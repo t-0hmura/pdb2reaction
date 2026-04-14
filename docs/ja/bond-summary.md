@@ -26,6 +26,7 @@ pdb2reaction bond-summary -i R.pdb IM1.pdb IM2.pdb P.pdb
 | `--device TEXT` | 計算デバイス（`cpu`, `cuda`） | `cpu` |
 | `--bond-factor FLOAT` | 共有結合半径の和に対するスケーリングファクター | `1.20` |
 | `--one-based / --zero-based` | 出力の原子インデックス規約 | `--one-based` |
+| `--out-json / --no-out-json` | 入力の隣に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照。 | `False` |
 
 ## 例
 

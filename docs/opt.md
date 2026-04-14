@@ -6,7 +6,7 @@
 
 `pdb2reaction opt` optimizes a single structure to a local minimum using L-BFGS (`--opt-mode grad`, default) or RFO (`--opt-mode hess`). For PDB inputs, link-hydrogen parents are automatically frozen.
 
-The command uses pysisyphus LBFGS (`lbfgs`) or RFOptimizer (`rfo`) while an MLIP backend (UMA by default; ORB, MACE, and AIMNet2 also available via `-b/--backend`) provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `_trj.xyz`, or any format supported by `geom_loader`. Settings follow precedence: **defaults < config < explicit CLI < override**.
+The command uses pysisyphus LBFGS (`lbfgs`) or RFOptimizer (`rfo`) while an MLIP backend (UMA by default; ORB, MACE, and AIMNet2 also available via `-b/--backend`) provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `_trj.xyz`, or any format supported by `geom_loader`. Settings follow precedence: **defaults < config < explicit CLI**.
 
 When the starting structure is a PDB or Gaussian template, the command also writes `.pdb` (PDB inputs) and `.gjf` (Gaussian templates) companions, controlled by `--convert-files/--no-convert-files` (enabled by default). PDB-specific conveniences include:
 - With `--freeze-links` (default `True`), parent atoms of link hydrogens are detected and merged into `geom.freeze_atoms` (1-based indices).
@@ -40,8 +40,15 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --thresh gau_tight --dump \
 2. Add a harmonic distance restraint.
 
 ```bash
+# Restrain atoms 1 and 5 to 2.0 Å. The example uses --bias-k 20.0 (a loose restraint
+# suitable for a light guide near the target distance); the default `bias.k` is 300
+# eV·Å⁻² and is better when you want the restraint to dominate during optimization.
 pdb2reaction opt -i input.pdb -q 0 -m 1 \
  --dist-freeze '[(1,5,2.0)]' --bias-k 20.0 --out-dir ./result_opt_rest
+
+# 2-tuple form: restrain atoms 1 and 5 to their current distance
+pdb2reaction opt -i input.pdb -q 0 -m 1 \
+ --dist-freeze '[(1,5)]' --out-dir ./result_opt_freeze
 ```
 
 3. Switch explicitly to RFO mode.
@@ -73,8 +80,8 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <nu
   > **Naming note:** The CLI accepts `grad|lbfgs` and `hess|rfo`. In YAML, use `lbfgs` or `rfo` directly.
 - **Flatten loop**: `--flatten` enables post-optimization flattening of imaginary vibrational modes. In `opt`, all detected imaginary modes are flattened each iteration until none remain or the internal loop cap is reached.
 - **Restraints**: `--dist-freeze` consumes Python-literal tuples `(i, j, target_Å)` where `target_Å` is the target distance in Å; omitting the third element restrains the starting distance. `--bias-k` sets a global harmonic strength (eV·Å⁻²). Indices default to 1-based but can be flipped to 0-based with `--zero-based`.
-- **Charge/spin resolution**: Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli-conventions.md#charge-specification) for details).
-- **Freeze atoms**: When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Link hydrogen and frozen atoms](extract.md#link-hydrogen-and-frozen-atoms)).
+- **Charge/spin resolution**: Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: Charge specification <charge-specification>` for details).
+- **Freeze atoms**: When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see {ref}`Link hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
 - **Dumping & conversion**: `--dump` mirrors `opt.dump=True` and writes `optimization_trj.xyz`; when conversion is enabled, trajectories are mirrored to `.pdb` for PDB inputs. `opt.dump_restart` can emit restart YAML snapshots.
 - **Exit codes**: `0` success, `2` zero step (step norm < `min_step_norm`), `3` optimizer failure, `130` keyboard interrupt, `1` unexpected error.
 
@@ -104,6 +111,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <nu
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
 | `--config FILE` | Base YAML configuration file. | _None_ |
 | `--show-config/--no-show-config` | Print resolved YAML layer information before execution. | `False` |
+| `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
 | `--dry-run/--no-dry-run` | Validate options and print execution plan without running optimization. | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
@@ -121,8 +129,7 @@ out_dir/
 ```
 The console prints the resolved `geom`, `calc`, `opt`, `lbfgs`/`rfo` blocks plus cycle-by-cycle progress and total runtime.
 
-(yaml-configuration-override-yaml)=
-See [CLI Conventions: Configuration precedence](cli-conventions.md#configuration-precedence) for the full resolution order.
+See {ref}`CLI Conventions: Configuration precedence <configuration-precedence>` for the full resolution order.
 
 ### `geom`
 - `coord_type` (`"cart"`): Cartesian vs. `"dlc"` delocalized internal coordinates.

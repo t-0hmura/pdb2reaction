@@ -1,14 +1,25 @@
 # YAML Reference
 
+```{tip}
+**Looking for the `all` end-to-end command?** The `all` command consumes every section described on this page and forwards them to the appropriate subcommand. See [`all`](all.md) (in particular its "Subcommand → YAML Sections" mapping) for which sections are read by which stage.
+```
+
+(yaml-configuration-precedence)=
 ## Configuration precedence
 
-Settings are resolved in the following order (highest priority first):
+Settings are resolved in the following order (later sources override earlier ones):
 
-1. **CLI flags** (e.g., `-q -1`, `--thresh gau_loose`)
-2. **YAML file** (passed via `--config`)
-3. **Built-in defaults** (defined in `defaults.py`)
+```
+built-in defaults  <  --config (YAML)  <  CLI flags
+```
+
+1. **Built-in defaults** — hard-coded values in `pdb2reaction/defaults.py`.
+2. **`--config`** — a YAML file that overrides defaults (e.g., `--config my_settings.yaml`).
+3. **CLI flags** — explicit command-line options (e.g., `-q -1`, `--thresh gau_loose`). Only *explicitly supplied* flags override YAML; options left at their CLI default do not mask YAML values.
 
 For example, if the YAML sets `charge: 0` but the CLI passes `-q -1`, the charge will be `-1`.
+
+This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, and `dft`. See also {ref}`CLI Conventions: Configuration precedence <configuration-precedence>`.
 
 ## Common CLI-to-YAML mapping
 
@@ -26,6 +37,31 @@ For example, if the YAML sets `charge: 0` but the CLI passes `-q -1`, the charge
 | `--opt-mode` | `opt_mode` | `opt` (tsopt) |
 | `--freeze-atoms` | `freeze_atoms` | `geom` |
 | `--coord-type` | `coord_type` | `geom` |
+
+### Default `--thresh` per subcommand
+
+`--thresh` defaults differ per subcommand because TS optimizers use a tighter "baker" preset while minimizers use the standard "gau" preset.
+
+| Subcommand | Default `--thresh` | Backing defaults block |
+|------------|-------------------|------------------------|
+| `opt` | `gau` | `OPT_BASE_KW` (→ `lbfgs` / `rfo`) |
+| `tsopt` (Hessian Dimer) | `baker` | `HESSIAN_DIMER_KW`, inner `LBFGS_TS_KW` |
+| `tsopt` (RS-I-RFO) | `baker` | `RSIRFO_KW` |
+| `scan`, `scan2d`, `scan3d` | `gau` | `OPT_BASE_KW` |
+| `path-search` (per-step opt) | `gau` | `OPT_BASE_KW` |
+| `path-opt` / StringOptimizer | `gau_loose` | `STOPT_KW` |
+| `all` (pre-opt, post-opt min) | `gau` | `OPT_BASE_KW` |
+| `all` (post-opt TS stage) | `baker` | `HESSIAN_DIMER_KW` / `RSIRFO_KW` |
+
+Accepted values: `gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`. Override per run with `--thresh <preset>` or under `opt.thresh` in YAML.
+
+```{note}
+**Subcommands without `--thresh`.** `irc`, `freq`, and `dft` do **not** expose `--thresh`:
+
+- `irc` — convergence is governed by `irc.rms_grad_thresh`, `irc.energy_thresh`, and `irc.max_cycles` (see [`irc` section](#irc-section)). The optimizer preset family does not apply because IRC follows a predictor–corrector integrator, not a force-based minimizer.
+- `freq` — there is no optimization step, so no `--thresh`. Numerical accuracy is governed by `--hessian-calc-mode` and the underlying MLIP precision.
+- `dft` — SCF convergence uses `dft.conv_tol` (default `1e-9` hartree) and `dft.max_cycle`, not the `gau`/`baker` preset family. See the [`dft` section](#dft-section).
+```
 
 ## Overview
 
@@ -390,12 +426,14 @@ rsirfo:
  prim_coord: null # Primary coordinates to monitor
  rx_coords: null # Reaction coordinates to monitor
  hessian_update: bofill # Hessian update scheme
+ hessian_recalc: 500 # Rebuild exact Hessian every N macro steps (inherited from rfo)
  hessian_recalc_reset: true # Reset recalc counter after exact Hessian
  max_micro_cycles: 50 # Micro-iterations per macro cycle
  augment_bonds: false # Augment reaction path based on bond analysis
  min_line_search: true # Enforce minimum line-search step
  max_line_search: true # Enforce maximum line-search step
  assert_neg_eigval: false # Require negative eigenvalue at convergence
+ track_mode_by_overlap: false # Track the selected TS mode by overlap with the previous Hessian
  # Also inherits rfo-like settings: trust_radius, trust_update, etc.
 ```
 
@@ -432,8 +470,10 @@ irc:
  prefix: "" # Filename prefix
  max_pred_steps: 500 # Predictor-corrector max steps
  loose_cycles: 3 # Loose cycles before tightening
- corr_func: mbs # Corrector function choice
+ corr_func: mbs # EulerPC corrector function: "mbs" (modified Bulirsch–Stoer, default) or "rk4"
 ```
+
+The `corr_func` key selects the corrector step used by the predictor–corrector IRC integrator (EulerPC). `"mbs"` is the pysisyphus-native modified Bulirsch–Stoer implementation (default) and `"rk4"` requests a classical fourth-order Runge–Kutta corrector. Change this only if the default integrator is numerically unstable on your system; most users should leave it at `mbs`.
 
 ---
 
@@ -494,14 +534,24 @@ dft:
 Scan coordinates are specified via `-s/--scan-lists` (inline or YAML file), **not** in the main YAML config.
 See [Quickstart: scan workflow](quickstart-scan.md) for scan coordinate syntax (PDB selectors, multi-stage).
 
+(bias-section)=
 ### `bias`
 
-Harmonic bias settings for scans.
+Harmonic bias settings for scans and restraint-based optimizations.
 
 ```yaml
 bias:
  k: 300.0 # Harmonic bias strength (eV·Å⁻²)
 ```
+
+**Shared spring constant across subcommands.** The same physical harmonic penalty (`k`, in eV·Å⁻²) appears in three places with the same default of `300.0`:
+
+| YAML key | Used by | CLI flag |
+|----------|---------|----------|
+| `bias.k` | `opt` (`--bias-k` applied to `--dist-freeze` pairs), `scan`, `scan2d`, `scan3d` | `--bias-k` |
+| `dmf.dmf_options.k_fix` | `path-opt` / `path-search` when `mep_mode: dmf` | — (YAML only) |
+
+Override any of these to tune how stiff the harmonic restraint is. A smaller value (e.g. `20.0`) is appropriate when the geometry should relax against a soft guidance term; the default `300.0` enforces near-rigid pinning.
 
 ---
 

@@ -4,6 +4,8 @@
 
 **pdb2reaction** は、機械学習原子間ポテンシャル（MLIP: Machine Learning Interatomic Potential）を使用して、PDB 構造から酵素反応経路を自動モデリングする Python 製 CLI ツールキットです。
 
+> このページは日本語版です. English: [index](../index.md)
+
 ```{toctree}
 :maxdepth: 2
 :caption: ガイド
@@ -51,9 +53,9 @@ bond-summary
 yaml-reference
 json-output
 uma-pysis
+hpc-example
 glossary
 ```
-
 
 ---
 
@@ -87,6 +89,7 @@ glossary
 | 症状からエラー対処を探す | — | [典型エラー別レシピ](recipes-common-errors.md) |
 | よくあるエラーを解決したい | — | [トラブルシューティング](troubleshooting.md) |
 | 略語や用語を調べる | — | [用語集](glossary.md) |
+| CLI の規約（フラグ、優先順位、原子/残基セレクタ）を調べる | — | [CLI 規約](cli-conventions.md) |
 
 ---
 
@@ -139,7 +142,7 @@ glossary
 
 | トピック | ページ |
 |-------|------|
-| **CLI コマンドリファレンス** | [コマンドリファレンス](../reference/commands/index.md) |
+| **CLI コマンドリファレンス（英語のみ、自動生成）** | [コマンドリファレンス（英語のみ）](../reference/commands/index.md) |
 | **YAML 設定オプション** | [YAML リファレンス](yaml-reference.md) |
 | **MLIP バックエンド設定** | [MLIP 計算機](uma-pysis.md) |
 | **用語** | [用語集](glossary.md) |
@@ -210,25 +213,27 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 
 ## 出力構造
 
-典型的な `pdb2reaction all` の出力:
+典型的な `pdb2reaction all` の出力（デフォルトは `--refine-path True` で `path_search/` を使用。`--refine-path False` では代わりに `path_opt/` が使われます）:
+
 ```
 result_all/
-├── summary.log # 結果要約
-├── summary.json # JSON 結果
-├── models/ # 抽出されたクラスターモデル
-├── scan/ # （オプション）スキャン結果
-├─┬ path_opt/ # MEP軌跡とダイアグラム（デフォルト）
-│ ├── mep_trj.xyz # MEP軌跡
-│ ├── mep.pdb # PDB形式のMEP
-│ ├── mep_plot.png # エネルギープロファイルプロット
-│ └── seg_*/ # セグメントごとの詳細
-│ # （デフォルト: path_search/、mep_w_ref.pdb を含む; --refine-path False 時は path_opt/）
-└┬── path_opt/post_seg_*/ # 後処理出力
- ├── tsopt/ # TS最適化結果
- ├── irc/ # IRC軌跡
- ├── freq/ # 振動モード
- └── dft/ # DFT結果
+├── summary.log               # 結果要約
+├── summary.json              # JSON 結果
+├── models/                   # 抽出されたクラスターモデル
+├── scan/                     # （オプション）スキャン結果
+└── path_search/              # MEP 探索結果（デフォルト）
+    ├── mep_trj.xyz           # 最終 MEP 軌跡
+    ├── mep.pdb               # PDB 形式の MEP
+    ├── mep_plot.png          # エネルギープロファイル図
+    ├── seg_*/                # セグメントごとの MEP 詳細
+    └── post_seg_*/           # セグメントごとの後処理
+        ├── tsopt/            # TS 最適化結果
+        ├── irc/              # IRC 軌跡
+        ├── freq/             # 振動解析
+        └── dft/              # DFT 結果
 ```
+
+`--refine-path False` を指定した場合、`path_search/` サブツリーは同じレイアウトの `path_opt/` に置き換わります。
 
 ---
 

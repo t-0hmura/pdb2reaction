@@ -87,13 +87,13 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 ```
 
 ## Workflow
-- **Charge/spin resolution**: Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli-conventions.md#charge-specification) for details).
+- **Charge/spin resolution**: Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: Charge specification <charge-specification>` for details).
 - **Geometry loading & freeze-links**: structures are read via
-  `pysisyphus.helpers.geom_loader`. When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Link hydrogen and frozen atoms](extract.md#link-hydrogen-and-frozen-atoms)).
+  `pysisyphus.helpers.geom_loader`. When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see {ref}`Link hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
 - **MLIP Hessians (default: UMA)**: `--hessian-calc-mode` toggles between analytical and finite-difference
   evaluations; both honor active (PHVA) subspaces. The MLIP backend may return only the active block when
   frozen atoms are present.
-  For Hessian evaluation modes, see [MLIP Calculator](uma-pysis.md#hessian-evaluation).
+  For Hessian evaluation modes, see {ref}`hessian-evaluation`.
 - **Dimer mode details**:
  - The Hessian Guided Dimer stage periodically refreshes the dimer direction by evaluating an exact
   Hessian (active subspace, TR-projected) and prefers `torch.lobpcg` for the lowest
@@ -137,6 +137,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--config FILE` | Base YAML configuration file applied before explicit CLI options. | _None_ |
 | `--show-config/--no-show-config` | Print resolved config layers and continue execution. | `False` |
+| `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
@@ -174,16 +175,20 @@ out_dir/ (default:./result_tsopt/)
 
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
-- Imaginary-frequency detection threshold defaults to 5.0 cm⁻¹ (configurable via
-  `hessian_dimer.neg_freq_thresh_cm`); frequencies with magnitudes below this threshold are not counted as imaginary. The selected `root` controls which vibrational mode is followed during optimization.
+- Imaginary-frequency **detection** threshold defaults to 5.0 cm⁻¹ (configurable via
+  `hessian_dimer.neg_freq_thresh_cm`); frequencies with magnitudes below this threshold are not counted as imaginary. The selected `root` controls which vibrational mode is followed during optimization. **Note:** This 5 cm⁻¹ value is the *internal detection cutoff* for "is there an imaginary mode at all", not a TS-quality check. A separate ~100 cm⁻¹ rule-of-thumb is used in [Common Error Recipes](recipes-common-errors.md) to judge whether a detected imaginary mode is *physically meaningful* for a transition state — don't confuse the two.
 - Use `--opt-mode` to choose the algorithm workflow directly (`rsirfo` by default), instead of
   manually editing YAML mode mappings.
 - PHVA translation/rotation projection follows the same implementation as `freq`, while reducing
   memory usage and preserving correct active-space eigenvectors.
-- See [CLI Conventions: Configuration precedence](cli-conventions.md#configuration-precedence) for the full resolution order.
+- See {ref}`CLI Conventions: Configuration precedence <configuration-precedence>` for the full resolution order.
 
 Shared sections reuse
 [YAML Reference](yaml-reference.md). Adjust only the values you need to change.
+
+```{note}
+**Reference duplication.** The YAML keys for `geom`, `calc`, `opt`, `hessian_dimer`, and `rsirfo` listed below mirror the canonical definitions in [YAML Reference](yaml-reference.md). When the two pages disagree, the canonical [YAML Reference](yaml-reference.md) entries (and `pdb2reaction/defaults.py`) take precedence; the inline appendix on this page is reproduced only for `tsopt`-specific defaults (e.g. `out_dir: ./result_tsopt/`, the `--flatten` interaction documented above) and convenience lookup. Note that `flatten_max_iter` is forced to `0` by the CLI initializer unless `--flatten` is passed, regardless of the value shown in the inline YAML.
+```
 
 ### Shared configuration (common to both modes)
 

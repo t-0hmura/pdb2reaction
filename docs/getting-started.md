@@ -45,14 +45,15 @@ PDB (R, P)
 [extract]  Active site model extraction (cluster model)
   |
   v
-[path-opt]  MEP search (GSM or DMF)
-  |         Produces: mep.pdb, energy_diagram.png, summary.json
+[path-search]  MEP search (recursive path-search, default; --refine-path False switches to path-opt)
+  |             Produces: mep.pdb, energy_diagram_*.png, summary.json
   v
 [tsopt]  TS optimization (RS-I-RFO or Hessian Guided Dimer)
   |       Produces: final_geometry.xyz, vib/imag_*.pdb
   v
 [irc]  Intrinsic Reaction Coordinate
-  |     Produces: finished_irc.pdb, structures/reactant.xyz, structures/product.xyz
+  |     Produces: finished_irc_trj.xyz, forward_irc_trj.xyz, backward_irc_trj.xyz
+  |     (under post_seg_XX/irc/ when launched via `all`)
   v
 [freq]  Vibrational analysis + thermochemistry (R, TS, P)
   |      Produces: frequencies_cm-1.txt, thermoanalysis.yaml
@@ -121,7 +122,7 @@ For setup and dependency installation, see [Installation](installation.md).
 
 ## Command line basics
 
-The main entry point is the `pdb2reaction` command, installed via `pip`. A shorthand alias **`p2r`** is also available — all commands can be run with either name. Internally it uses the **Click** library, and the default subcommand is `all`.
+The main entry point is the `pdb2reaction` command, installed via `pip`. A shorthand alias **`p2r`** is also registered by the `pdb2reaction` package (same setuptools entry point; you get both after `pip install pdb2reaction`) — all commands can be run with either name. Internally it uses the **Click** library, and the default subcommand is `all`.
 
 That means:
 
@@ -268,9 +269,9 @@ Below are the most commonly used options across workflows.
 | `--thermo/--no-thermo` | Run vibrational analysis and thermochemistry. |
 | `--dft/--no-dft` | Perform single-point DFT calculations. |
 | `--refine-path/--no-refine-path` | Use recursive `path-search` (default: `True`). Set to `False` for single-pass `path-opt`. |
-| `--opt-mode grad\|hess` | Workflow-level preset in `all` (`grad` -> LBFGS/Dimer, `hess` -> RFO/RS-I-RFO; default `grad`). For direct commands, prefer `opt --opt-mode grad|hess` and `tsopt --opt-mode grad|hess`. |
+| `--opt-mode grad\|hess` | Workflow-level preset in `all` (`grad` -> LBFGS/Dimer, `hess` -> RFO/RS-I-RFO; **default `grad` at the `all` pre-opt scope**). For direct commands, prefer `opt --opt-mode grad|hess` and `tsopt --opt-mode grad|hess`. **Default differs by scope**: standalone `tsopt --opt-mode` defaults to `hess`. See {ref}`opt-mode-semantics` for the full per-subcommand mapping. |
 | `--mep-mode gsm\|dmf` | MEP method (default: `gsm`): Growing String Method or Direct Max Flux. |
-| `--hessian-calc-mode Analytical\|FiniteDifference` | Hessian evaluation method (default: `FiniteDifference`). For Hessian evaluation modes, see [MLIP Calculator](uma-pysis.md#hessian-evaluation). |
+| `--hessian-calc-mode Analytical\|FiniteDifference` | Hessian evaluation method (default: `FiniteDifference`). For Hessian evaluation modes, see {ref}`MLIP Calculator <hessian-evaluation>`. |
 
 For a full matrix of options and YAML schemas, see [all](all.md) and [YAML Reference](yaml-reference.md).
 
@@ -320,7 +321,7 @@ Most users will primarily call `pdb2reaction all`. The CLI also exposes individu
 | `add-elem-info` | Repair PDB element columns | [add-elem-info](add-elem-info.md) |
 
 ```{tip}
-For Hessian evaluation modes, see [MLIP Calculator](uma-pysis.md#hessian-evaluation).
+For Hessian evaluation modes, see {ref}`MLIP Calculator <hessian-evaluation>`.
 ```
 
 ---

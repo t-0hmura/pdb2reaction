@@ -2,6 +2,18 @@
 
 このページでは、pdb2reaction ドキュメント内で使われる略語・専門用語を簡潔に説明します。
 
+## 日本語表記の統一（canonical）
+
+pdb2reaction の日本語ドキュメントでは以下の表記を正規形として採用します。翻訳の揺れが見つかった場合は、この表に合わせて修正してください。
+
+| 概念 | 正規表記 | 備考 |
+| --- | --- | --- |
+| Hessian（二階微分行列） | **ヘシアン** | 「ヘッシアン」は使わない。 |
+| Highest-Energy Image (HEI) | **最高エネルギー画像** | 「最高エネルギーイメージ」は使わない。略語は `HEI` のまま。 |
+| Kink | **ねじれ** | 「キンク」「屈曲」は使わない。初出で `(kink)` を併記可。 |
+| Trust region | **信頼領域** | 最適化が信頼する領域そのものを指す。 |
+| Trust radius | **信頼半径** | `trust_radius` / `trust_min` / `trust_max` の値を指す場合はこちらを使う。 |
+
 ---
 
 ## 反応経路・最適化
@@ -10,10 +22,9 @@
 |------|----------|------|
 | **MEP** | Minimum Energy Path | 反応物から生成物へ至る最小エネルギー経路（ポテンシャルエネルギー面上の最も低い経路）。 |
 | **TS** | Transition State | ポテンシャルエネルギー面上の一次鞍点（first-order saddle point）。反応座標方向にのみ負の曲率（虚振動数）を 1 つ持つ停留点。 |
-| **IRC** | Intrinsic Reaction Coordinate（固有反応座標） | TS から反応物側・生成物側へ向かう、質量重み付き最急降下経路。TS が意図した反応物と生成物を接続していることの検証に使用します。 |
+| **IRC** | Intrinsic Reaction Coordinate（固有反応座標） | 古典的には TS から反応物側・生成物側へ向かう**質量重み付き**最急降下経路として定義され、TS が意図した端点を接続することの検証に使用します。pdb2reaction の EulerPC 積分は**質量重みなしのデカルト座標**で動作します（`irc.md`: `--step-size` は質量重みなしデカルトの Bohr）。`geom.coord_type` は `cart` に強制されます。 |
 | **GSM** | Growing String Method | 端点からストリング（イメージ列）を伸長・最適化して MEP を近似する手法。 |
 | **DMF** | Direct Max Flux | 反応座標方向のフラックスを最大化することで MEP を最適化する chain-of-states 手法。pdb2reaction では `--mep-mode dmf` で選択します。 |
-| **NEB** | Nudged Elastic Band | イメージ間にばね力を導入し、間隔を保ちながら経路を最適化する chain-of-states 手法。 |
 | **HEI** | Highest-Energy Image | MEP 上でエネルギーが最大のイメージ。TS の初期推定としてよく使われます。 |
 | **イメージ（Image）** | — | 経路上の 1 つの構造（1 ノード）。chain-of-states 法で離散化された各点。 |
 | **セグメント** | — | 2 つの隣接する端点を結ぶ MEP 区間（例: R → I1, I1 → I2, …）。 |
@@ -28,12 +39,17 @@
 
 | 用語 | 正式名称 | 説明 |
 |------|----------|------|
+| **BFGS** | Broyden-Fletcher-Goldfarb-Shanno | 準ニュートン型のヘシアン更新スキーム（`hessian_update: bfgs`）。 |
 | **L-BFGS** | Limited-memory BFGS | 勾配履歴からヘシアンを近似する準ニュートン法。`opt --opt-mode grad` で使用。 |
 | **RFO** | Rational Function Optimization | 明示的なヘシアン情報を使用する信頼領域最適化法。`opt --opt-mode hess` で使用。 |
-| **RS-I-RFO** | Restricted-Step Image-RFO | ヘシアン行列の 1 つの負固有値方向に沿って一次鞍点を探索する RFO 変種。`tsopt --opt-mode hess` で使用。 |
-| **Dimer** | Dimer Method | 完全なヘシアンを計算せずに最低曲率モードを推定する TS 最適化法。`tsopt --opt-mode grad` で使用。 |
+| **RS-I-RFO** | Restricted-Step Image-RFO | ヘシアン行列の 1 つの負固有値方向に沿って一次鞍点を探索する RFO 変種。`tsopt --opt-mode hess` のデフォルト。 |
+| **Dimer** | Dimer Method | 完全なヘシアンを計算せずに最低曲率モードを推定する TS 最適化法。`tsopt --opt-mode grad` で使用。pdb2reaction は Hessian Guided Dimer 変種を使い、活性部分空間の正確ヘシアンを周期的に評価してダイマー方向を更新します。 |
+| **Bofill** | Bofill Update | SR1（対称ランク 1）と PSB（Powell-symmetric-Broyden）を混合したヘシアン更新スキーム。鞍点探索に適します。`hessian_update: bofill` で選択され、RS-I-RFO と Dimer のフラット化ループで使用されます。 |
+| **SR1** | Symmetric Rank-One | ランク 1 のヘシアン更新スキーム。Bofill の 2 要素のうち 1 つ。 |
+| **PSB** | Powell-Symmetric-Broyden | 対称ヘシアン更新スキーム。Bofill の 2 要素のうちもう 1 つ。 |
 | **EulerPC** | Euler Predictor-Corrector | IRC 計算の積分スキーム。勾配方向への予測ステップと経路を修正する補正ステップの 2 段階で構成されます。 |
 | **PHVA** | Partial Hessian Vibrational Analysis（部分ヘシアン振動解析） | 凍結されていない活性自由度のみで振動解析を行う手法。`freeze_atoms` 設定時に自動適用されます。 |
+| **Active DOF** | Active Degrees of Freedom（活性自由度） | `freeze_atoms` に列挙されていない原子が持つ 3N 個のデカルト座標。PHVA、部分ヘシアン TS 最適化、解析的ヘシアン経路はすべてこの活性部分空間のみで動作し、凍結原子は縮約ヘシアンの行・列を寄与しません。 |
 | **DLC** | Delocalized Internal Coordinates（非局在化内部座標） | 原子間距離・角度・二面角から構成される冗長内部座標系。`coord_type: dlc` で利用可能（デフォルトは `cart` = デカルト座標）。 |
 
 ---
@@ -48,6 +64,8 @@
 | **MACE** | MACE | Equivariant message-passing MLIP。`-b mace` で選択。 |
 | **AIMNet2** | AIMNet2 | Atoms-In-Molecules Network v2。`-b aimnet2` で選択。 |
 | **xTB** | Extended Tight Binding | 半経験的量子化学手法。pdb2reaction では `--solvent` による暗黙溶媒補正に使用。 |
+| **fairchem** | — | Meta がオープンソースで公開している基盤モデルツールキット。UMA 系のチェックポイントを提供します。pdb2reaction は UMA 予測器のロードに `fairchem-core` へ依存します。 |
+| **task_name** | — | UMA の推論バッチに記録されるタスクタグ（YAML: `calc.task_name`、デフォルト `omol`）。チェックポイントが学習したタスク/プリセットを選択します。 |
 | **解析ヘシアン** | Analytical Hessian | エネルギーの正確な二階微分を計算。高速だが VRAM を多く消費。`--hessian-calc-mode Analytical` で選択。 |
 | **有限差分** | Finite Difference | 微小変位による微分近似。低速だがメモリ効率が良い。`--hessian-calc-mode FiniteDifference`（デフォルト）で選択。 |
 
@@ -62,6 +80,9 @@
 | **Hessian（ヘシアン行列）** | — | エネルギーの二階微分行列。固有値から振動数を、固有ベクトルから振動モード（変位ベクトル）を得ます。振動解析や TS 最適化に使用します。 |
 | **SP** | Single Point | 固定構造での計算（最適化なし）。高精度エネルギー補正によく使用。 |
 | **スピン多重度** | Spin Multiplicity | 2S+1（S は全スピン量子数）。一重項（singlet）= 1、二重項（doublet）= 2、三重項（triplet）= 3 など。`-m/--multiplicity` で指定（デフォルト: 1）。 |
+| **ALPB** | Analytical Linearized Poisson-Boltzmann | xTB で利用可能な暗黙溶媒モデル（`--solvent-model alpb`、デフォルト）。 |
+| **CPCMX** | Conductor-like PCM (XC 拡張) | xTB で利用可能な暗黙溶媒モデル（`--solvent-model cpcmx`）。 |
+| **cyipopt** | — | IPOPT 内点法ソルバの Python バインディング。DMF（`--mep-mode dmf`）経路精密化パイプラインが依存します。 |
 
 ---
 
@@ -72,8 +93,8 @@
 | **PDB** | Protein Data Bank | タンパク質などの三次元構造を表す標準フォーマット（およびデータベース）。 |
 | **XYZ** | — | 元素記号と直交座標を並べたシンプルなテキスト形式。 |
 | **GJF** | Gaussian Job File | Gaussian の入力形式。pdb2reaction は電荷/多重度と座標の読み取りに利用します。 |
-| **活性部位モデル** | Active Site Model（バインディングポケット） | `-c/--center` と `-r/--radius` で定義される基質周辺の抽出範囲。 |
-| **クラスターモデル** | Cluster Model | 活性部位モデルから切り出され、リンク水素でキャップされた計算対象の部分系。MEP/TS 探索の計算量削減に使用します。 |
+| **活性部位モデル** | Active Site Model（バインディングポケット） | `-c/--center` と `-r/--radius` で定義される基質周辺の抽出範囲。pdb2reaction ドキュメントでは「活性部位モデル」と「クラスターモデル」を下流の計算入力の意味でほぼ同義に使います。厳密には「活性部位モデル」は幾何学的な選択領域、「クラスターモデル」はそれをリンク水素でキャップして QM/MLIP 計算入力として完成させた段階を指します。 |
+| **クラスターモデル** | Cluster Model | 抽出した活性部位モデルの切断された共有結合をリンク水素でキャップし、QM/MLIP 計算入力として整えた部分系。実質的には「活性部位モデル」（キャップ前の幾何選択）と「クラスターモデル」（キャップ後、計算実行可能）は同じ対象の 2 段階です。 |
 | **リンク水素** | Link Hydrogen | 活性部位モデル抽出時に切断された結合をキャップするために付加する水素原子。 |
 | **主鎖** | Backbone | タンパク質の主骨格（N–Cα–C–O 原子）。活性部位モデル抽出時に `--exclude-backbone` で除外可能。 |
 

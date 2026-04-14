@@ -17,16 +17,19 @@ Run the full `pdb2reaction all` workflow from a single structure by driving one 
 
 ### Basic syntax
 
-Each literal is a list of `(atom1, atom2, target_Å)` triples. One literal = one stage.
+Each literal is a list of 3-tuples `(atom1, atom2, target_distance_Å)`. Exactly three elements per tuple are required; the third is always the target distance in **ångströms**. One literal = one stage.
 
 ```bash
 # Single stage, integer atom indices (1-based by default)
-pdb2reaction -i input.pdb -q 0 -s '[(1, 5, 1.35)]' -o ./result_scan
+pdb2reaction -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 \
+ -s '[(1, 5, 1.35)]' -o ./result_scan
 
 # Single stage, PDB selector strings
-pdb2reaction -i input.pdb -q 0 \
+pdb2reaction -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 \
  -s '[("TYR,285,CA", "SAM,309,C10", 1.35)]' -o ./result_scan
 ```
+
+The `-c/--center` cluster selector is required when running on a protein–ligand PDB; omit `-c` (and pass `-q` directly instead of `-l`) for small-molecule `.pdb` / `.xyz` inputs. `-m/--multiplicity` defaults to `1` (singlet) but is shown explicitly here for clarity.
 
 ### PDB selectors
 
@@ -46,7 +49,7 @@ Pass multiple literals — each becomes one sequential stage:
 ```bash
 # Stage 1: drive one bond to 1.35 Å
 # Stage 2: drive two bonds simultaneously
-pdb2reaction -i input.pdb -q 0 -s \
+pdb2reaction -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 -s \
   '[("TYR,285,CA","SAM,309,C10",1.35)]' \
   '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]' \
   -o ./result_scan
@@ -106,7 +109,7 @@ result_scan/
 │   └── stage_02/                  # Scan stage 2 (if multi-stage)
 └── path_search/                   # MEP search (default, recursive); path_opt/ with --refine-path False
     ├── mep.pdb
-    └── energy_diagram_uma_all.png
+    └── energy_diagram_UMA_all.png
 ```
 
 **What to check:**
@@ -115,7 +118,7 @@ result_scan/
 2. `path_search/mep.pdb` — the optimized MEP trajectory
 3. `summary.log` — barrier heights and bond change summary
 
-**Tip:** Use `--print-parsed` to verify scan targets before a full run:
+**Tip:** Use `--print-parsed --dry-run` to verify scan targets before a full run:
 
 ```bash
 pdb2reaction scan -i input.pdb -q 0 -s '[(1, 5, 1.35)]' --print-parsed --dry-run

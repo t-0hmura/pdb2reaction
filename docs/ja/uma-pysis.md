@@ -89,7 +89,7 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 |---------|---------|-------------------|-------------|-------|
 | **UMA** | 同梱 | あり | あり | fairchem による完全機能 |
 | **ORB** | `pip install "pdb2reaction[orb]"` | なし（有限差分のみ） | なし | orb-models |
-| **MACE** | `pip install --no-deps mace-torch` | なし（有限差分のみ） | なし | mace-torch |
+| **MACE** | `pip uninstall -y fairchem-core && pip install mace-torch` | なし（有限差分のみ） | なし | mace-torch |
 | **AIMNet2** | `pip install "pdb2reaction[aimnet]"` | なし（有限差分のみ） | なし | aimnet |
 
 ### 暗黙溶媒補正
@@ -104,150 +104,27 @@ pdb2reaction opt -i input.pdb -q 0 -b orb --solvent water --solvent-model cpcmx
 デルタアプローチによる補正: ΔE = E_xTB(溶媒) - E_xTB(真空) を MLIP エネルギー/力/ヘシアンに加算します。`xtb` が `PATH` 上にインストールされている必要があります。
 
 ## 主な特徴
+
 - **MLIPバックエンド** – デフォルトの UMA バックエンドは FAIR-Chem の `pretrained_mlip` ヘルパーでUMAチェックポイントを読み込み、AtomicData バッチに電荷/スピン情報を付与。代替バックエンド（ORB、MACE、AIMNet2）は `-b/--backend` で利用可能。
 - **デバイス処理** – `device="auto"` はCUDAがあればGPU、なければCPUを選択。グラフ構築は選択デバイス上で行い、`workers>1` では並列予測器が転送を管理。
-### ヘシアンモード
-
-`hessian_calc_mode="Analytical"` で2階自動微分、`"FiniteDifference"`（デフォルト）は力の中心差分。`workers>1` の場合は解析ヘシアンは無効化されます。
 - **凍結原子** – `freeze_atoms` に1始まりの原子インデックスを渡すと、凍結原子の力がゼロ化。`return_partial_hessian=True` で凍結自由度を除いたヘシアンを返すか、フル行列で該当行/列をゼロ化できます。
 - **精度制御** – エネルギー/力は常にfloat64。`hessian_double=False` でヘシアンをモデルのネイティブdtype（通常float32）で返します。
-- **マルチワーカー推論** – `workers>1` で FAIR-Chem の `ParallelMLIPPredictUnit` を起動し、`workers_per_node` をノードごとに指定可能。バッチ処理速度の向上に有効です。**注意:** `workers>1` の場合、`hessian_calc_mode="Analytical"` を指定していても解析ヘシアンは暗黙的に有限差分（`force_fd=True`）へ切り替わります。警告は出力されないため、ヘシアン計算時間が想定より長い場合はログを確認してください。
+- **マルチワーカー推論** – `workers>1` で FAIR-Chem の `ParallelMLIPPredictUnit` を起動し、`workers_per_node` をノードごとに指定可能。バッチ処理速度の向上に有効です。
+
+```{warning}
+`workers > 1` の場合、`hessian_calc_mode="Analytical"` を明示的に指定していても解析ヘシアンは暗黙的に有限差分（`force_fd=True`）へ切り替わります。警告は出力されないため、ヘシアン計算時間が想定より長い場合はログを確認してください。この警告は `--workers` / `--workers-per-node` を持つすべてのサブコマンド（`opt`, `tsopt`, `freq`, `irc`, `all`, scan 系）に適用されます。
+```
+
+(ja-hessian-evaluation)=
+### ヘシアン評価モード
+
+`hessian_calc_mode="Analytical"` は選択されたデバイス上で2階自動微分を行い、`"FiniteDifference"`（デフォルト）は力の中心差分を計算します。複数の推論ワーカーを要求した場合、解析モードは自動的に無効化されます（上記の警告を参照）。
 
 ## HPC での使用例: PBS + Open MPI + Ray
 
-`workers` / `workers_per_node` は、スケジューラ配下で Ray クラスタを構築することでノード間に分散できます。以下は Open MPI を使う PBS スクリプトの一例です（モジュール名、ポート、リソース要求は環境に合わせて調整してください）。
+複数ノードで `workers` / `workers_per_node` を Ray クラスタに分散する PBS + Open MPI のテンプレートは [HPC 実行例のページ](hpc-example.md) を参照してください。モジュール名、conda パス、PBS リソース要求などを環境に合わせて調整すればそのまま使えます。
 
-```bash
-#!/bin/bash
-#PBS -l select=4:mpiprocs=72
-#PBS -l walltime=24:00:00
-#PBS -j oe
-#PBS -N pdb2reaction
-
-cd "$PBS_O_WORKDIR"
-
-# --- Environment setting ---
-source /etc/profile.d/modules.sh
-module purge
-module load gcc ompi cuda/12.9
-source ~/apps/miniconda3/etc/profile.d/conda.sh
-conda activate pdb2reaction
-# -------------------
-
-
-# --- Ray setting ---
-# Stable CUDA/NCCL
-export CUDA_DEVICE_ORDER=PCI_BUS_ID
-export NCCL_SOCKET_FAMILY=AF_INET
-
-# CUDA_VISIBLE_DEVICES fallback (if scheduler doesn't set)
-if [[ -z "${CUDA_VISIBLE_DEVICES:-}" || "${CUDA_VISIBLE_DEVICES}" == "NoDevFiles" ]]; then
- export CUDA_VISIBLE_DEVICES=0
-fi
-export GPUS_PER_NODE="$(awk -F',' '{print NF}' <<< "${CUDA_VISIBLE_DEVICES}")"
-
-# --- Nodes ---
-mapfile -t NODES < <(awk '!seen[$0]++' "$PBS_NODEFILE")
-NNODES="${#NODES[@]}"
-
-HEAD_NODE="${NODES[0]}"
-HEAD_IP="$(getent ahostsv4 "${HEAD_NODE}" | awk 'NR==1{print $1}')"
-
-# --- Ports (avoid collisions: derive from PBS_JOBID) ---
-JOBTAG="${PBS_JOBID%%.*}"
-JOBNUM="${JOBTAG//[^0-9]/}"; JOBNUM="${JOBNUM:-0}"
-BASE_PORT=$((20000 + (JOBNUM % 20000)))
-
-RAY_PORT="${BASE_PORT}"
-RAY_OBJECT_MANAGER_PORT=$((BASE_PORT + 1))
-RAY_NODE_MANAGER_PORT=$((BASE_PORT + 2))
-RAY_RUNTIME_ENV_AGENT_PORT=$((BASE_PORT + 3))
-RAY_METRICS_EXPORT_PORT=$((BASE_PORT + 6))
-RAY_MIN_WORKER_PORT=$((BASE_PORT + 100))
-RAY_MAX_WORKER_PORT=$((BASE_PORT + 999))
-
-RAY_TEMP_DIR="/tmp/ray_${JOBTAG}"
-RAY_HEAD_ADDR="${HEAD_IP}:${RAY_PORT}"
-
-# For ray.init(address="auto") / ray status
-export RAY_ADDRESS="${RAY_HEAD_ADDR}"
-# (optional but handy for tmp-heavy workloads)
-export TMPDIR="${RAY_TEMP_DIR}"
-
-echo "Nodes(${NNODES}): ${NODES[*]}"
-echo "Ray head: ${RAY_HEAD_ADDR}"
-echo "Ray temp: ${RAY_TEMP_DIR}"
-echo "CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES} (GPUS_PER_NODE=${GPUS_PER_NODE})"
-
-MPI=(mpirun --bind-to none -np "${NNODES}" --map-by ppr:1:node)
-BASH=(bash --noprofile --norc -c)
-
-cleanup() {
- echo "Stopping Ray..."
- [[ -n "${RAY_LAUNCH_PID:-}" ]] && kill "${RAY_LAUNCH_PID}" >/dev/null 2>&1 || true
- "${MPI[@]}" "${BASH[@]}" "ray stop -f >/dev/null 2>&1 || true" || true
-}
-trap cleanup EXIT
-
-# Prepare node-local /tmp + stop any leftover ray
-"${MPI[@]}" "${BASH[@]}" "mkdir -p '${RAY_TEMP_DIR}'; ray stop -f >/dev/null 2>&1 || true"
-
-# --- Launch Ray (rank0=head) ---
-"${MPI[@]}" "${BASH[@]}" "
-
-# Keep env stable inside remote shell as well
-export PYTHONPATH='${PYTHONPATH}'
-export CUDA_DEVICE_ORDER=PCI_BUS_ID
-export NCCL_SOCKET_FAMILY=AF_INET
-export TMPDIR='${RAY_TEMP_DIR}'
-
-# Avoid NCCL \"duplicate GPU\" when hostid is identical across nodes
-export NCCL_HOSTID=$(hostname -s)
-
-# Per-node GPU count
-if [[ -z \"${CUDA_VISIBLE_DEVICES:-}\" || \"${CUDA_VISIBLE_DEVICES}\" == \"NoDevFiles\" ]]; then
- export CUDA_VISIBLE_DEVICES=0
-fi
-GPUS=$(awk -F',' '{print NF}' <<<"${CUDA_VISIBLE_DEVICES}")
-
-HOST=$(hostname -s)
-IP=$(getent ahostsv4 "${HOST}" | awk 'NR==1{print $1}')
-
-echo "[${HOST}] IP=${IP} CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES} (GPUS=${GPUS}) NCCL_HOSTID=${NCCL_HOSTID}"
-
-if [[ \"${OMPI_COMM_WORLD_RANK:-0}\" == \"0\" ]]; then
- echo "[${HOST}] ray HEAD on ${HEAD_IP}:${RAY_PORT}"
- ray start --head --node-ip-address='${HEAD_IP}' --port='${RAY_PORT}' \
- --object-manager-port='${RAY_OBJECT_MANAGER_PORT}' --node-manager-port='${RAY_NODE_MANAGER_PORT}' \
- --runtime-env-agent-port='${RAY_RUNTIME_ENV_AGENT_PORT}' \
- --metrics-export-port='${RAY_METRICS_EXPORT_PORT}' \
- --min-worker-port='${RAY_MIN_WORKER_PORT}' --max-worker-port='${RAY_MAX_WORKER_PORT}' \
- --num-gpus="${GPUS}" \
- --temp-dir='${RAY_TEMP_DIR}' \
- --disable-usage-stats --include-dashboard=false --block
-else
- until (echo > /dev/tcp/${HEAD_IP}/${RAY_PORT}) >/dev/null 2>&1; do sleep 1; done
- echo "[${HOST}] ray WORKER -> ${RAY_HEAD_ADDR}"
- ray start --address='${RAY_HEAD_ADDR}' --node-ip-address="${IP}" \
- --object-manager-port='${RAY_OBJECT_MANAGER_PORT}' --node-manager-port='${RAY_NODE_MANAGER_PORT}' \
- --runtime-env-agent-port='${RAY_RUNTIME_ENV_AGENT_PORT}' \
- --metrics-export-port='${RAY_METRICS_EXPORT_PORT}' \
- --min-worker-port='${RAY_MIN_WORKER_PORT}' --max-worker-port='${RAY_MAX_WORKER_PORT}' \
- --num-gpus="${GPUS}" \
- --temp-dir='${RAY_TEMP_DIR}' \
- --disable-usage-stats --block
-fi
-" &
-
-RAY_LAUNCH_PID=$!
-
-sleep 10 # Wait for workers
-ray status || true
-# --- Ray setup end ---
-
-pdb2reaction opt -i test.pdb -q -5 -m 1
-```
-
+(ja-configuration-reference)=
 ## 設定リファレンス
 代表的なコンストラクタ引数（右端はデフォルト値）:
 
@@ -267,8 +144,11 @@ pdb2reaction opt -i test.pdb -q -5 -m 1
 | `hessian_double` | ヘシアンをfloat64で返す | `True` |
 | `out_hess_torch` | ヘシアンを `torch.Tensor` で返す | `True` |
 | `print_timing` | ヘシアン計算のタイミング内訳を表示 | `True` |
+| `print_vram` | ヘシアン計算中の CUDA VRAM 使用量を表示（UMA バックエンド限定） | `True` |
 | `solvent` | 暗黙溶媒名（例: `"water"`）または `"none"` | `"none"` |
 | `solvent_model` | xTB 溶媒モデル: `"alpb"` または `"cpcmx"` | `"alpb"` |
+| `xtb_cmd` | 溶媒補正で使用する xTB 実行コマンド | `"xtb"` |
+| `xtb_acc` | 溶媒補正実行時の xTB 精度設定 | `0.2` |
 
 
 ---

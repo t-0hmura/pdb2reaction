@@ -199,11 +199,27 @@ cat result_opt/result.json | python -m json.tool
 | `model` | string | MLIP モデル名 |
 | `image_energies_hartree` | float[] | 全イメージエネルギー |
 | `n_images` | int | イメージ数 |
-| `hei_index` | int | 最高エネルギーイメージのインデックス |
+| `hei_index` | int | 最高エネルギー画像のインデックス |
 | `hei_energy_hartree` | float | HEI エネルギー |
 | `barrier_kcal` | float | 前方障壁 (kcal/mol) |
 | `delta_kcal` | float | 反応エネルギー (kcal/mol) |
 | `files` | object | 軌跡 + HEI ファイル |
+
+### `path-search`
+
+`path-search` は `--out-json` による `result.json` を出力せず、代わりに **常に** `summary.json` を出力ディレクトリに書き出します。共通エンベロープ（`command`, `pdb2reaction_version`, `elapsed_seconds`, `environment`）に加え、以下を含みます:
+
+| フィールド | 型 | 説明 |
+|-----------|------|------|
+| `status` | string | `"success"` / `"partial"` |
+| `n_segments` | int | 再帰 MEP のセグメント数 |
+| `segments` | object[] | セグメントごとの `barrier_kcal`, `delta_kcal`, `bond_changes`, `hei_index`, `mep_mode` |
+| `energy_diagrams` | object[] | セグメントごとのラベル付きエネルギープロファイル (kcal/mol) |
+| `mlip_backend` | string | バックエンド / モデル名 |
+| `charge` | int | 系の電荷 |
+| `spin` | int | スピン多重度 |
+
+`all` がさらに追加するフィールドは下の [`summary.json` セクション](#ja-summary-json-path-search-all) を参照してください。
 
 ### `dft`
 
@@ -267,6 +283,7 @@ cat result_opt/result.json | python -m json.tool
 | `status` | string | `"ok"` |
 | `comparisons` | object[] | ペアごとの比較（`structure_a`, `structure_b`, `bonds_formed`, `bonds_broken`） |
 
+(ja-summary-json-path-search-all)=
 ## `summary.json` (`path-search` / `all`)
 
 `all` / `path-search` は `summary.json` を出力します:
@@ -323,3 +340,10 @@ jq '.imaginary_frequencies_cm' result.json
 # 自由エネルギー取得
 jq '.thermochemistry.sum_EE_and_thermal_free_energy_ha' result.json
 ```
+
+## 関連項目
+
+- [CLI 規約](cli-conventions.md) — `--out-json` / `--no-out-json` フラグの規約と終了コード
+- [YAML リファレンス](yaml-reference.md) — これらのスキーマに現れる設定入力
+- [all](all.md), [path-search](path-search.md) — 常に `summary.json` を書き出すサブコマンド
+- [opt](opt.md), [tsopt](tsopt.md), [freq](freq.md), [irc](irc.md), [scan](scan.md), [path-opt](path-opt.md), [dft](dft.md), [extract](extract.md) — `--out-json` 指定時にのみ `result.json` を書き出すサブコマンド

@@ -73,15 +73,15 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [-l, -
 ## ワークフロー
 1. **事前アライメント & 凍結解決**
  - 2 番目以降のエンドポイントは最初の構造に対して Kabsch アライメントされます。いずれかのエンドポイントで `freeze_atoms` が定義されている場合、RMSD フィットにはその原子のみを使用しますが、得られた変換は全原子に適用されます。
- - `--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（[リンク水素と凍結原子](extract.md#リンク水素と凍結原子) を参照）。
+ - `--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（{ref}`リンク水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
 
 2. **ストリング成長とHEIエクスポート**
  - 経路の成長・精密化後、内部ノード間の局所極大のうちエネルギーが最も高いものを優先的に選択します。内部の局所極大がない場合は内部ノードの最大値に、内部ノードもない場合は全体の最大値にフォールバックします。
- - 最高エネルギーイメージ（HEI）は `.xyz` として書き込まれます。PDB 参照がある場合は `.pdb`、Gaussian テンプレートがある場合は `.gjf` も出力します（いずれも `--convert-files` の設定に従います）。
+ - 最高エネルギー画像（HEI）は `.xyz` として書き込まれます。PDB 参照がある場合は `.pdb`、Gaussian テンプレートがある場合は `.gjf` も出力します（いずれも `--convert-files` の設定に従います）。
 
 ### 主要な挙動
 - **エンドポイント**: 入力は2構造のみ。形式は `geom_loader` に準拠。PDB 入力（または `--ref-pdb` 付きXYZ/GJF）で軌跡/HEIのPDB 出力が有効。
-- **電荷/スピン**: 電荷の解決順序の詳細は [CLI 規約: 電荷の指定](cli-conventions.md#電荷の指定) を参照してください。
+- **電荷/スピン**: 電荷の解決順序の詳細は {ref}`CLI 規約: 電荷の指定 <ja-charge-specification>` を参照してください。
 - **MEPセグメント**: `--max-nodes` は内部ノード数を制御します。GSM の場合、総画像数は `max_nodes + 2`（固定端点を含む）。DMF の場合、`max_nodes` はチェーン上の移動可能なイメージ数です。GSM成長およびクライミング精密化の収束プリセットは `--thresh-stopt` または `stopt.thresh`（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`）で指定します。
 - **エンドポイント事前最適化**: `--thresh` は `--opt-mode` で選ばれた単一構造最適化（`opt.lbfgs.thresh` / `opt.rfo.thresh`）のみに適用されます。
 - **クライミングイメージ**: `--climb` は標準のクライミング手順とLanczos接線リファインの両方を切り替え。
@@ -98,7 +98,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [-l, -
 | `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器に渡されます） | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度 | テンプレート/`1` |
 | `--freeze-links/--no-freeze-links` | PDBのみ: リンクH親を凍結（YAMLとマージ）。詳細は [extract](extract.md) を参照 | `True` |
-| `--max-nodes INT` | 内部ノード数（ストリングイメージ = `max_nodes + 2`） | `20` |
+| `--max-nodes INT` | 内部ノード数。**GSM:** 総イメージ数 = `max_nodes + 2`（端点 2 つは固定）。**DMF:** チェーン上の*移動可能な*イメージ数（端点の暗黙的展開なし）。 | `20` |
 | `--mep-mode {gsm\|dmf}` | GSM（ストリングベース）またはDMF（ダイレクトフラックス）経路生成器を選択 | `gsm` |
 | `--max-cycles INT` | オプティマイザーマクロイテレーション上限 | `300` |
 | `--climb/--no-climb` | クライミングイメージ精密化を有効化 | `True` |
@@ -118,13 +118,14 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [-l, -
 | `--preopt/--no-preopt` | アライメント/MEP 探索前に各エンドポイントを事前最適化（GSM/DMF） | `False` |
 | `--preopt-max-cycles INT` | エンドポイント事前最適化サイクルの上限 | `10000` |
 | `--fix-ends/--no-fix-ends` | GSM成長/精密化中にエンドポイント構造を固定 | `False` |
+| `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照。 | `False` |
 
 ## 出力
 ```
 out_dir/
 ├─ final_geometries_trj.xyz # XYZ経路（コメント行にエネルギーを保持）
 ├─ final_geometries_trj.pdb # PDB 参照が利用可能で変換が有効な場合
-├─ hei.xyz # 最高エネルギーイメージ
+├─ hei.xyz # 最高エネルギー画像
 ├─ hei.pdb # PDB 参照が利用可能な場合のHEI（変換有効時）
 ├─ hei.gjf # Gaussian テンプレートを使用して書き込まれたHEI（変換有効時）
 ├─ align_refine/ # 剛体アライメント/リファイン段階の中間ファイル（アライメント実行時）
@@ -133,8 +134,11 @@ out_dir/
 コンソールには解決済みYAMLブロックが出力され、GSM/DMFのMEP進行状況とタイミングが報告されます。
 
 
-設定の優先順位は [CLI 規約: 設定の優先順位](cli-conventions.md#設定の優先順位) を参照してください。
+設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
 
+```{note}
+**参照の重複について。** 以下の `geom`、`calc`、`opt.lbfgs`、`opt.rfo` セクションは [YAML リファレンス](yaml-reference.md) の正規定義をミラーしています。両ページに齟齬がある場合は、正規版 [YAML リファレンス](yaml-reference.md)（および `pdb2reaction/defaults.py`）が優先されます。本ページの付録は `path-opt` 固有のデフォルト（例: `out_dir`）と参照の便宜のためにインライン展開しているだけです。
+```
 
 ### `geom`
 - [`opt`](opt.md) と同じキー（`coord_type`, `freeze_atoms` など）。`--freeze-links` がPDB 入力で `freeze_atoms` にマージされます。

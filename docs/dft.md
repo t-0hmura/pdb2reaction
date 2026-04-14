@@ -39,6 +39,8 @@ pdb2reaction dft -i input.pdb -q 0 -m 1 \
  --engine gpu --out-dir ./result_dft_tight
 ```
 
+> **Caveat:** The tight `def2-tzvpd` setting above is appropriate only for **small** active-site models (≲150 atoms) on a GPU with sufficient VRAM. For larger systems on 16–24 GB GPUs this combination will OOM (see the "Out-of-memory with def2-TZVPD" note below); switch to `--func-basis 'wb97m-v/def2-svp'` or use an external DFT program (ORCA, Gaussian) for production work on full systems.
+
 2. Force CPU backend for portability.
 
 ```bash
@@ -89,11 +91,12 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 \
 | `--conv-tol FLOAT` | SCF convergence tolerance in hartree (`dft.conv_tol`). | `1e-9` |
 | `--grid-level INT` | PySCF numerical integration grid level (`dft.grid_level`). | `3` |
 | `-o, --out-dir TEXT` | Output directory (`dft.out_dir`). | `./result_dft/` |
-| `--engine [gpu\|cpu]` | SCF backend: gpu (GPU4PySCF) or cpu (PySCF). | `gpu` |
-| `--convert-files/--no-convert-files` | Accepted for interface consistency; no PDB/GJF outputs are produced by `dft`. | `True` |
+| `--engine [gpu\|cpu]` | SCF backend: gpu (GPU4PySCF) or cpu (PySCF). On the standalone `dft` subcommand this option is named `--engine`; the same knob is named `--dft-engine` when forwarded through `pdb2reaction all`. | `gpu` |
+| `--convert-files/--no-convert-files` | **No-op on `dft`.** Accepted purely for interface consistency with the other subcommands; `dft` never produces PDB or GJF outputs (only `input_geometry.xyz` + `result.yaml`). The flag's value is ignored. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to validate atom counts and enable ligand-charge derivation for XYZ/GJF inputs (no output conversion). | _None_ |
 | `--config FILE` | Base YAML configuration file applied before explicit CLI options. | _None_ |
 | `--show-config/--no-show-config` | Print resolved configuration and continue execution. | `False` |
+| `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
 | `--dry-run/--no-dry-run` | Validate options and print execution plan without running DFT. | `False` |
 
 ## Outputs
@@ -124,7 +127,7 @@ out_dir/ (default:./result_dft/)
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - `--engine gpu` (default) requires GPU4PySCF and **raises an error** if GPU is unavailable. Use `--engine cpu` to force CPU-only execution.
-- **Blackwell-architecture GPUs** (RTX 50xx): GPU4PySCF may fail with out-of-memory errors even for small systems (~100 atoms). Use `--engine cpu` or an external DFT program (ORCA, Gaussian) for production calculations on these GPUs.
+- **Blackwell-architecture GPUs** (RTX 50xx): GPU4PySCF may fail with out-of-memory errors even for small systems (~100 atoms). Use `--engine cpu` or an external DFT program (ORCA, Gaussian) for production calculations on these GPUs. Note that `--engine cpu` is only practical for small active-site models (≲150 atoms) and small basis sets (e.g. `def2-svp`); larger systems on CPU become prohibitively slow, so an external DFT program is the recommended path for full systems.
 - **Out-of-memory with def2-TZVPD**: The default basis set `def2-tzvpd` is large and may cause OOM for systems with >150 atoms on 16–24 GB GPUs. Use `--func-basis 'wb97m-v/def2-svp'` as a practical alternative; barrier height errors between def2-SVP and def2-TZVPD are typically 1–3 kcal/mol.
 - Compiled GPU4PySCF wheels may not support non-x86 systems; build from source in that case (see https://github.com/pyscf/gpu4pyscf).
 - Density fitting is always attempted with PySCF defaults (no auxiliary basis guessing is implemented).

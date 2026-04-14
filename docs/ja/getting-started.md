@@ -52,7 +52,8 @@ PDB (R, P)
   |       出力: final_geometry.xyz, vib/imag_*.pdb
   v
 [irc]  固有反応座標
-  |     出力: finished_irc.pdb, structures/reactant.xyz, structures/product.xyz
+  |     出力: finished_irc_trj.xyz, forward_irc_trj.xyz, backward_irc_trj.xyz
+  |     （`all` 経由の場合は post_seg_XX/irc/ 配下）
   v
 [freq]  振動解析 + 熱化学 (R, TS, P)
   |      出力: frequencies_cm-1.txt, thermoanalysis.yaml
@@ -121,7 +122,7 @@ PDB に水素原子がない場合は、pdb2reaction を実行する前に次の
 
 ## コマンドの基本構成
 
-`pip` でインストールされる `pdb2reaction` コマンドが主な起点です。短縮エイリアス **`p2r`** も利用可能で、すべてのコマンドをどちらの名前でも実行できます。内部的には **Click** ライブラリを使用しており、デフォルトのサブコマンドは `all` です。
+`pip` でインストールされる `pdb2reaction` コマンドが主な起点です。短縮エイリアス **`p2r`** も `pdb2reaction` パッケージが同じ setuptools entry point で登録しており（`pip install pdb2reaction` 直後から両方利用可能）、すべてのコマンドをどちらの名前でも実行できます。内部的には **Click** ライブラリを使用しており、デフォルトのサブコマンドは `all` です。
 
 つまり:
 
@@ -268,9 +269,9 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
 | `--thermo/--no-thermo` | 振動解析と熱化学を実行 |
 | `--dft/--no-dft` | DFT 一点計算を実行 |
 | `--refine-path/--no-refine-path` | 再帰的 `path-search` を使用（デフォルト: `True`）。`False` で単一パス `path-opt` に切替 |
-| `--opt-mode grad\|hess` | `all` でのワークフロープリセット（`grad` -> LBFGS/Dimer、`hess` -> RFO/RS-I-RFO、デフォルト `grad`）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨 |
+| `--opt-mode grad\|hess` | `all` でのワークフロープリセット（`grad` -> LBFGS/Dimer、`hess` -> RFO/RS-I-RFO。**`all` の pre-opt スコープではデフォルト `grad`**）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨。**スコープによりデフォルトが異なる**: 単独の `tsopt --opt-mode` のデフォルトは `hess`。サブコマンドごとの完全なマッピングは {ref}`ja-opt-mode-semantics` を参照 |
 | `--mep-mode gsm\|dmf` | MEP 手法（デフォルト: `gsm`）: Growing String Method または Direct Max Flux |
-| `--hessian-calc-mode Analytical\|FiniteDifference` | ヘシアン行列の計算モード（デフォルト: `FiniteDifference`）。詳細は [MLIP 計算機](uma-pysis.md#ヘシアンモード) を参照 |
+| `--hessian-calc-mode Analytical\|FiniteDifference` | ヘシアン行列の計算モード（デフォルト: `FiniteDifference`）。詳細は {ref}`MLIP 計算機 <ja-hessian-evaluation>` を参照 |
 
 すべてのオプションと YAML スキーマについては [all](all.md) および [YAML リファレンス](yaml-reference.md) を参照してください。
 
@@ -320,7 +321,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
 | `add-elem-info` | PDB元素カラム修復 | [add-elem-info](add-elem-info.md) |
 
 ```{tip}
-ヘシアン評価モードの詳細は [MLIP 計算機](uma-pysis.md#ヘシアンモード) を参照してください。
+ヘシアン評価モードの詳細は {ref}`MLIP 計算機 <ja-hessian-evaluation>` を参照してください。
 ```
 
 ---

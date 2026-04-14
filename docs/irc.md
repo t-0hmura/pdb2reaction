@@ -88,7 +88,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1); used unless YAML sets `calc.spin`. | `.gjf` template value or `1` |
 | `--max-cycles INT` | Maximum IRC steps; used unless YAML sets `irc.max_cycles`. | `125` |
 | `--step-size FLOAT` | Step length in unweighted Cartesian coordinates (Bohr); used unless YAML sets `irc.step_length`. | `0.10` |
-| `--root INT` | Index of the imaginary vibrational mode for the initial displacement; used unless YAML sets `irc.root`. | `0` |
+| `--root INT` | **0-based** index into the projected Hessian's eigenvalues sorted in **ascending order** (most-negative first), used to pick the mode for the initial IRC displacement. For a validated TS with exactly one imaginary mode, leave `--root 0` (the sole negative eigenvalue). Use `--root 1`, `--root 2`, … only if you know the active imaginary mode is ranked above more-negative spurious modes. Used unless YAML sets `irc.root`. | `0` |
 | `--forward/--no-forward` | Run forward branch (`irc.forward`), used unless YAML sets `irc.forward`. | `True` |
 | `--backward/--no-backward` | Run backward branch (`irc.backward`), used unless YAML sets `irc.backward`. | `True` |
 | `--freeze-links/--no-freeze-links` | For PDB inputs, freeze link-H parents (merged with `geom.freeze_atoms`). See [extract](extract.md) for link-hydrogen details. | `True` |
@@ -98,6 +98,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 | `--hessian-calc-mode CHOICE` | MLIP Hessian mode (`calc.hessian_calc_mode`), used unless YAML sets `calc.hessian_calc_mode`. | `FiniteDifference` |
 | `--config FILE` | Base YAML configuration applied before explicit CLI options. | _None_ |
 | `--show-config/--no-show-config` | Print resolved YAML layers/config and continue. | `False` |
+| `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
@@ -125,10 +126,10 @@ out_dir/ (default:./result_irc/)
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - The MLIP backend (UMA by default) is reused throughout the IRC; aggressive `step_length` values can destabilize EulerPC.
-- For Hessian evaluation modes, see [MLIP Calculator](uma-pysis.md#hessian-evaluation).
-- When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Link hydrogen and frozen atoms](extract.md#link-hydrogen-and-frozen-atoms)).
+- For Hessian evaluation modes, see {ref}`hessian-evaluation`.
+- When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see {ref}`Link hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
 
-See [CLI Conventions: Configuration precedence](cli-conventions.md#configuration-precedence) for the full resolution order.
+See {ref}`CLI Conventions: Configuration precedence <configuration-precedence>` for the full resolution order.
 Shared sections reuse [YAML Reference](yaml-reference.md) for geometry/calculator keys: `--freeze-links` augments `geom.freeze_atoms` for PDB inputs, and `--hessian-calc-mode` plus CLI charge/spin values supplement the merged `calc` block. For `irc`, `geom.coord_type` is forced to `cart` and `calc.return_partial_hessian` is forced to `true` after YAML/CLI merging.
 
 `irc` keys (defaults in parentheses):

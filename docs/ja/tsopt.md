@@ -87,9 +87,9 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 ```
 
 ## ワークフロー
-- **電荷/スピン解決**: 電荷の解決順序の詳細は [CLI 規約: 電荷の指定](cli-conventions.md#電荷の指定) を参照してください。
-- **構造ロードと freeze-links**: 構造は `pysisyphus.helpers.geom_loader` で読み込まれます。`--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（[リンク水素と凍結原子](extract.md#リンク水素と凍結原子) を参照）。
-- **MLIP ヘシアン（デフォルト: UMA）**: `--hessian-calc-mode` で解析的ヘシアンと有限差分ヘシアンを切り替えます。いずれも活性（PHVA）部分空間を考慮します。凍結原子が存在する場合、MLIP バックエンドは活性ブロックのみを返すことがあります。ヘシアン評価モードの詳細は [MLIP 計算機](uma-pysis.md#ヘシアンモード) を参照してください。
+- **電荷/スピン解決**: 電荷の解決順序の詳細は {ref}`CLI 規約: 電荷の指定 <ja-charge-specification>` を参照してください。
+- **構造ロードと freeze-links**: 構造は `pysisyphus.helpers.geom_loader` で読み込まれます。`--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（{ref}`リンク水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
+- **MLIP ヘシアン（デフォルト: UMA）**: `--hessian-calc-mode` で解析的ヘシアンと有限差分ヘシアンを切り替えます。いずれも活性（PHVA）部分空間を考慮します。凍結原子が存在する場合、MLIP バックエンドは活性ブロックのみを返すことがあります。ヘシアン評価モードの詳細は {ref}`ja-hessian-evaluation` を参照してください。
 - **Dimerモード詳細**:
  - Hessian Guided Dimer段階は、正確ヘシアン（活性サブスペース、TR射影）を周期的に評価してダイマー方向を更新します。`root == 0` のときは最小固有対に `torch.lobpcg` を優先し、失敗時は `torch.linalg.eigh` にフォールバックします。
  - `--flatten` が有効な場合、フラット化ループはΔxとΔgを用い、Bofill（SR1/MS ↔ PSBブレンド; `hessian_dimer.flatten_loop_bofill` で切替）で活性ヘシアンを更新します。各ループは虚振動数モード推定 → 1回フラット化 → ダイマー方向再更新 → dimer+LBFGSマイクロ区間 → （任意で）Bofill更新を実行します。虚振動数モードが1つになったら最終的な正確ヘシアンで振動解析を行います。
@@ -118,6 +118,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 | `--ref-pdb FILE` | 入力がXYZ/GJFの場合に使用する参照 PDB トポロジー | _None_ |
 | `--config FILE` | 明示 CLI オプションより前に適用するベース YAML 設定ファイル | _None_ |
 | `--show-config/--no-show-config` | 解決後の設定レイヤーを表示して実行を継続 | `False` |
+| `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照。 | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
@@ -155,12 +156,16 @@ out_dir/ (デフォルト:./result_tsopt/)
 
 ## 注意事項
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
-- 虚振動数モード検出の閾値はデフォルトで 5.0 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm` で変更可能）。この閾値未満の振動数は虚振動数としてカウントされません。選択した `root` は最適化中にどの振動モードを追跡するかを制御します。
+- 虚振動数モード**検出**の閾値はデフォルトで 5.0 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm` で変更可能）。この閾値未満の振動数は虚振動数としてカウントされません。選択した `root` は最適化中にどの振動モードを追跡するかを制御します。**注意:** この 5 cm⁻¹ は「虚モードがそもそも存在するか」を判定する *内部検出カットオフ* であり、TS の品質チェックではありません。[共通エラーレシピ](recipes-common-errors.md) で用いられる約 100 cm⁻¹ の経験則は、検出された虚モードが遷移状態として *物理的に意味のある* ものかを判定するための別の基準です。両者を混同しないでください。
 - `--opt-mode` はワークフロー選択用です（デフォルト: `rsirfo`）。YAML のモードマッピングを手動で変更するのではなく、目的のアルゴリズムに合ったモードを選択してください。
 - PHVAの並進/回転射影は `freq` と同じ実装を使用し、メモリ消費を抑えつつ、活性空間の正しい固有ベクトルを保持します。
-- 設定の優先順位は [CLI 規約: 設定の優先順位](cli-conventions.md#設定の優先順位) を参照してください。
+- 設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
 
 共通セクションについては [YAML リファレンス](yaml-reference.md) を参照してください。必要な値だけ変更してください。
+
+```{note}
+**リファレンスの重複について。** 以下に並ぶ `geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo` の YAML キーは [YAML リファレンス](yaml-reference.md) の正規定義をミラーしたものです。両者が食い違った場合は [YAML リファレンス](yaml-reference.md) と `pdb2reaction/defaults.py` を正とし、本ページの付録は `tsopt` 固有のデフォルト値（例: `out_dir: ./result_tsopt/`、上述の `--flatten` との相互作用）と参照の便宜のためにインライン展開しているだけです。なお、インライン YAML に表示される値に関わらず、`flatten_max_iter` は `--flatten` を指定しない限り CLI 初期化器によって `0` に強制されます。
+```
 
 ### 共通設定（両モード共通）
 

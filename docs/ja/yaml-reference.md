@@ -1,14 +1,25 @@
 # YAML 設定リファレンス
 
+```{tip}
+**`all` 一気通貫コマンドをお探しの場合:** `all` コマンドはこのページに記載のすべてのセクションを読み取り、適切なサブコマンドへ転送します。どのセクションがどのステージで読み取られるかは [`all`](all.md)（特に "サブコマンド → YAML セクション" マッピング）を参照してください。
+```
+
+(ja-yaml-configuration-precedence)=
 ## 設定の優先順位
 
-設定は以下の優先順位で解決されます（高い順）:
+設定は以下の順序で解決されます（後のものが前のものを上書き）:
 
-1. **CLI フラグ**（例: `-q -1`, `--thresh gau_loose`）
-2. **YAML ファイル**（`--config` で指定）
-3. **組み込みデフォルト**（`defaults.py` で定義）
+```
+組み込みデフォルト  <  --config (YAML)  <  CLI フラグ
+```
+
+1. **組み込みデフォルト** — `pdb2reaction/defaults.py` に定義されたハードコード値。
+2. **`--config`** — デフォルトを上書きする YAML ファイル（例: `--config my_settings.yaml`）。
+3. **CLI フラグ** — コマンドラインで明示的に指定したオプション（例: `-q -1`, `--thresh gau_loose`）。*明示的に指定された*値のみが YAML を上書きし、CLI デフォルトのままのオプションは YAML の値を隠しません。
 
 例: YAML で `charge: 0` を設定し、CLI で `-q -1` を渡した場合、電荷は `-1` になります。
+
+この優先順位は `all`, `opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, `dft` に共通です。あわせて {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
 
 ## 主要な CLI→YAML マッピング
 
@@ -26,6 +37,31 @@
 | `--opt-mode` | `opt_mode` | `opt` (tsopt) |
 | `--freeze-atoms` | `freeze_atoms` | `geom` |
 | `--coord-type` | `coord_type` | `geom` |
+
+### サブコマンド別の `--thresh` デフォルト
+
+TS 最適化はより厳しい "baker" プリセットを、通常の極小化は "gau" プリセットを使うため、`--thresh` のデフォルトはサブコマンドごとに異なります。
+
+| サブコマンド | デフォルト `--thresh` | 由来となるデフォルト辞書 |
+|------------|---------------------|-----------------------|
+| `opt` | `gau` | `OPT_BASE_KW`（→ `lbfgs` / `rfo`） |
+| `tsopt`（Hessian Dimer） | `baker` | `HESSIAN_DIMER_KW`、内側の `LBFGS_TS_KW` |
+| `tsopt`（RS-I-RFO） | `baker` | `RSIRFO_KW` |
+| `scan`, `scan2d`, `scan3d` | `gau` | `OPT_BASE_KW` |
+| `path-search`（各ステップの opt） | `gau` | `OPT_BASE_KW` |
+| `path-opt` / StringOptimizer | `gau_loose` | `STOPT_KW` |
+| `all`（pre-opt、post-opt 極小化） | `gau` | `OPT_BASE_KW` |
+| `all`（post-opt TS 段階） | `baker` | `HESSIAN_DIMER_KW` / `RSIRFO_KW` |
+
+受け付ける値: `gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`。実行ごとに `--thresh <preset>` または YAML の `opt.thresh` で上書きできます。
+
+```{note}
+**`--thresh` を持たないサブコマンド。** `irc`、`freq`、`dft` には `--thresh` が**ありません**:
+
+- `irc` — 収束は `irc.rms_grad_thresh`、`irc.energy_thresh`、`irc.max_cycles` で制御されます（[`irc` セクション](#irc-section) を参照）。IRC は予測子–修正子積分器に従うため、力ベース極小化用のプリセットファミリは適用されません。
+- `freq` — 最適化ステップが無いため `--thresh` は存在しません。数値精度は `--hessian-calc-mode` と MLIP 自体の精度で決まります。
+- `dft` — SCF 収束は `dft.conv_tol`（デフォルト `1e-9` Hartree）と `dft.max_cycle` で制御されます。`gau`/`baker` プリセットファミリは使用しません。[`dft` セクション](#dft-section) を参照してください。
+```
 
 ## 概要
 
@@ -389,12 +425,14 @@ rsirfo:
  prim_coord: null # Primary coordinates to monitor
  rx_coords: null # Reaction coordinates to monitor
  hessian_update: bofill # Hessian update scheme
+ hessian_recalc: 500 # Rebuild exact Hessian every N macro steps (rfo から継承)
  hessian_recalc_reset: true # Reset recalc counter after exact Hessian
  max_micro_cycles: 50 # Micro-iterations per macro cycle
  augment_bonds: false # Augment reaction path based on bond analysis
  min_line_search: true # Enforce minimum line-search step
  max_line_search: true # Enforce maximum line-search step
  assert_neg_eigval: false # Require negative eigenvalue at convergence
+ track_mode_by_overlap: false # 前回の Hessian との重なりで追跡対象 TS モードを選ぶ
  # Also inherits rfo-like settings: trust_radius, trust_update, etc.
 ```
 
@@ -431,8 +469,10 @@ irc:
  prefix: "" # Filename prefix
  max_pred_steps: 500 # Predictor-corrector max steps
  loose_cycles: 3 # Loose cycles before tightening
- corr_func: mbs # Corrector function choice
+ corr_func: mbs # EulerPC コレクタ関数: "mbs"（Modified Bulirsch–Stoer、デフォルト）または "rk4"
 ```
+
+`corr_func` は、予測子–修正子法ベースの IRC 積分器（EulerPC）が使う修正子ステップを選択します。`"mbs"` は pysisyphus 組み込みの Modified Bulirsch–Stoer 実装（デフォルト）、`"rk4"` は古典的な 4 次 Runge–Kutta 修正子を要求します。既定の積分器がシステム上で数値的に不安定な場合にのみ変更してください。通常は `mbs` のままで問題ありません。
 
 ---
 
@@ -493,14 +533,24 @@ dft:
 スキャン座標は `-s/--scan-lists`（インラインまたは YAML ファイル）で指定します（メイン YAML 設定ではありません）。
 構文の詳細は[クイックスタート: スキャン](quickstart-scan.md)を参照してください。
 
+(ja-bias-section)=
 ### `bias`
 
-調和バイアス設定。
+スキャン・拘束付き最適化で使用する調和バイアス設定。
 
 ```yaml
 bias:
  k: 300.0 # Harmonic bias strength (eV·Å⁻²)
 ```
+
+**サブコマンド間で共有されるばね定数。** 同じ物理的な調和ペナルティ（`k`、単位 eV·Å⁻²）がデフォルト値 `300.0` で 3 箇所に現れます:
+
+| YAML キー | 使用元 | CLI フラグ |
+|----------|-------|-----------|
+| `bias.k` | `opt`（`--dist-freeze` 原子ペアに対する `--bias-k`）、`scan`, `scan2d`, `scan3d` | `--bias-k` |
+| `dmf.dmf_options.k_fix` | `path-opt` / `path-search` で `mep_mode: dmf` を使用する場合 | —（YAML 専用） |
+
+調和拘束の強さを調整したい場合はこれらのいずれかを上書きしてください。値を小さく（例: `20.0`）すると、柔らかい誘導項としてジオメトリが緩和しやすくなります。デフォルトの `300.0` はほぼ剛体的に固定する値です。
 
 ---
 

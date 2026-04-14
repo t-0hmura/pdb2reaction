@@ -15,6 +15,10 @@
 
 残基/原子の命名が非標準で残基分類や電荷サマリーに影響がある場合は、下部の付録（PDB 命名規則と内部参照リスト）を参照してください。
 
+```{important}
+**リンク水素と凍結原子について。** 切断された共有結合は **リンク水素**（残基 `LKH`、原子 `HL`）でキャップされます。下流のすべてのサブコマンドでデフォルトで有効な `--freeze-links` により、これらリンク水素の親原子は最適化、MEP 探索、IRC、振動解析の間凍結され、モデル境界での非物理的な緩和を防ぎます。完全な挙動は下記 [リンク水素と凍結原子](#リンク水素と凍結原子) セクションを参照してください。`opt`、`tsopt`、`freq`、`irc`、`path-search`、`path-opt`、`scan` などのサブコマンドはいずれもこのセクションを参照しています。
+```
+
 ## 使用法
 ```bash
 pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb...]
@@ -58,7 +62,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
  - `--exclude-backbone` の場合、アミノ酸残基は**非主鎖**原子（N/H*/CA/HA*/C/O以外）で基質に接触する必要がある
 - **独立したヘテロ-ヘテロカットオフ（`--radius-het2het`）:** 基質ヘテロ原子（非C/H）がタンパク質ヘテロ原子の指定Å以内にある場合に残基を追加
 - **水処理:** HOH/WAT/H2O/DOD/TIP/TIP3/SOLはデフォルトで含まれる（`--include-h2o`）
-- **強制包含:** `--selected-resn` はチェーン/挿入コード付きIDを受け入れる（例: `A:123A`）
+- **強制包含:** `--selected-resn` は名前が示唆する残基名ではなく、オプションのチェーン/挿入コード付きの**残基 ID** を受け入れます（例: `A:123A`）。このフラグは残基名トークンには対応していません。残基名ベースの基質選択には `-c/--center 'GPP,SAM'` を使用してください。
 - **近傍セーフガード:**
  - `--no-exclude-backbone` で主鎖原子が基質に接触した場合、ペプチド隣接のN/C側残基（C–N ≤ 1.9 Å）を自動的に含める。末端はN/H*またはC/O/OXTのキャップを保持。
  - ジスルフィド結合（SG–SG ≤ 2.5 Å）は両方のCysを包含。
@@ -109,10 +113,11 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
 | `--include-h2o/--no-include-h2o` | HOH/WAT/H2O/DOD/TIP/TIP3/SOL水を含める | `True` |
 | `--exclude-backbone/--no-exclude-backbone` | 非基質アミノ酸の主鎖原子を除去 | `False` |
 | `--add-linkh/--no-add-linkh` | 切断された結合に1.09 Åで炭素のみのリンク水素を追加 | `True` |
-| `--selected-resn TEXT` | 強制包含残基（オプションのチェーン/挿入コード付きID） | `""` |
-| `--modified-residue TEXT` | 修飾アミノ酸残基名をカンマ区切りで指定（任意で電荷付き）。主鎖切断と電荷計算にアミノ酸として扱う。例: `HD1,HD2,HD3` または `HD1:0,SEP:-2`。電荷省略時は 0。 | `""` |
+| `--selected-resn TEXT` | **残基 ID**（オプションのチェーン/挿入コード付き、例: `A:123A`）で強制的に含める残基。名前とは裏腹にこのフラグは残基名トークンを受け付けません。残基名ベースの選択には `-c/--center 'GPP,SAM'` を使用してください。 | `""` |
+| `--modified-residue TEXT` | 修飾アミノ酸残基名をカンマ区切りで指定（任意で各残基に電荷付き）。主鎖切断と電荷計算にアミノ酸として扱う。例: `HD1,HD2,HD3` または `HD1:0,SEP:-2`。残基ごとに `:electric` 接尾辞を省略した場合、その残基の電荷は `0` になります（例: `HD1,HD2:-1` では `HD1` が電荷 0、`HD2` が電荷 −1）。フラグ全体のデフォルトは空文字列（無効）。 | `""` |
 | `-l, --ligand-charge TEXT` | 総電荷または残基名ごとのマッピング（例: `GPP:-3,SAM:1`） | _None_ |
 | `-v, --verbose/--no-verbose` | INFOレベルログを出力（`True`）または警告のみ（`False`） | `True` |
+| `--out-json/--no-out-json` | 抽出された PDB(s) の隣に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照。 | `False` |
 
 ## 出力
 ```text
@@ -254,6 +259,7 @@ HOH, WAT, H2O, DOD, TIP, TIP3, SOL
 - リンク水素は炭素切断のみで挿入され、アンサンブルモードでは同一結合パターンを全モデルで再利用します。
 - INFO ログに残基選択、切断数、電荷内訳の要約が出力されます。
 
+(ja-link-hydrogen-and-frozen-atoms)=
 ## リンク水素と凍結原子
 
 pdb2reaction が活性部位モデルを抽出する際、切断された結合は**リンク水素**でキャップされます。デフォルト（`--freeze-links`）では、リンク水素の親原子が最適化や経路探索中に凍結され、境界での非物理的な再配置を防ぎます。

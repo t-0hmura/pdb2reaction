@@ -146,19 +146,23 @@ out_dir/ (default:./result_path_search/)
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
-- Provide at least two inputs; `click.BadParameter` is raised otherwise.
+- Provide at least two inputs; otherwise the command exits with an "invalid value" error for `-i/--input`.
 - Repeat `--ref-full-pdb` once per file when providing multiple templates; with `--align`, only the first template is reused for merges.
 - All MLIP backends are shared across structures for efficiency.
 - When `--dump` is set, MEP (GSM/DMF) and single-structure optimizations emit trajectories. Restart YAML is written only when `dump_restart` is enabled in YAML.
 
-See [CLI Conventions: Configuration precedence](cli-conventions.md#configuration-precedence) for the full resolution order.
+See {ref}`CLI Conventions: Configuration precedence <configuration-precedence>` for the full resolution order.
 The YAML root must be a mapping. Shared sections reuse [YAML Reference](yaml-reference.md): `geom`/`calc` mirror single-structure options (with `--freeze-links` augmenting `geom.freeze_atoms` for PDBs), and `stopt` inherits the StringOptimizer knobs documented for `path-opt` (see [path-opt.md](path-opt.md)).
+
+```{note}
+**Reference duplication.** The YAML keys for `geom`, `calc`, `gs`, `dmf`, `stopt`, `opt.lbfgs`, and `opt.rfo` listed below mirror the canonical definitions in [YAML Reference](yaml-reference.md). When the two pages disagree, the canonical [YAML Reference](yaml-reference.md) entries (and `pdb2reaction/defaults.py`) take precedence; the appendix on this page is reproduced inline only for `path-search`-specific defaults (e.g. `out_dir: ./result_path_search/`) and convenience lookup.
+```
 
 `gs` (Growing String) inherits defaults from `pdb2reaction.path_opt.GS_KW` with overrides for `max_nodes` (internal nodes per segment), climb behavior (`climb`, `climb_rms`, `climb_fixed`), and reparameterization cadence (`reparam_every_full`, `reparam_check`).
 
 `opt` houses the single-structure optimizers used for HEI±1 and kink nodes, split into `lbfgs` and `rfo` subsections. Each subsection mirrors [YAML Reference](yaml-reference.md) but defaults to `out_dir: ./result_path_search/` and `dump: False`.
 
-`bond` carries the MLIP-based bond-change detection parameters shared with [`scan`](scan.md#section-bond): `device`, `bond_factor`, `margin_fraction`, and `delta_fraction`.
+`bond` carries the MLIP-based bond-change detection parameters shared with {ref}`scan <section-bond>`: `device`, `bond_factor`, `margin_fraction`, and `delta_fraction`.
 
 
 `dmf` bundles Direct Max Flux + (C)FB-ENM controls applied whenever `--mep-mode dmf` is selected. The defaults mirror the shared `DMF_KW` dictionary and can be overridden per run:

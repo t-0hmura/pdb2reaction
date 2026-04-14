@@ -7,6 +7,18 @@ Refer to the upstream projects for additional details:
 - fairchem / UMA: <https://github.com/facebookresearch/fairchem>, <https://huggingface.co/facebook/UMA>
 - Hugging Face token & security: <https://huggingface.co/docs/hub/security-tokens>
 
+## Which path should I follow?
+
+```text
+Are you on a clean CUDA 12.9 machine and want UMA only?
+  |                                             |
+  v yes                                         v no (HPC modules, alt backends, DMF, xTB, DFT, ...)
+[Quick start]  (4 commands)                     [Step-by-step installation]  (8 steps, opt-in extras)
+```
+
+- **Quick start** — if `torch` with CUDA works out of the box and you only need the default GSM MEP path with UMA, follow the 4-line recipe below.
+- **Step-by-step installation** — use this if you need any of: environment modules (`module load cuda/...`), a dedicated conda env, DMF (`cyipopt`), alternative MLIP backends (ORB / AIMNet2 / MACE), implicit solvent via xTB, or `--dft` single-point post-processing.
+
 ## Quick start
 
 Below is a minimal setup example that works on many CUDA 12.9 clusters. Adjust module names and versions to match your system. This example assumes the default GSM MEP mode (`--mep-mode gsm`). For DMF (`--mep-mode dmf`), install cyipopt via conda first.
@@ -22,25 +34,19 @@ pip install pdb2reaction
 plotly_get_chrome -y
 ```
 
-Finally, log in to **Hugging Face Hub** so that UMA models can be downloaded (requires a free HF account with read-only token; you may need to accept the UMA model license at <https://huggingface.co/facebook/UMA>). Either:
+Finally, log in to **Hugging Face Hub** so that UMA models can be downloaded (requires a free HF account with read-only token; you may need to accept the UMA model license at <https://huggingface.co/facebook/UMA>):
 
 ```bash
-# Hugging Face CLI
 hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 ```
 
-or
-
-```bash
-# Classic CLI
-huggingface-cli login
-```
+> On older `huggingface_hub` (<0.26) the equivalent command is `huggingface-cli login`. Throughout this guide we use `hf auth login` as the canonical form.
 
 You only need to do this once per machine / environment.
 
-> **Tip:** UMA is the default MLIP backend. To use ORB or AIMNet2, install the corresponding extra (e.g. `pip install "pdb2reaction[orb]"`) and pass `--backend orb` to any command. See [Installation](#step-by-step-installation) step 7.
+> **Tip:** UMA is the default MLIP backend. To use ORB or AIMNet2, install the corresponding extra (e.g. `pip install "pdb2reaction[orb]"`) and pass `-b/--backend orb` to any command. See [Installation](#step-by-step-installation) step 7.
 >
-> **MACE:** MACE requires `e3nn==0.4.4`, which conflicts with `fairchem-core` (UMA). To switch to MACE, run `pip uninstall fairchem-core && pip install mace-torch`. UMA and MACE cannot coexist — use separate conda environments if you need both.
+> **MACE:** MACE requires `e3nn==0.4.4`, which conflicts with `fairchem-core` (UMA). The canonical MACE recipe is `pip uninstall -y fairchem-core && pip install mace-torch`. UMA and MACE cannot coexist in the same environment — use separate conda environments if you need both. (The `--no-deps mace-torch` variant seen in some older notes is not recommended; it leaves torch-scatter / e3nn unpinned.)
 
 - If you want to use the Direct Max Flux (DMF) method for MEP search, create a conda environment and install cyipopt before installing pdb2reaction.
 
@@ -60,6 +66,7 @@ You only need to do this once per machine / environment.
   ```
 
 
+(step-by-step-installation)=
 ## Step-by-step installation
 
 If you prefer to build the environment piece by piece:
@@ -104,8 +111,10 @@ If you prefer to build the environment piece by piece:
 6. **Log in to Hugging Face Hub (UMA model)**
 
     ```bash
-    huggingface-cli login
+    hf auth login
     ```
+
+    On older `huggingface_hub` versions (<0.26) use `huggingface-cli login` instead.
 
     See also:
 
@@ -125,7 +134,11 @@ If you prefer to build the environment piece by piece:
     pip install "pdb2reaction[aimnet]"
 
     # MACE backend (conflicts with UMA — uninstall fairchem-core first)
-    pip uninstall fairchem-core && pip install mace-torch
+    pip uninstall -y fairchem-core && pip install mace-torch
+
+    # DFT single-point post-processing (`--dft` / `pdb2reaction dft`)
+    # Installs gpu4pyscf-cuda12x, PySCF, and related dependencies.
+    pip install "pdb2reaction[dft]"
     ```
 
     To enable implicit solvent corrections, install [xTB](https://github.com/grimme-lab/xtb) and ensure the `xtb` command is available on your `PATH`.
@@ -164,4 +177,13 @@ If you prefer to build the environment piece by piece:
     ```
 
     If `CUDA: False`, check that the correct CUDA module is loaded and the PyTorch build matches your CUDA driver version.
+
+## Next steps
+
+- [Getting Started](getting-started.md) — project overview, pipeline stages, and workflow modes
+- [Quickstart: `pdb2reaction all`](quickstart-all.md) — run the end-to-end workflow from two PDBs
+- [Quickstart: single-structure staged scan](quickstart-scan.md) — `--scan-lists` driven MEP from one PDB
+- [Quickstart: TS optimization](quickstart-tsopt-freq.md) — optimize and validate a TS candidate
+- [CLI Conventions](cli-conventions.md) — flag precedence, atom/residue selectors, shared options
+- [Troubleshooting](troubleshooting.md) and [Common Error Recipes](recipes-common-errors.md)
 

@@ -17,16 +17,19 @@
 
 ### 基本構文
 
-各リテラルは `(atom1, atom2, target_distance)` のタプルリストです（距離の単位は Å）。1 リテラル = 1 ステージ。
+各リテラルは 3 要素タプル `(atom1, atom2, target_distance_Å)` のリストです。3 番目の要素は必ず **ångström** 単位の目標距離で、ちょうど 3 要素が必要です。1 リテラル = 1 ステージ。
 
 ```bash
 # 単一ステージ、整数原子インデックス（デフォルトで1-based）
-pdb2reaction -i input.pdb -q 0 -s '[(1, 5, 1.35)]' -o ./result_scan
+pdb2reaction -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 \
+ -s '[(1, 5, 1.35)]' -o ./result_scan
 
 # 単一ステージ、PDBセレクタ文字列
-pdb2reaction -i input.pdb -q 0 \
+pdb2reaction -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 \
  -s '[("TYR,285,CA", "SAM,309,C10", 1.35)]' -o ./result_scan
 ```
+
+タンパク質–リガンド複合体 PDB を入力とする場合は `-c/--center` の指定が必須です。低分子 `.pdb` / `.xyz` では `-c` を省略し、`-l` の代わりに `-q` を直接渡してください。`-m/--multiplicity` のデフォルトは `1`（一重項）ですが、例ではここでも明示的に示しています。
 
 ### PDBセレクタ
 
@@ -46,7 +49,7 @@ pdb2reaction -i input.pdb -q 0 \
 ```bash
 # ステージ1: 1つの結合を 1.35 Å に駆動
 # ステージ2: 2つの結合を同時に駆動
-pdb2reaction -i input.pdb -q 0 -s \
+pdb2reaction -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 -s \
   '[("TYR,285,CA","SAM,309,C10",1.35)]' \
   '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]' \
   -o ./result_scan
@@ -106,7 +109,7 @@ result_scan/
 │   └── stage_02/                  # ステージ 2（マルチステージ時）
 └── path_search/                   # MEP 探索（デフォルト、再帰的）; --refine-path False 時は path_opt/
     ├── mep.pdb
-    └── energy_diagram_uma_all.png
+    └── energy_diagram_UMA_all.png
 ```
 
 **確認ポイント:**

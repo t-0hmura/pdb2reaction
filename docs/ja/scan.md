@@ -179,8 +179,12 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
 
 これは 2 つの手動ステージの間にジオメトリリセットを行うのと同等ですが、スクリプトを書く必要がありません。同じリテラル内で 3-tuple と 4-tuple を混在させることもできます。
 
+```{note}
+**4-tuple 使用時のステージ番号。** 1 つの 4-tuple は出力ツリー内で **2 つ** のステージに展開されます。`start` パスは `stage_NN/` に、`end` パスは `stage_NN+1/` に書き込まれます。したがって最初のリテラルとして 1 個の 4-tuple を渡した場合、1 つの統合された `stage_01/` ではなく `stage_01/` と `stage_02/` が作成されます。3-tuple と 4-tuple を混在させた場合、カウンターは 3-tuple ごとに `+1`、4-tuple ごとに `+2` 進みます。
+```
+
 ## ワークフロー
-1. `geom_loader` で構造を読み込み、電荷とスピンを解決します。電荷の解決順序の詳細は [CLI 規約: 電荷の指定](cli-conventions.md#電荷の指定) を参照してください。
+1. `geom_loader` で構造を読み込み、電荷とスピンを解決します。電荷の解決順序の詳細は {ref}`CLI 規約: 電荷の指定 <ja-charge-specification>` を参照してください。
 2. `--preopt` の場合、バイアスをかける前に無バイアスの前処理最適化を実行し、開始構造を緩和します。
 3. `-s/--scan-lists`（YAML/JSON ファイルパスまたはインライン Python リテラル）からステージターゲットを読み取り、`(i, j)` インデックスを正規化します（デフォルトは 1 始まり）。PDB 入力では、各エントリに整数インデックスまたは `'TYR,285,CA'` のような原子セレクタ文字列を指定できます。セレクタの区切りは空白・カンマ・スラッシュ・バッククォート・バックスラッシュのいずれも可で、トークン順序は任意です（フォールバックは resname, resseq, atom を想定）。
     各結合について変位 `Δ = target − current` を計算し、`h = --max-step-size` として `N = ceil(max(|Δ|) / h)` ステップに分割します。各結合は `δ = Δ / N` ずつ更新されます。
@@ -215,6 +219,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 | `--preopt/--no-preopt` | スキャン前に無バイアス最適化を実行 | `False` |
 | `--endopt/--no-endopt` | 各ステージ後に無バイアス最適化を実行 | `False` |
+| `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照。 | `False` |
 
 ### 共有 YAML セクション
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml-reference.md) と同じキーを使用します。`opt.dump` は YAML で設定可能ですが、ステージ軌跡の出力は `--dump` で制御します。
@@ -223,7 +228,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
 ### セクション `bias`
 - `k`（`300`）: 調和バイアス強度（eV·Å⁻²）。
 
-(section-bond)=
+(ja-section-bond)=
 ### セクション `bond`
 `path-search` と共通の UMA ベース結合変化検出:
 - `device`（`"auto"`）: 結合解析用 UMA デバイス。
@@ -253,7 +258,7 @@ out_dir/ (デフォルト:./result_scan/)
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - `-s/--scan-lists` には単一フラグの後に複数リテラルを並べます。ターゲット距離は正の値である必要があります。原子インデックスは内部で 0 始まりに正規化されます。PDB 入力ではセレクタ文字列を使用でき、空白・カンマ・スラッシュ・バッククォート・バックスラッシュで区切れます。トークン順序は任意です。
-- `--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（[リンク水素と凍結原子](extract.md#リンク水素と凍結原子) を参照）。
+- `--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（{ref}`リンク水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
 - ステージ結果（`result.xyz` と任意の PDB/GJF コンパニオン）は常に書き出されます。結合スキャン軌跡（`scan_trj.xyz` および PDB 入力で変換有効時の `scan.pdb`）も常に書き出されます。`--dump` フラグはステップごとの最適化軌跡ファイルのみを制御します。
 
 

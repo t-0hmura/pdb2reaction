@@ -72,6 +72,7 @@ pdb2reaction all --help-advanced # 全オプション
 
 ---
 
+(ja-charge-specification)=
 ## 電荷の指定
 
 PDB 入力では、`--ligand-charge` を使うと**非標準残基（基質・補因子・金属イオンなど）の形式電荷（formal charge）だけ**を指定すれば、標準アミノ酸やイオンの電荷と合算して全系の電荷が自動計算されます。大きな酵素–基質系で総電荷を手動で数える必要がなくなります。
@@ -90,10 +91,14 @@ PDB 入力では、`--ligand-charge` を使うと**非標準残基（基質・�
 
 ### 電荷の解決順序
 1. `-q/--charge`（明示的な CLI 上書き）— 最優先
-2. 活性部位モデル（バインディングポケット）抽出（アミノ酸、イオン、`--ligand-charge` の合計）
+2. 活性部位モデル（バインディングポケット）抽出（アミノ酸、イオン、`--ligand-charge` の合計） — `all` などで `-c/--center` を指定し抽出が有効な場合のみ
 3. フォールバックとしての `--ligand-charge`（抽出がスキップされた場合）
 4. `.gjf` テンプレートのメタデータ
 5. デフォルト: なし（未解決の場合は実行を中断します。`-q`、`.gjf` 電荷メタデータ、または PDB 入力の `--ligand-charge` のいずれかで解決してください）
+
+```{note}
+ステップ 2（抽出による電荷導出）は `-c/--center` を伴う `all` などのコマンドでのみ作動します。`opt`/`tsopt`/`freq` などの単独サブコマンドや、`-c` を指定しない場合は抽出がスキップされ、解決順は 1 → 3 → 4 → 5 となります。
+```
 
 ```{note}
 `--ligand-charge` による導出は、PDB 入力のみ（`--ref-pdb` を付けた XYZ/GJF 入力を含む）で電荷が**まだ解決されていない**場合に適用されます。未解決の場合は、`.gjf` メタデータへフォールバックする前に `--ligand-charge` 導出を先に試行します。
@@ -157,6 +162,52 @@ PDB 入力では、`--ligand-charge` を使うと**非標準残基（基質・�
 
 ---
 
+(ja-exit-codes)=
+## 終了コード
+
+`pdb2reaction` サブコマンドは概ね共通の終了コード規約に従いますが、実際に送出されるコードはサブコマンドごとに異なります（下表「主な発生元」列を参照）。各サブコマンドが返し得る終了コードの一覧は、当該サブコマンドのページを確認してください。
+
+| コード | 意味 | 主な発生元 |
+|--------|------|-----------|
+| `0` | 成功 | すべてのサブコマンド |
+| `1` | 予期しないエラー（未処理例外） | すべてのサブコマンド |
+| `2` | ゼロステップ長（ステップノルム下限未満）**または** 依存インポート失敗 | `opt`, `tsopt`, `path-opt`; `dft`（PySCF/GPU4PySCF 未インストール） |
+| `3` | 最適化失敗 **または** SCF 非収束 | `opt`, `tsopt`, `path-opt`; `dft` |
+| `4` | 軌跡書き出しエラー | `path-opt` |
+| `5` | HEI エクスポートエラー | `path-opt` |
+| `130` | キーボード割り込み (SIGINT) | すべてのサブコマンド |
+
+`irc` や `freq` のように `0 / 1 / 130` しか使わないサブコマンドも同じ規約に従います。単に、これらは現時点で最適化固有のエラーを送出していないだけです。
+
+---
+
+(ja-opt-mode-semantics)=
+## `--opt-mode`（サブコマンド依存）
+
+```{warning}
+同じ `--opt-mode` トークンでも、サブコマンドによって**選択される最適化アルゴリズムが異なり**、デフォルトも**統一されていません**。レシピをコピーする前に必ずサブコマンドごとの表を確認してください。
+```
+
+| サブコマンド | `grad` エイリアス | `hess` エイリアス | デフォルト |
+|------------|------------------|------------------|-----------|
+| `opt` | L-BFGS (`lbfgs`) | RFO (`rfo`) | `grad` (L-BFGS) |
+| `tsopt` | Dimer (`dimer`) | RS-I-RFO (`rsirfo`) | `hess` (RS-I-RFO) |
+| `path-opt`（端点 preopt） | L-BFGS | RFO | `grad` |
+| `path-search`（端点 preopt） | L-BFGS | RFO | `grad` |
+| `scan` / `scan2d` / `scan3d`（端点 preopt） | L-BFGS | RFO | `grad` |
+| `all`（pre-opt 段階、`--opt-mode`） | L-BFGS | RFO | `grad` |
+| `all`（post-opt — TSOPT プリセット、`--opt-mode-post`） | Dimer (`dimer`) | RS-I-RFO (`rsirfo`) | `hess` |
+| `all`（post-opt — IRC 後エンドポイント最適化、`--opt-mode-post`） | L-BFGS | RFO | `hess` |
+
+**受け付けるエイリアス**もサブコマンド固有です:
+
+- `opt` は `grad` / `lbfgs` と `hess` / `rfo` を受け付けます。
+- `tsopt` は `grad` / `dimer` と `hess` / `rsirfo` を受け付けます。
+
+したがって `tsopt` に対する `--opt-mode grad` は L-BFGS 最小化ではなく **Dimer TS 探索**です。サブコマンド間で曖昧さを避けたい場合は、明示的なアルゴリズム名（`--opt-mode lbfgs`, `--opt-mode rsirfo` など）を指定してください。
+
+---
+
 ## YAML 設定
 
 詳細設定は多層 YAML で渡せます：
@@ -167,20 +218,20 @@ pdb2reaction -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result/
 
 利用可能なすべてのオプションは [YAML リファレンス](yaml-reference.md) を参照してください。
 
+(ja-configuration-precedence)=
 ### 設定の優先順位
 
 設定は以下の順序で解決されます（後のものが前のものを上書き）：
 
 ```
-組み込みデフォルト  <  --config (YAML)  <  CLI オプション  <  --override-yaml
+組み込みデフォルト  <  --config (YAML)  <  CLI オプション
 ```
 
-- **組み込みデフォルト** — すべてのパラメータのハードコード値。
+- **組み込みデフォルト** — すべてのパラメータのハードコード値（`pdb2reaction/defaults.py` を参照）。
 - **`--config`** — デフォルトを上書きする YAML ファイル。サイト共通やプロジェクト共通の設定に便利です。
 - **CLI オプション** — コマンドラインで明示的に指定されたフラグ（例: `-b orb`）。*明示的に指定された*値のみが YAML を上書きし、CLI デフォルトのままのオプションは YAML の値を隠しません。
-- **`--override-yaml`** — 最後に適用される YAML レイヤー。実行ごとの微調整に使用します。
 
-この優先順位は `all`, `opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, `dft` に共通です。
+この優先順位は `all`, `opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, `dft` に共通です。あわせて {ref}`YAML リファレンス: 設定の優先順位 <ja-yaml-configuration-precedence>` を参照してください。
 
 ---
 

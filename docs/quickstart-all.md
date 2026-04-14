@@ -10,6 +10,8 @@ Run the end-to-end workflow once from two full PDB structures.
 - Two PDB files (reactant R and product P) with **hydrogen atoms** already added
 - The same atoms in the same order across all input PDB files
 
+> **About the example filenames:** `1.R.pdb` and `3.P.pdb` mirror the numbered reactant/product files shipped in the GPP C6-methyltransferase BezA example directory ([`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) — `1.R.pdb` = reactant state, `3.P.pdb` = product state, with intermediate `2.*.pdb` files available for multi-step runs). Replace them with the two (or more) full-system PDBs for your own reaction.
+
 ## Minimal command
 
 ```bash
@@ -24,6 +26,8 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  --tsopt --thermo --dft --out-dir ./result_all
 ```
 
+> **VRAM warning:** `--dft` launches GPU4PySCF single-point jobs on the extracted cluster model and can easily OOM on GPUs with < 24 GB VRAM for clusters above ~200 atoms. If you hit `CUDA out of memory`, either drop `--dft` and run `pdb2reaction dft` separately with a smaller basis / trimmed cluster, or move the DFT step to a larger-VRAM node. The `[dft]` extra must also be installed (see [Installation](installation.md) Step 7).
+
 ## Expected output
 
 A successful run produces a directory like:
@@ -34,11 +38,11 @@ result_all/
 ├── summary.json                   # Machine-readable results
 ├── path_search/
 │   ├── mep.pdb                    # Merged MEP trajectory
-│   ├── energy_diagram_uma_all.png # Energy profile
+│   ├── energy_diagram_UMA_all.png # Energy profile
 │   ├── summary.json               # Path-search results
 │   └── post_seg_01/               # Post-processing (if --tsopt)
 │       ├── ts/final_geometry.pdb
-│       ├── irc/finished_irc.pdb
+│       ├── irc/finished_irc_trj.xyz
 │       └── freq/
 └── seg_01/                        # IRC-optimized R/TS/P structures
     ├── reactant.pdb

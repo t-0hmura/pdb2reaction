@@ -73,14 +73,14 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [-l, -
 ## Workflow
 1. **Pre-alignment & freeze resolution**
  - All endpoints after the first are Kabsch-aligned to the first structure. If either endpoint defines `freeze_atoms`, only those atoms participate in the RMSD fit and the resulting transform is applied to every atom.
- - When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Link hydrogen and frozen atoms](extract.md#link-hydrogen-and-frozen-atoms)).
+ - When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see {ref}`Link hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
 2. **String growth and HEI export**
  - After the path is grown and refined, the tool searches for the highest-energy internal local maximum (preferred). If none exists, it falls back to the maximum among internal nodes; if no internal nodes are present, the global maximum is exported.
  - The highest-energy image (HEI) is written both as `.xyz` and `.pdb` when a PDB reference exists, and as `.gjf` when a Gaussian template is available; these conversions honor `--convert-files`.
 
 ### Key behaviors
 - **Endpoints**: Exactly two structures are required. Formats follow `geom_loader`. PDB inputs (or XYZ/GJF with `--ref-pdb`) enable trajectory/HEI PDB exports.
-- **Charge/spin**: Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli-conventions.md#charge-specification) for details).
+- **Charge/spin**: Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: Charge specification <charge-specification>` for details).
 - **MEP segments**: `--max-nodes` controls the number of *internal* nodes/images. For GSM, total images = `max_nodes + 2` (including fixed endpoints). For DMF, `max_nodes` sets the number of movable images along the chain. GSM growth and optional climbing-image refinement use the StringOptimizer convergence preset from `--thresh-stopt` or `stopt.thresh` (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`).
 - **Endpoint preoptimization**: `--thresh` controls only the single-structure endpoint optimizer selected by `--opt-mode` (`opt.lbfgs.thresh` / `opt.rfo.thresh`).
 - **Climbing image**: `--climb` toggles both the standard climbing step and the Lanczos-based tangent refinement.
@@ -96,7 +96,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [-l, -
 | `--workers`, `--workers-per-node` | MLIP predictor parallelism (workers > 1 disables analytic Hessians; UMA backend only; `workers_per_node` forwarded to the parallel predictor). | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (`calc.spin`). | Template/`1` |
 | `--freeze-links/--no-freeze-links` | PDB-only: freeze link-H parents (merged with YAML). See [extract](extract.md) for link-hydrogen details. | `True` |
-| `--max-nodes INT` | Number of internal nodes (string images = `max_nodes + 2`). | `20` |
+| `--max-nodes INT` | Number of internal nodes. **GSM:** total images = `max_nodes + 2` (the two endpoints are fixed). **DMF:** number of *movable* images along the chain (no implicit endpoint expansion). | `20` |
 | `--mep-mode {gsm\|dmf}` | Select GSM (string-based) or DMF (direct flux) path generator. | `gsm` |
 | `--max-cycles INT` | Optimizer macro-iteration cap (`stopt.max_cycles`). | `300` |
 | `--climb/--no-climb` | Enable climbing-image refinement (and Lanczos tangent). | `True` |
@@ -116,6 +116,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [-l, -
 | `--preopt/--no-preopt` | Pre-optimize each endpoint with the selected single-structure optimizer before alignment/MEP search (GSM/DMF). | `False` |
 | `--preopt-max-cycles INT` | Cap for endpoint preoptimization cycles. | `10000` |
 | `--fix-ends/--no-fix-ends` | Keep the endpoint geometries fixed during GSM growth/refinement. | `False` |
+| `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
 
 ## Outputs
 ```
@@ -130,7 +131,12 @@ out_dir/
 ```
 Console output echoes the resolved YAML blocks and prints cycle-by-cycle MEP progress (GSM/DMF) with timing information.
 
-See [CLI Conventions: Configuration precedence](cli-conventions.md#configuration-precedence) for the full resolution order.
+See {ref}`CLI Conventions: Configuration precedence <configuration-precedence>` for the full resolution order.
+
+```{note}
+**Reference duplication.** The YAML keys for `geom`, `calc`, `opt.lbfgs`, and `opt.rfo` listed below mirror the canonical definitions in [YAML Reference](yaml-reference.md). When the two pages disagree, the canonical [YAML Reference](yaml-reference.md) entries (and `pdb2reaction/defaults.py`) take precedence; the appendix on this page is reproduced inline only for `path-opt`-specific defaults (e.g. `out_dir`) and convenience lookup.
+```
+
 ### `geom`
 - Same keys as [`opt`](opt.md) (`coord_type`, `freeze_atoms`, etc.); `--freeze-links` augments `freeze_atoms` for PDBs.
 

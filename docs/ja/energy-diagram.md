@@ -44,6 +44,7 @@ pdb2reaction energy-diagram -i 0 12.5 4.3 --label-x R TS P --label-y "ΔE (kcal/
 | `-o, --output PATH` | 出力画像パス（`.png/.jpg/.jpeg/.svg/.pdf`） | `energy_diagram.png` |
 | `--label-x TEXT...` | X軸状態ラベル（入力値と同じ個数が必要） | `S1, S2,...` |
 | `--label-y TEXT` | Y軸ラベル | `ΔE (kcal/mol)` |
+| `--out-json/--no-out-json` | 出力画像の隣に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照。 | `False` |
 
 ## 出力
 ```

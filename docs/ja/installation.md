@@ -7,6 +7,18 @@
 - fairchem / UMA: <https://github.com/facebookresearch/fairchem>, <https://huggingface.co/facebook/UMA>
 - Hugging Faceトークンとセキュリティ: <https://huggingface.co/docs/hub/security-tokens>
 
+## どちらの手順を選べばよいか
+
+```text
+クリーンな CUDA 12.9 環境で UMA のみ使えればよい?
+  |                                                          |
+  v はい                                                      v いいえ（HPC モジュール、他バックエンド、DMF、xTB、DFT など）
+[クイックスタート]  （4 コマンド）                              [詳細なインストール手順]  （8 ステップ、任意の追加導入）
+```
+
+- **クイックスタート** — `torch`（CUDA 対応）がそのまま動き、デフォルトの GSM MEP と UMA だけで十分なら、下の 4 行レシピに従ってください。
+- **詳細なインストール手順** — 以下のいずれかに該当する場合はこちらを使ってください: 環境モジュール（`module load cuda/...`）、専用の conda 環境、DMF（`cyipopt`）、追加の MLIP バックエンド（ORB / AIMNet2 / MACE）、xTB による暗黙溶媒、`--dft` 一点計算の後処理。
+
 ## クイックスタート
 
 以下は多くの CUDA 12.9 クラスターで動作する最小限のセットアップ例です。モジュール名やバージョンはお使いの環境に合わせて調整してください。この例はデフォルトの GSM による MEP 探索（`--mep-mode gsm`）を前提としています。DMF（`--mep-mode dmf`）を使用する場合は、先に conda で cyipopt をインストールしてください。
@@ -25,22 +37,16 @@ plotly_get_chrome -y
 最後に、UMA モデルをダウンロードできるように **Hugging Face Hub** にログインします（無料の HF アカウントと読み取り専用トークンが必要。<https://huggingface.co/facebook/UMA> でモデルライセンスの承認が必要な場合あり）:
 
 ```bash
-# Hugging Face CLI
 hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 ```
 
-または
-
-```bash
-# クラシックCLI
-huggingface-cli login
-```
+> 古い `huggingface_hub`（<0.26）では `huggingface-cli login` を使用してください。本ガイドでは正準形として `hf auth login` を使います。
 
 これはマシン/環境ごとに1回だけ行う必要があります。
 
-> **ヒント:** UMA がデフォルトの MLIP バックエンドです。ORB や AIMNet2 を使用するには、対応する extra をインストール（例: `pip install "pdb2reaction[orb]"`）し、コマンドに `-b orb` を渡してください。[詳細なインストール手順](#詳細なインストール手順)の手順 7 を参照してください。
+> **ヒント:** UMA がデフォルトの MLIP バックエンドです。ORB や AIMNet2 を使用するには、対応する extra をインストール（例: `pip install "pdb2reaction[orb]"`）し、コマンドに `-b/--backend orb` を渡してください。[詳細なインストール手順](#ja-step-by-step-installation)の手順 7 を参照してください。
 >
-> **MACE:** MACE は `e3nn==0.4.4` を必要としますが、`fairchem-core`（UMA）と競合します。MACE に切り替えるには `pip uninstall fairchem-core && pip install mace-torch` を実行してください。UMA と MACE は共存できません — 両方必要な場合は別の conda 環境を使用してください。
+> **MACE:** MACE は `e3nn==0.4.4` を必要としますが、`fairchem-core`（UMA）と競合します。正準の MACE 導入手順は `pip uninstall -y fairchem-core && pip install mace-torch` です。UMA と MACE は同一環境で共存できないため、両方必要な場合は別々の conda 環境を使ってください。（古いメモにある `--no-deps mace-torch` 方式は torch-scatter / e3nn が pin されないため推奨しません。）
 
 - MEP 探索で Direct Max Flux（DMF）法を使用する場合は、conda 環境を作成し、pdb2reaction のインストール前に cyipopt をインストールしてください。
 
@@ -60,6 +66,7 @@ huggingface-cli login
   ```
 
 
+(ja-step-by-step-installation)=
 ## 詳細なインストール手順
 
 環境を段階的に構築する場合:
@@ -104,8 +111,10 @@ huggingface-cli login
 6. **Hugging Face Hub (UMAモデル) にログイン**
 
     ```bash
-    huggingface-cli login
+    hf auth login
     ```
+
+    古い `huggingface_hub`（<0.26）の場合は代わりに `huggingface-cli login` を使用してください。
 
     参照:
 
@@ -125,7 +134,11 @@ huggingface-cli login
     pip install "pdb2reaction[aimnet]"
 
     # MACE バックエンド (UMA と競合 — 先に fairchem-core をアンインストール)
-    pip uninstall fairchem-core && pip install mace-torch
+    pip uninstall -y fairchem-core && pip install mace-torch
+
+    # DFT 一点計算の後処理（`--dft` / `pdb2reaction dft`）
+    # gpu4pyscf-cuda12x、PySCF、および関連依存をインストールします。
+    pip install "pdb2reaction[dft]"
     ```
 
     暗黙溶媒補正を使用するには、[xTB](https://github.com/grimme-lab/xtb) をインストールし、`xtb` コマンドが `PATH` 上で利用可能であることを確認してください。
@@ -164,4 +177,13 @@ huggingface-cli login
     ```
 
     `CUDA: False` の場合、CUDA モジュールのロードと PyTorch ビルドの CUDA バージョンを確認してください。
+
+## 次の導線
+
+- [はじめに](getting-started.md) — プロジェクト概要、パイプラインの各ステージ、ワークフローモード
+- [クイックスタート: `pdb2reaction all`](quickstart-all.md) — 2 つの PDB から end-to-end 実行
+- [クイックスタート: 単一構造スキャン](quickstart-scan.md) — `--scan-lists` で 1 つの PDB から MEP
+- [クイックスタート: TS 最適化](quickstart-tsopt-freq.md) — TS 候補の最適化と検証
+- [CLI 規約](cli-conventions.md) — フラグの優先順位、原子/残基セレクタ、共通オプション
+- [トラブルシューティング](troubleshooting.md) と [典型エラー別レシピ](recipes-common-errors.md)
 

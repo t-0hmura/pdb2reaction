@@ -195,6 +195,22 @@ Convergence details are available for rsirfo mode; dimer mode provides `n_opt_cy
 | `delta_kcal` | float | Reaction energy (kcal/mol) |
 | `files` | object | Trajectory + HEI files |
 
+### `path-search`
+
+`path-search` does not emit `result.json` under `--out-json`; instead it **always** writes a `summary.json` to the output directory with the shared envelope (`command`, `pdb2reaction_version`, `elapsed_seconds`, `environment`) plus:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | string | `"success"` / `"partial"` |
+| `n_segments` | int | Recursive MEP segment count |
+| `segments` | object[] | Per-segment `barrier_kcal`, `delta_kcal`, `bond_changes`, `hei_index`, `mep_mode` |
+| `energy_diagrams` | object[] | Per-segment labelled energy profiles (kcal/mol) |
+| `mlip_backend` | string | Backend/model identifier |
+| `charge` | int | System charge |
+| `spin` | int | Spin multiplicity |
+
+See also the extended [`summary.json` section](#summary-json-path-search-all) for the additional fields that `all` layers on top.
+
 ### `dft`
 
 | Field | Type | Description |
@@ -256,6 +272,7 @@ When `--out-json` is enabled, `bond-summary` prints JSON to **stdout** (not a fi
 | `status` | string | `"ok"` |
 | `comparisons` | object[] | Per-pair comparison with `structure_a`, `structure_b`, `bonds_formed`, `bonds_broken` |
 
+(summary-json-path-search-all)=
 ## `summary.json` (`path-search` / `all`)
 
 The `all` and `path-search` commands write `summary.json` with a richer structure:
@@ -312,3 +329,10 @@ jq '.imaginary_frequencies_cm' result.json
 # Get thermochemistry from freq
 jq '.thermochemistry.sum_EE_and_thermal_free_energy_ha' result.json
 ```
+
+## See Also
+
+- [CLI Conventions](cli-conventions.md) — `--out-json` / `--no-out-json` flag conventions and exit codes
+- [YAML Reference](yaml-reference.md) — configuration inputs whose values surface in these schemas
+- [all](all.md), [path-search](path-search.md) — subcommands that always emit `summary.json`
+- [opt](opt.md), [tsopt](tsopt.md), [freq](freq.md), [irc](irc.md), [scan](scan.md), [path-opt](path-opt.md), [dft](dft.md), [extract](extract.md) — subcommands that emit `result.json` only under `--out-json`

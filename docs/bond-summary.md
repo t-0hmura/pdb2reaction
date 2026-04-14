@@ -29,6 +29,7 @@ Supported formats: **XYZ**, **PDB**, **GJF** (auto-detected by extension).
 | `--device TEXT` | Compute device (`cpu`, `cuda`) | `cpu` |
 | `--bond-factor FLOAT` | Scaling factor for covalent radii sum | `1.20` |
 | `--one-based / --zero-based` | Atom index convention in output | `--one-based` |
+| `--out-json / --no-out-json` | Write a machine-readable `result.json` next to the input(s). See [JSON Output Schema](json-output.md) for the schema. | `False` |
 
 ## Examples
 

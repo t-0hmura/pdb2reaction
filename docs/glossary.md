@@ -10,10 +10,9 @@ This page provides definitions for abbreviations and technical terms used throug
 |------|-----------|-------------|
 | **MEP** | Minimum Energy Path | The lowest-energy pathway on a potential energy surface (PES) connecting reactants to products through a transition state. |
 | **TS** | Transition State | A first-order saddle point on the potential energy surface, typically the highest-energy point along the reaction coordinate. |
-| **IRC** | Intrinsic Reaction Coordinate | A mass-weighted steepest-descent path from a TS toward reactants and products. Often used to validate TS connectivity. |
+| **IRC** | Intrinsic Reaction Coordinate | Classically defined as the mass-weighted steepest-descent path from a TS toward reactants and products, used to validate TS connectivity. In pdb2reaction the EulerPC integrator runs in **unweighted Cartesian coordinates** (`irc.md`: `--step-size` is in Bohr of unweighted Cartesian); `geom.coord_type` is forced to `cart`. |
 | **GSM** | Growing String Method | A string-based method that grows images from endpoints and optimizes them to approximate an MEP. |
 | **DMF** | Direct Max Flux | A chain-of-states method for optimizing an MEP by maximizing flux along the pathway. In pdb2reaction it is selected with `--mep-mode dmf`. |
-| **NEB** | Nudged Elastic Band | A chain-of-states method that uses spring forces to maintain image spacing along a reaction path. |
 | **HEI** | Highest-Energy Image | The image along an MEP with maximum energy; often used as a TS guess. |
 | **Image** | — | A single geometry (one "node") along a chain-of-states path. |
 | **Segment** | — | An MEP between two adjacent endpoints (e.g., R → I1, I1 → I2, …). |
@@ -28,12 +27,17 @@ This page provides definitions for abbreviations and technical terms used throug
 
 | Term | Full Name | Description |
 |------|-----------|-------------|
+| **BFGS** | Broyden-Fletcher-Goldfarb-Shanno | A quasi-Newton Hessian update scheme (`hessian_update: bfgs`). |
 | **L-BFGS** | Limited-memory BFGS | A quasi-Newton optimization algorithm that approximates the Hessian using a limited history of gradients. Used in `opt --opt-mode grad`. |
 | **RFO** | Rational Function Optimization | A trust-region optimization method that uses explicit Hessian information. Used in `opt --opt-mode hess`. |
-| **RS-I-RFO** | Restricted-Step Image-RFO | A variant of RFO for saddle point (TS) optimization that follows one negative eigenvalue. |
-| **Dimer** | Dimer Method | A TS optimization method that estimates the lowest curvature mode without computing the full Hessian. Used in `tsopt --opt-mode grad`. |
+| **RS-I-RFO** | Restricted-Step Image-RFO | A variant of RFO for saddle point (TS) optimization that follows one negative eigenvalue. Default for `tsopt --opt-mode hess`. |
+| **Dimer** | Dimer Method | A TS optimization method that estimates the lowest curvature mode without computing the full Hessian. Used in `tsopt --opt-mode grad`. pdb2reaction uses a Hessian-Guided Dimer variant that periodically evaluates an exact active-subspace Hessian to update the dimer direction. |
+| **Bofill** | Bofill Update | A Hessian update scheme that blends SR1 (symmetric rank-one) and PSB (Powell-symmetric-Broyden) updates, well suited to saddle-point searches. Selected via `hessian_update: bofill` and used by RS-I-RFO and the Dimer flatten loop. |
+| **SR1** | Symmetric Rank-One | A rank-one Hessian update scheme; one of the two components blended by Bofill. |
+| **PSB** | Powell-Symmetric-Broyden | A symmetric Hessian update scheme; the second component blended by Bofill. |
 | **EulerPC** | Euler Predictor-Corrector | An integration scheme for IRC calculations: a predictor step along the gradient direction followed by a corrector step that refines the path. |
 | **PHVA** | Partial Hessian Vibrational Analysis | Vibrational analysis performed only on the active (non-frozen) degrees of freedom. Automatically applied when `freeze_atoms` is set. |
+| **Active DOF** | Active Degrees of Freedom | The 3N Cartesian coordinates of atoms not listed in `freeze_atoms`. PHVA, partial-Hessian TS optimization, and the analytical Hessian path operate only on this active subspace; frozen atoms contribute neither rows nor columns to the reduced Hessian. |
 | **DLC** | Delocalized Internal Coordinates | A redundant internal coordinate system constructed from interatomic distances, angles, and dihedrals. Available via `coord_type: dlc` (default is `cart` = Cartesian). |
 
 ---
@@ -48,6 +52,8 @@ This page provides definitions for abbreviations and technical terms used throug
 | **MACE** | MACE | Equivariant message-passing MLIP. Selected with `-b mace`. |
 | **AIMNet2** | AIMNet2 | Atoms-In-Molecules Network v2. Selected with `-b aimnet2`. |
 | **xTB** | Extended Tight Binding | A semi-empirical quantum chemistry method. In pdb2reaction, used for implicit solvation correction via `--solvent`. |
+| **fairchem** | — | Meta's open-source foundation-model toolkit that ships the UMA family of checkpoints. pdb2reaction depends on `fairchem-core` to load UMA predictors. |
+| **task_name** | — | UMA task tag recorded in each inference batch (YAML: `calc.task_name`, default `omol`). Selects the UMA task/preset that a checkpoint was trained for. |
 | **Analytical Hessian** | — | Exact evaluation of the Hessian matrix via automatic differentiation; faster than finite differences but requires more VRAM. Selected with `--hessian-calc-mode Analytical`. |
 | **Finite Difference** | — | Approximating the Hessian by finite nuclear displacements; slower but more memory-efficient. Selected with `--hessian-calc-mode FiniteDifference` (default). |
 
@@ -62,6 +68,9 @@ This page provides definitions for abbreviations and technical terms used throug
 | **Hessian** | — | The matrix of second derivatives of energy with respect to atomic coordinates. Eigenvalues yield vibrational frequencies; eigenvectors yield vibrational modes (displacement vectors). Used for vibrational analysis and TS optimization. |
 | **SP** | Single Point | A calculation at a fixed geometry (no optimization); often used for higher-level energy refinement. |
 | **Spin Multiplicity** | — | 2S+1, where S is total spin. Singlet = 1, doublet = 2, triplet = 3, etc. Specified with `-m/--multiplicity` (default: 1). |
+| **ALPB** | Analytical Linearized Poisson-Boltzmann | An implicit-solvent model available via xTB (`--solvent-model alpb`, default). |
+| **CPCMX** | Conductor-like PCM (exchange-correlation extension) | An implicit-solvent model available via xTB (`--solvent-model cpcmx`). |
+| **cyipopt** | — | Python bindings for the IPOPT interior-point optimizer. Required by the DMF (`--mep-mode dmf`) path refinement pipeline. |
 
 ---
 
@@ -72,8 +81,8 @@ This page provides definitions for abbreviations and technical terms used throug
 | **PDB** | Protein Data Bank | A file format and database for macromolecular 3D structures. |
 | **XYZ** | — | A simple text format listing atomic symbols and Cartesian coordinates. |
 | **GJF** | Gaussian Job File | An input format for Gaussian; pdb2reaction reads charge/multiplicity and coordinates from these files. |
-| **Active Site Model** | Active Site Model (Binding Pocket) | The extraction region around the substrate(s), defined by `-c/--center` and `-r/--radius`. |
-| **Cluster Model** | — | The computational subsystem cut from the active site model and capped with link hydrogens. Used to reduce system size for MEP/TS search. |
+| **Active Site Model** | Active Site Model (Binding Pocket) | The extraction region around the substrate(s), defined by `-c/--center` and `-r/--radius`. pdb2reaction uses "active site model" and "cluster model" interchangeably when describing the downstream calculation input; strictly, "active site model" refers to the geometric selection and "cluster model" to the same selection after it has been capped with link hydrogens and prepared for QM/MLIP calculation. |
+| **Cluster Model** | — | The QM/MLIP computational subsystem obtained by taking the extracted active site model and capping severed covalent bonds with link hydrogens. In practice, "active site model" (pre-cap geometric selection) and "cluster model" (capped, calculation-ready) name two stages of the same object. |
 | **Link Hydrogen** | — | A hydrogen atom added to cap severed bonds when extracting an active site model from a larger structure. |
 | **Backbone** | — | The main chain of a protein (N–Cα–C–O atoms). Can be excluded during active site model extraction with `--exclude-backbone`. |
 

@@ -59,6 +59,16 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite
 - Console report with totals for processed/assigned atoms,
   per-element counts, and up to 50 unresolved atoms.
 
+## Integration with `all` workflow
+
+When running `pdb2reaction all`, `add-elem-info` is **automatically invoked as a
+preflight step** on every PDB input before any other processing (followed by
+`fix-altloc`, then active site model extraction). This ensures element symbols
+are populated before bond detection or charge assignment runs. You therefore do
+**not** need to run `add-elem-info` manually before `pdb2reaction all`; it is
+only required when you use individual subcommands such as `extract` or `opt`
+directly on a PDB that lacks element columns.
+
 ## Notes
 - Only columns 77–78 are modified; coordinates, occupancies, B-factors, charges, altlocs,
   insertion codes, and record ordering stay untouched.

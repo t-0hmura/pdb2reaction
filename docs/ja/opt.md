@@ -4,7 +4,7 @@
 
 > **要約:** L-BFGS（`--opt-mode grad`、デフォルト）または RFO（`--opt-mode hess`）で単一構造を局所極小点に最適化します。必要に応じて `--flatten` で虚振動数モードフラット化を実行できます。
 
-`pdb2reaction opt` は pysisyphus の LBFGS（`lbfgs`）または RFOptimizer（`rfo`）を用い、MLIP（デフォルト: UMA、`-b/--backend` で ORB・MACE・AIMNet2 も選択可能）のエネルギー・勾配・ヘシアンで単一構造を局所極小点へ最適化します。入力構造は `.pdb`、`.xyz`、`_trj.xyz`、その他 `geom_loader` がサポートする任意の形式に対応しています。設定の優先順位は **デフォルト < config < 明示CLI < override** です。
+`pdb2reaction opt` は pysisyphus の LBFGS（`lbfgs`）または RFOptimizer（`rfo`）を用い、MLIP（デフォルト: UMA、`-b/--backend` で ORB・MACE・AIMNet2 も選択可能）のエネルギー・勾配・ヘシアンで単一構造を局所極小点へ最適化します。入力構造は `.pdb`、`.xyz`、`_trj.xyz`、その他 `geom_loader` がサポートする任意の形式に対応しています。設定の優先順位は **デフォルト < config < 明示CLI** です。
 
 開始構造が PDB または Gaussian テンプレートの場合、最適化構造を `.pdb`（PDB 入力）や `.gjf`（Gaussian テンプレート）として自動的に書き出します（`--convert-files/--no-convert-files` で制御、デフォルトで有効）。
 PDB 固有の便利機能:
@@ -38,8 +38,15 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --thresh gau_tight --dump \
 2. 距離拘束を 1 本だけ追加する。
 
 ```bash
+# 原子 1-5 間を 2.0 Å に拘束。例では `--bias-k 20.0`（目標距離付近でゆるく誘導する弱い
+# 拘束）を使っていますが、`bias.k` のデフォルトは 300 eV·Å⁻² です。最適化中に拘束を
+# 支配的にしたい場合はデフォルト値の方が適しています。
 pdb2reaction opt -i input.pdb -q 0 -m 1 \
  --dist-freeze '[(1,5,2.0)]' --bias-k 20.0 --out-dir ./result_opt_rest
+
+# 2-tuple 形式: 原子 1-5 間の距離を現在値に固定
+pdb2reaction opt -i input.pdb -q 0 -m 1 \
+ --dist-freeze '[(1,5)]' --out-dir ./result_opt_freeze
 ```
 
 3. RFO モードを明示して実行する。
@@ -71,8 +78,8 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <nu
   > **命名規則の注意:** CLI は `grad|lbfgs` および `hess|rfo` を受け付けます。YAML では `lbfgs` または `rfo` を直接指定してください。
 - **Flatten loop**: `--flatten` を有効にすると、最適化後に虚振動数モードフラット化を実行します。`opt` では、各反復で検出された虚振動数モードをすべてフラット化し、虚振動数モードがなくなるか内部ループ上限に達するまで繰り返します。
 - **拘束**: `--dist-freeze` は Python リテラルタプル `(i, j, target_Å)` を解釈します（`target_Å` は目標距離、単位は Å）。3番目の要素を省略すると開始距離を拘束します。`--bias-k` はグローバル調和強度（eV·Å⁻²）を設定します。インデックスはデフォルトで1始まりですが、`--zero-based` で0始まりに切り替えられます。
-- **電荷/スピン解決**: 電荷の解決順序の詳細は [CLI 規約: 電荷の指定](cli-conventions.md#電荷の指定) を参照してください。
-- **凍結原子**: `--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（[リンク水素と凍結原子](extract.md#リンク水素と凍結原子) を参照）。
+- **電荷/スピン解決**: 電荷の解決順序の詳細は {ref}`CLI 規約: 電荷の指定 <ja-charge-specification>` を参照してください。
+- **凍結原子**: `--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（{ref}`リンク水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
 - **ダンプ & 変換**: `--dump` は `opt.dump=True` を反映し `optimization_trj.xyz` を出力します。変換が有効な場合、PDB 入力では軌跡が `optimization.pdb` としても出力されます。`opt.dump_restart` を有効にするとリスタートYAMLが出力されます。
 - **終了コード**: `0` 成功、`2` ゼロステップ（ステップノルムが `min_step_norm` 未満）、`3` 最適化失敗、`130` キーボード割り込み、`1` 予期せぬエラー。
 
@@ -102,6 +109,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <nu
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`、`gau`、`gau_tight`、`gau_vtight`、`baker`、`never`） | `gau` |
 | `--config FILE` | ベースYAML設定ファイル | _None_ |
 | `--show-config/--no-show-config` | 実行前に解決済みYAMLレイヤ情報を表示 | `False` |
+| `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照。 | `False` |
 | `--dry-run/--no-dry-run` | 実行せずに設定検証と実行計画表示のみ行う。 | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
@@ -119,8 +127,7 @@ out_dir/
 ```
 コンソールには解決済みの `geom`/`calc`/`opt`/`lbfgs`/`rfo` ブロックとサイクル進行、総実行時間が出力されます。
 
-(ja-yaml-configuration-override-yaml)=
-設定の優先順位は [CLI 規約: 設定の優先順位](cli-conventions.md#設定の優先順位) を参照してください。
+設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
 
 ### `geom`
 - `coord_type`（`"cart"`）: デカルト座標 vs `"dlc"` 非局在化内部座標

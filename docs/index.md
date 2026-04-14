@@ -17,14 +17,6 @@ quickstart-tsopt-freq
 recipes-common-errors
 troubleshooting
 cli-conventions
-ja/getting-started
-ja/installation
-ja/quickstart-all
-ja/quickstart-scan
-ja/quickstart-tsopt-freq
-ja/recipes-common-errors
-ja/troubleshooting
-ja/cli-conventions
 ```
 
 ```{toctree}
@@ -49,23 +41,6 @@ dft
 trj2fig
 energy-diagram
 bond-summary
-ja/all
-ja/extract
-ja/fix-altloc
-ja/add-elem-info
-ja/opt
-ja/tsopt
-ja/path-opt
-ja/path-search
-ja/scan
-ja/scan2d
-ja/scan3d
-ja/freq
-ja/irc
-ja/dft
-ja/trj2fig
-ja/energy-diagram
-ja/bond-summary
 ```
 
 ```{toctree}
@@ -77,11 +52,8 @@ reference/commands/index
 yaml-reference
 json-output
 uma-pysis
+hpc-example
 glossary
-ja/yaml-reference
-ja/json-output
-ja/uma-pysis
-ja/glossary
 ```
 
 ```{toctree}
@@ -125,6 +97,7 @@ ja/index
 | Diagnose failures by symptom | — | [Common Error Recipes](recipes-common-errors.md) |
 | Resolve common errors | — | [Troubleshooting](troubleshooting.md) |
 | Look up abbreviations and terms | — | [Glossary](glossary.md) |
+| Understand CLI conventions (flags, precedence, atom/residue selectors) | — | [CLI Conventions](cli-conventions.md) |
 
 ---
 
@@ -248,25 +221,27 @@ See the [YAML Reference](yaml-reference.md) for all options.
 
 ## Output Structure
 
-Typical `pdb2reaction all` output:
+Typical `pdb2reaction all` output (default `--refine-path True`, which uses `path_search/`; pass `--refine-path False` to use `path_opt/` instead):
+
 ```
 result_all/
-├── summary.log # Text summary
-├── summary.json # JSON summary
-├── models/ # Extracted cluster models
-├── scan/ # (Optional) scan results
-├─┬ path_opt/ # MEP trajectories and diagrams (default)
-│ ├── mep_trj.xyz # MEP trajectory
-│ ├── mep.pdb # MEP in PDB format
-│ ├── mep_plot.png # Energy profile plot
-│ └── seg_*/ # Per-segment details
-│ # (default: path_search/ with mep_w_ref.pdb; --refine-path False: path_opt/ instead)
-└┬── path_opt/post_seg_*/ # Post-processing outputs
- ├── tsopt/ # TS optimization results
- ├── irc/ # IRC trajectories
- ├── freq/ # Vibrational analysis
- └── dft/ # DFT results
+├── summary.log               # Text summary
+├── summary.json              # JSON summary
+├── models/                   # Extracted cluster models
+├── scan/                     # (Optional) scan results
+└── path_search/              # MEP search results (default)
+    ├── mep_trj.xyz           # Final MEP trajectory
+    ├── mep.pdb               # MEP in PDB format
+    ├── mep_plot.png          # Energy profile plot
+    ├── seg_*/                # Per-segment MEP details
+    └── post_seg_*/           # Post-processing per segment
+        ├── tsopt/            # TS optimization results
+        ├── irc/              # IRC trajectories
+        ├── freq/             # Vibrational analysis
+        └── dft/              # DFT results
 ```
+
+When `--refine-path False` is passed, the `path_search/` subtree is replaced by `path_opt/` with the same internal layout.
 
 ---
 

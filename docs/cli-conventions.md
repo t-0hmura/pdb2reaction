@@ -74,6 +74,7 @@ When selecting by residue name, if multiple residues share the same name, **all*
 
 ---
 
+(charge-specification)=
 ## Charge Specification
 
 For PDB inputs, `--ligand-charge` lets you specify charges only for non-standard residues (substrates, cofactors, metal ions). The total system charge is then **automatically derived** by summing standard amino-acid charges, ion charges, and your ligand charges — no need to manually count atoms across the entire complex. This is especially useful for large enzyme–substrate systems where the total charge is not obvious.
@@ -92,10 +93,14 @@ For PDB inputs, `--ligand-charge` lets you specify charges only for non-standard
 
 ### Charge resolution order
 1. `-q/--charge` (explicit CLI override) — highest priority
-2. Active site model (binding pocket) extraction (sums amino acids, ions, `--ligand-charge`)
+2. Active site model (binding pocket) extraction (sums amino acids, ions, `--ligand-charge`) — only when `-c/--center` is passed and extraction actually runs (e.g. `all`, `extract`)
 3. `--ligand-charge` as fallback (when extraction skipped)
 4. `.gjf` template metadata
 5. Default: none (unresolved charge aborts; provide `-q` or `.gjf` charge metadata, or use PDB `--ligand-charge`)
+
+```{note}
+Step 2 (extraction-based charge derivation) only fires for commands like `all` that take `-c/--center`. For standalone subcommands such as `opt`/`tsopt`/`freq`, or when `-c` is omitted, extraction is skipped and resolution becomes `1 → 3 → 4 → 5`.
+```
 
 ```{note}
 `--ligand-charge` derivation is only applied for PDB inputs (including XYZ/GJF inputs when `--ref-pdb` is supplied) and only when charge is **not yet resolved**. In that unresolved case, ligand-derived charge is attempted before `.gjf` metadata fallback.
@@ -159,6 +164,52 @@ The three tokens (residue name, residue number, atom name) can appear in any ord
 
 ---
 
+(exit-codes)=
+## Exit codes
+
+`pdb2reaction` subcommands follow a largely shared exit-code convention, but the codes a given subcommand can actually emit differ (see the "Typical emitter" column below). For the exhaustive list per subcommand, consult that subcommand's page.
+
+| Code | Meaning | Typical emitter |
+|------|---------|-----------------|
+| `0` | Success | every subcommand |
+| `1` | Unexpected error (any unhandled exception) | every subcommand |
+| `2` | Zero step length (step norm below minimum) **or** missing dependency on import | `opt`, `tsopt`, `path-opt`; `dft` (PySCF/GPU4PySCF not installed) |
+| `3` | Optimizer failure **or** SCF not converged | `opt`, `tsopt`, `path-opt`; `dft` |
+| `4` | Trajectory write error | `path-opt` |
+| `5` | HEI export error | `path-opt` |
+| `130` | Keyboard interrupt (SIGINT) | every subcommand |
+
+Subcommands that only use `0 / 1 / 130` (such as `irc` and `freq`) still follow the same codes — they simply do not currently raise the optimizer-specific errors.
+
+---
+
+(opt-mode-semantics)=
+## `--opt-mode` (subcommand-dependent)
+
+```{warning}
+The same `--opt-mode` token selects **different optimizer algorithms** depending on the subcommand, and its default is **not uniform**. Always check the per-subcommand table before copying a recipe.
+```
+
+| Subcommand | `grad` alias selects | `hess` alias selects | Default |
+|------------|---------------------|----------------------|---------|
+| `opt` | L-BFGS (`lbfgs`) | RFO (`rfo`) | `grad` (L-BFGS) |
+| `tsopt` | Dimer (`dimer`) | RS-I-RFO (`rsirfo`) | `hess` (RS-I-RFO) |
+| `path-opt` (endpoint preopt) | L-BFGS | RFO | `grad` |
+| `path-search` (endpoint preopt) | L-BFGS | RFO | `grad` |
+| `scan` / `scan2d` / `scan3d` (endpoint preopt) | L-BFGS | RFO | `grad` |
+| `all` (pre-opt stage, `--opt-mode`) | L-BFGS | RFO | `grad` |
+| `all` (post-opt — TSOPT preset, `--opt-mode-post`) | Dimer (`dimer`) | RS-I-RFO (`rsirfo`) | `hess` |
+| `all` (post-opt — post-IRC endpoint optimizer, `--opt-mode-post`) | L-BFGS | RFO | `hess` |
+
+**Accepted aliases** are subcommand-specific:
+
+- `opt` accepts `grad` / `lbfgs` and `hess` / `rfo`.
+- `tsopt` accepts `grad` / `dimer` and `hess` / `rsirfo`.
+
+As a result, `--opt-mode grad` on `tsopt` is a **Dimer** TS search, not an L-BFGS minimization. Use the explicit algorithm alias (`--opt-mode lbfgs`, `--opt-mode rsirfo`, etc.) if you want to be unambiguous across subcommands.
+
+---
+
 ## YAML Configuration
 
 Advanced settings can be passed via layered YAML inputs:
@@ -169,20 +220,20 @@ pdb2reaction -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result/
 
 See [YAML Reference](yaml-reference.md) for all available options.
 
+(configuration-precedence)=
 ### Configuration precedence
 
 Settings are resolved in the following order (later sources override earlier ones):
 
 ```
-built-in defaults  <  --config (YAML)  <  CLI options  <  --override-yaml
+built-in defaults  <  --config (YAML)  <  CLI options
 ```
 
-- **Built-in defaults** — hard-coded values for every parameter.
+- **Built-in defaults** — hard-coded values for every parameter (see `pdb2reaction/defaults.py`).
 - **`--config`** — a YAML file that overrides defaults. Useful for site-wide or project-wide settings.
 - **CLI options** — explicit flags on the command line (e.g., `--backend orb`). Only *explicitly supplied* values override YAML; options left at their CLI default do not mask YAML values.
-- **`--override-yaml`** — a second YAML layer applied last, intended for per-run tweaks.
 
-This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, and `dft`.
+This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, and `dft`. See also {ref}`YAML Reference: Configuration precedence <yaml-configuration-precedence>`.
 
 ---
 

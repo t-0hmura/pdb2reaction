@@ -116,7 +116,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 
 1. **Active site model (binding pocket) extraction** (if `-c/--center` is provided)
  - Substrates may be specified via PDB paths, residue IDs (`123,124` or `A:123,B:456`), or residue names (`GPP,SAM`).
- - Optional toggles forward to the extractor: `--radius`, `--radius-het2het`, `--include-H2O`, `--exclude-backbone`, `--add-linkH`, `--selected-resn`, and `--verbose`.
+ - Optional toggles forward to the extractor: `--radius`, `--radius-het2het`, `--include-h2o`, `--exclude-backbone`, `--add-linkh`, `--selected-resn`, and `--verbose`.
  - Per-input active site model PDBs are saved under `<out-dir>/models/`. When multiple structures are supplied, their active site models are unioned per residue selection.
  - The **first active site model’s net charge** is propagated to scan/MEP/TSOPT.
 
@@ -138,14 +138,14 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  - `--thermo`: call `freq` on (R, TS, P) to obtain vibrational/thermochemistry data and an MLIP Gibbs diagram.
  - `--dft`: launch single-point DFT on (R, TS, P) and build a DFT diagram. When combined with `--thermo`, a DFT//MLIP Gibbs diagram (DFT energies + MLIP thermal correction) is also produced.
   - Shared overrides include `--opt-mode`, `--opt-mode-post` (overrides TSOPT/post-IRC optimization mode), `--flatten/--no-flatten`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, and `--dft-engine` (GPU-first by default).
- - For Hessian evaluation modes, see [MLIP Calculator](uma-pysis.md#hessian-evaluation).
+ - For Hessian evaluation modes, see {ref}`hessian-evaluation`.
 
 6. **TSOPT-only mode** (single input, `--tsopt`, no `--scan-lists`)
  - Skips the MEP/merge stages. Runs `tsopt` on the active site model (or full input if extraction is skipped), performs EulerPC IRC, identifies the higher-energy endpoint as reactant (R), and generates the same set of energy diagrams plus optional freq/DFT outputs.
 
 ### Charge and spin precedence
 
-Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli-conventions.md#charge-specification) for details). In the `all` command, charge derivation from active site model extraction (when `-c` is specified) acts as an additional priority layer.
+Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: Charge specification <charge-specification>` for details). In the `all` command, charge derivation from active site model extraction (when `-c` is specified) acts as an additional priority layer.
 
 **Spin resolution:** `--multiplicity` (CLI) → `.gjf` template → default (1)
 
@@ -188,10 +188,10 @@ Charge is resolved via the standard priority chain (see [CLI Conventions: Charge
 | --- | --- | --- |
 | `-c, --center TEXT` | Substrate specification (PDB path, residue IDs, or residue names). | Required for extraction |
 | `-r, --radius FLOAT` | Active site model inclusion cutoff (Å). | `2.6` |
-| `--radius-het2het FLOAT` | Independent hetero–hetero cutoff (Å). | `0.0` |
-| `--include-H2O/--no-include-H2O` | Include waters (HOH/WAT/TIP3/SOL). | `True` |
+| `--radius-het2het FLOAT` | Independent hetero–hetero cutoff (Å). Passing `0` is internally nudged to `0.001 Å` to avoid empty selections (same behavior as standalone `extract`). | `0.0` |
+| `--include-h2o/--no-include-h2o` | Include waters (HOH/WAT/TIP3/SOL). | `True` |
 | `--exclude-backbone/--no-exclude-backbone` | Remove backbone atoms on non-substrate amino acids. | `False` |
-| `--add-linkH/--no-add-linkH` | Add link hydrogens for severed bonds. | `True` |
+| `--add-linkh/--no-add-linkh` | Add link hydrogens for severed bonds. | `True` |
 | `--selected-resn TEXT` | Residues to force include. | `""` |
 | `--modified-residue TEXT` | Comma-separated residue names (with optional charge) to treat as amino acids for backbone truncation and charge assignment (e.g., `HD1,HD2,HD3` or `HD1:0,SEP:-2`). | `""` |
 | `--freeze-links/--no-freeze-links` | Freeze link parents in active site model PDBs. | `True` |
@@ -202,12 +202,12 @@ Charge is resolved via the standard priority chain (see [CLI Conventions: Charge
 | Option | Description | Default |
 | --- | --- | --- |
 | `--mep-mode [gsm\|dmf]` | MEP search algorithm: GSM (Growing String Method) or DMF (Direct Max Flux). | `gsm` |
-| `--max-nodes INT` | MEP internal nodes per segment. | `20` |
+| `--max-nodes INT` | MEP internal nodes per segment. **GSM:** total images = `max_nodes + 2` (endpoints fixed). **DMF:** number of *movable* images along the chain (no implicit endpoint expansion). | `20` |
 | `--max-cycles INT` | MEP maximum optimization cycles. | `300` |
 | `--climb/--no-climb` | Enable TS climbing for the first segment. | `True` |
 | `--opt-mode [grad\|hess]` | Workflow preset (`grad` → LBFGS/Dimer, `hess` → RFO/RSIRFO). For direct commands, prefer `opt --opt-mode grad|hess` and `tsopt --opt-mode grad|hess`. | `grad` |
 | `--thresh TEXT` | Convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
-| `--preopt/--no-preopt` | Pre-optimize active site model endpoints before MEP search. | `True` |
+| `--preopt/--no-preopt` | Pre-optimize active site model endpoints before MEP search. **Note:** `all` overrides the child-subcommand default here. Standalone `path-search`, `path-opt`, `scan`, `scan2d`, and `scan3d` default `--preopt` to `False`. | `True` |
 | `--refine-path/--no-refine-path` | If True (default), run recursive `path-search`; if False, chain `path-opt` segments without recursive refinement. | `True` |
 
 ### MLIP Calculator Options
@@ -262,7 +262,7 @@ Example: `--opt-mode grad --opt-mode-post hess` uses LBFGS for path optimization
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `--dft-engine [gpu\|cpu]` | DFT backend: gpu (GPU4PySCF) or cpu (PySCF). | `gpu` |
+| `--dft-engine [gpu\|cpu]` | DFT backend: gpu (GPU4PySCF) or cpu (PySCF). In the `all` wrapper this is named `--dft-engine` (prefix-disambiguated); on the standalone `dft` subcommand the same option is named `--engine`. | `gpu` |
 | `--dft-out-dir PATH` | Base directory override for DFT outputs. | _None_ |
 | `--dft-func-basis TEXT` | Functional/basis pair. | `wb97m-v/def2-tzvpd` |
 | `--dft-max-cycle INT` | Maximum SCF iterations. | `100` |
@@ -302,6 +302,16 @@ out_dir/ (default:./result_all/)
 │     └─ dft/                   # DFT single-point results (when --dft is enabled)
 └─ tsopt_single/                # TSOPT-only outputs with IRC endpoints
 ```
+
+```{note}
+**`seg_XX/` vs `path_search/post_seg_XX/`.** The two per-segment trees serve different purposes and are **not** duplicates:
+
+- **`seg_XX/`** (top level of `out_dir`) is the *segment-level merged result* aggregating the final reactant/TS/product structures for reactive segment `XX`. It is written after the full post-processing pipeline converges and holds the canonical `reactant.{pdb,xyz,gjf}`, `ts.{pdb,xyz,gjf}`, `product.{pdb,xyz,gjf}` you should cite when reporting mechanisms.
+- **`path_search/post_seg_XX/`** is the *per-segment post-processing workspace*. It stores the intermediate products of each stage (`ts/`, `irc/`, `structures/`, `freq/`, `dft/`) and is the right place to inspect when debugging a single stage (e.g. checking `ts/vib/imag_*_trj.xyz` or `irc/*_trj.xyz`). Reactive segments get populated; bridge segments (no bond change) are skipped.
+
+When `--refine-path False` is passed, the workspace moves under `path_opt/post_seg_XX/` instead.
+```
+
 - Console logs summarizing active site model charge resolution, YAML contents, scan stages, MEP progress (GSM/DMF), and per-stage timing.
 
 ### Energy diagram naming convention
@@ -345,14 +355,14 @@ The JSON summary contains structured data. Common top-level keys include:
 - Extraction radii: passing `0` to `--radius` or `--radius-het2het` is internally clamped to `0.001 Å` by the extractor.
 - Energies in diagrams are reported relative to the first state (reactant) in kcal/mol.
 - Omitting `-c/--center` skips extraction and feeds the entire input structures directly to the MEP/tsopt/freq/DFT stages; single-structure runs still require either `--scan-lists` or `--tsopt`.
-- **`--resume`**: Re-run the same command with `--resume` to skip stages whose output files already exist. Each stage is guarded by sentinel-file checks (e.g. `summary.json` for MEP, `final_geometry.*` + `finished_irc_trj.xyz` for TSOPT/IRC, `R/`+`TS/`+`P/` directories for freq/DFT). When extraction is skipped on resume, provide `-q/--charge` or `--ligand-charge` explicitly so the charge can be resolved without re-running the extractor.
+- **`--resume`**: Re-run the same command with `--resume` to skip stages whose output files already exist. Each stage is guarded by sentinel-file checks (e.g. `summary.json` for MEP, `final_geometry.*` + `finished_irc_trj.xyz` for TSOPT/IRC, `R/`+`TS/`+`P/` directories for freq/DFT). When extraction is skipped on resume, provide `-q/--charge` or `--ligand-charge` explicitly so the charge can be resolved without re-running the extractor. **Sentinel-corruption caveat:** `--resume` only checks for the *presence* of the sentinel files, not their integrity. If a stage was killed mid-write (SIGKILL, OOM, cluster preemption) and the sentinel file was already on disk but is truncated or corrupted, `--resume` will still consider the stage complete. Delete the stage's output directory (e.g. `path_search/post_seg_XX/ts/`) before resuming if you suspect a partially written result.
 
 
 `all` supports layered YAML:
 
 - `--config FILE`: base settings.
 
-`defaults < config < CLI < override-yaml`
+`defaults < config < CLI`
 
 The effective YAML is forwarded to **every** invoked subcommand. Each tool reads the sections described in its own documentation:
 
@@ -363,8 +373,7 @@ The effective YAML is forwarded to **every** invoked subcommand. Each tool reads
 | [`tsopt`](tsopt.md) | `geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo` |
 | [`freq`](freq.md) | `geom`, `calc`, `freq`, `thermo` |
 | [`dft`](dft.md) | `dft` |
-
-> **Note:** Applied after CLI values.
+| [`irc`](irc.md) | `geom`, `calc`, `irc` |
 
 **Minimal example:**
 ```yaml

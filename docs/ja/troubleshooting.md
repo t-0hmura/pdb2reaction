@@ -16,6 +16,7 @@
 
 ---
 
+(ts-input-extraction)=
 ## 入力 / 抽出の問題
 
 ### 「Element symbols are missing … add-elem-info を実行してください」
@@ -96,6 +97,7 @@ pdb2reaction extract -i complex.pdb -c PRE --modified-residue "SEP,TPO,MLY" -o p
 
 ---
 
+(ts-charge-spin)=
 ## 電荷 / スピンの問題
 
 ### 「電荷が必須」系のエラー（非 GJF 入力）
@@ -116,6 +118,7 @@ pdb2reaction extract -i complex.pdb -c PRE --modified-residue "SEP,TPO,MLY" -o p
 
 ---
 
+(ts-install-env)=
 ## インストール / 環境の問題
 
 ### UMA のダウンロード/認証エラー（Hugging Face）
@@ -126,7 +129,7 @@ pdb2reaction extract -i complex.pdb -c PRE --modified-residue "SEP,TPO,MLY" -o p
 - 環境/マシンごとに一度ログインします。
 
   ```bash
-  huggingface-cli login
+  hf auth login
   ```
 
 - HPC では、計算ノードから HF キャッシュ（ホームディレクトリ等）に書き込み可能か確認してください。
@@ -173,6 +176,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 
 ---
 
+(ts-calc-conv)=
 ## 計算 / 収束の問題
 
 ### 最適化が `max_cycles` に達し、`max(force)` が閾値をわずかに超える
@@ -200,7 +204,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 
 対処の例:
 - オプティマイザーモードを切り替えてください: `--opt-mode grad`（Dimer 法）または `--opt-mode hess`（RS-I-RFO 法、デフォルト）
-- 余分な虚振動数モードのフラット化を有効にしてください: `--flatten`（`pdb2reaction all` でのみ利用可能。単独の `tsopt` では使用不可）
+- 余分な虚振動数モードのフラット化を有効にしてください: `--flatten`（単独の `tsopt`、`opt`、および `pdb2reaction all` で利用可能。デフォルトは無効）
 - 最大サイクル数を増やしてください: `--max-cycles 20000`（単独の `tsopt` の場合）、`--tsopt-max-cycles 20000`（`all` の場合）
 - より厳しい収束閾値を使ってください: `--thresh baker` または `--thresh gau_tight`
 
@@ -213,7 +217,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 - エネルギーが振動したり勾配ノルムが大きいままになる
 
 対処の例:
-- ステップサイズを減らしてください: `--step-size 0.05`（デフォルト: 0.10 Bohr sqrt(amu)）
+- ステップサイズを減らしてください: `--step-size 0.05`（デフォルト: 0.10 bohr、質量重み付けなしのデカルト座標）
 - 最大サイクル数を増やしてください: `--max-cycles 200`
 - IRC 実行前に TS 候補の虚振動数が 1 本（|ν| >= 100 cm⁻¹）だけであることを確認してください
 
@@ -226,7 +230,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 - 結合変化が正しく検出されない
 
 対処の例:
-- `--max-nodes` を増やしてください（複雑な反応には 15 や 20 など）
+- `--max-nodes` をデフォルトの 20 より増やしてください（複雑な反応には 30 や 40 など）
 - 端点の事前最適化を有効にしてください: `--preopt`
 - 別の MEP 手法を試してください: `--mep-mode dmf`（GSM が失敗した場合）またはその逆
 - YAML で結合検出パラメータを調整してください（`bond.bond_factor`、`bond.delta_fraction`）
@@ -248,13 +252,15 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 
 | バックエンド | 精度 | 速度 (中央値 s/step) | VRAM | 備考 |
 |------------|------|---------------------|------|------|
-| **UMA-s1p1** | 良好 | 0.03 s | ~2 GB | デフォルト。高速、探索向き |
-| **UMA-s1p2** | より高精度 | 0.08 s | ~4 GB | 2-3 倍遅い |
-| **UMA-m1p1** | より高精度 | 0.22 s | ~8 GB | 中規模モデル、VRAM 大 |
+| **UMA-s1p1** | 良好 | 0.03 s | ~2 GB | デフォルト（`uma-s-1p1`）。高速、探索向き |
+| **UMA-m1p1** | より高精度 | 0.22 s | ~8 GB | 中規模モデル（`uma-m-1p1`）、VRAM 大 |
 | **MACE** | 最高精度 | 0.37 s | ~4 GB | 最高精度だが別環境が必要（e3nn 競合） |
 | **ORB** | 変動あり | 0.02 s | ~2 GB | 最速だが複雑な反応で失敗率高い |
 
-**推奨:** UMA-s1p1 で高速スクリーニング → MACE/UMA-s1p2 で主要結果を検証。
+**推奨:**
+- UMA-s1p1 で高速スクリーニングし、その後 MACE または UMA-m1p1 で主要結果を検証してください。
+- S~N~2 反応やメチル転移反応では、MACE が UMA より高精度な傾向があります。
+- ORB は高速ですが、多段階反応では信頼性が低く、経路最適化で SVD 失敗が頻発します。
 
 ## GPU メモリ (VRAM) 目安
 

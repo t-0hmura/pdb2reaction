@@ -40,6 +40,8 @@ pdb2reaction dft -i input.pdb -q 0 -m 1 \
  --engine gpu --out-dir ./result_dft_tight
 ```
 
+> **注意:** 上記の `def2-tzvpd` 設定は、十分な VRAM を持つ GPU 上で**小さい**活性部位モデル（≲150 原子）にのみ適しています。16–24 GB GPU でより大きな系を扱うとこの組み合わせは OOM になります（後述の「def2-TZVPD でメモリ不足になる場合」を参照）。`--func-basis 'wb97m-v/def2-svp'` に切り替えるか、全系を本番運用するなら外部 DFT プログラム（ORCA, Gaussian）を使用してください。
+
 2. 移植性重視で CPU バックエンドを強制する。
 
 ```bash
@@ -90,11 +92,12 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 \
 | `--conv-tol FLOAT` | SCF収束許容値（Hartree） | `1e-9` |
 | `--grid-level INT` | PySCF数値積分グリッドレベル | `3` |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_dft/` |
-| `--engine [gpu\|cpu]` | SCFバックエンド: gpu (GPU4PySCF) または cpu (PySCF) | `gpu` |
-| `--convert-files/--no-convert-files` | インターフェースの一貫性のために受け付けるが、`dft` では PDB/GJF 出力は生成されない | `True` |
+| `--engine [gpu\|cpu]` | SCFバックエンド: gpu (GPU4PySCF) または cpu (PySCF)。単体の `dft` サブコマンドではこのオプション名は `--engine` ですが、`pdb2reaction all` から転送する場合は同じ設定が `--dft-engine` という名前になります。 | `gpu` |
+| `--convert-files/--no-convert-files` | **`dft` では no-op。** 他のサブコマンドとのインターフェース整合性のためだけに受け付けられます。`dft` は PDB や GJF を一切出力せず（`input_geometry.xyz` + `result.yaml` のみ）、このフラグの値は無視されます。 | `True` |
 | `--ref-pdb FILE` | 原子数検証とXYZ/GJF 入力のリガンド電荷導出を有効にする参照 PDB トポロジー（出力変換は行わない） | _None_ |
 | `--config FILE` | 明示的な CLI オプション適用前に読み込むベース YAML | _None_ |
 | `--show-config/--no-show-config` | 解決済み設定を表示して実行を継続 | `False` |
+| `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照。 | `False` |
 | `--dry-run/--no-dry-run` | 実行せずに設定検証と実行計画表示のみ行う。 | `False` |
 
 ## 出力
@@ -123,7 +126,7 @@ out_dir/ (デフォルト:./result_dft/)
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - `--engine gpu`（デフォルト）は GPU4PySCF を必要とし、GPU が利用できない場合は**エラーになります**。CPU のみで実行するには `--engine cpu` を指定します。
-- **Blackwell アーキテクチャ GPU**（RTX 50xx）: GPU4PySCF は小規模な系（~100原子）でもメモリ不足エラーが発生する場合があります。これらの GPU では `--engine cpu` または外部 DFT プログラム（ORCA, Gaussian）を使用してください。
+- **Blackwell アーキテクチャ GPU**（RTX 50xx）: GPU4PySCF は小規模な系（~100原子）でもメモリ不足エラーが発生する場合があります。これらの GPU では `--engine cpu` または外部 DFT プログラム（ORCA, Gaussian）を使用してください。なお `--engine cpu` は活性部位モデル（≲150 原子）と小さい基底関数（例: `def2-svp`）に限り実用的で、より大きな系を CPU で計算すると非常に低速になるため、全系計算には外部 DFT プログラムの利用を推奨します。
 - **def2-TZVPD でメモリ不足になる場合**: デフォルトの基底関数 `def2-tzvpd` は大きく、16–24 GB GPU で 150 原子以上の系では OOM が発生する場合があります。`--func-basis 'wb97m-v/def2-svp'` を使用してください。def2-SVP と def2-TZVPD のバリアハイト差は通常 1–3 kcal/mol です。
 - GPU4PySCF のコンパイル済みホイールは非 x86 環境では動作しない場合があります。ソースからビルドしてください（参照: https://github.com/pyscf/gpu4pyscf）。
 - 密度フィッティングは常に PySCF のデフォルト設定で試行されます（補助基底の推定は未実装）。

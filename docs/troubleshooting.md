@@ -16,6 +16,7 @@ Before a long run, verify:
 
 ---
 
+(input-extraction-problems)=
 ## Input / extraction problems
 
 ### “Element symbols are missing … please run add-elem-info”
@@ -96,6 +97,7 @@ If `--modified-residue` is insufficient (e.g., the residue has an unusual backbo
 
 ---
 
+(charge-spin-problems)=
 ## Charge / spin problems
 
 ### “Charge is required …” (non-GJF inputs)
@@ -116,6 +118,7 @@ Fix:
 
 ---
 
+(installation-environment-problems)=
 ## Installation / environment problems
 
 ### UMA download/authentication errors
@@ -126,7 +129,7 @@ Fix:
 - Log in once per environment/machine:
 
   ```bash
-  huggingface-cli login
+  hf auth login
   ```
 
 - On HPC, ensure your home directory (or HF cache directory) is writable from compute nodes.
@@ -173,6 +176,7 @@ Fix:
 
 ---
 
+(calculation-convergence-problems)=
 ## Calculation / convergence problems
 
 ### Optimization reaches `max_cycles` with `max(force)` slightly above the threshold
@@ -200,7 +204,7 @@ Symptoms:
 
 Fixes to try:
 - Switch optimizer modes: `--opt-mode grad` (Dimer) or `--opt-mode hess` (RS-I-RFO).
-- Enable flattening of extra imaginary modes: `--flatten` (available in `pdb2reaction all` only, not standalone `tsopt`).
+- Enable flattening of extra imaginary modes: `--flatten` (available on standalone `tsopt`, `opt`, and `pdb2reaction all`; default disabled).
 - Increase max cycles: `--max-cycles 20000` (for standalone `tsopt`; `--tsopt-max-cycles 20000` for `all`).
 - Use tighter convergence: `--thresh baker` or `--thresh gau_tight`.
 
@@ -213,7 +217,7 @@ Symptoms:
 - Energy oscillates or gradient remains high.
 
 Fixes to try:
-- Reduce step size: `--step-size 0.05` (default is 0.10).
+- Reduce step size: `--step-size 0.05` (default is 0.10 bohr, unweighted Cartesian).
 - Increase max cycles: `--max-cycles 200`.
 - Check if the TS candidate has only one imaginary frequency before running IRC.
 
@@ -226,7 +230,7 @@ Symptoms:
 - Bond changes are not detected correctly.
 
 Fixes to try:
-- Increase `--max-nodes` (e.g., 15 or 20) for complex reactions.
+- Increase `--max-nodes` above the default of 20 (e.g., 30 or 40) for complex reactions.
 - Enable endpoint pre-optimization: `--preopt`.
 - Try the alternative MEP method: `--mep-mode dmf` (if GSM fails) or vice versa.
 - Adjust bond detection parameters in YAML (`bond.bond_factor`, `bond.delta_fraction`).
@@ -248,14 +252,13 @@ Benchmark: LBFGS geometry optimization, 29-177 atom cluster models, NVIDIA RTX 5
 
 | Backend | Accuracy | Speed (median s/step) | VRAM usage | Notes |
 |---------|----------|----------------------|------------|-------|
-| **UMA-s1p1** | Good | 0.03 s | ~2 GB | Default. Fast, good for exploration |
-| **UMA-s1p2** | Better | 0.08 s | ~4 GB | Higher accuracy, 2-3x slower |
-| **UMA-m1p1** | Better | 0.22 s | ~8 GB | Medium model, heavy VRAM |
+| **UMA-s1p1** | Good | 0.03 s | ~2 GB | Default (`uma-s-1p1`). Fast, good for exploration |
+| **UMA-m1p1** | Better | 0.22 s | ~8 GB | Medium model (`uma-m-1p1`), heavy VRAM |
 | **MACE** | Best | 0.37 s | ~4 GB | Highest accuracy but requires separate env (e3nn conflict) |
 | **ORB** | Variable | 0.02 s | ~2 GB | Fastest, but higher failure rate on complex reactions |
 
 **Recommendations:**
-- Start with UMA-s1p1 for rapid screening, then validate key results with MACE or UMA-s1p2.
+- Start with UMA-s1p1 for rapid screening, then validate key results with MACE or UMA-m1p1.
 - For S~N~2 / methyltransfer reactions, MACE tends to outperform UMA.
 - ORB is fast but unreliable for multi-step reactions (frequent SVD failures in path optimization).
 

@@ -118,7 +118,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 
 1. **活性部位モデル抽出**（`-c/--center` が指定された場合）
  - 基質は PDB パス、残基 ID（`123,124` または `A:123,B:456`）、または残基名（`GPP,SAM`）で指定可能
- - 抽出オプション: `--radius`、`--radius-het2het`、`--include-H2O`、`--exclude-backbone`、`--add-linkH`、`--selected-resn`、`--verbose`
+ - 抽出オプション: `--radius`、`--radius-het2het`、`--include-h2o`、`--exclude-backbone`、`--add-linkh`、`--selected-resn`、`--verbose`
  - 入力ごとの活性部位モデル PDB は `<out-dir>/models/` に保存。複数構造が提供された場合、活性部位モデルは残基選択ごとに統合
  - **最初の活性部位モデルの総電荷**がスキャン/MEP/TSOPT に伝播
 
@@ -140,7 +140,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  - `--thermo`: (R, TS, P) で `freq` を呼び出し、振動/熱化学データと MLIP Gibbs ダイアグラムを取得
  - `--dft`: (R, TS, P) で DFT 一点計算を実行し、DFT ダイアグラムを構築。`--thermo` と組み合わせると DFT//MLIP Gibbs ダイアグラムも生成
   - 共有の上書きオプション: `--opt-mode`、`--opt-mode-post`（TSOPT/IRC 後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU 優先）など
- - ヘシアン評価モードの詳細は [MLIP 計算機](uma-pysis.md#ヘシアンモード) を参照してください。
+ - ヘシアン評価モードの詳細は {ref}`ja-hessian-evaluation` を参照してください。
 
 6. **TSOPT のみモード**（単一入力、`--tsopt`、`--scan-lists` なし）
  - MEP/マージステージをスキップし、活性部位モデル（または抽出がスキップされた場合は全入力構造）で `tsopt`（内部で虚振動数チェック済み）→ EulerPC IRC を実行
@@ -149,7 +149,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 
 ### 電荷とスピンの優先順位
 
-電荷の解決順序の詳細は [CLI 規約: 電荷の指定](cli-conventions.md#電荷の指定) を参照してください。`all` コマンドでは、活性部位モデル抽出（`-c` 指定時）による電荷導出が追加の優先度レイヤーとして機能します。
+電荷の解決順序の詳細は {ref}`CLI 規約: 電荷の指定 <ja-charge-specification>` を参照してください。`all` コマンドでは、活性部位モデル抽出（`-c` 指定時）による電荷導出が追加の優先度レイヤーとして機能します。
 
 **スピンの解決順序:** `--multiplicity`（CLI）→ `.gjf` テンプレート → デフォルト（1）
 
@@ -193,10 +193,10 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 | --- | --- | --- |
 | `-c, --center TEXT` | 基質指定（PDBパス、残基ID、または残基名） | 抽出に必須 |
 | `-r, --radius FLOAT` | 活性部位モデル包含カットオフ（Å） | `2.6` |
-| `--radius-het2het FLOAT` | ヘテロ–ヘテロカットオフ（Å） | `0.0` |
-| `--include-H2O/--no-include-H2O` | 水分子を含める（HOH/WAT/TIP3/SOL） | `True` |
+| `--radius-het2het FLOAT` | ヘテロ–ヘテロカットオフ（Å）。`0` を渡すと空の選択を避けるため内部で `0.001 Å` に自動補正されます（単体の `extract` と同じ挙動）。 | `0.0` |
+| `--include-h2o/--no-include-h2o` | 水分子を含める（HOH/WAT/TIP3/SOL） | `True` |
 | `--exclude-backbone/--no-exclude-backbone` | 非基質アミノ酸の主鎖原子を除去 | `False` |
-| `--add-linkH/--no-add-linkH` | 切断結合にリンク水素を付加 | `True` |
+| `--add-linkh/--no-add-linkh` | 切断結合にリンク水素を付加 | `True` |
 | `--selected-resn TEXT` | 強制包含残基 | `""` |
 | `--modified-residue TEXT` | 修飾アミノ酸残基名をカンマ区切りで指定（任意で電荷付き）。主鎖切断と電荷計算にアミノ酸として扱う。例: `HD1,HD2,HD3` または `HD1:0,SEP:-2`。 | `""` |
 | `--freeze-links/--no-freeze-links` | 活性部位モデルPDBでリンクHの親を凍結 | `True` |
@@ -207,12 +207,12 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `--mep-mode [gsm\|dmf]` | MEP 探索アルゴリズム: GSM（Growing String Method）または DMF（Direct Max Flux） | `gsm` |
-| `--max-nodes INT` | MEP内部ノード数 | `20` |
+| `--max-nodes INT` | MEP 内部ノード数。**GSM:** 総イメージ数 = `max_nodes + 2`（端点 2 つは固定）。**DMF:** チェーン上の *可動* イメージ数（端点の暗黙的拡張なし）。 | `20` |
 | `--max-cycles INT` | MEP最大最適化サイクル | `300` |
 | `--climb/--no-climb` | 最初のセグメントでTSクライミングを有効化 | `True` |
 | `--opt-mode [grad\|hess]` | ワークフロープリセット（`grad` → LBFGS/Dimer、`hess` → RFO/RSIRFO）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨 | `grad` |
 | `--thresh TEXT` | 収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
-| `--preopt/--no-preopt` | MEP前に活性部位モデル端点を事前最適化 | `True` |
+| `--preopt/--no-preopt` | MEP前に活性部位モデル端点を事前最適化。**注意:** `all` はここで子サブコマンドのデフォルトを上書きします。単体の `path-search`、`path-opt`、`scan`、`scan2d`、`scan3d` では `--preopt` のデフォルトは `False` です。 | `True` |
 | `--refine-path/--no-refine-path` | True（デフォルト）の場合は再帰的 `path-search`、False の場合は `path-opt` を連結して再帰的精密化なしで実行 | `True` |
 
 ### MLIP 計算機オプション
@@ -266,7 +266,7 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `--dft-engine [gpu\|cpu]` | DFTバックエンド: gpu (GPU4PySCF) または cpu (PySCF) | `gpu` |
+| `--dft-engine [gpu\|cpu]` | DFTバックエンド: gpu (GPU4PySCF) または cpu (PySCF)。`all` ラッパーではプレフィックス付きで `--dft-engine` と名付けられていますが、単体の `dft` サブコマンドでは同じオプションが `--engine` という名前になります。 | `gpu` |
 | `--dft-out-dir PATH` | DFT出力ディレクトリ上書き | _None_ |
 | `--dft-func-basis TEXT` | 汎関数/基底関数ペア | `wb97m-v/def2-tzvpd` |
 | `--dft-max-cycle INT` | 最大SCFサイクル | `100` |
@@ -307,6 +307,14 @@ out_dir/ (デフォルト:./result_all/)
 └─ tsopt_single/                # TSOPT のみ出力（IRC エンドポイント）
 ```
 
+```{note}
+**`seg_XX/` と `path_search/post_seg_XX/` の違い。** 2 つのセグメント別ツリーは重複ではなく、それぞれ異なる役割を持ちます:
+
+- **`seg_XX/`**（`out_dir` 直下）は *セグメントごとの統合結果* であり、反応セグメント `XX` の最終的な reactant/TS/product 構造を集約したものです。後処理パイプラインが完了した後に書き出され、機構を報告する際に引用すべき正規の `reactant.{pdb,xyz,gjf}`、`ts.{pdb,xyz,gjf}`、`product.{pdb,xyz,gjf}` を保持します。
+- **`path_search/post_seg_XX/`** は *セグメントごとの後処理ワークスペース* です。各ステージの中間生成物（`ts/`、`irc/`、`structures/`、`freq/`、`dft/`）を保存し、特定のステージをデバッグしたい場合（例えば `ts/vib/imag_*_trj.xyz` や `irc/*_trj.xyz` を確認したい場合）に参照します。反応セグメントのみ生成され、結合変化のないブリッジセグメントはスキップされます。
+
+`--refine-path False` を指定した場合、ワークスペースは `path_opt/post_seg_XX/` 配下に移動します。
+```
 
 - コンソールには電荷解決結果、YAML 設定、MEP 進行状況、各ステージの所要時間が出力されます。
 
@@ -351,7 +359,7 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 - 抽出半径: `--radius` または `--radius-het2het` に `0` を渡すと、内部で `0.001 Å` にクランプされます。
 - エネルギーダイアグラムは反応物（最初の状態）基準の kcal/mol で表示されます。
 - `-c/--center` を省略すると抽出をスキップし、全構造をそのまま MEP/tsopt/freq/DFT に渡します。ただし単一構造実行では `--scan-lists` か `--tsopt` が必要です。
-- **`--resume`**: 同じコマンドに `--resume` を付けて再実行すると、出力ファイルが既に存在するステージをスキップします。各ステージはセンチネルファイルで判定されます（MEP は `summary.json`、TSOPT/IRC は `final_geometry.*` + `finished_irc_trj.xyz`、freq/DFT は `R/`+`TS/`+`P/` ディレクトリ）。resume 時に抽出がスキップされた場合は `-q/--charge` または `--ligand-charge` を明示的に指定してください。
+- **`--resume`**: 同じコマンドに `--resume` を付けて再実行すると、出力ファイルが既に存在するステージをスキップします。各ステージはセンチネルファイルで判定されます（MEP は `summary.json`、TSOPT/IRC は `final_geometry.*` + `finished_irc_trj.xyz`、freq/DFT は `R/`+`TS/`+`P/` ディレクトリ）。resume 時に抽出がスキップされた場合は `-q/--charge` または `--ligand-charge` を明示的に指定してください。**センチネル破損時の注意:** `--resume` はセンチネルファイルの *存在* のみを確認し、整合性は検証しません。ステージが書き込み途中でキル（SIGKILL、OOM、クラスタのプリエンプション）され、センチネルファイルが中途半端な状態でディスクに残った場合でも、`--resume` はそのステージを完了済みとみなします。部分書き込みが疑われる場合は、再開前に該当ステージの出力ディレクトリ（例: `path_search/post_seg_XX/ts/`）を削除してください。
 
 
 `all` は YAML の多層指定をサポートします:
@@ -360,7 +368,7 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 
 適用順序:
 
-`defaults < config < CLI < override-yaml`
+`defaults < config < CLI`
 
 解決後の YAML は呼び出されるすべてのサブコマンドに転送されます。各ツールが読み取るセクションは以下のとおりです:
 
@@ -371,8 +379,7 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 | [`tsopt`](tsopt.md) | `geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo` |
 | [`freq`](freq.md) | `geom`, `calc`, `freq`, `thermo` |
 | [`dft`](dft.md) | `dft` |
-
-> **注記:** CLI 値の後に適用されます。
+| [`irc`](irc.md) | `geom`, `calc`, `irc` |
 
 **最小例:**
 ```yaml

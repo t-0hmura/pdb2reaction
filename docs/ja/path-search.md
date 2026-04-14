@@ -119,7 +119,7 @@ pdb2reaction path-search -i R.pdb -i [I.pdb ...] -i P.pdb [-q CHARGE] [-l, --lig
 
 ## ワークフロー
 
-1. **ペアごとの初期セグメント（GSM/DMF）** – 各隣接入力（A→B）間で `GrowingString` または DMF を実行し、粗いMEPと最高エネルギーイメージ（HEI）を取得。
+1. **ペアごとの初期セグメント（GSM/DMF）** – 各隣接入力（A→B）間で `GrowingString` または DMF を実行し、粗いMEPと最高エネルギー画像（HEI）を取得。
 2. **HEI周辺の局所緩和** – `refine-mode=peak` なら HEI±1、`refine-mode=minima` なら HEI 近傍の局所極小点を、選択した単一構造オプティマイザー（`opt-mode`）で精密化し `End1`/`End2` を得る。
 3. **ねじれ vs. 精密化の決定** – `End1` と `End2` 間に共有結合変化がなければ *ねじれ*（kink: 共有結合変化を伴わない構造変化区間）とみなし、`search.kink_max_nodes` の線形ノードを挿入して個別最適化。結合変化がある場合は **反応セグメント**（共有結合変化を伴う区間に対して GSM/DMF で精密化するセグメント）を起動。
 4. **選択的再帰** – `(A→End1)` と `(End2→B)` の結合変化を `bond` しきい値で比較し、共有結合更新が残るサブ区間のみ再帰的に探索。再帰深度は `search.max_depth` で制限。
@@ -148,14 +148,18 @@ out_dir/ (デフォルト:./result_path_search/)
 ## 注意事項
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
-- 入力は2つ以上が必須。満たさない場合は `click.BadParameter` が発生します。
+- 入力は2つ以上が必須。満たさない場合、`-i/--input` の "invalid value" エラーで終了します。
 - 複数テンプレートを渡す場合は `--ref-full-pdb` をファイルごとに繰り返して指定します。`--align` が有効な場合、マージでは先頭テンプレートのみが再利用されます。
 - MLIP バックエンド（デフォルト: UMA）は全構造で共有・再利用されます。
 - `--dump` が有効な場合、MEP（GSM/DMF）と単一構造最適化の軌跡が出力されます。リスタート YAML は YAML で `dump_restart` を有効にした場合のみ書き出されます。
 
-設定の優先順位は [CLI 規約: 設定の優先順位](cli-conventions.md#設定の優先順位) を参照してください。
+設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
 
-YAML ルートはマッピングでなければなりません。共通セクションは [YAML リファレンス](yaml-reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（`--freeze-links` については [リンク水素と凍結原子](extract.md#リンク水素と凍結原子) を参照）、`stopt` は `path-opt`（[path-opt.md](path-opt.md)）に記載の StringOptimizer 設定を継承します。
+YAML ルートはマッピングでなければなりません。共通セクションは [YAML リファレンス](yaml-reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（`--freeze-links` については {ref}`リンク水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）、`stopt` は `path-opt`（[path-opt.md](path-opt.md)）に記載の StringOptimizer 設定を継承します。
+
+```{note}
+**リファレンスの重複について。** 以下に並ぶ `geom`, `calc`, `gs`, `dmf`, `stopt`, `opt.lbfgs`, `opt.rfo` の YAML キーは [YAML リファレンス](yaml-reference.md) の正規定義をミラーしたものです。両者が食い違った場合は [YAML リファレンス](yaml-reference.md) と `pdb2reaction/defaults.py` を正とし、本ページの付録は `path-search` 固有のデフォルト値（例: `out_dir: ./result_path_search/`）と参照の便宜のためにインライン展開しているだけです。
+```
 
 `gs`（Growing String）は `pdb2reaction.path_opt.GS_KW` のデフォルト値を継承し、`max_nodes`（セグメント内部ノード）、クライミング設定（`climb`, `climb_rms`, `climb_fixed`）、再パラメータ化（`reparam_every_full`, `reparam_check`）を上書きできます。
 

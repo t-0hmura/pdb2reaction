@@ -159,6 +159,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `--preopt/--no-preopt` | スキャン前に無バイアス最適化を実行 | `False` |
 | `--baseline {min,first}` | kcal/mol の基準をグローバル最小値または最初の格子点に設定 | `min` |
 | `--zmin FLOAT`, `--zmax FLOAT` | カラースケールの下限/上限（kcal/mol） | 自動 |
+| `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照。 | `False` |
 
 ### 共有 YAML セクション
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml-reference.md) と同じキーを使用します。`opt.dump` は YAML で設定可能ですが、スキャン軌跡の出力は `--dump` で制御します。

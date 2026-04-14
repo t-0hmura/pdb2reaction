@@ -62,6 +62,7 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend for energy recomputation. | `uma` |
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
+| `--out-json/--no-out-json` | Write a machine-readable `result.json` next to the output(s). See [JSON Output Schema](json-output.md) for the schema. | `False` |
 
 ## Outputs
 ```

@@ -179,8 +179,12 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
 
 This is equivalent to two manual stages with a geometry reset between them, but avoids the need to script it yourself. Mixed 3-tuples and 4-tuples are accepted in the same literal.
 
+```{note}
+**Stage counter with 4-tuples.** A 4-tuple expands into **two** stages in the output tree: the `start` pass is written under `stage_NN/` and the `end` pass under `stage_NN+1/`. So if you pass a single 4-tuple as your first literal, you will see `stage_01/` and `stage_02/`, not one combined `stage_01/`. When mixing 3-tuples and 4-tuples, the counter advances by `+1` per 3-tuple and `+2` per 4-tuple.
+```
+
 ## Workflow
-1. Load the structure through `geom_loader`. Charge is resolved via the standard priority chain (see [CLI Conventions: Charge specification](cli-conventions.md#charge-specification) for details).
+1. Load the structure through `geom_loader`. Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: Charge specification <charge-specification>` for details).
 2. Optionally run an unbiased preoptimization (`--preopt`) before any
     biasing so the starting point is relaxed.
 3. Parse stage targets from `-s/--scan-lists` (YAML/JSON file or inline literal), then normalize the
@@ -228,6 +232,7 @@ This is equivalent to two manual stages with a geometry reset between them, but 
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 | `--preopt/--no-preopt` | Run an unbiased optimization before scanning. | `False` |
 | `--endopt/--no-endopt` | Run an unbiased optimization after each stage. | `False` |
+| `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
 
 ### Shared YAML sections
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical keys to those documented in
@@ -271,7 +276,7 @@ out_dir/ (default:./result_scan/)
   Tuples must have positive targets. Atom indices are normalized to 0-based internally for computation. For
   PDB inputs, `i`/`j` can be selector strings with flexible delimiters
   (space/comma/slash/backtick/backslash) and unordered tokens.
-- When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see [Link hydrogen and frozen atoms](extract.md#link-hydrogen-and-frozen-atoms)).
+- When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see {ref}`Link hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
 - Stage results (`result.xyz` plus optional PDB/GJF companions) are always
   written. Concatenated scan trajectories (`scan_trj.xyz` and `scan.pdb` for
   PDB inputs with conversion enabled) are also always written. The `--dump`

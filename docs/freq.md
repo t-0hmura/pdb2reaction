@@ -9,7 +9,7 @@
 - **Frozen atoms:** Supported via PHVA (Partial Hessian Vibrational Analysis).
 - **Outputs:** `frequencies_cm-1.txt`, per-mode `_trj.xyz` animations (and optional `.pdb`), plus `thermoanalysis.yaml` when enabled/available.
 - **TS check:** A properly converged first-order saddle point (TS) is expected to have **exactly one** imaginary frequency (negative cm⁻¹ value).
-- **Performance:** For Hessian evaluation modes, see [MLIP Calculator](uma-pysis.md#hessian-evaluation).
+- **Performance:** For Hessian evaluation modes, see {ref}`hessian-evaluation`.
 
 `pdb2reaction freq` performs vibrational analysis with an MLIP backend (UMA by default), honoring frozen atoms via PHVA. It exports normal-mode animations as `_trj.xyz` (and `.pdb` when a PDB template is available and conversion is enabled), and prints a Gaussian-style thermochemistry summary when the optional `thermoanalysis` package is installed.
 
@@ -76,7 +76,7 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
   `geom.freeze_atoms`; the merged list is echoed and propagated to the MLIP backend and PHVA.
 - **MLIP backend**: `--hessian-calc-mode` selects analytical or finite-difference Hessians.
   The MLIP backend may return a partial (active) Hessian block whenever atoms are frozen.
-  For Hessian evaluation modes, see [MLIP Calculator](uma-pysis.md#hessian-evaluation).
+  For Hessian evaluation modes, see {ref}`hessian-evaluation`.
 - **PHVA & TR projection**: with frozen atoms, eigenanalysis occurs inside the active
   subspace with translation/rotation modes projected there. Both 3N×3N and active-block
   Hessians are accepted, and frequencies are reported in cm⁻¹ (negatives = imaginary).
@@ -110,13 +110,14 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
 | `--sort CHOICE` | Mode ordering: `value` (cm⁻¹) or `abs`. | `value` |
 | `-o, --out-dir TEXT` | Output directory. | `./result_freq/` |
 | `--temperature FLOAT` | Thermochemistry temperature (K). | `298.15` |
-| `--pressure FLOAT` | Thermochemistry pressure (atm). | `1.0` |
-| `--dump/--no-dump` | Write `thermoanalysis.yaml`. | `False` |
+| `--pressure FLOAT` | Thermochemistry pressure (atm). On the CLI this flag is `--pressure`; the matching YAML key under `thermo:` is `pressure_atm` (explicit unit suffix). Both are in atm and get converted to Pa internally. | `1.0` |
+| `--dump/--no-dump` | Write `thermoanalysis.yaml`. Standalone `freq` defaults to `False`; when invoked as part of `pdb2reaction all --thermo` the wrapper flips this to `True` unless you pass `--no-dump`. | `False` |
 | `--hessian-calc-mode CHOICE` | MLIP Hessian mode (`Analytical` or `FiniteDifference`). | `FiniteDifference` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB companions when a PDB template is available (GJF is not written). | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--config FILE` | Base YAML configuration applied before explicit CLI options. | _None_ |
 | `--show-config/--no-show-config` | Print resolved YAML layers/config and continue. | `False` |
+| `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
@@ -145,9 +146,9 @@ out_dir/ (default:./result_freq/)
 
 - Imaginary frequencies are reported as negative values in cm⁻¹. `freq` prints how many were detected
   and dumps details when `--dump`.
-- `--hessian-calc-mode` follows the standard precedence (defaults < config < explicit CLI < override); an explicit CLI `--hessian-calc-mode` value takes precedence over `calc.hessian_calc_mode` in the config YAML.
+- `--hessian-calc-mode` follows the standard precedence (defaults < config < explicit CLI); an explicit CLI `--hessian-calc-mode` value takes precedence over `calc.hessian_calc_mode` in the config YAML.
 
-Provide mappings with merge order **defaults < config < explicit CLI < override**.
+Provide mappings with merge order **defaults < config < explicit CLI**.
 Shared sections reuse [YAML Reference](yaml-reference.md).
 An additional `thermo` section is supported for thermochemistry controls.
 

@@ -5,16 +5,20 @@ For full details, keep [Troubleshooting](troubleshooting.md) open in parallel.
 
 ## Quick routing
 
-| Symptom | Start here | Then read |
+Each row deep-links into the relevant [Troubleshooting](troubleshooting.md) section via the section title in the **Then read** column.
+
+| Symptom | Start here | Then read (section in `troubleshooting.md`) |
 | --- | --- | --- |
-| Missing element columns / extraction aborts | `add-elem-info` on the original PDB | [Troubleshooting](troubleshooting.md) |
-| "Charge is required" errors | Set `-q/--charge` or `-l/--ligand-charge` explicitly | [Troubleshooting](troubleshooting.md) |
-| Energies/states look wrong after a run | Re-check charge/multiplicity policy in CLI conventions | [Troubleshooting](troubleshooting.md) |
-| DMF mode import errors (`cyipopt`) | Run `conda install -c conda-forge cyipopt` | [Troubleshooting](troubleshooting.md) |
-| TSOPT/IRC does not converge | For LBFGS/Dimer: adjust `max_step`. For RFO/RS-I-RFO: adjust `trust_radius`/`trust_min`/`trust_max`. Increase cycles, validate TS quality first | [Troubleshooting](troubleshooting.md) |
-| Opt/TSOPT hits `max_cycles` with `max(force)` barely above threshold | Usually handled automatically by the `opt.energy_plateau` fallback (new in v0.3.5). Manual workaround: use `--thresh gau` or `--thresh gau_loose` | [Troubleshooting](troubleshooting.md) |
-| CUDA/GPU runtime mismatch | Verify `torch.cuda.is_available()` and CUDA build pairing | [Troubleshooting](troubleshooting.md) |
-| Plot export failures | Run `plotly_get_chrome -y` to install headless Chrome | [Troubleshooting](troubleshooting.md) |
+| Missing element columns / extraction aborts | `add-elem-info` on the original PDB | {ref}`Input / extraction problems <input-extraction-problems>` |
+| "Charge is required" errors | Set `-q/--charge` or `-l/--ligand-charge` explicitly | {ref}`Charge / spin problems <charge-spin-problems>` |
+| Energies/states look wrong after a run | Re-check charge/multiplicity policy in CLI conventions | {ref}`Input / extraction problems <input-extraction-problems>` |
+| DMF mode import errors (`cyipopt`) | Run `conda install -c conda-forge cyipopt` | {ref}`Installation / environment problems <installation-environment-problems>` |
+| TSOPT does not converge | For LBFGS/Dimer: reduce `max_step`. For RFO/RS-I-RFO: reduce `trust_radius`/`trust_min`/`trust_max`. Increase cycles, validate TS quality first | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
+| IRC does not terminate | Reduce `--step-size`, increase `--max-cycles`, confirm a single imaginary mode | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
+| Opt/TSOPT hits `max_cycles` with `max(force)` barely above threshold | Usually handled automatically by the `opt.energy_plateau` fallback (new in v0.3.5). Manual workaround: use `--thresh gau` or `--thresh gau_loose` | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
+| MEP search (GSM/DMF) fails | Increase `--max-nodes` above default 20, enable `--preopt`, try the alternative `--mep-mode` | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
+| CUDA/GPU runtime mismatch | Verify `torch.cuda.is_available()` and CUDA build pairing | {ref}`Installation / environment problems <installation-environment-problems>` |
+| Plot export failures | Run `plotly_get_chrome -y` to install headless Chrome | {ref}`Installation / environment problems <installation-environment-problems>` |
 
 ## Recipe 1: Extraction fails before MEP starts
 
@@ -60,7 +64,7 @@ Signal:
 
 First checks:  
 - Confirm TS candidate quality: exactly one imaginary frequency with |ν| ≥ 100 cm⁻¹, and the corresponding imaginary mode shows displacement along the reaction coordinate.  
-- For LBFGS/Dimer: reduce `max_step`. For RFO/RS-I-RFO: reduce `trust_radius`/`trust_min`/`trust_max`. Increase cycle limits.  
+- For LBFGS/Dimer: reduce `max_step` (YAML sections: `lbfgs` / `hessian_dimer`). For RFO/RS-I-RFO: reduce `trust_radius`/`trust_min`/`trust_max` (YAML sections: `rfo` / `rsirfo`). Increase cycle limits. See [YAML Reference](yaml-reference.md) for section layout.  
 - If the run stops at `max_cycles` while the force is only barely above the threshold (and the energy has flattened), the `opt.energy_plateau` fallback (new in v0.3.5) should already mark this as converged. If it does not, loosen the force threshold with `--thresh gau` or `--thresh gau_loose`.  
 
 Typical fix path:

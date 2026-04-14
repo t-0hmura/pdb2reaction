@@ -185,6 +185,7 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 | `--preopt/--no-preopt` | Run an unbiased optimization before scanning. | `False` |
 | `--baseline {min,first}` | Shift kcal/mol energies so the global min or first grid point is zero. | `min` |
 | `--zmin FLOAT`, `--zmax FLOAT` | Manual limits for the contour/surface color scale (kcal/mol). | Autoscaled |
+| `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
 
 ### Shared YAML sections
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical knobs to those documented for
