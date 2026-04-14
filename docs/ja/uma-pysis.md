@@ -88,9 +88,9 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 | バックエンド | インストール | 解析ヘシアン | マルチワーカー | 備考 |
 |---------|---------|-------------------|-------------|-------|
 | **UMA** | 同梱 | あり | あり | fairchem による完全機能 |
-| **ORB** | `pip install "pdb2reaction[orb]"` | なし（有限差分のみ） | なし | orb-models |
-| **MACE** | `pip uninstall -y fairchem-core && pip install mace-torch` | なし（有限差分のみ） | なし | mace-torch |
-| **AIMNet2** | `pip install "pdb2reaction[aimnet]"` | なし（有限差分のみ） | なし | aimnet |
+| **ORB** | `pip install "pdb2reaction[orb]"` | あり（autograd） | なし | orb-models（conservative モデルのみ） |
+| **MACE** | `pip uninstall -y fairchem-core && pip install mace-torch` | あり（`calc.get_hessian`） | なし | mace-torch >= 0.3.8 |
+| **AIMNet2** | `pip install "pdb2reaction[aimnet]"` | あり（native） | なし | aimnet |
 
 ### 暗黙溶媒補正
 
