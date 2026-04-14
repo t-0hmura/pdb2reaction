@@ -215,6 +215,51 @@ class MACECalculator(MLIPCalculator):
         forces = np.asarray(atoms.get_forces(), dtype=np.float64)
         return energy, forces
 
+    # ------------------------------------------------------------------
+    # Analytical Hessian (delegated to MACECalculator.get_hessian)
+    # ------------------------------------------------------------------
+
+    def _supports_analytical_hessian(self) -> bool:
+        return True
+
+    def _compute_analytical_hessian_ev(self, elem, coord_ang):
+        from ase import Atoms
+
+        if not hasattr(self._calc, "get_hessian"):
+            raise BackendError(
+                "Installed MACE calculator does not expose get_hessian(). "
+                "Upgrade mace-torch (>=0.3.8) or use "
+                "--hessian-calc-mode FiniteDifference."
+            )
+
+        atoms = Atoms(symbols=list(elem),
+                      positions=np.asarray(coord_ang, dtype=np.float64))
+        atoms.info["charge"] = int(self.charge)
+        atoms.info["spin"] = int(self.mult)
+        atoms.calc = self._calc
+
+        try:
+            H = self._calc.get_hessian(atoms=atoms)
+        except BackendError:
+            raise
+        except Exception as exc:
+            msg = str(exc).lower()
+            if "out of memory" in msg and "cuda" in msg:
+                raise BackendError(
+                    "MACE analytical Hessian failed due to CUDA out-of-memory. "
+                    "Retry with --hessian-calc-mode FiniteDifference."
+                ) from exc
+            raise BackendError(
+                f"MACE analytical Hessian failed: {exc}"
+            ) from exc
+
+        H = np.asarray(H, dtype=np.float64)
+        dof = len(elem) * 3
+        # Handle (1, N, 3, N, 3) or (N, 3, N, 3) or (3N, 3N)
+        if H.ndim == 5 and H.shape[0] > 0:
+            H = H[0]
+        return H.reshape(dof, dof)
+
 
 class MACEASECalculator:
     """Factory that returns a MACE ASE calculator for DMF."""

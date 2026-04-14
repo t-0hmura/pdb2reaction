@@ -189,6 +189,43 @@ class AIMNet2Calculator(MLIPCalculator):
         energy, forces, _ = self._call(list(elem), coord_ang, with_hessian=False)
         return energy, np.asarray(forces, dtype=np.float64)
 
+    # ------------------------------------------------------------------
+    # Analytical Hessian (reuses existing _call(with_hessian=True) path)
+    # ------------------------------------------------------------------
+
+    def _supports_analytical_hessian(self) -> bool:
+        return True
+
+    def _compute_analytical_hessian_ev(self, elem, coord_ang):
+        try:
+            _e, _f, h = self._call(list(elem), coord_ang, with_hessian=True)
+        except BackendError:
+            raise
+        except Exception as exc:
+            msg = str(exc).lower()
+            if "out of memory" in msg and "cuda" in msg:
+                raise BackendError(
+                    "AIMNet2 analytical Hessian failed due to CUDA "
+                    "out-of-memory. Retry with --hessian-calc-mode "
+                    "FiniteDifference."
+                ) from exc
+            raise BackendError(
+                f"AIMNet2 analytical Hessian failed: {exc}"
+            ) from exc
+
+        if h is None:
+            raise BackendError(
+                "AIMNet2 did not return an analytical Hessian "
+                "(installed aimnet version may not support hessian=True)."
+            )
+
+        h = np.asarray(h, dtype=np.float64)
+        dof = len(elem) * 3
+        # Handle (1, N, 3, N, 3) or (N, 3, N, 3) or (3N, 3N)
+        if h.ndim == 5 and h.shape[0] > 0:
+            h = h[0]
+        return h.reshape(dof, dof)
+
 
 class AIMNet2ASECalculator:
     """Factory that returns an AIMNet2-backed ASE calculator for DMF.

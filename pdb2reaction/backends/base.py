@@ -30,6 +30,92 @@ class BackendError(RuntimeError):
     """Raised for backend-specific runtime failures."""
 
 
+def _prepare_model_for_autograd_hessian(model_obj, torch_mod):
+    """Prepare a torch module for ``torch.autograd.functional.hessian``.
+
+    Saves and mutates model state so autograd can traverse the forward pass
+    without tracking parameter gradients or running stochastic dropout:
+
+    * every parameter's ``requires_grad`` is saved and set to ``False``
+    * ``model_obj.train(True)`` is called (autograd backward through modules
+      that short-circuit in eval-mode needs training mode active)
+    * every Dropout / AlphaDropout / FeatureAlphaDropout module has its
+      ``p`` saved and forced to ``0.0``, and is switched to eval mode
+      ``train(False)``, so dropout is effectively a no-op during the
+      Hessian pass
+
+    Returns a ``state`` dict which must be passed to
+    ``_restore_model_after_autograd_hessian`` in a ``finally`` block.
+    """
+    state = {
+        "was_training": bool(getattr(model_obj, "training", False)),
+        "param_flags": [],
+        "dropout_states": [],
+    }
+
+    if hasattr(model_obj, "parameters"):
+        for param in model_obj.parameters():
+            state["param_flags"].append((param, bool(param.requires_grad)))
+            param.requires_grad_(False)
+
+    if hasattr(model_obj, "train"):
+        model_obj.train(True)
+
+    dropout_types = []
+    nn_mod = getattr(torch_mod, "nn", None)
+    if nn_mod is not None:
+        for name in (
+            "Dropout",
+            "Dropout1d",
+            "Dropout2d",
+            "Dropout3d",
+            "AlphaDropout",
+            "FeatureAlphaDropout",
+        ):
+            cls = getattr(nn_mod, name, None)
+            if cls is not None:
+                dropout_types.append(cls)
+
+    if dropout_types and hasattr(model_obj, "modules"):
+        dtypes = tuple(dropout_types)
+        for module in model_obj.modules():
+            if not isinstance(module, dtypes):
+                continue
+            old_p = getattr(module, "p", None)
+            state["dropout_states"].append(
+                (module, bool(getattr(module, "training", False)), old_p)
+            )
+            if old_p is not None:
+                try:
+                    module.p = 0.0
+                except Exception:
+                    pass
+            module.train(False)
+
+    return state
+
+
+def _restore_model_after_autograd_hessian(model_obj, state):
+    """Undo the mutations performed by :func:`_prepare_model_for_autograd_hessian`.
+
+    Safe to call from a ``finally`` block: operates on whatever partial
+    state was recorded and gracefully handles the empty-state case.
+    """
+    for module, was_training, old_p in state.get("dropout_states", []):
+        if old_p is not None:
+            try:
+                module.p = old_p
+            except Exception:
+                pass
+        module.train(was_training)
+
+    if hasattr(model_obj, "train"):
+        model_obj.train(state.get("was_training", False))
+
+    for param, req_grad in state.get("param_flags", []):
+        param.requires_grad_(req_grad)
+
+
 class MLIPCalculator(Calculator):
     """PySisyphus-compatible MLIP calculator base class.
 
