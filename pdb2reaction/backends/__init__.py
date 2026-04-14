@@ -53,17 +53,20 @@ _BACKEND_ACCEPTED_KEYS: Dict[str, set] = {
     },
     "orb": {
         "charge", "spin", "device", "freeze_atoms", "hessian_calc_mode",
-        "return_partial_hessian", "hessian_double", "print_timing",
+        "return_partial_hessian", "hessian_double", "out_hess_torch",
+        "print_timing",
         "model", "precision", "compile_model",
     },
     "mace": {
         "charge", "spin", "device", "freeze_atoms", "hessian_calc_mode",
-        "return_partial_hessian", "hessian_double", "print_timing",
+        "return_partial_hessian", "hessian_double", "out_hess_torch",
+        "print_timing",
         "model", "default_dtype",
     },
     "aimnet2": {
         "charge", "spin", "device", "freeze_atoms", "hessian_calc_mode",
-        "return_partial_hessian", "hessian_double", "print_timing",
+        "return_partial_hessian", "hessian_double", "out_hess_torch",
+        "print_timing",
         "model",
     },
 }

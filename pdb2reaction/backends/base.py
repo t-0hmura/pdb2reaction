@@ -143,6 +143,7 @@ class MLIPCalculator(Calculator):
         hessian_calc_mode: str = "FiniteDifference",
         return_partial_hessian: bool = False,
         hessian_double: bool = True,
+        out_hess_torch: bool = False,
         print_timing: bool = True,
         **kwargs,
     ):
@@ -152,6 +153,7 @@ class MLIPCalculator(Calculator):
         self.hessian_calc_mode = hessian_calc_mode
         self.return_partial_hessian = bool(return_partial_hessian)
         self.hessian_double = bool(hessian_double)
+        self.out_hess_torch = bool(out_hess_torch)
         self.print_timing = bool(print_timing)
 
         # Normalise freeze_atoms
@@ -313,6 +315,57 @@ class MLIPCalculator(Calculator):
                 H[frozen_dof_idx, :] = 0.0
             return H
 
+    @staticmethod
+    def _is_torch_tensor(obj: Any) -> bool:
+        return type(obj).__module__.startswith("torch") and hasattr(obj, "detach")
+
+    def _apply_active_trim_torch(self, H, n_atoms: int):
+        """Torch version of :meth:`_apply_active_trim_np`.
+
+        Returns a (3N,3N) tensor (frozen rows/cols zeroed) or an
+        active-DOF sub-block tensor when ``return_partial_hessian=True``.
+        """
+        import torch
+
+        if len(self.freeze_atoms) == 0:
+            return H.reshape(n_atoms * 3, n_atoms * 3)
+        _, active_dof_idx, frozen_dof_idx = self._active_and_frozen_dof_idx(n_atoms)
+        H = H.reshape(n_atoms * 3, n_atoms * 3)
+        if self.return_partial_hessian:
+            idx = torch.tensor(active_dof_idx, device=H.device, dtype=torch.long)
+            return H.index_select(0, idx).index_select(1, idx)
+        if frozen_dof_idx:
+            cols = torch.tensor(frozen_dof_idx, device=H.device, dtype=torch.long)
+            H = H.clone()
+            H.index_fill_(1, cols, 0.0)
+            H.index_fill_(0, cols, 0.0)
+        return H
+
+    def _au_hessian_torch(self, H):
+        """Convert a (3N,3N) torch Hessian from eV/Å² to Hartree/Bohr² and
+        symmetrise.  All operations are in-place on the working buffer to
+        minimise peak VRAM: a single materialised ``Hᵀ`` temporary is the
+        only extra (3N,3N) allocation required.
+
+        Returns a detached torch.Tensor on the same device as the input.
+        """
+        import torch
+
+        if H.dim() == 4:
+            n = H.size(0)
+            H = H.reshape(n * 3, n * 3)
+        if self.hessian_double and H.dtype != torch.float64:
+            # Non-in-place: torch has no "cast & drop original" single-op.
+            # Peak here is 1× original + 1× float64 copy until the original
+            # goes out of scope at function return.
+            H = H.to(dtype=torch.float64)
+        # Materialise the transpose once so the in-place add is alias-free.
+        H_t = H.transpose(0, 1).contiguous()
+        H.add_(H_t)
+        del H_t
+        H.mul_(0.5 * H_EVAA_2_AU)
+        return H.detach()
+
     # ------------------------------------------------------------------
     # PySisyphus API
     # ------------------------------------------------------------------
@@ -346,16 +399,23 @@ class MLIPCalculator(Calculator):
             t0 = time.perf_counter()
             e_ev, F_ev = self._compute_energy_forces_ev(elem, coord_ang)
             H_ev = self._compute_analytical_hessian_ev(elem, coord_ang)
-            H_ev = np.asarray(H_ev, dtype=np.float64)
-            if H_ev.ndim == 4:
-                H_ev = H_ev.reshape(n_atoms * 3, n_atoms * 3)
             mode_elapsed = time.perf_counter() - t0
 
             F_ev = self._zero_frozen_forces_ev(
                 np.asarray(F_ev, dtype=np.float64).reshape(-1, 3)
             )
-            H_ev = self._apply_active_trim_np(H_ev, n_atoms)
-            H_au = self._hessian_ev_to_au(H_ev)
+
+            if self._is_torch_tensor(H_ev):
+                H_ev = self._apply_active_trim_torch(H_ev, n_atoms)
+                H_au = self._au_hessian_torch(H_ev)
+                if not self.out_hess_torch:
+                    H_au = H_au.cpu().numpy()
+            else:
+                H_ev = np.asarray(H_ev, dtype=np.float64)
+                if H_ev.ndim == 4:
+                    H_ev = H_ev.reshape(n_atoms * 3, n_atoms * 3)
+                H_ev = self._apply_active_trim_np(H_ev, n_atoms)
+                H_au = self._hessian_ev_to_au(H_ev)
 
             out = {
                 "energy": e_ev * EV2AU,

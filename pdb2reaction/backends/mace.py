@@ -223,6 +223,27 @@ class MACECalculator(MLIPCalculator):
         return True
 
     def _compute_analytical_hessian_ev(self, elem, coord_ang):
+        """Return MACE's analytical Hessian as a torch.Tensor on GPU.
+
+        The public ``MACECalculator.get_hessian(atoms=...)`` API calls
+        ``hessian.detach().cpu().numpy()`` internally, forcing a CPU
+        round-trip.  To preserve the GPU tensor (so that the base
+        dispatcher's torch path can use it and ``out_hess_torch=True``
+        works), we reproduce the single-model code path directly:
+
+            batch = calc._atoms_to_batch(atoms)
+            out   = calc.models[0](
+                calc._clone_batch(batch).to_dict(),
+                compute_hessian=True, compute_stress=False,
+                training=calc.use_compile,
+            )
+            return out["hessian"]  # torch.Tensor on calc.device
+
+        This uses the same private helpers that ``get_hessian`` uses and
+        is therefore tightly coupled to mace-torch >=0.3.8.  A fallback
+        to the public numpy API is kept for older or non-standard MACE
+        calculators.
+        """
         from ase import Atoms
 
         if not hasattr(self._calc, "get_hessian"):
@@ -238,8 +259,28 @@ class MACECalculator(MLIPCalculator):
         atoms.info["spin"] = int(self.mult)
         atoms.calc = self._calc
 
+        calc = self._calc
+        torch = self._torch
+
         try:
-            H = self._calc.get_hessian(atoms=atoms)
+            have_internal_path = (
+                hasattr(calc, "_atoms_to_batch")
+                and hasattr(calc, "_clone_batch")
+                and getattr(calc, "models", None) is not None
+                and len(calc.models) == 1
+            )
+            if have_internal_path:
+                batch = calc._atoms_to_batch(atoms)
+                out = calc.models[0](
+                    calc._clone_batch(batch).to_dict(),
+                    compute_hessian=True,
+                    compute_stress=False,
+                    training=getattr(calc, "use_compile", False),
+                )
+                H = out["hessian"]
+            else:
+                # Fallback: public API (CPU round-trip).
+                H = calc.get_hessian(atoms=atoms)
         except BackendError:
             raise
         except Exception as exc:
@@ -253,12 +294,17 @@ class MACECalculator(MLIPCalculator):
                 f"MACE analytical Hessian failed: {exc}"
             ) from exc
 
-        H = np.asarray(H, dtype=np.float64)
         dof = len(elem) * 3
-        # Handle (1, N, 3, N, 3) or (N, 3, N, 3) or (3N, 3N)
-        if H.ndim == 5 and H.shape[0] > 0:
-            H = H[0]
-        return H.reshape(dof, dof)
+        if isinstance(H, torch.Tensor):
+            # Common shapes: (1, N, 3, N, 3), (N, 3, N, 3), (3N, 3N)
+            if H.dim() == 5 and H.size(0) > 0:
+                H = H[0]
+            return H.reshape(dof, dof)
+
+        H_np = np.asarray(H, dtype=np.float64)
+        if H_np.ndim == 5 and H_np.shape[0] > 0:
+            H_np = H_np[0]
+        return H_np.reshape(dof, dof)
 
 
 class MACEASECalculator:

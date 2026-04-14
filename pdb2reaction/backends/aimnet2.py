@@ -197,11 +197,31 @@ class AIMNet2Calculator(MLIPCalculator):
         return True
 
     def _compute_analytical_hessian_ev(self, elem, coord_ang):
+        """Return AIMNet2's native analytical Hessian as a torch.Tensor.
+
+        AIMNet2's `calculator(data, hessian=True)` already produces the
+        Hessian on the model device (CUDA when available).  Calling the
+        calculator directly — instead of going through the numpy-
+        converting ``_call`` wrapper used for energies/forces — keeps
+        the tensor on GPU so the base dispatcher can route it through
+        the torch path and preserve ``out_hess_torch=True``.
+        """
+        torch = self._torch
+        from ase.data import atomic_numbers
+        numbers = np.asarray(
+            [atomic_numbers[str(s)] for s in elem], dtype=np.int64
+        )
+        coord_np = np.asarray(coord_ang, dtype=np.float32).reshape(-1, 3)
+        data = {
+            "coord": coord_np,
+            "numbers": numbers.reshape(-1),
+            "charge": np.asarray([float(self.charge)], dtype=np.float32),
+            "mult": np.asarray([float(self.mult)], dtype=np.float32),
+        }
+
         try:
-            _e, _f, h = self._call(list(elem), coord_ang, with_hessian=True)
-        except BackendError:
-            raise
-        except Exception as exc:
+            out = self._calculator(data, forces=True, hessian=True)
+        except (RuntimeError, getattr(torch.cuda, "OutOfMemoryError", RuntimeError)) as exc:
             msg = str(exc).lower()
             if "out of memory" in msg and "cuda" in msg:
                 raise BackendError(
@@ -213,18 +233,29 @@ class AIMNet2Calculator(MLIPCalculator):
                 f"AIMNet2 analytical Hessian failed: {exc}"
             ) from exc
 
-        if h is None:
+        hess = None
+        if isinstance(out, (list, tuple)):
+            if len(out) > 2:
+                hess = out[2]
+        elif isinstance(out, dict):
+            for key in ("hessian", "Hessian", "hess", "hessians"):
+                if key in out:
+                    hess = out[key]
+                    break
+
+        if hess is None:
             raise BackendError(
                 "AIMNet2 did not return an analytical Hessian "
                 "(installed aimnet version may not support hessian=True)."
             )
 
-        h = np.asarray(h, dtype=np.float64)
+        # Keep the Hessian on its native device: the base dispatcher
+        # recognises torch tensors and routes them through the GPU path.
+        if not isinstance(hess, torch.Tensor):
+            hess = torch.as_tensor(hess)
         dof = len(elem) * 3
-        # Handle (1, N, 3, N, 3) or (N, 3, N, 3) or (3N, 3N)
-        if h.ndim == 5 and h.shape[0] > 0:
-            h = h[0]
-        return h.reshape(dof, dof)
+        hess = hess.reshape(dof, dof)
+        return hess
 
 
 class AIMNet2ASECalculator:
