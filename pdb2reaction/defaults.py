@@ -80,7 +80,7 @@ UMA_CALC_KW: Dict[str, Any] = {
 
 ORB_BACKEND_DEFAULTS: Dict[str, Any] = {
     "model": "orb_v3_conservative_omol",
-    "precision": "float32",
+    "precision": "float32-high",
     "compile_model": False,
 }
 
