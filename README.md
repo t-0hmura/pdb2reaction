@@ -2,7 +2,7 @@
 
 ## Overview
 
-`pdb2reaction` is a Python CLI toolkit for turning **PDB structures** into **enzymatic reaction pathways** with machine-learning interatomic potentials (MLIPs). Each workflow step is also available as an [individual subcommand](#cli-subcommands) ([`opt`](docs/opt.md), [`scan`](docs/scan.md), [`scan2d`](docs/scan2d.md), [`path-search`](docs/path_search.md), [`tsopt`](docs/tsopt.md), [`freq`](docs/freq.md), [`irc`](docs/irc.md), [`dft`](docs/dft.md), [`energy-diagram`](docs/energy_diagram.md), [etc.](#cli-subcommands)) for fine-grained control.
+`pdb2reaction` is a Python CLI toolkit for turning **PDB structures** into **enzymatic reaction pathways** with machine-learning interatomic potentials (MLIPs). Each workflow step is also available as an [individual subcommand](#cli-subcommands) ([`opt`](docs/opt.md), [`scan`](docs/scan.md), [`scan2d`](docs/scan2d.md), [`path-search`](docs/path-search.md), [`tsopt`](docs/tsopt.md), [`freq`](docs/freq.md), [`irc`](docs/irc.md), [`dft`](docs/dft.md), [`energy-diagram`](docs/energy-diagram.md), [etc.](#cli-subcommands)) for fine-grained control.
 
 A **single command** can generate a first-pass enzymatic reaction path:
 
@@ -116,13 +116,11 @@ For detailed installation instructions, see [Installation](https://github.com/t-
 | **MACE** | <https://github.com/ACEsuit/mace> | See below |
 | **AIMNet2** | <https://github.com/isayevlab/aimnetcentral> | `pip install "pdb2reaction[aimnet]"` |
 
-> **MACE installation:** MACE requires `e3nn==0.4.4`, which conflicts with `fairchem-core` (UMA).
-> To use MACE, first uninstall UMA's dependency, then install MACE:
+> **MACE installation:** Because `mace-torch` and `fairchem-core` (UMA) can pin incompatible versions of `e3nn`, we recommend installing MACE in a dedicated environment. To use MACE, uninstall `fairchem-core` first, then install MACE:
 > ```bash
 > pip uninstall fairchem-core
 > pip install mace-torch
 > ```
-> UMA and MACE cannot coexist in the same environment. Use separate conda environments if you need both.
 
 ---
 
@@ -162,7 +160,7 @@ pdb2reaction extract -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -r 6.0
 pdb2reaction opt -i model.pdb -l 'SAM:1,GPP:-3'
 ```
 
-**3. MEP search** — [`path-opt`](docs/path_opt.md)
+**3. MEP search** — [`path-opt`](docs/path-opt.md)
 ```bash
 pdb2reaction path-opt -i R_model.pdb P_model.pdb -l 'SAM:1,GPP:-3'
 ```
@@ -202,8 +200,8 @@ pdb2reaction dft -i optimized.pdb -l 'SAM:1,GPP:-3'
 | Subcommand | Role | Documentation |
 |---|---|---|
 | `extract` | Extract active-site model (cluster model) | [docs/extract.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/extract.md) |
-| `fix-altloc` | Resolve alternate conformations in PDB files | [docs/fix_altloc.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/fix_altloc.md) |
-| `add-elem-info` | Add/repair PDB element columns (77–78) | [docs/add_elem_info.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/add_elem_info.md) |
+| `fix-altloc` | Resolve alternate conformations in PDB files | [docs/fix-altloc.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/fix-altloc.md) |
+| `add-elem-info` | Add/repair PDB element columns (77–78) | [docs/add-elem-info.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/add-elem-info.md) |
 
 ### Optimization & Path Search
 
@@ -211,8 +209,8 @@ pdb2reaction dft -i optimized.pdb -l 'SAM:1,GPP:-3'
 |---|---|---|
 | `opt` | Geometry optimization (L-BFGS or RFO) | [docs/opt.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/opt.md) |
 | `tsopt` | TS optimization (Dimer or RS-I-RFO) | [docs/tsopt.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/tsopt.md) |
-| `path-opt` | MEP optimization via GSM or DMF | [docs/path_opt.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/path_opt.md) |
-| `path-search` | Recursive MEP search with refinement | [docs/path_search.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/path_search.md) |
+| `path-opt` | MEP optimization via GSM or DMF | [docs/path-opt.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/path-opt.md) |
+| `path-search` | Recursive MEP search with refinement | [docs/path-search.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/path-search.md) |
 | `scan` | 1D bond-length driven scan | [docs/scan.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/scan.md) |
 | `scan2d` | 2D distance grid scan | [docs/scan2d.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/scan2d.md) |
 | `scan3d` | 3D distance grid scan | [docs/scan3d.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/scan3d.md) |
@@ -231,7 +229,7 @@ pdb2reaction dft -i optimized.pdb -l 'SAM:1,GPP:-3'
 | Subcommand | Role | Documentation |
 |---|---|---|
 | `trj2fig` | Energy plot from XYZ trajectory | [docs/trj2fig.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/trj2fig.md) |
-| `energy-diagram` | Energy diagram from numeric values | [docs/energy_diagram.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/energy_diagram.md) |
+| `energy-diagram` | Energy diagram from numeric values | [docs/energy-diagram.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/energy-diagram.md) |
 
 
 > **Tip:** In [`tsopt`](docs/tsopt.md), [`freq`](docs/freq.md), and [`irc`](docs/irc.md), setting **`--hessian-calc-mode Analytical`** is strongly recommended when you have enough VRAM.
@@ -240,7 +238,7 @@ pdb2reaction dft -i optimized.pdb -l 'SAM:1,GPP:-3'
 
 ## HPC / Multi-GPU
 
-On HPC clusters or multi-GPU workstations, `pdb2reaction` can parallelize UMA inference across nodes. Set `workers` and `workers_per_node` to enable parallel inference; see [docs/uma_pysis.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/uma_pysis.md) for details.
+On HPC clusters or multi-GPU workstations, `pdb2reaction` can parallelize UMA inference across nodes. Set `workers` and `workers_per_node` to enable parallel inference; see [docs/uma-pysis.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/uma-pysis.md) for details.
 
 ---
 
@@ -273,8 +271,8 @@ A preprint describing `pdb2reaction` is in preparation. Currently, if you find t
   author       = {Ohmura, Takuto},
   title        = {pdb2reaction},
   year         = {2026},
-  month        = {3},
-  version      = {0.3.2},
+  month        = {4},
+  version      = {0.3.5},
   url          = {https://github.com/t-0hmura/pdb2reaction},
   license      = {GPL-3.0},
   doi          = {10.5281/zenodo.19197878}

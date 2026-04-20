@@ -111,8 +111,11 @@ pdb2reaction opt -i input.pdb -q 0 -b orb --solvent water --solvent-model cpcmx
 - **精度制御** – エネルギー/力は常にfloat64。`hessian_double=False` でヘシアンをモデルのネイティブdtype（通常float32）で返します。
 - **マルチワーカー推論** – `workers>1` で FAIR-Chem の `ParallelMLIPPredictUnit` を起動し、`workers_per_node` をノードごとに指定可能。バッチ処理速度の向上に有効です。
 
+(ja-workers-fd-downgrade)=
+### `workers > 1` による暗黙的な FD ダウングレード
+
 ```{warning}
-`workers > 1` の場合、`hessian_calc_mode="Analytical"` を明示的に指定していても解析ヘシアンは暗黙的に有限差分（`force_fd=True`）へ切り替わります。警告は出力されないため、ヘシアン計算時間が想定より長い場合はログを確認してください。この警告は `--workers` / `--workers-per-node` を持つすべてのサブコマンド（`opt`, `tsopt`, `freq`, `irc`, `all`, scan 系）に適用されます。
+`workers > 1` の場合、`hessian_calc_mode="Analytical"` を明示的に指定していても解析ヘシアンは暗黙的に有限差分（`force_fd=True`）へ切り替わります。**このダウングレード発生時にログマーカーは出力されません。**診断する唯一の方法は、同じ原子数の解析ヘシアン基準ランと比較してヘシアン計算時間が FD 相当に長くなっていることの確認です。明示的な警告やログ行は存在しないため、「想定より長いヘシアン所要時間」だけが手掛かりとなります。この警告は `--workers` / `--workers-per-node` を持つすべてのサブコマンド（`opt`, `tsopt`, `freq`, `irc`, `all`, scan 系）に適用されます。
 ```
 
 (ja-hessian-evaluation)=
@@ -136,7 +139,7 @@ pdb2reaction opt -i input.pdb -q 0 -b orb --solvent water --solvent-model cpcmx
 | `model` | UMAモデル名 (`uma-s-1p1`, `uma-m-1p1`) | `"uma-s-1p1"` |
 | `task_name` | UMAバッチに記録されるタスクタグ | `"omol"` |
 | `device` | `"cuda"` / `"cpu"` / `"auto"` | `"auto"` |
-| `workers` / `workers_per_node` | 並列UMA予測器（`workers>1` で解析ヘシアン無効） | `1` / `1` |
+| `workers` / `workers_per_node` | 並列UMA予測器。`workers>1` の場合、解析ヘシアンは**警告なく**有限差分へダウングレードされます。`hessian_calc_mode` のデフォルトはそもそも FD のため、`Analytical` を明示的に選んだ場合のみ影響があります。 | `1` / `1` |
 | `max_neigh`, `radius`, `r_edges` | 近傍構築のオプション上書き | `None`, `None`, `False` |
 | `freeze_atoms` | 1始まりの凍結原子インデックス | _None_ |
 | `hessian_calc_mode` | `"Analytical"` または `"FiniteDifference"` | `"FiniteDifference"` |

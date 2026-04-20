@@ -111,8 +111,11 @@ The correction uses a delta approach: ΔE = E_xTB(solvent) - E_xTB(vacuum), adde
 - **Precision control** – energies and forces are always returned as float64. Set `hessian_double=False` to obtain the Hessian matrix in the model's native dtype (typically float32).
 - **Multi-worker inference** – `workers>1` spawns FAIR-Chem's `ParallelMLIPPredictUnit` with `workers_per_node` workers per node, useful for batch throughput.
 
+(workers-fd-downgrade)=
+### `workers > 1` silent FD downgrade
+
 ```{warning}
-When `workers > 1`, analytical Hessians are silently switched to finite differences (`force_fd=True`) even if `hessian_calc_mode="Analytical"` is set. No warning is printed — check your logs if Hessian timings are unexpectedly long. This warning applies to every subcommand that exposes `--workers` / `--workers-per-node` (`opt`, `tsopt`, `freq`, `irc`, `all`, and the scan family).
+When `workers > 1`, analytical Hessians are silently switched to finite differences (`force_fd=True`) even if `hessian_calc_mode="Analytical"` is set. **No log marker is emitted when this downgrade occurs**; the only diagnostic is that Hessian timings will be comparable to FD rather than analytical for a same-atom-count reference run. Check your logs only for unexpectedly long Hessian elapsed time — there is no explicit warning or line to grep for. This applies to every subcommand that exposes `--workers` / `--workers-per-node` (`opt`, `tsopt`, `freq`, `irc`, `all`, and the scan family).
 ```
 
 (hessian-evaluation)=
@@ -136,7 +139,7 @@ Common constructor keywords (defaults shown in the rightmost column):
 | `model` | UMA pretrained model name (`uma-s-1p1`, `uma-m-1p1`). | `"uma-s-1p1"` |
 | `task_name` | Task tag recorded in UMA batches. | `"omol"` |
 | `device` | "cuda", "cpu", or automatic selection. | `"auto"` |
-| `workers` / `workers_per_node` | Parallel UMA predictors; when `workers>1`, analytical Hessians are disabled. | `1` / `1` |
+| `workers` / `workers_per_node` | Parallel UMA predictors; when `workers>1`, analytical Hessians are silently downgraded to finite difference (no warning). FD is the default `hessian_calc_mode` anyway, so this usually matters only when `Analytical` was explicitly requested. | `1` / `1` |
 | `max_neigh`, `radius`, `r_edges` | Optional overrides for UMA neighborhood construction. | `None`, `None`, `False` |
 | `freeze_atoms` | List of 1-based atom indices to freeze. | _None_ |
 | `hessian_calc_mode` | "Analytical" or "FiniteDifference" for Hessian evaluation. | `"FiniteDifference"` |

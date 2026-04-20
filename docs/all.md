@@ -167,8 +167,8 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | `-i, --input PATH...` | Two or more full structures in reaction order (single input allowed only with `--scan-lists` or `--tsopt`). | Required |
 | `--ref-pdb FILE` | Reference PDB for topology when `-i` provides XYZ inputs. | _None_ |
 | `-o, --out-dir PATH` | Top-level output directory. | `./result_all/` |
-| `--convert-files/--no-convert-files` | Global toggle for XYZ/TRJ → PDB/GJF companions when templates are available. | `True` |
-| `--dump/--no-dump` | Dump MEP (GSM/DMF) trajectories. Always forwarded to `path-search`/`path-opt`; forwarded to `scan`/`tsopt` only when explicitly set here. `freq` defaults to dump=True unless you pass `--no-dump`. | `False` |
+| `--convert-files BOOL` | Global toggle for XYZ/TRJ → PDB/GJF companions when templates are available. | `True` |
+| `--dump BOOL` | Dump MEP (GSM/DMF) trajectories. Always forwarded to `path-search`/`path-opt`; forwarded to `scan`/`tsopt` only when explicitly set here. `freq` defaults to dump=True unless you pass `--no-dump`. | `False` |
 | `--config FILE` | Base YAML applied first. | _None_ |
 | `--show-config/--no-show-config` | Print resolved configuration before execution. | `False` |
 | `--dry-run/--no-dry-run` | Validate and print plan without running stages. | `False` |
@@ -189,13 +189,13 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | `-c, --center TEXT` | Substrate specification (PDB path, residue IDs, or residue names). | Required for extraction |
 | `-r, --radius FLOAT` | Active site model inclusion cutoff (Å). | `2.6` |
 | `--radius-het2het FLOAT` | Independent hetero–hetero cutoff (Å). Passing `0` is internally nudged to `0.001 Å` to avoid empty selections (same behavior as standalone `extract`). | `0.0` |
-| `--include-h2o/--no-include-h2o` | Include waters (HOH/WAT/TIP3/SOL). | `True` |
-| `--exclude-backbone/--no-exclude-backbone` | Remove backbone atoms on non-substrate amino acids. | `False` |
-| `--add-linkh/--no-add-linkh` | Add link hydrogens for severed bonds. | `True` |
-| `--selected-resn TEXT` | Residues to force include. | `""` |
+| `--include-h2o BOOL` | Include waters (HOH/WAT/TIP3/SOL). | `True` |
+| `--exclude-backbone BOOL` | Remove backbone atoms on non-substrate amino acids. | `False` |
+| `--add-linkh BOOL` | Add link hydrogens for severed bonds. | `True` |
+| `--selected-resn TEXT` | Residues to force include. **Despite the name, this flag accepts residue IDs (colon-separated integers with optional chains/insertion codes, e.g. `A:123A`), not 3-letter residue names.** Use `-c/--center 'GPP,SAM'` for residue-name-based selection. | `""` |
 | `--modified-residue TEXT` | Comma-separated residue names (with optional charge) to treat as amino acids for backbone truncation and charge assignment (e.g., `HD1,HD2,HD3` or `HD1:0,SEP:-2`). | `""` |
-| `--freeze-links/--no-freeze-links` | Freeze link parents in active site model PDBs. | `True` |
-| `--verbose/--no-verbose` | Enable INFO-level extractor logging. | `True` |
+| `--freeze-links BOOL` | Freeze link parents in active site model PDBs. | `True` |
+| `--verbose BOOL` | Enable INFO-level extractor logging. | `True` |
 
 ### MEP Search Options
 
@@ -204,17 +204,17 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | `--mep-mode [gsm\|dmf]` | MEP search algorithm: GSM (Growing String Method) or DMF (Direct Max Flux). | `gsm` |
 | `--max-nodes INT` | MEP internal nodes per segment. **GSM:** total images = `max_nodes + 2` (endpoints fixed). **DMF:** number of *movable* images along the chain (no implicit endpoint expansion). | `20` |
 | `--max-cycles INT` | MEP maximum optimization cycles. | `300` |
-| `--climb/--no-climb` | Enable TS climbing for the first segment. | `True` |
-| `--opt-mode [grad\|hess]` | Workflow preset (`grad` → LBFGS/Dimer, `hess` → RFO/RSIRFO). For direct commands, prefer `opt --opt-mode grad|hess` and `tsopt --opt-mode grad|hess`. | `grad` |
+| `--climb BOOL` | Enable TS climbing for the first segment. | `True` |
+| `--opt-mode [grad\|hess]` | Workflow preset (`grad` → LBFGS/Dimer, `hess` → RFO/RSIRFO). For direct commands, prefer `opt --opt-mode grad|hess` and `tsopt --opt-mode grad|hess`. The token-to-algorithm mapping depends on the scope; see {ref}`opt-mode-semantics` for the per-subcommand table and note that `all`'s pre-opt default (`grad`) is not the same as `tsopt`'s default (`hess`). | `grad` |
 | `--thresh TEXT` | Convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
-| `--preopt/--no-preopt` | Pre-optimize active site model endpoints before MEP search. **Note:** `all` overrides the child-subcommand default here. Standalone `path-search`, `path-opt`, `scan`, `scan2d`, and `scan3d` default `--preopt` to `False`. | `True` |
-| `--refine-path/--no-refine-path` | If True (default), run recursive `path-search`; if False, chain `path-opt` segments without recursive refinement. | `True` |
+| `--preopt BOOL` | Pre-optimize active site model endpoints before MEP search. **Note:** `all` overrides the child-subcommand default here. Standalone `path-search`, `path-opt`, `scan`, `scan2d`, and `scan3d` default `--preopt` to `False`. | `True` |
+| `--refine-path BOOL` | If True (default), run recursive `path-search`; if False, chain `path-opt` segments without recursive refinement. | `True` |
 
 ### MLIP Calculator Options
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `--workers`, `--workers-per-node` | MLIP predictor parallelism (workers > 1 disables analytic Hessians; UMA backend only). | `1`, `1` |
+| `--workers`, `--workers-per-node` | MLIP predictor parallelism (workers > 1 disables analytic Hessians; UMA backend only). See {ref}`workers-fd-downgrade` for diagnostic notes. | `1`, `1` |
 | `--hessian-calc-mode [Analytical\|FiniteDifference]` | Shared MLIP Hessian engine. | `FiniteDifference` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
@@ -224,9 +224,9 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `--tsopt/--no-tsopt` | Run TS optimization + IRC per reactive segment. | `False` |
-| `--thermo/--no-thermo` | Run vibrational analysis (`freq`) on R/TS/P. | `False` |
-| `--dft/--no-dft` | Run single-point DFT on R/TS/P. | `False` |
+| `--tsopt BOOL` | Run TS optimization + IRC per reactive segment. | `False` |
+| `--thermo BOOL` | Run vibrational analysis (`freq`) on R/TS/P. | `False` |
+| `--dft BOOL` | Run single-point DFT on R/TS/P. | `False` |
 
 ```{warning}
 The `--dft` single-point calculations (powered by PySCF/GPU4PySCF) are very expensive for models exceeding ~500 atoms. For such systems, HPC clusters with high-end GPUs (e.g. A100, H200) are typically required.
@@ -275,12 +275,12 @@ Example: `--opt-mode grad --opt-mode-post hess` uses LBFGS for path optimization
 | --- | --- | --- |
 | `-s, --scan-lists TEXT...` | Staged scans: `(i,j,target_Å)` tuples. | _None_ |
 | `--scan-out-dir PATH` | Override the scan output directory. | _None_ |
-| `--scan-one-based/--no-scan-one-based` | Force scan indexing to 1-based or 0-based. | _None_ |
+| `--scan-one-based BOOL` | Force scan indexing to 1-based or 0-based. | _None_ |
 | `--scan-max-step-size FLOAT` | Maximum step size (Å). | `0.20` |
 | `--scan-bias-k FLOAT` | Harmonic bias strength (eV·Å⁻²). | `300` |
 | `--scan-relax-max-cycles INT` | Relaxation max cycles per step. | `10000` |
-| `--scan-preopt/--no-scan-preopt` | Override the scan preoptimization toggle. | _None_ |
-| `--scan-endopt/--no-scan-endopt` | Override the scan end-of-stage optimization toggle. | _None_ |
+| `--scan-preopt BOOL` | Override the scan preoptimization toggle. | _None_ |
+| `--scan-endopt BOOL` | Override the scan end-of-stage optimization toggle. | _None_ |
 
 ## Outputs
 ```text

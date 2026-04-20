@@ -65,7 +65,7 @@ Please run `pdb2reaction add-elem-info -i...` to populate element columns before
 
 対処の例:
 - `--radius` を増やしてください（例: 2.6 → 3.5 Å）
-- `--selected-resn` で残基を強制包含してください（例: `--selected-resn 'A:123,B:456'`）
+- `--selected-resn` で残基を強制包含してください（例: `--selected-resn 'A:123,B:456'`）。**警告:** 名前に反して、`--selected-resn` は3文字の残基名ではなく**残基 ID**（コロン区切り整数）を受け取ります — `TYR,GLU` のような指定は何もマッチせず、エラーも出ません。
 - 主鎖削除が強すぎる場合は `--no-exclude-backbone` を試してください
 
 ---
@@ -219,7 +219,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 対処の例:
 - ステップサイズを減らしてください: `--step-size 0.05`（デフォルト: 0.10 bohr、質量重み付けなしのデカルト座標）
 - 最大サイクル数を増やしてください: `--max-cycles 200`
-- IRC 実行前に TS 候補の虚振動数が 1 本（|ν| >= 100 cm⁻¹）だけであることを確認してください
+- IRC 実行前に TS 候補の虚振動数が 1 本（|ν| >= 100 cm⁻¹）だけであることを確認してください。**閾値の区別:** 内部 5 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm`）と 100 cm⁻¹ の TS 品質ゲートは別の問いに答える閾値です — 正規の定義は {ref}`ja-imaginary-mode-thresholds` を参照してください。
 
 ---
 

@@ -24,7 +24,7 @@ Given **(i) two or more full protein–ligand PDB files** (R → … → P), **o
 - explores **minimum-energy paths (MEPs)** with path optimization methods such as the Growing String Method (GSM) and Direct Max Flux (DMF),
 - _optionally_ optimizes **transition states**, runs **vibrational analysis**, **IRC calculations**, and **single-point DFT calculations**.
 
-Calculations use machine-learning interatomic potentials (MLIPs). The default backend is Meta's **UMA**, but **ORB**, **MACE**, and **AIMNet2** are also supported via `-b/--backend`. Typical use cases include:
+Calculations use machine-learning interatomic potentials (MLIPs). The default backend is Meta's **UMA**, but **ORB**, **MACE**, and **AIMNet2** (experimental) are also supported via `-b/--backend`. Typical use cases include:
 
 - **Trial-and-error exploration of reaction mechanisms** at a scale where DFT-level verification would be too slow
 - **Generating initial geometries** (reactant/TS/product cluster models) for subsequent quantum-chemistry refinement

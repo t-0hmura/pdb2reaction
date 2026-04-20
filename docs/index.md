@@ -221,7 +221,7 @@ See the [YAML Reference](yaml-reference.md) for all options.
 
 ## Output Structure
 
-Typical `pdb2reaction all` output (default `--refine-path True`, which uses `path_search/`; pass `--refine-path False` to use `path_opt/` instead):
+Typical `pdb2reaction all` output (default `--refine-path True`, which uses `path_search/`; pass `--refine-path False` to use `path_opt/` instead — the flag lives on `pdb2reaction all`, see [all.md](all.md#mep-search-options) for its definition):
 
 ```
 result_all/
@@ -233,9 +233,10 @@ result_all/
     ├── mep_trj.xyz           # Final MEP trajectory
     ├── mep.pdb               # MEP in PDB format
     ├── mep_plot.png          # Energy profile plot
-    ├── seg_*/                # Per-segment MEP details
+    ├── seg_*/                # Per-segment MEP details (inputs and MEP outputs)
+    │   └── structures/       # Extracted stationary-point structures
     └── post_seg_*/           # Post-processing per segment
-        ├── tsopt/            # TS optimization results
+        ├── ts/               # TS optimization results
         ├── irc/              # IRC trajectories
         ├── freq/             # Vibrational analysis
         └── dft/              # DFT results

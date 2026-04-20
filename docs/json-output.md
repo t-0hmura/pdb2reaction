@@ -39,7 +39,7 @@ Every `result.json` automatically includes:
 
 ## Error handling
 
-If a job fails (e.g., crash, OOM, convergence failure leading to `sys.exit`), **no `result.json` is written**. The absence of `result.json` indicates failure. Check the `.out` log file for error details.
+If a job fails (e.g., crash, OOM, convergence failure leading to `sys.exit`), `result.json` is still written with `"status": "error"` plus an `"error_type"` field describing the failure class. Check the `.out` log file for a full traceback. The authoritative signal is `status == "error"`, not the absence of `result.json`.
 
 For jobs that complete but did not converge, `result.json` is written with `"status": "not_converged"` and the final force/step values, allowing an AI agent to decide whether to retry with more cycles.
 
@@ -265,7 +265,7 @@ See also the extended [`summary.json` section](#summary-json-path-search-all) fo
 
 ### `bond-summary`
 
-When `--out-json` is enabled, `bond-summary` prints JSON to **stdout** (not a file):
+When `--out-json` is enabled, `bond-summary` prints JSON to **stdout** (no `result.json` file is written; redirect stdout if you need to persist it). This is **unlike** the MLIP-based subcommands above, which all write a `result.json` file into `out_dir`:
 
 | Field | Type | Description |
 |-------|------|-------------|

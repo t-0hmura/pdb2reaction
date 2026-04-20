@@ -65,7 +65,7 @@ Symptoms:
 
 Fixes to try:
 - Increase `--radius` (e.g., 2.6 → 3.5 Å).
-- Use `--selected-resn` to force-include residues (e.g., `--selected-resn 'A:123,B:456'`).
+- Use `--selected-resn` to force-include residues (e.g., `--selected-resn 'A:123,B:456'`). **Warning:** despite the name, `--selected-resn` accepts residue **IDs** (colon-separated integers), not 3-letter residue names — using `TYR,GLU` will silently match nothing.
 - If backbone trimming is too aggressive, set `--no-exclude-backbone`.
 
 ---
@@ -219,7 +219,7 @@ Symptoms:
 Fixes to try:
 - Reduce step size: `--step-size 0.05` (default is 0.10 bohr, unweighted Cartesian).
 - Increase max cycles: `--max-cycles 200`.
-- Check if the TS candidate has only one imaginary frequency before running IRC.
+- Check if the TS candidate has only one imaginary frequency before running IRC. **Threshold note:** the internal 5 cm⁻¹ detection cutoff (`hessian_dimer.neg_freq_thresh_cm`) and the user-side 100 cm⁻¹ TS-quality gate answer different questions; see {ref}`imaginary-mode-thresholds` for the canonical definition.
 
 ---
 

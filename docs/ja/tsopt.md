@@ -103,12 +103,13 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 | `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル | 必須 |
 | `-q, --charge INT` | 総電荷。`.gjf` テンプレートまたは `--ligand-charge`（PDB 入力または `--ref-pdb` 付きXYZ/GJF）が提供しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
 | `-l, --ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
-| `--workers INT` | MLIP予測器の並列度（workers > 1 で解析ヘシアン無効） | `1` |
+| `--workers INT` | MLIP予測器の並列度（workers > 1 で解析ヘシアン無効）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照。 | `1` |
 | `--workers-per-node INT` | ノードあたりのワーカー数。並列予測器に渡されます | `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | `--freeze-links/--no-freeze-links` | PDBのみ。リンク水素の親を凍結（`geom.freeze_atoms` にマージ） | `True` |
+| `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用。 | _None_ |
 | `--max-cycles INT` | `opt.max_cycles` に渡されるマクロサイクル上限 | `10000` |
-| `--opt-mode TEXT` | 最適化モード: `grad`（`dimer`）または `hess`（`rsirfo`）。`dimer`/`rsirfo` も指定可。 | `hess` |
+| `--opt-mode TEXT` | 最適化モード: `grad`（`dimer`）または `hess`（`rsirfo`）。`dimer`/`rsirfo` も指定可。`tsopt` では `grad`/`hess` トークンは **Dimer / RS-I-RFO** へ対応し（`opt` の L-BFGS/RFO ではない）、デフォルトは `grad` ではなく `hess` です。詳細は {ref}`ja-opt-mode-semantics` を参照してください。 | `hess` |
 | `--dump/--no-dump` | 軌跡をダンプ | `False` |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_tsopt/` |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`、`gau`、`gau_tight`、`gau_vtight`、`baker`、`never`） | `baker` |
@@ -124,8 +125,16 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 | `--dry-run/--no-dry-run` | 実行せずに入力/設定を検証し、実行計画を表示。 | `False` |
 
+(ja-flatten-precedence-caveat)=
+### `--flatten` 優先順位の注意
+
 ```{note}
-**`--flatten` はデフォルトで無効です。** `defaults.py` では `flatten_max_iter=50` と定義されていますが、CLI の初期化で `--flatten` が明示的に渡されない限り `flatten_max_iter=0` が設定されます。TS 候補に複数の虚振動数がある場合は、`--flatten` を追加して余分なモードの除去ループを有効にしてください。
+**`--flatten` はデフォルトで無効です（優先順位の注意）。** `defaults.py` では `flatten_max_iter: 50` が定義されており（下記インライン YAML 表記でも `flatten_max_iter: 50`）、それにもかかわらず CLI の初期化器はコマンドラインで `--flatten` が **明示的に** 渡されない限り `flatten_max_iter = 0` を強制します。実効値は以下のとおりです:
+
+- CLI `--flatten` **未指定** → `flatten_max_iter = 0`（余剰モード除去ループ無効）。YAML の 50 は**無視**されます。
+- CLI `--flatten` 指定 → YAML / `defaults.py` の値が有効（デフォルト `flatten_max_iter = 50`）。YAML で `hessian_dimer.flatten_max_iter` や `rsirfo.flatten_max_iter` を上書き可能です。
+
+TS 候補に複数の虚振動数がある場合は、`--flatten` を追加して余分なモードの除去ループを有効にしてください。
 ```
 
 ## 出力
@@ -156,7 +165,7 @@ out_dir/ (デフォルト:./result_tsopt/)
 
 ## 注意事項
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
-- 虚振動数モード**検出**の閾値はデフォルトで 5.0 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm` で変更可能）。この閾値未満の振動数は虚振動数としてカウントされません。選択した `root` は最適化中にどの振動モードを追跡するかを制御します。**注意:** この 5 cm⁻¹ は「虚モードがそもそも存在するか」を判定する *内部検出カットオフ* であり、TS の品質チェックではありません。[共通エラーレシピ](recipes-common-errors.md) で用いられる約 100 cm⁻¹ の経験則は、検出された虚モードが遷移状態として *物理的に意味のある* ものかを判定するための別の基準です。両者を混同しないでください。
+- 虚振動数モード**検出**の閾値はデフォルトで 5.0 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm` で変更可能）。この閾値未満の振動数は虚振動数としてカウントされません。選択した `root` は最適化中にどの振動モードを追跡するかを制御します。**注意:** この 5 cm⁻¹ の内部検出カットオフと約 100 cm⁻¹ の TS 品質ゲートは別の閾値です — 正規の定義は {ref}`ja-imaginary-mode-thresholds` を参照してください。
 - `--opt-mode` はワークフロー選択用です（デフォルト: `rsirfo`）。YAML のモードマッピングを手動で変更するのではなく、目的のアルゴリズムに合ったモードを選択してください。
 - PHVAの並進/回転射影は `freq` と同じ実装を使用し、メモリ消費を抑えつつ、活性空間の正しい固有ベクトルを保持します。
 - 設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
@@ -323,6 +332,7 @@ rsirfo:
  prim_coord: null # primary coordinates to monitor
  rx_coords: null # reaction coordinates to monitor
  hessian_update: bofill # Hessian update scheme override
+ hessian_recalc: 500 # N マクロステップごとに exact Hessian を再計算（rfo から継承）; TS 収束が遅い場合は 50-200 に下げてください（下の Tip 参照）
  hessian_recalc_reset: true # reset recalc counter after exact Hessian
  max_micro_cycles: 50 # micro-iterations per macro cycle
  augment_bonds: false # augment reaction path based on bond analysis

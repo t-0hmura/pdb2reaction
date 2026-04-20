@@ -72,6 +72,10 @@ Residue selectors identify which residues to use as substrates or extraction cen
 When selecting by residue name, if multiple residues share the same name, **all** matches are included and a warning is logged.
 ```
 
+```{warning}
+**`--selected-resn` accepts residue IDs, not names.** Despite its name, the `--selected-resn` flag (on `extract` and `all`) accepts **residue IDs** (colon-separated integers with optional chains/insertion codes, e.g. `A:123A`), **not** 3-letter residue names. Use `-c/--center 'GPP,SAM'` if you want residue-name-based substrate selection. See the [`extract` CLI options table](extract.md) for the canonical description.
+```
+
 ---
 
 (charge-specification)=
@@ -207,6 +211,36 @@ The same `--opt-mode` token selects **different optimizer algorithms** depending
 - `tsopt` accepts `grad` / `dimer` and `hess` / `rsirfo`.
 
 As a result, `--opt-mode grad` on `tsopt` is a **Dimer** TS search, not an L-BFGS minimization. Use the explicit algorithm alias (`--opt-mode lbfgs`, `--opt-mode rsirfo`, etc.) if you want to be unambiguous across subcommands.
+
+---
+
+## CLI ↔ YAML name mismatches
+
+Some CLI flags use slightly different names than their YAML counterparts, and a few are renamed when wrapped in `all`. The full mapping table lives in [YAML Reference → Common CLI-to-YAML mapping](yaml-reference.md#common-cli-to-yaml-mapping); the two most frequently misremembered cases are:
+
+(pressure-vs-pressure-atm)=
+### `--pressure` (CLI) vs `pressure_atm` (YAML)
+
+- **CLI flag:** `--pressure FLOAT` (on `freq`; in `all` it is exposed as `--freq-pressure`).
+- **YAML key:** `thermo.pressure_atm` (explicit unit suffix).
+- Both carry values in **atm** and are converted to Pa internally.
+
+(engine-vs-dft-engine)=
+### `--engine` (standalone `dft`) vs `--dft-engine` (in `all`)
+
+- On the **standalone `dft`** subcommand the backend selector is named **`--engine`** (values: `gpu`, `cpu`).
+- Inside **`pdb2reaction all`** the exact same option is renamed **`--dft-engine`** (prefix-disambiguated so it does not collide with other engine-like flags under the `all` wrapper).
+- In YAML both resolve to the same `dft` section setting; see [YAML Reference → `dft` section](yaml-reference.md#dft-section).
+
+Equivalent commands:
+
+```bash
+# Standalone dft
+pdb2reaction dft -i ts.xyz -q 0 --engine gpu
+
+# Same thing inside the all wrapper
+pdb2reaction all -i r.pdb p.pdb -c SAM --dft --dft-engine gpu
+```
 
 ---
 

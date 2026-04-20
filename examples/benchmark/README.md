@@ -27,14 +27,18 @@ For every enzyme directory we provide:
   `dataset/Cluster/<pdb>/energy_profile.csv`. These numbers populate the
   `LITERATURE` dictionary in `scripts/validate_benchmark.py` under the
   left-input baseline convention described in the paper SI-G.
-- per-model subdirectories (`model_A/`, `model_B/.../`, `model/step1/`,
+- per-model subdirectories (`model_A/`, `model_B/`, `model_Ba/`, `model/step1/`,
   etc.), each containing:
-    - `1.R.xyz`, `2.TS.xyz`, `3.P.xyz`, ... — the stationary-point
-      geometries used as pipeline inputs.
+    - stationary-point XYZ files numbered in reaction order (`1.R.xyz`, optional
+      `2.IM*.xyz` / `3.IM*.xyz`, `2.TS.xyz` or `3.TS.xyz`, final `*.P.xyz`).
+      Single-step models follow the simpler `1.R.xyz`, `2.TS.xyz`, `3.P.xyz`
+      convention; multistep models use an extended numbering with intermediate
+      (`IM`) entries — see the actual files in each subdirectory.
     - `config.yaml` — pipeline configuration used for the benchmark run.
-    - `run.sh` — the four variant command lines for the four pipeline
-      conditions (`default`, `nrp`, `tsonly`, `ana`). Uncomment the line
-      you want and execute `bash run.sh`.
+    - `run.sh` — driver script invoking one or more of the four pipeline
+      conditions (`default`, `nrp`, `tsonly`, `ana`). Different cases ship with
+      different conditions active by default; edit `run.sh` to enable/disable
+      conditions for your reproduction, then execute `bash run.sh`.
 
 We do **not** redistribute the original PDF reprints of the Himo-group
 papers, the Kromann et al. 2016 PeerJ benchmark compilation, or the Himo
@@ -54,7 +58,10 @@ optionally a DFT//MLIP single-point stage when `--dft` is active).
 
 Paper timings were measured on a single NVIDIA GH200 120GB GPU (Miyabi
 cluster). A consumer NVIDIA RTX 5080 reproduces the bezA application
-profile to within 0.3 kcal/mol per segment (paper Section 4.5).
+profile with both transition-state Gibbs energies agreeing to within
+~0.1 and ~0.6 kcal/mol respectively, and the intermediate and product
+relative Gibbs energies differing by up to 2.2 kcal/mol (paper
+Section 4.5 and Fig. 6B caption).
 
 ## Qualitative pass/fail judgment
 

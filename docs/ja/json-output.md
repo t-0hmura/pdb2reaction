@@ -276,7 +276,7 @@ cat result_opt/result.json | python -m json.tool
 
 ### `bond-summary`
 
-`--out-json` 有効時、`bond-summary` は JSON を**標準出力**に出力します（ファイルではなく）:
+`--out-json` 有効時、`bond-summary` は JSON を**標準出力**に出力します（`result.json` ファイルは書き出しません。永続化したい場合は stdout をリダイレクトしてください）。上の MLIP 系サブコマンドが `out_dir` に `result.json` を書き出すのとは**異なる**挙動です:
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|

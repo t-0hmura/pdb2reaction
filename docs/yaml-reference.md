@@ -37,6 +37,17 @@ This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan
 | `--opt-mode` | `opt_mode` | `opt` (tsopt) |
 | `--freeze-atoms` | `freeze_atoms` | `geom` |
 | `--coord-type` | `coord_type` | `geom` |
+| `--temperature` (freq, `all --freq-temperature`) | `temperature` | `thermo` |
+| `--pressure` (freq, `all --freq-pressure`) | `pressure_atm` | `thermo` |
+| `--engine` (`dft` subcommand) / `--dft-engine` (`all` wrapper) | `engine` (CLI internal) | `dft` |
+
+```{note}
+**Name mismatch — `--pressure` vs `pressure_atm`.** On the CLI the flag is `--pressure` (units implicit: atm); the matching YAML key under `thermo:` is `pressure_atm` with an explicit unit suffix. Both carry atm values and get converted to Pa internally.
+```
+
+```{note}
+**Name mismatch — `--engine` vs `--dft-engine`.** The standalone `dft` subcommand exposes the backend selector as `--engine` (gpu / cpu). In `pdb2reaction all`, to avoid colliding with other engines, the same flag is renamed `--dft-engine` — see [CLI Conventions → `--engine` vs `--dft-engine`](cli-conventions.md#engine-vs-dft-engine).
+```
 
 ### Default `--thresh` per subcommand
 
@@ -139,11 +150,11 @@ calc:
 ```
 
 **Notes:**
-- `backend` selects the MLIP engine. UMA (default) supports analytical Hessians and multi-worker inference; other backends use finite-difference Hessians only.
+- `backend` selects the MLIP engine. All backends (UMA, ORB, MACE, AIMNet2) support both analytical (autograd) and finite-difference Hessians; multi-worker inference is UMA-only.
 - `workers` / `workers_per_node` are effective with the UMA backend only.
 - `solvent` enables xTB-based implicit solvent corrections (delta correction approach). Requires `xtb` to be installed.
 - `hessian_calc_mode: Analytical` is recommended when sufficient VRAM is available
-- `workers > 1` disables analytical Hessians
+- `workers > 1` disables analytical Hessians — when `workers > 1`, analytical Hessian is **silently downgraded to finite difference (no warning is issued)** even if `hessian_calc_mode: Analytical` is set. Since `FiniteDifference` is the default anyway, this usually only matters when you explicitly opted into `Analytical`. See [MLIP Calculator → workers warning](uma-pysis.md#key-features) for details.
 - Charge/spin inherit `.gjf` template metadata when available
 - `freq` sets `calc.return_partial_hessian = true` by default (PHVA); YAML can override.
 - IRC forces `geom.coord_type = cart` and `calc.return_partial_hessian = true` regardless of YAML (partial Hessian with active-DOF processing).
@@ -261,7 +272,7 @@ Growing String Method settings.
 gs:
  fix_first: true # Keep first endpoint fixed
  fix_last: true # Keep last endpoint fixed
- max_nodes: 20 # Maximum string nodes (internal images)
+ max_nodes: 20 # Maximum string nodes (internal images); for GSM the total path has +2 endpoints
  perp_thresh: 0.005 # Perpendicular displacement threshold
  reparam_check: rms # Reparameterization check metric
  reparam_every: 1 # Reparameterization stride
@@ -277,11 +288,19 @@ gs:
  scheduler: null # Optional scheduler backend
 ```
 
+```{note}
+**`max_nodes` semantics differ between GSM and DMF.** For **GSM** (`mep-mode gs`), `gs.max_nodes` is the number of **internal images** — the total path length is `max_nodes + 2` because the two endpoints are fixed. For **DMF** (`mep-mode dmf`), the CLI flag `--max-nodes` instead counts the **number of movable images** with no implicit endpoint expansion. See [`path-opt`](path-opt.md) for per-method details.
+```
+
 ---
 
 ### `dmf`
 
 Direct Max Flux settings for MEP optimization.
+
+```{note}
+**`--max-nodes` for DMF means "number of movable images"** — unlike GSM, DMF does not add +2 for fixed endpoints. See the `gs.max_nodes` note above for the contrast.
+```
 
 ```yaml
 dmf:
@@ -374,7 +393,7 @@ hessian_dimer:
  update_interval_hessian: 500 # Hessian rebuild cadence
  neg_freq_thresh_cm: 5.0 # Imaginary-frequency detection threshold (cm⁻¹)
  flatten_amp_ang: 0.1 # Flattening amplitude (Å)
- flatten_max_iter: 50 # Flattening iteration cap
+ flatten_max_iter: 50 # Flattening iteration cap (see note below)
  flatten_sep_cutoff: 0.0 # Minimum distance between representative atoms
  flatten_k: 10 # Representative atoms sampled per mode
  flatten_loop_bofill: false # Bofill update for flatten displacements
@@ -407,6 +426,10 @@ hessian_dimer:
  max_cycles: 10000
 ```
 
+```{note}
+**`flatten_max_iter` CLI precedence exception.** The YAML value `hessian_dimer.flatten_max_iter: 50` (and the analogous `rsirfo.flatten_max_iter` override) is **overridden to `0` by the CLI unless `--flatten` is explicitly passed**, regardless of the normal `defaults < YAML < CLI` ordering. See {ref}`flatten-precedence-caveat` for the full behavior table.
+```
+
 ---
 
 ### `rsirfo`
@@ -435,6 +458,10 @@ rsirfo:
  assert_neg_eigval: false # Require negative eigenvalue at convergence
  track_mode_by_overlap: false # Track the selected TS mode by overlap with the previous Hessian
  # Also inherits rfo-like settings: trust_radius, trust_update, etc.
+```
+
+```{note}
+**`--flatten` precedence.** The flatten loop for both Hessian-Dimer and RS-I-RFO paths is configured under the `hessian_dimer:` YAML section (key `flatten_max_iter`, default 50); `rsirfo:` does not define its own flatten counter. The CLI overrides `flatten_max_iter` to `0` unless `--flatten` is explicitly passed on the command line. See {ref}`flatten-precedence-caveat`.
 ```
 
 ---

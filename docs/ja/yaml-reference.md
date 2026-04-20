@@ -21,6 +21,7 @@
 
 この優先順位は `all`, `opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, `dft` に共通です。あわせて {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
 
+(ja-common-cli-to-yaml-mapping)=
 ## 主要な CLI→YAML マッピング
 
 | CLI フラグ | YAML キー | セクション |
@@ -37,6 +38,17 @@
 | `--opt-mode` | `opt_mode` | `opt` (tsopt) |
 | `--freeze-atoms` | `freeze_atoms` | `geom` |
 | `--coord-type` | `coord_type` | `geom` |
+| `--temperature`（freq、`all --freq-temperature`） | `temperature` | `thermo` |
+| `--pressure`（freq、`all --freq-pressure`） | `pressure_atm` | `thermo` |
+| `--engine`（`dft` サブコマンド） / `--dft-engine`（`all` ラッパー） | `engine`（CLI 内部） | `dft` |
+
+```{note}
+**名前不一致 — `--pressure` vs `pressure_atm`.** CLI フラグは `--pressure`（単位は暗黙的に atm）、`thermo:` 配下の対応 YAML キーは `pressure_atm`（単位接尾辞付き）です。いずれも atm で扱い、内部で Pa に変換されます。
+```
+
+```{note}
+**名前不一致 — `--engine` vs `--dft-engine`.** 単体の `dft` サブコマンドでは `--engine`（gpu / cpu）です。`pdb2reaction all` では他の engine 系オプションと衝突を避けるため、同じフラグが `--dft-engine` にリネームされます — [CLI 規約 → `--engine` vs `--dft-engine`](cli-conventions.md#ja-engine-vs-dft-engine) を参照してください。
+```
 
 ### サブコマンド別の `--thresh` デフォルト
 
@@ -58,9 +70,9 @@ TS 最適化はより厳しい "baker" プリセットを、通常の極小化�
 ```{note}
 **`--thresh` を持たないサブコマンド。** `irc`、`freq`、`dft` には `--thresh` が**ありません**:
 
-- `irc` — 収束は `irc.rms_grad_thresh`、`irc.energy_thresh`、`irc.max_cycles` で制御されます（[`irc` セクション](#irc-section) を参照）。IRC は予測子–修正子積分器に従うため、力ベース極小化用のプリセットファミリは適用されません。
+- `irc` — 収束は `irc.rms_grad_thresh`、`irc.energy_thresh`、`irc.max_cycles` で制御されます（[`irc` セクション](#ja-irc-section) を参照）。IRC は予測子–修正子積分器に従うため、力ベース極小化用のプリセットファミリは適用されません。
 - `freq` — 最適化ステップが無いため `--thresh` は存在しません。数値精度は `--hessian-calc-mode` と MLIP 自体の精度で決まります。
-- `dft` — SCF 収束は `dft.conv_tol`（デフォルト `1e-9` Hartree）と `dft.max_cycle` で制御されます。`gau`/`baker` プリセットファミリは使用しません。[`dft` セクション](#dft-section) を参照してください。
+- `dft` — SCF 収束は `dft.conv_tol`（デフォルト `1e-9` Hartree）と `dft.max_cycle` で制御されます。`gau`/`baker` プリセットファミリは使用しません。[`dft` セクション](#ja-dft-section) を参照してください。
 ```
 
 ## 概要
@@ -143,7 +155,7 @@ calc:
 - `workers` / `workers_per_node` は UMA バックエンドでのみ有効。
 - `solvent` で xTB ベースの暗黙溶媒補正を有効化（デルタ補正方式）。`xtb` のインストールが必要。
 - VRAM が十分な場合は `hessian_calc_mode: Analytical` を使用してください。
-- `workers > 1` の場合、解析ヘシアンは無効化されます。
+- `workers > 1` の場合、解析ヘシアンは無効化されます — `hessian_calc_mode: Analytical` を明示指定していても、`workers > 1` では **警告なしに有限差分へダウングレード**されます。デフォルトがそもそも `FiniteDifference` のため、通常問題になるのは `Analytical` を明示的に選択したときだけです。詳細は [MLIP Calculator → workers warning](uma-pysis.md#ja-hessian-evaluation) を参照してください。
 - 電荷/スピンは `.gjf` テンプレートがあればそれを継承します。
 - `freq` はデフォルトで `calc.return_partial_hessian = true`（PHVA）を設定します（YAML で上書き可能）。
 - IRC は `geom.coord_type = cart` と `calc.return_partial_hessian = true` を常に強制します（YAMLより優先、partial Hessian で active-DOF 処理）。
@@ -260,7 +272,7 @@ Growing String Method（GSM）の設定。
 gs:
  fix_first: true # Keep first endpoint fixed
  fix_last: true # Keep last endpoint fixed
- max_nodes: 20 # Maximum string nodes (internal images)
+ max_nodes: 20 # Maximum string nodes (internal images); GSM ではエンドポイント2点を加えた合計が総画像数
  perp_thresh: 0.005 # Perpendicular displacement threshold
  reparam_check: rms # Reparameterization check metric
  reparam_every: 1 # Reparameterization stride
@@ -276,11 +288,19 @@ gs:
  scheduler: null # Optional scheduler backend
 ```
 
+```{note}
+**GSM と DMF で `max_nodes` の意味が異なります。** **GSM**（`mep-mode gs`）では `gs.max_nodes` は **内部画像数** を指し、エンドポイント2点が固定されるため総パス長は `max_nodes + 2` となります。**DMF**（`mep-mode dmf`）では CLI の `--max-nodes` は **可動画像数** を指し、エンドポイントの暗黙的な追加はありません。詳細は [`path-opt`](path-opt.md) を参照してください。
+```
+
 ---
 
 ### `dmf`
 
 Direct Max Flux（DMF）によるMEP最適化。
+
+```{note}
+**DMF の `--max-nodes` は「可動画像数」を意味します** — GSM と異なり、DMF は固定エンドポイント2点を加算しません。上記の `gs.max_nodes` の注記と比較してください。
+```
 
 ```yaml
 dmf:
@@ -373,7 +393,7 @@ hessian_dimer:
  update_interval_hessian: 500 # Hessian rebuild cadence
  neg_freq_thresh_cm: 5.0 # Imaginary-frequency detection threshold (cm⁻¹)
  flatten_amp_ang: 0.1 # Flattening amplitude (Å)
- flatten_max_iter: 50 # Flattening iteration cap
+ flatten_max_iter: 50 # Flattening iteration cap (下記注記を参照)
  flatten_sep_cutoff: 0.0 # Minimum distance between representative atoms
  flatten_k: 10 # Representative atoms sampled per mode
  flatten_loop_bofill: false # Bofill update for flatten displacements
@@ -406,6 +426,10 @@ hessian_dimer:
  max_cycles: 10000
 ```
 
+```{note}
+**`flatten_max_iter` の CLI 優先順位の例外。** YAML の `hessian_dimer.flatten_max_iter: 50`（および対応する `rsirfo.flatten_max_iter`）は、通常の `defaults < YAML < CLI` の順序とは異なり、**コマンドラインで `--flatten` が明示的に渡されない限り CLI によって `0` に上書きされます**。完全な動作表は {ref}`ja-flatten-precedence-caveat` を参照してください。
+```
+
 ---
 
 ### `rsirfo`
@@ -434,6 +458,10 @@ rsirfo:
  assert_neg_eigval: false # Require negative eigenvalue at convergence
  track_mode_by_overlap: false # 前回の Hessian との重なりで追跡対象 TS モードを選ぶ
  # Also inherits rfo-like settings: trust_radius, trust_update, etc.
+```
+
+```{note}
+**`rsirfo.flatten_max_iter` の CLI 優先順位の例外。** YAML で `rsirfo.flatten_max_iter` を設定しても、コマンドラインで `--flatten` が明示的に渡されない限り、CLI によって `0` に上書きされます。{ref}`ja-flatten-precedence-caveat` を参照してください。
 ```
 
 ---

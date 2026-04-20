@@ -16,7 +16,7 @@ Each row deep-links into the relevant [Troubleshooting](troubleshooting.md) sect
 | TSOPT does not converge | For LBFGS/Dimer: reduce `max_step`. For RFO/RS-I-RFO: reduce `trust_radius`/`trust_min`/`trust_max`. Increase cycles, validate TS quality first | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
 | IRC does not terminate | Reduce `--step-size`, increase `--max-cycles`, confirm a single imaginary mode | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
 | Opt/TSOPT hits `max_cycles` with `max(force)` barely above threshold | Usually handled automatically by the `opt.energy_plateau` fallback (new in v0.3.5). Manual workaround: use `--thresh gau` or `--thresh gau_loose` | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
-| MEP search (GSM/DMF) fails | Increase `--max-nodes` above default 20, enable `--preopt`, try the alternative `--mep-mode` | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
+| MEP search (GSM/DMF) fails | Increase `--max-nodes` above default 20, enable `--preopt` (note: `--preopt` defaults to **True under `all`** but **False under standalone** `path-search`/`path-opt`/`scan*`), try the alternative `--mep-mode` | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
 | CUDA/GPU runtime mismatch | Verify `torch.cuda.is_available()` and CUDA build pairing | {ref}`Installation / environment problems <installation-environment-problems>` |
 | Plot export failures | Run `plotly_get_chrome -y` to install headless Chrome | {ref}`Installation / environment problems <installation-environment-problems>` |
 
@@ -30,7 +30,7 @@ First checks:
 - Ensure element columns are present before running `extract` or `all`.  
 
 Typical fix path:  
-- Repair elements with `pdb2reaction add-elem-info -i input.pdb -o input_fixed.pdb` -> rerun extraction -> confirm active site model size (`--radius`) and residue inclusion (`--selected-resn`).  
+- Repair elements with `pdb2reaction add-elem-info -i input.pdb -o input_fixed.pdb` -> rerun extraction -> confirm active site model size (`--radius`) and residue inclusion (`--selected-resn`). **Warning:** despite the name, `--selected-resn` accepts residue **IDs** (colon-separated integers like `'A:123,B:456'`), not 3-letter residue names — using `TYR,GLU` will silently match nothing.
 
 ## Recipe 2: Charge/spin validation fails
 
@@ -63,7 +63,7 @@ Signal:
 - TSOPT stalls, IRC branches look unstable, or MEP refinement stops unexpectedly.  
 
 First checks:  
-- Confirm TS candidate quality: exactly one imaginary frequency with |ν| ≥ 100 cm⁻¹, and the corresponding imaginary mode shows displacement along the reaction coordinate.  
+- Confirm TS candidate quality: exactly one imaginary frequency with |ν| ≥ 100 cm⁻¹, and the corresponding imaginary mode shows displacement along the reaction coordinate. **Threshold clarification:** the 5 cm⁻¹ `hessian_dimer.neg_freq_thresh_cm` detection cutoff and this 100 cm⁻¹ TS-quality gate are distinct thresholds — see {ref}`imaginary-mode-thresholds` for the canonical definition.  
 - For LBFGS/Dimer: reduce `max_step` (YAML sections: `lbfgs` / `hessian_dimer`). For RFO/RS-I-RFO: reduce `trust_radius`/`trust_min`/`trust_max` (YAML sections: `rfo` / `rsirfo`). Increase cycle limits. See [YAML Reference](yaml-reference.md) for section layout.  
 - If the run stops at `max_cycles` while the force is only barely above the threshold (and the energy has flattened), the `opt.energy_plateau` fallback (new in v0.3.5) should already mark this as converged. If it does not, loosen the force threshold with `--thresh gau` or `--thresh gau_loose`.  
 

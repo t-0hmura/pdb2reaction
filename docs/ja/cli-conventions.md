@@ -70,6 +70,10 @@ pdb2reaction all --help-advanced # 全オプション
 残基名で選択する場合、同名の残基が複数あれば**すべて**が含まれ、警告がログに出力されます。
 ```
 
+```{warning}
+**`--selected-resn` は残基 ID を受け付け、残基名は受け付けません。** `extract` と `all` の `--selected-resn` フラグは、名前に反して **残基 ID**（コロン区切り整数、オプションでチェーン/挿入コード付き、例 `A:123A`）を受け付け、3 文字残基名は受け付けません。残基名ベースの基質選択には `-c/--center 'GPP,SAM'` を使用してください。正式な説明は [`extract` の CLI オプション表](extract.md) を参照してください。
+```
+
 ---
 
 (ja-charge-specification)=
@@ -205,6 +209,36 @@ PDB 入力では、`--ligand-charge` を使うと**非標準残基（基質・�
 - `tsopt` は `grad` / `dimer` と `hess` / `rsirfo` を受け付けます。
 
 したがって `tsopt` に対する `--opt-mode grad` は L-BFGS 最小化ではなく **Dimer TS 探索**です。サブコマンド間で曖昧さを避けたい場合は、明示的なアルゴリズム名（`--opt-mode lbfgs`, `--opt-mode rsirfo` など）を指定してください。
+
+---
+
+## CLI ↔ YAML 名称の不一致
+
+一部の CLI フラグは YAML の対応キーと微妙に名前が異なり、`all` でラップされたときにリネームされるものもあります。完全なマッピング表は [YAML リファレンス → 主要な CLI→YAML マッピング](yaml-reference.md#ja-common-cli-to-yaml-mapping) にあります。特に混同されやすい 2 ケースを以下に示します:
+
+(ja-pressure-vs-pressure-atm)=
+### `--pressure` (CLI) vs `pressure_atm` (YAML)
+
+- **CLI フラグ:** `--pressure FLOAT`（`freq` サブコマンド; `all` では `--freq-pressure` として公開）。
+- **YAML キー:** `thermo.pressure_atm`（単位接尾辞付き）。
+- 両方とも値は **atm** 単位で扱われ、内部で Pa に変換されます。
+
+(ja-engine-vs-dft-engine)=
+### `--engine`（単体 `dft`）vs `--dft-engine`（`all` 内）
+
+- **単体 `dft`** サブコマンドではバックエンド選択フラグは **`--engine`**（値: `gpu`, `cpu`）です。
+- **`pdb2reaction all`** 内では同じオプションが **`--dft-engine`** にリネームされます（`all` ラッパーで他の engine 系フラグと衝突しないようプレフィックスで区別するため）。
+- YAML では両方とも同じ `dft` セクション設定に解決されます。[YAML リファレンス → `dft` セクション](yaml-reference.md#ja-dft-section) を参照してください。
+
+等価なコマンド:
+
+```bash
+# 単体 dft
+pdb2reaction dft -i ts.xyz -q 0 --engine gpu
+
+# all ラッパー内で同じ処理
+pdb2reaction all -i r.pdb p.pdb -c SAM --dft --dft-engine gpu
+```
 
 ---
 

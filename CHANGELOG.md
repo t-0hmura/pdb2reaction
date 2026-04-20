@@ -6,6 +6,105 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+- GPU-resident analytical Hessian for all four backends (Orb, MACE, AIMNet2 in addition to UMA); previously only UMA provided native analytical Hessians.
+- 23-step benchmark inputs and validation scripts shipped under `examples/benchmark/` to reproduce the JCIM benchmark.
+
+### Changed
+- Orb backend default precision: `float32` → `float32-high` (higher-precision matmul on Ampere+).
+- Comprehensive proofread sweep (Mode B/C/X + LaTeX cross-check): 3-cycle fix pass covering `README.md`, `docs/*.md`, `docs/ja/*.md`, `examples/benchmark/README.md`, `CHANGELOG.md`.
+
+### Fixed
+- TS optimization: reverted TR (translation/rotation) projection because it destabilized convergence on link-hydrogen-capped clusters.
+- Doc synchronization (EN + JA): output tree `tsopt/` → `ts/`, `structures/` subdir added under `seg_*/`, AIMNet2 flagged "experimental" in backend lists.
+
+## [0.3.5] — 2026-04-13
+
+### Added
+- Energy plateau convergence fallback for optimizers stuck on flat PES (range-based criterion, threshold 1e-4 au).
+- `_all_mw_freqs_cm` helper for TS imaginary-mode tracking (commented debug prints).
+
+### Changed
+- `--refine-path` default reverted to `True` (recursive `path-search` is again the primary MEP mode under `pdb2reaction all`).
+- `trust_max` lowered from 0.20 to 0.10 for RFO / RS-I-RFO optimizers for MLIP stability.
+- Energy-plateau convergence criterion switched from mean to range with threshold 2e-4 au, and skipped for chain-of-states optimizers.
+- DFT stage now runs as a subprocess to avoid libcusolver conflicts with PyTorch; releases calculator/result refs and frees GPU memory before the subprocess.
+- DFT output shows GPU device name and CPU thread count.
+- Doc version bumped to v0.3.5; `def2-svp` recommended as OOM workaround for large systems.
+
+### Fixed
+- PDB trajectory conversion: `MODEL`/`ENDMDL` missing on first frame.
+- Preopt output directory overwrite across segments (include segment name in tag).
+- Error `result.json` now written on every CLI subcommand failure.
+- Graceful handling of DFT failure (skip diagrams, expose status in summary).
+- EulerPC corrector integration loop: safety guards against NaN / zero-norm.
+- Tangent normalization and SVD align guarded against NaN / zero.
+- Removed internal pysisyphus reference from `--input` help text.
+- Docs: quickstart paths, troubleshooting, exit codes, `track_mode_by_overlap`, `dft/` in output tree, `scan`/`path-opt`/`irc` in See Also, `path_opt → path_search`, `--model → calc.model`, `--print-parsed` scope, JA toctree captions, `yaml-reference --config` flag.
+- Phase 4 critical review: removed repeat-flag claims, synced `ION` dict, hoisted `set()`, removed dead parameter.
+
+## [0.3.4] — 2026-04-05
+
+### Added
+- Global pre-alignment stage and expanded smoke tests covering it.
+- Auto-ECP selection for def2 basis sets; removed `--engine auto`.
+
+### Fixed
+- Exception-safe `AMINO_ACIDS` restore via `try/finally` in `extract()`.
+- `bond-summary` PDB loading: `geom_from_pdb_str → geom_from_pdb`.
+- Improved xTB not-found error message with install instructions.
+- Documented GPU4PySCF Blackwell OOM limitation in `dft.md` (EN/JA).
+- 8 audit findings: docs defaults, code bugs, YAML examples.
+
+## [0.3.3] — 2026-04-05
+
+### Added
+- JSON Output Reference page (EN/JA) covering `result.json` across every subcommand.
+- `--out-json` to every subcommand; `summary.yaml` migrated to `summary.json`; `result.json` enriched with status, backend, and config fingerprint.
+- `--modified-residue` option to `extract` and `all` commands plus troubleshooting entry.
+- Python API Reference page; bond-summary / uma-pysis integrated with API references; standalone API page retired.
+- Tsutsumi et al. 2022 citation for the bezA example system.
+
+### Changed
+- `--refine-path` promoted to the default `--help` display (previously `--help-advanced`); temporarily defaulted to `False` with `path-opt` as the primary MEP path (reverted in 0.3.5).
+- Renamed `pocket → model` throughout filenames, directories, identifiers, CLI help, and user messages.
+- Rewrote quickstart-scan as an `all --scan-lists` workflow guide.
+- `reference/yaml.md` renamed to `reference/api-reference.md`; API page rewritten.
+- `-s/--scan-lists` accepts multiple values (`-s a -s b`) instead of requiring re-specification.
+- README examples migrated to bezA; examples/ cross-referenced from docs.
+- EN and JA documentation pages resynced (structure and content).
+
+### Fixed
+- `_resolve_device`: handle `'auto' → cuda/cpu`.
+- bezA description corrected (bornyl diphosphate synthase → methyltransferase; now sourced from Tsutsumi et al. 2022).
+- Resume guard, first-input handling, zero-mass, `dir()` branches, scan guard, kink HEI, `_to_json` numpy/torch support, `BOND_KW` device, bare assert, dead `dft` check, missing `tabulate` dependency.
+- MACE install docs: clarify that `fairchem-core` must be uninstalled first (e3nn conflict).
+- Shell quoting in `pip install` extras examples (use double quotes).
+- JCIM reviewer feedback across documentation (EN + JA): JA UMA hard-code, benchmark GPU spec, pipeline diagram, path-search See Also, Stage 4 guard, `UMA → MLIP` label.
+
+## [0.3.2] — 2026-03-24
+
+### Added
+- CITATION.cff with author + software co-author metadata for v0.3.2.
+- `--verbose` flag to smoke test commands.
+- Leading blank line before config blocks for readability; defaults filtering on bond/DMF blocks.
+- Auto-shortening of absolute paths in all CLI output via `click.echo` patch.
+
+### Changed
+- RFO / RS-I-RFO trust-radius defaults lowered for MLIP stability; docs updated accordingly.
+- Removed `--verbose` flag from command middle positions (now group-level / end-of-command).
+- Shortened imaginary-mode filenames: `final_imag_mode → imag`.
+- IRC initial-displacement clamp increased from 0.5 to 3.0 au.
+
+### Fixed
+- `click.echo` double blank lines: `_patched_echo` suppresses consecutive blanks; `pretty_block` spacing adjusted; section banners de-paded.
+- IRC bisection: eliminated in-place mutation of initial displacement.
+- 27- and 32-agent audit remediation: JA doc defaults, `--scan-preopt`/`--scan-endopt` defaults, `--preopt` default (False → True).
+- Theme toggle: document-level capture; 3-state → 2-state (light ↔ dark).
+- `_patch_click_echo` definition order (NameError on import).
+- `--verbose` flag semantics reconciled; always show full config dump.
+- `reference/commands` and `reference/yaml` regenerated from code to match shipped CLI.
+
 ## [0.3.1] — 2026-03-18
 
 ### Added

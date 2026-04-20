@@ -70,7 +70,7 @@ Stages run sequentially; each starts from the previous stage's relaxed result.
 -s "[(\"TYR,285,CA\",\"SAM,309,C10\",1.35)]"
 ```
 
-> **Tip:** Use `--print-parsed` to verify that your scan targets were parsed correctly before a full run.
+> **Tip:** To verify that your scan targets were parsed correctly before a full run, invoke the standalone `scan`/`scan2d`/`scan3d` subcommand with `--print-parsed --dry-run` (these flags are not exposed on `pdb2reaction all`).
 
 ---
 

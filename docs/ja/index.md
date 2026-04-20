@@ -213,7 +213,7 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 
 ## 出力構造
 
-典型的な `pdb2reaction all` の出力（デフォルトは `--refine-path True` で `path_search/` を使用。`--refine-path False` では代わりに `path_opt/` が使われます）:
+典型的な `pdb2reaction all` の出力（デフォルトは `--refine-path True` で `path_search/` を使用。`--refine-path False` では代わりに `path_opt/` が使われます — このフラグは `pdb2reaction all` にのみ属します、定義は {ref}`mep-search-options` を参照）:
 
 ```
 result_all/
@@ -225,9 +225,10 @@ result_all/
     ├── mep_trj.xyz           # 最終 MEP 軌跡
     ├── mep.pdb               # PDB 形式の MEP
     ├── mep_plot.png          # エネルギープロファイル図
-    ├── seg_*/                # セグメントごとの MEP 詳細
+    ├── seg_*/                # セグメントごとの MEP 詳細 (入力と MEP 出力)
+    │   └── structures/       # 抽出された定常点構造
     └── post_seg_*/           # セグメントごとの後処理
-        ├── tsopt/            # TS 最適化結果
+        ├── ts/               # TS 最適化結果
         ├── irc/              # IRC 軌跡
         ├── freq/             # 振動解析
         └── dft/              # DFT 結果

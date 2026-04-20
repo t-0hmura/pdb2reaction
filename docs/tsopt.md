@@ -122,12 +122,13 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Net charge. Required unless a `.gjf` template or `--ligand-charge` (PDB inputs or XYZ/GJF with `--ref-pdb`) supplies it. Overrides `--ligand-charge` when both are set. | Required unless template/derivation applies |
 | `-l, --ligand-charge TEXT` | Per-residue charge mapping (e.g., `GPP:-3,SAM:1`). Automatically derives the total system charge from PDB residue charges — no manual counting needed. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
-| `--workers INT` | MLIP predictor parallelism (workers > 1 disables analytic Hessians). | `1` |
+| `--workers INT` | MLIP predictor parallelism (workers > 1 disables analytic Hessians). See {ref}`workers-fd-downgrade` for diagnostic notes. | `1` |
 | `--workers-per-node INT` | Workers per node, forwarded to the parallel predictor. | `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links/--no-freeze-links` | PDB-only. Freeze parents of link hydrogens (merged into `geom.freeze_atoms`). See [extract](extract.md) for link-hydrogen details. | `True` |
+| `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
 | `--max-cycles INT` | Macro-cycle cap forwarded to `opt.max_cycles`. | `10000` |
-| `--opt-mode TEXT` | Optimizer preset: `grad` (`dimer`) or `hess` (`rsirfo`). Aliases `dimer`/`rsirfo` are accepted. | `hess` |
+| `--opt-mode TEXT` | Optimizer preset: `grad` (`dimer`) or `hess` (`rsirfo`). Aliases `dimer`/`rsirfo` are accepted. See {ref}`opt-mode-semantics` — on `tsopt` these tokens map to **Dimer / RS-I-RFO** (not L-BFGS / RFO as in `opt`), and the default is `hess`, not `grad`. | `hess` |
 | `--dump/--no-dump` | Dump trajectories. | `False` |
 | `-o, --out-dir TEXT` | Output directory. | `./result_tsopt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
@@ -143,8 +144,16 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 | `--dry-run/--no-dry-run` | Validate inputs/config and print the execution plan without running TS optimization. | `False` |
 
+(flatten-precedence-caveat)=
+### `--flatten` precedence caveat
+
 ```{note}
-**`--flatten` is disabled by default.** Although `defaults.py` defines `flatten_max_iter=50`, the CLI initialization sets `flatten_max_iter=0` unless `--flatten` is explicitly passed. If your TS candidate has multiple imaginary frequencies, try adding `--flatten` to enable the surplus-mode cleanup loop.
+**`--flatten` is disabled by default (precedence caveat).** Although `defaults.py` defines `flatten_max_iter: 50` (and the YAML table below shows `flatten_max_iter: 50`), the CLI initializer forces `flatten_max_iter = 0` unless `--flatten` is **explicitly** passed on the command line. In other words, the effective value is:
+
+- CLI `--flatten` **not** passed → `flatten_max_iter = 0` (surplus-mode cleanup disabled). The YAML value of 50 is **ignored**.
+- CLI `--flatten` passed → the YAML / `defaults.py` value applies (default `flatten_max_iter = 50`); you can override via YAML `hessian_dimer.flatten_max_iter` or `rsirfo.flatten_max_iter`.
+
+If your TS candidate has multiple imaginary frequencies, add `--flatten` to enable the surplus-mode cleanup loop.
 ```
 
 ## Outputs
@@ -176,7 +185,7 @@ out_dir/ (default:./result_tsopt/)
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 - Imaginary-frequency **detection** threshold defaults to 5.0 cm⁻¹ (configurable via
-  `hessian_dimer.neg_freq_thresh_cm`); frequencies with magnitudes below this threshold are not counted as imaginary. The selected `root` controls which vibrational mode is followed during optimization. **Note:** This 5 cm⁻¹ value is the *internal detection cutoff* for "is there an imaginary mode at all", not a TS-quality check. A separate ~100 cm⁻¹ rule-of-thumb is used in [Common Error Recipes](recipes-common-errors.md) to judge whether a detected imaginary mode is *physically meaningful* for a transition state — don't confuse the two.
+  `hessian_dimer.neg_freq_thresh_cm`); frequencies with magnitudes below this threshold are not counted as imaginary. The selected `root` controls which vibrational mode is followed during optimization. **Note:** This 5 cm⁻¹ internal detection cutoff is distinct from the ~100 cm⁻¹ TS-quality gate used in [Common Error Recipes](recipes-common-errors.md); see {ref}`imaginary-mode-thresholds` for the canonical definition.
 - Use `--opt-mode` to choose the algorithm workflow directly (`rsirfo` by default), instead of
   manually editing YAML mode mappings.
 - PHVA translation/rotation projection follows the same implementation as `freq`, while reducing
@@ -348,6 +357,7 @@ rsirfo:
  prim_coord: null # primary coordinates to monitor
  rx_coords: null # reaction coordinates to monitor
  hessian_update: bofill # Hessian update scheme override
+ hessian_recalc: 500 # Rebuild exact Hessian every N macro steps (inherited from rfo); lower to 50-200 if TS convergence is slow (see tip below)
  hessian_recalc_reset: true # reset recalc counter after exact Hessian
  max_micro_cycles: 50 # micro-iterations per macro cycle
  augment_bonds: false # augment reaction path based on bond analysis

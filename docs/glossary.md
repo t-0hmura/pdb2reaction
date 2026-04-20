@@ -111,7 +111,19 @@ This page provides definitions for abbreviations and technical terms used throug
 | **Bohr** | Atomic unit of length; 1 Bohr ≈ 0.529 Å. |
 | **Angstrom (Å)** | 10⁻¹⁰ m; standard unit for interatomic distances. |
 | **cm⁻¹** | Reciprocal centimeters (wavenumber); the standard unit for vibrational frequencies. Imaginary frequencies appear as negative values. |
-| **Imaginary Frequency** | A vibrational frequency corresponding to a negative eigenvalue of the Hessian. A TS has exactly one (first-order saddle point). Reported as a negative cm⁻¹ value. |
+| **Imaginary Frequency** | A vibrational frequency corresponding to a negative eigenvalue of the Hessian. A TS has exactly one (first-order saddle point). Reported as a negative cm⁻¹ value. See {ref}`imaginary-mode-thresholds` for the two separate thresholds used by pdb2reaction. |
+
+(imaginary-mode-thresholds)=
+### Imaginary-mode thresholds: 5 cm⁻¹ vs 100 cm⁻¹
+
+pdb2reaction uses **two distinct** cm⁻¹ thresholds around imaginary modes, which are easy to confuse:
+
+| Threshold | Role | Where defined | Nature |
+|-----------|------|---------------|--------|
+| **5 cm⁻¹** | *Internal detection cutoff* — frequencies with magnitude below this are **not counted as imaginary at all** (treated as rigid-body / numerical noise). | `pdb2reaction/defaults.py` as `hessian_dimer.neg_freq_thresh_cm = 5.0` | Hard-coded default; tunable via `hessian_dimer.neg_freq_thresh_cm` in YAML. |
+| **100 cm⁻¹** | *TS-quality gate* — user-facing heuristic: a physically meaningful TS imaginary mode should have \|ν\| ≥ 100 cm⁻¹ along the reaction coordinate. Below this, the "imaginary" mode is likely a soft wag or rotational artefact, not a true reaction coordinate. | `recipes-common-errors.md` and `troubleshooting.md` TS-quality checks | Not a code threshold; a reader heuristic. |
+
+These thresholds answer **different questions**: 5 cm⁻¹ decides "is this counted as imaginary?"; 100 cm⁻¹ decides "does this imaginary mode look like a real TS?". Don't conflate them — a mode at, say, 35 cm⁻¹ is counted as imaginary internally (passes the 5 cm⁻¹ filter) but fails the TS-quality gate (below 100 cm⁻¹).
 
 ---
 

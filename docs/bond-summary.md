@@ -29,7 +29,7 @@ Supported formats: **XYZ**, **PDB**, **GJF** (auto-detected by extension).
 | `--device TEXT` | Compute device (`cpu`, `cuda`) | `cpu` |
 | `--bond-factor FLOAT` | Scaling factor for covalent radii sum | `1.20` |
 | `--one-based / --zero-based` | Atom index convention in output | `--one-based` |
-| `--out-json / --no-out-json` | Write a machine-readable `result.json` next to the input(s). See [JSON Output Schema](json-output.md) for the schema. | `False` |
+| `--out-json / --no-out-json` | **Print machine-readable JSON to stdout** instead of the text report (this subcommand does **not** write a `result.json` file — redirect stdout if you need to persist it). This option is advanced: it does **not** appear in `pdb2reaction bond-summary --help`; use `--help-advanced` to see it. See [JSON Output Schema → bond-summary](json-output.md#bond-summary) for the schema. | `False` |
 
 ## Examples
 
