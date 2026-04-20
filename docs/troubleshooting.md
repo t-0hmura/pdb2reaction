@@ -248,7 +248,7 @@ Fixes to try:
 
 ## Choosing a backend
 
-Informal per-step LBFGS inference cost on 29–177 atom cluster models on an NVIDIA RTX 5080 (16 GB VRAM); accurate benchmark accuracies and pass/fail rates are published separately in the `pdb2reaction` paper.
+Informal per-step LBFGS inference cost on small-to-medium cluster models on an NVIDIA RTX 5080 (16 GB VRAM). The numbers below are order-of-magnitude guidance for backend selection, not a rigorous benchmark.
 
 | Backend | Speed (median s/step) | VRAM usage | Notes |
 |---------|----------------------|------------|-------|

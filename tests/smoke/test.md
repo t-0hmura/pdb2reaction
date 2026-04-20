@@ -60,11 +60,12 @@ path commands use `--preopt False --climb False --max-nodes 5`.
 | 22 | MEP mode | `all` (pdb+pdb, `--mep-mode dmf`) | |
 | 23 | Complex TS | `tsopt` (complex, hess) | |
 | 24 | Complex TS | `tsopt` (complex, grad) | |
-| 25-31 | Dry-run | opt/tsopt/freq/scan/dft/path-search/irc | `--dry-run` |
-| 32 | Utility | `extract` | |
-| 33 | Utility | `add-elem-info` | |
-| 34 | Utility | `trj2fig` | conditional on test1 output |
-| 35 | Utility | `energy-diagram` | |
+| 25-30 | Dry-run | opt / tsopt / freq / dft / path-search / irc | `--dry-run` |
+| 31 | Utility | `extract` | |
+| 32 | Utility | `add-elem-info` | |
+| 33 | Utility | `trj2fig` | conditional on test1 output |
+| 34 | Utility | `energy-diagram` | |
+| 35 | Utility | `bond-summary` | two PDB structures |
 | 36 | Utility | `fix-altloc` | |
 | 37 | Spec file | `scan` (1D, YAML spec) | `-s scan_spec.yaml` |
 | 38 | Spec file | `scan2d` (YAML spec) | `-s scan2d_spec.yaml` on complex model |

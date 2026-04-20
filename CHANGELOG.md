@@ -8,11 +8,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 - GPU-resident analytical Hessian for all four backends (Orb, MACE, AIMNet2 in addition to UMA); previously only UMA provided native analytical Hessians.
-- 23-step benchmark inputs and validation scripts shipped under `examples/benchmark/` to reproduce the paper benchmark.
 
 ### Changed
 - Orb backend default precision: `float32` → `float32-high` (higher-precision matmul on Ampere+).
-- Comprehensive proofread sweep (Mode B/C/X + LaTeX cross-check): 3-cycle fix pass covering `README.md`, `docs/*.md`, `docs/ja/*.md`, `examples/benchmark/README.md`, `CHANGELOG.md`.
+- Comprehensive proofread sweep (Mode B/C/X + LaTeX cross-check): 3-cycle fix pass covering `README.md`, `docs/*.md`, `docs/ja/*.md`, and `CHANGELOG.md`.
 
 ### Fixed
 - TS optimization: reverted TR (translation/rotation) projection because it destabilized convergence on link-hydrogen-capped clusters.
