@@ -67,18 +67,32 @@ Section 4.5 and Fig. 6B caption).
 
 After a case finishes, run `scripts/validate_benchmark.py` (a copy of
 `validation2/validate_results.py` with the `VALIDATION_DIR` path adjusted
-to this directory) to classify it as pass (v) / partial (~) / fail (x) /
-incomplete (-). The exact rule is documented in the paper SI-G
-("Pass/Fail Judgment Criteria"); in short:
+to this directory) to classify it into one of four display symbols that
+match the paper's main-text qualitative table (SI-G, "Pass/Fail Judgment
+Criteria"):
 
-- **v** (pass, `checkmark`) — all non-metal covalent bond changes in the
-  input R->P pair are reproduced in the IRC-relaxed endpoints;
-- **~** (partial) — only some of the expected bond changes are
-  reproduced (did not occur in the current benchmark);
-- **x** (fail) — none of the expected bond changes are reproduced, or
-  the pipeline failed to produce IRC-validated endpoints;
-- **—** (incomplete) — the pipeline did not finish (no `summary.json`,
-  no relaxed endpoints).
+- **✓** (clean pass) — all non-metal covalent bond changes in the input
+  R→P pair are reproduced in the IRC-relaxed endpoints *and* the
+  converged TS has exactly one imaginary mode (`n_imag = 1`);
+- **~** (topology pass) — the same bond-change criterion is satisfied,
+  but the converged TS carries `n_imag ≥ 2` (reaction coordinate
+  identified, TS spectrum not a clean harmonic saddle; typical for the
+  Orb backend on this benchmark);
+- **×** (fail) — the pipeline completed but the intended reaction is
+  not reproduced (bond-change mismatch, no reactive segment detected,
+  or shifted endpoints);
+- **E** (workflow error) — the pipeline crashed before producing a
+  validated TS (e.g. IRC `AssertionError`, SVD non-convergence,
+  uncaught exception detected in `all.out`). The workflow-error display
+  takes precedence over `×` whenever a crash signature is present,
+  even if the validator's status code is otherwise `MULTI_SEGMENT` etc.
+
+Raw validator status codes (`PERFECT`, `GOOD`, `WRONG_REACT`,
+`PARTIAL_REACT`, `OPT_BROKEN`, `MULTI_SEGMENT`, `ANOMALOUS`,
+`SVD_FAIL`, `ERROR`, `NOT_STARTED`, ...) are kept in the per-run CSV
+for diagnostics; the mapping to the four display symbols above is
+implemented once in `p2r_main/images/gen_data.py` of the manuscript
+source and documented in the paper SI-G.
 
 ## Primary citations for the benchmark itself
 
