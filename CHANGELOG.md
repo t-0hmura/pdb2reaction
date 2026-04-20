@@ -23,7 +23,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Zenodo DOI typo in `README.md` and `CITATION.cff`: `10.5281/zenodo.19197878` (unrelated record by another author) → `10.5281/zenodo.19197865` (pdb2reaction concept DOI).
 - TS optimization: reverted the TR (translation/rotation) projection that destabilized convergence on link-hydrogen-capped clusters.
 - Orb backend description in `README.md` and `troubleshooting.md` (EN + JA): the old "higher failure rate / SVD failures" wording did not describe the current post-analytical-Hessian behavior; reworded to "correctly identifies the reaction coordinate but TS typically carries extra small imaginary modes".
-- Five Sphinx cross-reference warnings: `file.md#anchor` call sites converted to `{ref}...<label>` form.
+- Sphinx cross-reference warnings: several `file.md#anchor` call sites converted to `{ref}...<label>` form.
 - `tests/smoke/test.md`: test count 35 → 41 (run.sh has `test1` .. `test41`); rows 36–41 and the dry-run block realigned with actual indices.
 
 ### Upgrade notes
