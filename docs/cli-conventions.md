@@ -216,7 +216,7 @@ As a result, `--opt-mode grad` on `tsopt` is a **Dimer** TS search, not an L-BFG
 
 ## CLI ↔ YAML name mismatches
 
-Some CLI flags use slightly different names than their YAML counterparts, and a few are renamed when wrapped in `all`. The full mapping table lives in [YAML Reference → Common CLI-to-YAML mapping](yaml-reference.md#common-cli-to-yaml-mapping); the two most frequently misremembered cases are:
+Some CLI flags use slightly different names than their YAML counterparts, and a few are renamed when wrapped in `all`. The full mapping table lives in {ref}`YAML Reference: Common CLI-to-YAML mapping <common-cli-to-yaml-mapping>`; the two most frequently misremembered cases are:
 
 (pressure-vs-pressure-atm)=
 ### `--pressure` (CLI) vs `pressure_atm` (YAML)
@@ -230,7 +230,7 @@ Some CLI flags use slightly different names than their YAML counterparts, and a 
 
 - On the **standalone `dft`** subcommand the backend selector is named **`--engine`** (values: `gpu`, `cpu`).
 - Inside **`pdb2reaction all`** the exact same option is renamed **`--dft-engine`** (prefix-disambiguated so it does not collide with other engine-like flags under the `all` wrapper).
-- In YAML both resolve to the same `dft` section setting; see [YAML Reference → `dft` section](yaml-reference.md#dft-section).
+- In YAML both resolve to the same `dft` section setting; see {ref}`YAML Reference: dft section <dft-section>`.
 
 Equivalent commands:
 

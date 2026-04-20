@@ -47,7 +47,7 @@
 ```
 
 ```{note}
-**名前不一致 — `--engine` vs `--dft-engine`.** 単体の `dft` サブコマンドでは `--engine`（gpu / cpu）です。`pdb2reaction all` では他の engine 系オプションと衝突を避けるため、同じフラグが `--dft-engine` にリネームされます — [CLI 規約 → `--engine` vs `--dft-engine`](cli-conventions.md#ja-engine-vs-dft-engine) を参照してください。
+**名前不一致 — `--engine` vs `--dft-engine`.** 単体の `dft` サブコマンドでは `--engine`（gpu / cpu）です。`pdb2reaction all` では他の engine 系オプションと衝突を避けるため、同じフラグが `--dft-engine` にリネームされます — {ref}`CLI 規約の --engine vs --dft-engine 節 <ja-engine-vs-dft-engine>` を参照してください。
 ```
 
 ### サブコマンド別の `--thresh` デフォルト
@@ -155,7 +155,7 @@ calc:
 - `workers` / `workers_per_node` は UMA バックエンドでのみ有効。
 - `solvent` で xTB ベースの暗黙溶媒補正を有効化（デルタ補正方式）。`xtb` のインストールが必要。
 - VRAM が十分な場合は `hessian_calc_mode: Analytical` を使用してください。
-- `workers > 1` の場合、解析ヘシアンは無効化されます — `hessian_calc_mode: Analytical` を明示指定していても、`workers > 1` では **警告なしに有限差分へダウングレード**されます。デフォルトがそもそも `FiniteDifference` のため、通常問題になるのは `Analytical` を明示的に選択したときだけです。詳細は [MLIP Calculator → workers warning](uma-pysis.md#ja-hessian-evaluation) を参照してください。
+- `workers > 1` の場合、解析ヘシアンは無効化されます — `hessian_calc_mode: Analytical` を明示指定していても、`workers > 1` では **警告なしに有限差分へダウングレード**されます。デフォルトがそもそも `FiniteDifference` のため、通常問題になるのは `Analytical` を明示的に選択したときだけです。詳細は {ref}`MLIP Calculator のヘシアン評価モード <ja-hessian-evaluation>` を参照してください。
 - 電荷/スピンは `.gjf` テンプレートがあればそれを継承します。
 - `freq` はデフォルトで `calc.return_partial_hessian = true`（PHVA）を設定します（YAML で上書き可能）。
 - IRC は `geom.coord_type = cart` と `calc.return_partial_hessian = true` を常に強制します（YAMLより優先、partial Hessian で active-DOF 処理）。

@@ -214,7 +214,7 @@ PDB 入力では、`--ligand-charge` を使うと**非標準残基（基質・�
 
 ## CLI ↔ YAML 名称の不一致
 
-一部の CLI フラグは YAML の対応キーと微妙に名前が異なり、`all` でラップされたときにリネームされるものもあります。完全なマッピング表は [YAML リファレンス → 主要な CLI→YAML マッピング](yaml-reference.md#ja-common-cli-to-yaml-mapping) にあります。特に混同されやすい 2 ケースを以下に示します:
+一部の CLI フラグは YAML の対応キーと微妙に名前が異なり、`all` でラップされたときにリネームされるものもあります。完全なマッピング表は {ref}`YAML リファレンスの主要な CLI→YAML マッピング <ja-common-cli-to-yaml-mapping>` にあります。特に混同されやすい 2 ケースを以下に示します:
 
 (ja-pressure-vs-pressure-atm)=
 ### `--pressure` (CLI) vs `pressure_atm` (YAML)
@@ -228,7 +228,7 @@ PDB 入力では、`--ligand-charge` を使うと**非標準残基（基質・�
 
 - **単体 `dft`** サブコマンドではバックエンド選択フラグは **`--engine`**（値: `gpu`, `cpu`）です。
 - **`pdb2reaction all`** 内では同じオプションが **`--dft-engine`** にリネームされます（`all` ラッパーで他の engine 系フラグと衝突しないようプレフィックスで区別するため）。
-- YAML では両方とも同じ `dft` セクション設定に解決されます。[YAML リファレンス → `dft` セクション](yaml-reference.md#ja-dft-section) を参照してください。
+- YAML では両方とも同じ `dft` セクション設定に解決されます。{ref}`YAML リファレンスの dft セクション <ja-dft-section>` を参照してください。
 
 等価なコマンド:
 

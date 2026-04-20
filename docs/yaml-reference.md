@@ -21,6 +21,7 @@ For example, if the YAML sets `charge: 0` but the CLI passes `-q -1`, the charge
 
 This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, and `dft`. See also {ref}`CLI Conventions: Configuration precedence <configuration-precedence>`.
 
+(common-cli-to-yaml-mapping)=
 ## Common CLI-to-YAML mapping
 
 | CLI flag | YAML key | Section |
@@ -46,7 +47,7 @@ This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan
 ```
 
 ```{note}
-**Name mismatch — `--engine` vs `--dft-engine`.** The standalone `dft` subcommand exposes the backend selector as `--engine` (gpu / cpu). In `pdb2reaction all`, to avoid colliding with other engines, the same flag is renamed `--dft-engine` — see [CLI Conventions → `--engine` vs `--dft-engine`](cli-conventions.md#engine-vs-dft-engine).
+**Name mismatch — `--engine` vs `--dft-engine`.** The standalone `dft` subcommand exposes the backend selector as `--engine` (gpu / cpu). In `pdb2reaction all`, to avoid colliding with other engines, the same flag is renamed `--dft-engine` — see {ref}`the --engine vs --dft-engine note in CLI Conventions <engine-vs-dft-engine>`.
 ```
 
 ### Default `--thresh` per subcommand
@@ -154,7 +155,7 @@ calc:
 - `workers` / `workers_per_node` are effective with the UMA backend only.
 - `solvent` enables xTB-based implicit solvent corrections (delta correction approach). Requires `xtb` to be installed.
 - `hessian_calc_mode: Analytical` is recommended when sufficient VRAM is available
-- `workers > 1` disables analytical Hessians — when `workers > 1`, analytical Hessian is **silently downgraded to finite difference (no warning is issued)** even if `hessian_calc_mode: Analytical` is set. Since `FiniteDifference` is the default anyway, this usually only matters when you explicitly opted into `Analytical`. See [MLIP Calculator → workers warning](uma-pysis.md#key-features) for details.
+- `workers > 1` disables analytical Hessians — when `workers > 1`, analytical Hessian is **silently downgraded to finite difference (no warning is issued)** even if `hessian_calc_mode: Analytical` is set. Since `FiniteDifference` is the default anyway, this usually only matters when you explicitly opted into `Analytical`. See {ref}`the MLIP Calculator hessian-evaluation note <hessian-evaluation>` for details.
 - Charge/spin inherit `.gjf` template metadata when available
 - `freq` sets `calc.return_partial_hessian = true` by default (PHVA); YAML can override.
 - IRC forces `geom.coord_type = cart` and `calc.return_partial_hessian = true` regardless of YAML (partial Hessian with active-DOF processing).

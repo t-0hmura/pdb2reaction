@@ -36,10 +36,10 @@ hessian_h_bohr2 = calc.get_hessian(symbols, coords_bohr)["hessian"] # ndarray (H
 from pdb2reaction.backends import create_calculator, create_ase_calculator
 ```
 
-| Function | Description |
+| 関数 | 説明 |
 |----------|-------------|
-| `create_calculator(backend="uma", **kwargs)` | Create a PySisyphus-compatible MLIP calculator. Accepts `charge`, `spin`, `model`, `device`, `solvent`, `solvent_model`, `hessian_calc_mode`, `freeze_atoms`, and other backend-specific kwargs. Unknown keys are silently filtered per-backend. |
-| `create_ase_calculator(backend="uma", **kwargs)` | Create an ASE-compatible MLIP calculator (used for DMF workflows and ASE-based tools). Same kwargs as `create_calculator`. |
+| `create_calculator(backend="uma", **kwargs)` | PySisyphus 互換の MLIP 計算機を生成します。`charge`、`spin`、`model`、`device`、`solvent`、`solvent_model`、`hessian_calc_mode`、`freeze_atoms` などバックエンド固有の kwargs も受け付けます。未知のキーはバックエンドごとに黙って除外されます。 |
+| `create_ase_calculator(backend="uma", **kwargs)` | ASE 互換の MLIP 計算機を生成します（DMF ワークフローや ASE ベースのツールで使用）。kwargs は `create_calculator` と同じです。 |
 
 ### 例
 

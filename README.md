@@ -275,7 +275,7 @@ A preprint describing `pdb2reaction` is in preparation. Currently, if you find t
   version      = {0.3.5},
   url          = {https://github.com/t-0hmura/pdb2reaction},
   license      = {GPL-3.0},
-  doi          = {10.5281/zenodo.19197878}
+  doi          = {10.5281/zenodo.19197865}
 }
 ```
 
@@ -285,7 +285,7 @@ A preprint describing `pdb2reaction` is in preparation. Currently, if you find t
 
 - **MACE and UMA cannot coexist** in the same environment due to an `e3nn` version conflict. Use separate conda environments.
 - **DFT single-point** (`pdb2reaction dft`) is practical up to ~500 atoms; larger systems may require fragmentation.
-- **ORB backend** has a higher failure rate on multi-step reactions (SVD failures in path optimization).
+- **ORB backend** tends to converge transition states with extra small imaginary modes even when the reaction coordinate is correctly identified (i.e. mechanism recovery is usually fine but a clean single-saddle TS spectrum is not guaranteed). For quantitative studies that need a single-imaginary-mode TS, prefer UMA or MACE, or re-score ORB-converged geometries with DFT.
 - **CPU-only execution** is supported but 10-100x slower than GPU.
 
 ---
