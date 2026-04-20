@@ -13,7 +13,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 - Orb backend default precision: `float32` → `float32-high` (higher-precision matmul on Ampere+).
-- Documentation: 4-symbol qualitative rubric (`✓ / ~ / × / E`) plus Orb / AIMNet2 / MyST cross-reference cleanups synchronized across `README.md`, `docs/*.md`, `docs/ja/*.md`, and this changelog. Sphinx HTML now builds with zero warnings.
+- Documentation: EN/JA synchronized (analytical-Hessian backend coverage, Orb description, MyST cross-references) across `README.md`, `docs/*.md`, and `docs/ja/*.md`. Sphinx HTML now builds with zero warnings.
 - Output tree: `tsopt/` → `ts/`; `structures/` subdirectory added under each `seg_NN/`.
 
 ### Removed
