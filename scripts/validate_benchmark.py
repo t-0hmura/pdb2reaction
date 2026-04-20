@@ -12,7 +12,7 @@ For each completed run, checks:
 Output: CSV table + human-readable summary
 
 Usage:
-    python validate_results.py [--backend uma_s1p1] [--csv results.csv]
+    python validate_benchmark.py [--backend uma_s1p1] [--csv results.csv]
 """
 
 import argparse
@@ -78,9 +78,11 @@ LITERATURE = {
     ("1PWZ", "model_B"):  {"barrier": 17.9, "rxn_e": 14.1,  "ref": "Hopmann 2008 JCTC"},
     ("1PWZ", "model_C"):  {"barrier": 18.2, "rxn_e": 5.5,   "ref": "Hopmann 2008 JCTC"},
     # 1RTQ: R -> TS1 -> IM1_1 -> IM1_2 -> TS2 -> IM2 -> TS3 -> IM3 -> TS4 -> P
-    # step1 inputs R(0)/IM1_1(11.3), step2 IM1_2(15.4)/IM2(14.2), step3 IM2/IM3(14.1), step4 IM3/P(2.4)
+    # Each step is scored under the left-input baseline convention documented in
+    # paper SI-G: barrier = max(middle stationary points) - left input,
+    # rxn_e = right input - left input.
     ("1RTQ", "model/step1"): {"barrier": 12.1, "rxn_e": 11.3,  "ref": "Chen 2008 JPC"},
-    ("1RTQ", "model/step2"): {"barrier": 0.1,  "rxn_e": -1.2,  "ref": "Chen 2008 JPC"},
+    ("1RTQ", "model/step2"): {"barrier": 4.2,  "rxn_e": -1.2,  "ref": "Chen 2008 JPC"},
     ("1RTQ", "model/step3"): {"barrier": -0.8, "rxn_e": -0.1,  "ref": "Chen 2008 JPC"},
     ("1RTQ", "model/step4"): {"barrier": -0.6, "rxn_e": -11.7, "ref": "Chen 2008 JPC"},
     # 2E7Z/model_A: R -> IM1 -> TS1 -> IM2 -> TS2 -> IM3 -> TS3 -> IM4 -> TS4 -> P
@@ -89,8 +91,13 @@ LITERATURE = {
     ("2E7Z", "model_A/step2"): {"barrier": 5.5,  "rxn_e": -27.0, "ref": "Liao 2010 PNAS"},
     ("2E7Z", "model_A/step3"): {"barrier": 9.5,  "rxn_e": -7.5,  "ref": "Liao 2010 PNAS"},
     ("2E7Z", "model_A/step4"): {"barrier": 14.7, "rxn_e": 3.6,   "ref": "Liao 2010 PNAS"},
-    # 2E7Z/model_B: R(0) -> IM1(-19.7) -> TS1(13.7) -> IM2(0.2). Input: IM1 -> IM2 (IM1 = baseline).
-    ("2E7Z", "model_B"):  {"barrier": 33.4, "rxn_e": 19.9, "ref": "Liao 2010 PNAS"},
+    # 2E7Z/model_B: neutral-Asp13 Model B single-TS run; left input is the free
+    # reactant R, so under the left-input baseline convention (SI-G) the
+    # literature barrier is E_TS1 - E_R = 13.7 kcal/mol and the reaction energy
+    # R -> IM2 is 0.2 kcal/mol. The alternative IM1-referenced barrier (33.4
+    # kcal/mol) from the Kromann 2016 repository is not used here because IM1
+    # is not the left input of the pdb2reaction run for this system.
+    ("2E7Z", "model_B"):  {"barrier": 13.7, "rxn_e": 0.2,  "ref": "Liao 2010 PNAS"},
     # 4OTA: R -> TS1 -> IM -> TS2 -> P (2 steps per model)
     ("4OTA", "model_A/step1"): {"barrier": 12.8, "rxn_e": 9.8,   "ref": "Sevastik 2007"},
     ("4OTA", "model_A/step2"): {"barrier": -2.8, "rxn_e": -13.5, "ref": "Sevastik 2007"},

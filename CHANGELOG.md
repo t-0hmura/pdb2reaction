@@ -8,7 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 - GPU-resident analytical Hessian for all four backends (Orb, MACE, AIMNet2 in addition to UMA); previously only UMA provided native analytical Hessians.
-- 23-step benchmark inputs and validation scripts shipped under `examples/benchmark/` to reproduce the JCIM benchmark.
+- 23-step benchmark inputs and validation scripts shipped under `examples/benchmark/` to reproduce the paper benchmark.
 
 ### Changed
 - Orb backend default precision: `float32` → `float32-high` (higher-precision matmul on Ampere+).
@@ -80,7 +80,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Resume guard, first-input handling, zero-mass, `dir()` branches, scan guard, kink HEI, `_to_json` numpy/torch support, `BOND_KW` device, bare assert, dead `dft` check, missing `tabulate` dependency.
 - MACE install docs: clarify that `fairchem-core` must be uninstalled first (e3nn conflict).
 - Shell quoting in `pip install` extras examples (use double quotes).
-- JCIM reviewer feedback across documentation (EN + JA): JA UMA hard-code, benchmark GPU spec, pipeline diagram, path-search See Also, Stage 4 guard, `UMA → MLIP` label.
+- External reviewer feedback integrated across documentation (EN + JA): JA UMA hard-code, benchmark GPU spec, pipeline diagram, path-search See Also, Stage 4 guard, `UMA → MLIP` label.
 
 ## [0.3.2] — 2026-03-24
 

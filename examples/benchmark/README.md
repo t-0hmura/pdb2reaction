@@ -65,10 +65,10 @@ Section 4.5 and Fig. 6B caption).
 
 ## Qualitative pass/fail judgment
 
-After a case finishes, run `scripts/validate_benchmark.py` (a copy of
-`validation2/validate_results.py` with the `VALIDATION_DIR` path adjusted
-to this directory) to classify it into one of four display symbols that
-match the paper's main-text qualitative table (SI-G, "Pass/Fail Judgment
+After a case finishes, run `scripts/validate_benchmark.py` (with its
+`VALIDATION_DIR` constant pointed at this `examples/benchmark/` tree)
+to classify each case into one of four display symbols that match the
+paper's main-text qualitative table (SI-G, "Pass/Fail Judgment
 Criteria"):
 
 - **✓** (clean pass) — all non-metal covalent bond changes in the input

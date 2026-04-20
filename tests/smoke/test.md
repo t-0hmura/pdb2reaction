@@ -32,7 +32,7 @@ All iterative tests use `--thresh gau_loose` and reduced `--max-cycles` (3-5)
 to keep runtime short. Scan tests use `--preopt False --endopt False`, and
 path commands use `--preopt False --climb False --max-nodes 5`.
 
-### Test coverage (35 tests)
+### Test coverage (41 tests)
 
 | # | Category | Command | Notes |
 |---|----------|---------|-------|
@@ -65,6 +65,12 @@ path commands use `--preopt False --climb False --max-nodes 5`.
 | 33 | Utility | `add-elem-info` | |
 | 34 | Utility | `trj2fig` | conditional on test1 output |
 | 35 | Utility | `energy-diagram` | |
+| 36 | Utility | `fix-altloc` | |
+| 37 | Spec file | `scan` (1D, YAML spec) | `-s scan_spec.yaml` |
+| 38 | Spec file | `scan2d` (YAML spec) | `-s scan2d_spec.yaml` on complex model |
+| 39 | Solvent | `opt` (xTB water) | skipped if `xtb` not on PATH |
+| 40 | Dist-freeze | `opt` (`--dist-freeze`, dry-run) | inline 3-tuple + 2-tuple |
+| 41 | `all` | `all` (pdb+pdb, `--refine-path true`) | recursive path-search default |
 
 Notes:
 - Outputs (`test1/`, `test2/`, ...) and log files (`test1.out`, ...) are created in

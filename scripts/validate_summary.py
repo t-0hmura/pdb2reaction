@@ -23,7 +23,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent))
-from validate_results import (
+from validate_benchmark import (
     run_bond_summary,
     find_input_endpoints,
     find_irc_endpoints,
@@ -123,7 +123,7 @@ def analyze(backend, pdb, model, condition="default"):
         return {"judge": "—", "reason": "NO_STRUCTURES", "input_bc": fmt_bc(bc_input_nm)}
 
     # Two-way assignment: try normal vs swapped and pick closer to input R/P
-    from validate_results import assign_irc_to_input
+    from validate_benchmark import assign_irc_to_input
     try:
         irc_R2, irc_P2, _swapped = assign_irc_to_input(inp_R, inp_P, irc_R, irc_P)
         irc_R, irc_P = irc_R2, irc_P2
@@ -188,7 +188,7 @@ def main():
             if r["lit_barrier"] != "N/A":
                 lit_map[(r["pdb"], r["model"])] = r["lit_barrier"]
     else:
-        print("Warning: results_all.csv not found. Run validate_results.py first.", file=sys.stderr)
+        print("Warning: results_all.csv not found. Run validate_benchmark.py first.", file=sys.stderr)
         return
 
     cond_list = list(CONDITIONS.keys())

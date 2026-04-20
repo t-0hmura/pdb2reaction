@@ -143,26 +143,3 @@ version_file = "pdb2reaction/_version.py"
 version_scheme = "guess-next-dev"
 local_scheme = "node-and-date"
 
-# -----------------------------------------------------------------------------
-# Manuscript-known-good package versions (2026-04, pdb2reaction JCIM submission)
-# -----------------------------------------------------------------------------
-# The runtime pins above are deliberately left loose so that new users can pick
-# up recent bug-fixes in the MLIP backends. The exact versions below are the
-# ones that produced the benchmark numbers reported in the pdb2reaction JCIM
-# paper. Reproducing the paper results to within numerical noise should only
-# require matching these specific versions.
-#
-#   torch          == 2.8.0+cu129
-#   fairchem-core  == 2.19.0      # UMA backend (facebook/UMA)
-#   orb-models     == 0.5.5       # ORB backend
-#   mace-torch     == (not installed in the benchmark env; MACE results in the
-#                     manuscript were obtained with an earlier environment.
-#                     The MACE backend is loaded dynamically via the
-#                     pdb2reaction.backends.mace plugin; any mace-torch release
-#                     that exposes the `MACECalculator` ASE interface should
-#                     work. The manuscript used mace-torch 0.3.x.)
-#   UMA checkpoint : uma-s-1p1 (HuggingFace `facebook/UMA`, s1.1 variant)
-#
-# Python: 3.11+ (tested on CPython 3.11 from the `p2r` conda environment).
-# CUDA  : 12.9 (driver + toolkit); benchmarks ran on NVIDIA GH200 120 GB.
-# -----------------------------------------------------------------------------
