@@ -25,7 +25,7 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --tsopt --thermo --dft
 ```
 
-> **Working examples** are provided in the [`examples/`](examples/) directory, including complete `all` workflow scripts for both multi-structure MEP and scan-based pipelines. The example system is GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)), which catalyzes a two-step reaction: (1) electrophilic methyl transfer from SAM to the C6 position of GPP via a C7 carbocation intermediate, and (2) proton abstraction from C6 by the catalytic base E170 to yield 6-methylgeranyl pyrophosphate (6MGPP).
+> **Working examples** are provided in the [`examples/`](examples/) directory: a `run.sh` with complete `all` workflow commands for both the multi-structure MEP and the scan-based pipeline. The example system is GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)), which catalyzes a two-step reaction: (1) electrophilic methyl transfer from SAM to the C6 position of GPP via a C7 carbocation intermediate, and (2) proton abstraction from C6 by the catalytic base E170 to yield 6-methylgeranyl pyrophosphate (6MGPP).
 
 ---
 
@@ -56,7 +56,7 @@ Both `pdb2reaction` and `mlmm-toolkit` include a custom GPU-optimized pysisyphus
 
 - [**Getting Started**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/getting-started.md) — Quick start and workflow overview
 - [**Installation**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/installation.md) — Setup and dependency installation
-- [**Examples**](examples/) — Working `all` workflow scripts (MEP and scan pipelines) for bezA
+- [**Examples**](examples/) — Working `all` workflow commands (MEP and scan pipelines) for bezA, in `examples/run.sh`
 - [**YAML Reference**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/yaml-reference.md) — Configuration options
 - [**JSON Output Reference**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/json-output.md) — Machine-readable result.json schema
 - [**Troubleshooting**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/troubleshooting.md) — Common errors, backend selection guide, VRAM requirements
@@ -126,7 +126,7 @@ For detailed installation instructions, see [Installation](https://github.com/t-
 
 ## Quick Examples
 
-The examples below use GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)) — a two-step mechanism: electrophilic methyl transfer from SAM to GPP C6 (via C7 carbocation), then proton abstraction by E170. Complete working scripts are in [`examples/`](examples/).
+The examples below use GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)) — a two-step mechanism: electrophilic methyl transfer from SAM to GPP C6 (via C7 carbocation), then proton abstraction by E170. The complete commands are in [`examples/run.sh`](examples/).
 
 ### Full workflow (multi-structure MEP)
 ```bash

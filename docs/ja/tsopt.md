@@ -15,7 +15,7 @@
 - **`--opt-mode hess`（RS‑I‑RFO）**: デフォルト。ヘシアン計算のコストを許容でき、堅牢性を重視する場合に推奨。
 - **`--opt-mode grad`（Dimer）**: 軽量な探索や、複数の TS 初期構造から素早く反復したい場合に有効。
 
-> **命名規則の注意:** CLI は `grad|dimer`（= Dimer）および `hess|rsirfo`（= RS-I-RFO、デフォルト）を受け付けます。YAML では `dimer` または `rsirfo` を直接指定してください。
+> **命名規則の注意:** CLI は `grad|dimer`（= Dimer）および `hess|rsirfo`（= RS-I-RFO、デフォルト）を受け付けます。YAML ではトップレベルの `hessian_dimer:`（Dimer）または `rsirfo:`（RS-I-RFO）ブロックを直接指定してください。
 
 XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定し、XYZ 座標を保持したまま PDB/GJF への変換が可能です。TS 初期構造が必要な場合は、2 端点なら [path-opt](path-opt.md)、2 構造以上なら [path-search](path-search.md) で HEI を取得してから `tsopt`（内部で虚振動数チェック済み）→ `irc` の順で検証してください。
 

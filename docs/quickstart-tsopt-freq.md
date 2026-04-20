@@ -37,7 +37,7 @@ result_tsopt/
 1. Terminal output: **`n=1`** with |frequency| >= 100 cm⁻¹ indicates a chemically meaningful first-order saddle point. (Note: `tsopt`'s internal imaginary-mode detector counts any mode with |ν| >= 5 cm⁻¹, so the 100 cm⁻¹ cutoff is a *quality* heuristic for TS acceptance, not the detection threshold — see [recipes-common-errors](recipes-common-errors.md).)
 2. `vib/imag_*.pdb` — open in PyMOL and animate; the mode should correspond to the expected bond-breaking/forming
 3. If `n=0` (no imaginary mode): the optimization converged to a minimum, not a TS. Try a different initial guess
-4. If `n>1` (multiple imaginary modes): add `--flatten` to attempt flattening extra modes (pass a YAML config via `--config` and set `hessian_dimer.flatten_max_iter` / `rsirfo.flatten_max_iter` to cap the iteration count)
+4. If `n>1` (multiple imaginary modes): add `--flatten` to attempt flattening extra modes (pass a YAML config via `--config` and set `hessian_dimer.flatten_max_iter` to cap the iteration count — the same key is read for both Dimer and RS-I-RFO modes)
 
 ## 2. (Optional) Separate frequency analysis
 

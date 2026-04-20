@@ -199,11 +199,11 @@ class UMAcore:
 #                    PySisyphus calculator class
 # ===================================================================
 class UMACalculator(MLIPCalculator):
-    """UMA (fairchem) backend — full feature set.
+    """UMA (fairchem) backend.
 
     Extends ``MLIPCalculator`` with UMA-specific features:
-    GPU-accelerated FD Hessian, analytical Hessian (autograd),
-    multi-worker inference, and VRAM logging.
+    multi-worker inference and VRAM logging. Analytical Hessian
+    (autograd) is also available on the other backends.
     """
 
     def __init__(

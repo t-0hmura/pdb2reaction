@@ -6,7 +6,7 @@ Pairwise MEP optimization via GSM or DMF with UMA calculator.
 Example:
     pdb2reaction path-opt -i reac.pdb prod.pdb -q 0 -m 1
 
-For detailed documentation, see: docs/path_opt.md
+For detailed documentation, see: docs/path-opt.md
 """
 
 from __future__ import annotations

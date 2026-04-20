@@ -15,7 +15,7 @@
 - Use **`--opt-mode hess` (RS‑I‑RFO)** when you want the default, conservative optimizer and you can afford Hessian work.
 - Use **`--opt-mode grad` (Dimer)** when you want a lighter-weight search, or when you plan to iterate quickly from several TS guesses.
 
-> **Naming note:** The CLI accepts `grad|dimer` (= Dimer) and `hess|rsirfo` (= RS-I-RFO, default). In YAML, use `dimer` or `rsirfo` directly.
+> **Naming note:** The CLI accepts `grad|dimer` (= Dimer) and `hess|rsirfo` (= RS-I-RFO, default). In YAML, use the top-level `hessian_dimer:` (Dimer) or `rsirfo:` (RS-I-RFO) blocks directly.
 
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion. If you need a TS guess first, run [path-opt](path-opt.md) (two structures) or [path-search](path-search.md) (two or more structures) and then optimize the HEI with `tsopt` (which includes an imaginary-frequency check) → `irc`.
 

@@ -6,7 +6,7 @@ Repair PDB element symbols (columns 77-78) with Biopython inference.
 Example:
     pdb2reaction add-elem-info -i 1abc.pdb
 
-For detailed documentation, see: docs/add_elem_info.md
+For detailed documentation, see: docs/add-elem-info.md
 """
 
 from __future__ import annotations

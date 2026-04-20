@@ -78,11 +78,6 @@ pdb2reaction scan -i input.pdb -q 0 -s \
  '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]' \
  --max-step-size 0.20 --dump --out-dir ./result_scan/ --opt-mode grad \
  --preopt --endopt
-
-# 単一の --scan-lists の後に複数リテラルを渡す
-pdb2reaction scan -i input.pdb -q 0 -s \
- '[("TYR,285,CA","SAM,309,C10",1.35)]' \
- '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]'
 ```
 
 ## YAML/JSON スペックファイルの書式（推奨）

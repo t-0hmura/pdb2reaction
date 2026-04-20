@@ -6,7 +6,7 @@ Central configuration defaults for pdb2reaction workflows.
 All default dictionaries are defined here to avoid redundant definitions across modules.
 Modules should import defaults from here instead of defining local copies.
 
-Shared optimizer/IRC/path defaults — keep aligned with mlmm_toolkit/defaults.py.
+Shared optimizer/IRC/path defaults — keep aligned with mlmm_toolkit/mlmm/defaults.py.
 Project-specific overrides are commented with rationale.
 """
 

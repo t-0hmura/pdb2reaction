@@ -6,7 +6,7 @@ Recursive MEP construction using GSM/DMF with bond-change detection and refineme
 Example:
     pdb2reaction path-search -i reactant.pdb product.pdb -q 0
 
-For detailed documentation, see: docs/path_search.md
+For detailed documentation, see: docs/path-search.md
 """
 
 from __future__ import annotations
