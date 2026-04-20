@@ -6,16 +6,29 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.3.6] — 2026-04-21
+
 ### Added
-- GPU-resident analytical Hessian for all four backends (Orb, MACE, AIMNet2 in addition to UMA); previously only UMA provided native analytical Hessians.
+- GPU-resident analytical Hessian for all four backends (Orb, MACE, AIMNet2 in addition to UMA); previously only UMA provided a native analytical Hessian and the other backends silently fell back to finite differences when `--hessian-calc-mode Analytical` was requested. The backend-level silent fallback is removed — Orb / MACE / AIMNet2 now either produce an analytical Hessian or raise `BackendError`. The long-standing worker-level downgrade (UMA multi-worker path uses finite differences regardless of `hessian_calc_mode`) is unchanged and remains documented in `docs/uma-pysis.md` and `docs/yaml-reference.md`.
 
 ### Changed
 - Orb backend default precision: `float32` → `float32-high` (higher-precision matmul on Ampere+).
-- Comprehensive proofread sweep (Mode B/C/X + LaTeX cross-check): 3-cycle fix pass covering `README.md`, `docs/*.md`, `docs/ja/*.md`, and `CHANGELOG.md`.
+- Documentation: 4-symbol qualitative rubric (`✓ / ~ / × / E`) plus Orb / AIMNet2 / MyST cross-reference cleanups synchronized across `README.md`, `docs/*.md`, `docs/ja/*.md`, and this changelog. Sphinx HTML now builds with zero warnings.
+- Output tree: `tsopt/` → `ts/`; `structures/` subdirectory added under each `seg_NN/`.
+
+### Removed
+- `examples/benchmark/` (185 files) and `scripts/validate_benchmark.py` / `scripts/validate_summary.py`. The 6-enzyme / 23-step cluster-model benchmark now ships as part of the accompanying preprint Supporting Information (`p2r_si_benchmark_inputs/` + `p2r_si_coords/`), not the software repository.
 
 ### Fixed
-- TS optimization: reverted TR (translation/rotation) projection because it destabilized convergence on link-hydrogen-capped clusters.
-- Doc synchronization (EN + JA): output tree `tsopt/` → `ts/`, `structures/` subdir added under `seg_*/`, AIMNet2 flagged "experimental" in backend lists.
+- Zenodo DOI typo in `README.md` and `CITATION.cff`: `10.5281/zenodo.19197878` (unrelated record by another author) → `10.5281/zenodo.19197865` (pdb2reaction concept DOI).
+- TS optimization: reverted the TR (translation/rotation) projection that destabilized convergence on link-hydrogen-capped clusters.
+- Orb backend description in `README.md` and `troubleshooting.md` (EN + JA): the old "higher failure rate / SVD failures" wording did not describe the current post-analytical-Hessian behavior; reworded to "correctly identifies the reaction coordinate but TS typically carries extra small imaginary modes".
+- Five Sphinx cross-reference warnings: `file.md#anchor` call sites converted to `{ref}...<label>` form.
+- `tests/smoke/test.md`: test count 35 → 41 (run.sh has `test1` .. `test41`); rows 36–41 and the dry-run block realigned with actual indices.
+
+### Upgrade notes
+- Users who relied on `examples/benchmark/` or `scripts/validate_*` should pull the benchmark set from the preprint Supporting Information, or keep a copy of the 0.3.5 tarball.
+- Runs that implicitly depended on `--hessian-calc-mode Analytical` silently falling back to finite differences on Orb / MACE / AIMNet2 will now compute true analytical Hessians. Set `--hessian-calc-mode FiniteDifference` explicitly to restore the old behavior.
 
 ## [0.3.5] — 2026-04-13
 

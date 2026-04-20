@@ -272,7 +272,7 @@ A preprint describing `pdb2reaction` is in preparation. Currently, if you find t
   title        = {pdb2reaction},
   year         = {2026},
   month        = {4},
-  version      = {0.3.5},
+  version      = {0.3.6},
   url          = {https://github.com/t-0hmura/pdb2reaction},
   license      = {GPL-3.0},
   doi          = {10.5281/zenodo.19197865}

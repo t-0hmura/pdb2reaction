@@ -274,6 +274,7 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 | `--dft-conv-tol FLOAT` | SCF収束閾値 | `1e-9` |
 | `--dft-grid-level INT` | PySCFグリッドレベル | `3` |
 
+(ja-scan-options-single-input-runs)=
 ### スキャンオプション（単一入力）
 
 | オプション | 説明 | デフォルト |

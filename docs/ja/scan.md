@@ -218,7 +218,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
-| `--preopt/--no-preopt` | スキャン前に無バイアス最適化を実行。**スコープ依存デフォルト:** 単体では `False`、`pdb2reaction all` 経由では `True` に反転されます（[`all` → スキャンオプション](all.md)を参照）。 | `False` |
+| `--preopt/--no-preopt` | スキャン前に無バイアス最適化を実行。**スコープ依存デフォルト:** 単体では `False`、`pdb2reaction all` 経由では `True` に反転されます（{ref}`all → スキャンオプション <ja-scan-options-single-input-runs>` を参照）。 | `False` |
 | `--endopt/--no-endopt` | 各ステージ後に無バイアス最適化を実行 | `False` |
 | `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照。 | `False` |
 
