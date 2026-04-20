@@ -151,7 +151,7 @@ calc:
 ```
 
 **注記:**
-- `backend` で MLIP エンジンを選択。UMA（デフォルト）は解析ヘシアンとマルチワーカー推論に対応。他のバックエンドは有限差分ヘシアンを使用。
+- `backend` で MLIP エンジンを選択。すべてのバックエンド（UMA, ORB, MACE, AIMNet2）が解析ヘシアン（`hessian_calc_mode: Analytical`）と有限差分ヘシアンの両方に対応。マルチワーカー推論は UMA バックエンド限定。
 - `workers` / `workers_per_node` は UMA バックエンドでのみ有効。
 - `solvent` で xTB ベースの暗黙溶媒補正を有効化（デルタ補正方式）。`xtb` のインストールが必要。
 - VRAM が十分な場合は `hessian_calc_mode: Analytical` を使用してください。
