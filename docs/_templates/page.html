@@ -69,12 +69,14 @@
         captionText = (captionTextEl ? captionTextEl.textContent : caption.textContent || '').trim().toLowerCase();
       }
       var hideGroup = visibleCount === 0;
-      if (isJa && captionText === 'language') {
-        hideGroup = true;
-      }
+      // On JA pages the JA navigation is nested under the English "Language"
+      // caption of the master toctree. Keep the group visible (it contains
+      // the JA nav) but hide just the "Language" caption label so the JA
+      // pages don't show an English section title above the JA links.
+      var hideCaptionOnly = isJa && captionText === 'language' && !hideGroup;
       setHidden(ul, hideGroup);
       if (caption && caption.classList && caption.classList.contains('caption')) {
-        setHidden(caption, hideGroup);
+        setHidden(caption, hideGroup || hideCaptionOnly);
       }
     });
   }
