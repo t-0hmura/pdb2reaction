@@ -7,18 +7,6 @@ Refer to the upstream projects for additional details:
 - fairchem / UMA: <https://github.com/facebookresearch/fairchem>, <https://huggingface.co/facebook/UMA>
 - Hugging Face token & security: <https://huggingface.co/docs/hub/security-tokens>
 
-## Which path should I follow?
-
-```text
-Are you on a clean CUDA 12.9 machine and want UMA only?
-  |                                             |
-  v yes                                         v no (HPC modules, alt backends, DMF, xTB, DFT, ...)
-[Quick start]  (4 commands)                     [Step-by-step installation]  (8 steps, opt-in extras)
-```
-
-- **Quick start** — if `torch` with CUDA works out of the box and you only need the default GSM MEP path with UMA, follow the 4-line recipe below.
-- **Step-by-step installation** — use this if you need any of: environment modules (`module load cuda/...`), a dedicated conda env, DMF (`cyipopt`), alternative MLIP backends (ORB / AIMNet2 / MACE), implicit solvent via xTB, or `--dft` single-point post-processing.
-
 ## Quick start
 
 Below is a minimal setup example that works on many CUDA 12.9 clusters. Adjust module names and versions to match your system. This example assumes the default GSM MEP mode (`--mep-mode gsm`). For DMF (`--mep-mode dmf`), install cyipopt via conda first.

@@ -7,18 +7,6 @@
 - fairchem / UMA: <https://github.com/facebookresearch/fairchem>, <https://huggingface.co/facebook/UMA>
 - Hugging Faceトークンとセキュリティ: <https://huggingface.co/docs/hub/security-tokens>
 
-## どちらの手順を選べばよいか
-
-```text
-クリーンな CUDA 12.9 環境で UMA のみ使えればよい?
-  |                                                          |
-  v はい                                                      v いいえ（HPC モジュール、他バックエンド、DMF、xTB、DFT など）
-[クイックスタート]  （4 コマンド）                              [詳細なインストール手順]  （8 ステップ、任意の追加導入）
-```
-
-- **クイックスタート** — `torch`（CUDA 対応）がそのまま動き、デフォルトの GSM MEP と UMA だけで十分なら、下の 4 行レシピに従ってください。
-- **詳細なインストール手順** — 以下のいずれかに該当する場合はこちらを使ってください: 環境モジュール（`module load cuda/...`）、専用の conda 環境、DMF（`cyipopt`）、追加の MLIP バックエンド（ORB / AIMNet2 / MACE）、xTB による暗黙溶媒、`--dft` 一点計算の後処理。
-
 ## クイックスタート
 
 以下は多くの CUDA 12.9 クラスターで動作する最小限のセットアップ例です。モジュール名やバージョンはお使いの環境に合わせて調整してください。この例はデフォルトの GSM による MEP 探索（`--mep-mode gsm`）を前提としています。DMF（`--mep-mode dmf`）を使用する場合は、先に conda で cyipopt をインストールしてください。
