@@ -17,7 +17,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Output tree: per-segment `tsopt/` → `ts/`; `structures/` subdirectory added under each `post_seg_NN/`.
 
 ### Removed
-- `examples/benchmark/` and `scripts/validate_benchmark.py` / `scripts/validate_summary.py`. The 6-enzyme / 23-step cluster-model benchmark now ships as part of the accompanying preprint Supporting Information (`p2r_si_data/`), not the software repository.
+- `examples/benchmark/` and `scripts/validate_benchmark.py` / `scripts/validate_summary.py`. The 6-enzyme / 23-step cluster-model benchmark now ships as part of the accompanying preprint Supporting Information, not the software repository.
 
 ### Fixed
 - Zenodo DOI typo in `README.md` and `CITATION.cff`: `10.5281/zenodo.19197878` (unrelated record by another author) → `10.5281/zenodo.19197865` (pdb2reaction concept DOI).
