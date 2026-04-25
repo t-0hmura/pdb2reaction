@@ -58,11 +58,18 @@ pdb2reaction extract -i complex.pdb -c 'SAM,GPP,MG' -o cluster.pdb
 # Form 2 — a separate PDB containing only the substrate residues.
 pdb2reaction extract -i complex.pdb -c substrate.pdb -o cluster.pdb
 
-# Form 3 — chain-specific: `chainID:resSeq` or `chainID:resName`
-pdb2reaction extract -i complex.pdb -c 'A:44,A:SAM,A:GPP' -o cluster.pdb
+# Form 3 — chain-aware: `chainID:resSeq` (numeric resSeq is honored)
+pdb2reaction extract -i complex.pdb -c 'A:44' -o cluster.pdb
 ```
 
-The pocket radius around the centers is set by `-r <Å>` (default 3.0 Å).
+> **Caveat**: only `chainID:resSeq` (numeric) is parsed as chain-aware
+> in `extract.py`. Tokens like `'A:SAM'` (chain:resName) silently fall
+> back to a plain resName match across all chains. To restrict by chain
+> you must supply numeric resSeq. To select all SAM in chain A, run
+> `extract` with `-c 'SAM'` first then trim chains by hand, or use the
+> Form-2 substrate-PDB workflow.
+
+The pocket radius around the centers is set by `-r <Å>` (default 2.6 Å).
 All residues with at least one heavy atom inside the radius are kept.
 
 ## Per-residue charge mapping (`-l / --ligand-charge`)

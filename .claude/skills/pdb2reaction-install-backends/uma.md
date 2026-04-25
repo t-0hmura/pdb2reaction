@@ -51,12 +51,16 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb \
     -b uma                       # explicit, identical to default
 ```
 
-Available models (set via `--model` or via `pdb2reaction.defaults.UMA_CALC_KW`):
+Available models (set via `--model` or via `pdb2reaction.defaults.UMA_CALC_KW`).
+Two equivalent notations are common:
 
-| `--model` value | Notes |
-|---|---|
-| `uma-s-1.1` (default) | Smaller / faster, sufficient for most workflows |
-| `uma-m-1.1` | Larger, slightly more accurate, ~3× slower |
+| config string (`--model`) | paper notation | HuggingFace repo | Notes |
+|---|---|---|---|
+| `uma-s-1p1` (default) | UMA-S-1.1 / UMA-s-1.1 | `facebook/UMA-S-1.1` | Smaller / faster, sufficient for most workflows |
+| `uma-m-1p1` | UMA-M-1.1 / UMA-m-1.1 | `facebook/UMA-M-1.1` | Larger, slightly more accurate, ~3× slower |
+
+`p` is the dot replacement used by fairchem-core's config parser
+(`1p1` ↔ `1.1`). Pass the config string (`uma-s-1p1`) on the CLI.
 
 Inspect the full default kwarg dict:
 
