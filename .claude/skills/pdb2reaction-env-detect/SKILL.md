@@ -116,11 +116,12 @@ command -v module >/dev/null && module list 2>&1
 
 | Placeholder | How to fill it from the output above |
 |---|---|
-| `<YOUR_QUEUE>` | A queue from `qstat -Q` (PBS) or partition from `sinfo` (SLURM) whose `max_walltime` covers your job |
+| `<YOUR_QUEUE>` | A queue from `qstat -Q` (PBS) whose `max_walltime` covers your job |
+| `<YOUR_PARTITION>` | A partition from `sinfo -o "%P %l %N %G"` (SLURM) whose `TIMELIMIT` covers your job |
 | `<NCPU>` | `np` from `pbsnodes -a` (PBS) or `--cpus-per-task` budget (SLURM) |
 | `<NGPU>` | `gpus = N` from `pbsnodes -a` (PBS) or `--gres=gpu:N` (SLURM) |
-| `<MEM>` | A safe fraction of the per-node memory shown by `pbsnodes` / `sinfo` |
-| `<CUDA_MODULE>` | The line returned by `module avail cuda` (e.g. `cuda/12.x` — exact value depends on the cluster) |
+| `<MEM>` | A safe fraction of the per-node memory: `pbsnodes -a \| grep totalmem` (PBS) or `sinfo -o "%m"` (SLURM) |
+| `<CUDA_MODULE>` | A line from `module avail 2>&1 \| grep -i cuda` (naming varies: `cuda`, `cudatoolkit`, `nvhpc`, …) |
 | `<YOUR_ENV>` | The conda env that imported `pdb2reaction` in step 7 |
 | `<HH:MM:SS>` | Your estimated walltime, capped by the queue's `resources_max.walltime` |
 
@@ -134,7 +135,7 @@ placeholder used by other `pdb2reaction-*` skills.
   echo "=== Scheduler ==="
   command -v qsub   >/dev/null && echo "PBS"
   command -v sbatch >/dev/null && echo "SLURM"
-  command -v qsub sbatch >/dev/null || echo "local only"
+  command -v qsub >/dev/null || command -v sbatch >/dev/null || echo "local only"
 
   echo
   echo "=== Architecture ==="

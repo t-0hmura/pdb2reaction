@@ -77,7 +77,7 @@ need both toolkits available on the same host.
 ## Conda env templates
 
 Replace `<...>` with the values you discovered in `env-detect`. The
-templates assume `python=3.11`; `pdb2reaction` requires Python ≥ 3.10.
+templates assume `python=3.11`; `pdb2reaction` requires Python ≥ 3.11.
 
 `env_pdb2reaction.yml` (UMA / Orb / AIMNet2 / DFT / xTB):
 

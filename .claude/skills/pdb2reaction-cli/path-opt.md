@@ -49,7 +49,7 @@ pdb2reaction path-opt -i R.pdb P.pdb -l 'GPP:-3' --mep-mode dmf -b mace \
 ```
 result_path_opt/
 ├── result.json
-├── final_string_geoms.xyz          # converged string trajectory
+├── final_geometries_trj.xyz          # converged string trajectory
 ├── nodes/                          # per-node geometries
 └── hei.{xyz,pdb}                   # highest-energy image (TS candidate)
 ```

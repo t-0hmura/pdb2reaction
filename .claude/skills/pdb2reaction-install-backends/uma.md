@@ -86,19 +86,29 @@ subcommand; see `pdb2reaction-cli/SKILL.md`.
 
 ## Multi-GPU inference (advanced)
 
-Under heavy MEP search load you can shard inference across multiple GPUs:
+Under heavy MEP search load you can shard inference across multiple GPUs.
+Configure via a YAML config (`--config`) — there is no `--calc-kwargs`
+CLI flag:
+
+```yaml
+# multi_worker.yaml
+calc:
+  workers: 4
+  workers_per_node: 4
+```
 
 ```bash
-pdb2reaction all -i ... -b uma \
-    --calc-kwargs '{"workers": 4, "workers_per_node": 4}'
+pdb2reaction all -i ... -b uma --config multi_worker.yaml
 ```
 
 This spawns a Ray worker pool. Limitations:
 
-- One node only (no cross-node sharding via `pdb2reaction`).
+- **Single node only** (no cross-node sharding via `pdb2reaction`).
 - All workers must see the same GPUs (e.g. `CUDA_VISIBLE_DEVICES=0,1,2,3`).
-- Adds overhead for small graphs — turn off when you're optimizing
-  systems below ~100 atoms.
+- Adds overhead for small graphs — disable for systems below ~100 atoms.
+- **Silent Hessian downgrade**: when `workers > 1`, analytical Hessian
+  is silently disabled in favor of finite-difference. See
+  `pdb2reaction/docs/uma-pysis.md` for the full caveat.
 
 ## Known gotchas
 

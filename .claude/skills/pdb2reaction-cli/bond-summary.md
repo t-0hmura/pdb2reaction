@@ -2,66 +2,73 @@
 
 ## Purpose
 
-Detect bond changes between two structures. Reports formed / broken
-bonds using the same 1.3× covalent-radius cutoff that `path-search`
-uses for recursive segmentation and that `irc` reports as
-`bond_changes`.
+Detect bond changes between consecutive structures. Reports formed /
+broken bonds using the same algorithm `path-search` invokes for
+recursive segmentation and that `irc` reports under `bond_changes`.
 
-Use as a sanity check on R vs. P, or to understand how a recursive
+Use it as a sanity check on R vs P, or to understand how a recursive
 `path-search` decided where to split a multi-step mechanism.
 
 ## Synopsis
 
 ```bash
-pdb2reaction bond-summary -i reactant.pdb product.pdb [--threshold 1.3]
+pdb2reaction bond-summary -i a.pdb -i b.pdb [-i c.pdb ...] \
+    [--bond-factor 1.2] [--device cpu] [--one-based|--zero-based]
 ```
 
 ## Key flags
 
 | flag | type | default | description |
 |---|---|---|---|
-| `-i, --input` | path×2 | required | Two structures with identical atom ordering |
-| `--threshold` | float | 1.3 | Covalent-radius multiplier for bond cutoff |
-| `--csv` | path | none | Optionally write a CSV of pairs + distances |
+| `-i, --input` | path | required (≥2) | Repeat `-i` for each structure (XYZ / PDB / GJF). Atom ordering must be identical across all inputs. |
+| `--device` | str | `cpu` | Compute device for distance calculations |
+| `--bond-factor` | float | `1.2` | Covalent-radius multiplier for bond cutoff |
+| `--one-based / --zero-based` | flag | `--one-based` | Atom-index numbering convention in the report |
+
+(Internal `margin_fraction` of 0.05 further shrinks the threshold; see
+`bond_changes.py`.)
 
 ## Examples
 
 ```bash
-pdb2reaction bond-summary -i 1.R.pdb 3.P.pdb
+# R vs P
+pdb2reaction bond-summary -i 1.R.pdb -i 3.P.pdb
+
+# Multi-frame check across an MEP
+pdb2reaction bond-summary -i frame_01.xyz -i frame_05.xyz -i frame_10.xyz
 ```
 
-Output (text on stdout):
+## Output
+
+Text on stdout, e.g.:
 
 ```
-FORMED:
-  C(SAM 320) — C(GPP 321 7)   3.17 Å → 1.68 Å
-  O(GLU 186) — H(GPP 321 H11) 2.23 Å → 0.98 Å
-BROKEN:
-  S(SAM 320) — C(SAM 320 CS1) 1.80 Å → 3.43 Å
-  C(GPP 321 7) — H(GPP 321 H11) 1.10 Å → 2.32 Å
-```
-
-## Output (when `--csv`)
-
-```
-atom1, atom2, dist_R, dist_P, change
-"CS1 SAM 320", "C7 GPP 321", 3.170, 1.678, "FORMED"
-...
+Pair 1 -> 2:
+  Bond formed (2):
+    CS1 SAM 320 — C7 GPP 321 :  3.17 Å -> 1.68 Å
+    OE2 GLU 186 — H11 GPP 321 :  2.23 Å -> 0.98 Å
+  Bond broken (2):
+    S SAM 320 — CS1 SAM 320 :  1.80 Å -> 3.43 Å
+    C7 GPP 321 — H11 GPP 321 :  1.10 Å -> 2.32 Å
 ```
 
 ## Caveats
 
-- Atom ordering must match between the two inputs. If they don't,
+- Atom ordering must match across all inputs. If they don't, run
   `pdb2reaction extract` first to canonicalize.
-- The 1.3× threshold is empirical. Metal–ligand bonds often hover
-  around the cutoff; raise to 1.5 or 1.6 to be more permissive.
-- Bond-change detection is geometry-based, not physics-based — it
-  doesn't tell you whether the bond is covalent vs. ionic vs.
-  hydrogen-bonded.
+- The default `1.2` × covalent-radius cutoff (with internal margin
+  fraction `0.05`) is geometry-only — it does not classify covalent
+  vs ionic vs hydrogen-bonded; metal–ligand interactions may hover
+  near the cutoff. Raise `--bond-factor` to 1.5 / 1.6 for permissive
+  detection.
+- Bond-change blocks are also embedded in `summary.json`'s per-segment
+  output as a list of `{"Bond formed (k)": [...], "Bond broken (k)": [...]}`
+  dicts (one per consecutive pair). See `../pdb2reaction-workflows-output/SKILL.md`.
 
 ## See also
 
-- `irc.md` — same algorithm, applied to IRC endpoints.
+- `irc.md` — same algorithm applied to IRC endpoints.
 - `path-search.md` — uses bond changes for recursive segmentation.
-- `pdb2reaction-workflows-output/SKILL.md` — interpreting
+- `../pdb2reaction-workflows-output/SKILL.md` — interpreting
   `summary.json["segments"][i]["bond_changes"]`.
+- Defaults: `import pdb2reaction.defaults as d; print(d.BOND_KW)`

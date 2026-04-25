@@ -17,16 +17,19 @@ turned off by default.
 
 Two routes; pick whichever your env can use.
 
-**Route A — `xtb-python` (recommended, pip-installable):**
+**Route A — `xtb` Python bindings (recommended, pip-installable):**
 
 ```bash
-pip install xtb-python
+pip install xtb
 ```
+
+The PyPI package name is `xtb` (not `xtb-python`); the import name is
+also `xtb`.
 
 Verify:
 
 ```bash
-python -c "import xtb; print('xtb-python:', xtb.__version__)"
+python -c "import xtb; print('xtb:', xtb.__version__)"
 ```
 
 **Route B — system `xtb` binary (xtb 6.7+):**

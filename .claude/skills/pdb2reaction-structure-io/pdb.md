@@ -100,13 +100,21 @@ extracted PDB's B-factor field for downstream consumption.
 
 ## Common edits
 
-### Rename residue 44 from CYS to CSS
+### Rename residue 44 in chain A from CYS to CSS
+
+PDB columns: resName 18-20, chainID 22, resSeq 23-26. Match all three
+explicitly via `awk substr` (the natural column-aware tool — sed regex
+on PDB lines is error-prone because of the dot-counts):
 
 ```bash
-sed -i '/^ATOM.\{17\}.\{4\}CYS.\{1\}A.\{3\}44/{ s/CYS/CSS/ }' my.pdb
+awk 'BEGIN{OFS=""} \
+  ($1=="ATOM" || $1=="HETATM") && substr($0,18,3)=="CYS" \
+    && substr($0,22,1)=="A" && substr($0,23,4)+0==44 \
+    { $0 = substr($0,1,17) "CSS" substr($0,21) } \
+  { print }' my.pdb > my_renamed.pdb
 ```
 
-(The `.\{N\}` placeholders avoid touching atoms in other residues.)
+For non-trivial edits use Biopython (handles altloc, ANISOU, …).
 
 ### Add element column with `add-elem-info`
 
@@ -117,7 +125,7 @@ pdb2reaction add-elem-info -i my.pdb -o my_with_elem.pdb
 ### Resolve alt-loc
 
 ```bash
-pdb2reaction fix-altloc -i my.pdb -o my_clean.pdb --keep A
+pdb2reaction fix-altloc -i my.pdb -o my_clean.pdb
 ```
 
 ### Programmatic edits via Biopython
@@ -128,8 +136,9 @@ p = PDBParser(QUIET=True).get_structure("x", "my.pdb")
 for atom in p.get_atoms():
     if atom.get_name() == "OD1" and atom.get_parent().get_resname() == "ASP":
         atom.set_bfactor(20.0)        # mark frozen, for example
-PDBIO().set_structure(p)
-PDBIO().save("my_edited.pdb")
+io = PDBIO()
+io.set_structure(p)
+io.save("my_edited.pdb")
 ```
 
 ## Validation hooks

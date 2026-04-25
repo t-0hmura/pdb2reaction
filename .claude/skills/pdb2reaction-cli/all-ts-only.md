@@ -33,18 +33,21 @@ pdb2reaction all -i ts_candidate.pdb \
 `pdb2reaction all` falls into TS-only mode when:
 
 - exactly **one** `-i` input is given,
-- **no** `--scan-lists` is provided,
-- the input does not look like a reactant (heuristic: it has at least
-  one bond near a typical TS geometry, e.g. a stretched bond between
-  ~1.5 and ~2.5× equilibrium length).
+- **no** `--scan-lists` is provided.
 
-If you want to **force** TS-only behavior, set:
+The orchestrator skips path-search automatically and starts the
+pipeline at `tsopt`. There is **no explicit "force TS-only" flag** — the
+mode is selected purely from the input shape. If you also pass
+`--no-tsopt`, `all` becomes a thin wrapper around `freq + irc + dft`
+(rarely useful).
+
+For finer control, run the underlying subcommands directly:
 
 ```bash
-pdb2reaction all -i ts.xyz --no-path-search --tsopt --thermo -o result_ts_only
+pdb2reaction tsopt -i ts.xyz -q ... -m 1 -o result_tsopt -b uma
+pdb2reaction irc   -i result_tsopt/final_geometry.xyz -o result_irc -b uma
+pdb2reaction freq  -i result_tsopt/final_geometry.xyz -o result_freq -b uma
 ```
-
-(The `--no-path-search` flag is in `--help-advanced`.)
 
 ## Pipeline collapses to
 
