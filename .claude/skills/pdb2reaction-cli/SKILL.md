@@ -118,7 +118,7 @@ pdb2reaction bond-summary -i reactant.pdb product.pdb
 |---|---|
 | `--scan-lists` syntax error | The list is a Python literal-eval expression. Quote with single-quotes outside, double-quotes inside, and watch ` ` vs ``\``. |
 | Wrong charge silently | Always run `--show-config` once before a long job; it prints the resolved charge. |
-| Backend `auto` silently picks the wrong one | Spell `-b uma` / `-b orb` / `-b mace` / `-b aimnet2` explicitly for production runs. |
+| Forgetting to pin `-b` for production | The default is `-b uma`; specify `-b uma` / `-b orb` / `-b mace` / `-b aimnet2` explicitly so a future default change cannot silently re-route the run. |
 | `--config` YAML ignored | YAML is read **after** built-in defaults but **before** explicit CLI flags. Anything also given on CLI overrides YAML. |
 | `--help-advanced` flags differ between versions | They are subject to change; if a flag isn't in `--help`, check `--help-advanced` and version-pin if the workflow is shared. |
 | OOM on the Hessian step | Reduce `hessian_calc_mode` to `'FiniteDifference'`, set `return_partial_hessian=True`, or downgrade backend (UMA-m → UMA-s). |

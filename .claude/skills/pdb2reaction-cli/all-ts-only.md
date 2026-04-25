@@ -38,8 +38,8 @@ pdb2reaction all -i ts_candidate.pdb \
 The orchestrator skips path-search automatically and starts the
 pipeline at `tsopt`. There is **no explicit "force TS-only" flag** — the
 mode is selected purely from the input shape. If you also pass
-`--no-tsopt`, `all` becomes a thin wrapper around `freq + irc + dft`
-(rarely useful).
+`--tsopt false` (the BOOL form), `all` becomes a thin wrapper around
+`freq + irc + dft` (rarely useful).
 
 For finer control, run the underlying subcommands directly:
 
@@ -93,11 +93,11 @@ d = json.load(open("result_ts_only/summary.json"))
 seg = d["segments"][0]
 print(seg["barrier_kcal"], seg["delta_kcal"])
 print(seg["bond_changes"])             # what bonds broke / formed along the IRC
-print(seg["tsopt"]["n_imaginary"])     # should be 1
+print(seg["tsopt"]["n_imaginary_modes"])     # should be 1
 print(seg["irc"]["energy_reactant_hartree"], seg["irc"]["energy_ts_hartree"], seg["irc"]["energy_product_hartree"])
 ```
 
-If `tsopt.n_imaginary != 1`, the geometry is **not a true first-order
+If `tsopt.n_imaginary_modes != 1`, the geometry is **not a true first-order
 saddle**; see "Distinctive failure modes" below.
 
 ## Distinctive failure modes
@@ -105,8 +105,8 @@ saddle**; see "Distinctive failure modes" below.
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `tsopt.status == "not_converged"` | Initial Hessian misleading or step size too large | `pdb2reaction tsopt -i ts.xyz --opt-mode rsirfo --max-cycles 200` standalone, then re-run downstream stages |
-| `tsopt.n_imaginary == 0` | Geometry collapsed to a minimum during refinement | TS guess was not a real saddle; re-do `path-search` instead |
-| `tsopt.n_imaginary == 2+` | Two near-degenerate negative modes | Normal for some metalloenzyme TSs; check whether the second imaginary mode is a translation / rotation residue (often resolved by tightening `freeze_atoms`) |
+| `tsopt.n_imaginary_modes == 0` | Geometry collapsed to a minimum during refinement | TS guess was not a real saddle; re-do `path-search` instead |
+| `tsopt.n_imaginary_modes == 2+` | Two near-degenerate negative modes | Normal for some metalloenzyme TSs; check whether the second imaginary mode is a translation / rotation residue (often resolved by tightening `freeze_atoms`) |
 | `irc.bond_changes == {}` (no bonds change) | TS connects two essentially identical wells (numerical ringing) | Verify the imaginary mode visualization in `freq/`; this is sometimes a non-physical TS |
 
 ## When *not* to use TS-only mode
@@ -119,7 +119,7 @@ saddle**; see "Distinctive failure modes" below.
 
 ## Caveats
 
-- The `--no-tsopt` flag would skip TS optimization entirely, which is
+- Passing `--tsopt false` skips TS optimization entirely, which is
   rarely what you want in this mode.
 - For an XYZ TS candidate, you must supply `-q` and `-m` explicitly
   (XYZ has no header). Use `--ref-pdb cluster.pdb` if you want

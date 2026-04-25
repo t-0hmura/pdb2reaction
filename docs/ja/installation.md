@@ -47,10 +47,10 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
   conda install -c conda-forge cyipopt -y
   ```
 
-- *環境モジュール*を使用する HPC クラスターでは、PyTorch をインストールする**前に** CUDA をロードしてください。
+- *環境モジュール*を使用する HPC クラスターでは、PyTorch をインストールする**前に** CUDA をロードしてください。`module avail cuda` で利用可能なバージョンを確認し、ターゲットの PyTorch wheel に合うバージョン（例: `cu126` ↔ CUDA 12.6、`cu129` ↔ CUDA 12.9）をロードしてください:
 
   ```bash
-  module load cuda/12.9
+  module load cuda/<your-version>   # 例: cuda/12.6 または cuda/12.9
   ```
 
 
@@ -61,8 +61,12 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 
 1. **CUDAをロード（HPCで環境モジュールを使用する場合）**
 
+    `module avail cuda` で利用可能なバージョンを確認し、ターゲットの
+    PyTorch wheel に合うバージョン（例: `cu126` は CUDA 12.6、`cu129`
+    は CUDA 12.9）をロードしてください:
+
     ```bash
-    module load cuda/12.9
+    module load cuda/<your-version>
     ```
 
 2. **conda環境を作成してアクティブ化**

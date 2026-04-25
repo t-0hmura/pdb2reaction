@@ -91,8 +91,10 @@ spin densities. Useful for debugging convergence problems.
 | `gpu` | x86_64 + CUDA + > 100 atoms | ~1–10 h on RTX-class GPU per single point |
 | `cpu` | aarch64, no GPU, or < 100 atoms | ~10–100× slower than GPU |
 
-aarch64 (`uname -m`) **forces CPU** because `gpu4pyscf-cuda12x` ships
-x86_64 wheels only.
+aarch64 (`uname -m`) **requires `--engine cpu` explicitly**:
+`gpu4pyscf-cuda12x` ships x86_64 wheels only, so `--engine gpu` (the
+default) raises `ClickException` on aarch64 rather than silently
+falling back.
 
 ## Common errors
 
@@ -101,7 +103,7 @@ x86_64 wheels only.
 | `OSError: libcusolver.so.11 not found` | `pdb2reaction-install-backends/env-cuda.md` (LD_LIBRARY_PATH order) |
 | `cupy ... invalid device ordinal` | `unset CUDA_VISIBLE_DEVICES` |
 | `RuntimeError: CUDA out of memory` | Lower `grid_level`, switch to `def2-svp`, or `--engine cpu` |
-| aarch64 `--engine gpu` falls back silently | Expected; check log says `engine: cpu` |
+| aarch64 `--engine gpu` raises `ClickException` ("GPU backend failed...") | `gpu4pyscf-cuda12x` is x86_64 only; re-submit with `--engine cpu` |
 
 ## Caveats
 

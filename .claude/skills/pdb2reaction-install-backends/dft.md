@@ -77,7 +77,7 @@ python -c "import pdb2reaction.defaults as d; print(d.GEOM_KW_DEFAULT, d.CALC_KW
 | `cupy.cuda.runtime.CUDARuntimeError: invalid device ordinal` | Torch and cupy disagree on CUDA visibility | `unset CUDA_VISIBLE_DEVICES` and let GPU4PySCF use device 0 |
 | `RuntimeError: CUDA out of memory` mid-SCF | Functional / basis too heavy for VRAM | Lower `grid_level`, switch to `def2-svp`, or use `--engine cpu` |
 | `gpu4pyscf` import succeeds but SCF stalls at start | cuTENSOR not installed | `pip install cutensor-cu12==2.2.0` (matches `[dft]` extra) |
-| aarch64: `--engine gpu` requested but no `gpu4pyscf` | Architecture not supported | Falls back to `--engine cpu` automatically; expect 10× slower |
+| aarch64: `--engine gpu` requested but no `gpu4pyscf` | Architecture not supported | Raises `ClickException` ("GPU backend failed... Use --engine cpu to explicitly run on CPU"). Re-submit with `--engine cpu`; expect 10× slower. |
 
 ## Memory rough-cuts
 

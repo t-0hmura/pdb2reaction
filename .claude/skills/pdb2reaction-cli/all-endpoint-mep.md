@@ -78,7 +78,7 @@ Same as the base `all.md`. Specifically for endpoint-MEP mode:
 | Symptom in `summary.json` | Likely cause | Fix |
 |---|---|---|
 | `path_search.status == "wrong_reaction"` | Bond-change detector found extra changes; the reaction in the inputs and the reaction the optimizer found don't match. | Check which bonds changed via `bond-summary -i 1.R.pdb 3.P.pdb`; consider `--refine-mode minima` or supply IM explicitly. |
-| `tsopt.n_imaginary > 1` for a segment | Multi-imaginary-mode TS — common with Orb on tricky systems | Re-run that segment with `pdb2reaction tsopt --opt-mode rsirfo -b uma` (RS-I-RFO is more robust than Dimer for ill-conditioned Hessians). |
+| `tsopt.n_imaginary_modes > 1` for a segment | Multi-imaginary-mode TS — common with Orb on tricky systems | Re-run that segment with `pdb2reaction tsopt --opt-mode rsirfo -b uma` (RS-I-RFO is more robust than Dimer for ill-conditioned Hessians). |
 | Different atom counts across `-i` inputs | Inconsistent extractions | Re-extract per the snippet above, verify with `wc -l 1.R.pdb 3.P.pdb`. |
 
 ## Caveats
