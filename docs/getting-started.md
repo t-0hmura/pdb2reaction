@@ -360,6 +360,20 @@ pdb2reaction -i TS.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --thermo
 
 ---
 
+## Agent Skills
+
+`pdb2reaction` treats AI coding agents as first-class users. The
+`.claude/skills/` directory ships agent-readable instructions
+covering the CLI subcommands, structure I/O (PDB / XYZ / GJF), backend
+installation (UMA / Orb / MACE / AIMNet2 / DFT / xtb), canonical
+workflows, output parsing, and HPC operation. Copy `.claude/skills/`
+into your project repository or `~/.claude/skills/` for agent platforms
+like Claude Code, Cursor, or OpenCode. Inspired by the
+[nvalchemi-toolkit](https://github.com/NVIDIA/nvalchemi-toolkit) skill
+pattern.
+
+---
+
 ## Getting help
 
 For any subcommand:

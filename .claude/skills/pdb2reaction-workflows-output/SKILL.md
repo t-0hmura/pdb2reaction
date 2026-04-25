@@ -1,0 +1,266 @@
+---
+name: pdb2reaction-workflows-output
+description: Canonical pdb2reaction workflows (cluster + 1-step / multistep / scan-list / endpoint-MEP / TS-only / DFT//MLIP), plus the summary.json schema, R/TS/P/IM canonical paths, bond-change interpretation, and energy-diagram conventions used to extract numerical results.
+---
+
+# pdb2reaction Workflows and Output Parsing
+
+## Overview
+
+This skill ties the per-subcommand mds in `pdb2reaction-cli/` together
+into **end-to-end recipes** and explains how to read the resulting
+output trees, JSON, and figures. Use this when you have a goal
+("compute the barrier of step 1 of this enzyme") and want the path
+through the toolkit.
+
+## Six canonical workflows
+
+### 1. Cluster + 1-step reaction (multi-input MEP)
+
+You have R and P PDBs (from a published QM study). One step.
+
+```bash
+pdb2reaction all -i 1.R.pdb 3.P.pdb \
+    -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
+    --tsopt --thermo \
+    -o result_mep
+```
+
+Result: `result_mep/seg_NN/{reactant,ts,product}.pdb`,
+`summary.json["segments"][0]["barrier_kcal"]`.
+
+### 2. Multi-step recursive (multi-input MEP, recursive segmentation)
+
+You have R and P. The mechanism is multi-step, but you don't have
+intermediates handy. Path-search recursively segments by detecting
+bond changes.
+
+```bash
+pdb2reaction all -i 1.R.pdb 3.P.pdb \
+    -c '...' -l '...' \
+    --tsopt --thermo \
+    -o result_mep
+```
+
+The output `summary.json["n_segments"]` may be > 1 — that's the
+recursion finding intermediates the inputs didn't contain.
+
+### 3. Single-input scan-list (when only R is available)
+
+You have just the reactant. Articulate the reaction as a sequence of
+distance-restraint scans.
+
+```bash
+pdb2reaction all -i 1.R.pdb \
+    -c '...' -l '...' \
+    --scan-lists '[("CS1 SAM 320","GPP 321 C7",1.60)]' \
+                 '[("GPP`321/H11","GLU`186/OE2",0.90)]' \
+    --tsopt --thermo \
+    -o result_scan
+```
+
+Each `--scan-lists` argument is one stage. See
+`pdb2reaction-cli/all-scan-list.md` for syntax details.
+
+### 4. Endpoint-MEP with explicit intermediates
+
+You have R, IM₁, IM₂, P from the literature. Pass them all in order:
+
+```bash
+pdb2reaction all -i 1.R.pdb 2.IM1.pdb 3.IM2.pdb 4.P.pdb \
+    -c '...' -l '...' \
+    --tsopt --thermo \
+    -o result_mep_4pt
+```
+
+Recursive segmentation still runs *between* adjacent endpoints, so
+you don't have to provide every elementary step.
+
+### 5. TS-only validation (existing TS candidate)
+
+You have a TS guess from another code or a prior run. Skip
+extract / path-search:
+
+```bash
+pdb2reaction tsopt -i ts.xyz -q -1 -m 1 -b uma -o result_tsopt
+pdb2reaction freq  -i result_tsopt/final_geometry.xyz -q -1 -m 1 -b uma -o result_freq
+pdb2reaction irc   -i result_tsopt/final_geometry.xyz -q -1 -m 1 -b uma -o result_irc
+```
+
+Or use `pdb2reaction all` with a single `-i` (collapses to TS-only
+mode automatically; see `pdb2reaction-cli/all-ts-only.md`).
+
+### 6. DFT//MLIP refinement
+
+After any of the above, refine R / TS / P energies at DFT level:
+
+```bash
+pdb2reaction dft -i seg_01/reactant.pdb \
+    -l 'SAM:1,GPP:-3' \
+    --func-basis 'wb97m-v/def2-tzvpd' \
+    --engine gpu \
+    -o dft_R
+pdb2reaction dft -i seg_01/ts.pdb       -l '...' --func-basis '...' -o dft_TS
+pdb2reaction dft -i seg_01/product.pdb  -l '...' --func-basis '...' -o dft_P
+```
+
+Composite the energies with `energy-diagram` (see below).
+
+## summary.json schema (`pdb2reaction all` output)
+
+Top-level keys:
+
+| Key | Description |
+|---|---|
+| `command` | The subcommand (`"all"`, `"tsopt"`, …) |
+| `pdb2reaction_version` | Toolkit version that produced this output |
+| `status` | `"completed"`, `"error"`, `"not_converged"` |
+| `elapsed_seconds` | Wall-clock duration |
+| `charge` / `spin` | Resolved cluster charge / multiplicity |
+| `environment` | `{device, gpu_name, gpu_vram_gb, cuda_version, cpu, n_cpus, ram_gb}` |
+| `config` | Full effective config after CLI + YAML + defaults merge |
+| `freeze_atoms` | Indices held fixed during optimization (link-H parents) |
+| `n_segments` | Number of elementary steps detected |
+| `n_segments_reactive` | Number of segments with non-empty bond changes |
+| `rate_limiting_step` | Index of the highest-barrier segment |
+| `overall_reaction_energy_kcal` | R → P total energy difference |
+| `segments` | List, one per elementary step (see below) |
+| `post_segments` | Per-segment post-processing details |
+| `key_output_files` | Map of role → path (mep_pdb, energy_diagrams, …) |
+| `pipeline_mode` | Internal mode tag |
+| `mlip_backend` | Which backend produced the energies |
+| `energy_diagrams` | Paths to PNG / HTML diagrams |
+
+Per-segment keys (`summary.json["segments"][i]`):
+
+| Key | Description |
+|---|---|
+| `index` | Segment index (`01`, `03`, …) |
+| `barrier_kcal` | TS – R energy (kcal/mol) — the rate constant input |
+| `delta_kcal` | P – R energy (kcal/mol) |
+| `bond_changes` | `{formed: [...], broken: [...]}` (1.3× covalent-radius cutoff) |
+| `structures` | Map: `reactant`, `ts`, `product` → file paths |
+| `tsopt` | `{status, energy_hartree, n_imaginary_modes, imaginary_frequencies_cm}` |
+| `irc` | `{n_frames_forward, n_frames_backward, energies_*, bond_changes}` |
+| `freq` | `{n_imaginary, frequencies_cm, thermochemistry: {...}}` |
+| `dft` | `{energy_hartree, method, status}` (when `--dft` was passed) |
+
+## R/TS/P canonical paths
+
+Two locations get written for each elementary step:
+
+```
+result_all/
+├── seg_NN/                                 # CANONICAL — top-level, post-LBFGS optimized
+│   ├── reactant.{xyz,pdb}                  # IRC backward endpoint, then LBFGS-optimized
+│   ├── ts.{xyz,pdb}                        # tsopt'd transition state
+│   └── product.{xyz,pdb}                   # IRC forward endpoint, then LBFGS-optimized
+└── result/path_search/post_seg_NN/structures/
+    ├── reactant.{xyz,pdb}                  # same as above (canonical) — nested copy
+    ├── reactant_irc.{xyz,pdb}              # raw IRC backward end (pre-LBFGS)
+    ├── ts.{xyz,pdb}                        # same as above
+    ├── product.{xyz,pdb}                   # same as above (canonical)
+    └── product_irc.{xyz,pdb}               # raw IRC forward end (pre-LBFGS)
+```
+
+**Rule of thumb**: read from `seg_NN/` for downstream stages. Use
+`reactant_irc.xyz` / `product_irc.xyz` only when debugging
+IRC vs. LBFGS divergence.
+
+`bond_changes` are computed from `reactant.xyz` / `product.xyz`
+(post-LBFGS), not from the raw IRC endpoints.
+
+## Programmatic key extraction
+
+```python
+import json
+
+# Per-segment barriers
+d = json.load(open("result_all/summary.json"))
+for seg in d["segments"]:
+    print(f"seg_{seg['index']:02d}: ΔE‡ = {seg['barrier_kcal']:.1f} kcal/mol, "
+          f"ΔE = {seg['delta_kcal']:.1f} kcal/mol")
+
+# Rate-limiting barrier
+rls = d["rate_limiting_step"]
+print(f"rate-limiting: seg_{rls:02d}, barrier = "
+      f"{d['segments'][rls-1]['barrier_kcal']:.1f} kcal/mol")
+
+# DFT//MLIP energies (when --dft was used)
+for seg in d["segments"]:
+    if "dft" in seg and seg["dft"]["status"] == "completed":
+        print(seg["index"], seg["dft"]["energy_hartree"])
+
+# Imaginary-mode check on every TS
+for seg in d["segments"]:
+    n = seg["tsopt"]["n_imaginary_modes"]
+    if n != 1:
+        print(f"WARNING: seg_{seg['index']:02d} has {n} imaginary modes")
+```
+
+## Bond-change interpretation
+
+`segments[i]["bond_changes"]` looks like:
+
+```json
+{
+  "formed":  ["CS1(SAM 320) — C7(GPP 321)", "OE2(GLU 186) — H11(GPP 321)"],
+  "broken":  ["CS1(SAM 320) — S(SAM 320)", "C7(GPP 321) — H11(GPP 321)"]
+}
+```
+
+Reading rules:
+
+- `formed` lists bonds that exist in P but not R (covalent-radius
+  cutoff 1.3×).
+- `broken` lists bonds that exist in R but not P.
+- For a single elementary step you usually expect 1–4 entries combined.
+- If a single segment shows > 8 bond changes, the recursive
+  segmentation may have failed — inspect the geometries before trusting
+  the barrier.
+
+## Failed-run output
+
+When `summary.json["status"] != "completed"`, look at:
+
+1. `summary.log` — human-readable, prints the failure point first.
+2. `post_seg_NN/<stage>/result.json` — per-stage status (which step
+   crashed).
+3. `post_seg_NN/<stage>/<stage>.log` — stack trace if any.
+
+Even on failed runs, partial outputs are kept:
+
+- `path_search/seg_NN/` exists for any segment that completed
+  path-search (even if downstream stages failed).
+- `seg_NN/` (top-level) is **only populated** for fully-successful
+  segments.
+
+## Energy diagrams
+
+`pdb2reaction all` writes `path_search/energy_diagram_*.png`:
+
+- `energy_diagram_MEP.png` — bare MEP energies from the path-search
+  string (MLIP, no thermochemistry).
+- `energy_diagram_UMA_all.png` (etc.) — per-segment energies for
+  whichever backend was used.
+- `energy_diagram_G_UMA_all.png` — Gibbs free-energy diagram with
+  QRRHO thermochemistry (when `--thermo`).
+
+To compose a custom diagram from energies of multiple runs, use
+`pdb2reaction-cli/energy-diagram.md`:
+
+```bash
+pdb2reaction energy-diagram \
+    --states 'R:0.0' 'TS1:21.5' 'IM:-0.7' 'TS2:2.2' 'P:-18.2' \
+    -o my_diagram.png
+```
+
+## Cross-references
+
+- `pdb2reaction-cli/all.md` and the three `all-*.md` mode files.
+- `pdb2reaction-cli/{tsopt,freq,irc,dft}.md` — per-stage
+  `result.json` schemas.
+- `pdb2reaction-cli/bond-summary.md` — same bond-change algorithm,
+  standalone.
+- `pdb2reaction-structure-io/SKILL.md` — input file formats that feed
+  these workflows.

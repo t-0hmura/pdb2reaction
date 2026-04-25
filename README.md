@@ -281,6 +281,25 @@ A preprint describing `pdb2reaction` is in preparation. Currently, if you find t
 
 ---
 
+## Agent Skills
+
+`pdb2reaction` treats AI coding agents as first-class users. The
+`.claude/skills/` directory bundles agent-readable instructions
+covering the CLI subcommands, structure I/O (PDB / XYZ / GJF),
+backend installation (UMA / Orb / MACE / AIMNet2 / DFT / xtb), common
+workflows, output parsing, and HPC operation.
+
+To use these skills with your agent platform (Claude Code, Cursor,
+OpenCode, etc.), copy the `.claude/skills/` directory into your
+project repository or home directory (whichever your platform expects).
+
+The skill format is inspired by [nvalchemi-toolkit][nvalchemi]'s
+agent skill pattern.
+
+[nvalchemi]: https://github.com/NVIDIA/nvalchemi-toolkit
+
+---
+
 ## Known limitations
 
 - **MACE and UMA cannot coexist** in the same environment due to an `e3nn` version conflict. Use separate conda environments.
