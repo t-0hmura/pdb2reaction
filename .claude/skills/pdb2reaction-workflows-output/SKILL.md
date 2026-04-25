@@ -212,7 +212,7 @@ for seg in d["segments"]:
 Reading rules:
 
 - `formed` lists bonds that exist in P but not R (covalent-radius
-  cutoff 1.3×).
+  cutoff 1.20×).
 - `broken` lists bonds that exist in R but not P.
 - For a single elementary step you usually expect 1–4 entries combined.
 - If a single segment shows > 8 bond changes, the recursive

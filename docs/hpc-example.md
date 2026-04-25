@@ -20,7 +20,7 @@ cd "$PBS_O_WORKDIR"
 # --- Environment setting ---
 source /etc/profile.d/modules.sh
 module purge
-module load gcc ompi cuda/12.9
+module load gcc ompi cuda/<your-version>     # e.g. cuda/12.6 or cuda/12.9
 source ~/apps/miniconda3/etc/profile.d/conda.sh
 conda activate pdb2reaction
 # -------------------

@@ -88,8 +88,9 @@ when present, falling back to `_irc.xyz` if not. See
 ## Bond-change check
 
 `bond_changes` records which bonds are different between R and P
-according to a 1.3× covalent-radius cutoff. This is the same algorithm
-used by `bond-summary` and `path-search` segmentation.
+according to a 1.20× covalent-radius cutoff (with internal margin
+0.05). This is the same algorithm used by `bond-summary` and
+`path-search` segmentation.
 
 ```python
 import json

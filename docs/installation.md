@@ -47,10 +47,10 @@ You only need to do this once per machine / environment.
   conda install -c conda-forge cyipopt -y
   ```
 
-- If you are on an HPC cluster that uses *environment modules*, load CUDA **before** installing PyTorch, like this:
+- If you are on an HPC cluster that uses *environment modules*, load CUDA **before** installing PyTorch. Run `module avail cuda` to see which CUDA versions your site provides, then load the one matching your target PyTorch wheel (e.g. `cu126` ↔ CUDA 12.6, `cu129` ↔ CUDA 12.9):
 
   ```bash
-  module load cuda/12.9
+  module load cuda/<your-version>   # e.g. cuda/12.6 or cuda/12.9
   ```
 
 
@@ -61,8 +61,12 @@ If you prefer to build the environment piece by piece:
 
 1. **Load CUDA (if you use environment modules on an HPC cluster)**
 
+    Run `module avail cuda` to see what is provided, then load the
+    version matching your target PyTorch wheel (e.g. `cu126` for CUDA
+    12.6, `cu129` for CUDA 12.9):
+
     ```bash
-    module load cuda/12.9
+    module load cuda/<your-version>
     ```
 
 2. **Create and activate a conda environment**

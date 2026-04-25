@@ -30,9 +30,9 @@ pdb2reaction all -i <input(s)> [-c <substrate>] [-l 'RES:Q,...'] \
 | `-m, --multiplicity` | int | 1 | Spin multiplicity (2S+1) |
 | `-r, --radius` | float | 2.6 | Pocket radius (Å) when `-c` triggers extraction |
 | `--scan-lists` | repeated | none | Staged distance scans (mode 2 — `all-scan-list.md`) |
-| `--tsopt / --no-tsopt` | flag | `--tsopt` | Run TS optimization after path-search |
-| `--thermo / --no-thermo` | flag | `--thermo` | Run freq + thermochemistry |
-| `--dft / --no-dft` | flag | `--no-dft` | Run DFT single point on R / TS / P |
+| `--tsopt` | BOOL | `False` | Run TS optimization + IRC per reactive segment |
+| `--thermo` | BOOL | `False` | Run freq + thermochemistry on R / TS / P |
+| `--dft` | BOOL | `False` | Run DFT single point on R / TS / P |
 | `--func-basis` | str | `wb97m-v/def2-tzvpd` | DFT functional/basis (when `--dft`) |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `--solvent` | str | none | xTB-ALPB solvent name (`water`, `methanol`, …) |

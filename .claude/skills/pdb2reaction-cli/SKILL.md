@@ -19,7 +19,7 @@ Each row points to the full per-subcommand md in this skill directory.
 | `path-search.md` | `path-search` | Recursive MEP search (GSM or DMF) across N endpoints with bond-change segmentation.<br>Splits multi-step paths into one-TS-per-segment automatically. |
 | `path-opt.md` | `path-opt` | MEP optimization for a **single** segment between two endpoints.<br>Building block of `path-search`; also useful for refining one segment without re-running the whole search. |
 | `opt.md` | `opt` | Single-structure geometry optimization with LBFGS or RFO.<br>`--opt-mode grad` (LBFGS, default) is fast; `--opt-mode hess` (RFO) is robust on tricky surfaces. |
-| `tsopt.md` | `tsopt` | TS optimization: Hessian-Guided Dimer (default) or RS-I-RFO.<br>`--opt-mode grad/dimer` for cheaper Dimer; `--opt-mode hess/rsirfo` for full-Hessian RS-I-RFO. |
+| `tsopt.md` | `tsopt` | TS optimization: RS-I-RFO (default) or Hessian-Guided Dimer.<br>`--opt-mode hess/rsirfo` for full-Hessian RS-I-RFO (default); `--opt-mode grad/dimer` for cheaper Dimer. |
 | `freq.md` | `freq` | Vibrational analysis: Hessian, frequencies, normal-mode visualization, QRRHO thermochemistry.<br>Default temperature/pressure 298.15 K / 1 atm; partial-Hessian variant when `freeze_atoms` is non-empty. |
 | `irc.md` | `irc` | IRC integration with EulerPC in mass-weighted Cartesians.<br>Forward + backward from a TS, plus LBFGS optimization of each endpoint. |
 | `dft.md` | `dft` | Single-point DFT through PySCF (CPU) or GPU4PySCF (CUDA, x86_64).<br>`--engine gpu` is default when available; falls back to CPU on aarch64. |
@@ -57,7 +57,7 @@ These flags appear on most subcommands (canonical list:
 | `-q, --charge` | Total charge (integer) |
 | `-l, --ligand-charge` | `'RES1:Q1,RES2:Q2'` per-residue mapping (PDB inputs) |
 | `-m, --multiplicity` | Spin multiplicity (2S+1), default 1 |
-| `-b, --backend` | MLIP backend: `uma` / `orb` / `mace` / `aimnet2` / `auto` |
+| `-b, --backend` | MLIP backend: `uma` / `orb` / `mace` / `aimnet2` |
 | `-o, --out-dir` | Output directory, subcommand-specific default |
 | `--config` | YAML configuration file applied before CLI flags |
 | `--show-config` / `--dry-run` | Print resolved config without running |

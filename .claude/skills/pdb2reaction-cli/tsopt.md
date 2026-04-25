@@ -2,9 +2,9 @@
 
 ## Purpose
 
-Transition-state optimization. Two algorithms: Hessian-Guided Dimer
-(default, `--opt-mode grad`/`dimer`) and RS-I-RFO (full-Hessian,
-`--opt-mode hess`/`rsirfo`). Use after `path-search` or `scan` to refine
+Transition-state optimization. Two algorithms: RS-I-RFO (full-Hessian,
+default, `--opt-mode hess`/`rsirfo`) and Hessian-Guided Dimer (lighter,
+`--opt-mode grad`/`dimer`). Use after `path-search` or `scan` to refine
 a HEI to a true first-order saddle, or as a standalone validator on an
 externally-generated TS guess.
 
