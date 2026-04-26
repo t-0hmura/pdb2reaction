@@ -87,7 +87,7 @@ piece.
 
 | `-b` | Model family | Strength |
 |---|---|---|
-| `uma` (default) | UMA-s-1.1, UMA-m-1.1 (Meta FAIR) | Broadest coverage, default for most workflows |
+| `uma` (default) | UMA-s-1.1, UMA-s-1.2, UMA-m-1.1 (Meta FAIR) | Broadest coverage, default for most workflows |
 | `mace` | MACE-OMOL-0 | Strong on organic + 1st-row metals; needs separate env (e3nn conflict) |
 | `orb` | Orb-v3-omol | Fast screening; lower TS accuracy than UMA/MACE |
 | `aimnet2` | AIMNet2 | Element coverage limited; small organics |

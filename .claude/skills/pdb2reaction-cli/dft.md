@@ -108,8 +108,9 @@ falling back.
 ## Caveats
 
 - `pdb2reaction dft` runs only **single points**, not optimization.
-  For DFT-level geometry refinement, run `pdb2reaction tsopt -b dft`
-  (DFT calculator selectable via `-b`) or use a separate code.
+  `tsopt` / `opt` accept only MLIP backends (`-b uma|orb|mace|aimnet2`),
+  so DFT-level geometry refinement requires a separate QM code (e.g.
+  Gaussian, ORCA, PySCF) — there is no `-b dft` option.
 - `--func-basis` follows PySCF naming; cross-check with
   `python -c "from pyscf import gto; print(gto.basis._BASIS_DEFAULT)"`.
 - xTB-ALPB (`--solvent`) **does not stack** with PySCF's PCM; pick one.
