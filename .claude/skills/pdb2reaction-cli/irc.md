@@ -3,10 +3,10 @@
 ## Purpose
 
 Intrinsic Reaction Coordinate (IRC) integration from a TS geometry.
-Default integrator: **EulerPC** (mass-weighted Cartesians). Forward
-and backward branches are run, then each endpoint is LBFGS-optimized
-to the nearest minimum. Output: a stitched IRC trajectory plus the
-optimized R and P geometries.
+Uses **EulerPC** in mass-weighted Cartesians (the only supported
+integrator; not exposed as a CLI flag). Forward and backward branches
+are run, then each endpoint is LBFGS-optimized to the nearest minimum.
+Output: a stitched IRC trajectory plus the optimized R and P geometries.
 
 ## Synopsis
 
@@ -25,7 +25,6 @@ pdb2reaction irc -i ts.{pdb,xyz,gjf} \
 | `-q` / `-l` / `-m` | — | — | Charge / spin (common conventions) |
 | `--max-cycles` | int | 125 | Max IRC steps per branch (forward + backward) |
 | `--step-size` | float | (live default) | Step in Bohr; check `IRC_KW.step_size` |
-| `--integrator` | str | `EulerPC` | EulerPC (default) or other pysisyphus integrator |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `-o, --out-dir` | path | `./result_irc/` | Output directory |
 | `--config` / `--show-config` / `--dry-run` / `--help-advanced` | — | — | Standard |

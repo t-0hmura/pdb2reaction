@@ -19,7 +19,7 @@ pdb2reaction extract -i complex.pdb -c <substrate-spec> [-l 'RES:Q,...'] \
 | flag | type | default | description |
 |---|---|---|---|
 | `-i, --input` | path(s) | required | Protein–substrate complex PDB(s); multi-input requires identical atom counts |
-| `-c, --center` | str | required | Substrate selector: PDB path, `'RES1,RES2'`, `'A:44,B:SAM'`, or residue-name list |
+| `-c, --center` | str | required | Substrate selector: residue-name list `'GPP,SAM'`, residue-ID list `'A:44,B:321'`, or a PDB path. Chain-qualified residue *names* (`'B:SAM'`) are not supported — use the residue ID instead. |
 | `-r, --radius` | float | 2.6 | Pocket radius (Å) around `-c` atoms |
 | `--radius-het2het` | float | (live default) | Separate radius for HET-to-HET inclusion |
 | `-l, --ligand-charge` | str | none | Per-residue charges (amino acids derived from internal table) |
@@ -28,7 +28,7 @@ pdb2reaction extract -i complex.pdb -c <substrate-spec> [-l 'RES:Q,...'] \
 | `--exclude-backbone / --no-exclude-backbone` | flag | (live default) | Trim backbone atoms outside the active site |
 | `--add-linkh / --no-add-linkh` | flag | (live default) | Cap severed bonds with link hydrogens |
 | `--selected-resn` | str | none | Force-include extra residue IDs (`'A:123,B:456'`); IDs only — passing residue names raises `ValueError` |
-| `--modified-residue` | str | none | Treat the named residues as non-standard (skip canonical AA charge lookup) |
+| `--modified-residue` | str | none | Comma-separated residue names (with optional charge) to **treat as amino acids** for backbone truncation and charge assignment. Examples: `'HD1,HD2,HD3'` (charge defaults to 0) or `'HD1:0,SEP:-2'`. |
 | `-v, --verbose / --no-verbose` | flag | (live default) | Echo per-residue inclusion + charge sums |
 | `--out-json / --no-out-json` | flag | off | Write a JSON summary alongside the PDB |
 

@@ -26,7 +26,7 @@ pdb2reaction tsopt -i ts_guess.{pdb,xyz,gjf} \
 | `-q` / `-l` / `-m` | — | — | Charge / spin (common conventions) |
 | `--opt-mode` | str | `hess` | `grad`/`dimer` (Hessian-Guided Dimer) or `hess`/`rsirfo` (RS-I-RFO) |
 | `--max-cycles` | int | 10000 | Optimization step cap |
-| `--hessian-init` | str | (live default) | `'analytical'` / `'finite-diff'` / `'guess'`; check `RSIRFO_KW` |
+| `--hessian-calc-mode` | str | (live default) | `Analytical` or `FiniteDifference` (default: `FiniteDifference`); selects how the initial Hessian is computed |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `--solvent` | str | none | xTB-ALPB solvent |
 | `-o, --out-dir` | path | `./result_tsopt/` | Output directory |

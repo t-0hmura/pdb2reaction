@@ -1,6 +1,6 @@
 # pdb2reaction ドキュメント
 
-*バージョン: v0.3.6*
+*バージョン: v{{ version }}*
 
 **pdb2reaction** は、機械学習原子間ポテンシャル（MLIP: Machine Learning Interatomic Potential）を使用して、PDB 構造から酵素反応経路を自動モデリングする Python 製 CLI ツールキットです。
 

@@ -5,8 +5,9 @@
 Blank the PDB altLoc column (col 17) without shifting any other field,
 and keep **one** altLoc per atom. The default rule is **highest
 occupancy first, then earliest appearance** — there is no letter-based
-selection. Run on raw RCSB PDBs before `extract`; most downstream tools
-(including `pdb2reaction extract`) expect one conformation per atom.
+selection. `pdb2reaction all` preflight-runs this only when altLoc is
+detected. Call it explicitly when invoking `extract` / `opt` / `tsopt`
+directly on a raw RCSB PDB.
 
 ## Synopsis
 

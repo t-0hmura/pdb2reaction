@@ -63,13 +63,13 @@ pdb2reaction dft -i ts.xyz -q 0 -m 1 \
 
 ```
 result_dft/
-├── result.json
+├── result.json (only when --out-json is passed)
 ├── result.yaml             # PySCF-style detail dump
 ├── input_geometry.xyz       # echoed input
 └── dft.log
 ```
 
-`result.json` keys:
+`result.json` keys (written only when `--out-json` is passed):
 
 ```python
 import json

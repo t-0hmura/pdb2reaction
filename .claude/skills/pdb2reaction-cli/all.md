@@ -24,7 +24,7 @@ pdb2reaction all -i <input(s)> [-c <substrate>] [-l 'RES:Q,...'] \
 | Flag | Type | Default | Description |
 |---|---|---|---|
 | `-i, --input` | path(s) | required | One or more reaction-ordered structures, or a TS-candidate alone |
-| `-c, --center` | str | (uses input as-is) | Substrate selector: `'RES1,RES2,...'`, PDB path, or `'A:44,B:SAM'` |
+| `-c, --center` | str | (uses input as-is) | Substrate selector: residue-name list `'RES1,RES2,...'`, residue-ID list `'A:44,B:321'`, or a PDB path. Chain-qualified residue *names* (`'B:SAM'`) are not supported — use the residue ID instead. |
 | `-l, --ligand-charge` | str | none | Per-residue charges, e.g. `'SAM:1,GPP:-3'` |
 | `-q, --charge` | int | derived from `-l` | Total cluster charge override |
 | `-m, --multiplicity` | int | 1 | Spin multiplicity (2S+1) |

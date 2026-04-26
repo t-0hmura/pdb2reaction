@@ -9,7 +9,7 @@ or HTML plot. Useful for quickly visualizing IRC, MEP, or scan output.
 ## Synopsis
 
 ```bash
-pdb2reaction trj2fig -i trajectory.xyz [-o out.png] [--html]
+pdb2reaction trj2fig -i trajectory.xyz [-o energy.png|energy.html|energy.csv]
 ```
 
 ## Key flags
@@ -19,7 +19,7 @@ pdb2reaction trj2fig -i trajectory.xyz [-o out.png] [--html]
 | `-i, --input` | path | required | XYZ trajectory with energy in comment line |
 | `-o, --out` | path | `energy.png` | Output figure path; suffix selects format (`.png` / `.svg` / `.pdf` / `.jpg` / `.html` / `.csv`) |
 | `--unit` | choice | `kcal` | `kcal` or `hartree` |
-| `-r, --reference` | int / `min` | `min` | Reference frame for ΔE (1-based index, or `"min"` for the lowest-energy frame) |
+| `-r, --reference` | int / `init` / `None` | `init` | Reference frame for ΔE: `init` (initial frame; last frame if `--reverse-x`), `None` (absolute E), or a 1-based integer index |
 | `-q, --charge` / `-m, --multiplicity` / `-b, --backend` / `--solvent` / `--solvent-model` | — | — | Recompute energies via MLIP if the input XYZ has no energies in its comment lines |
 | `--reverse-x/--no-reverse-x` | flag | `--no-reverse-x` | Flip the x-axis |
 
@@ -31,10 +31,10 @@ pdb2reaction trj2fig -i trajectory.xyz [-o out.png] [--html]
 pdb2reaction trj2fig -i finished_irc_trj.xyz -o irc_profile.png
 ```
 
-### Interactive HTML
+### Interactive HTML (suffix selects format)
 
 ```bash
-pdb2reaction trj2fig -i mep.xyz --html -o mep.html
+pdb2reaction trj2fig -i mep.xyz -o mep.html
 ```
 
 ## Caveats

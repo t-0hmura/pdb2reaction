@@ -118,10 +118,10 @@ result_scan/
 2. `path_search/mep.pdb` — 最適化後の MEP 軌跡
 3. `summary.log` — 障壁高さと結合変化
 
-**ヒント:** `--print-parsed --dry-run` でスキャン設定を事前確認:
+**ヒント:** `--print-parsed` を付けて (Ctrl-C で中断する形で) スキャン設定を事前確認:
 
 ```bash
-pdb2reaction scan -i input.pdb -q 0 -s '[(1, 5, 1.35)]' --print-parsed --dry-run
+pdb2reaction scan -i input.pdb -q 0 -s '[(1, 5, 1.35)]' --print-parsed
 ```
 
 ## 補足

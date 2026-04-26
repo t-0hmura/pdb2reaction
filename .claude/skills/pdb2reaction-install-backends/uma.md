@@ -107,8 +107,13 @@ pdb2reaction all -i ... -b uma --config multi_worker.yaml
 
 This spawns a Ray worker pool. Limitations:
 
-- **Single node only** (no cross-node sharding via `pdb2reaction`).
-- All workers must see the same GPUs (e.g. `CUDA_VISIBLE_DEVICES=0,1,2,3`).
+- `pdb2reaction` does **not** launch a cross-node Ray cluster by
+  itself; for multi-node use, start the Ray cluster externally
+  under your scheduler (see `pdb2reaction/docs/hpc-example.md` for
+  a PBS template) and `pdb2reaction` will join it via `RAY_ADDRESS`.
+  In a single-node configuration the Ray pool is started locally.
+- All workers in a single-node pool must see the same GPUs
+  (e.g. `CUDA_VISIBLE_DEVICES=0,1,2,3`).
 - Adds overhead for small graphs — disable for systems below ~100 atoms.
 - **Silent Hessian downgrade**: when `workers > 1`, analytical Hessian
   is silently disabled in favor of finite-difference. See

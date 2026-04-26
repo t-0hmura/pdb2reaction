@@ -7,8 +7,9 @@ inconsistent with the atom name. Many PDBs from PyMOL / Maestro come
 out with empty element columns; running `extract` on them then fails
 because the element-aware truncation logic can't classify atoms.
 
-Always run `add-elem-info` (and `fix-altloc.md`) on a freshly-downloaded
-RCSB PDB before any other subcommand.
+`pdb2reaction all` preflight-runs this only when the element field is
+missing. Call it explicitly when invoking `extract` / `opt` / `tsopt`
+directly on a raw RCSB PDB.
 
 ## Synopsis
 

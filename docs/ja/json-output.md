@@ -39,7 +39,7 @@ cat result_opt/result.json | python -m json.tool
 
 ## エラー処理
 
-ジョブが失敗した場合（クラッシュ、OOM、収束失敗による `sys.exit` など）、**`result.json` は生成されません**。`result.json` の不在が失敗を示します。エラーの詳細は `.out` ログファイルを確認してください。
+ジョブが失敗した場合（クラッシュ、OOM、収束失敗による `sys.exit` など）、可能な限り `"status": "error"` と失敗種別を表す `"error_type"` を含む `result.json` が書き出されます。詳細なトレースバックは `.out` ログファイルを参照してください。失敗判定には `result.json` の不在ではなく `status == "error"` を使用してください。
 
 収束しなかったが完了したジョブでは、`"status": "not_converged"` と最終 force/step 値を含む `result.json` が書き出されます。
 
