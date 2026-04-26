@@ -248,16 +248,12 @@ When `--refine-path False` is passed, the `path_search/` subtree is replaced by 
 
 ## Agent Skills
 
-`pdb2reaction` treats AI coding agents as first-class users. The
-`.claude/skills/` directory ships agent-readable instructions covering
-the CLI subcommands, structure I/O (PDB / XYZ / GJF), backend
+`pdb2reaction` ships AI-agent instructions under `.claude/skills/`
+covering the CLI subcommands, structure I/O (PDB / XYZ / GJF), backend
 installation (UMA / Orb / MACE / AIMNet2 / DFT / xtb), canonical
-workflows, output parsing, and HPC operation. Copy the
-`.claude/skills/` contents into your project repository or
-`~/.claude/skills/` to make them available to your agent platform
-(Claude Code, Cursor, OpenCode, etc.). The skill format is inspired
-by the [nvalchemi-toolkit](https://github.com/NVIDIA/nvalchemi-toolkit)
-skill pattern.
+workflows, output parsing, and HPC operation. Copy the contents into
+your project repository or `~/.claude/skills/` to make them available
+to your agent platform (Claude Code, Cursor, etc.).
 
 ---
 

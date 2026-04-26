@@ -64,13 +64,13 @@ Both `pdb2reaction` and `mlmm-toolkit` include a custom GPU-optimized pysisyphus
 - [**Troubleshooting**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/troubleshooting.md) — Common errors, backend selection guide, VRAM requirements
 - **Full documentation**: [docs/index.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/index.md)
 
-***This software is still under development. Please use it at your own risk.***
+`pdb2reaction` is actively developed; validated workflows are documented in the manuscript and Supporting Information.
 
 ---
 
 ## Installation
 
-`pdb2reaction` requires Linux with a CUDA-capable GPU.
+Linux with a CUDA-capable NVIDIA GPU is the validated production environment for the MLIP reaction-path workflows reported in the paper. The core Python package and CPU-only smoke tests also run on macOS and on Windows under WSL2.
 
 ### Prerequisites
 
@@ -285,20 +285,13 @@ A preprint describing `pdb2reaction` is in preparation. Currently, if you find t
 
 ## Agent Skills
 
-`pdb2reaction` treats AI coding agents as first-class users. The
-`.claude/skills/` directory bundles agent-readable instructions
-covering the CLI subcommands, structure I/O (PDB / XYZ / GJF),
-backend installation (UMA / Orb / MACE / AIMNet2 / DFT / xtb), common
+`pdb2reaction` ships AI-agent instructions under `.claude/skills/`
+covering the CLI subcommands, structure I/O (PDB / XYZ / GJF), backend
+installation (UMA / Orb / MACE / AIMNet2 / DFT / xtb), common
 workflows, output parsing, and HPC operation.
 
-To use these skills with your agent platform (Claude Code, Cursor,
-OpenCode, etc.), copy the `.claude/skills/` directory into your
-project repository or home directory (whichever your platform expects).
-
-The skill format is inspired by [nvalchemi-toolkit][nvalchemi]'s
-agent skill pattern.
-
-[nvalchemi]: https://github.com/NVIDIA/nvalchemi-toolkit
+To use them, copy the `.claude/skills/` directory into your project
+repository or home directory (Claude Code, Cursor, etc.).
 
 ---
 
@@ -313,6 +306,6 @@ agent skill pattern.
 
 ## License
 
-`pdb2reaction` is distributed under the **GNU General Public License version 3 (GPL-3.0)**.  
+`pdb2reaction` is distributed under the **GNU General Public License version 3 (GPL-3.0)** and is available for academic and commercial use subject to the GPL-3.0 license terms.  
 
-***This software is still under development. Please use it at your own risk.***  
+`pdb2reaction` is actively developed; validated workflows are documented in the manuscript and Supporting Information.  
