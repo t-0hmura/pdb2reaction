@@ -11,7 +11,7 @@ extracted cluster is written as a PDB ready for any other subcommand.
 
 ```bash
 pdb2reaction extract -i complex.pdb -c <substrate-spec> [-l 'RES:Q,...'] \
-    [-r <radius_A>] [-o cluster.pdb] [--multi-model]
+    [-r <radius_A>] [-o cluster.pdb] [--out-json]
 ```
 
 ## Key flags
@@ -21,15 +21,21 @@ pdb2reaction extract -i complex.pdb -c <substrate-spec> [-l 'RES:Q,...'] \
 | `-i, --input` | path(s) | required | Protein–substrate complex PDB(s); multi-input requires identical atom counts |
 | `-c, --center` | str | required | Substrate selector: PDB path, `'RES1,RES2'`, `'A:44,B:SAM'`, or residue-name list |
 | `-r, --radius` | float | 2.6 | Pocket radius (Å) around `-c` atoms |
+| `--radius-het2het` | float | (live default) | Separate radius for HET-to-HET inclusion |
 | `-l, --ligand-charge` | str | none | Per-residue charges (amino acids derived from internal table) |
-| `-q, --charge` | int | derived | Override total cluster charge |
-| `-m, --multiplicity` | int | 1 | Spin multiplicity |
-| `-o, --output` | path | `model.pdb` | Output PDB path; multiple inputs → per-file or multi-MODEL |
-| `--multi-model` | flag | off | Write all inputs into one multi-MODEL PDB |
-| `--freeze-links / --no-freeze-links` | flag | `--freeze-links` | Mark link-H parents as frozen (B-factor) |
-| `--convert-files` | str | none | Also write `.xyz` / `.gjf` alongside `.pdb` |
-| `--show-config` / `--dry-run` | flag | off | Print resolved config, no extraction |
-| `--help-advanced` | flag | — | Hidden flags (residue rename, custom AA table, …) |
+| `-o, --output` | path | (auto: `<input>_extracted.pdb`) | Output PDB path; multiple inputs produce per-file outputs |
+| `--include-h2o / --no-include-h2o` | flag | (live default) | Include water residues found within radius |
+| `--exclude-backbone / --no-exclude-backbone` | flag | (live default) | Trim backbone atoms outside the active site |
+| `--add-linkh / --no-add-linkh` | flag | (live default) | Cap severed bonds with link hydrogens |
+| `--selected-resn` | str | none | Force-include extra residue IDs (`'A:123,B:456'`); IDs only — passing residue names raises `ValueError` |
+| `--modified-residue` | str | none | Treat the named residues as non-standard (skip canonical AA charge lookup) |
+| `-v, --verbose / --no-verbose` | flag | (live default) | Echo per-residue inclusion + charge sums |
+| `--out-json / --no-out-json` | flag | off | Write a JSON summary alongside the PDB |
+
+`extract` does **not** accept `-q`, `-m`, `--multi-model`,
+`--freeze-links`, `--convert-files`, `--show-config`, or `--dry-run`;
+those flags live on the downstream subcommands (`all`, `opt`, `tsopt`,
+`dft`, `path-opt`, `path-search`, `freq`, `irc`).
 
 ## Examples
 
@@ -55,19 +61,23 @@ pdb2reaction extract -i complex.pdb -c substrate.pdb -r 3.5 -o cluster.pdb
 ## Output
 
 ```
-cluster.pdb                # extracted cluster, link-H caps applied
-result.json (if --out-json) # extraction stats: total charge, n_atoms, n_residues, freeze list
+cluster.pdb                  # extracted cluster, link-H caps applied
+result.json (if --out-json)  # extraction stats: charges, atom counts, link-H count, file list
 ```
-
-The PDB B-factor field marks **frozen atoms** (link-H parents) — read
-this back with any subsequent subcommand via `freeze_atoms`.
 
 ```python
 import json
 d = json.load(open("result.json"))
-print(d["charge"], d["n_atoms"], d["residues"])
-print(d["freeze_atoms"])         # indices kept fixed in optimization
+print(d["status"], d["total_charge"])
+print(d["n_atoms_raw"], "->", d["n_atoms_extracted"])
+print(d["n_link_hydrogens"])
+print(d["files"])              # {basename: full_path} for each written PDB
+print(d["protein_charge"], d["ligand_total_charge"], d["ion_total_charge"])
 ```
+
+Frozen-atom indices (link-H parents) are surfaced by the *downstream*
+subcommands via `freeze_atoms` in their summary.json — `extract` itself
+just writes the cluster PDB.
 
 ## Caveats
 

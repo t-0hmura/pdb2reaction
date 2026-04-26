@@ -63,13 +63,17 @@ result_freq/
 ```python
 import json
 d = json.load(open("result_freq/result.json"))
-print(d["n_imaginary"])                 # 0 for minimum, 1 for TS
-print(d["frequencies_cm"][:5])          # first five frequencies
-print(d["thermochemistry"]["zpe_ha"])
-print(d["thermochemistry"]["thermal_correction_ha"])
-print(d["thermochemistry"]["entropy_kcal_per_K"])
-print(d["thermochemistry"]["G_hartree"])
+print(d["n_imaginary"])                       # 0 for minimum, 1 for TS
+print(d["frequencies_cm"][:5])                # first five frequencies (cm-1)
+t = d["thermochemistry"]
+print(t["electronic_energy_ha"])              # EE (Hartree)
+print(t["zpe_correction_ha"])                 # ZPE correction (Hartree)
+print(t["thermal_correction_free_energy_ha"]) # dG_therm (Hartree)
+print(t["sum_EE_and_thermal_free_energy_ha"]) # EE + dG_therm (Hartree)
+print(t["S_cal_per_mol_K"])                   # entropy (cal/mol·K)
 ```
+
+`result.json` is only written when `--out-json` is passed.
 
 ## QRRHO thermochemistry
 

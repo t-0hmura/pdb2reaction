@@ -115,35 +115,45 @@ Top-level keys:
 | `command` | The subcommand (`"all"`, `"tsopt"`, …) |
 | `pdb2reaction_version` | Toolkit version that produced this output |
 | `status` | `"completed"`, `"error"`, `"not_converged"` |
-| `elapsed_seconds` | Wall-clock duration |
 | `charge` / `spin` | Resolved cluster charge / multiplicity |
 | `environment` | `{device, gpu_name, gpu_vram_gb, cuda_version, cpu, n_cpus, ram_gb}` |
 | `config` | Full effective config after CLI + YAML + defaults merge |
 | `freeze_atoms` | Indices held fixed during optimization (link-H parents) |
+| `n_images` | Number of MEP images in the final string |
 | `n_segments` | Number of elementary steps detected |
 | `n_segments_reactive` | Number of segments with non-empty bond changes |
 | `rate_limiting_step` | Index of the highest-barrier segment |
 | `overall_reaction_energy_kcal` | R → P total energy difference |
-| `segments` | List, one per elementary step (see below) |
-| `post_segments` | Per-segment post-processing details |
-| `key_output_files` | Map of role → path (mep_pdb, energy_diagrams, …) |
+| `segments` | Lightweight per-segment summary (see below) |
+| `post_segments` | Per-segment post-processing details (tsopt / IRC / freq / DFT outputs) |
+| `key_output_files` | Map of role → path (str) for top-level files; `seg_NN` entries are `{description, files}` dicts |
 | `pipeline_mode` | Internal mode tag |
 | `mlip_backend` | Which backend produced the energies |
-| `energy_diagrams` | Paths to PNG / HTML diagrams |
+| `energy_diagrams` | List of energy-diagram entries (PNG / HTML paths and metadata) |
+| `out_dir` | Output directory absolute path |
 
-Per-segment keys (`summary.json["segments"][i]`):
+Per-segment keys (`summary.json["segments"][i]`) — lightweight, MEP-level:
 
 | Key | Description |
 |---|---|
-| `index` | Segment index (`01`, `03`, …) |
+| `index` | Segment index (1-based int; written zero-padded as `seg_01/`, `seg_03/`, …) |
+| `tag` | Segment tag (`"reactive"` / `"non-reactive"`) |
+| `kind` | Segment kind (`"elementary"` / etc.) |
 | `barrier_kcal` | TS – R energy (kcal/mol) — the rate constant input |
 | `delta_kcal` | P – R energy (kcal/mol) |
-| `bond_changes` | List of dicts (one per consecutive frame pair): `[{"Bond formed (k)": ["A — B : 3.17 Å -> 1.68 Å", ...], "Bond broken (k)": [...]}]`. Default cutoff is 1.20× covalent radii (with internal margin 0.05) — see `pdb2reaction-cli/bond-summary.md`. |
-| `structures` | Map: `reactant`, `ts`, `product` → file paths |
-| `tsopt` | `{status, energy_hartree, n_imaginary_modes, imaginary_frequencies_cm}` |
-| `irc` | `{n_frames_forward, n_frames_backward, energies_*, bond_changes}` |
-| `freq` | `{n_imaginary, frequencies_cm, thermochemistry: {...}}` |
-| `dft` | `{energy_hartree, method, status}` (when `--dft` was passed) |
+| `bond_changes` | List of single-key dicts (one per detected change): `[{"Bond formed (k)": ["A-B : 3.17 Å --> 1.68 Å", ...]}, {"Bond broken (k)": [...]}]`. Cutoff 1.20× covalent radii with margin 0.05 — see `pdb2reaction-cli/bond-summary.md`. |
+
+Per-segment post-processing keys (`summary.json["post_segments"][i]`) — when `--tsopt`, `--thermo`, or `--dft` was passed:
+
+| Key | Description |
+|---|---|
+| `index` / `tag` / `kind` / `bond_changes` | Mirror of the corresponding `segments[i]` row |
+| `mep_barrier_kcal` / `mep_delta_kcal` | Refined barriers from the post-IRC / tsopt re-evaluation |
+| `post_dir` | Subdirectory holding tsopt / freq / IRC outputs for this segment |
+| `irc_plot` / `irc_traj` | Paths to the IRC trace PNG and trajectory XYZ |
+| `uma` | Per-stage MLIP energy block (or whichever backend was used) |
+| `ts_imag` / `ts_imag_freq_cm` | TS imaginary-mode count and frequency (cm⁻¹) |
+| `gibbs_uma` | QRRHO Gibbs energies (when `--thermo`) |
 
 ## R/TS/P canonical paths
 
@@ -186,34 +196,38 @@ rls = d["rate_limiting_step"]
 print(f"rate-limiting: seg_{rls:02d}, barrier = "
       f"{d['segments'][rls-1]['barrier_kcal']:.1f} kcal/mol")
 
-# DFT//MLIP energies (when --dft was used)
-for seg in d["segments"]:
-    if "dft" in seg and seg["dft"]["status"] == "completed":
-        print(seg["index"], seg["dft"]["energy_hartree"])
+# Imaginary-mode check on every TS (post-processing data)
+for ps in d.get("post_segments", []):
+    n = ps.get("ts_imag")
+    if n is not None and n != 1:
+        print(f"WARNING: seg_{ps['index']:02d} has {n} imaginary modes "
+              f"(freq {ps.get('ts_imag_freq_cm')!r})")
 
-# Imaginary-mode check on every TS
-for seg in d["segments"]:
-    n = seg["tsopt"]["n_imaginary_modes"]
-    if n != 1:
-        print(f"WARNING: seg_{seg['index']:02d} has {n} imaginary modes")
+# Backend-level energies / Gibbs (when --tsopt and/or --thermo was passed)
+for ps in d.get("post_segments", []):
+    print(ps["index"], ps.get("uma"), ps.get("gibbs_uma"))
 ```
 
 ## Bond-change interpretation
 
-`segments[i]["bond_changes"]` looks like:
+`segments[i]["bond_changes"]` is a list of single-key dicts, one per
+detected change, with the change kind encoded in the key name:
 
 ```json
-{
-  "formed":  ["CS1(SAM 320) — C7(GPP 321)", "OE2(GLU 186) — H11(GPP 321)"],
-  "broken":  ["CS1(SAM 320) — S(SAM 320)", "C7(GPP 321) — H11(GPP 321)"]
-}
+[
+  {"Bond formed (1)": ["C508-C567 : 3.166 Å --> 1.675 Å"]},
+  {"Bond broken (1)": ["S507-C508 : 1.798 Å --> 3.459 Å"]}
+]
 ```
+
+The `(k)` integer is the consecutive-frame-pair index for multi-step
+IRC traces. Each string carries `<atom>-<atom> : <d_R> Å --> <d_P> Å`.
 
 Reading rules:
 
-- `formed` lists bonds that exist in P but not R (covalent-radius
-  cutoff 1.20×).
-- `broken` lists bonds that exist in R but not P.
+- "Bond formed (k)" entries list bonds that exist in P but not R
+  (covalent-radius cutoff 1.20×).
+- "Bond broken (k)" entries list bonds that exist in R but not P.
 - For a single elementary step you usually expect 1–4 entries combined.
 - If a single segment shows > 8 bond changes, the recursive
   segmentation may have failed — inspect the geometries before trusting

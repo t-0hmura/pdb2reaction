@@ -65,7 +65,7 @@ Symptoms:
 
 Fixes to try:
 - Increase `--radius` (e.g., 2.6 → 3.5 Å).
-- Use `--selected-resn` to force-include residues (e.g., `--selected-resn 'A:123,B:456'`). **Warning:** despite the name, `--selected-resn` accepts residue **IDs** (colon-separated integers), not 3-letter residue names — using `TYR,GLU` will silently match nothing.
+- Use `--selected-resn` to force-include residues (e.g., `--selected-resn 'A:123,B:456'`). **Warning:** despite the name, `--selected-resn` accepts residue **IDs** (colon-separated integers), not 3-letter residue names — passing `TYR,GLU` raises `ValueError: Invalid residue specifier 'TYR'. Use '123', '123A', 'A:123', or 'A:123A'.`
 - If backbone trimming is too aggressive, set `--no-exclude-backbone`.
 
 ---

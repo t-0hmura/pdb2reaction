@@ -17,9 +17,11 @@ pdb2reaction trj2fig -i trajectory.xyz [-o out.png] [--html]
 | flag | type | default | description |
 |---|---|---|---|
 | `-i, --input` | path | required | XYZ trajectory with energy in comment line |
-| `-o, --output` | path | `out.png` | Output figure path |
-| `--html` | flag | off | Write interactive Plotly HTML instead of static PNG |
-| `--xlabel` / `--ylabel` / `--title` | str | sensible defaults | Plot labels |
+| `-o, --out` | path | `energy.png` | Output figure path; suffix selects format (`.png` / `.svg` / `.pdf` / `.jpg` / `.html` / `.csv`) |
+| `--unit` | choice | `kcal` | `kcal` or `hartree` |
+| `-r, --reference` | int / `min` | `min` | Reference frame for ΔE (1-based index, or `"min"` for the lowest-energy frame) |
+| `-q, --charge` / `-m, --multiplicity` / `-b, --backend` / `--solvent` / `--solvent-model` | — | — | Recompute energies via MLIP if the input XYZ has no energies in its comment lines |
+| `--reverse-x/--no-reverse-x` | flag | `--no-reverse-x` | Flip the x-axis |
 
 ## Examples
 

@@ -52,7 +52,7 @@ STATE_FILE="$3"
 LOCK_FILE="$4"
 TASK_LIST="$5"
 
-# Env (replace <CUDA_MODULE> and <YOUR_ENV> via sed below if needed)
+# Env (replace <CUDA_MODULE> and <YOUR_ENV> in this template before submission)
 command -v module >/dev/null && module load <CUDA_MODULE>
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate <YOUR_ENV>

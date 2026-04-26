@@ -30,7 +30,7 @@ First checks:
 - Ensure element columns are present before running `extract` or `all`.  
 
 Typical fix path:  
-- Repair elements with `pdb2reaction add-elem-info -i input.pdb -o input_fixed.pdb` -> rerun extraction -> confirm active site model size (`--radius`) and residue inclusion (`--selected-resn`). **Warning:** despite the name, `--selected-resn` accepts residue **IDs** (colon-separated integers like `'A:123,B:456'`), not 3-letter residue names — using `TYR,GLU` will silently match nothing.
+- Repair elements with `pdb2reaction add-elem-info -i input.pdb -o input_fixed.pdb` -> rerun extraction -> confirm active site model size (`--radius`) and residue inclusion (`--selected-resn`). **Warning:** despite the name, `--selected-resn` accepts residue **IDs** (colon-separated integers like `'A:123,B:456'`), not 3-letter residue names — passing `TYR,GLU` raises a `ValueError` (`Invalid residue specifier 'TYR'.`).
 
 ## Recipe 2: Charge/spin validation fails
 

@@ -63,7 +63,6 @@ Examples:
 | Flag | Default | Meaning |
 |---|---|---|
 | `--scan-lists` | required | One or more stages of distance-restraint scans |
-| `--scan-mode` | `staged` | (advanced) governs how nodes are seeded between stages |
 | `--mep-mode` | `gsm` | After scans complete, MEP refinement uses GSM unless `dmf` |
 
 Unlike endpoint-MEP mode, `-i` is **a single PDB** (the reactant). The

@@ -70,7 +70,7 @@ Stages run sequentially; each starts from the previous stage's relaxed result.
 -s "[(\"TYR,285,CA\",\"SAM,309,C10\",1.35)]"
 ```
 
-> **Tip:** To verify that your scan targets were parsed correctly before a full run, invoke the standalone `scan` subcommand with `--print-parsed --dry-run` (only `scan` carries `--dry-run`; `scan2d`/`scan3d` expose `--print-parsed` only). These flags are not exposed on `pdb2reaction all`.
+> **Tip:** To verify that your scan targets were parsed correctly before a full run, invoke the standalone `scan` / `scan2d` / `scan3d` subcommand with `--print-parsed`; the parsed targets are printed and execution proceeds, so cancel (Ctrl-C) once you have confirmed the parse looks right. `--print-parsed` is not exposed on `pdb2reaction all`.
 
 ---
 
@@ -118,10 +118,10 @@ result_scan/
 2. `path_search/mep.pdb` — the optimized MEP trajectory
 3. `summary.log` — barrier heights and bond change summary
 
-**Tip:** Use `--print-parsed --dry-run` to verify scan targets before a full run:
+**Tip:** Use `--print-parsed` (and abort with Ctrl-C) to verify scan targets before letting the full run proceed:
 
 ```bash
-pdb2reaction scan -i input.pdb -q 0 -s '[(1, 5, 1.35)]' --print-parsed --dry-run
+pdb2reaction scan -i input.pdb -q 0 -s '[(1, 5, 1.35)]' --print-parsed
 ```
 
 ## Notes

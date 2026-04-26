@@ -94,13 +94,11 @@ those indices in a preprocessing step and feed them via `--config`.
 
 ## Generating gjf from `pdb2reaction` output
 
-```bash
-# Convert a PDB or XYZ stationary point to gjf
-pdb2reaction extract -i input.pdb -o cluster.pdb \
-    --convert-files gjf      # writes cluster.gjf alongside cluster.pdb
-```
-
-Or via ASE:
+`pdb2reaction extract` itself writes only PDB. To get a `.gjf` from a
+`pdb2reaction` stationary point, either let `pdb2reaction path-search`
+emit GJF companions via its `--convert-files/--no-convert-files` flag
+(default on; converts the per-segment XYZs into PDB+GJF), or pipe a
+single XYZ through ASE:
 
 ```python
 from ase.io import read, write

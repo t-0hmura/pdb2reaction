@@ -15,7 +15,7 @@ automatically with `pip install pdb2reaction`.
 
 ```bash
 conda activate <YOUR_ENV>
-pip install pdb2reaction                         # core only (UMA + Orb)
+pip install pdb2reaction                         # core (UMA via fairchem-core); Orb requires the [orb] extra
 pip install 'pdb2reaction[orb,aimnet,dft]'        # extras as needed
 ```
 
@@ -29,6 +29,7 @@ Available extras (canonical list lives in `pyproject.toml`):
 | `[dft]` | `pyscf`, `gpu4pyscf-cuda12x` (x86_64), `cupy-cuda12x`, `cutensor-cu12`, `basis-set-exchange` | `pdb2reaction dft` subcommand |
 | `[ci]` | CPU-only test deps (no GPU libs) | Running unit tests / docs builds |
 | `[dev]` | `pytest` family | Contributing |
+| `[docs]` | `sphinx`, `myst-parser`, `furo`, `sphinx-copybutton`, `sphinx-autobuild` | Building the Sphinx docs site |
 
 `[mace]` does **not** exist as an extra because MACE conflicts with
 `fairchem-core`'s `e3nn` pin — install `mace-torch` manually in a

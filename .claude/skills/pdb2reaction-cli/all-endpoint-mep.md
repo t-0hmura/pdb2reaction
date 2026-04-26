@@ -39,8 +39,12 @@ elementary step — just the "obvious" ones from the literature.
 | Flag | Default | Meaning |
 |---|---|---|
 | `--mep-mode` | `gsm` | `gsm` (Growing String) or `dmf` (Direct Max Flux) |
-| `--refine-mode` | mode-dependent | `peak` (HEI±1 around max) or `minima` (nearest local minima) |
 | `--max-nodes` | 20 | Maximum string nodes per segment (final string ≤ `max-nodes + 2`) |
+
+> `--refine-mode {peak,minima}` is exposed only on the standalone
+> `pdb2reaction path-search` subcommand, not on `all`. To override it
+> from `all`, add a small YAML config (`--config foo.yaml`) with a
+> `search.refine_mode` key.
 
 `--scan-lists` is **not** allowed in this mode — it triggers
 `all-scan-list.md` instead.
@@ -77,8 +81,8 @@ Same as the base `all.md`. Specifically for endpoint-MEP mode:
 
 | Symptom in `summary.json` | Likely cause | Fix |
 |---|---|---|
-| `path_search.status == "wrong_reaction"` | Bond-change detector found extra changes; the reaction in the inputs and the reaction the optimizer found don't match. | Check which bonds changed via `bond-summary -i 1.R.pdb 3.P.pdb`; consider `--refine-mode minima` or supply IM explicitly. |
-| `tsopt.n_imaginary_modes > 1` for a segment | Multi-imaginary-mode TS — common with Orb on tricky systems | Re-run that segment with `pdb2reaction tsopt --opt-mode rsirfo -b uma` (RS-I-RFO is more robust than Dimer for ill-conditioned Hessians). |
+| `path_search.status == "wrong_reaction"` | Bond-change detector found extra changes; the reaction in the inputs and the reaction the optimizer found don't match. | Check which bonds changed via `bond-summary -i 1.R.pdb 3.P.pdb`; rerun the standalone `pdb2reaction path-search` with `--refine-mode minima`, or supply the missing intermediate(s) explicitly via additional `-i` inputs. |
+| `tsopt.n_imaginary_modes > 1` for a segment | Multi-imaginary-mode TS — common with Orb on tricky systems | Re-run that segment with `pdb2reaction tsopt --opt-mode dimer -b uma` (default is already RS-I-RFO; the dimer is the lighter alternative when full-Hessian RS-I-RFO is unstable). |
 | Different atom counts across `-i` inputs | Inconsistent extractions | Re-extract per the snippet above, verify with `wc -l 1.R.pdb 3.P.pdb`. |
 
 ## Caveats

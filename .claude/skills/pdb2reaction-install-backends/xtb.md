@@ -72,9 +72,9 @@ E_total = E_MLIP_or_DFT (in vacuo) + ΔE_ALPB (xTB)
 ```
 
 The ALPB term is computed from the same atomic positions as the
-backbone calculator, so it's geometry-consistent but does not feed back
-into the gradient unless you also enable `--solvent-gradient` (off by
-default — adds noise on small clusters).
+backbone calculator, so it's geometry-consistent. Whenever `--solvent`
+is set, the ALPB gradient is added to the MLIP / DFT forces so the
+optimizer feels the solvent — there is no separate flag to toggle this.
 
 ## Known gotchas
 

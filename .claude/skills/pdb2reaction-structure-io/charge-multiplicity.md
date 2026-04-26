@@ -97,14 +97,16 @@ mechanisms sometimes invoke an unusual protonation state.
 
 After summing residue + ligand + metal charges, sanity-check by:
 
-- Letting `pdb2reaction` echo the charge it parsed:
+- Letting `pdb2reaction` echo the charge sum during extraction:
 
   ```bash
-  pdb2reaction extract -i complex.pdb -c '...' -l '...' -o cluster.pdb \
-      --show-config --dry-run
+  pdb2reaction extract -i complex.pdb -c '...' -l '...' -o cluster.pdb -v
   ```
 
-  The output prints the resolved `charge` and `spin`.
+  The verbose log prints the per-residue charge sum that produced
+  `cluster.pdb`. (`extract` does not have `--show-config` / `--dry-run`
+  flags; those are exposed on `all`, `opt`, `tsopt`, `dft`, `path-opt`,
+  `path-search`, `freq`, and `irc`.)
 
 - Or run a tiny optimization and read `summary.json`:
 
