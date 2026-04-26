@@ -139,7 +139,7 @@ pysisyphus forks and `e3nn` versions). Keep separate `conda env`s.
 |---|---|
 | Pick a subcommand and run it | `pdb2reaction-cli/SKILL.md` then the per-subcommand md |
 | Read or edit a `.pdb` / `.xyz` / `.gjf` input | `pdb2reaction-structure-io/{SKILL,pdb,xyz,gjf}.md` |
-| Decide charge / multiplicity for a substrate | `pdb2reaction-structure-io/charge-multiplicity.md` |
+| Decide charge / multiplicity for a substrate | [`pdb2reaction-structure-io/charge-multiplicity.md`](../pdb2reaction-structure-io/charge-multiplicity.md) |
 | Install the toolkit or a specific backend | `pdb2reaction-install-backends/SKILL.md` + the relevant backend md |
 | Build a recipe (multi-step / scan-list / endpoint MEP) | `pdb2reaction-workflows-output/SKILL.md` |
 | Submit on a PBS or SLURM cluster | `pdb2reaction-hpc/SKILL.md` |

@@ -135,5 +135,5 @@ grep -m1 '^#' ts.gjf
 
 - `pdb.md`, `xyz.md` — the other two formats.
 - `charge-multiplicity.md` — when the gjf header is missing or wrong.
-- `pdb2reaction-cli/dft.md` — gjf is the most natural input for
+- [`pdb2reaction-cli/dft.md`](../pdb2reaction-cli/dft.md) — gjf is the most natural input for
   `pdb2reaction dft` because it carries charge / spin already.

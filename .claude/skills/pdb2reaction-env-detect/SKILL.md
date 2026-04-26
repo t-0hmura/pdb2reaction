@@ -173,7 +173,7 @@ back to for the rest of your session.
 
 - `pdb2reaction-hpc/SKILL.md` — uses `<YOUR_QUEUE>`, `<NCPU>`, `<NGPU>`,
   `<MEM>`, `<HH:MM:SS>`, `<CUDA_MODULE>`, `<YOUR_ENV>` placeholders.
-- `pdb2reaction-install-backends/env-cuda.md` — uses driver version
+- [`pdb2reaction-install-backends/env-cuda.md`](../pdb2reaction-install-backends/env-cuda.md) — uses driver version
   and `<CUDA_MODULE>` to pick the right torch CUDA wheel.
-- `pdb2reaction-install-backends/dft.md` — uses `uname -m` to decide
+- [`pdb2reaction-install-backends/dft.md`](../pdb2reaction-install-backends/dft.md) — uses `uname -m` to decide
   between `gpu4pyscf-cuda12x` (x86_64) and CPU PySCF (aarch64).

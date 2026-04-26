@@ -60,7 +60,7 @@ pdb2reaction all -i 1.R.pdb \
 ```
 
 Each `--scan-lists` argument is one stage. See
-`pdb2reaction-cli/all-scan-list.md` for syntax details.
+[`pdb2reaction-cli/all-scan-list.md`](../pdb2reaction-cli/all-scan-list.md) for syntax details.
 
 ### 4. Endpoint-MEP with explicit intermediates
 
@@ -88,7 +88,7 @@ pdb2reaction irc   -i result_tsopt/final_geometry.xyz -q -1 -m 1 -b uma -o resul
 ```
 
 Or use `pdb2reaction all` with a single `-i` (collapses to TS-only
-mode automatically; see `pdb2reaction-cli/all-ts-only.md`).
+mode automatically; see [`pdb2reaction-cli/all-ts-only.md`](../pdb2reaction-cli/all-ts-only.md)).
 
 ### 6. DFT//MLIP refinement
 
@@ -141,7 +141,7 @@ Per-segment keys (`summary.json["segments"][i]`) — lightweight, MEP-level:
 | `kind` | Segment kind (`"elementary"` / etc.) |
 | `barrier_kcal` | TS – R energy (kcal/mol) — the rate constant input |
 | `delta_kcal` | P – R energy (kcal/mol) |
-| `bond_changes` | List of single-key dicts (one per detected change): `[{"Bond formed (k)": ["A-B : 3.17 Å --> 1.68 Å", ...]}, {"Bond broken (k)": [...]}]`. Cutoff 1.20× covalent radii with margin 0.05 — see `pdb2reaction-cli/bond-summary.md`. |
+| `bond_changes` | List of single-key dicts (one per detected change): `[{"Bond formed (k)": ["A-B : 3.17 Å --> 1.68 Å", ...]}, {"Bond broken (k)": [...]}]`. Cutoff 1.20× covalent radii with margin 0.05 — see [`pdb2reaction-cli/bond-summary.md`](../pdb2reaction-cli/bond-summary.md). |
 
 Per-segment post-processing keys (`summary.json["post_segments"][i]`) — when `--tsopt`, `--thermo`, or `--dft` was passed:
 
@@ -261,20 +261,21 @@ Even on failed runs, partial outputs are kept:
   QRRHO thermochemistry (when `--thermo`).
 
 To compose a custom diagram from energies of multiple runs, use
-`pdb2reaction-cli/energy-diagram.md`:
+[`pdb2reaction-cli/energy-diagram.md`](../pdb2reaction-cli/energy-diagram.md):
 
 ```bash
 pdb2reaction energy-diagram \
-    --states 'R:0.0' 'TS1:21.5' 'IM:-0.7' 'TS2:2.2' 'P:-18.2' \
+    -i 0.0 21.5 -0.7 2.2 -18.2 \
+    --label-x R TS1 IM TS2 P \
     -o my_diagram.png
 ```
 
 ## Cross-references
 
-- `pdb2reaction-cli/all.md` and the three `all-*.md` mode files.
+- [`pdb2reaction-cli/all.md`](../pdb2reaction-cli/all.md) and the three `all-*.md` mode files.
 - `pdb2reaction-cli/{tsopt,freq,irc,dft}.md` — per-stage
   `result.json` schemas.
-- `pdb2reaction-cli/bond-summary.md` — same bond-change algorithm,
+- [`pdb2reaction-cli/bond-summary.md`](../pdb2reaction-cli/bond-summary.md) — same bond-change algorithm,
   standalone.
 - `pdb2reaction-structure-io/SKILL.md` — input file formats that feed
   these workflows.

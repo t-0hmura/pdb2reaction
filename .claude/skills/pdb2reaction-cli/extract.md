@@ -88,10 +88,10 @@ just writes the cluster PDB.
   atoms; 3.0–4.5 Å is typical.
 - Ligand charges come **only** from `-l`; the internal table covers
   standard amino acids and a small list of common cofactors. For
-  uncommon ligands, see `pdb2reaction-structure-io/charge-multiplicity.md`.
+  uncommon ligands, see [`pdb2reaction-structure-io/charge-multiplicity.md`](../pdb2reaction-structure-io/charge-multiplicity.md).
 
 ## See also
 
-- `pdb2reaction-structure-io/pdb.md` — PDB column layout, residue selectors.
+- [`pdb2reaction-structure-io/pdb.md`](../pdb2reaction-structure-io/pdb.md) — PDB column layout, residue selectors.
 - `add-elem-info.md`, `fix-altloc.md` — pre-clean a raw PDB.
 - Defaults: `import pdb2reaction.defaults as d; print(d.GEOM_KW_DEFAULT)`

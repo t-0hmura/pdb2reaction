@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""Generate auto-derived CLI/YAML reference pages for docs."""
+"""Generate auto-derived CLI reference pages for docs.
+
+Only the per-subcommand pages under ``docs/reference/commands/`` are
+auto-generated. The YAML reference is the curated narrative at
+``docs/yaml-reference.md`` and is NOT regenerated here, because the
+narrative carries design rationale, cross-references, and per-section
+context that cannot be recovered from ``defaults.py`` introspection.
+"""
 
 from __future__ import annotations
 
@@ -7,61 +14,19 @@ import argparse
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 import click
-import yaml
 from click.testing import CliRunner
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS_ROOT = REPO_ROOT / "docs"
 REF_ROOT = DOCS_ROOT / "reference"
 COMMANDS_ROOT = REF_ROOT / "commands"
-YAML_REF_PATH = REF_ROOT / "yaml.md"
 TOOL_NAME = "pdb2reaction"
 
 sys.path.insert(0, str(REPO_ROOT))
 
 from pdb2reaction.cli import cli as root_cli  # noqa: E402
-
-
-_ALL_TEMPLATE = """# Starter config for `pdb2reaction all`
-
-extract:
-  radius: 2.6
-  radius_het2het: 0.0
-
-calc:
-  workers: 1
-  workers_per_node: 1
-
-path_search:
-  mep_mode: gsm
-  max_nodes: 20
-  max_cycles: 300
-
-scan:
-  max_step_size: 0.2
-  bias_k: 300.0
-  relax_max_cycles: 10000
-
-tsopt:
-  max_cycles: 10000
-
-freq:
-  max_write: 10
-  amplitude_ang: 0.8
-  n_frames: 20
-  sort: value
-  temperature: 298.15
-  pressure_atm: 1.0
-
-dft:
-  func_basis: wb97m-v/def2-tzvpd
-  max_cycle: 100
-  conv_tol: 1.0e-9
-  grid_level: 3
-"""
 
 
 @dataclass(frozen=True)
@@ -148,59 +113,6 @@ def _render_commands_index(command_docs: list[CommandDoc]) -> str:
     )
 
 
-def _iter_scalar_rows(data: dict, prefix: str = "") -> Iterable[tuple[str, str, str]]:
-    for key, value in data.items():
-        full_key = f"{prefix}.{key}" if prefix else str(key)
-        if isinstance(value, dict):
-            yield from _iter_scalar_rows(value, prefix=full_key)
-        else:
-            type_name = type(value).__name__
-            value_repr = repr(value)
-            yield full_key, type_name, value_repr
-
-
-def _render_yaml_reference() -> str:
-    template_data = yaml.safe_load(_ALL_TEMPLATE) or {}
-    top_keys = list(template_data.keys()) if isinstance(template_data, dict) else []
-    top_rows = "\n".join(f"| `{k}` |" for k in top_keys)
-    scalar_rows = "\n".join(
-        f"| `{k}` | `{t}` | `{v}` |" for k, t, v in _iter_scalar_rows(template_data)
-    )
-    scan_schema = """```yaml
-# scan (1D staged)
-one_based: false
-stages:
-  - - [1, 2, 1.65]
-  - - [2, 3, 2.30]
-
-# scan2d / scan3d
-one_based: false
-pairs:
-  - [1, 2, 1.40, 2.20]
-  - [2, 3, 1.20, 2.00]
-  - [3, 4, 1.00, 1.80]  # required only for scan3d
-```"""
-
-    return (
-        "# YAML Schema\n\n"
-        "## Top-level Keys\n\n"
-        "| Key |\n"
-        "|---|\n"
-        f"{top_rows}\n\n"
-        "## Starter Template\n\n"
-        "```yaml\n"
-        f"{_ALL_TEMPLATE.strip()}\n"
-        "```\n\n"
-        "## Scalar Defaults\n\n"
-        "| Key | Type | Default |\n"
-        "|---|---|---|\n"
-        f"{scalar_rows}\n\n"
-        "## Scan Spec Shapes\n\n"
-        "Accepted by `scan`, `scan2d`, and `scan3d` with `-s/--scan-lists`.\n\n"
-        f"{scan_schema}\n"
-    )
-
-
 def _render() -> list[RenderedFile]:
     command_docs = _collect_command_docs()
     rendered: list[RenderedFile] = []
@@ -223,7 +135,6 @@ def _render() -> list[RenderedFile]:
             content=_render_commands_index(command_docs),
         )
     )
-    rendered.append(RenderedFile(path=YAML_REF_PATH, content=_render_yaml_reference()))
     return rendered
 
 

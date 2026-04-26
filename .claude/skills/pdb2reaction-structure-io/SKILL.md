@@ -122,7 +122,7 @@ follow `charge-multiplicity.md`.
 
 ## See also
 
-- `pdb2reaction-cli/extract.md` — residue selectors and link-H caps.
+- [`pdb2reaction-cli/extract.md`](../pdb2reaction-cli/extract.md) — residue selectors and link-H caps.
 - `pdb2reaction-cli/SKILL.md` — common flag conventions across
   subcommands.
 - `pdb2reaction-workflows-output/SKILL.md` — what comes out of the

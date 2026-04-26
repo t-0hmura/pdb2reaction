@@ -133,4 +133,4 @@ This spawns a Ray worker pool. Limitations:
 - `env-cuda.md` — torch + CUDA setup (UMA needs CUDA-enabled torch).
 - `core.md` — `pdb2reaction` itself.
 - `mace.md` — alternate backend, requires a **separate** env.
-- `pdb2reaction-cli/tsopt.md`, `pdb2reaction-cli/freq.md` — `--hessian-calc-mode` choices.
+- [`pdb2reaction-cli/tsopt.md`](../pdb2reaction-cli/tsopt.md), [`pdb2reaction-cli/freq.md`](../pdb2reaction-cli/freq.md) — `--hessian-calc-mode` choices.

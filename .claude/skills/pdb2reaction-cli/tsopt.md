@@ -122,6 +122,6 @@ of frozen residues) or real chemical second-order saddle points.
 
 - `path-search.md` — produces TS candidates for `tsopt`.
 - `irc.md`, `freq.md` — downstream validation.
-- `pdb2reaction-install-backends/uma.md` / `mace.md` — TS-accurate
+- [`pdb2reaction-install-backends/uma.md`](../pdb2reaction-install-backends/uma.md) / `mace.md` — TS-accurate
   backends.
 - Defaults: `import pdb2reaction.defaults as d; print(d.RSIRFO_KW, d.DIMER_KW, d.HESSIAN_DIMER_KW)`

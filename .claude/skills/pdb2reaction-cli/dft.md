@@ -100,7 +100,7 @@ falling back.
 
 | Symptom | Fix |
 |---|---|
-| `OSError: libcusolver.so.11 not found` | `pdb2reaction-install-backends/env-cuda.md` (LD_LIBRARY_PATH order) |
+| `OSError: libcusolver.so.11 not found` | [`pdb2reaction-install-backends/env-cuda.md`](../pdb2reaction-install-backends/env-cuda.md) (LD_LIBRARY_PATH order) |
 | `cupy ... invalid device ordinal` | `unset CUDA_VISIBLE_DEVICES` |
 | `RuntimeError: CUDA out of memory` | Lower `grid_level`, switch to `def2-svp`, or `--engine cpu` |
 | aarch64 `--engine gpu` raises `ClickException` ("GPU backend failed...") | `gpu4pyscf-cuda12x` is x86_64 only; re-submit with `--engine cpu` |
@@ -117,7 +117,7 @@ falling back.
 
 ## See also
 
-- `pdb2reaction-install-backends/dft.md` — install + aarch64 handling.
+- [`pdb2reaction-install-backends/dft.md`](../pdb2reaction-install-backends/dft.md) — install + aarch64 handling.
 - `tsopt.md`, `irc.md` — produce the geometries you DFT-refine.
 - `pdb2reaction-workflows-output/SKILL.md` — DFT//MLIP recipe.
 - Defaults: `import pdb2reaction.defaults as d; print(d.GEOM_KW_DEFAULT)`

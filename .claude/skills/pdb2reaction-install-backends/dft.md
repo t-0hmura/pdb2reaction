@@ -94,6 +94,6 @@ choice, and whether RIJCOSX is enabled.
 ## See also
 
 - `env-cuda.md` — `LD_LIBRARY_PATH` and torch CUDA pairing.
-- `pdb2reaction-cli/dft.md` — full subcommand flag reference.
+- [`pdb2reaction-cli/dft.md`](../pdb2reaction-cli/dft.md) — full subcommand flag reference.
 - `pdb2reaction-workflows-output/SKILL.md` — DFT//MLIP refinement
   workflow (run `pdb2reaction dft` after `pdb2reaction all`).

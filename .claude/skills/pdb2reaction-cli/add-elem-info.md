@@ -52,4 +52,4 @@ case-sensitivity table.
 
 - `fix-altloc.md` — typically run together as a "PDB cleanup" step.
 - `extract.md` — depends on a well-formed element column.
-- `pdb2reaction-structure-io/pdb.md` — PDB column layout reference.
+- [`pdb2reaction-structure-io/pdb.md`](../pdb2reaction-structure-io/pdb.md) — PDB column layout reference.

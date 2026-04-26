@@ -111,5 +111,5 @@ use `--config` YAML and set `freeze_atoms`.
 ## See also
 
 - `tsopt.md`, `irc.md` — usual upstream stages.
-- `pdb2reaction-install-backends/uma.md` — `--hessian-calc-mode` knob.
+- [`pdb2reaction-install-backends/uma.md`](../pdb2reaction-install-backends/uma.md) — `--hessian-calc-mode` knob.
 - Defaults: `import pdb2reaction.defaults as d; print(d.FREQ_KW, d.THERMO_KW, d.FREQ_CALC_KW)`

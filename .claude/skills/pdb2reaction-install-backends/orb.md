@@ -85,4 +85,4 @@ re-run survivors with UMA or MACE for the final TS / IRC.
 - `env-cuda.md` — torch / CUDA prerequisites.
 - `uma.md` — recommended primary backend for production runs.
 - `mace.md` — alternative high-accuracy backend (separate env).
-- `pdb2reaction-cli/tsopt.md` — diagnosing TS convergence problems.
+- [`pdb2reaction-cli/tsopt.md`](../pdb2reaction-cli/tsopt.md) — diagnosing TS convergence problems.

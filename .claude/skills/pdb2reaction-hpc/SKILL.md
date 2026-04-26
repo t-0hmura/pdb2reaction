@@ -106,7 +106,7 @@ For pure MLIP `all` (no DFT): **2–6 h** is usually enough.
 | `pdb2reaction dft` with cheap functional / small molecule | Fine | Marginal speedup |
 | Hessian (analytical, UMA) | OK if VRAM-limited | Faster |
 
-Check `pdb2reaction-install-backends/dft.md` for `--engine gpu` / `cpu`
+Check [`pdb2reaction-install-backends/dft.md`](../pdb2reaction-install-backends/dft.md) for `--engine gpu` / `cpu`
 specifics, including the aarch64 caveat (CPU PySCF only).
 
 ## Monitoring and control
@@ -184,6 +184,6 @@ embed it inside the skill template.
 - `dynamic-dispatch.md` — flock + pbsdsh template for many short tasks.
 - `pdb2reaction-env-detect/SKILL.md` — discover queue / module / env
   values for the placeholders above.
-- `pdb2reaction-install-backends/env-cuda.md` — driver / torch CUDA
+- [`pdb2reaction-install-backends/env-cuda.md`](../pdb2reaction-install-backends/env-cuda.md) — driver / torch CUDA
   pairing.
-- `pdb2reaction-cli/all.md` — the typical workload submitted to HPC.
+- [`pdb2reaction-cli/all.md`](../pdb2reaction-cli/all.md) — the typical workload submitted to HPC.

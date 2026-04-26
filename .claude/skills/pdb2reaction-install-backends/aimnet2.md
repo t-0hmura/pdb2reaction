@@ -77,5 +77,5 @@ AIMNet2 accepts (from `backends/__init__.py:_BACKEND_ACCEPTED_KEYS['aimnet2']`):
 - `env-cuda.md` — torch / CUDA prereq.
 - `core.md` — `pdb2reaction` install.
 - `uma.md` — recommended for anything containing metals.
-- `pdb2reaction-structure-io/charge-multiplicity.md` — figuring out
+- [`pdb2reaction-structure-io/charge-multiplicity.md`](../pdb2reaction-structure-io/charge-multiplicity.md) — figuring out
   `-q` and `-m` for an unfamiliar substrate.

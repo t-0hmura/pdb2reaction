@@ -169,5 +169,5 @@ relevant mechanism.
 - `pdb.md` — `-l 'RES:Q'` syntax and where it parses from.
 - `xyz.md` — XYZ has no header, so `-q`/`-m` must be on the CLI.
 - `gjf.md` — gjf encodes charge / spin in the header.
-- `pdb2reaction-cli/extract.md` — the subcommand that consumes
+- [`pdb2reaction-cli/extract.md`](../pdb2reaction-cli/extract.md) — the subcommand that consumes
   `-l` and `-q` first.

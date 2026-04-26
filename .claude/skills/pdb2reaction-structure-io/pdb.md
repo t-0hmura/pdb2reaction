@@ -167,5 +167,5 @@ awk '/^ATOM|^HETATM/{key=substr($0,22,5)"-"substr($0,13,4); print key}' my.pdb \
 
 - `xyz.md`, `gjf.md` — alternative formats.
 - `charge-multiplicity.md` — figuring out per-ligand charges.
-- `pdb2reaction-cli/extract.md` — full `extract` flag set and examples.
+- [`pdb2reaction-cli/extract.md`](../pdb2reaction-cli/extract.md) — full `extract` flag set and examples.
 - `pdb2reaction-cli/{add-elem-info,fix-altloc}.md` — utility subcommands.

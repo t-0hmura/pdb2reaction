@@ -17,7 +17,7 @@ or QM/MM study.
 pdb2reaction all -i 1.R.pdb 3.P.pdb \
     -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --tsopt --thermo \
-    [--dft --func-basis 'wb97m-v/def2-svp'] \
+    [--dft --dft-func-basis 'wb97m-v/def2-svp'] \
     -o result_mep
 ```
 
