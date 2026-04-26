@@ -1,7 +1,5 @@
 # pdb2reaction: automated reaction-path modeling directly from PDB structures
 
-![pdb2reaction workflow overview](docs/overview.png)
-
 ## Overview
 
 `pdb2reaction` is a Python CLI toolkit for turning **PDB structures** into **enzymatic reaction pathways** with machine-learning interatomic potentials (MLIPs). Each workflow step is also available as an [individual subcommand](#cli-subcommands) ([`opt`](docs/opt.md), [`scan`](docs/scan.md), [`scan2d`](docs/scan2d.md), [`path-search`](docs/path-search.md), [`tsopt`](docs/tsopt.md), [`freq`](docs/freq.md), [`irc`](docs/irc.md), [`dft`](docs/dft.md), [`energy-diagram`](docs/energy-diagram.md), [etc.](#cli-subcommands)) for fine-grained control.
@@ -26,6 +24,8 @@ The full workflow — **MEP search → TS optimization → IRC → thermochemist
 pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --tsopt --thermo --dft
 ```
+
+![pdb2reaction workflow overview](docs/overview.png)
 
 > **Working examples** are provided in the [`examples/`](examples/) directory: a `run.sh` with complete `all` workflow commands for both the multi-structure MEP and the scan-based pipeline. The example system is GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)), which catalyzes a two-step reaction: (1) electrophilic methyl transfer from SAM to the C6 position of GPP via a C7 carbocation intermediate, and (2) proton abstraction from C6 by the catalytic base E170 to yield 6-methylgeranyl pyrophosphate (6MGPP).
 
