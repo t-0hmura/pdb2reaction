@@ -1,5 +1,7 @@
 # pdb2reaction: automated reaction-path modeling directly from PDB structures
 
+![pdb2reaction workflow overview](docs/overview.png)
+
 ## Overview
 
 `pdb2reaction` is a Python CLI toolkit for turning **PDB structures** into **enzymatic reaction pathways** with machine-learning interatomic potentials (MLIPs). Each workflow step is also available as an [individual subcommand](#cli-subcommands) ([`opt`](docs/opt.md), [`scan`](docs/scan.md), [`scan2d`](docs/scan2d.md), [`path-search`](docs/path-search.md), [`tsopt`](docs/tsopt.md), [`freq`](docs/freq.md), [`irc`](docs/irc.md), [`dft`](docs/dft.md), [`energy-diagram`](docs/energy-diagram.md), [etc.](#cli-subcommands)) for fine-grained control.
