@@ -53,7 +53,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Tangent normalization and SVD align guarded against NaN / zero.
 - Removed internal pysisyphus reference from `--input` help text.
 - Docs: quickstart paths, troubleshooting, exit codes, `track_mode_by_overlap`, `dft/` in output tree, `scan`/`path-opt`/`irc` in See Also, `path_opt → path_search`, `--model → calc.model`, `--print-parsed` scope, JA toctree captions, `yaml-reference --config` flag.
-- Phase 4 critical review: removed repeat-flag claims, synced `ION` dict, hoisted `set()`, removed dead parameter.
 
 ## [0.3.4] — 2026-04-05
 
@@ -66,7 +65,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - `bond-summary` PDB loading: `geom_from_pdb_str → geom_from_pdb`.
 - Improved xTB not-found error message with install instructions.
 - Documented GPU4PySCF Blackwell OOM limitation in `dft.md` (EN/JA).
-- 8 audit findings: docs defaults, code bugs, YAML examples.
 
 ## [0.3.3] — 2026-04-05
 
@@ -92,7 +90,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Resume guard, first-input handling, zero-mass, `dir()` branches, scan guard, kink HEI, `_to_json` numpy/torch support, `BOND_KW` device, bare assert, dead `dft` check, missing `tabulate` dependency.
 - MACE install docs: clarify that `fairchem-core` must be uninstalled first (e3nn conflict).
 - Shell quoting in `pip install` extras examples (use double quotes).
-- External reviewer feedback integrated across documentation (EN + JA): JA UMA hard-code, benchmark GPU spec, pipeline diagram, path-search See Also, Stage 4 guard, `UMA → MLIP` label.
+- Documentation polish (EN + JA): JA UMA hard-code, benchmark GPU spec, pipeline diagram, path-search See Also, Stage 4 guard, `UMA → MLIP` label.
 
 ## [0.3.2] — 2026-03-24
 
@@ -111,7 +109,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 ### Fixed
 - `click.echo` double blank lines: `_patched_echo` suppresses consecutive blanks; `pretty_block` spacing adjusted; section banners de-paded.
 - IRC bisection: eliminated in-place mutation of initial displacement.
-- 27- and 32-agent audit remediation: JA doc defaults, `--scan-preopt`/`--scan-endopt` defaults, `--preopt` default (False → True).
+- JA doc defaults synced; `--scan-preopt` / `--scan-endopt` defaults; `--preopt` default (False → True).
 - Theme toggle: document-level capture; 3-state → 2-state (light ↔ dark).
 - `_patch_click_echo` definition order (NameError on import).
 - `--verbose` flag semantics reconciled; always show full config dump.
