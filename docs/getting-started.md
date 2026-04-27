@@ -299,28 +299,7 @@ Each segment directory under `path_search/` (or `path_opt/` when `--refine-path 
 
 ## CLI commands
 
-Most users will primarily call `pdb2reaction all`. The CLI also exposes individual subcommands—each supports `-h/--help`.
-`pdb2reaction all --help` shows core options and `pdb2reaction all --help-advanced` shows the complete list.
-`scan`, `scan2d`, `scan3d`, and the calculation commands (`opt`, `path-opt`, `path-search`, `tsopt`, `freq`, [`irc`](irc.md), `dft`) now follow the same progressive-help pattern (`--help` core, `--help-advanced` full). `add-elem-info`, `trj2fig`, and `energy-diagram` also use the same pattern. `extract` and `fix-altloc` also support progressive help (`--help` core, `--help-advanced` full parser options).
-
-| Subcommand | Role | Documentation |
-|------------|------|---------------|
-| `all` | End-to-end workflow | [all](all.md) |
-| `extract` | Extract active site model (cluster model) | [extract](extract.md) |
-| `opt` | Geometry optimization | [opt](opt.md) |
-| `tsopt` | Transition state optimization | [tsopt](tsopt.md) |
-| `path-opt` | MEP optimization (GSM/DMF) | [path-opt](path-opt.md) |
-| `path-search` | Recursive MEP search | [path-search](path-search.md) |
-| `scan` | 1D bond-length scan | [scan](scan.md) |
-| `scan2d` | 2D distance scan | [scan2d](scan2d.md) |
-| `scan3d` | 3D distance scan | [scan3d](scan3d.md) |
-| `irc` | IRC calculation | [irc](irc.md) |
-| `freq` | Vibrational analysis | [freq](freq.md) |
-| `dft` | Single-point DFT | [dft](dft.md) |
-| `trj2fig` | Plot energy profiles | [trj2fig](trj2fig.md) |
-| `energy-diagram` | Draw state energy diagram from numeric values | [energy-diagram](energy-diagram.md) |
-| `fix-altloc` | Resolve PDB alternate-location indicators | [fix-altloc](fix-altloc.md) |
-| `add-elem-info` | Repair PDB element columns | [add-elem-info](add-elem-info.md) |
+Most users will primarily call `pdb2reaction all`. The CLI also exposes individual subcommands; each supports `-h/--help` and (for the calculation/scan/extract/utility commands) `--help-advanced` for the full list. For the categorized subcommand index with per-command documentation links, see the [documentation home](index.md#cli-subcommands).
 
 ```{tip}
 For Hessian evaluation modes, see {ref}`MLIP Calculator <hessian-evaluation>`.

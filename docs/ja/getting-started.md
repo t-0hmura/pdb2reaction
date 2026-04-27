@@ -297,28 +297,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
 
 ## CLI サブコマンド
 
-ほとんどのユーザーは `pdb2reaction all` を主に使用しますが、`pdb2reaction opt` などの個別サブコマンドも利用できます。各サブコマンドは `-h/--help` に対応しています。
-`pdb2reaction all --help` は主要オプションのみを表示し、`pdb2reaction all --help-advanced` で全オプションを表示できます。
-`scan` / `scan2d` / `scan3d` と計算系サブコマンド（`opt` / `path-opt` / `path-search` / `tsopt` / `freq` / `irc` / `dft`）に加え、`add-elem-info` / `trj2fig` / `energy-diagram` も同様に `--help` は主要オプションのみ、`--help-advanced` で全オプションを表示します。`extract` と `fix-altloc` も段階的 help に対応し、`--help-advanced` で parser の全オプションを表示します。
-
-| サブコマンド | 役割 | ドキュメント |
-|------------|------|------------|
-| `all` | 一気通貫ワークフロー | [all](all.md) |
-| `extract` | 活性部位モデルとしてクラスターモデルを抽出 | [extract](extract.md) |
-| `opt` | 構造最適化 | [opt](opt.md) |
-| `tsopt` | 遷移状態最適化 | [tsopt](tsopt.md) |
-| `path-opt` | MEP最適化 (GSM/DMF) | [path-opt](path-opt.md) |
-| `path-search` | 再帰的 MEP 探索 | [path-search](path-search.md) |
-| `scan` | 1D結合長スキャン | [scan](scan.md) |
-| `scan2d` | 2D距離スキャン | [scan2d](scan2d.md) |
-| `scan3d` | 3D距離スキャン | [scan3d](scan3d.md) |
-| `irc` | IRC 計算 | [irc](irc.md) |
-| `freq` | 振動解析 | [freq](freq.md) |
-| `dft` | DFT 一点計算 | [dft](dft.md) |
-| `trj2fig` | エネルギープロファイルプロット | [trj2fig](trj2fig.md) |
-| `energy-diagram` | 数値から状態エネルギーダイアグラムを描画 | [energy-diagram](energy-diagram.md) |
-| `fix-altloc` | PDB代替位置指示子の解決 | [fix-altloc](fix-altloc.md) |
-| `add-elem-info` | PDB元素カラム修復 | [add-elem-info](add-elem-info.md) |
+ほとんどのユーザは `pdb2reaction all` を主に使います。CLI は個別サブコマンドも提供しており、各コマンドは `-h/--help` に対応しています（計算/スキャン/抽出/ユーティリティ系は `--help-advanced` で全オプションを表示）。カテゴリ別のサブコマンド一覧と各ドキュメントへのリンクは [ドキュメントトップ](index.md#cli-サブコマンド) を参照してください。
 
 ```{tip}
 ヘシアン評価モードの詳細は {ref}`MLIP 計算機 <ja-hessian-evaluation>` を参照してください。

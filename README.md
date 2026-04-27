@@ -7,7 +7,7 @@
 A **single command** can generate a first-pass enzymatic reaction path:
 
 ```bash
-# bezA (GPP C6-methyltransferase): methyl transfer (SAM→GPP C6) + proton abstraction (E170)
+# BezA (GPP C6-methyltransferase): methyl transfer (SAM→GPP C6) + proton abstraction (E170)
 pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
 ```
 ```bash
@@ -58,7 +58,7 @@ Both `pdb2reaction` and `mlmm-toolkit` include a custom GPU-optimized pysisyphus
 
 - [**Getting Started**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/getting-started.md) — Quick start and workflow overview
 - [**Installation**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/installation.md) — Setup and dependency installation
-- [**Examples**](examples/) — Working `all` workflow commands (MEP and scan pipelines) for bezA, in `examples/run.sh`
+- [**Examples**](examples/) — Working `all` workflow commands (MEP and scan pipelines) for BezA, in `examples/run.sh`
 - [**YAML Reference**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/yaml-reference.md) — Configuration options
 - [**JSON Output Reference**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/json-output.md) — Machine-readable result.json schema
 - [**Troubleshooting**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/troubleshooting.md) — Common errors, backend selection guide, VRAM requirements
