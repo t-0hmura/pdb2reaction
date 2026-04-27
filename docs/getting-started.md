@@ -176,10 +176,6 @@ Behavior:
 
 This is the recommended mode when you can generate reasonably spaced intermediates (e.g., from docking, MD, or manual modeling).
 
-```{important}
-`pdb2reaction` assumes that multiple input PDBs contain **exactly the same atoms in the same order** (only coordinates may differ). If any non-coordinate fields differ across inputs, an error is raised. Input PDB files must also contain **hydrogen atoms**.
-```
-
 ---
 
 ### Single-structure + staged scan (feeds MEP refinement)
@@ -302,44 +298,6 @@ Each segment directory under `path_search/` (or `path_opt/` when `--refine-path 
 
 Most users will primarily call `pdb2reaction all`. The CLI also exposes individual subcommands; each supports `-h/--help` and (for the calculation/scan/extract/utility commands) `--help-advanced` for the full list. For the categorized subcommand index with per-command documentation links, see the [documentation home](index.md#cli-subcommands).
 
-```{tip}
-For Hessian evaluation modes, see {ref}`MLIP Calculator <hessian-evaluation>`.
-```
-
----
-
-## Quick reference
-
-**Common command patterns:**
-
-```bash
-# Basic MEP search (2+ structures)
-pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
-
-# Full workflow with post-processing
-pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
- --tsopt --thermo --dft
-
-# Single structure with staged scan
-pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
- -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' '[("GPP 321 H11","GLU 186 OE2",0.90)]'
-
-# TS-only optimization
-pdb2reaction -i TS.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --thermo
-```
-
-**Essential options:**
-
-| Option | Purpose |
-|--------|---------|
-| `-i` | Input structure(s) |
-| `-c` | Substrate definition for active site model extraction |
-| `-l, --ligand-charge` | Substrate charges (e.g., `'SAM:1,GPP:-3'`) |
-| `--tsopt` | Enable TS optimization + IRC |
-| `--thermo` | Run vibrational analysis |
-| `--dft` | Run single-point DFT |
-| `-o, --out-dir` | Output directory |
-
 ---
 
 ## Agent Skills
@@ -363,7 +321,6 @@ pdb2reaction <subcommand> --help-advanced
 pdb2reaction all --help-advanced
 ```
 
-For `all`, `--help` is intentionally short. Use `--help-advanced` to see every option.
 For detailed MLIP backend options, see [MLIP Calculator](uma-pysis.md).
 
 If you encounter any issues, please open an Issue on the [GitHub repository](https://github.com/t-0hmura/pdb2reaction).

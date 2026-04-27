@@ -20,7 +20,7 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --ther
 
 > **実行例:** [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) ディレクトリに GPP C6-メチル基転移酵素 BezA（[Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)）の完全な `all` ワークフロースクリプト（MEP およびスキャンパイプライン）があります。
 
-入力として、(i) 反応順に並べたタンパク質–リガンド複合体の PDB を 2 つ以上（R → … → P）、(ii) `--scan-lists` を指定した 1 つの PDB、または (iii) TS 候補 1 構造 + `--tsopt` を与えると、`pdb2reaction` が次を自動化します。
+入力として、(i) 反応順に並べたタンパク質–リガンド複合体の PDB を 2 つ以上（R → … → P）、(ii) `--scan-lists/-s` を指定した 1 つの PDB、または (iii) TS 候補 1 構造 + `--tsopt` を与えると、`pdb2reaction` が次を自動化します。
 
 - ユーザーが指定した基質の周辺から **活性部位モデル（バインディングポケット）** を切り出し、計算用の **クラスターモデル**（Cluster Model）を構築
 - Growing String Method (GSM) や Direct Max Flux (DMF) などの経路最適化手法で **最小エネルギー経路 (MEP: Minimum Energy Path)** を探索
@@ -32,7 +32,7 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --ther
 - 量子化学計算に向けた**初期構造の作成**（反応物・TS・生成物のクラスターモデル）
 - 基質バリアントや酵素変異体にわたる**反応経路の大量計算**
 
-一連の処理は CLI から呼び出せるように統一されており、手作業を最小化して **多段階の酵素反応メカニズム** を組み立てられるように設計しています。抽出を行わない全系ワークフロー（`--center/-c` と `--ligand-charge` を省略）では `.xyz` / `.gjf` 入力も利用できます。小分子系にもそのまま適用可能です。
+一連の処理は CLI から呼び出せるように統一されており、手作業を最小化して **多段階の酵素反応メカニズム** を組み立てられるように設計しています。抽出を行わない全系ワークフロー（`--center/-c` と `--ligand-charge/-l` を省略）では `.xyz` / `.gjf` 入力も利用できます。小分子系にもそのまま適用可能です。
 
 **HPC クラスターやマルチ GPU 環境**では、UMA 推論をノード間で並列化することで、大規模なクラスターモデル（必要なら **完全なタンパク質–リガンド複合体**）にも対応できます。`workers` と `workers_per_node` で並列度を設定してください（詳細は [MLIP バックエンド](uma-pysis.md)）。`-b/--backend` により代替バックエンド（ORB、MACE、AIMNet2）を選択することもできます。
 
@@ -47,21 +47,22 @@ PDB (R, P)
 [extract]  活性部位モデル抽出（クラスターモデル）
   |
   v
-[path-search]  MEP 探索（再帰的 path-search、デフォルト）; `--refine-path False` で path-opt に切替
-  |         出力: mep.pdb, energy_diagram.png, summary.json
+[scan]  （オプション, --scan-lists/-s）段階的距離拘束スキャン
+  |
   v
-[tsopt]  TS 最適化 (RS-I-RFO or Hessian Guided Dimer)
-  |       出力: final_geometry.xyz, vib/imag_*.pdb
+[path-search]  MEP 探索（再帰的 path-search、デフォルト; `--refine-path False` で path-opt に切替）
+  |
+  v
+[tsopt]  TS 最適化 (RS-I-RFO; 代替として Dimer)
+  |
   v
 [irc]  固有反応座標
-  |     出力: finished_irc_trj.xyz, forward_irc_trj.xyz, backward_irc_trj.xyz
-  |     （`all` 経由の場合は post_seg_XX/irc/ 配下）
+  |
   v
 [freq]  振動解析 + 熱化学 (R, TS, P)
-  |      出力: frequencies_cm-1.txt, thermoanalysis.yaml
+  |
   v
 [dft]  一点 DFT エネルギー（オプション, --dft）
-        出力: result.yaml
 ```
 
 各ステージは単独のサブコマンドとしても実行できます。`all` はこれらを統合し、`summary.json` と `summary.log` を出力します。
@@ -117,7 +118,7 @@ PDB に水素原子がない場合は、pdb2reaction を実行する前に次の
 セットアップと依存関係の詳細は [インストール](installation.md) を参照してください。
 
 - [クイックスタート: `pdb2reaction all`](quickstart-all.md)
-- [クイックスタート: `pdb2reaction all --scan-lists` で単一構造の段階的スキャン+MEP+TS](quickstart-scan.md)
+- [クイックスタート: `pdb2reaction all --scan-lists/-s` で単一構造の段階的スキャン+MEP+TS](quickstart-scan.md)
 - [クイックスタート: `pdb2reaction tsopt`（TS 最適化と検証）](quickstart-tsopt-freq.md)
 
 ---
@@ -175,17 +176,13 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 
 ドッキング、MD、手動モデリングなどで中間体を準備できる場合に推奨するモードです。
 
-```{important}
-`pdb2reaction` は複数の入力 PDB が**まったく同じ原子を同じ順序**で含むことを前提としています（座標のみが異なる状態）。座標以外のフィールドが入力間で異なる場合はエラーになります。入力 PDB ファイルには**水素原子**も含まれている必要があります。
-```
-
 ---
 
 ### 単一構造 + 段階的スキャン（MEP 精密化への入力）
 
 **1 つの PDB 構造**しかないが、反応に沿ってどの原子間距離が変化するかが分かっている場合に使用します。
 
-`--scan-lists` と一緒に単一の `-i` を指定します:
+`--scan-lists/-s` と一緒に単一の `-i` を指定します:
 
 **最小例**
 
@@ -206,11 +203,11 @@ pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 
 補足:
 
-- `--scan-lists` は抽出されたクラスターモデルでの**段階的距離スキャン**を記述
+- `--scan-lists/-s` は抽出されたクラスターモデルでの**段階的距離スキャン**を記述
 - 各タプル `(i, j, target_Å)` は:
  - `'TYR,285,CA'` のようなPDB原子セレクター文字列（**区切り文字**: スペース/カンマ/スラッシュ/バッククォート/バックスラッシュ ` ` `,` `/` `` ` `` `\`）**または**1始まりの原子インデックス
  - クラスターモデルのインデックスに自動的に再マッピング
-- 1 つの `-s/--scan-lists` リテラルで 1 ステージを実行。複数リテラルを渡すと順次ステージとして実行されます（例: `-s '[(…)]' '[(…)]'`）
+- 1 つの `--scan-lists/-s` リテラルで 1 ステージを実行。複数リテラルを渡すと順次ステージとして実行されます（例: `-s '[(…)]' '[(…)]'`）
 - 各ステージは `stage_XX/result.pdb` を書き出し、候補中間体または生成物として扱われる
 - デフォルトの `all` ワークフローは再帰的 `path-search` による自動精密化で処理（PDB テンプレートがある場合はマージされた `mep_w_ref*.pdb` を生成）
 - `--refine-path False` を指定すると、連結されたステージを単一パス `path-opt` で処理
@@ -249,7 +246,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
 `energy_diagram_*_all.png` や `irc_plot_all.png` などの出力は、トップレベルの `--out-dir` の下にもコピーされます。
 
 ```{important}
-単一入力実行には **`--scan-lists`**（段階的スキャン → GSM）**または** `--tsopt`（TSOPT のみ）のいずれかが必要です。これらのいずれも指定せずに単一の `-i` のみを渡しても、ワークフローは実行されません。
+単一入力実行には **`--scan-lists/-s`**（段階的スキャン → GSM）**または** `--tsopt`（TSOPT のみ）のいずれかが必要です。これらのいずれも指定せずに単一の `-i` のみを渡しても、ワークフローは実行されません。
 ```
 
 ---
@@ -260,7 +257,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
 
 | オプション | 説明 |
 |----------|------|
-| `-i, --input PATH...` | 入力構造。**2 つ以上の PDB** → MEP 探索; **1 つの PDB + `--scan-lists`** → 段階的スキャン → GSM; **1 つの PDB + `--tsopt`** → TSOPT のみモード |
+| `-i, --input PATH...` | 入力構造。**2 つ以上の PDB** → MEP 探索; **1 つの PDB + `--scan-lists/-s`** → 段階的スキャン → GSM; **1 つの PDB + `--tsopt`** → TSOPT のみモード |
 | `-c, --center TEXT` | 基質/抽出中心を定義。残基名（`'SAM,GPP'`）、残基ID（`A:123,B:456`）、または PDB パスをサポート |
 | `-l, --ligand-charge TEXT` | 電荷情報: マッピング（`'SAM:1,GPP:-3'`）または単一整数 |
 | `-q, --charge INT` | 総電荷の強制上書き |
@@ -301,44 +298,6 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
 
 ほとんどのユーザは `pdb2reaction all` を主に使います。CLI は個別サブコマンドも提供しており、各コマンドは `-h/--help` に対応しています（計算/スキャン/抽出/ユーティリティ系は `--help-advanced` で全オプションを表示）。カテゴリ別のサブコマンド一覧と各ドキュメントへのリンクは [ドキュメントトップ](index.md#cli-サブコマンド) を参照してください。
 
-```{tip}
-ヘシアン評価モードの詳細は {ref}`MLIP 計算機 <ja-hessian-evaluation>` を参照してください。
-```
-
----
-
-## 早見表
-
-**よく使うコマンドパターン:**
-
-```bash
-# 基本的な MEP 探索（2 構造以上）
-pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
-
-# 後処理付きフルワークフロー
-pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
- --tsopt --thermo --dft
-
-# 単一構造 + 段階的スキャン
-pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
- -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' '[("GPP 321 H11","GLU 186 OE2",0.90)]'
-
-# TS のみ最適化
-pdb2reaction -i TS.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --thermo
-```
-
-**主要オプション一覧:**
-
-| オプション | 用途 |
-|----------|------|
-| `-i` | 入力構造 |
-| `-c` | 活性部位モデル抽出用の基質定義 |
-| `-l, --ligand-charge` | 基質電荷（例: `'SAM:1,GPP:-3'`） |
-| `--tsopt` | TS 最適化 + IRC を有効化 |
-| `--thermo` | 振動解析を実行 |
-| `--dft` | DFT 一点計算を実行 |
-| `-o, --out-dir` | 出力ディレクトリ |
-
 ---
 
 ## ヘルプ
@@ -351,6 +310,6 @@ pdb2reaction <subcommand> --help-advanced
 pdb2reaction all --help-advanced
 ```
 
-`all` では `--help` は短縮版です。全オプションを確認するときは `--help-advanced` を使用してください。MLIP バックエンドの詳細オプションについては [MLIP バックエンド](uma-pysis.md) を参照してください。
+MLIP バックエンドの詳細オプションについては [MLIP バックエンド](uma-pysis.md) を参照してください。
 
 問題が発生した場合は、[GitHubリポジトリ](https://github.com/t-0hmura/pdb2reaction) でIssueを開いてください。

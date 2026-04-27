@@ -25,10 +25,10 @@ plotly_get_chrome -y
 最後に、UMA モデルをダウンロードできるように **Hugging Face Hub** にログインします（無料の HF アカウントと読み取り専用トークンが必要。<https://huggingface.co/facebook/UMA> でモデルライセンスの承認が必要な場合あり）:
 
 ```bash
+huggingface-cli login
+# または
 hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 ```
-
-> 古い `huggingface_hub`（<0.26）では `huggingface-cli login` を使用してください。本ガイドでは正準形として `hf auth login` を使います。
 
 これはマシン/環境ごとに1回だけ行う必要があります。
 
@@ -105,8 +105,6 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
     ```bash
     hf auth login
     ```
-
-    古い `huggingface_hub`（<0.26）の場合は代わりに `huggingface-cli login` を使用してください。
 
     参照:
 
