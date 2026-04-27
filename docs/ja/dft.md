@@ -6,6 +6,8 @@
 
 `pdb2reaction dft` は PySCF（CPU）または GPU4PySCF（GPU）を使用して DFT 一点計算を実行します。デフォルトの汎関数/基底関数は ωB97M-V/def2-tzvpd です。結果にはエネルギーと電子密度解析（Mulliken、meta-Löwdin、IAO 電荷）が含まれます。
 
+> `--engine`（単体の `dft`）と `--dft-engine`（`pdb2reaction all` から転送する場合）の命名規則は {ref}`ja-engine-vs-dft-engine` を参照してください。
+
 バックエンドは `--engine` で制御します:
 - `gpu`（デフォルト）: GPU4PySCF を使用します。**GPU が利用できない場合はエラーになります。** GPU アクセラレーションを保証したい本番計算に最適です。
 - `cpu`: CPU PySCF を強制的に使用します。GPU が利用できない場合や、決定的な CPU のみの実行が必要な場合（移植性やデバッグなど）に使用します。
@@ -92,7 +94,7 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 \
 | `--conv-tol FLOAT` | SCF収束許容値（Hartree） | `1e-9` |
 | `--grid-level INT` | PySCF数値積分グリッドレベル | `3` |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_dft/` |
-| `--engine [gpu\|cpu]` | SCFバックエンド: gpu (GPU4PySCF) または cpu (PySCF)。単体の `dft` サブコマンドではこのオプション名は `--engine` ですが、`pdb2reaction all` から転送する場合は同じ設定が `--dft-engine` という名前になります。 | `gpu` |
+| `--engine [gpu\|cpu]` | SCFバックエンド: gpu (GPU4PySCF) または cpu (PySCF)。`--engine` と `--dft-engine` の命名規則は {ref}`ja-engine-vs-dft-engine` を参照。 | `gpu` |
 | `--convert-files/--no-convert-files` | **`dft` では no-op。** 他のサブコマンドとのインターフェース整合性のためだけに受け付けられます。`dft` は PDB や GJF を一切出力せず（`input_geometry.xyz` + `result.yaml` のみ）、このフラグの値は無視されます。 | `True` |
 | `--ref-pdb FILE` | 原子数検証とXYZ/GJF 入力のリガンド電荷導出を有効にする参照 PDB トポロジー（出力変換は行わない） | _None_ |
 | `--config FILE` | 明示的な CLI オプション適用前に読み込むベース YAML | _None_ |
@@ -114,13 +116,7 @@ out_dir/ (デフォルト:./result_dft/)
 
 ## 終了コード
 
-| コード | 意味 |
-|--------|------|
-| 0 | 成功 |
-| 1 | 予期しないエラー |
-| 2 | インポート失敗（PySCF または GPU4PySCF が未インストール） |
-| 3 | SCF 未収束 |
-| 130 | キーボード割り込み |
+終了コードは CLI 規約の {ref}`ja-exit-codes` を参照。
 
 ## 注意事項
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。

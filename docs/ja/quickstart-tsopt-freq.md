@@ -9,7 +9,7 @@ TS 候補を最適化し、一次鞍点（first-order saddle point）である�
 - TS 候補構造: `.pdb`
 - 対象状態に対応した電荷（`-q/--charge` または `-l/--ligand-charge`）・多重度（`-m`）
 
-## 1. TS 最適化
+## 最小コマンド
 
 ```bash
 pdb2reaction tsopt -i ts_guess.pdb -q 0 -m 1 --out-dir ./result_tsopt
@@ -19,6 +19,14 @@ pdb2reaction tsopt -i ts_guess.pdb -q 0 -m 1 --out-dir ./result_tsopt
 
 ```
 [Imaginary modes] n=1  ([-593.1])
+```
+
+### （任意）個別の振動解析
+
+全振動モードの一覧や熱化学補正（零点エネルギー (ZPE)、ギブズ自由エネルギーなど; `all` コマンドの `--thermo` に相当）が必要な場合は、別途 `freq` を実行してください。虚振動数の確認だけであれば、上記の `tsopt` の出力で十分です。
+
+```bash
+pdb2reaction freq -i ./result_tsopt/final_geometry.pdb -q 0 -m 1 --out-dir ./result_freq
 ```
 
 ## 期待される出力
@@ -38,14 +46,6 @@ result_tsopt/
 2. `vib/imag_*.pdb` — PyMOL でアニメーション; 期待される結合の切断/形成に対応する振動であること
 3. `n=0`（虚振動なし）: 極小に収束。別の初期構造を試す
 4. `n>1`（複数の虚振動）: `--flatten` で余分なモードの平坦化を試行（反復回数の上限は `--config` で YAML を渡し、`hessian_dimer.flatten_max_iter` を指定 — Dimer と RS-I-RFO の両モードともこのキーを参照します）
-
-## 2.（任意）個別の振動解析
-
-全振動モードの一覧や熱化学補正（零点エネルギー (ZPE)、ギブズ自由エネルギーなど; `all` コマンドの `--thermo` に相当）が必要な場合は、別途 `freq` を実行してください。虚振動数の確認だけであれば、上記の `tsopt` の出力で十分です。
-
-```bash
-pdb2reaction freq -i ./result_tsopt/final_geometry.pdb -q 0 -m 1 --out-dir ./result_freq
-```
 
 ## 補足
 

@@ -96,7 +96,7 @@ Accepted values: `gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`
 | [`bond`](#bond) | Bond-change detection settings | scan, path-search |
 | [`search`](#search) | Recursive path search settings | path-search |
 | [`hessian_dimer`](#hessian_dimer) | Hessian Guided Dimer TS optimization | tsopt |
-| [`rsirfo`](#rsirfo) | RS-I-RFO TS optimization | tsopt |
+| [`rsirfo`](#rsirfo) | RS-I-RFO TS optimization | tsopt, all |
 
 ---
 

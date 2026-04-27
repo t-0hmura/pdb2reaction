@@ -65,7 +65,7 @@ Please run `pdb2reaction add-elem-info -i...` to populate element columns before
 
 対処の例:
 - `--radius` を増やしてください（例: 2.6 → 3.5 Å）
-- `--selected-resn` で残基を強制包含してください（例: `--selected-resn 'A:123,B:456'`）。**警告:** 名前に反して、`--selected-resn` は3文字の残基名ではなく**残基 ID**（コロン区切り整数）を受け取ります — `TYR,GLU` のような指定は何もマッチせず、エラーも出ません。
+- `--selected-resn` で残基を強制包含してください（例: `--selected-resn 'A:123,B:456'`）。残基 ID 仕様の詳細は CLI 規約の {ref}`ja-selected-resn-takes-ids` を参照。
 - 主鎖削除が強すぎる場合は `--no-exclude-backbone` を試してください
 
 ---
@@ -202,11 +202,12 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 - TS 最適化が多くのサイクルを回しても収束しない
 - 最適化後もヘシアン行列に複数の負の固有値が残る（虚振動数が 2 本以上）
 
-対処の例:
+対処の例（CLI フラグと YAML キーは補完的、必要に応じて併用してください）:
 - オプティマイザーモードを切り替えてください: `--opt-mode grad`（Dimer 法）または `--opt-mode hess`（RS-I-RFO 法、デフォルト）
 - 余分な虚振動数モードのフラット化を有効にしてください: `--flatten`（単独の `tsopt`、`opt`、および `pdb2reaction all` で利用可能。デフォルトは無効）
 - 最大サイクル数を増やしてください: `--max-cycles 20000`（単独の `tsopt` の場合）、`--tsopt-max-cycles 20000`（`all` の場合）
 - より厳しい収束閾値を使ってください: `--thresh baker` または `--thresh gau_tight`
+- YAML でステップサイズ / 信頼半径を縮小してください — LBFGS/Dimer: `lbfgs.max_step` / `hessian_dimer.max_step`、RFO/RS-I-RFO: `rfo.trust_radius` / `rfo.trust_min` / `rfo.trust_max`（および `rsirfo` セクション）。セクション構成は [YAML リファレンス](yaml-reference.md) を参照
 
 ---
 
@@ -219,7 +220,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 対処の例:
 - ステップサイズを減らしてください: `--step-size 0.05`（デフォルト: 0.10 bohr、質量重み付けなしのデカルト座標）
 - 最大サイクル数を増やしてください: `--max-cycles 200`
-- IRC 実行前に TS 候補の虚振動数が 1 本（|ν| >= 100 cm⁻¹）だけであることを確認してください。**閾値の区別:** 内部 5 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm`）と 100 cm⁻¹ の TS 品質ゲートは別の問いに答える閾値です — 正規の定義は {ref}`ja-imaginary-mode-thresholds` を参照してください。
+- IRC 実行前に TS 候補の虚振動数が 1 本（|ν| >= 100 cm⁻¹）だけであることを確認してください。5 cm⁻¹ 検出閾値と 100 cm⁻¹ 品質ゲートの違いは用語集 {ref}`ja-imaginary-mode-thresholds` を参照。
 
 ---
 

@@ -148,102 +148,11 @@ pdb2reaction all [OPTIONS]...
 
 ## 主要なワークフロー
 
-### 複数構造MEPワークフロー（反応物 → 生成物）
-
-推定反応座標に沿った複数の完全な PDB 構造（例: R → I1 → I2 → P）がすでにある場合に使用します。
-
-**最小例**
-
-```bash
-pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
-```
-
-**詳細例**
-
-```bash
-pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
- --out-dir ./result_all --tsopt --thermo --dft
-```
-
-処理の流れ:
-
-- 反応順に並んだ 2 つ以上の**完全系**を受け取る
-- 各構造から触媒クラスターモデルを抽出
-- デフォルトで**再帰的** `path-search` による **MEP 探索**を実行（出力は `path_search/`）
-- `--refine-path False` を指定すると単一パス `path-opt` に切り替え（出力は `path_opt/`）
-- PDB テンプレートがある場合、クラスターモデル MEP を**完全系**にマージ
-- 必要に応じて各セグメントで TS 最適化、IRC、振動解析、DFT 一点計算を実行
-
-ドッキング、MD、手動モデリングなどで中間体を準備できる場合に推奨するモードです。
-
----
-
-### 単一構造 + 段階的スキャン（MEP 精密化への入力）
-
-**1 つの PDB 構造**しかないが、反応に沿ってどの原子間距離が変化するかが分かっている場合に使用します。
-
-`--scan-lists/-s` と一緒に単一の `-i` を指定します:
-
-**最小例**
-
-```bash
-pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
- -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' \
- '[("GPP 321 H11","GLU 186 OE2",0.90)]'
-```
-
-**詳細例**
-
-```bash
-pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
- -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' \
- '[("GPP 321 H11","GLU 186 OE2",0.90)]' \
- --multiplicity 1 --out-dir ./result_scan --tsopt --thermo --dft
-```
-
-補足:
-
-- `--scan-lists/-s` は抽出されたクラスターモデルでの**段階的距離スキャン**を記述
-- 各タプル `(i, j, target_Å)` は:
- - `'TYR,285,CA'` のようなPDB原子セレクター文字列（**区切り文字**: スペース/カンマ/スラッシュ/バッククォート/バックスラッシュ ` ` `,` `/` `` ` `` `\`）**または**1始まりの原子インデックス
- - クラスターモデルのインデックスに自動的に再マッピング
-- 1 つの `--scan-lists/-s` リテラルで 1 ステージを実行。複数リテラルを渡すと順次ステージとして実行されます（例: `-s '[(…)]' '[(…)]'`）
-- 各ステージは `stage_XX/result.pdb` を書き出し、候補中間体または生成物として扱われる
-- デフォルトの `all` ワークフローは再帰的 `path-search` による自動精密化で処理（PDB テンプレートがある場合はマージされた `mep_w_ref*.pdb` を生成）
-- `--refine-path False` を指定すると、連結されたステージを単一パス `path-opt` で処理
-
-このモードは単一構造から反応経路を構築するのに便利です。
-
----
-
-### 単一構造 TSOPT のみモード
-
-すでに**遷移状態候補**があり、それを最適化して IRC 計算を行いたい場合に使用します。
-
-PDB を 1 つだけ指定し、`--tsopt` を有効にします:
-
-**最小例**
-
-```bash
-pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt
-```
-
-**詳細例**
-
-```bash
-pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
- --tsopt --thermo --dft --out-dir ./result_tsopt_only
-```
-
-処理の流れ:
-
-- MEP/経路探索は実行しません。
-- TS 最適化で**クラスターモデル上の TS** を収束させます。
-- 両方向で **IRC** を実行し、両端点を最適化して R および P 極小に緩和します。
-- R/TS/P に対して `freq` と `dft` を実行できます。
-- MLIP、Gibbs、DFT//MLIP（MLIP 最適化構造での DFT 一点エネルギー）エネルギーダイアグラムを生成します。
-
-`energy_diagram_*_all.png` や `irc_plot_all.png` などの出力は、トップレベルの `--out-dir` の下にもコピーされます。
+| モード | 概要 | クイックスタート |
+|------|-----|--------------|
+| **複数構造 MEP**（2 つ以上の PDB） | 反応座標に沿った複数の PDB（R → … → P）を受け取り、各構造のクラスターモデル抽出 → 再帰的 MEP 探索 → 必要に応じてセグメントごとに TS / IRC / freq / DFT を実行。 | [クイックスタート: `pdb2reaction all`](quickstart-all.md) |
+| **単一構造 + 段階的スキャン**（1 PDB + `--scan-lists/-s`） | 1 つの PDB をクラスターモデル上で段階的距離スキャンにかけ、各ステージを再帰的 `path-search`（`--refine-path False` で単一パス `path-opt`）に渡して MEP を構築。 | [クイックスタート: 単一構造の段階的スキャン](quickstart-scan.md) |
+| **単一構造 TSOPT のみ**（1 PDB + `--tsopt`） | MEP/経路探索を完全にスキップし、TS 候補を最適化 → 双方向 IRC → 端点最適化、必要なら R/TS/P に freq / DFT を実行。 | [クイックスタート: TS 最適化](quickstart-tsopt-freq.md) |
 
 ```{important}
 単一入力実行には **`--scan-lists/-s`**（段階的スキャン → GSM）**または** `--tsopt`（TSOPT のみ）のいずれかが必要です。これらのいずれも指定せずに単一の `-i` のみを渡しても、ワークフローは実行されません。
@@ -262,18 +171,10 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
 | `-l, --ligand-charge TEXT` | 電荷情報: マッピング（`'SAM:1,GPP:-3'`）または単一整数 |
 | `-q, --charge INT` | 総電荷の強制上書き |
 | `-m, --multiplicity INT` | スピン多重度（例: 一重項は `1`）。 |
-| `-s, --scan-lists TEXT...` | 単一入力実行用の段階的距離スキャン |
-| `-o, --out-dir PATH` | トップレベル出力ディレクトリ |
 | `--tsopt/--no-tsopt` | TS 最適化と IRC を有効化 |
-| `--thermo/--no-thermo` | 振動解析と熱化学を実行 |
-| `--dft/--no-dft` | DFT 一点計算を実行 |
-| `--refine-path/--no-refine-path` | 再帰的 `path-search` を使用（デフォルト: `True`）。`False` で単一パス `path-opt` に切替 |
-| `--opt-mode grad\|hess` | `all` でのワークフロープリセット（`grad` -> LBFGS/Dimer、`hess` -> RFO/RS-I-RFO。**`all` の pre-opt スコープではデフォルト `grad`**）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨。**スコープによりデフォルトが異なる**: 単独の `tsopt --opt-mode` のデフォルトは `hess`。サブコマンドごとの完全なマッピングは {ref}`ja-opt-mode-semantics` を参照 |
-| `--opt-mode-post grad\|hess` | `all` 専用の TSOPT / post-IRC 端点最適化向けオーバーライド（デフォルト: `hess`）。未指定時は `--opt-mode` を明示した場合のみそれに追従し、それ以外は `hess` にフォールバック |
-| `--mep-mode gsm\|dmf` | MEP 手法（デフォルト: `gsm`）: Growing String Method または Direct Max Flux |
-| `--hessian-calc-mode Analytical\|FiniteDifference` | ヘシアン行列の計算モード（デフォルト: `FiniteDifference`）。詳細は {ref}`MLIP 計算機 <ja-hessian-evaluation>` を参照 |
+| `-b, --backend TEXT` | MLIP バックエンドの選択（`uma`, `orb`, `mace`, `aimnet2`） |
 
-すべてのオプションと YAML スキーマについては [all](all.md) および [YAML リファレンス](yaml-reference.md) を参照してください。
+オプションの完全な一覧は [CLI 規約](cli-conventions.md) と [自動生成 CLI リファレンス](../reference/commands/index.md) を参照してください。
 
 ---
 

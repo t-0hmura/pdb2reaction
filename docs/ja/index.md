@@ -84,10 +84,6 @@ glossary
 | 遷移状態からIRCを実行 | `pdb2reaction irc` | [irc](irc.md) |
 | エネルギープロファイルを可視化 | `pdb2reaction trj2fig` | [trj2fig](trj2fig.md) |
 | 数値から状態エネルギーダイアグラムを描画 | `pdb2reaction energy-diagram` | [energy-diagram](energy-diagram.md) |
-| 症状からエラー対処を探す | — | [典型エラー別レシピ](recipes-common-errors.md) |
-| よくあるエラーを解決したい | — | [トラブルシューティング](troubleshooting.md) |
-| 略語や用語を調べる | — | [用語集](glossary.md) |
-| CLI の規約（フラグ、優先順位、原子/残基セレクタ）を調べる | — | [CLI 規約](cli-conventions.md) |
 
 ---
 

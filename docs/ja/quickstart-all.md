@@ -68,7 +68,7 @@ result_all/
 [Imaginary modes] n=1  ([-425.9])
 ```
 
-|振動数| >= 100 cm⁻¹ の虚振動 1 つが有効な TS を示します。
+|振動数| >= 100 cm⁻¹ の虚振動 1 つが有効な TS を示します。5 cm⁻¹ 検出閾値と 100 cm⁻¹ 品質ゲートの違いは用語集 {ref}`ja-imaginary-mode-thresholds` を参照。
 
 ## 補足
 

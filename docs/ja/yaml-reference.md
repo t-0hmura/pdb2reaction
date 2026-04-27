@@ -96,7 +96,7 @@ TS 最適化はより厳しい "baker" プリセットを、通常の極小化�
 | [`bond`](#bond) | 結合変化検出設定 | scan, path-search |
 | [`search`](#search) | 再帰的経路探索設定 | path-search |
 | [`hessian_dimer`](#hessian_dimer) | Hessian Guided Dimer TS 最適化 | tsopt |
-| [`rsirfo`](#rsirfo) | RS-I-RFO TS 最適化 | tsopt |
+| [`rsirfo`](#rsirfo) | RS-I-RFO TS 最適化 | tsopt, all |
 
 ---
 

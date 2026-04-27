@@ -128,7 +128,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 | `--freeze-links/--no-freeze-links` | PDB-only. Freeze parents of link hydrogens (merged into `geom.freeze_atoms`). See [extract](extract.md) for link-hydrogen details. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
 | `--max-cycles INT` | Macro-cycle cap forwarded to `opt.max_cycles`. | `10000` |
-| `--opt-mode TEXT` | Optimizer preset: `grad` (`dimer`) or `hess` (`rsirfo`). Aliases `dimer`/`rsirfo` are accepted. See {ref}`opt-mode-semantics` — on `tsopt` these tokens map to **Dimer / RS-I-RFO** (not L-BFGS / RFO as in `opt`), and the default is `hess`, not `grad`. | `hess` |
+| `--opt-mode TEXT` | Optimizer preset: `grad` (`dimer`) or `hess` (`rsirfo`). Aliases `dimer`/`rsirfo` are accepted. For the full subcommand-dependent table (`opt` uses L-BFGS/RFO; `tsopt` uses Dimer/RS-I-RFO), see {ref}`opt-mode-semantics`. | `hess` |
 | `--dump/--no-dump` | Dump trajectories. | `False` |
 | `-o, --out-dir TEXT` | Output directory. | `./result_tsopt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
@@ -174,18 +174,12 @@ out_dir/ (default:./result_tsopt/)
 
 ## Exit codes
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 2 | Zero step length (step norm below minimum) |
-| 3 | Optimizer failure |
-| 130 | Keyboard interrupt |
-| 1 | Unexpected error |
+See {ref}`exit-codes` in CLI Conventions.
 
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 - Imaginary-frequency **detection** threshold defaults to 5.0 cm⁻¹ (configurable via
-  `hessian_dimer.neg_freq_thresh_cm`); frequencies with magnitudes below this threshold are not counted as imaginary. The selected `root` controls which vibrational mode is followed during optimization. **Note:** This 5 cm⁻¹ internal detection cutoff is distinct from the ~100 cm⁻¹ TS-quality gate used in [Common Error Recipes](recipes-common-errors.md); see {ref}`imaginary-mode-thresholds` for the canonical definition.
+  `hessian_dimer.neg_freq_thresh_cm`); frequencies with magnitudes below this threshold are not counted as imaginary. The selected `root` controls which vibrational mode is followed during optimization. See {ref}`imaginary-mode-thresholds` in the glossary for the 5 cm⁻¹ detection threshold vs 100 cm⁻¹ quality gate.
 - Use `--opt-mode` to choose the algorithm workflow directly (`rsirfo` by default), instead of
   manually editing YAML mode mappings.
 - PHVA translation/rotation projection follows the same implementation as `freq`, while reducing

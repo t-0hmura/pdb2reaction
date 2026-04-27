@@ -9,7 +9,7 @@ Optimize a TS candidate and verify that it is a first-order saddle point.
 - TS candidate geometry: `.pdb`
 - Charge (`-q/--charge` or `--ligand-charge/-l`) and multiplicity (`-m`) for the target state
 
-## 1. TS optimization
+## Minimal command
 
 ```bash
 pdb2reaction tsopt -i ts_guess.pdb -q 0 -m 1 --out-dir ./result_tsopt
@@ -19,6 +19,14 @@ pdb2reaction tsopt -i ts_guess.pdb -q 0 -m 1 --out-dir ./result_tsopt
 
 ```
 [Imaginary modes] n=1  ([-593.1])
+```
+
+### (Optional) Separate frequency analysis
+
+A standalone `freq` run is useful when you want full vibrational frequency output or thermochemistry corrections (zero-point energy (ZPE), Gibbs free energy, etc.; `--thermo` in the `all` command). If you only need the imaginary-frequency check, the `tsopt` output above is sufficient.
+
+```bash
+pdb2reaction freq -i ./result_tsopt/final_geometry.pdb -q 0 -m 1 --out-dir ./result_freq
 ```
 
 ## Expected output
@@ -38,14 +46,6 @@ result_tsopt/
 2. `vib/imag_*.pdb` — open in PyMOL and animate; the mode should correspond to the expected bond-breaking/forming
 3. If `n=0` (no imaginary mode): the optimization converged to a minimum, not a TS. Try a different initial guess
 4. If `n>1` (multiple imaginary modes): add `--flatten` to attempt flattening extra modes (pass a YAML config via `--config` and set `hessian_dimer.flatten_max_iter` to cap the iteration count — the same key is read for both Dimer and RS-I-RFO modes)
-
-## 2. (Optional) Separate frequency analysis
-
-A standalone `freq` run is useful when you want full vibrational frequency output or thermochemistry corrections (zero-point energy (ZPE), Gibbs free energy, etc.; `--thermo` in the `all` command). If you only need the imaginary-frequency check, the `tsopt` output above is sufficient.
-
-```bash
-pdb2reaction freq -i ./result_tsopt/final_geometry.pdb -q 0 -m 1 --out-dir ./result_freq
-```
 
 ## Tips
 

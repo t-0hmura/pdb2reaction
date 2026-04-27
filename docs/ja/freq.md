@@ -8,7 +8,7 @@
 - **想定場面:** 構造が極小点か TS かを検証する場合や、MLIP による熱化学補正を求める場合に使用します。注: `tsopt` には虚振動数チェックが内蔵されているため、別途 `freq` を実行するのは主に熱化学量の取得や振動モードの詳細検討のためです。
 - **凍結原子:** PHVA（Partial Hessian Vibrational Analysis: 部分ヘシアン振動解析）として扱われます。
 - **主な出力:** `frequencies_cm-1.txt`、モードアニメーション（`_trj.xyz`、条件により `.pdb`）、`thermoanalysis.yaml`（有効化/利用可能な場合）。
-- **TS のチェック:** 収束した TS では虚振動数が **1 つだけ**（負の cm⁻¹）であるべきです。5 cm⁻¹ の内部検出閾値と約 100 cm⁻¹ の TS 品質ゲートは別の問いに答える閾値であり混同しないでください — 正規の定義は {ref}`ja-imaginary-mode-thresholds` を参照。
+- **TS のチェック:** 収束した TS では虚振動数が **1 つだけ**（負の cm⁻¹）であるべきです。5 cm⁻¹ 検出閾値と 100 cm⁻¹ 品質ゲートの違いは用語集 {ref}`ja-imaginary-mode-thresholds` を参照。
 - **性能:** ヘシアン評価モードの詳細は {ref}`ja-hessian-evaluation` を参照してください。
 
 `pdb2reaction freq` は MLIP バックエンド（デフォルト: UMA）で振動解析を実行し、凍結原子がある場合は PHVA として活性部分空間で固有解析を行います。基準振動のアニメーションを `_trj.xyz` として出力し、PDB テンプレートがあり `--convert-files` が有効な場合は `.pdb` も生成します。`thermoanalysis` パッケージがインストールされていれば、Gaussian 風の熱化学サマリーも出力します。
@@ -119,11 +119,7 @@ out_dir/ (デフォルト:./result_freq/)
 
 ## 終了コード
 
-| コード | 意味 |
-|------|---------|
-| 0 | 成功 |
-| 130 | キーボード割り込み |
-| 1 | 予期しないエラー |
+終了コードは CLI 規約の {ref}`ja-exit-codes` を参照。
 
 ## 注意事項
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。

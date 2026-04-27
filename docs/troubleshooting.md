@@ -65,7 +65,7 @@ Symptoms:
 
 Fixes to try:
 - Increase `--radius` (e.g., 2.6 → 3.5 Å).
-- Use `--selected-resn` to force-include residues (e.g., `--selected-resn 'A:123,B:456'`). **Warning:** despite the name, `--selected-resn` accepts residue **IDs** (colon-separated integers), not 3-letter residue names — passing `TYR,GLU` raises `ValueError: Invalid residue specifier 'TYR'. Use '123', '123A', 'A:123', or 'A:123A'.`
+- Use `--selected-resn` to force-include residues (e.g., `--selected-resn 'A:123,B:456'`). See {ref}`selected-resn-takes-ids` in CLI Conventions for the residue-ID requirement.
 - If backbone trimming is too aggressive, set `--no-exclude-backbone`.
 
 ---
@@ -202,11 +202,12 @@ Symptoms:
 - TS optimization runs for many cycles without converging.
 - Multiple imaginary frequencies remain after optimization.
 
-Fixes to try:
+Fixes to try (CLI flags and YAML knobs are complementary — use both as needed):
 - Switch optimizer modes: `--opt-mode grad` (Dimer) or `--opt-mode hess` (RS-I-RFO).
 - Enable flattening of extra imaginary modes: `--flatten` (available on standalone `tsopt`, `opt`, and `pdb2reaction all`; default disabled).
 - Increase max cycles: `--max-cycles 20000` (for standalone `tsopt`; `--tsopt-max-cycles 20000` for `all`).
 - Use tighter convergence: `--thresh baker` or `--thresh gau_tight`.
+- Reduce step sizes / trust radii via YAML — for LBFGS/Dimer: `lbfgs.max_step` / `hessian_dimer.max_step`; for RFO/RS-I-RFO: `rfo.trust_radius` / `rfo.trust_min` / `rfo.trust_max` (and the `rsirfo` section). See [YAML Reference](yaml-reference.md) for section layout.
 
 ---
 
@@ -219,7 +220,7 @@ Symptoms:
 Fixes to try:
 - Reduce step size: `--step-size 0.05` (default is 0.10 bohr, unweighted Cartesian).
 - Increase max cycles: `--max-cycles 200`.
-- Check if the TS candidate has only one imaginary frequency before running IRC. **Threshold note:** the internal 5 cm⁻¹ detection cutoff (`hessian_dimer.neg_freq_thresh_cm`) and the user-side 100 cm⁻¹ TS-quality gate answer different questions; see {ref}`imaginary-mode-thresholds` for the canonical definition.
+- Check if the TS candidate has only one imaginary frequency before running IRC. See {ref}`imaginary-mode-thresholds` in the glossary for the 5 cm⁻¹ detection threshold vs 100 cm⁻¹ quality gate.
 
 ---
 

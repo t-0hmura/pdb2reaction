@@ -148,102 +148,11 @@ If you omit `--center/-c`, cluster extraction is skipped and the **full input st
 
 ## Main workflow modes
 
-### Multi-structure MEP workflow (reactant → product)
-
-Use this when you already have several full PDB structures along a putative reaction coordinate (e.g., R → I1 → I2 → P).
-
-**Minimal example**
-
-```bash
-pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
-```
-
-**Extended example**
-
-```bash
-pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
- --out-dir ./result_all --tsopt --thermo --dft
-```
-
-Behavior:
-
-- takes two or more **full systems** in reaction order,
-- extracts cluster models for each structure,
-- performs **recursive MEP search** via [`path-search`](path-search.md) by default (outputs under `path_search/`),
-- optionally falls back to single-pass [`path-opt`](path-opt.md) with `--refine-path False` (outputs under `path_opt/`),
-- when PDB templates are available, merges the cluster-model MEP back into the **full system**,
-- optionally runs TS optimization, vibrational analysis, and single-point DFT calculations for each segment.
-
-This is the recommended mode when you can generate reasonably spaced intermediates (e.g., from docking, MD, or manual modeling).
-
----
-
-### Single-structure + staged scan (feeds MEP refinement)
-
-Use this when you only have **one PDB structure**, but you know which inter-atomic distances should change along the reaction.
-
-Provide a single `-i` together with `--scan-lists/-s`:
-
-**Minimal example**
-
-```bash
-pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
- -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' \
- '[("GPP 321 H11","GLU 186 OE2",0.90)]'
-```
-
-**Extended example**
-
-```bash
-pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
- -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' \
- '[("GPP 321 H11","GLU 186 OE2",0.90)]' \
- --multiplicity 1 --out-dir ./result_scan --tsopt --thermo --dft
-```
-
-Key points:
-
-- `--scan-lists/-s` describes **staged distance scans** on the extracted cluster model.
-- Each tuple `(i, j, target_Å)` is:
- - a PDB atom selector string like `'TYR,285,CA'` (**delimiters can be: space/comma/slash/backtick/backslash ` ` `,` `/` `` ` `` `\`**) **or** a 1-based atom index,
- - automatically remapped to the cluster-model indices.
-- Supplying one `--scan-lists/-s` literal runs a single scan stage; multiple literals run sequential stages (e.g. `-s '[(…)]' '[(…)]'`).
-- Each stage writes a `stage_XX/result.pdb`, which is treated as a candidate intermediate or product.
-- The default `all` workflow runs recursive `path-search` with automatic refinement (merged `mep_w_ref*.pdb` when PDB templates are available).
-- With `--refine-path False`, it instead uses single-pass `path-opt` on the concatenated stages.
-
-This mode is useful for building reaction paths starting from a single structure.
-
----
-
-### Single-structure TSOPT-only mode
-
-Use this when you already have a **transition-state candidate** and only want to optimize it and proceed to IRC calculations.
-
-Provide exactly one PDB and enable `--tsopt`:
-
-**Minimal example**
-
-```bash
-pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' --tsopt
-```
-
-**Extended example**
-
-```bash
-pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
- --tsopt --thermo --dft --out-dir ./result_tsopt_only
-```
-
-Behavior:
-
-- skips the MEP/path search entirely,
-- performs **transition-state optimization** on the cluster model,
-- runs an **IRC** in both directions and optimizes the endpoints to obtain R and P minima,
-- can then run vibrational analysis ([`freq`](freq.md)) and single-point DFT (`dft`) on the R/TS/P structures,
-- produces MLIP, Gibbs, and DFT//MLIP (DFT single-point energies at MLIP-optimized geometries) energy diagrams.
-
-Outputs such as `energy_diagram_*_all.png` and `irc_plot_all.png` are mirrored under the top-level `--out-dir`.
+| Mode | Description | Quickstart |
+|------|-------------|-----------|
+| **Multi-structure MEP** (≥ 2 PDBs) | Take full PDBs along a putative reaction coordinate (R → … → P), extract cluster models, run recursive MEP search, and optionally refine with TS / IRC / freq / DFT per segment. | [Quickstart: `pdb2reaction all`](quickstart-all.md) |
+| **Single-structure + staged scan** (1 PDB + `--scan-lists/-s`) | Drive one PDB through staged distance-restraint scans on the cluster model; each stage seeds the recursive `path-search` (or single-pass `path-opt` with `--refine-path False`). | [Quickstart: single-structure staged scan](quickstart-scan.md) |
+| **Single-structure TSOPT-only** (1 PDB + `--tsopt`) | Skip MEP entirely; optimize a TS candidate, run IRC in both directions, optimize endpoints, and optionally run freq / DFT on R/TS/P. | [Quickstart: TS optimization](quickstart-tsopt-freq.md) |
 
 ```{important}
 Single-input runs require **either** `--scan-lists/-s` (staged scan → GSM) **or** `--tsopt` (TSOPT-only). Supplying only a single `-i` without one of these will not trigger a full workflow.
@@ -262,18 +171,10 @@ Below are the most commonly used options across workflows.
 | `-l, --ligand-charge TEXT` | Charge info: mapping (`'SAM:1,GPP:-3'`) or single integer. |
 | `-q, --charge INT` | Hard override of net system charge. |
 | `-m, --multiplicity INT` | Spin multiplicity (e.g., `1` for singlet). |
-| `-s, --scan-lists TEXT...` | Staged distance scans for single-input runs. |
-| `-o, --out-dir PATH` | Top-level output directory. |
 | `--tsopt/--no-tsopt` | Enable TS optimization and IRC. |
-| `--thermo/--no-thermo` | Run vibrational analysis and thermochemistry. |
-| `--dft/--no-dft` | Perform single-point DFT calculations. |
-| `--refine-path/--no-refine-path` | Use recursive `path-search` (default: `True`). Set to `False` for single-pass `path-opt`. |
-| `--opt-mode grad\|hess` | Workflow-level preset in `all` (`grad` -> LBFGS/Dimer, `hess` -> RFO/RS-I-RFO; **default `grad` at the `all` pre-opt scope**). For direct commands, prefer `opt --opt-mode grad|hess` and `tsopt --opt-mode grad|hess`. **Default differs by scope**: standalone `tsopt --opt-mode` defaults to `hess`. See {ref}`opt-mode-semantics` for the full per-subcommand mapping. |
-| `--opt-mode-post grad\|hess` | `all`-only override for TSOPT and post-IRC endpoint optimizations (default: `hess`). When unset, follows `--opt-mode` if that flag was given explicitly; otherwise falls back to `hess`. |
-| `--mep-mode gsm\|dmf` | MEP method (default: `gsm`): Growing String Method or Direct Max Flux. |
-| `--hessian-calc-mode Analytical\|FiniteDifference` | Hessian evaluation method (default: `FiniteDifference`). For Hessian evaluation modes, see {ref}`MLIP Calculator <hessian-evaluation>`. |
+| `-b, --backend TEXT` | Select MLIP backend (`uma`, `orb`, `mace`, `aimnet2`). |
 
-For a full matrix of options and YAML schemas, see [all](all.md) and [YAML Reference](yaml-reference.md).
+For the complete option matrix, see [CLI Conventions](cli-conventions.md) and the [generated CLI reference](reference/commands/index.md).
 
 ---
 

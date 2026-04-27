@@ -62,7 +62,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
  - When `--exclude-backbone`, amino-acid residues must contact the substrate with a **non-backbone** atom (not N/H*/CA/HA*/C/O). Non-amino acids use any atom.
 - **Independent hetero–hetero cutoff (`--radius-het2het`):** adds residues when a substrate hetero atom (non C/H) lies within the specified Å of a protein hetero atom. With backbone exclusion enabled the protein atom must be non-backbone.
 - **Water handling:** HOH/WAT/H2O/DOD/TIP/TIP3/SOL are included by default (`--include-h2o`).
-- **Forced inclusion:** `--selected-resn` accepts residue **IDs** with optional chains/insertion codes (e.g., `A:123A`), despite the name suggesting residue *names*. Residue-name-based forced inclusion is not supported on this flag; use `-c/--center 'GPP,SAM'` for name-based substrate selection instead.
+- **Forced inclusion:** `--selected-resn` accepts residue **IDs** (e.g., `A:123A`). See {ref}`selected-resn-takes-ids` in CLI Conventions for the residue-ID requirement.
 - **Neighbor safeguards:**
  - When backbone exclusion is off and a residue contacts the substrate with a backbone atom, auto-include the peptide-adjacent N/C neighbors (C–N ≤ 1.9 Å). Termini keep caps (N/H* or C/O/OXT).
  - Disulfide bonds (SG–SG ≤ 2.5 Å) bring both cysteines.
@@ -111,7 +111,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
 | `--include-h2o/--no-include-h2o` | Include HOH/WAT/H2O/DOD/TIP/TIP3/SOL waters. | `True` |
 | `--exclude-backbone/--no-exclude-backbone` | Remove backbone atoms on non-substrate amino acids (PRO/HYP safeguards). | `False` |
 | `--add-linkh/--no-add-linkh` | Add carbon-only link hydrogens at 1.09 Å along severed bonds. | `True` |
-| `--selected-resn TEXT` | Force-include residues by **residue ID** (with optional chains/insertion codes, e.g., `A:123A`). Despite the name, this flag does not accept residue-name tokens — use `-c/--center 'GPP,SAM'` for name-based selection. | `""` |
+| `--selected-resn TEXT` | Force-include residues by **residue ID** (with optional chains/insertion codes, e.g., `A:123A`). See {ref}`selected-resn-takes-ids` in CLI Conventions for the residue-ID requirement. | `""` |
 | `--modified-residue TEXT` | Comma-separated residue names (with optional per-residue charge) to treat as amino acids for backbone truncation and charge assignment (e.g., `HD1,HD2,HD3` or `HD1:0,SEP:-2`). When a residue is given without a trailing `:charge`, that residue's charge defaults to `0` (e.g. in `HD1,HD2:-1` → `HD1` gets charge 0 and `HD2` gets charge −1). The flag as a whole is off by default (empty string). | `""` |
 | `-l, --ligand-charge TEXT` | Total charge or per-resname mapping (e.g., `GPP:-3,SAM:1`). | _None_ |
 | `-v, --verbose/--no-verbose` | Emit INFO-level logging (`True`) or keep warnings only (`False`). | `True` |

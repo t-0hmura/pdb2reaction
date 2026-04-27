@@ -28,7 +28,7 @@
  - 入力構造が同じ前処理フローで作られ、原子順が揃っているか。
  - `extract` / `all` 前に元素カラムが埋まっているか。
 - 典型的な修正手順:
- - `pdb2reaction add-elem-info -i input.pdb -o input_fixed.pdb` で元素列を修復 -> 抽出再実行 -> 活性部位モデルサイズ（`--radius`）/残基選択（`--selected-resn`）を再確認。**警告:** 名前に反して、`--selected-resn` は3文字の残基名ではなく**残基 ID**（`'A:123,B:456'` のようなコロン区切り整数）を受け取ります — `TYR,GLU` のような指定は何もマッチせず、エラーも出ません。
+ - `pdb2reaction add-elem-info -i input.pdb -o input_fixed.pdb` で元素列を修復 -> 抽出再実行 -> 活性部位モデルサイズ（`--radius`）/残基選択（`--selected-resn`）を再確認。残基 ID 仕様の詳細は CLI 規約の {ref}`ja-selected-resn-takes-ids` を参照。
 
 ## レシピ 2: 電荷/スピンの解決で止まる
 
@@ -56,8 +56,8 @@
 - 兆候:
  - TSOPT が停滞、IRC が不安定、MEP 精密化が途中停止。
 - 最初の確認:
- - TS 候補が虚振動数 1 本（|ν| >= 100 cm⁻¹）のみを持ち、対応する虚振動モードが反応座標方向の変位を示すか。**閾値の区別:** 5 cm⁻¹ の `hessian_dimer.neg_freq_thresh_cm` 検出カットオフとこの 100 cm⁻¹ の TS 品質ゲートは別の閾値です — 正規の定義は {ref}`ja-imaginary-mode-thresholds` を参照してください。
- - LBFGS/Dimer の場合は `max_step` を**縮小**してください（YAML セクション: `lbfgs` / `hessian_dimer`）。RFO/RS-I-RFO の場合は `trust_radius`/`trust_min`/`trust_max` を**縮小**してください（YAML セクション: `rfo` / `rsirfo`）。サイクル上限の確認も。セクション構成は [YAML リファレンス](yaml-reference.md) を参照してください。
- - `max_cycles` 到達時に力のノルムが閾値をわずかに超えているだけでエネルギーがフラット化している場合、`opt.energy_plateau` フォールバック（v0.3.5 新機能）が自動で収束と判定するはずです。効かない場合は `--thresh gau` または `--thresh gau_loose` で力の閾値を緩めてください。
+ - TS 候補が虚振動数 1 本（|ν| >= 100 cm⁻¹）のみを持ち、対応する虚振動モードが反応座標方向の変位を示すか。5 cm⁻¹ 検出閾値と 100 cm⁻¹ 品質ゲートの違いは用語集 {ref}`ja-imaginary-mode-thresholds` を参照。
+ - ステップサイズ / 信頼半径（YAML キー `max_step`, `trust_radius`/`trust_min`/`trust_max`）と、最適化モード / フラット化（CLI フラグ `--opt-mode`, `--flatten`）は補完的に併用してください。YAML セクション構成は [YAML リファレンス](yaml-reference.md)、正規の修正手順は {ref}`計算 / 収束の問題 <ts-calc-conv>` を参照。
+ - `max_cycles` 到達時に力のノルムが閾値をわずかに超えているだけでエネルギーがフラット化している場合は {ref}`計算 / 収束の問題 <ts-calc-conv>` を参照 — `opt.energy_plateau` フォールバック（v0.3.5 新機能）が自動処理します。
 - 典型的な修正手順:
  - 小規模ケースで条件を詰め、安定化後に本番条件へ戻す。

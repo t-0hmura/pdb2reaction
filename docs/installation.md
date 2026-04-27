@@ -11,6 +11,8 @@ Refer to the upstream projects for additional details:
 
 Below is a minimal setup example that works on many CUDA 12.9 clusters. Adjust module names and versions to match your system. This example assumes the default GSM MEP mode (`--mep-mode gsm`). For DMF (`--mep-mode dmf`), install cyipopt via conda first.
 
+### Required
+
 ```bash
 # 1) Install a CUDA-enabled PyTorch build
 # 2) Install pdb2reaction
@@ -32,9 +34,7 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 
 You only need to do this once per machine / environment.
 
-> **Tip:** UMA is the default MLIP backend. To use ORB or AIMNet2, install the corresponding extra (e.g. `pip install "pdb2reaction[orb]"`) and pass `-b/--backend orb` to any command. See [Installation](#step-by-step-installation) step 7.
->
-> **MACE:** MACE requires `e3nn==0.4.4`, which conflicts with `fairchem-core` (UMA). The canonical MACE recipe is `pip uninstall -y fairchem-core && pip install mace-torch`. UMA and MACE cannot coexist in the same environment — use separate conda environments if you need both. (The `--no-deps mace-torch` variant seen in some older notes is not recommended; it leaves torch-scatter / e3nn unpinned.)
+### Optional
 
 - If you want to use the Direct Max Flux (DMF) method for MEP search, create a conda environment and install cyipopt before installing pdb2reaction.
 
@@ -52,6 +52,12 @@ You only need to do this once per machine / environment.
   ```bash
   module load cuda/<your-version>   # e.g. cuda/12.6 or cuda/12.9
   ```
+
+> **Tip:** UMA is the default MLIP backend. To use ORB or AIMNet2, install the corresponding extra (e.g. `pip install "pdb2reaction[orb]"`) and pass `-b/--backend orb` to any command. See [Installation](#step-by-step-installation) step 7.
+
+```{warning}
+**MACE:** MACE requires `e3nn==0.4.4`, which conflicts with `fairchem-core` (UMA). The canonical MACE recipe is `pip uninstall -y fairchem-core && pip install mace-torch`. UMA and MACE cannot coexist in the same environment — use separate conda environments if you need both. (The `--no-deps mace-torch` variant seen in some older notes is not recommended; it leaves torch-scatter / e3nn unpinned.)
+```
 
 
 (step-by-step-installation)=

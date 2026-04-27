@@ -10,6 +10,13 @@ Active site model extraction → (optional) staged scan → MEP search (recursiv
 The `all` workflow **without `--tsopt`** produces **TS candidates** (Highest-Energy Images from MEP search). Adding `--tsopt` refines these into optimized TS structures validated by imaginary-frequency check, followed by IRC for endpoint validation. Always inspect the results (imaginary-frequency count + endpoint connectivity) before mechanistic interpretation.
 ```
 
+### At a glance
+- **Use when:** You want the entire pipeline (extraction → MEP → TS optimization → IRC → thermo → DFT) end-to-end from PDB(s).
+- **Method:** Three modes — multi-structure MEP, single-structure + staged scan, or TSOPT-only — selected by the inputs and flags you provide.
+- **Outputs:** `summary.log`, `summary.json`, and `path_search/mep.pdb` (or `path_opt/` when `--refine-path False`); per-segment `seg_XX/` and post-processing `path_search/post_seg_XX/` when `--tsopt`/`--thermo`/`--dft` are enabled.
+- **Defaults:** Backend `uma`, `--mep-mode gsm`, `--opt-mode grad`, `--refine-path True`, `--preopt True`, `--thresh gau`, `--thresh-post baker`; `--tsopt`/`--thermo`/`--dft` are off.
+- **Next step:** Without `--tsopt`, results are TS *candidates* (HEIs); add `--tsopt` (imaginary-frequency check) and IRC for validation, then optionally `--thermo` and `--dft`.
+
 ## Workflow at a glance
 
 Most workflows follow this flow:
@@ -43,11 +50,12 @@ It supports three modes:
 
   - One `--scan-lists/-s` literal runs a single scan stage.
   - Multiple stages are passed as multiple arguments to a single `--scan-lists/-s` (e.g. `-s '[(…)]' '[(…)]'`).
+
+- **TSOPT-only active site model TS optimization** — Provide a single input structure, omit `--scan-lists/-s`, and set `--tsopt`. `all` extracts the active site model (if `-c/--center` is given) and runs TS optimization + IRC, with optional freq/DFT, on that single system.
+
 ```{tip}
 For large active site models, the single-structure scan workflow (`--scan-lists/-s`) tends to produce more reliable reaction barriers than the multi-structure MEP workflow. When multiple full PDB structures are provided, structural differences in regions unrelated to the reaction coordinate can accumulate, leading to overestimated barriers. The scan workflow avoids this by starting from a single structure and driving only the relevant coordinates, minimizing irrelevant structural noise. This effect becomes more pronounced as the model size increases.
 ```
-
-- **TSOPT-only active site model TS optimization** — Provide a single input structure, omit `--scan-lists/-s`, and set `--tsopt`. `all` extracts the active site model (if `-c/--center` is given) and runs TS optimization + IRC, with optional freq/DFT, on that single system.
 
 > **Working examples:** The [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) directory contains complete `all` workflow scripts for GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)), covering both multi-structure MEP and scan-based pipelines.
 

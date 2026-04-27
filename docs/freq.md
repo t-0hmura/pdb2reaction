@@ -8,7 +8,7 @@
 - **Use when:** You need full vibrational analysis (e.g., confirm a stationary point is a true minimum with no imaginary frequencies) and/or compute thermochemistry corrections from an MLIP backend (UMA by default). Note: `tsopt` already includes an imaginary-frequency check, so a separate `freq` run is mainly for thermochemistry or detailed vibrational mode inspection.
 - **Frozen atoms:** Supported via PHVA (Partial Hessian Vibrational Analysis).
 - **Outputs:** `frequencies_cm-1.txt`, per-mode `_trj.xyz` animations (and optional `.pdb`), plus `thermoanalysis.yaml` when enabled/available.
-- **TS check:** A properly converged first-order saddle point (TS) is expected to have **exactly one** imaginary frequency (negative cm⁻¹ value). Note: the 5 cm⁻¹ internal detection threshold and the ~100 cm⁻¹ TS-quality gate answer different questions and must not be conflated — see {ref}`imaginary-mode-thresholds` for the canonical definition.
+- **TS check:** A properly converged first-order saddle point (TS) is expected to have **exactly one** imaginary frequency (negative cm⁻¹ value). See {ref}`imaginary-mode-thresholds` in the glossary for the 5 cm⁻¹ detection threshold vs 100 cm⁻¹ quality gate.
 - **Performance:** For Hessian evaluation modes, see {ref}`hessian-evaluation`.
 
 `pdb2reaction freq` performs vibrational analysis with an MLIP backend (UMA by default), honoring frozen atoms via PHVA. It exports normal-mode animations as `_trj.xyz` (and `.pdb` when a PDB template is available and conversion is enabled), and prints a Gaussian-style thermochemistry summary when the optional `thermoanalysis` package is installed.
@@ -136,11 +136,7 @@ out_dir/ (default:./result_freq/)
 
 ## Exit codes
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 130 | Keyboard interrupt |
-| 1 | Unexpected error |
+See {ref}`exit-codes` in CLI Conventions.
 
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.

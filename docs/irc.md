@@ -117,11 +117,7 @@ out_dir/ (default:./result_irc/)
 
 ## Exit codes
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 130 | Keyboard interrupt |
-| 1 | Unexpected error |
+See {ref}`exit-codes` in CLI Conventions.
 
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.

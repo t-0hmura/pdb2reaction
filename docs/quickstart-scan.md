@@ -11,70 +11,7 @@ Run the full `pdb2reaction all` workflow from a single structure by driving one 
 
 ---
 
-## Method A: `--scan-lists/-s` inline literal (quick one-liners)
-
-`--scan-lists/-s` accepts Python-literal strings directly on the command line.
-
-### Basic syntax
-
-Each literal is a list of 3-tuples `(atom1, atom2, target_distance_Å)`. Exactly three elements per tuple are required; the third is always the target distance in **ångströms**. One literal = one stage.
-
-```bash
-# Single stage, integer atom indices (1-based by default)
-pdb2reaction -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 \
- -s '[(1, 5, 1.35)]' -o ./result_scan
-
-# Single stage, PDB selector strings
-pdb2reaction -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 \
- -s '[("TYR,285,CA", "SAM,309,C10", 1.35)]' -o ./result_scan
-```
-
-The `-c/--center` cluster selector is required when running on a protein–ligand PDB; omit `-c` (and pass `-q` directly instead of `-l`) for small-molecule `.pdb` / `.xyz` inputs. `-m/--multiplicity` defaults to `1` (singlet) but is shown explicitly here for clarity.
-
-### PDB selectors
-
-Atoms can be specified by residue name, residue number, and atom name. Token separators are flexible:
-
-```bash
-"TYR,285,CA"     # comma-separated
-"TYR 285 CA"     # space-separated
-"TYR/285/CA"     # slash-separated
-"285,TYR,CA"     # order is flexible
-```
-
-### Multiple stages
-
-Pass multiple literals — each becomes one sequential stage:
-
-```bash
-# Stage 1: drive one bond to 1.35 Å
-# Stage 2: drive two bonds simultaneously
-pdb2reaction -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 -s \
-  '[("TYR,285,CA","SAM,309,C10",1.35)]' \
-  '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]' \
-  -o ./result_scan
-```
-
-Stages run sequentially; each starts from the previous stage's relaxed result.
-
-### Quoting rules
-
-```bash
-# Correct: single-quote the outer list, double-quote selector strings inside
--s '[("TYR,285,CA","SAM,309,C10",1.35)]'
-
-# Correct: integer indices need no inner quotes
--s '[(1, 5, 2.0)]'
-
-# Avoid: double-quoting the outer literal requires escaping
--s "[(\"TYR,285,CA\",\"SAM,309,C10\",1.35)]"
-```
-
-> **Tip:** To verify that your scan targets were parsed correctly before a full run, invoke the standalone `scan` / `scan2d` / `scan3d` subcommand with `--print-parsed`; the parsed targets are printed and execution proceeds, so cancel (Ctrl-C) once you have confirmed the parse looks right. `--print-parsed` is not exposed on `pdb2reaction all`.
-
----
-
-## Method B: YAML spec file (for complex scans)
+## Method A: YAML spec file (recommended)
 
 ### 1. Prepare `scan.yaml`
 
@@ -92,6 +29,45 @@ stages:
 ```bash
 pdb2reaction -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
 ```
+
+Stages run sequentially; each starts from the previous stage's relaxed result.
+
+---
+
+## Method B: `--scan-lists/-s` inline literal (quick one-liners)
+
+`--scan-lists/-s` accepts Python-literal strings directly on the command line. For atom selector syntax (residue/atom tokens, separators, ordering) and outer/inner quoting rules, see the [`scan` page](scan.md#inline-python-literal-format) or [CLI Conventions: Atom Selectors](cli-conventions.md#atom-selectors).
+
+### Basic syntax
+
+Each literal is a list of 3-tuples `(atom1, atom2, target_distance_Å)`. Exactly three elements per tuple are required; the third is always the target distance in **ångströms**. One literal = one stage.
+
+```bash
+# Single stage, integer atom indices (1-based by default)
+pdb2reaction -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 \
+ -s '[(1, 5, 1.35)]' -o ./result_scan
+
+# Single stage, PDB selector strings
+pdb2reaction -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 \
+ -s '[("TYR,285,CA", "SAM,309,C10", 1.35)]' -o ./result_scan
+```
+
+The `-c/--center` cluster selector is required when running on a protein–ligand PDB; omit `-c` (and pass `-q` directly instead of `-l`) for small-molecule `.pdb` / `.xyz` inputs. `-m/--multiplicity` defaults to `1` (singlet) but is shown explicitly here for clarity.
+
+### Multiple stages
+
+Pass multiple literals — each becomes one sequential stage:
+
+```bash
+# Stage 1: drive one bond to 1.35 Å
+# Stage 2: drive two bonds simultaneously
+pdb2reaction -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 -s \
+  '[("TYR,285,CA","SAM,309,C10",1.35)]' \
+  '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]' \
+  -o ./result_scan
+```
+
+Stages run sequentially; each starts from the previous stage's relaxed result.
 
 ---
 

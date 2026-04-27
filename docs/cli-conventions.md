@@ -72,8 +72,11 @@ Residue selectors identify which residues to use as substrates or extraction cen
 When selecting by residue name, if multiple residues share the same name, **all** matches are included and a warning is logged.
 ```
 
+(selected-resn-takes-ids)=
+### `--selected-resn` takes residue IDs, not names
+
 ```{warning}
-**`--selected-resn` accepts residue IDs, not names.** Despite its name, the `--selected-resn` flag (on `extract` and `all`) accepts **residue IDs** (colon-separated integers with optional chains/insertion codes, e.g. `A:123A`), **not** 3-letter residue names. Use `-c/--center 'GPP,SAM'` if you want residue-name-based substrate selection. See the [`extract` CLI options table](extract.md) for the canonical description.
+**`--selected-resn` accepts residue IDs, not names.** Despite its name, the `--selected-resn` flag (on `extract` and `all`) accepts **residue IDs** (colon-separated integers with optional chains/insertion codes, e.g. `A:123A`), **not** 3-letter residue names. Passing residue-name tokens (e.g. `'TYR,GLU'`) raises `ValueError("Invalid residue specifier 'TYR'. Use '123', '123A', 'A:123', or 'A:123A'.")`. Use `-c/--center 'GPP,SAM'` if you want residue-name-based substrate selection. See the [`extract` CLI options table](extract.md) for the canonical description.
 ```
 
 ---

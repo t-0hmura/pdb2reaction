@@ -70,8 +70,11 @@ pdb2reaction all --help-advanced # 全オプション
 残基名で選択する場合、同名の残基が複数あれば**すべて**が含まれ、警告がログに出力されます。
 ```
 
+(ja-selected-resn-takes-ids)=
+### `--selected-resn` は残基 ID を取る（残基名ではない）
+
 ```{warning}
-**`--selected-resn` は残基 ID を受け付け、残基名は受け付けません。** `extract` と `all` の `--selected-resn` フラグは、名前に反して **残基 ID**（コロン区切り整数、オプションでチェーン/挿入コード付き、例 `A:123A`）を受け付け、3 文字残基名は受け付けません。残基名ベースの基質選択には `-c/--center 'GPP,SAM'` を使用してください。正式な説明は [`extract` の CLI オプション表](extract.md) を参照してください。
+**`--selected-resn` は残基 ID を受け付け、残基名は受け付けません。** `extract` と `all` の `--selected-resn` フラグは、名前に反して **残基 ID**（コロン区切り整数、オプションでチェーン/挿入コード付き、例 `A:123A`）を受け付け、3 文字残基名は受け付けません。残基名トークン（例 `'TYR,GLU'`）を渡すと `ValueError("Invalid residue specifier 'TYR'. Use '123', '123A', 'A:123', or 'A:123A'.")` が発生します。残基名ベースの基質選択には `-c/--center 'GPP,SAM'` を使用してください。正式な説明は [`extract` の CLI オプション表](extract.md) を参照してください。
 ```
 
 ---

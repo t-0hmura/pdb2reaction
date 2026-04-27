@@ -11,6 +11,8 @@
 
 以下は多くの CUDA 12.9 クラスターで動作する最小限のセットアップ例です。モジュール名やバージョンはお使いの環境に合わせて調整してください。この例はデフォルトの GSM による MEP 探索（`--mep-mode gsm`）を前提としています。DMF（`--mep-mode dmf`）を使用する場合は、先に conda で cyipopt をインストールしてください。
 
+### 必須
+
 ```bash
 # 1) CUDA 対応の PyTorchビルドをインストール
 # 2) pdb2reactionをインストール
@@ -32,9 +34,7 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 
 これはマシン/環境ごとに1回だけ行う必要があります。
 
-> **ヒント:** UMA がデフォルトの MLIP バックエンドです。ORB や AIMNet2 を使用するには、対応する extra をインストール（例: `pip install "pdb2reaction[orb]"`）し、コマンドに `-b/--backend orb` を渡してください。[詳細なインストール手順](#ja-step-by-step-installation)の手順 7 を参照してください。
->
-> **MACE:** MACE は `e3nn==0.4.4` を必要としますが、`fairchem-core`（UMA）と競合します。正準の MACE 導入手順は `pip uninstall -y fairchem-core && pip install mace-torch` です。UMA と MACE は同一環境で共存できないため、両方必要な場合は別々の conda 環境を使ってください。（古いメモにある `--no-deps mace-torch` 方式は torch-scatter / e3nn が pin されないため推奨しません。）
+### 任意
 
 - MEP 探索で Direct Max Flux（DMF）法を使用する場合は、conda 環境を作成し、pdb2reaction のインストール前に cyipopt をインストールしてください。
 
@@ -52,6 +52,12 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
   ```bash
   module load cuda/<your-version>   # 例: cuda/12.6 または cuda/12.9
   ```
+
+> **ヒント:** UMA がデフォルトの MLIP バックエンドです。ORB や AIMNet2 を使用するには、対応する extra をインストール（例: `pip install "pdb2reaction[orb]"`）し、コマンドに `-b/--backend orb` を渡してください。[詳細なインストール手順](#ja-step-by-step-installation)の手順 7 を参照してください。
+
+```{warning}
+**MACE:** MACE は `e3nn==0.4.4` を必要としますが、`fairchem-core`（UMA）と競合します。正準の MACE 導入手順は `pip uninstall -y fairchem-core && pip install mace-torch` です。UMA と MACE は同一環境で共存できないため、両方必要な場合は別々の conda 環境を使ってください。（古いメモにある `--no-deps mace-torch` 方式は torch-scatter / e3nn が pin されないため推奨しません。）
+```
 
 
 (ja-step-by-step-installation)=

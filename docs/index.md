@@ -98,10 +98,6 @@ ja/index
 | Run IRC from a transition state | `pdb2reaction irc` | [irc](irc.md) |
 | Visualize energy profile | `pdb2reaction trj2fig` | [trj2fig](trj2fig.md) |
 | Draw state energy diagram from numeric values | `pdb2reaction energy-diagram` | [energy-diagram](energy-diagram.md) |
-| Diagnose failures by symptom | — | [Common Error Recipes](recipes-common-errors.md) |
-| Resolve common errors | — | [Troubleshooting](troubleshooting.md) |
-| Look up abbreviations and terms | — | [Glossary](glossary.md) |
-| Understand CLI conventions (flags, precedence, atom/residue selectors) | — | [CLI Conventions](cli-conventions.md) |
 
 ---
 
@@ -180,12 +176,7 @@ For setup, see [Installation](installation.md). For runnable command examples, w
 
 ## Agent Skills
 
-`pdb2reaction` ships AI-agent instructions under `.claude/skills/`
-covering the CLI subcommands, structure I/O (PDB / XYZ / GJF), backend
-installation (UMA / Orb / MACE / AIMNet2 / DFT / xtb), canonical
-workflows, output parsing, and HPC operation. Copy the contents into
-your project repository or `~/.claude/skills/` to make them available
-to your agent platform (Claude Code, Cursor, etc.).
+`pdb2reaction` ships AI-agent instructions under `.claude/skills/` covering CLI subcommands, structure I/O, backend installation, workflows, output parsing, and HPC operation. See [`.claude/skills/README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/.claude/skills/README.md) for the full skill index and installation instructions.
 
 ---
 
