@@ -88,7 +88,7 @@ pdb2reaction all -i 1.R.pdb -c "SAM,GPP,MG" -l "SAM:1,GPP:-3" \
 
 ## 使用法
 ```bash
-pdb2reaction all -i INPUT1 -i [INPUT2 ...] -c SUBSTRATE [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] [options]
+pdb2reaction all -i INPUT1 [INPUT2 ...] -c SUBSTRATE [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] [options]
 ```
 
 ヘルプ出力は `pdb2reaction all --help` で主要オプションを、`pdb2reaction all --help-advanced` で全オプションを確認できます。
@@ -233,13 +233,14 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 | `--tsopt/--no-tsopt` | セグメントごとの TS 最適化（内部で虚振動数チェック済み）+ IRC を実行 | `False` |
 | `--thermo/--no-thermo` | R/TS/Pで振動解析を実行 | `False` |
 | `--dft/--no-dft` | R/TS/PでDFT一点計算を実行 | `False` |
+| `--opt-mode-post [grad\|hess]` | TSOPT/IRC後最適化のプリセット上書き（`grad` → Dimer/LBFGS、`hess` → RSIRFO/RFO） | `hess` |
+| `--thresh-post TEXT` | IRC後エンドポイント最適化の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
+| `--flatten/--no-flatten` | 余分な虚振動モードのフラット化 | `False` |
 
 ```{warning}
 `--dft` による DFT 一点計算（PySCF/GPU4PySCF）は、約 500 原子を超えるモデルでは計算コストが非常に大きくなります。そのような系では、A100 や H200 等の高性能 GPU を搭載した HPC クラスタの利用が必要になる場合があります。
 ```
-| `--opt-mode-post [grad\|hess]` | TSOPT/IRC後最適化のプリセット上書き（`grad` → Dimer/LBFGS、`hess` → RSIRFO/RFO） | `hess` |
-| `--thresh-post TEXT` | IRC後エンドポイント最適化の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
-| `--flatten/--no-flatten` | 余分な虚振動モードのフラット化 | `False` |
+
 TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode`（明示指定時のみ）→ TSOPT のデフォルト（`hess` → `rsirfo`）の順で決まります。
 
 例: `--opt-mode grad --opt-mode-post hess` は、経路最適化に LBFGS、TS 精密化に RS-I-RFO を使用します。

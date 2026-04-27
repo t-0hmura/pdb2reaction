@@ -84,7 +84,7 @@ ja/index
 | Objectives | Command | Guide |
 |-------------------------|---------|-------|
 | First run (end-to-end) | `pdb2reaction all` | [Quickstart: all](quickstart-all.md) |
-| Single-structure staged scan | `pdb2reaction scan` | [Quickstart: scan](quickstart-scan.md) |
+| Single-structure staged scan + MEP + TS | `pdb2reaction all --scan-lists` | [Quickstart: scan](quickstart-scan.md) |
 | TS optimization and validation | `pdb2reaction tsopt` | [Quickstart: tsopt](quickstart-tsopt-freq.md) |
 | Run complete reaction path search from PDB | `pdb2reaction all` | [all](all.md) |
 | Extract active site as cluster model from protein-ligand complex | `pdb2reaction extract` | [extract](extract.md) |
@@ -259,7 +259,20 @@ to your agent platform (Claude Code, Cursor, etc.).
 
 ## Citation
 
-A preprint describing `pdb2reaction` is in preparation. Please check back later for citation details.
+A preprint describing `pdb2reaction` is in preparation. Currently, if you find this work helpful for your research, please cite the software itself:
+
+```bibtex
+@software{ohmura2026pdb2reaction,
+  author       = {Ohmura, Takuto},
+  title        = {pdb2reaction},
+  year         = {2026},
+  month        = {4},
+  version      = {0.3.6},
+  url          = {https://github.com/t-0hmura/pdb2reaction},
+  license      = {GPL-3.0},
+  doi          = {10.5281/zenodo.19197865}
+}
+```
 
 ## License
 
@@ -284,4 +297,4 @@ For issues and feature requests, visit the [GitHub repository](https://github.co
 
 ---
 
-*Note: This documentation is under active development. Some sections may be incomplete or subject to change.*
+*This documentation is versioned with each release.*

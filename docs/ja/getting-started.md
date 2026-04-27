@@ -115,7 +115,7 @@ PDB に水素原子がない場合は、pdb2reaction を実行する前に次の
 セットアップと依存関係の詳細は [インストール](installation.md) を参照してください。
 
 - [クイックスタート: `pdb2reaction all`](quickstart-all.md)
-- [クイックスタート: `pdb2reaction scan` で単一構造の段階的スキャン](quickstart-scan.md)
+- [クイックスタート: `pdb2reaction all --scan-lists` で単一構造の段階的スキャン+MEP+TS](quickstart-scan.md)
 - [クイックスタート: `pdb2reaction tsopt`（TS 最適化と検証）](quickstart-tsopt-freq.md)
 
 ---

@@ -74,7 +74,7 @@ glossary
 | 目的 | 推奨コマンド | ガイド |
 |--------------|--------------|--------|
 | 最初の 1 回を実行（end-to-end） | `pdb2reaction all` | [クイックスタート: all](quickstart-all.md) |
-| 単一構造の段階的スキャン | `pdb2reaction scan` | [クイックスタート: scan](quickstart-scan.md) |
+| 単一構造の段階的スキャン+MEP+TS | `pdb2reaction all --scan-lists` | [クイックスタート: scan](quickstart-scan.md) |
 | TS 最適化と検証 | `pdb2reaction tsopt` | [クイックスタート: tsopt](quickstart-tsopt-freq.md) |
 | PDB から反応経路探索を一通り実行 | `pdb2reaction all` | [all](all.md) |
 | タンパク質–リガンド複合体から活性部位をクラスターモデルとして抽出 | `pdb2reaction extract` | [extract](extract.md) |
@@ -238,7 +238,20 @@ result_all/
 
 ## 引用
 
-`pdb2reaction` を説明するプレプリントを準備中です。引用情報については後日ご確認ください。
+`pdb2reaction` を説明するプレプリントを準備中です。現時点では、本ソフトウェア自体を引用してください:
+
+```bibtex
+@software{ohmura2026pdb2reaction,
+  author       = {Ohmura, Takuto},
+  title        = {pdb2reaction},
+  year         = {2026},
+  month        = {4},
+  version      = {0.3.6},
+  url          = {https://github.com/t-0hmura/pdb2reaction},
+  license      = {GPL-3.0},
+  doi          = {10.5281/zenodo.19197865}
+}
+```
 
 ## ライセンス
 
@@ -263,4 +276,4 @@ pdb2reaction <subcommand> --help-advanced
 
 ---
 
-*Note: 本ドキュメントは整備中です。一部未完成の箇所や今後変更される箇所があります。*
+*本ドキュメントは各リリースに対応してバージョン管理されています。*

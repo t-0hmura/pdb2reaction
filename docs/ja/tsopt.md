@@ -249,51 +249,51 @@ hessian_dimer:
  device: auto # device selection for eigensolver
  root: 0 # targeted TS root index
  dimer:
- length: 0.0189 # dimer separation (Bohr)
- rotation_max_cycles: 15 # max rotation iterations
- rotation_method: fourier # rotation optimizer method
- rotation_thresh: 0.0001 # rotation convergence threshold
- rotation_tol: 1 # rotation tolerance factor
- rotation_max_element: 0.001 # max rotation matrix element
- rotation_interpolate: true # interpolate rotation steps
- rotation_disable: false # disable rotations entirely
- rotation_disable_pos_curv: true # disable when positive curvature detected
- rotation_remove_trans: true # remove translational components
- trans_force_f_perp: true # project forces perpendicular to translation
- bonds: null # bond list for constraints
- N_hessian: null # Hessian size override
- bias_rotation: false # bias rotational search
- bias_translation: false # bias translational search
- bias_gaussian_dot: 0.1 # Gaussian bias dot product
- seed: null # RNG seed for rotations
- write_orientations: true # write rotation orientations
- forward_hessian: true # propagate Hessian forward
- lbfgs:
- thresh: baker # LBFGS convergence preset
- max_cycles: 10000 # iteration limit
- print_every: 100 # logging stride
- min_step_norm: 1.0e-08 # minimum accepted step norm
- assert_min_step: true # assert when steps stagnate
- rms_force: null # explicit RMS force target
- rms_force_only: false # rely only on RMS force convergence
- max_force_only: false # rely only on max force convergence
- force_only: false # skip displacement checks
- converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
- overachieve_factor: 0.0 # tighten thresholds
- check_eigval_structure: false # validate Hessian eigenstructure
- line_search: true # enable line search
- dump: false # dump trajectory/restart data
- dump_restart: false # dump restart checkpoints
- prefix: "" # filename prefix
- out_dir: ./result_tsopt/ # output directory (defaults.py default is ./result_opt/, overridden to ./result_tsopt/ by tsopt at runtime)
- keep_last: 7 # history size for LBFGS buffers
- beta: 1.0 # initial damping beta
- gamma_mult: false # multiplicative gamma update toggle
- max_step: 0.3 # maximum step length
- control_step: true # control step length adaptively
- double_damp: true # double damping safeguard
- mu_reg: null # regularization strength
- max_mu_reg_adaptions: 10 # cap on mu adaptations
+   length: 0.0189 # dimer separation (Bohr)
+   rotation_max_cycles: 15 # max rotation iterations
+   rotation_method: fourier # rotation optimizer method
+   rotation_thresh: 0.0001 # rotation convergence threshold
+   rotation_tol: 1 # rotation tolerance factor
+   rotation_max_element: 0.001 # max rotation matrix element
+   rotation_interpolate: true # interpolate rotation steps
+   rotation_disable: false # disable rotations entirely
+   rotation_disable_pos_curv: true # disable when positive curvature detected
+   rotation_remove_trans: true # remove translational components
+   trans_force_f_perp: true # project forces perpendicular to translation
+   bonds: null # bond list for constraints
+   N_hessian: null # Hessian size override
+   bias_rotation: false # bias rotational search
+   bias_translation: false # bias translational search
+   bias_gaussian_dot: 0.1 # Gaussian bias dot product
+   seed: null # RNG seed for rotations
+   write_orientations: true # write rotation orientations
+   forward_hessian: true # propagate Hessian forward
+   lbfgs:
+     thresh: baker # LBFGS convergence preset
+     max_cycles: 10000 # iteration limit
+     print_every: 100 # logging stride
+     min_step_norm: 1.0e-08 # minimum accepted step norm
+     assert_min_step: true # assert when steps stagnate
+     rms_force: null # explicit RMS force target
+     rms_force_only: false # rely only on RMS force convergence
+     max_force_only: false # rely only on max force convergence
+     force_only: false # skip displacement checks
+     converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
+     overachieve_factor: 0.0 # tighten thresholds
+     check_eigval_structure: false # validate Hessian eigenstructure
+     line_search: true # enable line search
+     dump: false # dump trajectory/restart data
+     dump_restart: false # dump restart checkpoints
+     prefix: "" # filename prefix
+     out_dir: ./result_tsopt/ # output directory (defaults.py default is ./result_opt/, overridden to ./result_tsopt/ by tsopt at runtime)
+     keep_last: 7 # history size for LBFGS buffers
+     beta: 1.0 # initial damping beta
+     gamma_mult: false # multiplicative gamma update toggle
+     max_step: 0.3 # maximum step length
+     control_step: true # control step length adaptively
+     double_damp: true # double damping safeguard
+     mu_reg: null # regularization strength
+     max_mu_reg_adaptions: 10 # cap on mu adaptations
 ```
 
 ### RS-I-RFO モード（`--opt-mode hess`、デフォルト）

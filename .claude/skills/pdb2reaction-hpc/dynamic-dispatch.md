@@ -116,8 +116,8 @@ else
     status=$?
 fi
 
-# Cleanup
-rm -f "${WORKER}" "${STATE_FILE}" "${LOCK_FILE}" "${TASK_LIST}"
+# Cleanup (do not remove ${TASK_LIST} — that is your input)
+rm -f "${WORKER}" "${STATE_FILE}" "${LOCK_FILE}"
 echo "All ${TOTAL_TASKS} tasks attempted (worker exit status=${status})."
 exit ${status}
 ```

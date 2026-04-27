@@ -165,7 +165,7 @@ result_all/
 │   ├── reactant.{xyz,pdb}                  # IRC backward endpoint, then LBFGS-optimized
 │   ├── ts.{xyz,pdb}                        # tsopt'd transition state
 │   └── product.{xyz,pdb}                   # IRC forward endpoint, then LBFGS-optimized
-└── result/path_search/post_seg_NN/structures/
+└── path_search/post_seg_NN/structures/
     ├── reactant.{xyz,pdb}                  # same as above (canonical) — nested copy
     ├── reactant_irc.{xyz,pdb}              # raw IRC backward end (pre-LBFGS)
     ├── ts.{xyz,pdb}                        # same as above

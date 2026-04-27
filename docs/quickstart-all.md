@@ -76,6 +76,6 @@ One imaginary mode with |frequency| > 100 cm⁻¹ indicates a valid TS.
 
 ## Next step
 
-- Single-structure staged scan route: [Quickstart: `pdb2reaction scan`](quickstart-scan.md)
+- Single-structure staged scan route: [Quickstart: `pdb2reaction all --scan-lists`](quickstart-scan.md)
 - TS optimization and validation: [Quickstart: `pdb2reaction tsopt`](quickstart-tsopt-freq.md)
 - Full option reference: [all](all.md)

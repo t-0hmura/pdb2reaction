@@ -132,14 +132,22 @@ other users on shared clusters.
 
 ## Failed jobs / restart
 
-`pdb2reaction all` doesn't auto-resume by default; re-running creates
-a fresh `result_all/`. Several stages support manual continuation:
+`pdb2reaction all` supports `--resume` to continue from a partially
+completed `--out-dir`: pass the same `-o <out_dir> --resume` and the
+pipeline skips stages whose outputs already exist on disk. Note that
+when extraction is skipped by `--resume`, charges must be supplied
+explicitly via `-q/--charge` (and `--ligand-charge` when applicable),
+since the original CLI invocation is not persisted.
+
+If `--resume` cannot pick up the run (e.g., the partial output is in
+an unexpected layout), individual stages support manual continuation
+as a fallback:
 
 - `tsopt`, `freq`, `irc`, `dft` — re-run on the previous output.
 - `path-search` — pass the partial `mep.pdb` as `-i`.
 
-For walltime-truncated jobs, write the per-stage outputs to a
-persistent location and resume from the last completed stage.
+For walltime-truncated jobs, write `--out-dir` to a persistent
+location and re-submit with `--resume` after a longer walltime.
 
 ## Parallel job submission patterns
 

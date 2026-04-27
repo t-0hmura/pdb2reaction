@@ -27,7 +27,7 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 
 ![pdb2reaction workflow overview](docs/overview.png)
 
-> **Working examples** are provided in the [`examples/`](examples/) directory: a `run.sh` with complete `all` workflow commands for both the multi-structure MEP and the scan-based pipeline. The example system is GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)), which catalyzes a two-step reaction: (1) electrophilic methyl transfer from SAM to the C6 position of GPP via a C7 carbocation intermediate, and (2) proton abstraction from C6 by the catalytic base E170 to yield 6-methylgeranyl pyrophosphate (6MGPP).
+> **Working examples** are provided in the [`examples/`](examples/) directory: a `run.sh` with complete `all` workflow commands for both the multi-structure MEP and the scan-based pipeline. The example system is GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)), which catalyzes a two-step reaction: (1) electrophilic methyl transfer from SAM to the C6 position of GPP via a C7 carbocation intermediate, and (2) proton abstraction from C6 by the catalytic base E170 to yield 6-methylgeranyl pyrophosphate (6MGPP). E170 in the literature numbering corresponds to `GLU 186` in the example PDB file (used in the scan-list selectors below).
 
 ---
 
@@ -77,14 +77,16 @@ Linux with a CUDA-capable NVIDIA GPU is the validated production environment for
 - Python >= 3.11
 - CUDA 12.x
 
-### Minimal setup (CUDA 12.9, torch 2.8.0)
+### Minimal setup (CUDA 12.9)
 
 ```bash
-pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu129
+pip install torch --index-url https://download.pytorch.org/whl/cu129
 pip install pdb2reaction
 plotly_get_chrome -y
-huggingface-cli login
+hf auth login
 ```
+
+> On older `huggingface_hub` (<0.26) replace `hf auth login` with `huggingface-cli login`.
 
 ### For DMF method
 
@@ -92,10 +94,12 @@ huggingface-cli login
 conda create -n pdb2reaction python=3.11 -y
 conda activate pdb2reaction
 conda install -c conda-forge cyipopt -y
-pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu129
+pip install torch --index-url https://download.pytorch.org/whl/cu129
 pip install pdb2reaction
 plotly_get_chrome -y
 ```
+
+For the full step-by-step guide (HPC `module load`, alternative backends, DFT extras, troubleshooting), see [docs/installation.md](docs/installation.md).
 
 ### DFT single-point (`pdb2reaction dft`)
 

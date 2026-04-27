@@ -86,7 +86,7 @@ PDB/GJF companion files are generated when templates are available, controlled b
 
 ## Usage
 ```bash
-pdb2reaction all -i INPUT1 -i [INPUT2 ...] -c SUBSTRATE [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] [options]
+pdb2reaction all -i INPUT1 [INPUT2 ...] -c SUBSTRATE [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] [options]
 ```
 
 For help output, `pdb2reaction all --help` shows core options and `pdb2reaction all --help-advanced` shows the full option list.
@@ -189,7 +189,7 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | `-c, --center TEXT` | Substrate specification (PDB path, residue IDs, or residue names). | Required for extraction |
 | `-r, --radius FLOAT` | Active site model inclusion cutoff (Å). | `2.6` |
 | `--radius-het2het FLOAT` | Independent hetero–hetero cutoff (Å). Passing `0` is internally nudged to `0.001 Å` to avoid empty selections (same behavior as standalone `extract`). | `0.0` |
-| `--include-h2o BOOL` | Include waters (HOH/WAT/TIP3/SOL). | `True` |
+| `--include-h2o/--no-include-h2o` | Include waters (HOH/WAT/TIP3/SOL). | `True` |
 | `--exclude-backbone BOOL` | Remove backbone atoms on non-substrate amino acids. | `False` |
 | `--add-linkh BOOL` | Add link hydrogens for severed bonds. | `True` |
 | `--selected-resn TEXT` | Residues to force include. **Despite the name, this flag accepts residue IDs (colon-separated integers with optional chains/insertion codes, e.g. `A:123A`), not 3-letter residue names.** Use `-c/--center 'GPP,SAM'` for residue-name-based selection. | `""` |
@@ -227,13 +227,13 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | `--tsopt BOOL` | Run TS optimization + IRC per reactive segment. | `False` |
 | `--thermo BOOL` | Run vibrational analysis (`freq`) on R/TS/P. | `False` |
 | `--dft BOOL` | Run single-point DFT on R/TS/P. | `False` |
+| `--opt-mode-post [grad\|hess]` | Optimizer preset override for TSOPT and post-IRC optimization (`grad` → Dimer/LBFGS, `hess` → RSIRFO/RFO). | `hess` |
+| `--thresh-post TEXT` | Convergence preset for post-IRC endpoint optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
+| `--flatten/--no-flatten` | Enable surplus-imaginary-mode flattening in `tsopt`. | `False` |
 
 ```{warning}
 The `--dft` single-point calculations (powered by PySCF/GPU4PySCF) are very expensive for models exceeding ~500 atoms. For such systems, HPC clusters with high-end GPUs (e.g. A100, H200) are typically required.
 ```
-| `--opt-mode-post [grad\|hess]` | Optimizer preset override for TSOPT and post-IRC optimization (`grad` → Dimer/LBFGS, `hess` → RSIRFO/RFO). | `hess` |
-| `--thresh-post TEXT` | Convergence preset for post-IRC endpoint optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
-| `--flatten/--no-flatten` | Enable surplus-imaginary-mode flattening in `tsopt`. | `False` |
 
 TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (only when explicitly provided) → TSOPT default (`hess` → `rsirfo`).
 

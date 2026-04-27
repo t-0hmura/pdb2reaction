@@ -117,7 +117,7 @@ To ensure identical atom ordering across multiple PDB inputs, apply the same hyd
 For setup and dependency installation, see [Installation](installation.md).
 
 - [Quickstart: run `pdb2reaction all`](quickstart-all.md)
-- [Quickstart: run a single-structure staged scan with `pdb2reaction scan`](quickstart-scan.md)
+- [Quickstart: single-structure staged scan + MEP + TS with `pdb2reaction all --scan-lists`](quickstart-scan.md)
 - [Quickstart: TS optimization and validation with `pdb2reaction tsopt`](quickstart-tsopt-freq.md)
 
 ---

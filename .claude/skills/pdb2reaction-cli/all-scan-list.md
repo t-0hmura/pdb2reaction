@@ -9,7 +9,7 @@ to OE2 of GLU186". `pdb2reaction all` runs each stage in order, ties
 the resulting trajectories into an MEP, and the recursive bond-change
 segmentation slots in any intermediates it finds.
 
-This is how the bezA case study in the published benchmark was driven.
+This is how the bezA case study in the validated example was driven.
 
 ## Synopsis
 
@@ -41,7 +41,7 @@ tuples, where each tuple is `(atom_a, atom_b, target_distance_Å)`.
 | Form | Meaning |
 |---|---|
 | `"NAME RESNAME RESID"` | Atom by PDB name + residue name + residue index, separated by single spaces |
-| `"RESNAME\`RESID/NAME"` | Compact "tilde-form" with backticks and slash; same fields, different separators |
+| `"RESNAME\`RESID/NAME"` | Compact backtick/slash form; same fields, different separators |
 | `"chainID:RESID:NAME"` | Chain-aware lookup |
 
 Multiple bonds per stage drive simultaneously. If you want them done

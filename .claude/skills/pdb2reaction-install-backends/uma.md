@@ -28,15 +28,18 @@ download:
 
 ```bash
 pip install huggingface_hub[cli]
-huggingface-cli login        # paste a Read token from huggingface.co/settings/tokens
+hf auth login                # paste a Read token from huggingface.co/settings/tokens
 ```
+
+On older `huggingface_hub` (<0.26) the equivalent command is
+`huggingface-cli login`.
 
 The token is cached in `~/.cache/huggingface/`. Once it's there, future
 runs (and PBS jobs) pick it up automatically.
 
 If you hit `huggingface_hub.errors.GatedRepoError` or
-`401 Client Error: Unauthorized`, re-run `huggingface-cli login` and
-make sure the token has access to the UMA model repos
+`401 Client Error: Unauthorized`, re-run `hf auth login` and make sure
+the token has access to the UMA model repos
 (`facebook/UMA-S-1.1`, `facebook/UMA-M-1.1`).
 
 ## CLI usage
