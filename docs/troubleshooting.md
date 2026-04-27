@@ -101,7 +101,7 @@ If `--modified-residue` is insufficient (e.g., the residue has an unusual backbo
 ## Charge / spin problems
 
 ### “Charge is required …” (non-GJF inputs)
-Many stages need a net charge when the input is not `.gjf`. If you omit `-q/--charge`, the workflow may attempt to derive charge from `--ligand-charge` (PDB-only) or from a `.gjf` template.
+Many stages need a net charge when the input is not `.gjf`. If you omit `-q/--charge`, the workflow may attempt to derive charge from `--ligand-charge/-l` (PDB-only) or from a `.gjf` template.
 
 Fix:
 - Provide charge and multiplicity explicitly:

@@ -2,6 +2,10 @@
 
 *Version: v0.3.7*
 
+---
+
+<img src="./overview.png" alt="pdb2reaction workflow overview" width="90%">
+
 **pdb2reaction** is a Python CLI toolkit for automated enzymatic reaction-path modeling directly from PDB structures using machine-learning interatomic potentials (MLIPs).
 
 ```{toctree}
@@ -84,7 +88,7 @@ ja/index
 | Objectives | Command | Guide |
 |-------------------------|---------|-------|
 | First run (end-to-end) | `pdb2reaction all` | [Quickstart: all](quickstart-all.md) |
-| Single-structure staged scan + MEP + TS | `pdb2reaction all --scan-lists` | [Quickstart: scan](quickstart-scan.md) |
+| Single-structure staged scan + MEP + TS | `pdb2reaction all --scan-lists/-s` | [Quickstart: scan](quickstart-scan.md) |
 | TS optimization and validation | `pdb2reaction tsopt` | [Quickstart: tsopt](quickstart-tsopt-freq.md) |
 | Run complete reaction path search from PDB | `pdb2reaction all` | [all](all.md) |
 | Extract active site as cluster model from protein-ligand complex | `pdb2reaction extract` | [extract](extract.md) |
@@ -222,7 +226,3 @@ pdb2reaction <subcommand> --help-advanced
 ```
 
 For issues and feature requests, visit the [GitHub repository](https://github.com/t-0hmura/pdb2reaction).
-
----
-
-*This documentation is versioned with each release.*

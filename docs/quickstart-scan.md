@@ -1,19 +1,19 @@
-# Quickstart: single-structure scan workflow (`--scan-lists`)
+# Quickstart: single-structure scan workflow (`--scan-lists/-s`)
 
 ## Goal
 
-Run the full `pdb2reaction all` workflow from a single structure by driving one or more bond distances via `-s/--scan-lists`. This automatically chains: staged scan → MEP refinement → (optional) TS optimization + IRC.
+Run the full `pdb2reaction all` workflow from a single structure by driving one or more bond distances via `--scan-lists/-s`. This automatically chains: staged scan → MEP refinement → (optional) TS optimization + IRC.
 
 ## Prerequisites
 
 - Input structure: `.pdb`
-- Charge (`-q/--charge` or `-l/--ligand-charge`) and multiplicity (`-m`) for the target state
+- Charge (`-q/--charge` or `--ligand-charge/-l`) and multiplicity (`-m`) for the target state
 
 ---
 
-## Method A: `-s/--scan-lists` inline literal (quick one-liners)
+## Method A: `--scan-lists/-s` inline literal (quick one-liners)
 
-`-s/--scan-lists` accepts Python-literal strings directly on the command line.
+`--scan-lists/-s` accepts Python-literal strings directly on the command line.
 
 ### Basic syntax
 
@@ -126,7 +126,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(1, 5, 1.35)]' --print-parsed
 
 ## Notes
 
-- `-s/--scan-lists` accepts either a YAML/JSON file path or inline Python literals (not both at once).
+- `--scan-lists/-s` accepts either a YAML/JSON file path or inline Python literals (not both at once).
 - Use `pdb2reaction all --help-advanced` to inspect all options including scan controls.
 - For the standalone `scan` subcommand (without MEP refinement), see [scan](scan.md).
 

@@ -10,7 +10,7 @@ Each row deep-links into the relevant [Troubleshooting](troubleshooting.md) sect
 | Symptom | Start here | Then read (section in `troubleshooting.md`) |
 | --- | --- | --- |
 | Missing element columns / extraction aborts | `add-elem-info` on the original PDB | {ref}`Input / extraction problems <input-extraction-problems>` |
-| "Charge is required" errors | Set `-q/--charge` or `-l/--ligand-charge` explicitly | {ref}`Charge / spin problems <charge-spin-problems>` |
+| "Charge is required" errors | Set `-q/--charge` or `--ligand-charge/-l` explicitly | {ref}`Charge / spin problems <charge-spin-problems>` |
 | Energies/states look wrong after a run | Re-check charge/multiplicity policy in CLI conventions | {ref}`Input / extraction problems <input-extraction-problems>` |
 | DMF mode import errors (`cyipopt`) | Run `conda install -c conda-forge cyipopt` | {ref}`Installation / environment problems <installation-environment-problems>` |
 | TSOPT does not converge | For LBFGS/Dimer: reduce `max_step`. For RFO/RS-I-RFO: reduce `trust_radius`/`trust_min`/`trust_max`. Increase cycles, validate TS quality first | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
@@ -39,11 +39,11 @@ Signal:
 
 First checks: 
 - Ensure net charge and multiplicity are physically correct for the target state.  
-- If using residue maps, validate each residue key in `--ligand-charge`.  
+- If using residue maps, validate each residue key in `--ligand-charge/-l`.  
 - Verify the resolution rules in [CLI Conventions](cli-conventions.md) when results look physically inconsistent.  
 
 Typical fix path:  
-- Prefer explicit `-q/--charge` or `-l/--ligand-charge` and `-m` for critical runs, then retry scan/path/tsopt.   
+- Prefer explicit `-q/--charge` or `--ligand-charge/-l` and `-m` for critical runs, then retry scan/path/tsopt.   
 
 ## Recipe 3: Environment blockers
 

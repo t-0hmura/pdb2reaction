@@ -7,7 +7,7 @@ Optimize a TS candidate and verify that it is a first-order saddle point.
 ## Prerequisites
 
 - TS candidate geometry: `.pdb`
-- Charge (`-q/--charge` or `-l/--ligand-charge`) and multiplicity (`-m`) for the target state
+- Charge (`-q/--charge` or `--ligand-charge/-l`) and multiplicity (`-m`) for the target state
 
 ## 1. TS optimization
 

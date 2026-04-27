@@ -2,10 +2,10 @@
 
 ## Overview
 
-> **Summary:** Perform a two-distance (d₁, d₂) grid scan with harmonic restraints and MLIP relaxations. Use `-s/--scan-lists` with a YAML/JSON spec file (recommended) or an inline Python literal.
+> **Summary:** Perform a two-distance (d₁, d₂) grid scan with harmonic restraints and MLIP relaxations. Use `--scan-lists/-s` with a YAML/JSON spec file (recommended) or an inline Python literal.
 
 ### At a glance
-- **Input:** One structure + `-s/--scan-lists scan2d.yaml` (recommended), or one `-s/--scan-lists` inline literal containing exactly two quadruples.
+- **Input:** One structure + `-s/--scan-lists scan2d.yaml` (recommended), or one `--scan-lists/-s` inline literal containing exactly two quadruples.
 - **Grid ordering:** Each axis is reordered so the point closest to the (pre)optimized structure is visited first.
 - **Energies:** Values written to `surface.csv` are always evaluated **without bias**, so grid points are directly comparable.
 - **Outputs:** `surface.csv` plus `scan2d_map.png` and `scan2d_landscape.html`, and per-point structures under `grid/`.
@@ -31,7 +31,7 @@ pdb2reaction scan2d -i input.pdb -q 0 -s scan2d.yaml -o ./result_scan2d/
 2. **Run with an inline literal** -- see [Examples](#examples) below.
 3. **Enable `--dump`** to store inner trajectories by d1 step — see [Examples](#examples) below.
 
-> **Note:** Add `--print-parsed` when you want to verify parsed pair targets from `-s/--scan-lists`.
+> **Note:** Add `--print-parsed` when you want to verify parsed pair targets from `--scan-lists/-s`.
 
 ## Usage
 ```bash
@@ -78,7 +78,7 @@ pairs:
 
 ## Inline Python literal format
 
-`-s/--scan-lists` also accepts a **single inline Python literal** string. Shell quoting matters.
+`--scan-lists/-s` also accepts a **single inline Python literal** string. Shell quoting matters.
 
 ### Basic structure
 
@@ -127,12 +127,12 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 ## Workflow
 1. Load the input geometry via `geom_loader`, resolve charge/spin, and optionally
     run an unbiased preoptimization when `--preopt`. If `-q` is omitted but
-    `--ligand-charge` is provided, the structure is treated as an enzyme–substrate
+    `--ligand-charge/-l` is provided, the structure is treated as an enzyme–substrate
     complex and `extract.py`’s charge summary derives the total charge before the
     scan (for PDB inputs, or XYZ/GJF when `--ref-pdb` is supplied). The preoptimized
     structure is saved under `grid/preopt_i###_j###.*` and its unbiased energy is
     stored in `surface.csv` with indices `i = j = -1`.
-2. Parse targets from `-s/--scan-lists` (YAML/JSON file or inline literal) into two quadruples, normalize indices
+2. Parse targets from `--scan-lists/-s` (YAML/JSON file or inline literal) into two quadruples, normalize indices
     (1-based by default). For PDB inputs, each atom entry can be an integer index
     or a selector string like `'TYR,285,CA'`; delimiters may be spaces, commas,
     slashes, backticks, or backslashes, and token order is flexible (fallback
@@ -161,13 +161,13 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge (CLI > template/`--ligand-charge`). Overrides `--ligand-charge` when both are set. | Required unless template/derivation applies |
+| `-q, --charge INT` | Total charge (CLI > template/`--ligand-charge/-l`). Overrides `--ligand-charge/-l` when both are set. | Required unless template/derivation applies |
 | `-l, --ligand-charge TEXT` | Per-residue charge mapping (e.g., `GPP:-3,SAM:1`). Automatically derives the total system charge from PDB residue charges — no manual counting needed. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | MLIP predictor parallelism (workers > 1 disables analytic Hessians; UMA backend only; `workers_per_node` forwarded to the parallel predictor). See {ref}`workers-fd-downgrade` for diagnostic notes. | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
 | `-s, --scan-lists TEXT` | Scan targets: a YAML/JSON spec file path (recommended) or **single** inline Python literal with two quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
 | `--one-based/--zero-based` | Interpret `(i, j)` indices as 1- or 0-based. | `True` |
-| `--print-parsed/--no-print-parsed` | Print parsed pair tuples after `-s/--scan-lists` resolution. | `False` |
+| `--print-parsed/--no-print-parsed` | Print parsed pair tuples after `--scan-lists/-s` resolution. | `False` |
 | `--max-step-size FLOAT` | Maximum change allowed for either distance per increment (Å). Determines the grid density. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
 | `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. Used unless YAML sets `opt.max_cycles`. | `10000` |

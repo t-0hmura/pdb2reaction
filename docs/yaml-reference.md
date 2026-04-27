@@ -559,7 +559,7 @@ dft:
 
 ## Scan Sections
 
-Scan coordinates are specified via `-s/--scan-lists` (inline or YAML file), **not** in the main YAML config.
+Scan coordinates are specified via `--scan-lists/-s` (inline or YAML file), **not** in the main YAML config.
 See [Quickstart: scan workflow](quickstart-scan.md) for scan coordinate syntax (PDB selectors, multi-stage).
 
 (bias-section)=

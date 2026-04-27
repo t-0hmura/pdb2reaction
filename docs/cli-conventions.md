@@ -81,7 +81,7 @@ When selecting by residue name, if multiple residues share the same name, **all*
 (charge-specification)=
 ## Charge Specification
 
-For PDB inputs, `--ligand-charge` lets you specify charges only for non-standard residues (substrates, cofactors, metal ions). The total system charge is then **automatically derived** by summing standard amino-acid charges, ion charges, and your ligand charges — no need to manually count atoms across the entire complex. This is especially useful for large enzyme–substrate systems where the total charge is not obvious.
+For PDB inputs, `--ligand-charge/-l` lets you specify charges only for non-standard residues (substrates, cofactors, metal ions). The total system charge is then **automatically derived** by summing standard amino-acid charges, ion charges, and your ligand charges — no need to manually count atoms across the entire complex. This is especially useful for large enzyme–substrate systems where the total charge is not obvious.
 
 ### Per-residue mapping (recommended)
 ```bash
@@ -97,21 +97,21 @@ For PDB inputs, `--ligand-charge` lets you specify charges only for non-standard
 
 ### Charge resolution order
 1. `-q/--charge` (explicit CLI override) — highest priority
-2. Active site model (binding pocket) extraction (sums amino acids, ions, `--ligand-charge`) — only when `-c/--center` is passed and extraction actually runs (e.g. `all`, `extract`)
-3. `--ligand-charge` as fallback (when extraction skipped)
+2. Active site model (binding pocket) extraction (sums amino acids, ions, `--ligand-charge/-l`) — only when `-c/--center` is passed and extraction actually runs (e.g. `all`, `extract`)
+3. `--ligand-charge/-l` as fallback (when extraction skipped)
 4. `.gjf` template metadata
-5. Default: none (unresolved charge aborts; provide `-q` or `.gjf` charge metadata, or use PDB `--ligand-charge`)
+5. Default: none (unresolved charge aborts; provide `-q` or `.gjf` charge metadata, or use PDB `--ligand-charge/-l`)
 
 ```{note}
 Step 2 (extraction-based charge derivation) only fires for commands like `all` that take `-c/--center`. For standalone subcommands such as `opt`/`tsopt`/`freq`, or when `-c` is omitted, extraction is skipped and resolution becomes `1 → 3 → 4 → 5`.
 ```
 
 ```{note}
-`--ligand-charge` derivation is only applied for PDB inputs (including XYZ/GJF inputs when `--ref-pdb` is supplied) and only when charge is **not yet resolved**. In that unresolved case, ligand-derived charge is attempted before `.gjf` metadata fallback.
+`--ligand-charge/-l` derivation is only applied for PDB inputs (including XYZ/GJF inputs when `--ref-pdb` is supplied) and only when charge is **not yet resolved**. In that unresolved case, ligand-derived charge is attempted before `.gjf` metadata fallback.
 ```
 
 ```{tip}
-Always provide `--ligand-charge` for non-standard residues (substrates, cofactors, unusual ligands) to ensure correct charge propagation.
+Always provide `--ligand-charge/-l` for non-standard residues (substrates, cofactors, unusual ligands) to ensure correct charge propagation.
 ```
 
 ---

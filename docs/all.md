@@ -39,15 +39,15 @@ Each stage is available as an individual subcommand. The `pdb2reaction all` comm
 It supports three modes:
 
 - **Multi-structure workflow** — Provide ≥2 structures (PDB/GJF/XYZ) in reaction order plus a substrate definition. `all` extracts active site models, runs GSM/DMF MEP search, merges the optimized path back into the full-system template(s), and optionally runs TSOPT+IRC/freq/DFT per reactive segment.
-- **Single-structure + staged scan** — Provide one structure plus one or more `--scan-lists`. The (staged) scan generates an ordered set of intermediates that become MEP endpoints.
+- **Single-structure + staged scan** — Provide one structure plus one or more `--scan-lists/-s`. The (staged) scan generates an ordered set of intermediates that become MEP endpoints.
 
-  - One `--scan-lists` literal runs a single scan stage.
-  - Multiple stages are passed as multiple arguments to a single `-s/--scan-lists` (e.g. `-s '[(…)]' '[(…)]'`).
+  - One `--scan-lists/-s` literal runs a single scan stage.
+  - Multiple stages are passed as multiple arguments to a single `--scan-lists/-s` (e.g. `-s '[(…)]' '[(…)]'`).
 ```{tip}
-For large active site models, the single-structure scan workflow (`--scan-lists`) tends to produce more reliable reaction barriers than the multi-structure MEP workflow. When multiple full PDB structures are provided, structural differences in regions unrelated to the reaction coordinate can accumulate, leading to overestimated barriers. The scan workflow avoids this by starting from a single structure and driving only the relevant coordinates, minimizing irrelevant structural noise. This effect becomes more pronounced as the model size increases.
+For large active site models, the single-structure scan workflow (`--scan-lists/-s`) tends to produce more reliable reaction barriers than the multi-structure MEP workflow. When multiple full PDB structures are provided, structural differences in regions unrelated to the reaction coordinate can accumulate, leading to overestimated barriers. The scan workflow avoids this by starting from a single structure and driving only the relevant coordinates, minimizing irrelevant structural noise. This effect becomes more pronounced as the model size increases.
 ```
 
-- **TSOPT-only active site model TS optimization** — Provide a single input structure, omit `--scan-lists`, and set `--tsopt`. `all` extracts the active site model (if `-c/--center` is given) and runs TS optimization + IRC, with optional freq/DFT, on that single system.
+- **TSOPT-only active site model TS optimization** — Provide a single input structure, omit `--scan-lists/-s`, and set `--tsopt`. `all` extracts the active site model (if `-c/--center` is given) and runs TS optimization + IRC, with optional freq/DFT, on that single system.
 
 > **Working examples:** The [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) directory contains complete `all` workflow scripts for GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)), covering both multi-structure MEP and scan-based pipelines.
 
@@ -121,8 +121,8 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  - The **first active site model’s net charge** is propagated to scan/MEP/TSOPT.
 
 2. **Optional staged scan (single-input only)**
- - Each `--scan-lists` argument is a Python-like list of `(i,j,target_Å)` tuples describing an MLIP scan stage. Atom indices refer to the original input ordering (1-based) and are remapped to the active site model ordering. For PDB inputs, `i`/`j` can be integer indices or selector strings like `'TYR,285,CA'`; selectors accept spaces/commas/slashes/backticks/backslashes (` ` `,` `/` `` ` `` `\`) as delimiters and allow unordered tokens (fallback assumes resname, resseq, atom).
- - A single literal runs a one-stage scan; multiple literals run **sequentially** so stage 2 begins from stage 1's result, and so on. Supply multiple literals as arguments to a single `-s/--scan-lists` (e.g. `-s '[(…)]' '[(…)]'`).
+ - Each `--scan-lists/-s` argument is a Python-like list of `(i,j,target_Å)` tuples describing an MLIP scan stage. Atom indices refer to the original input ordering (1-based) and are remapped to the active site model ordering. For PDB inputs, `i`/`j` can be integer indices or selector strings like `'TYR,285,CA'`; selectors accept spaces/commas/slashes/backticks/backslashes (` ` `,` `/` `` ` `` `\`) as delimiters and allow unordered tokens (fallback assumes resname, resseq, atom).
+ - A single literal runs a one-stage scan; multiple literals run **sequentially** so stage 2 begins from stage 1's result, and so on. Supply multiple literals as arguments to a single `--scan-lists/-s` (e.g. `-s '[(…)]' '[(…)]'`).
  - Stage endpoints (`stage_XX/result.pdb`) become the ordered intermediates that feed the subsequent MEP step.
 
 3. **MEP search on active site models (recursive `path-search`)**
@@ -140,7 +140,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
   - Shared overrides include `--opt-mode`, `--opt-mode-post` (overrides TSOPT/post-IRC optimization mode), `--flatten/--no-flatten`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, and `--dft-engine` (GPU-first by default).
  - For Hessian evaluation modes, see {ref}`hessian-evaluation`.
 
-6. **TSOPT-only mode** (single input, `--tsopt`, no `--scan-lists`)
+6. **TSOPT-only mode** (single input, `--tsopt`, no `--scan-lists/-s`)
  - Skips the MEP/merge stages. Runs `tsopt` on the active site model (or full input if extraction is skipped), performs EulerPC IRC, identifies the higher-energy endpoint as reactant (R), and generates the same set of energy diagrams plus optional freq/DFT outputs.
 
 ### Charge and spin precedence
@@ -149,7 +149,7 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 
 **Spin resolution:** `--multiplicity` (CLI) → `.gjf` template → default (1)
 
-> **Tip:** Always provide `--ligand-charge` for non-standard substrates to ensure correct charge propagation.
+> **Tip:** Always provide `--ligand-charge/-l` for non-standard substrates to ensure correct charge propagation.
 
 ### Input expectations
 - Extraction enabled (`-c/--center`): inputs must be **PDB** files so residues can be located.
@@ -164,7 +164,7 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `-i, --input PATH...` | Two or more full structures in reaction order (single input allowed only with `--scan-lists` or `--tsopt`). | Required |
+| `-i, --input PATH...` | Two or more full structures in reaction order (single input allowed only with `--scan-lists/-s` or `--tsopt`). | Required |
 | `--ref-pdb FILE` | Reference PDB for topology when `-i` provides XYZ inputs. | _None_ |
 | `-o, --out-dir PATH` | Top-level output directory. | `./result_all/` |
 | `--convert-files BOOL` | Global toggle for XYZ/TRJ → PDB/GJF companions when templates are available. | `True` |
@@ -179,7 +179,7 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | Option | Description | Default |
 | --- | --- | --- |
 | `-l, --ligand-charge TEXT` | Net charge or per-resname mapping used when `-q` is omitted (recommended). Triggers extract-style charge derivation on the full complex (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
-| `-q, --charge INT` | Force the net system charge (overrides `--ligand-charge`). | _None_ |
+| `-q, --charge INT` | Force the net system charge (overrides `--ligand-charge/-l`). | _None_ |
 | `-m, --multiplicity INT` | Spin multiplicity forwarded to all downstream steps. | `1` |
 
 ### Extraction Options
@@ -349,13 +349,13 @@ The JSON summary contains structured data. Common top-level keys include:
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
-- Always provide `--ligand-charge` (numeric or per-residue mapping) when formal charges cannot be inferred so the correct net charge propagates to scan/MEP/TSOPT/DFT.
+- Always provide `--ligand-charge/-l` (numeric or per-residue mapping) when formal charges cannot be inferred so the correct net charge propagates to scan/MEP/TSOPT/DFT.
 - Reference PDB templates for merging are derived automatically from the original inputs; the explicit `--ref-full-pdb` option of `path-search` is intentionally hidden in this wrapper.
 - Convergence presets: `--thresh` defaults to `gau`; `--thresh-post` defaults to `baker`.
 - Extraction radii: passing `0` to `--radius` or `--radius-het2het` is internally clamped to `0.001 Å` by the extractor.
 - Energies in diagrams are reported relative to the first state (reactant) in kcal/mol.
-- Omitting `-c/--center` skips extraction and feeds the entire input structures directly to the MEP/tsopt/freq/DFT stages; single-structure runs still require either `--scan-lists` or `--tsopt`.
-- **`--resume`**: Re-run the same command with `--resume` to skip stages whose output files already exist. Each stage is guarded by sentinel-file checks (e.g. `summary.json` for MEP, `final_geometry.*` + `finished_irc_trj.xyz` for TSOPT/IRC, `R/`+`TS/`+`P/` directories for freq/DFT). When extraction is skipped on resume, provide `-q/--charge` or `--ligand-charge` explicitly so the charge can be resolved without re-running the extractor. **Sentinel-corruption caveat:** `--resume` only checks for the *presence* of the sentinel files, not their integrity. If a stage was killed mid-write (SIGKILL, OOM, cluster preemption) and the sentinel file was already on disk but is truncated or corrupted, `--resume` will still consider the stage complete. Delete the stage's output directory (e.g. `path_search/post_seg_XX/ts/`) before resuming if you suspect a partially written result.
+- Omitting `-c/--center` skips extraction and feeds the entire input structures directly to the MEP/tsopt/freq/DFT stages; single-structure runs still require either `--scan-lists/-s` or `--tsopt`.
+- **`--resume`**: Re-run the same command with `--resume` to skip stages whose output files already exist. Each stage is guarded by sentinel-file checks (e.g. `summary.json` for MEP, `final_geometry.*` + `finished_irc_trj.xyz` for TSOPT/IRC, `R/`+`TS/`+`P/` directories for freq/DFT). When extraction is skipped on resume, provide `-q/--charge` or `--ligand-charge/-l` explicitly so the charge can be resolved without re-running the extractor. **Sentinel-corruption caveat:** `--resume` only checks for the *presence* of the sentinel files, not their integrity. If a stage was killed mid-write (SIGKILL, OOM, cluster preemption) and the sentinel file was already on disk but is truncated or corrupted, `--resume` will still consider the stage complete. Delete the stage's output directory (e.g. `path_search/post_seg_XX/ts/`) before resuming if you suspect a partially written result.
 
 
 `all` supports layered YAML:

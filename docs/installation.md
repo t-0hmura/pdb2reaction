@@ -174,7 +174,7 @@ If you prefer to build the environment piece by piece:
 
 - [Getting Started](getting-started.md) — project overview, pipeline stages, and workflow modes
 - [Quickstart: `pdb2reaction all`](quickstart-all.md) — run the end-to-end workflow from two PDBs
-- [Quickstart: single-structure staged scan](quickstart-scan.md) — `--scan-lists` driven MEP from one PDB
+- [Quickstart: single-structure staged scan](quickstart-scan.md) — `--scan-lists/-s` driven MEP from one PDB
 - [Quickstart: TS optimization](quickstart-tsopt-freq.md) — optimize and validate a TS candidate
 - [CLI Conventions](cli-conventions.md) — flag precedence, atom/residue selectors, shared options
 - [Troubleshooting](troubleshooting.md) and [Common Error Recipes](recipes-common-errors.md)

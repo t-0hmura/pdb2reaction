@@ -2,14 +2,14 @@
 
 ## Overview
 
-> **Summary:** Drive a reaction coordinate by scanning bond distances with harmonic restraints. Use `-s/--scan-lists` to define targets as either a YAML/JSON spec file path (recommended) or inline Python literals.
+> **Summary:** Drive a reaction coordinate by scanning bond distances with harmonic restraints. Use `--scan-lists/-s` to define targets as either a YAML/JSON spec file path (recommended) or inline Python literals.
 
 ### At a glance
 - **Use when:** You have a single structure and want to *push* specific distances to explore a plausible path (often before `path-search`/`path-opt`).
-- **Input:** One structure + `-s/--scan-lists scan.yaml` (recommended), or one or more `-s/--scan-lists` inline literals (each literal = one stage).
+- **Input:** One structure + `-s/--scan-lists scan.yaml` (recommended), or one or more `--scan-lists/-s` inline literals (each literal = one stage).
 - **Defaults:** `--opt-mode grad` (LBFGS), `--no-preopt`, `--no-endopt`, `--max-step-size 0.20 Å`.
 - **Outputs:** Per-stage `result.xyz` (+ optional `.pdb`/`.gjf`), and concatenated scan trajectories (`scan_trj.xyz`/`scan.pdb`). `--dump` controls per-step optimizer trajectory files only.
-- **Note:** Passing a YAML/JSON file path to `-s/--scan-lists` is recommended for complex or multi-stage scans -- it avoids shell quoting pitfalls and is easier to version-control. Inline Python literals work well for simple single-stage scans.
+- **Note:** Passing a YAML/JSON file path to `--scan-lists/-s` is recommended for complex or multi-stage scans -- it avoids shell quoting pitfalls and is easier to version-control. Inline Python literals work well for simple single-stage scans.
 
 `pdb2reaction scan` performs a staged, bond-length–driven scan using an MLIP backend (UMA by default) and harmonic restraints. At each step, the temporary targets are updated, restraint wells are applied, and the structure is relaxed with LBFGS (`--opt-mode grad`) or RFOptimizer (`--opt-mode hess`).
 
@@ -48,7 +48,7 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 -s '[("TYR,285,CA","SAM,309,C10",1.35)]
 pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml --dump -o ./result_scan_dump
 ```
 
-> **Note:** Add `--print-parsed` when you want to verify parsed stage targets from `-s/--scan-lists`.
+> **Note:** Add `--print-parsed` when you want to verify parsed stage targets from `--scan-lists/-s`.
 
 ## Usage
 ```bash
@@ -87,7 +87,7 @@ pdb2reaction scan -i input.pdb -q 0 -s \
 
 ## YAML/JSON spec file format (recommended)
 
-`-s/--scan-lists` accepts a YAML/JSON file path with a mapping root:
+`--scan-lists/-s` accepts a YAML/JSON file path with a mapping root:
 
 ```yaml
 one_based: true # optional; defaults to CLI --one-based
@@ -102,7 +102,7 @@ stages:
 
 ## Inline Python literal format
 
-`-s/--scan-lists` also accepts **inline Python literal** strings evaluated by the CLI. Shell quoting matters.
+`--scan-lists/-s` also accepts **inline Python literal** strings evaluated by the CLI. Shell quoting matters.
 
 ### Basic structure
 
@@ -114,7 +114,7 @@ Each literal is a Python list of triples `(atom1, atom2, target_Å)`:
 
 - Wrap the entire literal in **single quotes** so the shell does not interpret parentheses or spaces.
 - Each triple drives the distance between `atom1`–`atom2` toward `target_Å`.
-- One literal = one **stage**. For multiple stages, pass multiple literals after a **single** `-s/--scan-lists` flag.
+- One literal = one **stage**. For multiple stages, pass multiple literals after a **single** `--scan-lists/-s` flag.
 
 ### Specifying atoms
 
@@ -150,7 +150,7 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 
 ### Multiple stages
 
-Pass multiple literals after a single `-s/--scan-lists` flag. Each literal becomes one stage:
+Pass multiple literals after a single `--scan-lists/-s` flag. Each literal becomes one stage:
 
 ```bash
 # Stage 1: drive one bond to 1.35 Å
@@ -187,7 +187,7 @@ This is equivalent to two manual stages with a geometry reset between them, but 
 1. Load the structure through `geom_loader`. Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: Charge specification <charge-specification>` for details).
 2. Optionally run an unbiased preoptimization (`--preopt`) before any
     biasing so the starting point is relaxed.
-3. Parse stage targets from `-s/--scan-lists` (YAML/JSON file or inline literal), then normalize the
+3. Parse stage targets from `--scan-lists/-s` (YAML/JSON file or inline literal), then normalize the
     `(i, j)` indices (1-based by default). When the input is a PDB, each entry
     may be either an integer index or an atom selector string like `'TYR,285,CA'`;
     selector fields can be separated by spaces, commas, slashes, backticks, or
@@ -209,13 +209,13 @@ This is equivalent to two manual stages with a geometry reset between them, but 
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge (CLI > template). When omitted, charge can be inferred from `--ligand-charge`; explicit `-q` overrides any derived value. | Required unless a `.gjf` template or `--ligand-charge` supplies it |
+| `-q, --charge INT` | Total charge (CLI > template). When omitted, charge can be inferred from `--ligand-charge/-l`; explicit `-q` overrides any derived value. | Required unless a `.gjf` template or `--ligand-charge/-l` supplies it |
 | `-l, --ligand-charge TEXT` | Per-residue charge mapping (e.g., `GPP:-3,SAM:1`). Automatically derives the total system charge from PDB residue charges — no manual counting needed. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | MLIP predictor parallelism (workers > 1 disables analytic Hessians; UMA backend only; `workers_per_node` forwarded to the parallel predictor). See {ref}`workers-fd-downgrade` for diagnostic notes. | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
 | `-s, --scan-lists TEXT` | Scan targets: a YAML/JSON spec file path (recommended) or inline Python literal with `(i,j,targetÅ)` triples or `(i,j,start,end)` 4-tuples for bidirectional scans. Each inline literal is one stage; supply multiple literals after a single flag. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
 | `--one-based/--zero-based` | Interpret atom indices as 1- or 0-based. These are mutually exclusive toggle aliases for the same flag (`--one-based` sets it to `True`, `--zero-based` sets it to `False`). | `True` |
-| `--print-parsed/--no-print-parsed` | Print parsed stage tuples after `-s/--scan-lists` resolution. | `False` |
+| `--print-parsed/--no-print-parsed` | Print parsed stage tuples after `--scan-lists/-s` resolution. | `False` |
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
 | `--relax-max-cycles INT` | Cap on optimizer cycles during preopt, each biased step, and end-of-stage cleanups. Used unless YAML sets `opt.max_cycles`. | `10000` |
@@ -273,7 +273,7 @@ out_dir/ (default:./result_scan/)
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
-- Provide multiple literals after a single `-s/--scan-lists` flag.
+- Provide multiple literals after a single `--scan-lists/-s` flag.
   Tuples must have positive targets. Atom indices are normalized to 0-based internally for computation. For
   PDB inputs, `i`/`j` can be selector strings with flexible delimiters
   (space/comma/slash/backtick/backslash) and unordered tokens.
@@ -397,7 +397,7 @@ bond:
 
 - [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
 
-- [all](all.md) — End-to-end workflow with `--scan-lists` for single-structure inputs
+- [all](all.md) — End-to-end workflow with `--scan-lists/-s` for single-structure inputs
 - [path-search](path-search.md) — MEP search using scan endpoints as intermediates
 - [extract](extract.md) — Generate active site model (binding pocket) PDBs before scanning
 - [YAML Reference](yaml-reference.md) — Full `bias` and `bond` configuration options

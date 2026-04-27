@@ -2,14 +2,14 @@
 
 ## Overview
 
-> **Summary:** Extract a cluster model (active site model (binding pocket)) from a protein–ligand PDB. Specify substrates with `-c` by residue name, residue ID, or a PDB path. Link hydrogens are added to cap cut bonds. Use `--ligand-charge` for non-standard residue charges.
+> **Summary:** Extract a cluster model (active site model (binding pocket)) from a protein–ligand PDB. Specify substrates with `-c` by residue name, residue ID, or a PDB path. Link hydrogens are added to cap cut bonds. Use `--ligand-charge/-l` for non-standard residue charges.
 
 ### At a glance
 - **Input:** One or more complex PDBs with consistent atom ordering (ensemble mode supported).
 - **Substrate selection (`-c`):** residue IDs (`A:123A`), residue names (`GPP,SAM`), or a substrate PDB that matches the complex coordinates.
 - **Selection logic:** distance cutoff (`--radius`) plus optional hetero–hetero proximity (`--radius-het2het`) and peptide/disulfide/PRO safeguards.
 - **Truncation & capping:** trims residues/segments and optionally adds link hydrogens (`--add-linkh` by default).
-- **Charges:** unknown residues default to 0 unless `--ligand-charge` supplies a total charge or per-resname mapping.
+- **Charges:** unknown residues default to 0 unless `--ligand-charge/-l` supplies a total charge or per-resname mapping.
 
 `pdb2reaction extract` creates an active site model (cluster model) from a protein–ligand PDB. It selects residues near the substrate, truncates the model according to backbone/side-chain rules, optionally caps severed bonds with link hydrogens, and can process single structures or ensembles.
 
@@ -79,9 +79,9 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
 - Inserted after a `TER` as contiguous `HETATM` records named `HL` in residue `LKH` (chain `L`). Serial numbers continue from the main block.
 - In multi-structure mode the same bonds are capped across all models; coordinates remain model-specific.
 
-### Charge summary (`--ligand-charge`)
+### Charge summary (`--ligand-charge/-l`)
 - Amino acids and common ions draw charges from internal dictionaries; waters are zero.
-- Unknown residues default to 0 unless `--ligand-charge` supplies either a total charge (distributed across unknown substrate residues, or all unknowns when no unknown substrate) or a per-resname mapping like `GPP:-3,SAM:1`.
+- Unknown residues default to 0 unless `--ligand-charge/-l` supplies either a total charge (distributed across unknown substrate residues, or all unknowns when no unknown substrate) or a per-resname mapping like `GPP:-3,SAM:1`.
 - Summaries (protein/ligand/ion/total) are logged for the first input when verbose mode is enabled.
 
 ### Multi-structure ensembles

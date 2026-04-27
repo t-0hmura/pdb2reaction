@@ -2,10 +2,10 @@
 
 ## Overview
 
-> **Summary:** Perform a three-distance (d₁, d₂, d₃) grid scan with harmonic restraints and MLIP relaxations. Use `-s/--scan-lists` with a YAML/JSON spec file (recommended) or an inline Python literal; or plot an existing `surface.csv` via `--csv`.
+> **Summary:** Perform a three-distance (d₁, d₂, d₃) grid scan with harmonic restraints and MLIP relaxations. Use `--scan-lists/-s` with a YAML/JSON spec file (recommended) or an inline Python literal; or plot an existing `surface.csv` via `--csv`.
 
 ### At a glance
-- **Input:** One structure + `-s/--scan-lists scan3d.yaml` (recommended) or one `-s/--scan-lists` inline literal (three quadruples), unless you use `--csv` to plot only.
+- **Input:** One structure + `-s/--scan-lists scan3d.yaml` (recommended) or one `--scan-lists/-s` inline literal (three quadruples), unless you use `--csv` to plot only.
 - **Grid ordering:** Values are reordered so points closest to the (pre)optimized structure are visited first.
 - **Energies:** Recorded energies are evaluated **without bias**, so grid points are directly comparable.
 - **Outputs:** `surface.csv`, per-point geometries under `grid/`, and an HTML isosurface plot (`scan3d_density.html`).
@@ -30,7 +30,7 @@ pdb2reaction scan3d -i input.pdb -q 0 -s scan3d.yaml -o ./result_scan3d/
 2. **Run with an inline literal** -- see [Examples](#examples) below.
 3. **Enable `--dump`** to keep inner d3 trajectories per `(d1,d2)` slice -- see [Examples](#examples) below.
 
-> **Note:** Add `--print-parsed` when you want to verify parsed pair targets from `-s/--scan-lists`.
+> **Note:** Add `--print-parsed` when you want to verify parsed pair targets from `--scan-lists/-s`.
 
 ## Usage
 ```bash
@@ -39,7 +39,7 @@ pdb2reaction scan3d [-i INPUT.{pdb|xyz|trj|...}] [-q CHARGE] [-l, --ligand-charg
  [-s/--scan-lists scan3d.yaml | '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE] [--csv PATH]
 ```
-Note: `-i/--input` and `-s/--scan-lists` are required unless `--csv` is provided.
+Note: `-i/--input` and `--scan-lists/-s` are required unless `--csv` is provided.
 
 ### Examples
 ```bash
@@ -83,7 +83,7 @@ pairs:
 
 ## Inline Python literal format
 
-`-s/--scan-lists` also accepts a **single inline Python literal** string. Shell quoting matters.
+`--scan-lists/-s` also accepts a **single inline Python literal** string. Shell quoting matters.
 
 ### Basic structure
 
@@ -132,11 +132,11 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 ## Workflow
 1. Load the structure through `geom_loader`, resolve charge/spin from CLI or
     embedded Gaussian templates, and optionally run an unbiased preoptimization
-    when `--preopt`. If `-q` is omitted but `--ligand-charge` is provided, the
+    when `--preopt`. If `-q` is omitted but `--ligand-charge/-l` is provided, the
     structure is treated as an enzyme–substrate complex and `extract.py`’s charge
     summary derives the total charge before scanning (for PDB inputs, or XYZ/GJF
     when `--ref-pdb` is supplied).
-2. Parse targets from `-s/--scan-lists` (YAML/JSON file or inline literal; default 1-based indices unless
+2. Parse targets from `--scan-lists/-s` (YAML/JSON file or inline literal; default 1-based indices unless
     `--zero-based` is passed) into three quadruples. For PDB inputs, each
     atom entry can be an integer index or a selector string like `'TYR,285,CA'`;
     delimiters may be spaces, commas, slashes, backticks, or backslashes, and
@@ -160,13 +160,13 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required unless `--csv` is provided |
-| `-q, --charge INT` | Total charge (CLI > template/`--ligand-charge`). Overrides `--ligand-charge` when both are set. | Required unless template/derivation applies |
+| `-q, --charge INT` | Total charge (CLI > template/`--ligand-charge/-l`). Overrides `--ligand-charge/-l` when both are set. | Required unless template/derivation applies |
 | `-l, --ligand-charge TEXT` | Per-residue charge mapping (e.g., `GPP:-3,SAM:1`). Automatically derives the total system charge from PDB residue charges — no manual counting needed. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | MLIP predictor parallelism (workers > 1 disables analytic Hessians; UMA backend only; `workers_per_node` forwarded to the parallel predictor). See {ref}`workers-fd-downgrade` for diagnostic notes. | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
 | `-s, --scan-lists TEXT` | Scan targets: a YAML/JSON spec file path (recommended) or **single** inline Python literal with three quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required unless `--csv` is provided |
 | `--one-based/--zero-based` | Interpret `(i, j)` indices as 1- or 0-based. | `True` |
-| `--print-parsed/--no-print-parsed` | Print parsed pair tuples after `-s/--scan-lists` resolution. | `False` |
+| `--print-parsed/--no-print-parsed` | Print parsed pair tuples after `--scan-lists/-s` resolution. | `False` |
 | `--max-step-size FLOAT` | Maximum change allowed per distance increment (Å). Controls grid density. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
 | `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. Used unless YAML sets `opt.max_cycles`. | `10000` |
@@ -177,7 +177,7 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `-o, --out-dir TEXT` | Output directory root for grids and plots. | `./result_scan3d/` |
-| `--csv PATH` | Load an existing `surface.csv` and only plot it (no new scan). `-i/--input` and `-s/--scan-lists` become optional. | _None_ |
+| `--csv PATH` | Load an existing `surface.csv` and only plot it (no new scan). `-i/--input` and `--scan-lists/-s` become optional. | _None_ |
 | `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
 | `--config FILE` | Base YAML configuration file (applied first). | _None_ |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |

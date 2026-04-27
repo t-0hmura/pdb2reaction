@@ -20,7 +20,7 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --ther
 
 > **Working examples:** The [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) directory contains complete `all` workflow scripts for GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)), covering both multi-structure MEP and scan-based pipelines.
 
-Given **(i) two or more full protein–ligand PDB files** (R → … → P), **or (ii) one PDB with `--scan-lists`**, **or (iii) one TS candidate with `--tsopt`**, `pdb2reaction` automatically:
+Given **(i) two or more full protein–ligand PDB files** (R → … → P), **or (ii) one PDB with `--scan-lists/-s`**, **or (iii) one TS candidate with `--tsopt`**, `pdb2reaction` automatically:
 
 - extracts an **active site model (binding pocket)** around user-defined substrates to build a **cluster model**,
 - explores **minimum-energy paths (MEPs)** with path optimization methods such as the Growing String Method (GSM) and Direct Max Flux (DMF),
@@ -32,7 +32,7 @@ Calculations use machine-learning interatomic potentials (MLIPs). The default ba
 - **Generating initial geometries** (reactant/TS/product cluster models) for subsequent quantum-chemistry refinement
 - **High-throughput screening** of reaction pathways across substrate variants or enzyme mutants
 
-The CLI is designed to generate **multi-step enzymatic reaction mechanisms** with minimal manual setup. The same workflow also works for small-molecule systems. When you skip active site model extraction (omit `--center/-c` and `--ligand-charge`), you can also use `.xyz` or `.gjf` inputs.
+The CLI is designed to generate **multi-step enzymatic reaction mechanisms** with minimal manual setup. The same workflow also works for small-molecule systems. When you skip active site model extraction (omit `--center/-c` and `--ligand-charge/-l`), you can also use `.xyz` or `.gjf` inputs.
 
 On **HPC clusters or multi-GPU workstations**, `pdb2reaction` can scale to large cluster models (and optionally **full protein–ligand complexes**) by parallelizing UMA inference across nodes. Set `workers` and `workers_per_node` to enable multi-worker inference; see [MLIP Calculator](uma-pysis.md) for configuration details. Alternative backends (ORB, MACE, AIMNet2) can be selected with `-b/--backend`.
 
@@ -47,21 +47,22 @@ PDB (R, P)
 [extract]  Active site model extraction (cluster model)
   |
   v
-[path-search]  MEP search (recursive path-search, default; --refine-path False switches to path-opt)
-  |             Produces: mep.pdb, energy_diagram_*.png, summary.json
+[scan]  (optional, --scan-lists/-s) Staged distance-restraint scans
+  |
   v
-[tsopt]  TS optimization (RS-I-RFO or Hessian Guided Dimer)
-  |       Produces: final_geometry.xyz, vib/imag_*.pdb
+[path-search]  MEP search (recursive path-search, default; --refine-path False switches to path-opt)
+  |
+  v
+[tsopt]  TS optimization (RS-I-RFO; Dimer as alternative)
+  |
   v
 [irc]  Intrinsic Reaction Coordinate
-  |     Produces: finished_irc_trj.xyz, forward_irc_trj.xyz, backward_irc_trj.xyz
-  |     (under post_seg_XX/irc/ when launched via `all`)
+  |
   v
 [freq]  Vibrational analysis + thermochemistry (R, TS, P)
-  |      Produces: frequencies_cm-1.txt, thermoanalysis.yaml
+  |
   v
 [dft]  Single-point DFT energy (optional, --dft)
-        Produces: result.yaml
 ```
 
 Each stage can also be run as a standalone subcommand. The `all` command orchestrates them and produces a unified `summary.json` and `summary.log`.
@@ -117,7 +118,7 @@ To ensure identical atom ordering across multiple PDB inputs, apply the same hyd
 For setup and dependency installation, see [Installation](installation.md).
 
 - [Quickstart: run `pdb2reaction all`](quickstart-all.md)
-- [Quickstart: single-structure staged scan + MEP + TS with `pdb2reaction all --scan-lists`](quickstart-scan.md)
+- [Quickstart: single-structure staged scan + MEP + TS with `pdb2reaction all --scan-lists/-s`](quickstart-scan.md)
 - [Quickstart: TS optimization and validation with `pdb2reaction tsopt`](quickstart-tsopt-freq.md)
 
 ---
@@ -185,7 +186,7 @@ This is the recommended mode when you can generate reasonably spaced intermediat
 
 Use this when you only have **one PDB structure**, but you know which inter-atomic distances should change along the reaction.
 
-Provide a single `-i` together with `--scan-lists`:
+Provide a single `-i` together with `--scan-lists/-s`:
 
 **Minimal example**
 
@@ -206,11 +207,11 @@ pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 
 Key points:
 
-- `--scan-lists` describes **staged distance scans** on the extracted cluster model.
+- `--scan-lists/-s` describes **staged distance scans** on the extracted cluster model.
 - Each tuple `(i, j, target_Å)` is:
  - a PDB atom selector string like `'TYR,285,CA'` (**delimiters can be: space/comma/slash/backtick/backslash ` ` `,` `/` `` ` `` `\`**) **or** a 1-based atom index,
  - automatically remapped to the cluster-model indices.
-- Supplying one `-s/--scan-lists` literal runs a single scan stage; multiple literals run sequential stages (e.g. `-s '[(…)]' '[(…)]'`).
+- Supplying one `--scan-lists/-s` literal runs a single scan stage; multiple literals run sequential stages (e.g. `-s '[(…)]' '[(…)]'`).
 - Each stage writes a `stage_XX/result.pdb`, which is treated as a candidate intermediate or product.
 - The default `all` workflow runs recursive `path-search` with automatic refinement (merged `mep_w_ref*.pdb` when PDB templates are available).
 - With `--refine-path False`, it instead uses single-pass `path-opt` on the concatenated stages.
@@ -249,7 +250,7 @@ Behavior:
 Outputs such as `energy_diagram_*_all.png` and `irc_plot_all.png` are mirrored under the top-level `--out-dir`.
 
 ```{important}
-Single-input runs require **either** `--scan-lists` (staged scan → GSM) **or** `--tsopt` (TSOPT-only). Supplying only a single `-i` without one of these will not trigger a full workflow.
+Single-input runs require **either** `--scan-lists/-s` (staged scan → GSM) **or** `--tsopt` (TSOPT-only). Supplying only a single `-i` without one of these will not trigger a full workflow.
 ```
 
 ---
@@ -260,7 +261,7 @@ Below are the most commonly used options across workflows.
 
 | Option | Description |
 |--------|-------------|
-| `-i, --input PATH...` | Input structures. **≥ 2 PDBs** → MEP search; **1 PDB + `--scan-lists`** → staged scan → GSM; **1 PDB + `--tsopt`** → TSOPT-only mode. |
+| `-i, --input PATH...` | Input structures. **≥ 2 PDBs** → MEP search; **1 PDB + `--scan-lists/-s`** → staged scan → GSM; **1 PDB + `--tsopt`** → TSOPT-only mode. |
 | `-c, --center TEXT` | Defines the substrate / extraction center. Supports residue names (`'SAM,GPP'`), residue IDs (`A:123,B:456`), or PDB paths. |
 | `-l, --ligand-charge TEXT` | Charge info: mapping (`'SAM:1,GPP:-3'`) or single integer. |
 | `-q, --charge INT` | Hard override of net system charge. |
