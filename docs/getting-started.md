@@ -198,7 +198,7 @@ Each segment directory under `path_search/` (or `path_opt/` when `--refine-path 
 
 ## CLI commands
 
-Most users will primarily call `pdb2reaction all`. The CLI also exposes individual subcommands; each supports `-h/--help` and (for the calculation/scan/extract/utility commands) `--help-advanced` for the full list. For the categorized subcommand index with per-command documentation links, see the [documentation home](index.md#cli-subcommands).
+Most users will primarily call `pdb2reaction all`. The CLI also exposes individual subcommands; each supports `-h/--help` and (for the calculation/scan/extract/utility commands) `--help-advanced` for the full list. For the subcommand index with per-command documentation links, see the [documentation home](index.md#subcommands).
 
 ---
 

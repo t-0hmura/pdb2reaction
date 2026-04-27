@@ -57,74 +57,36 @@ glossary
 
 ---
 
-## ドキュメント案内
+## ここから始める
 
-| トピック | ページ |
-|-------|------|
-| **はじめに** | [はじめに](getting-started.md) |
-| **インストール** | [インストール](installation.md) |
-| **症状起点の切り分け導線** | [典型エラー別レシピ](recipes-common-errors.md) |
-| **よくあるエラーと対処** | [トラブルシューティング](troubleshooting.md) |
-| **CLI 規約と入力要件** | [CLI 規約](cli-conventions.md) |
+| 目的 | 移動先 |
+|------|--------|
+| **はじめての方** | [クイックスタート: all](quickstart-all.md) |
+| **反応物のみ** | [クイックスタート: scan](quickstart-scan.md) |
+| **TS 候補がある** | [クイックスタート: tsopt + freq](quickstart-tsopt-freq.md) |
+| **エラーで止まった** | [典型エラー別レシピ](recipes-common-errors.md) |
 
----
-
-## 目的別ガイド
-
-| 目的 | 推奨コマンド | ガイド |
-|--------------|--------------|--------|
-| 最初の 1 回を実行（end-to-end） | `pdb2reaction all` | [クイックスタート: all](quickstart-all.md) |
-| 単一構造の段階的スキャン+MEP+TS | `pdb2reaction all --scan-lists` | [クイックスタート: scan](quickstart-scan.md) |
-| TS 最適化と検証 | `pdb2reaction tsopt` | [クイックスタート: tsopt](quickstart-tsopt-freq.md) |
-| PDB から反応経路探索を一通り実行 | `pdb2reaction all` | [all](all.md) |
-| タンパク質–リガンド複合体から活性部位をクラスターモデルとして抽出 | `pdb2reaction extract` | [extract](extract.md) |
-| 単一構造を最適化 | `pdb2reaction opt` | [opt](opt.md) |
-| 遷移状態を探索・最適化 | `pdb2reaction tsopt` | [tsopt](tsopt.md) |
-| 最小エネルギー経路を探索し TS 候補を取得 | `pdb2reaction path-search` | [path-search](path-search.md) |
-| 遷移状態からIRCを実行 | `pdb2reaction irc` | [irc](irc.md) |
-| エネルギープロファイルを可視化 | `pdb2reaction trj2fig` | [trj2fig](trj2fig.md) |
-| 数値から状態エネルギーダイアグラムを描画 | `pdb2reaction energy-diagram` | [energy-diagram](energy-diagram.md) |
+前提条件は [Installation](installation.md) を参照してください。
 
 ---
 
-## CLI サブコマンド
+## サブコマンド
 
-### メインワークフロー
 | サブコマンド | 説明 |
 |---------|------|
 | [`all`](all.md) | end-to-end ワークフロー: 抽出 → スキャン → MEP 探索 → TS 最適化 → IRC → 熱化学 → DFT |
-
-### 構造準備
-| サブコマンド | 説明 |
-|---------|------|
 | [`extract`](extract.md) | タンパク質–リガンド複合体から活性部位モデル（バインディングポケット）を抽出 |
 | [`fix-altloc`](fix-altloc.md) | PDB の代替位置指示子を解決 |
 | [`add-elem-info`](add-elem-info.md) | PDB の元素カラム（77–78）を修復 |
-
-### 構造最適化
-| サブコマンド | 説明 |
-|---------|------|
 | [`opt`](opt.md) | 単一構造の構造最適化（L-BFGS or RFO。[+ 任意flatten]） |
 | [`tsopt`](tsopt.md) | 遷移状態最適化（Dimer or RS-I-RFO。[+ 任意flatten]） |
-
-### 経路探索・最適化
-| サブコマンド | 説明 |
-|---------|------|
 | [`path-opt`](path-opt.md) | GSM または DMF による 1段階の MEP 最適化（2構造から） |
 | [`path-search`](path-search.md) | 自動精密化を伴う多段階の再帰的 MEP 探索（2構造以上） |
-
-### スキャン
-| サブコマンド | 説明 |
-|---------|------|
 | [`scan`](scan.md) | 拘束付き 1D 結合長スキャン |
 | [`scan2d`](scan2d.md) | 2D 距離グリッドスキャン |
 | [`scan3d`](scan3d.md) | 3D 距離グリッドスキャン |
-
-### 解析・後処理
-| サブコマンド | 説明 |
-|---------|------|
-| [`irc`](irc.md) | 固有反応座標（IRC: Intrinsic Reaction Coordinate）計算 |
 | [`freq`](freq.md) | 振動解析と熱化学 |
+| [`irc`](irc.md) | 固有反応座標（IRC: Intrinsic Reaction Coordinate）計算 |
 | [`dft`](dft.md) | DFT 一点計算（GPU4PySCF / PySCF） |
 | [`trj2fig`](trj2fig.md) | XYZ軌跡からエネルギープロファイルをプロット |
 | [`energy-diagram`](energy-diagram.md) | 数値入力からエネルギーダイアグラムを作成 |
@@ -136,27 +98,13 @@ glossary
 
 | トピック | ページ |
 |-------|------|
+| **はじめに** | [はじめに](getting-started.md) |
+| **CLI 規約と入力要件** | [CLI 規約](cli-conventions.md) |
+| **よくあるエラーと対処** | [トラブルシューティング](troubleshooting.md) |
 | **CLI コマンドリファレンス（英語のみ、自動生成）** | [コマンドリファレンス（英語のみ）](../reference/commands/index.md) |
 | **YAML 設定オプション** | [YAML リファレンス](yaml-reference.md) |
 | **MLIP バックエンド設定** | [MLIP 計算機](uma-pysis.md) |
 | **用語** | [用語集](glossary.md) |
-
----
-
-## システム要件
-
-### ハードウェア
-- **OS**: Linux
-- **GPU**: CUDA 12.x 互換
-- **VRAM**: 8 GB 以上推奨
-- **RAM**: 16 GB以上推奨
-
-### ソフトウェア
-- Python >= 3.11
-- CUDA サポート付き PyTorch
-- CUDA 12.x ツールキット
-
-セットアップは [Installation](installation.md) を参照してください。実行可能なコマンド例・ワークフローモード・出力ディレクトリ構造は [Getting Started](getting-started.md) を参照してください。
 
 ---
 

@@ -63,66 +63,12 @@ pdb2reaction scan2d -i input.pdb -q 0 \
  --preopt --baseline min
 ```
 
-## YAML/JSON spec file format (recommended)
+## Scan-list spec
 
-```yaml
-one_based: true # optional; defaults to CLI --one-based
-pairs:
- - [1, 5, 1.30, 3.10]
- - [2, 8, 1.20, 3.20]
-```
+`scan2d` accepts exactly **two** quadruples `(i, j, low_Å, high_Å)` (under the `pairs` key for YAML/JSON, or as a single inline literal). Unlike `scan`, only **one literal** is accepted (no multi-stage support).
 
-- `pairs` is required and must contain exactly 2 quadruples.
-- Each quadruple is `(i, j, low_Å, high_Å)`.
-- Indices may be integers or PDB selectors, same as inline literals.
-
-## Inline Python literal format
-
-`--scan-lists/-s` also accepts a **single inline Python literal** string. Shell quoting matters.
-
-### Basic structure
-
-The literal is a Python list of exactly **two** quadruples `(atom1, atom2, low_Å, high_Å)`:
-
-```
--s '[(atom1, atom2, low_Å, high_Å), (atom3, atom4, low_Å, high_Å)]'
-```
-
-- Wrap the entire literal in **single quotes** so the shell does not interpret parentheses or spaces.
-- Each quadruple defines one scan axis: the distance between `atom1`–`atom2` is scanned from `low_Å` to `high_Å`.
-- Unlike `scan`, only **one literal** is accepted (no multi-stage support).
-
-### Specifying atoms
-
-Atoms can be given as **integer indices** or **PDB selector strings**:
-
-| Method | Example | Notes |
-| --- | --- | --- |
-| Integer index | `(1, 5, 1.30, 3.10)` | 1-based by default (`--one-based`) |
-| PDB selector | `("TYR,285,CA", "SAM,309,C10", 1.30, 3.10)` | Residue name, residue number, atom name |
-
-PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, backtick `` ` ``, or backslash `\`. Token order is flexible.
-
-```bash
-# All of these specify the same atom:
-"TYR,285,CA"
-"TYR 285 CA"
-"TYR/285/CA"
-"285,TYR,CA" # order is flexible
-```
-
-### Quoting rules
-
-```bash
-# Correct: single-quote the list, double-quote selector strings inside
--s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20)]'
-
-# Correct: integer indices need no inner quotes
--s '[(1, 5, 1.30, 3.10), (2, 8, 1.20, 3.20)]'
-
-# Avoid: double-quoting the outer literal requires escaping inner quotes
--s "[(\"TYR,285,CA\",\"SAM,309,C10\",1.30,3.10),...]"
-```
+For the YAML/JSON file format, inline Python literal syntax, atom selectors, and quoting rules,
+see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
 
 ## Workflow
 1. Load the input geometry via `geom_loader`, resolve charge/spin, and optionally

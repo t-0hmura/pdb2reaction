@@ -19,7 +19,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  --out-dir ./result_all
 ```
 
-後処理（TS 最適化、振動解析・熱化学、DFT 一点計算）まで同時に実行する場合:
+### （オプション）同一実行で後処理まで行う
 
 ```bash
 pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \

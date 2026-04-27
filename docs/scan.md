@@ -85,68 +85,10 @@ pdb2reaction scan -i input.pdb -q 0 -s \
  '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]'
 ```
 
-## YAML/JSON spec file format (recommended)
+## Scan-list spec
 
-`--scan-lists/-s` accepts a YAML/JSON file path with a mapping root:
-
-```yaml
-one_based: true # optional; defaults to CLI --one-based
-stages:
- - [[1, 5, 1.35]]
- - [[1, 5, 2.20], [2, 8, 1.80]]
-```
-
-- `stages` is required.
-- Each stage is a list of `(i, j, target_Å)` triples.
-- Indices may be integers or PDB selectors, same as inline literals.
-
-## Inline Python literal format
-
-`--scan-lists/-s` also accepts **inline Python literal** strings evaluated by the CLI. Shell quoting matters.
-
-### Basic structure
-
-Each literal is a Python list of triples `(atom1, atom2, target_Å)`:
-
-```
---scan-lists '[(atom1, atom2, target_Å),...]'
-```
-
-- Wrap the entire literal in **single quotes** so the shell does not interpret parentheses or spaces.
-- Each triple drives the distance between `atom1`–`atom2` toward `target_Å`.
-- One literal = one **stage**. For multiple stages, pass multiple literals after a **single** `--scan-lists/-s` flag.
-
-### Specifying atoms
-
-Atoms can be given as **integer indices** or **PDB selector strings**:
-
-| Method | Example | Notes |
-| --- | --- | --- |
-| Integer index | `(1, 5, 2.0)` | 1-based by default (`--one-based`) |
-| PDB selector | `("TYR,285,CA", "SAM,309,C10", 2.0)` | Residue name, residue number, atom name |
-
-PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, backtick `` ` ``, or backslash `\`. Token order is flexible.
-
-```bash
-# All of these specify the same atom:
-"TYR,285,CA"
-"TYR 285 CA"
-"TYR/285/CA"
-"285,TYR,CA" # order is flexible
-```
-
-### Quoting rules
-
-```bash
-# Correct: single-quote the list, double-quote selector strings inside
--s '[("TYR,285,CA","SAM,309,C10",1.35)]'
-
-# Correct: integer indices need no inner quotes
--s '[(1, 5, 2.0)]'
-
-# Avoid: double-quoting the outer literal requires escaping inner quotes
--s "[(\"TYR,285,CA\",\"SAM,309,C10\",1.35)]"
-```
+For the YAML/JSON file format, inline Python literal syntax, atom selectors, and quoting rules,
+see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
 
 ### Multiple stages
 

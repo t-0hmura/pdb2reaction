@@ -158,6 +158,81 @@ The three tokens (residue name, residue number, atom name) can appear in any ord
 
 ---
 
+(scan-list-spec)=
+### Scan-list spec
+
+`--scan-lists/-s` (used by `scan`, `scan2d`, `scan3d`, and `all`) accepts either a YAML/JSON spec file path or one or more inline Python literals. Use a file for complex or multi-stage runs; inline literals work well for short, single-stage cases.
+
+#### YAML/JSON spec file format (recommended)
+
+The file root is a mapping. The list-of-tuples key is `stages` for `scan` and `pairs` for `scan2d`/`scan3d`:
+
+```yaml
+one_based: true # optional; defaults to CLI --one-based
+stages: # scan
+  - [[1, 5, 1.35]]
+  - [[1, 5, 2.20], [2, 8, 1.80]]
+```
+
+```yaml
+one_based: true # optional
+pairs: # scan2d (exactly 2 entries) / scan3d (exactly 3 entries)
+  - [1, 5, 1.30, 3.10]
+  - [2, 8, 1.20, 3.20]
+```
+
+- `stages` / `pairs` is required.
+- Each `scan` stage is a list of `(i, j, target_Å)` triples.
+- Each `scan2d`/`scan3d` axis is a `(i, j, low_Å, high_Å)` quadruple.
+- Indices may be integers or PDB selectors, same as inline literals.
+
+#### Inline Python literal format
+
+Each literal is a Python list. Shell quoting matters.
+
+```
+-s '[(atom1, atom2, target_Å), ...]'        # scan: triples
+-s '[(atom1, atom2, low_Å, high_Å), ...]'   # scan2d / scan3d: quadruples
+```
+
+- Wrap the entire literal in **single quotes** so the shell does not interpret parentheses or spaces.
+- For `scan`, one literal = one **stage**; for multiple stages, pass multiple literals after a **single** `--scan-lists/-s` flag.
+- For `scan2d`/`scan3d`, only **one literal** is accepted (no multi-stage support); it must contain exactly 2 (`scan2d`) or 3 (`scan3d`) quadruples.
+
+##### Specifying atoms
+
+Atoms can be given as **integer indices** or **PDB selector strings**:
+
+| Method | Example | Notes |
+| --- | --- | --- |
+| Integer index | `(1, 5, 2.0)` | 1-based by default (`--one-based`) |
+| PDB selector | `("TYR,285,CA", "SAM,309,C10", 2.0)` | Residue name, residue number, atom name |
+
+PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, backtick `` ` ``, or backslash `\`. Token order is flexible.
+
+```bash
+# All of these specify the same atom:
+"TYR,285,CA"
+"TYR 285 CA"
+"TYR/285/CA"
+"285,TYR,CA" # order is flexible
+```
+
+##### Quoting rules
+
+```bash
+# Correct: single-quote the list, double-quote selector strings inside
+-s '[("TYR,285,CA","SAM,309,C10",1.35)]'
+
+# Correct: integer indices need no inner quotes
+-s '[(1, 5, 2.0)]'
+
+# Avoid: double-quoting the outer literal requires escaping inner quotes
+-s "[(\"TYR,285,CA\",\"SAM,309,C10\",1.35)]"
+```
+
+---
+
 ## Input File Requirements
 
 ### PDB files

@@ -36,7 +36,7 @@ pdb2reaction -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
 
 ## 方法 B: `-s/--scan-lists` インラインリテラル（簡易ワンライナー向け）
 
-`-s/--scan-lists` はコマンドライン上で Python リテラル文字列を直接受け取ります。原子セレクタの構文（残基/原子トークン、区切り文字、順序）と外側/内側のクォーティングルールについては、[`scan` ページ](scan.md) または [CLI 規約](cli-conventions.md) の原子セレクタ節を参照してください。
+`-s/--scan-lists` はコマンドライン上で Python リテラル文字列を直接受け取ります。原子セレクタの構文（残基/原子トークン、区切り文字、順序）と外側/内側のクォーティングルールについては、{ref}`CLI 規約: スキャンリスト仕様 <ja-scan-list-spec>` を参照してください。
 
 ### 基本構文
 

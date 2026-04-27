@@ -36,7 +36,7 @@ Stages run sequentially; each starts from the previous stage's relaxed result.
 
 ## Method B: `--scan-lists/-s` inline literal (quick one-liners)
 
-`--scan-lists/-s` accepts Python-literal strings directly on the command line. For atom selector syntax (residue/atom tokens, separators, ordering) and outer/inner quoting rules, see the [`scan` page](scan.md#inline-python-literal-format) or [CLI Conventions: Atom Selectors](cli-conventions.md#atom-selectors).
+`--scan-lists/-s` accepts Python-literal strings directly on the command line. For atom selector syntax (residue/atom tokens, separators, ordering) and outer/inner quoting rules, see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
 
 ### Basic syntax
 

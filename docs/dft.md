@@ -11,13 +11,21 @@
 The backend is controlled by `--engine`:
 - `gpu` (default): Uses GPU4PySCF. **Raises an error if GPU is unavailable.** Best for production runs on GPU-equipped nodes where you want to guarantee GPU acceleration.
 - `cpu`: Forces CPU PySCF. Use when no GPU is available or when you need deterministic CPU-only execution (e.g., portability or debugging).
-> **Note:** The default basis `def2-tzvpd` is a triple-zeta diffuse-augmented set and is computationally expensive for large systems. Consider a smaller basis (e.g., `6-31g**` or `def2-svp`) for exploratory calculations.
 
 > **Prerequisites:** DFT dependencies (PySCF, GPU4PySCF) are **not** included in the default install. Install them with `pip install "pdb2reaction[dft]"`.
 
-> **System size limit:** DFT single-point calculations are practical only for systems up to **~300 atoms**. Larger systems require excessive compute time and memory. For such systems, HPC clusters with high-end GPUs (e.g. A100, H200) are typically required. For enzyme systems, extract a small active site model (binding pocket) before running DFT.
-
 In addition to total energies, the command reports Mulliken, meta-Löwdin, and IAO atomic charges and spin densities.
+
+### Practical limits
+
+DFT single-point calculations are bounded by both basis-set cost and system size. The thresholds below assume default settings (`wb97m-v/def2-tzvpd`, density fitting, grid level 3).
+
+- **Default basis cost:** `def2-tzvpd` is a triple-zeta diffuse-augmented set and is computationally expensive for large systems. For exploratory calculations, consider a smaller basis (e.g., `6-31g**` or `def2-svp`).
+- **GPU memory, def2-TZVPD:** On 16–24 GB GPUs the default `def2-tzvpd` will OOM for systems with **>150 atoms**. Switch to `--func-basis 'wb97m-v/def2-svp'` as a practical alternative; barrier height errors between def2-SVP and def2-TZVPD are typically 1–3 kcal/mol.
+- **GPU memory, small active sites (≲150 atoms):** The tight `def2-tzvpd` setting is appropriate only for **small** active-site models on a GPU with sufficient VRAM. For larger systems on 16–24 GB GPUs this combination will OOM; switch to `def2-svp` or use an external DFT program (ORCA, Gaussian) for production work on full systems.
+- **Blackwell-architecture GPUs (RTX 50xx):** GPU4PySCF may fail with out-of-memory errors even for small systems (~100 atoms). Use `--engine cpu` or an external DFT program (ORCA, Gaussian) for production calculations on these GPUs.
+- **CPU backend:** `--engine cpu` is only practical for small active-site models (**≲150 atoms**) and small basis sets (e.g. `def2-svp`); larger systems on CPU become prohibitively slow, so an external DFT program is the recommended path for full systems.
+- **Overall system-size ceiling:** DFT single-point calculations are practical only for systems up to **~300 atoms**. Larger systems require excessive compute time and memory; HPC clusters with high-end GPUs (e.g. A100, H200) are typically required. For enzyme systems, extract a small active site model (binding pocket) before running DFT.
 
 ## Minimal example
 
@@ -41,7 +49,7 @@ pdb2reaction dft -i input.pdb -q 0 -m 1 \
  --engine gpu --out-dir ./result_dft_tight
 ```
 
-> **Caveat:** The tight `def2-tzvpd` setting above is appropriate only for **small** active-site models (≲150 atoms) on a GPU with sufficient VRAM. For larger systems on 16–24 GB GPUs this combination will OOM (see the "Out-of-memory with def2-TZVPD" note below); switch to `--func-basis 'wb97m-v/def2-svp'` or use an external DFT program (ORCA, Gaussian) for production work on full systems.
+> **Caveat:** The tight `def2-tzvpd` setting above is appropriate only for **small** active-site models (≲150 atoms) on a GPU with sufficient VRAM. See "Practical limits" above for the full set of size/basis/backend thresholds.
 
 2. Force CPU backend for portability.
 
@@ -123,8 +131,7 @@ See {ref}`exit-codes` in CLI Conventions.
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - `--engine gpu` (default) requires GPU4PySCF and **raises an error** if GPU is unavailable. Use `--engine cpu` to force CPU-only execution.
-- **Blackwell-architecture GPUs** (RTX 50xx): GPU4PySCF may fail with out-of-memory errors even for small systems (~100 atoms). Use `--engine cpu` or an external DFT program (ORCA, Gaussian) for production calculations on these GPUs. Note that `--engine cpu` is only practical for small active-site models (≲150 atoms) and small basis sets (e.g. `def2-svp`); larger systems on CPU become prohibitively slow, so an external DFT program is the recommended path for full systems.
-- **Out-of-memory with def2-TZVPD**: The default basis set `def2-tzvpd` is large and may cause OOM for systems with >150 atoms on 16–24 GB GPUs. Use `--func-basis 'wb97m-v/def2-svp'` as a practical alternative; barrier height errors between def2-SVP and def2-TZVPD are typically 1–3 kcal/mol.
+- For basis-set cost, GPU/CPU memory ceilings, Blackwell GPUs, and the overall ~300-atom limit, see the "Practical limits" subsection above.
 - Compiled GPU4PySCF wheels may not support non-x86 systems; build from source in that case (see https://github.com/pyscf/gpu4pyscf).
 - Density fitting is always attempted with PySCF defaults (no auxiliary basis guessing is implemented).
 - The YAML input file must have a mapping root; the `dft` section is optional. Non-mapping roots raise an error via `load_yaml_dict`.
