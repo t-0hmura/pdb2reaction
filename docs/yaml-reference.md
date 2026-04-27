@@ -159,7 +159,6 @@ calc:
 - Charge/spin inherit `.gjf` template metadata when available
 - `freq` sets `calc.return_partial_hessian = true` by default (PHVA); YAML can override.
 - IRC forces `geom.coord_type = cart` and `calc.return_partial_hessian = true` regardless of YAML (partial Hessian with active-DOF processing).
-- For `irc`, `calc.return_partial_hessian` is forced to `true` after YAML/CLI merging.
 
 ---
 
