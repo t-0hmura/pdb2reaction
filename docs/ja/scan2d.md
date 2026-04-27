@@ -5,11 +5,11 @@
 > **要約:** 調和拘束と MLIP 緩和（デフォルト: UMA、`-b/--backend` で ORB・MACE・AIMNet2 も選択可能）により、2 距離（d₁, d₂）のグリッドスキャンを行います。`-s/--scan-lists`（YAML/JSON ファイルパス、推奨）またはインライン Python リテラル を使用します。
 
 ### 要点
-- **入力:** 1 つの構造 + `-s scan2d.yaml`（推奨）または `-s/--scan-lists` の **単一** インラインリテラル（四つ組はちょうど 2 つ）。
-- **訪問順:** 各軸は（事前最適化された）構造に最も近い点を先に訪れるよう並べ替えられます。
-- **エネルギー:** `surface.csv` の値は常に **バイアスなし**で評価されるため、格子点間で直接比較できます。
-- **主な出力:** `surface.csv`、`scan2d_map.png`、`scan2d_landscape.html`、および `grid/` 配下の各点の構造。
-- **注意:** `(high − low) / --max-step-size` が大きいと格子点数が急増します。
+- **想定場面:** 2 つの距離 `(d₁, d₂)` 上で 2D ポテンシャル面を得たいとき（TS 領域の特定や、MEP 精密化前の反応ランドスケープ可視化など）。入力は 1 つの構造 + `-s scan2d.yaml`（推奨）または `-s/--scan-lists` の **単一** インラインリテラル（四つ組はちょうど 2 つ）。
+- **計算手法:** `--max-step-size` から線形グリッドを構成し、各軸は（事前最適化された）構造に最も近い点を先に訪れるよう並べ替えられます。各格子点は対応する調和拘束を有効にして MLIP バックエンド（デフォルト: UMA）で緩和します。`surface.csv` の値は常に **バイアスなし**で評価されるため、格子点間で直接比較できます。
+- **主な出力:** `surface.csv`、`scan2d_map.png`（2D コンター）、`scan2d_landscape.html`（3D サーフェス）、および `grid/` 配下の各点の構造。
+- **デフォルト値:** `--opt-mode grad`（LBFGS）、`--no-preopt`、`--max-step-size 0.20 Å`、`--bias-k 300 eV·Å⁻²`、`--thresh baker`、`--baseline min`、`--out-dir ./result_scan2d/`。`(high − low) / --max-step-size` が大きいと格子点数が急増します。
+- **次のステップ:** `scan2d_map.png` / `scan2d_landscape.html` で TS 領域候補を確認し、`tsopt` で精密化（または `pdb2reaction all` で連結）。
 
 `scan2d` は `--max-step-size` に基づいて両軸の線形グリッドを作成し、各格子点を拘束付きで緩和してバイアスなしの UMA エネルギーを記録します。可視化用の出力も生成します。RFOptimizer を使用する場合は `--opt-mode hess` を指定してください。
 

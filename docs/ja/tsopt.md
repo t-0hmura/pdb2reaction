@@ -5,11 +5,11 @@
 > **要約:** 遷移状態（TS）*候補*を、RS-I-RFO（Restricted-Step Image Rational Function Optimization）（`--opt-mode hess`、デフォルト）で最適化します。RS-I-RFO で収束しない場合や、完全 Hessian の再計算コストが過大な場合の **代替** TS optimizer として Hessian-Guided Dimer（`--opt-mode grad`）が利用可能です。`tsopt` は最後に自動で Hessian 計算と虚振動数チェックを行います。妥当な TS（一次鞍点）では虚振動数が **ちょうど 1 つ** です。端点の接続性は `irc` で確認してください。
 
 ### 要点
-- **入力:** `path-opt` / `path-search` が出力する HEI、または自前の TS 初期構造（`geom_loader` が扱える形式）。
-- **モード:** `hess`（`rsirfo`）= RS‑I‑RFO（デフォルト、一般的により堅牢）。`grad`（`dimer`）= Hessian-Guided Dimer（RS-I-RFO で収束しない場合や完全 Hessian の再計算コストが過大な場合の代替。初期 Hessian で探索方向を決定し、以後はダイマー回転で更新する）。
-- **品質確認:** `tsopt` は最終 Hessian 計算と虚振動数チェックを内部で実行します（出力の n=1 を確認）。結果はなお *候補* であり、[irc](irc.md) で端点の接続性を確認してください。完全な振動解析や熱化学補正が必要な場合のみ、別途 [freq](freq.md) を実行します。
-- **任意の後処理:** `--flatten`（デフォルト無効）で余分な虚振動数モードの除去を制御します。
-- **出力変換:** `--convert-files`（デフォルト）で、PDB 入力は（`--dump` のとき）`.pdb` を併記し、Gaussian テンプレートは最終構造の `.gjf` を書き出します。
+- **想定場面:** TS 初期構造（`path-opt` / `path-search` の HEI、または自前のもの）を一次鞍点に最適化し、虚振動数チェックを内蔵で行いたい場合。
+- **手法:** `--opt-mode hess`（`rsirfo`）= RS‑I‑RFO（デフォルト、一般的により堅牢）。`--opt-mode grad`（`dimer`）= Hessian-Guided Dimer（RS-I-RFO で収束しない場合や完全 Hessian の再計算コストが過大な場合の代替）。`--flatten`（デフォルト無効）で余分な虚振動数モードの除去を制御します。
+- **主な出力:** `final_geometry.{xyz,pdb,gjf}`、`vib/imag_*_trj.xyz`（PDB 入力では `.pdb` も）。`--dump` を指定した場合は最適化軌跡も。
+- **デフォルト:** `--opt-mode hess`（RS-I-RFO）、`--thresh baker`、`--hessian-calc-mode FiniteDifference`、`--max-cycles 10000`、`--flatten` 無効、バックエンド `uma`。
+- **次ステップ:** `tsopt` は最終 Hessian 計算と虚振動数チェックを内部で実行しますが、結果はなお *候補* です。[irc](irc.md) で端点の接続性を確認してください。完全な振動解析や熱化学補正が必要な場合のみ、別途 [freq](freq.md) を実行します。
 
 ### `--opt-mode` の選び方
 - **`--opt-mode hess`（RS‑I‑RFO）**: デフォルト。多くの系で堅牢に収束する。

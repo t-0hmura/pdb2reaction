@@ -5,11 +5,11 @@
 > **要約:** 調和拘束を用いて結合距離をスキャンし、反応座標を駆動します。`-s/--scan-lists`（YAML/JSON ファイルパス、推奨）でターゲット距離を指定します。インライン Python リテラルも利用できます。
 
 ### 要点
-- **想定場面:** 単一構造から特定の原子間距離を変化させ、もっともらしい反応経路を探索したい場合に使います（`path-search` / `path-opt` の前処理として使うことが多い）。
-- **入力:** 1 つの構造 + `-s scan.yaml`（推奨）または `-s/--scan-lists` の 1 個以上のインラインリテラル（**1 リテラル = 1 ステージ**）。
-- **デフォルト値:** `--opt-mode grad`（LBFGS）、`--no-preopt`、`--no-endopt`、`--max-step-size 0.20 Å`。
+- **想定場面:** 単一構造から特定の原子間距離を変化させ、もっともらしい反応経路を探索したい場合に使います（`path-search` / `path-opt` の前処理として使うことが多い）。入力は 1 つの構造 + `-s scan.yaml`（推奨）または `-s/--scan-lists` の 1 個以上のインラインリテラル（**1 リテラル = 1 ステージ**）。可能な限り YAML/JSON ファイルパスを渡してください。インライン Python リテラルはクォート/エスケープが必要で、単純な単一ステージのスキャン向きです。
+- **計算手法:** MLIP バックエンド（デフォルト: UMA、`-b/--backend` で切替可能）に調和拘束 `E = Σ ½ k (|ri − rj| − target)²` を加え、各ステップを LBFGS（`--opt-mode grad`）または RFOptimizer（`--opt-mode hess`）で緩和。
 - **主な出力:** ステージごとの `result.xyz`（必要に応じて `.pdb`/`.gjf`）と結合スキャン軌跡（`scan_trj.xyz`/`scan.pdb`）。`--dump` はステップごとの最適化軌跡のみを制御。
-- **注意:** 可能な限り YAML/JSON ファイルパスを `-s/--scan-lists` に渡してください。インライン Python リテラルはクォート/エスケープが必要です。
+- **デフォルト値:** `--opt-mode grad`（LBFGS）、`--no-preopt`、`--no-endopt`、`--max-step-size 0.20 Å`、`--bias-k 300 eV·Å⁻²`、`--thresh gau`、`--out-dir ./result_scan/`。
+- **次のステップ:** ステージの端点（`stage_XX/result.pdb`）を `path-search` / `path-opt` に渡して MEP を精密化するか、`pdb2reaction all -s ...` でスキャン → MEP → TSOPT/IRC/freq/DFT を一気通貫で実行します。
 
 `pdb2reaction scan` は MLIP バックエンド（デフォルト: UMA、`-b/--backend` で ORB・MACE・AIMNet2 も選択可能）と調和拘束による段階的な結合長スキャンを実行します。各ステップで一時ターゲットを更新し、拘束ポテンシャルを適用したうえで構造全体を LBFGS（`--opt-mode grad`）または RFOptimizer（`--opt-mode hess`）で緩和します。
 

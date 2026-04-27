@@ -5,11 +5,11 @@
 > **Summary:** Drive a reaction coordinate by scanning bond distances with harmonic restraints. Use `--scan-lists/-s` to define targets as either a YAML/JSON spec file path (recommended) or inline Python literals.
 
 ### At a glance
-- **Use when:** You have a single structure and want to *push* specific distances to explore a plausible path (often before `path-search`/`path-opt`).
-- **Input:** One structure + `-s/--scan-lists scan.yaml` (recommended), or one or more `--scan-lists/-s` inline literals (each literal = one stage).
-- **Defaults:** `--opt-mode grad` (LBFGS), `--no-preopt`, `--no-endopt`, `--max-step-size 0.20 Å`.
+- **Use when:** You have a single structure and want to *push* specific distances to explore a plausible path (often before `path-search`/`path-opt`). Input is one structure + `-s/--scan-lists scan.yaml` (recommended), or one or more `--scan-lists/-s` inline literals (each literal = one stage). YAML/JSON file paths avoid shell-quoting pitfalls and version better; inline literals are fine for simple single-stage scans.
+- **Method:** MLIP backend (UMA by default; selectable via `-b/--backend`) with harmonic restraints `E = Σ ½ k (|ri − rj| − target)²` and LBFGS (`--opt-mode grad`) or RFOptimizer (`--opt-mode hess`) per step.
 - **Outputs:** Per-stage `result.xyz` (+ optional `.pdb`/`.gjf`), and concatenated scan trajectories (`scan_trj.xyz`/`scan.pdb`). `--dump` controls per-step optimizer trajectory files only.
-- **Note:** Passing a YAML/JSON file path to `--scan-lists/-s` is recommended for complex or multi-stage scans -- it avoids shell quoting pitfalls and is easier to version-control. Inline Python literals work well for simple single-stage scans.
+- **Defaults:** `--opt-mode grad` (LBFGS), `--no-preopt`, `--no-endopt`, `--max-step-size 0.20 Å`, `--bias-k 300 eV·Å⁻²`, `--thresh gau`, `--out-dir ./result_scan/`.
+- **Next step:** Feed the staged endpoints (`stage_XX/result.pdb`) to `path-search`/`path-opt` for MEP refinement, or use `pdb2reaction all -s ...` to chain scan → MEP → TSOPT/IRC/freq/DFT in one command.
 
 `pdb2reaction scan` performs a staged, bond-length–driven scan using an MLIP backend (UMA by default) and harmonic restraints. At each step, the temporary targets are updated, restraint wells are applied, and the structure is relaxed with LBFGS (`--opt-mode grad`) or RFOptimizer (`--opt-mode hess`).
 

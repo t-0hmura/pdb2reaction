@@ -5,11 +5,11 @@
 > **要約:** MLIP（デフォルト: UMA、`-b/--backend` で ORB・MACE・AIMNet2 も選択可能）を用いて振動数と熱化学量（ZPE、ギブズ自由エネルギーなど）を計算します。VRAM に余裕がある場合、`--hessian-calc-mode Analytical` によりヘシアン計算を高速化できます。虚振動数は負の値で表示されます。
 
 ### 要点
-- **想定場面:** 構造が極小点か TS かを検証する場合や、MLIP による熱化学補正を求める場合に使用します。注: `tsopt` には虚振動数チェックが内蔵されているため、別途 `freq` を実行するのは主に熱化学量の取得や振動モードの詳細検討のためです。
-- **凍結原子:** PHVA（Partial Hessian Vibrational Analysis: 部分ヘシアン振動解析）として扱われます。
-- **主な出力:** `frequencies_cm-1.txt`、モードアニメーション（`_trj.xyz`、条件により `.pdb`）、`thermoanalysis.yaml`（有効化/利用可能な場合）。
-- **TS のチェック:** 収束した TS では虚振動数が **1 つだけ**（負の cm⁻¹）であるべきです。5 cm⁻¹ 検出閾値と 100 cm⁻¹ 品質ゲートの違いは用語集 {ref}`ja-imaginary-mode-thresholds` を参照。
-- **性能:** ヘシアン評価モードの詳細は {ref}`ja-hessian-evaluation` を参照してください。
+- **想定場面:** 完全な振動解析（極小点に虚振動数がないこと、TS にちょうど 1 つあること等の確認）または熱化学補正（ZPE、ギブズ自由エネルギーなど）が必要な場合。注: `tsopt` には虚振動数チェックが内蔵されているため、別途 `freq` を実行するのは主に熱化学量の取得や振動モードの詳細検討のためです。
+- **手法:** MLIP バックエンドのヘシアン（デフォルト UMA、`-b/--backend` で ORB/MACE/AIMNet2 も選択可）+ 凍結原子に対する PHVA（Partial Hessian Vibrational Analysis）。`thermoanalysis` がインストールされていれば QRRHO 風の熱化学解析も実行されます。
+- **主な出力:** `frequencies_cm-1.txt`、モードごとの `mode_*_trj.xyz` アニメーション（PDB 入力で変換有効なら `.pdb` も）、`--dump` 指定時で `thermoanalysis` 利用可能なら `thermoanalysis.yaml`。
+- **デフォルト:** バックエンド `uma`、`--hessian-calc-mode FiniteDifference`、`--max-write 10`、`--amplitude-ang 0.8`、`--n-frames 20`、`--sort value`、`--temperature 298.15`、`--pressure 1.0`、`--dump False`。
+- **次ステップ:** 収束した TS では虚振動数が **ちょうど 1 つ**（負の cm⁻¹）。5 cm⁻¹ 検出閾値と 100 cm⁻¹ 品質ゲートの違いは用語集 {ref}`ja-imaginary-mode-thresholds` を参照。ヘシアン評価モードの詳細は {ref}`ja-hessian-evaluation` を参照。
 
 `pdb2reaction freq` は MLIP バックエンド（デフォルト: UMA）で振動解析を実行し、凍結原子がある場合は PHVA として活性部分空間で固有解析を行います。基準振動のアニメーションを `_trj.xyz` として出力し、PDB テンプレートがあり `--convert-files` が有効な場合は `.pdb` も生成します。`thermoanalysis` パッケージがインストールされていれば、Gaussian 風の熱化学サマリーも出力します。
 
@@ -128,37 +128,15 @@ out_dir/ (デフォルト:./result_freq/)
 - `--hessian-calc-mode` は **デフォルト < config < 明示CLI** の優先順位で解決されます。CLI で明示的に指定した値が最優先です。
 
 
-マッピング形式で指定し、マージ順は **デフォルト < config < 明示CLI** です。共通セクションについては [YAML リファレンス](yaml-reference.md) を参照してください。熱化学制御用に `thermo` セクションも利用できます。
+マッピング形式で指定し、マージ順は **デフォルト < config < 明示CLI** です。
+
+`geom`、`calc`、`freq`、`thermo` の各セクションは [YAML リファレンス](yaml-reference.md) の正規定義から変更ありません: [`geom`](yaml-reference.md#geom)、[`calc`](yaml-reference.md#calc)、[`freq`](yaml-reference.md#freq-section)、[`thermo`](yaml-reference.md#thermo) を参照してください。`freq` ではデフォルトで `calc.return_partial_hessian = true`（PHVA）が自動設定されます（YAML で上書き可）。
+
+`freq` 固有のデフォルトとして異なるのは出力ディレクトリのみです:
 
 ```yaml
-geom:
- coord_type: cart # coordinate type: cartesian vs dlc internals
- freeze_atoms: [] # 1-based frozen atoms merged with CLI/link detection
-calc:
- charge: 0 # total charge (CLI/template override)
- spin: 1 # spin multiplicity 2S+1
- model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
- task_name: omol # UMA task name
- device: auto # MLIP device selection
- max_neigh: null # maximum neighbors for graph construction
- radius: null # cutoff radius for neighbor search
- r_edges: false # store radial edges
- out_hess_torch: true # request torch-form Hessian
- freeze_atoms: null # calculator-level frozen atoms
- hessian_calc_mode: FiniteDifference # Hessian mode selection
- return_partial_hessian: true # allow partial Hessians
- backend: uma # MLIP backend: uma, orb, mace, aimnet2
- solvent: none # implicit solvent name (e.g. water) or none
- solvent_model: alpb # xTB solvent model: alpb or cpcmx
 freq:
- amplitude_ang: 0.8 # displacement amplitude for modes (Å)
- n_frames: 20 # number of frames per mode
- max_write: 10 # maximum number of modes to write
- sort: value # sort order: value vs abs
-thermo:
- temperature: 298.15 # thermochemistry temperature (K)
- pressure_atm: 1.0 # thermochemistry pressure (atm)
- dump: false # write thermoanalysis.yaml when true
+ out_dir: ./result_freq/ # freq のデフォルト
 ```
 
 ---

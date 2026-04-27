@@ -5,9 +5,11 @@
 > **Summary:** Runs EulerPC (Euler Predictor-Corrector)-based intrinsic reaction coordinate (IRC) integration from a transition state toward reactants and products. By default both forward and backward branches are computed. Setting `--hessian-calc-mode Analytical` is strongly recommended when VRAM permits.
 
 ### At a glance
-- **Input:** A TS structure (ideally already optimized and validated).
-- **Key knobs:** `--step-size` (step length in unweighted Cartesian Bohr) and `--max-cycles` (number of steps).
-- **Hard overrides:** IRC forces `geom.coord_type = cart` after merge (even if YAML sets it). `calc.return_partial_hessian` is forced to `true` (partial Hessian with active-DOF processing in pysisyphus).
+- **Use when:** You have a TS structure (ideally already optimized and validated by `tsopt`) and want to trace the intrinsic reaction coordinate to confirm endpoint connectivity (R ↔ TS ↔ P).
+- **Method:** EulerPC (Euler Predictor-Corrector) integration with an MLIP-backend Hessian (UMA by default; ORB/MACE/AIMNet2 also supported). Forward and backward branches run by default.
+- **Outputs:** `finished_irc_trj.xyz`, `forward_irc_trj.xyz`, `backward_irc_trj.xyz` (and `.pdb` companions when a reference PDB is available).
+- **Defaults:** `--max-cycles 125`, `--step-size 0.10` Bohr, `--root 0`, `--forward`/`--backward` both on, `--hessian-calc-mode FiniteDifference`, backend `uma`. **Hard overrides:** IRC forces `geom.coord_type = cart` and `calc.return_partial_hessian = true` after YAML/CLI merging.
+- **Next step:** Optimize IRC endpoints to true minima with [opt](opt.md), or pair with [freq](freq.md) for thermochemistry. For Hessian evaluation modes, see {ref}`hessian-evaluation`.
 
 `pdb2reaction irc` runs EulerPC-based IRC integrations with an MLIP backend (UMA by default; `-b/--backend` also supports ORB, MACE, and AIMNet2).
 
@@ -127,59 +129,16 @@ See {ref}`exit-codes` in CLI Conventions.
 - When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see {ref}`Link hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
 
 See {ref}`CLI Conventions: Configuration precedence <configuration-precedence>` for the full resolution order.
-Shared sections reuse [YAML Reference](yaml-reference.md) for geometry/calculator keys: `--freeze-links` augments `geom.freeze_atoms` for PDB inputs, and `--hessian-calc-mode` plus CLI charge/spin values supplement the merged `calc` block. For `irc`, `geom.coord_type` is forced to `cart` and `calc.return_partial_hessian` is forced to `true` after YAML/CLI merging.
 
-`irc` keys (defaults in parentheses):
-- `step_length` (`0.10`), `max_cycles` (`125`): primary integration controls surfaced via `--step-size`/`--max-cycles`.
-- `hessian_init` (`"calc"`), `hessian_update` (`"bofill"`), `hessian_recalc` (`null`): Hessian initialization/update cadence.
-- `displ`, `displ_energy`, `displ_length`: displacement construction; keep defaults unless debugging.
-- Convergence thresholds: `rms_grad_thresh` (`1.0e-3`), `hard_rms_grad_thresh` (`null`), `energy_thresh` (`1.0e-6`), `imag_below` (`0.0`).
-- Output & diagnostics: `force_inflection` (`True`), `check_bonds` (`False`), `out_dir` (`"./result_irc/"`), `prefix` (`""`), `max_pred_steps` (`500`), `loose_cycles` (`3`), `corr_func` (`"mbs"` — corrector function: modified Bulirsch-Stoer).
+The `geom`, `calc`, and `irc` sections are unchanged from the canonical definitions in [YAML Reference](yaml-reference.md): see [`geom`](yaml-reference.md#geom), [`calc`](yaml-reference.md#calc), and [`irc`](yaml-reference.md#irc-section). `--freeze-links` augments `geom.freeze_atoms` for PDB inputs, and `--hessian-calc-mode` plus CLI charge/spin values supplement the merged `calc` block.
+
+**`irc`-specific hard overrides** (applied after YAML/CLI merging, regardless of YAML values):
 
 ```yaml
 geom:
  coord_type: cart # forced to cart for irc (YAML value ignored)
- freeze_atoms: [] # 1-based frozen atoms merged with CLI/link detection
 calc:
- charge: 0 # total charge (CLI/template override)
- spin: 1 # spin multiplicity 2S+1
- model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
- task_name: omol # UMA task name
- device: auto # MLIP device selection
- max_neigh: null # maximum neighbors for graph construction
- radius: null # cutoff radius for neighbor search
- r_edges: false # store radial edges
- out_hess_torch: true # request torch-form Hessian
- freeze_atoms: null # calculator-level frozen atoms
- hessian_calc_mode: FiniteDifference # Hessian mode selection
  return_partial_hessian: true # forced true for irc (partial Hessian with active-DOF processing)
- backend: uma # MLIP backend: uma, orb, mace, aimnet2
- solvent: none # implicit solvent name (e.g. water) or none
- solvent_model: alpb # xTB solvent model: alpb or cpcmx
-irc:
- step_length: 0.1 # integration step length
- max_cycles: 125 # maximum steps along IRC
- downhill: false # follow downhill direction only
- forward: true # propagate in forward direction
- backward: true # propagate in backward direction
- root: 0 # normal-mode root index
- hessian_init: calc # Hessian initialization source
- displ: energy # displacement construction method
- displ_energy: 0.001 # energy-based displacement scaling
- displ_length: 0.1 # length-based displacement fallback
- rms_grad_thresh: 0.001 # RMS gradient convergence threshold
- hard_rms_grad_thresh: null # hard RMS gradient stop
- energy_thresh: 0.000001 # energy change threshold
- imag_below: 0.0 # imaginary frequency cutoff
- force_inflection: true # enforce inflection detection
- check_bonds: false # check bonds during propagation
- out_dir: ./result_irc/ # output directory
- prefix: "" # filename prefix
- hessian_update: bofill # Hessian update scheme
- hessian_recalc: null # Hessian rebuild cadence
- max_pred_steps: 500 # predictor-corrector max steps
- loose_cycles: 3 # loose cycles before tightening
- corr_func: mbs # corrector function choice
 ```
 
 ---

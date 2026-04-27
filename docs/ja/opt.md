@@ -4,6 +4,13 @@
 
 > **要約:** L-BFGS（`--opt-mode grad`、デフォルト）または RFO（`--opt-mode hess`）で単一構造を局所極小点に最適化します。必要に応じて `--flatten` で虚振動数モードフラット化を実行できます。
 
+### 要点
+- **想定場面:** 単一構造（PDB/XYZ/GJF/`_trj.xyz`）を局所極小点まで緩和したいとき。距離拘束や虚振動数モードのフラット化も任意で利用できます。
+- **手法:** pysisyphus の L-BFGS（`--opt-mode grad`、デフォルト）または RFOptimizer（`--opt-mode hess`）を MLIP バックエンド（デフォルト UMA、`-b` で ORB/MACE/AIMNet2）で駆動。PDB 入力では `--freeze-links` によりリンク水素の親原子が自動凍結されます。
+- **主な出力:** `final_geometry.xyz`（常に出力）。`--convert-files` 有効時は PDB 入力で `final_geometry.pdb`、Gaussian テンプレート時は `final_geometry.gjf` も出力。`--dump` 有効時は `optimization_trj.xyz` / `optimization.pdb`。`opt.dump_restart` 設定時はリスタート YAML も出力。
+- **デフォルト値:** バックエンド `uma`、`--opt-mode grad`、`--thresh gau`、`--max-cycles 10000`、`--bias-k 300`、`--freeze-links True`、`--convert-files True`、`--flatten False`、`--dump False`、`--out-dir ./result_opt/`。
+- **次にやること:** 極小であることを [`freq`](freq.md) で確認するか、鞍点には [`tsopt`](tsopt.md)、反応経路全体には [`path-search`](path-search.md) / [`all`](all.md) へ進んでください。
+
 `pdb2reaction opt` は pysisyphus の LBFGS（`lbfgs`）または RFOptimizer（`rfo`）を用い、MLIP（デフォルト: UMA、`-b/--backend` で ORB・MACE・AIMNet2 も選択可能）のエネルギー・勾配・ヘシアンで単一構造を局所極小点へ最適化します。入力構造は `.pdb`、`.xyz`、`_trj.xyz`、その他 `geom_loader` がサポートする任意の形式に対応しています。設定の優先順位は **デフォルト < config < 明示CLI** です。
 
 開始構造が PDB または Gaussian テンプレートの場合、最適化構造を `.pdb`（PDB 入力）や `.gjf`（Gaussian テンプレート）として自動的に書き出します（`--convert-files/--no-convert-files` で制御、デフォルトで有効）。

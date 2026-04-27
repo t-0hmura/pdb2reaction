@@ -4,6 +4,13 @@
 
 > **Summary:** Optimizes a single structure toward a local minimum using L-BFGS (`--opt-mode grad`, default) or RFO (`--opt-mode hess`). Optional imaginary-frequency flattening can be enabled with `--flatten`.
 
+### At a glance
+- **Use when:** You need to relax a single structure (PDB/XYZ/GJF/`_trj.xyz`) to a local minimum, optionally with distance restraints or imaginary-mode flattening.
+- **Method:** pysisyphus L-BFGS (`--opt-mode grad`, default) or RFOptimizer (`--opt-mode hess`) driven by an MLIP backend (UMA by default; ORB/MACE/AIMNet2 via `-b`); link-hydrogen parents on PDB inputs are auto-frozen with `--freeze-links`.
+- **Outputs:** `final_geometry.xyz` (always), plus `final_geometry.pdb` (PDB inputs) and `final_geometry.gjf` (Gaussian templates) when `--convert-files` is enabled; `optimization_trj.xyz`/`optimization.pdb` when `--dump` is on; optional restart YAML.
+- **Defaults:** Backend `uma`, `--opt-mode grad`, `--thresh gau`, `--max-cycles 10000`, `--bias-k 300`, `--freeze-links True`, `--convert-files True`, `--flatten False`, `--dump False`, `--out-dir ./result_opt/`.
+- **Next step:** Confirm the minimum with [`freq`](freq.md), or proceed to [`tsopt`](tsopt.md) for saddle points and [`path-search`](path-search.md) / [`all`](all.md) for full reaction pathways.
+
 `pdb2reaction opt` optimizes a single structure to a local minimum using L-BFGS (`--opt-mode grad`, default) or RFO (`--opt-mode hess`). For PDB inputs, link-hydrogen parents are automatically frozen.
 
 The command uses pysisyphus LBFGS (`lbfgs`) or RFOptimizer (`rfo`) while an MLIP backend (UMA by default; ORB, MACE, and AIMNet2 also available via `-b/--backend`) provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `_trj.xyz`, or any format supported by `geom_loader`. Settings follow precedence: **defaults < config < explicit CLI**.

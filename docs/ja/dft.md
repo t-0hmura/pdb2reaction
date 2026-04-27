@@ -4,6 +4,13 @@
 
 > **要約:** GPU4PySCF または CPU PySCF を使用して DFT 一点計算を実行します。デフォルトの汎関数/基底関数は ωB97M-V/def2-tzvpd です。結果にはエネルギーと電子密度解析（population analysis: Mulliken、meta-Löwdin、IAO 電荷）が含まれます。
 
+### 要点
+- **想定場面:** 小規模な活性部位モデルに対して DFT 一点エネルギー（および電子密度解析）が必要なとき。多くは MLIP で最適化した R/TS/P 構造の精密化に使います。
+- **計算手法:** 密度フィッティング付きの PySCF（CPU）または GPU4PySCF（GPU）。バックエンドは `--engine {gpu|cpu}` で選択します。
+- **主な出力:** `input_geometry.xyz` と `result.yaml`（Hartree/kcal·mol⁻¹ のエネルギー、収束・実行時間・エンジン情報、Mulliken/meta-Löwdin/IAO 電荷とスピン密度）。
+- **デフォルト値:** `--engine gpu`、`--func-basis wb97m-v/def2-tzvpd`、`--max-cycle 100`、`--conv-tol 1e-9`、`--grid-level 3`、`--out-dir ./result_dft/`。
+- **次のステップ:** `all --dft --thermo` で DFT エネルギーと MLIP の熱補正を組み合わせる（DFT//MLIP Gibbs）か、ここで得た構造をそのまま機構報告に使います。
+
 `pdb2reaction dft` は PySCF（CPU）または GPU4PySCF（GPU）を使用して DFT 一点計算を実行します。デフォルトの汎関数/基底関数は ωB97M-V/def2-tzvpd です。結果にはエネルギーと電子密度解析（Mulliken、meta-Löwdin、IAO 電荷）が含まれます。
 
 > `--engine`（単体の `dft`）と `--dft-engine`（`pdb2reaction all` から転送する場合）の命名規則は {ref}`ja-engine-vs-dft-engine` を参照してください。

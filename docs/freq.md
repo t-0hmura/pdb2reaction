@@ -5,11 +5,11 @@
 > **Summary:** Compute vibrational frequencies and thermochemistry (ZPE, Gibbs energy, etc.) with an MLIP backend (UMA by default; `-b/--backend` also supports ORB, MACE, AIMNet2). When VRAM permits, `--hessian-calc-mode Analytical` speeds Hessian evaluation. Imaginary frequencies appear as negative values.
 
 ### At a glance
-- **Use when:** You need full vibrational analysis (e.g., confirm a stationary point is a true minimum with no imaginary frequencies) and/or compute thermochemistry corrections from an MLIP backend (UMA by default). Note: `tsopt` already includes an imaginary-frequency check, so a separate `freq` run is mainly for thermochemistry or detailed vibrational mode inspection.
-- **Frozen atoms:** Supported via PHVA (Partial Hessian Vibrational Analysis).
-- **Outputs:** `frequencies_cm-1.txt`, per-mode `_trj.xyz` animations (and optional `.pdb`), plus `thermoanalysis.yaml` when enabled/available.
-- **TS check:** A properly converged first-order saddle point (TS) is expected to have **exactly one** imaginary frequency (negative cm⁻¹ value). See {ref}`imaginary-mode-thresholds` in the glossary for the 5 cm⁻¹ detection threshold vs 100 cm⁻¹ quality gate.
-- **Performance:** For Hessian evaluation modes, see {ref}`hessian-evaluation`.
+- **Use when:** You need full vibrational analysis (e.g., confirm a stationary point is a true minimum with no imaginary frequencies, or that a TS has exactly one) and/or thermochemistry corrections (ZPE, Gibbs energy). Note: `tsopt` already includes an imaginary-frequency check, so a separate `freq` run is mainly for thermochemistry or detailed mode inspection.
+- **Method:** MLIP-backend Hessian (UMA by default; ORB/MACE/AIMNet2 also supported via `-b/--backend`) with PHVA (Partial Hessian Vibrational Analysis) for frozen atoms. Optional QRRHO-style thermochemistry via `thermoanalysis`.
+- **Outputs:** `frequencies_cm-1.txt`, per-mode `mode_*_trj.xyz` animations (and `.pdb` for PDB inputs with conversion enabled); `thermoanalysis.yaml` when `--dump` and `thermoanalysis` is installed.
+- **Defaults:** Backend `uma`, `--hessian-calc-mode FiniteDifference`, `--max-write 10`, `--amplitude-ang 0.8`, `--n-frames 20`, `--sort value`, `--temperature 298.15`, `--pressure 1.0`, `--dump False`.
+- **Next step:** A properly converged first-order saddle point (TS) is expected to have **exactly one** imaginary frequency (see {ref}`imaginary-mode-thresholds` for the 5 cm⁻¹ detection vs 100 cm⁻¹ quality gate). For Hessian evaluation modes, see {ref}`hessian-evaluation`.
 
 `pdb2reaction freq` performs vibrational analysis with an MLIP backend (UMA by default), honoring frozen atoms via PHVA. It exports normal-mode animations as `_trj.xyz` (and `.pdb` when a PDB template is available and conversion is enabled), and prints a Gaussian-style thermochemistry summary when the optional `thermoanalysis` package is installed.
 
@@ -146,38 +146,14 @@ See {ref}`exit-codes` in CLI Conventions.
 - `--hessian-calc-mode` follows the standard precedence (defaults < config < explicit CLI); an explicit CLI `--hessian-calc-mode` value takes precedence over `calc.hessian_calc_mode` in the config YAML.
 
 Provide mappings with merge order **defaults < config < explicit CLI**.
-Shared sections reuse [YAML Reference](yaml-reference.md).
-An additional `thermo` section is supported for thermochemistry controls.
+
+The `geom`, `calc`, `freq`, and `thermo` sections are unchanged from the canonical definitions in [YAML Reference](yaml-reference.md): see [`geom`](yaml-reference.md#geom), [`calc`](yaml-reference.md#calc), [`freq`](yaml-reference.md#freq-section), and [`thermo`](yaml-reference.md#thermo). `freq` automatically sets `calc.return_partial_hessian = true` (PHVA) by default; YAML can override.
+
+The only `freq`-specific default that differs from the canonical block is the output directory:
 
 ```yaml
-geom:
- coord_type: cart # coordinate type: cartesian vs dlc internals
- freeze_atoms: [] # 1-based frozen atoms merged with CLI/link detection
-calc:
- charge: 0 # total charge (CLI/template override)
- spin: 1 # spin multiplicity 2S+1
- model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
- task_name: omol # UMA task name
- device: auto # MLIP device selection
- max_neigh: null # maximum neighbors for graph construction
- radius: null # cutoff radius for neighbor search
- r_edges: false # store radial edges
- out_hess_torch: true # request torch-form Hessian
- freeze_atoms: null # calculator-level frozen atoms
- hessian_calc_mode: FiniteDifference # Hessian mode selection
- return_partial_hessian: true # allow partial Hessians
- backend: uma # MLIP backend: uma, orb, mace, aimnet2
- solvent: none # implicit solvent name (e.g. water) or none
- solvent_model: alpb # xTB solvent model: alpb or cpcmx
 freq:
- amplitude_ang: 0.8 # displacement amplitude for modes (Å)
- n_frames: 20 # number of frames per mode
- max_write: 10 # maximum number of modes to write
- sort: value # sort order: value vs abs
-thermo:
- temperature: 298.15 # thermochemistry temperature (K)
- pressure_atm: 1.0 # thermochemistry pressure (atm)
- dump: false # write thermoanalysis.yaml when true
+ out_dir: ./result_freq/ # freq default
 ```
 
 ---

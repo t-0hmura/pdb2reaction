@@ -5,11 +5,11 @@
 > **Summary:** Perform a two-distance (d₁, d₂) grid scan with harmonic restraints and MLIP relaxations. Use `--scan-lists/-s` with a YAML/JSON spec file (recommended) or an inline Python literal.
 
 ### At a glance
-- **Input:** One structure + `-s/--scan-lists scan2d.yaml` (recommended), or one `--scan-lists/-s` inline literal containing exactly two quadruples.
-- **Grid ordering:** Each axis is reordered so the point closest to the (pre)optimized structure is visited first.
-- **Energies:** Values written to `surface.csv` are always evaluated **without bias**, so grid points are directly comparable.
-- **Outputs:** `surface.csv` plus `scan2d_map.png` and `scan2d_landscape.html`, and per-point structures under `grid/`.
-- **Caution:** Grid size grows quickly as `(high − low) / --max-step-size` increases.
+- **Use when:** You want a 2D potential-energy map over two distances `(d₁, d₂)` — e.g. to locate a TS region or visualize the reaction landscape before MEP refinement. Input is one structure + `-s/--scan-lists scan2d.yaml` (recommended), or a single `--scan-lists/-s` inline literal containing exactly two quadruples.
+- **Method:** Linear grids built with `--max-step-size`; each axis is reordered so the point closest to the (pre)optimized structure is visited first. Each grid point is relaxed with the appropriate harmonic restraints active (MLIP backend, UMA by default). Values written to `surface.csv` are always evaluated **without bias**, so grid points are directly comparable.
+- **Outputs:** `surface.csv` plus `scan2d_map.png` (2D contour) and `scan2d_landscape.html` (3D surface), and per-point structures under `grid/`.
+- **Defaults:** `--opt-mode grad` (LBFGS), `--no-preopt`, `--max-step-size 0.20 Å`, `--bias-k 300 eV·Å⁻²`, `--thresh baker`, `--baseline min`, `--out-dir ./result_scan2d/`. Grid size grows quickly as `(high − low) / --max-step-size` increases.
+- **Next step:** Inspect `scan2d_map.png` / `scan2d_landscape.html` for a TS-region candidate, then refine with `tsopt` (or chain via `pdb2reaction all`).
 
 `scan2d` constructs linear grids for both distances using `--max-step-size`, relaxes each grid point with the appropriate restraints active, and records unbiased MLIP energies for visualization. The default backend is UMA; select an alternative with `-b/--backend`. Use `--opt-mode hess` when you need RFOptimizer instead of LBFGS.
 

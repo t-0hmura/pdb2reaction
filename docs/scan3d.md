@@ -5,11 +5,11 @@
 > **Summary:** Perform a three-distance (d₁, d₂, d₃) grid scan with harmonic restraints and MLIP relaxations. Use `--scan-lists/-s` with a YAML/JSON spec file (recommended) or an inline Python literal; or plot an existing `surface.csv` via `--csv`.
 
 ### At a glance
-- **Input:** One structure + `-s/--scan-lists scan3d.yaml` (recommended) or one `--scan-lists/-s` inline literal (three quadruples), unless you use `--csv` to plot only.
-- **Grid ordering:** Values are reordered so points closest to the (pre)optimized structure are visited first.
-- **Energies:** Recorded energies are evaluated **without bias**, so grid points are directly comparable.
+- **Use when:** You want a 3D potential-energy volume over three distances `(d₁, d₂, d₃)`, or want to re-plot an existing `surface.csv`. Input is one structure + `-s/--scan-lists scan3d.yaml` (recommended) or one `--scan-lists/-s` inline literal (three quadruples), unless you use `--csv` to plot only.
+- **Method:** Nested loops d₁ → d₂ → d₃ with linear grids built from `--max-step-size`; values are reordered so points closest to the (pre)optimized structure are visited first. Each point is relaxed with the appropriate harmonic restraints (MLIP backend, UMA by default), and recorded energies are evaluated **without bias**, so grid points are directly comparable.
 - **Outputs:** `surface.csv`, per-point geometries under `grid/`, and an HTML isosurface plot (`scan3d_density.html`).
-- **Caution:** 3D grids grow very quickly; consider coarser `--max-step-size` or smaller ranges first.
+- **Defaults:** `--opt-mode grad` (LBFGS), `--no-preopt`, `--max-step-size 0.20 Å`, `--bias-k 300 eV·Å⁻²`, `--thresh baker`, `--baseline min`, `--out-dir ./result_scan3d/`. 3D grids grow very quickly; consider coarser `--max-step-size` or smaller ranges first.
+- **Next step:** Inspect `scan3d_density.html` for low-energy channels, then narrow the search with a 2D `scan2d` slice or refine candidate TS structures with `tsopt`.
 
 `scan3d` nests loops over d₁ → d₂ → d₃ and relaxes each point with the appropriate restraints active. The default optimizer is LBFGS (`--opt-mode grad`); switch to `--opt-mode hess` for RFOptimizer.
 

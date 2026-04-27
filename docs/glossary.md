@@ -65,6 +65,7 @@ This page provides definitions for abbreviations and technical terms used throug
 |------|-----------|-------------|
 | **QM** | Quantum Mechanics | First-principles electronic structure calculations (DFT, HF, post-HF, etc.). |
 | **DFT** | Density Functional Theory | A quantum-mechanical method that models electronic structure via electron density functionals. |
+| **DFT//MLIP** | — | Composite-method notation: DFT single-point energies evaluated at MLIP-optimized geometries. Combines MLIP geometry/dynamics with DFT energy refinement. The `//` separator follows the standard quantum-chemistry convention "energy-level // geometry-level". |
 | **Hessian** | — | The matrix of second derivatives of energy with respect to atomic coordinates. Eigenvalues yield vibrational frequencies; eigenvectors yield vibrational modes (displacement vectors). Used for vibrational analysis and TS optimization. |
 | **SP** | Single Point | A calculation at a fixed geometry (no optimization); often used for higher-level energy refinement. |
 | **Spin Multiplicity** | — | 2S+1, where S is total spin. Singlet = 1, doublet = 2, triplet = 3, etc. Specified with `-m/--multiplicity` (default: 1). |

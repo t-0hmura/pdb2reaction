@@ -5,11 +5,11 @@
 > **Summary:** Optimize a transition-state *candidate* using RS‑I‑RFO (Restricted-Step Image Rational Function Optimization) (`--opt-mode hess`, default) or, as an alternative when RS‑I‑RFO struggles, Hessian-Guided Dimer (`--opt-mode grad`). `tsopt` performs a final Hessian calculation and imaginary-frequency check automatically; a validated TS (first-order saddle point) should show **exactly one** imaginary frequency. Always confirm endpoint connectivity with `irc`.
 
 ### At a glance
-- **Input:** A TS guess (HEI from `path-opt`/`path-search`, or your own structure) in any `geom_loader`-supported format.
-- **Modes:** `hess` (`rsirfo`) = RS‑I‑RFO with full Hessian (default, more reliable for most systems). `grad` (`dimer`) = Hessian-Guided Dimer (alternative when RS‑I‑RFO fails to converge or full-Hessian recomputation is prohibitive; uses an initial Hessian to set the search direction, then dimer rotation rather than full-Hessian rebuilds).
-- **Quality control:** `tsopt` includes a final imaginary-frequency check (look for n=1 in the output). The result is still a *candidate* until [irc](irc.md) confirms endpoint connectivity. A separate [freq](freq.md) run is only needed for full vibrational analysis or thermochemistry.
-- **Optional cleanup:** `--flatten` (default: disabled) controls surplus-imaginary-mode cleanup.
-- **Output conversion:** With `--convert-files` (default), PDB inputs can be mirrored to `.pdb` (when `--dump`), and Gaussian templates write a `.gjf` for the final geometry.
+- **Use when:** You have a TS guess (HEI from `path-opt`/`path-search`, or your own structure) and need to refine it into an optimized first-order saddle point with a built-in imaginary-frequency check.
+- **Method:** `--opt-mode hess` (`rsirfo`) = RS‑I‑RFO with full Hessian (default, more reliable for most systems); `--opt-mode grad` (`dimer`) = Hessian-Guided Dimer (alternative when RS‑I‑RFO fails to converge or full-Hessian recomputation is prohibitive). `--flatten` (default disabled) controls surplus-imaginary-mode cleanup.
+- **Outputs:** `final_geometry.{xyz,pdb,gjf}`, `vib/imag_*_trj.xyz` (and `.pdb` for PDB inputs); optimization trajectories with `--dump`.
+- **Defaults:** `--opt-mode hess` (RS-I-RFO), `--thresh baker`, `--hessian-calc-mode FiniteDifference`, `--max-cycles 10000`, `--flatten` disabled, backend `uma`.
+- **Next step:** The result is still a *candidate* until [irc](irc.md) confirms endpoint connectivity. A separate [freq](freq.md) run is only needed for full vibrational analysis or thermochemistry.
 
 ### Choosing `--opt-mode`
 - Use **`--opt-mode hess` (RS‑I‑RFO)** when you want the default, conservative optimizer and you can afford Hessian work.

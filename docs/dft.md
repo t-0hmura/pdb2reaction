@@ -4,6 +4,13 @@
 
 > **Summary:** Runs single-point DFT with GPU4PySCF or CPU PySCF. The default functional/basis is ωB97M-V/def2-tzvpd. Results include energy and population analysis (Mulliken, meta-Löwdin, IAO charges).
 
+### At a glance
+- **Use when:** You need a single-point DFT energy (and population analysis) on a small active-site model — typically to refine MLIP-optimized R/TS/P structures.
+- **Method:** PySCF (CPU) or GPU4PySCF (GPU) with density fitting; backend chosen via `--engine {gpu|cpu}`.
+- **Outputs:** `input_geometry.xyz` plus `result.yaml` (energy in hartree/kcal·mol⁻¹, convergence/timing/engine metadata, and Mulliken/meta-Löwdin/IAO charges and spin densities).
+- **Defaults:** `--engine gpu`, `--func-basis wb97m-v/def2-tzvpd`, `--max-cycle 100`, `--conv-tol 1e-9`, `--grid-level 3`, `--out-dir ./result_dft/`.
+- **Next step:** Combine DFT energies with MLIP thermal corrections (DFT//MLIP Gibbs) via `all --dft --thermo`, or feed the optimized structures here directly into mechanism reporting.
+
 `pdb2reaction dft` runs single-point DFT calculations using PySCF (CPU) or GPU4PySCF (GPU). The default functional/basis is ωB97M-V/def2-tzvpd. Results include energy and population analysis (Mulliken, meta-Löwdin, IAO charges).
 
 > See {ref}`engine-vs-dft-engine` for the `--engine` (standalone `dft`) vs `--dft-engine` (forwarded through `pdb2reaction all`) naming convention.

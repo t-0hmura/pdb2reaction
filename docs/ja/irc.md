@@ -5,9 +5,11 @@
 > **要約:** 遷移状態（TS）から反応物・生成物方向へ固有反応座標（IRC）を追跡します。デフォルトで前方・後方の両方向を実行します。VRAM に余裕がある場合は `--hessian-calc-mode Analytical` が推奨されます。
 
 ### 要点
-- **入力:** TS 構造（最適化・検証済みが望ましい）。
-- **主要パラメータ:** `--step-size`（非質量加重デカルト Bohr でのステップ長）、`--max-cycles`（ステップ数）。
-- **強制上書き:** IRC はマージ後に `geom.coord_type = cart` を強制します（YAML 設定より優先）。`calc.return_partial_hessian` は `true` に強制されます（partial Hessian、pysisyphus で active-DOF 処理）。
+- **想定場面:** `tsopt` で最適化・検証済みの TS 構造を出発点に、固有反応座標を追跡して端点接続性（R ↔ TS ↔ P）を確認したい場合。
+- **手法:** EulerPC（Euler Predictor-Corrector）積分 + MLIP バックエンドのヘシアン（デフォルト UMA、ORB/MACE/AIMNet2 も選択可）。デフォルトでは前方・後方両方の分岐を実行します。
+- **主な出力:** `finished_irc_trj.xyz`、`forward_irc_trj.xyz`、`backward_irc_trj.xyz`（参照 PDB が利用可能なら `.pdb` コンパニオンも）。
+- **デフォルト:** `--max-cycles 125`、`--step-size 0.10` Bohr、`--root 0`、`--forward`/`--backward` 両方有効、`--hessian-calc-mode FiniteDifference`、バックエンド `uma`。**強制上書き:** IRC は YAML/CLI マージ後に `geom.coord_type = cart` および `calc.return_partial_hessian = true` を強制します。
+- **次ステップ:** IRC 端点を [opt](opt.md) で真の極小に最適化、または [freq](freq.md) と組み合わせて熱化学量を取得。ヘシアン評価モードの詳細は {ref}`ja-hessian-evaluation` を参照。
 
 `pdb2reaction irc` は MLIP（デフォルト: UMA、`-b/--backend` で ORB・MACE・AIMNet2 も選択可能）を用いた EulerPC（Euler Predictor-Corrector）ベースの固有反応座標（IRC）積分を実行します。
 
@@ -127,59 +129,16 @@ out_dir/ (デフォルト:./result_irc/)
 - `--freeze-links` が有効な場合、リンク水素の親原子が自動的に凍結されます（{ref}`リンク水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
 
 設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
-共通セクションでは [YAML リファレンス](yaml-reference.md) のジオメトリ/計算機キーを再利用します。`--freeze-links` は PDB 入力で `geom.freeze_atoms` を拡張し、`--hessian-calc-mode` と CLI の charge/spin 値はマージ済み `calc` ブロックを補完します。`irc` では `geom.coord_type` が `cart` に、`calc.return_partial_hessian` が `true` に強制されます（YAML/CLI マージ後）。
 
-`irc` キー（括弧内はデフォルト）:
-- `step_length` (`0.10`), `max_cycles` (`125`): 主な積分制御（`--step-size`/`--max-cycles`）。
-- `hessian_init` (`"calc"`), `hessian_update` (`"bofill"`), `hessian_recalc` (`null`): ヘシアン初期化/更新サイクル。
-- `displ`, `displ_energy`, `displ_length`: 変位生成の制御。通常はデフォルト推奨。
-- 収束閾値: `rms_grad_thresh` (`1.0e-3`), `hard_rms_grad_thresh` (`null`), `energy_thresh` (`1.0e-6`), `imag_below` (`0.0`).
-- 出力/診断: `force_inflection` (`True`), `check_bonds` (`False`), `out_dir` (`"./result_irc/"`), `prefix` (`""`), `max_pred_steps` (`500`), `loose_cycles` (`3`), `corr_func` (`"mbs"` — 補正関数: modified Bulirsch-Stoer).
+`geom`、`calc`、`irc` の各セクションは [YAML リファレンス](yaml-reference.md) の正規定義から変更ありません: [`geom`](yaml-reference.md#geom)、[`calc`](yaml-reference.md#calc)、[`irc`](yaml-reference.md#irc-section) を参照してください。`--freeze-links` は PDB 入力で `geom.freeze_atoms` を拡張し、`--hessian-calc-mode` と CLI の charge/spin 値はマージ済み `calc` ブロックを補完します。
+
+**`irc` 固有の強制上書き**（YAML/CLI マージ後に YAML 値を無視して適用）:
 
 ```yaml
 geom:
- coord_type: cart # irc では cart に強制（YAML値は無視）
- freeze_atoms: [] # 1-based frozen atoms merged with CLI/link detection
+ coord_type: cart # irc では cart に強制（YAML 値は無視）
 calc:
- charge: 0 # total charge (CLI/template override)
- spin: 1 # spin multiplicity 2S+1
- model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
- task_name: omol # UMA task name
- device: auto # MLIP device selection
- max_neigh: null # maximum neighbors for graph construction
- radius: null # cutoff radius for neighbor search
- r_edges: false # store radial edges
- out_hess_torch: true # request torch-form Hessian
- freeze_atoms: null # calculator-level frozen atoms
- hessian_calc_mode: FiniteDifference # Hessian mode selection
  return_partial_hessian: true # irc では true に強制（partial Hessian、active-DOF 処理）
- backend: uma # MLIP backend: uma, orb, mace, aimnet2
- solvent: none # implicit solvent name (e.g. water) or none
- solvent_model: alpb # xTB solvent model: alpb or cpcmx
-irc:
- step_length: 0.1 # integration step length
- max_cycles: 125 # maximum steps along IRC
- downhill: false # follow downhill direction only
- forward: true # propagate in forward direction
- backward: true # propagate in backward direction
- root: 0 # normal-mode root index
- hessian_init: calc # Hessian initialization source
- displ: energy # displacement construction method
- displ_energy: 0.001 # energy-based displacement scaling
- displ_length: 0.1 # length-based displacement fallback
- rms_grad_thresh: 0.001 # RMS gradient convergence threshold
- hard_rms_grad_thresh: null # hard RMS gradient stop
- energy_thresh: 0.000001 # energy change threshold
- imag_below: 0.0 # imaginary frequency cutoff
- force_inflection: true # enforce inflection detection
- check_bonds: false # check bonds during propagation
- out_dir: ./result_irc/ # output directory
- prefix: "" # filename prefix
- hessian_update: bofill # Hessian update scheme
- hessian_recalc: null # Hessian rebuild cadence
- max_pred_steps: 500 # predictor-corrector max steps
- loose_cycles: 3 # loose cycles before tightening
- corr_func: mbs # corrector function choice
 ```
 
 ---
