@@ -232,7 +232,7 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | `--flatten/--no-flatten` | Enable surplus-imaginary-mode flattening in `tsopt`. | `False` |
 
 ```{warning}
-The `--dft` single-point calculations (powered by PySCF/GPU4PySCF) are very expensive for models exceeding ~500 atoms. For such systems, HPC clusters with high-end GPUs (e.g. A100, H200) are typically required.
+The `--dft` single-point calculations (powered by PySCF/GPU4PySCF) are very expensive for models exceeding ~300 atoms. For such systems, HPC clusters with high-end GPUs (e.g. A100, H200) are typically required.
 ```
 
 TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (only when explicitly provided) → TSOPT default (`hess` → `rsirfo`).

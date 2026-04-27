@@ -238,7 +238,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 | `--flatten/--no-flatten` | 余分な虚振動モードのフラット化 | `False` |
 
 ```{warning}
-`--dft` による DFT 一点計算（PySCF/GPU4PySCF）は、約 500 原子を超えるモデルでは計算コストが非常に大きくなります。そのような系では、A100 や H200 等の高性能 GPU を搭載した HPC クラスタの利用が必要になる場合があります。
+`--dft` による DFT 一点計算（PySCF/GPU4PySCF）は、約 300 原子を超えるモデルでは計算コストが非常に大きくなります。そのような系では、A100 や H200 等の高性能 GPU を搭載した HPC クラスタの利用が必要になる場合があります。
 ```
 
 TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode`（明示指定時のみ）→ TSOPT のデフォルト（`hess` → `rsirfo`）の順で決まります。

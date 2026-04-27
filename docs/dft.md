@@ -13,7 +13,7 @@ The backend is controlled by `--engine`:
 
 > **Prerequisites:** DFT dependencies (PySCF, GPU4PySCF) are **not** included in the default install. Install them with `pip install "pdb2reaction[dft]"`.
 
-> **System size limit:** DFT single-point calculations are practical only for systems up to **~500 atoms**. Larger systems require excessive compute time and memory. For such systems, HPC clusters with high-end GPUs (e.g. A100, H200) are typically required. For enzyme systems, extract a small active site model (binding pocket) before running DFT.
+> **System size limit:** DFT single-point calculations are practical only for systems up to **~300 atoms**. Larger systems require excessive compute time and memory. For such systems, HPC clusters with high-end GPUs (e.g. A100, H200) are typically required. For enzyme systems, extract a small active site model (binding pocket) before running DFT.
 
 In addition to total energies, the command reports Mulliken, meta-Löwdin, and IAO atomic charges and spin densities.
 
