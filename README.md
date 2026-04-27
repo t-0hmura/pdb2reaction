@@ -9,7 +9,7 @@
 A **single command** can generate a first-pass enzymatic reaction path:
 
 ```bash
-# BezA (GPP C6-methyltransferase): methyl transfer (SAM→GPP C6) + proton abstraction (E170)
+# Multi-PDB mode (R + P → MEP)
 pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
 ```
 ```bash
@@ -27,7 +27,7 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --tsopt --thermo --dft
 ```
 
-> **Working examples** are provided in the [`examples/`](examples/) directory: a `run.sh` with complete `all` workflow commands for both the multi-structure MEP and the scan-based pipeline. The example system is GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)), which catalyzes a two-step reaction: (1) electrophilic methyl transfer from SAM to the C6 position of GPP via a C7 carbocation intermediate, and (2) proton abstraction from C6 by the catalytic base E170 to yield 6-methylgeranyl pyrophosphate (6MGPP). E170 in the literature numbering corresponds to `GLU 186` in the example PDB file (used in the scan-list selectors below).
+> **Working examples** are provided in the [`examples/`](examples/) directory: a `run.sh` with complete `all` workflow commands for both the multi-structure MEP and the scan-based pipeline.
 
 ---
 
@@ -156,7 +156,7 @@ pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 
 **1. Extract active-site model (cluster model)** — [`extract`](docs/extract.md)
 ```bash
-pdb2reaction extract -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -r 6.0
+pdb2reaction extract -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
 ```
 
 **2. Optimize geometry** — [`opt`](docs/opt.md)
@@ -166,7 +166,12 @@ pdb2reaction opt -i model.pdb -l 'SAM:1,GPP:-3'
 
 **3. MEP search** — [`path-opt`](docs/path-opt.md)
 ```bash
-pdb2reaction path-opt -i R_model.pdb P_model.pdb -l 'SAM:1,GPP:-3'
+pdb2reaction path-opt -i R_model.pdb IM_model.pdb -l 'SAM:1,GPP:-3'
+```
+
+**Recursive MEP search for multi-step reactions** — [`path-search`](docs/path-search.md)
+```bash
+pdb2reaction path-search -i R_model.pdb P_model.pdb -l 'SAM:1,GPP:-3'
 ```
 
 **4. TS optimization** — [`tsopt`](docs/tsopt.md)
