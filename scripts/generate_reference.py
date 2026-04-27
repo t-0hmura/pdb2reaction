@@ -80,9 +80,15 @@ def _capture_help(command_name: str, *, advanced: bool) -> str:
             f"Failed to collect help for '{TOOL_NAME} {command_name}' "
             f"(advanced={advanced}):\n{result.output}"
         )
-    # Strip version banner so docs stay stable across builds.
+    # Strip pre-banner noise (version line, bundled-pysisyphus
+    # rc-file warning) so docs stay stable across environments where
+    # `~/.pysisyphusrc` may or may not exist.
     lines = result.output.splitlines(keepends=True)
-    lines = [ln for ln in lines if not ln.startswith(f"{TOOL_NAME} ver. ")]
+    lines = [
+        ln for ln in lines
+        if not ln.startswith(f"{TOOL_NAME} ver. ")
+        and not ln.startswith("Couldn't find configuration file. Expected it at ")
+    ]
     return "".join(lines).rstrip() + "\n"
 
 
