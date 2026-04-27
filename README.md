@@ -81,20 +81,13 @@ Linux with a CUDA-capable NVIDIA GPU is the validated production environment for
 pip install torch --index-url https://download.pytorch.org/whl/cu129
 pip install pdb2reaction
 plotly_get_chrome -y
-hf auth login
+huggingface-cli login
 ```
 
-> On older `huggingface_hub` (<0.26) replace `hf auth login` with `huggingface-cli login`.
-
-### For DMF method
-
+### For DMF method (Additional MEP search method)
+Install `cyipopt` (recommended via conda):
 ```bash
-conda create -n pdb2reaction python=3.11 -y
-conda activate pdb2reaction
 conda install -c conda-forge cyipopt -y
-pip install torch --index-url https://download.pytorch.org/whl/cu129
-pip install pdb2reaction
-plotly_get_chrome -y
 ```
 
 For the full step-by-step guide (HPC `module load`, alternative backends, DFT extras, troubleshooting), see [docs/installation.md](docs/installation.md).
@@ -107,7 +100,7 @@ DFT dependencies are **not** installed by default. To use `pdb2reaction dft`, in
 pip install "pdb2reaction[dft]"
 ```
 
-This installs PySCF, GPU4PySCF (x86_64 only), and related CUDA libraries. Note that DFT single-point calculations are practical only for systems up to **~500 atoms**; larger systems will require prohibitive compute time and memory.
+This installs PySCF, GPU4PySCF (x86_64 only), and related CUDA libraries. Note that DFT single-point calculations are practical only for systems up to **~300 atoms**; larger systems will require prohibitive computational cost.
 
 For detailed installation instructions, see [Installation](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/installation.md).
 
@@ -130,7 +123,7 @@ For detailed installation instructions, see [Installation](https://github.com/t-
 
 ## Quick Examples
 
-The examples below use GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)) — a two-step mechanism: electrophilic methyl transfer from SAM to GPP C6 (via C7 carbocation), then proton abstraction by E170. The complete commands are in [`examples/run.sh`](examples/).
+The examples below use GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)) — a two-step mechanism: electrophilic methyl transfer from SAM to GPP C6 (via C7 carbocation), then proton abstraction by glutamate (`GLU 186`). The complete commands are in [`examples/run.sh`](examples/).
 
 ### Full workflow (multi-structure MEP)
 ```bash
