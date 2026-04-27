@@ -15,30 +15,21 @@ Orb-v3-omol.
 put MACE in a separate env, e.g. `<your_mace_env>`.
 
 ```bash
-conda create -n <your_mace_env> python=3.11
+conda create -n <your_mace_env> python=3.11 -y
 conda activate <your_mace_env>
 
 # torch matching your CUDA driver (see env-cuda.md)
 pip install torch --index-url https://download.pytorch.org/whl/<cu_index>
 
-# MACE first; install pdb2reaction with --no-deps to skip its base
-# fairchem-core dependency (which would re-pin e3nn and break MACE).
-# The remaining base deps are then installed manually.
+# Install pdb2reaction (pulls in fairchem-core / UMA), then swap UMA
+# out for MACE. mace-torch will reinstall e3nn at the version it
+# requires.
+pip install pdb2reaction
+pip uninstall -y fairchem-core
 pip install mace-torch
-pip install --no-deps pdb2reaction
-pip install pydmf "torch>=2.6.0" numpy biopython "ase>=3.25.0" \
-    pyyaml click "plotly>=6.1.1" kaleido autograd dask distributed \
-    h5py jinja2 joblib matplotlib natsort psutil rmsd scipy sympy \
-    scikit-learn pandas
 ```
 
-`pdb2reaction`'s base `dependencies` list (in `pyproject.toml`) pins
-`fairchem-core`, so a plain `pip install pdb2reaction` reintroduces
-the e3nn conflict the dedicated env was meant to avoid; `--no-deps`
-plus a manual base-dep install is the supported workaround for a
-MACE-only environment.
-
-If you accidentally install both UMA and MACE in one env, you'll see
+If you accidentally keep both UMA and MACE in one env, you'll see
 errors like:
 
 ```
