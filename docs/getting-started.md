@@ -2,7 +2,7 @@
 
 ## Overview
 
-![pdb2reaction workflow overview](overview.png)
+<img src="./overview.png" alt="pdb2reaction workflow overview" width="90%">
 
 `pdb2reaction` is a Python CLI toolkit for **modeling enzymatic reaction pathways from PDB structures** using machine-learning interatomic potentials (MLIPs).
 

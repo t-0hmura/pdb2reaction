@@ -2,7 +2,7 @@
 
 ## 概要
 
-![pdb2reaction workflow overview](../overview.png)
+<img src="../overview.png" alt="pdb2reaction workflow overview" width="90%">
 
 `pdb2reaction` は、機械学習原子間ポテンシャル（MLIP: Machine Learning Interatomic Potential）を用いて **PDB 構造から酵素反応経路をモデリング** する Python 製の CLI ツールキットです。
 
