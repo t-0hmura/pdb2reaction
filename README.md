@@ -62,7 +62,7 @@ Both `pdb2reaction` and `mlmm-toolkit` include a custom GPU-optimized pysisyphus
 - [**YAML Reference**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/yaml-reference.md) — Configuration options
 - [**JSON Output Reference**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/json-output.md) — Machine-readable result.json schema
 - [**Troubleshooting**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/troubleshooting.md) — Common errors, backend selection guide, VRAM requirements
-- **Full documentation**: <https://t-0hmura.github.io/pdb2reaction/>
+- **Full documentation**: [t-0hmura.github.io/pdb2reaction/](https://t-0hmura.github.io/pdb2reaction/)
 
 ---
 
