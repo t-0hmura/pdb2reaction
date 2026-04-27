@@ -240,7 +240,7 @@ pdb2reaction dft -i optimized.pdb -l 'SAM:1,GPP:-3'
 
 ## HPC / Multi-GPU
 
-On HPC clusters or multi-GPU workstations, `pdb2reaction` can parallelize UMA inference across nodes. Set `workers` and `workers_per_node` to enable parallel inference; see [docs/uma-pysis.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/uma-pysis.md) for details.
+On HPC clusters or multi-GPU workstations, `pdb2reaction` can parallelize UMA inference across nodes. Set `workers` and `workers_per_node` to enable parallel inference; see [docs/hpc-example.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/hpc-example.md) for details.
 
 ---
 
