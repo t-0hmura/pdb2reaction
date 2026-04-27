@@ -17,7 +17,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Output tree: per-segment `tsopt/` → `ts/`; `structures/` subdirectory added under each `post_seg_NN/`.
 
 ### Removed
-- `examples/benchmark/` and `scripts/validate_benchmark.py` / `scripts/validate_summary.py`. The 6-enzyme / 23-step cluster-model benchmark now ships as part of the accompanying preprint Supporting Information, not the software repository.
+- `examples/benchmark/` and `scripts/validate_benchmark.py` / `scripts/validate_summary.py`. The 6-enzyme / 23-step cluster-model benchmark now ships as a separate Zenodo data bundle, not as part of the software repository.
 
 ### Fixed
 - Zenodo DOI typo in `README.md` and `CITATION.cff`: `10.5281/zenodo.19197878` (unrelated record by another author) → `10.5281/zenodo.19197865` (pdb2reaction concept DOI).
@@ -27,7 +27,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - `tests/smoke/test.md`: test count 35 → 41 (run.sh has `test1` .. `test41`); rows 36–41 and the dry-run block realigned with actual indices.
 
 ### Upgrade notes
-- Users who relied on `examples/benchmark/` or `scripts/validate_*` should pull the benchmark set from the preprint Supporting Information, or keep a copy of the 0.3.5 tarball.
+- Users who relied on `examples/benchmark/` or `scripts/validate_*` should pull the benchmark set from the separate Zenodo data bundle, or keep a copy of the 0.3.5 tarball.
 - Runs that implicitly depended on `--hessian-calc-mode Analytical` silently falling back to finite differences on Orb / MACE / AIMNet2 will now compute true analytical Hessians. Set `--hessian-calc-mode FiniteDifference` explicitly to restore the old behavior.
 
 ## [0.3.5] — 2026-04-13

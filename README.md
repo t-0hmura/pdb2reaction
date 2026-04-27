@@ -2,6 +2,8 @@
 
 ## Overview
 
+![pdb2reaction workflow overview](docs/overview.png)
+
 `pdb2reaction` is a Python CLI toolkit for turning **PDB structures** into **enzymatic reaction pathways** with machine-learning interatomic potentials (MLIPs). Each workflow step is also available as an [individual subcommand](#cli-subcommands) ([`opt`](docs/opt.md), [`scan`](docs/scan.md), [`scan2d`](docs/scan2d.md), [`path-search`](docs/path-search.md), [`tsopt`](docs/tsopt.md), [`freq`](docs/freq.md), [`irc`](docs/irc.md), [`dft`](docs/dft.md), [`energy-diagram`](docs/energy-diagram.md), [etc.](#cli-subcommands)) for fine-grained control.
 
 A **single command** can generate a first-pass enzymatic reaction path:
@@ -24,8 +26,6 @@ The full workflow — **MEP search → TS optimization → IRC → thermochemist
 pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --tsopt --thermo --dft
 ```
-
-![pdb2reaction workflow overview](docs/overview.png)
 
 > **Working examples** are provided in the [`examples/`](examples/) directory: a `run.sh` with complete `all` workflow commands for both the multi-structure MEP and the scan-based pipeline. The example system is GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)), which catalyzes a two-step reaction: (1) electrophilic methyl transfer from SAM to the C6 position of GPP via a C7 carbocation intermediate, and (2) proton abstraction from C6 by the catalytic base E170 to yield 6-methylgeranyl pyrophosphate (6MGPP). E170 in the literature numbering corresponds to `GLU 186` in the example PDB file (used in the scan-list selectors below).
 
@@ -64,13 +64,11 @@ Both `pdb2reaction` and `mlmm-toolkit` include a custom GPU-optimized pysisyphus
 - [**Troubleshooting**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/troubleshooting.md) — Common errors, backend selection guide, VRAM requirements
 - **Full documentation**: [docs/index.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/index.md)
 
-`pdb2reaction` is actively developed; validated workflows are documented in the manuscript and Supporting Information.
-
 ---
 
 ## Installation
 
-Linux with a CUDA-capable NVIDIA GPU is the validated production environment for the MLIP reaction-path workflows reported in the paper. The core Python package and CPU-only smoke tests also run on macOS and on Windows under WSL2.
+Linux with a CUDA-capable NVIDIA GPU is the validated production environment for the MLIP reaction-path workflows. The core Python package and CPU-only smoke tests also run on macOS and on Windows under WSL2.
 
 ### Prerequisites
 
@@ -310,6 +308,4 @@ repository or home directory (Claude Code, Cursor, etc.).
 
 ## License
 
-`pdb2reaction` is distributed under the **GNU General Public License version 3 (GPL-3.0)** and is available for academic and commercial use subject to the GPL-3.0 license terms.  
-
-`pdb2reaction` is actively developed; validated workflows are documented in the manuscript and Supporting Information.  
+`pdb2reaction` is distributed under the **GNU General Public License version 3 (GPL-3.0)** and is available for academic and commercial use subject to the GPL-3.0 license terms.
