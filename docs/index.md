@@ -122,6 +122,23 @@ See [Installation](installation.md) for prerequisites.
 
 ---
 
+## System Requirements
+
+### Hardware
+- **OS**: Linux
+- **GPU**: CUDA 12.x compatible
+- **VRAM**: 8 GB+ recommended
+- **RAM**: 16 GB+ recommended
+
+### Software
+- Python >= 3.11
+- PyTorch with CUDA support
+- CUDA 12.x toolkit
+
+For setup, see [Installation](installation.md).
+
+---
+
 ## Agent Skills
 
 `pdb2reaction` ships AI-agent instructions under `.claude/skills/` covering CLI subcommands, structure I/O, backend installation, workflows, output parsing, and HPC operation. See [`.claude/skills/README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/.claude/skills/README.md) for the full skill index and installation instructions.
