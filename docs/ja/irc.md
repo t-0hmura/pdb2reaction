@@ -9,7 +9,7 @@
 - **主要パラメータ:** `--step-size`（非質量加重デカルト Bohr でのステップ長）、`--max-cycles`（ステップ数）。
 - **強制上書き:** IRC はマージ後に `geom.coord_type = cart` を強制します（YAML 設定より優先）。`calc.return_partial_hessian` は `true` に強制されます（partial Hessian、pysisyphus で active-DOF 処理）。
 
-`pdb2reaction irc` は MLIP（デフォルト: UMA、`-b/--backend` で ORB・MACE・AIMNet2 も選択可能）を用いた EulerPC（Euler Predictor-Corrector）ベースの固有反応座標（IRC）積分を実行します。CLI は意図的にシンプルに保たれています。CLI で公開されていないパラメータは YAML で指定することで、再現性のある実行が可能です。
+`pdb2reaction irc` は MLIP（デフォルト: UMA、`-b/--backend` で ORB・MACE・AIMNet2 も選択可能）を用いた EulerPC（Euler Predictor-Corrector）ベースの固有反応座標（IRC）積分を実行します。
 
 XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定し、XYZ 座標を保持したまま PDB 出力変換が可能になります。一般的な手順は `tsopt`（内部で虚振動数チェック済み、**1 つ** であることを確認）→ `irc` です。
 

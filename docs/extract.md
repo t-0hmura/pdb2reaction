@@ -168,7 +168,7 @@ Steps:
 
 ## Appendix: PDB naming requirements and reference lists
 
-This appendix is mainly for debugging cases where `extract` misclassifies residues due to **non-standard residue/atom naming**. If your inputs follow standard PDB conventions, you can usually skip it.
+This appendix is mainly for debugging cases where `extract` misclassifies residues due to **non-standard residue/atom naming**.
 
 ```{important}
 For `extract` to work correctly, **residue names and atom names in the input PDB must conform to standard PDB naming conventions**. The tool relies on internal dictionaries to recognize amino acids, ions, water molecules, and backbone atoms. Non-standard naming will cause residues to be misclassified or charges to be incorrectly assigned.

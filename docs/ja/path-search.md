@@ -159,7 +159,7 @@ out_dir/ (デフォルト:./result_path_search/)
 YAML ルートはマッピングでなければなりません。共通セクションは [YAML リファレンス](yaml-reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（`--freeze-links` については {ref}`リンク水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）、`stopt` は `path-opt`（[path-opt.md](path-opt.md)）に記載の StringOptimizer 設定を継承します。
 
 ```{note}
-**リファレンスの重複について。** 以下に並ぶ `geom`, `calc`, `gs`, `dmf`, `stopt`, `opt.lbfgs`, `opt.rfo` の YAML キーは [YAML リファレンス](yaml-reference.md) の正規定義をミラーしたものです。両者が食い違った場合は [YAML リファレンス](yaml-reference.md) と `pdb2reaction/defaults.py` を正とし、本ページの付録は `path-search` 固有のデフォルト値（例: `out_dir: ./result_path_search/`）と参照の便宜のためにインライン展開しているだけです。
+**リファレンスの重複について。** 以下の `geom`, `calc`, `gs`, `dmf`, `stopt`, `opt.lbfgs`, `opt.rfo` が [YAML リファレンス](yaml-reference.md) と食い違った場合は [YAML リファレンス](yaml-reference.md) と `pdb2reaction/defaults.py` を正とします。
 ```
 
 `gs`（Growing String）は `pdb2reaction.path_opt.GS_KW` のデフォルト値を継承し、`max_nodes`（セグメント内部ノード）、クライミング設定（`climb`, `climb_rms`, `climb_fixed`）、再パラメータ化（`reparam_every_full`, `reparam_check`）を上書きできます。

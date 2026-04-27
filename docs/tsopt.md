@@ -196,7 +196,7 @@ Shared sections reuse
 [YAML Reference](yaml-reference.md). Adjust only the values you need to change.
 
 ```{note}
-**Reference duplication.** The YAML keys for `geom`, `calc`, `opt`, `hessian_dimer`, and `rsirfo` listed below mirror the canonical definitions in [YAML Reference](yaml-reference.md). When the two pages disagree, the canonical [YAML Reference](yaml-reference.md) entries (and `pdb2reaction/defaults.py`) take precedence; the inline appendix on this page is reproduced only for `tsopt`-specific defaults (e.g. `out_dir: ./result_tsopt/`, the `--flatten` interaction documented above) and convenience lookup. Note that `flatten_max_iter` is forced to `0` by the CLI initializer unless `--flatten` is passed, regardless of the value shown in the inline YAML.
+**Reference duplication.** The YAML keys for `geom`, `calc`, `opt`, `hessian_dimer`, and `rsirfo` listed below mirror the canonical definitions in [YAML Reference](yaml-reference.md). When the two pages disagree, the canonical [YAML Reference](yaml-reference.md) entries (and `pdb2reaction/defaults.py`) take precedence; the inline appendix on this page is reproduced only for `tsopt`-specific defaults (e.g. `out_dir: ./result_tsopt/`, the `--flatten` interaction documented above). Note that `flatten_max_iter` is forced to `0` by the CLI initializer unless `--flatten` is passed, regardless of the value shown in the inline YAML.
 ```
 
 ### Shared configuration (common to both modes)

@@ -5,8 +5,6 @@ traces back to a wrong total charge or multiplicity. `pdb2reaction`
 needs both as integers; getting them right is **non-negotiable** for
 meaningful energies.
 
-This file is the workflow for figuring them out when they aren't given.
-
 ## Multiplicity (`-m`)
 
 | Default | Use case |
@@ -130,8 +128,7 @@ When the agent does not know a charge / multiplicity:
 
 ## Quick-reference ligand charges (commonly seen)
 
-These are starting points, not gospel — always confirm against the
-relevant mechanism.
+Always confirm against the relevant mechanism.
 
 | Ligand | Resname (PDB) | Charge at pH 7 |
 |---|---|---|

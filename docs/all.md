@@ -350,7 +350,7 @@ The JSON summary contains structured data. Common top-level keys include:
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - Always provide `--ligand-charge/-l` (numeric or per-residue mapping) when formal charges cannot be inferred so the correct net charge propagates to scan/MEP/TSOPT/DFT.
-- Reference PDB templates for merging are derived automatically from the original inputs; the explicit `--ref-full-pdb` option of `path-search` is intentionally hidden in this wrapper.
+- Reference PDB templates for merging are derived automatically from the original inputs; the explicit `--ref-full-pdb` option of `path-search` is hidden in this wrapper.
 - Convergence presets: `--thresh` defaults to `gau`; `--thresh-post` defaults to `baker`.
 - Extraction radii: passing `0` to `--radius` or `--radius-het2het` is internally clamped to `0.001 Å` by the extractor.
 - Energies in diagrams are reported relative to the first state (reactant) in kcal/mol.

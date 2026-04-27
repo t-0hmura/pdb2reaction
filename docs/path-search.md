@@ -156,7 +156,7 @@ See {ref}`CLI Conventions: Configuration precedence <configuration-precedence>` 
 The YAML root must be a mapping. Shared sections reuse [YAML Reference](yaml-reference.md): `geom`/`calc` mirror single-structure options (with `--freeze-links` augmenting `geom.freeze_atoms` for PDBs), and `stopt` inherits the StringOptimizer knobs documented for `path-opt` (see [path-opt.md](path-opt.md)).
 
 ```{note}
-**Reference duplication.** The YAML keys for `geom`, `calc`, `gs`, `dmf`, `stopt`, `opt.lbfgs`, and `opt.rfo` listed below mirror the canonical definitions in [YAML Reference](yaml-reference.md). When the two pages disagree, the canonical [YAML Reference](yaml-reference.md) entries (and `pdb2reaction/defaults.py`) take precedence; the appendix on this page is reproduced inline only for `path-search`-specific defaults (e.g. `out_dir: ./result_path_search/`) and convenience lookup.
+**Reference duplication.** The YAML keys for `geom`, `calc`, `gs`, `dmf`, `stopt`, `opt.lbfgs`, and `opt.rfo` listed below mirror the canonical definitions in [YAML Reference](yaml-reference.md). When the two pages disagree, the canonical [YAML Reference](yaml-reference.md) entries (and `pdb2reaction/defaults.py`) take precedence; the appendix on this page is reproduced inline only for `path-search`-specific defaults (e.g. `out_dir: ./result_path_search/`).
 ```
 
 `gs` (Growing String) inherits defaults from `pdb2reaction.path_opt.GS_KW` with overrides for `max_nodes` (internal nodes per segment), climb behavior (`climb`, `climb_rms`, `climb_fixed`), and reparameterization cadence (`reparam_every_full`, `reparam_check`).

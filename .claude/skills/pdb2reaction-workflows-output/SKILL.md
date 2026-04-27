@@ -5,14 +5,6 @@ description: Canonical pdb2reaction workflows (cluster + 1-step / multistep / sc
 
 # pdb2reaction Workflows and Output Parsing
 
-## Overview
-
-This skill ties the per-subcommand mds in `pdb2reaction-cli/` together
-into **end-to-end recipes** and explains how to read the resulting
-output trees, JSON, and figures. Use this when you have a goal
-("compute the barrier of step 1 of this enzyme") and want the path
-through the toolkit.
-
 ## Six canonical workflows
 
 ### 1. Cluster + 1-step reaction (multi-input MEP)

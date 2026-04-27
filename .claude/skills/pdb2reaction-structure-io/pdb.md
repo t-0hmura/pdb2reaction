@@ -1,9 +1,7 @@
 # PDB format (pdb.md)
 
 The Protein Data Bank format is the primary input to `pdb2reaction`. It
-is **column-based** — each field has a fixed character range — so a one-
-character drift breaks everything downstream. Treat editing as a
-column-aware operation, not as plain-text find-and-replace.
+is **column-based** — each field has a fixed character range.
 
 ## Record types `pdb2reaction` cares about
 

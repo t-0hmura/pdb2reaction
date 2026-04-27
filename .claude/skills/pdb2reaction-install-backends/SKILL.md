@@ -18,7 +18,7 @@ description: How to install pdb2reaction itself and each of its MLIP / DFT / xTB
 Bundled and installed automatically with the package: `pysisyphus` (a
 GPU-tensor fork), `thermoanalysis`. They must not be installed separately.
 
-This skill directory contains nine files; read them in this order:
+Files in this skill directory:
 
 | File | When to consult |
 |---|---|

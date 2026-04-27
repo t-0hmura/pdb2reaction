@@ -138,7 +138,7 @@ out_dir/
 設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
 
 ```{note}
-**参照の重複について。** 以下の `geom`、`calc`、`opt.lbfgs`、`opt.rfo` セクションは [YAML リファレンス](yaml-reference.md) の正規定義をミラーしています。両ページに齟齬がある場合は、正規版 [YAML リファレンス](yaml-reference.md)（および `pdb2reaction/defaults.py`）が優先されます。本ページの付録は `path-opt` 固有のデフォルト（例: `out_dir`）と参照の便宜のためにインライン展開しているだけです。
+正規定義は [YAML リファレンス](yaml-reference.md) および `pdb2reaction/defaults.py` を参照してください（齟齬がある場合はそちらが優先）。以下は `path-opt` 固有のデフォルト（例: `out_dir`）を含む抜粋です。
 ```
 
 ### `geom`

@@ -2,8 +2,7 @@
 
 `pdb2reaction` can apply an xTB-ALPB **implicit solvent correction** to
 any backend-computed energy. The correction is a separate semi-empirical
-SCF call that adds a continuum-solvation term; it is optional and
-turned off by default.
+SCF call that adds a continuum-solvation term.
 
 ## When to use
 

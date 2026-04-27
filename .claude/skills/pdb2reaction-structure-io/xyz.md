@@ -1,8 +1,7 @@
 # XYZ format (xyz.md)
 
-XYZ is the lingua franca of computational chemistry: a simple
-plain-text dump of element + Cartesian coordinate, with no residue or
-charge information embedded. `pdb2reaction` writes XYZ for trajectories,
+XYZ is a simple plain-text dump of element + Cartesian coordinate, with
+no residue or charge information embedded. `pdb2reaction` writes XYZ for trajectories,
 optimized stationary points, and IRC paths; it accepts XYZ as input
 when `-q` / `-m` (or `--ref-pdb`) is supplied.
 

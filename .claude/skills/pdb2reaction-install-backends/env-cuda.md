@@ -136,8 +136,6 @@ if torch.cuda.is_available():
 PY
 ```
 
-This is the canonical "is my CUDA + torch healthy?" probe used everywhere.
-
 ## See also
 
 - `core.md` — install `pdb2reaction` itself (after torch is healthy).

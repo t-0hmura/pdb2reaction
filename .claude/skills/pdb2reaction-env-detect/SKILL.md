@@ -20,8 +20,8 @@ install pages.
 
 ## Discovery sequence
 
-Run these one by one. Each step only takes a second; the goal is to
-populate the placeholder table at the bottom.
+Run these one by one. The goal is to populate the placeholder table at
+the bottom.
 
 ### 1. Scheduler
 
@@ -58,7 +58,7 @@ constrain which torch CUDA index and which model size you can use.
 
 ### 4. CUDA toolkit
 
-Three places it might live (skill content does not transcribe paths):
+Three places it might live:
 
 ```bash
 # 4a. HPC modulefile (most common on managed clusters)
@@ -166,8 +166,7 @@ placeholder used by other `pdb2reaction-*` skills.
 } 2>&1 | tee env_probe.txt
 ```
 
-The resulting `env_probe.txt` is a self-contained summary you can refer
-back to for the rest of your session.
+Output is written to `env_probe.txt`.
 
 ## Cross-references
 

@@ -9,8 +9,8 @@ description: How to run pdb2reaction on PBS (Torque/PBSPro) and SLURM clusters �
 
 `pdb2reaction` is a CPU+GPU Python program; on HPC clusters you typically
 submit it as a PBS or SLURM job that requests one node with one GPU.
-This skill provides **generic templates** with placeholders — fill in
-your queue / module / env names from `pdb2reaction-env-detect/SKILL.md`.
+This skill provides templates with placeholders — fill in your queue /
+module / env names from `pdb2reaction-env-detect/SKILL.md`.
 
 ## When the env is unknown
 
@@ -182,8 +182,7 @@ shared list with file-lock-protected counter increment.
 
 ## ssh-based remote submission
 
-Generally avoided in shared distribution skills (depends on
-per-user ssh config). If your cluster requires `ssh <login> qsub`,
+Generally avoided (depends on per-user ssh config). If your cluster requires `ssh <login> qsub`,
 add that as a wrapper around the PBS / SLURM command above; do **not**
 embed it inside the skill template.
 

@@ -8,9 +8,9 @@ pull tasks from a shared list with file-lock-protected counter
 increment.
 
 This is the same pattern used by `pbsdsh` + `flock` on Torque/PBSPro
-clusters. The recipe below is **placeholder-driven** — fill in
-`<NCPU>`, `<NGPU>`, `<QUEUE>`, `<CUDA_MODULE>`, `<YOUR_ENV>`,
-`<TASK_LIST_FILE>` from `pdb2reaction-env-detect/SKILL.md`.
+clusters. Fill in `<NCPU>`, `<NGPU>`, `<QUEUE>`, `<CUDA_MODULE>`,
+`<YOUR_ENV>`, `<TASK_LIST_FILE>` from
+`pdb2reaction-env-detect/SKILL.md` in the recipe below.
 
 ## Files involved
 

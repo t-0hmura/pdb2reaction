@@ -9,7 +9,7 @@
 - **Key knobs:** `--step-size` (step length in unweighted Cartesian Bohr) and `--max-cycles` (number of steps).
 - **Hard overrides:** IRC forces `geom.coord_type = cart` after merge (even if YAML sets it). `calc.return_partial_hessian` is forced to `true` (partial Hessian with active-DOF processing in pysisyphus).
 
-`pdb2reaction irc` runs EulerPC-based IRC integrations with an MLIP backend (UMA by default; `-b/--backend` also supports ORB, MACE, and AIMNet2). The CLI is intentionally narrow; parameters not surfaced on the command line should be provided via YAML so the run remains explicit and reproducible.
+`pdb2reaction irc` runs EulerPC-based IRC integrations with an MLIP backend (UMA by default; `-b/--backend` also supports ORB, MACE, and AIMNet2).
 
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB output conversion. A typical workflow is `tsopt` (which includes an imaginary-frequency check; confirm **one** imaginary frequency) → `irc`.
 

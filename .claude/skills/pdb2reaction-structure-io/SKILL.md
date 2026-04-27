@@ -56,10 +56,6 @@ When an agent must edit a structure file, the basic posture is:
 4. Make the smallest possible edit (single residue rename, single
    charge change). Avoid wholesale rewrites.
 
-> Future expansion: this skill is intentionally a base layer.
-> Subsequent rounds will add literature-database integration
-> (PubChem / ChEBI / UniProt) and ML-based charge inference.
-
 ## Subcommand × format compatibility
 
 | Subcommand | PDB | XYZ | GJF |

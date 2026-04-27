@@ -32,7 +32,7 @@ Calculations use machine-learning interatomic potentials (MLIPs). The default ba
 - **Generating initial geometries** (reactant/TS/product cluster models) for subsequent quantum-chemistry refinement
 - **High-throughput screening** of reaction pathways across substrate variants or enzyme mutants
 
-The CLI is designed to generate **multi-step enzymatic reaction mechanisms** with minimal manual setup. The same workflow also works for small-molecule systems. When you skip active site model extraction (omit `--center/-c` and `--ligand-charge/-l`), you can also use `.xyz` or `.gjf` inputs.
+The CLI generates **multi-step enzymatic reaction mechanisms** with minimal manual setup. The same workflow also works for small-molecule systems. When you skip active site model extraction (omit `--center/-c` and `--ligand-charge/-l`), you can also use `.xyz` or `.gjf` inputs.
 
 On **HPC clusters or multi-GPU workstations**, `pdb2reaction` can scale to large cluster models (and optionally **full protein–ligand complexes**) by parallelizing UMA inference across nodes. Set `workers` and `workers_per_node` to enable multi-worker inference; see [MLIP Calculator](uma-pysis.md) for configuration details. Alternative backends (ORB, MACE, AIMNet2) can be selected with `-b/--backend`.
 

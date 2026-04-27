@@ -125,9 +125,7 @@ pdb2reaction bond-summary -i reactant.pdb product.pdb
 
 ## Defaults
 
-Every default value is exported from `pdb2reaction.defaults` (read with
-`import` — the skill does not transcribe values that change between
-releases):
+Every default value is exported from `pdb2reaction.defaults`:
 
 ```bash
 python -c "import pdb2reaction.defaults as d; print([n for n in dir(d) if n.endswith('_KW') or n.startswith('OUT_DIR')])"
