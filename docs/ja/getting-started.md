@@ -269,6 +269,7 @@ pdb2reaction -i TS_CANDIDATE.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' \
 | `--dft/--no-dft` | DFT 一点計算を実行 |
 | `--refine-path/--no-refine-path` | 再帰的 `path-search` を使用（デフォルト: `True`）。`False` で単一パス `path-opt` に切替 |
 | `--opt-mode grad\|hess` | `all` でのワークフロープリセット（`grad` -> LBFGS/Dimer、`hess` -> RFO/RS-I-RFO。**`all` の pre-opt スコープではデフォルト `grad`**）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨。**スコープによりデフォルトが異なる**: 単独の `tsopt --opt-mode` のデフォルトは `hess`。サブコマンドごとの完全なマッピングは {ref}`ja-opt-mode-semantics` を参照 |
+| `--opt-mode-post grad\|hess` | `all` 専用の TSOPT / post-IRC 端点最適化向けオーバーライド（デフォルト: `hess`）。未指定時は `--opt-mode` を明示した場合のみそれに追従し、それ以外は `hess` にフォールバック |
 | `--mep-mode gsm\|dmf` | MEP 手法（デフォルト: `gsm`）: Growing String Method または Direct Max Flux |
 | `--hessian-calc-mode Analytical\|FiniteDifference` | ヘシアン行列の計算モード（デフォルト: `FiniteDifference`）。詳細は {ref}`MLIP 計算機 <ja-hessian-evaluation>` を参照 |
 

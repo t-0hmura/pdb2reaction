@@ -269,6 +269,7 @@ Below are the most commonly used options across workflows.
 | `--dft/--no-dft` | Perform single-point DFT calculations. |
 | `--refine-path/--no-refine-path` | Use recursive `path-search` (default: `True`). Set to `False` for single-pass `path-opt`. |
 | `--opt-mode grad\|hess` | Workflow-level preset in `all` (`grad` -> LBFGS/Dimer, `hess` -> RFO/RS-I-RFO; **default `grad` at the `all` pre-opt scope**). For direct commands, prefer `opt --opt-mode grad|hess` and `tsopt --opt-mode grad|hess`. **Default differs by scope**: standalone `tsopt --opt-mode` defaults to `hess`. See {ref}`opt-mode-semantics` for the full per-subcommand mapping. |
+| `--opt-mode-post grad\|hess` | `all`-only override for TSOPT and post-IRC endpoint optimizations (default: `hess`). When unset, follows `--opt-mode` if that flag was given explicitly; otherwise falls back to `hess`. |
 | `--mep-mode gsm\|dmf` | MEP method (default: `gsm`): Growing String Method or Direct Max Flux. |
 | `--hessian-calc-mode Analytical\|FiniteDifference` | Hessian evaluation method (default: `FiniteDifference`). For Hessian evaluation modes, see {ref}`MLIP Calculator <hessian-evaluation>`. |
 
