@@ -298,7 +298,7 @@ repository or home directory (Claude Code, Cursor, etc.).
 ## Known limitations
 
 - **MACE and UMA cannot coexist** in the same environment due to an `e3nn` version conflict. Use separate conda environments.
-- **DFT single-point** (`pdb2reaction dft`) is practical up to ~500 atoms; larger systems may require fragmentation.
+- **DFT single-point** (`pdb2reaction dft`) is practical up to ~300 atoms; larger systems may require fragmentation.
 - **ORB backend** tends to converge transition states with extra small imaginary modes even when the reaction coordinate is correctly identified (i.e. mechanism recovery is usually fine but a clean single-saddle TS spectrum is not guaranteed). For quantitative studies that need a single-imaginary-mode TS, prefer UMA or MACE, or re-score ORB-converged geometries with DFT.
 - **CPU-only execution** is supported but 10-100x slower than GPU.
 
