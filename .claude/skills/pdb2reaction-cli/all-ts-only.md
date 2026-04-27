@@ -55,7 +55,7 @@ pdb2reaction freq  -i result_tsopt/final_geometry.xyz -o result_freq -b uma
 ts_candidate.{xyz,pdb,gjf}
        │
        ▼
-   [tsopt]            (Dimer or RS-I-RFO; default RS-I-RFO)
+   [tsopt]            (RS-I-RFO default; Dimer alternative)
        │
        ▼
    [irc]              (forward + backward; LBFGS endpoint refinement)

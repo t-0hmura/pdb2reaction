@@ -54,7 +54,7 @@ distance-restraint scans.
 pdb2reaction all -i 1.R.pdb \
     -c '...' -l '...' \
     --scan-lists '[("CS1 SAM 320","GPP 321 C7",1.60)]' \
-                 '[("GPP`321/H11","GLU`186/OE2",0.90)]' \
+                 '[("GPP 321 H11","GLU 186 OE2",0.90)]' \
     --tsopt --thermo \
     -o result_scan
 ```

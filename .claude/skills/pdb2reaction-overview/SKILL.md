@@ -19,7 +19,7 @@ Three things make it different from gluing together generic tools:
    cluster, sums residue/ligand formal charges, and places link hydrogens
    along severed covalent bonds without manual atom mapping.
 2. **GPU-accelerated pysisyphus fork (bundled).** Geometry optimizers, TS
-   searches (Dimer, RS-I-RFO), and IRC integrators keep the heavy tensor
+   searches (RS-I-RFO default, Dimer alternative), and IRC integrators keep the heavy tensor
    work on the same device as the MLIP — no CPU round-trip per step.
 3. **Recursive bond-change-driven path search.** When the reactant and
    product differ by more than one elementary step, the path search
@@ -65,7 +65,7 @@ PDB(s)
 [path-search]  MEP (GSM or DMF), recursive bond-change segmentation
   │            → seg_01, seg_03, ... (one per elementary step)
   ▼
-[tsopt]        TS refinement per segment (Dimer / RS-I-RFO)
+[tsopt]        TS refinement per segment (RS-I-RFO default; Dimer alternative)
   │
   ▼
 [irc]          forward/backward IRC, endpoint LBFGS optimization
@@ -126,7 +126,7 @@ pysisyphus forks and `e3nn` versions). Keep separate `conda env`s.
 | `pdb2reaction/all.py` | End-to-end orchestration for `pdb2reaction all` |
 | `pdb2reaction/extract.py` | PDB → cluster, residue table, link-H placement |
 | `pdb2reaction/path_search.py` | Recursive MEP search, bond-change segmentation |
-| `pdb2reaction/tsopt.py` | Dimer / RS-I-RFO transition-state search |
+| `pdb2reaction/tsopt.py` | RS-I-RFO (default) / Dimer (alternative) transition-state search |
 | `pdb2reaction/irc.py` | EulerPC IRC + endpoint optimization |
 | `pdb2reaction/freq.py` | Hessian, frequencies, QRRHO thermochemistry |
 | `pdb2reaction/dft.py` | PySCF / GPU4PySCF single-point driver |

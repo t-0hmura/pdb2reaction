@@ -2,10 +2,15 @@
 
 ## Purpose
 
-Transition-state optimization. Two algorithms: RS-I-RFO (full-Hessian,
-default, `--opt-mode hess`/`rsirfo`) and Hessian-Guided Dimer (lighter,
-`--opt-mode grad`/`dimer`). Use after `path-search` or `scan` to refine
-a HEI to a true first-order saddle, or as a standalone validator on an
+Transition-state optimization. The default algorithm is RS-I-RFO
+(full-Hessian; `--opt-mode hess`/`rsirfo`). Hessian-Guided Dimer
+(`--opt-mode grad`/`dimer`) is the **alternative** TS optimizer when
+RS-I-RFO struggles (e.g. unstable full-Hessian eigenstructure or very
+large clusters where full-Hessian recomputation is prohibitive); the
+dimer still uses an initial Hessian to set the search direction, then
+updates the lowest mode via dimer rotation rather than recomputing the
+full Hessian each cycle. Use after `path-search` or `scan` to refine a
+HEI to a true first-order saddle, or as a standalone validator on an
 externally-generated TS guess.
 
 ## Synopsis
@@ -40,7 +45,7 @@ pdb2reaction tsopt -i ts_guess.{pdb,xyz,gjf} \
 pdb2reaction tsopt -i hei.xyz -q 0 -m 1 -b uma -o result_tsopt
 ```
 
-### Dimer mode (lighter, no full Hessian)
+### Dimer mode (alternative when RS-I-RFO struggles)
 
 ```bash
 pdb2reaction tsopt -i hei.xyz -q 0 -m 1 \
@@ -83,11 +88,11 @@ print(d["structure_path"])              # final_geometry.xyz
 
 | Mode | Algorithm | When |
 |---|---|---|
-| `hess` / `rsirfo` (default) | RS-I-RFO with full Hessian | Robust for tricky / multi-imaginary-mode candidates; slower per cycle but converges in fewer cycles |
-| `grad` / `dimer` | Hessian-Guided Dimer | Cheaper per cycle; useful when full Hessian is too expensive (large clusters > 600 atoms with UMA-m) |
+| `hess` / `rsirfo` (default) | RS-I-RFO with full Hessian | Default. Robust for tricky / multi-imaginary-mode candidates; slower per cycle but converges in fewer cycles |
+| `grad` / `dimer` | Hessian-Guided Dimer | Alternative when RS-I-RFO fails to converge or full-Hessian recomputation is prohibitive (e.g. large clusters > 600 atoms with UMA-m). Dimer uses the initial Hessian to set the search direction and then rotates the dimer pair rather than recomputing the full Hessian each cycle. |
 
-Switch from `dimer` → `rsirfo` if Dimer fails to converge after ~50
-cycles.
+Try `rsirfo` first; switch to `dimer` only if RS-I-RFO does not
+converge or the full-Hessian cost becomes prohibitive.
 
 ## Validation: imaginary modes
 

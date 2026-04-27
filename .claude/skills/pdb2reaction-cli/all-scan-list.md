@@ -5,11 +5,9 @@
 You have **only the reactant** (no product structure) and you can
 articulate the chemistry as a sequence of staged distance scans —
 e.g. "first push the methyl from S of SAM to C7 of GPP, then snap H11
-to OE2 of GLU186". `pdb2reaction all` runs each stage in order, ties
+to OE2 of GLU 186". `pdb2reaction all` runs each stage in order, ties
 the resulting trajectories into an MEP, and the recursive bond-change
 segmentation slots in any intermediates it finds.
-
-This is how the bezA case study in the validated example was driven.
 
 ## Synopsis
 
@@ -18,7 +16,7 @@ pdb2reaction all -i 1.R.pdb \
     -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --scan-lists \
         '[("CS1 SAM 320","GPP 321 C7",1.60)]' \
-        '[("GPP`321/H11","GLU`186/OE2",0.90)]' \
+        '[("GPP 321 H11","GLU 186 OE2",0.90)]' \
     --tsopt --thermo \
     -o result_scan
 ```
@@ -40,8 +38,7 @@ tuples, where each tuple is `(atom_a, atom_b, target_distance_Å)`.
 
 | Form | Meaning |
 |---|---|
-| `"NAME RESNAME RESID"` | Atom by PDB name + residue name + residue index, separated by single spaces |
-| `"RESNAME\`RESID/NAME"` | Compact backtick/slash form; same fields, different separators |
+| `"NAME RESNAME RESID"` | Atom by PDB name + residue name + residue index, separated by single spaces (canonical) |
 | `"chainID:RESID:NAME"` | Chain-aware lookup |
 
 Multiple bonds per stage drive simultaneously. If you want them done
@@ -55,7 +52,7 @@ Examples:
 
 # Two stages, one bond each (stepwise mechanism):
 --scan-lists '[("CS1 SAM 320","GPP 321 C7",1.60)]' \
-             '[("GPP`321/H11","GLU`186/OE2",0.90)]'
+             '[("GPP 321 H11","GLU 186 OE2",0.90)]'
 ```
 
 ## Mode-specific flags
