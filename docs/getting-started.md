@@ -2,6 +2,8 @@
 
 ## Overview
 
+![pdb2reaction workflow overview](overview.png)
+
 `pdb2reaction` is a Python CLI toolkit for **modeling enzymatic reaction pathways from PDB structures** using machine-learning interatomic potentials (MLIPs).
 
 In many workflows, a **single command** like the one below is enough to generate a useful initial reaction path:
@@ -15,8 +17,6 @@ You can also run **Minimum Energy Path (MEP) search → Transition State (TS) op
 pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --thermo --dft
 ```
 ---
-
-![pdb2reaction workflow overview](overview.png)
 
 > **Working examples:** The [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) directory contains complete `all` workflow scripts for GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)), covering both multi-structure MEP and scan-based pipelines.
 
