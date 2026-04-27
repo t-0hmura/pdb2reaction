@@ -153,50 +153,11 @@ Extends `opt` with L-BFGS specifics: `keep_last`, `beta`, `gamma_mult`, `max_ste
 ### `rfo`
 Extends `opt` with RFOptimizer fields: trust-region sizing (`trust_radius`, `trust_min`, `trust_max`, `trust_update`), `max_energy_incr`, Hessian management (`hessian_update`, `hessian_init`, `hessian_recalc`, `hessian_recalc_adapt`, `small_eigval_thresh`), micro-iteration controls (`alpha0`, `max_micro_cycles`, `rfo_overlaps`), DIIS helpers (`gdiis`, `gediis`, thresholds, `gdiis_test_direction`), and `adapt_step_func`.
 
-### Shared configuration (common to both modes)
+### Opt-specific defaults
 
-```yaml
-geom:
- coord_type: cart # coordinate type: cartesian vs dlc internals
- freeze_atoms: [] # 1-based frozen atoms merged with CLI/link detection
-calc:
- charge: 0 # net charge (CLI/template override)
- spin: 1 # spin multiplicity 2S+1
- model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
- task_name: omol # UMA task name
- device: auto # MLIP device selection
- backend: uma # MLIP backend (uma | orb | mace | aimnet2)
- solvent: none # implicit solvent for xTB correction (e.g. water)
- solvent_model: alpb # xTB solvent model (alpb | cpcmx)
- max_neigh: null # maximum neighbors for graph construction
- radius: null # cutoff radius for neighbor search
- r_edges: false # store radial edges
- out_hess_torch: true # request torch-form Hessian
- freeze_atoms: null # calculator-level frozen atoms
- hessian_calc_mode: FiniteDifference # Hessian mode selection
- return_partial_hessian: true # partial Hessian (active-DOF only)
-opt:
- thresh: gau # convergence preset (Gaussian/Baker-style)
- max_cycles: 10000 # optimizer cycle cap
- print_every: 100 # logging stride
- min_step_norm: 1.0e-08 # minimum norm for step acceptance
- assert_min_step: true # stop if steps fall below threshold
- rms_force: null # explicit RMS force target
- rms_force_only: false # rely only on RMS force convergence
- max_force_only: false # rely only on max force convergence
- force_only: false # skip displacement checks
- converge_to_geom_rms_thresh: 0.05 # geom RMS threshold when converging to ref
- overachieve_factor: 0.0 # factor to tighten thresholds
- check_eigval_structure: false # validate Hessian eigenstructure
- line_search: true # enable line search
- energy_plateau: true # fallback convergence when the energy range flattens (new in v0.3.5)
- energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); plateau range threshold
- energy_plateau_window: 50 # number of most recent steps inspected for the plateau
- dump: false # dump trajectory/restart data
- dump_restart: false # dump restart checkpoints
- prefix: "" # filename prefix
- out_dir: ./result_opt/ # output directory
-```
+The `opt` subcommand sets `opt.out_dir` (and `lbfgs.out_dir` / `rfo.out_dir`) to `./result_opt/`.
+
+For the full YAML schema of `geom`, `calc`, `opt`, `lbfgs`, and `rfo`, see [YAML Reference](yaml-reference.md).
 
 ```{note}
 **Energy plateau fallback (new in v0.3.5).** When `energy_plateau: true`, the optimizer
@@ -206,89 +167,6 @@ is declared converged if the energy range (max − min) over the last
 the MLIP force noise floor (~4×10⁻⁴ au) exceeds the force-based convergence threshold
 (e.g. `baker` max_force = 3×10⁻⁴ au). The fallback is skipped for chain-of-states
 optimizers, which store per-image energy arrays.
-```
-
-### L-BFGS mode (`--opt-mode grad`)
-
-Used with `--opt-mode grad` (L-BFGS optimizer).
-
-```yaml
-lbfgs:
- thresh: gau # LBFGS convergence preset
- max_cycles: 10000 # iteration limit
- print_every: 100 # logging stride
- min_step_norm: 1.0e-08 # minimum accepted step norm
- assert_min_step: true # assert when steps stagnate
- rms_force: null # explicit RMS force target
- rms_force_only: false # rely only on RMS force convergence
- max_force_only: false # rely only on max force convergence
- force_only: false # skip displacement checks
- converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
- overachieve_factor: 0.0 # tighten thresholds
- check_eigval_structure: false # validate Hessian eigenstructure
- line_search: true # enable line search
- energy_plateau: true # fallback convergence when the energy range flattens
- energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); plateau range threshold
- energy_plateau_window: 50 # number of most recent steps inspected
- dump: false # dump trajectory/restart data
- dump_restart: false # dump restart checkpoints
- prefix: "" # filename prefix
- out_dir: ./result_opt/ # output directory
- keep_last: 7 # history size for LBFGS buffers
- beta: 1.0 # initial damping beta
- gamma_mult: false # multiplicative gamma update toggle
- max_step: 0.3 # maximum step length
- control_step: true # control step length adaptively
- double_damp: true # double damping safeguard
- mu_reg: null # regularization strength
- max_mu_reg_adaptions: 10 # cap on mu adaptations
-```
-
-### RFO mode (`--opt-mode hess`)
-
-Used with `--opt-mode hess` (RFO optimizer).
-
-```yaml
-rfo:
- thresh: gau # RFOptimizer convergence preset
- max_cycles: 10000 # iteration cap
- print_every: 100 # logging stride (matches shared opt defaults)
- min_step_norm: 1.0e-08 # minimum accepted step norm
- assert_min_step: true # assert when steps stagnate
- rms_force: null # explicit RMS force target
- rms_force_only: false # rely only on RMS force convergence
- max_force_only: false # rely only on max force convergence
- force_only: false # skip displacement checks
- converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
- overachieve_factor: 0.0 # tighten thresholds
- check_eigval_structure: false # validate Hessian eigenstructure
- line_search: true # enable line search
- energy_plateau: true # fallback convergence when the energy range flattens
- energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); plateau range threshold
- energy_plateau_window: 50 # number of most recent steps inspected
- dump: false # dump trajectory/restart data
- dump_restart: false # dump restart checkpoints
- prefix: "" # filename prefix
- out_dir: ./result_opt/ # output directory
- trust_radius: 0.10 # trust-region radius
- trust_update: true # enable trust-region updates
- trust_min: 0.0001 # minimum trust radius
- trust_max: 0.10 # maximum trust radius (bohr); reduced from 0.20 in v0.3.5
- max_energy_incr: null # allowed energy increase per step
- hessian_update: bfgs # Hessian update scheme
- hessian_init: calc # Hessian initialization source
- hessian_recalc: 500 # rebuild Hessian every N steps
- hessian_recalc_adapt: null # adaptive Hessian rebuild factor
- small_eigval_thresh: 1.0e-08 # eigenvalue threshold for stability
- alpha0: 1.0 # initial micro step
- max_micro_cycles: 50 # micro-iteration limit
- rfo_overlaps: false # enable RFO overlaps
- gediis: false # enable GEDIIS
- gdiis: true # enable GDIIS
- gdiis_thresh: 0.0025 # GDIIS acceptance threshold
- gediis_thresh: 0.01 # GEDIIS acceptance threshold
- gdiis_test_direction: true # test descent direction before DIIS
- adapt_step_func: true # adaptive step scaling toggle
 ```
 
 ---

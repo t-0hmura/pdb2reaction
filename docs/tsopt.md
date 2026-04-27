@@ -195,47 +195,14 @@ Shared sections reuse
 
 ### Shared configuration (common to both modes)
 
+`geom` and `calc` keys are unchanged from the canonical definitions; see [`geom`](yaml-reference.md#geom) and [`calc`](yaml-reference.md#calc) in the YAML Reference.
+
+The `opt` block uses the same keys as [`opt`](yaml-reference.md#opt), with these `tsopt`-specific defaults:
+
 ```yaml
-geom:
- coord_type: cart # coordinate type: cartesian vs dlc internals
- freeze_atoms: [] # 1-based frozen atoms merged with CLI/link detection
-calc:
- charge: 0 # total charge (CLI/template override)
- spin: 1 # spin multiplicity 2S+1
- model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
- task_name: omol # UMA task name
- device: auto # MLIP device selection
- backend: uma # MLIP backend (uma | orb | mace | aimnet2)
- solvent: none # implicit solvent for xTB correction (e.g. water)
- solvent_model: alpb # xTB solvent model (alpb | cpcmx)
- max_neigh: null # maximum neighbors for graph construction
- radius: null # cutoff radius for neighbor search
- r_edges: false # store radial edges
- out_hess_torch: true # request torch-form Hessian
- freeze_atoms: null # calculator-level frozen atoms
- hessian_calc_mode: FiniteDifference # Hessian mode selection
- return_partial_hessian: true # partial Hessian (active-DOF only)
 opt:
- thresh: baker # convergence preset (Gaussian/Baker-style)
- max_cycles: 10000 # optimizer cycle cap
- print_every: 100 # logging stride
- min_step_norm: 1.0e-08 # minimum norm for step acceptance
- assert_min_step: true # stop if steps fall below threshold
- rms_force: null # explicit RMS force target
- rms_force_only: false # rely only on RMS force convergence
- max_force_only: false # rely only on max force convergence
- force_only: false # skip displacement checks
- converge_to_geom_rms_thresh: 0.05 # geom RMS threshold when converging to ref
- overachieve_factor: 0.0 # factor to tighten thresholds
- check_eigval_structure: false # validate Hessian eigenstructure
- line_search: true # enable line search
- energy_plateau: true # fallback convergence when the energy range flattens (new in v0.3.5)
- energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); plateau range threshold
- energy_plateau_window: 50 # number of most recent steps inspected
- dump: false # dump trajectory/restart data
- dump_restart: false # dump restart checkpoints
- prefix: "" # filename prefix
- out_dir: ./result_tsopt/ # output directory
+ thresh: baker # tsopt default (vs. `gau` for `opt`)
+ out_dir: ./result_tsopt/ # tsopt default (vs. `./result_opt/` for `opt`)
 ```
 
 ```{note}
@@ -253,112 +220,28 @@ force criterion unreachable even though the energy has plainly flattened. Set
 
 Used with `--opt-mode grad` (Hessian Guided Dimer + LBFGS translation).
 
+The full `hessian_dimer` block (including the inner `dimer:` and its nested `lbfgs:`) is documented in [`hessian_dimer`](yaml-reference.md#hessian_dimer). The inner `lbfgs:` inherits from the [`lbfgs`](yaml-reference.md#lbfgs) section, with this `tsopt`-specific override:
+
 ```yaml
 hessian_dimer:
- thresh_loose: gau_loose # loose convergence preset
- thresh: baker # main convergence preset
- update_interval_hessian: 500 # Hessian rebuild cadence
- neg_freq_thresh_cm: 5.0 # negative frequency threshold (cm⁻¹)
- flatten_amp_ang: 0.1 # flattening amplitude (Å)
- flatten_max_iter: 50 # flattening iteration cap (disabled when --no-flatten)
- flatten_sep_cutoff: 0.0 # minimum distance between representative atoms (Å)
- flatten_k: 10 # representative atoms sampled per mode
- flatten_loop_bofill: false # Bofill update for flatten displacements
- mem: 100000 # memory limit for solver
- device: auto # device selection for eigensolver
- root: 0 # targeted TS root index
  dimer:
-   length: 0.0189 # dimer separation (bohr)
-   rotation_max_cycles: 15 # max rotation iterations
-   rotation_method: fourier # rotation optimizer method
-   rotation_thresh: 0.0001 # rotation convergence threshold
-   rotation_tol: 1 # rotation tolerance factor
-   rotation_max_element: 0.001 # max rotation matrix element
-   rotation_interpolate: true # interpolate rotation steps
-   rotation_disable: false # disable rotations entirely
-   rotation_disable_pos_curv: true # disable when positive curvature detected
-   rotation_remove_trans: true # remove translational components
-   trans_force_f_perp: true # project forces perpendicular to translation
-   bonds: null # bond list for constraints
-   N_hessian: null # Hessian size override
-   bias_rotation: false # bias rotational search
-   bias_translation: false # bias translational search
-   bias_gaussian_dot: 0.1 # Gaussian bias dot product
-   seed: null # RNG seed for rotations
-   write_orientations: true # write rotation orientations
-   forward_hessian: true # propagate Hessian forward
    lbfgs:
-     thresh: baker # LBFGS convergence preset
-     max_cycles: 10000 # iteration limit
-     print_every: 100 # logging stride
-     min_step_norm: 1.0e-08 # minimum accepted step norm
-     assert_min_step: true # assert when steps stagnate
-     rms_force: null # explicit RMS force target
-     rms_force_only: false # rely only on RMS force convergence
-     max_force_only: false # rely only on max force convergence
-     force_only: false # skip displacement checks
-     converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
-     overachieve_factor: 0.0 # tighten thresholds
-     check_eigval_structure: false # validate Hessian eigenstructure
-     line_search: true # enable line search
-     dump: false # dump trajectory/restart data
-     dump_restart: false # dump restart checkpoints
-     prefix: "" # filename prefix
-     out_dir: ./result_tsopt/ # output directory (defaults.py default is ./result_opt/, overridden to ./result_tsopt/ by tsopt at runtime)
-     keep_last: 7 # history size for LBFGS buffers
-     beta: 1.0 # initial damping beta
-     gamma_mult: false # multiplicative gamma update toggle
-     max_step: 0.3 # maximum step length
-     control_step: true # control step length adaptively
-     double_damp: true # double damping safeguard
-     mu_reg: null # regularization strength
-     max_mu_reg_adaptions: 10 # cap on mu adaptations
+     out_dir: ./result_tsopt/ # tsopt override (defaults.py value is ./result_opt/)
 ```
+
+Recall that `flatten_max_iter` is forced to `0` by the CLI initializer unless `--flatten` is passed (see {ref}`flatten-precedence-caveat` above).
 
 ### RS-I-RFO mode (`--opt-mode hess`, default)
 
 Used with `--opt-mode hess` (RS-I-RFO, the default).
 
+The full `rsirfo` block is documented in [`rsirfo`](yaml-reference.md#rsirfo) (which also inherits trust-region and Hessian-update keys from [`rfo`](yaml-reference.md#rfo)). The `tsopt`-specific overrides are:
+
 ```yaml
 rsirfo:
- thresh: baker # RS-IRFO convergence preset
- max_cycles: 10000 # iteration cap
- trust_radius: 0.10 # trust-region radius
- trust_update: true # enable trust-region updates
- trust_min: 0.0001 # minimum trust radius
  trust_max: 0.10 # maximum trust radius (bohr); reduced from 0.20 in v0.3.5 to damp near-saddle oscillations on large systems
- print_every: 100 # logging stride
- min_step_norm: 1.0e-08 # minimum accepted step norm
- assert_min_step: true # assert when steps stagnate
- rms_force: null # explicit RMS force target
- rms_force_only: false # rely only on RMS force convergence
- max_force_only: false # rely only on max force convergence
- force_only: false # skip displacement checks
- converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
- overachieve_factor: 0.0 # tighten thresholds
- check_eigval_structure: false # validate Hessian eigenstructure
- line_search: true # enable line search
- energy_plateau: true # fallback convergence when the energy range flattens
- energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); plateau range threshold
- energy_plateau_window: 50 # number of most recent steps inspected
- dump: false # dump trajectory/restart data
- dump_restart: false # dump restart checkpoints
- prefix: "" # filename prefix
- out_dir: ./result_tsopt/ # output directory (defaults.py default is ./result_opt/, overridden to ./result_tsopt/ by tsopt at runtime)
- roots: [0] # target root indices
- hessian_ref: null # reference Hessian
- rx_modes: null # reaction-mode definitions for projection
- prim_coord: null # primary coordinates to monitor
- rx_coords: null # reaction coordinates to monitor
- hessian_update: bofill # Hessian update scheme override
- hessian_recalc: 500 # Rebuild exact Hessian every N macro steps (inherited from rfo); lower to 50-200 if TS convergence is slow (see tip below)
- hessian_recalc_reset: true # reset recalc counter after exact Hessian
- max_micro_cycles: 50 # micro-iterations per macro cycle
- augment_bonds: false # augment reaction path based on bond analysis
- min_line_search: true # enforce minimum line-search step
- max_line_search: true # enforce maximum line-search step
- assert_neg_eigval: false # require a negative eigenvalue at convergence
- track_mode_by_overlap: false # track TS mode via eigenvector overlap between steps
+ out_dir: ./result_tsopt/ # tsopt override (defaults.py value is ./result_opt/)
+ hessian_recalc: 500 # rebuild exact Hessian every N macro steps; lower to 50-200 if TS convergence is slow (see tip below)
 ```
 
 ```{tip}

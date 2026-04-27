@@ -135,166 +135,32 @@ Console output echoes the resolved YAML blocks and prints cycle-by-cycle MEP pro
 See {ref}`CLI Conventions: Configuration precedence <configuration-precedence>` for the full resolution order.
 
 ```{note}
-**Reference duplication.** The YAML keys for `geom`, `calc`, `opt.lbfgs`, and `opt.rfo` listed below mirror the canonical definitions in [YAML Reference](yaml-reference.md). When the two pages disagree, the canonical [YAML Reference](yaml-reference.md) entries (and `pdb2reaction/defaults.py`) take precedence; the appendix on this page is reproduced inline only for `path-opt`-specific defaults (e.g. `out_dir`) and convenience lookup.
+**Reference duplication.** The YAML keys for `geom`, `calc`, `gs`, `dmf`, `stopt`, `opt.lbfgs`, and `opt.rfo` are defined canonically in [YAML Reference](yaml-reference.md). When the two pages disagree, the canonical [YAML Reference](yaml-reference.md) entries (and `pdb2reaction/defaults.py`) take precedence; only `path-opt`-specific overrides are reproduced below.
 ```
 
-### `geom`
-- Same keys as [`opt`](opt.md) (`coord_type`, `freeze_atoms`, etc.); `--freeze-links` augments `freeze_atoms` for PDBs.
+### YAML sections used by `path-opt`
 
-### `calc`
-- MLIP backend setup identical to the single-structure optimization (`model`, `device`, neighbor radii, Hessian options, etc.).
+See [YAML Reference](yaml-reference.md) for full key listings:
 
-### `dmf`
-- Direct Max Flux + (C)FB-ENM interpolation controls. Keys mirror the CLI-accessible `dmf` block:
+- [`geom`](yaml-reference.md#geom) — `--freeze-links` augments `freeze_atoms` for PDB inputs.
+- [`calc`](yaml-reference.md#calc) — MLIP backend setup.
+- [`gs`](yaml-reference.md#gs) — Growing String representation (GSM mode).
+- [`dmf`](yaml-reference.md#dmf) — Direct Max Flux + (C)FB-ENM interpolation (DMF mode).
+- [`stopt`](yaml-reference.md#stopt) — StringOptimizer settings.
+- [`opt.lbfgs`](yaml-reference.md#lbfgs) / [`opt.rfo`](yaml-reference.md#rfo) — Endpoint single-structure preoptimization. YAML overrides CLI `--preopt-max-cycles`.
 
-### `gs`
-- Controls the Growing String representation: `max_nodes`, `perp_thresh`, reparameterization cadence (`reparam_check`, `reparam_every`, `reparam_every_full`, `param`), `max_micro_cycles`, DLC resets, climb toggles/thresholds, and optional scheduler hooks.
+### `path-opt`-specific defaults
 
-### `stopt`
-- StringOptimizer settings: type labels, `thresh`, `stop_in_when_full`, `scale_step`, `max_cycles`, dumping flags, `reparam_thresh`, `coord_diff_thresh`, `out_dir`, and `print_every`.
+The following keys differ from the canonical defaults when invoked via `path-opt`:
 
-### `opt.lbfgs` / `opt.rfo`
-- Single-structure preoptimization settings for endpoints. Keys mirror the `lbfgs`/`rfo` sections in [YAML Reference](yaml-reference.md). YAML overrides CLI `--preopt-max-cycles`.
-
-### Example YAML (default value)
 ```yaml
-geom:
- coord_type: cart # coordinate type: cartesian vs dlc internals
- freeze_atoms: [] # 1-based frozen atoms merged with CLI/link detection
-calc:
- charge: 0 # total charge (CLI/template override)
- spin: 1 # spin multiplicity 2S+1
- model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
- task_name: omol # UMA task name
- device: auto # MLIP device selection
- max_neigh: null # maximum neighbors for graph construction
- radius: null # cutoff radius for neighbor search
- r_edges: false # store radial edges
- out_hess_torch: true # request torch-form Hessian
- freeze_atoms: null # calculator-level frozen atoms
- hessian_calc_mode: FiniteDifference # Hessian mode selection
- return_partial_hessian: true  # partial Hessian over active DOFs
-gs:
- fix_first: true # keep the first endpoint fixed during optimization
- fix_last: true # keep the last endpoint fixed during optimization
- max_nodes: 20 # maximum string nodes
- perp_thresh: 0.005 # perpendicular displacement threshold
- reparam_check: rms # reparametrization check metric
- reparam_every: 1 # reparametrization stride
- reparam_every_full: 1 # full reparametrization stride
- param: equi # parametrization scheme
- max_micro_cycles: 10 # micro-iteration limit
- reset_dlc: true # rebuild delocalized coordinates each step
- climb: true # enable climbing image
- climb_rms: 0.0005 # climbing RMS threshold
- climb_lanczos: true # Lanczos refinement for climbing
- climb_lanczos_rms: 0.0005 # Lanczos RMS threshold
- climb_fixed: false # keep climbing image fixed
- scheduler: null # optional scheduler backend
 stopt:
- type: string # optimizer type label
- thresh: gau_loose # StringOptimizer convergence preset
- stop_in_when_full: 300 # early stop threshold when string is full
- align: false # alignment toggle (kept off; external Kabsch used instead)
- scale_step: global # step scaling mode
- max_cycles: 300 # maximum optimization cycles
- dump: false # dump trajectory/restart data
- dump_restart: false # dump restart checkpoints
- reparam_thresh: 0.0 # reparametrization threshold
- coord_diff_thresh: 0.0 # coordinate difference threshold
- out_dir: ./result_path_opt/ # output directory
- print_every: 10 # logging stride
-dmf:
- max_cycles: 300 # maximum DMF/IPOPT iterations
- correlated: true # correlated DMF propagation
- sequential: true # sequential DMF execution
- fbenm_only_endpoints: false # run FB-ENM beyond endpoints
- fbenm_options:
-   delta_scale: 0.2 # FB-ENM displacement scaling
-   bond_scale: 1.25 # bond cutoff scaling
-   fix_planes: true # enforce planar constraints
- cfbenm_options:
-   bond_scale: 1.25 # CFB-ENM bond cutoff scaling
-   corr0_scale: 1.1 # correlation scale for corr0
-   corr1_scale: 1.5 # correlation scale for corr1
-   corr2_scale: 1.6 # correlation scale for corr2
-   eps: 0.05 # correlation epsilon
-   pivotal: true # pivotal residue handling
-   single: true # single-atom pivots
-   remove_fourmembered: true # prune four-membered rings
- dmf_options:
-   remove_rotation_and_translation: false # keep rigid-body motions
-   mass_weighted: false # toggle mass weighting
-   parallel: false # enable parallel DMF
-   eps_vel: 0.01 # velocity tolerance
-   eps_rot: 0.01 # rotational tolerance
-   beta: 10.0 # beta parameter for DMF
-   update_teval: false # update transition evaluation
-   k_fix: 300.0 # harmonic constant for restraints
+ out_dir: ./result_path_opt/ # output directory (path-opt default)
 opt:
  lbfgs:
-   thresh: gau # LBFGS convergence preset
-   max_cycles: 10000 # iteration limit
-   print_every: 100 # logging stride
-   min_step_norm: 1.0e-08 # minimum accepted step norm
-   assert_min_step: true # assert when steps stagnate
-   rms_force: null # explicit RMS force target
-   rms_force_only: false # rely only on RMS force convergence
-   max_force_only: false # rely only on max force convergence
-   force_only: false # skip displacement checks
-   converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
-   overachieve_factor: 0.0 # tighten thresholds
-   check_eigval_structure: false # validate Hessian eigenstructure
-   line_search: true # enable line search
-   dump: false # dump trajectory/restart data
-   dump_restart: false # dump restart checkpoints
-   prefix: "" # filename prefix
-   out_dir: ./result_path_opt/ # output directory
-   keep_last: 7 # history size for LBFGS buffers
-   beta: 1.0 # initial damping beta
-   gamma_mult: false # multiplicative gamma update toggle
-   max_step: 0.3 # maximum step length
-   control_step: true # control step length adaptively
-   double_damp: true # double damping safeguard
-   mu_reg: null # regularization strength
-   max_mu_reg_adaptions: 10 # cap on mu adaptations
+   out_dir: ./result_path_opt/ # output directory (path-opt default)
  rfo:
-   thresh: gau # RFOptimizer convergence preset
-   max_cycles: 10000 # iteration cap
-   print_every: 100 # logging stride
-   min_step_norm: 1.0e-08 # minimum accepted step norm
-   assert_min_step: true # assert when steps stagnate
-   rms_force: null # explicit RMS force target
-   rms_force_only: false # rely only on RMS force convergence
-   max_force_only: false # rely only on max force convergence
-   force_only: false # skip displacement checks
-   converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
-   overachieve_factor: 0.0 # tighten thresholds
-   check_eigval_structure: false # validate Hessian eigenstructure
-   line_search: true # enable line search
-   dump: false # dump trajectory/restart data
-   dump_restart: false # dump restart checkpoints
-   prefix: "" # filename prefix
-   out_dir: ./result_path_opt/ # output directory
-   trust_radius: 0.10 # trust-region radius
-   trust_update: true # enable trust-region updates
-   trust_min: 0.0001 # minimum trust radius
-   trust_max: 0.10 # maximum trust radius
-   max_energy_incr: null # allowed energy increase per step
-   hessian_update: bfgs # Hessian update scheme
-   hessian_init: calc # Hessian initialization source
-   hessian_recalc: 500 # rebuild Hessian every N steps
-   hessian_recalc_adapt: null # adaptive Hessian rebuild factor
-   small_eigval_thresh: 1.0e-08 # eigenvalue threshold for stability
-   alpha0: 1.0 # initial micro step
-   max_micro_cycles: 50 # micro-iteration limit
-   rfo_overlaps: false # enable RFO overlaps
-   gediis: false # enable GEDIIS
-   gdiis: true # enable GDIIS
-   gdiis_thresh: 0.0025 # GDIIS acceptance threshold
-   gediis_thresh: 0.01 # GEDIIS acceptance threshold
-   gdiis_test_direction: true # test descent direction before DIIS
-   adapt_step_func: true # adaptive step scaling toggle
+   out_dir: ./result_path_opt/ # output directory (path-opt default)
 ```
 
 ---

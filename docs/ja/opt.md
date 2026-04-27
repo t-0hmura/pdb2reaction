@@ -152,50 +152,11 @@ LBFGSとRFOの両方で使用される共有オプティマイザー制御:
 `opt` を RFOptimizer 固有の設定で拡張: 信頼領域サイジング（`trust_radius`、`trust_min`、`trust_max`、`trust_update`）、`max_energy_incr`、ヘシアン管理（`hessian_update`、`hessian_init`、`hessian_recalc`、`hessian_recalc_adapt`、`small_eigval_thresh`）、マイクロイテレーション制御（`alpha0`、`max_micro_cycles`、`rfo_overlaps`）、DIISヘルパー（`gdiis`、`gediis`、閾値、`gdiis_test_direction`）、および `adapt_step_func`
 
 
-### 共通設定（両モード共通）
+### opt 固有のデフォルト
 
-```yaml
-geom:
- coord_type: cart # coordinate type: cartesian vs dlc internals
- freeze_atoms: [] # 1-based frozen atoms merged with CLI/link detection
-calc:
- charge: 0 # total charge (CLI/template override)
- spin: 1 # spin multiplicity 2S+1
- model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
- task_name: omol # UMA task name
- device: auto # MLIP デバイス選択
- backend: uma # MLIP バックエンド (uma | orb | mace | aimnet2)
- solvent: none # xTB 暗黙溶媒（例: water）
- solvent_model: alpb # xTB 溶媒モデル (alpb | cpcmx)
- max_neigh: null # maximum neighbors for graph construction
- radius: null # cutoff radius for neighbor search
- r_edges: false # store radial edges
- out_hess_torch: true # request torch-form Hessian
- freeze_atoms: null # calculator-level frozen atoms
- hessian_calc_mode: FiniteDifference # Hessian mode selection
- return_partial_hessian: true # partial Hessian (active-DOF only)
-opt:
- thresh: gau # convergence preset (Gaussian/Baker-style)
- max_cycles: 10000 # optimizer cycle cap
- print_every: 100 # logging stride
- min_step_norm: 1.0e-08 # minimum norm for step acceptance
- assert_min_step: true # stop if steps fall below threshold
- rms_force: null # explicit RMS force target
- rms_force_only: false # rely only on RMS force convergence
- max_force_only: false # rely only on max force convergence
- force_only: false # skip displacement checks
- converge_to_geom_rms_thresh: 0.05 # geom RMS threshold when converging to ref
- overachieve_factor: 0.0 # factor to tighten thresholds
- check_eigval_structure: false # validate Hessian eigenstructure
- line_search: true # enable line search
- energy_plateau: true # エネルギーがフラット化した場合のフォールバック収束 (v0.3.5 新機能)
- energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); プラトー判定のレンジ閾値
- energy_plateau_window: 50 # プラトー判定に用いる直近ステップ数
- dump: false # dump trajectory/restart data
- dump_restart: false # dump restart checkpoints
- prefix: "" # filename prefix
- out_dir: ./result_opt/ # output directory
-```
+`opt` サブコマンドは `opt.out_dir`（および `lbfgs.out_dir` / `rfo.out_dir`）を `./result_opt/` に設定します。
+
+`geom`、`calc`、`opt`、`lbfgs`、`rfo` の完全な YAML スキーマは [YAML リファレンス](yaml-reference.md) を参照してください。
 
 ```{note}
 **エネルギープラトーによるフォールバック収束 (v0.3.5 新機能)。** `energy_plateau: true`
@@ -205,89 +166,6 @@ opt:
 （~4×10⁻⁴ au）が力ベースの収束閾値（例: `baker` max_force = 3×10⁻⁴ au）を上回る
 場合でも、無駄にサイクルを消費するのを防ぎます。chain-of-states オプティマイザー
 （イメージごとのエネルギー配列を保持するもの）ではこのフォールバックはスキップされます。
-```
-
-### L-BFGS モード（`--opt-mode grad`）
-
-`--opt-mode grad`（L-BFGS）で使用します。
-
-```yaml
-lbfgs:
- thresh: gau # LBFGS convergence preset
- max_cycles: 10000 # iteration limit
- print_every: 100 # logging stride
- min_step_norm: 1.0e-08 # minimum accepted step norm
- assert_min_step: true # assert when steps stagnate
- rms_force: null # explicit RMS force target
- rms_force_only: false # rely only on RMS force convergence
- max_force_only: false # rely only on max force convergence
- force_only: false # skip displacement checks
- converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
- overachieve_factor: 0.0 # tighten thresholds
- check_eigval_structure: false # validate Hessian eigenstructure
- line_search: true # enable line search
- energy_plateau: true # エネルギーがフラット化した場合のフォールバック収束
- energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); プラトー判定のレンジ閾値
- energy_plateau_window: 50 # プラトー判定に用いる直近ステップ数
- dump: false # dump trajectory/restart data
- dump_restart: false # dump restart checkpoints
- prefix: "" # filename prefix
- out_dir: ./result_opt/ # output directory
- keep_last: 7 # history size for LBFGS buffers
- beta: 1.0 # initial damping beta
- gamma_mult: false # multiplicative gamma update toggle
- max_step: 0.3 # maximum step length
- control_step: true # control step length adaptively
- double_damp: true # double damping safeguard
- mu_reg: null # regularization strength
- max_mu_reg_adaptions: 10 # cap on mu adaptations
-```
-
-### RFO モード（`--opt-mode hess`）
-
-`--opt-mode hess`（RFO）で使用します。
-
-```yaml
-rfo:
- thresh: gau # RFOptimizer convergence preset
- max_cycles: 10000 # iteration cap
- print_every: 100 # logging stride (matches shared opt defaults)
- min_step_norm: 1.0e-08 # minimum accepted step norm
- assert_min_step: true # assert when steps stagnate
- rms_force: null # explicit RMS force target
- rms_force_only: false # rely only on RMS force convergence
- max_force_only: false # rely only on max force convergence
- force_only: false # skip displacement checks
- converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
- overachieve_factor: 0.0 # tighten thresholds
- check_eigval_structure: false # validate Hessian eigenstructure
- line_search: true # enable line search
- energy_plateau: true # エネルギーがフラット化した場合のフォールバック収束
- energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); プラトー判定のレンジ閾値
- energy_plateau_window: 50 # プラトー判定に用いる直近ステップ数
- dump: false # dump trajectory/restart data
- dump_restart: false # dump restart checkpoints
- prefix: "" # filename prefix
- out_dir: ./result_opt/ # output directory
- trust_radius: 0.10 # trust-region radius
- trust_update: true # enable trust-region updates
- trust_min: 0.0001 # minimum trust radius
- trust_max: 0.10 # maximum trust radius (bohr); v0.3.5 で 0.20 から 0.10 に変更
- max_energy_incr: null # allowed energy increase per step
- hessian_update: bfgs # Hessian update scheme
- hessian_init: calc # Hessian initialization source
- hessian_recalc: 500 # rebuild Hessian every N steps
- hessian_recalc_adapt: null # adaptive Hessian rebuild factor
- small_eigval_thresh: 1.0e-08 # eigenvalue threshold for stability
- alpha0: 1.0 # initial micro step
- max_micro_cycles: 50 # micro-iteration limit
- rfo_overlaps: false # enable RFO overlaps
- gediis: false # enable GEDIIS
- gdiis: true # enable GDIIS
- gdiis_thresh: 0.0025 # GDIIS acceptance threshold
- gediis_thresh: 0.01 # GEDIIS acceptance threshold
- gdiis_test_direction: true # test descent direction before DIIS
- adapt_step_func: true # adaptive step scaling toggle
 ```
 
 ---

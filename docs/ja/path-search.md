@@ -171,145 +171,23 @@ YAML ルートはマッピングでなければなりません。共通セクシ
 
 `dmf` は `--mep-mode dmf` 選択時に適用される Direct Max Flux + (C)FB-ENM の設定です。デフォルト値は `DMF_KW` を踏襲し、実行ごとに上書きできます。
 
-### YAML例（デフォルト値）
+### `path-search` 固有の上書き
+
+`geom`, `calc`, `gs`, `dmf`, `stopt`, `opt.lbfgs`, `opt.rfo` の全キーは [YAML リファレンス](yaml-reference.md) を参照してください。以下のデフォルトは `out_dir` のみが各セクションの正準デフォルトと異なり、`./result_path_search/` を指します:
+
 ```yaml
-geom:
- coord_type: cart # coordinate type: cartesian vs dlc internals
- freeze_atoms: [] # 1-based frozen atoms merged with CLI/link detection
-calc:
- charge: 0 # total charge (CLI/template override)
- spin: 1 # spin multiplicity 2S+1
- model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
- task_name: omol # UMA task name
- device: auto # MLIP device selection
- max_neigh: null # maximum neighbors for graph construction
- radius: null # cutoff radius for neighbor search
- r_edges: false # store radial edges
- out_hess_torch: true # request torch-form Hessian
- freeze_atoms: null # calculator-level frozen atoms
- hessian_calc_mode: FiniteDifference # Hessian mode selection
- return_partial_hessian: true  # partial Hessian over active DOFs
-gs:
- fix_first: true # keep the first endpoint fixed during optimization
- fix_last: true # keep the last endpoint fixed during optimization
- max_nodes: 20 # maximum string nodes
- perp_thresh: 0.005 # perpendicular displacement threshold
- reparam_check: rms # reparametrization check metric
- reparam_every: 1 # reparametrization stride
- reparam_every_full: 1 # full reparametrization stride
- param: equi # parametrization scheme
- max_micro_cycles: 10 # micro-iteration limit
- reset_dlc: true # rebuild delocalized coordinates each step
- climb: true # enable climbing image
- climb_rms: 0.0005 # climbing RMS threshold
- climb_lanczos: true # Lanczos refinement for climbing
- climb_lanczos_rms: 0.0005 # Lanczos RMS threshold
- climb_fixed: false # keep climbing image fixed
- scheduler: null # optional scheduler backend
 stopt:
- type: string # optimizer type label
- thresh: gau_loose # StringOptimizer convergence preset
- stop_in_when_full: 300 # early stop threshold when string is full
- align: false # alignment toggle (kept off)
- scale_step: global # step scaling mode
- max_cycles: 300 # maximum optimization cycles
- dump: false # dump trajectory/restart data
- dump_restart: false # dump restart checkpoints
- reparam_thresh: 0.0 # reparametrization threshold
- coord_diff_thresh: 0.0 # coordinate difference threshold
- out_dir: ./result_path_search/ # output directory
- print_every: 10 # logging stride
-dmf:
- max_cycles: 300 # maximum DMF/IPOPT iterations
- correlated: true # correlated DMF propagation
- sequential: true # sequential DMF execution
- fbenm_only_endpoints: false # run FB-ENM beyond endpoints
- fbenm_options:
-   delta_scale: 0.2 # FB-ENM displacement scaling
-   bond_scale: 1.25 # bond cutoff scaling
-   fix_planes: true # enforce planar constraints
- cfbenm_options:
-   bond_scale: 1.25 # CFB-ENM bond cutoff scaling
-   corr0_scale: 1.1 # correlation scale for corr0
-   corr1_scale: 1.5 # correlation scale for corr1
-   corr2_scale: 1.6 # correlation scale for corr2
-   eps: 0.05 # correlation epsilon
-   pivotal: true # pivotal residue handling
-   single: true # single-atom pivots
-   remove_fourmembered: true # prune four-membered rings
- dmf_options:
-   remove_rotation_and_translation: false # keep rigid-body motions
-   mass_weighted: false # toggle mass weighting
-   parallel: false # enable parallel DMF
-   eps_vel: 0.01 # velocity tolerance
-   eps_rot: 0.01 # rotational tolerance
-   beta: 10.0 # beta parameter for DMF
-   update_teval: false # update transition evaluation
-   k_fix: 300.0 # harmonic constant for restraints
+ out_dir: ./result_path_search/ # path-search 上書き（正準デフォルト: ./result_path_opt/）
 opt:
  lbfgs:
-   thresh: gau # LBFGS convergence preset
-   max_cycles: 10000 # iteration limit
-   print_every: 100 # logging stride
-   min_step_norm: 1.0e-08 # minimum accepted step norm
-   assert_min_step: true # assert when steps stagnate
-   rms_force: null # explicit RMS force target
-   rms_force_only: false # rely only on RMS force convergence
-   max_force_only: false # rely only on max force convergence
-   force_only: false # skip displacement checks
-   converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
-   overachieve_factor: 0.0 # tighten thresholds
-   check_eigval_structure: false # validate Hessian eigenstructure
-   line_search: true # enable line search
-   dump: false # dump trajectory/restart data
-   dump_restart: false # dump restart checkpoints
-   prefix: "" # filename prefix
-   out_dir: ./result_path_search/ # output directory
-   keep_last: 7 # history size for LBFGS buffers
-   beta: 1.0 # initial damping beta
-   gamma_mult: false # multiplicative gamma update toggle
-   max_step: 0.3 # maximum step length
-   control_step: true # control step length adaptively
-   double_damp: true # double damping safeguard
-   mu_reg: null # regularization strength
-   max_mu_reg_adaptions: 10 # cap on mu adaptations
+   out_dir: ./result_path_search/ # path-search 上書き（正準デフォルト: ./result_opt/）
  rfo:
-   thresh: gau # RFOptimizer convergence preset
-   max_cycles: 10000 # iteration cap
-   print_every: 100 # logging stride
-   min_step_norm: 1.0e-08 # minimum accepted step norm
-   assert_min_step: true # assert when steps stagnate
-   rms_force: null # explicit RMS force target
-   rms_force_only: false # rely only on RMS force convergence
-   max_force_only: false # rely only on max force convergence
-   force_only: false # skip displacement checks
-   converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
-   overachieve_factor: 0.0 # tighten thresholds
-   check_eigval_structure: false # validate Hessian eigenstructure
-   line_search: true # enable line search
-   dump: false # dump trajectory/restart data
-   dump_restart: false # dump restart checkpoints
-   prefix: "" # filename prefix
-   out_dir: ./result_path_search/ # output directory
-   trust_radius: 0.10 # trust-region radius
-   trust_update: true # enable trust-region updates
-   trust_min: 0.0001 # minimum trust radius
-   trust_max: 0.10 # maximum trust radius
-   max_energy_incr: null # allowed energy increase per step
-   hessian_update: bfgs # Hessian update scheme
-   hessian_init: calc # Hessian initialization source
-   hessian_recalc: 500 # rebuild Hessian every N steps
-   hessian_recalc_adapt: null # adaptive Hessian rebuild factor
-   small_eigval_thresh: 1.0e-08 # eigenvalue threshold for stability
-   alpha0: 1.0 # initial micro step
-   max_micro_cycles: 50 # micro-iteration limit
-   rfo_overlaps: false # enable RFO overlaps
-   gediis: false # enable GEDIIS
-   gdiis: true # enable GDIIS
-   gdiis_thresh: 0.0025 # GDIIS acceptance threshold
-   gediis_thresh: 0.01 # GEDIIS acceptance threshold
-   gdiis_test_direction: true # test descent direction before DIIS
-   adapt_step_func: true # adaptive step scaling toggle
+   out_dir: ./result_path_search/ # path-search 上書き（正準デフォルト: ./result_opt/）
+```
+
+`bond` と `search` は `path-search` の再帰ロジックの中核であるため、ここに残します:
+
+```yaml
 bond:
  device: auto # MLIP device for bond analysis
  bond_factor: 1.2 # covalent-radius scaling
