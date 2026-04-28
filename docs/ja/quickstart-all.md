@@ -52,7 +52,7 @@ result_all/
 
 **確認ポイント:**
 
-1. `summary.log` — `status: success` と障壁高さ (kcal/mol)
+1. `summary.json` — `status` フィールド（`"success"` / `"partial"` / `"failed"`）とセグメントごとの `barrier_kcal` を確認。`summary.log` は同じ情報を人間可読形式でミラーします
 2. `seg_01/*.pdb` — PyMOL で R/TS/P 構造を確認
 3. `energy_diagram_*.png` — 明確な障壁があるエネルギープロファイル
 

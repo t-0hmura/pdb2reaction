@@ -40,7 +40,7 @@ This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan
 | _(YAML only)_ | `coord_type` | `geom` |
 | `--temperature` (freq, `all --freq-temperature`) | `temperature` | `thermo` |
 | `--pressure` (freq, `all --freq-pressure`) | `pressure_atm` | `thermo` |
-| `--engine` (`dft` subcommand) / `--dft-engine` (`all` wrapper) | `engine` (CLI internal) | `dft` |
+| `--engine` (`dft` subcommand) / `--dft-engine` (`all` wrapper) | _(CLI only)_ | `dft` |
 
 ```{note}
 **Name mismatch — `--pressure` vs `pressure_atm`.** On the CLI the flag is `--pressure` (units implicit: atm); the matching YAML key under `thermo:` is `pressure_atm` with an explicit unit suffix. Both carry atm values and get converted to Pa internally.

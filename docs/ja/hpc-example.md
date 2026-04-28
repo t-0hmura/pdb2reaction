@@ -3,7 +3,7 @@
 大規模バッチや複数ノードの `pdb2reaction` 実行では、`workers` / `workers_per_node`（{ref}`MLIP 計算機 <ja-configuration-reference>` 参照）をスケジューラ配下の Ray クラスタでノード間に分散できます。
 
 ```{warning}
-`workers > 1` で実行すると、`hessian_calc_mode="Analytical"` を明示的に指定していても解析ヘシアンは自動的に有限差分へ差し替わります。{ref}`ja-hessian-evaluation` を参照してください。
+UMA バックエンドを `workers > 1` で実行すると、`hessian_calc_mode="Analytical"` を明示的に指定していても解析ヘシアンは自動的に有限差分へ差し替わります。{ref}`ja-hessian-evaluation` を参照してください。ORB / MACE / AIMNet2 は `workers` / `workers_per_node` を受け付けないため、この規則は適用されません。
 ```
 
 以下の PBS スクリプトは Open MPI を使用して複数ノードで Ray クラスタを構築する一例です。**テンプレートとして扱ってください**: モジュール名、conda パス、ポート、PBS リソース要求は環境に合わせて調整が必要です。

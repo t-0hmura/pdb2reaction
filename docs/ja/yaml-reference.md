@@ -40,7 +40,7 @@
 | _(YAML のみ)_ | `coord_type` | `geom` |
 | `--temperature`（freq、`all --freq-temperature`） | `temperature` | `thermo` |
 | `--pressure`（freq、`all --freq-pressure`） | `pressure_atm` | `thermo` |
-| `--engine`（`dft` サブコマンド） / `--dft-engine`（`all` ラッパー） | `engine`（CLI 内部） | `dft` |
+| `--engine`（`dft` サブコマンド） / `--dft-engine`（`all` ラッパー） | _(CLI のみ)_ | `dft` |
 
 ```{note}
 **名前不一致 — `--pressure` vs `pressure_atm`.** CLI フラグは `--pressure`（単位は暗黙的に atm）、`thermo:` 配下の対応 YAML キーは `pressure_atm`（単位接尾辞付き）です。いずれも atm で扱い、内部で Pa に変換されます。
@@ -460,7 +460,7 @@ rsirfo:
 ```
 
 ```{note}
-**`rsirfo.flatten_max_iter` の CLI 優先順位の例外。** YAML で `rsirfo.flatten_max_iter` を設定しても、コマンドラインで `--flatten` が明示的に渡されない限り、CLI によって `0` に上書きされます。{ref}`ja-flatten-precedence-caveat` を参照してください。
+**`--flatten` の優先順位。** Hessian-Dimer と RS-I-RFO 両経路の flatten ループは `hessian_dimer:` YAML セクションの `flatten_max_iter` キー（デフォルト 50）で設定します。`rsirfo:` には独自の flatten カウンタはありません。CLI は `--flatten` がコマンドラインで明示的に渡されない限り `flatten_max_iter` を `0` に上書きします。{ref}`ja-flatten-precedence-caveat` を参照してください。
 ```
 
 ---

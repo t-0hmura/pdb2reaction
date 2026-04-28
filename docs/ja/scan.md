@@ -7,7 +7,7 @@
 ### 要点
 - **想定場面:** 単一構造から特定の原子間距離を駆動し、もっともらしい反応経路を探索する場面（`path-search` / `path-opt` の前処理として使われることが多い）。入力は 1 つの構造 + `-s scan.yaml`（推奨）または `-s/--scan-lists` の 1 個以上のインラインリテラル（**1 リテラル = 1 ステージ**）。可能な限り YAML/JSON ファイルパスを渡してください。インライン Python リテラルはクォート/エスケープが必要で、単純な単一ステージのスキャン向きです。
 - **計算手法:** MLIP バックエンド（デフォルト: UMA、`-b/--backend` で切替可能）に調和拘束 `E = Σ ½ k (|ri − rj| − target)²` を加え、各ステップを LBFGS（`--opt-mode grad`）または RFOptimizer（`--opt-mode hess`）で緩和。
-- **主な出力:** ステージごとの `result.xyz`（必要に応じて `.pdb`/`.gjf`）と結合スキャン軌跡（`scan_trj.xyz`/`scan.pdb`）。`--dump` はステップごとの最適化軌跡のみを制御。
+- **主な出力:** ステージごとの `result.xyz`（必要に応じて `.pdb`/`.gjf`）と結合スキャン軌跡（`scan_trj.xyz`/`scan.pdb`）。ステップごとの最適化軌跡ファイルは現状 CLI からは出力されません（`--dump` は予約フラグ）。最適化レベルのダンプが必要な場合は YAML で `opt.dump: true` を設定してください。
 - **デフォルト値:** `--opt-mode grad`（LBFGS）、`--no-preopt`、`--no-endopt`、`--max-step-size 0.20 Å`、`--bias-k 300 eV·Å⁻²`、`--thresh gau`、`--out-dir ./result_scan/`。
 - **次のステップ:** ステージの端点（`stage_XX/result.pdb`）を `path-search` / `path-opt` に渡して MEP を精密化するか、`pdb2reaction all -s ...` でスキャン → MEP → TSOPT/IRC/freq/DFT を一気通貫で実行します。
 
@@ -19,14 +19,14 @@ XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定する�
 ## 最小例
 
 ```bash
-pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml --out-dir ./result_scan
+pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
 ```
 
 ## 出力の見方
 
 - `result_scan/stage_01/result.pdb`（または `result.xyz`）
 - `result_scan/stage_02/result.pdb`（または `result.xyz`）
-- `result_scan/stage_*/scan_trj.xyz` と `scan.pdb`（常に生成されます。`--dump` はステップごとの最適化軌跡ファイルのみを制御）
+- `result_scan/stage_*/scan_trj.xyz` と `scan.pdb`（常に生成されます。ステップごとの最適化軌跡ファイルは現状 CLI からは出力されません — 最適化レベルのダンプは YAML で `opt.dump: true` を設定してください）
 
 ## よくある例
 
@@ -45,7 +45,7 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 -s '[("TYR,285,CA","SAM,309,C10",1.35)]
 3. ステージごとの軌跡を保存して確認する。
 
 ```bash
-pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml --dump --out-dir ./result_scan_dump
+pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml --dump -o ./result_scan_dump
 ```
 
 > **Note:** `-s/--scan-lists` の解釈結果を確認したい場合は `--print-parsed` を追加してください。
@@ -76,7 +76,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[("TYR,285,CA","SAM,309,C10",1.35)]'
 pdb2reaction scan -i input.pdb -q 0 -s \
  '[("TYR,285,CA","SAM,309,C10",1.35)]' \
  '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]' \
- --max-step-size 0.20 --dump --out-dir ./result_scan/ --opt-mode grad \
+ --max-step-size 0.20 --dump -o ./result_scan/ --opt-mode grad \
  --preopt --endopt
 ```
 
@@ -125,9 +125,9 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
 2. `--preopt` の場合、バイアスをかける前に無バイアスの前処理最適化を実行し、開始構造を緩和します。
 3. `-s/--scan-lists`（YAML/JSON ファイルパスまたはインライン Python リテラル）からステージターゲットを読み取り、`(i, j)` インデックスを正規化します（デフォルトは 1 始まり）。PDB 入力では、各エントリに整数インデックスまたは `'TYR,285,CA'` のような原子セレクタ文字列を指定できます。セレクタの区切りは空白・カンマ・スラッシュ・バッククォート・バックスラッシュのいずれも可で、トークン順序は任意です（フォールバックは resname, resseq, atom を想定）。
     各結合について変位 `Δ = target − current` を計算し、`h = --max-step-size` として `N = ceil(max(|Δ|) / h)` ステップに分割します。各結合は `δ = Δ / N` ずつ更新されます。
-4. すべてのステップを順に進め、一時ターゲットを更新しながら調和ポテンシャル `E = Σ ½ k (|ri − rj| − target)²` を適用し、UMA で最適化します。最適化サイクルの上限は `--relax-max-cycles` で設定します（YAML で `opt.max_cycles` が指定されていない場合）。
+4. すべてのステップを順に進め、一時ターゲットを更新しながら調和ポテンシャル `E = Σ ½ k (|ri − rj| − target)²` を適用し、MLIP バックエンド（デフォルト: UMA）で最適化します。最適化サイクルの上限は `--relax-max-cycles` で設定します（YAML で `opt.max_cycles` が指定されていない場合）。
 5. 各ステージの最終ステップ後、必要に応じて無バイアス緩和（`--endopt`）を実行し、共有結合の変化を報告して `result.*` を出力します。
-6. すべてのステージについて繰り返します。結合スキャン軌跡（`scan_trj.xyz` および `scan.pdb`）は常に書き出されます。`--dump` はステップごとの最適化軌跡ファイルのみを制御します。
+6. すべてのステージについて繰り返します。結合スキャン軌跡（`scan_trj.xyz` および `scan.pdb`）は常に書き出されます。ステップごとの最適化軌跡ファイルは現状 CLI からは出力されません（`--dump` は予約フラグ）。最適化レベルのダンプが必要な場合は YAML で `opt.dump: true` を設定してください。
 
 ## CLI オプション
 | オプション | 説明 | デフォルト |
@@ -146,7 +146,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
 | `--opt-mode TEXT` | `grad` → LBFGS、`hess` → RFOptimizer。同じトークンが `tsopt` では Dimer / RS-I-RFO へ対応する点については {ref}`ja-opt-mode-semantics` を参照してください。 | `grad` |
 | `--freeze-links/--no-freeze-links` | PDB 入力時にリンク水素の親原子を凍結 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用。 | _None_ |
-| `--dump/--no-dump` | ステップごとの最適化軌跡を出力。注: `scan_trj.xyz`/`scan.pdb` はこのフラグに関係なく常に書き出されます | `False` |
+| `--dump/--no-dump` | 予約フラグ。CLI からは現状最適化器に転送されません（`scan` では `opt_cfg["dump"]` は常に `False`）。ステップごとの最適化軌跡を出力するには YAML で `opt.dump: true` を設定してください。`scan_trj.xyz`/`scan.pdb` はこのフラグに関係なく常に書き出されます。 | `False` |
 | `--convert-files/--no-convert-files` | PDB/Gaussian 入力で XYZ/TRJ → PDB/GJF コンパニオン変換を切り替え（軌跡変換は PDB のみ） | `True` |
 | `--ref-pdb FILE` | XYZ/GJF 入力時の参照 PDB トポロジー（XYZ 座標は保持） | _None_ |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_scan/` |
@@ -230,6 +230,9 @@ opt:
  converge_to_geom_rms_thresh: 0.05 # geom RMS threshold when converging to ref
  overachieve_factor: 0.0 # factor to tighten thresholds
  check_eigval_structure: false # validate Hessian eigenstructure
+ energy_plateau: true # enable plateau-based early stop
+ energy_plateau_thresh: 1.0e-04 # plateau detection threshold
+ energy_plateau_window: 50 # plateau detection window (cycles)
  line_search: true # enable line search
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
@@ -248,6 +251,9 @@ lbfgs:
  converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
  overachieve_factor: 0.0 # tighten thresholds
  check_eigval_structure: false # validate Hessian eigenstructure
+ energy_plateau: true # enable plateau-based early stop
+ energy_plateau_thresh: 1.0e-04 # plateau detection threshold
+ energy_plateau_window: 50 # plateau detection window (cycles)
  line_search: true # enable line search
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
@@ -274,6 +280,9 @@ rfo:
  converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
  overachieve_factor: 0.0 # tighten thresholds
  check_eigval_structure: false # validate Hessian eigenstructure
+ energy_plateau: true # enable plateau-based early stop
+ energy_plateau_thresh: 1.0e-04 # plateau detection threshold
+ energy_plateau_window: 50 # plateau detection window (cycles)
  line_search: true # enable line search
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints

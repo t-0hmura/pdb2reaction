@@ -66,7 +66,7 @@ Symptoms:
 Fixes to try:
 - Increase `--radius` (e.g., 2.6 → 3.5 Å).
 - Use `--selected-resn` to force-include residues (e.g., `--selected-resn 'A:123,B:456'`). See {ref}`selected-resn-takes-ids` in CLI Conventions for the residue-ID requirement.
-- If backbone trimming is too aggressive, set `--no-exclude-backbone`.
+- If you previously enabled `--exclude-backbone` and the trim is too aggressive, drop the flag (or pass `--no-exclude-backbone`) to keep main-chain atoms.
 
 ---
 
@@ -100,8 +100,8 @@ If `--modified-residue` is insufficient (e.g., the residue has an unusual backbo
 (charge-spin-problems)=
 ## Charge / spin problems
 
-### “Charge is required …” (non-GJF inputs)
-Many stages need a net charge when the input is not `.gjf`. If you omit `-q/--charge`, the workflow may attempt to derive charge from `--ligand-charge/-l` (PDB-only) or from a `.gjf` template.
+### `-q/--charge is required …` (non-GJF inputs)
+Many stages need a net charge when the input is not `.gjf`. If you omit `-q/--charge`, the workflow may attempt to derive charge from `--ligand-charge/-l` (PDB-only) or from a `.gjf` template; if neither path resolves, it stops with the error above.
 
 Fix:
 - Provide charge and multiplicity explicitly:
@@ -207,7 +207,7 @@ Fixes to try (CLI flags and YAML knobs are complementary — use both as needed)
 - Enable flattening of extra imaginary modes: `--flatten` (available on standalone `tsopt`, `opt`, and `pdb2reaction all`; default disabled).
 - Increase max cycles: `--max-cycles 20000` (for standalone `tsopt`; `--tsopt-max-cycles 20000` for `all`).
 - Use tighter convergence: `--thresh baker` or `--thresh gau_tight`.
-- Reduce step sizes / trust radii via YAML — for LBFGS/Dimer: `lbfgs.max_step` / `hessian_dimer.max_step`; for RFO/RS-I-RFO: `rfo.trust_radius` / `rfo.trust_min` / `rfo.trust_max` (and the `rsirfo` section). See [YAML Reference](yaml-reference.md) for section layout.
+- Reduce step sizes / trust radii via YAML — for LBFGS/Dimer: `lbfgs.max_step` / `hessian_dimer.lbfgs.max_step`; for RFO/RS-I-RFO: `rfo.trust_radius` / `rfo.trust_min` / `rfo.trust_max` (and the `rsirfo` section). See [YAML Reference](yaml-reference.md) for section layout.
 
 ---
 

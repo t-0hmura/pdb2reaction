@@ -11,13 +11,13 @@
 - **デフォルト値:** `--opt-mode grad`（LBFGS）、`--no-preopt`、`--max-step-size 0.20 Å`、`--bias-k 300 eV·Å⁻²`、`--thresh baker`、`--baseline min`、`--out-dir ./result_scan2d/`。`(high − low) / --max-step-size` が大きいと格子点数が急増します。
 - **次のステップ:** `scan2d_map.png` / `scan2d_landscape.html` で TS 領域候補を確認し、`tsopt` で精密化（または `pdb2reaction all` で連結）。
 
-`scan2d` は `--max-step-size` に基づいて両軸の線形グリッドを作成し、各格子点を拘束付きで緩和してバイアスなしの UMA エネルギーを記録します。可視化用の出力も生成します。RFOptimizer を使用する場合は `--opt-mode hess` を指定してください。
+`scan2d` は `--max-step-size` に基づいて両軸の線形グリッドを作成し、各格子点を拘束付きで緩和してバイアスなしの MLIP エネルギー（デフォルトは UMA、`-b/--backend` で切替可能）を記録します。可視化用の出力も生成します。RFOptimizer を使用する場合は `--opt-mode hess` を指定してください。
 
 XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定すると、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
 
 ## 最小例
 ```bash
-pdb2reaction scan2d -i input.pdb -q 0 -s scan2d.yaml --out-dir ./result_scan2d/
+pdb2reaction scan2d -i input.pdb -q 0 -s scan2d.yaml -o ./result_scan2d/
 ```
 
 ## 出力の見方
@@ -59,7 +59,7 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 # LBFGS、内側軌跡ダンプ、Plotly 出力
 pdb2reaction scan2d -i input.pdb -q 0 \
  -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20)]' \
- --max-step-size 0.20 --dump --out-dir ./result_scan2d/ --opt-mode grad \
+ --max-step-size 0.20 --dump -o ./result_scan2d/ --opt-mode grad \
  --preopt --baseline min
 ```
 
@@ -103,7 +103,7 @@ YAML/JSON ファイル書式、インライン Python リテラル構文、原�
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
-| `--preopt/--no-preopt` | スキャン前に無バイアス最適化を実行。**スコープ依存デフォルト:** 単体では `False`、`pdb2reaction all` 経由では `True` に反転されます（{ref}`all → スキャンオプション <ja-scan-options-single-input-runs>` を参照）。 | `False` |
+| `--preopt/--no-preopt` | スキャン前に無バイアス最適化を実行。 | `False` |
 | `--baseline {min,first}` | kcal/mol の基準をグローバル最小値または最初の格子点に設定 | `min` |
 | `--zmin FLOAT`, `--zmax FLOAT` | カラースケールの下限/上限（kcal/mol） | 自動 |
 | `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照。 | `False` |

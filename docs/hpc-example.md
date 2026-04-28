@@ -3,7 +3,7 @@
 For large-batch or multi-node `pdb2reaction` runs, `workers` / `workers_per_node` (see {ref}`MLIP Calculator <configuration-reference>`) can be scaled across nodes by launching a Ray cluster under your scheduler.
 
 ```{warning}
-When you run with `workers > 1`, analytical Hessians are silently disabled and replaced with finite differences, even if `hessian_calc_mode="Analytical"` is set explicitly. See {ref}`hessian-evaluation`.
+When you run the UMA backend with `workers > 1`, analytical Hessians are silently disabled and replaced with finite differences, even if `hessian_calc_mode="Analytical"` is set explicitly. See {ref}`hessian-evaluation`. ORB / MACE / AIMNet2 do not accept `workers` / `workers_per_node` and are unaffected by this rule.
 ```
 
 The following PBS script illustrates one way to build a multi-node Ray cluster on an Open MPI–equipped HPC system. **Treat it as a template**: you will need to adjust module names, conda path, ports, and resource requests to match your environment.

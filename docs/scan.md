@@ -7,7 +7,7 @@
 ### At a glance
 - **Use when:** A single structure needs specific distances driven to explore a plausible path (often before `path-search`/`path-opt`). Input is one structure + `-s/--scan-lists scan.yaml` (recommended), or one or more `--scan-lists/-s` inline literals (each literal = one stage). YAML/JSON file paths avoid shell-quoting pitfalls and version better; inline literals are fine for simple single-stage scans.
 - **Method:** MLIP backend (UMA by default; selectable via `-b/--backend`) with harmonic restraints `E = Σ ½ k (|ri − rj| − target)²` and LBFGS (`--opt-mode grad`) or RFOptimizer (`--opt-mode hess`) per step.
-- **Outputs:** Per-stage `result.xyz` (+ optional `.pdb`/`.gjf`), and concatenated scan trajectories (`scan_trj.xyz`/`scan.pdb`). `--dump` controls per-step optimizer trajectory files only.
+- **Outputs:** Per-stage `result.xyz` (+ optional `.pdb`/`.gjf`), and concatenated scan trajectories (`scan_trj.xyz`/`scan.pdb`). Per-step optimizer trajectory files are not currently written from the CLI; the `--dump` flag is reserved (the optimizer-level dump can be enabled via `opt.dump` in YAML).
 - **Defaults:** `--opt-mode grad` (LBFGS), `--no-preopt`, `--no-endopt`, `--max-step-size 0.20 Å`, `--bias-k 300 eV·Å⁻²`, `--thresh gau`, `--out-dir ./result_scan/`.
 - **Next step:** Feed the staged endpoints (`stage_XX/result.pdb`) to `path-search`/`path-opt` for MEP refinement, or use `pdb2reaction all -s ...` to chain scan → MEP → TSOPT/IRC/freq/DFT in one command.
 
@@ -26,7 +26,7 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
 
 - `result_scan/stage_01/result.pdb` (or `result.xyz`)
 - `result_scan/stage_02/result.pdb` (or `result.xyz`)
-- `result_scan/stage_*/scan_trj.xyz` and `scan.pdb` (always written; `--dump` controls per-step optimizer trajectory files only)
+- `result_scan/stage_*/scan_trj.xyz` and `scan.pdb` (always written; per-step optimizer trajectory files are not currently emitted from the CLI — set `opt.dump: true` in YAML to enable the optimizer-level dump)
 
 ## Common examples
 
@@ -144,8 +144,9 @@ This is equivalent to two manual stages with a geometry reset between them, but 
     (`--endopt`) before reporting covalent bond changes and writing the
     `result.*` files.
 6. Repeat for every stage. Concatenated scan trajectories (`scan_trj.xyz` and
-    `scan.pdb`) are always written; `--dump` controls per-step optimizer
-    trajectory files only.
+    `scan.pdb`) are always written. Per-step optimizer trajectory files are not
+    currently emitted from the CLI; set `opt.dump: true` in YAML if you need
+    them.
 
 ## CLI options
 | Option | Description | Default |
@@ -164,7 +165,7 @@ This is equivalent to two manual stages with a geometry reset between them, but 
 | `--opt-mode TEXT` | `grad` → LBFGS, `hess` → RFOptimizer. See {ref}`opt-mode-semantics` for how the same token maps to different optimizers under `tsopt`. | `grad` |
 | `--freeze-links/--no-freeze-links` | When the input is PDB, freeze the parents of link hydrogens. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
-| `--dump/--no-dump` | Dump per-step optimizer trajectories. Note: `scan_trj.xyz`/`scan.pdb` are always written regardless of this flag. | `False` |
+| `--dump/--no-dump` | Reserved flag; the CLI does not currently forward this to the optimizer (`opt_cfg["dump"]` is always set to `False` for `scan`). To enable per-step optimizer trajectory output, set `opt.dump: true` in YAML. `scan_trj.xyz`/`scan.pdb` are always written regardless. | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs (trajectory conversion only writes PDB). | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `-o, --out-dir TEXT` | Output directory root. | `./result_scan/` |
@@ -222,8 +223,10 @@ out_dir/ (default:./result_scan/)
 - When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see {ref}`Link hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
 - Stage results (`result.xyz` plus optional PDB/GJF companions) are always
   written. Concatenated scan trajectories (`scan_trj.xyz` and `scan.pdb` for
-  PDB inputs with conversion enabled) are also always written. The `--dump`
-  flag controls only per-step optimizer trajectory files.
+  PDB inputs with conversion enabled) are also always written. Per-step
+  optimizer trajectory files are not currently emitted from the CLI — the
+  `--dump` flag is reserved; use `opt.dump: true` in YAML to enable the
+  optimizer-level dump.
 
 
 ```yaml
@@ -256,6 +259,9 @@ opt:
  converge_to_geom_rms_thresh: 0.05 # geom RMS threshold when converging to ref
  overachieve_factor: 0.0 # factor to tighten thresholds
  check_eigval_structure: false # validate Hessian eigenstructure
+ energy_plateau: true # enable plateau-based early stop
+ energy_plateau_thresh: 1.0e-04 # plateau detection threshold
+ energy_plateau_window: 50 # plateau detection window (cycles)
  line_search: true # enable line search
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
@@ -274,6 +280,9 @@ lbfgs:
  converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
  overachieve_factor: 0.0 # tighten thresholds
  check_eigval_structure: false # validate Hessian eigenstructure
+ energy_plateau: true # enable plateau-based early stop
+ energy_plateau_thresh: 1.0e-04 # plateau detection threshold
+ energy_plateau_window: 50 # plateau detection window (cycles)
  line_search: true # enable line search
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
@@ -300,6 +309,9 @@ rfo:
  converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
  overachieve_factor: 0.0 # tighten thresholds
  check_eigval_structure: false # validate Hessian eigenstructure
+ energy_plateau: true # enable plateau-based early stop
+ energy_plateau_thresh: 1.0e-04 # plateau detection threshold
+ energy_plateau_window: 50 # plateau detection window (cycles)
  line_search: true # enable line search
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints

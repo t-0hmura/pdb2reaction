@@ -66,7 +66,7 @@ Please run `pdb2reaction add-elem-info -i...` to populate element columns before
 対処の例:
 - `--radius` を増やしてください（例: 2.6 → 3.5 Å）
 - `--selected-resn` で残基を強制包含してください（例: `--selected-resn 'A:123,B:456'`）。残基 ID 仕様の詳細は CLI 規約の {ref}`ja-selected-resn-takes-ids` を参照。
-- 主鎖削除が強すぎる場合は `--no-exclude-backbone` を試してください
+- 以前に `--exclude-backbone` を明示的に有効化していて、その削除が強すぎる場合は当該フラグを外す（または `--no-exclude-backbone` を渡す）ことで主鎖原子を保持できます
 
 ---
 
@@ -207,7 +207,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 - 余分な虚振動数モードのフラット化を有効にしてください: `--flatten`（単独の `tsopt`、`opt`、および `pdb2reaction all` で利用可能。デフォルトは無効）
 - 最大サイクル数を増やしてください: `--max-cycles 20000`（単独の `tsopt` の場合）、`--tsopt-max-cycles 20000`（`all` の場合）
 - より厳しい収束閾値を使ってください: `--thresh baker` または `--thresh gau_tight`
-- YAML でステップサイズ / 信頼半径を縮小してください — LBFGS/Dimer: `lbfgs.max_step` / `hessian_dimer.max_step`、RFO/RS-I-RFO: `rfo.trust_radius` / `rfo.trust_min` / `rfo.trust_max`（および `rsirfo` セクション）。セクション構成は [YAML リファレンス](yaml-reference.md) を参照
+- YAML でステップサイズ / 信頼半径を縮小してください — LBFGS/Dimer: `lbfgs.max_step` / `hessian_dimer.lbfgs.max_step`、RFO/RS-I-RFO: `rfo.trust_radius` / `rfo.trust_min` / `rfo.trust_max`（および `rsirfo` セクション）。セクション構成は [YAML リファレンス](yaml-reference.md) を参照
 
 ---
 

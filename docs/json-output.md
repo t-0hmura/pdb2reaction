@@ -99,8 +99,10 @@ Convergence details are available for rsirfo mode; dimer mode provides `n_opt_cy
 | `model` | string | Model identifier |
 | `n_atoms` | int | Total atoms |
 | `n_freeze_atoms` | int | Frozen atoms |
+| `solvent` | string | Implicit solvent or `"none"` |
 | `temperature_K` | float | Temperature (K) |
 | `pressure_atm` | float | Pressure (atm) |
+| `input_file` | string | Input filename |
 | `files` | object | `{"frequencies_txt": "frequencies_cm-1.txt"}` |
 
 **`thermochemistry`** (null if thermoanalysis unavailable):
@@ -136,9 +138,13 @@ Convergence details are available for rsirfo mode; dimer mode provides `n_opt_cy
 | `backend` | string | MLIP backend |
 | `charge` | int | System charge |
 | `spin` | int | Spin multiplicity |
+| `model` | string | Model identifier |
+| `n_freeze_atoms` | int | Frozen atoms |
+| `solvent` | string | Implicit solvent or `"none"` |
 | `bond_changes` | object | `{formed: [...], broken: [...]}` |
 | `step_length` | float | IRC step length (Bohr) |
 | `max_cycles` | int | Maximum IRC steps |
+| `input_file` | string | Input filename |
 | `files` | object | Trajectory files (xyz + pdb) |
 
 ### `scan`
@@ -146,11 +152,15 @@ Convergence details are available for rsirfo mode; dimer mode provides `n_opt_cy
 | Field | Type | Description |
 |-------|------|-------------|
 | `status` | string | `"completed"` |
-| `n_stages` | int | Number of scan stages |
-| `stages` | object[] | Per-stage data (see below) |
-| `backend` | string | MLIP backend |
 | `charge` | int | System charge |
 | `spin` | int | Spin multiplicity |
+| `backend` | string | MLIP backend |
+| `model` | string | Model identifier |
+| `solvent` | string | Implicit solvent or `"none"` |
+| `preopt` | bool | Pre-optimization performed? |
+| `max_step_size_angstrom` | float | Max bond-length step per increment (Å) |
+| `n_stages` | int | Number of scan stages |
+| `stages` | object[] | Per-stage data (see below) |
 | `files` | object | Output files |
 
 **`stages[]`**:
@@ -171,13 +181,16 @@ Convergence details are available for rsirfo mode; dimer mode provides `n_opt_cy
 | Field | Type | Description |
 |-------|------|-------------|
 | `status` | string | `"completed"` |
+| `charge` | int | System charge |
+| `spin` | int | Spin multiplicity |
+| `backend` | string | MLIP backend |
+| `model` | string | Model identifier |
+| `solvent` | string | Implicit solvent or `"none"` |
+| `max_step_size_angstrom` | float | Max bond-length step per increment (Å, `scan2d` only) |
 | `n_grid_points` | int | Total grid points |
 | `grid_shape` | int[] | Grid dimensions |
 | `pair1`, `pair2` (,`pair3`) | object | `{i, j, low, high}` with optional `label_i`, `label_j` |
 | `min_energy_hartree` | float | Surface minimum energy |
-| `backend` | string | MLIP backend |
-| `charge` | int | System charge |
-| `spin` | int | Spin multiplicity |
 | `files` | object | CSV + plot files |
 
 ### `path-opt`
@@ -188,9 +201,14 @@ Convergence details are available for rsirfo mode; dimer mode provides `n_opt_cy
 | `converged` | bool | Convergence flag |
 | `mep_mode` | string | `"dmf"` or `"gsm"` |
 | `backend` | string | MLIP backend |
+| `charge` | int | System charge |
+| `spin` | int | Spin multiplicity |
+| `model` | string | Model identifier |
+| `solvent` | string | Implicit solvent or `"none"` |
 | `image_energies_hartree` | float[] | All image energies |
 | `n_images` | int | Image count |
 | `hei_index` | int | Highest-energy image index |
+| `hei_energy_hartree` | float | HEI energy (Hartree) |
 | `barrier_kcal` | float | Forward barrier (kcal/mol) |
 | `delta_kcal` | float | Reaction energy (kcal/mol) |
 | `files` | object | Trajectory + HEI files |
@@ -216,16 +234,22 @@ See also the extended [`summary.json` section](#summary-json-path-search-all) fo
 | Field | Type | Description |
 |-------|------|-------------|
 | `converged` | bool | SCF converged? |
-| `energy_hartree` | float | DFT energy |
-| `xc_functional` | string | XC functional |
-| `basis_set` | string | Basis set |
-| `used_gpu` | bool | GPU acceleration used? |
-| `charges` | object | `{mulliken, lowdin, iao}` per-atom arrays |
-| `spin_densities` | object | `{mulliken, lowdin, iao}` per-atom arrays |
+| `charge` | int | System charge |
+| `spin` | int | Spin multiplicity |
 | `n_atoms` | int | Atom count |
 | `grid_level` | int | DFT grid level |
 | `conv_tol` | float | SCF convergence tolerance |
-| `files` | object | `{"result_yaml": "result.yaml"}` |
+| `max_cycle` | int | Maximum SCF cycles |
+| `input_file` | string | Input filename |
+| `energy_hartree` | float | DFT energy |
+| `energy_kcal_per_mol` | float | DFT energy (kcal/mol) |
+| `xc_functional` | string | XC functional |
+| `basis_set` | string | Basis set |
+| `engine` | string | Effective engine label (`"gpu"` or `"cpu"`) |
+| `used_gpu` | bool | GPU acceleration used? |
+| `charges` | object | `{mulliken, lowdin, iao}` per-atom arrays |
+| `spin_densities` | object | `{mulliken, lowdin, iao}` per-atom arrays |
+| `files` | object | `{"result_yaml": "result.yaml", "input_geometry_xyz": "input_geometry.xyz"}` |
 
 ### `extract`
 

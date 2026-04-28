@@ -96,7 +96,7 @@ see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
     evaluate the MLIP energy without bias. Optional per-outer-step inner
     trajectories are saved as `inner_path_d1_###_trj.xyz` when `--dump`.
 5. After all points are visited, write `<out-dir>/surface.csv` with columns
-    `i,j,d1_label,d2_label,d1_A,d2_A,energy_hartree,energy_kcal,bias_converged`, shifting the kcal
+    `i,j,d1_A,d2_A,energy_hartree,bias_converged,energy_kcal,d1_label,d2_label`, shifting the kcal
     reference via `--baseline {min|first}`. With `--baseline first`, the reference
     is the first grid entry (`i = j = 0` after reordering), not necessarily
     `(low₁, low₂)`. Generate `scan2d_map.png` (2D contour) and
@@ -129,7 +129,7 @@ see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
-| `--preopt/--no-preopt` | Run an unbiased optimization before scanning. **Scope-dependent default:** `False` standalone; flipped to `True` when invoked via `pdb2reaction all` (see [`all` → Scan Options](all.md#scan-options-single-input-runs)). | `False` |
+| `--preopt/--no-preopt` | Run an unbiased optimization before scanning. | `False` |
 | `--baseline {min,first}` | Shift kcal/mol energies so the global min or first grid point is zero. | `min` |
 | `--zmin FLOAT`, `--zmax FLOAT` | Manual limits for the contour/surface color scale (kcal/mol). | Autoscaled |
 | `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |

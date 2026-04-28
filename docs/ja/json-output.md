@@ -152,11 +152,15 @@ cat result_opt/result.json | python -m json.tool
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `status` | string | `"completed"` |
-| `n_stages` | int | スキャンステージ数 |
-| `stages` | object[] | ステージごとのデータ（下記参照） |
-| `backend` | string | MLIP バックエンド |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
+| `backend` | string | MLIP バックエンド |
+| `model` | string | MLIP モデル名 |
+| `solvent` | string | 暗黙溶媒 or `"none"` |
+| `preopt` | bool | 事前最適化を実行したか |
+| `max_step_size_angstrom` | float | 1 ステップ当たりの最大結合長変位 (Å) |
+| `n_stages` | int | スキャンステージ数 |
+| `stages` | object[] | ステージごとのデータ（下記参照） |
 | `files` | object | 出力ファイル |
 
 **`stages[]`**:
@@ -177,13 +181,16 @@ cat result_opt/result.json | python -m json.tool
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `status` | string | `"completed"` |
+| `charge` | int | 系の電荷 |
+| `spin` | int | スピン多重度 |
+| `backend` | string | MLIP バックエンド |
+| `model` | string | MLIP モデル名 |
+| `solvent` | string | 暗黙溶媒 or `"none"` |
+| `max_step_size_angstrom` | float | 1 ステップ当たりの最大結合長変位 (Å, `scan2d` のみ) |
 | `n_grid_points` | int | グリッド点数 |
 | `grid_shape` | int[] | グリッド次元 |
 | `pair1`, `pair2` (,`pair3`) | object | `{i, j, low, high}` (オプション: `label_i`, `label_j`) |
 | `min_energy_hartree` | float | 表面最小エネルギー |
-| `backend` | string | MLIP バックエンド |
-| `charge` | int | 系の電荷 |
-| `spin` | int | スピン多重度 |
 | `files` | object | CSV + プロットファイル |
 
 ### `path-opt`
@@ -197,6 +204,7 @@ cat result_opt/result.json | python -m json.tool
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
 | `model` | string | MLIP モデル名 |
+| `solvent` | string | 暗黙溶媒 or `"none"` |
 | `image_energies_hartree` | float[] | 全イメージエネルギー |
 | `n_images` | int | イメージ数 |
 | `hei_index` | int | 最高エネルギー画像のインデックス |
@@ -226,17 +234,22 @@ cat result_opt/result.json | python -m json.tool
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `converged` | bool | SCF 収束? |
-| `energy_hartree` | float | DFT エネルギー |
-| `xc_functional` | string | 汎関数 |
-| `basis_set` | string | 基底関数 |
-| `used_gpu` | bool | GPU 使用? |
-| `charges` | object | `{mulliken, lowdin, iao}` 原子電荷配列 |
-| `spin_densities` | object | `{mulliken, lowdin, iao}` スピン密度配列 |
+| `charge` | int | 系の電荷 |
+| `spin` | int | スピン多重度 |
 | `n_atoms` | int | 原子数 |
 | `grid_level` | int | DFT グリッドレベル |
 | `conv_tol` | float | SCF 収束閾値 |
+| `max_cycle` | int | 最大 SCF サイクル数 |
 | `input_file` | string | 入力ファイル名 |
-| `files` | object | `{"result_yaml": "result.yaml"}` |
+| `energy_hartree` | float | DFT エネルギー |
+| `energy_kcal_per_mol` | float | DFT エネルギー (kcal/mol) |
+| `xc_functional` | string | 汎関数 |
+| `basis_set` | string | 基底関数 |
+| `engine` | string | 実効エンジンラベル (`"gpu"` / `"cpu"`) |
+| `used_gpu` | bool | GPU 使用? |
+| `charges` | object | `{mulliken, lowdin, iao}` 原子電荷配列 |
+| `spin_densities` | object | `{mulliken, lowdin, iao}` スピン密度配列 |
+| `files` | object | `{"result_yaml": "result.yaml", "input_geometry_xyz": "input_geometry.xyz"}` |
 
 ### `extract`
 

@@ -198,12 +198,12 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | `-r, --radius FLOAT` | Active site model inclusion cutoff (Å). | `2.6` |
 | `--radius-het2het FLOAT` | Independent hetero–hetero cutoff (Å). Passing `0` is internally nudged to `0.001 Å` to avoid empty selections (same behavior as standalone `extract`). | `0.0` |
 | `--include-h2o/--no-include-h2o` | Include waters (HOH/WAT/TIP3/SOL). | `True` |
-| `--exclude-backbone BOOL` | Remove backbone atoms on non-substrate amino acids. | `False` |
-| `--add-linkh BOOL` | Add link hydrogens for severed bonds. | `True` |
+| `--exclude-backbone/--no-exclude-backbone` | Remove backbone atoms on non-substrate amino acids. | `False` |
+| `--add-linkh/--no-add-linkh` | Add link hydrogens for severed bonds. | `True` |
 | `--selected-resn TEXT` | Residues to force include. **Despite the name, this flag accepts residue IDs (colon-separated integers with optional chains/insertion codes, e.g. `A:123A`), not 3-letter residue names.** Use `-c/--center 'GPP,SAM'` for residue-name-based selection. | `""` |
 | `--modified-residue TEXT` | Comma-separated residue names (with optional charge) to treat as amino acids for backbone truncation and charge assignment (e.g., `HD1,HD2,HD3` or `HD1:0,SEP:-2`). | `""` |
-| `--freeze-links BOOL` | Freeze link parents in active site model PDBs. | `True` |
-| `--verbose BOOL` | Enable INFO-level extractor logging. | `True` |
+| `--freeze-links/--no-freeze-links` | Freeze link parents in active site model PDBs. | `True` |
+| `--verbose/--no-verbose` | Enable INFO-level extractor logging. | `True` |
 
 ### MEP Search Options
 
