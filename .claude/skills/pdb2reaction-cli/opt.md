@@ -60,8 +60,10 @@ result_opt/
 └── optimization_trj.xyz       # full optimization trajectory (with --dump)
 ```
 
-`result.json` keys: `status` (converged / not_converged), `n_cycles`,
-`final_energy_hartree`, `gradient_max`, `structure_path`.
+`result.json` (only when `--out-json` is passed) keys: `status`
+(`success` / `partial` / `failed`), `n_opt_cycles`, `energy_hartree`,
+`final_max_force`, `final_rms_force`, and the `files` block whose
+`final_geometry_xyz` entry points at the converged geometry.
 
 ## `--opt-mode` choice
 

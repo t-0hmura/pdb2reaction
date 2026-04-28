@@ -56,6 +56,8 @@ def main() -> int:
          ["git", "diff", "--exit-code", "docs/reference/commands"]),
         ("Check skills/**.md command examples against live CLI",
          [sys.executable, "scripts/check_skill_commands.py"]),
+        ("Check skill drift (prose tables / JSON snippets — warning-only)",
+         [sys.executable, "scripts/check_skill_drift.py"]),
         ("Check intro template headings", [sys.executable, "scripts/check_intro_template.py"]),
         ("Check markdown local links", [sys.executable, "scripts/check_markdown_links.py"]),
         ("Check all->scan option contract", [sys.executable, "scripts/check_all_scan_contract.py"]),
