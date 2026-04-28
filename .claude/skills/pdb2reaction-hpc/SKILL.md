@@ -27,8 +27,8 @@ placeholders this skill uses.
 #PBS -N <jobname>
 #PBS -q <YOUR_QUEUE>
 #PBS -l nodes=1:ppn=<NCPU>:gpus=<NGPU>,mem=<MEM>GB,walltime=<HH:MM:SS>
-#PBS -o /dev/null
-#PBS -e /dev/null
+
+set -euo pipefail
 cd "${PBS_O_WORKDIR}"
 
 # CUDA: HPC modulefile (env-detect outputs <CUDA_MODULE>)
@@ -37,6 +37,12 @@ command -v module >/dev/null && module load <CUDA_MODULE>
 # Conda env (env-detect outputs <YOUR_ENV>)
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate <YOUR_ENV>
+
+# Preflight (sanity-check env before the long job; output captured to pbs.out)
+which pdb2reaction
+pdb2reaction --version
+python -c "import torch; print('cuda:', torch.cuda.is_available(), 'device:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'cpu')"
+nvidia-smi -L 2>/dev/null || true
 
 # Optional: torch CUDA tuning
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
@@ -64,11 +70,19 @@ Both are accepted by most modern Torque + PBSPro installations; check
 #SBATCH --mem=<MEM>G
 #SBATCH --time=<HH:MM:SS>
 #SBATCH --output=%x.%j.out
+set -euo pipefail
 
 cd "${SLURM_SUBMIT_DIR}"
 command -v module >/dev/null && module load <CUDA_MODULE>
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate <YOUR_ENV>
+
+# Preflight
+which pdb2reaction
+pdb2reaction --version
+python -c "import torch; print('cuda:', torch.cuda.is_available(), 'device:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'cpu')"
+nvidia-smi -L 2>/dev/null || true
+
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 pdb2reaction all -i 1.R.pdb 3.P.pdb \

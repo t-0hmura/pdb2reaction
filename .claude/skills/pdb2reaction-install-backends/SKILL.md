@@ -94,7 +94,10 @@ dependencies:
       - pdb2reaction[orb,aimnet,dft]   # extras: see core.md / per-backend md
 ```
 
-`env_pdb2reaction_mace.yml` (MACE only, separate env):
+`env_pdb2reaction_mace.yml` (MACE only, separate env). `fairchem-core`
+is a **core** dependency of `pdb2reaction` (not an extra), so it gets
+pulled in by `pip install pdb2reaction` and must be removed *after*
+install — see `mace.md`:
 
 ```yaml
 name: <your_mace_env>
@@ -105,8 +108,10 @@ dependencies:
   - pip:
       - --extra-index-url https://download.pytorch.org/whl/<cu_index>
       - torch
-      - mace-torch
-      - pdb2reaction       # without [orb,aimnet] to avoid fairchem deps
+      - pdb2reaction
+# After conda env create, run inside the env:
+#   pip uninstall -y fairchem-core      # remove UMA's e3nn pin
+#   pip install mace-torch              # pulls the e3nn version MACE needs
 ```
 
 `<cu_index>` is one of `cpu`, `cu118`, `cu121`, `cu124`, `cu126`, `cu129` — see
