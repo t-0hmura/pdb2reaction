@@ -32,8 +32,8 @@ Verify:
 
 ```bash
 python -c "import pyscf; print('pyscf       :', pyscf.__version__)"
-python -c "import gpu4pyscf; print('gpu4pyscf   :', gpu4pyscf.__version__)"   # only on x86_64
-python -c "import cupy; print('cupy        :', cupy.__version__)"
+python -c "import gpu4pyscf; print('gpu4pyscf   :', gpu4pyscf.__version__)"   # x86_64 only
+python -c "import cupy; print('cupy        :', cupy.__version__)"             # x86_64 only
 ```
 
 ## CPU vs GPU choice

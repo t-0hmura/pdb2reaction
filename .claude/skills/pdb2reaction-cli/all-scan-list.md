@@ -15,8 +15,8 @@ segmentation slots in any intermediates it finds.
 pdb2reaction all -i 1.R.pdb \
     -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --scan-lists \
-        '[("CS1 SAM 320","GPP 321 C7",1.60)]' \
-        '[("GPP 321 H11","GLU 186 OE2",0.90)]' \
+        '[("CS1 SAM 320","C7 GPP 321",1.60)]' \
+        '[("H11 GPP 321","OE2 GLU 186",0.90)]' \
     --tsopt --thermo \
     -o result_scan
 ```
@@ -48,11 +48,11 @@ Examples:
 
 ```bash
 # One stage, two bonds driven together (concerted SN2):
---scan-lists '[("CS1 SAM 320","GPP 321 C7",1.60),("GPP 321 C7","S SAM 320",3.0)]'
+--scan-lists '[("CS1 SAM 320","C7 GPP 321",1.60),("C7 GPP 321","S SAM 320",3.0)]'
 
 # Two stages, one bond each (stepwise mechanism):
---scan-lists '[("CS1 SAM 320","GPP 321 C7",1.60)]' \
-             '[("GPP 321 H11","GLU 186 OE2",0.90)]'
+--scan-lists '[("CS1 SAM 320","C7 GPP 321",1.60)]' \
+             '[("H11 GPP 321","OE2 GLU 186",0.90)]'
 ```
 
 ## Mode-specific flags

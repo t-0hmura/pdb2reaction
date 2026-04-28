@@ -32,14 +32,21 @@ pdb2reaction add-elem-info -i raw.pdb -o cleaned.pdb
 
 ## Algorithm
 
-The element is inferred from the **atom name** (cols 13–16) using
-the standard PDB convention: the leading 1–2 alphabetic characters
-(after stripping leading whitespace) are the element symbol. For
-4-character names where the first character is a digit (e.g. `1HG2`),
-the second character is taken instead.
+The element is inferred from atom name + residue name with the
+following priority (`add_elem_info.guess_element`):
 
-Special cases (Mg, Mn, Fe, Zn, Ca, …) are handled by an internal
-case-sensitivity table.
+1. **Ion residues** (residue name is in the internal `ION` dict):
+   the residue name is the element source. Polyatomic ions
+   (`NH4`, `H3O+`, …) dispatch per atom-name prefix (`H`/`D` → H,
+   `N` → N, `O` → O); monatomic metals/halogens use the residue.
+2. **Polymers and water** (protein, nucleic acid, water): use the
+   PDB convention element subset (`H`/`C`/`N`/`O`/`S`/`P`/`Se`).
+3. **Other ligands**: 1–2 alphabetic prefix of the atom name with a
+   case-sensitivity table for two-letter symbols (`Mg`, `Mn`, `Fe`,
+   `Zn`, `Ca`, …); 4-character names starting with a digit (e.g.
+   `1HG2`) use the second character.
+4. Unresolved → reported as missing in the diagnostic summary
+   (truncated at 50 entries) and left blank in the output.
 
 ## Caveats
 

@@ -8,8 +8,9 @@ before committing to it.
 ## Element coverage
 
 AIMNet2 supports H, B, C, N, O, F, Si, P, S, Cl, As, Se, Br, I.
-**No first-row transition metals**, no Mg/Ca/Mn/Fe/Co/Ni/Cu/Zn —
-metalloenzymes need UMA or MACE.
+**No metals** — neither alkaline-earth (Mg, Ca) nor first-row
+transition metals (Mn, Fe, Co, Ni, Cu, Zn) are covered.
+Metalloenzymes need UMA or MACE.
 
 ## Install
 

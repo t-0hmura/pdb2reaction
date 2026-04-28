@@ -28,7 +28,9 @@ _lock                   # flock file (auto-managed)
 #!/usr/bin/env bash
 #PBS -N pdb2reaction_dispatch
 #PBS -q <YOUR_QUEUE>
-#PBS -l select=<N_NODES>:ncpus=<NCPU>:ngpus=<NGPU>:mem=<MEM>gb,walltime=<HH:MM:SS>
+#PBS -l select=<N_NODES>:ncpus=<NCPU>:ngpus=<NGPU>:mem=<MEM>gb,walltime=<HH:MM:SS>   # PBSPro
+# Torque alternative (replace the line above):
+##PBS -l nodes=<N_NODES>:ppn=<NCPU>:gpus=<NGPU>,mem=<MEM>gb,walltime=<HH:MM:SS>
 #PBS -j oe
 
 cd "${PBS_O_WORKDIR}"
@@ -153,7 +155,7 @@ The SLURM equivalent uses `srun --multi-prog` or per-task `sbatch
 #SBATCH ...
 
 cd "${SLURM_SUBMIT_DIR}"
-rel_path=$(sed -n "${SLURM_ARRAY_TASK_ID}p" <TASK_LIST_FILE>)
+rel_path=$(sed -n "${SLURM_ARRAY_TASK_ID}p" "<TASK_LIST_FILE>")
 cd "${rel_path}" && bash run.sh
 ```
 

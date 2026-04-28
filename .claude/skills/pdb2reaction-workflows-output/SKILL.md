@@ -45,8 +45,8 @@ distance-restraint scans.
 ```bash
 pdb2reaction all -i 1.R.pdb \
     -c '...' -l '...' \
-    --scan-lists '[("CS1 SAM 320","GPP 321 C7",1.60)]' \
-                 '[("GPP 321 H11","GLU 186 OE2",0.90)]' \
+    --scan-lists '[("CS1 SAM 320","C7 GPP 321",1.60)]' \
+                 '[("H11 GPP 321","OE2 GLU 186",0.90)]' \
     --tsopt --thermo \
     -o result_scan
 ```
@@ -110,8 +110,8 @@ Top-level keys:
 | `charge` / `spin` | Resolved cluster charge / multiplicity |
 | `environment` | `{device, gpu_name, gpu_vram_gb, cuda_version, cpu, n_cpus, ram_gb}` |
 | `config` | Full effective config after CLI + YAML + defaults merge |
-| `freeze_atoms` | Indices held fixed during optimization (link-H parents) |
-| `n_images` | Number of MEP images in the final string |
+| `freeze_atoms` | Indices held fixed during optimization (link-H parents). 0-based internal indices; `summary.log` echoes them as 1-based. |
+| `n_images` | MEP image count in path-search / path-opt; IRC trajectory frame count in tsopt-only mode |
 | `n_segments` | Total MEP segment count (reactive + bridge) |
 | `n_segments_reactive` | Reactive segment count (kind != "bridge") |
 | `rate_limiting_step` | Dict `{segment, barrier_kcal, method}` for the highest-barrier segment |
@@ -119,7 +119,7 @@ Top-level keys:
 | `segments` | Lightweight per-segment summary (see below) |
 | `post_segments` | Per-segment post-processing details (tsopt / IRC / freq / DFT outputs) |
 | `key_output_files` | Map of role → path (str) for top-level files; `seg_NN` entries are `{description, files}` dicts |
-| `pipeline_mode` | Internal mode tag |
+| `pipeline_mode` | One of `"path-search"`, `"path-opt"`, `"tsopt-only"` |
 | `mlip_backend` | Which backend produced the energies |
 | `energy_diagrams` | List of energy-diagram entries (PNG / HTML paths and metadata) |
 | `out_dir` | Output directory absolute path |
@@ -128,7 +128,7 @@ Per-segment keys (`summary.json["segments"][i]`) — lightweight, MEP-level:
 
 | Key | Description |
 |---|---|
-| `index` | Segment index (1-based int; written zero-padded as `seg_01/`, `seg_03/`, …) |
+| `index` | Segment index (1-based int; written zero-padded as `seg_01/`, `seg_02/`, …) |
 | `tag` | Segment tag (`"reactive"` / `"non-reactive"`) |
 | `kind` | Segment kind (`"seg"`, `"bridge"`, or `"tsopt"`) |
 | `barrier_kcal` | TS – R energy (kcal/mol) — the rate constant input |
@@ -160,18 +160,18 @@ result_all/
 │   └── product.{xyz,pdb}                   # IRC forward endpoint, re-optimized
 └── path_search/post_seg_NN/structures/
     ├── reactant.{xyz,pdb}                  # same as above (canonical) — nested copy
-    ├── reactant_irc.{xyz,pdb}              # raw IRC backward end (pre-LBFGS)
+    ├── reactant_irc.{xyz,pdb}              # raw IRC backward end (pre-RFO/LBFGS re-optimization)
     ├── ts.{xyz,pdb}                        # same as above
     ├── product.{xyz,pdb}                   # same as above (canonical)
-    └── product_irc.{xyz,pdb}               # raw IRC forward end (pre-LBFGS)
+    └── product_irc.{xyz,pdb}               # raw IRC forward end (pre-RFO/LBFGS re-optimization)
 ```
 
 **Rule of thumb**: read from `seg_NN/` for downstream stages. Use
 `reactant_irc.xyz` / `product_irc.xyz` only when debugging
-IRC vs. LBFGS divergence.
+IRC vs. post-IRC re-optimization divergence.
 
 `bond_changes` are computed from `reactant.xyz` / `product.xyz`
-(post-LBFGS), not from the raw IRC endpoints.
+(post-IRC re-optimization), not from the raw IRC endpoints.
 
 ## Programmatic key extraction
 
@@ -232,9 +232,14 @@ Reading rules:
 When `summary.json["status"] != "success"`, look at:
 
 1. `summary.log` — human-readable, prints the failure point first.
-2. `post_seg_NN/<stage>/result.json` — per-stage status (which step
-   crashed).
-3. `post_seg_NN/<stage>/<stage>.log` — stack trace if any.
+2. `path_search/post_seg_NN/<stage>/result.json` (or `path_opt/...`
+   when `--refine-path False`) — per-stage status (which step
+   crashed). Note: top-level `post_seg_NN/` is a re-export; the
+   primary copy lives under `path_search/` or `path_opt/`.
+3. The per-stage log produced by the underlying tool (e.g. PySCF /
+   pysisyphus) is silenced by default (see
+   `default_group._silence_pysisyphus_loggers`); rerun with `--dump`
+   to keep optimizer trajectories.
 
 Even on failed runs, partial outputs are kept:
 
@@ -245,7 +250,8 @@ Even on failed runs, partial outputs are kept:
 
 ## Energy diagrams
 
-`pdb2reaction all` writes `path_search/energy_diagram_*.png`:
+`pdb2reaction all` writes `path_search/energy_diagram_*.png` (or
+`path_opt/energy_diagram_*.png` when `--refine-path False`):
 
 - `energy_diagram_MEP.png` — bare MEP energies from the path-search
   string (MLIP, no thermochemistry).

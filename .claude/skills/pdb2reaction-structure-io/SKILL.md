@@ -68,9 +68,9 @@ When an agent must edit a structure file, the basic posture is:
 | `freq` | ✓ | ✓ | ✓ |
 | `irc` | ✓ | ✓ | ✓ |
 | `dft` | ✓ | ✓ | ✓ |
-| `scan`, `scan2d`, `scan3d` | ✓ | — | — |
+| `scan`, `scan2d`, `scan3d` | ✓ | ✓ | ✓ |
 | `all` | ✓ | ✓ (single segment) | ✓ |
-| `bond-summary` | ✓ | ✓ | — |
+| `bond-summary` | ✓ | ✓ | ✓ |
 
 If you pass an XYZ to a subcommand that needs residue context (e.g.
 `-l 'GLU:-1'`), supply `--ref-pdb <path>` so the residue mapping can be

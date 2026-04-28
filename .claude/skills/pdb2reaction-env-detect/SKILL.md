@@ -121,7 +121,7 @@ command -v module >/dev/null && module list 2>&1
 | `<YOUR_PARTITION>` | A partition from `sinfo -o "%P %l %N %G"` (SLURM) whose `TIMELIMIT` covers your job |
 | `<NCPU>` | `np` from `pbsnodes -a` (PBS) or `--cpus-per-task` budget (SLURM) |
 | `<NGPU>` | `gpus = N` from `pbsnodes -a` (PBS) or `--gres=gpu:N` (SLURM) |
-| `<MEM>` | A safe fraction of the per-node memory: `pbsnodes -a \| grep totalmem` (PBS) or `sinfo -o "%m"` (SLURM) |
+| `<MEM>` | A safe fraction of the per-node memory: `pbsnodes -a \| grep totalmem` (PBS) or `sinfo -o "%m"` (SLURM, returns MB — divide by 1024 for the GB value the HPC SKILL.md `--mem=<MEM>G` template expects) |
 | `<CUDA_MODULE>` | A line from `module avail 2>&1 \| grep -i cuda` (e.g. `cuda/12.9`; naming varies: `cuda`, `cudatoolkit`, `nvhpc`, …) |
 | `<YOUR_ENV>` | The conda env that imported `pdb2reaction` in step 7 |
 | `<HH:MM:SS>` | Your estimated walltime, capped by the queue's `resources_max.walltime` |

@@ -39,8 +39,11 @@ pdb2reaction trj2fig -i mep.xyz -o mep.html
 
 ## Caveats
 
-- The XYZ comment line must encode the energy. ASE format `... energy=-1234.56`
-  is recognized. Pure XYZ without energy fails silently with a flat plot.
+- The XYZ comment line must encode the energy. The reader pulls the
+  first numeric token (any decimal / scientific / negative form), so
+  bare floats like `-12345.67` and ASE-style `... energy=-1234.56`
+  both work. If the comment line has no numeric token at all, the
+  reader raises (no silent flat plot).
 - For a labeled energy diagram (R / TS / IM / P), use `energy-diagram.md`
   instead.
 

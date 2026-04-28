@@ -59,6 +59,7 @@ Two equivalent notations are common:
 | config string (`--model`) | paper notation | HuggingFace repo | Notes |
 |---|---|---|---|
 | `uma-s-1p1` (default) | UMA-S-1.1 / UMA-s-1.1 | `facebook/UMA-S-1.1` | Smaller / faster, sufficient for most workflows |
+| `uma-s-1p2` | UMA-S-1.2 / UMA-s-1.2 | `facebook/UMA-S-1.2` | Successor checkpoint (still small) |
 | `uma-m-1p1` | UMA-M-1.1 / UMA-m-1.1 | `facebook/UMA-M-1.1` | Larger, slightly more accurate, ~3× slower |
 
 `p` is the dot replacement used by fairchem-core's config parser

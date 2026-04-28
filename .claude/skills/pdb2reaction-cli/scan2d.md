@@ -36,7 +36,7 @@ are driven simultaneously, generating the grid.
 
 ```bash
 pdb2reaction scan2d -i 1.R.pdb -l 'SAM:1,GPP:-3' \
-    -s '[("CS1 SAM 320","C7 GPP 321",1.60), ("GPP 321 H11","GLU 186 OE2",0.90)]' \
+    -s '[("CS1 SAM 320","C7 GPP 321",1.60), ("H11 GPP 321","OE2 GLU 186",0.90)]' \
     -b uma -o result_scan2d
 ```
 

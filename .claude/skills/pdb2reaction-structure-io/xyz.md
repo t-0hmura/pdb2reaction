@@ -23,26 +23,24 @@ when `-q` / `-m` (or `--ref-pdb`) is supplied.
 - Multiple frames (a trajectory) are concatenated: each frame restarts
   with the atom-count line.
 
-## ASE Properties extension (line 2)
+## Comment line (line 2)
 
-ASE writes XYZ trajectories with a structured comment line:
+`pdb2reaction` writes `*_trj.xyz` files with a bare floating-point
+energy as the comment line:
 
 ```
-Lattice="..." Properties=species:S:1:pos:R:3 energy=-12345.67 pbc="F F F"
+56
+-11148.201817745587
+H   0.123  4.567  8.901
+...
 ```
 
-Key fields you'll see in `pdb2reaction` output:
-
-| Key | Meaning |
-|---|---|
-| `Properties=species:S:1:pos:R:3` | Standard "element + 3 coords per atom" |
-| `energy=...` | Total energy (Hartree by default in pdb2reaction) |
-| `forces:R:3` | Per-atom forces appended after coords |
-| `Lattice="..."` | Cell vectors, if periodic (cluster models are not periodic) |
-| `pbc="F F F"` | Periodic-boundary flags (always F for cluster models) |
-
-`pdb2reaction` writes `*_trj.xyz` files this way; the comment line of
-each frame carries the energy at that point along the IRC, MEP, or scan.
+The comment is parsed by `read_xyz_energies` (a regex that pulls the
+first numeric token), and emitted on write by `_write_frame_with_energy`
+in `pdb2reaction.utils`. ASE-style extxyz tags (`Lattice="..."`,
+`Properties=species:S:1:pos:R:3`, `pbc="F F F"`) are **not** produced
+by pdb2reaction's writer; they may appear when the file was written by
+ASE directly.
 
 ## Reading and writing in Python
 

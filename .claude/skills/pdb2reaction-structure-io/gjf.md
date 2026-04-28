@@ -11,7 +11,7 @@ input that already encodes charge, spin, and a route specification.
 %mem=8GB
 %chk=run.chk
 
-# wB97X-D/def2-svp opt freq
+# <route line: functional/basis + keywords; user-supplied>
 
   Title (one line, free text)
 
@@ -49,7 +49,7 @@ the CLI overrides whatever's in the gjf).
 | Element + x/y/z | Geometry, fed to the calculator |
 | Charge | `-q` (only if you don't override on CLI) |
 | Multiplicity | `-m` (only if you don't override on CLI) |
-| Frozen flag (`-1` in column 2) | **Silently ignored** by the gjf coordinate parser. Use `--freeze-links` (CLI) or YAML `freeze_atoms` to declare frozen atoms; the gjf header's `-1` does not propagate. |
+| Frozen flag (`-1` in column 2) | Preserved verbatim by the gjf I/O layer (captured in the line prefix and re-emitted by `convert_xyz_to_gjf`). It does **not** drive the runtime freeze list — use `--freeze-links` / `--freeze-atoms` / YAML `geom.freeze_atoms` to declare frozen atoms. |
 
 ## CLI usage
 
@@ -79,35 +79,48 @@ frozen during optimization. Gaussian convention:
   C  -1   1.234   5.678   9.012
 ```
 
-**`pdb2reaction` does not parse this flag.** Its gjf coordinate regex
-captures element + x/y/z only; the `-1` is dropped silently on read
-and never written on output.
+**`pdb2reaction` does not act on this flag** — i.e. it does not add
+the `-1`-marked atoms to the runtime freeze list. The flag itself is
+preserved on round-trip: `_GJF_COORD_RE` puts everything before the
+x/y/z floats into the line `prefix` capture group, and
+`convert_xyz_to_gjf` re-emits the prefix verbatim.
 
-To declare frozen atoms, use either:
+To declare frozen atoms in pdb2reaction, use either:
 
 - `--freeze-links` (CLI; default-on for `extract`-produced clusters
-  with link-H caps), or
-- a YAML `--config` with `freeze_atoms: [<index>, ...]`.
+  with link-H caps),
+- `--freeze-atoms 'i,j,k,...'` (CLI, 1-based), or
+- a YAML `--config` with `geom.freeze_atoms: [<index>, ...]`.
 
 If you have a Gaussian gjf with frozen markers you care about, extract
-those indices in a preprocessing step and feed them via `--config`.
+those indices in a preprocessing step and feed them via `--freeze-atoms`
+or `geom.freeze_atoms`.
 
 ## Generating gjf from `pdb2reaction` output
 
 `pdb2reaction extract` itself writes only PDB. To get a `.gjf` from a
-`pdb2reaction` stationary point, either let `pdb2reaction path-search`
-emit GJF companions via its `--convert-files/--no-convert-files` flag
-(default on; converts the per-segment XYZs into PDB+GJF), or pipe a
-single XYZ through ASE:
+`pdb2reaction` stationary point, the simplest path is to let
+`pdb2reaction path-search` (or any geometry-touching subcommand) emit
+GJF companions via `--convert-files/--no-convert-files` (default on);
+that pipeline reuses the user-supplied gjf template's route line and
+header, so you don't have to specify the QM method here.
+
+To convert a single XYZ programmatically, use the in-tree helper
+`pdb2reaction.utils.convert_xyz_to_gjf(xyz_path, template, out_path)`,
+which writes the new geometry under the existing template's header
+(charge / spin / route / link0 / connectivity sections all preserved):
 
 ```python
-from ase.io import read, write
-atoms = read("ts.xyz")
-atoms.info["charge"] = 0
-atoms.info["multiplicity"] = 1
-write("ts.gjf", atoms, format="gaussian-in",
-      properties=["forces"], extra="# wB97X-D/def2-svp opt freq")
+from pathlib import Path
+from pdb2reaction.utils import parse_gjf_template, convert_xyz_to_gjf
+template = parse_gjf_template(Path("template.gjf"))   # any prior gjf
+convert_xyz_to_gjf(Path("ts.xyz"), template, Path("ts.gjf"))
 ```
+
+If no template is available, hand-write the route line in a stub gjf
+once and reuse it; do not embed a specific QM method in this skill,
+since the appropriate functional/basis depends on the user's downstream
+calculation.
 
 ## Validation
 
