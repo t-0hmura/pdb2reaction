@@ -90,13 +90,16 @@ Inspect the active QRRHO knob via `pdb2reaction.defaults.THERMO_KW`.
 
 ## Partial-Hessian Vibrational Analysis (PHVA)
 
-When the input has frozen atoms (PDB B-factor or `freeze_atoms`
-set), `freq` automatically computes the **partial Hessian**: only the
-mobile-atom block is built and diagonalized; frozen atoms are projected
-out. This is much cheaper for large clusters.
+When the input has frozen atoms, `freq` automatically computes the
+**partial Hessian**: only the mobile-atom block is built and
+diagonalized; frozen atoms are projected out. This is much cheaper for
+large clusters.
 
-Frozen atoms are written by `extract` for link-H parents. To override,
-use `--config` YAML and set `freeze_atoms`.
+`pdb2reaction` does **not** read PDB B-factors as a freeze list. The
+freeze set is assembled (in priority order) from CLI `--freeze-atoms`
+(1-based atom indices), CLI `--freeze-links/--no-freeze-links` (auto
+freeze of `LKH/HL` link-H parents written by `extract`), and YAML
+`geom.freeze_atoms`. See `freeze-atoms.md`.
 
 ## Caveats
 

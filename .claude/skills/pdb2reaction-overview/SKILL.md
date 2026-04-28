@@ -1,6 +1,6 @@
 ---
 name: pdb2reaction-overview
-description: What pdb2reaction is, when to use it, and the design choices that distinguish it from generic QM/MLIP path-search tools (PDB-native input, GPU-accelerated pysisyphus fork, recursive bond-change-driven path search).
+description: Orientation for pdb2reaction — what it is, when to use it, and how it differs from generic QM/MLIP path-search tools (PDB-native input, GPU-accelerated pysisyphus fork, recursive bond-change-driven path search). TRIGGER on first-touch / "what is pdb2reaction" / "should I use it" questions. SKIP when the user already named a subcommand, an install issue, an output file, a structure format, or a cluster — sibling skills cover those.
 ---
 
 # pdb2reaction Overview
@@ -38,8 +38,8 @@ Three things make it different from gluing together generic tools:
 ## When *not* to use it
 
 - Pure QM (DFT-only) without MLIP: stick with ORCA/Gaussian/Q-Chem directly.
-- Explicit-solvent QM/MM: see ML/MM-style frameworks (e.g. `mlmm_toolkit`),
-  not `pdb2reaction` (which is cluster-model only).
+- Explicit-solvent QM/MM with full force-field embedding: out of scope
+  (`pdb2reaction` is cluster-model only).
 - Free-energy simulations (umbrella sampling, metadynamics): out of scope.
 
 ## Quick check
@@ -99,22 +99,6 @@ dictionaries are in `pdb2reaction.defaults` (read live, not transcribed):
 ```bash
 python -c "import pdb2reaction.defaults as d; print(sorted(n for n in dir(d) if not n.startswith('_')))"
 ```
-
-## Sibling project: mlmm-toolkit
-
-`mlmm_toolkit` shares the same `pysisyphus` and `thermoanalysis` core but
-targets ML/MM ONIOM workflows (3-layer ML/movable-MM/frozen, AmberTools
-parm7 topology, microiteration). Choose:
-
-| Use case | Toolkit |
-|---|---|
-| Cluster model, no MM environment | `pdb2reaction` |
-| Solvated enzyme with MM force field around ML region | `mlmm_toolkit` |
-| Need automatic Amber parameterization | `mlmm_toolkit` (`mm-parm` subcommand) |
-| Need recursive multi-step path-search | `pdb2reaction` |
-
-The two toolkits **cannot share a Python environment** (incompatible
-pysisyphus forks and `e3nn` versions). Keep separate `conda env`s.
 
 ## Where the code lives
 

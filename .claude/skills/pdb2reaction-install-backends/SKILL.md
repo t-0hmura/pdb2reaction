@@ -1,6 +1,6 @@
 ---
 name: pdb2reaction-install-backends
-description: How to install pdb2reaction itself and each of its MLIP / DFT / xTB backends, and how to handle CUDA, PyTorch, and platform-specific quirks. Read this before trying to import pdb2reaction or invoke any subcommand.
+description: Install recipes for pdb2reaction core + MLIP / DFT / xTB backends, with CUDA / PyTorch / e3nn / aarch64 quirks. TRIGGER on install / setup / `pip install` / `conda env` / `ImportError` / CUDA-version mismatch / "GPU not detected" / `huggingface` auth / e3nn version conflict questions. SKIP when pdb2reaction already imports cleanly and the user is invoking subcommands — the CLI skill covers usage.
 ---
 
 # pdb2reaction — Install and Backends
@@ -12,8 +12,7 @@ description: How to install pdb2reaction itself and each of its MLIP / DFT / xTB
 - a recent **PyTorch** wheel matching your CUDA driver,
 - one or more **MLIP backends** (UMA / Orb / MACE / AIMNet2),
 - optional **PySCF / GPU4PySCF** for DFT single points,
-- optional **xtb** for ALPB solvent corrections,
-- AmberTools is **not** required (that is `mlmm_toolkit`'s territory).
+- optional **xtb** for ALPB solvent corrections.
 
 Bundled and installed automatically with the package: `pysisyphus` (a
 GPU-tensor fork), `thermoanalysis`. They must not be installed separately.
@@ -69,10 +68,6 @@ DFT, xTB) can sit in either.
 
 `pdb2reaction` itself is the same code in both envs; only the calculator
 plugin set differs.
-
-`mlmm_toolkit` shares this `e3nn`/`pysisyphus` constraint and **cannot
-coexist with pdb2reaction in one env either**. Use `<mlmm_env>` if you
-need both toolkits available on the same host.
 
 ## Conda env templates
 

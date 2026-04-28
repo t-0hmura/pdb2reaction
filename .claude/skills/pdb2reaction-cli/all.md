@@ -29,12 +29,11 @@ pdb2reaction all -i <input(s)> [-c <substrate>] [-l 'RES:Q,...'] \
 | `-q, --charge` | int | derived from `-l` | Total cluster charge override |
 | `-m, --multiplicity` | int | 1 | Spin multiplicity (2S+1) |
 | `-r, --radius` | float | 2.6 | Pocket radius (Å) when `-c` triggers extraction |
-| `--scan-lists` | repeated | none | Staged distance scans (mode 2 — `all-scan-list.md`) |
-| `--tsopt` | BOOL | `False` | Run TS optimization + IRC per reactive segment |
+| `-s, --scan-lists` | repeated | none | Staged distance scans (mode 2 — `all-scan-list.md`) |
+| `--tsopt` | BOOL | `False` | Run TS optimization + IRC per reactive segment (also required to enter TS-only mode with a single `-i`) |
 | `--thermo` | BOOL | `False` | Run freq + thermochemistry on R / TS / P |
 | `--dft` | BOOL | `False` | Run DFT single point on R / TS / P |
 | `--dft-func-basis` | str | `wb97m-v/def2-tzvpd` | DFT functional/basis (when `--dft`) |
-| `-s, --scan-lists` | repeated | none | Staged distance scans (mode 2 — `all-scan-list.md`) |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `--solvent` | str | none | xTB-ALPB solvent name (`water`, `methanol`, …) |
 | `-o, --out-dir` | path | `./result_all/` | Top-level output directory |
@@ -48,7 +47,7 @@ between versions).
 ## Mode selection cheatsheet
 
 ```
-Single -i input.{xyz,pdb,gjf} (no --scan-lists, no extra inputs)
+Single -i input.{xyz,pdb,gjf} + --tsopt (no --scan-lists, no extra inputs)
     └── all-ts-only.md     (treat input as TS candidate; tsopt+irc+freq)
 
 Single -i input.pdb + --scan-lists '...'
@@ -57,6 +56,11 @@ Single -i input.pdb + --scan-lists '...'
 Multiple -i 1.R.pdb [2.IM.pdb ...] N.P.pdb (reaction-ordered)
     └── all-endpoint-mep.md (multi-endpoint MEP)
 ```
+
+A single `-i` without **either** `--scan-lists` or `--tsopt` raises
+`BadParameter` (see `all.py`: "Provide at least two structures... or a
+single structure with --scan-lists, or a single structure with --tsopt
+True").
 
 ## Output tree (typical)
 

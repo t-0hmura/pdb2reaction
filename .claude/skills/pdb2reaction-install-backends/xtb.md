@@ -8,7 +8,7 @@ SCF call that adds a continuum-solvation term.
 
 | Use it when | Skip it when |
 |---|---|
-| You need a quick, approximate solvent correction for a bare cluster | Fully embedded QM/MM or explicit waters (use `mlmm_toolkit`) |
+| You need a quick, approximate solvent correction for a bare cluster | Full QM/MM embedding or explicit waters (out of scope) |
 | Comparing barrier heights between gas-phase and solvated approximation | Reporting absolute solvent free energies (xTB-ALPB is empirical) |
 | Substrate is in a public-friendly solvent (water, DMSO, methanol, …) | Solvent isn't in the ALPB parameter set (unusual organics) |
 
@@ -84,5 +84,5 @@ optimizer feels the solvent — there is no separate flag to toggle this.
 - `dft.md` — note that xTB-ALPB does **not** stack with PySCF's own
   PCM/COSMO; pick one.
 - `pdb2reaction-cli/SKILL.md` — `--solvent` is accepted by `all`,
-  `tsopt`, `freq`, `irc`, `opt`, `path-search`, and `path-opt`.
-  Not accepted by `dft`, `scan`, `scan2d`, `scan3d`, or `extract`.
+  `tsopt`, `freq`, `irc`, `opt`, `path-search`, `path-opt`, `scan`,
+  `scan2d`, and `scan3d`. Not accepted by `dft` or `extract`.

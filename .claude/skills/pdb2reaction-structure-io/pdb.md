@@ -142,11 +142,18 @@ from Bio.PDB import PDBParser, PDBIO
 p = PDBParser(QUIET=True).get_structure("x", "my.pdb")
 for atom in p.get_atoms():
     if atom.get_name() == "OD1" and atom.get_parent().get_resname() == "ASP":
-        atom.set_bfactor(20.0)        # mark frozen, for example
+        atom.set_bfactor(20.0)        # cosmetic edit only; see note below
 io = PDBIO()
 io.set_structure(p)
 io.save("my_edited.pdb")
 ```
+
+**Note:** `pdb2reaction` does **not** treat the PDB B-factor column as
+a freeze flag. To freeze atoms during optimization, use the CLI
+`--freeze-atoms` / `--freeze-links` options or the YAML
+`geom.freeze_atoms` key (see `pdb2reaction-cli/freeze-atoms.md`).
+B-factors edited above are passed through verbatim by `extract` /
+`add-elem-info` but have no effect on geometry constraints.
 
 ## Validation hooks
 

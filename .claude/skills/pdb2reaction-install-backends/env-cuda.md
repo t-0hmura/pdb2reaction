@@ -106,7 +106,10 @@ pip install torch --index-url https://download.pytorch.org/whl/cpu
 ```
 
 `pdb2reaction` runs MLIP backends on CPU but is **much slower**
-(50–200×). DFT subcommand falls back to PySCF CPU automatically — see
+(50–200×). For DFT (`pdb2reaction dft`), CPU PySCF is **not** an
+automatic fallback — pass `--engine cpu` explicitly when the GPU
+backend is unavailable; with the default `--engine gpu` the command
+raises a `ClickException` rather than silently falling back. See
 `dft.md`.
 
 ## Architecture quirk: aarch64

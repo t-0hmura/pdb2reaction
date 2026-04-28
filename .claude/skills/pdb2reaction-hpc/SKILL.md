@@ -1,6 +1,6 @@
 ---
 name: pdb2reaction-hpc
-description: How to run pdb2reaction on PBS (Torque/PBSPro) and SLURM clusters — generic preamble templates with placeholders, walltime guidance, CPU vs GPU choice, monitoring, and the dynamic-dispatch (flock + pbsdsh) recipe in dynamic-dispatch.md.
+description: PBS (Torque / PBSPro) and SLURM submission for pdb2reaction — preamble templates with placeholders, walltime budgeting, CPU vs GPU choice, job monitoring, and the dynamic-dispatch (flock + pbsdsh) recipe in `dynamic-dispatch.md`. TRIGGER on cluster submission / `qsub` / `sbatch` / walltime / preamble / `--resume` / multi-job dispatch / `workers > 1` questions. SKIP for local single-machine runs, install setup, or output parsing.
 ---
 
 # pdb2reaction HPC

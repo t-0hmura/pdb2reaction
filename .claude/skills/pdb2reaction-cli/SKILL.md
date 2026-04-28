@@ -1,6 +1,6 @@
 ---
 name: pdb2reaction-cli
-description: Cheatsheet + recipes for the 17 pdb2reaction subcommands. SKILL.md has 1-line input→output per sub; each subcommand also has a full md (`extract.md` / `tsopt.md` / …) for flags, validation, caveats. See also `freeze-atoms.md` for the cluster-boundary frozen-atom mechanics shared by every geometry-touching subcommand.
+description: Per-subcommand reference for pdb2reaction's 17 CLI subcommands (extract / path-search / tsopt / freq / irc / dft / scan / opt / all / …). SKILL.md is a 1-line input→output cheatsheet; each subcommand also has its own md (`extract.md` / `tsopt.md` / …) for flags, validation, caveats. See `freeze-atoms.md` for cluster-boundary frozen-atom mechanics. TRIGGER on questions about a specific subcommand, flag, or shell invocation. SKIP for install / HPC / output-parsing / structure-format-editing questions.
 ---
 
 # pdb2reaction CLI
@@ -152,5 +152,7 @@ Each per-subcommand md points at the relevant `_KW` dict in the
 - `pdb2reaction-structure-io/` — input file formats and charge / spin.
 - `pdb2reaction-install-backends/` — `<tool>` / backend installation.
 - `pdb2reaction-workflows-output/SKILL.md` — what comes out of each
-  invocation, summary.json schema, R/TS/P canonical paths.
+  invocation, six canonical workflows, energy diagrams. The `summary.json`
+  schema, R/TS/P canonical paths, and bond-change interpretation are in
+  [`pdb2reaction-workflows-output/summary-json.md`](../pdb2reaction-workflows-output/summary-json.md).
 - `pdb2reaction-hpc/SKILL.md` — running these recipes on PBS / SLURM.

@@ -30,16 +30,18 @@ pdb2reaction all -i ts_candidate.pdb \
 
 ## How it differs from the other two modes
 
-`pdb2reaction all` falls into TS-only mode when:
+`pdb2reaction all` falls into TS-only mode when **all three** hold:
 
 - exactly **one** `-i` input is given,
-- **no** `--scan-lists` is provided.
+- **no** `--scan-lists` is provided,
+- `--tsopt` (or `--tsopt True`) is passed.
 
-The orchestrator skips path-search automatically and starts the
-pipeline at `tsopt`. There is **no explicit "force TS-only" flag** — the
-mode is selected purely from the input shape. If you also pass
-`--tsopt false` (the BOOL form), `all` becomes a thin wrapper around
-`freq + irc + dft` (rarely useful).
+If a single `-i` is given without either `--scan-lists` or `--tsopt`,
+the CLI raises `BadParameter` instead of running (see `all.py`:
+"Provide at least two structures... or a single structure with
+--scan-lists, or a single structure with --tsopt True"). With the
+required `--tsopt` set, the orchestrator skips path-search and starts
+the pipeline at `tsopt`.
 
 For finer control, run the underlying subcommands directly:
 

@@ -1,6 +1,6 @@
 ---
 name: pdb2reaction-structure-io
-description: How to read, edit, and write the three molecular-structure formats pdb2reaction handles — PDB, XYZ, GJF — plus the charge / multiplicity decision workflow for arbitrary substrates.
+description: PDB / XYZ / GJF input-file reference for pdb2reaction, plus the charge / multiplicity decision workflow for arbitrary substrates. TRIGGER on editing or inspecting a structure file, deciding `-q` / `-l` / `-m`, or interpreting residue / charge / spin in an input. SKIP for subcommand syntax, output parsing, install, or HPC questions.
 ---
 
 # pdb2reaction Structure I/O
