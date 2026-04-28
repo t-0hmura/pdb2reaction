@@ -5,7 +5,7 @@
 > **要約:** 遷移状態（TS）から反応物・生成物方向へ固有反応座標（IRC）を追跡します。デフォルトで前方・後方の両方向を実行します。VRAM に余裕がある場合は `--hessian-calc-mode Analytical` が推奨されます。
 
 ### 要点
-- **想定場面:** `tsopt` で最適化・検証済みの TS 構造を出発点に、固有反応座標を追跡して端点接続性（R ↔ TS ↔ P）を確認したい場合。
+- **想定場面:** `tsopt` で最適化・検証済みの TS 構造を出発点に、固有反応座標を追跡して端点接続性（R ↔ TS ↔ P）を確認するケース。
 - **手法:** EulerPC（Euler Predictor-Corrector）積分 + MLIP バックエンドのヘシアン（デフォルト UMA、ORB/MACE/AIMNet2 も選択可）。デフォルトでは前方・後方両方の分岐を実行します。
 - **主な出力:** `finished_irc_trj.xyz`、`forward_irc_trj.xyz`、`backward_irc_trj.xyz`（参照 PDB が利用可能なら `.pdb` コンパニオンも）。
 - **デフォルト:** `--max-cycles 125`、`--step-size 0.10` Bohr、`--root 0`、`--forward`/`--backward` 両方有効、`--hessian-calc-mode FiniteDifference`、バックエンド `uma`。**強制上書き:** IRC は YAML/CLI マージ後に `geom.coord_type = cart` および `calc.return_partial_hessian = true` を強制します。

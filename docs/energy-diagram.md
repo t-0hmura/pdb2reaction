@@ -9,7 +9,7 @@
 - **Output:** One image file (`.png`, `.jpg`, `.jpeg`, `.svg`, or `.pdf`).
 - **Default output:** `energy_diagram.png`.
 - **State labels:** Optional `--label-x`; defaults to `S1`, `S2`,...
-- **Use when:** You already have energies and only need a formatted diagram.
+- **Use when:** Energies already available; only the formatted diagram is needed.
 
 `pdb2reaction energy-diagram` only visualizes numbers you provide. It does not read structure files and does not run `--thermo` / `--dft`-style calculations.
 

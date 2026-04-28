@@ -5,7 +5,7 @@
 > **Summary:** Optimize a transition-state *candidate* using RS‑I‑RFO (Restricted-Step Image Rational Function Optimization) (`--opt-mode hess`, default) or, as an alternative when RS‑I‑RFO struggles, Hessian-Guided Dimer (`--opt-mode grad`). `tsopt` performs a final Hessian calculation and imaginary-frequency check automatically; a validated TS (first-order saddle point) should show **exactly one** imaginary frequency. Always confirm endpoint connectivity with `irc`.
 
 ### At a glance
-- **Use when:** You have a TS guess (HEI from `path-opt`/`path-search`, or your own structure) and need to refine it into an optimized first-order saddle point with a built-in imaginary-frequency check.
+- **Use when:** Refining a TS guess (HEI from `path-opt`/`path-search`, or a user-supplied structure) into an optimized first-order saddle point with a built-in imaginary-frequency check.
 - **Method:** `--opt-mode hess` (`rsirfo`) = RS‑I‑RFO with full Hessian (default, more reliable for most systems); `--opt-mode grad` (`dimer`) = Hessian-Guided Dimer (alternative when RS‑I‑RFO fails to converge or full-Hessian recomputation is prohibitive). `--flatten` (default disabled) controls surplus-imaginary-mode cleanup.
 - **Outputs:** `final_geometry.{xyz,pdb,gjf}`, `vib/imag_*_trj.xyz` (and `.pdb` for PDB inputs); optimization trajectories with `--dump`.
 - **Defaults:** `--opt-mode hess` (RS-I-RFO), `--thresh baker`, `--hessian-calc-mode FiniteDifference`, `--max-cycles 10000`, `--flatten` disabled, backend `uma`.

@@ -5,7 +5,7 @@
 > **Summary:** Runs single-point DFT with GPU4PySCF or CPU PySCF. The default functional/basis is ωB97M-V/def2-tzvpd. Results include energy and population analysis (Mulliken, meta-Löwdin, IAO charges).
 
 ### At a glance
-- **Use when:** You need a single-point DFT energy (and population analysis) on a small active-site model — typically to refine MLIP-optimized R/TS/P structures.
+- **Use when:** Single-point DFT energy (and population analysis) on a small active-site model — typically for refining MLIP-optimized R/TS/P structures.
 - **Method:** PySCF (CPU) or GPU4PySCF (GPU) with density fitting; backend chosen via `--engine {gpu|cpu}`.
 - **Outputs:** `input_geometry.xyz` plus `result.yaml` (energy in hartree/kcal·mol⁻¹, convergence/timing/engine metadata, and Mulliken/meta-Löwdin/IAO charges and spin densities).
 - **Defaults:** `--engine gpu`, `--func-basis wb97m-v/def2-tzvpd`, `--max-cycle 100`, `--conv-tol 1e-9`, `--grid-level 3`, `--out-dir ./result_dft/`.

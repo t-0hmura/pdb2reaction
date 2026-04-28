@@ -5,7 +5,7 @@
 > **Summary:** Build a continuous MEP from **two or more** structures with GSM (default) or DMF (`--mep-mode dmf`). Automatically refines only regions with bond changes and exports the highest-energy image (HEI) as a TS candidate (validate with tsopt + IRC).
 
 ### At a glance
-- **Use when:** You have R → … → P structures (2+ inputs) and want a single stitched MEP with automatic refinement.
+- **Use when:** R → … → P structures (2+ inputs) requiring a single stitched MEP with automatic refinement.
 - **Method:** Chains GSM/DMF segments and recursively refines only sub-intervals that still contain covalent changes.
 - **Outputs:** `mep_trj.xyz` (main trajectory), `summary.json` (segment-by-segment results), and optional plots/merged PDBs when enabled.
 - **Defaults:** `--mep-mode gsm`, `--opt-mode grad` (LBFGS), `--no-preopt`, `--align`, `--thresh gau`, `--thresh-stopt gau_loose`.

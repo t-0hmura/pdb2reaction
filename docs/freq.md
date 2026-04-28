@@ -5,7 +5,7 @@
 > **Summary:** Compute vibrational frequencies and thermochemistry (ZPE, Gibbs energy, etc.) with an MLIP backend (UMA by default; `-b/--backend` also supports ORB, MACE, AIMNet2). When VRAM permits, `--hessian-calc-mode Analytical` speeds Hessian evaluation. Imaginary frequencies appear as negative values.
 
 ### At a glance
-- **Use when:** You need full vibrational analysis (e.g., confirm a stationary point is a true minimum with no imaginary frequencies, or that a TS has exactly one) and/or thermochemistry corrections (ZPE, Gibbs energy). Note: `tsopt` already includes an imaginary-frequency check, so a separate `freq` run is mainly for thermochemistry or detailed mode inspection.
+- **Use when:** Full vibrational analysis is required (e.g., confirming a stationary point is a true minimum with no imaginary frequencies, or that a TS has exactly one) and/or thermochemistry corrections (ZPE, Gibbs energy) are needed. Note: `tsopt` already includes an imaginary-frequency check, so a separate `freq` run is mainly for thermochemistry or detailed mode inspection.
 - **Method:** MLIP-backend Hessian (UMA by default; ORB/MACE/AIMNet2 also supported via `-b/--backend`) with PHVA (Partial Hessian Vibrational Analysis) for frozen atoms. Optional QRRHO-style thermochemistry via `thermoanalysis`.
 - **Outputs:** `frequencies_cm-1.txt`, per-mode `mode_*_trj.xyz` animations (and `.pdb` for PDB inputs with conversion enabled); `thermoanalysis.yaml` when `--dump` and `thermoanalysis` is installed.
 - **Defaults:** Backend `uma`, `--hessian-calc-mode FiniteDifference`, `--max-write 10`, `--amplitude-ang 0.8`, `--n-frames 20`, `--sort value`, `--temperature 298.15`, `--pressure 1.0`, `--dump False`.

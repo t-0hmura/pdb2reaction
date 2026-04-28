@@ -5,7 +5,7 @@
 > **Summary:** Perform a three-distance (d₁, d₂, d₃) grid scan with harmonic restraints and MLIP relaxations. Use `--scan-lists/-s` with a YAML/JSON spec file (recommended) or an inline Python literal; or plot an existing `surface.csv` via `--csv`.
 
 ### At a glance
-- **Use when:** You want a 3D potential-energy volume over three distances `(d₁, d₂, d₃)`, or want to re-plot an existing `surface.csv`. Input is one structure + `-s/--scan-lists scan3d.yaml` (recommended) or one `--scan-lists/-s` inline literal (three quadruples), unless you use `--csv` to plot only.
+- **Use when:** A 3D potential-energy volume over three distances `(d₁, d₂, d₃)` is needed, or an existing `surface.csv` needs re-plotting. Input is one structure + `-s/--scan-lists scan3d.yaml` (recommended) or one `--scan-lists/-s` inline literal (three quadruples); `--csv` enables plot-only mode.
 - **Method:** Nested loops d₁ → d₂ → d₃ with linear grids built from `--max-step-size`; values are reordered so points closest to the (pre)optimized structure are visited first. Each point is relaxed with the appropriate harmonic restraints (MLIP backend, UMA by default), and recorded energies are evaluated **without bias**, so grid points are directly comparable.
 - **Outputs:** `surface.csv`, per-point geometries under `grid/`, and an HTML isosurface plot (`scan3d_density.html`).
 - **Defaults:** `--opt-mode grad` (LBFGS), `--no-preopt`, `--max-step-size 0.20 Å`, `--bias-k 300 eV·Å⁻²`, `--thresh baker`, `--baseline min`, `--out-dir ./result_scan3d/`. 3D grids grow very quickly; consider coarser `--max-step-size` or smaller ranges first.

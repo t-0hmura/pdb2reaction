@@ -11,7 +11,7 @@ The `all` workflow **without `--tsopt`** produces **TS candidates** (Highest-Ene
 ```
 
 ### At a glance
-- **Use when:** You want the entire pipeline (extraction → MEP → TS optimization → IRC → thermo → DFT) end-to-end from PDB(s).
+- **Use when:** End-to-end pipeline from PDB(s) (extraction → MEP → TS optimization → IRC → thermo → DFT).
 - **Method:** Three modes — multi-structure MEP, single-structure + staged scan, or TSOPT-only — selected by the inputs and flags you provide.
 - **Outputs:** `summary.log`, `summary.json`, and `path_search/mep.pdb` (or `path_opt/` when `--refine-path False`); per-segment `seg_XX/` and post-processing `path_search/post_seg_XX/` when `--tsopt`/`--thermo`/`--dft` are enabled.
 - **Defaults:** Backend `uma`, `--mep-mode gsm`, `--opt-mode grad`, `--refine-path True`, `--preopt True`, `--thresh gau`, `--thresh-post baker`; `--tsopt`/`--thermo`/`--dft` are off.

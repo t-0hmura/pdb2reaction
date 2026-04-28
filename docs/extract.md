@@ -5,7 +5,7 @@
 > **Summary:** Extract a cluster model (active site model (binding pocket)) from a protein–ligand PDB. Specify substrates with `-c` by residue name, residue ID, or a PDB path. Link hydrogens are added to cap cut bonds. Use `--ligand-charge/-l` for non-standard residue charges.
 
 ### At a glance
-- **Use when:** You need an active site model (cluster model) carved out of a protein–ligand PDB — single structure or an ensemble — for downstream MEP/TSOPT/freq/DFT runs.
+- **Use when:** Carving an active site model (cluster model) from a protein–ligand PDB (single structure or ensemble) for downstream MEP/TSOPT/freq/DFT runs.
 - **Method:** Distance-based residue selection (`--radius`, optional `--radius-het2het`) with peptide/disulfide/PRO safeguards, backbone truncation, and optional link-hydrogen capping at severed bonds.
 - **Outputs:** Active site model PDB(s) with link hydrogens after a `TER` record (`model.pdb`, `model_<input>.pdb`, or a single multi-MODEL PDB depending on `-o`); optional `result.json` with `--out-json`.
 - **Defaults:** `--radius 2.6 Å`, `--radius-het2het 0.0` (off), `--include-h2o True`, `--exclude-backbone False`, `--add-linkh True`, `--freeze-links True`, `--verbose True`.
@@ -13,7 +13,7 @@
 
 `pdb2reaction extract` creates an active site model (cluster model) from a protein–ligand PDB. It selects residues near the substrate, truncates the model according to backbone/side-chain rules, optionally caps severed bonds with link hydrogens, and can process single structures or ensembles.
 
-If you run into misclassification (e.g., unusual residue/atom naming), see the appendix below on naming requirements and the internal reference lists.
+For misclassification due to unusual residue/atom naming, see the appendix below on naming requirements and the internal reference lists.
 
 ```{important}
 **Link hydrogens and frozen atoms.** Severed covalent bonds are capped with **link hydrogens** (residue `LKH`, atom `HL`). By default (`--freeze-links`, on in every downstream subcommand), the parent atoms of these link hydrogens are frozen during optimization, MEP search, IRC, and vibrational analysis to prevent unphysical relaxation at the model boundary. See the full semantics in the [Link hydrogen and frozen atoms](#link-hydrogen-and-frozen-atoms) section below. Subcommands such as `opt`, `tsopt`, `freq`, `irc`, `path-search`, `path-opt`, and `scan` all cross-reference this section.

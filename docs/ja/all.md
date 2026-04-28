@@ -13,7 +13,7 @@ MLIP バックエンドはデフォルトで UMA を使用しますが、`-b/--b
 ```
 
 ### 要点
-- **想定場面:** PDB から end-to-end（活性部位モデル抽出 → MEP → TS 最適化 → IRC → 熱化学 → DFT）で一括実行したい場合に使います。
+- **想定場面:** PDB からの end-to-end 一括実行（活性部位モデル抽出 → MEP → TS 最適化 → IRC → 熱化学 → DFT）。
 - **手法:** 入力とフラグに応じて 3 つのモードを切り替え（複数構造 MEP / 単一構造 + 段階的スキャン / TSOPT のみ）。
 - **主な出力:** `summary.log`、`summary.json`、`path_search/mep.pdb`（`--refine-path False` 時は `path_opt/`）。`--tsopt`/`--thermo`/`--dft` 有効時はセグメント別 `seg_XX/` と後処理ワークスペース `path_search/post_seg_XX/` も生成。
 - **デフォルト値:** バックエンド `uma`、`--mep-mode gsm`、`--opt-mode grad`、`--refine-path True`、`--preopt True`、`--thresh gau`、`--thresh-post baker`。`--tsopt`/`--thermo`/`--dft` はいずれも `False`。

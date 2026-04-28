@@ -5,7 +5,7 @@
 > **Summary:** Runs EulerPC (Euler Predictor-Corrector)-based intrinsic reaction coordinate (IRC) integration from a transition state toward reactants and products. By default both forward and backward branches are computed. Setting `--hessian-calc-mode Analytical` is strongly recommended when VRAM permits.
 
 ### At a glance
-- **Use when:** You have a TS structure (ideally already optimized and validated by `tsopt`) and want to trace the intrinsic reaction coordinate to confirm endpoint connectivity (R ↔ TS ↔ P).
+- **Use when:** Tracing the intrinsic reaction coordinate from an optimized TS (validated by `tsopt`) to confirm endpoint connectivity (R ↔ TS ↔ P).
 - **Method:** EulerPC (Euler Predictor-Corrector) integration with an MLIP-backend Hessian (UMA by default; ORB/MACE/AIMNet2 also supported). Forward and backward branches run by default.
 - **Outputs:** `finished_irc_trj.xyz`, `forward_irc_trj.xyz`, `backward_irc_trj.xyz` (and `.pdb` companions when a reference PDB is available).
 - **Defaults:** `--max-cycles 125`, `--step-size 0.10` Bohr, `--root 0`, `--forward`/`--backward` both on, `--hessian-calc-mode FiniteDifference`, backend `uma`. **Hard overrides:** IRC forces `geom.coord_type = cart` and `calc.return_partial_hessian = true` after YAML/CLI merging.

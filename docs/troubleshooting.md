@@ -58,7 +58,7 @@ Tip:
 
 ---
 
-### “My active site model (binding pocket) is empty / missing important residues”
+### “Active site model (binding pocket) is empty / missing important residues”
 Symptoms:
 - The extracted active site model is unexpectedly small.
 - Key catalytic residues are missing.
