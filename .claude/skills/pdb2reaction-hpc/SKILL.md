@@ -170,6 +170,23 @@ use the flock + pbsdsh pattern documented in `dynamic-dispatch.md`. One
 qsub grabs N nodes, each node runs a worker that pulls tasks from a
 shared list with file-lock-protected counter increment.
 
+## Multi-node MLIP inference (`workers > 1`, UMA only)
+
+Most subcommands that touch geometry expose `--workers` and
+`--workers-per-node`, which spin up a Ray cluster of UMA predictor
+workers. **Two important caveats:**
+
+1. The `workers` / `workers_per_node` flags are filtered to the UMA
+   backend (see `pdb2reaction/backends/__init__.py:_BACKEND_ACCEPTED_KEYS`).
+   ORB / MACE / AIMNet2 silently drop the kwarg.
+2. When `workers > 1`, the UMA backend silently sets `force_fd = True`
+   (`pdb2reaction/backends/uma.py:431`) and the Hessian is computed
+   by finite difference even if the YAML/CLI requested `Analytical`.
+   See `docs/uma-pysis.md` `(workers-fd-downgrade)=`.
+
+The full PBS + OpenMPI + Ray bootstrap is in
+`docs/hpc-example.md`; the schematic in this skill is single-node only.
+
 ## Useful environment variables
 
 | Variable | Purpose |

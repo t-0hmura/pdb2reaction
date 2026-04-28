@@ -77,7 +77,8 @@ either install it or run CPU-only.
 ### 5. PBS scheduler details (when `SCHED=pbs`)
 
 ```bash
-qstat -Q                          # available queues + max walltime
+qstat -Q                          # list queues (counts only)
+qstat -Qf <queue>                 # full queue config including resources_max.walltime
 pbsnodes -a 2>/dev/null | grep -E "^[a-z0-9]|^ *(np|properties|gpus)" | head
 qstat -u "$USER"                  # your running / queued jobs
 ```
@@ -116,12 +117,12 @@ command -v module >/dev/null && module list 2>&1
 
 | Placeholder | How to fill it from the output above |
 |---|---|
-| `<YOUR_QUEUE>` | A queue from `qstat -Q` (PBS) whose `max_walltime` covers your job |
+| `<YOUR_QUEUE>` | A queue from `qstat -Q` (PBS); inspect with `qstat -Qf <queue>` to check `resources_max.walltime` covers your job |
 | `<YOUR_PARTITION>` | A partition from `sinfo -o "%P %l %N %G"` (SLURM) whose `TIMELIMIT` covers your job |
 | `<NCPU>` | `np` from `pbsnodes -a` (PBS) or `--cpus-per-task` budget (SLURM) |
 | `<NGPU>` | `gpus = N` from `pbsnodes -a` (PBS) or `--gres=gpu:N` (SLURM) |
 | `<MEM>` | A safe fraction of the per-node memory: `pbsnodes -a \| grep totalmem` (PBS) or `sinfo -o "%m"` (SLURM) |
-| `<CUDA_MODULE>` | A line from `module avail 2>&1 \| grep -i cuda` (naming varies: `cuda`, `cudatoolkit`, `nvhpc`, …) |
+| `<CUDA_MODULE>` | A line from `module avail 2>&1 \| grep -i cuda` (e.g. `cuda/12.9`; naming varies: `cuda`, `cudatoolkit`, `nvhpc`, …) |
 | `<YOUR_ENV>` | The conda env that imported `pdb2reaction` in step 7 |
 | `<HH:MM:SS>` | Your estimated walltime, capped by the queue's `resources_max.walltime` |
 

@@ -58,7 +58,7 @@ pdb2reaction scan -i 1.R.pdb -l 'SAM:1,GPP:-3' \
 
 ```
 result_scan/
-├── result.json
+├── result.json                # only when --out-json is passed
 ├── stage_01/                # per-stage relaxed snapshots
 │   └── scan_*.xyz
 ├── stage_02/

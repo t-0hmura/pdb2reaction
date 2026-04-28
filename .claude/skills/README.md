@@ -15,7 +15,8 @@ tasks. Inspired by the [nvalchemi-toolkit][nvalchemi] skill pattern.
   the charge / multiplicity decision workflow.
 - `pdb2reaction-install-backends`: install pdb2reaction itself, MLIP
   backends (UMA / Orb / MACE / AIMNet2), DFT (PySCF / GPU4PySCF), and
-  xtb; CUDA + PyTorch pairing.
+  xtb (ALPB implicit-solvent correction, not an MLIP backend);
+  CUDA + PyTorch pairing.
 - `pdb2reaction-workflows-output`: canonical workflows (cluster /
   multistep / scan-list / endpoint-MEP / TS-only / DFT//MLIP), output
   schema, and R/TS/P canonical paths.

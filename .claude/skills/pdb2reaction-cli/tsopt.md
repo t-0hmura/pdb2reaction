@@ -64,7 +64,7 @@ pdb2reaction tsopt -i hei.xyz -l 'SAM:1,GPP:-3' \
 
 ```
 result_tsopt/
-├── result.json                     # only when --out-json is passed
+├── result.json                # only when --out-json is passed
 ├── final_geometry.xyz              # converged TS (always)
 ├── final_geometry.pdb              # PDB companion (with --convert-files)
 ├── final_geometry.gjf              # Gaussian companion (when input is .gjf)
@@ -74,16 +74,16 @@ result_tsopt/
     └── imag_*.{pdb,xyz}            # mode displacement visualization
 ```
 
-`result.json` keys:
+`result.json` (only when `--out-json` is passed) keys:
 
 ```python
 import json
 d = json.load(open("result_tsopt/result.json"))
-print(d["status"])                      # "converged" / "not_converged"
+print(d["status"])                      # "success" / "partial" / "failed"
 print(d["energy_hartree"])
 print(d["n_imaginary_modes"])           # should be 1 for a real TS
 print(d["imaginary_frequencies_cm"])    # list of cm⁻¹
-print(d["structure_path"])              # final_geometry.xyz
+print(d["files"]["final_geometry_xyz"]) # path under out_dir
 ```
 
 ## `--opt-mode` choice
@@ -120,8 +120,10 @@ of frozen residues) or real chemical second-order saddle points.
 
 - A converged `tsopt` is **not** a complete validation; always follow
   with `irc.md` to confirm the TS connects the expected R and P.
-- `--max-cycles` rarely needs to be increased above 200 in practice;
-  failure usually means the TS guess is too far off.
+- `--max-cycles` defaults to 10000 as a safety upper bound;
+  well-conditioned cases converge in well under 200 cycles, so hitting
+  >200 cycles usually means the TS guess is too far off — re-run
+  `path-search` rather than raising the cap.
 - Backend choice matters here more than for minima: UMA / MACE are
   usually safer than Orb for TS curvature.
 

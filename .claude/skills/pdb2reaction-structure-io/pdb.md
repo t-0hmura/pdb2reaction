@@ -99,9 +99,11 @@ Link hydrogens carry **no formal charge**; they do not enter the
 charge sum.
 
 The atoms that **donate** hydrogens (i.e. atom `A`, the cluster-side
-parent of each cap) are added to a `freeze_atoms` list so they do not
-move during optimization. `pdb2reaction` writes the indices to the
-extracted PDB's B-factor field for downstream consumption.
+parent of each cap) are frozen during optimization. The PDB itself
+carries no encoded freeze list — `pdb2reaction.utils.detect_freeze_links`
+re-derives the parent atom of each `LKH/HL` record at runtime via a
+nearest-neighbor search in Cartesian space. The B-factor column on
+the LKH atoms is hard-coded to 0.00 by `_format_linkH_block`.
 
 ## Common edits
 

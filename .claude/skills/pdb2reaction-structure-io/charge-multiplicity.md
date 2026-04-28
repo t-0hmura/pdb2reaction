@@ -33,8 +33,11 @@ Two routes:
 The amino-acid table is internal:
 
 ```bash
-python -c "from pdb2reaction.extract import AMINO_ACIDS as a; print({r: a[r].get('charge', 0) for r in a})"
+python -c "from pdb2reaction.extract import AMINO_ACIDS, ION; print(dict(AMINO_ACIDS)); print(dict(ION))"
 ```
+
+(`AMINO_ACIDS` and `ION` are `Dict[str, int]` mapping residue/ion
+name to formal charge.)
 
 (Or read `pdb2reaction/extract.py` directly if `dir()` shows other
 relevant attributes.)
