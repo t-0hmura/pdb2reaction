@@ -54,10 +54,10 @@ pdb2reaction path-opt -i /tmp/relax_R/final_geometry.xyz /tmp/relax_P/final_geom
 
 ```
 result_opt/
-├── result.json
-├── final_geometry.{xyz,pdb}   # converged geometry
-├── opt_trj.xyz                # full optimization trajectory
-└── opt.log                    # per-cycle gradient norm + energy
+├── result.json                # only when --out-json is passed
+├── final_geometry.xyz         # converged geometry (always)
+├── final_geometry.pdb         # PDB companion (with --convert-files, default True)
+└── optimization_trj.xyz       # full optimization trajectory (with --dump)
 ```
 
 `result.json` keys: `status` (converged / not_converged), `n_cycles`,

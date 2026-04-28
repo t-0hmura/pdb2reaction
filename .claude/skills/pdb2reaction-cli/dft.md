@@ -113,7 +113,7 @@ falling back.
   Gaussian, ORCA, PySCF) — there is no `-b dft` option.
 - `--func-basis` follows PySCF naming; cross-check with
   `python -c "from pyscf import gto; print(gto.basis._BASIS_DEFAULT)"`.
-- xTB-ALPB (`--solvent`) **does not stack** with PySCF's PCM; pick one.
+- The standalone `dft` subcommand does not accept `--solvent` / `--solvent-model` / `-b/--backend`. xTB-ALPB solvent corrections are MLIP-stage flags (`scan`, `path-search`, `tsopt`, `irc`, `opt`); to combine with DFT, run them at the MLIP stage and then the `dft` single point on the MLIP-optimized geometry.
 
 ## See also
 

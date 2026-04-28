@@ -31,7 +31,7 @@ Three things make it different from gluing together generic tools:
 | Goal | Fit |
 |---|---|
 | Cluster-model enzyme reaction mechanism (single or multi-step) | Primary use case |
-| Validate a TS candidate with IRC + thermochemistry on MLIP | `pdb2reaction tsopt → freq → irc` |
+| Validate a TS candidate with IRC + thermochemistry on MLIP | `pdb2reaction tsopt → irc → freq` |
 | DFT//MLIP barrier refinement | `pdb2reaction dft -i <ts.pdb>` after IRC |
 | Single-point energies on an arbitrary geometry (MLIP or DFT) | `pdb2reaction opt` / `pdb2reaction dft` |
 
@@ -63,7 +63,7 @@ PDB(s)
   │
   ▼
 [path-search]  MEP (GSM or DMF), recursive bond-change segmentation
-  │            → seg_01, seg_03, ... (one per elementary step)
+  │            → seg_01, seg_02, ... (one per elementary step)
   ▼
 [tsopt]        TS refinement per segment (RS-I-RFO default; Dimer alternative)
   │

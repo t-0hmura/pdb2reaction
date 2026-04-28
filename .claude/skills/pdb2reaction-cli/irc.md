@@ -50,14 +50,12 @@ pdb2reaction irc -i ts.xyz -q -1 -m 1 \
 ```
 result_irc/
 ├── result.json
-├── forward_irc_trj.xyz             # raw IRC forward trajectory
-├── backward_irc_trj.xyz            # raw IRC backward trajectory
+├── forward_irc_trj.xyz             # IRC forward trajectory
+├── backward_irc_trj.xyz            # IRC backward trajectory
 ├── finished_irc_trj.xyz            # stitched: backward (reversed) + TS + forward
-├── reactant.{xyz,pdb}              # backward endpoint after LBFGS
-├── product.{xyz,pdb}               # forward endpoint after LBFGS
-├── reactant_irc.xyz                # raw IRC backward end (pre-LBFGS)
-├── product_irc.xyz                 # raw IRC forward end (pre-LBFGS)
-└── irc.log
+├── finished_first.xyz              # backward endpoint
+├── finished_last.xyz               # forward endpoint
+└── result.json                     # only when --out-json is passed
 ```
 
 `result.json` keys:

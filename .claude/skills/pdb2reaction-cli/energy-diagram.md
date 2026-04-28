@@ -19,10 +19,10 @@ pdb2reaction energy-diagram -i 0 12.5 4.3 [-i 18.2 -2.0] \
 |---|---|---|---|
 | `-i, --input` | numeric sequence | required | Energy values. Accepts space-separated numbers (`-i 0 12.5 4.3`), a Python-list literal (`-i "[0,12.5,4.3]"`), or repeated `-i` calls |
 | `-o, --output` | path | `energy_diagram.png` | Output image path |
-| `--help-advanced` | flag | — | Reveal labels / unit / format options |
+| `--label-x` | sequence | `S1, S2, ...` | Per-state labels on the x-axis |
+| `--label-y` | str | `Energy (kcal/mol)` | Y-axis label |
 
-State labels and y-axis units are exposed via `--help-advanced`. Without
-labels, points are plotted in input order.
+Without `--label-x`, points are plotted in input order with `S1, S2, …` labels.
 
 ## Examples
 
@@ -45,8 +45,7 @@ pdb2reaction energy-diagram -i "[0.0, 21.5, -0.7, 2.2, -18.2]" -o diagram.png
   calling.
 - For a profile along a continuous trajectory (XYZ frames with energies
   in the comment line), use `trj2fig.md`.
-- Per-state labels and y-axis legend customization live behind
-  `--help-advanced`; refer to that for production figures.
+- Per-state labels are passed via `--label-x` and the y-axis caption via `--label-y`.
 
 ## See also
 

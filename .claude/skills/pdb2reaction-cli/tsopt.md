@@ -64,12 +64,14 @@ pdb2reaction tsopt -i hei.xyz -l 'SAM:1,GPP:-3' \
 
 ```
 result_tsopt/
-├── result.json
-├── final_geometry.{xyz,pdb}        # converged TS
-├── tsopt_trj.xyz                   # full optimization trajectory
-├── vib/                            # imaginary-mode vibrations
-│   └── imag_*.{pdb,xyz}            # mode displacement visualization
-└── tsopt.log
+├── result.json                     # only when --out-json is passed
+├── final_geometry.xyz              # converged TS (always)
+├── final_geometry.pdb              # PDB companion (with --convert-files)
+├── final_geometry.gjf              # Gaussian companion (when input is .gjf)
+├── optimization_trj.xyz            # full optimization trajectory (RS-I-RFO; with --dump)
+├── optimization_all_trj.xyz        # full optimization trajectory (HessianDimer mode; with --dump)
+└── vib/                            # imaginary-mode vibrations
+    └── imag_*.{pdb,xyz}            # mode displacement visualization
 ```
 
 `result.json` keys:

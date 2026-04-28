@@ -50,12 +50,11 @@ pdb2reaction freq -i ts.xyz -l 'SAM:1' \
 
 ```
 result_freq/
-├── result.json
+├── result.json                    # only when --out-json is passed
 ├── frequencies_cm-1.txt           # all modes, sorted, cm⁻¹
-├── thermoanalysis.yaml            # ZPE, thermal corrections, S, H, G
-├── vib/
-│   └── mode_NNN.{xyz,pdb}         # per-mode displacement (visualize in PyMOL)
-└── freq.log
+├── thermoanalysis.yaml            # ZPE, thermal corrections, S, H, G (with --dump)
+├── mode_NNNN_<freq>cm-1_trj.xyz   # per-mode displacement trajectory (in out_dir, not vib/)
+└── mode_NNNN_<freq>cm-1.pdb       # PDB companion when applicable
 ```
 
 `result.json` keys:

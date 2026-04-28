@@ -33,7 +33,8 @@ pdb2reaction all -i <input(s)> [-c <substrate>] [-l 'RES:Q,...'] \
 | `--tsopt` | BOOL | `False` | Run TS optimization + IRC per reactive segment |
 | `--thermo` | BOOL | `False` | Run freq + thermochemistry on R / TS / P |
 | `--dft` | BOOL | `False` | Run DFT single point on R / TS / P |
-| `--func-basis` | str | `wb97m-v/def2-tzvpd` | DFT functional/basis (when `--dft`) |
+| `--dft-func-basis` | str | `wb97m-v/def2-tzvpd` | DFT functional/basis (when `--dft`) |
+| `-s, --scan-lists` | repeated | none | Staged distance scans (mode 2 — `all-scan-list.md`) |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `--solvent` | str | none | xTB-ALPB solvent name (`water`, `methanol`, …) |
 | `-o, --out-dir` | path | `./result_all/` | Top-level output directory |
@@ -69,7 +70,7 @@ result_all/
 │   ├── seg_NN/ post_seg_NN/        # per-segment intermediate output
 │   └── energy_diagram_*.png
 ├── post_seg_NN/                    # per-segment post-processing
-│   ├── tsopt/                      # TS optimization output
+│   ├── ts/                         # TS optimization output
 │   ├── irc/                        # forward/backward IRC trajectories
 │   ├── freq/                       # frequencies + thermo
 │   └── dft/                        # (if --dft) single-point DFT
@@ -89,7 +90,7 @@ for canonical path conventions and the bond-change interpretation.
 ```python
 import json
 d = json.load(open("result_all/summary.json"))
-print(d["status"])                    # "completed" / "error"
+print(d["status"])                    # "success" / "partial" / "failed"
 print(d["pdb2reaction_version"])
 print(d["charge"], d["spin"])
 print(d["rate_limiting_step"])        # which segment is rate-limiting
@@ -120,7 +121,7 @@ analysis scripts keep working.
 
 - `--scan-lists` is a Python literal-eval expression. Most
   shell-quoting trouble traces back to single vs double quotes.
-- If `summary.json` shows `"status": "error"` for any segment, look
+- If `summary.json` shows `"status": "failed"` (or `"partial"`) for any segment, look
   at the corresponding `summary.log` block; per-stage errors are also
   duplicated into `post_seg_NN/<stage>/result.json`.
 - The `seg_NN/` top-level directory is **only populated on success**

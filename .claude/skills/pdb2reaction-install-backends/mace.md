@@ -70,7 +70,7 @@ MACE accepts (from `backends/__init__.py:_BACKEND_ACCEPTED_KEYS['mace']`):
 | `charge`, `spin` | Total charge and spin multiplicity |
 | `device` | `'cuda'`, `'cpu'`, `'auto'` |
 | `model` | Override the default MACE checkpoint |
-| `default_dtype` | `'float32'` (default) or `'float64'` |
+| `default_dtype` | `'float64'` (default; from `MACE_BACKEND_DEFAULTS`) or `'float32'` for faster, lower-precision inference |
 | `freeze_atoms`, `hessian_calc_mode`, `return_partial_hessian`, `hessian_double` | Standard cross-backend |
 
 ## Strengths and weaknesses
@@ -87,7 +87,7 @@ MACE accepts (from `backends/__init__.py:_BACKEND_ACCEPTED_KEYS['mace']`):
 |---|---|
 | `e3nn` import error | UMA + MACE in the same env. Use a fresh env. |
 | `RuntimeError: Expected all tensors to be on the same device` | Mixed `cpu`/`cuda` tensors after a `.to()` round-trip. Restart Python and ensure `device='cuda'` consistently. |
-| Slow Hessian on `default_dtype='float64'` | Expected: float64 + 600-atom Hessian is ~4× slower than float32 with marginal accuracy gain. Use float64 only when you suspect a near-degenerate eigenvalue. |
+| Slow Hessian on the default `default_dtype='float64'` | Expected: float64 + 600-atom Hessian is ~4× slower than float32. Switch to `default_dtype='float32'` only when you can tolerate lower-precision modes. |
 
 ## See also
 

@@ -57,7 +57,7 @@ Orb accepts (canonical list in
 | `charge`, `spin` | Total charge and spin multiplicity |
 | `device` | `'cuda'`, `'cpu'`, `'auto'` |
 | `model` | Override the default Orb checkpoint |
-| `precision` | `'float32'` (default) or `'float64'` for tighter convergence |
+| `precision` | `'float32-high'` (default; TF32-style mixed precision) or `'float64'` for tighter convergence. **`'float32'` is invalid** — Orb silently falls back to a slow path. |
 | `compile_model` | `True` to torch-compile (faster after first call, slower start) |
 | `freeze_atoms`, `hessian_calc_mode`, `return_partial_hessian`, `hessian_double` | Same as UMA |
 
@@ -76,7 +76,7 @@ re-run survivors with UMA or MACE for the final TS / IRC.
 
 | Symptom | Cause / fix |
 |---|---|
-| `RuntimeError: ... mat1 and mat2 shapes ... ` during Hessian | `precision='float32'` precision insufficient on near-degenerate modes; try `precision='float64'`. |
+| `RuntimeError: ... mat1 and mat2 shapes ... ` during Hessian | Default `precision='float32-high'` insufficient on near-degenerate modes; try `precision='float64'`. |
 | `compile_model=True` makes the first call 60+ s slow | Expected; subsequent calls are faster. Disable for short jobs. |
 | TS converges with > 1 imaginary mode | Common with Orb on aromatic or metalloenzyme systems. Re-run that step with UMA/MACE. |
 

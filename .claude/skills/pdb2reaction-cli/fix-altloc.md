@@ -12,7 +12,7 @@ directly on a raw RCSB PDB.
 ## Synopsis
 
 ```bash
-pdb2reaction fix-altloc -i in.pdb [-o out.pdb] [--help-advanced]
+pdb2reaction fix-altloc -i in.pdb [-o out.pdb] [--inplace] [--overwrite] [--recursive]
 ```
 
 `-i` can be a single PDB or a directory; `-o` matches accordingly
@@ -24,7 +24,9 @@ pdb2reaction fix-altloc -i in.pdb [-o out.pdb] [--help-advanced]
 |---|---|---|---|
 | `-i, --input` | path | required | Input PDB file or directory |
 | `-o, --out` | path | derived | Output file (if input is file) or directory (if directory). Omit to overwrite in place via `--inplace`. |
-| `--help-advanced` | flag | — | Reveal advanced flags (`--inplace`, `--overwrite`, `--force`, `--recursive`) |
+| `--inplace` | flag | False | Overwrite the input file in place |
+| `--overwrite` | flag | False | Overwrite an existing output file |
+| `--recursive` | flag | False | Recurse into sub-directories when `-i` is a directory |
 
 The selection rule is **fixed**: highest occupancy, then earliest
 appearance. There is no `--keep <letter>` flag.
@@ -38,9 +40,8 @@ pdb2reaction fix-altloc -i raw.pdb -o cleaned.pdb
 # Whole directory
 pdb2reaction fix-altloc -i raw_pdbs/ -o cleaned_pdbs/
 
-# In place (advanced)
-pdb2reaction fix-altloc -i raw.pdb --help-advanced     # see --inplace
-pdb2reaction fix-altloc -i raw.pdb --inplace --force
+# In place (overwrite)
+pdb2reaction fix-altloc -i raw.pdb --inplace --overwrite
 ```
 
 ## Output

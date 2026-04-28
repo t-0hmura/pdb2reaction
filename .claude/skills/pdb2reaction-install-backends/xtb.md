@@ -14,24 +14,18 @@ SCF call that adds a continuum-solvation term.
 
 ## Install
 
-Two routes; pick whichever your env can use.
-
-**Route A — `xtb` Python bindings (recommended, pip-installable):**
-
-```bash
-pip install xtb
-```
-
-The PyPI package name is `xtb` (not `xtb-python`); the import name is
-also `xtb`.
-
-Verify:
+`pdb2reaction` invokes the `xtb` binary via `subprocess.run`; it does
+not import any Python xtb package. The supported install path is the
+conda-forge binary:
 
 ```bash
-python -c "import xtb; print('xtb:', xtb.__version__)"
+conda install -c conda-forge xtb
 ```
 
-**Route B — system `xtb` binary (xtb 6.7+):**
+(Verify with `xtb --version`.) `pip install xtb` provides Python
+bindings that `pdb2reaction` does not use.
+
+**Site-installed binary (xtb 6.7+):**
 
 If your site already has `xtb` as a module or in `$PATH`:
 
