@@ -60,12 +60,12 @@ glossary
 
 ## ここから始める
 
-| 目的 | 移動先 |
-|------|--------|
-| **はじめての方** | [クイックスタート: all](quickstart-all.md) |
+| 目的 | ワークフロー |
+|------|------------|
+| **End-to-end 初回実行** | [クイックスタート: all](quickstart-all.md) |
 | **反応物のみ** | [クイックスタート: scan](quickstart-scan.md) |
-| **TS 候補がある** | [クイックスタート: tsopt + freq](quickstart-tsopt-freq.md) |
-| **エラーで止まった** | [典型エラー別レシピ](recipes-common-errors.md) |
+| **TS 候補あり** | [クイックスタート: tsopt + freq](quickstart-tsopt-freq.md) |
+| **実行失敗 / エラー** | [典型エラー別レシピ](recipes-common-errors.md) |
 
 前提条件は [Installation](installation.md) を参照してください。
 

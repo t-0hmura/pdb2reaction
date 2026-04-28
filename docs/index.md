@@ -74,14 +74,14 @@ ja/index
 
 ## Start here
 
-| If you... | Go to |
-|-----------|-------|
-| **I'm new — first run end-to-end** | [Quickstart: all](quickstart-all.md) |
-| **I have a reactant only** | [Quickstart: scan](quickstart-scan.md) |
-| **I have a TS candidate** | [Quickstart: tsopt + freq](quickstart-tsopt-freq.md) |
-| **I hit an error / something failed** | [Common Error Recipes](recipes-common-errors.md) |
+| Goal | Workflow |
+|------|----------|
+| **First end-to-end run** | [Quickstart: all](quickstart-all.md) |
+| **Reactant only** | [Quickstart: scan](quickstart-scan.md) |
+| **TS candidate available** | [Quickstart: tsopt + freq](quickstart-tsopt-freq.md) |
+| **Run failure / error** | [Common Error Recipes](recipes-common-errors.md) |
 
-See [Installation](installation.md) for prerequisites.
+Refer to [Installation](installation.md) for prerequisites.
 
 ---
 
