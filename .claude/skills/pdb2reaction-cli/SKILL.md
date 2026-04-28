@@ -1,6 +1,6 @@
 ---
 name: pdb2reaction-cli
-description: Index and recipes for the 17 pdb2reaction subcommands. Each subcommand has its own md (extract.md / tsopt.md / …); this SKILL.md is the orientation, the cross-cutting flag conventions, and a small library of canonical recipes.
+description: Index and recipes for the 17 pdb2reaction subcommands. Each subcommand has its own md (extract.md / tsopt.md / …); this SKILL.md is the orientation, the cross-cutting flag conventions, and a small library of canonical recipes. See also `freeze-atoms.md` for the cluster-boundary frozen-atom mechanics shared by every geometry-touching subcommand.
 ---
 
 # pdb2reaction CLI
@@ -31,6 +31,12 @@ Each row points to the full per-subcommand md in this skill directory.
 | `add-elem-info.md` | `add-elem-info` | Repair / add the element column (PDB cols 77-78).<br>Run before `extract` if your PDB came out of PyMOL or Maestro and elements are missing. |
 | `fix-altloc.md` | `fix-altloc` | Resolve PDB alternate locations (`altloc` field).<br>Pick a single conformation per residue; needed before `extract` on raw RCSB downloads. |
 | `bond-summary.md` | `bond-summary` | Detect bond changes between two structures (e.g. R vs P).<br>Uses the same bond-change algorithm `path-search` invokes for segmentation. |
+
+## Cross-cutting topic guides
+
+| md | Topic |
+|---|---|
+| `freeze-atoms.md` | Cluster-boundary frozen atoms — link hydrogens (`LKH/HL`), `--freeze-links`, `--freeze-atoms`, YAML `geom.freeze_atoms`. The three sources are unioned; required for cluster models. |
 
 ## Pipeline at a glance
 

@@ -18,6 +18,7 @@ installation
 quickstart-all
 quickstart-scan
 quickstart-tsopt-freq
+freeze-atoms
 recipes-common-errors
 troubleshooting
 cli-conventions
@@ -114,6 +115,7 @@ See [Installation](installation.md) for prerequisites.
 |-------|------|
 | **Getting Started** | [Getting Started](getting-started.md) |
 | **CLI conventions & input requirements** | [CLI Conventions](cli-conventions.md) |
+| **Cluster boundary atoms (link hydrogens, `--freeze-atoms`)** | [Frozen Atoms](freeze-atoms.md) |
 | **Common errors & fixes** | [Troubleshooting](troubleshooting.md) |
 | **CLI command reference** | [Command Reference](reference/commands/index.md) |
 | **YAML configuration options** | [YAML Reference](yaml-reference.md) |
