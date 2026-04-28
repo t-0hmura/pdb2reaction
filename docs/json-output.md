@@ -221,7 +221,7 @@ Convergence details are available for rsirfo mode; dimer mode provides `n_opt_cy
 |-------|------|-------------|
 | `status` | string | `"success"` / `"partial"` |
 | `n_segments` | int | Recursive MEP segment count |
-| `segments` | object[] | Per-segment `barrier_kcal`, `delta_kcal`, `bond_changes`, `hei_index`, `mep_mode` |
+| `segments` | object[] | Per-segment `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` |
 | `energy_diagrams` | object[] | Per-segment labelled energy profiles (kcal/mol) |
 | `mlip_backend` | string | Backend/model identifier |
 | `charge` | int | System charge |
@@ -245,7 +245,7 @@ See also the extended [`summary.json` section](#summary-json-path-search-all) fo
 | `energy_kcal_per_mol` | float | DFT energy (kcal/mol) |
 | `xc_functional` | string | XC functional |
 | `basis_set` | string | Basis set |
-| `engine` | string | Effective engine label (`"gpu"` or `"cpu"`) |
+| `engine` | string | Effective engine label (`"gpu4pyscf"` or `"pyscf(cpu)"`) |
 | `used_gpu` | bool | GPU acceleration used? |
 | `charges` | object | `{mulliken, lowdin, iao}` per-atom arrays |
 | `spin_densities` | object | `{mulliken, lowdin, iao}` per-atom arrays |
@@ -303,9 +303,9 @@ The `all` and `path-search` commands write `summary.json` with a richer structur
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `status` | string | `"success"` / `"partial"` |
+| `status` | string | `"success"` / `"partial"` / `"failed"` (`all`); `"success"` / `"partial"` (`path-search`) |
 | `n_segments` | int | Segment count |
-| `segments` | object[] | Per-segment barrier, delta, bond changes |
+| `segments` | object[] | Per-segment `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` |
 | `energy_diagrams` | object[] | Energy profiles with labels and kcal/mol values |
 | `mlip_backend` | string | Model identifier |
 | `charge` | int | System charge |

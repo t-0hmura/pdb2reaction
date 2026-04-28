@@ -75,9 +75,9 @@ result_dft/
 import json
 d = json.load(open("result_dft/result.json"))
 print(d["energy_hartree"])
-print(d["method"])           # e.g. "wb97m-v/def2-tzvpd"
-print(d["engine"])           # "gpu" / "cpu"
-print(d["status"])
+print(d["xc_functional"], d["basis_set"])  # e.g. "wb97m-v", "def2-tzvpd"
+print(d["engine"])           # "gpu4pyscf" or "pyscf(cpu)"
+print(d["converged"])        # True / False (exit code 3 if False)
 ```
 
 `result.yaml` carries the full PySCF / GPU4PySCF runtime info: basis

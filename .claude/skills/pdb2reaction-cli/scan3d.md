@@ -13,7 +13,7 @@ protons + one redox-donor distance).
 
 ```bash
 pdb2reaction scan3d -i input.pdb \
-    -s '[(a1,b1,T1), (a2,b2,T2), (a3,b3,T3)]' \
+    -s '[(a1,b1,low_1,high_1), (a2,b2,low_2,high_2), (a3,b3,low_3,high_3)]' \
     [--csv surface.csv] \
     [-l 'RES:Q,...'] [-b uma|orb|mace|aimnet2] [-o ./result_scan3d/]
 ```
@@ -23,7 +23,7 @@ pdb2reaction scan3d -i input.pdb \
 | flag | type | default | description |
 |---|---|---|---|
 | `-i, --input` | path | required (unless `--csv`) | Reactant `.pdb` / `.xyz` / `.gjf` |
-| `-s, --scan-lists` | str | required (unless `--csv`) | Python literal with **three** tuples |
+| `-s, --scan-lists` | str | required (unless `--csv`) | Python literal with **three** 4-tuples `(i, j, low, high)` |
 | `--csv` | path | none | Skip the scan; load a precomputed `surface.csv` for downstream plotting |
 | `-q` / `-l` / `-m` | — | — | Charge / spin |
 | `-b, --backend` | str | `uma` | MLIP backend |
@@ -35,7 +35,7 @@ pdb2reaction scan3d -i input.pdb \
 
 ```bash
 pdb2reaction scan3d -i 1.R.pdb -l 'SAM:1' \
-    -s '[("OH TYR 100","HC TYR 100",1.50), ("HC TYR 100","O ASP 50",1.20), ("FE 200","O ASP 50",2.10)]' \
+    -s '[("OH TYR 100","HC TYR 100",1.50,2.40), ("HC TYR 100","O ASP 50",1.20,2.20), ("FE 200","O ASP 50",2.10,3.10)]' \
     -b uma -o result_scan3d
 ```
 

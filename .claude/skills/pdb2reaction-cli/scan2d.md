@@ -11,7 +11,7 @@ surfaces (e.g. SN2 attack + leaving-group departure).
 
 ```bash
 pdb2reaction scan2d -i input.pdb \
-    -s '[(a1, b1, target_A), (a2, b2, target_B)]' \
+    -s '[(a1, b1, low_A, high_A), (a2, b2, low_B, high_B)]' \
     [-l 'RES:Q,...'] \
     [-b uma|orb|mace|aimnet2] [-o ./result_scan2d/]
 ```
@@ -21,7 +21,7 @@ pdb2reaction scan2d -i input.pdb \
 | flag | type | default | description |
 |---|---|---|---|
 | `-i, --input` | path | required | Reactant `.pdb` / `.xyz` / `.gjf` |
-| `-s, --scan-lists` | str | required | Inline Python literal containing **two** tuples (one per axis), or a YAML/JSON spec file. |
+| `-s, --scan-lists` | str | required | Inline Python literal containing **two** 4-tuples `(i, j, low, high)` (one per axis), or a YAML/JSON spec file. |
 | `-q` / `-l` / `-m` | — | — | Charge / spin |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `--solvent` | str | `none` | xTB-ALPB solvent |
@@ -29,14 +29,16 @@ pdb2reaction scan2d -i input.pdb \
 | `--ref-pdb` | path | none | Residue context for XYZ/GJF |
 | `--config` / `--show-config` / `--dry-run` / `--help-advanced` | — | — | Standard |
 
-The two tuples in the `-s` literal define the two scan axes; both bonds
-are driven simultaneously, generating the grid.
+Each 4-tuple defines one scan axis: atoms `i,j` (1-based indices or
+PDB-style atom specs) and the distance range `[low, high]` in Å. Both
+bonds are driven across their ranges simultaneously, generating the
+grid.
 
 ## Examples
 
 ```bash
 pdb2reaction scan2d -i 1.R.pdb -l 'SAM:1,GPP:-3' \
-    -s '[("CS1 SAM 320","C7 GPP 321",1.60), ("H11 GPP 321","OE2 GLU 186",0.90)]' \
+    -s '[("CS1 SAM 320","C7 GPP 321",1.60,3.10), ("H11 GPP 321","OE2 GLU 186",0.90,2.40)]' \
     -b uma -o result_scan2d
 ```
 

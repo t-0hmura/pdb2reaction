@@ -11,30 +11,7 @@
 
 ---
 
-## 方法 A: YAML スペックファイル（推奨）
-
-### 1. `scan.yaml` を作成
-
-ステージごとの目標距離（単位: Å）を順番に定義します。
-
-```yaml
-one_based: true
-stages:
- - [["TYR,285,CA", "SAM,309,C10", 1.35]]
- - [["TYR,285,CA", "SAM,309,C10", 2.20], ["TYR,285,CB", "SAM,309,C11", 1.80]]
-```
-
-### 2. 実行
-
-```bash
-pdb2reaction -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
-```
-
-ステージは順番に実行され、各ステージは前ステージの緩和結果から開始します。
-
----
-
-## 方法 B: `-s/--scan-lists` インラインリテラル（簡易ワンライナー向け）
+## 方法 A: `-s/--scan-lists` インラインリテラル（既定）
 
 `-s/--scan-lists` はコマンドライン上で Python リテラル文字列を直接受け取ります。原子セレクタの構文（残基/原子トークン、区切り文字、順序）と外側/内側のクォーティングルールについては、{ref}`CLI 規約: スキャンリスト仕様 <ja-scan-list-spec>` を参照してください。
 
@@ -102,7 +79,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(1, 5, 1.35)]' --print-parsed
 
 ## 補足
 
-- `-s/--scan-lists` は YAML/JSON ファイルパスまたはインライン Python リテラルを受け付けます（両方を同時に指定することはできません）。
+- `-s/--scan-lists` は `all` 経由ではインライン Python リテラルのみを受け付けます。YAML/JSON スペックファイルは単独の `scan` サブコマンドのみが受け付けます（[scan](scan.md) を参照）。
 - `pdb2reaction all --help-advanced` で全オプション（スキャン制御を含む）を確認できます。
 - 単独の `scan` サブコマンド（MEP 精密化なし）については [scan](scan.md) を参照してください。
 

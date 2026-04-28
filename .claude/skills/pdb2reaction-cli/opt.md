@@ -61,7 +61,7 @@ result_opt/
 ```
 
 `result.json` (only when `--out-json` is passed) keys: `status`
-(`success` / `partial` / `failed`), `n_opt_cycles`, `energy_hartree`,
+(`converged` / `not_converged`; `error` on failure), `n_opt_cycles`, `energy_hartree`,
 `final_max_force`, `final_rms_force`, and the `files` block whose
 `final_geometry_xyz` entry points at the converged geometry.
 

@@ -40,7 +40,7 @@ This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan
 | _(YAML only)_ | `coord_type` | `geom` |
 | `--temperature` (freq, `all --freq-temperature`) | `temperature` | `thermo` |
 | `--pressure` (freq, `all --freq-pressure`) | `pressure_atm` | `thermo` |
-| `--engine` (`dft` subcommand) / `--dft-engine` (`all` wrapper) | _(CLI only)_ | `dft` |
+| `--engine` (`dft` subcommand) / `--dft-engine` (`all` wrapper) | `engine` | `dft` |
 
 ```{note}
 **Name mismatch — `--pressure` vs `pressure_atm`.** On the CLI the flag is `--pressure` (units implicit: atm); the matching YAML key under `thermo:` is `pressure_atm` with an explicit unit suffix. Both carry atm values and get converted to Pa internally.
@@ -550,6 +550,7 @@ dft:
  conv_tol: 1.0e-09 # SCF convergence tolerance (hartree)
  max_cycle: 100 # Maximum SCF iterations
  grid_level: 3 # PySCF grid level
+ engine: gpu # SCF backend: "gpu" (GPU4PySCF) or "cpu" (PySCF)
  verbose: 0 # PySCF verbosity (0-9)
  out_dir: ./result_dft/ # Output directory root
 ```

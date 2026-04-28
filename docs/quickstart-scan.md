@@ -11,30 +11,7 @@ Run the full `pdb2reaction all` workflow from a single structure by driving one 
 
 ---
 
-## Method A: YAML spec file (recommended)
-
-### 1. Prepare `scan.yaml`
-
-Define each stage in order:
-
-```yaml
-one_based: true
-stages:
- - [["TYR,285,CA", "SAM,309,C10", 1.35]]
- - [["TYR,285,CA", "SAM,309,C10", 2.20], ["TYR,285,CB", "SAM,309,C11", 1.80]]
-```
-
-### 2. Run
-
-```bash
-pdb2reaction -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
-```
-
-Stages run sequentially; each starts from the previous stage's relaxed result.
-
----
-
-## Method B: `--scan-lists/-s` inline literal (quick one-liners)
+## Method A: `--scan-lists/-s` inline literal (default)
 
 `--scan-lists/-s` accepts Python-literal strings directly on the command line. For atom selector syntax (residue/atom tokens, separators, ordering) and outer/inner quoting rules, see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
 
@@ -102,7 +79,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(1, 5, 1.35)]' --print-parsed
 
 ## Notes
 
-- `--scan-lists/-s` accepts either a YAML/JSON file path or inline Python literals (not both at once).
+- `-s/--scan-lists` accepts inline Python literals when used with `all`. The standalone `scan` subcommand additionally accepts a YAML/JSON spec file path (see [scan](scan.md)).
 - Use `pdb2reaction all --help-advanced` to inspect all options including scan controls.
 - For the standalone `scan` subcommand (without MEP refinement), see [scan](scan.md).
 

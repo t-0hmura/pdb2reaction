@@ -40,7 +40,7 @@
 | _(YAML のみ)_ | `coord_type` | `geom` |
 | `--temperature`（freq、`all --freq-temperature`） | `temperature` | `thermo` |
 | `--pressure`（freq、`all --freq-pressure`） | `pressure_atm` | `thermo` |
-| `--engine`（`dft` サブコマンド） / `--dft-engine`（`all` ラッパー） | _(CLI のみ)_ | `dft` |
+| `--engine`（`dft` サブコマンド） / `--dft-engine`（`all` ラッパー） | `engine` | `dft` |
 
 ```{note}
 **名前不一致 — `--pressure` vs `pressure_atm`.** CLI フラグは `--pressure`（単位は暗黙的に atm）、`thermo:` 配下の対応 YAML キーは `pressure_atm`（単位接尾辞付き）です。いずれも atm で扱い、内部で Pa に変換されます。
@@ -549,6 +549,7 @@ dft:
  conv_tol: 1.0e-09 # SCF convergence tolerance (hartree)
  max_cycle: 100 # Maximum SCF iterations
  grid_level: 3 # PySCF grid level
+ engine: gpu # SCF backend: "gpu" (GPU4PySCF) or "cpu" (PySCF)
  verbose: 0 # PySCF verbosity (0-9)
  out_dir: ./result_dft/ # Output directory root
 ```

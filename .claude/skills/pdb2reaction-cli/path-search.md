@@ -63,28 +63,37 @@ pdb2reaction path-search -i 1.R.pdb 3.P.pdb \
 
 ```
 result_path_search/
-├── summary.json                  # full result, see below
-├── summary.log                   # human-readable
-├── mep.pdb / mep_trj.xyz         # stitched MEP across all segments
-├── seg_NN/                       # per elementary step
-│   ├── nodes/                    # GSM/DMF string nodes
-│   └── hei.{xyz,pdb}             # highest-energy image (TS candidate)
-├── post_seg_NN/                  # post-processing: TS refinement seeds
-│   └── structures/{reactant,ts,product}.{xyz,pdb}
-└── energy_diagram_*.png
+├── summary.json                       # full result, see below
+├── summary.log                        # human-readable
+├── final_geometries_trj.xyz           # stitched MEP across all segments
+├── seg_NNN_<tag>/                     # per-string scratch (e.g. seg_001_mep, seg_002_maxdepth)
+│   ├── final_geometries_trj.xyz       # this string's frames
+│   ├── mep_plot.png
+│   └── hei.{xyz,pdb}                  # highest-energy image (TS candidate)
+├── mep_seg_NN.{pdb,xyz} mep_seg_NN_trj.xyz   # canonical per-segment MEP frames
+├── hei_seg_NN.{xyz,pdb,gjf}           # canonical HEI per segment (TS seed)
+└── energy_diagram_UMA.png
 ```
+
+Standalone `path-search` does **not** create `post_seg_NN/` —
+post-processing (tsopt / irc / freq / dft) is `all`'s job.
 
 `summary.json["segments"]` lists each elementary step with:
 
 ```python
 {
   "index": 1,
+  "tag": "seg_01",
+  "kind": "seg",
   "barrier_kcal": 21.5,
   "delta_kcal": -0.7,
-  "bond_changes": {"formed": ["..."], "broken": ["..."]},
-  "structures": {"reactant": "post_seg_01/structures/reactant.pdb", ...}
+  "bond_changes": {"formed": ["..."], "broken": ["..."]}
 }
 ```
+
+Top-level `summary.json["status"]` is `"success"` (energy diagram
+written) or `"partial"` (no diagram — usually means MEP did not
+complete cleanly).
 
 ## Caveats
 
@@ -94,12 +103,12 @@ result_path_search/
   supply.
 - `--max-nodes` bigger than 30 rarely helps; if a segment doesn't
   converge with 20 nodes, the chemistry is usually the problem.
-- Output **does not** include refined TSs; that's `post_seg_NN/tsopt/`
-  in the `all` pipeline.
+- Output **does not** include refined TSs; that's
+  `path_search/post_seg_NN/ts/` produced by the `all` pipeline.
 
 ## See also
 
 - `path-opt.md` — single-segment MEP optimization (the building block).
-- `tsopt.md` — runs after path-search on each `post_seg_NN/structures/ts.pdb`.
+- `tsopt.md` — runs after path-search on each `hei_seg_NN.xyz` (TS seed).
 - `bond-summary.md` — same bond-change algorithm used here, standalone.
 - Defaults: `import pdb2reaction.defaults as d; print(d.SEARCH_KW, d.GS_KW, d.DMF_KW)`

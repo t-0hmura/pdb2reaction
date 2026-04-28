@@ -65,25 +65,27 @@ result_all/
 ├── summary.json                    # machine-readable per-stage results
 ├── summary.log                     # human-readable text + dir tree
 ├── extract/                        # cluster.pdb (if -c was given)
-├── path_search/
-│   ├── mep.pdb / mep_trj.xyz       # full path
-│   ├── seg_NN/ post_seg_NN/        # per-segment intermediate output
-│   └── energy_diagram_*.png
-├── post_seg_NN/                    # per-segment post-processing
-│   ├── ts/                         # TS optimization output
-│   ├── irc/                        # forward/backward IRC trajectories
-│   ├── freq/                       # frequencies + thermo
-│   └── dft/                        # (if --dft) single-point DFT
-└── seg_NN/                         # canonical R/TS/P/IM coords (top-level)
-    ├── reactant.pdb / .xyz
-    ├── ts.pdb / .xyz
-    └── product.pdb / .xyz
+├── path_search/                    # (or path_opt/ when --no-refine-path)
+│   ├── seg_NNN_<tag>/              # per-segment MEP scratch (e.g., seg_001_mep, seg_002_maxdepth)
+│   ├── mep_seg_NN.{pdb,xyz} mep_seg_NN_trj.xyz    # canonical per-segment MEP frames
+│   ├── hei_seg_NN.{xyz,pdb,gjf}    # HEI candidate per segment
+│   ├── post_seg_NN/                # per-segment post-processing
+│   │   ├── ts/                     # tsopt output (final_geometry.xyz, vib/imag_*.pdb)
+│   │   ├── irc/                    # forward / backward / finished IRC trajectories
+│   │   ├── freq/                   # frequencies_cm-1.txt, thermoanalysis.yaml
+│   │   └── dft/                    # (if --dft) DFT single-point
+│   └── energy_diagram_*.png        # MEP / UMA / DFT / Gibbs diagrams
+└── seg_NN/                         # canonical R/TS/P coords (top-level, 2-digit)
+    ├── reactant.{pdb,xyz}
+    ├── ts.{pdb,xyz}
+    └── product.{pdb,xyz}
 ```
 
-`seg_NN/` (top-level) is the primary place to look for R/TS/P/IM
-coordinates after a successful run. Per-stage details live in the
-nested `post_seg_NN/`. See `pdb2reaction-workflows-output/SKILL.md`
-for canonical path conventions and the bond-change interpretation.
+`seg_NN/` (top-level) is the primary place to look for R/TS/P
+coordinates after a successful run. Per-stage details live in
+`path_search/post_seg_NN/`. See
+`pdb2reaction-workflows-output/SKILL.md` for canonical path
+conventions and the bond-change interpretation.
 
 ## Output keys (summary.json — top level)
 
@@ -109,9 +111,9 @@ Per-segment fields include `barrier_kcal`, `delta_kcal`, `bond_changes`,
 `--help-advanced`). To rerun only a failed segment:
 
 ```bash
-pdb2reaction tsopt -i path_search/seg_03/ts.xyz -o post_seg_03/tsopt -b uma
-pdb2reaction irc   -i post_seg_03/tsopt/final_geometry.xyz -o post_seg_03/irc -b uma
-pdb2reaction freq  -i post_seg_03/irc/finished_irc_trj.xyz -o post_seg_03/freq -b uma
+pdb2reaction tsopt -i path_search/hei_seg_03.xyz -o path_search/post_seg_03/ts -b uma
+pdb2reaction irc   -i path_search/post_seg_03/ts/final_geometry.xyz -o path_search/post_seg_03/irc -b uma
+pdb2reaction freq  -i path_search/post_seg_03/ts/final_geometry.xyz -o path_search/post_seg_03/freq -b uma
 ```
 
 The directory layout matches what `all` produces, so downstream

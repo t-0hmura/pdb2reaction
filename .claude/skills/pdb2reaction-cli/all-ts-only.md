@@ -74,15 +74,13 @@ collapses to one segment:
 result_ts_only/
 ├── summary.json
 ├── summary.log
-├── post_seg_01/
-│   ├── tsopt/         final_geometry.{xyz,pdb}, result.json
-│   ├── irc/           forward_irc_trj.xyz, backward_irc_trj.xyz, finished_irc_trj.xyz
-│   ├── freq/          frequencies_cm-1.txt, thermoanalysis.yaml
-│   └── (dft/)
-└── seg_01/
-    ├── reactant.pdb   (from the IRC backward endpoint)
-    ├── ts.pdb
-    └── product.pdb    (from the IRC forward endpoint)
+└── tsopt_single/
+    ├── ts/            final_geometry.{xyz,pdb}, optimization_trj.xyz (with --dump)
+    ├── irc/           forward_irc_trj.xyz, backward_irc_trj.xyz, finished_irc_trj.xyz
+    ├── freq/          frequencies_cm-1.txt, thermoanalysis.yaml (with --dump)
+    ├── dft/           (when --dft)
+    ├── endpoint_opt/  intermediate optimizer scratch
+    └── structures/    reactant.pdb, ts.pdb, product.pdb (canonical R/TS/P)
 ```
 
 ## Output keys
@@ -90,14 +88,15 @@ result_ts_only/
 ```python
 import json
 d = json.load(open("result_ts_only/summary.json"))
-seg = d["segments"][0]
+seg  = d["segments"][0]            # MEP-style block (barrier/delta/bond_changes)
+post = d["post_segments"][0]       # post-processing block (ts_imag / uma / dft …)
 print(seg["barrier_kcal"], seg["delta_kcal"])
-print(seg["bond_changes"])             # what bonds broke / formed along the IRC
-print(seg["tsopt"]["n_imaginary_modes"])     # should be 1
-print(seg["irc"]["energy_reactant_hartree"], seg["irc"]["energy_ts_hartree"], seg["irc"]["energy_product_hartree"])
+print(seg["bond_changes"])         # what bonds broke / formed along the IRC
+print(post["ts_imag"]["n_imag"])   # should be 1 for a true TS
+print(post["uma"]["energies_au"])  # [E(R), E(TS), E(P)] in hartree
 ```
 
-If `tsopt.n_imaginary_modes != 1`, the geometry is **not a true first-order
+If `post["ts_imag"]["n_imag"] != 1`, the geometry is **not a true first-order
 saddle**; see "Distinctive failure modes" below.
 
 ## Distinctive failure modes

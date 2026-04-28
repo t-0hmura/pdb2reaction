@@ -221,7 +221,7 @@ cat result_opt/result.json | python -m json.tool
 |-----------|------|------|
 | `status` | string | `"success"` / `"partial"` |
 | `n_segments` | int | 再帰 MEP のセグメント数 |
-| `segments` | object[] | セグメントごとの `barrier_kcal`, `delta_kcal`, `bond_changes`, `hei_index`, `mep_mode` |
+| `segments` | object[] | セグメントごとの `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` |
 | `energy_diagrams` | object[] | セグメントごとのラベル付きエネルギープロファイル (kcal/mol) |
 | `mlip_backend` | string | バックエンド / モデル名 |
 | `charge` | int | 系の電荷 |
@@ -245,7 +245,7 @@ cat result_opt/result.json | python -m json.tool
 | `energy_kcal_per_mol` | float | DFT エネルギー (kcal/mol) |
 | `xc_functional` | string | 汎関数 |
 | `basis_set` | string | 基底関数 |
-| `engine` | string | 実効エンジンラベル (`"gpu"` / `"cpu"`) |
+| `engine` | string | 実効エンジンラベル (`"gpu4pyscf"` / `"pyscf(cpu)"`) |
 | `used_gpu` | bool | GPU 使用? |
 | `charges` | object | `{mulliken, lowdin, iao}` 原子電荷配列 |
 | `spin_densities` | object | `{mulliken, lowdin, iao}` スピン密度配列 |
@@ -303,9 +303,9 @@ cat result_opt/result.json | python -m json.tool
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `status` | string | `"success"` / `"partial"` |
+| `status` | string | `"success"` / `"partial"` / `"failed"` (`all`); `"success"` / `"partial"` (`path-search`) |
 | `n_segments` | int | セグメント数 |
-| `segments` | object[] | セグメントごとの障壁、反応エネルギー、結合変化 |
+| `segments` | object[] | セグメントごとの `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` |
 | `energy_diagrams` | object[] | エネルギーダイアグラム（ラベル + kcal/mol） |
 | `mlip_backend` | string | モデル名 |
 | `charge` | int | 系の電荷 |
