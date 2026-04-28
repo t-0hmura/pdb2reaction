@@ -9,40 +9,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 ## [0.3.7] — 2026-04-28
 
 ### Changed
-- Documentation restructured for newcomer-friendliness across EN and JA mirrors:
-  - `docs/index.md`: replaced the flat information list with a 4-card "Start here" goal-based map (newcomer / reactant only / TS candidate / errors) and a single autosummary subcommand table.
-  - All 11 calculation command pages (`extract`, `opt`, `tsopt`, `freq`, `irc`, `dft`, `scan`, `scan2d`, `scan3d`, `path-search`, `path-opt`) now open with the unified 5-bullet "At a glance" block (Use when / Method / Outputs / Defaults / Next step), matching `all.md`.
-  - `quickstart-{all,scan,tsopt-freq}.md` aligned to the unified Quickstart template (Goal / Prerequisites / Minimal command / Expected output / Tips / Next step). `quickstart-scan` now leads with the YAML/JSON spec form (the recommended one), with the inline Python literal as the secondary path.
-  - `getting-started.md`: workflow-modes section compressed to a 3-row table; "Important CLI options" matrix trimmed to the 7 most-relevant flags with a pointer to the canonical references.
-  - `installation.md`: "Required" (4 contiguous steps) vs "Optional" (DMF / MACE / ORB / AIMNet2 / DFT extras) split; MACE+UMA conflict promoted from a tip blockquote to a `{warning}` admonition (it uninstalls `fairchem-core`).
-  - `dft.md`: scattered basis-set / GPU OOM / system-size warnings consolidated into a single "Practical limits" subsection.
-- Reference duplication consolidated. The same fact is now defined in exactly one canonical location and linked from every other page:
-  - `--selected-resn` ID-vs-name warning → `cli-conventions.md` `(selected-resn-takes-ids)`
-  - `--opt-mode` polysemy across `opt`/`tsopt` → `cli-conventions.md` `(opt-mode-semantics)`
-  - `--engine` (`dft`) vs `--dft-engine` (`all` wrapper) alias → `cli-conventions.md` `(engine-vs-dft-engine)`
-  - Exit-codes table → `cli-conventions.md` `(exit-codes)` (was duplicated across `dft`/`irc`/`freq`/`tsopt`/`opt`/`path-opt`)
-  - `5 cm⁻¹` detection threshold vs `100 cm⁻¹` quality gate → `glossary.md` `(imaginary-mode-thresholds)`
-  - Scan-list spec (YAML/JSON file format, inline Python literal, atom selectors, quoting) → `cli-conventions.md` `(scan-list-spec)`. `scan{,2d,3d}.md` retain only their dimension-specific content.
-- Command pages no longer reproduce large YAML appendices that mirror `yaml-reference.md`. `tsopt`, `path-search`, `path-opt`, `opt`, `freq`, and `irc` keep only command-specific overrides (e.g., `out_dir: ./result_<command>/`, `flatten_max_iter`, IRC's hard `coord_type=cart` / `return_partial_hessian=true`) and link to the canonical schema.
-- Recipes vs Troubleshooting split clarified: `recipes-common-errors.md` is now a symptom-to-page router, `troubleshooting.md` carries the detailed fixes. The TSOPT-not-converging guidance is now explicit that the YAML knobs (`lbfgs.max_step`, `hessian_dimer.max_step`, `rfo.trust_*`, `rsirfo`) and CLI flags (`--opt-mode`, `--flatten`) are complementary.
+- Docs restructured for newcomer onboarding (EN+JA): goal-based 4-card "Start here" map on `docs/index.md`; unified 5-bullet "At a glance" block on all 11 calculation command pages; unified Quickstart template; `getting-started.md` workflow-modes table + flag matrix trimmed; `installation.md` split into Required vs Optional with the MACE+UMA conflict promoted to a `{warning}`; `dft.md` size/OOM caveats consolidated into a single "Practical limits" subsection.
+- Reference duplication eliminated — each canonical fact has exactly one home and is cross-linked from every other page: `--selected-resn` ID-vs-name (`cli-conventions.md` `(selected-resn-takes-ids)`), `--opt-mode` polysemy (`(opt-mode-semantics)`), `--engine` / `--dft-engine` alias (`(engine-vs-dft-engine)`), exit-codes table (`(exit-codes)`), 5 cm⁻¹ vs 100 cm⁻¹ TS thresholds (`glossary.md` `(imaginary-mode-thresholds)`), scan-list spec (`(scan-list-spec)`).
+- Command pages (`tsopt`, `path-search`, `path-opt`, `opt`, `freq`, `irc`) no longer reproduce the YAML schema; canonical schema lives in `yaml-reference.md`. ~1500 lines of duplication removed; only command-specific overrides remain inline.
+- `recipes-common-errors.md` is now a symptom→page router; detailed fixes live in `troubleshooting.md`.
 
 ### Added
-- `glossary.md` (EN+JA): `DFT//MLIP` entry — DFT single-point energies at MLIP-optimized geometries, following the standard `energy-level // geometry-level` notation.
-- `yaml-reference.md` (EN+JA) overview table: `rsirfo` "Used by" column now lists `tsopt, all` (was `tsopt`).
-- `--opt-mode-post grad|hess` (`all`-only) listed in `getting-started.md` "Important CLI options" with the same scope description used in earlier prose.
+- `glossary.md` (EN+JA): `DFT//MLIP` entry.
+- `yaml-reference.md` overview: `rsirfo` "Used by" lists `tsopt, all` (was `tsopt`).
+- `getting-started.md` "Important CLI options": `--opt-mode-post grad|hess` (`all`-only).
 
 ### Fixed
-- `docs/ja/extract.md` `--modified-residue` description: typo `:electric` suffix → `:charge` suffix.
-- `docs/ja/cli-conventions.md` `--selected-resn` warning: previously claimed silent no-match; corrected to match the actual implementation, which raises `ValueError("Invalid residue specifier '<token>'. Use '123', '123A', 'A:123', or 'A:123A'.")` when residue-name tokens are passed.
-- `docs/yaml-reference.md` IRC: the redundant `calc.return_partial_hessian` bullet that restated the immediately preceding bullet was removed (EN+JA).
-- `docs/ja/getting-started.md`: `reference/commands/index.md` link updated to the correct relative path.
-
-### Removed
-- Duplicated YAML appendix sections from command pages (~1500 lines net across EN+JA), with all keys verified to exist in `yaml-reference.md`.
-- Duplicate prose copies of warnings, exit-code tables, and threshold definitions that are now centralized at the canonical anchors above.
-
-### Upgrade notes
-- All anchor names are stable; existing deep links into the docs continue to work. The new (`selected-resn-takes-ids`, `scan-list-spec`) anchors live in `cli-conventions.md`.
+- `docs/ja/extract.md`: typo `:electric` → `:charge`.
+- `docs/ja/cli-conventions.md` `--selected-resn`: previously claimed silent no-match; corrected to match the actual `ValueError` raised when residue-name tokens are passed.
+- `docs/yaml-reference.md` IRC: removed redundant `calc.return_partial_hessian` bullet duplicating the preceding line (EN+JA).
+- `docs/ja/getting-started.md`: corrected relative path to `reference/commands/index.md`.
 
 ## [0.3.6] — 2026-04-21
 
