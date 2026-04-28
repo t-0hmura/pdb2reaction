@@ -135,9 +135,6 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'numpy': ('https://numpy.org/doc/stable/', None),
 }
-# Cap each intersphinx fetch so a slow / redirecting upstream cannot
-# hang the docs build forever.
-intersphinx_timeout = 30
 
 # -- Options for copy button -------------------------------------------------
 
