@@ -6,7 +6,7 @@
 
 ### At a glance
 - **Use when:** Single-point DFT energy (and population analysis) on a small active-site model — typically for refining MLIP-optimized R/TS/P structures.
-- **Method:** PySCF (CPU) or GPU4PySCF (GPU) with density fitting; backend chosen via `--engine {gpu|cpu}`.
+- **Method:** PySCF (CPU) or GPU4PySCF (GPU); backend chosen via `--engine {gpu|cpu}`. Closed-shell GPU runs use GPU4PySCF's low-memory `rks_lowmem.RKS` by default (`--lowmem/--no-lowmem`); other paths fall back automatically.
 - **Outputs:** `input_geometry.xyz` plus `result.yaml` (energy in hartree/kcal·mol⁻¹, convergence/timing/engine metadata, and Mulliken/meta-Löwdin/IAO charges and spin densities).
 - **Defaults:** `--engine gpu`, `--func-basis wb97m-v/def2-tzvpd`, `--max-cycle 100`, `--conv-tol 1e-9`, `--grid-level 3`, `--out-dir ./result_dft/`.
 - **Next step:** Combine DFT energies with MLIP thermal corrections (DFT//MLIP Gibbs) via `all --dft --thermo`, or feed the optimized structures here directly into mechanism reporting.
@@ -109,6 +109,7 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 \
 | `--grid-level INT` | PySCF numerical integration grid level (`dft.grid_level`). | `3` |
 | `-o, --out-dir TEXT` | Output directory (`dft.out_dir`). | `./result_dft/` |
 | `--engine [gpu\|cpu]` | SCF backend: gpu (GPU4PySCF) or cpu (PySCF). See {ref}`engine-vs-dft-engine` for the `--engine` vs `--dft-engine` naming convention. | `gpu` |
+| `--lowmem/--no-lowmem` | Use `gpu4pyscf.dft.rks_lowmem.RKS` for closed-shell GPU runs (skips density fitting in favor of memory-efficient direct JK). Open-shell, CPU, or pre-`rks_lowmem` GPU4PySCF installs fall back to standard RKS/UKS automatically. | `True` |
 | `--convert-files/--no-convert-files` | **No-op on `dft`.** Accepted purely for interface consistency with the other subcommands; `dft` never produces PDB or GJF outputs (only `input_geometry.xyz` + `result.yaml`). The flag's value is ignored. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to validate atom counts and enable ligand-charge derivation for XYZ/GJF inputs (no output conversion). | _None_ |
 | `--config FILE` | Base YAML configuration file applied before explicit CLI options. | _None_ |
@@ -158,6 +159,7 @@ Accepts a mapping root; the `dft` section (and optional `geom`) is applied when 
 - `grid_level` (`3`): PySCF `grids.level`.
 - `verbose` (`0`): PySCF verbosity (0–9). The CLI constructs the configuration with this quiet default unless overridden.
 - `out_dir` (`"./result_dft/"`): Output directory root.
+- `lowmem` (`True`): Use `gpu4pyscf.dft.rks_lowmem.RKS` on closed-shell GPU runs (skips density fitting). Auto-falls back to standard RKS/UKS for open-shell, CPU, or older `gpu4pyscf` installs without `rks_lowmem`.
 
 _Functional/basis selection defaults to `wb97m-v/def2-tzvpd` but can be overridden on the CLI. Charge/spin inherit `.gjf` template metadata when present. If `-q` is omitted but `--ligand-charge/-l` is provided, the input is treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge; explicit `-q` still overrides. For non-`.gjf` inputs, omitting `-q` without `--ligand-charge/-l` aborts; multiplicity defaults to `1` when omitted. Set them explicitly for non-default states._
 

@@ -551,6 +551,7 @@ dft:
  max_cycle: 100 # Maximum SCF iterations
  grid_level: 3 # PySCF grid level
  engine: gpu # SCF backend: "gpu" (GPU4PySCF) or "cpu" (PySCF)
+ lowmem: true # Use gpu4pyscf rks_lowmem.RKS for closed-shell GPU runs
  verbose: 0 # PySCF verbosity (0-9)
  out_dir: ./result_dft/ # Output directory root
 ```

@@ -6,7 +6,7 @@
 
 ### 要点
 - **想定場面:** 小規模な活性部位モデルに対して DFT 一点エネルギー（および電子密度解析）が必要なとき。多くは MLIP で最適化した R/TS/P 構造の精密化に使います。
-- **計算手法:** 密度フィッティング付きの PySCF（CPU）または GPU4PySCF（GPU）。バックエンドは `--engine {gpu|cpu}` で選択します。
+- **計算手法:** PySCF（CPU）または GPU4PySCF（GPU）。バックエンドは `--engine {gpu|cpu}` で選択します。closed-shell の GPU 経路は GPU4PySCF の低メモリ実装 `rks_lowmem.RKS` をデフォルトで使用し（`--lowmem/--no-lowmem`）、open-shell や CPU、`rks_lowmem` 未対応の旧 `gpu4pyscf` では標準 RKS/UKS に自動フォールバックします。
 - **主な出力:** `input_geometry.xyz` と `result.yaml`（Hartree/kcal·mol⁻¹ のエネルギー、収束・実行時間・エンジン情報、Mulliken/meta-Löwdin/IAO 電荷とスピン密度）。
 - **デフォルト値:** `--engine gpu`、`--func-basis wb97m-v/def2-tzvpd`、`--max-cycle 100`、`--conv-tol 1e-9`、`--grid-level 3`、`--out-dir ./result_dft/`。
 - **次のステップ:** `all --dft --thermo` で DFT エネルギーと MLIP の熱補正を組み合わせる（DFT//MLIP Gibbs）か、ここで得た構造をそのまま機構報告に使います。
@@ -109,6 +109,7 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 \
 | `--grid-level INT` | PySCF数値積分グリッドレベル | `3` |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_dft/` |
 | `--engine [gpu\|cpu]` | SCFバックエンド: gpu (GPU4PySCF) または cpu (PySCF)。`--engine` と `--dft-engine` の命名規則は {ref}`ja-engine-vs-dft-engine` を参照。 | `gpu` |
+| `--lowmem/--no-lowmem` | closed-shell の GPU 経路で `gpu4pyscf.dft.rks_lowmem.RKS` を使用（密度フィッティングを使わず、メモリ効率の良い直接 JK を使用）。open-shell や CPU エンジン、`rks_lowmem` 未搭載の旧 `gpu4pyscf` では標準 RKS/UKS に自動フォールバック。 | `True` |
 | `--convert-files/--no-convert-files` | **`dft` では no-op。** 他のサブコマンドとのインターフェース整合性のためだけに受け付けられます。`dft` は PDB や GJF を一切出力せず（`input_geometry.xyz` + `result.yaml` のみ）、このフラグの値は無視されます。 | `True` |
 | `--ref-pdb FILE` | 原子数検証とXYZ/GJF 入力のリガンド電荷導出を有効にする参照 PDB トポロジー（出力変換は行わない） | _None_ |
 | `--config FILE` | 明示的な CLI オプション適用前に読み込むベース YAML | _None_ |
@@ -157,6 +158,7 @@ out_dir/ (デフォルト:./result_dft/)
 - `grid_level` (`3`): PySCF `grids.level`
 - `verbose` (`0`): PySCF冗長度（0–9）
 - `out_dir` (`"./result_dft/"`): 出力ディレクトリ
+- `lowmem` (`True`): closed-shell の GPU 経路で `gpu4pyscf.dft.rks_lowmem.RKS` を使用（密度フィッティングをスキップ）。open-shell、CPU エンジン、`rks_lowmem` 非搭載の旧 `gpu4pyscf` では標準 RKS/UKS に自動フォールバック。
 
 _汎関数/基底のデフォルトは `wb97m-v/def2-tzvpd` ですが CLI で上書き可能です。電荷/スピンは `.gjf` テンプレートがあればそれを継承し、`-q` が省略され `--ligand-charge` がある場合は `extract.py` の電荷サマリーから総電荷を導出します。明示的な `-q` は常に最優先です。`.gjf` 以外の入力で `--ligand-charge` もない場合は中断します。多重度は省略時 `1` がデフォルトです。_
 

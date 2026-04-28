@@ -59,6 +59,7 @@ DFT_KW: Dict[str, Any] = {
     "out_dir": "./result_dft/",# Output directory
     "func": DFT_DEFAULT_FUNC,  # XC functional (can be overridden via YAML)
     "basis": DFT_DEFAULT_BASIS,# Basis set (can be overridden via YAML)
+    "lowmem": True,            # Use gpu4pyscf rks_lowmem (closed-shell GPU only); auto-fallback otherwise
 }
 
 
@@ -102,16 +103,61 @@ def _AU2KCALPERMOL(Eh: float) -> float:
     return float(Eh * AU2KCALPERMOL)
 
 
-def _configure_scf_object(mf, dft_cfg: Dict[str, Any], xc: str):
-    """Apply common SCF settings (XC, DF, tolerances, grids) to an SCF object."""
+def _configure_scf_object(mf, dft_cfg: Dict[str, Any], xc: str, *, use_density_fit: bool = True):
+    """Apply common SCF settings (XC, DF, tolerances, grids) to an SCF object.
+
+    `use_density_fit=False` is required for `gpu4pyscf.dft.rks_lowmem.RKS`,
+    which intentionally does not implement `density_fit`.
+    """
     mf.xc = xc
     mf.max_cycle = int(dft_cfg["max_cycle"])
     mf.conv_tol = float(dft_cfg["conv_tol"])
     mf.grids.level = int(dft_cfg["grid_level"])
     mf.chkfile = None
-    mf = mf.density_fit()
+    if use_density_fit:
+        mf = mf.density_fit()
 
     return mf
+
+
+def _build_cpu_surrogate_for_analysis(mol, mf, xc: str, spin2s: int):
+    """Construct a CPU `pyscf.dft` SCF object carrying converged orbitals from `mf`.
+
+    Used when the GPU SCF object's `to_cpu()` is not implemented
+    (e.g. `gpu4pyscf.dft.rks_lowmem.RKS`). Population analysis routines in
+    `pyscf.scf.hf` / `pyscf.scf.uhf` operate on numpy arrays, so MOs are
+    transferred from CuPy if needed.
+    """
+    from pyscf import dft as pdft
+
+    def _to_np(x):
+        try:
+            import cupy as _cp
+            if isinstance(x, _cp.ndarray):
+                return _cp.asnumpy(x)
+        except Exception:
+            pass
+        return np.asarray(x)
+
+    surrogate = pdft.RKS(mol) if spin2s == 0 else pdft.UKS(mol)
+    surrogate.xc = xc
+    surrogate.chkfile = None
+    mo_coeff = mf.mo_coeff
+    mo_occ = mf.mo_occ
+    mo_energy = getattr(mf, "mo_energy", None)
+    if spin2s == 0:
+        surrogate.mo_coeff = _to_np(mo_coeff)
+        surrogate.mo_occ = _to_np(mo_occ)
+        if mo_energy is not None:
+            surrogate.mo_energy = _to_np(mo_energy)
+    else:
+        surrogate.mo_coeff = (_to_np(mo_coeff[0]), _to_np(mo_coeff[1]))
+        surrogate.mo_occ = (_to_np(mo_occ[0]), _to_np(mo_occ[1]))
+        if mo_energy is not None:
+            surrogate.mo_energy = (_to_np(mo_energy[0]), _to_np(mo_energy[1]))
+    surrogate.converged = bool(getattr(mf, "converged", False))
+    surrogate.e_tot = float(getattr(mf, "e_tot", float("nan")))
+    return surrogate
 
 
 def _format_row_for_echo(row: List[Union[int, str, float, None]]) -> str:
@@ -355,6 +401,14 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     help="SCF backend: gpu (GPU4PySCF, raises error if unavailable) or cpu (PySCF).",
 )
 @click.option(
+    "--lowmem/--no-lowmem",
+    "lowmem",
+    default=DFT_KW["lowmem"],
+    show_default=True,
+    help="Use gpu4pyscf rks_lowmem.RKS for closed-shell GPU runs (skips density_fit). "
+         "Open-shell or CPU engines fall back to standard RKS/UKS automatically.",
+)
+@click.option(
     "--config",
     "config_yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
@@ -397,6 +451,7 @@ def cli(
     grid_level: int,
     out_dir: str,
     engine: str,
+    lowmem: bool,
     config_yaml: Optional[Path],
     show_config: bool,
     out_json: bool,
@@ -446,6 +501,8 @@ def cli(
                 dft_cfg["grid_level"] = int(grid_level)
             if cli_param_overridden(ctx, "out_dir"):
                 dft_cfg["out_dir"] = out_dir
+            if cli_param_overridden(ctx, "lowmem"):
+                dft_cfg["lowmem"] = bool(lowmem)
 
             func_basis_value = str(
                 dft_cfg.get(
@@ -474,6 +531,7 @@ def cli(
             if cli_param_overridden(ctx, "engine"):
                 engine_name = (engine or "gpu").strip().lower()
             out_dir_path = Path(dft_cfg["out_dir"]).resolve()
+            lowmem_requested = bool(dft_cfg.get("lowmem", True))
             echo_cfg = {
                 "charge": int(resolved_charge),
                 "multiplicity": multiplicity,
@@ -485,6 +543,7 @@ def cli(
                 "grid_level": dft_cfg["grid_level"],
                 "out_dir": str(out_dir_path),
                 "engine": engine_name,
+                "lowmem": lowmem_requested,
             }
             click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
             click.echo(pretty_block("dft", echo_cfg))
@@ -565,6 +624,7 @@ def cli(
             # --------------------------
             engine = engine_name
             using_gpu = False
+            using_lowmem = False
             engine_label = "pyscf(cpu)"
             make_ks = (lambda mod: mod.RKS(mol) if spin2s == 0 else mod.UKS(mol))
 
@@ -602,10 +662,37 @@ def cli(
 
                 try:
                     from gpu4pyscf import dft as gdf
-                    mf = make_ks(gdf)
-                    using_gpu = True
-                    engine_label = "gpu4pyscf"
-                    mf = _configure_scf_object(mf, dft_cfg, xc)
+
+                    rks_lowmem_mod = None
+                    if lowmem_requested and spin2s == 0:
+                        try:
+                            from gpu4pyscf.dft import rks_lowmem as rks_lowmem_mod  # type: ignore
+                        except ImportError:
+                            click.echo(
+                                "[lowmem] WARNING: gpu4pyscf.dft.rks_lowmem is not available "
+                                "in this gpu4pyscf install; falling back to standard RKS.",
+                                err=True,
+                            )
+                            rks_lowmem_mod = None
+
+                    if rks_lowmem_mod is not None:
+                        mf = rks_lowmem_mod.RKS(mol, xc=xc)
+                        using_gpu = True
+                        using_lowmem = True
+                        engine_label = "gpu4pyscf(rks_lowmem)"
+                        # density_fit is intentionally NotImplemented in rks_lowmem.
+                        mf = _configure_scf_object(mf, dft_cfg, xc, use_density_fit=False)
+                    else:
+                        if lowmem_requested and spin2s != 0:
+                            click.echo(
+                                "[lowmem] NOTE: rks_lowmem only supports closed-shell; "
+                                "open-shell run uses standard UKS.",
+                                err=True,
+                            )
+                        mf = make_ks(gdf)
+                        using_gpu = True
+                        engine_label = "gpu4pyscf"
+                        mf = _configure_scf_object(mf, dft_cfg, xc)
                     e_tot = mf.kernel()
 
                 except Exception as e:
@@ -638,10 +725,15 @@ def cli(
             # --------------------------
             # 6) Charges (Mulliken / meta-Löwdin-AO / IAO) & Spin densities
             # --------------------------
-            try:
-                mf_for_analysis = mf.to_cpu()  # GPU → CPU (no-op on CPU backend)
-            except Exception:
-                mf_for_analysis = mf
+            if using_lowmem:
+                # rks_lowmem.RKS.to_cpu() raises NotImplementedError; build a CPU
+                # surrogate carrying the converged orbitals for population analysis.
+                mf_for_analysis = _build_cpu_surrogate_for_analysis(mol, mf, xc, spin2s)
+            else:
+                try:
+                    mf_for_analysis = mf.to_cpu()  # GPU → CPU (no-op on CPU backend)
+                except Exception:
+                    mf_for_analysis = mf
 
             charges = _compute_atomic_charges(mol, mf_for_analysis)
             spins   = _compute_atomic_spin_densities(mol, mf_for_analysis)
@@ -694,6 +786,7 @@ def cli(
                     "converged": converged,
                     "engine": engine_label,
                     "used_gpu": bool(using_gpu),
+                    "used_lowmem": bool(using_lowmem),
                 },
                 # Table-style outputs (flow lists)
                 "charges [index, element, mulliken, lowdin, iao]": charges_rows_flow,
@@ -736,6 +829,7 @@ def cli(
                     "basis_set": basis,
                     "engine": engine_label,
                     "used_gpu": bool(using_gpu),
+                    "used_lowmem": bool(using_lowmem),
                     "charges": {k: v for k, v in charges.items()},
                     "spin_densities": {k: v for k, v in spins.items()},
                     "files": {
