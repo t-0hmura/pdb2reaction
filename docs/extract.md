@@ -8,7 +8,7 @@
 - **Use when:** Carving an active site model (cluster model) from a protein–ligand PDB (single structure or ensemble) for downstream MEP/TSOPT/freq/DFT runs.
 - **Method:** Distance-based residue selection (`--radius`, optional `--radius-het2het`) with peptide/disulfide/PRO safeguards, backbone truncation, and optional link-hydrogen capping at severed bonds.
 - **Outputs:** Active site model PDB(s) with link hydrogens after a `TER` record (`model.pdb`, `model_<input>.pdb`, or a single multi-MODEL PDB depending on `-o`); optional `result.json` with `--out-json`.
-- **Defaults:** `--radius 2.6 Å`, `--radius-het2het 0.0` (off), `--include-h2o True`, `--exclude-backbone False`, `--add-linkh True`, `--freeze-links True`, `--verbose True`.
+- **Defaults:** `--radius 2.6 Å`, `--radius-het2het 0.0` (off), `--include-h2o True`, `--exclude-backbone False`, `--add-linkh True`, `--verbose True`. (`--freeze-links` is a downstream-stage flag, default `True`; see [`opt`](opt.md), [`tsopt`](tsopt.md), [`freq`](freq.md), [`irc`](irc.md), [`path-search`](path-search.md), [`path-opt`](path-opt.md), [`scan`](scan.md).)
 - **Next step:** Feed the model PDB(s) into [`path-search`](path-search.md) / [`scan`](scan.md) / [`opt`](opt.md) / [`tsopt`](tsopt.md), or use [`all`](all.md) with `-c/--center` to chain extraction with the rest of the pipeline.
 
 `pdb2reaction extract` creates an active site model (cluster model) from a protein–ligand PDB. It selects residues near the substrate, truncates the model according to backbone/side-chain rules, optionally caps severed bonds with link hydrogens, and can process single structures or ensembles.

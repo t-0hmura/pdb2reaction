@@ -8,7 +8,7 @@
 - **想定場面:** タンパク質–リガンド PDB（単一構造またはアンサンブル）から、後続の MEP/TSOPT/freq/DFT 用の活性部位モデル（クラスターモデル）を切り出す場合。
 - **手法:** 距離ベースの残基選択（`--radius`、必要に応じて `--radius-het2het`）+ ペプチド/ジスルフィド/PRO セーフガード、主鎖トリミング、切断結合へのリンク水素キャップ（任意）。
 - **主な出力:** `TER` の後にリンク水素を含む活性部位モデル PDB（`-o` 指定に応じて `model.pdb`、`model_<input>.pdb`、または単一マルチ MODEL PDB）。`--out-json` 指定時は `result.json` も出力。
-- **デフォルト値:** `--radius 2.6 Å`、`--radius-het2het 0.0`（無効）、`--include-h2o True`、`--exclude-backbone False`、`--add-linkh True`、`--freeze-links True`、`--verbose True`。
+- **デフォルト値:** `--radius 2.6 Å`、`--radius-het2het 0.0`（無効）、`--include-h2o True`、`--exclude-backbone False`、`--add-linkh True`、`--verbose True`。（`--freeze-links` は下流コマンド側のフラグ、デフォルト `True`。[`opt`](opt.md), [`tsopt`](tsopt.md), [`freq`](freq.md), [`irc`](irc.md), [`path-search`](path-search.md), [`path-opt`](path-opt.md), [`scan`](scan.md) を参照。）
 - **次のステップ:** 出力モデル PDB を [`path-search`](path-search.md) / [`scan`](scan.md) / [`opt`](opt.md) / [`tsopt`](tsopt.md) に渡すか、[`all`](all.md) を `-c/--center` 付きで実行して抽出から後処理まで一括で連結。
 
 `pdb2reaction extract` は基質近傍の残基を選択して活性部位モデル（クラスターモデル）を生成し、規則に従ってトリミングしたうえで、必要に応じて切断結合をリンク水素でキャップします。単一構造だけでなく、複数 PDB を入力するアンサンブル処理にも対応しています。

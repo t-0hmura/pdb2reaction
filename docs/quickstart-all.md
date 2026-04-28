@@ -52,7 +52,7 @@ result_all/
 
 **What to check:**
 
-1. `summary.json` — check the `status` field (e.g., `"completed"`) and the per-segment `barrier_kcal` values; `summary.log` mirrors the same information in human-readable form
+1. `summary.json` — check the `status` field (`"success"`, `"partial"`, or `"failed"`) and the per-segment `barrier_kcal` values; `summary.log` mirrors the same information in human-readable form
 2. `seg_01/*.pdb` — open in PyMOL to verify the R/TS/P structures make chemical sense
 3. `energy_diagram_*.png` — the energy profile should show a clear barrier
 
