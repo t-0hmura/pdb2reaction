@@ -66,6 +66,21 @@ Both `pdb2reaction` and `mlmm-toolkit` include a custom GPU-optimized pysisyphus
 
 ---
 
+## Agent Skills
+
+`pdb2reaction` ships AI-agent instructions under [`.claude/skills/`](.claude/skills/) so your agent can drive enzyme reaction-mechanism investigations via Claude Code, Cursor, etc.
+
+The skill bundle covers:
+- End-to-end workflows and output parsing (`summary.json`, R/TS/P canonical paths)
+- CLI subcommands (`extract`, `path-search`, `tsopt`, `freq`, `irc`, `dft`, …)
+- Structure I/O (PDB / XYZ / GJF, charge & multiplicity decisions, link hydrogens & frozen atoms)
+- Installation & Setup instructions
+- HPC operation (PBS / SLURM, multi-GPU)
+
+To activate, copy the `.claude/skills/` directory into your project repository or home directory.
+
+---
+
 ## Installation
 
 Linux with a CUDA-capable NVIDIA GPU is the validated production environment for the MLIP reaction-path workflows. The core Python package and CPU-only smoke tests also run on macOS and on Windows under WSL2.
@@ -280,18 +295,6 @@ A preprint describing `pdb2reaction` is in preparation. Currently, if you find t
   doi          = {10.5281/zenodo.19197865}
 }
 ```
-
----
-
-## Agent Skills
-
-`pdb2reaction` ships AI-agent instructions under `.claude/skills/`
-covering the CLI subcommands, structure I/O (PDB / XYZ / GJF), backend
-installation (UMA / Orb / MACE / AIMNet2 / DFT / xtb), common
-workflows, output parsing, and HPC operation.
-
-To use them, copy the `.claude/skills/` directory into your project
-repository or home directory (Claude Code, Cursor, etc.).
 
 ---
 
