@@ -4,7 +4,7 @@
 
 <img src="./docs/overview.png" alt="pdb2reaction workflow overview" width="90%">
 
-`pdb2reaction` is a Python CLI toolkit for turning **PDB structures** into **enzymatic reaction pathways** with machine-learning interatomic potentials (MLIPs). Each workflow step is also available as an [individual subcommand](#cli-subcommands) ([`opt`](docs/opt.md), [`scan`](docs/scan.md), [`scan2d`](docs/scan2d.md), [`path-search`](docs/path-search.md), [`tsopt`](docs/tsopt.md), [`freq`](docs/freq.md), [`irc`](docs/irc.md), [`dft`](docs/dft.md), [`energy-diagram`](docs/energy-diagram.md), [etc.](#cli-subcommands)) for fine-grained control.
+`pdb2reaction` is a Python CLI toolkit for modeling **enzymatic reaction pathways** from **PDB structures** using machine-learning interatomic potentials (MLIPs). Each workflow step is also available as an [individual subcommand](#cli-subcommands) ([`opt`](docs/opt.md), [`scan`](docs/scan.md), [`scan2d`](docs/scan2d.md), [`path-search`](docs/path-search.md), [`tsopt`](docs/tsopt.md), [`freq`](docs/freq.md), [`irc`](docs/irc.md), [`dft`](docs/dft.md), [`energy-diagram`](docs/energy-diagram.md), [etc.](#cli-subcommands)) for fine-grained control.
 
 A **single command** can generate a first-pass enzymatic reaction path:
 
@@ -12,12 +12,14 @@ A **single command** can generate a first-pass enzymatic reaction path:
 # Multi-PDB mode (R + P → MEP)
 pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
 ```
+
 ```bash
 # Scan mode (single structure → staged bond scans → MEP)
 pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --scan-lists '[("CS1 SAM 320","GPP 321 C7",1.60)]' \
                  '[("GPP 321 H11","GLU 186 OE2",0.90)]'
 ```
+
 ---
 
 The full workflow — **MEP search → TS optimization → IRC → thermochemistry → single-point DFT** — can be run in one command:
