@@ -31,8 +31,12 @@ placeholders this skill uses.
 set -euo pipefail
 cd "${PBS_O_WORKDIR}"
 
-# CUDA: HPC modulefile (env-detect outputs <CUDA_MODULE>)
-command -v module >/dev/null && module load <CUDA_MODULE>
+# CUDA + toolchain: HPC modulefiles (env-detect outputs <CUDA_MODULE>)
+# - gcc: load when the system default is too old for the CUDA toolkit or
+#   when pip will compile a C/CUDA extension from source.
+# - <OPENMPI_MODULE>: only for multi-node Ray (`workers > 1`); omit on
+#   single-node jobs.
+command -v module >/dev/null && module load <CUDA_MODULE> gcc <OPENMPI_MODULE>
 
 # Conda env (env-detect outputs <YOUR_ENV>)
 source "$(conda info --base)/etc/profile.d/conda.sh"
@@ -73,7 +77,8 @@ Both are accepted by most modern Torque + PBSPro installations; check
 set -euo pipefail
 
 cd "${SLURM_SUBMIT_DIR}"
-command -v module >/dev/null && module load <CUDA_MODULE>
+# CUDA + toolchain (see PBS template above for when gcc / OpenMPI are needed)
+command -v module >/dev/null && module load <CUDA_MODULE> gcc <OPENMPI_MODULE>
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate <YOUR_ENV>
 
