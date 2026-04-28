@@ -134,8 +134,12 @@ autodoc_typehints_format = 'short'
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'numpy': ('https://numpy.org/doc/stable/', None),
-    'torch': ('https://pytorch.org/docs/stable/', None),
+    'torch': ('https://docs.pytorch.org/docs/stable/', None),
 }
+# Cap each intersphinx fetch so a slow / redirecting upstream cannot
+# hang the docs build forever (PyTorch's docs domain moved to
+# docs.pytorch.org and the legacy URL was hanging without a timeout).
+intersphinx_timeout = 30
 
 # -- Options for copy button -------------------------------------------------
 
