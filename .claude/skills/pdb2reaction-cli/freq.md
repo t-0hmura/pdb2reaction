@@ -35,8 +35,10 @@ pdb2reaction freq -i geom.{pdb,xyz,gjf} \
 ### Default (298.15 K, 1 atm)
 
 ```bash
-pdb2reaction freq -i ts.xyz -q 0 -m 1 -b uma -o result_freq
+pdb2reaction freq -i ts.xyz -q 0 -m 1 -b uma --out-json -o result_freq
 ```
+
+`--out-json` enables the `result.json` shown below; omit it for `frequencies_cm-1.txt` + `thermoanalysis.yaml` only.
 
 ### Higher temperature for activation enthalpy
 

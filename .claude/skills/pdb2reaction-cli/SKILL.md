@@ -1,36 +1,35 @@
 ---
 name: pdb2reaction-cli
-description: Index and recipes for the 17 pdb2reaction subcommands. Each subcommand has its own md (extract.md / tsopt.md / …); this SKILL.md is the orientation, the cross-cutting flag conventions, and a small library of canonical recipes. See also `freeze-atoms.md` for the cluster-boundary frozen-atom mechanics shared by every geometry-touching subcommand.
+description: Cheatsheet + recipes for the 17 pdb2reaction subcommands. SKILL.md has 1-line input→output per sub; each subcommand also has a full md (`extract.md` / `tsopt.md` / …) for flags, validation, caveats. See also `freeze-atoms.md` for the cluster-boundary frozen-atom mechanics shared by every geometry-touching subcommand.
 ---
 
 # pdb2reaction CLI
 
-## Subcommand index
+## Cheatsheet (input → output)
 
-Each row points to the full per-subcommand md in this skill directory.
+`-l 'RES:Q,...'` (or `-q <int>`) and `-m <int>` are required for non-trivial inputs; omitted below for brevity. `-b` defaults to `uma`. Full flags: `<sub>.md` next to this file, or `pdb2reaction <sub> --help`.
 
-| md | subcommand | role (2 lines) |
-|---|---|---|
-| `all.md` | `all` | End-to-end pipeline: extract → MEP → TS → IRC → freq → (DFT) in one invocation.<br>Delegates to a base orientation; specific modes are in `all-{endpoint-mep,scan-list,ts-only}.md`. |
-| `all-endpoint-mep.md` | `all` (mode 1) | Drives the pipeline from N reaction-ordered structures (R, optionally IM₁ … IMₙ, P).<br>Path search runs GSM/DMF between adjacent endpoints; recursion handles multi-step mechanisms. |
-| `all-scan-list.md` | `all` (mode 2) | Drives the pipeline from a single reactant + a list of staged distance scans.<br>The scan list seeds the MEP; recursion handles intermediate states like in mode 1. |
-| `all-ts-only.md` | `all` (mode 3) | Skips path search and starts from a TS candidate; runs `tsopt → irc → freq → dft`.<br>Use when you already have a transition-state guess (from a different code or a prior run). |
-| `extract.md` | `extract` | Cuts an active-site cluster from a PDB around the substrate residues.<br>Handles residue selection, per-residue charge mapping (`-l`), and link-H placement in one pass. |
-| `path-search.md` | `path-search` | Recursive MEP search (GSM or DMF) across N endpoints with bond-change segmentation.<br>Splits multi-step paths into one-TS-per-segment automatically. |
-| `path-opt.md` | `path-opt` | MEP optimization for a **single** segment between two endpoints.<br>Building block of `path-search`; also useful for refining one segment without re-running the whole search. |
-| `opt.md` | `opt` | Single-structure geometry optimization with LBFGS or RFO.<br>`--opt-mode grad` (LBFGS, default) is fast; `--opt-mode hess` (RFO) is robust on tricky surfaces. |
-| `tsopt.md` | `tsopt` | TS optimization: RS-I-RFO (default) or Hessian-Guided Dimer.<br>`--opt-mode hess/rsirfo` for full-Hessian RS-I-RFO (default); `--opt-mode grad/dimer` for cheaper Dimer. |
-| `freq.md` | `freq` | Vibrational analysis: Hessian, frequencies, normal-mode visualization, QRRHO thermochemistry.<br>Default temperature/pressure 298.15 K / 1 atm; partial-Hessian variant when `freeze_atoms` is non-empty. |
-| `irc.md` | `irc` | IRC integration with EulerPC in mass-weighted Cartesians.<br>Forward + backward from a TS, plus LBFGS optimization of each endpoint. |
-| `dft.md` | `dft` | Single-point DFT through PySCF (CPU) or GPU4PySCF (CUDA, x86_64).<br>`--engine gpu` is default when available; falls back to CPU on aarch64. |
-| `scan.md` | `scan` | 1D distance scan with harmonic restraints to seed a path search.<br>Useful when neither endpoint nor TS guess is available — drives the bond manually. |
-| `scan2d.md` | `scan2d` | 2D analog of `scan` with two restrained distances.<br>Generates a grid; pdb2reaction interpolates the MEP through the grid minima. |
-| `scan3d.md` | `scan3d` | 3D analog with three restrained distances.<br>Rare but supported; output volume grows quickly, plan resources. |
-| `trj2fig.md` | `trj2fig` | Plot an energy profile from an XYZ trajectory.<br>Reads ASE-style energies in the comment line and writes a static PNG/HTML. |
-| `energy-diagram.md` | `energy-diagram` | Build an ad-hoc energy diagram from a list of state names + energies.<br>For composing diagrams that combine multiple `pdb2reaction` runs. |
-| `add-elem-info.md` | `add-elem-info` | Repair / add the element column (PDB cols 77-78).<br>Run before `extract` if your PDB came out of PyMOL or Maestro and elements are missing. |
-| `fix-altloc.md` | `fix-altloc` | Resolve PDB alternate locations (`altloc` field).<br>Pick a single conformation per residue; needed before `extract` on raw RCSB downloads. |
-| `bond-summary.md` | `bond-summary` | Detect bond changes between two structures (e.g. R vs P).<br>Uses the same bond-change algorithm `path-search` invokes for segmentation. |
+| sub | role | minimal command | primary output |
+|---|---|---|---|
+| `all` | End-to-end (extract → MEP → tsopt → irc → freq → dft) | `pdb2reaction all -i 1.R.pdb 3.P.pdb --tsopt --thermo -o out` | `out/seg_NN/{reactant,ts,product}.pdb` + `out/summary.json` |
+| `all` (scan-list) | Single reactant + staged scans | `pdb2reaction all -i 1.R.pdb -s '[(a,b,1.6)]' --tsopt -o out` | as above |
+| `all` (ts-only) | Pre-existing TS candidate | `pdb2reaction all -i ts.xyz -q 0 -m 1 --tsopt --thermo -o out` | `out/tsopt_single/{ts,irc,freq}/...` + `out/seg_01/*.pdb` |
+| `extract` | Active-site cluster cut | `pdb2reaction extract -i raw.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' -r 2.6 -o cluster.pdb` | `cluster.pdb` (`-o` is the output file path, not a directory) |
+| `path-search` | Recursive MEP w/ bond-change segmentation | `pdb2reaction path-search -i 1.R.pdb 3.P.pdb -o out` | `out/hei_seg_NN.xyz` + `out/summary.json` |
+| `path-opt` | Single-segment MEP refinement | `pdb2reaction path-opt -i 1.R.pdb 2.P.pdb -o out` | `out/final_geometries_trj.xyz` |
+| `opt` | Geometry minimization (LBFGS / RFO) | `pdb2reaction opt -i geom.pdb -o out` | `out/final_geometry.xyz` |
+| `tsopt` | TS optimization (RS-I-RFO / Dimer) | `pdb2reaction tsopt -i ts.xyz -q 0 -m 1 -o out` | `out/final_geometry.xyz`; `result.json.n_imaginary_modes`==1 for true TS |
+| `freq` | Hessian + QRRHO thermo | `pdb2reaction freq -i geom.xyz -q 0 -m 1 -o out` | `out/frequencies_cm-1.txt`, `out/thermoanalysis.yaml` |
+| `irc` | IRC from a TS | `pdb2reaction irc -i ts.xyz -q 0 -m 1 -o out` | `out/{forward,backward,finished}_irc_trj.xyz` |
+| `dft` | Single-point DFT (PySCF / GPU4PySCF) | `pdb2reaction dft -i geom.pdb --func-basis 'wb97m-v/def2-tzvpd' -o out` | `out/result.yaml` (energy_hartree, engine_label) |
+| `scan` | 1D distance scan w/ restraints | `pdb2reaction scan -i 1.R.pdb -s '[(a,b,1.6)]' -o out` | `out/mep.xyz`, per-stage `stage_NN/scan_*.xyz` |
+| `scan2d` | 2D distance grid scan | `pdb2reaction scan2d -i 1.R.pdb -s '[(a,b,1.3,3.1),(c,d,1.2,3.2)]' -o out` | `out/surface.csv` + `out/grid_NN_MM/final.xyz` |
+| `scan3d` | 3D distance grid scan | `pdb2reaction scan3d -i 1.R.pdb -s '[(a,b,L,H),(c,d,L,H),(e,f,L,H)]' -o out` | `out/surface.csv` + `out/grid_NN_MM_LL/final.xyz` |
+| `trj2fig` | Energy profile from XYZ trj | `pdb2reaction trj2fig -i trj.xyz` | `trj.xyz.png` |
+| `energy-diagram` | Diagram from energy values | `pdb2reaction energy-diagram -i 0.0 21.5 -0.7 --label-x R TS P` | `energy_diagram.png` |
+| `add-elem-info` | Add PDB element column (cols 77-78) | `pdb2reaction add-elem-info -i raw.pdb -o fixed.pdb` | `fixed.pdb` |
+| `fix-altloc` | Resolve PDB alternate locations | `pdb2reaction fix-altloc -i raw.pdb -o fixed.pdb` | `fixed.pdb` (single conformation per residue) |
+| `bond-summary` | Diff bonds between consecutive structures | `pdb2reaction bond-summary -i reactant.pdb -i product.pdb` (or positional `R.pdb P.pdb`) | stdout text by default; JSON to stdout with `--out-json` |
 
 ## Cross-cutting topic guides
 
@@ -115,7 +114,7 @@ pdb2reaction dft -i seg_01/ts.pdb \
 ### Bond-change report between R and P
 
 ```bash
-pdb2reaction bond-summary -i reactant.pdb product.pdb
+pdb2reaction bond-summary -i reactant.pdb -i product.pdb
 ```
 
 ## Cross-cutting caveats

@@ -73,7 +73,7 @@ optimizer feels the solvent — there is no separate flag to toggle this.
 
 | Symptom | Cause / fix |
 |---|---|
-| `xtb-python` import fails on aarch64 | Wheel not yet published for ARM. Use Route B (system binary). |
+| `xtb` binary not on PATH | `pdb2reaction` calls `xtb` via `subprocess.run`; install via `conda install -c conda-forge xtb` (binary; no Python bindings needed). |
 | `xtb` binary version too old (< 6.7) | ALPB introduced in 6.4 but parameter set updated repeatedly; upgrade if results disagree with documentation. |
 | Different barrier vs literature | Could be `--solvent` mismatch or the literature used a different solvation model (CPCM / SMD). State the model in any comparison. |
 
@@ -84,4 +84,5 @@ optimizer feels the solvent — there is no separate flag to toggle this.
 - `dft.md` — note that xTB-ALPB does **not** stack with PySCF's own
   PCM/COSMO; pick one.
 - `pdb2reaction-cli/SKILL.md` — `--solvent` is accepted by `all`,
-  `tsopt`, `freq`, `irc`, and `dft`.
+  `tsopt`, `freq`, `irc`, `opt`, `path-search`, and `path-opt`.
+  Not accepted by `dft`, `scan`, `scan2d`, `scan3d`, or `extract`.

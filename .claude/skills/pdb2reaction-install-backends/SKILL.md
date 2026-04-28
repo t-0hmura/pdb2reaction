@@ -86,12 +86,12 @@ name: <your_env>
 channels: [conda-forge, nvidia]
 dependencies:
   - python=3.11
+  - xtb                                # if you need xtb.md features (binary; called via subprocess)
   - pip
   - pip:
       - --extra-index-url https://download.pytorch.org/whl/<cu_index>
       - torch
       - pdb2reaction[orb,aimnet,dft]   # extras: see core.md / per-backend md
-      - xtb-python                     # if you need xtb.md features
 ```
 
 `env_pdb2reaction_mace.yml` (MACE only, separate env):

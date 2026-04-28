@@ -133,7 +133,7 @@ Per-segment keys (`summary.json["segments"][i]`) — lightweight, MEP-level:
 | `kind` | Segment kind (`"seg"`, `"bridge"`, or `"tsopt"`) |
 | `barrier_kcal` | TS – R energy (kcal/mol) — the rate constant input |
 | `delta_kcal` | P – R energy (kcal/mol) |
-| `bond_changes` | List of single-key dicts (one per detected change): `[{"Bond formed (k)": ["A-B : 3.17 Å --> 1.68 Å", ...]}, {"Bond broken (k)": [...]}]`. Cutoff 1.20× covalent radii with margin 0.05 — see [`pdb2reaction-cli/bond-summary.md`](../pdb2reaction-cli/bond-summary.md). |
+| `bond_changes` | List of single-key dicts: `[{"Bond formed (k)": ["A-B : 3.17 Å --> 1.68 Å", ...]}, {"Bond broken (k)": [...]}]`. **Standalone `irc result.json["bond_changes"]` uses a different shape**: `{"formed": [str], "broken": [str]}` (flat dict). The list-of-dicts form here is the `path_search` / `all` summary.json shape. Cutoff 1.20× covalent radii with margin 0.05 — see [`pdb2reaction-cli/bond-summary.md`](../pdb2reaction-cli/bond-summary.md). |
 
 Per-segment post-processing keys (`summary.json["post_segments"][i]`) — when `--tsopt`, `--thermo`, or `--dft` was passed:
 
@@ -185,9 +185,10 @@ for seg in d["segments"]:
           f"ΔE = {seg['delta_kcal']:.1f} kcal/mol")
 
 # Rate-limiting barrier
-rls = d["rate_limiting_step"]
+rls = d["rate_limiting_step"]                # {"segment", "barrier_kcal", "method"}
+idx = rls["segment"] - 1                     # segments[] is 0-indexed; rls["segment"] is 1-based
 print(f"rate-limiting: seg_{rls['segment']:02d}, barrier = "
-      f"{d['segments'][rls-1]['barrier_kcal']:.1f} kcal/mol")
+      f"{d['segments'][idx]['barrier_kcal']:.1f} kcal/mol")
 
 # Imaginary-mode check on every TS (post-processing data)
 for ps in d.get("post_segments", []):

@@ -87,7 +87,10 @@ post-processing (tsopt / irc / freq / dft) is `all`'s job.
   "kind": "seg",
   "barrier_kcal": 21.5,
   "delta_kcal": -0.7,
-  "bond_changes": {"formed": ["..."], "broken": ["..."]}
+  "bond_changes": [
+    {"Bond formed (1)": ["C508-C567 : 3.166 Å --> 1.675 Å"]},
+    {"Bond broken (1)": ["S507-C508 : 1.798 Å --> 3.459 Å"]}
+  ]
 }
 ```
 

@@ -22,7 +22,7 @@ pdb2reaction scan -i input.pdb \
 | flag | type | default | description |
 |---|---|---|---|
 | `-i, --input` | path | required | Reactant `.pdb` / `.xyz` / `.gjf` |
-| `-s, --scan-lists` | str | required | Inline Python literal `'[(a,b,target),...]'`, or YAML/JSON spec path. Repeat to add stages. |
+| `-s, --scan-lists` | str | required | Inline Python literal `'[(a,b,target),...]'`, or YAML/JSON spec path. **Pass multiple stages as space-separated literals after a single `-s`** — repeating `-s` is rejected. |
 | `-q` / `-l` / `-m` | — | — | Charge / spin (common conventions) |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `--solvent` | str | `none` | xTB-ALPB solvent |
@@ -31,9 +31,10 @@ pdb2reaction scan -i input.pdb \
 | `--config` / `--show-config` / `--dry-run` / `--help-advanced` | — | — | Standard |
 
 The tuple grammar in `-s` accepts atom-index ints (`(1, 5, 1.4)`) or atom
-specs (`("CS1 SAM 320", "C7 GPP 321", 1.60)`). Multiple `-s` flags
-chain stages sequentially: each stage starts from the previous stage's
-final geometry.
+specs (`("CS1 SAM 320", "C7 GPP 321", 1.60)`). Multiple stages chain
+sequentially as space-separated literals after a **single** `-s`; each
+stage starts from the previous stage's final geometry. Repeating `-s`
+is rejected.
 
 ## Examples
 
@@ -50,9 +51,11 @@ pdb2reaction scan -i 1.R.pdb -l 'SAM:1,GPP:-3' \
 ```bash
 pdb2reaction scan -i 1.R.pdb -l 'SAM:1,GPP:-3' \
     -s '[("CS1 SAM 320","C7 GPP 321",1.60)]' \
-    -s '[("H11 GPP 321","OE2 GLU 186",0.90)]' \
+       '[("H11 GPP 321","OE2 GLU 186",0.90)]' \
     -b uma -o result_scan_staged
 ```
+
+Each space-separated literal after a single `-s` is one stage; do **not** repeat `-s` (rejected with `repeated flags are not accepted`).
 
 ## Output
 

@@ -12,7 +12,7 @@ input.
 ```bash
 pdb2reaction dft -i geom.{pdb,xyz,gjf} \
     [-q 0 -m 1] [-l 'RES:Q,...'] \
-    [--func-basis 'wb97m-v/def2-svp'] \
+    [--func-basis 'wb97m-v/def2-tzvpd'] \
     [--engine gpu|cpu] \
     [-o ./result_dft/]
 ```
@@ -38,8 +38,10 @@ pdb2reaction dft -i geom.{pdb,xyz,gjf} \
 pdb2reaction dft -i seg_01/ts.pdb \
     -l 'SAM:1,GPP:-3' \
     --func-basis 'wb97m-v/def2-tzvpd' \
-    --engine gpu
+    --engine gpu --out-json
 ```
+
+`--out-json` enables the `result.json` example below; omit it for `result.yaml` only.
 
 ### Lighter basis for benchmark scans
 

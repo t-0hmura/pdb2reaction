@@ -42,8 +42,10 @@ those flags live on the downstream subcommands (`all`, `opt`, `tsopt`,
 ### Minimal — extract around two residues
 
 ```bash
-pdb2reaction extract -i 1abc.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' -r 4.0 -o cluster.pdb
+pdb2reaction extract -i 1abc.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' -r 4.0 --out-json -o cluster.pdb
 ```
+
+`--out-json` enables the `result.json` shown below; omit it for `cluster.pdb` only.
 
 ### Multiple structures, identical ordering
 

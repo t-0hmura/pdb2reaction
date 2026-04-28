@@ -34,8 +34,10 @@ pdb2reaction irc -i ts.{pdb,xyz,gjf} \
 ### Default IRC from a tsopt'd geometry
 
 ```bash
-pdb2reaction irc -i result_tsopt/final_geometry.xyz -q 0 -m 1 -b uma -o result_irc
+pdb2reaction irc -i result_tsopt/final_geometry.xyz -q 0 -m 1 -b uma --out-json -o result_irc
 ```
+
+`--out-json` enables the `result.json` examples below; omit it for trajectory files only.
 
 ### Tighter step / longer integration for shallow surfaces
 
