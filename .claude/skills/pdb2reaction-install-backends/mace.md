@@ -33,7 +33,7 @@ errors like:
 ImportError: e3nn 0.5.x requires ... but mace-torch installed e3nn 0.4.x
 ```
 
-The fix is to nuke the env and start over (`conda env remove -n <env>`).
+The fix is to remove the env and recreate it (`conda env remove -n <env>`), then re-run the install steps above.
 
 ## Confirm install
 
