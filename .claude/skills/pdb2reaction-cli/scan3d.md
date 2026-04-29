@@ -43,7 +43,7 @@ pdb2reaction scan3d -i 1.R.pdb -l 'SAM:1' \
 
 ```
 result_scan3d/
-├── result.json
+├── result.json                 # only when --out-json is passed
 ├── grid/                        # per grid-point relaxed geometries (flat)
 │   └── point_iNN_jMM_kLL.xyz    # one file per (i,j,k) grid point
 └── surface.csv                  # 3D energy surface (axis_1, axis_2, axis_3, energy)
