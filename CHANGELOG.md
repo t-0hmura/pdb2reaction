@@ -6,6 +6,26 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.3.8] — 2026-04-29
+
+### Added
+- `pdb2reaction dft --lowmem/--no-lowmem` (default `True`): closed-shell GPU runs now use `gpu4pyscf.dft.rks_lowmem.RKS`, which performs SCF with a memory-efficient direct-JK pipeline (no density fitting). Open-shell, CPU, and pre-`rks_lowmem` `gpu4pyscf` installs auto-fall back to standard `RKS`/`UKS`. Selectable via the new `--lowmem/--no-lowmem` CLI flag and `dft.lowmem` YAML key. Population analysis on lowmem builds a CPU surrogate from the converged MOs because `rks_lowmem.RKS.to_cpu()` is not implemented upstream.
+- Agent skills: cluster-boundary frozen-atoms reference (`pdb2reaction-cli/freeze-atoms.md`); 1-line input→output cheatsheet on `pdb2reaction-cli/SKILL.md`; `summary.json` schema split out to `pdb2reaction-workflows-output/summary-json.md`.
+- `scripts/check_skill_drift.py`: warning-only prose-vs-source consistency check for the agent skills, wired into Docs Quality.
+
+### Changed
+- Closed-shell GPU DFT defaults switch from DF + standard `RKS` to direct-JK `rks_lowmem.RKS`. Absolute energies shift by sub-mHa relative to v0.3.6/v0.3.7; pass `--no-lowmem` (or set `dft.lowmem: false`) to reproduce earlier numbers.
+- HPC PBS / SLURM preambles in the agent skills now also load `gcc` and an optional `<OPENMPI_MODULE>` (the latter only when running multi-node Ray); inline notes describe when each module is actually required.
+- Sphinx config: drop the PyTorch `intersphinx_mapping` entry that was causing build hangs and remove the now-unused `intersphinx_timeout`.
+- Documentation tone (EN+JA): `docs/index.md` "Start here" and per-page "At a glance" hooks rephrased from first-person scenarios to declarative goal phrases.
+
+### Fixed
+- TS-only mode under `pdb2reaction all`: docs and agent skills now correctly state that a single `-i` requires `--tsopt` (in addition to no `--scan-lists`); without `--tsopt`, `BadParameter` is raised.
+- `pdb2reaction-install-backends/env-cuda.md`: DFT does not auto-fall back to CPU when GPU4PySCF is missing; `--engine cpu` must be passed explicitly.
+- `pdb2reaction-install-backends/xtb.md`: `--solvent` is accepted by `scan`, `scan2d`, and `scan3d`; only `dft` and `extract` reject it.
+- `pdb2reaction-cli/freq.md` and `pdb2reaction-structure-io/pdb.md`: PDB B-factors are not a freeze flag for pdb2reaction; the freeze set is assembled from `--freeze-atoms`, `--freeze-links`, and YAML `geom.freeze_atoms`.
+- Output-tree, JSON schema, and scan-list grammar references in the skills realigned with the source.
+
 ## [0.3.7] — 2026-04-28
 
 ### Changed
