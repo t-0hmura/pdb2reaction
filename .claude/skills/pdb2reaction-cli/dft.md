@@ -66,10 +66,9 @@ pdb2reaction dft -i ts.xyz -q 0 -m 1 \
 
 ```
 result_dft/
-├── result.json (only when --out-json is passed)
-├── result.yaml             # PySCF-style detail dump
-├── input_geometry.xyz       # echoed input
-└── dft.log
+├── result.yaml                 # energy + per-atom Mulliken/Loewdin/IAO charges & spin densities
+├── result.json                 # only when --out-json is passed
+└── input_geometry.xyz          # geometry snapshot sent to PySCF
 ```
 
 `result.json` keys (written only when `--out-json` is passed):
@@ -79,7 +78,8 @@ import json
 d = json.load(open("result_dft/result.json"))
 print(d["energy_hartree"])
 print(d["xc_functional"], d["basis_set"])  # e.g. "wb97m-v", "def2-tzvpd"
-print(d["engine"])           # "gpu4pyscf" or "pyscf(cpu)"
+print(d["engine"])           # "gpu4pyscf(rks_lowmem)", "gpu4pyscf", or "pyscf(cpu)"
+print(d["used_gpu"], d["used_lowmem"])  # bool, bool (lowmem False on open-shell / CPU / --no-lowmem)
 print(d["converged"])        # True / False (exit code 3 if False)
 ```
 
@@ -116,7 +116,7 @@ falling back.
   Gaussian, ORCA, PySCF) — there is no `-b dft` option.
 - `--func-basis` follows PySCF naming; cross-check with
   `python -c "from pyscf import gto; print(gto.basis._BASIS_DEFAULT)"`.
-- The standalone `dft` subcommand does not accept `--solvent` / `--solvent-model` / `-b/--backend`. xTB-ALPB solvent corrections are MLIP-stage flags (`scan`, `path-search`, `tsopt`, `irc`, `opt`); to combine with DFT, run them at the MLIP stage and then the `dft` single point on the MLIP-optimized geometry.
+- The standalone `dft` subcommand does not accept `--solvent` / `--solvent-model` / `-b/--backend`. xTB-ALPB solvent corrections are MLIP-stage flags (`scan` / `scan2d` / `scan3d`, `path-search`, `path-opt`, `tsopt`, `freq`, `irc`, `opt`, `all`); to combine with DFT, run them at the MLIP stage and then the `dft` single point on the MLIP-optimized geometry.
 
 ## See also
 

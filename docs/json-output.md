@@ -245,8 +245,9 @@ See also the extended [`summary.json` section](#summary-json-path-search-all) fo
 | `energy_kcal_per_mol` | float | DFT energy (kcal/mol) |
 | `xc_functional` | string | XC functional |
 | `basis_set` | string | Basis set |
-| `engine` | string | Effective engine label (`"gpu4pyscf"` or `"pyscf(cpu)"`) |
+| `engine` | string | Effective engine label (`"gpu4pyscf(rks_lowmem)"`, `"gpu4pyscf"`, or `"pyscf(cpu)"`) |
 | `used_gpu` | bool | GPU acceleration used? |
+| `used_lowmem` | bool | `gpu4pyscf.dft.rks_lowmem.RKS` actually used? (False on open-shell, CPU, `--no-lowmem`, or pre-`rks_lowmem` GPU4PySCF) |
 | `charges` | object | `{mulliken, lowdin, iao}` per-atom arrays |
 | `spin_densities` | object | `{mulliken, lowdin, iao}` per-atom arrays |
 | `files` | object | `{"result_yaml": "result.yaml", "input_geometry_xyz": "input_geometry.xyz"}` |

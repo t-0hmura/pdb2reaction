@@ -44,7 +44,7 @@ pdb2reaction dft -i input.pdb -q 0 -m 1 --engine gpu --out-dir ./result_dft
 
 - `result_dft/input_geometry.xyz`
 - `result_dft/result.yaml`
-- Engine metadata (`gpu4pyscf` / `pyscf(cpu)`) in `result.yaml`
+- Engine metadata (`gpu4pyscf(rks_lowmem)` / `gpu4pyscf` / `pyscf(cpu)`) in `result.yaml`
 
 ## Common examples
 
@@ -93,7 +93,7 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 \
 
 ## Workflow
 1. **Input handling** – Any file loadable by `geom_loader` (.pdb/.xyz/_trj.xyz/…) is accepted. Coordinates are re-exported as `input_geometry.xyz`. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology for atom-count validation and (if you also use `--ligand-charge/-l`) charge derivation; the DFT stage itself does **not** emit PDB/GJF outputs.
-2. **SCF build** – `--func-basis` is parsed into functional and basis. Density fitting is enabled automatically with PySCF defaults. `--engine` controls GPU/CPU preference (`gpu` requires GPU4PySCF and raises an error if unavailable; `cpu` forces CPU). Nonlocal corrections (e.g., VV10) are not configured explicitly beyond the backend defaults.
+2. **SCF build** – `--func-basis` is parsed into functional and basis. `--engine` controls GPU/CPU preference (`gpu` requires GPU4PySCF and raises an error if unavailable; `cpu` forces CPU). On the closed-shell GPU path with `--lowmem` (default), the SCF object is `gpu4pyscf.dft.rks_lowmem.RKS`, which uses a memory-efficient direct-JK pipeline (no density fitting); on the open-shell GPU, CPU, or `--no-lowmem` paths, density fitting is enabled automatically with PySCF defaults. Nonlocal corrections (e.g., VV10) are not configured explicitly beyond the backend defaults.
 3. **Population analysis & outputs** – After convergence (or failure) the command writes `result.yaml` summarizing the energy (in hartree and kcal/mol), convergence metadata, timing, backend info, and per-atom Mulliken/meta-Löwdin/IAO charges and spin densities (UKS only for spins). Any failed analysis column is set to `null` with a warning.
 
 ## CLI options
@@ -125,7 +125,7 @@ out_dir/ (default:./result_dft/)
 ```
 - `result.yaml` expands to:
  - `energy`: energy in hartree and kcal/mol, convergence flag, wall time, engine metadata
-  (`gpu4pyscf` vs `pyscf(cpu)`, `used_gpu`).
+  (`engine`: `gpu4pyscf(rks_lowmem)` / `gpu4pyscf` / `pyscf(cpu)`; `used_gpu`; `used_lowmem`).
  - `charges`: Mulliken, meta-Löwdin, and IAO atomic charges (`null` when a method fails).
  - `spin_densities`: Mulliken, meta-Löwdin, and IAO spin densities (UKS-only for spins).
 - It also summarizes charge, multiplicity, spin (2S), functional, basis,
@@ -141,7 +141,7 @@ See {ref}`exit-codes` in CLI Conventions.
 - `--engine gpu` (default) requires GPU4PySCF and **raises an error** if GPU is unavailable. Use `--engine cpu` to force CPU-only execution.
 - For basis-set cost, GPU/CPU memory ceilings, Blackwell GPUs, and the overall ~300-atom limit, see the "Practical limits" subsection above.
 - Compiled GPU4PySCF wheels may not support non-x86 systems; build from source in that case (see https://github.com/pyscf/gpu4pyscf).
-- Density fitting is always attempted with PySCF defaults (no auxiliary basis guessing is implemented).
+- Density fitting is enabled with PySCF defaults on the standard SCF paths (open-shell GPU, CPU, or `--no-lowmem`). The closed-shell GPU `--lowmem` path uses `gpu4pyscf.dft.rks_lowmem.RKS` and skips density fitting in favor of memory-efficient direct JK. No auxiliary basis guessing is implemented.
 - The YAML input file must have a mapping root; the `dft` section is optional. Non-mapping roots raise an error via `load_yaml_dict`.
 - IAO spin/charge analysis may fail for challenging systems; corresponding columns in `result.yaml` become `null` and a warning is printed.
 

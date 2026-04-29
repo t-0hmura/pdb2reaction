@@ -245,8 +245,9 @@ cat result_opt/result.json | python -m json.tool
 | `energy_kcal_per_mol` | float | DFT エネルギー (kcal/mol) |
 | `xc_functional` | string | 汎関数 |
 | `basis_set` | string | 基底関数 |
-| `engine` | string | 実効エンジンラベル (`"gpu4pyscf"` / `"pyscf(cpu)"`) |
+| `engine` | string | 実効エンジンラベル (`"gpu4pyscf(rks_lowmem)"` / `"gpu4pyscf"` / `"pyscf(cpu)"`) |
 | `used_gpu` | bool | GPU 使用? |
+| `used_lowmem` | bool | `gpu4pyscf.dft.rks_lowmem.RKS` を実際に使用したか? (open-shell, CPU, `--no-lowmem`, あるいは `rks_lowmem` 未搭載の旧 `gpu4pyscf` では False) |
 | `charges` | object | `{mulliken, lowdin, iao}` 原子電荷配列 |
 | `spin_densities` | object | `{mulliken, lowdin, iao}` スピン密度配列 |
 | `files` | object | `{"result_yaml": "result.yaml", "input_geometry_xyz": "input_geometry.xyz"}` |
