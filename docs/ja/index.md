@@ -1,6 +1,10 @@
 # pdb2reaction ドキュメント
 
-*バージョン: v0.3.7*
+*バージョン: v0.3.8*
+
+---
+
+<img src="../overview.png" alt="pdb2reaction ワークフロー概要" width="90%">
 
 **pdb2reaction** は、機械学習原子間ポテンシャル（MLIP: Machine Learning Interatomic Potential）を使用して、PDB 構造から酵素反応経路を自動モデリングする Python 製 CLI ツールキットです。
 
@@ -127,6 +131,12 @@ glossary
 
 ---
 
+## エージェントスキル
+
+`pdb2reaction` は、CLI サブコマンド・構造 I/O・バックエンドインストール・ワークフロー・出力解析・HPC 運用をカバーする AI エージェント向け命令を `.claude/skills/` に同梱しています。完全なスキル索引とインストール手順は [`.claude/skills/README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/.claude/skills/README.md) を参照してください。
+
+---
+
 ## 引用
 
 `pdb2reaction` を説明するプレプリントを準備中です。現時点では、本ソフトウェア自体を引用してください:
@@ -137,7 +147,7 @@ glossary
   title        = {pdb2reaction},
   year         = {2026},
   month        = {4},
-  version      = {0.3.6},
+  version      = {0.3.8},
   url          = {https://github.com/t-0hmura/pdb2reaction},
   license      = {GPL-3.0},
   doi          = {10.5281/zenodo.19197865}

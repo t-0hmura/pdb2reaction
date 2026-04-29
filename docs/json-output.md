@@ -231,6 +231,12 @@ See also the extended [`summary.json` section](#summary-json-path-search-all) fo
 
 ### `dft`
 
+> **Note:** `dft` writes `result.json` only on a successful SCF (exit 0). A
+> non-converged SCF returns exit code 3 and skips `result.json`; SCF status
+> is encoded by the `converged: bool` field plus the exit code, not by a
+> `status` field. The generic "not_converged" / "error" envelope above does
+> not apply to `dft`.
+
 | Field | Type | Description |
 |-------|------|-------------|
 | `converged` | bool | SCF converged? |

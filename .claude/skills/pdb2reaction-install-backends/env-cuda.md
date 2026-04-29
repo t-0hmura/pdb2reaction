@@ -15,8 +15,8 @@ CUDA index whose minimum driver is ≤ your driver version.
 | ≥ 450 (CUDA 11.8 baseline) | `cu118` | Maximum back-compat, slow on 5xx-series GPUs |
 | ≥ 525 (CUDA 12.0+) | `cu121` | |
 | ≥ 545 (CUDA 12.3+) | `cu124` (when available) | |
-| ≥ 555 (CUDA 12.5+) | `cu126` | |
-| ≥ 560 (CUDA 12.6+) | `cu126` | |
+| ≥ 555 (CUDA 12.6+) | `cu126` | |
+| ≥ 565 (CUDA 12.8+) | `cu128` | (when available) |
 | ≥ 570 (CUDA 12.9+) | `cu129` | Recent / Blackwell-class GPUs |
 | no GPU | `cpu` | CPU-only inference |
 

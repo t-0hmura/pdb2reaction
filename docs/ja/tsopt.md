@@ -236,6 +236,6 @@ TS 収束が遅い場合や最適化中に TS モードが失われる場合は�
 - [path-search](path-search.md) — TS 候補（HEI）を特定するMEP 探索
 - [irc](irc.md) — 最適化されたTSからの反応経路追跡
 - [freq](freq.md) — 完全な振動解析と熱化学補正（虚振動数チェックは `tsopt` が内部で実行済み）
-- [all](all.md) — 抽出 → MEP → tsopt → IRC → freq を連鎖する一気通貫ワークフロー
+- [all](all.md) — 抽出 → MEP → tsopt → IRC（→ オプションで freq/DFT）を連鎖する一気通貫ワークフロー
 - [YAML リファレンス](yaml-reference.md) — `hessian_dimer`（Hessian Guided Dimer）と `rsirfo` の完全な設定オプション
 - [用語集](glossary.md) — TS、Dimer、RS-I-RFO、ヘシアンの定義

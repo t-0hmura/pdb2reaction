@@ -22,9 +22,9 @@ description: Per-subcommand reference for pdb2reaction's 17 CLI subcommands (ext
 | `freq` | Hessian + QRRHO thermo | `pdb2reaction freq -i geom.xyz -q 0 -m 1 -o out` | `out/frequencies_cm-1.txt`, `out/thermoanalysis.yaml` |
 | `irc` | IRC from a TS | `pdb2reaction irc -i ts.xyz -q 0 -m 1 -o out` | `out/{forward,backward,finished}_irc_trj.xyz` |
 | `dft` | Single-point DFT (PySCF / GPU4PySCF) | `pdb2reaction dft -i geom.pdb --func-basis 'wb97m-v/def2-tzvpd' -o out` | `out/result.yaml` (energy_hartree, engine_label) |
-| `scan` | 1D distance scan w/ restraints | `pdb2reaction scan -i 1.R.pdb -s '[(a,b,1.6)]' -o out` | `out/mep.xyz`, per-stage `stage_NN/scan_*.xyz` |
-| `scan2d` | 2D distance grid scan | `pdb2reaction scan2d -i 1.R.pdb -s '[(a,b,1.3,3.1),(c,d,1.2,3.2)]' -o out` | `out/surface.csv` + `out/grid_NN_MM/final.xyz` |
-| `scan3d` | 3D distance grid scan | `pdb2reaction scan3d -i 1.R.pdb -s '[(a,b,L,H),(c,d,L,H),(e,f,L,H)]' -o out` | `out/surface.csv` + `out/grid_NN_MM_LL/final.xyz` |
+| `scan` | 1D distance scan w/ restraints | `pdb2reaction scan -i 1.R.pdb -s '[(a,b,1.6)]' -o out` | `out/scan_trj.xyz`, per-stage `stage_NN/result.xyz` |
+| `scan2d` | 2D distance grid scan | `pdb2reaction scan2d -i 1.R.pdb -s '[(a,b,1.3,3.1),(c,d,1.2,3.2)]' -o out` | `out/surface.csv` + `out/grid/point_iNN_jMM.xyz` |
+| `scan3d` | 3D distance grid scan | `pdb2reaction scan3d -i 1.R.pdb -s '[(a,b,L,H),(c,d,L,H),(e,f,L,H)]' -o out` | `out/surface.csv` + `out/grid/point_iNN_jMM_kLL.xyz` |
 | `trj2fig` | Energy profile from XYZ trj | `pdb2reaction trj2fig -i trj.xyz` | `trj.xyz.png` |
 | `energy-diagram` | Diagram from energy values | `pdb2reaction energy-diagram -i 0.0 21.5 -0.7 --label-x R TS P` | `energy_diagram.png` |
 | `add-elem-info` | Add PDB element column (cols 77-78) | `pdb2reaction add-elem-info -i raw.pdb -o fixed.pdb` | `fixed.pdb` |

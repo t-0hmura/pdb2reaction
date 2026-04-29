@@ -21,7 +21,7 @@
 
 > **前提条件:** DFT 依存パッケージ（PySCF、GPU4PySCF）はデフォルトではインストールされません。`pip install "pdb2reaction[dft]"` でインストールしてください。
 
-総エネルギーに加え、Mulliken、meta-Löwdin、IAO の原子電荷およびスピン密度も報告します。XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定でき、原子数の検証や電荷導出に使用されますが、DFT 段階自体は PDB/GJF 出力を生成しません。
+総エネルギーに加え、Mulliken、meta-Löwdin、IAO の原子電荷およびスピン密度も報告します。
 
 ### 実用上限
 

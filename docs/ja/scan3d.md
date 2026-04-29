@@ -36,7 +36,7 @@ pdb2reaction scan3d -i input.pdb -q 0 -s scan3d.yaml --out-dir ./result_scan3d/
 ```bash
 pdb2reaction scan3d [-i INPUT.{pdb|xyz|trj|...}] [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
  [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
- [-s scan3d.yaml | --scan-lists '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
+ [-s/--scan-lists scan3d.yaml | '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE] [--csv PATH]
 ```
 注: `-i/--input` と `-s/--scan-lists` は `--csv` が指定されていない限り必須です。

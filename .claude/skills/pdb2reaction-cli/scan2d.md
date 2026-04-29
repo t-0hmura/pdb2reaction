@@ -47,10 +47,9 @@ pdb2reaction scan2d -i 1.R.pdb -l 'SAM:1,GPP:-3' \
 ```
 result_scan2d/
 ├── result.json                # only when --out-json is passed
-├── grid_NN_MM/                 # per grid-point relaxed geometries
-│   └── final.xyz
-├── surface.csv                 # 2D energy surface (axis_1, axis_2, energy)
-└── scan2d.log
+├── grid/                       # per grid-point relaxed geometries (flat)
+│   └── point_iNN_jMM.xyz       # one file per (i,j) grid point
+└── surface.csv                 # 2D energy surface (axis_1, axis_2, energy)
 ```
 
 `result.json` stores grid metadata and energy values; `surface.csv` is

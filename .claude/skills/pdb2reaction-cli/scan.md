@@ -63,14 +63,15 @@ Each space-separated literal after a single `-s` is one stage; do **not** repeat
 result_scan/
 ├── result.json                # only when --out-json is passed
 ├── stage_01/                # per-stage relaxed snapshots
-│   └── scan_*.xyz
+│   ├── result.xyz             # final geometry of stage
+│   └── scan_*.xyz             # intermediate steps (when opt.dump: true)
 ├── stage_02/
-├── mep.xyz                  # stitched scan trajectory
-└── scan.log
+├── scan_trj.xyz             # stitched scan trajectory (always written)
+└── scan.pdb                 # PDB form (with --convert-files, default on)
 ```
 
 `result.json` lists per-stage status, target distances, final energies,
-and the stitched MEP path. Plot with `trj2fig.md`.
+and the stitched scan trajectory. Plot with `trj2fig.md`.
 
 ## Caveats
 
