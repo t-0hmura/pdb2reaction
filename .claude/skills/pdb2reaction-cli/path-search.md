@@ -66,10 +66,15 @@ result_path_search/
 ├── summary.json                       # full result, see below
 ├── summary.log                        # human-readable
 ├── mep_trj.xyz                        # stitched MEP across all segments (top level)
+├── mep.pdb                            # PDB companion (when reference PDB available)
+├── mep.gjf                            # GJF companion (when input is .gjf)
+├── mep_w_ref.pdb                      # full MEP with reference frame
+├── mep_w_ref_seg_NN.pdb               # per-segment merged with reference
+├── mep_plot.png                       # MEP energy plot
 ├── seg_NNN_<tag>/                     # per-string scratch (e.g. seg_001_mep, seg_002_maxdepth)
 │   ├── final_geometries_trj.xyz       # this string's frames
 │   ├── mep_plot.png
-│   └── hei.{xyz,pdb}                  # highest-energy image (TS candidate)
+│   └── hei.{xyz,pdb,gjf}              # highest-energy image (TS candidate)
 ├── mep_seg_NN_trj.xyz                 # canonical per-segment MEP frames
 ├── mep_seg_NN.{pdb,gjf}               # PDB / GJF companions
 ├── hei_seg_NN.{xyz,pdb,gjf}           # canonical HEI per segment (TS seed)

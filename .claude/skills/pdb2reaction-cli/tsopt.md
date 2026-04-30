@@ -45,8 +45,6 @@ pdb2reaction tsopt -i ts_guess.{pdb,xyz,gjf} \
 pdb2reaction tsopt -i hei.xyz -q 0 -m 1 -b uma --out-json -o result_tsopt
 ```
 
-`--out-json` is required for the `result.json` shown below; omit it if you only want the geometry.
-
 ### Dimer mode (alternative when RS-I-RFO struggles)
 
 ```bash

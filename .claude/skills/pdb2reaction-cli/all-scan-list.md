@@ -80,7 +80,7 @@ result_scan/
 │   ├── stage_02/  scan_*.xyz
 │   └── ...
 ├── path_search/                    # (or path_opt/ when --refine-path False)
-│   ├── mep_seg_NN.{pdb,xyz}        # per-segment MEP strings
+│   ├── mep_seg_NN_trj.xyz + mep_seg_NN.{pdb,gjf}  # per-segment MEP strings
 │   └── post_seg_NN/                # per-segment refinements + energy diagrams
 ├── seg_NN/                         # canonical R/TS/P per segment (top-level)
 └── summary.json

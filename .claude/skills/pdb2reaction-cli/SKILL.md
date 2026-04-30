@@ -37,20 +37,6 @@ description: Per-subcommand reference for pdb2reaction's 17 CLI subcommands (ext
 |---|---|
 | `freeze-atoms.md` | Cluster-boundary frozen atoms — link hydrogens (`LKH/HL`), `--freeze-links`, `--freeze-atoms`, YAML `geom.freeze_atoms`. The three sources are unioned; required for cluster models. |
 
-## Pipeline at a glance
-
-```
-PDB(s) ──► extract ──► path-search ──► tsopt ──► irc ──► freq ──► (dft)
-                          │   │            │       │       │
-                          ▼   └─ path-opt  ▼       ▼       ▼
-                       seg_NN/                  result_freq/
-                                                  result_irc/
-                                                  result_tsopt/
-```
-
-`pdb2reaction all` chains the whole pipeline; each box is also available
-as its own subcommand.
-
 ## Common flag conventions
 
 These flags appear on most subcommands (canonical list:

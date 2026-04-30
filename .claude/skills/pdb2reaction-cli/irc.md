@@ -56,6 +56,9 @@ result_irc/
 ├── finished_irc_trj.xyz            # stitched: backward (reversed) + TS + forward
 ├── finished_first.xyz              # backward endpoint (raw IRC)
 ├── finished_last.xyz               # forward endpoint (raw IRC)
+├── forward_irc.pdb                 # PDB companions (only when input is .pdb)
+├── backward_irc.pdb
+├── finished_irc.pdb
 └── result.json                     # only when --out-json is passed
 ```
 
