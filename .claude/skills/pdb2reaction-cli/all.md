@@ -71,7 +71,7 @@ result_all/
 ├── extract/                        # cluster.pdb (if -c was given)
 ├── path_search/                    # (or path_opt/ when --no-refine-path)
 │   ├── seg_NNN_<tag>/              # per-segment MEP scratch (e.g., seg_001_mep, seg_002_maxdepth)
-│   ├── mep_seg_NN.{pdb,xyz} mep_seg_NN_trj.xyz    # canonical per-segment MEP frames
+│   ├── mep_seg_NN_trj.xyz + mep_seg_NN.{pdb,gjf}  # canonical per-segment MEP frames
 │   ├── hei_seg_NN.{xyz,pdb,gjf}    # HEI candidate per segment
 │   ├── post_seg_NN/                # per-segment post-processing
 │   │   ├── ts/                     # tsopt output (final_geometry.xyz, vib/imag_*.pdb)

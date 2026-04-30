@@ -74,8 +74,6 @@ print(t["sum_EE_and_thermal_free_energy_ha"]) # EE + dG_therm (Hartree)
 print(t["S_cal_per_mol_K"])                   # entropy (cal/mol·K)
 ```
 
-`result.json` is only written when `--out-json` is passed.
-
 ## QRRHO thermochemistry
 
 Default thermochemistry uses the QRRHO (Grimme) treatment with a

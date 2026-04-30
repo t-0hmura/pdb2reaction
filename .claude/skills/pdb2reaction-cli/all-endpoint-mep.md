@@ -70,7 +70,8 @@ pdb2reaction extract -i 1.R_raw.pdb 3.P_raw.pdb \
 
 Same as the base `all.md`. Specifically for endpoint-MEP mode:
 
-- `path_search/mep_seg_NN.{pdb,xyz,trj.xyz}` — per-segment MEP strings (no top-level `mep.pdb` is written; concatenate the per-segment files if needed)
+- `<out_dir>/mep.pdb`, `mep_trj.xyz`, `mep_w_ref.pdb`, `energy_diagram_MEP.png` — stitched MEP across all segments (copied from `path_search/` to the top of the output directory)
+- `path_search/mep_seg_NN_trj.xyz` + `mep_seg_NN.{pdb,gjf}` — per-segment MEP frames (no bare `mep_seg_NN.xyz`)
 - `path_search/seg_NNN_<tag>/` — internal scratch dirs for the recursive splitter (3-digit index with descriptive suffix `_mep`/`_maxdepth`/`_bridge`); not user-facing
 - `path_search/post_seg_NN/` — per-segment refined-string output + energy diagrams
 - `seg_NN/{reactant,ts,product}.pdb` — canonical R/TS/P per segment after IRC + LBFGS endpoint optimization (this is the user-facing layout)
