@@ -129,17 +129,14 @@ If you prefer to build the environment piece by piece:
     # AIMNet2 backend
     pip install "pdb2reaction[aimnet]"
 
-    # MACE backend (conflicts with UMA's fairchem-core — install in a
-    # separate conda environment; do NOT run the line below in the
-    # default UMA env or you will permanently break UMA)
-    # cd <separate_mace_env>
-    # pip uninstall -y fairchem-core && pip install mace-torch
+    # MACE backend (use a separate conda environment because mace-torch
+    # pins e3nn==0.4.4 which conflicts with UMA's fairchem-core)
+    pip uninstall -y fairchem-core && pip install mace-torch
 
     # DFT single-point post-processing (`--dft` / `pdb2reaction dft`)
     # Installs gpu4pyscf-cuda12x, PySCF, and related dependencies.
-    # Note: gpu4pyscf-cuda12x ships x86_64 wheels only. On aarch64,
-    # `pdb2reaction dft --engine gpu` raises ClickException; use
-    # `--engine cpu` (PySCF) or skip the [dft] extra.
+    # Note: gpu4pyscf-cuda12x publishes x86_64 wheels on PyPI; on
+    # aarch64 build from source (https://github.com/pyscf/gpu4pyscf).
     pip install "pdb2reaction[dft]"
     ```
 

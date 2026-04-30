@@ -24,9 +24,11 @@ This pulls (canonical pin in `pyproject.toml`):
 | `cutensor-cu12` | cuTENSOR / RIJCOSX kernels | x86_64 only |
 | `basis-set-exchange` | Programmatic basis-set lookup | All |
 
-On `aarch64` (`uname -m`), `gpu4pyscf-cuda12x` is unavailable — the
-extras install will succeed for `pyscf` and `basis-set-exchange` but
-skip GPU4PySCF, leaving you on CPU PySCF.
+On `aarch64` (`uname -m`), the `gpu4pyscf-cuda12x` PyPI wheel is
+x86_64-only. The extras install will succeed for `pyscf` and
+`basis-set-exchange` but skip GPU4PySCF, leaving you on CPU PySCF.
+Build `gpu4pyscf` from source
+(https://github.com/pyscf/gpu4pyscf) to use `--engine gpu` on aarch64.
 
 Verify:
 
@@ -77,7 +79,7 @@ python -c "import pdb2reaction.defaults as d; print(d.GEOM_KW_DEFAULT, d.CALC_KW
 | `cupy.cuda.runtime.CUDARuntimeError: invalid device ordinal` | Torch and cupy disagree on CUDA visibility | `unset CUDA_VISIBLE_DEVICES` and let GPU4PySCF use device 0 |
 | `RuntimeError: CUDA out of memory` mid-SCF | Functional / basis too heavy for VRAM | Lower `grid_level`, switch to `def2-svp`, or use `--engine cpu` |
 | `gpu4pyscf` import succeeds but SCF stalls at start | cuTENSOR not installed | `pip install cutensor-cu12==2.2.0` (matches `[dft]` extra) |
-| aarch64: `--engine gpu` requested but no `gpu4pyscf` | Architecture not supported | Raises `ClickException` ("GPU backend failed... Use --engine cpu to explicitly run on CPU"). Re-submit with `--engine cpu`; expect 10× slower. |
+| aarch64: `--engine gpu` requested but no `gpu4pyscf` | PyPI wheel is x86_64-only | Raises `ClickException` ("GPU backend failed... Use --engine cpu to explicitly run on CPU"). Either re-submit with `--engine cpu` (~10× slower) or build `gpu4pyscf` from source (https://github.com/pyscf/gpu4pyscf). |
 
 ## Memory rough-cuts
 

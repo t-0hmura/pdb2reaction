@@ -129,16 +129,14 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
     # AIMNet2 バックエンド
     pip install "pdb2reaction[aimnet]"
 
-    # MACE バックエンド (UMA の fairchem-core と競合 — 必ず別 conda 環境で実施。
-    # 既定の UMA 環境で実行すると UMA が永久破壊される)
-    # cd <separate_mace_env>
-    # pip uninstall -y fairchem-core && pip install mace-torch
+    # MACE バックエンド（mace-torch が要求する e3nn==0.4.4 が UMA の
+    # fairchem-core と衝突するため、別 conda 環境で実施してください）
+    pip uninstall -y fairchem-core && pip install mace-torch
 
     # DFT 一点計算の後処理（`--dft` / `pdb2reaction dft`）
     # gpu4pyscf-cuda12x、PySCF、および関連依存をインストールします。
-    # 注: gpu4pyscf-cuda12x は x86_64 wheel のみ。aarch64 では
-    # `pdb2reaction dft --engine gpu` が ClickException を投げるため
-    # `--engine cpu` (PySCF) を使うか、[dft] extras をスキップ。
+    # 注: gpu4pyscf-cuda12x は PyPI で x86_64 wheel を配布。aarch64 では
+    # ソースからビルドしてください (https://github.com/pyscf/gpu4pyscf)。
     pip install "pdb2reaction[dft]"
     ```
 

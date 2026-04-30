@@ -94,7 +94,7 @@ spin densities. Useful for debugging convergence problems.
 | `OSError: libcusolver.so.11 not found` | [`pdb2reaction-install-backends/env-cuda.md`](../pdb2reaction-install-backends/env-cuda.md) (LD_LIBRARY_PATH order) |
 | `cupy ... invalid device ordinal` | `unset CUDA_VISIBLE_DEVICES` |
 | `RuntimeError: CUDA out of memory` | Lower `grid_level`, switch to `def2-svp`, or `--engine cpu` |
-| aarch64 `--engine gpu` raises `ClickException` ("GPU backend failed...") | `gpu4pyscf-cuda12x` is x86_64 only; re-submit with `--engine cpu` |
+| aarch64 `--engine gpu` raises `ClickException` ("GPU backend failed...") | PyPI wheel is x86_64-only; re-submit with `--engine cpu` or build `gpu4pyscf` from source (https://github.com/pyscf/gpu4pyscf) |
 
 ## Caveats
 
