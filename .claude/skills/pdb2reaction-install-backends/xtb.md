@@ -49,10 +49,15 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb \
     --solvent water        # ALPB water on top of MLIP
 ```
 
-Available solvents (pass to `--solvent`): `water`, `methanol`, `ethanol`,
-`acetone`, `acetonitrile`, `dmso`, `dmf`, `chloroform`, `dichloromethane`,
-`hexane`, `benzene`, `toluene`, `thf`. The exact list comes from xTB's
-ALPB parameter set; check `xtb --help` for the most current options.
+Available solvents (pass to `--solvent`): the keyword is forwarded
+verbatim to xTB's ALPB parameter set, so use the spelling xTB
+recognises. Common entries include `water`, `methanol`, `acetone`,
+`acetonitrile`, `dmso`, `dmf`, `chcl3`, `ch2cl2`, `hexane`,
+`benzene`, `toluene`, `thf`, `nhexan`, `phenol`, `octanol`,
+`woctanol`, `aniline`, `furane`, `ether`, `noctane`, `co2`. The
+authoritative list comes from xTB's ALPB parameter set — run
+`xtb --help` and consult the xTB docs for the version you have
+installed (the set has expanded over xTB releases).
 
 To turn off: simply omit `--solvent` or pass `--solvent none`.
 

@@ -123,8 +123,10 @@ output directory:
   across all `seg_NN/` for whichever backend was used (MLIP).
 - `<out_dir>/energy_diagram_G_UMA_all.png` — same with QRRHO Gibbs
   thermochemistry (when `--thermo`).
+- `<out_dir>/energy_diagram_DFT_all.png` — DFT//MLIP electronic-only
+  combined diagram (when `--dft`).
 - `<out_dir>/energy_diagram_G_DFT_plus_UMA_all.png` — DFT//MLIP combined
-  diagram (when `--dft --thermo`).
+  diagram with Gibbs thermochemistry (when `--dft --thermo`).
 
 To compose a custom diagram from energies of multiple runs, use
 [`pdb2reaction-cli/energy-diagram.md`](../pdb2reaction-cli/energy-diagram.md):

@@ -69,7 +69,7 @@ result_all/
 ├── summary.json                    # machine-readable per-stage results
 ├── summary.log                     # human-readable text + dir tree
 ├── models/                         # model_<input_stem>.pdb (extracted active-site clusters; one per -i input when -c was given)
-├── path_search/                    # (or path_opt/ when --no-refine-path)
+├── path_search/                    # (or path_opt/ when --refine-path False)
 │   ├── seg_NNN_<tag>/              # per-segment MEP scratch (e.g., seg_001_mep, seg_002_maxdepth)
 │   ├── mep_seg_NN_trj.xyz + mep_seg_NN.{pdb,gjf}  # canonical per-segment MEP frames
 │   ├── hei_seg_NN.{xyz,pdb,gjf}    # HEI candidate per segment
@@ -77,8 +77,11 @@ result_all/
 │   │   ├── ts/                     # tsopt output (final_geometry.xyz, vib/imag_*.pdb)
 │   │   ├── irc/                    # forward / backward / finished IRC trajectories
 │   │   ├── freq/                   # {R,TS,P}/{frequencies_cm-1.txt, thermoanalysis.yaml} (per-state subdirs)
-│   │   └── dft/                    # (if --dft) DFT single-point
-│   └── energy_diagram_*.png        # MEP / UMA / DFT / Gibbs diagrams
+│   │   ├── dft/                    # (if --dft) {R,TS,P}/result.{yaml,json} (per-state subdirs)
+│   │   └── energy_diagram_{UMA,G_UMA,DFT,G_DFT_plus_UMA}.png  # per-segment diagrams
+│   └── energy_diagram_MEP.png      # bare MEP energies (path-search level)
+├── energy_diagram_{UMA,G_UMA,DFT,G_DFT_plus_UMA}_all.png  # aggregated multi-segment diagrams (top-level)
+├── mep_trj.xyz + mep.{pdb,gjf}     # stitched MEP across all segments (top level)
 └── seg_NN/                         # canonical R/TS/P coords (top-level, 2-digit)
     ├── reactant.{pdb,xyz}
     ├── ts.{pdb,xyz}
@@ -131,8 +134,9 @@ analysis scripts keep working.
   at the corresponding `summary.log` block; per-stage errors are also
   duplicated into `post_seg_NN/<stage>/result.json`.
 - The `seg_NN/` top-level directory is **only populated on success**
-  for that segment. Failed segments leave `path_search/seg_NN/` but
-  not the top-level copy.
+  for that segment. Failed segments leave artifacts under
+  `path_search/seg_NNN_<tag>/` and `path_search/post_seg_NN/`
+  (3-digit scratch) but not the top-level 2-digit copy.
 
 ## See also
 
