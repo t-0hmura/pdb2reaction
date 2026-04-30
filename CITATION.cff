@@ -12,3 +12,10 @@ repository-code: "https://github.com/t-0hmura/pdb2reaction"
 version: "0.3.8"
 date-released: "2026-05-01"
 doi: "10.5281/zenodo.19197865"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.19197865"
+    description: "Zenodo concept DOI (all versions)"
+  - type: doi
+    value: "10.5281/zenodo.19930670"
+    description: "Zenodo archive of v0.3.8"
