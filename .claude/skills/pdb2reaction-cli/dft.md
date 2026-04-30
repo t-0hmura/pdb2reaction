@@ -44,15 +44,6 @@ pdb2reaction dft -i seg_01/ts.pdb \
 
 `--out-json` enables the `result.json` example below; omit it for `result.yaml` only.
 
-### Lighter basis for benchmark scans
-
-```bash
-pdb2reaction dft -i seg_01/ts.pdb -l 'SAM:1,GPP:-3' \
-    --func-basis 'wb97m-v/def2-svp' \
-    --engine gpu \
-    -o result_dft_svp
-```
-
 ### CPU PySCF (aarch64 / no GPU)
 
 ```bash

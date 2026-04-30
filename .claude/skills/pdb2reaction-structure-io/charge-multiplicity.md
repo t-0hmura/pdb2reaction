@@ -1,9 +1,7 @@
 # Charge and multiplicity (charge-multiplicity.md)
 
-Sometimes, failure of "the optimizer ran but the chemistry is wrong"
-traces back to a wrong total charge or multiplicity. `pdb2reaction`
-needs both as integers; getting them right is **non-negotiable** for
-meaningful energies.
+`pdb2reaction` needs total charge (`-q`) and multiplicity (`-m`) as
+integers. Wrong values silently produce wrong-chemistry trajectories.
 
 ## Multiplicity (`-m`)
 
@@ -38,9 +36,6 @@ python -c "from pdb2reaction.extract import AMINO_ACIDS, ION; print(dict(AMINO_A
 
 (`AMINO_ACIDS` and `ION` are `Dict[str, int]` mapping residue/ion
 name to formal charge.)
-
-(Or read `pdb2reaction/extract.py` directly if `dir()` shows other
-relevant attributes.)
 
 For non-standard residues / ligands / metals, you must supply `-l`.
 

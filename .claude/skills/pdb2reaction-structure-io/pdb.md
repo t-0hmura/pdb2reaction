@@ -1,7 +1,6 @@
 # PDB format (pdb.md)
 
-The Protein Data Bank format is the primary input to `pdb2reaction`. It
-is **column-based** — each field has a fixed character range.
+PDB is `pdb2reaction`'s primary input. Column-based, fixed-width fields.
 
 ## Record types `pdb2reaction` cares about
 
