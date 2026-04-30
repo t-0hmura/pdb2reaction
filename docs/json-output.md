@@ -81,7 +81,7 @@ All fields from `opt`, plus:
 | `opt_mode` | string | `"rsirfo"` or `"dimer"` |
 
 The `files` object may include `imaginary_mode_files` (list of vib file paths).
-Convergence details are available for rsirfo mode; dimer mode provides `n_opt_cycles` only.
+Convergence details are available for rsirfo mode; dimer mode provides `n_opt_cycles` only and always reports `status: "converged"` (the dimer driver does not export a non-convergence signal — check `n_imaginary_modes == 1` plus the `.out` log instead).
 
 ### `freq`
 
@@ -133,8 +133,8 @@ Convergence details are available for rsirfo mode; dimer mode provides `n_opt_cy
 | `energy_reactant_hartree` | float | Reactant energy |
 | `energy_ts_hartree` | float | TS energy |
 | `energy_product_hartree` | float | Product energy |
-| `forward_converged` | bool | Forward IRC converged? |
-| `backward_converged` | bool | Backward IRC converged? |
+| `forward_converged` | bool \| null | Forward IRC converged? `null` when the integrator did not expose the flag |
+| `backward_converged` | bool \| null | Backward IRC converged? `null` when the integrator did not expose the flag |
 | `backend` | string | MLIP backend |
 | `charge` | int | System charge |
 | `spin` | int | Spin multiplicity |
@@ -167,6 +167,7 @@ Convergence details are available for rsirfo mode; dimer mode provides `n_opt_cy
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `index` | int | 1-based stage index |
 | `n_steps` | int | Steps in this stage |
 | `converged` | bool | Constrained optimization converged? |
 | `pairs_1based` | list | Atom pairs (1-based) |
@@ -188,8 +189,8 @@ Convergence details are available for rsirfo mode; dimer mode provides `n_opt_cy
 | `solvent` | string | Implicit solvent or `"none"` |
 | `max_step_size_angstrom` | float | Max bond-length step per increment (Å, `scan2d` only) |
 | `n_grid_points` | int | Total grid points |
-| `grid_shape` | int[] | Grid dimensions |
-| `pair1`, `pair2` (,`pair3`) | object | `{i, j, low, high}` with optional `label_i`, `label_j` |
+| `grid_shape` | int[] | Grid dimensions (only when running fresh; absent under `scan3d --csv`) |
+| `pair1`, `pair2` (,`pair3`) | object | `{i, j, low, high}` with optional `label_i`, `label_j`. `scan3d`: present only when running fresh; absent under `--csv` re-plot |
 | `min_energy_hartree` | float | Surface minimum energy |
 | `files` | object | CSV + plot files |
 
@@ -271,9 +272,14 @@ See also the extended [`summary.json` section](#summary-json-path-search-all) fo
 | `ion_total_charge` | float | Ion charge sum |
 | `ion_charges` | list | `[[name, charge], ...]` |
 | `unknown_residue_charges` | object | `{resname: charge}` |
+| `n_link_hydrogens` | int | Link hydrogens added at severed C/N bonds |
+| `exclude_backbone` | bool | Whether backbone atoms were excluded |
+| `include_h2o` | bool | Whether crystallographic waters were included |
+| `ligand_charge_input` | string | User-supplied `--ligand-charge` mapping |
 | `center` | string | Center residue |
 | `radius` | float | Extraction radius (angstrom) |
 | `input_files` | string[] | Input PDB paths |
+| `files` | object | Output PDB / cluster filenames |
 
 ### `trj2fig`
 

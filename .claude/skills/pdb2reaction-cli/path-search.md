@@ -65,14 +65,15 @@ pdb2reaction path-search -i 1.R.pdb 3.P.pdb \
 result_path_search/
 ├── summary.json                       # full result, see below
 ├── summary.log                        # human-readable
-├── final_geometries_trj.xyz           # stitched MEP across all segments
+├── mep_trj.xyz                        # stitched MEP across all segments (top level)
 ├── seg_NNN_<tag>/                     # per-string scratch (e.g. seg_001_mep, seg_002_maxdepth)
 │   ├── final_geometries_trj.xyz       # this string's frames
 │   ├── mep_plot.png
 │   └── hei.{xyz,pdb}                  # highest-energy image (TS candidate)
-├── mep_seg_NN.{pdb,xyz} mep_seg_NN_trj.xyz   # canonical per-segment MEP frames
+├── mep_seg_NN_trj.xyz                 # canonical per-segment MEP frames
+├── mep_seg_NN.{pdb,gjf}               # PDB / GJF companions
 ├── hei_seg_NN.{xyz,pdb,gjf}           # canonical HEI per segment (TS seed)
-└── energy_diagram_UMA.png
+└── energy_diagram_MEP.png             # bare MEP energies (backend not encoded in filename)
 ```
 
 Standalone `path-search` does **not** create `post_seg_NN/` —

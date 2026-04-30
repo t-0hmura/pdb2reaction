@@ -3,9 +3,7 @@
 This folder contains a set of skills that common AI agent interfaces
 will recognize and help speed up code development by providing
 concise instructions on how to use the `pdb2reaction` CLI for common
-tasks. Inspired by the [nvalchemi-toolkit][nvalchemi] skill pattern.
-
-[nvalchemi]: https://github.com/NVIDIA/nvalchemi-toolkit
+tasks.
 
 - `pdb2reaction-overview`: what `pdb2reaction` is, when to use it,
   and how it differs from generic QM/MLIP path-search tools.

@@ -127,7 +127,7 @@ This spawns a Ray worker pool. Limitations:
 | Symptom | Cause / fix |
 |---|---|
 | `e3nn` install conflict | UMA's `fairchem-core` pin clashes with `mace-torch`. Use a separate env for MACE (see `mace.md`). |
-| `uma-m-1.1` runs out of VRAM during freq | Switch `hessian_calc_mode` to `'FiniteDifference'`, or use `uma-s-1.1`. |
+| `uma-m-1.1` runs out of VRAM during freq | `'FiniteDifference'` is already the default; if you've overridden it with `--hessian-calc-mode Analytical`, drop the flag or use `uma-s-1.1`. |
 | First call is slow (10–30 s) | One-time model download + JIT compile. The cache lives at `~/.cache/huggingface/hub/`. |
 | Multi-worker run crashes with `Ray actor died` | Mismatched CUDA versions across processes; fall back to single-worker. |
 

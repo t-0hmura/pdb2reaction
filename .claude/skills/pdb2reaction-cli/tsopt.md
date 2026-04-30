@@ -73,7 +73,8 @@ result_tsopt/
 ├── optimization_trj.xyz            # full optimization trajectory (RS-I-RFO; with --dump)
 ├── optimization_all_trj.xyz        # full optimization trajectory (HessianDimer mode; with --dump)
 └── vib/                            # imaginary-mode vibrations
-    └── imag_*.{pdb,xyz}            # mode displacement visualization
+    ├── imag_<freq>cm-1_trj.xyz     # animated displacement (XYZ trajectory)
+    └── imag_<freq>cm-1.pdb         # animated displacement (PDB companion)
 ```
 
 `result.json` (only when `--out-json` is passed) keys:

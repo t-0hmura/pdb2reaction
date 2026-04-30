@@ -81,7 +81,7 @@ cat result_opt/result.json | python -m json.tool
 | `opt_mode` | string | `"rsirfo"` / `"dimer"` |
 
 `files` には `imaginary_mode_files`（vib ファイルリスト）を含む場合があります。
-収束詳細 (force/step) は rsirfo モードで利用可能です。dimer モードでは `n_opt_cycles` のみ提供されます。
+収束詳細 (force/step) は rsirfo モードで利用可能です。dimer モードでは `n_opt_cycles` のみ提供され、`status` は常に `"converged"` を返します (dimer ドライバには非収束シグナルが無いため、`n_imaginary_modes == 1` と `.out` ログで判定してください)。
 
 ### `freq`
 
@@ -133,8 +133,8 @@ cat result_opt/result.json | python -m json.tool
 | `energy_reactant_hartree` | float | 反応物エネルギー |
 | `energy_ts_hartree` | float | TS エネルギー |
 | `energy_product_hartree` | float | 生成物エネルギー |
-| `forward_converged` | bool | 前方 IRC 収束? |
-| `backward_converged` | bool | 後方 IRC 収束? |
+| `forward_converged` | bool \| null | 前方 IRC 収束? インテグレータがフラグを公開しない場合は `null` |
+| `backward_converged` | bool \| null | 後方 IRC 収束? インテグレータがフラグを公開しない場合は `null` |
 | `backend` | string | MLIP バックエンド |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
@@ -167,6 +167,7 @@ cat result_opt/result.json | python -m json.tool
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
+| `index` | int | 1-based ステージインデックス |
 | `n_steps` | int | ステップ数 |
 | `converged` | bool | 拘束最適化の収束? |
 | `pairs_1based` | list | 原子ペア (1-based) |
@@ -188,8 +189,8 @@ cat result_opt/result.json | python -m json.tool
 | `solvent` | string | 暗黙溶媒 or `"none"` |
 | `max_step_size_angstrom` | float | 1 ステップ当たりの最大結合長変位 (Å, `scan2d` のみ) |
 | `n_grid_points` | int | グリッド点数 |
-| `grid_shape` | int[] | グリッド次元 |
-| `pair1`, `pair2` (,`pair3`) | object | `{i, j, low, high}` (オプション: `label_i`, `label_j`) |
+| `grid_shape` | int[] | グリッド次元 (`scan3d --csv` 再プロット時には省略) |
+| `pair1`, `pair2` (,`pair3`) | object | `{i, j, low, high}` (オプション: `label_i`, `label_j`)。`scan3d` で `--csv` 再プロット時は省略 |
 | `min_energy_hartree` | float | 表面最小エネルギー |
 | `files` | object | CSV + プロットファイル |
 
@@ -267,9 +268,14 @@ cat result_opt/result.json | python -m json.tool
 | `ion_total_charge` | float | イオン電荷合計 |
 | `ion_charges` | list | `[[名前, 電荷], ...]` |
 | `unknown_residue_charges` | object | `{残基名: 電荷}` |
+| `n_link_hydrogens` | int | 切断された C/N 結合に追加されたリンク水素数 |
+| `exclude_backbone` | bool | バックボーンを除外したか |
+| `include_h2o` | bool | 結晶水を含めたか |
+| `ligand_charge_input` | string | ユーザ指定 `--ligand-charge` マッピング |
 | `center` | string | 中心残基 |
 | `radius` | float | 抽出半径 (angstrom) |
 | `input_files` | string[] | 入力 PDB パス |
+| `files` | object | 出力 PDB / クラスターファイル |
 
 ### `trj2fig`
 

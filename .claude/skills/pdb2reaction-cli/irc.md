@@ -51,12 +51,11 @@ pdb2reaction irc -i ts.xyz -q -1 -m 1 \
 
 ```
 result_irc/
-├── result.json
 ├── forward_irc_trj.xyz             # IRC forward trajectory
 ├── backward_irc_trj.xyz            # IRC backward trajectory
 ├── finished_irc_trj.xyz            # stitched: backward (reversed) + TS + forward
-├── finished_first.xyz              # backward endpoint
-├── finished_last.xyz               # forward endpoint
+├── finished_first.xyz              # backward endpoint (raw IRC)
+├── finished_last.xyz               # forward endpoint (raw IRC)
 └── result.json                     # only when --out-json is passed
 ```
 
@@ -71,17 +70,14 @@ print(d["bond_changes"])           # {"formed": [...], "broken": [...]}
 print(d["status"])                  # "completed" / "diverged" / ...
 ```
 
-## R/TS/P canonical geometries
+## R/TS/P canonical geometries (downstream — `pdb2reaction all`)
 
-Two flavours of endpoint geometry are written:
-
-| File | What |
-|---|---|
-| `reactant.xyz`, `product.xyz` | Post-LBFGS-optimized minima — **canonical** for downstream stages |
-| `reactant_irc.xyz`, `product_irc.xyz` | Raw IRC endpoint — useful for debugging IRC vs. LBFGS divergence |
-
-The validator and bond-change detector use `reactant.xyz` / `product.xyz`
-when present, falling back to `_irc.xyz` if not. See
+Standalone `irc` writes only the raw IRC endpoints (`finished_first.xyz`
+/ `finished_last.xyz`). The post-IRC LBFGS-optimized minima and the
+canonical `reactant.{xyz,pdb}` / `product.{xyz,pdb}` filenames live
+under `<out_dir>/seg_NN/` and are produced by the `pdb2reaction all`
+pipeline (which calls IRC internally and then optimizes the endpoints
+under `path_search/post_seg_NN/`); see
 `pdb2reaction-workflows-output/SKILL.md`.
 
 ## Bond-change check

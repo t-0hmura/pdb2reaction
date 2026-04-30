@@ -3,9 +3,8 @@
 ## Purpose
 
 Repair the element column (PDB cols 77–78) when it is blank or
-inconsistent with the atom name. Sometimes, PDBs from toolkit like tleap (ambertools) come
-out with empty element columns; running `extract` on them then fails
-because the element-aware truncation logic can't classify atoms.
+inconsistent with the atom name (a common state for tleap-emitted PDBs;
+without it, `extract`'s element-aware truncation logic fails).
 
 `pdb2reaction all` preflight-runs this only when the element field is
 missing. Call it explicitly when invoking `extract` / `opt` / `tsopt`
