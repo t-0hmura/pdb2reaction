@@ -76,7 +76,7 @@ result_all/
 │   ├── post_seg_NN/                # per-segment post-processing
 │   │   ├── ts/                     # tsopt output (final_geometry.xyz, vib/imag_*.pdb)
 │   │   ├── irc/                    # forward / backward / finished IRC trajectories
-│   │   ├── freq/                   # frequencies_cm-1.txt, thermoanalysis.yaml
+│   │   ├── freq/                   # {R,TS,P}/{frequencies_cm-1.txt, thermoanalysis.yaml} (per-state subdirs)
 │   │   └── dft/                    # (if --dft) DFT single-point
 │   └── energy_diagram_*.png        # MEP / UMA / DFT / Gibbs diagrams
 └── seg_NN/                         # canonical R/TS/P coords (top-level, 2-digit)

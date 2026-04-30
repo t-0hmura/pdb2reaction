@@ -86,14 +86,11 @@ result_scan/
 └── summary.json
 ```
 
-`summary.json["scan"]` carries the stage-by-stage record:
-
-```python
-import json
-d = json.load(open("result_scan/summary.json"))
-for stage in d["path_search"]["scan"]["stages"]:
-    print(stage["index"], stage["bonds"], stage["status"], stage["final_distance_A"])
-```
+For per-stage scan diagnostics (target distances, convergence, energies),
+run `pdb2reaction scan` standalone with `--out-json` and parse
+`result_scan/result.json` `["stages"]` (see [`scan.md`](scan.md)).
+`pdb2reaction all` does **not** propagate the per-stage scan record into
+its `summary.json`.
 
 ## Distinctive failure modes
 
@@ -101,7 +98,7 @@ for stage in d["path_search"]["scan"]["stages"]:
 |---|---|---|
 | Stage k goes to a different geometry than expected | Distance restraint not strong enough; SCF found a side product | Tighten the target distance, or split a complex stage into two simpler ones |
 | `--scan-lists` triggers a Python literal-eval error | Quoting mistake | Wrap each stage in single quotes outside, double quotes inside; backticks survive bash without escaping |
-| Path search reports more segments than expected | Bond-change detector found a "free" intermediate | This is usually correct; check the IM geometry in `seg_01/product.pdb` (= `seg_03/reactant.pdb`) |
+| Path search reports more segments than expected | Bond-change detector found a "free" intermediate | Usually correct; inspect the IM geometry in `seg_01/product.{pdb,xyz,gjf}` (= `seg_03/reactant.{pdb,xyz,gjf}`); the extension follows the `-i` input format. |
 
 ## Caveats
 

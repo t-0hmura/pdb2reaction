@@ -61,7 +61,7 @@ result_ts_only/
 └── tsopt_single/
     ├── ts/            final_geometry.{xyz,pdb}, optimization_trj.xyz (with --dump)
     ├── irc/           forward_irc_trj.xyz, backward_irc_trj.xyz, finished_irc_trj.xyz
-    ├── freq/          frequencies_cm-1.txt, thermoanalysis.yaml (with --dump)
+    ├── freq/          {R,TS,P}/{frequencies_cm-1.txt, thermoanalysis.yaml}
     ├── dft/           (when --dft)
     └── structures/    reactant.pdb, ts.pdb, product.pdb (mirror of seg_01/)
 ```
