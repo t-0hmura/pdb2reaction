@@ -11,7 +11,7 @@
 - **デフォルト値:** バックエンド `uma`、`--opt-mode grad`、`--thresh gau`、`--max-cycles 10000`、`--bias-k 300`、`--freeze-links True`、`--convert-files True`、`--flatten False`、`--dump False`、`--out-dir ./result_opt/`。
 - **次にやること:** 極小であることを [`freq`](freq.md) で確認するか、鞍点には [`tsopt`](tsopt.md)、反応経路全体には [`path-search`](path-search.md) / [`all`](all.md) へ進んでください。
 
-`pdb2reaction opt` は pysisyphus の LBFGS（`lbfgs`）または RFOptimizer（`rfo`）を用い、MLIP（デフォルト: UMA、`-b/--backend` で ORB・MACE・AIMNet2 も選択可能）のエネルギー・勾配・ヘシアンで単一構造を局所極小点へ最適化します。入力構造は `.pdb`、`.xyz`、`_trj.xyz`、その他 `geom_loader` がサポートする任意の形式に対応しています。設定の優先順位は **デフォルト < config < 明示CLI** です。
+このコマンドは pysisyphus の LBFGS（`lbfgs`）または RFOptimizer（`rfo`）を用い、MLIP（デフォルト: UMA、`-b/--backend` で ORB・MACE・AIMNet2 も選択可能）のエネルギー・勾配・ヘシアンで単一構造を局所極小点へ最適化します。入力構造は `.pdb`、`.xyz`、`_trj.xyz`、その他 `geom_loader` がサポートする任意の形式に対応しています。設定の優先順位は **デフォルト < config < 明示CLI** です。
 
 開始構造が PDB または Gaussian テンプレートの場合、最適化構造を `.pdb`（PDB 入力）や `.gjf`（Gaussian テンプレート）として自動的に書き出します（`--convert-files/--no-convert-files` で制御、デフォルトで有効）。
 PDB 固有の便利機能:
@@ -174,8 +174,6 @@ LBFGSとRFOの両方で使用される共有オプティマイザー制御:
 場合でも、無駄にサイクルを消費するのを防ぎます。chain-of-states オプティマイザー
 （イメージごとのエネルギー配列を保持するもの）ではこのフォールバックはスキップされます。
 ```
-
----
 
 ## 関連項目
 

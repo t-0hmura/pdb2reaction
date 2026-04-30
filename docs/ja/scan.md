@@ -7,7 +7,7 @@
 ### 要点
 - **想定場面:** 単一構造から特定の原子間距離を駆動し、もっともらしい反応経路を探索する場面（`path-search` / `path-opt` の前処理として使われることが多い）。入力は 1 つの構造 + `-s scan.yaml`（推奨）または `-s/--scan-lists` の 1 個以上のインラインリテラル（**1 リテラル = 1 ステージ**）。可能な限り YAML/JSON ファイルパスを渡してください。インライン Python リテラルはクォート/エスケープが必要で、単純な単一ステージのスキャン向きです。
 - **計算手法:** MLIP バックエンド（デフォルト: UMA、`-b/--backend` で切替可能）に調和拘束 `E = Σ ½ k (|ri − rj| − target)²` を加え、各ステップを LBFGS（`--opt-mode grad`）または RFOptimizer（`--opt-mode hess`）で緩和。
-- **主な出力:** ステージごとの `result.xyz`（必要に応じて `.pdb`/`.gjf`）と結合スキャン軌跡（`scan_trj.xyz`/`scan.pdb`）。ステップごとの最適化軌跡ファイルは現状 CLI からは出力されません（`--dump` は予約フラグ）。最適化レベルのダンプが必要な場合は YAML で `opt.dump: true` を設定してください。
+- **主な出力:** ステージごとの `result.xyz`（必要に応じて `.pdb`/`.gjf`）と結合スキャン軌跡。`--dump` の予約挙動は「注意事項」を参照。
 - **デフォルト値:** `--opt-mode grad`（LBFGS）、`--no-preopt`、`--no-endopt`、`--max-step-size 0.20 Å`、`--bias-k 300 eV·Å⁻²`、`--thresh gau`、`--out-dir ./result_scan/`。
 - **次のステップ:** ステージの端点（`stage_XX/result.pdb`）を `path-search` / `path-opt` に渡して MEP を精密化するか、`pdb2reaction all -s ...` でスキャン → MEP → TSOPT/IRC/freq/DFT を一気通貫で実行します。
 
@@ -315,8 +315,6 @@ bond:
  margin_fraction: 0.05 # tolerance margin for comparisons
  delta_fraction: 0.05 # minimum relative change to flag bonds
 ```
-
----
 
 ## 関連項目
 

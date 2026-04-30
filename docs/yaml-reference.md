@@ -99,8 +99,6 @@ Accepted values: `gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`
 | [`hessian_dimer`](#hessian_dimer) | Hessian Guided Dimer TS optimization | tsopt |
 | [`rsirfo`](#rsirfo) | RS-I-RFO TS optimization | tsopt, all |
 
----
-
 ## Shared Sections
 
 ### `geom`
@@ -191,7 +189,7 @@ opt:
  out_dir: ./result_opt/ # Output directory
 ```
 
-**Energy plateau fallback (new in v0.3.5):**
+**Energy plateau fallback:**
 When `energy_plateau: true`, the optimizer declares convergence if the energy range
 (max − min) over the last `energy_plateau_window` steps falls below
 `energy_plateau_thresh` (default `1e-4` au ≈ 0.06 kcal/mol over 50 steps). This prevents
@@ -243,7 +241,7 @@ rfo:
  trust_radius: 0.10 # Trust-region radius
  trust_update: true # Enable trust-region updates
  trust_min: 0.0001 # Minimum trust radius
- trust_max: 0.10 # Maximum trust radius (bohr); reduced from 0.20 in v0.3.5
+ trust_max: 0.10 # Maximum trust radius (bohr)
  max_energy_incr: null # Allowed energy increase per step
  hessian_update: bfgs # Hessian update scheme: bfgs, bofill, etc.
  hessian_init: calc # Hessian initialization: calc, unit, etc.
@@ -260,8 +258,6 @@ rfo:
  gdiis_test_direction: true # Test descent direction before DIIS
  adapt_step_func: true # Adaptive step scaling
 ```
-
----
 
 ## Path Optimization Sections
 
@@ -373,8 +369,6 @@ stopt:
  print_every: 10 # Logging stride
 ```
 
----
-
 ## TS Optimization Sections
 
 TS optimization uses **two mutually exclusive** algorithm sections, selected by `--opt-mode`:
@@ -465,8 +459,6 @@ rsirfo:
 **`--flatten` precedence.** The flatten loop for both Hessian-Dimer and RS-I-RFO paths is configured under the `hessian_dimer:` YAML section (key `flatten_max_iter`, default 50); `rsirfo:` does not define its own flatten counter. The CLI overrides `flatten_max_iter` to `0` unless `--flatten` is explicitly passed on the command line. See {ref}`flatten-precedence-caveat`.
 ```
 
----
-
 ## IRC Section
 
 (irc-section)=
@@ -503,8 +495,6 @@ irc:
 
 The `corr_func` key selects the corrector step used by the predictor–corrector IRC integrator (EulerPC). `"mbs"` is the pysisyphus-native modified Bulirsch–Stoer implementation (default) and `"rk4"` requests a classical fourth-order Runge–Kutta corrector. Change this only if the default integrator is numerically unstable on your system; most users should leave it at `mbs`.
 
----
-
 ## Vibrational Analysis Sections
 
 (freq-section)=
@@ -534,8 +524,6 @@ thermo:
  dump: false # Write thermoanalysis.yaml
 ```
 
----
-
 ## DFT Section
 
 (dft-section)=
@@ -556,8 +544,6 @@ dft:
  verbose: 0 # PySCF verbosity (0-9)
  out_dir: ./result_dft/ # Output directory root
 ```
-
----
 
 ## Scan Sections
 
@@ -596,8 +582,6 @@ bond:
  margin_fraction: 0.05 # Fractional tolerance for comparisons
  delta_fraction: 0.05 # Minimum relative change to flag bond formation/breaking
 ```
-
----
 
 ## Example: Complete Configuration File
 
@@ -658,8 +642,6 @@ dft:
  basis: def2-tzvpd
  grid_level: 3
 ```
-
----
 
 ## See Also
 

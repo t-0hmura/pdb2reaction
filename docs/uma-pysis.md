@@ -143,7 +143,7 @@ Common constructor keywords (defaults shown in the rightmost column):
 | `max_neigh`, `radius`, `r_edges` | Optional overrides for UMA neighborhood construction. | `None`, `None`, `False` |
 | `freeze_atoms` | List of 1-based atom indices to freeze. | _None_ |
 | `hessian_calc_mode` | "Analytical" or "FiniteDifference" for Hessian evaluation. | `"FiniteDifference"` |
-| `return_partial_hessian` | Return only the active-DOF Hessian block instead of the full matrix. | `True` |
+| `return_partial_hessian` | Return only the active-DOF Hessian block instead of the full matrix. | `False` |
 | `hessian_double` | Assemble and return the Hessian in float64 precision. | `True` |
 | `out_hess_torch` | Return Hessians as `torch.Tensor` objects. | `True` |
 | `print_timing` | Print Hessian computation timing breakdown. | `True` |
@@ -153,8 +153,6 @@ Common constructor keywords (defaults shown in the rightmost column):
 | `xtb_cmd` | Command used to invoke xTB for the solvent correction. | `"xtb"` |
 | `xtb_acc` | xTB accuracy setting passed to the solvent-correction run. | `0.2` |
 
-
----
 
 ## See Also
 

@@ -123,7 +123,8 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [-l, -
 ```
 out_dir/
 ├─ final_geometries_trj.xyz # XYZ path; comment line holds energies when provided
-├─ final_geometries_trj.pdb # When a PDB reference is available (input PDB or --ref-pdb) and conversion enabled
+├─ final_geometries.pdb # PDB of every image when a PDB reference is available (input PDB or --ref-pdb) and conversion enabled
+├─ final_geometries.gjf # Gaussian companion when a Gaussian template is detected (conversion enabled)
 ├─ hei.xyz # Highest-energy image with its energy on the comment line
 ├─ hei.pdb # HEI converted to PDB when a PDB reference is available (conversion enabled)
 ├─ hei.gjf # HEI written using a detected Gaussian template (conversion enabled)
@@ -162,8 +163,6 @@ opt:
  rfo:
    out_dir: ./result_path_opt/ # output directory (path-opt default)
 ```
-
----
 
 ## See Also
 

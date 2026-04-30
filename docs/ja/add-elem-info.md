@@ -3,10 +3,6 @@
 ## 概要
 `add-elem-info` は、PDB ファイルの ATOM/HETATM レコードにある元素記号カラム（77–78）を修復します。
 
-### 出力の挙動
-- `-o/--out` が**省略**され、`--overwrite` が **`True` でない**場合、出力は `<input>_add_elem.pdb` に書き込まれます（末尾の `.pdb` を `_add_elem.pdb` に置換）。
-- `--overwrite` **かつ** `-o/--out` が**省略**されている場合、**入力ファイルをその場で上書き**します。`-o/--out` が指定された場合、`--overwrite` は無視されます。
-
 ## 使用法
 ```bash
 pdb2reaction add-elem-info -i INPUT.pdb [-o OUTPUT.pdb] [--overwrite/--no-overwrite]
@@ -58,8 +54,6 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite
 ## `all` ワークフローとの統合
 
 `pdb2reaction all` を実行すると、`add-elem-info` は **すべての PDB 入力に対してプリフライトステップとして自動的に呼び出されます**（その後 `fix-altloc`、続いて活性部位モデルの抽出が行われます）。これにより、結合検出や電荷割り当てが実行される前に元素記号が確実に補完されます。そのため `pdb2reaction all` の前に `add-elem-info` を手動で実行する**必要はありません**。手動実行が必要となるのは、元素カラムが欠落した PDB に対して `extract` や `opt` などの個別サブコマンドを直接使用する場合だけです。詳細は [all](all.md) のプリフライトの説明を参照してください。
-
----
 
 ## 関連項目
 

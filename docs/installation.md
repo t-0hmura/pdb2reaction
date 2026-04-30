@@ -53,7 +53,7 @@ You only need to do this once per machine / environment.
   module load cuda/<your-version>   # e.g. cuda/12.6 or cuda/12.9
   ```
 
-> **Tip:** UMA is the default MLIP backend. To use ORB or AIMNet2, install the corresponding extra (e.g. `pip install "pdb2reaction[orb]"`) and pass `-b/--backend orb` to any command. See [Installation](#step-by-step-installation) step 7.
+> **Tip:** UMA is the default MLIP backend. To use ORB or AIMNet2, install the corresponding extra (e.g. `pip install "pdb2reaction[orb]"`) and pass `-b/--backend orb` to any command. See step 7 below.
 
 ```{warning}
 **MACE:** MACE requires `e3nn==0.4.4`, which conflicts with `fairchem-core` (UMA). The canonical MACE recipe is `pip uninstall -y fairchem-core && pip install mace-torch`. UMA and MACE cannot coexist in the same environment — use separate conda environments if you need both. (The `--no-deps mace-torch` variant seen in some older notes is not recommended; it leaves torch-scatter / e3nn unpinned.)

@@ -25,11 +25,6 @@ pdb2reaction scan3d -i input.pdb -q 0 -s scan3d.yaml --out-dir ./result_scan3d/
 - `result_scan3d/grid/point_i000_j000_k000.xyz`
 - `result_scan3d/scan3d_density.html`
 
-## よくある例
-1. **YAML spec から実行する** — 下記の[例](#例)を参照。
-2. **インラインリテラルを使う** — 下記の[例](#例)を参照。
-3. **`--dump` を有効にして** `(d1,d2)` ごとの d3 軌跡を保存する — 下記の[例](#例)を参照。
-
 > **Note:** `-s/--scan-lists` の解釈結果を確認したい場合は `--print-parsed` を追加してください。
 
 ## 使用法

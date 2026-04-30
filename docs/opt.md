@@ -11,8 +11,6 @@
 - **Defaults:** Backend `uma`, `--opt-mode grad`, `--thresh gau`, `--max-cycles 10000`, `--bias-k 300`, `--freeze-links True`, `--convert-files True`, `--flatten False`, `--dump False`, `--out-dir ./result_opt/`.
 - **Next step:** Confirm the minimum with [`freq`](freq.md), or proceed to [`tsopt`](tsopt.md) for saddle points and [`path-search`](path-search.md) / [`all`](all.md) for full reaction pathways.
 
-`pdb2reaction opt` optimizes a single structure to a local minimum using L-BFGS (`--opt-mode grad`, default) or RFO (`--opt-mode hess`). For PDB inputs, link-hydrogen parents are automatically frozen.
-
 The command uses pysisyphus LBFGS (`lbfgs`) or RFOptimizer (`rfo`) while an MLIP backend (UMA by default; ORB, MACE, and AIMNet2 also available via `-b/--backend`) provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `_trj.xyz`, or any format supported by `geom_loader`. Settings follow precedence: **defaults < config < explicit CLI**.
 
 When the starting structure is a PDB or Gaussian template, the command also writes `.pdb` (PDB inputs) and `.gjf` (Gaussian templates) companions, controlled by `--convert-files/--no-convert-files` (enabled by default). PDB-specific conveniences include:
@@ -94,8 +92,6 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <nu
 
 ## CLI options
 
-> **Note:** Default values shown are used when the option is not specified.
-
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Input structure accepted by `geom_loader`. | Required |
@@ -167,7 +163,7 @@ The `opt` subcommand sets `opt.out_dir` (and `lbfgs.out_dir` / `rfo.out_dir`) to
 For the full YAML schema of `geom`, `calc`, `opt`, `lbfgs`, and `rfo`, see [YAML Reference](yaml-reference.md).
 
 ```{note}
-**Energy plateau fallback (new in v0.3.5).** When `energy_plateau: true`, the optimizer
+**Energy plateau fallback.** When `energy_plateau: true`, the optimizer
 is declared converged if the energy range (max − min) over the last
 `energy_plateau_window` steps falls below `energy_plateau_thresh`
 (default `1×10⁻⁴ au ≈ 0.06 kcal/mol` over 50 steps). This prevents wasted cycles when
@@ -175,8 +171,6 @@ the MLIP force noise floor (~4×10⁻⁴ au) exceeds the force-based convergence
 (e.g. `baker` max_force = 3×10⁻⁴ au). The fallback is skipped for chain-of-states
 optimizers, which store per-image energy arrays.
 ```
-
----
 
 ## See Also
 

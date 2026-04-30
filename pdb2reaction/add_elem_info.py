@@ -11,7 +11,6 @@ For detailed documentation, see: docs/add-elem-info.md
 
 from __future__ import annotations
 
-import argparse
 import collections
 import os
 import re
@@ -93,7 +92,7 @@ def _default_out_pdb_path(in_pdb: str) -> str:
 # -----------------------------
 # Element inference (use residue to disambiguate)
 # -----------------------------
-def guess_element(atom_name: str, resname: str, is_het: bool) -> Optional[str]:
+def guess_element(atom_name: str, resname: str, _is_het: bool = False) -> Optional[str]:
     """
     Infer the element from atom name + residue name.
     Priority:
@@ -255,40 +254,6 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
     if len(unknown) > 50:
         click.echo("    ... (truncated) ...")
 
-
-def main():
-    ap = argparse.ArgumentParser(
-        description="Add/repair element columns (77–78) in a PDB using Biopython."
-    )
-    ap.add_argument(
-        "-i",
-        "--input",
-        dest="in_pdb",
-        required=True,
-        help="Input PDB filepath.",
-    )
-    ap.add_argument(
-        "-o",
-        "--out",
-        help='Output PDB filepath (default: replace ".pdb" with "_add_elem.pdb"; when provided, --overwrite is ignored).',
-    )
-    ap.add_argument(
-        "--overwrite",
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="Overwrite the input file in-place when -o/--out is omitted.",
-    )
-    args = ap.parse_args()
-
-    if not os.path.isfile(args.in_pdb):
-        click.echo(f"[ERR] Input not found: {args.in_pdb}", err=True)
-        sys.exit(1)
-
-    try:
-        assign_elements(args.in_pdb, args.out, overwrite=args.overwrite)
-    except Exception as e:
-        click.echo(f"[ERR] Failed: {e}", err=True)
-        sys.exit(2)
 
 # -----------------------------
 # Click subcommand (pdb2reaction add-elem-info)

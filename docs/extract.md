@@ -11,8 +11,6 @@
 - **Defaults:** `--radius 2.6 Å`, `--radius-het2het 0.0` (off), `--include-h2o True`, `--exclude-backbone False`, `--add-linkh True`, `--verbose True`. (`--freeze-links` is a downstream-stage flag, default `True`; see [`opt`](opt.md), [`tsopt`](tsopt.md), [`freq`](freq.md), [`irc`](irc.md), [`path-search`](path-search.md), [`path-opt`](path-opt.md), [`scan`](scan.md).)
 - **Next step:** Feed the model PDB(s) into [`path-search`](path-search.md) / [`scan`](scan.md) / [`opt`](opt.md) / [`tsopt`](tsopt.md), or use [`all`](all.md) with `-c/--center` to chain extraction with the rest of the pipeline.
 
-`pdb2reaction extract` creates an active site model (cluster model) from a protein–ligand PDB. It selects residues near the substrate, truncates the model according to backbone/side-chain rules, optionally caps severed bonds with link hydrogens, and can process single structures or ensembles.
-
 For misclassification due to unusual residue/atom naming, see the appendix below on naming requirements and the internal reference lists.
 
 ```{important}
@@ -31,6 +29,7 @@ pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb...]
  [--selected-resn LIST]
  [--modified-residue LIST]
  [-l, --ligand-charge MAP_OR_NUMBER]
+ [--out-json/--no-out-json]
  [--verbose/--no-verbose]
 ```
 
@@ -126,17 +125,11 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
  # Output directories are not created automatically; ensure they exist
 ```
 - Charge summary (protein/ligand/ion/total) is logged for model #1 when verbose mode is enabled.
-- Output directories are not created automatically; ensure they exist before running.
 - Programmatic use (`extract_api`) returns `{"outputs": [...], "counts": [...], "charge_summary": {...}}`.
 
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
-
-- `--radius` defaults to 2.6 Å; `0` is nudged to 0.001 Å to avoid empty selections. `--radius-het2het` is off by default (also nudged to 0.001 Å when zero is provided).
-- If the extracted active site model is too small, calculated energies and barriers may be unreliable. In such cases, increasing the extraction radius (e.g., `-r 4.0` or higher) can improve accuracy by including more of the protein environment.
-- Waters can be excluded with `--no-include-h2o`.
-- Backbone trimming plus capping respect chain breaks and PRO/HYP safeguards as outlined above; non-amino residues never lose backbone-like atom names.
-- Link hydrogens are inserted only on carbon cuts and reuse identical bonding patterns across models in ensemble mode.
+- If the extracted active site model is too small, calculated energies and barriers may be unreliable; increasing the extraction radius (e.g., `-r 4.0` or higher) improves accuracy by including more of the protein environment.
 - INFO logs summarize residue selection, truncation counts, and charge breakdowns.
 
 ## Systems with non-standard residues (MCPB, etc.)
@@ -266,8 +259,6 @@ When pdb2reaction extracts an active site model from a larger structure, severed
 - **Vibrational analysis**: when frozen atoms are present, `freq` automatically performs Partial Hessian Vibrational Analysis (PHVA), diagonalizing only the active block of the Hessian.
 
 Frozen atoms can also be set manually via the `geom.freeze_atoms` YAML key (1-based indices). CLI-detected link atoms are merged with YAML-specified atoms.
-
----
 
 ## See Also
 

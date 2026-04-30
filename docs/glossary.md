@@ -2,8 +2,6 @@
 
 This page provides definitions for abbreviations and technical terms used throughout the pdb2reaction documentation.
 
----
-
 ## Reaction Path & Optimization
 
 | Term | Full Name | Description |
@@ -20,8 +18,6 @@ This page provides definitions for abbreviations and technical terms used throug
 | **Bridge segment** | — | A segment connecting two non-adjacent intermediates that still contains unresolved bond changes; `path-search` recursively subdivides bridge segments until all reactive regions are isolated. |
 | **Kink** | — | A region along an MEP where no covalent bond change is detected but a geometric distortion persists. `path-search` inserts linearly interpolated nodes and optimizes them individually rather than running a full string calculation. |
 | **PES** | Potential Energy Surface | A hypersurface of energy as a function of atomic coordinates. The MEP is the lowest-energy pathway on the PES. |
-
----
 
 ## Optimization Algorithms
 
@@ -40,8 +36,6 @@ This page provides definitions for abbreviations and technical terms used throug
 | **Active DOF** | Active Degrees of Freedom | The 3N Cartesian coordinates of atoms not listed in `freeze_atoms`. PHVA, partial-Hessian TS optimization, and the analytical Hessian path operate only on this active subspace; frozen atoms contribute neither rows nor columns to the reduced Hessian. |
 | **DLC** | Delocalized Internal Coordinates | A redundant internal coordinate system constructed from interatomic distances, angles, and dihedrals. Available via `coord_type: dlc` (default is `cart` = Cartesian). |
 
----
-
 ## Machine Learning & Calculators
 
 | Term | Full Name | Description |
@@ -57,8 +51,6 @@ This page provides definitions for abbreviations and technical terms used throug
 | **Analytical Hessian** | — | Exact evaluation of the Hessian matrix via automatic differentiation; faster than finite differences but requires more VRAM. Selected with `--hessian-calc-mode Analytical`. |
 | **Finite Difference** | — | Approximating the Hessian by finite nuclear displacements; slower but more memory-efficient. Selected with `--hessian-calc-mode FiniteDifference` (default). |
 
----
-
 ## Quantum Chemistry
 
 | Term | Full Name | Description |
@@ -73,8 +65,6 @@ This page provides definitions for abbreviations and technical terms used throug
 | **CPCMX** | Conductor-like PCM (exchange-correlation extension) | An implicit-solvent model available via xTB (`--solvent-model cpcmx`). |
 | **cyipopt** | — | Python bindings for the IPOPT interior-point optimizer. Required by the DMF (`--mep-mode dmf`) path refinement pipeline. |
 
----
-
 ## Structural Biology & Active Site Model Extraction
 
 | Term | Full Name | Description |
@@ -87,8 +77,6 @@ This page provides definitions for abbreviations and technical terms used throug
 | **Link Hydrogen** | — | A hydrogen atom added to cap severed bonds when extracting an active site model from a larger structure. |
 | **Backbone** | — | The main chain of a protein (N–Cα–C–O atoms). Can be excluded during active site model extraction with `--exclude-backbone`. |
 
----
-
 ## Thermochemistry
 
 | Term | Full Name | Description |
@@ -98,8 +86,6 @@ This page provides definitions for abbreviations and technical terms used throug
 | **Enthalpy** | (H) | H = E + PV; total heat content at constant pressure. |
 | **Entropy** | (S) | A measure of disorder; contributes −TS to Gibbs energy. |
 | **QRRHO** | Quasi-Rigid-Rotor Harmonic Oscillator | A thermochemical approximation incorporating Grimme's correction for low-frequency vibrations. Automatically applied in `freq`. |
-
----
 
 ## Units & Constants
 
@@ -126,8 +112,6 @@ pdb2reaction uses **two distinct** cm⁻¹ thresholds around imaginary modes, wh
 
 These thresholds answer **different questions**: 5 cm⁻¹ decides "is this counted as imaginary?"; 100 cm⁻¹ decides "does this imaginary mode look like a real TS?". Don't conflate them — a mode at, say, 35 cm⁻¹ is counted as imaginary internally (passes the 5 cm⁻¹ filter) but fails the TS-quality gate (below 100 cm⁻¹).
 
----
-
 ## CLI Conventions
 
 | Term | Description |
@@ -135,8 +119,6 @@ These thresholds answer **different questions**: 5 cm⁻¹ decides "is this coun
 | **Boolean option** | CLI flags that accept toggle form (`--flag` / `--no-flag`) or value form (`True`/`False`, `yes`/`no`, `1`/`0`). Example: `--tsopt`. |
 | **Residue selector** | A specification like `'SAM,GPP'` (names) or `'A:123,B:456'` (chain:ID). |
 | **Atom selector** | A specification like `'TYR,285,CA'` identifying a specific atom by residue name, number, and atom name. |
-
----
 
 ## See Also
 

@@ -3,11 +3,7 @@
 
 from pathlib import Path
 
-import pytest
-
-pytest.importorskip("fairchem", reason="fairchem-core not available (GPU-only)")
-
-from pdb2reaction.summary_log import (  # noqa: E402
+from pdb2reaction.summary_log import (
     _fmt_bool,
     _shorten_path,
     _format_energy_rows,

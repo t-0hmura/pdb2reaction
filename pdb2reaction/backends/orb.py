@@ -330,7 +330,7 @@ class OrbASECalculator:
         *,
         model: str = "orb_v3_conservative_omol",
         device: str = "auto",
-        precision: str = "float32",
+        precision: str = "float32-high",
         compile_model: bool = False,
     ):
         # Build and return the ORB ASE calculator directly

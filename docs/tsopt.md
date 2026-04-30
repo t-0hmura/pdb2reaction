@@ -11,10 +11,6 @@
 - **Defaults:** `--opt-mode hess` (RS-I-RFO), `--thresh baker`, `--hessian-calc-mode FiniteDifference`, `--max-cycles 10000`, `--flatten` disabled, backend `uma`.
 - **Next step:** The result is still a *candidate* until [irc](irc.md) confirms endpoint connectivity. A separate [freq](freq.md) run is only needed for full vibrational analysis or thermochemistry.
 
-### Choosing `--opt-mode`
-- Use **`--opt-mode hess` (RS‑I‑RFO)** when you want the default, conservative optimizer and you can afford Hessian work.
-- Use **`--opt-mode grad` (Dimer)** when you want a lighter-weight search, or when you plan to iterate quickly from several TS guesses.
-
 > **Naming note:** The CLI accepts `grad|dimer` (= Dimer) and `hess|rsirfo` (= RS-I-RFO, default). In YAML, use the top-level `hessian_dimer:` (Dimer) or `rsirfo:` (RS-I-RFO) blocks directly.
 
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion. If you need a TS guess first, run [path-opt](path-opt.md) (two structures) or [path-search](path-search.md) (two or more structures) and then optimize the HEI with `tsopt` (which includes an imaginary-frequency check) → `irc`.
@@ -190,7 +186,7 @@ Shared sections reuse
 [YAML Reference](yaml-reference.md). Adjust only the values you need to change.
 
 ```{note}
-**Reference duplication.** The YAML keys for `geom`, `calc`, `opt`, `hessian_dimer`, and `rsirfo` listed below mirror the canonical definitions in [YAML Reference](yaml-reference.md). When the two pages disagree, the canonical [YAML Reference](yaml-reference.md) entries (and `pdb2reaction/defaults.py`) take precedence; the inline appendix on this page is reproduced only for `tsopt`-specific defaults (e.g. `out_dir: ./result_tsopt/`, the `--flatten` interaction documented above). Note that `flatten_max_iter` is forced to `0` by the CLI initializer unless `--flatten` is passed, regardless of the value shown in the inline YAML.
+**Reference duplication.** The YAML keys for `geom`, `calc`, `opt`, `hessian_dimer`, and `rsirfo` listed below mirror the canonical definitions in [YAML Reference](yaml-reference.md). When the two pages disagree, the canonical [YAML Reference](yaml-reference.md) entries (and `pdb2reaction/defaults.py`) take precedence; the inline appendix on this page is reproduced only for `tsopt`-specific defaults (e.g. `out_dir: ./result_tsopt/`, the `--flatten` interaction documented above).
 ```
 
 ### Shared configuration (common to both modes)
@@ -206,7 +202,7 @@ opt:
 ```
 
 ```{note}
-**Energy plateau fallback (new in v0.3.5).** The RS-I-RFO optimizer honours the
+**Energy plateau fallback.** The RS-I-RFO optimizer honours the
 shared `energy_plateau` setting: if the energy range (max − min) over the last
 `energy_plateau_window` (default 50) steps falls below `energy_plateau_thresh`
 (default `1×10⁻⁴ au ≈ 0.06 kcal/mol`), the run is declared converged. This is
@@ -229,8 +225,6 @@ hessian_dimer:
      out_dir: ./result_tsopt/ # tsopt override (defaults.py value is ./result_opt/)
 ```
 
-Recall that `flatten_max_iter` is forced to `0` by the CLI initializer unless `--flatten` is passed (see {ref}`flatten-precedence-caveat` above).
-
 ### RS-I-RFO mode (`--opt-mode hess`, default)
 
 Used with `--opt-mode hess` (RS-I-RFO, the default).
@@ -239,9 +233,9 @@ The full `rsirfo` block is documented in [`rsirfo`](yaml-reference.md#rsirfo) (w
 
 ```yaml
 rsirfo:
- trust_max: 0.10 # maximum trust radius (bohr); reduced from 0.20 in v0.3.5 to damp near-saddle oscillations on large systems
+ trust_max: 0.10 # maximum trust radius (bohr)
  out_dir: ./result_tsopt/ # tsopt override (defaults.py value is ./result_opt/)
- hessian_recalc: 500 # rebuild exact Hessian every N macro steps; lower to 50-200 if TS convergence is slow (see tip below)
+ hessian_recalc: 500 # rebuild exact Hessian every N macro steps
 ```
 
 ```{tip}
@@ -251,8 +245,6 @@ Set `rsirfo.track_mode_by_overlap: true` if the TS mode switches root during opt
 ```{tip}
 If TS convergence is slow or the TS mode is lost during optimization, try lowering `hessian_recalc` (e.g., to 50--200) in the `rsirfo` section. More frequent exact Hessian recalculations improve robustness at the cost of additional Hessian evaluations.
 ```
-
----
 
 ## See Also
 

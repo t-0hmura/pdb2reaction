@@ -1,8 +1,6 @@
 # CLI 規約
 
-このページでは、`pdb2reaction` の全コマンドで使用される規約を説明します。これらの規約を理解することで、正しいコマンドを記述し、よくあるエラーを回避できます。
-
----
+このページでは、`pdb2reaction` の全コマンドで使用される規約を説明します。
 
 ## ブール値オプション
 
@@ -28,8 +26,6 @@
 - `--climb` — MEP 探索でクライミングイメージを有効化
 - `--convert-files` — PDB/GJF コンパニオンファイルの生成
 
----
-
 ## 段階的ヘルプ（`all`）
 
 `pdb2reaction all` は 2 段階ヘルプです:
@@ -40,8 +36,6 @@ pdb2reaction all --help-advanced # 全オプション
 ```
 
 以下のコマンドも同じ段階的ヘルプに対応しています（`--help` で主要オプション、`--help-advanced` で全オプション）: `scan`, `scan2d`, `scan3d`, `opt`, `path-opt`, `path-search`, `tsopt`, `freq`, `irc`, `dft`, `add-elem-info`, `trj2fig`, `energy-diagram`, `extract`, `fix-altloc`。
-
----
 
 ## 残基セレクタ
 
@@ -115,8 +109,6 @@ PDB 入力では、`--ligand-charge` を使うと**非標準残基（基質・�
 非標準の残基（基質、補因子、特殊なリガンド）には必ず `--ligand-charge` を指定し、正しい電荷伝播を確保してください。
 ```
 
----
-
 ## スピン多重度
 
 ```bash
@@ -128,8 +120,6 @@ PDB 入力では、`--ligand-charge` を使うと**非標準残基（基質・�
 ```{note}
 `all` を含む全サブコマンドで `-m/--multiplicity` を統一して使用します。
 ```
-
----
 
 ## 原子セレクタ
 
@@ -229,8 +219,6 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 -s "[(\"TYR,285,CA\",\"SAM,309,C10\",1.35)]"
 ```
 
----
-
 ## 入力ファイル要件
 
 ### PDB ファイル
@@ -288,8 +276,6 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 
 したがって `tsopt` に対する `--opt-mode grad` は L-BFGS 最小化ではなく **Dimer TS 探索**です。サブコマンド間で曖昧さを避けたい場合は、明示的なアルゴリズム名（`--opt-mode lbfgs`, `--opt-mode rsirfo` など）を指定してください。
 
----
-
 ## CLI ↔ YAML 名称の不一致
 
 一部の CLI フラグは YAML の対応キーと微妙に名前が異なり、`all` でラップされたときにリネームされるものもあります。完全なマッピング表は {ref}`YAML リファレンスの主要な CLI→YAML マッピング <ja-common-cli-to-yaml-mapping>` にあります。特に混同されやすい 2 ケースを以下に示します:
@@ -318,8 +304,6 @@ pdb2reaction dft -i ts.xyz -q 0 --engine gpu
 pdb2reaction all -i r.pdb p.pdb -c SAM --dft --dft-engine gpu
 ```
 
----
-
 ## YAML 設定
 
 詳細設定は多層 YAML で渡せます：
@@ -345,8 +329,6 @@ pdb2reaction -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result/
 
 この優先順位は `all`, `opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, `dft` に共通です。あわせて {ref}`YAML リファレンス: 設定の優先順位 <ja-yaml-configuration-precedence>` を参照してください。
 
----
-
 ## 出力ディレクトリ
 
 `-o/--out-dir` で結果の保存先を指定します：
@@ -368,8 +350,6 @@ pdb2reaction -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result/
 - `freq`: `./result_freq/`
 - `irc`: `./result_irc/`
 - `dft`: `./result_dft/`
-
----
 
 ## 関連項目
 

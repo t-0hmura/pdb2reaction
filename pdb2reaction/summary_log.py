@@ -93,9 +93,11 @@ def _format_ts_imag_info(ts_info: Any) -> List[str]:
 
     if isinstance(ts_info, dict):
         n_imag = ts_info.get("n_imag")
-        nu_imag = ts_info.get("nu_imag_max_cm") or ts_info.get("nu_imag_cm")
+        nu_imag = ts_info.get("nu_imag_max_cm")
+        if nu_imag is None:
+            nu_imag = ts_info.get("nu_imag_cm")
         min_abs = ts_info.get("min_abs_imag_cm")
-        if nu_imag is None and ts_info.get("ts_imag_freq_cm"):
+        if nu_imag is None:
             nu_imag = ts_info.get("ts_imag_freq_cm")
     else:
         try:
@@ -479,7 +481,7 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
     if post_segments:
         for seg in post_segments:
             idx = int(seg.get("index", 0) or 0)
-            tag = seg.get("tag", f"seg_{idx:02d}")
+            tag = seg.get("tag", f"seg_{idx:03d}")
             kind = seg.get("kind", "seg")
             lines.append(f"  === Segment {idx:02d} ({kind}) tag={tag} ===")
             if seg.get("post_dir"):

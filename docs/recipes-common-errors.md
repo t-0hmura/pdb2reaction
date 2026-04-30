@@ -15,7 +15,7 @@ Each row deep-links into the relevant [Troubleshooting](troubleshooting.md) sect
 | DMF mode import errors (`cyipopt`) | Run `conda install -c conda-forge cyipopt` | {ref}`Installation / environment problems <installation-environment-problems>` |
 | TSOPT does not converge | For LBFGS/Dimer: reduce `max_step`. For RFO/RS-I-RFO: reduce `trust_radius`/`trust_min`/`trust_max`. Increase cycles, validate TS quality first | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
 | IRC does not terminate | Reduce `--step-size`, increase `--max-cycles`, confirm a single imaginary mode | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
-| Opt/TSOPT hits `max_cycles` with `max(force)` barely above threshold | Usually handled automatically by the `opt.energy_plateau` fallback (new in v0.3.5). Manual workaround: use `--thresh gau` or `--thresh gau_loose` | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
+| Opt/TSOPT hits `max_cycles` with `max(force)` barely above threshold | Usually handled automatically by the `opt.energy_plateau` fallback. Manual workaround: use `--thresh gau` or `--thresh gau_loose` | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
 | MEP search (GSM/DMF) fails | Increase `--max-nodes` above default 20, enable `--preopt` (note: `--preopt` defaults to **True under `all`** but **False under standalone** `path-search`/`path-opt`/`scan*`), try the alternative `--mep-mode` | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
 | CUDA/GPU runtime mismatch | Verify `torch.cuda.is_available()` and CUDA build pairing | {ref}`Installation / environment problems <installation-environment-problems>` |
 | Plot export failures | Run `plotly_get_chrome -y` to install headless Chrome | {ref}`Installation / environment problems <installation-environment-problems>` |
@@ -65,7 +65,7 @@ Signal:
 First checks:  
 - Confirm TS candidate quality: exactly one imaginary frequency with |ν| ≥ 100 cm⁻¹, and the corresponding imaginary mode shows displacement along the reaction coordinate. See {ref}`imaginary-mode-thresholds` in the glossary for the 5 cm⁻¹ detection threshold vs 100 cm⁻¹ quality gate.  
 - Tune step sizes / trust radii (YAML knobs `max_step`, `trust_radius`/`trust_min`/`trust_max`) and optimizer mode / flattening (CLI flags `--opt-mode`, `--flatten`); these are complementary. For YAML section layout see [YAML Reference](yaml-reference.md); for the canonical fix path see {ref}`Calculation / convergence problems <calculation-convergence-problems>`.  
-- If the run stops at `max_cycles` while the force is only barely above the threshold (and the energy has flattened), see {ref}`Calculation / convergence problems <calculation-convergence-problems>` — the `opt.energy_plateau` fallback (new in v0.3.5) handles this automatically.  
+- If the run stops at `max_cycles` while the force is only barely above the threshold (and the energy has flattened), see {ref}`Calculation / convergence problems <calculation-convergence-problems>` — the `opt.energy_plateau` fallback handles this automatically.  
 
 Typical fix path:
 - Run a smaller diagnostic case, tune thresholds/step sizes, then scale back up.

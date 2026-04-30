@@ -125,7 +125,8 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [-l, -
 ```
 out_dir/
 ├─ final_geometries_trj.xyz # XYZ経路（コメント行にエネルギーを保持）
-├─ final_geometries_trj.pdb # PDB 参照が利用可能で変換が有効な場合
+├─ final_geometries.pdb # PDB 参照が利用可能で変換が有効な場合の全画像 PDB
+├─ final_geometries.gjf # Gaussian テンプレート検出時の Gaussian コンパニオン（変換有効時）
 ├─ hei.xyz # 最高エネルギー画像
 ├─ hei.pdb # PDB 参照が利用可能な場合のHEI（変換有効時）
 ├─ hei.gjf # Gaussian テンプレートを使用して書き込まれたHEI（変換有効時）
@@ -165,8 +166,6 @@ opt:
  rfo:
    out_dir: ./result_path_opt/ # output directory (path-opt default)
 ```
-
----
 
 ## 関連項目
 

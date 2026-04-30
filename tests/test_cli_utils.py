@@ -1,9 +1,6 @@
 # tests/test_cli_utils.py
 """Tests for pdb2reaction.cli_utils."""
 
-import os
-import shutil
-import tempfile
 from pathlib import Path
 
 import click

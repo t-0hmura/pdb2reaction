@@ -6,25 +6,26 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
-## [0.3.8] — 2026-04-29
+## [0.3.8] — 2026-05-01
 
 ### Added
-- `pdb2reaction dft --lowmem/--no-lowmem` (default `True`): closed-shell GPU runs now use `gpu4pyscf.dft.rks_lowmem.RKS`, which performs SCF with a memory-efficient direct-JK pipeline (no density fitting). Open-shell, CPU, and pre-`rks_lowmem` `gpu4pyscf` installs auto-fall back to standard `RKS`/`UKS`. Selectable via the new `--lowmem/--no-lowmem` CLI flag and `dft.lowmem` YAML key. Population analysis on lowmem builds a CPU surrogate from the converged MOs because `rks_lowmem.RKS.to_cpu()` is not implemented upstream.
-- Agent skills: cluster-boundary frozen-atoms reference (`pdb2reaction-cli/freeze-atoms.md`); 1-line input→output cheatsheet on `pdb2reaction-cli/SKILL.md`; `summary.json` schema split out to `pdb2reaction-workflows-output/summary-json.md`.
-- `scripts/check_skill_drift.py`: warning-only prose-vs-source consistency check for the agent skills, wired into Docs Quality.
+- `pdb2reaction dft --lowmem/--no-lowmem` (default `True`): closed-shell GPU SCF now uses `gpu4pyscf.dft.rks_lowmem.RKS` (direct-JK, no density fitting). Open-shell / CPU / older `gpu4pyscf` paths fall back to standard `RKS`/`UKS`. YAML key `dft.lowmem`.
 
 ### Changed
-- Closed-shell GPU DFT defaults switch from DF + standard `RKS` to direct-JK `rks_lowmem.RKS`. Absolute energies shift by sub-mHa relative to v0.3.6/v0.3.7; pass `--no-lowmem` (or set `dft.lowmem: false`) to reproduce earlier numbers.
-- HPC PBS / SLURM preambles in the agent skills now also load `gcc` and an optional `<OPENMPI_MODULE>` (the latter only when running multi-node Ray); inline notes describe when each module is actually required.
-- Sphinx config: drop the PyTorch `intersphinx_mapping` entry that was causing build hangs and remove the now-unused `intersphinx_timeout`.
-- Documentation tone (EN+JA): `docs/index.md` "Start here" and per-page "At a glance" hooks rephrased from first-person scenarios to declarative goal phrases.
+- Closed-shell GPU DFT defaults switch from DF + standard `RKS` to direct-JK `rks_lowmem.RKS`. Absolute energies shift by sub-mHa; pass `--no-lowmem` to reproduce v0.3.6/v0.3.7 numbers.
+- Documentation pruned (EN+JA): per-command pages drop redundant Summary↔At a glance↔intro repetitions, version-stamp annotations are moved to this CHANGELOG, and decorative `---` separators between H2 headings are removed (~130 across docs/).
 
 ### Fixed
-- TS-only mode under `pdb2reaction all`: docs and agent skills now correctly state that a single `-i` requires `--tsopt` (in addition to no `--scan-lists`); without `--tsopt`, `BadParameter` is raised.
-- `pdb2reaction-install-backends/env-cuda.md`: DFT does not auto-fall back to CPU when GPU4PySCF is missing; `--engine cpu` must be passed explicitly.
-- `pdb2reaction-install-backends/xtb.md`: `--solvent` is accepted by `scan`, `scan2d`, and `scan3d`; only `dft` and `extract` reject it.
-- `pdb2reaction-cli/freq.md` and `pdb2reaction-structure-io/pdb.md`: PDB B-factors are not a freeze flag for pdb2reaction; the freeze set is assembled from `--freeze-atoms`, `--freeze-links`, and YAML `geom.freeze_atoms`.
-- Output-tree, JSON schema, and scan-list grammar references in the skills realigned with the source.
+- `OrbASECalculator` default precision changed from `'float32'` (silent slow path, blocks autograd Hessian) to `'float32-high'`, matching `OrbCalculator`.
+- `dft.py` exception handler: `out_dir_path` is now pre-bound before YAML override resolution, so `apply_yaml_overrides` failures no longer mask the original exception with `NameError`.
+- `freq.py` analytical-Hessian path now clones the result before mass-weighted projection, preventing in-place mutation of the cached Geometry Hessian.
+- `freq.py` `prepared_input` cleanup span widened so the temp file is removed even when an exception fires before the main try block.
+- `solvent.py`: when the wrapped backend returns a torch GPU tensor for the Hessian, it is detached to CPU/numpy before adding the xTB delta correction (previously raised on UMA + analytical + GPU + solvent).
+- `path_opt.py` finally block: `shared_calc = gs = geoms = None` indent corrected so it runs once outside the cleanup loop.
+- `summary_log.py`: `nu_imag` resolution no longer treats `0.0` as missing (was `or`-chain falsy fallback); `seg_NN` tag fallback width unified to `:03d`.
+- Documentation realigned with source: `uma-pysis.md` `return_partial_hessian` default is `False` (not `True`); `scan2d` output filenames are distance-tag (`point_iDDD_jDDD`, `DDD = round(d × 100)` Å), not step indices; `all.md` output tree expands `models/model_<input>.pdb`, `freq/{R,TS,P}/`, and `tsopt_single/` subdirectories; `path-opt.md` lists `final_geometries.pdb` (no `_trj` suffix) and adds `.gjf` companion; `path-search.md` adds `mep_seg_NN`, `hei_seg_NN`, `hei_w_ref_seg_NN.pdb`, `mep.gjf` to the output tree; JA `troubleshooting.md` charge-mapping example now includes the missing `extract` subcommand; JA `getting-started.md` adds the missing Agent Skills section.
+- Internal cleanup: removed unused `CliArgBuilder` class and dead YAML-merge trampolines in `all.py`; removed legacy argparse `main()` in `add_elem_info.py`; dropped sister-project reference from `defaults.py` module docstring; `extract.py` `if api==True:` → `if api:`.
+- Tests: `test_summary_log.py` no longer skips silently when `fairchem` is absent; unused imports removed from 4 test files.
 
 ## [0.3.7] — 2026-04-28
 

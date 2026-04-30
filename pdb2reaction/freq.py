@@ -382,8 +382,9 @@ def _calc_full_hessian_torch(geom, uma_kwargs: dict, device: torch.device) -> to
             "Failed to set Hessian results on Geometry cache", exc_info=True
         )
 
-    # Fresh result from calculator: no clone needed
-    return _to_torch(results["hessian"], clone=False)
+    # Clone so downstream in-place mass-weighting / TR projection does not
+    # poison the Hessian cached on the Geometry object.
+    return _to_torch(results["hessian"], clone=True)
 
 
 def _calc_energy(geom, uma_kwargs: dict, calc=None) -> float:
@@ -663,16 +664,20 @@ def cli(
     time_start = time.perf_counter()
     set_convert_file_enabled(convert_files)
     prepared_input = prepare_input_structure(input_path)
-    apply_ref_pdb_override(prepared_input, ref_pdb)
-    geom_input_path = prepared_input.geom_path
-    source_path = prepared_input.source_path
-    charge, spin = resolve_charge_spin(
-        prepared_input,
-        charge,
-        spin,
-        ligand_charge=ligand_charge,
-        prefix="[freq]",
-    )
+    try:
+        apply_ref_pdb_override(prepared_input, ref_pdb)
+        geom_input_path = prepared_input.geom_path
+        source_path = prepared_input.source_path
+        charge, spin = resolve_charge_spin(
+            prepared_input,
+            charge,
+            spin,
+            ligand_charge=ligand_charge,
+            prefix="[freq]",
+        )
+    except BaseException:
+        prepared_input.cleanup()
+        raise
 
     # --------------------------
     # 1) Assemble configuration (defaults < config < CLI(explicit) < override)

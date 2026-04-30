@@ -57,7 +57,6 @@ from .utils import (
     collect_single_option_values,
     convert_xyz_like_outputs,
     convert_xyz_to_gjf,
-    deep_update,
     detect_freeze_links_logged,
     format_elapsed,
     merge_freeze_atom_groups,
@@ -212,43 +211,6 @@ def _run_cli_main(
         _echo("")
 
 
-class CliArgBuilder:
-    """Fluent builder for constructing CLI argument lists.
-
-    Consolidates the previous ``_append_cli_arg`` / ``_append_toggle_arg``
-    free functions into a single reusable utility.
-    """
-
-    def __init__(self, initial: Sequence[str] = ()) -> None:
-        self._args: List[str] = list(initial)
-
-    # -- mutating helpers --------------------------------------------------
-
-    def value(self, flag: str, val: Any | None) -> "CliArgBuilder":
-        """Append ``flag val`` when *val* is not ``None``."""
-        if val is None:
-            return self
-        if isinstance(val, bool):
-            self._args.extend([flag, "True" if val else "False"])
-        else:
-            self._args.extend([flag, str(val)])
-        return self
-
-    def toggle(self, flag: str, val: bool | None) -> "CliArgBuilder":
-        """Append ``--flag`` or ``--no-flag`` when *val* is not ``None``."""
-        if val is None:
-            return self
-        if not flag.startswith("--"):
-            raise ValueError(f"Toggle flag must start with '--': {flag}")
-        base = flag if not flag.startswith("--no-") else f"--{flag[5:]}"
-        neg = f"--no-{base[2:]}"
-        self._args.append(base if bool(val) else neg)
-        return self
-
-    def build(self) -> List[str]:
-        return list(self._args)
-
-
 def _append_cli_arg(args: List[str], flag: str, value: Any | None) -> None:
     """Append ``flag`` and ``value`` (converted to string) to ``args`` when ``value`` is not ``None``."""
     if value is None:
@@ -277,56 +239,6 @@ def _resolve_override_dir(default: Path, override: Path | None) -> Path:
     if override.is_absolute():
         return override
     return default.parent / override
-
-
-def _resolve_yaml_sources(
-    config_yaml: Optional[Path],
-) -> Tuple[Optional[Path], Optional[Path], bool]:
-    """Resolve YAML inputs for the all pipeline."""
-    return config_yaml, None, False
-
-
-def _build_effective_args_yaml(
-    config_yaml: Optional[Path],
-    override_yaml: Optional[Path],
-    *,
-    tmp_prefix: str,
-) -> Tuple[Optional[Path], Dict[str, Any]]:
-    """
-    Build an effective args-yaml file path.
-
-    Precedence for file layering:
-      config_yaml < override_yaml
-    """
-    base_cfg = load_yaml_dict(config_yaml)
-    override_cfg = load_yaml_dict(override_yaml)
-
-    if config_yaml is None and override_yaml is None:
-        return None, {}
-    if config_yaml is None:
-        return override_yaml, override_cfg
-    if override_yaml is None:
-        return config_yaml, base_cfg
-
-    merged: Dict[str, Any] = {}
-    deep_update(merged, base_cfg)
-    deep_update(merged, override_cfg)
-
-    with tempfile.NamedTemporaryFile(
-        mode="w",
-        encoding="utf-8",
-        suffix=".yaml",
-        prefix=tmp_prefix,
-        delete=False,
-    ) as tf:
-        yaml.safe_dump(merged, tf, sort_keys=False, allow_unicode=True)
-        effective = Path(tf.name).resolve()
-
-    # Register cleanup so the temp file is removed when the process exits.
-    import atexit
-    atexit.register(lambda p=effective: p.unlink(missing_ok=True))
-
-    return effective, merged
 
 
 CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
@@ -2492,12 +2404,8 @@ def cli(
         logger.debug("Failed to check dump parameter source: %s", exc)
         dump_override_requested = False
 
-    config_yaml, override_yaml, _ = _resolve_yaml_sources(config_yaml=config_yaml)
-    args_yaml, merged_yaml_cfg = _build_effective_args_yaml(
-        config_yaml=config_yaml,
-        override_yaml=None,
-        tmp_prefix="pdb2reaction_all_merged_",
-    )
+    args_yaml = config_yaml
+    merged_yaml_cfg = load_yaml_dict(config_yaml) if config_yaml is not None else {}
 
     opt_mode_set = False
     opt_mode_post_set = False
@@ -2606,7 +2514,6 @@ def cli(
         config_payload: Dict[str, Any] = {
             "yaml": {
                 "config": str(config_yaml) if config_yaml else None,
-                "override_yaml": str(override_yaml) if override_yaml else None,
                 "effective_args_yaml": str(args_yaml) if args_yaml else None,
             },
             "all": {
@@ -3044,10 +2951,10 @@ def cli(
 
             ensure_dir(struct_dir)
             model_ref = ref_pdb_for_topology or ts_initial_pdb
-            pR_irc = _save_single_geom_as_pdb_for_tools(
+            _save_single_geom_as_pdb_for_tools(
                 g_react_irc, model_ref, struct_dir, "reactant_irc"
             )
-            pP_irc = _save_single_geom_as_pdb_for_tools(
+            _save_single_geom_as_pdb_for_tools(
                 g_prod_irc, model_ref, struct_dir, "product_irc"
             )
             pT = _save_single_geom_as_pdb_for_tools(gT, model_ref, struct_dir, "ts")
@@ -3056,7 +2963,7 @@ def cli(
             ensure_dir(endpoint_opt_dir)
 
             # Map IRC left/right Hessians → R/P endpoint (left=forward, right=backward)
-            from .hessian_cache import load as _hess_load, store as _hess_store, clear as _clear_hess_cache
+            from .hessian_cache import load as _hess_load, store as _hess_store
             _react_hk = "irc_left" if eL >= eR_raw else "irc_right"
             _prod_hk  = "irc_right" if eL >= eR_raw else "irc_left"
 
@@ -3577,7 +3484,6 @@ def cli(
         _echo_section(
             "====== [all] TSOPT-only pipeline successfully finished ======"
         )
-        # summary.md and key_* outputs are disabled.
         _echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
         return
 
@@ -4390,7 +4296,6 @@ def cli(
         if energy_diagrams:
             summary["energy_diagrams"] = list(energy_diagrams)
         _write_pipeline_summary_log([])
-        # summary.md and key_* outputs are disabled.
         _echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
         return
 
@@ -4403,7 +4308,6 @@ def cli(
 
     if not segments:
         _echo("[post] No segments found in summary; nothing to do.")
-        # summary.md and key_* outputs are disabled.
         _echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
         return
 
@@ -4419,7 +4323,6 @@ def cli(
     ]
     if not reactive:
         _echo("[post] No bond-change segments. Skipping TS/thermo/DFT.")
-        # summary.md and key_* outputs are disabled.
         _echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
         return
 
@@ -4558,13 +4461,13 @@ def cli(
                 irc_trj_for_all.append((irc_trj_path, reverse_irc))
 
             ref_struct_template = ref_pdb_for_seg or hei_model_path
-            pL_irc = _save_single_geom_as_pdb_for_tools(
+            _save_single_geom_as_pdb_for_tools(
                 gL, ref_struct_template, struct_dir, "reactant_irc"
             )
             pT = _save_single_geom_as_pdb_for_tools(
                 gT, ref_struct_template, struct_dir, "ts"
             )
-            pR_irc = _save_single_geom_as_pdb_for_tools(
+            _save_single_geom_as_pdb_for_tools(
                 gR, ref_struct_template, struct_dir, "product_irc"
             )
 
@@ -4574,7 +4477,7 @@ def cli(
             # Map IRC left/right Hessians → R/P endpoint
             # When reverse_irc is True, _irc_and_match swapped left/right to match GSM endpoints,
             # so "irc_left" (=forward) now corresponds to gR and "irc_right" (=backward) to gL.
-            from .hessian_cache import load as _hess_load, store as _hess_store, clear as _clear_hess_cache
+            from .hessian_cache import load as _hess_load, store as _hess_store
             _left_hk  = "irc_right" if reverse_irc else "irc_left"
             _right_hk = "irc_left"  if reverse_irc else "irc_right"
 
@@ -5142,7 +5045,6 @@ def cli(
             err=True,
         )
 
-    # summary.md and key_* outputs are disabled.
     _echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
 
 

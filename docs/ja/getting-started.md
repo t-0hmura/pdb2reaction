@@ -32,9 +32,9 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --ther
 - 量子化学計算に向けた**初期構造の作成**（反応物・TS・生成物のクラスターモデル）
 - 基質バリアントや酵素変異体にわたる**反応経路の大量計算**
 
-抽出を行わない全系ワークフロー（`--center/-c` と `--ligand-charge/-l` を省略）では `.xyz` / `.gjf` 入力も利用できます。小分子系にもそのまま適用可能です。
+本 CLI は最小限の手動設定で**多段階の酵素反応機構**を生成します。小分子系にもそのまま適用可能です。抽出を行わない全系ワークフロー（`--center/-c` と `--ligand-charge/-l` を省略）では `.xyz` / `.gjf` 入力も利用できます。
 
-**HPC クラスターやマルチ GPU 環境**では、UMA 推論をノード間で並列化することで、大規模なクラスターモデル（必要なら **完全なタンパク質–リガンド複合体**）にも対応できます。`workers` と `workers_per_node` で並列度を設定してください（詳細は [MLIP バックエンド](uma-pysis.md)）。`-b/--backend` により代替バックエンド（ORB、MACE、AIMNet2）を選択することもできます。
+**HPC クラスターやマルチ GPU 環境**では、UMA 推論をノード間で並列化することで、大規模なクラスターモデル（必要なら **完全なタンパク質–リガンド複合体**）にも対応できます。`workers` と `workers_per_node` で並列度を設定してください（詳細は [MLIP バックエンド](uma-pysis.md)）。
 
 ### パイプライン概要
 
@@ -111,8 +111,6 @@ PDB に水素原子がない場合は、pdb2reaction を実行する前に次の
 
 複数の PDB 入力で同一の原子順序を確保するには、すべての構造に同じ水素付与ツールを一貫した設定で適用してください。
 
----
-
 ## 推奨クイックスタート導線
 
 セットアップと依存関係の詳細は [インストール](installation.md) を参照してください。
@@ -120,8 +118,6 @@ PDB に水素原子がない場合は、pdb2reaction を実行する前に次の
 - [クイックスタート: `pdb2reaction all`](quickstart-all.md)
 - [クイックスタート: `pdb2reaction all --scan-lists/-s` で単一構造の段階的スキャン+MEP+TS](quickstart-scan.md)
 - [クイックスタート: `pdb2reaction tsopt`（TS 最適化と検証）](quickstart-tsopt-freq.md)
-
----
 
 ## コマンドの基本構成
 
@@ -144,8 +140,6 @@ pdb2reaction all [OPTIONS]...
 
 `--center/-c` を省略すると、クラスター抽出はスキップされ、**完全な入力構造**が直接使用されます。
 
----
-
 ## 主要なワークフロー
 
 | モード | 概要 | クイックスタート |
@@ -157,8 +151,6 @@ pdb2reaction all [OPTIONS]...
 ```{important}
 単一入力実行には **`--scan-lists/-s`**（段階的スキャン → GSM）**または** `--tsopt`（TSOPT のみ）のいずれかが必要です。これらのいずれも指定せずに単一の `-i` のみを渡しても、ワークフローは実行されません。
 ```
-
----
 
 ## 重要な CLI オプションと動作
 
@@ -176,8 +168,6 @@ pdb2reaction all [OPTIONS]...
 
 オプションの完全な一覧は [CLI 規約](cli-conventions.md) と [自動生成 CLI リファレンス](../reference/commands/index.md) を参照してください。
 
----
-
 ## サマリーファイル
 
 `pdb2reaction all` を実行すると、以下のサマリーファイルが出力されます。
@@ -194,13 +184,13 @@ pdb2reaction all [OPTIONS]...
 
 `path_search/`（`--refine-path False` 使用時は `path_opt/`）配下の各セグメントディレクトリにも `summary.log` と `summary.json` があり、個別のセグメントの精密化結果を確認できます。
 
----
-
 ## CLI サブコマンド
 
 ほとんどのユーザは `pdb2reaction all` を主に使います。CLI は個別サブコマンドも提供しており、各コマンドは `-h/--help` に対応しています（計算/スキャン/抽出/ユーティリティ系は `--help-advanced` で全オプションを表示）。サブコマンド一覧と各ドキュメントへのリンクは [ドキュメントトップ](index.md#サブコマンド) を参照してください。
 
----
+## エージェントスキル
+
+`pdb2reaction` は `.claude/skills/` に AI エージェント向けの指示書を同梱しており、CLI サブコマンド、構造 I/O（PDB / XYZ / GJF）、バックエンドインストール（UMA / Orb / MACE / AIMNet2 / DFT / xtb）、標準的なワークフロー、出力解析、HPC 運用をカバーしています。Claude Code や Cursor などのエージェントプラットフォームで使うには、`.claude/skills/` をプロジェクトリポジトリまたは `~/.claude/skills/` にコピーしてください。
 
 ## ヘルプ
 

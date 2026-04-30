@@ -53,7 +53,7 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
   module load cuda/<your-version>   # 例: cuda/12.6 または cuda/12.9
   ```
 
-> **ヒント:** UMA がデフォルトの MLIP バックエンドです。ORB や AIMNet2 を使用するには、対応する extra をインストール（例: `pip install "pdb2reaction[orb]"`）し、コマンドに `-b/--backend orb` を渡してください。[詳細なインストール手順](#ja-step-by-step-installation)の手順 7 を参照してください。
+> **ヒント:** UMA がデフォルトの MLIP バックエンドです。ORB や AIMNet2 を使用するには、対応する extra をインストール（例: `pip install "pdb2reaction[orb]"`）し、コマンドに `-b/--backend orb` を渡してください。下の手順 7 を参照。
 
 ```{warning}
 **MACE:** MACE は `e3nn==0.4.4` を必要としますが、`fairchem-core`（UMA）と競合します。正準の MACE 導入手順は `pip uninstall -y fairchem-core && pip install mace-torch` です。UMA と MACE は同一環境で共存できないため、両方必要な場合は別々の conda 環境を使ってください。（古いメモにある `--no-deps mace-torch` 方式は torch-scatter / e3nn が pin されないため推奨しません。）

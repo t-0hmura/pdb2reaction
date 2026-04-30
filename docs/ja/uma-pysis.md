@@ -143,7 +143,7 @@ UMA バックエンドを `workers > 1` で使用する場合、`hessian_calc_mo
 | `max_neigh`, `radius`, `r_edges` | 近傍構築のオプション上書き | `None`, `None`, `False` |
 | `freeze_atoms` | 1始まりの凍結原子インデックス | _None_ |
 | `hessian_calc_mode` | `"Analytical"` または `"FiniteDifference"` | `"FiniteDifference"` |
-| `return_partial_hessian` | アクティブ自由度のみ返す | `True` |
+| `return_partial_hessian` | アクティブ自由度のみ返す | `False` |
 | `hessian_double` | ヘシアンをfloat64で返す | `True` |
 | `out_hess_torch` | ヘシアンを `torch.Tensor` で返す | `True` |
 | `print_timing` | ヘシアン計算のタイミング内訳を表示 | `True` |
@@ -153,8 +153,6 @@ UMA バックエンドを `workers > 1` で使用する場合、`hessian_calc_mo
 | `xtb_cmd` | 溶媒補正で使用する xTB 実行コマンド | `"xtb"` |
 | `xtb_acc` | 溶媒補正実行時の xTB 精度設定 | `0.2` |
 
-
----
 
 ## 関連項目
 

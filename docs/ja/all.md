@@ -303,6 +303,7 @@ out_dir/ (デフォルト:./result_all/)
 ├─ summary.log                  # 結果要約
 ├─ summary.json                 # JSON 結果
 ├─ models/                      # 抽出実行時の活性部位モデル PDB
+│  └─ model_<input_stem>.pdb   #   -i 入力ごとに 1 つ
 ├─ scan/                        # 段階的スキャン結果（--scan-lists 提供時）
 ├─ seg_XX/                      # セグメント XX の TS 最適化・IRC 後の構造
 │  ├─ reactant.{pdb,xyz,gjf}   #   出力形式は入力形式と一致
@@ -313,9 +314,14 @@ out_dir/ (デフォルト:./result_all/)
 │     ├─ structures/            # IRC 端点の最適化済み R/TS/P 構造
 │     ├─ irc/                   # IRC 軌道とプロット
 │     ├─ ts/                    # TS 最適化出力と振動解析
-│     ├─ freq/                  # 振動数・熱化学（R, TS, P）
+│     ├─ freq/{R,TS,P}/         # 状態別 frequencies_cm-1.txt + thermoanalysis.yaml
 │     └─ dft/                   # DFT 一点計算結果（--dft 有効時）
 └─ tsopt_single/                # TSOPT のみ出力（IRC エンドポイント）
+   ├─ structures/               # R/TS/P の作業コピー（正規版は top-level seg_NN/ 配下）
+   ├─ ts/                       # TS 最適化出力と振動解析
+   ├─ irc/                      # IRC 軌道とプロット
+   ├─ freq/{R,TS,P}/            # 状態別 frequencies_cm-1.txt + thermoanalysis.yaml
+   └─ dft/                      # DFT 一点計算結果（--dft 有効時）
 ```
 
 ```{note}
@@ -405,8 +411,6 @@ dft:
 ```
 
 すべての YAML オプションの完全なリファレンスについては、**[YAML 設定リファレンス](yaml-reference.md)** を参照してください。
-
----
 
 ## 関連項目
 

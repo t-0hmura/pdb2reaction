@@ -1290,7 +1290,7 @@ def cli(
         for prepared in prepared_inputs:
             prepared.cleanup()
         # Release GPU memory so subsequent pipeline stages don't OOM
-            shared_calc = gs = geoms = None
+        shared_calc = gs = geoms = None
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()

@@ -9,8 +9,6 @@ Run the full `pdb2reaction all` workflow from a single structure by driving one 
 - Input structure: `.pdb`
 - Charge (`-q/--charge` or `--ligand-charge/-l`) and multiplicity (`-m`) for the target state
 
----
-
 ## Method A: `--scan-lists/-s` inline literal (default)
 
 `--scan-lists/-s` accepts Python-literal strings directly on the command line. For atom selector syntax (residue/atom tokens, separators, ordering) and outer/inner quoting rules, see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
@@ -45,8 +43,6 @@ pdb2reaction -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 -s \
 ```
 
 Stages run sequentially; each starts from the previous stage's relaxed result.
-
----
 
 ## Expected output
 

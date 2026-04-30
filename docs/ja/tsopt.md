@@ -11,11 +11,7 @@
 - **デフォルト:** `--opt-mode hess`（RS-I-RFO）、`--thresh baker`、`--hessian-calc-mode FiniteDifference`、`--max-cycles 10000`、`--flatten` 無効、バックエンド `uma`。
 - **次ステップ:** `tsopt` は最終 Hessian 計算と虚振動数チェックを内部で実行しますが、結果はなお *候補* です。[irc](irc.md) で端点の接続性を確認してください。完全な振動解析や熱化学補正が必要な場合のみ、別途 [freq](freq.md) を実行します。
 
-### `--opt-mode` の選び方
-- **`--opt-mode hess`（RS‑I‑RFO）**: デフォルト。多くの系で堅牢に収束する。
-- **`--opt-mode grad`（Dimer）**: RS-I-RFO で収束しない場合、または完全 Hessian の再計算が過大なコストになる大規模クラスタでの代替。初期 Hessian は使用するが、以後は完全 Hessian の再構築を避けてダイマー回転で更新する。
-
-> **命名規則の注意:** CLI は `grad|dimer`（= Dimer）および `hess|rsirfo`（= RS-I-RFO、デフォルト）を受け付けます。YAML ではトップレベルの `hessian_dimer:`（Dimer）または `rsirfo:`（RS-I-RFO）ブロックを直接指定してください。
+> **命名規則の注意:** CLI は `grad|dimer`（= Dimer）および `hess|rsirfo`（= RS-I-RFO、デフォルト）を受け付けます。YAML ではトップレベルの `hessian_dimer:`（Dimer）または `rsirfo:`（RS-I-RFO）ブロックを直接指定してください。`--opt-mode grad`（Dimer）は初期 Hessian のみを使用し、以後は完全 Hessian の再構築を避けてダイマー回転で更新します。
 
 XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定し、XYZ 座標を保持したまま PDB/GJF への変換が可能です。TS 初期構造が必要な場合は、2 端点なら [path-opt](path-opt.md)、2 構造以上なら [path-search](path-search.md) で HEI を取得してから `tsopt`（内部で虚振動数チェック済み）→ `irc` の順で検証してください。
 
@@ -216,7 +212,7 @@ hessian_dimer:
 rsirfo:
  trust_max: 0.10 # 最大信頼半径 (bohr); v0.3.5 で 0.20 から 0.10 に変更（大規模系での鞍点近傍振動の抑制）
  out_dir: ./result_tsopt/ # tsopt の上書き（defaults.py の値は ./result_opt/）
- hessian_recalc: 500 # N マクロステップごとに exact Hessian を再計算; TS 収束が遅い場合は 50-200 に下げてください（下の Tip 参照）
+ hessian_recalc: 500 # N マクロステップごとに exact Hessian を再計算
 ```
 
 ```{tip}
@@ -226,8 +222,6 @@ rsirfo:
 ```{tip}
 TS 収束が遅い場合や最適化中に TS モードが失われる場合は、`rsirfo` セクションの `hessian_recalc` を小さくしてみてください（例: 50--200）。正確なヘシアン再計算の頻度を上げることで、追加のヘシアン評価コストと引き換えに堅牢性が向上します。
 ```
-
----
 
 ## 関連項目
 

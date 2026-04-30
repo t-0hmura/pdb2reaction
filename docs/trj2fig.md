@@ -83,8 +83,6 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 - `--reverse-x` flips both the axis direction and the behavior of `-r init` so
   that the initial frame appears on the right side of the plot.
 
----
-
 ## See Also
 
 - [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing

@@ -41,6 +41,7 @@ class AIMNet2Calculator(MLIPCalculator):
         return_partial_hessian: bool = False,
         hessian_double: bool = True,
         print_timing: bool = True,
+        out_hess_torch: bool = False,
         **kwargs,
     ):
         try:
@@ -60,6 +61,7 @@ class AIMNet2Calculator(MLIPCalculator):
             return_partial_hessian=return_partial_hessian,
             hessian_double=hessian_double,
             print_timing=print_timing,
+            out_hess_torch=out_hess_torch,
             **kwargs,
         )
 

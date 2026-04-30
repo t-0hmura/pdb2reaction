@@ -72,18 +72,6 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
  [--show-config/--no-show-config] [--dry-run/--no-dry-run]
 ```
 
-### Examples
-- **Active site model-only** MEP between two endpoints:
-  ```bash
-  pdb2reaction path-search -i reactant.pdb product.pdb -q 0
-  ```
-- **Multistep** search with YAML overrides and merged full-system output:
-  ```bash
-  pdb2reaction path-search \
-  -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 \
-  --ref-full-pdb holo_template.pdb --out-dir ./run_ps
-  ```
-
 ## CLI options
 | Option | Description | Default |
 | --- | --- | --- |
@@ -134,13 +122,21 @@ Bond-change detection relies on `bond_changes.compare_structures` with threshold
 out_dir/ (default:./result_path_search/)
 ├─ mep_trj.xyz # Primary MEP trajectory
 ├─ mep.pdb # PDB companion when inputs were PDB templates and conversion is enabled
+├─ mep.gjf # Gaussian companion when a Gaussian template is detected
 ├─ mep_w_ref.pdb # Merged full-system MEP (requires ref PDB/template)
+├─ mep_seg_XX_trj.xyz # Per-segment MEP trajectory (XYZ)
+├─ mep_seg_XX.pdb # Per-segment PDB companion (when conversion is enabled)
+├─ mep_seg_XX.gjf # Per-segment Gaussian companion (when a template is detected)
 ├─ mep_w_ref_seg_XX.pdb # Merged per-segment paths when covalent changes exist (requires ref PDB)
+├─ hei_seg_XX.xyz # Per-segment highest-energy image
+├─ hei_seg_XX.pdb # HEI PDB companion (when conversion is enabled)
+├─ hei_seg_XX.gjf # HEI Gaussian companion (when a template is detected)
+├─ hei_w_ref_seg_XX.pdb # Merged HEI in full-system context (requires ref PDB)
 ├─ summary.json # Barrier and classification summary for every recursive segment
 ├─ summary.log # Text summary
 ├─ mep_plot.png # ΔE profile generated via `trj2fig` (kcal/mol, reactant reference)
 ├─ energy_diagram_MEP.png # Static export of the MEP state-energy diagram (relative to reactant)
-└─ seg_000_*/ # GSM/DMF dumps, HEI snapshots, kink/refinement diagnostics per segment
+└─ seg_NNN_*/ # GSM/DMF dumps, HEI snapshots, kink/refinement diagnostics per segment
 ```
 - Console reports covering resolved configuration blocks (`geom`, `calc`, `gs`, `stopt`, `opt.*`, `bond`, `search`).
 
@@ -159,18 +155,11 @@ The YAML root must be a mapping. Shared sections reuse [YAML Reference](yaml-ref
 **Reference duplication.** The YAML keys for `geom`, `calc`, `gs`, `dmf`, `stopt`, `opt.lbfgs`, and `opt.rfo` listed below mirror the canonical definitions in [YAML Reference](yaml-reference.md). When the two pages disagree, the canonical [YAML Reference](yaml-reference.md) entries (and `pdb2reaction/defaults.py`) take precedence; the appendix on this page is reproduced inline only for `path-search`-specific defaults (e.g. `out_dir: ./result_path_search/`).
 ```
 
-`gs` (Growing String) inherits defaults from `pdb2reaction.path_opt.GS_KW` with overrides for `max_nodes` (internal nodes per segment), climb behavior (`climb`, `climb_rms`, `climb_fixed`), and reparameterization cadence (`reparam_every_full`, `reparam_check`).
-
-`opt` houses the single-structure optimizers used for HEI±1 and kink nodes, split into `lbfgs` and `rfo` subsections. Each subsection mirrors [YAML Reference](yaml-reference.md) but defaults to `out_dir: ./result_path_search/` and `dump: False`.
+`bond` and `search` are central to the recursion logic and shown below; `gs`, `dmf`, `stopt`, `opt.lbfgs`, and `opt.rfo` are reproduced only for the `path-search`-specific `out_dir` overrides.
 
 `bond` carries the MLIP-based bond-change detection parameters shared with {ref}`scan <section-bond>`: `device`, `bond_factor`, `margin_fraction`, and `delta_fraction`.
 
-
-`dmf` bundles Direct Max Flux + (C)FB-ENM controls applied whenever `--mep-mode dmf` is selected. The defaults mirror the shared `DMF_KW` dictionary and can be overridden per run:
-
 ### `path-search`-specific overrides
-
-For full key listings of `geom`, `calc`, `gs`, `dmf`, `stopt`, `opt.lbfgs`, and `opt.rfo`, see [YAML Reference](yaml-reference.md). The defaults below differ from the canonical entries only in `out_dir`, which points to `./result_path_search/` instead of the per-section default:
 
 ```yaml
 stopt:
@@ -200,8 +189,6 @@ search:
  max_seq_kink: 2 # max sequential kinks
  refine_mode: null # optional refinement strategy (auto-chooses when null)
 ```
-
----
 
 ## See Also
 

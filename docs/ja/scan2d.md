@@ -22,14 +22,8 @@ pdb2reaction scan2d -i input.pdb -q 0 -s scan2d.yaml -o ./result_scan2d/
 
 ## 出力の見方
 - `result_scan2d/surface.csv`
-- `result_scan2d/grid/point_i000_j000.xyz`
+- `result_scan2d/grid/point_iDDD_jDDD.xyz` (`DDD = round(d × 100)` Å。例: `d1=1.30 Å, d2=3.10 Å` → `point_i130_j310.xyz`)
 - `result_scan2d/scan2d_map.png` と `result_scan2d/scan2d_landscape.html`
-
-## よくある例
-
-1. **YAML spec から実行する** — 下記の[例](#例)を参照。
-2. **インラインリテラルを使う** — 下記の[例](#例)を参照。
-3. **`--dump` を有効にして d1 ごとの内側軌跡を保存する** — 下記の[例](#例)を参照。
 
 > **Note:** `-s/--scan-lists` の解釈結果を確認したい場合は `--print-parsed` を追加してください。
 
@@ -71,10 +65,10 @@ YAML/JSON ファイル書式、インライン Python リテラル構文、原�
 {ref}`CLI 規約: スキャンリスト仕様 <ja-scan-list-spec>` を参照してください。
 
 ## ワークフロー
-1. `geom_loader` で入力構造をロードし、電荷とスピンを解決します。`--preopt` の場合は無バイアスの事前最適化を実行します。`-q` が省略され `--ligand-charge` がある場合、構造は酵素--基質複合体として扱われ、PDB 入力（または `--ref-pdb` 付き XYZ/GJF）では `extract.py` の電荷サマリーから総電荷を導出します。事前最適化構造は `grid/preopt_i###_j###.*` に保存され、`surface.csv` には `i = j = -1` のエントリとしてバイアスなしエネルギーが記録されます。
+1. `geom_loader` で入力構造をロードし、電荷とスピンを解決します。`--preopt` の場合は無バイアスの事前最適化を実行します。`-q` が省略され `--ligand-charge` がある場合、構造は酵素--基質複合体として扱われ、PDB 入力（または `--ref-pdb` 付き XYZ/GJF）では `extract.py` の電荷サマリーから総電荷を導出します。事前最適化構造は `grid/preopt_iDDD_jDDD.*`（`DDD = round(d × 100)` Å）に保存され、`surface.csv` には `i = j = -1` のエントリとしてバイアスなしエネルギーが記録されます。
 2. `-s/--scan-lists`（YAML/JSON ファイルパスまたはインライン Python リテラル）を 2 つの四つ組に解析し、インデックスを正規化します（デフォルトは 1 始まり）。PDB 入力では、各エントリに整数インデックスまたは `'TYR,285,CA'` のようなセレクタ文字列を指定できます。区切りは空白・カンマ・スラッシュ・バッククォート・バックスラッシュのいずれも可で、トークン順序は任意です（フォールバックは resname, resseq, atom を想定）。線形グリッドは `ceil(|high − low| / h) + 1` 点（両端を含む）で構成します（`h = --max-step-size`）。長さ 0 の範囲は 1 点に縮退します。その後、各軸は事前最適化構造に最も近い距離が `i = 0` / `j = 0` になるよう並べ替えられます。
 3. 外側ループで `d1[i]`（近い順）を走査します。各値で **d₁ 拘束のみ**を適用して緩和し、その構造をスナップショットとして保存します。次に内側ループで `d2[j]` を走査し、**d₁ と d₂ の両拘束**を適用して、最も近い既収束構造から緩和を開始します。
-4. 各 `(i, j)` について、`<out-dir>/grid/point_i###_j###.xyz` に構造を保存し、バイアス収束の可否を記録し、バイアスを除去した UMA エネルギーを評価します。`--dump` の場合、外側ループごとの内側軌跡が `inner_path_d1_###_trj.xyz` として保存されます。
+4. 各 `(i, j)` について、`<out-dir>/grid/point_iDDD_jDDD.xyz`（`DDD = round(d × 100)` Å。例 `d1=1.30 Å, d2=3.10 Å` → `point_i130_j310.xyz`）に構造を保存し、バイアス収束の可否を記録し、バイアスを除去した UMA エネルギーを評価します。`--dump` の場合、外側ループごとの内側軌跡が `inner_path_d1_###_trj.xyz`（`###` は外側ステップ index）として保存されます。
 5. すべての点を走査したら、`<out-dir>/surface.csv` を作成します。`--baseline {min|first}` で kcal/mol の基準を設定します。`--baseline first` では基準点が `(low₁, low₂)` ではなく再並べ替え後の最初の格子点（`i = j = 0`）になります。`scan2d_map.png`（2D コンター）と `scan2d_landscape.html`（3D サーフェス）を `<out-dir>/` に生成します。`--zmin/--zmax` でカラースケールを固定できます。
 
 ## CLI オプション
@@ -120,13 +114,13 @@ out_dir/ (デフォルト:./result_scan2d/)
 ├─ surface.csv # 構造化グリッド表
 ├─ scan2d_map.png # 2D コンター（Kaleido 必須; PNG 出力に失敗すると実行が停止）
 ├─ scan2d_landscape.html # 3D サーフェス可視化
-├─ grid/point_i###_j###.xyz # 各 (i, j) の緩和構造
-├─ grid/point_i###_j###.pdb # 変換有効時の PDB コンパニオン
-├─ grid/point_i###_j###.gjf # テンプレートがある場合の Gaussian コンパニオン
-├─ grid/preopt_i###_j###.xyz # 事前最適化構造（--preopt が True の場合）
-├─ grid/preopt_i###_j###.pdb # 変換有効時の PDB コンパニオン
-├─ grid/preopt_i###_j###.gjf # テンプレートがある場合の Gaussian コンパニオン
-└─ grid/inner_path_d1_###_trj.xyz # --dump の場合のみ（PDB 入力時は.pdb にも変換）
+├─ grid/point_iDDD_jDDD.xyz # DDD = round(d × 100) Å (例: d1=1.30 Å, d2=3.10 Å → point_i130_j310.xyz)
+├─ grid/point_iDDD_jDDD.pdb # 変換有効時の PDB コンパニオン
+├─ grid/point_iDDD_jDDD.gjf # テンプレートがある場合の Gaussian コンパニオン
+├─ grid/preopt_iDDD_jDDD.xyz # 事前最適化構造（--preopt が True の場合）、DDD = round(d × 100)
+├─ grid/preopt_iDDD_jDDD.pdb # 変換有効時の PDB コンパニオン
+├─ grid/preopt_iDDD_jDDD.gjf # テンプレートがある場合の Gaussian コンパニオン
+└─ grid/inner_path_d1_###_trj.xyz # --dump の場合のみ（### は外側ステップ index、PDB 入力時は.pdb にも変換）
 ```
 
 ## 注意事項

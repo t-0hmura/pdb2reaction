@@ -34,7 +34,7 @@ Calculations use machine-learning interatomic potentials (MLIPs). The default ba
 
 The CLI generates **multi-step enzymatic reaction mechanisms** with minimal manual setup. The same workflow also works for small-molecule systems. When you skip active site model extraction (omit `--center/-c` and `--ligand-charge/-l`), you can also use `.xyz` or `.gjf` inputs.
 
-On **HPC clusters or multi-GPU workstations**, `pdb2reaction` can scale to large cluster models (and optionally **full protein–ligand complexes**) by parallelizing UMA inference across nodes. Set `workers` and `workers_per_node` to enable multi-worker inference; see [MLIP Calculator](uma-pysis.md) for configuration details. Alternative backends (ORB, MACE, AIMNet2) can be selected with `-b/--backend`.
+On **HPC clusters or multi-GPU workstations**, `pdb2reaction` can scale to large cluster models (and optionally **full protein–ligand complexes**) by parallelizing UMA inference across nodes. Set `workers` and `workers_per_node` to enable multi-worker inference; see [MLIP Calculator](uma-pysis.md) for configuration details.
 
 ### Pipeline overview
 
@@ -111,8 +111,6 @@ If your PDB lacks hydrogen atoms, use one of the following tools before running 
 
 To ensure identical atom ordering across multiple PDB inputs, apply the same hydrogen-addition tool with consistent settings to all structures.
 
----
-
 ## Quickstart routes (recommended)
 
 For setup and dependency installation, see [Installation](installation.md).
@@ -120,8 +118,6 @@ For setup and dependency installation, see [Installation](installation.md).
 - [Quickstart: run `pdb2reaction all`](quickstart-all.md)
 - [Quickstart: single-structure staged scan + MEP + TS with `pdb2reaction all --scan-lists/-s`](quickstart-scan.md)
 - [Quickstart: TS optimization and validation with `pdb2reaction tsopt`](quickstart-tsopt-freq.md)
-
----
 
 ## Command line basics
 
@@ -144,8 +140,6 @@ All high-level workflows share two important options when you use cluster extrac
 
 If you omit `--center/-c`, cluster extraction is skipped and the **full input structure** is used directly.
 
----
-
 ## Main workflow modes
 
 | Mode | Description | Quickstart |
@@ -157,8 +151,6 @@ If you omit `--center/-c`, cluster extraction is skipped and the **full input st
 ```{important}
 Single-input runs require **either** `--scan-lists/-s` (staged scan → GSM) **or** `--tsopt` (TSOPT-only). Supplying only a single `-i` without one of these will not trigger a full workflow.
 ```
-
----
 
 ## Important CLI options and behaviors
 
@@ -176,8 +168,6 @@ Below are the most commonly used options across workflows.
 
 For the complete option matrix, see [CLI Conventions](cli-conventions.md) and the [generated CLI reference](reference/commands/index.md).
 
----
-
 ## Run summaries
 
 Every `pdb2reaction all` run writes:
@@ -194,13 +184,9 @@ They typically contain:
 
 Each segment directory under `path_search/` (or `path_opt/` when `--refine-path False` is used) also gets its own `summary.log` and `summary.json`, so you can inspect local refinements independently.
 
----
-
 ## CLI commands
 
 Most users will primarily call `pdb2reaction all`. The CLI also exposes individual subcommands; each supports `-h/--help` and (for the calculation/scan/extract/utility commands) `--help-advanced` for the full list. For the subcommand index with per-command documentation links, see the [documentation home](index.md#subcommands).
-
----
 
 ## Agent Skills
 
@@ -210,8 +196,6 @@ installation (UMA / Orb / MACE / AIMNet2 / DFT / xtb), canonical
 workflows, output parsing, and HPC operation. Copy `.claude/skills/`
 into your project repository or `~/.claude/skills/` for agent platforms
 like Claude Code or Cursor.
-
----
 
 ## Getting help
 

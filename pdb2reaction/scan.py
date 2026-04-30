@@ -28,7 +28,6 @@ from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
 from pysisyphus.constants import BOHR2ANG, ANG2BOHR
 
 from .defaults import (
-    CALC_KW_DEFAULT,
     GEOM_KW_DEFAULT,
     OPT_BASE_KW,
     LBFGS_KW,

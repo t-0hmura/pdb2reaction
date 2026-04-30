@@ -22,14 +22,8 @@ pdb2reaction scan2d -i input.pdb -q 0 -s scan2d.yaml -o ./result_scan2d/
 
 ## Output checklist
 - `result_scan2d/surface.csv`
-- `result_scan2d/grid/point_i000_j000.xyz`
+- `result_scan2d/grid/point_iDDD_jDDD.xyz` (`DDD = round(d × 100)` in Å — e.g. `d1=1.30 Å, d2=3.10 Å` → `point_i130_j310.xyz`)
 - `result_scan2d/scan2d_map.png` and `result_scan2d/scan2d_landscape.html`
-
-## Common examples
-
-1. **Run from a YAML spec file** -- see [Examples](#examples) below.
-2. **Run with an inline literal** -- see [Examples](#examples) below.
-3. **Enable `--dump`** to store inner trajectories by d1 step — see [Examples](#examples) below.
 
 > **Note:** Add `--print-parsed` when you want to verify parsed pair targets from `--scan-lists/-s`.
 
@@ -92,9 +86,11 @@ see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
     run the inner loop over `d2[j]` with **both restraints** applied starting from
     the nearest previously converged structure.
 4. At each `(i, j)` pair, store the biased-optimization result under
-    `<out-dir>/grid/point_i###_j###.xyz`, record whether the bias converged, and
-    evaluate the MLIP energy without bias. Optional per-outer-step inner
-    trajectories are saved as `inner_path_d1_###_trj.xyz` when `--dump`.
+    `<out-dir>/grid/point_iDDD_jDDD.xyz` where `DDD = round(d × 100)` in Å
+    (e.g. `d1=1.30 Å, d2=3.10 Å` → `point_i130_j310.xyz`), record whether the
+    bias converged, and evaluate the MLIP energy without bias. Optional
+    per-outer-step inner trajectories are saved as `inner_path_d1_###_trj.xyz`
+    when `--dump` (`###` is the outer step index).
 5. After all points are visited, write `<out-dir>/surface.csv` with columns
     `i,j,d1_A,d2_A,energy_hartree,bias_converged,energy_kcal,d1_label,d2_label`, shifting the kcal
     reference via `--baseline {min|first}`. With `--baseline first`, the reference
@@ -148,13 +144,13 @@ out_dir/ (default:./result_scan2d/)
 ├─ surface.csv # Structured grid table
 ├─ scan2d_map.png # 2D contour (requires Kaleido; the run stops if PNG export fails)
 ├─ scan2d_landscape.html # 3D surface visualization
-├─ grid/point_i###_j###.xyz # Relaxed geometries for every (i, j) pair
-├─ grid/point_i###_j###.pdb # PDB companions when conversion is enabled and templates exist
-├─ grid/point_i###_j###.gjf # Gaussian companions when templates exist and conversion is enabled
-├─ grid/preopt_i###_j###.xyz # Starting structure (present when --preopt is True)
-├─ grid/preopt_i###_j###.pdb # PDB companion when conversion is enabled
-├─ grid/preopt_i###_j###.gjf # Gaussian companion when templates exist and conversion is enabled
-└─ grid/inner_path_d1_###_trj.xyz # Present only when --dump is True (mirrored to .pdb for PDB inputs with conversion)
+├─ grid/point_iDDD_jDDD.xyz # DDD = round(d × 100) in Å (e.g. d1=1.30 Å, d2=3.10 Å -> point_i130_j310.xyz)
+├─ grid/point_iDDD_jDDD.pdb # PDB companions when conversion is enabled and templates exist
+├─ grid/point_iDDD_jDDD.gjf # Gaussian companions when templates exist and conversion is enabled
+├─ grid/preopt_iDDD_jDDD.xyz # Starting structure (present when --preopt is True), DDD = round(d × 100)
+├─ grid/preopt_iDDD_jDDD.pdb # PDB companion when conversion is enabled
+├─ grid/preopt_iDDD_jDDD.gjf # Gaussian companion when templates exist and conversion is enabled
+└─ grid/inner_path_d1_###_trj.xyz # Present only when --dump is True (### = outer step index; mirrored to .pdb for PDB inputs with conversion)
 ```
 
 ## Notes

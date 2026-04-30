@@ -7,7 +7,7 @@
 ### At a glance
 - **Use when:** A single structure needs specific distances driven to explore a plausible path (often before `path-search`/`path-opt`). Input is one structure + `-s/--scan-lists scan.yaml` (recommended), or one or more `--scan-lists/-s` inline literals (each literal = one stage). YAML/JSON file paths avoid shell-quoting pitfalls and version better; inline literals are fine for simple single-stage scans.
 - **Method:** MLIP backend (UMA by default; selectable via `-b/--backend`) with harmonic restraints `E = Σ ½ k (|ri − rj| − target)²` and LBFGS (`--opt-mode grad`) or RFOptimizer (`--opt-mode hess`) per step.
-- **Outputs:** Per-stage `result.xyz` (+ optional `.pdb`/`.gjf`), and concatenated scan trajectories (`scan_trj.xyz`/`scan.pdb`). Per-step optimizer trajectory files are not currently written from the CLI; the `--dump` flag is reserved (the optimizer-level dump can be enabled via `opt.dump` in YAML).
+- **Outputs:** Per-stage `result.xyz` (+ optional `.pdb`/`.gjf`), and concatenated scan trajectories. See "Notes" for the `--dump` caveat.
 - **Defaults:** `--opt-mode grad` (LBFGS), `--no-preopt`, `--no-endopt`, `--max-step-size 0.20 Å`, `--bias-k 300 eV·Å⁻²`, `--thresh gau`, `--out-dir ./result_scan/`.
 - **Next step:** Feed the staged endpoints (`stage_XX/result.pdb`) to `path-search`/`path-opt` for MEP refinement, or use `pdb2reaction all -s ...` to chain scan → MEP → TSOPT/IRC/freq/DFT in one command.
 
@@ -26,7 +26,7 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
 
 - `result_scan/stage_01/result.pdb` (or `result.xyz`)
 - `result_scan/stage_02/result.pdb` (or `result.xyz`)
-- `result_scan/stage_*/scan_trj.xyz` and `scan.pdb` (always written; per-step optimizer trajectory files are not currently emitted from the CLI — set `opt.dump: true` in YAML to enable the optimizer-level dump)
+- `result_scan/stage_*/scan_trj.xyz` (always written; `scan.pdb` companion when input is PDB and conversion is enabled)
 
 ## Common examples
 
@@ -344,8 +344,6 @@ bond:
  margin_fraction: 0.05 # tolerance margin for comparisons
  delta_fraction: 0.05 # minimum relative change to flag bonds
 ```
-
----
 
 ## See Also
 

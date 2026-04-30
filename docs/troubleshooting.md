@@ -1,15 +1,12 @@
 # Troubleshooting
 
-This page collects common failure modes and practical fixes. It is written to be copy-and-paste friendly: search this page for the error message you see.
+This page collects common failure modes and practical fixes.
 If you want a symptom-first entrypoint, start with [Common Error Recipes](recipes-common-errors.md) and then return here for details.
-
----
 
 ## Preflight checklist
 
 Before a long run, verify:
 
-- You can run `pdb2reaction -h` and see the CLI help.
 - UMA can be downloaded (Hugging Face login/token is available on the machine).
 - For enzyme workflows: your input PDB(s) contain **hydrogens** and **element symbols**.
 - When you provide multiple PDBs: they have the **same atoms in the same order** (only coordinates differ).
@@ -189,7 +186,7 @@ Why it happens:
 - MLIP gradient/force evaluations carry a small stochastic noise floor (typically ~4×10⁻⁴ au for UMA-class models). This noise floor can exceed the force-based convergence criterion (`baker` = 3×10⁻⁴ au), so the force threshold can never be satisfied even though the geometry has already converged.
 
 Fixes to try:
-- The **energy plateau fallback** (new in v0.3.5) should handle this automatically: `opt.energy_plateau: true` declares convergence when the energy range over the last `opt.energy_plateau_window` (default 50) steps falls below `opt.energy_plateau_thresh` (default `1×10⁻⁴ au ≈ 0.06 kcal/mol`). No user action is required in most cases.
+- The **energy plateau fallback** should handle this automatically: `opt.energy_plateau: true` declares convergence when the energy range over the last `opt.energy_plateau_window` (default 50) steps falls below `opt.energy_plateau_thresh` (default `1×10⁻⁴ au ≈ 0.06 kcal/mol`). No user action is required in most cases.
 - If you need to override the automatic fallback, loosen the force threshold manually: `--thresh gau` (the default for `opt`) or `--thresh gau_loose`.
 - You can also tune `opt.energy_plateau_thresh` / `opt.energy_plateau_window` from YAML, or disable the fallback with `opt.energy_plateau: false`.
 - Note: the plateau fallback is **skipped for chain-of-states optimizers** (`path-opt`, `path-search` string/GSM/DMF stages) because they store per-image energies rather than a single scalar energy trace.
@@ -236,16 +233,12 @@ Fixes to try:
 - Try the alternative MEP method: `--mep-mode dmf` (if GSM fails) or vice versa.
 - Adjust bond detection parameters in YAML (`bond.bond_factor`, `bond.delta_fraction`).
 
----
-
 ## Performance / stability tips
 
 - **Out of memory (VRAM)**: reduce active site model size (`--radius`), reduce nodes (`--max-nodes`), or use lighter optimizer settings (`--opt-mode grad`).
 - **Analytical Hessian is slow or causes OOM**: keep the default `FiniteDifference` mode. Only use `--hessian-calc-mode Analytical` if you have ample VRAM (16 GB+ recommended for 500+ atom systems).
 - **Workers > 1**: improves UMA throughput on HPC, but disables the analytical Hessian evaluation.
 - **Large systems (1000+ atoms)**: consider extracting a smaller active site model (`--radius 2.5`) or running on multi-GPU setups.
-
----
 
 ## Choosing a backend
 

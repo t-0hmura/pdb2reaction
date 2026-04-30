@@ -91,8 +91,6 @@ if changed:
     print(summary)
 ```
 
----
-
 ## 関連項目
 
 - [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け

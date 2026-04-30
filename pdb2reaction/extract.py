@@ -1768,7 +1768,7 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
 
     n_linkh = len(ref_targets) if args.add_linkh and ref_targets else 0
 
-    if api==True:
+    if api:
         return {
             "outputs": outputs,
             "counts": model_counts,

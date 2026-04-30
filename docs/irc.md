@@ -11,9 +11,7 @@
 - **Defaults:** `--max-cycles 125`, `--step-size 0.10` Bohr, `--root 0`, `--forward`/`--backward` both on, `--hessian-calc-mode FiniteDifference`, backend `uma`. **Hard overrides:** IRC forces `geom.coord_type = cart` and `calc.return_partial_hessian = true` after YAML/CLI merging.
 - **Next step:** Optimize IRC endpoints to true minima with [opt](opt.md), or pair with [freq](freq.md) for thermochemistry. For Hessian evaluation modes, see {ref}`hessian-evaluation`.
 
-`pdb2reaction irc` runs EulerPC-based IRC integrations with an MLIP backend (UMA by default; `-b/--backend` also supports ORB, MACE, and AIMNet2).
-
-For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB output conversion. A typical workflow is `tsopt` (which includes an imaginary-frequency check; confirm **one** imaginary frequency) → `irc`.
+For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB output conversion. A typical workflow is `tsopt` → `irc`.
 
 ## Minimal example
 
@@ -75,7 +73,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 ```
 
 ## Workflow
-1. **Input preparation** – Any format supported by `geom_loader` is accepted. When a reference PDB is available (input is `.pdb` or `--ref-pdb` is supplied), EulerPC trajectories are converted to PDB using that topology, and `--freeze-links` augments `geom.freeze_atoms` by freezing parents of link hydrogens for PDB inputs. Note: `geom.coord_type` is forced to `cart` (Cartesian) regardless of YAML/CLI settings, and `calc.return_partial_hessian` is forced to `true` (partial Hessian with active-DOF processing).
+1. **Input preparation** – Any format supported by `geom_loader` is accepted. When a reference PDB is available (input is `.pdb` or `--ref-pdb` is supplied), EulerPC trajectories are converted to PDB using that topology, and `--freeze-links` augments `geom.freeze_atoms` by freezing parents of link hydrogens for PDB inputs.
 2. **EulerPC integration** – The EulerPC predictor-corrector integrator traces the IRC path from the transition state. Forward and/or backward branches are run according to `--forward`/`--backward` flags. Each step uses an energy-based predictor followed by a corrector step.
 3. **Trajectory output** – Finished, forward, and backward IRC trajectories are written as XYZ files. When a reference PDB is available, PDB companions are also generated (`--convert-files`).
 
@@ -125,7 +123,6 @@ See {ref}`exit-codes` in CLI Conventions.
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - The MLIP backend (UMA by default) is reused throughout the IRC; aggressive `step_length` values can destabilize EulerPC.
-- For Hessian evaluation modes, see {ref}`hessian-evaluation`.
 - When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see {ref}`Link hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
 
 See {ref}`CLI Conventions: Configuration precedence <configuration-precedence>` for the full resolution order.
@@ -141,14 +138,12 @@ calc:
  return_partial_hessian: true # forced true for irc (partial Hessian with active-DOF processing)
 ```
 
----
-
 ## See Also
 
 - [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
 
 - [tsopt](tsopt.md) — Optimize the TS before running IRC
-- [freq](freq.md) — Full vibrational analysis and thermochemistry (imaginary-frequency check is already included in `tsopt`)
+- [freq](freq.md) — Full vibrational analysis and thermochemistry
 - [opt](opt.md) — Optimize IRC endpoints to true minima
 - [all](all.md) — End-to-end workflow that runs IRC after tsopt
 - [YAML Reference](yaml-reference.md) — Full `irc` configuration options

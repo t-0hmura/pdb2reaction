@@ -70,8 +70,6 @@ ja/index
 ```
 
 
----
-
 ## Start here
 
 | Goal | Workflow |
@@ -82,8 +80,6 @@ ja/index
 | **Run failure / error** | [Common Error Recipes](recipes-common-errors.md) |
 
 Refer to [Installation](installation.md) for prerequisites.
-
----
 
 ## Subcommands
 
@@ -107,13 +103,10 @@ Refer to [Installation](installation.md) for prerequisites.
 | [`energy-diagram`](energy-diagram.md) | Draw an energy diagram from numeric values |
 | [`bond-summary`](bond-summary.md) | Detect and report covalent bond changes between consecutive structures |
 
----
-
 ## Configuration & Reference
 
 | Topic | Page |
 |-------|------|
-| **Getting Started** | [Getting Started](getting-started.md) |
 | **CLI conventions & input requirements** | [CLI Conventions](cli-conventions.md) |
 | **Cluster boundary atoms (link hydrogens, `--freeze-atoms`)** | [Frozen Atoms](freeze-atoms.md) |
 | **Common errors & fixes** | [Troubleshooting](troubleshooting.md) |
@@ -121,8 +114,6 @@ Refer to [Installation](installation.md) for prerequisites.
 | **YAML configuration options** | [YAML Reference](yaml-reference.md) |
 | **MLIP backend settings** | [MLIP Calculator](uma-pysis.md) |
 | **Terminology** | [Glossary](glossary.md) |
-
----
 
 ## System Requirements
 
@@ -139,13 +130,9 @@ Refer to [Installation](installation.md) for prerequisites.
 
 For setup, see [Installation](installation.md).
 
----
-
 ## Agent Skills
 
 `pdb2reaction` ships AI-agent instructions under `.claude/skills/` covering CLI subcommands, structure I/O, backend installation, workflows, output parsing, and HPC operation. See [`.claude/skills/README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/.claude/skills/README.md) for the full skill index and installation instructions.
-
----
 
 ## Citation
 
@@ -167,8 +154,6 @@ A preprint describing `pdb2reaction` is in preparation. Currently, if you find t
 ## License
 
 `pdb2reaction` is distributed under the **GNU General Public License version 3 (GPL-3.0)**.
-
----
 
 ## Getting Help
 

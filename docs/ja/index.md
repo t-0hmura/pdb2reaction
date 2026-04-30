@@ -60,8 +60,6 @@ hpc-example
 glossary
 ```
 
----
-
 ## ここから始める
 
 | 目的 | ワークフロー |
@@ -72,8 +70,6 @@ glossary
 | **実行失敗 / エラー** | [典型エラー別レシピ](recipes-common-errors.md) |
 
 前提条件は [Installation](installation.md) を参照してください。
-
----
 
 ## サブコマンド
 
@@ -97,13 +93,10 @@ glossary
 | [`energy-diagram`](energy-diagram.md) | 数値入力からエネルギーダイアグラムを作成 |
 | [`bond-summary`](bond-summary.md) | 連続構造間の共有結合変化を検出・レポート |
 
----
-
 ## 設定・リファレンス
 
 | トピック | ページ |
 |-------|------|
-| **はじめに** | [はじめに](getting-started.md) |
 | **CLI 規約と入力要件** | [CLI 規約](cli-conventions.md) |
 | **クラスター境界の凍結原子（リンク水素・`--freeze-atoms`）** | [凍結原子](freeze-atoms.md) |
 | **よくあるエラーと対処** | [トラブルシューティング](troubleshooting.md) |
@@ -111,8 +104,6 @@ glossary
 | **YAML 設定オプション** | [YAML リファレンス](yaml-reference.md) |
 | **MLIP バックエンド設定** | [MLIP 計算機](uma-pysis.md) |
 | **用語** | [用語集](glossary.md) |
-
----
 
 ## システム要件
 
@@ -129,13 +120,9 @@ glossary
 
 セットアップは [インストール](installation.md) を参照してください。
 
----
-
 ## エージェントスキル
 
 `pdb2reaction` は、CLI サブコマンド・構造 I/O・バックエンドインストール・ワークフロー・出力解析・HPC 運用をカバーする AI エージェント向け命令を `.claude/skills/` に同梱しています。完全なスキル索引とインストール手順は [`.claude/skills/README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/.claude/skills/README.md) を参照してください。
-
----
 
 ## 引用
 
@@ -157,8 +144,6 @@ glossary
 ## ライセンス
 
 `pdb2reaction` は **GNU General Public License version 3 (GPL-3.0)** の下で配布されています。
-
----
 
 ## ヘルプ
 

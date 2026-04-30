@@ -4,12 +4,6 @@
 `add-elem-info` repairs the element-symbol columns (77–78) of ATOM/HETATM
 records in a PDB file.
 
-### Output behavior
-- If `-o/--out` is **omitted** and `--overwrite` is **not** `True`, the output is written to
-  `<input>_add_elem.pdb` (i.e., it replaces a trailing `.pdb` with `_add_elem.pdb`).
-- If `--overwrite` **and** `-o/--out` is **omitted**, the **input file is overwritten
-  in-place**. When `-o/--out` is supplied, `--overwrite` is ignored.
-
 ## Usage
 ```bash
 pdb2reaction add-elem-info -i INPUT.pdb [-o OUTPUT.pdb] [--overwrite/--no-overwrite]
@@ -74,8 +68,6 @@ directly on a PDB that lacks element columns.
   insertion codes, and record ordering stay untouched.
 - ATOM and HETATM records across all models/chains/residues are supported.
 - Deuterium labels map to hydrogen; selenium (`SE*`) and halogens are recognized automatically.
-
----
 
 ## See Also
 

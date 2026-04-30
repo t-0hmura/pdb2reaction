@@ -96,8 +96,6 @@ if changed:
     print(summary)
 ```
 
----
-
 ## See Also
 
 - [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing

@@ -62,10 +62,6 @@ def register_yaml_representers() -> None:
     """Register shared YAML representers (literal strings and flow lists)."""
     yaml.add_representer(
         YamlLiteralStr,
-        lambda dumper, data: dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
-    )
-    yaml.add_representer(
-        YamlLiteralStr,
         lambda dumper, data: dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|"),
         Dumper=yaml.SafeDumper
     )
@@ -1669,7 +1665,7 @@ def _convert_to_pdb_logged(
         if ref_pdb_path is None or not _CONVERT_FILES_ENABLED:
             return None
         src_path = Path(src_path)
-        if (not src_path.exists()) or src_path.suffix.lower() not in (".xyz", "_trj.xyz"):
+        if (not src_path.exists()) or src_path.suffix.lower() != ".xyz":
             return None
         out_path = out_path if out_path is not None else src_path.with_suffix(".pdb")
         convert_xyz_to_pdb(src_path, ref_pdb_path, out_path)

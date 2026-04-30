@@ -73,18 +73,6 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
  [--show-config/--no-show-config] [--dry-run/--no-dry-run]
 ```
 
-### 例
-- **活性部位モデルのみ**の2つのエンドポイント間のMEP:
-  ```bash
-  pdb2reaction path-search -i reactant.pdb product.pdb -q 0
-  ```
-- YAML 上書きとマージされた全系出力を使用した**マルチステップ**探索:
-  ```bash
-  pdb2reaction path-search \
-  -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 \
-  --ref-full-pdb holo_template.pdb --out-dir ./run_ps
-  ```
-
 
 ## CLI オプション
 | オプション | 説明 | デフォルト |
@@ -134,13 +122,21 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
 out_dir/ (デフォルト:./result_path_search/)
 ├─ mep_trj.xyz # 主要 MEP 軌跡
 ├─ mep.pdb # 入力がPDB テンプレートで変換が有効な場合のPDB コンパニオン
+├─ mep.gjf # Gaussian テンプレート検出時の Gaussian コンパニオン
 ├─ mep_w_ref.pdb # マージされた全系MEP（参照 PDB/テンプレートが必要）
+├─ mep_seg_XX_trj.xyz # セグメントごとの MEP 軌跡（XYZ）
+├─ mep_seg_XX.pdb # セグメントごとの PDB コンパニオン（変換有効時）
+├─ mep_seg_XX.gjf # セグメントごとの Gaussian コンパニオン（テンプレート検出時）
 ├─ mep_w_ref_seg_XX.pdb # 共有結合変化がある場合のマージされたセグメントごとのパス
+├─ hei_seg_XX.xyz # セグメントごとの最高エネルギー画像
+├─ hei_seg_XX.pdb # HEI PDB コンパニオン（変換有効時）
+├─ hei_seg_XX.gjf # HEI Gaussian コンパニオン（テンプレート検出時）
+├─ hei_w_ref_seg_XX.pdb # 全系コンテキストでマージされた HEI（参照 PDB が必要）
 ├─ summary.json # すべての再帰セグメントの障壁と分類サマリー
 ├─ summary.log # 結果要約
 ├─ mep_plot.png # ΔEプロファイル（kcal/mol、反応物基準）
 ├─ energy_diagram_MEP.png # MEP状態エネルギーダイアグラムの静的エクスポート
-└─ seg_000_*/ # セグメントごとの GSM/DMF ダンプ、HEI スナップショット、kink/精密化の診断情報
+└─ seg_NNN_*/ # セグメントごとの GSM/DMF ダンプ、HEI スナップショット、kink/精密化の診断情報
 ```
 
 
@@ -203,8 +199,6 @@ search:
  max_seq_kink: 2 # max sequential kinks
  refine_mode: null # optional refinement strategy (auto-chooses when null)
 ```
-
----
 
 ## 関連項目
 

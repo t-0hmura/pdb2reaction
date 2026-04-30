@@ -1,8 +1,6 @@
 # CLI Conventions
 
-This page documents the conventions used across all `pdb2reaction` commands. Understanding these conventions helps you write correct commands and avoid common errors.
-
----
+This page documents the conventions used across all `pdb2reaction` commands.
 
 ## Boolean Options
 
@@ -28,8 +26,6 @@ Common boolean options:
 - `--climb` — enable climbing image in MEP search
 - `--convert-files` — generate PDB/GJF companion files
 
----
-
 ## Progressive Help (`all`)
 
 `pdb2reaction all` uses two help levels:
@@ -42,8 +38,6 @@ pdb2reaction all --help-advanced # full option list
 The following subcommands support progressive help (`--help` for core options, `--help-advanced` for the full list):
 
 `all`, `scan`, `scan2d`, `scan3d`, `opt`, `path-opt`, `path-search`, `tsopt`, `freq`, `irc`, `dft`, `add-elem-info`, `trj2fig`, `energy-diagram`, `extract`, `fix-altloc`.
-
----
 
 ## Residue Selectors
 
@@ -117,8 +111,6 @@ Step 2 (extraction-based charge derivation) only fires for commands like `all` t
 Always provide `--ligand-charge/-l` for non-standard residues (substrates, cofactors, unusual ligands) to ensure correct charge propagation.
 ```
 
----
-
 ## Spin Multiplicity
 
 ```bash
@@ -130,8 +122,6 @@ Always provide `--ligand-charge/-l` for non-standard residues (substrates, cofac
 ```{note}
 Use `-m/--multiplicity` consistently in `all` and other subcommands.
 ```
-
----
 
 ## Atom Selectors
 
@@ -231,8 +221,6 @@ PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, bac
 -s "[(\"TYR,285,CA\",\"SAM,309,C10\",1.35)]"
 ```
 
----
-
 ## Input File Requirements
 
 ### PDB files
@@ -290,8 +278,6 @@ The same `--opt-mode` token selects **different optimizer algorithms** depending
 
 As a result, `--opt-mode grad` on `tsopt` is a **Dimer** TS search, not an L-BFGS minimization. Use the explicit algorithm alias (`--opt-mode lbfgs`, `--opt-mode rsirfo`, etc.) if you want to be unambiguous across subcommands.
 
----
-
 ## CLI ↔ YAML name mismatches
 
 Some CLI flags use slightly different names than their YAML counterparts, and a few are renamed when wrapped in `all`. The full mapping table lives in {ref}`YAML Reference: Common CLI-to-YAML mapping <common-cli-to-yaml-mapping>`; the two most frequently misremembered cases are:
@@ -320,8 +306,6 @@ pdb2reaction dft -i ts.xyz -q 0 --engine gpu
 pdb2reaction all -i r.pdb p.pdb -c SAM --dft --dft-engine gpu
 ```
 
----
-
 ## YAML Configuration
 
 Advanced settings can be passed via layered YAML inputs:
@@ -347,8 +331,6 @@ built-in defaults  <  --config (YAML)  <  CLI options
 
 This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, and `dft`. See also {ref}`YAML Reference: Configuration precedence <yaml-configuration-precedence>`.
 
----
-
 ## Output Directory
 
 Use `-o/--out-dir` to specify where results are saved:
@@ -370,8 +352,6 @@ Default output directories:
 - `freq`: `./result_freq/`
 - `irc`: `./result_irc/`
 - `dft`: `./result_dft/`
-
----
 
 ## See Also
 

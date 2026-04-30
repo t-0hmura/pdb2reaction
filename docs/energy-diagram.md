@@ -59,8 +59,6 @@ OUTPUT.(png|jpg|jpeg|svg|pdf)
 - At least two numeric values are required.
 - This command does not read structure files and does not compute energies.
 
----
-
 ## See Also
 
 - [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing

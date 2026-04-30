@@ -157,12 +157,18 @@ class SolventCorrectedCalculator(MLIPCalculator):
         result["energy"] += de_ev * _EV2AU
         if df_ev_ang is not None:
             df_au = np.asarray(df_ev_ang, dtype=np.float64).reshape(-1) * _F_EVAA_2_AU
-            result["forces"] = np.asarray(result["forces"], dtype=np.float64) + df_au
+            f_base = result["forces"]
+            if hasattr(f_base, "detach"):
+                f_base = f_base.detach().cpu().numpy()
+            result["forces"] = np.asarray(f_base, dtype=np.float64) + df_au
         if dh_ev_ang2 is not None:
             dh_au = np.asarray(dh_ev_ang2, dtype=np.float64) * _H_EVAA_2_AU
             n_atoms = len(elem)
             dh_au = self._apply_active_trim_np(dh_au, n_atoms)
-            result["hessian"] = np.asarray(result["hessian"], dtype=np.float64) + dh_au
+            h_base = result["hessian"]
+            if hasattr(h_base, "detach"):
+                h_base = h_base.detach().cpu().numpy()
+            result["hessian"] = np.asarray(h_base, dtype=np.float64) + dh_au
         return result
 
     # Pass through subclass hooks (unused since we override get_* directly)

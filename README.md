@@ -117,9 +117,7 @@ DFT dependencies are **not** installed by default. To use `pdb2reaction dft`, in
 pip install "pdb2reaction[dft]"
 ```
 
-This installs PySCF, GPU4PySCF (x86_64 only), and related CUDA libraries. Note that DFT single-point calculations are practical only for systems up to **~300 atoms**; larger systems will require prohibitive computational cost.
-
-For detailed installation instructions, see [Installation](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/installation.md).
+This installs PySCF, GPU4PySCF (x86_64 only), and related CUDA libraries.
 
 ### Supported ML potentials
 

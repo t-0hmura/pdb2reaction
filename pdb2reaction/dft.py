@@ -479,6 +479,7 @@ def cli(
         prefix="[dft]",
     ) as (prepared_input, resolved_charge, resolved_spin):
         geom_input_path = prepared_input.geom_path
+        out_dir_path = Path(out_dir).resolve()
         try:
             time_start = time.perf_counter()
             # --------------------------

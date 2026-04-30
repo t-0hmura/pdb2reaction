@@ -63,8 +63,6 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 - 未対応の拡張子がある場合は実行が中断されます。`.png` は Plotly の `scale=2` で高解像度出力されます。
 - `--reverse-x` は軸の向きと `-r init` の解釈の両方に影響します。
 
----
-
 ## 関連項目
 
 - [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け

@@ -11,8 +11,6 @@
 - **Defaults:** `--engine gpu`, `--func-basis wb97m-v/def2-tzvpd`, `--max-cycle 100`, `--conv-tol 1e-9`, `--grid-level 3`, `--out-dir ./result_dft/`.
 - **Next step:** Combine DFT energies with MLIP thermal corrections (DFT//MLIP Gibbs) via `all --dft --thermo`, or feed the optimized structures here directly into mechanism reporting.
 
-`pdb2reaction dft` runs single-point DFT calculations using PySCF (CPU) or GPU4PySCF (GPU). The default functional/basis is ωB97M-V/def2-tzvpd. Results include energy and population analysis (Mulliken, meta-Löwdin, IAO charges).
-
 > See {ref}`engine-vs-dft-engine` for the `--engine` (standalone `dft`) vs `--dft-engine` (forwarded through `pdb2reaction all`) naming convention.
 
 The backend is controlled by `--engine`:
@@ -21,15 +19,12 @@ The backend is controlled by `--engine`:
 
 > **Prerequisites:** DFT dependencies (PySCF, GPU4PySCF) are **not** included in the default install. Install them with `pip install "pdb2reaction[dft]"`.
 
-In addition to total energies, the command reports Mulliken, meta-Löwdin, and IAO atomic charges and spin densities.
-
 ### Practical limits
 
 DFT single-point calculations are bounded by both basis-set cost and system size. The thresholds below assume default settings (`wb97m-v/def2-tzvpd`, density fitting, grid level 3).
 
 - **Default basis cost:** `def2-tzvpd` is a triple-zeta diffuse-augmented set and is computationally expensive for large systems. For exploratory calculations, consider a smaller basis (e.g., `6-31g**` or `def2-svp`).
-- **GPU memory, def2-TZVPD:** On 16–24 GB GPUs the default `def2-tzvpd` will OOM for systems with **>150 atoms**. Switch to `--func-basis 'wb97m-v/def2-svp'` as a practical alternative; barrier height errors between def2-SVP and def2-TZVPD are typically 1–3 kcal/mol.
-- **GPU memory, small active sites (≲150 atoms):** The tight `def2-tzvpd` setting is appropriate only for **small** active-site models on a GPU with sufficient VRAM. For larger systems on 16–24 GB GPUs this combination will OOM; switch to `def2-svp` or use an external DFT program (ORCA, Gaussian) for production work on full systems.
+- **GPU memory, def2-TZVPD:** On 16–24 GB GPUs the default `def2-tzvpd` will OOM for systems with **>150 atoms**. The tight setting is appropriate only for **small** active-site models on a GPU with sufficient VRAM. Switch to `--func-basis 'wb97m-v/def2-svp'` (barrier height errors between def2-SVP and def2-TZVPD are typically 1–3 kcal/mol), or use an external DFT program (ORCA, Gaussian) for production work on full systems.
 - **Blackwell-architecture GPUs (RTX 50xx):** GPU4PySCF may fail with out-of-memory errors even for small systems (~100 atoms). Use `--engine cpu` or an external DFT program (ORCA, Gaussian) for production calculations on these GPUs.
 - **CPU backend:** `--engine cpu` is only practical for small active-site models (**≲150 atoms**) and small basis sets (e.g. `def2-svp`); larger systems on CPU become prohibitively slow, so an external DFT program is the recommended path for full systems.
 - **Overall system-size ceiling:** DFT single-point calculations are practical only for systems up to **~300 atoms**. Larger systems require excessive compute time and memory; HPC clusters with high-end GPUs (e.g. A100, H200) are typically required. For enzyme systems, extract a small active site model (binding pocket) before running DFT.
@@ -138,7 +133,6 @@ See {ref}`exit-codes` in CLI Conventions.
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
-- `--engine gpu` (default) requires GPU4PySCF and **raises an error** if GPU is unavailable. Use `--engine cpu` to force CPU-only execution.
 - For basis-set cost, GPU/CPU memory ceilings, Blackwell GPUs, and the overall ~300-atom limit, see the "Practical limits" subsection above.
 - Compiled GPU4PySCF wheels may not support non-x86 systems; build from source in that case (see https://github.com/pyscf/gpu4pyscf).
 - Density fitting is enabled with PySCF defaults on the standard SCF paths (open-shell GPU, CPU, or `--no-lowmem`). The closed-shell GPU `--lowmem` path uses `gpu4pyscf.dft.rks_lowmem.RKS` and skips density fitting in favor of memory-efficient direct JK. No auxiliary basis guessing is implemented.
@@ -175,8 +169,6 @@ dft:
  verbose: 0 # PySCF verbosity (0-9)
  out_dir: ./result_dft/ # output directory root
 ```
-
----
 
 ## See Also
 

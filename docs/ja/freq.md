@@ -11,9 +11,6 @@
 - **デフォルト:** バックエンド `uma`、`--hessian-calc-mode FiniteDifference`、`--max-write 10`、`--amplitude-ang 0.8`、`--n-frames 20`、`--sort value`、`--temperature 298.15`、`--pressure 1.0`、`--dump False`。
 - **次ステップ:** 収束した TS では虚振動数が **ちょうど 1 つ**（負の cm⁻¹）。5 cm⁻¹ 検出閾値と 100 cm⁻¹ 品質ゲートの違いは用語集 {ref}`ja-imaginary-mode-thresholds` を参照。ヘシアン評価モードの詳細は {ref}`ja-hessian-evaluation` を参照。
 
-`pdb2reaction freq` は MLIP バックエンド（デフォルト: UMA）で振動解析を実行し、凍結原子がある場合は PHVA として活性部分空間で固有解析を行います。基準振動のアニメーションを `_trj.xyz` として出力し、PDB テンプレートがあり `--convert-files` が有効な場合は `.pdb` も生成します。`thermoanalysis` パッケージがインストールされていれば、Gaussian 風の熱化学サマリーも出力します。
-
-
 ## 最小例
 
 ```bash
@@ -138,8 +135,6 @@ out_dir/ (デフォルト:./result_freq/)
 freq:
  out_dir: ./result_freq/ # freq のデフォルト
 ```
-
----
 
 ## 関連項目
 

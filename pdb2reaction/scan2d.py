@@ -34,7 +34,6 @@ from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
 from pysisyphus.constants import ANG2BOHR, AU2KCALPERMOL
 
 from .defaults import (
-    CALC_KW_DEFAULT,
     GEOM_KW_DEFAULT,
     BIAS_KW,
     OPT_MODE_ALIASES,
@@ -309,6 +308,7 @@ def cli(
         source_path = prepared_input.source_path
 
         tmp_root = None
+        out_dir_path = Path(out_dir).resolve()
         try:
             time_start = time.perf_counter()
 

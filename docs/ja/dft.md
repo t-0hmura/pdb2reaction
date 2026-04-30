@@ -11,8 +11,6 @@
 - **デフォルト値:** `--engine gpu`、`--func-basis wb97m-v/def2-tzvpd`、`--max-cycle 100`、`--conv-tol 1e-9`、`--grid-level 3`、`--out-dir ./result_dft/`。
 - **次のステップ:** `all --dft --thermo` で DFT エネルギーと MLIP の熱補正を組み合わせる（DFT//MLIP Gibbs）か、ここで得た構造をそのまま機構報告に使います。
 
-`pdb2reaction dft` は PySCF（CPU）または GPU4PySCF（GPU）を使用して DFT 一点計算を実行します。デフォルトの汎関数/基底関数は ωB97M-V/def2-tzvpd です。結果にはエネルギーと電子密度解析（Mulliken、meta-Löwdin、IAO 電荷）が含まれます。
-
 > `--engine`（単体の `dft`）と `--dft-engine`（`pdb2reaction all` から転送する場合）の命名規則は {ref}`ja-engine-vs-dft-engine` を参照してください。
 
 バックエンドは `--engine` で制御します:
@@ -21,15 +19,12 @@
 
 > **前提条件:** DFT 依存パッケージ（PySCF、GPU4PySCF）はデフォルトではインストールされません。`pip install "pdb2reaction[dft]"` でインストールしてください。
 
-総エネルギーに加え、Mulliken、meta-Löwdin、IAO の原子電荷およびスピン密度も報告します。
-
 ### 実用上限
 
 DFT 一点計算は基底関数のコストとシステムサイズの双方で制約されます。以下の閾値はデフォルト設定（`wb97m-v/def2-tzvpd`、密度フィッティング、グリッドレベル 3）を前提としています。
 
 - **デフォルト基底のコスト:** `def2-tzvpd` はトリプルゼータのディフューズ拡張セットであり、大きな系では計算コストが高くなります。探索的な計算には小さい基底（例: `6-31g**` や `def2-svp`）を検討してください。
-- **GPU メモリ、def2-TZVPD:** 16–24 GB GPU ではデフォルトの `def2-tzvpd` で **150 原子以上** の系は OOM になります。代替として `--func-basis 'wb97m-v/def2-svp'` を使用してください。def2-SVP と def2-TZVPD のバリアハイト差は通常 1–3 kcal/mol です。
-- **GPU メモリ、小規模活性部位（≲150 原子）:** 厳しい `def2-tzvpd` 設定は十分な VRAM を持つ GPU 上で**小さい**活性部位モデルにのみ適しています。16–24 GB GPU でより大きな系を扱うとこの組み合わせは OOM になります。`def2-svp` に切り替えるか、全系を本番運用するなら外部 DFT プログラム（ORCA, Gaussian）を使用してください。
+- **GPU メモリ、def2-TZVPD:** 16–24 GB GPU ではデフォルトの `def2-tzvpd` で **150 原子以上** の系は OOM になります。厳しい設定は十分な VRAM を持つ GPU 上で**小さい**活性部位モデルにのみ適します。代替として `--func-basis 'wb97m-v/def2-svp'` を使用するか（def2-SVP と def2-TZVPD のバリアハイト差は通常 1–3 kcal/mol）、全系を本番運用するなら外部 DFT プログラム（ORCA, Gaussian）を使用してください。
 - **Blackwell アーキテクチャ GPU（RTX 50xx）:** GPU4PySCF は小規模な系（~100 原子）でもメモリ不足エラーが発生する場合があります。これらの GPU では `--engine cpu` または外部 DFT プログラム（ORCA, Gaussian）を使用してください。
 - **CPU バックエンド:** `--engine cpu` は活性部位モデル（**≲150 原子**）と小さい基底関数（例: `def2-svp`）に限り実用的で、より大きな系を CPU で計算すると非常に低速になるため、全系計算には外部 DFT プログラムの利用を推奨します。
 - **総合的なシステムサイズ上限:** DFT 一点計算は **約 300 原子** までのシステムで実用的です。それ以上のシステムでは計算時間とメモリ使用量が実用範囲を超え、A100 や H200 等の高性能 GPU を搭載した HPC クラスタの利用が必要になる場合があります。酵素系では、DFT 実行前に小さな活性部位モデル（バインディングポケット）を抽出してください。
@@ -136,7 +131,6 @@ out_dir/ (デフォルト:./result_dft/)
 ## 注意事項
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
-- `--engine gpu`（デフォルト）は GPU4PySCF を必要とし、GPU が利用できない場合は**エラーになります**。CPU のみで実行するには `--engine cpu` を指定します。
 - 基底関数のコスト、GPU/CPU メモリ上限、Blackwell GPU、約 300 原子の総合上限については、上の「実用上限」を参照してください。
 - GPU4PySCF のコンパイル済みホイールは非 x86 環境では動作しない場合があります。ソースからビルドしてください（参照: https://github.com/pyscf/gpu4pyscf）。
 - 標準 SCF 経路（open-shell GPU、CPU、または `--no-lowmem`）では密度フィッティングが PySCF のデフォルト設定で有効になります。closed-shell の GPU `--lowmem` 経路では `gpu4pyscf.dft.rks_lowmem.RKS` を使用し、密度フィッティングはスキップ（メモリ効率の良い直接 JK 計算）。補助基底の推定は未実装です。
@@ -174,8 +168,6 @@ dft:
  verbose: 0 # PySCF verbosity (0-9)
  out_dir: ./result_dft/ # output directory root
 ```
-
----
 
 ## 関連項目
 

@@ -11,9 +11,6 @@
 - **Defaults:** Backend `uma`, `--hessian-calc-mode FiniteDifference`, `--max-write 10`, `--amplitude-ang 0.8`, `--n-frames 20`, `--sort value`, `--temperature 298.15`, `--pressure 1.0`, `--dump False`.
 - **Next step:** A properly converged first-order saddle point (TS) is expected to have **exactly one** imaginary frequency (see {ref}`imaginary-mode-thresholds` for the 5 cm⁻¹ detection vs 100 cm⁻¹ quality gate). For Hessian evaluation modes, see {ref}`hessian-evaluation`.
 
-`pdb2reaction freq` performs vibrational analysis with an MLIP backend (UMA by default), honoring frozen atoms via PHVA. It exports normal-mode animations as `_trj.xyz` (and `.pdb` when a PDB template is available and conversion is enabled), and prints a Gaussian-style thermochemistry summary when the optional `thermoanalysis` package is installed.
-
-
 ## Minimal example
 
 ```bash
@@ -145,8 +142,6 @@ See {ref}`exit-codes` in CLI Conventions.
   and dumps details when `--dump`.
 - `--hessian-calc-mode` follows the standard precedence (defaults < config < explicit CLI); an explicit CLI `--hessian-calc-mode` value takes precedence over `calc.hessian_calc_mode` in the config YAML.
 
-Provide mappings with merge order **defaults < config < explicit CLI**.
-
 The `geom`, `calc`, `freq`, and `thermo` sections are unchanged from the canonical definitions in [YAML Reference](yaml-reference.md): see [`geom`](yaml-reference.md#geom), [`calc`](yaml-reference.md#calc), [`freq`](yaml-reference.md#freq-section), and [`thermo`](yaml-reference.md#thermo). `freq` automatically sets `calc.return_partial_hessian = true` (PHVA) by default; YAML can override.
 
 The only `freq`-specific default that differs from the canonical block is the output directory:
@@ -155,8 +150,6 @@ The only `freq`-specific default that differs from the canonical block is the ou
 freq:
  out_dir: ./result_freq/ # freq default
 ```
-
----
 
 ## See Also
 

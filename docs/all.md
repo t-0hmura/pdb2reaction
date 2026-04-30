@@ -296,6 +296,7 @@ out_dir/ (default:./result_all/)
 ├─ summary.log                  # Text summary
 ├─ summary.json                 # JSON results
 ├─ models/                      # Extracted active site model PDBs when extraction runs
+│  └─ model_<input_stem>.pdb   #   One per -i input
 ├─ scan/                        # Staged scan results (present when --scan-lists is provided)
 ├─ seg_XX/                      # Refined TS and optimized IRC endpoints of segment XX
 │  ├─ reactant.{pdb,xyz,gjf}   #   Output format matches input format
@@ -306,9 +307,14 @@ out_dir/ (default:./result_all/)
 │     ├─ structures/            # Optimized R/TS/P structures (IRC endpoints)
 │     ├─ irc/                   # IRC trajectories and plots
 │     ├─ ts/                    # TS optimization output and vibrational analysis
-│     ├─ freq/                  # Frequency and thermochemistry (R, TS, P)
+│     ├─ freq/{R,TS,P}/         # Per-state frequencies_cm-1.txt + thermoanalysis.yaml
 │     └─ dft/                   # DFT single-point results (when --dft is enabled)
 └─ tsopt_single/                # TSOPT-only outputs with IRC endpoints
+   ├─ structures/               # Working copy of R/TS/P (canonical canonical lives at top-level seg_NN/)
+   ├─ ts/                       # TS optimization output and vibrational analysis
+   ├─ irc/                      # IRC trajectories and plots
+   ├─ freq/{R,TS,P}/            # Per-state frequencies_cm-1.txt + thermoanalysis.yaml
+   └─ dft/                      # DFT single-point results (when --dft is enabled)
 ```
 
 ```{note}
@@ -396,8 +402,6 @@ dft:
 ```
 
 For a complete reference of all YAML options, see **[YAML Configuration Reference](yaml-reference.md)**.
-
----
 
 ## See Also
 

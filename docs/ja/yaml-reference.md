@@ -99,8 +99,6 @@ TS 最適化はより厳しい "baker" プリセットを、通常の極小化�
 | [`hessian_dimer`](#hessian_dimer) | Hessian Guided Dimer TS 最適化 | tsopt |
 | [`rsirfo`](#rsirfo) | RS-I-RFO TS 最適化 | tsopt, all |
 
----
-
 ## 共通セクション
 
 ### `geom`
@@ -260,8 +258,6 @@ rfo:
  adapt_step_func: true # Adaptive step scaling
 ```
 
----
-
 ## 経路最適化セクション
 
 ### `gs`
@@ -372,8 +368,6 @@ stopt:
  print_every: 10 # Logging stride
 ```
 
----
-
 ## TS 最適化セクション
 
 TS 最適化は `--opt-mode` で**2 つのアルゴリズム**を切り替えます:
@@ -464,8 +458,6 @@ rsirfo:
 **`--flatten` の優先順位。** Hessian-Dimer と RS-I-RFO 両経路の flatten ループは `hessian_dimer:` YAML セクションの `flatten_max_iter` キー（デフォルト 50）で設定します。`rsirfo:` には独自の flatten カウンタはありません。CLI は `--flatten` がコマンドラインで明示的に渡されない限り `flatten_max_iter` を `0` に上書きします。{ref}`ja-flatten-precedence-caveat` を参照してください。
 ```
 
----
-
 ## IRCセクション
 
 (ja-irc-section)=
@@ -502,8 +494,6 @@ irc:
 
 `corr_func` は、予測子–修正子法ベースの IRC 積分器（EulerPC）が使う修正子ステップを選択します。`"mbs"` は pysisyphus 組み込みの Modified Bulirsch–Stoer 実装（デフォルト）、`"rk4"` は古典的な 4 次 Runge–Kutta 修正子を要求します。既定の積分器がシステム上で数値的に不安定な場合にのみ変更してください。通常は `mbs` のままで問題ありません。
 
----
-
 ## 振動解析セクション
 
 (ja-freq-section)=
@@ -533,8 +523,6 @@ thermo:
  dump: false # Write thermoanalysis.yaml
 ```
 
----
-
 ## DFTセクション
 
 (ja-dft-section)=
@@ -555,8 +543,6 @@ dft:
  verbose: 0 # PySCF verbosity (0-9)
  out_dir: ./result_dft/ # Output directory root
 ```
-
----
 
 ## スキャン関連セクション
 
@@ -595,8 +581,6 @@ bond:
  margin_fraction: 0.05 # Fractional tolerance for comparisons
  delta_fraction: 0.05 # Minimum relative change to flag bond formation/breaking
 ```
-
----
 
 ## 例: 設定ファイルの全体例
 
@@ -655,8 +639,6 @@ dft:
  basis: def2-tzvpd
  grid_level: 3
 ```
-
----
 
 ## 参照
 

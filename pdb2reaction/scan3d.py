@@ -67,7 +67,6 @@ from .utils import (
     distance_A_from_coords,
     distance_tag,
     set_freeze_atoms_or_warn,
-    yaml_freeze_to_internal,
     _parse_freeze_atoms,
     merge_freeze_atom_indices,
 )

@@ -1,14 +1,6 @@
 # pdb2reaction/defaults.py
 
-"""
-Central configuration defaults for pdb2reaction workflows.
-
-All default dictionaries are defined here to avoid redundant definitions across modules.
-Modules should import defaults from here instead of defining local copies.
-
-Shared optimizer/IRC/path defaults — keep aligned with mlmm_toolkit/mlmm/defaults.py.
-Project-specific overrides are commented with rationale.
-"""
+"""Central configuration defaults for pdb2reaction workflows."""
 
 from __future__ import annotations
 
@@ -70,7 +62,6 @@ CALC_KW_DEFAULT: Dict[str, Any] = {
 # Extended UMA calculator defaults with freeze_atoms support
 UMA_CALC_KW: Dict[str, Any] = {
     **CALC_KW_DEFAULT,
-    "out_hess_torch": True,
     "freeze_atoms": None,
 }
 
@@ -461,7 +452,4 @@ RSIRFO_KW: Dict[str, Any] = {
 # Freq calc defaults (alias of UMA_CALC_KW)
 # -----------------------------------------------
 
-FREQ_CALC_KW: Dict[str, Any] = {
-    **UMA_CALC_KW,
-    "return_partial_hessian": True,
-}
+FREQ_CALC_KW: Dict[str, Any] = dict(UMA_CALC_KW)

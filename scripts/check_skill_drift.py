@@ -156,7 +156,7 @@ def main() -> int:
 
     if all_warnings:
         print(
-            f"⚠ skill drift check: {len(all_warnings)} warning(s) "
+            f"[skill-drift] WARN: {len(all_warnings)} warning(s) "
             f"across {n_files} file(s):\n"
         )
         for w in all_warnings:
@@ -168,7 +168,7 @@ def main() -> int:
             "rename is intentional)."
         )
     else:
-        print(f"✓ skill drift check: no warnings across {n_files} file(s)")
+        print(f"[skill-drift] OK: no warnings across {n_files} file(s)")
     return 0
 
 
