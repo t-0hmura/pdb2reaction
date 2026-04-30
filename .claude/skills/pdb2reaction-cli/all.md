@@ -46,16 +46,11 @@ between versions).
 
 ## Mode selection cheatsheet
 
-```
-Single -i input.{xyz,pdb,gjf} + --tsopt (no --scan-lists, no extra inputs)
-    └── all-ts-only.md     (treat input as TS candidate; tsopt+irc+freq)
-
-Single -i input.pdb + --scan-lists '...'
-    └── all-scan-list.md   (single reactant + staged distance scans)
-
-Multiple -i 1.R.pdb [2.IM.pdb ...] N.P.pdb (reaction-ordered)
-    └── all-endpoint-mep.md (multi-endpoint MEP)
-```
+| Inputs | Mode md | Behavior |
+|---|---|---|
+| Single `-i input.{xyz,pdb,gjf}` + `--tsopt` (no `--scan-lists`) | `all-ts-only.md` | treat input as TS candidate; tsopt + irc + freq |
+| Single `-i input.pdb` + `--scan-lists '...'` | `all-scan-list.md` | single reactant + staged distance scans |
+| Multiple `-i 1.R.pdb [2.IM.pdb …] N.P.pdb` (reaction-ordered) | `all-endpoint-mep.md` | multi-endpoint MEP |
 
 A single `-i` without **either** `--scan-lists` or `--tsopt` raises
 `BadParameter` (see `all.py`: "Provide at least two structures... or a
@@ -64,29 +59,25 @@ True").
 
 ## Output tree (typical)
 
-```
-result_all/
-├── summary.json                    # machine-readable per-stage results
-├── summary.log                     # human-readable text + dir tree
-├── models/                         # model_<input_stem>.pdb (extracted active-site clusters; one per -i input when -c was given)
-├── path_search/                    # (or path_opt/ when --refine-path False)
-│   ├── seg_NNN_<tag>/              # per-segment MEP scratch (e.g., seg_001_mep, seg_002_maxdepth)
-│   ├── mep_seg_NN_trj.xyz + mep_seg_NN.{pdb,gjf}  # canonical per-segment MEP frames
-│   ├── hei_seg_NN.{xyz,pdb,gjf}    # HEI candidate per segment
-│   ├── post_seg_NN/                # per-segment post-processing
-│   │   ├── ts/                     # tsopt output (final_geometry.xyz, vib/imag_*.pdb)
-│   │   ├── irc/                    # forward / backward / finished IRC trajectories
-│   │   ├── freq/                   # {R,TS,P}/{frequencies_cm-1.txt, thermoanalysis.yaml} (per-state subdirs)
-│   │   ├── dft/                    # (if --dft) {R,TS,P}/result.{yaml,json} (per-state subdirs)
-│   │   └── energy_diagram_{UMA,G_UMA,DFT,G_DFT_plus_UMA}.png  # per-segment diagrams
-│   └── energy_diagram_MEP.png      # bare MEP energies (path-search level)
-├── energy_diagram_{UMA,G_UMA,DFT,G_DFT_plus_UMA}_all.png  # aggregated multi-segment diagrams (top-level)
-├── mep_trj.xyz + mep.{pdb,gjf}     # stitched MEP across all segments (top level)
-└── seg_NN/                         # canonical R/TS/P coords (top-level, 2-digit)
-    ├── reactant.{pdb,xyz}
-    ├── ts.{pdb,xyz}
-    └── product.{pdb,xyz}
-```
+`<path_dir>` = `path_search/` (default) or `path_opt/` (`--refine-path False`).
+
+| Path | When | Content |
+|---|---|---|
+| `<out_dir>/summary.json` | always | machine-readable per-stage results |
+| `<out_dir>/summary.log` | always | human-readable text + dir tree |
+| `<out_dir>/models/model_<stem>.pdb` | `-c` given | extracted active-site clusters (one per `-i` input) |
+| `<out_dir>/seg_NN/{reactant,ts,product}.{pdb,xyz}` | always | canonical R/TS/P (2-digit, top-level) |
+| `<out_dir>/mep_trj.xyz`, `mep.{pdb,gjf}` | always | stitched MEP across segments |
+| `<out_dir>/energy_diagram_{UMA,G_UMA,DFT,G_DFT_plus_UMA}_all.png` | combos of `--thermo`/`--dft` | aggregated multi-segment diagrams |
+| `<path_dir>/seg_NNN_<tag>/` | always | per-string MEP scratch (3-digit, `_mep` / `_maxdepth` / `_bridge`) |
+| `<path_dir>/mep_seg_NN_trj.xyz`, `mep_seg_NN.{pdb,gjf}` | always | canonical per-segment MEP frames |
+| `<path_dir>/hei_seg_NN.{xyz,pdb,gjf}` | always | HEI candidate per segment (TS seed) |
+| `<path_dir>/energy_diagram_MEP.png` | always | bare MEP energies (path-search level) |
+| `<path_dir>/post_seg_NN/ts/final_geometry.{xyz,pdb}`, `vib/imag_*.pdb` | always | tsopt output |
+| `<path_dir>/post_seg_NN/irc/{forward,backward,finished}_irc_trj.xyz` | always | IRC trajectories |
+| `<path_dir>/post_seg_NN/freq/{R,TS,P}/{frequencies_cm-1.txt, thermoanalysis.yaml}` | always | per-state freq + thermo |
+| `<path_dir>/post_seg_NN/dft/{R,TS,P}/result.{yaml,json}` | `--dft` | per-state DFT |
+| `<path_dir>/post_seg_NN/energy_diagram_{UMA,G_UMA,DFT,G_DFT_plus_UMA}.png` | combos of `--thermo`/`--dft` | per-segment diagrams |
 
 ## Output keys (summary.json — top level)
 

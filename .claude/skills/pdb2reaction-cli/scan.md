@@ -59,19 +59,15 @@ Each space-separated literal after a single `-s` is one stage; do **not** repeat
 
 ## Output
 
-```
-result_scan/
-├── result.json                  # only when --out-json is passed
-├── preopt/                      # only with --preopt
-│   └── result.{xyz,pdb,gjf}     # pre-optimized starting geometry
-├── stage_01/                    # per-stage relaxed snapshots
-│   ├── result.xyz               # final geometry of stage
-│   ├── scan_trj.xyz             # per-stage scan trajectory (always written)
-│   └── scan_*.xyz               # intermediate steps (when opt.dump: true)
-├── stage_02/                    # …
-├── scan_trj.xyz                 # stitched scan trajectory across all stages
-└── scan.pdb                     # PDB form (with --convert-files, default on)
-```
+| Path | When | Content |
+|---|---|---|
+| `<out_dir>/result.json` | `--out-json` | machine-readable result |
+| `<out_dir>/preopt/result.{xyz,pdb,gjf}` | `--preopt` | pre-optimized starting geometry |
+| `<out_dir>/stage_NN/result.xyz` | always | final geometry of stage |
+| `<out_dir>/stage_NN/scan_trj.xyz` | always | per-stage scan trajectory |
+| `<out_dir>/stage_NN/scan_*.xyz` | YAML `opt.dump: true` | intermediate optimizer steps |
+| `<out_dir>/scan_trj.xyz` | always | stitched scan trajectory across all stages |
+| `<out_dir>/scan.pdb` | `--convert-files` (default on) + PDB input | PDB companion |
 
 `result.json` lists per-stage status, target distances, final energies,
 and the stitched scan trajectory. Plot with `trj2fig.md`.

@@ -44,17 +44,15 @@ pdb2reaction scan2d -i 1.R.pdb -l 'SAM:1,GPP:-3' \
 
 ## Output
 
-```
-result_scan2d/
-├── result.json                # only when --out-json is passed
-├── grid/                                   # per grid-point geometries (flat)
-│   ├── point_i<d1Å>_j<d2Å>.xyz              # final relaxed point (always)
-│   ├── preopt_i<d1Å>_j<d2Å>.{xyz,pdb,gjf}   # pre-relaxation snapshot (--preopt)
-│   └── inner_path_d1_NNN_trj.xyz            # inner-loop trajectory (--dump)
-├── scan2d_map.png                          # 2D energy surface heatmap (always)
-├── scan2d_landscape.html                   # interactive 3D landscape (always)
-└── surface.csv                             # 2D energy surface (axis_1, axis_2, energy)
-```
+| Path | When | Content |
+|---|---|---|
+| `<out_dir>/result.json` | `--out-json` | machine-readable result |
+| `<out_dir>/grid/point_i<d1Å>_j<d2Å>.xyz` | always | final relaxed grid point |
+| `<out_dir>/grid/preopt_i<d1Å>_j<d2Å>.{xyz,pdb,gjf}` | `--preopt` | pre-relaxation snapshot |
+| `<out_dir>/grid/inner_path_d1_NNN_trj.xyz` | `--dump` | inner-loop trajectory |
+| `<out_dir>/scan2d_map.png` | always | 2D energy surface heatmap |
+| `<out_dir>/scan2d_landscape.html` | always | interactive 3D landscape |
+| `<out_dir>/surface.csv` | always | 2D energy surface (axis_1, axis_2, energy) |
 
 `result.json` stores grid metadata and energy values; `surface.csv` is
 ready for downstream contour plotting; `scan2d_map.png` is the static

@@ -64,12 +64,11 @@ pdb2reaction dft -i ts.xyz -q 0 -m 1 \
 
 ## Output
 
-```
-result_dft/
-├── result.yaml                 # energy + per-atom Mulliken/Loewdin/IAO charges & spin densities
-├── result.json                 # only when --out-json is passed
-└── input_geometry.xyz          # geometry snapshot sent to PySCF
-```
+| Path | When | Content |
+|---|---|---|
+| `<out_dir>/result.yaml` | always | energy + per-atom Mulliken / Loewdin / IAO charges & spin densities |
+| `<out_dir>/result.json` | `--out-json` | machine-readable result |
+| `<out_dir>/input_geometry.xyz` | always | geometry snapshot sent to PySCF |
 
 `result.json` keys (written only when `--out-json` is passed):
 

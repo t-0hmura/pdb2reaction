@@ -28,19 +28,11 @@ element symbols. Per-format details are in:
 
 ## Decision tree: which format to feed `pdb2reaction`
 
-```
-Is the input a fresh extraction from the PDB Bank or a model from PyMOL/Maestro?
-  └── PDB. pdb2reaction reads residue names directly; use -l 'RES:Q,...'
-          to assign per-residue ligand charges.
-
-Is the input a single-segment optimized structure (TS candidate, IRC endpoint)?
-  └── XYZ is fine. Pass -q TOTAL_CHARGE and -m MULT explicitly.
-      Or use --ref-pdb pointing back to the original PDB so -l still works.
-
-Is the input a Gaussian gjf (with route line, charge, spin in header)?
-  └── GJF. pdb2reaction parses the header automatically; -q and -m
-      are inferred unless you override.
-```
+| Input situation | Format | How to set `-q` / `-m` |
+|---|---|---|
+| Fresh extraction from PDB Bank or model from PyMOL / Maestro | **PDB** | `-l 'RES:Q,...'` for per-residue ligand charges; `pdb2reaction` reads residue names directly |
+| Single-segment optimized geometry (TS candidate, IRC endpoint) | **XYZ** | pass `-q TOTAL_CHARGE` and `-m MULT` explicitly; or use `--ref-pdb` pointing back to the original PDB so `-l` still works |
+| Gaussian gjf with route line, charge, spin in header | **GJF** | `pdb2reaction` parses the header automatically; `-q` / `-m` inferred unless you override |
 
 ## Editing approach (agent-side)
 
@@ -78,29 +70,38 @@ recovered.
 
 ## Quick reference: which fields where
 
-```
-PDB  ATOM/HETATM record
-     ┌───────────────────────────────────────────────────────┐
-     │ name(13-16) altloc(17) resName(18-20) chainID(22)     │
-     │ resSeq(23-26)  X(31-38)  Y(39-46)  Z(47-54)           │
-     │ occupancy(55-60) bfactor(61-66) element(77-78)        │
-     └───────────────────────────────────────────────────────┘
+PDB ATOM / HETATM record (column-positions, 1-indexed):
 
-XYZ  line 1: <natoms>
-     line 2: <comment, optional ASE Properties=…>
-     line 3+: <element>  <x>  <y>  <z>
+| Cols | Field |
+|---|---|
+| 13–16 | atom name |
+| 17 | altLoc |
+| 18–20 | resName |
+| 22 | chainID |
+| 23–26 | resSeq |
+| 31–38 / 39–46 / 47–54 | X / Y / Z |
+| 55–60 | occupancy |
+| 61–66 | B-factor |
+| 77–78 | element |
 
-GJF  %nproc=...  %mem=...
-     # <route line:  functional/basis  options>
+XYZ:
 
-     <title>
+| Line | Content |
+|---|---|
+| 1 | `<natoms>` |
+| 2 | comment, optional ASE `Properties=...` |
+| 3+ | `<element>  <x>  <y>  <z>` |
 
-     <charge> <spin>
-     <element>  <x>  <y>  <z>
-     ...
+GJF (top-to-bottom block order):
 
-     [optional connectivity, ECP blocks, ...]
-```
+| Block | Content |
+|---|---|
+| Link0 | `%nproc=...`, `%mem=...` |
+| Route | `# <functional/basis  options>` |
+| Title | `<title>` |
+| Charge/Spin | `<charge> <spin>` |
+| Coords | `<element>  <x>  <y>  <z>` … |
+| Optional | connectivity / ECP blocks |
 
 Full byte-by-byte / per-keyword detail: see `pdb.md`, `xyz.md`, `gjf.md`.
 

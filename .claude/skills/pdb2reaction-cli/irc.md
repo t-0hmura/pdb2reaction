@@ -49,18 +49,13 @@ pdb2reaction irc -i ts.xyz -q -1 -m 1 \
 
 ## Output
 
-```
-result_irc/
-├── forward_irc_trj.xyz             # IRC forward trajectory
-├── backward_irc_trj.xyz            # IRC backward trajectory
-├── finished_irc_trj.xyz            # stitched: backward (reversed) + TS + forward
-├── finished_first.xyz              # backward endpoint (raw IRC)
-├── finished_last.xyz               # forward endpoint (raw IRC)
-├── forward_irc.pdb                 # PDB companions (only when input is .pdb)
-├── backward_irc.pdb
-├── finished_irc.pdb
-└── result.json                     # only when --out-json is passed
-```
+| Path | When | Content |
+|---|---|---|
+| `<out_dir>/forward_irc_trj.xyz`, `backward_irc_trj.xyz` | always | IRC forward / backward trajectories |
+| `<out_dir>/finished_irc_trj.xyz` | always | stitched: backward (reversed) + TS + forward |
+| `<out_dir>/finished_first.xyz`, `finished_last.xyz` | always | raw IRC endpoints (backward / forward) |
+| `<out_dir>/{forward,backward,finished}_irc.pdb` | input is `.pdb` | PDB companions |
+| `<out_dir>/result.json` | `--out-json` | machine-readable result |
 
 `result.json` keys:
 

@@ -60,19 +60,11 @@ Present when `--tsopt`, `--thermo`, or `--dft` was passed:
 
 Two locations get written for each elementary step:
 
-```
-result_all/
-├── seg_NN/                                 # CANONICAL — top-level, post-IRC re-optimized (RFO by default; LBFGS via --opt-mode-post grad)
-│   ├── reactant.{xyz,pdb}                  # IRC backward endpoint, re-optimized
-│   ├── ts.{xyz,pdb}                        # tsopt'd transition state
-│   └── product.{xyz,pdb}                   # IRC forward endpoint, re-optimized
-└── path_search/post_seg_NN/structures/
-    ├── reactant.{xyz,pdb}                  # same as above (canonical) — nested copy
-    ├── reactant_irc.{xyz,pdb}              # raw IRC backward end (pre-RFO/LBFGS re-optimization)
-    ├── ts.{xyz,pdb}                        # same as above
-    ├── product.{xyz,pdb}                   # same as above (canonical)
-    └── product_irc.{xyz,pdb}               # raw IRC forward end (pre-RFO/LBFGS re-optimization)
-```
+| Path | Content |
+|---|---|
+| `<out_dir>/seg_NN/{reactant,ts,product}.{xyz,pdb}` | **CANONICAL** — top-level, post-IRC re-optimized (RFO default; LBFGS via `--opt-mode-post grad`). `reactant` = backward endpoint, `ts` = tsopt'd, `product` = forward endpoint, all re-optimized |
+| `<out_dir>/path_search/post_seg_NN/structures/{reactant,ts,product}.{xyz,pdb}` | nested copy of canonical |
+| `<out_dir>/path_search/post_seg_NN/structures/{reactant,product}_irc.{xyz,pdb}` | raw IRC endpoints (pre-RFO/LBFGS re-optimization); for debugging IRC vs. post-IRC re-optimization divergence |
 
 **Rule of thumb**: read from `seg_NN/` for downstream stages. Use
 `reactant_irc.xyz` / `product_irc.xyz` only when debugging

@@ -68,15 +68,16 @@ pdb2reaction extract -i 1.R_raw.pdb 3.P_raw.pdb \
 
 ## Output
 
-Same as the base `all.md`. Specifically for endpoint-MEP mode:
+Same as `all.md`. Specifically for endpoint-MEP mode:
 
-- `<out_dir>/mep.pdb`, `mep_trj.xyz`, `mep_w_ref.pdb`, `energy_diagram_MEP.png` — stitched MEP across all segments (copied from `path_search/` to the top of the output directory)
-- `path_search/mep_seg_NN_trj.xyz` + `mep_seg_NN.{pdb,gjf}` — per-segment MEP frames (no bare `mep_seg_NN.xyz`)
-- `path_search/seg_NNN_<tag>/` — internal scratch dirs for the recursive splitter (3-digit index with descriptive suffix `_mep`/`_maxdepth`/`_bridge`); not user-facing
-- `path_search/post_seg_NN/` — per-segment refined-string output + energy diagrams
-- `seg_NN/{reactant,ts,product}.pdb` — canonical R/TS/P per segment after IRC + LBFGS endpoint optimization
-- `summary.json["segments"]` — list of `{index, barrier_kcal,
-  delta_kcal, bond_changes, ...}` entries
+| Path | When | Content |
+|---|---|---|
+| `<out_dir>/mep.pdb`, `mep_trj.xyz`, `mep_w_ref.pdb`, `energy_diagram_MEP.png` | always | stitched MEP (copied from `path_search/`) |
+| `<out_dir>/path_search/mep_seg_NN_trj.xyz`, `mep_seg_NN.{pdb,gjf}` | always | per-segment MEP frames (no bare `.xyz`) |
+| `<out_dir>/path_search/seg_NNN_<tag>/` | always | recursive-splitter scratch (3-digit, `_mep` / `_maxdepth` / `_bridge`); internal |
+| `<out_dir>/path_search/post_seg_NN/` | always | per-segment refined-string output + energy diagrams |
+| `<out_dir>/seg_NN/{reactant,ts,product}.pdb` | always | canonical R/TS/P (after IRC + LBFGS endpoint opt) |
+| `<out_dir>/summary.json["segments"]` | always | list of `{index, barrier_kcal, delta_kcal, bond_changes, ...}` |
 
 ## Distinctive failure modes
 

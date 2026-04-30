@@ -55,31 +55,17 @@ skill (`SKILL.md` plus `core.md`) before doing anything else.
 
 ## Pipeline at a glance
 
-```
-PDB(s)
-  │
-  ▼
-[extract]      active-site cluster + link-H caps + total charge
-  │
-  ▼
-[path-search]  MEP (GSM or DMF), recursive bond-change segmentation
-  │            → seg_01, seg_02, ... (one per elementary step)
-  ▼
-[tsopt]        TS refinement per segment (RS-I-RFO default; Dimer alternative)
-  │
-  ▼
-[irc]          forward/backward IRC, endpoint LBFGS optimization
-  │
-  ▼
-[freq]         Hessian, vibrational frequencies, QRRHO thermochemistry
-  │
-  ▼
-[dft]          (optional) ωB97M-V/def2-TZVPD single point on R, TS, P
-```
+| Stage | Role |
+|---|---|
+| `extract` | active-site cluster + link-H caps + total charge |
+| `path-search` | MEP (GSM or DMF), recursive bond-change segmentation → `seg_01`, `seg_02`, … (one per elementary step) |
+| `tsopt` | TS refinement per segment (RS-I-RFO default; Dimer alternative) |
+| `irc` | forward / backward IRC, endpoint LBFGS optimization |
+| `freq` | Hessian, vibrational frequencies, QRRHO thermochemistry |
+| `dft` | (optional) ωB97M-V/def2-TZVPD single point on R, TS, P |
 
 `pdb2reaction all` chains all of these. Each stage is also available as
-its own subcommand (`pdb2reaction tsopt -i ts.xyz`) if you only want one
-piece.
+its own subcommand (`pdb2reaction tsopt -i ts.xyz`).
 
 ## Backend choices (MLIP)
 

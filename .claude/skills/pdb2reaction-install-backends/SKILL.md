@@ -44,20 +44,12 @@ Files in this skill directory:
 
 ## Decision tree: which backend?
 
-```
-Need TS + IRC validation on a known organic + 1st-row metal cluster?
-    └── start with UMA-s-1.1 (uma.md)
-        └── if accuracy is borderline, also install MACE-OMOL-0 (mace.md, separate env)
-
-Need a fast screen across many candidates?
-    └── Orb-v3 (orb.md)
-
-Working on small organic molecules, no metals?
-    └── AIMNet2 (aimnet2.md) — limited element coverage, but light
-
-Need DFT//MLIP refinement?
-    └── add dft.md regardless of MLIP choice
-```
+| Goal | Recommendation |
+|---|---|
+| TS + IRC on known organic + 1st-row metal cluster | start with **UMA-s-1.1** (`uma.md`); if accuracy borderline, add **MACE-OMOL-0** in a separate env (`mace.md`) |
+| Fast screen across many candidates | **Orb-v3** (`orb.md`) |
+| Small organics, no metals | **AIMNet2** (`aimnet2.md`) — limited element coverage, light |
+| DFT//MLIP refinement | add **`dft.md`** regardless of MLIP choice |
 
 ## Why two envs for MACE
 

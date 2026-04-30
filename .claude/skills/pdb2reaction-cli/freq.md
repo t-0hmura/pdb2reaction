@@ -50,14 +50,13 @@ pdb2reaction freq -i ts.xyz -l 'SAM:1' \
 
 ## Output
 
-```
-result_freq/
-├── result.json                    # only when --out-json is passed
-├── frequencies_cm-1.txt           # all modes, sorted, cm⁻¹
-├── thermoanalysis.yaml            # ZPE, thermal corrections, S, H, G (with --dump)
-├── mode_NNNN_<freq>cm-1_trj.xyz   # per-mode displacement trajectory (in out_dir, not vib/)
-└── mode_NNNN_<freq>cm-1.pdb       # PDB companion when applicable
-```
+| Path | When | Content |
+|---|---|---|
+| `<out_dir>/result.json` | `--out-json` | machine-readable result |
+| `<out_dir>/frequencies_cm-1.txt` | always | all modes, sorted (cm⁻¹) |
+| `<out_dir>/thermoanalysis.yaml` | `--dump` | ZPE, thermal corrections, S, H, G |
+| `<out_dir>/mode_NNNN_<freq>cm-1_trj.xyz` | always | per-mode displacement trajectory (top-level, NOT under `vib/`) |
+| `<out_dir>/mode_NNNN_<freq>cm-1.pdb` | input has PDB topology | PDB companion |
 
 `result.json` keys:
 

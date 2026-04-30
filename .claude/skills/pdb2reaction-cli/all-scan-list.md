@@ -71,20 +71,15 @@ trajectories.
 
 ## Output
 
-Same overall tree as in `all.md`, plus per-stage scan output:
+Same overall layout as `all.md`, plus per-stage scan output:
 
-```
-result_scan/
-├── scan/                           # at out_dir top level (NOT under path_search/)
-│   ├── stage_01/  scan_*.xyz       # raw distance-restraint scan trajectory
-│   ├── stage_02/  scan_*.xyz
-│   └── ...
-├── path_search/                    # (or path_opt/ when --refine-path False)
-│   ├── mep_seg_NN_trj.xyz + mep_seg_NN.{pdb,gjf}  # per-segment MEP strings
-│   └── post_seg_NN/                # per-segment refinements + energy diagrams
-├── seg_NN/                         # canonical R/TS/P per segment (top-level)
-└── summary.json
-```
+| Path | When | Content |
+|---|---|---|
+| `<out_dir>/scan/stage_NN/scan_*.xyz` | always | raw distance-restraint scan trajectory (top level, not under `path_search/`) |
+| `<out_dir>/path_search/mep_seg_NN_trj.xyz`, `mep_seg_NN.{pdb,gjf}` | always (`path_opt/` when `--refine-path False`) | per-segment MEP strings |
+| `<out_dir>/path_search/post_seg_NN/` | always | per-segment refinements + energy diagrams |
+| `<out_dir>/seg_NN/{reactant,ts,product}.{pdb,xyz,gjf}` | always | canonical R/TS/P per segment (top-level) |
+| `<out_dir>/summary.json` | always | machine-readable result |
 
 For per-stage scan diagnostics (target distances, convergence, energies),
 run `pdb2reaction scan` standalone with `--out-json` and parse

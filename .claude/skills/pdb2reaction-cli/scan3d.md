@@ -41,16 +41,14 @@ pdb2reaction scan3d -i 1.R.pdb -l 'SAM:1' \
 
 ## Output
 
-```
-result_scan3d/
-├── result.json                       # only when --out-json is passed
-├── grid/                                              # per grid-point geometries (flat)
-│   ├── point_i<d1Å>_j<d2Å>_k<d3Å>.xyz                  # final relaxed point (always)
-│   ├── preopt_i<d1Å>_j<d2Å>_k<d3Å>.{xyz,pdb,gjf}       # pre-relaxation snapshot (--preopt)
-│   └── inner_path_d1_NNN_d2_MMM_trj.xyz                # inner-loop trajectory (--dump)
-├── scan3d_density.html                                # interactive 3D iso-surface (always)
-└── surface.csv                                        # 3D energy surface (axis_1, axis_2, axis_3, energy)
-```
+| Path | When | Content |
+|---|---|---|
+| `<out_dir>/result.json` | `--out-json` | machine-readable result |
+| `<out_dir>/grid/point_i<d1Å>_j<d2Å>_k<d3Å>.xyz` | always | final relaxed grid point |
+| `<out_dir>/grid/preopt_i<d1Å>_j<d2Å>_k<d3Å>.{xyz,pdb,gjf}` | `--preopt` | pre-relaxation snapshot |
+| `<out_dir>/grid/inner_path_d1_NNN_d2_MMM_trj.xyz` | `--dump` | inner-loop trajectory |
+| `<out_dir>/scan3d_density.html` | always | interactive 3D iso-surface |
+| `<out_dir>/surface.csv` | always | 3D energy surface (axis_1, axis_2, axis_3, energy) |
 
 `result.json` stores grid metadata and energy values; `surface.csv`
 holds the four-column tabulation ready for slicing / contour plotting

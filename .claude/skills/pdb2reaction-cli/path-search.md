@@ -61,25 +61,18 @@ pdb2reaction path-search -i 1.R.pdb 3.P.pdb \
 
 ## Output
 
-```
-result_path_search/
-├── summary.json                       # full result, see below
-├── summary.log                        # human-readable
-├── mep_trj.xyz                        # stitched MEP across all segments (top level)
-├── mep.pdb                            # PDB companion (when reference PDB available)
-├── mep.gjf                            # GJF companion (when input is .gjf)
-├── mep_w_ref.pdb                      # full MEP with reference frame
-├── mep_w_ref_seg_NN.pdb               # per-segment merged with reference
-├── mep_plot.png                       # MEP energy plot
-├── seg_NNN_<tag>/                     # per-string scratch (e.g. seg_001_mep, seg_002_maxdepth)
-│   ├── final_geometries_trj.xyz       # this string's frames
-│   ├── mep_plot.png
-│   └── hei.{xyz,pdb,gjf}              # highest-energy image (TS candidate)
-├── mep_seg_NN_trj.xyz                 # canonical per-segment MEP frames
-├── mep_seg_NN.{pdb,gjf}               # PDB / GJF companions
-├── hei_seg_NN.{xyz,pdb,gjf}           # canonical HEI per segment (TS seed)
-└── energy_diagram_MEP.png             # bare MEP energies (backend not encoded in filename)
-```
+| Path | When | Content |
+|---|---|---|
+| `<out_dir>/summary.json`, `summary.log` | always | machine + human result |
+| `<out_dir>/mep_trj.xyz` | always | stitched MEP across all segments |
+| `<out_dir>/mep.pdb` | reference PDB available | PDB companion |
+| `<out_dir>/mep.gjf` | input is `.gjf` | GJF companion |
+| `<out_dir>/mep_w_ref.pdb`, `mep_w_ref_seg_NN.pdb` | reference PDB available | full / per-segment MEP merged with reference |
+| `<out_dir>/mep_plot.png` | always | MEP energy plot |
+| `<out_dir>/seg_NNN_<tag>/{final_geometries_trj.xyz, mep_plot.png, hei.{xyz,pdb,gjf}}` | always | per-string scratch (3-digit, `_mep` / `_maxdepth`) |
+| `<out_dir>/mep_seg_NN_trj.xyz`, `mep_seg_NN.{pdb,gjf}` | always | canonical per-segment MEP frames |
+| `<out_dir>/hei_seg_NN.{xyz,pdb,gjf}` | always | canonical HEI per segment (TS seed) |
+| `<out_dir>/energy_diagram_MEP.png` | always | bare MEP energies |
 
 Standalone `path-search` does **not** create `post_seg_NN/` —
 post-processing (tsopt / irc / freq / dft) is `all`'s job.

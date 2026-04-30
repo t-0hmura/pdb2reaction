@@ -50,21 +50,16 @@ pdb2reaction freq  -i result_tsopt/final_geometry.xyz -o result_freq -b uma
 `extract` and `path-search` are skipped entirely; the chain collapses
 to `tsopt → irc → freq → (dft)`. The output tree:
 
-```
-result_ts_only/
-├── summary.json
-├── summary.log
-├── seg_01/                # canonical R/TS/P (same layout as multi-input mode)
-│   ├── reactant.{pdb,xyz}
-│   ├── ts.{pdb,xyz}
-│   └── product.{pdb,xyz}
-└── tsopt_single/
-    ├── ts/            final_geometry.{xyz,pdb}, optimization_trj.xyz (with --dump)
-    ├── irc/           forward_irc_trj.xyz, backward_irc_trj.xyz, finished_irc_trj.xyz
-    ├── freq/          {R,TS,P}/{frequencies_cm-1.txt, thermoanalysis.yaml}
-    ├── dft/           (when --dft)
-    └── structures/    reactant.pdb, ts.pdb, product.pdb (mirror of seg_01/)
-```
+| Path | When | Content |
+|---|---|---|
+| `<out_dir>/summary.json` | always | machine-readable result |
+| `<out_dir>/summary.log` | always | human-readable text + dir tree |
+| `<out_dir>/seg_01/{reactant,ts,product}.{pdb,xyz}` | always | canonical R/TS/P (same layout as multi-input mode) |
+| `<out_dir>/tsopt_single/ts/final_geometry.{xyz,pdb}`, `optimization_trj.xyz` | always (`_trj.xyz` with `--dump`) | tsopt output |
+| `<out_dir>/tsopt_single/irc/{forward,backward,finished}_irc_trj.xyz` | always | IRC trajectories |
+| `<out_dir>/tsopt_single/freq/{R,TS,P}/{frequencies_cm-1.txt, thermoanalysis.yaml}` | always | per-state freq + thermo |
+| `<out_dir>/tsopt_single/dft/{R,TS,P}/result.{yaml,json}` | `--dft` | per-state DFT |
+| `<out_dir>/tsopt_single/structures/{reactant,ts,product}.pdb` | always | mirror of `seg_01/` |
 
 ## Output keys
 

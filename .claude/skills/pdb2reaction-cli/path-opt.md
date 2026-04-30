@@ -46,14 +46,13 @@ pdb2reaction path-opt -i R.pdb P.pdb -l 'GPP:-3' --mep-mode dmf -b mace \
 
 ## Output
 
-```
-result_path_opt/
-├── result.json                       # only when --out-json is passed
-├── final_geometries_trj.xyz          # converged string trajectory
-├── final_geometries.{pdb,gjf}        # PDB / GJF companions (with --convert-files)
-├── hei.{xyz,pdb,gjf}                 # highest-energy image (TS candidate)
-└── (DMF only) dmf_initial_trj.xyz, dmf_ipopt.out
-```
+| Path | When | Content |
+|---|---|---|
+| `<out_dir>/result.json` | `--out-json` | machine-readable result |
+| `<out_dir>/final_geometries_trj.xyz` | always | converged string trajectory |
+| `<out_dir>/final_geometries.{pdb,gjf}` | `--convert-files` (default on) | PDB / GJF companions |
+| `<out_dir>/hei.{xyz,pdb,gjf}` | always | highest-energy image (TS candidate) |
+| `<out_dir>/dmf_initial_trj.xyz`, `dmf_ipopt.out` | `--mep-mode dmf` | DMF-mode artifacts |
 
 `result.json` reports converged string energies, gradient norm, and
 the path-opt status (`converged` / `not_converged`).
