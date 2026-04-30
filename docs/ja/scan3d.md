@@ -27,16 +27,7 @@ pdb2reaction scan3d -i input.pdb -q 0 -s scan3d.yaml --out-dir ./result_scan3d/
 
 > **Note:** `-s/--scan-lists` の解釈結果を確認したい場合は `--print-parsed` を追加してください。
 
-## 使用法
-```bash
-pdb2reaction scan3d [-i INPUT.{pdb|xyz|trj|...}] [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
- [-s/--scan-lists scan3d.yaml | '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
- [--convert-files/--no-convert-files] [--ref-pdb FILE] [--csv PATH]
-```
-注: `-i/--input` と `-s/--scan-lists` は `--csv` が指定されていない限り必須です。
-
-### 例
+## よくある例
 ```bash
 # 推奨: YAML/JSON spec
 cat > scan3d.yaml << 'YAML'
@@ -61,6 +52,15 @@ pdb2reaction scan3d -i input.pdb -q 0 \
 # 既存surface.csvからのプロットのみ（スキャンしない）
 pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 --out-dir ./result_scan3d/
 ```
+
+## 使用法
+```bash
+pdb2reaction scan3d [-i INPUT.{pdb|xyz|trj|...}] [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
+ [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
+ [-s/--scan-lists scan3d.yaml | '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
+ [--convert-files/--no-convert-files] [--ref-pdb FILE] [--csv PATH]
+```
+注: `-i/--input` と `-s/--scan-lists` は `--csv` が指定されていない限り必須です。
 
 ## スキャンリスト仕様
 

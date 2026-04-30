@@ -27,16 +27,7 @@ pdb2reaction scan3d -i input.pdb -q 0 -s scan3d.yaml -o ./result_scan3d/
 
 > **Note:** Add `--print-parsed` when you want to verify parsed pair targets from `--scan-lists/-s`.
 
-## Usage
-```bash
-pdb2reaction scan3d [-i INPUT.{pdb|xyz|trj|...}] [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
- [-s/--scan-lists scan3d.yaml | '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
- [--convert-files/--no-convert-files] [--ref-pdb FILE] [--csv PATH]
-```
-Note: `-i/--input` and `--scan-lists/-s` are required unless `--csv` is provided.
-
-### Examples
+## Common examples
 ```bash
 # Recommended: YAML/JSON spec file
 cat > scan3d.yaml << 'YAML'
@@ -61,6 +52,15 @@ pdb2reaction scan3d -i input.pdb -q 0 \
 # Plot only from an existing surface.csv (skip new energy evaluation)
 pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 -o ./result_scan3d/
 ```
+
+## Usage
+```bash
+pdb2reaction scan3d [-i INPUT.{pdb|xyz|trj|...}] [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
+ [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
+ [-s/--scan-lists scan3d.yaml | '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
+ [--convert-files/--no-convert-files] [--ref-pdb FILE] [--csv PATH]
+```
+Note: `-i/--input` and `--scan-lists/-s` are required unless `--csv` is provided.
 
 ## Scan-list spec
 
