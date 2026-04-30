@@ -68,7 +68,7 @@ True").
 result_all/
 ├── summary.json                    # machine-readable per-stage results
 ├── summary.log                     # human-readable text + dir tree
-├── extract/                        # cluster.pdb (if -c was given)
+├── models/                         # model_<input_stem>.pdb (extracted active-site clusters; one per -i input when -c was given)
 ├── path_search/                    # (or path_opt/ when --no-refine-path)
 │   ├── seg_NNN_<tag>/              # per-segment MEP scratch (e.g., seg_001_mep, seg_002_maxdepth)
 │   ├── mep_seg_NN_trj.xyz + mep_seg_NN.{pdb,gjf}  # canonical per-segment MEP frames
