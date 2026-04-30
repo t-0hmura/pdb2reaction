@@ -79,8 +79,8 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
 | --- | --- | --- |
 | `-i, --input PATH...` | 反応順序の2つ以上の構造（反応物 → 生成物）。すべてのファイルを単一の `-i`/`--input` の後ろに並べて指定 | 必須 |
 | `-q, --charge INT` | 総電荷。非`.gjf`入力では `--ligand-charge` の導出が成功しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
-| `-l, --ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力のみ） | _None_ |
-| `--workers`, `--workers-per-node` | UMA予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器に渡されます）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照。 | `1`, `1` |
+| `-l, --ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
+| `--workers`, `--workers-per-node` | MLIP 予測器の並列度（workers > 1 で解析ヘシアン無効; UMA バックエンドのみ; `workers_per_node` は並列予測器に渡されます）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照。 | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | `--freeze-links/--no-freeze-links` | PDB 活性部位モデル読み込み時、リンク水素の親原子を凍結。詳細は [extract](extract.md) を参照 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用。 | _None_ |
@@ -90,7 +90,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
 | `--opt-mode TEXT` | HEI±1/ねじれノード用の単一構造オプティマイザー（`grad`=LBFGS、`hess`=RFO）。同じトークンが `tsopt` では Dimer / RS-I-RFO へ対応する点については {ref}`ja-opt-mode-semantics` を参照してください。 | `grad` |
 | `--mep-mode {gsm\|dmf}` | セグメント生成器: GSM（string）またはDMF（direct flux） | `gsm` |
 | `--refine-mode {peak\|minima}` | 精密化シード: `peak` はHEI±1、`minima` はHEIから最寄り局所極小点へ外側探索。未指定時はGSMで`peak`、DMFで`minima` | _Auto_ |
-| `--dump/--no-dump` | MEP（GSM/DMF）と単一構造軌跡/リスタートをダンプ | `False` |
+| `--dump/--no-dump` | MEP（GSM/DMF）と単一構造軌跡をダンプ。リスタート YAML は YAML で有効化した場合のみ書き出されます | `False` |
 | `--convert-files/--no-convert-files` | PDB/Gaussian入力のXYZ/TRJ → PDB/GJFコンパニオンを切り替え | `True` |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_path_search/` |
 | `--thresh TEXT` | 単一構造最適化のみの収束プリセットを上書き（`opt.lbfgs/rfo.thresh`） | `gau` |
@@ -103,7 +103,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
 | `--dry-run/--no-dry-run` | 実行せずに検証と実行計画表示のみを行う。 | `False` |
 | `--preopt/--no-preopt` | 選択された単一構造オプティマイザー（LBFGS/RFO）で MEP 探索前に各エンドポイントを事前最適化。**スコープ依存デフォルト:** 単体の `path-search` では `False`、**`pdb2reaction all` 経由では `True` に反転**されます（{ref}`mep-search-options` を参照）。 | `False` |
 | `--align/--no-align` | 探索前にすべての入力を最初の構造にアライメント | `True` |
-| `--ref-full-pdb PATH...` | フルサイズテンプレート PDB（`--align` があれば先頭のみ再利用可） | _None_ |
+| `--ref-full-pdb PATH...` | フルサイズテンプレート PDB（入力と同数。`--align` があれば先頭のみ再利用可） | _None_ |
 | `--ref-pdb PATH...` | 入力が XYZ/GJF の場合に最終的な全系マージで用いるポケット参照 PDB（入力と同数・同順） | _None_ |
 
 ## ワークフロー
@@ -134,8 +134,8 @@ out_dir/ (デフォルト:./result_path_search/)
 ├─ hei_w_ref_seg_XX.pdb # 全系コンテキストでマージされた HEI（参照 PDB が必要）
 ├─ summary.json # すべての再帰セグメントの障壁と分類サマリー
 ├─ summary.log # 結果要約
-├─ mep_plot.png # ΔEプロファイル（kcal/mol、反応物基準）
-├─ energy_diagram_MEP.png # MEP状態エネルギーダイアグラムの静的エクスポート
+├─ mep_plot.png # `trj2fig` で生成した ΔE プロファイル（kcal/mol、反応物基準）
+├─ energy_diagram_MEP.png # MEP 状態エネルギーダイアグラムの静的エクスポート（反応物基準）
 └─ seg_NNN_*/ # セグメントごとの GSM/DMF ダンプ、HEI スナップショット、kink/精密化の診断情報
 ```
 
@@ -155,21 +155,14 @@ out_dir/ (デフォルト:./result_path_search/)
 YAML ルートはマッピングでなければなりません。共通セクションは [YAML リファレンス](yaml-reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（`--freeze-links` については {ref}`リンク水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）、`stopt` は `path-opt`（[path-opt.md](path-opt.md)）に記載の StringOptimizer 設定を継承します。
 
 ```{note}
-**リファレンスの重複について。** 以下の `geom`, `calc`, `gs`, `dmf`, `stopt`, `opt.lbfgs`, `opt.rfo` が [YAML リファレンス](yaml-reference.md) と食い違った場合は [YAML リファレンス](yaml-reference.md) と `pdb2reaction/defaults.py` を正とします。
+**リファレンスの重複について。** `geom`, `calc`, `gs`, `dmf`, `stopt`, `opt.lbfgs`, `opt.rfo` の YAML キーは [YAML リファレンス](yaml-reference.md) に正規定義があります。両ページで齟齬がある場合は [YAML リファレンス](yaml-reference.md) と `pdb2reaction/defaults.py` を正とし、本ページの appendix は `path-search` 固有のデフォルト（例: `out_dir: ./result_path_search/`）のみを再掲します。
 ```
 
-`gs`（Growing String）は `pdb2reaction.path_opt.GS_KW` のデフォルト値を継承し、`max_nodes`（セグメント内部ノード）、クライミング設定（`climb`, `climb_rms`, `climb_fixed`）、再パラメータ化（`reparam_every_full`, `reparam_check`）を上書きできます。
+`bond` と `search` は `path-search` の再帰ロジックの中核であり、ここで詳述します。`gs`、`dmf`、`stopt`、`opt.lbfgs`、`opt.rfo` は `path-search` 固有の `out_dir` 上書きのみ再掲します。
 
-`opt` は HEI±1 と kink ノードに使う単一構造オプティマイザーで、`lbfgs` と `rfo` に分かれます。各サブセクションは [YAML リファレンス](yaml-reference.md) と同じキーを持ちますが、デフォルトは `out_dir: ./result_path_search/`、`dump: False` です。
-
-`bond` は UMA ベースの結合変化検出パラメータで、[scan](scan.md) の bond セクションと共通の `device`, `bond_factor`, `margin_fraction`, `delta_fraction` を持ちます。
-
-
-`dmf` は `--mep-mode dmf` 選択時に適用される Direct Max Flux + (C)FB-ENM の設定です。デフォルト値は `DMF_KW` を踏襲し、実行ごとに上書きできます。
+`bond` は MLIP ベースの結合変化検出パラメータで、[scan](scan.md) の bond セクションと共通の `device`, `bond_factor`, `margin_fraction`, `delta_fraction` を持ちます。
 
 ### `path-search` 固有の上書き
-
-`geom`, `calc`, `gs`, `dmf`, `stopt`, `opt.lbfgs`, `opt.rfo` の全キーは [YAML リファレンス](yaml-reference.md) を参照してください。以下のデフォルトは `out_dir` のみが各セクションの正準デフォルトと異なり、`./result_path_search/` を指します:
 
 ```yaml
 stopt:

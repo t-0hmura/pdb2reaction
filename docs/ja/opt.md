@@ -166,7 +166,7 @@ LBFGSとRFOの両方で使用される共有オプティマイザー制御:
 `geom`、`calc`、`opt`、`lbfgs`、`rfo` の完全な YAML スキーマは [YAML リファレンス](yaml-reference.md) を参照してください。
 
 ```{note}
-**エネルギープラトーによるフォールバック収束 (v0.3.5 新機能)。** `energy_plateau: true`
+**エネルギープラトーによるフォールバック収束。** `energy_plateau: true`
 のとき、直近 `energy_plateau_window` ステップのエネルギーレンジ（max − min）が
 `energy_plateau_thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`、50 ステップ）を
 下回ると、オプティマイザーは収束したと判定します。MLIP の力のノイズフロア

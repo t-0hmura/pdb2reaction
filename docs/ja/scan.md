@@ -26,7 +26,7 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
 
 - `result_scan/stage_01/result.pdb`（または `result.xyz`）
 - `result_scan/stage_02/result.pdb`（または `result.xyz`）
-- `result_scan/stage_*/scan_trj.xyz` と `scan.pdb`（常に生成されます。ステップごとの最適化軌跡ファイルは現状 CLI からは出力されません — 最適化レベルのダンプは YAML で `opt.dump: true` を設定してください）
+- `result_scan/stage_*/scan_trj.xyz`（常に生成。`scan.pdb` コンパニオンは PDB 入力 + 変換有効時のみ）
 
 ## よくある例
 
@@ -78,6 +78,11 @@ pdb2reaction scan -i input.pdb -q 0 -s \
  '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]' \
  --max-step-size 0.20 --dump -o ./result_scan/ --opt-mode grad \
  --preopt --endopt
+
+# 1 つの -s/--scan-lists の後に複数のステージリテラルを並べる
+pdb2reaction scan -i input.pdb -q 0 -s \
+ '[("TYR,285,CA","SAM,309,C10",1.35)]' \
+ '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]'
 ```
 
 ## スキャンリスト仕様
@@ -125,7 +130,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
 2. `--preopt` の場合、バイアスをかける前に無バイアスの前処理最適化を実行し、開始構造を緩和します。
 3. `-s/--scan-lists`（YAML/JSON ファイルパスまたはインライン Python リテラル）からステージターゲットを読み取り、`(i, j)` インデックスを正規化します（デフォルトは 1 始まり）。PDB 入力では、各エントリに整数インデックスまたは `'TYR,285,CA'` のような原子セレクタ文字列を指定できます。セレクタの区切りは空白・カンマ・スラッシュ・バッククォート・バックスラッシュのいずれも可で、トークン順序は任意です（フォールバックは resname, resseq, atom を想定）。
     各結合について変位 `Δ = target − current` を計算し、`h = --max-step-size` として `N = ceil(max(|Δ|) / h)` ステップに分割します。各結合は `δ = Δ / N` ずつ更新されます。
-4. すべてのステップを順に進め、一時ターゲットを更新しながら調和ポテンシャル `E = Σ ½ k (|ri − rj| − target)²` を適用し、MLIP バックエンド（デフォルト: UMA）で最適化します。最適化サイクルの上限は `--relax-max-cycles` で設定します（YAML で `opt.max_cycles` が指定されていない場合）。
+4. すべてのステップを順に進め、一時ターゲットを更新しながら調和ポテンシャル `E = Σ ½ k (|ri − rj| − target)²` を適用し、MLIP バックエンドで最適化します。最適化サイクルの上限は `--relax-max-cycles` で設定します（YAML で `opt.max_cycles` が指定されていない場合）。
 5. 各ステージの最終ステップ後、必要に応じて無バイアス緩和（`--endopt`）を実行し、共有結合の変化を報告して `result.*` を出力します。
 6. すべてのステージについて繰り返します。結合スキャン軌跡（`scan_trj.xyz` および `scan.pdb`）は常に書き出されます。ステップごとの最適化軌跡ファイルは現状 CLI からは出力されません（`--dump` は予約フラグ）。最適化レベルのダンプが必要な場合は YAML で `opt.dump: true` を設定してください。
 
@@ -138,7 +143,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
 | `--workers`, `--workers-per-node` | UMA 予測器の並列度（workers > 1 で解析ヘシアンは無効化; `workers_per_node` は並列予測器に渡されます）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照。 | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
 | `-s, --scan-lists TEXT` | スキャンターゲット: YAML/JSON スペックファイルパス（推奨）またはインライン Python リテラル（`(i,j,targetÅ)` 三つ組もしくは `(i,j,start,end)` 四つ組（双方向スキャン））。各リテラルが 1 ステージ; 1 つのフラグの後に複数リテラルを渡す。`i`/`j` は整数インデックスまたは PDB 原子セレクタ（`'TYR,285,CA'`） | 必須 |
-| `--one-based/--zero-based` | 原子インデックスを 1 始まり/0 始まりとして解釈 | `True` |
+| `--one-based/--zero-based` | 原子インデックスを 1 始まり/0 始まりとして解釈。これらは同一フラグの相互排他エイリアス（`--one-based` → `True`、`--zero-based` → `False`） | `True` |
 | `--print-parsed/--no-print-parsed` | `-s/--scan-lists` 解釈後のステージ情報を表示。 | `False` |
 | `--max-step-size FLOAT` | 1 ステップあたりのスキャン結合の最大変化量（Å）。ステップ数を決定 | `0.20` |
 | `--bias-k FLOAT` | 調和バイアス強度 `k`（eV·Å⁻²） | `300` |
@@ -168,7 +173,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
 
 (ja-section-bond)=
 ### セクション `bond`
-`path-search` と共通の UMA ベース結合変化検出:
+`path-search` と共通の MLIP ベース結合変化検出:
 - `device`（`"auto"`）: 結合解析用 UMA デバイス。
 - `bond_factor`（`1.20`）: 共有結合半径のスケーリング係数。
 - `margin_fraction`（`0.05`）: 比較時の相対許容値。

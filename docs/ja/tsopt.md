@@ -11,7 +11,7 @@
 - **デフォルト:** `--opt-mode hess`（RS-I-RFO）、`--thresh baker`、`--hessian-calc-mode FiniteDifference`、`--max-cycles 10000`、`--flatten` 無効、バックエンド `uma`。
 - **次ステップ:** `tsopt` は最終 Hessian 計算と虚振動数チェックを内部で実行しますが、結果はなお *候補* です。[irc](irc.md) で端点の接続性を確認してください。完全な振動解析や熱化学補正が必要な場合のみ、別途 [freq](freq.md) を実行します。
 
-> **命名規則の注意:** CLI は `grad|dimer`（= Dimer）および `hess|rsirfo`（= RS-I-RFO、デフォルト）を受け付けます。YAML ではトップレベルの `hessian_dimer:`（Dimer）または `rsirfo:`（RS-I-RFO）ブロックを直接指定してください。`--opt-mode grad`（Dimer）は初期 Hessian のみを使用し、以後は完全 Hessian の再構築を避けてダイマー回転で更新します。
+> **命名規則の注意:** CLI は `grad|dimer`（= Dimer）および `hess|rsirfo`（= RS-I-RFO、デフォルト）を受け付けます。YAML ではトップレベルの `hessian_dimer:`（Dimer）または `rsirfo:`（RS-I-RFO）ブロックを直接指定してください。
 
 XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定し、XYZ 座標を保持したまま PDB/GJF への変換が可能です。TS 初期構造が必要な場合は、2 端点なら [path-opt](path-opt.md)、2 構造以上なら [path-search](path-search.md) で HEI を取得してから `tsopt`（内部で虚振動数チェック済み）→ `irc` の順で検証してください。
 
@@ -163,7 +163,7 @@ out_dir/ (デフォルト:./result_tsopt/)
 共通セクションについては [YAML リファレンス](yaml-reference.md) を参照してください。必要な値だけ変更してください。
 
 ```{note}
-**リファレンスの重複について。** 以下に並ぶ `geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo` の YAML キーは [YAML リファレンス](yaml-reference.md) の正規定義をミラーしたものです。両者が食い違った場合は [YAML リファレンス](yaml-reference.md) と `pdb2reaction/defaults.py` を正とし、本ページの付録は `tsopt` 固有のデフォルト値（例: `out_dir: ./result_tsopt/`、上述の `--flatten` との相互作用）と参照の便宜のためにインライン展開しているだけです。なお、インライン YAML に表示される値に関わらず、`flatten_max_iter` は `--flatten` を指定しない限り CLI 初期化器によって `0` に強制されます。
+**リファレンスの重複について。** 以下に並ぶ `geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo` の YAML キーは [YAML リファレンス](yaml-reference.md) の正規定義をミラーしたものです。両者が食い違った場合は [YAML リファレンス](yaml-reference.md) と `pdb2reaction/defaults.py` を正とし、本ページの付録は `tsopt` 固有のデフォルト値（例: `out_dir: ./result_tsopt/`、上述の `--flatten` との相互作用）と参照の便宜のためにインライン展開しているだけです。
 ```
 
 ### 共通設定（両モード共通）
@@ -179,7 +179,7 @@ opt:
 ```
 
 ```{note}
-**エネルギープラトーによるフォールバック収束 (v0.3.5 新機能)。** RS-I-RFO は共通の
+**エネルギープラトーによるフォールバック収束。** RS-I-RFO は共通の
 `energy_plateau` 設定を参照します。直近 `energy_plateau_window` ステップ（デフォルト 50）の
 エネルギーレンジ（max − min）が `energy_plateau_thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`）
 を下回ると収束と判定されます。大規模 TS 系では MLIP の力のノイズフロア（~4×10⁻⁴ au）が
@@ -200,8 +200,6 @@ hessian_dimer:
      out_dir: ./result_tsopt/ # tsopt の上書き（defaults.py の値は ./result_opt/）
 ```
 
-なお `flatten_max_iter` は、`--flatten` を渡さない限り CLI 初期化器によって `0` に強制されます（上記 {ref}`ja-flatten-precedence-caveat` を参照）。
-
 ### RS-I-RFO モード（`--opt-mode hess`、デフォルト）
 
 `--opt-mode hess`（RS-I-RFO、デフォルト）で使用します。
@@ -210,7 +208,7 @@ hessian_dimer:
 
 ```yaml
 rsirfo:
- trust_max: 0.10 # 最大信頼半径 (bohr); v0.3.5 で 0.20 から 0.10 に変更（大規模系での鞍点近傍振動の抑制）
+ trust_max: 0.10 # 最大信頼半径 (bohr)
  out_dir: ./result_tsopt/ # tsopt の上書き（defaults.py の値は ./result_opt/）
  hessian_recalc: 500 # N マクロステップごとに exact Hessian を再計算
 ```

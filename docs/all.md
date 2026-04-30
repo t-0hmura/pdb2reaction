@@ -216,7 +216,7 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | `--opt-mode [grad\|hess]` | Workflow preset (`grad` → LBFGS/Dimer, `hess` → RFO/RSIRFO). For direct commands, prefer `opt --opt-mode grad|hess` and `tsopt --opt-mode grad|hess`. The token-to-algorithm mapping depends on the scope; see {ref}`opt-mode-semantics` for the per-subcommand table and note that `all`'s pre-opt default (`grad`) is not the same as `tsopt`'s default (`hess`). | `grad` |
 | `--thresh TEXT` | Convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
 | `--preopt/--no-preopt` | Pre-optimize active site model endpoints before MEP search. **Note:** `all` overrides the child-subcommand default here. Standalone `path-search`, `path-opt`, `scan`, `scan2d`, and `scan3d` default `--preopt` to `False`. | `True` |
-| `--refine-path/--no-refine-path` | If True (default), run recursive `path-search`; if False, chain `path-opt` segments without recursive refinement. | `True` |
+| `--refine-path BOOL` | If `True` (default), run recursive `path-search`; if `False`, chain `path-opt` segments without recursive refinement. Pass `--refine-path False` to disable (no `--no-refine-path` auto-form: `click.BOOL` parameter, not a flag). | `True` |
 
 ### MLIP Calculator Options
 
@@ -310,7 +310,7 @@ out_dir/ (default:./result_all/)
 │     ├─ freq/{R,TS,P}/         # Per-state frequencies_cm-1.txt + thermoanalysis.yaml
 │     └─ dft/                   # DFT single-point results (when --dft is enabled)
 └─ tsopt_single/                # TSOPT-only outputs with IRC endpoints
-   ├─ structures/               # Working copy of R/TS/P (canonical canonical lives at top-level seg_NN/)
+   ├─ structures/               # Working copy of R/TS/P (canonical version lives at top-level seg_NN/)
    ├─ ts/                       # TS optimization output and vibrational analysis
    ├─ irc/                      # IRC trajectories and plots
    ├─ freq/{R,TS,P}/            # Per-state frequencies_cm-1.txt + thermoanalysis.yaml

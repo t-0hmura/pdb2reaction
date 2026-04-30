@@ -7,7 +7,7 @@ This page provides definitions for abbreviations and technical terms used throug
 | Term | Full Name | Description |
 |------|-----------|-------------|
 | **MEP** | Minimum Energy Path | The lowest-energy pathway on a potential energy surface (PES) connecting reactants to products through a transition state. |
-| **TS** | Transition State | A first-order saddle point on the potential energy surface, typically the highest-energy point along the reaction coordinate. |
+| **TS** | Transition State | A first-order saddle point on the potential energy surface — a stationary point with exactly one direction of negative curvature (one imaginary frequency) along the reaction coordinate. |
 | **IRC** | Intrinsic Reaction Coordinate | Classically defined as the mass-weighted steepest-descent path from a TS toward reactants and products, used to validate TS connectivity. In pdb2reaction the EulerPC integrator runs in **unweighted Cartesian coordinates** (`irc.md`: `--step-size` is in Bohr of unweighted Cartesian); `geom.coord_type` is forced to `cart`. |
 | **GSM** | Growing String Method | A string-based method that grows images from endpoints and optimizes them to approximate an MEP. |
 | **DMF** | Direct Max Flux | A chain-of-states method for optimizing an MEP by maximizing flux along the pathway. In pdb2reaction it is selected with `--mep-mode dmf`. |

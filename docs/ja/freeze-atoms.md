@@ -17,7 +17,7 @@ pdb2reaction extract -i complex.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' -o model.pdb
 pdb2reaction opt -i model.pdb -q 0 -m 1   # --freeze-links は True、LKH 親原子を自動凍結
 ```
 
-XYZ/GJF 入力には `LKH` レコードがないため `--freeze-links` は無効です。`--ref-pdb FILE` で PDB トポロジーを継承するか、次の 2 つの方法を使ってください。
+XYZ/GJF 入力には `LKH` レコードがないため `--freeze-links` は無効で、次の 2 つの方法を使ってください。`--ref-pdb FILE` を渡すと XYZ/GJF 実行が PDB トポロジーを継承し、リンク水素検出が復活します。
 
 ### 2. `--freeze-atoms 'i,j,k,...'`（CLI 明示指定）
 

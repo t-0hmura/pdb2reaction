@@ -186,7 +186,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 - MLIP の勾配（力）計算には小さな確率的ノイズフロアがあり（UMA 系で典型的に ~4×10⁻⁴ au）、これが力ベースの収束閾値（`baker` = 3×10⁻⁴ au）を上回る場合があります。その結果、構造はすでに収束しているにもかかわらず、力閾値を満たすことができません。
 
 対処:
-- **エネルギープラトーによるフォールバック収束**（v0.3.5 新機能）が自動でこの状況を処理します: `opt.energy_plateau: true` のとき、直近 `opt.energy_plateau_window`（デフォルト 50）ステップのエネルギーレンジが `opt.energy_plateau_thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`）を下回ると収束と判定されます。多くの場合、ユーザー側での対応は不要です。
+- **エネルギープラトーによるフォールバック収束**が自動でこの状況を処理します: `opt.energy_plateau: true` のとき、直近 `opt.energy_plateau_window`（デフォルト 50）ステップのエネルギーレンジが `opt.energy_plateau_thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`）を下回ると収束と判定されます。多くの場合、ユーザー側での対応は不要です。
 - 自動フォールバックを上書きしたい場合は、力の閾値を手動で緩めてください: `--thresh gau`（`opt` のデフォルト）または `--thresh gau_loose`。
 - `opt.energy_plateau_thresh` / `opt.energy_plateau_window` は YAML からチューニングでき、`opt.energy_plateau: false` で無効化できます。
 - 注意: このプラトーフォールバックは **chain-of-states オプティマイザー**（`path-opt`、`path-search` の string/GSM/DMF 段階）では**スキップ**されます（単一のスカラーエネルギー履歴ではなく、イメージごとのエネルギー配列を保持しているため）。

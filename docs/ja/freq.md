@@ -122,10 +122,7 @@ out_dir/ (デフォルト:./result_freq/)
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - 虚振動数モードは負の振動数として報告されます。`freq` は検出された虚振動数の個数を表示し、`--dump` で詳細を出力します。
-- `--hessian-calc-mode` は **デフォルト < config < 明示CLI** の優先順位で解決されます。CLI で明示的に指定した値が最優先です。
-
-
-マッピング形式で指定し、マージ順は **デフォルト < config < 明示CLI** です。
+- `--hessian-calc-mode` は **デフォルト < config < 明示CLI** の優先順位で解決されます。CLI で明示的に指定した値は config YAML の `calc.hessian_calc_mode` より優先されます。
 
 `geom`、`calc`、`freq`、`thermo` の各セクションは [YAML リファレンス](yaml-reference.md) の正規定義から変更ありません: [`geom`](yaml-reference.md#geom)、[`calc`](yaml-reference.md#calc)、[`freq`](yaml-reference.md#freq-section)、[`thermo`](yaml-reference.md#thermo) を参照してください。`freq` ではデフォルトで `calc.return_partial_hessian = true`（PHVA）が自動設定されます（YAML で上書き可）。
 

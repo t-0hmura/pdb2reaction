@@ -4,7 +4,7 @@
 
 `pdb2reaction all` は、抽出から解析までの一連の処理を **まとめて実行する最上位コマンド** です。典型的なフローは次のとおりです。
 
-活性部位モデル（バインディングポケット）抽出 →（任意）段階的スキャン → MEP 探索（デフォルトで再帰的 `path-search`）→（任意）TS 最適化（`tsopt`、内部で虚振動数チェック済み）+ IRC →（任意）振動解析・熱化学（`freq`）→（任意）DFT 一点計算（`dft`）。`--refine-path False` を指定すると単一パス `path-opt`（GSM/DMF）に切り替わります。
+活性部位モデル（バインディングポケット）抽出 →（任意）段階的スキャン → MEP 探索（デフォルトで再帰的 `path-search`）→（任意）TS 最適化（`tsopt`）+ IRC →（任意）振動解析・熱化学（`freq`）→（任意）DFT 一点計算（`dft`）。`--refine-path False` を指定すると単一パス `path-opt`（GSM/DMF）に切り替わります。
 
 MLIP バックエンドはデフォルトで UMA を使用しますが、`-b/--backend` オプションで ORB・MACE・AIMNet2 も選択可能です。
 
@@ -53,7 +53,7 @@ MLIP バックエンドはデフォルトで UMA を使用しますが、`-b/--b
   - `-s/--scan-lists` を 1 つだけ渡すと 1 ステージになります。
   - 複数ステージは 1 つの `-s/--scan-lists` に複数リテラルを並べて指定します（例: `-s '[(…)]' '[(…)]'`）。
 
-- **TSOPT のみ（活性部位モデル TS 最適化）** — 1 つの入力構造に対し、`--scan-lists` を省略して `--tsopt` を指定します。`-c/--center` がある場合は活性部位モデルを抽出し、その系で TS 最適化（内部で虚振動数チェック済み）+ IRC（必要に応じて freq / DFT）のみ実行します。
+- **TSOPT のみ（活性部位モデル TS 最適化）** — 1 つの入力構造に対し、`--scan-lists` を省略して `--tsopt` を指定します。`-c/--center` がある場合は活性部位モデルを抽出し、その系で TS 最適化+ IRC（必要に応じて freq / DFT）のみ実行します。
 
 ```{tip}
 大規模な活性部位モデルでは、単一構造スキャンワークフロー（`--scan-lists`）の方が、複数構造 MEP ワークフローよりも信頼性の高い反応障壁を得やすい傾向があります。複数の PDB を入力すると、反応座標と無関係な領域の構造差異が蓄積し、障壁を過大評価する可能性があります。スキャンワークフローは単一構造から出発して関連する座標のみを駆動するため、無関係な構造ノイズを最小化できます。この影響はモデルサイズが大きくなるほど顕著になります。
@@ -76,7 +76,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c "SAM,GPP,MG" -l "SAM:1,GPP:-3" \
 
 ## よくある例
 
-1. TS 最適化（内部で虚振動数チェック済み）・IRC・熱化学・DFT まで一括実行する。
+1. TS 最適化・IRC・熱化学・DFT まで一括実行する。
 
 ```bash
 pdb2reaction all -i 1.R.pdb 3.P.pdb -c "SAM,GPP,MG" -l "SAM:1,GPP:-3" \
@@ -144,14 +144,14 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  - `--refine-path` が True（デフォルト）かつ参照 PDB テンプレートがある場合、マージ済みの `mep_w_ref*.pdb` とセグメントごとの `mep_w_ref_seg_XX.pdb` が `<out-dir>/path_search/` に出力されます。`--refine-path False`（`path-opt` モード）では全系マージは行われません。
 
 5. **オプションのセグメントごとの後処理**（反応セグメントのみ — 結合変化のあるセグメント。ブリッジセグメントはスキップ）
- - `--tsopt`: 各 HEI 活性部位モデルで TS 最適化（内部で虚振動数チェック済み）を実行し、EulerPC IRC で追跡した後、IRC エンドポイントを `--thresh-post`（デフォルト `baker`）で再最適化してセグメントエネルギーダイアグラムを出力。エンドポイント最適化の作業ディレクトリは完了後に自動削除されます。
+ - `--tsopt`: 各 HEI 活性部位モデルで TS 最適化を実行し、EulerPC IRC で追跡した後、IRC エンドポイントを `--thresh-post`（デフォルト `baker`）で再最適化します。エンドポイント最適化の作業ディレクトリは完了後に自動削除されます。
  - `--thermo`: (R, TS, P) で `freq` を呼び出し、振動/熱化学データと MLIP Gibbs ダイアグラムを取得
  - `--dft`: (R, TS, P) で DFT 一点計算を実行し、DFT ダイアグラムを構築。`--thermo` と組み合わせると DFT//MLIP Gibbs ダイアグラムも生成
   - 共有の上書きオプション: `--opt-mode`、`--opt-mode-post`（TSOPT/IRC 後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU 優先）など
  - ヘシアン評価モードの詳細は {ref}`ja-hessian-evaluation` を参照してください。
 
 6. **TSOPT のみモード**（単一入力、`--tsopt`、`--scan-lists` なし）
- - MEP/マージステージをスキップし、活性部位モデル（または抽出がスキップされた場合は全入力構造）で `tsopt`（内部で虚振動数チェック済み）→ EulerPC IRC を実行
+ - MEP/マージステージをスキップし、活性部位モデル（または抽出がスキップされた場合は全入力構造）で `tsopt`→ EulerPC IRC を実行
  - 高エネルギー側の IRC 終端を反応物 (R) として識別し、エネルギーダイアグラム一式とオプションの freq/DFT 出力を生成
 
 
@@ -222,7 +222,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 | `--opt-mode [grad\|hess]` | ワークフロープリセット（`grad` → LBFGS/Dimer、`hess` → RFO/RSIRFO）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨。トークンのマッピングはスコープ依存で、`all` の pre-opt デフォルト（`grad`）と `tsopt` のデフォルト（`hess`）は一致しません。詳細は {ref}`ja-opt-mode-semantics` を参照してください。 | `grad` |
 | `--thresh TEXT` | 収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
 | `--preopt/--no-preopt` | MEP前に活性部位モデル端点を事前最適化。**注意:** `all` はここで子サブコマンドのデフォルトを上書きします。単体の `path-search`、`path-opt`、`scan`、`scan2d`、`scan3d` では `--preopt` のデフォルトは `False` です。 | `True` |
-| `--refine-path/--no-refine-path` | True（デフォルト）の場合は再帰的 `path-search`、False の場合は `path-opt` を連結して再帰的精密化なしで実行 | `True` |
+| `--refine-path BOOL` | `True`（デフォルト）の場合は再帰的 `path-search`、`False` の場合は `path-opt` を連結して再帰的精密化なしで実行。無効化するには `--refine-path False` を渡してください（`click.BOOL` パラメータのため `--no-refine-path` 形式は自動生成されません）。 | `True` |
 
 ### MLIP 計算機オプション
 
@@ -238,7 +238,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `--tsopt/--no-tsopt` | セグメントごとの TS 最適化（内部で虚振動数チェック済み）+ IRC を実行 | `False` |
+| `--tsopt/--no-tsopt` | セグメントごとの TS 最適化+ IRC を実行 | `False` |
 | `--thermo/--no-thermo` | R/TS/Pで振動解析を実行 | `False` |
 | `--dft/--no-dft` | R/TS/PでDFT一点計算を実行 | `False` |
 | `--opt-mode-post [grad\|hess]` | TSOPT/IRC後最適化のプリセット上書き（`grad` → Dimer/LBFGS、`hess` → RSIRFO/RFO） | `hess` |

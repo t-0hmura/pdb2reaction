@@ -11,9 +11,7 @@
 - **デフォルト:** `--max-cycles 125`、`--step-size 0.10` Bohr、`--root 0`、`--forward`/`--backward` 両方有効、`--hessian-calc-mode FiniteDifference`、バックエンド `uma`。**強制上書き:** IRC は YAML/CLI マージ後に `geom.coord_type = cart` および `calc.return_partial_hessian = true` を強制します。
 - **次ステップ:** IRC 端点を [opt](opt.md) で真の極小に最適化、または [freq](freq.md) と組み合わせて熱化学量を取得。ヘシアン評価モードの詳細は {ref}`ja-hessian-evaluation` を参照。
 
-`pdb2reaction irc` は MLIP（デフォルト: UMA、`-b/--backend` で ORB・MACE・AIMNet2 も選択可能）を用いた EulerPC（Euler Predictor-Corrector）ベースの固有反応座標（IRC）積分を実行します。
-
-XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定し、XYZ 座標を保持したまま PDB 出力変換が可能になります。一般的な手順は `tsopt`（内部で虚振動数チェック済み、**1 つ** であることを確認）→ `irc` です。
+XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定し、XYZ 座標を保持したまま PDB 出力変換が可能になります。一般的な手順は `tsopt` → `irc` です。
 
 ## 最小例
 
@@ -75,7 +73,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 ```
 
 ## ワークフロー
-1. **入力準備** – `geom_loader` がサポートする任意のフォーマットを受け入れます。参照 PDB が利用可能な場合（PDB 入力時、または `--ref-pdb` で指定した場合）、EulerPC 軌跡はそのトポロジーで PDB に変換されます。`--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（{ref}`リンク水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
+1. **入力準備** – `geom_loader` がサポートする任意のフォーマットを受け入れます。参照 PDB が利用可能な場合（PDB 入力時、または `--ref-pdb` で指定した場合）、EulerPC 軌跡はそのトポロジーで PDB に変換されます。PDB 入力に対して `--freeze-links` はリンク水素の親原子を凍結し、`geom.freeze_atoms` を拡張します。
 2. **EulerPC 積分** – EulerPC 予測子-修正子積分器が遷移状態から IRC 経路をたどります。`--forward`/`--backward` フラグに従って順方向および/または逆方向の分岐が実行されます。各ステップではエネルギーベースの予測子と修正子ステップを使用します。
 3. **軌跡出力** – 完了済み、順方向、逆方向の IRC 軌跡が XYZ ファイルとして書き込まれます。参照 PDB が利用可能な場合、PDB コンパニオンも生成されます（`--convert-files`）。
 
@@ -113,7 +111,7 @@ out_dir/ (デフォルト:./result_irc/)
 ├─ <prefix>finished_irc_trj.xyz # 完全な IRC 軌跡
 ├─ <prefix>forward_irc_trj.xyz # 順方向分岐が実行された場合
 ├─ <prefix>backward_irc_trj.xyz # 逆方向分岐が実行された場合
-└─ *.pdb # PDB 入力用の軌跡コンパニオン（変換有効時）
+└─ *.pdb # 参照 PDB が利用可能な場合の軌跡コンパニオン（変換有効時）
 ```
 コンソールには確定済みの `geom`/`calc`/`irc` 設定と実行時間の要約が表示されます。
 
@@ -125,7 +123,6 @@ out_dir/ (デフォルト:./result_irc/)
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - MLIP バックエンド（デフォルト: UMA）は IRC 全体で再利用されます。`step_length` を大きくし過ぎると EulerPC が不安定になることがあります。
-- ヘシアン評価モードの詳細は {ref}`ja-hessian-evaluation` を参照してください。
 - `--freeze-links` が有効な場合、リンク水素の親原子が自動的に凍結されます（{ref}`リンク水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
 
 設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
@@ -146,7 +143,7 @@ calc:
 - [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
 
 - [tsopt](tsopt.md) — IRC実行前にTSを最適化
-- [freq](freq.md) — 完全な振動解析と熱化学補正（虚振動数チェックは `tsopt` が内部で実行済み）
+- [freq](freq.md) — 完全な振動解析と熱化学補正
 - [opt](opt.md) — IRC端点を真の極小に最適化
 - [all](all.md) — tsopt後にIRCを実行する一気通貫ワークフロー
 - [YAML リファレンス](yaml-reference.md) — `irc` の完全な設定オプション

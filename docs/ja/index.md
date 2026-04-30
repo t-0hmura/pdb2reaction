@@ -53,6 +53,7 @@ bond-summary
 :caption: リファレンス
 :hidden:
 
+../reference/commands/index
 yaml-reference
 json-output
 uma-pysis
@@ -159,7 +160,3 @@ pdb2reaction <subcommand> --help-advanced
 ```
 
 問題や機能リクエストについては、[GitHubリポジトリ](https://github.com/t-0hmura/pdb2reaction) をご覧ください。
-
----
-
-*本ドキュメントは各リリースに対応してバージョン管理されています。*

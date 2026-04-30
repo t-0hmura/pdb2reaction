@@ -31,6 +31,7 @@ pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb...]
  [--selected-resn LIST]
  [--modified-residue LIST]
  [-l, --ligand-charge MAP_OR_NUMBER]
+ [--out-json/--no-out-json]
  [--verbose/--no-verbose]
 ```
 
