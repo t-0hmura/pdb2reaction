@@ -23,7 +23,7 @@ pdb2reaction extract -i complex.pdb -c <substrate-spec> [-l 'RES:Q,...'] \
 | `-r, --radius` | float | 2.6 | Pocket radius (Å) around `-c` atoms |
 | `--radius-het2het` | float | (live default) | Separate radius for HET-to-HET inclusion |
 | `-l, --ligand-charge` | str | none | Per-residue charges (amino acids derived from internal table) |
-| `-o, --output` | path | (auto: `<input>_extracted.pdb`) | Output PDB path; multiple inputs produce per-file outputs |
+| `-o, --output` | path | `model.pdb` (single input); `model_<filename>.pdb` (multi) | Output PDB path; multi inputs emit one per file |
 | `--include-h2o / --no-include-h2o` | flag | (live default) | Include water residues found within radius |
 | `--exclude-backbone / --no-exclude-backbone` | flag | (live default) | Trim backbone atoms outside the active site |
 | `--add-linkh / --no-add-linkh` | flag | (live default) | Cap severed bonds with link hydrogens |

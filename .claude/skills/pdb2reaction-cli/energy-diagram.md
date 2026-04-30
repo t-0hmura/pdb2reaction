@@ -20,7 +20,7 @@ pdb2reaction energy-diagram -i 0 12.5 4.3 [-i 18.2 -2.0] \
 | `-i, --input` | numeric sequence | required | Energy values. Accepts space-separated numbers (`-i 0 12.5 4.3`), a Python-list literal (`-i "[0,12.5,4.3]"`), or repeated `-i` calls |
 | `-o, --output` | path | `energy_diagram.png` | Output image path |
 | `--label-x` | sequence | `S1, S2, ...` | Per-state labels on the x-axis |
-| `--label-y` | str | `Energy (kcal/mol)` | Y-axis label |
+| `--label-y` | str | `ΔE (kcal/mol)` | Y-axis label |
 
 Without `--label-x`, points are plotted in input order with `S1, S2, …` labels.
 

@@ -90,4 +90,5 @@ optimizer feels the solvent — there is no separate flag to toggle this.
   PCM/COSMO; pick one.
 - `pdb2reaction-cli/SKILL.md` — `--solvent` is accepted by `all`,
   `tsopt`, `freq`, `irc`, `opt`, `path-search`, `path-opt`, `scan`,
-  `scan2d`, and `scan3d`. Not accepted by `dft` or `extract`.
+  `scan2d`, `scan3d`, and `trj2fig`. Not accepted by `dft` or
+  `extract`.

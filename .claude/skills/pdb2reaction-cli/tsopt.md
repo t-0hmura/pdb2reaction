@@ -68,9 +68,9 @@ result_tsopt/
 ├── final_geometry.xyz              # converged TS (always)
 ├── final_geometry.pdb              # PDB companion (with --convert-files)
 ├── final_geometry.gjf              # Gaussian companion (when input is .gjf)
-├── optimization_trj.xyz            # full optimization trajectory (grad-mode; with --dump)
+├── optimization_trj.xyz            # full optimization trajectory (rsirfo/hess; with --dump)
 ├── optimization.pdb                # PDB companion (with --convert-files)
-├── optimization_all_trj.xyz        # full optimization trajectory (hess/HessianDimer; with --dump)
+├── optimization_all_trj.xyz        # full optimization trajectory (grad/dimer; with --dump)
 ├── optimization_all.pdb            # PDB companion (with --convert-files)
 └── vib/                            # imaginary-mode vibrations
     ├── imag_<freq>cm-1_trj.xyz     # animated displacement (XYZ trajectory)

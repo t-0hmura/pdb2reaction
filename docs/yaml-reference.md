@@ -59,7 +59,8 @@ This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan
 | `opt` | `gau` | `OPT_BASE_KW` (→ `lbfgs` / `rfo`) |
 | `tsopt` (Hessian Dimer) | `baker` | `HESSIAN_DIMER_KW`, inner `LBFGS_TS_KW` |
 | `tsopt` (RS-I-RFO) | `baker` | `RSIRFO_KW` |
-| `scan`, `scan2d`, `scan3d` | `gau` | `OPT_BASE_KW` |
+| `scan` | `gau` | `OPT_BASE_KW` |
+| `scan2d`, `scan3d` | `baker` | `scan_common.py` (`thresh_default="baker"`) |
 | `path-search` (per-step opt) | `gau` | `OPT_BASE_KW` |
 | `path-opt` / StringOptimizer | `gau_loose` | `STOPT_KW` |
 | `all` (pre-opt, post-opt min) | `gau` | `OPT_BASE_KW` |
@@ -329,7 +330,7 @@ dmf:
    eps_rot: 0.01 # Rotational tolerance
    beta: 10.0 # Beta parameter for DMF
    update_teval: false # Update transition evaluation
-   k_fix: 300.0 # Harmonic constant for restraints
+ k_fix: 300.0 # Harmonic constant for restraints (top-level dmf key, NOT under dmf_options)
 ```
 
 ---
@@ -578,7 +579,7 @@ bias:
 | YAML key | Used by | CLI flag |
 |----------|---------|----------|
 | `bias.k` | `opt` (`--bias-k` applied to `--dist-freeze` pairs), `scan`, `scan2d`, `scan3d` | `--bias-k` |
-| `dmf.dmf_options.k_fix` | `path-opt` / `path-search` when `mep_mode: dmf` | — (YAML only) |
+| `dmf.k_fix` | `path-opt` / `path-search` when `mep_mode: dmf` | — (YAML only) |
 
 Override any of these to tune how stiff the harmonic restraint is. A smaller value (e.g. `20.0`) is appropriate when the geometry should relax against a soft guidance term; the default `300.0` enforces near-rigid pinning.
 

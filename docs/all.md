@@ -175,8 +175,8 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | `-i, --input PATH...` | Two or more full structures in reaction order (single input allowed only with `--scan-lists/-s` or `--tsopt`). | Required |
 | `--ref-pdb FILE` | Reference PDB for topology when `-i` provides XYZ inputs. | _None_ |
 | `-o, --out-dir PATH` | Top-level output directory. | `./result_all/` |
-| `--convert-files BOOL` | Global toggle for XYZ/TRJ → PDB/GJF companions when templates are available. | `True` |
-| `--dump BOOL` | Dump MEP (GSM/DMF) trajectories. Always forwarded to `path-search`/`path-opt`; forwarded to `scan`/`tsopt` only when explicitly set here. `freq` defaults to dump=True unless you pass `--no-dump`. | `False` |
+| `--convert-files/--no-convert-files` | Global toggle for XYZ/TRJ → PDB/GJF companions when templates are available. | `True` |
+| `--dump/--no-dump` | Dump MEP (GSM/DMF) trajectories. Always forwarded to `path-search`/`path-opt`; forwarded to `scan`/`tsopt` only when explicitly set here. `freq` defaults to dump=True unless you pass `--no-dump`. | `False` |
 | `--config FILE` | Base YAML applied first. | _None_ |
 | `--show-config/--no-show-config` | Print resolved configuration before execution. | `False` |
 | `--dry-run/--no-dry-run` | Validate and print plan without running stages. | `False` |
@@ -212,11 +212,11 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | `--mep-mode [gsm\|dmf]` | MEP search algorithm: GSM (Growing String Method) or DMF (Direct Max Flux). | `gsm` |
 | `--max-nodes INT` | MEP internal nodes per segment. **GSM:** total images = `max_nodes + 2` (endpoints fixed). **DMF:** number of *movable* images along the chain (no implicit endpoint expansion). | `20` |
 | `--max-cycles INT` | MEP maximum optimization cycles. | `300` |
-| `--climb BOOL` | Enable TS climbing for the first segment. | `True` |
+| `--climb/--no-climb` | Enable TS climbing for the first segment. | `True` |
 | `--opt-mode [grad\|hess]` | Workflow preset (`grad` → LBFGS/Dimer, `hess` → RFO/RSIRFO). For direct commands, prefer `opt --opt-mode grad|hess` and `tsopt --opt-mode grad|hess`. The token-to-algorithm mapping depends on the scope; see {ref}`opt-mode-semantics` for the per-subcommand table and note that `all`'s pre-opt default (`grad`) is not the same as `tsopt`'s default (`hess`). | `grad` |
 | `--thresh TEXT` | Convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
-| `--preopt BOOL` | Pre-optimize active site model endpoints before MEP search. **Note:** `all` overrides the child-subcommand default here. Standalone `path-search`, `path-opt`, `scan`, `scan2d`, and `scan3d` default `--preopt` to `False`. | `True` |
-| `--refine-path BOOL` | If True (default), run recursive `path-search`; if False, chain `path-opt` segments without recursive refinement. | `True` |
+| `--preopt/--no-preopt` | Pre-optimize active site model endpoints before MEP search. **Note:** `all` overrides the child-subcommand default here. Standalone `path-search`, `path-opt`, `scan`, `scan2d`, and `scan3d` default `--preopt` to `False`. | `True` |
+| `--refine-path/--no-refine-path` | If True (default), run recursive `path-search`; if False, chain `path-opt` segments without recursive refinement. | `True` |
 
 ### MLIP Calculator Options
 
@@ -232,9 +232,9 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `--tsopt BOOL` | Run TS optimization + IRC per reactive segment. | `False` |
-| `--thermo BOOL` | Run vibrational analysis (`freq`) on R/TS/P. | `False` |
-| `--dft BOOL` | Run single-point DFT on R/TS/P. | `False` |
+| `--tsopt/--no-tsopt` | Run TS optimization + IRC per reactive segment. | `False` |
+| `--thermo/--no-thermo` | Run vibrational analysis (`freq`) on R/TS/P. | `False` |
+| `--dft/--no-dft` | Run single-point DFT on R/TS/P. | `False` |
 | `--opt-mode-post [grad\|hess]` | Optimizer preset override for TSOPT and post-IRC optimization (`grad` → Dimer/LBFGS, `hess` → RSIRFO/RFO). | `hess` |
 | `--thresh-post TEXT` | Convergence preset for post-IRC endpoint optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
 | `--flatten/--no-flatten` | Enable surplus-imaginary-mode flattening in `tsopt`. | `False` |
@@ -283,12 +283,12 @@ Example: `--opt-mode grad --opt-mode-post hess` uses LBFGS for path optimization
 | --- | --- | --- |
 | `-s, --scan-lists TEXT...` | Staged scans: `(i,j,target_Å)` tuples. | _None_ |
 | `--scan-out-dir PATH` | Override the scan output directory. | _None_ |
-| `--scan-one-based BOOL` | Force scan indexing to 1-based or 0-based. | _None_ |
+| `--scan-one-based/--no-scan-one-based` | Force scan indexing to 1-based or 0-based. | _None_ |
 | `--scan-max-step-size FLOAT` | Maximum step size (Å). | `0.20` |
 | `--scan-bias-k FLOAT` | Harmonic bias strength (eV·Å⁻²). | `300` |
 | `--scan-relax-max-cycles INT` | Relaxation max cycles per step. | `10000` |
-| `--scan-preopt BOOL` | Override the scan preoptimization toggle. | _None_ |
-| `--scan-endopt BOOL` | Override the scan end-of-stage optimization toggle. | _None_ |
+| `--scan-preopt/--no-scan-preopt` | Override the scan preoptimization toggle. | _None_ |
+| `--scan-endopt/--no-scan-endopt` | Override the scan end-of-stage optimization toggle. | _None_ |
 
 ## Outputs
 ```text

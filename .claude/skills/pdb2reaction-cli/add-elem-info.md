@@ -21,7 +21,7 @@ pdb2reaction add-elem-info -i in.pdb -o out.pdb
 | flag | type | default | description |
 |---|---|---|---|
 | `-i, --input` | path | required | Input PDB |
-| `-o, --output` | path | required | Output PDB with element column populated |
+| `-o, --out` | path | `<input>_add_elem.pdb` (auto) | Output PDB with element column populated |
 
 ## Examples
 

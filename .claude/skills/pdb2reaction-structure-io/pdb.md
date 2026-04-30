@@ -61,12 +61,15 @@ pdb2reaction extract -i complex.pdb -c 'A:44' -o cluster.pdb
 ```
 
 > **Caveat**: only `chainID:resSeq` (numeric) is parsed as chain-aware
-> in `extract.py`. Tokens like `'A:SAM'` (chain:resName) raise
-> `ValueError("Residue name 'A:SAM' not found in complex.")` because
-> the resname splitter (`[,\s]+`) does not consume the colon. To
+> in `extract.py`. Tokens like `'A:SAM'` (chain:resName) fail the
+> `_parse_res_tokens` regex (which requires a numeric resSeq), and
+> `resolve_substrate_residues` then silently falls through to the
+> resname splitter (`[,\s]+`); since the literal token `'A:SAM'` is
+> not a known resname, the call raises
+> `ValueError("Residue name 'A:SAM' not found in complex.")`. To
 > restrict by chain you must supply numeric resSeq. To select all SAM
 > in chain A, run `extract` with `-c 'SAM'` first then trim chains by
-> hand, or use the Form-2 substrate-PDB workflow.
+> hand, or use the substrate-PDB form (`-c <substrate.pdb>`).
 
 The pocket radius around the centers is set by `-r <Å>` (default 2.6 Å).
 All residues with at least one heavy atom inside the radius are kept.

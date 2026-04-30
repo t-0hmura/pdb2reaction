@@ -59,7 +59,8 @@ TS 最適化はより厳しい "baker" プリセットを、通常の極小化�
 | `opt` | `gau` | `OPT_BASE_KW`（→ `lbfgs` / `rfo`） |
 | `tsopt`（Hessian Dimer） | `baker` | `HESSIAN_DIMER_KW`、内側の `LBFGS_TS_KW` |
 | `tsopt`（RS-I-RFO） | `baker` | `RSIRFO_KW` |
-| `scan`, `scan2d`, `scan3d` | `gau` | `OPT_BASE_KW` |
+| `scan` | `gau` | `OPT_BASE_KW` |
+| `scan2d`, `scan3d` | `baker` | `scan_common.py` (`thresh_default="baker"`) |
 | `path-search`（各ステップの opt） | `gau` | `OPT_BASE_KW` |
 | `path-opt` / StringOptimizer | `gau_loose` | `STOPT_KW` |
 | `all`（pre-opt、post-opt 極小化） | `gau` | `OPT_BASE_KW` |
@@ -328,7 +329,7 @@ dmf:
    eps_rot: 0.01 # Rotational tolerance
    beta: 10.0 # Beta parameter for DMF
    update_teval: false # Update transition evaluation
-   k_fix: 300.0 # Harmonic constant for restraints
+ k_fix: 300.0 # Harmonic constant for restraints (dmf 直下、dmf_options 配下ではない)
 ```
 
 ---
@@ -577,7 +578,7 @@ bias:
 | YAML キー | 使用元 | CLI フラグ |
 |----------|-------|-----------|
 | `bias.k` | `opt`（`--dist-freeze` 原子ペアに対する `--bias-k`）、`scan`, `scan2d`, `scan3d` | `--bias-k` |
-| `dmf.dmf_options.k_fix` | `path-opt` / `path-search` で `mep_mode: dmf` を使用する場合 | —（YAML 専用） |
+| `dmf.k_fix` | `path-opt` / `path-search` で `mep_mode: dmf` を使用する場合 | —（YAML 専用） |
 
 調和拘束の強さを調整したい場合はこれらのいずれかを上書きしてください。値を小さく（例: `20.0`）すると、柔らかい誘導項としてジオメトリが緩和しやすくなります。デフォルトの `300.0` はほぼ剛体的に固定する値です。
 
