@@ -34,12 +34,15 @@ tuples, where each tuple is `(atom_a, atom_b, target_distance_Å)`.
 [ ("<atom-spec>", "<atom-spec>", <float>) , ... ]
 ```
 
-`<atom-spec>` formats:
+`<atom-spec>` is a string of three tokens (atom name, residue name, residue index) in **any order**, separated by whitespace, comma, slash, backtick, or backslash. Common conventions:
 
-| Form | Meaning |
+| Form | Example |
 |---|---|
-| `"NAME RESNAME RESID"` | Atom by PDB name + residue name + residue index, separated by single spaces (canonical) |
-| `"chainID:RESID:NAME"` | Chain-aware lookup |
+| `"NAME RESNAME RESID"` (whitespace) | `"CS1 SAM 320"` |
+| `"NAME,RESNAME,RESID"` (comma) | `"CS1,SAM,320"` |
+| `"RESNAME/RESID/NAME"` (slash) | `"SAM/320/CS1"` |
+
+The parser (`utils.resolve_atom_spec_index`) auto-detects the role of each token by type (integer = resid, known residue name = resname, otherwise atom name); chain IDs are not part of the spec.
 
 Multiple bonds per stage drive simultaneously. If you want them done
 **sequentially**, split them into separate `--scan-lists` arguments.
@@ -72,20 +75,18 @@ Same overall tree as in `all.md`, plus per-stage scan output:
 
 ```
 result_scan/
-├── path_search/
-│   ├── scan/
-│   │   ├── stage_01/  scan_*.xyz   # raw distance-restraint scan trajectory
-│   │   ├── stage_02/  scan_*.xyz
-│   │   └── ...
-│   ├── mep.pdb / mep_trj.xyz       # stitched MEP
-│   ├── seg_NN/                     # segments after bond-change splitting
-│   └── post_seg_NN/                # per-segment refinements
+├── scan/                           # at out_dir top level (NOT under path_search/)
+│   ├── stage_01/  scan_*.xyz       # raw distance-restraint scan trajectory
+│   ├── stage_02/  scan_*.xyz
+│   └── ...
+├── path_search/                    # (or path_opt/ when --refine-path False)
+│   ├── mep_seg_NN.{pdb,xyz}        # per-segment MEP strings
+│   └── post_seg_NN/                # per-segment refinements + energy diagrams
 ├── seg_NN/                         # canonical R/TS/P per segment (top-level)
 └── summary.json
 ```
 
-`summary.json["scan"]` (or under `path_search.scan`) carries the
-stage-by-stage record:
+`summary.json["scan"]` carries the stage-by-stage record:
 
 ```python
 import json

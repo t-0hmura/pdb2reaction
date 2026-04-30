@@ -85,7 +85,6 @@ result_ts_only/
     ├── irc/           forward_irc_trj.xyz, backward_irc_trj.xyz, finished_irc_trj.xyz
     ├── freq/          frequencies_cm-1.txt, thermoanalysis.yaml (with --dump)
     ├── dft/           (when --dft)
-    ├── endpoint_opt/  intermediate optimizer scratch
     └── structures/    reactant.pdb, ts.pdb, product.pdb (mirror of seg_01/)
 ```
 
