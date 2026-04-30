@@ -76,13 +76,17 @@ collapses to one segment:
 result_ts_only/
 ├── summary.json
 ├── summary.log
+├── seg_01/                # canonical R/TS/P (same layout as multi-input mode)
+│   ├── reactant.{pdb,xyz}
+│   ├── ts.{pdb,xyz}
+│   └── product.{pdb,xyz}
 └── tsopt_single/
     ├── ts/            final_geometry.{xyz,pdb}, optimization_trj.xyz (with --dump)
     ├── irc/           forward_irc_trj.xyz, backward_irc_trj.xyz, finished_irc_trj.xyz
     ├── freq/          frequencies_cm-1.txt, thermoanalysis.yaml (with --dump)
     ├── dft/           (when --dft)
     ├── endpoint_opt/  intermediate optimizer scratch
-    └── structures/    reactant.pdb, ts.pdb, product.pdb (canonical R/TS/P)
+    └── structures/    reactant.pdb, ts.pdb, product.pdb (mirror of seg_01/)
 ```
 
 ## Output keys

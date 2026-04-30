@@ -34,6 +34,7 @@ _lock                   # flock file (auto-managed)
 #PBS -j oe
 
 cd "${PBS_O_WORKDIR}"
+set -euo pipefail
 
 ROOT_DIR="$PWD"
 TASK_LIST="${ROOT_DIR}/<TASK_LIST_FILE>"

@@ -111,10 +111,14 @@ on a single mid-range GPU. Adjust generously.
 | `irc` | 5–30 min | Forward + backward; default 125 cycles each |
 | `freq` | 5–30 min | Hessian once + diagonalization |
 | `dft` (ωB97M-V/def2-svp, GPU) | 30 min – 6 h | Heavy; ~1–10 h on TZVPD |
-| `dft` (CPU) | 10× GPU time | Use only for small clusters |
+| `dft` (CPU) | 10–100× GPU time | Use only for small clusters (< 100 atoms); larger systems hit the upper bound |
 
 For an `all` run with 2 segments + DFT: budget **6–24 h walltime**.
-For pure MLIP `all` (no DFT): **2–6 h** is usually enough.
+For pure MLIP `all` (no DFT): **2–6 h** is usually enough. For
+benchmark-scale runs with **≥10 segments** (e.g. the 23-step
+benchmark), a single `qsub` will exceed typical 24–72 h walltime caps;
+fan out across multiple jobs (parallel `seg_NN/` `qsub`s, or the
+`dynamic-dispatch.md` recipe).
 
 ## CPU vs GPU choice
 

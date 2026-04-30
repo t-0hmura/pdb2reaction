@@ -48,12 +48,17 @@ pdb2reaction scan2d -i 1.R.pdb -l 'SAM:1,GPP:-3' \
 result_scan2d/
 ├── result.json                # only when --out-json is passed
 ├── grid/                       # per grid-point relaxed geometries (flat)
-│   └── point_iNN_jMM.xyz       # one file per (i,j) grid point
+│   └── point_i<d1Å>_j<d2Å>.xyz # one file per (d1, d2) grid point;
+│                                 # tag is the bond distance in Å
+│                                 # (e.g. point_i1.60_j2.40.xyz)
+├── scan2d_map.png              # 2D energy surface heatmap (always written)
+├── scan2d_landscape.html       # interactive 3D landscape (always written)
 └── surface.csv                 # 2D energy surface (axis_1, axis_2, energy)
 ```
 
 `result.json` stores grid metadata and energy values; `surface.csv` is
-ready for downstream contour plotting.
+ready for downstream contour plotting; `scan2d_map.png` is the static
+2D heatmap; `scan2d_landscape.html` is an interactive 3D rendering.
 
 ## Caveats
 
