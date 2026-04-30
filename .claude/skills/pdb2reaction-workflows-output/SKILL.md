@@ -106,27 +106,22 @@ failed-run diagnostics live in [`summary-json.md`](summary-json.md).
 
 ## Energy diagrams
 
-`pdb2reaction all` writes per-segment diagrams under
-`<path_dir>/post_seg_NN/` (where `path_dir` = `path_search/` when
-`--refine-path` true, `path_opt/` otherwise; for TS-only mode the
-diagrams are written under `tsopt_single/` instead). Each segment
-emits `energy_diagram_UMA.png`, `energy_diagram_G_UMA.png` (with
-`--thermo`), `energy_diagram_DFT.png` (with `--dft`), and
-`energy_diagram_G_DFT_plus_UMA.png` (with `--dft --thermo`). The
-**aggregated** multi-segment diagrams are written at the top of the
-output directory:
+`pdb2reaction all` writes:
 
-- `<out_dir>/energy_diagram_MEP.png` — bare MEP energies from the
-  path-search string (MLIP, no thermochemistry; bundled with
-  `path_search/` when `--refine-path` true, `path_opt/` otherwise).
-- `<out_dir>/energy_diagram_UMA_all.png` — per-segment energies stitched
-  across all `seg_NN/` for whichever backend was used (MLIP).
-- `<out_dir>/energy_diagram_G_UMA_all.png` — same with QRRHO Gibbs
-  thermochemistry (when `--thermo`).
-- `<out_dir>/energy_diagram_DFT_all.png` — DFT//MLIP electronic-only
-  combined diagram (when `--dft`).
-- `<out_dir>/energy_diagram_G_DFT_plus_UMA_all.png` — DFT//MLIP combined
-  diagram with Gibbs thermochemistry (when `--dft --thermo`).
+| Path | When | Content |
+|---|---|---|
+| `<path_dir>/post_seg_NN/energy_diagram_UMA.png` | always | per-segment MLIP |
+| `<path_dir>/post_seg_NN/energy_diagram_G_UMA.png` | `--thermo` | + QRRHO Gibbs |
+| `<path_dir>/post_seg_NN/energy_diagram_DFT.png` | `--dft` | DFT//MLIP electronic |
+| `<path_dir>/post_seg_NN/energy_diagram_G_DFT_plus_UMA.png` | `--dft --thermo` | DFT//MLIP + Gibbs |
+| `<path_dir>/energy_diagram_MEP.png` | always | bare MEP energies |
+| `<out_dir>/energy_diagram_UMA_all.png` | always | aggregated MLIP |
+| `<out_dir>/energy_diagram_G_UMA_all.png` | `--thermo` | aggregated + Gibbs |
+| `<out_dir>/energy_diagram_DFT_all.png` | `--dft` | aggregated DFT |
+| `<out_dir>/energy_diagram_G_DFT_plus_UMA_all.png` | `--dft --thermo` | aggregated DFT + Gibbs |
+
+`<path_dir>` = `path_search/` when `--refine-path true` (default),
+`path_opt/` when `false`, `tsopt_single/` for TS-only mode.
 
 To compose a custom diagram from energies of multiple runs, use
 [`pdb2reaction-cli/energy-diagram.md`](../pdb2reaction-cli/energy-diagram.md):

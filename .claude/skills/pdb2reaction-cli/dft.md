@@ -85,7 +85,7 @@ print(d["converged"])        # True / False (exit code 3 if False)
 
 `result.yaml` carries the full PySCF / GPU4PySCF runtime info: basis
 expansion, grid_level, SCF iterations, Mulliken / Loewdin / IAO charges,
-spin densities. Useful for debugging convergence problems.
+spin densities.
 
 ## Common errors
 

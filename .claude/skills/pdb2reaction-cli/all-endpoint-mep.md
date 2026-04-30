@@ -74,7 +74,7 @@ Same as the base `all.md`. Specifically for endpoint-MEP mode:
 - `path_search/mep_seg_NN_trj.xyz` + `mep_seg_NN.{pdb,gjf}` — per-segment MEP frames (no bare `mep_seg_NN.xyz`)
 - `path_search/seg_NNN_<tag>/` — internal scratch dirs for the recursive splitter (3-digit index with descriptive suffix `_mep`/`_maxdepth`/`_bridge`); not user-facing
 - `path_search/post_seg_NN/` — per-segment refined-string output + energy diagrams
-- `seg_NN/{reactant,ts,product}.pdb` — canonical R/TS/P per segment after IRC + LBFGS endpoint optimization (this is the user-facing layout)
+- `seg_NN/{reactant,ts,product}.pdb` — canonical R/TS/P per segment after IRC + LBFGS endpoint optimization
 - `summary.json["segments"]` — list of `{index, barrier_kcal,
   delta_kcal, bond_changes, ...}` entries
 

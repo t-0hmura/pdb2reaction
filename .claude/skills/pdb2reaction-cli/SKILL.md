@@ -39,9 +39,6 @@ description: Per-subcommand reference for pdb2reaction's 17 CLI subcommands (ext
 
 ## Common flag conventions
 
-These flags appear on most subcommands (canonical list:
-`pdb2reaction <subcommand> --help`):
-
 | Flag | Meaning |
 |---|---|
 | `-i, --input` | Input file(s); accepts `.pdb`, `.xyz`, `.gjf` |

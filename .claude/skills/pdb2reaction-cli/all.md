@@ -88,12 +88,6 @@ result_all/
     └── product.{pdb,xyz}
 ```
 
-`seg_NN/` (top-level) is the primary place to look for R/TS/P
-coordinates after a successful run. Per-stage details live in
-`path_search/post_seg_NN/`. See
-`pdb2reaction-workflows-output/SKILL.md` for canonical path
-conventions and the bond-change interpretation.
-
 ## Output keys (summary.json — top level)
 
 ```python

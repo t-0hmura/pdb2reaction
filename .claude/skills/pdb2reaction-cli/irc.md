@@ -73,15 +73,9 @@ print(d["bond_changes"])           # {"formed": [...], "broken": [...]}
 print(d["status"])                  # "completed" / "diverged" / ...
 ```
 
-## R/TS/P canonical geometries (downstream — `pdb2reaction all`)
-
-Standalone `irc` writes only the raw IRC endpoints (`finished_first.xyz`
-/ `finished_last.xyz`). The post-IRC LBFGS-optimized minima and the
-canonical `reactant.{xyz,pdb}` / `product.{xyz,pdb}` filenames live
-under `<out_dir>/seg_NN/` and are produced by the `pdb2reaction all`
-pipeline (which calls IRC internally and then optimizes the endpoints
-under `path_search/post_seg_NN/`); see
-`pdb2reaction-workflows-output/SKILL.md`.
+For LBFGS-optimized canonical `reactant.{xyz,pdb}` / `product.{xyz,pdb}`
+under `<out_dir>/seg_NN/`, run `pdb2reaction all` (it calls `irc`
+internally and post-processes the endpoints).
 
 ## Bond-change check
 
