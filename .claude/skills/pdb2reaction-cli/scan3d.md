@@ -44,12 +44,12 @@ pdb2reaction scan3d -i 1.R.pdb -l 'SAM:1' \
 ```
 result_scan3d/
 ├── result.json                       # only when --out-json is passed
-├── grid/                              # per grid-point relaxed geometries (flat)
-│   └── point_i<d1Å>_j<d2Å>_k<d3Å>.xyz # one file per (d1, d2, d3) grid point;
-│                                       # tag is the bond distance in Å
-│                                       # (e.g. point_i1.30_j2.40_k1.10.xyz)
-├── scan3d_density.html                # interactive 3D iso-surface (always written)
-└── surface.csv                        # 3D energy surface (axis_1, axis_2, axis_3, energy)
+├── grid/                                              # per grid-point geometries (flat)
+│   ├── point_i<d1Å>_j<d2Å>_k<d3Å>.xyz                  # final relaxed point (always)
+│   ├── preopt_i<d1Å>_j<d2Å>_k<d3Å>.{xyz,pdb,gjf}       # pre-relaxation snapshot (--preopt)
+│   └── inner_path_d1_NNN_d2_MMM_trj.xyz                # inner-loop trajectory (--dump)
+├── scan3d_density.html                                # interactive 3D iso-surface (always)
+└── surface.csv                                        # 3D energy surface (axis_1, axis_2, axis_3, energy)
 ```
 
 `result.json` stores grid metadata and energy values; `surface.csv`

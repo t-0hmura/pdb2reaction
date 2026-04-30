@@ -87,18 +87,6 @@ print(d["converged"])        # True / False (exit code 3 if False)
 expansion, grid_level, SCF iterations, Mulliken / Loewdin / IAO charges,
 spin densities. Useful for debugging convergence problems.
 
-## Engine choice
-
-| `--engine` | When | Cost |
-|---|---|---|
-| `gpu` | x86_64 + CUDA + > 100 atoms | ~1–10 h on RTX-class GPU per single point |
-| `cpu` | aarch64, no GPU, or < 100 atoms | ~10–100× slower than GPU |
-
-aarch64 (`uname -m`) **requires `--engine cpu` explicitly**:
-`gpu4pyscf-cuda12x` ships x86_64 wheels only, so `--engine gpu` (the
-default) raises `ClickException` on aarch64 rather than silently
-falling back.
-
 ## Common errors
 
 | Symptom | Fix |

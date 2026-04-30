@@ -36,12 +36,8 @@ pdb2reaction all -i ts_candidate.pdb \
 - **no** `--scan-lists` is provided,
 - `--tsopt` (or `--tsopt True`) is passed.
 
-If a single `-i` is given without either `--scan-lists` or `--tsopt`,
-the CLI raises `BadParameter` instead of running (see `all.py`:
-"Provide at least two structures... or a single structure with
---scan-lists, or a single structure with --tsopt True"). With the
-required `--tsopt` set, the orchestrator skips path-search and starts
-the pipeline at `tsopt`.
+Without `--scan-lists` or `--tsopt` the CLI raises `BadParameter`
+(`all.md` covers the orchestrator's input gate).
 
 For finer control, run the underlying subcommands directly:
 
@@ -51,26 +47,8 @@ pdb2reaction irc   -i result_tsopt/final_geometry.xyz -o result_irc -b uma
 pdb2reaction freq  -i result_tsopt/final_geometry.xyz -o result_freq -b uma
 ```
 
-## Pipeline collapses to
-
-```
-ts_candidate.{xyz,pdb,gjf}
-       │
-       ▼
-   [tsopt]            (RS-I-RFO default; Dimer alternative)
-       │
-       ▼
-   [irc]              (forward + backward; LBFGS endpoint refinement)
-       │
-       ▼
-   [freq]             (Hessian + thermo)
-       │
-       ▼
-   [dft]              (optional)
-```
-
-`extract` and `path-search` are skipped entirely. The output tree
-collapses to one segment:
+`extract` and `path-search` are skipped entirely; the chain collapses
+to `tsopt → irc → freq → (dft)`. The output tree:
 
 ```
 result_ts_only/

@@ -61,13 +61,16 @@ Each space-separated literal after a single `-s` is one stage; do **not** repeat
 
 ```
 result_scan/
-├── result.json                # only when --out-json is passed
-├── stage_01/                # per-stage relaxed snapshots
-│   ├── result.xyz             # final geometry of stage
-│   └── scan_*.xyz             # intermediate steps (when opt.dump: true)
-├── stage_02/
-├── scan_trj.xyz             # stitched scan trajectory (always written)
-└── scan.pdb                 # PDB form (with --convert-files, default on)
+├── result.json                  # only when --out-json is passed
+├── preopt/                      # only with --preopt
+│   └── result.{xyz,pdb,gjf}     # pre-optimized starting geometry
+├── stage_01/                    # per-stage relaxed snapshots
+│   ├── result.xyz               # final geometry of stage
+│   ├── scan_trj.xyz             # per-stage scan trajectory (always written)
+│   └── scan_*.xyz               # intermediate steps (when opt.dump: true)
+├── stage_02/                    # …
+├── scan_trj.xyz                 # stitched scan trajectory across all stages
+└── scan.pdb                     # PDB form (with --convert-files, default on)
 ```
 
 `result.json` lists per-stage status, target distances, final energies,
