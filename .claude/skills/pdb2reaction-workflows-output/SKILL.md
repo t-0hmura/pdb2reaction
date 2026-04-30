@@ -106,12 +106,15 @@ failed-run diagnostics live in [`summary-json.md`](summary-json.md).
 
 ## Energy diagrams
 
-`pdb2reaction all` writes per-segment diagrams under each `seg_NN/`
-(e.g. `seg_01/tsopt/energy_diagram_UMA.png`,
-`energy_diagram_G_UMA.png`, `energy_diagram_DFT.png` when `--dft`,
-`energy_diagram_G_DFT_plus_UMA.png` when `--dft --thermo`) and writes
-the **aggregated** multi-segment diagrams at the top of the output
-directory:
+`pdb2reaction all` writes per-segment diagrams under
+`<path_dir>/post_seg_NN/` (where `path_dir` = `path_search/` when
+`--refine-path` true, `path_opt/` otherwise; for TS-only mode the
+diagrams are written under `tsopt_single/` instead). Each segment
+emits `energy_diagram_UMA.png`, `energy_diagram_G_UMA.png` (with
+`--thermo`), `energy_diagram_DFT.png` (with `--dft`), and
+`energy_diagram_G_DFT_plus_UMA.png` (with `--dft --thermo`). The
+**aggregated** multi-segment diagrams are written at the top of the
+output directory:
 
 - `<out_dir>/energy_diagram_MEP.png` — bare MEP energies from the
   path-search string (MLIP, no thermochemistry; bundled with
