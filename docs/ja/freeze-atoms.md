@@ -21,7 +21,7 @@ XYZ/GJF 入力には `LKH` レコードがないため `--freeze-links` は無�
 
 ### 2. `--freeze-atoms 'i,j,k,...'`（CLI 明示指定）
 
-カンマ区切りの **1 始まり** 原子インデックス。任意の入力形式に適用可。`--freeze-links` と併用すると合集合が凍結されます。
+カンマ区切りの **1 始まり** 原子インデックス。任意の入力形式に適用可。`--freeze-links` と併用すると和集合が凍結されます。
 
 ```bash
 pdb2reaction tsopt -i ts_candidate.xyz -q 0 -m 1 \
@@ -53,9 +53,9 @@ pdb2reaction tsopt -i ts.xyz -q 0 -m 1 --config tsopt.yaml
 
 ## 計算への効果
 
-- **力（Force）:** 凍結 DOF はゼロに設定（最適化器は動かせません）。
-- **ヘシアン:** 凍結 DOF の行・列は除去される（`calc.return_partial_hessian: true`、`freq` のデフォルト、`irc` では強制）か、フル行列でゼロ化されます。
-- **振動解析:** 凍結原子があるとき `freq` は自動で Partial Hessian Vibrational Analysis（PHVA）を実行し、active ブロックのみ対角化します。{ref}`5 cm⁻¹ vs 100 cm⁻¹ のしきい値 <ja-imaginary-mode-thresholds>` が結果に適用されます。
+- **力（Force）:** 凍結 DOF に対する力をゼロ化（最適化器は動かせません）。
+- **ヘシアン:** 凍結 DOF の行・列は除去される（`calc.return_partial_hessian: true`。`freq` ではデフォルト、`irc` では強制）か、フル行列でゼロ化されます。
+- **振動解析:** 凍結原子があるとき `freq` は自動で Partial Hessian Vibrational Analysis（PHVA）を実行し、active ブロックのみ対角化します。得られた固有値に {ref}`5 cm⁻¹ vs 100 cm⁻¹ のしきい値 <ja-imaginary-mode-thresholds>` が適用されます。
 - **MEP / IRC:** 凍結原子は全イメージ・全ステップで初期座標を保持します。
 
 ## サブコマンド対応表

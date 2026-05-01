@@ -16,7 +16,7 @@
 開始構造が PDB または Gaussian テンプレートの場合、最適化構造を `.pdb`（PDB 入力）や `.gjf`（Gaussian テンプレート）として自動的に書き出します（`--convert-files/--no-convert-files` で制御、デフォルトで有効）。
 PDB 固有の便利機能:
 - `--freeze-links`（デフォルト `True`）でリンク水素の親原子を検出し、`geom.freeze_atoms` にマージします（1始まり）。
-- 出力変換では `final_geometry.pdb`（および `--dump` の場合は `optimization.pdb`）を入力 PDBを参照して書き出します。
+- 出力変換では `final_geometry.pdb`（および `--dump` の場合は `optimization.pdb`）を入力 PDB をトポロジー参照として書き出します。
 XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定でき、XYZ 座標を保持したままフォーマット対応の PDB/GJF 出力変換が可能です。
 
 Gaussian `.gjf` テンプレートは電荷/スピンのデフォルト値を提供し、変換が有効な場合に最適化構造を `.gjf` として自動出力します。
@@ -83,7 +83,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <nu
 ## ワークフロー
 - **オプティマイザー**: `--opt-mode grad`（alias: `lbfgs`、デフォルト）→ L-BFGS、`--opt-mode hess`（alias: `rfo`）→ RFOptimizer
   > **命名規則の注意:** CLI は `grad|lbfgs` および `hess|rfo` を受け付けます。YAML では `lbfgs` または `rfo` を直接指定してください。
-- **Flatten loop**: `--flatten` を有効にすると、最適化後に虚振動数モードフラット化を実行します。`opt` では、各反復で検出された虚振動数モードをすべてフラット化し、虚振動数モードがなくなるか内部ループ上限に達するまで繰り返します。
+- **Flatten loop**: `--flatten` を有効にすると、最適化後に虚振動数モードのフラット化ループを実行します。`opt` では各反復で検出された虚振動数モードをすべてフラット化し、虚振動数が残らなくなるか内部ループ上限に達するまで繰り返します。
 - **拘束**: `--dist-freeze` は Python リテラルタプル `(i, j, target_Å)` を解釈します（`target_Å` は目標距離、単位は Å）。3番目の要素を省略すると開始距離を拘束します。`--bias-k` はグローバル調和強度（eV·Å⁻²）を設定します。インデックスはデフォルトで1始まりですが、`--zero-based` で0始まりに切り替えられます。
 - **電荷/スピン解決**: 電荷の解決順序の詳細は {ref}`CLI 規約: 電荷の指定 <ja-charge-specification>` を参照してください。
 - **凍結原子**: `--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（{ref}`リンク水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
@@ -149,7 +149,7 @@ out_dir/
 LBFGSとRFOの両方で使用される共有オプティマイザー制御:
 - `thresh` プリセット（Gaussian 系または Baker 系）。プリセットは `pdb2reaction/opt.py` に記載されている力/ステップ閾値に変換されます。
 - `max_cycles`、`print_every`（`100`）、`min_step_norm`（`1e-8`）、`assert_min_step`、収束切り替え（`rms_force` など）、RMSD ベースの `converge_to_geom_rms_thresh`、`overachieve_factor`、`check_eigval_structure`、`line_search`。
-- エネルギープラトーによるフォールバック収束（`energy_plateau`、`energy_plateau_thresh`、`energy_plateau_window`）— 直近ステップのエネルギーレンジがフラット化した場合に収束を宣言します（MLIP の力のノイズで力ベース収束に到達できない場合に有効。下の注記を参照）。
+- 平坦なエネルギー地形によるフォールバック収束（`energy_plateau`、`energy_plateau_thresh`、`energy_plateau_window`）— 直近ステップのエネルギーレンジが平坦化した場合に収束を宣言します（MLIP の力のノイズで力ベース収束に到達できない場合に有効。下の注記を参照）。
 - ダンプ/管理項目（`dump`、`dump_restart`、`prefix`、`out_dir`）。
 
 ### `lbfgs`
@@ -166,12 +166,12 @@ LBFGSとRFOの両方で使用される共有オプティマイザー制御:
 `geom`、`calc`、`opt`、`lbfgs`、`rfo` の完全な YAML スキーマは [YAML リファレンス](yaml-reference.md) を参照してください。
 
 ```{note}
-**エネルギープラトーによるフォールバック収束。** `energy_plateau: true`
+**平坦なエネルギー地形によるフォールバック収束。** `energy_plateau: true`
 のとき、直近 `energy_plateau_window` ステップのエネルギーレンジ（max − min）が
 `energy_plateau_thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`、50 ステップ）を
-下回ると、オプティマイザーは収束したと判定します。MLIP の力のノイズフロア
+下回ると、オプティマイザーは収束したと判定します。これにより、MLIP の力のノイズフロア
 （~4×10⁻⁴ au）が力ベースの収束閾値（例: `baker` max_force = 3×10⁻⁴ au）を上回る
-場合でも、無駄にサイクルを消費するのを防ぎます。chain-of-states オプティマイザー
+場合でも、無駄にサイクルを消費せずに停止できます。なお chain-of-states オプティマイザー
 （イメージごとのエネルギー配列を保持するもの）ではこのフォールバックはスキップされます。
 ```
 

@@ -68,7 +68,7 @@ If `--tsopt` is enabled, you should also see:
 [Imaginary modes] n=1  ([-425.9])
 ```
 
-One imaginary mode with |frequency| > 100 cm⁻¹ indicates a valid TS. See {ref}`imaginary-mode-thresholds` in the glossary for the 5 cm⁻¹ detection threshold vs 100 cm⁻¹ quality gate.
+One imaginary mode with |frequency| ≥ 100 cm⁻¹ indicates a valid TS. See {ref}`imaginary-mode-thresholds` in the glossary for the 5 cm⁻¹ detection threshold vs 100 cm⁻¹ quality gate.
 
 ## Tips
 

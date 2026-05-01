@@ -113,7 +113,7 @@ geom:
 
 **注記:**
 - `freeze_atoms` は PDB 入力時の `--freeze-links` 検出原子とマージされます。
-- 凍結原子は力がゼロ化され、ヘシアンの該当行/列もゼロ化されます。
+- 凍結原子は力がゼロ化され、ヘシアンの該当列もゼロ化されます。
 - `irc` では `geom.coord_type` が YAML/CLI マージ後に `cart` へ強制されます。
 
 ---
@@ -180,24 +180,25 @@ opt:
  overachieve_factor: 0.0 # Factor to tighten thresholds
  check_eigval_structure: false # Validate Hessian eigenstructure
  line_search: true # Enable line search
- energy_plateau: true # エネルギーがフラット化した場合にフォールバック収束を宣言（下記注記を参照）
- energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); プラトー判定のレンジ閾値
- energy_plateau_window: 50 # プラトー判定に用いる直近ステップ数
+ energy_plateau: true # エネルギー地形が平坦になった場合にフォールバック収束を宣言（下記注記を参照）
+ energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); 平坦判定のレンジ閾値
+ energy_plateau_window: 50 # 平坦判定に用いる直近ステップ数
  dump: false # Dump trajectory/restart data
  dump_restart: false # Dump restart checkpoints
  prefix: "" # Filename prefix
  out_dir: ./result_opt/ # Output directory
 ```
 
-**エネルギープラトーによるフォールバック収束:**
+**平坦なエネルギー地形によるフォールバック収束:**
 `energy_plateau: true` の場合、直近 `energy_plateau_window` ステップのエネルギーレンジ
 （max − min）が `energy_plateau_thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`、50 ステップ）
-を下回ると、オプティマイザーは収束したと判定します。MLIP の力のノイズフロア
+を下回ると、オプティマイザーは収束したと判定します。これにより、MLIP の力のノイズフロア
 （典型的には ~4×10⁻⁴ au）が力ベースの収束閾値（例: `baker` max_force = 3×10⁻⁴ au）を
-上回る場合でも、エネルギーが明らかにフラット化していれば無駄なサイクルを消費せずに
+上回る場合でも、エネルギー地形が明らかに平坦化していれば無駄なサイクルを消費せずに
 停止できます。
-chain-of-states（COS）オプティマイザー（`stopt`、`gs`、DMF など）はイメージごとの
-エネルギー配列を保持するため、このフォールバックは**スキップ**されます。
+ただし chain-of-states（COS）オプティマイザー（`stopt`、`gs`、DMF など）は単一のスカラー
+エネルギー履歴ではなくイメージごとのエネルギー配列を保持するため、このフォールバックは
+**スキップ**されます。
 
 **収束プリセット:**
 

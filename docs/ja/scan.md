@@ -5,7 +5,7 @@
 > **要約:** 調和拘束を用いて結合距離をスキャンし、反応座標を駆動します。`-s/--scan-lists`（YAML/JSON ファイルパス、推奨）でターゲット距離を指定します。インライン Python リテラルも利用できます。
 
 ### 要点
-- **想定場面:** 単一構造から特定の原子間距離を駆動し、もっともらしい反応経路を探索する場面（`path-search` / `path-opt` の前処理として使われることが多い）。入力は 1 つの構造 + `-s scan.yaml`（推奨）または `-s/--scan-lists` の 1 個以上のインラインリテラル（**1 リテラル = 1 ステージ**）。可能な限り YAML/JSON ファイルパスを渡してください。インライン Python リテラルはクォート/エスケープが必要で、単純な単一ステージのスキャン向きです。
+- **想定場面:** 単一構造から特定の原子間距離を駆動し、もっともらしい反応経路を探索する場面（`path-search` / `path-opt` の前処理として使われることが多い）。入力は 1 つの構造 + `-s scan.yaml`（推奨）または `-s/--scan-lists` の 1 個以上のインラインリテラル（**1 リテラル = 1 ステージ**）。YAML/JSON ファイルパスはシェルのクォート問題を避けられ、バージョン管理にも向きます。インライン Python リテラルは単純な単一ステージのスキャンには十分です。
 - **計算手法:** MLIP バックエンド（デフォルト: UMA、`-b/--backend` で切替可能）に調和拘束 `E = Σ ½ k (|ri − rj| − target)²` を加え、各ステップを LBFGS（`--opt-mode grad`）または RFOptimizer（`--opt-mode hess`）で緩和。
 - **主な出力:** ステージごとの `result.xyz`（必要に応じて `.pdb`/`.gjf`）と結合スキャン軌跡。`--dump` の予約挙動は「注意事項」を参照。
 - **デフォルト値:** `--opt-mode grad`（LBFGS）、`--no-preopt`、`--no-endopt`、`--max-step-size 0.20 Å`、`--bias-k 300 eV·Å⁻²`、`--thresh gau`、`--out-dir ./result_scan/`。
@@ -126,7 +126,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
 ```
 
 ## ワークフロー
-1. `geom_loader` で構造を読み込み、電荷とスピンを解決します。電荷の解決順序の詳細は {ref}`CLI 規約: 電荷の指定 <ja-charge-specification>` を参照してください。
+1. `geom_loader` で構造を読み込み、電荷を解決します。電荷の解決順序の詳細は {ref}`CLI 規約: 電荷の指定 <ja-charge-specification>` を参照してください。
 2. `--preopt` の場合、バイアスをかける前に無バイアスの前処理最適化を実行し、開始構造を緩和します。
 3. `-s/--scan-lists`（YAML/JSON ファイルパスまたはインライン Python リテラル）からステージターゲットを読み取り、`(i, j)` インデックスを正規化します（デフォルトは 1 始まり）。PDB 入力では、各エントリに整数インデックスまたは `'TYR,285,CA'` のような原子セレクタ文字列を指定できます。セレクタの区切りは空白・カンマ・スラッシュ・バッククォート・バックスラッシュのいずれも可で、トークン順序は任意です（フォールバックは resname, resseq, atom を想定）。
     各結合について変位 `Δ = target − current` を計算し、`h = --max-step-size` として `N = ceil(max(|Δ|) / h)` ステップに分割します。各結合は `δ = Δ / N` ずつ更新されます。
@@ -140,7 +140,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
 | `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル | 必須 |
 | `-q, --charge INT` | 総電荷（CLI > テンプレート）。`-q` を省略して `--ligand-charge` がある場合は電荷が導出され、明示的な `-q` が最優先 | `.gjf` テンプレートまたは `--ligand-charge` がない場合は必須 |
 | `-l, --ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
-| `--workers`, `--workers-per-node` | UMA 予測器の並列度（workers > 1 で解析ヘシアンは無効化; `workers_per_node` は並列予測器に渡されます）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照。 | `1`, `1` |
+| `--workers`, `--workers-per-node` | MLIP 予測器の並列度（workers > 1 で解析ヘシアンは無効化; UMA バックエンドのみ; `workers_per_node` は並列予測器に渡されます）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照。 | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
 | `-s, --scan-lists TEXT` | スキャンターゲット: YAML/JSON スペックファイルパス（推奨）またはインライン Python リテラル（`(i,j,targetÅ)` 三つ組もしくは `(i,j,start,end)` 四つ組（双方向スキャン））。各リテラルが 1 ステージ; 1 つのフラグの後に複数リテラルを渡す。`i`/`j` は整数インデックスまたは PDB 原子セレクタ（`'TYR,285,CA'`） | 必須 |
 | `--one-based/--zero-based` | 原子インデックスを 1 始まり/0 始まりとして解釈。これらは同一フラグの相互排他エイリアス（`--one-based` → `True`、`--zero-based` → `False`） | `True` |
@@ -174,7 +174,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
 (ja-section-bond)=
 ### セクション `bond`
 `path-search` と共通の MLIP ベース結合変化検出:
-- `device`（`"auto"`）: 結合解析用 UMA デバイス。
+- `device`（`"auto"`）: 結合解析用 MLIP デバイス。
 - `bond_factor`（`1.20`）: 共有結合半径のスケーリング係数。
 - `margin_fraction`（`0.05`）: 比較時の相対許容値。
 - `delta_fraction`（`0.05`）: 結合の形成・切断を判定する最小相対変化量。

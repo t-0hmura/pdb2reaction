@@ -9,7 +9,7 @@
 - **手法:** デフォルトは GSM。`--mep-mode dmf` で DMF に切り替え可能。
 - **主な出力:** `final_geometries_trj.xyz`（経路）と `hei.xyz`（HEI）。変換が有効なら `.pdb`/`.gjf` コンパニオンも生成。
 - **デフォルト値:** `--opt-mode grad`（LBFGS）、`--climb`、`--max-nodes 20`、`--no-preopt`、`--thresh gau`、`--thresh-stopt gau_loose`。
-- **次のステップ:** HEI は TS 候補。`tsopt`（虚振動数チェックを内蔵、虚振動は **1 つ** が期待値）→ `irc` で検証。
+- **次のステップ:** HEI を `tsopt`（虚振動数チェックを内蔵、虚振動は **1 つ** が期待値）で TS として最適化 → `irc` で接続性を検証。
 
 `pdb2reaction path-opt` は 2 端点間の最小エネルギー経路（MEP）を探索し、最高エネルギー画像（HEI）を報告します。HEI は *候補* に過ぎないため、[tsopt](tsopt.md)（内部で虚振動数チェック済み）→ [irc](irc.md) による接続性の確認が必須です。**2 つ以上の構造**を入力して反応領域だけを自動で精密化したい場合は、[path-search](path-search.md) を使用してください。
 
@@ -84,9 +84,9 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [-l, -
 - **電荷/スピン**: 電荷の解決順序の詳細は {ref}`CLI 規約: 電荷の指定 <ja-charge-specification>` を参照してください。
 - **MEPセグメント**: `--max-nodes` は内部ノード数を制御します。GSM の場合、総画像数は `max_nodes + 2`（固定端点を含む）。DMF の場合、`max_nodes` はチェーン上の移動可能なイメージ数です。GSM成長およびクライミング精密化の収束プリセットは `--thresh-stopt` または `stopt.thresh`（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`）で指定します。
 - **エンドポイント事前最適化**: `--thresh` は `--opt-mode` で選ばれた単一構造最適化（`opt.lbfgs.thresh` / `opt.rfo.thresh`）のみに適用されます。
-- **クライミングイメージ**: `--climb` は標準のクライミング手順とLanczos接線リファインの両方を切り替え。
+- **クライミングイメージ**: `--climb` は標準のクライミングステップと Lanczos ベースの接線リファインの両方を切り替えます。
 - **ダンプ**: `--dump` で StringOptimizer の `stopt.dump=True` に対応し、`out_dir` 内に軌跡ダンプを出力します。リスタート YAML は YAML で有効化した場合のみ書き出されます。
-- **終了コード**: 終了コードは CLI 規約の {ref}`ja-exit-codes` を参照。
+- **終了コード**: CLI 規約の {ref}`ja-exit-codes` を参照。
 
 ## CLI オプション
 
@@ -127,19 +127,18 @@ out_dir/
 ├─ final_geometries_trj.xyz # XYZ経路（コメント行にエネルギーを保持）
 ├─ final_geometries.pdb # PDB 参照が利用可能で変換が有効な場合の全画像 PDB
 ├─ final_geometries.gjf # Gaussian テンプレート検出時の Gaussian コンパニオン（変換有効時）
-├─ hei.xyz # 最高エネルギー画像
+├─ hei.xyz # 最高エネルギー画像（コメント行にエネルギーを保持）
 ├─ hei.pdb # PDB 参照が利用可能な場合のHEI（変換有効時）
 ├─ hei.gjf # Gaussian テンプレートを使用して書き込まれたHEI（変換有効時）
 ├─ align_refine/ # 剛体アライメント/リファイン段階の中間ファイル（アライメント実行時）
-└─ <オプティマイザーダンプ/リスタート>
+└─ <オプティマイザーダンプ> # `--dump` 指定時の軌跡ダンプ（リスタート YAML は YAML の `dump_restart` 経由のみ）
 ```
-コンソールには解決済みYAMLブロックが出力され、GSM/DMFのMEP進行状況とタイミングが報告されます。
-
+コンソールには解決済み YAML ブロックが出力され、GSM/DMF の MEP 進行状況とタイミングが報告されます。
 
 設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
 
 ```{note}
-正規定義は [YAML リファレンス](yaml-reference.md) および `pdb2reaction/defaults.py` を参照してください（齟齬がある場合はそちらが優先）。以下は `path-opt` 固有のデフォルト（例: `out_dir`）を含む抜粋です。
+**リファレンスの重複について。** `geom`、`calc`、`gs`、`dmf`、`stopt`、`opt.lbfgs`、`opt.rfo` の YAML キーは [YAML リファレンス](yaml-reference.md) に正規定義があります。両ページで齟齬がある場合は [YAML リファレンス](yaml-reference.md) と `pdb2reaction/defaults.py` を正とし、以下では `path-opt` 固有の上書きのみ再掲します。
 ```
 
 ### `path-opt` で使用される YAML セクション

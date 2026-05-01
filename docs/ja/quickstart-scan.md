@@ -75,7 +75,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(1, 5, 1.35)]' --print-parsed
 
 ## 補足
 
-- `-s/--scan-lists` は `all` 経由ではインライン Python リテラルのみを受け付けます。YAML/JSON スペックファイルは単独の `scan` サブコマンドのみが受け付けます（[scan](scan.md) を参照）。
+- `-s/--scan-lists` は `all` ではインライン Python リテラルのみを受け取ります。単独の `scan` サブコマンドはこれに加えて YAML/JSON スペックファイルパスも受け取れます（[scan](scan.md) を参照）。
 - `pdb2reaction all --help-advanced` で全オプション（スキャン制御を含む）を確認できます。
 - 単独の `scan` サブコマンド（MEP 精密化なし）については [scan](scan.md) を参照してください。
 

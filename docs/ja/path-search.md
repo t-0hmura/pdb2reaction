@@ -16,7 +16,7 @@
 
 `--convert-files` が有効（デフォルト）な場合、参照 PDB があれば軌跡の `.pdb` コンパニオンを、Gaussian テンプレートがあれば HEI スナップショットの `.gjf` コンパニオンを生成します。XYZ/GJF 入力では `--ref-pdb` が最終的な全系マージで用いるポケット参照 PDB（入力と同数・同順）を提供し、`--ref-full-pdb` によりフルテンプレートへのマージが可能です（XYZ/GJF 入力では主軌跡の PDB コンパニオンは生成されません）。
 
-再帰的分解により多段階反応を自動検出し、各素反応ステップの詳細な MEP を構築します。ただし、複雑な多段階反応の検出は困難な場合があり、入力中間体やスキャン仕様、収束閾値の調整など手動での試行錯誤が必要になることがあります。
+再帰的分解により多段階反応を自動検出し、各素反応ステップの詳細な MEP を構築します。ただし、複雑な多段階反応の機構を満足な経路として得るには、入力中間体やスキャン仕様、収束閾値の調整など手動での試行錯誤が必要になることがあります。
 
 **2 端点だけ**で再帰精密化が不要な場合は、[path-opt](path-opt.md) の方がシンプルです。
 
@@ -84,7 +84,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | `--freeze-links/--no-freeze-links` | PDB 活性部位モデル読み込み時、リンク水素の親原子を凍結。詳細は [extract](extract.md) を参照 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用。 | _None_ |
-| `--max-nodes INT` | MEPセグメントごとの内部ノード | `20` |
+| `--max-nodes INT` | MEP セグメントごとの内部ノード（GSM string image または DMF image） | `20` |
 | `--max-cycles INT` | 最大MEP最適化サイクル（GSM/DMF） | `300` |
 | `--climb/--no-climb` | GSMセグメントのクライミングイメージを有効化（ブリッジは無効） | `True` |
 | `--opt-mode TEXT` | HEI±1/ねじれノード用の単一構造オプティマイザー（`grad`=LBFGS、`hess`=RFO）。同じトークンが `tsopt` では Dimer / RS-I-RFO へ対応する点については {ref}`ja-opt-mode-semantics` を参照してください。 | `grad` |
@@ -110,12 +110,13 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
 
 1. **ペアごとの初期セグメント（GSM/DMF）** – 各隣接入力（A→B）間で `GrowingString` または DMF を実行し、粗いMEPと最高エネルギー画像（HEI）を取得。
 2. **HEI周辺の局所緩和** – `refine-mode=peak` なら HEI±1、`refine-mode=minima` なら HEI 近傍の局所極小点を、選択した単一構造オプティマイザー（`opt-mode`）で精密化し `End1`/`End2` を得る。
-3. **ねじれ vs. 精密化の決定** – `End1` と `End2` 間に共有結合変化がなければ *ねじれ*（kink: 共有結合変化を伴わない構造変化区間）とみなし、`search.kink_max_nodes` の線形ノードを挿入して個別最適化。結合変化がある場合は **反応セグメント**（共有結合変化を伴う区間に対して GSM/DMF で精密化するセグメント）を起動。
+   > **デフォルト:** `--refine-mode` 省略時は GSM では `peak`、DMF では `minima` が選択されます。
+3. **ねじれ vs. 精密化の決定** – `End1` と `End2` 間に共有結合変化がなければ *ねじれ*（kink: 共有結合変化を伴わない構造変化区間。[用語集](glossary.md) 参照）とみなし、`search.kink_max_nodes` の線形ノードを挿入して個別最適化。結合変化がある場合は *反応セグメント*（端点間に共有結合変化が検出される区間。[用語集](glossary.md) 参照）として扱い、`End1` と `End2` 間に **精密化セグメント (GSM/DMF)** を起動して障壁を鋭利化。
 4. **選択的再帰** – `(A→End1)` と `(End2→B)` の結合変化を `bond` しきい値で比較し、共有結合更新が残るサブ区間のみ再帰的に探索。再帰深度は `search.max_depth` で制限。
-5. **スティッチング & ブリッジング** – 解決済みのサブパスを連結し、RMSD ≤ `search.stitch_rmsd_thresh` の重複エンドポイントを除去。RMSDギャップが `search.bridge_rmsd_thresh` を超える場合はブリッジセグメント（隣接するサブパス間の RMSD ギャップを埋めるために挿入される補間 MEP）を挿入。境界で結合変化が検出される場合はブリッジではなく新規の再帰セグメントで置換。
+5. **スティッチング & ブリッジング** – 解決済みのサブパスを連結し、RMSD ≤ `search.stitch_rmsd_thresh` の重複エンドポイントを除去。RMSDギャップが `search.bridge_rmsd_thresh` を超える場合は *ブリッジセグメント*（非隣接の中間体間を接続するセグメント。[用語集](glossary.md) 参照）を GSM/DMF で挿入。境界で結合変化が検出される場合はブリッジではなく新規の再帰セグメントで置換。
 6. **アライメント & マージング（オプション）** – `--align`（デフォルト）で事前最適化構造を先頭入力へ剛体アライメントし、`freeze_atoms` を整合。`--ref-full-pdb` を指定すると活性部位モデル軌跡をフルサイズPDB テンプレートへマージ（`--align` により先頭テンプレートの再利用が可能）。
 
-結合変化の判定は `bond_changes.compare_structures` を用い、`bond` セクションのしきい値に従います。MLIP バックエンド（デフォルト: UMA）は全構造で共有・再利用されます。
+結合変化の判定は `bond_changes.compare_structures` を用い、`bond` セクションのしきい値に従います。MLIP バックエンドは全構造で共有・再利用されます。
 
 ## 出力
 ```
@@ -147,12 +148,12 @@ out_dir/ (デフォルト:./result_path_search/)
 
 - 入力は2つ以上が必須。満たさない場合、`-i/--input` の "invalid value" エラーで終了します。
 - 複数テンプレートを渡す場合は `--ref-full-pdb` をファイルごとに繰り返して指定します。`--align` が有効な場合、マージでは先頭テンプレートのみが再利用されます。
-- MLIP バックエンド（デフォルト: UMA）は全構造で共有・再利用されます。
+- MLIP バックエンドは全構造で共有・再利用されます。
 - `--dump` が有効な場合、MEP（GSM/DMF）と単一構造最適化の軌跡が出力されます。リスタート YAML は YAML で `dump_restart` を有効にした場合のみ書き出されます。
 
 設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
 
-YAML ルートはマッピングでなければなりません。共通セクションは [YAML リファレンス](yaml-reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（`--freeze-links` については {ref}`リンク水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）、`stopt` は `path-opt`（[path-opt.md](path-opt.md)）に記載の StringOptimizer 設定を継承します。
+YAML ルートはマッピングでなければなりません。共通セクションは [YAML リファレンス](yaml-reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（PDB 入力では `--freeze-links` が `geom.freeze_atoms` を補強します。詳細は {ref}`リンク水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）、`stopt` は `path-opt`（[path-opt.md](path-opt.md)）に記載の StringOptimizer 設定を継承します。
 
 ```{note}
 **リファレンスの重複について。** `geom`, `calc`, `gs`, `dmf`, `stopt`, `opt.lbfgs`, `opt.rfo` の YAML キーは [YAML リファレンス](yaml-reference.md) に正規定義があります。両ページで齟齬がある場合は [YAML リファレンス](yaml-reference.md) と `pdb2reaction/defaults.py` を正とし、本ページの appendix は `path-search` 固有のデフォルト（例: `out_dir: ./result_path_search/`）のみを再掲します。

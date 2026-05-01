@@ -26,7 +26,7 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --ther
 - Growing String Method (GSM) や Direct Max Flux (DMF) などの経路最適化手法で **最小エネルギー経路 (MEP: Minimum Energy Path)** を探索
 - 必要に応じて **遷移状態（TS: Transition State）** を最適化し、**IRC（固有反応座標: Intrinsic Reaction Coordinate）計算**・**振動解析**・**DFT 一点計算** を実行
 
-ポテンシャルエネルギー面（PES: Potential Energy Surface）の計算には機械学習原子間ポテンシャル（MLIP）を用います。デフォルトのバックエンドは Meta の **UMA** ですが、`-b/--backend` により **ORB**、**MACE**、**AIMNet2**も選択できます。想定される主な用途は以下の通りです。
+計算には機械学習原子間ポテンシャル（MLIP）を用います。デフォルトのバックエンドは Meta の **UMA** ですが、`-b/--backend` により **ORB**、**MACE**、**AIMNet2** も選択できます。想定される主な用途は以下の通りです。
 
 - DFT 等の量子化学計算では検証に時間がかかる規模の**反応機構解析の試行錯誤**
 - 量子化学計算に向けた**初期構造の作成**（反応物・TS・生成物のクラスターモデル）
@@ -131,7 +131,7 @@ pdb2reaction [OPTIONS]...
 pdb2reaction all [OPTIONS]...
 ```
 
-`all` は、クラスター抽出から MEP 探索、TS 最適化、IRC、振動解析、DFT 一点計算までを 1 コマンドで一括実行するサブコマンドです。
+[`all`](all.md) は、クラスター抽出、MEP 探索、TS 最適化、振動解析、必要に応じた DFT までを 1 コマンドで一括実行するサブコマンドです。
 
 クラスター抽出を行う場合、ワークフロー全体で共通の重要オプションが 2 つあります:
 

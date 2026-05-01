@@ -1,7 +1,7 @@
 # MLIP 計算機
 
 ## 概要
-`pdb2reaction` は複数の機械学習原子間ポテンシャル（MLIP）を PySisyphus 向けの計算機バックエンドとしてサポートします。デフォルトバックエンドは **UMA**（Meta の Universal Models for Atoms）ですが、**ORB**、**MACE**、**AIMNet2** も利用可能です。各バックエンドはエネルギー/力/ヘシアンを Hartree 単位で返し、デバイス配置・単位変換を内部で処理します。`pdb2reaction` の最適化、経路探索、熱化学、軌跡後処理など広範に利用されます。
+`pdb2reaction` は複数の機械学習原子間ポテンシャル（MLIP）を PySisyphus 向けの計算機バックエンドとしてサポートします。デフォルトバックエンドは **UMA**（Meta の Universal Models for Atoms）ですが、**ORB**、**MACE**、**AIMNet2** も利用可能です。各バックエンドはエネルギー/力/ヘシアンを Hartree 単位で返し、デバイス配置と単位変換を内部で処理します。これらの計算機は `pdb2reaction` の最適化・経路探索・熱化学・軌跡後処理など広範に使用されます。
 
 ## クイックスタート
 ```python
@@ -87,7 +87,7 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 
 | バックエンド | インストール | 解析ヘシアン | マルチワーカー | 備考 |
 |---------|---------|-------------------|-------------|-------|
-| **UMA** | 同梱 | あり | あり | fairchem による完全機能 |
+| **UMA** | 同梱 | あり（autograd） | あり | fairchem による完全機能 |
 | **ORB** | `pip install "pdb2reaction[orb]"` | あり（autograd） | なし | orb-models（conservative モデルのみ） |
 | **MACE** | `pip uninstall -y fairchem-core && pip install mace-torch` | あり（`calc.get_hessian`） | なし | mace-torch >= 0.3.8 |
 | **AIMNet2** | `pip install "pdb2reaction[aimnet]"` | あり（native） | なし | aimnet |
@@ -115,7 +115,7 @@ pdb2reaction opt -i input.pdb -q 0 -b orb --solvent water --solvent-model cpcmx
 ### `workers > 1` による暗黙的な FD ダウングレード（UMA バックエンド）
 
 ```{warning}
-UMA バックエンドを `workers > 1` で使用する場合、`hessian_calc_mode="Analytical"` を明示的に指定していても解析ヘシアンは暗黙的に有限差分へ切り替わります（内部フラグ、ユーザーから設定不可）。**このダウングレード発生時にログマーカーは出力されません。**診断する唯一の方法は、同じ原子数の解析ヘシアン基準ランと比較してヘシアン計算時間が FD 相当に長くなっていることの確認です。明示的な警告やログ行は存在しないため、「想定より長いヘシアン所要時間」だけが手掛かりとなります。この警告は `--workers` / `--workers-per-node` を持つすべてのサブコマンド（`opt`, `tsopt`, `freq`, `irc`, `all`, `path-opt`, `path-search`, scan 系）に適用されます。UMA 以外のバックエンド（ORB / MACE / AIMNet2）では `workers` / `workers_per_node` は `_BACKEND_ACCEPTED_KEYS` で暗黙的に除外されるため、このダウングレード規則は該当しません。
+UMA バックエンドを `workers > 1` で使用する場合、`hessian_calc_mode="Analytical"` を明示的に指定していても解析ヘシアンは暗黙的に有限差分へ切り替わります（内部フラグ、ユーザーから設定不可）。**このダウングレード発生時にログマーカーは出力されません。**診断する唯一の方法は、同じ原子数の解析ヘシアン基準ランと比較してヘシアン計算時間が FD 相当に長くなっていることの確認です。明示的な警告やログ行は存在しないため、「想定より長いヘシアン所要時間」だけが手掛かりとなります。このダウングレード規則は `--workers` / `--workers-per-node` を持つすべてのサブコマンド（`opt`, `tsopt`, `freq`, `irc`, `all`, `path-opt`, `path-search`, scan 系）に適用されます。UMA 以外のバックエンド（ORB / MACE / AIMNet2）では `workers` / `workers_per_node` は `_BACKEND_ACCEPTED_KEYS` で暗黙的に除外されるため、このダウングレード規則は該当しません。
 ```
 
 (ja-hessian-evaluation)=

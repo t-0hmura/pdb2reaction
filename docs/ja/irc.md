@@ -2,7 +2,7 @@
 
 ## 概要
 
-> **要約:** 遷移状態（TS）から反応物・生成物方向へ固有反応座標（IRC）を追跡します。デフォルトで前方・後方の両方向を実行します。VRAM に余裕がある場合は `--hessian-calc-mode Analytical` が推奨されます。
+> **要約:** 遷移状態（TS）から反応物・生成物方向へ EulerPC（Euler Predictor-Corrector）ベースの固有反応座標（IRC）積分を実行します。デフォルトで前方・後方の両方向を実行します。VRAM に余裕がある場合は `--hessian-calc-mode Analytical` が推奨されます。
 
 ### 要点
 - **想定場面:** `tsopt` で最適化・検証済みの TS 構造を出発点に、固有反応座標を追跡して端点接続性（R ↔ TS ↔ P）を確認するケース。
@@ -81,14 +81,14 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `-i, --input PATH` | `geom_loader` が受け入れる遷移状態構造 | 必須 |
-| `-q, --charge INT` | 総電荷; YAML が `calc.charge` を指定していない場合に使用。`.gjf` テンプレートまたは `--ligand-charge`（PDB 入力または `--ref-pdb` 付きXYZ/GJF）が提供しない限り必須。明示的な `-q` は `--ligand-charge` より優先 | テンプレート/導出が適用されない限り必須 |
+| `-q, --charge INT` | 総電荷; YAML が `calc.charge` を指定していない場合に使用。`.gjf` テンプレートまたは `--ligand-charge/-l`（PDB 入力または `--ref-pdb` 付き XYZ/GJF）が提供しない限り必須。両方が設定された場合でも、明示的な `-q` は `--ligand-charge/-l` より優先されます。 | テンプレート/導出が適用されない限り必須 |
 | `-l, --ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `--workers INT` | MLIP予測器の並列度（workers > 1 で解析ヘシアン無効）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照。 | `1` |
 | `--workers-per-node INT` | ノードあたりのワーカー数。並列予測器に渡されます | `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1）。YAML が `calc.spin` を指定していない場合に使用 | `.gjf` テンプレート値または `1` |
 | `--max-cycles INT` | 最大IRCステップ（YAML が `irc.max_cycles` を指定していない場合に使用） | `125` |
 | `--step-size FLOAT` | ステップ長（Bohr、非質量加重デカルト座標）（YAML が `irc.step_length` を指定していない場合に使用） | `0.10` |
-| `--root INT` | 射影ヘシアンの固有値を**昇順**（最も負の値を先頭）に並べたときの**0 始まり**のインデックス。初期 IRC 変位に使用するモードを指定します。虚振動が 1 個だけの妥当な TS では `--root 0`（唯一の負の固有値）のままにしてください。`--root 1`、`--root 2` などは、活性な虚モードが誤った更に負のモードよりも上位にランクされている場合にのみ使用します。YAML が `irc.root` を指定していない場合に使用。 | `0` |
+| `--root INT` | 射影ヘシアンの固有値を**昇順**（最も負の値を先頭）に並べたときの**0 始まり**のインデックス。初期 IRC 変位に使用するモードを指定します。虚振動が 1 個だけの妥当な TS では `--root 0`（唯一の負の固有値）のままにしてください。`--root 1`、`--root 2` などは、活性な虚モードがより負のスプリアス（疑似）モードよりも上位にランクされていることが分かっている場合にのみ使用します。YAML が `irc.root` を指定していない場合に使用。 | `0` |
 | `--forward/--no-forward` | 順方向分岐を実行（YAML が `irc.forward` を指定していない場合に使用） | `True` |
 | `--backward/--no-backward` | 逆方向分岐を実行（YAML が `irc.backward` を指定していない場合に使用） | `True` |
 | `--freeze-links/--no-freeze-links` | PDB 入力用、リンクH親を凍結（`geom.freeze_atoms` にマージ）。詳細は [extract](extract.md) を参照 | `True` |

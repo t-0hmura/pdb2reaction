@@ -53,7 +53,7 @@ result_all/
 **確認ポイント:**
 
 1. `summary.json` — `status` フィールド（`"success"` / `"partial"` / `"failed"`）とセグメントごとの `barrier_kcal` を確認。`summary.log` は同じ情報を人間可読形式でミラーします
-2. `seg_01/*.pdb` — PyMOL で R/TS/P 構造を確認
+2. `seg_01/*.pdb` — PyMOL で R/TS/P 構造が化学的に妥当か確認
 3. `energy_diagram_*.png` — 明確な障壁があるエネルギープロファイル
 
 **成功時のターミナル出力例:**
@@ -68,7 +68,7 @@ result_all/
 [Imaginary modes] n=1  ([-425.9])
 ```
 
-|振動数| >= 100 cm⁻¹ の虚振動 1 つが有効な TS を示します。5 cm⁻¹ 検出閾値と 100 cm⁻¹ 品質ゲートの違いは用語集 {ref}`ja-imaginary-mode-thresholds` を参照。
+|振動数| ≥ 100 cm⁻¹ の虚振動 1 つが有効な TS を示します。5 cm⁻¹ 検出閾値と 100 cm⁻¹ 品質ゲートの違いは用語集 {ref}`ja-imaginary-mode-thresholds` を参照。
 
 ## 補足
 

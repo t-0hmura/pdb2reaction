@@ -39,9 +39,9 @@ cat result_opt/result.json | python -m json.tool
 
 ## エラー処理
 
-ジョブが失敗した場合（クラッシュ、OOM、収束失敗による `sys.exit` など）、可能な限り `"status": "error"` と失敗種別を表す `"error_type"` を含む `result.json` が書き出されます。詳細なトレースバックは `.out` ログファイルを参照してください。失敗判定には `result.json` の不在ではなく `status == "error"` を使用してください。
+ジョブが失敗した場合（クラッシュ、OOM、収束失敗による `sys.exit` など）でも、`"status": "error"` と失敗種別を表す `"error_type"` を含む `result.json` が書き出されます。詳細なトレースバックは `.out` ログファイルを参照してください。失敗判定には `result.json` の不在ではなく `status == "error"` を使用してください。
 
-収束しなかったが完了したジョブでは、`"status": "not_converged"` と最終 force/step 値を含む `result.json` が書き出されます。
+収束しなかったが完了したジョブでは、`"status": "not_converged"` と最終 force/step 値を含む `result.json` が書き出されるため、AI エージェントはサイクル数を増やして再試行するかどうかをこの情報をもとに判断できます。
 
 ## サブコマンド別スキーマ
 
@@ -308,7 +308,7 @@ cat result_opt/result.json | python -m json.tool
 (ja-summary-json-path-search-all)=
 ## `summary.json` (`path-search` / `all`)
 
-`all` / `path-search` は `summary.json` を出力します:
+`all` / `path-search` は、より構造化された `summary.json` を出力します:
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|

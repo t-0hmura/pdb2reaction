@@ -83,7 +83,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 ```
 
 ## ワークフロー
-- **電荷/スピン解決**: 電荷の解決順序の詳細は {ref}`CLI 規約: 電荷の指定 <ja-charge-specification>` を参照してください。
+- **電荷/スピン解決**: 電荷は標準の優先順位チェーンで解決されます。詳細は {ref}`CLI 規約: 電荷の指定 <ja-charge-specification>` を参照してください。
 - **構造ロードと freeze-links**: 構造は `pysisyphus.helpers.geom_loader` で読み込まれます。`--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（{ref}`リンク水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
 - **MLIP ヘシアン（デフォルト: UMA）**: `--hessian-calc-mode` で解析的ヘシアンと有限差分ヘシアンを切り替えます。いずれも活性（PHVA）部分空間を考慮します。凍結原子が存在する場合、MLIP バックエンドは活性ブロックのみを返すことがあります。ヘシアン評価モードの詳細は {ref}`ja-hessian-evaluation` を参照してください。
 - **Dimerモード詳細**:
@@ -102,7 +102,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 | `--workers INT` | MLIP予測器の並列度（workers > 1 で解析ヘシアン無効）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照。 | `1` |
 | `--workers-per-node INT` | ノードあたりのワーカー数。並列予測器に渡されます | `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
-| `--freeze-links/--no-freeze-links` | PDBのみ。リンク水素の親を凍結（`geom.freeze_atoms` にマージ） | `True` |
+| `--freeze-links/--no-freeze-links` | PDB のみ。リンク水素の親を凍結（`geom.freeze_atoms` にマージ）。リンク水素の詳細は [extract](extract.md) を参照 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用。 | _None_ |
 | `--max-cycles INT` | `opt.max_cycles` に渡されるマクロサイクル上限 | `10000` |
 | `--opt-mode TEXT` | 最適化モード: `grad`（`dimer`）または `hess`（`rsirfo`）。`dimer`/`rsirfo` も指定可。サブコマンド別の対応表（`opt` は L-BFGS/RFO、`tsopt` は Dimer/RS-I-RFO）は {ref}`ja-opt-mode-semantics` を参照。 | `hess` |
@@ -179,12 +179,12 @@ opt:
 ```
 
 ```{note}
-**エネルギープラトーによるフォールバック収束。** RS-I-RFO は共通の
+**平坦なエネルギー地形によるフォールバック収束。** RS-I-RFO は共通の
 `energy_plateau` 設定を参照します。直近 `energy_plateau_window` ステップ（デフォルト 50）の
 エネルギーレンジ（max − min）が `energy_plateau_thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`）
 を下回ると収束と判定されます。大規模 TS 系では MLIP の力のノイズフロア（~4×10⁻⁴ au）が
-`baker` max_force 閾値（3×10⁻⁴ au）を上回ることがあり、エネルギーがすでにフラット化していても
-力ベース判定に到達しないことがあります。無効化するには `energy_plateau: false` を指定してください。
+`baker` max_force 閾値（3×10⁻⁴ au）を上回ることがあり、エネルギー地形がすでに平坦になっていても
+力ベース判定に到達しないためです。無効化するには `energy_plateau: false` を指定してください。
 ```
 
 ### Dimer モード（`--opt-mode grad`）
@@ -225,8 +225,8 @@ TS 収束が遅い場合や最適化中に TS モードが失われる場合は�
 
 - [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
 
-- [path-search](path-search.md) — TS 候補（HEI）を特定するMEP 探索
-- [irc](irc.md) — 最適化されたTSからの反応経路追跡
+- [path-search](path-search.md) — TS 候補（HEI）を特定する MEP 探索
+- [irc](irc.md) — 最適化された TS からの反応経路追跡
 - [freq](freq.md) — 完全な振動解析と熱化学補正（虚振動数チェックは `tsopt` が内部で実行済み）
 - [all](all.md) — 抽出 → MEP → tsopt → IRC（→ オプションで freq/DFT）を連鎖する一気通貫ワークフロー
 - [YAML リファレンス](yaml-reference.md) — `hessian_dimer`（Hessian Guided Dimer）と `rsirfo` の完全な設定オプション

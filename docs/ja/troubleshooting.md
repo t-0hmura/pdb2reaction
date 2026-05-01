@@ -98,7 +98,7 @@ pdb2reaction extract -i complex.pdb -c PRE --modified-residue "SEP,TPO,MLY" -o p
 ## 電荷 / スピンの問題
 
 ### 「電荷が必須」系のエラー（非 GJF 入力）
-`.gjf` でない入力では、複数ステージで総電荷が必要になります。`-q/--charge` を省略した場合、PDB なら `--ligand-charge` を使って推定しようとしますが、推定できないと停止します。
+`.gjf` でない入力では、複数ステージで総電荷が必要になります。`-q/--charge` を省略した場合、ワークフローは `--ligand-charge/-l`（PDB のみ）または `.gjf` テンプレートから電荷を導出しようとしますが、いずれの経路でも解決できないと上記のエラーで停止します。
 
 対処:
 - 電荷と多重度を明示する:
@@ -180,16 +180,16 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 
 症状:
 - オプティマイザーが `max_cycles` 上限まで回りきり、最終サマリで `max(force)` や `rms(force)` が目標をわずかに上回る（例: `baker` の 3×10⁻⁴ au に対して 4×10⁻⁴ au）。
-- 一方で、エネルギー自体は明らかにフラット化しており、10⁻⁵–10⁻⁴ au レベルで振動している。
+- 一方で、エネルギー自体は明らかに平坦化しており、10⁻⁵–10⁻⁴ au レベルで振動している。
 
 原因:
 - MLIP の勾配（力）計算には小さな確率的ノイズフロアがあり（UMA 系で典型的に ~4×10⁻⁴ au）、これが力ベースの収束閾値（`baker` = 3×10⁻⁴ au）を上回る場合があります。その結果、構造はすでに収束しているにもかかわらず、力閾値を満たすことができません。
 
 対処:
-- **エネルギープラトーによるフォールバック収束**が自動でこの状況を処理します: `opt.energy_plateau: true` のとき、直近 `opt.energy_plateau_window`（デフォルト 50）ステップのエネルギーレンジが `opt.energy_plateau_thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`）を下回ると収束と判定されます。多くの場合、ユーザー側での対応は不要です。
+- **平坦なエネルギー地形によるフォールバック収束**が自動でこの状況を処理します: `opt.energy_plateau: true` のとき、直近 `opt.energy_plateau_window`（デフォルト 50）ステップのエネルギーレンジが `opt.energy_plateau_thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`）を下回ると収束と判定されます。多くの場合、ユーザー側での対応は不要です。
 - 自動フォールバックを上書きしたい場合は、力の閾値を手動で緩めてください: `--thresh gau`（`opt` のデフォルト）または `--thresh gau_loose`。
 - `opt.energy_plateau_thresh` / `opt.energy_plateau_window` は YAML からチューニングでき、`opt.energy_plateau: false` で無効化できます。
-- 注意: このプラトーフォールバックは **chain-of-states オプティマイザー**（`path-opt`、`path-search` の string/GSM/DMF 段階）では**スキップ**されます（単一のスカラーエネルギー履歴ではなく、イメージごとのエネルギー配列を保持しているため）。
+- 注意: この平坦地形フォールバックは **chain-of-states オプティマイザー**（`path-opt`、`path-search` の string/GSM/DMF 段階）では**スキップ**されます（単一のスカラーエネルギー履歴ではなく、イメージごとのエネルギー配列を保持しているため）。
 
 ---
 
@@ -211,7 +211,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 ### IRC が正常に終了しない
 
 症状:
-- IRC が明確な極小構造（停留点）に到達する前に停止する
+- IRC が明確な極小構造に到達する前に停止する
 - エネルギーが振動したり勾配ノルムが大きいままになる
 
 対処の例:
@@ -258,6 +258,8 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 
 ## GPU メモリ (VRAM) 目安
 
+系のサイズ別のおおよその VRAM 使用量は次のとおりです。
+
 | 原子数 | LBFGS 最適化 | ヘシアン（解析的） | ヘシアン（有限差分） |
 |-------|------------|-----------------|------------------|
 | 50 | ~2 GB | ~3 GB | ~2 GB |
@@ -265,7 +267,10 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 | 200 | ~4 GB | ~12 GB | ~4 GB |
 | 500 | ~6 GB | 16 GB で OOM | ~6 GB |
 
-`torch.cuda.OutOfMemoryError` の場合: `--hessian-calc-mode FiniteDifference`、`--radius` の縮小、小さいモデル（YAML設定で `calc.model: uma-s-1p1`）を検討してください。
+`torch.cuda.OutOfMemoryError` が出た場合は次を試してください。
+- `--hessian-calc-mode FiniteDifference` を指定する（速度は落ちますが VRAM 使用量を抑えられます）
+- `--radius` を小さくしてクラスターモデルのサイズを縮小する
+- より小さいモデルを使う（YAML 設定で `calc.model: uma-m-1p1` の代わりに `uma-s-1p1` を指定）
 
 ## 不具合報告のときに添えると助かる情報
 

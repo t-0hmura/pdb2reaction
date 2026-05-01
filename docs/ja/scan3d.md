@@ -2,7 +2,7 @@
 
 ## 概要
 
-> **要約:** 調和拘束と MLIP 緩和（デフォルト: UMA、`-b/--backend` で ORB・MACE・AIMNet2 も選択可能）により、3 距離（d₁, d₂, d₃）のグリッドスキャンを行います。`-s/--scan-lists`（YAML/JSON ファイルパス、推奨）またはインライン Python リテラルを使用できます。`--csv` では既存 `surface.csv` の可視化のみ実行します。
+> **要約:** 調和拘束と MLIP 緩和により、3 距離（d₁, d₂, d₃）のグリッドスキャンを行います。`-s/--scan-lists`（YAML/JSON ファイルパス、推奨）またはインライン Python リテラルでターゲットを指定します。`--csv` では既存 `surface.csv` の可視化のみ実行します。
 
 ### 要点
 - **想定場面:** 3 つの距離 `(d₁, d₂, d₃)` 上で 3D ポテンシャル体積を得たいとき、または既存の `surface.csv` を再プロットしたいとき。入力は 1 つの構造 + `-s scan3d.yaml`（推奨）または `-s/--scan-lists` の **単一** インラインリテラル（四つ組は 3 つ）。`--csv` 指定時はプロットのみで実行可能です。
@@ -17,7 +17,7 @@ XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定する�
 
 ## 最小例
 ```bash
-pdb2reaction scan3d -i input.pdb -q 0 -s scan3d.yaml --out-dir ./result_scan3d/
+pdb2reaction scan3d -i input.pdb -q 0 -s scan3d.yaml -o ./result_scan3d/
 ```
 
 ## 出力の見方
@@ -41,16 +41,16 @@ pdb2reaction scan3d -i input.pdb -q 0 -s scan3d.yaml
 
 # 代替: Python リテラル
 pdb2reaction scan3d -i input.pdb -q 0 \
- --scan-lists '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20),("TYR,285,CG","SAM,309,C12",1.10,3.00)]'
+ -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20),("TYR,285,CG","SAM,309,C12",1.10,3.00)]'
 
 # LBFGS 緩和、内側軌跡ダンプ、HTML 等値面プロット
 pdb2reaction scan3d -i input.pdb -q 0 \
- --scan-lists '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20),("TYR,285,CG","SAM,309,C12",1.10,3.00)]' \
- --max-step-size 0.20 --dump --out-dir ./result_scan3d/ --opt-mode grad \
+ -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20),("TYR,285,CG","SAM,309,C12",1.10,3.00)]' \
+ --max-step-size 0.20 --dump -o ./result_scan3d/ --opt-mode grad \
  --preopt --baseline min
 
-# 既存surface.csvからのプロットのみ（スキャンしない）
-pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 --out-dir ./result_scan3d/
+# 既存 surface.csv からのプロットのみ（スキャンしない）
+pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 -o ./result_scan3d/
 ```
 
 ## 使用法
@@ -71,7 +71,7 @@ YAML/JSON ファイル書式、インライン Python リテラル構文、原�
 
 ## ワークフロー
 1. `geom_loader` で構造を読み込み、CLI または Gaussian テンプレートから電荷とスピンを解決します。`--preopt` の場合は無バイアスの事前最適化を実行します。`-q` が省略され `--ligand-charge` が与えられている場合、構造は酵素--基質複合体として扱われ、PDB 入力（または `--ref-pdb` 付き XYZ/GJF）で `extract.py` の電荷サマリーから総電荷を導出します。
-2. `-s/--scan-lists`（YAML/JSON ファイルパスまたはインライン Python リテラル、デフォルト 1 始まり、`--zero-based` で 0 始まり）を 3 つの四つ組に解析します。PDB 入力では、各原子指定に整数インデックスまたは `'TYR,285,CA'` のようなセレクタ文字列を使用できます。区切りは空白・カンマ・スラッシュ・バッククォート・バックスラッシュのいずれも可で、トークン順序は任意です。`h = --max-step-size` で各距離の線形グリッドを生成し、開始距離に近い値が先に走査されるよう並べ替えます。
+2. `-s/--scan-lists`（YAML/JSON ファイルパスまたはインライン Python リテラル、デフォルト 1 始まり、`--zero-based` で 0 始まり）を 3 つの四つ組に解析します。PDB 入力では、各原子指定に整数インデックスまたは `'TYR,285,CA'` のようなセレクタ文字列を使用できます。区切りは空白・カンマ・スラッシュ・バッククォート・バックスラッシュのいずれも可で、トークン順序は任意です（不明な場合は resname, resseq, atom の順と仮定）。`h = --max-step-size` で各距離の線形グリッドを生成し、開始距離に近い値が先に走査されるよう並べ替えます。
 3. 外側ループで `d1[i]` を走査し、**d₁ 拘束のみ**を適用して緩和します。近い d₁ 値の既存構造から開始します。
 4. 中間ループで `d2[j]` を走査し、**d₁ + d₂ 拘束**を適用して緩和します。近い (d₁, d₂) の構造から開始します。
 5. 内側ループで `d3[k]` を走査し、**3 つの拘束すべて**を適用して緩和します。バイアスを除去したエネルギーを測定し、構造と収束フラグを書き出します。
@@ -97,8 +97,8 @@ YAML/JSON ファイル書式、インライン Python リテラル構文、原�
 | `--dump/--no-dump` | 各 (d₁, d₂) ペアの `inner_path_d1_###_d2_###_trj.xyz` を保存 | `False` |
 | `--convert-files/--no-convert-files` | PDB/Gaussian 入力で XYZ/TRJ → PDB/GJF 変換を切り替え | `True` |
 | `--ref-pdb FILE` | XYZ/GJF 入力時の参照 PDB トポロジー（XYZ 座標を保持） | _None_ |
-| `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_scan3d/` |
-| `--csv PATH` | 既存の `surface.csv` を読み込みプロットのみ実行（新規スキャンなし） | _None_ |
+| `-o, --out-dir TEXT` | グリッドとプロットの出力ディレクトリ | `./result_scan3d/` |
+| `--csv PATH` | 既存の `surface.csv` を読み込みプロットのみ実行（新規スキャンなし）。指定時は `-i/--input` と `-s/--scan-lists` が任意になります。 | _None_ |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
 | `--config FILE` | ベース YAML 設定ファイル（最初に適用） | _None_ |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
@@ -156,7 +156,7 @@ out_dir/ (デフォルト:./result_scan3d/)
 ## 注意事項
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
-- MLIP バックエンド（デフォルト: UMA、`-b/--backend` で切替可能）が計算エンジンで、1D/2D スキャンと同じ `HarmonicBiasCalculator` を再利用します。
+- 計算エンジンは MLIP バックエンド（デフォルト: UMA）で、1D/2D スキャンと同じ `HarmonicBiasCalculator` を再利用します。
 - Å 単位の制限値は内部で Bohr に変換され、LBFGS ステップや RFO 信頼半径の制御に使われます。最適化の一時ファイルはテンポラリディレクトリに配置されます。
 - `--baseline` はデフォルトでグローバル最小値を基準としてゼロにします。`--baseline first` は `(i,j,k)=(0,0,0)` の格子点を基準にします。
 - 3D 可視化は 50×50×50 グリッドでの RBF 補間と、半透明の段階的等値面を使用します（断面表示はありません）。

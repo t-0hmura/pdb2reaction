@@ -43,7 +43,7 @@ MLIP バックエンドはデフォルトで UMA を使用しますが、`-b/--b
  └─ (任意) DFT 一点計算 [`dft`](dft.md)
 ```
 
-各ステージはサブコマンドとして単独実行できます。
+各ステージはサブコマンドとして単独でも実行できます。`pdb2reaction all` は、これらのステージを end-to-end でまとめて実行するためのコマンドです。
 
 主なモードは 3 つあります。
 
@@ -151,8 +151,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  - ヘシアン評価モードの詳細は {ref}`ja-hessian-evaluation` を参照してください。
 
 6. **TSOPT のみモード**（単一入力、`--tsopt`、`--scan-lists` なし）
- - MEP/マージステージをスキップし、活性部位モデル（または抽出がスキップされた場合は全入力構造）で `tsopt`→ EulerPC IRC を実行
- - 高エネルギー側の IRC 終端を反応物 (R) として識別し、エネルギーダイアグラム一式とオプションの freq/DFT 出力を生成
+ - MEP/マージステージをスキップし、活性部位モデル（または抽出がスキップされた場合は全入力構造）で `tsopt` → EulerPC IRC を実行し、高エネルギー側の IRC 終端を反応物 (R) として識別したうえで、エネルギーダイアグラム一式とオプションの freq/DFT 出力を生成します。
 
 
 ### 電荷とスピンの優先順位
@@ -191,7 +190,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `-l, --ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`、推奨）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
+| `-l, --ligand-charge TEXT` | 総電荷または残基別マッピング（`-q` 省略時に使用、推奨）。PDB 入力（または `--ref-pdb` 付き XYZ/GJF）で extract と同じ全系電荷導出を起動します。 | _None_ |
 | `-q, --charge INT` | 総電荷を強制上書き（`--ligand-charge` より優先） | _None_ |
 | `-m, --multiplicity INT` | 全下流ステップへ転送されるスピン多重度 | `1` |
 
@@ -294,8 +293,8 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 | `--scan-max-step-size FLOAT` | 最大ステップサイズ（Å） | `0.20` |
 | `--scan-bias-k FLOAT` | 調和バイアス強度（eV·Å⁻²） | `300` |
 | `--scan-relax-max-cycles INT` | 緩和サイクル上限 | `10000` |
-| `--scan-preopt/--no-scan-preopt` | scan事前最適化 | _None_ |
-| `--scan-endopt/--no-scan-endopt` | scanステージ終端最適化 | _None_ |
+| `--scan-preopt/--no-scan-preopt` | scan の事前最適化トグルを上書き | _None_ |
+| `--scan-endopt/--no-scan-endopt` | scan のステージ終端最適化トグルを上書き | _None_ |
 
 ## 出力
 ```text
@@ -333,7 +332,7 @@ out_dir/ (デフォルト:./result_all/)
 `--refine-path False` を指定した場合、ワークスペースは `path_opt/post_seg_XX/` 配下に移動します。
 ```
 
-- コンソールには電荷解決結果、YAML 設定、MEP 進行状況、各ステージの所要時間が出力されます。
+- コンソールには活性部位モデルの電荷解決結果、YAML 設定、スキャンステージ、MEP（GSM/DMF）の進行状況、各ステージの所要時間が出力されます。
 
 ### エネルギーダイアグラムの命名規則
 
