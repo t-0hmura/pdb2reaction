@@ -185,10 +185,6 @@ See {ref}`exit-codes` in CLI Conventions.
 Shared sections reuse
 [YAML Reference](yaml-reference.md). Adjust only the values you need to change.
 
-```{note}
-**Reference duplication.** The YAML keys for `geom`, `calc`, `opt`, `hessian_dimer`, and `rsirfo` listed below mirror the canonical definitions in [YAML Reference](yaml-reference.md). When the two pages disagree, the canonical [YAML Reference](yaml-reference.md) entries (and `pdb2reaction/defaults.py`) take precedence; the inline appendix on this page is reproduced only for `tsopt`-specific defaults (e.g. `out_dir: ./result_tsopt/`, the `--flatten` interaction documented above).
-```
-
 ### Shared configuration (common to both modes)
 
 `geom` and `calc` keys are unchanged from the canonical definitions; see [`geom`](yaml-reference.md#geom) and [`calc`](yaml-reference.md#calc) in the YAML Reference.

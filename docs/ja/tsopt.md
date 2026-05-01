@@ -162,10 +162,6 @@ out_dir/ (デフォルト:./result_tsopt/)
 
 共通セクションについては [YAML リファレンス](yaml-reference.md) を参照してください。必要な値だけ変更してください。
 
-```{note}
-**リファレンスの重複について。** 以下に並ぶ `geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo` の YAML キーは [YAML リファレンス](yaml-reference.md) の正規定義をミラーしたものです。両者が食い違った場合は [YAML リファレンス](yaml-reference.md) と `pdb2reaction/defaults.py` を正とし、本ページの付録は `tsopt` 固有のデフォルト値（例: `out_dir: ./result_tsopt/`、上述の `--flatten` との相互作用）と参照の便宜のためにインライン展開しているだけです。
-```
-
 ### 共通設定（両モード共通）
 
 `geom` と `calc` のキーは正規定義から変更ありません。詳細は YAML リファレンスの [`geom`](yaml-reference.md#geom) と [`calc`](yaml-reference.md#calc) を参照してください。

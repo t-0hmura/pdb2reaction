@@ -155,10 +155,6 @@ out_dir/ (デフォルト:./result_path_search/)
 
 YAML ルートはマッピングでなければなりません。共通セクションは [YAML リファレンス](yaml-reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（PDB 入力では `--freeze-links` が `geom.freeze_atoms` を補強します。詳細は {ref}`リンク水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）、`stopt` は `path-opt`（[path-opt.md](path-opt.md)）に記載の StringOptimizer 設定を継承します。
 
-```{note}
-**リファレンスの重複について。** `geom`, `calc`, `gs`, `dmf`, `stopt`, `opt.lbfgs`, `opt.rfo` の YAML キーは [YAML リファレンス](yaml-reference.md) に正規定義があります。両ページで齟齬がある場合は [YAML リファレンス](yaml-reference.md) と `pdb2reaction/defaults.py` を正とし、本ページの appendix は `path-search` 固有のデフォルト（例: `out_dir: ./result_path_search/`）のみを再掲します。
-```
-
 `bond` と `search` は `path-search` の再帰ロジックの中核であり、ここで詳述します。`gs`、`dmf`、`stopt`、`opt.lbfgs`、`opt.rfo` は `path-search` 固有の `out_dir` 上書きのみ再掲します。
 
 `bond` は MLIP ベースの結合変化検出パラメータで、[scan](scan.md) の bond セクションと共通の `device`, `bond_factor`, `margin_fraction`, `delta_fraction` を持ちます。

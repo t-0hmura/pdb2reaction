@@ -135,10 +135,6 @@ Console output echoes the resolved YAML blocks and prints cycle-by-cycle MEP pro
 
 See {ref}`CLI Conventions: Configuration precedence <configuration-precedence>` for the full resolution order.
 
-```{note}
-**Reference duplication.** The YAML keys for `geom`, `calc`, `gs`, `dmf`, `stopt`, `opt.lbfgs`, and `opt.rfo` are defined canonically in [YAML Reference](yaml-reference.md). When the two pages disagree, the canonical [YAML Reference](yaml-reference.md) entries (and `pdb2reaction/defaults.py`) take precedence; only `path-opt`-specific overrides are reproduced below.
-```
-
 ### YAML sections used by `path-opt`
 
 See [YAML Reference](yaml-reference.md) for full key listings:

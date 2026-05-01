@@ -137,10 +137,6 @@ out_dir/
 
 設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
 
-```{note}
-**リファレンスの重複について。** `geom`、`calc`、`gs`、`dmf`、`stopt`、`opt.lbfgs`、`opt.rfo` の YAML キーは [YAML リファレンス](yaml-reference.md) に正規定義があります。両ページで齟齬がある場合は [YAML リファレンス](yaml-reference.md) と `pdb2reaction/defaults.py` を正とし、以下では `path-opt` 固有の上書きのみ再掲します。
-```
-
 ### `path-opt` で使用される YAML セクション
 
 完全なキー一覧は [YAML リファレンス](yaml-reference.md) を参照:
