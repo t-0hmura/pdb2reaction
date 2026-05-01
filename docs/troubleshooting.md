@@ -217,7 +217,7 @@ Symptoms:
 Fixes to try:
 - Reduce step size: `--step-size 0.05` (default is 0.10 bohr, unweighted Cartesian).
 - Increase max cycles: `--max-cycles 200`.
-- Check if the TS candidate has only one imaginary frequency before running IRC. See {ref}`imaginary-mode-thresholds` in the glossary for the 5 cm⁻¹ detection threshold vs 100 cm⁻¹ quality gate.
+- Check that the TS candidate has exactly one imaginary frequency before running IRC. The detection cutoff is `hessian_dimer.neg_freq_thresh_cm` (default 5 cm⁻¹).
 
 ---
 

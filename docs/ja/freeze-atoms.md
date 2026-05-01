@@ -55,7 +55,7 @@ pdb2reaction tsopt -i ts.xyz -q 0 -m 1 --config tsopt.yaml
 
 - **力（Force）:** 凍結 DOF に対する力をゼロ化（最適化器は動かせません）。
 - **ヘシアン:** 凍結 DOF の行・列は除去される（`calc.return_partial_hessian: true`。`freq` ではデフォルト、`irc` では強制）か、フル行列でゼロ化されます。
-- **振動解析:** 凍結原子があるとき `freq` は自動で Partial Hessian Vibrational Analysis（PHVA）を実行し、active ブロックのみ対角化します。得られた固有値に {ref}`5 cm⁻¹ vs 100 cm⁻¹ のしきい値 <ja-imaginary-mode-thresholds>` が適用されます。
+- **振動解析:** 凍結原子があるとき `freq` は自動で Partial Hessian Vibrational Analysis（PHVA）を実行し、active ブロックのみ対角化します。
 - **MEP / IRC:** 凍結原子は全イメージ・全ステップで初期座標を保持します。
 
 ## サブコマンド対応表

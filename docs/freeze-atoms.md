@@ -55,7 +55,7 @@ There is no mode that substitutes one for another; every entry that appears in a
 
 - **Forces:** zeroed for every frozen DOF (the optimizer cannot move them).
 - **Hessian:** rows and columns of frozen DOFs are either removed (`calc.return_partial_hessian: true`, the default for `freq` and forced for `irc`) or zeroed in the full matrix.
-- **Vibrational analysis:** when frozen atoms are present, `freq` automatically performs Partial Hessian Vibrational Analysis (PHVA) on the active block; the {ref}`5 cm⁻¹ vs 100 cm⁻¹ thresholds <imaginary-mode-thresholds>` apply to the resulting eigenvalues.
+- **Vibrational analysis:** when frozen atoms are present, `freq` automatically performs Partial Hessian Vibrational Analysis (PHVA) on the active block.
 - **MEP / IRC:** frozen atoms keep their initial coordinates at every image / step.
 
 ## Subcommand coverage

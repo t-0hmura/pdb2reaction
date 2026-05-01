@@ -175,7 +175,7 @@ See {ref}`exit-codes` in CLI Conventions.
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 - Imaginary-frequency **detection** threshold defaults to 5.0 cm⁻¹ (configurable via
-  `hessian_dimer.neg_freq_thresh_cm`); frequencies with magnitudes below this threshold are not counted as imaginary. The selected `root` controls which vibrational mode is followed during optimization. See {ref}`imaginary-mode-thresholds` in the glossary for the 5 cm⁻¹ detection threshold vs 100 cm⁻¹ quality gate.
+  `hessian_dimer.neg_freq_thresh_cm`); frequencies with magnitudes below this threshold are not counted as imaginary. The selected `root` controls which vibrational mode is followed during optimization.
 - Use `--opt-mode` to choose the algorithm workflow directly (`rsirfo` by default), instead of
   manually editing YAML mode mappings.
 - PHVA translation/rotation projection follows the same implementation as `freq`, while reducing

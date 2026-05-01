@@ -68,7 +68,7 @@ If `--tsopt` is enabled, you should also see:
 [Imaginary modes] n=1  ([-425.9])
 ```
 
-One imaginary mode with |frequency| ≥ 100 cm⁻¹ indicates a valid TS. See {ref}`imaginary-mode-thresholds` in the glossary for the 5 cm⁻¹ detection threshold vs 100 cm⁻¹ quality gate.
+A first-order saddle point shows exactly one imaginary mode along the reaction coordinate; IRC validation (run automatically when `--irc` is enabled) confirms it connects the expected reactant and product.
 
 ## Tips
 

@@ -9,7 +9,7 @@
 - **Method:** MLIP-backend Hessian (UMA by default; ORB/MACE/AIMNet2 also supported via `-b/--backend`) with PHVA (Partial Hessian Vibrational Analysis) for frozen atoms. Optional QRRHO-style thermochemistry via `thermoanalysis`.
 - **Outputs:** `frequencies_cm-1.txt`, per-mode `mode_*_trj.xyz` animations (and `.pdb` for PDB inputs with conversion enabled); `thermoanalysis.yaml` when `--dump` and `thermoanalysis` is installed.
 - **Defaults:** Backend `uma`, `--hessian-calc-mode FiniteDifference`, `--max-write 10`, `--amplitude-ang 0.8`, `--n-frames 20`, `--sort value`, `--temperature 298.15`, `--pressure 1.0`, `--dump False`.
-- **Next step:** A properly converged first-order saddle point (TS) is expected to have **exactly one** imaginary frequency (see {ref}`imaginary-mode-thresholds` for the 5 cm⁻¹ detection vs 100 cm⁻¹ quality gate). For Hessian evaluation modes, see {ref}`hessian-evaluation`.
+- **Next step:** A properly converged first-order saddle point (TS) is expected to have **exactly one** imaginary frequency (detection cutoff `hessian_dimer.neg_freq_thresh_cm`, default 5 cm⁻¹). For Hessian evaluation modes, see {ref}`hessian-evaluation`.
 
 ## Minimal example
 

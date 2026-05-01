@@ -56,7 +56,7 @@
 - 兆候:
  - TSOPT が停滞、IRC が不安定、MEP 精密化が途中停止。
 - 最初の確認:
- - TS 候補が虚振動数 1 本（|ν| ≥ 100 cm⁻¹）のみを持ち、対応する虚振動モードが反応座標方向の変位を示すか。5 cm⁻¹ 検出閾値と 100 cm⁻¹ 品質ゲートの違いは用語集 {ref}`ja-imaginary-mode-thresholds` を参照。
+ - TS 候補が虚振動数 1 本のみを持ち、対応する虚振動モードが反応座標方向の変位を示すか。検出カットオフは `hessian_dimer.neg_freq_thresh_cm`（デフォルト 5 cm⁻¹）。
  - ステップサイズ / 信頼半径（YAML キー `max_step`, `trust_radius`/`trust_min`/`trust_max`）と、最適化モード / フラット化（CLI フラグ `--opt-mode`, `--flatten`）は補完的に併用してください。YAML セクション構成は [YAML リファレンス](yaml-reference.md)、正規の修正手順は {ref}`計算 / 収束の問題 <ts-calc-conv>` を参照。
  - `max_cycles` 到達時に力のノルムが閾値をわずかに超えているだけで、エネルギー地形がほぼ平坦になっている場合は {ref}`計算 / 収束の問題 <ts-calc-conv>` を参照してください — `opt.energy_plateau` フォールバックが自動処理します。
 - 典型的な修正手順:

@@ -72,8 +72,6 @@ on the CLI.
   for `irc`) or zeroed in the full matrix.
 - **`freq`:** when the frozen-atom set is non-empty, automatically runs
   Partial Hessian Vibrational Analysis (PHVA) on the active block.
-  Imaginary-mode thresholds (5 cm⁻¹ for non-TS, 100 cm⁻¹ for TS) apply
-  to the resulting eigenvalues.
 - **`irc` / `path-opt` / `path-search`:** frozen atoms keep their
   initial Cartesian coordinates at every image and every step.
 

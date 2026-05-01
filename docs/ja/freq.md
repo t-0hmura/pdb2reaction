@@ -9,7 +9,7 @@
 - **手法:** MLIP バックエンドのヘシアン（デフォルト UMA、`-b/--backend` で ORB/MACE/AIMNet2 も選択可）+ 凍結原子に対する PHVA（Partial Hessian Vibrational Analysis）。`thermoanalysis` を介したオプションの QRRHO 風熱化学補正。
 - **主な出力:** `frequencies_cm-1.txt`、モードごとの `mode_*_trj.xyz` アニメーション（PDB 入力で変換有効なら `.pdb` も）、`--dump` 指定時で `thermoanalysis` 利用可能なら `thermoanalysis.yaml`。
 - **デフォルト:** バックエンド `uma`、`--hessian-calc-mode FiniteDifference`、`--max-write 10`、`--amplitude-ang 0.8`、`--n-frames 20`、`--sort value`、`--temperature 298.15`、`--pressure 1.0`、`--dump False`。
-- **次ステップ:** 収束した TS では虚振動数が **ちょうど 1 つ**（負の cm⁻¹）。5 cm⁻¹ 検出閾値と 100 cm⁻¹ 品質ゲートの違いは {ref}`ja-imaginary-mode-thresholds` を参照。ヘシアン評価モードの詳細は {ref}`ja-hessian-evaluation` を参照。
+- **次ステップ:** 収束した TS では虚振動数が **ちょうど 1 つ**（負の cm⁻¹）。検出カットオフは `hessian_dimer.neg_freq_thresh_cm`（デフォルト 5 cm⁻¹）。ヘシアン評価モードの詳細は {ref}`ja-hessian-evaluation` を参照。
 
 ## 最小例
 
