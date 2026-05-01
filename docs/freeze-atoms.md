@@ -4,7 +4,7 @@
 
 > **Summary:** Cluster models need a small set of atoms held in place at the truncation boundary so the optimizer cannot pull the dangling fragment into something unphysical. `pdb2reaction` handles this through **link hydrogens** (added at severed bonds by `extract`) and three layers of `freeze_atoms` specification.
 
-When a residue is sliced out of a larger protein, the bond at the boundary is capped with a **link hydrogen** (residue `LKH`, atom `HL`, 1.09 Å along the original bond vector). If the parent atom of that link hydrogen is left free, gradient descent will quietly relax the cap+parent pair into a different geometry, deforming the boundary. Freezing the relevant atoms keeps the boundary stationary throughout optimization, MEP search, IRC, and vibrational analysis.
+When a residue is sliced out of a larger protein with `extract` sub-command, the bond at the boundary is capped with a **link hydrogen** (residue `LKH`, atom `HL`, 1.09 Å along the original bond vector). If the parent atom of that link hydrogen is left free, gradient descent will quietly relax the cap+parent pair into a different geometry, deforming the boundary. Freezing the relevant atoms keeps the boundary stationary throughout optimization, MEP search, IRC, and vibrational analysis.
 
 ## Three ways to specify frozen atoms
 

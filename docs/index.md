@@ -62,11 +62,55 @@ glossary
 ```
 
 ```{toctree}
-:maxdepth: 1
-:caption: Language
+:maxdepth: 2
+:caption: ガイド
 :hidden:
 
-ja/index
+ja/getting-started
+ja/installation
+ja/quickstart-all
+ja/quickstart-scan
+ja/quickstart-tsopt-freq
+ja/freeze-atoms
+ja/recipes-common-errors
+ja/troubleshooting
+ja/cli-conventions
+```
+
+```{toctree}
+:maxdepth: 2
+:caption: コマンド
+:hidden:
+
+ja/all
+ja/extract
+ja/fix-altloc
+ja/add-elem-info
+ja/opt
+ja/tsopt
+ja/path-opt
+ja/path-search
+ja/scan
+ja/scan2d
+ja/scan3d
+ja/freq
+ja/irc
+ja/dft
+ja/trj2fig
+ja/energy-diagram
+ja/bond-summary
+```
+
+```{toctree}
+:maxdepth: 2
+:caption: リファレンス
+:hidden:
+
+ja/yaml-reference
+ja/json-output
+ja/uma-pysis
+ja/hpc-example
+ja/glossary
 ```
 
 
