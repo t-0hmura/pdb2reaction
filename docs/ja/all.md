@@ -6,7 +6,7 @@
 
 活性部位モデル（バインディングポケット）抽出 →（任意）段階的スキャン → MEP 探索（デフォルトで再帰的 `path-search`）→（任意）TS 最適化（`tsopt`）+ IRC →（任意）振動解析・熱化学（`freq`）→（任意）DFT 一点計算（`dft`）。`--refine-path False` を指定すると単一パス `path-opt`（GSM/DMF）に切り替わります。
 
-MLIP バックエンドはデフォルトで UMA を使用しますが、`-b/--backend` オプションで ORB・MACE・AIMNet2 も選択可能です。
+MLIP バックエンドはデフォルトで UMA を使用しますが、`-b/--backend` オプションで ORB ・ MACE ・ AIMNet2 も選択可能です。
 
 ```{important}
 `--tsopt` **なし**の `all` ワークフローは **TS 候補**（MEP 探索の最高エネルギー画像 / HEI）を出力します。`--tsopt` を追加すると、これらを虚振動数チェックで検証済みの最適化 TS 構造に精密化し、続いて IRC でエンドポイントを検証します。結果の虚振動モードと端点極小は必ず目視で確認してください。
@@ -17,7 +17,7 @@ MLIP バックエンドはデフォルトで UMA を使用しますが、`-b/--b
 - **手法:** 入力とフラグに応じて 3 つのモードを切り替え（複数構造 MEP / 単一構造 + 段階的スキャン / TSOPT のみ）。
 - **主な出力:** `summary.log`、`summary.json`、`path_search/mep.pdb`（`--refine-path False` 時は `path_opt/`）。`--tsopt`/`--thermo`/`--dft` 有効時はセグメント別 `seg_XX/` と後処理ワークスペース `path_search/post_seg_XX/` も生成。
 - **デフォルト値:** バックエンド `uma`、`--mep-mode gsm`、`--opt-mode grad`、`--refine-path True`、`--preopt True`、`--thresh gau`、`--thresh-post baker`。`--tsopt`/`--thermo`/`--dft` はいずれも `False`。
-- **次にやること:** `--tsopt` なしでは結果は **TS 候補**（HEI）です。`--tsopt`（虚振動数チェック）+ IRC で検証し、必要に応じて `--thermo`・`--dft` を追加してください。
+- **次にやること:** `--tsopt` なしでは結果は **TS 候補**（HEI）です。`--tsopt`（虚振動数チェック）+ IRC で検証し、必要に応じて `--thermo` ・ `--dft` を追加してください。
 
 ## ワークフローの全体像
 
@@ -76,7 +76,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c "SAM,GPP,MG" -l "SAM:1,GPP:-3" \
 
 ## よくある例
 
-1. TS 最適化・IRC・熱化学・DFT まで一括実行する。
+1. TS 最適化・ IRC ・熱化学・ DFT まで一括実行する。
 
 ```bash
 pdb2reaction all -i 1.R.pdb 3.P.pdb -c "SAM,GPP,MG" -l "SAM:1,GPP:-3" \
@@ -131,7 +131,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  - **最初の活性部位モデルの総電荷**がスキャン/MEP/TSOPT に伝播
 
 2. **オプションの段階的スキャン（単一入力のみ）**
- - 各 `--scan-lists` 引数は MLIP スキャンステージを記述する `(i,j,target_Å)` タプルの Python ライクなリスト。原子インデックスは元の入力順序（1始まり）を参照し、活性部位モデル順序に自動変換されます。PDB 入力の場合、`i`/`j` は整数インデックスまたは `'TYR,285,CA'` のようなセレクタ文字列を使用可能です。セレクタはスペース/カンマ/スラッシュ/バッククォート/バックスラッシュ（` ` `,` `/` `` ` `` `\`）を区切り文字として受け付け、トークン順序は任意です（フォールバックは resname, resseq, atom と仮定）。
+ - 各 `--scan-lists` 引数は MLIP スキャンステージを記述する `(i,j,target_Å)` タプルの Python ライクなリスト。原子インデックスは元の入力順序（1 始まり）を参照し、活性部位モデル順序に自動変換されます。PDB 入力の場合、`i`/`j` は整数インデックスまたは `'TYR,285,CA'` のようなセレクタ文字列を使用可能です。セレクタはスペース/カンマ/スラッシュ/バッククォート/バックスラッシュ（` ` `,` `/` `` ` `` `\`）を区切り文字として受け付け、トークン順序は任意です（フォールバックは resname, resseq, atom と仮定）。
  - 単一リテラルは 1 ステージスキャンを実行し、複数リテラルは**順次**実行されるため、ステージ 2 はステージ 1 の結果から開始されます。複数リテラルは 1 つの `-s/--scan-lists` に並べて指定します（例: `-s '[(…)]' '[(…)]'`）。
  - ステージエンドポイント（`stage_XX/result.pdb`）が、後続 MEP ステップへ渡される順序付き中間体となる
 
@@ -176,21 +176,21 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `-i, --input PATH...` | 反応順序の2つ以上の完全構造（`--scan-lists` または `--tsopt` のみ単一入力可） | 必須 |
+| `-i, --input PATH...` | 反応順序の 2 つ以上の完全構造（`--scan-lists` または `--tsopt` のみ単一入力可） | 必須 |
 | `--ref-pdb FILE` | `-i` で XYZ 入力を使用する場合のトポロジー参照 PDB | _None_ |
 | `-o, --out-dir PATH` | トップレベル出力ディレクトリ | `./result_all/` |
-| `--convert-files/--no-convert-files` | XYZ/TRJ → PDB/GJFコンパニオンの全体切替 | `True` |
-| `--dump/--no-dump` | MEP(GSM/DMF)軌跡を出力。`path-search`/`path-opt` には常時転送され、`scan`/`tsopt` には明示指定時のみ転送。`freq` はデフォルトで dump=True なので `--no-dump` で無効化。 | `False` |
+| `--convert-files/--no-convert-files` | XYZ/TRJ → PDB/GJF コンパニオンの全体切替 | `True` |
+| `--dump/--no-dump` | MEP(GSM/DMF)軌跡を出力。`path-search`/`path-opt` には常時転送され、`scan`/`tsopt` には明示指定時のみ転送。`freq` はデフォルトで dump=True なので `--no-dump` で無効化 | `False` |
 | `--config FILE` | 先に適用するベース YAML | _None_ |
 | `--show-config/--no-show-config` | 実行前に解決済み設定を表示 | `False` |
-| `--dry-run/--no-dry-run` | 実行せず検証と計画表示のみ行う。 | `False` |
-| `--resume/--no-resume` | `--out-dir` から前回の実行を再開。出力ファイルが既に存在する完了済みステージはスキップされる。 | `False` |
+| `--dry-run/--no-dry-run` | 実行せず検証と計画表示のみ行う | `False` |
+| `--resume/--no-resume` | `--out-dir` から前回の実行を再開。出力ファイルが既に存在する完了済みステージはスキップされる | `False` |
 
 ### 電荷・スピンオプション
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `-l, --ligand-charge TEXT` | 総電荷または残基別マッピング（`-q` 省略時に使用、推奨）。PDB 入力（または `--ref-pdb` 付き XYZ/GJF）で extract と同じ全系電荷導出を起動します。 | _None_ |
+| `-l, --ligand-charge TEXT` | 総電荷または残基別マッピング（`-q` 省略時に使用、推奨）。PDB 入力（または `--ref-pdb` 付き XYZ/GJF）で extract と同じ全系電荷導出を起動します | _None_ |
 | `-q, --charge INT` | 総電荷を強制上書き（`--ligand-charge` より優先） | _None_ |
 | `-m, --multiplicity INT` | 全下流ステップへ転送されるスピン多重度 | `1` |
 
@@ -198,16 +198,16 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `-c, --center TEXT` | 基質指定（PDBパス、残基ID、または残基名） | 抽出に必須 |
+| `-c, --center TEXT` | 基質指定（PDB パス、残基 ID、または残基名） | 抽出に必須 |
 | `-r, --radius FLOAT` | 活性部位モデル包含カットオフ（Å） | `2.6` |
-| `--radius-het2het FLOAT` | ヘテロ–ヘテロカットオフ（Å）。`0` を渡すと空の選択を避けるため内部で `0.001 Å` に自動補正されます（単体の `extract` と同じ挙動）。 | `0.0` |
+| `--radius-het2het FLOAT` | ヘテロ–ヘテロカットオフ（Å）。`0` を渡すと空の選択を避けるため内部で `0.001 Å` に自動補正されます（単体の `extract` と同じ挙動） | `0.0` |
 | `--include-h2o/--no-include-h2o` | 水分子を含める（HOH/WAT/TIP3/SOL） | `True` |
 | `--exclude-backbone/--no-exclude-backbone` | 非基質アミノ酸の主鎖原子を除去 | `False` |
 | `--add-linkh/--no-add-linkh` | 切断結合にリンク水素を付加 | `True` |
-| `--selected-resn TEXT` | 強制包含残基。**名前とは裏腹にこのフラグは残基 ID（コロン区切り整数、オプションでチェーン/挿入コード付き、例 `A:123A`）を受け付け、3 文字残基名は受け付けません。** 残基名ベースの選択には `-c/--center 'GPP,SAM'` を使用してください。 | `""` |
-| `--modified-residue TEXT` | 修飾アミノ酸残基名をカンマ区切りで指定（任意で電荷付き）。主鎖切断と電荷計算にアミノ酸として扱う。例: `HD1,HD2,HD3` または `HD1:0,SEP:-2`。 | `""` |
-| `--freeze-links/--no-freeze-links` | 活性部位モデルPDBでリンクHの親を凍結 | `True` |
-| `--verbose/--no-verbose` | 抽出器のINFOログを有効化 | `True` |
+| `--selected-resn TEXT` | 強制包含残基。**名前とは裏腹にこのフラグは残基 ID（コロン区切り整数、オプションでチェーン/挿入コード付き、例 `A:123A`）を受け付け、3 文字残基名は受け付けません。** 残基名ベースの選択には `-c/--center 'GPP,SAM'` を使用してください | `""` |
+| `--modified-residue TEXT` | 修飾アミノ酸残基名をカンマ区切りで指定（任意で電荷付き）。主鎖切断と電荷計算にアミノ酸として扱う。例: `HD1,HD2,HD3` または `HD1:0,SEP:-2` | `""` |
+| `--freeze-links/--no-freeze-links` | 活性部位モデル PDB でリンク H の親を凍結 | `True` |
+| `--verbose/--no-verbose` | 抽出器の INFO ログを有効化 | `True` |
 
 (mep-search-options)=
 ### MEP 探索オプション
@@ -215,19 +215,19 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `--mep-mode [gsm\|dmf]` | MEP 探索アルゴリズム: GSM（Growing String Method）または DMF（Direct Max Flux） | `gsm` |
-| `--max-nodes INT` | MEP 内部ノード数。**GSM:** 総イメージ数 = `max_nodes + 2`（端点 2 つは固定）。**DMF:** チェーン上の *可動* イメージ数（端点の暗黙的拡張なし）。 | `20` |
-| `--max-cycles INT` | MEP最大最適化サイクル | `300` |
-| `--climb/--no-climb` | 最初のセグメントでTSクライミングを有効化 | `True` |
-| `--opt-mode [grad\|hess]` | ワークフロープリセット（`grad` → LBFGS/Dimer、`hess` → RFO/RSIRFO）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨。トークンのマッピングはスコープ依存で、`all` の pre-opt デフォルト（`grad`）と `tsopt` のデフォルト（`hess`）は一致しません。詳細は {ref}`ja-opt-mode-semantics` を参照してください。 | `grad` |
+| `--max-nodes INT` | MEP 内部ノード数。**GSM:** 総イメージ数 = `max_nodes + 2`（端点 2 つは固定）。**DMF:** チェーン上の *可動* イメージ数（端点の暗黙的拡張なし） | `20` |
+| `--max-cycles INT` | MEP 最大最適化サイクル | `300` |
+| `--climb/--no-climb` | 最初のセグメントで TS クライミングを有効化 | `True` |
+| `--opt-mode [grad\|hess]` | ワークフロープリセット（`grad` → LBFGS/Dimer、`hess` → RFO/RSIRFO）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨。トークンのマッピングはスコープ依存で、`all` の pre-opt デフォルト（`grad`）と `tsopt` のデフォルト（`hess`）は一致しません。詳細は {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
 | `--thresh TEXT` | 収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
-| `--preopt/--no-preopt` | MEP前に活性部位モデル端点を事前最適化。**注意:** `all` はここで子サブコマンドのデフォルトを上書きします。単体の `path-search`、`path-opt`、`scan`、`scan2d`、`scan3d` では `--preopt` のデフォルトは `False` です。 | `True` |
-| `--refine-path BOOL` | `True`（デフォルト）の場合は再帰的 `path-search`、`False` の場合は `path-opt` を連結して再帰的精密化なしで実行。無効化するには `--refine-path False` を渡してください（`click.BOOL` パラメータのため `--no-refine-path` 形式は自動生成されません）。 | `True` |
+| `--preopt/--no-preopt` | MEP 前に活性部位モデル端点を事前最適化。**注意:** `all` はここで子サブコマンドのデフォルトを上書きします。単体の `path-search`、`path-opt`、`scan`、`scan2d`、`scan3d` では `--preopt` のデフォルトは `False` です | `True` |
+| `--refine-path BOOL` | `True`（デフォルト）の場合は再帰的 `path-search`、`False` の場合は `path-opt` を連結して再帰的精密化なしで実行。無効化するには `--refine-path False` を渡してください（`click.BOOL` パラメータのため `--no-refine-path` 形式は自動生成されません） | `True` |
 
 ### MLIP 計算機オプション
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `--workers`, `--workers-per-node` | MLIP 予測器の並列度（workers > 1 で解析ヘシアン無効; UMA バックエンドのみ）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照。 | `1`, `1` |
+| `--workers`, `--workers-per-node` | MLIP 予測器の並列度（workers > 1 で解析ヘシアン無効; UMA バックエンドのみ）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1`, `1` |
 | `--hessian-calc-mode [Analytical\|FiniteDifference]` | 共有 MLIP ヘシアンエンジン | `FiniteDifference` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--solvent TEXT` | xTB 補正用の暗黙溶媒名（例: `water`）。`none` で無効化 | `none` |
@@ -238,10 +238,10 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `--tsopt/--no-tsopt` | セグメントごとの TS 最適化+ IRC を実行 | `False` |
-| `--thermo/--no-thermo` | R/TS/Pで振動解析を実行 | `False` |
-| `--dft/--no-dft` | R/TS/PでDFT一点計算を実行 | `False` |
-| `--opt-mode-post [grad\|hess]` | TSOPT/IRC後最適化のプリセット上書き（`grad` → Dimer/LBFGS、`hess` → RSIRFO/RFO） | `hess` |
-| `--thresh-post TEXT` | IRC後エンドポイント最適化の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
+| `--thermo/--no-thermo` | R/TS/P で振動解析を実行 | `False` |
+| `--dft/--no-dft` | R/TS/P で DFT 一点計算を実行 | `False` |
+| `--opt-mode-post [grad\|hess]` | TSOPT/IRC 後最適化のプリセット上書き（`grad` → Dimer/LBFGS、`hess` → RSIRFO/RFO） | `hess` |
+| `--thresh-post TEXT` | IRC 後エンドポイント最適化の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
 | `--flatten/--no-flatten` | 余分な虚振動モードのフラット化 | `False` |
 
 ```{warning}
@@ -257,13 +257,13 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `--tsopt-max-cycles INT` | `tsopt --max-cycles` 上書き | `10000` |
-| `--tsopt-out-dir PATH` | tsopt出力サブディレクトリ | _None_ |
+| `--tsopt-out-dir PATH` | tsopt 出力サブディレクトリ | _None_ |
 
 ### Freq 上書き
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `--freq-out-dir PATH` | freq出力ディレクトリ上書き | _None_ |
+| `--freq-out-dir PATH` | freq 出力ディレクトリ上書き | _None_ |
 | `--freq-max-write INT` | 最大モード出力数 | `10` |
 | `--freq-amplitude-ang FLOAT` | モードアニメーション振幅（Å） | `0.8` |
 | `--freq-n-frames INT` | モードアニメーションフレーム数 | `20` |
@@ -275,12 +275,12 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `--dft-engine [gpu\|cpu]` | DFTバックエンド: gpu (GPU4PySCF) または cpu (PySCF)。`all` ラッパーではプレフィックス付きで `--dft-engine` と名付けられていますが、単体の `dft` サブコマンドでは同じオプションが `--engine` という名前になります。 | `gpu` |
-| `--dft-out-dir PATH` | DFT出力ディレクトリ上書き | _None_ |
+| `--dft-engine [gpu\|cpu]` | DFT バックエンド: gpu (GPU4PySCF) または cpu (PySCF)。`all` ラッパーではプレフィックス付きで `--dft-engine` と名付けられていますが、単体の `dft` サブコマンドでは同じオプションが `--engine` という名前になります | `gpu` |
+| `--dft-out-dir PATH` | DFT 出力ディレクトリ上書き | _None_ |
 | `--dft-func-basis TEXT` | 汎関数/基底関数ペア | `wb97m-v/def2-tzvpd` |
-| `--dft-max-cycle INT` | 最大SCFサイクル | `100` |
-| `--dft-conv-tol FLOAT` | SCF収束閾値 | `1e-9` |
-| `--dft-grid-level INT` | PySCFグリッドレベル | `3` |
+| `--dft-max-cycle INT` | 最大 SCF サイクル | `100` |
+| `--dft-conv-tol FLOAT` | SCF 収束閾値 | `1e-9` |
+| `--dft-grid-level INT` | PySCF グリッドレベル | `3` |
 
 (ja-scan-options-single-input-runs)=
 ### スキャンオプション（単一入力）
@@ -288,8 +288,8 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `-s, --scan-lists TEXT...` | 段階的スキャン: `(i,j,target_Å)` タプル | _None_ |
-| `--scan-out-dir PATH` | scan出力ディレクトリ上書き | _None_ |
-| `--scan-one-based/--no-scan-one-based` | 1始まり/0始まりインデックス | _None_ |
+| `--scan-out-dir PATH` | scan 出力ディレクトリ上書き | _None_ |
+| `--scan-one-based/--no-scan-one-based` | 1 始まり/0 始まりインデックス | _None_ |
 | `--scan-max-step-size FLOAT` | 最大ステップサイズ（Å） | `0.20` |
 | `--scan-bias-k FLOAT` | 調和バイアス強度（eV·Å⁻²） | `300` |
 | `--scan-relax-max-cycles INT` | 緩和サイクル上限 | `10000` |
@@ -353,7 +353,7 @@ out_dir/ (デフォルト:./result_all/)
 ### `summary.log` の読み方
 ログは番号付きセクションで構成されます:
 - **[1] グローバル MEP 概要** – イメージ/セグメント数、MEP 軌跡プロットのパス、MEP 全体のエネルギーダイアグラム。
-- **[2] セグメント別MEPサマリー（MLIPパス）** – セグメントごとの障壁（`ΔE‡`）、反応エネルギー（`ΔE`）、結合変化サマリー。
+- **[2] セグメント別 MEP サマリー（MLIP パス）** – セグメントごとの障壁（`ΔE‡`）、反応エネルギー（`ΔE`）、結合変化サマリー。
 - **[3] セグメント別後処理（TSOPT / Thermo / DFT）** – TS 虚振動数チェック、IRC 出力、MLIP/熱化学/DFT のエネルギーテーブル。
 - **[4] エネルギーダイアグラム（概要）** – MEP/MLIP/Gibbs/DFT 系の図表と、任意の横断サマリー表。
 - **[5] 出力ディレクトリ構造** – 生成ファイルを注釈付きでまとめたツリー。
@@ -425,5 +425,5 @@ dft:
 - [dft](dft.md) — 単独の DFT 計算
 - [典型エラー別レシピ](recipes-common-errors.md) — 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) — よくあるエラーと対処法
-- [YAML リファレンス](yaml-reference.md) — 全YAML設定オプション
-- [用語集](glossary.md) — MEP、TS、IRC、GSM、DMFの定義
+- [YAML リファレンス](yaml-reference.md) — 全 YAML 設定オプション
+- [用語集](glossary.md) — MEP、TS、IRC、GSM、DMF の定義

@@ -77,21 +77,21 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
 ## CLI オプション
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `-i, --input PATH...` | 反応順序の2つ以上の構造（反応物 → 生成物）。すべてのファイルを単一の `-i`/`--input` の後ろに並べて指定 | 必須 |
-| `-q, --charge INT` | 総電荷。非`.gjf`入力では `--ligand-charge` の導出が成功しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
+| `-i, --input PATH...` | 反応順序の 2 つ以上の構造（反応物 → 生成物）。すべてのファイルを単一の `-i`/`--input` の後ろに並べて指定 | 必須 |
+| `-q, --charge INT` | 総電荷。非 `.gjf` 入力では `--ligand-charge` の導出が成功しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
 | `-l, --ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
-| `--workers`, `--workers-per-node` | MLIP 予測器の並列度（workers > 1 で解析ヘシアン無効; UMA バックエンドのみ; `workers_per_node` は並列予測器に渡されます）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照。 | `1`, `1` |
+| `--workers`, `--workers-per-node` | MLIP 予測器の並列度（workers > 1 で解析ヘシアン無効; UMA バックエンドのみ; `workers_per_node` は並列予測器に渡されます）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | `--freeze-links/--no-freeze-links` | PDB 活性部位モデル読み込み時、リンク水素の親原子を凍結。詳細は [extract](extract.md) を参照 | `True` |
-| `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用。 | _None_ |
+| `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
 | `--max-nodes INT` | MEP セグメントごとの内部ノード（GSM string image または DMF image） | `20` |
-| `--max-cycles INT` | 最大MEP最適化サイクル（GSM/DMF） | `300` |
-| `--climb/--no-climb` | GSMセグメントのクライミングイメージを有効化（ブリッジは無効） | `True` |
-| `--opt-mode TEXT` | HEI±1/ねじれノード用の単一構造オプティマイザー（`grad`=LBFGS、`hess`=RFO）。同じトークンが `tsopt` では Dimer / RS-I-RFO へ対応する点については {ref}`ja-opt-mode-semantics` を参照してください。 | `grad` |
-| `--mep-mode {gsm\|dmf}` | セグメント生成器: GSM（string）またはDMF（direct flux） | `gsm` |
-| `--refine-mode {peak\|minima}` | 精密化シード: `peak` はHEI±1、`minima` はHEIから最寄り局所極小点へ外側探索。未指定時はGSMで`peak`、DMFで`minima` | _Auto_ |
+| `--max-cycles INT` | 最大 MEP 最適化サイクル（GSM/DMF） | `300` |
+| `--climb/--no-climb` | GSM セグメントのクライミングイメージを有効化（ブリッジは無効） | `True` |
+| `--opt-mode TEXT` | HEI±1/ねじれノード用の単一構造オプティマイザー（`grad`=LBFGS、`hess`=RFO）。同じトークンが `tsopt` では Dimer / RS-I-RFO へ対応する点については {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
+| `--mep-mode {gsm\|dmf}` | セグメント生成器: GSM（string）または DMF（direct flux） | `gsm` |
+| `--refine-mode {peak\|minima}` | 精密化シード: `peak` は HEI±1、`minima` は HEI から最寄り局所極小点へ外側探索。未指定時は GSM で `peak`、DMF で `minima` | _Auto_ |
 | `--dump/--no-dump` | MEP（GSM/DMF）と単一構造軌跡をダンプ。リスタート YAML は YAML で有効化した場合のみ書き出されます | `False` |
-| `--convert-files/--no-convert-files` | PDB/Gaussian入力のXYZ/TRJ → PDB/GJFコンパニオンを切り替え | `True` |
+| `--convert-files/--no-convert-files` | PDB/Gaussian 入力の XYZ/TRJ → PDB/GJF コンパニオンを切り替え | `True` |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_path_search/` |
 | `--thresh TEXT` | 単一構造最適化のみの収束プリセットを上書き（`opt.lbfgs/rfo.thresh`） | `gau` |
 | `--thresh-stopt TEXT` | ストリングオプティマイザーの収束プリセットを上書き（`stopt.thresh`） | `gau_loose` |
@@ -100,21 +100,21 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
-| `--dry-run/--no-dry-run` | 実行せずに検証と実行計画表示のみを行う。 | `False` |
-| `--preopt/--no-preopt` | 選択された単一構造オプティマイザー（LBFGS/RFO）で MEP 探索前に各エンドポイントを事前最適化。**スコープ依存デフォルト:** 単体の `path-search` では `False`、**`pdb2reaction all` 経由では `True` に反転**されます（{ref}`mep-search-options` を参照）。 | `False` |
+| `--dry-run/--no-dry-run` | 実行せずに検証と実行計画表示のみを行う | `False` |
+| `--preopt/--no-preopt` | 選択された単一構造オプティマイザー（LBFGS/RFO）で MEP 探索前に各エンドポイントを事前最適化。**スコープ依存デフォルト:** 単体の `path-search` では `False`、**`pdb2reaction all` 経由では `True` に反転**されます（{ref}`mep-search-options` を参照） | `False` |
 | `--align/--no-align` | 探索前にすべての入力を最初の構造にアライメント | `True` |
 | `--ref-full-pdb PATH...` | フルサイズテンプレート PDB（入力と同数。`--align` があれば先頭のみ再利用可） | _None_ |
 | `--ref-pdb PATH...` | 入力が XYZ/GJF の場合に最終的な全系マージで用いるポケット参照 PDB（入力と同数・同順） | _None_ |
 
 ## ワークフロー
 
-1. **ペアごとの初期セグメント（GSM/DMF）** – 各隣接入力（A→B）間で `GrowingString` または DMF を実行し、粗いMEPと最高エネルギー画像（HEI）を取得。
-2. **HEI周辺の局所緩和** – `refine-mode=peak` なら HEI±1、`refine-mode=minima` なら HEI 近傍の局所極小点を、選択した単一構造オプティマイザー（`opt-mode`）で精密化し `End1`/`End2` を得る。
+1. **ペアごとの初期セグメント（GSM/DMF）** – 各隣接入力（A→B）間で `GrowingString` または DMF を実行し、粗い MEP と最高エネルギー画像（HEI）を取得。
+2. **HEI 周辺の局所緩和** – `refine-mode=peak` なら HEI±1、`refine-mode=minima` なら HEI 近傍の局所極小点を、選択した単一構造オプティマイザー（`opt-mode`）で精密化し `End1`/`End2` を得る。
    > **デフォルト:** `--refine-mode` 省略時は GSM では `peak`、DMF では `minima` が選択されます。
 3. **ねじれ vs. 精密化の決定** – `End1` と `End2` 間に共有結合変化がなければ *ねじれ*（kink: 共有結合変化を伴わない構造変化区間。[用語集](glossary.md) 参照）とみなし、`search.kink_max_nodes` の線形ノードを挿入して個別最適化。結合変化がある場合は *反応セグメント*（端点間に共有結合変化が検出される区間。[用語集](glossary.md) 参照）として扱い、`End1` と `End2` 間に **精密化セグメント (GSM/DMF)** を起動して障壁を鋭利化。
 4. **選択的再帰** – `(A→End1)` と `(End2→B)` の結合変化を `bond` しきい値で比較し、共有結合更新が残るサブ区間のみ再帰的に探索。再帰深度は `search.max_depth` で制限。
-5. **スティッチング & ブリッジング** – 解決済みのサブパスを連結し、RMSD ≤ `search.stitch_rmsd_thresh` の重複エンドポイントを除去。RMSDギャップが `search.bridge_rmsd_thresh` を超える場合は *ブリッジセグメント*（非隣接の中間体間を接続するセグメント。[用語集](glossary.md) 参照）を GSM/DMF で挿入。境界で結合変化が検出される場合はブリッジではなく新規の再帰セグメントで置換。
-6. **アライメント & マージング（オプション）** – `--align`（デフォルト）で事前最適化構造を先頭入力へ剛体アライメントし、`freeze_atoms` を整合。`--ref-full-pdb` を指定すると活性部位モデル軌跡をフルサイズPDB テンプレートへマージ（`--align` により先頭テンプレートの再利用が可能）。
+5. **スティッチング & ブリッジング** – 解決済みのサブパスを連結し、RMSD ≤ `search.stitch_rmsd_thresh` の重複エンドポイントを除去。RMSD ギャップが `search.bridge_rmsd_thresh` を超える場合は *ブリッジセグメント*（非隣接の中間体間を接続するセグメント。[用語集](glossary.md) 参照）を GSM/DMF で挿入。境界で結合変化が検出される場合はブリッジではなく新規の再帰セグメントで置換。
+6. **アライメント & マージング（オプション）** – `--align`（デフォルト）で事前最適化構造を先頭入力へ剛体アライメントし、`freeze_atoms` を整合。`--ref-full-pdb` を指定すると活性部位モデル軌跡をフルサイズ PDB テンプレートへマージ（`--align` により先頭テンプレートの再利用が可能）。
 
 結合変化の判定は `bond_changes.compare_structures` を用い、`bond` セクションのしきい値に従います。MLIP バックエンドは全構造で共有・再利用されます。
 
@@ -146,7 +146,7 @@ out_dir/ (デフォルト:./result_path_search/)
 ## 注意事項
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
-- 入力は2つ以上が必須。満たさない場合、`-i/--input` の "invalid value" エラーで終了します。
+- 入力は 2 つ以上が必須。満たさない場合、`-i/--input` の "invalid value" エラーで終了します。
 - 複数テンプレートを渡す場合は `--ref-full-pdb` をファイルごとに繰り返して指定します。`--align` が有効な場合、マージでは先頭テンプレートのみが再利用されます。
 - MLIP バックエンドは全構造で共有・再利用されます。
 - `--dump` が有効な場合、MEP（GSM/DMF）と単一構造最適化の軌跡が出力されます。リスタート YAML は YAML で `dump_restart` を有効にした場合のみ書き出されます。
@@ -199,9 +199,9 @@ search:
 - [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) -- 詳細な対処ガイド
 
-- [path-opt](path-opt.md) — 単一パスMEP最適化（再帰的精密化なし）
-- [tsopt](tsopt.md) — HEIを遷移状態として最適化
-- [extract](extract.md) — path-search入力用の活性部位モデルPDBを生成
+- [path-opt](path-opt.md) — 単一パス MEP 最適化（再帰的精密化なし）
+- [tsopt](tsopt.md) — HEI を遷移状態として最適化
+- [extract](extract.md) — path-search 入力用の活性部位モデル PDB を生成
 - [all](all.md) — 一気通貫ワークフロー（デフォルトで再帰的 path-search を使用; `--refine-path False` で path-opt に切替）
 - [YAML リファレンス](yaml-reference.md) — `gs`、`dmf`、`bond`、`search` の完全な設定オプション
-- [用語集](glossary.md) — MEP、GSM、DMF、HEIの定義
+- [用語集](glossary.md) — MEP、GSM、DMF、HEI の定義

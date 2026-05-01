@@ -24,30 +24,30 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 ```
 
 ## ワークフロー
-1. XYZ軌跡を解析し、各フレームのコメント行から最初の浮動小数点数を読み取ります（`1.5e-3` などの科学表記に対応）。`-q/-m` がある場合は MLIP バックエンドで再計算した Hartree エネルギーを使用します。エネルギーが取得できない場合は実行を中断します。
+1. XYZ 軌跡を解析し、各フレームのコメント行から最初の浮動小数点数を読み取ります（`1.5e-3` などの科学表記に対応）。`-q/-m` がある場合は MLIP バックエンドで再計算した Hartree エネルギーを使用します。エネルギーが取得できない場合は実行を中断します。
 2. 参照指定を正規化:
  - `init` → フレーム `0`（`--reverse-x` が有効な場合は最後のフレーム）
  - `None`/`none`/`null` → 絶対エネルギー（参照なし）
- - 整数リテラル → 0始まりのフレーム番号
+ - 整数リテラル → 0 始まりのフレーム番号
 3. エネルギーを kcal/mol または Hartree に変換し、参照指定がある場合は参照値を差し引いて ΔE を作成します。
 4. Plotly 図を作成（強調ティック、スプライン補間、マーカー、タイトルなし）し、指定された拡張子へ書き出します。
-5. 必要に応じて `frame`, `energy_hartree` と、指定単位での ΔE/E 列を含むCSVを出力します。
+5. 必要に応じて `frame`, `energy_hartree` と、指定単位での ΔE/E 列を含む CSV を出力します。
 
 ## CLI オプション
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `-i, --input PATH` | コメント行にエネルギーを含むXYZ軌跡 | 必須 |
+| `-i, --input PATH` | コメント行にエネルギーを含む XYZ 軌跡 | 必須 |
 | `-o, --out PATH` | 複数指定可能な出力ファイル名（`.png/.jpg/.jpeg/.html/.svg/.pdf/.csv`） | `energy.png` |
 | _extra arguments_ | オプション後に続く位置引数（`-o` リストにマージ） | _None_ |
 | `--unit {kcal,hartree}` | 出力単位 | `kcal` |
-| `-r, --reference TEXT` | 参照指定（`init`、`None`、または0始まり整数） | `init` |
+| `-r, --reference TEXT` | 参照指定（`init`、`None`、または 0 始まり整数） | `init` |
 | `-q, --charge INT` | 総電荷。指定時は MLIP バックエンドでエネルギーを再計算 | _None_ |
 | `-m, --multiplicity INT` | スピン多重度（2S+1）。指定時は MLIP バックエンドでエネルギーを再計算 | _None_ |
-| `--reverse-x/--no-reverse-x` | x軸を反転し、`init` の参照を最後のフレームに変更 | `False` |
+| `--reverse-x/--no-reverse-x` | x 軸を反転し、`init` の参照を最後のフレームに変更 | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | エネルギー再計算用 MLIP バックエンド | `uma` |
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
-| `--out-json/--no-out-json` | 出力の隣に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照。 | `False` |
+| `--out-json/--no-out-json` | 出力の隣に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 
 ## 出力
 ```

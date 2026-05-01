@@ -26,11 +26,11 @@ pdb2reaction bond-summary -i R.pdb IM1.pdb IM2.pdb P.pdb
 | `--device TEXT` | 計算デバイス（`cpu`, `cuda`） | `cpu` |
 | `--bond-factor FLOAT` | 共有結合半径の和に対するスケーリングファクター | `1.20` |
 | `--one-based / --zero-based` | 出力の原子インデックス規約 | `--one-based` |
-| `--out-json / --no-out-json` | **機械可読な JSON を標準出力へ出力**（テキストレポートの代わり）。このサブコマンドは `result.json` ファイルを書き出しません（永続化したい場合は stdout をリダイレクトしてください）。このオプションは **`pdb2reaction bond-summary --help` には表示されません**（`--help-advanced` で確認できます）。スキーマは [JSON 出力スキーマ → bond-summary](json-output.md#bond-summary) を参照。 | `False` |
+| `--out-json / --no-out-json` | **機械可読な JSON を標準出力へ出力**（テキストレポートの代わり）。このサブコマンドは `result.json` ファイルを書き出しません（永続化したい場合は stdout をリダイレクトしてください）。このオプションは **`pdb2reaction bond-summary --help` には表示されません**（`--help-advanced` で確認できます）。スキーマは [JSON 出力スキーマ → bond-summary](json-output.md#bond-summary) を参照 | `False` |
 
 ## 例
 
-### 2構造の比較
+### 2 構造の比較
 
 ```bash
 pdb2reaction bond-summary -i 1.R.xyz 3.P.xyz
@@ -55,7 +55,7 @@ Bond broken (2):
 pdb2reaction bond-summary -i 1.R.xyz 3.IM1.xyz 5.IM2.xyz 7.P.xyz
 ```
 
-R→IM1, IM1→IM2, IM2→P の3つの比較ブロックが出力されます。
+R→IM1, IM1→IM2, IM2→P の 3 つの比較ブロックが出力されます。
 
 ## 注意事項
 

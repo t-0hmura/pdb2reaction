@@ -84,7 +84,7 @@ Please run `pdb2reaction add-elem-info -i...` to populate element columns before
 
 ### 非標準残基が正しく切断されない
 
-抽出された活性部位モデルに非標準の3文字コードを持つ修飾アミノ酸残基（リン酸化セリン、メチル化リシンなど）が含まれている場合、デフォルトでは主鎖切断やリンク水素付加が適用されません。`--modified-residue` で登録してください:
+抽出された活性部位モデルに非標準の 3 文字コードを持つ修飾アミノ酸残基（リン酸化セリン、メチル化リシンなど）が含まれている場合、デフォルトでは主鎖切断やリンク水素付加が適用されません。`--modified-residue` で登録してください:
 
 ```bash
 pdb2reaction extract -i complex.pdb -c PRE --modified-residue "SEP,TPO,MLY" -o pocket.pdb

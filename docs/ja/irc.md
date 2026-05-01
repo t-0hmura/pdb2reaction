@@ -81,29 +81,29 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `-i, --input PATH` | `geom_loader` が受け入れる遷移状態構造 | 必須 |
-| `-q, --charge INT` | 総電荷; YAML が `calc.charge` を指定していない場合に使用。`.gjf` テンプレートまたは `--ligand-charge/-l`（PDB 入力または `--ref-pdb` 付き XYZ/GJF）が提供しない限り必須。両方が設定された場合でも、明示的な `-q` は `--ligand-charge/-l` より優先されます。 | テンプレート/導出が適用されない限り必須 |
+| `-q, --charge INT` | 総電荷; YAML が `calc.charge` を指定していない場合に使用。`.gjf` テンプレートまたは `--ligand-charge/-l`（PDB 入力または `--ref-pdb` 付き XYZ/GJF）が提供しない限り必須。両方が設定された場合でも、明示的な `-q` は `--ligand-charge/-l` より優先されます | テンプレート/導出が適用されない限り必須 |
 | `-l, --ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
-| `--workers INT` | MLIP予測器の並列度（workers > 1 で解析ヘシアン無効）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照。 | `1` |
+| `--workers INT` | MLIP 予測器の並列度（workers > 1 で解析ヘシアン無効）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1` |
 | `--workers-per-node INT` | ノードあたりのワーカー数。並列予測器に渡されます | `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1）。YAML が `calc.spin` を指定していない場合に使用 | `.gjf` テンプレート値または `1` |
-| `--max-cycles INT` | 最大IRCステップ（YAML が `irc.max_cycles` を指定していない場合に使用） | `125` |
+| `--max-cycles INT` | 最大 IRC ステップ（YAML が `irc.max_cycles` を指定していない場合に使用） | `125` |
 | `--step-size FLOAT` | ステップ長（Bohr、非質量加重デカルト座標）（YAML が `irc.step_length` を指定していない場合に使用） | `0.10` |
-| `--root INT` | 射影ヘシアンの固有値を**昇順**（最も負の値を先頭）に並べたときの**0 始まり**のインデックス。初期 IRC 変位に使用するモードを指定します。虚振動が 1 個だけの妥当な TS では `--root 0`（唯一の負の固有値）のままにしてください。`--root 1`、`--root 2` などは、活性な虚モードがより負のスプリアス（疑似）モードよりも上位にランクされていることが分かっている場合にのみ使用します。YAML が `irc.root` を指定していない場合に使用。 | `0` |
+| `--root INT` | 射影ヘシアンの固有値を**昇順**（最も負の値を先頭）に並べたときの**0 始まり**のインデックス。初期 IRC 変位に使用するモードを指定します。虚振動が 1 個だけの妥当な TS では `--root 0`（唯一の負の固有値）のままにしてください。`--root 1`、`--root 2` などは、活性な虚モードがより負のスプリアス（疑似）モードよりも上位にランクされていることが分かっている場合にのみ使用します。YAML が `irc.root` を指定していない場合に使用 | `0` |
 | `--forward/--no-forward` | 順方向分岐を実行（YAML が `irc.forward` を指定していない場合に使用） | `True` |
 | `--backward/--no-backward` | 逆方向分岐を実行（YAML が `irc.backward` を指定していない場合に使用） | `True` |
-| `--freeze-links/--no-freeze-links` | PDB 入力用、リンクH親を凍結（`geom.freeze_atoms` にマージ）。詳細は [extract](extract.md) を参照 | `True` |
-| `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用。 | _None_ |
+| `--freeze-links/--no-freeze-links` | PDB 入力用、リンク H 親を凍結（`geom.freeze_atoms` にマージ）。詳細は [extract](extract.md) を参照 | `True` |
+| `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
 | `-o, --out-dir TEXT` | 出力ディレクトリ（YAML が `irc.out_dir` を指定していない場合に使用） | `./result_irc/` |
 | `--convert-files/--no-convert-files` | 参照 PDB が利用可能な場合に XYZ/TRJ → PDB コンパニオンを出力するかどうか | `True` |
-| `--ref-pdb FILE` | 入力がXYZ/GJFの場合に使用する参照 PDB トポロジー | _None_ |
-| `--hessian-calc-mode CHOICE` | MLIPヘシアンモード（YAML が `calc.hessian_calc_mode` を指定していない場合に使用） | `FiniteDifference` |
-| `--config FILE` | 明示CLI適用前に読み込むベース YAML。 | _None_ |
-| `--show-config/--no-show-config` | 解決済み YAML レイヤー/設定を表示して続行。 | `False` |
-| `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照。 | `False` |
+| `--ref-pdb FILE` | 入力が XYZ/GJF の場合に使用する参照 PDB トポロジー | _None_ |
+| `--hessian-calc-mode CHOICE` | MLIP ヘシアンモード（YAML が `calc.hessian_calc_mode` を指定していない場合に使用） | `FiniteDifference` |
+| `--config FILE` | 明示 CLI 適用前に読み込むベース YAML | _None_ |
+| `--show-config/--no-show-config` | 解決済み YAML レイヤー/設定を表示して続行 | `False` |
+| `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
-| `--dry-run/--no-dry-run` | 実行せずに検証と実行計画のみ表示。 | `False` |
+| `--dry-run/--no-dry-run` | 実行せずに検証と実行計画のみ表示 | `False` |
 
 ## 出力
 ```
@@ -142,9 +142,9 @@ calc:
 
 - [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
 
-- [tsopt](tsopt.md) — IRC実行前にTSを最適化
+- [tsopt](tsopt.md) — IRC 実行前に TS を最適化
 - [freq](freq.md) — 完全な振動解析と熱化学補正
-- [opt](opt.md) — IRC端点を真の極小に最適化
-- [all](all.md) — tsopt後にIRCを実行する一気通貫ワークフロー
+- [opt](opt.md) — IRC 端点を真の極小に最適化
+- [all](all.md) — tsopt 後に IRC を実行する一気通貫ワークフロー
 - [YAML リファレンス](yaml-reference.md) — `irc` の完全な設定オプション
 - [用語集](glossary.md) — IRC（固有反応座標）の定義

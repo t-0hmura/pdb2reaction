@@ -88,29 +88,29 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 \
 
 ## ワークフロー
 1. **入力処理** – `geom_loader` でロード可能な任意のファイル（.pdb/.xyz/_trj.xyz/…）を受け入れ、座標は `input_geometry.xyz` として再エクスポートされます。XYZ/GJF 入力では `--ref-pdb` が参照 PDB トポロジーを提供し、原子数検証や（`--ligand-charge` 使用時の）電荷導出に使われます。DFT 段階自体は PDB/GJF 出力を生成しません。
-2. **SCFビルド** – `--func-basis` を汎関数と基底に解析します。`--engine` でGPU/CPUを制御します（`gpu` はGPU4PySCF必須でエラー終了、`cpu` はCPU固定）。closed-shell + GPU + `--lowmem`（デフォルト）では SCF オブジェクトに `gpu4pyscf.dft.rks_lowmem.RKS` を使用し、メモリ効率の良い直接 JK で密度フィッティングをスキップします。open-shell GPU、CPU、または `--no-lowmem` の経路では密度フィッティングが PySCF のデフォルト設定で自動的に有効化されます。非局所補正（例: VV10）はバックエンドのデフォルト設定を超える明示的な設定は行いません。
-3. **電子密度解析 & 出力** – 収束後（または失敗後）、エネルギー（Hartree/kcal·mol⁻¹）、収束メタデータ、タイミング、バックエンド情報、および原子ごとのMulliken/meta-Löwdin/IAO電荷とスピン密度を要約する `result.yaml` を書き込みます。解析に失敗した列は `null` に設定され、警告が出力されます。
+2. **SCF ビルド** – `--func-basis` を汎関数と基底に解析します。`--engine` で GPU/CPU を制御します（`gpu` は GPU4PySCF 必須でエラー終了、`cpu` は CPU 固定）。closed-shell + GPU + `--lowmem`（デフォルト）では SCF オブジェクトに `gpu4pyscf.dft.rks_lowmem.RKS` を使用し、メモリ効率の良い直接 JK で密度フィッティングをスキップします。open-shell GPU、CPU、または `--no-lowmem` の経路では密度フィッティングが PySCF のデフォルト設定で自動的に有効化されます。非局所補正（例: VV10）はバックエンドのデフォルト設定を超える明示的な設定は行いません。
+3. **電子密度解析 & 出力** – 収束後（または失敗後）、エネルギー（Hartree/kcal·mol⁻¹）、収束メタデータ、タイミング、バックエンド情報、および原子ごとの Mulliken/meta-Löwdin/IAO 電荷とスピン密度を要約する `result.yaml` を書き込みます。解析に失敗した列は `null` に設定され、警告が出力されます。
 
 ## CLI オプション
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル | 必須 |
-| `-q, --charge INT` | PySCFに提供される総電荷。`.gjf` テンプレートまたは `--ligand-charge`（PDB 入力または `--ref-pdb` 付きXYZ/GJF）が提供しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
+| `-q, --charge INT` | PySCF に提供される総電荷。`.gjf` テンプレートまたは `--ligand-charge`（PDB 入力または `--ref-pdb` 付き XYZ/GJF）が提供しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
 | `-l, --ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
-| `-m, --multiplicity INT` | スピン多重度（2S+1）。PySCF用に `2S` に変換 | `.gjf` テンプレート値または `1` |
+| `-m, --multiplicity INT` | スピン多重度（2S+1）。PySCF 用に `2S` に変換 | `.gjf` テンプレート値または `1` |
 | `--func-basis TEXT` | `FUNC/BASIS` 形式の汎関数/基底ペア | `wb97m-v/def2-tzvpd` |
-| `--max-cycle INT` | 最大SCF反復 | `100` |
-| `--conv-tol FLOAT` | SCF収束許容値（Hartree） | `1e-9` |
-| `--grid-level INT` | PySCF数値積分グリッドレベル | `3` |
+| `--max-cycle INT` | 最大 SCF 反復 | `100` |
+| `--conv-tol FLOAT` | SCF 収束許容値（Hartree） | `1e-9` |
+| `--grid-level INT` | PySCF 数値積分グリッドレベル | `3` |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_dft/` |
-| `--engine [gpu\|cpu]` | SCFバックエンド: gpu (GPU4PySCF) または cpu (PySCF)。`--engine` と `--dft-engine` の命名規則は {ref}`ja-engine-vs-dft-engine` を参照。 | `gpu` |
-| `--lowmem/--no-lowmem` | closed-shell の GPU 経路で `gpu4pyscf.dft.rks_lowmem.RKS` を使用（密度フィッティングを使わず、メモリ効率の良い直接 JK を使用）。open-shell や CPU エンジン、`rks_lowmem` 未搭載の旧 `gpu4pyscf` では標準 RKS/UKS に自動フォールバック。 | `True` |
-| `--convert-files/--no-convert-files` | **`dft` では no-op。** 他のサブコマンドとのインターフェース整合性のためだけに受け付けられます。`dft` は PDB や GJF を一切出力せず（`input_geometry.xyz` + `result.yaml` のみ）、このフラグの値は無視されます。 | `True` |
-| `--ref-pdb FILE` | 原子数検証とXYZ/GJF 入力のリガンド電荷導出を有効にする参照 PDB トポロジー（出力変換は行わない） | _None_ |
+| `--engine [gpu\|cpu]` | SCF バックエンド: gpu (GPU4PySCF) または cpu (PySCF)。`--engine` と `--dft-engine` の命名規則は {ref}`ja-engine-vs-dft-engine` を参照 | `gpu` |
+| `--lowmem/--no-lowmem` | closed-shell の GPU 経路で `gpu4pyscf.dft.rks_lowmem.RKS` を使用（密度フィッティングを使わず、メモリ効率の良い直接 JK を使用）。open-shell や CPU エンジン、`rks_lowmem` 未搭載の旧 `gpu4pyscf` では標準 RKS/UKS に自動フォールバック | `True` |
+| `--convert-files/--no-convert-files` | **`dft` では no-op。** 他のサブコマンドとのインターフェース整合性のためだけに受け付けられます。`dft` は PDB や GJF を一切出力せず（`input_geometry.xyz` + `result.yaml` のみ）、このフラグの値は無視されます | `True` |
+| `--ref-pdb FILE` | 原子数検証と XYZ/GJF 入力のリガンド電荷導出を有効にする参照 PDB トポロジー（出力変換は行わない） | _None_ |
 | `--config FILE` | 明示的な CLI オプション適用前に読み込むベース YAML | _None_ |
 | `--show-config/--no-show-config` | 解決済み設定を表示して実行を継続 | `False` |
-| `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照。 | `False` |
-| `--dry-run/--no-dry-run` | 実行せずに設定検証と実行計画表示のみ行う。 | `False` |
+| `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
+| `--dry-run/--no-dry-run` | 実行せずに設定検証と実行計画表示のみ行う | `False` |
 
 ## 出力
 ```
@@ -120,8 +120,8 @@ out_dir/ (デフォルト:./result_dft/)
 ```
 - `result.yaml` には以下が含まれます:
  - `energy`: Hartree/kcal·mol⁻¹、収束フラグ、実行時間、エンジン情報（`engine`: `gpu4pyscf(rks_lowmem)`/`gpu4pyscf`/`pyscf(cpu)`、`used_gpu`、`used_lowmem`）
- - `charges`: Mulliken/meta-Löwdin/IAO原子電荷（失敗時は `null`）
- - `spin_densities`: Mulliken/meta-Löwdin/IAOスピン密度（UKSのみ、失敗時は `null`）
+ - `charges`: Mulliken/meta-Löwdin/IAO 原子電荷（失敗時は `null`）
+ - `spin_densities`: Mulliken/meta-Löwdin/IAO スピン密度（UKS のみ、失敗時は `null`）
 - 電荷・多重度（2S）、汎関数/基底、収束設定、出力ディレクトリも要約されます。
 
 ## 終了コード
@@ -147,10 +147,10 @@ out_dir/ (デフォルト:./result_dft/)
 - `func` (`"wb97m-v"`): 交換相関汎関数
 - `basis` (`"def2-tzvpd"`): 基底セット名
 - `func_basis` (_None_): `FUNC/BASIS` 形式の統合指定（`func`/`basis` を上書き）
-- `conv_tol` (`1e-9`): SCF収束閾値（Hartree）
-- `max_cycle` (`100`): 最大SCF反復
+- `conv_tol` (`1e-9`): SCF 収束閾値（Hartree）
+- `max_cycle` (`100`): 最大 SCF 反復
 - `grid_level` (`3`): PySCF `grids.level`
-- `verbose` (`0`): PySCF冗長度（0–9）
+- `verbose` (`0`): PySCF 冗長度（0–9）
 - `out_dir` (`"./result_dft/"`): 出力ディレクトリ
 - `lowmem` (`True`): closed-shell の GPU 経路で `gpu4pyscf.dft.rks_lowmem.RKS` を使用（密度フィッティングをスキップ）。open-shell、CPU エンジン、`rks_lowmem` 非搭載の旧 `gpu4pyscf` では標準 RKS/UKS に自動フォールバック。
 
@@ -173,7 +173,7 @@ dft:
 
 - [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
 
-- [freq](freq.md) — MLIPベースの振動解析（DFT精密化の前に行うことが多い）
+- [freq](freq.md) — MLIP ベースの振動解析（DFT 精密化の前に行うことが多い）
 - [all](all.md) — `--dft` を使用した一気通貫ワークフロー
 - [YAML リファレンス](yaml-reference.md) — `dft` の完全な設定オプション
 - [用語集](glossary.md) — DFT、SP（一点計算）の定義

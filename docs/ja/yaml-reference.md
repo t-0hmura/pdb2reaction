@@ -84,15 +84,15 @@ TS 最適化はより厳しい "baker" プリセットを、通常の極小化�
 | [`geom`](#geom) | ジオメトリと座標設定 | all, opt, scan, scan2d, scan3d, tsopt, freq, irc, path-opt, path-search |
 | [`calc`](#calc) | MLIP バックエンドの設定 | all, opt, scan, scan2d, scan3d, tsopt, freq, irc, path-opt, path-search |
 | [`opt`](#opt) | 最適化の共通設定 | opt, scan, scan2d, scan3d, tsopt, path-opt, path-search |
-| [`lbfgs`](#lbfgs) | L-BFGSの設定 | opt, scan, scan2d, scan3d, path-search |
-| [`rfo`](#rfo) | RFOの設定 | opt, scan, scan2d, scan3d, path-search |
+| [`lbfgs`](#lbfgs) | L-BFGS の設定 | opt, scan, scan2d, scan3d, path-search |
+| [`rfo`](#rfo) | RFO の設定 | opt, scan, scan2d, scan3d, path-search |
 | [`gs`](#gs) | GSM（Growing String Method）設定 | path-opt, path-search |
 | [`dmf`](#dmf) | DMF（Direct Max Flux）設定 | path-opt, path-search |
 | [`stopt`](#stopt) | StringOptimizer 設定 | path-opt, path-search |
-| [`irc`](#ja-irc-section) | IRC積分設定 | irc |
+| [`irc`](#ja-irc-section) | IRC 積分設定 | irc |
 | [`freq`](#ja-freq-section) | 振動解析設定 | freq |
 | [`thermo`](#thermo) | 熱化学設定 | freq |
-| [`dft`](#ja-dft-section) | DFT計算設定 | dft |
+| [`dft`](#ja-dft-section) | DFT 計算設定 | dft |
 | [`bias`](#bias) | 調和バイアス設定 | scan, scan2d, scan3d |
 | [`bond`](#bond) | 結合変化検出設定 | scan, path-search |
 | [`search`](#search) | 再帰的経路探索設定 | path-search |
@@ -157,7 +157,7 @@ calc:
 - `workers > 1` の場合、解析ヘシアンは無効化されます — `hessian_calc_mode: Analytical` を明示指定していても、`workers > 1` では **警告なしに有限差分へダウングレード**されます。デフォルトがそもそも `FiniteDifference` のため、通常問題になるのは `Analytical` を明示的に選択したときだけです。詳細は {ref}`MLIP Calculator のヘシアン評価モード <ja-hessian-evaluation>` を参照してください。
 - 電荷/スピンは `.gjf` テンプレートがあればそれを継承します。
 - `freq` はデフォルトで `calc.return_partial_hessian = true`（PHVA）を設定します（YAML で上書き可能）。
-- IRC は `geom.coord_type = cart` と `calc.return_partial_hessian = true` を常に強制します（YAMLより優先、partial Hessian で active-DOF 処理）。
+- IRC は `geom.coord_type = cart` と `calc.return_partial_hessian = true` を常に強制します（YAML より優先、partial Hessian で active-DOF 処理）。
 
 ---
 
@@ -214,7 +214,7 @@ opt:
 
 ### `lbfgs`
 
-L-BFGSの設定（`opt` を拡張）。
+L-BFGS の設定（`opt` を拡張）。
 
 ```yaml
 lbfgs:
@@ -293,7 +293,7 @@ gs:
 
 ### `dmf`
 
-Direct Max Flux（DMF）によるMEP最適化。
+Direct Max Flux（DMF）による MEP 最適化。
 
 ```{note}
 **DMF の `--max-nodes` は「可動画像数」を意味します** — GSM と異なり、DMF は固定エンドポイント2点を加算しません。上記の `gs.max_nodes` の注記と比較してください。
@@ -333,7 +333,7 @@ dmf:
 
 ### `search`
 
-再帰的経路探索（path-searchのみ）。
+再帰的経路探索（path-search のみ）。
 
 ```yaml
 search:
@@ -459,12 +459,12 @@ rsirfo:
 **`--flatten` の優先順位。** Hessian-Dimer と RS-I-RFO 両経路の flatten ループは `hessian_dimer:` YAML セクションの `flatten_max_iter` キー（デフォルト 50）で設定します。`rsirfo:` には独自の flatten カウンタはありません。CLI は `--flatten` がコマンドラインで明示的に渡されない限り `flatten_max_iter` を `0` に上書きします。{ref}`ja-flatten-precedence-caveat` を参照してください。
 ```
 
-## IRCセクション
+## IRC セクション
 
 (ja-irc-section)=
 ### `irc` (section)
 
-IRC積分設定。
+IRC 積分設定。
 
 ```yaml
 irc:
@@ -524,12 +524,12 @@ thermo:
  dump: false # Write thermoanalysis.yaml
 ```
 
-## DFTセクション
+## DFT セクション
 
 (ja-dft-section)=
 ### `dft` (section)
 
-DFT計算設定。
+DFT 計算設定。
 
 ```yaml
 dft:
@@ -548,7 +548,7 @@ dft:
 ## スキャン関連セクション
 
 スキャン座標は `-s/--scan-lists`（インラインまたは YAML ファイル）で指定します（メイン YAML 設定ではありません）。
-構文の詳細は[クイックスタート: スキャン](quickstart-scan.md)を参照してください。
+構文の詳細は [クイックスタート: スキャン](quickstart-scan.md) を参照してください。
 
 (ja-bias-section)=
 ### `bias`
@@ -573,7 +573,7 @@ bias:
 
 ### `bond`
 
-MLIPベースの結合変化検出。
+MLIP ベースの結合変化検出。
 
 ```yaml
 bond:
@@ -648,5 +648,5 @@ dft:
 - [tsopt](tsopt.md) - 遷移状態最適化
 - [path-search](path-search.md) - 再帰的 MEP 探索
 - [freq](freq.md) - 振動解析
-- [dft](dft.md) - DFT計算
+- [dft](dft.md) - DFT 計算
 - [uma-pysis](uma-pysis.md) - MLIP バックエンドの詳細

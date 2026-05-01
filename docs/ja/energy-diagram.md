@@ -42,9 +42,9 @@ pdb2reaction energy-diagram -i 0 12.5 4.3 --label-x R TS P --label-y "ΔE (kcal/
 | --- | --- | --- |
 | `-i, --input TEXT...` | 数値入力（複数引数またはリスト形式文字列） | 必須 |
 | `-o, --output PATH` | 出力画像パス（`.png/.jpg/.jpeg/.svg/.pdf`） | `energy_diagram.png` |
-| `--label-x TEXT...` | X軸状態ラベル（入力値と同じ個数が必要） | `S1, S2,...` |
-| `--label-y TEXT` | Y軸ラベル | `ΔE (kcal/mol)` |
-| `--out-json/--no-out-json` | 出力画像の隣に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照。 | `False` |
+| `--label-x TEXT...` | X 軸状態ラベル（入力値と同じ個数が必要） | `S1, S2,...` |
+| `--label-y TEXT` | Y 軸ラベル | `ΔE (kcal/mol)` |
+| `--out-json/--no-out-json` | 出力画像の隣に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 
 ## 出力
 ```
@@ -56,7 +56,7 @@ OUTPUT.(png|jpg|jpeg|svg|pdf)
 
 ## 注意事項
 - 入力順がそのまま描画順になります。
-- 入力値は最低2点必要です。
+- 入力値は最低 2 点必要です。
 - 構造ファイルの読み込みやエネルギー計算は行いません。
 
 ## 関連項目
@@ -64,4 +64,4 @@ OUTPUT.(png|jpg|jpeg|svg|pdf)
 - [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) -- 詳細な対処ガイド
 - [trj2fig](trj2fig.md) -- 軌跡エネルギーからプロファイルを描画
-- [all](all.md) -- エネルギーダイアグラム出力を含むend-to-end実行
+- [all](all.md) -- エネルギーダイアグラム出力を含む end-to-end 実行

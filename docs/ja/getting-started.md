@@ -29,7 +29,7 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --ther
 計算には機械学習原子間ポテンシャル（MLIP）を用います。デフォルトのバックエンドは Meta の **UMA** ですが、`-b/--backend` により **ORB**、**MACE**、**AIMNet2** も選択できます。想定される主な用途は以下の通りです。
 
 - DFT 等の量子化学計算では検証に時間がかかる規模の**反応機構解析の試行錯誤**
-- 量子化学計算に向けた**初期構造の作成**（反応物・TS・生成物のクラスターモデル）
+- 量子化学計算に向けた**初期構造の作成**（反応物・ TS ・生成物のクラスターモデル）
 - 基質バリアントや酵素変異体にわたる**反応経路の大量計算**
 
 本 CLI は最小限の手動設定で**多段階の酵素反応機構**を生成します。小分子系にもそのまま適用可能です。抽出を行わない全系ワークフロー（`--center/-c` と `--ligand-charge/-l` を省略）では `.xyz` / `.gjf` 入力も利用できます。
@@ -135,8 +135,8 @@ pdb2reaction all [OPTIONS]...
 
 クラスター抽出を行う場合、ワークフロー全体で共通の重要オプションが 2 つあります:
 
-- `-i/--input`: 1つ以上の**完全構造**（反応物、中間体、生成物）
-- `-c/--center`: **基質/抽出中心**の定義方法（例: 残基名または残基ID）
+- `-i/--input`: 1 つ以上の**完全構造**（反応物、中間体、生成物）
+- `-c/--center`: **基質/抽出中心**の定義方法（例: 残基名または残基 ID）
 
 `--center/-c` を省略すると、クラスター抽出はスキップされ、**完全な入力構造**が直接使用されます。
 
@@ -144,9 +144,9 @@ pdb2reaction all [OPTIONS]...
 
 | モード | 概要 | クイックスタート |
 |------|-----|--------------|
-| **複数構造 MEP**（2 つ以上の PDB） | 反応座標に沿った複数の PDB（R → … → P）を受け取り、各構造のクラスターモデル抽出 → 再帰的 MEP 探索 → 必要に応じてセグメントごとに TS / IRC / freq / DFT を実行。 | [クイックスタート: `pdb2reaction all`](quickstart-all.md) |
-| **単一構造 + 段階的スキャン**（1 PDB + `--scan-lists/-s`） | 1 つの PDB をクラスターモデル上で段階的距離スキャンにかけ、各ステージを再帰的 `path-search`（`--refine-path False` で単一パス `path-opt`）に渡して MEP を構築。 | [クイックスタート: 単一構造の段階的スキャン](quickstart-scan.md) |
-| **単一構造 TSOPT のみ**（1 PDB + `--tsopt`） | MEP/経路探索を完全にスキップし、TS 候補を最適化 → 双方向 IRC → 端点最適化、必要なら R/TS/P に freq / DFT を実行。 | [クイックスタート: TS 最適化](quickstart-tsopt-freq.md) |
+| **複数構造 MEP**（2 つ以上の PDB） | 反応座標に沿った複数の PDB（R → … → P）を受け取り、各構造のクラスターモデル抽出 → 再帰的 MEP 探索 → 必要に応じてセグメントごとに TS / IRC / freq / DFT を実行 | [クイックスタート: `pdb2reaction all`](quickstart-all.md) |
+| **単一構造 + 段階的スキャン**（1 PDB + `--scan-lists/-s`） | 1 つの PDB をクラスターモデル上で段階的距離スキャンにかけ、各ステージを再帰的 `path-search`（`--refine-path False` で単一パス `path-opt`）に渡して MEP を構築 | [クイックスタート: 単一構造の段階的スキャン](quickstart-scan.md) |
+| **単一構造 TSOPT のみ**（1 PDB + `--tsopt`） | MEP/経路探索を完全にスキップし、TS 候補を最適化 → 双方向 IRC → 端点最適化、必要なら R/TS/P に freq / DFT を実行 | [クイックスタート: TS 最適化](quickstart-tsopt-freq.md) |
 
 ```{important}
 単一入力実行には **`--scan-lists/-s`**（段階的スキャン → GSM）**または** `--tsopt`（TSOPT のみ）のいずれかが必要です。これらのいずれも指定せずに単一の `-i` のみを渡しても、ワークフローは実行されません。
@@ -159,10 +159,10 @@ pdb2reaction all [OPTIONS]...
 | オプション | 説明 |
 |----------|------|
 | `-i, --input PATH...` | 入力構造。**2 つ以上の PDB** → MEP 探索; **1 つの PDB + `--scan-lists/-s`** → 段階的スキャン → GSM; **1 つの PDB + `--tsopt`** → TSOPT のみモード |
-| `-c, --center TEXT` | 基質/抽出中心を定義。残基名（`'SAM,GPP'`）、残基ID（`A:123,B:456`）、または PDB パスをサポート |
+| `-c, --center TEXT` | 基質/抽出中心を定義。残基名（`'SAM,GPP'`）、残基 ID（`A:123,B:456`）、または PDB パスをサポート |
 | `-l, --ligand-charge TEXT` | 電荷情報: マッピング（`'SAM:1,GPP:-3'`）または単一整数 |
 | `-q, --charge INT` | 総電荷の強制上書き |
-| `-m, --multiplicity INT` | スピン多重度（例: 一重項は `1`）。 |
+| `-m, --multiplicity INT` | スピン多重度（例: 一重項は `1`） |
 | `--tsopt/--no-tsopt` | TS 最適化と IRC を有効化 |
 | `-b, --backend TEXT` | MLIP バックエンドの選択（`uma`, `orb`, `mace`, `aimnet2`） |
 
@@ -204,4 +204,4 @@ pdb2reaction all --help-advanced
 
 MLIP バックエンドの詳細オプションについては [MLIP バックエンド](uma-pysis.md) を参照してください。
 
-問題が発生した場合は、[GitHubリポジトリ](https://github.com/t-0hmura/pdb2reaction) でIssueを開いてください。
+問題が発生した場合は、[GitHubリポジトリ](https://github.com/t-0hmura/pdb2reaction) で Issue を開いてください。

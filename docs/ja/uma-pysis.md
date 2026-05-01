@@ -25,7 +25,7 @@ forces_h_bohr = calc.get_forces(symbols, coords_bohr)["forces"] # ndarray (Hartr
 hessian_h_bohr2 = calc.get_hessian(symbols, coords_bohr)["hessian"] # ndarray (Hartree/Bohr²)
 ```
 
-- 座標は **Bohr** で与えます。ラッパー内部で Å に変換し、UMA計算後に Hartree / Hartree·Bohr⁻¹ / Hartree·Bohr⁻² に戻します。
+- 座標は **Bohr** で与えます。ラッパー内部で Å に変換し、UMA 計算後に Hartree / Hartree·Bohr⁻¹ / Hartree·Bohr⁻² に戻します。
 - `pysisyphus` の geometry オブジェクトにアタッチするか、上記のように直接呼び出せます。
 
 ## Python API: Calculator Factory
@@ -38,8 +38,8 @@ from pdb2reaction.backends import create_calculator, create_ase_calculator
 
 | 関数 | 説明 |
 |----------|-------------|
-| `create_calculator(backend="uma", **kwargs)` | PySisyphus 互換の MLIP 計算機を生成します。`charge`、`spin`、`model`、`device`、`solvent`、`solvent_model`、`hessian_calc_mode`、`freeze_atoms` などバックエンド固有の kwargs も受け付けます。未知のキーはバックエンドごとに黙って除外されます。 |
-| `create_ase_calculator(backend="uma", **kwargs)` | ASE 互換の MLIP 計算機を生成します（DMF ワークフローや ASE ベースのツールで使用）。kwargs は `create_calculator` と同じです。 |
+| `create_calculator(backend="uma", **kwargs)` | PySisyphus 互換の MLIP 計算機を生成します。`charge`、`spin`、`model`、`device`、`solvent`、`solvent_model`、`hessian_calc_mode`、`freeze_atoms` などバックエンド固有の kwargs も受け付けます。未知のキーはバックエンドごとに黙って除外されます |
+| `create_ase_calculator(backend="uma", **kwargs)` | ASE 互換の MLIP 計算機を生成します（DMF ワークフローや ASE ベースのツールで使用）。kwargs は `create_calculator` と同じです |
 
 ### 例
 
@@ -105,10 +105,10 @@ pdb2reaction opt -i input.pdb -q 0 -b orb --solvent water --solvent-model cpcmx
 
 ## 主な特徴
 
-- **MLIPバックエンド** – デフォルトの UMA バックエンドは FAIR-Chem の `pretrained_mlip` ヘルパーでUMAチェックポイントを読み込み、AtomicData バッチに電荷/スピン情報を付与。代替バックエンド（ORB、MACE、AIMNet2）は `-b/--backend` で利用可能。
-- **デバイス処理** – `device="auto"` はCUDAがあればGPU、なければCPUを選択。グラフ構築は選択デバイス上で行い、`workers>1` では並列予測器が転送を管理。
-- **凍結原子** – `freeze_atoms` に1始まりの原子インデックスを渡すと、凍結原子の力がゼロ化。`return_partial_hessian=True` で凍結自由度を除いたヘシアンを返すか、フル行列で該当行/列をゼロ化できます。
-- **精度制御** – エネルギー/力は常にfloat64。`hessian_double=False` でヘシアンをモデルのネイティブdtype（通常float32）で返します。
+- **MLIP バックエンド** – デフォルトの UMA バックエンドは FAIR-Chem の `pretrained_mlip` ヘルパーで UMA チェックポイントを読み込み、AtomicData バッチに電荷/スピン情報を付与。代替バックエンド（ORB、MACE、AIMNet2）は `-b/--backend` で利用可能。
+- **デバイス処理** – `device="auto"` は CUDA があれば GPU、なければ CPU を選択。グラフ構築は選択デバイス上で行い、`workers>1` では並列予測器が転送を管理。
+- **凍結原子** – `freeze_atoms` に 1 始まりの原子インデックスを渡すと、凍結原子の力がゼロ化。`return_partial_hessian=True` で凍結自由度を除いたヘシアンを返すか、フル行列で該当行/列をゼロ化できます。
+- **精度制御** – エネルギー/力は常に float64。`hessian_double=False` でヘシアンをモデルのネイティブ dtype（通常 float32）で返します。
 - **マルチワーカー推論** – `workers>1` で FAIR-Chem の `ParallelMLIPPredictUnit` を起動し、`workers_per_node` をノードごとに指定可能。バッチ処理速度の向上に有効です。
 
 (ja-workers-fd-downgrade)=
@@ -121,7 +121,7 @@ UMA バックエンドを `workers > 1` で使用する場合、`hessian_calc_mo
 (ja-hessian-evaluation)=
 ### ヘシアン評価モード
 
-`hessian_calc_mode="Analytical"` は選択されたデバイス上で2階自動微分を行い、`"FiniteDifference"`（デフォルト）は力の中心差分を計算します。複数の推論ワーカーを要求した場合、解析モードは自動的に無効化されます（上記の警告を参照）。
+`hessian_calc_mode="Analytical"` は選択されたデバイス上で 2 階自動微分を行い、`"FiniteDifference"`（デフォルト）は力の中心差分を計算します。複数の推論ワーカーを要求した場合、解析モードは自動的に無効化されます（上記の警告を参照）。
 
 ## HPC での使用例: PBS + Open MPI + Ray
 
@@ -136,15 +136,15 @@ UMA バックエンドを `workers > 1` で使用する場合、`hessian_calc_mo
 | `backend` | MLIP バックエンドエンジン | `"uma"` |
 | `charge` | 総電荷 | `0` |
 | `spin` | スピン多重度（2S+1） | `1` |
-| `model` | UMAモデル名 (`uma-s-1p1`, `uma-m-1p1`) | `"uma-s-1p1"` |
-| `task_name` | UMAバッチに記録されるタスクタグ | `"omol"` |
+| `model` | UMA モデル名 (`uma-s-1p1`, `uma-m-1p1`) | `"uma-s-1p1"` |
+| `task_name` | UMA バッチに記録されるタスクタグ | `"omol"` |
 | `device` | `"cuda"` / `"cpu"` / `"auto"` | `"auto"` |
-| `workers` / `workers_per_node` | 並列UMA予測器（UMA バックエンド限定。ORB / MACE / AIMNet2 では無視されます）。`workers>1` の場合、解析ヘシアンは**警告なく**有限差分へダウングレードされます。`hessian_calc_mode` のデフォルトはそもそも FD のため、`Analytical` を明示的に選んだ場合のみ影響があります。 | `1` / `1` |
+| `workers` / `workers_per_node` | 並列 UMA 予測器（UMA バックエンド限定。ORB / MACE / AIMNet2 では無視されます）。`workers>1` の場合、解析ヘシアンは**警告なく**有限差分へダウングレードされます。`hessian_calc_mode` のデフォルトはそもそも FD のため、`Analytical` を明示的に選んだ場合のみ影響があります | `1` / `1` |
 | `max_neigh`, `radius`, `r_edges` | 近傍構築のオプション上書き | `None`, `None`, `False` |
-| `freeze_atoms` | 1始まりの凍結原子インデックス | _None_ |
+| `freeze_atoms` | 1 始まりの凍結原子インデックス | _None_ |
 | `hessian_calc_mode` | `"Analytical"` または `"FiniteDifference"` | `"FiniteDifference"` |
 | `return_partial_hessian` | アクティブ自由度のみ返す | `False` |
-| `hessian_double` | ヘシアンをfloat64で返す | `True` |
+| `hessian_double` | ヘシアンを float64 で返す | `True` |
 | `out_hess_torch` | ヘシアンを `torch.Tensor` で返す | `True` |
 | `print_timing` | ヘシアン計算のタイミング内訳を表示 | `True` |
 | `print_vram` | ヘシアン計算中の CUDA VRAM 使用量を表示（UMA バックエンド限定） | `True` |

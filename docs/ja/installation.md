@@ -5,7 +5,7 @@
 詳細は上流プロジェクトを参照してください:
 
 - fairchem / UMA: <https://github.com/facebookresearch/fairchem>, <https://huggingface.co/facebook/UMA>
-- Hugging Faceトークンとセキュリティ: <https://huggingface.co/docs/hub/security-tokens>
+- Hugging Face トークンとセキュリティ: <https://huggingface.co/docs/hub/security-tokens>
 
 ## クイックスタート
 
@@ -32,7 +32,7 @@ huggingface-cli login
 hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 ```
 
-これはマシン/環境ごとに1回だけ行う必要があります。
+これはマシン/環境ごとに 1 回だけ行う必要があります。
 
 ### 任意
 
@@ -65,7 +65,7 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 
 環境を段階的に構築する場合:
 
-1. **CUDAをロード（HPCで環境モジュールを使用する場合）**
+1. **CUDA をロード（HPC で環境モジュールを使用する場合）**
 
     `module avail cuda` で利用可能なバージョンを確認し、ターゲットの
     PyTorch wheel に合うバージョン（例: `cu126` は CUDA 12.6、`cu129`
@@ -75,7 +75,7 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
     module load cuda/<your-version>
     ```
 
-2. **conda環境を作成してアクティブ化**
+2. **conda 環境を作成してアクティブ化**
 
     ```bash
     conda create -n pdb2reaction python=3.11 -y
@@ -89,9 +89,9 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
     conda install -c conda-forge cyipopt -y
     ```
 
-4. **適切なCUDAビルドのPyTorchをインストール**
+4. **適切な CUDA ビルドの PyTorch をインストール**
 
-    CUDA 12.9の場合:
+    CUDA 12.9 の場合:
 
     ```bash
     pip install torch --index-url https://download.pytorch.org/whl/cu129
@@ -99,14 +99,14 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 
     PyTorch は CUDA ドライバーバージョンに合わせたビルドが必要です。互換性は [PyTorch Get Started](https://pytorch.org/get-started/locally/) で確認してください。CPU のみの実行もサポートされますが、大幅に遅くなります（10-100 倍）。
 
-5. **`pdb2reaction` 本体と可視化用Chromeをインストール**
+5. **`pdb2reaction` 本体と可視化用 Chrome をインストール**
 
     ```bash
     pip install pdb2reaction
     plotly_get_chrome -y
     ```
 
-6. **Hugging Face Hub (UMAモデル) にログイン**
+6. **Hugging Face Hub (UMA モデル) にログイン**
 
     ```bash
     hf auth login
