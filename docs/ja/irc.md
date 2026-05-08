@@ -108,10 +108,12 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 ## 出力
 ```
 out_dir/ (デフォルト:./result_irc/)
-├─ <prefix>finished_irc_trj.xyz # 完全な IRC 軌跡
-├─ <prefix>forward_irc_trj.xyz # 順方向分岐が実行された場合
-├─ <prefix>backward_irc_trj.xyz # 逆方向分岐が実行された場合
-└─ *.pdb # 参照 PDB が利用可能な場合の軌跡コンパニオン（変換有効時）
+├─ <prefix>finished_irc_trj.xyz   # 完全な IRC 軌跡
+├─ <prefix>finished_irc.pdb       # 参照 PDB が利用可能な場合の軌跡コンパニオン（変換有効時）
+├─ <prefix>forward_irc_trj.xyz    # 順方向分岐が実行された場合
+├─ <prefix>forward_irc.pdb        # 順方向分岐の PDB コンパニオン（同条件）
+├─ <prefix>backward_irc_trj.xyz   # 逆方向分岐が実行された場合
+└─ <prefix>backward_irc.pdb       # 逆方向分岐の PDB コンパニオン（同条件）
 ```
 コンソールには確定済みの `geom`/`calc`/`irc` 設定と実行時間の要約が表示されます。
 

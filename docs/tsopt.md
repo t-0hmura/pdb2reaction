@@ -2,11 +2,11 @@
 
 ## Overview
 
-> **Summary:** Optimize a transition-state *candidate* using RS‑I‑RFO (Restricted-Step Image Rational Function Optimization) (`--opt-mode hess`, default) or, as an alternative when RS‑I‑RFO struggles, Hessian-Guided Dimer (`--opt-mode grad`). `tsopt` performs a final Hessian calculation and imaginary-frequency check automatically; a validated TS (first-order saddle point) should show **exactly one** imaginary frequency. Always confirm endpoint connectivity with `irc`.
+> **Summary:** Optimize a transition-state *candidate* using RS-I-RFO (Restricted-Step Image Rational Function Optimization) (`--opt-mode hess`, default) or, as an alternative when RS-I-RFO struggles, Hessian-Guided Dimer (`--opt-mode grad`). `tsopt` performs a final Hessian calculation and imaginary-frequency check automatically; a validated TS (first-order saddle point) should show **exactly one** imaginary frequency. Always confirm endpoint connectivity with `irc`.
 
 ### At a glance
 - **Use when:** Refining a TS guess (HEI from `path-opt`/`path-search`, or a user-supplied structure) into an optimized first-order saddle point with a built-in imaginary-frequency check.
-- **Method:** `--opt-mode hess` (`rsirfo`) = RS‑I‑RFO with full Hessian (default, more reliable for most systems); `--opt-mode grad` (`dimer`) = Hessian-Guided Dimer (alternative when RS‑I‑RFO fails to converge or full-Hessian recomputation is prohibitive). `--flatten` (default disabled) controls surplus-imaginary-mode cleanup.
+- **Method:** `--opt-mode hess` (`rsirfo`) = RS-I-RFO with full Hessian (default, more reliable for most systems); `--opt-mode grad` (`dimer`) = Hessian-Guided Dimer (alternative when RS-I-RFO fails to converge or full-Hessian recomputation is prohibitive). `--flatten` (default disabled) controls surplus-imaginary-mode cleanup.
 - **Outputs:** `final_geometry.{xyz,pdb,gjf}`, `vib/imag_*_trj.xyz` (and `.pdb` for PDB inputs); optimization trajectories with `--dump`.
 - **Defaults:** `--opt-mode hess` (RS-I-RFO), `--thresh baker`, `--hessian-calc-mode FiniteDifference`, `--max-cycles 10000`, `--flatten` disabled, backend `uma`.
 - **Next step:** The result is still a *candidate* until [irc](irc.md) confirms endpoint connectivity. A separate [freq](freq.md) run is only needed for full vibrational analysis or thermochemistry.
@@ -97,7 +97,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
  - When enabled (`--flatten`), the flatten loop updates the stored active Hessian via
   Bofill (SR1/MS ↔ PSB blend; toggle via `hessian_dimer.flatten_loop_bofill`) using
   displacements Δx and gradient differences Δg. Each loop estimates imaginary modes, flattens
-  once, refreshes the dimer direction, runs a dimer+LBFGS micro-segment, and (optionally)
+  once, refreshes the dimer direction, runs a dimer+L-BFGS micro-segment, and (optionally)
   performs a Bofill update. Once only one imaginary mode remains, a final exact Hessian is
   computed for frequency analysis.
  - If `root != 0`, that root seeds only the initial dimer direction; subsequent refreshes
@@ -210,7 +210,7 @@ force criterion unreachable even though the energy has plainly flattened. Set
 
 ### Dimer mode (`--opt-mode grad`)
 
-Used with `--opt-mode grad` (Hessian Guided Dimer + LBFGS translation).
+Used with `--opt-mode grad` (Hessian Guided Dimer + L-BFGS translation).
 
 The full `hessian_dimer` block (including the inner `dimer:` and its nested `lbfgs:`) is documented in [`hessian_dimer`](yaml-reference.md#hessian_dimer). The inner `lbfgs:` inherits from the [`lbfgs`](yaml-reference.md#lbfgs) section, with this `tsopt`-specific override:
 

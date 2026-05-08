@@ -108,10 +108,12 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 ## Outputs
 ```
 out_dir/ (default:./result_irc/)
-├─ <prefix>finished_irc_trj.xyz # Complete IRC trajectory
-├─ <prefix>forward_irc_trj.xyz # Present when the forward branch runs
-├─ <prefix>backward_irc_trj.xyz # Present when the backward branch runs
-└─ *.pdb # Trajectory companions when a reference PDB is available (conversion enabled)
+├─ <prefix>finished_irc_trj.xyz   # Complete IRC trajectory
+├─ <prefix>finished_irc.pdb       # PDB companion (when ref PDB available + conversion enabled)
+├─ <prefix>forward_irc_trj.xyz    # Present when the forward branch runs
+├─ <prefix>forward_irc.pdb        # Forward-branch PDB companion (same gating)
+├─ <prefix>backward_irc_trj.xyz   # Present when the backward branch runs
+└─ <prefix>backward_irc.pdb       # Backward-branch PDB companion (same gating)
 ```
 - Console summaries of resolved `geom`, `calc`, and `irc` configurations plus wall-clock timing.
 

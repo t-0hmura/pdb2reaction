@@ -56,12 +56,12 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite
 ## Integration with `all` workflow
 
 When running `pdb2reaction all`, `add-elem-info` is **automatically invoked as a
-preflight step** on every PDB input before any other processing (followed by
-`fix-altloc`, then active site model extraction). This ensures element symbols
-are populated before bond detection or charge assignment runs. You therefore do
-**not** need to run `add-elem-info` manually before `pdb2reaction all`; it is
-only required when you use individual subcommands such as `extract` or `opt`
-directly on a PDB that lacks element columns.
+preflight step only when a PDB input is missing element symbols** (followed by
+`fix-altloc`, then active site model extraction). Inputs that already carry
+element symbols pass through unchanged. You therefore do **not** need to run
+`add-elem-info` manually before `pdb2reaction all`; it is only required when
+you use individual subcommands such as `extract` or `opt` directly on a PDB
+that lacks element columns.
 
 ## Notes
 - Only columns 77–78 are modified; coordinates, occupancies, B-factors, charges, altlocs,

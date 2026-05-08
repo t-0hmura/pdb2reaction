@@ -12,8 +12,13 @@ Each row deep-links into the relevant [Troubleshooting](troubleshooting.md) sect
 | Missing element columns / extraction aborts | `add-elem-info` on the original PDB | {ref}`Input / extraction problems <input-extraction-problems>` |
 | `-q/--charge is required` errors | Set `-q/--charge` or `--ligand-charge/-l` explicitly | {ref}`Charge / spin problems <charge-spin-problems>` |
 | Energies/states look wrong after a run | Re-check charge/multiplicity policy in CLI conventions | {ref}`Input / extraction problems <input-extraction-problems>` |
-| DMF mode import errors (`cyipopt`) | Run `conda install -c conda-forge cyipopt` | {ref}`Installation / environment problems <installation-environment-problems>` |
-| TSOPT does not converge | For LBFGS/Dimer: reduce `max_step`. For RFO/RS-I-RFO: reduce `trust_radius`/`trust_min`/`trust_max`. Increase cycles, validate TS quality first | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
+| DMF mode import errors (`cyipopt`, `pydmf`) | Run `conda install -c conda-forge cyipopt`; install `pydmf` separately if needed | {ref}`Installation / environment problems <installation-environment-problems>` |
+| UMA model 401/403 / gated-repo error | Run `hf auth login` and accept the UMA model license | {ref}`Installation / environment problems <installation-environment-problems>` |
+| `e3nn` / `fairchem-core` import conflict (MACE in UMA env) | Use a separate conda env for MACE; do not mix `mace-torch` with `fairchem-core` | {ref}`Installation / environment problems <installation-environment-problems>` |
+| Workers > 1 raises `RuntimeError: Analytical Hessian is not available` | Set `--hessian-calc-mode FiniteDifference` (default) or drop to `--workers 1` | {ref}`Installation / environment problems <installation-environment-problems>` |
+| CUDA out-of-memory at runtime | Reduce `--radius`, switch to `--opt-mode grad`, keep default FD Hessian, or move to a larger GPU | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
+| TS converged but extra small imaginary modes remain | Add `--flatten` (available on `tsopt`, `opt`, and `pdb2reaction all`) | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
+| TSOPT does not converge | For L-BFGS/Dimer: reduce `max_step`. For RFO/RS-I-RFO: reduce `trust_radius`/`trust_min`/`trust_max`. Increase cycles, validate TS quality first | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
 | IRC does not terminate | Reduce `--step-size`, increase `--max-cycles`, confirm a single imaginary mode | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
 | Opt/TSOPT hits `max_cycles` with `max(force)` barely above threshold | Usually handled automatically by the `opt.energy_plateau` fallback. Manual workaround: use `--thresh gau` or `--thresh gau_loose` | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
 | MEP search (GSM/DMF) fails | Increase `--max-nodes` above default 20, enable `--preopt` (note: `--preopt` defaults to **True under `all`** but **False under standalone** `path-search`/`path-opt`/`scan*`), try the alternative `--mep-mode` | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
@@ -56,6 +61,22 @@ First checks:
 
 Typical fix path:
 - Repair environment first, verify with `pdb2reaction --version` and `python -c "import torch; print(torch.cuda.is_available())"`, then rerun with `--dry-run` before full execution.
+
+(recipe-cpcmx-build)=
+## Recipe 5: Building xTB with CPCM-X support
+
+`conda install -c conda-forge xtb` ships with ALPB (default `--solvent-model alpb`) but does **not** include CPCM-X. To use `--solvent-model cpcmx` you have to build xTB from source with the CPCM-X feature enabled.
+
+Build (requires GCC ≥ 10):
+
+```bash
+git clone --depth 1 https://github.com/grimme-lab/xtb.git
+cd xtb
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DWITH_CPCMX=ON
+make -C build -j8
+```
+
+Set `CPXHOME` to `<xtb-checkout>/build/_deps/cpcmx-src/` at runtime, and either prepend `<xtb-checkout>/build` to `$PATH` or set `calc.xtb_cmd` (YAML) / `--xtb-cmd` (where exposed) to the custom binary.
 
 ## Recipe 4: Convergence and post-processing failures
 

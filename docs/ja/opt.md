@@ -11,7 +11,7 @@
 - **デフォルト値:** バックエンド `uma`、`--opt-mode grad`、`--thresh gau`、`--max-cycles 10000`、`--bias-k 300`、`--freeze-links True`、`--convert-files True`、`--flatten False`、`--dump False`、`--out-dir ./result_opt/`。
 - **次にやること:** 極小であることを [`freq`](freq.md) で確認するか、鞍点には [`tsopt`](tsopt.md)、反応経路全体には [`path-search`](path-search.md) / [`all`](all.md) へ進んでください。
 
-このコマンドは pysisyphus の LBFGS（`lbfgs`）または RFOptimizer（`rfo`）を用い、MLIP（デフォルト: UMA、`-b/--backend` で ORB ・ MACE ・ AIMNet2 も選択可能）のエネルギー・勾配・ヘシアンで単一構造を局所極小点へ最適化します。入力構造は `.pdb`、`.xyz`、`_trj.xyz`、その他 `geom_loader` がサポートする任意の形式に対応しています。設定の優先順位は **デフォルト < config < 明示 CLI** です。
+このコマンドは pysisyphus の L-BFGS（`lbfgs`）または RFOptimizer（`rfo`）を用い、MLIP（デフォルト: UMA、`-b/--backend` で ORB ・ MACE ・ AIMNet2 も選択可能）のエネルギー・勾配・ヘシアンで単一構造を局所極小点へ最適化します。入力構造は `.pdb`、`.xyz`、`_trj.xyz`、その他 `geom_loader` がサポートする任意の形式に対応しています。設定の優先順位は **デフォルト < config < 明示 CLI** です。
 
 開始構造が PDB または Gaussian テンプレートの場合、最適化構造を `.pdb`（PDB 入力）や `.gjf`（Gaussian テンプレート）として自動的に書き出します（`--convert-files/--no-convert-files` で制御、デフォルトで有効）。
 PDB 固有の便利機能:
@@ -63,7 +63,7 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hess \
  --out-dir ./result_opt_hess
 ```
 
-4. LBFGS モードで実行し、最適化後に虚振動数モードをフラット化する。
+4. L-BFGS モードで実行し、最適化後に虚振動数モードをフラット化する。
 
 ```bash
 pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode grad --flatten \
@@ -146,7 +146,7 @@ out_dir/
 - `charge`/`spin` は CLI オプションに対応（`.gjf` がある場合はテンプレート値がデフォルト）
 
 ### `opt`
-LBFGS と RFO の両方で使用される共有オプティマイザー制御:
+L-BFGS と RFO の両方で使用される共有オプティマイザー制御:
 - `thresh` プリセット（Gaussian 系または Baker 系）。プリセットは `pdb2reaction/opt.py` に記載されている力/ステップ閾値に変換されます。
 - `max_cycles`、`print_every`（`100`）、`min_step_norm`（`1e-8`）、`assert_min_step`、収束切り替え（`rms_force` など）、RMSD ベースの `converge_to_geom_rms_thresh`、`overachieve_factor`、`check_eigval_structure`、`line_search`。
 - 平坦なエネルギー地形によるフォールバック収束（`energy_plateau`、`energy_plateau_thresh`、`energy_plateau_window`）— 直近ステップのエネルギーレンジが平坦化した場合に収束を宣言します（MLIP の力のノイズで力ベース収束に到達できない場合に有効。下の注記を参照）。

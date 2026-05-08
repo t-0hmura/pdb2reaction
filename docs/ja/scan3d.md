@@ -22,7 +22,7 @@ pdb2reaction scan3d -i input.pdb -q 0 -s scan3d.yaml -o ./result_scan3d/
 
 ## 出力の見方
 - `result_scan3d/surface.csv`
-- `result_scan3d/grid/point_i000_j000_k000.xyz`
+- `result_scan3d/grid/point_iDDD_jDDD_kDDD.xyz`（`DDD = round(d × 100)`、例: d₁=1.30, d₂=3.10, d₃=2.00 Å → `point_i130_j310_k200.xyz`）
 - `result_scan3d/scan3d_density.html`
 
 > **Note:** `-s/--scan-lists` の解釈結果を確認したい場合は `--print-parsed` を追加してください。
@@ -75,7 +75,7 @@ YAML/JSON ファイル書式、インライン Python リテラル構文、原�
 3. 外側ループで `d1[i]` を走査し、**d₁ 拘束のみ**を適用して緩和します。近い d₁ 値の既存構造から開始します。
 4. 中間ループで `d2[j]` を走査し、**d₁ + d₂ 拘束**を適用して緩和します。近い (d₁, d₂) の構造から開始します。
 5. 内側ループで `d3[k]` を走査し、**3 つの拘束すべて**を適用して緩和します。バイアスを除去したエネルギーを測定し、構造と収束フラグを書き出します。
-6. 完了後に `surface.csv` を組み立て、`--baseline {min|first}` で kcal/mol の基準を設定し、`--zmin/--zmax` に従った 3D RBF 補間等値面図 `scan3d_density.html` を生成します。`--csv` が指定された場合、この可視化ステップのみを実行します。
+6. 完了後に `surface.csv`（カラム: `i,j,k,d1_A,d2_A,d3_A,energy_hartree,bias_converged,energy_kcal,d1_label,d2_label,d3_label`）を組み立て、`--baseline {min|first}` で kcal/mol の基準を設定し、`--zmin/--zmax` に従った 3D RBF 補間等値面図 `scan3d_density.html` を生成します。`--csv` が指定された場合、この可視化ステップのみを実行します。
 
 ## CLI オプション
 | オプション | 説明 | デフォルト |

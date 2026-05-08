@@ -1,7 +1,9 @@
 # MLIP Calculator
 
 ## Overview
-`pdb2reaction` supports multiple machine-learning interatomic potentials (MLIPs) as calculator backends for PySisyphus. The default backend is **UMA** (Meta's Universal Models for Atoms), but **ORB**, **MACE**, and **AIMNet2** are also available. Each backend returns energies, forces, and Hessian matrices in hartree-based atomic units while handling device placement and unit conversions internally. The calculator is used throughout `pdb2reaction` for optimization, path searches, thermochemistry, and trajectory post-processing.
+`pdb2reaction` supports multiple machine-learning interatomic potentials (MLIPs) as calculator backends for pysisyphus. The default backend is **UMA** (Meta's Universal Models for Atoms), but **ORB**, **MACE**, and **AIMNet2** are also available. Each backend returns energies, forces, and Hessian matrices in hartree-based atomic units while handling GPU/CPU dispatch and bohr↔Å conversion internally. For cluster-sized systems (hundreds of atoms), the 3N × 3N Hessian tensors processed by augmented-Hessian eigensolves (RFO / RS-I-RFO) and IRC propagation would otherwise dominate wall-clock through repeated host–device synchronization, so all three quantities are kept on-device. The calculator is used throughout `pdb2reaction` for optimization, path searches, thermochemistry, and trajectory post-processing.
+
+`pdb2reaction` ships a GPU-accelerated `pysisyphus` fork: the RFO / RS-I-RFO single-structure optimizers, the EulerPC IRC integrator, and the vibrational-mode (Hessian) diagonalization run on CUDA when `device="cuda"` (or `"auto"` on a GPU host). On CPU hosts the same routines fall back transparently to the upstream NumPy/SciPy paths.
 
 ## Quick start
 ```python
@@ -105,11 +107,11 @@ The correction uses a delta approach: ΔE = E_xTB(solvent) - E_xTB(vacuum), adde
 
 ## Key features
 
-- **MLIP backends** – the default UMA backend loads pretrained UMA checkpoints via FAIR-Chem's `pretrained_mlip` helpers and forwards charge/spin metadata in the AtomicData batch. Alternative backends (ORB, MACE, AIMNet2) are available via `-b/--backend`.
+- **MLIP backends** – the default UMA backend loads pretrained UMA checkpoints via `fairchem-core`'s `pretrained_mlip` helpers and forwards charge/spin metadata in the AtomicData batch. Alternative backends (ORB, MACE, AIMNet2) are available via `-b/--backend`.
 - **Device handling** – `device="auto"` selects CUDA when available, otherwise CPU. Graph construction happens on the chosen device; when `workers>1`, the parallel predictor manages device transfers.
 - **Freeze atoms** – provide 1-based indices via `freeze_atoms`; frozen atoms receive zeroed forces. The Hessian matrix either drops frozen degrees of freedom (`return_partial_hessian=True`) or zeroes the corresponding rows and columns in the full matrix.
 - **Precision control** – energies and forces are always returned as float64. Set `hessian_double=False` to obtain the Hessian matrix in the model's native dtype (typically float32).
-- **Multi-worker inference** – `workers>1` spawns FAIR-Chem's `ParallelMLIPPredictUnit` with `workers_per_node` workers per node, useful for batch throughput.
+- **Multi-worker inference** – `workers>1` spawns `fairchem-core`'s `ParallelMLIPPredictUnit` with `workers_per_node` workers per node, useful for batch throughput.
 
 (workers-fd-downgrade)=
 ### `workers > 1` silent FD downgrade (UMA backend)

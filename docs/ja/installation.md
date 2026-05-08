@@ -27,9 +27,10 @@ plotly_get_chrome -y
 最後に、UMA モデルをダウンロードできるように **Hugging Face Hub** にログインします（無料の HF アカウントと読み取り専用トークンが必要。<https://huggingface.co/facebook/UMA> でモデルライセンスの承認が必要な場合あり）:
 
 ```bash
-huggingface-cli login
-# または
+hf auth login
+# またはスクリプト内でトークン指定する場合:
 hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
+# legacy alias（互換のため動作）: huggingface-cli login
 ```
 
 これはマシン/環境ごとに 1 回だけ行う必要があります。
@@ -56,7 +57,20 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 > **ヒント:** UMA がデフォルトの MLIP バックエンドです。ORB や AIMNet2 を使用するには、対応する extra をインストール（例: `pip install "pdb2reaction[orb]"`）し、コマンドに `-b/--backend orb` を渡してください。下の手順 7 を参照。
 
 ```{warning}
-**MACE:** MACE は `e3nn==0.4.4` を必要としますが、`fairchem-core`（UMA）と競合します。正準の MACE 導入手順は `pip uninstall -y fairchem-core && pip install mace-torch` です。UMA と MACE は同一環境で共存できないため、両方必要な場合は別々の conda 環境を使ってください。（古いメモにある `--no-deps mace-torch` 方式は torch-scatter / e3nn が pin されないため推奨しません。）
+**MACE:** MACE は `e3nn==0.4.4` を必要としますが、`fairchem-core`（UMA）と競合します。UMA と MACE は同一環境で共存できません。
+
+**推奨（clean な専用 env）:**
+
+```bash
+conda create -n <mace-env> python=3.11 -y
+conda activate <mace-env>
+pip install torch --index-url https://download.pytorch.org/whl/cu129
+pip install pdb2reaction mace-torch
+```
+
+この env には `fairchem-core` を一切入れないため `e3nn` 競合は発生しません。
+
+**代替（既存 UMA env からの in-place 切替）:** `pip uninstall -y fairchem-core && pip install mace-torch`。この env では UMA backend が失われます。（古いメモにある `--no-deps mace-torch` 方式は torch-scatter / e3nn が pin されないため推奨しません。）
 ```
 
 
@@ -150,16 +164,7 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
     conda install -c conda-forge xtb
     ```
 
-    **CPCM-X 溶媒和モデルの場合**（ソースからのビルドが必要）:
-
-    ```bash
-    git clone --depth 1 https://github.com/grimme-lab/xtb.git
-    cd xtb
-    cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DWITH_CPCMX=ON
-    make -C build -j8
-    ```
-
-    GCC >= 10 が必要です。実行時に `CPXHOME` を `build/_deps/cpcmx-src/` に設定してください。
+    **CPCM-X 溶媒和モデルの場合** conda-forge の xtb は CPCM-X を含まないため、ソースからのビルドが必要です。手順は {ref}`ja-recipe-cpcmx-build` を参照。
 
     カスタム xTB バイナリを使用するには、YAML 設定で `xtb_cmd` キーを設定するか、Python で `calc.xtb_cmd` を使用してください。
 

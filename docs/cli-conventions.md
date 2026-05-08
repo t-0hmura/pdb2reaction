@@ -1,7 +1,5 @@
 # CLI Conventions
 
-This page documents the conventions used across all `pdb2reaction` commands.
-
 ## Boolean Options
 
 Boolean options are normalized at the root CLI.
@@ -15,8 +13,7 @@ Both notations are accepted:
 --tsopt True --thermo yes --dft 0
 ```
 
-For options that are defined only as `--flag`, the root CLI also accepts `--no-flag` and `--flag False` as compatibility aliases.
-All subcommands (including `extract` and `fix-altloc`) use Click as their CLI backend.
+Both forms are accepted regardless of how each subcommand registers its boolean options in source: `bool_compat` synthesizes a `--no-<flag>` alias for every value-style (`type=click.BOOL`) flag and a value-style alias for every flag-pair, so toggle and value forms are interchangeable across subcommands. All subcommands (including `extract` and `fix-altloc`) use Click as their CLI backend.
 
 Common boolean options:
 - `--tsopt`, `--thermo`, `--dft` — enable post-processing stages
@@ -265,16 +262,17 @@ The same `--opt-mode` token selects **different optimizer algorithms** depending
 | `opt` | L-BFGS (`lbfgs`) | RFO (`rfo`) | `grad` (L-BFGS) |
 | `tsopt` | Dimer (`dimer`) | RS-I-RFO (`rsirfo`) | `hess` (RS-I-RFO) |
 | `path-opt` (endpoint preopt) | L-BFGS | RFO | `grad` |
-| `path-search` (endpoint preopt) | L-BFGS | RFO | `grad` |
-| `scan` / `scan2d` / `scan3d` (endpoint preopt) | L-BFGS | RFO | `grad` |
+| `path-search` (HEI±1 / kink-node single-structure optimizer) | L-BFGS | RFO | `grad` |
+| `scan` / `scan2d` / `scan3d` (per-grid relaxation) | L-BFGS | RFO | `grad` |
 | `all` (pre-opt stage, `--opt-mode`) | L-BFGS | RFO | `grad` |
-| `all` (post-opt — TSOPT preset, `--opt-mode-post`) | Dimer (`dimer`) | RS-I-RFO (`rsirfo`) | `hess` |
+| `all` (post-opt — TSOPT preset, `--opt-mode-post`) | Dimer | RS-I-RFO | `hess` |
 | `all` (post-opt — post-IRC endpoint optimizer, `--opt-mode-post`) | L-BFGS | RFO | `hess` |
 
 **Accepted aliases** are subcommand-specific:
 
 - `opt` accepts `grad` / `lbfgs` and `hess` / `rfo`.
 - `tsopt` accepts `grad` / `dimer` and `hess` / `rsirfo`.
+- `scan` / `scan2d` / `scan3d` / `path-opt` / `path-search` / `all` accept only `grad` / `hess` (no algorithm-name aliases). `--opt-mode-post` on `all` is likewise restricted to `grad` / `hess`.
 
 As a result, `--opt-mode grad` on `tsopt` is a **Dimer** TS search, not an L-BFGS minimization. Use the explicit algorithm alias (`--opt-mode lbfgs`, `--opt-mode rsirfo`, etc.) if you want to be unambiguous across subcommands.
 

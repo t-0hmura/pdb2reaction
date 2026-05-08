@@ -11,7 +11,7 @@
 - **Defaults:** Backend `uma`, `--opt-mode grad`, `--thresh gau`, `--max-cycles 10000`, `--bias-k 300`, `--freeze-links True`, `--convert-files True`, `--flatten False`, `--dump False`, `--out-dir ./result_opt/`.
 - **Next step:** Confirm the minimum with [`freq`](freq.md), or proceed to [`tsopt`](tsopt.md) for saddle points and [`path-search`](path-search.md) / [`all`](all.md) for full reaction pathways.
 
-The command uses pysisyphus LBFGS (`lbfgs`) or RFOptimizer (`rfo`) while an MLIP backend (UMA by default; ORB, MACE, and AIMNet2 also available via `-b/--backend`) provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `_trj.xyz`, or any format supported by `geom_loader`. Settings follow precedence: **defaults < config < explicit CLI**.
+The command uses pysisyphus L-BFGS (`lbfgs`) or RFOptimizer (`rfo`) while an MLIP backend (UMA by default; ORB, MACE, and AIMNet2 also available via `-b/--backend`) provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `_trj.xyz`, or any format supported by `geom_loader`. Settings follow precedence: **defaults < config < explicit CLI**.
 
 When the starting structure is a PDB or Gaussian template, the command also writes `.pdb` (PDB inputs) and `.gjf` (Gaussian templates) companions, controlled by `--convert-files/--no-convert-files` (enabled by default). PDB-specific conveniences include:
 - With `--freeze-links` (default `True`), parent atoms of link hydrogens are detected and merged into `geom.freeze_atoms` (1-based indices).
@@ -63,7 +63,7 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hess \
  --out-dir ./result_opt_hess
 ```
 
-4. Run LBFGS mode and flatten imaginary modes after optimization.
+4. Run L-BFGS mode and flatten imaginary modes after optimization.
 
 ```bash
 pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode grad --flatten \
@@ -144,7 +144,7 @@ See {ref}`CLI Conventions: Configuration precedence <configuration-precedence>` 
 - `charge`/`spin` mirror the CLI options; defaults come from `.gjf` when present.
 
 ### `opt`
-Shared optimizer controls used by both LBFGS and RFO:
+Shared optimizer controls used by both L-BFGS and RFO:
 - `thresh` presets (Gaussian-like or Baker rule). Presets translate to the force/step thresholds documented in `pdb2reaction/opt.py`.
 - `max_cycles`, `print_every` (`100`), `min_step_norm` (`1e-8`), `assert_min_step`, convergence toggles (`rms_force`, etc.), RMSD-based `converge_to_geom_rms_thresh`, `overachieve_factor`, `check_eigval_structure`, `line_search`.
 - Energy plateau fallback (`energy_plateau`, `energy_plateau_thresh`, `energy_plateau_window`) — declares convergence when the recent energy range flattens (useful when MLIP force noise prevents force-based convergence; see note below).

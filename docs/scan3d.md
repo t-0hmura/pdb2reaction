@@ -22,7 +22,7 @@ pdb2reaction scan3d -i input.pdb -q 0 -s scan3d.yaml -o ./result_scan3d/
 
 ## Output checklist
 - `result_scan3d/surface.csv`
-- `result_scan3d/grid/point_i000_j000_k000.xyz`
+- `result_scan3d/grid/point_iDDD_jDDD_kDDD.xyz` (where `DDD = round(d × 100)`, e.g. `point_i130_j310_k200.xyz` for d₁=1.30, d₂=3.10, d₃=2.00 Å)
 - `result_scan3d/scan3d_density.html`
 
 > **Note:** Add `--print-parsed` when you want to verify parsed pair targets from `--scan-lists/-s`.
@@ -91,10 +91,11 @@ see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
 5. Inner loop over `d3[k]`: relax with all three restraints, measure the
     unbiased energy (bias removed for evaluation), and write the constrained
     geometry and convergence flag.
-6. After the scan completes, assemble `surface.csv`, apply the kcal/mol
-    baseline shift (`--baseline {min|first}`), and generate a 3D RBF-interpolated
-    isosurface plot (`scan3d_density.html`) honoring `--zmin/--zmax`. When
-    `--csv` is provided, only this plotting step runs.
+6. After the scan completes, assemble `surface.csv` (columns:
+    `i,j,k,d1_A,d2_A,d3_A,energy_hartree,bias_converged,energy_kcal,d1_label,d2_label,d3_label`),
+    apply the kcal/mol baseline shift (`--baseline {min|first}`), and generate a
+    3D RBF-interpolated isosurface plot (`scan3d_density.html`) honoring
+    `--zmin/--zmax`. When `--csv` is provided, only this plotting step runs.
 
 ## CLI options
 | Option | Description | Default |

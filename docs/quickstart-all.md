@@ -10,7 +10,7 @@ Run the end-to-end workflow once from two full PDB structures.
 - Two PDB files (reactant R and product P) with **hydrogen atoms** already added
 - The same atoms in the same order across all input PDB files
 
-> **About the example filenames:** `1.R.pdb` and `3.P.pdb` mirror the numbered reactant/product files shipped in the GPP C6-methyltransferase BezA example directory ([`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) — `1.R.pdb` = reactant state, `3.P.pdb` = product state, with intermediate `2.*.pdb` files available for multi-step runs). Replace them with the two (or more) full-system PDBs for your own reaction.
+> **About the example filenames:** `1.R.pdb` and `3.P.pdb` mirror the numbered reactant/product files shipped in the geranyl pyrophosphate (GPP) C6-methyltransferase BezA example directory ([`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) — `1.R.pdb` = reactant state, `3.P.pdb` = product state, with intermediate `2.*.pdb` files available for runs that include additional reactant/product/intermediate structures). Replace them with the two (or more) full-system PDBs for your own reaction.
 
 ## Minimal command
 
@@ -59,8 +59,10 @@ result_all/
 **Sample terminal output (successful run):**
 
 ```
-[all] Elapsed for Whole Pipeline: 00:05:06.123
+[all] Elapsed for Whole Pipeline: HH:MM:SS.sss
 ```
+
+(Wall-clock varies with system size, GPU, and selected stages.)
 
 If `--tsopt` is enabled, you should also see:
 

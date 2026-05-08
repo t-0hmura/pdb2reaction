@@ -1,7 +1,9 @@
 # MLIP 計算機
 
 ## 概要
-`pdb2reaction` は複数の機械学習原子間ポテンシャル（MLIP）を PySisyphus 向けの計算機バックエンドとしてサポートします。デフォルトバックエンドは **UMA**（Meta の Universal Models for Atoms）ですが、**ORB**、**MACE**、**AIMNet2** も利用可能です。各バックエンドはエネルギー/力/ヘシアンを Hartree 単位で返し、デバイス配置と単位変換を内部で処理します。これらの計算機は `pdb2reaction` の最適化・経路探索・熱化学・軌跡後処理など広範に使用されます。
+`pdb2reaction` は複数の機械学習原子間ポテンシャル（MLIP）を pysisyphus 向けの計算機バックエンドとしてサポートします。デフォルトバックエンドは **UMA**（Meta の Universal Models for Atoms）ですが、**ORB**、**MACE**、**AIMNet2** も利用可能です。各バックエンドはエネルギー / 力 / ヘシアンを Hartree 単位で返し、GPU/CPU ディスパッチと bohr↔Å 変換を内部処理します。クラスターサイズ（数百原子）の系では、augmented-Hessian 固有値解（RFO / RS-I-RFO）と IRC 伝播が扱う 3N × 3N の Hessian テンソルがホスト–デバイス同期の繰り返しで wall-clock を支配しがちなため、エネルギー / 力 / ヘシアンの三量はすべて on-device で保持されます。これらの計算機は `pdb2reaction` の最適化・経路探索・熱化学・軌跡後処理など広範に使用されます。
+
+`pdb2reaction` は GPU 加速版の `pysisyphus` fork を同梱しています。RFO / RS-I-RFO 単一構造 optimizer、EulerPC IRC integrator、振動モード（Hessian）対角化が `device="cuda"`（または GPU ホストでの `"auto"`）の場合に CUDA で実行されます。CPU ホストでは upstream の NumPy/SciPy パスへ透過的にフォールバックします。
 
 ## クイックスタート
 ```python
@@ -105,11 +107,11 @@ pdb2reaction opt -i input.pdb -q 0 -b orb --solvent water --solvent-model cpcmx
 
 ## 主な特徴
 
-- **MLIP バックエンド** – デフォルトの UMA バックエンドは FAIR-Chem の `pretrained_mlip` ヘルパーで UMA チェックポイントを読み込み、AtomicData バッチに電荷/スピン情報を付与。代替バックエンド（ORB、MACE、AIMNet2）は `-b/--backend` で利用可能。
+- **MLIP バックエンド** – デフォルトの UMA バックエンドは `fairchem-core` の `pretrained_mlip` ヘルパーで UMA チェックポイントを読み込み、AtomicData バッチに電荷/スピン情報を付与。代替バックエンド（ORB、MACE、AIMNet2）は `-b/--backend` で利用可能。
 - **デバイス処理** – `device="auto"` は CUDA があれば GPU、なければ CPU を選択。グラフ構築は選択デバイス上で行い、`workers>1` では並列予測器が転送を管理。
 - **凍結原子** – `freeze_atoms` に 1 始まりの原子インデックスを渡すと、凍結原子の力がゼロ化。`return_partial_hessian=True` で凍結自由度を除いたヘシアンを返すか、フル行列で該当行/列をゼロ化できます。
 - **精度制御** – エネルギー/力は常に float64。`hessian_double=False` でヘシアンをモデルのネイティブ dtype（通常 float32）で返します。
-- **マルチワーカー推論** – `workers>1` で FAIR-Chem の `ParallelMLIPPredictUnit` を起動し、`workers_per_node` をノードごとに指定可能。バッチ処理速度の向上に有効です。
+- **マルチワーカー推論** – `workers>1` で `fairchem-core` の `ParallelMLIPPredictUnit` を起動し、`workers_per_node` をノードごとに指定可能。バッチ処理速度の向上に有効です。
 
 (ja-workers-fd-downgrade)=
 ### `workers > 1` による暗黙的な FD ダウングレード（UMA バックエンド）

@@ -27,9 +27,10 @@ plotly_get_chrome -y
 Finally, log in to **Hugging Face Hub** so that UMA models can be downloaded (requires a free HF account with read-only token; you may need to accept the UMA model license at <https://huggingface.co/facebook/UMA>):
 
 ```bash
-huggingface-cli login
-# or 
+hf auth login
+# or, with an access token in scripts:
 hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
+# legacy alias (still works): huggingface-cli login
 ```
 
 You only need to do this once per machine / environment.
@@ -56,7 +57,20 @@ You only need to do this once per machine / environment.
 > **Tip:** UMA is the default MLIP backend. To use ORB or AIMNet2, install the corresponding extra (e.g. `pip install "pdb2reaction[orb]"`) and pass `-b/--backend orb` to any command. See step 7 below.
 
 ```{warning}
-**MACE:** MACE requires `e3nn==0.4.4`, which conflicts with `fairchem-core` (UMA). The canonical MACE recipe is `pip uninstall -y fairchem-core && pip install mace-torch`. UMA and MACE cannot coexist in the same environment — use separate conda environments if you need both. (The `--no-deps mace-torch` variant seen in some older notes is not recommended; it leaves torch-scatter / e3nn unpinned.)
+**MACE:** MACE requires `e3nn==0.4.4`, which conflicts with `fairchem-core` (UMA). UMA and MACE cannot coexist in the same environment.
+
+**Recommended (clean separate env):**
+
+```bash
+conda create -n <mace-env> python=3.11 -y
+conda activate <mace-env>
+pip install torch --index-url https://download.pytorch.org/whl/cu129
+pip install pdb2reaction mace-torch
+```
+
+`fairchem-core` is never installed in this env, so there is no `e3nn` conflict.
+
+**Alternative (in-place from an existing UMA env):** `pip uninstall -y fairchem-core && pip install mace-torch`. This loses the UMA backend in that env. (The `--no-deps mace-torch` variant seen in some older notes is not recommended; it leaves torch-scatter / e3nn unpinned.)
 ```
 
 
@@ -150,16 +164,7 @@ If you prefer to build the environment piece by piece:
     conda install -c conda-forge xtb
     ```
 
-    **For CPCM-X solvation model** (requires building from source):
-
-    ```bash
-    git clone --depth 1 https://github.com/grimme-lab/xtb.git
-    cd xtb
-    cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DWITH_CPCMX=ON
-    make -C build -j8
-    ```
-
-    Requires GCC >= 10. Set `CPXHOME` to `build/_deps/cpcmx-src/` at runtime.
+    **For CPCM-X solvation model** the conda-forge xtb does not include CPCM-X; build from source. See {ref}`recipe-cpcmx-build` for the recipe.
 
     To use a custom xTB binary, set the `xtb_cmd` key in your YAML config or use `calc.xtb_cmd` in Python.
 

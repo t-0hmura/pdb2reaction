@@ -1,7 +1,5 @@
 # 用語集
 
-このページでは、pdb2reaction ドキュメント内で使われる略語・専門用語を簡潔に説明します。
-
 ## 反応経路・最適化
 
 | 用語 | 正式名称 | 説明 |
@@ -44,9 +42,10 @@
 | **UMA** | Universal Models for Atoms | Meta が公開している事前学習 MLIP 群。pdb2reaction のデフォルト計算バックエンドです |
 | **ORB** | ORB Models | Orbital Materials の MLIP バックエンド。`-b orb` で選択 |
 | **MACE** | MACE | Equivariant message-passing MLIP。`-b mace` で選択 |
-| **AIMNet2** | AIMNet2 | Atoms-In-Molecules Network v2。`-b aimnet2` で選択 |
+| **AIMNet2** | Atoms-in-Molecules Neural Network 2 | 電荷対応ニューラルネットワークポテンシャル（Anstine et al. 2024）。`-b aimnet2` で選択 |
 | **xTB** | Extended Tight Binding | 半経験的量子化学手法。pdb2reaction では `--solvent` による暗黙溶媒補正に使用 |
 | **fairchem** | — | Meta がオープンソースで公開している基盤モデルツールキット。UMA 系のチェックポイントを提供します。pdb2reaction は UMA 予測器のロードに `fairchem-core` へ依存します |
+| **ASE** | Atomic Simulation Environment | pdb2reaction の MLIP バックエンド全てが利用する Calculator API を提供する Python フレームワーク（Larsen et al., *J. Phys. Condens. Matter* 2017）。 |
 | **task_name** | — | UMA の推論バッチに記録されるタスクタグ（YAML: `calc.task_name`、デフォルト `omol`）。チェックポイントが学習したタスク/プリセットを選択します |
 | **解析ヘシアン** | Analytical Hessian | エネルギーの正確な二階微分を計算。高速だが VRAM を多く消費。`--hessian-calc-mode Analytical` で選択 |
 | **有限差分** | Finite Difference | 微小変位による微分近似。低速だがメモリ効率が良い。`--hessian-calc-mode FiniteDifference`（デフォルト）で選択 |
@@ -64,6 +63,8 @@
 | **ALPB** | Analytical Linearized Poisson-Boltzmann | xTB で利用可能な暗黙溶媒モデル（`--solvent-model alpb`、デフォルト） |
 | **CPCM-X** | 拡張型 Conductor-like Polarizable Continuum Model | xTB で利用可能な暗黙溶媒モデル（`--solvent-model cpcmx`）。"X" は非水溶媒への拡張を意味します。 |
 | **cyipopt** | — | IPOPT 内点法ソルバの Python バインディング。DMF（`--mep-mode dmf`）経路精密化パイプラインが依存します |
+| **IPOPT** | Interior Point OPTimizer | 非線形制約付き最適化のオープンソース solver（Wächter & Biegler 2006）。DMF 経路精密化で `cyipopt` 経由で使用されます。 |
+| **SCF** | Self-Consistent Field | DFT/HF で電子波動関数を反復収束させる手続き。`pdb2reaction dft` では `--max-cycle` / `--conv-tol` で制御されます。 |
 
 ## 構造生物学・活性部位モデル抽出
 
@@ -92,6 +93,9 @@
 | 用語 | 説明 |
 |------|------|
 | **Hartree** | 原子単位系のエネルギー。1 Hartree ≈ 627.5 kcal/mol ≈ 27.21 eV |
+| **RMSD** | Root-Mean-Square Deviation。`path-search` のセグメント stitch/bridge 類似性指標（`stitch_rmsd_thresh`, `bridge_rmsd_thresh`）として使用されます。 |
+| **MAE** | Mean Absolute Error。ベンチマークや回帰のレポートで使用されます。 |
+| **CI** | Confidence Interval（統計）。量子化学の "configuration interaction" とは別で、pdb2reaction ではベンチマーク統計の文脈でのみ使用します。 |
 | **kcal/mol** | 反応エネルギー表現でよく使われる単位 |
 | **kJ/mol** | キロジュール/モル。1 kcal/mol ≈ 4.184 kJ/mol |
 | **eV** | 電子ボルト。1 eV ≈ 23.06 kcal/mol |

@@ -326,6 +326,8 @@ bond:
 - [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
 
 - [all](all.md) — 単一構造入力に `--scan-lists` を使用した一気通貫ワークフロー
+- [scan2d](scan2d.md) — 同じ MLIP backend と YAML 設定で 2 距離（d₁, d₂）グリッドスキャン
+- [scan3d](scan3d.md) — 3 距離（d₁, d₂, d₃）グリッドスキャン + 等値面出力
 - [path-search](path-search.md) — スキャン端点を中間体として MEP を探索
 - [extract](extract.md) — スキャン前に活性部位モデル（バインディングポケット） PDB を生成
 - [YAML リファレンス](yaml-reference.md) — `bias` と `bond` の完全な設定オプション

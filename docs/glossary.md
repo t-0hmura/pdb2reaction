@@ -1,7 +1,5 @@
 # Glossary
 
-This page provides definitions for abbreviations and technical terms used throughout the pdb2reaction documentation.
-
 ## Reaction Path & Optimization
 
 | Term | Full Name | Description |
@@ -44,9 +42,10 @@ This page provides definitions for abbreviations and technical terms used throug
 | **UMA** | Universal Models for Atoms | Meta's family of pretrained MLIPs used as the default calculator backend in pdb2reaction. |
 | **ORB** | ORB Models | Orbital Materials' MLIP backend. Selected with `-b orb`. |
 | **MACE** | MACE | Equivariant message-passing MLIP. Selected with `-b mace`. |
-| **AIMNet2** | AIMNet2 | Atoms-In-Molecules Network v2. Selected with `-b aimnet2`. |
+| **AIMNet2** | Atoms-in-Molecules Neural Network 2 | Charge-aware neural-network potential (Anstine et al. 2024); selected with `-b aimnet2`. |
 | **xTB** | Extended Tight Binding | A semi-empirical quantum chemistry method. In pdb2reaction, used for implicit solvation correction via `--solvent`. |
 | **fairchem** | — | Meta's open-source foundation-model toolkit that ships the UMA family of checkpoints. pdb2reaction depends on `fairchem-core` to load UMA predictors. |
+| **ASE** | Atomic Simulation Environment | Python framework providing the Calculator API used by all MLIP backends in pdb2reaction (Larsen et al., *J. Phys. Condens. Matter* 2017). |
 | **task_name** | — | UMA task tag recorded in each inference batch (YAML: `calc.task_name`, default `omol`). Selects the UMA task/preset that a checkpoint was trained for. |
 | **Analytical Hessian** | — | Exact evaluation of the Hessian matrix via automatic differentiation; faster than finite differences but requires more VRAM. Selected with `--hessian-calc-mode Analytical`. |
 | **Finite Difference** | — | Approximating the Hessian by finite nuclear displacements; slower but more memory-efficient. Selected with `--hessian-calc-mode FiniteDifference` (default). |
@@ -64,6 +63,8 @@ This page provides definitions for abbreviations and technical terms used throug
 | **ALPB** | Analytical Linearized Poisson-Boltzmann | An implicit-solvent model available via xTB (`--solvent-model alpb`, default). |
 | **CPCM-X** | Extended Conductor-like Polarizable Continuum Model | An implicit-solvent model available via xTB (`--solvent-model cpcmx`); the "X" denotes the extension to non-aqueous solvents. |
 | **cyipopt** | — | Python bindings for the IPOPT interior-point optimizer. Required by the DMF (`--mep-mode dmf`) path refinement pipeline. |
+| **IPOPT** | Interior Point OPTimizer | Open-source nonlinear constrained optimizer (Wächter & Biegler 2006) used by the DMF path-refinement solver via `cyipopt` bindings. |
+| **SCF** | Self-Consistent Field | Iterative procedure that converges the electronic wavefunction in DFT/HF; controlled in `pdb2reaction dft` by `--max-cycle` and `--conv-tol`. |
 
 ## Structural Biology & Active Site Model Extraction
 
@@ -92,6 +93,9 @@ This page provides definitions for abbreviations and technical terms used throug
 | Term | Description |
 |------|-------------|
 | **Hartree** | Atomic unit of energy; 1 Hartree ≈ 627.5 kcal/mol ≈ 27.21 eV. |
+| **RMSD** | Root-Mean-Square Deviation; used as the segment stitch / bridge similarity metric in `path-search` (`stitch_rmsd_thresh`, `bridge_rmsd_thresh`). |
+| **MAE** | Mean Absolute Error; used in benchmark / regression reports. |
+| **CI** | Confidence Interval (statistical context). Distinct from quantum-chemistry "configuration interaction"; pdb2reaction uses CI only in benchmark statistics. |
 | **kcal/mol** | Kilocalories per mole; a common unit for reaction energetics. |
 | **kJ/mol** | Kilojoules per mole; 1 kcal/mol ≈ 4.184 kJ/mol. |
 | **eV** | Electron volt; 1 eV ≈ 23.06 kcal/mol. |

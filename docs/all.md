@@ -51,7 +51,7 @@ It supports three modes:
   - One `--scan-lists/-s` literal runs a single scan stage.
   - Multiple stages are passed as multiple arguments to a single `--scan-lists/-s` (e.g. `-s '[(…)]' '[(…)]'`).
 
-- **TSOPT-only active site model TS optimization** — Provide a single input structure, omit `--scan-lists/-s`, and set `--tsopt`. `all` extracts the active site model (if `-c/--center` is given) and runs TS optimization + IRC, with optional freq/DFT, on that single system.
+- **TSOPT-only mode** — Provide a single input structure, omit `--scan-lists/-s`, and set `--tsopt`. `all` extracts the active site model (if `-c/--center` is given) and runs TS optimization + IRC, with optional freq/DFT, on that single system.
 
 ```{tip}
 For large active site models, the single-structure scan workflow (`--scan-lists/-s`) tends to produce more reliable reaction barriers than the multi-structure MEP workflow. When multiple full PDB structures are provided, structural differences in regions unrelated to the reaction coordinate can accumulate, leading to overestimated barriers. The scan workflow avoids this by starting from a single structure and driving only the relevant coordinates, minimizing irrelevant structural noise. This effect becomes more pronounced as the model size increases.
@@ -343,6 +343,8 @@ Energy diagram files are named by method and scope:
 | `energy_diagram_G_UMA_all.png` | all segments + thermo | All segments combined (MLIP Gibbs) |
 | `energy_diagram_DFT_all.png` | all segments + DFT | All segments combined (DFT) |
 | `energy_diagram_G_DFT_plus_UMA_all.png` | all segments + DFT + thermo | All segments combined (DFT//MLIP Gibbs) |
+| `irc_plot.png` | per-segment IRC completes | Per-segment IRC profile (MLIP energy along the IRC trajectory) |
+| `irc_plot_all.png` | all segments aggregated | All-segment IRC profiles concatenated |
 
 ### Reading `summary.log`
 The log is organized into numbered sections:

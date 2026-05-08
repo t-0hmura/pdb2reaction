@@ -1,7 +1,5 @@
 # CLI 規約
 
-このページでは、`pdb2reaction` の全コマンドで使用される規約を説明します。
-
 ## ブール値オプション
 
 ブール値オプションは root CLI で正規化されます。
@@ -15,8 +13,7 @@
 --tsopt True --thermo yes --dft 0
 ```
 
-`--flag` 単独で定義されているオプションでも、互換のため `--no-flag` と `--flag False` を受理します。
-`extract` と `fix-altloc` を含むすべてのサブコマンドが Click を CLI バックエンドとして使用します。
+サブコマンドのソース側登録形式（value-style `type=click.BOOL` / flag-pair）に関係なく両形式を受理します。`bool_compat` が value-style flag に `--no-<flag>` synthetic alias を、flag-pair に value-style alias を生成するため、toggle と value 表記はサブコマンド横断で互換です。`extract` と `fix-altloc` を含むすべてのサブコマンドが Click を CLI バックエンドとして使用します。
 
 よく使うブール値オプション：
 - `--tsopt`, `--thermo`, `--dft` — 後処理ステージの有効化
@@ -263,16 +260,17 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `opt` | L-BFGS (`lbfgs`) | RFO (`rfo`) | `grad` (L-BFGS) |
 | `tsopt` | Dimer (`dimer`) | RS-I-RFO (`rsirfo`) | `hess` (RS-I-RFO) |
 | `path-opt`（端点 preopt） | L-BFGS | RFO | `grad` |
-| `path-search`（端点 preopt） | L-BFGS | RFO | `grad` |
-| `scan` / `scan2d` / `scan3d`（端点 preopt） | L-BFGS | RFO | `grad` |
+| `path-search`（HEI±1 / kink ノードの単一構造 optimizer） | L-BFGS | RFO | `grad` |
+| `scan` / `scan2d` / `scan3d`（grid relaxation） | L-BFGS | RFO | `grad` |
 | `all`（pre-opt 段階、`--opt-mode`） | L-BFGS | RFO | `grad` |
-| `all`（post-opt — TSOPT プリセット、`--opt-mode-post`） | Dimer (`dimer`) | RS-I-RFO (`rsirfo`) | `hess` |
+| `all`（post-opt — TSOPT プリセット、`--opt-mode-post`） | Dimer | RS-I-RFO | `hess` |
 | `all`（post-opt — IRC 後エンドポイント最適化、`--opt-mode-post`） | L-BFGS | RFO | `hess` |
 
 **受け付けるエイリアス**もサブコマンド固有です:
 
 - `opt` は `grad` / `lbfgs` と `hess` / `rfo` を受け付けます。
 - `tsopt` は `grad` / `dimer` と `hess` / `rsirfo` を受け付けます。
+- `scan` / `scan2d` / `scan3d` / `path-opt` / `path-search` / `all` は `grad` / `hess` のみ受け付けます（アルゴリズム名 alias なし）。`all` の `--opt-mode-post` も `grad` / `hess` のみです。
 
 したがって `tsopt` に対する `--opt-mode grad` は L-BFGS 最小化ではなく **Dimer TS 探索**です。サブコマンド間で曖昧さを避けたい場合は、明示的なアルゴリズム名（`--opt-mode lbfgs`, `--opt-mode rsirfo` など）を指定してください。
 

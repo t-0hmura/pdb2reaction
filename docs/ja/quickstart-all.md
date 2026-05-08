@@ -59,8 +59,10 @@ result_all/
 **成功時のターミナル出力例:**
 
 ```
-[all] Elapsed for Whole Pipeline: 00:05:06.123
+[all] Elapsed for Whole Pipeline: HH:MM:SS.sss
 ```
+
+（実行時間は系サイズ、GPU、有効化したステージで変動します。）
 
 `--tsopt` が有効な場合:
 

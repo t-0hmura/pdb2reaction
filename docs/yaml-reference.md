@@ -35,7 +35,7 @@ This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan
 | `--thresh` | `thresh` | `opt` |
 | `--max-cycles` | `max_cycles` | `opt` |
 | `--dump` | `dump` | `opt` |
-| `--opt-mode` | `opt_mode` | `opt` (tsopt) |
+| `--opt-mode` | `opt_mode` | `opt`, `tsopt`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, `all` |
 | `--freeze-atoms` | `freeze_atoms` | `geom` |
 | _(YAML only)_ | `coord_type` | `geom` |
 | `--temperature` (freq, `all --freq-temperature`) | `temperature` | `thermo` |
@@ -81,7 +81,7 @@ Accepted values: `gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`
 
 | Section | Description | Used by |
 |---------|-------------|---------|
-| [`geom`](#geom) | Geometry and coordinate settings | all, opt, scan, scan2d, scan3d, tsopt, freq, irc, path-opt, path-search |
+| [`geom`](#geom) | Geometry and coordinate settings | all, opt, scan, scan2d, scan3d, tsopt, freq, irc, path-opt, path-search, dft |
 | [`calc`](#calc) | MLIP backend configuration | all, opt, scan, scan2d, scan3d, tsopt, freq, irc, path-opt, path-search |
 | [`opt`](#opt) | Shared optimizer settings | opt, scan, scan2d, scan3d, tsopt, path-opt, path-search |
 | [`lbfgs`](#lbfgs) | L-BFGS optimizer settings | opt, scan, scan2d, scan3d, path-search |

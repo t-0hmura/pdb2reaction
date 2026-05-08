@@ -350,6 +350,8 @@ bond:
 - [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
 
 - [all](all.md) — End-to-end workflow with `--scan-lists/-s` for single-structure inputs
+- [scan2d](scan2d.md) — Two-distance grid scan (d₁, d₂) with the same MLIP backend and YAML controls
+- [scan3d](scan3d.md) — Three-distance grid scan (d₁, d₂, d₃) with isosurface output
 - [path-search](path-search.md) — MEP search using scan endpoints as intermediates
 - [extract](extract.md) — Generate active site model (binding pocket) PDBs before scanning
 - [YAML Reference](yaml-reference.md) — Full `bias` and `bond` configuration options

@@ -35,7 +35,7 @@
 | `--thresh` | `thresh` | `opt` |
 | `--max-cycles` | `max_cycles` | `opt` |
 | `--dump` | `dump` | `opt` |
-| `--opt-mode` | `opt_mode` | `opt` (tsopt) |
+| `--opt-mode` | `opt_mode` | `opt`, `tsopt`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, `all` |
 | `--freeze-atoms` | `freeze_atoms` | `geom` |
 | _(YAML のみ)_ | `coord_type` | `geom` |
 | `--temperature`（freq、`all --freq-temperature`） | `temperature` | `thermo` |
@@ -81,7 +81,7 @@ TS 最適化はより厳しい "baker" プリセットを、通常の極小化�
 
 | セクション | 説明 | 使用されるコマンド |
 |---------|-------------|---------|
-| [`geom`](#geom) | ジオメトリと座標設定 | all, opt, scan, scan2d, scan3d, tsopt, freq, irc, path-opt, path-search |
+| [`geom`](#geom) | ジオメトリと座標設定 | all, opt, scan, scan2d, scan3d, tsopt, freq, irc, path-opt, path-search, dft |
 | [`calc`](#calc) | MLIP バックエンドの設定 | all, opt, scan, scan2d, scan3d, tsopt, freq, irc, path-opt, path-search |
 | [`opt`](#opt) | 最適化の共通設定 | opt, scan, scan2d, scan3d, tsopt, path-opt, path-search |
 | [`lbfgs`](#lbfgs) | L-BFGS の設定 | opt, scan, scan2d, scan3d, path-search |

@@ -51,6 +51,10 @@ pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
  --mep-mode dmf --max-nodes 12 --out-dir ./result_path_opt_dmf
 ```
 
+```{note}
+DMF モードは標準インストールに加えて `cyipopt` と `pydmf` の依存パッケージが必要です。`--mep-mode dmf` 実行前に conda-forge から `cyipopt` をインストールしてください。
+```
+
 3. リンク親原子を凍結し、climb を切って短時間で確認する。
 
 ```bash
@@ -100,7 +104,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [-l, -
 | `--freeze-links/--no-freeze-links` | PDB のみ: リンク H 親を凍結（YAML とマージ）。詳細は [extract](extract.md) を参照 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
 | `--max-nodes INT` | 内部ノード数。**GSM:** 総イメージ数 = `max_nodes + 2`（端点 2 つは固定）。**DMF:** チェーン上の*移動可能な*イメージ数（端点の暗黙的展開なし） | `20` |
-| `--mep-mode {gsm\|dmf}` | GSM（ストリングベース）または DMF（ダイレクトフラックス）経路生成器を選択 | `gsm` |
+| `--mep-mode {gsm\|dmf}` | GSM（ストリングベース）または DMF（Direct Max Flux）経路生成器を選択 | `gsm` |
 | `--max-cycles INT` | MEP 最適化サイクル上限（`stopt.max_cycles`、`stopt.stop_in_when_full`、`dmf.max_cycles` を同時設定） | `300` |
 | `--climb/--no-climb` | クライミングイメージ精密化を有効化（Lanczos 接線も同時切替） | `True` |
 | `--dump/--no-dump` | MEP 軌跡をダンプ（GSM/DMF）。リスタート YAML は YAML で有効化した場合のみ書き出されます | `False` |

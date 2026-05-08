@@ -6,7 +6,7 @@
 
 ### 要点
 - **想定場面:** TS 初期構造（`path-opt` / `path-search` の HEI、または自前のもの）を一次鞍点に最適化し、虚振動数チェックを内蔵で行いたい場合。
-- **手法:** `--opt-mode hess`（`rsirfo`）= RS‑I‑RFO（デフォルト、一般的により堅牢）。`--opt-mode grad`（`dimer`）= Hessian-Guided Dimer（RS-I-RFO で収束しない場合や完全 Hessian の再計算コストが過大な場合の代替）。`--flatten`（デフォルト無効）で余分な虚振動数モードの除去を制御します。
+- **手法:** `--opt-mode hess`（`rsirfo`）= RS-I-RFO（デフォルト、一般的により堅牢）。`--opt-mode grad`（`dimer`）= Hessian-Guided Dimer（RS-I-RFO で収束しない場合や完全 Hessian の再計算コストが過大な場合の代替）。`--flatten`（デフォルト無効）で余分な虚振動数モードの除去を制御します。
 - **主な出力:** `final_geometry.{xyz,pdb,gjf}`、`vib/imag_*_trj.xyz`（PDB 入力では `.pdb` も）。`--dump` を指定した場合は最適化軌跡も。
 - **デフォルト:** `--opt-mode hess`（RS-I-RFO）、`--thresh baker`、`--hessian-calc-mode FiniteDifference`、`--max-cycles 10000`、`--flatten` 無効、バックエンド `uma`。
 - **次ステップ:** `tsopt` は最終 Hessian 計算と虚振動数チェックを内部で実行しますが、結果はなお *候補* です。[irc](irc.md) で端点の接続性を確認してください。完全な振動解析や熱化学補正が必要な場合のみ、別途 [freq](freq.md) を実行します。
@@ -88,7 +88,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 - **MLIP ヘシアン（デフォルト: UMA）**: `--hessian-calc-mode` で解析的ヘシアンと有限差分ヘシアンを切り替えます。いずれも活性（PHVA）部分空間を考慮します。凍結原子が存在する場合、MLIP バックエンドは活性ブロックのみを返すことがあります。ヘシアン評価モードの詳細は {ref}`ja-hessian-evaluation` を参照してください。
 - **Dimer モード詳細**:
  - Hessian Guided Dimer 段階は、正確ヘシアン（活性サブスペース、TR 射影）を周期的に評価してダイマー方向を更新します。`root == 0` のときは最小固有対に `torch.lobpcg` を優先し、失敗時は `torch.linalg.eigh` にフォールバックします。
- - `--flatten` が有効な場合、フラット化ループはΔx とΔg を用い、Bofill（SR1/MS ↔ PSB ブレンド; `hessian_dimer.flatten_loop_bofill` で切替）で活性ヘシアンを更新します。各ループは虚振動数モード推定 → 1 回フラット化 → ダイマー方向再更新 → dimer+LBFGS マイクロ区間 → （任意で）Bofill 更新を実行します。虚振動数モードが 1 つになったら最終的な正確ヘシアンで振動解析を行います。
+ - `--flatten` が有効な場合、フラット化ループはΔx とΔg を用い、Bofill（SR1/MS ↔ PSB ブレンド; `hessian_dimer.flatten_loop_bofill` で切替）で活性ヘシアンを更新します。各ループは虚振動数モード推定 → 1 回フラット化 → ダイマー方向再更新 → dimer+L-BFGS マイクロ区間 → （任意で）Bofill 更新を実行します。虚振動数モードが 1 つになったら最終的な正確ヘシアンで振動解析を行います。
  - `root != 0` の場合は初期ダイマー方向のみその root を使用し、以降の更新は最も負のモード（`root = 0`）に従います。
 - **RS-I-RFO モード**: RS-I-RFO を実行し、任意のヘシアン参照や R+S 分割セーフガード、マイクロサイクル制御は `rsirfo` セクションで設定します。`--flatten` が有効で収束後も虚振動数モードが複数残る場合、追加モードをフラット化して RS-I-RFO を再実行し、虚振動数モードが 1 つになるか上限に達するまで繰り返します。
 - **モード出力と変換**: 検出された虚振動数モードはすべて `vib/imag_*_trj.xyz` に書き出されます。PDB 入力で変換が有効な場合は `.pdb` としても出力されます。最適化軌跡と最終構造は `--dump` 時に入力テンプレート経由で PDB に変換されます。Gaussian テンプレートでは最終構造のみ `.gjf` が生成されます。
@@ -185,7 +185,7 @@ opt:
 
 ### Dimer モード（`--opt-mode grad`）
 
-`--opt-mode grad`（Hessian Guided Dimer + LBFGS）で使用します。
+`--opt-mode grad`（Hessian Guided Dimer + L-BFGS）で使用します。
 
 `hessian_dimer` ブロック全体（内部 `dimer:` とそのネストされた `lbfgs:` を含む）は [`hessian_dimer`](yaml-reference.md#hessian_dimer) に記載されています。内部 `lbfgs:` は [`lbfgs`](yaml-reference.md#lbfgs) セクションを継承し、以下が `tsopt` 固有の上書きです:
 

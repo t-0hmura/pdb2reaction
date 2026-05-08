@@ -1,7 +1,6 @@
 # Troubleshooting
 
-This page collects common failure modes and practical fixes.
-If you want a symptom-first entrypoint, start with [Common Error Recipes](recipes-common-errors.md) and then return here for details.
+For a symptom-first entry point, start with [Common Error Recipes](recipes-common-errors.md).
 
 ## Preflight checklist
 

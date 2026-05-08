@@ -51,6 +51,10 @@ pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
  --mep-mode dmf --max-nodes 12 --out-dir ./result_path_opt_dmf
 ```
 
+```{note}
+DMF mode requires the optional `cyipopt` and `pydmf` packages on top of the base install. Install `cyipopt` from conda-forge before running with `--mep-mode dmf`.
+```
+
 3. Freeze link parents and disable climb for a quick pass.
 
 ```bash
@@ -98,7 +102,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [-l, -
 | `--freeze-links/--no-freeze-links` | PDB-only: freeze link-H parents (merged with YAML). See [extract](extract.md) for link-hydrogen details. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
 | `--max-nodes INT` | Number of internal nodes. **GSM:** total images = `max_nodes + 2` (the two endpoints are fixed). **DMF:** number of *movable* images along the chain (no implicit endpoint expansion). | `20` |
-| `--mep-mode {gsm\|dmf}` | Select GSM (string-based) or DMF (direct flux) path generator. | `gsm` |
+| `--mep-mode {gsm\|dmf}` | Select GSM (string-based) or DMF (Direct Max Flux) path generator. | `gsm` |
 | `--max-cycles INT` | MEP optimizer cycle cap (sets `stopt.max_cycles`, `stopt.stop_in_when_full`, and `dmf.max_cycles`). | `300` |
 | `--climb/--no-climb` | Enable climbing-image refinement (and Lanczos tangent). | `True` |
 | `--dump/--no-dump` | Dump MEP trajectories (GSM/DMF). Restart YAML is written only when enabled in YAML. | `False` |

@@ -53,10 +53,11 @@ There is no mode that substitutes one for another; every entry that appears in a
 
 ## Effect on the calculation
 
-- **Forces:** zeroed for every frozen DOF (the optimizer cannot move them).
-- **Hessian:** rows and columns of frozen DOFs are either removed (`calc.return_partial_hessian: true`, the default for `freq` and forced for `irc`) or zeroed in the full matrix.
+- **Forces:** zeroed for every frozen DOF in `opt` / `tsopt` / `scan` / `freq` / `irc` (hard freeze; the optimizer cannot move them).
+- **Hessian:** rows and columns of frozen DOFs are either removed (`calc.return_partial_hessian: true`, the global calculator default and forced for `freq` and `irc`) or zeroed in the full matrix.
 - **Vibrational analysis:** when frozen atoms are present, `freq` automatically performs Partial Hessian Vibrational Analysis (PHVA) on the active block.
-- **MEP / IRC:** frozen atoms keep their initial coordinates at every image / step.
+- **`path-opt` (soft restraint):** instead of zeroing forces, `path-opt` adds a `HarmonicFixAtoms` calculator (default `k_fix = 300 eV/Å²`) per image so frozen atoms relax with a harmonic restraint, not a hard constraint. Coordinates may drift slightly from the input geometry.
+- **MEP / IRC:** along the resolved path / IRC trajectory, frozen atoms keep their initial coordinates at every image / step (path-search and irc apply the hard freeze).
 
 ## Subcommand coverage
 
