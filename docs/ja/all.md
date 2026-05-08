@@ -221,7 +221,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 | `--opt-mode [grad\|hess]` | ワークフロープリセット（`grad` → LBFGS/Dimer、`hess` → RFO/RSIRFO）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨。トークンのマッピングはスコープ依存で、`all` の pre-opt デフォルト（`grad`）と `tsopt` のデフォルト（`hess`）は一致しません。詳細は {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
 | `--thresh TEXT` | 収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
 | `--preopt/--no-preopt` | MEP 前に活性部位モデル端点を事前最適化。**注意:** `all` はここで子サブコマンドのデフォルトを上書きします。単体の `path-search`、`path-opt`、`scan`、`scan2d`、`scan3d` では `--preopt` のデフォルトは `False` です | `True` |
-| `--refine-path BOOL` | `True`（デフォルト）の場合は再帰的 `path-search`、`False` の場合は `path-opt` を連結して再帰的精密化なしで実行。無効化するには `--refine-path False` を渡してください（`click.BOOL` パラメータのため `--no-refine-path` 形式は自動生成されません） | `True` |
+| `--refine-path / --no-refine-path` | 有効（デフォルト）の場合は再帰的 `path-search`、無効の場合は `path-opt` を連結して再帰的精密化なしで実行。`--refine-path True` / `--refine-path False` でも同じ。 | `True` |
 
 ### MLIP 計算機オプション
 
