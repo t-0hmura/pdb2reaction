@@ -42,7 +42,7 @@ result_tsopt/
 
 **What to check:**
 
-1. Terminal output: **`n=1`** indicates a first-order saddle point. The detection cutoff is `hessian_dimer.neg_freq_thresh_cm` (default 5 cm⁻¹); modes with smaller magnitude are treated as numerical noise. IRC then validates the saddle by tracing it back to reactant and product.
+1. Terminal output: **`n=1`** indicates a first-order saddle point. The detection cutoff is `hessian_dimer.neg_freq_thresh_cm` (default 5 cm⁻¹); modes with smaller magnitude are treated as numerical noise. To validate the saddle by tracing it back to reactant and product, run [irc](irc.md) as the next step.
 2. `vib/imag_*.pdb` — open in PyMOL and animate; the mode should correspond to the expected bond-breaking/forming
 3. If `n=0` (no imaginary mode): the optimization converged to a minimum, not a TS. Try a different initial guess
 4. If `n>1` (multiple imaginary modes): add `--flatten` to attempt flattening extra modes (pass a YAML config via `--config` and set `hessian_dimer.flatten_max_iter` to cap the iteration count — the same key is read for both Dimer and RS-I-RFO modes)

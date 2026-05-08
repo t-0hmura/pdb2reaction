@@ -209,7 +209,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 | `--freeze-links/--no-freeze-links` | 活性部位モデル PDB でリンク H の親を凍結 | `True` |
 | `--verbose/--no-verbose` | 抽出器の INFO ログを有効化 | `True` |
 
-(mep-search-options)=
+(ja-mep-search-options)=
 ### MEP 探索オプション
 
 | オプション | 説明 | デフォルト |

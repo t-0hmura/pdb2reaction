@@ -76,6 +76,8 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(1, 5, 1.35)]' --print-parsed
 ## Notes
 
 - `-s/--scan-lists` accepts inline Python literals when used with `all`. The standalone `scan` subcommand additionally accepts a YAML/JSON spec file path (see [scan](scan.md)).
+- Default scan stepping: `--scan-max-step-size 0.20 Å` (per-distance step) and `--scan-bias-k 300 eV/Å²` (harmonic bias strength). Override via the `--scan-*` flags on `pdb2reaction all` or via the YAML `bias` block; see [scan](scan.md) and [yaml-reference](yaml-reference.md#bias) for the per-stage controls.
+- Each scan stage ends with a bond-change check (`has_bond_change`) on the final relaxed geometry; the result is reported in `summary.log`/`summary.json` and gates the recursive MEP refinement.
 - Use `pdb2reaction all --help-advanced` to inspect all options including scan controls.
 - For the standalone `scan` subcommand (without MEP refinement), see [scan](scan.md).
 

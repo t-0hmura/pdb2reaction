@@ -62,7 +62,7 @@
 | **SP** | Single Point | 固定構造での計算（最適化なし）。高精度エネルギー補正によく使用 |
 | **スピン多重度** | Spin Multiplicity | 2S+1（S は全スピン量子数）。一重項（singlet）= 1、二重項（doublet）= 2、三重項（triplet）= 3 など。`-m/--multiplicity` で指定（デフォルト: 1） |
 | **ALPB** | Analytical Linearized Poisson-Boltzmann | xTB で利用可能な暗黙溶媒モデル（`--solvent-model alpb`、デフォルト） |
-| **CPCMX** | Conductor-like PCM (XC 拡張) | xTB で利用可能な暗黙溶媒モデル（`--solvent-model cpcmx`） |
+| **CPCM-X** | 拡張型 Conductor-like Polarizable Continuum Model | xTB で利用可能な暗黙溶媒モデル（`--solvent-model cpcmx`）。"X" は非水溶媒への拡張を意味します。 |
 | **cyipopt** | — | IPOPT 内点法ソルバの Python バインディング。DMF（`--mep-mode dmf`）経路精密化パイプラインが依存します |
 
 ## 構造生物学・活性部位モデル抽出

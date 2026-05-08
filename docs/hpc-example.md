@@ -22,7 +22,7 @@ source /etc/profile.d/modules.sh
 module purge
 module load gcc ompi cuda/<your-version>     # e.g. cuda/12.6 or cuda/12.9
 source ~/apps/miniconda3/etc/profile.d/conda.sh
-conda activate pdb2reaction
+conda activate <your-env>
 # -------------------
 
 
@@ -136,10 +136,25 @@ sleep 10 # Wait for workers
 ray status || true
 # --- Ray setup end ---
 
-pdb2reaction opt -i test.pdb -q -5 -m 1
+pdb2reaction opt -i test.pdb -q -5 -m 1 --workers ${NNODES} --workers-per-node ${GPUS_PER_NODE}
 ```
+
+## Walltime budgeting
+
+The 24 h template above is a default ceiling, not a target. Most jobs finish well under that; pick a budget that fits your system's wall-clock pattern:
+
+- **Cluster-model `opt` / `tsopt`** (~50–100 atoms, single GPU): minutes to a few hours.
+- **`pdb2reaction all` end-to-end** (extract → MEP → TSOPT → IRC → freq → DFT) on a small substrate: typically a few hours; high-end multi-GPU nodes can shorten the DFT stage substantially.
+- **MEP (`path-search` / `path-opt`)**: scales with `--max-nodes` × `--max-cycles`; a recursive `path-search` campaign can occupy a single GPU for many hours on multistep mechanisms.
+
+Walltime scales roughly inversely with effective parallelism (`workers × workers_per_node`) on the UMA backend. ORB / MACE / AIMNet2 do not parallelize across workers, so adding more nodes does not shorten their wall-clock.
+
+## Resuming after walltime expiry
+
+If a long job hits its walltime ceiling, restart with `--resume` instead of starting from scratch. `pdb2reaction all --resume --out-dir <same-dir>` skips stages whose output files already exist (extract, scan, MEP segments, per-segment TSOPT/IRC/freq/DFT). The same flag is available on `pdb2reaction all` only; standalone subcommands re-run from scratch (intermediate files such as `optimization_trj.xyz` are overwritten).
 
 ## See also
 
 - [MLIP Calculator](uma-pysis.md) — configuration reference and Hessian evaluation notes
 - [opt](opt.md) / [all](all.md) — subcommands that honor `workers` / `workers_per_node`
+- [all `--resume`](all.md) — checkpoint workflow for long campaigns

@@ -102,4 +102,4 @@ if changed:
 - [Troubleshooting](troubleshooting.md) -- Detailed troubleshooting guide
 - [irc](irc.md) -- IRC trajectories whose endpoints are validated by bond detection
 - [all](all.md) -- End-to-end workflow that uses bond-change validation internally
-- [trj2fig](trj2fig.md) -- Visualise energy profiles from trajectories
+- [trj2fig](trj2fig.md) -- Visualize energy profiles from trajectories

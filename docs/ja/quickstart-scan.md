@@ -76,6 +76,8 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(1, 5, 1.35)]' --print-parsed
 ## 補足
 
 - `-s/--scan-lists` は `all` ではインライン Python リテラルのみを受け取ります。単独の `scan` サブコマンドはこれに加えて YAML/JSON スペックファイルパスも受け取れます（[scan](scan.md) を参照）。
+- スキャン step デフォルト: `--scan-max-step-size 0.20 Å`（距離ごとの step 幅）と `--scan-bias-k 300 eV/Å²`（調和バイアス強度）。`pdb2reaction all` の `--scan-*` フラグまたは YAML の `bias` ブロックで上書き可能（[scan](scan.md) / [yaml-reference](yaml-reference.md#bias) 参照）。
+- 各スキャン stage は最終リラックス構造に対する bond-change check（`has_bond_change`）で終了し、結果は `summary.log`/`summary.json` に記録され、再帰的 MEP refinement の起点となります。
 - `pdb2reaction all --help-advanced` で全オプション（スキャン制御を含む）を確認できます。
 - 単独の `scan` サブコマンド（MEP 精密化なし）については [scan](scan.md) を参照してください。
 

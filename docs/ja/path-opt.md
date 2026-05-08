@@ -116,7 +116,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [-l, -
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 | `--dry-run/--no-dry-run` | 実行せずに検証と実行計画表示のみを行う | `False` |
-| `--preopt/--no-preopt` | アライメント/MEP 探索前に各エンドポイントを事前最適化（GSM/DMF）。**スコープ依存デフォルト:** 単体の `path-opt` では `False`、**`pdb2reaction all` 経由では `True` に反転**されます（{ref}`mep-search-options` を参照） | `False` |
+| `--preopt/--no-preopt` | アライメント/MEP 探索前に各エンドポイントを事前最適化（GSM/DMF）。**スコープ依存デフォルト:** 単体の `path-opt` では `False`、**`pdb2reaction all` 経由では `True` に反転**されます（{ref}`ja-mep-search-options` を参照） | `False` |
 | `--preopt-max-cycles INT` | エンドポイント事前最適化サイクルの上限 | `10000` |
 | `--fix-ends/--no-fix-ends` | GSM 成長/精密化中にエンドポイント構造を固定 | `False` |
 | `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
@@ -170,6 +170,6 @@ opt:
 - [path-search](path-search.md) — 自動精密化を伴う再帰的 MEP 探索（2+構造用）
 - [tsopt](tsopt.md) — HEI を TS 候補として最適化（内部で虚振動数チェック済み）。続けて IRC で接続性を確認
 - [extract](extract.md) — path-opt 入力用の活性部位モデル PDB を生成
-- [all](all.md) — 一気通貫ワークフロー（デフォルトで再帰的 path-search を使用; `--refine-path False` で path-opt に切替。`--refine-path` フラグは `pdb2reaction all` にのみ属します — 定義は {ref}`mep-search-options` を参照してください）
+- [all](all.md) — 一気通貫ワークフロー（デフォルトで再帰的 path-search を使用; `--refine-path False` で path-opt に切替。`--refine-path` フラグは `pdb2reaction all` にのみ属します — 定義は {ref}`ja-mep-search-options` を参照してください）
 - [YAML リファレンス](yaml-reference.md) — `gs`、`dmf`、`stopt`、`opt` の完全な設定オプション
 - [用語集](glossary.md) — MEP、GSM、DMF、HEI の定義

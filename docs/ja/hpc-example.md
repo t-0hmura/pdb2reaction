@@ -136,10 +136,25 @@ sleep 10 # Wait for workers
 ray status || true
 # --- Ray setup end ---
 
-pdb2reaction opt -i test.pdb -q -5 -m 1
+pdb2reaction opt -i test.pdb -q -5 -m 1 --workers ${NNODES} --workers-per-node ${GPUS_PER_NODE}
 ```
+
+## ウォールタイム見積り
+
+上の 24 時間テンプレートは ceiling（上限）であり目標値ではありません。実行系の wall-clock パターンに合わせて選んでください。
+
+- **クラスターモデルの `opt` / `tsopt`**（~50–100 原子、単一 GPU）: 数分〜数時間
+- **`pdb2reaction all` 一気通貫**（extract → MEP → TSOPT → IRC → freq → DFT、小型基質）: 通常数時間。ハイエンド multi-GPU ノードでは DFT 段が大きく短縮可能
+- **MEP（`path-search` / `path-opt`）**: `--max-nodes` × `--max-cycles` でスケール。多段階反応の再帰的 `path-search` キャンペーンは単一 GPU で何時間にも及び得る
+
+ウォールタイムは UMA backend の場合、有効並列度（`workers × workers_per_node`）に概ね反比例します。ORB / MACE / AIMNet2 は worker 並列を持たないので、ノードを増やしても wall-clock は短くなりません。
+
+## ウォールタイム超過後の再開
+
+長時間 job が walltime に達した場合、ゼロから再実行せず `--resume` で再開してください。`pdb2reaction all --resume --out-dir <same-dir>` は出力ファイルが既に存在するステージ（extract、scan、MEP セグメント、セグメントごとの TSOPT/IRC/freq/DFT）をスキップします。`--resume` は `pdb2reaction all` 限定で、単体サブコマンドはゼロから再実行されます（中間ファイル `optimization_trj.xyz` 等は上書き）。
 
 ## 関連項目
 
 - [MLIP 計算機](uma-pysis.md) — 設定リファレンスとヘシアン評価モード
 - [opt](opt.md) / [all](all.md) — `workers` / `workers_per_node` を取るサブコマンド
+- [all `--resume`](all.md) — 長時間キャンペーンのチェックポイントワークフロー

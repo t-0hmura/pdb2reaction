@@ -62,7 +62,7 @@ This page provides definitions for abbreviations and technical terms used throug
 | **SP** | Single Point | A calculation at a fixed geometry (no optimization); often used for higher-level energy refinement. |
 | **Spin Multiplicity** | — | 2S+1, where S is total spin. Singlet = 1, doublet = 2, triplet = 3, etc. Specified with `-m/--multiplicity` (default: 1). |
 | **ALPB** | Analytical Linearized Poisson-Boltzmann | An implicit-solvent model available via xTB (`--solvent-model alpb`, default). |
-| **CPCMX** | Conductor-like PCM (exchange-correlation extension) | An implicit-solvent model available via xTB (`--solvent-model cpcmx`). |
+| **CPCM-X** | Extended Conductor-like Polarizable Continuum Model | An implicit-solvent model available via xTB (`--solvent-model cpcmx`); the "X" denotes the extension to non-aqueous solvents. |
 | **cyipopt** | — | Python bindings for the IPOPT interior-point optimizer. Required by the DMF (`--mep-mode dmf`) path refinement pipeline. |
 
 ## Structural Biology & Active Site Model Extraction

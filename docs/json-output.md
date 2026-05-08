@@ -30,12 +30,12 @@ Every `result.json` automatically includes:
 | Field | Type | Example |
 |-------|------|---------|
 | `device` | string | `"cuda"` or `"cpu"` |
-| `gpu_name` | string | `"NVIDIA GeForce RTX 5080"` |
-| `gpu_vram_gb` | float | `16.6` |
-| `cuda_version` | string | `"12.9"` |
-| `cpu` | string | `"AMD Ryzen 9 7950X 16-Core Processor"` |
-| `n_cpus` | int | `32` |
-| `ram_gb` | float | `133.7` |
+| `gpu_name` | string | `"<gpu model>"` |
+| `gpu_vram_gb` | float | `<vram in GB>` |
+| `cuda_version` | string | `"<cuda version>"` |
+| `cpu` | string | `"<cpu model>"` |
+| `n_cpus` | int | `<int>` |
+| `ram_gb` | float | `<ram in GB>` |
 
 ## Error handling
 
@@ -141,7 +141,7 @@ Convergence details are available for rsirfo mode; dimer mode provides `n_opt_cy
 | `model` | string | Model identifier |
 | `n_freeze_atoms` | int | Frozen atoms |
 | `solvent` | string | Implicit solvent or `"none"` |
-| `bond_changes` | object | `{formed: [...], broken: [...]}` |
+| `bond_changes` | object | `{formed: [...], broken: [...]}` of element-prefixed 1-based atom-pair strings (e.g. `"C7-O12"`); key is omitted when the comparison fails or `finished_first.xyz`/`finished_last.xyz` are absent. |
 | `step_length` | float | IRC step length (Bohr) |
 | `max_cycles` | int | Maximum IRC steps |
 | `input_file` | string | Input filename |
@@ -175,7 +175,7 @@ Convergence details are available for rsirfo mode; dimer mode provides `n_opt_cy
 | `target_distances_angstrom` | list | Target distances |
 | `final_energy_hartree` | float | Energy at last step |
 | `energies_hartree` | float[] | Per-step energies |
-| `bond_changes` | object | Detected bond changes |
+| `bond_changes` | object | `{"changed": bool \| null, "summary": str}` from `has_bond_change` (free-text summary; `null`/`""` when the comparison did not run). |
 
 ### `scan2d` / `scan3d`
 
@@ -216,14 +216,14 @@ Convergence details are available for rsirfo mode; dimer mode provides `n_opt_cy
 
 ### `path-search`
 
-`path-search` does not emit `result.json` under `--out-json`; instead it **always** writes a `summary.json` to the output directory with the shared envelope (`command`, `pdb2reaction_version`, `elapsed_seconds`, `environment`) plus:
+`path-search` has no `--out-json` flag; it **always** writes a `summary.json` to the output directory with the shared envelope (`command`, `pdb2reaction_version`, `environment`) plus:
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `status` | string | `"success"` / `"partial"` |
 | `n_segments` | int | Recursive MEP segment count |
-| `segments` | object[] | Per-segment `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` |
-| `energy_diagrams` | object[] | Per-segment labelled energy profiles (kcal/mol) |
+| `segments` | object[] | Per-segment `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` (list of `{title: [entries]}` dicts; bridge segments emit `""`). |
+| `energy_diagrams` | object[] | Per-segment labeled energy profiles (kcal/mol) |
 | `mlip_backend` | string | Backend/model identifier |
 | `charge` | int | System charge |
 | `spin` | int | Spin multiplicity |
@@ -307,7 +307,7 @@ When `--out-json` is enabled, `bond-summary` prints JSON to **stdout** (no `resu
 | Field | Type | Description |
 |-------|------|-------------|
 | `status` | string | `"ok"` |
-| `comparisons` | object[] | Per-pair comparison with `structure_a`, `structure_b`, `bonds_formed`, `bonds_broken` |
+| `comparisons` | object[] | Per-pair comparison with `structure_a` (string), `structure_b` (string), `bonds_formed` (int count), `bonds_broken` (int count). |
 
 (summary-json-path-search-all)=
 ## `summary.json` (`path-search` / `all`)
@@ -318,7 +318,7 @@ The `all` and `path-search` commands write `summary.json` with a richer structur
 |-------|------|-------------|
 | `status` | string | `"success"` / `"partial"` / `"failed"` (`all`); `"success"` / `"partial"` (`path-search`) |
 | `n_segments` | int | Segment count |
-| `segments` | object[] | Per-segment `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` |
+| `segments` | object[] | Per-segment `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` (list of `{title: [entries]}` dicts produced by `_bond_changes_block`; bridge segments emit `""`). |
 | `energy_diagrams` | object[] | Energy profiles with labels and kcal/mol values |
 | `mlip_backend` | string | Model identifier |
 | `charge` | int | System charge |

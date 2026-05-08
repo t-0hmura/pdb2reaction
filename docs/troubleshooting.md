@@ -242,19 +242,19 @@ Fixes to try:
 
 ## Choosing a backend
 
-Informal per-step LBFGS inference cost on small-to-medium cluster models on an NVIDIA RTX 5080 (16 GB VRAM). The numbers below are order-of-magnitude guidance for backend selection, not a rigorous benchmark.
+Informal per-step L-BFGS inference cost on small-to-medium cluster models, measured on a 16 GB consumer GPU. The numbers below are order-of-magnitude guidance for backend selection, not a rigorous benchmark.
 
-| Backend | Speed (median s/step) | VRAM usage | Notes |
+| Backend (`-b/--backend`, model id) | Speed (median s/step) | VRAM usage | Notes |
 |---------|----------------------|------------|-------|
-| **UMA-s-1.1** (default) | 0.03 s | ~2 GB | Fast, good for exploration |
-| **UMA-m-1.1** | 0.22 s | ~8 GB | Medium model, heavy VRAM |
-| **MACE-OMOL-0** | 0.37 s | ~4 GB | Requires a separate env (`e3nn` conflict) |
-| **Orb-v3-omol** | 0.02 s | ~2 GB | Fastest; see caveat below |
+| `uma` (`uma-s-1p1`, default) | 0.03 s | ~2 GB | Fast, good for exploration |
+| `uma` (`uma-m-1p1`) | 0.22 s | ~8 GB | Medium model, heavy VRAM |
+| `mace` (`MACE-OMOL-0`) | 0.37 s | ~4 GB | Requires a separate env (`e3nn` conflict) |
+| `orb` (`orb_v3_conservative_omol`) | 0.02 s | ~2 GB | Fastest; see caveat below |
 
 **Recommendations:**
-- Start with UMA-s-1.1 for rapid screening, then cross-check key results with MACE or UMA-m-1.1.
-- For SAM-dependent S~N~2 / methyltransfer chemistries the MACE and UMA-s-1.1 backends are complementary; try both when one produces a suspect TS.
-- Orb-v3-omol often identifies the correct reaction coordinate but tends to converge transition states with extra small imaginary modes. Orb is therefore a good first-pass *mechanism-recovery* backend, but a clean single-imaginary-mode TS is not guaranteed — for quantitative kinetics or frequency analysis, re-score Orb geometries with UMA / MACE / DFT or switch backend.
+- Start with the default UMA model for rapid screening, then cross-check key results with MACE or the larger UMA variant.
+- For SAM-dependent S~N~2 / methyltransfer chemistries the MACE and default UMA backends are complementary; try both when one produces a suspect TS.
+- The Orb backend often identifies the correct reaction coordinate but tends to converge transition states with extra small imaginary modes. Orb is therefore a good first-pass *mechanism-recovery* backend, but a clean single-imaginary-mode TS is not guaranteed — for quantitative kinetics or frequency analysis, re-score Orb geometries with UMA / MACE / DFT or switch backend.
 
 ## GPU memory (VRAM) requirements
 

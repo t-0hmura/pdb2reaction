@@ -101,7 +101,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 | `--dry-run/--no-dry-run` | 実行せずに検証と実行計画表示のみを行う | `False` |
-| `--preopt/--no-preopt` | 選択された単一構造オプティマイザー（LBFGS/RFO）で MEP 探索前に各エンドポイントを事前最適化。**スコープ依存デフォルト:** 単体の `path-search` では `False`、**`pdb2reaction all` 経由では `True` に反転**されます（{ref}`mep-search-options` を参照） | `False` |
+| `--preopt/--no-preopt` | 選択された単一構造オプティマイザー（LBFGS/RFO）で MEP 探索前に各エンドポイントを事前最適化。**スコープ依存デフォルト:** 単体の `path-search` では `False`、**`pdb2reaction all` 経由では `True` に反転**されます（{ref}`ja-mep-search-options` を参照） | `False` |
 | `--align/--no-align` | 探索前にすべての入力を最初の構造にアライメント | `True` |
 | `--ref-full-pdb PATH...` | フルサイズテンプレート PDB（入力と同数。`--align` があれば先頭のみ再利用可） | _None_ |
 | `--ref-pdb PATH...` | 入力が XYZ/GJF の場合に最終的な全系マージで用いるポケット参照 PDB（入力と同数・同順） | _None_ |

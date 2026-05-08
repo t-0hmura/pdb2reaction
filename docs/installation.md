@@ -40,8 +40,8 @@ You only need to do this once per machine / environment.
 
   ```bash
   # Create and activate a dedicated conda environment
-  conda create -n pdb2reaction python=3.11 -y
-  conda activate pdb2reaction
+  conda create -n <your-env> python=3.11 -y
+  conda activate <your-env>
 
   # Install cyipopt (required for the DMF method in MEP search)
   conda install -c conda-forge cyipopt -y
@@ -78,8 +78,8 @@ If you prefer to build the environment piece by piece:
 2. **Create and activate a conda environment**
 
     ```bash
-    conda create -n pdb2reaction python=3.11 -y
-    conda activate pdb2reaction
+    conda create -n <your-env> python=3.11 -y
+    conda activate <your-env>
     ```
 
 3. **Install cyipopt**
