@@ -676,8 +676,7 @@ def cli(
             ligand_charge=ligand_charge,
             prefix="[freq]",
         )
-        if not dry_run:
-            validate_charge_spin_for_prepared(prepared_input, charge, spin)
+        validate_charge_spin_for_prepared(prepared_input, charge, spin)
     except BaseException:
         prepared_input.cleanup()
         raise

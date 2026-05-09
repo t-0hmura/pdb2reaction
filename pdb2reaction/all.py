@@ -2810,9 +2810,8 @@ def cli(
     else:
         q_int = int(resolved_charge) if resolved_charge is not None else 0
 
-    if not dry_run:
-        _validate_path = model_outputs[0] if model_outputs else input_paths[0]
-        validate_charge_spin_at_path(_validate_path, q_int, spin)
+    _validate_path = model_outputs[0] if model_outputs else input_paths[0]
+    validate_charge_spin_at_path(_validate_path, q_int, spin)
 
     # Resolve --ref-pdb for topology
     ref_pdb_for_topology: Optional[Path] = None

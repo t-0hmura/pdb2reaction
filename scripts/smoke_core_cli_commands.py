@@ -57,7 +57,7 @@ def _run_dry_run_smoke(runner: CliRunner, fixtures: dict[str, Path]) -> int:
             str(fixtures["r_pdb"]),
             str(fixtures["p_pdb"]),
             "-q",
-            "0",
+            "-1",
             "--dry-run",
         ],
         [
@@ -67,7 +67,7 @@ def _run_dry_run_smoke(runner: CliRunner, fixtures: dict[str, Path]) -> int:
             "-i",
             str(fixtures["p_pdb"]),
             "-q",
-            "0",
+            "-1",
             "--dry-run",
         ],
         ["tsopt", "-i", str(fixtures["ts_gjf"]), "--dry-run"],
