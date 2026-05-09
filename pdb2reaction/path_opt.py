@@ -717,7 +717,8 @@ def cli(
             ligand_charge=ligand_charge,
             prefix="[path-opt]",
         )
-        validate_charge_spin_for_prepared(prepared_inputs, resolved_charge, resolved_spin)
+        if not dry_run:
+            validate_charge_spin_for_prepared(prepared_inputs, resolved_charge, resolved_spin)
         charge_value = calc_cfg.get("charge", resolved_charge)
         if charge_value is None:
             charge_value = resolved_charge

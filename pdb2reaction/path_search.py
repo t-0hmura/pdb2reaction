@@ -1994,7 +1994,8 @@ def cli(
         if cli_param_overridden(ctx, "spin"):
             calc_cfg["spin"] = int(resolved_spin)
 
-        validate_charge_spin_for_prepared(prepared_inputs, calc_cfg["charge"], calc_cfg["spin"])
+        if not dry_run:
+            validate_charge_spin_for_prepared(prepared_inputs, calc_cfg["charge"], calc_cfg["spin"])
 
         if cli_param_overridden(ctx, "workers"):
             calc_cfg["workers"] = int(workers)
