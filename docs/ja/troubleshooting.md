@@ -238,6 +238,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 - **解析ヘシアン（Analytical Hessian）が遅いまたは OOM**: デフォルトの `FiniteDifference` を維持してください。`--hessian-calc-mode Analytical` は十分な VRAM がある場合のみ使用してください（500 原子以上では 16 GB 以上推奨）
 - **workers > 1**: HPC で UMA の処理速度は改善しますが、解析ヘシアンは無効になります
 - **大規模系（1000 原子以上）**: より小さな活性部位モデル（`--radius 2.5` Å）を抽出するか、マルチ GPU セットアップでの実行を検討してください
+- **HPC で DFT を回すとき（数百原子規模）**: PySCF / GPU4PySCF は積分・中間ファイルを `$PYSCF_TMPDIR`（未設定なら `$TMPDIR`、最後は `/tmp`）に書き出します。ノードローカル `/tmp` は容量が小さい / `tmpfs` であることが多く、SCF の途中で枯渇する場合があります。`dft` 起動前に `PYSCF_TMPDIR` をジョブの作業ファイルシステム配下に設定してください（例: `export PYSCF_TMPDIR="$PBS_O_WORKDIR"`）
 
 ## バックエンド選択ガイド
 

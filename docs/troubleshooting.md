@@ -238,6 +238,7 @@ Fixes to try:
 - **Analytical Hessian is slow or causes OOM**: keep the default `FiniteDifference` mode. Only use `--hessian-calc-mode Analytical` if you have ample VRAM (16 GB+ recommended for 500+ atom systems).
 - **Workers > 1**: improves UMA throughput on HPC, but disables the analytical Hessian evaluation.
 - **Large systems (1000+ atoms)**: consider extracting a smaller active site model (`--radius 2.5`) or running on multi-GPU setups.
+- **DFT scratch on HPC (~hundreds of atoms)**: PySCF / GPU4PySCF spill integral and intermediate files to `$PYSCF_TMPDIR` (or `$TMPDIR` / `/tmp` if unset). Node-local `/tmp` is often small or `tmpfs`-backed and can fill up mid-SCF. Set `PYSCF_TMPDIR` to the job's working filesystem before launching `dft` (e.g. `export PYSCF_TMPDIR="$PBS_O_WORKDIR"`).
 
 ## Choosing a backend
 

@@ -28,6 +28,7 @@ DFT single-point calculations are bounded by both basis-set cost and system size
 - **Blackwell-architecture GPUs (RTX 50xx):** GPU4PySCF may fail with out-of-memory errors even for small systems (~100 atoms). Use `--engine cpu` or an external DFT program (ORCA, Gaussian) for production calculations on these GPUs.
 - **CPU backend:** `--engine cpu` is only practical for small active-site models (**≲150 atoms**) and small basis sets (e.g. `def2-svp`); larger systems on CPU become prohibitively slow, so an external DFT program is the recommended path for full systems.
 - **Overall system-size ceiling:** DFT single-point calculations are practical only for systems up to **~300 atoms**. Larger systems require excessive compute time and memory; HPC clusters with high-end GPUs (e.g. A100, H200) are typically required. For enzyme systems, extract a small active site model (binding pocket) before running DFT.
+- **HPC scratch space:** PySCF / GPU4PySCF write integral and intermediate files to `$PYSCF_TMPDIR` (falling back to `$TMPDIR`, then `/tmp`). On HPC nodes where `/tmp` is small or `tmpfs`-backed, hundreds-of-atoms systems can exhaust it mid-SCF. Set `PYSCF_TMPDIR` to a directory on the job's working filesystem (e.g. `export PYSCF_TMPDIR="$PBS_O_WORKDIR"`) before launching `dft`.
 
 ## Minimal example
 
