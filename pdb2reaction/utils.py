@@ -2586,3 +2586,37 @@ def write_result_json(
         return dest
     except Exception:
         return None
+
+
+def validate_charge_spin(elements, charge, multiplicity):
+    """Raise ValueError if sum_Z(elements) - charge has wrong parity for multiplicity."""
+    from pysisyphus.elem_data import ATOMIC_NUMBERS
+
+    sum_z = sum(ATOMIC_NUMBERS[str(e).lower()] for e in elements)
+    total = sum_z - int(charge)
+    unpaired = int(multiplicity) - 1
+    if total < unpaired or (total - unpaired) % 2:
+        raise ValueError(
+            f"ML region electron count inconsistent: sum_Z={sum_z}, "
+            f"charge={charge}, total_electrons={total}, multiplicity={multiplicity}; "
+            f"adjust charge or multiplicity by ±1."
+        )
+
+
+def validate_charge_spin_at_path(path, charge, multiplicity):
+    """Read elements at the given geometry path and run validate_charge_spin."""
+    from ase.io import read as _ase_read
+
+    atoms = _ase_read(path)
+    validate_charge_spin(atoms.get_chemical_symbols(), charge, multiplicity)
+
+
+def validate_charge_spin_for_prepared(prepared_or_list, charge, multiplicity):
+    """Read elements from PreparedInputStructure(s) and run validate_charge_spin per geometry."""
+    items = (
+        list(prepared_or_list)
+        if isinstance(prepared_or_list, (list, tuple))
+        else [prepared_or_list]
+    )
+    for prepared in items:
+        validate_charge_spin_at_path(prepared.geom_path, charge, multiplicity)

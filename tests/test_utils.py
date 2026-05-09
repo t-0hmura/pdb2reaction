@@ -120,3 +120,18 @@ def test_resolve_charge_spin_skips_ligand_validation_when_charge_is_explicit(
 
     assert charge == 1
     assert spin == 2
+
+
+def test_validate_charge_spin_water_neutral_singlet_passes() -> None:
+    from pdb2reaction.utils import validate_charge_spin
+
+    validate_charge_spin(["O", "H", "H"], charge=0, multiplicity=1)
+
+
+def test_validate_charge_spin_water_neutral_doublet_raises() -> None:
+    import pytest
+
+    from pdb2reaction.utils import validate_charge_spin
+
+    with pytest.raises(ValueError, match="electron count inconsistent"):
+        validate_charge_spin(["O", "H", "H"], charge=0, multiplicity=2)

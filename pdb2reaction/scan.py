@@ -56,6 +56,7 @@ from .utils import (
     parse_scan_list_triples,
     parse_scan_spec_stages,
     prepared_cli_input,
+    validate_charge_spin_for_prepared,
     set_convert_file_enabled,
     convert_xyz_like_outputs,
     load_pdb_atom_metadata,
@@ -269,6 +270,7 @@ def cli(
         ligand_charge=ligand_charge,
         prefix="[scan]",
     ) as (prepared_input, resolved_charge, resolved_spin):
+        validate_charge_spin_for_prepared(prepared_input, resolved_charge, resolved_spin)
         geom_input_path = prepared_input.geom_path
         source_path = prepared_input.source_path
         needs_pdb = source_path.suffix.lower() == ".pdb"

@@ -35,6 +35,7 @@ from pdb2reaction.utils import (
     format_elapsed,
     resolve_freeze_atoms,
     prepared_cli_input,
+    validate_charge_spin_for_prepared,
     set_convert_file_enabled,
     convert_xyz_like_outputs,
     cli_param_overridden,
@@ -289,6 +290,7 @@ def cli(
         ligand_charge=ligand_charge,
         prefix="[irc]",
     ) as (prepared_input, resolved_charge, resolved_spin):
+        validate_charge_spin_for_prepared(prepared_input, resolved_charge, resolved_spin)
         geom_input_path = prepared_input.geom_path
         source_path = prepared_input.source_path
         calc = eulerpc = geometry = None

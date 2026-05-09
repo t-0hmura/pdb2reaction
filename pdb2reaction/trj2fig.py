@@ -51,12 +51,16 @@ def recompute_energies(
     """
     # Import lazily so comment-only mode does not require torch/UMA deps.
     from .backends import create_calculator
+    from .utils import validate_charge_spin
 
     frames_obj = read(traj_path, index=":", format="xyz")
     frames = [frames_obj] if isinstance(frames_obj, Atoms) else list(frames_obj)
     if not frames:
         raise RuntimeError(f"No frames found in {traj_path}")
 
+    validate_charge_spin(
+        frames[0].get_chemical_symbols(), charge or 0, multiplicity or 1
+    )
     calc = create_calculator(
         backend=backend, charge=charge or 0, spin=multiplicity or 1,
         solvent=solvent, solvent_model=solvent_model,

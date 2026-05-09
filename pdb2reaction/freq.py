@@ -42,6 +42,7 @@ from .utils import (
     prepare_input_structure,
     apply_ref_pdb_override,
     resolve_charge_spin,
+    validate_charge_spin_for_prepared,
     set_convert_file_enabled,
     resolve_freeze_atoms,
     cli_param_overridden,
@@ -675,6 +676,7 @@ def cli(
             ligand_charge=ligand_charge,
             prefix="[freq]",
         )
+        validate_charge_spin_for_prepared(prepared_input, charge, spin)
     except BaseException:
         prepared_input.cleanup()
         raise

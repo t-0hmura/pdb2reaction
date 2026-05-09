@@ -65,6 +65,7 @@ from .utils import (
     yaml_freeze_to_internal,
     set_convert_file_enabled,
     resolve_charge_spin,
+    validate_charge_spin_at_path,
     load_yaml_dict,
     apply_yaml_overrides,
     load_pdb_atom_metadata,
@@ -2808,6 +2809,9 @@ def cli(
         _echo(override_msg, err=True)
     else:
         q_int = int(resolved_charge) if resolved_charge is not None else 0
+
+    _validate_path = model_outputs[0] if model_outputs else input_paths[0]
+    validate_charge_spin_at_path(_validate_path, q_int, spin)
 
     # Resolve --ref-pdb for topology
     ref_pdb_for_topology: Optional[Path] = None

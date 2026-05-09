@@ -56,6 +56,7 @@ from .utils import (
     pretty_block,
     format_elapsed,
     prepared_cli_input,
+    validate_charge_spin_for_prepared,
     set_convert_file_enabled,
     convert_xyz_like_outputs,
     load_pdb_atom_metadata,
@@ -999,6 +1000,7 @@ def cli(
                 ligand_charge=ligand_charge,
                 prefix="[scan3d]",
             ) as (prepared_input, charge_val, spin_val):
+                validate_charge_spin_for_prepared(prepared_input, charge_val, spin_val)
                 _run_scan3d(
                     prepared_input,
                     charge_val,

@@ -71,6 +71,7 @@ from .utils import (
     convert_xyz_like_outputs,
     _convert_to_pdb_logged,
     PreparedInputStructure,
+    validate_charge_spin_for_prepared,
     GjfTemplate,
     geom_from_xyz_string,
     close_matplotlib_figures,
@@ -1992,6 +1993,8 @@ def cli(
         calc_cfg["spin"] = int(spin_value)
         if cli_param_overridden(ctx, "spin"):
             calc_cfg["spin"] = int(resolved_spin)
+
+        validate_charge_spin_for_prepared(prepared_inputs, calc_cfg["charge"], calc_cfg["spin"])
 
         if cli_param_overridden(ctx, "workers"):
             calc_cfg["workers"] = int(workers)
