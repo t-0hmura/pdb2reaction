@@ -8,7 +8,7 @@
 - **Use when:** R → … → P structures (2+ inputs) requiring a single stitched MEP with automatic refinement.
 - **Method:** Chains GSM/DMF segments and recursively refines only sub-intervals that still contain covalent changes.
 - **Outputs:** `mep_trj.xyz` (main trajectory), `summary.json` (segment-by-segment results), and optional plots/merged PDBs when enabled.
-- **Defaults:** `--mep-mode gsm`, `--opt-mode grad` (LBFGS), `--no-preopt`, `--align`, `--thresh gau`, `--thresh-stopt gau_loose`.
+- **Defaults:** `--mep-mode gsm`, `--opt-mode grad` (L-BFGS), `--no-preopt`, `--align`, `--thresh gau`, `--thresh-stopt gau_loose`.
 - **Next step:** HEI output alone does **not** validate a TS. Follow with [tsopt](tsopt.md) (includes imaginary-frequency check) and [irc](irc.md).
 
 `pdb2reaction path-search` builds a continuous minimum-energy path (MEP) across two or more structures using GSM (default) or DMF (`--mep-mode dmf`). It selectively refines only those regions where covalent bond changes are detected, then stitches the resolved subpaths into a single trajectory.
@@ -85,7 +85,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
 | `--max-nodes INT` | Internal nodes per MEP segment (GSM string images or DMF images). | `20` |
 | `--max-cycles INT` | Maximum MEP optimization cycles (GSM/DMF). | `300` |
 | `--climb/--no-climb` | Enable climbing image for GSM segments (bridge segments always run without climbing). | `True` |
-| `--opt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes. `grad` maps to LBFGS; `hess` maps to RFO. See {ref}`opt-mode-semantics` for how the same token maps across subcommands (tsopt uses Dimer/RS-I-RFO, not L-BFGS/RFO). | `grad` |
+| `--opt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes. `grad` maps to L-BFGS; `hess` maps to RFO. See {ref}`opt-mode-semantics` for how the same token maps across subcommands (tsopt uses Dimer/RS-I-RFO, not L-BFGS/RFO). | `grad` |
 | `--mep-mode {gsm\|dmf}` | Segment generator: GSM (string-based) or DMF (direct flux). | `gsm` |
 | `--refine-mode {peak\|minima}` | Seeds for refinement: `peak` optimizes HEI±1; `minima` searches outward from the HEI toward the nearest local minima on each side. Defaults to `peak` for GSM and `minima` for DMF when omitted. | _Auto_ |
 | `--dump/--no-dump` | Dump MEP (GSM/DMF) and single-structure trajectories. Restart YAML is written only when enabled in YAML. | `False` |
@@ -99,7 +99,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 | `--dry-run/--no-dry-run` | Validate options and print the execution plan without running path search. | `False` |
-| `--preopt/--no-preopt` | Pre-optimize each endpoint with the selected single-structure optimizer (LBFGS/RFO) before MEP search. **Scope-dependent default:** `False` under standalone `path-search`; **flipped to `True` when invoked via `pdb2reaction all`** (see [`all` → MEP Search Options](all.md#mep-search-options)). | `False` |
+| `--preopt/--no-preopt` | Pre-optimize each endpoint with the selected single-structure optimizer (L-BFGS/RFO) before MEP search. **Scope-dependent default:** `False` under standalone `path-search`; **flipped to `True` when invoked via `pdb2reaction all`** (see [`all` → MEP Search Options](all.md#mep-search-options)). | `False` |
 | `--align/--no-align` | Align all inputs to the first structure before searching. | `True` |
 | `--ref-full-pdb PATH...` | Full-size template PDBs (one per input, unless `--align` lets you reuse the first). | _None_ |
 | `--ref-pdb PATH...` | Active site model reference PDBs used for the final full-system merge when inputs are XYZ/GJF (one per input, matching input order). | _None_ |

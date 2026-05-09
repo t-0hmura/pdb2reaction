@@ -34,10 +34,10 @@ Options:
   -r, --radius FLOAT              Inclusion cutoff (Å) around substrate atoms.
                                   [default: 2.6]
   --radius-het2het FLOAT          Independent hetero–hetero cutoff (Å) for
-                                  non‑C/H pairs.  [default: 0.0]
+                                  non-C/H pairs.  [default: 0.0]
   --include-h2o BOOLEAN           Include waters (HOH/WAT/TIP3/SOL) in the
                                   active site model.  [default: True]
-  --exclude-backbone BOOLEAN      Remove backbone atoms on non‑substrate amino
+  --exclude-backbone BOOLEAN      Remove backbone atoms on non-substrate amino
                                   acids (with PRO/HYP safeguards).  [default:
                                   False]
   --add-linkh BOOLEAN             Add link hydrogens for severed bonds (carbon-

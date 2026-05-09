@@ -213,7 +213,7 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | `--max-nodes INT` | MEP internal nodes per segment. **GSM:** total images = `max_nodes + 2` (endpoints fixed). **DMF:** number of *movable* images along the chain (no implicit endpoint expansion). | `20` |
 | `--max-cycles INT` | MEP maximum optimization cycles. | `300` |
 | `--climb/--no-climb` | Enable TS climbing for the first segment. | `True` |
-| `--opt-mode [grad\|hess]` | Workflow preset (`grad` → LBFGS/Dimer, `hess` → RFO/RSIRFO). For direct commands, prefer `opt --opt-mode grad|hess` and `tsopt --opt-mode grad|hess`. The token-to-algorithm mapping depends on the scope; see {ref}`opt-mode-semantics` for the per-subcommand table and note that `all`'s pre-opt default (`grad`) is not the same as `tsopt`'s default (`hess`). | `grad` |
+| `--opt-mode [grad\|hess]` | Workflow preset (`grad` → L-BFGS/Dimer, `hess` → RFO/RSIRFO). For direct commands, prefer `opt --opt-mode grad|hess` and `tsopt --opt-mode grad|hess`. The token-to-algorithm mapping depends on the scope; see {ref}`opt-mode-semantics` for the per-subcommand table and note that `all`'s pre-opt default (`grad`) is not the same as `tsopt`'s default (`hess`). | `grad` |
 | `--thresh TEXT` | Convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
 | `--preopt/--no-preopt` | Pre-optimize active site model endpoints before MEP search. **Note:** `all` overrides the child-subcommand default here. Standalone `path-search`, `path-opt`, `scan`, `scan2d`, and `scan3d` default `--preopt` to `False`. | `True` |
 | `--refine-path / --no-refine-path` | If on (default), run recursive `path-search`; if off, chain `path-opt` segments without recursive refinement. Equivalent to `--refine-path True`/`--refine-path False`. | `True` |
@@ -235,7 +235,7 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | `--tsopt/--no-tsopt` | Run TS optimization + IRC per reactive segment. | `False` |
 | `--thermo/--no-thermo` | Run vibrational analysis (`freq`) on R/TS/P. | `False` |
 | `--dft/--no-dft` | Run single-point DFT on R/TS/P. | `False` |
-| `--opt-mode-post [grad\|hess]` | Optimizer preset override for TSOPT and post-IRC optimization (`grad` → Dimer/LBFGS, `hess` → RSIRFO/RFO). | `hess` |
+| `--opt-mode-post [grad\|hess]` | Optimizer preset override for TSOPT and post-IRC optimization (`grad` → Dimer/L-BFGS, `hess` → RSIRFO/RFO). | `hess` |
 | `--thresh-post TEXT` | Convergence preset for post-IRC endpoint optimizations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
 | `--flatten/--no-flatten` | Enable surplus-imaginary-mode flattening in `tsopt`. | `False` |
 
@@ -245,7 +245,7 @@ The `--dft` single-point calculations (powered by PySCF/GPU4PySCF) are very expe
 
 TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (only when explicitly provided) → TSOPT default (`hess` → `rsirfo`).
 
-Example: `--opt-mode grad --opt-mode-post hess` uses LBFGS for path optimization and RS-I-RFO for TS refinement.
+Example: `--opt-mode grad --opt-mode-post hess` uses L-BFGS for path optimization and RS-I-RFO for TS refinement.
 
 ### TSOPT Overrides
 
@@ -328,7 +328,7 @@ When `--refine-path False` is passed, the workspace moves under `path_opt/post_s
 
 - Console logs summarizing active site model charge resolution, YAML contents, scan stages, MEP progress (GSM/DMF), and per-stage timing.
 
-### Energy diagram naming convention
+### Plot file naming convention
 
 Energy diagram files are named by method and scope:
 
@@ -343,7 +343,7 @@ Energy diagram files are named by method and scope:
 | `energy_diagram_G_UMA_all.png` | all segments + thermo | All segments combined (MLIP Gibbs) |
 | `energy_diagram_DFT_all.png` | all segments + DFT | All segments combined (DFT) |
 | `energy_diagram_G_DFT_plus_UMA_all.png` | all segments + DFT + thermo | All segments combined (DFT//MLIP Gibbs) |
-| `irc_plot.png` | per-segment IRC completes | Per-segment IRC profile (MLIP energy along the IRC trajectory) |
+| `irc_plot.png` (under `<post_seg_XX>/irc/`) | per-segment IRC completes | Per-segment IRC profile (MLIP energy along the IRC trajectory) |
 | `irc_plot_all.png` | all segments aggregated | All-segment IRC profiles concatenated |
 
 ### Reading `summary.log`

@@ -8,7 +8,7 @@
 - **想定場面:** R → … → P の **2 構造以上**を入力とし、自動精密化を含む連続 MEP を構築する場面。
 - **手法:** GSM/DMF セグメントを連鎖し、結合変化が残る区間だけを再帰的に精密化します。
 - **主な出力:** `mep_trj.xyz`（主軌跡）、`summary.json`（セグメントごとの結果）、必要に応じてプロットやマージ済み PDB。
-- **デフォルト値:** `--mep-mode gsm`、`--opt-mode grad`（LBFGS）、`--no-preopt`、`--align`、`--thresh gau`、`--thresh-stopt gau_loose`。
+- **デフォルト値:** `--mep-mode gsm`、`--opt-mode grad`（L-BFGS）、`--no-preopt`、`--align`、`--thresh gau`、`--thresh-stopt gau_loose`。
 - **次にやること:** HEI は **TS 候補**であり、単独では TS 検証になりません。続けて [tsopt](tsopt.md)（内部で虚振動数チェック済み）→ [irc](irc.md) を実行してください。
 
 `pdb2reaction path-search` は反応順に並んだ 2 構造以上を入力とし、連続的な最小エネルギー経路（MEP）を構築します。共有結合変化が検出される領域のみを選択的に精密化し、解決済みのサブパスを連結して 1 本の軌跡にまとめます。
@@ -87,7 +87,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
 | `--max-nodes INT` | MEP セグメントごとの内部ノード（GSM string image または DMF image） | `20` |
 | `--max-cycles INT` | 最大 MEP 最適化サイクル（GSM/DMF） | `300` |
 | `--climb/--no-climb` | GSM セグメントのクライミングイメージを有効化（ブリッジは無効） | `True` |
-| `--opt-mode TEXT` | HEI±1/ねじれノード用の単一構造オプティマイザー（`grad`=LBFGS、`hess`=RFO）。同じトークンが `tsopt` では Dimer / RS-I-RFO へ対応する点については {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
+| `--opt-mode TEXT` | HEI±1/ねじれノード用の単一構造オプティマイザー（`grad`=L-BFGS、`hess`=RFO）。同じトークンが `tsopt` では Dimer / RS-I-RFO へ対応する点については {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
 | `--mep-mode {gsm\|dmf}` | セグメント生成器: GSM（string）または DMF（direct flux） | `gsm` |
 | `--refine-mode {peak\|minima}` | 精密化シード: `peak` は HEI±1、`minima` は HEI から最寄り局所極小点へ外側探索。未指定時は GSM で `peak`、DMF で `minima` | _Auto_ |
 | `--dump/--no-dump` | MEP（GSM/DMF）と単一構造軌跡をダンプ。リスタート YAML は YAML で有効化した場合のみ書き出されます | `False` |
@@ -101,7 +101,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 | `--dry-run/--no-dry-run` | 実行せずに検証と実行計画表示のみを行う | `False` |
-| `--preopt/--no-preopt` | 選択された単一構造オプティマイザー（LBFGS/RFO）で MEP 探索前に各エンドポイントを事前最適化。**スコープ依存デフォルト:** 単体の `path-search` では `False`、**`pdb2reaction all` 経由では `True` に反転**されます（{ref}`ja-mep-search-options` を参照） | `False` |
+| `--preopt/--no-preopt` | 選択された単一構造オプティマイザー（L-BFGS/RFO）で MEP 探索前に各エンドポイントを事前最適化。**スコープ依存デフォルト:** 単体の `path-search` では `False`、**`pdb2reaction all` 経由では `True` に反転**されます（{ref}`ja-mep-search-options` を参照） | `False` |
 | `--align/--no-align` | 探索前にすべての入力を最初の構造にアライメント | `True` |
 | `--ref-full-pdb PATH...` | フルサイズテンプレート PDB（入力と同数。`--align` があれば先頭のみ再利用可） | _None_ |
 | `--ref-pdb PATH...` | 入力が XYZ/GJF の場合に最終的な全系マージで用いるポケット参照 PDB（入力と同数・同順） | _None_ |

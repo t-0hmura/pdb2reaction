@@ -14,9 +14,9 @@
 | 計算は通るが状態/エネルギーが不自然 | [CLI 規約](cli-conventions.md) の電荷解決順序を再確認してください | {ref}`入力 / 抽出の問題 <ts-input-extraction>` |
 | DMF モードの import エラー（`cyipopt`、`pydmf`） | `conda install -c conda-forge cyipopt`。`pydmf` は別途 pip で導入 | {ref}`インストール / 環境の問題 <ts-install-env>` |
 | UMA モデルで 401/403 / gated repo エラー | `hf auth login` でログインし、UMA モデルのライセンスに同意してください | {ref}`インストール / 環境の問題 <ts-install-env>` |
-| `e3nn` / `fairchem-core` の import 競合（UMA env に MACE を入れた） | MACE 専用 conda env を作成。`mace-torch` と `fairchem-core` を同 env に共存させない | {ref}`インストール / 環境の問題 <ts-install-env>` |
-| Workers > 1 で `RuntimeError: Analytical Hessian is not available` | `--hessian-calc-mode FiniteDifference`（デフォルト）に戻すか、`--workers 1` に下げる | {ref}`インストール / 環境の問題 <ts-install-env>` |
-| 実行時に CUDA OOM | `--radius` を縮小、`--opt-mode grad` に切替、有限差分 Hessian のまま、または VRAM の大きい GPU へ | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
+| `e3nn` / `fairchem-core` の import 競合（UMA env に MACE を入れた） | `mace-torch < 0.3.8` の場合は MACE 専用 conda env を使用。v0.3.8+ は `fairchem-core` と共存可能 | {ref}`インストール / 環境の問題 <ts-install-env>` |
+| `--workers > 1` 時に `--hessian-calc-mode Analytical` が silently FD に降格 | 解析 Hessian が必要なら `--workers 1` に下げる、不要なら FD（デフォルト）のまま | {ref}`インストール / 環境の問題 <ts-install-env>` |
+| 実行時に CUDA OOM | `--radius` を縮小して再抽出（extract / all のみ）、`--opt-mode grad` に切替、有限差分 Hessian のまま、または VRAM の大きい GPU へ | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | TS は収束したが小さい虚振動が複数残る | `--flatten` を追加（`tsopt`、`opt`、`pdb2reaction all` 共通） | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | TSOPT が収束しない | L-BFGS/Dimer: `max_step` を**縮小**。RFO/RS-I-RFO: `trust_radius`/`trust_min`/`trust_max` を**縮小**。サイクル上限を増やし、TS 品質を確認 | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | IRC が正常に終了しない | `--step-size` を縮小、`--max-cycles` を増加、虚振動数が 1 本のみか確認 | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
@@ -56,22 +56,6 @@
 - 典型的な修正手順:
  - 先に環境を修復し、`pdb2reaction --version` や `python -c "import torch; print(torch.cuda.is_available())"` で確認後、`--dry-run` で事前チェックしてから本実行。
 
-(ja-recipe-cpcmx-build)=
-## レシピ 5: CPCM-X を有効にした xTB のソースビルド
-
-`conda install -c conda-forge xtb` で導入される xTB は ALPB（デフォルト `--solvent-model alpb`）のみ対応で、CPCM-X は含まれません。`--solvent-model cpcmx` を使うには、CPCM-X 機能を有効化してソースからビルドする必要があります。
-
-ビルド（GCC ≥ 10 が必要）:
-
-```bash
-git clone --depth 1 https://github.com/grimme-lab/xtb.git
-cd xtb
-cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DWITH_CPCMX=ON
-make -C build -j8
-```
-
-実行時に `CPXHOME` を `<xtb-checkout>/build/_deps/cpcmx-src/` に設定し、`<xtb-checkout>/build` を `$PATH` に追加するか、`calc.xtb_cmd`（YAML）/ `--xtb-cmd`（公開されている場合）でカスタムバイナリを指定してください。
-
 ## レシピ 4: 収束・後処理で止まる
 
 - 兆候:
@@ -82,3 +66,21 @@ make -C build -j8
  - `max_cycles` 到達時に力のノルムが閾値をわずかに超えているだけで、エネルギー地形がほぼ平坦になっている場合は {ref}`計算 / 収束の問題 <ts-calc-conv>` を参照してください — `opt.energy_plateau` フォールバックが自動処理します。
 - 典型的な修正手順:
  - 小規模ケースで条件を詰め、安定化後に本番条件へ戻す。
+
+(ja-recipe-cpcmx-build)=
+## レシピ 5: CPCM-X を有効にした xTB のソースビルド
+
+`conda install -c conda-forge xtb` で導入される xTB は ALPB（デフォルト `--solvent-model alpb`）のみ対応で、CPCM-X は含まれません。`--solvent-model cpcmx` を使うには、CPCM-X 機能を有効化してソースからビルドする必要があります。
+
+ビルド（upstream xtb の指針では GCC ≥ 8。CMake が BLAS/LAPACK を自動検出できない場合は `-DBLAS_LIBRARIES=...` `-DLAPACK_LIBRARIES=...` を指定）:
+
+```bash
+git clone --depth 1 https://github.com/grimme-lab/xtb.git
+cd xtb
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DWITH_CPCMX=ON
+# tblite の並列ビルド競合を避けるため 2 段階で実行:
+make -C build tblite-lib -j8
+make -C build xtb-exe -j8
+```
+
+実行時に `CPXHOME` を `<xtb-checkout>/build/_deps/cpcmx-src/` に設定（`cpcmx.toml` と `DB/` パラメータフォルダを含むディレクトリ）。`<xtb-checkout>/build` を `$PATH` に追加するか、`calc.xtb_cmd`（YAML）/ `--xtb-cmd`（公開されている場合）でカスタムバイナリを指定してください。

@@ -53,11 +53,11 @@ pdb2reaction tsopt -i ts.xyz -q 0 -m 1 --config tsopt.yaml
 
 ## 計算への効果
 
-- **力（Force）:** `opt` / `tsopt` / `scan` / `freq` / `irc` では凍結 DOF の力をゼロ化（hard freeze）。
-- **ヘシアン:** 凍結 DOF の行・列は除去される（`calc.return_partial_hessian: true`。calculator のグローバルデフォルトで、`freq` と `irc` では強制）か、フル行列でゼロ化されます。
+- **力（Force）:** `opt` / `tsopt` / `scan` / `freq` / `irc` と `path-search --mep-mode gsm` では凍結 DOF の力をゼロ化（hard freeze）。
+- **ヘシアン:** 凍結 DOF の行・列は除去される（`calc.return_partial_hessian: true`。calculator のグローバルデフォルトで、`opt` / `tsopt` / `scan` / `freq` / `irc` で再度強制設定）か、フル行列でゼロ化されます。
 - **振動解析:** 凍結原子があるとき `freq` は自動で Partial Hessian Vibrational Analysis（PHVA）を実行し、active ブロックのみ対角化します。
-- **`path-opt`（soft restraint）:** ゼロ化の代わりに `HarmonicFixAtoms`（デフォルト `k_fix = 300 eV/Å²`）を各 image に追加し、凍結原子を調和拘束で relax させます（hard 拘束ではなく、初期座標から微小ずれが生じ得ます）。
-- **MEP / IRC:** 解かれた経路 / IRC 軌跡では、凍結原子は全 image・全ステップで初期座標を保持します（path-search と irc は hard freeze 適用）。
+- **`path-opt` と `path-search --mep-mode dmf`（soft restraint）:** ゼロ化の代わりに `HarmonicFixAtoms`（デフォルト `k_fix = 300 eV/Å²`、ASE 単位系）を各 image に追加し、凍結原子を調和拘束で relax させます（hard 拘束ではなく、初期座標から微小ずれが生じ得ます）。
+- **MEP / IRC:** `path-search --mep-mode gsm` と `irc` は解かれた経路 / IRC 軌跡で hard freeze を適用、`--mep-mode dmf`（path-opt / path-search）は上記 soft restraint を使用。
 
 ## サブコマンド対応表
 

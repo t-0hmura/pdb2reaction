@@ -4,7 +4,7 @@
 
 <img src="./overview.png" alt="pdb2reaction workflow overview" width="90%">
 
-`pdb2reaction` is a Python CLI toolkit for **modeling enzymatic reaction pathways from PDB structures** using machine-learning interatomic potentials (MLIPs) — neural-network models trained on DFT reference data (energies, atomic forces, and stress tensors) to approximate the DFT potential energy surface at a fraction of the original cost.
+`pdb2reaction` is a Python CLI toolkit for **modeling enzymatic reaction pathways from PDB structures** using machine-learning interatomic potentials (MLIPs) — neural-network models trained on DFT reference data (energies and atomic forces, and additionally stress tensors for foundation models trained on periodic data) to approximate the DFT potential energy surface at a fraction of the original cost.
 
 In many workflows, a **single command** like the one below is enough to generate a useful initial reaction path:
 ```bash
@@ -26,7 +26,7 @@ Given **(i) two or more full protein–ligand PDB files** (R → … → P), **o
 - explores **minimum-energy paths (MEPs)** with path optimization methods such as the Growing String Method (GSM) and Direct Max Flux (DMF),
 - _optionally_ optimizes **transition states**, runs **vibrational analysis**, **IRC calculations**, and **single-point DFT calculations**.
 
-Calculations use machine-learning interatomic potentials (MLIPs). The default backend is Meta's **UMA**, but **ORB**, **MACE**, and **AIMNet2** are also supported via `-b/--backend`. Recent foundation-model MLIPs make cluster-model TS optimization, IRC verification, and QRRHO thermochemistry tractable on a single GPU, removing the DFT-bound cost barrier that previously gated mechanistic screening. Typical use cases include:
+Calculations use machine-learning interatomic potentials (MLIPs). The default backend is Meta's **UMA**, but **ORB**, **MACE**, and **AIMNet2** are also supported via `-b/--backend`. Foundation-model MLIPs in this group (UMA, ORB-v3, MACE-OMOL-0) make cluster-model TS optimization, IRC verification, and QRRHO thermochemistry tractable on a single GPU, lowering the DFT-bound cost barrier that previously throttled mechanistic screening. Typical use cases include:
 
 - **Trial-and-error exploration of reaction mechanisms** at a scale where DFT-level verification would be too slow
 - **Generating initial geometries** (reactant/TS/product cluster models) for subsequent quantum-chemistry refinement

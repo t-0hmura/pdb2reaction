@@ -42,7 +42,7 @@
 | **UMA** | Universal Models for Atoms | Meta が公開している事前学習 MLIP 群。pdb2reaction のデフォルト計算バックエンドです |
 | **ORB** | ORB Models | Orbital Materials の MLIP バックエンド。`-b orb` で選択 |
 | **MACE** | MACE | Equivariant message-passing MLIP。`-b mace` で選択 |
-| **AIMNet2** | Atoms-in-Molecules Neural Network 2 | 電荷対応ニューラルネットワークポテンシャル（Anstine et al. 2024）。`-b aimnet2` で選択 |
+| **AIMNet2** | Atoms-in-Molecules Neural Network Potential, 2nd generation | 電荷対応ニューラルネットワークポテンシャル（Anstine et al., *Chem. Sci.* 2025）。`-b aimnet2` で選択 |
 | **xTB** | Extended Tight Binding | 半経験的量子化学手法。pdb2reaction では `--solvent` による暗黙溶媒補正に使用 |
 | **fairchem** | — | Meta がオープンソースで公開している基盤モデルツールキット。UMA 系のチェックポイントを提供します。pdb2reaction は UMA 予測器のロードに `fairchem-core` へ依存します |
 | **ASE** | Atomic Simulation Environment | pdb2reaction の MLIP バックエンド全てが利用する Calculator API を提供する Python フレームワーク（Larsen et al., *J. Phys. Condens. Matter* 2017）。 |
@@ -61,7 +61,7 @@
 | **SP** | Single Point | 固定構造での計算（最適化なし）。高精度エネルギー補正によく使用 |
 | **スピン多重度** | Spin Multiplicity | 2S+1（S は全スピン量子数）。一重項（singlet）= 1、二重項（doublet）= 2、三重項（triplet）= 3 など。`-m/--multiplicity` で指定（デフォルト: 1） |
 | **ALPB** | Analytical Linearized Poisson-Boltzmann | xTB で利用可能な暗黙溶媒モデル（`--solvent-model alpb`、デフォルト） |
-| **CPCM-X** | 拡張型 Conductor-like Polarizable Continuum Model | xTB で利用可能な暗黙溶媒モデル（`--solvent-model cpcmx`）。"X" は非水溶媒への拡張を意味します。 |
+| **CPCM-X** | 拡張型 Conductor-like Polarizable Continuum Solvation Model | xTB で利用可能な暗黙溶媒モデル（`--solvent-model cpcmx`）。"X" は "eXtended" を意味し、CPCM に COSMO-RS 由来の σ-profile と SMD 流の非静電項を結合することで任意溶媒に対応する溶媒和自由エネルギーを与える（Stahn, Ehlert, Grimme, *J. Phys. Chem. A* 2023）。 |
 | **cyipopt** | — | IPOPT 内点法ソルバの Python バインディング。DMF（`--mep-mode dmf`）経路精密化パイプラインが依存します |
 | **IPOPT** | Interior Point OPTimizer | 非線形制約付き最適化のオープンソース solver（Wächter & Biegler 2006）。DMF 経路精密化で `cyipopt` 経由で使用されます。 |
 | **SCF** | Self-Consistent Field | DFT/HF で電子波動関数を反復収束させる手続き。`pdb2reaction dft` では `--max-cycle` / `--conv-tol` で制御されます。 |

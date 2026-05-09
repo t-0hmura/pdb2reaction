@@ -154,7 +154,7 @@ calc:
 - `workers` / `workers_per_node` は UMA バックエンドでのみ有効。
 - `solvent` で xTB ベースの暗黙溶媒補正を有効化（デルタ補正方式）。`xtb` のインストールが必要。
 - VRAM が十分な場合は `hessian_calc_mode: Analytical` を使用してください。
-- `workers > 1` の場合、解析ヘシアンは無効化されます — `workers > 1` で `hessian_calc_mode: Analytical` を要求すると `RuntimeError` で実行が中断されます。マルチワーカー UMA 推論には `hessian_calc_mode: FiniteDifference`（デフォルト）を指定してください。詳細は {ref}`MLIP Calculator のヘシアン評価モード <ja-hessian-evaluation>` を参照してください。
+- `workers > 1` の場合、解析ヘシアンは無効化されます — `workers > 1` では calculator 入口で解析パスが silently bypass され、`hessian_calc_mode: Analytical` を明示指定していても有限差分 Hessian が計算されます。デフォルトが `FiniteDifference` のため、通常問題になるのは `Analytical` を明示的に選択したときだけです。詳細は {ref}`MLIP Calculator のヘシアン評価モード <ja-hessian-evaluation>` を参照してください。
 - 電荷/スピンは `.gjf` テンプレートがあればそれを継承します。
 - `freq` はデフォルトで `calc.return_partial_hessian = true`（PHVA）を設定します（YAML で上書き可能）。
 - IRC は `geom.coord_type = cart` と `calc.return_partial_hessian = true` を常に強制します（YAML より優先、partial Hessian で active-DOF 処理）。

@@ -8,10 +8,10 @@
 - **Use when:** You want a 2D potential-energy map over two distances `(d₁, d₂)` — e.g. to locate a TS region or visualize the reaction landscape before MEP refinement. Input is one structure + `-s/--scan-lists scan2d.yaml` (recommended), or a single `--scan-lists/-s` inline literal containing exactly two quadruples.
 - **Method:** Linear grids built with `--max-step-size`; each axis is reordered so the point closest to the (pre)optimized structure is visited first. Each grid point is relaxed with the appropriate harmonic restraints active (MLIP backend, UMA by default). Values written to `surface.csv` are always evaluated **without bias**, so grid points are directly comparable.
 - **Outputs:** `surface.csv` plus `scan2d_map.png` (2D contour) and `scan2d_landscape.html` (3D surface), and per-point structures under `grid/`.
-- **Defaults:** `--opt-mode grad` (LBFGS), `--no-preopt`, `--max-step-size 0.20 Å`, `--bias-k 300 eV·Å⁻²`, `--thresh baker`, `--baseline min`, `--out-dir ./result_scan2d/`. Grid size grows quickly as `(high − low) / --max-step-size` increases.
+- **Defaults:** `--opt-mode grad` (L-BFGS), `--no-preopt`, `--max-step-size 0.20 Å`, `--bias-k 300 eV·Å⁻²`, `--thresh baker`, `--baseline min`, `--out-dir ./result_scan2d/`. Grid size grows quickly as `(high − low) / --max-step-size` increases.
 - **Next step:** Inspect `scan2d_map.png` / `scan2d_landscape.html` for a TS-region candidate, then refine with `tsopt` (or chain via `pdb2reaction all`).
 
-`scan2d` constructs linear grids for both distances using `--max-step-size`, relaxes each grid point with the appropriate restraints active, and records unbiased MLIP energies for visualization. The default backend is UMA; select an alternative with `-b/--backend`. Use `--opt-mode hess` when you need RFOptimizer instead of LBFGS.
+`scan2d` constructs linear grids for both distances using `--max-step-size`, relaxes each grid point with the appropriate restraints active, and records unbiased MLIP energies for visualization. The default backend is UMA; select an alternative with `-b/--backend`. Use `--opt-mode hess` when you need RFOptimizer instead of L-BFGS.
 
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
 
@@ -113,7 +113,7 @@ see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
 | `--max-step-size FLOAT` | Maximum change allowed for either distance per increment (Å). Determines the grid density. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
 | `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. Used unless YAML sets `opt.max_cycles`. | `10000` |
-| `--opt-mode TEXT` | `grad` → LBFGS, `hess` → RFOptimizer. | `grad` |
+| `--opt-mode TEXT` | `grad` → L-BFGS, `hess` → RFOptimizer. | `grad` |
 | `--freeze-links/--no-freeze-links` | When the input is PDB, freeze parents of link hydrogens. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
 | `--dump/--no-dump` | Write `inner_path_d1_###_trj.xyz` for each outer step. | `False` |
@@ -158,7 +158,7 @@ out_dir/ (default:./result_scan2d/)
 
 - The MLIP backend (UMA by default) reuses the same
   `HarmonicBiasCalculator` as the 1D scan.
-- Ångström limits are converted to Bohr internally to cap LBFGS steps and RFO
+- Ångström limits are converted to Bohr internally to cap L-BFGS steps and RFO
   trust radii; Optimizer scratch files live under temporary directories.
 - The bias is always removed before final energies are recorded so you can reuse
   `surface.csv` in downstream fitting or visualization scripts.

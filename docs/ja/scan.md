@@ -6,12 +6,12 @@
 
 ### 要点
 - **想定場面:** 単一構造から特定の原子間距離を駆動し、もっともらしい反応経路を探索する場面（`path-search` / `path-opt` の前処理として使われることが多い）。入力は 1 つの構造 + `-s scan.yaml`（推奨）または `-s/--scan-lists` の 1 個以上のインラインリテラル（**1 リテラル = 1 ステージ**）。YAML/JSON ファイルパスはシェルのクォート問題を避けられ、バージョン管理にも向きます。インライン Python リテラルは単純な単一ステージのスキャンには十分です。
-- **計算手法:** MLIP バックエンド（デフォルト: UMA、`-b/--backend` で切替可能）に調和拘束 `E = Σ ½ k (|ri − rj| − target)²` を加え、各ステップを LBFGS（`--opt-mode grad`）または RFOptimizer（`--opt-mode hess`）で緩和。
+- **計算手法:** MLIP バックエンド（デフォルト: UMA、`-b/--backend` で切替可能）に調和拘束 `E = Σ ½ k (|ri − rj| − target)²` を加え、各ステップを L-BFGS（`--opt-mode grad`）または RFOptimizer（`--opt-mode hess`）で緩和。
 - **主な出力:** ステージごとの `result.xyz`（必要に応じて `.pdb`/`.gjf`）と結合スキャン軌跡。`--dump` の予約挙動は「注意事項」を参照。
-- **デフォルト値:** `--opt-mode grad`（LBFGS）、`--no-preopt`、`--no-endopt`、`--max-step-size 0.20 Å`、`--bias-k 300 eV·Å⁻²`、`--thresh gau`、`--out-dir ./result_scan/`。
+- **デフォルト値:** `--opt-mode grad`（L-BFGS）、`--no-preopt`、`--no-endopt`、`--max-step-size 0.20 Å`、`--bias-k 300 eV·Å⁻²`、`--thresh gau`、`--out-dir ./result_scan/`。
 - **次のステップ:** ステージの端点（`stage_XX/result.pdb`）を `path-search` / `path-opt` に渡して MEP を精密化するか、`pdb2reaction all -s ...` でスキャン → MEP → TSOPT/IRC/freq/DFT を一気通貫で実行します。
 
-`pdb2reaction scan` は MLIP バックエンド（デフォルト: UMA、`-b/--backend` で ORB ・ MACE ・ AIMNet2 も選択可能）と調和拘束による段階的な結合長スキャンを実行します。各ステップで一時ターゲットを更新し、拘束ポテンシャルを適用したうえで構造全体を LBFGS（`--opt-mode grad`）または RFOptimizer（`--opt-mode hess`）で緩和します。
+`pdb2reaction scan` は MLIP バックエンド（デフォルト: UMA、`-b/--backend` で ORB ・ MACE ・ AIMNet2 も選択可能）と調和拘束による段階的な結合長スキャンを実行します。各ステップで一時ターゲットを更新し、拘束ポテンシャルを適用したうえで構造全体を L-BFGS（`--opt-mode grad`）または RFOptimizer（`--opt-mode hess`）で緩和します。
 
 
 XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定すると、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
@@ -148,7 +148,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
 | `--max-step-size FLOAT` | 1 ステップあたりのスキャン結合の最大変化量（Å）。ステップ数を決定 | `0.20` |
 | `--bias-k FLOAT` | 調和バイアス強度 `k`（eV·Å⁻²） | `300` |
 | `--relax-max-cycles INT` | 前処理・各バイアスステップ・後処理における最適化サイクルの上限。YAML で `opt.max_cycles` が指定されていない場合に使用 | `10000` |
-| `--opt-mode TEXT` | `grad` → LBFGS、`hess` → RFOptimizer。同じトークンが `tsopt` では Dimer / RS-I-RFO へ対応する点については {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
+| `--opt-mode TEXT` | `grad` → L-BFGS、`hess` → RFOptimizer。同じトークンが `tsopt` では Dimer / RS-I-RFO へ対応する点については {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
 | `--freeze-links/--no-freeze-links` | PDB 入力時にリンク水素の親原子を凍結 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
 | `--dump/--no-dump` | 予約フラグ。CLI からは現状最適化器に転送されません（`scan` では `opt_cfg["dump"]` は常に `False`）。ステップごとの最適化軌跡を出力するには YAML で `opt.dump: true` を設定してください。`scan_trj.xyz`/`scan.pdb` はこのフラグに関係なく常に書き出されます | `False` |

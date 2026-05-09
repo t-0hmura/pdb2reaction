@@ -8,10 +8,10 @@
 - **Use when:** A 3D potential-energy volume over three distances `(d₁, d₂, d₃)` is needed, or an existing `surface.csv` needs re-plotting. Input is one structure + `-s/--scan-lists scan3d.yaml` (recommended) or one `--scan-lists/-s` inline literal (three quadruples); `--csv` enables plot-only mode.
 - **Method:** Nested loops d₁ → d₂ → d₃ with linear grids built from `--max-step-size`; values are reordered so points closest to the (pre)optimized structure are visited first. Each point is relaxed with the appropriate harmonic restraints (MLIP backend, UMA by default), and recorded energies are evaluated **without bias**, so grid points are directly comparable.
 - **Outputs:** `surface.csv`, per-point geometries under `grid/`, and an HTML isosurface plot (`scan3d_density.html`).
-- **Defaults:** `--opt-mode grad` (LBFGS), `--no-preopt`, `--max-step-size 0.20 Å`, `--bias-k 300 eV·Å⁻²`, `--thresh baker`, `--baseline min`, `--out-dir ./result_scan3d/`. 3D grids grow very quickly; consider coarser `--max-step-size` or smaller ranges first.
+- **Defaults:** `--opt-mode grad` (L-BFGS), `--no-preopt`, `--max-step-size 0.20 Å`, `--bias-k 300 eV·Å⁻²`, `--thresh baker`, `--baseline min`, `--out-dir ./result_scan3d/`. 3D grids grow very quickly; consider coarser `--max-step-size` or smaller ranges first.
 - **Next step:** Inspect `scan3d_density.html` for low-energy channels, then narrow the search with a 2D `scan2d` slice or refine candidate TS structures with `tsopt`.
 
-`scan3d` nests loops over d₁ → d₂ → d₃ and relaxes each point with the appropriate restraints active. The default optimizer is LBFGS (`--opt-mode grad`); switch to `--opt-mode hess` for RFOptimizer.
+`scan3d` nests loops over d₁ → d₂ → d₃ and relaxes each point with the appropriate restraints active. The default optimizer is L-BFGS (`--opt-mode grad`); switch to `--opt-mode hess` for RFOptimizer.
 
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
 
@@ -111,7 +111,7 @@ see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
 | `--max-step-size FLOAT` | Maximum change allowed per distance increment (Å). Controls grid density. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
 | `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. Used unless YAML sets `opt.max_cycles`. | `10000` |
-| `--opt-mode TEXT` | `grad` → LBFGS, `hess` → RFOptimizer. | `grad` |
+| `--opt-mode TEXT` | `grad` → L-BFGS, `hess` → RFOptimizer. | `grad` |
 | `--freeze-links/--no-freeze-links` | When the input is PDB, freeze parents of link hydrogens. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
 | `--dump/--no-dump` | Write `inner_path_d1_###_d2_###_trj.xyz` for each (d₁, d₂). | `False` |
@@ -180,7 +180,7 @@ out_dir/ (default:./result_scan3d/)
 
 - The MLIP backend (UMA by default) reuses the same
   `HarmonicBiasCalculator` as the 1D/2D scans.
-- Ångström limits are converted to Bohr internally to cap LBFGS steps and RFO
+- Ångström limits are converted to Bohr internally to cap L-BFGS steps and RFO
   trust radii; optimizer scratch files live under temporary directories.
 - `--baseline` defaults to the global minimum; `--baseline first` anchors the
   `(i,j,k)=(0,0,0)` grid point when present.

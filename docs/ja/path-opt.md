@@ -8,7 +8,7 @@
 - **想定場面:** 反応物と生成物の **2 端点**が揃っており、MEP の初期推定が必要な場面。
 - **手法:** デフォルトは GSM。`--mep-mode dmf` で DMF に切り替え可能。
 - **主な出力:** `final_geometries_trj.xyz`（経路）と `hei.xyz`（HEI）。変換が有効なら `.pdb`/`.gjf` コンパニオンも生成。
-- **デフォルト値:** `--opt-mode grad`（LBFGS）、`--climb`、`--max-nodes 20`、`--no-preopt`、`--thresh gau`、`--thresh-stopt gau_loose`。
+- **デフォルト値:** `--opt-mode grad`（L-BFGS）、`--climb`、`--max-nodes 20`、`--no-preopt`、`--thresh gau`、`--thresh-stopt gau_loose`。
 - **次のステップ:** HEI を `tsopt`（虚振動数チェックを内蔵、虚振動は **1 つ** が期待値）で TS として最適化 → `irc` で接続性を検証。
 
 `pdb2reaction path-opt` は 2 端点間の最小エネルギー経路（MEP）を探索し、最高エネルギー画像（HEI）を報告します。HEI は *候補* に過ぎないため、[tsopt](tsopt.md)（内部で虚振動数チェック済み）→ [irc](irc.md) による接続性の確認が必須です。**2 つ以上の構造**を入力して反応領域だけを自動で精密化したい場合は、[path-search](path-search.md) を使用してください。
@@ -108,7 +108,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [-l, -
 | `--max-cycles INT` | MEP 最適化サイクル上限（`stopt.max_cycles`、`stopt.stop_in_when_full`、`dmf.max_cycles` を同時設定） | `300` |
 | `--climb/--no-climb` | クライミングイメージ精密化を有効化（Lanczos 接線も同時切替） | `True` |
 | `--dump/--no-dump` | MEP 軌跡をダンプ（GSM/DMF）。リスタート YAML は YAML で有効化した場合のみ書き出されます | `False` |
-| `--opt-mode TEXT` | エンドポイント事前最適化用の単一構造オプティマイザー（`grad` = LBFGS、`hess` = RFO） | `grad` |
+| `--opt-mode TEXT` | エンドポイント事前最適化用の単一構造オプティマイザー（`grad` = L-BFGS、`hess` = RFO） | `grad` |
 | `--convert-files/--no-convert-files` | PDB/Gaussian 入力用の XYZ/TRJ → PDB/GJF コンパニオン出力の切り替え | `True` |
 | `--ref-pdb FILE` | XYZ/GJF 入力用の参照 PDB トポロジー（XYZ 座標は保持し PDB 変換を有効化） | _None_ |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_path_opt/` |

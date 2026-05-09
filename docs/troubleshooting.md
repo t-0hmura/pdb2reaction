@@ -203,7 +203,7 @@ Fixes to try (CLI flags and YAML knobs are complementary — use both as needed)
 - Enable flattening of extra imaginary modes: `--flatten` (available on standalone `tsopt`, `opt`, and `pdb2reaction all`; default disabled).
 - Increase max cycles: `--max-cycles 20000` (for standalone `tsopt`; `--tsopt-max-cycles 20000` for `all`).
 - Use tighter convergence: `--thresh baker` or `--thresh gau_tight`.
-- Reduce step sizes / trust radii via YAML — for LBFGS/Dimer: `lbfgs.max_step` / `hessian_dimer.lbfgs.max_step`; for RFO/RS-I-RFO: `rfo.trust_radius` / `rfo.trust_min` / `rfo.trust_max` (and the `rsirfo` section). See [YAML Reference](yaml-reference.md) for section layout.
+- Reduce step sizes / trust radii via YAML — for L-BFGS/Dimer: `lbfgs.max_step` / `hessian_dimer.lbfgs.max_step`; for RFO/RS-I-RFO: `rfo.trust_radius` / `rfo.trust_min` / `rfo.trust_max` (and the `rsirfo` section). See [YAML Reference](yaml-reference.md) for section layout.
 
 ---
 
@@ -259,7 +259,7 @@ Informal per-step L-BFGS inference cost on small-to-medium cluster models, measu
 
 Approximate VRAM usage by system size:
 
-| Atoms | LBFGS opt | Hessian (analytical) | Hessian (finite diff) |
+| Atoms | L-BFGS opt | Hessian (analytical) | Hessian (finite diff) |
 |-------|-----------|---------------------|-----------------------|
 | 50 | ~2 GB | ~3 GB | ~2 GB |
 | 100 | ~3 GB | ~6 GB | ~3 GB |

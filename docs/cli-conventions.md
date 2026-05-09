@@ -265,7 +265,7 @@ The same `--opt-mode` token selects **different optimizer algorithms** depending
 | `path-search` (HEI±1 / kink-node single-structure optimizer) | L-BFGS | RFO | `grad` |
 | `scan` / `scan2d` / `scan3d` (per-grid relaxation) | L-BFGS | RFO | `grad` |
 | `all` (pre-opt stage, `--opt-mode`) | L-BFGS | RFO | `grad` |
-| `all` (post-opt — TSOPT preset, `--opt-mode-post`) | Dimer | RS-I-RFO | `hess` |
+| `all` (post-opt — TSOPT preset, `--opt-mode-post`) | Dimer (`dimer`) | RS-I-RFO (`rsirfo`) | `hess` |
 | `all` (post-opt — post-IRC endpoint optimizer, `--opt-mode-post`) | L-BFGS | RFO | `hess` |
 
 **Accepted aliases** are subcommand-specific:
@@ -274,7 +274,7 @@ The same `--opt-mode` token selects **different optimizer algorithms** depending
 - `tsopt` accepts `grad` / `dimer` and `hess` / `rsirfo`.
 - `scan` / `scan2d` / `scan3d` / `path-opt` / `path-search` / `all` accept only `grad` / `hess` (no algorithm-name aliases). `--opt-mode-post` on `all` is likewise restricted to `grad` / `hess`.
 
-As a result, `--opt-mode grad` on `tsopt` is a **Dimer** TS search, not an L-BFGS minimization. Use the explicit algorithm alias (`--opt-mode lbfgs`, `--opt-mode rsirfo`, etc.) if you want to be unambiguous across subcommands.
+As a result, `--opt-mode grad` on `tsopt` is a **Dimer** TS search, not an L-BFGS minimization. To be unambiguous, use the algorithm alias accepted by that subcommand: `--opt-mode lbfgs|rfo` on `opt`, `--opt-mode dimer|rsirfo` on `tsopt`. (Other subcommands accept only `grad` / `hess`.)
 
 ## CLI ↔ YAML name mismatches
 

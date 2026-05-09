@@ -263,7 +263,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | `path-search`（HEI±1 / kink ノードの単一構造 optimizer） | L-BFGS | RFO | `grad` |
 | `scan` / `scan2d` / `scan3d`（grid relaxation） | L-BFGS | RFO | `grad` |
 | `all`（pre-opt 段階、`--opt-mode`） | L-BFGS | RFO | `grad` |
-| `all`（post-opt — TSOPT プリセット、`--opt-mode-post`） | Dimer | RS-I-RFO | `hess` |
+| `all`（post-opt — TSOPT プリセット、`--opt-mode-post`） | Dimer (`dimer`) | RS-I-RFO (`rsirfo`) | `hess` |
 | `all`（post-opt — IRC 後エンドポイント最適化、`--opt-mode-post`） | L-BFGS | RFO | `hess` |
 
 **受け付けるエイリアス**もサブコマンド固有です:
@@ -272,7 +272,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 - `tsopt` は `grad` / `dimer` と `hess` / `rsirfo` を受け付けます。
 - `scan` / `scan2d` / `scan3d` / `path-opt` / `path-search` / `all` は `grad` / `hess` のみ受け付けます（アルゴリズム名 alias なし）。`all` の `--opt-mode-post` も `grad` / `hess` のみです。
 
-したがって `tsopt` に対する `--opt-mode grad` は L-BFGS 最小化ではなく **Dimer TS 探索**です。サブコマンド間で曖昧さを避けたい場合は、明示的なアルゴリズム名（`--opt-mode lbfgs`, `--opt-mode rsirfo` など）を指定してください。
+したがって `tsopt` に対する `--opt-mode grad` は L-BFGS 最小化ではなく **Dimer TS 探索**です。曖昧さを避けたい場合は、各サブコマンドが受け付けるアルゴリズム名を使用してください: `opt` では `--opt-mode lbfgs|rfo`、`tsopt` では `--opt-mode dimer|rsirfo`。（他のサブコマンドは `grad` / `hess` のみ受け付けます。）
 
 ## CLI ↔ YAML 名称の不一致
 

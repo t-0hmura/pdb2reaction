@@ -1,6 +1,6 @@
 # Installation
 
-`pdb2reaction` is intended for Linux environments (local workstations or HPC clusters) with a CUDA‑capable GPU. Several dependencies – notably **PyTorch**, **fairchem‑core (UMA)**, and **gpu4pyscf‑cuda12x** – expect a working CUDA installation.
+`pdb2reaction` is intended for Linux environments (local workstations or HPC clusters) with a CUDA-capable GPU. Several dependencies – notably **PyTorch**, **fairchem-core (UMA)**, and **gpu4pyscf-cuda12x** – expect a working CUDA installation.
 
 Refer to the upstream projects for additional details:
 
@@ -30,8 +30,9 @@ Finally, log in to **Hugging Face Hub** so that UMA models can be downloaded (re
 hf auth login
 # or, with an access token in scripts:
 hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
-# legacy alias (still works): huggingface-cli login
 ```
+
+(Requires `huggingface_hub >= 0.34`; in `huggingface_hub >= 1.0` the legacy `huggingface-cli login` entry point exits with a deprecation notice.)
 
 You only need to do this once per machine / environment.
 
@@ -57,20 +58,7 @@ You only need to do this once per machine / environment.
 > **Tip:** UMA is the default MLIP backend. To use ORB or AIMNet2, install the corresponding extra (e.g. `pip install "pdb2reaction[orb]"`) and pass `-b/--backend orb` to any command. See step 7 below.
 
 ```{warning}
-**MACE:** MACE requires `e3nn==0.4.4`, which conflicts with `fairchem-core` (UMA). UMA and MACE cannot coexist in the same environment.
-
-**Recommended (clean separate env):**
-
-```bash
-conda create -n <mace-env> python=3.11 -y
-conda activate <mace-env>
-pip install torch --index-url https://download.pytorch.org/whl/cu129
-pip install pdb2reaction mace-torch
-```
-
-`fairchem-core` is never installed in this env, so there is no `e3nn` conflict.
-
-**Alternative (in-place from an existing UMA env):** `pip uninstall -y fairchem-core && pip install mace-torch`. This loses the UMA backend in that env. (The `--no-deps mace-torch` variant seen in some older notes is not recommended; it leaves torch-scatter / e3nn unpinned.)
+**MACE:** `mace-torch` requires `e3nn==0.4.4`, which conflicts with `fairchem-core`'s `e3nn` pin (older `mace-torch` versions). The canonical recipe is `pip uninstall -y fairchem-core && pip install mace-torch` in a dedicated conda env — UMA and MACE cannot share the same environment unless `mace-torch` ≥ 0.3.8 (which advertises coexistence with `fairchem-core`). The `--no-deps mace-torch` variant seen in some older notes is not recommended; it leaves torch-scatter / e3nn unpinned.
 ```
 
 

@@ -8,10 +8,10 @@
 - **想定場面:** 2 つの距離 `(d₁, d₂)` 上で 2D ポテンシャル面を得たいとき（TS 領域の特定や、MEP 精密化前の反応ランドスケープ可視化など）。入力は 1 つの構造 + `-s scan2d.yaml`（推奨）または `-s/--scan-lists` の **単一** インラインリテラル（四つ組はちょうど 2 つ）。
 - **計算手法:** `--max-step-size` から線形グリッドを構成し、各軸は（事前最適化された）構造に最も近い点を先に訪れるよう並べ替えられます。各格子点は対応する調和拘束を有効にして MLIP バックエンド（デフォルト: UMA）で緩和します。`surface.csv` の値は常に **バイアスなし**で評価されるため、格子点間で直接比較できます。
 - **主な出力:** `surface.csv`、`scan2d_map.png`（2D コンター）、`scan2d_landscape.html`（3D サーフェス）、および `grid/` 配下の各点の構造。
-- **デフォルト値:** `--opt-mode grad`（LBFGS）、`--no-preopt`、`--max-step-size 0.20 Å`、`--bias-k 300 eV·Å⁻²`、`--thresh baker`、`--baseline min`、`--out-dir ./result_scan2d/`。`(high − low) / --max-step-size` が大きいと格子点数が急増します。
+- **デフォルト値:** `--opt-mode grad`（L-BFGS）、`--no-preopt`、`--max-step-size 0.20 Å`、`--bias-k 300 eV·Å⁻²`、`--thresh baker`、`--baseline min`、`--out-dir ./result_scan2d/`。`(high − low) / --max-step-size` が大きいと格子点数が急増します。
 - **次のステップ:** `scan2d_map.png` / `scan2d_landscape.html` で TS 領域候補を確認し、`tsopt` で精密化（または `pdb2reaction all` で連結）。
 
-`scan2d` は `--max-step-size` に基づいて両軸の線形グリッドを作成し、各格子点を対応する拘束付きで緩和して、可視化用にバイアスなしの MLIP エネルギーを記録します。デフォルトのバックエンドは UMA で、`-b/--backend` で他のバックエンドも選択できます。LBFGS の代わりに RFOptimizer を使う場合は `--opt-mode hess` を指定してください。
+`scan2d` は `--max-step-size` に基づいて両軸の線形グリッドを作成し、各格子点を対応する拘束付きで緩和して、可視化用にバイアスなしの MLIP エネルギーを記録します。デフォルトのバックエンドは UMA で、`-b/--backend` で他のバックエンドも選択できます。L-BFGS の代わりに RFOptimizer を使う場合は `--opt-mode hess` を指定してください。
 
 XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定すると、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
 
@@ -85,7 +85,7 @@ YAML/JSON ファイル書式、インライン Python リテラル構文、原�
 | `--max-step-size FLOAT` | 各距離の 1 増分あたりの最大変化量（Å）。グリッド密度を決定 | `0.20` |
 | `--bias-k FLOAT` | 調和バイアス強度 `k`（eV·Å⁻²） | `300` |
 | `--relax-max-cycles INT` | 各バイアス緩和の最大最適化サイクル数。YAML で `opt.max_cycles` が指定されていない場合に使用 | `10000` |
-| `--opt-mode TEXT` | `grad` → LBFGS、`hess` → RFOptimizer | `grad` |
+| `--opt-mode TEXT` | `grad` → L-BFGS、`hess` → RFOptimizer | `grad` |
 | `--freeze-links/--no-freeze-links` | PDB 入力時にリンク水素の親原子を凍結 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
 | `--dump/--no-dump` | 外側ループごとの `inner_path_d1_###_trj.xyz` を保存 | `False` |
@@ -127,7 +127,7 @@ out_dir/ (デフォルト:./result_scan2d/)
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - 計算エンジンは MLIP バックエンド（デフォルト: UMA、`-b/--backend` で切替可能）で、1D スキャンと同じ `HarmonicBiasCalculator` を再利用します。
-- Å 単位の制限値は内部で Bohr に変換され、LBFGS ステップや RFO 信頼半径の制御に使われます。最適化の一時ファイルはテンポラリディレクトリに配置されます。
+- Å 単位の制限値は内部で Bohr に変換され、L-BFGS ステップや RFO 信頼半径の制御に使われます。最適化の一時ファイルはテンポラリディレクトリに配置されます。
 - バイアスはエネルギー記録前に除去されるため、`surface.csv` を下流のフィッティングや可視化スクリプトにそのまま利用できます。
 - `--freeze-links` はユーザー指定の `freeze_atoms` にリンク水素親原子をマージし、抽出された活性部位モデルの境界を固定します。
 

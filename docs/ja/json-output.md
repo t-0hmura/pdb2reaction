@@ -30,12 +30,12 @@ cat result_opt/result.json | python -m json.tool
 | フィールド | 型 | 例 |
 |-----------|------|------|
 | `device` | string | `"cuda"` または `"cpu"` |
-| `gpu_name` | string | `"NVIDIA GeForce RTX 5080"` |
-| `gpu_vram_gb` | float | `16.6` |
-| `cuda_version` | string | `"12.9"` |
-| `cpu` | string | `"AMD Ryzen 9 7950X 16-Core Processor"` |
-| `n_cpus` | int | `32` |
-| `ram_gb` | float | `133.7` |
+| `gpu_name` | string | `"<gpu model>"` |
+| `gpu_vram_gb` | float | `<vram in GB>` |
+| `cuda_version` | string | `"<cuda version>"` |
+| `cpu` | string | `"<cpu model>"` |
+| `n_cpus` | int | `<int>` |
+| `ram_gb` | float | `<ram in GB>` |
 
 ## エラー処理
 
@@ -141,7 +141,7 @@ cat result_opt/result.json | python -m json.tool
 | `model` | string | MLIP モデル名 |
 | `n_freeze_atoms` | int | 凍結原子数 |
 | `solvent` | string | 暗黙溶媒 or `"none"` |
-| `bond_changes` | object | `{formed: [...], broken: [...]}` |
+| `bond_changes` | object | `{formed: [...], broken: [...]}` の各リストは元素記号付き 1 始まりの原子ペア文字列（例 `"C7-O12"`）。比較が失敗または `finished_first.xyz`/`finished_last.xyz` が存在しない場合はキー自体が省略されます。 |
 | `step_length` | float | IRC ステップ長 (Bohr) |
 | `max_cycles` | int | 最大 IRC ステップ数 |
 | `input_file` | string | 入力ファイル名 |
@@ -175,7 +175,7 @@ cat result_opt/result.json | python -m json.tool
 | `target_distances_angstrom` | list | 目標距離 |
 | `final_energy_hartree` | float | 最終エネルギー |
 | `energies_hartree` | float[] | ステップごとのエネルギー |
-| `bond_changes` | object | 検出された結合変化 |
+| `bond_changes` | object | `{"changed": bool \| null, "summary": str}`（`has_bond_change` の自由記述サマリ。比較が走らなかった場合は `null`/`""`）。 |
 
 ### `scan2d` / `scan3d`
 
@@ -216,13 +216,13 @@ cat result_opt/result.json | python -m json.tool
 
 ### `path-search`
 
-`path-search` は `--out-json` による `result.json` を出力せず、代わりに **常に** `summary.json` を出力ディレクトリに書き出します。共通エンベロープ（`command`, `pdb2reaction_version`, `elapsed_seconds`, `environment`）に加え、以下を含みます:
+`path-search` は `--out-json` フラグを持たず、`summary.json` を出力ディレクトリに**常に**書き出します。共通エンベロープ（`command`, `pdb2reaction_version`, `environment`）に加え、以下を含みます:
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `status` | string | `"success"` / `"partial"` |
 | `n_segments` | int | 再帰 MEP のセグメント数 |
-| `segments` | object[] | セグメントごとの `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` |
+| `segments` | object[] | セグメントごとの `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes`（`{title: [entries]}` dict のリスト。bridge セグメントは `""`）。 |
 | `energy_diagrams` | object[] | セグメントごとのラベル付きエネルギープロファイル (kcal/mol) |
 | `mlip_backend` | string | バックエンド / モデル名 |
 | `charge` | int | 系の電荷 |

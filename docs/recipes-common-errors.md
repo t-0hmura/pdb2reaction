@@ -14,9 +14,9 @@ Each row deep-links into the relevant [Troubleshooting](troubleshooting.md) sect
 | Energies/states look wrong after a run | Re-check charge/multiplicity policy in CLI conventions | {ref}`Input / extraction problems <input-extraction-problems>` |
 | DMF mode import errors (`cyipopt`, `pydmf`) | Run `conda install -c conda-forge cyipopt`; install `pydmf` separately if needed | {ref}`Installation / environment problems <installation-environment-problems>` |
 | UMA model 401/403 / gated-repo error | Run `hf auth login` and accept the UMA model license | {ref}`Installation / environment problems <installation-environment-problems>` |
-| `e3nn` / `fairchem-core` import conflict (MACE in UMA env) | Use a separate conda env for MACE; do not mix `mace-torch` with `fairchem-core` | {ref}`Installation / environment problems <installation-environment-problems>` |
-| Workers > 1 raises `RuntimeError: Analytical Hessian is not available` | Set `--hessian-calc-mode FiniteDifference` (default) or drop to `--workers 1` | {ref}`Installation / environment problems <installation-environment-problems>` |
-| CUDA out-of-memory at runtime | Reduce `--radius`, switch to `--opt-mode grad`, keep default FD Hessian, or move to a larger GPU | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
+| `e3nn` / `fairchem-core` import conflict (MACE in UMA env) | Use a separate conda env for MACE if `mace-torch < 0.3.8`; v0.3.8+ may coexist with `fairchem-core` | {ref}`Installation / environment problems <installation-environment-problems>` |
+| `--hessian-calc-mode Analytical` silently downgraded to FD when `--workers > 1` | Drop to `--workers 1` for analytical Hessians; otherwise accept FD (the default) | {ref}`Installation / environment problems <installation-environment-problems>` |
+| CUDA out-of-memory at runtime | Re-extract with smaller `--radius` (extract / all only), switch to `--opt-mode grad`, keep default FD Hessian, or move to a larger GPU | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
 | TS converged but extra small imaginary modes remain | Add `--flatten` (available on `tsopt`, `opt`, and `pdb2reaction all`) | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
 | TSOPT does not converge | For L-BFGS/Dimer: reduce `max_step`. For RFO/RS-I-RFO: reduce `trust_radius`/`trust_min`/`trust_max`. Increase cycles, validate TS quality first | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
 | IRC does not terminate | Reduce `--step-size`, increase `--max-cycles`, confirm a single imaginary mode | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
@@ -62,31 +62,34 @@ First checks:
 Typical fix path:
 - Repair environment first, verify with `pdb2reaction --version` and `python -c "import torch; print(torch.cuda.is_available())"`, then rerun with `--dry-run` before full execution.
 
+## Recipe 4: Convergence and post-processing failures
+
+Signal:
+- TSOPT stalls, IRC branches look unstable, or MEP refinement stops unexpectedly.
+
+First checks:
+- Confirm TS candidate quality: exactly one imaginary frequency, and the corresponding imaginary mode shows displacement along the reaction coordinate. The detection cutoff is `hessian_dimer.neg_freq_thresh_cm` (default 5 cm⁻¹).
+- Tune step sizes / trust radii (YAML knobs `max_step`, `trust_radius`/`trust_min`/`trust_max`) and optimizer mode / flattening (CLI flags `--opt-mode`, `--flatten`); these are complementary. For YAML section layout see [YAML Reference](yaml-reference.md); for the canonical fix path see {ref}`Calculation / convergence problems <calculation-convergence-problems>`.
+- If the run stops at `max_cycles` while the force is only barely above the threshold (and the energy has flattened), see {ref}`Calculation / convergence problems <calculation-convergence-problems>` — the `opt.energy_plateau` fallback handles this automatically.
+
+Typical fix path:
+- Run a smaller diagnostic case, tune thresholds/step sizes, then scale back up.
+
 (recipe-cpcmx-build)=
 ## Recipe 5: Building xTB with CPCM-X support
 
 `conda install -c conda-forge xtb` ships with ALPB (default `--solvent-model alpb`) but does **not** include CPCM-X. To use `--solvent-model cpcmx` you have to build xTB from source with the CPCM-X feature enabled.
 
-Build (requires GCC ≥ 10):
+Build (requires GCC ≥ 8 per upstream xtb; if CMake cannot autodetect BLAS/LAPACK, pass `-DBLAS_LIBRARIES=...` and `-DLAPACK_LIBRARIES=...`):
 
 ```bash
 git clone --depth 1 https://github.com/grimme-lab/xtb.git
 cd xtb
 cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DWITH_CPCMX=ON
-make -C build -j8
+# Two-step build avoids a parallel race in tblite:
+make -C build tblite-lib -j8
+make -C build xtb-exe -j8
 ```
 
-Set `CPXHOME` to `<xtb-checkout>/build/_deps/cpcmx-src/` at runtime, and either prepend `<xtb-checkout>/build` to `$PATH` or set `calc.xtb_cmd` (YAML) / `--xtb-cmd` (where exposed) to the custom binary.
+Set `CPXHOME` to `<xtb-checkout>/build/_deps/cpcmx-src/` at runtime (the directory must contain `cpcmx.toml` and the `DB/` parameter folder), and either prepend `<xtb-checkout>/build` to `$PATH` or set `calc.xtb_cmd` (YAML) / `--xtb-cmd` (where exposed) to the custom binary.
 
-## Recipe 4: Convergence and post-processing failures
-
-Signal:  
-- TSOPT stalls, IRC branches look unstable, or MEP refinement stops unexpectedly.  
-
-First checks:  
-- Confirm TS candidate quality: exactly one imaginary frequency, and the corresponding imaginary mode shows displacement along the reaction coordinate. The detection cutoff is `hessian_dimer.neg_freq_thresh_cm` (default 5 cm⁻¹).  
-- Tune step sizes / trust radii (YAML knobs `max_step`, `trust_radius`/`trust_min`/`trust_max`) and optimizer mode / flattening (CLI flags `--opt-mode`, `--flatten`); these are complementary. For YAML section layout see [YAML Reference](yaml-reference.md); for the canonical fix path see {ref}`Calculation / convergence problems <calculation-convergence-problems>`.  
-- If the run stops at `max_cycles` while the force is only barely above the threshold (and the energy has flattened), see {ref}`Calculation / convergence problems <calculation-convergence-problems>` — the `opt.energy_plateau` fallback handles this automatically.  
-
-Typical fix path:
-- Run a smaller diagnostic case, tune thresholds/step sizes, then scale back up.

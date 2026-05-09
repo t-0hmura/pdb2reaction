@@ -8,10 +8,10 @@
 - **想定場面:** 3 つの距離 `(d₁, d₂, d₃)` 上で 3D ポテンシャル体積を得たいとき、または既存の `surface.csv` を再プロットしたいとき。入力は 1 つの構造 + `-s scan3d.yaml`（推奨）または `-s/--scan-lists` の **単一** インラインリテラル（四つ組は 3 つ）。`--csv` 指定時はプロットのみで実行可能です。
 - **計算手法:** d₁ → d₂ → d₃ のネストループで `--max-step-size` から線形グリッドを構成し、事前最適化構造に近い値が先に走査されるよう各軸を並べ替えます。各点は対応する調和拘束を有効にして MLIP バックエンド（デフォルト: UMA）で緩和し、記録されるエネルギーは **バイアスを除去して**評価されるため、格子点間で直接比較できます。
 - **主な出力:** `surface.csv`、`grid/` 配下の各点の構造、HTML の等値面図（`scan3d_density.html`）。
-- **デフォルト値:** `--opt-mode grad`（LBFGS）、`--no-preopt`、`--max-step-size 0.20 Å`、`--bias-k 300 eV·Å⁻²`、`--thresh baker`、`--baseline min`、`--out-dir ./result_scan3d/`。3D グリッドは点数が急激に増加するため、まず `--max-step-size` を大きくするか範囲を狭めることを検討してください。
+- **デフォルト値:** `--opt-mode grad`（L-BFGS）、`--no-preopt`、`--max-step-size 0.20 Å`、`--bias-k 300 eV·Å⁻²`、`--thresh baker`、`--baseline min`、`--out-dir ./result_scan3d/`。3D グリッドは点数が急激に増加するため、まず `--max-step-size` を大きくするか範囲を狭めることを検討してください。
 - **次のステップ:** `scan3d_density.html` で低エネルギーチャネルを確認し、2D の `scan2d` スライスで絞り込むか、`tsopt` で TS 候補を精密化します。
 
-`scan3d` は d₁ → d₂ → d₃ の順にループをネストし、対応する拘束をかけて各格子点を緩和します。デフォルトは LBFGS（`--opt-mode grad`）で、RFOptimizer が必要な場合は `--opt-mode hess` を指定してください。
+`scan3d` は d₁ → d₂ → d₃ の順にループをネストし、対応する拘束をかけて各格子点を緩和します。デフォルトは L-BFGS（`--opt-mode grad`）で、RFOptimizer が必要な場合は `--opt-mode hess` を指定してください。
 
 XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定すると、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
 
@@ -91,7 +91,7 @@ YAML/JSON ファイル書式、インライン Python リテラル構文、原�
 | `--max-step-size FLOAT` | 各距離の 1 増分あたりの最大変化量（Å）。グリッド密度を決定 | `0.20` |
 | `--bias-k FLOAT` | 調和バイアス強度 `k`（eV·Å⁻²） | `300` |
 | `--relax-max-cycles INT` | 各バイアス緩和の最大最適化サイクル数。YAML で `opt.max_cycles` が指定されていない場合に使用 | `10000` |
-| `--opt-mode TEXT` | `grad` → LBFGS、`hess` → RFOptimizer | `grad` |
+| `--opt-mode TEXT` | `grad` → L-BFGS、`hess` → RFOptimizer | `grad` |
 | `--freeze-links/--no-freeze-links` | PDB 入力時にリンク水素の親原子を凍結 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
 | `--dump/--no-dump` | 各 (d₁, d₂) ペアの `inner_path_d1_###_d2_###_trj.xyz` を保存 | `False` |
@@ -157,7 +157,7 @@ out_dir/ (デフォルト:./result_scan3d/)
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - 計算エンジンは MLIP バックエンド（デフォルト: UMA）で、1D/2D スキャンと同じ `HarmonicBiasCalculator` を再利用します。
-- Å 単位の制限値は内部で Bohr に変換され、LBFGS ステップや RFO 信頼半径の制御に使われます。最適化の一時ファイルはテンポラリディレクトリに配置されます。
+- Å 単位の制限値は内部で Bohr に変換され、L-BFGS ステップや RFO 信頼半径の制御に使われます。最適化の一時ファイルはテンポラリディレクトリに配置されます。
 - `--baseline` はデフォルトでグローバル最小値を基準としてゼロにします。`--baseline first` は `(i,j,k)=(0,0,0)` の格子点を基準にします。
 - 3D 可視化は 50×50×50 グリッドでの RBF 補間と、半透明の段階的等値面を使用します（断面表示はありません）。
 - `--freeze-links` はユーザー指定の `freeze_atoms` にリンク水素親原子をマージし、抽出された活性部位モデルの境界を固定します。

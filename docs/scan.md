@@ -6,12 +6,12 @@
 
 ### At a glance
 - **Use when:** A single structure needs specific distances driven to explore a plausible path (often before `path-search`/`path-opt`). Input is one structure + `-s/--scan-lists scan.yaml` (recommended), or one or more `--scan-lists/-s` inline literals (each literal = one stage). YAML/JSON file paths avoid shell-quoting pitfalls and version better; inline literals are fine for simple single-stage scans.
-- **Method:** MLIP backend (UMA by default; selectable via `-b/--backend`) with harmonic restraints `E = Σ ½ k (|ri − rj| − target)²` and LBFGS (`--opt-mode grad`) or RFOptimizer (`--opt-mode hess`) per step.
+- **Method:** MLIP backend (UMA by default; selectable via `-b/--backend`) with harmonic restraints `E = Σ ½ k (|ri − rj| − target)²` and L-BFGS (`--opt-mode grad`) or RFOptimizer (`--opt-mode hess`) per step.
 - **Outputs:** Per-stage `result.xyz` (+ optional `.pdb`/`.gjf`), and concatenated scan trajectories. See "Notes" for the `--dump` caveat.
-- **Defaults:** `--opt-mode grad` (LBFGS), `--no-preopt`, `--no-endopt`, `--max-step-size 0.20 Å`, `--bias-k 300 eV·Å⁻²`, `--thresh gau`, `--out-dir ./result_scan/`.
+- **Defaults:** `--opt-mode grad` (L-BFGS), `--no-preopt`, `--no-endopt`, `--max-step-size 0.20 Å`, `--bias-k 300 eV·Å⁻²`, `--thresh gau`, `--out-dir ./result_scan/`.
 - **Next step:** Feed the staged endpoints (`stage_XX/result.pdb`) to `path-search`/`path-opt` for MEP refinement, or use `pdb2reaction all -s ...` to chain scan → MEP → TSOPT/IRC/freq/DFT in one command.
 
-`pdb2reaction scan` performs a staged, bond-length–driven scan using an MLIP backend (UMA by default) and harmonic restraints. At each step, the temporary targets are updated, restraint wells are applied, and the structure is relaxed with LBFGS (`--opt-mode grad`) or RFOptimizer (`--opt-mode hess`).
+`pdb2reaction scan` performs a staged, bond-length–driven scan using an MLIP backend (UMA by default) and harmonic restraints. At each step, the temporary targets are updated, restraint wells are applied, and the structure is relaxed with L-BFGS (`--opt-mode grad`) or RFOptimizer (`--opt-mode hess`).
 
 
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
@@ -162,7 +162,7 @@ This is equivalent to two manual stages with a geometry reset between them, but 
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
 | `--relax-max-cycles INT` | Cap on optimizer cycles during preopt, each biased step, and end-of-stage cleanups. Used unless YAML sets `opt.max_cycles`. | `10000` |
-| `--opt-mode TEXT` | `grad` → LBFGS, `hess` → RFOptimizer. See {ref}`opt-mode-semantics` for how the same token maps to different optimizers under `tsopt`. | `grad` |
+| `--opt-mode TEXT` | `grad` → L-BFGS, `hess` → RFOptimizer. See {ref}`opt-mode-semantics` for how the same token maps to different optimizers under `tsopt`. | `grad` |
 | `--freeze-links/--no-freeze-links` | When the input is PDB, freeze the parents of link hydrogens. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
 | `--dump/--no-dump` | Reserved flag; the CLI does not currently forward this to the optimizer (`opt_cfg["dump"]` is always set to `False` for `scan`). To enable per-step optimizer trajectory output, set `opt.dump: true` in YAML. `scan_trj.xyz`/`scan.pdb` are always written regardless. | `False` |

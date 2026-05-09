@@ -1,7 +1,7 @@
 # MLIP 計算機
 
 ## 概要
-`pdb2reaction` は複数の機械学習原子間ポテンシャル（MLIP）を pysisyphus 向けの計算機バックエンドとしてサポートします。デフォルトバックエンドは **UMA**（Meta の Universal Models for Atoms）ですが、**ORB**、**MACE**、**AIMNet2** も利用可能です。各バックエンドはエネルギー / 力 / ヘシアンを Hartree 単位で返し、GPU/CPU ディスパッチと bohr↔Å 変換を内部処理します。クラスターサイズ（数百原子）の系では、augmented-Hessian 固有値解（RFO / RS-I-RFO）と IRC 伝播が扱う 3N × 3N の Hessian テンソルがホスト–デバイス同期の繰り返しで wall-clock を支配しがちなため、エネルギー / 力 / ヘシアンの三量はすべて on-device で保持されます。これらの計算機は `pdb2reaction` の最適化・経路探索・熱化学・軌跡後処理など広範に使用されます。
+`pdb2reaction` は複数の機械学習原子間ポテンシャル（MLIP）を pysisyphus 向けの計算機バックエンドとしてサポートします。デフォルトバックエンドは **UMA**（Meta の Universal Models for Atoms）ですが、**ORB**、**MACE**、**AIMNet2** も利用可能です。各バックエンドはエネルギー / 力 / ヘシアンを Hartree 単位で返し、GPU/CPU ディスパッチと bohr↔Å 変換を内部処理します。クラスターサイズ（数百原子）の系では、augmented-Hessian 固有値解（RFO / RS-I-RFO）と IRC 伝播が扱う 3N × 3N の Hessian テンソルを on-device に保持しなければホスト–デバイス同期の繰り返しで wall-clock を支配しがちなため、Hessian は pysisyphus 経由で on-device に保持されます（エネルギー / 力 はスカラー / numpy 配列で host へ戻すコストは無視できる）。これらの計算機は `pdb2reaction` の最適化・経路探索・熱化学・軌跡後処理など広範に使用されます。
 
 `pdb2reaction` は GPU 加速版の `pysisyphus` fork を同梱しています。RFO / RS-I-RFO 単一構造 optimizer、EulerPC IRC integrator、振動モード（Hessian）対角化が `device="cuda"`（または GPU ホストでの `"auto"`）の場合に CUDA で実行されます。CPU ホストでは upstream の NumPy/SciPy パスへ透過的にフォールバックします。
 
@@ -40,7 +40,7 @@ from pdb2reaction.backends import create_calculator, create_ase_calculator
 
 | 関数 | 説明 |
 |----------|-------------|
-| `create_calculator(backend="uma", **kwargs)` | PySisyphus 互換の MLIP 計算機を生成します。`charge`、`spin`、`model`、`device`、`solvent`、`solvent_model`、`hessian_calc_mode`、`freeze_atoms` などバックエンド固有の kwargs も受け付けます。未知のキーはバックエンドごとに黙って除外されます |
+| `create_calculator(backend="uma", **kwargs)` | pysisyphus 互換の MLIP 計算機を生成します。`charge`、`spin`、`model`、`device`、`solvent`、`solvent_model`、`hessian_calc_mode`、`freeze_atoms` などバックエンド固有の kwargs も受け付けます。未知のキーはバックエンドごとに黙って除外されます |
 | `create_ase_calculator(backend="uma", **kwargs)` | ASE 互換の MLIP 計算機を生成します（DMF ワークフローや ASE ベースのツールで使用）。kwargs は `create_calculator` と同じです |
 
 ### 例
@@ -89,7 +89,7 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 
 | バックエンド | インストール | 解析ヘシアン | マルチワーカー | 備考 |
 |---------|---------|-------------------|-------------|-------|
-| **UMA** | 同梱 | あり（autograd） | あり | fairchem による完全機能 |
+| **UMA** | 同梱 | あり（autograd） | あり | `fairchem-core` による完全機能 |
 | **ORB** | `pip install "pdb2reaction[orb]"` | あり（autograd） | なし | orb-models（conservative モデルのみ） |
 | **MACE** | `pip uninstall -y fairchem-core && pip install mace-torch` | あり（`calc.get_hessian`） | なし | mace-torch >= 0.3.8 |
 | **AIMNet2** | `pip install "pdb2reaction[aimnet]"` | あり（native） | なし | aimnet |

@@ -218,7 +218,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 | `--max-nodes INT` | MEP 内部ノード数。**GSM:** 総イメージ数 = `max_nodes + 2`（端点 2 つは固定）。**DMF:** チェーン上の *可動* イメージ数（端点の暗黙的拡張なし） | `20` |
 | `--max-cycles INT` | MEP 最大最適化サイクル | `300` |
 | `--climb/--no-climb` | 最初のセグメントで TS クライミングを有効化 | `True` |
-| `--opt-mode [grad\|hess]` | ワークフロープリセット（`grad` → LBFGS/Dimer、`hess` → RFO/RSIRFO）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨。トークンのマッピングはスコープ依存で、`all` の pre-opt デフォルト（`grad`）と `tsopt` のデフォルト（`hess`）は一致しません。詳細は {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
+| `--opt-mode [grad\|hess]` | ワークフロープリセット（`grad` → L-BFGS/Dimer、`hess` → RFO/RSIRFO）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨。トークンのマッピングはスコープ依存で、`all` の pre-opt デフォルト（`grad`）と `tsopt` のデフォルト（`hess`）は一致しません。詳細は {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
 | `--thresh TEXT` | 収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
 | `--preopt/--no-preopt` | MEP 前に活性部位モデル端点を事前最適化。**注意:** `all` はここで子サブコマンドのデフォルトを上書きします。単体の `path-search`、`path-opt`、`scan`、`scan2d`、`scan3d` では `--preopt` のデフォルトは `False` です | `True` |
 | `--refine-path / --no-refine-path` | 有効（デフォルト）の場合は再帰的 `path-search`、無効の場合は `path-opt` を連結して再帰的精密化なしで実行。`--refine-path True` / `--refine-path False` でも同じ。 | `True` |
@@ -240,7 +240,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 | `--tsopt/--no-tsopt` | セグメントごとの TS 最適化+ IRC を実行 | `False` |
 | `--thermo/--no-thermo` | R/TS/P で振動解析を実行 | `False` |
 | `--dft/--no-dft` | R/TS/P で DFT 一点計算を実行 | `False` |
-| `--opt-mode-post [grad\|hess]` | TSOPT/IRC 後最適化のプリセット上書き（`grad` → Dimer/LBFGS、`hess` → RSIRFO/RFO） | `hess` |
+| `--opt-mode-post [grad\|hess]` | TSOPT/IRC 後最適化のプリセット上書き（`grad` → Dimer/L-BFGS、`hess` → RSIRFO/RFO） | `hess` |
 | `--thresh-post TEXT` | IRC 後エンドポイント最適化の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
 | `--flatten/--no-flatten` | 余分な虚振動モードのフラット化 | `False` |
 
@@ -250,7 +250,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 
 TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode`（明示指定時のみ）→ TSOPT のデフォルト（`hess` → `rsirfo`）の順で決まります。
 
-例: `--opt-mode grad --opt-mode-post hess` は、経路最適化に LBFGS、TS 精密化に RS-I-RFO を使用します。
+例: `--opt-mode grad --opt-mode-post hess` は、経路最適化に L-BFGS、TS 精密化に RS-I-RFO を使用します。
 
 ### TSOPT 上書き
 
@@ -334,7 +334,7 @@ out_dir/ (デフォルト:./result_all/)
 
 - コンソールには活性部位モデルの電荷解決結果、YAML 設定、スキャンステージ、MEP（GSM/DMF）の進行状況、各ステージの所要時間が出力されます。
 
-### エネルギーダイアグラムの命名規則
+### プロットファイルの命名規則
 
 エネルギーダイアグラムファイルは手法とスコープに基づいて命名されます:
 
@@ -349,7 +349,7 @@ out_dir/ (デフォルト:./result_all/)
 | `energy_diagram_G_UMA_all.png` | 全セグメント + thermo | 全セグメント統合（MLIP ギブズ） |
 | `energy_diagram_DFT_all.png` | 全セグメント + DFT | 全セグメント統合（DFT） |
 | `energy_diagram_G_DFT_plus_UMA_all.png` | 全セグメント + DFT + thermo | 全セグメント統合（DFT//MLIP ギブズ） |
-| `irc_plot.png` | セグメント IRC 完了 | セグメントごとの IRC プロファイル（MLIP エネルギー） |
+| `irc_plot.png`（`<post_seg_XX>/irc/` 配下） | セグメント IRC 完了 | セグメントごとの IRC プロファイル（MLIP エネルギー） |
 | `irc_plot_all.png` | 全セグメント集約 | 全セグメントの IRC プロファイル連結 |
 
 ### `summary.log` の読み方

@@ -8,7 +8,7 @@
 - **Use when:** Two endpoint structures (R → P) are available and a first-pass MEP is needed.
 - **Method:** GSM by default; switch to DMF with `--mep-mode dmf`.
 - **Outputs:** `final_geometries_trj.xyz` (path) and `hei.xyz` (HEI), plus optional `.pdb`/`.gjf` companions when conversion is enabled.
-- **Defaults:** `--opt-mode grad` (LBFGS), `--climb`, `--max-nodes 20`, `--no-preopt`, `--thresh gau`, `--thresh-stopt gau_loose`.
+- **Defaults:** `--opt-mode grad` (L-BFGS), `--climb`, `--max-nodes 20`, `--no-preopt`, `--thresh gau`, `--thresh-stopt gau_loose`.
 - **Next step:** Optimize the HEI with `tsopt` (includes imaginary-frequency check; expect **one** imaginary frequency) → `irc`.
 
 `pdb2reaction path-opt` searches for a minimum-energy path (MEP) between two endpoints and reports the highest-energy image (HEI). Treat the HEI as a *candidate* transition state until it is validated with [tsopt](tsopt.md) (which includes an imaginary-frequency check) and [irc](irc.md). For workflows that start from **two or more** structures and automatically refine only the reactive region, use [path-search](path-search.md).
@@ -106,7 +106,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [-l, -
 | `--max-cycles INT` | MEP optimizer cycle cap (sets `stopt.max_cycles`, `stopt.stop_in_when_full`, and `dmf.max_cycles`). | `300` |
 | `--climb/--no-climb` | Enable climbing-image refinement (and Lanczos tangent). | `True` |
 | `--dump/--no-dump` | Dump MEP trajectories (GSM/DMF). Restart YAML is written only when enabled in YAML. | `False` |
-| `--opt-mode TEXT` | Single-structure optimizer for endpoint preoptimization (`grad` = LBFGS, `hess` = RFO). | `grad` |
+| `--opt-mode TEXT` | Single-structure optimizer for endpoint preoptimization (`grad` = L-BFGS, `hess` = RFO). | `grad` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology for XYZ/GJF inputs (keeps XYZ coordinates) to enable PDB conversions. | _None_ |
 | `-o, --out-dir TEXT` | Output directory. | `./result_path_opt/` |
