@@ -4,7 +4,7 @@ orphan: true
 
 # pdb2reaction ドキュメント
 
-*バージョン: v0.3.8*
+*バージョン: v0.3.9*
 
 ---
 
@@ -85,8 +85,8 @@ orphan: true
   author       = {Ohmura, Takuto},
   title        = {pdb2reaction},
   year         = {2026},
-  month        = {4},
-  version      = {0.3.8},
+  month        = {5},
+  version      = {0.3.9},
   url          = {https://github.com/t-0hmura/pdb2reaction},
   license      = {GPL-3.0},
   doi          = {10.5281/zenodo.19197865}
