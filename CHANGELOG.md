@@ -6,6 +6,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.3.9] — 2026-05-11
+
+Default-value alignment. `pdb2reaction all` behaviour unchanged from v0.3.8.
+
+### Changed
+- `SEARCH_KW.max_nodes_segment` 10 → 20.
+- `path-search`/`path-opt` `--preopt` default `False` → `True` (matches `all`).
+- `path-opt` `--fix-ends` default `False` → `True` (matches `GS_KW`).
+- `MLIPCalculator` (and all backend subclasses) `return_partial_hessian` / `out_hess_torch` class-kwarg defaults `False` → `True` (matches `CALC_KW_DEFAULT`).
+
+### Fixed
+- `path-search` writes all stage artefacts (stopt/lbfgs/rfo) to `-o` instead of leaking preopt to `./result_opt/`.
+- `all` no longer overrides YAML `stopt.max_cycles` / `gs.climb` when user did not pass the corresponding flag.
+- `OrbCalculator.__init__` exposes `out_hess_torch` explicitly (parity with MACE/AIMNet2).
+
 ## [0.3.8] — 2026-05-01
 
 ### Added

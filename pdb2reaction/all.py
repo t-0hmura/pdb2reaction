@@ -3792,15 +3792,16 @@ def cli(
                 mep_mode_kind,
                 "--max-nodes",
                 str(int(max_nodes)),
-                "--max-cycles",
-                str(int(max_cycles)),
                 "--opt-mode",
                 str(opt_mode_norm),
                 "--out-dir",
                 str(seg_dir),
             ]
+            if cli_param_overridden(ctx, "max_cycles"):
+                po_args.extend(["--max-cycles", str(int(max_cycles))])
             _append_toggle_arg(po_args, "--freeze-links", bool(freeze_links_flag and freeze_ref is not None))
-            _append_toggle_arg(po_args, "--climb", bool(climb))
+            if cli_param_overridden(ctx, "climb"):
+                _append_toggle_arg(po_args, "--climb", bool(climb))
             _append_toggle_arg(po_args, "--dump", bool(dump))
             _append_toggle_arg(po_args, "--convert-files", bool(convert_files))
             _append_toggle_arg(po_args, "--preopt", bool(preopt))
@@ -4142,8 +4143,10 @@ def cli(
         _append_toggle_arg(ps_args, "--freeze-links", bool(freeze_links_flag and freeze_ref is not None))
         ps_args.extend(["--mep-mode", mep_mode_kind])
         ps_args.extend(["--max-nodes", str(int(max_nodes))])
-        ps_args.extend(["--max-cycles", str(int(max_cycles))])
-        _append_toggle_arg(ps_args, "--climb", bool(climb))
+        if cli_param_overridden(ctx, "max_cycles"):
+            ps_args.extend(["--max-cycles", str(int(max_cycles))])
+        if cli_param_overridden(ctx, "climb"):
+            _append_toggle_arg(ps_args, "--climb", bool(climb))
         ps_args.extend(["--opt-mode", str(opt_mode_norm)])
         _append_toggle_arg(ps_args, "--dump", bool(dump))
         if thresh is not None:

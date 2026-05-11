@@ -99,7 +99,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 | `--dry-run/--no-dry-run` | Validate options and print the execution plan without running path search. | `False` |
-| `--preopt/--no-preopt` | Pre-optimize each endpoint with the selected single-structure optimizer (L-BFGS/RFO) before MEP search. **Scope-dependent default:** `False` under standalone `path-search`; **flipped to `True` when invoked via `pdb2reaction all`** (see [`all` → MEP Search Options](all.md#mep-search-options)). | `False` |
+| `--preopt/--no-preopt` | Pre-optimize each endpoint with the selected single-structure optimizer (L-BFGS/RFO) before MEP search. | `True` |
 | `--align/--no-align` | Align all inputs to the first structure before searching. | `True` |
 | `--ref-full-pdb PATH...` | Full-size template PDBs (one per input, unless `--align` lets you reuse the first). | _None_ |
 | `--ref-pdb PATH...` | Active site model reference PDBs used for the final full-system merge when inputs are XYZ/GJF (one per input, matching input order). | _None_ |
@@ -179,7 +179,7 @@ search:
  max_depth: 10 # recursion depth limit
  stitch_rmsd_thresh: 0.0001 # RMSD threshold for stitching segments
  bridge_rmsd_thresh: 0.0001 # RMSD threshold for bridging nodes
- max_nodes_segment: 10 # max nodes per segment
+ max_nodes_segment: 20 # max nodes per segment
  max_nodes_bridge: 5 # max nodes per bridge
  kink_max_nodes: 3 # max nodes for kink optimizations
  max_seq_kink: 2 # max sequential kinks

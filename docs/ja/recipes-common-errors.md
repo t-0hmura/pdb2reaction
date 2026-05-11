@@ -21,7 +21,7 @@
 | TSOPT が収束しない | L-BFGS/Dimer: `max_step` を**縮小**。RFO/RS-I-RFO: `trust_radius`/`trust_min`/`trust_max` を**縮小**。サイクル上限を増やし、TS 品質を確認 | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | IRC が正常に終了しない | `--step-size` を縮小、`--max-cycles` を増加、虚振動数が 1 本のみか確認 | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | opt/TSOPT が `max_cycles` で停止し、`max(force)` が閾値をわずかに超える | 通常は `opt.energy_plateau` フォールバックが自動で処理します。手動回避は `--thresh gau` または `--thresh gau_loose` | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
-| MEP 探索（GSM/DMF）が失敗 | `--max-nodes` をデフォルト 20 から増やす、`--preopt` 有効化（注: `--preopt` のデフォルトは **`all` では True**、単体の `path-search`/`path-opt`/`scan*` では **False**）、別の `--mep-mode` を試す | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
+| MEP 探索（GSM/DMF）が失敗 | `--max-nodes` をデフォルト 20 から増やす、`--preopt` 有効化（デフォルト: `all`/`path-search`/`path-opt` で `True`、`scan*` で `False`）、別の `--mep-mode` を試す | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | CUDA/GPU 実行時エラー | `torch.cuda.is_available()` と CUDA バージョンの整合を確認してください | {ref}`インストール / 環境の問題 <ts-install-env>` |
 | 図の出力失敗 | `plotly_get_chrome -y` で Chrome ランタイムを導入してください | {ref}`インストール / 環境の問題 <ts-install-env>` |
 

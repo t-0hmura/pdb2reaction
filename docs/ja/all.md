@@ -220,7 +220,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 | `--climb/--no-climb` | 最初のセグメントで TS クライミングを有効化 | `True` |
 | `--opt-mode [grad\|hess]` | ワークフロープリセット（`grad` → L-BFGS/Dimer、`hess` → RFO/RSIRFO）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨。トークンのマッピングはスコープ依存で、`all` の pre-opt デフォルト（`grad`）と `tsopt` のデフォルト（`hess`）は一致しません。詳細は {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
 | `--thresh TEXT` | 収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
-| `--preopt/--no-preopt` | MEP 前に活性部位モデル端点を事前最適化。**注意:** `all` はここで子サブコマンドのデフォルトを上書きします。単体の `path-search`、`path-opt`、`scan`、`scan2d`、`scan3d` では `--preopt` のデフォルトは `False` です | `True` |
+| `--preopt/--no-preopt` | MEP 前に活性部位モデル端点を事前最適化。単体の `scan`、`scan2d`、`scan3d` では `--preopt` のデフォルトは `False`（`--preopt` を渡すと有効化） | `True` |
 | `--refine-path / --no-refine-path` | 有効（デフォルト）の場合は再帰的 `path-search`、無効の場合は `path-opt` を連結して再帰的精密化なしで実行。`--refine-path True` / `--refine-path False` でも同じ。 | `True` |
 
 ### MLIP 計算機オプション

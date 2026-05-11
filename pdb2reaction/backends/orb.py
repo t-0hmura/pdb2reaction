@@ -67,8 +67,9 @@ class OrbCalculator(MLIPCalculator):
         device: str = "auto",
         freeze_atoms: Optional[Sequence[int]] = None,
         hessian_calc_mode: str = "FiniteDifference",
-        return_partial_hessian: bool = False,
+        return_partial_hessian: bool = True,
         hessian_double: bool = True,
+        out_hess_torch: bool = True,
         print_timing: bool = True,
         **kwargs,
     ):
@@ -89,6 +90,7 @@ class OrbCalculator(MLIPCalculator):
             hessian_calc_mode=hessian_calc_mode,
             return_partial_hessian=return_partial_hessian,
             hessian_double=hessian_double,
+            out_hess_torch=out_hess_torch,
             print_timing=print_timing,
             **kwargs,
         )

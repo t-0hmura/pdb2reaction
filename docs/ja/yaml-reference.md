@@ -340,7 +340,7 @@ search:
  max_depth: 10 # Recursion depth limit
  stitch_rmsd_thresh: 0.0001 # RMSD threshold for stitching segments
  bridge_rmsd_thresh: 0.0001 # RMSD threshold for bridging nodes
- max_nodes_segment: 10 # Max nodes per segment
+ max_nodes_segment: 20 # Max nodes per segment
  max_nodes_bridge: 5 # Max nodes per bridge
  kink_max_nodes: 3 # Max nodes for kink optimizations
  max_seq_kink: 2 # Max sequential kinks
@@ -625,7 +625,7 @@ bond:
 
 search:
  max_depth: 10
- max_nodes_segment: 10
+ max_nodes_segment: 20
 
 freq:
  max_write: 10

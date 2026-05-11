@@ -215,7 +215,7 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | `--climb/--no-climb` | Enable TS climbing for the first segment. | `True` |
 | `--opt-mode [grad\|hess]` | Workflow preset (`grad` → L-BFGS/Dimer, `hess` → RFO/RSIRFO). For direct commands, prefer `opt --opt-mode grad|hess` and `tsopt --opt-mode grad|hess`. The token-to-algorithm mapping depends on the scope; see {ref}`opt-mode-semantics` for the per-subcommand table and note that `all`'s pre-opt default (`grad`) is not the same as `tsopt`'s default (`hess`). | `grad` |
 | `--thresh TEXT` | Convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
-| `--preopt/--no-preopt` | Pre-optimize active site model endpoints before MEP search. **Note:** `all` overrides the child-subcommand default here. Standalone `path-search`, `path-opt`, `scan`, `scan2d`, and `scan3d` default `--preopt` to `False`. | `True` |
+| `--preopt/--no-preopt` | Pre-optimize active site model endpoints before MEP search. Standalone `scan`, `scan2d`, and `scan3d` default `--preopt` to `False` (pass `--preopt` to enable). | `True` |
 | `--refine-path / --no-refine-path` | If on (default), run recursive `path-search`; if off, chain `path-opt` segments without recursive refinement. Equivalent to `--refine-path True`/`--refine-path False`. | `True` |
 
 ### MLIP Calculator Options

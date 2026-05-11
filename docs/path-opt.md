@@ -8,7 +8,7 @@
 - **Use when:** Two endpoint structures (R → P) are available and a first-pass MEP is needed.
 - **Method:** GSM by default; switch to DMF with `--mep-mode dmf`.
 - **Outputs:** `final_geometries_trj.xyz` (path) and `hei.xyz` (HEI), plus optional `.pdb`/`.gjf` companions when conversion is enabled.
-- **Defaults:** `--opt-mode grad` (L-BFGS), `--climb`, `--max-nodes 20`, `--no-preopt`, `--thresh gau`, `--thresh-stopt gau_loose`.
+- **Defaults:** `--opt-mode grad` (L-BFGS), `--climb`, `--max-nodes 20`, `--preopt`, `--fix-ends`, `--thresh gau`, `--thresh-stopt gau_loose`.
 - **Next step:** Optimize the HEI with `tsopt` (includes imaginary-frequency check; expect **one** imaginary frequency) → `irc`.
 
 `pdb2reaction path-opt` searches for a minimum-energy path (MEP) between two endpoints and reports the highest-energy image (HEI). Treat the HEI as a *candidate* transition state until it is validated with [tsopt](tsopt.md) (which includes an imaginary-frequency check) and [irc](irc.md). For workflows that start from **two or more** structures and automatically refine only the reactive region, use [path-search](path-search.md).
@@ -118,9 +118,9 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [-l, -
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 | `--dry-run/--no-dry-run` | Validate options and print the execution plan without running optimization. | `False` |
-| `--preopt/--no-preopt` | Pre-optimize each endpoint with the selected single-structure optimizer before alignment/MEP search (GSM/DMF). **Scope-dependent default:** `False` under standalone `path-opt`; **flipped to `True` when invoked via `pdb2reaction all`** (see [`all` → MEP Search Options](all.md#mep-search-options)). | `False` |
+| `--preopt/--no-preopt` | Pre-optimize each endpoint with the selected single-structure optimizer before alignment/MEP search (GSM/DMF). | `True` |
 | `--preopt-max-cycles INT` | Cap for endpoint preoptimization cycles. | `10000` |
-| `--fix-ends/--no-fix-ends` | Keep the endpoint geometries fixed during GSM growth/refinement. | `False` |
+| `--fix-ends/--no-fix-ends` | Keep the endpoint geometries fixed during GSM growth/refinement. | `True` |
 | `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
 
 ## Outputs

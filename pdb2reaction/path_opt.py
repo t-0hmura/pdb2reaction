@@ -565,7 +565,7 @@ def _optimize_single(
 )
 @click.option(
     "--preopt/--no-preopt",
-    default=False,
+    default=True,
     show_default=True,
     help="Preoptimize each endpoint via the selected single-structure optimizer (LBFGS/RFO) before alignment and path optimization.",
 )
@@ -578,7 +578,7 @@ def _optimize_single(
 )
 @click.option(
     "--fix-ends/--no-fix-ends",
-    default=False,
+    default=True,
     show_default=True,
     help="Fix structures of input endpoints during path optimization (GSM/DMF).",
 )

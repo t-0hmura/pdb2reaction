@@ -38,10 +38,10 @@ class AIMNet2Calculator(MLIPCalculator):
         device: str = "auto",
         freeze_atoms: Optional[Sequence[int]] = None,
         hessian_calc_mode: str = "FiniteDifference",
-        return_partial_hessian: bool = False,
+        return_partial_hessian: bool = True,
         hessian_double: bool = True,
         print_timing: bool = True,
-        out_hess_torch: bool = False,
+        out_hess_torch: bool = True,
         **kwargs,
     ):
         try:

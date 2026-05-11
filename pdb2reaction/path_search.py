@@ -1723,7 +1723,7 @@ def _merge_final_and_write(final_images: List[Any],
 @click.option(
     "--preopt/--no-preopt",
     "preopt",
-    default=False,
+    default=True,
     show_default=True,
     help="If True, run initial single-structure optimizations of inputs."
 )
@@ -2014,10 +2014,9 @@ def cli(
             stopt_cfg["dump"] = bool(dump)
             lbfgs_cfg["dump"] = bool(dump)
             rfo_cfg["dump"] = bool(dump)
-        if cli_param_overridden(ctx, "out_dir"):
-            stopt_cfg["out_dir"] = out_dir
-            lbfgs_cfg["out_dir"] = out_dir
-            rfo_cfg["out_dir"] = out_dir
+        stopt_cfg["out_dir"] = out_dir
+        lbfgs_cfg["out_dir"] = out_dir
+        rfo_cfg["out_dir"] = out_dir
         if cli_param_overridden(ctx, "thresh") and thresh is not None:
             lbfgs_cfg["thresh"] = str(thresh)
             rfo_cfg["thresh"] = str(thresh)
