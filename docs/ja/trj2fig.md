@@ -1,6 +1,16 @@
 # `trj2fig`
 
 ## 概要
+
+> **要約:** XYZ 軌跡のコメント行に書かれたエネルギーを読み取り（または MLIP バックエンドで再計算し）、静的・インタラクティブ図と CSV として出力します。
+
+### 要点
+- **想定場面:** `opt` / `scan` / `path-opt` / `path-search` / `irc` などが出力した XYZ 軌跡のエネルギーを可視化するとき。または `-q/-m` を渡してフレームごとに MLIP で再計算するとき。
+- **手法:** 各フレームの comment 行先頭の数値（Hartree）をパース（または選択した MLIP バックエンドで再計算）し、kcal/mol または Hartree に変換。必要に応じて参照フレーム（先頭・末尾・手動）を差し引き、Plotly で描画。
+- **主な出力:** 画像（`.png` / `.jpg` / `.jpeg` / `.html` / `.svg` / `.pdf`）や CSV を 1 個以上。`--out-json` 指定時は `result.json` も出力。`-o` 省略時の既定出力は `energy.png`。
+- **デフォルト値:** `--unit kcal`、`-r/--reference init`、`--reverse-x False`、`-b/--backend uma`、`--solvent none`、`--solvent-model alpb`、`--out-json False`。
+- **次のステップ:** 軌跡なしの数値エネルギーだけを描画したい場合は [`energy-diagram`](energy-diagram.md) を使用。それ以外は通常これが最終可視化ステップです。
+
 `trj2fig` は pdb2reaction ワークフローで得られたエネルギー値付き XYZ 軌跡からプロット画像を生成します。デフォルトでは各フレームのコメント行に含まれる Hartree エネルギーを読み取り、kcal/mol または Hartree に変換して、必要に応じて基準フレームに対する相対値にします。静的/インタラクティブな図と CSV を出力します。基準は最初のフレームまたは手動指定（`-r`）で、`--reverse-x` 使用時は最後のフレームが基準になります。`-q/--charge` と `-m/--multiplicity` を与えると、コメント行ではなく MLIP バックエンド（デフォルト: UMA、`-b/--backend` で選択可能）で各フレームのエネルギーを再計算します。
 
 ## 使用法

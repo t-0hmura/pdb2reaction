@@ -1,6 +1,16 @@
 # `trj2fig`
 
 ## Overview
+
+> **Summary:** Plot energies from an XYZ trajectory's comment lines (or recompute them with an MLIP backend) and export as static / interactive figures and CSV.
+
+### At a glance
+- **Use when:** Visualizing energies along an XYZ trajectory produced by `opt`, `scan`, `path-opt`, `path-search`, or `irc`; or recomputing energies on the fly when `-q/-m` are supplied.
+- **Method:** Parse the first numeric token from each frame's comment line (or recompute with the selected MLIP backend); convert to kcal/mol or hartree; optionally subtract a reference frame (first / last / manual); render via Plotly.
+- **Outputs:** One or more images (`.png` / `.jpg` / `.jpeg` / `.html` / `.svg` / `.pdf`) and/or CSV tables; optional `result.json` with `--out-json`. Default output is `energy.png` when `-o` is omitted.
+- **Defaults:** `--unit kcal`, `-r/--reference init`, `--reverse-x False`, `-b/--backend uma`, `--solvent none`, `--solvent-model alpb`, `--out-json False`.
+- **Next step:** Use [`energy-diagram`](energy-diagram.md) when only numeric state energies are needed without a trajectory; otherwise the figure is typically the terminal visualization step.
+
 `trj2fig` converts an XYZ trajectory with energy values (obtained from the pdb2reaction workflow) into plot images. By default it
 reads the energies (in hartree) encoded in each frame’s comment line, converts them
 to kcal/mol or hartree, optionally references all values to a chosen frame, and

@@ -1,11 +1,21 @@
 # `fix-altloc`
 
 ## Overview
+
+> **Summary:** Remove alternate-location (altLoc) indicators from PDB files by keeping the highest-occupancy conformer per atom and blanking column 17.
+
+### At a glance
+- **Use when:** A PDB file has altLoc indicators that downstream pipeline stages (`extract`, `opt`, `tsopt`, ...) cannot consume. Run before any cluster extraction or geometry stage.
+- **Method:** Per-atom selection by occupancy (highest first; ties broken by file order); column 17 blanked in-place on the kept line. No coordinate, B-factor, or other column is rewritten.
+- **Outputs:** Cleaned PDB at `<input>_clean.pdb` (file input) or `<input>_clean/` (directory input); `-o` overrides; `--inplace` rewrites the source file.
+- **Defaults:** `--recursive False`, `--inplace False`, `--overwrite False`, `--force False`; files with no altLoc characters are skipped unless `--force` is set.
+- **Next step:** Pass the cleaned PDB to [`extract`](extract.md) or [`all`](all.md) — those stages assume a single-conformer input.
+
 `fix-altloc` removes alternate location (altLoc) indicators from PDB files by
 selecting the best conformer for each atom based on occupancy and dropping
 duplicates.
 
-### What it does
+### Algorithm
 1. Blank the PDB altLoc column (column 17, 1-based) with a single space.
  - This is a 1-character replacement (no shifting / no reformatting).
 2. If the same atom appears multiple times due to alternate locations

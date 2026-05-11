@@ -4,12 +4,12 @@
 
 > **Summary:** Draw a state energy diagram directly from numeric values (no structure file, no quantum/thermo calculation).
 
-### Quick reference
-- **Input:** Numeric energies passed via `-i/--input` (multiple tokens or list-like string).
-- **Output:** One image file (`.png`, `.jpg`, `.jpeg`, `.svg`, or `.pdf`).
-- **Default output:** `energy_diagram.png`.
-- **State labels:** Optional `--label-x`; defaults to `S1`, `S2`,...
-- **Use when:** Energies already available; only the formatted diagram is needed.
+### At a glance
+- **Use when:** Numeric state energies are already known (e.g. from `summary.json`) and only the formatted diagram is needed.
+- **Method:** Matplotlib renderer — no structure file is read, no QM / thermo / MLIP call is performed.
+- **Outputs:** One image file (`.png` / `.jpg` / `.jpeg` / `.svg` / `.pdf`); optional `result.json` with `--out-json`. Default output is `energy_diagram.png`.
+- **Defaults:** `-o energy_diagram.png`, `--label-x` auto-numbered (`S1`, `S2`, ...), `--label-y "ΔE (kcal/mol)"`, `--out-json False`.
+- **Next step:** Pair with [`trj2fig`](trj2fig.md) when an energy trajectory is also on hand, or with [`all`](all.md) outputs (`summary.json`) for end-to-end pipelines.
 
 `pdb2reaction energy-diagram` only visualizes numbers you provide. It does not read structure files and does not run `--thermo` / `--dft`-style calculations.
 

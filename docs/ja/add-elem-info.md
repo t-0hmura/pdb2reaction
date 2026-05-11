@@ -1,6 +1,16 @@
 # `add-elem-info`
 
 ## 概要
+
+> **要約:** PDB ファイルの ATOM/HETATM レコードの元素記号カラム（77–78）を修復します。原子ごとの元素は atom name と residue context から推定します。
+
+### 要点
+- **想定場面:** PDB の元素カラム（77–78）が欠落・誤記で、`extract` / `opt` / `tsopt` などの下流サブコマンドが入力を受け付けないとき。
+- **手法:** `Bio.PDB.PDBParser` で再パースし、atom name + 残基辞書（アミノ酸頭文字 / イオン / ハロゲン / 重水素）から元素を推定。書き換えるのはカラム 77–78 のみ。
+- **主な出力:** 修復済 PDB を `<input>_add_elem.pdb`（既定）、`OUTPUT.pdb`（`-o`）、または `--overwrite` 指定時に in-place で出力。割当てた元素数と最大 50 件の未解決原子レポートを標準出力に表示。
+- **デフォルト値:** `--overwrite False`、出力 `<input>_add_elem.pdb`。
+- **次のステップ:** 修復済 PDB を [`extract`](extract.md) や [`all`](all.md) に渡してください。`all` は preflight で `add-elem-info` を自動呼び出しするため、手動実行は単独サブコマンドの前処理用です。
+
 `add-elem-info` は、PDB ファイルの ATOM/HETATM レコードにある元素記号カラム（77–78）を修復します。
 
 ## 使用法

@@ -1,6 +1,16 @@
 # `add-elem-info`
 
 ## Overview
+
+> **Summary:** Repair the element-symbol columns (77–78) of ATOM/HETATM records in a PDB file. Per-atom elements are inferred from atom name + residue context.
+
+### At a glance
+- **Use when:** A PDB file has missing or wrong element columns (77–78) and downstream subcommands (`extract`, `opt`, `tsopt`, ...) reject it.
+- **Method:** `Bio.PDB.PDBParser` re-parse + per-atom element inference from atom name + residue dictionaries (amino-acid first-letter / ion / halogen / deuterium); only columns 77–78 are rewritten.
+- **Outputs:** Repaired PDB written to `<input>_add_elem.pdb` (default), `OUTPUT.pdb` (`-o`), or in-place when `--overwrite` is set; console report of assigned-element counts and up to 50 unresolved atoms.
+- **Defaults:** `--overwrite False`; output `<input>_add_elem.pdb`.
+- **Next step:** Feed the repaired PDB into [`extract`](extract.md) or [`all`](all.md); `all` auto-invokes `add-elem-info` as a preflight, so manual use is only needed before standalone subcommands.
+
 `add-elem-info` repairs the element-symbol columns (77–78) of ATOM/HETATM
 records in a PDB file.
 

@@ -1,6 +1,15 @@
 # `bond-summary`
 
-Detect and report covalent bond changes between consecutive molecular structures.
+## Overview
+
+> **Summary:** Detect and report covalent bond changes between consecutive molecular structures (R → TS → P or multi-intermediate chains) by element-specific covalent-radius perception.
+
+### At a glance
+- **Use when:** Auditing which covalent bonds form / break between sequential structures along a reaction path — e.g. validating an IRC endpoint pair, screening multistep mechanisms, or sanity-checking `all` post-processing manually.
+- **Method:** Element-specific covalent-radius bond perception scaled by `--bond-factor`; for *N* input structures the command emits *N* − 1 pairwise comparison blocks.
+- **Outputs:** Text report on stdout listing formed / broken bonds with distances in Å (or machine-readable JSON to stdout with `--out-json`). No file is written.
+- **Defaults:** `--device cpu`, `--bond-factor 1.20`, `--one-based True`, `--out-json False`.
+- **Next step:** Pair with [`irc`](irc.md) for endpoint connectivity checks, or with [`all`](all.md) post-processing for end-to-end mechanism validation.
 
 ## Synopsis
 
