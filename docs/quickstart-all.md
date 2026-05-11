@@ -1,4 +1,4 @@
-# Quickstart: `pdb2reaction all`
+# Quickstart: `pdb2reaction all` (Endpoint mode)
 
 ## Goal
 

@@ -1,4 +1,4 @@
-# クイックスタート: 単一構造スキャンワークフロー（`--scan-lists/-s`）
+# クイックスタート: `pdb2reaction all --scan-lists`（Scan モード）
 
 ## 目的
 

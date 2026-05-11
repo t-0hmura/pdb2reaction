@@ -1,4 +1,4 @@
-# Quickstart: single-structure scan workflow (`--scan-lists/-s`)
+# Quickstart: `pdb2reaction all --scan-lists` (Scan mode)
 
 ## Goal
 

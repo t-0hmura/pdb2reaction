@@ -1,4 +1,4 @@
-# クイックスタート: `pdb2reaction all`
+# クイックスタート: `pdb2reaction all`（Endpoint モード）
 
 ## 目的
 

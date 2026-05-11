@@ -1,4 +1,4 @@
-# クイックスタート: `pdb2reaction all --tsopt`（TS のみモード）
+# クイックスタート: `pdb2reaction all --tsopt`（TS-only モード）
 
 ## 目的
 
