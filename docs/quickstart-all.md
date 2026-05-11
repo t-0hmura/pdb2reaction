@@ -79,5 +79,5 @@ A first-order saddle point shows exactly one imaginary mode along the reaction c
 ## Next step
 
 - Single-structure staged scan route: [Quickstart: `pdb2reaction all --scan-lists`](quickstart-scan.md)
-- TS optimization and validation: [Quickstart: `pdb2reaction tsopt`](quickstart-tsopt-freq.md)
+- TS candidate validation: [Quickstart: TS-only mode](quickstart-tsopt-freq.md)
 - Full option reference: [all](all.md)

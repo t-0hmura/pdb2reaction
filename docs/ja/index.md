@@ -18,7 +18,7 @@ orphan: true
 |------|------------|
 | **End-to-end 初回実行** | [クイックスタート: all](quickstart-all.md) |
 | **反応物のみ** | [クイックスタート: scan](quickstart-scan.md) |
-| **TS 候補あり** | [クイックスタート: tsopt + freq](quickstart-tsopt-freq.md) |
+| **TS 候補あり** | [クイックスタート: TS のみモード](quickstart-tsopt-freq.md) |
 | **実行失敗 / エラー** | [典型エラー別レシピ](recipes-common-errors.md) |
 
 前提条件は [Installation](installation.md) を参照してください。

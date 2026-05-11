@@ -117,7 +117,7 @@ PDB に水素原子がない場合は、pdb2reaction を実行する前に次の
 
 - [クイックスタート: `pdb2reaction all`](quickstart-all.md)
 - [クイックスタート: `pdb2reaction all --scan-lists/-s` で単一構造の段階的スキャン+MEP+TS](quickstart-scan.md)
-- [クイックスタート: `pdb2reaction tsopt`（TS 最適化と検証）](quickstart-tsopt-freq.md)
+- [クイックスタート: TS のみモード（`pdb2reaction all --tsopt`）](quickstart-tsopt-freq.md)
 
 ## コマンドの基本構成
 
@@ -146,7 +146,7 @@ pdb2reaction all [OPTIONS]...
 |------|-----|--------------|
 | **複数構造 MEP**（2 つ以上の PDB） | 反応座標に沿った複数の PDB（R → … → P）を受け取り、各構造のクラスターモデル抽出 → 再帰的 MEP 探索 → 必要に応じてセグメントごとに TS / IRC / freq / DFT を実行 | [クイックスタート: `pdb2reaction all`](quickstart-all.md) |
 | **単一構造 + 段階的スキャン**（1 PDB + `--scan-lists/-s`） | 1 つの PDB をクラスターモデル上で段階的距離スキャンにかけ、各ステージを再帰的 `path-search`（`--refine-path False` で単一パス `path-opt`）に渡して MEP を構築 | [クイックスタート: 単一構造の段階的スキャン](quickstart-scan.md) |
-| **単一構造 TSOPT のみ**（1 PDB + `--tsopt`） | MEP/経路探索を完全にスキップし、TS 候補を最適化 → 双方向 IRC → 端点最適化、必要なら R/TS/P に freq / DFT を実行 | [クイックスタート: TS 最適化](quickstart-tsopt-freq.md) |
+| **単一構造 TSOPT のみ**（1 PDB + `--tsopt`） | MEP/経路探索を完全にスキップし、TS 候補を最適化 → 双方向 IRC → 端点最適化、必要なら R/TS/P に freq / DFT を実行 | [クイックスタート: TS のみモード](quickstart-tsopt-freq.md) |
 
 ```{important}
 単一入力実行には **`--scan-lists/-s`**（段階的スキャン → GSM）**または** `--tsopt`（TSOPT のみ）のいずれかが必要です。これらのいずれも指定せずに単一の `-i` のみを渡しても、ワークフローは実行されません。

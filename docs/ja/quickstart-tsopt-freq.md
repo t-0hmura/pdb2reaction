@@ -1,57 +1,99 @@
-# クイックスタート: `pdb2reaction tsopt`
+# クイックスタート: `pdb2reaction all --tsopt`（TS のみモード）
 
 ## 目的
 
-TS 候補を最適化し、一次鞍点（first-order saddle point）であることを確認します。
+既に手元にある TS 候補構造に対して、`tsopt → irc → freq →（任意で dft）` の検証・熱力学チェーンだけを `pdb2reaction all` で一括実行します。上流の `extract` / `path-search` はスキップされます。
 
 ## 事前に必要なもの
 
-- TS 候補構造: `.pdb`
-- 対象状態に対応した電荷（`-q/--charge` または `-l/--ligand-charge`）・多重度（`-m`）
+- pdb2reaction がインストール済み（[インストール](installation.md)を参照）
+- TS 候補構造 1 つ: `.pdb`（残基／電荷情報を持つため推奨）または `.xyz`
+- 電荷指定（次のいずれか **ひとつ**を必ず指定）:
+  - `-q INT` — 全電荷を整数で直接指定
+  - `-l 'RES:Q,...'` — 残基ごとのリガンド電荷（タンパク質–リガンド複合体 PDB の場合）
+  - `.gjf` ヘッダから自動取得（Gaussian 入力を渡した場合のみ）
+- `-m/--multiplicity` — デフォルトは `1`（一重項）。ラジカル種では明示が必要です
+- `.xyz` 入力では `-q` と `-m` が必須です。`-l` 形式で電荷を渡したい場合は `--ref-pdb cluster.pdb` を併用してください
+- TS のみモードに入る条件は **3 つすべて成立**: (1) `-i` 入力がちょうど 1 つ、(2) `--scan-lists` が無い、(3) `--tsopt`（または `--tsopt True`）が指定されている。そうでない場合 CLI は入力ゲートで `BadParameter` を送出します（`Provide at least two structures with -i/--input in reaction order, or use a single structure with --scan-lists, or a single structure with --tsopt True.`）。
 
 ## 最小コマンド
 
 ```bash
-pdb2reaction tsopt -i ts_guess.pdb -q 0 -m 1 --out-dir ./result_tsopt
+pdb2reaction all -i ts_candidate.pdb -l 'SAM:1,GPP:-3' \
+    --tsopt --thermo -o ./result_ts_only
 ```
 
-`tsopt` は最適化の最後に自動でヘシアン行列（Hessian）の計算と虚振動数の確認を実行します。ターミナル出力で以下のような行を確認してください。
-
-```
-[Imaginary modes] n=1  ([-593.1])
-```
-
-### （任意）個別の振動解析
-
-全振動モードの一覧や熱化学補正（零点エネルギー (ZPE)、ギブズ自由エネルギーなど; `all` コマンドの `--thermo` に相当）が必要な場合は、別途 `freq` を実行してください。虚振動数の確認だけであれば、上記の `tsopt` の出力で十分です。
+XYZ 入力では `-q` と `-m` を明示します:
 
 ```bash
-pdb2reaction freq -i ./result_tsopt/final_geometry.pdb -q 0 -m 1 --out-dir ./result_freq
+pdb2reaction all -i ts_candidate.xyz -q -1 -m 1 -b uma \
+    --tsopt --thermo -o ./result_ts_only
 ```
+
+`--tsopt` で検証チェーンを起動し、`--thermo` で freq から ZPE / Gibbs 補正を追加します。両ステージとも同一 backend（デフォルト UMA）で実行されます。
+
+### （任意）DFT 一点計算を追加
+
+```bash
+pdb2reaction all -i ts_candidate.pdb -l 'SAM:1,GPP:-3' \
+    --tsopt --thermo --dft --dft-func-basis 'wb97m-v/def2-tzvpd' \
+    -o ./result_ts_only
+```
+
+> **VRAM 注意:** `--dft` は GPU4PySCF で一点計算を実行します。クラスター > 200 原子 / VRAM < 24 GB では `CUDA out of memory` の可能性あり。OOM 時は `--dft` を外して `pdb2reaction dft` を小さい基底または縮小クラスターで単独実行するか、VRAM の大きい node に移してください。`[dft]` extra のインストールも必要です（[インストール](installation.md) を参照）。
 
 ## 期待される出力
 
+成功時の出力ツリー:
+
 ```text
-result_tsopt/
-├── final_geometry.xyz     # 最適化済み TS
-├── final_geometry.pdb     # PDB 形式（入力が PDB の場合）
-└── vib/
-    ├── imag_-593.10cm-1.pdb       # 虚振動モードアニメーション
-    └── imag_-593.10cm-1_trj.xyz
+result_ts_only/
+├── summary.log                                # 人間可読サマリー
+├── summary.json                               # status: success | partial | failed
+├── structures/                                # 正準 R/TS/P（TS のみモード）
+│   ├── reactant.pdb
+│   ├── ts.pdb
+│   └── product.pdb
+└── tsopt_single/                              # tsopt → irc → freq の orchestration
+    ├── ts/
+    │   ├── final_geometry.{xyz,pdb}
+    │   └── vib/imag_*_trj.xyz                 # 虚振動モードアニメーション
+    ├── irc/
+    │   └── {forward,backward,finished}_irc_trj.xyz
+    ├── freq/{R,TS,P}/
+    │   ├── frequencies_cm-1.txt
+    │   └── thermoanalysis.yaml
+    └── dft/{R,TS,P}/                          # --dft 時のみ
+        ├── result.yaml                        # 常に出力（--dft 時）
+        └── result.json                        # --out-json で opt-in
 ```
 
-**確認ポイント:**
+**確認ポイント（実行順）:**
 
-1. ターミナル出力: **`n=1`** で一次鞍点。検出カットオフは `hessian_dimer.neg_freq_thresh_cm`（デフォルト 5 cm⁻¹）で、絶対値がこれ未満のモードは数値ノイズとして扱われ虚振動とは数えません。鞍点の妥当性を反応物・生成物まで追跡して検証するには、次のステップで [irc](irc.md) を実行してください。
-2. `vib/imag_*.pdb` — PyMOL でアニメーション; 期待される結合の切断/形成に対応する振動であること
-3. `n=0`（虚振動なし）: 極小に収束。別の初期構造を試す
-4. `n>1`（複数の虚振動）: `--flatten` で余分なモードの平坦化を試行（反復回数の上限は `--config` で YAML を渡し、`hessian_dimer.flatten_max_iter` を指定 — Dimer と RS-I-RFO の両モードともこのキーを参照します）
+1. `summary.json` の `status` が `"success"` であること。`segments[0].barrier_kcal` と `segments[0].delta_kcal` も確認。
+2. `post_segments[0].ts_imag.n_imag == 1` — 一次鞍点の必要条件。
+3. `tsopt_single/irc/{forward,backward}_irc_trj.xyz` を PyMOL で開き、R 端・P 端まで到達していることを確認。
+4. `segments[0].bond_changes` が空でなく、想定どおりの結合切断・形成が記録されていること。
+5. `tsopt_single/freq/{R,TS,P}/frequencies_cm-1.txt` で R / P に虚振動が無く、TS で 1 つだけあること。
+
+**トラブルシュート:**
+
+| 症状 | 原因 | 対処 |
+|---|---|---|
+| `post_segments[0].ts_imag.n_imag == 0` | TS 候補が極小に崩落 | TS 候補を取り直す（例: `path-search`）。TS のみモードでは失った鞍点を回復できません |
+| `n_imag >= 2` | 縮退した負モードあり | `--flatten` で余剰モードを除去。`hessian_dimer.flatten_max_iter` は [tsopt](tsopt.md) を参照 |
+| `segments[0].bond_changes == {}` または IRC が想定と違う終点に到達 | 虚振動が反応座標方向と一致していない、または TS が同一井戸を結んでいる | `tsopt_single/ts/vib/imag_*_trj.xyz` を PyMOL で可視化し、虚振動が想定の反応方向か確認。違う場合は TS 候補を取り直す |
+| `freq/{R,P}/frequencies_cm-1.txt` に虚振動が残る | IRC の終点が真の極小に達していない | 収束を厳しくする（`--thresh-post baker`）か YAML で IRC max cycles を伸ばす。[freq](freq.md) を参照 |
 
 ## 補足
 
-- VRAM に余裕がある場合は `--hessian-calc-mode Analytical` を使用してください（デフォルトは `FiniteDifference`）。
-- 全オプションは `pdb2reaction tsopt --help-advanced` と `pdb2reaction freq --help-advanced` を参照してください。
+- `--resume` で再実行すると、各 stage のセンチネルファイルが既にあるものはスキップされます（TS のみモードでは `structures/{reactant,ts,product}.pdb`、IRC は `finished_irc_trj.xyz`）。SIGKILL / OOM / preemption 後はセンチネル一致だけで完全性は保証されないため、該当 stage の出力ディレクトリを削除してから再開してください。詳細な再開仕様は [all](all.md) を参照。
+- `tsopt` 単独でのパラメータ調整（`--opt-mode`、`--max-cycles`、Hessian オプション）は [tsopt](tsopt.md) を参照。
+- ヘシアン解析が可能な backend では `--hessian-calc-mode Analytical` を推奨します（デフォルトは `FiniteDifference`）。
+- 全オプションを確認するには `pdb2reaction all --help-advanced`。
 
 ## 次の導線
 
-- 反応経路追跡は [irc](irc.md)、一括実行は [all](all.md) を参照してください。
+- 複数構造からの MEP 経路: [クイックスタート: `pdb2reaction all`](quickstart-all.md)
+- 単一構造からのスキャン駆動: [クイックスタート: `pdb2reaction all --scan-lists`](quickstart-scan.md)
+- 全オプションリファレンス: [all](all.md) / [tsopt](tsopt.md) / [irc](irc.md) / [freq](freq.md) / [dft](dft.md)

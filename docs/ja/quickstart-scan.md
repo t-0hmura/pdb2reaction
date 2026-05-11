@@ -84,4 +84,4 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(1, 5, 1.35)]' --print-parsed
 ## 次の導線
 
 - 全オプション: [all](all.md)
-- TS 最適化と検証: [クイックスタート: `pdb2reaction tsopt`](quickstart-tsopt-freq.md)
+- TS 候補の検証: [クイックスタート: TS のみモード](quickstart-tsopt-freq.md)

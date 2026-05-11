@@ -175,7 +175,7 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 - [はじめに](getting-started.md) — プロジェクト概要、パイプラインの各ステージ、ワークフローモード
 - [クイックスタート: `pdb2reaction all`](quickstart-all.md) — 2 つの PDB から end-to-end 実行
 - [クイックスタート: 単一構造スキャン](quickstart-scan.md) — `--scan-lists` で 1 つの PDB から MEP
-- [クイックスタート: TS 最適化](quickstart-tsopt-freq.md) — TS 候補の最適化と検証
+- [クイックスタート: TS のみモード](quickstart-tsopt-freq.md) — TS 候補を end-to-end で検証
 - [CLI 規約](cli-conventions.md) — フラグの優先順位、原子/残基セレクタ、共通オプション
 - [トラブルシューティング](troubleshooting.md) と [典型エラー別レシピ](recipes-common-errors.md)
 

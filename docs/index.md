@@ -120,7 +120,7 @@ ja/glossary
 |------|----------|
 | **First end-to-end run** | [Quickstart: all](quickstart-all.md) |
 | **Reactant only** | [Quickstart: scan](quickstart-scan.md) |
-| **TS candidate available** | [Quickstart: tsopt + freq](quickstart-tsopt-freq.md) |
+| **TS candidate available** | [Quickstart: TS-only mode](quickstart-tsopt-freq.md) |
 | **Run failure / error** | [Common Error Recipes](recipes-common-errors.md) |
 
 Refer to [Installation](installation.md) for prerequisites.

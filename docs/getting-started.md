@@ -117,7 +117,7 @@ For setup and dependency installation, see [Installation](installation.md).
 
 - [Quickstart: run `pdb2reaction all`](quickstart-all.md)
 - [Quickstart: single-structure staged scan + MEP + TS with `pdb2reaction all --scan-lists/-s`](quickstart-scan.md)
-- [Quickstart: TS optimization and validation with `pdb2reaction tsopt`](quickstart-tsopt-freq.md)
+- [Quickstart: TS-only mode (`pdb2reaction all --tsopt`)](quickstart-tsopt-freq.md)
 
 ## Command line basics
 
@@ -146,7 +146,7 @@ If you omit `--center/-c`, cluster extraction is skipped and the **full input st
 |------|-------------|-----------|
 | **Multi-structure MEP** (≥ 2 PDBs) | Take full PDBs along a putative reaction coordinate (R → … → P), extract cluster models, run recursive MEP search, and optionally refine with TS / IRC / freq / DFT per segment. | [Quickstart: `pdb2reaction all`](quickstart-all.md) |
 | **Single-structure + staged scan** (1 PDB + `--scan-lists/-s`) | Drive one PDB through staged distance-restraint scans on the cluster model; each stage seeds the recursive `path-search` (or single-pass `path-opt` with `--refine-path False`). | [Quickstart: single-structure staged scan](quickstart-scan.md) |
-| **Single-structure TSOPT-only** (1 PDB + `--tsopt`) | Skip MEP entirely; optimize a TS candidate, run IRC in both directions, optimize endpoints, and optionally run freq / DFT on R/TS/P. | [Quickstart: TS optimization](quickstart-tsopt-freq.md) |
+| **Single-structure TSOPT-only** (1 PDB + `--tsopt`) | Skip MEP entirely; optimize a TS candidate, run IRC in both directions, optimize endpoints, and optionally run freq / DFT on R/TS/P. | [Quickstart: TS-only mode](quickstart-tsopt-freq.md) |
 
 ```{important}
 Single-input runs require **either** `--scan-lists/-s` (staged scan → GSM) **or** `--tsopt` (TSOPT-only). Supplying only a single `-i` without one of these will not trigger a full workflow.

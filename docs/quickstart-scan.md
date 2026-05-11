@@ -84,4 +84,4 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(1, 5, 1.35)]' --print-parsed
 ## Next step
 
 - Full option reference: [all](all.md)
-- TS optimization and validation: [Quickstart: `pdb2reaction tsopt`](quickstart-tsopt-freq.md)
+- TS candidate validation: [Quickstart: TS-only mode](quickstart-tsopt-freq.md)

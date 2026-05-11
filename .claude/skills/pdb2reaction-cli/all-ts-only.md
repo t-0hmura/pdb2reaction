@@ -82,8 +82,8 @@ saddle**; see "Distinctive failure modes" below.
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `tsopt.status == "not_converged"` | Initial Hessian misleading or step size too large | `pdb2reaction tsopt -i ts.xyz --opt-mode rsirfo --max-cycles 200` standalone, then re-run downstream stages |
-| `tsopt.n_imaginary_modes == 0` | Geometry collapsed to a minimum during refinement | TS guess was not a real saddle; re-do `path-search` instead |
-| `tsopt.n_imaginary_modes == 2+` | Two near-degenerate negative modes | Normal for some metalloenzyme TSs; check whether the second imaginary mode is a translation / rotation residue (often resolved by tightening `freeze_atoms`) |
+| `post["ts_imag"]["n_imag"] == 0` | Geometry collapsed to a minimum during refinement | TS guess was not a real saddle; re-do `path-search` instead |
+| `post["ts_imag"]["n_imag"] >= 2` | Two near-degenerate negative modes | Normal for some metalloenzyme TSs; check whether the second imaginary mode is a translation / rotation residue (often resolved by tightening `freeze_atoms`) |
 | `irc.bond_changes == {}` (no bonds change) | TS connects two essentially identical wells (numerical ringing) | Verify the imaginary mode visualization in `freq/`; this is sometimes a non-physical TS |
 
 ## When *not* to use TS-only mode
