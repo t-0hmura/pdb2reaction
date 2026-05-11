@@ -8,7 +8,7 @@
 - **想定場面:** R → … → P の **2 構造以上**を入力とし、自動精密化を含む連続 MEP を構築する場面。
 - **手法:** GSM/DMF セグメントを連鎖し、結合変化が残る区間だけを再帰的に精密化します。
 - **主な出力:** `mep_trj.xyz`（主軌跡）、`summary.json`（セグメントごとの結果）、必要に応じてプロットやマージ済み PDB。
-- **デフォルト値:** `--mep-mode gsm`、`--opt-mode grad`（L-BFGS）、`--no-preopt`、`--align`、`--thresh gau`、`--thresh-stopt gau_loose`。
+- **デフォルト値:** `--mep-mode gsm`、`--opt-mode grad`（L-BFGS）、`--preopt`、`--align`、`--thresh gau`、`--thresh-stopt gau_loose`。
 - **次にやること:** HEI は **TS 候補**であり、単独では TS 検証になりません。続けて [tsopt](tsopt.md)（内部で虚振動数チェック済み）→ [irc](irc.md) を実行してください。
 
 `pdb2reaction path-search` は反応順に並んだ 2 構造以上を入力とし、連続的な最小エネルギー経路（MEP）を構築します。共有結合変化が検出される領域のみを選択的に精密化し、解決済みのサブパスを連結して 1 本の軌跡にまとめます。
@@ -79,7 +79,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
 | --- | --- | --- |
 | `-i, --input PATH...` | 反応順序の 2 つ以上の構造（反応物 → 生成物）。すべてのファイルを単一の `-i`/`--input` の後ろに並べて指定 | 必須 |
 | `-q, --charge INT` | 総電荷。非 `.gjf` 入力では `--ligand-charge` の導出が成功しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
-| `-l, --ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
+| `-l, --ligand-charge TEXT` | スカラー整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `--workers`, `--workers-per-node` | MLIP 予測器の並列度（workers > 1 で解析ヘシアン無効; UMA バックエンドのみ; `workers_per_node` は並列予測器に渡されます）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | `--freeze-links/--no-freeze-links` | PDB 活性部位モデル読み込み時、リンク水素の親原子を凍結。詳細は [extract](extract.md) を参照 | `True` |

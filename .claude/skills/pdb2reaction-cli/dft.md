@@ -26,7 +26,7 @@ pdb2reaction dft -i geom.{pdb,xyz,gjf} \
 | `--ref-pdb` | path | none | Reference PDB so `-l` works on `.xyz` input |
 | `--func-basis` | str | `wb97m-v/def2-tzvpd` | `'FUNC/BASIS'` |
 | `--engine` | str | `gpu` | `gpu` (GPU4PySCF) or `cpu` (PySCF) |
-| `--lowmem/--no-lowmem` | bool | `True` | `gpu4pyscf.dft.rks_lowmem.RKS` on closed-shell GPU (memory-efficient direct JK; mutually exclusive with density fitting); open-shell / CPU / pre-`rks_lowmem` GPU4PySCF auto-fall back to standard RKS/UKS with DF |
+| `--lowmem / --no-lowmem` | toggle | `--lowmem` | Closed-shell GPU uses `rks_lowmem.RKS` (no DF); open-shell / CPU / older gpu4pyscf auto-fall back to RKS/UKS+DF |
 | `--config` | path | none | YAML config file |
 | `-o, --out-dir` | path | `./result_dft/` | Output directory |
 | `--show-config` / `--dry-run` / `--help-advanced` | — | — | Standard |

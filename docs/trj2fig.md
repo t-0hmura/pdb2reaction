@@ -32,7 +32,7 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 ```
 
 ## Workflow
-1. Parse the XYZ trajectory. By default, read the first floating-point number
+1. Parse the XYZ trajectory. By default, read the first numeric token
     found in every frame comment (scientific notation such as `1.5e-3` is supported). If
     `-q/-m` is present, recompute energies (in hartree) for each frame with
     the MLIP backend using those charge/spin values instead of the comment.
@@ -67,7 +67,8 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 ## Outputs
 ```
 <output>.[png|jpg|jpeg|html|svg|pdf] # Plotly export for every requested extension (defaults to energy.png)
-<output>.csv # Optional energy table when CSV is requested
+<output>.csv                         # Optional energy table when CSV is requested
+result.json                          # Machine-readable summary when --out-json is set
 ```
 - When no `-o` or positional outputs are provided, a single `energy.png` is written
   to the current directory. CSV exports include `frame`, `energy_hartree`, and either
@@ -76,7 +77,7 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 - Console diagnostics describing parsing failures or unsupported extensions.
 
 ## Notes
-- Energies are taken from the first decimal number in each comment; malformed
+- Energies are taken from the first numeric token in each comment; malformed
   comments raise an error.
 - Unsupported extensions abort the run; `.png` uses Plotly’s PNG export with
   `scale=2` for sharper output.

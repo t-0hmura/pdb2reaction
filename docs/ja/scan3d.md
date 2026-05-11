@@ -6,7 +6,7 @@
 
 ### 要点
 - **想定場面:** 3 つの距離 `(d₁, d₂, d₃)` 上で 3D ポテンシャル体積を得たいとき、または既存の `surface.csv` を再プロットしたいとき。入力は 1 つの構造 + `-s scan3d.yaml`（推奨）または `-s/--scan-lists` の **単一** インラインリテラル（四つ組は 3 つ）。`--csv` 指定時はプロットのみで実行可能です。
-- **計算手法:** d₁ → d₂ → d₃ のネストループで `--max-step-size` から線形グリッドを構成し、事前最適化構造に近い値が先に走査されるよう各軸を並べ替えます。各点は対応する調和拘束を有効にして MLIP バックエンド（デフォルト: UMA）で緩和し、記録されるエネルギーは **バイアスを除去して**評価されるため、格子点間で直接比較できます。
+- **計算手法:** d₁ → d₂ → d₃ のネストループで `--max-step-size` から線形グリッドを構成し、開始構造（`--preopt` 指定時は事前最適化後の構造）に近い値が先に走査されるよう各軸を並べ替えます。各点は対応する調和拘束を有効にして MLIP バックエンド（デフォルト: UMA）で緩和し、記録されるエネルギーは **バイアスを除去して**評価されるため、格子点間で直接比較できます。
 - **主な出力:** `surface.csv`、`grid/` 配下の各点の構造、HTML の等値面図（`scan3d_density.html`）。
 - **デフォルト値:** `--opt-mode grad`（L-BFGS）、`--no-preopt`、`--max-step-size 0.20 Å`、`--bias-k 300 eV·Å⁻²`、`--thresh baker`、`--baseline min`、`--out-dir ./result_scan3d/`。3D グリッドは点数が急激に増加するため、まず `--max-step-size` を大きくするか範囲を狭めることを検討してください。
 - **次のステップ:** `scan3d_density.html` で低エネルギーチャネルを確認し、2D の `scan2d` スライスで絞り込むか、`tsopt` で TS 候補を精密化します。
@@ -82,8 +82,8 @@ YAML/JSON ファイル書式、インライン Python リテラル構文、原�
 | --- | --- | --- |
 | `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル | `--csv` 未指定時は必須 |
 | `-q, --charge INT` | 総電荷（CLI > テンプレート/`--ligand-charge`）。両方指定時は `-q` が優先 | テンプレート/導出がない場合は必須 |
-| `-l, --ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
-| `--workers`, `--workers-per-node` | UMA 予測器の並列度（workers > 1 で解析ヘシアン無効; `workers_per_node` は並列予測器へ転送）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1`, `1` |
+| `-l, --ligand-charge TEXT` | スカラー整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
+| `--workers`, `--workers-per-node` | MLIP 予測器の並列度（workers > 1 で解析ヘシアンが無効、UMA バックエンドのみ対応; `workers_per_node` は並列予測器へ転送）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
 | `-s, --scan-lists TEXT` | スキャンターゲット: YAML/JSON スペックファイルパス（推奨）または **単一**のインライン Python リテラルで 3 つの四つ組 `(i,j,lowÅ,highÅ)` を指定。`i`/`j` は整数インデックスまたは PDB セレクタ | `--csv` 未指定時に必須 |
 | `--one-based/--zero-based` | `(i, j)` のインデックスを 1 始まり/0 始まりとして解釈 | `True` |

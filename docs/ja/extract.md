@@ -58,7 +58,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
 - `-c/--center` からの基質残基を常に含める
 - **標準カットオフ（`--radius`、デフォルト 2.6 Å）:**
  - `--no-exclude-backbone` の場合、カットオフ内の任意の原子が残基を対象にする
- - `--exclude-backbone` の場合、アミノ酸残基は**非主鎖**原子（N/H*/CA/HA*/C/O 以外）で基質に接触する必要がある
+ - `--exclude-backbone` の場合、アミノ酸残基は**非主鎖**原子（N/H*/CA/HA*/C/O 以外）で基質に接触する必要がある。非アミノ酸残基は任意の原子で接触判定される。
 - **独立したヘテロ-ヘテロカットオフ（`--radius-het2het`）:** 基質ヘテロ原子（非 C/H）がタンパク質ヘテロ原子の指定Å以内にある場合に残基を追加。`--exclude-backbone` 有効時はタンパク質側原子も非主鎖でなければならない。
 - **水処理:** HOH/WAT/H2O/DOD/TIP/TIP3/SOL はデフォルトで含まれる（`--include-h2o`）
 - **強制包含:** `--selected-resn` は**残基 ID** を受け入れます（例: `A:123A`）。残基 ID 仕様の詳細は CLI 規約の {ref}`ja-selected-resn-takes-ids` を参照。
@@ -72,7 +72,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
 - 連続ペプチドストレッチは内部主鎖原子を保持; 末端キャップ（N/H*または C/O/OXT）のみ除去
 - TER を認識し、チェーン切断を跨ぐキャッピングは行わない
 - `--exclude-backbone` の場合、**非基質**アミノ酸の主鎖原子を除去（PRO/HYP 保護と PRO 近傍保持は適用）
-- 非アミノ酸残基は主鎖様原子名を持つ原子を失わない
+- 非アミノ酸残基は主鎖様の原子名（N/CA/HA/H/H1/H2/H3）を持つ原子を失わない
 
 ### リンク水素（`--add-linkh`）
 - 切断された結合ベクトルに沿って 1.09 Åで炭素のみのリンク水素を追加（CB–CA、CA–N、CA–C; PRO/HYP は CA–C のみ）

@@ -7,18 +7,8 @@ description: PBS (Torque / PBSPro) and SLURM submission for pdb2reaction — pre
 
 ## Overview
 
-`pdb2reaction` is a CPU+GPU Python program; on HPC clusters you typically
-submit it as a PBS or SLURM job that requests one node with one GPU.
-This skill provides templates with placeholders — fill in your queue /
-module / env names from `pdb2reaction-env-detect/SKILL.md`.
-
-## When the env is unknown
-
-If you don't know the cluster's queue / GPU / module configuration,
-read `pdb2reaction-env-detect/SKILL.md` first. It walks through the
-discovery commands (`qstat -Q`, `pbsnodes -a`, `nvidia-smi`,
-`module avail cuda`, `conda env list`) and tells you how to fill the
-placeholders this skill uses.
+Submit `pdb2reaction` as a PBS / SLURM job with 1 node / 1 GPU.
+Placeholders filled from `pdb2reaction-env-detect/SKILL.md`.
 
 ## PBS preamble template (Torque / PBSPro)
 
@@ -108,9 +98,9 @@ on a single mid-range GPU. Adjust generously.
 | `path-search` (DMF) | 10–60 min | Slower than GSM but more robust |
 | `tsopt` (RS-I-RFO, default) | 5–60 min | Full-Hessian rebuilds dominate |
 | `tsopt` (Dimer, alternative) | 1–10 min | Initial Hessian + dimer rotation, with periodic Hessian refreshes when curvature drifts; cheaper per cycle than full-Hessian RS-I-RFO when full-Hessian recomputation is too expensive |
-| `irc` | 5–30 min | Forward + backward; default 125 cycles each |
+| `irc` | 5–30 min | Forward + backward; `--max-cycles` cap 125 each direction |
 | `freq` | 5–30 min | Hessian once + diagonalization |
-| `dft` (ωB97M-V/def2-svp, GPU) | 30 min – 6 h | Heavy; ~1–10 h on TZVPD |
+| `dft` (ωB97M-V/def2-tzvpd, GPU) | 1–10 h | Heavy; `def2-svp` shrinks this 3–10× |
 | `dft` (CPU) | 10–100× GPU time | Use only for small clusters (< 100 atoms); larger systems hit the upper bound |
 
 For an `all` run with 2 segments + DFT: budget **6–24 h walltime**.
@@ -202,9 +192,9 @@ workers. **Two important caveats:**
 1. The `workers` / `workers_per_node` flags are filtered to the UMA
    backend (see `pdb2reaction/backends/__init__.py:_BACKEND_ACCEPTED_KEYS`).
    ORB / MACE / AIMNet2 silently drop the kwarg.
-2. When `workers > 1`, the UMA backend silently sets `force_fd = True`
-   (`pdb2reaction/backends/uma.py:431`) and the Hessian is computed
-   by finite difference even if the YAML/CLI requested `Analytical`.
+2. When `workers > 1`, requesting `hessian_calc_mode=Analytical` raises
+   a `RuntimeError` (`pdb2reaction/backends/uma.py:160`); use
+   `FiniteDifference` (the default) or drop to `workers = 1`.
    See `docs/uma-pysis.md` `(workers-fd-downgrade)=`.
 
 The full PBS + OpenMPI + Ray bootstrap is in

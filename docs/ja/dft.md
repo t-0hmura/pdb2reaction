@@ -2,10 +2,10 @@
 
 ## 概要
 
-> **要約:** GPU4PySCF または CPU PySCF を使用して DFT 一点計算を実行します。デフォルトの汎関数/基底関数は ωB97M-V/def2-tzvpd です。結果にはエネルギーと電子密度解析（population analysis: Mulliken、meta-Löwdin、IAO 電荷）が含まれます。
+> **要約:** GPU4PySCF または CPU PySCF を使用して DFT 一点計算を実行します。デフォルトの汎関数/基底関数は ωB97M-V/def2-tzvpd です。結果にはエネルギーと布居解析（population analysis: Mulliken、meta-Löwdin、IAO 電荷）が含まれます。
 
 ### 要点
-- **想定場面:** 小規模な活性部位モデルに対して DFT 一点エネルギー（および電子密度解析）が必要なとき。多くは MLIP で最適化した R/TS/P 構造の精密化に使います。
+- **想定場面:** 小規模な活性部位モデルに対して DFT 一点エネルギー（および布居解析）が必要なとき。多くは MLIP で最適化した R/TS/P 構造の精密化に使います。
 - **計算手法:** PySCF（CPU）または GPU4PySCF（GPU）。バックエンドは `--engine {gpu|cpu}` で選択します。closed-shell の GPU 経路は GPU4PySCF の低メモリ実装 `rks_lowmem.RKS` をデフォルトで使用し（`--lowmem/--no-lowmem`）、open-shell や CPU、`rks_lowmem` 未対応の旧 `gpu4pyscf` では標準 RKS/UKS に自動フォールバックします。
 - **主な出力:** `input_geometry.xyz` と `result.yaml`（Hartree/kcal·mol⁻¹ のエネルギー、収束・実行時間・エンジン情報、Mulliken/meta-Löwdin/IAO 電荷とスピン密度）。
 - **デフォルト値:** `--engine gpu`、`--func-basis wb97m-v/def2-tzvpd`、`--max-cycle 100`、`--conv-tol 1e-9`、`--grid-level 3`、`--out-dir ./result_dft/`。
@@ -90,14 +90,14 @@ pdb2reaction dft -i input.pdb -q 1 -m 2 \
 ## ワークフロー
 1. **入力処理** – `geom_loader` でロード可能な任意のファイル（.pdb/.xyz/_trj.xyz/…）を受け入れ、座標は `input_geometry.xyz` として再エクスポートされます。XYZ/GJF 入力では `--ref-pdb` が参照 PDB トポロジーを提供し、原子数検証や（`--ligand-charge` 使用時の）電荷導出に使われます。DFT 段階自体は PDB/GJF 出力を生成しません。
 2. **SCF ビルド** – `--func-basis` を汎関数と基底に解析します。`--engine` で GPU/CPU を制御します（`gpu` は GPU4PySCF 必須でエラー終了、`cpu` は CPU 固定）。closed-shell + GPU + `--lowmem`（デフォルト）では SCF オブジェクトに `gpu4pyscf.dft.rks_lowmem.RKS` を使用し、メモリ効率の良い直接 JK で密度フィッティングをスキップします。open-shell GPU、CPU、または `--no-lowmem` の経路では密度フィッティングが PySCF のデフォルト設定で自動的に有効化されます。非局所補正（例: VV10）はバックエンドのデフォルト設定を超える明示的な設定は行いません。
-3. **電子密度解析 & 出力** – 収束後（または失敗後）、エネルギー（Hartree/kcal·mol⁻¹）、収束メタデータ、タイミング、バックエンド情報、および原子ごとの Mulliken/meta-Löwdin/IAO 電荷とスピン密度を要約する `result.yaml` を書き込みます。解析に失敗した列は `null` に設定され、警告が出力されます。
+3. **布居解析 & 出力** – 収束後（または失敗後）、エネルギー（Hartree/kcal·mol⁻¹）、収束メタデータ、タイミング、バックエンド情報、および原子ごとの Mulliken/meta-Löwdin/IAO 電荷とスピン密度を要約する `result.yaml` を書き込みます。解析に失敗した列は `null` に設定され、警告が出力されます。
 
 ## CLI オプション
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル | 必須 |
 | `-q, --charge INT` | PySCF に提供される総電荷。`.gjf` テンプレートまたは `--ligand-charge`（PDB 入力または `--ref-pdb` 付き XYZ/GJF）が提供しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
-| `-l, --ligand-charge TEXT` | 残基別電荷マッピング（例: `GPP:-3,SAM:1`）。PDB の残基電荷から全系の電荷を自動導出します（手動計算不要）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
+| `-l, --ligand-charge TEXT` | スカラー整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `-m, --multiplicity INT` | スピン多重度（2S+1）。PySCF 用に `2S` に変換 | `.gjf` テンプレート値または `1` |
 | `--func-basis TEXT` | `FUNC/BASIS` 形式の汎関数/基底ペア | `wb97m-v/def2-tzvpd` |
 | `--max-cycle INT` | 最大 SCF 反復 | `100` |

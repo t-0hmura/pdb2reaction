@@ -23,7 +23,7 @@ element symbols. Per-format details are in:
 |---|---|
 | `pdb.md` | PDB column-by-column layout, residue selectors, link-H placement |
 | `xyz.md` | XYZ format, ASE extension comment line |
-| `gjf.md` | Gaussian gjf header (`%link0 → route → charge spin → coords`) |
+| `gjf.md` | Gaussian gjf header (`%link0 → route → charge multiplicity → coords`) |
 | `charge-multiplicity.md` | Deciding `-q` and `-m` for an unfamiliar substrate (literature lookup workflow) |
 
 ## Decision tree: which format to feed `pdb2reaction`
@@ -64,6 +64,9 @@ When an agent must edit a structure file, the basic posture is:
 | `all` | ✓ | ✓ (single segment) | ✓ |
 | `bond-summary` | ✓ | ✓ | ✓ |
 
+PDB-utility subcommands (`fix-altloc`, `add-elem-info`) take PDB only;
+`trj2fig` takes trajectory XYZ; `energy-diagram` takes no structure.
+
 If you pass an XYZ to a subcommand that needs residue context (e.g.
 `-l 'GLU:-1'`), supply `--ref-pdb <path>` so the residue mapping can be
 recovered.
@@ -99,7 +102,7 @@ GJF (top-to-bottom block order):
 | Link0 | `%nproc=...`, `%mem=...` |
 | Route | `# <functional/basis  options>` |
 | Title | `<title>` |
-| Charge/Spin | `<charge> <spin>` |
+| Charge/Multiplicity | `<charge> <multiplicity>` (multiplicity = 2S+1) |
 | Coords | `<element>  <x>  <y>  <z>` … |
 | Optional | connectivity / ECP blocks |
 

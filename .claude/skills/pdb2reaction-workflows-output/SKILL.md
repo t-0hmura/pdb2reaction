@@ -120,8 +120,8 @@ failed-run diagnostics live in [`summary-json.md`](summary-json.md).
 | `<out_dir>/energy_diagram_DFT_all.png` | `--dft` | aggregated DFT |
 | `<out_dir>/energy_diagram_G_DFT_plus_UMA_all.png` | `--dft --thermo` | aggregated DFT + Gibbs |
 
-`<path_dir>` = `path_search/` when `--refine-path true` (default),
-`path_opt/` when `false`, `tsopt_single/` for TS-only mode.
+`<path_dir>` = `path_search/` with `--refine-path` (default),
+`path_opt/` with `--no-refine-path`, `tsopt_single/` for TS-only mode.
 
 To compose a custom diagram from energies of multiple runs, use
 [`pdb2reaction-cli/energy-diagram.md`](../pdb2reaction-cli/energy-diagram.md):

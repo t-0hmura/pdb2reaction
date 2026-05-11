@@ -22,6 +22,7 @@ pdb2reaction add-elem-info -i in.pdb -o out.pdb
 |---|---|---|---|
 | `-i, --input` | path | required | Input PDB |
 | `-o, --out` | path | `<input>_add_elem.pdb` (auto) | Output PDB with element column populated |
+| `--overwrite / --no-overwrite` | flag | `--no-overwrite` | Overwrite input file in-place (only honored when `-o/--out` omitted) |
 
 ## Examples
 
@@ -44,13 +45,15 @@ following priority (`add_elem_info.guess_element`):
    case-sensitivity table for two-letter symbols (`Mg`, `Mn`, `Fe`,
    `Zn`, `Ca`, …); 4-character names starting with a digit (e.g.
    `1HG2`) use the second character.
-4. Unresolved → reported as missing in the diagnostic summary
-   (truncated at 50 entries) and left blank in the output.
+4. Unresolved → reported in the diagnostic summary (truncated at 50
+   entries); the existing element field is left unchanged.
 
 ## Caveats
 
-- Existing element columns are **overwritten** by default. Use a
-  diff to confirm the changes are sensible.
+- Element-column values in the output are recomputed from atom / residue
+  names (existing values are replaced). The input file is not modified
+  unless `--overwrite` is passed with no `-o/--out`. Use a diff to confirm
+  the changes are sensible.
 - Atom names that don't follow the standard convention (e.g.
   exotic ligand names) may be misclassified; verify by spot-check.
 

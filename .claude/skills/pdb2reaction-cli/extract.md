@@ -21,15 +21,15 @@ pdb2reaction extract -i complex.pdb -c <substrate-spec> [-l 'RES:Q,...'] \
 | `-i, --input` | path(s) | required | Protein–substrate complex PDB(s); multi-input requires identical atom counts |
 | `-c, --center` | str | required | Substrate selector: residue-name list `'GPP,SAM'`, residue-ID list `'A:44,B:321'`, or a PDB path. Chain-qualified residue *names* (`'B:SAM'`) are not supported — use the residue ID instead. |
 | `-r, --radius` | float | 2.6 | Pocket radius (Å) around `-c` atoms |
-| `--radius-het2het` | float | (live default) | Separate radius for HET-to-HET inclusion |
+| `--radius-het2het` | float | `0` | Separate radius for HET-to-HET inclusion (`0` disables) |
 | `-l, --ligand-charge` | str | none | Per-residue charges (amino acids derived from internal table) |
 | `-o, --output` | path | `model.pdb` (single input); `model_<filename>.pdb` (multi) | Output PDB path; multi inputs emit one per file |
-| `--include-h2o / --no-include-h2o` | flag | (live default) | Include water residues found within radius |
-| `--exclude-backbone / --no-exclude-backbone` | flag | (live default) | Trim backbone atoms outside the active site |
-| `--add-linkh / --no-add-linkh` | flag | (live default) | Cap severed bonds with link hydrogens |
+| `--include-h2o / --no-include-h2o` | flag | `--include-h2o` | Include water residues found within radius |
+| `--exclude-backbone / --no-exclude-backbone` | flag | `--no-exclude-backbone` | Trim backbone atoms outside the active site |
+| `--add-linkh / --no-add-linkh` | flag | `--add-linkh` | Cap severed bonds with link hydrogens |
 | `--selected-resn` | str | none | Force-include extra residue IDs (`'A:123,B:456'`); IDs only — passing residue names raises `ValueError` |
 | `--modified-residue` | str | none | Comma-separated residue names (with optional charge) to **treat as amino acids** for backbone truncation and charge assignment. Examples: `'HD1,HD2,HD3'` (charge defaults to 0) or `'HD1:0,SEP:-2'`. |
-| `-v, --verbose / --no-verbose` | flag | (live default) | Echo per-residue inclusion + charge sums |
+| `-v, --verbose / --no-verbose` | flag | `--verbose` | Echo per-residue inclusion + charge sums |
 | `--out-json / --no-out-json` | flag | off | Write a JSON summary alongside the PDB |
 
 `extract` does **not** accept `-q`, `-m`, `--multi-model`,
@@ -83,9 +83,10 @@ just writes the cluster PDB.
 
 ## Caveats
 
-- Atom names must match exactly (case-sensitive) when using `'A:44:CA'`-style
-  selectors. `add-elem-info` and `fix-altloc` should run before extract
-  if the PDB came out of PyMOL / Maestro.
+- When `-c` is a PDB path, atom names must match exactly (case-sensitive)
+  between substrate.pdb and complex.pdb for the `is_exact_match` coordinate
+  check. `add-elem-info` and `fix-altloc` should run before extract if the
+  PDB came out of PyMOL / Maestro.
 - `-r` < 2 Å usually leaves the cluster missing essential coordinating
   atoms; 3.0–4.5 Å is typical.
 - Ligand charges come **only** from `-l`; the internal table covers

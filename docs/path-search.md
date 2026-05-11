@@ -8,7 +8,7 @@
 - **Use when:** R → … → P structures (2+ inputs) requiring a single stitched MEP with automatic refinement.
 - **Method:** Chains GSM/DMF segments and recursively refines only sub-intervals that still contain covalent changes.
 - **Outputs:** `mep_trj.xyz` (main trajectory), `summary.json` (segment-by-segment results), and optional plots/merged PDBs when enabled.
-- **Defaults:** `--mep-mode gsm`, `--opt-mode grad` (L-BFGS), `--no-preopt`, `--align`, `--thresh gau`, `--thresh-stopt gau_loose`.
+- **Defaults:** `--mep-mode gsm`, `--opt-mode grad` (L-BFGS), `--preopt`, `--align`, `--thresh gau`, `--thresh-stopt gau_loose`.
 - **Next step:** HEI output alone does **not** validate a TS. Follow with [tsopt](tsopt.md) (includes imaginary-frequency check) and [irc](irc.md).
 
 `pdb2reaction path-search` builds a continuous minimum-energy path (MEP) across two or more structures using GSM (default) or DMF (`--mep-mode dmf`). It selectively refines only those regions where covalent bond changes are detected, then stitches the resolved subpaths into a single trajectory.
@@ -77,7 +77,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
 | --- | --- | --- |
 | `-i, --input PATH...` | Two or more structures in reaction order (reactant → product). Pass all files after a single `-i`/`--input`. | Required |
 | `-q, --charge INT` | Net charge. Required for non-`.gjf` inputs unless `--ligand-charge/-l` derivation succeeds (PDB inputs). Overrides `--ligand-charge/-l` when both are set. | Required unless template/derivation applies |
-| `-l, --ligand-charge TEXT` | Per-residue charge mapping (e.g., `GPP:-3,SAM:1`). Automatically derives the total system charge from PDB residue charges — no manual counting needed. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
+| `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB residue charges. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | MLIP predictor parallelism (workers > 1 disables analytic Hessians; UMA backend only; `workers_per_node` forwarded to the parallel predictor). See {ref}`workers-fd-downgrade` for diagnostic notes. | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links/--no-freeze-links` | When loading PDB active site models, freeze the parent atoms of link hydrogens. See [extract](extract.md) for link-hydrogen details. | `True` |

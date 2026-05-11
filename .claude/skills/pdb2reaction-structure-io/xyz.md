@@ -3,7 +3,7 @@
 XYZ is a simple plain-text dump of element + Cartesian coordinate, with
 no residue or charge information embedded. `pdb2reaction` writes XYZ for trajectories,
 optimized stationary points, and IRC paths; it accepts XYZ as input
-when `-q` / `-m` (or `--ref-pdb`) is supplied.
+when `-q` and `-m` are supplied (or `--ref-pdb` plus `-m`).
 
 ## Layout
 

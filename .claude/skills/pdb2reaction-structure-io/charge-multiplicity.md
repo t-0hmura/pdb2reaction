@@ -9,8 +9,8 @@ integers. Wrong values silently produce wrong-chemistry trajectories.
 |---|---|
 | **1 (singlet, closed shell)** | The default for almost every organic / biological / metal-coordination system whose textbook description is closed-shell. |
 | 2 (doublet) | Radical species, unpaired-electron transition states (e.g. radical SAM enzymes, Fe(III) low-spin) |
-| 3 (triplet) | O₂, some carbenes, ferromagnetic Mn(IV)–Mn(IV) couples in low-symmetry environments |
-| 4 (quartet) | Mn(II) / Fe(III) high-spin in some geometries |
+| 3 (triplet) | O₂, some carbenes, Ni(II) (d⁸) high-spin tetrahedral / weak-field octahedral |
+| 4 (quartet) | Co²⁺ (d⁷) high-spin, Cr³⁺ / V²⁺ (d³) |
 | 5 (quintet) | Mn(III), Fe(II) high-spin |
 | 6 (sextet) | Mn(II) high-spin, S=5/2 ferric |
 
@@ -43,35 +43,11 @@ For non-standard residues / ligands / metals, you must supply `-l`.
 
 When you don't know a ligand's formal charge:
 
-### Step 1 — check the primary paper
+- **Lookup**: primary mechanism paper → PubChem / ChEBI `Formal Charge` → RCSB ligand summary (e.g. `https://www.rcsb.org/ligand/SAM`).
+- **Derive from SMILES** if needed: `sum(a.GetFormalCharge() for a in Chem.MolFromSmiles(smi).GetAtoms())`.
+- **Sanity-check**: `pdb2reaction extract … -v` echoes the per-residue charge sum used for `cluster.pdb`; `--show-config` / `--dry-run` on `all` / `opt` / `tsopt` / `dft` / `path-opt` / `path-search` / `freq` / `irc` (not `extract`) print the resolved charge before running.
 
-Most enzyme-mechanism papers state the charge state of the substrate
-explicitly in the Methods. The PDB Bank summary page links to the
-reference; check there first.
-
-### Step 2 — PubChem / ChEBI
-
-For small-molecule ligands:
-
-- **PubChem** (https://pubchem.ncbi.nlm.nih.gov) — search by ligand
-  3-letter code or name. The "Computed Properties" panel lists
-  `Formal Charge`.
-- **ChEBI** (https://www.ebi.ac.uk/chebi) — biological compound focus,
-  often has the charge state used in published mechanisms.
-- **PDB Ligand summary** (e.g. `https://www.rcsb.org/ligand/SAM`) —
-  shows the canonical SMILES and charge in the deposited model.
-
-### Step 3 — derive from the SMILES
-
-Given a SMILES (e.g. from PubChem), compute the formal charge:
-
-```python
-from rdkit import Chem
-mol = Chem.MolFromSmiles("CC(=O)[O-]")     # acetate
-print(sum(a.GetFormalCharge() for a in mol.GetAtoms()))    # → -1
-```
-
-### Step 4 — protonation state at physiological pH
+### Protonation state at physiological pH
 
 Many ligands have multiple protonation states. Common rule of thumb:
 
@@ -88,28 +64,6 @@ Many ligands have multiple protonation states. Common rule of thumb:
 
 Check the literature for the cluster you are modeling — biological
 mechanisms sometimes invoke an unusual protonation state.
-
-### Step 5 — sanity-check the total
-
-After summing residue + ligand + metal charges, sanity-check by:
-
-- Letting `pdb2reaction` echo the charge sum during extraction:
-
-  ```bash
-  pdb2reaction extract -i complex.pdb -c '...' -l '...' -o cluster.pdb -v
-  ```
-
-  The verbose log prints the per-residue charge sum that produced
-  `cluster.pdb`. (`extract` does not have `--show-config` / `--dry-run`
-  flags; those are exposed on `all`, `opt`, `tsopt`, `dft`, `path-opt`,
-  `path-search`, `freq`, and `irc`.)
-
-- Or run a tiny optimization and read `summary.json`:
-
-  ```bash
-  pdb2reaction opt -i cluster.pdb -q ... -m 1 -o /tmp/check
-  python -c "import json; print(json.load(open('/tmp/check/result.json'))['charge'])"
-  ```
 
 ## Permission to web-search
 

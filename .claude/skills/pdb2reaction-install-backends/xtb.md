@@ -25,7 +25,7 @@ conda install -c conda-forge xtb
 (Verify with `xtb --version`.) `pip install xtb` provides Python
 bindings that `pdb2reaction` does not use.
 
-**Site-installed binary (xtb 6.7+):**
+**Site-installed binary:**
 
 If your site already has `xtb` as a module or in `$PATH`:
 
@@ -34,9 +34,8 @@ xtb --version
 which xtb
 ```
 
-`pdb2reaction` calls the binary via subprocess when it can't find the
-Python bindings. Make sure `xtb` is on `$PATH` for any PBS / SLURM job
-that needs it.
+`pdb2reaction` invokes `xtb` via subprocess; make sure it is on `$PATH`
+in any PBS / SLURM job that needs it.
 
 ## CLI usage
 
@@ -61,6 +60,9 @@ installed (the set has expanded over xTB releases).
 
 To turn off: simply omit `--solvent` or pass `--solvent none`.
 
+`--solvent-model` selects `alpb` (default, conda-forge binary) or
+`cpcmx` (requires a source build with CPCM-X enabled).
+
 ## How it composes with MLIP / DFT
 
 The corrected energy at each step is:
@@ -79,7 +81,7 @@ optimizer feels the solvent — there is no separate flag to toggle this.
 | Symptom | Cause / fix |
 |---|---|
 | `xtb` binary not on PATH | `pdb2reaction` calls `xtb` via `subprocess.run`; install via `conda install -c conda-forge xtb` (binary; no Python bindings needed). |
-| `xtb` binary version too old (< 6.7) | ALPB introduced in 6.4 but parameter set updated repeatedly; upgrade if results disagree with documentation. |
+| `xtb` binary too old for current ALPB parameter set | ALPB parameter set has been updated across xtb releases; upgrade if results disagree with documentation. |
 | Different barrier vs literature | Could be `--solvent` mismatch or the literature used a different solvation model (CPCM / SMD). State the model in any comparison. |
 
 ## See also

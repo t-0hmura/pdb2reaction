@@ -34,7 +34,7 @@ tuples, where each tuple is `(atom_a, atom_b, target_distance_Å)`.
 [ ("<atom-spec>", "<atom-spec>", <float>) , ... ]
 ```
 
-`<atom-spec>` is a string of three tokens (atom name, residue name, residue index) in **any order**, separated by whitespace, comma, slash, backtick, or backslash. Common conventions:
+`<atom-spec>` is a string of three tokens (atom name, residue name, residue index) in **any order**, separated by whitespace, comma, slash, backtick, or backslash. Tokens are matched by type (atom name / resname / numeric index) rather than position. Common conventions:
 
 | Form | Example |
 |---|---|
@@ -75,7 +75,7 @@ Same overall layout as `all.md`, plus per-stage scan output:
 
 | Path | When | Content |
 |---|---|---|
-| `<out_dir>/scan/stage_NN/scan_*.xyz` | always | raw distance-restraint scan trajectory (top level, not under `path_search/`) |
+| `<out_dir>/scan/stage_NN/{scan_trj.xyz,result.{xyz,pdb,gjf}}` | always | raw distance-restraint scan trajectory + per-stage final geometry (top level, not under `path_search/`) |
 | `<out_dir>/path_search/mep_seg_NN_trj.xyz`, `mep_seg_NN.{pdb,gjf}` | always (`path_opt/` when `--refine-path False`) | per-segment MEP strings |
 | `<out_dir>/path_search/post_seg_NN/` | always | per-segment refinements + energy diagrams |
 | `<out_dir>/seg_NN/{reactant,ts,product}.{pdb,xyz,gjf}` | always | canonical R/TS/P per segment (top-level) |
@@ -93,7 +93,7 @@ its `summary.json`.
 |---|---|---|
 | Stage k goes to a different geometry than expected | Distance restraint not strong enough; SCF found a side product | Tighten the target distance, or split a complex stage into two simpler ones |
 | `--scan-lists` triggers a Python literal-eval error | Quoting mistake | Wrap each stage in single quotes outside, double quotes inside; backticks survive bash without escaping |
-| Path search reports more segments than expected | Bond-change detector found a "free" intermediate | Usually correct; inspect the IM geometry in `seg_01/product.{pdb,xyz,gjf}` (= `seg_03/reactant.{pdb,xyz,gjf}`); the extension follows the `-i` input format. |
+| Path search reports more segments than expected | Bond-change detector found a "free" intermediate | Usually correct; inspect the IM geometry in `seg_01/product.{pdb,xyz,gjf}` (= `seg_02/reactant.{pdb,xyz,gjf}`); the extension follows the `-i` input format. |
 
 ## Caveats
 

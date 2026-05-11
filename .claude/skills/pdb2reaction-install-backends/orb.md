@@ -63,7 +63,7 @@ Orb accepts (canonical list in
 
 | Strength | Weakness |
 |---|---|
-| 5–10× faster per call than UMA-s on > 200-atom systems | TS curvature less accurate than UMA / MACE; many TS searches end up with multiple imaginary modes |
+| Faster per call than UMA on large systems | TS curvature less accurate than UMA / MACE; many TS searches end up with multiple imaginary modes |
 | Trained on broad organic chemistry | Not the right tool for fine-grained `wB97M-V` benchmarking |
 | Easy install, no auth gate | Smaller user community than UMA |
 
@@ -75,7 +75,7 @@ re-run survivors with UMA or MACE for the final TS / IRC.
 | Symptom | Cause / fix |
 |---|---|
 | `RuntimeError: ... mat1 and mat2 shapes ... ` during Hessian | Default `precision='float32-high'` insufficient on near-degenerate modes; try `precision='float64'`. |
-| `compile_model=True` makes the first call 60+ s slow | Expected; subsequent calls are faster. Disable for short jobs. |
+| `compile_model=True` adds torch-compile overhead on first call | Subsequent calls are faster. Disable for short jobs. |
 | TS converges with > 1 imaginary mode | Common with Orb on aromatic or metalloenzyme systems. Re-run that step with UMA/MACE. |
 
 ## See also

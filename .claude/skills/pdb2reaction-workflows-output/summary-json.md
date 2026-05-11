@@ -39,7 +39,7 @@ Lightweight, MEP-level:
 | `kind` | Segment kind (`"seg"`, `"bridge"`, or `"tsopt"`) |
 | `barrier_kcal` | TS – R energy (kcal/mol) — the rate constant input |
 | `delta_kcal` | P – R energy (kcal/mol) |
-| `bond_changes` | List of single-key dicts: `[{"Bond formed (k)": ["A-B : 3.17 Å --> 1.68 Å", ...]}, {"Bond broken (k)": [...]}]`. **Standalone `irc result.json["bond_changes"]` uses a different shape**: `{"formed": [str], "broken": [str]}` (flat dict). The list-of-dicts form here is the `path_search` / `all` summary.json shape. Cutoff 1.20× covalent radii with margin 0.05 — see [`pdb2reaction-cli/bond-summary.md`](../pdb2reaction-cli/bond-summary.md). |
+| `bond_changes` | List of single-key dicts: `[{"Bond formed (k)": ["A-B : 3.17 Å --> 1.68 Å", ...]}, {"Bond broken (k)": [...]}]`. **Standalone `irc result.json["bond_changes"]` uses a different shape**: `{"formed": [str], "broken": [str]}` (flat dict). The list-of-dicts form here is the `path_search` / `all` summary.json shape. See "Bond-change interpretation" below for cutoff / algorithm. |
 
 ## Per-segment post-processing keys (`summary.json["post_segments"][i]`)
 
@@ -118,10 +118,9 @@ detected change, with the change kind encoded in the key name:
 The `(k)` integer is the consecutive-frame-pair index for multi-step
 IRC traces. Each string carries `<atom>-<atom> : <d_R> Å --> <d_P> Å`.
 
-Reading rules:
+Reading rules (cutoff: 1.20× covalent radii, margin 0.05; algorithm in [`pdb2reaction-cli/bond-summary.md`](../pdb2reaction-cli/bond-summary.md)):
 
-- "Bond formed (k)" entries list bonds that exist in P but not R
-  (covalent-radius cutoff 1.20×).
+- "Bond formed (k)" entries list bonds that exist in P but not R.
 - "Bond broken (k)" entries list bonds that exist in R but not P.
 - For a single reactive segment you usually expect 1–4 entries combined.
 - If a single segment shows > 8 bond changes, the recursive

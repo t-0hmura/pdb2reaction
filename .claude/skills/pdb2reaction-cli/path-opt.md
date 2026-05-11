@@ -70,8 +70,9 @@ the path-opt status (`converged` / `not_converged`).
 - Convergence is sensitive to initial endpoint geometries. If
   `not_converged`, try running `pdb2reaction opt` on each endpoint
   first to pre-relax to local minima.
-- For systems with > 200 atoms, GSM's per-node Hessian-free curvature
-  estimation may stall — try `--mep-mode dmf` or relax `--max-nodes`.
+- For large systems, GSM's per-node Hessian-free curvature estimation
+  may stall (informal rule of thumb) — try `--mep-mode dmf` or raise
+  `--max-nodes`.
 
 ## See also
 

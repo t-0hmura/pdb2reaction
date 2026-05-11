@@ -1,8 +1,7 @@
 # CUDA + PyTorch setup (env-cuda.md)
 
-This file picks up after `pdb2reaction-env-detect/SKILL.md` — i.e. you
-already know your driver version, your CPU architecture, and whether
-CUDA is available via `module`, system install, or conda.
+Prerequisite: driver version, CPU architecture, and CUDA source from
+`pdb2reaction-env-detect/SKILL.md`.
 
 ## Step 1. Pick the torch CUDA index from the driver
 
@@ -43,10 +42,7 @@ echo "$CUDA_HOME"                   # often set by the module
 
 Add `module load <CUDA_MODULE>` (and `gcc`, plus `<OPENMPI_MODULE>` if
 relevant) to **every** PBS / SLURM script that uses the GPU (see
-`pdb2reaction-hpc/SKILL.md`). On clusters whose system default gcc
-already matches the CUDA toolkit, the explicit `module load gcc` line
-may be unnecessary — leave it in the template anyway and let the
-modulefile no-op if the version is already current.
+`pdb2reaction-hpc/SKILL.md`).
 
 **Setup B — system install** (e.g. `/usr/local/cuda` on a workstation):
 

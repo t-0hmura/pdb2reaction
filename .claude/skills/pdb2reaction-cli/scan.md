@@ -65,7 +65,7 @@ Each space-separated literal after a single `-s` is one stage; do **not** repeat
 | `<out_dir>/preopt/result.{xyz,pdb,gjf}` | `--preopt` | pre-optimized starting geometry |
 | `<out_dir>/stage_NN/result.xyz` | always | final geometry of stage |
 | `<out_dir>/stage_NN/scan_trj.xyz` | always | per-stage scan trajectory |
-| `<out_dir>/stage_NN/scan_*.xyz` | YAML `opt.dump: true` | intermediate optimizer steps |
+| `<out_dir>/stage_NN/scan_*.xyz` | `--dump` or YAML `opt.dump: true` | intermediate optimizer steps |
 | `<out_dir>/scan_trj.xyz` | always | stitched scan trajectory across all stages |
 | `<out_dir>/scan.pdb` | `--convert-files` (default on) + PDB input | PDB companion |
 

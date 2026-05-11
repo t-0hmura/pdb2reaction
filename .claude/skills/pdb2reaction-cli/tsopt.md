@@ -89,7 +89,7 @@ print(d["files"]["final_geometry_xyz"]) # path under out_dir
 | Mode | Algorithm | When |
 |---|---|---|
 | `hess` / `rsirfo` (default) | RS-I-RFO with full Hessian | Default. Robust for tricky / multi-imaginary-mode candidates; slower per cycle but converges in fewer cycles |
-| `grad` / `dimer` | Hessian-Guided Dimer | Alternative when RS-I-RFO fails to converge or full-Hessian recomputation is prohibitive (e.g. large clusters > 600 atoms with UMA-m). Dimer uses the initial Hessian to set the search direction and then rotates the dimer pair rather than recomputing the full Hessian each cycle. |
+| `grad` / `dimer` | Hessian-Guided Dimer | Alternative when RS-I-RFO fails to converge or full-Hessian recomputation is prohibitive on large clusters. Dimer uses the initial Hessian to set the search direction and then rotates the dimer pair rather than recomputing the full Hessian each cycle. |
 
 Try `rsirfo` first; switch to `dimer` only if RS-I-RFO does not
 converge or the full-Hessian cost becomes prohibitive.
@@ -118,10 +118,9 @@ of frozen residues) or real chemical second-order saddle points.
 
 - A converged `tsopt` is **not** a complete validation; always follow
   with `irc.md` to confirm the TS connects the expected R and P.
-- `--max-cycles` defaults to 10000 as a safety upper bound;
-  well-conditioned cases converge in well under 200 cycles, so hitting
-  >200 cycles usually means the TS guess is too far off — re-run
-  `path-search` rather than raising the cap.
+- `--max-cycles` defaults to 10000 as a safety upper bound; if a run
+  burns through many cycles without converging, the TS guess is usually
+  too far off — re-run `path-search` rather than raising the cap.
 - Backend choice matters here more than for minima: UMA / MACE are
   usually safer than Orb for TS curvature.
 

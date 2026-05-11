@@ -49,6 +49,7 @@ pdb2reaction energy-diagram -i 0 12.5 4.3 --label-x R TS P --label-y "ΔE (kcal/
 ## Outputs
 ```
 OUTPUT.(png|jpg|jpeg|svg|pdf)
+result.json   # Optional sidecar with input energies and labels (when --out-json is set)
 ```
 - If `-o/--output` is omitted, `energy_diagram.png` is written to the current directory.
 - When output has no extension, `.png` is appended automatically.

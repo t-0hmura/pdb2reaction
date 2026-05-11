@@ -27,7 +27,7 @@ Available extras (canonical list lives in `pyproject.toml`):
 | `[orb]` | `orb-models` | Using `-b orb` |
 | `[aimnet]` | `aimnet>=0.1.0` | Using `-b aimnet2` |
 | `[dft]` | `pyscf`, `gpu4pyscf-cuda12x` (x86_64), `cupy-cuda12x`, `cutensor-cu12`, `basis-set-exchange` | `pdb2reaction dft` subcommand |
-| `[ci]` | CPU-only test deps; pulls in `torch` (CPU wheel must be installed separately via the PyTorch CPU index) | Running unit tests / docs builds |
+| `[ci]` | CPU-only test deps; CI installs the torch CPU wheel separately via the PyTorch CPU index | Running unit tests / docs builds |
 | `[dev]` | `pytest` family | Contributing |
 | `[docs]` | `sphinx`, `myst-parser`, `furo`, `sphinx-copybutton`, `sphinx-autobuild` | Building the Sphinx docs site |
 

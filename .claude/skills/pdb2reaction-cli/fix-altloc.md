@@ -24,9 +24,10 @@ pdb2reaction fix-altloc -i in.pdb [-o out.pdb] [--inplace] [--overwrite] [--recu
 |---|---|---|---|
 | `-i, --input` | path | required | Input PDB file or directory |
 | `-o, --out` | path | derived | Output file (if input is file) or directory (if directory). Omit to overwrite in place via `--inplace`. |
-| `--inplace` | flag | False | Overwrite the input file in place |
-| `--overwrite` | flag | False | Overwrite an existing output file |
-| `--recursive` | flag | False | Recurse into sub-directories when `-i` is a directory |
+| `--inplace / --no-inplace` | flag | `--no-inplace` | Overwrite input file(s) in place; writes a `.bak` next to each file |
+| `--overwrite / --no-overwrite` | flag | `--no-overwrite` | Overwrite an existing output file |
+| `--recursive / --no-recursive` | flag | `--no-recursive` | Recurse into sub-directories when `-i` is a directory |
+| `--force / --no-force` | flag | `--no-force` | Process files even if no altLoc detected (default skips them) |
 
 The selection rule is **fixed**: highest occupancy, then earliest
 appearance. There is no `--keep <letter>` flag.

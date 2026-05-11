@@ -52,7 +52,7 @@ pdb2reaction scan2d -i 1.R.pdb -l 'SAM:1,GPP:-3' \
 | `<out_dir>/grid/inner_path_d1_NNN_trj.xyz` | `--dump` | inner-loop trajectory |
 | `<out_dir>/scan2d_map.png` | always | 2D energy surface heatmap |
 | `<out_dir>/scan2d_landscape.html` | always | interactive 3D landscape |
-| `<out_dir>/surface.csv` | always | 2D energy surface (axis_1, axis_2, energy) |
+| `<out_dir>/surface.csv` | always | 2D energy surface (d1_A, d2_A, energy_hartree, energy_kcal, plus axis labels) |
 
 `result.json` stores grid metadata and energy values; `surface.csv` is
 ready for downstream contour plotting; `scan2d_map.png` is the static

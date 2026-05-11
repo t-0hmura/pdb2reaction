@@ -1,29 +1,22 @@
 # Gaussian gjf format (gjf.md)
 
 `gjf` (or `.com`) is the Gaussian input format. From `pdb2reaction`'s
-perspective it is **XYZ with a 5-line header** that adds charge / spin /
-route line / title; everything from the coordinate block onward is the
-same as XYZ.
+perspective it is **XYZ with a Gaussian header** (link-0 `%`-block + route
+line + title + charge / multiplicity), and everything from the coordinate
+block onward is the same as XYZ.
 
-## XYZ → GJF in one diff
+## XYZ → GJF block-by-block
 
-```
-                               %nproc=8                ← optional %-block
-                               %mem=8GB                ← (skip if unused)
-                               %chk=run.chk
-                                                        ← (blank)
-                               # <route line>          ← method/basis/keywords
-                                                        ← (blank)
-                               Title (free text)       ← any string
-<n_atoms>                                              ← (blank)
-<comment line>                 0 1                      ← <charge> <multiplicity>
-<element> x y z                <element> x y z          ← coordinates (Å)
-<element> x y z                <element> x y z
-...                            ...
-                                                        ← (terminating blank)
-```
-
-Left = XYZ (2-line header). Right = GJF (~5-line header, same coordinates).
+| Block | XYZ | GJF |
+|---|---|---|
+| Link0 (`%nproc`, `%mem`, `%chk`) | — | optional, top of file |
+| Route line (`# <method> <basis> <keywords>`) | — | required |
+| Title | — | required (free text) |
+| Charge / multiplicity | — | required (`<q> <m>`) |
+| Atom count | line 1 (`<n_atoms>`) | — |
+| Comment line | line 2 (free text) | — |
+| Coordinates (`<element> x y z`) | lines 3 … | after charge/mult, terminated by blank |
+| Connectivity / ECP (optional) | — | after coordinates, blank-separated |
 
 ## What `pdb2reaction` reads from a `.gjf`
 

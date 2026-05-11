@@ -12,9 +12,9 @@ PDB is `pdb2reaction`'s primary input. Column-based, fixed-width fields.
 | `END`, `ENDMDL` | File terminator — informational only |
 | `CRYST1` | Unit cell — read but not written by `pdb2reaction` (cluster model only) |
 
-`pdb2reaction` ignores `MODEL`, `ANISOU`, `LINK`, `SSBOND`, etc. Strip
-them with `pdb2reaction add-elem-info` or `fix-altloc` if a downstream
-step complains.
+`pdb2reaction` ignores `MODEL`, `ANISOU`, `LINK`, `SSBOND`, etc. If a
+downstream step complains, strip them with a one-line `awk` / `grep`
+filter.
 
 ## Column layout (`ATOM` / `HETATM`)
 
@@ -95,8 +95,8 @@ If you don't know a ligand's formal charge, see
 When `extract` cuts a covalent bond between an in-cluster atom (`A`)
 and an out-of-cluster atom (`B`), it places a hydrogen `H_link` along
 the `A→B` direction at 1.09 Å (standard C-H length). The link hydrogen
-is written as a `HETATM` with residue name `LKH` (or similar marker
-in your version — check by reading `pdb2reaction.extract.AMINO_ACIDS`).
+is written as a `HETATM` with atom name `HL` and residue name `LKH`
+(hard-coded in `_format_linkH_block`).
 
 Link hydrogens carry **no formal charge**; they do not enter the
 charge sum.

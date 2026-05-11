@@ -7,10 +7,11 @@ with **link hydrogens** + three layers of `freeze_atoms`.
 
 ## Background: link hydrogens (`LKH/HL`)
 
-When `extract` cuts a covalent bond between an in-cluster atom (`A`) and
-an out-of-cluster atom (`B`), it places a hydrogen along `A→B` at 1.09 Å.
-The cap is written as a `HETATM` with residue name `LKH`, atom name `HL`.
-The cluster-side parent atom `A` of each cap is what needs to be frozen.
+When `extract` cuts a C–X covalent bond between an in-cluster carbon (`A`)
+and an out-of-cluster atom (`B`), it places a hydrogen along `A→B` at 1.09 Å
+(carbon-only; non-C boundaries are not capped). The cap is written as a
+`HETATM` with residue name `LKH`, atom name `HL`. The cluster-side parent
+atom `A` of each cap is what needs to be frozen.
 
 ## Three sources of frozen atoms (merged as a union at run time)
 
@@ -66,10 +67,13 @@ on the CLI.
 
 ## Effect on the calculation
 
-- **Forces:** zeroed for every frozen DOF; optimizer cannot move them.
+- **Forces:**
+  - Hard freeze (`opt` / `tsopt` / `scan` / `freq` / `irc`, `path-search --mep-mode gsm`): forces on frozen DOFs are zeroed; optimizer cannot move them.
+  - Soft restraint (`path-opt`, `path-search --mep-mode dmf`): `HarmonicFixAtoms` adds a stiff harmonic penalty around the initial Cartesians; frozen atoms can drift slightly.
 - **Hessian:** rows and columns of frozen DOFs are either removed
-  (`calc.return_partial_hessian: true`, the default for `freq`, forced
-  for `irc`) or zeroed in the full matrix.
+  (`calc.return_partial_hessian: true`, the global calculator default
+  and explicitly re-asserted by `opt` / `tsopt` / `scan` / `freq` / `irc`)
+  or zeroed in the full matrix.
 - **`freq`:** when the frozen-atom set is non-empty, automatically runs
   Partial Hessian Vibrational Analysis (PHVA) on the active block.
 - **`irc` / `path-opt` / `path-search`:** frozen atoms keep their

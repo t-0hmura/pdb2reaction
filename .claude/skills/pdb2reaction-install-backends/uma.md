@@ -30,8 +30,8 @@ pip install huggingface_hub[cli]
 hf auth login                # paste a Read token from huggingface.co/settings/tokens
 ```
 
-On older `huggingface_hub` (<0.26) the equivalent command is
-`huggingface-cli login`.
+Requires `huggingface_hub >= 0.34`; on older versions use the legacy
+`huggingface-cli login` (still works but is being deprecated).
 
 The token is cached in `~/.cache/huggingface/`. Once it's there, future
 runs (and PBS jobs) pick it up automatically.
@@ -53,14 +53,15 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb \
     -b uma                       # explicit, identical to default
 ```
 
-Available models (set via `--model` or via `pdb2reaction.defaults.UMA_CALC_KW`).
-Two equivalent notations are common:
+Available models (set via the `calc.model:` field in `--config` YAML or
+by overriding `pdb2reaction.defaults.UMA_CALC_KW`). Two equivalent
+notations are common:
 
-| config string (`--model`) | paper notation | HuggingFace repo | Notes |
+| config string (`calc.model`) | paper notation | HuggingFace repo | Notes |
 |---|---|---|---|
-| `uma-s-1p1` (default) | UMA-S-1.1 / UMA-s-1.1 | `facebook/UMA-S-1.1` | Smaller / faster, sufficient for most workflows |
-| `uma-s-1p2` | UMA-S-1.2 / UMA-s-1.2 | `facebook/UMA-S-1.2` | Successor checkpoint (still small) |
-| `uma-m-1p1` | UMA-M-1.1 / UMA-m-1.1 | `facebook/UMA-M-1.1` | Larger, slightly more accurate, ~3× slower |
+| `uma-s-1p1` (default) | UMA-s-1.1 | `facebook/UMA-S-1.1` | Smaller / faster, sufficient for most workflows |
+| `uma-s-1p2` | UMA-s-1.2 | `facebook/UMA-S-1.2` | Successor checkpoint (still small) |
+| `uma-m-1p1` | UMA-m-1.1 | `facebook/UMA-M-1.1` | Larger, slightly more accurate, ~3× slower |
 
 `p` is the dot replacement used by fairchem-core's config parser
 (`1p1` ↔ `1.1`). Pass the config string (`uma-s-1p1`) on the CLI.
@@ -80,7 +81,7 @@ UMA accepts these calculator kwargs (canonical list in
 |---|---|
 | `charge`, `spin` | Total charge and spin multiplicity |
 | `device` | `'cuda'`, `'cpu'`, or `'auto'` |
-| `model` | `'uma-s-1.1'` or `'uma-m-1.1'` |
+| `model` | `'uma-s-1p1'`, `'uma-s-1p2'`, or `'uma-m-1p1'` |
 | `task_name` | `'omol'` (default — organic molecules + 1st-row metals) |
 | `freeze_atoms` | Indices of atoms held fixed (link-atom parents, frozen residues) |
 | `hessian_calc_mode` | `'FiniteDifference'` (default) or `'Analytical'` |
@@ -118,8 +119,9 @@ This spawns a Ray worker pool. Limitations:
 - All workers in a single-node pool must see the same GPUs
   (e.g. `CUDA_VISIBLE_DEVICES=0,1,2,3`).
 - Adds overhead for small graphs — disable for systems below ~100 atoms.
-- **Silent Hessian downgrade**: when `workers > 1`, analytical Hessian
-  is silently disabled in favor of finite-difference. See
+- **Analytical Hessian unavailable**: when `workers > 1`, requesting
+  `hessian_calc_mode=Analytical` raises a `RuntimeError`; use
+  `FiniteDifference` (the default) or drop to `workers = 1`. See
   `pdb2reaction/docs/uma-pysis.md` for the full caveat.
 
 ## Known gotchas

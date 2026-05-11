@@ -13,7 +13,9 @@ Use it as a sanity check on R vs P, or to understand how a recursive
 
 ```bash
 pdb2reaction bond-summary -i a.pdb -i b.pdb [-i c.pdb ...] \
-    [--bond-factor 1.2] [--device cpu] [--one-based|--zero-based]
+    [--bond-factor 1.2] [--device cpu] [--one-based|--zero-based] [--out-json]
+# Positional file args also accepted:
+pdb2reaction bond-summary A.xyz B.xyz [C.xyz ...]
 ```
 
 ## Key flags
@@ -24,6 +26,7 @@ pdb2reaction bond-summary -i a.pdb -i b.pdb [-i c.pdb ...] \
 | `--device` | str | `cpu` | Compute device for distance calculations |
 | `--bond-factor` | float | `1.2` | Covalent-radius multiplier for bond cutoff |
 | `--one-based / --zero-based` | flag | `--one-based` | Atom-index numbering convention in the report |
+| `--out-json / --no-out-json` | flag | `--no-out-json` | Emit machine-readable JSON to stdout in place of the text report |
 
 (Internal `margin_fraction` of 0.05 further shrinks the threshold; see
 `bond_changes.py`.)
@@ -43,13 +46,15 @@ pdb2reaction bond-summary -i frame_01.xyz -i frame_05.xyz -i frame_10.xyz
 Text on stdout, e.g.:
 
 ```
-Pair 1 -> 2:
-  Bond formed (2):
-    CS1 SAM 320 — C7 GPP 321 :  3.17 Å -> 1.68 Å
-    OE2 GLU 186 — H11 GPP 321 :  2.23 Å -> 0.98 Å
-  Bond broken (2):
-    S SAM 320 — CS1 SAM 320 :  1.80 Å -> 3.43 Å
-    C7 GPP 321 — H11 GPP 321 :  1.10 Å -> 2.32 Å
+============================================================
+  1.R.pdb  →  2.P.pdb
+============================================================
+Bond formed (2):
+  - C320-C321 : 3.170 Å --> 1.680 Å
+  - O186-H321 : 2.230 Å --> 0.980 Å
+Bond broken (2):
+  - S320-C320 : 1.800 Å --> 3.430 Å
+  - C321-H321 : 1.100 Å --> 2.320 Å
 ```
 
 ## Caveats

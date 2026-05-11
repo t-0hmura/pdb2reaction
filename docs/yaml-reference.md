@@ -84,8 +84,8 @@ Accepted values: `gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`
 | [`geom`](#geom) | Geometry and coordinate settings | all, opt, scan, scan2d, scan3d, tsopt, freq, irc, path-opt, path-search, dft |
 | [`calc`](#calc) | MLIP backend configuration | all, opt, scan, scan2d, scan3d, tsopt, freq, irc, path-opt, path-search |
 | [`opt`](#opt) | Shared optimizer settings | opt, scan, scan2d, scan3d, tsopt, path-opt, path-search |
-| [`lbfgs`](#lbfgs) | L-BFGS optimizer settings | opt, scan, scan2d, scan3d, path-search |
-| [`rfo`](#rfo) | RFO optimizer settings | opt, scan, scan2d, scan3d, path-search |
+| [`lbfgs`](#lbfgs) | L-BFGS optimizer settings | opt, scan, scan2d, scan3d, path-search, path-opt |
+| [`rfo`](#rfo) | RFO optimizer settings | opt, scan, scan2d, scan3d, path-search, path-opt |
 | [`gs`](#gs) | Growing String Method settings | path-opt, path-search |
 | [`dmf`](#dmf) | Direct Max Flux settings | path-opt, path-search |
 | [`stopt`](#stopt) | StringOptimizer settings | path-opt, path-search |
@@ -108,7 +108,7 @@ Geometry loading and coordinate handling.
 ```yaml
 geom:
  coord_type: cart # Coordinate type: "cart" (Cartesian) or "dlc" (delocalized internals)
- freeze_atoms: [] # 1-based indices of atoms to freeze; merged with CLI --freeze-links detection
+ freeze_atoms: [] # 1-based atom indices to freeze; if `--freeze-links` is on (PDB only), the auto-detected link-H parent indices are merged in
 ```
 
 **Notes:**
@@ -154,7 +154,7 @@ calc:
 - `workers` / `workers_per_node` are effective with the UMA backend only.
 - `solvent` enables xTB-based implicit solvent corrections (delta correction approach). Requires `xtb` to be installed.
 - `hessian_calc_mode: Analytical` is recommended when sufficient VRAM is available
-- `workers > 1` disables analytical Hessians — when `workers > 1`, the analytical path is silently bypassed at the calculator entry point and a finite-difference Hessian is computed instead, even when `hessian_calc_mode: Analytical` is set. Since `FiniteDifference` is the default, this only matters if you explicitly opted into `Analytical`. See {ref}`the MLIP Calculator hessian-evaluation note <hessian-evaluation>` for details.
+- `workers > 1` disables analytical Hessians — when `workers > 1`, the calculator raises a `RuntimeError` if `hessian_calc_mode: Analytical` is requested. Use `FiniteDifference` (the default) or drop to `workers = 1`. See {ref}`the MLIP Calculator hessian-evaluation note <hessian-evaluation>` for details.
 - Charge/spin inherit `.gjf` template metadata when available
 - `freq` sets `calc.return_partial_hessian = true` by default (PHVA); YAML can override.
 - IRC forces `geom.coord_type = cart` and `calc.return_partial_hessian = true` regardless of YAML (partial Hessian with active-DOF processing).
@@ -193,9 +193,9 @@ opt:
 When `energy_plateau: true`, the optimizer declares convergence if the energy range
 (max − min) over the last `energy_plateau_window` steps falls below
 `energy_plateau_thresh` (default `1e-4` au ≈ 0.06 kcal/mol over 50 steps). This prevents
-wasted cycles when the MLIP force noise floor (typically ~4×10⁻⁴ au) exceeds the
-force-based convergence threshold (e.g. `baker` max_force = 3×10⁻⁴ au), so the force
-criterion can never be satisfied even though the energy has clearly flattened.
+wasted cycles when MLIP force noise can exceed the `baker` threshold
+(`max_force = 3×10⁻⁴ au`), so the force criterion may never be satisfied
+even after the energy has flattened.
 The fallback is **skipped** for chain-of-states (COS) optimizers such as `stopt`,
 `gs`, and DMF, because those store per-image energy arrays rather than a single scalar
 trace.

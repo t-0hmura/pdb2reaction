@@ -117,7 +117,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Net charge. Required unless a `.gjf` template or `--ligand-charge/-l` (PDB inputs or XYZ/GJF with `--ref-pdb`) supplies it. Overrides `--ligand-charge/-l` when both are set. | Required unless template/derivation applies |
-| `-l, --ligand-charge TEXT` | Per-residue charge mapping (e.g., `GPP:-3,SAM:1`). Automatically derives the total system charge from PDB residue charges — no manual counting needed. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
+| `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB residue charges. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers INT` | MLIP predictor parallelism (workers > 1 disables analytic Hessians). See {ref}`workers-fd-downgrade` for diagnostic notes. | `1` |
 | `--workers-per-node INT` | Workers per node, forwarded to the parallel predictor. | `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
@@ -144,10 +144,10 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 ### `--flatten` precedence caveat
 
 ```{note}
-**`--flatten` is disabled by default (precedence caveat).** Although `defaults.py` defines `flatten_max_iter: 50` (and the YAML table below shows `flatten_max_iter: 50`), the CLI initializer forces `flatten_max_iter = 0` unless `--flatten` is **explicitly** passed on the command line. In other words, the effective value is:
+**`--flatten` is disabled by default (precedence caveat).** Although `defaults.py` defines `flatten_max_iter: 50`, the CLI initializer seeds `flatten_max_iter = 0`; the effective value is then resolved as:
 
-- CLI `--flatten` **not** passed → `flatten_max_iter = 0` (surplus-mode cleanup disabled). The YAML value of 50 is **ignored**.
-- CLI `--flatten` passed → the YAML / `defaults.py` value applies (default `flatten_max_iter = 50`); you can override via YAML `hessian_dimer.flatten_max_iter` or `rsirfo.flatten_max_iter`.
+- CLI `--flatten` **not** passed → `flatten_max_iter = 0` unless **explicitly set in YAML** via `hessian_dimer.flatten_max_iter` or `rsirfo.flatten_max_iter`. The `defaults.py` value of 50 is ignored (not the user's YAML).
+- CLI `--flatten` passed → the YAML / `defaults.py` value applies (default `flatten_max_iter = 50`); you can still override via YAML `hessian_dimer.flatten_max_iter` or `rsirfo.flatten_max_iter`.
 
 If your TS candidate has multiple imaginary frequencies, add `--flatten` to enable the surplus-mode cleanup loop.
 ```
@@ -178,8 +178,7 @@ See {ref}`exit-codes` in CLI Conventions.
   `hessian_dimer.neg_freq_thresh_cm`); frequencies with magnitudes below this threshold are not counted as imaginary. The selected `root` controls which vibrational mode is followed during optimization.
 - Use `--opt-mode` to choose the algorithm workflow directly (`rsirfo` by default), instead of
   manually editing YAML mode mappings.
-- PHVA translation/rotation projection follows the same implementation as `freq`, while reducing
-  memory usage and preserving correct active-space eigenvectors.
+- Dimer mode applies translation/rotation projection (PHVA when frozen atoms are present) before the initial Hessian diagonalization, matching the `freq` implementation; RS-I-RFO mode operates directly on the active-DOF Cartesian Hessian without TR projection (frozen atoms remove the rigid-body symmetry).
 - See {ref}`CLI Conventions: Configuration precedence <configuration-precedence>` for the full resolution order.
 
 Shared sections reuse

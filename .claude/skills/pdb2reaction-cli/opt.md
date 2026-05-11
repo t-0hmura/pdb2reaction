@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Single-structure geometry optimization with LBFGS or RFO.
+Single-structure geometry optimization with L-BFGS or RFO.
 Use this to relax a starting geometry to its nearest local minimum
 before feeding it to `path-search` / `path-opt`, or as a post-IRC
 endpoint refinement.
@@ -21,8 +21,8 @@ pdb2reaction opt -i input.pdb [-q 0 -m 1] \
 |---|---|---|---|
 | `-i, --input` | path | required | `.pdb` / `.xyz` / `.gjf` |
 | `-q` / `-l` / `-m` | — | — | Charge / spin (common conventions) |
-| `--opt-mode` | str | `grad` | `grad` (LBFGS) or `hess` (RFO); aliases `lbfgs` / `rfo` |
-| `--max-cycles` | int | (live default) | Stop after N cycles; check `OPT_BASE_KW` |
+| `--opt-mode` | str | `grad` | `grad` (L-BFGS) or `hess` (RFO); aliases `lbfgs` / `rfo` |
+| `--max-cycles` | int | `10000` | Stop after N cycles; see `OPT_BASE_KW["max_cycles"]` |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `--solvent` | str | none | xTB-ALPB solvent |
 | `-o, --out-dir` | path | `./result_opt/` | Output directory |
@@ -30,7 +30,7 @@ pdb2reaction opt -i input.pdb [-q 0 -m 1] \
 
 ## Examples
 
-### Default LBFGS
+### Default L-BFGS
 
 ```bash
 pdb2reaction opt -i my.pdb -l 'SAM:1' -b uma -o result_opt
@@ -68,21 +68,21 @@ pdb2reaction path-opt -i /tmp/relax_R/final_geometry.xyz /tmp/relax_P/final_geom
 
 | Mode | Algorithm | When |
 |---|---|---|
-| `grad` / `lbfgs` | LBFGS | Default, fast, robust for most well-conditioned minima |
-| `hess` / `rfo` | RFO with Hessian updates | Stiffer convergence; useful when LBFGS oscillates |
+| `grad` / `lbfgs` | L-BFGS | Default, fast, robust for most well-conditioned minima |
+| `hess` / `rfo` | RFO with Hessian updates | Stiffer convergence; useful when L-BFGS oscillates |
 
 ## Caveats
 
 - Not a TS optimizer — for TS use `tsopt.md`.
-- LBFGS occasionally walks past a saddle on shallow surfaces; if the
+- L-BFGS occasionally walks past a saddle on shallow surfaces; if the
   resulting geometry has imaginary frequencies (run `freq` to check),
   re-run with `--opt-mode rfo`.
 - `--config` YAML is the way to override less-common settings (step
-  limits, trust radius, etc.); inspect `OPT_BASE_KW` and `LBFGS_KW`
+  limits, trust radius, etc.); inspect `OPT_BASE_KW` and `L-BFGS_KW`
   in `pdb2reaction.defaults`.
 
 ## See also
 
 - `tsopt.md` — TS analog.
 - `freq.md` — verify the optimized minimum (zero imaginary modes).
-- Defaults: `import pdb2reaction.defaults as d; print(d.OPT_BASE_KW, d.LBFGS_KW, d.RFO_KW)`
+- Defaults: `import pdb2reaction.defaults as d; print(d.OPT_BASE_KW, d.L-BFGS_KW, d.RFO_KW)`

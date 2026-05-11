@@ -182,7 +182,7 @@ Symptoms:
 - The energy, on the other hand, has clearly flattened and oscillates at the 10⁻⁵–10⁻⁴ au level.
 
 Why it happens:
-- MLIP gradient/force evaluations carry a small stochastic noise floor (typically ~4×10⁻⁴ au for UMA-class models). This noise floor can exceed the force-based convergence criterion (`baker` = 3×10⁻⁴ au), so the force threshold can never be satisfied even though the geometry has already converged.
+- MLIP gradient/force evaluations carry a small stochastic noise floor (on the order of 10⁻⁴ Hartree/Bohr). This noise floor can exceed the force-based convergence criterion (`baker` = 3×10⁻⁴ au), so the force threshold can never be satisfied even though the geometry has already converged.
 
 Fixes to try:
 - The **energy plateau fallback** should handle this automatically: `opt.energy_plateau: true` declares convergence when the energy range over the last `opt.energy_plateau_window` (default 50) steps falls below `opt.energy_plateau_thresh` (default `1×10⁻⁴ au ≈ 0.06 kcal/mol`). No user action is required in most cases.

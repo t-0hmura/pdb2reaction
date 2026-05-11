@@ -32,7 +32,7 @@ hf auth login
 hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 ```
 
-(Requires `huggingface_hub >= 0.34`; in `huggingface_hub >= 1.0` the legacy `huggingface-cli login` entry point exits with a deprecation notice.)
+(Recent `huggingface_hub` releases ship the `hf` CLI; older versions still expose `huggingface-cli login`, which is being deprecated.)
 
 You only need to do this once per machine / environment.
 
@@ -58,7 +58,7 @@ You only need to do this once per machine / environment.
 > **Tip:** UMA is the default MLIP backend. To use ORB or AIMNet2, install the corresponding extra (e.g. `pip install "pdb2reaction[orb]"`) and pass `-b/--backend orb` to any command. See step 7 below.
 
 ```{warning}
-**MACE:** `mace-torch` requires `e3nn==0.4.4`, which conflicts with `fairchem-core`'s `e3nn` pin (older `mace-torch` versions). The canonical recipe is `pip uninstall -y fairchem-core && pip install mace-torch` in a dedicated conda env — UMA and MACE cannot share the same environment unless `mace-torch` ≥ 0.3.8 (which advertises coexistence with `fairchem-core`). The `--no-deps mace-torch` variant seen in some older notes is not recommended; it leaves torch-scatter / e3nn unpinned.
+**MACE:** `mace-torch` requires `e3nn==0.4.4`, which conflicts with `fairchem-core`'s `e3nn` pin (older `mace-torch` versions). Use a separate conda env for MACE unless your `mace-torch` release advertises coexistence with `fairchem-core`; the canonical recipe is `pip uninstall -y fairchem-core && pip install mace-torch` in a dedicated env.
 ```
 
 
@@ -133,7 +133,10 @@ If you prefer to build the environment piece by piece:
 
     # MACE backend (use a separate conda environment because mace-torch
     # pins e3nn==0.4.4 which conflicts with UMA's fairchem-core)
-    pip uninstall -y fairchem-core && pip install mace-torch
+    conda create -n <mace-env> python=3.11 -y && conda activate <mace-env> \
+        && pip install pdb2reaction \
+        && pip uninstall -y fairchem-core \
+        && pip install mace-torch
 
     # DFT single-point post-processing (`--dft` / `pdb2reaction dft`)
     # Installs gpu4pyscf-cuda12x, PySCF, and related dependencies.

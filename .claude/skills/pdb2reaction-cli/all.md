@@ -30,9 +30,9 @@ pdb2reaction all -i <input(s)> [-c <substrate>] [-l 'RES:Q,...'] \
 | `-m, --multiplicity` | int | 1 | Spin multiplicity (2S+1) |
 | `-r, --radius` | float | 2.6 | Pocket radius (Å) when `-c` triggers extraction |
 | `-s, --scan-lists` | repeated | none | Staged distance scans (mode 2 — `all-scan-list.md`) |
-| `--tsopt` | BOOL | `False` | Run TS optimization + IRC per reactive segment (also required to enter TS-only mode with a single `-i`) |
-| `--thermo` | BOOL | `False` | Run freq + thermochemistry on R / TS / P |
-| `--dft` | BOOL | `False` | Run DFT single point on R / TS / P |
+| `--tsopt / --no-tsopt` | toggle | `--no-tsopt` | Run TS optimization + IRC per reactive segment (also required to enter TS-only mode with a single `-i`) |
+| `--thermo / --no-thermo` | toggle | `--no-thermo` | Run freq + thermochemistry on R / TS / P |
+| `--dft / --no-dft` | toggle | `--no-dft` | Run DFT single point on R / TS / P |
 | `--dft-func-basis` | str | `wb97m-v/def2-tzvpd` | DFT functional/basis (when `--dft`) |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `--solvent` | str | none | xTB-ALPB solvent name (`water`, `methanol`, …) |
@@ -99,8 +99,7 @@ Per-segment fields include `barrier_kcal`, `delta_kcal`, `bond_changes`,
 
 ## Resume / restart
 
-`pdb2reaction all` writes restart files when `--dump` is on (see
-`--help-advanced`). To rerun only a failed segment:
+`pdb2reaction all` supports `--resume` to skip stages whose outputs already exist. For finer-grained re-runs, call subcommands directly:
 
 ```bash
 pdb2reaction tsopt -i path_search/hei_seg_03.xyz -o path_search/post_seg_03/ts -b uma

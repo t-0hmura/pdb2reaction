@@ -25,7 +25,7 @@ pdb2reaction freq -i geom.{pdb,xyz,gjf} \
 | `-q` / `-l` / `-m` | — | — | Charge / spin (common conventions) |
 | `--temperature` | float | 298.15 | K, for thermochemistry |
 | `--pressure` | float | 1.0 | atm, for thermochemistry |
-| `--hessian-calc-mode` | str | (live default) | `Analytical` / `FiniteDifference`; check `UMA_CALC_KW` |
+| `--hessian-calc-mode` | str | `FiniteDifference` | `Analytical` / `FiniteDifference`; check `UMA_CALC_KW` |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `-o, --out-dir` | path | `./result_freq/` | Output directory |
 | `--config` / `--show-config` / `--dry-run` / `--help-advanced` | — | — | Standard |

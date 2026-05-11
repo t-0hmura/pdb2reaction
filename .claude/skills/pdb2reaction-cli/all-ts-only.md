@@ -7,7 +7,7 @@ older `pdb2reaction` run, or a manual guess) and want to run only the
 validation + thermochemistry stages — `tsopt → irc → freq → (dft)` —
 without the upstream extract / path-search.
 
-This is the "I trust this geometry, just check it for me" mode.
+Scope: validate a known TS candidate (no upstream extract / path-search).
 
 ## Synopsis
 
@@ -15,7 +15,7 @@ This is the "I trust this geometry, just check it for me" mode.
 pdb2reaction all -i ts_candidate.xyz \
     -q -1 -m 1 -b uma \
     --tsopt --thermo \
-    [--dft --dft-func-basis 'wb97m-v/def2-svp'] \
+    [--dft --dft-func-basis 'wb97m-v/def2-tzvpd'] \
     -o result_ts_only
 ```
 
@@ -96,8 +96,6 @@ saddle**; see "Distinctive failure modes" below.
 
 ## Caveats
 
-- Passing `--tsopt false` skips TS optimization entirely, which is
-  rarely what you want in this mode.
 - For an XYZ TS candidate, you must supply `-q` and `-m` explicitly
   (XYZ has no header). Use `--ref-pdb cluster.pdb` if you want
   `-l 'RES:Q'` to work.

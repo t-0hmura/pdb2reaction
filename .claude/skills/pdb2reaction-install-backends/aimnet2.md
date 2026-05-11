@@ -1,9 +1,7 @@
 # AIMNet2 backend (aimnet2.md)
 
-AIMNet2 (IsayevLab) is a lightweight MLIP for **small organic
-molecules**. It is the cheapest backend in `pdb2reaction` but has
-narrow element coverage; check whether your substrate is supported
-before committing to it.
+AIMNet2 (IsayevLab) is a lightweight MLIP for small organic molecules
+with narrow element coverage (see list below).
 
 ## Element coverage
 
@@ -55,7 +53,7 @@ AIMNet2 accepts (from `backends/__init__.py:_BACKEND_ACCEPTED_KEYS['aimnet2']`):
 | `charge`, `spin` | Total charge and spin multiplicity |
 | `device` | `'cuda'`, `'cpu'`, `'auto'` |
 | `model` | Override the default checkpoint |
-| `freeze_atoms`, `hessian_calc_mode`, `return_partial_hessian`, `hessian_double` | Standard cross-backend |
+| `freeze_atoms`, `hessian_calc_mode`, `return_partial_hessian`, `hessian_double`, `out_hess_torch`, `print_timing` | Standard cross-backend |
 
 ## When to use AIMNet2
 

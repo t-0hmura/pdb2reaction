@@ -1,9 +1,7 @@
 # MACE backend (mace.md)
 
-MACE-OMOL-0 is a high-accuracy MLIP trained on the OMol25 dataset
-(83 elements, organics + biomolecules + transition-metal complexes).
-It competes with UMA on TS-region work alongside UMA-s-1.1,
-UMA-m-1.1, and Orb-v3-omol.
+MACE backend uses `MACE-OMOL-0` (OMol25; 83 elements). Requires a
+dedicated env (e3nn pin conflict with UMA).
 
 ## Critical: separate environment required
 
@@ -68,15 +66,15 @@ MACE accepts (from `backends/__init__.py:_BACKEND_ACCEPTED_KEYS['mace']`):
 | `device` | `'cuda'`, `'cpu'`, `'auto'` |
 | `model` | Override the default MACE checkpoint |
 | `default_dtype` | `'float64'` (default; from `MACE_BACKEND_DEFAULTS`) or `'float32'` for faster, lower-precision inference |
-| `freeze_atoms`, `hessian_calc_mode`, `return_partial_hessian`, `hessian_double` | Standard cross-backend |
+| `freeze_atoms`, `hessian_calc_mode`, `return_partial_hessian`, `hessian_double`, `out_hess_torch`, `print_timing` | Standard cross-backend |
 
 ## Strengths and weaknesses
 
 | Strength | Weakness |
 |---|---|
-| Often the most accurate TS curvature on first-row organometallics | Separate env needed |
-| Slower than Orb but ~2× faster than UMA-m | Larger first-load (~30 s) |
-| Mature, widely benchmarked | No multi-GPU sharding API |
+| Mature, widely benchmarked | Separate env required (e3nn pin conflict with UMA) |
+| — | No multi-GPU sharding API |
+| — | First call slow (model load + torch graph build) |
 
 ## Known gotchas
 
@@ -84,7 +82,7 @@ MACE accepts (from `backends/__init__.py:_BACKEND_ACCEPTED_KEYS['mace']`):
 |---|---|
 | `e3nn` import error | UMA + MACE in the same env. Use a fresh env. |
 | `RuntimeError: Expected all tensors to be on the same device` | Mixed `cpu`/`cuda` tensors after a `.to()` round-trip. Restart Python and ensure `device='cuda'` consistently. |
-| Slow Hessian on the default `default_dtype='float64'` | Expected: float64 + 600-atom Hessian is ~4× slower than float32. Switch to `default_dtype='float32'` only when you can tolerate lower-precision modes. |
+| Slow Hessian on the default `default_dtype='float64'` | Expected: float64 Hessian is materially slower than float32. Switch to `default_dtype='float32'` if precision allows. |
 
 ## See also
 

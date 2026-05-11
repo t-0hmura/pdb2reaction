@@ -123,7 +123,7 @@ UMA バックエンドを `workers > 1` で使用する場合、`hessian_calc_mo
 (ja-hessian-evaluation)=
 ### ヘシアン評価モード
 
-`hessian_calc_mode="Analytical"` は選択されたデバイス上で 2 階自動微分を行い、`"FiniteDifference"`（デフォルト）は力の中心差分を計算します。複数の推論ワーカーを要求した場合、解析モードは自動的に無効化されます（上記の警告を参照）。
+`hessian_calc_mode="Analytical"` は選択されたデバイス上で 2 階自動微分を行い、`"FiniteDifference"`（デフォルト）は力の中心差分を計算します。複数の推論ワーカーを要求した状態で `Analytical` を明示指定すると `RuntimeError` が送出されます（上記の警告を参照）。
 
 ## HPC での使用例: PBS + Open MPI + Ray
 
@@ -145,7 +145,7 @@ UMA バックエンドを `workers > 1` で使用する場合、`hessian_calc_mo
 | `max_neigh`, `radius`, `r_edges` | 近傍構築のオプション上書き | `None`, `None`, `False` |
 | `freeze_atoms` | 1 始まりの凍結原子インデックス | _None_ |
 | `hessian_calc_mode` | `"Analytical"` または `"FiniteDifference"` | `"FiniteDifference"` |
-| `return_partial_hessian` | アクティブ自由度のみ返す | `False` |
+| `return_partial_hessian` | アクティブ自由度のみ返す | `True` |
 | `hessian_double` | ヘシアンを float64 で返す | `True` |
 | `out_hess_torch` | ヘシアンを `torch.Tensor` で返す | `True` |
 | `print_timing` | ヘシアン計算のタイミング内訳を表示 | `True` |

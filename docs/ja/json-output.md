@@ -76,7 +76,7 @@ cat result_opt/result.json | python -m json.tool
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `n_imaginary_modes` | int | 虚振動数 |
+| `n_imaginary_modes` | int | 虚振動の数 |
 | `imaginary_frequencies_cm` | float[] | 虚振動数 (cm⁻¹, 負の値) |
 | `opt_mode` | string | `"rsirfo"` / `"dimer"` |
 
@@ -88,8 +88,8 @@ cat result_opt/result.json | python -m json.tool
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `status` | string | `"completed"` |
-| `n_modes` | int | 全基準振動数 |
-| `n_imaginary` | int | 虚振動数 |
+| `n_modes` | int | 基準振動モードの総数 |
+| `n_imaginary` | int | 虚モード数 |
 | `frequencies_cm` | float[] | 全振動数 (cm⁻¹) |
 | `imaginary_frequencies_cm` | float[] | 負の振動数のみ |
 | `thermochemistry` | object\|null | 熱化学データ（下表参照） |

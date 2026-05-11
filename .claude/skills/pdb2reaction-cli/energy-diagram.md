@@ -45,7 +45,6 @@ pdb2reaction energy-diagram -i "[0.0, 21.5, -0.7, 2.2, -18.2]" -o diagram.png
   calling.
 - For a profile along a continuous trajectory (XYZ frames with energies
   in the comment line), use `trj2fig.md`.
-- Per-state labels are passed via `--label-x` and the y-axis caption via `--label-y`.
 
 ## See also
 

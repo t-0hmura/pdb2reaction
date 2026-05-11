@@ -21,7 +21,7 @@ description: Per-subcommand reference for pdb2reaction's 17 CLI subcommands (ext
 | `tsopt` | TS optimization (RS-I-RFO / Dimer) | `pdb2reaction tsopt -i ts.xyz -q 0 -m 1 -o out` | `out/final_geometry.xyz`; `result.json.n_imaginary_modes`==1 for true TS |
 | `freq` | Hessian + QRRHO thermo | `pdb2reaction freq -i geom.xyz -q 0 -m 1 -o out` | `out/frequencies_cm-1.txt`, `out/thermoanalysis.yaml` |
 | `irc` | IRC from a TS | `pdb2reaction irc -i ts.xyz -q 0 -m 1 -o out` | `out/{forward,backward,finished}_irc_trj.xyz` |
-| `dft` | Single-point DFT (PySCF / GPU4PySCF) | `pdb2reaction dft -i geom.pdb --func-basis 'wb97m-v/def2-tzvpd' -o out` | `out/result.yaml` (energy_hartree, engine_label) |
+| `dft` | Single-point DFT (PySCF / GPU4PySCF) | `pdb2reaction dft -i geom.pdb --func-basis 'wb97m-v/def2-tzvpd' -o out` | `out/result.yaml` always (energy.hartree, energy.engine); `out/result.json` with `--out-json` |
 | `scan` | 1D distance scan w/ restraints | `pdb2reaction scan -i 1.R.pdb -s '[(a,b,1.6)]' -o out` | `out/scan_trj.xyz`, per-stage `stage_NN/result.xyz` |
 | `scan2d` | 2D distance grid scan | `pdb2reaction scan2d -i 1.R.pdb -s '[(a,b,1.3,3.1),(c,d,1.2,3.2)]' -o out` | `out/surface.csv` + `out/grid/point_i<d1Å>_j<d2Å>.xyz` + `out/scan2d_map.png` |
 | `scan3d` | 3D distance grid scan | `pdb2reaction scan3d -i 1.R.pdb -s '[(a,b,L,H),(c,d,L,H),(e,f,L,H)]' -o out` | `out/surface.csv` + `out/grid/point_i<d1Å>_j<d2Å>_k<d3Å>.xyz` + `out/scan3d_density.html` |
