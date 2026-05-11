@@ -184,7 +184,6 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 | `--config FILE` | 先に適用するベース YAML | _None_ |
 | `--show-config/--no-show-config` | 実行前に解決済み設定を表示 | `False` |
 | `--dry-run/--no-dry-run` | 実行せず検証と計画表示のみ行う | `False` |
-| `--resume/--no-resume` | `--out-dir` から前回の実行を再開。出力ファイルが既に存在する完了済みステージはスキップされる | `False` |
 
 ### 電荷・スピンオプション
 
@@ -377,7 +376,6 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 - 抽出半径: `--radius` または `--radius-het2het` に `0` を渡すと、内部で `0.001 Å` にクランプされます。
 - エネルギーダイアグラムは反応物（最初の状態）基準の kcal/mol で表示されます。
 - `-c/--center` を省略すると抽出をスキップし、全構造をそのまま MEP/tsopt/freq/DFT に渡します。ただし単一構造実行では `--scan-lists` か `--tsopt` が必要です。
-- **`--resume`**: 同じコマンドに `--resume` を付けて再実行すると、出力ファイルが既に存在するステージをスキップします。各ステージはセンチネルファイルで判定されます（MEP は `summary.json`、TSOPT/IRC は `final_geometry.*` + `finished_irc_trj.xyz`、freq/DFT は `R/`+`TS/`+`P/` ディレクトリ）。resume 時に抽出がスキップされた場合は `-q/--charge` または `--ligand-charge` を明示的に指定してください。**センチネル破損時の注意:** `--resume` はセンチネルファイルの *存在* のみを確認し、整合性は検証しません。ステージが書き込み途中でキル（SIGKILL、OOM、クラスタのプリエンプション）され、センチネルファイルが中途半端な状態でディスクに残った場合でも、`--resume` はそのステージを完了済みとみなします。部分書き込みが疑われる場合は、再開前に該当ステージの出力ディレクトリ（例: `path_search/post_seg_XX/ts/`）を削除してください。
 
 
 `all` は YAML の多層指定をサポートします:

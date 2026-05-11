@@ -82,7 +82,6 @@ result_ts_only/
 
 ## Tips
 
-- Re-run with `--resume` to skip stages whose sentinel files already exist (`structures/{reactant,ts,product}.pdb` for the TS-only chain, `finished_irc_trj.xyz` for IRC). After a SIGKILL / OOM / preemption, delete the stage's output directory before resuming — sentinel presence is not an integrity check. See [all](all.md) for the full resume contract.
 - For finer control over `tsopt` parameters (`--opt-mode`, `--max-cycles`, Hessian options), run the standalone subcommand — see [tsopt](tsopt.md).
 - `--hessian-calc-mode Analytical` is recommended when VRAM permits (default: `FiniteDifference`).
 - Inspect the full option surface with `pdb2reaction all --help-advanced`.

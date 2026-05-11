@@ -39,7 +39,7 @@ pdb2reaction all -i <input(s)> [-c <substrate>] [-l 'RES:Q,...'] \
 | `-o, --out-dir` | path | `./result_all/` | Top-level output directory |
 | `--config` | path | none | YAML config applied before CLI flags |
 | `--show-config` / `--dry-run` | flag | off | Print resolved config and exit |
-| `--help-advanced` | flag | — | Reveal hidden flags (resume / checkpoint / freeze options) |
+| `--help-advanced` | flag | — | Reveal hidden flags (freeze, advanced overrides) |
 
 Run `pdb2reaction all --help-advanced` for the full list (it changes
 between versions).
@@ -97,9 +97,10 @@ Per-segment fields include `barrier_kcal`, `delta_kcal`, `bond_changes`,
 `structures` (paths to reactant/ts/product files), `tsopt` /
 `irc` / `freq` / `dft` sub-objects with their own `status` and energies.
 
-## Resume / restart
+## Re-running individual stages
 
-`pdb2reaction all` supports `--resume` to skip stages whose outputs already exist. For finer-grained re-runs, call subcommands directly:
+To rerun a specific stage (for example after a walltime hit), call the
+standalone subcommands directly on the segment outputs `all` produced:
 
 ```bash
 pdb2reaction tsopt -i path_search/hei_seg_03.xyz -o path_search/post_seg_03/ts -b uma

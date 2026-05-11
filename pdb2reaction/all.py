@@ -147,35 +147,6 @@ def _copy_logged(src: Path, dst: Path, *, label: Optional[str] = None, echo: boo
         return False
 
 
-# ---------- Resume / checkpoint helpers ----------
-
-def _stage_done(sentinel_files: Sequence[Path]) -> bool:
-    """Return True if all sentinel files/directories exist (non-empty)."""
-    for p in sentinel_files:
-        if p.is_dir():
-            if not any(p.iterdir()):
-                return False
-        elif not p.is_file():
-            return False
-    return True
-
-
-def _yaml_valid(path: Path, required_keys: Sequence[str] = ()) -> bool:
-    """Return True if *path* is a parseable YAML file containing *required_keys*."""
-    try:
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-        if not isinstance(data, dict):
-            return False
-        return all(k in data for k in required_keys)
-    except Exception as exc:
-        logger.debug("YAML validation failed for %s: %s", path, exc)
-        return False
-
-
-def _skip_msg(stage_label: str) -> None:
-    """Log that a stage is being skipped because its outputs already exist."""
-    _echo_section(f"====== [resume] Skipping {stage_label} — outputs already exist ======")
-
 def _run_cli_main(
     cmd_name: str,
     cli_obj,
@@ -2067,16 +2038,6 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     help="Validate options and print the execution plan without running any stage.",
 )
 @click.option(
-    "--resume/--no-resume",
-    "resume",
-    default=False,
-    show_default=True,
-    help=(
-        "Resume a previous run from --out-dir. Completed stages whose output files "
-        "already exist are skipped. Useful when a long pipeline was interrupted."
-    ),
-)
-@click.option(
     "--preopt",
     "preopt",
     type=click.BOOL,
@@ -2337,7 +2298,6 @@ def cli(
     config_yaml: Optional[Path],
     show_config: bool,
     dry_run: bool,
-    resume: bool,
     preopt: bool,
     hessian_calc_mode: Optional[str],
     do_tsopt: bool,
@@ -2532,7 +2492,6 @@ def cli(
                 "dump": bool(dump),
                 "convert_files": bool(convert_files),
                 "refine_path": bool(refine_path),
-                "resume": bool(resume),
                 "preopt": bool(preopt),
                 "tsopt": bool(do_tsopt),
                 "thermo": bool(do_thermo),
@@ -2559,9 +2518,6 @@ def cli(
         )
         _echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start))
         return
-
-    if resume:
-        _echo_section("====== [all] Resume mode enabled — completed stages will be skipped ======")
 
     yaml_cfg = load_yaml_dict(args_yaml)
     _set_yaml_freeze_atoms(yaml_cfg)
@@ -2647,14 +2603,7 @@ def cli(
 
     resolved_charge: Optional[int] = None
 
-    # Resume: skip extraction if all model files already exist
-    _extraction_skipped_by_resume = False
-    if not skip_extract and resume and _stage_done(model_outputs):
-        _skip_msg("Stage 1 — Extraction")
-        _echo(f"[resume] Found existing model files: {[str(p) for p in model_outputs]}")
-        _extraction_skipped_by_resume = True
-
-    if not skip_extract and not _extraction_skipped_by_resume:
+    if not skip_extract:
         _echo_section(
             f"====== [all] Stage 1/{stage_total} — Active site model extraction (multi-structure union when applicable) started ======"
         )
@@ -2693,34 +2642,6 @@ def cli(
             resolved_charge = _round_charge_with_note(q_total, prefix="[all]")
         except Exception as e:
             raise click.ClickException(f"[all] Could not obtain total charge from extractor: {e}")
-    elif _extraction_skipped_by_resume:
-        # Extraction was skipped by --resume; charge must come from CLI or GJF
-        _echo(
-            "[resume] Extraction skipped; charge must be provided via -q/--charge "
-            "or --ligand-charge."
-        )
-        if ligand_charge is not None:
-            first_model = model_outputs[0] if model_outputs else None
-            if first_model and first_model.suffix.lower() == ".pdb":
-                try:
-                    with prepare_input_structure(first_model) as prepared:
-                        resolved_charge = _derive_charge_from_ligand_charge(
-                            prepared, ligand_charge, prefix="[resume]"
-                        )
-                except Exception as exc:
-                    logger.debug("Failed to derive charge from ligand_charge during resume: %s", exc)
-            if resolved_charge is None:
-                try:
-                    resolved_charge = _round_charge_with_note(
-                        float(ligand_charge), prefix="[resume]"
-                    )
-                except (ValueError, TypeError) as exc:
-                    logger.debug("Failed to parse ligand_charge as float during resume: %s", exc)
-        if resolved_charge is None and charge_override is None:
-            raise click.ClickException(
-                "[resume] Cannot resolve charge from existing active site model files. "
-                "Provide -q/--charge explicitly when using --resume."
-            )
     else:
         _echo_section(
             f"====== [all] Stage 1/{stage_total} — Extraction skipped (no -c/--center); using FULL structures as active site models started ======"
@@ -2872,165 +2793,130 @@ def cli(
         freq_root = _resolve_override_dir(tsroot / "freq", freq_out_dir)
         dft_root = _resolve_override_dir(tsroot / "dft", dft_out_dir)
 
-        # Resume: check if TSOPT/IRC/endpoint-opt phase is complete
-        _tsonly_struct_done = (
-            resume
-            and (struct_dir / "reactant.pdb").is_file()
-            and (struct_dir / "product.pdb").is_file()
-            and (struct_dir / "ts.pdb").is_file()
-            and (tsroot / "irc" / "finished_irc_trj.xyz").is_file()
+        _tsopt_ref = ref_pdb_for_topology or (ts_initial_pdb if ts_initial_pdb.suffix.lower() == ".pdb" else None)
+        ts_pdb, g_ts = _run_tsopt_on_hei(
+            ts_initial_pdb,
+            q_int,
+            spin,
+            calc_cfg_shared,
+            args_yaml,
+            tsroot,
+            freeze_links_flag,
+            tsopt_opt_mode_default,
+            _tsopt_ref,
+            convert_files,
+            overrides=tsopt_overrides,
         )
-        # Defaults for variables that may not be set on the --resume path
-        g_react_opt = None
-        g_prod_opt = None
-        irc_res: Dict[str, Any] = {}
 
-        if _tsonly_struct_done:
-            _skip_msg("TSOPT-only — TSOPT/IRC/endpoint-opt")
-            pR = struct_dir / "reactant.pdb"
-            pP = struct_dir / "product.pdb"
-            pT = struct_dir / "ts.pdb"
-            irc_plot_path: Optional[Path] = tsroot / "irc" / "irc_plot.png"
-            if not irc_plot_path.exists():
-                irc_plot_path = None
-            # Reload energies from existing summary.json
-            e_react = e_prod = eT = 0.0
-            try:
-                _s = json.loads((tsroot / "summary.json").read_text(encoding="utf-8"))
-                for _ed in (_s or {}).get("energy_diagrams", []):
-                    if isinstance(_ed, dict) and "TSOPT" in str(_ed.get("ylabel", "") or _ed.get("title_note", "")):
-                        _elist = _ed.get("energies_au", [])
-                        if len(_elist) >= 3:
-                            e_react, eT, e_prod = float(_elist[0]), float(_elist[1]), float(_elist[2])
-                            break
-            except Exception:
-                _echo("[resume] WARNING: Could not reload energies from summary.json; "
-                      "energy diagram may show zeros", err=True)
+        irc_res = _irc_and_match(
+            seg_idx=1,
+            seg_dir=tsroot,
+            ref_pdb_for_seg=ts_pdb,
+            seg_model_pdb=ref_pdb_for_topology or ts_initial_pdb,
+            ref_pdb_template=_tsopt_ref,
+            g_ts=g_ts,
+            q_int=q_int,
+            spin=spin,
+            freeze_links_flag=freeze_links_flag,
+            calc_cfg=calc_cfg_shared,
+            args_yaml=args_yaml,
+            convert_files=convert_files,
+            seg_tag=None,
+        )
+        gL = irc_res["left_min_geom"]
+        gR = irc_res["right_min_geom"]
+        gT = irc_res["ts_geom"]
+        irc_plot_path = irc_res.get("irc_plot_path")
+
+        eL = float(gL.energy)
+        eR_raw = float(gR.energy)
+        eT = float(gT.energy)
+
+        if eL >= eR_raw:
+            g_react_irc, e_react_irc = gL, eL
+            g_prod_irc, e_prod_irc = gR, eR_raw
         else:
-            _tsopt_ref = ref_pdb_for_topology or (ts_initial_pdb if ts_initial_pdb.suffix.lower() == ".pdb" else None)
-            ts_pdb, g_ts = _run_tsopt_on_hei(
-                ts_initial_pdb,
-                q_int,
-                spin,
-                calc_cfg_shared,
-                args_yaml,
-                tsroot,
-                freeze_links_flag,
+            g_react_irc, e_react_irc = gR, eR_raw
+            g_prod_irc, e_prod_irc = gL, eL
+
+        ensure_dir(struct_dir)
+        model_ref = ref_pdb_for_topology or ts_initial_pdb
+        _save_single_geom_as_pdb_for_tools(
+            g_react_irc, model_ref, struct_dir, "reactant_irc"
+        )
+        _save_single_geom_as_pdb_for_tools(
+            g_prod_irc, model_ref, struct_dir, "product_irc"
+        )
+        pT = _save_single_geom_as_pdb_for_tools(gT, model_ref, struct_dir, "ts")
+
+        endpoint_opt_dir = tsroot / "endpoint_opt"
+        ensure_dir(endpoint_opt_dir)
+
+        # Map IRC left/right Hessians → R/P endpoint (left=forward, right=backward)
+        from .hessian_cache import load as _hess_load, store as _hess_store
+        _react_hk = "irc_left" if eL >= eR_raw else "irc_right"
+        _prod_hk  = "irc_right" if eL >= eR_raw else "irc_left"
+
+        _c = _hess_load(_react_hk)
+        if _c:
+            _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"))
+        try:
+            g_react_opt, _ = _optimize_endpoint_geom(
+                g_react_irc,
                 tsopt_opt_mode_default,
-                _tsopt_ref,
-                convert_files,
-                overrides=tsopt_overrides,
+                endpoint_opt_dir,
+                "reactant",
+                dump=dump,
+                thresh=thresh_post,
             )
-
-            irc_res = _irc_and_match(
-                seg_idx=1,
-                seg_dir=tsroot,
-                ref_pdb_for_seg=ts_pdb,
-                seg_model_pdb=ref_pdb_for_topology or ts_initial_pdb,
-                ref_pdb_template=_tsopt_ref,
-                g_ts=g_ts,
-                q_int=q_int,
-                spin=spin,
-                freeze_links_flag=freeze_links_flag,
-                calc_cfg=calc_cfg_shared,
-                args_yaml=args_yaml,
-                convert_files=convert_files,
-                seg_tag=None,
+        except Exception as e:
+            _echo(
+                f"[post] WARNING: Reactant endpoint optimization failed in TSOPT-only mode: {e}",
+                err=True,
             )
-            gL = irc_res["left_min_geom"]
-            gR = irc_res["right_min_geom"]
-            gT = irc_res["ts_geom"]
-            irc_plot_path = irc_res.get("irc_plot_path")
+            g_react_opt = g_react_irc
 
-            eL = float(gL.energy)
-            eR_raw = float(gR.energy)
-            eT = float(gT.energy)
-
-            if eL >= eR_raw:
-                g_react_irc, e_react_irc = gL, eL
-                g_prod_irc, e_prod_irc = gR, eR_raw
-            else:
-                g_react_irc, e_react_irc = gR, eR_raw
-                g_prod_irc, e_prod_irc = gL, eL
-
-            ensure_dir(struct_dir)
-            model_ref = ref_pdb_for_topology or ts_initial_pdb
-            _save_single_geom_as_pdb_for_tools(
-                g_react_irc, model_ref, struct_dir, "reactant_irc"
+        _c = _hess_load(_prod_hk)
+        if _c:
+            _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"))
+        try:
+            g_prod_opt, _ = _optimize_endpoint_geom(
+                g_prod_irc,
+                tsopt_opt_mode_default,
+                endpoint_opt_dir,
+                "product",
+                dump=dump,
+                thresh=thresh_post,
             )
-            _save_single_geom_as_pdb_for_tools(
-                g_prod_irc, model_ref, struct_dir, "product_irc"
+        except Exception as e:
+            _echo(
+                f"[post] WARNING: Product endpoint optimization failed in TSOPT-only mode: {e}",
+                err=True,
             )
-            pT = _save_single_geom_as_pdb_for_tools(gT, model_ref, struct_dir, "ts")
+            g_prod_opt = g_prod_irc
 
-            endpoint_opt_dir = tsroot / "endpoint_opt"
-            ensure_dir(endpoint_opt_dir)
+        # Clean up endpoint_opt as a temporary working directory
+        shutil.rmtree(endpoint_opt_dir, ignore_errors=True)
+        _echo(f"[endpoint-opt] Clean endpoint-opt working dir.")
 
-            # Map IRC left/right Hessians → R/P endpoint (left=forward, right=backward)
-            from .hessian_cache import load as _hess_load, store as _hess_store
-            _react_hk = "irc_left" if eL >= eR_raw else "irc_right"
-            _prod_hk  = "irc_right" if eL >= eR_raw else "irc_left"
+        pR = _save_single_geom_as_pdb_for_tools(
+            g_react_opt, model_ref, struct_dir, "reactant"
+        )
+        pP = _save_single_geom_as_pdb_for_tools(
+            g_prod_opt, model_ref, struct_dir, "product"
+        )
 
-            _c = _hess_load(_react_hk)
-            if _c:
-                _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"))
-            try:
-                g_react_opt, _ = _optimize_endpoint_geom(
-                    g_react_irc,
-                    tsopt_opt_mode_default,
-                    endpoint_opt_dir,
-                    "reactant",
-                    dump=dump,
-                    thresh=thresh_post,
-                )
-            except Exception as e:
-                _echo(
-                    f"[post] WARNING: Reactant endpoint optimization failed in TSOPT-only mode: {e}",
-                    err=True,
-                )
-                g_react_opt = g_react_irc
+        e_react = float(g_react_opt.energy)
+        e_prod = float(g_prod_opt.energy)
 
-            _c = _hess_load(_prod_hk)
-            if _c:
-                _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"))
-            try:
-                g_prod_opt, _ = _optimize_endpoint_geom(
-                    g_prod_irc,
-                    tsopt_opt_mode_default,
-                    endpoint_opt_dir,
-                    "product",
-                    dump=dump,
-                    thresh=thresh_post,
-                )
-            except Exception as e:
-                _echo(
-                    f"[post] WARNING: Product endpoint optimization failed in TSOPT-only mode: {e}",
-                    err=True,
-                )
-                g_prod_opt = g_prod_irc
-
-            # Clean up endpoint_opt as a temporary working directory
-            shutil.rmtree(endpoint_opt_dir, ignore_errors=True)
-            _echo(f"[endpoint-opt] Clean endpoint-opt working dir.")
-
-            pR = _save_single_geom_as_pdb_for_tools(
-                g_react_opt, model_ref, struct_dir, "reactant"
-            )
-            pP = _save_single_geom_as_pdb_for_tools(
-                g_prod_opt, model_ref, struct_dir, "product"
-            )
-
-            e_react = float(g_react_opt.energy)
-            e_prod = float(g_prod_opt.energy)
-
-            diag_payload = _write_segment_energy_diagram(
-                tsroot / "energy_diagram_UMA",
-                labels=["R", "TS", "P"],
-                energies_au=[e_react, eT, e_prod],
-                title_note="(UMA, TSOPT + IRC)",
-            )
-            if diag_payload:
-                energy_diagrams.append(diag_payload)
+        diag_payload = _write_segment_energy_diagram(
+            tsroot / "energy_diagram_UMA",
+            labels=["R", "TS", "P"],
+            energies_au=[e_react, eT, e_prod],
+            title_note="(UMA, TSOPT + IRC)",
+        )
+        if diag_payload:
+            energy_diagrams.append(diag_payload)
 
         # ── Release GPU memory before freq/thermo/DFT ──
         for _g in [locals().get(n) for n in ("gL", "gR", "gT", "g_react_irc", "g_prod_irc", "g_react_opt", "g_prod_opt")]:
@@ -3042,38 +2928,11 @@ def cli(
 
         thermo_payloads: Dict[str, Dict[str, Any]] = {}
 
-        # Resume: check if freq outputs already exist
-        _tsonly_freq_done = (
-            resume
-            and do_thermo
-            and (freq_root / "R" / "thermoanalysis.yaml").is_file()
-            and (freq_root / "TS" / "thermoanalysis.yaml").is_file()
-            and (freq_root / "P" / "thermoanalysis.yaml").is_file()
-        )
-        # Resume: check if DFT outputs already exist
-        _tsonly_dft_done = (
-            resume
-            and do_dft
-            and (dft_root / "R" / "result.yaml").is_file()
-            and (dft_root / "TS" / "result.yaml").is_file()
-            and (dft_root / "P" / "result.yaml").is_file()
-        )
-
         ref_pdb_for_tsopt_only = ref_pdb_for_topology or (
             ts_initial_pdb if ts_initial_pdb.suffix.lower() == ".pdb" else None
         )
 
-        if do_thermo and _tsonly_freq_done:
-            _skip_msg("TSOPT-only — Freq/Thermo")
-            try:
-                tR = yaml.safe_load((freq_root / "R" / "thermoanalysis.yaml").read_text(encoding="utf-8")) or {}
-                tT = yaml.safe_load((freq_root / "TS" / "thermoanalysis.yaml").read_text(encoding="utf-8")) or {}
-                tP = yaml.safe_load((freq_root / "P" / "thermoanalysis.yaml").read_text(encoding="utf-8")) or {}
-                thermo_payloads = {"R": tR, "TS": tT, "P": tP}
-            except Exception as e:
-                _echo(f"[resume] WARNING: Failed to reload thermo results; re-running freq: {e}", err=True)
-                _tsonly_freq_done = False
-        elif do_thermo:
+        if do_thermo:
             _echo()
             _echo("[thermo] Single TSOPT: freq on TS/R/P")
             tT = _run_freq_for_state(
@@ -3135,17 +2994,7 @@ def cli(
                     err=True,
                 )
 
-        if do_dft and _tsonly_dft_done:
-            _skip_msg("TSOPT-only — DFT")
-            try:
-                dR = yaml.safe_load((dft_root / "R" / "result.yaml").read_text(encoding="utf-8")) or {}
-                dT = yaml.safe_load((dft_root / "TS" / "result.yaml").read_text(encoding="utf-8")) or {}
-                dP = yaml.safe_load((dft_root / "P" / "result.yaml").read_text(encoding="utf-8")) or {}
-                dft_payloads = {"R": dR, "TS": dT, "P": dP}
-            except Exception as e:
-                _echo(f"[resume] WARNING: Failed to reload DFT results; re-running DFT: {e}", err=True)
-                _tsonly_dft_done = False
-        elif do_dft:
+        if do_dft:
             # ── Aggressively release GPU memory before DFT subprocess ──
             for _varname in (
                 "g_ts", "g_react_opt", "g_prod_opt",
@@ -3496,60 +3345,7 @@ def cli(
     # -------------------------------------------------------------------------
     models_for_path: List[Path]
     model_ref_pdbs: Optional[List[Path]] = None
-    # Resume: check if scan stage results already exist
-    _scan_results_exist = (
-        resume
-        and is_single
-        and has_scan
-        and scan_dir.is_dir()
-        and any(scan_dir.glob("stage_*/result.*"))
-    )
-    if is_single and has_scan and _scan_results_exist:
-        _skip_msg("Stage 1b — Staged scan")
-        # Collect existing stage results
-        stage_results_resumed: List[Path] = []
-        for st in sorted(scan_dir.glob("stage_*")):
-            res = _find_with_suffixes(st / "result", [".xyz", ".pdb", ".gjf"])
-            if res:
-                stage_results_resumed.append(res.resolve())
-        if not stage_results_resumed:
-            _echo("[resume] WARNING: No stage results found in scan dir; will re-run scan.", err=True)
-            _scan_results_exist = False
-
-    if is_single and has_scan and _scan_results_exist:
-        # Use the resumed scan results
-        if skip_extract:
-            scan_input_pdb = Path(input_paths[0]).resolve()
-        else:
-            scan_input_pdb = Path(model_outputs[0]).resolve()
-        initial_path_for_path = scan_input_pdb
-        initial_ref_pdb_for_path = ref_pdb_for_topology or (scan_input_pdb if scan_input_pdb.suffix.lower() == ".pdb" else None)
-        preopt_xyz = (scan_dir / "preopt" / "result.xyz").resolve()
-        preopt_pdb = (scan_dir / "preopt" / "result.pdb").resolve()
-        if preopt_xyz.exists():
-            initial_path_for_path = preopt_xyz
-            if preopt_pdb.exists():
-                initial_ref_pdb_for_path = preopt_pdb
-            _echo(f"[all] Using scan preopt XYZ as initial path endpoint: {initial_path_for_path}")
-        models_for_path = [initial_path_for_path] + stage_results_resumed
-        model_ref_pdbs = None
-        if initial_ref_pdb_for_path is not None:
-            candidate_pdbs_r: List[Path] = [initial_ref_pdb_for_path]
-            missing_pdb_r = False
-            for stage_path in stage_results_resumed:
-                if stage_path.suffix.lower() == ".pdb":
-                    candidate_pdbs_r.append(stage_path)
-                else:
-                    pdb_candidate_r = stage_path.with_suffix(".pdb")
-                    if pdb_candidate_r.exists():
-                        candidate_pdbs_r.append(pdb_candidate_r)
-                    else:
-                        missing_pdb_r = True
-                        break
-            if not missing_pdb_r:
-                model_ref_pdbs = candidate_pdbs_r
-        _echo(f"[resume] Collected {len(stage_results_resumed)} scan stage result(s) from previous run")
-    elif is_single and has_scan:
+    if is_single and has_scan:
         _echo_section("====== [all] Stage 1b — Staged scan on input started ======\n")
         ensure_dir(scan_dir)
 
@@ -3761,13 +3557,7 @@ def cli(
     # -------------------------------------------------------------------------
     # Stage 2: MEP search
     # -------------------------------------------------------------------------
-    _mep_skipped_by_resume = (
-        resume
-        and _yaml_valid(path_dir / "summary.json", required_keys=("segments",))
-    )
-    if not refine_path and _mep_skipped_by_resume:
-        _skip_msg("Stage 2 — MEP search (path-opt)")
-    elif not refine_path:
+    if not refine_path:
         _echo_section(
             f"====== [all] Stage 2/{stage_total} — Pairwise MEP search via path-opt (no recursive path_search) started ======"
         )
@@ -4121,9 +3911,7 @@ def cli(
                 f"[write] WARNING: Failed to write summary.log for path-opt branch: {e}",
                 err=True,
             )
-    if refine_path and _mep_skipped_by_resume:
-        _skip_msg("Stage 2 — MEP search (path_search)")
-    elif refine_path:
+    if refine_path:
         # --- recursive GSM path_search branch ---
         _echo_section(
             f"====== [all] Stage 2/{stage_total} — MEP search on input structures (recursive GSM) started ======"
@@ -4384,44 +4172,7 @@ def cli(
         state_structs: Dict[str, Path] = {}
         uma_ref_energies: Dict[str, float] = {}
 
-        # Resume: check if this segment's post-processing is already complete
-        _seg_tsopt_done = (
-            resume
-            and (seg_dir / "ts").is_dir()
-            and any((seg_dir / "ts").glob("final_geometry.*"))
-            and (seg_dir / "irc").is_dir()
-            and (seg_dir / "irc" / "finished_irc_trj.xyz").is_file()
-            and (seg_dir / "structures" / "reactant.pdb").is_file()
-            and (seg_dir / "structures" / "product.pdb").is_file()
-        )
-        if _seg_tsopt_done and do_tsopt:
-            _echo(f"[resume] Skipping TSOPT/IRC for segment {seg_idx:02d} — outputs exist")
-            # Reload structures from disk for downstream freq/DFT/diagrams
-            for state_label, stem in [("R", "reactant"), ("TS", "ts"), ("P", "product")]:
-                for ext in (".pdb", ".xyz", ".gjf"):
-                    cand = struct_dir / f"{stem}{ext}"
-                    if cand.is_file():
-                        state_structs[state_label] = cand
-                        break
-            # Reload energies from existing summary if available
-            try:
-                _seg_summary_path = path_dir / "summary.json"
-                if _seg_summary_path.is_file():
-                    _seg_summary = json.loads(_seg_summary_path.read_text(encoding="utf-8"))
-                    for _ed in (_seg_summary or {}).get("energy_diagrams", []):
-                        if isinstance(_ed, dict) and _ed.get("ylabel", "").startswith("UMA"):
-                            _e_list = _ed.get("energies_kcal", [])
-                            if len(_e_list) >= 3:
-                                energy_diagrams.append(_ed)
-                                break
-            except Exception as exc:
-                logger.debug("Failed to reload energy diagrams from %s: %s", path_dir / "summary.json", exc)
-            # Try to load IRC trajectory for all-segment aggregation
-            _irc_trj = seg_dir / "irc" / "finished_irc_trj.xyz"
-            if _irc_trj.is_file():
-                irc_trj_for_all.append((_irc_trj, False))
-
-        elif do_tsopt:
+        if do_tsopt:
             ts_pdb, g_ts = _run_tsopt_on_hei(
                 hei_model_path,
                 q_int,
@@ -4666,37 +4417,7 @@ def cli(
         p_ts = state_structs.get("TS")
         p_prod = state_structs.get("P")
 
-        # Resume: check if freq outputs already exist
-        _seg_freq_done = (
-            resume
-            and do_thermo
-            and freq_seg_root.is_dir()
-            and (freq_seg_root / "R").is_dir()
-            and any((freq_seg_root / "R").iterdir())
-            and (freq_seg_root / "TS").is_dir()
-            and any((freq_seg_root / "TS").iterdir())
-            and (freq_seg_root / "P").is_dir()
-            and any((freq_seg_root / "P").iterdir())
-        )
-        if _seg_freq_done:
-            _echo(f"[resume] Skipping freq for segment {seg_idx:02d} — outputs exist")
-
-        # Resume: check if DFT outputs already exist
-        _seg_dft_done = (
-            resume
-            and do_dft
-            and dft_seg_root.is_dir()
-            and (dft_seg_root / "R").is_dir()
-            and any((dft_seg_root / "R").iterdir())
-            and (dft_seg_root / "TS").is_dir()
-            and any((dft_seg_root / "TS").iterdir())
-            and (dft_seg_root / "P").is_dir()
-            and any((dft_seg_root / "P").iterdir())
-        )
-        if _seg_dft_done:
-            _echo(f"[resume] Skipping DFT for segment {seg_idx:02d} — outputs exist")
-
-        if do_thermo and not _seg_freq_done:
+        if do_thermo:
             if not (p_react and p_ts and p_prod):
                 _echo(
                     f"[thermo] WARNING: Missing R/TS/P structures for segment {seg_idx:02d}; skipping thermo.",
@@ -4802,7 +4523,7 @@ def cli(
                         err=True,
                     )
 
-        if do_dft and not _seg_dft_done:
+        if do_dft:
             # ── Aggressively release GPU memory before DFT subprocess ──
             for _obj in (
                 locals().get("gL"), locals().get("gR"), locals().get("gT"),

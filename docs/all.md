@@ -180,7 +180,6 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | `--config FILE` | Base YAML applied first. | _None_ |
 | `--show-config/--no-show-config` | Print resolved configuration before execution. | `False` |
 | `--dry-run/--no-dry-run` | Validate and print plan without running stages. | `False` |
-| `--resume/--no-resume` | Resume a previous run from `--out-dir`. Completed stages whose output files already exist are skipped. | `False` |
 
 ### Charge/Spin Options
 
@@ -371,7 +370,6 @@ The JSON summary contains structured data. Common top-level keys include:
 - Extraction radii: passing `0` to `--radius` or `--radius-het2het` is internally clamped to `0.001 Å` by the extractor.
 - Energies in diagrams are reported relative to the first state (reactant) in kcal/mol.
 - Omitting `-c/--center` skips extraction and feeds the entire input structures directly to the MEP/tsopt/freq/DFT stages; single-structure runs still require either `--scan-lists/-s` or `--tsopt`.
-- **`--resume`**: Re-run the same command with `--resume` to skip stages whose output files already exist. Each stage is guarded by sentinel-file checks (e.g. `summary.json` for MEP, `final_geometry.*` + `finished_irc_trj.xyz` for TSOPT/IRC, `R/`+`TS/`+`P/` directories for freq/DFT). When extraction is skipped on resume, provide `-q/--charge` or `--ligand-charge/-l` explicitly so the charge can be resolved without re-running the extractor. **Sentinel-corruption caveat:** `--resume` only checks for the *presence* of the sentinel files, not their integrity. If a stage was killed mid-write (SIGKILL, OOM, cluster preemption) and the sentinel file was already on disk but is truncated or corrupted, `--resume` will still consider the stage complete. Delete the stage's output directory (e.g. `path_search/post_seg_XX/ts/`) before resuming if you suspect a partially written result.
 
 
 `all` supports layered YAML:

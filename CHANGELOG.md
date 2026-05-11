@@ -6,7 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [0.3.9] — 2026-05-11
 
-Default-value alignment. `pdb2reaction all` behaviour unchanged from v0.3.8.
+Default-value alignment plus removal of the `--resume` flag.
+
+### Removed
+- **BREAKING:** `pdb2reaction all --resume / --no-resume`. The resumed-run path silently dropped per-segment TSOPT energies, UMA reference energies, freq thermal corrections, and DFT results from aggregate diagrams and `summary.json`; sentinel checks were existence-only (no integrity verification, no parameter-identity comparison) and the TS-only branch consumed prior outputs without checking the input PDB. To pick up a walltime-truncated run, invoke the standalone subcommands (`pdb2reaction tsopt / irc / freq / dft`) against the segment outputs `all` already produced.
 
 ### Changed
 - `SEARCH_KW.max_nodes_segment` 10 → 20.

@@ -118,10 +118,6 @@ Options:
   --dry-run / --no-dry-run        Validate options and print the execution plan
                                   without running any stage.  [default: no-dry-
                                   run]
-  --resume / --no-resume          Resume a previous run from --out-dir.
-                                  Completed stages whose output files already
-                                  exist are skipped. Useful when a long pipeline
-                                  was interrupted.  [default: no-resume]
   --preopt BOOLEAN                If True, run initial single-structure
                                   optimizations of the active site model inputs.
                                   [default: True]

@@ -87,7 +87,6 @@ result_ts_only/
 
 ## 補足
 
-- `--resume` で再実行すると、各 stage のセンチネルファイルが既にあるものはスキップされます（TS のみモードでは `structures/{reactant,ts,product}.pdb`、IRC は `finished_irc_trj.xyz`）。SIGKILL / OOM / preemption 後はセンチネル一致だけで完全性は保証されないため、該当 stage の出力ディレクトリを削除してから再開してください。詳細な再開仕様は [all](all.md) を参照。
 - `tsopt` 単独でのパラメータ調整（`--opt-mode`、`--max-cycles`、Hessian オプション）は [tsopt](tsopt.md) を参照。
 - ヘシアン解析が可能な backend では `--hessian-calc-mode Analytical` を推奨します（デフォルトは `FiniteDifference`）。
 - 全オプションを確認するには `pdb2reaction all --help-advanced`。

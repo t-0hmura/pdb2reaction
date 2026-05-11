@@ -1,6 +1,6 @@
 ---
 name: pdb2reaction-hpc
-description: PBS (Torque / PBSPro) and SLURM submission for pdb2reaction — preamble templates with placeholders, walltime budgeting, CPU vs GPU choice, job monitoring, and the dynamic-dispatch (flock + pbsdsh) recipe in `dynamic-dispatch.md`. TRIGGER on cluster submission / `qsub` / `sbatch` / walltime / preamble / `--resume` / multi-job dispatch / `workers > 1` questions. SKIP for local single-machine runs, install setup, or output parsing.
+description: PBS (Torque / PBSPro) and SLURM submission for pdb2reaction — preamble templates with placeholders, walltime budgeting, CPU vs GPU choice, job monitoring, and the dynamic-dispatch (flock + pbsdsh) recipe in `dynamic-dispatch.md`. TRIGGER on cluster submission / `qsub` / `sbatch` / walltime / preamble / multi-job dispatch / `workers > 1` questions. SKIP for local single-machine runs, install setup, or output parsing.
 ---
 
 # pdb2reaction HPC
@@ -145,22 +145,16 @@ other users on shared clusters.
 
 ## Failed jobs / restart
 
-`pdb2reaction all` supports `--resume` to continue from a partially
-completed `--out-dir`: pass the same `-o <out_dir> --resume` and the
-pipeline skips stages whose outputs already exist on disk. Note that
-when extraction is skipped by `--resume`, charges must be supplied
-explicitly via `-q/--charge` (and `--ligand-charge` when applicable),
-since the original CLI invocation is not persisted.
-
-If `--resume` cannot pick up the run (e.g., the partial output is in
-an unexpected layout), individual stages support manual continuation
-as a fallback:
+If a job fails or is killed by walltime, individual stages can be
+re-run on the partial output by invoking the standalone subcommands
+directly:
 
 - `tsopt`, `freq`, `irc`, `dft` — re-run on the previous output.
 - `path-search` — pass the partial `mep.pdb` as `-i`.
 
-For walltime-truncated jobs, write `--out-dir` to a persistent
-location and re-submit with `--resume` after a longer walltime.
+For walltime-truncated `all` runs, point `--out-dir` at a persistent
+location and pick up where you left off by chaining the appropriate
+subcommands against the artefacts that `all` already produced.
 
 ## Parallel job submission patterns
 

@@ -149,12 +149,7 @@ The 24 h template above is a default ceiling, not a target. Most jobs finish wel
 
 Walltime scales roughly inversely with effective parallelism (`workers × workers_per_node`) on the UMA backend. ORB / MACE / AIMNet2 do not parallelize across workers, so adding more nodes does not shorten their wall-clock.
 
-## Resuming after walltime expiry
-
-If a long job hits its walltime ceiling, restart with `--resume` instead of starting from scratch. `pdb2reaction all --resume -q <charge> -m <mult> --out-dir <same-dir>` (`-q`/`-m` must still be supplied — runtime requires them when extraction is skipped) skips stages whose output files already exist (extract, scan, MEP segments, per-segment TSOPT/IRC/freq/DFT). The same flag is available on `pdb2reaction all` only; standalone subcommands re-run from scratch (intermediate files such as `optimization_trj.xyz` are overwritten).
-
 ## See also
 
 - [MLIP Calculator](uma-pysis.md) — configuration reference and Hessian evaluation notes
 - [opt](opt.md) / [all](all.md) — subcommands that honor `workers` / `workers_per_node`
-- [all `--resume`](all.md) — checkpoint workflow for long campaigns

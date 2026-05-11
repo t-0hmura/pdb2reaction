@@ -72,7 +72,7 @@ _COMMAND_BOOL_VALUE_OPTIONS: dict[str, frozenset[str]] = {
 # but entries here ensure correct normalization *before* the lazy
 # subcommand is imported (needed for early argv rewriting).
 _COMMAND_BOOL_TOGGLE_OPTIONS: dict[str, frozenset[str]] = {
-    "all": frozenset({"--flatten", "--show-config", "--dry-run", "--resume"}),
+    "all": frozenset({"--flatten", "--show-config", "--dry-run"}),
     "trj2fig": frozenset({"--reverse-x"}),
     "add-elem-info": frozenset({"--overwrite"}),
     "scan": frozenset(
