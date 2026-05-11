@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pdb2reaction"
-description = "pdb2reaction - Automated enzyme reaction path modeling from PDB structures"
+description = "pdb2reaction - Automated enzyme reaction path elucidation from PDB structures"
 readme = "README.md"
 authors = [{name = "Takuto Ohmura", email = "ohmura.takuto@gmail.com"}]
 license = {file = "LICENSE"}

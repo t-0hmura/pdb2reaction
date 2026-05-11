@@ -1,10 +1,10 @@
-# `pdb2reaction`: End-to-end Reaction-Path Modeling from PDB Structures Using Machine-Learning Interatomic Potentials
+# `pdb2reaction`: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials
 
 ## Overview
 
 <img src="./docs/overview.png" alt="pdb2reaction workflow overview" width="90%">
 
-`pdb2reaction` is a Python CLI toolkit for modeling **enzymatic reaction pathways** from **PDB structures** using machine-learning interatomic potentials (MLIPs). Each workflow step is also available as an [individual subcommand](#cli-subcommands) ([`opt`](docs/opt.md), [`scan`](docs/scan.md), [`scan2d`](docs/scan2d.md), [`path-search`](docs/path-search.md), [`tsopt`](docs/tsopt.md), [`freq`](docs/freq.md), [`irc`](docs/irc.md), [`dft`](docs/dft.md), [`energy-diagram`](docs/energy-diagram.md), [etc.](#cli-subcommands)) for fine-grained control.
+`pdb2reaction` is a Python CLI toolkit for elucidating **enzymatic reaction pathways** from **PDB structures** using machine-learning interatomic potentials (MLIPs). Each workflow step is also available as an [individual subcommand](#cli-subcommands) ([`opt`](docs/opt.md), [`scan`](docs/scan.md), [`scan2d`](docs/scan2d.md), [`path-search`](docs/path-search.md), [`tsopt`](docs/tsopt.md), [`freq`](docs/freq.md), [`irc`](docs/irc.md), [`dft`](docs/dft.md), [`energy-diagram`](docs/energy-diagram.md), [etc.](#cli-subcommands)) for fine-grained control.
 
 A **single command** can generate a first-pass enzymatic reaction path:
 

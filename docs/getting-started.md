@@ -4,7 +4,7 @@
 
 <img src="./overview.png" alt="pdb2reaction workflow overview" width="90%">
 
-`pdb2reaction` is a Python CLI toolkit for **modeling enzymatic reaction pathways from PDB structures** using machine-learning interatomic potentials (MLIPs) — neural-network models trained on DFT reference data (energies and atomic forces, and additionally stress tensors for foundation models trained on periodic data) to approximate the DFT potential energy surface at a fraction of the original cost.
+`pdb2reaction` is a Python CLI toolkit for **elucidating enzymatic reaction pathways from PDB structures** using machine-learning interatomic potentials (MLIPs) — neural-network models trained on DFT reference data (energies and atomic forces, and additionally stress tensors for foundation models trained on periodic data) to approximate the DFT potential energy surface at a fraction of the original cost.
 
 In many workflows, a **single command** like the one below is enough to generate a useful initial reaction path:
 ```bash
