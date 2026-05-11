@@ -73,7 +73,7 @@ Options:
                                   without running path search.  [default: no-
                                   dry-run]
   --preopt / --no-preopt          If True, run initial single-structure
-                                  optimizations of inputs.  [default: no-preopt]
+                                  optimizations of inputs.  [default: preopt]
   --align / --no-align            After preoptimization, align all inputs to the
                                   *first* input and match freeze_atoms using the
                                   align_freeze_atoms API. When --align is True

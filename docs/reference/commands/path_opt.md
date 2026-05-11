@@ -72,13 +72,12 @@ Options:
   --preopt / --no-preopt          Preoptimize each endpoint via the selected
                                   single-structure optimizer (LBFGS/RFO) before
                                   alignment and path optimization.  [default:
-                                  no-preopt]
+                                  preopt]
   --preopt-max-cycles INTEGER     Maximum cycles for each endpoint
                                   preoptimization pass (LBFGS or RFO; only used
                                   when --preopt is enabled).  [default: 10000]
   --fix-ends / --no-fix-ends      Fix structures of input endpoints during path
-                                  optimization (GSM/DMF).  [default: no-fix-
-                                  ends]
+                                  optimization (GSM/DMF).  [default: fix-ends]
   -b, --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
   --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
