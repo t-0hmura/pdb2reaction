@@ -190,7 +190,7 @@ pdb2reaction all [OPTIONS]...
 
 ## エージェントスキル
 
-`pdb2reaction` は `.claude/skills/` に AI エージェント向けの指示書を同梱しており、CLI サブコマンド、構造 I/O（PDB / XYZ / GJF）、バックエンドインストール（UMA / Orb / MACE / AIMNet2 / DFT / xtb）、標準的なワークフロー、出力解析、HPC 運用をカバーしています。Claude Code や Cursor などのエージェントプラットフォームで使うには、`.claude/skills/` をプロジェクトリポジトリまたは `~/.claude/skills/` にコピーしてください。
+`pdb2reaction` は `skills/` に AI エージェント向けの指示書を同梱しており、CLI サブコマンド、構造 I/O（PDB / XYZ / GJF）、バックエンドインストール（UMA / Orb / MACE / AIMNet2 / DFT / xtb）、標準的なワークフロー、出力解析、HPC 運用をカバーしています。Claude Code・Codex・Cursor などのエージェントで使うには、`skills/` をプロジェクト直下に（例: Claude Code なら `.claude/skills/` に）または `~/.claude/skills/` にコピーしてください。
 
 ## ヘルプ
 

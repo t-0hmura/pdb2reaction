@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Detect drift between ``.claude/skills/`` markdown and pdb2reaction
+"""Detect drift between ``skills/`` markdown and pdb2reaction
 source for content that ``check_skill_commands.py`` does not cover —
 prose tables, JSON snippets, and output trees rather than bash blocks.
 
@@ -28,7 +28,7 @@ from pathlib import Path
 import click
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
+SKILLS_DIR = REPO_ROOT / "skills"
 
 sys.path.insert(0, str(REPO_ROOT))
 from pdb2reaction.cli import cli as root_cli  # noqa: E402

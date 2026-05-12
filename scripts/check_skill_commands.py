@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit fenced ``bash`` blocks in .claude/skills/**/*.md.
+"""Audit fenced ``bash`` blocks in skills/**/*.md.
 
 For every line that starts with ``pdb2reaction <subcommand>``, parse out
 flag tokens (``--foo`` and ``-f``) and verify each one is registered on
@@ -27,7 +27,7 @@ from pathlib import Path
 import click
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
+SKILLS_DIR = REPO_ROOT / "skills"
 
 sys.path.insert(0, str(REPO_ROOT))
 from pdb2reaction.cli import cli as root_cli  # noqa: E402

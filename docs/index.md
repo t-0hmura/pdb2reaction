@@ -176,7 +176,7 @@ For setup, see [Installation](installation.md).
 
 ## Agent Skills
 
-`pdb2reaction` ships AI-agent instructions under `.claude/skills/` covering CLI subcommands, structure I/O, backend installation, workflows, output parsing, and HPC operation. See [`.claude/skills/README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/.claude/skills/README.md) for the full skill index and installation instructions.
+`pdb2reaction` ships AI-agent instructions under `skills/` covering CLI subcommands, structure I/O, backend installation, workflows, output parsing, and HPC operation. See [`skills/README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/skills/README.md) for the full skill index and installation instructions.
 
 ## Citation
 

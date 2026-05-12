@@ -4,6 +4,11 @@ All notable changes to **pdb2reaction** will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## Unreleased
+
+### Changed
+- AI-agent skill bundle moved from `.claude/skills/` to top-level `skills/` so non-Claude agents (Codex, Cursor, aider, …) can read the same instructions. Copy the directory into your project (e.g.\ as `.claude/skills/` for Claude Code) to activate. README / docs / drift-check scripts updated.
+
 ## [0.3.9] — 2026-05-11
 
 Default-value alignment plus removal of the `--resume` flag.

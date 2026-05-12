@@ -74,7 +74,7 @@ orphan: true
 
 ## エージェントスキル
 
-`pdb2reaction` は、CLI サブコマンド・構造 I/O ・バックエンドインストール・ワークフロー・出力解析・ HPC 運用をカバーする AI エージェント向け命令を `.claude/skills/` に同梱しています。完全なスキル索引とインストール手順は [`.claude/skills/README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/.claude/skills/README.md) を参照してください。
+`pdb2reaction` は、CLI サブコマンド・構造 I/O ・バックエンドインストール・ワークフロー・出力解析・ HPC 運用をカバーする AI エージェント向け命令を `skills/` に同梱しています。完全なスキル索引とインストール手順は [`skills/README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/skills/README.md) を参照してください。
 
 ## 引用
 

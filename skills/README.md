@@ -24,9 +24,10 @@ tasks.
 - `pdb2reaction-env-detect`: fallback for detecting scheduler / GPU /
   CUDA / conda env when the environment is unknown.
 
-Copying this `.claude/skills/` directory into another project (or
-`~/.claude/skills/`) gives an agent the orientation it needs to work
-with `pdb2reaction`. For version-sensitive defaults, advanced flags,
+Copying this `skills/` directory into another project (e.g.\ as
+`.claude/skills/` for Claude Code, `~/.claude/skills/` for a
+user-global install, or your agent's configured skill location)
+gives an agent the orientation it needs to work with `pdb2reaction`. For version-sensitive defaults, advanced flags,
 and backend model identifiers, agents should verify against the
 installed CLI (`pdb2reaction <subcommand> --help-advanced`) and
 `pdb2reaction.defaults`.

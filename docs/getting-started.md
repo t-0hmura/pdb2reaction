@@ -190,12 +190,13 @@ Most users will primarily call `pdb2reaction all`. The CLI also exposes individu
 
 ## Agent Skills
 
-`pdb2reaction` ships AI-agent instructions under `.claude/skills/`
-covering the CLI subcommands, structure I/O (PDB / XYZ / GJF), backend
+`pdb2reaction` ships AI-agent instructions under `skills/` covering
+the CLI subcommands, structure I/O (PDB / XYZ / GJF), backend
 installation (UMA / Orb / MACE / AIMNet2 / DFT / xtb), canonical
-workflows, output parsing, and HPC operation. Copy `.claude/skills/`
-into your project repository or `~/.claude/skills/` for agent platforms
-like Claude Code or Cursor.
+workflows, output parsing, and HPC operation. Copy `skills/` into
+your project (e.g.\ as `.claude/skills/` for Claude Code, or
+`~/.claude/skills/` for a user-global install) or to your agent's
+configured skill location.
 
 ## Getting help
 

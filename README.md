@@ -70,7 +70,7 @@ Both `pdb2reaction` and `mlmm-toolkit` include a custom GPU-optimized pysisyphus
 
 ## Agent Skills
 
-`pdb2reaction` ships AI-agent instructions under [`.claude/skills/`](.claude/skills/) so your agent can drive enzyme reaction-mechanism investigations via Claude Code, Cursor, etc.
+`pdb2reaction` ships AI-agent instructions under [`skills/`](skills/) so your agent can drive enzyme reaction-mechanism investigations via Claude Code, Codex, Cursor, etc.
 
 The skill bundle covers:
 - End-to-end workflows and output parsing (`summary.json`, R/TS/P canonical paths)
@@ -79,7 +79,7 @@ The skill bundle covers:
 - Installation & Setup instructions
 - HPC operation (PBS / SLURM, multi-GPU)
 
-To activate, copy the `.claude/skills/` directory into your project repository or home directory.
+To activate, copy the `skills/` directory into your project (e.g. as `.claude/skills/` for Claude Code) or your agent's configured skill location.
 
 ---
 
