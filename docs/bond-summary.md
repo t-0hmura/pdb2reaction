@@ -2,7 +2,7 @@
 
 ## Overview
 
-> **Summary:** Detect and report covalent bond changes between consecutive molecular structures (R → TS → P or multi-intermediate chains) by element-specific covalent-radius perception.
+Detect and report covalent bond changes between consecutive molecular structures (R → TS → P or multi-intermediate chains) by element-specific covalent-radius perception.
 
 ### At a glance
 - **Use when:** Auditing which covalent bonds form / break between sequential structures along a reaction path — e.g. validating an IRC endpoint pair, screening multistep mechanisms, or sanity-checking `all` post-processing manually.

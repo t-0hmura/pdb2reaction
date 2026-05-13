@@ -2,7 +2,7 @@
 
 ## Overview
 
-> **Summary:** Runs single-point DFT with GPU4PySCF or CPU PySCF. The default functional/basis is ωB97M-V/def2-tzvpd. Results include energy and population analysis (Mulliken, meta-Löwdin, IAO charges).
+Runs single-point DFT with GPU4PySCF or CPU PySCF. The default functional/basis is ωB97M-V/def2-tzvpd. Results include energy and population analysis (Mulliken, meta-Löwdin, IAO charges).
 
 ### At a glance
 - **Use when:** Single-point DFT energy (and population analysis) on a small active-site model — typically for refining MLIP-optimized R/TS/P structures.

@@ -2,7 +2,7 @@
 
 ## Overview
 
-> **Summary:** Remove alternate-location (altLoc) indicators from PDB files by keeping the highest-occupancy conformer per atom and blanking column 17.
+Remove alternate-location (altLoc) indicators from PDB files by keeping the highest-occupancy conformer per atom and blanking column 17.
 
 ### At a glance
 - **Use when:** A PDB file has altLoc indicators that downstream pipeline stages (`extract`, `opt`, `tsopt`, ...) cannot consume. Run before any cluster extraction or geometry stage.

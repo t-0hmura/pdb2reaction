@@ -2,7 +2,7 @@
 
 ## Overview
 
-> **Summary:** Build a continuous MEP from **two or more** structures with GSM (default) or DMF (`--mep-mode dmf`). Automatically refines only regions with bond changes and exports the highest-energy image (HEI) as a TS candidate (validate with tsopt + IRC).
+Build a continuous MEP from **two or more** structures with GSM (default) or DMF (`--mep-mode dmf`). Automatically refines only regions with bond changes and exports the highest-energy image (HEI) as a TS candidate (validate with tsopt + IRC).
 
 ### At a glance
 - **Use when:** R → … → P structures (2+ inputs) requiring a single stitched MEP with automatic refinement.

@@ -2,7 +2,7 @@
 
 ## Overview
 
-> **Summary:** Runs EulerPC (Euler Predictor-Corrector)-based intrinsic reaction coordinate (IRC) integration from a transition state toward reactants and products. By default both forward and backward branches are computed. Setting `--hessian-calc-mode Analytical` is strongly recommended when VRAM permits.
+Runs EulerPC (Euler Predictor-Corrector)-based intrinsic reaction coordinate (IRC) integration from a transition state toward reactants and products. By default both forward and backward branches are computed. Setting `--hessian-calc-mode Analytical` is strongly recommended when VRAM permits.
 
 ### At a glance
 - **Use when:** Tracing the intrinsic reaction coordinate from an optimized TS (validated by `tsopt`) to confirm endpoint connectivity (R ↔ TS ↔ P).

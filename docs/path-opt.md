@@ -2,7 +2,7 @@
 
 ## Overview
 
-> **Summary:** Find an MEP between **exactly two** structures with GSM (default) or DMF (`--mep-mode dmf`). Writes the path trajectory and exports the highest-energy image (HEI) as a TS candidate.
+Find an MEP between **exactly two** structures with GSM (default) or DMF (`--mep-mode dmf`). Writes the path trajectory and exports the highest-energy image (HEI) as a TS candidate.
 
 ### At a glance
 - **Use when:** Two endpoint structures (R → P) are available and a first-pass MEP is needed.

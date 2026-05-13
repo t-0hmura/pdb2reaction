@@ -4,10 +4,12 @@
 
 `pdb2reaction all` runs the entire workflow end-to-end:
 
-Active site model extraction → (optional) staged scan → MEP search (recursive `path-search` by default) → (optional) TS optimization + IRC (`tsopt`) → (optional) vibrational analysis / thermochemistry (`freq`) → (optional) single-point DFT (`dft`). Use `--refine-path False` to fall back to single-pass `path-opt` (GSM/DMF). The default MLIP backend is UMA; select an alternative with `-b/--backend`.
+Active site model extraction → (optional) staged scan → MEP search (recursive `path-search` by default) → (optional) TS optimization + IRC (`tsopt`) → (optional) vibrational analysis / thermochemistry (`freq`) → (optional) single-point DFT (`dft`). Use `--refine-path False` to fall back to single-pass `path-opt` (GSM/DMF).  
+
+The default MLIP backend is UMA; select an alternative with `-b/--backend`.  
 
 ```{important}
-The `all` workflow **without `--tsopt`** produces **TS candidates** (Highest-Energy Images from MEP search). Adding `--tsopt` refines these into optimized TS structures validated by imaginary-frequency check, followed by IRC for endpoint validation. Always inspect the results (imaginary-frequency count + endpoint connectivity) before mechanistic interpretation.
+The `all` workflow **without `--tsopt`** produces **TS candidates** (Highest-Energy Images from MEP search). Adding `--tsopt` refines these into optimized TS structures validated by imaginary-frequency check, followed by IRC for endpoint validation. Always inspect the results (imaginary-frequency count + endpoint connectivity) before mechanistic interpretation.  
 ```
 
 ### At a glance

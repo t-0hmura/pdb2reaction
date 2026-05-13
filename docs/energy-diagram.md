@@ -2,7 +2,7 @@
 
 ## Overview
 
-> **Summary:** Draw a state energy diagram directly from numeric values (no structure file, no quantum/thermo calculation).
+Draw a state energy diagram directly from numeric values (no structure file, no quantum/thermo calculation).
 
 ### At a glance
 - **Use when:** Numeric state energies are already known (e.g. from `summary.json`) and only the formatted diagram is needed.

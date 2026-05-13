@@ -2,7 +2,7 @@
 
 ## Overview
 
-> **Summary:** Compute vibrational frequencies and thermochemistry (ZPE, Gibbs energy, etc.) with an MLIP backend (UMA by default; `-b/--backend` also supports ORB, MACE, AIMNet2). When VRAM permits, `--hessian-calc-mode Analytical` speeds Hessian evaluation. Imaginary frequencies appear as negative values.
+Compute vibrational frequencies and thermochemistry (ZPE, Gibbs energy, etc.) with an MLIP backend (UMA by default; `-b/--backend` also supports ORB, MACE, AIMNet2). When VRAM permits, `--hessian-calc-mode Analytical` speeds Hessian evaluation. Imaginary frequencies appear as negative values.
 
 ### At a glance
 - **Use when:** Full vibrational analysis is required (e.g., confirming a stationary point is a true minimum with no imaginary frequencies, or that a TS has exactly one) and/or thermochemistry corrections (ZPE, Gibbs energy) are needed. Note: `tsopt` already includes an imaginary-frequency check, so a separate `freq` run is mainly for thermochemistry or detailed mode inspection.

@@ -2,7 +2,7 @@
 
 ## Overview
 
-> **Summary:** Perform a two-distance (d₁, d₂) grid scan with harmonic restraints and MLIP relaxations. Use `--scan-lists/-s` with a YAML/JSON spec file (recommended) or an inline Python literal.
+Perform a two-distance (d₁, d₂) grid scan with harmonic restraints and MLIP relaxations. Use `--scan-lists/-s` with a YAML/JSON spec file (recommended) or an inline Python literal.
 
 ### At a glance
 - **Use when:** You want a 2D potential-energy map over two distances `(d₁, d₂)` — e.g. to locate a TS region or visualize the reaction landscape before MEP refinement. Input is one structure + `-s/--scan-lists scan2d.yaml` (recommended), or a single `--scan-lists/-s` inline literal containing exactly two quadruples.
@@ -143,7 +143,7 @@ see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
 out_dir/ (default:./result_scan2d/)
 ├─ surface.csv # Structured grid table
 ├─ scan2d_map.png # 2D contour (requires Kaleido; the run stops if PNG export fails)
-├─ scan2d_landscape.html # 3D surface visualization
+├─ scan2d_landscape.html # 3D surface visualization (You can open it with Web browser)
 ├─ grid/point_iDDD_jDDD.xyz # DDD = round(d × 100) in Å (e.g. d1=1.30 Å, d2=3.10 Å -> point_i130_j310.xyz)
 ├─ grid/point_iDDD_jDDD.pdb # PDB companions when conversion is enabled and templates exist
 ├─ grid/point_iDDD_jDDD.gjf # Gaussian companions when templates exist and conversion is enabled

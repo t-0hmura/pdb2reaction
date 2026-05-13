@@ -2,7 +2,7 @@
 
 ## Overview
 
-> **Summary:** Extract a cluster model (active site model (binding pocket)) from a protein–ligand PDB. Specify substrates with `-c` by residue name, residue ID, or a PDB path. Link hydrogens are added to cap cut bonds. Use `--ligand-charge/-l` for non-standard residue charges.
+Extract a cluster model (active site model (binding pocket)) from a protein–ligand PDB. Specify substrates with `-c` by residue name, residue ID, or a PDB path. Link hydrogens are added to cap cut bonds. Use `--ligand-charge/-l` for non-standard residue charges.
 
 ### At a glance
 - **Use when:** Carving an active site model (cluster model) from a protein–ligand PDB (single structure or ensemble) for downstream MEP/TSOPT/freq/DFT runs.

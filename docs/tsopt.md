@@ -2,7 +2,7 @@
 
 ## Overview
 
-> **Summary:** Optimize a transition-state *candidate* using RS-I-RFO (Restricted-Step Image Rational Function Optimization) (`--opt-mode hess`, default) or, as an alternative when RS-I-RFO struggles, Hessian-Guided Dimer (`--opt-mode grad`). `tsopt` performs a final Hessian calculation and imaginary-frequency check automatically; a validated TS (first-order saddle point) should show **exactly one** imaginary frequency. Always confirm endpoint connectivity with `irc`.
+Optimize a transition-state *candidate* using RS-I-RFO (Restricted-Step Image Rational Function Optimization) (`--opt-mode hess`, default) or, as an alternative when RS-I-RFO struggles, Hessian-Guided Dimer (`--opt-mode grad`). `tsopt` performs a final Hessian calculation and imaginary-frequency check automatically; a validated TS (first-order saddle point) should show **exactly one** imaginary frequency. Always confirm endpoint connectivity with `irc`.
 
 ### At a glance
 - **Use when:** Refining a TS guess (HEI from `path-opt`/`path-search`, or a user-supplied structure) into an optimized first-order saddle point with a built-in imaginary-frequency check.

@@ -2,7 +2,7 @@
 
 ## Overview
 
-> **Summary:** Plot energies from an XYZ trajectory's comment lines (or recompute them with an MLIP backend) and export as static / interactive figures and CSV.
+Plot energies from an XYZ trajectory's comment lines (or recompute them with an MLIP backend) and export as static / interactive figures and CSV.
 
 ### At a glance
 - **Use when:** Visualizing energies along an XYZ trajectory produced by `opt`, `scan`, `path-opt`, `path-search`, or `irc`; or recomputing energies on the fly when `-q/-m` are supplied.

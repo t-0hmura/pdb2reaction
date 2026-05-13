@@ -2,7 +2,7 @@
 
 ## Overview
 
-> **Summary:** Perform a three-distance (d₁, d₂, d₃) grid scan with harmonic restraints and MLIP relaxations. Use `--scan-lists/-s` with a YAML/JSON spec file (recommended) or an inline Python literal; or plot an existing `surface.csv` via `--csv`.
+Perform a three-distance (d₁, d₂, d₃) grid scan with harmonic restraints and MLIP relaxations. Use `--scan-lists/-s` with a YAML/JSON spec file (recommended) or an inline Python literal; or plot an existing `surface.csv` via `--csv`.
 
 ### At a glance
 - **Use when:** A 3D potential-energy volume over three distances `(d₁, d₂, d₃)` is needed, or an existing `surface.csv` needs re-plotting. Input is one structure + `-s/--scan-lists scan3d.yaml` (recommended) or one `--scan-lists/-s` inline literal (three quadruples); `--csv` enables plot-only mode.
@@ -167,7 +167,7 @@ bias:
 ```
 out_dir/ (default:./result_scan3d/)
 ├─ surface.csv # Grid metadata; may include a reference row (i=j=k=-1)
-├─ scan3d_density.html # 3D energy isosurface visualization
+├─ scan3d_density.html # 3D energy isosurface visualization (You can open it with Web browser)
 ├─ grid/point_i###_j###_k###.xyz # Relaxed geometry for each grid point (Å×100 tags)
 ├─ grid/point_i###_j###_k###.pdb # PDB companions when conversion is enabled and templates exist
 ├─ grid/point_i###_j###_k###.gjf # Gaussian companions when templates exist and conversion is enabled

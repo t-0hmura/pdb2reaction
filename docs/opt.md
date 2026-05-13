@@ -2,7 +2,7 @@
 
 ## Overview
 
-> **Summary:** Optimizes a single structure toward a local minimum using L-BFGS (`--opt-mode grad`, default) or RFO (`--opt-mode hess`). Optional imaginary-frequency flattening can be enabled with `--flatten`.
+Optimizes a single structure toward a local minimum using L-BFGS (`--opt-mode grad`, default) or RFO (`--opt-mode hess`). Optional imaginary-frequency flattening can be enabled with `--flatten`.
 
 ### At a glance
 - **Use when:** Relaxing a single structure (PDB/XYZ/GJF/`_trj.xyz`) to a local minimum, optionally with distance restraints or imaginary-mode flattening.
