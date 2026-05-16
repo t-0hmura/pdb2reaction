@@ -9,6 +9,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 ### Fixed
 - `scan` / `scan2d` config precedence now matches the other subcommands: `defaults < --config (YAML) < CLI`. Previously `build_scan_configs` applied the YAML configuration *after* the CLI-derived values, so a `--config` file silently overrode explicit CLI options (e.g. `--thresh`, `--bias-k`, `--workers`) for scans. Runs that pass options only on the CLI (or only via YAML) are unaffected. Added `tests/test_scan_precedence.py`.
 
+### Documentation
+- Corrected the `--workers` help string across all subcommands (and the generated CLI reference): `>1` does not make Hessian computation unsupported — the analytical (autograd) Hessian is unavailable and pdb2reaction silently uses the FiniteDifference Hessian instead.
+- `energy-diagram` docs (EN/JP): the renderer is Plotly, not Matplotlib.
+- `quickstart-all` (JP): removed the nonexistent `--irc` toggle; IRC validation runs automatically as part of `--tsopt` (matches the EN page).
+
 ### Changed
 - AI-agent skill bundle moved from `.claude/skills/` to top-level `skills/` so non-Claude agents (Codex, Cursor, aider, …) can read the same instructions. Copy the directory into your project (e.g.\ as `.claude/skills/` for Claude Code) to activate. README / docs / drift-check scripts updated.
 

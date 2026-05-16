@@ -53,7 +53,7 @@ def add_scan_common_options(
             type=int,
             default=workers_default,
             show_default=True,
-            help="MLIP predictor workers; >1 spawns a parallel predictor (Hessian computation not supported with workers>1).",
+            help="MLIP predictor workers; >1 spawns a parallel predictor (analytical Hessian is unavailable when workers>1; FiniteDifference Hessian is used instead).",
         ),
         click.option(
             "--workers-per-node",

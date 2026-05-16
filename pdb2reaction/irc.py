@@ -101,7 +101,7 @@ def _echo_convert_trj_if_exists(
     type=int,
     default=UMA_CALC_KW["workers"],
     show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor (Hessian computation not supported with workers>1).",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (analytical Hessian is unavailable when workers>1; FiniteDifference Hessian is used instead).",
 )
 @click.option(
     "--workers-per-node",

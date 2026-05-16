@@ -58,8 +58,9 @@ Options:
                                   extractor/GJF/--ligand-charge-derived values;
                                   emits a warning when used).
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
-                                  predictor (Hessian computation not supported
-                                  with workers>1).  [default: 1]
+                                  predictor (analytical Hessian is unavailable
+                                  when workers>1; FiniteDifference Hessian is
+                                  used instead).  [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
   -b, --backend [uma|orb|mace|aimnet2]

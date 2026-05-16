@@ -322,7 +322,7 @@ def _flatten_all_imag_modes_for_geom(
     type=int,
     default=UMA_CALC_KW["workers"],
     show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor (Hessian computation not supported with workers>1).",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (analytical Hessian is unavailable when workers>1; FiniteDifference Hessian is used instead).",
 )
 @click.option(
     "--workers-per-node",

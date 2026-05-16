@@ -1601,7 +1601,7 @@ def _merge_final_and_write(final_images: List[Any],
     type=int,
     default=UMA_CALC_KW["workers"],
     show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor (Hessian computation not supported with workers>1).",
+    help="MLIP predictor workers; >1 spawns a parallel predictor (analytical Hessian is unavailable when workers>1; FiniteDifference Hessian is used instead).",
 )
 @click.option(
     "--workers-per-node",

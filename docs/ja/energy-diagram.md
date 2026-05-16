@@ -6,7 +6,7 @@
 
 ### 要点
 - **想定場面:** 状態エネルギーの数値（例: `summary.json` から取り出した値）が既にあり、整形済みダイアグラムだけが欲しいとき。
-- **手法:** Matplotlib による描画のみ。構造ファイルの読み込み、QM / 熱力学 / MLIP 計算は一切行いません。
+- **手法:** Plotly による描画のみ。構造ファイルの読み込み、QM / 熱力学 / MLIP 計算は一切行いません。
 - **主な出力:** 画像ファイル 1 つ（`.png` / `.jpg` / `.jpeg` / `.svg` / `.pdf`）。`--out-json` 指定時は `result.json` も出力。`-o` 省略時の既定出力は `energy_diagram.png`。
 - **デフォルト値:** `-o energy_diagram.png`、`--label-x` は `S1`, `S2`, ... の自動採番、`--label-y "ΔE (kcal/mol)"`、`--out-json False`。
 - **次のステップ:** エネルギー軌跡も合わせて描画したい場合は [`trj2fig`](trj2fig.md) を使用。`all` の出力（`summary.json`）と組み合わせれば [`all`](all.md) パイプラインの最終可視化として機能します。
