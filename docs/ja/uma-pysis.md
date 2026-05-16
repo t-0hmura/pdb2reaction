@@ -123,7 +123,7 @@ UMA バックエンドを `workers > 1` で使用する場合、`hessian_calc_mo
 (ja-hessian-evaluation)=
 ### ヘシアン評価モード
 
-`hessian_calc_mode="Analytical"` は選択されたデバイス上で 2 階自動微分を行い、`"FiniteDifference"`（デフォルト）は力の中心差分を計算します。複数の推論ワーカーを要求した状態で `Analytical` を明示指定すると `RuntimeError` が送出されます（上記の警告を参照）。
+`hessian_calc_mode="Analytical"` は選択されたデバイス上で 2 階自動微分を行い、`"FiniteDifference"`（デフォルト）は力の中心差分を計算します。複数の推論ワーカーを要求した状態では、`Analytical` を明示指定していても解析ヘシアンは警告なく有限差分へダウングレードされます（上記の注記を参照）。解析ヘシアンが必要な場合は `workers = 1` を指定してください。
 
 ## HPC での使用例: PBS + Open MPI + Ray
 

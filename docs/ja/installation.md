@@ -32,7 +32,7 @@ hf auth login
 hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 ```
 
-（`huggingface_hub >= 0.34` が必要。`huggingface_hub >= 1.0` では legacy の `huggingface-cli login` エントリポイントは deprecation 通知を出して終了します。）
+（新しい `huggingface_hub` は `hf` CLI を同梱しています。旧バージョンでは `huggingface-cli login` が引き続き利用できますが、これは非推奨化が進められています。）
 
 これはマシン/環境ごとに 1 回だけ行う必要があります。
 
@@ -42,8 +42,8 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 
   ```bash
   # 専用のconda環境を作成してアクティブ化
-  conda create -n pdb2reaction python=3.11 -y
-  conda activate pdb2reaction
+  conda create -n <your-env> python=3.11 -y
+  conda activate <your-env>
 
   # cyipoptをインストール（MEP 探索のDMF法に必要）
   conda install -c conda-forge cyipopt -y
@@ -58,7 +58,7 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 > **ヒント:** UMA がデフォルトの MLIP バックエンドです。ORB や AIMNet2 を使用するには、対応する extra をインストール（例: `pip install "pdb2reaction[orb]"`）し、コマンドに `-b/--backend orb` を渡してください。下の手順 7 を参照。
 
 ```{warning}
-**MACE:** `mace-torch` は `e3nn==0.4.4` を要求し、`fairchem-core` の `e3nn` pin（古い `mace-torch` バージョン）と競合します。標準 recipe は専用 conda env で `pip uninstall -y fairchem-core && pip install mace-torch`。`mace-torch` ≥ 0.3.8 は `fairchem-core` との共存を謳っていますが、それ未満では UMA と MACE は同一環境で共存できません。古いメモにある `--no-deps mace-torch` 方式は torch-scatter / e3nn が pin されないため推奨しません。
+**MACE:** `mace-torch` は `e3nn==0.4.4` を要求し、`fairchem-core` の `e3nn` pin（古い `mace-torch` バージョン）と競合します。お使いの `mace-torch` リリースが `fairchem-core` との共存を明示していない限り、MACE には専用の conda env を使用してください。標準 recipe は専用 env で `pip uninstall -y fairchem-core && pip install mace-torch` です。
 ```
 
 
@@ -80,8 +80,8 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 2. **conda 環境を作成してアクティブ化**
 
     ```bash
-    conda create -n pdb2reaction python=3.11 -y
-    conda activate pdb2reaction
+    conda create -n <your-env> python=3.11 -y
+    conda activate <your-env>
     ```
 
 3. **cyipopt をインストール**

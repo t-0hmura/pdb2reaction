@@ -15,7 +15,7 @@
 | DMF モードの import エラー（`cyipopt`、`pydmf`） | `conda install -c conda-forge cyipopt`。`pydmf` は別途 pip で導入 | {ref}`インストール / 環境の問題 <ts-install-env>` |
 | UMA モデルで 401/403 / gated repo エラー | `hf auth login` でログインし、UMA モデルのライセンスに同意してください | {ref}`インストール / 環境の問題 <ts-install-env>` |
 | `e3nn` / `fairchem-core` の import 競合（UMA env に MACE を入れた） | `mace-torch < 0.3.8` の場合は MACE 専用 conda env を使用。v0.3.8+ は `fairchem-core` と共存可能 | {ref}`インストール / 環境の問題 <ts-install-env>` |
-| `--workers > 1` 時に `--hessian-calc-mode Analytical` を指定すると `RuntimeError` が送出される | 解析 Hessian が必要なら `--workers 1` に下げる、不要なら `FiniteDifference`（デフォルト）のまま | {ref}`インストール / 環境の問題 <ts-install-env>` |
+| `--workers > 1` 時は `--hessian-calc-mode Analytical` を指定しても警告なく `FiniteDifference` にダウングレードされる | 解析 Hessian が必要なら `--workers 1` に下げる、不要なら `FiniteDifference`（デフォルト）のまま | {ref}`インストール / 環境の問題 <ts-install-env>` |
 | 実行時に CUDA OOM | `--radius` を縮小して再抽出（extract / all のみ）、`--opt-mode grad` に切替、有限差分 Hessian のまま、または VRAM の大きい GPU へ | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | TS は収束したが小さい虚振動が複数残る | `--flatten` を追加（`tsopt`、`opt`、`pdb2reaction all` 共通） | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | TSOPT が収束しない | L-BFGS/Dimer: `max_step` を**縮小**。RFO/RS-I-RFO: `trust_radius`/`trust_min`/`trust_max` を**縮小**。サイクル上限を増やし、TS 品質を確認 | {ref}`計算 / 収束の問題 <ts-calc-conv>` |

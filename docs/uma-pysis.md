@@ -114,16 +114,16 @@ The correction uses a delta approach: ΔE = E_xTB(solvent) - E_xTB(vacuum), adde
 - **Multi-worker inference** – `workers>1` spawns `fairchem-core`'s `ParallelMLIPPredictUnit` with `workers_per_node` workers per node, useful for batch throughput.
 
 (workers-fd-downgrade)=
-### `workers > 1` with analytical Hessians (UMA backend)
+### `workers > 1` silent FD downgrade (UMA backend)
 
 ```{warning}
-When the UMA backend is used with `workers > 1` and `hessian_calc_mode="Analytical"` is set, the calculator raises `RuntimeError("Analytical Hessian is not available when predictor workers > 1 ...")`. Either drop to `workers = 1` for analytical Hessians, or use `hessian_calc_mode="FiniteDifference"` (the default). This applies to every subcommand that exposes `--workers` / `--workers-per-node` (`opt`, `tsopt`, `freq`, `irc`, `all`, `path-opt`, `path-search`, and the scan family). On non-UMA backends (ORB, MACE, AIMNet2) `workers` / `workers_per_node` are silently filtered out per `_BACKEND_ACCEPTED_KEYS`, so this rule does not apply.
+When the UMA backend is used with `workers > 1`, analytical Hessians are silently downgraded to finite differences even if `hessian_calc_mode="Analytical"` is explicitly set (an internal flag, not user-configurable). **No log marker is emitted when this downgrade occurs.** The only way to diagnose it is to notice that the Hessian evaluation time grows to the FD-equivalent cost relative to an analytical-Hessian reference run of the same atom count. Use `workers = 1` if you need analytical Hessians. This downgrade applies to every subcommand that exposes `--workers` / `--workers-per-node` (`opt`, `tsopt`, `freq`, `irc`, `all`, `path-opt`, `path-search`, and the scan family). On non-UMA backends (ORB, MACE, AIMNet2) `workers` / `workers_per_node` are silently filtered out per `_BACKEND_ACCEPTED_KEYS`, so this rule does not apply.
 ```
 
 (hessian-evaluation)=
 ### Hessian evaluation mode
 
-`hessian_calc_mode="Analytical"` uses second-order autograd on the selected device; `"FiniteDifference"` (default) computes central differences of forces. Analytical mode is unavailable when multiple inference workers are requested — the calculator raises `RuntimeError` (see the warning above); pick `workers = 1` or stay on FiniteDifference.
+`hessian_calc_mode="Analytical"` uses second-order autograd on the selected device; `"FiniteDifference"` (default) computes central differences of forces. Analytical mode is silently downgraded to finite differences when multiple inference workers are requested (see the note above); pick `workers = 1` if you need analytical Hessians, or stay on FiniteDifference.
 
 ## HPC example: PBS + Open MPI + Ray
 
@@ -141,7 +141,7 @@ Common constructor keywords (defaults shown in the rightmost column):
 | `model` | UMA pretrained model name (`uma-s-1p1`, `uma-m-1p1`). | `"uma-s-1p1"` |
 | `task_name` | Task tag recorded in UMA batches. | `"omol"` |
 | `device` | "cuda", "cpu", or automatic selection. | `"auto"` |
-| `workers` / `workers_per_node` | Parallel UMA predictors (UMA backend; ignored by ORB / MACE / AIMNet2); requesting `workers > 1` together with `hessian_calc_mode="Analytical"` raises `RuntimeError`. FD is the default `hessian_calc_mode` anyway, so this usually matters only when `Analytical` was explicitly requested. | `1` / `1` |
+| `workers` / `workers_per_node` | Parallel UMA predictors (UMA backend; ignored by ORB / MACE / AIMNet2); requesting `workers > 1` silently downgrades analytical Hessians to finite differences (no warning). FD is the default `hessian_calc_mode` anyway, so this usually matters only when `Analytical` was explicitly requested. | `1` / `1` |
 | `max_neigh`, `radius`, `r_edges` | Optional overrides for UMA neighborhood construction. | `None`, `None`, `False` |
 | `freeze_atoms` | List of 1-based atom indices to freeze. | _None_ |
 | `hessian_calc_mode` | "Analytical" or "FiniteDifference" for Hessian evaluation. | `"FiniteDifference"` |

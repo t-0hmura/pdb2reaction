@@ -49,6 +49,7 @@ pdb2reaction energy-diagram -i 0 12.5 4.3 --label-x R TS P --label-y "ΔE (kcal/
 ## 出力
 ```
 OUTPUT.(png|jpg|jpeg|svg|pdf)
+result.json   # 入力エネルギーとラベルを含む任意のサイドカー（--out-json 指定時）
 ```
 - `-o/--output` を省略した場合、カレントディレクトリに `energy_diagram.png` を出力します。
 - 出力拡張子がない場合は `.png` が自動で補完されます。

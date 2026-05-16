@@ -45,7 +45,7 @@ A successful run produces:
 result_ts_only/
 ├── summary.log                                # Human-readable summary
 ├── summary.json                               # status: success | partial | failed
-├── structures/                                # Canonical R/TS/P (TS-only mode)
+├── seg_01/                                    # Canonical R/TS/P (TS-only mode)
 │   ├── reactant.pdb
 │   ├── ts.pdb
 │   └── product.pdb
