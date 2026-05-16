@@ -652,8 +652,19 @@ def build_scan_configs(
     thresh: Optional[str] = None,
     bias_k: Optional[float] = None,
     set_charge_spin: bool = True,
+    workers_overridden: bool = True,
+    workers_per_node_overridden: bool = True,
 ) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
-    """Build common scan configs (defaults ← CLI ← YAML)."""
+    """Build common scan configs with uniform precedence ``defaults < --config (YAML) < CLI``.
+
+    The YAML configuration is applied first (over the built-in defaults), then
+    explicit CLI-derived values override it, matching the precedence used by the
+    other subcommands (e.g. ``opt``).  ``workers`` / ``workers_per_node`` carry a
+    non-``None`` CLI default, so they are only treated as a CLI override when the
+    caller signals it via ``workers_overridden`` / ``workers_per_node_overridden``
+    (typically ``cli_param_overridden(ctx, "workers")``); ``thresh`` / ``bias_k``
+    default to ``None`` and so are self-gating.
+    """
     geom_cfg = dict(geom_kw)
     calc_cfg = dict(calc_kw)
     opt_cfg = dict(opt_kw)
@@ -661,21 +672,7 @@ def build_scan_configs(
     rfo_cfg = dict(rfo_kw)
     bias_cfg = dict(bias_kw)
 
-    if set_charge_spin:
-        if charge is not None:
-            calc_cfg["charge"] = int(charge)
-        if spin is not None:
-            calc_cfg["spin"] = int(spin)
-    calc_cfg["workers"] = int(workers)
-    calc_cfg["workers_per_node"] = int(workers_per_node)
-    opt_cfg["out_dir"] = out_dir
-    opt_cfg["dump"] = False
-    if thresh is not None:
-        opt_cfg["thresh"] = str(thresh)
-
-    if bias_k is not None:
-        bias_cfg["k"] = float(bias_k)
-
+    # 1. YAML (--config) over built-in defaults.
     apply_yaml_overrides(
         yaml_cfg,
         [
@@ -688,6 +685,24 @@ def build_scan_configs(
             *list(extra_overrides),
         ],
     )
+
+    # 2. Explicit CLI-derived values over YAML (uniform with other subcommands).
+    if set_charge_spin:
+        if charge is not None:
+            calc_cfg["charge"] = int(charge)
+        if spin is not None:
+            calc_cfg["spin"] = int(spin)
+    if workers_overridden:
+        calc_cfg["workers"] = int(workers)
+    if workers_per_node_overridden:
+        calc_cfg["workers_per_node"] = int(workers_per_node)
+    # out_dir / dump are run-scoped (not YAML-tunable) and always set.
+    opt_cfg["out_dir"] = out_dir
+    opt_cfg["dump"] = False
+    if thresh is not None:
+        opt_cfg["thresh"] = str(thresh)
+    if bias_k is not None:
+        bias_cfg["k"] = float(bias_k)
 
     return geom_cfg, calc_cfg, opt_cfg, lbfgs_cfg, rfo_cfg, bias_cfg
 

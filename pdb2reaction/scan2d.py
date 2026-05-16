@@ -126,6 +126,8 @@ def _build_scan_context(
     source_path: Optional[Path],
     freeze_links: bool,
     set_charge_spin: bool = True,
+    workers_overridden: bool = True,
+    workers_per_node_overridden: bool = True,
 ) -> Tuple[
     Dict[str, Any],
     Dict[str, Any],
@@ -153,6 +155,8 @@ def _build_scan_context(
         thresh=thresh,
         bias_k=bias_k,
         set_charge_spin=set_charge_spin,
+        workers_overridden=workers_overridden,
+        workers_per_node_overridden=workers_per_node_overridden,
     )
 
     kind = normalize_choice(
@@ -354,6 +358,8 @@ def cli(
                 max_step_size=max_step_size,
                 source_path=source_path,
                 freeze_links=freeze_links,
+                workers_overridden=cli_param_overridden(ctx, "workers"),
+                workers_per_node_overridden=cli_param_overridden(ctx, "workers_per_node"),
             )
 
             # Merge CLI --freeze-atoms (already 0-based)

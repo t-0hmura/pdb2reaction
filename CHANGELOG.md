@@ -6,6 +6,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+### Fixed
+- `scan` / `scan2d` config precedence now matches the other subcommands: `defaults < --config (YAML) < CLI`. Previously `build_scan_configs` applied the YAML configuration *after* the CLI-derived values, so a `--config` file silently overrode explicit CLI options (e.g. `--thresh`, `--bias-k`, `--workers`) for scans. Runs that pass options only on the CLI (or only via YAML) are unaffected. Added `tests/test_scan_precedence.py`.
+
 ### Changed
 - AI-agent skill bundle moved from `.claude/skills/` to top-level `skills/` so non-Claude agents (Codex, Cursor, aider, …) can read the same instructions. Copy the directory into your project (e.g.\ as `.claude/skills/` for Claude Code) to activate. README / docs / drift-check scripts updated.
 

@@ -316,6 +316,8 @@ def cli(
                 out_dir=out_dir,
                 thresh=thresh,
                 bias_k=bias_k,
+                workers_overridden=cli_param_overridden(ctx, "workers"),
+                workers_per_node_overridden=cli_param_overridden(ctx, "workers_per_node"),
             )
 
             if cli_param_overridden(ctx, "backend"):
