@@ -175,7 +175,7 @@ See {ref}`exit-codes` in CLI Conventions.
 ## Notes
 - For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 - Imaginary-frequency **detection** threshold defaults to 5.0 cm⁻¹ (configurable via
-  `hessian_dimer.neg_freq_thresh_cm`); frequencies with magnitudes below this threshold are not counted as imaginary. The selected `root` controls which vibrational mode is followed during optimization.
+  `hessian_dimer.neg_freq_thresh_cm`); frequencies with magnitudes below this threshold are not counted as imaginary. The selected `root` controls which vibrational mode is followed during optimization. It is set via YAML (`rsirfo.root` or `hessian_dimer.root`; default `0`) — `tsopt` has no `--root` CLI flag (unlike [`irc`](irc.md)).
 - Use `--opt-mode` to choose the algorithm workflow directly (`rsirfo` by default), instead of
   manually editing YAML mode mappings.
 - Dimer mode applies translation/rotation projection (PHVA when frozen atoms are present) before the initial Hessian diagonalization, matching the `freq` implementation; RS-I-RFO mode operates directly on the active-DOF Cartesian Hessian without TR projection (frozen atoms remove the rigid-body symmetry).

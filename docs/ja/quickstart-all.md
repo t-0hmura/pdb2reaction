@@ -10,7 +10,7 @@
 - **水素原子が追加済み**の 2 つの PDB ファイル（反応物 R と生成物 P）
 - すべての入力 PDB で同じ原子が同じ順序で含まれていること
 
-> **ファイル名について:** 例の `1.R.pdb` と `3.P.pdb` は geranyl pyrophosphate (GPP) C6-メチル基転移酵素 BezA のサンプルディレクトリ（[`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples)）に同梱された反応物/生成物 PDB に対応します（`1.R.pdb` = 反応物状態、`3.P.pdb` = 生成物状態、追加の反応物/生成物/中間体構造を含む run 向けに `2.*.pdb` の中間状態も利用可能）。ご自身の反応では、2 つ以上の全系 PDB に置き換えてください。
+> **ファイル名について:** 例の `1.R.pdb` と `3.P.pdb` は geranyl pyrophosphate (GPP) C6-メチル基転移酵素 BezA のサンプルディレクトリ（[`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples)）に同梱された反応物/生成物 PDB に対応します（`1.R.pdb` = 反応物状態、`3.P.pdb` = 生成物状態、追加の反応物/生成物/中間体構造を含む run 向けに `2.*.pdb` の中間状態も利用可能）。ご自身の反応では、2 つ以上の全系 PDB に置き換えてください。下記コマンドをそのまま試すには、まず同梱例を取得してください: `git clone https://github.com/t-0hmura/pdb2reaction && cd pdb2reaction/examples`。
 
 ## 最小コマンド
 
