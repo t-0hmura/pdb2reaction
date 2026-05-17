@@ -9,8 +9,8 @@ authors:
     orcid: "https://orcid.org/0009-0008-1215-0168"
 license: GPL-3.0
 repository-code: "https://github.com/t-0hmura/pdb2reaction"
-version: "0.3.9"
-date-released: "2026-05-11"
+version: "0.3.10"
+date-released: "2026-05-17"
 doi: "10.5281/zenodo.19197865"
 identifiers:
   - type: doi

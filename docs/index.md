@@ -1,6 +1,6 @@
 # pdb2reaction Documentation
 
-*Version: v0.3.9*
+*Version: v0.3.10*
 
 ---
 
@@ -189,7 +189,7 @@ A preprint describing `pdb2reaction` is in preparation. Currently, if you find t
   title        = {pdb2reaction},
   year         = {2026},
   month        = {5},
-  version      = {0.3.9},
+  version      = {0.3.10},
   url          = {https://github.com/t-0hmura/pdb2reaction},
   license      = {GPL-3.0},
   doi          = {10.5281/zenodo.19197865}

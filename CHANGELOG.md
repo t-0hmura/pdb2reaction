@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+## [0.3.10] — 2026-05-17
+
 ### Fixed
 - `scan` / `scan2d` config precedence now matches the other subcommands: `defaults < --config (YAML) < CLI`. Previously `build_scan_configs` applied the YAML configuration *after* the CLI-derived values, so a `--config` file silently overrode explicit CLI options (e.g. `--thresh`, `--bias-k`, `--workers`) for scans. Runs that pass options only on the CLI (or only via YAML) are unaffected. Added `tests/test_scan_precedence.py`.
 
