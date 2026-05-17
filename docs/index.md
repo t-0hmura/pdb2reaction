@@ -66,6 +66,7 @@ glossary
 :caption: ガイド
 :hidden:
 
+ja/index
 ja/getting-started
 ja/installation
 ja/quickstart-all

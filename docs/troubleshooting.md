@@ -148,8 +148,8 @@ Fixes:
 
 ---
 
-### DMF mode fails (cyipopt missing)
-If you use DMF (`--mep-mode dmf`) and see errors importing IPOPT/cyipopt:
+### DMF mode fails (`cyipopt` missing, or `No module named pydmf`)
+If you use DMF (`--mep-mode dmf`) and see errors importing IPOPT/`cyipopt`:
 
 Fix:
 - Install `cyipopt` from conda-forge (recommended) before installing `pdb2reaction`:
@@ -157,6 +157,7 @@ Fix:
   ```bash
   conda install -c conda-forge cyipopt
   ```
+- `pydmf` ships with `pdb2reaction` as a dependency. If you see `No module named pydmf`, reinstall with `pip install --force-reinstall pdb2reaction`.
 
 ---
 

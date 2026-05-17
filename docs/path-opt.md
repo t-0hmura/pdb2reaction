@@ -52,7 +52,7 @@ pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
 ```
 
 ```{note}
-DMF mode requires the optional `cyipopt` and `pydmf` packages on top of the base install. Install `cyipopt` from conda-forge before running with `--mep-mode dmf`.
+DMF mode additionally requires `cyipopt` (install from conda-forge before running with `--mep-mode dmf`). `pydmf` ships with `pdb2reaction` as a dependency.
 ```
 
 3. Freeze link parents and disable climb for a quick pass.

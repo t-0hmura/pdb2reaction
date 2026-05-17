@@ -12,7 +12,7 @@ Each row deep-links into the relevant [Troubleshooting](troubleshooting.md) sect
 | Missing element columns / extraction aborts | `add-elem-info` on the original PDB | {ref}`Input / extraction problems <input-extraction-problems>` |
 | `-q/--charge is required` errors | Set `-q/--charge` or `--ligand-charge/-l` explicitly | {ref}`Charge / spin problems <charge-spin-problems>` |
 | Energies/states look wrong after a run | Re-check charge/multiplicity policy in CLI conventions | {ref}`Input / extraction problems <input-extraction-problems>` |
-| DMF mode import errors (`cyipopt`, `pydmf`) | Run `conda install -c conda-forge cyipopt`; install `pydmf` separately if needed | {ref}`Installation / environment problems <installation-environment-problems>` |
+| DMF mode import error (`cyipopt`), or `No module named pydmf` | `conda install -c conda-forge cyipopt` (`pydmf` ships with `pdb2reaction`) | {ref}`Installation / environment problems <installation-environment-problems>` |
 | UMA model 401/403 / gated-repo error | Run `hf auth login` and accept the UMA model license | {ref}`Installation / environment problems <installation-environment-problems>` |
 | `e3nn` / `fairchem-core` import conflict (MACE in UMA env) | Use a separate conda env for MACE unless the `mace-torch` release advertises `fairchem-core` coexistence | {ref}`Installation / environment problems <installation-environment-problems>` |
 | `--hessian-calc-mode Analytical` is silently downgraded to FiniteDifference when `--workers > 1` (no warning) | Drop to `--workers 1` if you need analytical Hessians, or use FiniteDifference (the default) | {ref}`Installation / environment problems <installation-environment-problems>` |

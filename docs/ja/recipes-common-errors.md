@@ -12,7 +12,7 @@
 | 元素カラム欠落で抽出が止まる | 元の PDB に `add-elem-info` を適用してください | {ref}`入力 / 抽出の問題 <ts-input-extraction>` |
 | `-q/--charge is required` 系エラー | `-q/--charge` または `-l/--ligand-charge` を明示指定してください | {ref}`電荷 / スピンの問題 <ts-charge-spin>` |
 | 計算は通るが状態/エネルギーが不自然 | [CLI 規約](cli-conventions.md) の電荷解決順序を再確認してください | {ref}`入力 / 抽出の問題 <ts-input-extraction>` |
-| DMF モードの import エラー（`cyipopt`、`pydmf`） | `conda install -c conda-forge cyipopt`。`pydmf` は別途 pip で導入 | {ref}`インストール / 環境の問題 <ts-install-env>` |
+| DMF モードの import エラー（`cyipopt`）、または `No module named pydmf` | `conda install -c conda-forge cyipopt`（`pydmf` は `pdb2reaction` に同梱） | {ref}`インストール / 環境の問題 <ts-install-env>` |
 | UMA モデルで 401/403 / gated repo エラー | `hf auth login` でログインし、UMA モデルのライセンスに同意してください | {ref}`インストール / 環境の問題 <ts-install-env>` |
 | `e3nn` / `fairchem-core` の import 競合（UMA env に MACE を入れた） | `mace-torch < 0.3.8` の場合は MACE 専用 conda env を使用。v0.3.8+ は `fairchem-core` と共存可能 | {ref}`インストール / 環境の問題 <ts-install-env>` |
 | `--workers > 1` 時は `--hessian-calc-mode Analytical` を指定しても警告なく `FiniteDifference` にダウングレードされる | 解析 Hessian が必要なら `--workers 1` に下げる、不要なら `FiniteDifference`（デフォルト）のまま | {ref}`インストール / 環境の問題 <ts-install-env>` |

@@ -1,7 +1,3 @@
----
-orphan: true
----
-
 # pdb2reaction ドキュメント
 
 *バージョン: v0.3.9*
