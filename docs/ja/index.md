@@ -74,10 +74,22 @@
 
 ## 引用
 
-`pdb2reaction` を説明するプレプリントを準備中です。現時点では、本ソフトウェアが研究のお役に立った場合、ソフトウェア自体を引用してください:
+`pdb2reaction` を研究で利用する場合は、ChemRxiv プレプリントを引用してください:
 
 ```bibtex
-@software{ohmura2026pdb2reaction,
+@misc{ohmura2026pdb2reaction,
+  author       = {Ohmura, Takuto and Sato, Hajime and Terada, Tohru},
+  title        = {pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials},
+  year         = {2026},
+  doi          = {10.26434/chemrxiv.15003538/v1},
+  note         = {ChemRxiv preprint}
+}
+```
+
+ソフトウェアまたは特定のリリースを引用する場合は、Zenodo レコードを使用してください:
+
+```bibtex
+@software{ohmura2026pdb2reaction_software,
   author       = {Ohmura, Takuto},
   title        = {pdb2reaction},
   year         = {2026},

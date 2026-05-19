@@ -181,10 +181,22 @@ For setup, see [Installation](installation.md).
 
 ## Citation
 
-A preprint describing `pdb2reaction` is in preparation. Currently, if you find this work helpful for your research, please cite the software itself:
+If you use `pdb2reaction` in your research, please cite the ChemRxiv preprint:
 
 ```bibtex
-@software{ohmura2026pdb2reaction,
+@misc{ohmura2026pdb2reaction,
+  author       = {Ohmura, Takuto and Sato, Hajime and Terada, Tohru},
+  title        = {pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials},
+  year         = {2026},
+  doi          = {10.26434/chemrxiv.15003538/v1},
+  note         = {ChemRxiv preprint}
+}
+```
+
+To cite the software or a specific release, use the Zenodo record:
+
+```bibtex
+@software{ohmura2026pdb2reaction_software,
   author       = {Ohmura, Takuto},
   title        = {pdb2reaction},
   year         = {2026},

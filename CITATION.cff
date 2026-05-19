@@ -19,3 +19,18 @@ identifiers:
   - type: doi
     value: "10.5281/zenodo.20257050"
     description: "Zenodo archive of v0.3.10"
+preferred-citation:
+  type: article
+  title: "pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials"
+  authors:
+    - family-names: Ohmura
+      given-names: Takuto
+      orcid: "https://orcid.org/0009-0008-1215-0168"
+    - family-names: Sato
+      given-names: Hajime
+    - family-names: Terada
+      given-names: Tohru
+  year: 2026
+  journal: "ChemRxiv"
+  doi: "10.26434/chemrxiv.15003538/v1"
+  notes: "Preprint"
