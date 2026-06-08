@@ -1,6 +1,6 @@
 # `scan3d`
 
-Perform a three-distance (d₁, d₂, d₃) grid scan with harmonic restraints and MLIP relaxations, producing a 3D potential-energy volume over three distances `(d₁, d₂, d₃)`; use it when such a volume is needed or when an existing `surface.csv` needs re-plotting. Use `--scan-lists/-s` with a YAML/JSON spec file (recommended) or an inline Python literal; or plot an existing `surface.csv` via `--csv`. `scan3d` nests loops over d₁ → d₂ → d₃ and relaxes each point with the appropriate restraints active. The default optimizer is L-BFGS (`--opt-mode grad`); switch to `--opt-mode hess` for RFOptimizer. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
+Perform a three-distance grid scan with harmonic restraints and MLIP relaxations, producing a 3D potential-energy volume over the three distances `(d₁, d₂, d₃)`. Use it when such a volume is needed or when an existing `surface.csv` needs re-plotting. Use `--scan-lists/-s` with a YAML/JSON spec file (recommended) or an inline Python literal, or plot an existing `surface.csv` via `--csv`. `scan3d` nests loops over d₁ → d₂ → d₃ and relaxes each point with the appropriate restraints active. The default optimizer is L-BFGS (`--opt-mode grad`); switch to `--opt-mode hess` for RFOptimizer. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
 
 ## Examples
 

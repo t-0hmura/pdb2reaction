@@ -1,6 +1,6 @@
 # JSON 出力リファレンス
 
-pdb2reaction は AI エージェント、スクリプト、下流ツールからの利用に向けた機械可読 JSON 出力を提供します。
+pdb2reaction は、AI エージェント・スクリプト・下流ツールがプログラムから扱える機械可読の JSON 出力を提供します。
 
 ## `--out-json` フラグ
 
@@ -81,7 +81,7 @@ cat result_opt/result.json | python -m json.tool
 | `opt_mode` | string | `"rsirfo"` / `"dimer"` |
 
 `files` には `imaginary_mode_files`（vib ファイルリスト）を含む場合があります。
-収束詳細 (force/step) は rsirfo モードで利用可能です。dimer モードも `runner.is_converged` に応じて `status` に `"converged"` / `"not_converged"` を返します。rsirfo モードが出す力・ステップ収束の詳細キーのみ、dimer モードでは省略されます。
+収束詳細 (force/step) は rsirfo モードで利用可能です。dimer モードも `runner.is_converged` に応じて `status` に `"converged"` / `"not_converged"` を返します。rsirfo モードが出す力・ステップ収束の詳細キーは、dimer モードでは省略されます。
 
 ### `freq`
 

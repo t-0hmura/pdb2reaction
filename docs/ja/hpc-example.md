@@ -141,13 +141,13 @@ pdb2reaction opt -i test.pdb -q -5 -m 1 --workers ${NNODES} --workers-per-node $
 
 ## ウォールタイム見積り
 
-上の 24 時間テンプレートは ceiling（上限）であり目標値ではありません。実行系の wall-clock パターンに合わせて選んでください。
+上の 24 時間テンプレートは ceiling（上限）であり目標値ではありません。実行環境の wall-clock パターンに合わせて選んでください。
 
 - **クラスターモデルの `opt` / `tsopt`**（~50–100 原子、単一 GPU）: 数分〜数時間
 - **`pdb2reaction all` 一気通貫**（extract → MEP → TSOPT → IRC → freq → DFT、小型基質）: 通常数時間。ハイエンド multi-GPU ノードでは DFT 段が大きく短縮可能
 - **MEP（`path-search` / `path-opt`）**: `--max-nodes`（セグメントあたりのイメージ数）と `--max-cycles`（GSM 最適化サイクル数）の双方でスケール。再帰的 `path-search` キャンペーンではこれにセグメント数が掛かるため、多段階反応では単一 GPU で何時間にも及び得る
 
-ウォールタイムは UMA backend の場合、有効並列度（`workers × workers_per_node`）に概ね反比例します。ORB / MACE / AIMNet2 は worker 並列を持たないので、ノードを増やしても wall-clock は短くなりません。
+UMA backend の場合、ウォールタイムは有効並列度（`workers × workers_per_node`）に概ね反比例します。ORB / MACE / AIMNet2 は worker 並列を持たないので、ノードを増やしても wall-clock は短くなりません。
 
 ## 関連項目
 

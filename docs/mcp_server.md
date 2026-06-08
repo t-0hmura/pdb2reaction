@@ -71,8 +71,8 @@ When a subcommand fails, the parsed `summary` (or sibling `result.json`) carries
 
 ## Opt-in IRC convergence guard
 
-`run_irc` (CLI: `pdb2reaction irc`) accepts `irc_pos_def: bool` — IRC
-convergence then additionally requires a positive-definite mass-weighted
+`run_irc` (CLI: `pdb2reaction irc`) accepts `irc_pos_def: bool` — when set,
+IRC convergence additionally requires a positive-definite mass-weighted
 Hessian, blocking the IRC "shoulder" false-convergence where the rms-only
 criterion calls success before reaching the local minimum. Defaults to
 `None` (rms-only, legacy).

@@ -1,6 +1,6 @@
 # `opt`
 
-Optimizes a single structure toward a local minimum using L-BFGS (`--opt-mode grad`, default) or RFO (`--opt-mode hess`). The command uses pysisyphus L-BFGS (`lbfgs`) or RFOptimizer (`rfo`) while an MLIP backend (UMA by default; ORB, MACE, and AIMNet2 also available via `-b/--backend`) provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `_trj.xyz`, or any format supported by `geom_loader`. Use it to relax a single structure (PDB/XYZ/GJF/`_trj.xyz`) to a local minimum, optionally with distance restraints or imaginary-mode flattening: pick `--opt-mode grad` (alias `lbfgs`, default) for L-BFGS minimisation, or `--opt-mode hess` (alias `rfo`) for RFOptimizer.
+Relaxes a single structure toward a local minimum, optionally with distance restraints or imaginary-mode flattening. Use `--opt-mode grad` (alias `lbfgs`, default) for L-BFGS minimisation or `--opt-mode hess` (alias `rfo`) for RFOptimizer. The optimizer comes from pysisyphus, while an MLIP backend (UMA by default; ORB, MACE, and AIMNet2 also available via `-b/--backend`) provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `_trj.xyz`, or any format supported by `geom_loader`.
 
 ## Examples
 
@@ -64,7 +64,7 @@ out_dir/
 ├─ optimization.pdb # PDB conversion of the trajectory (PDB inputs, conversion enabled)
 └─ restart*.yml # Optional restarts when opt.dump_restart is set
 ```
-The console prints the resolved `geom`, `calc`, `opt`, `lbfgs`/`rfo` blocks plus cycle-by-cycle progress and total runtime.
+The console prints the resolved `geom`, `calc`, `opt`, and `lbfgs`/`rfo` blocks, along with cycle-by-cycle progress and total runtime.
 
 See {ref}`CLI Conventions: Configuration precedence <configuration-precedence>` for the full resolution order.
 

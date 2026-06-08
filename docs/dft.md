@@ -1,6 +1,6 @@
 # `dft`
 
-Runs single-point DFT with GPU4PySCF or CPU PySCF, reporting energy and population analysis (Mulliken, meta-Löwdin, IAO charges). The default functional/basis is ωB97M-V/def2-tzvpd. Use it for single-point DFT energy (and population analysis) on a small active-site model — typically to refine MLIP-optimized R/TS/P structures — selecting the backend with `--engine` (default `gpu`); use `cpu` when no GPU is available, or for portable/debug runs.
+Runs single-point DFT with GPU4PySCF or CPU PySCF, reporting energy and population analysis (Mulliken, meta-Löwdin, IAO charges). The default functional/basis is ωB97M-V/def2-tzvpd. Use it for single-point DFT energy (and population analysis) on a small active-site model, typically to refine MLIP-optimized R/TS/P structures. Select the backend via `--engine` (default `gpu`); use `cpu` when no GPU is available, or for portable/debug runs.
 
 > See {ref}`engine-vs-dft-engine` for the `--engine` (standalone `dft`) vs `--dft-engine` (forwarded through `pdb2reaction all`) naming convention.
 

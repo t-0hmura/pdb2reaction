@@ -2,7 +2,7 @@
 
 `pdb2reaction path-opt` searches for a minimum-energy path (MEP) between **exactly two** structures with GSM (default) or DMF (`--mep-mode dmf`). It writes the path trajectory and exports the highest-energy image (HEI) as a TS candidate. Treat the HEI as a *candidate* transition state until it is validated with [tsopt](tsopt.md) (which includes an imaginary-frequency check) and [irc](irc.md). For workflows that start from **two or more** structures and automatically refine only the reactive region, use [path-search](path-search.md).
 
-Use it when you have exactly two endpoint structures (R → P) and need a first-pass MEP without recursive refinement; choose GSM (default) for a string-based path generator or switch to DMF with `--mep-mode dmf` for the Direct Max Flux generator.
+Use it when you have exactly two endpoint structures (R → P) and need a first-pass MEP without recursive refinement. Choose GSM (default) for a string-based path generator, or switch to DMF with `--mep-mode dmf` for the Direct Max Flux generator.
 
 An MLIP backend (UMA by default; switch with `-b/--backend` to ORB, MACE, or AIMNet2) provides energies, gradients, and Hessians for every image. Before optimization starts, a rigid-body alignment step keeps the string stable.
 

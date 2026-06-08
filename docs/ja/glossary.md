@@ -25,7 +25,7 @@
 | **L-BFGS** | Limited-memory BFGS | 勾配履歴からヘシアンを近似する準ニュートン法。`opt --opt-mode grad` で使用 |
 | **RFO** | Rational Function Optimization | 明示的なヘシアン情報を使用する信頼領域最適化法。`opt --opt-mode hess` で使用 |
 | **RS-I-RFO** | Restricted-Step Image-RFO | ヘシアン行列の 1 つの負固有値方向に沿って一次鞍点を探索する RFO 変種。`tsopt --opt-mode hess` のデフォルト |
-| **Dimer** | Dimer Method | 完全なヘシアンを計算せずに最低曲率モードを推定する TS 最適化法。`tsopt --opt-mode grad` で使用。pdb2reaction は Hessian Guided Dimer 変種を使い、活性部分空間の正確ヘシアンを周期的に評価してダイマー方向を更新します |
+| **Dimer** | Dimer Method | 完全なヘシアンを計算せずに最低曲率モードを推定する TS 最適化法。`tsopt --opt-mode grad` で使用。pdb2reaction は Hessian Guided Dimer 変種を使い、活性部分空間の正確なヘシアンを周期的に評価してダイマー方向を更新します |
 | **Bofill** | Bofill Update | SR1（対称ランク 1）と PSB（Powell-symmetric-Broyden）を混合したヘシアン更新スキーム。鞍点探索に適します。`hessian_update: bofill` で選択され、RS-I-RFO と Dimer のフラット化ループで使用されます |
 | **SR1** | Symmetric Rank-One | ランク 1 のヘシアン更新スキーム。Bofill の 2 要素のうち 1 つ |
 | **PSB** | Powell-Symmetric-Broyden | 対称ヘシアン更新スキーム。Bofill の 2 要素のうちもう 1 つ |

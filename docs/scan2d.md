@@ -1,6 +1,6 @@
 # `scan2d`
 
-Perform a two-distance (d₁, d₂) grid scan with harmonic restraints and MLIP relaxations, producing a 2D potential-energy map over the two distances `(d₁, d₂)` — use it to locate a TS region or visualize the reaction landscape before MEP refinement. `scan2d` constructs linear grids for both distances using `--max-step-size`, relaxes each grid point with the appropriate restraints active, and records unbiased MLIP energies for visualization. Input is one structure plus `-s/--scan-lists scan2d.yaml` (recommended), or a single `--scan-lists/-s` inline literal containing exactly two quadruples. The default backend is UMA; select an alternative with `-b/--backend`. Use `--opt-mode hess` when you need RFOptimizer instead of L-BFGS.
+Perform a two-distance (d₁, d₂) grid scan with harmonic restraints and MLIP relaxations, producing a 2D potential-energy map over `(d₁, d₂)` — use it to locate a TS region or visualize the reaction landscape before MEP refinement. `scan2d` constructs linear grids for both distances using `--max-step-size`, relaxes each grid point with the appropriate restraints active, and records unbiased MLIP energies for visualization. Input is one structure plus `-s/--scan-lists scan2d.yaml` (recommended), or a single `--scan-lists/-s` inline literal containing exactly two quadruples. The default backend is UMA; select an alternative with `-b/--backend`. Use `--opt-mode hess` when you need RFOptimizer instead of L-BFGS.
 
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
 
@@ -182,7 +182,7 @@ More YAML options for `opt` are available in [YAML Reference](yaml-reference.md)
 - The MLIP backend (UMA by default) reuses the same
   `HarmonicBiasCalculator` as the 1D scan.
 - Ångström limits are converted to Bohr internally to cap L-BFGS steps and RFO
-  trust radii; Optimizer scratch files live under temporary directories.
+  trust radii; optimizer scratch files live under temporary directories.
 - The bias is always removed before final energies are recorded so you can reuse
   `surface.csv` in downstream fitting or visualization scripts.
 - `--freeze-links` merges user `freeze_atoms` with detected link-H parents for

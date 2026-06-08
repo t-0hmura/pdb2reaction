@@ -6,7 +6,7 @@
 
 `pdb2reaction` is a Python CLI for **elucidating enzymatic reaction pathways from PDB structures** using machine-learning interatomic potentials (MLIPs). The default backend is Meta's UMA; `orb`, `mace`, and `aimnet2` are also supported via `-b/--backend`. Foundation-model MLIPs make cluster-model TS optimisation, IRC verification, and QRRHO thermochemistry tractable on a single GPU — lowering the DFT-bound cost barrier that previously throttled mechanistic screening.
 
-A single command generates a useful initial reaction path:
+A single command generates a reasonable initial reaction path:
 
 ```bash
 pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'                       # MEP only

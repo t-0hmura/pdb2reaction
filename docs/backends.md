@@ -54,7 +54,7 @@ first one whose import succeeds.
 ### UMA fp64
 
 Switching OMol-trained UMA from default fp32 to fp64 can have non-trivial impact
-on TSopt + Hessian. Enable via:
+on TSopt and Hessian results. Enable via:
 
 ```bash
 pdb2reaction tsopt -i ts.pdb -q 0 --precision fp64 ...

@@ -1,6 +1,6 @@
 # `trj2fig`
 
-Plot energies from an XYZ trajectory's comment lines (or recompute them with an MLIP backend) and export the series as static / interactive figures and CSV tables. Use it to visualize energies along an XYZ trajectory produced by `opt`, `scan`, `path-opt`, `path-search`, or `irc`. By default it reads the per-frame energies (in hartree) from each comment line, converts them to kcal/mol or hartree, and optionally references all values to a chosen frame to produce ΔE. Supplying `-q/--charge` and/or `-m/--multiplicity` instead recomputes every frame's energy with the MLIP backend (default UMA) using the given charge/spin.
+Plot energies from an XYZ trajectory's comment lines (or recompute them via an MLIP backend) and export the series as static / interactive figures and CSV tables. Use it to visualize energies along a trajectory produced by `opt`, `scan`, `path-opt`, `path-search`, or `irc`. By default it reads the per-frame energies (in hartree) from each comment line, converts them to kcal/mol or hartree, and optionally references all values to a chosen frame to produce ΔE. Supplying `-q/--charge` and/or `-m/--multiplicity` instead recomputes every frame's energy with the MLIP backend (default UMA) using the given charge/spin.
 
 ## Examples
 

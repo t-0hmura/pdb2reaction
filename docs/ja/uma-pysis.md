@@ -1,7 +1,7 @@
 # MLIP 計算機
 
 ## 概要
-`pdb2reaction` は複数の機械学習原子間ポテンシャル（MLIP）を pysisyphus 向けの計算機バックエンドとしてサポートします。デフォルトバックエンドは **UMA**（Meta の Universal Models for Atoms）ですが、**ORB**、**MACE**、**AIMNet2** も利用可能です。各バックエンドはエネルギー / 力 / ヘシアンを Hartree 単位で返し、GPU/CPU ディスパッチと bohr↔Å 変換を内部処理します。クラスターサイズ（数百原子）の系では、augmented-Hessian 固有値解（RFO / RS-I-RFO）と IRC 伝播が扱う 3N × 3N の Hessian テンソルを on-device に保持しなければホスト–デバイス同期の繰り返しで wall-clock を支配しがちなため、Hessian は pysisyphus 経由で on-device に保持されます（エネルギー / 力 はスカラー / numpy 配列で host へ戻すコストは無視できる）。これらの計算機は `pdb2reaction` の最適化・経路探索・熱化学・軌跡後処理など広範に使用されます。
+`pdb2reaction` は複数の機械学習原子間ポテンシャル（MLIP）を pysisyphus 向けの計算機バックエンドとしてサポートします。デフォルトバックエンドは **UMA**（Meta の Universal Models for Atoms）ですが、**ORB**、**MACE**、**AIMNet2** も利用可能です。各バックエンドはエネルギー / 力 / ヘシアンを Hartree 単位で返し、GPU/CPU ディスパッチと bohr↔Å 変換を内部処理します。クラスターサイズ（数百原子）の系では、augmented-Hessian 固有値解（RFO / RS-I-RFO）と IRC 伝播が扱う 3N × 3N の Hessian テンソルを on-device に保持しないと、ホスト–デバイス同期の繰り返しで wall-clock が支配されがちです。そのため Hessian は pysisyphus 経由で on-device に保持します（エネルギー / 力 はスカラー / numpy 配列で host へ戻すため、そのコストは無視できます）。これらの計算機は `pdb2reaction` の最適化・経路探索・熱化学・軌跡後処理など幅広く用いられます。
 
 `pdb2reaction` は GPU 加速版の `pysisyphus` fork を同梱しています。RFO / RS-I-RFO 単一構造 optimizer、EulerPC IRC integrator、振動モード（Hessian）対角化が `device="cuda"`（または GPU ホストでの `"auto"`）の場合に CUDA で実行されます。CPU ホストでは upstream の NumPy/SciPy パスへ透過的にフォールバックします。
 

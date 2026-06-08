@@ -1,6 +1,6 @@
 # `all`
 
-`pdb2reaction all` は、抽出から解析までの一連の処理を **まとめて実行する最上位コマンド** です。`extract` → `scan` / `path-search` → `tsopt` → `irc` / `freq` / `dft` を手動で連結する代わりに、構造から検証済みの機構までを 1 コマンドで得られます。1 つ以上の PDB 入力から活性部位モデル（バインディングポケット）を抽出し、（任意の）段階的スキャンを行い、MEP 探索（デフォルトで再帰的 `path-search`、`--refine-path False` で単一パス `path-opt` に切り替え）を実行したうえで、必要に応じて TS 最適化・IRC・振動解析・DFT 一点計算まで連結します。MLIP バックエンドはデフォルトで UMA を使用しますが、`-b/--backend` オプションで ORB ・ MACE ・ AIMNet2 も選択可能です。
+`pdb2reaction all` は、抽出から解析までの一連の処理を **まとめて実行する最上位コマンド** です。`extract` → `scan` / `path-search` → `tsopt` → `irc` / `freq` / `dft` を手動で連結する代わりに、構造から検証済みの機構までを 1 コマンドで得られます。1 つ以上の PDB 入力から活性部位モデル（バインディングポケット）を抽出し、（任意の）段階的スキャンを行い、MEP 探索（デフォルトで再帰的 `path-search`、`--refine-path False` で単一パス `path-opt` に切り替え）を実行したうえで、必要に応じて TS 最適化・IRC・振動解析・DFT 一点計算まで連結します。MLIP バックエンドはデフォルトで UMA を使用しますが、`-b/--backend` オプションで ORB・MACE・AIMNet2 も選択できます。
 
 `all` は与える入力に応じて次の 3 つのモードのいずれかで動作します。
 

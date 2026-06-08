@@ -1,6 +1,6 @@
 # `irc`
 
-遷移状態（TS）から反応物・生成物方向へ EulerPC（Euler Predictor-Corrector）ベースの固有反応座標（IRC）積分を実行し、`tsopt` で最適化・検証済みの TS 構造を出発点に固有反応座標を追跡して端点接続性（R ↔ TS ↔ P）を確認します。デフォルトで前方・後方の両方向を実行します。`--no-backward`（または `--no-forward`）で一方向のみをたどります。VRAM に余裕がある場合は `--hessian-calc-mode Analytical` が推奨されます。XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定し、XYZ 座標を保持したまま PDB 出力変換が可能になります。一般的な手順は `tsopt` → `irc` です。
+遷移状態（TS）から反応物・生成物方向へ EulerPC（Euler Predictor-Corrector）ベースの固有反応座標（IRC）積分を実行し、`tsopt` で最適化・検証済みの TS 構造を出発点に経路を追跡して端点接続性（R ↔ TS ↔ P）を確認します。デフォルトで前方・後方の両方向を実行します。`--no-backward`（または `--no-forward`）で一方向のみをたどります。VRAM に余裕がある場合は `--hessian-calc-mode Analytical` が推奨されます。XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定し、XYZ 座標を保持したまま PDB 出力変換が可能になります。一般的な手順は `tsopt` → `irc` です。
 
 ## 実行例
 

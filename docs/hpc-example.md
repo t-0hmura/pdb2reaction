@@ -6,7 +6,7 @@ For large-batch or multi-node `pdb2reaction` runs, `workers` / `workers_per_node
 - `workers-per-node` — how many of those run on each node (default `1`); controls per-node GPU/memory pressure.
 
 ```{warning}
-When you run the UMA backend with `workers > 1`, `hessian_calc_mode="Analytical"` is silently downgraded to finite differences (no warning); drop to `workers = 1` if you need analytical Hessians, or use `FiniteDifference` (the default). See {ref}`hessian-evaluation`. ORB / MACE / AIMNet2 do not accept `workers` / `workers_per_node` and are unaffected by this rule.
+When you run the UMA backend with `workers > 1`, `hessian_calc_mode="Analytical"` is silently downgraded to finite differences (no warning). Drop to `workers = 1` if you need analytical Hessians, or use `FiniteDifference` (the default). See {ref}`hessian-evaluation`. ORB / MACE / AIMNet2 do not accept `workers` / `workers_per_node` and are unaffected by this rule.
 ```
 
 The following PBS script illustrates one way to build a multi-node Ray cluster on an Open MPI–equipped HPC system. **Treat it as a template**: you will need to adjust module names, conda path, ports, and resource requests to match your environment.
@@ -150,7 +150,7 @@ The 24 h template above is a default ceiling, not a target. Most jobs finish wel
 - **`pdb2reaction all` end-to-end** (extract → MEP → TSOPT → IRC → freq → DFT) on a small substrate: typically a few hours; high-end multi-GPU nodes can shorten the DFT stage substantially.
 - **MEP (`path-search` / `path-opt`)**: scales with `--max-nodes` (images per segment) and `--max-cycles` (GSM optimizer iterations) — recursive `path-search` campaigns multiply both by segment count, so multistep mechanisms can occupy a single GPU for many hours.
 
-Walltime scales roughly inversely with effective parallelism (`workers × workers_per_node`) on the UMA backend. ORB / MACE / AIMNet2 do not parallelize across workers, so adding more nodes does not shorten their wall-clock.
+Walltime scales roughly inversely with effective parallelism (`workers × workers_per_node`) on the UMA backend. ORB / MACE / AIMNet2 do not parallelize across workers, so adding more nodes does not shorten their wall-clock time.
 
 ## See Also
 

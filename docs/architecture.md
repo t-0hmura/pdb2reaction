@@ -4,7 +4,7 @@
 
 ## 1. Overview
 
-`pdb2reaction` is a Python CLI that performs **pure-MLIP enzymatic reaction-path analysis** on an active-site cluster model. From a PDB plus a substrate name, it extracts the active-site cluster, caps severed bonds with link hydrogens, runs Hessian-based TS search via a RS-I-RFO TS optimization on the MLIP potential, and produces the reaction path (extract → MEP → tsopt → IRC → freq → dft).
+`pdb2reaction` is a Python CLI that performs **pure-MLIP enzymatic reaction-path analysis** on an active-site cluster model. From a PDB plus a substrate name, it extracts the active-site cluster, caps severed bonds with link hydrogens, and runs Hessian-based RS-I-RFO TS optimization on the MLIP potential to produce the reaction path (extract → MEP → tsopt → IRC → freq → dft).
 
 
 Two bundled forks (`pysisyphus/`, `thermoanalysis/`) live at the repo top as repo-internal modules. They are deliberately **not** the upstream PyPI distributions; reinstalling them from PyPI alongside this package silently breaks the local extensions. See §6.
@@ -25,7 +25,7 @@ Two bundled forks (`pysisyphus/`, `thermoanalysis/`) live at the repo top as rep
 | **L5 Foundation** | `pdb2reaction/core/` | defaults (single source of truth), utils (PDB / XYZ / plot helpers), future `errors.py` / `types.py` / `logging.py` | (none) |
 | (bundle, not a layer) | `<repo>/pysisyphus/`, `<repo>/thermoanalysis/` | repo-internal forks (optimiser / thermochemistry) | (sibling, layer-external) |
 
-**Dependency direction (one-way)**: `L1 → L2 → {L3, L4} → L5`. The directional rule is enforced by CI marker coverage (`.github/scripts/check_engineering_markers.py`). Bundled forks sit outside the layer graph and may be imported from any layer through their absolute package path (`from pysisyphus.X import Y`).
+**Dependency direction (one-way)**: `L1 → L2 → {L3, L4} → L5`. The directional rule is enforced by CI marker coverage (`.github/scripts/check_engineering_markers.py`). Bundled forks sit outside the layer graph and may be imported from any layer via their absolute package path (`from pysisyphus.X import Y`).
 
 ### 2.2 ASCII map of the package tree
 

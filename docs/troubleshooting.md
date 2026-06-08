@@ -76,7 +76,7 @@ Raise `--max-nodes 30` / `40` for complex reactions; `--preopt`; try the alterna
 ## Performance / stability tips
 
 - **OOM** — shrink active-site model (`--radius`), lower `--max-nodes`, use lighter `--opt-mode grad`.
-- **Analytical Hessian** — keep the default `FiniteDifference`; only set `--hessian-calc-mode Analytical` if you have 16 GB+ VRAM (for 500+ atom systems).
+- **Analytical Hessian** — keep the default `FiniteDifference`; only set `--hessian-calc-mode Analytical` if you have 16 GB+ VRAM (in 500+ atom systems).
 - **`workers > 1`** — improves UMA throughput on HPC, but disables the analytical Hessian.
 - **Large systems (1000+ atoms)** — extract a smaller active-site model (`--radius 2.5`) or run multi-GPU.
 - **DFT scratch on HPC (~hundreds of atoms)** — PySCF / GPU4PySCF spills integrals to `$PYSCF_TMPDIR` (or `$TMPDIR` / `/tmp` if unset). Node-local `/tmp` is often small / `tmpfs`-backed and can fill up mid-SCF. Set `export PYSCF_TMPDIR="$PBS_O_WORKDIR"` before launching `dft`.
@@ -88,7 +88,7 @@ Order-of-magnitude per-step L-BFGS cost on small-to-medium cluster models, measu
 | Backend (`-b/--backend`, model id) | s/step | VRAM | Notes |
 |---|---|---|---|
 | `uma` (`uma-s-1p1`, default) | 0.03 | ~2 GB | Fast, good for exploration. |
-| `uma` (`uma-m-1p1`) | 0.22 | ~8 GB | Medium model, heavy VRAM. |
+| `uma` (`uma-m-1p1`) | 0.22 | ~8 GB | Medium model, higher VRAM. |
 | `mace` (`MACE-OMOL-0`) | 0.37 | ~4 GB | Separate env (`e3nn` conflict with fairchem-core). |
 | `orb` (`orb_v3_conservative_omol`) | 0.02 | ~2 GB | Fastest; see caveat. |
 

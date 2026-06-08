@@ -1,6 +1,6 @@
 # `freq`
 
-Compute vibrational frequencies and thermochemistry (ZPE, Gibbs energy, etc.) with an MLIP backend (UMA by default; `-b/--backend` also supports ORB, MACE, AIMNet2). Use it when full vibrational analysis is required (e.g., confirming a stationary point is a true minimum with no imaginary frequencies, or that a TS has exactly one) and/or thermochemistry corrections (ZPE, Gibbs energy) are needed. When VRAM permits, `--hessian-calc-mode Analytical` speeds Hessian evaluation. Imaginary frequencies appear as negative values.
+Compute vibrational frequencies and thermochemistry (ZPE, Gibbs energy, etc.) using an MLIP backend (UMA by default; `-b/--backend` also supports ORB, MACE, AIMNet2). Use it when full vibrational analysis is required — for example, to confirm that a stationary point is a true minimum with no imaginary frequencies, or that a TS has exactly one — or when thermochemistry corrections (ZPE, Gibbs energy) are needed. When VRAM permits, `--hessian-calc-mode Analytical` speeds up Hessian evaluation. Imaginary frequencies appear as negative values.
 
 ## Examples
 
@@ -36,7 +36,7 @@ pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 \
   The MLIP backend may return a partial (active) Hessian block whenever atoms are frozen.
   For Hessian evaluation modes, see {ref}`hessian-evaluation`.
 - **PHVA & TR projection**: with frozen atoms, eigenanalysis occurs inside the active
-  subspace with translation/rotation modes projected there. Both 3N×3N and active-block
+  subspace, where translation/rotation modes are projected out. Both 3N×3N and active-block
   Hessians are accepted, and frequencies are reported in cm⁻¹ (negatives = imaginary).
 - **Mode export**: `--max-write` limits how many modes are animated. Modes are sorted by
   value (or absolute value with `--sort abs`). The sinusoidal animation amplitude

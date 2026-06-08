@@ -1,6 +1,6 @@
 # `sp`
 
-`pdb2reaction sp` evaluates the MLIP energy + atomic forces (optionally the full Hessian) at a single geometry. Use it for a quick MLIP energy / forces / Hessian sanity check on a structure before running an optimization, for comparing backends head-to-head, or for generating reference numbers / Hessians outside the optimizer loop.
+`pdb2reaction sp` evaluates the MLIP energy and atomic forces (optionally the full Hessian) at a single geometry. Use it for a quick energy / forces / Hessian sanity check on a structure before running an optimization, for comparing backends head-to-head, or for generating reference values and Hessians outside the optimizer loop.
 
 ## Examples
 
@@ -44,7 +44,7 @@ When `--hess` is set, the backend choice picks the Hessian computation strategy:
 - `--backend uma` (default) → `Analytical` Hessian via the UMA torch autograd path
 - `--backend orb` / `mace` / `aimnet2` → falls back to `FiniteDifference` (no analytical Hessian implementation upstream)
 
-`--hessian-calc-mode` lets you force `FiniteDifference` even on UMA if you want a sanity-check against the analytical implementation, or vice-versa.
+`--hessian-calc-mode` lets you force `FiniteDifference` even on UMA if you want a sanity check against the analytical implementation, or vice versa.
 
 ## CLI options
 

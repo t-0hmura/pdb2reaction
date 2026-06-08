@@ -4,7 +4,7 @@
 
 Cluster models need a small set of atoms held in place at the truncation boundary so the optimizer cannot pull the dangling fragment into something unphysical. `pdb2reaction` handles this through **link hydrogens** (added at severed bonds by `extract`) and three layers of `freeze_atoms` specification.
 
-When a residue is sliced out of a larger protein with `extract` sub-command, the bond at the boundary is capped with a **link hydrogen** (residue `LKH`, atom `HL`, 1.09 Å along the original bond vector). If the parent atom of that link hydrogen is left free, gradient descent will quietly relax the cap+parent pair into a different geometry, deforming the boundary. Freezing the relevant atoms keeps the boundary stationary throughout optimization, MEP search, IRC, and vibrational analysis.
+When a residue is sliced out of a larger protein using the `extract` sub-command, the bond at the boundary is capped with a **link hydrogen** (residue `LKH`, atom `HL`, 1.09 Å along the original bond vector). If the parent atom of that link hydrogen is left free, gradient descent will quietly relax the cap+parent pair into a different geometry, deforming the boundary. Freezing the relevant atoms keeps the boundary stationary throughout optimization, MEP search, IRC, and vibrational analysis.
 
 ## Three ways to specify frozen atoms
 
@@ -55,7 +55,7 @@ There is no mode that substitutes one for another; every entry that appears in a
 
 - **Forces:** zeroed for every frozen DOF in `opt` / `tsopt` / `scan` / `freq` / `irc` and in `path-search --mep-mode gsm` (hard freeze; the optimizer cannot move them).
 - **Hessian:** rows and columns of frozen DOFs are either removed (`calc.return_partial_hessian: true`, the global calculator default; explicitly forced again by `opt` / `tsopt` / `scan` / `freq` / `irc`) or zeroed in the full matrix.
-- **Vibrational analysis:** when frozen atoms are present, `freq` automatically performs Partial Hessian Vibrational Analysis (PHVA) on the active block.
+- **Vibrational analysis:** when frozen atoms are present, `freq` automatically performs partial Hessian vibrational analysis (PHVA) on the active block.
 - **`path-opt` and `path-search --mep-mode dmf` (soft restraint):** instead of zeroing forces, these stages add a `HarmonicFixAtoms` calculator (default `k_fix = 300 eV/Å²`, ASE units) per image so frozen atoms relax with a harmonic restraint, not a hard constraint. Coordinates may drift slightly from the input geometry.
 - **MEP / IRC:** `path-search --mep-mode gsm` and `irc` apply the hard freeze along the resolved path / IRC trajectory; `--mep-mode dmf` (path-opt or path-search) uses the soft restraint above.
 

@@ -2,7 +2,7 @@
 
 ## Goal
 
-Run the full `pdb2reaction all` workflow from a single structure by driving one or more bond distances via `--scan-lists/-s`. This automatically chains: staged scan → MEP refinement → (optional) TS optimization + IRC.
+Run the full `pdb2reaction all` workflow from a single structure by driving one or more bond distances via `--scan-lists/-s`. This automatically chains: staged scan → MEP refinement → (optional) TS optimization and IRC.
 
 ## Prerequisites
 

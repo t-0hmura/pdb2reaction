@@ -48,7 +48,7 @@
 | **ASE** | Atomic Simulation Environment | Python framework providing the Calculator API used by all MLIP backends in pdb2reaction (Larsen et al., *J. Phys. Condens. Matter* 2017). |
 | **task_name** | — | UMA task tag recorded in each inference batch (YAML: `calc.task_name`, default `omol`). Selects the UMA task/preset that a checkpoint was trained for. |
 | **Analytical Hessian** | — | Exact evaluation of the Hessian matrix via automatic differentiation; faster than finite differences but requires more VRAM. Selected with `--hessian-calc-mode Analytical`. |
-| **Finite Difference** | — | Approximating the Hessian by finite nuclear displacements; slower but more memory-efficient. Selected with `--hessian-calc-mode FiniteDifference` (default). |
+| **Finite Difference** | — | Approximation of the Hessian via finite nuclear displacements; slower but more memory-efficient. Selected with `--hessian-calc-mode FiniteDifference` (default). |
 
 ## Quantum Chemistry
 

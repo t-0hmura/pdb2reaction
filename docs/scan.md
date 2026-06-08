@@ -1,6 +1,6 @@
 # `scan`
 
-Drive a reaction coordinate by scanning bond distances with harmonic restraints. Use `pdb2reaction scan` when a single structure needs specific distances driven to explore a plausible path (often before `path-search`/`path-opt`). It performs a staged, bond-length–driven scan using an MLIP backend (UMA by default) and harmonic restraints. At each step, the temporary targets are updated, restraint wells are applied, and the structure is relaxed with L-BFGS (`--opt-mode grad`) or RFOptimizer (`--opt-mode hess`). For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
+Drive a reaction coordinate by scanning bond distances with harmonic restraints. Use `pdb2reaction scan` to drive specific distances in a single structure and explore a plausible path (often before `path-search`/`path-opt`). It performs a staged, bond-length–driven scan using an MLIP backend (UMA by default) and harmonic restraints. At each step, the temporary targets are updated, restraint wells are applied, and the structure is relaxed with L-BFGS (`--opt-mode grad`) or RFOptimizer (`--opt-mode hess`). For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
 
 ## Examples
 

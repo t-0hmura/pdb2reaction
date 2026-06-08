@@ -3,8 +3,8 @@
 `pdb2reaction-mcp`（エイリアス `p2r-mcp`）は、[MCP](https://modelcontextprotocol.io/)
 サーバーであり、MCP に対応した任意のエージェントが stdio 上の JSON-RPC を介して
 すべての `pdb2reaction` CLI サブコマンドを駆動できるようにします。Claude Desktop /
-Claude Code / Cursor / Codeium をはじめ、公式の Python または TypeScript MCP SDK で
-構築した任意のカスタムエージェントが利用できます。
+Claude Code / Cursor / Codeium のほか、公式の Python または TypeScript MCP SDK で
+構築したカスタムエージェントからも利用できます。
 
 ## インストール
 

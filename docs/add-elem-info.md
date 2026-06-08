@@ -1,6 +1,6 @@
 # `add-elem-info`
 
-Repair the element-symbol columns (77–78) of ATOM/HETATM records in a PDB file. Per-atom elements are inferred from atom name + residue context, using `Bio.PDB.PDBParser` re-parse + per-atom element inference; only columns 77–78 are rewritten. Use it when a PDB file has missing or wrong element columns (77–78) and downstream subcommands (`extract`, `opt`, `tsopt`, ...) reject it; `all` auto-invokes `add-elem-info` as a preflight, so manual use is only needed before standalone subcommands.
+Repair the element-symbol columns (77–78) of ATOM/HETATM records in a PDB file. The file is re-parsed with `Bio.PDB.PDBParser`, each element is inferred from the atom name and residue context, and only columns 77–78 are rewritten. Use it when a PDB file has missing or wrong element columns and downstream subcommands (`extract`, `opt`, `tsopt`, ...) reject it. The `all` command auto-invokes `add-elem-info` as a preflight, so manual use is only needed before standalone subcommands.
 
 ## Examples
 

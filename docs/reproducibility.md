@@ -60,7 +60,7 @@ are rejected with a clear error rather than run misleadingly:
 
 - **`--precision fp64`** — AIMNet2's model inputs are cast to float32 upstream,
   so an "fp64" run would not actually be fp64.
-- **`--deterministic`** — AIMNet2 computes forces through a custom CUDA kernel
+- **`--deterministic`** — AIMNet2 computes forces via a custom CUDA kernel
   that lies outside `torch.use_deterministic_algorithms` control, so its forces
   are not bit-reproducible (energy is). PyTorch's deterministic mode neither
   detects nor controls the custom op, so the limitation is reported explicitly.
