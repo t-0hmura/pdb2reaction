@@ -138,17 +138,39 @@ ja/glossary
 
 ## Subcommands
 
-| Subcommand | Role |
-|---|---|
-| [`all`](all.md) | End-to-end: extract → scan → MEP → TS → IRC → freq → DFT |
-| [`extract`](extract.md) · [`fix-altloc`](fix-altloc.md) · [`add-elem-info`](add-elem-info.md) | Structure preparation |
-| [`opt`](opt.md) · [`tsopt`](tsopt.md) | Geometry / TS optimisation |
-| [`path-opt`](path-opt.md) · [`path-search`](path-search.md) | MEP via GSM/DMF / recursive refinement |
-| [`scan`](scan.md) · [`scan2d`](scan2d.md) · [`scan3d`](scan3d.md) | 1D / 2D / 3D bond-distance scans |
-| [`freq`](freq.md) · [`irc`](irc.md) | Vibrational analysis + thermochemistry / IRC (EulerPC) |
-| [`dft`](dft.md) · [`sp`](sp.md) | Single-point DFT / single-point MLIP energy + forces |
-| [`bond-summary`](bond-summary.md) | Bond-change report between consecutive structures |
-| [`trj2fig`](trj2fig.md) · [`energy-diagram`](energy-diagram.md) | Energy plot / R→TS→P diagram |
+| Subcommand | Description |
+|------------|-------------|
+| [`all`](all.md) | End-to-end workflow: extraction → scan → MEP → TS optimization → IRC → thermochemistry → DFT |
+| [`extract`](extract.md) | Extract active site model (binding pocket) from protein–ligand complex |
+| [`fix-altloc`](fix-altloc.md) | Resolve PDB alternate locations |
+| [`add-elem-info`](add-elem-info.md) | Repair PDB element columns (77–78) |
+| [`opt`](opt.md) | Single-structure geometry optimization (L-BFGS or RFO; optional flatten) |
+| [`tsopt`](tsopt.md) | Transition state optimization (Dimer or RS-I-RFO; optional flatten) |
+| [`path-opt`](path-opt.md) | Single-step MEP optimization via GSM or DMF (from 2 structures) |
+| [`path-search`](path-search.md) | Recursive multi-step MEP search with automatic refinement (2+ structures) |
+| [`scan`](scan.md) | 1D bond-length driven scan with restraints |
+| [`scan2d`](scan2d.md) | 2D distance grid scan |
+| [`scan3d`](scan3d.md) | 3D distance grid scan |
+| [`freq`](freq.md) | Vibrational frequency analysis & thermochemistry |
+| [`irc`](irc.md) | Intrinsic Reaction Coordinate calculation |
+| [`dft`](dft.md) | Single-point DFT calculations (GPU4PySCF / PySCF) |
+| [`sp`](sp.md) | Single-point MLIP energy + forces |
+| [`trj2fig`](trj2fig.md) | Plot energy profiles from XYZ trajectories |
+| [`energy-diagram`](energy-diagram.md) | Draw an energy diagram from numeric values |
+| [`bond-summary`](bond-summary.md) | Detect and report covalent bond changes between consecutive structures |
+
+## Getting Help
+
+```bash
+# General help
+pdb2reaction --help
+
+# Command help
+pdb2reaction <subcommand> --help
+
+# Advanced options (dry-run, internal tuning, etc.)
+pdb2reaction <subcommand> --help-advanced
+```
 
 ## Citation
 

@@ -7,18 +7,6 @@ Refer to the upstream projects for additional details:
 - fairchem / UMA: <https://github.com/facebookresearch/fairchem>, <https://huggingface.co/facebook/UMA>
 - Hugging Face token & security: <https://huggingface.co/docs/hub/security-tokens>
 
-## System requirements (details)
-
-The README carries a condensed table; the tuning notes and provenance behind those numbers live here.
-
-**GPU / CUDA / VRAM.** Install a PyTorch wheel whose CUDA tag matches your runtime — `cu126` for CUDA 12.6 or `cu129` for CUDA 12.9 (12.9 is required for RTX 50-series). 8 GB VRAM is the practical minimum and 16 GB is recommended; analytical Hessians on 500+-atom regions want 24 GB. As a low-water mark, `tests/smoke/` runs at only ~0.9 GB peak VRAM on the default `uma-s-1p1` model, so the suite fits comfortably on small GPUs even though production TS / IRC / Hessian workflows do not.
-
-**RAM.** 32 GB is the minimum and 60 GB is recommended. The 60 GB figure is the `mem=60GB` request used in the project's own HPC job scripts, sized to leave headroom for large active-site models alongside the GPU calculation.
-
-**Disk.** Budget ~20 GB of free space, itemised as: the conda environment (~8 GB), the UMA Hugging Face model cache (~1–4 GB, depending on which UMA variants you download), and the headless Chromium that Plotly fetches for static PNG export (~150 MB, downloaded once by `plotly_get_chrome`).
-
-CPU-only execution works but is 10–100× slower and is not recommended for full TS / IRC / Hessian workflows.
-
 ## Quick start
 
 Below is a minimal setup example that works on many CUDA 12.9 clusters. Adjust module names and versions to match your system. This example assumes the default GSM MEP mode (`--mep-mode gsm`). For DMF (`--mep-mode dmf`), install cyipopt via conda first.
@@ -184,6 +172,16 @@ If you prefer to build the environment piece by piece:
     ```
 
     If `CUDA: False`, check that the correct CUDA module is loaded and the PyTorch build matches your CUDA driver version.
+
+## System requirements
+
+**GPU / CUDA / VRAM.** Install a PyTorch wheel whose CUDA tag matches your runtime — `cu126` for CUDA 12.6 or `cu129` for CUDA 12.9 (12.9 is required for RTX 50-series). 8 GB VRAM is the practical minimum and 16 GB is recommended; analytical Hessians on 500+-atom regions want 24 GB. The `tests/smoke/` suite peaks at ~0.9 GB on the default `uma-s-1p1` model, so it fits small GPUs even though production TS / IRC / Hessian workflows do not.
+
+**RAM.** 32 GB minimum, 60 GB recommended (headroom for large active-site models alongside the GPU calculation).
+
+**Disk.** Budget ~20 GB free: conda environment (~8 GB), UMA Hugging Face model cache (~1–4 GB), and the headless Chromium Plotly fetches for static PNG export (~150 MB, via `plotly_get_chrome`).
+
+CPU-only execution works but is 10–100× slower and is not recommended for full TS / IRC / Hessian workflows.
 
 ## Next steps
 
