@@ -1,9 +1,9 @@
 # MLIP Backends
 
-> **Summary:** pdb2reaction dispatches every workflow stage (`opt`, `scan`,
-> `tsopt`, `freq`, `irc`, `path-search`,...) through a single `MLIPCalculator`
-> adapter. This page documents how to select a backend, the per-backend kwargs,
-> and how to add a new backend.
+pdb2reaction dispatches every workflow stage (`opt`, `scan`, `tsopt`, `freq`,
+`irc`, `path-search`,...) through a single `MLIPCalculator` adapter. This page
+documents how to select a backend, the per-backend kwargs, and how to add a new
+backend.
 
 ## Backend dispatcher pattern
 

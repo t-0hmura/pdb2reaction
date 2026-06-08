@@ -1,9 +1,6 @@
 # MLIP バックエンド
 
-> **要約:** pdb2reaction は、すべてのワークフローステージ（`opt`、`scan`、
-> `tsopt`、`freq`、`irc`、`path-search`,...）を単一の `MLIPCalculator`
-> アダプタ経由でディスパッチします。本ページでは、バックエンドの選択方法・
-> バックエンドごとの kwargs・新しいバックエンドの追加方法を説明します。
+pdb2reaction は、すべてのワークフローステージ（`opt`、`scan`、`tsopt`、`freq`、`irc`、`path-search`,...）を単一の `MLIPCalculator` アダプタ経由でディスパッチします。本ページでは、バックエンドの選択方法・バックエンドごとの kwargs・新しいバックエンドの追加方法を説明します。
 
 ## バックエンドディスパッチャのパターン
 
