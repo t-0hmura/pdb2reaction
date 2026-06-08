@@ -1,0 +1,110 @@
+# MLIP バックエンド
+
+> **要約:** pdb2reaction は、すべてのワークフローステージ（`opt`、`scan`、
+> `tsopt`、`freq`、`irc`、`path-search`,...）を単一の `MLIPCalculator`
+> アダプタ経由でディスパッチします。本ページでは、バックエンドの選択方法、
+> バックエンドごとの kwargs、新しいバックエンドの追加方法を説明します。
+
+## バックエンドディスパッチャのパターン
+
+```python
+from pdb2reaction.backends import create_calculator, create_ase_calculator
+
+calc = create_calculator(
+    backend="uma",        # one of: "uma", "orb", "mace", "aimnet2", "auto"
+    charge=0, spin=1,
+    device="cuda", workers=1,
+    model="uma-s-1p1",
+)
+# calc is a pysisyphus-compatible MLIPCalculator; pass it to any stage runner.
+
+# ASE-based stages (e.g. DMF path optimization) use the ASE factory:
+ase_calc = create_ase_calculator(backend="uma", model="uma-s-1p1", device="cuda")
+```
+
+`create_calculator(...)` は `**kwargs` を各バックエンドの
+`_BACKEND_ACCEPTED_KEYS` セットと照合してフィルタするため、ワークフロー側のコードは
+スーパーセットを渡しても問題なく、未知のキーは黙って破棄されます。同じパターンが
+`create_ase_calculator()` にも適用されます。
+
+`backend="auto"` は UMA → Orb → MACE → AIMNet2 の順で解決し、最初にインポートに
+成功したものを選択します。
+
+## ファイルマップ
+
+| file | role |
+|------|------|
+| `pdb2reaction/backends/__init__.py` | `BACKEND_REGISTRY` dict + `create_calculator()` / `create_ase_calculator()` ファクトリ + `resolve_backend('auto')` の UMA 優先フォールバック |
+| `pdb2reaction/backends/base.py` | `MLIPCalculator(pysisyphus.calculators.Calculator)` ABC + FD-Hessian 組み立て + 単位変換 + `BackendError(RuntimeError)` |
+| `pdb2reaction/backends/uma.py` | UMA (Meta FAIR fairchem-core) — autograd Hessian path |
+| `pdb2reaction/backends/orb.py` | Orb (Orbital Materials) — precision / compile_model |
+| `pdb2reaction/backends/mace.py` | MACE — default_dtype |
+| `pdb2reaction/backends/aimnet2.py` | AIMNet2 — charge-aware（p2r 論文の 5-backend ベンチマークからは除外） |
+| `pdb2reaction/backends/solvent.py` | xTB ALPB ラッパー — 任意のベース calculator を溶媒 ΔE 補正でラップ |
+| `pdb2reaction/backends/xtb_alpb_correction.py` | スタンドアロンの xTB ALPB 補正（上記ラッパーとは別の API。混同しないこと） |
+
+## バックエンドごとの特性
+
+| backend | install | model identifier | precision option |
+|---------|---------|------------------|------------------|
+| `uma` | `pip install fairchem-core` + HF auth | `uma-s-1p1` / `uma-s-1p2` | `precision="fp32" \| "fp64"` |
+| `orb` | `pip install orb-models` | `orb_v3_conservative_omol` | `precision="float32-high" \|...` |
+| `mace` | 専用 env: `pip uninstall -y fairchem-core && pip install mace-torch`（`e3nn` の pin が UMA と競合するため） | `MACE-OMOL-0` | `default_dtype="float64"` |
+| `aimnet2` | `pip install aimnet` | `aimnet2` | n/a |
+
+### UMA fp64
+
+OMol で学習された UMA をデフォルトの fp32 から fp64 に切り替えると、TSopt + Hessian に
+無視できない影響が生じることがあります。以下で有効化します。
+
+```bash
+pdb2reaction tsopt -i ts.pdb -q 0 --precision fp64 ...
+pdb2reaction freq  -i opt.pdb -q 0 --precision fp64 ...
+pdb2reaction irc   -i ts.pdb -q 0 --precision fp64 ...
+```
+
+`--precision` はバックエンド非依存です。UMA の `precision` /
+ORB の `precision` / MACE の `default_dtype` へ自動的にルーティングされ、AIMNet2 は
+これを無視します。
+
+または YAML 設定で:
+
+```yaml
+calc:
+  precision: fp64
+```
+
+`InferenceSettings` API のため `fairchem-core ≥ 2.0` が必要です。
+
+## バックエンド追加レシピ（5 ステップ）
+
+`--backend xyz` として公開する新しいバックエンド `XYZModel` を追加するには:
+
+1. **`pdb2reaction/backends/xyz.py` を作成**:
+   `XYZCalculator(MLIPCalculator)`（pysisyphus パス）と `XYZASECalculator(...)`
+   （ASE パス）を実装します。どちらも共通の kwargs である `charge / spin / device /
+   freeze_atoms / hessian_calc_mode / return_partial_hessian / hessian_double /
+   print_timing / model` と、バックエンド固有の kwargs（`precision`、
+   `default_dtype` など）を受け付ける必要があります。
+2. **`MLIPCalculator` を継承**（`backends/base.py`）し、サブクラスフックである
+   `_compute_energy_forces_ev(elem, coord_ang) -> (energy_eV,
+   forces_eV_Ang)` を実装します。バックエンドが解析的 Hessian を公開している場合は、
+   必要に応じて `_compute_analytical_hessian_ev(elem,
+   coord_ang) -> hessian_eV_Ang2` をオーバーライドします。
+   そうでなければ、基底クラスが FD-Hessian の組み立て + 単位変換
+   （eV/Å → Hartree/Bohr）を無償で提供します。
+3. **`BACKEND_REGISTRY` に登録**（`backends/__init__.py`）: 既存のエントリの隣に
+   `"xyz": {"module": "pdb2reaction.backends.xyz", "pysis_cls": "XYZCalculator",
+   "ase_cls": "XYZASECalculator"}` を追加します。
+4. **受け付ける kwargs を宣言**: `_BACKEND_ACCEPTED_KEYS["xyz"]` と
+   `_ASE_ACCEPTED_KEYS["xyz"]` にセットを追加します。`resolve_backend('auto')` の
+   フォールバック順に参加させたい場合は `"xyz"` を追加します。
+5. **ドキュメント化 + smoke**: 本ページのファイルマップ / バックエンドごとの
+   表にエントリを追加し、model identifier + インストールコマンドを記載し、
+   新しいバックエンドが end-to-end で実行されるよう `tests/smoke/run.sh` に
+   `xyz` の行を追加します。
+
+## 関連項目
+
+- [アーキテクチャ](architecture.md) — 6 層のディレクトリマップ + 依存方向。
+- [CONTRIBUTING](https://github.com/t-0hmura/pdb2reaction/blob/main/CONTRIBUTING.md) — Recipe 3.2「Add an MLIP backend」、ゲートサイクルの完全な参照付き。
