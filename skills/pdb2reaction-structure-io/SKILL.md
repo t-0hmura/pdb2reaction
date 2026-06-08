@@ -5,7 +5,7 @@ description: PDB / XYZ / GJF input-file reference for pdb2reaction, plus the cha
 
 # pdb2reaction Structure I/O
 
-## Overview
+## Purpose
 
 `pdb2reaction` accepts three input formats; each carries different
 information and is preferred for different stages of the workflow:

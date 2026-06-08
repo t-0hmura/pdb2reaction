@@ -1,18 +1,29 @@
 # `pdb2reaction scan3d`
 
 ```text
-
 Usage: pdb2reaction scan3d [OPTIONS]
 
   3D distance scan with harmonic restraints.
 
 Options:
+  -v, --verbose LEVEL             Console verbosity 0-3 (default 2). 0=silent;
+                                  1=milestones only; 2=+optimizer cycle tables,
+                                  per-stage timing, VRAM, deliverable paths;
+                                  3=everything (full config blocks, per-file
+                                  paths, DEBUG logging).  [0<=x<=3]
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
   -i, --input FILE                Input structure file (.pdb, .xyz, _trj.xyz,
                                   ...). Required unless --csv is provided.
   -s, --scan-lists TEXT           Scan targets: inline Python literal or a
-                                  YAML/JSON spec file path.
+                                  YAML/JSON spec file path. scan3d expects
+                                  EXACTLY 3 quadruples (i, j, low, high) — one
+                                  per scanned bond axis — e.g. '[(12,45,1.30,3.1
+                                  0),(10,55,1.20,3.20),(15,60,1.10,3.00)]'. Atom
+                                  indices may also be PDB-style strings like 'CE
+                                  SAM   216'. Step count per axis is set via
+                                  --max-step-size, NOT inside the tuple (scan3d
+                                  does not accept a 5th element).
   --csv FILE                      If provided, skip the 3D scan and read a
                                   precomputed surface.csv from this path. When
                                   used, -i/--input and --scan-lists are
@@ -21,9 +32,10 @@ Options:
                                   unless --ligand-charge is provided (PDB inputs
                                   or XYZ/GJF with --ref-pdb).
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
-                                  predictor (analytical Hessian is unavailable
-                                  when workers>1; FiniteDifference Hessian is
-                                  used instead).  [default: 1]
+                                  predictor. NOTE: the analytical Hessian raises
+                                  a RuntimeError when workers>1; run with
+                                  --workers 1 for Hessian-based modes.
+                                  [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
   -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
@@ -35,8 +47,10 @@ Options:
                                   based]
   --max-step-size FLOAT           Maximum step size per scanned distance [Å].
                                   [default: 0.2]
-  --bias-k FLOAT                  Harmonic well strength k [eV/Å^2].  [default:
-                                  300.0]
+  --bias-k FLOAT                  Harmonic well strength k [eV/Å^2]. Defaults to
+                                  YAML bias.k (BIAS_KW['k']=300 in defaults.py)
+                                  when omitted; explicit CLI value overrides
+                                  YAML.
   --relax-max-cycles INTEGER      Maximum optimizer cycles per grid relaxation.
                                   When explicitly provided, used unless YAML
                                   sets opt.max_cycles.  [default: 10000]
@@ -59,7 +73,8 @@ Options:
                                   is XYZ/GJF (keeps XYZ coordinates).
   -o, --out-dir TEXT              Base output directory.  [default:
                                   ./result_scan3d/]
-  --thresh TEXT                   Convergence preset (gau_loose|gau|gau_tight|ga
+  --thresh [gau_loose|gau|gau_tight|gau_vtight|baker|never]
+                                  Convergence preset (gau_loose|gau|gau_tight|ga
                                   u_vtight|baker|never).  Defaults to 'baker'.
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
@@ -82,5 +97,27 @@ Options:
                                   --scan-lists.  [default: no-print-parsed]
   --out-json / --no-out-json      Write machine-readable result.json to out_dir.
                                   [default: no-out-json]
+  --dry-run / --no-dry-run        Resolve and validate options (input,
+                                  charge/spin parity, --scan-lists parse) and
+                                  print the planned scan, then exit without
+                                  running any optimization.  [default: no-dry-
+                                  run]
+  --coord-type [cart|redund|dlc|tric]
+                                  Optimisation coordinate system
+                                  (cart|redund|dlc|tric). cart is the robust
+                                  default used in published numbers; dlc speeds
+                                  up torsion-rich opts.
+  --print-every INTEGER RANGE     Print optimizer status every N cycles (debug
+                                  knob).  [x>=1]
+  --precision [fp32|fp64]         MLIP backend precision: fp32 (default) or
+                                  fp64. Routed to backend-specific kwargs (UMA
+                                  precision / ORB precision / MACE
+                                  default_dtype). aimnet2: fp32 no-op; fp64
+                                  rejected.
+  --deterministic / --no-deterministic
+                                  Strict bit-reproducible GPU runs
+                                  (deterministic algorithms + index_reduce_
+                                  shim). Slower; raises if unsupported. Default
+                                  off.
   -h, --help                      Show this message and exit.
 ```

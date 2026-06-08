@@ -54,12 +54,12 @@ to `tsopt → irc → freq → (dft)`. The output tree:
 |---|---|---|
 | `<out_dir>/summary.json` | always | machine-readable result |
 | `<out_dir>/summary.log` | always | human-readable text + dir tree |
-| `<out_dir>/seg_01/{reactant,ts,product}.{pdb,xyz}` | always | canonical R/TS/P (same layout as multi-input mode) |
-| `<out_dir>/tsopt_single/ts/final_geometry.{xyz,pdb}`, `optimization_trj.xyz` | always (`_trj.xyz` with `--dump`) | tsopt output |
-| `<out_dir>/tsopt_single/irc/{forward,backward,finished}_irc_trj.xyz` | always | IRC trajectories |
-| `<out_dir>/tsopt_single/freq/{R,TS,P}/{frequencies_cm-1.txt, thermoanalysis.yaml}` | always | per-state freq + thermo |
-| `<out_dir>/tsopt_single/dft/{R,TS,P}/result.{yaml,json}` | `--dft` | per-state DFT |
-| `<out_dir>/tsopt_single/structures/{reactant,ts,product}.pdb` | always | mirror of `seg_01/` |
+| `<out_dir>/segments/seg_01/{reactant,ts,product}.{pdb,xyz}` | always | canonical R/TS/P (TS-only mode; extension follows the `-i` input format) |
+| `<out_dir>/segments/seg_01/structures/` | always | `.pdb` working copies of R/TS/P |
+| `<out_dir>/segments/seg_01/ts/final_geometry.{xyz,pdb}`, `optimization_trj.xyz` | always (`_trj.xyz` with `--dump`) | tsopt output |
+| `<out_dir>/segments/seg_01/irc/{forward,backward,finished}_irc_trj.xyz` | always | IRC trajectories |
+| `<out_dir>/segments/seg_01/freq/{R,TS,P}/{frequencies_cm-1.txt, thermoanalysis.yaml}` | always | per-state freq + thermo |
+| `<out_dir>/segments/seg_01/dft/{R,TS,P}/result.{yaml,json}` | `--dft` | per-state DFT |
 
 ## Output keys
 

@@ -1,43 +1,13 @@
 # `fix-altloc`
 
-## Overview
+Remove alternate-location (altLoc) indicators from PDB files by selecting the best conformer for each atom based on occupancy and dropping duplicates. For each atom, the highest-occupancy conformer is kept (ties broken by file order) and column 17 is blanked. Run it before any cluster extraction or geometry stage that cannot consume multi-conformer input.
 
-Remove alternate-location (altLoc) indicators from PDB files by keeping the highest-occupancy conformer per atom and blanking column 17.
+## When to use
 
-### At a glance
-- **Use when:** A PDB file has altLoc indicators that downstream pipeline stages (`extract`, `opt`, `tsopt`, ...) cannot consume. Run before any cluster extraction or geometry stage.
-- **Method:** Per-atom selection by occupancy (highest first; ties broken by file order); column 17 blanked in-place on the kept line. No coordinate, B-factor, or other column is rewritten.
-- **Outputs:** Cleaned PDB at `<input>_clean.pdb` (file input) or `<input>_clean/` (directory input); `-o` overrides; `--inplace` rewrites the source file.
-- **Defaults:** `--recursive False`, `--inplace False`, `--overwrite False`, `--force False`; files with no altLoc characters are skipped unless `--force` is set.
-- **Next step:** Pass the cleaned PDB to [`extract`](extract.md) or [`all`](all.md) — those stages assume a single-conformer input.
+- Use when a PDB file has altLoc indicators that downstream pipeline stages (`extract`, `opt`, `tsopt`, ...) cannot consume. Run before any cluster extraction or geometry stage.
 
-`fix-altloc` removes alternate location (altLoc) indicators from PDB files by
-selecting the best conformer for each atom based on occupancy and dropping
-duplicates.
+## Quick examples
 
-### Algorithm
-1. Blank the PDB altLoc column (column 17, 1-based) with a single space.
- - This is a 1-character replacement (no shifting / no reformatting).
-2. If the same atom appears multiple times due to alternate locations
-    (altLoc like A/B/... or custom labels like H/L), keep the "best" one:
- - Highest occupancy first
- - If tied (or occupancy missing), keep the earliest one in the file
-
-### Handled records
-- `ATOM` / `HETATM`: altLoc selection and blanking
-- `ANISOU`: kept only if the corresponding ATOM/HETATM line (same serial) is kept
-
-### Automatic skip behavior
-By default, if a file contains **no altLoc characters** (all column 17 positions
-are blank), the file is **skipped** and no output is written. Use `--force` to
-process files regardless of altLoc presence.
-
-## Usage
-```bash
-pdb2reaction fix-altloc -i INPUT.pdb [-o OUTPUT.pdb] [OPTIONS]
-```
-
-## Examples
 ```bash
 # Process a single file (output: INPUT_clean.pdb)
 pdb2reaction fix-altloc -i 1abc.pdb
@@ -50,12 +20,25 @@ pdb2reaction fix-altloc -i ./structures -o ./cleaned --recursive
 
 # Overwrite input files in-place (creates .bak backups)
 pdb2reaction fix-altloc -i ./structures --inplace --recursive
-
-# Force processing even if no altLoc is detected
-pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb --force
 ```
 
+## Inputs
+
+Command form:
+
+```bash
+pdb2reaction fix-altloc -i INPUT.pdb [-o OUTPUT.pdb] [OPTIONS]
+```
+
+| Input | Required | Notes |
+| --- | --- | --- |
+| `-i, --input` | yes | Input PDB file or directory. |
+| `-o, --out` | no | Output file (if input is a file) or directory (if input is a directory). Defaults to `<input>_clean.pdb` / `<input>_clean/`. |
+
+By default, if a file contains **no altLoc characters** (all column 17 positions are blank), the file is **skipped** and no output is written. Use `--force` to process files regardless of altLoc presence.
+
 ## Workflow
+
 1. Check if the input file contains any non-blank altLoc characters (column 17).
  - If no altLoc is found and `--force` is not set, skip the file.
 2. For each ATOM/HETATM record, build an identity key ignoring the altLoc field:
@@ -68,35 +51,12 @@ pdb2reaction fix-altloc -i 1abc.pdb -o 1abc_fixed.pdb --force
  - altLoc column (17) blanked to a single space
  - ANISOU records filtered to match retained atoms
 
-## CLI options
-| Option | Description | Default |
-| --- | --- | --- |
-| `-i, --input PATH` | Input PDB file or directory. | Required |
-| `-o, --out PATH` | Output file (if input is a file) or directory (if input is a directory). | File input: `<input>_clean.pdb`; directory input: `<input>_clean/` |
-| `--recursive/--no-recursive` | Process `*.pdb` files recursively when input is a directory. | `False` |
-| `--inplace/--no-inplace` | Overwrite input file(s) in-place (creates `.bak` backup). | `False` |
-| `--overwrite/--no-overwrite` | Allow overwriting existing output files. | `False` |
-| `--force/--no-force` | Process files even if no altLoc is detected. | `False` |
+### Handled records
 
-## Outputs
-- A PDB file with alternate locations removed:
- - File input: `<input>_clean.pdb` by default (when `-o/--out` is omitted)
- - Directory input: `<input>_clean/` directory by default (mirrors subpaths)
- - `OUTPUT.pdb` if `-o/--out` is provided
- - Original file overwritten if `--inplace` is set (backup saved as `<input>.pdb.bak`)
+- `ATOM` / `HETATM`: altLoc selection and blanking
+- `ANISOU`: kept only if the corresponding ATOM/HETATM line (same serial) is kept
 
-## Integration with `all` workflow
-When running the `pdb2reaction all` workflow, `fix-altloc` is automatically
-invoked as a preflight step **after** `add-elem-info` (if element fields were
-missing) and **before** active site model extraction. This ensures that:
-1. Element symbols are populated first
-2. Alternate locations are resolved to a single conformer
-3. The extraction step receives clean, unambiguous coordinates
-
-Files are only processed if altLoc characters are detected; otherwise, the
-original file is passed through unchanged.
-
-## Handling different atom counts between altLoc states
+### Handling different atom counts between altLoc states
 
 When different altLoc states contain different atoms (e.g., altLoc A has atoms
 N, CA, CB, CG while altLoc B has N, CA, CB, CD), `fix-altloc` handles this correctly:
@@ -126,8 +86,40 @@ Output:
  ATOM 6 CD ALA A 1... 0.40 # kept (B only)
 ```
 
+## Outputs
+
+- A PDB file with alternate locations removed:
+ - File input: `<input>_clean.pdb` by default (when `-o/--out` is omitted)
+ - Directory input: `<input>_clean/` directory by default (mirrors subpaths)
+ - `OUTPUT.pdb` if `-o/--out` is provided
+ - Original file overwritten if `--inplace` is set (backup saved as `<input>.pdb.bak`)
+
+## Python API
+
+For programmatic use, the module exports:
+```python
+from pdb2reaction.io.pdb_fix import has_altloc, fix_altloc_file
+
+# Check if a file has altLoc
+if has_altloc(Path("input.pdb")):
+ # Fix altLoc
+ was_processed = fix_altloc_file("input.pdb", "output.pdb", overwrite=True)
+```
+
+## CLI options
+
+| Option | Description | Default |
+| --- | --- | --- |
+| `-i, --input PATH` | Input PDB file or directory. | Required |
+| `-o, --out PATH` | Output file (if input is a file) or directory (if input is a directory). | File input: `<input>_clean.pdb`; directory input: `<input>_clean/` |
+| `--recursive/--no-recursive` | Process `*.pdb` files recursively when input is a directory. | `False` |
+| `--inplace/--no-inplace` | Overwrite input file(s) in-place (creates `.bak` backup). | `False` |
+| `--overwrite/--no-overwrite` | Allow overwriting existing output files. | `False` |
+| `--force/--no-force` | Process files even if no altLoc is detected. | `False` |
+
+The full flag list is in the generated [command reference](reference/commands/index.md).
+
 ## Notes
-- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - Atom serial numbers are **NOT renumbered** (gaps may remain after duplicate removal).
 - `CONECT` and other connectivity/annotation records are **NOT updated**.
@@ -135,13 +127,8 @@ Output:
   insertion codes, and record ordering stay untouched (except for duplicate removal).
 - MODEL/ENDMDL blocks are processed independently.
 
-## API usage
-For programmatic use, the module exports:
-```python
-from pdb2reaction.fix_altloc import has_altloc, fix_altloc_file
+## See Also
 
-# Check if a file has altLoc
-if has_altloc(Path("input.pdb")):
- # Fix altLoc
- was_processed = fix_altloc_file("input.pdb", "output.pdb", overwrite=True)
-```
+- [Common Error Recipes](recipes-common-errors.md)
+- [Troubleshooting](troubleshooting.md)
+- [all](all.md) -- end-to-end workflow that auto-invokes `add-elem-info` then `fix-altloc` as preflight

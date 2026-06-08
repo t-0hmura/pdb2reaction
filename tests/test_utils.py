@@ -9,18 +9,22 @@ import numpy as np
 
 def test_pretty_block_with_numpy_scalars() -> None:
     """pretty_block should normalize NumPy scalars for YAML-safe dumping."""
-    from pdb2reaction.utils import pretty_block
+    from pdb2reaction.core.utils import pretty_block, set_verbose_level
 
-    payload = {
-        "freeze_atoms": [np.int64(0), np.int64(3)],
-        "ratio": np.float64(1.25),
-    }
-    text = pretty_block("freeze_atoms (effective)", payload)
+    set_verbose_level(3)  # pretty_block (config dump) returns "" below -v 3
+    try:
+        payload = {
+            "freeze_atoms": [np.int64(0), np.int64(3)],
+            "ratio": np.float64(1.25),
+        }
+        text = pretty_block("freeze_atoms (effective)", payload)
 
-    assert "freeze_atoms" in text
-    assert "- 0" in text
-    assert "- 3" in text
-    assert "ratio: 1.25" in text
+        assert "freeze_atoms" in text
+        assert "- 0" in text
+        assert "- 3" in text
+        assert "ratio: 1.25" in text
+    finally:
+        set_verbose_level(0)
 
 
 def _prepared_with_template(
@@ -30,7 +34,7 @@ def _prepared_with_template(
     template_charge: int = 7,
     template_spin: int = 3,
 ):
-    from pdb2reaction.utils import GjfTemplate, PreparedInputStructure
+    from pdb2reaction.core.utils import GjfTemplate, PreparedInputStructure
 
     source_path = tmp_path / source_name
     source_path.write_text("")
@@ -55,7 +59,7 @@ def test_resolve_charge_spin_prefers_ligand_derivation_over_gjf(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
-    from pdb2reaction import utils as u
+    from pdb2reaction.core import utils as u
 
     prepared = _prepared_with_template(tmp_path)
     monkeypatch.setattr(
@@ -79,7 +83,7 @@ def test_resolve_charge_spin_falls_back_to_gjf_after_ligand_derivation(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
-    from pdb2reaction import utils as u
+    from pdb2reaction.core import utils as u
 
     prepared = _prepared_with_template(tmp_path, template_charge=5, template_spin=2)
     monkeypatch.setattr(
@@ -102,7 +106,7 @@ def test_resolve_charge_spin_falls_back_to_gjf_after_ligand_derivation(
 def test_resolve_charge_spin_skips_ligand_validation_when_charge_is_explicit(
     tmp_path: Path,
 ) -> None:
-    from pdb2reaction import utils as u
+    from pdb2reaction.core import utils as u
 
     prepared = _prepared_with_template(
         tmp_path,
@@ -123,7 +127,7 @@ def test_resolve_charge_spin_skips_ligand_validation_when_charge_is_explicit(
 
 
 def test_validate_charge_spin_water_neutral_singlet_passes() -> None:
-    from pdb2reaction.utils import validate_charge_spin
+    from pdb2reaction.core.utils import validate_charge_spin
 
     validate_charge_spin(["O", "H", "H"], charge=0, multiplicity=1)
 
@@ -131,7 +135,7 @@ def test_validate_charge_spin_water_neutral_singlet_passes() -> None:
 def test_validate_charge_spin_water_neutral_doublet_raises() -> None:
     import pytest
 
-    from pdb2reaction.utils import validate_charge_spin
+    from pdb2reaction.core.utils import validate_charge_spin
 
     with pytest.raises(ValueError, match="electron count inconsistent"):
         validate_charge_spin(["O", "H", "H"], charge=0, multiplicity=2)

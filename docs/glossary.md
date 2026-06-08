@@ -15,7 +15,7 @@
 | **Reactive segment** | — | A segment in which covalent bond changes are detected between the endpoints. Only reactive segments proceed to TS optimization. |
 | **Bridge segment** | — | A segment connecting two non-adjacent intermediates that still contains unresolved bond changes; `path-search` recursively subdivides bridge segments until all reactive regions are isolated. |
 | **Kink** | — | A region along an MEP where no covalent bond change is detected but a geometric distortion persists. `path-search` inserts linearly interpolated nodes and optimizes them individually rather than running a full string calculation. |
-| **PES** | Potential Energy Surface | A hypersurface of energy as a function of atomic coordinates. The MEP is the lowest-energy pathway on the PES. |
+| **PES** | Potential Energy Surface | A hypersurface of energy as a function of atomic coordinates. |
 
 ## Optimization Algorithms
 
@@ -74,7 +74,7 @@
 | **XYZ** | — | A simple text format listing atomic symbols and Cartesian coordinates. |
 | **GJF** | Gaussian Job File | An input format for Gaussian; pdb2reaction reads charge/multiplicity and coordinates from these files. |
 | **Active Site Model** | Active Site Model (Binding Pocket) | The extraction region around the substrate(s), defined by `-c/--center` and `-r/--radius`. pdb2reaction uses "active site model" and "cluster model" interchangeably when describing the downstream calculation input; strictly, "active site model" refers to the geometric selection and "cluster model" to the same selection after it has been capped with link hydrogens and prepared for QM/MLIP calculation. |
-| **Cluster Model** | — | The QM/MLIP computational subsystem obtained by taking the extracted active site model and capping severed covalent bonds with link hydrogens. In practice, "active site model" (pre-cap geometric selection) and "cluster model" (capped, calculation-ready) name two stages of the same object. |
+| **Cluster Model** | — | The QM/MLIP computational subsystem obtained by taking the extracted active site model and capping severed covalent bonds with link hydrogens. |
 | **Link Hydrogen** | — | A hydrogen atom added to cap severed bonds when extracting an active site model from a larger structure. |
 | **Backbone** | — | The main chain of a protein (N–Cα–C–O atoms). Can be excluded during active site model extraction with `--exclude-backbone`. |
 
@@ -111,7 +111,7 @@ Two unrelated cm⁻¹ thresholds appear in `pdb2reaction`. They act on different
 
 | Threshold | Role | Source |
 |-----------|------|--------|
-| **5 cm⁻¹** | *Imaginary-mode detection cutoff.* Negative eigenvalues with magnitude below this are not counted as imaginary (treated as rigid-body / numerical noise). | `pdb2reaction/defaults.py` as `hessian_dimer.neg_freq_thresh_cm = 5.0`; tunable via YAML. |
+| **5 cm⁻¹** | *Imaginary-mode detection cutoff.* Negative eigenvalues with magnitude below this are not counted as imaginary (treated as rigid-body / numerical noise). | `pdb2reaction/core/defaults.py` as `hessian_dimer.neg_freq_thresh_cm = 5.0`; tunable via YAML. |
 | **100 cm⁻¹** | *QRRHO rotor cutoff* (Grimme). Positive low-frequency vibrations are damped between harmonic-oscillator and free-rotor entropy in `freq` thermochemistry; it changes only entropy / Gibbs free energy. | `thermoanalysis/config.py` as `ROTOR_CUT_DEFAULT = 100.0`. |
 
 ## CLI Conventions

@@ -2,6 +2,9 @@
 
 For large-batch or multi-node `pdb2reaction` runs, `workers` / `workers_per_node` (see {ref}`MLIP Calculator <configuration-reference>`) can be scaled across nodes by launching a Ray cluster under your scheduler.
 
+- `workers` — total number of UMA predictor processes across all nodes (default `1`).
+- `workers-per-node` — how many of those run on each node (default `1`); controls per-node GPU/memory pressure.
+
 ```{warning}
 When you run the UMA backend with `workers > 1`, `hessian_calc_mode="Analytical"` is silently downgraded to finite differences (no warning); drop to `workers = 1` if you need analytical Hessians, or use `FiniteDifference` (the default). See {ref}`hessian-evaluation`. ORB / MACE / AIMNet2 do not accept `workers` / `workers_per_node` and are unaffected by this rule.
 ```
@@ -149,7 +152,7 @@ The 24 h template above is a default ceiling, not a target. Most jobs finish wel
 
 Walltime scales roughly inversely with effective parallelism (`workers × workers_per_node`) on the UMA backend. ORB / MACE / AIMNet2 do not parallelize across workers, so adding more nodes does not shorten their wall-clock.
 
-## See also
+## See Also
 
 - [MLIP Calculator](uma-pysis.md) — configuration reference and Hessian evaluation notes
 - [opt](opt.md) / [all](all.md) — subcommands that honor `workers` / `workers_per_node`

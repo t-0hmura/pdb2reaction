@@ -38,7 +38,7 @@ pdb2reaction freq -i geom.{pdb,xyz,gjf} \
 pdb2reaction freq -i ts.xyz -q 0 -m 1 -b uma --out-json -o result_freq
 ```
 
-`--out-json` enables the `result.json` shown below; omit it for `frequencies_cm-1.txt` + `thermoanalysis.yaml` only.
+`--out-json` enables the `result.json` shown below; omit it for `frequencies_cm-1.txt` only.
 
 ### Higher temperature for activation enthalpy
 
@@ -83,7 +83,7 @@ Default thermochemistry uses the QRRHO (Grimme) treatment with a
 - high-frequency vibrations use the standard harmonic-oscillator
   partition function.
 
-Inspect the active QRRHO knob via `pdb2reaction.defaults.THERMO_KW`.
+Inspect the active QRRHO knob via `pdb2reaction.core.defaults.THERMO_KW`.
 
 ## Partial-Hessian Vibrational Analysis (PHVA)
 
@@ -105,7 +105,7 @@ freeze of `LKH/HL` link-H parents written by `extract`), and YAML
 - Imaginary frequencies < ~50 cm⁻¹ are often numerical noise, not real
   modes. The QRRHO cutoff (100 cm⁻¹) is one safeguard.
 - `--hessian-calc-mode FiniteDifference` is more memory-friendly but
-  ~3× slower than `Analytical`.
+  slower than `Analytical`.
 - Thermochemistry depends on charge / spin — make sure `-q`/`-m` are
   correct or ZPE will be off.
 
@@ -113,4 +113,4 @@ freeze of `LKH/HL` link-H parents written by `extract`), and YAML
 
 - `tsopt.md`, `irc.md` — usual upstream stages.
 - [`pdb2reaction-install-backends/uma.md`](../pdb2reaction-install-backends/uma.md) — `--hessian-calc-mode` knob.
-- Defaults: `import pdb2reaction.defaults as d; print(d.FREQ_KW, d.THERMO_KW, d.FREQ_CALC_KW)`
+- Defaults: `import pdb2reaction.core.defaults as d; print(d.FREQ_KW, d.THERMO_KW, d.FREQ_CALC_KW)`

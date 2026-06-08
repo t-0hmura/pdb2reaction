@@ -1,63 +1,42 @@
 # `path-search`
 
-## 概要
+**2 構造以上**から、GSM（デフォルト）または DMF（`--mep-mode dmf`）で連続的な最小エネルギー経路（MEP）を構築します。共有結合変化が検出される領域のみを選択的に精密化し、解決済みのサブパスを連結して 1 本の軌跡にまとめ、各セグメントの最高エネルギー画像（HEI）を TS 候補として出力します（tsopt + IRC で検証）。再帰的分解により多段階反応を自動検出し、各素反応ステップの詳細な MEP を構築しますが、複雑な多段階反応の機構を満足な経路として得るには、入力中間体やスキャン仕様、収束閾値の調整など手動での試行錯誤が必要になることがあります。
 
-> **要約:** **2 構造以上**から、GSM（デフォルト）または DMF（`--mep-mode dmf`）で連続的な MEP を構築します。共有結合変化のある領域のみを自動で精密化し、最高エネルギー画像（HEI）を TS 候補として出力します（tsopt + IRC で検証）。
+## 使いどころ
 
-### 要点
-- **想定場面:** R → … → P の **2 構造以上**を入力とし、自動精密化を含む連続 MEP を構築する場面。
-- **手法:** GSM/DMF セグメントを連鎖し、結合変化が残る区間だけを再帰的に精密化します。
-- **主な出力:** `mep_trj.xyz`（主軌跡）、`summary.json`（セグメントごとの結果）、必要に応じてプロットやマージ済み PDB。
-- **デフォルト値:** `--mep-mode gsm`、`--opt-mode grad`（L-BFGS）、`--preopt`、`--align`、`--thresh gau`、`--thresh-stopt gau_loose`。
-- **次にやること:** HEI は **TS 候補**であり、単独では TS 検証になりません。続けて [tsopt](tsopt.md)（内部で虚振動数チェック済み）→ [irc](irc.md) を実行してください。
+- R → … → P の **2 構造以上**を入力とし、自動精密化を含む連続 MEP を 1 本の軌跡にまとめたい場面。
+- セグメント生成器として `--mep-mode gsm`（デフォルト、string ベース）または `--mep-mode dmf`（direct flux）を選びます。
+- 精密化シードとして `--refine-mode peak`（HEI±1 を最適化）または `--refine-mode minima`（最寄り局所極小点へ外側探索）を選びます（未指定時は GSM で `peak`、DMF で `minima`）。
+- **2 端点だけ**で再帰精密化が不要な場合は、[path-opt](path-opt.md) の方がシンプルです。
 
-`pdb2reaction path-search` は反応順に並んだ 2 構造以上を入力とし、連続的な最小エネルギー経路（MEP）を構築します。共有結合変化が検出される領域のみを選択的に精密化し、解決済みのサブパスを連結して 1 本の軌跡にまとめます。
-
-
-`--convert-files` が有効（デフォルト）な場合、参照 PDB があれば軌跡の `.pdb` コンパニオンを、Gaussian テンプレートがあれば HEI スナップショットの `.gjf` コンパニオンを生成します。XYZ/GJF 入力では `--ref-pdb` が最終的な全系マージで用いるポケット参照 PDB（入力と同数・同順）を提供し、`--ref-full-pdb` によりフルテンプレートへのマージが可能です（XYZ/GJF 入力では主軌跡の PDB コンパニオンは生成されません）。
-
-再帰的分解により多段階反応を自動検出し、各素反応ステップの詳細な MEP を構築します。ただし、複雑な多段階反応の機構を満足な経路として得るには、入力中間体やスキャン仕様、収束閾値の調整など手動での試行錯誤が必要になることがあります。
-
-**2 端点だけ**で再帰精密化が不要な場合は、[path-opt](path-opt.md) の方がシンプルです。
-
-## 最小例
+## 実行例
 
 ```bash
 pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
  --out-dir ./result_path_search
 ```
 
-## 出力の見方
-
-- `result_path_search/mep_trj.xyz`
-- `result_path_search/summary.json`
-- `result_path_search/summary.log`
-- `result_path_search/mep_plot.png`（プロット生成時）
-
-## よくある例
-
-1. 中間体を明示して多段の経路を与える。
-
 ```bash
+# 中間体を明示して多段の経路を与える
 pdb2reaction path-search -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 -m 1 \
  --out-dir ./result_path_search_multi
 ```
 
-2. テンプレート参照を使って全系マージ出力を有効化する。
-
 ```bash
+# テンプレート参照を使って全系マージ出力を有効化する
 pdb2reaction path-search -i R.pdb IM1.pdb P.pdb -q 0 -m 1 \
  --ref-full-pdb holo_template.pdb --out-dir ./result_path_search_merge
 ```
 
-3. DMF + minima リファインで探索する。
-
 ```bash
+# DMF + minima リファインで探索する
 pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
  --mep-mode dmf --refine-mode minima --out-dir ./result_path_search_dmf
 ```
 
-## 使用法
+## 入力
+
+コマンド形式:
 
 ```bash
 pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1] \
@@ -73,13 +52,67 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
  [--show-config/--no-show-config] [--dry-run/--no-dry-run]
 ```
 
+| 入力 | 必須 | 備考 |
+| --- | --- | --- |
+| `-i, --input` | はい | 反応順序の 2 つ以上の構造（反応物 → 生成物）。すべてのファイルを単一の `-i`/`--input` の後ろに並べて指定。 |
+| `-q, --charge` | 条件付き | 総電荷。非 `.gjf` 入力では `--ligand-charge/-l` の導出が成功しない限り必須（PDB 入力）。両方指定時は `-q` が `--ligand-charge/-l` より優先。 |
+| `-l, --ligand-charge` | 任意 | スカラー整数のリガンド総電荷、または残基別マッピング（例: `GPP:-3,SAM:1`）。`-q` 省略時に使用（PDB 入力のみ。XYZ/GJF は `-q` 必須）。 |
+| `-m, --multiplicity` | いいえ | スピン多重度（2S+1）。既定は `.gjf` テンプレート値または `1`。 |
+| `--ref-pdb` | XYZ/GJF マージ時 | 入力が XYZ/GJF の場合に最終的な全系マージで用いる活性部位モデル参照 PDB（入力と同数・同順）。 |
+
+`--convert-files` が有効（デフォルト）な場合、参照 PDB があれば軌跡の `.pdb` コンパニオンを、Gaussian テンプレートがあれば HEI スナップショットの `.gjf` コンパニオンを生成します。XYZ/GJF 入力では `--ref-pdb` が最終的な全系マージで用いるポケット参照 PDB（入力と同数・同順）を提供し、`--ref-full-pdb` によりフルテンプレートへのマージが可能です（XYZ/GJF 入力では主軌跡の PDB コンパニオンは生成されません）。
+
+## 処理の流れ
+
+1. **ペアごとの初期セグメント（GSM/DMF）** – 各隣接入力（A→B）間で `GrowingString` または DMF を実行し、粗い MEP と最高エネルギー画像（HEI）を取得。
+2. **HEI 周辺の局所緩和** – `refine-mode=peak` なら HEI±1、`refine-mode=minima` なら HEI 近傍の局所極小点を、選択した単一構造オプティマイザー（`opt-mode`）で精密化し `End1`/`End2` を得る。
+   > **デフォルト:** `--refine-mode` 省略時は GSM では `peak`、DMF では `minima` が選択されます。
+3. **ねじれ vs. 精密化の決定** – `End1` と `End2` 間に共有結合変化がなければ *ねじれ*（kink: 共有結合変化を伴わない構造変化区間。[用語集](glossary.md) 参照）とみなし、`search.kink_max_nodes` の線形ノードを挿入して個別最適化。結合変化がある場合は *反応セグメント*（端点間に共有結合変化が検出される区間。[用語集](glossary.md) 参照）として扱い、`End1` と `End2` 間に **精密化セグメント (GSM/DMF)** を起動して障壁を鋭利化。
+4. **選択的再帰** – `(A→End1)` と `(End2→B)` の結合変化を `bond` しきい値で比較し、共有結合更新が残るサブ区間のみ再帰的に探索。再帰深度は `search.max_depth` で制限。
+5. **スティッチング & ブリッジング** – 解決済みのサブパスを連結し、RMSD ≤ `search.stitch_rmsd_thresh` の重複エンドポイントを除去。RMSD ギャップが `search.bridge_rmsd_thresh` を超える場合は *ブリッジセグメント*（非隣接の中間体間を接続するセグメント。[用語集](glossary.md) 参照）を GSM/DMF で挿入。境界で結合変化が検出される場合はブリッジではなく新規の再帰セグメントで置換。
+6. **アライメント & マージング（オプション）** – `--align`（デフォルト）で事前最適化構造を先頭入力へ剛体アライメントし、`freeze_atoms` を整合。`--ref-full-pdb` を指定すると活性部位モデル軌跡をフルサイズ PDB テンプレートへマージ（`--align` により先頭テンプレートの再利用が可能）。
+
+結合変化の判定は `bond_changes.compare_structures` を用い、`bond` セクションのしきい値に従います。MLIP バックエンドは全構造で共有・再利用されます。
+
+## 出力
+
+```
+out_dir/ (デフォルト:./result_path_search/)
+├─ mep_trj.xyz # 主要 MEP 軌跡
+├─ mep.pdb # 入力がPDB テンプレートで変換が有効な場合のPDB コンパニオン
+├─ mep.gjf # Gaussian テンプレート検出時の Gaussian コンパニオン
+├─ mep_w_ref.pdb # マージされた全系MEP（参照 PDB/テンプレートが必要）
+├─ mep_seg_XX_trj.xyz # セグメントごとの MEP 軌跡（XYZ）
+├─ mep_seg_XX.pdb # セグメントごとの PDB コンパニオン（変換有効時）
+├─ mep_seg_XX.gjf # セグメントごとの Gaussian コンパニオン（テンプレート検出時）
+├─ mep_w_ref_seg_XX.pdb # 共有結合変化がある場合のマージされたセグメントごとのパス
+├─ hei_seg_XX.xyz # セグメントごとの最高エネルギー画像
+├─ hei_seg_XX.pdb # HEI PDB コンパニオン（変換有効時）
+├─ hei_seg_XX.gjf # HEI Gaussian コンパニオン（テンプレート検出時）
+├─ hei_w_ref_seg_XX.pdb # 全系コンテキストでマージされた HEI（参照 PDB が必要）
+├─ summary.json # すべての再帰セグメントの障壁と分類サマリー
+├─ summary.log # 結果要約
+├─ mep_plot.png # `trj2fig` で生成した ΔE プロファイル（kcal/mol、反応物基準）
+├─ energy_diagram_MEP.png # MEP 状態エネルギーダイアグラムの静的エクスポート（反応物基準）
+└─ seg_NNN_*/ # セグメントごとの GSM/DMF ダンプ、HEI スナップショット、kink/精密化の診断情報
+```
+
+結果は通常、次のファイルを開いて確認します。
+
+- `result_path_search/mep_trj.xyz`
+- `result_path_search/summary.json`
+- `result_path_search/summary.log`
+- `result_path_search/mep_plot.png`（プロット生成時）
+
+- コンソールには確定済みの設定ブロック（`geom`, `calc`, `gs`, `stopt`, `opt.*`, `bond`, `search`）が出力されます。詳細は {ref}`ja-verbosity-levels` を参照してください。
 
 ## CLI オプション
+
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `-i, --input PATH...` | 反応順序の 2 つ以上の構造（反応物 → 生成物）。すべてのファイルを単一の `-i`/`--input` の後ろに並べて指定 | 必須 |
 | `-q, --charge INT` | 総電荷。非 `.gjf` 入力では `--ligand-charge` の導出が成功しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
-| `-l, --ligand-charge TEXT` | スカラー整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
+| `-l, --ligand-charge TEXT` | スカラー整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力のみ。XYZ/GJF は `-q` 必須） | _None_ |
 | `--workers`, `--workers-per-node` | MLIP 予測器の並列度（workers > 1 で解析ヘシアン無効; UMA バックエンドのみ; `workers_per_node` は並列予測器に渡されます）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | `--freeze-links/--no-freeze-links` | PDB 活性部位モデル読み込み時、リンク水素の親原子を凍結。詳細は [extract](extract.md) を参照 | `True` |
@@ -106,52 +139,9 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
 | `--ref-full-pdb PATH...` | フルサイズテンプレート PDB（入力と同数。`--align` があれば先頭のみ再利用可） | _None_ |
 | `--ref-pdb PATH...` | 入力が XYZ/GJF の場合に最終的な全系マージで用いるポケット参照 PDB（入力と同数・同順） | _None_ |
 
-## ワークフロー
-
-1. **ペアごとの初期セグメント（GSM/DMF）** – 各隣接入力（A→B）間で `GrowingString` または DMF を実行し、粗い MEP と最高エネルギー画像（HEI）を取得。
-2. **HEI 周辺の局所緩和** – `refine-mode=peak` なら HEI±1、`refine-mode=minima` なら HEI 近傍の局所極小点を、選択した単一構造オプティマイザー（`opt-mode`）で精密化し `End1`/`End2` を得る。
-   > **デフォルト:** `--refine-mode` 省略時は GSM では `peak`、DMF では `minima` が選択されます。
-3. **ねじれ vs. 精密化の決定** – `End1` と `End2` 間に共有結合変化がなければ *ねじれ*（kink: 共有結合変化を伴わない構造変化区間。[用語集](glossary.md) 参照）とみなし、`search.kink_max_nodes` の線形ノードを挿入して個別最適化。結合変化がある場合は *反応セグメント*（端点間に共有結合変化が検出される区間。[用語集](glossary.md) 参照）として扱い、`End1` と `End2` 間に **精密化セグメント (GSM/DMF)** を起動して障壁を鋭利化。
-4. **選択的再帰** – `(A→End1)` と `(End2→B)` の結合変化を `bond` しきい値で比較し、共有結合更新が残るサブ区間のみ再帰的に探索。再帰深度は `search.max_depth` で制限。
-5. **スティッチング & ブリッジング** – 解決済みのサブパスを連結し、RMSD ≤ `search.stitch_rmsd_thresh` の重複エンドポイントを除去。RMSD ギャップが `search.bridge_rmsd_thresh` を超える場合は *ブリッジセグメント*（非隣接の中間体間を接続するセグメント。[用語集](glossary.md) 参照）を GSM/DMF で挿入。境界で結合変化が検出される場合はブリッジではなく新規の再帰セグメントで置換。
-6. **アライメント & マージング（オプション）** – `--align`（デフォルト）で事前最適化構造を先頭入力へ剛体アライメントし、`freeze_atoms` を整合。`--ref-full-pdb` を指定すると活性部位モデル軌跡をフルサイズ PDB テンプレートへマージ（`--align` により先頭テンプレートの再利用が可能）。
-
-結合変化の判定は `bond_changes.compare_structures` を用い、`bond` セクションのしきい値に従います。MLIP バックエンドは全構造で共有・再利用されます。
-
-## 出力
-```
-out_dir/ (デフォルト:./result_path_search/)
-├─ mep_trj.xyz # 主要 MEP 軌跡
-├─ mep.pdb # 入力がPDB テンプレートで変換が有効な場合のPDB コンパニオン
-├─ mep.gjf # Gaussian テンプレート検出時の Gaussian コンパニオン
-├─ mep_w_ref.pdb # マージされた全系MEP（参照 PDB/テンプレートが必要）
-├─ mep_seg_XX_trj.xyz # セグメントごとの MEP 軌跡（XYZ）
-├─ mep_seg_XX.pdb # セグメントごとの PDB コンパニオン（変換有効時）
-├─ mep_seg_XX.gjf # セグメントごとの Gaussian コンパニオン（テンプレート検出時）
-├─ mep_w_ref_seg_XX.pdb # 共有結合変化がある場合のマージされたセグメントごとのパス
-├─ hei_seg_XX.xyz # セグメントごとの最高エネルギー画像
-├─ hei_seg_XX.pdb # HEI PDB コンパニオン（変換有効時）
-├─ hei_seg_XX.gjf # HEI Gaussian コンパニオン（テンプレート検出時）
-├─ hei_w_ref_seg_XX.pdb # 全系コンテキストでマージされた HEI（参照 PDB が必要）
-├─ summary.json # すべての再帰セグメントの障壁と分類サマリー
-├─ summary.log # 結果要約
-├─ mep_plot.png # `trj2fig` で生成した ΔE プロファイル（kcal/mol、反応物基準）
-├─ energy_diagram_MEP.png # MEP 状態エネルギーダイアグラムの静的エクスポート（反応物基準）
-└─ seg_NNN_*/ # セグメントごとの GSM/DMF ダンプ、HEI スナップショット、kink/精密化の診断情報
-```
-
-
-- コンソールには確定済みの設定ブロック（`geom`, `calc`, `gs`, `stopt`, `opt.*`, `bond`, `search`）が出力されます。
-
-## 注意事項
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
-
-- 入力は 2 つ以上が必須。満たさない場合、`-i/--input` の "invalid value" エラーで終了します。
-- 複数テンプレートを渡す場合は `--ref-full-pdb` をファイルごとに繰り返して指定します。`--align` が有効な場合、マージでは先頭テンプレートのみが再利用されます。
-- MLIP バックエンドは全構造で共有・再利用されます。
-- `--dump` が有効な場合、MEP（GSM/DMF）と単一構造最適化の軌跡が出力されます。リスタート YAML は YAML で `dump_restart` を有効にした場合のみ書き出されます。
-
 設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
+
+## YAML 設定
 
 YAML ルートはマッピングでなければなりません。共通セクションは [YAML リファレンス](yaml-reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（PDB 入力では `--freeze-links` が `geom.freeze_atoms` を補強します。詳細は {ref}`リンク水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）、`stopt` は `path-opt`（[path-opt.md](path-opt.md)）に記載の StringOptimizer 設定を継承します。
 
@@ -171,7 +161,7 @@ opt:
    out_dir: ./result_path_search/ # path-search 上書き（正準デフォルト: ./result_opt/）
 ```
 
-`bond` と `search` は `path-search` の再帰ロジックの中核であるため、ここに残します:
+`bond` / `search`:
 
 ```yaml
 bond:
@@ -190,11 +180,18 @@ search:
  refine_mode: null # optional refinement strategy (auto-chooses when null)
 ```
 
+## 注意事項
+
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+- 入力は 2 つ以上が必須。満たさない場合、`-i/--input` の "invalid value" エラーで終了します。
+- 複数テンプレートを渡す場合は `--ref-full-pdb` をファイルごとに繰り返して指定します。`--align` が有効な場合、マージでは先頭テンプレートのみが再利用されます。
+- MLIP バックエンドは全構造で共有・再利用されます。
+- `--dump` が有効な場合、MEP（GSM/DMF）と単一構造最適化の軌跡が出力されます。リスタート YAML は YAML で `dump_restart` を有効にした場合のみ書き出されます。
+
 ## 関連項目
 
 - [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) -- 詳細な対処ガイド
-
 - [path-opt](path-opt.md) — 単一パス MEP 最適化（再帰的精密化なし）
 - [tsopt](tsopt.md) — HEI を遷移状態として最適化
 - [extract](extract.md) — path-search 入力用の活性部位モデル PDB を生成

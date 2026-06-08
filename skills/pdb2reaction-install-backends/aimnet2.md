@@ -13,13 +13,13 @@ Metalloenzymes need UMA or MACE.
 ## Install
 
 ```bash
-pip install 'pdb2reaction[aimnet]'         # pulls aimnet>=0.1.0
+pip install 'pdb2reaction[aimnet]'         # pulls aimnet>=0.2.0
 ```
 
 Or, if `pdb2reaction` is already installed:
 
 ```bash
-pip install 'aimnet>=0.1.0'
+pip install 'aimnet>=0.2.0'
 ```
 
 Confirm:
@@ -41,7 +41,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb \
 Default model: `aimnet2`. Inspect:
 
 ```bash
-python -c "import pdb2reaction.defaults as d; print(d.AIMNET2_BACKEND_DEFAULTS)"
+python -c "import pdb2reaction.core.defaults as d; print(d.AIMNET2_BACKEND_DEFAULTS)"
 ```
 
 ## Backend-specific flags

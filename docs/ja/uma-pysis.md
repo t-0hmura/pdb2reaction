@@ -8,12 +8,12 @@
 ## クイックスタート
 ```python
 import numpy as np
-from pdb2reaction.uma_pysis import uma_pysis
+from pdb2reaction.backends.uma import UMACalculator
 
 # 例: 中性一重項の2原子系（GPUが利用可能ならGPU、なければCPU）
-calc = uma_pysis(charge=0, spin=1, model="uma-s-1p1", device="auto")
+calc = UMACalculator(charge=0, spin=1, model="uma-s-1p1", device="auto")
 
-# uma_pysis には Bohr 単位の座標（形状: [n_atoms, 3]）を渡します
+# UMACalculator には Bohr 単位の座標（形状: [n_atoms, 3]）を渡します
 coords_bohr = np.array([
  [0.0, 0.0, 0.0],
  [2.2, 0.0, 0.0], # 約 1.16 Å
@@ -117,7 +117,7 @@ pdb2reaction opt -i input.pdb -q 0 -b orb --solvent water --solvent-model cpcmx
 ### `workers > 1` による暗黙的な FD ダウングレード（UMA バックエンド）
 
 ```{warning}
-UMA バックエンドを `workers > 1` で使用する場合、`hessian_calc_mode="Analytical"` を明示的に指定していても解析ヘシアンは暗黙的に有限差分へ切り替わります（内部フラグ、ユーザーから設定不可）。**このダウングレード発生時にログマーカーは出力されません。**診断する唯一の方法は、同じ原子数の解析ヘシアン基準ランと比較してヘシアン計算時間が FD 相当に長くなっていることの確認です。明示的な警告やログ行は存在しないため、「想定より長いヘシアン所要時間」だけが手掛かりとなります。このダウングレード規則は `--workers` / `--workers-per-node` を持つすべてのサブコマンド（`opt`, `tsopt`, `freq`, `irc`, `all`, `path-opt`, `path-search`, scan 系）に適用されます。UMA 以外のバックエンド（ORB / MACE / AIMNet2）では `workers` / `workers_per_node` は `_BACKEND_ACCEPTED_KEYS` で暗黙的に除外されるため、このダウングレード規則は該当しません。
+UMA バックエンドを `workers > 1` で使用する場合、`hessian_calc_mode="Analytical"` を明示的に指定していても解析ヘシアンは暗黙的に有限差分へ切り替わります（内部フラグ、ユーザーから設定不可）。**このダウングレード発生時にログマーカーは出力されません。**診断する唯一の方法は、同じ原子数の解析ヘシアン基準ランと比較してヘシアン計算時間が FD 相当に長くなっていることの確認です。このダウングレード規則は `--workers` / `--workers-per-node` を持つすべてのサブコマンド（`opt`, `tsopt`, `freq`, `irc`, `all`, `path-opt`, `path-search`, scan 系）に適用されます。UMA 以外のバックエンド（ORB / MACE / AIMNet2）では `workers` / `workers_per_node` は `_BACKEND_ACCEPTED_KEYS` で暗黙的に除外されるため、このダウングレード規則は該当しません。
 ```
 
 (ja-hessian-evaluation)=

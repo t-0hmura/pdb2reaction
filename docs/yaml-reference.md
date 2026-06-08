@@ -13,7 +13,7 @@ Settings are resolved in the following order (later sources override earlier one
 built-in defaults  <  --config (YAML)  <  CLI flags
 ```
 
-1. **Built-in defaults** — hard-coded values in `pdb2reaction/defaults.py`.
+1. **Built-in defaults** — hard-coded values in `pdb2reaction/core/defaults.py`.
 2. **`--config`** — a YAML file that overrides defaults (e.g., `--config my_settings.yaml`).
 3. **CLI flags** — explicit command-line options (e.g., `-q -1`, `--thresh gau_loose`). Only *explicitly supplied* flags override YAML; options left at their CLI default do not mask YAML values.
 
@@ -31,7 +31,7 @@ This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan
 | `-b` / `--backend` | `backend` | `calc` |
 | _(YAML only)_ | `model` | `calc` |
 | `--solvent` | `solvent` | `calc` |
-| `--device` | `device` | `calc` |
+| _(YAML only)_ | `device` | `calc` |
 | `--thresh` | `thresh` | `opt` |
 | `--max-cycles` | `max_cycles` | `opt` |
 | `--dump` | `dump` | `opt` |
@@ -125,6 +125,7 @@ MLIP backend configuration. Supports multiple backends (UMA, ORB, MACE, AIMNet2)
 ```yaml
 calc:
  backend: uma           # MLIP backend: "uma", "orb", "mace", or "aimnet2"
+ precision: fp32 # fp32 (baseline) | fp64 (full-precision base inference); backends may override (ORB float32-high, MACE float64)
  charge: 0 # Total system charge (overridden by CLI -q)
  spin: 1 # Spin multiplicity 2S+1 (overridden by CLI -m)
  model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
@@ -286,7 +287,7 @@ gs:
 ```
 
 ```{note}
-**`max_nodes` semantics differ between GSM and DMF.** For **GSM** (`mep-mode gs`), `gs.max_nodes` is the number of **internal images** — the total path length is `max_nodes + 2` because the two endpoints are fixed. For **DMF** (`mep-mode dmf`), the CLI flag `--max-nodes` instead counts the **number of movable images** with no implicit endpoint expansion. See [`path-opt`](path-opt.md) for per-method details.
+**`max_nodes` semantics differ between GSM and DMF.** For **GSM** (`mep-mode gsm`), `gs.max_nodes` is the number of **internal images** — the total path length is `max_nodes + 2` because the two endpoints are fixed. For **DMF** (`mep-mode dmf`), the CLI flag `--max-nodes` instead counts the **number of movable images** with no implicit endpoint expansion. See [`path-opt`](path-opt.md) for per-method details.
 ```
 
 ---
@@ -490,10 +491,10 @@ irc:
  prefix: "" # Filename prefix
  max_pred_steps: 500 # Predictor-corrector max steps
  loose_cycles: 3 # Loose cycles before tightening
- corr_func: mbs # EulerPC corrector function: "mbs" (modified Bulirsch–Stoer, default) or "rk4"
+ corr_func: mbs # EulerPC corrector function (only "mbs" is currently registered)
 ```
 
-The `corr_func` key selects the corrector step used by the predictor–corrector IRC integrator (EulerPC). `"mbs"` is the pysisyphus-native modified Bulirsch–Stoer implementation (default) and `"rk4"` requests a classical fourth-order Runge–Kutta corrector. Change this only if the default integrator is numerically unstable on your system; most users should leave it at `mbs`.
+The `corr_func` key selects the corrector step used by the predictor–corrector IRC integrator (EulerPC). Only `"mbs"` (the pysisyphus-native modified Bulirsch–Stoer implementation, default) is currently registered; other values raise a construction error.
 
 ## Vibrational Analysis Sections
 
@@ -541,7 +542,7 @@ dft:
  grid_level: 3 # PySCF grid level
  engine: gpu # SCF backend: "gpu" (GPU4PySCF) or "cpu" (PySCF)
  lowmem: true # Use gpu4pyscf rks_lowmem.RKS for closed-shell GPU runs
- verbose: 0 # PySCF verbosity (0-9)
+ verbose: 0 # PySCF verbosity (0-9); CLI -v 2/3 raises runtime PySCF verbosity to >=4
  out_dir: ./result_dft/ # Output directory root
 ```
 
@@ -557,15 +558,17 @@ Harmonic bias settings for scans and restraint-based optimizations.
 
 ```yaml
 bias:
- k: 300.0 # Harmonic bias strength (eV·Å⁻²)
+ k: 300 # Harmonic bias strength (eV·Å⁻²)
 ```
 
-**Shared spring constant across subcommands.** The same physical harmonic penalty (`k`, in eV·Å⁻²) appears in three places with the same default of `300.0`:
+**Shared spring constant across subcommands.** The same physical harmonic penalty (`k`, in eV·Å⁻²) appears in the following places with the same default of `300`:
 
 | YAML key | Used by | CLI flag |
 |----------|---------|----------|
-| `bias.k` | `opt` (`--bias-k` applied to `--dist-freeze` pairs), `scan`, `scan2d`, `scan3d` | `--bias-k` |
+| `bias.k` | `scan`, `scan2d`, `scan3d` | `--bias-k` |
 | `dmf.k_fix` | `path-opt` / `path-search` when `mep_mode: dmf` | — (YAML only) |
+
+`opt` also accepts `--bias-k` (applied to `--dist-freeze` pairs) but reads it only from the CLI flag, which defaults to the same `300.0` constant; it does not honour the `bias:` YAML section.
 
 Override any of these to tune how stiff the harmonic restraint is. A smaller value (e.g. `20.0`) is appropriate when the geometry should relax against a soft guidance term; the default `300.0` enforces near-rigid pinning.
 

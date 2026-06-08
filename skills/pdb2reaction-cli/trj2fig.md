@@ -19,8 +19,8 @@ pdb2reaction trj2fig -i trajectory.xyz [-o energy.png|energy.html|energy.csv]
 | `-i, --input` | path | required | XYZ trajectory with energy in comment line |
 | `-o, --out` | path | `energy.png` | Output figure path; suffix selects format (`.png` / `.svg` / `.pdf` / `.jpg` / `.html` / `.csv`) |
 | `--unit` | choice | `kcal` | `kcal` or `hartree` |
-| `-r, --reference` | int / `init` / `None` | `init` | Reference frame for ΔE: `init` (initial frame; last frame if `--reverse-x`), `None` (absolute E), or a 1-based integer index |
-| `-q, --charge` / `-m, --multiplicity` / `-b, --backend` / `--solvent` / `--solvent-model` | — | — | Recompute energies via MLIP if the input XYZ has no energies in its comment lines |
+| `-r, --reference` | int / `init` / `None` | `init` | Reference frame for ΔE: `init` (initial frame; last frame if `--reverse-x`), `None` (absolute E), or a 0-based integer index |
+| `-q, --charge` / `-m, --multiplicity` / `-b, --backend` / `--solvent` / `--solvent-model` | — | — | Recompute every frame's energy via the MLIP backend when `-q/--charge` and/or `-m/--multiplicity` is supplied (instead of reading the comment line) |
 | `--reverse-x/--no-reverse-x` | flag | `--no-reverse-x` | Flip the x-axis |
 
 ## Examples
@@ -39,8 +39,10 @@ pdb2reaction trj2fig -i mep.xyz -o mep.html
 
 ## Caveats
 
-- The XYZ comment line must encode the energy. The reader pulls the
-  first numeric token (any decimal / scientific / negative form), so
+- The XYZ comment line must encode the energy. An explicit keyed token
+  (`E=` / `Energy:`, any decimal / scientific / negative form) takes
+  precedence; otherwise the lone bare numeric token is used (and when
+  several bare numbers are present, the last one, with a warning). So
   bare floats like `-12345.67` and ASE-style `... energy=-1234.56`
   both work. If the comment line has no numeric token at all, the
   reader raises (no silent flat plot).

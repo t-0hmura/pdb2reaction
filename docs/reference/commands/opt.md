@@ -1,29 +1,27 @@
 # `pdb2reaction opt`
 
 ```text
-
 Usage: pdb2reaction opt [OPTIONS]
 
   Single-structure geometry optimization using LBFGS or RFO.
 
 Options:
+  -v, --verbose LEVEL             Console verbosity 0-3 (default 2). 0=silent;
+                                  1=milestones only; 2=+optimizer cycle tables,
+                                  per-stage timing, VRAM, deliverable paths;
+                                  3=everything (full config blocks, per-file
+                                  paths, DEBUG logging).  [0<=x<=3]
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
   -i, --input FILE                Input structure file (.pdb, .xyz, _trj.xyz,
                                   ...).  [required]
-  -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
-                                  unless --ligand-charge is provided (PDB inputs
-                                  or XYZ/GJF with --ref-pdb).
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
-                                  predictor (analytical Hessian is unavailable
-                                  when workers>1; FiniteDifference Hessian is
-                                  used instead).  [default: 1]
+                                  predictor. NOTE: the analytical Hessian (used
+                                  for RFO seeding) raises a
+                                  RuntimeError when workers>1; run with
+                                  --workers 1 for those modes.  [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
-  -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
-                                  GPP:-3,SAM:1) used to derive charge when -q is
-                                  omitted (requires PDB input or --ref-pdb).
-  -m, --multiplicity INTEGER      Spin multiplicity (2S+1).
   --dist-freeze TEXT              Distance restraints: inline Python literal
                                   (e.g. '[(1,5,1.4)]') or a YAML/JSON spec file
                                   path. Same format as --scan-lists:
@@ -57,7 +55,8 @@ Options:
   --dump / --no-dump              Write optimization trajectory to
                                   'optimization_trj.xyz'.  [default: no-dump]
   -o, --out-dir TEXT              Output directory.  [default: ./result_opt/]
-  --thresh TEXT                   Convergence preset (gau_loose|gau|gau_tight|ga
+  --thresh [gau_loose|gau|gau_tight|gau_vtight|baker|never]
+                                  Convergence preset (gau_loose|gau|gau_tight|ga
                                   u_vtight|baker|never). Defaults to 'gau' when
                                   not provided.
   --config FILE                   Base YAML configuration file applied before
@@ -75,5 +74,29 @@ Options:
   --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
                                   'water'). 'none' to disable.  [default: none]
   --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
+  --coord-type [cart|redund|dlc|tric]
+                                  Optimisation coordinate system
+                                  (cart|redund|dlc|tric). cart is the robust
+                                  default used in published numbers; dlc speeds
+                                  up torsion-rich opts.
+  -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
+                                  unless --ligand-charge is provided (.gjf
+                                  templates inherit the charge automatically).
+  -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
+                                  GPP:-3,SAM:1) used to derive charge when -q is
+                                  omitted (requires PDB input or --ref-pdb).
+  -m, --multiplicity INTEGER      Spin multiplicity (2S+1).
+  --print-every INTEGER RANGE     Print optimizer status every N cycles (debug
+                                  knob).  [x>=1]
+  --precision [fp32|fp64]         MLIP backend precision: fp32 (default) or
+                                  fp64. Routed to backend-specific kwargs (UMA
+                                  precision / ORB precision / MACE
+                                  default_dtype). aimnet2: fp32 no-op; fp64
+                                  rejected.
+  --deterministic / --no-deterministic
+                                  Strict bit-reproducible GPU runs
+                                  (deterministic algorithms + index_reduce_
+                                  shim). Slower; raises if unsupported. Default
+                                  off.
   -h, --help                      Show this message and exit.
 ```

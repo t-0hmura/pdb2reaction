@@ -1,54 +1,37 @@
 # `bond-summary`
 
-## Overview
+Detect and report covalent bond changes between consecutive molecular structures (R → TS → P or multi-intermediate chains) by element-specific covalent-radius perception. For *N* input files it produces *N − 1* comparison blocks (A→B, B→C, …) and prints them to stdout; no file is written.
 
-Detect and report covalent bond changes between consecutive molecular structures (R → TS → P or multi-intermediate chains) by element-specific covalent-radius perception.
+## When to use
 
-### At a glance
-- **Use when:** Auditing which covalent bonds form / break between sequential structures along a reaction path — e.g. validating an IRC endpoint pair, screening multistep mechanisms, or sanity-checking `all` post-processing manually.
-- **Method:** Element-specific covalent-radius bond perception scaled by `--bond-factor`; for *N* input structures the command emits *N* − 1 pairwise comparison blocks.
-- **Outputs:** Text report on stdout listing formed / broken bonds with distances in Å (or machine-readable JSON to stdout with `--out-json`). No file is written.
-- **Defaults:** `--device cpu`, `--bond-factor 1.20`, `--one-based True`, `--out-json False`.
-- **Next step:** Pair with [`irc`](irc.md) for endpoint connectivity checks, or with [`all`](all.md) post-processing for end-to-end mechanism validation.
+- Auditing which covalent bonds form / break between sequential structures along a reaction path — e.g. validating an IRC endpoint pair, screening multistep mechanisms, or sanity-checking `all` post-processing manually.
 
-## Synopsis
-
-```bash
-pdb2reaction bond-summary -i R.xyz P.xyz
-pdb2reaction bond-summary -i R.xyz TS.xyz P.xyz
-pdb2reaction bond-summary -i R.pdb IM1.pdb IM2.pdb P.pdb
-```
-
-## Description
-
-`bond-summary` compares consecutive pairs of input structures and reports
-bonds that are formed or broken. For *N* input files it produces *N − 1*
-comparison blocks (A→B, B→C, …).
-
-Bond perception uses element-specific covalent radii with configurable
-tolerances. Distances are reported in Ångström.
-
-Supported formats: **XYZ**, **PDB**, **GJF** (auto-detected by extension).
-
-## Options
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-i, --input FILE` | Input structure file (repeat for each file, ≥ 2 required) | — |
-| `--device TEXT` | Compute device (`cpu`, `cuda`) | `cpu` |
-| `--bond-factor FLOAT` | Scaling factor for covalent radii sum | `1.20` |
-| `--one-based / --zero-based` | Atom index convention in output | `--one-based` |
-| `--out-json / --no-out-json` | **Print machine-readable JSON to stdout** instead of the text report (this subcommand does **not** write a `result.json` file — redirect stdout if you need to persist it). This option is advanced: it does **not** appear in `pdb2reaction bond-summary --help`; use `--help-advanced` to see it. See [JSON Output Schema → bond-summary](json-output.md#bond-summary) for the schema. | `False` |
-
-## Examples
-
-### Two-structure comparison
+## Quick examples
 
 ```bash
 pdb2reaction bond-summary -i 1.R.xyz 3.P.xyz
 ```
 
-Output:
+```bash
+pdb2reaction bond-summary -i 1.R.xyz 3.IM1.xyz 5.IM2.xyz 7.P.xyz
+```
+
+The multi-structure form produces three comparison blocks: R→IM1, IM1→IM2, IM2→P.
+
+## Inputs
+
+Command form:
+
+```bash
+pdb2reaction bond-summary -i INPUT1 INPUT2 [INPUT3 ...] [options]
+```
+
+`bond-summary` compares consecutive pairs of input structures and reports bonds that are formed or broken. Bond perception uses element-specific covalent radii with configurable tolerances. Distances are reported in Ångström. Supported formats: **XYZ**, **PDB**, **GJF** (auto-detected by extension); ≥ 2 input files are required.
+
+## Outputs
+
+`bond-summary` writes no files. It prints a text report to stdout (one comparison block per consecutive pair), or machine-readable JSON to stdout with `--json`. Each text block lists the formed and broken bonds with their before/after distances in Å:
+
 ```
 ============================================================
   1.R.xyz  →  3.P.xyz
@@ -61,28 +44,12 @@ Bond broken (2):
   - H106-O107 : 1.034 Å --> 1.673 Å
 ```
 
-### Multi-structure (reaction pathway)
-
-```bash
-pdb2reaction bond-summary -i 1.R.xyz 3.IM1.xyz 5.IM2.xyz 7.P.xyz
-```
-
-Produces three comparison blocks: R→IM1, IM1→IM2, IM2→P.
-
-## Notes
-
-- All input structures must have **identical atom counts and element ordering**.
-- Bond detection uses the same algorithm as the internal `bond_changes` module
-  used by the `all` workflow for IRC endpoint validation.
-- To adjust sensitivity to borderline bonds (e.g., metal coordination at 2.0–2.4 Å),
-  increase `--bond-factor` (e.g., `1.30`).
-
 ## Python API
 
 The bond change detection functions can also be used programmatically:
 
 ```python
-from pdb2reaction.bond_changes import compare_structures, has_bond_change, summarize_changes
+from pdb2reaction.domain.bond_changes import compare_structures, has_bond_change, summarize_changes
 ```
 
 | Function | Description |
@@ -95,7 +62,7 @@ from pdb2reaction.bond_changes import compare_structures, has_bond_change, summa
 
 ```python
 from pysisyphus.helpers import geom_loader
-from pdb2reaction.bond_changes import has_bond_change
+from pdb2reaction.domain.bond_changes import has_bond_change
 
 geom_r = geom_loader("R.xyz")
 geom_p = geom_loader("P.xyz")
@@ -104,6 +71,24 @@ changed, summary = has_bond_change(geom_r, geom_p, {"device": "cpu", "bond_facto
 if changed:
     print(summary)
 ```
+
+## CLI options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `-i, --input FILE` | Input structure file (repeat for each file, ≥ 2 required) | — |
+| `--device TEXT` | Compute device (`cpu`, `cuda`) | `cpu` |
+| `--bond-factor FLOAT` | Scaling factor for covalent radii sum | `1.20` |
+| `--one-based / --zero-based` | Atom index convention in output | `--one-based` |
+| `--json / --no-json` | **Emit machine-readable JSON to stdout** instead of the text report. See [JSON Output Schema → bond-summary](json-output.md#bond-summary) for the schema and stdout/persistence behavior. | `False` |
+
+The full flag list is in the generated [command reference](reference/commands/index.md).
+
+## Notes
+
+- All input structures must have **identical atom counts and element ordering**.
+- Bond detection uses the same algorithm as the internal `bond_changes` module used by the `all` workflow for IRC endpoint validation.
+- To adjust sensitivity to borderline bonds (e.g., metal coordination at 2.0–2.4 Å), increase `--bond-factor` (e.g., `1.30`).
 
 ## See Also
 

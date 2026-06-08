@@ -1,41 +1,56 @@
 # `energy-diagram`
 
-## Overview
+Draw a state energy diagram directly from numeric values you provide — it does not read structure files and runs no quantum / thermo / MLIP calculation (`--thermo` / `--dft`). It produces one image file and an optional machine-readable sidecar.
 
-Draw a state energy diagram directly from numeric values (no structure file, no quantum/thermo calculation).
+## When to use
 
-### At a glance
-- **Use when:** Numeric state energies are already known (e.g. from `summary.json`) and only the formatted diagram is needed.
-- **Method:** Plotly renderer — no structure file is read, no QM / thermo / MLIP call is performed.
-- **Outputs:** One image file (`.png` / `.jpg` / `.jpeg` / `.svg` / `.pdf`); optional `result.json` with `--out-json`. Default output is `energy_diagram.png`.
-- **Defaults:** `-o energy_diagram.png`, `--label-x` auto-numbered (`S1`, `S2`, ...), `--label-y "ΔE (kcal/mol)"`, `--out-json False`.
-- **Next step:** Pair with [`trj2fig`](trj2fig.md) when an energy trajectory is also on hand, or with [`all`](all.md) outputs (`summary.json`) for end-to-end pipelines.
+- Use when numeric state energies are already known (e.g. from `summary.json`) and only the formatted diagram is needed.
 
-`pdb2reaction energy-diagram` only visualizes numbers you provide. It does not read structure files and does not run `--thermo` / `--dft`-style calculations.
+## Quick examples
 
-## Usage
+```bash
+# List string (recommended for ad-hoc plots)
+pdb2reaction energy-diagram -i "[0, 12.5, 4.3]" -o energy.png
+```
+
+```bash
+# Repeated flag form (use one `-i` per value)
+pdb2reaction energy-diagram -i 0 -i 12.5 -i 4.3 -o energy.png
+```
+
+```bash
+# X/Y labels — same applies to --label-x / --label-y
+pdb2reaction energy-diagram -i "[0, 12.5, 4.3]" \
+    --label-x "['R','TS','P']" --label-y "ΔE (kcal/mol)" -o energy.png
+```
+
+## Inputs
+
+Command form:
+
 ```bash
 pdb2reaction energy-diagram -i VALUES... [-o OUTPUT] [--label-x...] [--label-y...]
 ```
 
-## Examples
-```bash
-# Multiple numeric arguments
-pdb2reaction energy-diagram -i 0 12.5 4.3 -o energy.png
-
-# List string
-pdb2reaction energy-diagram -i "[-205.1, -190.4, -198.7]" -o energy.png
-
-# X/Y labels
-pdb2reaction energy-diagram -i 0 12.5 4.3 --label-x R TS P --label-y "ΔE (kcal/mol)" -o energy.png
-```
+| Input | Required | Notes |
+| --- | --- | --- |
+| `-i, --input` | yes | Numeric values; supports repeated flags and a single list-like string. |
 
 ## Workflow
-1. Collect values from `-i/--input` (supports repeated flags, multiple values after one flag, and list-like strings).
+1. Collect values from `-i/--input` (supports repeated flags and a single list-like string).
 2. Parse all input values as floats and fail early if fewer than two values are provided.
 3. Parse optional `--label-x` values. If omitted, labels are auto-generated as `S1`, `S2`,...
 4. Validate label count (`--label-x`) against value count, then render the diagram.
 5. Save the image to `-o/--output` and print the saved path.
+
+## Outputs
+```
+OUTPUT.(png|jpg|jpeg|svg|pdf)
+result.json   # Optional sidecar with status, n_points, files plus standard envelope fields (command/version/schema/environment); no per-point energies or labels (when --out-json is set)
+```
+- If `-o/--output` is omitted, `energy_diagram.png` is written to the current directory.
+- When output has no extension, `.png` is appended automatically.
+- Parent directories are created automatically when needed.
 
 ## CLI options
 | Option | Description | Default |
@@ -46,19 +61,11 @@ pdb2reaction energy-diagram -i 0 12.5 4.3 --label-x R TS P --label-y "ΔE (kcal/
 | `--label-y TEXT` | Y-axis label. | `ΔE (kcal/mol)` |
 | `--out-json/--no-out-json` | Write a machine-readable `result.json` next to the output image. See [JSON Output Schema](json-output.md) for the schema. | `False` |
 
-## Outputs
-```
-OUTPUT.(png|jpg|jpeg|svg|pdf)
-result.json   # Optional sidecar with input energies and labels (when --out-json is set)
-```
-- If `-o/--output` is omitted, `energy_diagram.png` is written to the current directory.
-- When output has no extension, `.png` is appended automatically.
-- Parent directories are created automatically when needed.
+The full flag list is in the generated [command reference](reference/commands/index.md).
 
 ## Notes
 - Input order is used directly as plotting order.
 - At least two numeric values are required.
-- This command does not read structure files and does not compute energies.
 
 ## See Also
 

@@ -50,12 +50,12 @@ pdb2reaction path-opt -i R.pdb P.pdb -l 'GPP:-3' --mep-mode dmf -b mace \
 |---|---|---|
 | `<out_dir>/result.json` | `--out-json` | machine-readable result |
 | `<out_dir>/final_geometries_trj.xyz` | always | converged string trajectory |
-| `<out_dir>/final_geometries.{pdb,gjf}` | `--convert-files` (default on) | PDB / GJF companions |
-| `<out_dir>/hei.{xyz,pdb,gjf}` | always | highest-energy image (TS candidate) |
+| `<out_dir>/final_geometries.{pdb,gjf}` | `--convert-files` (default on) AND PDB reference / GJF template present | PDB / GJF companions |
+| `<out_dir>/hei.{xyz,pdb,gjf}` | `hei.xyz` always; `.pdb`/`.gjf` when a PDB reference / GJF template is present + `--convert-files` | highest-energy image (TS candidate) |
 | `<out_dir>/dmf_initial_trj.xyz`, `dmf_ipopt.out` | `--mep-mode dmf` | DMF-mode artifacts |
 
-`result.json` reports converged string energies, gradient norm, and
-the path-opt status (`converged` / `not_converged`).
+`result.json` reports converged string energies and the path-opt
+status (`converged` / `not_converged`).
 
 ## When to use vs path-search
 
@@ -78,4 +78,4 @@ the path-opt status (`converged` / `not_converged`).
 
 - `path-search.md` — the recursive driver around this command.
 - `opt.md` — pre-relax endpoints before path-opt.
-- Defaults: `import pdb2reaction.defaults as d; print(d.GS_KW, d.DMF_KW, d.STOPT_KW)`
+- Defaults: `import pdb2reaction.core.defaults as d; print(d.GS_KW, d.DMF_KW, d.STOPT_KW)`

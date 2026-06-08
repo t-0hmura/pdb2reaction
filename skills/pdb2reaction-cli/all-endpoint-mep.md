@@ -61,9 +61,9 @@ If the inputs come from different programs or were re-numbered, run
 them through `extract` once to canonicalize ordering:
 
 ```bash
-pdb2reaction extract -i 1.R_raw.pdb 3.P_raw.pdb \
+pdb2reaction extract -i 1.R_raw.pdb -i 3.P_raw.pdb \
     -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
-    -o "1.R.pdb" "3.P.pdb"
+    -o 1.R.pdb -o 3.P.pdb
 ```
 
 ## Output
@@ -72,11 +72,11 @@ Same as `all.md`. Specifically for endpoint-MEP mode:
 
 | Path | When | Content |
 |---|---|---|
-| `<out_dir>/mep.pdb`, `mep_trj.xyz`, `mep_w_ref.pdb`, `energy_diagram_MEP.png` | always | stitched MEP (copied from `path_search/`) |
-| `<out_dir>/path_search/mep_seg_NN_trj.xyz`, `mep_seg_NN.{pdb,gjf}` | always | per-segment MEP frames (no bare `.xyz`) |
-| `<out_dir>/path_search/seg_NNN_<tag>/` | always | recursive-splitter scratch (3-digit, `_mep` / `_maxdepth` / `_bridge`); internal |
-| `<out_dir>/path_search/post_seg_NN/` | always | per-segment refined-string output + energy diagrams |
-| `<out_dir>/seg_NN/{reactant,ts,product}.pdb` | always | canonical R/TS/P (after IRC + LBFGS endpoint opt) |
+| `<out_dir>/mep.pdb`, `mep_trj.xyz`, `mep_w_ref.pdb`, `energy_diagram_MEP.png` | always | stitched MEP (promoted from `_work/path_search/`) |
+| `<out_dir>/_work/path_search/mep_seg_NN_trj.xyz`, `mep_seg_NN.{pdb,gjf}` | always | per-segment MEP frames (no bare `.xyz`); scratch |
+| `<out_dir>/_work/path_search/seg_NNN_<tag>/` | always | recursive-splitter scratch (3-digit, `_mep` / `_maxdepth` / `_bridge`); internal |
+| `<out_dir>/segments/seg_NN/` | always | per-segment deliverables + post-processing (ts/irc/freq/dft) + energy diagrams |
+| `<out_dir>/segments/seg_NN/{reactant,ts,product}.pdb` | always | canonical R/TS/P (after IRC + LBFGS endpoint opt) |
 | `<out_dir>/summary.json["segments"]` | always | list of `{index, barrier_kcal, delta_kcal, bond_changes, ...}` |
 
 ## Distinctive failure modes

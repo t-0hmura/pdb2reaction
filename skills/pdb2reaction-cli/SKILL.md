@@ -1,6 +1,6 @@
 ---
 name: pdb2reaction-cli
-description: Per-subcommand reference for pdb2reaction's 17 CLI subcommands (extract / path-search / tsopt / freq / irc / dft / scan / opt / all / …). SKILL.md is a 1-line input→output cheatsheet; each subcommand also has its own md (`extract.md` / `tsopt.md` / …) for flags, validation, caveats. See `freeze-atoms.md` for cluster-boundary frozen-atom mechanics. TRIGGER on questions about a specific subcommand, flag, or shell invocation. SKIP for install / HPC / output-parsing / structure-format-editing questions.
+description: Per-subcommand reference for pdb2reaction's 18 CLI subcommands (extract / path-search / tsopt / freq / irc / dft / scan / opt / sp / all / …). SKILL.md is a 1-line input→output cheatsheet; each subcommand also has its own md (`extract.md` / `tsopt.md` / …) for flags, validation, caveats. See `freeze-atoms.md` for cluster-boundary frozen-atom mechanics. TRIGGER on questions about a specific subcommand, flag, or shell invocation. SKIP for install / HPC / output-parsing / structure-format-editing questions.
 ---
 
 # pdb2reaction CLI
@@ -11,25 +11,26 @@ description: Per-subcommand reference for pdb2reaction's 17 CLI subcommands (ext
 
 | sub | role | minimal command | primary output |
 |---|---|---|---|
-| `all` | End-to-end (extract → MEP → tsopt → irc → freq → dft) | `pdb2reaction all -i 1.R.pdb 3.P.pdb --tsopt --thermo -o out` | `out/seg_NN/{reactant,ts,product}.pdb` + `out/summary.json` |
+| `all` | End-to-end (extract → MEP → tsopt → irc → freq → dft) | `pdb2reaction all -i 1.R.pdb 3.P.pdb --tsopt --thermo -o out` | `out/segments/seg_NN/{reactant,ts,product}.pdb` + `out/summary.json` |
 | `all` (scan-list) | Single reactant + staged scans | `pdb2reaction all -i 1.R.pdb -s '[(a,b,1.6)]' --tsopt -o out` | as above |
-| `all` (ts-only) | Pre-existing TS candidate | `pdb2reaction all -i ts.xyz -q 0 -m 1 --tsopt --thermo -o out` | `out/tsopt_single/{ts,irc,freq}/...` + `out/seg_01/*.pdb` |
+| `all` (ts-only) | Pre-existing TS candidate | `pdb2reaction all -i ts.xyz -q 0 -m 1 --tsopt --thermo -o out` | `out/segments/seg_01/{ts,irc,freq}/...` + `out/segments/seg_01/structures/*.pdb` |
 | `extract` | Active-site cluster cut | `pdb2reaction extract -i raw.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' -r 2.6 -o cluster.pdb` | `cluster.pdb` (`-o` is the output file path, not a directory) |
 | `path-search` | Recursive MEP w/ bond-change segmentation | `pdb2reaction path-search -i 1.R.pdb 3.P.pdb -o out` | `out/hei_seg_NN.xyz` + `out/summary.json` |
 | `path-opt` | Single-segment MEP refinement | `pdb2reaction path-opt -i 1.R.pdb 2.P.pdb -o out` | `out/final_geometries_trj.xyz` |
 | `opt` | Geometry minimization (LBFGS / RFO) | `pdb2reaction opt -i geom.pdb -o out` | `out/final_geometry.xyz` |
 | `tsopt` | TS optimization (RS-I-RFO / Dimer) | `pdb2reaction tsopt -i ts.xyz -q 0 -m 1 -o out` | `out/final_geometry.xyz`; `result.json.n_imaginary_modes`==1 for true TS |
 | `freq` | Hessian + QRRHO thermo | `pdb2reaction freq -i geom.xyz -q 0 -m 1 -o out` | `out/frequencies_cm-1.txt`, `out/thermoanalysis.yaml` |
+| `sp` | Single-point MLIP energy + forces (+optional Hessian) | `pdb2reaction sp -i geom.pdb -q 0 -m 1 -o out` | `out/forces.npy` (+ `out/hessian.npy` with `--hess`); energy printed to stdout; `out/result.json` + `out/summary.json` only with `--out-json` |
 | `irc` | IRC from a TS | `pdb2reaction irc -i ts.xyz -q 0 -m 1 -o out` | `out/{forward,backward,finished}_irc_trj.xyz` |
 | `dft` | Single-point DFT (PySCF / GPU4PySCF) | `pdb2reaction dft -i geom.pdb --func-basis 'wb97m-v/def2-tzvpd' -o out` | `out/result.yaml` always (energy.hartree, energy.engine); `out/result.json` with `--out-json` |
 | `scan` | 1D distance scan w/ restraints | `pdb2reaction scan -i 1.R.pdb -s '[(a,b,1.6)]' -o out` | `out/scan_trj.xyz`, per-stage `stage_NN/result.xyz` |
 | `scan2d` | 2D distance grid scan | `pdb2reaction scan2d -i 1.R.pdb -s '[(a,b,1.3,3.1),(c,d,1.2,3.2)]' -o out` | `out/surface.csv` + `out/grid/point_i<d1Å>_j<d2Å>.xyz` + `out/scan2d_map.png` |
 | `scan3d` | 3D distance grid scan | `pdb2reaction scan3d -i 1.R.pdb -s '[(a,b,L,H),(c,d,L,H),(e,f,L,H)]' -o out` | `out/surface.csv` + `out/grid/point_i<d1Å>_j<d2Å>_k<d3Å>.xyz` + `out/scan3d_density.html` |
 | `trj2fig` | Energy profile from XYZ trj | `pdb2reaction trj2fig -i trj.xyz` | `trj.xyz.png` |
-| `energy-diagram` | Diagram from energy values | `pdb2reaction energy-diagram -i 0.0 21.5 -0.7 --label-x R TS P` | `energy_diagram.png` |
+| `energy-diagram` | Diagram from energy values | `pdb2reaction energy-diagram -i "[0.0, 21.5, -0.7]" --label-x "['R','TS','P']"` | `energy_diagram.png` |
 | `add-elem-info` | Add PDB element column (cols 77-78) | `pdb2reaction add-elem-info -i raw.pdb -o fixed.pdb` | `fixed.pdb` |
 | `fix-altloc` | Resolve PDB alternate locations | `pdb2reaction fix-altloc -i raw.pdb -o fixed.pdb` | `fixed.pdb` (single conformation per residue) |
-| `bond-summary` | Diff bonds between consecutive structures | `pdb2reaction bond-summary -i reactant.pdb -i product.pdb` (or positional `R.pdb P.pdb`) | stdout text by default; JSON to stdout with `--out-json` |
+| `bond-summary` | Diff bonds between consecutive structures | `pdb2reaction bond-summary -i reactant.pdb -i product.pdb` (or positional `R.pdb P.pdb`) | stdout text by default; JSON to stdout with `--json` |
 
 ## Cross-cutting topic guides
 
@@ -113,16 +114,16 @@ pdb2reaction bond-summary -i reactant.pdb -i product.pdb
 
 ## Defaults
 
-Every default value is exported from `pdb2reaction.defaults`:
+Every default value is exported from `pdb2reaction.core.defaults`:
 
 ```bash
-python -c "import pdb2reaction.defaults as d; print([n for n in dir(d) if n.endswith('_KW') or n.startswith('OUT_DIR')])"
+python -c "import pdb2reaction.core.defaults as d; print([n for n in dir(d) if n.endswith('_KW') or n.startswith('OUT_DIR')])"
 
 # Examples:
-python -c "import pdb2reaction.defaults as d; print(d.LBFGS_KW)"
-python -c "import pdb2reaction.defaults as d; print(d.RSIRFO_KW)"
-python -c "import pdb2reaction.defaults as d; print(d.IRC_KW)"
-python -c "import pdb2reaction.defaults as d; print(d.UMA_CALC_KW)"
+python -c "import pdb2reaction.core.defaults as d; print(d.LBFGS_KW)"
+python -c "import pdb2reaction.core.defaults as d; print(d.RSIRFO_KW)"
+python -c "import pdb2reaction.core.defaults as d; print(d.IRC_KW)"
+python -c "import pdb2reaction.core.defaults as d; print(d.UMA_CALC_KW)"
 ```
 
 Each per-subcommand md points at the relevant `_KW` dict in the

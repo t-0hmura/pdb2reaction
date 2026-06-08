@@ -111,7 +111,7 @@
 
 | 閾値 | 役割 | 定義場所 |
 |------|------|----------|
-| **5 cm⁻¹** | *虚振動モード検出カットオフ*。絶対値がこれ未満の負の固有値は虚振動と見なされない（剛体運動または数値ノイズとして扱われる） | `pdb2reaction/defaults.py` の `hessian_dimer.neg_freq_thresh_cm = 5.0`。YAML で調整可 |
+| **5 cm⁻¹** | *虚振動モード検出カットオフ*。絶対値がこれ未満の負の固有値は虚振動と見なされない（剛体運動または数値ノイズとして扱われる） | `pdb2reaction/core/defaults.py` の `hessian_dimer.neg_freq_thresh_cm = 5.0`。YAML で調整可 |
 | **100 cm⁻¹** | *QRRHO rotor cutoff*（Grimme）。`freq` の熱化学計算において、これ未満の **正の** 低振動モードは harmonic-oscillator から自由回転子の entropy へ滑らかに移行する。entropy / Gibbs 自由エネルギーのみに影響 | `thermoanalysis/config.py` の `ROTOR_CUT_DEFAULT = 100.0` |
 
 ## CLI 規則

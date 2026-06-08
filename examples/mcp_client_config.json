@@ -1,0 +1,14 @@
+{
+  "_comment": "Sample MCP client config that launches the pdb2reaction MCP server over stdio. The `mcpServers` schema is the de-facto MCP client convention (Claude Desktop, Claude Code, Cursor, Codeium, custom Python / TypeScript clients via the `mcp` SDK). Drop a copy of this object into your client's config file (e.g. ~/Library/Application Support/Claude/claude_desktop_config.json on macOS, %APPDATA%/Claude/claude_desktop_config.json on Windows, ~/.cursor/mcp.json for Cursor, or your custom client's equivalent). Replace `<conda-prefix>/envs/<env-name>` with the conda env that has pdb2reaction installed (the output of `conda info --base` plus `/envs/<your-env>`).",
+  "mcpServers": {
+    "pdb2reaction": {
+      "command": "pdb2reaction-mcp",
+      "args": [],
+      "env": {
+        "PATH": "<conda-prefix>/envs/<env-name>/bin:/usr/local/cuda/bin:/usr/bin:/bin",
+        "CUDA_VISIBLE_DEVICES": "0",
+        "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+      }
+    }
+  }
+}

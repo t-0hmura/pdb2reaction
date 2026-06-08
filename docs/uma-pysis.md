@@ -8,12 +8,12 @@
 ## Quick start
 ```python
 import numpy as np
-from pdb2reaction.uma_pysis import uma_pysis
+from pdb2reaction.backends.uma import UMACalculator
 
 # Example: a neutral singlet diatomic on GPU when available
-calc = uma_pysis(charge=0, spin=1, model="uma-s-1p1", device="auto")
+calc = UMACalculator(charge=0, spin=1, model="uma-s-1p1", device="auto")
 
-# uma_pysis expects coordinates in Bohr (shape: [n_atoms, 3])
+# UMACalculator expects coordinates in Bohr (shape: [n_atoms, 3])
 coords_bohr = np.array([
  [0.0, 0.0, 0.0],
  [2.2, 0.0, 0.0], # ~1.16 Å

@@ -59,7 +59,7 @@ class MACECalculator(MLIPCalculator):
                 "(v0.3.8+ coexists with fairchem-core; older versions need separate env)"
             ) from exc
 
-        # Warn about potential UMA/MACE conflict (resolved in MACE v0.3.8+)
+        # DO NOT INLINE: mace-torch pre-0.3.8 pinned a conflicting e3nn version that broke when fairchem-core (used by UMA) was imported in the same env (fixed in mace-torch PR #589). Warning helps legacy-install users.
         try:
             import fairchem.core  # noqa: F401
             try:
@@ -217,9 +217,7 @@ class MACECalculator(MLIPCalculator):
         forces = np.asarray(atoms.get_forces(), dtype=np.float64)
         return energy, forces
 
-    # ------------------------------------------------------------------
     # Analytical Hessian (delegated to MACECalculator.get_hessian)
-    # ------------------------------------------------------------------
 
     def _supports_analytical_hessian(self) -> bool:
         return True
@@ -279,7 +277,10 @@ class MACECalculator(MLIPCalculator):
                     compute_stress=False,
                     training=getattr(calc, "use_compile", False),
                 )
-                H = out["hessian"]
+                # detach so model activations / saved tensors free; we only
+                # need the Hessian numerically downstream, no gradients.
+                H = out["hessian"].detach()
+                del out
             else:
                 # Fallback: public API (CPU round-trip).
                 H = calc.get_hessian(atoms=atoms)

@@ -36,24 +36,25 @@ A successful run produces a directory like:
 result_all/
 ├── summary.log                    # Human-readable summary
 ├── summary.json                   # Machine-readable results
-├── path_search/
-│   ├── mep.pdb                    # Merged MEP trajectory
-│   ├── energy_diagram_UMA_all.png # Energy profile
-│   ├── summary.json               # Path-search results
-│   └── post_seg_01/               # Post-processing (if --tsopt)
-│       ├── ts/final_geometry.pdb
+├── mep.pdb                        # Merged MEP path (promoted to the root)
+├── energy_diagram_MEP.png         # All-segment MEP energy profile
+├── segments/
+│   └── seg_01/                    # Per-reactive-segment deliverables
+│       ├── reactant.pdb           # Canonical IRC-optimized R/TS/P
+│       ├── ts.pdb
+│       ├── product.pdb
+│       ├── ts/final_geometry.pdb  # Present with --tsopt
 │       ├── irc/finished_irc_trj.xyz
-│       └── freq/
-└── seg_01/                        # IRC-optimized R/TS/P structures
-    ├── reactant.pdb
-    ├── ts.pdb
-    └── product.pdb
+│       └── freq/                  # Present with --thermo
+└── _work/                         # Pipeline scratch (safe to delete)
+    └── path_search/               # Raw MEP-engine output
+        └── summary.json           # Path-search engine results
 ```
 
 **What to check:**
 
 1. `summary.json` — check the `status` field (`"success"`, `"partial"`, or `"failed"`) and the per-segment `barrier_kcal` values; `summary.log` mirrors the same information in human-readable form
-2. `seg_01/*.pdb` — open in PyMOL to verify the R/TS/P structures make chemical sense
+2. `segments/seg_01/*.pdb` — open in PyMOL to verify the R/TS/P structures make chemical sense
 3. `energy_diagram_*.png` — the energy profile should show a clear barrier
 
 **Sample terminal output (successful run):**

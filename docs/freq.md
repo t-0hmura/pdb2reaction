@@ -1,50 +1,34 @@
 # `freq`
 
-## Overview
-
 Compute vibrational frequencies and thermochemistry (ZPE, Gibbs energy, etc.) with an MLIP backend (UMA by default; `-b/--backend` also supports ORB, MACE, AIMNet2). When VRAM permits, `--hessian-calc-mode Analytical` speeds Hessian evaluation. Imaginary frequencies appear as negative values.
 
-### At a glance
-- **Use when:** Full vibrational analysis is required (e.g., confirming a stationary point is a true minimum with no imaginary frequencies, or that a TS has exactly one) and/or thermochemistry corrections (ZPE, Gibbs energy) are needed. Note: `tsopt` already includes an imaginary-frequency check, so a separate `freq` run is mainly for thermochemistry or detailed mode inspection.
-- **Method:** MLIP-backend Hessian (UMA by default; ORB/MACE/AIMNet2 also supported via `-b/--backend`) with PHVA (Partial Hessian Vibrational Analysis) for frozen atoms. Optional QRRHO-style thermochemistry via `thermoanalysis`.
-- **Outputs:** `frequencies_cm-1.txt`, per-mode `mode_*_trj.xyz` animations (and `.pdb` for PDB inputs with conversion enabled); `thermoanalysis.yaml` when `--dump` and `thermoanalysis` is installed.
-- **Defaults:** Backend `uma`, `--hessian-calc-mode FiniteDifference`, `--max-write 10`, `--amplitude-ang 0.8`, `--n-frames 20`, `--sort value`, `--temperature 298.15`, `--pressure 1.0`, `--dump False`.
-- **Next step:** A properly converged first-order saddle point (TS) is expected to have **exactly one** imaginary frequency (detection cutoff `hessian_dimer.neg_freq_thresh_cm`, default 5 cm⁻¹). For Hessian evaluation modes, see {ref}`hessian-evaluation`.
+## When to use
 
-## Minimal example
+- Use when full vibrational analysis is required (e.g., confirming a stationary point is a true minimum with no imaginary frequencies, or that a TS has exactly one) and/or thermochemistry corrections (ZPE, Gibbs energy) are needed. Note: `tsopt` already includes an imaginary-frequency check, so a separate `freq` run is mainly for thermochemistry or detailed mode inspection.
+- A properly converged first-order saddle point (TS) is expected to have **exactly one** imaginary frequency (detection cutoff `hessian_dimer.neg_freq_thresh_cm`, default 5 cm⁻¹).
+
+## Quick examples
 
 ```bash
+# Minimal run with explicit charge and spin
 pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 --out-dir ./result_freq
 ```
 
-## Output checklist
-
-- `result_freq/frequencies_cm-1.txt`
-- `result_freq/mode_*_trj.xyz`
-- `result_freq/mode_*.pdb` (for PDB inputs with conversion enabled)
-
-## Common examples
-
-1. Limit exported modes for quick inspection.
-
 ```bash
-pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 --max-write 6 --out-dir ./result_freq_quick
-```
-
-2. Run PHVA with link freezing and dump thermo payload.
-
-```bash
+# PHVA with link freezing and dump thermo payload
 pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 --freeze-links --dump --out-dir ./result_freq_phva
 ```
 
-3. Use analytical Hessian mode on VRAM-rich nodes.
-
 ```bash
+# Analytical Hessian mode on VRAM-rich nodes
 pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 \
  --hessian-calc-mode Analytical --out-dir ./result_freq_analytical
 ```
 
-## Usage
+## Inputs
+
+Command form:
+
 ```bash
 pdb2reaction freq -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
  [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
@@ -57,16 +41,16 @@ pdb2reaction freq -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <n
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
-### Examples
-```bash
-# Minimal run with explicit charge and spin
-pdb2reaction freq -i a.pdb -q 0 -m 1
-
-# PHVA with YAML overrides and a custom output directory
-pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
-```
+| Input | Required | Notes |
+| --- | --- | --- |
+| `-i, --input` | yes | Structure file accepted by `geom_loader` (`pdb` / `xyz` / `trj` / ...). |
+| `-q, --charge` | unless derived | Total charge. Required unless a `.gjf` template or `--ligand-charge/-l` supplies it. |
+| `-l, --ligand-charge` | no | Scalar integer or per-residue mapping (e.g. `GPP:-3,SAM:1`); used when `-q` is omitted. |
+| `-m, --multiplicity` | no | Spin multiplicity (2S+1); defaults to the `.gjf` template value or `1`. |
+| `--ref-pdb` | for XYZ/GJF | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). |
 
 ## Workflow
+
 - **Geometry loading & freeze handling**: structures are read via
   `pysisyphus.helpers.geom_loader`. For PDB inputs, `--freeze-links` detects link
   hydrogens and freezes their parent atoms, then merges the resulting indices with
@@ -87,11 +71,27 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
   corrections, heat capacities, entropies) is printed using PHVA frequencies. CLI pressure in
   atm is converted internally to Pa. When `--dump`, a `thermoanalysis.yaml` snapshot is
   also written.
-- **Performance & exit behavior**: the implementation minimizes GPU memory usage by keeping
-  a single Hessian resident.
-  Keyboard interrupts exit with code 130; other failures print a traceback and exit with code 1.
+- **Performance**: the implementation minimizes GPU memory usage by keeping a single Hessian resident.
+
+## Outputs
+
+```text
+out_dir/ (default:./result_freq/)
+├─ mode_XXXX_±freqcm-1_trj.xyz # Per-mode animations
+├─ mode_XXXX_±freqcm-1.pdb # Only when a PDB template exists and conversion is enabled
+├─ frequencies_cm-1.txt # Full frequency list using the selected sort order
+└─ thermoanalysis.yaml # Present when `thermoanalysis` is importable and --dump is True
+```
+- Console blocks summarizing resolved `geom`, `calc`, `freq`, and thermochemistry settings.
+
+## Exit codes
+
+See {ref}`exit-codes` in CLI Conventions.
 
 ## CLI options
+
+The tables below cover the options that need explanation; the full flag list is in the generated [command reference](reference/commands/index.md) — do not hand-duplicate it here.
+
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
@@ -109,7 +109,7 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
 | `-o, --out-dir TEXT` | Output directory. | `./result_freq/` |
 | `--temperature FLOAT` | Thermochemistry temperature (K). | `298.15` |
 | `--pressure FLOAT` | Thermochemistry pressure (atm). On the CLI this flag is `--pressure`; the matching YAML key under `thermo:` is `pressure_atm` (explicit unit suffix). Both are in atm and get converted to Pa internally. | `1.0` |
-| `--dump/--no-dump` | Write `thermoanalysis.yaml`. Standalone `freq` defaults to `False`; when invoked as part of `pdb2reaction all --thermo` the wrapper flips this to `True` unless you pass `--no-dump`. | `False` |
+| `--dump/--no-dump` | Write `thermoanalysis.yaml`. Standalone `freq` defaults to `False` (use `--no-dump` to keep it off explicitly); when invoked as part of `pdb2reaction all --thermo` the freq stage uses `dump=True` by default — pass `--dump False` to `all` to disable it. | `False` |
 | `--hessian-calc-mode CHOICE` | MLIP Hessian mode (`Analytical` or `FiniteDifference`). | `FiniteDifference` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB companions when a PDB template is available (GJF is not written). | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
@@ -121,26 +121,7 @@ pdb2reaction freq -i a.xyz -q -1 --config ./freq.yaml --out-dir ./result_freq/
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 | `--dry-run/--no-dry-run` | Validate and print execution plan without running frequency analysis. | `False` |
 
-## Outputs
-```
-out_dir/ (default:./result_freq/)
-├─ mode_XXXX_±freqcm-1_trj.xyz # Per-mode animations
-├─ mode_XXXX_±freqcm-1.pdb # Only when a PDB template exists and conversion is enabled
-├─ frequencies_cm-1.txt # Full frequency list using the selected sort order
-└─ thermoanalysis.yaml # Present when `thermoanalysis` is importable and --dump is True
-```
-- Console blocks summarizing resolved `geom`, `calc`, `freq`, and thermochemistry settings.
-
-## Exit codes
-
-See {ref}`exit-codes` in CLI Conventions.
-
-## Notes
-- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
-
-- Imaginary frequencies are reported as negative values in cm⁻¹. `freq` prints how many were detected
-  and dumps details when `--dump`.
-- `--hessian-calc-mode` follows the standard precedence (defaults < config < explicit CLI); an explicit CLI `--hessian-calc-mode` value takes precedence over `calc.hessian_calc_mode` in the config YAML.
+## YAML configuration
 
 The `geom`, `calc`, `freq`, and `thermo` sections are unchanged from the canonical definitions in [YAML Reference](yaml-reference.md): see [`geom`](yaml-reference.md#geom), [`calc`](yaml-reference.md#calc), [`freq`](yaml-reference.md#freq-section), and [`thermo`](yaml-reference.md#thermo). `freq` automatically sets `calc.return_partial_hessian = true` (PHVA) by default; YAML can override.
 
@@ -151,9 +132,13 @@ freq:
  out_dir: ./result_freq/ # freq default
 ```
 
-## See Also
+## Notes
 
-- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
+- Imaginary frequencies are reported as negative values in cm⁻¹. `freq` prints how many were detected
+  and dumps details when `--dump`.
+- `--hessian-calc-mode` follows the standard precedence (defaults < config < explicit CLI); an explicit CLI `--hessian-calc-mode` value takes precedence over `calc.hessian_calc_mode` in the config YAML.
+
+## See Also
 
 - [tsopt](tsopt.md) — Optimize TS candidates (includes imaginary-frequency check; follow with IRC for endpoint validation)
 - [irc](irc.md) — IRC from TS (freq is often run on IRC endpoints for thermochemistry)
@@ -161,3 +146,5 @@ freq:
 - [all](all.md) — End-to-end workflow with `--thermo`
 - [YAML Reference](yaml-reference.md) — Full `freq` and `thermo` configuration options
 - [Glossary](glossary.md) — Definitions of ZPE, Gibbs Energy, Enthalpy, Entropy
+- [Common Error Recipes](recipes-common-errors.md) — Symptom-first failure routing
+- [Troubleshooting](troubleshooting.md) — Detailed fixes for common failure modes

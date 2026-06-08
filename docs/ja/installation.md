@@ -58,7 +58,7 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 > **ヒント:** UMA がデフォルトの MLIP バックエンドです。ORB や AIMNet2 を使用するには、対応する extra をインストール（例: `pip install "pdb2reaction[orb]"`）し、コマンドに `-b/--backend orb` を渡してください。下の手順 7 を参照。
 
 ```{warning}
-**MACE:** `mace-torch` は `e3nn==0.4.4` を要求し、`fairchem-core` の `e3nn` pin（古い `mace-torch` バージョン）と競合します。お使いの `mace-torch` リリースが `fairchem-core` との共存を明示していない限り、MACE には専用の conda env を使用してください。標準 recipe は専用 env で `pip uninstall -y fairchem-core && pip install mace-torch` です。
+**MACE:** `mace-torch` は `e3nn==0.4.4` を要求し、`fairchem-core` の `e3nn>=0.5` pin（UMA）と競合します。両者は共存できないため、MACE には専用の conda env が必要です。標準 recipe はその env で `pip uninstall -y fairchem-core && pip install mace-torch` です。
 ```
 
 

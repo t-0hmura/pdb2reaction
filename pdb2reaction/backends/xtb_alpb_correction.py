@@ -6,6 +6,10 @@ from xTB implicit-solvent terms on the same geometry:
     dE = E(solv) - E(vac)
     dF = F(solv) - F(vac)
     dH = H(solv) - H(vac)
+
+Note: this is the **ALPB implicit-solvent delta** correction (solvation
+only, no MM charges). The QM/MM electrostatic embedding correction is a
+separate physics path and is not used here.
 """
 
 import concurrent.futures
@@ -222,6 +226,7 @@ def _run_xtb(
         xtb_acc=xtb_acc,
         mode=mode,
     )
+    # DO NOT INLINE: xTB ignores --threads flag for some operations; OMP_NUM_THREADS via env is the only reliable thread-control mechanism. Install-hint XTBError message is also user-facing rescue (keep verbatim).
     env = os.environ.copy()
     env["OMP_NUM_THREADS"] = str(resolve_xtb_ncores(ncores))
 

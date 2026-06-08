@@ -14,16 +14,32 @@ cat result_opt/result.json | python -m json.tool
 
 The `all` and `path-search` commands always write `summary.json` (no `--out-json` flag needed).
 
+### `summary.json` mirror
+
+`write_result_json` mirrors every per-stage `result.json` payload to `summary.json` alongside it. Agent scripts can read a single filename (`summary.json`) across every subcommand; the `result.json` written next to it carries the identical payload.
+
 ## Common envelope
 
-Every `result.json` automatically includes:
+Every `result.json` (and the mirrored `summary.json`) automatically includes:
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `schema_version` | string | Envelope schema version; current value lives at `pdb2reaction.core.utils.RESULT_JSON_SCHEMA_VERSION` — pin against that constant rather than the literal in this doc. Bumps signal a structural change. |
 | `command` | string | Subcommand name (e.g. `"opt"`) |
 | `pdb2reaction_version` | string | Package version |
+| `status` | string | One of `success`, `partial`, `error`, `unknown` |
 | `elapsed_seconds` | float | Wall-clock time (seconds) |
 | `environment` | object | Hardware info (see below) |
+
+### Error envelope (when `status == "error"`)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `error` | string | `str(exc)` of the original exception |
+| `error_type` | string | Exception class name |
+| `error_class_chain` | list[string] | Full MRO class names so agents can match the hierarchy without parsing text |
+| `error_module` | string | Module the exception class was defined in |
+| `error_label` | string | High-level CLI stage label |
 
 **`environment`**:
 
@@ -81,7 +97,7 @@ All fields from `opt`, plus:
 | `opt_mode` | string | `"rsirfo"` or `"dimer"` |
 
 The `files` object may include `imaginary_mode_files` (list of vib file paths).
-Convergence details are available for rsirfo mode; dimer mode provides `n_opt_cycles` only and always reports `status: "converged"` (the dimer driver does not export a non-convergence signal — check `n_imaginary_modes == 1` plus the `.out` log instead).
+Convergence details are available for rsirfo mode; dimer mode also reports `status: "converged"` or `"not_converged"` (from `runner.is_converged`), but provides `n_opt_cycles` only and omits the per-cycle force/step convergence detail keys that rsirfo provides.
 
 ### `freq`
 
@@ -302,7 +318,7 @@ See also the extended [`summary.json` section](#summary-json-path-search-all) fo
 
 ### `bond-summary`
 
-When `--out-json` is enabled, `bond-summary` prints JSON to **stdout** (no `result.json` file is written; redirect stdout if you need to persist it). This is **unlike** the MLIP-based subcommands above, which all write a `result.json` file into `out_dir`:
+When `--json` is enabled, `bond-summary` prints JSON to **stdout** (no `result.json` file is written; redirect stdout if you need to persist it). This is **unlike** the MLIP-based subcommands above, which all write a `result.json` file into `out_dir`:
 
 | Field | Type | Description |
 |-------|------|-------------|

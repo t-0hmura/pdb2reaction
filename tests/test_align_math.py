@@ -4,7 +4,7 @@
 import numpy as np
 import pytest
 
-from pdb2reaction.align_freeze_atoms import (
+from pdb2reaction.workflows.align_freeze import (
     kabsch_R_t,
     _rodrigues,
     _rotation_align_vectors,

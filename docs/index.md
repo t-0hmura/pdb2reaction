@@ -1,12 +1,8 @@
 # pdb2reaction Documentation
 
-*Version: v0.3.10*
-
----
+*Version: v0.3.10* — Python CLI for enzymatic reaction-path elucidation from PDB structures using machine-learning interatomic potentials (MLIPs).
 
 <img src="./overview.png" alt="pdb2reaction workflow overview" width="90%">
-
-**pdb2reaction** is a Python CLI toolkit for automated enzymatic reaction-path elucidation directly from PDB structures using machine-learning interatomic potentials (MLIPs).
 
 ```{toctree}
 :maxdepth: 2
@@ -22,6 +18,7 @@ freeze-atoms
 recipes-common-errors
 troubleshooting
 cli-conventions
+reproducibility
 ```
 
 ```{toctree}
@@ -43,6 +40,7 @@ scan3d
 freq
 irc
 dft
+sp
 trj2fig
 energy-diagram
 bond-summary
@@ -57,6 +55,10 @@ reference/commands/index
 yaml-reference
 json-output
 uma-pysis
+backends
+architecture
+output-layout
+mcp_server
 hpc-example
 glossary
 ```
@@ -114,115 +116,46 @@ ja/hpc-example
 ja/glossary
 ```
 
-
 ## Start here
 
-| Goal | Workflow |
-|------|----------|
-| **First end-to-end run** | [Quickstart: all](quickstart-all.md) |
-| **Reactant only** | [Quickstart: scan](quickstart-scan.md) |
-| **TS candidate available** | [Quickstart: TS-only mode](quickstart-tsopt-freq.md) |
-| **Run failure / error** | [Common Error Recipes](recipes-common-errors.md) |
-
-Refer to [Installation](installation.md) for prerequisites.
+| Goal | Page |
+|---|---|
+| Install + run a first end-to-end pipeline | [Installation](installation.md) · [Getting Started](getting-started.md) |
+| End-to-end pipeline from a PDB | [Quickstart: all](quickstart-all.md) |
+| Reactant only — staged distance scan | [Quickstart: scan](quickstart-scan.md) |
+| TS candidate available — `tsopt → IRC → freq` | [Quickstart: TS-only](quickstart-tsopt-freq.md) |
+| Run failure / error | [Common Error Recipes](recipes-common-errors.md) · [Troubleshooting](troubleshooting.md) |
+| CLI conventions / YAML / Glossary | [CLI Conventions](cli-conventions.md) · [YAML Reference](yaml-reference.md) · [Glossary](glossary.md) |
+| Bit-reproducible runs (`--deterministic`) | [Reproducibility](reproducibility.md) |
+| MLIP backend settings / HPC examples | [MLIP Calculator](uma-pysis.md) · [HPC Examples](hpc-example.md) |
+| Cluster boundary atoms (link H, `--freeze-atoms`) | [Frozen Atoms](freeze-atoms.md) |
 
 ## Subcommands
 
-| Subcommand | Description |
-|------------|-------------|
-| [`all`](all.md) | End-to-end workflow: extraction → scan → MEP → TS optimization → IRC → thermochemistry → DFT |
-| [`extract`](extract.md) | Extract active site model (binding pocket) from protein–ligand complex |
-| [`fix-altloc`](fix-altloc.md) | Resolve PDB alternate locations |
-| [`add-elem-info`](add-elem-info.md) | Repair PDB element columns (77–78) |
-| [`opt`](opt.md) | Single-structure geometry optimization (L-BFGS or RFO. [+ optional flatten]) |
-| [`tsopt`](tsopt.md) | Transition state optimization (Dimer or RS-I-RFO. [+ optional flatten]) |
-| [`path-opt`](path-opt.md) | Single-step MEP optimization via GSM or DMF (from 2 structures) |
-| [`path-search`](path-search.md) | Recursive multi-step MEP search with automatic refinement (2+ structures) |
-| [`scan`](scan.md) | 1D bond-length driven scan with restraints |
-| [`scan2d`](scan2d.md) | 2D distance grid scan |
-| [`scan3d`](scan3d.md) | 3D distance grid scan |
-| [`freq`](freq.md) | Vibrational frequency analysis & thermochemistry |
-| [`irc`](irc.md) | Intrinsic Reaction Coordinate calculation |
-| [`dft`](dft.md) | Single-point DFT calculations (GPU4PySCF / PySCF) |
-| [`trj2fig`](trj2fig.md) | Plot energy profiles from XYZ trajectories |
-| [`energy-diagram`](energy-diagram.md) | Draw an energy diagram from numeric values |
-| [`bond-summary`](bond-summary.md) | Detect and report covalent bond changes between consecutive structures |
-
-## Configuration & Reference
-
-| Topic | Page |
-|-------|------|
-| **CLI conventions & input requirements** | [CLI Conventions](cli-conventions.md) |
-| **Cluster boundary atoms (link hydrogens, `--freeze-atoms`)** | [Frozen Atoms](freeze-atoms.md) |
-| **Common errors & fixes** | [Troubleshooting](troubleshooting.md) |
-| **CLI command reference** | [Command Reference](reference/commands/index.md) |
-| **YAML configuration options** | [YAML Reference](yaml-reference.md) |
-| **MLIP backend settings** | [MLIP Calculator](uma-pysis.md) |
-| **Terminology** | [Glossary](glossary.md) |
-
-## System Requirements
-
-### Hardware
-- **OS**: Linux
-- **GPU**: CUDA 12.x compatible
-- **VRAM**: 8 GB+ recommended
-- **RAM**: 16 GB+ recommended
-
-### Software
-- Python >= 3.11
-- PyTorch with CUDA support
-- CUDA 12.x toolkit
-
-For setup, see [Installation](installation.md).
-
-## Agent Skills
-
-`pdb2reaction` ships AI-agent instructions under `skills/` covering CLI subcommands, structure I/O, backend installation, workflows, output parsing, and HPC operation. See [`skills/README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/skills/README.md) for the full skill index and installation instructions.
+| Subcommand | Role |
+|---|---|
+| [`all`](all.md) | End-to-end: extract → scan → MEP → TS → IRC → freq → DFT |
+| [`extract`](extract.md) · [`fix-altloc`](fix-altloc.md) · [`add-elem-info`](add-elem-info.md) | Structure preparation |
+| [`opt`](opt.md) · [`tsopt`](tsopt.md) | Geometry / TS optimisation |
+| [`path-opt`](path-opt.md) · [`path-search`](path-search.md) | MEP via GSM/DMF / recursive refinement |
+| [`scan`](scan.md) · [`scan2d`](scan2d.md) · [`scan3d`](scan3d.md) | 1D / 2D / 3D bond-distance scans |
+| [`freq`](freq.md) · [`irc`](irc.md) | Vibrational analysis + thermochemistry / IRC (EulerPC) |
+| [`dft`](dft.md) · [`sp`](sp.md) | Single-point DFT / single-point MLIP energy + forces |
+| [`bond-summary`](bond-summary.md) | Bond-change report between consecutive structures |
+| [`trj2fig`](trj2fig.md) · [`energy-diagram`](energy-diagram.md) | Energy plot / R→TS→P diagram |
 
 ## Citation
 
-If you use `pdb2reaction` in your research, please cite the ChemRxiv preprint:
-
 ```bibtex
 @misc{ohmura2026pdb2reaction,
-  author       = {Ohmura, Takuto and Sato, Hajime and Terada, Tohru},
-  title        = {pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials},
-  year         = {2026},
-  doi          = {10.26434/chemrxiv.15003538/v1},
-  note         = {ChemRxiv preprint}
+  author = {Ohmura, Takuto and Sato, Hajime and Terada, Tohru},
+  title  = {pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials},
+  year   = {2026}, doi = {10.26434/chemrxiv.15003538}, note = {ChemRxiv preprint}
 }
 ```
 
-To cite the software or a specific release, use the Zenodo record:
-
-```bibtex
-@software{ohmura2026pdb2reaction_software,
-  author       = {Ohmura, Takuto},
-  title        = {pdb2reaction},
-  year         = {2026},
-  month        = {5},
-  version      = {0.3.10},
-  url          = {https://github.com/t-0hmura/pdb2reaction},
-  license      = {GPL-3.0},
-  doi          = {10.5281/zenodo.19197865}
-}
-```
+A Zenodo software record is also available (DOI `10.5281/zenodo.19197865`).
 
 ## License
 
-`pdb2reaction` is distributed under the **GNU General Public License version 3 (GPL-3.0)**.
-
-## Getting Help
-
-```bash
-# General help
-pdb2reaction --help
-
-# Command help
-pdb2reaction <subcommand> --help
-
-# Advanced options (dry-run, internal tuning, etc.)
-pdb2reaction <subcommand> --help-advanced
-```
-
-For issues and feature requests, visit the [GitHub repository](https://github.com/t-0hmura/pdb2reaction).
+GNU General Public License v3 (GPL-3.0).

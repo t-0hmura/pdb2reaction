@@ -74,8 +74,9 @@ pdb2reaction path-search -i 1.R.pdb 3.P.pdb \
 | `<out_dir>/hei_seg_NN.{xyz,pdb,gjf}` | always | canonical HEI per segment (TS seed) |
 | `<out_dir>/energy_diagram_MEP.png` | always | bare MEP energies |
 
-Standalone `path-search` does **not** create `post_seg_NN/` —
-post-processing (tsopt / irc / freq / dft) is `all`'s job.
+Standalone `path-search` does **not** run post-processing —
+tsopt / irc / freq / dft are `all`'s job (it writes them under
+`segments/seg_NN/`).
 
 `summary.json["segments"]` lists each elementary step with:
 
@@ -105,12 +106,12 @@ complete cleanly).
   supply.
 - `--max-nodes` bigger than 30 rarely helps; if a segment doesn't
   converge with 20 nodes, the chemistry is usually the problem.
-- Output **does not** include refined TSs; that's
-  `path_search/post_seg_NN/ts/` produced by the `all` pipeline.
+- Output **does not** include refined TSs; those are
+  `segments/seg_NN/ts/` produced by the `all` pipeline.
 
 ## See also
 
 - `path-opt.md` — single-segment MEP optimization (the building block).
 - `tsopt.md` — runs after path-search on each `hei_seg_NN.xyz` (TS seed).
 - `bond-summary.md` — same bond-change algorithm used here, standalone.
-- Defaults: `import pdb2reaction.defaults as d; print(d.SEARCH_KW, d.GS_KW, d.DMF_KW)`
+- Defaults: `import pdb2reaction.core.defaults as d; print(d.SEARCH_KW, d.GS_KW, d.DMF_KW)`

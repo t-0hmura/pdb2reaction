@@ -1,5 +1,3 @@
-# pdb2reaction/backends/__init__.py
-
 """
 MLIP backend factory and registry.
 
@@ -50,6 +48,7 @@ _BACKEND_ACCEPTED_KEYS: Dict[str, set] = {
         "return_partial_hessian", "hessian_double", "print_timing",
         "model", "task_name", "workers", "workers_per_node",
         "max_neigh", "radius", "r_edges", "out_hess_torch", "print_vram",
+        "precision",  # fp32 (default) | fp64 (full-precision base inference)
     },
     "orb": {
         "charge", "spin", "device", "freeze_atoms", "hessian_calc_mode",
@@ -80,6 +79,76 @@ _ASE_ACCEPTED_KEYS: Dict[str, set] = {
 }
 
 VALID_BACKENDS = tuple(BACKEND_REGISTRY.keys())
+
+
+# Backend-specific value domain for the unified ``--precision`` CLI flag.
+# Keyed by canonical user value ('fp32' | 'fp64') -> { backend: (kw_name, kw_value) }.
+# UMA accepts 'fp32'/'fp64' directly (its own enum). ORB expects orb_models'
+# matmul-precision strings ('float32-high' | 'float64' — 'float32' alone is
+# silently demoted to 'highest', see backends/orb.py:55-62). MACE wants
+# numpy-style dtype strings.
+_PRECISION_DISPATCH: Dict[str, Dict[str, tuple]] = {
+    "fp32": {
+        "uma":  ("precision", "fp32"),
+        "orb":  ("precision", "float32-high"),
+        "mace": ("default_dtype", "float32"),
+    },
+    "fp64": {
+        "uma":  ("precision", "fp64"),
+        "orb":  ("precision", "float64"),
+        "mace": ("default_dtype", "float64"),
+    },
+}
+
+
+def apply_precision_to_calc_cfg(calc_cfg: Dict[str, Any], precision: str) -> None:
+    """Route the unified ``--precision`` CLI value into backend-specific kwargs.
+
+    Mutates ``calc_cfg`` in place. For aimnet2 (no precision knob) ``fp32`` is a
+    no-op and ``fp64`` is rejected (its model inputs are cast to float32
+    upstream). Raises ``BackendError`` for invalid values or aimnet2 + fp64.
+    """
+    val = str(precision or "").lower()
+    if val not in _PRECISION_DISPATCH:
+        raise BackendError(
+            f"--precision must be 'fp32' or 'fp64', got {precision!r}"
+        )
+    backend = resolve_backend(calc_cfg.get("backend") or "uma")
+    mapping = _PRECISION_DISPATCH[val]
+    if backend not in mapping:
+        # AIMNet2 (or any future backend with no precision knob) cannot honour
+        # `--precision fp64`: upstream `aimnet` casts model inputs to float32
+        # (`aimnet/calculators/calculator.py keys_in: torch.float`), so silently
+        # accepting fp64 would lie about the actual numeric precision of the
+        # run. Reject the combination loudly; fp32 stays a no-op so users can
+        # swap `--backend` without changing scripts.
+        if val == "fp64":
+            raise BackendError(
+                f"--precision fp64 is not supported by backend {backend!r}: "
+                f"its model inputs are cast to float32 upstream, so the run "
+                f"would not actually be fp64."
+            )
+        return
+    kw_name, kw_val = mapping[backend]
+    calc_cfg[kw_name] = kw_val
+    if val == "fp64":
+        # fp64 model precision implies a fp64 Hessian. Leaving ``hessian_double``
+        # off while the forward pass is fp64 is internally inconsistent: the
+        # optimizer / eigen linear algebra would discard exactly the precision
+        # the user paid for. ``hessian_double`` is not a CLI flag (always True
+        # by default), so the only way to reach the mismatch is a hand-edited
+        # config. Warn that the deliberate inconsistency is being overridden,
+        # then force fp64 on so the run stays self-consistent.
+        if calc_cfg.get("hessian_double", True) is False:
+            warnings.warn(
+                "--precision fp64 forces a fp64 Hessian: overriding the "
+                "hessian_double=False set in the config. A fp32 Hessian under "
+                "fp64 model precision is internally inconsistent (the optimizer "
+                "and eigen linear algebra would discard the fp64 precision). "
+                "Use --precision fp32 if a fp32 Hessian is intended.",
+                stacklevel=2,
+            )
+        calc_cfg["hessian_double"] = True
 
 
 def _import_cls(backend: str, cls_key: str):
@@ -136,6 +205,22 @@ def create_calculator(backend: str = "uma", **kwargs) -> MLIPCalculator:
     xtb_acc = float(kwargs.pop("xtb_acc", 0.2))
 
     backend = resolve_backend(backend)
+    # Env-var / direct-API entry point for strict determinism (the CLI uses the
+    # --deterministic flag callback). Idempotent; no-op unless requested.
+    from ._determinism import (
+        is_deterministic_active,
+        is_deterministic_requested,
+        setup_deterministic,
+    )
+    if is_deterministic_requested():
+        setup_deterministic()
+    if backend == "aimnet2" and is_deterministic_active():
+        raise BackendError(
+            "AIMNet2 forces are not bit-reproducible under strict determinism: "
+            "they are produced by a custom CUDA kernel (torch.ops.aimnet, "
+            "conv_sv_2d_sp_bwd) outside torch.use_deterministic_algorithms "
+            "control (~1e-9 residual across runs; the energy is reproducible)."
+        )
     accepted = _BACKEND_ACCEPTED_KEYS.get(backend, set())
     filtered = _filter_kwargs(kwargs, accepted)
     cls = _import_cls(backend, "pysis_cls")
@@ -167,6 +252,20 @@ def create_ase_calculator(backend: str = "uma", **kwargs):
         Backend-specific parameters.
     """
     backend = resolve_backend(backend)
+    from ._determinism import (
+        is_deterministic_active,
+        is_deterministic_requested,
+        setup_deterministic,
+    )
+    if is_deterministic_requested():
+        setup_deterministic()
+    if backend == "aimnet2" and is_deterministic_active():
+        raise BackendError(
+            "AIMNet2 forces are not bit-reproducible under strict determinism: "
+            "they are produced by a custom CUDA kernel (torch.ops.aimnet, "
+            "conv_sv_2d_sp_bwd) outside torch.use_deterministic_algorithms "
+            "control (~1e-9 residual across runs; the energy is reproducible)."
+        )
     accepted = _ASE_ACCEPTED_KEYS.get(backend, set())
     filtered = _filter_kwargs(kwargs, accepted)
     cls = _import_cls(backend, "ase_cls")

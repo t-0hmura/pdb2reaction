@@ -1,7 +1,6 @@
 # `pdb2reaction all`
 
 ```text
-
 Usage: pdb2reaction all [OPTIONS]
 
   Run active site model extraction → (optional single-structure staged scan) →
@@ -11,6 +10,11 @@ Usage: pdb2reaction all [OPTIONS]
   path_search; (b) with --tsopt True and no --scan-lists, run TSOPT-only mode.
 
 Options:
+  -v, --verbose LEVEL             Console verbosity 0-3 (default 2). 0=silent;
+                                  1=milestones only; 2=+optimizer cycle tables,
+                                  per-stage timing, VRAM, deliverable paths;
+                                  3=everything (full config blocks, per-file
+                                  paths, DEBUG logging).  [0<=x<=3]
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
   -i, --input FILE                Two or more **full structures** (PDB/XYZ/GJF)
@@ -42,8 +46,11 @@ Options:
                                   False]
   --add-linkh BOOLEAN             Add link hydrogens for severed bonds (carbon-
                                   only) in active site models.  [default: True]
-  --selected-resn TEXT            Force-include residues (comma/space separated;
-                                  chain/insertion codes allowed).  [default: ""]
+  --selected-resn TEXT            Force-include residues by residue ID (not
+                                  name; e.g. '123', 'A:123A', 'B:456');
+                                  comma/space separated. Use '-c/--center
+                                  GPP,SAM' for residue-name selection.
+                                  [default: ""]
   --modified-residue TEXT         Comma-separated residue names (with optional
                                   charge) to treat as amino acids for backbone
                                   truncation and charge assignment. Examples:
@@ -58,9 +65,10 @@ Options:
                                   extractor/GJF/--ligand-charge-derived values;
                                   emits a warning when used).
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
-                                  predictor (analytical Hessian is unavailable
-                                  when workers>1; FiniteDifference Hessian is
-                                  used instead).  [default: 1]
+                                  predictor. NOTE: analytical Hessian raises a
+                                  RuntimeError when workers>1; pass --hessian-
+                                  calc-mode FiniteDifference explicitly.
+                                  [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
   -b, --backend [uma|orb|mace|aimnet2]
@@ -68,8 +76,6 @@ Options:
   --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
                                   'water'). 'none' to disable.  [default: none]
   --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
-  --verbose BOOLEAN               Enable INFO-level logging inside extractor.
-                                  [default: True]
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1).  [default: 1]
   --freeze-links BOOLEAN          Freeze parent atoms of link hydrogens (PDB
                                   input or XYZ/GJF with --ref-pdb).  [default:
@@ -81,9 +87,9 @@ Options:
                                   [default: 20]
   --max-cycles INTEGER            Maximum GSM optimization cycles.  [default:
                                   300]
-  --climb BOOLEAN                 Enable transition-state climbing after growth
-                                  for the **first** segment in each pair.
-                                  [default: True]
+  --climb BOOLEAN                 Enable climbing image for standard GSM
+                                  segments (bridge segments always disable
+                                  climbing).  [default: True]
   --opt-mode [grad|hess]          Optimizer mode forwarded to scan/tsopt and
                                   used for single optimizations: grad
                                   (=LBFGS/Dimer) or hess (=RFO/RSIRFO).
@@ -105,10 +111,12 @@ Options:
                                   run a single-pass path-opt GSM between each
                                   adjacent pair and concatenate the segments (no
                                   path_search).  [default: True]
-  --thresh TEXT                   Convergence preset (gau_loose|gau|gau_tight|ga
+  --thresh [gau_loose|gau|gau_tight|gau_vtight|baker|never]
+                                  Convergence preset (gau_loose|gau|gau_tight|ga
                                   u_vtight|baker|never). Defaults to 'gau' when
                                   not provided.
-  --thresh-post TEXT              Convergence preset for post-IRC endpoint
+  --thresh-post [gau_loose|gau|gau_tight|gau_vtight|baker|never]
+                                  Convergence preset for post-IRC endpoint
                                   optimizations (gau_loose|gau|gau_tight|gau_vti
                                   ght|baker|never).  [default: baker]
   --config FILE                   Base YAML configuration file applied before
@@ -198,5 +206,18 @@ Options:
   --ref-pdb FILE                  Reference PDB for topology when -i provides
                                   XYZ inputs. Enables PDB output conversion in
                                   TSOPT-only, scan, and path_search pipelines.
+  --coord-type [cart|dlc]         Optimisation coordinate system (cart|dlc).
+                                  cart is the robust default used in published
+                                  numbers; dlc speeds up torsion-rich opts.
+  --precision [fp32|fp64]         MLIP backend precision: fp32 (default) or
+                                  fp64. Routed to backend-specific kwargs (UMA
+                                  precision / ORB precision / MACE
+                                  default_dtype). aimnet2: fp32 no-op; fp64
+                                  rejected.
+  --deterministic / --no-deterministic
+                                  Strict bit-reproducible GPU runs
+                                  (deterministic algorithms + index_reduce_
+                                  shim). Slower; raises if unsupported. Default
+                                  off.
   -h, --help                      Show this message and exit.
 ```

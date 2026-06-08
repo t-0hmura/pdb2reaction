@@ -62,11 +62,11 @@ Two locations get written for each elementary step:
 
 | Path | Content |
 |---|---|
-| `<out_dir>/seg_NN/{reactant,ts,product}.{xyz,pdb}` | **CANONICAL** — top-level, post-IRC re-optimized (RFO default; LBFGS via `--opt-mode-post grad`). `reactant` = backward endpoint, `ts` = tsopt'd, `product` = forward endpoint, all re-optimized |
-| `<out_dir>/path_search/post_seg_NN/structures/{reactant,ts,product}.{xyz,pdb}` | nested copy of canonical |
-| `<out_dir>/path_search/post_seg_NN/structures/{reactant,product}_irc.{xyz,pdb}` | raw IRC endpoints (pre-RFO/LBFGS re-optimization); for debugging IRC vs. post-IRC re-optimization divergence |
+| `<out_dir>/segments/seg_NN/{reactant,ts,product}.{xyz,pdb}` | **CANONICAL** — post-IRC re-optimized (RFO default; LBFGS via `--opt-mode-post grad`). `reactant` = backward endpoint, `ts` = tsopt'd, `product` = forward endpoint, all re-optimized |
+| `<out_dir>/segments/seg_NN/structures/{reactant,ts,product}.{xyz,pdb}` | nested copy of canonical |
+| `<out_dir>/segments/seg_NN/structures/{reactant,product}_irc.{xyz,pdb}` | raw IRC endpoints (pre-RFO/LBFGS re-optimization); for debugging IRC vs. post-IRC re-optimization divergence |
 
-**Rule of thumb**: read from `seg_NN/` for downstream stages. Use
+**Rule of thumb**: read from `segments/seg_NN/` for downstream stages. Use
 `reactant_irc.xyz` / `product_irc.xyz` only when debugging
 IRC vs. post-IRC re-optimization divergence.
 
@@ -132,10 +132,8 @@ Reading rules (cutoff: 1.20× covalent radii, margin 0.05; algorithm in [`pdb2re
 When `summary.json["status"] != "success"`, look at:
 
 1. `summary.log` — human-readable, prints the failure point first.
-2. `path_search/post_seg_NN/<stage>/result.json` (or `path_opt/...`
-   when `--refine-path False`) — per-stage status (which step
-   crashed). Note: top-level `post_seg_NN/` is a re-export; the
-   primary copy lives under `path_search/` or `path_opt/`.
+2. `segments/seg_NN/<stage>/result.json` — per-stage status (which step
+   crashed) for the post-processing stages (ts / irc / freq / dft).
 3. The per-stage log produced by the underlying tool (e.g. PySCF /
    pysisyphus) is silenced by default (see
    `default_group._silence_pysisyphus_loggers`); rerun with `--dump`
@@ -143,10 +141,10 @@ When `summary.json["status"] != "success"`, look at:
 
 Even on failed runs, partial outputs are kept:
 
-- `path_search/seg_NN/` exists for any segment that completed
-  path-search (even if downstream stages failed).
-- `seg_NN/` (top-level) is **only populated** for fully-successful
-  segments.
+- `_work/path_search/seg_NNN_<tag>/` (3-digit scratch) exists for any
+  segment that completed path-search (even if downstream stages failed).
+- `segments/seg_NN/` (deliverable) is **only populated** for
+  fully-successful segments.
 
 ## See also
 

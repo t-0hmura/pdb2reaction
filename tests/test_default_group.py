@@ -5,12 +5,12 @@ from __future__ import annotations
 import click
 from click.testing import CliRunner
 
-from pdb2reaction.advanced_help import (
+from pdb2reaction.cli.help_pages import (
     _configure_subcommand_help_visibility,
     _ensure_help_advanced_option,
 )
-from pdb2reaction.bool_compat import normalize_bool_argv as _normalize_bool_argv_impl
-from pdb2reaction.default_group import DefaultGroup
+from pdb2reaction.cli.bool_compat import normalize_bool_argv as _normalize_bool_argv_impl
+from pdb2reaction.cli.default_group import DefaultGroup
 
 
 def _normalize_passthrough(args, *_):
@@ -167,17 +167,17 @@ def test_single_flag_accepts_no_prefix_and_value_style_syntax() -> None:
 def test_toggle_with_non_no_negative_alias_accepts_no_prefix_and_values() -> None:
     cli = _make_group(normalize_bool_argv=_normalize_bool_argv_impl)
 
-    @cli.command(name="define-layer")
+    @cli.command(name="toggle-demo")
     @click.option("--one-based/--zero-based", default=True)
-    def define_layer_cmd(one_based: bool) -> None:
+    def toggle_demo_cmd(one_based: bool) -> None:
         click.echo(f"one_based={one_based}")
 
     runner = CliRunner()
-    result_false = runner.invoke(cli, ["define-layer", "--one-based", "False"])
+    result_false = runner.invoke(cli, ["toggle-demo", "--one-based", "False"])
     assert result_false.exit_code == 0
     assert "one_based=False" in result_false.output
 
-    result_no = runner.invoke(cli, ["define-layer", "--no-one-based"])
+    result_no = runner.invoke(cli, ["toggle-demo", "--no-one-based"])
     assert result_no.exit_code == 0
     assert "one_based=False" in result_no.output
 

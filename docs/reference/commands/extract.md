@@ -1,7 +1,6 @@
 # `pdb2reaction extract`
 
 ```text
-
 Usage: pdb2reaction extract [OPTIONS]
 
   Extract an active site model around substrate residues (from a PDB or residue
@@ -9,11 +8,20 @@ Usage: pdb2reaction extract [OPTIONS]
   multi-structure input and multi-MODEL output.
 
 Options:
+  -v, --verbose LEVEL             Console verbosity 0-3 (default 2). 0=silent;
+                                  1=milestones only; 2=+optimizer cycle tables,
+                                  per-stage timing, VRAM, deliverable paths;
+                                  3=everything (full config blocks, per-file
+                                  paths, DEBUG logging).  [0<=x<=3]
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
-  -i, --input TEXT                Protein-substrate complex PDB(s). If multiple,
-                                  they must have identical atom counts and
-                                  ordering.  [required]
+  -i, --input TEXT                Protein-substrate complex PDB(s). Repeat -i
+                                  for each file (e.g. '-i a.pdb -i b.pdb');
+                                  space-separated '-i a.pdb b.pdb' is NOT
+                                  supported and is now rejected with an explicit
+                                  error (it used to silently drop b.pdb). If
+                                  multiple, they must have identical atom counts
+                                  and ordering.  [required]
   -c, --center TEXT               Substrate specification: a PDB path, a
                                   comma/space-separated residue-ID list like
                                   '123,124' or 'A:123,B:456' (insertion codes
@@ -45,7 +53,6 @@ Options:
                                   'HD1:0,SEP:-2'.
   -l, --ligand-charge TEXT        Total charge number or per-resname mapping
                                   like 'GPP:-3,SAM:1'.
-  -v, --verbose / --no-verbose    Enable INFO-level logging.  [default: v]
   --out-json / --no-out-json      Write machine-readable result.json next to the
                                   output PDB.  [default: no-out-json]
   -h, --help                      Show this message and exit.

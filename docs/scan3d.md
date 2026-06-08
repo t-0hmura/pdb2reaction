@@ -1,33 +1,15 @@
 # `scan3d`
 
-## Overview
+Perform a three-distance (d₁, d₂, d₃) grid scan with harmonic restraints and MLIP relaxations. Use `--scan-lists/-s` with a YAML/JSON spec file (recommended) or an inline Python literal; or plot an existing `surface.csv` via `--csv`. `scan3d` nests loops over d₁ → d₂ → d₃ and relaxes each point with the appropriate restraints active. The default optimizer is L-BFGS (`--opt-mode grad`); switch to `--opt-mode hess` for RFOptimizer. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
 
-Perform a three-distance (d₁, d₂, d₃) grid scan with harmonic restraints and MLIP relaxations. Use `--scan-lists/-s` with a YAML/JSON spec file (recommended) or an inline Python literal; or plot an existing `surface.csv` via `--csv`.
+## When to use
 
-### At a glance
-- **Use when:** A 3D potential-energy volume over three distances `(d₁, d₂, d₃)` is needed, or an existing `surface.csv` needs re-plotting. Input is one structure + `-s/--scan-lists scan3d.yaml` (recommended) or one `--scan-lists/-s` inline literal (three quadruples); `--csv` enables plot-only mode.
-- **Method:** Nested loops d₁ → d₂ → d₃ with linear grids built from `--max-step-size`; values are reordered so points closest to the (pre)optimized structure are visited first. Each point is relaxed with the appropriate harmonic restraints (MLIP backend, UMA by default), and recorded energies are evaluated **without bias**, so grid points are directly comparable.
-- **Outputs:** `surface.csv`, per-point geometries under `grid/`, and an HTML isosurface plot (`scan3d_density.html`).
-- **Defaults:** `--opt-mode grad` (L-BFGS), `--no-preopt`, `--max-step-size 0.20 Å`, `--bias-k 300 eV·Å⁻²`, `--thresh baker`, `--baseline min`, `--out-dir ./result_scan3d/`. 3D grids grow very quickly; consider coarser `--max-step-size` or smaller ranges first.
-- **Next step:** Inspect `scan3d_density.html` for low-energy channels, then narrow the search with a 2D `scan2d` slice or refine candidate TS structures with `tsopt`.
+- Use when a 3D potential-energy volume over three distances `(d₁, d₂, d₃)` is needed, or an existing `surface.csv` needs re-plotting.
+- Provide one structure plus `-s/--scan-lists scan3d.yaml` (recommended) or one `--scan-lists/-s` inline literal (three quadruples); `--csv` enables plot-only mode.
+- 3D grids grow very quickly; consider coarser `--max-step-size` or smaller ranges first.
 
-`scan3d` nests loops over d₁ → d₂ → d₃ and relaxes each point with the appropriate restraints active. The default optimizer is L-BFGS (`--opt-mode grad`); switch to `--opt-mode hess` for RFOptimizer.
+## Quick examples
 
-For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
-
-## Minimal example
-```bash
-pdb2reaction scan3d -i input.pdb -q 0 -s scan3d.yaml -o ./result_scan3d/
-```
-
-## Output checklist
-- `result_scan3d/surface.csv`
-- `result_scan3d/grid/point_iDDD_jDDD_kDDD.xyz` (where `DDD = round(d × 100)`, e.g. `point_i130_j310_k200.xyz` for d₁=1.30, d₂=3.10, d₃=2.00 Å)
-- `result_scan3d/scan3d_density.html`
-
-> **Note:** Add `--print-parsed` when you want to verify parsed pair targets from `--scan-lists/-s`.
-
-## Common examples
 ```bash
 # Recommended: YAML/JSON spec file
 cat > scan3d.yaml << 'YAML'
@@ -38,38 +20,46 @@ pairs:
  - ["TYR,285,CG", "SAM,309,C12", 1.10, 3.00]
 YAML
 pdb2reaction scan3d -i input.pdb -q 0 -s scan3d.yaml
+```
 
+```bash
 # Alternative: inline Python literal
 pdb2reaction scan3d -i input.pdb -q 0 \
  -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20),("TYR,285,CG","SAM,309,C12",1.10,3.00)]'
+```
 
-# LBFGS relaxations, dumped inner trajectories, and an HTML isosurface plot
-pdb2reaction scan3d -i input.pdb -q 0 \
- -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20),("TYR,285,CG","SAM,309,C12",1.10,3.00)]' \
- --max-step-size 0.20 --dump -o ./result_scan3d/ --opt-mode grad \
- --preopt --baseline min
-
+```bash
 # Plot only from an existing surface.csv (skip new energy evaluation)
 pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 -o ./result_scan3d/
 ```
 
-## Usage
+## Inputs
+
+Command form:
+
 ```bash
 pdb2reaction scan3d [-i INPUT.{pdb|xyz|trj|...}] [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
  [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
  [-s/--scan-lists scan3d.yaml | '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE] [--csv PATH]
 ```
+
 Note: `-i/--input` and `--scan-lists/-s` are required unless `--csv` is provided.
 
-## Scan-list spec
+| Input | Required | Notes |
+| --- | --- | --- |
+| `-i, --input` | yes (unless `--csv`) | Structure file accepted by `geom_loader` (PDB / XYZ / TRJ / GJF). |
+| `-s, --scan-lists` | yes (unless `--csv`) | A YAML/JSON spec file path (recommended) or a single inline Python literal with three quadruples. |
+| `--csv` | for plot-only | Existing `surface.csv` to re-plot; makes `-i` and `-s` optional. |
+
+### Input syntax
 
 `scan3d` accepts exactly **three** quadruples `(i, j, low_Å, high_Å)` (under the `pairs` key for YAML/JSON, or as a single inline literal). Unlike `scan`, only **one literal** is accepted (no multi-stage support).
 
-For the YAML/JSON file format, inline Python literal syntax, atom selectors, and quoting rules,
-see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
+For the YAML/JSON file format, inline Python literal syntax, atom selectors, and quoting rules, see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
 
 ## Workflow
+
 1. Load the structure through `geom_loader`, resolve charge/spin from CLI or
     embedded Gaussian templates, and optionally run an unbiased preoptimization
     when `--preopt`. If `-q` is omitted but `--ligand-charge/-l` is provided, the
@@ -97,7 +87,25 @@ see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
     3D RBF-interpolated isosurface plot (`scan3d_density.html`) honoring
     `--zmin/--zmax`. When `--csv` is provided, only this plotting step runs.
 
+## Outputs
+
+The key deliverables are `surface.csv`, per-point geometries under `grid/`, and the `scan3d_density.html` isosurface plot.
+
+```
+out_dir/ (default:./result_scan3d/)
+├─ surface.csv # Grid metadata; may include a reference row (i=j=k=-1)
+├─ scan3d_density.html # 3D energy isosurface visualization (You can open it with Web browser)
+├─ grid/point_i###_j###_k###.xyz # Relaxed geometry for each grid point (Å×100 tags)
+├─ grid/point_i###_j###_k###.pdb # PDB companions when conversion is enabled and templates exist
+├─ grid/point_i###_j###_k###.gjf # Gaussian companions when templates exist and conversion is enabled
+├─ grid/preopt_i###_j###_k###.xyz # Starting structure saved before scanning (preoptimized when --preopt is True)
+└─ grid/inner_path_d1_###_d2_###_trj.xyz # Present only when --dump is True (mirrored to .pdb for PDB inputs with conversion)
+```
+
+Grid-point geometries use `Å×100` tags, so `point_i130_j310_k200.xyz` corresponds to d₁=1.30, d₂=3.10, d₃=2.00 Å.
+
 ## CLI options
+
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required unless `--csv` is provided |
@@ -129,6 +137,10 @@ see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
 | `--zmin FLOAT`, `--zmax FLOAT` | Manual limits for the isosurface color bands (kcal/mol). | Autoscaled |
 | `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
 
+The full flag list is in the generated [command reference](reference/commands/index.md); do not hand-duplicate it here.
+
+## YAML configuration
+
 ### Shared YAML sections
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical knobs to those documented for
   [YAML Reference](yaml-reference.md). `opt.dump` can be set in YAML for optimizer dumps;
@@ -158,25 +170,7 @@ bias:
  k: 300.0 # harmonic bias strength (eV·Å⁻²)
 ```
 
-`--relax-max-cycles` applies only when explicitly provided **and** YAML does not set `opt.max_cycles` (default `10000`).
-
-### Section `bias`
-- `k` (`300`): Harmonic strength in eV·Å⁻².
-
-## Outputs
-```
-out_dir/ (default:./result_scan3d/)
-├─ surface.csv # Grid metadata; may include a reference row (i=j=k=-1)
-├─ scan3d_density.html # 3D energy isosurface visualization (You can open it with Web browser)
-├─ grid/point_i###_j###_k###.xyz # Relaxed geometry for each grid point (Å×100 tags)
-├─ grid/point_i###_j###_k###.pdb # PDB companions when conversion is enabled and templates exist
-├─ grid/point_i###_j###_k###.gjf # Gaussian companions when templates exist and conversion is enabled
-├─ grid/preopt_i###_j###_k###.xyz # Starting structure saved before scanning (preoptimized when --preopt is True)
-└─ grid/inner_path_d1_###_d2_###_trj.xyz # Present only when --dump is True (mirrored to .pdb for PDB inputs with conversion)
-```
-
 ## Notes
-- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
 
 - The MLIP backend (UMA by default) reuses the same
   `HarmonicBiasCalculator` as the 1D/2D scans.
@@ -188,6 +182,8 @@ out_dir/ (default:./result_scan3d/)
   semi-transparent step-colored isosurfaces (no cross-sectional planes).
 - `--freeze-links` merges user `freeze_atoms` with detected link-H parents for
   PDB inputs, keeping extracted active site models rigid.
+- Add `--print-parsed` when you want to verify parsed pair targets from `--scan-lists/-s`.
+- `--relax-max-cycles` is applied only when explicitly provided and YAML does not set `opt.max_cycles` (default `10000`); a YAML `opt.max_cycles` value takes precedence.
 
 ## See Also
 - [scan](scan.md) -- 1D bond-distance scan

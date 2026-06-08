@@ -6,7 +6,7 @@ from pathlib import Path
 
 from click.testing import CliRunner
 
-import pdb2reaction.energy_diagram as energy_diagram
+import pdb2reaction.io.energy_diagram as energy_diagram
 from pdb2reaction.cli import cli as root_cli
 
 
@@ -131,3 +131,28 @@ def test_energy_diagram_smoke(tmp_path: Path, monkeypatch) -> None:
     assert result.exit_code == 0, result.output
     assert out_png.exists()
     assert out_png.read_text(encoding="utf-8") == "dummy-image"
+
+
+def test_verbose_is_a_per_subcommand_option() -> None:
+    """`-v/--verbose LEVEL` is injected into every subcommand; it is no longer a
+    root-group option, so a root-placed `-v` is rejected."""
+    runner = CliRunner()
+    for name in (
+        "opt", "tsopt", "freq", "irc", "sp", "scan",
+        "path-search", "dft", "all", "extract",
+    ):
+        res = runner.invoke(root_cli, [name, "--help"])
+        assert res.exit_code == 0, res.output
+        assert "-v, --verbose" in res.output, f"{name} --help is missing -v"
+
+    # Root-placed `-v` no longer exists (it moved onto the subcommands).
+    root = runner.invoke(root_cli, ["-v", "2", "opt", "--help"])
+    assert root.exit_code != 0
+    assert "No such option" in root.output
+
+    # The level is an IntRange(0, 3); 0/1/2/3 are accepted (default 2) and
+    # out-of-range values are rejected.
+    for cmd in (["opt", "-v", "4"], ["extract", "-v", "4"]):
+        bad = runner.invoke(root_cli, cmd)
+        assert bad.exit_code != 0, cmd
+        assert "is not in the range" in bad.output, cmd

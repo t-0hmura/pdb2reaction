@@ -73,9 +73,8 @@ print(d["used_gpu"], d["used_lowmem"])  # bool, bool (lowmem False on open-shell
 print(d["converged"])        # True / False (exit code 3 if False)
 ```
 
-`result.yaml` carries the full PySCF / GPU4PySCF runtime info: basis
-expansion, grid_level, SCF iterations, Mulliken / Loewdin / IAO charges,
-spin densities.
+`result.yaml` carries the run info: grid_level, Mulliken / Loewdin /
+IAO charges, spin densities.
 
 ## Common errors
 
@@ -91,7 +90,7 @@ spin densities.
 - `pdb2reaction dft` runs only **single points**, not optimization.
   `tsopt` / `opt` accept only MLIP backends (`-b uma|orb|mace|aimnet2`),
   so DFT-level geometry refinement requires a separate QM code (e.g.
-  Gaussian, ORCA, PySCF) — there is no `-b dft` option.
+  Gaussian, ORCA, PySCF).
 - `--func-basis` follows PySCF naming; cross-check with
   `python -c "from pyscf import gto; print(gto.basis._BASIS_DEFAULT)"`.
 - The standalone `dft` subcommand does not accept `--solvent` / `--solvent-model` / `-b/--backend`. xTB-ALPB solvent corrections are MLIP-stage flags (`scan` / `scan2d` / `scan3d`, `path-search`, `path-opt`, `tsopt`, `freq`, `irc`, `opt`, `all`); to combine with DFT, run them at the MLIP stage and then the `dft` single point on the MLIP-optimized geometry.
@@ -101,4 +100,4 @@ spin densities.
 - [`pdb2reaction-install-backends/dft.md`](../pdb2reaction-install-backends/dft.md) — install + aarch64 handling.
 - `tsopt.md`, `irc.md` — produce the geometries you DFT-refine.
 - `pdb2reaction-workflows-output/SKILL.md` — DFT//MLIP recipe.
-- Defaults: `import pdb2reaction.defaults as d; print(d.GEOM_KW_DEFAULT)`
+- Defaults: `import pdb2reaction.core.defaults as d; print(d.GEOM_KW_DEFAULT)`

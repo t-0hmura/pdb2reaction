@@ -1,0 +1,406 @@
+"""Central configuration defaults for pdb2reaction workflows."""
+
+from __future__ import annotations
+
+from typing import Any, Dict
+
+# Convergence preset choices (single source of truth so opt/tsopt/
+# path_opt/path_search/scan/all all reject unknown --thresh values at
+# Click parse time).
+
+THRESH_CHOICES = ("gau_loose", "gau", "gau_tight", "gau_vtight", "baker", "never")
+
+
+OUT_DIR_OPT = "./result_opt/"
+OUT_DIR_SCAN = "./result_scan/"
+OUT_DIR_SCAN2D = "./result_scan2d/"
+OUT_DIR_SCAN3D = "./result_scan3d/"
+OUT_DIR_FREQ = "./result_freq/"
+OUT_DIR_IRC = "./result_irc/"
+OUT_DIR_TSOPT = "./result_tsopt/"
+OUT_DIR_PATH_OPT = "./result_path_opt/"
+OUT_DIR_PATH_SEARCH = "./result_path_search/"
+OUT_DIR_ALL = "./result_all/"
+OUT_DIR_DFT = "./result_dft/"
+OUT_DIR_SP = "./result_sp/"
+
+# `all`-pipeline layout dirnames — single source for the deliverable/scratch split.
+SEGMENTS_DIRNAME = "segments"  # per-segment deliverables: segments/seg_NN/<subcmd>/
+WORK_DIRNAME = "_work"  # pipeline-wide scratch (rm -rf safe)
+
+
+GEOM_KW_DEFAULT: Dict[str, Any] = {
+    "coord_type": "cart",
+    "freeze_atoms": [],
+}
+
+# Calculator defaults (UMA)
+
+CALC_KW_DEFAULT: Dict[str, Any] = {
+    "backend": "uma",
+    "charge": 0,
+    "spin": 1,
+    "model": "uma-s-1p1",
+    "task_name": "omol",
+    "device": "auto",
+    "max_neigh": None,
+    "radius": None,
+    "r_edges": False,
+    "workers": 1,
+    "workers_per_node": 1,
+    "precision": "fp32",  # "fp32" (established baseline) | "fp64" (full-precision base inference; non-trivial TSopt/Hessian impact)
+    "hessian_calc_mode": "FiniteDifference",
+    "out_hess_torch": True,
+    "hessian_double": True,
+    "print_timing": True,
+    "print_vram": True,
+    "return_partial_hessian": True,
+    # Solvent correction
+    "solvent": "none",
+    "solvent_model": "alpb",
+    "xtb_cmd": "xtb",
+    "xtb_acc": 0.2,
+}
+
+# Extended UMA calculator defaults with freeze_atoms support
+UMA_CALC_KW: Dict[str, Any] = {
+    **CALC_KW_DEFAULT,
+    "freeze_atoms": None,
+}
+
+
+ORB_BACKEND_DEFAULTS: Dict[str, Any] = {
+    "model": "orb_v3_conservative_omol",
+    "precision": "float32-high",
+    "compile_model": False,
+}
+
+MACE_BACKEND_DEFAULTS: Dict[str, Any] = {
+    "model": "MACE-OMOL-0",
+    "default_dtype": "float64",
+}
+
+AIMNET2_BACKEND_DEFAULTS: Dict[str, Any] = {
+    "model": "aimnet2",
+}
+
+_BACKEND_DEFAULTS_MAP: Dict[str, Dict[str, Any]] = {
+    "orb": ORB_BACKEND_DEFAULTS,
+    "mace": MACE_BACKEND_DEFAULTS,
+    "aimnet2": AIMNET2_BACKEND_DEFAULTS,
+}
+
+
+def apply_backend_defaults(cfg: Dict[str, Any]) -> None:
+    """Apply backend-specific defaults to *cfg* in-place.
+
+    Only overwrite keys whose current value equals the UMA default
+    (i.e., the caller has not explicitly set them via CLI or YAML).
+    """
+    defaults = _BACKEND_DEFAULTS_MAP.get(cfg.get("backend", "uma"))
+    if defaults is None:
+        return
+    for key, val in defaults.items():
+        if key not in cfg or cfg[key] == CALC_KW_DEFAULT.get(key):
+            cfg[key] = val
+
+
+# Optimizer base (common to LBFGS & RFO)
+
+OPT_BASE_KW: Dict[str, Any] = {
+    "thresh": "gau",
+    "max_cycles": 10000,
+    "print_every": 100,
+    "min_step_norm": 1e-8,
+    "assert_min_step": True,
+    "rms_force": None,
+    "rms_force_only": False,
+    "max_force_only": False,
+    "force_only": False,
+    "converge_to_geom_rms_thresh": 0.05,
+    "overachieve_factor": 0.0,
+    "check_eigval_structure": False,
+    "energy_plateau": True,
+    "energy_plateau_thresh": 1e-4,
+    "energy_plateau_window": 50,
+    "line_search": True,
+    "dump": False,
+    "dump_restart": False,
+    "prefix": "",
+    "out_dir": OUT_DIR_OPT,
+}
+
+
+LBFGS_KW: Dict[str, Any] = {
+    **OPT_BASE_KW,
+    "keep_last": 7,
+    "beta": 1.0,
+    "gamma_mult": False,
+    "max_step": 0.30,
+    "control_step": True,
+    "double_damp": True,
+    "mu_reg": None,
+    "max_mu_reg_adaptions": 10,
+}
+
+
+RFO_KW: Dict[str, Any] = {
+    **OPT_BASE_KW,
+    "trust_radius": 0.10,
+    "trust_update": True,
+    "trust_min": 1e-4,
+    "trust_max": 0.10,
+    "max_energy_incr": None,
+    "hessian_update": "bfgs",
+    "hessian_init": "calc",
+    "hessian_recalc": 500,
+    "hessian_recalc_adapt": None,
+    "small_eigval_thresh": 1e-8,
+    "alpha0": 1.0,
+    "max_micro_cycles": 50,
+    "rfo_overlaps": False,
+    "gediis": False,
+    "gdiis": True,
+    "gdiis_thresh": 2.5e-3,
+    "gediis_thresh": 1.0e-2,
+    "gdiis_test_direction": True,
+    "adapt_step_func": True,
+}
+
+# Bias (harmonic well) defaults
+
+BIAS_KW: Dict[str, Any] = {
+    "k": 300,
+}
+
+
+BOND_KW: Dict[str, Any] = {
+    "device": "auto",
+    "bond_factor": 1.20,
+    "margin_fraction": 0.05,
+    "delta_fraction": 0.05,
+}
+
+
+OPT_MODE_ALIASES = (
+    (("grad", "light", "lbfgs"), "lbfgs"),
+    (("hess", "heavy", "rfo"), "rfo"),
+)
+
+# DMF (Direct Max Flux + (C)FB-ENM) defaults
+
+DMF_KW: Dict[str, Any] = {
+    "max_cycles": 300,
+    "correlated": True,
+    "sequential": True,
+    "fbenm_only_endpoints": False,
+    "fbenm_options": {
+        "delta_scale": 0.2,
+        "bond_scale": 1.25,
+        "fix_planes": True,
+    },
+    "cfbenm_options": {
+        "bond_scale": 1.25,
+        "corr0_scale": 1.10,
+        "corr1_scale": 1.50,
+        "corr2_scale": 1.60,
+        "eps": 0.05,
+        "pivotal": True,
+        "single": True,
+        "remove_fourmembered": True,
+    },
+    "dmf_options": {
+        "remove_rotation_and_translation": False,
+        "mass_weighted": False,
+        "parallel": False,
+        "eps_vel": 0.01,
+        "eps_rot": 0.01,
+        "beta": 10.0,
+        "update_teval": False,
+    },
+    "k_fix": 300.0,
+}
+
+# GrowingString (path representation) defaults
+
+GS_KW: Dict[str, Any] = {
+    "fix_first": True,
+    "fix_last": True,
+    "max_nodes": 20,
+    "perp_thresh": 5e-3,
+    "reparam_check": "rms",
+    "reparam_every": 1,
+    "reparam_every_full": 1,
+    "param": "equi",
+    "max_micro_cycles": 10,
+    "reset_dlc": True,
+    "climb": True,
+    "climb_rms": 5e-4,
+    "climb_lanczos": True,
+    "climb_lanczos_rms": 5e-4,
+    "climb_fixed": False,
+    "scheduler": None,
+}
+
+# StringOptimizer (optimization control) defaults
+
+STOPT_KW: Dict[str, Any] = {
+    "type": "string",
+    "thresh": "gau_loose",
+    "stop_in_when_full": 300,
+    "align": False,
+    "scale_step": "global",
+    "max_cycles": 300,
+    "dump": False,
+    "dump_restart": False,
+    "reparam_thresh": 0.0,
+    "coord_diff_thresh": 0.0,
+    "out_dir": OUT_DIR_PATH_OPT,
+    "print_every": 10,
+}
+
+
+SEARCH_KW: Dict[str, Any] = {
+    "max_depth": 10,
+    "stitch_rmsd_thresh": 1.0e-4,
+    "bridge_rmsd_thresh": 1.0e-4,
+    "max_nodes_segment": 20,
+    "max_nodes_bridge": 5,
+    "kink_max_nodes": 3,
+    "max_seq_kink": 2,
+    "refine_mode": None,
+}
+
+
+IRC_KW: Dict[str, Any] = {
+    "step_length": 0.10,
+    "max_cycles": 125,
+    "downhill": False,
+    "forward": True,
+    "backward": True,
+    "root": 0,
+    "hessian_init": "calc",
+    "displ": "energy",
+    "displ_energy": 1.0e-3,
+    "displ_length": 0.10,
+    "rms_grad_thresh": 1.0e-3,
+    "hard_rms_grad_thresh": None,
+    "energy_thresh": 1.0e-6,
+    "imag_below": 0.0,
+    "force_inflection": True,
+    "check_bonds": False,
+    "out_dir": OUT_DIR_IRC,
+    "prefix": "",
+    "hessian_update": "bofill",
+    "hessian_recalc": None,
+    "max_pred_steps": 500,
+    "loose_cycles": 3,
+    "corr_func": "mbs",
+}
+
+
+FREQ_KW: Dict[str, Any] = {
+    "amplitude_ang": 0.8,
+    "n_frames": 20,
+    "max_write": 10,
+    "sort": "value",
+    "out_dir": OUT_DIR_FREQ,
+}
+
+
+THERMO_KW: Dict[str, Any] = {
+    "temperature": 298.15,
+    "pressure_atm": 1.0,
+    "dump": False,
+}
+
+
+TSOPT_MODE_ALIASES = (
+    (("grad", "light", "dimer"), "dimer"),
+    (("hess", "heavy", "rsirfo"), "rsirfo"),
+    (("trim",), "trim"),
+    (("rsprfo",), "rsprfo"),
+)
+
+
+DIMER_KW: Dict[str, Any] = {
+    "length": 0.0189,
+    "rotation_max_cycles": 15,
+    "rotation_method": "fourier",
+    "rotation_thresh": 1e-4,
+    "rotation_tol": 1,
+    "rotation_max_element": 0.001,
+    "rotation_interpolate": True,
+    "rotation_disable": False,
+    "rotation_disable_pos_curv": True,
+    "rotation_remove_trans": True,
+    "trans_force_f_perp": True,
+    "bonds": None,
+    "N_hessian": None,
+    "bias_rotation": False,
+    "bias_translation": False,
+    "bias_gaussian_dot": 0.1,
+    "seed": None,
+    "write_orientations": True,
+    "forward_hessian": True,
+}
+
+
+HESSIAN_DIMER_KW: Dict[str, Any] = {
+    "thresh_loose": "gau_loose",
+    "thresh": "baker",
+    "update_interval_hessian": 500,
+    "neg_freq_thresh_cm": 5.0,
+    "flatten_amp_ang": 0.10,
+    "flatten_max_iter": 50,
+    "flatten_sep_cutoff": 0.0,
+    "flatten_k": 10,
+    "flatten_loop_bofill": False,
+    "mem": 100000,
+    "device": "auto",
+    "root": 0,
+}
+
+# LBFGS for TS inner loop (baker threshold)
+
+LBFGS_TS_KW: Dict[str, Any] = {
+    **LBFGS_KW,
+    "thresh": "baker",
+}
+
+# Hessian Guided Dimer CLI-level defaults
+#   (extends HESSIAN_DIMER_KW with nested dimer/lbfgs configs)
+
+HESSIAN_DIMER_CLI_KW: Dict[str, Any] = {
+    **HESSIAN_DIMER_KW,
+    "dimer": {**DIMER_KW},
+    "lbfgs": {**LBFGS_TS_KW},
+}
+
+# RS-I-RFO defaults for TS optimization (heavy mode)
+
+# Keys from RFO_KW that are RFOptimizer-specific (not used by TSHessianOptimizer)
+_RFO_ONLY_KEYS = {"gediis", "gdiis", "gdiis_thresh", "gediis_thresh", "gdiis_test_direction", "adapt_step_func", "rfo_overlaps"}
+
+RSIRFO_KW: Dict[str, Any] = {
+    **{k: v for k, v in RFO_KW.items() if k not in _RFO_ONLY_KEYS},
+    "thresh": "baker",
+    "trust_max": 0.10,
+    "roots": [0],
+    "hessian_ref": None,
+    "rx_modes": None,
+    "prim_coord": None,
+    "rx_coords": None,
+    "hessian_update": "bofill",
+    "hessian_recalc_reset": True,
+    "max_micro_cycles": 50,
+    "augment_bonds": False,
+    "min_line_search": True,
+    "max_line_search": True,
+    "assert_neg_eigval": False,
+    "track_mode_by_overlap": False,
+}
+
+# Freq calc defaults (alias of UMA_CALC_KW)
+
+FREQ_CALC_KW: Dict[str, Any] = dict(UMA_CALC_KW)

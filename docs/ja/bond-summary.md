@@ -1,51 +1,37 @@
 # `bond-summary`
 
-## 概要
+連続する分子構造（R → TS → P や多段中間体列）の間の共有結合変化を、元素固有の共有結合半径によって検出・報告します。入力 *N* 構造に対し *N* − 1 個のペア比較ブロック（A→B, B→C, …）を生成して標準出力へ表示します。ファイルは作成されません。
 
-> **要約:** 連続する分子構造（R → TS → P や多段中間体列）の間の共有結合変化を、元素固有の共有結合半径によって検出・報告します。
+## 使いどころ
 
-### 要点
-- **想定場面:** 反応経路上の連続構造でどの共有結合が形成・切断されたかを確認するとき。IRC 端点ペアの妥当性検証、多段機構のスクリーニング、`all` の post-processing 結果を手動で検算する場合など。
-- **手法:** `--bond-factor` でスケールした元素固有の共有結合半径による結合判定。入力 *N* 構造に対し *N* − 1 個のペア比較ブロックを出力します。
-- **主な出力:** 標準出力に形成・切断結合と距離（Å）のテキストレポート（または `--out-json` 指定時は機械可読 JSON）。ファイルは作成されません。
-- **デフォルト値:** `--device cpu`、`--bond-factor 1.20`、`--one-based True`、`--out-json False`。
-- **次のステップ:** [`irc`](irc.md) の端点接続性チェックや、[`all`](all.md) post-processing と組み合わせた end-to-end 機構検証に使います。
+- 反応経路上の連続構造でどの共有結合が形成・切断されたかを確認するとき。IRC 端点ペアの妥当性検証、多段機構のスクリーニング、`all` の post-processing 結果を手動で検算する場合など。
 
-## 書式
-
-```bash
-pdb2reaction bond-summary -i R.xyz P.xyz
-pdb2reaction bond-summary -i R.xyz TS.xyz P.xyz
-pdb2reaction bond-summary -i R.pdb IM1.pdb IM2.pdb P.pdb
-```
-
-## 説明
-
-`bond-summary` は入力構造の連続ペアを比較し、形成または切断された結合を報告します。*N* 個の入力ファイルに対して *N − 1* 個の比較ブロック（A→B, B→C, …）を生成します。
-
-結合認識は元素固有の共有結合半径と設定可能な許容値（tolerances）を使用します。距離はオングストローム（Å）で報告されます。
-
-対応フォーマット: **XYZ**、**PDB**、**GJF**（拡張子から自動検出）。
-
-## オプション
-
-| オプション | 説明 | デフォルト |
-|--------|-------------|---------|
-| `-i, --input FILE` | 入力構造ファイル（各ファイルごとに `-i` を繰り返す、2 つ以上必須） | — |
-| `--device TEXT` | 計算デバイス（`cpu`, `cuda`） | `cpu` |
-| `--bond-factor FLOAT` | 共有結合半径の和に対するスケーリングファクター | `1.20` |
-| `--one-based / --zero-based` | 出力の原子インデックス規約 | `--one-based` |
-| `--out-json / --no-out-json` | **機械可読な JSON を標準出力へ出力**（テキストレポートの代わり）。このサブコマンドは `result.json` ファイルを書き出しません（永続化したい場合は stdout をリダイレクトしてください）。このオプションは **`pdb2reaction bond-summary --help` には表示されません**（`--help-advanced` で確認できます）。スキーマは [JSON 出力スキーマ → bond-summary](json-output.md#bond-summary) を参照 | `False` |
-
-## 例
-
-### 2 構造の比較
+## 実行例
 
 ```bash
 pdb2reaction bond-summary -i 1.R.xyz 3.P.xyz
 ```
 
-出力:
+```bash
+pdb2reaction bond-summary -i 1.R.xyz 3.IM1.xyz 5.IM2.xyz 7.P.xyz
+```
+
+多構造形式では R→IM1, IM1→IM2, IM2→P の 3 つの比較ブロックが出力されます。
+
+## 入力
+
+書式:
+
+```bash
+pdb2reaction bond-summary -i INPUT1 INPUT2 [INPUT3 ...] [options]
+```
+
+`bond-summary` は入力構造の連続ペアを比較し、形成または切断された結合を報告します。結合認識は元素固有の共有結合半径と設定可能な許容値（tolerances）を使用します。距離はオングストローム（Å）で報告されます。対応フォーマット: **XYZ**、**PDB**、**GJF**（拡張子から自動検出）。入力ファイルは 2 つ以上必須です。
+
+## 出力
+
+`bond-summary` はファイルを書き出しません。標準出力に形成・切断結合と距離（Å）のテキストレポート（連続ペアごとに 1 比較ブロック）を表示します。`--json` 指定時は機械可読 JSON を標準出力へ出力します。各テキストブロックは形成・切断された結合とその前後の距離（Å）を列挙します:
+
 ```
 ============================================================
   1.R.xyz  →  3.P.xyz
@@ -58,26 +44,12 @@ Bond broken (2):
   - H106-O107 : 1.034 Å --> 1.673 Å
 ```
 
-### 多構造比較（反応経路）
-
-```bash
-pdb2reaction bond-summary -i 1.R.xyz 3.IM1.xyz 5.IM2.xyz 7.P.xyz
-```
-
-R→IM1, IM1→IM2, IM2→P の 3 つの比較ブロックが出力されます。
-
-## 注意事項
-
-- すべての入力構造は**同一の原子数と元素順序**である必要があります。
-- 結合検出は `all` ワークフローの IRC 端点検証で使用される内部 `bond_changes` モジュールと同じアルゴリズムを使用します。
-- 境界的な結合（例: 金属配位 2.0–2.4 Å）の感度を調整するには、`--bond-factor` を大きくしてください（例: `1.30`）。
-
 ## Python API
 
 結合変化検出関数は Python から直接利用できます:
 
 ```python
-from pdb2reaction.bond_changes import compare_structures, has_bond_change, summarize_changes
+from pdb2reaction.domain.bond_changes import compare_structures, has_bond_change, summarize_changes
 ```
 
 | Function | Description |
@@ -90,7 +62,7 @@ from pdb2reaction.bond_changes import compare_structures, has_bond_change, summa
 
 ```python
 from pysisyphus.helpers import geom_loader
-from pdb2reaction.bond_changes import has_bond_change
+from pdb2reaction.domain.bond_changes import has_bond_change
 
 geom_r = geom_loader("R.xyz")
 geom_p = geom_loader("P.xyz")
@@ -99,6 +71,22 @@ changed, summary = has_bond_change(geom_r, geom_p, {"device": "cpu", "bond_facto
 if changed:
     print(summary)
 ```
+
+## CLI オプション
+
+| オプション | 説明 | デフォルト |
+|--------|-------------|---------|
+| `-i, --input FILE` | 入力構造ファイル（各ファイルごとに `-i` を繰り返す、2 つ以上必須） | — |
+| `--device TEXT` | 計算デバイス（`cpu`, `cuda`） | `cpu` |
+| `--bond-factor FLOAT` | 共有結合半径の和に対するスケーリングファクター | `1.20` |
+| `--one-based / --zero-based` | 出力の原子インデックス規約 | `--one-based` |
+| `--json / --no-json` | **機械可読な JSON を標準出力へ出力**（テキストレポートの代わり）。このサブコマンドは `result.json` ファイルを書き出しません（永続化したい場合は stdout をリダイレクトしてください）。スキーマは [JSON 出力スキーマ → bond-summary](json-output.md#bond-summary) を参照 | `False` |
+
+## 注意事項
+
+- すべての入力構造は**同一の原子数と元素順序**である必要があります。
+- 結合検出は `all` ワークフローの IRC 端点検証で使用される内部 `bond_changes` モジュールと同じアルゴリズムを使用します。
+- 境界的な結合（例: 金属配位 2.0–2.4 Å）の感度を調整するには、`--bond-factor` を大きくしてください（例: `1.30`）。
 
 ## 関連項目
 

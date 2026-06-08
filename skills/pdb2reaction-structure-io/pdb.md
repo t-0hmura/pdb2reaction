@@ -103,7 +103,7 @@ charge sum.
 
 The atoms that **donate** hydrogens (i.e. atom `A`, the cluster-side
 parent of each cap) are frozen during optimization. The PDB itself
-carries no encoded freeze list — `pdb2reaction.utils.detect_freeze_links`
+carries no encoded freeze list — `pdb2reaction.core.utils.detect_freeze_links`
 re-derives the parent atom of each `LKH/HL` record at runtime via a
 nearest-neighbor search in Cartesian space. The B-factor column on
 the LKH atoms is hard-coded to 0.00 by `_format_linkH_block`.
@@ -168,7 +168,7 @@ awk '/^ATOM|^HETATM/{print substr($0,18,3)}' my.pdb | sort -u
 # any missing element columns?
 awk '/^ATOM|^HETATM/{e=substr($0,77,2); if(e=="  ") print NR, $0}' my.pdb
 
-# any duplicate atom names within one residue (often breaks AMBER / parm7)?
+# any duplicate atom names within one residue (often breaks downstream parsers)?
 awk '/^ATOM|^HETATM/{key=substr($0,22,5)"-"substr($0,13,4); print key}' my.pdb \
     | sort | uniq -c | awk '$1>1'
 ```

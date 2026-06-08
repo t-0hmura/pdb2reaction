@@ -10,7 +10,7 @@ Provides ``UMACalculator`` (PySisyphus-compatible) and ``UMAASECalculator``
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, Optional, Sequence
 
 import click
 import numpy as np
@@ -30,9 +30,27 @@ except Exception:
     ParallelMLIPPredictUnit = None
     guess_inference_settings = None
 
+# fp64 base precision: switching OMol-trained UMA from default fp32 to
+# fp64 can have non-trivial impact on TSopt + Hessian numerics. Available
+# via InferenceSettings(base_precision_dtype="float64") in fairchem ≥ 2.0.
+try:
+    from fairchem.core.units.mlip_unit.api.inference import InferenceSettings as _UMAInferenceSettings
+except Exception:
+    _UMAInferenceSettings = None
+
 from pysisyphus.constants import BOHR2ANG, ANG2BOHR, AU2EV
 
 from .base import MLIPCalculator, BackendError
+
+
+# Strict deterministic-mode setup for UMA is opt-in (default no-op).
+# It lives in `pdb2reaction.backends._determinism` and is enabled via the
+# `--deterministic` CLI flag or `PDB2REACTION_STRICT_DETERMINISTIC=1`; the
+# backend factory and the CLI option callback drive it.
+# The supported reproducibility route is `--precision fp64`: when every stage
+# runs in fp64, the residual non-determinism from CUDA atomic ordering is at
+# the ~1e-15 level, below any chemically meaningful threshold.
+
 
 # ---- Unit conversion constants ----
 EV2AU = 1.0 / AU2EV
@@ -40,9 +58,6 @@ F_EVAA_2_AU = EV2AU / ANG2BOHR
 H_EVAA_2_AU = EV2AU / ANG2BOHR / ANG2BOHR
 
 
-# ===================================================================
-#                         UMA core wrapper
-# ===================================================================
 class UMAcore:
     """Thin wrapper around fairchem-UMA predict_unit.
 
@@ -65,6 +80,7 @@ class UMAcore:
         max_neigh: Optional[int] = None,
         radius: Optional[float] = None,
         r_edges: bool = False,
+        precision: str = "fp32",
     ):
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -74,6 +90,23 @@ class UMAcore:
         self.workers = max(int(workers or 1), 1)
         self.workers_per_node = max(int(workers_per_node or 1), 1)
         self.parallel_predict = self.workers > 1
+
+        # fp32 is the established baseline; fp64 enables full-precision
+        # base inference and can change TSopt + Hessian numerics non-trivially.
+        # Selected per-call via `precision="fp32"|"fp64"`.
+        self.precision = str(precision or "fp32").lower()
+        if self.precision not in ("fp32", "fp64"):
+            raise BackendError(f"UMA precision must be 'fp32' or 'fp64', got {precision!r}")
+        if self.precision == "fp64" and _UMAInferenceSettings is None:
+            raise BackendError(
+                "UMA precision='fp64' requires fairchem-core's InferenceSettings; "
+                "upgrade fairchem-core (≥ 2.0) or pass precision='fp32'."
+            )
+        uma_inference_settings = (
+            _UMAInferenceSettings(base_precision_dtype="float64")
+            if self.precision == "fp64" and _UMAInferenceSettings is not None
+            else None
+        )
 
         self._AtomicData = AtomicData
         self._collater = data_list_collater
@@ -86,7 +119,8 @@ class UMAcore:
                     "includes `fairchem-core[extras]`."
                 )
             ckpt_path = pretrained_mlip.pretrained_checkpoint_path_from_name(model)
-            inference_settings = guess_inference_settings("default")
+            # fp64 path: pass our InferenceSettings; fp32 path: fairchem default
+            inference_settings = uma_inference_settings or guess_inference_settings("default")
             atom_refs = pretrained_mlip.get_reference_energies(model, reference_type="atom_refs")
             form_elem_refs = pretrained_mlip.get_reference_energies(model, reference_type="form_elem_refs")
             self.predict = ParallelMLIPPredictUnit(
@@ -99,9 +133,10 @@ class UMAcore:
                 num_workers_per_node=self.workers_per_node,
             )
         else:
-            self.predict = pretrained_mlip.get_predict_unit(
-                model, device=self.device_str, workers=self.workers
-            )
+            predict_kwargs = dict(device=self.device_str, workers=self.workers)
+            if uma_inference_settings is not None:
+                predict_kwargs["inference_settings"] = uma_inference_settings
+            self.predict = pretrained_mlip.get_predict_unit(model, **predict_kwargs)
 
         self.has_torch_model = hasattr(self.predict, "model") and isinstance(
             getattr(self.predict, "model", None), nn.Module
@@ -138,7 +173,18 @@ class UMAcore:
         r_edges = self._r_edges
 
         atoms.info.update({"charge": self.charge, "spin": self.spin})
-        data = self._AtomicData.from_ase(atoms, max_neigh=max_neigh, radius=radius, r_edges=r_edges)
+        # When the inference path uses fp64, hand AtomicData the matching
+        # target dtype so it does not down-cast positions to fp32 only to be
+        # re-upcasted (and emit the fairchem `Upcasting atomic coordinates`
+        # WARNING on every call). fp32 path keeps fairchem's default.
+        target_dtype = torch.float64 if self.precision == "fp64" else torch.float32
+        data = self._AtomicData.from_ase(
+            atoms,
+            max_neigh=max_neigh,
+            radius=radius,
+            r_edges=r_edges,
+            target_dtype=target_dtype,
+        )
         data.dataset = self.task_name
         batch = self._collater([data], otf_graph=True)
         if not self.parallel_predict:
@@ -195,9 +241,6 @@ class UMAcore:
         return {"energy": energy, "forces": forces_np, "hessian": H}
 
 
-# ===================================================================
-#                    PySisyphus calculator class
-# ===================================================================
 class UMACalculator(MLIPCalculator):
     """UMA (fairchem) backend.
 
@@ -216,6 +259,7 @@ class UMACalculator(MLIPCalculator):
         max_neigh: Optional[int] = None,
         radius: Optional[float] = None,
         r_edges: bool = False,
+        precision: str = "fp32",
         out_hess_torch: bool = True,
         print_vram: bool = True,
         # Base class parameters
@@ -252,6 +296,7 @@ class UMACalculator(MLIPCalculator):
             max_neigh=max_neigh,
             radius=radius,
             r_edges=r_edges,
+            precision=precision,
         )
         self.out_hess_torch = out_hess_torch
         self.print_vram = bool(print_vram)
@@ -263,19 +308,15 @@ class UMACalculator(MLIPCalculator):
     def _supports_analytical_hessian(self) -> bool:
         return True  # Analytical path available only when workers == 1 and predictor.model is accessible
 
-    # ------------------------------------------------------------------
     # Subclass hooks are NOT used for UMA; we override get_* directly
     # to retain the GPU FD Hessian and torch-based analytical Hessian.
-    # ------------------------------------------------------------------
 
     def _compute_energy_forces_ev(self, elem, coord_ang):
         self._ensure_core(elem)
         res = self._core.compute(coord_ang, forces=True, hessian=False)
         return res["energy"], res["forces"]
 
-    # ------------------------------------------------------------------
     # Hessian helpers (UMA-specific)
-    # ------------------------------------------------------------------
 
     def _emit_hessian_logs(
         self,
@@ -288,8 +329,8 @@ class UMACalculator(MLIPCalculator):
         vram_base_reserved: Optional[float] = None,
         vram_total: Optional[float] = None,
     ) -> None:
-        if self.print_timing:
-            click.echo(f"[HessianTiming] mode: {mode_label} | elapsed: {mode_elapsed_s:.2f} s")
+        hessian_vram_summary = ""
+        hessian_vram_detail = None
         if self.print_vram and core.device.type == "cuda":
             dev = core.device
             torch.cuda.synchronize(device=dev)
@@ -300,12 +341,24 @@ class UMACalculator(MLIPCalculator):
             peak_reserved = max(peak_reserved_abs - base_reserved, 0.0) / 1e9
             total_vram = float(vram_total or torch.cuda.get_device_properties(dev).total_memory) / 1e9
             remaining_vram = max((total_vram * 1e9) - peak_reserved_abs, 0.0) / 1e9
-            click.echo(
+            hessian_vram_summary = f", peak VRAM {peak_alloc:.2f} GB"
+            hessian_vram_detail = (
                 f"[HessianVRAM] total={total_vram:.3f} GB | "
                 f"peak_allocated={peak_alloc:.3f} GB | "
                 f"peak_reserved={peak_reserved:.3f} GB | "
-                f"remaining={remaining_vram:.3f} GB\n"
+                f"remaining={remaining_vram:.3f} GB"
             )
+        from pdb2reaction.core.utils import verbose_level
+        if self.print_timing:
+            click.echo(
+                f"[hessian] Completed {mode_label} Hessian: {total_elapsed_s:.2f} s"
+                f"{hessian_vram_summary}",
+                detail=True,
+            )
+            if verbose_level() >= 3:
+                click.echo(f"[HessianTiming] mode: {mode_label} | elapsed: {mode_elapsed_s:.2f} s")
+        if hessian_vram_detail is not None and verbose_level() >= 3:
+            click.echo(hessian_vram_detail)
 
     def _au_hessian(self, H: torch.Tensor):
         """Convert Hessian from eV/Å² to Hartree/Bohr² (torch version)."""
@@ -313,13 +366,14 @@ class UMACalculator(MLIPCalculator):
         H = H.view(n * 3, n * 3)
         if self.hessian_double:
             H = H.to(dtype=torch.float64)
-        _t = H.T.clone()
-        H.add_(_t).mul_(0.5)
-        del _t
+        # Bounded-peak symmetrization (helper writes both triangles).
+        from pdb2reaction.core.utils import symmetrize_inplace
+        symmetrize_inplace(H)
         H.mul_(H_EVAA_2_AU)
         if self.out_hess_torch:
             return H.detach()
         else:
+            # C-NEED: numpy return at boundary; GPU H freed implicitly when caller drops the return value.
             return H.detach().cpu().numpy()
 
     def _apply_analytical_active_trim(self, H: torch.Tensor) -> torch.Tensor:
@@ -368,12 +422,24 @@ class UMACalculator(MLIPCalculator):
 
         force_dtype = torch.from_numpy(F0).dtype
         hessian_dtype = torch.float64 if self.hessian_double else force_dtype
-        H = torch.zeros((dof, dof), device=dev, dtype=hessian_dtype)
+        n_active = len(active_dof_idx)
+        if self.return_partial_hessian and n_active < dof:
+            # Compact-from-the-start: rows = active DOFs, cols = full dof.
+            # Saves (dof - n_active) * dof * itemsize bytes of GPU VRAM
+            # (e.g. ~7 GB at 10k atoms / 200 active). Partial Hessian is
+            # preserved as-is (no upper-triangle-only tricks); row-write
+            # populates both triangles of the active sub-block symmetrically
+            # after the post-loop extract.
+            H = torch.zeros((n_active, dof), device=dev, dtype=hessian_dtype)
+            _partial_alloc = True
+        else:
+            H = torch.zeros((dof, dof), device=dev, dtype=hessian_dtype)
+            _partial_alloc = False
 
         coord_plus = coord_ang.copy()
         coord_minus = coord_ang.copy()
 
-        for k in active_dof_idx:
+        for i_local, k in enumerate(active_dof_idx):
             a = k // 3
             c = k % 3
             coord_plus[a, c] = coord_ang[a, c] + eps_ang
@@ -387,24 +453,29 @@ class UMACalculator(MLIPCalculator):
             Fp_t = torch.from_numpy(Fp).to(dev, dtype=hessian_dtype)
             Fm_t = torch.from_numpy(Fm).to(dev, dtype=hessian_dtype)
             col = -(Fp_t - Fm_t) / (2.0 * eps_ang)
-            H[:, k] = col
+            if _partial_alloc:
+                H[i_local, :] = col
+            else:
+                H[:, k] = col
 
             coord_plus[a, c] = coord_ang[a, c]
             coord_minus[a, c] = coord_ang[a, c]
 
         if self.return_partial_hessian:
-            idx = torch.tensor(active_dof_idx, device=dev, dtype=torch.long)
-            H = H.index_select(0, idx).index_select(1, idx)
             n_active_atoms = len(active_atoms)
+            idx = torch.tensor(active_dof_idx, device=dev, dtype=torch.long)
+            if _partial_alloc:
+                # H is already (n_active, dof) — single index_select(1) extracts to (n_active, n_active).
+                H = H.index_select(1, idx)
+            else:
+                H = H.index_select(0, idx).index_select(1, idx)
             H = H.view(n_active_atoms, 3, n_active_atoms, 3)
         else:
             H = H.view(n_atoms, 3, n_atoms, 3)
 
         return {"energy": energy0_eV, "forces": np.asarray(F0, dtype=np.float64).reshape(-1, 3), "hessian": H}
 
-    # ------------------------------------------------------------------
     # PySisyphus API (override base to use GPU path + torch Hessian)
-    # ------------------------------------------------------------------
 
     def get_energy(self, elem, coords):
         self._ensure_core(elem)
@@ -497,9 +568,6 @@ class UMACalculator(MLIPCalculator):
         return out
 
 
-# ===================================================================
-#                     ASE calculator class
-# ===================================================================
 class UMAASECalculator(FAIRChemCalculator):
     """UMA ASE calculator (wraps FAIRChemCalculator) for use with ASE-based path optimizers (DMF/NEB/growing-string)."""
 
@@ -511,11 +579,26 @@ class UMAASECalculator(FAIRChemCalculator):
         task_name: str = "omol",
         workers: int = 1,
         workers_per_node: int = 1,
+        precision: str = "fp32",
     ):
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
         num_workers = max(int(workers or 1), 1)
         num_workers_per_node = max(int(workers_per_node or 1), 1)
+
+        precision = str(precision or "fp32").lower()
+        if precision not in ("fp32", "fp64"):
+            raise BackendError(f"UMA precision must be 'fp32' or 'fp64', got {precision!r}")
+        if precision == "fp64" and _UMAInferenceSettings is None:
+            raise BackendError(
+                "UMA precision='fp64' requires fairchem-core's InferenceSettings; "
+                "upgrade fairchem-core (>= 2.0) or pass precision='fp32'."
+            )
+        uma_inference_settings = (
+            _UMAInferenceSettings(base_precision_dtype="float64")
+            if precision == "fp64" and _UMAInferenceSettings is not None
+            else None
+        )
 
         if num_workers > 1:
             if (ParallelMLIPPredictUnit is None) or (guess_inference_settings is None):
@@ -524,7 +607,7 @@ class UMAASECalculator(FAIRChemCalculator):
                     "could not be imported from fairchem."
                 )
             ckpt_path = pretrained_mlip.pretrained_checkpoint_path_from_name(model)
-            inference_settings = guess_inference_settings("default")
+            inference_settings = uma_inference_settings or guess_inference_settings("default")
             atom_refs = pretrained_mlip.get_reference_energies(model, reference_type="atom_refs")
             form_elem_refs = pretrained_mlip.get_reference_energies(model, reference_type="form_elem_refs")
             predictor = ParallelMLIPPredictUnit(
@@ -537,7 +620,8 @@ class UMAASECalculator(FAIRChemCalculator):
                 num_workers_per_node=num_workers_per_node,
             )
         else:
-            predictor = pretrained_mlip.get_predict_unit(
-                model, device=device, workers=num_workers,
-            )
+            predict_kwargs = dict(device=device, workers=num_workers)
+            if uma_inference_settings is not None:
+                predict_kwargs["inference_settings"] = uma_inference_settings
+            predictor = pretrained_mlip.get_predict_unit(model, **predict_kwargs)
         super().__init__(predictor, task_name=str(task_name))

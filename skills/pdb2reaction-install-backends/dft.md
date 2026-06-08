@@ -18,11 +18,13 @@ This pulls (canonical pin in `pyproject.toml`):
 
 | Package | Purpose | Platform |
 |---|---|---|
-| `pyscf>=2.8.0` | Reference SCF / DFT engine | All |
-| `gpu4pyscf-cuda12x>=1.5.2` | CUDA acceleration of PySCF | **x86_64 only** |
-| `cupy-cuda12x` | Tensor backend for GPU4PySCF | x86_64 only |
-| `cutensor-cu12` | cuTENSOR / RIJCOSX kernels | x86_64 only |
-| `basis-set-exchange` | Programmatic basis-set lookup | All |
+| `pyscf>=2.13.0` | Reference SCF / DFT engine | All |
+| `gpu4pyscf-cuda12x>=1.7.0` | CUDA acceleration of PySCF | **x86_64 only** |
+| `cupy-cuda12x>=13.0,!=13.4.0` | Tensor backend for GPU4PySCF | x86_64 only |
+| `basis-set-exchange>=0.11` | Programmatic basis-set lookup | All |
+
+`cutensor-cu12` (cuTENSOR / RIJCOSX kernels, x86_64 only) is pulled in
+transitively by `gpu4pyscf-cuda12x`, not pinned directly by the `[dft]` extra.
 
 On `aarch64` (`uname -m`), the `gpu4pyscf-cuda12x` PyPI wheel is
 x86_64-only. The extras install will succeed for `pyscf` and
@@ -59,7 +61,7 @@ Common flag set:
 | Flag | Purpose | Default |
 |---|---|---|
 | `-i, --input` | `.pdb`, `.xyz`, or `.gjf` input | required |
-| `-q, --charge` / `-l, --ligand-charge` | Total charge or per-residue mapping | required for `.xyz` input |
+| `-q, --charge` / `-l, --ligand-charge` | Total charge or per-residue mapping | required for `.xyz` without `--ref-pdb` |
 | `-m, --multiplicity` | Spin multiplicity (2S+1) | 1 |
 | `--func-basis` | `'FUNC/BASIS'` like `'wb97m-v/def2-tzvpd'` | `wb97m-v/def2-tzvpd` |
 | `--engine` | `gpu` / `cpu` | `gpu` |
@@ -68,7 +70,7 @@ Common flag set:
 Inspect the live default kwargs:
 
 ```bash
-python -c "import pdb2reaction.defaults as d; print(d.GEOM_KW_DEFAULT, d.CALC_KW_DEFAULT)"
+python -c "import pdb2reaction.core.defaults as d; print(d.GEOM_KW_DEFAULT, d.CALC_KW_DEFAULT)"
 ```
 
 ## Failure diagnosis
@@ -78,7 +80,7 @@ python -c "import pdb2reaction.defaults as d; print(d.GEOM_KW_DEFAULT, d.CALC_KW
 | `OSError: libcusolver.so.11 not found` | `LD_LIBRARY_PATH` shadowing torch's bundled CUDA libs | See `env-cuda.md`, Option 1 (`LD_LIBRARY_PATH` reorder) |
 | `cupy.cuda.runtime.CUDARuntimeError: invalid device ordinal` | Torch and cupy disagree on CUDA visibility | `unset CUDA_VISIBLE_DEVICES` and let GPU4PySCF use device 0 |
 | `RuntimeError: CUDA out of memory` mid-SCF | Functional / basis too heavy for VRAM | Lower `grid_level`, switch to `def2-svp`, or use `--engine cpu` |
-| `gpu4pyscf` import succeeds but SCF stalls at start | cuTENSOR not installed | `pip install cutensor-cu12==2.2.0` (matches `[dft]` extra) |
+| `gpu4pyscf` import succeeds but SCF stalls at start | cuTENSOR not installed | `pip install cutensor-cu12` (normally pulled in transitively by `gpu4pyscf-cuda12x`) |
 | aarch64: `--engine gpu` requested but no `gpu4pyscf` | x86_64-only wheel | Re-run with `--engine cpu` or build from source (see Install). |
 
 ## Memory rough-cuts

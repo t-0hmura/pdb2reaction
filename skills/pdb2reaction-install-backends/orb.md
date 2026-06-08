@@ -42,7 +42,7 @@ biomolecules + transition-metal complexes).
 Inspect the default kwarg dict:
 
 ```bash
-python -c "import pdb2reaction.defaults as d; print(d.ORB_BACKEND_DEFAULTS)"
+python -c "import pdb2reaction.core.defaults as d; print(d.ORB_BACKEND_DEFAULTS)"
 ```
 
 ## Backend-specific flags

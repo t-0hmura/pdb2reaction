@@ -52,7 +52,7 @@ pdb2reaction dft -i ts.gjf --func-basis 'wb97m-v/def2-tzvpd' --engine gpu
 - Programmatic conversion:
   ```python
   from pathlib import Path
-  from pdb2reaction.utils import parse_gjf_template, convert_xyz_to_gjf
+  from pdb2reaction.core.utils import parse_gjf_template, convert_xyz_to_gjf
   template = parse_gjf_template(Path("template.gjf"))
   convert_xyz_to_gjf(Path("ts.xyz"), template, Path("ts.gjf"))
   ```

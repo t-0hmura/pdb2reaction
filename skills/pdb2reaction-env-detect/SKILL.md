@@ -5,7 +5,7 @@ description: Fallback skill for detecting the current compute environment (local
 
 # pdb2reaction Environment Detection
 
-## When to use this skill
+## Purpose
 
 Most `pdb2reaction` skills assume you already know your environment and
 fill in placeholders like `<YOUR_QUEUE>`, `<NCPU>`, `<NGPU>`, `<CUDA_MODULE>`,
@@ -167,10 +167,7 @@ placeholder used by other `pdb2reaction-*` skills.
 } 2>&1 | tee env_probe.txt
 ```
 
-Output is written to `env_probe.txt`.
-
-## Cross-references
-
+## See also
 - `pdb2reaction-hpc/SKILL.md` — uses `<YOUR_QUEUE>`, `<NCPU>`, `<NGPU>`,
   `<MEM>`, `<HH:MM:SS>`, `<CUDA_MODULE>`, `<YOUR_ENV>` placeholders.
 - [`pdb2reaction-install-backends/env-cuda.md`](../pdb2reaction-install-backends/env-cuda.md) — uses driver version

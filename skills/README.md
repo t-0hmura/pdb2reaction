@@ -7,8 +7,15 @@ tasks.
 
 - `pdb2reaction-overview`: what `pdb2reaction` is, when to use it,
   and how it differs from generic QM/MLIP path-search tools.
-- `pdb2reaction-cli`: index of the 17 subcommands plus per-subcommand
+- `pdb2reaction-architecture`: 6-layer package map (cli / workflows /
+  domain / backends / io / core) + bundled-fork policy; tells an agent
+  which dir to grep for a given concern before touching code.
+- `pdb2reaction-cli`: index of the 18 subcommands plus per-subcommand
   mds (each with synopsis, key flags, examples, output, caveats).
+- `pdb2reaction-mcp`: how to drive `pdb2reaction` from any MCP client
+  (Claude Desktop / Claude Code / Cursor / custom SDK) via the bundled
+  `pdb2reaction-mcp` server; lists the 18 MCP tools and the shared
+  `SubcmdResult` return schema.
 - `pdb2reaction-structure-io`: PDB / XYZ / GJF format references and
   the charge / multiplicity decision workflow.
 - `pdb2reaction-install-backends`: install pdb2reaction itself, MLIP
@@ -30,4 +37,4 @@ user-global install, or your agent's configured skill location)
 gives an agent the orientation it needs to work with `pdb2reaction`. For version-sensitive defaults, advanced flags,
 and backend model identifiers, agents should verify against the
 installed CLI (`pdb2reaction <subcommand> --help-advanced`) and
-`pdb2reaction.defaults`.
+`pdb2reaction.core.defaults`.

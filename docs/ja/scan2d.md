@@ -1,33 +1,19 @@
 # `scan2d`
 
-## 概要
-
-> **要約:** 調和拘束と MLIP 緩和により、2 距離（d₁, d₂）のグリッドスキャンを行います。`-s/--scan-lists`（YAML/JSON ファイルパス、推奨）またはインライン Python リテラルでターゲットを指定します。
-
-### 要点
-- **想定場面:** 2 つの距離 `(d₁, d₂)` 上で 2D ポテンシャル面を得たいとき（TS 領域の特定や、MEP 精密化前の反応ランドスケープ可視化など）。入力は 1 つの構造 + `-s scan2d.yaml`（推奨）または `-s/--scan-lists` の **単一** インラインリテラル（四つ組はちょうど 2 つ）。
-- **計算手法:** `--max-step-size` から線形グリッドを構成し、各軸は（事前最適化された）構造に最も近い点を先に訪れるよう並べ替えられます。各格子点は対応する調和拘束を有効にして MLIP バックエンド（デフォルト: UMA）で緩和します。`surface.csv` の値は常に **バイアスなし**で評価されるため、格子点間で直接比較できます。
-- **主な出力:** `surface.csv`、`scan2d_map.png`（2D コンター）、`scan2d_landscape.html`（3D サーフェス）、および `grid/` 配下の各点の構造。
-- **デフォルト値:** `--opt-mode grad`（L-BFGS）、`--no-preopt`、`--max-step-size 0.20 Å`、`--bias-k 300 eV·Å⁻²`、`--thresh baker`、`--baseline min`、`--out-dir ./result_scan2d/`。`(high − low) / --max-step-size` が大きいと格子点数が急増します。
-- **次のステップ:** `scan2d_map.png` / `scan2d_landscape.html` で TS 領域候補を確認し、`tsopt` で精密化（または `pdb2reaction all` で連結）。
-
-`scan2d` は `--max-step-size` に基づいて両軸の線形グリッドを作成し、各格子点を対応する拘束付きで緩和して、可視化用にバイアスなしの MLIP エネルギーを記録します。デフォルトのバックエンドは UMA で、`-b/--backend` で他のバックエンドも選択できます。L-BFGS の代わりに RFOptimizer を使う場合は `--opt-mode hess` を指定してください。
+調和拘束と MLIP 緩和により、2 距離（d₁, d₂）のグリッドスキャンを行います。`scan2d` は `--max-step-size` に基づいて両軸の線形グリッドを作成し、各格子点を対応する拘束付きで緩和して、可視化用にバイアスなしの MLIP エネルギーを記録します。デフォルトのバックエンドは UMA で、`-b/--backend` で他のバックエンドも選択できます。L-BFGS の代わりに RFOptimizer を使う場合は `--opt-mode hess` を指定してください。
 
 XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定すると、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
 
-## 最小例
+## 使いどころ
+
+- 2 つの距離 `(d₁, d₂)` 上で 2D ポテンシャル面を得たいとき（TS 領域の特定や、MEP 精密化前の反応ランドスケープ可視化など）。入力は 1 つの構造 + `-s/--scan-lists scan2d.yaml`（推奨）、または四つ組をちょうど 2 つ含む `-s/--scan-lists` の **単一** インラインリテラル。
+
+## 実行例
+
 ```bash
 pdb2reaction scan2d -i input.pdb -q 0 -s scan2d.yaml -o ./result_scan2d/
 ```
 
-## 出力の見方
-- `result_scan2d/surface.csv`
-- `result_scan2d/grid/point_iDDD_jDDD.xyz` (`DDD = round(d × 100)` Å。例: `d1=1.30 Å, d2=3.10 Å` → `point_i130_j310.xyz`)
-- `result_scan2d/scan2d_map.png` と `result_scan2d/scan2d_landscape.html`
-
-> **Note:** `-s/--scan-lists` の解釈結果を確認したい場合は `--print-parsed` を追加してください。
-
-## よくある例
 ```bash
 # 推奨: YAML/JSON spec
 cat > scan2d.yaml << 'YAML'
@@ -37,11 +23,15 @@ pairs:
  - ["TYR,285,CB", "SAM,309,C11", 1.20, 3.20]
 YAML
 pdb2reaction scan2d -i input.pdb -q 0 -s scan2d.yaml
+```
 
+```bash
 # 代替: Python リテラル
 pdb2reaction scan2d -i input.pdb -q 0 \
  -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20)]'
+```
 
+```bash
 # LBFGS、内側軌跡ダンプ、Plotly 出力
 pdb2reaction scan2d -i input.pdb -q 0 \
  -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20)]' \
@@ -49,7 +39,10 @@ pdb2reaction scan2d -i input.pdb -q 0 \
  --preopt --baseline min
 ```
 
-## 使用法
+## 入力
+
+コマンド形式:
+
 ```bash
 pdb2reaction scan2d -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
  [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
@@ -57,21 +50,54 @@ pdb2reaction scan2d -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge 
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
-## スキャンリスト仕様
+| 入力 | 必須 | 備考 |
+| --- | --- | --- |
+| `-i, --input` | はい | `geom_loader` が受け入れる構造ファイル |
+| `-s, --scan-lists` | はい | YAML/JSON スペックファイルパス（推奨）、または 2 つの四つ組 `(i,j,lowÅ,highÅ)` を含む単一のインライン Python リテラル |
+| `-q, --charge` | テンプレート/導出がない場合は必須 | 総電荷（CLI > テンプレート/`--ligand-charge/-l`） |
+| `--ref-pdb` | XYZ/GJF 入力時 | 入力が XYZ/GJF のときに使用する参照 PDB トポロジー（XYZ 座標を保持） |
+
+### スキャンリスト仕様
 
 `scan2d` はちょうど **2 つ**の四つ組 `(i, j, low_Å, high_Å)` を受け付けます（YAML/JSON では `pairs` キー、インラインでは単一リテラル）。`scan` と異なり、リテラルは **1 つだけ**を受け付けます（複数ステージは非対応）。
 
 YAML/JSON ファイル書式、インライン Python リテラル構文、原子セレクタ、クォート規則については
 {ref}`CLI 規約: スキャンリスト仕様 <ja-scan-list-spec>` を参照してください。
 
-## ワークフロー
+## 処理の流れ
+
 1. `geom_loader` で入力構造をロードし、電荷とスピンを解決します。`--preopt` の場合は無バイアスの事前最適化を実行します。`-q` が省略され `--ligand-charge` がある場合、構造は酵素--基質複合体として扱われ、PDB 入力（または `--ref-pdb` 付き XYZ/GJF）では `extract.py` の電荷サマリーから総電荷を導出します。事前最適化構造は `grid/preopt_iDDD_jDDD.*`（`DDD = round(d × 100)` Å）に保存され、`surface.csv` には `i = j = -1` のエントリとしてバイアスなしエネルギーが記録されます。
 2. `-s/--scan-lists`（YAML/JSON ファイルパスまたはインライン Python リテラル）を 2 つの四つ組に解析し、インデックスを正規化します（デフォルトは 1 始まり）。PDB 入力では、各エントリに整数インデックスまたは `'TYR,285,CA'` のようなセレクタ文字列を指定できます。区切りは空白・カンマ・スラッシュ・バッククォート・バックスラッシュのいずれも可で、トークン順序は任意です（フォールバックは resname, resseq, atom を想定）。線形グリッドは `ceil(|high − low| / h) + 1` 点（両端を含む）で構成します（`h = --max-step-size`）。長さ 0 の範囲は 1 点に縮退します。その後、各軸は事前最適化構造に最も近い距離が `i = 0` / `j = 0` になるよう並べ替えられます。
 3. 外側ループで `d1[i]`（近い順）を走査します。各値で **d₁ 拘束のみ**を適用して緩和し、その構造をスナップショットとして保存します。次に内側ループで `d2[j]` を走査し、**d₁ と d₂ の両拘束**を適用して、最も近い既収束構造から緩和を開始します。
 4. 各 `(i, j)` について、`<out-dir>/grid/point_iDDD_jDDD.xyz`（`DDD = round(d × 100)` Å。例 `d1=1.30 Å, d2=3.10 Å` → `point_i130_j310.xyz`）に構造を保存し、バイアス収束の可否を記録し、バイアスを除去した MLIP エネルギーを評価します。`--dump` の場合、外側ループごとの内側軌跡が `inner_path_d1_###_trj.xyz`（`###` は外側ステップ index）として保存されます。
 5. すべての点を走査したら、`i,j,d1_A,d2_A,energy_hartree,bias_converged,energy_kcal,d1_label,d2_label` の列を持つ `<out-dir>/surface.csv` を作成し、`--baseline {min|first}` で kcal/mol の基準をシフトします。`--baseline first` では基準点が `(low₁, low₂)` ではなく再並べ替え後の最初の格子点（`i = j = 0`）になります。`scan2d_map.png`（2D コンター）と `scan2d_landscape.html`（3D サーフェス）を `<out-dir>/` に生成します。`--zmin/--zmax` でカラースケールを固定できます。
 
+## 出力
+
+実行後は `surface.csv`、`grid/` 配下の各点の構造、`scan2d_map.png` / `scan2d_landscape.html` のプロットを確認してください。
+
+- `result_scan2d/surface.csv`
+- `result_scan2d/grid/point_iDDD_jDDD.xyz` (`DDD = round(d × 100)` Å。例: `d1=1.30 Å, d2=3.10 Å` → `point_i130_j310.xyz`)
+- `result_scan2d/scan2d_map.png` と `result_scan2d/scan2d_landscape.html`
+
+```text
+out_dir/ (デフォルト:./result_scan2d/)
+├─ surface.csv # 構造化グリッド表
+├─ scan2d_map.png # 2D コンター（Kaleido 必須; PNG 出力に失敗すると実行が停止）
+├─ scan2d_landscape.html # 3D サーフェス可視化
+├─ grid/point_iDDD_jDDD.xyz # DDD = round(d × 100) Å (例: d1=1.30 Å, d2=3.10 Å → point_i130_j310.xyz)
+├─ grid/point_iDDD_jDDD.pdb # 変換有効時の PDB コンパニオン
+├─ grid/point_iDDD_jDDD.gjf # テンプレートがある場合の Gaussian コンパニオン
+├─ grid/preopt_iDDD_jDDD.xyz # 事前最適化構造（--preopt が True の場合）、DDD = round(d × 100)
+├─ grid/preopt_iDDD_jDDD.pdb # 変換有効時の PDB コンパニオン
+├─ grid/preopt_iDDD_jDDD.gjf # テンプレートがある場合の Gaussian コンパニオン
+└─ grid/inner_path_d1_###_trj.xyz # --dump の場合のみ（### は外側ステップ index、PDB 入力時は.pdb にも変換）
+```
+
+> **Note:** `-s/--scan-lists` の解釈結果を確認したい場合は `--print-parsed` を追加してください。
+
 ## CLI オプション
+
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル | 必須 |
@@ -102,35 +128,7 @@ YAML/JSON ファイル書式、インライン Python リテラル構文、原�
 | `--zmin FLOAT`, `--zmax FLOAT` | カラースケールの下限/上限（kcal/mol） | 自動 |
 | `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 
-### 共有 YAML セクション
-- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml-reference.md) と同じキーを使用します。`opt.dump` は YAML で設定可能ですが、スキャン軌跡の出力は `--dump` で制御します。
-
-### セクション `bias`
-- `k`（`300`）: 調和バイアス強度（eV·Å⁻²）。
-
-## 出力
-```
-out_dir/ (デフォルト:./result_scan2d/)
-├─ surface.csv # 構造化グリッド表
-├─ scan2d_map.png # 2D コンター（Kaleido 必須; PNG 出力に失敗すると実行が停止）
-├─ scan2d_landscape.html # 3D サーフェス可視化
-├─ grid/point_iDDD_jDDD.xyz # DDD = round(d × 100) Å (例: d1=1.30 Å, d2=3.10 Å → point_i130_j310.xyz)
-├─ grid/point_iDDD_jDDD.pdb # 変換有効時の PDB コンパニオン
-├─ grid/point_iDDD_jDDD.gjf # テンプレートがある場合の Gaussian コンパニオン
-├─ grid/preopt_iDDD_jDDD.xyz # 事前最適化構造（--preopt が True の場合）、DDD = round(d × 100)
-├─ grid/preopt_iDDD_jDDD.pdb # 変換有効時の PDB コンパニオン
-├─ grid/preopt_iDDD_jDDD.gjf # テンプレートがある場合の Gaussian コンパニオン
-└─ grid/inner_path_d1_###_trj.xyz # --dump の場合のみ（### は外側ステップ index、PDB 入力時は.pdb にも変換）
-```
-
-## 注意事項
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
-
-- 計算エンジンは MLIP バックエンド（デフォルト: UMA、`-b/--backend` で切替可能）で、1D スキャンと同じ `HarmonicBiasCalculator` を再利用します。
-- Å 単位の制限値は内部で Bohr に変換され、L-BFGS ステップや RFO 信頼半径の制御に使われます。最適化の一時ファイルはテンポラリディレクトリに配置されます。
-- バイアスはエネルギー記録前に除去されるため、`surface.csv` を下流のフィッティングや可視化スクリプトにそのまま利用できます。
-- `--freeze-links` はユーザー指定の `freeze_atoms` にリンク水素親原子をマージし、抽出された活性部位モデルの境界を固定します。
-
+## YAML 設定
 
 ```yaml
 geom:
@@ -156,8 +154,22 @@ bias:
  k: 300.0 # harmonic bias strength (eV·Å⁻²)
 ```
 
+### 共有 YAML セクション
+- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml-reference.md) と同じキーを使用します。`opt.dump` は YAML で設定可能ですが、スキャン軌跡の出力は `--dump` で制御します。
+
+### セクション `bias`
+- `k`（`300`）: 調和バイアス強度（eV·Å⁻²）。
+
 `opt` の詳細は [YAML リファレンス](yaml-reference.md) を参照してください。
-`--relax-max-cycles` は**明示的に指定され**、かつ YAML で `opt.max_cycles` が設定されていない場合にのみ適用されます（デフォルト `10000`）。
+
+## 注意事項
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+
+- 計算エンジンは MLIP バックエンド（デフォルト: UMA、`-b/--backend` で切替可能）で、1D スキャンと同じ `HarmonicBiasCalculator` を再利用します。
+- Å 単位の制限値は内部で Bohr に変換され、L-BFGS ステップや RFO 信頼半径の制御に使われます。最適化の一時ファイルはテンポラリディレクトリに配置されます。
+- バイアスはエネルギー記録前に除去されるため、`surface.csv` を下流のフィッティングや可視化スクリプトにそのまま利用できます。
+- `--freeze-links` はユーザー指定の `freeze_atoms` にリンク水素親原子をマージし、抽出された活性部位モデルの境界を固定します。
+- `--relax-max-cycles` は**明示的に指定され**、かつ YAML で `opt.max_cycles` が設定されていない場合にのみ適用されます（デフォルト `10000`）。
 
 ## 関連項目
 - [scan](scan.md) -- 1D 結合距離スキャン

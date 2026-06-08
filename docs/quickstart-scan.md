@@ -50,21 +50,24 @@ Stages run sequentially; each starts from the previous stage's relaxed result.
 result_scan/
 ├── summary.log
 ├── summary.json
-├── scan/
-│   ├── preopt/                    # Pre-optimized structure
-│   ├── stage_01/                  # Scan stage 1 results
-│   │   ├── scan_trj.xyz          # Scan trajectory
-│   │   └── scan.pdb
-│   └── stage_02/                  # Scan stage 2 (if multi-stage)
-└── path_search/                   # MEP search (default, recursive); path_opt/ with --refine-path False
-    ├── mep.pdb
-    └── energy_diagram_UMA_all.png
+├── mep.pdb                        # Full MEP path (promoted to the root)
+├── energy_diagram_MEP.png         # MEP energy plot (promoted to the root)
+├── segments/
+│   └── seg_01/                    # Per-reactive-segment deliverables
+└── _work/                         # Pipeline scratch (safe to delete)
+    ├── scan/
+    │   ├── preopt/                # Pre-optimized structure
+    │   ├── stage_01/              # Scan stage 1 results
+    │   │   ├── scan_trj.xyz       # Scan trajectory
+    │   │   └── scan.pdb
+    │   └── stage_02/              # Scan stage 2 (if multi-stage)
+    └── path_search/               # MEP search (path_opt/ with --refine-path False)
 ```
 
 **What to check:**
 
-1. `scan/stage_01/scan_trj.xyz` — open in PyMOL to verify bond distances change as expected
-2. `path_search/mep.pdb` — the optimized MEP trajectory
+1. `_work/scan/stage_01/scan_trj.xyz` — open in PyMOL to verify bond distances change as expected
+2. `mep.pdb` — the optimized MEP trajectory (promoted to the output root)
 3. `summary.log` — barrier heights and bond change summary
 
 **Tip:** Use `--print-parsed` (and abort with Ctrl-C) to verify scan targets before letting the full run proceed:

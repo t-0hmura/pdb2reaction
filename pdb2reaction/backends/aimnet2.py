@@ -191,9 +191,7 @@ class AIMNet2Calculator(MLIPCalculator):
         energy, forces, _ = self._call(list(elem), coord_ang, with_hessian=False)
         return energy, np.asarray(forces, dtype=np.float64)
 
-    # ------------------------------------------------------------------
     # Analytical Hessian (reuses existing _call(with_hessian=True) path)
-    # ------------------------------------------------------------------
 
     def _supports_analytical_hessian(self) -> bool:
         return True
@@ -252,11 +250,17 @@ class AIMNet2Calculator(MLIPCalculator):
             )
 
         # Keep the Hessian on its native device: the base dispatcher
-        # recognises torch tensors and routes them through the GPU path.
+        # recognises torch tensors and routes them through the GPU path,
+        # avoiding a costly 3N×3N CPU copy on every analytical call.
         if not isinstance(hess, torch.Tensor):
             hess = torch.as_tensor(hess)
+        else:
+            # detach so AIMNet2 forward-pass activations / saved tensors free;
+            # downstream consumers (PHVA, eigh, projection) need only values.
+            hess = hess.detach()
         dof = len(elem) * 3
         hess = hess.reshape(dof, dof)
+        del out
         return hess
 
 
@@ -280,7 +284,6 @@ class AIMNet2ASECalculator:
         if str(device).lower() == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
 
-        # Try different constructor signatures
         for args, kwargs in [
             ((model,), {"device": device}),
             ((), {"model": model, "device": device}),

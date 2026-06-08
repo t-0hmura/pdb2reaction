@@ -1,12 +1,16 @@
 # `pdb2reaction bond-summary`
 
 ```text
-
 Usage: pdb2reaction bond-summary [OPTIONS] [EXTRA_INPUTS]...
 
   Detect bond changes between consecutive structures.
 
 Options:
+  -v, --verbose LEVEL         Console verbosity 0-3 (default 2). 0=silent;
+                              1=milestones only; 2=+optimizer cycle tables, per-
+                              stage timing, VRAM, deliverable paths;
+                              3=everything (full config blocks, per-file paths,
+                              DEBUG logging).  [0<=x<=3]
   --help-advanced             Show all options (including advanced settings) and
                               exit.
   -i, --input TEXT            Input structure files (XYZ/PDB/GJF). Repeat -i for
@@ -17,7 +21,7 @@ Options:
                               1.2]
   --one-based / --zero-based  Use 1-based atom indices in output.  [default:
                               one-based]
-  --out-json / --no-out-json  Print machine-readable JSON to stdout instead of
-                              text.  [default: no-out-json]
+  --json / --no-json          Emit JSON to stdout (no file written).  [default:
+                              no-json]
   -h, --help                  Show this message and exit.
 ```

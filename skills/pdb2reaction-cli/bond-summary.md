@@ -13,7 +13,7 @@ Use it as a sanity check on R vs P, or to understand how a recursive
 
 ```bash
 pdb2reaction bond-summary -i a.pdb -i b.pdb [-i c.pdb ...] \
-    [--bond-factor 1.2] [--device cpu] [--one-based|--zero-based] [--out-json]
+    [--bond-factor 1.2] [--device cpu] [--one-based|--zero-based] [--json]
 # Positional file args also accepted:
 pdb2reaction bond-summary A.xyz B.xyz [C.xyz ...]
 ```
@@ -26,7 +26,7 @@ pdb2reaction bond-summary A.xyz B.xyz [C.xyz ...]
 | `--device` | str | `cpu` | Compute device for distance calculations |
 | `--bond-factor` | float | `1.2` | Covalent-radius multiplier for bond cutoff |
 | `--one-based / --zero-based` | flag | `--one-based` | Atom-index numbering convention in the report |
-| `--out-json / --no-out-json` | flag | `--no-out-json` | Emit machine-readable JSON to stdout in place of the text report |
+| `--json / --no-json` | flag | `--no-json` | Emit machine-readable JSON to stdout in place of the text report |
 
 (Internal `margin_fraction` of 0.05 further shrinks the threshold; see
 `bond_changes.py`.)
@@ -76,4 +76,4 @@ Bond broken (2):
 - `path-search.md` — uses bond changes for recursive segmentation.
 - `../pdb2reaction-workflows-output/SKILL.md` — interpreting
   `summary.json["segments"][i]["bond_changes"]`.
-- Defaults: `import pdb2reaction.defaults as d; print(d.BOND_KW)`
+- Defaults: bond-summary uses its own CLI defaults (`device=cpu`, `bond_factor=1.20`). `BOND_KW` (`device=auto`) only governs the internal bond checks in scan / path-search / all.

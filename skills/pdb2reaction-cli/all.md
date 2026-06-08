@@ -15,7 +15,7 @@ more elementary steps.
 
 ```bash
 pdb2reaction all -i <input(s)> [-c <substrate>] [-l 'RES:Q,...'] \
-    [--scan-lists '...'] [--tsopt] [--thermo] [--dft] \
+    [--scan-lists '...'] [--tsopt True] [--thermo True] [--dft True] \
     [-b uma|orb|mace|aimnet2] [-o result_all/]
 ```
 
@@ -30,9 +30,9 @@ pdb2reaction all -i <input(s)> [-c <substrate>] [-l 'RES:Q,...'] \
 | `-m, --multiplicity` | int | 1 | Spin multiplicity (2S+1) |
 | `-r, --radius` | float | 2.6 | Pocket radius (Å) when `-c` triggers extraction |
 | `-s, --scan-lists` | repeated | none | Staged distance scans (mode 2 — `all-scan-list.md`) |
-| `--tsopt / --no-tsopt` | toggle | `--no-tsopt` | Run TS optimization + IRC per reactive segment (also required to enter TS-only mode with a single `-i`) |
-| `--thermo / --no-thermo` | toggle | `--no-thermo` | Run freq + thermochemistry on R / TS / P |
-| `--dft / --no-dft` | toggle | `--no-dft` | Run DFT single point on R / TS / P |
+| `--tsopt` | BOOL | `False` | Run TS optimization + IRC per reactive segment (also required to enter TS-only mode with a single `-i`) |
+| `--thermo` | BOOL | `False` | Run freq + thermochemistry on R / TS / P |
+| `--dft` | BOOL | `False` | Run DFT single point on R / TS / P |
 | `--dft-func-basis` | str | `wb97m-v/def2-tzvpd` | DFT functional/basis (when `--dft`) |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `--solvent` | str | none | xTB-ALPB solvent name (`water`, `methanol`, …) |
@@ -59,25 +59,25 @@ True").
 
 ## Output tree (typical)
 
-`<path_dir>` = `path_search/` (default) or `path_opt/` (`--refine-path False`).
+Three zones: deliverables at `<out_dir>/`, per-segment deliverables under `<out_dir>/segments/seg_NN/`, scratch under `<out_dir>/_work/`. `<work_path>` = `_work/path_search/` (default) or `_work/path_opt/` (`--refine-path False`).
 
 | Path | When | Content |
 |---|---|---|
 | `<out_dir>/summary.json` | always | machine-readable per-stage results |
 | `<out_dir>/summary.log` | always | human-readable text + dir tree |
-| `<out_dir>/models/model_<stem>.pdb` | `-c` given | extracted active-site clusters (one per `-i` input) |
-| `<out_dir>/seg_NN/{reactant,ts,product}.{pdb,xyz}` | always | canonical R/TS/P (2-digit, top-level) |
-| `<out_dir>/mep_trj.xyz`, `mep.{pdb,gjf}` | always | stitched MEP across segments |
+| `<out_dir>/mep.{pdb,gjf}`, `mep_trj.xyz`, `mep_w_ref.pdb` | always | stitched MEP across segments (promoted to root) |
+| `<out_dir>/energy_diagram_MEP.png` | always | bare all-segment MEP energies |
 | `<out_dir>/energy_diagram_{UMA,G_UMA,DFT,G_DFT_plus_UMA}_all.png` | combos of `--thermo`/`--dft` | aggregated multi-segment diagrams |
-| `<path_dir>/seg_NNN_<tag>/` | always | per-string MEP scratch (3-digit, `_mep` / `_maxdepth` / `_bridge`) |
-| `<path_dir>/mep_seg_NN_trj.xyz`, `mep_seg_NN.{pdb,gjf}` | always | canonical per-segment MEP frames |
-| `<path_dir>/hei_seg_NN.{xyz,pdb,gjf}` | always | HEI candidate per segment (TS seed) |
-| `<path_dir>/energy_diagram_MEP.png` | always | bare MEP energies (path-search level) |
-| `<path_dir>/post_seg_NN/ts/final_geometry.{xyz,pdb}`, `vib/imag_*.pdb` | always | tsopt output |
-| `<path_dir>/post_seg_NN/irc/{forward,backward,finished}_irc_trj.xyz` | always | IRC trajectories |
-| `<path_dir>/post_seg_NN/freq/{R,TS,P}/{frequencies_cm-1.txt, thermoanalysis.yaml}` | always | per-state freq + thermo |
-| `<path_dir>/post_seg_NN/dft/{R,TS,P}/result.{yaml,json}` | `--dft` | per-state DFT |
-| `<path_dir>/post_seg_NN/energy_diagram_{UMA,G_UMA,DFT,G_DFT_plus_UMA}.png` | combos of `--thermo`/`--dft` | per-segment diagrams |
+| `<out_dir>/segments/seg_NN/{reactant,ts,product}.{pdb,xyz}` | always | canonical R/TS/P (2-digit) |
+| `<out_dir>/segments/seg_NN/ts/final_geometry.{xyz,pdb}`, `vib/imag_*.pdb` | `--tsopt` | tsopt output |
+| `<out_dir>/segments/seg_NN/irc/{forward,backward,finished}_irc_trj.xyz` | `--tsopt` | IRC trajectories |
+| `<out_dir>/segments/seg_NN/freq/{R,TS,P}/{frequencies_cm-1.txt, thermoanalysis.yaml}` | `--thermo` | per-state freq + thermo |
+| `<out_dir>/segments/seg_NN/dft/{R,TS,P}/result.{yaml,json}` | `--dft` | per-state DFT |
+| `<out_dir>/segments/seg_NN/energy_diagram_{UMA,G_UMA,DFT,G_DFT_plus_UMA}.png` | combos of `--thermo`/`--dft` | per-segment diagrams |
+| `<out_dir>/_work/models/model_<stem>.pdb` | `-c` given | extracted active-site clusters (one per `-i` input) |
+| `<work_path>/seg_NNN_<tag>/` | always | per-string MEP scratch (3-digit, `_mep` / `_maxdepth` / `_bridge`) |
+| `<work_path>/mep_seg_NN_trj.xyz`, `mep_seg_NN.{pdb,gjf}` | always | per-segment MEP frames |
+| `<work_path>/hei_seg_NN.{xyz,pdb,gjf}` | always | HEI candidate per segment (TS seed) |
 
 ## Output keys (summary.json — top level)
 
@@ -103,9 +103,9 @@ To rerun a specific stage (for example after a walltime hit), call the
 standalone subcommands directly on the segment outputs `all` produced:
 
 ```bash
-pdb2reaction tsopt -i path_search/hei_seg_03.xyz -o path_search/post_seg_03/ts -b uma
-pdb2reaction irc   -i path_search/post_seg_03/ts/final_geometry.xyz -o path_search/post_seg_03/irc -b uma
-pdb2reaction freq  -i path_search/post_seg_03/ts/final_geometry.xyz -o path_search/post_seg_03/freq -b uma
+pdb2reaction tsopt -i _work/path_search/hei_seg_03.xyz -o segments/seg_03/ts -b uma
+pdb2reaction irc   -i segments/seg_03/ts/final_geometry.xyz -o segments/seg_03/irc -b uma
+pdb2reaction freq  -i segments/seg_03/ts/final_geometry.xyz -o segments/seg_03/freq -b uma
 ```
 
 The directory layout matches what `all` produces, so downstream
@@ -117,11 +117,11 @@ analysis scripts keep working.
   shell-quoting trouble traces back to single vs double quotes.
 - If `summary.json` shows `"status": "failed"` (or `"partial"`) for any segment, look
   at the corresponding `summary.log` block; per-stage errors are also
-  duplicated into `post_seg_NN/<stage>/result.json`.
-- The `seg_NN/` top-level directory is **only populated on success**
-  for that segment. Failed segments leave artifacts under
-  `path_search/seg_NNN_<tag>/` and `path_search/post_seg_NN/`
-  (3-digit scratch) but not the top-level 2-digit copy.
+  duplicated into `segments/seg_NN/<stage>/result.json`.
+- The `segments/seg_NN/` deliverable directory is **only populated on success**
+  for that segment. Failed segments leave scratch artifacts under
+  `_work/path_search/seg_NNN_<tag>/` (3-digit) but not the `segments/seg_NN/`
+  2-digit deliverable copy.
 
 ## See also
 
@@ -131,5 +131,5 @@ analysis scripts keep working.
   `dft.md` — the underlying subcommands.
 - `pdb2reaction-workflows-output/SKILL.md` — output schema and
   R/TS/P coordinate conventions.
-- Defaults: `import pdb2reaction.defaults` (`OUT_DIR_ALL`, plus the
+- Defaults: `import pdb2reaction.core.defaults` (`OUT_DIR_ALL`, plus the
   per-stage `*_KW` dicts).

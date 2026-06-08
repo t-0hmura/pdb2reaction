@@ -1,32 +1,13 @@
 # `trj2fig`
 
-## Overview
+Plot energies from an XYZ trajectory's comment lines (or recompute them with an MLIP backend) and export the series as static / interactive figures and CSV tables. By default it reads the per-frame energies (in hartree) from each comment line, converts them to kcal/mol or hartree, and optionally references all values to a chosen frame to produce ΔE. Supplying `-q/--charge` and/or `-m/--multiplicity` instead recomputes every frame's energy with the MLIP backend (default UMA) using the given charge/spin.
 
-Plot energies from an XYZ trajectory's comment lines (or recompute them with an MLIP backend) and export as static / interactive figures and CSV.
+## When to use
 
-### At a glance
-- **Use when:** Visualizing energies along an XYZ trajectory produced by `opt`, `scan`, `path-opt`, `path-search`, or `irc`; or recomputing energies on the fly when `-q/-m` are supplied.
-- **Method:** Parse the first numeric token from each frame's comment line (or recompute with the selected MLIP backend); convert to kcal/mol or hartree; optionally subtract a reference frame (first / last / manual); render via Plotly.
-- **Outputs:** One or more images (`.png` / `.jpg` / `.jpeg` / `.html` / `.svg` / `.pdf`) and/or CSV tables; optional `result.json` with `--out-json`. Default output is `energy.png` when `-o` is omitted.
-- **Defaults:** `--unit kcal`, `-r/--reference init`, `--reverse-x False`, `-b/--backend uma`, `--solvent none`, `--solvent-model alpb`, `--out-json False`.
-- **Next step:** Use [`energy-diagram`](energy-diagram.md) when only numeric state energies are needed without a trajectory; otherwise the figure is typically the terminal visualization step.
+- Visualizing energies along an XYZ trajectory produced by `opt`, `scan`, `path-opt`, `path-search`, or `irc`; or recomputing energies on the fly when `-q/-m` are supplied.
 
-`trj2fig` converts an XYZ trajectory with energy values (obtained from the pdb2reaction workflow) into plot images. By default it
-reads the energies (in hartree) encoded in each frame’s comment line, converts them
-to kcal/mol or hartree, optionally references all values to a chosen frame, and
-exports the resulting series as static/interactive figures and CSV tables. The
-reference can be the first frame or set manually (`-r`), and the last frame when `--reverse-x` is
-used. When you supply `-q/--charge` and/or
-`-m/--multiplicity`, all energies are recomputed for every frame with the
-MLIP backend (default UMA; see `-b/--backend`) using the provided charge/spin instead of the comment
-lines.
+## Quick examples
 
-## Usage
-```bash
-pdb2reaction trj2fig -i TRAJECTORY.xyz [-o OUTPUTS...] [-q CHARGE] [-m MULT] [options]
-```
-
-### Examples
 ```bash
 # Default PNG, ΔE relative to the first frame
 pdb2reaction trj2fig -i traj.xyz
@@ -41,9 +22,23 @@ pdb2reaction trj2fig -i traj.xyz --reverse-x -o energy.png energy.html energy.pd
 pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 ```
 
+## Inputs
+
+Command form:
+
+```bash
+pdb2reaction trj2fig -i TRAJECTORY.xyz [-o OUTPUTS...] [-q CHARGE] [-m MULT] [options]
+```
+
+| Input | Required | Notes |
+| --- | --- | --- |
+| `-i, --input PATH` | yes | XYZ trajectory whose second line stores energies. |
+| `-o, --out PATH` | no | Repeatable output filenames; supports `.png/.jpg/.jpeg/.html/.svg/.pdf/.csv`. Defaults to `energy.png`. |
+
 ## Workflow
-1. Parse the XYZ trajectory. By default, read the first numeric token
-    found in every frame comment (scientific notation such as `1.5e-3` is supported). If
+
+1. Parse the XYZ trajectory. By default, read the energy from every frame
+    comment: an explicit `E=`/`Energy:` token takes precedence, otherwise the lone numeric token is used (scientific notation such as `1.5e-3` is supported; with multiple bare numbers the LAST is taken and a warning is emitted). If
     `-q/-m` is present, recompute energies (in hartree) for each frame with
     the MLIP backend using those charge/spin values instead of the comment.
     If no energies are found or produced, the run aborts.
@@ -58,7 +53,20 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 5. Optionally emit a CSV table with columns `frame`, `energy_hartree`, and the
     appropriate ΔE/E column in the requested unit.
 
+## Outputs
+
+```
+<output>.[png|jpg|jpeg|html|svg|pdf] # Plotly export for every requested extension (defaults to energy.png)
+<output>.csv                         # Optional energy table when CSV is requested
+result.json                          # Machine-readable summary when --out-json is set
+```
+- CSV exports include `frame`, `energy_hartree`, and either a ΔE column
+  (`delta_kcal`/`delta_hartree`) or an absolute column (`energy_kcal`/`energy_hartree`)
+  when no reference is applied.
+- Console diagnostics describing parsing failures or unsupported extensions.
+
 ## CLI options
+
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | XYZ trajectory whose second line stores energies. | Required |
@@ -74,25 +82,12 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 | `--out-json/--no-out-json` | Write a machine-readable `result.json` next to the output(s). See [JSON Output Schema](json-output.md) for the schema. | `False` |
 
-## Outputs
-```
-<output>.[png|jpg|jpeg|html|svg|pdf] # Plotly export for every requested extension (defaults to energy.png)
-<output>.csv                         # Optional energy table when CSV is requested
-result.json                          # Machine-readable summary when --out-json is set
-```
-- When no `-o` or positional outputs are provided, a single `energy.png` is written
-  to the current directory. CSV exports include `frame`, `energy_hartree`, and either
-  a ΔE column (`delta_kcal`/`delta_hartree`) or absolute column (`energy_kcal`/`energy_hartree`
-  when no reference is applied).
-- Console diagnostics describing parsing failures or unsupported extensions.
+The full flag list is in the generated [command reference](reference/commands/index.md).
 
 ## Notes
-- Energies are taken from the first numeric token in each comment; malformed
-  comments raise an error.
+- A comment with no parseable energy raises an error (see Workflow step 1 for the `E=`/`Energy:` vs. bare-number precedence).
 - Unsupported extensions abort the run; `.png` uses Plotly’s PNG export with
   `scale=2` for sharper output.
-- `--reverse-x` flips both the axis direction and the behavior of `-r init` so
-  that the initial frame appears on the right side of the plot.
 
 ## See Also
 

@@ -8,7 +8,7 @@ CLI-derived assignments, so YAML silently overrode explicit CLI options for
 scan / scan2d.
 """
 
-from pdb2reaction.utils import build_scan_configs
+from pdb2reaction.core.utils import build_scan_configs
 
 
 def _base_kw():

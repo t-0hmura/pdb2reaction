@@ -1,25 +1,14 @@
 # `add-elem-info`
 
-## Overview
+Repair the element-symbol columns (77–78) of ATOM/HETATM records in a PDB file. Per-atom elements are inferred from atom name + residue context, using `Bio.PDB.PDBParser` re-parse + per-atom element inference; only columns 77–78 are rewritten.
 
-> **Summary:** Repair the element-symbol columns (77–78) of ATOM/HETATM records in a PDB file. Per-atom elements are inferred from atom name + residue context.
+## When to use
 
-### At a glance
-- **Use when:** A PDB file has missing or wrong element columns (77–78) and downstream subcommands (`extract`, `opt`, `tsopt`, ...) reject it.
-- **Method:** `Bio.PDB.PDBParser` re-parse + per-atom element inference from atom name + residue dictionaries (amino-acid first-letter / ion / halogen / deuterium); only columns 77–78 are rewritten.
-- **Outputs:** Repaired PDB written to `<input>_add_elem.pdb` (default), `OUTPUT.pdb` (`-o`), or in-place when `--overwrite` is set; console report of assigned-element counts and up to 50 unresolved atoms.
-- **Defaults:** `--overwrite False`; output `<input>_add_elem.pdb`.
-- **Next step:** Feed the repaired PDB into [`extract`](extract.md) or [`all`](all.md); `all` auto-invokes `add-elem-info` as a preflight, so manual use is only needed before standalone subcommands.
+- Use when a PDB file has missing or wrong element columns (77–78) and downstream subcommands (`extract`, `opt`, `tsopt`, ...) reject it.
+- `all` auto-invokes `add-elem-info` as a preflight, so manual use is only needed before standalone subcommands.
 
-`add-elem-info` repairs the element-symbol columns (77–78) of ATOM/HETATM
-records in a PDB file.
+## Quick examples
 
-## Usage
-```bash
-pdb2reaction add-elem-info -i INPUT.pdb [-o OUTPUT.pdb] [--overwrite/--no-overwrite]
-```
-
-## Examples
 ```bash
 # Populate element fields and write to "<input>_add_elem.pdb"
 pdb2reaction add-elem-info -i 1abc.pdb
@@ -31,6 +20,19 @@ pdb2reaction add-elem-info -i 1abc.pdb -o 1abc_fixed.pdb
 pdb2reaction add-elem-info -i 1abc.pdb --overwrite
 ```
 
+## Inputs
+
+Command form:
+
+```bash
+pdb2reaction add-elem-info -i INPUT.pdb [-o OUTPUT.pdb] [--overwrite/--no-overwrite]
+```
+
+| Input | Required | Notes |
+| --- | --- | --- |
+| `-i, --input PATH` | yes | Input PDB file. |
+| `-o, --out PATH` | no | Output path. When set, `--overwrite` is ignored; defaults to `<input>_add_elem.pdb`. |
+
 ## Workflow
 1. Parse the input file with `Bio.PDB.PDBParser`, mirroring the residue
     definitions used in `extract.py` (`AMINO_ACIDS`, `WATER_RES`, `ION`).
@@ -41,19 +43,9 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite
   first-letter mapping for C/N/O/P/S; carbon side-chain labels default to C.
  - Other ligands: use atom-name prefixes and fall back to element-symbol
   normalization (recognizing halogens, deuterium → hydrogen, etc.).
-3. Write the structure through `PDBIO`:
- - default output: `<input>_add_elem.pdb` (when `-o/--out` is omitted and `--overwrite` is not `True`)
- - `-o/--out`: write to the specified path; `--overwrite` is ignored when this is provided
- - `--overwrite` (without `-o/--out`): overwrite the input path in-place
+3. Write the structure through `PDBIO` to the chosen output path (see [Outputs](#outputs) for the default / `-o` / `--overwrite` precedence).
 4. Print a summary reporting how many atoms were assigned/reassigned, plus
     per-element totals and a truncated list of unresolved atoms.
-
-## CLI options
-| Option | Description | Default |
-| --- | --- | --- |
-| `-i, --input PATH` | Input PDB file. | Required |
-| `-o, --out PATH` | Output path. When set, `--overwrite` is ignored. | _None_ → `<input>_add_elem.pdb` |
-| `--overwrite/--no-overwrite` | Overwrite the input file in-place when `-o/--out` is omitted. | `False` |
 
 ## Outputs
 - A PDB file with element symbols populated/corrected:
@@ -63,21 +55,21 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite
 - Console report with totals for processed/assigned atoms,
   per-element counts, and up to 50 unresolved atoms.
 
-## Integration with `all` workflow
+## CLI options
+| Option | Description | Default |
+| --- | --- | --- |
+| `-i, --input PATH` | Input PDB file. | Required |
+| `-o, --out PATH` | Output path. When set, `--overwrite` is ignored. | _None_ → `<input>_add_elem.pdb` |
+| `--overwrite/--no-overwrite` | Overwrite the input file in-place when `-o/--out` is omitted. | `False` |
 
-When running `pdb2reaction all`, `add-elem-info` is **automatically invoked as a
-preflight step only when a PDB input is missing element symbols** (followed by
-`fix-altloc`, then active site model extraction). Inputs that already carry
-element symbols pass through unchanged. You therefore do **not** need to run
-`add-elem-info` manually before `pdb2reaction all`; it is only required when
-you use individual subcommands such as `extract` or `opt` directly on a PDB
-that lacks element columns.
+The full flag list is in the generated [command reference](reference/commands/index.md).
 
 ## Notes
 - Only columns 77–78 are modified; coordinates, occupancies, B-factors, charges, altlocs,
   insertion codes, and record ordering stay untouched.
 - ATOM and HETATM records across all models/chains/residues are supported.
 - Deuterium labels map to hydrogen; selenium (`SE*`) and halogens are recognized automatically.
+- Re-running on a PDB that already carries valid element symbols is a no-op (atoms pass through unchanged). See [all](all.md) for how the `all` preflight invokes `add-elem-info` automatically only when element columns are missing.
 
 ## See Also
 

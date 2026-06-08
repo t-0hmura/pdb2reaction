@@ -5,7 +5,7 @@ description: Orientation for pdb2reaction — what it is, when to use it, and ho
 
 # pdb2reaction Overview
 
-## What it is
+## Purpose
 
 `pdb2reaction` is a command-line toolkit that takes a protein–ligand PDB and
 runs the entire MLIP-driven reaction-path workflow — active-site extraction,
@@ -80,26 +80,26 @@ its own subcommand (`pdb2reaction tsopt -i ts.xyz`).
 
 Backend-specific install notes live in
 `pdb2reaction-install-backends/{uma,mace,orb,aimnet2}.md`. The default-value
-dictionaries are in `pdb2reaction.defaults` (read live, not transcribed):
+dictionaries are in `pdb2reaction.core.defaults` (read live, not transcribed):
 
 ```bash
-python -c "import pdb2reaction.defaults as d; print(sorted(n for n in dir(d) if not n.startswith('_')))"
+python -c "import pdb2reaction.core.defaults as d; print(sorted(n for n in dir(d) if not n.startswith('_')))"
 ```
 
 ## Where the code lives
 
 | File | What's there |
 |---|---|
-| `pdb2reaction/cli.py` | Click entry point, subcommand registry |
-| `pdb2reaction/defaults.py` | All default kwarg dicts (UMA_CALC_KW, RSIRFO_KW, IRC_KW, …) — single source of truth |
+| `pdb2reaction/cli/app.py` | Click entry point, subcommand registry |
+| `pdb2reaction/core/defaults.py` | All default kwarg dicts (UMA_CALC_KW, RSIRFO_KW, IRC_KW, …) — single source of truth |
 | `pdb2reaction/backends/__init__.py` | `BACKEND_REGISTRY`, `create_calculator(...)` factory |
-| `pdb2reaction/all.py` | End-to-end orchestration for `pdb2reaction all` |
-| `pdb2reaction/extract.py` | PDB → cluster, residue table, link-H placement |
-| `pdb2reaction/path_search.py` | Recursive MEP search, bond-change segmentation |
-| `pdb2reaction/tsopt.py` | RS-I-RFO (default) / Dimer (alternative) transition-state search |
-| `pdb2reaction/irc.py` | EulerPC IRC + endpoint optimization |
-| `pdb2reaction/freq.py` | Hessian, frequencies, QRRHO thermochemistry |
-| `pdb2reaction/dft.py` | PySCF / GPU4PySCF single-point driver |
+| `pdb2reaction/workflows/all.py` | End-to-end orchestration for `pdb2reaction all` |
+| `pdb2reaction/workflows/extract.py` | PDB → cluster, residue table, link-H placement |
+| `pdb2reaction/workflows/path_search.py` | Recursive MEP search, bond-change segmentation |
+| `pdb2reaction/workflows/tsopt.py` | RS-I-RFO (default) / Dimer (alternative) transition-state search |
+| `pdb2reaction/workflows/irc.py` | EulerPC IRC + endpoint optimization |
+| `pdb2reaction/workflows/freq.py` | Hessian, frequencies, QRRHO thermochemistry |
+| `pdb2reaction/workflows/dft.py` | PySCF / GPU4PySCF single-point driver |
 | bundled `pysisyphus/` | GPU-tensor pysisyphus fork |
 | bundled `thermoanalysis/` | QRRHO thermochemistry |
 

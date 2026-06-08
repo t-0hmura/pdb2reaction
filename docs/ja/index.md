@@ -81,7 +81,7 @@
   author       = {Ohmura, Takuto and Sato, Hajime and Terada, Tohru},
   title        = {pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials},
   year         = {2026},
-  doi          = {10.26434/chemrxiv.15003538/v1},
+  doi          = {10.26434/chemrxiv.15003538},
   note         = {ChemRxiv preprint}
 }
 ```

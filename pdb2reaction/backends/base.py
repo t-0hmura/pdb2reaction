@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional, Sequence
 
 import click
 import numpy as np
+import torch
 
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.constants import BOHR2ANG, ANG2BOHR, AU2EV
@@ -156,19 +157,24 @@ class MLIPCalculator(Calculator):
         self.out_hess_torch = bool(out_hess_torch)
         self.print_timing = bool(print_timing)
 
-        # Normalise freeze_atoms
+        # Normalise freeze_atoms. A silent `except Exception: freeze_iter=[]`
+        # masked malformed user input (e.g. typo in a CLI string) by quietly
+        # un-freezing all atoms, which would let a TS opt walk through what the
+        # user meant to be frozen. Narrow to the actual conversion errors and
+        # raise with the offending entry instead.
         if freeze_atoms is None:
             freeze_iter: List[int] = []
         else:
             try:
                 freeze_iter = [int(i) for i in list(freeze_atoms)]
-            except Exception:
-                freeze_iter = []
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"freeze_atoms must be an iterable of ints (1-based indices); "
+                    f"got {freeze_atoms!r}. Original error: {exc}"
+                ) from exc
         self.freeze_atoms = sorted(set(freeze_iter))
 
-    # ------------------------------------------------------------------
     # Subclass hooks (override in backend implementations)
-    # ------------------------------------------------------------------
 
     def _compute_energy_forces_ev(
         self, elem: Sequence[str], coord_ang: np.ndarray
@@ -192,9 +198,6 @@ class MLIPCalculator(Calculator):
         """Return True if this backend can compute analytical Hessians."""
         return False
 
-    # ------------------------------------------------------------------
-    # Freeze-atom helpers
-    # ------------------------------------------------------------------
 
     def _active_and_frozen_dof_idx(self, n_atoms: int):
         frozen_set = set(self.freeze_atoms)
@@ -225,9 +228,7 @@ class MLIPCalculator(Calculator):
         Fz[np.asarray(self.freeze_atoms, dtype=int)] = 0.0
         return Fz
 
-    # ------------------------------------------------------------------
     # FD Hessian (CPU, used by non-UMA backends)
-    # ------------------------------------------------------------------
 
     def _build_fd_hessian_cpu(
         self,
@@ -253,11 +254,22 @@ class MLIPCalculator(Calculator):
         e0, F0 = self._compute_energy_forces_ev(elem, coord_ang)
         F0 = np.asarray(F0, dtype=np.float64).reshape(n_atoms, 3)
 
-        H = np.zeros((dof, dof), dtype=np.float64)
+        n_active = len(active_dof_idx)
+        if self.return_partial_hessian and n_active < dof:
+            # Compact (n_active, dof) — saves (dof - n_active) * dof * 8 bytes
+            # of CPU RAM (e.g. ~14 GB at 10k atoms / 200 active). Partial
+            # Hessian is preserved as-is (no upper-triangle tricks); both
+            # triangles are populated by the post-loop symmetrise on the
+            # compact square block.
+            H = np.zeros((n_active, dof), dtype=np.float64)
+            _partial_alloc = True
+        else:
+            H = np.zeros((dof, dof), dtype=np.float64)
+            _partial_alloc = False
         coord_plus = coord_ang.copy()
         coord_minus = coord_ang.copy()
 
-        for k in active_dof_idx:
+        for i_local, k in enumerate(active_dof_idx):
             a = k // 3
             c = k % 3
 
@@ -269,24 +281,29 @@ class MLIPCalculator(Calculator):
             _, Fm = self._compute_energy_forces_ev(elem, coord_minus)
             Fm = np.asarray(Fm, dtype=np.float64).reshape(-1)
 
-            H[:, k] = -(Fp - Fm) / (2.0 * eps_ang)
+            if _partial_alloc:
+                H[i_local, :] = -(Fp - Fm) / (2.0 * eps_ang)
+            else:
+                H[:, k] = -(Fp - Fm) / (2.0 * eps_ang)
 
             coord_plus[a, c] = coord_ang[a, c]
             coord_minus[a, c] = coord_ang[a, c]
 
-        # Symmetrise
-        H = 0.5 * (H + H.T)
-
-        # Reduce to active-DOF block if requested
-        if self.return_partial_hessian:
+        if _partial_alloc:
+            # H is (n_active, dof). Take active columns → (n_active, n_active),
+            # then symmetrise the compact square block (writes BOTH triangles).
             idx = np.array(active_dof_idx, dtype=int)
-            H = H[np.ix_(idx, idx)]
+            H = H[:, idx]
+            H = 0.5 * (H + H.T)
+        else:
+            # Legacy path: symmetrise full (dof, dof) then optionally extract.
+            H = 0.5 * (H + H.T)
+            if self.return_partial_hessian:
+                idx = np.array(active_dof_idx, dtype=int)
+                H = H[np.ix_(idx, idx)]
 
         return {"energy": e0, "forces": F0, "hessian": H}
 
-    # ------------------------------------------------------------------
-    # Hessian postprocessing
-    # ------------------------------------------------------------------
 
     def _hessian_ev_to_au(self, H_ev_ang2: np.ndarray) -> np.ndarray:
         """Convert (3N,3N) Hessian from eV/Å² to Hartree/Bohr² and symmetrise."""
@@ -366,9 +383,6 @@ class MLIPCalculator(Calculator):
         H.mul_(0.5 * H_EVAA_2_AU)
         return H.detach()
 
-    # ------------------------------------------------------------------
-    # PySisyphus API
-    # ------------------------------------------------------------------
 
     def get_energy(self, elem, coords):
         coord_ang = np.asarray(coords, dtype=np.float64).reshape(-1, 3) * BOHR2ANG
@@ -388,7 +402,6 @@ class MLIPCalculator(Calculator):
         coord_ang = np.asarray(coords, dtype=np.float64).reshape(-1, 3) * BOHR2ANG
         n_atoms = coord_ang.shape[0]
 
-        hess_total_start = time.perf_counter()
         mode_label = "FiniteDifference"
 
         mode = (self.hessian_calc_mode or "FiniteDifference").strip().lower()
@@ -409,7 +422,12 @@ class MLIPCalculator(Calculator):
                 H_ev = self._apply_active_trim_torch(H_ev, n_atoms)
                 H_au = self._au_hessian_torch(H_ev)
                 if not self.out_hess_torch:
-                    H_au = H_au.cpu().numpy()
+                    # C-NEED: numpy boundary; release the eV-unit torch H now.
+                    H_au_np = H_au.cpu().numpy()
+                    del H_au, H_ev
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                    H_au = H_au_np
             else:
                 H_ev = np.asarray(H_ev, dtype=np.float64)
                 if H_ev.ndim == 4:
@@ -438,9 +456,11 @@ class MLIPCalculator(Calculator):
                 "hessian": H_au,
             }
 
-        total_elapsed = time.perf_counter() - hess_total_start
         if self.print_timing:
-            click.echo(f"[HessianTiming] mode: {mode_label} | elapsed: {mode_elapsed:.2f} s")
+            click.echo(f"[hessian] Completed {mode_label} Hessian: {mode_elapsed:.2f} s", detail=True)
+            from pdb2reaction.core.utils import verbose_level
+            if verbose_level() >= 3:
+                click.echo(f"[HessianTiming] mode: {mode_label} | elapsed: {mode_elapsed:.2f} s")
 
         partial_meta = self._build_partial_hessian_meta(n_atoms)
         if partial_meta is not None:

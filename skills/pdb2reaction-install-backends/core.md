@@ -25,8 +25,8 @@ Available extras (canonical list lives in `pyproject.toml`):
 |---|---|---|
 | (none) | UMA via `fairchem-core`, base deps | Default; UMA backend works out of the box |
 | `[orb]` | `orb-models` | Using `-b orb` |
-| `[aimnet]` | `aimnet>=0.1.0` | Using `-b aimnet2` |
-| `[dft]` | `pyscf`, `gpu4pyscf-cuda12x` (x86_64), `cupy-cuda12x`, `cutensor-cu12`, `basis-set-exchange` | `pdb2reaction dft` subcommand |
+| `[aimnet]` | `aimnet>=0.2.0` | Using `-b aimnet2` |
+| `[dft]` | `pyscf`, `gpu4pyscf-cuda12x` (x86_64), `cupy-cuda12x`, `basis-set-exchange` | `pdb2reaction dft` subcommand |
 | `[ci]` | CPU-only test deps; CI installs the torch CPU wheel separately via the PyTorch CPU index | Running unit tests / docs builds |
 | `[dev]` | `pytest` family | Contributing |
 | `[docs]` | `sphinx`, `myst-parser`, `furo`, `sphinx-copybutton`, `sphinx-autobuild` | Building the Sphinx docs site |
@@ -49,9 +49,6 @@ cd pdb2reaction
 pip install -e '.[orb,aimnet,dft]'
 ```
 
-`pip install -e .` will pick up edits to the source tree without
-re-installing. Useful when you are debugging the toolkit itself.
-
 ## Verify the install
 
 ```bash
@@ -61,7 +58,7 @@ pdb2reaction --help
 # Sanity import
 python -c "
 import pdb2reaction
-import pdb2reaction.defaults as d
+import pdb2reaction.core.defaults as d
 print('version :', pdb2reaction.__version__)
 print('defaults:', sorted(n for n in dir(d) if not n.startswith('_'))[:10], '...')
 "
@@ -82,12 +79,12 @@ Inside that directory:
 
 | File / dir | Purpose |
 |---|---|
-| `cli.py` | Click entry point |
-| `defaults.py` | All default kwarg dicts (read with `import pdb2reaction.defaults`) |
+| `cli/app.py` | Click entry point |
+| `core/defaults.py` | All default kwarg dicts (read with `import pdb2reaction.core.defaults`) |
 | `backends/` | UMA / Orb / MACE / AIMNet2 calculator factories |
 | `pysisyphus/` | Bundled GPU-tensor pysisyphus fork |
 | `thermoanalysis/` | Bundled QRRHO thermochemistry |
-| `extract.py`, `path_search.py`, `tsopt.py`, `irc.py`, `freq.py`, `dft.py`, `all.py` | Subcommand implementations |
+| `workflows/{extract,path_search,tsopt,irc,freq,dft,all}.py` | Subcommand implementations |
 
 ## Upgrading
 
@@ -98,7 +95,7 @@ pdb2reaction --version                    # confirm new version
 
 When upgrading **across minor versions**, also re-check:
 
-- `python -c "import pdb2reaction.defaults as d; print(d.RSIRFO_KW)"` — keys may have moved
+- `python -c "import pdb2reaction.core.defaults as d; print(d.RSIRFO_KW)"` — keys may have moved
 - `pdb2reaction <subcommand> --help` — flag set may have changed
 - `summary.json` schema — see `pdb2reaction-workflows-output/SKILL.md`
 
