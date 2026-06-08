@@ -93,7 +93,8 @@ def _run_extract_smoke(runner: CliRunner, fixtures: dict[str, Path]) -> None:
                 "PRE",
                 "-o",
                 str(output_pdb),
-                "--no-verbose",
+                "-v",
+                "0",
             ],
             "extract execution smoke",
         )
