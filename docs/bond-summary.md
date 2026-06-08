@@ -1,32 +1,20 @@
 # `bond-summary`
 
-Detect and report covalent bond changes between consecutive molecular structures (R → TS → P or multi-intermediate chains) by element-specific covalent-radius perception. For *N* input files it produces *N − 1* comparison blocks (A→B, B→C, …) and prints them to stdout; no file is written.
+Detect and report covalent bond changes between consecutive molecular structures (R → TS → P or multi-intermediate chains) by element-specific covalent-radius perception. For *N* input files it produces *N − 1* comparison blocks (A→B, B→C, …) and prints them to stdout; no file is written. Use it to audit which covalent bonds form / break between sequential structures along a reaction path — e.g. validating an IRC endpoint pair, screening multistep mechanisms, or sanity-checking `all` post-processing manually. Supported input formats are **XYZ**, **PDB**, and **GJF** (auto-detected by extension); distances are reported in Ångström.
 
-## When to use
+## Examples
 
-- Auditing which covalent bonds form / break between sequential structures along a reaction path — e.g. validating an IRC endpoint pair, screening multistep mechanisms, or sanity-checking `all` post-processing manually.
-
-## Quick examples
+Two-structure comparison (R → P):
 
 ```bash
 pdb2reaction bond-summary -i 1.R.xyz 3.P.xyz
 ```
 
+Multi-structure chain — produces three comparison blocks (R→IM1, IM1→IM2, IM2→P):
+
 ```bash
 pdb2reaction bond-summary -i 1.R.xyz 3.IM1.xyz 5.IM2.xyz 7.P.xyz
 ```
-
-The multi-structure form produces three comparison blocks: R→IM1, IM1→IM2, IM2→P.
-
-## Inputs
-
-Command form:
-
-```bash
-pdb2reaction bond-summary -i INPUT1 INPUT2 [INPUT3 ...] [options]
-```
-
-`bond-summary` compares consecutive pairs of input structures and reports bonds that are formed or broken. Bond perception uses element-specific covalent radii with configurable tolerances. Distances are reported in Ångström. Supported formats: **XYZ**, **PDB**, **GJF** (auto-detected by extension); ≥ 2 input files are required.
 
 ## Outputs
 
@@ -76,7 +64,7 @@ if changed:
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `-i, --input FILE` | Input structure file (repeat for each file, ≥ 2 required) | — |
+| `-i, --input FILE` | Input structure file in XYZ, PDB, or GJF format (auto-detected by extension; repeat for each file, ≥ 2 required) | — |
 | `--device TEXT` | Compute device (`cpu`, `cuda`) | `cpu` |
 | `--bond-factor FLOAT` | Scaling factor for covalent radii sum | `1.20` |
 | `--one-based / --zero-based` | Atom index convention in output | `--one-based` |

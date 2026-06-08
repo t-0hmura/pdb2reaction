@@ -1,33 +1,10 @@
 # `irc`
 
-Runs EulerPC (Euler Predictor-Corrector)-based intrinsic reaction coordinate (IRC) integration from a transition state toward reactants and products. By default both forward and backward branches are computed. Setting `--hessian-calc-mode Analytical` is strongly recommended when VRAM permits. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB output conversion. A typical workflow is `tsopt` → `irc`.
+Runs EulerPC (Euler Predictor-Corrector)-based intrinsic reaction coordinate (IRC) integration from a transition state toward reactants and products, tracing the path from an optimized TS (validated by `tsopt`) to confirm endpoint connectivity (R ↔ TS ↔ P). By default both forward and backward branches are computed; use `--no-backward` (or `--no-forward`) to follow only one direction. Setting `--hessian-calc-mode Analytical` is strongly recommended when VRAM permits. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB output conversion. A typical workflow is `tsopt` → `irc`.
 
-## When to use
+## Examples
 
-- Trace the intrinsic reaction coordinate from an optimized TS (validated by `tsopt`) to confirm endpoint connectivity (R ↔ TS ↔ P).
-- Run both forward and backward branches by default; use `--no-backward` (or `--no-forward`) to follow only one direction.
-
-## Quick examples
-
-```bash
-pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc
-```
-
-```bash
-# Forward-only branch, finite-difference Hessian, larger step size
-pdb2reaction irc -i ts.pdb -q 0 -m 1 --no-backward \
- --step-size 0.2 --hessian-calc-mode FiniteDifference --out-dir ./irc_fd/
-```
-
-```bash
-# Increase step size and use analytical Hessians
-pdb2reaction irc -i ts.pdb -q 0 -m 1 --step-size 0.20 \
- --hessian-calc-mode Analytical --out-dir ./result_irc_analytical
-```
-
-## Inputs
-
-Command form:
+Command synopsis:
 
 ```bash
 pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] \
@@ -42,12 +19,27 @@ pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <nu
  [--show-config] [--dry-run]
 ```
 
-| Input | Required | Notes |
-| --- | --- | --- |
-| `-i, --input PATH` | yes | Transition-state structure accepted by `geom_loader`. |
-| `-q, --charge INT` | unless template/derivation applies | Total charge; used unless YAML sets `calc.charge`. Required unless a `.gjf` template or `--ligand-charge/-l` supplies it. |
-| `-l, --ligand-charge TEXT` | no | Scalar integer or per-residue mapping (e.g., `GPP:-3,SAM:1`) deriving the total from PDB residue charges; used when `-q` is omitted. |
-| `--ref-pdb FILE` | for XYZ/GJF inputs | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). |
+Basic run with both branches:
+
+```bash
+pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc
+```
+
+Forward-only branch, finite-difference Hessian, larger step size:
+
+```bash
+# Forward-only branch, finite-difference Hessian, larger step size
+pdb2reaction irc -i ts.pdb -q 0 -m 1 --no-backward \
+ --step-size 0.2 --hessian-calc-mode FiniteDifference --out-dir ./irc_fd/
+```
+
+Increase step size and use analytical Hessians:
+
+```bash
+# Increase step size and use analytical Hessians
+pdb2reaction irc -i ts.pdb -q 0 -m 1 --step-size 0.20 \
+ --hessian-calc-mode Analytical --out-dir ./result_irc_analytical
+```
 
 ## Workflow
 
@@ -114,14 +106,14 @@ calc:
  return_partial_hessian: true # forced true for irc (partial Hessian with active-DOF processing)
 ```
 
+## Exit codes
+
+See {ref}`exit-codes` in CLI Conventions.
+
 ## Notes
 
 - The MLIP backend (UMA by default) is reused throughout the IRC; aggressive `step_length` values can destabilize EulerPC.
 - When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see {ref}`Link hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
-
-## Exit codes
-
-See {ref}`exit-codes` in CLI Conventions.
 
 ## See Also
 

@@ -1,12 +1,13 @@
 # `energy-diagram`
 
-Draw a state energy diagram directly from numeric values you provide — it does not read structure files and runs no quantum / thermo / MLIP calculation (`--thermo` / `--dft`). It produces one image file and an optional machine-readable sidecar.
+Draw a state energy diagram directly from numeric values you provide — it does not read structure files and runs no quantum / thermo / MLIP calculation (`--thermo` / `--dft`). Use it when numeric state energies are already known (e.g. from `summary.json`) and only the formatted diagram is needed; it produces one image file and an optional machine-readable sidecar.
 
-## When to use
+## Examples
 
-- Use when numeric state energies are already known (e.g. from `summary.json`) and only the formatted diagram is needed.
-
-## Quick examples
+```bash
+# Command form
+pdb2reaction energy-diagram -i VALUES... [-o OUTPUT] [--label-x...] [--label-y...]
+```
 
 ```bash
 # List string (recommended for ad-hoc plots)
@@ -23,18 +24,6 @@ pdb2reaction energy-diagram -i 0 -i 12.5 -i 4.3 -o energy.png
 pdb2reaction energy-diagram -i "[0, 12.5, 4.3]" \
     --label-x "['R','TS','P']" --label-y "ΔE (kcal/mol)" -o energy.png
 ```
-
-## Inputs
-
-Command form:
-
-```bash
-pdb2reaction energy-diagram -i VALUES... [-o OUTPUT] [--label-x...] [--label-y...]
-```
-
-| Input | Required | Notes |
-| --- | --- | --- |
-| `-i, --input` | yes | Numeric values; supports repeated flags and a single list-like string. |
 
 ## Workflow
 1. Collect values from `-i/--input` (supports repeated flags and a single list-like string).

@@ -1,40 +1,8 @@
 # `path-search`
 
-Build a continuous minimum-energy path (MEP) from **two or more** structures with GSM (default) or DMF (`--mep-mode dmf`). It selectively refines only those regions where covalent bond changes are detected, then stitches the resolved subpaths into a single trajectory, exporting the highest-energy image (HEI) of each segment as a TS candidate (validate with tsopt + IRC). The recursive decomposition automatically detects multistep reactions and builds a detailed MEP for each elementary step; complex multistep mechanisms may require manual trial-and-error—adjusting input intermediates, scan specifications, or convergence thresholds—to obtain a satisfactory pathway.
+Build a continuous minimum-energy path (MEP) from **two or more** structures (R → … → P) with GSM (default, `--mep-mode gsm`, string-based) or DMF (`--mep-mode dmf`, direct flux). Use it when you need a single stitched MEP with automatic refinement: it selectively refines only those regions where covalent bond changes are detected (`--refine-mode peak` optimizes HEI±1, `--refine-mode minima` searches outward toward the nearest local minima, defaulting to `peak` for GSM and `minima` for DMF), then stitches the resolved subpaths into a single trajectory, exporting the highest-energy image (HEI) of each segment as a TS candidate (validate with tsopt + IRC). The recursive decomposition automatically detects multistep reactions and builds a detailed MEP for each elementary step; complex multistep mechanisms may require manual trial-and-error—adjusting input intermediates, scan specifications, or convergence thresholds—to obtain a satisfactory pathway. If you only have **two** endpoints and do not need recursive refinement, [path-opt](path-opt.md) is the simpler option.
 
-## When to use
-
-- Use `path-search` for R → … → P structures (2+ inputs) requiring a single stitched MEP with automatic refinement.
-- Pick `--mep-mode gsm` (default, string-based) or `--mep-mode dmf` (direct flux) as the segment generator.
-- Choose `--refine-mode peak` (optimizes HEI±1) or `--refine-mode minima` (searches outward toward the nearest local minima); when omitted it defaults to `peak` for GSM and `minima` for DMF.
-- If you only have **two** endpoints and do not need recursive refinement, [path-opt](path-opt.md) is the simpler option.
-
-## Quick examples
-
-```bash
-pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
- --out-dir ./result_path_search
-```
-
-```bash
-# Provide explicit intermediates for a multistep path
-pdb2reaction path-search -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 -m 1 \
- --out-dir ./result_path_search_multi
-```
-
-```bash
-# Enable merged full-system outputs with template references
-pdb2reaction path-search -i R.pdb IM1.pdb P.pdb -q 0 -m 1 \
- --ref-full-pdb holo_template.pdb --out-dir ./result_path_search_merge
-```
-
-```bash
-# Use DMF mode with minima refinement
-pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
- --mep-mode dmf --refine-mode minima --out-dir ./result_path_search_dmf
-```
-
-## Inputs
+## Examples
 
 Command form:
 
@@ -52,13 +20,36 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
  [--show-config/--no-show-config] [--dry-run/--no-dry-run]
 ```
 
-| Input | Required | Notes |
-| --- | --- | --- |
-| `-i, --input` | yes | Two or more structures in reaction order (reactant → product). Pass all files after a single `-i`/`--input`. |
-| `-q, --charge` | conditional | Net charge. Required for non-`.gjf` inputs unless `--ligand-charge/-l` derivation succeeds (PDB inputs). Overrides `--ligand-charge/-l` when both are set. |
-| `-l, --ligand-charge` | optional | Scalar integer total ligand charge or per-residue mapping (e.g. `GPP:-3,SAM:1`); used when `-q` is omitted (PDB inputs only — XYZ/GJF must supply `-q`). |
-| `-m, --multiplicity` | no | Spin multiplicity (2S+1); defaults to the `.gjf` template value or `1`. |
-| `--ref-pdb` | for XYZ/GJF merge | Active site model reference PDBs (one per input, matching input order) used for the final full-system merge when inputs are XYZ/GJF. |
+Two endpoints (reactant → product):
+
+```bash
+pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
+ --out-dir ./result_path_search
+```
+
+Provide explicit intermediates for a multistep path:
+
+```bash
+# Provide explicit intermediates for a multistep path
+pdb2reaction path-search -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 -m 1 \
+ --out-dir ./result_path_search_multi
+```
+
+Enable merged full-system outputs with template references:
+
+```bash
+# Enable merged full-system outputs with template references
+pdb2reaction path-search -i R.pdb IM1.pdb P.pdb -q 0 -m 1 \
+ --ref-full-pdb holo_template.pdb --out-dir ./result_path_search_merge
+```
+
+Use DMF mode with minima refinement:
+
+```bash
+# Use DMF mode with minima refinement
+pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
+ --mep-mode dmf --refine-mode minima --out-dir ./result_path_search_dmf
+```
 
 ## Workflow
 

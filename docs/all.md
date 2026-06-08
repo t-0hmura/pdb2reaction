@@ -1,26 +1,28 @@
 # `all`
 
-`pdb2reaction all` runs the entire workflow end-to-end. Starting from one or more PDB inputs, it extracts an active-site cluster model, runs an optional staged scan, performs an MEP search (recursive `path-search` by default; `--refine-path False` falls back to single-pass `path-opt`), and optionally chains TS optimisation, IRC, vibrational analysis, and single-point DFT. The default MLIP backend is UMA; choose an alternative with `-b/--backend`.
+`pdb2reaction all` runs the entire workflow end-to-end so you can go from structures to a validated mechanism in one command, instead of chaining `extract` → `scan` / `path-search` → `tsopt` → `irc` / `freq` / `dft` by hand. Starting from one or more PDB inputs, it extracts an active-site cluster model, runs an optional staged scan, performs an MEP search (recursive `path-search` by default; `--refine-path False` falls back to single-pass `path-opt`), and optionally chains TS optimisation, IRC, vibrational analysis, and single-point DFT. The default MLIP backend is UMA; choose an alternative with `-b/--backend`.
+
+`all` runs in one of three modes, chosen by what you pass:
+
+- **Multi-structure MEP** (`[mode] all (mep)`) — give ≥ 2 structures in reaction order plus a substrate definition. `all` extracts active-site models, runs GSM / DMF MEP search, merges the optimised path back into the full-system template(s), and optionally runs TSOPT + IRC / freq / DFT per reactive segment.
+- **Single-structure staged scan** (`[mode] all (scan-lists)`) — give one structure plus one or more `--scan-lists/-s` literals, each defining a scan stage; the staged scan produces the ordered intermediates that drive the MEP step.
+- **TSOPT-only** — give a single input and set `--tsopt` (no `--scan-lists`). `all` skips the MEP / merge stages, runs `tsopt` + EulerPC IRC on the active-site model (or the full input if extraction is skipped), and identifies the higher-energy endpoint as the reactant.
 
 ```{important}
 Without `--tsopt`, the workflow produces **TS candidates** (highest-energy images from MEP search). Adding `--tsopt` refines them into optimised TS structures validated by an imaginary-frequency check, followed by IRC for endpoint validation. Always inspect the results (imaginary-frequency count and IRC endpoint connectivity) before mechanistic interpretation.
 ```
 
-## When to use
-
-- Use `all` to go from structures to a validated mechanism in one command, instead of chaining `extract` → `scan` / `path-search` → `tsopt` → `irc` / `freq` / `dft` by hand.
-- `all` runs in one of three modes, chosen by what you pass:
-  - **Multi-structure MEP** (`[mode] all (mep)`) — give ≥ 2 structures in reaction order plus a substrate definition. `all` extracts active-site models, runs GSM / DMF MEP search, merges the optimised path back into the full-system template(s), and optionally runs TSOPT + IRC / freq / DFT per reactive segment.
-  - **Single-structure staged scan** (`[mode] all (scan-lists)`) — give one structure plus one or more `--scan-lists/-s` literals, each defining a scan stage; the staged scan produces the ordered intermediates that drive the MEP step.
-  - **TSOPT-only** — give a single input and set `--tsopt` (no `--scan-lists`). `all` skips the MEP / merge stages, runs `tsopt` + EulerPC IRC on the active-site model (or the full input if extraction is skipped), and identifies the higher-energy endpoint as the reactant.
-
-```{tip}
-For large active-site models, the single-structure scan workflow tends to produce more reliable reaction barriers than the multi-structure MEP workflow. When multiple full PDB structures are provided, structural differences in regions unrelated to the reaction coordinate can accumulate and overestimate the barrier. The scan workflow avoids this by driving only the relevant coordinates from a single starting structure. The effect becomes more pronounced as the model size grows.
-```
+## Examples
 
 Working examples for GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)) covering both multi-structure MEP and scan-based pipelines: [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples).
 
-## Quick examples
+Command form:
+
+```bash
+pdb2reaction all -i INPUT1 [INPUT2 ...] -c SUBSTRATE [-b uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] [options]
+```
+
+Multi-structure MEP with TS + thermo + DFT:
 
 ```bash
 # Multi-structure MEP with TS + thermo + DFT
@@ -28,12 +30,16 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --tsopt --thermo --dft --out-dir ./result_mep
 ```
 
+Single-structure staged scan (two stages):
+
 ```bash
 # Single-structure staged scan (two stages)
 pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' '[("GPP 321 H11","GLU 186 OE2",0.90)]' \
     --tsopt --thermo --out-dir ./result_scan
 ```
+
+TSOPT-only validation of a single TS candidate:
 
 ```bash
 # TSOPT-only validation of a single TS candidate
@@ -43,32 +49,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 
 PDB / GJF companion files are generated automatically when reference templates are available; control with `--convert-files` (on by default).
 
-## Inputs
-
-Command form:
-
-```bash
-pdb2reaction all -i INPUT1 [INPUT2 ...] -c SUBSTRATE [-b uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] [options]
-```
-
 `pdb2reaction all --help` shows core options; `pdb2reaction all --help-advanced` shows the full option list.
-
-| Input | Required | Notes |
-| --- | --- | --- |
-| `-i, --input` | yes | Full structures in reaction order. ≥ 2 for multi-structure MEP; a single input is allowed only with `--scan-lists/-s` (staged scan) or `--tsopt` (TSOPT-only). |
-| `-c, --center` | for extraction | Substrate specification: PDB path, residue IDs (`123,124` / `A:123,B:456`), or residue names (`GPP,SAM`). Omit to skip extraction and feed whole structures downstream. |
-| `-l, --ligand-charge` | recommended | Net charge or per-resname mapping for non-standard residues; the total system charge is derived automatically. |
-| `--ref-pdb` | for XYZ inputs | Reference PDB supplying topology when `-i` provides XYZ. |
-
-Input expectations:
-
-- Extraction enabled (`-c/--center`): inputs must be **PDB** so residues can be located.
-- Extraction skipped: inputs may be **PDB / XYZ / GJF**.
-- Multi-structure runs require ≥ 2 structures. For full input-file requirements (hydrogens, element columns, atom-order parity), see [CLI Conventions](cli-conventions.md).
-
-### Charge and spin precedence
-
-Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: Charge specification <charge-specification>`). In `all`, the charge derivation from active-site model extraction (when `-c` is set) acts as an additional priority layer. Spin resolution: `--multiplicity` CLI → `.gjf` template → default `1`. Always provide `--ligand-charge/-l` for non-standard substrates so the correct net charge propagates to scan / MEP / TSOPT / DFT.
 
 ## Workflow
 
@@ -169,6 +150,14 @@ Top-level keys: `out_dir`, `n_images`, `n_segments` (run metadata and counts); `
 ## CLI options
 
 Defaults shown are used when the option is not specified. The full flag list is in the generated [command reference](reference/commands/index.md); the tables below cover the options that need explanation.
+
+Input expectations:
+
+- Extraction enabled (`-c/--center`): inputs must be **PDB** so residues can be located.
+- Extraction skipped: inputs may be **PDB / XYZ / GJF**.
+- Multi-structure runs require ≥ 2 structures. For full input-file requirements (hydrogens, element columns, atom-order parity), see [CLI Conventions](cli-conventions.md).
+
+Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: Charge specification <charge-specification>`). In `all`, the charge derivation from active-site model extraction (when `-c` is set) acts as an additional priority layer. Spin resolution: `--multiplicity` CLI → `.gjf` template → default `1`. Always provide `--ligand-charge/-l` for non-standard substrates so the correct net charge propagates to scan / MEP / TSOPT / DFT.
 
 ### Input / output
 
@@ -301,6 +290,10 @@ dft:
 Full schema: [YAML Reference](yaml-reference.md).
 
 ## Notes
+
+```{tip}
+For large active-site models, the single-structure scan workflow tends to produce more reliable reaction barriers than the multi-structure MEP workflow. When multiple full PDB structures are provided, structural differences in regions unrelated to the reaction coordinate can accumulate and overestimate the barrier. The scan workflow avoids this by driving only the relevant coordinates from a single starting structure. The effect becomes more pronounced as the model size grows.
+```
 
 - Reference PDB templates for merging are derived automatically from the original inputs; the explicit `--ref-full-pdb` option of `path-search` is hidden in this wrapper.
 - Extraction radii: passing `0` to `--radius` or `--radius-het2het` is internally clamped to `0.001 Å` by the extractor.

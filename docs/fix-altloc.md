@@ -1,14 +1,13 @@
 # `fix-altloc`
 
-Remove alternate-location (altLoc) indicators from PDB files by selecting the best conformer for each atom based on occupancy and dropping duplicates. For each atom, the highest-occupancy conformer is kept (ties broken by file order) and column 17 is blanked. Run it before any cluster extraction or geometry stage that cannot consume multi-conformer input.
+Remove alternate-location (altLoc) indicators from PDB files by selecting the best conformer for each atom based on occupancy and dropping duplicates. For each atom, the highest-occupancy conformer is kept (ties broken by file order) and column 17 is blanked. Run it before any cluster extraction or geometry stage (`extract`, `opt`, `tsopt`, ...) that cannot consume multi-conformer input.
 
-## When to use
-
-- Use when a PDB file has altLoc indicators that downstream pipeline stages (`extract`, `opt`, `tsopt`, ...) cannot consume. Run before any cluster extraction or geometry stage.
-
-## Quick examples
+## Examples
 
 ```bash
+# Command form
+pdb2reaction fix-altloc -i INPUT.pdb [-o OUTPUT.pdb] [OPTIONS]
+
 # Process a single file (output: INPUT_clean.pdb)
 pdb2reaction fix-altloc -i 1abc.pdb
 
@@ -21,21 +20,6 @@ pdb2reaction fix-altloc -i ./structures -o ./cleaned --recursive
 # Overwrite input files in-place (creates .bak backups)
 pdb2reaction fix-altloc -i ./structures --inplace --recursive
 ```
-
-## Inputs
-
-Command form:
-
-```bash
-pdb2reaction fix-altloc -i INPUT.pdb [-o OUTPUT.pdb] [OPTIONS]
-```
-
-| Input | Required | Notes |
-| --- | --- | --- |
-| `-i, --input` | yes | Input PDB file or directory. |
-| `-o, --out` | no | Output file (if input is a file) or directory (if input is a directory). Defaults to `<input>_clean.pdb` / `<input>_clean/`. |
-
-By default, if a file contains **no altLoc characters** (all column 17 positions are blank), the file is **skipped** and no output is written. Use `--force` to process files regardless of altLoc presence.
 
 ## Workflow
 
@@ -121,6 +105,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 
 ## Notes
 
+- By default, if a file contains **no altLoc characters** (all column 17 positions are blank), the file is **skipped** and no output is written. Use `--force` to process files regardless of altLoc presence.
 - Atom serial numbers are **NOT renumbered** (gaps may remain after duplicate removal).
 - `CONECT` and other connectivity/annotation records are **NOT updated**.
 - Only column 17 (altLoc) is modified; coordinates, occupancies, B-factors, charges,

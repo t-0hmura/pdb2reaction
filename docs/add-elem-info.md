@@ -1,13 +1,8 @@
 # `add-elem-info`
 
-Repair the element-symbol columns (77–78) of ATOM/HETATM records in a PDB file. Per-atom elements are inferred from atom name + residue context, using `Bio.PDB.PDBParser` re-parse + per-atom element inference; only columns 77–78 are rewritten.
+Repair the element-symbol columns (77–78) of ATOM/HETATM records in a PDB file. Per-atom elements are inferred from atom name + residue context, using `Bio.PDB.PDBParser` re-parse + per-atom element inference; only columns 77–78 are rewritten. Use it when a PDB file has missing or wrong element columns (77–78) and downstream subcommands (`extract`, `opt`, `tsopt`, ...) reject it; `all` auto-invokes `add-elem-info` as a preflight, so manual use is only needed before standalone subcommands.
 
-## When to use
-
-- Use when a PDB file has missing or wrong element columns (77–78) and downstream subcommands (`extract`, `opt`, `tsopt`, ...) reject it.
-- `all` auto-invokes `add-elem-info` as a preflight, so manual use is only needed before standalone subcommands.
-
-## Quick examples
+## Examples
 
 ```bash
 # Populate element fields and write to "<input>_add_elem.pdb"
@@ -19,19 +14,6 @@ pdb2reaction add-elem-info -i 1abc.pdb -o 1abc_fixed.pdb
 # Overwrite the input file in-place
 pdb2reaction add-elem-info -i 1abc.pdb --overwrite
 ```
-
-## Inputs
-
-Command form:
-
-```bash
-pdb2reaction add-elem-info -i INPUT.pdb [-o OUTPUT.pdb] [--overwrite/--no-overwrite]
-```
-
-| Input | Required | Notes |
-| --- | --- | --- |
-| `-i, --input PATH` | yes | Input PDB file. |
-| `-o, --out PATH` | no | Output path. When set, `--overwrite` is ignored; defaults to `<input>_add_elem.pdb`. |
 
 ## Workflow
 1. Parse the input file with `Bio.PDB.PDBParser`, mirroring the residue

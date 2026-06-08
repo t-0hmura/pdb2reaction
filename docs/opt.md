@@ -1,40 +1,8 @@
 # `opt`
 
-Optimizes a single structure toward a local minimum using L-BFGS (`--opt-mode grad`, default) or RFO (`--opt-mode hess`). The command uses pysisyphus L-BFGS (`lbfgs`) or RFOptimizer (`rfo`) while an MLIP backend (UMA by default; ORB, MACE, and AIMNet2 also available via `-b/--backend`) provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `_trj.xyz`, or any format supported by `geom_loader`. Optional imaginary-frequency flattening can be enabled with `--flatten`.
+Optimizes a single structure toward a local minimum using L-BFGS (`--opt-mode grad`, default) or RFO (`--opt-mode hess`). The command uses pysisyphus L-BFGS (`lbfgs`) or RFOptimizer (`rfo`) while an MLIP backend (UMA by default; ORB, MACE, and AIMNet2 also available via `-b/--backend`) provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `_trj.xyz`, or any format supported by `geom_loader`. Use it to relax a single structure (PDB/XYZ/GJF/`_trj.xyz`) to a local minimum, optionally with distance restraints or imaginary-mode flattening: pick `--opt-mode grad` (alias `lbfgs`, default) for L-BFGS minimisation, or `--opt-mode hess` (alias `rfo`) for RFOptimizer.
 
-## When to use
-
-- Relax a single structure (PDB/XYZ/GJF/`_trj.xyz`) to a local minimum, optionally with distance restraints or imaginary-mode flattening.
-- Pick `--opt-mode grad` (alias `lbfgs`, default) for L-BFGS minimisation; pick `--opt-mode hess` (alias `rfo`) for RFOptimizer.
-
-## Quick examples
-
-```bash
-pdb2reaction opt -i input.pdb -q 0 -m 1 --out-dir ./result_opt
-```
-
-```bash
-# Tighter threshold and keep trajectory dumps
-pdb2reaction opt -i input.pdb -q 0 -m 1 --thresh gau_tight --dump \
- --out-dir ./result_opt_tight
-```
-
-```bash
-# Add a harmonic distance restraint. The example uses --bias-k 20.0 (a loose restraint
-# suitable for a light guide near the target distance); the default `bias.k` is 300
-# eV·Å⁻² and is better when you want the restraint to dominate during optimization.
-pdb2reaction opt -i input.pdb -q 0 -m 1 \
- --dist-freeze '[(1,5,2.0)]' --bias-k 20.0 --out-dir ./result_opt_rest
-# 2-tuple form restrains atoms 1 and 5 to their current distance: --dist-freeze '[(1,5)]'
-```
-
-```bash
-# Switch explicitly to RFO mode
-pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hess \
- --out-dir ./result_opt_hess
-```
-
-## Inputs
+## Examples
 
 Command form:
 
@@ -47,12 +15,33 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <nu
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
-| Input | Required | Notes |
-| --- | --- | --- |
-| `-i, --input` | yes | Input structure accepted by `geom_loader` (`.pdb`, `.xyz`, `_trj.xyz`, `.gjf`). |
-| `-q, --charge` | unless template/derivation applies | Net charge; supplied by a `.gjf` template or derived from `-l/--ligand-charge` when omitted. |
-| `-m, --multiplicity` | no | Spin multiplicity (2S+1); falls back to `.gjf` template or `1`. |
-| `--ref-pdb` | for XYZ/GJF | Reference PDB topology when the input is XYZ/GJF, enabling format-aware PDB/GJF output conversion. |
+Basic minimisation:
+
+```bash
+pdb2reaction opt -i input.pdb -q 0 -m 1 --out-dir ./result_opt
+```
+
+Tighter threshold and keep trajectory dumps:
+
+```bash
+pdb2reaction opt -i input.pdb -q 0 -m 1 --thresh gau_tight --dump \
+ --out-dir ./result_opt_tight
+```
+
+Add a harmonic distance restraint. The example uses `--bias-k 20.0` (a loose restraint suitable for a light guide near the target distance); the default `bias.k` is 300 eV·Å⁻² and is better when you want the restraint to dominate during optimization:
+
+```bash
+pdb2reaction opt -i input.pdb -q 0 -m 1 \
+ --dist-freeze '[(1,5,2.0)]' --bias-k 20.0 --out-dir ./result_opt_rest
+# 2-tuple form restrains atoms 1 and 5 to their current distance: --dist-freeze '[(1,5)]'
+```
+
+Switch explicitly to RFO mode:
+
+```bash
+pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hess \
+ --out-dir ./result_opt_hess
+```
 
 ## Workflow
 

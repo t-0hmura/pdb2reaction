@@ -4,20 +4,17 @@
 
 > **Naming note:** the CLI accepts `grad` / `dimer` (Dimer) and `hess` / `rsirfo` (RS-I-RFO, default). In YAML, use the top-level `hessian_dimer:` (Dimer) or `rsirfo:` (RS-I-RFO) blocks directly.
 
-For XYZ / GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping the XYZ coordinates, enabling format-aware PDB / GJF output conversion. If you need a TS guess first, run [`path-opt`](path-opt.md) (two structures) or [`path-search`](path-search.md) (two or more structures) and then optimise the HEI with `tsopt` → `irc`.
+Use it to refine a TS guess — the HEI from `path-opt` / `path-search`, or a user-supplied structure — into an optimised first-order saddle point with a built-in imaginary-frequency check. Pick `--opt-mode hess` (RS-I-RFO, default) for most systems, since it uses a full Hessian and is more reliable; switch to `--opt-mode grad` (Hessian-Guided Dimer) when RS-I-RFO fails to converge or full-Hessian recomputation is prohibitive. Enable `--flatten` (disabled by default) when the candidate has multiple imaginary frequencies and you need surplus-mode cleanup. For XYZ / GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping the XYZ coordinates, enabling format-aware PDB / GJF output conversion. If you need a TS guess first, run [`path-opt`](path-opt.md) (two structures) or [`path-search`](path-search.md) (two or more structures) and then optimise the HEI with `tsopt` → `irc`.
 
-## When to use
+## Examples
 
-- Refine a TS guess (HEI from `path-opt` / `path-search`, or a user-supplied structure) into an optimised first-order saddle point with a built-in imaginary-frequency check.
-- Pick `--opt-mode hess` (RS-I-RFO, default) for most systems — it uses a full Hessian and is more reliable.
-- Pick `--opt-mode grad` (Hessian-Guided Dimer) as the alternative when RS-I-RFO fails to converge or full-Hessian recomputation is prohibitive.
-- Enable `--flatten` (disabled by default) when the candidate has multiple imaginary frequencies and you need surplus-mode cleanup.
-
-## Quick examples
+Default RS-I-RFO optimisation of a PDB candidate:
 
 ```bash
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --out-dir ./result_tsopt
 ```
+
+Dimer mode with analytical Hessian (VRAM permitting):
 
 ```bash
 # Dimer mode with analytical Hessian (VRAM permitting)
@@ -25,11 +22,15 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
     --opt-mode grad --hessian-calc-mode Analytical --out-dir ./result_tsopt_grad
 ```
 
+RS-I-RFO mode driven by YAML overrides:
+
 ```bash
 # RS-I-RFO mode driven by YAML overrides
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
     --opt-mode hess --config tsopt.yaml --out-dir ./result_tsopt_hess
 ```
+
+RS-I-RFO mode with surplus-imaginary-mode flattening enabled:
 
 ```bash
 # RS-I-RFO mode with surplus-imaginary-mode flattening enabled
@@ -38,30 +39,6 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
 ```
 
 Add `--dump` to keep the full optimisation trajectory for inspection.
-
-## Inputs
-
-Command form:
-
-```bash
-pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l 'RES:Q,...'] [-m 2S+1] \
-    [-b uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] [--opt-mode grad|hess|dimer|rsirfo|trim|rsprfo] [--flatten / --no-flatten] \
-    [--freeze-links / --no-freeze-links] [--max-cycles N] [--thresh PRESET] \
-    [--hessian-calc-mode Analytical|FiniteDifference] \
-    [--convert-files / --no-convert-files] [--ref-pdb FILE]
-```
-
-`pdb2reaction tsopt --help` shows core options; `pdb2reaction tsopt --help-advanced` shows the full option list.
-
-| Input | Required | Notes |
-| --- | --- | --- |
-| `-i, --input` | yes | Structure file accepted by `geom_loader` (`.pdb` / `.xyz` / `.gjf` / `.trj`). |
-| `-q, --charge` | unless template / derivation | Net charge. Required unless a `.gjf` template or `--ligand-charge/-l` supplies it. |
-| `-l, --ligand-charge` | when `-q` omitted | Scalar integer or per-residue mapping (`GPP:-3,SAM:1`) deriving total from PDB residue charges. |
-| `-m, --multiplicity` | no | Spin multiplicity (2S+1); defaults to the `.gjf` template value or `1`. |
-| `--ref-pdb` | for XYZ / GJF | Reference PDB topology when the input is XYZ / GJF (keeps XYZ coordinates). |
-
-For full input-file requirements (hydrogens, element columns, atom-order parity, charge specification), see [CLI Conventions](cli-conventions.md).
 
 ## Workflow
 
@@ -95,11 +72,23 @@ Exit codes: see {ref}`exit-codes` in CLI Conventions.
 
 ## CLI options
 
+Command form:
+
+```bash
+pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l 'RES:Q,...'] [-m 2S+1] \
+    [-b uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] [--opt-mode grad|hess|dimer|rsirfo|trim|rsprfo] [--flatten / --no-flatten] \
+    [--freeze-links / --no-freeze-links] [--max-cycles N] [--thresh PRESET] \
+    [--hessian-calc-mode Analytical|FiniteDifference] \
+    [--convert-files / --no-convert-files] [--ref-pdb FILE]
+```
+
+`pdb2reaction tsopt --help` shows core options; `pdb2reaction tsopt --help-advanced` shows the full option list. For full input-file requirements (hydrogens, element columns, atom-order parity, charge specification), see [CLI Conventions](cli-conventions.md).
+
 The tables below cover the options that need explanation. The full flag list is in the generated [command reference](reference/commands/index.md); do not hand-duplicate it here.
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
+| `-i, --input PATH` | Structure file accepted by `geom_loader` (`.pdb` / `.xyz` / `.gjf` / `.trj`). | Required |
 | `-q, --charge INT` | Net charge. Required unless a `.gjf` template or `--ligand-charge/-l` (PDB inputs or XYZ / GJF with `--ref-pdb`) supplies it. Overrides `--ligand-charge/-l` when both are set. | Required unless template / derivation applies |
 | `-l, --ligand-charge TEXT` | Either a scalar integer (e.g. `-1`) for the total ligand charge, or a per-residue mapping (e.g. `GPP:-3,SAM:1`) that derives the total from PDB residue charges. Used when `-q` is omitted. | _None_ |
 | `--workers INT`, `--workers-per-node INT` | MLIP predictor parallelism (workers > 1 disables analytic Hessians; see {ref}`workers-fd-downgrade`). | `1`, `1` |

@@ -1,53 +1,30 @@
 # `freq`
 
-Compute vibrational frequencies and thermochemistry (ZPE, Gibbs energy, etc.) with an MLIP backend (UMA by default; `-b/--backend` also supports ORB, MACE, AIMNet2). When VRAM permits, `--hessian-calc-mode Analytical` speeds Hessian evaluation. Imaginary frequencies appear as negative values.
+Compute vibrational frequencies and thermochemistry (ZPE, Gibbs energy, etc.) with an MLIP backend (UMA by default; `-b/--backend` also supports ORB, MACE, AIMNet2). Use it when full vibrational analysis is required (e.g., confirming a stationary point is a true minimum with no imaginary frequencies, or that a TS has exactly one) and/or thermochemistry corrections (ZPE, Gibbs energy) are needed. When VRAM permits, `--hessian-calc-mode Analytical` speeds Hessian evaluation. Imaginary frequencies appear as negative values.
 
-## When to use
+## Examples
 
-- Use when full vibrational analysis is required (e.g., confirming a stationary point is a true minimum with no imaginary frequencies, or that a TS has exactly one) and/or thermochemistry corrections (ZPE, Gibbs energy) are needed. Note: `tsopt` already includes an imaginary-frequency check, so a separate `freq` run is mainly for thermochemistry or detailed mode inspection.
-- A properly converged first-order saddle point (TS) is expected to have **exactly one** imaginary frequency (detection cutoff `hessian_dimer.neg_freq_thresh_cm`, default 5 cm⁻¹).
-
-## Quick examples
+Minimal run with explicit charge and spin:
 
 ```bash
 # Minimal run with explicit charge and spin
 pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 --out-dir ./result_freq
 ```
 
+PHVA with link freezing and dump thermo payload:
+
 ```bash
 # PHVA with link freezing and dump thermo payload
 pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 --freeze-links --dump --out-dir ./result_freq_phva
 ```
+
+Analytical Hessian mode on VRAM-rich nodes:
 
 ```bash
 # Analytical Hessian mode on VRAM-rich nodes
 pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 \
  --hessian-calc-mode Analytical --out-dir ./result_freq_analytical
 ```
-
-## Inputs
-
-Command form:
-
-```bash
-pdb2reaction freq -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
- [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
- [--workers N] [--workers-per-node N] \
- [--freeze-links/--no-freeze-links] \
- [--max-write N] [--amplitude-ang Å] [--n-frames N] [--sort value|abs] \
- [--out-dir DIR] [--config FILE] [--show-config] [--dry-run] \
- [--temperature K] [--pressure FLOAT] [--dump/--no-dump] \
- [--hessian-calc-mode Analytical|FiniteDifference] \
- [--convert-files/--no-convert-files] [--ref-pdb FILE]
-```
-
-| Input | Required | Notes |
-| --- | --- | --- |
-| `-i, --input` | yes | Structure file accepted by `geom_loader` (`pdb` / `xyz` / `trj` / ...). |
-| `-q, --charge` | unless derived | Total charge. Required unless a `.gjf` template or `--ligand-charge/-l` supplies it. |
-| `-l, --ligand-charge` | no | Scalar integer or per-residue mapping (e.g. `GPP:-3,SAM:1`); used when `-q` is omitted. |
-| `-m, --multiplicity` | no | Spin multiplicity (2S+1); defaults to the `.gjf` template value or `1`. |
-| `--ref-pdb` | for XYZ/GJF | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). |
 
 ## Workflow
 
@@ -94,7 +71,7 @@ The tables below cover the options that need explanation; the full flag list is 
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
+| `-i, --input PATH` | Structure file accepted by `geom_loader` (`.pdb` / `.xyz` / `.trj` / ...). | Required |
 | `-q, --charge INT` | Total charge. When omitted, charge can be inferred from `--ligand-charge/-l`; explicit `-q` overrides any derived value. | Required unless a `.gjf` template or `--ligand-charge/-l` supplies it |
 | `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB residue charges. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers INT` | MLIP predictor parallelism (workers > 1 disables analytic Hessians). See {ref}`workers-fd-downgrade` for diagnostic notes. | `1` |
@@ -134,6 +111,8 @@ freq:
 
 ## Notes
 
+- `tsopt` already includes an imaginary-frequency check, so a separate `freq` run is mainly for thermochemistry or detailed mode inspection.
+- A properly converged first-order saddle point (TS) is expected to have **exactly one** imaginary frequency (detection cutoff `hessian_dimer.neg_freq_thresh_cm`, default 5 cm⁻¹).
 - Imaginary frequencies are reported as negative values in cm⁻¹. `freq` prints how many were detected
   and dumps details when `--dump`.
 - `--hessian-calc-mode` follows the standard precedence (defaults < config < explicit CLI); an explicit CLI `--hessian-calc-mode` value takes precedence over `calc.hessian_calc_mode` in the config YAML.

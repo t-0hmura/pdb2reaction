@@ -1,45 +1,16 @@
 # `scan2d`
 
-Perform a two-distance (d₁, d₂) grid scan with harmonic restraints and MLIP relaxations. `scan2d` constructs linear grids for both distances using `--max-step-size`, relaxes each grid point with the appropriate restraints active, and records unbiased MLIP energies for visualization. The default backend is UMA; select an alternative with `-b/--backend`. Use `--opt-mode hess` when you need RFOptimizer instead of L-BFGS.
+Perform a two-distance (d₁, d₂) grid scan with harmonic restraints and MLIP relaxations, producing a 2D potential-energy map over the two distances `(d₁, d₂)` — use it to locate a TS region or visualize the reaction landscape before MEP refinement. `scan2d` constructs linear grids for both distances using `--max-step-size`, relaxes each grid point with the appropriate restraints active, and records unbiased MLIP energies for visualization. Input is one structure plus `-s/--scan-lists scan2d.yaml` (recommended), or a single `--scan-lists/-s` inline literal containing exactly two quadruples. The default backend is UMA; select an alternative with `-b/--backend`. Use `--opt-mode hess` when you need RFOptimizer instead of L-BFGS.
 
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
 
-## When to use
+## Examples
 
-- Use when you want a 2D potential-energy map over two distances `(d₁, d₂)` — e.g. to locate a TS region or visualize the reaction landscape before MEP refinement. Input is one structure + `-s/--scan-lists scan2d.yaml` (recommended), or a single `--scan-lists/-s` inline literal containing exactly two quadruples.
-
-## Quick examples
+Minimal run with a YAML spec file:
 
 ```bash
 pdb2reaction scan2d -i input.pdb -q 0 -s scan2d.yaml -o ./result_scan2d/
 ```
-
-```bash
-# Recommended: YAML/JSON spec file
-cat > scan2d.yaml << 'YAML'
-one_based: true
-pairs:
- - ["TYR,285,CA", "SAM,309,C10", 1.30, 3.10]
- - ["TYR,285,CB", "SAM,309,C11", 1.20, 3.20]
-YAML
-pdb2reaction scan2d -i input.pdb -q 0 -s scan2d.yaml
-```
-
-```bash
-# Alternative: inline Python literal
-pdb2reaction scan2d -i input.pdb -q 0 \
- -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20)]'
-```
-
-```bash
-# LBFGS, dumped inner trajectories, and Plotly outputs
-pdb2reaction scan2d -i input.pdb -q 0 \
- -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20)]' \
- --max-step-size 0.20 --dump -o ./result_scan2d/ --opt-mode grad \
- --preopt --baseline min
-```
-
-## Inputs
 
 Command form:
 
@@ -50,12 +21,33 @@ pdb2reaction scan2d -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge 
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
-| Input | Required | Notes |
-| --- | --- | --- |
-| `-i, --input` | yes | Structure file accepted by `geom_loader`. |
-| `-s, --scan-lists` | yes | A YAML/JSON spec file path (recommended) or a single inline Python literal with two quadruples `(i,j,lowÅ,highÅ)`. |
-| `-q, --charge` | unless template/derivation applies | Total charge (CLI > template/`--ligand-charge/-l`). |
-| `--ref-pdb` | for XYZ/GJF inputs | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). |
+Recommended YAML/JSON spec file:
+
+```bash
+cat > scan2d.yaml << 'YAML'
+one_based: true
+pairs:
+ - ["TYR,285,CA", "SAM,309,C10", 1.30, 3.10]
+ - ["TYR,285,CB", "SAM,309,C11", 1.20, 3.20]
+YAML
+pdb2reaction scan2d -i input.pdb -q 0 -s scan2d.yaml
+```
+
+Alternative inline Python literal:
+
+```bash
+pdb2reaction scan2d -i input.pdb -q 0 \
+ -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20)]'
+```
+
+LBFGS, dumped inner trajectories, and Plotly outputs:
+
+```bash
+pdb2reaction scan2d -i input.pdb -q 0 \
+ -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20)]' \
+ --max-step-size 0.20 --dump -o ./result_scan2d/ --opt-mode grad \
+ --preopt --baseline min
+```
 
 ### Scan-list spec
 

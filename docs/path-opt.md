@@ -2,44 +2,15 @@
 
 `pdb2reaction path-opt` searches for a minimum-energy path (MEP) between **exactly two** structures with GSM (default) or DMF (`--mep-mode dmf`). It writes the path trajectory and exports the highest-energy image (HEI) as a TS candidate. Treat the HEI as a *candidate* transition state until it is validated with [tsopt](tsopt.md) (which includes an imaginary-frequency check) and [irc](irc.md). For workflows that start from **two or more** structures and automatically refine only the reactive region, use [path-search](path-search.md).
 
+Use it when you have exactly two endpoint structures (R → P) and need a first-pass MEP without recursive refinement; choose GSM (default) for a string-based path generator or switch to DMF with `--mep-mode dmf` for the Direct Max Flux generator.
+
 An MLIP backend (UMA by default; switch with `-b/--backend` to ORB, MACE, or AIMNet2) provides energies, gradients, and Hessians for every image. Before optimization starts, a rigid-body alignment step keeps the string stable.
 
 ```{note}
 **Frozen atoms in DMF mode** use `HarmonicFixAtoms` (harmonic restraints with k=300 eV/Å²) instead of pysisyphus's hard coordinate freeze used by GSM. This means frozen atoms in DMF can move slightly from their reference positions, which differs from the rigid freeze in GSM mode.
 ```
 
-## When to use
-
-- Use `path-opt` when you have exactly two endpoint structures (R → P) and need a first-pass MEP without recursive refinement.
-- For workflows that start from two or more structures and want automatic recursive refinement of regions with bond changes, use [path-search](path-search.md) instead.
-- Choose GSM (default) for a string-based path generator; switch to DMF with `--mep-mode dmf` for the Direct Max Flux generator.
-
-## Quick examples
-
-```bash
-pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
- --out-dir ./result_path_opt
-```
-
-```bash
-# Pre-optimize endpoints before MEP search
-pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
- --preopt --preopt-max-cycles 20000 --out-dir ./result_path_opt_preopt
-```
-
-```bash
-# Use DMF mode instead of GSM
-pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
- --mep-mode dmf --max-nodes 12 --out-dir ./result_path_opt_dmf
-```
-
-```{note}
-DMF mode additionally requires `cyipopt` (install from conda-forge before running with `--mep-mode dmf`). `pydmf` ships with `pdb2reaction` as a dependency.
-```
-
-A quick pass that freezes link parents and disables climb: add `--freeze-links --no-climb`.
-
-## Inputs
+## Examples
 
 Command form:
 
@@ -54,13 +25,34 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [-l, -
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
-| Input | Required | Notes |
-| --- | --- | --- |
-| `-i, --input PATH PATH` | yes | Reactant and product structures (`.pdb`/`.xyz`). Exactly two structures are required. Formats follow `geom_loader`. PDB inputs (or XYZ/GJF with `--ref-pdb`) enable trajectory/HEI PDB exports. |
-| `-q, --charge INT` | conditional | Total charge. Required for non-`.gjf` inputs unless `--ligand-charge/-l` derivation succeeds; `.gjf` templates can supply it. |
-| `-l, --ligand-charge TEXT` | no | Total charge or per-resname mapping used when `-q` is omitted. |
-| `-m, --multiplicity INT` | no | Spin multiplicity. |
-| `--ref-pdb FILE` | for XYZ/GJF | Reference PDB topology for XYZ/GJF inputs (keeps XYZ coordinates) to enable PDB conversions. |
+MEP search between two endpoints:
+
+```bash
+pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
+ --out-dir ./result_path_opt
+```
+
+Pre-optimize endpoints before MEP search:
+
+```bash
+# Pre-optimize endpoints before MEP search
+pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
+ --preopt --preopt-max-cycles 20000 --out-dir ./result_path_opt_preopt
+```
+
+Use DMF mode instead of GSM:
+
+```bash
+# Use DMF mode instead of GSM
+pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
+ --mep-mode dmf --max-nodes 12 --out-dir ./result_path_opt_dmf
+```
+
+```{note}
+DMF mode additionally requires `cyipopt` (install from conda-forge before running with `--mep-mode dmf`). `pydmf` ships with `pdb2reaction` as a dependency.
+```
+
+A quick pass that freezes link parents and disables climb: add `--freeze-links --no-climb`.
 
 ## Workflow
 
@@ -109,7 +101,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--dump/--no-dump` | Dump MEP trajectories (GSM/DMF). Restart YAML is written only when enabled in YAML. | `False` |
 | `--opt-mode TEXT` | Single-structure optimizer for endpoint preoptimization (`grad` = L-BFGS, `hess` = RFO). | `grad` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
-| `--ref-pdb FILE` | Reference PDB topology for XYZ/GJF inputs (see Inputs). | _None_ |
+| `--ref-pdb FILE` | Reference PDB topology for XYZ/GJF inputs (keeps XYZ coordinates) to enable PDB conversions. | _None_ |
 | `-o, --out-dir TEXT` | Output directory. | `./result_path_opt/` |
 | `--thresh TEXT` | Override convergence preset for endpoint preoptimization only (`opt.lbfgs/rfo.thresh`). | `gau` |
 | `--thresh-stopt TEXT` | Override convergence preset for the string optimizer (`stopt.thresh`). | `gau_loose` |

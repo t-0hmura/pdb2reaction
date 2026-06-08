@@ -1,38 +1,8 @@
 # `extract`
 
-`pdb2reaction extract` carves an active-site cluster model (binding pocket) from a protein–ligand PDB. Specify the substrate with `-c` (residue name, residue ID, or PDB path). Link hydrogens cap severed bonds when `--add-linkh` is on (default). Use `--ligand-charge/-l` for non-standard residue charges.
+`pdb2reaction extract` carves an active-site cluster model (binding pocket) from a protein–ligand PDB (single structure or ensemble) for downstream MEP / TSOPT / freq / DFT runs. Specify the substrate with `-c/--center` as a residue name (`'GPP,SAM'`), residue ID (`'A:123A'`), or a PDB path. Link hydrogens cap severed bonds when `--add-linkh` is on (default). Use `--ligand-charge/-l` for non-standard residue charges.
 
-## When to use
-
-- Carve an active-site model (cluster model) from a protein–ligand PDB (single structure or ensemble) for downstream MEP / TSOPT / freq / DFT runs.
-- Provide the substrate via `-c/--center` as a residue name (`'GPP,SAM'`), residue ID (`'A:123A'`), or a PDB path; use `--ligand-charge/-l` whenever the substrate carries non-standard residue charges.
-- For misclassification due to unusual residue/atom naming, see the appendix below on naming requirements and the internal reference lists.
-
-## Quick examples
-
-```bash
-# Minimal (ID-based substrate) with explicit total ligand charge
-pdb2reaction extract -i complex.pdb -c '123' -o model.pdb -l -3
-```
-
-```bash
-# Substrate provided as a PDB; per-resname charge mapping (others remain 0)
-pdb2reaction extract -i complex.pdb -c substrate.pdb -o model.pdb -l 'GPP:-3,SAM:1'
-```
-
-```bash
-# Name-based substrate selection — all matches included (WARNING logged)
-pdb2reaction extract -i complex.pdb -c 'GPP,SAM' -o model.pdb -l 'GPP:-3,SAM:1'
-```
-
-```bash
-# Multi-structure → single multi-MODEL output with hetero-hetero proximity
-pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
-    -o model_multi.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
-# Multi-structure → multiple outputs: pass -o model1.pdb -o model2.pdb instead
-```
-
-## Inputs
+## Examples
 
 Command form:
 
@@ -50,18 +20,35 @@ pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb ...]
     [-v LEVEL]
 ```
 
-| Input | Required | Notes |
-| --- | --- | --- |
-| `-i, --input` | yes | One or more protein–ligand PDB files (identical atom ordering required). |
-| `-c, --center` | yes | Substrate specification: PDB path, residue IDs, or residue names. |
-| `-o, --output` | no | Active-site model PDB output(s). Naming/layout depends on count — see [Outputs](#outputs). |
-| `-l, --ligand-charge` | no | Total charge or per-resname mapping for non-standard residue charges. |
+Minimal (ID-based substrate) with explicit total ligand charge:
 
-### Substrate specification (`-c/--center`)
+```bash
+# Minimal (ID-based substrate) with explicit total ligand charge
+pdb2reaction extract -i complex.pdb -c '123' -o model.pdb -l -3
+```
 
-- **PDB path**: coordinates must match the first input exactly (tolerance 1e-3 Å); residue IDs propagate to other structures.
-- **Residue IDs**: `'123,124'`, `'A:123,B:456'`, `'123A'`, `'A:123A'` (insertion codes supported).
-- **Residue names**: comma-separated, case-insensitive. If multiple residues share a name, **all** matches are included and a warning is logged.
+Substrate provided as a PDB; per-resname charge mapping (others remain 0):
+
+```bash
+# Substrate provided as a PDB; per-resname charge mapping (others remain 0)
+pdb2reaction extract -i complex.pdb -c substrate.pdb -o model.pdb -l 'GPP:-3,SAM:1'
+```
+
+Name-based substrate selection — all matches included (WARNING logged):
+
+```bash
+# Name-based substrate selection — all matches included (WARNING logged)
+pdb2reaction extract -i complex.pdb -c 'GPP,SAM' -o model.pdb -l 'GPP:-3,SAM:1'
+```
+
+Multi-structure → single multi-MODEL output with hetero-hetero proximity:
+
+```bash
+# Multi-structure → single multi-MODEL output with hetero-hetero proximity
+pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
+    -o model_multi.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
+# Multi-structure → multiple outputs: pass -o model1.pdb -o model2.pdb instead
+```
 
 ## Workflow
 
@@ -136,6 +123,12 @@ Defaults shown are used when the option is not specified. The full flag list is 
 | `--modified-residue TEXT` | Comma-separated residue names (with optional per-residue charge) to treat as amino acids for backbone truncation and charge assignment (e.g. `HD1,HD2,HD3` or `HD1:0,SEP:-2`). A residue given without a trailing `:charge` defaults to charge 0. | `""` |
 | `-l, --ligand-charge TEXT` | Total charge or per-resname mapping (e.g. `GPP:-3,SAM:1`). | _None_ |
 | `--out-json / --no-out-json` | Write a machine-readable `result.json` alongside the extracted PDB(s). Schema: [JSON Output Schema](json-output.md). | `False` |
+
+### Substrate specification (`-c/--center`)
+
+- **PDB path**: coordinates must match the first input exactly (tolerance 1e-3 Å); residue IDs propagate to other structures.
+- **Residue IDs**: `'123,124'`, `'A:123,B:456'`, `'123A'`, `'A:123A'` (insertion codes supported).
+- **Residue names**: comma-separated, case-insensitive. If multiple residues share a name, **all** matches are included and a warning is logged.
 
 ## Notes
 

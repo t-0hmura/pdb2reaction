@@ -1,17 +1,24 @@
 # `dft`
 
-Runs single-point DFT with GPU4PySCF or CPU PySCF. The default functional/basis is ωB97M-V/def2-tzvpd. Results include energy and population analysis (Mulliken, meta-Löwdin, IAO charges).
+Runs single-point DFT with GPU4PySCF or CPU PySCF, reporting energy and population analysis (Mulliken, meta-Löwdin, IAO charges). The default functional/basis is ωB97M-V/def2-tzvpd. Use it for single-point DFT energy (and population analysis) on a small active-site model — typically to refine MLIP-optimized R/TS/P structures — selecting the backend with `--engine` (default `gpu`); use `cpu` when no GPU is available, or for portable/debug runs.
 
 > See {ref}`engine-vs-dft-engine` for the `--engine` (standalone `dft`) vs `--dft-engine` (forwarded through `pdb2reaction all`) naming convention.
 
 > **Prerequisites:** DFT dependencies (PySCF, GPU4PySCF) are **not** included in the default install. Install them with `pip install "pdb2reaction[dft]"`.
 
-## When to use
+## Examples
 
-- Single-point DFT energy (and population analysis) on a small active-site model — typically for refining MLIP-optimized R/TS/P structures.
-- Backend selection via `--engine` (default `gpu`): use `cpu` when no GPU is available, or for portable/debug runs.
+Command form:
 
-## Quick examples
+```bash
+pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULTIPLICITY] \
+ [--func-basis 'FUNC/BASIS'] \
+ [--max-cycle N] [--conv-tol Eh] [--grid-level L] \
+ [--out-dir DIR] [--engine gpu|cpu] [--convert-files/--no-convert-files] \
+ [--ref-pdb FILE] [--config FILE] [--show-config] [--dry-run]
+```
+
+Basic GPU single point.
 
 ```bash
 pdb2reaction dft -i input.pdb -q 0 -m 1 --engine gpu --out-dir ./result_dft
@@ -40,27 +47,7 @@ pdb2reaction dft -i input.pdb -l 'LIG:0' -m 1 \
  --engine gpu --out-dir ./result_dft_ligand
 ```
 
-## Inputs
-
-Command form:
-
-```bash
-pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULTIPLICITY] \
- [--func-basis 'FUNC/BASIS'] \
- [--max-cycle N] [--conv-tol Eh] [--grid-level L] \
- [--out-dir DIR] [--engine gpu|cpu] [--convert-files/--no-convert-files] \
- [--ref-pdb FILE] [--config FILE] [--show-config] [--dry-run]
-```
-
-| Input | Required | Notes |
-| --- | --- | --- |
-| `-i, --input` | yes | Structure file accepted by `geom_loader` (`.pdb`/`.xyz`/`_trj.xyz`/`.gjf`/…). |
-| `-q, --charge` | unless derivable | Total charge supplied to PySCF. Required unless a `.gjf` template or `--ligand-charge/-l` supplies it. |
-| `-l, --ligand-charge` | optional | Scalar integer or per-residue mapping (e.g., `GPP:-3,SAM:1`); used when `-q` is omitted (PDB inputs, or XYZ/GJF with `--ref-pdb`). |
-| `-m, --multiplicity` | optional | Spin multiplicity (2S+1); defaults to `.gjf` template value or `1`. |
-| `--ref-pdb` | for XYZ/GJF | Reference PDB topology for atom-count validation and ligand-charge derivation. |
-
-Functional/basis selection defaults to `wb97m-v/def2-tzvpd` but can be overridden on the CLI. Charge/spin inherit `.gjf` template metadata when present. If `-q` is omitted but `--ligand-charge/-l` is provided, the input is treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge; explicit `-q` still overrides. For non-`.gjf` inputs, omitting `-q` without `--ligand-charge/-l` aborts; multiplicity defaults to `1` when omitted. Set them explicitly for non-default states.
+When `-q` is omitted but `--ligand-charge/-l` is provided, the input is treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge; an explicit `-q` still overrides. For non-`.gjf` inputs, omitting `-q` without `--ligand-charge/-l` aborts.
 
 ## Workflow
 

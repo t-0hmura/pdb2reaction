@@ -1,13 +1,8 @@
 # `scan`
 
-Drive a reaction coordinate by scanning bond distances with harmonic restraints. `pdb2reaction scan` performs a staged, bond-length–driven scan using an MLIP backend (UMA by default) and harmonic restraints. At each step, the temporary targets are updated, restraint wells are applied, and the structure is relaxed with L-BFGS (`--opt-mode grad`) or RFOptimizer (`--opt-mode hess`). For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
+Drive a reaction coordinate by scanning bond distances with harmonic restraints. Use `pdb2reaction scan` when a single structure needs specific distances driven to explore a plausible path (often before `path-search`/`path-opt`). It performs a staged, bond-length–driven scan using an MLIP backend (UMA by default) and harmonic restraints. At each step, the temporary targets are updated, restraint wells are applied, and the structure is relaxed with L-BFGS (`--opt-mode grad`) or RFOptimizer (`--opt-mode hess`). For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
 
-## When to use
-
-- Use when a single structure needs specific distances driven to explore a plausible path (often before `path-search`/`path-opt`).
-- Input is one structure + `-s/--scan-lists scan.yaml` (recommended), or one or more `--scan-lists/-s` inline literals (each literal = one stage). YAML/JSON file paths avoid shell-quoting pitfalls and version better; inline literals are fine for simple single-stage scans.
-
-## Quick examples
+## Examples
 
 ```bash
 # Minimal: run from a YAML spec
@@ -24,10 +19,6 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 -s '[("TYR,285,CA","SAM,309,C10",1.35)]
 pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml --dump -o ./result_scan_dump
 ```
 
-> **Note:** Add `--print-parsed` when you want to verify parsed stage targets from `--scan-lists/-s`.
-
-## Inputs
-
 Command form:
 
 ```bash
@@ -37,51 +28,7 @@ pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <n
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
-| Input | Required | Notes |
-| --- | --- | --- |
-| `-i, --input` | yes | Structure file accepted by `geom_loader` (PDB / XYZ / GJF / TRJ). |
-| `-s, --scan-lists` | yes | YAML/JSON spec file path (recommended) or inline Python literal(s); each inline literal is one stage. |
-| `--ref-pdb` | for XYZ/GJF inputs | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). |
-
-### Scan-list spec
-
-For the YAML/JSON file format, inline Python literal syntax, atom selectors, and quoting rules,
-see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
-
-#### Multiple stages
-
-Pass multiple literals after a single `--scan-lists/-s` flag. Each literal becomes one stage:
-
-```bash
-# Stage 1: drive one bond to 1.35 Å
-# Stage 2: drive two bonds simultaneously
--s \
- '[("TYR,285,CA","SAM,309,C10",1.35)]' \
- '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]'
-```
-
-Stages run sequentially; each starts from the previous stage's relaxed result.
-
-#### Bidirectional scan (4-tuple)
-
-Instead of a 3-tuple `(i, j, target)`, you can pass a **4-tuple** `(i, j, start, end)` to scan in both directions from the current geometry. The CLI automatically expands each 4-tuple into two stages:
-
-1. **Pass 1:** Drive `i`--`j` from the current distance toward `start`.
-2. **Pass 2:** Restore the initial geometry and drive `i`--`j` toward `end`.
-
-The concatenated trajectory is assembled as `start → initial → end`, giving a continuous path through the starting structure.
-
-```bash
-# Bidirectional scan: drive bond 12--45 from current geometry
-# toward 1.35 Å (pass 1) and toward 2.50 Å (pass 2)
-pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
-```
-
-This is equivalent to two manual stages with a geometry reset between them. Mixed 3-tuples and 4-tuples are accepted in the same literal.
-
-```{note}
-**Stage counter with 4-tuples.** A 4-tuple expands into **two** stages in the output tree: the `start` pass is written under `stage_NN/` and the `end` pass under `stage_NN+1/`. So if you pass a single 4-tuple as your first literal, you will see `stage_01/` and `stage_02/`, not one combined `stage_01/`. When mixing 3-tuples and 4-tuples, the counter advances by `+1` per 3-tuple and `+2` per 4-tuple.
-```
+> **Note:** Add `--print-parsed` when you want to verify parsed stage targets from `--scan-lists/-s`.
 
 ## Workflow
 
@@ -200,8 +147,49 @@ bond:
 
 More YAML options for `opt`/`lbfgs`/`rfo`/`bias`/`bond` and their defaults are in [YAML Reference](yaml-reference.md).
 
+## Scan-list spec
+
+For the YAML/JSON file format, inline Python literal syntax, atom selectors, and quoting rules,
+see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
+
+### Multiple stages
+
+Pass multiple literals after a single `--scan-lists/-s` flag. Each literal becomes one stage:
+
+```bash
+# Stage 1: drive one bond to 1.35 Å
+# Stage 2: drive two bonds simultaneously
+-s \
+ '[("TYR,285,CA","SAM,309,C10",1.35)]' \
+ '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]'
+```
+
+Stages run sequentially; each starts from the previous stage's relaxed result.
+
+### Bidirectional scan (4-tuple)
+
+Instead of a 3-tuple `(i, j, target)`, you can pass a **4-tuple** `(i, j, start, end)` to scan in both directions from the current geometry. The CLI automatically expands each 4-tuple into two stages:
+
+1. **Pass 1:** Drive `i`--`j` from the current distance toward `start`.
+2. **Pass 2:** Restore the initial geometry and drive `i`--`j` toward `end`.
+
+The concatenated trajectory is assembled as `start → initial → end`, giving a continuous path through the starting structure.
+
+```bash
+# Bidirectional scan: drive bond 12--45 from current geometry
+# toward 1.35 Å (pass 1) and toward 2.50 Å (pass 2)
+pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
+```
+
+This is equivalent to two manual stages with a geometry reset between them. Mixed 3-tuples and 4-tuples are accepted in the same literal.
+
+```{note}
+**Stage counter with 4-tuples.** A 4-tuple expands into **two** stages in the output tree: the `start` pass is written under `stage_NN/` and the `end` pass under `stage_NN+1/`. So if you pass a single 4-tuple as your first literal, you will see `stage_01/` and `stage_02/`, not one combined `stage_01/`. When mixing 3-tuples and 4-tuples, the counter advances by `+1` per 3-tuple and `+2` per 4-tuple.
+```
+
 ## Notes
 
+- The scan input is one structure plus `-s/--scan-lists scan.yaml` (recommended) or one or more `--scan-lists/-s` inline literals (each literal = one stage). YAML/JSON file paths avoid shell-quoting pitfalls and version better; inline literals are fine for simple single-stage scans.
 - Provide multiple literals after a single `--scan-lists/-s` flag. Tuples must have positive targets. Atom indices are normalized to 0-based internally for computation. For PDB inputs, `i`/`j` can be integer indices or selector strings (see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`).
 - When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see {ref}`Link hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
 

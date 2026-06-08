@@ -1,26 +1,8 @@
 # `sp`
 
-`pdb2reaction sp` evaluates the MLIP energy + atomic forces (optionally the full Hessian) at a single geometry. Use it for fast inspection of a structure before running an optimization, for comparing backends head-to-head, or for generating reference numbers / Hessians outside the optimizer loop.
+`pdb2reaction sp` evaluates the MLIP energy + atomic forces (optionally the full Hessian) at a single geometry. Use it for a quick MLIP energy / forces / Hessian sanity check on a structure before running an optimization, for comparing backends head-to-head, or for generating reference numbers / Hessians outside the optimizer loop.
 
-## When to use
-
-- Quick MLIP energy / forces / Hessian sanity check on a structure before running an optimization.
-- Comparing backends head-to-head, or generating reference numbers / Hessians outside the optimizer loop.
-- For single-point DFT (gpu4pyscf / PySCF) benchmarking use [`dft`](dft.md) instead.
-
-## Quick examples
-
-```bash
-# energy + forces (UMA backend, neutral closed-shell)
-pdb2reaction sp -i structure.pdb -q 0 -m 1
-```
-
-```bash
-# also compute the full Hessian (UMA → analytical; other backends → finite-difference)
-pdb2reaction sp -i structure.pdb -q 0 -m 1 --hess
-```
-
-## Inputs
+## Examples
 
 Command form:
 
@@ -28,12 +10,19 @@ Command form:
 pdb2reaction sp -i FILE -q INT -m INT [-b uma|orb|mace|aimnet2] [--hess] [options]
 ```
 
-| Input | Required | Notes |
-|---|---|---|
-| `-i, --input FILE` | yes | PDB / XYZ / GJF structure file |
-| `-q, --charge INT` | for non-GJF | total charge of the system (GJF inherits the template) |
-| `-l, --ligand-charge TEXT` | optional | per-residue charge mapping (e.g. `SAM:1,GPP:-3`), used to derive `-q` automatically |
-| `-m, --multiplicity INT` | for non-GJF | spin multiplicity, 2S+1 (default `1`; GJF inherits the template) |
+Energy + forces (UMA backend, neutral closed-shell):
+
+```bash
+# energy + forces (UMA backend, neutral closed-shell)
+pdb2reaction sp -i structure.pdb -q 0 -m 1
+```
+
+Also compute the full Hessian (UMA → analytical; other backends → finite-difference):
+
+```bash
+# also compute the full Hessian (UMA → analytical; other backends → finite-difference)
+pdb2reaction sp -i structure.pdb -q 0 -m 1 --hess
+```
 
 ## Outputs
 
@@ -63,6 +52,10 @@ The full flag list is in the generated [command reference](reference/commands/in
 
 | flag | default | meaning |
 |---|---|---|
+| `-i, --input FILE` | — | PDB / XYZ / GJF structure file (required) |
+| `-q, --charge INT` | — | total charge of the system (required for non-GJF; GJF inherits the template) |
+| `-l, --ligand-charge TEXT` | — | per-residue charge mapping (e.g. `SAM:1,GPP:-3`), used to derive `-q` automatically |
+| `-m, --multiplicity INT` | `1` | spin multiplicity, 2S+1 (required for non-GJF; GJF inherits the template) |
 | `-b, --backend [uma\|orb\|mace\|aimnet2]` | `uma` | MLIP backend selection |
 | `--hess / --no-hess` | `--no-hess` | also compute and write `hessian.npy` |
 | `--hessian-calc-mode [Analytical\|FiniteDifference]` | auto | force a specific Hessian mode (only applies with `--hess`) |
@@ -73,6 +66,10 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--show-config / --dry-run` | off | print effective merged config / validate without running |
 
 Run `pdb2reaction sp --help-advanced` for the full list (workers, solvent corrections, etc.).
+
+## Notes
+
+- For single-point DFT (gpu4pyscf / PySCF) benchmarking use [`dft`](dft.md) instead.
 
 ## See Also
 

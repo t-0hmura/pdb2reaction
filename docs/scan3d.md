@@ -1,14 +1,19 @@
 # `scan3d`
 
-Perform a three-distance (d₁, d₂, d₃) grid scan with harmonic restraints and MLIP relaxations. Use `--scan-lists/-s` with a YAML/JSON spec file (recommended) or an inline Python literal; or plot an existing `surface.csv` via `--csv`. `scan3d` nests loops over d₁ → d₂ → d₃ and relaxes each point with the appropriate restraints active. The default optimizer is L-BFGS (`--opt-mode grad`); switch to `--opt-mode hess` for RFOptimizer. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
+Perform a three-distance (d₁, d₂, d₃) grid scan with harmonic restraints and MLIP relaxations, producing a 3D potential-energy volume over three distances `(d₁, d₂, d₃)`; use it when such a volume is needed or when an existing `surface.csv` needs re-plotting. Use `--scan-lists/-s` with a YAML/JSON spec file (recommended) or an inline Python literal; or plot an existing `surface.csv` via `--csv`. `scan3d` nests loops over d₁ → d₂ → d₃ and relaxes each point with the appropriate restraints active. The default optimizer is L-BFGS (`--opt-mode grad`); switch to `--opt-mode hess` for RFOptimizer. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
 
-## When to use
+## Examples
 
-- Use when a 3D potential-energy volume over three distances `(d₁, d₂, d₃)` is needed, or an existing `surface.csv` needs re-plotting.
-- Provide one structure plus `-s/--scan-lists scan3d.yaml` (recommended) or one `--scan-lists/-s` inline literal (three quadruples); `--csv` enables plot-only mode.
-- 3D grids grow very quickly; consider coarser `--max-step-size` or smaller ranges first.
+Command form:
 
-## Quick examples
+```bash
+pdb2reaction scan3d [-i INPUT.{pdb|xyz|trj|...}] [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
+ [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
+ [-s/--scan-lists scan3d.yaml | '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
+ [--convert-files/--no-convert-files] [--ref-pdb FILE] [--csv PATH]
+```
+
+Recommended: YAML/JSON spec file.
 
 ```bash
 # Recommended: YAML/JSON spec file
@@ -22,41 +27,20 @@ YAML
 pdb2reaction scan3d -i input.pdb -q 0 -s scan3d.yaml
 ```
 
+Alternative: inline Python literal.
+
 ```bash
 # Alternative: inline Python literal
 pdb2reaction scan3d -i input.pdb -q 0 \
  -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20),("TYR,285,CG","SAM,309,C12",1.10,3.00)]'
 ```
 
+Plot only from an existing `surface.csv` (skip new energy evaluation).
+
 ```bash
 # Plot only from an existing surface.csv (skip new energy evaluation)
 pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 -o ./result_scan3d/
 ```
-
-## Inputs
-
-Command form:
-
-```bash
-pdb2reaction scan3d [-i INPUT.{pdb|xyz|trj|...}] [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
- [-s/--scan-lists scan3d.yaml | '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
- [--convert-files/--no-convert-files] [--ref-pdb FILE] [--csv PATH]
-```
-
-Note: `-i/--input` and `--scan-lists/-s` are required unless `--csv` is provided.
-
-| Input | Required | Notes |
-| --- | --- | --- |
-| `-i, --input` | yes (unless `--csv`) | Structure file accepted by `geom_loader` (PDB / XYZ / TRJ / GJF). |
-| `-s, --scan-lists` | yes (unless `--csv`) | A YAML/JSON spec file path (recommended) or a single inline Python literal with three quadruples. |
-| `--csv` | for plot-only | Existing `surface.csv` to re-plot; makes `-i` and `-s` optional. |
-
-### Input syntax
-
-`scan3d` accepts exactly **three** quadruples `(i, j, low_Å, high_Å)` (under the `pairs` key for YAML/JSON, or as a single inline literal). Unlike `scan`, only **one literal** is accepted (no multi-stage support).
-
-For the YAML/JSON file format, inline Python literal syntax, atom selectors, and quoting rules, see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
 
 ## Workflow
 
@@ -172,6 +156,9 @@ bias:
 
 ## Notes
 
+- `-i/--input` and `--scan-lists/-s` are required unless `--csv` is provided.
+- `scan3d` accepts exactly **three** quadruples `(i, j, low_Å, high_Å)` (under the `pairs` key for YAML/JSON, or as a single inline literal). Unlike `scan`, only **one literal** is accepted (no multi-stage support). For the YAML/JSON file format, inline Python literal syntax, atom selectors, and quoting rules, see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
+- 3D grids grow very quickly; consider coarser `--max-step-size` or smaller ranges first.
 - The MLIP backend (UMA by default) reuses the same
   `HarmonicBiasCalculator` as the 1D/2D scans.
 - Ångström limits are converted to Bohr internally to cap L-BFGS steps and RFO
