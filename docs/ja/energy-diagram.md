@@ -1,15 +1,16 @@
 # `energy-diagram`
 
-`pdb2reaction energy-diagram` は与えた数値エネルギーだけを入力として状態エネルギーダイアグラムを描画します。構造ファイルの読み込みや `--thermo` / `--dft` のような量子 / 熱力学 / MLIP 計算は一切行いません。画像ファイル 1 つと、任意で機械可読なサイドカーを出力します。
-
-## 使いどころ
-
-- 状態エネルギーの数値（例: `summary.json` から取り出した値）が既にあり、整形済みダイアグラムだけが欲しいとき。
+`pdb2reaction energy-diagram` は与えた数値エネルギーだけを入力として状態エネルギーダイアグラムを描画します。構造ファイルの読み込みや `--thermo` / `--dft` のような量子 / 熱力学 / MLIP 計算は一切行いません。状態エネルギーの数値（例: `summary.json` から取り出した値）が既にあり、整形済みダイアグラムだけが欲しいときに使用し、画像ファイル 1 つと、任意で機械可読なサイドカーを出力します。
 
 ## 実行例
 
 ```bash
-# リスト文字列で指定
+# コマンド形式
+pdb2reaction energy-diagram -i VALUES... [-o OUTPUT] [--label-x...] [--label-y...]
+```
+
+```bash
+# リスト文字列で指定（その場限りの作図に推奨）
 pdb2reaction energy-diagram -i "[0, 12.5, 4.3]" -o energy.png
 ```
 
@@ -19,21 +20,9 @@ pdb2reaction energy-diagram -i 0 -i 12.5 -i 4.3 -o energy.png
 ```
 
 ```bash
-# X/Yラベルを指定
+# X/Yラベルを指定（--label-x / --label-y 共通）
 pdb2reaction energy-diagram -i "[0, 12.5, 4.3]" --label-x "['R','TS','P']" --label-y "ΔE (kcal/mol)" -o energy.png
 ```
-
-## 入力
-
-コマンド形式:
-
-```bash
-pdb2reaction energy-diagram -i VALUES... [-o OUTPUT] [--label-x...] [--label-y...]
-```
-
-| 入力 | 必須 | 説明 |
-| --- | --- | --- |
-| `-i, --input` | 必須 | 数値入力。繰り返し指定（`-i` を値ごとに 1 つ）、またはリスト形式文字列に対応。 |
 
 ## 処理の流れ
 1. `-i/--input` から値を収集します（繰り返し指定、またはリスト文字列に対応）。
@@ -62,10 +51,9 @@ result.json   # 任意のサイドカー（--out-json 指定時）。status / n_
 
 すべてのフラグ一覧は生成された [コマンドリファレンス](../reference/commands/index.md) を参照してください。
 
-## 注意事項
+## 注記
 - 入力順がそのまま描画順になります。
 - 入力値は最低 2 点必要です。
-- 構造ファイルの読み込みやエネルギー計算は行いません。
 
 ## 関連項目
 

@@ -1,12 +1,14 @@
 # `trj2fig`
 
-XYZ 軌跡のコメント行に書かれたエネルギーを読み取り（または MLIP バックエンドで再計算し）、静的・インタラクティブ図と CSV として出力します。デフォルトでは各フレームのコメント行に含まれる Hartree エネルギーを読み取り、kcal/mol または Hartree に変換して、必要に応じて基準フレームに対する相対値（ΔE）にします。基準は最初のフレームまたは手動指定（`-r`）で、`--reverse-x` 使用時は最後のフレームが基準になります。`-q/--charge` と `-m/--multiplicity` を与えると、コメント行ではなく MLIP バックエンド（デフォルト: UMA、`-b/--backend` で選択可能）で各フレームのエネルギーを再計算します。
-
-## 使いどころ
-
-- `opt` / `scan` / `path-opt` / `path-search` / `irc` などが出力した XYZ 軌跡のエネルギーを可視化するとき。または `-q/-m` を渡してフレームごとに MLIP で再計算するとき。
+XYZ 軌跡のコメント行に書かれたエネルギーを読み取り（または MLIP バックエンドで再計算し）、静的・インタラクティブ図と CSV として出力します。`opt` / `scan` / `path-opt` / `path-search` / `irc` などが出力した XYZ 軌跡のエネルギーを可視化するときに使います。デフォルトでは各フレームのコメント行に含まれる Hartree エネルギーを読み取り、kcal/mol または Hartree に変換して、必要に応じて基準フレームに対する相対値（ΔE）にします。基準は最初のフレームまたは手動指定（`-r`）で、`--reverse-x` 使用時は最後のフレームが基準になります。`-q/--charge` と `-m/--multiplicity` を与えると、コメント行ではなく MLIP バックエンド（デフォルト: UMA、`-b/--backend` で選択可能）で各フレームのエネルギーを再計算します。
 
 ## 実行例
+
+コマンド形式:
+
+```bash
+pdb2reaction trj2fig -i TRAJECTORY.xyz [-o OUTPUTS...] [-q CHARGE] [-m MULT] [options]
+```
 
 ```bash
 # デフォルトPNG、最初のフレームを基準としたΔE
@@ -21,19 +23,6 @@ pdb2reaction trj2fig -i traj.xyz --reverse-x -o energy.png energy.html energy.pd
 # UMAで全フレームのエネルギーを再計算
 pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 ```
-
-## 入力
-
-コマンド形式:
-
-```bash
-pdb2reaction trj2fig -i TRAJECTORY.xyz [-o OUTPUTS...] [-q CHARGE] [-m MULT] [options]
-```
-
-| 入力 | 必須 | 備考 |
-| --- | --- | --- |
-| `-i, --input PATH` | はい | コメント行にエネルギーを含む XYZ 軌跡 |
-| `-o, --out PATH` | いいえ | 複数指定可能な出力ファイル名（`.png/.jpg/.jpeg/.html/.svg/.pdf/.csv`）。デフォルトは `energy.png` |
 
 ## 処理の流れ
 
@@ -71,7 +60,7 @@ pdb2reaction trj2fig -i TRAJECTORY.xyz [-o OUTPUTS...] [-q CHARGE] [-m MULT] [op
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 | `--out-json/--no-out-json` | 出力の隣に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 
-## 注意事項
+## 注記
 - エネルギーはコメント行内の最初の浮動小数点数から取得されます。不正なコメント行はエラーになります。
 - 未対応の拡張子がある場合は実行が中断されます。`.png` は Plotly の `scale=2` で高解像度出力されます。
 - `--reverse-x` は軸の向きと `-r init` の解釈の両方に影響します。

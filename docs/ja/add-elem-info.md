@@ -1,11 +1,6 @@
 # `add-elem-info`
 
-PDB ファイルの ATOM/HETATM レコードの元素記号カラム（77–78）を修復します。原子ごとの元素は atom name と residue context から推定し、`Bio.PDB.PDBParser` による再パース + 原子単位の元素推定を用います。書き換えるのはカラム 77–78 のみです。
-
-## 使いどころ
-
-- PDB の元素カラム（77–78）が欠落・誤記で、`extract` / `opt` / `tsopt` などの下流サブコマンドが入力を受け付けないとき。
-- `all` は preflight で `add-elem-info` を自動呼び出しするため、手動実行は単独サブコマンドの前処理用です。
+PDB ファイルの ATOM/HETATM レコードの元素記号カラム（77–78）を修復します。原子ごとの元素は atom name と residue context から推定し、`Bio.PDB.PDBParser` による再パース + 原子単位の元素推定を用います。書き換えるのはカラム 77–78 のみです。PDB の元素カラム（77–78）が欠落・誤記で、`extract` / `opt` / `tsopt` などの下流サブコマンドが入力を受け付けないときに使用します。`all` は preflight で `add-elem-info` を自動呼び出しするため、手動実行は単独サブコマンドの前処理用です。
 
 ## 実行例
 
@@ -19,19 +14,6 @@ pdb2reaction add-elem-info -i 1abc.pdb -o 1abc_fixed.pdb
 # 入力ファイルをその場で上書き
 pdb2reaction add-elem-info -i 1abc.pdb --overwrite
 ```
-
-## 入力
-
-コマンド形式:
-
-```bash
-pdb2reaction add-elem-info -i INPUT.pdb [-o OUTPUT.pdb] [--overwrite/--no-overwrite]
-```
-
-| 入力 | 必須 | 備考 |
-| --- | --- | --- |
-| `-i, --input PATH` | はい | 入力 PDB ファイル |
-| `-o, --out PATH` | いいえ | 出力パス。指定した場合 `--overwrite` は無視される。既定は `<input>_add_elem.pdb` |
 
 ## 処理の流れ
 1. `Bio.PDB.PDBParser` で入力を解析し、`extract.py` で使用される残基定義（`AMINO_ACIDS`、`WATER_RES`、`ION`）と同じ定義を使用して分類する。
@@ -61,7 +43,7 @@ pdb2reaction add-elem-info -i INPUT.pdb [-o OUTPUT.pdb] [--overwrite/--no-overwr
 
 完全なフラグ一覧は生成された [command reference](../reference/commands/index.md) を参照してください。
 
-## 注意事項
+## 注記
 - 変更されるのは列 77–78 のみ。座標、占有率、B 因子、電荷、altloc、挿入コード、レコード順序は保持されます。
 - すべてのモデル/チェーン/残基にわたる ATOM/HETATM レコードを処理します。
 - 重水素は水素に正規化され、セレン（`SE*`）やハロゲンは自動認識されます。

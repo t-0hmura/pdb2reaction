@@ -1,53 +1,30 @@
 # `freq`
 
-MLIP バックエンド（デフォルト: UMA、`-b/--backend` で ORB ・ MACE ・ AIMNet2 も選択可能）を用いて振動数と熱化学量（ZPE、ギブズ自由エネルギーなど）を計算します。VRAM に余裕がある場合、`--hessian-calc-mode Analytical` によりヘシアン計算を高速化できます。虚振動数は負の値で表示されます。
-
-## 使いどころ
-
-- 完全な振動解析（極小点に虚振動数がないこと、TS にちょうど 1 つあること等の確認）または熱化学補正（ZPE、ギブズ自由エネルギーなど）が必要な場合。注: `tsopt` には虚振動数チェックが内蔵されているため、別途 `freq` を実行するのは主に熱化学量の取得や振動モードの詳細検討のためです。
-- 収束した一次の鞍点（TS）では虚振動数が **ちょうど 1 つ**（検出カットオフは `hessian_dimer.neg_freq_thresh_cm`、デフォルト 5 cm⁻¹）になることが期待されます。
+MLIP バックエンド（デフォルト: UMA、`-b/--backend` で ORB ・ MACE ・ AIMNet2 も選択可能）を用いて振動数と熱化学量（ZPE、ギブズ自由エネルギーなど）を計算します。完全な振動解析（極小点に虚振動数がないこと、TS にちょうど 1 つあること等の確認）または熱化学補正（ZPE、ギブズ自由エネルギーなど）が必要な場合に使用します。VRAM に余裕がある場合、`--hessian-calc-mode Analytical` によりヘシアン計算を高速化できます。虚振動数は負の値で表示されます。
 
 ## 実行例
+
+明示的な電荷とスピンでの最小実行:
 
 ```bash
 # 明示的な電荷とスピンでの最小実行
 pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 --out-dir ./result_freq
 ```
 
+freeze-links + 熱化学ダンプを有効化して実行する:
+
 ```bash
 # freeze-links + 熱化学ダンプを有効化して実行する
 pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 --freeze-links --dump --out-dir ./result_freq_phva
 ```
+
+VRAM に余裕があるノードで解析的ヘシアンを使う:
 
 ```bash
 # VRAM に余裕があるノードで解析的ヘシアンを使う
 pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 \
  --hessian-calc-mode Analytical --out-dir ./result_freq_analytical
 ```
-
-## 入力
-
-コマンド形式:
-
-```bash
-pdb2reaction freq -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
- [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
- [--workers N] [--workers-per-node N] \
- [--freeze-links/--no-freeze-links] \
- [--max-write N] [--amplitude-ang Å] [--n-frames N] [--sort value|abs] \
- [--out-dir DIR] [--config FILE] [--show-config] [--dry-run] \
- [--temperature K] [--pressure FLOAT] [--dump/--no-dump] \
- [--hessian-calc-mode Analytical|FiniteDifference] \
- [--convert-files/--no-convert-files] [--ref-pdb FILE]
-```
-
-| 入力 | 必須 | 備考 |
-| --- | --- | --- |
-| `-i, --input` | はい | `geom_loader` が受け入れる構造ファイル（`pdb` / `xyz` / `trj` / ...）。 |
-| `-q, --charge` | 導出されない限り必須 | 総電荷。`.gjf` テンプレートまたは `--ligand-charge/-l` が提供しない限り必須。 |
-| `-l, --ligand-charge` | いいえ | スカラー整数または残基別マッピング（例: `GPP:-3,SAM:1`）。`-q` 省略時に使用。 |
-| `-m, --multiplicity` | いいえ | スピン多重度（2S+1）。`.gjf` テンプレート値または `1` がデフォルト。 |
-| `--ref-pdb` | XYZ/GJF の場合 | 入力が XYZ/GJF の場合に使用する参照 PDB トポロジー（XYZ 座標は保持）。 |
 
 ## 処理の流れ
 
@@ -81,9 +58,11 @@ out_dir/ (デフォルト:./result_freq/)
 
 ## CLI オプション
 
+以下の表は説明が必要なオプションを扱います。全フラグの一覧は生成された [コマンドリファレンス](../reference/commands/index.md) にあります（ここで手作業で複製しないでください）。
+
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル | 必須 |
+| `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル（`.pdb` / `.xyz` / `.trj` / ...） | 必須 |
 | `-q, --charge INT` | 総電荷。省略時は `--ligand-charge` から導出可能。明示的な `-q` は導出値より優先される | `.gjf` テンプレートまたは `--ligand-charge` が提供しない限り必須 |
 | `-l, --ligand-charge TEXT` | スカラー整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `--workers INT` | MLIP 予測器の並列度（workers > 1 で解析ヘシアン無効）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1` |
@@ -121,8 +100,10 @@ freq:
  out_dir: ./result_freq/ # freq のデフォルト
 ```
 
-## 注意事項
+## 注記
 
+- `tsopt` には虚振動数チェックが内蔵されているため、別途 `freq` を実行するのは主に熱化学量の取得や振動モードの詳細検討のためです。
+- 収束した一次の鞍点（TS）では虚振動数が **ちょうど 1 つ**（検出カットオフは `hessian_dimer.neg_freq_thresh_cm`、デフォルト 5 cm⁻¹）になることが期待されます。
 - 虚振動数モードは負の振動数として報告されます。`freq` は検出された虚振動数の個数を表示し、`--dump` で詳細を出力します。
 - `--hessian-calc-mode` は **デフォルト < config < 明示 CLI** の優先順位で解決されます。CLI で明示的に指定した値は config YAML の `calc.hessian_calc_mode` より優先されます。
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。

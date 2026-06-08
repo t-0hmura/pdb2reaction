@@ -2,44 +2,15 @@
 
 `pdb2reaction path-opt` は **ちょうど 2 つの構造**間の最小エネルギー経路（MEP）を、GSM（デフォルト）または DMF（`--mep-mode dmf`）で探索します。経路軌跡を書き出し、最高エネルギー画像（HEI）を TS 候補として出力します。HEI は *候補* に過ぎないため、[tsopt](tsopt.md)（虚振動数チェックを内蔵）→ [irc](irc.md) による接続性の確認が必須です。**2 つ以上の構造**を入力して反応領域だけを自動で精密化したい場合は、[path-search](path-search.md) を使用してください。
 
+反応物と生成物の **2 端点**（R → P）が揃っており、再帰的精密化なしで MEP の初期推定が必要な場面で使用します。ストリングベースの経路生成には GSM（デフォルト）を、Direct Max Flux 生成器には `--mep-mode dmf` で DMF を選択します。
+
 MLIP バックエンド（デフォルト: UMA、`-b/--backend` で ORB ・ MACE ・ AIMNet2 も選択可能）で各イメージのエネルギー/勾配/ヘシアンを評価します。最適化の前に剛体アライメントを行い、ストリングの安定性を向上させます。`freeze_atoms` を指定した場合、RMSD フィットにはその原子群のみを使用しますが、変換自体は全原子に適用されます。
 
 ```{note}
 **DMF モードでの凍結原子**は、GSM で使用される pysisyphus のハード座標凍結ではなく、`HarmonicFixAtoms`（k=300 eV/Å² の調和拘束）を使用します。そのため、DMF での凍結原子は参照位置からわずかに移動する可能性があり、GSM モードの剛体凍結とは挙動が異なります。
 ```
 
-## 使いどころ
-
-- 反応物と生成物の **2 端点**（R → P）が揃っており、再帰的精密化なしで MEP の初期推定が必要な場面。
-- 2 つ以上の構造から開始し、結合変化のある領域を自動で再帰的に精密化したい場合は、代わりに [path-search](path-search.md) を使用してください。
-- ストリングベースの経路生成には GSM（デフォルト）を、Direct Max Flux 生成器には `--mep-mode dmf` で DMF を選択します。
-
 ## 実行例
-
-```bash
-pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
- --out-dir ./result_path_opt
-```
-
-```bash
-# MEP 探索前に端点を事前最適化する
-pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
- --preopt --preopt-max-cycles 20000 --out-dir ./result_path_opt_preopt
-```
-
-```bash
-# GSM ではなく DMF モードで実行する
-pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
- --mep-mode dmf --max-nodes 12 --out-dir ./result_path_opt_dmf
-```
-
-```{note}
-DMF モードは追加で `cyipopt` が必要です（`--mep-mode dmf` 実行前に conda-forge からインストールしてください）。`pydmf` は `pdb2reaction` の依存として同梱されています。
-```
-
-リンク親原子を凍結し、climb を切って短時間で確認するには `--freeze-links --no-climb` を追加します。
-
-## 入力
 
 コマンド形式:
 
@@ -54,13 +25,34 @@ pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [-l, -
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
-| 入力 | 必須 | 注記 |
-| --- | --- | --- |
-| `-i, --input PATH PATH` | yes | 反応物と生成物構造（`.pdb`/`.xyz`）。入力は 2 構造のみ。形式は `geom_loader` に準拠。PDB 入力（または `--ref-pdb` 付き XYZ/GJF）で軌跡/HEI の PDB 出力が有効。 |
-| `-q, --charge INT` | conditional | 総電荷。`.gjf` 以外では `--ligand-charge/-l` 導出が成功しない限り必須。`.gjf` テンプレートがあればそれを使用可能。 |
-| `-l, --ligand-charge TEXT` | no | `-q` 省略時に使用する総電荷または残基別マッピング。 |
-| `-m, --multiplicity INT` | no | スピン多重度。 |
-| `--ref-pdb FILE` | XYZ/GJF 用 | XYZ/GJF 入力用の参照 PDB トポロジー（XYZ 座標は保持）。PDB 変換を有効化します。 |
+2 端点間の MEP 探索:
+
+```bash
+pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
+ --out-dir ./result_path_opt
+```
+
+MEP 探索前に端点を事前最適化する:
+
+```bash
+# MEP 探索前に端点を事前最適化する
+pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
+ --preopt --preopt-max-cycles 20000 --out-dir ./result_path_opt_preopt
+```
+
+GSM ではなく DMF モードで実行する:
+
+```bash
+# GSM ではなく DMF モードで実行する
+pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
+ --mep-mode dmf --max-nodes 12 --out-dir ./result_path_opt_dmf
+```
+
+```{note}
+DMF モードは追加で `cyipopt` が必要です（`--mep-mode dmf` 実行前に conda-forge からインストールしてください）。`pydmf` は `pdb2reaction` の依存として同梱されています。
+```
+
+リンク親原子を凍結し、climb を切って短時間で確認するには `--freeze-links --no-climb` を追加します。
 
 ## 処理の流れ
 
@@ -102,8 +94,8 @@ out_dir/
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `-i, --input PATH PATH` | 反応物と生成物構造（`.pdb`/`.xyz`） | 必須 |
-| `-q, --charge INT` | 総電荷（`calc.charge`）。`.gjf` 以外では `--ligand-charge` 導出が成功しない限り必須（PDB 入力または `--ref-pdb` 付き XYZ/GJF）。`.gjf` テンプレートがあればそれを使用し、電荷メタデータが無い `.gjf` 入力は `-q` が無いと中断。両方指定時は `-q` が優先 | テンプレート/導出がない限り必須 |
+| `-i, --input PATH PATH` | 反応物と生成物構造（`.pdb`/`.xyz`）。入力は 2 構造のみ。形式は `geom_loader` に準拠 | 必須 |
+| `-q, --charge INT` | 総電荷（`calc.charge`）。`.gjf` 以外では `--ligand-charge` 導出が成功しない限り必須（PDB 入力または `--ref-pdb` 付き XYZ/GJF）。`.gjf` テンプレートがあればそれを使用し、電荷メタデータが無い `.gjf` 入力は `-q` が無いと中断。両方指定時は `-q` が優先。解決順序は {ref}`CLI 規約: 電荷の指定 <ja-charge-specification>` を参照 | テンプレート/導出がない限り必須 |
 | `-l, --ligand-charge TEXT` | 総電荷または残基別マッピング（`-q` 省略時）。PDB 入力（または `--ref-pdb` 付き XYZ/GJF）で extract と同じ全系電荷導出を起動します | _None_ |
 | `--workers`, `--workers-per-node` | MLIP 予測器の並列度（workers > 1 で解析ヘシアン無効; UMA バックエンドのみ; `workers_per_node` は並列予測器に渡されます）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度（`calc.spin`） | テンプレート/`1` |
@@ -119,7 +111,7 @@ out_dir/
 | `--ref-pdb FILE` | XYZ/GJF 入力用の参照 PDB トポロジー（XYZ 座標は保持し PDB 変換を有効化） | _None_ |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_path_opt/` |
 | `--thresh TEXT` | エンドポイント事前最適化のみの収束プリセットを上書き（`opt.lbfgs/rfo.thresh`） | `gau` |
-| `--thresh-stopt TEXT` | ストリングオプティマイザーの収束プリセットを上書き（`stopt.thresh`） | `gau_loose` |
+| `--thresh-stopt TEXT` | ストリングオプティマイザー（GSM 成長およびクライミング精密化）の収束プリセットを上書き（`stopt.thresh`; `gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau_loose` |
 | `--config FILE` | 明示 CLI 指定より前に適用されるベース YAML | _None_ |
 | `--show-config/--no-show-config` | 解決済み設定（YAML レイヤ情報を含む）を表示して実行継続 | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
@@ -158,14 +150,9 @@ opt:
    out_dir: ./result_path_opt/ # output directory (path-opt default)
 ```
 
-## 注意事項
+## 終了コード
 
-- **MEP セグメント**: `--max-nodes` は内部ノード数を制御します。GSM の場合、総画像数は `max_nodes + 2`（固定端点を含む）。DMF の場合、`max_nodes` はチェーン上の移動可能なイメージ数です。GSM 成長およびクライミング精密化の収束プリセットは `--thresh-stopt` または `stopt.thresh`（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`）で指定します。
-- **エンドポイント事前最適化**: `--thresh` は `--opt-mode` で選ばれた単一構造最適化（`opt.lbfgs.thresh` / `opt.rfo.thresh`）のみに適用されます。
-- **クライミングイメージ**: `--climb` は標準のクライミングステップと Lanczos ベースの接線リファインの両方を切り替えます。
-- **ダンプ**: `--dump` で StringOptimizer の `stopt.dump=True` に対応し、`out_dir` 内に軌跡ダンプを出力します。リスタート YAML は YAML で有効化した場合のみ書き出されます。
-- **電荷/スピン**: 電荷の解決順序の詳細は {ref}`CLI 規約: 電荷の指定 <ja-charge-specification>` を参照してください。
-- **終了コード**: CLI 規約の {ref}`ja-exit-codes` を参照。
+CLI 規約の {ref}`ja-exit-codes` を参照してください。
 
 ## 関連項目
 

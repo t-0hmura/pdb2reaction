@@ -4,20 +4,17 @@
 
 > **命名規則の注意:** CLI は `grad|dimer`（= Dimer）および `hess|rsirfo`（= RS-I-RFO、デフォルト）を受け付けます。YAML ではトップレベルの `hessian_dimer:`（Dimer）または `rsirfo:`（RS-I-RFO）ブロックを直接指定してください。
 
-XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定し、XYZ 座標を保持したまま PDB/GJF への変換が可能です。TS 初期構造が必要な場合は、2 端点なら [path-opt](path-opt.md)、2 構造以上なら [path-search](path-search.md) で HEI を取得してから `tsopt`（内部で虚振動数チェック済み）→ `irc` の順で検証してください。
-
-## 使いどころ
-
-- TS 初期構造（`path-opt` / `path-search` の HEI、または自前のもの）を一次鞍点に最適化し、虚振動数チェックを内蔵で行いたい場合。
-- ほとんどの系では `--opt-mode hess`（RS-I-RFO、デフォルト）を選びます。完全 Hessian を用い、一般的により堅牢です。
-- RS-I-RFO で収束しない場合や完全 Hessian の再計算コストが過大な場合は、代替として `--opt-mode grad`（Hessian-Guided Dimer）を選びます。
-- 候補に複数の虚振動数があり余分なモードの除去が必要な場合は、`--flatten`（デフォルト無効）を有効化します。
+TS 初期構造（`path-opt` / `path-search` の HEI、または自前のもの）を一次鞍点に最適化し、虚振動数チェックを内蔵で行いたい場合に使用します。ほとんどの系では `--opt-mode hess`（RS-I-RFO、デフォルト）を選びます。完全 Hessian を用い、一般的により堅牢です。RS-I-RFO で収束しない場合や完全 Hessian の再計算コストが過大な場合は、代替として `--opt-mode grad`（Hessian-Guided Dimer）を選びます。候補に複数の虚振動数があり余分なモードの除去が必要な場合は、`--flatten`（デフォルト無効）を有効化します。XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定し、XYZ 座標を保持したまま PDB/GJF への変換が可能です。TS 初期構造が必要な場合は、2 端点なら [path-opt](path-opt.md)、2 構造以上なら [path-search](path-search.md) で HEI を取得してから `tsopt`（内部で虚振動数チェック済み）→ `irc` の順で検証してください。
 
 ## 実行例
+
+PDB 候補のデフォルト RS-I-RFO 最適化:
 
 ```bash
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --out-dir ./result_tsopt
 ```
+
+dimer モード + 解析的ヘシアン（VRAM に余裕がある場合）:
 
 ```bash
 # VRAM に余裕がある場合に dimer モード + 解析的ヘシアンで実行する
@@ -25,11 +22,15 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
  --opt-mode grad --hessian-calc-mode Analytical --out-dir ./result_tsopt_grad
 ```
 
+rsirfo モードを YAML 上書きと併用:
+
 ```bash
 # rsirfo モードを YAML 上書きと併用する
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
  --opt-mode hess --config tsopt.yaml --out-dir ./result_tsopt_hess
 ```
+
+rsirfo モードで flatten を有効化:
 
 ```bash
 # rsirfo モードで flatten を有効化して実行する
@@ -38,31 +39,6 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
 ```
 
 最適化軌跡を保存して確認したい場合は `--dump` を追加します。
-
-## 入力
-
-コマンド形式:
-
-```bash
-pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
- [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
- [--opt-mode grad|hess|dimer|rsirfo|trim|rsprfo] [--flatten/--no-flatten] \
- [--freeze-links/--no-freeze-links] [--max-cycles N] [--thresh PRESET] \
- [--hessian-calc-mode Analytical|FiniteDifference] \
- [--convert-files/--no-convert-files] [--ref-pdb FILE]
-```
-
-`pdb2reaction tsopt --help` でコアオプション、`pdb2reaction tsopt --help-advanced` で全オプションを表示します。
-
-| 入力 | 必須 | 注記 |
-| --- | --- | --- |
-| `-i, --input` | yes | `geom_loader` が受け入れる構造ファイル（`.pdb` / `.xyz` / `.gjf` / `.trj`） |
-| `-q, --charge` | テンプレート/導出がない限り必須 | 総電荷。`.gjf` テンプレートまたは `--ligand-charge/-l` が提供しない限り必須 |
-| `-l, --ligand-charge` | `-q` 省略時 | スカラー整数または残基別マッピング（`GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出 |
-| `-m, --multiplicity` | no | スピン多重度（2S+1）。`.gjf` テンプレート値または `1` がデフォルト |
-| `--ref-pdb` | XYZ/GJF の場合 | 入力が XYZ/GJF の場合の参照 PDB トポロジー（XYZ 座標を保持） |
-
-入力ファイルの完全な要件（水素、元素列、原子順序の整合性、電荷指定）は [CLI 規約](cli-conventions.md) を参照してください。
 
 ## 処理の流れ
 
@@ -103,9 +79,22 @@ out_dir/ (デフォルト:./result_tsopt/)
 
 ## CLI オプション
 
+コマンド形式:
+
+```bash
+pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
+ [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
+ [--opt-mode grad|hess|dimer|rsirfo|trim|rsprfo] [--flatten/--no-flatten] \
+ [--freeze-links/--no-freeze-links] [--max-cycles N] [--thresh PRESET] \
+ [--hessian-calc-mode Analytical|FiniteDifference] \
+ [--convert-files/--no-convert-files] [--ref-pdb FILE]
+```
+
+`pdb2reaction tsopt --help` でコアオプション、`pdb2reaction tsopt --help-advanced` で全オプションを表示します。入力ファイルの完全な要件（水素、元素列、原子順序の整合性、電荷指定）は [CLI 規約](cli-conventions.md) を参照してください。
+
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル | 必須 |
+| `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル（`.pdb` / `.xyz` / `.gjf` / `.trj`） | 必須 |
 | `-q, --charge INT` | 総電荷。`.gjf` テンプレートまたは `--ligand-charge`（PDB 入力または `--ref-pdb` 付き XYZ/GJF）が提供しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
 | `-l, --ligand-charge TEXT` | スカラー整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `--workers INT` | MLIP 予測器の並列度（workers > 1 で解析ヘシアン無効）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1` |
@@ -201,9 +190,8 @@ rsirfo:
 TS 収束が遅い場合や最適化中に TS モードが失われる場合は、`rsirfo` セクションの `hessian_recalc` を小さくしてみてください（例: 50--200）。正確なヘシアン再計算の頻度を上げることで、追加のヘシアン評価コストと引き換えに堅牢性が向上します。
 ```
 
-## 注意事項
+## 注記
 
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 - 虚振動数モード**検出**の閾値はデフォルトで 5.0 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm` で変更可能）。この閾値未満の振動数は虚振動数としてカウントされません。選択した `root` は最適化中にどの振動モードを追跡するかを制御します。`root` は YAML（`rsirfo.root` または `hessian_dimer.root`、デフォルト `0`）で設定します。`tsopt` に `--root` CLI フラグはありません（[`irc`](irc.md) とは異なります）。
 - `--opt-mode` はワークフロー選択用です（デフォルト: `rsirfo`）。YAML のモードマッピングを手動で変更するのではなく、目的のアルゴリズムに合ったモードを選択してください。
 - PHVA の並進/回転射影は `freq` と同じ実装を使用し、メモリ消費を抑えつつ、活性空間の正しい固有ベクトルを保持します。
@@ -212,7 +200,7 @@ TS 収束が遅い場合や最適化中に TS モードが失われる場合は�
 ## 関連項目
 
 - [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
-
+- [トラブルシューティング](troubleshooting.md) — 詳細な切り分け
 - [path-search](path-search.md) — TS 候補（HEI）を特定する MEP 探索
 - [irc](irc.md) — 最適化された TS からの反応経路追跡
 - [freq](freq.md) — 完全な振動解析と熱化学補正（虚振動数チェックは `tsopt` が内部で実行済み）

@@ -1,38 +1,8 @@
 # `extract`
 
-タンパク質–リガンド PDB からクラスターモデル（活性部位モデル（バインディングポケット））を抽出します。基質は `-c` で指定します（残基名、残基 ID、または PDB パス）。切断された結合はリンク水素でキャップされます（`--add-linkh` 有効時、デフォルト）。非標準残基の電荷には `--ligand-charge/-l` を使用してください。
-
-## 使いどころ
-
-- タンパク質–リガンド PDB（単一構造またはアンサンブル）から、後続の MEP/TSOPT/freq/DFT 用の活性部位モデル（クラスターモデル）を切り出す場合。
-- 基質は `-c/--center` で残基名（`'GPP,SAM'`）、残基 ID（`'A:123A'`）、または PDB パスとして指定。基質が非標準残基の電荷を持つ場合は `--ligand-charge/-l` を併用する。
-- 残基/原子の命名が非標準で残基分類や電荷サマリーに影響がある場合は、下部の付録（PDB 命名規則と内部参照リスト）を参照してください。
+タンパク質–リガンド PDB（単一構造またはアンサンブル）から、後続の MEP/TSOPT/freq/DFT 用の活性部位モデル（クラスターモデル（バインディングポケット））を切り出します。基質は `-c/--center` で残基名（`'GPP,SAM'`）、残基 ID（`'A:123A'`）、または PDB パスとして指定します。切断された結合はリンク水素でキャップされます（`--add-linkh` 有効時、デフォルト）。非標準残基の電荷には `--ligand-charge/-l` を使用してください。
 
 ## 実行例
-
-```bash
-# 最小（ID基準の基質）+ 明示的な総リガンド電荷
-pdb2reaction extract -i complex.pdb -c '123' -o model.pdb -l -3
-```
-
-```bash
-# PDB として提供される基質。残基名ごとの電荷マッピング（その他は 0）
-pdb2reaction extract -i complex.pdb -c substrate.pdb -o model.pdb -l 'GPP:-3,SAM:1'
-```
-
-```bash
-# 名前基準の基質選択（すべてのマッチを含む。WARNING ログ出力）
-pdb2reaction extract -i complex.pdb -c 'GPP,SAM' -o model.pdb -l 'GPP:-3,SAM:1'
-```
-
-```bash
-# ヘテロ-ヘテロ近接を有効にした複数構造から単一のマルチMODEL出力
-pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
- -o model_multi.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
-# 複数出力にする場合は -o model1.pdb -o model2.pdb を指定
-```
-
-## 入力
 
 コマンド形式:
 
@@ -51,18 +21,35 @@ pdb2reaction extract -i COMPLEX.pdb [-i COMPLEX2.pdb ...]
  [-v LEVEL]
 ```
 
-| 入力 | 必須 | 備考 |
-| --- | --- | --- |
-| `-i, --input` | はい | 1 つ以上のタンパク質-リガンド PDB ファイル（同一の原子順序が必要）。 |
-| `-c, --center` | はい | 基質指定（PDB パス、残基 ID、または残基名）。 |
-| `-o, --output` | いいえ | 活性部位モデル PDB 出力。命名/レイアウトは個数に依存（下記「出力」を参照）。 |
-| `-l, --ligand-charge` | いいえ | 非標準残基の電荷に対する総電荷または残基名ごとのマッピング。 |
+最小（ID基準の基質）+ 明示的な総リガンド電荷:
 
-### 基質指定（`-c/--center`）
+```bash
+# 最小（ID基準の基質）+ 明示的な総リガンド電荷
+pdb2reaction extract -i complex.pdb -c '123' -o model.pdb -l -3
+```
 
-- **PDB パス**: 座標が先頭入力と完全一致（許容誤差 1e-3 Å）。残基 ID は他構造へ伝播。
-- **残基 ID**: `'123,124'`, `'A:123,B:456'`, `'123A'`, `'A:123A'`（挿入コード対応）。
-- **残基名**: カンマ区切り（大文字小文字は無視）。同名残基が複数ある場合は**すべて**含め、警告を出力。
+PDB として提供される基質。残基名ごとの電荷マッピング（その他は 0）:
+
+```bash
+# PDB として提供される基質。残基名ごとの電荷マッピング（その他は 0）
+pdb2reaction extract -i complex.pdb -c substrate.pdb -o model.pdb -l 'GPP:-3,SAM:1'
+```
+
+名前基準の基質選択（すべてのマッチを含む。WARNING ログ出力）:
+
+```bash
+# 名前基準の基質選択（すべてのマッチを含む。WARNING ログ出力）
+pdb2reaction extract -i complex.pdb -c 'GPP,SAM' -o model.pdb -l 'GPP:-3,SAM:1'
+```
+
+ヘテロ-ヘテロ近接を有効にした複数構造から単一のマルチ MODEL 出力:
+
+```bash
+# ヘテロ-ヘテロ近接を有効にした複数構造から単一のマルチMODEL出力
+pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
+ -o model_multi.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
+# 複数出力にする場合は -o model1.pdb -o model2.pdb を指定
+```
 
 ## 処理の流れ
 
@@ -139,7 +126,13 @@ pdb2reaction extract -i COMPLEX.pdb [-i COMPLEX2.pdb ...]
 | `-l, --ligand-charge TEXT` | 総電荷または残基名ごとのマッピング（例: `GPP:-3,SAM:1`） | _None_ |
 | `--out-json/--no-out-json` | 抽出された PDB(s) の隣に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 
-## 注意事項
+### 基質指定（`-c/--center`）
+
+- **PDB パス**: 座標が先頭入力と完全一致（許容誤差 1e-3 Å）。残基 ID は他構造へ伝播。
+- **残基 ID**: `'123,124'`, `'A:123,B:456'`, `'123A'`, `'A:123A'`（挿入コード対応）。
+- **残基名**: カンマ区切り（大文字小文字は無視）。同名残基が複数ある場合は**すべて**含め、警告を出力。
+
+## 注記
 
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 - 抽出された活性部位モデルが小さすぎると、エネルギーや障壁の計算値が不正確になることがあります。その場合は抽出半径を大きくする（例: `-r 4.0` 以上）ことで、タンパク質環境をより多く含めて精度を改善できます。

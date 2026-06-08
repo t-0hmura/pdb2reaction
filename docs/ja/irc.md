@@ -1,31 +1,8 @@
 # `irc`
 
-遷移状態（TS）から反応物・生成物方向へ EulerPC（Euler Predictor-Corrector）ベースの固有反応座標（IRC）積分を実行します。デフォルトで前方・後方の両方向を実行します。VRAM に余裕がある場合は `--hessian-calc-mode Analytical` が推奨されます。XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定し、XYZ 座標を保持したまま PDB 出力変換が可能になります。一般的な手順は `tsopt` → `irc` です。
-
-## 使いどころ
-
-- `tsopt` で最適化・検証済みの TS 構造を出発点に、固有反応座標を追跡して端点接続性（R ↔ TS ↔ P）を確認するケース。
-- デフォルトでは前方・後方両方の分岐を実行します。`--no-backward`（または `--no-forward`）で一方向のみをたどります。
+遷移状態（TS）から反応物・生成物方向へ EulerPC（Euler Predictor-Corrector）ベースの固有反応座標（IRC）積分を実行し、`tsopt` で最適化・検証済みの TS 構造を出発点に固有反応座標を追跡して端点接続性（R ↔ TS ↔ P）を確認します。デフォルトで前方・後方の両方向を実行します。`--no-backward`（または `--no-forward`）で一方向のみをたどります。VRAM に余裕がある場合は `--hessian-calc-mode Analytical` が推奨されます。XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定し、XYZ 座標を保持したまま PDB 出力変換が可能になります。一般的な手順は `tsopt` → `irc` です。
 
 ## 実行例
-
-```bash
-pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc
-```
-
-```bash
-# 順方向のみ、有限差分ヘシアン、大きいステップサイズ
-pdb2reaction irc -i ts.pdb -q 0 -m 1 --no-backward \
- --step-size 0.2 --hessian-calc-mode FiniteDifference --out-dir ./irc_fd/
-```
-
-```bash
-# ステップを大きくし、解析ヘシアンを使う
-pdb2reaction irc -i ts.pdb -q 0 -m 1 --step-size 0.20 \
- --hessian-calc-mode Analytical --out-dir ./result_irc_analytical
-```
-
-## 入力
 
 コマンド形式:
 
@@ -42,12 +19,27 @@ pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <nu
  [--show-config] [--dry-run]
 ```
 
-| 入力 | 必須 | 備考 |
-| --- | --- | --- |
-| `-i, --input PATH` | はい | `geom_loader` が受け入れる遷移状態構造 |
-| `-q, --charge INT` | テンプレート/導出が適用されない限り必須 | 総電荷; YAML が `calc.charge` を指定していない場合に使用。`.gjf` テンプレートまたは `--ligand-charge/-l` が提供しない限り必須 |
-| `-l, --ligand-charge TEXT` | いいえ | スカラー整数または残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用 |
-| `--ref-pdb FILE` | XYZ/GJF 入力時 | 入力が XYZ/GJF の場合に使用する参照 PDB トポロジー（XYZ 座標を保持） |
+両方向の基本実行:
+
+```bash
+pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc
+```
+
+順方向のみ、有限差分ヘシアン、大きいステップサイズ:
+
+```bash
+# 順方向のみ、有限差分ヘシアン、大きいステップサイズ
+pdb2reaction irc -i ts.pdb -q 0 -m 1 --no-backward \
+ --step-size 0.2 --hessian-calc-mode FiniteDifference --out-dir ./irc_fd/
+```
+
+ステップを大きくし、解析ヘシアンを使う:
+
+```bash
+# ステップを大きくし、解析ヘシアンを使う
+pdb2reaction irc -i ts.pdb -q 0 -m 1 --step-size 0.20 \
+ --hessian-calc-mode Analytical --out-dir ./result_irc_analytical
+```
 
 ## 処理の流れ
 
@@ -67,12 +59,6 @@ out_dir/ (デフォルト:./result_irc/)
 └─ <prefix>backward_irc.pdb       # 逆方向分岐の PDB コンパニオン（同条件）
 ```
 コンソールには確定済みの `geom`/`calc`/`irc` 設定と実行時間の要約が表示されます。
-
-主な確認対象:
-
-- `result_irc/finished_irc_trj.xyz`
-- `result_irc/forward_irc_trj.xyz`
-- `result_irc/backward_irc_trj.xyz`
 
 ## CLI オプション
 
@@ -118,19 +104,19 @@ calc:
  return_partial_hessian: true # irc では true に強制（partial Hessian、active-DOF 処理）
 ```
 
-## 注意事項
-
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
-- MLIP バックエンド（デフォルト: UMA）は IRC 全体で再利用されます。`step_length` を大きくし過ぎると EulerPC が不安定になることがあります。
-- `--freeze-links` が有効な場合、リンク水素の親原子が自動的に凍結されます（{ref}`リンク水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
-
 ## 終了コード
 
 終了コードは CLI 規約の {ref}`ja-exit-codes` を参照。
 
+## 注意事項
+
+- MLIP バックエンド（デフォルト: UMA）は IRC 全体で再利用されます。`step_length` を大きくし過ぎると EulerPC が不安定になることがあります。
+- `--freeze-links` が有効な場合、リンク水素の親原子が自動的に凍結されます（{ref}`リンク水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
+
 ## 関連項目
 
 - [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
+- [トラブルシューティング](troubleshooting.md) — よくある失敗モードの詳細な対処
 - [tsopt](tsopt.md) — IRC 実行前に TS を最適化
 - [freq](freq.md) — 完全な振動解析と熱化学補正
 - [opt](opt.md) — IRC 端点を真の極小に最適化

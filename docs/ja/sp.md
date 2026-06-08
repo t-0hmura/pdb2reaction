@@ -1,26 +1,8 @@
 # `sp`
 
-`pdb2reaction sp` は、単一の構造に対して MLIP のエネルギー + 原子間力（オプションで完全な Hessian）を評価します。最適化を実行する前の構造の高速なチェック、バックエンド同士の直接比較、あるいは optimizer のループ外で参照値 / Hessian を生成する用途に利用します。
+`pdb2reaction sp` は、単一の構造に対して MLIP のエネルギー + 原子間力（オプションで完全な Hessian）を評価します。最適化を実行する前に構造に対して MLIP のエネルギー / 原子間力 / Hessian を手早くサニティチェックする、バックエンド同士を直接比較する、あるいは optimizer のループ外で参照値 / Hessian を生成する用途に利用します。
 
-## 使うべき場面
-
-- 最適化を実行する前に、構造に対して MLIP のエネルギー / 原子間力 / Hessian を手早くサニティチェックする。
-- バックエンド同士を直接比較する、または optimizer のループ外で参照値 / Hessian を生成する。
-- 一点 DFT（gpu4pyscf / PySCF）のベンチマークには、代わりに [`dft`](dft.md) を使用してください。
-
-## クイック例
-
-```bash
-# energy + forces (UMA backend, neutral closed-shell)
-pdb2reaction sp -i structure.pdb -q 0 -m 1
-```
-
-```bash
-# also compute the full Hessian (UMA → analytical; other backends → finite-difference)
-pdb2reaction sp -i structure.pdb -q 0 -m 1 --hess
-```
-
-## 入力
+## 実行例
 
 コマンド形式:
 
@@ -28,12 +10,19 @@ pdb2reaction sp -i structure.pdb -q 0 -m 1 --hess
 pdb2reaction sp -i FILE -q INT -m INT [-b uma|orb|mace|aimnet2] [--hess] [options]
 ```
 
-| 入力 | 必須 | 備考 |
-|---|---|---|
-| `-i, --input FILE` | はい | PDB / XYZ / GJF の構造ファイル |
-| `-q, --charge INT` | 非 GJF の場合 | 系の総電荷（GJF はテンプレートから継承） |
-| `-l, --ligand-charge TEXT` | 任意 | 残基別の電荷マッピング（例: `SAM:1,GPP:-3`）。`-q` の自動導出に使用 |
-| `-m, --multiplicity INT` | 非 GJF の場合 | スピン多重度、2S+1（デフォルト `1`；GJF はテンプレートから継承） |
+エネルギー + 原子間力（UMA バックエンド、中性閉殻）:
+
+```bash
+# energy + forces (UMA backend, neutral closed-shell)
+pdb2reaction sp -i structure.pdb -q 0 -m 1
+```
+
+完全な Hessian も計算（UMA → 解析的、その他のバックエンド → 有限差分）:
+
+```bash
+# also compute the full Hessian (UMA → analytical; other backends → finite-difference)
+pdb2reaction sp -i structure.pdb -q 0 -m 1 --hess
+```
 
 ## 出力
 
@@ -63,6 +52,10 @@ pdb2reaction sp -i FILE -q INT -m INT [-b uma|orb|mace|aimnet2] [--hess] [option
 
 | フラグ | デフォルト | 意味 |
 |---|---|---|
+| `-i, --input FILE` | — | PDB / XYZ / GJF の構造ファイル（必須） |
+| `-q, --charge INT` | — | 系の総電荷（非 GJF では必須；GJF はテンプレートから継承） |
+| `-l, --ligand-charge TEXT` | — | 残基別の電荷マッピング（例: `SAM:1,GPP:-3`）。`-q` の自動導出に使用 |
+| `-m, --multiplicity INT` | `1` | スピン多重度、2S+1（非 GJF では必須；GJF はテンプレートから継承） |
 | `-b, --backend [uma\|orb\|mace\|aimnet2]` | `uma` | MLIP バックエンドの選択 |
 | `--hess / --no-hess` | `--no-hess` | `hessian.npy` も計算して書き出す |
 | `--hessian-calc-mode [Analytical\|FiniteDifference]` | auto | 特定の Hessian モードを強制（`--hess` 指定時のみ有効） |
@@ -73,6 +66,10 @@ pdb2reaction sp -i FILE -q INT -m INT [-b uma|orb|mace|aimnet2] [--hess] [option
 | `--show-config / --dry-run` | off | 有効化されたマージ済み設定を出力 / 実行せずに検証 |
 
 完全な一覧（workers、溶媒補正など）を見るには `pdb2reaction sp --help-advanced` を実行してください。
+
+## 注記
+
+- 一点 DFT（gpu4pyscf / PySCF）のベンチマークには、代わりに [`dft`](dft.md) を使用してください。
 
 ## 関連項目
 

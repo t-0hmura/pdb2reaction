@@ -1,40 +1,8 @@
 # `path-search`
 
-**2 構造以上**から、GSM（デフォルト）または DMF（`--mep-mode dmf`）で連続的な最小エネルギー経路（MEP）を構築します。共有結合変化が検出される領域のみを選択的に精密化し、解決済みのサブパスを連結して 1 本の軌跡にまとめ、各セグメントの最高エネルギー画像（HEI）を TS 候補として出力します（tsopt + IRC で検証）。再帰的分解により多段階反応を自動検出し、各素反応ステップの詳細な MEP を構築しますが、複雑な多段階反応の機構を満足な経路として得るには、入力中間体やスキャン仕様、収束閾値の調整など手動での試行錯誤が必要になることがあります。
-
-## 使いどころ
-
-- R → … → P の **2 構造以上**を入力とし、自動精密化を含む連続 MEP を 1 本の軌跡にまとめたい場面。
-- セグメント生成器として `--mep-mode gsm`（デフォルト、string ベース）または `--mep-mode dmf`（direct flux）を選びます。
-- 精密化シードとして `--refine-mode peak`（HEI±1 を最適化）または `--refine-mode minima`（最寄り局所極小点へ外側探索）を選びます（未指定時は GSM で `peak`、DMF で `minima`）。
-- **2 端点だけ**で再帰精密化が不要な場合は、[path-opt](path-opt.md) の方がシンプルです。
+**2 構造以上**から、GSM（デフォルト、`--mep-mode gsm`、string ベース）または DMF（`--mep-mode dmf`、direct flux）で連続的な最小エネルギー経路（MEP）を構築します。R → … → P の **2 構造以上**を入力とし、自動精密化を含む連続 MEP を 1 本の軌跡にまとめたい場面で使用します。共有結合変化が検出される領域のみを選択的に精密化し（`--refine-mode peak` は HEI±1 を最適化、`--refine-mode minima` は最寄り局所極小点へ外側探索、デフォルトは GSM で `peak`、DMF で `minima`）、解決済みのサブパスを連結して 1 本の軌跡にまとめ、各セグメントの最高エネルギー画像（HEI）を TS 候補として出力します（tsopt + IRC で検証）。再帰的分解により多段階反応を自動検出し、各素反応ステップの詳細な MEP を構築しますが、複雑な多段階反応の機構を満足な経路として得るには、入力中間体やスキャン仕様、収束閾値の調整など手動での試行錯誤が必要になることがあります。**2 端点だけ**で再帰精密化が不要な場合は、[path-opt](path-opt.md) の方がシンプルです。
 
 ## 実行例
-
-```bash
-pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
- --out-dir ./result_path_search
-```
-
-```bash
-# 中間体を明示して多段の経路を与える
-pdb2reaction path-search -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 -m 1 \
- --out-dir ./result_path_search_multi
-```
-
-```bash
-# テンプレート参照を使って全系マージ出力を有効化する
-pdb2reaction path-search -i R.pdb IM1.pdb P.pdb -q 0 -m 1 \
- --ref-full-pdb holo_template.pdb --out-dir ./result_path_search_merge
-```
-
-```bash
-# DMF + minima リファインで探索する
-pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
- --mep-mode dmf --refine-mode minima --out-dir ./result_path_search_dmf
-```
-
-## 入力
 
 コマンド形式:
 
@@ -52,15 +20,36 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
  [--show-config/--no-show-config] [--dry-run/--no-dry-run]
 ```
 
-| 入力 | 必須 | 備考 |
-| --- | --- | --- |
-| `-i, --input` | はい | 反応順序の 2 つ以上の構造（反応物 → 生成物）。すべてのファイルを単一の `-i`/`--input` の後ろに並べて指定。 |
-| `-q, --charge` | 条件付き | 総電荷。非 `.gjf` 入力では `--ligand-charge/-l` の導出が成功しない限り必須（PDB 入力）。両方指定時は `-q` が `--ligand-charge/-l` より優先。 |
-| `-l, --ligand-charge` | 任意 | スカラー整数のリガンド総電荷、または残基別マッピング（例: `GPP:-3,SAM:1`）。`-q` 省略時に使用（PDB 入力のみ。XYZ/GJF は `-q` 必須）。 |
-| `-m, --multiplicity` | いいえ | スピン多重度（2S+1）。既定は `.gjf` テンプレート値または `1`。 |
-| `--ref-pdb` | XYZ/GJF マージ時 | 入力が XYZ/GJF の場合に最終的な全系マージで用いる活性部位モデル参照 PDB（入力と同数・同順）。 |
+2 端点（反応物 → 生成物）:
 
-`--convert-files` が有効（デフォルト）な場合、参照 PDB があれば軌跡の `.pdb` コンパニオンを、Gaussian テンプレートがあれば HEI スナップショットの `.gjf` コンパニオンを生成します。XYZ/GJF 入力では `--ref-pdb` が最終的な全系マージで用いるポケット参照 PDB（入力と同数・同順）を提供し、`--ref-full-pdb` によりフルテンプレートへのマージが可能です（XYZ/GJF 入力では主軌跡の PDB コンパニオンは生成されません）。
+```bash
+pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
+ --out-dir ./result_path_search
+```
+
+中間体を明示して多段の経路を与える:
+
+```bash
+# 中間体を明示して多段の経路を与える
+pdb2reaction path-search -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 -m 1 \
+ --out-dir ./result_path_search_multi
+```
+
+テンプレート参照を使って全系マージ出力を有効化する:
+
+```bash
+# テンプレート参照を使って全系マージ出力を有効化する
+pdb2reaction path-search -i R.pdb IM1.pdb P.pdb -q 0 -m 1 \
+ --ref-full-pdb holo_template.pdb --out-dir ./result_path_search_merge
+```
+
+DMF + minima リファインで探索する:
+
+```bash
+# DMF + minima リファインで探索する
+pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
+ --mep-mode dmf --refine-mode minima --out-dir ./result_path_search_dmf
+```
 
 ## 処理の流れ
 
@@ -124,7 +113,7 @@ out_dir/ (デフォルト:./result_path_search/)
 | `--mep-mode {gsm\|dmf}` | セグメント生成器: GSM（string）または DMF（direct flux） | `gsm` |
 | `--refine-mode {peak\|minima}` | 精密化シード: `peak` は HEI±1、`minima` は HEI から最寄り局所極小点へ外側探索。未指定時は GSM で `peak`、DMF で `minima` | _Auto_ |
 | `--dump/--no-dump` | MEP（GSM/DMF）と単一構造軌跡をダンプ。リスタート YAML は YAML で有効化した場合のみ書き出されます | `False` |
-| `--convert-files/--no-convert-files` | PDB/Gaussian 入力の XYZ/TRJ → PDB/GJF コンパニオンを切り替え | `True` |
+| `--convert-files/--no-convert-files` | PDB/Gaussian 入力の XYZ/TRJ → PDB/GJF コンパニオンを切り替え。XYZ/GJF 入力では主軌跡の PDB コンパニオンは生成されません。 | `True` |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_path_search/` |
 | `--thresh TEXT` | 単一構造最適化のみの収束プリセットを上書き（`opt.lbfgs/rfo.thresh`） | `gau` |
 | `--thresh-stopt TEXT` | ストリングオプティマイザーの収束プリセットを上書き（`stopt.thresh`） | `gau_loose` |
@@ -180,13 +169,9 @@ search:
  refine_mode: null # optional refinement strategy (auto-chooses when null)
 ```
 
-## 注意事項
+## 注記
 
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 - 入力は 2 つ以上が必須。満たさない場合、`-i/--input` の "invalid value" エラーで終了します。
-- 複数テンプレートを渡す場合は `--ref-full-pdb` をファイルごとに繰り返して指定します。`--align` が有効な場合、マージでは先頭テンプレートのみが再利用されます。
-- MLIP バックエンドは全構造で共有・再利用されます。
-- `--dump` が有効な場合、MEP（GSM/DMF）と単一構造最適化の軌跡が出力されます。リスタート YAML は YAML で `dump_restart` を有効にした場合のみ書き出されます。
 
 ## 関連項目
 

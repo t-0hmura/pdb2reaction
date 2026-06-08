@@ -1,14 +1,19 @@
 # `scan3d`
 
-調和拘束と MLIP 緩和により、3 距離（d₁, d₂, d₃）のグリッドスキャンを行います。`-s/--scan-lists`（YAML/JSON ファイルパス、推奨）またはインライン Python リテラルでターゲットを指定するか、`--csv` で既存 `surface.csv` の可視化のみを実行します。`scan3d` は d₁ → d₂ → d₃ の順にループをネストし、対応する拘束をかけて各格子点を緩和します。デフォルトは L-BFGS（`--opt-mode grad`）で、RFOptimizer が必要な場合は `--opt-mode hess` を指定してください。XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定すると、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
-
-## 使いどころ
-
-- 3 つの距離 `(d₁, d₂, d₃)` 上で 3D ポテンシャル体積を得たいとき、または既存の `surface.csv` を再プロットしたいとき。
-- 入力は 1 つの構造 + `-s scan3d.yaml`（推奨）または `-s/--scan-lists` の **単一** インラインリテラル（四つ組は 3 つ）。`--csv` 指定時はプロットのみで実行可能です。
-- 3D グリッドは点数が急激に増加するため、まず `--max-step-size` を大きくするか範囲を狭めることを検討してください。
+調和拘束と MLIP 緩和により、3 距離（d₁, d₂, d₃）のグリッドスキャンを行い、3 つの距離 `(d₁, d₂, d₃)` 上の 3D ポテンシャルエネルギー体積を生成します。3D ポテンシャル体積を得たいとき、または既存の `surface.csv` を再プロットしたいときに使用します。`-s/--scan-lists`（YAML/JSON ファイルパス、推奨）またはインライン Python リテラルでターゲットを指定するか、`--csv` で既存 `surface.csv` の可視化のみを実行します。`scan3d` は d₁ → d₂ → d₃ の順にループをネストし、対応する拘束をかけて各格子点を緩和します。デフォルトは L-BFGS（`--opt-mode grad`）で、RFOptimizer が必要な場合は `--opt-mode hess` を指定してください。XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定すると、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
 
 ## 実行例
+
+コマンド形式:
+
+```bash
+pdb2reaction scan3d [-i INPUT.{pdb|xyz|trj|...}] [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
+ [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
+ [-s/--scan-lists scan3d.yaml | '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
+ [--convert-files/--no-convert-files] [--ref-pdb FILE] [--csv PATH]
+```
+
+推奨: YAML/JSON spec ファイル。
 
 ```bash
 # 推奨: YAML/JSON spec
@@ -22,11 +27,15 @@ YAML
 pdb2reaction scan3d -i input.pdb -q 0 -s scan3d.yaml
 ```
 
+代替: インライン Python リテラル。
+
 ```bash
 # 代替: Python リテラル
 pdb2reaction scan3d -i input.pdb -q 0 \
  -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20),("TYR,285,CG","SAM,309,C12",1.10,3.00)]'
 ```
+
+LBFGS 緩和、内側軌跡ダンプ、HTML 等値面プロット。
 
 ```bash
 # LBFGS 緩和、内側軌跡ダンプ、HTML 等値面プロット
@@ -36,36 +45,12 @@ pdb2reaction scan3d -i input.pdb -q 0 \
  --preopt --baseline min
 ```
 
+既存 `surface.csv` からのプロットのみ（新規エネルギー評価をスキップ）。
+
 ```bash
 # 既存 surface.csv からのプロットのみ（スキャンしない）
 pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 -o ./result_scan3d/
 ```
-
-## 入力
-
-コマンド形式:
-
-```bash
-pdb2reaction scan3d [-i INPUT.{pdb|xyz|trj|...}] [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
- [-s/--scan-lists scan3d.yaml | '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
- [--convert-files/--no-convert-files] [--ref-pdb FILE] [--csv PATH]
-```
-
-注: `-i/--input` と `-s/--scan-lists` は `--csv` が指定されていない限り必須です。
-
-| 入力 | 必須 | 備考 |
-| --- | --- | --- |
-| `-i, --input` | はい（`--csv` 指定時を除く） | `geom_loader` が受け入れる構造ファイル（PDB / XYZ / TRJ / GJF）。 |
-| `-s, --scan-lists` | はい（`--csv` 指定時を除く） | YAML/JSON スペックファイルパス（推奨）、または 3 つの四つ組を持つ単一のインライン Python リテラル。 |
-| `--csv` | プロットのみで必須 | 再プロットする既存の `surface.csv`。指定すると `-i` と `-s` が任意になります。 |
-
-### スキャンリスト仕様
-
-`scan3d` はちょうど **3 つ**の四つ組 `(i, j, low_Å, high_Å)` を受け付けます（YAML/JSON では `pairs` キー、インラインでは単一リテラル）。`scan` と異なり、リテラルは **1 つだけ**を受け付けます（複数ステージは非対応）。
-
-YAML/JSON ファイル書式、インライン Python リテラル構文、原子セレクタ、クォート規則については
-{ref}`CLI 規約: スキャンリスト仕様 <ja-scan-list-spec>` を参照してください。
 
 ## 処理の流れ
 
@@ -93,13 +78,11 @@ out_dir/ (デフォルト:./result_scan3d/)
 
 グリッド点の構造は `Å×100` タグを使用するため、`point_i130_j310_k200.xyz` は d₁=1.30, d₂=3.10, d₃=2.00 Å に対応します。
 
-> **Note:** `-s/--scan-lists` の解釈結果を確認したい場合は `--print-parsed` を追加してください。
-
 ## CLI オプション
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル | `--csv` 未指定時は必須 |
+| `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル（PDB / XYZ / TRJ / GJF） | `--csv` 未指定時は必須 |
 | `-q, --charge INT` | 総電荷（CLI > テンプレート/`--ligand-charge`）。両方指定時は `-q` が優先 | テンプレート/導出がない場合は必須 |
 | `-l, --ligand-charge TEXT` | スカラー整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `--workers`, `--workers-per-node` | MLIP 予測器の並列度（workers > 1 で解析ヘシアンが無効、UMA バックエンドのみ対応; `workers_per_node` は並列予測器へ転送）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1`, `1` |
@@ -162,15 +145,18 @@ bias:
 ### セクション `bias`
 - `k`（`300`）: 調和バイアス強度（eV·Å⁻²）。
 
-## 注意事項
+## 注記
 
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
-
+- `-i/--input` と `-s/--scan-lists` は `--csv` が指定されていない限り必須です。
+- `scan3d` はちょうど **3 つ**の四つ組 `(i, j, low_Å, high_Å)` を受け付けます（YAML/JSON では `pairs` キー、インラインでは単一リテラル）。`scan` と異なり、リテラルは **1 つだけ**を受け付けます（複数ステージは非対応）。YAML/JSON ファイル書式、インライン Python リテラル構文、原子セレクタ、クォート規則については {ref}`CLI 規約: スキャンリスト仕様 <ja-scan-list-spec>` を参照してください。
+- 3D グリッドは点数が急激に増加するため、まず `--max-step-size` を大きくするか範囲を狭めることを検討してください。
 - 計算エンジンは MLIP バックエンド（デフォルト: UMA）で、1D/2D スキャンと同じ `HarmonicBiasCalculator` を再利用します。
 - Å 単位の制限値は内部で Bohr に変換され、L-BFGS ステップや RFO 信頼半径の制御に使われます。最適化の一時ファイルはテンポラリディレクトリに配置されます。
 - `--baseline` はデフォルトでグローバル最小値を基準としてゼロにします。`--baseline first` は `(i,j,k)=(0,0,0)` の格子点を基準にします。
 - 3D 可視化は 50×50×50 グリッドでの RBF 補間と、半透明の段階的等値面を使用します（断面表示はありません）。
 - `--freeze-links` はユーザー指定の `freeze_atoms` にリンク水素親原子をマージし、抽出された活性部位モデルの境界を固定します。
+- `-s/--scan-lists` の解釈結果を確認したい場合は `--print-parsed` を追加してください。
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 ## 関連項目
 - [scan](scan.md) -- 1D 結合距離スキャン

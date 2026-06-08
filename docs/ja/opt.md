@@ -1,40 +1,8 @@
 # `opt`
 
-このコマンドは pysisyphus の L-BFGS（`lbfgs`）または RFOptimizer（`rfo`）を用い、MLIP（デフォルト: UMA、`-b/--backend` で ORB ・ MACE ・ AIMNet2 も選択可能）のエネルギー・勾配・ヘシアンで単一構造を局所極小点へ最適化します。L-BFGS は `--opt-mode grad`（デフォルト）、RFO は `--opt-mode hess` で選択します。入力構造は `.pdb`、`.xyz`、`_trj.xyz`、その他 `geom_loader` がサポートする任意の形式に対応しています。必要に応じて `--flatten` で虚振動数モードのフラット化を実行できます。
-
-## 使いどころ
-
-- 単一構造（PDB/XYZ/GJF/`_trj.xyz`）を局所極小点まで緩和する場合。距離拘束や虚振動数モードのフラット化も任意で併用可能。
-- L-BFGS 最小化には `--opt-mode grad`（alias `lbfgs`、デフォルト）、RFOptimizer には `--opt-mode hess`（alias `rfo`）を選択。
+このコマンドは pysisyphus の L-BFGS（`lbfgs`）または RFOptimizer（`rfo`）を用い、MLIP（デフォルト: UMA、`-b/--backend` で ORB ・ MACE ・ AIMNet2 も選択可能）のエネルギー・勾配・ヘシアンで単一構造を局所極小点へ最適化します。入力構造は `.pdb`、`.xyz`、`_trj.xyz`、その他 `geom_loader` がサポートする任意の形式に対応しています。単一構造（PDB/XYZ/GJF/`_trj.xyz`）を局所極小点まで緩和する用途に使い、距離拘束や虚振動数モードのフラット化も任意で併用可能です。L-BFGS 最小化には `--opt-mode grad`（alias `lbfgs`、デフォルト）、RFOptimizer には `--opt-mode hess`（alias `rfo`）を選択します。
 
 ## 実行例
-
-```bash
-pdb2reaction opt -i input.pdb -q 0 -m 1 --out-dir ./result_opt
-```
-
-```bash
-# 収束を厳しくして軌跡ダンプを保存する
-pdb2reaction opt -i input.pdb -q 0 -m 1 --thresh gau_tight --dump \
- --out-dir ./result_opt_tight
-```
-
-```bash
-# 距離拘束を 1 本だけ追加する。原子 1-5 間を 2.0 Å に拘束。例では `--bias-k 20.0`
-# （目標距離付近でゆるく誘導する弱い拘束）を使っていますが、`bias.k` のデフォルトは
-# 300 eV·Å⁻² です。最適化中に拘束を支配的にしたい場合はデフォルト値の方が適しています。
-pdb2reaction opt -i input.pdb -q 0 -m 1 \
- --dist-freeze '[(1,5,2.0)]' --bias-k 20.0 --out-dir ./result_opt_rest
-# 2-tuple 形式: 原子 1-5 間の距離を現在値に固定 --dist-freeze '[(1,5)]'
-```
-
-```bash
-# RFO モードを明示して実行する
-pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hess \
- --out-dir ./result_opt_hess
-```
-
-## 入力
 
 コマンド形式:
 
@@ -47,20 +15,33 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <nu
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
-| 入力 | 必須 | 注記 |
-| --- | --- | --- |
-| `-i, --input` | はい | `geom_loader` が受け入れる入力構造（`.pdb`、`.xyz`、`_trj.xyz`、`.gjf`）。 |
-| `-q, --charge` | テンプレート/導出が適用されない限り | 総電荷。省略時は `.gjf` テンプレートが提供するか、`-l/--ligand-charge` から導出。 |
-| `-m, --multiplicity` | いいえ | スピン多重度（2S+1）。`.gjf` テンプレートまたは `1` にフォールバック。 |
-| `--ref-pdb` | XYZ/GJF の場合 | 入力が XYZ/GJF のときの参照 PDB トポロジー。フォーマット対応の PDB/GJF 出力変換を可能にします。 |
+基本的な最小化:
 
-開始構造が PDB または Gaussian テンプレートの場合、最適化構造を `.pdb`（PDB 入力）や `.gjf`（Gaussian テンプレート）として自動的に書き出します（`--convert-files/--no-convert-files` で制御、デフォルトで有効）。
-PDB 固有の便利機能:
-- `--freeze-links`（デフォルト `True`）でリンク水素の親原子を検出し、`geom.freeze_atoms` にマージします（1 始まり）。
-- 出力変換では `final_geometry.pdb`（および `--dump` の場合は `optimization.pdb`）を入力 PDB をトポロジー参照として書き出します。
-XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定でき、XYZ 座標を保持したままフォーマット対応の PDB/GJF 出力変換が可能です。
+```bash
+pdb2reaction opt -i input.pdb -q 0 -m 1 --out-dir ./result_opt
+```
 
-Gaussian `.gjf` テンプレートは電荷/スピンのデフォルト値を提供し、変換が有効な場合に最適化構造を `.gjf` として自動出力します。
+収束を厳しくして軌跡ダンプを保存する:
+
+```bash
+pdb2reaction opt -i input.pdb -q 0 -m 1 --thresh gau_tight --dump \
+ --out-dir ./result_opt_tight
+```
+
+調和距離拘束を追加する。例では `--bias-k 20.0`（目標距離付近でゆるく誘導する弱い拘束）を使っていますが、`bias.k` のデフォルトは 300 eV·Å⁻² で、最適化中に拘束を支配的にしたい場合はデフォルト値の方が適しています:
+
+```bash
+pdb2reaction opt -i input.pdb -q 0 -m 1 \
+ --dist-freeze '[(1,5,2.0)]' --bias-k 20.0 --out-dir ./result_opt_rest
+# 2-tuple 形式: 原子 1-5 間の距離を現在値に固定 --dist-freeze '[(1,5)]'
+```
+
+RFO モードを明示して実行する:
+
+```bash
+pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hess \
+ --out-dir ./result_opt_hess
+```
 
 ## 処理の流れ
 
@@ -98,7 +79,7 @@ out_dir/
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `-i, --input PATH` | `geom_loader` が受け入れる入力構造 | 必須 |
+| `-i, --input PATH` | `geom_loader` が受け入れる入力構造（`.pdb`、`.xyz`、`_trj.xyz`、`.gjf`） | 必須 |
 | `-q, --charge INT` | 総電荷。`.gjf` テンプレートまたは `--ligand-charge`（PDB 入力または `--ref-pdb` 付き XYZ/GJF）が提供しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
 | `-l, --ligand-charge TEXT` | スカラー整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `--workers INT` | MLIP 予測器の並列度（workers > 1 で解析ヘシアン無効）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1` |
@@ -169,7 +150,7 @@ L-BFGS と RFO の両方で使用される共有オプティマイザー制御:
 
 `geom`、`calc`、`opt`、`lbfgs`、`rfo` の完全な YAML スキーマは [YAML リファレンス](yaml-reference.md) を参照してください。
 
-## 注意事項
+## 注記
 
 ```{note}
 **平坦なエネルギー地形によるフォールバック収束。** `energy_plateau: true`

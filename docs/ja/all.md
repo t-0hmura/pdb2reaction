@@ -1,24 +1,28 @@
 # `all`
 
-`pdb2reaction all` は、抽出から解析までの一連の処理を **まとめて実行する最上位コマンド** です。1 つ以上の PDB 入力から活性部位モデル（バインディングポケット）を抽出し、（任意の）段階的スキャンを行い、MEP 探索（デフォルトで再帰的 `path-search`、`--refine-path False` で単一パス `path-opt` に切り替え）を実行したうえで、必要に応じて TS 最適化・IRC・振動解析・DFT 一点計算まで連結します。MLIP バックエンドはデフォルトで UMA を使用しますが、`-b/--backend` オプションで ORB ・ MACE ・ AIMNet2 も選択可能です。
+`pdb2reaction all` は、抽出から解析までの一連の処理を **まとめて実行する最上位コマンド** です。`extract` → `scan` / `path-search` → `tsopt` → `irc` / `freq` / `dft` を手動で連結する代わりに、構造から検証済みの機構までを 1 コマンドで得られます。1 つ以上の PDB 入力から活性部位モデル（バインディングポケット）を抽出し、（任意の）段階的スキャンを行い、MEP 探索（デフォルトで再帰的 `path-search`、`--refine-path False` で単一パス `path-opt` に切り替え）を実行したうえで、必要に応じて TS 最適化・IRC・振動解析・DFT 一点計算まで連結します。MLIP バックエンドはデフォルトで UMA を使用しますが、`-b/--backend` オプションで ORB ・ MACE ・ AIMNet2 も選択可能です。
 
-```{important}
-`--tsopt` **なし**の `all` ワークフローは **TS 候補**（MEP 探索の最高エネルギー画像 / HEI）を出力します。`--tsopt` を追加すると、これらを虚振動数チェックで検証済みの最適化 TS 構造に精密化し、続いて IRC でエンドポイントを検証します。結果（虚振動数の本数と端点の接続性）は機構解釈の前に必ず目視で確認してください。
-```
-
-## 使いどころ
+`all` は与える入力に応じて次の 3 つのモードのいずれかで動作します。
 
 - **複数構造 MEP** — 反応順に並べた 2 構造以上（PDB/GJF/XYZ）と基質定義を与え、活性部位モデル抽出 → GSM/DMF MEP 探索 → 全系テンプレートへのマージまで一括実行する場合。
 - **単一構造 + 段階的スキャン** — 1 つの構造に対して `-s/--scan-lists` を 1 つ以上与え、（段階的）スキャンで得た中間体列を MEP の端点として用いる場合。
 - **TSOPT のみ** — 1 つの入力構造に `--scan-lists` を省略して `--tsopt` を指定し、MEP/マージをスキップして TS 最適化 + IRC（必要に応じて freq / DFT）だけ実行する場合。
 
-```{tip}
-大規模な活性部位モデルでは、単一構造スキャンワークフロー（`--scan-lists`）の方が、複数構造 MEP ワークフローよりも信頼性の高い反応障壁を得やすい傾向があります。複数の PDB を入力すると、反応座標と無関係な領域の構造差異が蓄積し、障壁を過大評価する可能性があります。スキャンワークフローは単一構造から出発して関連する座標のみを駆動するため、無関係な構造ノイズを最小化できます。この影響はモデルサイズが大きくなるほど顕著になります。
+```{important}
+`--tsopt` **なし**の `all` ワークフローは **TS 候補**（MEP 探索の最高エネルギー画像 / HEI）を出力します。`--tsopt` を追加すると、これらを虚振動数チェックで検証済みの最適化 TS 構造に精密化し、続いて IRC でエンドポイントを検証します。結果（虚振動数の本数と端点の接続性）は機構解釈の前に必ず目視で確認してください。
 ```
 
-> **実行例:** [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) ディレクトリに GPP C6-メチル基転移酵素 BezA（[Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)）の完全な `all` ワークフロースクリプト（MEP およびスキャンパイプライン）があります。
-
 ## 実行例
+
+[`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) ディレクトリに GPP C6-メチル基転移酵素 BezA（[Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)）の完全な `all` ワークフロースクリプト（MEP およびスキャンパイプライン）があります。
+
+コマンド形式:
+
+```bash
+pdb2reaction all -i INPUT1 [INPUT2 ...] -c SUBSTRATE [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] [options]
+```
+
+TS 最適化・IRC・熱化学・DFT まで一括実行する複数構造 MEP:
 
 ```bash
 # TS 最適化・IRC・熱化学・DFT まで一括実行する複数構造 MEP
@@ -26,12 +30,16 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c "SAM,GPP,MG" -l "SAM:1,GPP:-3" \
  --tsopt --thermo --dft --out-dir ./result_mep
 ```
 
+単一構造 + 段階的スキャン（2 ステージ）:
+
 ```bash
 # 単一構造 + 段階的スキャン（2 ステージ）
 pdb2reaction all -i 1.R.pdb -c "SAM,GPP,MG" -l "SAM:1,GPP:-3" \
  -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' '[("GPP 321 H11","GLU 186 OE2",0.90)]' \
  --tsopt --thermo --out-dir ./result_scan
 ```
+
+TSOPT のみワークフロー（経路探索なし）:
 
 ```bash
 # TSOPT のみワークフロー（経路探索なし）
@@ -41,33 +49,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 
 テンプレートがある場合の XYZ/TRJ → PDB/GJF 変換（付随ファイルの生成）は、全ステージ共通の `--convert-files/--no-convert-files`（デフォルト: `True`）で制御できます。
 
-## 入力
-
-```bash
-pdb2reaction all -i INPUT1 [INPUT2 ...] -c SUBSTRATE [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] [options]
-```
-
 ヘルプ出力は `pdb2reaction all --help` で主要オプションを、`pdb2reaction all --help-advanced` で全オプションを確認できます。
-
-| 入力 | 必須 | 説明 |
-| --- | --- | --- |
-| `-i, --input` | 必須 | 反応順序の完全構造。複数構造 MEP では 2 つ以上。単一入力は `--scan-lists/-s`（段階的スキャン）または `--tsopt`（TSOPT のみ）使用時のみ可。 |
-| `-c, --center` | 抽出に必須 | 基質指定: PDB パス、残基 ID（`123,124` / `A:123,B:456`）、または残基名（`GPP,SAM`）。省略すると抽出をスキップし、全構造を下流へ渡す。 |
-| `-l, --ligand-charge` | 推奨 | 非標準残基の総電荷または残基別マッピング。系全体の総電荷は自動導出される。 |
-| `--ref-pdb` | XYZ 入力時 | `-i` で XYZ を渡す場合にトポロジーを供給する参照 PDB。 |
-
-### 入力要件
-- 抽出有効（`-c/--center`）: 残基同定のため入力は **PDB** が必須。
-- 抽出なし: **PDB/XYZ/GJF** を使用可能。
-- 複数構造実行は 2 つ以上の構造が必要。
-
-### 電荷とスピンの優先順位
-
-電荷の解決順序の詳細は {ref}`CLI 規約: 電荷の指定 <ja-charge-specification>` を参照してください。`all` コマンドでは、活性部位モデル抽出（`-c` 指定時）による電荷導出が追加の優先度レイヤーとして機能します。
-
-**スピンの解決順序:** `--multiplicity`（CLI）→ `.gjf` テンプレート → デフォルト（1）
-
-> **ヒント:** 非標準の基質には `--ligand-charge` を必ず指定し、正しい電荷伝播を確保してください。
 
 ## 処理の流れ
 
@@ -199,6 +181,14 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 
 ## CLI オプション
 
+入力の要件:
+
+- 抽出有効（`-c/--center`）: 残基同定のため入力は **PDB** が必須。
+- 抽出なし: **PDB/XYZ/GJF** を使用可能。
+- 複数構造実行は 2 つ以上の構造が必要。完全な入力ファイル要件（水素、元素列、原子順序の一致）は [CLI 規約](cli-conventions.md) を参照してください。
+
+電荷の解決順序の詳細は {ref}`CLI 規約: 電荷の指定 <ja-charge-specification>` を参照してください。`all` コマンドでは、活性部位モデル抽出（`-c` 指定時）による電荷導出が追加の優先度レイヤーとして機能します。スピンの解決順序は `--multiplicity`（CLI）→ `.gjf` テンプレート → デフォルト（1）。非標準の基質には `--ligand-charge/-l` を必ず指定し、scan/MEP/TSOPT/DFT へ正しい総電荷を伝播させてください。
+
 ### 入出力オプション
 
 | オプション | 説明 | デフォルト |
@@ -224,7 +214,7 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `-c, --center TEXT` | 基質指定（PDB パス、残基 ID、または残基名） | 抽出に必須 |
+| `-c, --center TEXT` | 基質指定: PDB パス、残基 ID（`123,124` / `A:123,B:456`）、または残基名（`GPP,SAM`）。省略すると抽出をスキップし、全構造を下流へ渡す | 抽出に必須 |
 | `-r, --radius FLOAT` | 活性部位モデル包含カットオフ（Å） | `2.6` |
 | `--radius-het2het FLOAT` | ヘテロ–ヘテロカットオフ（Å）。`0` を渡すと空の選択を避けるため内部で `0.001 Å` に自動補正されます（単体の `extract` と同じ挙動） | `0.0` |
 | `--include-h2o/--no-include-h2o` | 水分子を含める（HOH/WAT/TIP3/SOL） | `True` |
@@ -356,9 +346,13 @@ dft:
 
 すべての YAML オプションの完全なリファレンスについては、**[YAML 設定リファレンス](yaml-reference.md)** を参照してください。
 
-## 注意事項
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+## 注記
 
+```{tip}
+大規模な活性部位モデルでは、単一構造スキャンワークフロー（`--scan-lists`）の方が、複数構造 MEP ワークフローよりも信頼性の高い反応障壁を得やすい傾向があります。複数の PDB を入力すると、反応座標と無関係な領域の構造差異が蓄積し、障壁を過大評価する可能性があります。スキャンワークフローは単一構造から出発して関連する座標のみを駆動するため、無関係な構造ノイズを最小化できます。この影響はモデルサイズが大きくなるほど顕著になります。
+```
+
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 - 形式電荷を推定できない場合は `--ligand-charge`（数値または残基別マッピング）を必ず指定し、scan/MEP/TSOPT/DFT へ正しい総電荷を伝播させてください。
 - マージ用の参照 PDB テンプレートは元の入力から自動的に導出されます。`path-search` の `--ref-full-pdb` はこのラッパーでは意図的に非公開です。
 - 収束プリセット: `--thresh` のデフォルトは `gau`、`--thresh-post` のデフォルトは `baker`。

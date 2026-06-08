@@ -1,17 +1,24 @@
 # `dft`
 
-> **要約:** GPU4PySCF または CPU PySCF を使用して DFT 一点計算を実行します。デフォルトの汎関数/基底関数は ωB97M-V/def2-tzvpd です。結果にはエネルギーと布居解析（population analysis: Mulliken、meta-Löwdin、IAO 電荷）が含まれます。
+GPU4PySCF または CPU PySCF を使用して DFT 一点計算を実行し、エネルギーと布居解析（population analysis: Mulliken、meta-Löwdin、IAO 電荷）を報告します。デフォルトの汎関数/基底関数は ωB97M-V/def2-tzvpd です。小規模な活性部位モデルに対して DFT 一点エネルギー（および布居解析）が必要なとき、多くは MLIP で最適化した R/TS/P 構造の精密化に使います。バックエンドは `--engine`（デフォルト `gpu`）で選択します。GPU が利用できない場合や移植性・デバッグ目的の実行には `cpu` を使用します。
 
 > `--engine`（単体の `dft`）と `--dft-engine`（`pdb2reaction all` から転送する場合）の命名規則は {ref}`ja-engine-vs-dft-engine` を参照してください。
 
 > **前提条件:** DFT 依存パッケージ（PySCF、GPU4PySCF）はデフォルトではインストールされません。`pip install "pdb2reaction[dft]"` でインストールしてください。
 
-## 使いどころ
-
-- 小規模な活性部位モデルに対して DFT 一点エネルギー（および布居解析）が必要なとき。多くは MLIP で最適化した R/TS/P 構造の精密化に使います。
-- バックエンドは `--engine`（デフォルト `gpu`）で選択します。GPU が利用できない場合や移植性・デバッグ目的の実行には `cpu` を使用します。
-
 ## 実行例
+
+コマンド形式:
+
+```bash
+pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULTIPLICITY] \
+ [--func-basis 'FUNC/BASIS'] \
+ [--max-cycle N] [--conv-tol Eh] [--grid-level L] \
+ [--out-dir DIR] [--engine gpu|cpu] [--convert-files/--no-convert-files] \
+ [--ref-pdb FILE] [--config FILE] [--show-config] [--dry-run]
+```
+
+基本的な GPU 一点計算。
 
 ```bash
 pdb2reaction dft -i input.pdb -q 0 -m 1 --engine gpu --out-dir ./result_dft
@@ -40,27 +47,7 @@ pdb2reaction dft -i input.pdb -l 'LIG:0' -m 1 \
  --engine gpu --out-dir ./result_dft_ligand
 ```
 
-## 入力
-
-コマンド形式:
-
-```bash
-pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULTIPLICITY] \
- [--func-basis 'FUNC/BASIS'] \
- [--max-cycle N] [--conv-tol Eh] [--grid-level L] \
- [--out-dir DIR] [--engine gpu|cpu] [--convert-files/--no-convert-files] \
- [--ref-pdb FILE] [--config FILE] [--show-config] [--dry-run]
-```
-
-| 入力 | 必須 | 説明 |
-| --- | --- | --- |
-| `-i, --input` | はい | `geom_loader` が受け入れる構造ファイル（`.pdb`/`.xyz`/`_trj.xyz`/`.gjf`/…）。 |
-| `-q, --charge` | 導出できない限り | PySCF に提供される総電荷。`.gjf` テンプレートまたは `--ligand-charge/-l` が提供しない限り必須。 |
-| `-l, --ligand-charge` | 任意 | スカラー整数または残基別マッピング（例: `GPP:-3,SAM:1`）。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF）。 |
-| `-m, --multiplicity` | 任意 | スピン多重度（2S+1）。`.gjf` テンプレート値または `1` がデフォルト。 |
-| `--ref-pdb` | XYZ/GJF で必要 | 原子数検証とリガンド電荷導出のための参照 PDB トポロジー。 |
-
-汎関数/基底のデフォルトは `wb97m-v/def2-tzvpd` ですが CLI で上書き可能です。電荷/スピンは `.gjf` テンプレートがあればそれを継承します。`-q` が省略され `--ligand-charge/-l` がある場合、入力は酵素−基質複合体として扱われ、`extract.py` の電荷サマリーから総電荷を計算します。明示的な `-q` は常に最優先です。`.gjf` 以外の入力で `--ligand-charge/-l` もない場合は中断します。多重度は省略時 `1` がデフォルトです。デフォルト以外の状態では明示的に設定してください。
+`-q` が省略され `--ligand-charge/-l` がある場合、入力は酵素−基質複合体として扱われ、`extract.py` の電荷サマリーから総電荷を計算します。明示的な `-q` は常に最優先です。`.gjf` 以外の入力で `--ligand-charge/-l` もない場合は中断します。
 
 ## 処理の流れ
 
@@ -86,7 +73,7 @@ out_dir/ (デフォルト:./result_dft/)
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル | 必須 |
+| `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル（`.pdb`/`.xyz`/`_trj.xyz`/`.gjf`/…） | 必須 |
 | `-q, --charge INT` | PySCF に提供される総電荷。`.gjf` テンプレートまたは `--ligand-charge`（PDB 入力または `--ref-pdb` 付き XYZ/GJF）が提供しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
 | `-l, --ligand-charge TEXT` | スカラー整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `-m, --multiplicity INT` | スピン多重度（2S+1）。PySCF 用に `2S` に変換 | `.gjf` テンプレート値または `1` |
