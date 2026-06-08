@@ -53,7 +53,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb \
 Default model: `MACE-OMOL-0`. Inspect:
 
 ```bash
-python -c "import pdb2reaction.defaults as d; print(d.MACE_BACKEND_DEFAULTS)"
+python -c "import pdb2reaction.core.defaults as d; print(d.MACE_BACKEND_DEFAULTS)"
 ```
 
 ## Backend-specific flags

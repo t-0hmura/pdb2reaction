@@ -4,321 +4,159 @@
 
 <img src="./docs/overview.png" alt="pdb2reaction workflow overview" width="90%">
 
-`pdb2reaction` is a Python CLI toolkit for elucidating **enzymatic reaction pathways** from **PDB structures** using machine-learning interatomic potentials (MLIPs). Each workflow step is also available as an [individual subcommand](#cli-subcommands) ([`opt`](docs/opt.md), [`scan`](docs/scan.md), [`scan2d`](docs/scan2d.md), [`path-search`](docs/path-search.md), [`tsopt`](docs/tsopt.md), [`freq`](docs/freq.md), [`irc`](docs/irc.md), [`dft`](docs/dft.md), [`energy-diagram`](docs/energy-diagram.md), [etc.](#cli-subcommands)) for fine-grained control.
+`pdb2reaction` is a Python CLI for elucidating **enzymatic reaction pathways** from **PDB structures** using machine-learning interatomic potentials (MLIPs). Given (i) two or more PDB files (R → ... → P), (ii) one PDB with `--scan-lists`, or (iii) one TS candidate with `--tsopt`, it extracts an **active-site cluster model**, runs an **MEP search**, and optionally chains **TS optimization → IRC → frequencies → DFT single-point**. Each stage is also exposed as an [individual subcommand](#cli-subcommands).
 
-A **single command** can generate a first-pass enzymatic reaction path:
-
-```bash
-# Multi-PDB mode (R + P → MEP)
-pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
-```
+An initial reaction path is one command:
 
 ```bash
-# Scan mode (single structure → staged bond scans → MEP)
-pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
-    --scan-lists '[("CS1 SAM 320","GPP 321 C7",1.60)]' \
-                 '[("GPP 321 H11","GLU 186 OE2",0.90)]'
+# Multi-PDB mode (R + P endpoints → MEP, with TS optimisation + thermo)
+pdb2reaction all -i R.pdb P.pdb -q 0 --tsopt --thermo
 ```
 
----
+> **Prerequisites:** input PDBs must already contain hydrogens; multiple PDBs must share the same atoms in the same order (only coordinates differ). Small-molecule `.xyz` / `.gjf` inputs work when `-c` / `--ligand-charge` are omitted.
 
-The full workflow — **MEP search → TS optimization → IRC → thermochemistry → single-point DFT** — can be run in one command:
+## Related tools
 
-```bash
-pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
-    --tsopt --thermo --dft
-```
+| Tool | Use case |
+|---|---|
+| **`pdb2reaction`** (this repo) | Pure-MLIP **cluster-model** reaction paths from PDB / XYZ / GJF — no MM force field required. |
+| [**mlmm-toolkit**](https://github.com/t-0hmura/mlmm_toolkit) | **ML/MM ONIOM** with the full protein environment; automates MM parameterisation and ML-region assignment from a single PDB. |
+| [**uma_pysis**](https://github.com/t-0hmura/uma_pysis) | YAML-input reaction-mechanism analysis for **small molecules**. |
 
-> **Working examples** are provided in the [`examples/`](examples/) directory: a `run.sh` with complete `all` workflow commands for both the multi-structure MEP and the scan-based pipeline.
-
----
-
-Given **(i) two or more PDB files** (R → ... → P), **or (ii) one PDB with `--scan-lists`**, **or (iii) one TS candidate with `--tsopt`**, `pdb2reaction` automatically:
-
-- extracts an **active-site model** around user-defined substrates to build a **cluster model**,
-- explores **minimum-energy paths (MEPs)** with GSM or DMF,
-- *optionally* optimizes **transition states**, runs **vibrational analysis**, **IRC**, and **single-point DFT**,
-
-using machine-learning interatomic potentials (MLIPs).
-
-### Related tools
-
-| Tool | Use case | Repository |
-|------|----------|------------|
-| **mlmm-toolkit** | ML/MM (ONIOM) with full protein environment — automates MM parameter generation and ML region assignment from a single PDB input | <https://github.com/t-0hmura/mlmm_toolkit> |
-| **UMA–Pysisyphus Interface** | YAML-input-based reaction mechanism analysis for small molecules | <https://github.com/t-0hmura/uma_pysis> |
-
-Both `pdb2reaction` and `mlmm-toolkit` include a custom GPU-optimized pysisyphus fork for geometry optimization, TS search, and IRC. This bundled fork is **not compatible** with the upstream pysisyphus package; do not install them side by side.
-
-> **Important (prerequisites):**
-> - Input PDB files must already contain **hydrogen atoms**.
-> - When providing multiple PDBs, they must contain **the same atoms in the same order** (only coordinates may differ).
-> - Boolean CLI options accept both `--flag` / `--no-flag` and value style `--flag True/False` (`yes/no`, `1/0` are also accepted). Prefer toggle style in new scripts.
-> - The workflow also works for small-molecule systems. If you omit `--center/-c` and `--ligand-charge`, you can use `.xyz` or `.gjf` inputs as well.
+`pdb2reaction` and `mlmm-toolkit` bundle the same GPU-optimised pysisyphus fork; it is **not** compatible with upstream pysisyphus — do not install them side by side.
 
 ## Documentation
 
-- [**Getting Started**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/getting-started.md) — Quick start and workflow overview
-- [**Installation**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/installation.md) — Setup and dependency installation
-- [**Examples**](examples/) — Working `all` workflow commands (MEP and scan pipelines) for BezA, in `examples/run.sh`
-- [**YAML Reference**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/yaml-reference.md) — Configuration options
-- [**JSON Output Reference**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/json-output.md) — Machine-readable result.json schema
-- [**Troubleshooting**](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/troubleshooting.md) — Common errors, backend selection guide, VRAM requirements
-- **Full documentation**: [t-0hmura.github.io/pdb2reaction/](https://t-0hmura.github.io/pdb2reaction/)
+- [Getting Started](docs/getting-started.md) · [Installation](docs/installation.md) · [Examples](examples/) · [Troubleshooting](docs/troubleshooting.md)
+- [YAML Reference](docs/yaml-reference.md) · [JSON Output Schema](docs/json-output.md)
+- Full site: <https://t-0hmura.github.io/pdb2reaction/>
 
----
+## System requirements
 
-## Agent Skills
+| Component | Requirement |
+|---|---|
+| OS / Python | Linux x86_64 (validated); macOS / WSL 2 for CPU-only smoke tests. Python >= 3.11 (3.12 tested). |
+| GPU / CUDA / VRAM | NVIDIA GPU, CUDA >= 12.6 (12.9 recommended; required for RTX 50-series, matched to the PyTorch wheel). 8 GB VRAM minimum, 16 GB recommended (24 GB for analytical Hessian on 500+-atom regions). |
+| RAM / Disk | 32 GB RAM minimum (60 GB recommended); 20 GB free disk for the conda env, UMA cache, and artefacts. |
 
-`pdb2reaction` ships AI-agent instructions under [`skills/`](skills/) so your agent can drive enzyme reaction-mechanism investigations via Claude Code, Codex, Cursor, etc.
-
-The skill bundle covers:
-- End-to-end workflows and output parsing (`summary.json`, R/TS/P canonical paths)
-- CLI subcommands (`extract`, `path-search`, `tsopt`, `freq`, `irc`, `dft`, …)
-- Structure I/O (PDB / XYZ / GJF, charge & multiplicity decisions, link hydrogens & frozen atoms)
-- Installation & Setup instructions
-- HPC operation (PBS / SLURM, multi-GPU)
-
-To activate, copy the `skills/` directory into your project (e.g. as `.claude/skills/` for Claude Code) or your agent's configured skill location.
-
----
+CPU-only execution works but is 10–100× slower; not recommended for full TS / IRC / Hessian workflows. Full requirement and tuning details: [docs/installation.md](docs/installation.md).
 
 ## Installation
 
-Linux with a CUDA-capable NVIDIA GPU is the validated production environment for the MLIP reaction-path workflows. The core Python package and CPU-only smoke tests also run on macOS and on Windows under WSL2.
-
-### Prerequisites
-
-- Python >= 3.11
-- CUDA 12.x
-
-### Minimal setup (CUDA 12.9)
-
 ```bash
+# 1. CUDA-enabled PyTorch (match your CUDA runtime)
 pip install torch --index-url https://download.pytorch.org/whl/cu129
-pip install pdb2reaction
-plotly_get_chrome -y
-huggingface-cli login
+
+# 2. pdb2reaction (editable from a local clone, or `pip install pdb2reaction`)
+pip install -e .
+
+# 3. Authenticate Hugging Face once (only required for the default UMA backend)
+#    Accept the FAIR Chemistry License v1 at https://huggingface.co/facebook/UMA, then:
+hf auth login                               # interactive
+# OR: export HF_TOKEN=hf_xxx && hf auth login --token "$HF_TOKEN" --add-to-git-credential   # CI / HPC
 ```
 
-### For DMF method (Additional MEP search method)
-Install `cyipopt` (recommended via conda):
-```bash
-conda install -c conda-forge cyipopt -y
-```
+**Optional extras** (install only what you need):
 
-For the full step-by-step guide (HPC `module load`, alternative backends, DFT extras, troubleshooting), see [docs/installation.md](docs/installation.md).
+| Extra | Adds |
+|---|---|
+| `[orb]` / `[aimnet]` | Orb / AIMNet2 MLIP backend (`-b orb` / `-b aimnet2`) — *not* HF-gated |
+| `[dft]` | PySCF + GPU4PySCF single-point DFT (`--dft` / `pdb2reaction dft`) |
+| `[mcp]` | Model Context Protocol server for agent clients |
 
-### DFT single-point (`pdb2reaction dft`)
+The MACE backend (`-b mace`) is **not** a pip extra: `mace-torch` pins `e3nn==0.4.4`, which conflicts with `fairchem-core`'s `e3nn>=0.5` (UMA), so it needs a dedicated environment — `pip uninstall -y fairchem-core && pip install mace-torch` (see [docs/installation.md](docs/installation.md)).
 
-DFT dependencies are **not** installed by default. To use `pdb2reaction dft`, install the `[dft]` extra:
-
-```bash
-pip install "pdb2reaction[dft]"
-```
-
-This installs PySCF, GPU4PySCF (x86_64 only), and related CUDA libraries.
-
-### Supported ML potentials
-
-| Potential | Repository | Install extra |
-|-----------|------------|---------------|
-| **UMA** (default) | <https://github.com/facebookresearch/fairchem> | *(included)* |
-| **ORB** | <https://github.com/orbital-materials/orb-models> | `pip install "pdb2reaction[orb]"` |
-| **MACE** | <https://github.com/ACEsuit/mace> | See below |
-| **AIMNet2** | <https://github.com/isayevlab/aimnetcentral> | `pip install "pdb2reaction[aimnet]"` |
-
-> **MACE installation:** Because `mace-torch` and `fairchem-core` (UMA) can pin incompatible versions of `e3nn`, we recommend installing MACE in a dedicated environment. To use MACE, uninstall `fairchem-core` first, then install MACE:
-> ```bash
-> pip uninstall fairchem-core
-> pip install mace-torch
-> ```
-
----
+CUDA module loads, alternative-backend recipes, DMF/`cyipopt` setup, Plotly Chromium, and HPC job-script templates: [docs/installation.md](docs/installation.md) and [docs/hpc-example.md](docs/hpc-example.md).
 
 ## Quick Examples
 
-The examples below use GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)) — a two-step mechanism: electrophilic methyl transfer from SAM to GPP C6 (via C7 carbocation), then proton abstraction by glutamate (`GLU 186`). The complete commands are in [`examples/run.sh`](examples/).
+Examples use GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)) — full commands in [`examples/run.sh`](examples/).
 
-### Full workflow (multi-structure MEP)
 ```bash
+# Multi-structure MEP (R + P → MEP, with TS + thermochemistry)
 pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --tsopt --thermo --out-dir result_mep
-```
 
-### Scan mode (single structure → staged bond scans → MEP)
-```bash
+# Scan mode (single structure → staged bond scan → MEP)
 pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
-    --scan-lists '[("CS1 SAM 320","GPP 321 C7",1.60)]' \
-                 '[("GPP 321 H11","GLU 186 OE2",0.90)]' \
-    --tsopt --thermo --out-dir result_scan
+    -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' --tsopt --thermo --out-dir result_scan
+
+# TS-only validation (single TS candidate → tsopt → IRC → freq)
+pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt
 ```
 
-### TS optimization only
-```bash
-pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
-    --tsopt
-```
+Per-stage walkthrough (`extract` → `opt` → `path-search` → `tsopt` → `freq` → `irc` → `dft`): [docs/getting-started.md](docs/getting-started.md) and [docs/quickstart-all.md](docs/quickstart-all.md).
 
-### Step-by-step workflow
+## Output
 
-**1. Extract active-site model (cluster model)** — [`extract`](docs/extract.md)
-```bash
-pdb2reaction extract -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'
-```
+A run writes its deliverables to `--out-dir` (default `./result_all/`):
 
-**2. Optimize geometry** — [`opt`](docs/opt.md)
-```bash
-pdb2reaction opt -i model.pdb -l 'SAM:1,GPP:-3'
-```
+- `segments/seg_NN/{reactant,ts,product}.*` — the canonical R / TS / P structures to cite
+- `mep.pdb` / `mep_trj.xyz` — the merged reaction path
+- `energy_diagram_MEP.png` — barrier diagram across all segments
+- `summary.log` (human-readable) / `summary.json` (machine-readable)
 
-**3. MEP search** — [`path-opt`](docs/path-opt.md)
-```bash
-pdb2reaction path-opt -i R_model.pdb IM_model.pdb -l 'SAM:1,GPP:-3'
-```
-
-**Recursive MEP search for multi-step reactions** — [`path-search`](docs/path-search.md)
-```bash
-pdb2reaction path-search -i R_model.pdb P_model.pdb -l 'SAM:1,GPP:-3'
-```
-
-**4. TS optimization** — [`tsopt`](docs/tsopt.md)
-```bash
-pdb2reaction tsopt -i hei.pdb -l 'SAM:1,GPP:-3'
-```
-
-**5. Frequency analysis** — [`freq`](docs/freq.md)
-```bash
-pdb2reaction freq -i ts_optimized.pdb -l 'SAM:1,GPP:-3'
-```
-
-**6. IRC** — [`irc`](docs/irc.md)
-```bash
-pdb2reaction irc -i ts_optimized.pdb -l 'SAM:1,GPP:-3'
-```
-
-**7. DFT single-point** — [`dft`](docs/dft.md)
-```bash
-pdb2reaction dft -i optimized.pdb -l 'SAM:1,GPP:-3'
-```
-
----
+Pipeline scratch lives under `_work/` (safe to delete). Full layout and filename conventions: [docs/output-layout.md](docs/output-layout.md).
 
 ## CLI Subcommands
 
-### Workflow
-
-| Subcommand | Role | Documentation |
+| Subcommand | Role | Doc |
 |---|---|---|
-| `all` | End-to-end: extraction → MEP → TS → IRC → freq → DFT | [docs/all.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/all.md) |
+| `all` (default) | End-to-end: extract → MEP → TS → IRC → freq → DFT | [all](docs/all.md) |
+| `extract` | Build active-site cluster model | [extract](docs/extract.md) |
+| `fix-altloc` | Resolve PDB alternate conformations | [fix-altloc](docs/fix-altloc.md) |
+| `add-elem-info` | Repair PDB element columns (77–78) | [add-elem-info](docs/add-elem-info.md) |
+| `opt` | Geometry optimization (L-BFGS / RFO) | [opt](docs/opt.md) |
+| `tsopt` | TS optimization (Dimer / RS-I-RFO) | [tsopt](docs/tsopt.md) |
+| `path-opt` | MEP via GSM or DMF | [path-opt](docs/path-opt.md) |
+| `path-search` | Recursive MEP search with refinement | [path-search](docs/path-search.md) |
+| `scan` / `scan2d` / `scan3d` | 1D / 2D / 3D bond-distance scans | [scan](docs/scan.md) · [scan2d](docs/scan2d.md) · [scan3d](docs/scan3d.md) |
+| `freq` | Vibrational analysis + thermochemistry | [freq](docs/freq.md) |
+| `irc` | IRC (EulerPC) | [irc](docs/irc.md) |
+| `dft` | Single-point DFT (GPU4PySCF / PySCF) | [dft](docs/dft.md) |
+| `sp` | Single-point MLIP energy / forces / Hessian | [sp](docs/sp.md) |
+| `bond-summary` | Compare structures, report bond changes | [bond-summary](docs/bond-summary.md) |
+| `trj2fig` / `energy-diagram` | Energy plot / R→TS→P diagram | [trj2fig](docs/trj2fig.md) · [energy-diagram](docs/energy-diagram.md) |
 
-### Structure Preparation
-
-| Subcommand | Role | Documentation |
-|---|---|---|
-| `extract` | Extract active-site model (cluster model) | [docs/extract.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/extract.md) |
-| `fix-altloc` | Resolve alternate conformations in PDB files | [docs/fix-altloc.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/fix-altloc.md) |
-| `add-elem-info` | Add/repair PDB element columns (77–78) | [docs/add-elem-info.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/add-elem-info.md) |
-
-### Optimization & Path Search
-
-| Subcommand | Role | Documentation |
-|---|---|---|
-| `opt` | Geometry optimization (L-BFGS or RFO) | [docs/opt.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/opt.md) |
-| `tsopt` | TS optimization (Dimer or RS-I-RFO) | [docs/tsopt.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/tsopt.md) |
-| `path-opt` | MEP optimization via GSM or DMF | [docs/path-opt.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/path-opt.md) |
-| `path-search` | Recursive MEP search with refinement | [docs/path-search.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/path-search.md) |
-| `scan` | 1D bond-length driven scan | [docs/scan.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/scan.md) |
-| `scan2d` | 2D distance grid scan | [docs/scan2d.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/scan2d.md) |
-| `scan3d` | 3D distance grid scan | [docs/scan3d.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/scan3d.md) |
-
-### Analysis
-
-| Subcommand | Role | Documentation |
-|---|---|---|
-| `freq` | Vibrational frequency analysis + thermochemistry | [docs/freq.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/freq.md) |
-| `irc` | IRC calculation (EulerPC) | [docs/irc.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/irc.md) |
-| `dft` | Single-point DFT (GPU4PySCF / PySCF) | [docs/dft.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/dft.md) |
-| `bond-summary` | Compare structures and report bond changes | [docs/bond-summary.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/bond-summary.md) |
-
-### Visualization
-
-| Subcommand | Role | Documentation |
-|---|---|---|
-| `trj2fig` | Energy plot from XYZ trajectory | [docs/trj2fig.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/trj2fig.md) |
-| `energy-diagram` | Energy diagram from numeric values | [docs/energy-diagram.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/energy-diagram.md) |
-
-
-> **Tip:** In [`tsopt`](docs/tsopt.md), [`freq`](docs/freq.md), and [`irc`](docs/irc.md), setting **`--hessian-calc-mode Analytical`** is strongly recommended when you have enough VRAM.
-
----
-
-## HPC / Multi-GPU
-
-On HPC clusters or multi-GPU workstations, `pdb2reaction` can parallelize UMA inference across nodes. Set `workers` and `workers_per_node` to enable parallel inference; see [docs/hpc-example.md](https://github.com/t-0hmura/pdb2reaction/blob/main/docs/hpc-example.md) for details.
-
----
+> `tsopt`, `freq`, `irc`: set `--hessian-calc-mode Analytical` when VRAM allows.
 
 ## Getting Help
 
 ```bash
-pdb2reaction --help
-pdb2reaction <subcommand> --help
-pdb2reaction <subcommand> --help-advanced
-pdb2reaction all --help-advanced
-# Shorthand alias (equivalent to pdb2reaction)
-p2r --help
-# Equivalent module invocation
-python -m pdb2reaction --help
+pdb2reaction --help                       # top-level
+pdb2reaction <subcmd> --help              # core options
+pdb2reaction <subcmd> --help-advanced     # full option set
+p2r --help                                # short alias
+python -m pdb2reaction --help             # equivalent module invocation
 ```
 
-`pdb2reaction all --help` shows core options. Use `pdb2reaction all --help-advanced` for the full option list.
-`scan`, `scan2d`, `scan3d`, and the calculation commands (`opt`, `path-opt`, `path-search`, `tsopt`, `freq`, `irc`, `dft`) now follow the same progressive-help pattern (`--help` core, `--help-advanced` full). `add-elem-info`, `trj2fig`, and `energy-diagram` also use the same pattern. `extract` and `fix-altloc` also support progressive help (`--help` core, `--help-advanced` full parser options).
-
-> If you encounter any issues, please open an issue at <https://github.com/t-0hmura/pdb2reaction/issues>.
-
----
+Issues: <https://github.com/t-0hmura/pdb2reaction/issues>.
 
 ## Citation
 
-If you use `pdb2reaction` in your research, please cite the ChemRxiv preprint:
-
 ```bibtex
 @misc{ohmura2026pdb2reaction,
-  author       = {Ohmura, Takuto and Sato, Hajime and Terada, Tohru},
-  title        = {pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials},
-  year         = {2026},
-  doi          = {10.26434/chemrxiv.15003538/v1},
-  note         = {ChemRxiv preprint}
+  author = {Ohmura, Takuto and Sato, Hajime and Terada, Tohru},
+  title  = {pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials},
+  year   = {2026}, doi = {10.26434/chemrxiv.15003538}, note = {ChemRxiv preprint}
 }
 ```
 
-To cite the software or a specific release, use the Zenodo record:
+## Agent Skills
 
-```bibtex
-@software{ohmura2026pdb2reaction_software,
-  author       = {Ohmura, Takuto},
-  title        = {pdb2reaction},
-  year         = {2026},
-  month        = {5},
-  version      = {0.3.10},
-  url          = {https://github.com/t-0hmura/pdb2reaction},
-  license      = {GPL-3.0},
-  doi          = {10.5281/zenodo.19197865}
-}
-```
-
----
+Agent instructions for Claude Code / Codex / Cursor live in [`skills/`](skills/) — copy into your project's skill location (e.g. `.claude/skills/`) to let an agent drive `extract` / `path-search` / `tsopt` / `irc` / `dft` end-to-end.
 
 ## Known limitations
 
-- **MACE and UMA cannot coexist** in the same environment due to an `e3nn` version conflict. Use separate conda environments.
-- **DFT single-point** (`pdb2reaction dft`) is practical up to ~300 atoms; larger systems may require fragmentation.
-- **ORB backend** tends to converge transition states with extra small imaginary modes even when the reaction coordinate is correctly identified (i.e. mechanism recovery is usually fine but a clean single-saddle TS spectrum is not guaranteed). For quantitative studies that need a single-imaginary-mode TS, prefer UMA or MACE, or re-score ORB-converged geometries with DFT.
-- **CPU-only execution** is supported but 10-100x slower than GPU.
+- **MACE + UMA cannot coexist** (`e3nn` version conflict). Use separate conda envs.
+- **DFT single-point** is practical up to ~300 atoms; larger systems need fragmentation.
+- **ORB backend** sometimes converges TS with extra soft imaginary modes — mechanism recovery is fine, but for clean single-saddle spectra prefer UMA / MACE or re-score with DFT.
+- **CPU-only execution** is 10–100× slower than GPU.
 
----
+## Contributing
+
+Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-`pdb2reaction` is distributed under the **GNU General Public License version 3 (GPL-3.0)** and is available for academic and commercial use subject to the GPL-3.0 license terms.
+GNU General Public License v3 (GPL-3.0).

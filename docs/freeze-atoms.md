@@ -80,7 +80,7 @@ There is no mode that substitutes one for another; every entry that appears in a
 - **XYZ/GJF without a topology.** No `LKH` records exist, so `--freeze-links` is a no-op. Provide `--ref-pdb FILE` or an explicit `--freeze-atoms` list.
 - **`--no-freeze-links`.** Disables the auto-freeze. Useful only for diagnostic runs that intentionally let the boundary relax; production cluster-model runs should leave `--freeze-links` on.
 
-## See also
+## See Also
 
 - [`extract`](extract.md) — Where link hydrogens are inserted (residue `LKH`, atom `HL`, 1.09 Å along severed bond vector). Full algorithmic detail at {ref}`Link hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`.
 - [YAML Reference](yaml-reference.md) — `geom.freeze_atoms` schema and merge order.

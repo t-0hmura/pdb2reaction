@@ -81,7 +81,7 @@ cat result_opt/result.json | python -m json.tool
 | `opt_mode` | string | `"rsirfo"` / `"dimer"` |
 
 `files` には `imaginary_mode_files`（vib ファイルリスト）を含む場合があります。
-収束詳細 (force/step) は rsirfo モードで利用可能です。dimer モードでは `n_opt_cycles` のみ提供され、`status` は常に `"converged"` を返します (dimer ドライバには非収束シグナルが無いため、`n_imaginary_modes == 1` と `.out` ログで判定してください)。
+収束詳細 (force/step) は rsirfo モードで利用可能です。dimer モードも `runner.is_converged` に応じて `status` に `"converged"` / `"not_converged"` を返します。rsirfo モードが出す力・ステップ収束の詳細キーのみ、dimer モードでは省略されます。
 
 ### `freq`
 
@@ -298,7 +298,7 @@ cat result_opt/result.json | python -m json.tool
 
 ### `bond-summary`
 
-`--out-json` 有効時、`bond-summary` は JSON を**標準出力**に出力します（`result.json` ファイルは書き出しません。永続化したい場合は stdout をリダイレクトしてください）。上の MLIP 系サブコマンドが `out_dir` に `result.json` を書き出すのとは**異なる**挙動です:
+`--json` 有効時、`bond-summary` は JSON を**標準出力**に出力します（`result.json` ファイルは書き出しません。永続化したい場合は stdout をリダイレクトしてください）。上の MLIP 系サブコマンドが `out_dir` に `result.json` を書き出すのとは**異なる**挙動です:
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|

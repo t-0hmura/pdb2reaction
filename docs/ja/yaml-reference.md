@@ -13,7 +13,7 @@
 組み込みデフォルト  <  --config (YAML)  <  CLI フラグ
 ```
 
-1. **組み込みデフォルト** — `pdb2reaction/defaults.py` に定義されたハードコード値。
+1. **組み込みデフォルト** — `pdb2reaction/core/defaults.py` に定義されたハードコード値。
 2. **`--config`** — デフォルトを上書きする YAML ファイル（例: `--config my_settings.yaml`）。
 3. **CLI フラグ** — コマンドラインで明示的に指定したオプション（例: `-q -1`, `--thresh gau_loose`）。*明示的に指定された*値のみが YAML を上書きし、CLI デフォルトのままのオプションは YAML の値を隠しません。
 
@@ -84,8 +84,8 @@ TS 最適化はより厳しい "baker" プリセットを、通常の極小化�
 | [`geom`](#geom) | ジオメトリと座標設定 | all, opt, scan, scan2d, scan3d, tsopt, freq, irc, path-opt, path-search, dft |
 | [`calc`](#calc) | MLIP バックエンドの設定 | all, opt, scan, scan2d, scan3d, tsopt, freq, irc, path-opt, path-search |
 | [`opt`](#opt) | 最適化の共通設定 | opt, scan, scan2d, scan3d, tsopt, path-opt, path-search |
-| [`lbfgs`](#lbfgs) | L-BFGS の設定 | opt, scan, scan2d, scan3d, path-search |
-| [`rfo`](#rfo) | RFO の設定 | opt, scan, scan2d, scan3d, path-search |
+| [`lbfgs`](#lbfgs) | L-BFGS の設定 | opt, scan, scan2d, scan3d, path-search, path-opt |
+| [`rfo`](#rfo) | RFO の設定 | opt, scan, scan2d, scan3d, path-search, path-opt |
 | [`gs`](#gs) | GSM（Growing String Method）設定 | path-opt, path-search |
 | [`dmf`](#dmf) | DMF（Direct Max Flux）設定 | path-opt, path-search |
 | [`stopt`](#stopt) | StringOptimizer 設定 | path-opt, path-search |
@@ -125,6 +125,7 @@ MLIP バックエンドの設定。複数バックエンド（UMA, ORB, MACE, AI
 ```yaml
 calc:
  backend: uma           # MLIP backend: "uma", "orb", "mace", or "aimnet2"
+ precision: fp32 # fp32 (baseline) | fp64 (full-precision base inference); backends may override (ORB float32-high, MACE float64)
  charge: 0 # Total system charge (overridden by CLI -q)
  spin: 1 # Spin multiplicity 2S+1 (overridden by CLI -m)
  model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
@@ -490,10 +491,10 @@ irc:
  prefix: "" # Filename prefix
  max_pred_steps: 500 # Predictor-corrector max steps
  loose_cycles: 3 # Loose cycles before tightening
- corr_func: mbs # EulerPC コレクタ関数: "mbs"（Modified Bulirsch–Stoer、デフォルト）または "rk4"
+ corr_func: mbs # EulerPC コレクタ関数（現在登録されているのは "mbs" のみ）
 ```
 
-`corr_func` は、予測子–修正子法ベースの IRC 積分器（EulerPC）が使う修正子ステップを選択します。`"mbs"` は pysisyphus 組み込みの Modified Bulirsch–Stoer 実装（デフォルト）、`"rk4"` は古典的な 4 次 Runge–Kutta 修正子を要求します。既定の積分器がシステム上で数値的に不安定な場合にのみ変更してください。通常は `mbs` のままで問題ありません。
+`corr_func` は、予測子–修正子法ベースの IRC 積分器（EulerPC）が使う修正子ステップを選択します。現在登録されているのは `"mbs"`（pysisyphus 組み込みの Modified Bulirsch–Stoer 実装、デフォルト）のみで、それ以外の値は構築時にエラーになります。
 
 ## 振動解析セクション
 
@@ -541,7 +542,7 @@ dft:
  grid_level: 3 # PySCF grid level
  engine: gpu # SCF backend: "gpu" (GPU4PySCF) or "cpu" (PySCF)
  lowmem: true # closed-shell GPU で gpu4pyscf rks_lowmem.RKS を使用
- verbose: 0 # PySCF verbosity (0-9)
+ verbose: 0 # PySCF verbosity (0-9); CLI -v 2/3 では実行時 PySCF verbosity が >=4
  out_dir: ./result_dft/ # Output directory root
 ```
 
@@ -560,12 +561,14 @@ bias:
  k: 300.0 # Harmonic bias strength (eV·Å⁻²)
 ```
 
-**サブコマンド間で共有されるばね定数。** 同じ物理的な調和ペナルティ（`k`、単位 eV·Å⁻²）がデフォルト値 `300.0` で 3 箇所に現れます:
+**サブコマンド間で共有されるばね定数。** 同じ物理的な調和ペナルティ（`k`、単位 eV·Å⁻²）が以下の箇所にデフォルト値 `300.0` で現れます:
 
 | YAML キー | 使用元 | CLI フラグ |
 |----------|-------|-----------|
-| `bias.k` | `opt`（`--dist-freeze` 原子ペアに対する `--bias-k`）、`scan`, `scan2d`, `scan3d` | `--bias-k` |
+| `bias.k` | `scan`, `scan2d`, `scan3d` | `--bias-k` |
 | `dmf.k_fix` | `path-opt` / `path-search` で `mep_mode: dmf` を使用する場合 | —（YAML 専用） |
+
+`opt` も `--bias-k`（`--dist-freeze` 原子ペアに適用）を受け付けますが、これは CLI フラグからのみ読み取られ、同じ `300.0` を既定値とします。`bias:` YAML セクションは参照しません。
 
 調和拘束の強さを調整したい場合はこれらのいずれかを上書きしてください。値を小さく（例: `20.0`）すると、柔らかい誘導項としてジオメトリが緩和しやすくなります。デフォルトの `300.0` はほぼ剛体的に固定する値です。
 

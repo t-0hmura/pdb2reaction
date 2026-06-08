@@ -1,5 +1,7 @@
 # CLI Command Reference
 
+These pages are the generated `--help` reference for each command. For usage guidance and worked examples, see the command's narrative guide in the main documentation (e.g. [all](../../all.md), [opt](../../opt.md)).
+
 ```{toctree}
 :maxdepth: 1
 :hidden:
@@ -19,6 +21,7 @@ path_search
 scan
 scan2d
 scan3d
+sp
 trj2fig
 tsopt
 ```
@@ -40,5 +43,6 @@ tsopt
 | `pdb2reaction scan` | [scan](scan.md) |
 | `pdb2reaction scan2d` | [scan2d](scan2d.md) |
 | `pdb2reaction scan3d` | [scan3d](scan3d.md) |
+| `pdb2reaction sp` | [sp](sp.md) |
 | `pdb2reaction trj2fig` | [trj2fig](trj2fig.md) |
 | `pdb2reaction tsopt` | [tsopt](tsopt.md) |

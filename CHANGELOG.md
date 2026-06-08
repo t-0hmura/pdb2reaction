@@ -6,6 +6,180 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+## [0.4.0] — 2026-06-09
+
+### Fixed
+- MCP `run_single_point_dft` emitted `--functional` / `--basis` (two flags
+  the `dft` CLI does not accept) so every call failed; it now passes the
+  single combined `--func-basis FUNC/BASIS` argument.
+- `MLIPCalculator.__init__` no longer swallows malformed `freeze_atoms`
+  input with `except Exception: freeze_iter=[]`. A typo in the CLI
+  string used to silently un-freeze every atom and let TS opt walk
+  through what the user thought was frozen. Narrowed to (TypeError,
+  ValueError) and raises with the offending value.
+- `MLIPCalculator._compute_full_hessian_au` referenced `torch` but the
+  module never imported it; any analytical-Hessian backend that
+  returned a torch tensor would crash with `NameError: torch is not
+  defined`. Added the missing `import torch`.
+- `path_search._run.freeze_atoms_for_log` pre-initialised before its
+  inner try block; the comprehension is also assigned later in the
+  nested function, so Python treats the name as local and the previous
+  raise hit `UnboundLocalError` instead of falling back to the empty
+  list from the cli() scope.
+- `workflows/all.py` GPU-release block before the DFT subprocess fork
+  rebinds names to `None` explicitly instead of calling
+  `del locals()[name]` — the latter is a CPython no-op (locals()
+  returns a copy of the frame namespace) and the torch.nn.Module
+  references stayed pinned through the subsequent gc.collect() +
+  empty_cache(), so the subprocess started with the GPU still occupied.
+
+### Changed
+- `--precision fp64` now also forces the Hessian to fp64 (`hessian_double`)
+  so the optimiser / eigen linear algebra cannot silently run in a lower
+  precision than the model; a config that set `hessian_double=False` under
+  fp64 is overridden with a warning.
+- AIMNet2 now rejects both `--precision fp64` (its model inputs are cast to
+  float32 upstream) and `--deterministic` (its forces come from a custom
+  CUDA kernel outside torch's deterministic-algorithms control), with clear
+  errors instead of running misleadingly.
+- The `all`-pipeline determinism check in the smoke suite is now an
+  informational monitor (reports drift, does not gate); bit-exactness is an
+  opt-in via `--deterministic`, not a default guarantee.
+- `--help` of `pdb2reaction` now groups subcommands under semantic
+  sections ("Pipelines" / "Pipeline stages" / "Inputs & topology" /
+  "Analysis") in a configurable, deterministic order; subcommands not
+  listed in any section fall through to a trailing "Other" bucket so
+  we never hide an entry silently.
+- CLI exception renderer appends `Try 'pdb2reaction <subcmd> -h for
+  help.` to every user-input-style error so first-time users see a
+  recovery path, and routes the full traceback through
+  `logging.getLogger(...).exception` so log scrapers / `-v` users get
+  the structured record alongside the human-readable terminal echo.
+- Repo-wide ruff `F401` sweep: removed 29 unused imports including the
+  unused `warnings` shadow in `backends/__init__.py`.
+- `docs/cli-conventions.md` now spells out the four permanent boolean
+  forms (`--flag` / `--no-flag` / `--flag True/yes/1/on` /
+  `--flag False/no/0/off`) and adds a "Contributing a new bool flag"
+  section pointing at the `add_*_option` factory + `_COMMAND_BOOL_*`
+  registries.
+- `docs/architecture.md` lists the actual `pdb2reaction/workflows/`
+  files (the previous text referenced workflow modules that do not
+  exist in this repo) and refreshes the per-file LOC numbers cited
+  in §2.3.
+
+### Added
+- `--deterministic` flag on every compute subcommand (`opt`, `tsopt`,
+  `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`,
+  `all`, `sp`) for bit-reproducible GPU runs (deterministic algorithms +
+  an `index_reduce_` shim). Process-global, slower, and fails loud if the
+  build cannot honour it; `PDB2REACTION_STRICT_DETERMINISTIC=1` is the env-var
+  equivalent. Verified bit-identical energy and forces on uma / orb / mace.
+- `docs/reproducibility.md` documenting the determinism / precision model
+  and the per-backend reproducibility guarantees.
+- `tests/test_help_grouping.py` locks the four-bucket `--help` section
+  rendering + order.
+- `result.json` / `summary.json` envelope now carries
+  `schema_version: "1.0"` and `write_result_json` mirrors every per-stage
+  `result.json` payload to a sibling `summary.json` so agents can
+  converge on a single filename across every subcommand. `result.json`
+  is preserved for back-compat. `RESULT_JSON_STATUS_VALUES` enumerates
+  the allowed `status` strings.
+- Structured error envelope when a subcommand fails: the JSON envelope
+  now carries `error_class_chain` (MRO names), `error_module`, and
+  `error_label` alongside the legacy `error` / `error_type` / `status`
+  keys, so MCP clients can pattern-match the exception hierarchy
+  without parsing text.
+- `docs/output-layout.md` (new): single-page reference for the filename
+  conventions per subcommand + agent recipe for reading `summary.json`
+  with class-chain pattern matching. `docs/json-output.md` and
+  `docs/mcp_server.md` updated with the schema_version, summary.json
+  mirror, and error envelope semantics.
+- `tests/test_write_result_json.py`, `tests/test_error_envelope.py`
+  (~6 tier-1 assertions) lock in the new envelope contracts.
+- `pdb2reaction.workflows._all_helpers` (new module) provides the
+  landing zone for `pdb2reaction.workflows.all.cli()` decomposition.
+  Currently exposes:
+    * `build_energy_level_dict` (factors the 4-way R/TS/P energy-level
+      dict duplication out of cli() — same shape for UMA / Gibbs /
+      DFT / Gibbs-DFT entries, now in one place).
+    * `build_pipeline_summary_payload` (factors the inner body of
+      `_write_pipeline_summary_log` for unit-testability).
+- `tests/test_all_helpers.py` (5 cases) pins the extracted helper
+  contracts (energy-level kcal projection + no-input-mutation, summary
+  payload shape, DFT-disabled path drops dft_func_basis, AllContext
+  signature drift guard).
+- `AllContext` frozen dataclass added to `_all_helpers`: bundles the
+  65 `pdb2reaction all` CLI parameters in declaration order; foundation
+  for future cli() decomposition steps.
+- `pdb2reaction.workflows._path_yaml_helpers` (new module):
+  `apply_single_opt_yaml_layer` extracted from the 44-LOC nested
+  closure that previously lived (verbatim) in both `path_opt.cli()`
+  and `path_search.cli()`. Both sites now delegate to the shared
+  helper.
+- `pdb2reaction.mcp._runner` exposes `SubcmdResultDict` (TypedDict),
+  `MCP_SUBCMD_RESULT_SCHEMA_VERSION = "1.0"`, and
+  `MCP_SUBCMD_RESULT_STATUSES` enum; `SubcmdResult.to_dict` now emits
+  `schema_version` so MCP clients can pin the contract.
+- Smoke `tests/smoke/run.sh` expanded with per-stage `--coord-type
+  {dlc,redund,tric}` + `--precision fp64` test coverage
+  (test53a/d/g/j/k/m); test53 itself capped at `--max-cycles 5 --no-
+  tsopt/thermo/dft` so the DLC code path is exercised without the
+  multi-hour convergence the uncapped run requires.
+- Smoke model-based complex scans now pass explicit boundary
+  `--freeze-atoms` for the generated `p_complex_model.pdb`, and add
+  complex-model DLC regressions (test69/70) so frozen-DOF internal-coordinate
+  paths are not covered only by small-molecule inputs.
+- `--precision fp32|fp64` accepted on every calculator-constructing
+  subcommand. The flag was previously available only on `tsopt / freq /
+  irc / sp`; it now also covers `opt / all / path-opt / path-search /
+  scan / scan2d / scan3d`. For `all`, the value propagates to every
+  child stage through the shared args YAML, so a single top-level
+  switch covers the full pipeline.
+- `--irc-pos-def` (IRC convergence guard requiring PSD mass-weighted
+  Hessian) is opt-in on `irc`; blocks the IRC "shoulder" false
+  convergence where the rms-only criterion calls success before
+  reaching the local minimum.
+
+### Removed
+- **BREAKING:** Flat-top compatibility shim layer removed. The package now
+  lives under 6 layer directories (`cli/`, `workflows/`, `domain/`,
+  `backends/`, `io/`, `core/`); the shims at `pdb2reaction/<file>.py` that
+  re-exported the new locations have been deleted in this release. External
+  code must migrate dotted imports to the layered paths:
+
+  | Old (removed)              | New                                |
+  |----------------------------|------------------------------------|
+  | `pdb2reaction.{all,opt,tsopt,freq,irc,scan,scan2d,scan3d,path_opt,path_search,extract,dft}` | `pdb2reaction.workflows.<same>` |
+  | `pdb2reaction.align_freeze_atoms` | `pdb2reaction.workflows.align_freeze` |
+  | `pdb2reaction.scan_common` | `pdb2reaction.workflows.scan_common` |
+  | `pdb2reaction.harmonic_constraints` | `pdb2reaction.workflows.restraints` |
+  | `pdb2reaction.{defaults,utils}` | `pdb2reaction.core.<same>`     |
+  | `pdb2reaction.uma_pysis`   | `pdb2reaction.backends.uma`        |
+  | `pdb2reaction.{bond_changes,bond_summary,add_elem_info}` | `pdb2reaction.domain.<same>` |
+  | `pdb2reaction.{energy_diagram,trj2fig,hessian_cache}` | `pdb2reaction.io.<same>` |
+  | `pdb2reaction.fix_altloc`  | `pdb2reaction.io.pdb_fix`          |
+  | `pdb2reaction.summary_log` | `pdb2reaction.io.summary`          |
+  | `pdb2reaction.cli_utils`   | `pdb2reaction.cli.decorators`      |
+  | `pdb2reaction.{bool_compat,default_group}` | `pdb2reaction.cli.<same>` |
+  | `pdb2reaction.advanced_help` | `pdb2reaction.cli.help_pages`    |
+
+  The `pdb2reaction` console-script CLI is unaffected — only Python imports change.
+- `--trust-band` / `--hessian-window` / `--weighted-trust` CLI flags
+  (and their `add_*_option` factories). The trust-radius / multistep
+  Hessian-update knobs they exposed showed no benefit on small TS
+  benchmarks and actively slowed convergence (rho-band trust update
+  −33 %, hessian_window > 1 −47 % cycles on a 20-atom TS), with no
+  evidence of speed-up on production-scale systems. The vendored
+  pysisyphus `HessianOptimizer` kwargs are left dormant; no
+  behaviour change since defaults were always legacy.
+
+### Documentation
+- Cleanup pass on in-source comments and docs: removed personal-name
+  attribution, internal-channel references, private memo filenames, and
+  internal review-process markers (phase IDs, dated user-correspondence
+  tags) that had leaked into shipped sources. Technical rationale is
+  preserved verbatim — no runtime behaviour change.
+
 ## [0.3.10] — 2026-05-17
 
 ### Fixed
@@ -56,7 +230,7 @@ Default-value alignment plus removal of the `--resume` flag.
 - `path_opt.py` finally block: `shared_calc = gs = geoms = None` indent corrected so it runs once outside the cleanup loop.
 - `summary_log.py`: `nu_imag` resolution no longer treats `0.0` as missing (was `or`-chain falsy fallback); `seg_NN` tag fallback width unified to `:03d`.
 - Documentation realigned with source: `uma-pysis.md` `return_partial_hessian` default is `False` (not `True`); `scan2d` output filenames are distance-tag (`point_iDDD_jDDD`, `DDD = round(d × 100)` Å), not step indices; `all.md` output tree expands `models/model_<input>.pdb`, `freq/{R,TS,P}/`, and `tsopt_single/` subdirectories; `path-opt.md` lists `final_geometries.pdb` (no `_trj` suffix) and adds `.gjf` companion; `path-search.md` adds `mep_seg_NN`, `hei_seg_NN`, `hei_w_ref_seg_NN.pdb`, `mep.gjf` to the output tree; JA `troubleshooting.md` charge-mapping example now includes the missing `extract` subcommand; JA `getting-started.md` adds the missing Agent Skills section.
-- Internal cleanup: removed unused `CliArgBuilder` class and dead YAML-merge trampolines in `all.py`; removed legacy argparse `main()` in `add_elem_info.py`; dropped sister-project reference from `defaults.py` module docstring; `extract.py` `if api==True:` → `if api:`.
+- Internal cleanup: removed unused `CliArgBuilder` class and dead YAML-merge trampolines in `all.py`; removed legacy argparse `main()` in `add_elem_info.py`; made the `defaults.py` module docstring self-contained; `extract.py` `if api==True:` → `if api:`.
 - Tests: `test_summary_log.py` no longer skips silently when `fairchem` is absent; unused imports removed from 4 test files.
 
 ## [0.3.7] — 2026-04-28

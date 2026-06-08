@@ -18,7 +18,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb \
     -o result_mep
 ```
 
-Result: `result_mep/seg_NN/{reactant,ts,product}.pdb`,
+Result: `result_mep/segments/seg_NN/{reactant,ts,product}.pdb`,
 `summary.json["segments"][0]["barrier_kcal"]`.
 
 ### 2. Multi-step recursive (multi-input MEP, recursive segmentation)
@@ -110,31 +110,29 @@ failed-run diagnostics live in [`summary-json.md`](summary-json.md).
 
 | Path | When | Content |
 |---|---|---|
-| `<path_dir>/post_seg_NN/energy_diagram_UMA.png` | always | per-segment MLIP |
-| `<path_dir>/post_seg_NN/energy_diagram_G_UMA.png` | `--thermo` | + QRRHO Gibbs |
-| `<path_dir>/post_seg_NN/energy_diagram_DFT.png` | `--dft` | DFT//MLIP electronic |
-| `<path_dir>/post_seg_NN/energy_diagram_G_DFT_plus_UMA.png` | `--dft --thermo` | DFT//MLIP + Gibbs |
-| `<path_dir>/energy_diagram_MEP.png` | always | bare MEP energies |
+| `<out_dir>/segments/seg_NN/energy_diagram_UMA.png` | always | per-segment MLIP |
+| `<out_dir>/segments/seg_NN/energy_diagram_G_UMA.png` | `--thermo` | + QRRHO Gibbs |
+| `<out_dir>/segments/seg_NN/energy_diagram_DFT.png` | `--dft` | DFT//MLIP electronic |
+| `<out_dir>/segments/seg_NN/energy_diagram_G_DFT_plus_UMA.png` | `--dft --thermo` | DFT//MLIP + Gibbs |
+| `<out_dir>/energy_diagram_MEP.png` | always | bare MEP energies (promoted to root) |
 | `<out_dir>/energy_diagram_UMA_all.png` | always | aggregated MLIP |
 | `<out_dir>/energy_diagram_G_UMA_all.png` | `--thermo` | aggregated + Gibbs |
 | `<out_dir>/energy_diagram_DFT_all.png` | `--dft` | aggregated DFT |
 | `<out_dir>/energy_diagram_G_DFT_plus_UMA_all.png` | `--dft --thermo` | aggregated DFT + Gibbs |
 
-`<path_dir>` = `path_search/` with `--refine-path` (default),
-`path_opt/` with `--no-refine-path`, `tsopt_single/` for TS-only mode.
+In TS-only mode the per-segment diagrams land under `segments/seg_01/`.
 
 To compose a custom diagram from energies of multiple runs, use
 [`pdb2reaction-cli/energy-diagram.md`](../pdb2reaction-cli/energy-diagram.md):
 
 ```bash
 pdb2reaction energy-diagram \
-    -i 0.0 21.5 -0.7 2.2 -18.2 \
-    --label-x R TS1 IM TS2 P \
+    -i "[0.0, 21.5, -0.7, 2.2, -18.2]" \
+    --label-x "['R','TS1','IM','TS2','P']" \
     -o my_diagram.png
 ```
 
-## Cross-references
-
+## See also
 - [`summary-json.md`](summary-json.md) — `summary.json` schema, R/TS/P
   paths, programmatic extraction, bond-change interpretation, failed-run
   diagnostics.

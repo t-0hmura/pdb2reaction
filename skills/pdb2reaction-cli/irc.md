@@ -65,11 +65,11 @@ d = json.load(open("result_irc/result.json"))
 print(d["n_frames_forward"], d["n_frames_backward"])
 print(d["energy_reactant_hartree"], d["energy_ts_hartree"], d["energy_product_hartree"])
 print(d["bond_changes"])           # {"formed": [...], "broken": [...]}
-print(d["status"])                  # "completed" / "diverged" / ...
+print(d["status"])                  # "completed" (success) / "error" (on failure)
 ```
 
 For LBFGS-optimized canonical `reactant.{xyz,pdb}` / `product.{xyz,pdb}`
-under `<out_dir>/seg_XX/`, run `pdb2reaction all` (it calls `irc`
+under `<out_dir>/segments/seg_NN/`, run `pdb2reaction all` (it calls `irc`
 internally and post-processes the endpoints).
 
 ## Bond-change check
@@ -103,4 +103,4 @@ for b in bc["broken"]: print("BROKEN ", b)
 - `freq.md`, `dft.md` — downstream.
 - `bond-summary.md` — same bond-change algorithm, standalone.
 - `pdb2reaction-workflows-output/SKILL.md` — R/TS/P path conventions.
-- Defaults: `import pdb2reaction.defaults as d; print(d.IRC_KW)`
+- Defaults: `import pdb2reaction.core.defaults as d; print(d.IRC_KW)`

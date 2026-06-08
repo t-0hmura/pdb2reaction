@@ -33,8 +33,7 @@ pdb2reaction scan -i input.pdb \
 The tuple grammar in `-s` accepts atom-index ints (`(1, 5, 1.4)`) or atom
 specs (`("CS1 SAM 320", "C7 GPP 321", 1.60)`). Multiple stages chain
 sequentially as space-separated literals after a **single** `-s`; each
-stage starts from the previous stage's final geometry. Repeating `-s`
-is rejected.
+stage starts from the previous stage's final geometry.
 
 ## Examples
 
@@ -86,4 +85,4 @@ and the stitched scan trajectory. Plot with `trj2fig.md`.
 
 - `scan2d.md`, `scan3d.md` — higher-dim analogs.
 - `all-scan-list.md` — wraps `scan` inside the full pipeline.
-- Defaults: `import pdb2reaction.defaults as d; print(d.BIAS_KW, d.BOND_KW, d.OUT_DIR_SCAN)`
+- Defaults: `import pdb2reaction.core.defaults as d; print(d.BIAS_KW, d.BOND_KW, d.OUT_DIR_SCAN)`

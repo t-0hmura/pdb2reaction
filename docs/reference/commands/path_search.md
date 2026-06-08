@@ -1,12 +1,16 @@
 # `pdb2reaction path-search`
 
 ```text
-
 Usage: pdb2reaction path-search [OPTIONS]
 
   Multistep MEP search via recursive GSM/DMF segmentation.
 
 Options:
+  -v, --verbose LEVEL             Console verbosity 0-3 (default 2). 0=silent;
+                                  1=milestones only; 2=+optimizer cycle tables,
+                                  per-stage timing, VRAM, deliverable paths;
+                                  3=everything (full config blocks, per-file
+                                  paths, DEBUG logging).  [0<=x<=3]
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
   -i, --input FILE                Two or more structures in reaction order.
@@ -22,9 +26,10 @@ Options:
                                   unless --ligand-charge derives it from PDB
                                   inputs.
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
-                                  predictor (analytical Hessian is unavailable
-                                  when workers>1; FiniteDifference Hessian is
-                                  used instead).  [default: 1]
+                                  predictor. NOTE: the analytical Hessian raises
+                                  a RuntimeError when workers>1; run with
+                                  --workers 1 for Hessian-based modes.
+                                  [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
   -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
@@ -34,8 +39,7 @@ Options:
                                   template when available, otherwise 1).
   --freeze-links / --no-freeze-links
                                   Freeze parent atoms of link hydrogens (PDB
-                                  input or XYZ/GJF with --ref-pdb).  [default:
-                                  freeze-links]
+                                  input only).  [default: freeze-links]
   --freeze-atoms TEXT             Comma-separated 1-based atom indices to freeze
                                   (e.g., '1,3,5').
   --max-nodes INTEGER             Number of internal nodes (string has
@@ -57,11 +61,13 @@ Options:
                                   [default: convert-files]
   -o, --out-dir TEXT              Output directory.  [default:
                                   ./result_path_search/]
-  --thresh TEXT                   Convergence preset for single-structure
+  --thresh [gau_loose|gau|gau_tight|gau_vtight|baker|never]
+                                  Convergence preset for single-structure
                                   optimizations only (gau_loose|gau|gau_tight|ga
                                   u_vtight|baker|never). Defaults to 'gau' when
                                   not provided.
-  --thresh-stopt TEXT             Convergence preset for the string optimizer
+  --thresh-stopt [gau_loose|gau|gau_tight|gau_vtight|baker|never]
+                                  Convergence preset for the string optimizer
                                   (stopt) (gau_loose|gau|gau_tight|gau_vtight|ba
                                   ker|never). Defaults to 'gau_loose' when not
                                   provided.
@@ -96,5 +102,18 @@ Options:
   --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
                                   'water'). 'none' to disable.  [default: none]
   --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
+  --coord-type [cart|dlc]         Optimisation coordinate system (cart|dlc).
+                                  cart is the robust default used in published
+                                  numbers; dlc speeds up torsion-rich opts.
+  --precision [fp32|fp64]         MLIP backend precision: fp32 (default) or
+                                  fp64. Routed to backend-specific kwargs (UMA
+                                  precision / ORB precision / MACE
+                                  default_dtype). aimnet2: fp32 no-op; fp64
+                                  rejected.
+  --deterministic / --no-deterministic
+                                  Strict bit-reproducible GPU runs
+                                  (deterministic algorithms + index_reduce_
+                                  shim). Slower; raises if unsupported. Default
+                                  off.
   -h, --help                      Show this message and exit.
 ```

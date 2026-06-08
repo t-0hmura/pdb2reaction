@@ -13,7 +13,7 @@
 --tsopt True --thermo yes --dft 0
 ```
 
-サブコマンドのソース側登録形式（value-style `type=click.BOOL` / flag-pair）に関係なく両形式を受理します。`bool_compat` が value-style flag に `--no-<flag>` synthetic alias を、flag-pair に value-style alias を生成するため、toggle と value 表記はサブコマンド横断で互換です。`extract` と `fix-altloc` を含むすべてのサブコマンドが Click を CLI バックエンドとして使用します。
+サブコマンドのソース側登録形式（value-style `type=click.BOOL` / flag-pair）に関係なく両形式を受理します。`bool_compat` が value-style flag に `--no-<flag>` synthetic alias を、flag-pair に value-style alias を生成するため、toggle と value 表記はサブコマンド横断で互換です。
 
 よく使うブール値オプション：
 - `--tsopt`, `--thermo`, `--dft` — 後処理ステージの有効化
@@ -33,6 +33,21 @@ pdb2reaction all --help-advanced # 全オプション
 ```
 
 以下のコマンドも同じ段階的ヘルプに対応しています（`--help` で主要オプション、`--help-advanced` で全オプション）: `scan`, `scan2d`, `scan3d`, `opt`, `path-opt`, `path-search`, `tsopt`, `freq`, `irc`, `dft`, `add-elem-info`, `trj2fig`, `energy-diagram`, `extract`, `fix-altloc`。
+
+(ja-verbosity-levels)=
+
+## ログ詳細度 (verbosity)
+
+`-v/--verbose LEVEL` は 0〜3 の整数 (**デフォルト 2**) で、各コマンドのコンソール出力量を決めます。コマンドごとのオプションなので、サブコマンドと一緒に指定します (例: `pdb2reaction opt -v 1 ...`)。4 段階は全コマンド共通で、各コマンドページはそのコマンド固有の出力だけを説明します。
+
+| レベル | 表示内容 |
+|---|---|
+| `-v 0` | 無出力。成功は終了コードと出力成果物で確認します。 |
+| `-v 1` | マイルストーンのみ: バージョン、入力要約、主要設定、出力先、dry-run / 最終ステータス。banner・`[command]`・`[mode]`・config dump は出ません。 |
+| `-v 2` | デフォルト。banner、`[command]`、`[mode]`、ステージ進捗、主要な optimizer サイクル表、終了ステータス、Hessian 1 行要約、thermo / DFT 要約、経過時間を追加します。 |
+| `-v 3` | デバッグ: resolved config / dry-run plan、backend DEBUG、raw optimizer・内部座標の詳細、`[HessianTiming]`、`[HessianVRAM]`。 |
+
+意味的な失敗はどのレベルでも失敗です。`-v 3` でのみ現れる `Traceback` も実行失敗を意味します。
 
 ## 残基セレクタ
 
@@ -321,7 +336,7 @@ pdb2reaction -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result/
 組み込みデフォルト  <  --config (YAML)  <  CLI オプション
 ```
 
-- **組み込みデフォルト** — すべてのパラメータのハードコード値（`pdb2reaction/defaults.py` を参照）。
+- **組み込みデフォルト** — すべてのパラメータのハードコード値（`pdb2reaction/core/defaults.py` を参照）。
 - **`--config`** — デフォルトを上書きする YAML ファイル。サイト共通やプロジェクト共通の設定に便利です。
 - **CLI オプション** — コマンドラインで明示的に指定されたフラグ（例: `--backend orb`）。*明示的に指定された*値のみが YAML を上書きし、CLI デフォルトのままのオプションは YAML の値を隠しません。
 

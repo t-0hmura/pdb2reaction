@@ -1,76 +1,43 @@
 # `opt`
 
-## 概要
+このコマンドは pysisyphus の L-BFGS（`lbfgs`）または RFOptimizer（`rfo`）を用い、MLIP（デフォルト: UMA、`-b/--backend` で ORB ・ MACE ・ AIMNet2 も選択可能）のエネルギー・勾配・ヘシアンで単一構造を局所極小点へ最適化します。L-BFGS は `--opt-mode grad`（デフォルト）、RFO は `--opt-mode hess` で選択します。入力構造は `.pdb`、`.xyz`、`_trj.xyz`、その他 `geom_loader` がサポートする任意の形式に対応しています。必要に応じて `--flatten` で虚振動数モードのフラット化を実行できます。
 
-> **要約:** L-BFGS（`--opt-mode grad`、デフォルト）または RFO（`--opt-mode hess`）で単一構造を局所極小点に最適化します。必要に応じて `--flatten` で虚振動数モードフラット化を実行できます。
+## 使いどころ
 
-### 要点
-- **想定場面:** 単一構造（PDB/XYZ/GJF/`_trj.xyz`）を局所極小点まで緩和する場合。距離拘束や虚振動数モードのフラット化も任意で併用可能。
-- **手法:** pysisyphus の L-BFGS（`--opt-mode grad`、デフォルト）または RFOptimizer（`--opt-mode hess`）を MLIP バックエンド（デフォルト UMA、`-b` で ORB/MACE/AIMNet2）で駆動。PDB 入力では `--freeze-links` によりリンク水素の親原子が自動凍結されます。
-- **主な出力:** `final_geometry.xyz`（常に出力）。`--convert-files` 有効時は PDB 入力で `final_geometry.pdb`、Gaussian テンプレート時は `final_geometry.gjf` も出力。`--dump` 有効時は `optimization_trj.xyz` / `optimization.pdb`。`opt.dump_restart` 設定時はリスタート YAML も出力。
-- **デフォルト値:** バックエンド `uma`、`--opt-mode grad`、`--thresh gau`、`--max-cycles 10000`、`--bias-k 300`、`--freeze-links True`、`--convert-files True`、`--flatten False`、`--dump False`、`--out-dir ./result_opt/`。
-- **次にやること:** 極小であることを [`freq`](freq.md) で確認するか、鞍点には [`tsopt`](tsopt.md)、反応経路全体には [`path-search`](path-search.md) / [`all`](all.md) へ進んでください。
+- 単一構造（PDB/XYZ/GJF/`_trj.xyz`）を局所極小点まで緩和する場合。距離拘束や虚振動数モードのフラット化も任意で併用可能。
+- L-BFGS 最小化には `--opt-mode grad`（alias `lbfgs`、デフォルト）、RFOptimizer には `--opt-mode hess`（alias `rfo`）を選択。
 
-このコマンドは pysisyphus の L-BFGS（`lbfgs`）または RFOptimizer（`rfo`）を用い、MLIP（デフォルト: UMA、`-b/--backend` で ORB ・ MACE ・ AIMNet2 も選択可能）のエネルギー・勾配・ヘシアンで単一構造を局所極小点へ最適化します。入力構造は `.pdb`、`.xyz`、`_trj.xyz`、その他 `geom_loader` がサポートする任意の形式に対応しています。設定の優先順位は **デフォルト < config < 明示 CLI** です。
-
-開始構造が PDB または Gaussian テンプレートの場合、最適化構造を `.pdb`（PDB 入力）や `.gjf`（Gaussian テンプレート）として自動的に書き出します（`--convert-files/--no-convert-files` で制御、デフォルトで有効）。
-PDB 固有の便利機能:
-- `--freeze-links`（デフォルト `True`）でリンク水素の親原子を検出し、`geom.freeze_atoms` にマージします（1 始まり）。
-- 出力変換では `final_geometry.pdb`（および `--dump` の場合は `optimization.pdb`）を入力 PDB をトポロジー参照として書き出します。
-XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定でき、XYZ 座標を保持したままフォーマット対応の PDB/GJF 出力変換が可能です。
-
-Gaussian `.gjf` テンプレートは電荷/スピンのデフォルト値を提供し、変換が有効な場合に最適化構造を `.gjf` として自動出力します。
-
-## 最小例
+## 実行例
 
 ```bash
 pdb2reaction opt -i input.pdb -q 0 -m 1 --out-dir ./result_opt
 ```
 
-## 出力の見方
-
-- `result_opt/final_geometry.xyz`
-- `result_opt/final_geometry.pdb`（PDB 入力かつ変換有効時）
-- `result_opt/optimization_trj.xyz`（`--dump` 有効時）
-
-## よくある例
-
-1. 収束を厳しくして軌跡ダンプを保存する。
-
 ```bash
+# 収束を厳しくして軌跡ダンプを保存する
 pdb2reaction opt -i input.pdb -q 0 -m 1 --thresh gau_tight --dump \
  --out-dir ./result_opt_tight
 ```
 
-2. 距離拘束を 1 本だけ追加する。
-
 ```bash
-# 原子 1-5 間を 2.0 Å に拘束。例では `--bias-k 20.0`（目標距離付近でゆるく誘導する弱い
-# 拘束）を使っていますが、`bias.k` のデフォルトは 300 eV·Å⁻² です。最適化中に拘束を
-# 支配的にしたい場合はデフォルト値の方が適しています。
+# 距離拘束を 1 本だけ追加する。原子 1-5 間を 2.0 Å に拘束。例では `--bias-k 20.0`
+# （目標距離付近でゆるく誘導する弱い拘束）を使っていますが、`bias.k` のデフォルトは
+# 300 eV·Å⁻² です。最適化中に拘束を支配的にしたい場合はデフォルト値の方が適しています。
 pdb2reaction opt -i input.pdb -q 0 -m 1 \
  --dist-freeze '[(1,5,2.0)]' --bias-k 20.0 --out-dir ./result_opt_rest
-
-# 2-tuple 形式: 原子 1-5 間の距離を現在値に固定
-pdb2reaction opt -i input.pdb -q 0 -m 1 \
- --dist-freeze '[(1,5)]' --out-dir ./result_opt_freeze
+# 2-tuple 形式: 原子 1-5 間の距離を現在値に固定 --dist-freeze '[(1,5)]'
 ```
 
-3. RFO モードを明示して実行する。
-
 ```bash
+# RFO モードを明示して実行する
 pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hess \
  --out-dir ./result_opt_hess
 ```
 
-4. L-BFGS モードで実行し、最適化後に虚振動数モードをフラット化する。
+## 入力
 
-```bash
-pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode grad --flatten \
- --out-dir ./result_opt_grad_flat
-```
+コマンド形式:
 
-## 使用法
 ```bash
 pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
  [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
@@ -80,8 +47,24 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <nu
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
-## ワークフロー
-- **オプティマイザー**: `--opt-mode grad`（alias: `lbfgs`、デフォルト）→ L-BFGS、`--opt-mode hess`（alias: `rfo`）→ RFOptimizer
+| 入力 | 必須 | 注記 |
+| --- | --- | --- |
+| `-i, --input` | はい | `geom_loader` が受け入れる入力構造（`.pdb`、`.xyz`、`_trj.xyz`、`.gjf`）。 |
+| `-q, --charge` | テンプレート/導出が適用されない限り | 総電荷。省略時は `.gjf` テンプレートが提供するか、`-l/--ligand-charge` から導出。 |
+| `-m, --multiplicity` | いいえ | スピン多重度（2S+1）。`.gjf` テンプレートまたは `1` にフォールバック。 |
+| `--ref-pdb` | XYZ/GJF の場合 | 入力が XYZ/GJF のときの参照 PDB トポロジー。フォーマット対応の PDB/GJF 出力変換を可能にします。 |
+
+開始構造が PDB または Gaussian テンプレートの場合、最適化構造を `.pdb`（PDB 入力）や `.gjf`（Gaussian テンプレート）として自動的に書き出します（`--convert-files/--no-convert-files` で制御、デフォルトで有効）。
+PDB 固有の便利機能:
+- `--freeze-links`（デフォルト `True`）でリンク水素の親原子を検出し、`geom.freeze_atoms` にマージします（1 始まり）。
+- 出力変換では `final_geometry.pdb`（および `--dump` の場合は `optimization.pdb`）を入力 PDB をトポロジー参照として書き出します。
+XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定でき、XYZ 座標を保持したままフォーマット対応の PDB/GJF 出力変換が可能です。
+
+Gaussian `.gjf` テンプレートは電荷/スピンのデフォルト値を提供し、変換が有効な場合に最適化構造を `.gjf` として自動出力します。
+
+## 処理の流れ
+
+- **オプティマイザー**: `--opt-mode grad`（alias: `lbfgs`、デフォルト）→ L-BFGS、`--opt-mode hess`（alias: `rfo`）→ RFOptimizer。サブコマンド別のトークン→アルゴリズム対応は {ref}`ja-opt-mode-semantics` を参照。
   > **命名規則の注意:** CLI は `grad|lbfgs` および `hess|rfo` を受け付けます。YAML では `lbfgs` または `rfo` を直接指定してください。
 - **Flatten loop**: `--flatten` を有効にすると、最適化後に虚振動数モードのフラット化ループを実行します。`opt` では各反復で検出された虚振動数モードをすべてフラット化し、虚振動数が残らなくなるか内部ループ上限に達するまで繰り返します。
 - **拘束**: `--dist-freeze` は Python リテラルタプル `(i, j, target_Å)` を解釈します（`target_Å` は目標距離、単位は Å）。3 番目の要素を省略すると開始距離を拘束します。`--bias-k` はグローバル調和強度（eV·Å⁻²）を設定します。インデックスはデフォルトで 1 始まりですが、`--zero-based` で 0 始まりに切り替えられます。
@@ -90,9 +73,28 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <nu
 - **ダンプ & 変換**: `--dump` は `opt.dump=True` を反映し `optimization_trj.xyz` を出力します。変換が有効な場合、PDB 入力では軌跡が `optimization.pdb` としても出力されます。`opt.dump_restart` を有効にするとリスタート YAML が出力されます。
 - **終了コード**: 終了コードは CLI 規約の {ref}`ja-exit-codes` を参照。
 
-## CLI オプション
+## 出力
 
-> **注記:** 表示されているデフォルト値は、オプション未指定時に使用される値です。
+```
+out_dir/
+├─ final_geometry.xyz # 常に出力
+├─ final_geometry.pdb # 入力がPDBで変換が有効な場合のみ
+├─ final_geometry.gjf # Gaussian テンプレートが検出され変換が有効な場合
+├─ optimization_trj.xyz # ダンプが有効な場合のみ
+├─ optimization.pdb # 軌跡のPDB変換（PDB 入力、変換有効時）
+└─ restart*.yml # opt.dump_restart 設定時のリスタートファイル（任意）
+```
+コンソールには解決済みの `geom`/`calc`/`opt`/`lbfgs`/`rfo` ブロックとサイクル進行、総実行時間が出力されます。
+
+最適化後は、主な成果物として次を確認します。
+
+- `result_opt/final_geometry.xyz`
+- `result_opt/final_geometry.pdb`（PDB 入力かつ変換有効時）
+- `result_opt/optimization_trj.xyz`（`--dump` 有効時）
+
+設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
+
+## CLI オプション
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
@@ -123,19 +125,22 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <nu
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 
-## 出力
-```
-out_dir/
-├─ final_geometry.xyz # 常に出力
-├─ final_geometry.pdb # 入力がPDBで変換が有効な場合のみ
-├─ final_geometry.gjf # Gaussian テンプレートが検出され変換が有効な場合
-├─ optimization_trj.xyz # ダンプが有効な場合のみ
-├─ optimization.pdb # 軌跡のPDB変換（PDB 入力、変換有効時）
-└─ restart*.yml # opt.dump_restart 設定時のリスタートファイル（任意）
-```
-コンソールには解決済みの `geom`/`calc`/`opt`/`lbfgs`/`rfo` ブロックとサイクル進行、総実行時間が出力されます。
+## YAML 設定
 
-設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
+共有セクションは [YAML リファレンス](yaml-reference.md) を再利用し、変更が必要な値だけを調整します。`geom`、`calc`、`opt`、オプティマイザー固有の `lbfgs`/`rfo` ブロックは正規のキーとデフォルトを使用します。代表的な最小構成:
+
+```yaml
+geom:
+  coord_type: cart        # or `dlc` for delocalized internal coordinates
+  freeze_atoms: []        # 1-based frozen indices; merged with CLI link detection
+calc:
+  charge: 0               # mirrors the CLI option; defaults from `.gjf` when present
+  spin: 1
+opt:
+  thresh: gau
+  max_cycles: 10000
+  out_dir: ./result_opt/  # opt-specific default
+```
 
 ### `geom`
 - `coord_type`（`"cart"`）: デカルト座標 vs `"dlc"` 非局在化内部座標
@@ -147,7 +152,7 @@ out_dir/
 
 ### `opt`
 L-BFGS と RFO の両方で使用される共有オプティマイザー制御:
-- `thresh` プリセット（Gaussian 系または Baker 系）。プリセットは `pdb2reaction/opt.py` に記載されている力/ステップ閾値に変換されます。
+- `thresh` プリセット（Gaussian 系または Baker 系）。プリセット名は `pdb2reaction/core/defaults.py`（`THRESH_CHOICES`）に定義され、各々が pysisyphus の収束プリセット（力/ステップ閾値）に対応します。
 - `max_cycles`、`print_every`（`100`）、`min_step_norm`（`1e-8`）、`assert_min_step`、収束切り替え（`rms_force` など）、RMSD ベースの `converge_to_geom_rms_thresh`、`overachieve_factor`、`check_eigval_structure`、`line_search`。
 - 平坦なエネルギー地形によるフォールバック収束（`energy_plateau`、`energy_plateau_thresh`、`energy_plateau_window`）— 直近ステップのエネルギーレンジが平坦化した場合に収束を宣言します（MLIP の力のノイズで力ベース収束に到達できない場合に有効。下の注記を参照）。
 - ダンプ/管理項目（`dump`、`dump_restart`、`prefix`、`out_dir`）。
@@ -158,12 +163,13 @@ L-BFGS と RFO の両方で使用される共有オプティマイザー制御:
 ### `rfo`
 `opt` を RFOptimizer 固有の設定で拡張: 信頼領域サイジング（`trust_radius`、`trust_min`、`trust_max`、`trust_update`）、`max_energy_incr`、ヘシアン管理（`hessian_update`、`hessian_init`、`hessian_recalc`、`hessian_recalc_adapt`、`small_eigval_thresh`）、マイクロイテレーション制御（`alpha0`、`max_micro_cycles`、`rfo_overlaps`）、DIIS ヘルパー（`gdiis`、`gediis`、閾値、`gdiis_test_direction`）、および `adapt_step_func`
 
-
 ### opt 固有のデフォルト
 
-`opt` サブコマンドは `opt.out_dir`（および `lbfgs.out_dir` / `rfo.out_dir`）を `./result_opt/` に設定します。
+`opt` サブコマンドは `opt.out_dir`（および `lbfgs.out_dir` / `rfo.out_dir`）を `./result_opt/` に設定します。CLI は `grad|lbfgs` および `hess|rfo` を受け付けますが、YAML では `lbfgs` または `rfo` を直接指定してください。
 
 `geom`、`calc`、`opt`、`lbfgs`、`rfo` の完全な YAML スキーマは [YAML リファレンス](yaml-reference.md) を参照してください。
+
+## 注意事項
 
 ```{note}
 **平坦なエネルギー地形によるフォールバック収束。** `energy_plateau: true`
@@ -175,11 +181,12 @@ L-BFGS と RFO の両方で使用される共有オプティマイザー制御:
 （イメージごとのエネルギー配列を保持するもの）ではこのフォールバックはスキップされます。
 ```
 
+- **命名規則の注意:** CLI は `grad|lbfgs` および `hess|rfo` を受け付けます。YAML では `lbfgs` または `rfo` を直接指定してください。
+
 ## 関連項目
 
 - [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) -- 詳細な対処ガイド
-
 - [tsopt](tsopt.md) — 極小ではなく遷移状態（鞍点）を最適化
 - [freq](freq.md) — 最適化が極小に達したことを確認する振動解析
 - [extract](extract.md) — 最適化前に活性部位モデル（バインディングポケット） PDB を生成

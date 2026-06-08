@@ -58,7 +58,7 @@ authoritative list comes from xTB's ALPB parameter set — run
 `xtb --help` and consult the xTB docs for the version you have
 installed (the set has expanded over xTB releases).
 
-To turn off: simply omit `--solvent` or pass `--solvent none`.
+To turn off: omit `--solvent` or pass `--solvent none`.
 
 `--solvent-model` selects `alpb` (default, conda-forge binary) or
 `cpcmx` (requires a source build with CPCM-X enabled).

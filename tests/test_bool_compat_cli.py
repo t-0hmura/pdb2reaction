@@ -59,6 +59,16 @@ def test_all_bool_options_accept_toggle_and_value_styles() -> None:
                 f"{result_value_false.output}"
             )
 
+            # Positive value form: `--flag True` should also be accepted
+            # (an earlier version only tested False but bool_compat handles both).
+            result_value_true = runner.invoke(
+                root_cli, [command_name, opt, "True", "--help"]
+            )
+            assert result_value_true.exit_code == 0, (
+                f"{command_name} should accept '{opt} True'. Output:\n"
+                f"{result_value_true.output}"
+            )
+
             tested += 1
 
     assert tested > 0

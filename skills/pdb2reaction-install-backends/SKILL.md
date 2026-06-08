@@ -5,7 +5,7 @@ description: Install recipes for pdb2reaction core + MLIP / DFT / xTB backends, 
 
 # pdb2reaction — Install and Backends
 
-## Overview
+## Purpose
 
 `pdb2reaction` is a Python package that depends on:
 
@@ -109,7 +109,7 @@ dependencies:
 ```bash
 pdb2reaction --version
 pdb2reaction --help                     # subcommand list
-python -c "import pdb2reaction.defaults as d; print(sorted(n for n in dir(d) if not n.startswith('_')))"
+python -c "import pdb2reaction.core.defaults as d; print(sorted(n for n in dir(d) if not n.startswith('_')))"
 
 # backend smoke checks (only those you installed)
 python -c "from pdb2reaction.backends import create_calculator; create_calculator(backend='uma',  charge=0, spin=1)"
@@ -133,8 +133,7 @@ go back to `env-cuda.md`.
 | `OSError: libcusolver.so.11 not found` | torch's bundled CUDA libs missing or shadowed | `env-cuda.md` — `LD_LIBRARY_PATH` order |
 | `RuntimeError: CUDA out of memory` during freq | Hessian evaluation too large for VRAM | switch to `--hessian-calc-mode FiniteDifference` (see `pdb2reaction-cli/freq.md`) or reduce the active region |
 
-## Live source
-
+## See also
 `pyproject.toml` lists the canonical extras and version pins. To inspect
 without opening the file:
 

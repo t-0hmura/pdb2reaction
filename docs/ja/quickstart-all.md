@@ -36,24 +36,25 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 result_all/
 ├── summary.log                    # テキストサマリ
 ├── summary.json                   # 機械可読な結果
-├── path_search/
-│   ├── mep.pdb                    # MEP 軌跡
-│   ├── energy_diagram_UMA_all.png # エネルギープロファイル
-│   ├── summary.json               # path-search の結果
-│   └── post_seg_01/               # 後処理（--tsopt 時）
-│       ├── ts/final_geometry.pdb
+├── mep.pdb                        # マージ済み MEP 経路（ルート直下に昇格）
+├── energy_diagram_MEP.png         # 全セグメントの MEP エネルギープロファイル
+├── segments/
+│   └── seg_01/                    # 反応セグメント別の成果物
+│       ├── reactant.pdb           # 正規 IRC 最適化 R/TS/P
+│       ├── ts.pdb
+│       ├── product.pdb
+│       ├── ts/final_geometry.pdb  # --tsopt 時
 │       ├── irc/finished_irc_trj.xyz
-│       └── freq/
-└── seg_01/                        # IRC 最適化 R/TS/P 構造
-    ├── reactant.pdb
-    ├── ts.pdb
-    └── product.pdb
+│       └── freq/                  # --thermo 時
+└── _work/                         # パイプライン作業領域（削除可）
+    └── path_search/               # MEP エンジン生出力
+        └── summary.json           # path-search エンジンの結果
 ```
 
 **確認ポイント:**
 
 1. `summary.json` — `status` フィールド（`"success"` / `"partial"` / `"failed"`）とセグメントごとの `barrier_kcal` を確認。`summary.log` は同じ情報を人間可読形式でミラーします
-2. `seg_01/*.pdb` — PyMOL で R/TS/P 構造が化学的に妥当か確認
+2. `segments/seg_01/*.pdb` — PyMOL で R/TS/P 構造が化学的に妥当か確認
 3. `energy_diagram_*.png` — 明確な障壁があるエネルギープロファイル
 
 **成功時のターミナル出力例:**

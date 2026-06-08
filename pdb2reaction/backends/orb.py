@@ -205,9 +205,6 @@ class OrbCalculator(MLIPCalculator):
         forces = np.asarray(atoms.get_forces(), dtype=np.float64)
         return energy, forces
 
-    # ------------------------------------------------------------------
-    # Analytical Hessian via torch.autograd.functional.hessian
-    # ------------------------------------------------------------------
 
     def _supports_analytical_hessian(self) -> bool:
         return True
@@ -256,6 +253,7 @@ class OrbCalculator(MLIPCalculator):
                 "Orb analytical Hessian requires a model object exposing predict()."
             )
 
+        # DO NOT INLINE: atomic_system only exists in newer orb_models releases; adapter path covers older versions, in-function import fallback gives a clear BackendError rather than NameError on stale installs.
         if self._adapter is not None and hasattr(self._adapter, "from_ase_atoms"):
             base_graph = self._adapter.from_ase_atoms(
                 atoms=atoms, device=self.device_str
@@ -335,7 +333,6 @@ class OrbASECalculator:
         precision: str = "float32-high",
         compile_model: bool = False,
     ):
-        # Build and return the ORB ASE calculator directly
         calc = OrbCalculator(
             model=model, device=device, precision=precision,
             compile_model=compile_model, charge=0, spin=1,

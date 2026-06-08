@@ -14,7 +14,6 @@ integers. Wrong values silently produce wrong-chemistry trajectories.
 | 5 (quintet) | Mn(III), Fe(II) high-spin |
 | 6 (sextet) | Mn(II) high-spin, S=5/2 ferric |
 
-> **Default to `-m 1` unless you have a positive reason to disagree.**
 > If the system contains a known paramagnetic metal, look up the
 > oxidation state and use the high-spin/low-spin assignment from the
 > primary literature for that enzyme.
@@ -31,7 +30,7 @@ Two routes:
 The amino-acid table is internal:
 
 ```bash
-python -c "from pdb2reaction.extract import AMINO_ACIDS, ION; print(dict(AMINO_ACIDS)); print(dict(ION))"
+python -c "from pdb2reaction.workflows.extract import AMINO_ACIDS, ION; print(dict(AMINO_ACIDS)); print(dict(ION))"
 ```
 
 (`AMINO_ACIDS` and `ION` are `Dict[str, int]` mapping residue/ion
@@ -45,7 +44,7 @@ When you don't know a ligand's formal charge:
 
 - **Lookup**: primary mechanism paper → PubChem / ChEBI `Formal Charge` → RCSB ligand summary (e.g. `https://www.rcsb.org/ligand/SAM`).
 - **Derive from SMILES** if needed: `sum(a.GetFormalCharge() for a in Chem.MolFromSmiles(smi).GetAtoms())`.
-- **Sanity-check**: `pdb2reaction extract … -v` echoes the per-residue charge sum used for `cluster.pdb`; `--show-config` / `--dry-run` on `all` / `opt` / `tsopt` / `dft` / `path-opt` / `path-search` / `freq` / `irc` (not `extract`) print the resolved charge before running.
+- **Sanity-check**: `pdb2reaction extract … --verbose` echoes the per-residue charge sum used for `cluster.pdb`; `--show-config` / `--dry-run` on `all` / `opt` / `tsopt` / `dft` / `path-opt` / `path-search` / `freq` / `irc` (not `extract`) print the resolved charge before running.
 
 ### Protonation state at physiological pH
 

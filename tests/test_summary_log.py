@@ -3,7 +3,7 @@
 
 from pathlib import Path
 
-from pdb2reaction.summary_log import (
+from pdb2reaction.io.summary import (
     _fmt_bool,
     _shorten_path,
     _format_energy_rows,

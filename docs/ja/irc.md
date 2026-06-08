@@ -1,54 +1,34 @@
 # `irc`
 
-## 概要
+遷移状態（TS）から反応物・生成物方向へ EulerPC（Euler Predictor-Corrector）ベースの固有反応座標（IRC）積分を実行します。デフォルトで前方・後方の両方向を実行します。VRAM に余裕がある場合は `--hessian-calc-mode Analytical` が推奨されます。XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定し、XYZ 座標を保持したまま PDB 出力変換が可能になります。一般的な手順は `tsopt` → `irc` です。
 
-> **要約:** 遷移状態（TS）から反応物・生成物方向へ EulerPC（Euler Predictor-Corrector）ベースの固有反応座標（IRC）積分を実行します。デフォルトで前方・後方の両方向を実行します。VRAM に余裕がある場合は `--hessian-calc-mode Analytical` が推奨されます。
+## 使いどころ
 
-### 要点
-- **想定場面:** `tsopt` で最適化・検証済みの TS 構造を出発点に、固有反応座標を追跡して端点接続性（R ↔ TS ↔ P）を確認するケース。
-- **手法:** EulerPC（Euler Predictor-Corrector）積分 + MLIP バックエンドのヘシアン（デフォルト UMA、ORB/MACE/AIMNet2 も選択可）。デフォルトでは前方・後方両方の分岐を実行します。
-- **主な出力:** `finished_irc_trj.xyz`、`forward_irc_trj.xyz`、`backward_irc_trj.xyz`（参照 PDB が利用可能なら `.pdb` コンパニオンも）。
-- **デフォルト:** `--max-cycles 125`、`--step-size 0.10` Bohr、`--root 0`、`--forward`/`--backward` 両方有効、`--hessian-calc-mode FiniteDifference`、バックエンド `uma`。**強制上書き:** IRC は YAML/CLI マージ後に `geom.coord_type = cart` および `calc.return_partial_hessian = true` を強制します。
-- **次ステップ:** IRC 端点を [opt](opt.md) で真の極小に最適化、または [freq](freq.md) と組み合わせて熱化学量を取得。ヘシアン評価モードの詳細は {ref}`ja-hessian-evaluation` を参照。
+- `tsopt` で最適化・検証済みの TS 構造を出発点に、固有反応座標を追跡して端点接続性（R ↔ TS ↔ P）を確認するケース。
+- デフォルトでは前方・後方両方の分岐を実行します。`--no-backward`（または `--no-forward`）で一方向のみをたどります。
 
-XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定し、XYZ 座標を保持したまま PDB 出力変換が可能になります。一般的な手順は `tsopt` → `irc` です。
-
-## 最小例
+## 実行例
 
 ```bash
 pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc
 ```
 
-## 出力の見方
-
-- `result_irc/finished_irc_trj.xyz`
-- `result_irc/forward_irc_trj.xyz`
-- `result_irc/backward_irc_trj.xyz`
-
-## よくある例
-
-1. 正方向のみを実行する。
-
 ```bash
+# 順方向のみ、有限差分ヘシアン、大きいステップサイズ
 pdb2reaction irc -i ts.pdb -q 0 -m 1 --no-backward \
- --out-dir ./result_irc_forward
+ --step-size 0.2 --hessian-calc-mode FiniteDifference --out-dir ./irc_fd/
 ```
 
-2. ステップを大きくし、解析ヘシアンを使う。
-
 ```bash
+# ステップを大きくし、解析ヘシアンを使う
 pdb2reaction irc -i ts.pdb -q 0 -m 1 --step-size 0.20 \
  --hessian-calc-mode Analytical --out-dir ./result_irc_analytical
 ```
 
-3. 両方向を維持したままステップ数上限を増やす。
+## 入力
 
-```bash
-pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 150 \
- --out-dir ./result_irc_long
-```
+コマンド形式:
 
-## 使用法
 ```bash
 pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] \
  [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
@@ -62,22 +42,40 @@ pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <nu
  [--show-config] [--dry-run]
 ```
 
-### 例
-```bash
-# 順方向のみ、有限差分ヘシアン、大きいステップサイズ
-pdb2reaction irc -i ts.pdb -q 0 -m 1 --no-backward \
- --step-size 0.2 --hessian-calc-mode FiniteDifference --out-dir ./irc_fd/
+| 入力 | 必須 | 備考 |
+| --- | --- | --- |
+| `-i, --input PATH` | はい | `geom_loader` が受け入れる遷移状態構造 |
+| `-q, --charge INT` | テンプレート/導出が適用されない限り必須 | 総電荷; YAML が `calc.charge` を指定していない場合に使用。`.gjf` テンプレートまたは `--ligand-charge/-l` が提供しない限り必須 |
+| `-l, --ligand-charge TEXT` | いいえ | スカラー整数または残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用 |
+| `--ref-pdb FILE` | XYZ/GJF 入力時 | 入力が XYZ/GJF の場合に使用する参照 PDB トポロジー（XYZ 座標を保持） |
 
-# PDB 入力: 完成軌跡と方向別軌跡もPDBとしてエクスポート
-pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
-```
+## 処理の流れ
 
-## ワークフロー
 1. **入力準備** – `geom_loader` がサポートする任意のフォーマットを受け入れます。参照 PDB が利用可能な場合（PDB 入力時、または `--ref-pdb` で指定した場合）、EulerPC 軌跡はそのトポロジーで PDB に変換されます。PDB 入力に対して `--freeze-links` はリンク水素の親原子を凍結し、`geom.freeze_atoms` を拡張します。
 2. **EulerPC 積分** – EulerPC 予測子-修正子積分器が遷移状態から IRC 経路をたどります。`--forward`/`--backward` フラグに従って順方向および/または逆方向の分岐が実行されます。各ステップではエネルギーベースの予測子と修正子ステップを使用します。
 3. **軌跡出力** – 完了済み、順方向、逆方向の IRC 軌跡が XYZ ファイルとして書き込まれます。参照 PDB が利用可能な場合、PDB コンパニオンも生成されます（`--convert-files`）。
 
+## 出力
+
+```
+out_dir/ (デフォルト:./result_irc/)
+├─ <prefix>finished_irc_trj.xyz   # 完全な IRC 軌跡
+├─ <prefix>finished_irc.pdb       # 参照 PDB が利用可能な場合の軌跡コンパニオン（変換有効時）
+├─ <prefix>forward_irc_trj.xyz    # 順方向分岐が実行された場合
+├─ <prefix>forward_irc.pdb        # 順方向分岐の PDB コンパニオン（同条件）
+├─ <prefix>backward_irc_trj.xyz   # 逆方向分岐が実行された場合
+└─ <prefix>backward_irc.pdb       # 逆方向分岐の PDB コンパニオン（同条件）
+```
+コンソールには確定済みの `geom`/`calc`/`irc` 設定と実行時間の要約が表示されます。
+
+主な確認対象:
+
+- `result_irc/finished_irc_trj.xyz`
+- `result_irc/forward_irc_trj.xyz`
+- `result_irc/backward_irc_trj.xyz`
+
 ## CLI オプション
+
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `-i, --input PATH` | `geom_loader` が受け入れる遷移状態構造 | 必須 |
@@ -105,27 +103,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc/
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 | `--dry-run/--no-dry-run` | 実行せずに検証と実行計画のみ表示 | `False` |
 
-## 出力
-```
-out_dir/ (デフォルト:./result_irc/)
-├─ <prefix>finished_irc_trj.xyz   # 完全な IRC 軌跡
-├─ <prefix>finished_irc.pdb       # 参照 PDB が利用可能な場合の軌跡コンパニオン（変換有効時）
-├─ <prefix>forward_irc_trj.xyz    # 順方向分岐が実行された場合
-├─ <prefix>forward_irc.pdb        # 順方向分岐の PDB コンパニオン（同条件）
-├─ <prefix>backward_irc_trj.xyz   # 逆方向分岐が実行された場合
-└─ <prefix>backward_irc.pdb       # 逆方向分岐の PDB コンパニオン（同条件）
-```
-コンソールには確定済みの `geom`/`calc`/`irc` 設定と実行時間の要約が表示されます。
-
-## 終了コード
-
-終了コードは CLI 規約の {ref}`ja-exit-codes` を参照。
-
-## 注意事項
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
-
-- MLIP バックエンド（デフォルト: UMA）は IRC 全体で再利用されます。`step_length` を大きくし過ぎると EulerPC が不安定になることがあります。
-- `--freeze-links` が有効な場合、リンク水素の親原子が自動的に凍結されます（{ref}`リンク水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
+## YAML 設定
 
 設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
 
@@ -140,10 +118,19 @@ calc:
  return_partial_hessian: true # irc では true に強制（partial Hessian、active-DOF 処理）
 ```
 
+## 注意事項
+
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+- MLIP バックエンド（デフォルト: UMA）は IRC 全体で再利用されます。`step_length` を大きくし過ぎると EulerPC が不安定になることがあります。
+- `--freeze-links` が有効な場合、リンク水素の親原子が自動的に凍結されます（{ref}`リンク水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
+
+## 終了コード
+
+終了コードは CLI 規約の {ref}`ja-exit-codes` を参照。
+
 ## 関連項目
 
 - [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
-
 - [tsopt](tsopt.md) — IRC 実行前に TS を最適化
 - [freq](freq.md) — 完全な振動解析と熱化学補正
 - [opt](opt.md) — IRC 端点を真の極小に最適化

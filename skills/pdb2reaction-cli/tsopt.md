@@ -77,7 +77,7 @@ pdb2reaction tsopt -i hei.xyz -l 'SAM:1,GPP:-3' \
 ```python
 import json
 d = json.load(open("result_tsopt/result.json"))
-print(d["status"])                      # "converged" / "not_converged" (Dimer always "converged"; "error" on failure)
+print(d["status"])                      # "converged" / "not_converged"; "error" on failure
 print(d["energy_hartree"])
 print(d["n_imaginary_modes"])           # should be 1 for a real TS
 print(d["imaginary_frequencies_cm"])    # list of cm⁻¹
@@ -89,10 +89,8 @@ print(d["files"]["final_geometry_xyz"]) # path under out_dir
 | Mode | Algorithm | When |
 |---|---|---|
 | `hess` / `rsirfo` (default) | RS-I-RFO with full Hessian | Default. Robust for tricky / multi-imaginary-mode candidates; slower per cycle but converges in fewer cycles |
-| `grad` / `dimer` | Hessian-Guided Dimer | Alternative when RS-I-RFO fails to converge or full-Hessian recomputation is prohibitive on large clusters. Dimer uses the initial Hessian to set the search direction and then rotates the dimer pair rather than recomputing the full Hessian each cycle. |
+| `grad` / `dimer` | Hessian-Guided Dimer | Alternative when RS-I-RFO fails to converge or full-Hessian recomputation is prohibitive on large clusters. |
 
-Try `rsirfo` first; switch to `dimer` only if RS-I-RFO does not
-converge or the full-Hessian cost becomes prohibitive.
 
 ## Validation: imaginary modes
 
@@ -130,4 +128,4 @@ of frozen residues) or real chemical second-order saddle points.
 - `irc.md`, `freq.md` — downstream validation.
 - [`pdb2reaction-install-backends/uma.md`](../pdb2reaction-install-backends/uma.md) / `mace.md` — TS-accurate
   backends.
-- Defaults: `import pdb2reaction.defaults as d; print(d.RSIRFO_KW, d.DIMER_KW, d.HESSIAN_DIMER_KW)`
+- Defaults: `import pdb2reaction.core.defaults as d; print(d.RSIRFO_KW, d.DIMER_KW, d.HESSIAN_DIMER_KW)`

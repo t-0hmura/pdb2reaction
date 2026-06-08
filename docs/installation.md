@@ -7,6 +7,18 @@ Refer to the upstream projects for additional details:
 - fairchem / UMA: <https://github.com/facebookresearch/fairchem>, <https://huggingface.co/facebook/UMA>
 - Hugging Face token & security: <https://huggingface.co/docs/hub/security-tokens>
 
+## System requirements (details)
+
+The README carries a condensed table; the tuning notes and provenance behind those numbers live here.
+
+**GPU / CUDA / VRAM.** Install a PyTorch wheel whose CUDA tag matches your runtime — `cu126` for CUDA 12.6 or `cu129` for CUDA 12.9 (12.9 is required for RTX 50-series). 8 GB VRAM is the practical minimum and 16 GB is recommended; analytical Hessians on 500+-atom regions want 24 GB. As a low-water mark, `tests/smoke/` runs at only ~0.9 GB peak VRAM on the default `uma-s-1p1` model, so the suite fits comfortably on small GPUs even though production TS / IRC / Hessian workflows do not.
+
+**RAM.** 32 GB is the minimum and 60 GB is recommended. The 60 GB figure is the `mem=60GB` request used in the project's own HPC job scripts, sized to leave headroom for large active-site models alongside the GPU calculation.
+
+**Disk.** Budget ~20 GB of free space, itemised as: the conda environment (~8 GB), the UMA Hugging Face model cache (~1–4 GB, depending on which UMA variants you download), and the headless Chromium that Plotly fetches for static PNG export (~150 MB, downloaded once by `plotly_get_chrome`).
+
+CPU-only execution works but is 10–100× slower and is not recommended for full TS / IRC / Hessian workflows.
+
 ## Quick start
 
 Below is a minimal setup example that works on many CUDA 12.9 clusters. Adjust module names and versions to match your system. This example assumes the default GSM MEP mode (`--mep-mode gsm`). For DMF (`--mep-mode dmf`), install cyipopt via conda first.
@@ -58,7 +70,7 @@ You only need to do this once per machine / environment.
 > **Tip:** UMA is the default MLIP backend. To use ORB or AIMNet2, install the corresponding extra (e.g. `pip install "pdb2reaction[orb]"`) and pass `-b/--backend orb` to any command. See step 7 below.
 
 ```{warning}
-**MACE:** `mace-torch` requires `e3nn==0.4.4`, which conflicts with `fairchem-core`'s `e3nn` pin (older `mace-torch` versions). Use a separate conda env for MACE unless your `mace-torch` release advertises coexistence with `fairchem-core`; the canonical recipe is `pip uninstall -y fairchem-core && pip install mace-torch` in a dedicated env.
+**MACE:** `mace-torch` requires `e3nn==0.4.4`, which conflicts with `fairchem-core`'s `e3nn>=0.5` pin (UMA). The two cannot coexist, so MACE needs a dedicated conda env; the canonical recipe is `pip uninstall -y fairchem-core && pip install mace-torch` in that env.
 ```
 
 

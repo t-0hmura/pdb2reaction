@@ -1,360 +1,231 @@
 # CLI Conventions
 
-## Boolean Options
+Conventions shared across all `pdb2reaction` commands.
 
-Boolean options are normalized at the root CLI.
-Both notations are accepted:
+## Boolean options
 
-```bash
-# Recommended
---tsopt --thermo --no-dft
+Every boolean CLI flag accepts **all four forms permanently** (no deprecation cycle planned):
 
-# Also accepted
---tsopt True --thermo yes --dft 0
-```
-
-Both forms are accepted regardless of how each subcommand registers its boolean options in source: `bool_compat` synthesizes a `--no-<flag>` alias for every value-style (`type=click.BOOL`) flag and a value-style alias for every flag-pair, so toggle and value forms are interchangeable across subcommands. All subcommands (including `extract` and `fix-altloc`) use Click as their CLI backend.
-
-Common boolean options:
-- `--tsopt`, `--thermo`, `--dft` — enable post-processing stages
-- `--freeze-links` — freeze link-hydrogen parents (default: `True`)
-- `--dump` — write trajectory files
-- `--preopt`, `--endopt` — pre/post optimization toggles
-- `--climb` — enable climbing image in MEP search
-- `--convert-files` — generate PDB/GJF companion files
-
-## Progressive Help (`all`)
-
-`pdb2reaction all` uses two help levels:
+| Form | Example |
+|---|---|
+| Positive flag | `--tsopt` |
+| Negative flag | `--no-tsopt` |
+| Positive value | `--tsopt True`, `--tsopt yes`, `--tsopt 1`, `--tsopt on` |
+| Negative value | `--tsopt False`, `--tsopt no`, `--tsopt 0`, `--tsopt off` |
 
 ```bash
-pdb2reaction all --help # core options only
-pdb2reaction all --help-advanced # full option list
+--tsopt --thermo --no-dft                # toggle form
+--tsopt True --thermo yes --dft 0        # value form
+--tsopt true --thermo on --dft off       # mix is fine
 ```
 
-The following subcommands support progressive help (`--help` for core options, `--help-advanced` for the full list):
+All four forms route through a single root-CLI `bool_compat` synthesizer; `tests/test_bool_compat_cli.py` walks every registered bool option against every form on every release, so a missing entry is caught by CI.
 
-`all`, `scan`, `scan2d`, `scan3d`, `opt`, `path-opt`, `path-search`, `tsopt`, `freq`, `irc`, `dft`, `add-elem-info`, `trj2fig`, `energy-diagram`, `extract`, `fix-altloc`.
+Common toggles: `--tsopt` / `--thermo` / `--dft` (post-processing stages) · `--freeze-links` (freeze link-H parents, default `True`) · `--dump` (write trajectory files) · `--preopt` / `--endopt` (pre/post optimisation) · `--climb` (climbing-image MEP) · `--convert-files` (generate PDB / GJF companions).
 
-## Residue Selectors
+### Contributing a new bool flag
 
-Residue selectors identify which residues to use as substrates or extraction centers.
+When adding a boolean flag inside a subcommand, always route it through one of the `add_*_option()` factories in `pdb2reaction/cli/common_options.py` and register the long name in the matching `_COMMAND_BOOL_*_OPTIONS` table in `pdb2reaction/cli/app.py`. Avoid writing `@click.option("--foo/--no-foo", ...)` or `type=click.BOOL` directly in the subcommand body — that bypasses the registry, falls out of test coverage, and silently drops the value form.
 
-### By residue name
+## Progressive help
+
 ```bash
--c 'SAM,GPP' # Select all residues named SAM or GPP
--c 'LIG' # Select all residues named LIG
+pdb2reaction <subcmd> --help               # core options
+pdb2reaction <subcmd> --help-advanced      # full option set
 ```
 
-### By residue ID
-```bash
--c '123,456' # Residues 123 and 456
--c 'A:123,B:456' # Chain A residue 123, Chain B residue 456
--c '123A' # Residue 123 with insertion code A
--c 'A:123A' # Chain A, residue 123, insertion code A
-```
+Supported by `all`, `scan` / `scan2d` / `scan3d`, `opt`, `path-opt`, `path-search`, `tsopt`, `freq`, `irc`, `dft`, `add-elem-info`, `trj2fig`, `energy-diagram`, `extract`, `fix-altloc`.
 
-### By PDB file
-```bash
--c substrate.pdb # Use coordinates from a separate PDB to locate substrates
-```
+(verbosity-levels)=
 
-```{note}
-When selecting by residue name, if multiple residues share the same name, **all** matches are included and a warning is logged.
-```
+## Verbosity levels
+
+`-v/--verbose LEVEL` is an integer from 0 to 3 (**default 2**) that sets how much each command prints to the console. It is a per-command option, so write it with the subcommand, e.g. `pdb2reaction opt -v 1 ...`. The same four levels apply to every command; command pages describe only their command-specific payload (e.g. the `opt` cycle table or the `freq` thermochemistry summary).
+
+| Level | What you see |
+|---|---|
+| `-v 0` | Silent. Confirm success from the exit code and the output artifacts. |
+| `-v 1` | Milestones only: version, input summary, key settings, output location, dry-run / final status. No banner, `[command]`, `[mode]`, or config dump. |
+| `-v 2` | Default. Adds the banner, `[command]`, `[mode]`, stage progress, the main optimizer cycle table, terminal status, the one-line Hessian summary, thermo / DFT summaries, and elapsed time. |
+| `-v 3` | Debug: resolved config / dry-run plan, backend DEBUG, raw optimizer and internal-coordinate chatter, `[HessianTiming]`, and `[HessianVRAM]`. |
+
+A semantic failure is a failure at any level: a `Traceback` that appears only at `-v 3` still means the run failed.
+
+## Residue selectors
+
+| Form | Example | Notes |
+|---|---|---|
+| By residue name | `-c 'SAM,GPP'` / `-c 'LIG'` | If multiple residues share a name, **all** matches are included (warning logged). |
+| By residue ID | `-c '123,456'` / `-c 'A:123,B:456'` / `-c '123A'` / `-c 'A:123A'` | Optional chain prefix; trailing letter = insertion code. |
+| By PDB file | `-c substrate.pdb` | Use coordinates from a separate PDB to locate substrates. |
 
 (selected-resn-takes-ids)=
-### `--selected-resn` takes residue IDs, not names
+### `--selected-resn` takes residue IDs (not names)
 
 ```{warning}
-**`--selected-resn` accepts residue IDs, not names.** Despite its name, the `--selected-resn` flag (on `extract` and `all`) accepts **residue IDs** (colon-separated integers with optional chains/insertion codes, e.g. `A:123A`), **not** 3-letter residue names. Passing residue-name tokens (e.g. `'TYR,GLU'`) raises `ValueError("Invalid residue specifier 'TYR'. Use '123', '123A', 'A:123', or 'A:123A'.")`. Use `-c/--center 'GPP,SAM'` if you want residue-name-based substrate selection. See the [`extract` CLI options table](extract.md) for the canonical description.
+**`--selected-resn` (on `extract` and `all`) accepts residue *IDs*, not names** — colon-separated integers with optional chains / insertion codes (e.g. `A:123A`). Passing residue-name tokens (e.g. `'TYR,GLU'`) raises `ValueError("Invalid residue specifier 'TYR'. Use '123', '123A', 'A:123', or 'A:123A'.")`. Use `-c/--center 'GPP,SAM'` for residue-name selection. Canonical description on the [`extract` page](extract.md).
 ```
-
----
 
 (charge-specification)=
-## Charge Specification
 
-For PDB inputs, `--ligand-charge/-l` lets you specify charges only for non-standard residues (substrates, cofactors, metal ions). The total system charge is then **automatically derived** by summing standard amino-acid charges, ion charges, and your ligand charges — no need to manually count atoms across the entire complex. This is especially useful for large enzyme–substrate systems where the total charge is not obvious.
+## Charge specification
 
-### Per-residue mapping (recommended)
+For PDB inputs, `--ligand-charge/-l` lets you specify charges only for non-standard residues (substrates, cofactors, metal ions). The total system charge is then **automatically derived** by summing standard amino-acid charges, ions, and your ligand charges.
+
 ```bash
--l 'SAM:1,GPP:-3' # SAM has charge +1, GPP has charge -3
--l 'LIG:-2' # LIG has charge -2
+-l 'SAM:1,GPP:-3'        # per-residue mapping (recommended; `=` separator also accepted)
+-l 'LIG:-2'              # single mapping
+-l -3                    # single integer = total ligand charge
+-q 0                     # explicit total system charge override
 ```
 
-### Total charge override
-```bash
--q 0 # Force total system charge to 0
--q -1 # Force total system charge to -1
-```
+**Resolution order** (highest priority first):
 
-### Charge resolution order
-1. `-q/--charge` (explicit CLI override) — highest priority
-2. Active site model (binding pocket) extraction (sums amino acids, ions, `--ligand-charge/-l`) — only when `-c/--center` is passed and extraction actually runs (e.g. `all`, `extract`)
-3. `--ligand-charge/-l` as fallback (when extraction skipped)
-4. `.gjf` template metadata
-5. Default: none (unresolved charge aborts; provide `-q` or `.gjf` charge metadata, or use PDB `--ligand-charge/-l`)
+1. `-q/--charge` explicit CLI override.
+2. Active-site model extraction summary (amino acids + ions + `--ligand-charge`; only when `-c/--center` is set and extraction runs — e.g. `all`, `extract`).
+3. `--ligand-charge/-l` fallback when extraction is skipped (PDB input, or XYZ / GJF with `--ref-pdb`).
+4. `.gjf` template metadata.
+5. Default: abort if unresolved (provide `-q`, `.gjf` charge metadata, or PDB `--ligand-charge/-l`).
 
-```{note}
-Step 2 (extraction-based charge derivation) only fires for commands like `all` that take `-c/--center`. For standalone subcommands such as `opt`/`tsopt`/`freq`, or when `-c` is omitted, extraction is skipped and resolution becomes `1 → 3 → 4 → 5`.
-```
-
-```{note}
-`--ligand-charge/-l` derivation is only applied for PDB inputs (including XYZ/GJF inputs when `--ref-pdb` is supplied) and only when charge is **not yet resolved**. In that unresolved case, ligand-derived charge is attempted before `.gjf` metadata fallback.
-```
+For per-stage subcommands (`opt` / `tsopt` / `freq` …) or when `-c` is omitted, extraction is skipped and resolution becomes `1 → 3 → 4 → 5`. Ligand-derived charge is attempted before `.gjf` metadata fallback.
 
 ```{tip}
 Always provide `--ligand-charge/-l` for non-standard residues (substrates, cofactors, unusual ligands) to ensure correct charge propagation.
 ```
 
-## Spin Multiplicity
+## Spin multiplicity
 
 ```bash
--m 1 # Singlet (default)
--m 2 # Doublet
--m 3 # Triplet
+-m 1    # singlet (default)
+-m 2    # doublet
+-m 3    # triplet
 ```
 
-```{note}
-Use `-m/--multiplicity` consistently in `all` and other subcommands.
-```
+Use `-m/--multiplicity` consistently in `all` and per-stage subcommands.
 
-## Atom Selectors
+## Atom selectors
 
-Atom selectors identify specific atoms for scans and restraints. They can be:
-
-### Integer index (1-based by default)
 ```bash
---scan-lists '[(1, 5, 2.0)]' # Atoms 1 and 5, target distance 2.0 Å
+--scan-lists '[(1, 5, 2.0)]'                                          # 1-based integer indices
+--scan-lists '[("TYR,285,CA", "SAM,309,C10", 2.20)]'                  # PDB-style selector strings
 ```
 
-### PDB-style selector string
-```bash
---scan-lists '[("TYR,285,CA", "SAM,309,C10", 2.20)]'
-```
-
-Selector fields can be separated by:
-- Space: `'TYR 285 CA'`
-- Comma: `'TYR,285,CA'`
-- Slash: `'TYR/285/CA'`
-- Backtick: `` 'TYR`285`CA' ``
-- Backslash: `'TYR\285\CA'`
-
-The three tokens (residue name, residue number, atom name) can appear in any order—the parser uses a fallback heuristic if the order is non-standard.
-
----
+Selector field delimiters: space · comma · slash · backtick · backslash. The three tokens (residue name / residue number / atom name) may appear in any order — the parser falls back to a heuristic for non-standard orderings.
 
 (scan-list-spec)=
+
 ### Scan-list spec
 
-`--scan-lists/-s` (used by `scan`, `scan2d`, `scan3d`, and `all`) accepts either a YAML/JSON spec file path or one or more inline Python literals. Use a file for complex or multi-stage runs; inline literals work well for short, single-stage cases.
+`--scan-lists/-s` (on `scan`, `scan2d`, `scan3d`, and `all`) accepts either a YAML / JSON spec file or one or more inline Python literals. Use a file for complex multi-stage runs; inline literals work for short cases.
 
-#### YAML/JSON spec file format (recommended)
-
-The file root is a mapping. The list-of-tuples key is `stages` for `scan` and `pairs` for `scan2d`/`scan3d`:
+**YAML / JSON spec file** (root = mapping; key is `stages` for `scan`, `pairs` for `scan2d` / `scan3d`):
 
 ```yaml
-one_based: true # optional; defaults to CLI --one-based
-stages: # scan
+one_based: true            # optional; defaults to CLI --one-based
+stages:                    # scan
   - [[1, 5, 1.35]]
   - [[1, 5, 2.20], [2, 8, 1.80]]
 ```
 
 ```yaml
-one_based: true # optional
-pairs: # scan2d (exactly 2 entries) / scan3d (exactly 3 entries)
+one_based: true
+pairs:                     # scan2d (exactly 2 entries) / scan3d (exactly 3 entries)
   - [1, 5, 1.30, 3.10]
   - [2, 8, 1.20, 3.20]
 ```
 
-- `stages` / `pairs` is required.
-- Each `scan` stage is a list of `(i, j, target_Å)` triples.
-- Each `scan2d`/`scan3d` axis is a `(i, j, low_Å, high_Å)` quadruple.
-- Indices may be integers or PDB selectors, same as inline literals.
+Each `scan` stage is a list of `(i, j, target_Å)` triples; each `scan2d` / `scan3d` axis is `(i, j, low_Å, high_Å)`. Indices may be integers or PDB selectors.
 
-#### Inline Python literal format
-
-Each literal is a Python list. Shell quoting matters.
-
-```
--s '[(atom1, atom2, target_Å), ...]'        # scan: triples
--s '[(atom1, atom2, low_Å, high_Å), ...]'   # scan2d / scan3d: quadruples
-```
-
-- Wrap the entire literal in **single quotes** so the shell does not interpret parentheses or spaces.
-- For `scan`, one literal = one **stage**; for multiple stages, pass multiple literals after a **single** `--scan-lists/-s` flag.
-- For `scan2d`/`scan3d`, only **one literal** is accepted (no multi-stage support); it must contain exactly 2 (`scan2d`) or 3 (`scan3d`) quadruples.
-
-##### Specifying atoms
-
-Atoms can be given as **integer indices** or **PDB selector strings**:
-
-| Method | Example | Notes |
-| --- | --- | --- |
-| Integer index | `(1, 5, 2.0)` | 1-based by default (`--one-based`) |
-| PDB selector | `("TYR,285,CA", "SAM,309,C10", 2.0)` | Residue name, residue number, atom name |
-
-PDB selector tokens can be separated by any of: comma `,`, space, slash `/`, backtick `` ` ``, or backslash `\`. Token order is flexible.
+**Inline literal**: wrap in **single quotes** so the shell does not interpret parens / spaces; use double-quoted PDB selectors inside.
 
 ```bash
-# All of these specify the same atom:
-"TYR,285,CA"
-"TYR 285 CA"
-"TYR/285/CA"
-"285,TYR,CA" # order is flexible
+-s '[(atom1, atom2, target_Å), ...]'             # scan: triples
+-s '[(atom1, atom2, low_Å, high_Å), ...]'        # scan2d / scan3d: quadruples
+-s '[("TYR,285,CA","SAM,309,C10",1.35)]'         # quoted selectors
+-s "[(\"TYR,285,CA\",\"SAM,309,C10\",1.35)]"       # avoid: double-quoted outer literal requires escaping inner quotes
 ```
 
-##### Quoting rules
+For `scan`, one literal = one **stage**; multiple stages → multiple literals after a single `--scan-lists` flag. For `scan2d` / `scan3d`, only one literal is accepted (no multi-stage support).
 
-```bash
-# Correct: single-quote the list, double-quote selector strings inside
--s '[("TYR,285,CA","SAM,309,C10",1.35)]'
+## Input file requirements
 
-# Correct: integer indices need no inner quotes
--s '[(1, 5, 2.0)]'
-
-# Avoid: double-quoting the outer literal requires escaping inner quotes
--s "[(\"TYR,285,CA\",\"SAM,309,C10\",1.35)]"
-```
-
-## Input File Requirements
-
-### PDB files
-- Must contain **hydrogen atoms** (use `reduce`, `pdb2pqr`, or Open Babel to add them)
-- Must have **element symbols** in columns 77–78 (use `pdb2reaction add-elem-info` if missing)
-- Multiple PDBs must have **identical atoms in the same order** (only coordinates may differ)
-
-### XYZ and GJF files
-- Can be used when active site model extraction is skipped (omit `-c/--center`)
-- `.gjf` files can provide charge/spin defaults from embedded metadata
-
----
+- **PDB** — must contain hydrogens (add via `reduce` / `pdb2pqr` / Open Babel) and element symbols in cols 77–78 (`pdb2reaction add-elem-info` if missing). Multiple PDBs must share identical atoms in the same order.
+- **XYZ / GJF** — accepted when active-site extraction is skipped (omit `-c/--center`). `.gjf` files can provide charge / spin defaults from embedded metadata.
 
 (exit-codes)=
+
 ## Exit codes
 
-`pdb2reaction` subcommands follow a largely shared exit-code convention, but the codes a given subcommand can actually emit differ (see the "Typical emitter" column below). For the exhaustive list per subcommand, consult that subcommand's page.
-
 | Code | Meaning | Typical emitter |
-|------|---------|-----------------|
+|---|---|---|
 | `0` | Success | every subcommand |
 | `1` | Unexpected error (any unhandled exception) | every subcommand |
-| `2` | Zero step length (step norm below minimum) **or** missing dependency on import | `opt`, `tsopt`, `path-opt`; `dft` (PySCF/GPU4PySCF not installed) |
-| `3` | Optimizer failure **or** SCF not converged | `opt`, `tsopt`, `path-opt`; `dft` |
+| `2` | Zero step length **or** missing import dependency | `opt`, `tsopt`, `path-opt`; `dft` (PySCF / GPU4PySCF not installed) |
+| `3` | Optimiser failure **or** SCF not converged | `opt`, `tsopt`, `path-opt`; `dft` |
 | `4` | Trajectory write error | `path-opt` |
 | `5` | HEI export error | `path-opt` |
 | `130` | Keyboard interrupt (SIGINT) | every subcommand |
 
-Subcommands that only use `0 / 1 / 130` (such as `irc` and `freq`) still follow the same codes — they simply do not currently raise the optimizer-specific errors.
-
----
+Subcommands that only use `0 / 1 / 130` (e.g. `irc`, `freq`) follow the same scheme; they simply don't currently raise the optimiser-specific errors.
 
 (opt-mode-semantics)=
+
 ## `--opt-mode` (subcommand-dependent)
 
 ```{warning}
-The same `--opt-mode` token selects **different optimizer algorithms** depending on the subcommand, and its default is **not uniform**. Always check the per-subcommand table before copying a recipe.
+The same `--opt-mode` token selects **different algorithms** by subcommand, and defaults differ. Always check the table before copying a recipe.
 ```
 
 | Subcommand | `grad` alias selects | `hess` alias selects | Default |
-|------------|---------------------|----------------------|---------|
+|---|---|---|---|
 | `opt` | L-BFGS (`lbfgs`) | RFO (`rfo`) | `grad` (L-BFGS) |
 | `tsopt` | Dimer (`dimer`) | RS-I-RFO (`rsirfo`) | `hess` (RS-I-RFO) |
 | `path-opt` (endpoint preopt) | L-BFGS | RFO | `grad` |
-| `path-search` (HEI±1 / kink-node single-structure optimizer) | L-BFGS | RFO | `grad` |
+| `path-search` (HEI±1 / kink-node single-structure) | L-BFGS | RFO | `grad` |
 | `scan` / `scan2d` / `scan3d` (per-grid relaxation) | L-BFGS | RFO | `grad` |
-| `all` (pre-opt stage, `--opt-mode`) | L-BFGS | RFO | `grad` |
-| `all` (post-opt — TSOPT preset, `--opt-mode-post`) | Dimer (`dimer`) | RS-I-RFO (`rsirfo`) | `hess` |
-| `all` (post-opt — post-IRC endpoint optimizer, `--opt-mode-post`) | L-BFGS | RFO | `hess` |
+| `all` (pre-opt, `--opt-mode`) | L-BFGS | RFO | `grad` |
+| `all` (TSOPT preset, `--opt-mode-post`) | Dimer | RS-I-RFO | `hess` |
+| `all` (post-IRC endpoint, `--opt-mode-post`) | L-BFGS | RFO | `hess` |
 
-**Accepted aliases** are subcommand-specific:
-
-- `opt` accepts `grad` / `lbfgs` and `hess` / `rfo`.
-- `tsopt` accepts `grad` / `dimer` and `hess` / `rsirfo`.
-- `scan` / `scan2d` / `scan3d` / `path-opt` / `path-search` / `all` accept only `grad` / `hess` (no algorithm-name aliases). `--opt-mode-post` on `all` is likewise restricted to `grad` / `hess`.
-
-As a result, `--opt-mode grad` on `tsopt` is a **Dimer** TS search, not an L-BFGS minimization. To be unambiguous, use the algorithm alias accepted by that subcommand: `--opt-mode lbfgs|rfo` on `opt`, `--opt-mode dimer|rsirfo` on `tsopt`. (Other subcommands accept only `grad` / `hess`.)
+Algorithm aliases are accepted on `opt` (`lbfgs` / `rfo`) and `tsopt` (`dimer` / `rsirfo`); all other subcommands accept only `grad` / `hess`. So `--opt-mode grad` on `tsopt` is a **Dimer** TS search, not L-BFGS minimisation — use `--opt-mode dimer|rsirfo` on `tsopt` and `--opt-mode lbfgs|rfo` on `opt` to be unambiguous.
 
 ## CLI ↔ YAML name mismatches
 
-Some CLI flags use slightly different names than their YAML counterparts, and a few are renamed when wrapped in `all`. The full mapping table lives in {ref}`YAML Reference: Common CLI-to-YAML mapping <common-cli-to-yaml-mapping>`; the two most frequently misremembered cases are:
+A few CLI flags use slightly different names than their YAML counterparts, and a few are renamed when wrapped in `all`. Full mapping table: {ref}`YAML Reference › Common CLI-to-YAML mapping <common-cli-to-yaml-mapping>`. The two most-asked cases:
 
 (pressure-vs-pressure-atm)=
-### `--pressure` (CLI) vs `pressure_atm` (YAML)
-
-- **CLI flag:** `--pressure FLOAT` (on `freq`; in `all` it is exposed as `--freq-pressure`).
-- **YAML key:** `thermo.pressure_atm` (explicit unit suffix).
-- Both carry values in **atm** and are converted to Pa internally.
+- **`--pressure` (CLI) vs `pressure_atm` (YAML)** — on `freq` the flag is `--pressure FLOAT`; in `all` it is exposed as `--freq-pressure`. YAML key: `thermo.pressure_atm`. Both carry **atm** values (converted to Pa internally).
 
 (engine-vs-dft-engine)=
-### `--engine` (standalone `dft`) vs `--dft-engine` (in `all`)
+### `--engine` (`dft`) vs `--dft-engine` (`all`)
 
-- On the **standalone `dft`** subcommand the backend selector is named **`--engine`** (values: `gpu`, `cpu`).
-- Inside **`pdb2reaction all`** the exact same option is renamed **`--dft-engine`** (prefix-disambiguated so it does not collide with other engine-like flags under the `all` wrapper).
-- In YAML both resolve to the same `dft` section setting; see {ref}`YAML Reference: dft section <dft-section>`.
-
-Equivalent commands:
+- **`--engine` (`dft`) vs `--dft-engine` (`all`)** — standalone `dft` accepts `--engine gpu|cpu`; inside `pdb2reaction all` it is renamed `--dft-engine` (prefix-disambiguated). Both map to the same YAML `dft` section setting.
 
 ```bash
-# Standalone dft
-pdb2reaction dft -i ts.xyz -q 0 --engine gpu
-
-# Same thing inside the all wrapper
-pdb2reaction all -i r.pdb p.pdb -c SAM --dft --dft-engine gpu
+pdb2reaction dft -i ts.xyz -q 0 --engine gpu                                  # standalone
+pdb2reaction all -i r.pdb p.pdb -c SAM --dft --dft-engine gpu                 # same thing inside `all`
 ```
 
-## YAML Configuration
-
-Advanced settings can be passed via layered YAML inputs:
+## YAML configuration
 
 ```bash
 pdb2reaction -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result/
 ```
 
-See [YAML Reference](yaml-reference.md) for all available options.
-
 (configuration-precedence)=
-### Configuration precedence
-
-Settings are resolved in the following order (later sources override earlier ones):
 
 ```
 built-in defaults  <  --config (YAML)  <  CLI options
 ```
 
-- **Built-in defaults** — hard-coded values for every parameter (see `pdb2reaction/defaults.py`).
-- **`--config`** — a YAML file that overrides defaults. Useful for site-wide or project-wide settings.
-- **CLI options** — explicit flags on the command line (e.g., `--backend orb`). Only *explicitly supplied* values override YAML; options left at their CLI default do not mask YAML values.
+Built-in defaults are in `pdb2reaction/core/defaults.py`. Only *explicitly supplied* CLI values override YAML; options left at their CLI default do not mask YAML values. Applies uniformly to all calc subcommands. Full schema: [YAML Reference](yaml-reference.md).
 
-This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, and `dft`. See also {ref}`YAML Reference: Configuration precedence <yaml-configuration-precedence>`.
+- **Known exception**: `flatten_max_iter` — when `--flatten` is not passed, the CLI initialiser seeds `flatten_max_iter = 0`, overriding `defaults.py`'s 50. See {ref}`flatten-precedence-caveat`.
 
-## Output Directory
+## Output directory
 
-Use `-o/--out-dir` to specify where results are saved:
-
-```bash
--o ./my_results/ # Custom output directory
-```
-
-Default output directories:
-- `all`: `./result_all/`
-- `extract`: current directory or specified `-o`
-- `opt`: `./result_opt/`
-- `tsopt`: `./result_tsopt/`
-- `path-opt`: `./result_path_opt/`
-- `path-search`: `./result_path_search/`
-- `scan`: `./result_scan/`
-- `scan2d`: `./result_scan2d/`
-- `scan3d`: `./result_scan3d/`
-- `freq`: `./result_freq/`
-- `irc`: `./result_irc/`
-- `dft`: `./result_dft/`
+`-o/--out-dir ./my_results/` overrides. Defaults: `all → ./result_all/`, per-stage subcommand → `./result_<subcmd>/` with hyphens in subcommand names mapped to underscores (e.g. `result_opt/`, `result_tsopt/`, `result_path_opt/`, `result_path_search/`). `extract` defaults to the current directory or the explicit `-o`.
 
 ## See Also
 
-- [Installation](installation.md) — Setup and dependency installation
-- [Getting Started](getting-started.md) — First run and workflow overview
-- [Common Error Recipes](recipes-common-errors.md) — Symptom-first failure routing
-- [Troubleshooting](troubleshooting.md) — Common errors and fixes
-- [YAML Reference](yaml-reference.md) — Complete configuration options
+[Installation](installation.md) · [Getting Started](getting-started.md) · [Common Error Recipes](recipes-common-errors.md) · [Troubleshooting](troubleshooting.md) · [YAML Reference](yaml-reference.md).

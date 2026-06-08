@@ -46,13 +46,13 @@ pdb2reaction scan3d -i 1.R.pdb -l 'SAM:1' \
 |---|---|---|
 | `<out_dir>/result.json` | `--out-json` | machine-readable result |
 | `<out_dir>/grid/point_i<d1Å>_j<d2Å>_k<d3Å>.xyz` | always | final relaxed grid point |
-| `<out_dir>/grid/preopt_i<d1Å>_j<d2Å>_k<d3Å>.{xyz,pdb,gjf}` | `--preopt` | pre-relaxation snapshot |
+| `<out_dir>/grid/preopt_i<d1Å>_j<d2Å>_k<d3Å>.{xyz,pdb,gjf}` | always | starting-structure snapshot (preoptimized only when `--preopt` is set) |
 | `<out_dir>/grid/inner_path_d1_NNN_d2_MMM_trj.xyz` | `--dump` | inner-loop trajectory |
 | `<out_dir>/scan3d_density.html` | always (with input csv when `--csv` is passed) | interactive 3D iso-surface |
 | `<out_dir>/surface.csv` | unless `--csv` (post-mortem reuses the input csv) | 3D energy surface (d1_A, d2_A, d3_A, energy_hartree, energy_kcal, plus axis labels) |
 
 `result.json` stores grid metadata and energy values; `surface.csv`
-holds the four-column tabulation ready for slicing / contour plotting
+holds the per-grid-point tabulation ready for slicing / contour plotting
 in pandas or matplotlib.
 
 ## Caveats
@@ -69,4 +69,4 @@ in pandas or matplotlib.
 - `scan.md`, `scan2d.md` — lower-dim analogs.
 - `all-scan-list.md` — staged sequential scans inside the full
   pipeline (avoids the 3D grid blow-up when stages are decoupled).
-- Defaults: `import pdb2reaction.defaults as d; print(d.OUT_DIR_SCAN3D)`
+- Defaults: `import pdb2reaction.core.defaults as d; print(d.OUT_DIR_SCAN3D)`

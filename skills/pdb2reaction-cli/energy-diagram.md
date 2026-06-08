@@ -9,7 +9,7 @@ run, TS / IM from another) and want a single composite figure.
 ## Synopsis
 
 ```bash
-pdb2reaction energy-diagram -i 0 12.5 4.3 [-i 18.2 -2.0] \
+pdb2reaction energy-diagram -i "[0, 12.5, 4.3]" \
     [-o energy_diagram.png]
 ```
 
@@ -17,7 +17,7 @@ pdb2reaction energy-diagram -i 0 12.5 4.3 [-i 18.2 -2.0] \
 
 | flag | type | default | description |
 |---|---|---|---|
-| `-i, --input` | numeric sequence | required | Energy values. Accepts space-separated numbers (`-i 0 12.5 4.3`), a Python-list literal (`-i "[0,12.5,4.3]"`), or repeated `-i` calls |
+| `-i, --input` | numeric sequence | required | Energy values. Accepts a Python-list literal (`-i "[0, 12.5, 4.3]"`) or repeated `-i` calls (`-i 0 -i 12.5 -i 4.3`). A bare space-separated list after one flag (`-i 0 12.5 4.3`) captures only the first value |
 | `-o, --output` | path | `energy_diagram.png` | Output image path |
 | `--label-x` | sequence | `S1, S2, ...` | Per-state labels on the x-axis |
 | `--label-y` | str | `ΔE (kcal/mol)` | Y-axis label |
@@ -29,7 +29,7 @@ Without `--label-x`, points are plotted in input order with `S1, S2, …` labels
 ### Five points (two-step mechanism)
 
 ```bash
-pdb2reaction energy-diagram -i 0.0 21.5 -0.7 2.2 -18.2 -o diagram.png
+pdb2reaction energy-diagram -i 0.0 -i 21.5 -i -0.7 -i 2.2 -i -18.2 -o diagram.png
 ```
 
 ### Bracketed list literal

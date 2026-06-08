@@ -2,5 +2,27 @@
 
 `pdb2reaction` uses `tests/` as the single test root.
 
-- Unit tests: `tests/*.py`
-- Smoke fixtures/scripts: `tests/smoke/`
+## Unit and CI Tests
+
+CPU-only tests live directly under `tests/*.py`.
+
+```bash
+pytest tests/ -v --tb=short -x
+```
+
+These tests cover CLI parsing, helper contracts, logging summaries, geometry
+regressions. They are suitable for CI.
+
+## Manual Smoke Tests
+
+GPU smoke fixtures and commands live in `tests/smoke/`.
+
+```bash
+cd tests/smoke
+bash run.sh
+```
+
+`tests/smoke/run.sh` assumes the caller has already configured the Python
+environment and CUDA runtime. Scheduler wrappers and environment activation
+must stay out of the repository.
+

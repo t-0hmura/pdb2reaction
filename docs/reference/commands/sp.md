@@ -1,0 +1,69 @@
+# `pdb2reaction sp`
+
+```text
+Usage: pdb2reaction sp [OPTIONS]
+
+  Compute a single-point MLIP energy + forces (and optionally Hessian).
+
+Options:
+  -v, --verbose LEVEL             Console verbosity 0-3 (default 2). 0=silent;
+                                  1=milestones only; 2=+detailed step logging
+                                  and deliverable paths; 3=everything (full
+                                  config blocks, per-file paths, DEBUG logging).
+                                  [0<=x<=3]
+  --help-advanced                 Show all options (including advanced settings)
+                                  and exit.
+  -i, --input FILE                Input structure (PDB / XYZ / GJF).  [required]
+  --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
+                                  predictor. NOTE: analytical Hessian raises a
+                                  RuntimeError when workers>1; pass --hessian-
+                                  calc-mode FiniteDifference explicitly.
+                                  [default: 1]
+  --workers-per-node INTEGER      Workers per node when using a parallel MLIP
+                                  predictor (workers>1).  [default: 1]
+  -o, --out-dir TEXT              Output directory.  [default: ./result_sp/]
+  --hess / --no-hess              Also compute the full Hessian and save to
+                                  hessian.npy.  [default: no-hess]
+  --hessian-calc-mode [analytical|finitedifference]
+                                  Hessian backend when --hess is set. Analytical
+                                  only works for UMA; other backends fall back
+                                  to FiniteDifference.
+  --convert-files / --no-convert-files
+                                  Auto-convert output XYZ-like files into
+                                  matching PDB beside them when the input had
+                                  PDB metadata.  [default: convert-files]
+  --config FILE                   YAML config file with sections (calc:, geom:,
+                                  …).
+  --show-config / --no-show-config
+                                  Print resolved configuration and continue
+                                  execution.
+  --dry-run / --no-dry-run        Validate options and print the plan without
+                                  running the calculation.
+  --out-json / --no-out-json      Write machine-readable result.json to out_dir.
+                                  [default: no-out-json]
+  -b, --backend [uma|orb|mace|aimnet2]
+                                  MLIP backend.  [default: uma]
+  --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
+                                  'water'). 'none' to disable.  [default: none]
+  --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
+  -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
+                                  unless --ligand-charge is provided (.gjf
+                                  templates inherit the charge automatically).
+  -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
+                                  GPP:-3,SAM:1) used to derive charge when -q is
+                                  omitted (requires PDB input or --ref-pdb).
+  -m, --multiplicity INTEGER      Spin multiplicity (2S+1).
+  --precision [fp32|fp64]         MLIP backend precision: fp32 (default) or
+                                  fp64. Routed to backend-specific kwargs (UMA
+                                  precision / ORB precision / MACE
+                                  default_dtype). aimnet2: fp32 no-op; fp64
+                                  rejected.
+  --deterministic / --no-deterministic
+                                  Strict bit-reproducible GPU runs
+                                  (deterministic algorithms + index_reduce_
+                                  shim). Slower; raises if unsupported. Default
+                                  off.
+  --print-every INTEGER RANGE     Print optimizer status every N cycles (debug
+                                  knob).  [x>=1]
+  -h, --help                      Show this message and exit.
+```

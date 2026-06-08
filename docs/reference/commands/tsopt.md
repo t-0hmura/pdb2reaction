@@ -1,29 +1,27 @@
 # `pdb2reaction tsopt`
 
 ```text
-
 Usage: pdb2reaction tsopt [OPTIONS]
 
   Transition state optimization (Dimer or RS-I-RFO).
 
 Options:
+  -v, --verbose LEVEL             Console verbosity 0-3 (default 2). 0=silent;
+                                  1=milestones only; 2=+optimizer cycle tables,
+                                  per-stage timing, VRAM, deliverable paths;
+                                  3=everything (full config blocks, per-file
+                                  paths, DEBUG logging).  [0<=x<=3]
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
   -i, --input FILE                Input structure file (.pdb, .xyz, _trj.xyz,
                                   ...).  [required]
-  -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
-                                  unless --ligand-charge is provided (PDB inputs
-                                  or XYZ/GJF with --ref-pdb).
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
-                                  predictor (analytical Hessian is unavailable
-                                  when workers>1; FiniteDifference Hessian is
-                                  used instead).  [default: 1]
+                                  predictor. NOTE: analytical Hessian raises a
+                                  RuntimeError when workers>1; pass --hessian-
+                                  calc-mode FiniteDifference explicitly.
+                                  [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
-  -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
-                                  GPP:-3,SAM:1) used to derive charge when -q is
-                                  omitted (requires PDB input or --ref-pdb).
-  -m, --multiplicity INTEGER      Spin multiplicity (2S+1).
   --freeze-links / --no-freeze-links
                                   Freeze parent atoms of link hydrogens (PDB
                                   input or XYZ/GJF with --ref-pdb).  [default:
@@ -41,15 +39,18 @@ Options:
   --flatten / --no-flatten        Enable the extra-imaginary-mode flattening
                                   loop (grad: dimer loop, hess: post-RSIRFO).
                                   [default: no-flatten]
-  --opt-mode [grad|hess|dimer|rsirfo]
+  --opt-mode [grad|hess|dimer|rsirfo|trim|rsprfo]
                                   TS optimizer: 'grad'/'dimer' → Hessian Guided
-                                  Dimer; 'hess'/'rsirfo' → RS-I-RFO.  [default:
-                                  hess]
-  --dump / --no-dump              Write optimization trajectory to
-                                  'tsopt_trj.xyz' in the output directory.
-                                  [default: no-dump]
+                                  Dimer; 'hess'/'rsirfo' → RS-I-RFO; 'trim' →
+                                  TRIM (Helgaker); 'rsprfo' → RS-P-RFO
+                                  (Banerjee).  [default: hess]
+  --dump / --no-dump              Write the per-cycle optimization trajectory
+                                  ('optimization_trj.xyz' for rsirfo/hess,
+                                  'optimization_all_trj.xyz' for grad/dimer) in
+                                  the output directory.  [default: no-dump]
   -o, --out-dir TEXT              Output directory.  [default: ./result_tsopt/]
-  --thresh TEXT                   Convergence preset for the active optimizer (g
+  --thresh [gau_loose|gau|gau_tight|gau_vtight|baker|never]
+                                  Convergence preset for the active optimizer (g
                                   au_loose|gau|gau_tight|gau_vtight|baker|never)
                                   . Defaults to 'baker' when not provided.
   --config FILE                   Base YAML configuration file applied before
@@ -71,5 +72,29 @@ Options:
   --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
                                   'water'). 'none' to disable.  [default: none]
   --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
+  -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
+                                  unless --ligand-charge is provided (.gjf
+                                  templates inherit the charge automatically).
+  -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
+                                  GPP:-3,SAM:1) used to derive charge when -q is
+                                  omitted (requires PDB input or --ref-pdb).
+  -m, --multiplicity INTEGER      Spin multiplicity (2S+1).
+  --precision [fp32|fp64]         MLIP backend precision: fp32 (default) or
+                                  fp64. Routed to backend-specific kwargs (UMA
+                                  precision / ORB precision / MACE
+                                  default_dtype). aimnet2: fp32 no-op; fp64
+                                  rejected.
+  --deterministic / --no-deterministic
+                                  Strict bit-reproducible GPU runs
+                                  (deterministic algorithms + index_reduce_
+                                  shim). Slower; raises if unsupported. Default
+                                  off.
+  --coord-type [cart|redund|dlc|tric]
+                                  Optimisation coordinate system
+                                  (cart|redund|dlc|tric). cart is the robust
+                                  default used in published numbers; dlc speeds
+                                  up torsion-rich opts.
+  --print-every INTEGER RANGE     Print optimizer status every N cycles (debug
+                                  knob).  [x>=1]
   -h, --help                      Show this message and exit.
 ```

@@ -1,63 +1,43 @@
 # `path-search`
 
-## Overview
+Build a continuous minimum-energy path (MEP) from **two or more** structures with GSM (default) or DMF (`--mep-mode dmf`). It selectively refines only those regions where covalent bond changes are detected, then stitches the resolved subpaths into a single trajectory, exporting the highest-energy image (HEI) of each segment as a TS candidate (validate with tsopt + IRC). The recursive decomposition automatically detects multistep reactions and builds a detailed MEP for each elementary step; complex multistep mechanisms may require manual trial-and-error—adjusting input intermediates, scan specifications, or convergence thresholds—to obtain a satisfactory pathway.
 
-Build a continuous MEP from **two or more** structures with GSM (default) or DMF (`--mep-mode dmf`). Automatically refines only regions with bond changes and exports the highest-energy image (HEI) as a TS candidate (validate with tsopt + IRC).
+## When to use
 
-### At a glance
-- **Use when:** R → … → P structures (2+ inputs) requiring a single stitched MEP with automatic refinement.
-- **Method:** Chains GSM/DMF segments and recursively refines only sub-intervals that still contain covalent changes.
-- **Outputs:** `mep_trj.xyz` (main trajectory), `summary.json` (segment-by-segment results), and optional plots/merged PDBs when enabled.
-- **Defaults:** `--mep-mode gsm`, `--opt-mode grad` (L-BFGS), `--preopt`, `--align`, `--thresh gau`, `--thresh-stopt gau_loose`.
-- **Next step:** HEI output alone does **not** validate a TS. Follow with [tsopt](tsopt.md) (includes imaginary-frequency check) and [irc](irc.md).
+- Use `path-search` for R → … → P structures (2+ inputs) requiring a single stitched MEP with automatic refinement.
+- Pick `--mep-mode gsm` (default, string-based) or `--mep-mode dmf` (direct flux) as the segment generator.
+- Choose `--refine-mode peak` (optimizes HEI±1) or `--refine-mode minima` (searches outward toward the nearest local minima); when omitted it defaults to `peak` for GSM and `minima` for DMF.
+- If you only have **two** endpoints and do not need recursive refinement, [path-opt](path-opt.md) is the simpler option.
 
-`pdb2reaction path-search` builds a continuous minimum-energy path (MEP) across two or more structures using GSM (default) or DMF (`--mep-mode dmf`). It selectively refines only those regions where covalent bond changes are detected, then stitches the resolved subpaths into a single trajectory.
-
-
-When `--convert-files` is enabled (default), the command mirrors trajectories into `.pdb` companions when PDB references exist, and writes `.gjf` companions for HEI snapshots when Gaussian templates exist. For XYZ/GJF inputs, `--ref-pdb` supplies pocket reference PDBs (one per input, matching input order) used for the final full-system merge, and `--ref-full-pdb` enables full-template merges (XYZ/GJF inputs still do not produce PDB companions of their own primary trajectory).
-
-The recursive decomposition automatically detects multistep reactions and builds a detailed MEP for each elementary step.  However, complex multistep mechanisms may require manual trial-and-error—adjusting input intermediates, scan specifications, or convergence thresholds—to obtain a satisfactory pathway.
-
-If you only have **two** endpoints and do not need recursive refinement, [path-opt](path-opt.md) is the simpler option.
-
-## Minimal example
+## Quick examples
 
 ```bash
 pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
  --out-dir ./result_path_search
 ```
 
-## Output checklist
-
-- `result_path_search/mep_trj.xyz`
-- `result_path_search/summary.json`
-- `result_path_search/summary.log`
-- `result_path_search/mep_plot.png` (when plotting succeeds)
-
-## Common examples
-
-1. Provide explicit intermediates for a multistep path.
-
 ```bash
+# Provide explicit intermediates for a multistep path
 pdb2reaction path-search -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 -m 1 \
  --out-dir ./result_path_search_multi
 ```
 
-2. Enable merged full-system outputs with template references.
-
 ```bash
+# Enable merged full-system outputs with template references
 pdb2reaction path-search -i R.pdb IM1.pdb P.pdb -q 0 -m 1 \
  --ref-full-pdb holo_template.pdb --out-dir ./result_path_search_merge
 ```
 
-3. Use DMF mode with minima refinement.
-
 ```bash
+# Use DMF mode with minima refinement
 pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
  --mep-mode dmf --refine-mode minima --out-dir ./result_path_search_dmf
 ```
 
-## Usage
+## Inputs
+
+Command form:
+
 ```bash
 pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1]
  [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx]
@@ -72,39 +52,16 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
  [--show-config/--no-show-config] [--dry-run/--no-dry-run]
 ```
 
-## CLI options
-| Option | Description | Default |
+| Input | Required | Notes |
 | --- | --- | --- |
-| `-i, --input PATH...` | Two or more structures in reaction order (reactant → product). Pass all files after a single `-i`/`--input`. | Required |
-| `-q, --charge INT` | Net charge. Required for non-`.gjf` inputs unless `--ligand-charge/-l` derivation succeeds (PDB inputs). Overrides `--ligand-charge/-l` when both are set. | Required unless template/derivation applies |
-| `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB residue charges. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
-| `--workers`, `--workers-per-node` | MLIP predictor parallelism (workers > 1 disables analytic Hessians; UMA backend only; `workers_per_node` forwarded to the parallel predictor). See {ref}`workers-fd-downgrade` for diagnostic notes. | `1`, `1` |
-| `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
-| `--freeze-links/--no-freeze-links` | When loading PDB active site models, freeze the parent atoms of link hydrogens. See [extract](extract.md) for link-hydrogen details. | `True` |
-| `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
-| `--max-nodes INT` | Internal nodes per MEP segment (GSM string images or DMF images). | `20` |
-| `--max-cycles INT` | Maximum MEP optimization cycles (GSM/DMF). | `300` |
-| `--climb/--no-climb` | Enable climbing image for GSM segments (bridge segments always run without climbing). | `True` |
-| `--opt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes. `grad` maps to L-BFGS; `hess` maps to RFO. See {ref}`opt-mode-semantics` for how the same token maps across subcommands (tsopt uses Dimer/RS-I-RFO, not L-BFGS/RFO). | `grad` |
-| `--mep-mode {gsm\|dmf}` | Segment generator: GSM (string-based) or DMF (direct flux). | `gsm` |
-| `--refine-mode {peak\|minima}` | Seeds for refinement: `peak` optimizes HEI±1; `minima` searches outward from the HEI toward the nearest local minima on each side. Defaults to `peak` for GSM and `minima` for DMF when omitted. | _Auto_ |
-| `--dump/--no-dump` | Dump MEP (GSM/DMF) and single-structure trajectories. Restart YAML is written only when enabled in YAML. | `False` |
-| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. | `True` |
-| `-o, --out-dir TEXT` | Output directory. | `./result_path_search/` |
-| `--thresh TEXT` | Override convergence preset for single-structure optimizations only (`opt.lbfgs/rfo.thresh`). | `gau` |
-| `--thresh-stopt TEXT` | Override convergence preset for the string optimizer (`stopt.thresh`). | `gau_loose` |
-| `--config FILE` | Base YAML configuration layer applied before explicit CLI values. | _None_ |
-| `--show-config/--no-show-config` | Print resolved configuration (including YAML layer metadata) and continue. | `False` |
-| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
-| `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
-| `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
-| `--dry-run/--no-dry-run` | Validate options and print the execution plan without running path search. | `False` |
-| `--preopt/--no-preopt` | Pre-optimize each endpoint with the selected single-structure optimizer (L-BFGS/RFO) before MEP search. | `True` |
-| `--align/--no-align` | Align all inputs to the first structure before searching. | `True` |
-| `--ref-full-pdb PATH...` | Full-size template PDBs (one per input, unless `--align` lets you reuse the first). | _None_ |
-| `--ref-pdb PATH...` | Active site model reference PDBs used for the final full-system merge when inputs are XYZ/GJF (one per input, matching input order). | _None_ |
+| `-i, --input` | yes | Two or more structures in reaction order (reactant → product). Pass all files after a single `-i`/`--input`. |
+| `-q, --charge` | conditional | Net charge. Required for non-`.gjf` inputs unless `--ligand-charge/-l` derivation succeeds (PDB inputs). Overrides `--ligand-charge/-l` when both are set. |
+| `-l, --ligand-charge` | optional | Scalar integer total ligand charge or per-residue mapping (e.g. `GPP:-3,SAM:1`); used when `-q` is omitted (PDB inputs only — XYZ/GJF must supply `-q`). |
+| `-m, --multiplicity` | no | Spin multiplicity (2S+1); defaults to the `.gjf` template value or `1`. |
+| `--ref-pdb` | for XYZ/GJF merge | Active site model reference PDBs (one per input, matching input order) used for the final full-system merge when inputs are XYZ/GJF. |
 
 ## Workflow
+
 1. **Initial segment per pair (GSM/DMF)** – run `GrowingString` or DMF between each adjacent input (A→B) to obtain a coarse MEP and identify the highest-energy image (HEI).
 2. **Local relaxation around HEI** – refine either HEI ± 1 (`refine-mode=peak`) or the nearest local minima on each side of the HEI (`refine-mode=minima`) with the chosen single-structure optimizer (`opt-mode`) to recover nearby minima (`End1`, `End2`).
     > **Default:** When `--refine-mode` is omitted, it defaults to `peak` for GSM and `minima` for DMF.
@@ -115,10 +72,11 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
 5. **Stitching & bridging** – concatenate resolved subpaths, dropping duplicate endpoints when RMSD ≤ `search.stitch_rmsd_thresh`. If the RMSD gap between two stitched pieces exceeds `search.bridge_rmsd_thresh`, insert a *bridge segment* -- a connecting segment between two non-adjacent intermediates (see [Glossary](glossary.md)) -- using GSM/DMF. When the interface itself shows a bond change, a brand-new recursive segment replaces the bridge.
 6. **Alignment & merging (optional)** – with `--align` (default), pre-optimized structures are rigidly aligned to the first input and `freeze_atoms` are reconciled. Provide `--ref-full-pdb` to merge active site model trajectories back into full-size PDB templates (one template per input unless alignment allows reuse of the first file).
 
-Bond-change detection relies on `bond_changes.compare_structures` with thresholds surfaced under the `bond` YAML section. MLIP backends are constructed once and shared across all structures for efficiency.
+Bond-change detection relies on `bond_changes.compare_structures` with thresholds surfaced under the `bond` YAML section. All MLIP backends are constructed once and shared across structures for efficiency.
 
 ## Outputs
-```
+
+```text
 out_dir/ (default:./result_path_search/)
 ├─ mep_trj.xyz # Primary MEP trajectory
 ├─ mep.pdb # PDB companion when inputs were PDB templates and conversion is enabled
@@ -138,17 +96,48 @@ out_dir/ (default:./result_path_search/)
 ├─ energy_diagram_MEP.png # Static export of the MEP state-energy diagram (relative to reactant)
 └─ seg_NNN_*/ # GSM/DMF dumps, HEI snapshots, kink/refinement diagnostics per segment
 ```
-- Console reports covering resolved configuration blocks (`geom`, `calc`, `gs`, `stopt`, `opt.*`, `bond`, `search`).
 
-## Notes
-- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
+- Console reports covering resolved configuration blocks (`geom`, `calc`, `gs`, `stopt`, `opt.*`, `bond`, `search`); see {ref}`verbosity-levels`.
 
-- Provide at least two inputs; otherwise the command exits with an "invalid value" error for `-i/--input`.
-- Repeat `--ref-full-pdb` once per file when providing multiple templates; with `--align`, only the first template is reused for merges.
-- All MLIP backends are shared across structures for efficiency.
-- When `--dump` is set, MEP (GSM/DMF) and single-structure optimizations emit trajectories. Restart YAML is written only when `dump_restart` is enabled in YAML.
+## CLI options
+
+The full flag list is in the generated [command reference](reference/commands/index.md); the table below covers the options that need explanation — do not hand-duplicate it here.
+
+| Option | Description | Default |
+| --- | --- | --- |
+| `-i, --input PATH...` | Two or more structures in reaction order (reactant → product). Pass all files after a single `-i`/`--input`. | Required |
+| `-q, --charge INT` | Net charge. Required for non-`.gjf` inputs unless `--ligand-charge/-l` derivation succeeds (PDB inputs). Overrides `--ligand-charge/-l` when both are set. | Required unless template/derivation applies |
+| `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB residue charges. Used when `-q` is omitted (PDB inputs only — XYZ/GJF must supply `-q` explicitly). | _None_ |
+| `--workers`, `--workers-per-node` | MLIP predictor parallelism (workers > 1 disables analytic Hessians; UMA backend only; `workers_per_node` forwarded to the parallel predictor). See {ref}`workers-fd-downgrade` for diagnostic notes. | `1`, `1` |
+| `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
+| `--freeze-links/--no-freeze-links` | When loading PDB active site models, freeze the parent atoms of link hydrogens. See [extract](extract.md) for link-hydrogen details. | `True` |
+| `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
+| `--max-nodes INT` | Internal nodes per MEP segment (GSM string images or DMF images). | `20` |
+| `--max-cycles INT` | Maximum MEP optimization cycles (GSM/DMF). | `300` |
+| `--climb/--no-climb` | Enable climbing image for GSM segments (bridge segments always run without climbing). | `True` |
+| `--opt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes. `grad` maps to L-BFGS; `hess` maps to RFO. See {ref}`opt-mode-semantics` for how the same token maps across subcommands (tsopt uses Dimer/RS-I-RFO, not L-BFGS/RFO). | `grad` |
+| `--mep-mode {gsm\|dmf}` | Segment generator: GSM (string-based) or DMF (direct flux). | `gsm` |
+| `--refine-mode {peak\|minima}` | Seeds for refinement: `peak` optimizes HEI±1; `minima` searches outward from the HEI toward the nearest local minima on each side. Defaults to `peak` for GSM and `minima` for DMF when omitted. | _Auto_ |
+| `--dump/--no-dump` | Dump MEP (GSM/DMF) and single-structure trajectories. Restart YAML is written only when enabled in YAML. | `False` |
+| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB or Gaussian inputs. XYZ/GJF inputs do not produce a PDB companion of their own primary trajectory. | `True` |
+| `-o, --out-dir TEXT` | Output directory. | `./result_path_search/` |
+| `--thresh TEXT` | Override convergence preset for single-structure optimizations only (`opt.lbfgs/rfo.thresh`). | `gau` |
+| `--thresh-stopt TEXT` | Override convergence preset for the string optimizer (`stopt.thresh`). | `gau_loose` |
+| `--config FILE` | Base YAML configuration layer applied before explicit CLI values. | _None_ |
+| `--show-config/--no-show-config` | Print resolved configuration (including YAML layer metadata) and continue. | `False` |
+| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
+| `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
+| `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
+| `--dry-run/--no-dry-run` | Validate options and print the execution plan without running path search. | `False` |
+| `--preopt/--no-preopt` | Pre-optimize each endpoint with the selected single-structure optimizer (L-BFGS/RFO) before MEP search. | `True` |
+| `--align/--no-align` | Align all inputs to the first structure before searching. | `True` |
+| `--ref-full-pdb PATH...` | Full-size template PDBs (one per input, unless `--align` lets you reuse the first). | _None_ |
+| `--ref-pdb PATH...` | Active site model reference PDBs used for the final full-system merge when inputs are XYZ/GJF (one per input, matching input order). | _None_ |
 
 See {ref}`CLI Conventions: Configuration precedence <configuration-precedence>` for the full resolution order.
+
+## YAML configuration
+
 The YAML root must be a mapping. Shared sections reuse [YAML Reference](yaml-reference.md): `geom`/`calc` mirror single-structure options (with `--freeze-links` augmenting `geom.freeze_atoms` for PDBs), and `stopt` inherits the StringOptimizer knobs documented for `path-opt` (see [path-opt.md](path-opt.md)).
 
 `bond` and `search` are central to the recursion logic and shown below; `gs`, `dmf`, `stopt`, `opt.lbfgs`, and `opt.rfo` are reproduced only for the `path-search`-specific `out_dir` overrides.
@@ -190,7 +179,6 @@ search:
 
 - [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) -- Detailed troubleshooting guide
-
 - [path-opt](path-opt.md) — Single-pass MEP optimization (no recursive refinement)
 - [tsopt](tsopt.md) — Optimize the HEI as a transition state
 - [extract](extract.md) — Generate active site model PDBs for path-search inputs

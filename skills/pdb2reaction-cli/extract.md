@@ -29,11 +29,10 @@ pdb2reaction extract -i complex.pdb -c <substrate-spec> [-l 'RES:Q,...'] \
 | `--add-linkh / --no-add-linkh` | flag | `--add-linkh` | Cap severed bonds with link hydrogens |
 | `--selected-resn` | str | none | Force-include extra residue IDs (`'A:123,B:456'`); IDs only — passing residue names raises `ValueError` |
 | `--modified-residue` | str | none | Comma-separated residue names (with optional charge) to **treat as amino acids** for backbone truncation and charge assignment. Examples: `'HD1,HD2,HD3'` (charge defaults to 0) or `'HD1:0,SEP:-2'`. |
-| `-v, --verbose / --no-verbose` | flag | `--verbose` | Echo per-residue inclusion + charge sums |
 | `--out-json / --no-out-json` | flag | off | Write a JSON summary alongside the PDB |
 
-`extract` does **not** accept `-q`, `-m`, `--multi-model`,
-`--freeze-links`, `--convert-files`, `--show-config`, or `--dry-run`;
+`extract` does **not** accept `-q`, `-m`, `--freeze-links`,
+`--convert-files`, `--show-config`, or `--dry-run`;
 those flags live on the downstream subcommands (`all`, `opt`, `tsopt`,
 `dft`, `path-opt`, `path-search`, `freq`, `irc`).
 
@@ -50,8 +49,8 @@ pdb2reaction extract -i 1abc.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' -r 4.0 --out-jso
 ### Multiple structures, identical ordering
 
 ```bash
-pdb2reaction extract -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
-    -o "1.R_clu.pdb" "3.P_clu.pdb"
+pdb2reaction extract -i 1.R.pdb -i 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
+    -o 1.R_clu.pdb -o 3.P_clu.pdb
 ```
 
 ### Substrate-only PDB driving extraction
@@ -97,4 +96,4 @@ just writes the cluster PDB.
 
 - [`pdb2reaction-structure-io/pdb.md`](../pdb2reaction-structure-io/pdb.md) — PDB column layout, residue selectors.
 - `add-elem-info.md`, `fix-altloc.md` — pre-clean a raw PDB.
-- Defaults: `import pdb2reaction.defaults as d; print(d.GEOM_KW_DEFAULT)`
+- Defaults: `import pdb2reaction.core.defaults as d; print(d.GEOM_KW_DEFAULT)`

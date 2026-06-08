@@ -1,27 +1,45 @@
 # `extract`
 
-## 概要
+タンパク質–リガンド PDB からクラスターモデル（活性部位モデル（バインディングポケット））を抽出します。基質は `-c` で指定します（残基名、残基 ID、または PDB パス）。切断された結合はリンク水素でキャップされます（`--add-linkh` 有効時、デフォルト）。非標準残基の電荷には `--ligand-charge/-l` を使用してください。
 
-> **要約:** タンパク質–リガンド PDB からクラスターモデル（活性部位モデル（バインディングポケット））を抽出します。基質は `-c` で指定します（残基名、残基 ID、または PDB パス）。切断された結合はリンク水素でキャップされます。非標準残基の電荷には `--ligand-charge` を使用してください。
+## 使いどころ
 
-### 要点
-- **想定場面:** タンパク質–リガンド PDB（単一構造またはアンサンブル）から、後続の MEP/TSOPT/freq/DFT 用の活性部位モデル（クラスターモデル）を切り出す場合。
-- **手法:** 距離ベースの残基選択（`--radius`、必要に応じて `--radius-het2het`）+ ペプチド/ジスルフィド/PRO セーフガード、主鎖トリミング、切断結合へのリンク水素キャップ（任意）。
-- **主な出力:** `TER` の後にリンク水素を含む活性部位モデル PDB（`-o` 指定に応じて `model.pdb`、`model_<input>.pdb`、または単一マルチ MODEL PDB）。`--out-json` 指定時は `result.json` も出力。
-- **デフォルト値:** `--radius 2.6 Å`、`--radius-het2het 0.0`（無効）、`--include-h2o True`、`--exclude-backbone False`、`--add-linkh True`、`--verbose True`。（`--freeze-links` は下流コマンド側のフラグ、デフォルト `True`。[`opt`](opt.md), [`tsopt`](tsopt.md), [`freq`](freq.md), [`irc`](irc.md), [`path-search`](path-search.md), [`path-opt`](path-opt.md), [`scan`](scan.md) を参照。）
-- **次のステップ:** 出力モデル PDB を [`path-search`](path-search.md) / [`scan`](scan.md) / [`opt`](opt.md) / [`tsopt`](tsopt.md) に渡すか、[`all`](all.md) を `-c/--center` 付きで実行して抽出から後処理まで一括で連結。
+- タンパク質–リガンド PDB（単一構造またはアンサンブル）から、後続の MEP/TSOPT/freq/DFT 用の活性部位モデル（クラスターモデル）を切り出す場合。
+- 基質は `-c/--center` で残基名（`'GPP,SAM'`）、残基 ID（`'A:123A'`）、または PDB パスとして指定。基質が非標準残基の電荷を持つ場合は `--ligand-charge/-l` を併用する。
+- 残基/原子の命名が非標準で残基分類や電荷サマリーに影響がある場合は、下部の付録（PDB 命名規則と内部参照リスト）を参照してください。
 
-残基/原子の命名が非標準で残基分類や電荷サマリーに影響がある場合は、下部の付録（PDB 命名規則と内部参照リスト）を参照してください。
+## 実行例
 
-```{important}
-**リンク水素と凍結原子について。** 切断された共有結合は **リンク水素**（残基 `LKH`、原子 `HL`）でキャップされます。下流のすべてのサブコマンドでデフォルトで有効な `--freeze-links` により、これらリンク水素の親原子は最適化、MEP 探索、IRC、振動解析の間凍結され、モデル境界での非物理的な緩和を防ぎます。完全な挙動は下記 [リンク水素と凍結原子](#ja-link-hydrogen-and-frozen-atoms) セクションを参照してください。`opt`、`tsopt`、`freq`、`irc`、`path-search`、`path-opt`、`scan` などのサブコマンドはいずれもこのセクションを参照しています。
+```bash
+# 最小（ID基準の基質）+ 明示的な総リガンド電荷
+pdb2reaction extract -i complex.pdb -c '123' -o model.pdb -l -3
 ```
 
-## 使用法
 ```bash
-pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb...]
+# PDB として提供される基質。残基名ごとの電荷マッピング（その他は 0）
+pdb2reaction extract -i complex.pdb -c substrate.pdb -o model.pdb -l 'GPP:-3,SAM:1'
+```
+
+```bash
+# 名前基準の基質選択（すべてのマッチを含む。WARNING ログ出力）
+pdb2reaction extract -i complex.pdb -c 'GPP,SAM' -o model.pdb -l 'GPP:-3,SAM:1'
+```
+
+```bash
+# ヘテロ-ヘテロ近接を有効にした複数構造から単一のマルチMODEL出力
+pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
+ -o model_multi.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
+# 複数出力にする場合は -o model1.pdb -o model2.pdb を指定
+```
+
+## 入力
+
+コマンド形式:
+
+```bash
+pdb2reaction extract -i COMPLEX.pdb [-i COMPLEX2.pdb ...]
  -c SUBSTRATE_SPEC
- [-o POCKET.pdb [POCKET2.pdb...]]
+ [-o MODEL.pdb [-o MODEL2.pdb ...]]
  [--radius Å] [--radius-het2het Å]
  [--include-h2o/--no-include-h2o]
  [--exclude-backbone/--no-exclude-backbone]
@@ -30,31 +48,26 @@ pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb...]
  [--modified-residue LIST]
  [-l, --ligand-charge MAP_OR_NUMBER]
  [--out-json/--no-out-json]
- [--verbose/--no-verbose]
+ [-v LEVEL]
 ```
 
-### 例
-```bash
-# 最小（ID基準の基質）+ 明示的な総リガンド電荷
-pdb2reaction extract -i complex.pdb -c '123' -o model.pdb -l -3
+| 入力 | 必須 | 備考 |
+| --- | --- | --- |
+| `-i, --input` | はい | 1 つ以上のタンパク質-リガンド PDB ファイル（同一の原子順序が必要）。 |
+| `-c, --center` | はい | 基質指定（PDB パス、残基 ID、または残基名）。 |
+| `-o, --output` | いいえ | 活性部位モデル PDB 出力。命名/レイアウトは個数に依存（下記「出力」を参照）。 |
+| `-l, --ligand-charge` | いいえ | 非標準残基の電荷に対する総電荷または残基名ごとのマッピング。 |
 
-# PDB として提供される基質。残基名ごとの電荷マッピング（その他は 0）
-pdb2reaction extract -i complex.pdb -c substrate.pdb -o model.pdb -l 'GPP:-3,SAM:1'
+### 基質指定（`-c/--center`）
 
-# 名前基準の基質選択（すべてのマッチを含む。WARNING ログ出力）
-pdb2reaction extract -i complex.pdb -c 'GPP,SAM' -o model.pdb -l 'GPP:-3,SAM:1'
+- **PDB パス**: 座標が先頭入力と完全一致（許容誤差 1e-3 Å）。残基 ID は他構造へ伝播。
+- **残基 ID**: `'123,124'`, `'A:123,B:456'`, `'123A'`, `'A:123A'`（挿入コード対応）。
+- **残基名**: カンマ区切り（大文字小文字は無視）。同名残基が複数ある場合は**すべて**含め、警告を出力。
 
-# ヘテロ-ヘテロ近接を有効にした複数構造から単一のマルチMODEL出力
-pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
- -o model_multi.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
+## 処理の流れ
 
-# ヘテロ-ヘテロ近接を有効にした複数構造から複数出力
-pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
- -o model1.pdb model2.pdb --radius-het2het 2.6 -l 'GPP:-3,SAM:1'
-```
-
-## ワークフロー
 ### 残基包含
+
 - `-c/--center` からの基質残基を常に含める
 - **標準カットオフ（`--radius`、デフォルト 2.6 Å）:**
  - `--no-exclude-backbone` の場合、カットオフ内の任意の原子が残基を対象にする
@@ -68,6 +81,7 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
  - 非末端 PRO 残基は常に N 側隣接残基を含め、主鎖除去後も CA を保持します。`--exclude-backbone` の場合は隣接残基の C/O/OXT を残し、ペプチド結合を維持。
 
 ### 切断/キャッピング
+
 - 孤立残基は側鎖原子のみを保持; アミノ酸主鎖原子（N, CA, C, O, OXT + N/CA 水素）は PRO/HYP 保護を除いて除去
 - 連続ペプチドストレッチは内部主鎖原子を保持; 末端キャップ（N/H*または C/O/OXT）のみ除去
 - TER を認識し、チェーン切断を跨ぐキャッピングは行わない
@@ -75,17 +89,19 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
 - 非アミノ酸残基は主鎖様の原子名（N/CA/HA/H/H1/H2/H3）を持つ原子を失わない
 
 ### リンク水素（`--add-linkh`）
+
 - 切断された結合ベクトルに沿って 1.09 Åで炭素のみのリンク水素を追加（CB–CA、CA–N、CA–C; PRO/HYP は CA–C のみ）
 - `TER` の後に残基 `LKH`（チェーン `L`）の連続した `HETATM` レコードとして `HL` という名前で挿入されます。シリアル番号は本体ブロックからの連番です
 - マルチ構造モードでは全モデルで同じ結合にキャップを付け、座標はモデルごとに保持されます
 
 ### 電荷サマリー（`--ligand-charge/-l`）
+
 - アミノ酸と一般的なイオンは内部辞書から電荷を取得; 水はゼロ
 - 未知残基は `--ligand-charge` が総電荷または残基名ごとのマッピング（例: `GPP:-3,SAM:1`）を提供しない限りデフォルトで 0。総電荷が与えられた場合は未知基質残基に配分され、未知基質が無い場合は未知残基全体に配分されます。
 - verbose モードが有効な場合、モデル#1 の電荷サマリー（タンパク質/リガンド/イオン/総計）がログに記録されます。
 
-
 ### マルチ構造アンサンブル
+
 - 複数の入力 PDB を受け付けます（先頭/末尾で原子順序の一致を検証）。各構造は独立に処理され、選択残基の**和集合**を全モデルに適用することで出力の一貫性を保ちます。
 - 出力ポリシー:
  - `-o` なし & 複数入力 → 構造ごとに `model_<original_basename>.pdb`。
@@ -93,14 +109,20 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
  - 入力数と同数の `-o` を指定 → 入力ごとに個別 PDB。
 - 診断ログにモデルごとの全原子数/保持原子数と残基 ID を出力します。
 
-### 基質指定（`-c/--center`）
-- **PDB パス**: 座標が先頭入力と完全一致（許容誤差 1e-3 Å）。残基 ID は他構造へ伝播。
-- **残基 ID**: `'123,124'`, `'A:123,B:456'`, `'123A'`, `'A:123A'`（挿入コード対応）。
-- **残基名**: カンマ区切り（大文字小文字は無視）。同名残基が複数ある場合は**すべて**含め、警告を出力。
+## 出力
+
+```text
+<output>.pdb # TERレコード後にオプションのリンク水素を含む活性部位モデル PDB
+ # 単一入力 → デフォルトでmodel.pdb
+ # -oなしの複数入力 → 構造ごとにmodel_<original_basename>.pdb
+ # 複数入力で1つの-oパス → 単一のマルチMODEL PDB
+ # 出力ディレクトリは自動作成されません。事前に存在を確認してください
+```
+
+- verbose モードが有効な場合、モデル#1 の電荷サマリー（タンパク質/リガンド/イオン/総計）がログに記録されます。
+- API 利用（`extract_api`）では `{"outputs": [...], "counts": [...], "charge_summary": {...}}` を返します。
 
 ## CLI オプション
-
-> **注記:** 表示されているデフォルト値は、オプション未指定時に使用される内部デフォルトです。
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
@@ -115,21 +137,10 @@ pdb2reaction extract -i complex1.pdb complex2.pdb -c 'GPP,SAM' \
 | `--selected-resn TEXT` | **残基 ID**（オプションのチェーン/挿入コード付き、例: `A:123A`）で強制的に含める残基。残基 ID 仕様の詳細は CLI 規約の {ref}`ja-selected-resn-takes-ids` を参照 | `""` |
 | `--modified-residue TEXT` | 修飾アミノ酸残基名をカンマ区切りで指定（任意で各残基に電荷付き）。主鎖切断と電荷計算にアミノ酸として扱う。例: `HD1,HD2,HD3` または `HD1:0,SEP:-2`。残基ごとに `:charge` 接尾辞を省略した場合、その残基の電荷は `0` になります（例: `HD1,HD2:-1` では `HD1` が電荷 0、`HD2` が電荷 −1）。フラグ全体のデフォルトは空文字列（無効） | `""` |
 | `-l, --ligand-charge TEXT` | 総電荷または残基名ごとのマッピング（例: `GPP:-3,SAM:1`） | _None_ |
-| `-v, --verbose/--no-verbose` | INFO レベルログを出力（`True`）または警告のみ（`False`） | `True` |
 | `--out-json/--no-out-json` | 抽出された PDB(s) の隣に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 
-## 出力
-```text
-<output>.pdb # TERレコード後にオプションのリンク水素を含む活性部位モデル PDB
- # 単一入力 → デフォルトでmodel.pdb
- # -oなしの複数入力 → 構造ごとにmodel_<original_basename>.pdb
- # 複数入力で1つの-oパス → 単一のマルチMODEL PDB
- # 出力ディレクトリは自動作成されません。事前に存在を確認してください
-```
-- verbose モードが有効な場合、モデル #1 の電荷サマリー（タンパク質/リガンド/イオン/総計）がログに記録されます。
-- API 利用（`extract_api`）では `{"outputs": [...], "counts": [...], "charge_summary": {...}}` を返します。
-
 ## 注意事項
+
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 - 抽出された活性部位モデルが小さすぎると、エネルギーや障壁の計算値が不正確になることがあります。その場合は抽出半径を大きくする（例: `-r 4.0` 以上）ことで、タンパク質環境をより多く含めて精度を改善できます。
 - INFO ログに残基選択、切断数、電荷内訳の要約が出力されます。
@@ -235,11 +246,11 @@ N, C, O, CA, OXT, H, H1, H2, H3, HN, HA, HA2, HA3
 
 | 電荷 | 残基名 |
 |------|--------|
-| +1 | `LI`, `NA`, `K`, `RB`, `CS`, `TL`, `AG`, `CU1`, `Ag`, `K+`, `Na+`, `NH4`, `H3O+`, `HE+`, `HZ+`, `Tl` |
-| +2 | `MG`, `CA`, `SR`, `BA`, `MN`, `FE2`, `CO`, `NI`, `CU`, `ZN`, `CD`, `HG`, `PB`, `Be`, `PD`, `PT`, `Sn`, `Ra`, `YB2`, `V2+` |
-| +3 | `FE`, `AU3`, `AL`, `GA`, `IN`, `CE`, `Ce`, `CR`, `Cr`, `Dy`, `EU`, `EU3`, `Er`, `GD3`, `LA`, `LU`, `Nd`, `PR`, `SM`, `Sm`, `TB`, `Tm`, `Y`, `Pu` |
-| +4 | `U4+`, `Th`, `Hf`, `Zr` |
-| −1 | `F`, `CL`, `BR`, `I`, `Cl-`, `IOD` |
+| +1 | `LI`, `NA`, `K`, `RB`, `CS`, `TL`, `AG`, `CU1`, `K+`, `NA+`, `NH4`, `H3O+`, `HE+`, `HZ+` |
+| +2 | `MG`, `CA`, `SR`, `BA`, `MN`, `FE2`, `CO`, `NI`, `CU`, `ZN`, `CD`, `HG`, `PB`, `BE`, `PD`, `PT`, `SN`, `RA`, `YB2`, `V2+` |
+| +3 | `FE`, `AU3`, `AL`, `GA`, `IN`, `CE`, `CR`, `DY`, `EU`, `EU3`, `ER`, `GD3`, `LA`, `LU`, `ND`, `PR`, `SM`, `TB`, `TM`, `Y`, `PU` |
+| +4 | `U4+`, `TH`, `HF`, `ZR` |
+| −1 | `F`, `CL`, `BR`, `I`, `CL-`, `IOD` |
 
 ### `WATER_RES`
 

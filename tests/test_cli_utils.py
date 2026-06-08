@@ -1,4 +1,3 @@
-# tests/test_cli_utils.py
 """Tests for pdb2reaction.cli_utils."""
 
 from pathlib import Path
@@ -7,10 +6,9 @@ import click
 import pytest
 import yaml
 
-from pdb2reaction.cli_utils import (
+from pdb2reaction.cli.decorators import (
     resolve_yaml_sources,
     load_merged_yaml_cfg,
-    link_or_copy_file,
 )
 
 
@@ -77,31 +75,3 @@ class TestLoadMergedYamlCfg:
         merged, cfg, ovr = load_merged_yaml_cfg(cfg_file, ovr_file)
         assert merged["opt"]["max_cycles"] == 50  # Override wins
         assert merged["opt"]["thresh"] == "gau"  # Config preserved
-
-
-class TestLinkOrCopyFile:
-    def test_creates_symlink(self, tmp_path):
-        src = tmp_path / "src.txt"
-        src.write_text("hello")
-        dst = tmp_path / "dst.txt"
-        result = link_or_copy_file(src, dst)
-        assert result is True
-        assert dst.exists()
-        assert dst.read_text() == "hello"
-
-    def test_overwrites_existing(self, tmp_path):
-        src = tmp_path / "src.txt"
-        src.write_text("new")
-        dst = tmp_path / "dst.txt"
-        dst.write_text("old")
-        result = link_or_copy_file(src, dst)
-        assert result is True
-        assert dst.read_text() == "new"
-
-    def test_directory_destination_returns_false(self, tmp_path):
-        src = tmp_path / "src.txt"
-        src.write_text("hello")
-        dst = tmp_path / "dst_dir"
-        dst.mkdir()
-        result = link_or_copy_file(src, dst)
-        assert result is False

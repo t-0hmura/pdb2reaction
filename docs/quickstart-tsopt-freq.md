@@ -45,31 +45,61 @@ A successful run produces:
 result_ts_only/
 ├── summary.log                                # Human-readable summary
 ├── summary.json                               # status: success | partial | failed
-├── seg_01/                                    # Canonical R/TS/P (TS-only mode)
-│   ├── reactant.pdb
-│   ├── ts.pdb
-│   └── product.pdb
-└── tsopt_single/                              # tsopt → irc → freq orchestration
-    ├── ts/
-    │   ├── final_geometry.{xyz,pdb}
-    │   └── vib/imag_*_trj.xyz                 # Imaginary-mode animation
-    ├── irc/
-    │   └── {forward,backward,finished}_irc_trj.xyz
-    ├── freq/{R,TS,P}/
-    │   ├── frequencies_cm-1.txt
-    │   └── thermoanalysis.yaml
-    └── dft/{R,TS,P}/                          # --dft only
-        ├── result.yaml                        # always (when --dft)
-        └── result.json                        # --out-json opt-in
+└── segments/
+    └── seg_01/                                # TS-only deliverables
+        ├── structures/                        # Canonical R/TS/P (TS-only mode)
+        │   ├── reactant.pdb
+        │   ├── ts.pdb
+        │   └── product.pdb
+        ├── ts/
+        │   ├── final_geometry.{xyz,pdb}
+        │   └── vib/imag_*_trj.xyz             # Imaginary-mode animation
+        ├── irc/
+        │   └── {forward,backward,finished}_irc_trj.xyz
+        ├── freq/{R,TS,P}/
+        │   ├── frequencies_cm-1.txt
+        │   └── thermoanalysis.yaml
+        └── dft/{R,TS,P}/                      # --dft only
+            ├── result.yaml                    # always (when --dft)
+            └── result.json                    # --out-json opt-in
 ```
 
-**What to check (in execution order):**
+## Inspecting the result
 
-1. `summary.json` — `status` is `"success"`; inspect `segments[0].barrier_kcal` and `segments[0].delta_kcal`.
-2. `post_segments[0].ts_imag.n_imag` — should be exactly `1` for a first-order saddle.
-3. `tsopt_single/irc/{forward,backward}_irc_trj.xyz` — open in PyMOL; trajectories should reach the expected reactant and product wells.
-4. `segments[0].bond_changes` — non-empty dict listing bonds broken / formed along the IRC.
-5. `tsopt_single/freq/{R,TS,P}/frequencies_cm-1.txt` — R and P should have no imaginary frequencies; TS exactly one.
+Walk these in order; each step has a fast pass/fail check before you move on.
+
+**1. Top-level verdict** — open `result_ts_only/summary.json`:
+
+- `status` should be `"success"` (`"partial"` = stages ran but one validator flagged; `"failed"` = a stage errored).
+- `rate_limiting_step.barrier_kcal` and `segments[0].delta_kcal` are the headline ΔE‡ and ΔE in kcal/mol.
+- `post_segments[0].gibbs_uma.barrier_kcal` / `.delta_kcal` are the same numbers with ZPE + thermal corrections applied (ΔG‡, ΔG at 298.15 K, 1 atm).
+
+**2. Imaginary mode at the saddle** — `post_segments[0].ts_imag`:
+
+- `n_imag` must be exactly `1`. `nu_imag_max_cm` (negative cm⁻¹) is the imaginary wavenumber.
+- A chemistry-relevant TS sits in **|ν| ≈ 100–2000 cm⁻¹**. If `|nu_imag_max_cm|` is below ~50 cm⁻¹, the "imag" mode is a soft delocalised motion, not a reactive coordinate — IRC will wander. Re-pick the TS guess, tighten `--thresh-post`, or raise `irc.imag_below` in the YAML (default `0.0` cm⁻¹) to skip very-soft modes when initialising IRC.
+- Visualise the mode: `pymol result_ts_only/segments/seg_01/ts/vib/imag_*_trj.xyz` — the animation should swing precisely the bond(s) you expect to break/form, not whole-residue tumbling.
+
+**3. IRC connectivity** — open the IRC trajectory in PyMOL:
+
+```bash
+pymol result_ts_only/segments/seg_01/irc/finished_irc_trj.xyz
+```
+
+The merged trajectory (forward + backward) should land on the intended reactant and product wells. Cross-check `segments[0].bond_changes` in `summary.json`: a non-empty list of `Bond formed` / `Bond broken` entries with sensible distance changes (e.g. `C12-O14 : 3.7 Å --> 1.4 Å`) is the chemistry-level confirmation.
+
+**4. Endpoint minima and thermochemistry** — for each of R, TS, P:
+
+- `result_ts_only/segments/seg_01/freq/{R,TS,P}/frequencies_cm-1.txt` — R and P should list zero negative frequencies; TS exactly one (matching step 2).
+- `result_ts_only/segments/seg_01/freq/{R,TS,P}/thermoanalysis.yaml` — fields are `electronic_energy_ha`, `zpe_correction_ha`, `sum_EE_and_ZPE_ha`, and `sum_EE_and_thermal_free_energy_ha` (the absolute Gibbs energy in hartree, at `temperature_K: 298.15`, `pressure_atm: 1.0`). Subtract R from TS for ΔG‡; p2r already reports the difference in `gibbs_uma.barrier_kcal`.
+
+**5. Visual structure check** — load the canonical R/TS/P PDBs:
+
+```bash
+pymol result_ts_only/segments/seg_01/structures/reactant.pdb result_ts_only/segments/seg_01/structures/ts.pdb result_ts_only/segments/seg_01/structures/product.pdb
+```
+
+In PyMOL: `align` the three states, label the reactive atoms (`label name C12+O14+C2+C17, name`), and confirm bond-length deltas match `bond_changes`.
 
 **Troubleshoot:**
 
@@ -77,7 +107,7 @@ result_ts_only/
 |---|---|---|
 | `post_segments[0].ts_imag.n_imag == 0` | TS guess collapsed to a minimum | Re-do the TS guess (e.g. via `path-search`); TS-only mode cannot recover a missing saddle |
 | `n_imag >= 2` | Near-degenerate negative modes | Add `--flatten` to flatten extras; see [tsopt](tsopt.md) for `hessian_dimer.flatten_max_iter` |
-| `segments[0].bond_changes == {}` or IRC reaches the wrong endpoint | Imaginary mode not along the intended coordinate, or TS connects two essentially identical wells | Visualize `tsopt_single/ts/vib/imag_*_trj.xyz` in PyMOL; if the mode is wrong, re-pick the TS guess |
+| `segments[0].bond_changes` is empty (`""` or `"(no covalent changes detected)"`) or IRC reaches the wrong endpoint | Imaginary mode not along the intended coordinate, or TS connects two essentially identical wells | Visualize `segments/seg_01/ts/vib/imag_*_trj.xyz` in PyMOL; if the mode is wrong, re-pick the TS guess |
 | `freq/{R,P}/frequencies_cm-1.txt` shows residual imaginary modes | IRC endpoint is not a true minimum | Tighten convergence (`--thresh-post baker`) or extend IRC max cycles in YAML; see [freq](freq.md) |
 
 ## Tips

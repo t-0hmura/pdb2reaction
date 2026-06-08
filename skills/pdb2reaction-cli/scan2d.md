@@ -27,7 +27,7 @@ pdb2reaction scan2d -i input.pdb \
 | `--solvent` | str | `none` | xTB-ALPB solvent |
 | `-o, --out-dir` | path | `./result_scan2d/` | Output directory |
 | `--ref-pdb` | path | none | Residue context for XYZ/GJF |
-| `--config` / `--show-config` / `--dry-run` / `--help-advanced` | — | — | Standard |
+| `--config` / `--dry-run` / `--help-advanced` | — | — | Standard |
 
 Each 4-tuple defines one scan axis: atoms `i,j` (1-based indices or
 PDB-style atom specs) and the distance range `[low, high]` in Å. Both
@@ -47,16 +47,15 @@ pdb2reaction scan2d -i 1.R.pdb -l 'SAM:1,GPP:-3' \
 | Path | When | Content |
 |---|---|---|
 | `<out_dir>/result.json` | `--out-json` | machine-readable result |
-| `<out_dir>/grid/point_i<d1Å>_j<d2Å>.xyz` | always | final relaxed grid point |
+| `<out_dir>/grid/point_iDDD_jDDD.xyz` (DDD = round(d×100), Å) | always | final relaxed grid point |
 | `<out_dir>/grid/preopt_i<d1Å>_j<d2Å>.{xyz,pdb,gjf}` | `--preopt` | pre-relaxation snapshot |
 | `<out_dir>/grid/inner_path_d1_NNN_trj.xyz` | `--dump` | inner-loop trajectory |
 | `<out_dir>/scan2d_map.png` | always | 2D energy surface heatmap |
 | `<out_dir>/scan2d_landscape.html` | always | interactive 3D landscape |
-| `<out_dir>/surface.csv` | always | 2D energy surface (d1_A, d2_A, energy_hartree, energy_kcal, plus axis labels) |
+| `<out_dir>/surface.csv` | always | 2D energy surface (i, j, d1_A, d2_A, energy_hartree, bias_converged, energy_kcal, plus axis labels) |
 
 `result.json` stores grid metadata and energy values; `surface.csv` is
-ready for downstream contour plotting; `scan2d_map.png` is the static
-2D heatmap; `scan2d_landscape.html` is an interactive 3D rendering.
+ready for downstream contour plotting.
 
 ## Caveats
 
@@ -69,4 +68,4 @@ ready for downstream contour plotting; `scan2d_map.png` is the static
 
 - `scan.md`, `scan3d.md` — 1D / 3D analogs.
 - `all-scan-list.md` — sequential scans (different from coupled grid).
-- Defaults: `import pdb2reaction.defaults as d; print(d.BIAS_KW, d.OUT_DIR_SCAN2D)`
+- Defaults: `import pdb2reaction.core.defaults as d; print(d.BIAS_KW, d.OUT_DIR_SCAN2D)`

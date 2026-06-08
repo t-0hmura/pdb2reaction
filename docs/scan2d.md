@@ -1,33 +1,19 @@
 # `scan2d`
 
-## Overview
-
-Perform a two-distance (d₁, d₂) grid scan with harmonic restraints and MLIP relaxations. Use `--scan-lists/-s` with a YAML/JSON spec file (recommended) or an inline Python literal.
-
-### At a glance
-- **Use when:** You want a 2D potential-energy map over two distances `(d₁, d₂)` — e.g. to locate a TS region or visualize the reaction landscape before MEP refinement. Input is one structure + `-s/--scan-lists scan2d.yaml` (recommended), or a single `--scan-lists/-s` inline literal containing exactly two quadruples.
-- **Method:** Linear grids built with `--max-step-size`; each axis is reordered so the point closest to the (pre)optimized structure is visited first. Each grid point is relaxed with the appropriate harmonic restraints active (MLIP backend, UMA by default). Values written to `surface.csv` are always evaluated **without bias**, so grid points are directly comparable.
-- **Outputs:** `surface.csv` plus `scan2d_map.png` (2D contour) and `scan2d_landscape.html` (3D surface), and per-point structures under `grid/`.
-- **Defaults:** `--opt-mode grad` (L-BFGS), `--no-preopt`, `--max-step-size 0.20 Å`, `--bias-k 300 eV·Å⁻²`, `--thresh baker`, `--baseline min`, `--out-dir ./result_scan2d/`. Grid size grows quickly as `(high − low) / --max-step-size` increases.
-- **Next step:** Inspect `scan2d_map.png` / `scan2d_landscape.html` for a TS-region candidate, then refine with `tsopt` (or chain via `pdb2reaction all`).
-
-`scan2d` constructs linear grids for both distances using `--max-step-size`, relaxes each grid point with the appropriate restraints active, and records unbiased MLIP energies for visualization. The default backend is UMA; select an alternative with `-b/--backend`. Use `--opt-mode hess` when you need RFOptimizer instead of L-BFGS.
+Perform a two-distance (d₁, d₂) grid scan with harmonic restraints and MLIP relaxations. `scan2d` constructs linear grids for both distances using `--max-step-size`, relaxes each grid point with the appropriate restraints active, and records unbiased MLIP energies for visualization. The default backend is UMA; select an alternative with `-b/--backend`. Use `--opt-mode hess` when you need RFOptimizer instead of L-BFGS.
 
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
 
-## Minimal example
+## When to use
+
+- Use when you want a 2D potential-energy map over two distances `(d₁, d₂)` — e.g. to locate a TS region or visualize the reaction landscape before MEP refinement. Input is one structure + `-s/--scan-lists scan2d.yaml` (recommended), or a single `--scan-lists/-s` inline literal containing exactly two quadruples.
+
+## Quick examples
+
 ```bash
 pdb2reaction scan2d -i input.pdb -q 0 -s scan2d.yaml -o ./result_scan2d/
 ```
 
-## Output checklist
-- `result_scan2d/surface.csv`
-- `result_scan2d/grid/point_iDDD_jDDD.xyz` (`DDD = round(d × 100)` in Å — e.g. `d1=1.30 Å, d2=3.10 Å` → `point_i130_j310.xyz`)
-- `result_scan2d/scan2d_map.png` and `result_scan2d/scan2d_landscape.html`
-
-> **Note:** Add `--print-parsed` when you want to verify parsed pair targets from `--scan-lists/-s`.
-
-## Common examples
 ```bash
 # Recommended: YAML/JSON spec file
 cat > scan2d.yaml << 'YAML'
@@ -37,11 +23,15 @@ pairs:
  - ["TYR,285,CB", "SAM,309,C11", 1.20, 3.20]
 YAML
 pdb2reaction scan2d -i input.pdb -q 0 -s scan2d.yaml
+```
 
+```bash
 # Alternative: inline Python literal
 pdb2reaction scan2d -i input.pdb -q 0 \
  -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20)]'
+```
 
+```bash
 # LBFGS, dumped inner trajectories, and Plotly outputs
 pdb2reaction scan2d -i input.pdb -q 0 \
  -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20)]' \
@@ -49,7 +39,10 @@ pdb2reaction scan2d -i input.pdb -q 0 \
  --preopt --baseline min
 ```
 
-## Usage
+## Inputs
+
+Command form:
+
 ```bash
 pdb2reaction scan2d -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
  [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
@@ -57,7 +50,14 @@ pdb2reaction scan2d -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge 
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
-## Scan-list spec
+| Input | Required | Notes |
+| --- | --- | --- |
+| `-i, --input` | yes | Structure file accepted by `geom_loader`. |
+| `-s, --scan-lists` | yes | A YAML/JSON spec file path (recommended) or a single inline Python literal with two quadruples `(i,j,lowÅ,highÅ)`. |
+| `-q, --charge` | unless template/derivation applies | Total charge (CLI > template/`--ligand-charge/-l`). |
+| `--ref-pdb` | for XYZ/GJF inputs | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). |
+
+### Scan-list spec
 
 `scan2d` accepts exactly **two** quadruples `(i, j, low_Å, high_Å)` (under the `pairs` key for YAML/JSON, or as a single inline literal). Unlike `scan`, only **one literal** is accepted (no multi-stage support).
 
@@ -65,6 +65,7 @@ For the YAML/JSON file format, inline Python literal syntax, atom selectors, and
 see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
 
 ## Workflow
+
 1. Load the input geometry via `geom_loader`, resolve charge/spin, and optionally
     run an unbiased preoptimization when `--preopt`. If `-q` is omitted but
     `--ligand-charge/-l` is provided, the structure is treated as an enzyme–substrate
@@ -99,7 +100,28 @@ see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
     `scan2d_landscape.html` (3D surface) in `<out-dir>/`. Use `--zmin/--zmax` to
     clamp the color scale.
 
+## Outputs
+
+After a run, check `surface.csv`, the per-point structures under `grid/`, and the `scan2d_map.png` / `scan2d_landscape.html` plots.
+
+```text
+out_dir/ (default:./result_scan2d/)
+├─ surface.csv # Structured grid table
+├─ scan2d_map.png # 2D contour (requires Kaleido; the run stops if PNG export fails)
+├─ scan2d_landscape.html # 3D surface visualization (You can open it with Web browser)
+├─ grid/point_iDDD_jDDD.xyz # DDD = round(d × 100) in Å (e.g. d1=1.30 Å, d2=3.10 Å -> point_i130_j310.xyz)
+├─ grid/point_iDDD_jDDD.pdb # PDB companions when conversion is enabled and templates exist
+├─ grid/point_iDDD_jDDD.gjf # Gaussian companions when templates exist and conversion is enabled
+├─ grid/preopt_iDDD_jDDD.xyz # Starting structure (present when --preopt is True), DDD = round(d × 100)
+├─ grid/preopt_iDDD_jDDD.pdb # PDB companion when conversion is enabled
+├─ grid/preopt_iDDD_jDDD.gjf # Gaussian companion when templates exist and conversion is enabled
+└─ grid/inner_path_d1_###_trj.xyz # Present only when --dump is True (### = outer step index; mirrored to .pdb for PDB inputs with conversion)
+```
+
 ## CLI options
+
+The tables below cover the options that need explanation; the full flag list is in the generated [command reference](reference/commands/index.md) — do not hand-duplicate it here.
+
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
@@ -130,41 +152,7 @@ see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
 | `--zmin FLOAT`, `--zmax FLOAT` | Manual limits for the contour/surface color scale (kcal/mol). | Autoscaled |
 | `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
 
-### Shared YAML sections
-- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical knobs to those documented for
-  [YAML Reference](yaml-reference.md). `opt.dump` can be set in YAML for optimizer dumps;
-  scan trajectory output is controlled by `--dump`.
-
-### Section `bias`
-- `k` (`300`): Harmonic strength in eV·Å⁻².
-
-## Outputs
-```
-out_dir/ (default:./result_scan2d/)
-├─ surface.csv # Structured grid table
-├─ scan2d_map.png # 2D contour (requires Kaleido; the run stops if PNG export fails)
-├─ scan2d_landscape.html # 3D surface visualization (You can open it with Web browser)
-├─ grid/point_iDDD_jDDD.xyz # DDD = round(d × 100) in Å (e.g. d1=1.30 Å, d2=3.10 Å -> point_i130_j310.xyz)
-├─ grid/point_iDDD_jDDD.pdb # PDB companions when conversion is enabled and templates exist
-├─ grid/point_iDDD_jDDD.gjf # Gaussian companions when templates exist and conversion is enabled
-├─ grid/preopt_iDDD_jDDD.xyz # Starting structure (present when --preopt is True), DDD = round(d × 100)
-├─ grid/preopt_iDDD_jDDD.pdb # PDB companion when conversion is enabled
-├─ grid/preopt_iDDD_jDDD.gjf # Gaussian companion when templates exist and conversion is enabled
-└─ grid/inner_path_d1_###_trj.xyz # Present only when --dump is True (### = outer step index; mirrored to .pdb for PDB inputs with conversion)
-```
-
-## Notes
-- For symptom-first diagnosis, start with [Common Error Recipes](recipes-common-errors.md), then use [Troubleshooting](troubleshooting.md) for detailed fixes.
-
-- The MLIP backend (UMA by default) reuses the same
-  `HarmonicBiasCalculator` as the 1D scan.
-- Ångström limits are converted to Bohr internally to cap L-BFGS steps and RFO
-  trust radii; Optimizer scratch files live under temporary directories.
-- The bias is always removed before final energies are recorded so you can reuse
-  `surface.csv` in downstream fitting or visualization scripts.
-- `--freeze-links` merges user `freeze_atoms` with detected link-H parents for
-  PDB inputs, keeping extracted active site models rigid.
-
+## YAML configuration
 
 ```yaml
 geom:
@@ -190,8 +178,24 @@ bias:
  k: 300.0 # harmonic bias strength (eV·Å⁻²)
 ```
 
+### Shared YAML sections
+- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical knobs to those documented for
+  [YAML Reference](yaml-reference.md). `opt.dump` can be set in YAML for optimizer dumps;
+  scan trajectory output is controlled by `--dump`.
+
 More YAML options for `opt` are available in [YAML Reference](yaml-reference.md).
-`--relax-max-cycles` applies only when explicitly provided **and** YAML does not set `opt.max_cycles` (default `10000`).
+
+## Notes
+
+- The MLIP backend (UMA by default) reuses the same
+  `HarmonicBiasCalculator` as the 1D scan.
+- Ångström limits are converted to Bohr internally to cap L-BFGS steps and RFO
+  trust radii; Optimizer scratch files live under temporary directories.
+- The bias is always removed before final energies are recorded so you can reuse
+  `surface.csv` in downstream fitting or visualization scripts.
+- `--freeze-links` merges user `freeze_atoms` with detected link-H parents for
+  PDB inputs, keeping extracted active site models rigid.
+- `--relax-max-cycles` applies only when explicitly provided and YAML does not set `opt.max_cycles` (default `10000`).
 
 ## See Also
 - [scan](scan.md) -- 1D bond-distance scan

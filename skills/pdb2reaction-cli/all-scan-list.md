@@ -75,10 +75,10 @@ Same overall layout as `all.md`, plus per-stage scan output:
 
 | Path | When | Content |
 |---|---|---|
-| `<out_dir>/scan/stage_NN/{scan_trj.xyz,result.{xyz,pdb,gjf}}` | always | raw distance-restraint scan trajectory + per-stage final geometry (top level, not under `path_search/`) |
-| `<out_dir>/path_search/mep_seg_NN_trj.xyz`, `mep_seg_NN.{pdb,gjf}` | always (`path_opt/` when `--refine-path False`) | per-segment MEP strings |
-| `<out_dir>/path_search/post_seg_NN/` | always | per-segment refinements + energy diagrams |
-| `<out_dir>/seg_NN/{reactant,ts,product}.{pdb,xyz,gjf}` | always | canonical R/TS/P per segment (top-level) |
+| `<out_dir>/_work/scan/stage_NN/{scan_trj.xyz,result.{xyz,pdb,gjf}}` | always | raw distance-restraint scan trajectory + per-stage final geometry (scratch) |
+| `<out_dir>/_work/path_search/mep_seg_NN_trj.xyz`, `mep_seg_NN.{pdb,gjf}` | always (`_work/path_opt/` when `--refine-path False`) | per-segment MEP strings (scratch) |
+| `<out_dir>/segments/seg_NN/` | always | per-segment deliverables + post-processing (ts/irc/freq/dft) + energy diagrams |
+| `<out_dir>/segments/seg_NN/{reactant,ts,product}.{pdb,xyz,gjf}` | always | canonical R/TS/P per segment |
 | `<out_dir>/summary.json` | always | machine-readable result |
 
 For per-stage scan diagnostics (target distances, convergence, energies),
@@ -110,4 +110,4 @@ its `summary.json`.
 - `scan.md`, `scan2d.md`, `scan3d.md` — standalone distance scan
   subcommands (without the surrounding pipeline).
 - `path-search.md` — what happens after all scans complete.
-- Defaults: `import pdb2reaction.defaults as d; print(d.SEARCH_KW, d.STOPT_KW)`.
+- Defaults: `import pdb2reaction.core.defaults as d; print(d.SEARCH_KW, d.STOPT_KW)`.

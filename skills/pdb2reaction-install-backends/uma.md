@@ -54,7 +54,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb \
 ```
 
 Available models (set via the `calc.model:` field in `--config` YAML or
-by overriding `pdb2reaction.defaults.UMA_CALC_KW`). Two equivalent
+by overriding `pdb2reaction.core.defaults.UMA_CALC_KW`). Two equivalent
 notations are common:
 
 | config string (`calc.model`) | paper notation | HuggingFace repo | Notes |
@@ -69,7 +69,7 @@ notations are common:
 Inspect the full default kwarg dict:
 
 ```bash
-python -c "import pdb2reaction.defaults as d; print(d.UMA_CALC_KW)"
+python -c "import pdb2reaction.core.defaults as d; print(d.UMA_CALC_KW)"
 ```
 
 ## Backend-specific flags
@@ -95,8 +95,7 @@ subcommand; see `pdb2reaction-cli/SKILL.md`.
 ## Multi-GPU inference (advanced)
 
 Under heavy MEP search load you can shard inference across multiple GPUs.
-Configure via a YAML config (`--config`) — there is no `--calc-kwargs`
-CLI flag:
+Configure via a YAML config (`--config`):
 
 ```yaml
 # multi_worker.yaml

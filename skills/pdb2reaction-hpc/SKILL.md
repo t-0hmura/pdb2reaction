@@ -5,7 +5,7 @@ description: PBS (Torque / PBSPro) and SLURM submission for pdb2reaction — pre
 
 # pdb2reaction HPC
 
-## Overview
+## Purpose
 
 Submit `pdb2reaction` as a PBS / SLURM job with 1 node / 1 GPU.
 Placeholders filled from `pdb2reaction-env-detect/SKILL.md`.

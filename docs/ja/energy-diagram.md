@@ -1,41 +1,55 @@
 # `energy-diagram`
 
-## 概要
+`pdb2reaction energy-diagram` は与えた数値エネルギーだけを入力として状態エネルギーダイアグラムを描画します。構造ファイルの読み込みや `--thermo` / `--dft` のような量子 / 熱力学 / MLIP 計算は一切行いません。画像ファイル 1 つと、任意で機械可読なサイドカーを出力します。
 
-> **要約:** 数値エネルギーだけを入力として状態エネルギーダイアグラムを描画します（構造ファイル不要、量子/熱力学計算なし）。
+## 使いどころ
 
-### 要点
-- **想定場面:** 状態エネルギーの数値（例: `summary.json` から取り出した値）が既にあり、整形済みダイアグラムだけが欲しいとき。
-- **手法:** Plotly による描画のみ。構造ファイルの読み込み、QM / 熱力学 / MLIP 計算は一切行いません。
-- **主な出力:** 画像ファイル 1 つ（`.png` / `.jpg` / `.jpeg` / `.svg` / `.pdf`）。`--out-json` 指定時は `result.json` も出力。`-o` 省略時の既定出力は `energy_diagram.png`。
-- **デフォルト値:** `-o energy_diagram.png`、`--label-x` は `S1`, `S2`, ... の自動採番、`--label-y "ΔE (kcal/mol)"`、`--out-json False`。
-- **次のステップ:** エネルギー軌跡も合わせて描画したい場合は [`trj2fig`](trj2fig.md) を使用。`all` の出力（`summary.json`）と組み合わせれば [`all`](all.md) パイプラインの最終可視化として機能します。
+- 状態エネルギーの数値（例: `summary.json` から取り出した値）が既にあり、整形済みダイアグラムだけが欲しいとき。
 
-`pdb2reaction energy-diagram` は与えた数値を可視化するのみで、構造ファイルの読み込みや `--thermo` / `--dft` のような計算は行いません。
+## 実行例
 
-## 使用法
+```bash
+# リスト文字列で指定
+pdb2reaction energy-diagram -i "[0, 12.5, 4.3]" -o energy.png
+```
+
+```bash
+# フラグ繰り返しで指定（値ごとに -i を 1 つ）
+pdb2reaction energy-diagram -i 0 -i 12.5 -i 4.3 -o energy.png
+```
+
+```bash
+# X/Yラベルを指定
+pdb2reaction energy-diagram -i "[0, 12.5, 4.3]" --label-x "['R','TS','P']" --label-y "ΔE (kcal/mol)" -o energy.png
+```
+
+## 入力
+
+コマンド形式:
+
 ```bash
 pdb2reaction energy-diagram -i VALUES... [-o OUTPUT] [--label-x...] [--label-y...]
 ```
 
-## 例
-```bash
-# 数値を複数引数で指定
-pdb2reaction energy-diagram -i 0 12.5 4.3 -o energy.png
+| 入力 | 必須 | 説明 |
+| --- | --- | --- |
+| `-i, --input` | 必須 | 数値入力。繰り返し指定（`-i` を値ごとに 1 つ）、またはリスト形式文字列に対応。 |
 
-# リスト文字列で指定
-pdb2reaction energy-diagram -i "[-205.1, -190.4, -198.7]" -o energy.png
-
-# X/Yラベルを指定
-pdb2reaction energy-diagram -i 0 12.5 4.3 --label-x R TS P --label-y "ΔE (kcal/mol)" -o energy.png
-```
-
-## ワークフロー
-1. `-i/--input` から値を収集します（繰り返し指定、1 フラグ後の複数値、リスト文字列に対応）。
+## 処理の流れ
+1. `-i/--input` から値を収集します（繰り返し指定、またはリスト文字列に対応）。
 2. 全値を float として解釈し、2 点未満なら早期にエラーを返します。
 3. 任意の `--label-x` を解釈します。未指定時は `S1`, `S2`,... を自動生成します。
 4. `--label-x` の個数と値の個数の一致を検証し、図を描画します。
 5. `-o/--output` に画像を保存し、保存先パスを表示します。
+
+## 出力
+```
+OUTPUT.(png|jpg|jpeg|svg|pdf)
+result.json   # 任意のサイドカー（--out-json 指定時）。status / n_points / files + 標準エンベロープ。per-point の energies・labels は含まれない
+```
+- `-o/--output` を省略した場合、カレントディレクトリに `energy_diagram.png` を出力します。
+- 出力拡張子がない場合は `.png` が自動で補完されます。
+- 必要なら親ディレクトリを自動作成します。
 
 ## CLI オプション
 | オプション | 説明 | デフォルト |
@@ -46,14 +60,7 @@ pdb2reaction energy-diagram -i 0 12.5 4.3 --label-x R TS P --label-y "ΔE (kcal/
 | `--label-y TEXT` | Y 軸ラベル | `ΔE (kcal/mol)` |
 | `--out-json/--no-out-json` | 出力画像の隣に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 
-## 出力
-```
-OUTPUT.(png|jpg|jpeg|svg|pdf)
-result.json   # 入力エネルギーとラベルを含む任意のサイドカー（--out-json 指定時）
-```
-- `-o/--output` を省略した場合、カレントディレクトリに `energy_diagram.png` を出力します。
-- 出力拡張子がない場合は `.png` が自動で補完されます。
-- 必要なら親ディレクトリを自動作成します。
+すべてのフラグ一覧は生成された [コマンドリファレンス](../reference/commands/index.md) を参照してください。
 
 ## 注意事項
 - 入力順がそのまま描画順になります。

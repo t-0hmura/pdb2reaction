@@ -78,11 +78,11 @@ pdb2reaction path-opt -i /tmp/relax_R/final_geometry.xyz /tmp/relax_P/final_geom
   resulting geometry has imaginary frequencies (run `freq` to check),
   re-run with `--opt-mode rfo`.
 - `--config` YAML is the way to override less-common settings (step
-  limits, trust radius, etc.); inspect `OPT_BASE_KW` and `L-BFGS_KW`
-  in `pdb2reaction.defaults`.
+  limits, trust radius, etc.); inspect `OPT_BASE_KW` and `LBFGS_KW`
+  in `pdb2reaction.core.defaults`.
 
 ## See also
 
 - `tsopt.md` — TS analog.
 - `freq.md` — verify the optimized minimum (zero imaginary modes).
-- Defaults: `import pdb2reaction.defaults as d; print(d.OPT_BASE_KW, d.L-BFGS_KW, d.RFO_KW)`
+- Defaults: `import pdb2reaction.core.defaults as d; print(d.OPT_BASE_KW, d.LBFGS_KW, d.RFO_KW)`

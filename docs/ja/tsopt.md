@@ -1,88 +1,71 @@
 # `tsopt`
 
-## 概要
-
-> **要約:** 遷移状態（TS）*候補*を、RS-I-RFO（Restricted-Step Image Rational Function Optimization）（`--opt-mode hess`、デフォルト）で最適化します。RS-I-RFO で収束しない場合や、完全 Hessian の再計算コストが過大な場合の **代替** TS optimizer として Hessian-Guided Dimer（`--opt-mode grad`）が利用可能です。`tsopt` は最後に自動で Hessian 計算と虚振動数チェックを行います。妥当な TS（一次鞍点）では虚振動数が **ちょうど 1 つ** です。端点の接続性は `irc` で確認してください。
-
-### 要点
-- **想定場面:** TS 初期構造（`path-opt` / `path-search` の HEI、または自前のもの）を一次鞍点に最適化し、虚振動数チェックを内蔵で行いたい場合。
-- **手法:** `--opt-mode hess`（`rsirfo`）= RS-I-RFO（デフォルト、一般的により堅牢）。`--opt-mode grad`（`dimer`）= Hessian-Guided Dimer（RS-I-RFO で収束しない場合や完全 Hessian の再計算コストが過大な場合の代替）。`--flatten`（デフォルト無効）で余分な虚振動数モードの除去を制御します。
-- **主な出力:** `final_geometry.{xyz,pdb,gjf}`、`vib/imag_*_trj.xyz`（PDB 入力では `.pdb` も）。`--dump` を指定した場合は最適化軌跡も。
-- **デフォルト:** `--opt-mode hess`（RS-I-RFO）、`--thresh baker`、`--hessian-calc-mode FiniteDifference`、`--max-cycles 10000`、`--flatten` 無効、バックエンド `uma`。
-- **次ステップ:** `tsopt` は最終 Hessian 計算と虚振動数チェックを内部で実行しますが、結果はなお *候補* です。[irc](irc.md) で端点の接続性を確認してください。完全な振動解析や熱化学補正が必要な場合のみ、別途 [freq](freq.md) を実行します。
+`pdb2reaction tsopt` は、遷移状態（TS）*候補*を一次鞍点に最適化します。デフォルトの optimizer は **RS-I-RFO**（Restricted-Step Image Rational Function Optimization、`--opt-mode hess`）です。RS-I-RFO で収束しない場合や、完全 Hessian の再計算コストが過大な場合は **Hessian-Guided Dimer**（`--opt-mode grad`）に切り替えます。`tsopt` は収束後に自動で Hessian 計算と虚振動数チェックを行います。妥当な TS（一次鞍点）では虚振動数が **ちょうど 1 つ** です。完全な振動解析や熱化学補正が必要な場合のみ別途 [`freq`](freq.md) を実行します（虚振動数チェックは `tsopt` に内蔵済み）。端点の接続性は必ず [`irc`](irc.md) で確認してください。
 
 > **命名規則の注意:** CLI は `grad|dimer`（= Dimer）および `hess|rsirfo`（= RS-I-RFO、デフォルト）を受け付けます。YAML ではトップレベルの `hessian_dimer:`（Dimer）または `rsirfo:`（RS-I-RFO）ブロックを直接指定してください。
 
 XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定し、XYZ 座標を保持したまま PDB/GJF への変換が可能です。TS 初期構造が必要な場合は、2 端点なら [path-opt](path-opt.md)、2 構造以上なら [path-search](path-search.md) で HEI を取得してから `tsopt`（内部で虚振動数チェック済み）→ `irc` の順で検証してください。
 
-## 最小例
+## 使いどころ
+
+- TS 初期構造（`path-opt` / `path-search` の HEI、または自前のもの）を一次鞍点に最適化し、虚振動数チェックを内蔵で行いたい場合。
+- ほとんどの系では `--opt-mode hess`（RS-I-RFO、デフォルト）を選びます。完全 Hessian を用い、一般的により堅牢です。
+- RS-I-RFO で収束しない場合や完全 Hessian の再計算コストが過大な場合は、代替として `--opt-mode grad`（Hessian-Guided Dimer）を選びます。
+- 候補に複数の虚振動数があり余分なモードの除去が必要な場合は、`--flatten`（デフォルト無効）を有効化します。
+
+## 実行例
 
 ```bash
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --out-dir ./result_tsopt
 ```
 
-## 出力の見方
-
-- `result_tsopt/final_geometry.pdb`（または `final_geometry.xyz`）
-- `result_tsopt/vib/imag_*_trj.xyz`
-- `result_tsopt/vib/imag_*.pdb`（PDB 入力の場合）
-
-## よくある例
-
-1. VRAM に余裕がある場合に dimer モード + 解析的ヘシアンで実行する。
-
 ```bash
+# VRAM に余裕がある場合に dimer モード + 解析的ヘシアンで実行する
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
  --opt-mode grad --hessian-calc-mode Analytical --out-dir ./result_tsopt_grad
 ```
 
-2. 最適化軌跡を保存して確認する。
-
 ```bash
-pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --dump --out-dir ./result_tsopt_dump
-```
-
-3. rsirfo モードを YAML 上書きと併用する。
-
-```bash
+# rsirfo モードを YAML 上書きと併用する
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
  --opt-mode hess --config tsopt.yaml --out-dir ./result_tsopt_hess
 ```
 
-4. rsirfo モードで flatten を有効化して実行する。
-
 ```bash
+# rsirfo モードで flatten を有効化して実行する
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
  --opt-mode hess --flatten --out-dir ./result_tsopt_flatten
 ```
 
-## 使用法
+最適化軌跡を保存して確認したい場合は `--dump` を追加します。
+
+## 入力
+
+コマンド形式:
+
 ```bash
 pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
  [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
- [--opt-mode grad|hess|dimer|rsirfo] [--flatten/--no-flatten] \
+ [--opt-mode grad|hess|dimer|rsirfo|trim|rsprfo] [--flatten/--no-flatten] \
  [--freeze-links/--no-freeze-links] [--max-cycles N] [--thresh PRESET] \
  [--hessian-calc-mode Analytical|FiniteDifference] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
-### 例
-```bash
-# 推奨ベースライン: 電荷/多重度を指定し rsirfo を使う
-pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess --out-dir ./result_tsopt/
+`pdb2reaction tsopt --help` でコアオプション、`pdb2reaction tsopt --help-advanced` で全オプションを表示します。
 
-# YAML 上書き、有限差分ヘシアン、freeze-links処理を伴う dimer モード
-pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --freeze-links \
- --opt-mode grad --max-cycles 10000 --no-dump \
- --out-dir ./result_tsopt/ --config ./args.yaml \
- --hessian-calc-mode FiniteDifference
+| 入力 | 必須 | 注記 |
+| --- | --- | --- |
+| `-i, --input` | yes | `geom_loader` が受け入れる構造ファイル（`.pdb` / `.xyz` / `.gjf` / `.trj`） |
+| `-q, --charge` | テンプレート/導出がない限り必須 | 総電荷。`.gjf` テンプレートまたは `--ligand-charge/-l` が提供しない限り必須 |
+| `-l, --ligand-charge` | `-q` 省略時 | スカラー整数または残基別マッピング（`GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出 |
+| `-m, --multiplicity` | no | スピン多重度（2S+1）。`.gjf` テンプレート値または `1` がデフォルト |
+| `--ref-pdb` | XYZ/GJF の場合 | 入力が XYZ/GJF の場合の参照 PDB トポロジー（XYZ 座標を保持） |
 
-# YAMLのみで駆動される rsirfo モード（RS-I-RFO）
-pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
- --config ./args.yaml --out-dir ./result_tsopt/
-```
+入力ファイルの完全な要件（水素、元素列、原子順序の整合性、電荷指定）は [CLI 規約](cli-conventions.md) を参照してください。
 
-## ワークフロー
+## 処理の流れ
+
 - **電荷/スピン解決**: 電荷は標準の優先順位チェーンで解決されます。詳細は {ref}`CLI 規約: 電荷の指定 <ja-charge-specification>` を参照してください。
 - **構造ロードと freeze-links**: 構造は `pysisyphus.helpers.geom_loader` で読み込まれます。`--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（{ref}`リンク水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
 - **MLIP ヘシアン（デフォルト: UMA）**: `--hessian-calc-mode` で解析的ヘシアンと有限差分ヘシアンを切り替えます。いずれも活性（PHVA）部分空間を考慮します。凍結原子が存在する場合、MLIP バックエンドは活性ブロックのみを返すことがあります。ヘシアン評価モードの詳細は {ref}`ja-hessian-evaluation` を参照してください。
@@ -93,7 +76,33 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 - **RS-I-RFO モード**: RS-I-RFO を実行し、任意のヘシアン参照や R+S 分割セーフガード、マイクロサイクル制御は `rsirfo` セクションで設定します。`--flatten` が有効で収束後も虚振動数モードが複数残る場合、追加モードをフラット化して RS-I-RFO を再実行し、虚振動数モードが 1 つになるか上限に達するまで繰り返します。
 - **モード出力と変換**: 検出された虚振動数モードはすべて `vib/imag_*_trj.xyz` に書き出されます。PDB 入力で変換が有効な場合は `.pdb` としても出力されます。最適化軌跡と最終構造は `--dump` 時に入力テンプレート経由で PDB に変換されます。Gaussian テンプレートでは最終構造のみ `.gjf` が生成されます。
 
+## 出力
+
+実行結果は `final_geometry.*`（最適化された鞍点）と `vib/imag_*` モード（妥当な TS ではちょうど 1 つ）を開いて検証します。
+
+- `result_tsopt/final_geometry.pdb`（または `final_geometry.xyz`）
+- `result_tsopt/vib/imag_*_trj.xyz`
+- `result_tsopt/vib/imag_*.pdb`（PDB 入力の場合）
+
+```text
+out_dir/ (デフォルト:./result_tsopt/)
+├─ final_geometry.xyz # 常に書き込み
+├─ final_geometry.pdb # 入力がPDBの場合（変換有効時）
+├─ final_geometry.gjf # 入力がGaussianの場合（変換有効時）
+├─ optimization_all_trj.xyz # --dumpがTrueのときの dimer モードダンプ
+├─ optimization_all.pdb # PDB 入力の dimer モードPDB コンパニオン（変換有効時、--dump）
+├─ optimization_trj.xyz # --dumpがTrueのときの rsirfo モード軌跡
+├─ optimization.pdb # rsirfo モードPDB コンパニオン（変換有効時、--dump）
+├─ vib/
+│ ├─ imag_±XXXX.Xcm-1_trj.xyz
+│ └─ imag_±XXXX.Xcm-1.pdb
+└─.dimer_mode.dat # dimer モード方向シード
+```
+
+終了コードは CLI 規約の {ref}`ja-exit-codes` を参照。
+
 ## CLI オプション
+
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル | 必須 |
@@ -105,7 +114,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 | `--freeze-links/--no-freeze-links` | PDB のみ。リンク水素の親を凍結（`geom.freeze_atoms` にマージ）。リンク水素の詳細は [extract](extract.md) を参照 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
 | `--max-cycles INT` | `opt.max_cycles` に渡されるマクロサイクル上限 | `10000` |
-| `--opt-mode TEXT` | 最適化モード: `grad`（`dimer`）または `hess`（`rsirfo`）。`dimer`/`rsirfo` も指定可。サブコマンド別の対応表（`opt` は L-BFGS/RFO、`tsopt` は Dimer/RS-I-RFO）は {ref}`ja-opt-mode-semantics` を参照 | `hess` |
+| `--opt-mode TEXT` | TS optimizer プリセット（Choice: `grad` / `hess` / `dimer` / `rsirfo` / `trim` / `rsprfo`）。`grad`/`dimer` → Hessian-Guided Dimer; `hess`/`rsirfo` → RS-I-RFO（デフォルト）; `trim` → TRIM（Helgaker、non-microiter）; `rsprfo` → RS-P-RFO（Banerjee、non-microiter）。サブコマンド別の対応表（`opt` は L-BFGS/RFO、`tsopt` は Dimer/RS-I-RFO）は {ref}`ja-opt-mode-semantics` を参照 | `hess` |
 | `--dump/--no-dump` | 軌跡をダンプ | `False` |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_tsopt/` |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`、`gau`、`gau_tight`、`gau_vtight`、`baker`、`never`） | `baker` |
@@ -133,32 +142,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess \
 TS 候補に複数の虚振動数がある場合は、`--flatten` を追加して余分なモードの除去ループを有効にしてください。
 ```
 
-## 出力
-```
-out_dir/ (デフォルト:./result_tsopt/)
-├─ final_geometry.xyz # 常に書き込み
-├─ final_geometry.pdb # 入力がPDBの場合（変換有効時）
-├─ final_geometry.gjf # 入力がGaussianの場合（変換有効時）
-├─ optimization_all_trj.xyz # --dumpがTrueのときの dimer モードダンプ
-├─ optimization_all.pdb # PDB 入力の dimer モードPDB コンパニオン（変換有効時、--dump）
-├─ optimization_trj.xyz # --dumpがTrueのときの rsirfo モード軌跡
-├─ optimization.pdb # rsirfo モードPDB コンパニオン（変換有効時、--dump）
-├─ vib/
-│ ├─ imag_±XXXX.Xcm-1_trj.xyz
-│ └─ imag_±XXXX.Xcm-1.pdb
-└─.dimer_mode.dat # dimer モード方向シード
-```
-
-## 終了コード
-
-終了コードは CLI 規約の {ref}`ja-exit-codes` を参照。
-
-## 注意事項
-- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
-- 虚振動数モード**検出**の閾値はデフォルトで 5.0 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm` で変更可能）。この閾値未満の振動数は虚振動数としてカウントされません。選択した `root` は最適化中にどの振動モードを追跡するかを制御します。`root` は YAML（`rsirfo.root` または `hessian_dimer.root`、デフォルト `0`）で設定します。`tsopt` に `--root` CLI フラグはありません（[`irc`](irc.md) とは異なります）。
-- `--opt-mode` はワークフロー選択用です（デフォルト: `rsirfo`）。YAML のモードマッピングを手動で変更するのではなく、目的のアルゴリズムに合ったモードを選択してください。
-- PHVA の並進/回転射影は `freq` と同じ実装を使用し、メモリ消費を抑えつつ、活性空間の正しい固有ベクトルを保持します。
-- 設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
+## YAML 設定
 
 共通セクションについては [YAML リファレンス](yaml-reference.md) を参照してください。必要な値だけ変更してください。
 
@@ -216,6 +200,14 @@ rsirfo:
 ```{tip}
 TS 収束が遅い場合や最適化中に TS モードが失われる場合は、`rsirfo` セクションの `hessian_recalc` を小さくしてみてください（例: 50--200）。正確なヘシアン再計算の頻度を上げることで、追加のヘシアン評価コストと引き換えに堅牢性が向上します。
 ```
+
+## 注意事項
+
+- 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
+- 虚振動数モード**検出**の閾値はデフォルトで 5.0 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm` で変更可能）。この閾値未満の振動数は虚振動数としてカウントされません。選択した `root` は最適化中にどの振動モードを追跡するかを制御します。`root` は YAML（`rsirfo.root` または `hessian_dimer.root`、デフォルト `0`）で設定します。`tsopt` に `--root` CLI フラグはありません（[`irc`](irc.md) とは異なります）。
+- `--opt-mode` はワークフロー選択用です（デフォルト: `rsirfo`）。YAML のモードマッピングを手動で変更するのではなく、目的のアルゴリズムに合ったモードを選択してください。
+- PHVA の並進/回転射影は `freq` と同じ実装を使用し、メモリ消費を抑えつつ、活性空間の正しい固有ベクトルを保持します。
+- 設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
 
 ## 関連項目
 

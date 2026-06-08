@@ -3,7 +3,7 @@
 
 import pytest
 
-from pdb2reaction.defaults import (
+from pdb2reaction.core.defaults import (
     GEOM_KW_DEFAULT,
     CALC_KW_DEFAULT,
     OPT_BASE_KW,

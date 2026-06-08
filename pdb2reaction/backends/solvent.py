@@ -22,13 +22,13 @@ Usage::
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Sequence
+from typing import Sequence
 
 import numpy as np
 
 from pysisyphus.constants import BOHR2ANG, AU2EV
 
-from .base import MLIPCalculator, BackendError
+from .base import MLIPCalculator
 
 # Unit conversion (atomic units ↔ eV/Å)
 _EV2AU = 1.0 / AU2EV
@@ -121,9 +121,6 @@ class SolventCorrectedCalculator(MLIPCalculator):
         )
         return float(de_ev), df_ev_ang, dh_ev_ang2
 
-    # ------------------------------------------------------------------
-    # PySisyphus API — delegate + add solvent correction
-    # ------------------------------------------------------------------
 
     def get_energy(self, elem, coords):
         result = self.base.get_energy(elem, coords)

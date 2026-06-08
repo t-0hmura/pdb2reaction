@@ -30,7 +30,7 @@ pdb2reaction fix-altloc -i in.pdb [-o out.pdb] [--inplace] [--overwrite] [--recu
 | `--force / --no-force` | flag | `--no-force` | Process files even if no altLoc detected (default skips them) |
 
 The selection rule is **fixed**: highest occupancy, then earliest
-appearance. There is no `--keep <letter>` flag.
+appearance.
 
 ## Examples
 

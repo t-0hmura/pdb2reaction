@@ -1,30 +1,28 @@
 # `pdb2reaction irc`
 
 ```text
-
 Usage: pdb2reaction irc [OPTIONS]
 
   Run an IRC calculation with EulerPC. Only the documented CLI options are
   accepted; all other settings come from YAML.
 
 Options:
+  -v, --verbose LEVEL             Console verbosity 0-3 (default 2). 0=silent;
+                                  1=milestones only; 2=+optimizer cycle tables,
+                                  per-stage timing, VRAM, deliverable paths;
+                                  3=everything (full config blocks, per-file
+                                  paths, DEBUG logging).  [0<=x<=3]
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
   -i, --input FILE                Input structure file (.pdb, .xyz, _trj.xyz,
                                   etc.).  [required]
-  -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
-                                  unless --ligand-charge is provided (PDB inputs
-                                  or XYZ/GJF with --ref-pdb).
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
-                                  predictor (analytical Hessian is unavailable
-                                  when workers>1; FiniteDifference Hessian is
-                                  used instead).  [default: 1]
+                                  predictor. NOTE: analytical Hessian raises a
+                                  RuntimeError when workers>1; pass --hessian-
+                                  calc-mode FiniteDifference explicitly.
+                                  [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
-  -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
-                                  GPP:-3,SAM:1) used to derive charge when -q is
-                                  omitted (requires PDB input or --ref-pdb).
-  -m, --multiplicity INTEGER      Spin multiplicity (2S+1).
   --max-cycles INTEGER            Maximum number of IRC steps; used unless YAML
                                   sets irc.max_cycles. Defaults to 125 when not
                                   provided.
@@ -70,5 +68,25 @@ Options:
   --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
                                   'water'). 'none' to disable.  [default: none]
   --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
+  -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
+                                  unless --ligand-charge is provided (.gjf
+                                  templates inherit the charge automatically).
+  -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
+                                  GPP:-3,SAM:1) used to derive charge when -q is
+                                  omitted (requires PDB input or --ref-pdb).
+  -m, --multiplicity INTEGER      Spin multiplicity (2S+1).
+  --precision [fp32|fp64]         MLIP backend precision: fp32 (default) or
+                                  fp64. Routed to backend-specific kwargs (UMA
+                                  precision / ORB precision / MACE
+                                  default_dtype). aimnet2: fp32 no-op; fp64
+                                  rejected.
+  --deterministic / --no-deterministic
+                                  Strict bit-reproducible GPU runs
+                                  (deterministic algorithms + index_reduce_
+                                  shim). Slower; raises if unsupported. Default
+                                  off.
+  --irc-pos-def / --no-irc-pos-def
+                                  Require pos-def Hessian at IRC convergence
+                                  (blocks shoulder false-convergence).
   -h, --help                      Show this message and exit.
 ```
