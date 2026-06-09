@@ -1,7 +1,7 @@
 # MLIP Calculator
 
 ## Overview
-`pdb2reaction` supports multiple machine-learning interatomic potentials (MLIPs) as calculator backends for pysisyphus. The default backend is **UMA** (Meta's Universal Models for Atoms), but **ORB**, **MACE**, and **AIMNet2** are also available. Each backend returns energies, forces, and Hessian matrices in hartree-based atomic units while handling GPU/CPU dispatch and bohr↔Å conversion internally. For cluster-sized systems (hundreds of atoms), the 3N × 3N Hessian tensors processed by augmented-Hessian eigensolves (RFO / RS-I-RFO) and IRC propagation would otherwise dominate wall-clock time due to frequent host–device synchronization, so the Hessian is kept on-device within pysisyphus (energies and forces flow as scalars / numpy arrays at negligible cost). The calculator is used throughout `pdb2reaction` for optimization, path searches, thermochemistry, and trajectory post-processing.
+`pdb2reaction` supports multiple machine-learning interatomic potentials (MLIPs) as calculator backends for pysisyphus. The default backend is **UMA** (Meta's Universal Models for Atoms), but **ORB**, **MACE**, and **AIMNet2** are also available. Each backend returns energies, forces, and Hessian matrices in hartree-based atomic units while handling GPU/CPU dispatch and bohr↔Å conversion internally. For cluster-sized systems (hundreds of atoms), the 3N × 3N Hessian tensors processed by augmented-Hessian eigensolves (RFO / RS-I-RFO) and IRC propagation would otherwise dominate wall-clock time due to frequent host–device synchronization, so the Hessian is kept on-device within pysisyphus. Energies and forces flow as scalars / numpy arrays at negligible cost. The calculator is used throughout `pdb2reaction` for optimization, path searches, thermochemistry, and trajectory post-processing.
 
 `pdb2reaction` ships a GPU-accelerated `pysisyphus` fork: the RFO / RS-I-RFO single-structure optimizers, the EulerPC IRC integrator, and the vibrational-mode (Hessian) diagonalization run on CUDA when `device="cuda"` (or `"auto"` on a GPU host). On CPU hosts the same routines fall back transparently to the upstream NumPy/SciPy paths.
 
@@ -89,7 +89,7 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 
 | Backend | Install | Analytical Hessian | Multi-worker | Notes |
 |---------|---------|-------------------|-------------|-------|
-| **UMA** | included | Yes (autograd) | Yes | Full feature set via `fairchem-core` |
+| **UMA** | included | Yes (autograd) | Yes | Default backend (`fairchem-core`) |
 | **ORB** | `pip install "pdb2reaction[orb]"` | Yes (autograd) | No | orb-models (conservative models only) |
 | **MACE** | `pip uninstall -y fairchem-core && pip install mace-torch` | Yes (`calc.get_hessian`) | No | mace-torch >= 0.3.8 |
 | **AIMNet2** | `pip install "pdb2reaction[aimnet]"` | Yes (native) | No | aimnet |
