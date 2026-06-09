@@ -47,10 +47,9 @@ result_ts_only/
 ├── summary.json                               # status: success | partial | failed
 └── segments/
     └── seg_01/                                # TS-only deliverables
-        ├── structures/                        # Canonical R/TS/P (TS-only mode)
-        │   ├── reactant.pdb
-        │   ├── ts.pdb
-        │   └── product.pdb
+        ├── reactant.pdb                        # Canonical R/TS/P (TS-only mode)
+        ├── ts.pdb
+        ├── product.pdb
         ├── ts/
         │   ├── final_geometry.{xyz,pdb}
         │   └── vib/imag_*_trj.xyz             # Imaginary-mode animation
@@ -96,7 +95,7 @@ The merged trajectory (forward + backward) should land on the intended reactant 
 **5. Visual structure check** — load the canonical R/TS/P PDBs:
 
 ```bash
-pymol result_ts_only/segments/seg_01/structures/reactant.pdb result_ts_only/segments/seg_01/structures/ts.pdb result_ts_only/segments/seg_01/structures/product.pdb
+pymol result_ts_only/segments/seg_01/reactant.pdb result_ts_only/segments/seg_01/ts.pdb result_ts_only/segments/seg_01/product.pdb
 ```
 
 In PyMOL: `align` the three states, label the reactive atoms (`label name C12+O14+C2+C17, name`), and confirm bond-length deltas match `bond_changes`.

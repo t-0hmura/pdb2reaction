@@ -1,6 +1,6 @@
 # JSON Output Reference
 
-pdb2reaction provides machine-readable JSON output for programmatic consumption by AI agents, scripts, and downstream tools.
+pdb2reaction emits machine-readable JSON for programmatic use by scripts and agents.
 
 ## `--out-json` flag
 
