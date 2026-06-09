@@ -2,7 +2,7 @@
 
 ## 目的
 
-`pdb2reaction all` のフルワークフローを、`-s/--scan-lists` で原子間距離を駆動して単一構造から実行します。段階的スキャン → MEP 精密化 → （任意）TS 最適化 + IRC が自動で連鎖します。
+`pdb2reaction all` のフルワークフローを、`-s/--scan-lists` で 1 つ以上の原子間距離を駆動して単一構造から実行します。これにより、段階的スキャン → 最小エネルギー経路（MEP）精密化 → （任意）遷移状態（TS）最適化 + 固有反応座標（IRC）が自動で連鎖します。
 
 ## 事前に必要なもの
 
@@ -50,21 +50,24 @@ pdb2reaction -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 -s \
 result_scan/
 ├── summary.log
 ├── summary.json
-├── scan/
-│   ├── preopt/                    # 事前最適化構造
-│   ├── stage_01/                  # スキャンステージ 1
-│   │   ├── scan_trj.xyz
-│   │   └── scan.pdb
-│   └── stage_02/                  # ステージ 2（マルチステージ時）
-└── path_search/                   # MEP 探索（デフォルト、再帰的）; --refine-path False 時は path_opt/
-    ├── mep.pdb
-    └── energy_diagram_UMA_all.png
+├── mep.pdb                        # MEP 全体パス（ルートへ昇格）
+├── energy_diagram_MEP.png         # MEP エネルギー図（ルートへ昇格）
+├── segments/
+│   └── seg_01/                    # 反応セグメントごとの成果物
+└── _work/                         # パイプラインの作業領域（削除可）
+    ├── scan/
+    │   ├── preopt/                # 事前最適化構造
+    │   ├── stage_01/              # スキャンステージ 1
+    │   │   ├── scan_trj.xyz       # スキャン軌跡
+    │   │   └── scan.pdb
+    │   └── stage_02/              # スキャンステージ 2（マルチステージ時）
+    └── path_search/               # MEP 探索（--refine-path False 時は path_opt/）
 ```
 
 **確認ポイント:**
 
-1. `scan/stage_01/scan_trj.xyz` — 結合距離の変化を PyMOL で確認
-2. `path_search/mep.pdb` — 最適化後の MEP 軌跡
+1. `_work/scan/stage_01/scan_trj.xyz` — 結合距離の変化を PyMOL で確認
+2. `mep.pdb` — 最適化後の MEP 軌跡（出力ルートへ昇格）
 3. `summary.log` — 障壁高さと結合変化
 
 **ヒント:** `--print-parsed` を付けて（Ctrl-C で中断して）スキャン設定を事前確認:
@@ -76,8 +79,16 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(1, 5, 1.35)]' --print-parsed
 ## 補足
 
 - `-s/--scan-lists` は `all` ではインライン Python リテラルのみを受け取ります。単独の `scan` サブコマンドはこれに加えて YAML/JSON スペックファイルパスも受け取れます（[scan](scan.md) を参照）。
-- スキャン step デフォルト: `pdb2reaction all` 経由では `--scan-max-step-size 0.20 Å`（距離ごとの step 幅）と `--scan-bias-k 300 eV/Å²`（調和バイアス強度）。単独の `pdb2reaction scan` コマンドでは prefix なしの `--max-step-size` / `--bias-k` で同じデフォルトを公開しています。どちらの形式でも、または YAML の `bias` ブロックで上書き可能（[scan](scan.md) / [yaml-reference](yaml-reference.md#bias) 参照）。
-- 各スキャン stage は最終リラックス構造に対する bond-change check（`has_bond_change`）で終了し、stage ごとの結果は `stage_XX/result.json`（`--out-json` 指定時）と scan ログに記録されます。再帰的 MEP refinement（`path-search`）は scan の端点を**無条件**に消費し、ゲートは scan stage の bond-change フラグではなく `--refine-path` です。
+- スキャン step のデフォルトは両コマンドで同じで、フラグ名のみが異なります（`all` では prefix 付き、単独の `scan` では prefix なし）:
+
+  | コマンド | 距離ごとの step 幅 | 調和バイアス強度 |
+  | --- | --- | --- |
+  | `pdb2reaction all` | `--scan-max-step-size 0.20 Å` | `--scan-bias-k 300 eV/Å²` |
+  | 単独の `pdb2reaction scan` | `--max-step-size 0.20 Å` | `--bias-k 300 eV/Å²` |
+
+  どちらの形式でも、または YAML の `bias` ブロックで上書き可能です（[scan](scan.md) / [yaml-reference](yaml-reference.md#bias) 参照）。
+- 各スキャン stage は、最終リラックス構造に対する bond-change check（`has_bond_change`）で終了します。stage ごとの結果は scan ログに記録され、`--out-json` 指定時には scan 出力ディレクトリに書き出される集約 `result.json`（その `stages` 配列内）にも記録されます。
+- 再帰的 MEP refinement（`path-search`）は scan の端点を**無条件**に消費します。実行されるかどうかのゲートは、scan stage の bond-change フラグ（`has_bond_change`）ではなく `--refine-path` です。
 - `pdb2reaction all --help-advanced` で全オプション（スキャン制御を含む）を確認できます。
 - 単独の `scan` サブコマンド（MEP 精密化なし）については [scan](scan.md) を参照してください。
 

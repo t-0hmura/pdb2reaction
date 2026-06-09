@@ -9,19 +9,23 @@
 
 | 症状 | 最初にやること | 詳細（セクション） |
 | --- | --- | --- |
+| **入力 / 抽出** | | |
 | 元素カラム欠落で抽出が止まる | 元の PDB に `add-elem-info` を適用してください | {ref}`入力 / 抽出の問題 <ts-input-extraction>` |
+| **電荷 / スピン** | | |
 | `-q/--charge is required` 系エラー | `-q/--charge` または `-l/--ligand-charge` を明示指定してください | {ref}`電荷 / スピンの問題 <ts-charge-spin>` |
-| 計算は通るが状態/エネルギーが不自然 | [CLI 規約](cli-conventions.md) の電荷解決順序を再確認してください | {ref}`入力 / 抽出の問題 <ts-input-extraction>` |
-| DMF モードの import エラー（`cyipopt`）、または `No module named pydmf` | `conda install -c conda-forge cyipopt`（`pydmf` は `pdb2reaction` に同梱） | {ref}`インストール / 環境の問題 <ts-install-env>` |
-| UMA モデルで 401/403 / gated repo エラー | `hf auth login` でログインし、UMA モデルのライセンスに同意してください | {ref}`インストール / 環境の問題 <ts-install-env>` |
-| `e3nn` / `fairchem-core` の import 競合（UMA env に MACE を入れた） | MACE 専用 conda env を使用（`mace-torch` は `e3nn==0.4.4` を pin し、`fairchem-core` の `e3nn>=0.5` と共存不可）。`pip uninstall -y fairchem-core && pip install mace-torch` | {ref}`インストール / 環境の問題 <ts-install-env>` |
-| `--workers > 1` 時は `--hessian-calc-mode Analytical` を指定しても警告なく `FiniteDifference` にダウングレードされる | 解析 Hessian が必要なら `--workers 1` に下げる、不要なら `FiniteDifference`（デフォルト）のまま | {ref}`インストール / 環境の問題 <ts-install-env>` |
+| 計算は通るが状態/エネルギーが不自然 | [CLI 規約](cli-conventions.md) の電荷解決順序を再確認してください | {ref}`電荷 / スピンの問題 <ts-charge-spin>` |
+| **計算 / 収束** | | |
+| `--workers > 1` 時は `--hessian-calc-mode Analytical` を指定しても警告なく `FiniteDifference` にダウングレードされる | 解析 Hessian が必要なら `--workers 1` に下げる、不要なら `FiniteDifference`（デフォルト）のまま | {ref}`workers > 1 によるヘシアンのダウングレード <ja-workers-fd-downgrade>` |
 | 実行時に CUDA OOM | `--radius` を縮小して再抽出（extract / all のみ）、`--opt-mode grad` に切替、有限差分 Hessian のまま、または VRAM の大きい GPU へ | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | TS は収束したが小さい虚振動が複数残る | `--flatten` を追加（`tsopt`、`opt`、`pdb2reaction all` 共通） | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | TSOPT が収束しない | L-BFGS/Dimer: `max_step` を**縮小**。RFO/RS-I-RFO: `trust_radius`/`trust_min`/`trust_max` を**縮小**。サイクル上限を増やし、TS 品質を確認 | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | IRC が正常に終了しない | `--step-size` を縮小、`--max-cycles` を増加、虚振動数が 1 本のみか確認 | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | opt/TSOPT が `max_cycles` で停止し、`max(force)` が閾値をわずかに超える | 通常は `opt.energy_plateau` フォールバックが自動で処理します。手動回避は `--thresh gau` または `--thresh gau_loose` | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | MEP 探索（GSM/DMF）が失敗 | `--max-nodes` をデフォルト 20 から増やす、`--preopt` 有効化（デフォルト: `all`/`path-search`/`path-opt` で `True`、`scan*` で `False`）、別の `--mep-mode` を試す | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
+| **インストール / 環境** | | |
+| DMF モードの import エラー（`cyipopt`）、または `No module named pydmf` | `conda install -c conda-forge cyipopt`（`pydmf` は `pdb2reaction` に同梱） | {ref}`インストール / 環境の問題 <ts-install-env>` |
+| UMA モデルで 401/403 / gated repo エラー | `hf auth login` でログインし、UMA モデルのライセンスに同意してください | {ref}`インストール / 環境の問題 <ts-install-env>` |
+| `e3nn` / `fairchem-core` の import 競合（UMA env に MACE を入れた） | MACE 専用 conda env を使用（`mace-torch` は `e3nn==0.4.4` を pin し、`fairchem-core` の `e3nn>=0.5` と共存不可）。`pip uninstall -y fairchem-core && pip install mace-torch` | {ref}`インストール / 環境の問題 <ts-install-env>` |
 | CUDA/GPU 実行時エラー | `torch.cuda.is_available()` と CUDA バージョンの整合を確認してください | {ref}`インストール / 環境の問題 <ts-install-env>` |
 | 図の出力失敗 | `plotly_get_chrome -y` で Chrome ランタイムを導入してください | {ref}`インストール / 環境の問題 <ts-install-env>` |
 
@@ -33,7 +37,7 @@
  - 入力構造が同じ前処理フローで作られ、原子順が揃っているか。
  - `extract` / `all` 前に元素カラムが埋まっているか。
 - 典型的な修正手順:
- - `pdb2reaction add-elem-info -i input.pdb -o input_fixed.pdb` で元素列を修復 -> 抽出再実行 -> 活性部位モデルサイズ（`--radius`）/残基選択（`--selected-resn`）を再確認。残基 ID 仕様の詳細は CLI 規約の {ref}`ja-selected-resn-takes-ids` を参照。
+ - `pdb2reaction add-elem-info -i input.pdb -o input_fixed.pdb` で元素列を修復 — 抽出再実行 — 活性部位モデルサイズ（`--radius`）/残基選択（`--selected-resn`）を再確認。残基 ID 仕様の詳細は CLI 規約の {ref}`ja-selected-resn-takes-ids` を参照。
 
 ## レシピ 2: 電荷/スピンの解決で止まる
 

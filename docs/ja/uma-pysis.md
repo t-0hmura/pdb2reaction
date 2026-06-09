@@ -117,7 +117,7 @@ pdb2reaction opt -i input.pdb -q 0 -b orb --solvent water --solvent-model cpcmx
 ### `workers > 1` による暗黙的な FD ダウングレード（UMA バックエンド）
 
 ```{warning}
-UMA バックエンドを `workers > 1` で使用する場合、`hessian_calc_mode="Analytical"` を明示的に指定していても解析ヘシアンは暗黙的に有限差分へ切り替わります（内部フラグ、ユーザーから設定不可）。**このダウングレード発生時にログマーカーは出力されません。**診断する唯一の方法は、同じ原子数の解析ヘシアン基準ランと比較してヘシアン計算時間が FD 相当に長くなっていることの確認です。このダウングレード規則は `--workers` / `--workers-per-node` を持つすべてのサブコマンド（`opt`, `tsopt`, `freq`, `irc`, `all`, `path-opt`, `path-search`, scan 系）に適用されます。UMA 以外のバックエンド（ORB / MACE / AIMNet2）では `workers` / `workers_per_node` は `_BACKEND_ACCEPTED_KEYS` で暗黙的に除外されるため、このダウングレード規則は該当しません。
+UMA バックエンドを `workers > 1` で使用する場合、`hessian_calc_mode="Analytical"` を明示的に指定していても解析ヘシアンは暗黙的に有限差分へ切り替わります（内部フラグ、ユーザーから設定不可）。**このダウングレード発生時にログマーカーは出力されません。**診断する唯一の方法は、同じ原子数の解析ヘシアン基準ランと比較してヘシアン計算時間が FD 相当に長くなっていることの確認です。このダウングレード規則は `--workers` / `--workers-per-node` を持つすべてのサブコマンド（`opt`, `tsopt`, `freq`, `irc`, `sp`, `all`, `path-opt`, `path-search`, scan 系）に適用されます。UMA 以外のバックエンド（ORB / MACE / AIMNet2）では `workers` / `workers_per_node` は `_BACKEND_ACCEPTED_KEYS` で暗黙的に除外されるため、このダウングレード規則は該当しません。
 ```
 
 (ja-hessian-evaluation)=

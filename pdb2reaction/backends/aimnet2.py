@@ -250,7 +250,7 @@ class AIMNet2Calculator(MLIPCalculator):
             )
 
         # Keep the Hessian on its native device: the base dispatcher
-        # recognises torch tensors and routes them through the GPU path,
+        # recognizes torch tensors and routes them through the GPU path,
         # avoiding a costly 3N×3N CPU copy on every analytical call.
         if not isinstance(hess, torch.Tensor):
             hess = torch.as_tensor(hess)

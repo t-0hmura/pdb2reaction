@@ -33,7 +33,7 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt True --deterministic
 - The environment variable `PDB2REACTION_STRICT_DETERMINISTIC=1` is the equivalent
   entry point for CI or the direct Python API (`create_calculator`).
 
-### Verified behaviour by backend
+### Verified behavior by backend
 
 | Backend | `--deterministic` |
 |---|---|
@@ -51,7 +51,7 @@ independent of precision. Only `--deterministic` gives bit-exactness.
 
 `--precision fp64` and the (internal, always-on) fp64 Hessian are independent
 knobs; passing `--precision fp64` additionally forces the Hessian to fp64 so the
-optimiser linear algebra cannot silently run in a lower precision than the model.
+optimizer linear algebra cannot silently run in a lower precision than the model.
 
 ## AIMNet2 limitations
 

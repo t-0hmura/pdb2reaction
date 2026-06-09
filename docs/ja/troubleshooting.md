@@ -183,13 +183,13 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 - 一方で、エネルギー自体は明らかに平坦化しており、10⁻⁵–10⁻⁴ au レベルで振動している。
 
 原因:
-- MLIP の勾配（力）計算には小さな確率的ノイズフロアがあり（10⁻⁴ Hartree/Bohr オーダー）、これが力ベースの収束閾値（`baker` = 3×10⁻⁴ au）を上回る場合があります。その結果、構造はすでに収束しているにもかかわらず、力閾値を満たすことができません。
+- MLIP（機械学習ポテンシャル）の勾配（力）計算には小さな確率的ノイズフロアがあり（10⁻⁴ Hartree/Bohr オーダー）、これが力ベースの収束閾値（`baker` = 3×10⁻⁴ au）を上回る場合があります。その結果、構造はすでに収束しているにもかかわらず、力閾値を満たすことができません。
 
 対処:
 - **平坦なエネルギー地形によるフォールバック収束**が自動でこの状況を処理します: `opt.energy_plateau: true` のとき、直近 `opt.energy_plateau_window`（デフォルト 50）ステップのエネルギーレンジが `opt.energy_plateau_thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`）を下回ると収束と判定されます。多くの場合、ユーザー側での対応は不要です。
 - 自動フォールバックを上書きしたい場合は、力の閾値を手動で緩めてください: `--thresh gau`（`opt` のデフォルト）または `--thresh gau_loose`。
 - `opt.energy_plateau_thresh` / `opt.energy_plateau_window` は YAML からチューニングでき、`opt.energy_plateau: false` で無効化できます。
-- 注意: この平坦地形フォールバックは **chain-of-states オプティマイザー**（`path-opt`、`path-search` の string/GSM/DMF 段階）では**スキップ**されます（単一のスカラーエネルギー履歴ではなく、イメージごとのエネルギー配列を保持しているため）。
+- 注意: この平坦地形フォールバックは **chain-of-states オプティマイザー**（`path-opt`、`path-search` の string/GSM（Growing String Method）/DMF（Direct Max Flux）段階）では**スキップ**されます（単一のスカラーエネルギー履歴ではなく、イメージごとのエネルギー配列を保持しているため）。
 
 ---
 
@@ -221,7 +221,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 
 ---
 
-### MEP 探索（GSM/DMF）が失敗または予期しない結果
+### MEP（最小エネルギー経路）探索（GSM/DMF）が失敗または予期しない結果
 
 症状:
 - 経路探索が有効な MEP なしで終了
@@ -236,8 +236,8 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 ## パフォーマンス / 安定性のヒント
 
 - **VRAM 不足**: `--radius` の値を減らして活性部位モデルを小さくする、`--max-nodes` を減らす、軽い最適化設定にする（`--opt-mode grad`）
-- **解析ヘシアン（Analytical Hessian）が遅いまたは OOM**: デフォルトの `FiniteDifference` を維持してください。`--hessian-calc-mode Analytical` は十分な VRAM がある場合のみ使用してください（500 原子以上では 16 GB 以上推奨）
-- **workers > 1**: HPC で UMA の処理速度は改善しますが、解析ヘシアンは無効になります
+- **解析ヘシアン（Analytical Hessian）が遅いまたは OOM**: デフォルトの `FiniteDifference` を維持してください。`--hessian-calc-mode Analytical` は 16 GB 以上の VRAM がある場合のみ使用してください。16 GB で収まるのは ~200 原子程度までです（下記の VRAM 目安表を参照）
+- **workers > 1**: HPC で UMA の処理速度は改善しますが、解析ヘシアンとは併用できません（`workers > 1` で解析ヘシアンを要求すると `RuntimeError` が発生します）。明示的に `--hessian-calc-mode FiniteDifference` を指定するか、ヘシアンを使うモードでは `--workers 1` で実行してください
 - **大規模系（1000 原子以上）**: より小さな活性部位モデル（`--radius 2.5` Å）を抽出するか、マルチ GPU セットアップでの実行を検討してください
 - **HPC で DFT を回すとき（数百原子規模）**: PySCF / GPU4PySCF は積分・中間ファイルを `$PYSCF_TMPDIR`（未設定なら `$TMPDIR`、最後は `/tmp`）に書き出します。ノードローカル `/tmp` は容量が小さい / `tmpfs` であることが多く、SCF の途中で枯渇する場合があります。`dft` 起動前に `PYSCF_TMPDIR` をジョブの作業ファイルシステム配下に設定してください（例: `export PYSCF_TMPDIR="$PBS_O_WORKDIR"`）
 

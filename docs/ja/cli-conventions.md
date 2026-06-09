@@ -32,7 +32,7 @@ pdb2reaction all --help # 主要オプションのみ
 pdb2reaction all --help-advanced # 全オプション
 ```
 
-以下のコマンドも同じ段階的ヘルプに対応しています（`--help` で主要オプション、`--help-advanced` で全オプション）: `scan`, `scan2d`, `scan3d`, `opt`, `path-opt`, `path-search`, `tsopt`, `freq`, `irc`, `dft`, `add-elem-info`, `trj2fig`, `energy-diagram`, `extract`, `fix-altloc`。
+以下のコマンドも同じ段階的ヘルプに対応しています（`--help` で主要オプション、`--help-advanced` で全オプション）: `scan`, `scan2d`, `scan3d`, `opt`, `path-opt`, `path-search`, `tsopt`, `freq`, `irc`, `dft`, `sp`, `add-elem-info`, `trj2fig`, `energy-diagram`, `bond-summary`, `extract`, `fix-altloc`。
 
 (ja-verbosity-levels)=
 

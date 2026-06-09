@@ -1,6 +1,12 @@
 # `scan3d`
 
-Perform a three-distance grid scan with harmonic restraints and MLIP relaxations, producing a 3D potential-energy volume over the three distances `(d₁, d₂, d₃)`. Use it when such a volume is needed or when an existing `surface.csv` needs re-plotting. Use `--scan-lists/-s` with a YAML/JSON spec file (recommended) or an inline Python literal, or plot an existing `surface.csv` via `--csv`. `scan3d` nests loops over d₁ → d₂ → d₃ and relaxes each point with the appropriate restraints active. The default optimizer is L-BFGS (`--opt-mode grad`); switch to `--opt-mode hess` for RFOptimizer. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
+Perform a three-distance grid scan with harmonic restraints and machine-learned interatomic potential (MLIP) relaxations, producing a 3D potential-energy volume over the three distances `(d₁, d₂, d₃)`. Use it when such a volume is needed, or when an existing `surface.csv` needs re-plotting.
+
+There are two ways to drive the command. To run a new scan, supply targets with `--scan-lists/-s`, either as a YAML/JSON spec file (recommended) or as an inline Python literal. To re-plot an existing `surface.csv` without re-evaluating energies, pass it via `--csv`. During a scan, `scan3d` nests loops over d₁ → d₂ → d₃ and relaxes each point with the appropriate harmonic restraints active.
+
+The default optimizer is L-BFGS (`--opt-mode grad`); switch to `--opt-mode hess` for RFOptimizer.
+
+For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
 
 ## Examples
 
@@ -92,34 +98,41 @@ Grid-point geometries use `Å×100` tags, so `point_i130_j310_k200.xyz` correspo
 
 | Option | Description | Default |
 | --- | --- | --- |
+| **Input & charge** | | |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required unless `--csv` is provided |
 | `-q, --charge INT` | Total charge (CLI > template/`--ligand-charge/-l`). Overrides `--ligand-charge/-l` when both are set. | Required unless template/derivation applies |
 | `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB residue charges. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
-| `--workers`, `--workers-per-node` | MLIP predictor parallelism (workers > 1 disables analytic Hessians; UMA backend only; `workers_per_node` forwarded to the parallel predictor). See {ref}`workers-fd-downgrade` for diagnostic notes. | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
+| **Backend & compute** | | |
+| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
+| `--workers`, `--workers-per-node` | MLIP predictor parallelism (workers > 1 disables analytic Hessians; UMA backend only; `workers_per_node` forwarded to the parallel predictor). See {ref}`workers-fd-downgrade` for diagnostic notes. | `1`, `1` |
+| `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
+| `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
+| **Active-region freezing** | | |
+| `--freeze-links/--no-freeze-links` | When the input is PDB, freeze parents of link hydrogens. | `True` |
+| `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
+| **Scan targets** | | |
 | `-s, --scan-lists TEXT` | Scan targets: a YAML/JSON spec file path (recommended) or **single** inline Python literal with three quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required unless `--csv` is provided |
 | `--one-based/--zero-based` | Interpret `(i, j)` indices as 1- or 0-based. | `True` |
 | `--print-parsed/--no-print-parsed` | Print parsed pair tuples after `--scan-lists/-s` resolution. | `False` |
 | `--max-step-size FLOAT` | Maximum change allowed per distance increment (Å). Controls grid density. | `0.20` |
+| **Refinement** | | |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
-| `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. Used unless YAML sets `opt.max_cycles`. | `10000` |
 | `--opt-mode TEXT` | `grad` → L-BFGS, `hess` → RFOptimizer. | `grad` |
-| `--freeze-links/--no-freeze-links` | When the input is PDB, freeze parents of link hydrogens. | `True` |
-| `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
-| `--dump/--no-dump` | Write `inner_path_d1_###_d2_###_trj.xyz` for each (d₁, d₂). | `False` |
-| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
+| `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. Used unless YAML sets `opt.max_cycles`. | `10000` |
+| `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
+| `--preopt/--no-preopt` | Run an unbiased optimization before scanning. | `False` |
+| **Merge & alignment** | | |
 | `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
+| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
+| **Output & config** | | |
 | `-o, --out-dir TEXT` | Output directory root for grids and plots. | `./result_scan3d/` |
 | `--csv PATH` | Load an existing `surface.csv` and only plot it (no new scan). `-i/--input` and `--scan-lists/-s` become optional. | _None_ |
-| `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
-| `--config FILE` | Base YAML configuration file (applied first). | _None_ |
-| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
-| `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
-| `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
-| `--preopt/--no-preopt` | Run an unbiased optimization before scanning. | `False` |
+| `--dump/--no-dump` | Write `inner_path_d1_###_d2_###_trj.xyz` for each (d₁, d₂). | `False` |
 | `--baseline {min,first}` | Shift kcal/mol energies so the global min or `(i,j,k)=(0,0,0)` is zero. | `min` |
 | `--zmin FLOAT`, `--zmax FLOAT` | Manual limits for the isosurface color bands (kcal/mol). | Autoscaled |
 | `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
+| `--config FILE` | Base YAML configuration file (applied first). | _None_ |
 
 The full flag list is in the generated [command reference](reference/commands/index.md); do not hand-duplicate it here.
 
@@ -156,7 +169,6 @@ bias:
 
 ## Notes
 
-- `-i/--input` and `--scan-lists/-s` are required unless `--csv` is provided.
 - `scan3d` accepts exactly **three** quadruples `(i, j, low_Å, high_Å)` (under the `pairs` key for YAML/JSON, or as a single inline literal). Unlike `scan`, only **one literal** is accepted (no multi-stage support). For the YAML/JSON file format, inline Python literal syntax, atom selectors, and quoting rules, see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
 - 3D grids grow very quickly; consider coarser `--max-step-size` or smaller ranges first.
 - The MLIP backend (UMA by default) reuses the same

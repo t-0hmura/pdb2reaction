@@ -2,10 +2,10 @@
 
 The `all` subcommand's `cli()` function is ~4,900 LOC; progressive
 helper extracts land in this module so the cli() body shrinks one piece
-at a time while behaviour is preserved.
+at a time while behavior is preserved.
 
 Anything imported here must be safe to use from ``cli()`` body callers
-without changing observable behaviour.
+without changing observable behavior.
 """
 
 from __future__ import annotations

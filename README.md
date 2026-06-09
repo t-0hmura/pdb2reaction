@@ -13,17 +13,17 @@ An initial reaction path is one command:
 pdb2reaction all -i R.pdb P.pdb -q 0 --tsopt --thermo
 ```
 
-> **Prerequisites:** input PDBs must already contain hydrogens; multiple PDBs must share the same atoms in the same order (only coordinates differ). Small-molecule `.xyz` / `.gjf` inputs work when `-c` / `--ligand-charge` are omitted.
+> **Prerequisites:** input PDBs must already contain hydrogens; multiple PDBs must share the same atoms in the same order (only coordinates differ). Small-molecule `.xyz` / `.gjf` inputs work when `--center/-c` and `--ligand-charge/-l` are omitted.
 
 ## Related tools
 
 | Tool | Use case |
 |---|---|
 | **`pdb2reaction`** (this repo) | Pure-MLIP **cluster-model** reaction paths from PDB / XYZ / GJF — no MM force field required. |
-| [**mlmm-toolkit**](https://github.com/t-0hmura/mlmm_toolkit) | **ML/MM ONIOM** with the full protein environment; automates MM parameterisation and ML-region assignment from a single PDB. |
+| [**mlmm-toolkit**](https://github.com/t-0hmura/mlmm_toolkit) | **ML/MM ONIOM** with the full protein environment; automates MM parameterization and ML-region assignment from a single PDB. |
 | [**uma_pysis**](https://github.com/t-0hmura/uma_pysis) | YAML-input reaction-mechanism analysis for **small molecules**. |
 
-`pdb2reaction` and `mlmm-toolkit` bundle the same GPU-optimised pysisyphus fork; it is **not** compatible with upstream pysisyphus — do not install them side by side.
+`pdb2reaction` and `mlmm-toolkit` bundle the same GPU-optimized pysisyphus fork; it is **not** compatible with upstream pysisyphus — do not install them side by side.
 
 ## Documentation
 
@@ -37,7 +37,7 @@ pdb2reaction all -i R.pdb P.pdb -q 0 --tsopt --thermo
 |---|---|
 | OS / Python | Linux x86_64 (validated); macOS / WSL 2 for CPU-only smoke tests. Python >= 3.11 (3.12 tested). |
 | GPU / CUDA / VRAM | NVIDIA GPU, CUDA >= 12.6 (12.9 recommended; required for RTX 50-series, matched to the PyTorch wheel). 8 GB VRAM minimum, 16 GB recommended (24 GB for analytical Hessian on 500+-atom regions). |
-| RAM / Disk | 32 GB RAM minimum (60 GB recommended); 20 GB free disk for the conda env, UMA cache, and artefacts. |
+| RAM / Disk | 32 GB RAM minimum (60 GB recommended); 20 GB free disk for the conda env, UMA cache, and artifacts. |
 
 CPU-only execution works but is 10–100× slower; not recommended for full TS / IRC / Hessian workflows. Full requirement and tuning details: [docs/installation.md](docs/installation.md).
 

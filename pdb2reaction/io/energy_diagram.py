@@ -113,7 +113,7 @@ def _gather_variadic_values(
 ) -> List[str]:
     """Collect variadic positional values after *flag_names* from Click extra args.
 
-    Stops at the next recognised flag or end-of-args.
+    Stops at the next recognized flag or end-of-args.
     """
     names_set = set(flag_names)
     stop_set = set(all_flags)

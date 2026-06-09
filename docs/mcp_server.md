@@ -53,7 +53,7 @@ When a subcommand fails, the parsed `summary` (or sibling `result.json`) carries
 | MCP tool | CLI subcmd | Purpose |
 |---|---|---|
 | `scan_1d` / `scan_2d` / `scan_3d` | `pdb2reaction scan{,2d,3d}` | Restraint-driven distance scans |
-| `optimize_path` | `pdb2reaction path-opt` | Two-endpoint MEP optimisation |
+| `optimize_path` | `pdb2reaction path-opt` | Two-endpoint MEP optimization |
 | `search_paths` | `pdb2reaction path-search` | Recursive reaction-pathway search |
 | `run_full_pipeline` | `pdb2reaction` (the `all` subcmd) | End-to-end: extract → MEP → TS → IRC → freq → DFT |
 | `run_single_point_dft` | `pdb2reaction dft` | Single-point DFT via gpu4pyscf |
@@ -78,9 +78,9 @@ criterion calls success before reaching the local minimum. Defaults to
 `None` (rms-only, legacy).
 
 `find_transition_state` (CLI: `pdb2reaction tsopt`) also exposes the
-alternative TS optimisers via `--opt-mode`:
+alternative TS optimizers via `--opt-mode`:
 
-- `opt_mode="trim"` — Helgaker (1991) trust-region image-minimisation TS opt
+- `opt_mode="trim"` — Helgaker (1991) trust-region image-minimization TS opt
 - `opt_mode="rsprfo"` — Banerjee (1985) restricted-step P-RFO TS opt
 
 ## Client configuration
@@ -136,7 +136,7 @@ async with stdio_client(server_params) as (read, write):
   `pdb2reaction` CLI in a subprocess — the agent should set `timeout_seconds`
   on each tool call to bound runaway computations.
 - Output files land under the `out_dir` kwarg (defaults to a unique
-  `tempfile.mkdtemp("p2r_mcp_<subcmd>_…")` so concurrent agent calls
+  `tempfile.mkdtemp(prefix="p2r_mcp_<subcmd>_…")` so concurrent agent calls
   don't collide).
 - The server does not modify `~/.bashrc` / login env, install software,
   or write outside `out_dir`. All MLIP weights / PDB inputs must

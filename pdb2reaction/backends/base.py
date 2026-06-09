@@ -157,7 +157,7 @@ class MLIPCalculator(Calculator):
         self.out_hess_torch = bool(out_hess_torch)
         self.print_timing = bool(print_timing)
 
-        # Normalise freeze_atoms. A silent `except Exception: freeze_iter=[]`
+        # Normalize freeze_atoms. A silent `except Exception: freeze_iter=[]`
         # masked malformed user input (e.g. typo in a CLI string) by quietly
         # un-freezing all atoms, which would let a TS opt walk through what the
         # user meant to be frozen. Narrow to the actual conversion errors and
@@ -361,7 +361,7 @@ class MLIPCalculator(Calculator):
     def _au_hessian_torch(self, H):
         """Convert a (3N,3N) torch Hessian from eV/Å² to Hartree/Bohr² and
         symmetrise.  All operations are in-place on the working buffer to
-        minimise peak VRAM: a single materialised ``Hᵀ`` temporary is the
+        minimize peak VRAM: a single materialised ``Hᵀ`` temporary is the
         only extra (3N,3N) allocation required.
 
         Returns a detached torch.Tensor on the same device as the input.

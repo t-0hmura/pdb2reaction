@@ -26,7 +26,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  --tsopt --thermo --dft --out-dir ./result_all
 ```
 
-> **VRAM 注意:** `--dft` は抽出されたクラスターモデルに対して GPU4PySCF の一点計算を走らせます。~200 原子を超える系では VRAM が 24 GB 未満の GPU で容易に OOM に至ります。`CUDA out of memory` になった場合は、`--dft` を外して基底を縮小または原子数を削減した上で別途 `pdb2reaction dft` を実行するか、より大容量の GPU ノードへ移してください。事前に `[dft]` extra のインストールも必要です（[インストール](installation.md) 手順 7 を参照）。
+> **VRAM 注意:** `--dft` は抽出されたクラスターモデルに対して GPU4PySCF の一点計算を走らせます。~200 原子を超える系では VRAM が 24 GB 未満の GPU で容易に OOM を起こします。`CUDA out of memory` になった場合は、`--dft` を外して基底を縮小または原子数を削減した上で別途 `pdb2reaction dft` を実行するか、より大容量の GPU ノードへ移してください。事前に `[dft]` extra のインストールも必要です（[インストール](installation.md) 手順 7 を参照）。
 
 ## 期待される出力
 

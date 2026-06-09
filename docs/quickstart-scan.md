@@ -2,14 +2,14 @@
 
 ## Goal
 
-Run the full `pdb2reaction all` workflow from a single structure by driving one or more bond distances via `--scan-lists/-s`. This automatically chains: staged scan → MEP refinement → (optional) TS optimization and IRC.
+Run the full `pdb2reaction all` workflow from a single structure by driving one or more bond distances via `--scan-lists/-s`. This automatically chains: staged scan → minimum energy path (MEP) refinement → (optional) transition state (TS) optimization and intrinsic reaction coordinate (IRC).
 
 ## Prerequisites
 
 - Input structure: `.pdb`
 - Charge (`-q/--charge` or `--ligand-charge/-l`) and multiplicity (`-m`) for the target state
 
-## Method A: `--scan-lists/-s` inline literal (default)
+## Scan targets via `--scan-lists/-s` inline literal (default)
 
 `--scan-lists/-s` accepts Python-literal strings directly on the command line. For atom selector syntax (residue/atom tokens, separators, ordering) and outer/inner quoting rules, see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
 
@@ -79,8 +79,16 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(1, 5, 1.35)]' --print-parsed
 ## Notes
 
 - `-s/--scan-lists` accepts inline Python literals when used with `all`. The standalone `scan` subcommand additionally accepts a YAML/JSON spec file path (see [scan](scan.md)).
-- Default scan stepping: `--scan-max-step-size 0.20 Å` (per-distance step) and `--scan-bias-k 300 eV/Å²` (harmonic bias strength) when invoked via `pdb2reaction all`. The standalone `pdb2reaction scan` command exposes the same defaults under the un-prefixed `--max-step-size` / `--bias-k` names; override via either form or via the YAML `bias` block. See [scan](scan.md) and [yaml-reference](yaml-reference.md#bias) for the per-stage controls.
-- Each scan stage ends with a bond-change check (`has_bond_change`) on the final relaxed geometry; the per-stage result is recorded under each `stage_XX/result.json` (when `--out-json` is set) and in the scan log. The recursive MEP refinement (`path-search`) consumes the scan endpoints unconditionally — it is gated by `--refine-path`, not by the scan-stage bond-change flag.
+- Default scan stepping is the same for both commands; only the flag names differ (prefixed under `all`, un-prefixed under standalone `scan`):
+
+  | Command | Per-distance step | Harmonic bias strength |
+  | --- | --- | --- |
+  | `pdb2reaction all` | `--scan-max-step-size 0.20 Å` | `--scan-bias-k 300 eV/Å²` |
+  | standalone `pdb2reaction scan` | `--max-step-size 0.20 Å` | `--bias-k 300 eV/Å²` |
+
+  Override via either flag form or via the YAML `bias` block. See [scan](scan.md) and [yaml-reference](yaml-reference.md#bias) for the per-stage controls.
+- Each scan stage ends with a bond-change check (`has_bond_change`) on the final relaxed geometry. The per-stage result is recorded in the scan log, and — when `--out-json` is set — also in the aggregate `result.json` (under its `stages` array) written to the scan out-dir.
+- The recursive MEP refinement (`path-search`) consumes the scan endpoints unconditionally. Whether it runs is gated by `--refine-path`, **not** by the scan-stage bond-change flag (`has_bond_change`).
 - Use `pdb2reaction all --help-advanced` to inspect all options including scan controls.
 - For the standalone `scan` subcommand (without MEP refinement), see [scan](scan.md).
 
@@ -88,3 +96,4 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(1, 5, 1.35)]' --print-parsed
 
 - Full option reference: [all](all.md)
 - TS candidate validation: [Quickstart: TS-only mode](quickstart-tsopt-freq.md)
+- Term definitions (MEP, TS, IRC, …): [Glossary](glossary.md)

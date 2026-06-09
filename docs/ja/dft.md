@@ -1,6 +1,6 @@
 # `dft`
 
-GPU4PySCF または CPU PySCF を使用して DFT 一点計算を実行し、エネルギーと布居解析（population analysis: Mulliken、meta-Löwdin、IAO 電荷）を報告します。デフォルトの汎関数/基底関数は ωB97M-V/def2-tzvpd です。小規模な活性部位モデルの DFT 一点エネルギー（および布居解析）を得る場面、多くは MLIP で最適化した R/TS/P 構造を精密化する場面で使用します。バックエンドは `--engine`（デフォルト `gpu`）で選択します。GPU が利用できない場合や移植性・デバッグ目的の実行には `cpu` を使用します。
+GPU4PySCF または CPU PySCF を使用して DFT 一点計算を実行し、エネルギーと布居解析（population analysis: Mulliken、meta-Löwdin、IAO 電荷）を報告します。デフォルトの汎関数/基底関数は ωB97M-V/def2-tzvpd です。小規模な活性部位モデルの DFT 一点エネルギー（および布居解析）を得る場面、多くは MLIP で最適化した R/TS/P 構造の精密化に使用します。バックエンドは `--engine`（デフォルト `gpu`）で選択します。GPU が利用できない場合や移植性・デバッグ目的の実行には `cpu` を使用します。
 
 > `--engine`（単体の `dft`）と `--dft-engine`（`pdb2reaction all` から転送する場合）の命名規則は {ref}`ja-engine-vs-dft-engine` を参照してください。
 
@@ -52,7 +52,7 @@ pdb2reaction dft -i input.pdb -l 'LIG:0' -m 1 \
 ## 処理の流れ
 
 1. **入力処理** – `geom_loader` でロード可能な任意のファイル（.pdb/.xyz/_trj.xyz/…）を受け入れ、座標は `input_geometry.xyz` として再エクスポートされます。XYZ/GJF 入力では `--ref-pdb` が参照 PDB トポロジーを提供し、原子数検証や（`--ligand-charge` 使用時の）電荷導出に使われます。DFT 段階自体は PDB/GJF 出力を生成しません。
-2. **SCF ビルド** – `--func-basis` を汎関数と基底に解析します。`--engine` で GPU/CPU を制御します（`gpu` は GPU4PySCF 必須でエラー終了、`cpu` は CPU 固定）。closed-shell + GPU + `--lowmem`（デフォルト）では SCF オブジェクトに `gpu4pyscf.dft.rks_lowmem.RKS` を使用し、メモリ効率の良い直接 JK で密度フィッティングをスキップします。open-shell GPU、CPU、または `--no-lowmem` の経路では密度フィッティングが PySCF のデフォルト設定で自動的に有効化されます。非局所補正（例: VV10）はバックエンドのデフォルト設定を超える明示的な設定は行いません。
+2. **SCF ビルド** – `--func-basis` を汎関数と基底に解析します。`--engine` で GPU/CPU を制御します（`gpu` は GPU4PySCF 必須でエラー終了、`cpu` は CPU 固定）。closed-shell + GPU + `--lowmem`（デフォルト）では SCF オブジェクトに `gpu4pyscf.dft.rks_lowmem.RKS` を使用し、メモリ効率の良い直接 JK で密度フィッティングをスキップします。open-shell GPU、CPU、または `--no-lowmem` の経路では密度フィッティングが PySCF のデフォルト設定で自動的に有効化されます。非局所補正（例: VV10）はバックエンドのデフォルトを超える明示的な設定は行いません。
 3. **布居解析 & 出力** – 収束後（または失敗後）、エネルギー（Hartree/kcal·mol⁻¹）、収束メタデータ、バックエンド情報、および原子ごとの Mulliken/meta-Löwdin/IAO 電荷とスピン密度を要約する `result.yaml` を書き込みます。解析に失敗した列は `null` に設定され、警告が出力されます。
 
 ## 出力

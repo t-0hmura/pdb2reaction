@@ -108,8 +108,9 @@ The full flag list is in the generated [command reference](reference/commands/in
 
 ### Shared YAML sections
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical keys to those documented in
-  [YAML Reference](yaml-reference.md). `opt.dump` can be set in YAML for optimizer dumps;
-  use `--dump` to control scan-stage trajectories.
+  [YAML Reference](yaml-reference.md). `opt.dump` (YAML) and `--dump` (CLI) are the
+  same toggle for per-step optimizer trajectory files; the scan-stage trajectories
+  `scan_trj.xyz`/`scan.pdb` are always written regardless.
 - `--relax-max-cycles` applies only when explicitly provided **and** YAML does not set `opt.max_cycles` (default `10000`).
 
 ### Section `bias`

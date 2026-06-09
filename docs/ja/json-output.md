@@ -14,14 +14,20 @@ cat result_opt/result.json | python -m json.tool
 
 `all` / `path-search` は常に `summary.json` を出力します（`--out-json` 不要）。
 
+### `summary.json` ミラー
+
+`write_result_json` は、ステージごとの `result.json` のペイロードをすべて同じディレクトリの `summary.json` にミラーリングします。これにより、エージェントスクリプトはどのサブコマンドでも単一のファイル名（`summary.json`）を読めばよく、隣に書き出される `result.json` も同一のペイロードを持ちます。
+
 ## 共通エンベロープ
 
 すべての `result.json` に自動付与されるフィールド:
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
+| `schema_version` | string | エンベロープのスキーマバージョン。現在値は `pdb2reaction.core.utils.RESULT_JSON_SCHEMA_VERSION` にあります（このドキュメント中のリテラルではなく、この定数を参照してください）。値が上がった場合は構造変更を意味します。 |
 | `command` | string | サブコマンド名（例: `"opt"`） |
 | `pdb2reaction_version` | string | パッケージバージョン |
+| `status` | string | `success` / `partial` / `error` / `unknown` のいずれか |
 | `elapsed_seconds` | float | 実行時間（秒） |
 | `environment` | object | ハードウェア情報（下表参照） |
 
@@ -36,6 +42,16 @@ cat result_opt/result.json | python -m json.tool
 | `cpu` | string | `"<cpu model>"` |
 | `n_cpus` | int | `<int>` |
 | `ram_gb` | float | `<ram in GB>` |
+
+### エラーエンベロープ（`status == "error"` のとき）
+
+| フィールド | 型 | 説明 |
+|-----------|------|------|
+| `error` | string | 元の例外の `str(exc)` |
+| `error_type` | string | 例外クラス名 |
+| `error_class_chain` | list[string] | MRO 全体のクラス名。エージェントがテキストを解析せずに階層を照合できます |
+| `error_module` | string | 例外クラスが定義されたモジュール |
+| `error_label` | string | 高レベルの CLI ステージラベル |
 
 ## エラー処理
 
@@ -81,7 +97,7 @@ cat result_opt/result.json | python -m json.tool
 | `opt_mode` | string | `"rsirfo"` / `"dimer"` |
 
 `files` には `imaginary_mode_files`（vib ファイルリスト）を含む場合があります。
-収束詳細 (force/step) は rsirfo モードで利用可能です。dimer モードも `runner.is_converged` に応じて `status` に `"converged"` / `"not_converged"` を返します。rsirfo モードが出す力・ステップ収束の詳細キーは、dimer モードでは省略されます。
+収束詳細 (force/step) は rsirfo モードで利用可能です。dimer モードも `runner.is_converged` に応じて `status` に `"converged"` / `"not_converged"` を返しますが、`n_opt_cycles` のみを出力し、rsirfo モードが出すサイクルごとの力・ステップ収束の詳細キーは省略されます。
 
 ### `freq`
 
@@ -303,7 +319,7 @@ cat result_opt/result.json | python -m json.tool
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `status` | string | `"ok"` |
-| `comparisons` | object[] | ペアごとの比較（`structure_a`, `structure_b`, `bonds_formed`, `bonds_broken`） |
+| `comparisons` | object[] | ペアごとの比較（`structure_a` (string), `structure_b` (string), `bonds_formed` (int), `bonds_broken` (int)） |
 
 (ja-summary-json-path-search-all)=
 ## `summary.json` (`path-search` / `all`)

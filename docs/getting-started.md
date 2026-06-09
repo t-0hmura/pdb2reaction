@@ -4,7 +4,7 @@
 
 <img src="./overview.png" alt="pdb2reaction workflow overview" width="90%">
 
-`pdb2reaction` is a Python CLI for **elucidating enzymatic reaction pathways from PDB structures** using machine-learning interatomic potentials (MLIPs). The default backend is Meta's UMA; `orb`, `mace`, and `aimnet2` are also supported via `-b/--backend`. Foundation-model MLIPs make cluster-model TS optimisation, IRC verification, and QRRHO thermochemistry tractable on a single GPU — lowering the DFT-bound cost barrier that previously throttled mechanistic screening.
+`pdb2reaction` is a Python CLI for **elucidating enzymatic reaction pathways from PDB structures** using machine-learning interatomic potentials (MLIPs). The default backend is Meta's UMA; `orb`, `mace`, and `aimnet2` are also supported via `-b/--backend`. Foundation-model MLIPs make cluster-model TS optimization, IRC verification, and QRRHO thermochemistry tractable on a single GPU — lowering the DFT-bound cost barrier that previously throttled mechanistic screening.
 
 A single command generates a reasonable initial reaction path:
 
@@ -13,7 +13,7 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'               
 pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --thermo --dft   # full
 ```
 
-Given (i) ≥ 2 PDBs (R → ... → P), (ii) one PDB with `--scan-lists/-s`, or (iii) one TS candidate with `--tsopt`, `pdb2reaction` extracts an **active-site cluster model**, runs an **MEP search** (GSM / DMF), and optionally chains TS optimisation, IRC, frequencies, and single-point DFT. The same workflow also works for small-molecule systems — omit `--center/-c` and `--ligand-charge/-l` to use `.xyz` / `.gjf` inputs.
+Given (i) ≥ 2 PDBs (R → ... → P), (ii) one PDB with `--scan-lists/-s`, or (iii) one TS candidate with `--tsopt`, `pdb2reaction` extracts an **active-site cluster model**, runs an **MEP search** (GSM / DMF), and optionally chains TS optimization, IRC, frequencies, and single-point DFT. The same workflow also works for small-molecule systems — omit `--center/-c` and `--ligand-charge/-l` to use `.xyz` / `.gjf` inputs.
 
 Working examples (BezA C6-methyltransferase, both multi-structure MEP and scan modes): [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples). For setup see [Installation](installation.md); for symptom-first diagnosis see [Common Error Recipes](recipes-common-errors.md) and [Troubleshooting](troubleshooting.md).
 
@@ -31,7 +31,7 @@ Each stage is also a standalone subcommand; `all` orchestrates them and writes u
 |---|---|
 | `summary.json` | Machine-readable results (barriers, energies, bond changes, environment) |
 | `summary.log` | Human-readable text summary with directory tree |
-| `seg_XX/` | IRC-optimised R/TS/P structures per reaction step |
+| `segments/seg_NN/` | IRC-optimized R/TS/P structures per reaction step |
 | `mep.pdb` | Merged MEP trajectory (PyMOL / VMD) |
 | `energy_diagram_*.png` | Energy profile plots (electronic / Gibbs-corrected) |
 
@@ -93,18 +93,18 @@ Single-input runs require **either** `--scan-lists/-s` or `--tsopt` — a bare `
 | `-c, --center TEXT` | Substrate / extraction center (residue names, residue IDs, or PDB paths). |
 | `-l, --ligand-charge TEXT` | Charge mapping (`'SAM:1,GPP:-3'`) or single integer. |
 | `-q, --charge INT` / `-m, --multiplicity INT` | Net system charge / spin multiplicity. |
-| `--tsopt` / `--thermo` / `--dft` | TS optimisation + IRC / vibrational analysis / single-point DFT. |
+| `--tsopt` / `--thermo` / `--dft` | TS optimization + IRC / vibrational analysis / single-point DFT. |
 | `-b, --backend uma\|orb\|mace\|aimnet2` | MLIP backend (default `uma`). |
 
 Full option matrix: [CLI Conventions](cli-conventions.md) and the generated CLI reference under [reference/commands/index](reference/commands/index.md). Backend cost / VRAM comparison: see [Troubleshooting › Choosing a backend](troubleshooting.md#choosing-a-backend).
 
 ## Run summaries
 
-Every `pdb2reaction all` run writes `summary.log` (human) + `summary.json` (machine) with the CLI command, global MEP statistics, per-segment barriers / bond changes, and MLIP / thermo / DFT energies (when enabled). Each `path_search/seg_NN/` (or `path_opt/` with `--refine-path False`) carries its own summaries.
+Every `pdb2reaction all` run writes `summary.log` (human) + `summary.json` (machine) with the CLI command, global MEP statistics, per-segment barriers / bond changes, and MLIP / thermo / DFT energies (when enabled). Each `segments/seg_NN/` carries its own per-stage summaries.
 
 ## HPC / multi-GPU
 
-`pdb2reaction` parallelises UMA inference across nodes — set `workers` and `workers_per_node` to enable multi-worker mode. Job-script templates: [docs/hpc-example.md](hpc-example.md). Backend configuration: [MLIP Calculator](uma-pysis.md).
+`pdb2reaction` parallelizes UMA inference across nodes — set `workers` and `workers_per_node` to enable multi-worker mode. Job-script templates: [docs/hpc-example.md](hpc-example.md). Backend configuration: [MLIP Calculator](uma-pysis.md).
 
 ## Agent Skills
 

@@ -103,7 +103,7 @@ Options:
                                   running any optimization.  [default: no-dry-
                                   run]
   --coord-type [cart|redund|dlc|tric]
-                                  Optimisation coordinate system
+                                  Optimization coordinate system
                                   (cart|redund|dlc|tric). cart is the robust
                                   default used in published numbers; dlc speeds
                                   up torsion-rich opts.

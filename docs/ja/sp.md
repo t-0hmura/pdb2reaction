@@ -48,7 +48,7 @@ pdb2reaction sp -i structure.pdb -q 0 -m 1 --hess
 - `--backend uma`（デフォルト）→ UMA の torch autograd 経路による `Analytical` Hessian
 - `--backend orb` / `mace` / `aimnet2` → `FiniteDifference` にフォールバック（上流に解析的 Hessian の実装がないため）
 
-`--hessian-calc-mode` を使うと、解析的実装とのサニティチェックを行いたい場合に UMA でも `FiniteDifference` を強制でき、その逆も可能です。
+`--hessian-calc-mode` を使うと、解析的実装とのサニティチェックを行いたい場合に UMA でも `FiniteDifference` を強制できます。一方、非 UMA バックエンドで `Analytical` を強制しても効果はなく、それらのバックエンドは常に `FiniteDifference` にフォールバックします。
 
 ## CLI オプション
 

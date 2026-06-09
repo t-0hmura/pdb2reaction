@@ -26,7 +26,7 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 
 ## 処理の流れ
 
-1. XYZ 軌跡を解析し、各フレームのコメント行から最初の浮動小数点数を読み取ります（`1.5e-3` などの科学表記に対応）。`-q/-m` がある場合は MLIP バックエンドで再計算した Hartree エネルギーを使用します。エネルギーが取得できない場合は実行を中断します。
+1. XYZ 軌跡を解析し、各フレームのコメント行からエネルギーを読み取ります。明示的な `E=` / `Energy:` トークンがあればそれを優先し、なければ行内の数値トークンを採用します（`1.5e-3` などの科学表記に対応）。キーなしで数値トークンが複数ある場合は最後の値を採用し、警告を出力します。`-q/-m` がある場合は MLIP バックエンドで再計算した Hartree エネルギーを使用します。エネルギーが取得できない場合は実行を中断します。
 2. 参照指定を正規化:
  - `init` → フレーム `0`（`--reverse-x` が有効な場合は最後のフレーム）
  - `None`/`none`/`null` → 絶対エネルギー（参照なし）
@@ -54,14 +54,14 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 | `-r, --reference TEXT` | 参照指定（`init`、`None`、または 0 始まり整数） | `init` |
 | `-q, --charge INT` | 総電荷。指定時は MLIP バックエンドでエネルギーを再計算 | _None_ |
 | `-m, --multiplicity INT` | スピン多重度（2S+1）。指定時は MLIP バックエンドでエネルギーを再計算 | _None_ |
-| `--reverse-x/--no-reverse-x` | x 軸を反転し、`init` の参照を最後のフレームに変更 | `False` |
+| `--reverse-x/--no-reverse-x` | x 軸を反転して最後のフレームを左端に表示し、`init` の参照を最後のフレームに変更 | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | エネルギー再計算用 MLIP バックエンド | `uma` |
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 | `--out-json/--no-out-json` | 出力の隣に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 
 ## 注記
-- エネルギーはコメント行内の最初の浮動小数点数から取得されます。不正なコメント行はエラーになります。
+- エネルギーが解析できないコメント行はエラーになります（`E=` / `Energy:` トークンと素の数値の優先順位は処理の流れの手順 1 を参照）。
 - 未対応の拡張子がある場合は実行が中断されます。`.png` は Plotly の `scale=2` で高解像度出力されます。
 - `--reverse-x` は軸の向きと `-r init` の解釈の両方に影響します。
 

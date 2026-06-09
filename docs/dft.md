@@ -24,7 +24,7 @@ Basic GPU single point.
 pdb2reaction dft -i input.pdb -q 0 -m 1 --engine gpu --out-dir ./result_dft
 ```
 
-Run with a larger basis and tighter SCF settings.
+Run with tighter SCF settings.
 
 ```bash
 pdb2reaction dft -i input.pdb -q 0 -m 1 \

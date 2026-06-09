@@ -31,7 +31,7 @@
 | `-b` / `--backend` | `backend` | `calc` |
 | _(YAML のみ)_ | `model` | `calc` |
 | `--solvent` | `solvent` | `calc` |
-| `--device` | `device` | `calc` |
+| _(YAML のみ)_ | `device` | `calc` |
 | `--thresh` | `thresh` | `opt` |
 | `--max-cycles` | `max_cycles` | `opt` |
 | `--dump` | `dump` | `opt` |
@@ -287,7 +287,7 @@ gs:
 ```
 
 ```{note}
-**GSM と DMF で `max_nodes` の意味が異なります。** **GSM**（`mep-mode gs`）では `gs.max_nodes` は **内部画像数** を指し、エンドポイント2点が固定されるため総パス長は `max_nodes + 2` となります。**DMF**（`mep-mode dmf`）では CLI の `--max-nodes` は **可動画像数** を指し、エンドポイントの暗黙的な追加はありません。詳細は [`path-opt`](path-opt.md) を参照してください。
+**GSM と DMF で `max_nodes` の意味が異なります。** **GSM**（`mep-mode gsm`）では `gs.max_nodes` は **内部画像数** を指し、エンドポイント2点が固定されるため総パス長は `max_nodes + 2` となります。**DMF**（`mep-mode dmf`）では CLI の `--max-nodes` は **可動画像数** を指し、エンドポイントの暗黙的な追加はありません。詳細は [`path-opt`](path-opt.md) を参照してください。
 ```
 
 ---
@@ -558,7 +558,7 @@ dft:
 
 ```yaml
 bias:
- k: 300.0 # Harmonic bias strength (eV·Å⁻²)
+ k: 300 # Harmonic bias strength (eV·Å⁻²)
 ```
 
 **サブコマンド間で共有されるばね定数。** 同じ物理的な調和ペナルティ（`k`、単位 eV·Å⁻²）が以下の箇所にデフォルト値 `300.0` で現れます:

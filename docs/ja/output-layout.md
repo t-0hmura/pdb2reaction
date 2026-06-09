@@ -30,7 +30,7 @@
 | `scan` / `scan2d` / `scan3d` | `./result_scan*/` |
 | `path-opt` / `path-search` | `./result_path_*/` |
 | `sp` | `./result_sp/` |
-| `extract` | `./`（`<input>_<cluster>.pdb` を書き出し） |
+| `extract` | `./`（`model.pdb` を書き出し。入力が複数の場合は `model_<input>.pdb`） |
 
 `--out-dir <path>`（または `-o`）で上書きします。
 

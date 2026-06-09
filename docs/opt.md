@@ -1,6 +1,6 @@
 # `opt`
 
-Relaxes a single structure toward a local minimum, optionally with distance restraints or imaginary-mode flattening. Use `--opt-mode grad` (alias `lbfgs`, default) for L-BFGS minimisation or `--opt-mode hess` (alias `rfo`) for RFOptimizer. The optimizer comes from pysisyphus, while an MLIP backend (UMA by default; ORB, MACE, and AIMNet2 also available via `-b/--backend`) provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `_trj.xyz`, or any format supported by `geom_loader`.
+Relaxes a single structure toward a local minimum, optionally with distance restraints or imaginary-mode flattening. Use `--opt-mode grad` (alias `lbfgs`, default) for L-BFGS minimization or `--opt-mode hess` (alias `rfo`) for RFOptimizer. The optimizer comes from pysisyphus, while an MLIP backend (UMA by default; ORB, MACE, and AIMNet2 also available via `-b/--backend`) provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `_trj.xyz`, or any format supported by `geom_loader`.
 
 ## Examples
 
@@ -15,7 +15,7 @@ pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <nu
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
-Basic minimisation:
+Basic minimization:
 
 ```bash
 pdb2reaction opt -i input.pdb -q 0 -m 1 --out-dir ./result_opt
@@ -86,7 +86,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--freeze-links/--no-freeze-links` | Toggle link-hydrogen parent freezing (PDB inputs only). See [extract](extract.md) for link-hydrogen details. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
 | `--max-cycles INT` | Hard limit on optimization iterations (`opt.max_cycles`). | `10000` |
-| `--opt-mode TEXT` | Optimizer preset: `grad` (`lbfgs`) or `hess` (`rfo`). Aliases `lbfgs`/`rfo` are accepted. On `opt`, `grad` = L-BFGS minimisation; on `tsopt`, `grad` = Hessian-Guided Dimer TS search. For the full subcommand-dependent table, see {ref}`opt-mode-semantics`. | `grad` |
+| `--opt-mode TEXT` | Optimizer preset: `grad` (`lbfgs`) or `hess` (`rfo`). Aliases `lbfgs`/`rfo` are accepted. On `opt`, `grad` = L-BFGS minimization; on `tsopt`, `grad` = Hessian-Guided Dimer TS search. For the full subcommand-dependent table, see {ref}`opt-mode-semantics`. | `grad` |
 | `--flatten/--no-flatten` | Enable/disable the post-optimization imaginary-mode flattening loop. | `False` |
 | `--dump/--no-dump` | Emit trajectory dumps (`optimization_trj.xyz`). | `False` |
 | `--convert-files/--no-convert-files` | Enable or disable XYZ/TRJ → PDB companions for PDB inputs and XYZ → GJF companions for Gaussian templates. | `True` |
@@ -133,8 +133,6 @@ the MLIP force noise floor (~4×10⁻⁴ au) exceeds the force-based convergence
 (e.g. `baker` max_force = 3×10⁻⁴ au). The fallback is skipped for chain-of-states
 optimizers, which store per-image energy arrays.
 ```
-
-- **Naming note:** The CLI accepts `grad|lbfgs` and `hess|rfo`. In YAML, use `lbfgs` or `rfo` directly.
 
 ## See Also
 

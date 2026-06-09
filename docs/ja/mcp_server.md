@@ -79,7 +79,7 @@ pip install "pdb2reaction[mcp]"
 `find_transition_state`（CLI: `pdb2reaction tsopt`）は `--opt-mode` により
 代替の TS オプティマイザも公開しています。
 
-- `opt_mode="trim"` — Helgaker (1991) の trust-region image-minimisation TS opt
+- `opt_mode="trim"` — Helgaker (1991) の trust-region image-minimization TS opt
 - `opt_mode="rsprfo"` — Banerjee (1985) の restricted-step P-RFO TS opt
 
 ## クライアント設定
@@ -136,7 +136,7 @@ async with stdio_client(server_params) as (read, write):
   起動するため、エージェントは各ツール呼び出しで `timeout_seconds` を設定し、
   暴走する計算を制限してください。
 - 出力ファイルは `out_dir` キーワード引数の配下に置かれます（デフォルトは一意の
-  `tempfile.mkdtemp("p2r_mcp_<subcmd>_…")` で、同時並行のエージェント呼び出しが
+  `tempfile.mkdtemp(prefix="p2r_mcp_<subcmd>_…")` で、同時並行のエージェント呼び出しが
   衝突しないようになっています）。
 - サーバーは `~/.bashrc` / ログイン環境を変更したり、ソフトウェアをインストールしたり、
   `out_dir` の外に書き込んだりはしません。すべての MLIP の重みや PDB 入力は

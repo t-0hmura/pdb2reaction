@@ -63,7 +63,7 @@ pdb2reaction irc -i ts.pdb -q 0 --precision fp64 ...
 ```
 
 `--precision` is backend-agnostic: it routes to UMA `precision` /
-ORB `precision` / MACE `default_dtype` automatically; AIMNet2 ignores it.
+ORB `precision` / MACE `default_dtype` automatically; AIMNet2 treats fp32 as a no-op and rejects fp64 (its model inputs are cast to float32 upstream).
 
 Or via YAML config:
 

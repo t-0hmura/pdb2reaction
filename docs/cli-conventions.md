@@ -21,7 +21,7 @@ Every boolean CLI flag accepts **all four forms permanently** (no deprecation cy
 
 All four forms route through a single root-CLI `bool_compat` synthesizer; `tests/test_bool_compat_cli.py` walks every registered bool option against every form on every release, so a missing entry is caught by CI.
 
-Common toggles: `--tsopt` / `--thermo` / `--dft` (post-processing stages) · `--freeze-links` (freeze link-H parents, default `True`) · `--dump` (write trajectory files) · `--preopt` / `--endopt` (pre/post optimisation) · `--climb` (climbing-image MEP) · `--convert-files` (generate PDB / GJF companions).
+Common toggles: `--tsopt` / `--thermo` / `--dft` (post-processing stages) · `--freeze-links` (freeze link-H parents, default `True`) · `--dump` (write trajectory files) · `--preopt` / `--endopt` (pre/post optimization) · `--climb` (climbing-image MEP) · `--convert-files` (generate PDB / GJF companions).
 
 ### Contributing a new bool flag
 
@@ -34,7 +34,7 @@ pdb2reaction <subcmd> --help               # core options
 pdb2reaction <subcmd> --help-advanced      # full option set
 ```
 
-Supported by `all`, `scan` / `scan2d` / `scan3d`, `opt`, `path-opt`, `path-search`, `tsopt`, `freq`, `irc`, `dft`, `add-elem-info`, `trj2fig`, `energy-diagram`, `extract`, `fix-altloc`.
+Supported by `all`, `scan` / `scan2d` / `scan3d`, `opt`, `path-opt`, `path-search`, `tsopt`, `freq`, `irc`, `dft`, `sp`, `add-elem-info`, `trj2fig`, `energy-diagram`, `bond-summary`, `extract`, `fix-altloc`.
 
 (verbosity-levels)=
 
@@ -161,12 +161,12 @@ For `scan`, one literal = one **stage**; multiple stages → multiple literals a
 | `0` | Success | every subcommand |
 | `1` | Unexpected error (any unhandled exception) | every subcommand |
 | `2` | Zero step length **or** missing import dependency | `opt`, `tsopt`, `path-opt`; `dft` (PySCF / GPU4PySCF not installed) |
-| `3` | Optimiser failure **or** SCF not converged | `opt`, `tsopt`, `path-opt`; `dft` |
+| `3` | Optimizer failure **or** SCF not converged | `opt`, `tsopt`, `path-opt`; `dft` |
 | `4` | Trajectory write error | `path-opt` |
 | `5` | HEI export error | `path-opt` |
 | `130` | Keyboard interrupt (SIGINT) | every subcommand |
 
-Subcommands that only use `0 / 1 / 130` (e.g. `irc`, `freq`) follow the same scheme; they simply don't currently raise the optimiser-specific errors.
+Subcommands that only use `0 / 1 / 130` (e.g. `irc`, `freq`) follow the same scheme; they simply don't currently raise the optimizer-specific errors.
 
 (opt-mode-semantics)=
 
@@ -187,7 +187,7 @@ The same `--opt-mode` token selects **different algorithms** by subcommand, and 
 | `all` (TSOPT preset, `--opt-mode-post`) | Dimer | RS-I-RFO | `hess` |
 | `all` (post-IRC endpoint, `--opt-mode-post`) | L-BFGS | RFO | `hess` |
 
-Algorithm aliases are accepted on `opt` (`lbfgs` / `rfo`) and `tsopt` (`dimer` / `rsirfo`); all other subcommands accept only `grad` / `hess`. So `--opt-mode grad` on `tsopt` is a **Dimer** TS search, not L-BFGS minimisation — use `--opt-mode dimer|rsirfo` on `tsopt` and `--opt-mode lbfgs|rfo` on `opt` to be unambiguous.
+Algorithm aliases are accepted on `opt` (`lbfgs` / `rfo`) and `tsopt` (`dimer` / `rsirfo`); all other subcommands accept only `grad` / `hess`. So `--opt-mode grad` on `tsopt` is a **Dimer** TS search, not L-BFGS minimization — use `--opt-mode dimer|rsirfo` on `tsopt` and `--opt-mode lbfgs|rfo` on `opt` to be unambiguous.
 
 ## CLI ↔ YAML name mismatches
 
@@ -220,7 +220,7 @@ built-in defaults  <  --config (YAML)  <  CLI options
 
 Built-in defaults are in `pdb2reaction/core/defaults.py`. Only *explicitly supplied* CLI values override YAML; options left at their CLI default do not mask YAML values. Applies uniformly to all calc subcommands. Full schema: [YAML Reference](yaml-reference.md).
 
-- **Known exception**: `flatten_max_iter` — when `--flatten` is not passed, the CLI initialiser seeds `flatten_max_iter = 0`, overriding `defaults.py`'s 50. See {ref}`flatten-precedence-caveat`.
+- **Known exception**: `flatten_max_iter` — when `--flatten` is not passed, the CLI initializer seeds `flatten_max_iter = 0`, overriding `defaults.py`'s 50. See {ref}`flatten-precedence-caveat`.
 
 ## Output directory
 

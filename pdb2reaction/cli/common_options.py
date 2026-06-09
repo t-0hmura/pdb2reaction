@@ -65,12 +65,12 @@ def add_coord_type_option(
 ) -> Callable[[Callable], Callable]:
     """Attach `--coord-type` to a Click command.
 
-    Selects the optimisation coordinate system passed through to pysisyphus'
+    Selects the optimization coordinate system passed through to pysisyphus'
     Geometry constructor. ``cart`` (default) preserves the historical
-    Cartesian behaviour used for the published paper data; ``dlc``
+    Cartesian behavior used for the published paper data; ``dlc``
     (delocalised internal coordinates) often converges faster on torsion-
     rich systems but can be brittle for bond-making / linear fragments.
-    ``redund`` and ``tric`` are accepted for single-structure optimisers
+    ``redund`` and ``tric`` are accepted for single-structure optimizers
     (opt / tsopt / scan / freq) but NOT for Chain-of-States engines —
     ``path-opt`` and ``path-search`` pass ``choices=("cart", "dlc")`` here
     because pysisyphus' ChainOfStates only honours those two coordinate
@@ -98,7 +98,7 @@ def add_coord_type_option(
             default=None,
             show_default=False,
             help=(
-                f"Optimisation coordinate system ({options_str}). cart is the "
+                f"Optimization coordinate system ({options_str}). cart is the "
                 f"robust default used in published numbers; dlc speeds up "
                 f"torsion-rich opts."
             ),

@@ -18,7 +18,7 @@ Before a long run, verify:
 | Symptom | Cause | Fix |
 |---|---|---|
 | `Element symbols are missing in '...'. Please run pdb2reaction add-elem-info` | Many PDBs leave the element column (cols 77–78) blank; `extract` needs them for atom typing. | `pdb2reaction add-elem-info -i input.pdb -o input_with_elem.pdb`, then re-run. |
-| `[multi] Atom count mismatch` / `[multi] Atom order mismatch` | Inputs prepared by different tools / settings, or atom order changed after re-protonation / re-parametrisation. | Regenerate **all** structures with the same protonation tool + settings. For MD ensembles, extract frames from the same trajectory + topology. Never reorder PDB atoms after building topology. |
+| `[multi] Atom count mismatch` / `[multi] Atom order mismatch` | Inputs prepared by different tools / settings, or atom order changed after re-protonation / re-parametrization. | Regenerate **all** structures with the same protonation tool + settings. For MD ensembles, extract frames from the same trajectory + topology. Never reorder PDB atoms after building topology. |
 | Active-site model empty / catalytic residues missing | Default radius too small. | Increase `--radius` (e.g. 2.6 → 3.5 Å); force-include with `--selected-resn 'A:123,B:456'` (see {ref}`selected-resn-takes-ids`); if `--exclude-backbone` over-trims, pass `--no-exclude-backbone`. |
 | Unreliable energies / barriers shifting with model size | Extracted model too small. | Increase `-r` (e.g. `pdb2reaction extract -i complex.pdb -c 'SUB' -o model.pdb -r 4.0`). |
 | Non-standard residues not truncated (SEP / TPO / MLY / D-amino acids) | Backbone truncation + link-H placement only apply to known three-letter codes. | `--modified-residue "SEP,TPO,MLY"`. If insufficient (unusual backbone topology), build the active-site model manually and pass it (`-i model.pdb`) directly to downstream subcommands. |
@@ -42,8 +42,8 @@ pdb2reaction         -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'    # extracti
 
 | Symptom | Fix |
 |---|---|
-| UMA download fails / HF auth missing (`huggingface_hub.errors.GatedRepoError`, `401`, `403`) | `hf auth login` once per env / machine; accept the UMA model licence on the HF page. On HPC, ensure HF cache dir is writable from compute nodes. |
-| `ImportError: orb-models is required` (or similar for AIMNet2 / MACE) | `pip install "pdb2reaction[orb]"` / `"[aimnet]"`; MACE installs into a separate env. |
+| UMA download fails / HF auth missing (`huggingface_hub.errors.GatedRepoError`, `401`, `403`) | `hf auth login` once per env / machine; accept the UMA model license on the HF page. On HPC, ensure HF cache dir is writable from compute nodes. |
+| `ImportError: orb-models is required` (or similar for AIMNet2 / MACE) | For ORB: `pip install "pdb2reaction[orb]"`. For AIMNet2: `pip install "pdb2reaction[aimnet]"`. MACE installs into a separate env. |
 | `torch.cuda.is_available()` returns `False` | Install PyTorch matching your cluster CUDA runtime; verify `nvidia-smi` + `python -c "import torch; print(torch.version.cuda, torch.cuda.is_available())"`. |
 | DMF fails (`--mep-mode dmf`: `cyipopt` missing or `No module named pydmf`) | `conda install -c conda-forge cyipopt` before installing `pdb2reaction`. `pydmf` ships as a dep; if missing, `pip install --force-reinstall pdb2reaction`. |
 | Plot export fails (Plotly / Chrome) | `plotly_get_chrome -y`. |
@@ -53,15 +53,27 @@ pdb2reaction         -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'    # extracti
 (calculation-convergence-problems)=
 ## Calculation / convergence
 
-### Optimiser reaches `max_cycles` with `max(force)` slightly above threshold
+### Optimizer reaches `max_cycles` with `max(force)` slightly above threshold
 
-MLIP gradients carry a stochastic noise floor (~10⁻⁴ Ha/Bohr) that can exceed the `baker` force criterion (3×10⁻⁴ au) even after the geometry has effectively converged. The **energy-plateau fallback** handles this automatically: `opt.energy_plateau: true` declares convergence when the energy range over the last `opt.energy_plateau_window` (default 50) steps falls below `opt.energy_plateau_thresh` (default `1×10⁻⁴ au ≈ 0.06 kcal/mol`).
+MLIP gradients carry a stochastic noise floor (~10⁻⁴ Ha/Bohr) that can exceed the `baker` force-convergence criterion (the `baker` preset's max-force threshold, 3×10⁻⁴ au) even after the geometry has effectively converged. The **energy-plateau fallback** handles this automatically: `opt.energy_plateau: true` declares convergence when the energy range over the last `opt.energy_plateau_window` (default 50) steps falls below `opt.energy_plateau_thresh` (default `1×10⁻⁴ au ≈ 0.06 kcal/mol`).
 
-To override: loosen the force threshold (`--thresh gau` default / `--thresh gau_loose`), or tune `opt.energy_plateau_thresh` / `opt.energy_plateau_window` (or set `opt.energy_plateau: false`) in YAML. The fallback is **skipped for chain-of-states optimisers** (`path-opt`, `path-search` GSM / DMF stages).
+To override, do one of:
 
-### TS optimisation does not converge / multiple imaginary modes remain
+- Loosen the force threshold (`--thresh gau` default / `--thresh gau_loose`).
+- Tune `opt.energy_plateau_thresh` / `opt.energy_plateau_window` in YAML.
+- Disable the fallback with `opt.energy_plateau: false` in YAML.
 
-Switch `--opt-mode grad` (Dimer) ↔ `--opt-mode hess` (RS-I-RFO); `--flatten` (standalone `tsopt` / `opt` / `pdb2reaction all`); raise `--max-cycles 20000` (standalone `tsopt`) or `--tsopt-max-cycles 20000` (`all`); tighter `--thresh baker` / `gau_tight`; reduce step sizes / trust radii via YAML (`lbfgs.max_step`, `hessian_dimer.lbfgs.max_step`, `rfo.trust_radius` / `trust_min` / `trust_max`, `rsirfo` block — see [YAML Reference](yaml-reference.md)).
+The fallback is **skipped for chain-of-states optimizers** (optimizers that move a whole chain of path images together), namely the `path-opt` and `path-search` Growing String Method (GSM) / Direct Max Flux (DMF) stages.
+
+### TS optimization does not converge / multiple imaginary modes remain
+
+Try the following, in order:
+
+1. Switch the optimizer mode: `--opt-mode grad` (Dimer Method) ↔ `--opt-mode hess` (Restricted-Step Image-RFO, RS-I-RFO).
+2. Add `--flatten` (available on standalone `tsopt` / `opt` / `pdb2reaction all`).
+3. Raise the cycle limit: `--max-cycles 20000` (standalone `tsopt`) or `--tsopt-max-cycles 20000` (`all`).
+4. Tighten the force threshold: `--thresh baker` / `gau_tight`.
+5. Reduce step sizes / trust radii via YAML: `lbfgs.max_step`, `hessian_dimer.lbfgs.max_step`, `rfo.trust_radius` / `trust_min` / `trust_max`, the `rsirfo` block — see [YAML Reference](yaml-reference.md).
 
 ### IRC does not terminate properly
 
@@ -69,15 +81,20 @@ Reduce `--step-size 0.05` (default 0.10 bohr); raise `--max-cycles 200`; confirm
 
 ### MEP search (GSM / DMF) fails or misses bonds
 
-Raise `--max-nodes 30` / `40` for complex reactions; `--preopt`; try the alternate `--mep-mode dmf` ↔ `gsm`; tune `bond.bond_factor` / `bond.delta_fraction` in YAML.
+The minimum energy path (MEP) search can stall or skip an expected bond change. Try the following:
+
+- Raise `--max-nodes 30` / `40` for complex reactions.
+- Add `--preopt`.
+- Try the alternate method: `--mep-mode dmf` ↔ `gsm`.
+- Tune `bond.bond_factor` / `bond.delta_fraction` in YAML.
 
 ---
 
 ## Performance / stability tips
 
 - **OOM** — shrink active-site model (`--radius`), lower `--max-nodes`, use lighter `--opt-mode grad`.
-- **Analytical Hessian** — keep the default `FiniteDifference`; only set `--hessian-calc-mode Analytical` if you have 16 GB+ VRAM (in 500+ atom systems).
-- **`workers > 1`** — improves UMA throughput on HPC, but disables the analytical Hessian.
+- **Analytical Hessian** — keep the default `FiniteDifference`; only set `--hessian-calc-mode Analytical` if you have 16 GB+ VRAM, and note it fits 16 GB only up to ~200 atoms (see the VRAM table below).
+- **`workers > 1`** — improves UMA throughput on HPC, but is incompatible with the analytical Hessian (it raises a `RuntimeError`); pass `--hessian-calc-mode FiniteDifference` explicitly, or run with `--workers 1` for Hessian-based modes.
 - **Large systems (1000+ atoms)** — extract a smaller active-site model (`--radius 2.5`) or run multi-GPU.
 - **DFT scratch on HPC (~hundreds of atoms)** — PySCF / GPU4PySCF spills integrals to `$PYSCF_TMPDIR` (or `$TMPDIR` / `/tmp` if unset). Node-local `/tmp` is often small / `tmpfs`-backed and can fill up mid-SCF. Set `export PYSCF_TMPDIR="$PBS_O_WORKDIR"` before launching `dft`.
 

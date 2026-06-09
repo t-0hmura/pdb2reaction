@@ -9,7 +9,7 @@ This page documents what files each `pdb2reaction` subcommand writes to its outp
 | `summary.json` | `all`, `path-search`, and every per-stage subcommand that runs `write_result_json` | Authoritative JSON envelope (see [JSON Output Reference](json-output.md)). Read this first. Pure utility subcommands that do not call `write_result_json` (e.g. `fix-altloc`, `add-elem-info`, `bond-summary`) do not emit it. |
 | `result.json` | per-stage subcommands that call `write_result_json` (`opt`, `tsopt`, `freq`, `irc`, `sp`, `scan` / `scan2d` / `scan3d`, `path-opt`, `dft`, `extract`) | Alternate filename — identical payload to `summary.json`. Read `summary.json` for the single-filename convention; `result.json` carries the same content and can be deleted if you only consume `summary.json`. |
 | `summary.log` | `path-search`, `all` | Human-readable run log (one row per segment / stage). |
-| `final_geometry.xyz` | `opt`, `tsopt` | Optimised geometry (XYZ, full precision). |
+| `final_geometry.xyz` | `opt`, `tsopt` | Optimized geometry (XYZ, full precision). |
 | `mep.pdb` / `mep_trj.xyz` | `path-search` | Reaction path frames (PDB / XYZ). |
 | `final_geometries_trj.xyz` / `hei.xyz` | `path-opt` | Standalone path-opt trajectory (full path) and highest-energy image (`.pdb` / `.gjf` companions when conversion is enabled). |
 | `mep_plot.png` | `path-search` | Energy profile (PNG) of the MEP. (`all` promotes the styled `energy_diagram_MEP.png` to the root instead.) |
@@ -30,7 +30,7 @@ This page documents what files each `pdb2reaction` subcommand writes to its outp
 | `scan` / `scan2d` / `scan3d` | `./result_scan*/` |
 | `path-opt` / `path-search` | `./result_path_*/` |
 | `sp` | `./result_sp/` |
-| `extract` | `./` (writes `<input>_<cluster>.pdb`) |
+| `extract` | `./` (writes `model.pdb`, or `model_<input>.pdb` for multiple inputs) |
 
 Override with `--out-dir <path>` (or `-o`).
 
@@ -41,6 +41,7 @@ A subcommand run on its own writes a **flat** result directory. The same writer,
 - **Standalone subcommand** → flat `result_<subcmd>/` with the files above. There is no `segments/` and no `_work/`; those only appear when `all` coordinates several writers in one run.
 - **Inside `all`, leaf writers nest unchanged.** A per-segment leaf output at `segments/seg_NN/<subcmd>/` is structurally identical to the standalone `result_<subcmd>/` — `all` simply hands the same writer a different output directory.
 - **`path-search` / `path-opt` are the engine exception.** Run standalone, `path-search` is itself a deliverable (`result_path_search/` with its own `summary.log`, `mep.pdb`, `mep_trj.xyz`, `mep_plot.png`, `energy_diagram_MEP.png`). Inside `all`, its raw output is treated as scratch under `_work/path_search/`, and only the merged products (`mep.pdb`, `mep_trj.xyz`, `mep_w_ref.pdb`, `energy_diagram_MEP.png`) are promoted to the pipeline root.
+
 The `all` tree therefore has three zones:
 
 ```text

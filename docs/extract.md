@@ -59,16 +59,16 @@ pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
 - **Independent hetero–hetero cutoff (`--radius-het2het`)**: adds residues when a substrate hetero atom (non C/H) lies within the specified Å of a protein hetero atom. With backbone exclusion enabled, the protein atom must be non-backbone.
 - **Water handling**: HOH / WAT / H2O / DOD / TIP / TIP3 / SOL are included by default (`--include-h2o`).
 - **Forced inclusion**: `--selected-resn` accepts residue **IDs** (e.g. `A:123A`). See {ref}`selected-resn-takes-ids` in CLI Conventions for the residue-ID requirement.
-- **Neighbour safeguards**:
-  - When backbone exclusion is off and a residue contacts the substrate with a backbone atom, the peptide-adjacent N / C neighbours (C–N ≤ 1.9 Å) are auto-included; termini keep caps (N/H* or C/O/OXT).
+- **Neighbor safeguards**:
+  - When backbone exclusion is off and a residue contacts the substrate with a backbone atom, the peptide-adjacent N / C neighbors (C–N ≤ 1.9 Å) are auto-included; termini keep caps (N/H* or C/O/OXT).
   - Disulfide bonds (SG–SG ≤ 2.5 Å) bring both cysteines.
-  - Non-terminal PRO residues always pull in the N-side amino acid; CA is preserved even when backbone atoms are removed, and under `--exclude-backbone` the neighbour's C / O / OXT remain to maintain the peptide bond.
+  - Non-terminal PRO residues always pull in the N-side amino acid; CA is preserved even when backbone atoms are removed, and under `--exclude-backbone` the neighbor's C / O / OXT remain to maintain the peptide bond.
 
 ### Truncation and capping
 
 - Isolated residues retain only side-chain atoms; amino-acid backbone atoms (N, CA, C, O, OXT plus N/CA hydrogens) are removed except for PRO / HYP safeguards.
 - Continuous peptide stretches keep internal backbone atoms; only terminal caps (N/H* or C/O/OXT) are removed. TER awareness prevents capping across chain breaks.
-- With `--exclude-backbone`, main-chain atoms on all **non-substrate** amino acids are stripped (subject to PRO / HYP safeguards and PRO neighbour retention).
+- With `--exclude-backbone`, main-chain atoms on all **non-substrate** amino acids are stripped (subject to PRO / HYP safeguards and PRO neighbor retention).
 - Non-amino-acid residues never lose atoms named like backbone (N / CA / HA / H / H1 / H2 / H3).
 
 ### Link hydrogens (`--add-linkh`)
@@ -172,7 +172,7 @@ If `--modified-residue` does not cover your use case, **manual active-site model
 This appendix exists mainly for debugging cases where `extract` misclassifies residues due to **non-standard residue or atom naming**. If your inputs follow standard PDB conventions, you can usually skip it.
 
 ```{important}
-For `extract` to work correctly, **residue and atom names in the input PDB must conform to standard PDB naming conventions**. The tool relies on internal dictionaries to recognise amino acids, ions, water molecules, and backbone atoms. Non-standard naming will cause residues to be misclassified or charges to be incorrectly assigned.
+For `extract` to work correctly, **residue and atom names in the input PDB must conform to standard PDB naming conventions**. The tool relies on internal dictionaries to recognize amino acids, ions, water molecules, and backbone atoms. Non-standard naming will cause residues to be misclassified or charges to be incorrectly assigned.
 ```
 
 ### `AMINO_ACIDS`
@@ -212,7 +212,7 @@ N, C, O, CA, OXT, H, H1, H2, H3, HN, HA, HA2, HA3
 
 ### `ION`
 
-Recognised ion residue names with formal charges:
+Recognized ion residue names with formal charges:
 
 | Charge | Residue names |
 |---|---|
@@ -224,7 +224,7 @@ Recognised ion residue names with formal charges:
 
 ### `WATER_RES`
 
-Recognised water residue names (included by default with `--include-h2o`, assigned zero charge):
+Recognized water residue names (included by default with `--include-h2o`, assigned zero charge):
 
 ```
 HOH, WAT, H2O, DOD, TIP, TIP3, SOL
@@ -234,17 +234,17 @@ HOH, WAT, H2O, DOD, TIP, TIP3, SOL
 
 ## Link hydrogen and frozen atoms
 
-When `pdb2reaction` extracts an active-site model from a larger structure, severed bonds are capped with **link hydrogens**. By default (`--freeze-links`), the parent atoms of these link hydrogens are frozen during optimisation and path searches to prevent unphysical rearrangement at the boundary.
+When `pdb2reaction` extracts an active-site model from a larger structure, severed bonds are capped with **link hydrogens**. By default (`--freeze-links`), the parent atoms of these link hydrogens are frozen during optimization and path searches to prevent unphysical rearrangement at the boundary.
 
 - **Forces** — frozen atoms receive zeroed forces.
 - **Hessian** — frozen degrees of freedom are either removed (`return_partial_hessian: true`) or zeroed in the full matrix.
-- **Vibrational analysis** — when frozen atoms are present, `freq` automatically performs Partial Hessian Vibrational Analysis (PHVA), diagonalising only the active block of the Hessian.
+- **Vibrational analysis** — when frozen atoms are present, `freq` automatically performs Partial Hessian Vibrational Analysis (PHVA), diagonalizing only the active block of the Hessian.
 
 Frozen atoms can also be set manually via the `geom.freeze_atoms` YAML key (1-based indices). CLI-detected link atoms are merged with YAML-specified atoms.
 
 ## See Also
 
-- [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
+- [Common Error Recipes](recipes-common-errors.md) — Symptom-first failure routing
 - [all](all.md) — End-to-end workflow that calls extract internally via `-c/--center`
 - [path-search](path-search.md) — MEP search on extracted active site models
 - [scan](scan.md) — Staged scan on extracted active site models
