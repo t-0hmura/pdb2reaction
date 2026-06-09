@@ -1,10 +1,14 @@
 # `tsopt`
 
-`pdb2reaction tsopt` は、遷移状態（TS）*候補*を一次鞍点に最適化します。デフォルトの optimizer は **RS-I-RFO**（Restricted-Step Image Rational Function Optimization、`--opt-mode hess`）です。RS-I-RFO で収束しない場合や、完全 Hessian の再計算コストが過大な場合は **Hessian-Guided Dimer**（`--opt-mode grad`）に切り替えます。`tsopt` は収束後に自動で Hessian 計算と虚振動数チェックを行います。妥当な TS（一次鞍点）では虚振動数が **ちょうど 1 つ** です。完全な振動解析や熱化学補正が必要な場合のみ別途 [`freq`](freq.md) を実行します（虚振動数チェックは `tsopt` に内蔵済み）。端点の接続性は必ず [`irc`](irc.md) で確認してください。
+`pdb2reaction tsopt` は、遷移状態（TS）*候補*を一次鞍点に最適化します。虚振動数チェックを内蔵しています。候補には `path-opt` / `path-search` の最高エネルギー像（HEI: highest-energy image）、または自前の構造を使えます。
+
+optimizer は `--opt-mode` で選びます。ほとんどの系では `--opt-mode hess`（デフォルトの **RS-I-RFO**: Restricted-Step Image Rational Function Optimization）を使ってください。完全 Hessian を用いるため、一般的により堅牢です。RS-I-RFO で収束しない場合や完全 Hessian の再計算コストが過大な場合は、`--opt-mode grad`（**Hessian-Guided Dimer**）に切り替えます。候補に複数の虚振動数があり余分なモードの除去が必要な場合は、`--flatten`（デフォルト無効）を有効化します。
+
+収束後、`tsopt` は最終的な Hessian 計算と虚振動数チェックを自動で行います。妥当な TS では虚振動数が **ちょうど 1 つ** です。別途の [`freq`](freq.md) は、完全な振動解析や熱化学補正が必要な場合にのみ実行します。端点の接続性は必ず [`irc`](irc.md) で確認してください。
+
+TS 初期構造がまず必要な場合は、2 端点なら [path-opt](path-opt.md)、2 構造以上なら [path-search](path-search.md) を実行し、得られた HEI を `tsopt` → `irc` の順で最適化・検証してください。XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定し、XYZ 座標を保持したまま、形式に応じた PDB/GJF 出力への変換ができます。
 
 > **命名規則の注意:** CLI は `grad|dimer`（= Dimer）および `hess|rsirfo`（= RS-I-RFO、デフォルト）を受け付けます。YAML ではトップレベルの `hessian_dimer:`（Dimer）または `rsirfo:`（RS-I-RFO）ブロックを直接指定してください。
-
-TS 初期構造（`path-opt` / `path-search` の HEI、または自前のもの）を一次鞍点に最適化し、虚振動数チェックを内蔵で行いたい場合に使用します。ほとんどの系では `--opt-mode hess`（RS-I-RFO、デフォルト）を選びます。完全 Hessian を用いるため、一般的により堅牢です。RS-I-RFO で収束しない場合や完全 Hessian の再計算コストが過大な場合は、代替として `--opt-mode grad`（Hessian-Guided Dimer）を選びます。候補に複数の虚振動数があり余分なモードの除去が必要な場合は、`--flatten`（デフォルト無効）を有効化します。XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定し、XYZ 座標を保持したまま PDB/GJF へ変換できます。TS 初期構造が必要な場合は、2 端点なら [path-opt](path-opt.md)、2 構造以上なら [path-search](path-search.md) で HEI を取得してから `tsopt`（内部で虚振動数チェック済み）→ `irc` の順で検証してください。
 
 ## 実行例
 
@@ -94,29 +98,35 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
+| **入力と電荷** | | |
 | `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル（`.pdb` / `.xyz` / `.gjf` / `.trj`） | 必須 |
 | `-q, --charge INT` | 総電荷。`.gjf` テンプレートまたは `--ligand-charge`（PDB 入力または `--ref-pdb` 付き XYZ/GJF）が提供しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
 | `-l, --ligand-charge TEXT` | スカラー整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
+| `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
+| `--ref-pdb FILE` | 入力が XYZ/GJF の場合に使用する参照 PDB トポロジー | _None_ |
+| **バックエンドと計算** | | |
+| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--workers INT` | MLIP 予測器の並列度（workers > 1 で解析ヘシアン無効）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1` |
 | `--workers-per-node INT` | ノードあたりのワーカー数。並列予測器に渡されます | `1` |
-| `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
-| `--freeze-links/--no-freeze-links` | PDB のみ。リンク水素の親を凍結（`geom.freeze_atoms` にマージ）。リンク水素の詳細は [extract](extract.md) を参照 | `True` |
-| `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
-| `--max-cycles INT` | `opt.max_cycles` に渡されるマクロサイクル上限 | `10000` |
-| `--opt-mode TEXT` | TS optimizer プリセット（Choice: `grad` / `hess` / `dimer` / `rsirfo` / `trim` / `rsprfo`）。`grad`/`dimer` → Hessian-Guided Dimer; `hess`/`rsirfo` → RS-I-RFO（デフォルト）; `trim` → TRIM（Helgaker、non-microiter）; `rsprfo` → RS-P-RFO（Banerjee、non-microiter）。サブコマンド別の対応表（`opt` は L-BFGS/RFO、`tsopt` は Dimer/RS-I-RFO）は {ref}`ja-opt-mode-semantics` を参照 | `hess` |
-| `--dump/--no-dump` | 軌跡をダンプ | `False` |
-| `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_tsopt/` |
-| `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`、`gau`、`gau_tight`、`gau_vtight`、`baker`、`never`） | `baker` |
-| `--flatten/--no-flatten` | 余分な虚振動数モードのフラット化ループを有効化（`False` は `flatten_max_iter=0` を強制）。TS 最適化が収束した後、ヘシアン行列の余分な負の固有値モードを反復的にフラット化し、虚振動数が 1 つだけ残るか反復上限に達するまで繰り返します。dimer（dimer ループ）および RS-I-RFO（収束後）の両方に適用 | `False` |
 | `--hessian-calc-mode CHOICE` | MLIP ヘシアンモード（`Analytical` または `FiniteDifference`） | `FiniteDifference` |
-| `--convert-files/--no-convert-files` | PDB または Gaussian 入力用の XYZ/TRJ → PDB/GJF コンパニオン出力を切り替え | `True` |
-| `--ref-pdb FILE` | 入力が XYZ/GJF の場合に使用する参照 PDB トポロジー | _None_ |
-| `--config FILE` | 明示 CLI オプションより前に適用するベース YAML 設定ファイル | _None_ |
-| `--show-config/--no-show-config` | 解決後の設定レイヤーを表示して実行を継続 | `False` |
-| `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
-| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
+| **活性領域の凍結** | | |
+| `--freeze-links/--no-freeze-links` | PDB のみ。リンク水素の親を凍結（`geom.freeze_atoms` にマージ）。リンク水素の詳細は [extract](extract.md) を参照 | `True` |
+| `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
+| **TS optimizer とモード** | | |
+| `--opt-mode TEXT` | TS optimizer プリセット（Choice: `grad` / `hess` / `dimer` / `rsirfo` / `trim` / `rsprfo`）。`grad`/`dimer` → Hessian-Guided Dimer; `hess`/`rsirfo` → RS-I-RFO（デフォルト）; `trim` → TRIM（Helgaker、non-microiter）; `rsprfo` → RS-P-RFO（Banerjee、non-microiter）。サブコマンド別の対応表（`opt` は L-BFGS/RFO、`tsopt` は Dimer/RS-I-RFO）は {ref}`ja-opt-mode-semantics` を参照 | `hess` |
+| `--flatten/--no-flatten` | 余分な虚振動数モードのフラット化ループを有効化（`False` は `flatten_max_iter=0` を強制）。TS 最適化が収束した後、ヘシアン行列の余分な負の固有値モードを反復的にフラット化し、虚振動数が 1 つだけ残るか反復上限に達するまで繰り返します。dimer（dimer ループ）および RS-I-RFO（収束後）の両方に適用 | `False` |
+| **閾値とサイクル** | | |
+| `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`、`gau`、`gau_tight`、`gau_vtight`、`baker`、`never`） | `baker` |
+| `--max-cycles INT` | `opt.max_cycles` に渡されるマクロサイクル上限 | `10000` |
+| **出力と設定** | | |
+| `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_tsopt/` |
+| `--convert-files/--no-convert-files` | PDB または Gaussian 入力用の XYZ/TRJ → PDB/GJF コンパニオン出力を切り替え | `True` |
+| `--dump/--no-dump` | 軌跡をダンプ | `False` |
+| `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
+| `--config FILE` | 明示 CLI オプションより前に適用するベース YAML 設定ファイル | _None_ |
+| `--show-config/--no-show-config` | 解決後の設定レイヤーを表示して実行を継続 | `False` |
 | `--dry-run/--no-dry-run` | 実行せずに入力/設定を検証し、実行計画を表示 | `False` |
 
 (ja-flatten-precedence-caveat)=
@@ -199,7 +209,7 @@ TS 収束が遅い場合や最適化中に TS モードが失われる場合は�
 
 ## 関連項目
 
-- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
+- [典型エラー別レシピ](recipes-common-errors.md) — 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) — 詳細な切り分け
 - [path-search](path-search.md) — TS 候補（HEI）を特定する MEP 探索
 - [irc](irc.md) — 最適化された TS からの反応経路追跡

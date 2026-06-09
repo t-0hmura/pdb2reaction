@@ -1,6 +1,12 @@
 # `scan3d`
 
-調和拘束と MLIP 緩和により、3 距離 `(d₁, d₂, d₃)` のグリッドスキャンを行い、その距離空間上の 3D ポテンシャルエネルギー体積を生成します。この体積を得たいとき、または既存の `surface.csv` を再プロットしたいときに使用します。ターゲットは `-s/--scan-lists`（YAML/JSON ファイルパス、推奨）またはインライン Python リテラルで指定するか、`--csv` で既存 `surface.csv` の可視化のみを実行します。`scan3d` は d₁ → d₂ → d₃ の順にループをネストし、対応する拘束をかけて各格子点を緩和します。デフォルトは L-BFGS（`--opt-mode grad`）で、RFOptimizer が必要な場合は `--opt-mode hess` を指定してください。XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定すると、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
+調和拘束と機械学習原子間ポテンシャル（MLIP）緩和により、3 距離 `(d₁, d₂, d₃)` のグリッドスキャンを行い、その距離空間上の 3D ポテンシャルエネルギー体積を生成します。この体積を得たいとき、または既存の `surface.csv` を再プロットしたいときに使用します。
+
+コマンドの駆動方法は 2 通りあります。新規スキャンを実行するには、ターゲットを `-s/--scan-lists` で指定します（YAML/JSON ファイルパスが推奨、またはインライン Python リテラル）。エネルギーを再評価せずに既存の `surface.csv` を再プロットするだけなら、`--csv` で渡します。スキャン中、`scan3d` は d₁ → d₂ → d₃ の順にループをネストし、対応する調和拘束をかけて各格子点を緩和します。
+
+デフォルトのオプティマイザは L-BFGS（`--opt-mode grad`）です。RFOptimizer が必要な場合は `--opt-mode hess` を指定してください。
+
+XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定すると、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
 
 ## 実行例
 
@@ -82,34 +88,41 @@ out_dir/ (デフォルト:./result_scan3d/)
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
+| **入力と電荷** | | |
 | `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル（PDB / XYZ / TRJ / GJF） | `--csv` 未指定時は必須 |
 | `-q, --charge INT` | 総電荷（CLI > テンプレート/`--ligand-charge`）。両方指定時は `-q` が優先 | テンプレート/導出がない場合は必須 |
 | `-l, --ligand-charge TEXT` | スカラー整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
-| `--workers`, `--workers-per-node` | MLIP 予測器の並列度（workers > 1 で解析ヘシアンが無効、UMA バックエンドのみ対応; `workers_per_node` は並列予測器へ転送）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
+| **バックエンドと計算** | | |
+| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
+| `--workers`, `--workers-per-node` | MLIP 予測器の並列度（workers > 1 で解析ヘシアンが無効、UMA バックエンドのみ対応; `workers_per_node` は並列予測器へ転送）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1`, `1` |
+| `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
+| `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
+| **活性領域の凍結** | | |
+| `--freeze-links/--no-freeze-links` | PDB 入力時にリンク水素の親原子を凍結 | `True` |
+| `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
+| **スキャンターゲット** | | |
 | `-s, --scan-lists TEXT` | スキャンターゲット: YAML/JSON スペックファイルパス（推奨）または **単一**のインライン Python リテラルで 3 つの四つ組 `(i,j,lowÅ,highÅ)` を指定。`i`/`j` は整数インデックスまたは PDB セレクタ | `--csv` 未指定時に必須 |
 | `--one-based/--zero-based` | `(i, j)` のインデックスを 1 始まり/0 始まりとして解釈 | `True` |
 | `--print-parsed/--no-print-parsed` | `-s/--scan-lists` 解釈後のペア情報を表示 | `False` |
 | `--max-step-size FLOAT` | 各距離の 1 増分あたりの最大変化量（Å）。グリッド密度を決定 | `0.20` |
+| **緩和** | | |
 | `--bias-k FLOAT` | 調和バイアス強度 `k`（eV·Å⁻²） | `300` |
-| `--relax-max-cycles INT` | 各バイアス緩和の最大最適化サイクル数。YAML で `opt.max_cycles` が指定されていない場合に使用 | `10000` |
 | `--opt-mode TEXT` | `grad` → L-BFGS、`hess` → RFOptimizer | `grad` |
-| `--freeze-links/--no-freeze-links` | PDB 入力時にリンク水素の親原子を凍結 | `True` |
-| `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
-| `--dump/--no-dump` | 各 (d₁, d₂) ペアの `inner_path_d1_###_d2_###_trj.xyz` を保存 | `False` |
-| `--convert-files/--no-convert-files` | PDB/Gaussian 入力で XYZ/TRJ → PDB/GJF 変換を切り替え | `True` |
+| `--relax-max-cycles INT` | 各バイアス緩和の最大最適化サイクル数。YAML で `opt.max_cycles` が指定されていない場合に使用 | `10000` |
+| `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
+| `--preopt/--no-preopt` | スキャン前に無バイアス最適化を実行 | `False` |
+| **マージとアラインメント** | | |
 | `--ref-pdb FILE` | XYZ/GJF 入力時の参照 PDB トポロジー（XYZ 座標を保持） | _None_ |
+| `--convert-files/--no-convert-files` | PDB/Gaussian 入力で XYZ/TRJ → PDB/GJF 変換を切り替え | `True` |
+| **出力と設定** | | |
 | `-o, --out-dir TEXT` | グリッドとプロットの出力ディレクトリ | `./result_scan3d/` |
 | `--csv PATH` | 既存の `surface.csv` を読み込みプロットのみ実行（新規スキャンなし）。指定時は `-i/--input` と `-s/--scan-lists` が任意になります | _None_ |
-| `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
-| `--config FILE` | ベース YAML 設定ファイル（最初に適用） | _None_ |
-| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
-| `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
-| `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
-| `--preopt/--no-preopt` | スキャン前に無バイアス最適化を実行 | `False` |
+| `--dump/--no-dump` | 各 (d₁, d₂) ペアの `inner_path_d1_###_d2_###_trj.xyz` を保存 | `False` |
 | `--baseline {min,first}` | kcal/mol の基準をグローバル最小値または `(i,j,k)=(0,0,0)` に設定 | `min` |
 | `--zmin FLOAT`, `--zmax FLOAT` | 等値面の色範囲（kcal/mol） | 自動 |
 | `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
+| `--config FILE` | ベース YAML 設定ファイル（最初に適用） | _None_ |
 
 ## YAML 設定
 
@@ -147,7 +160,6 @@ bias:
 
 ## 注記
 
-- `-i/--input` と `-s/--scan-lists` は `--csv` が指定されていない限り必須です。
 - `scan3d` はちょうど **3 つ**の四つ組 `(i, j, low_Å, high_Å)` を受け付けます（YAML/JSON では `pairs` キー、インラインでは単一リテラル）。`scan` と異なり、リテラルは **1 つだけ**を受け付けます（複数ステージは非対応）。YAML/JSON ファイル書式、インライン Python リテラル構文、原子セレクタ、クォート規則については {ref}`CLI 規約: スキャンリスト仕様 <ja-scan-list-spec>` を参照してください。
 - 3D グリッドは点数が急激に増加するため、まず `--max-step-size` を大きくするか範囲を狭めることを検討してください。
 - 計算エンジンは MLIP バックエンド（デフォルト: UMA）で、1D/2D スキャンと同じ `HarmonicBiasCalculator` を再利用します。
@@ -159,9 +171,9 @@ bias:
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 ## 関連項目
-- [scan](scan.md) -- 1D 結合距離スキャン
-- [scan2d](scan2d.md) -- 2D 距離グリッドスキャン
-- [opt](opt.md) -- スキャン前後の単一構造最適化
-- [all](all.md) -- 一気通貫ワークフロー
-- [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
-- [トラブルシューティング](troubleshooting.md) -- 詳細な対処ガイド
+- [scan](scan.md) — 1D 結合距離スキャン
+- [scan2d](scan2d.md) — 2D 距離グリッドスキャン
+- [opt](opt.md) — スキャン前後の単一構造最適化
+- [all](all.md) — 一気通貫ワークフロー
+- [典型エラー別レシピ](recipes-common-errors.md) — 症状起点の切り分け
+- [トラブルシューティング](troubleshooting.md) — 詳細な対処ガイド
