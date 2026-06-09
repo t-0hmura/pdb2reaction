@@ -63,7 +63,7 @@ see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
     `--ligand-charge/-l` is provided, the structure is treated as an enzyme–substrate
     complex and `extract.py`’s charge summary derives the total charge before the
     scan (for PDB inputs, or XYZ/GJF when `--ref-pdb` is supplied). The preoptimized
-    structure is saved under `grid/preopt_i###_j###.*` and its unbiased energy is
+    structure is saved under `grid/preopt_iDDD_jDDD.*` and its unbiased energy is
     stored in `surface.csv` with indices `i = j = -1`.
 2. Parse targets from `--scan-lists/-s` (YAML/JSON file or inline literal) into two quadruples, normalize indices
     (1-based by default). For PDB inputs, each atom entry can be an integer index

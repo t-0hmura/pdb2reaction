@@ -32,9 +32,9 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
     the MLIP backend using those charge/spin values instead of the comment.
     If no energies are found or produced, the run aborts.
 2. Normalize the reference specification:
- - `init` → frame `0` (or the last frame when `--reverse-x` is active).
- - `None`/`none`/`null` → absolute energies (no referencing).
- - Integer literal → the corresponding 0-based frame index.
+   - `init` → frame `0` (or the last frame when `--reverse-x` is active).
+   - `None`/`none`/`null` → absolute energies (no referencing).
+   - Integer literal → the corresponding 0-based frame index.
 3. Convert energies to either kcal/mol (default) or hartree and, when a
     reference is active, subtract the reference value to produce ΔE.
 4. Build the Plotly figure (strong ticks, spline interpolation, markers, no

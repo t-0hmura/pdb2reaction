@@ -12,7 +12,7 @@ Each row deep-links into the relevant [Troubleshooting](troubleshooting.md) sect
 | Missing element columns / extraction aborts | `add-elem-info` on the original PDB | {ref}`Input / extraction problems <input-extraction-problems>` |
 | `[multi] Atom count mismatch` / `[multi] Atom order mismatch` | Regenerate all PDBs with the same prep tool + settings; never reorder atoms after MM topology generation | {ref}`Input / extraction problems <input-extraction-problems>` |
 | `-q/--charge is required` errors | Set `-q/--charge` or `--ligand-charge/-l` explicitly | {ref}`Charge / spin problems <charge-spin-problems>` |
-| Energies/states look wrong after a run | Re-check charge/multiplicity policy in CLI conventions | {ref}`Input / extraction problems <input-extraction-problems>` |
+| Energies/states look wrong after a run | Re-check charge/multiplicity policy in CLI conventions | {ref}`Charge / spin problems <charge-spin-problems>` |
 | DMF mode import error (`cyipopt`), or `No module named pydmf` | `conda install -c conda-forge cyipopt` (`pydmf` ships with `pdb2reaction`) | {ref}`Installation / environment problems <installation-environment-problems>` |
 | UMA model 401/403 / gated-repo error (`huggingface_hub.errors.GatedRepoError`) | Run `hf auth login` and accept the UMA model license | {ref}`Installation / environment problems <installation-environment-problems>` |
 | `e3nn` / `fairchem-core` import conflict (MACE in UMA env) | Use a dedicated conda env for MACE (`mace-torch` pins `e3nn==0.4.4`, incompatible with `fairchem-core`'s `e3nn>=0.5`): `pip uninstall -y fairchem-core && pip install mace-torch` | {ref}`Installation / environment problems <installation-environment-problems>` |

@@ -2684,7 +2684,7 @@ def cli(
             # (so Python treats it as local to _run); if the inner sorted()
             # raised before its result was bound, the L2755 read below hit
             # an UnboundLocalError instead of falling back to the empty list
-            # from the cli() scope. Pre-initialise to ensure the name exists.
+            # from the cli() scope. Pre-initialize to ensure the name exists.
             freeze_atoms_for_log = []
             try:
                 freeze_atoms_for_log = sorted(

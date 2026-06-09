@@ -206,7 +206,7 @@ Options:
   --ref-pdb FILE                  Reference PDB for topology when -i provides
                                   XYZ inputs. Enables PDB output conversion in
                                   TSOPT-only, scan, and path_search pipelines.
-  --coord-type [cart|dlc]         Optimisation coordinate system (cart|dlc).
+  --coord-type [cart|dlc]         Optimization coordinate system (cart|dlc).
                                   cart is the robust default used in published
                                   numbers; dlc speeds up torsion-rich opts.
   --precision [fp32|fp64]         MLIP backend precision: fp32 (default) or

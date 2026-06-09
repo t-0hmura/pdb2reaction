@@ -44,7 +44,7 @@ When `--hess` is set, the backend choice picks the Hessian computation strategy:
 - `--backend uma` (default) → `Analytical` Hessian via the UMA torch autograd path
 - `--backend orb` / `mace` / `aimnet2` → falls back to `FiniteDifference` (no analytical Hessian implementation upstream)
 
-`--hessian-calc-mode` lets you force `FiniteDifference` even on UMA if you want a sanity check against the analytical implementation, or vice versa.
+`--hessian-calc-mode` lets you force `FiniteDifference` even on UMA if you want a sanity check against the analytical implementation. Forcing `Analytical` on a non-UMA backend has no effect — those backends always fall back to `FiniteDifference`.
 
 ## CLI options
 

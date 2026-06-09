@@ -56,7 +56,7 @@ class OrbCalculator(MLIPCalculator):
         # "float32-highest", or "float64".  The historical default
         # "float32" is not a valid value and silently falls through to
         # the slow "highest" matmul precision, which also enables the
-        # donated-buffer aot_autograd optimisation that blocks
+        # donated-buffer aot_autograd optimization that blocks
         # double-backward Hessians.  Default to "float32-high" so the
         # fast path is active.
         precision: str = "float32-high",
@@ -220,7 +220,7 @@ class OrbCalculator(MLIPCalculator):
 
         Requires a conservative Orb model (enforced in ``__init__``) and
         ``precision='float32-high'``/``'float64'`` so the loader does not
-        enable the aot_autograd donated-buffer optimisation that blocks
+        enable the aot_autograd donated-buffer optimization that blocks
         double backward.
 
         Returns a detached torch tensor of shape ``(3N, 3N)`` on the

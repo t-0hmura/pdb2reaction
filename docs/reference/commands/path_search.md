@@ -102,7 +102,7 @@ Options:
   --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
                                   'water'). 'none' to disable.  [default: none]
   --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
-  --coord-type [cart|dlc]         Optimisation coordinate system (cart|dlc).
+  --coord-type [cart|dlc]         Optimization coordinate system (cart|dlc).
                                   cart is the robust default used in published
                                   numbers; dlc speeds up torsion-rich opts.
   --precision [fp32|fp64]         MLIP backend precision: fp32 (default) or

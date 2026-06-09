@@ -1,14 +1,14 @@
 # `tsopt`
 
-`pdb2reaction tsopt` optimises a transition-state *candidate* into a first-order saddle point. The default optimiser is **RS-I-RFO** (Restricted-Step Image Rational Function Optimisation, `--opt-mode hess`); when RS-I-RFO struggles (or when full-Hessian recomputation is prohibitive), switch to the **Hessian-Guided Dimer** (`--opt-mode grad`). After convergence, `tsopt` performs a final Hessian calculation and imaginary-frequency check automatically — a validated TS should show **exactly one** imaginary frequency. A separate [`freq`](freq.md) run is only needed for full vibrational analysis or thermochemistry; the imaginary-frequency check is already included in `tsopt`. Always confirm endpoint connectivity with [`irc`](irc.md).
+`pdb2reaction tsopt` optimizes a transition-state *candidate* into a first-order saddle point. The default optimizer is **RS-I-RFO** (Restricted-Step Image Rational Function Optimization, `--opt-mode hess`); when RS-I-RFO struggles (or when full-Hessian recomputation is prohibitive), switch to the **Hessian-Guided Dimer** (`--opt-mode grad`). After convergence, `tsopt` performs a final Hessian calculation and imaginary-frequency check automatically — a validated TS should show **exactly one** imaginary frequency. A separate [`freq`](freq.md) run is only needed for full vibrational analysis or thermochemistry; the imaginary-frequency check is already included in `tsopt`. Always confirm endpoint connectivity with [`irc`](irc.md).
 
 > **Naming note:** the CLI accepts `grad` / `dimer` (Dimer) and `hess` / `rsirfo` (RS-I-RFO, default). In YAML, use the top-level `hessian_dimer:` (Dimer) or `rsirfo:` (RS-I-RFO) blocks directly.
 
-Use it to refine a TS guess — the HEI from `path-opt` / `path-search`, or a user-supplied structure — into an optimised first-order saddle point with a built-in imaginary-frequency check. Pick `--opt-mode hess` (RS-I-RFO, default) in most systems, since it uses a full Hessian and is more reliable. Switch to `--opt-mode grad` (Hessian-Guided Dimer) when RS-I-RFO fails to converge or full-Hessian recomputation is prohibitive. Enable `--flatten` (disabled by default) when the candidate has multiple imaginary frequencies and you need surplus-mode cleanup. For XYZ / GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping the XYZ coordinates, enabling format-aware PDB / GJF output conversion. If you need a TS guess first, run [`path-opt`](path-opt.md) (two structures) or [`path-search`](path-search.md) (two or more structures) and then optimise the HEI with `tsopt` → `irc`.
+Use it to refine a TS guess — the HEI from `path-opt` / `path-search`, or a user-supplied structure — into an optimized first-order saddle point with a built-in imaginary-frequency check. Pick `--opt-mode hess` (RS-I-RFO, default) in most systems, since it uses a full Hessian and is more reliable. Switch to `--opt-mode grad` (Hessian-Guided Dimer) when RS-I-RFO fails to converge or full-Hessian recomputation is prohibitive. Enable `--flatten` (disabled by default) when the candidate has multiple imaginary frequencies and you need surplus-mode cleanup. For XYZ / GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping the XYZ coordinates, enabling format-aware PDB / GJF output conversion. If you need a TS guess first, run [`path-opt`](path-opt.md) (two structures) or [`path-search`](path-search.md) (two or more structures) and then optimize the HEI with `tsopt` → `irc`.
 
 ## Examples
 
-Default RS-I-RFO optimisation of a PDB candidate:
+Default RS-I-RFO optimization of a PDB candidate:
 
 ```bash
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --out-dir ./result_tsopt
@@ -38,7 +38,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
     --opt-mode hess --flatten --out-dir ./result_tsopt_flatten
 ```
 
-Add `--dump` to keep the full optimisation trajectory for inspection.
+Add `--dump` to keep the full optimization trajectory for inspection.
 
 ## Workflow
 
@@ -46,12 +46,12 @@ Add `--dump` to keep the full optimisation trajectory for inspection.
 - **Geometry loading + freeze-links** — structures are read through `pysisyphus.helpers.geom_loader`. When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see {ref}`Link hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
 - **MLIP Hessians** (default UMA) — `--hessian-calc-mode` toggles analytical vs finite-difference; both honour active (PHVA) subspaces. The MLIP backend may return only the active block when frozen atoms are present. See {ref}`hessian-evaluation` for the full Hessian-evaluation matrix.
 - **Dimer mode** — the Hessian-Guided Dimer stage periodically refreshes the dimer direction by evaluating an exact Hessian (active subspace, TR-projected); the lowest eigenpair uses `torch.lobpcg` when `root == 0`, falling back to `torch.linalg.eigh`. With `--flatten`, the active Hessian is updated via Bofill (SR1/MS ↔ PSB blend; toggle via `hessian_dimer.flatten_loop_bofill`) using displacements Δx and gradient differences Δg. Each loop estimates imaginary modes, flattens once, refreshes the dimer direction, runs a Dimer + L-BFGS micro-segment, and (optionally) performs a Bofill update. Once only one imaginary mode remains, a final exact Hessian is computed for frequency analysis. If `root != 0`, that root seeds only the initial dimer direction; subsequent refreshes follow the most negative mode (`root = 0`).
-- **RS-I-RFO mode** — runs the RS-I-RFO optimiser with optional Hessian reference files, R+S splitting safeguards, and micro-cycle controls defined in the `rsirfo` YAML section. With `--flatten`, when more than one imaginary mode remains after convergence the workflow flattens extra modes and reruns RS-I-RFO until only one imaginary mode remains or the flatten-iteration cap is reached.
-- **Mode export + conversion** — all detected imaginary modes are written to `vib/imag_*_trj.xyz` and mirrored to `.pdb` when the input was PDB and conversion is enabled. The optimisation trajectory and final geometry are also converted to PDB via the input template when `--dump`; Gaussian templates receive a `.gjf` companion for the final geometry only.
+- **RS-I-RFO mode** — runs the RS-I-RFO optimizer with optional Hessian reference files, R+S splitting safeguards, and micro-cycle controls defined in the `rsirfo` YAML section. With `--flatten`, when more than one imaginary mode remains after convergence the workflow flattens extra modes and reruns RS-I-RFO until only one imaginary mode remains or the flatten-iteration cap is reached.
+- **Mode export + conversion** — all detected imaginary modes are written to `vib/imag_*_trj.xyz` and mirrored to `.pdb` when the input was PDB and conversion is enabled. The optimization trajectory and final geometry are also converted to PDB via the input template when `--dump`; Gaussian templates receive a `.gjf` companion for the final geometry only.
 
 ## Outputs
 
-Validate a run by opening `final_geometry.*` (the optimised saddle point) and the `vib/imag_*` modes (expect exactly one for a valid TS).
+Validate a run by opening `final_geometry.*` (the optimized saddle point) and the `vib/imag_*` modes (expect exactly one for a valid TS).
 
 ```text
 out_dir/   (default: ./result_tsopt/)
@@ -96,11 +96,11 @@ The tables below cover the options that need explanation. The full flag list is 
 | `--freeze-links / --no-freeze-links` | PDB-only. Freeze parents of link hydrogens (merged into `geom.freeze_atoms`). | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g. `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
 | `--max-cycles INT` | Macro-cycle cap forwarded to `opt.max_cycles`. | `10000` |
-| `--opt-mode TEXT` | TS optimiser preset (Choice: `grad` / `hess` / `dimer` / `rsirfo` / `trim` / `rsprfo`). `grad` and `dimer` → Hessian-Guided Dimer; `hess` and `rsirfo` → RS-I-RFO (default); `trim` → TRIM (Helgaker, non-microiter); `rsprfo` → RS-P-RFO (Banerjee, non-microiter). On `opt`, the same `grad` token picks L-BFGS minimisation instead — see {ref}`opt-mode-semantics`. | `hess` |
+| `--opt-mode TEXT` | TS optimizer preset (Choice: `grad` / `hess` / `dimer` / `rsirfo` / `trim` / `rsprfo`). `grad` and `dimer` → Hessian-Guided Dimer; `hess` and `rsirfo` → RS-I-RFO (default); `trim` → TRIM (Helgaker, non-microiter); `rsprfo` → RS-P-RFO (Banerjee, non-microiter). On `opt`, the same `grad` token picks L-BFGS minimization instead — see {ref}`opt-mode-semantics`. | `hess` |
 | `--dump / --no-dump` | Dump trajectories. | `False` |
 | `-o, --out-dir TEXT` | Output directory. | `./result_tsopt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
-| `--flatten / --no-flatten` | Enable the surplus-imaginary-mode flattening loop (`False` forces `flatten_max_iter = 0`). After TS optimisation converges, iteratively flattens surplus negative-eigenvalue modes until only one imaginary frequency remains (or the iteration cap is reached). Applies to both Dimer (dimer loop) and RS-I-RFO (post-convergence). | `False` |
+| `--flatten / --no-flatten` | Enable the surplus-imaginary-mode flattening loop (`False` forces `flatten_max_iter = 0`). After TS optimization converges, iteratively flattens surplus negative-eigenvalue modes until only one imaginary frequency remains (or the iteration cap is reached). Applies to both Dimer (dimer loop) and RS-I-RFO (post-convergence). | `False` |
 | `--hessian-calc-mode CHOICE` | MLIP Hessian mode (`Analytical` or `FiniteDifference`). | `FiniteDifference` |
 | `--convert-files / --no-convert-files` | Toggle XYZ / TRJ → PDB / GJF companions for PDB or Gaussian inputs. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology when the input is XYZ / GJF (keeps XYZ coordinates). | _None_ |
@@ -110,15 +110,15 @@ The tables below cover the options that need explanation. The full flag list is 
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
-| `--dry-run / --no-dry-run` | Validate inputs / config and print the execution plan without running TS optimisation. | `False` |
+| `--dry-run / --no-dry-run` | Validate inputs / config and print the execution plan without running TS optimization. | `False` |
 
 (flatten-precedence-caveat)=
 ### `--flatten` precedence caveat
 
 ```{note}
-**`--flatten` is disabled by default (precedence caveat).** Although `defaults.py` defines `flatten_max_iter: 50`, the CLI initialiser seeds `flatten_max_iter = 0`. Effective resolution:
+**`--flatten` is disabled by default (precedence caveat).** Although `defaults.py` defines `flatten_max_iter: 50`, the CLI initializer seeds `flatten_max_iter = 0`. Effective resolution:
 
-- CLI `--flatten` **not** passed → `flatten_max_iter = 0` unless **explicitly set in YAML** via `hessian_dimer.flatten_max_iter` or `rsirfo.flatten_max_iter`. The `defaults.py` value of 50 is ignored.
+- CLI `--flatten` **not** passed → `flatten_max_iter = 0` unless **explicitly set in YAML** via `hessian_dimer.flatten_max_iter` (the flatten counter is read only from the `hessian_dimer` block for both Dimer and RS-I-RFO paths). The `defaults.py` value of 50 is ignored.
 - CLI `--flatten` passed → the YAML / `defaults.py` value applies (default `flatten_max_iter = 50`); you can still override via YAML.
 
 If your TS candidate has multiple imaginary frequencies, add `--flatten` to enable the surplus-mode cleanup loop.
@@ -135,7 +135,7 @@ opt:
 ```
 
 ```{note}
-**Energy-plateau fallback.** The RS-I-RFO optimiser honours the shared `energy_plateau` setting: if the energy range (max − min) over the last `energy_plateau_window` (default 50) steps falls below `energy_plateau_thresh` (default `1×10⁻⁴ au ≈ 0.06 kcal/mol`), the run is declared converged. This matters for large TS systems where the MLIP force noise floor (~4×10⁻⁴ au) exceeds the `baker` `max_force` threshold (3×10⁻⁴ au), making the force criterion unreachable even though the energy has plainly flattened. Set `energy_plateau: false` to disable.
+**Energy-plateau fallback.** The RS-I-RFO optimizer honours the shared `energy_plateau` setting: if the energy range (max − min) over the last `energy_plateau_window` (default 50) steps falls below `energy_plateau_thresh` (default `1×10⁻⁴ au ≈ 0.06 kcal/mol`), the run is declared converged. This matters for large TS systems where the MLIP force noise floor (~4×10⁻⁴ au) exceeds the `baker` `max_force` threshold (3×10⁻⁴ au), making the force criterion unreachable even though the energy has plainly flattened. Set `energy_plateau: false` to disable.
 ```
 
 ### Dimer mode (`--opt-mode grad`)
@@ -161,14 +161,14 @@ rsirfo:
 ```
 
 ```{tip}
-Set `rsirfo.track_mode_by_overlap: true` if the TS mode switches root during optimisation (e.g. when multiple imaginary frequencies are present). If TS convergence is slow or the TS mode is lost, lowering `hessian_recalc` (e.g. to 50–200) helps — more frequent exact Hessian recalculations improve robustness at the cost of additional Hessian evaluations.
+Set `rsirfo.track_mode_by_overlap: true` if the TS mode switches root during optimization (e.g. when multiple imaginary frequencies are present). If TS convergence is slow or the TS mode is lost, lowering `hessian_recalc` (e.g. to 50–200) helps — more frequent exact Hessian recalculations improve robustness at the cost of additional Hessian evaluations.
 ```
 
 ## Notes
 
-- Imaginary-frequency **detection** threshold defaults to 5.0 cm⁻¹ (configurable via `hessian_dimer.neg_freq_thresh_cm`); frequencies with magnitudes below this threshold are not counted as imaginary. The selected `root` controls which vibrational mode is followed during optimisation; it is set via YAML (`rsirfo.root` or `hessian_dimer.root`; default `0`) — `tsopt` has no `--root` CLI flag (unlike [`irc`](irc.md)).
+- Imaginary-frequency **detection** threshold defaults to 5.0 cm⁻¹ (configurable via `hessian_dimer.neg_freq_thresh_cm`); frequencies with magnitudes below this threshold are not counted as imaginary. The selected `root` controls which vibrational mode is followed during optimization; it is set via YAML (`rsirfo.root` or `hessian_dimer.root`; default `0`) — `tsopt` has no `--root` CLI flag (unlike [`irc`](irc.md)).
 - Use `--opt-mode` to choose the algorithm directly (`rsirfo` by default) rather than editing YAML mode mappings.
-- Dimer mode applies translation / rotation projection (PHVA when frozen atoms are present) before the initial Hessian diagonalisation, matching the `freq` implementation. RS-I-RFO mode operates directly on the active-DOF Cartesian Hessian without TR projection (frozen atoms remove the rigid-body symmetry).
+- Dimer mode applies translation / rotation projection (PHVA when frozen atoms are present) before the initial Hessian diagonalization, matching the `freq` implementation. RS-I-RFO mode operates directly on the active-DOF Cartesian Hessian without TR projection (frozen atoms remove the rigid-body symmetry).
 - See {ref}`CLI Conventions: Configuration precedence <configuration-precedence>` for the full resolution order.
 
 ## See Also

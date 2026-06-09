@@ -1,6 +1,6 @@
 """Shared YAML-overlay helpers for `path-opt` and `path-search` cli().
 
-Both subcommands accept the same single-structure optimiser YAML schema:
+Both subcommands accept the same single-structure optimizer YAML schema:
 
   opt:
     <common keys>     # OPT_BASE_KW keys overlay both LBFGS + RFO
@@ -22,7 +22,7 @@ def apply_single_opt_yaml_layer(
     deep_update,
     apply_yaml_overrides,
 ) -> None:
-    """Apply single-structure optimiser overrides from one YAML layer.
+    """Apply single-structure optimizer overrides from one YAML layer.
 
     Mutates ``lbfgs_cfg`` and ``rfo_cfg`` in place. The ``deep_update`` and
     ``apply_yaml_overrides`` callables are taken as parameters so this

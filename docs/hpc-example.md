@@ -150,7 +150,7 @@ The 24 h template above is a default ceiling, not a target. Most jobs finish wel
 - **`pdb2reaction all` end-to-end** (extract → MEP → TSOPT → IRC → freq → DFT) on a small substrate: typically a few hours; high-end multi-GPU nodes can shorten the DFT stage substantially.
 - **MEP (`path-search` / `path-opt`)**: scales with `--max-nodes` (images per segment) and `--max-cycles` (GSM optimizer iterations) — recursive `path-search` campaigns multiply both by segment count, so multistep mechanisms can occupy a single GPU for many hours.
 
-Walltime scales roughly inversely with effective parallelism (`workers × workers_per_node`) on the UMA backend. ORB / MACE / AIMNet2 do not parallelize across workers, so adding more nodes does not shorten their wall-clock time.
+Walltime scales roughly inversely with effective parallelism (the total `workers` count) on the UMA backend. ORB / MACE / AIMNet2 do not parallelize across workers, so adding more nodes does not shorten their wall-clock time.
 
 ## See Also
 

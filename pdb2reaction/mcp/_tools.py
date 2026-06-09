@@ -92,7 +92,7 @@ def register_all(mcp) -> None:
         """Optimize a single molecular geometry (CLI: `pdb2reaction opt`).
 
         Default `opt_mode="grad"` matches the CLI default; pass `"hess"` for
-        RFO Hessian-based optimisation. Returns: SubcmdResult dict with
+        RFO Hessian-based optimization. Returns: SubcmdResult dict with
         summary.json contents (final_energy, n_cycles, converged, files map).
         """
         od = _resolve_out_dir(out_dir, "opt")
@@ -152,7 +152,7 @@ def register_all(mcp) -> None:
         opt_mode = one of {"grad", "hess", "dimer", "rsirfo", "trim", "rsprfo"}.
         - "hess" / "rsirfo" (default): RS-I-RFO.
         - "grad" / "dimer": Hessian-guided Dimer.
-        - "trim" (Helgaker 1991) / "rsprfo" (Banerjee 1985): alternative TS optimisers.
+        - "trim" (Helgaker 1991) / "rsprfo" (Banerjee 1985): alternative TS optimizers.
 
         Returns: SubcmdResult dict with summary.json (ts_energy, n_imaginary_modes,
         imaginary_frequencies_cm, n_opt_cycles, files map).
@@ -477,7 +477,7 @@ def register_all(mcp) -> None:
     ) -> dict[str, Any]:
         """Optimize a reaction-path segment (CLI: `pdb2reaction path-opt`).
 
-        Two-endpoint MEP optimisation (GSM / NEB family).
+        Two-endpoint MEP optimization (GSM / NEB family).
         """
         od = _resolve_out_dir(out_dir, "path_opt")
         argv: list[str] = ["pdb2reaction", "path-opt", "-i", reactant_pdb, product_pdb,

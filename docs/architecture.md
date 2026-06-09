@@ -17,13 +17,13 @@ Two bundled forks (`pysisyphus/`, `thermoanalysis/`) live at the repo top as rep
 
 | layer | dir | responsibility | may depend on |
 |---|---|---|---|
-| **L1 Interface** | `pdb2reaction/cli/` | Click root group, shared option-decorator factories (`common_options.py`), `--help-advanced`, bool flag normalisation, subcommand resolver | `workflows/`, `core/` |
+| **L1 Interface** | `pdb2reaction/cli/` | Click root group, shared option-decorator factories (`common_options.py`), `--help-advanced`, bool flag normalization, subcommand resolver | `workflows/`, `core/` |
 | **L2 Application** | `pdb2reaction/workflows/` | per-subcommand orchestration; one file per stage runner (`all.py`, `path_search.py`, `tsopt.py`, `extract.py`, `irc.py`, `freq.py`, `dft.py`, …) | `domain/`, `backends/`, `io/`, `core/` |
 | **L3 Domain** | `pdb2reaction/domain/` | chemistry-aware helper logic (bond change detection, bond summary, element-info propagation) | `core/` |
 | **L4a Infra (MLIP)** | `pdb2reaction/backends/` | MLIP backend dispatcher + per-backend adapter (UMA / Orb / MACE / AIMNet2) + xTB ALPB delta correction | `core/` |
 | **L4b Infra (I/O)** | `pdb2reaction/io/` | output layout, summary, trajectory, PDB fix, energy diagram, Hessian cache | `core/` |
 | **L5 Foundation** | `pdb2reaction/core/` | defaults (single source of truth), utils (PDB / XYZ / plot helpers), future `errors.py` / `types.py` / `logging.py` | (none) |
-| (bundle, not a layer) | `<repo>/pysisyphus/`, `<repo>/thermoanalysis/` | repo-internal forks (optimiser / thermochemistry) | (sibling, layer-external) |
+| (bundle, not a layer) | `<repo>/pysisyphus/`, `<repo>/thermoanalysis/` | repo-internal forks (optimizer / thermochemistry) | (sibling, layer-external) |
 
 **Dependency direction (one-way)**: `L1 → L2 → {L3, L4} → L5`. The directional rule is enforced by CI marker coverage (`.github/scripts/check_engineering_markers.py`). Bundled forks sit outside the layer graph and may be imported from any layer via their absolute package path (`from pysisyphus.X import Y`).
 
@@ -149,7 +149,7 @@ For a contributor opening the repo for the first time, follow this path top-to-b
 | 1 | 3 | [`README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/README.md) | one-paragraph elevator pitch + single-command usage |
 | 2 | 5 | this file (`docs/architecture.md`) §2 + §4 | 6-layer dir tree, dependency direction, where each concern lives |
 | 3 | 5 | [`pdb2reaction/cli/app.py`](../pdb2reaction/cli/app.py) | Click root group, `_LAZY_SUBCOMMANDS` registry (≈ 18 entries), absolute-path resolution |
-| 4 | 20 | [`pdb2reaction/workflows/all.py`](../pdb2reaction/workflows/all.py) (4,147 LOC, skim) | one full subcommand top-to-bottom; trace `extract → MEP → tsopt → IRC → freq → dft` |
+| 4 | 20 | [`pdb2reaction/workflows/all.py`](../pdb2reaction/workflows/all.py) (4,979 LOC, skim) | one full subcommand top-to-bottom; trace `extract → MEP → tsopt → IRC → freq → dft` |
 | 5 | 7 | [`CONTRIBUTING.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/CONTRIBUTING.md) §3 + §4 | 5 add-a-X recipes + the "do not touch" hidden constraints |
 
 After step 5 you can read any other file by following the file index in §4. The package is intentionally **flat-within-each-layer** — there is no nested package below `pdb2reaction/<layer>/`, so you never need to navigate more than two directories deep.
@@ -165,7 +165,7 @@ After step 5 you can read any other file by following the file index in §4. The
 | Click root group + subcommand dispatch | `pdb2reaction/cli/app.py` |
 | Subcommand resolver (lazy import) | `pdb2reaction/cli/default_group.py` |
 | `python -m pdb2reaction` entry | `pdb2reaction/__main__.py` |
-| Shared option decorator factories | `pdb2reaction/cli/decorators.py` |
+| YAML source resolution + standardized exception handling | `pdb2reaction/cli/decorators.py` |
 | `--help-advanced` pager | `pdb2reaction/cli/help_pages.py` |
 | Bool flag compat (`--flag` / `--no-flag` + value style) | `pdb2reaction/cli/bool_compat.py` |
 | Shared option-decorator factories (`--print-every`, `--irc-pos-def`, `--precision`, `--coord-type`, `--charge / --ligand-charge / --multiplicity`) | `pdb2reaction/cli/common_options.py` |
@@ -175,11 +175,11 @@ After step 5 you can read any other file by following the file index in §4. The
 | concern | file |
 |---|---|
 | Full pipeline orchestrator | `pdb2reaction/workflows/all.py` |
-| Geometry optimisation (LBFGS / RFO) | `pdb2reaction/workflows/opt.py` |
+| Geometry optimization (LBFGS / RFO) | `pdb2reaction/workflows/opt.py` |
 | 1D / 2D / 3D scans + shared | `pdb2reaction/workflows/scan{,2d,3d,_common}.py` |
 | MEP search (GSM) | `pdb2reaction/workflows/path_search.py` |
-| MEP optimiser core (pysisyphus COS) | `pdb2reaction/workflows/path_opt.py` |
-| TS optimisation (RSIRFO + Bofill + macro/micro) | `pdb2reaction/workflows/tsopt.py` |
+| MEP optimizer core (pysisyphus COS) | `pdb2reaction/workflows/path_opt.py` |
+| TS optimization (RSIRFO + Bofill + macro/micro) | `pdb2reaction/workflows/tsopt.py` |
 | Vibrational analysis (PHVA + UMA active block) | `pdb2reaction/workflows/freq.py` |
 | IRC integration (macro / micro) | `pdb2reaction/workflows/irc.py` |
 | Single-point DFT (gpu4pyscf subprocess) | `pdb2reaction/workflows/dft.py` |
@@ -193,7 +193,7 @@ After step 5 you can read any other file by following the file index in §4. The
 |---|---|
 | R↔P bond change detection | `pdb2reaction/domain/bond_changes.py` |
 | Post-IRC bond summary | `pdb2reaction/domain/bond_summary.py` |
-| PDB element column normaliser | `pdb2reaction/domain/add_elem_info.py` |
+| PDB element column normalizer | `pdb2reaction/domain/add_elem_info.py` |
 
 ### 4.4 MLIP backends (L4a `backends/`)
 
@@ -230,7 +230,7 @@ See [Backends](backends.md) for the add-a-backend recipe.
 
 | dir | role | divergent files (do NOT replace with upstream) |
 |---|---|---|
-| `pysisyphus/` | optimiser / TS / IRC engine | `irc/IRC.py` (opt-in `require_pos_def_hessian` PSD convergence guard), `optimizers/hessian_updates.py` (Bofill scatter on advanced indices, CPU-only `bofill_update` path for GPU OOM avoidance), `tsoptimizers/{RSIRFOptimizer,RSPRFOptimizer,TRIM,TSHessianOptimizer}.py`, `calculators/{Calculator,Dimer}.py`, `_array.py` (torch/numpy backend shim) |
+| `pysisyphus/` | optimizer / TS / IRC engine | `irc/IRC.py` (opt-in `require_pos_def_hessian` PSD convergence guard), `optimizers/hessian_updates.py` (Bofill scatter on advanced indices, CPU-only `bofill_update` path for GPU OOM avoidance), `tsoptimizers/{RSIRFOptimizer,RSPRFOptimizer,TRIM,TSHessianOptimizer}.py`, `calculators/{Calculator,Dimer}.py`, `_array.py` (torch/numpy backend shim) |
 | `thermoanalysis/` | thermochemistry (ΔG, ZPE, partition functions) | `QCData.py` (branding diff vs upstream) |
 
 See each dir's `README.md` for the touch-restriction boundary.
@@ -294,7 +294,7 @@ The bundled `pysisyphus/` and `thermoanalysis/` packages are **forks**. Reinstal
 
 | dir | upstream PyPI? | purpose | scope of edits allowed |
 |---|---|---|---|
-| `pysisyphus/` | NO — fork, do not `pip install pysisyphus` alongside | optimiser, TS, IRC, COS, calculators | annotation-only in this release line (docstring + type hints); logic edits forbidden |
+| `pysisyphus/` | NO — fork, do not `pip install pysisyphus` alongside | optimizer, TS, IRC, COS, calculators | annotation-only in this release line (docstring + type hints); logic edits forbidden |
 | `thermoanalysis/` | NO — fork (branding diff) | ΔG, ZPE, partition functions, `QCData` | same as `pysisyphus/` |
 
 Each dir carries its own `README.md` listing the divergent files and the touch-restriction boundary. From the layer model these forks live **outside** the L1..L5 graph: any layer may import them via the absolute package path (`from pysisyphus.X import Y`) without breaking the `L1 → L2 → {L3, L4} → L5` direction.
