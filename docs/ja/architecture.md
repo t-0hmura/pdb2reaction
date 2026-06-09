@@ -23,7 +23,7 @@
 | **L4a Infra (MLIP)** | `pdb2reaction/backends/` | MLIP バックエンドディスパッチャ + バックエンドごとのアダプタ（UMA / Orb / MACE / AIMNet2）+ xTB ALPB デルタ補正 | `core/` |
 | **L4b Infra (I/O)** | `pdb2reaction/io/` | 出力レイアウト、サマリ、軌跡、PDB 修正、エネルギーダイアグラム、Hessian キャッシュ | `core/` |
 | **L5 Foundation** | `pdb2reaction/core/` | defaults（単一真実源）、utils（PDB / XYZ / plot ヘルパー）、将来の `errors.py` / `types.py` / `logging.py` | (none) |
-| (bundle, not a layer) | `<repo>/pysisyphus/`, `<repo>/thermoanalysis/` | repo 内部 fork（optimiser / thermochemistry） | (sibling, layer-external) |
+| (bundle, not a layer) | `<repo>/pysisyphus/`, `<repo>/thermoanalysis/` | repo 内部 fork（optimizer / thermochemistry） | (sibling, layer-external) |
 
 **依存方向（一方向）**: `L1 → L2 → {L3, L4} → L5`。この方向性ルールは CI のマーカーカバレッジ（`.github/scripts/check_engineering_markers.py`）で強制されます。同梱 fork は階層グラフの外側に位置し、絶対パッケージパス（`from pysisyphus.X import Y`）を介してどの階層からでも import できます。
 
@@ -149,7 +149,7 @@ CLI サブコマンドリゾルバ（`cli/app.py:_LAZY_SUBCOMMANDS`）は **絶�
 | 1 | 3 | [`README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/README.md) | 1 段落のエレベーターピッチ + 単一コマンド使用法 |
 | 2 | 5 | このファイル（`docs/architecture.md`）§2 + §4 | 6 階層のディレクトリツリー、依存方向、各関心事の所在 |
 | 3 | 5 | [`pdb2reaction/cli/app.py`](../../pdb2reaction/cli/app.py) | Click root group、`_LAZY_SUBCOMMANDS` レジストリ（≈ 18 エントリ）、絶対パス解決 |
-| 4 | 20 | [`pdb2reaction/workflows/all.py`](../../pdb2reaction/workflows/all.py)（4,147 LOC, 流し読み） | 1 つの完全なサブコマンドを上から下まで; `extract → MEP → tsopt → IRC → freq → dft` を追う |
+| 4 | 20 | [`pdb2reaction/workflows/all.py`](../../pdb2reaction/workflows/all.py)（4,979 LOC, 流し読み） | 1 つの完全なサブコマンドを上から下まで; `extract → MEP → tsopt → IRC → freq → dft` を追う |
 | 5 | 7 | [`CONTRIBUTING.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/CONTRIBUTING.md) §3 + §4 | 5 つの add-a-X レシピ + 「触るな」という隠れた制約 |
 
 ステップ 5 の後は、§4 のファイル索引を辿ることで他のどのファイルでも読めます。本パッケージは意図的に **各階層内でフラット** です。`pdb2reaction/<layer>/` の下にネストしたパッケージは存在しないため、2 ディレクトリより深く辿る必要は決してありません。
@@ -165,7 +165,7 @@ CLI サブコマンドリゾルバ（`cli/app.py:_LAZY_SUBCOMMANDS`）は **絶�
 | Click root group + サブコマンドディスパッチ | `pdb2reaction/cli/app.py` |
 | サブコマンドリゾルバ（遅延 import） | `pdb2reaction/cli/default_group.py` |
 | `python -m pdb2reaction` エントリ | `pdb2reaction/__main__.py` |
-| 共有 option decorator ファクトリ | `pdb2reaction/cli/decorators.py` |
+| YAML ソース解決 + 標準化された例外処理 | `pdb2reaction/cli/decorators.py` |
 | `--help-advanced` ページャ | `pdb2reaction/cli/help_pages.py` |
 | Bool flag 互換（`--flag` / `--no-flag` + value style） | `pdb2reaction/cli/bool_compat.py` |
 | 共有 option-decorator ファクトリ（`--print-every`, `--irc-pos-def`, `--precision`, `--coord-type`, `--charge / --ligand-charge / --multiplicity`） | `pdb2reaction/cli/common_options.py` |
@@ -178,7 +178,7 @@ CLI サブコマンドリゾルバ（`cli/app.py:_LAZY_SUBCOMMANDS`）は **絶�
 | 構造最適化（LBFGS / RFO） | `pdb2reaction/workflows/opt.py` |
 | 1D / 2D / 3D スキャン + 共有 | `pdb2reaction/workflows/scan{,2d,3d,_common}.py` |
 | MEP 探索（GSM） | `pdb2reaction/workflows/path_search.py` |
-| MEP optimiser コア（pysisyphus COS） | `pdb2reaction/workflows/path_opt.py` |
+| MEP optimizer コア（pysisyphus COS） | `pdb2reaction/workflows/path_opt.py` |
 | TS 最適化（RSIRFO + Bofill + macro/micro） | `pdb2reaction/workflows/tsopt.py` |
 | 振動解析（PHVA + UMA active block） | `pdb2reaction/workflows/freq.py` |
 | IRC 積分（macro / micro） | `pdb2reaction/workflows/irc.py` |
@@ -230,7 +230,7 @@ add-a-backend レシピは [Backends](backends.md) を参照してください�
 
 | dir | role | divergent files (do NOT replace with upstream) |
 |---|---|---|
-| `pysisyphus/` | optimiser / TS / IRC エンジン | `irc/IRC.py`（オプトインの `require_pos_def_hessian` PSD 収束ガード）、`optimizers/hessian_updates.py`（advanced index 上での Bofill scatter、GPU OOM 回避のための CPU 専用 `bofill_update` パス）、`tsoptimizers/{RSIRFOptimizer,RSPRFOptimizer,TRIM,TSHessianOptimizer}.py`、`calculators/{Calculator,Dimer}.py`、`_array.py`（torch/numpy バックエンド shim） |
+| `pysisyphus/` | optimizer / TS / IRC エンジン | `irc/IRC.py`（オプトインの `require_pos_def_hessian` PSD 収束ガード）、`optimizers/hessian_updates.py`（advanced index 上での Bofill scatter、GPU OOM 回避のための CPU 専用 `bofill_update` パス）、`tsoptimizers/{RSIRFOptimizer,RSPRFOptimizer,TRIM,TSHessianOptimizer}.py`、`calculators/{Calculator,Dimer}.py`、`_array.py`（torch/numpy バックエンド shim） |
 | `thermoanalysis/` | thermochemistry（ΔG, ZPE, 分配関数） | `QCData.py`（上流との branding 差分） |
 
 touch 制限の境界については各ディレクトリの `README.md` を参照してください。
@@ -294,7 +294,7 @@ IRC / TSopt / Freq ステージは、CUDA メモリを解放するためにス�
 
 | dir | upstream PyPI? | purpose | scope of edits allowed |
 |---|---|---|---|
-| `pysisyphus/` | NO — fork、`pip install pysisyphus` を並べないこと | optimiser, TS, IRC, COS, calculators | 本リリースラインでは annotation のみ（docstring + 型ヒント）; ロジック編集は禁止 |
+| `pysisyphus/` | NO — fork、`pip install pysisyphus` を並べないこと | optimizer, TS, IRC, COS, calculators | 本リリースラインでは annotation のみ（docstring + 型ヒント）; ロジック編集は禁止 |
 | `thermoanalysis/` | NO — fork（branding 差分） | ΔG, ZPE, 分配関数, `QCData` | `pysisyphus/` と同じ |
 
 各ディレクトリは分岐ファイルと touch 制限の境界を列挙した独自の `README.md` を持ちます。階層モデルから見ると、これらの fork は L1..L5 グラフの **外側** に位置します。どの階層も絶対パッケージパス（`from pysisyphus.X import Y`）でこれらを import でき、`L1 → L2 → {L3, L4} → L5` の方向を壊しません。

@@ -73,7 +73,7 @@ PDB (R, P)
 |---------|------|
 | `summary.json` | 機械可読な結果（障壁、エネルギー、結合変化、環境情報） |
 | `summary.log` | ディレクトリツリー付きテキストサマリ |
-| `seg_XX/` | 反応ステップごとの IRC 最適化 R/TS/P 構造 |
+| `segments/seg_XX/` | 反応ステップごとの IRC 最適化 R/TS/P 構造 |
 | `mep.pdb` | PyMOL/VMD で表示可能な MEP 軌跡 |
 | `energy_diagram_*.png` | エネルギープロファイル図（電子/Gibbs 補正） |
 
@@ -163,7 +163,7 @@ pdb2reaction all [OPTIONS]...
 | `-l, --ligand-charge TEXT` | 電荷情報: マッピング（`'SAM:1,GPP:-3'`）または単一整数 |
 | `-q, --charge INT` | 総電荷の強制上書き |
 | `-m, --multiplicity INT` | スピン多重度（例: 一重項は `1`） |
-| `--tsopt/--no-tsopt` | TS 最適化と IRC を有効化 |
+| `--tsopt` | TS 最適化と IRC を有効化 |
 | `-b, --backend TEXT` | MLIP バックエンドの選択（`uma`, `orb`, `mace`, `aimnet2`） |
 
 オプションの完全な一覧は [CLI 規約](cli-conventions.md) と [自動生成 CLI リファレンス](../reference/commands/index.md) を参照してください。
@@ -182,7 +182,7 @@ pdb2reaction all [OPTIONS]...
 - セグメントごとの障壁高さと主要な結合変化
 - MLIP バックエンド、熱化学、DFT 後処理で得られたエネルギー（有効な場合）
 
-`path_search/`（`--refine-path False` 使用時は `path_opt/`）配下の各セグメントディレクトリにも `summary.log` と `summary.json` があり、個別のセグメントの精密化結果を確認できます。
+`segments/seg_NN/` 配下の各セグメントディレクトリにも `summary.log` と `summary.json` があり、個別のセグメントの精密化結果を確認できます。
 
 ## CLI サブコマンド
 

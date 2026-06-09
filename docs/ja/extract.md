@@ -59,7 +59,7 @@ pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
 - **標準カットオフ（`--radius`、デフォルト 2.6 Å）:**
  - `--no-exclude-backbone` の場合、カットオフ内の任意の原子が残基を対象にする
  - `--exclude-backbone` の場合、アミノ酸残基は**非主鎖**原子（N/H*/CA/HA*/C/O 以外）で基質に接触する必要がある。非アミノ酸残基は任意の原子で接触判定される。
-- **独立したヘテロ-ヘテロカットオフ（`--radius-het2het`）:** 基質ヘテロ原子（非 C/H）がタンパク質ヘテロ原子の指定Å以内にある場合に残基を追加。`--exclude-backbone` 有効時はタンパク質側原子も非主鎖でなければならない。
+- **独立したヘテロ-ヘテロカットオフ（`--radius-het2het`）:** 基質ヘテロ原子（非 C/H）がタンパク質ヘテロ原子の指定した Å 以内にある場合に残基を追加。`--exclude-backbone` 有効時はタンパク質側原子も非主鎖でなければならない。
 - **水処理:** HOH/WAT/H2O/DOD/TIP/TIP3/SOL はデフォルトで含まれる（`--include-h2o`）
 - **強制包含:** `--selected-resn` は**残基 ID** を受け入れます（例: `A:123A`）。残基 ID 仕様の詳細は CLI 規約の {ref}`ja-selected-resn-takes-ids` を参照。
 - **近傍セーフガード:**
@@ -85,7 +85,6 @@ pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
 
 - アミノ酸と一般的なイオンは内部辞書から電荷を取得; 水はゼロ
 - 未知残基は `--ligand-charge` が総電荷または残基名ごとのマッピング（例: `GPP:-3,SAM:1`）を提供しない限りデフォルトで 0。総電荷が与えられた場合は未知基質残基に配分され、未知基質が無い場合は未知残基全体に配分されます。
-- verbose モードが有効な場合、モデル#1 の電荷サマリー（タンパク質/リガンド/イオン/総計）がログに記録されます。
 
 ### マルチ構造アンサンブル
 
@@ -116,7 +115,7 @@ pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
 | `-i, --input PATH...` | 1 つ以上のタンパク質-リガンド PDB ファイル（同一の原子順序が必要） | 必須 |
 | `-c, --center SPEC` | 基質指定（PDB パス、残基 ID、または残基名） | 必須 |
 | `-o, --output PATH...` | 活性部位モデル PDB 出力。1 パス ⇒ マルチ MODEL、N パス ⇒ 入力ごと。複数入力で `-o` 1 つの場合は単一のマルチ MODEL PDB を生成。N 個の `-o` が N 個の入力と一致する場合は N 個の個別 PDB を生成 | 自動（`model.pdb` または `model_<input>.pdb`） |
-| `-r, --radius FLOAT` | 包含のための原子-原子距離カットオフ（Å） | `2.6` |
+| `-r, --radius FLOAT` | 包含のための原子-原子距離カットオフ（Å、0 の場合は内部で 0.001 Å） | `2.6` |
 | `--radius-het2het FLOAT` | 独立したヘテロ-ヘテロカットオフ（Å、非 C/H） | `0.0`（0 の場合は内部で 0.001 Å） |
 | `--include-h2o/--no-include-h2o` | HOH/WAT/H2O/DOD/TIP/TIP3/SOL 水を含める | `True` |
 | `--exclude-backbone/--no-exclude-backbone` | 非基質アミノ酸の主鎖原子を除去 | `False` |

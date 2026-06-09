@@ -125,8 +125,8 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
 ```{note}
 **`--flatten` はデフォルトで無効です（優先順位の注意）。** `defaults.py` では `flatten_max_iter: 50` が定義されており（下記インライン YAML 表記でも `flatten_max_iter: 50`）、それにもかかわらず CLI の初期化器はコマンドラインで `--flatten` が **明示的に** 渡されない限り `flatten_max_iter = 0` を強制します。実効値は以下のとおりです:
 
-- CLI `--flatten` **未指定** → `flatten_max_iter = 0`（余剰モード除去ループ無効）。YAML の 50 は**無視**されます。
-- CLI `--flatten` 指定 → YAML / `defaults.py` の値が有効（デフォルト `flatten_max_iter = 50`）。YAML で `hessian_dimer.flatten_max_iter` や `rsirfo.flatten_max_iter` を上書き可能です。
+- CLI `--flatten` **未指定** → YAML で `hessian_dimer.flatten_max_iter` を**明示的に指定**しない限り `flatten_max_iter = 0`（余剰モード除去ループ無効）。フラット化のカウンタは Dimer・RS-I-RFO のどちらの経路でも `hessian_dimer` ブロックからのみ読み取られます。`defaults.py` の値 50 は**無視**されます。
+- CLI `--flatten` 指定 → YAML / `defaults.py` の値が有効（デフォルト `flatten_max_iter = 50`）。引き続き YAML で上書きできます。
 
 TS 候補に複数の虚振動数がある場合は、`--flatten` を追加して余分なモードの除去ループを有効にしてください。
 ```
@@ -194,7 +194,7 @@ TS 収束が遅い場合や最適化中に TS モードが失われる場合は�
 
 - 虚振動数モード**検出**の閾値はデフォルトで 5.0 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm` で変更可能）。この閾値未満の振動数は虚振動数としてカウントされません。選択した `root` は最適化中にどの振動モードを追跡するかを制御します。`root` は YAML（`rsirfo.root` または `hessian_dimer.root`、デフォルト `0`）で設定します。`tsopt` に `--root` CLI フラグはありません（[`irc`](irc.md) とは異なります）。
 - `--opt-mode` はワークフロー選択用です（デフォルト: `rsirfo`）。YAML のモードマッピングを手動で変更するのではなく、目的のアルゴリズムに合ったモードを選択してください。
-- PHVA の並進/回転射影は `freq` と同じ実装を使用し、メモリ消費を抑えつつ、活性空間の正しい固有ベクトルを保持します。
+- Dimer モードは初期ヘシアンの対角化前に並進/回転射影（凍結原子がある場合は PHVA）を適用し、`freq` と同じ実装に揃えています。RS-I-RFO モードは活性 DOF のデカルトヘシアンを TR 射影なしで直接扱います（凍結原子により剛体対称性が失われるためです）。
 - 設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
 
 ## 関連項目

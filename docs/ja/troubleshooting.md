@@ -236,8 +236,8 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 ## パフォーマンス / 安定性のヒント
 
 - **VRAM 不足**: `--radius` の値を減らして活性部位モデルを小さくする、`--max-nodes` を減らす、軽い最適化設定にする（`--opt-mode grad`）
-- **解析ヘシアン（Analytical Hessian）が遅いまたは OOM**: デフォルトの `FiniteDifference` を維持してください。`--hessian-calc-mode Analytical` は十分な VRAM がある場合のみ使用してください（500 原子以上では 16 GB 以上推奨）
-- **workers > 1**: HPC で UMA の処理速度は改善しますが、解析ヘシアンは無効になります
+- **解析ヘシアン（Analytical Hessian）が遅いまたは OOM**: デフォルトの `FiniteDifference` を維持してください。`--hessian-calc-mode Analytical` は 16 GB 以上の VRAM がある場合のみ使用してください。16 GB で収まるのは ~200 原子程度までです（下記の VRAM 目安表を参照）
+- **workers > 1**: HPC で UMA の処理速度は改善しますが、解析ヘシアンとは併用できません（`workers > 1` で解析ヘシアンを要求すると `RuntimeError` が発生します）。明示的に `--hessian-calc-mode FiniteDifference` を指定するか、ヘシアンを使うモードでは `--workers 1` で実行してください
 - **大規模系（1000 原子以上）**: より小さな活性部位モデル（`--radius 2.5` Å）を抽出するか、マルチ GPU セットアップでの実行を検討してください
 - **HPC で DFT を回すとき（数百原子規模）**: PySCF / GPU4PySCF は積分・中間ファイルを `$PYSCF_TMPDIR`（未設定なら `$TMPDIR`、最後は `/tmp`）に書き出します。ノードローカル `/tmp` は容量が小さい / `tmpfs` であることが多く、SCF の途中で枯渇する場合があります。`dft` 起動前に `PYSCF_TMPDIR` をジョブの作業ファイルシステム配下に設定してください（例: `export PYSCF_TMPDIR="$PBS_O_WORKDIR"`）
 

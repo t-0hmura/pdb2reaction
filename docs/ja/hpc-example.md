@@ -2,6 +2,9 @@
 
 大規模バッチや複数ノードの `pdb2reaction` 実行では、`workers` / `workers_per_node`（{ref}`MLIP 計算機 <ja-configuration-reference>` 参照）をスケジューラ配下の Ray クラスタでノード間に分散できます。
 
+- `workers` — 全ノードを通じた UMA 予測プロセスの総数（デフォルト `1`）。
+- `workers-per-node` — そのうち各ノードで動作する数（デフォルト `1`）。ノードあたりの GPU / メモリ負荷を制御します。
+
 ```{warning}
 UMA バックエンドを `workers > 1` で実行している状態では `hessian_calc_mode="Analytical"` を明示指定しても解析ヘシアンは警告なく有限差分へダウングレードされます。解析ヘシアンが必要なら `workers = 1` に下げるか、デフォルトの `FiniteDifference` を使用してください。{ref}`ja-hessian-evaluation` を参照してください。ORB / MACE / AIMNet2 は `workers` / `workers_per_node` を受け付けないため、この規則は適用されません。
 ```
@@ -141,13 +144,13 @@ pdb2reaction opt -i test.pdb -q -5 -m 1 --workers ${NNODES} --workers-per-node $
 
 ## ウォールタイム見積り
 
-上の 24 時間テンプレートは ceiling（上限）であり目標値ではありません。実行環境の wall-clock パターンに合わせて選んでください。
+上の 24 時間テンプレートはデフォルトの ceiling（上限）であり目標値ではありません。多くのジョブはこれを大きく下回って完了します。実行環境の wall-clock パターンに合わせて選んでください。
 
 - **クラスターモデルの `opt` / `tsopt`**（~50–100 原子、単一 GPU）: 数分〜数時間
 - **`pdb2reaction all` 一気通貫**（extract → MEP → TSOPT → IRC → freq → DFT、小型基質）: 通常数時間。ハイエンド multi-GPU ノードでは DFT 段が大きく短縮可能
 - **MEP（`path-search` / `path-opt`）**: `--max-nodes`（セグメントあたりのイメージ数）と `--max-cycles`（GSM 最適化サイクル数）の双方でスケール。再帰的 `path-search` キャンペーンではこれにセグメント数が掛かるため、多段階反応では単一 GPU で何時間にも及び得る
 
-UMA backend の場合、ウォールタイムは有効並列度（`workers × workers_per_node`）に概ね反比例します。ORB / MACE / AIMNet2 は worker 並列を持たないので、ノードを増やしても wall-clock は短くなりません。
+UMA backend の場合、ウォールタイムは有効並列度（`workers` の総数）に概ね反比例します。ORB / MACE / AIMNet2 は worker 並列を持たないので、ノードを増やしても wall-clock は短くなりません。
 
 ## 関連項目
 
