@@ -10,7 +10,7 @@ An initial reaction path is one command:
 
 ```bash
 # Multi-PDB mode (R + P endpoints → MEP, with TS optimisation + thermo)
-pdb2reaction all -i R.pdb P.pdb -q 0 --tsopt --thermo
+pdb2reaction all -i R.pdb P.pdb -c 'LIG' -l 'LIG:-1' --tsopt --thermo
 ```
 
 > **Prerequisites:** input PDBs must already contain hydrogens; multiple PDBs must share the same atoms in the same order (only coordinates differ). Small-molecule `.xyz` / `.gjf` inputs work when `--center/-c` and `--ligand-charge/-l` are omitted.
