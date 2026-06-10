@@ -6,7 +6,7 @@
 
 `pdb2reaction` is a Python CLI for elucidating **enzymatic reaction pathways** from **PDB structures** using machine-learning interatomic potentials (MLIPs). Given (i) two or more PDB files (R → ... → P), (ii) one PDB with `--scan-lists`, or (iii) one TS candidate with `--tsopt`, it extracts an **active-site cluster model**, runs an **MEP search**, and optionally chains **TS optimization → IRC → frequencies → DFT single-point**. Each stage is also exposed as an [individual subcommand](#cli-subcommands).
 
-Inputs are not limited to full enzyme PDBs: pass a small molecule or a cluster model you built yourself directly as `.xyz` / `.gjf` (omit `--center/-c` to skip extraction), and the same end-to-end pipeline runs on the structure as given.
+Inputs are not limited to full enzyme PDBs: pass a small molecule as `.xyz` / `.gjf`, or a cluster model you built yourself as a PDB, and omit `--center/-c` to skip extraction — the same end-to-end pipeline then runs on the structure as given.
 
 An initial reaction path is one command:
 
@@ -86,8 +86,11 @@ pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 # TS-only validation (single TS candidate → tsopt → IRC → freq)
 pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt
 
-# Small molecule or your own cluster model (skip extraction; .xyz / .gjf input)
-pdb2reaction -i reactant.xyz product.xyz -q 0 --tsopt --thermo --out-dir result_cluster
+# Small molecule (gas-phase): .xyz / .gjf input — omit -c, set charge with -q
+pdb2reaction -i reactant.xyz product.xyz -q 0 --tsopt --thermo --out-dir result_small
+
+# Your own cluster model (already-trimmed PDB): omit -c to use it as-is
+pdb2reaction -i cluster_R.pdb cluster_P.pdb -q 0 --tsopt --thermo --out-dir result_cluster
 ```
 
 Per-stage walkthrough (`extract` → `opt` → `path-search` → `tsopt` → `freq` → `irc` → `dft`): [docs/getting-started.md](docs/getting-started.md) and [docs/quickstart-all.md](docs/quickstart-all.md).
