@@ -72,7 +72,7 @@ CUDA module loads, alternative-backend recipes, DMF/`cyipopt` setup, Plotly Chro
 
 ## Quick Examples
 
-Examples use GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)) — full commands in [`examples/run.sh`](examples/).
+Examples use GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)) — runnable MEP and scan commands are in [`examples/run.sh`](examples/).
 
 ```bash
 # Multi-structure MEP (R + P → MEP, with TS + thermochemistry)
@@ -84,8 +84,12 @@ pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' --tsopt --thermo --out-dir result_scan
 
 # TS-only validation (single TS candidate → tsopt → IRC → freq)
-pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt
+pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --thermo --out-dir result_tsonly
+```
 
+`pdb2reaction` can also be used to investigate reaction mechanisms of **small molecules** and **user-defined cluster models**.
+
+```bash
 # Small molecule (gas-phase): .xyz / .gjf input — omit -c, set charge with -q
 pdb2reaction -i reactant.xyz product.xyz -q 0 --tsopt --thermo --out-dir result_small
 
