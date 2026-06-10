@@ -6,6 +6,8 @@
 
 `pdb2reaction` is a Python CLI for elucidating **enzymatic reaction pathways** from **PDB structures** using machine-learning interatomic potentials (MLIPs). Given (i) two or more PDB files (R → ... → P), (ii) one PDB with `--scan-lists`, or (iii) one TS candidate with `--tsopt`, it extracts an **active-site cluster model**, runs an **MEP search**, and optionally chains **TS optimization → IRC → frequencies → DFT single-point**. Each stage is also exposed as an [individual subcommand](#cli-subcommands).
 
+Inputs are not limited to full enzyme PDBs: pass a small molecule or a cluster model you built yourself directly as `.xyz` / `.gjf` (omit `--center/-c` to skip extraction), and the same end-to-end pipeline runs on the structure as given.
+
 An initial reaction path is one command:
 
 ```bash
@@ -19,9 +21,9 @@ pdb2reaction all -i R.pdb P.pdb -c 'LIG' -l 'LIG:-1' --tsopt --thermo
 
 | Tool | Use case |
 |---|---|
-| **`pdb2reaction`** (this repo) | Pure-MLIP **cluster-model** reaction paths from PDB / XYZ / GJF — no MM force field required. |
+| **`pdb2reaction`** (this repo) | Pure-MLIP reaction paths for **cluster models and small molecules** from PDB / XYZ / GJF — no MM force field required. |
 | [**mlmm-toolkit**](https://github.com/t-0hmura/mlmm_toolkit) | **ML/MM ONIOM** with the full protein environment; automates MM parameterization and ML-region assignment from a single PDB. |
-| [**uma_pysis**](https://github.com/t-0hmura/uma_pysis) | YAML-input reaction-mechanism analysis for **small molecules**. |
+| [**uma_pysis**](https://github.com/t-0hmura/uma_pysis) | Lightweight **YAML-driven UMA–pysisyphus interface** for single PES jobs (GS / TS / IRC / ΔG). |
 
 `pdb2reaction` and `mlmm-toolkit` bundle the same GPU-optimized pysisyphus fork; it is **not** compatible with upstream pysisyphus — do not install them side by side.
 
@@ -83,6 +85,9 @@ pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 
 # TS-only validation (single TS candidate → tsopt → IRC → freq)
 pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt
+
+# Small molecule or your own cluster model (skip extraction; .xyz / .gjf input)
+pdb2reaction -i reactant.xyz product.xyz -q 0 --tsopt --thermo --out-dir result_cluster
 ```
 
 Per-stage walkthrough (`extract` → `opt` → `path-search` → `tsopt` → `freq` → `irc` → `dft`): [docs/getting-started.md](docs/getting-started.md) and [docs/quickstart-all.md](docs/quickstart-all.md).
