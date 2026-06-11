@@ -4,9 +4,7 @@
 
 <img src="./docs/overview.png" alt="pdb2reaction workflow overview" width="90%">
 
-`pdb2reaction` is a Python CLI for elucidating **enzymatic reaction pathways** from **PDB structures** using machine-learning interatomic potentials (MLIPs). Given (i) two or more PDB files (R → ... → P), (ii) one PDB with `--scan-lists`, or (iii) one TS candidate with `--tsopt`, it extracts an **active-site cluster model**, runs an **MEP search**, and optionally chains **TS optimization → IRC → frequencies → DFT single-point**. Each stage is also exposed as an [individual subcommand](#cli-subcommands).
-
-Inputs are not limited to full enzyme PDBs: pass a small molecule as `.xyz` / `.gjf`, or a cluster model you built yourself as a PDB, and omit `--center/-c` to skip extraction — the same end-to-end pipeline then runs on the structure as given.
+`pdb2reaction` is a Python CLI for elucidating **enzymatic reaction pathways** from **PDB structures** using machine-learning interatomic potentials (MLIPs). Given (i) two or more PDB files (R → ... → P), (ii) one PDB with `--scan-lists`, or (iii) one TS candidate with `--tsopt`, it extracts an **active-site cluster model**, runs an **MEP search**, and optionally chains **TS optimization → IRC → thermochemical correction → DFT single-point**. Each stage is also exposed as an [individual subcommand](#cli-subcommands).
 
 An initial reaction path is one command:
 
@@ -15,17 +13,19 @@ An initial reaction path is one command:
 pdb2reaction all -i R.pdb P.pdb -c 'LIG' -l 'LIG:-1' --tsopt --thermo
 ```
 
+Also, inputs are not limited to full enzyme PDBs: pass a small molecule as `.xyz` / `.gjf`, or a cluster model you built yourself as a PDB, and omit `--center/-c` to skip extraction — the same end-to-end pipeline then runs on the structure as given.
+
 > **Prerequisites:** input PDBs must already contain hydrogens; multiple PDBs must share the same atoms in the same order (only coordinates differ). Small-molecule `.xyz` / `.gjf` inputs work when `--center/-c` and `--ligand-charge/-l` are omitted.
 
 ## Related tools
 
 | Tool | Use case |
 |---|---|
-| **`pdb2reaction`** (this repo) | Pure-MLIP reaction paths for **cluster models and small molecules** from PDB / XYZ / GJF — no MM force field required. |
+| **`pdb2reaction`** (this repo) | Pure-MLIP reaction paths for **cluster models and small molecules** from PDB / XYZ / GJF. |
 | [**mlmm-toolkit**](https://github.com/t-0hmura/mlmm_toolkit) | **ML/MM ONIOM** with the full protein environment; automates MM parameterization and ML-region assignment from a single PDB. |
-| [**uma_pysis**](https://github.com/t-0hmura/uma_pysis) | Lightweight **YAML-driven UMA–pysisyphus interface** for single PES jobs (GS / TS / IRC / ΔG). |
+| [**uma_pysis**](https://github.com/t-0hmura/uma_pysis) | Lightweight **YAML-driven UMA–pysisyphus interface** for light reaction mechanism investigation (GS / TS / IRC / ΔG). |
 
-`pdb2reaction` and `mlmm-toolkit` bundle the same GPU-optimized pysisyphus fork; it is **not** compatible with upstream pysisyphus — do not install them side by side.
+> `pdb2reaction` and `mlmm-toolkit` bundle the same GPU-optimized pysisyphus fork; it is **not** compatible with upstream pysisyphus — do not install them side by side.
 
 ## Documentation
 
@@ -37,9 +37,9 @@ pdb2reaction all -i R.pdb P.pdb -c 'LIG' -l 'LIG:-1' --tsopt --thermo
 
 | Component | Requirement |
 |---|---|
-| OS / Python | Linux x86_64 (validated); macOS / WSL 2 for CPU-only smoke tests. Python >= 3.11 (3.12 tested). |
-| GPU / CUDA / VRAM | NVIDIA GPU, CUDA >= 12.6 (12.9 recommended; required for RTX 50-series, matched to the PyTorch wheel). 8 GB VRAM minimum, 16 GB recommended (24 GB for analytical Hessian on 500+-atom regions). |
-| RAM / Disk | 32 GB RAM minimum (60 GB recommended); 20 GB free disk for the conda env, UMA cache, and artifacts. |
+| OS / Python | Linux recommended. Python >= 3.11. |
+| GPU / CUDA / VRAM | NVIDIA GPU, CUDA >= 12.6 (12.8~ recommended; required for RTX 50-series). 8 GB~ VRAM recommended. |
+| RAM / Disk | 16 GB~ RAM recommended; 20 GB free disk for the conda env, UMA cache, and artifacts. |
 
 CPU-only execution works but is 10–100× slower; not recommended for full TS / IRC / Hessian workflows. Full requirement and tuning details: [docs/installation.md](docs/installation.md).
 
@@ -130,16 +130,12 @@ Pipeline scratch lives under `_work/` (safe to delete). Full layout and filename
 | `bond-summary` | Compare structures, report bond changes | [bond-summary](docs/bond-summary.md) |
 | `trj2fig` / `energy-diagram` | Energy plot / R→TS→P diagram | [trj2fig](docs/trj2fig.md) · [energy-diagram](docs/energy-diagram.md) |
 
-> `tsopt`, `freq`, `irc`: set `--hessian-calc-mode Analytical` when VRAM allows.
-
 ## Getting Help
 
 ```bash
 pdb2reaction --help                       # top-level
 pdb2reaction <subcmd> --help              # core options
 pdb2reaction <subcmd> --help-advanced     # full option set
-p2r --help                                # short alias
-python -m pdb2reaction --help             # equivalent module invocation
 ```
 
 Issues: <https://github.com/t-0hmura/pdb2reaction/issues>.
@@ -156,13 +152,13 @@ Issues: <https://github.com/t-0hmura/pdb2reaction/issues>.
 
 ## Agent Skills
 
-Agent instructions for Claude Code / Codex / Cursor live in [`skills/`](skills/) — copy into your project's skill location (e.g. `.claude/skills/`) to let an agent drive `extract` / `path-search` / `tsopt` / `irc` / `dft` end-to-end.
+Agent Skills for Claude Code / Codex / Cursor etc. in [`skills/`](skills/) — copy into your project's skill location (e.g. `.claude/skills/`) to let an agent drive `pdb2reaction` workflows and subcommands.
 
 ## Known limitations
 
 - **MACE + UMA cannot coexist** (`e3nn` version conflict). Use separate conda envs.
-- **DFT single-point** is practical up to ~300 atoms; larger systems need fragmentation.
-- **ORB backend** sometimes converges TS with extra soft imaginary modes — mechanism recovery is fine, but for clean single-saddle spectra prefer UMA / MACE or re-score with DFT.
+- **DFT single-point** is practical up to ~300 atoms; larger systems need high computational cost.
+- **ORB backend** sometimes converges TS with extra soft imaginary modes — for clean single-saddle spectra prefer UMA / MACE.
 - **CPU-only execution** is 10–100× slower than GPU.
 
 ## Contributing

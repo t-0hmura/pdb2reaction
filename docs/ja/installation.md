@@ -175,9 +175,9 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 
 ## システム要件
 
-**GPU / CUDA / VRAM:** 実行環境の CUDA に合った CUDA タグの PyTorch wheel をインストールしてください（CUDA 12.6 なら `cu126`、CUDA 12.9 なら `cu129`。RTX 50 系では 12.9 が必須です）。VRAM は実用上 8 GB が最小で、16 GB を推奨します。500 原子超の領域に対する解析的ヘシアンには 24 GB が必要です。`tests/smoke/` のスイートはデフォルトの `uma-s-1p1` モデルでピーク約 0.9 GB のため、本番の TS / IRC / ヘシアンのワークフローが収まらない小容量 GPU でも実行できます。
+**GPU / CUDA / VRAM:** 実行環境の CUDA に合った CUDA タグの PyTorch wheel をインストールしてください（CUDA 12.6 なら `cu126`、CUDA 12.9 なら `cu129`。RTX 50 系では 12.9 が必須です）。VRAM は 8 GB 以上を推奨します。大きな ML 領域の解析的ヘシアンでは GPU 容量が大きいほど有利です。`tests/smoke/` のスイートはデフォルトの `uma-s-1p1` モデルでピーク約 0.9 GB のため、本番の TS / IRC / ヘシアンのワークフローが収まらない小容量 GPU でも実行できます。
 
-**RAM:** 最小 32 GB、推奨 60 GB（GPU 計算と並行して大規模な活性部位モデルを扱うための余裕）。
+**RAM:** 16 GB 以上を推奨します（GPU 計算と並行して大規模な活性部位モデルを扱う場合は余裕があるほど安心です）。
 
 **ディスク:** 空き容量約 20 GB を見込んでください。内訳は conda 環境（約 8 GB）、UMA の Hugging Face モデルキャッシュ（約 1〜4 GB）、静的 PNG エクスポート用に Plotly が取得するヘッドレス Chromium（約 150 MB、`plotly_get_chrome` 経由）です。
 
