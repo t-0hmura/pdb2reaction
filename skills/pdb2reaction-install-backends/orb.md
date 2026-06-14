@@ -10,6 +10,14 @@ than UMA / MACE.
 pip install 'pdb2reaction[orb]'         # pulls orb-models
 ```
 
+> **torch_scatter has no PyPI binary wheel** (only an sdist), so `[orb]` source-builds it and fails
+> under PEP517 isolation (`No module named 'torch'`). Install from PyG's prebuilt-wheel index matching
+> your torch+CUDA tag (single command, no compiler needed):
+> ```bash
+> pip install 'pdb2reaction[orb]' -f https://data.pyg.org/whl/torch-2.8.0+cu129.html
+> ```
+> Fallback (CUDA toolchain present): `pip install torch` → `pip install torch_scatter --no-build-isolation` → `[orb]`.
+
 Or, if `pdb2reaction` is already installed:
 
 ```bash

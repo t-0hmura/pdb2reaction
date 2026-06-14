@@ -44,6 +44,7 @@ pdb2reaction         -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'    # extracti
 |---|---|
 | UMA download fails / HF auth missing (`huggingface_hub.errors.GatedRepoError`, `401`, `403`) | `hf auth login` once per env / machine; accept the UMA model license on the HF page. On HPC, ensure HF cache dir is writable from compute nodes. |
 | `ImportError: orb-models is required` (or similar for AIMNet2 / MACE) | For ORB: `pip install "pdb2reaction[orb]"`. For AIMNet2: `pip install "pdb2reaction[aimnet]"`. MACE installs into a separate env. |
+| `[orb]` install fails building **torch_scatter** (`No module named 'torch'`) | torch_scatter ships no PyPI binary wheel (only an sdist) → source-build fails under PEP517 build isolation. Install from PyG's prebuilt-wheel index matching your torch+CUDA tag: `pip install "pdb2reaction[orb]" -f https://data.pyg.org/whl/torch-2.8.0+cu129.html`. Fallback (CUDA toolchain present): `pip install torch_scatter --no-build-isolation`. |
 | `torch.cuda.is_available()` returns `False` | Install PyTorch matching your cluster CUDA runtime; verify `nvidia-smi` + `python -c "import torch; print(torch.version.cuda, torch.cuda.is_available())"`. |
 | DMF fails (`--mep-mode dmf`: `cyipopt` missing or `No module named pydmf`) | `conda install -c conda-forge cyipopt` before installing `pdb2reaction`. `pydmf` ships as a dep; if missing, `pip install --force-reinstall pdb2reaction`. |
 | Plot export fails (Plotly / Chrome) | `plotly_get_chrome -y`. |

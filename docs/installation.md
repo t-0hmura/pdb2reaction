@@ -125,7 +125,10 @@ If you prefer to build the environment piece by piece:
     pdb2reaction uses UMA by default. To use alternative backends, install the corresponding optional dependency:
 
     ```bash
-    # ORB backend
+    # ORB backend. orb-models pulls torch_scatter, whose prebuilt wheels live on PyG's
+    # index (not PyPI), so pip source-builds it and may fail under build isolation
+    # ("No module named 'torch'"). Add PyG's index matching your torch+CUDA tag, e.g.:
+    #   pip install "pdb2reaction[orb]" -f https://data.pyg.org/whl/torch-2.8.0+cu129.html
     pip install "pdb2reaction[orb]"
 
     # AIMNet2 backend

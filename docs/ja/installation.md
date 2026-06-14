@@ -125,7 +125,10 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
     pdb2reaction はデフォルトで UMA を使用します。他のバックエンドを使用する場合は、対応するオプション依存関係をインストールしてください:
 
     ```bash
-    # ORB バックエンド
+    # ORB バックエンド。orb-models が引く torch_scatter は prebuilt wheel が PyPI でなく
+    # PyG の index にあるため、pip はソースビルドし、build isolation で
+    # "No module named 'torch'" と失敗することがあります。torch+CUDA タグに合わせて PyG index を追加:
+    #   pip install "pdb2reaction[orb]" -f https://data.pyg.org/whl/torch-2.8.0+cu129.html
     pip install "pdb2reaction[orb]"
 
     # AIMNet2 バックエンド
