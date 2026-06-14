@@ -20,12 +20,17 @@ integers. Wrong values silently produce wrong-chemistry trajectories.
 
 ## Charge (`-q`, or summed via `-l 'RES:Q'`)
 
-Two routes:
+**For PDB inputs, prefer `-l`**: give only the non-standard-residue charges
+and let the total be auto-derived (standard AAs from the internal table +
+ions + your ligand charges; waters / link-H are neutral). It matches
+`extract`'s reported total and stays correct when the cluster (radius / rep)
+changes — so you never hand-enter a per-pocket total. Reserve `-q` for
+`.xyz` / `.gjf` inputs (no residues to sum) or to deliberately override.
 
-1. **Direct total** — pass `-q INTEGER` if you already know the total
-   charge of the cluster.
-2. **Per-residue mapping** — pass `-l 'RES1:Q1,RES2:Q2,...'` and let
-   `pdb2reaction` sum amino-acid + ligand charges.
+1. **Per-residue mapping (recommended for PDB)** — pass `-l 'RES1:Q1,RES2:Q2,...'`
+   and let `pdb2reaction` sum amino-acid + ligand charges.
+2. **Direct total / override** — pass `-q INTEGER` if you already know the
+   total charge of the cluster (or to override the `-l` derivation).
 
 The amino-acid table is internal:
 
