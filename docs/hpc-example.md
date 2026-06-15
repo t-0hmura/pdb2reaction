@@ -152,6 +152,10 @@ The 24 h template above is a default ceiling, not a target. Most jobs finish wel
 
 Walltime scales roughly inversely with effective parallelism (the total `workers` count) on the UMA backend. ORB / MACE / AIMNet2 do not parallelize across workers, so adding more nodes does not shorten their wall-clock time.
 
+## Precision on datacenter GPUs
+
+On the HPC datacenter cards these templates target (H100 / H200 / A100), run production TS optimizations and Hessians with `--precision fp64`: the fp64 throughput cost is small on these cards and it gives deterministic-grade, low numerical-noise results. Keep the default `--precision fp32` for screening and on consumer GPUs (RTX 50xx / 40xx), where fp64 is substantially slower. See [Reproducibility → Choosing precision by GPU class](reproducibility.md#choosing-precision-by-gpu-class) for the routing details and the `--deterministic` pairing.
+
 ## See Also
 
 - [MLIP Calculator](uma-pysis.md) — configuration reference and Hessian evaluation notes

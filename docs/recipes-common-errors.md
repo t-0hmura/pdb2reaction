@@ -75,6 +75,7 @@ Signal:
 
 First checks:
 - Confirm TS candidate quality: exactly one imaginary frequency, and the corresponding imaginary mode shows displacement along the reaction coordinate. The detection cutoff is `hessian_dimer.neg_freq_thresh_cm` (default 5 cm⁻¹).
+- For a wrong imaginary-mode count (a spurious second small mode, or no dominant reaction mode), raise precision with `--precision fp64` and/or switch to `--coord-type dlc`, then add `--flatten` for residual small modes — these levers are complementary. See [`tsopt` → Wrong imaginary-mode count after optimization](tsopt.md#wrong-imaginary-mode-count-after-optimization).
 - Tune step sizes / trust radii (YAML knobs `max_step`, `trust_radius`/`trust_min`/`trust_max`) and optimizer mode / flattening (CLI flags `--opt-mode`, `--flatten`); these are complementary. For YAML section layout see [YAML Reference](yaml-reference.md); for the canonical fix path see {ref}`Calculation / convergence problems <calculation-convergence-problems>`.
 - If the run stops at `max_cycles` while the force is only barely above the threshold (and the energy has flattened), see {ref}`Calculation / convergence problems <calculation-convergence-problems>` — the `opt.energy_plateau` fallback handles this automatically.
 

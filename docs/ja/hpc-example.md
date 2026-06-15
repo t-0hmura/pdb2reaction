@@ -152,6 +152,10 @@ pdb2reaction opt -i test.pdb -q -5 -m 1 --workers ${NNODES} --workers-per-node $
 
 UMA backend の場合、ウォールタイムは有効並列度（`workers` の総数）に概ね反比例します。ORB / MACE / AIMNet2 は worker 並列を持たないので、ノードを増やしても wall-clock は短くなりません。
 
+## データセンター GPU での精度
+
+これらのテンプレートが対象とする HPC データセンターカード（H100 / H200 / A100）では、本番の TS 最適化と Hessian を `--precision fp64` で実行してください。これらのカードでは fp64 のスループットコストが小さく、決定的グレードで数値ノイズの少ない結果が得られます。スクリーニングやコンシューマー GPU（RTX 50xx / 40xx、fp64 が大幅に遅い）ではデフォルトの `--precision fp32` のままにします。振り分けの詳細と `--deterministic` との併用は {ref}`再現性: GPU クラスによる精度の選択 <ja-precision-by-gpu-class>` を参照してください。
+
 ## 関連項目
 
 - [MLIP 計算機](uma-pysis.md) — 設定リファレンスとヘシアン評価モード

@@ -153,9 +153,24 @@ More YAML options for `opt`/`lbfgs`/`rfo`/`bias`/`bond` and their defaults are i
 For the YAML/JSON file format, inline Python literal syntax, atom selectors, and quoting rules,
 see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
 
-### Multiple stages
+### Staged vs concerted scans
 
-Pass multiple literals after a single `--scan-lists/-s` flag. Each literal becomes one stage:
+The number of `(i, j, target)` tuples inside one literal and the number of literals together decide whether the coordinates are driven *together* (concerted) or *in sequence* (staged):
+
+| Mode | Syntax | Use when |
+| --- | --- | --- |
+| Concerted | one `-s` with several coordinate tuples | The coordinates move together in a single step; you do not need to break the mechanism into stages |
+| Staged | `-s` repeated (one literal per sequential stage) | The mechanism is known up front and you want clean per-step control and per-stage output |
+
+When the mechanism **is** known, the staged form is generally preferred — it gives per-step barriers and per-stage geometries. When the mechanism is unknown or multi-step, let [`path-search`](path-search.md) auto-segment the path instead of guessing the stages yourself. (A 4-tuple `(i, j, low, high)` expands into a bidirectional 2-stage scan; see [Bidirectional scan](#bidirectional-scan-4-tuple).)
+
+```bash
+# Concerted: two coordinates move together in one stage
+pdb2reaction scan -i reactant.pdb \
+    -s '[("Ca RES 10","Cb RES 11",1.6),("H RES 11","O GLU 20",1.0)]' -o result_concerted
+```
+
+Pass multiple literals after a single `--scan-lists/-s` flag for a staged scan. Each literal becomes one stage:
 
 ```bash
 # Stage 1: drive one bond to 1.35 Å
@@ -166,6 +181,17 @@ Pass multiple literals after a single `--scan-lists/-s` flag. Each literal becom
 ```
 
 Stages run sequentially; each starts from the previous stage's relaxed result.
+
+(scan-direction-and-barrier-sign)=
+### Scan direction and barrier sign
+
+If a `scan` (or path) **starts from the product** side, the raw barrier it reports is the **reverse** barrier, `E(TS) − E(product)`. To quote the forward barrier, compute it from the reactant:
+
+| You ran | Forward barrier |
+| --- | --- |
+| A product-start scan | `E(TS) − E(reactant)` — **not** the raw product-start number |
+
+This is a read-time interpretation, not a flag. Always confirm which endpoint the scan started from before quoting a barrier, especially when the workflow was seeded from a crystallographic product complex.
 
 ### Bidirectional scan (4-tuple)
 

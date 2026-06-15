@@ -10,6 +10,17 @@ If you need a TS guess first, run [`path-opt`](path-opt.md) (two structures) or 
 
 > **Naming note:** the CLI accepts `grad` / `dimer` (Dimer) and `hess` / `rsirfo` (RS-I-RFO, default). In YAML, use the top-level `hessian_dimer:` (Dimer) or `rsirfo:` (RS-I-RFO) blocks directly.
 
+## Two routes to a TS candidate
+
+`tsopt` refines a candidate you already have; there are two complementary ways to *build* that candidate first. Pick the route that matches the information you have.
+
+| Route | Subcommand | Use when | What it does |
+| --- | --- | --- | --- |
+| (a) MEP / path search | [`path-search`](path-search.md) | You have both endpoints (reactant **and** product) and want the TS bracketed automatically | Recursive minimum-energy-path search (GSM / DMF) with bond-change detection; it auto-segments a multi-step path, refines each reactive segment, and returns the highest-energy image per segment (`hei_seg_NN.xyz`) |
+| (b) Distance-restrained scan | [`scan`](scan.md) | You have only the reactant, or want to drive a specific reacting distance directly | Harmonic distance restraints, `E = ½k(r − target)²`, drive each reacting distance with full relaxation, walking the system up to a TS candidate |
+
+There is no `opt --restraint` flag: `opt` is plain unrestrained minimization, and the distance-restrained build-up route is `scan` (which can relax the endpoints around the driven path with `--preopt` / `--endopt`). Feed the candidate from either route into `tsopt → freq → irc` to optimize and validate it.
+
 ## Examples
 
 Default RS-I-RFO optimization of a PDB candidate:
@@ -115,6 +126,8 @@ The tables below cover the options that need explanation. The full flag list is 
 | **TS optimizer & mode** | | |
 | `--opt-mode TEXT` | TS optimizer preset (Choice: `grad` / `hess` / `dimer` / `rsirfo` / `trim` / `rsprfo`). `grad` and `dimer` → Hessian-Guided Dimer; `hess` and `rsirfo` → RS-I-RFO (default); `trim` → TRIM (Helgaker, non-microiter); `rsprfo` → RS-P-RFO (Banerjee, non-microiter). On `opt`, the same `grad` token picks L-BFGS minimization instead — see {ref}`opt-mode-semantics`. | `hess` |
 | `--flatten / --no-flatten` | Enable the surplus-imaginary-mode flattening loop (`False` forces `flatten_max_iter = 0`). After TS optimization converges, iteratively flattens surplus negative-eigenvalue modes until only one imaginary frequency remains (or the iteration cap is reached). Applies to both Dimer (dimer loop) and RS-I-RFO (post-convergence). | `False` |
+| `--coord-type TEXT` | Optimization coordinate system (`cart` / `redund` / `dlc` / `tric`). `cart` is the robust default behind the published numbers; `dlc` (delocalized internal coordinates) is slower but converges more robustly to a clean first-order saddle on torsion-rich systems. Needs a Hessian-based optimizer (`tsopt` RS-I-RFO / Dimer qualify); `path-opt` / `path-search` accept only `cart` / `dlc`. | `cart` |
+| `--precision [fp32\|fp64]` | MLIP backend precision, routed to the backend-native kwarg (UMA `precision` / ORB `precision` / MACE `default_dtype`; `aimnet2`: `fp32` no-op, `fp64` rejected). On datacenter GPUs use `fp64` for low numerical-noise Hessians; see [Reproducibility](reproducibility.md#choosing-precision-by-gpu-class). | `fp32` |
 | **Thresholds & cycles** | | |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
 | `--max-cycles INT` | Macro-cycle cap forwarded to `opt.max_cycles`. | `10000` |
@@ -137,6 +150,50 @@ The tables below cover the options that need explanation. The full flag list is 
 - CLI `--flatten` passed → the YAML / `defaults.py` value applies (default `flatten_max_iter = 50`); you can still override via YAML.
 
 If your TS candidate has multiple imaginary frequencies, add `--flatten` to enable the surplus-mode cleanup loop.
+```
+
+### Wrong imaginary-mode count after optimization
+
+A true first-order saddle has **exactly one** imaginary frequency, and its mode displaces along the reaction coordinate (detection cutoff `hessian_dimer.neg_freq_thresh_cm`, default 5 cm⁻¹). If `tsopt` instead reports a spurious second small imaginary mode, or no dominant reaction mode, escalate the following levers — they are complementary, so you can combine them:
+
+| Lever | Flag | Effect |
+| --- | --- | --- |
+| Raise precision | `--precision fp64` | A cleaner Hessian removes numerical-noise imaginary modes (use on a datacenter GPU). |
+| Internal coordinates | `--coord-type dlc` | Delocalized internal coordinates — slower, but more robust convergence to a clean first-order saddle on torsion-rich systems. |
+| Flatten small modes | `--flatten` | Displaces along and re-relaxes residual small imaginary modes. |
+
+Try `--precision fp64` and/or `--coord-type dlc` first, then add `--flatten` to clean up any residual small modes:
+
+```bash
+pdb2reaction tsopt -i ts_candidate.xyz -q -1 -m 1 \
+    --precision fp64 --coord-type dlc --flatten -o result_tsopt
+```
+
+See also [Common Error Recipes → Convergence and post-processing failures](recipes-common-errors.md).
+
+### Reading a barrier scanned from the product side
+
+If the `scan` (or path) that produced this TS candidate started from the **product**, the raw barrier it reports is the **reverse** barrier, `E(TS) − E(product)`. The forward barrier you usually want is computed from the reactant:
+
+| You ran | Forward barrier |
+| --- | --- |
+| A product-start scan | `E(TS) − E(reactant)` — **not** the raw product-start number |
+
+This is a read-time interpretation, not a flag. Always confirm which endpoint the scan started from before quoting a barrier, especially when the workflow was seeded from a crystallographic product complex. See also [`scan` → Scan direction and barrier sign](scan.md#scan-direction-and-barrier-sign).
+
+### Controlled mutant-vs-WT comparison
+
+For a mutant-vs-WT (or mechanism-vs-mechanism) barrier comparison, **every compared model must use the identical atom set** — the same atom count and the same residues. Otherwise the comparison is not controlled and the barrier difference is not interpretable.
+
+`pdb2reaction` is a pure-MLIP cluster tool: there is no ML/MM layer concept, no layer-detection flag, and no geometric layer split. The same-atom-set rule is therefore enforced by construction:
+
+- Prepare **one** cluster atom set, then apply the mutation (or change the mechanism) **on that same set**, so the atom count and residues stay identical across every compared run. Edit the shared cluster in place — do **not** re-extract each variant independently, because a different `--radius` or residue inclusion silently changes the atom set and breaks the comparison.
+- Keep the non-standard ligand charge consistent across all compared runs with `-l 'RES:Q'` (e.g. `-l 'GPP:-3,SAM:1'`), so a charge difference never confounds the barrier comparison.
+
+```bash
+# WT and mutant share one prepared cluster (identical atom count + residues)
+pdb2reaction all -i wt_cluster.pdb     -l 'GPP:-3,SAM:1' --tsopt --thermo -o result_wt
+pdb2reaction all -i mutant_cluster.pdb -l 'GPP:-3,SAM:1' --tsopt --thermo -o result_mutant
 ```
 
 ## YAML configuration

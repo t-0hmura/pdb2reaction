@@ -33,7 +33,17 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt True --deterministic
 
 `--precision fp64` と（内部的で常時有効な）fp64 Hessian は独立したノブです。`--precision fp64` を渡すと、追加で Hessian も fp64 に強制されるため、optimizer の線形代数がモデルより低い精度で黙って実行されることはありません。
 
-## AIMNet2 の制限
+(ja-precision-by-gpu-class)=
+### GPU クラスによる精度の選択
+
+`--precision` は MLIP 推論の浮動小数点精度（`fp32` | `fp64`、大文字小文字を区別しない。デフォルトは `fp32` でスクリーニング速度の基準）を選択します。バックエンド非依存であり、CLI は値を各バックエンド固有のキー（UMA `precision`、ORB `precision`、MACE `default_dtype`）に振り分けます。`aimnet2` では `fp32` は no-op で、`fp64` はモデル入力が上流で float32 にキャストされるため拒否されます。どちらの値を選ぶかは GPU クラスによって決まります。
+
+| GPU クラス | 推奨 | 理由 |
+| --- | --- | --- |
+| HPC データセンター（H100 / H200 / A100） | `--precision fp64` | 決定的グレードで数値ノイズの少ない TS 最適化と Hessian が得られ、これらのカードでは fp64 のスループットコストが小さい。 |
+| コンシューマー（RTX 50xx / 40xx） | `--precision fp32`（デフォルト） | ここでは fp64 が大幅に遅く、fp32 が速度・スクリーニングの基準。 |
+
+OMol で学習された UMA バックエンドでは fp64 が TS 最適化と Hessian に無視できない影響を与えるため、スクリーニングだけでなく最終的・本番用の数値には fp64 を使用してください。ビット単位で同一の再実行が必要な場合は `--deterministic` と併用します。
 
 AIMNet2 は高い再現性を得るためのどちらの経路もサポートしておらず、いずれの組み合わせも誤解を招く形で実行する代わりに明確なエラーで拒否します。
 

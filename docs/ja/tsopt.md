@@ -10,6 +10,17 @@ TS 初期構造がまず必要な場合は、2 端点なら [path-opt](path-opt.
 
 > **命名規則の注意:** CLI は `grad|dimer`（= Dimer）および `hess|rsirfo`（= RS-I-RFO、デフォルト）を受け付けます。YAML ではトップレベルの `hessian_dimer:`（Dimer）または `rsirfo:`（RS-I-RFO）ブロックを直接指定してください。
 
+## TS 候補を得る 2 つの経路
+
+`tsopt` は既に手元にある候補を精密化します。その候補を*構築する*には補完的な 2 つの方法があり、手元の情報に合わせて選びます。
+
+| 経路 | サブコマンド | 使う場面 | 動作 |
+| --- | --- | --- | --- |
+| (a) MEP / 経路探索 | [`path-search`](path-search.md) | 両端点（反応物**および**生成物）があり、TS を自動でブラケットしたい | 再帰的な最小エネルギー経路探索（GSM / DMF）と結合変化検出。多段階経路を自動分割し、各反応区間を精密化し、区間ごとの最高エネルギー像（`hei_seg_NN.xyz`）を返す |
+| (b) 距離拘束スキャン | [`scan`](scan.md) | 反応物のみがある、または特定の反応距離を直接駆動したい | 調和距離拘束 `E = ½k(r − target)²` で各反応距離を完全緩和しながら駆動し、系を TS 候補まで押し上げる |
+
+`opt --restraint` フラグはありません。`opt` は純粋な無拘束最小化であり、距離拘束による積み上げ経路は `scan`（`--preopt` / `--endopt` で駆動経路まわりの端点を緩和できる）です。いずれの経路で得た候補も `tsopt → freq → irc` に渡して最適化・検証します。
+
 ## 実行例
 
 PDB 候補のデフォルト RS-I-RFO 最適化:
@@ -117,6 +128,8 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
 | **TS optimizer とモード** | | |
 | `--opt-mode TEXT` | TS optimizer プリセット（Choice: `grad` / `hess` / `dimer` / `rsirfo` / `trim` / `rsprfo`）。`grad`/`dimer` → Hessian-Guided Dimer; `hess`/`rsirfo` → RS-I-RFO（デフォルト）; `trim` → TRIM（Helgaker、non-microiter）; `rsprfo` → RS-P-RFO（Banerjee、non-microiter）。サブコマンド別の対応表（`opt` は L-BFGS/RFO、`tsopt` は Dimer/RS-I-RFO）は {ref}`ja-opt-mode-semantics` を参照 | `hess` |
 | `--flatten/--no-flatten` | 余分な虚振動数モードのフラット化ループを有効化（`False` は `flatten_max_iter=0` を強制）。TS 最適化が収束した後、ヘシアン行列の余分な負の固有値モードを反復的にフラット化し、虚振動数が 1 つだけ残るか反復上限に達するまで繰り返します。dimer（dimer ループ）および RS-I-RFO（収束後）の両方に適用 | `False` |
+| `--coord-type TEXT` | 最適化座標系（`cart` / `redund` / `dlc` / `tric`）。`cart` は公表値の基準となる堅牢なデフォルト。`dlc`（非局在内部座標）は低速だが、ねじれの多い系で第一次サドルへより堅牢に収束する。ヘシアンベースの最適化器が必要（`tsopt` の RS-I-RFO / Dimer は該当）。`path-opt` / `path-search` は `cart` / `dlc` のみ受け付ける | `cart` |
+| `--precision [fp32\|fp64]` | MLIP バックエンド精度。バックエンド固有のキー（UMA `precision` / ORB `precision` / MACE `default_dtype`。`aimnet2`: `fp32` は no-op、`fp64` は拒否）へ振り分け。データセンター GPU では数値ノイズの少ない Hessian のために `fp64` を使用。{ref}`再現性: GPU クラスによる精度の選択 <ja-precision-by-gpu-class>` を参照 | `fp32` |
 | **閾値とサイクル** | | |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`、`gau`、`gau_tight`、`gau_vtight`、`baker`、`never`） | `baker` |
 | `--max-cycles INT` | `opt.max_cycles` に渡されるマクロサイクル上限 | `10000` |
@@ -139,6 +152,51 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
 - CLI `--flatten` 指定 → YAML / `defaults.py` の値が有効（デフォルト `flatten_max_iter = 50`）。引き続き YAML で上書きできます。
 
 TS 候補に複数の虚振動数がある場合は、`--flatten` を追加して余分なモードの除去ループを有効にしてください。
+```
+
+(ja-wrong-imaginary-mode-count)=
+### 最適化後に虚振動数の本数が誤っている場合
+
+真の第一次サドルは虚振動数を**ちょうど 1 つ**だけ持ち、そのモードは反応座標に沿って変位します（検出閾値 `hessian_dimer.neg_freq_thresh_cm`、デフォルト 5 cm⁻¹）。`tsopt` が代わりに偽の 2 本目の小さい虚振動数を報告したり、支配的な反応モードが無い場合は、以下のレバーを段階的に強めます。これらは補完的なので併用できます。
+
+| レバー | フラグ | 効果 |
+| --- | --- | --- |
+| 精度を上げる | `--precision fp64` | よりクリーンな Hessian が数値ノイズ由来の虚振動数モードを除去（データセンター GPU で使用） |
+| 内部座標 | `--coord-type dlc` | 非局在内部座標。低速だが、ねじれの多い系で第一次サドルへより堅牢に収束 |
+| 小さいモードのフラット化 | `--flatten` | 残った小さい虚振動数モードに沿って変位させ再緩和 |
+
+まず `--precision fp64` および／または `--coord-type dlc` を試し、残った小さいモードは `--flatten` で除去します。
+
+```bash
+pdb2reaction tsopt -i ts_candidate.xyz -q -1 -m 1 \
+    --precision fp64 --coord-type dlc --flatten -o result_tsopt
+```
+
+[よくあるエラーのレシピ → 収束・後処理で止まる](recipes-common-errors.md) も参照してください。
+
+### 生成物側から開始したスキャンの障壁の読み方
+
+この TS 候補を生成した `scan`（または経路）が**生成物**から始まった場合、報告される生のバリアは**逆方向**のバリア `E(TS) − E(product)` です。通常ほしい順方向のバリアは反応物から計算します。
+
+| 実行内容 | 順方向バリア |
+| --- | --- |
+| 生成物始点のスキャン | `E(TS) − E(reactant)` — 生の生成物始点の値では**ない** |
+
+これはフラグではなく読み取り時の解釈です。特に結晶構造の生成物複合体から開始した場合は、バリアを引用する前にスキャンがどちらの端点から始まったかを必ず確認してください。{ref}`scan: スキャン方向とバリアの符号 <ja-scan-direction-barrier-sign>` も参照してください。
+
+### 制御された変異体 vs WT の比較
+
+変異体 vs WT（または機構 vs 機構）のバリア比較では、**比較するすべてのモデルが同一の原子集合**（同じ原子数・同じ残基）を使わなければなりません。さもなければ比較は制御されておらず、バリア差は解釈できません。
+
+`pdb2reaction` は純粋 MLIP のクラスターツールです。ML/MM レイヤーの概念も、レイヤー検出フラグも、幾何的レイヤー分割もありません。したがって同一原子集合の規則は構成上で担保します。
+
+- **1 つ**のクラスター原子集合を用意し、変異（または機構変更）を**その同じ集合上で**適用することで、比較するすべての実行で原子数と残基を同一に保ちます。共有クラスターをその場で編集してください。各変異体を独立に再抽出**しない**こと。`--radius` や残基の含め方が異なると原子集合が黙って変わり、比較が壊れます。
+- 非標準リガンドの電荷は `-l 'RES:Q'`（例 `-l 'GPP:-3,SAM:1'`）で比較するすべての実行に揃え、電荷差がバリア比較を交絡しないようにします。
+
+```bash
+# WT と変異体は 1 つの用意したクラスターを共有（原子数・残基が同一）
+pdb2reaction all -i wt_cluster.pdb     -l 'GPP:-3,SAM:1' --tsopt --thermo -o result_wt
+pdb2reaction all -i mutant_cluster.pdb -l 'GPP:-3,SAM:1' --tsopt --thermo -o result_mutant
 ```
 
 ## YAML 設定

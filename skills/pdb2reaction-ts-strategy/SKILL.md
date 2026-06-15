@@ -107,4 +107,4 @@ experiment and the barrier difference is not interpretable.
 
 - `pdb2reaction-cli/SKILL.md` — per-subcommand flags (`scan` / `tsopt` / `path-search` / `freq` / `irc`).
 - `pdb2reaction-workflows-output/SKILL.md` — six canonical workflows, R/TS/P paths, `--deterministic`.
-- docs `ts-strategy.md` — user-facing version of this know-how.
+- docs `tsopt.md` (TS routes / imaginary-mode fix / controlled comparison), `scan.md` (staged vs concerted, barrier direction), `reproducibility.md` (precision by GPU class) — the user-facing form of this know-how, folded from the former standalone page.
