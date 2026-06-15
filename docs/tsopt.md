@@ -160,7 +160,7 @@ A true first-order saddle has **exactly one** imaginary frequency, and its mode 
 | --- | --- | --- |
 | Raise precision | `--precision fp64` | A cleaner Hessian removes numerical-noise imaginary modes (use on a datacenter GPU). |
 | Internal coordinates | `--coord-type dlc` | Delocalized internal coordinates — slower, but more robust convergence to a clean first-order saddle on torsion-rich systems. |
-| Flatten small modes | `--flatten` | Displaces along and re-relaxes residual small imaginary modes. |
+| Flatten small modes | `--flatten` | Runs an extra-imaginary-mode flattening loop (`grad`: dimer loop; `hess`: post-RS-I-RFO step); `--no-flatten` forces `flatten_max_iter = 0`. |
 
 Try `--precision fp64` and/or `--coord-type dlc` first, then add `--flatten` to clean up any residual small modes:
 
@@ -168,6 +168,8 @@ Try `--precision fp64` and/or `--coord-type dlc` first, then add `--flatten` to 
 pdb2reaction tsopt -i ts_candidate.xyz -q -1 -m 1 \
     --precision fp64 --coord-type dlc --flatten -o result_tsopt
 ```
+
+For example, a mutant chorismate-mutase TS converged to the dominant Claisen mode at −223 cm⁻¹ plus a residual −12.5 cm⁻¹; `--flatten` drives it to a clean single-imaginary saddle.
 
 See also [Common Error Recipes → Convergence and post-processing failures](recipes-common-errors.md).
 

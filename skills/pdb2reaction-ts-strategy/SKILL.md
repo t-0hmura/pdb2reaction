@@ -50,10 +50,11 @@ Detection cutoff `hessian_dimer.neg_freq_thresh_cm` (default 5 cm⁻¹).
 |---|---|---|
 | Raise precision | `--precision fp64` | Cleaner Hessian → removes numerical-noise imaginary modes |
 | Internal coordinates | `--coord-type dlc` | Delocalised internal coords — slower but more robust convergence to a clean first-order saddle on torsion-rich systems |
-| Flatten spurious modes | `--flatten` | Displaces along + re-relaxes small extra imaginary modes (on `tsopt`, `opt`, `all`) |
+| Flatten spurious modes | `--flatten` | Extra-imaginary-mode flattening loop (`grad`: dimer loop; `hess`: post-RS-I-RFO); `--no-flatten` forces `flatten_max_iter=0`. On `tsopt`, `opt`, `all` |
 
 - `--coord-type` choices: `cart` (default, robust, published numbers) | `redund` | `dlc` | `tric`. On `path-opt` / `path-search` only `cart` / `dlc` are accepted.
 - Try `--precision fp64` and/or `--coord-type dlc` first; add `--flatten` for residual small modes. They are complementary.
+- Example: a mutant CM TS came out as the dominant Claisen mode −223 cm⁻¹ plus a residual −12.5 cm⁻¹; `--flatten` clears the spurious extra mode to a clean single-imaginary saddle.
 
 ## 4. P-start scan → barrier is the REVERSE direction
 

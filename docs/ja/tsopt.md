@@ -163,7 +163,7 @@ TS 候補に複数の虚振動数がある場合は、`--flatten` を追加し�
 | --- | --- | --- |
 | 精度を上げる | `--precision fp64` | よりクリーンな Hessian が数値ノイズ由来の虚振動数モードを除去（データセンター GPU で使用） |
 | 内部座標 | `--coord-type dlc` | 非局在内部座標。低速だが、ねじれの多い系で第一次サドルへより堅牢に収束 |
-| 小さいモードのフラット化 | `--flatten` | 残った小さい虚振動数モードに沿って変位させ再緩和 |
+| 小さいモードのフラット化 | `--flatten` | 余分な虚振動数モードのフラット化ループを実行（`grad`: dimer ループ、`hess`: RS-I-RFO 後の処理）。`--no-flatten` は `flatten_max_iter = 0` を強制 |
 
 まず `--precision fp64` および／または `--coord-type dlc` を試し、残った小さいモードは `--flatten` で除去します。
 
@@ -171,6 +171,8 @@ TS 候補に複数の虚振動数がある場合は、`--flatten` を追加し�
 pdb2reaction tsopt -i ts_candidate.xyz -q -1 -m 1 \
     --precision fp64 --coord-type dlc --flatten -o result_tsopt
 ```
+
+例えば、ある変異型コリスミ酸ムターゼの TS は支配的な Claisen モード −223 cm⁻¹ に加え残留 −12.5 cm⁻¹ を伴って収束しましたが、`--flatten` でクリーンな単一虚振動数のサドルへ駆動できます。
 
 [よくあるエラーのレシピ → 収束・後処理で止まる](recipes-common-errors.md) も参照してください。
 
