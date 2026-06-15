@@ -86,6 +86,10 @@ Options:
                                   (deterministic algorithms + index_reduce_
                                   shim). Slower; raises if unsupported. Default
                                   off.
+  --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
+                                  parity check (logs that it was skipped). For
+                                  an intentional open-shell or modified-residue
+                                  cluster.
   --coord-type [cart|redund|dlc|tric]
                                   Optimization coordinate system
                                   (cart|redund|dlc|tric). cart is the robust

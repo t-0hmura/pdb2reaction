@@ -116,5 +116,9 @@ Options:
                                   (deterministic algorithms + index_reduce_
                                   shim). Slower; raises if unsupported. Default
                                   off.
+  --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
+                                  parity check (logs that it was skipped). For
+                                  an intentional open-shell or modified-residue
+                                  cluster.
   -h, --help                      Show this message and exit.
 ```
