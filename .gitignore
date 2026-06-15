@@ -57,3 +57,6 @@ tests/smoke/model_r.pdb
 tests/smoke/r_complex_elem.pdb
 tests/smoke/r_complex_fixalt.pdb
 cos.log
+
+# release-process scratch — not distributed in the repo
+RELEASE_NOTES*

@@ -95,7 +95,7 @@ from pdb2reaction.core.utils import (
 from pdb2reaction.cli.common_options import (
     add_ml_charge_spin_options,
     add_precision_option,
-    add_deterministic_option,
+    add_deterministic_option, add_allow_charge_mult_mismatch_option,
     add_coord_type_option,
     add_print_every_option,
 )
@@ -1500,6 +1500,7 @@ def _build_rsirfo_kwargs(
 @add_ml_charge_spin_options()
 @add_precision_option()
 @add_deterministic_option()
+@add_allow_charge_mult_mismatch_option()
 @add_coord_type_option()
 @add_print_every_option()
 @click.pass_context

@@ -129,7 +129,7 @@ from pdb2reaction.core.utils import (
     cli_param_overridden,
     verbose_level,
 )
-from pdb2reaction.cli.common_options import add_coord_type_option, add_precision_option, add_deterministic_option
+from pdb2reaction.cli.common_options import add_coord_type_option, add_precision_option, add_deterministic_option, add_allow_charge_mult_mismatch_option
 
 logger = logging.getLogger(__name__)
 
@@ -2467,6 +2467,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
 @add_coord_type_option(choices=("cart", "dlc"))
 @add_precision_option()
 @add_deterministic_option()
+@add_allow_charge_mult_mismatch_option()
 @click.pass_context
 def cli(
     ctx: click.Context,

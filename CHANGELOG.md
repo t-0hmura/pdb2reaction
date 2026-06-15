@@ -6,9 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
-## [0.4.0] — 2026-06-09
+## [0.4.0] — 2026-06-15
 
 ### Fixed
+- OPC / TIP4P 4-point water with a virtual site (Amber `EPW`, element `EP`) is
+  now tolerated by the structure readers instead of crashing on the massless
+  extra point.
 - MCP `run_single_point_dft` emitted `--functional` / `--basis` (two flags
   the `dft` CLI does not accept) so every call failed; it now passes the
   single combined `--func-basis FUNC/BASIS` argument.
@@ -34,6 +37,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   empty_cache(), so the subprocess started with the GPU still occupied.
 
 ### Changed
+- `--dft-func-basis` is now surfaced in the primary `pdb2reaction <subcmd>
+  --help` (previously only under `--help-advanced`), so the DFT//MLIP
+  functional/basis is discoverable without the advanced listing.
 - `--precision fp64` now also forces the Hessian to fp64 (`hessian_double`)
   so the optimiser / eigen linear algebra cannot silently run in a lower
   precision than the model; a config that set `hessian_double=False` under
@@ -174,6 +180,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   behaviour change since defaults were always legacy.
 
 ### Documentation
+- Documented that the `[orb]` extra's `torch_scatter` has no PyPI binary wheel
+  (sdist only, fails under PEP517 build isolation): install from PyG's
+  prebuilt-wheel index, e.g.
+  `pip install "pdb2reaction[orb]" -f https://data.pyg.org/whl/torch-2.8.0+cu129.html`.
 - Cleanup pass on in-source comments and docs: removed personal-name
   attribution, internal-channel references, private memo filenames, and
   internal review-process markers (phase IDs, dated user-correspondence

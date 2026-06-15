@@ -44,7 +44,7 @@ from pdb2reaction.core.utils import (
 from pdb2reaction.cli.common_options import (
     add_ml_charge_spin_options,
     add_precision_option,
-    add_deterministic_option,
+    add_deterministic_option, add_allow_charge_mult_mismatch_option,
     add_irc_pos_def_option,
 )
 from pdb2reaction.cli.decorators import resolve_yaml_sources, load_merged_yaml_cfg, render_cli_exception
@@ -225,6 +225,7 @@ def _echo_convert_trj_if_exists(
 @add_ml_charge_spin_options()
 @add_precision_option()
 @add_deterministic_option()
+@add_allow_charge_mult_mismatch_option()
 @add_irc_pos_def_option()
 @click.pass_context
 def cli(

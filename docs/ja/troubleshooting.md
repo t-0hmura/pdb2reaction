@@ -148,6 +148,20 @@ pdb2reaction extract -i complex.pdb -c PRE --modified-residue "SEP,TPO,MLY" -o p
 
 ---
 
+### `[orb]` のインストールで torch_scatter のビルドに失敗する
+症状:
+- `pip install "pdb2reaction[orb]"` が **torch_scatter** のビルド時に `No module named 'torch'` で失敗する。
+
+対処:
+- torch_scatter は PyPI にバイナリ wheel がなく（sdist のみ）、PEP517 のビルド分離下ではソースビルドが失敗します。torch+CUDA タグに一致する PyG の prebuilt-wheel インデックスからインストールします:
+
+  ```bash
+  pip install "pdb2reaction[orb]" -f https://data.pyg.org/whl/torch-2.8.0+cu129.html
+  ```
+- フォールバック（CUDA ツールチェーンがある場合）: `pip install torch_scatter --no-build-isolation`
+
+---
+
 ### DMF モードが動かない（`cyipopt` がない、または `No module named pydmf`）
 DMF（`--mep-mode dmf`）を使うときに IPOPT/`cyipopt` の import エラーが出る場合:
 

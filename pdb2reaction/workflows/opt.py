@@ -68,7 +68,7 @@ from pdb2reaction.cli.common_options import (
     add_coord_type_option,
     add_print_every_option,
     add_precision_option,
-    add_deterministic_option,
+    add_deterministic_option, add_allow_charge_mult_mismatch_option,
 )
 from pdb2reaction.cli.decorators import run_cli, resolve_yaml_sources, load_merged_yaml_cfg
 from pdb2reaction.workflows.freq import (
@@ -398,6 +398,7 @@ def _flatten_all_imag_modes_for_geom(
 @add_print_every_option()
 @add_precision_option()
 @add_deterministic_option()
+@add_allow_charge_mult_mismatch_option()
 @click.pass_context
 def cli(
     ctx: click.Context,

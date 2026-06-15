@@ -71,7 +71,7 @@ from pdb2reaction.core.utils import (
 )
 from pdb2reaction.workflows.align_freeze import align_and_refine_sequence_inplace
 from pdb2reaction.workflows._path_yaml_helpers import apply_single_opt_yaml_layer
-from pdb2reaction.cli.common_options import add_coord_type_option, add_precision_option, add_deterministic_option
+from pdb2reaction.cli.common_options import add_coord_type_option, add_precision_option, add_deterministic_option, add_allow_charge_mult_mismatch_option
 from pdb2reaction.cli.decorators import resolve_yaml_sources, load_merged_yaml_cfg, _write_error_json, render_cli_exception
 
 logger = logging.getLogger(__name__)
@@ -608,6 +608,7 @@ def _optimize_single(
 @add_coord_type_option(choices=("cart", "dlc"))
 @add_precision_option()
 @add_deterministic_option()
+@add_allow_charge_mult_mismatch_option()
 @click.pass_context
 def cli(
     ctx: click.Context,

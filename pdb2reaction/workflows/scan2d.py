@@ -91,7 +91,7 @@ from pdb2reaction.cli.common_options import (
     add_coord_type_option,
     add_print_every_option,
     add_precision_option,
-    add_deterministic_option,
+    add_deterministic_option, add_allow_charge_mult_mismatch_option,
 )
 
 logger = logging.getLogger(__name__)
@@ -285,6 +285,7 @@ def _build_scan_context(
 @add_print_every_option()
 @add_precision_option()
 @add_deterministic_option()
+@add_allow_charge_mult_mismatch_option()
 @click.pass_context
 def cli(
     ctx: click.Context,

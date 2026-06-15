@@ -3038,18 +3038,40 @@ def write_result_json(
     return dest
 
 
+_ALLOW_CHARGE_MULT_MISMATCH = False
+
+
+def set_allow_charge_mult_mismatch(value: bool = True) -> None:
+    """Process-global toggle for ``--allow-charge-mult-mismatch`` (set by the CLI eager callback)."""
+    global _ALLOW_CHARGE_MULT_MISMATCH
+    _ALLOW_CHARGE_MULT_MISMATCH = bool(value)
+
+
 def validate_charge_spin(elements, charge, multiplicity):
-    """Raise ValueError if sum_Z(elements) - charge has wrong parity for multiplicity."""
+    """Raise ValueError if sum_Z(elements) - charge has the wrong parity for multiplicity,
+    unless ``--allow-charge-mult-mismatch`` was set (then log a warning and skip)."""
     from pysisyphus.elem_data import ATOMIC_NUMBERS
 
     sum_z = sum(ATOMIC_NUMBERS[str(e).lower()] for e in elements)
     total = sum_z - int(charge)
     unpaired = int(multiplicity) - 1
     if total < unpaired or (total - unpaired) % 2:
+        if _ALLOW_CHARGE_MULT_MISMATCH:
+            import logging
+            logging.getLogger(__name__).warning(
+                "Cluster electron-parity check SKIPPED (--allow-charge-mult-mismatch): "
+                "sum_Z=%d, charge=%d, total_electrons=%d, multiplicity=%d -- proceeding; "
+                "make sure this charge/multiplicity is intentional.",
+                sum_z, charge, total, multiplicity,
+            )
+            return
         raise ValueError(
-            f"ML region electron count inconsistent: sum_Z={sum_z}, "
-            f"charge={charge}, total_electrons={total}, multiplicity={multiplicity}; "
-            f"adjust charge or multiplicity by ±1."
+            f"Cluster electron count inconsistent: sum_Z={sum_z}, charge={charge}, "
+            f"total_electrons={total}, multiplicity={multiplicity}. Adjust charge (-q / -l) or "
+            f"multiplicity (-m) so the electron count matches the spin state (e.g. -m 2 for an odd "
+            f"electron count). Common cause: a modified/covalently-linked residue whose cluster cut "
+            f"left an unpaired electron, or an open-shell system. If this charge/multiplicity is "
+            f"intentional, pass --allow-charge-mult-mismatch to skip this check."
         )
 
 

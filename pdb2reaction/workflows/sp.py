@@ -48,7 +48,7 @@ from pdb2reaction.core.utils import (
 from pdb2reaction.cli.common_options import (
     add_ml_charge_spin_options,
     add_precision_option,
-    add_deterministic_option,
+    add_deterministic_option, add_allow_charge_mult_mismatch_option,
     add_print_every_option,
 )
 from pdb2reaction.cli.decorators import (
@@ -136,6 +136,7 @@ H_EVAA_2_AU = EV2AU / (ANG2BOHR * ANG2BOHR)
 @add_ml_charge_spin_options()
 @add_precision_option()
 @add_deterministic_option()
+@add_allow_charge_mult_mismatch_option()
 @add_print_every_option()
 @click.pass_context
 def cli(
