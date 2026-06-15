@@ -14,6 +14,7 @@ installation
 quickstart-all
 quickstart-scan
 quickstart-tsopt-freq
+ts-strategy
 freeze-atoms
 recipes-common-errors
 troubleshooting
@@ -130,6 +131,7 @@ ja/glossary
 | End-to-end pipeline from a PDB | [Quickstart: all](quickstart-all.md) |
 | Reactant only — staged distance scan | [Quickstart: scan](quickstart-scan.md) |
 | TS candidate available — `tsopt → IRC → freq` | [Quickstart: TS-only](quickstart-tsopt-freq.md) |
+| Choosing precision / TS route / staged-vs-concerted / barrier direction | [TS Strategy](ts-strategy.md) |
 | Run failure / error | [Common Error Recipes](recipes-common-errors.md) · [Troubleshooting](troubleshooting.md) |
 | CLI conventions / YAML / Glossary | [CLI Conventions](cli-conventions.md) · [YAML Reference](yaml-reference.md) · [Glossary](glossary.md) |
 | Bit-reproducible runs (`--deterministic`) | [Reproducibility](reproducibility.md) |

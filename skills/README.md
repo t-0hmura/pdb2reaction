@@ -12,6 +12,13 @@ tasks.
   which dir to grep for a given concern before touching code.
 - `pdb2reaction-cli`: index of the 18 subcommands plus per-subcommand
   mds (each with synopsis, key flags, examples, output, caveats).
+- `pdb2reaction-ts-strategy`: decision know-how for a reaction-barrier
+  run — precision (fp32 vs fp64) per GPU class, the two TS-candidate
+  routes (`path-search` MEP vs distance-restrained `scan`), fixing a bad
+  imaginary-mode count (`--precision fp64` / `--coord-type dlc` /
+  `--flatten`), reading a P-start barrier as the reverse direction,
+  staged vs concerted scans, and the same-atom-set rule for a controlled
+  mutant-vs-WT comparison.
 - `pdb2reaction-mcp`: how to drive `pdb2reaction` from any MCP client
   (Claude Desktop / Claude Code / Cursor / custom SDK) via the bundled
   `pdb2reaction-mcp` server; lists the 18 MCP tools and the shared
