@@ -160,7 +160,7 @@ For `scan`, one literal = one **stage**; multiple stages → multiple literals a
 |---|---|---|
 | `0` | Success | every subcommand |
 | `1` | Unexpected error (any unhandled exception) | every subcommand |
-| `2` | Zero step length **or** missing import dependency | `opt`, `tsopt`, `path-opt`; `dft` (PySCF / GPU4PySCF not installed) |
+| `2` | Zero step length **or** missing import dependency | `opt`, `tsopt`; `dft` (PySCF / GPU4PySCF not installed) |
 | `3` | Optimizer failure **or** SCF not converged | `opt`, `tsopt`, `path-opt`; `dft` |
 | `4` | Trajectory write error | `path-opt` |
 | `5` | HEI export error | `path-opt` |

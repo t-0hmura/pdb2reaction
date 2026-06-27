@@ -61,7 +61,7 @@ result_scan/
     │   │   ├── scan_trj.xyz       # Scan trajectory
     │   │   └── scan.pdb
     │   └── stage_02/              # Scan stage 2 (if multi-stage)
-    └── path_search/               # MEP search (path_opt/ with --refine-path False)
+    └── path_opt/                  # MEP search (path_search/ with --refine-path True)
 ```
 
 **What to check:**

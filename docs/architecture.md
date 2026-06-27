@@ -22,7 +22,7 @@ Two bundled forks (`pysisyphus/`, `thermoanalysis/`) live at the repo top as rep
 | **L3 Domain** | `pdb2reaction/domain/` | chemistry-aware helper logic (bond change detection, bond summary, element-info propagation) | `core/` |
 | **L4a Infra (MLIP)** | `pdb2reaction/backends/` | MLIP backend dispatcher + per-backend adapter (UMA / Orb / MACE / AIMNet2) + xTB ALPB delta correction | `core/` |
 | **L4b Infra (I/O)** | `pdb2reaction/io/` | output layout, summary, trajectory, PDB fix, energy diagram, Hessian cache | `core/` |
-| **L5 Foundation** | `pdb2reaction/core/` | defaults (single source of truth), utils (PDB / XYZ / plot helpers), future `errors.py` / `types.py` / `logging.py` | (none) |
+| **L5 Foundation** | `pdb2reaction/core/` | defaults (single source of truth), utils (PDB / XYZ / plot helpers), logging, future `errors.py` / `types.py` | (none) |
 | (bundle, not a layer) | `<repo>/pysisyphus/`, `<repo>/thermoanalysis/` | repo-internal forks (optimizer / thermochemistry) | (sibling, layer-external) |
 
 **Dependency direction (one-way)**: `L1 → L2 → {L3, L4} → L5`. The directional rule is enforced by CI marker coverage (`.github/scripts/check_engineering_markers.py`). Bundled forks sit outside the layer graph and may be imported from any layer via their absolute package path (`from pysisyphus.X import Y`).
@@ -93,7 +93,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 
 **L1 `cli/`** (~6 files). Only this layer constructs Click commands and parses argv. `app.py` holds the root `Click.Group` plus the `_LAZY_SUBCOMMANDS` registry — every entry uses an **absolute module path** (`pdb2reaction.workflows.all`, `pdb2reaction.io.trj2fig`, …) so the resolver is independent of where `default_group.py` itself lives. `common_options.py` collects the option-decorator factories shared across subcommands (`@add_print_every_option`, `@add_irc_pos_def_option`, `@add_precision_option`, `@add_coord_type_option`, `@add_ml_charge_spin_options`); subcommand bodies stack these decorators above `@click.pass_context` to keep `--help` text in lock-step.
 
-**L2 `workflows/`** (17 files). One file per subcommand. Each file owns a single `@click.command()` named `cli` and its private helpers. Large stage runners (`all.py` = 4,979 LOC, `path_search.py` = 2,790 LOC, `tsopt.py` = 2,063 LOC, `extract.py` = 2,159 LOC) remain as single files in the current layout.
+**L2 `workflows/`** (18 files). One file per subcommand. Each file owns a single `@click.command()` named `cli` and its private helpers. Large stage runners (`all.py` = 5,113 LOC, `path_search.py` = 2,755 LOC, `tsopt.py` = 2,116 LOC, `extract.py` = 2,151 LOC) remain as single files in the current layout.
 
 **L3 `domain/`**. Chemistry-aware helper logic that may import `torch` / `numpy` / `pysisyphus.constants` (numeric back-ends), but **may not import** MLIP runtimes (`fairchem`, `orb_models`, `mace`, `aimnet`). The `# DOMAIN_PURE` module-docstring marker plus `.github/scripts/check_engineering_markers.py` enforce the deny list. Domain helpers are reusable by any L2 stage runner.
 
@@ -149,7 +149,7 @@ For a contributor opening the repo for the first time, follow this path top-to-b
 | 1 | 3 | [`README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/README.md) | one-paragraph elevator pitch + single-command usage |
 | 2 | 5 | this file (`docs/architecture.md`) §2 + §4 | 6-layer dir tree, dependency direction, where each concern lives |
 | 3 | 5 | [`pdb2reaction/cli/app.py`](../pdb2reaction/cli/app.py) | Click root group, `_LAZY_SUBCOMMANDS` registry (≈ 18 entries), absolute-path resolution |
-| 4 | 20 | [`pdb2reaction/workflows/all.py`](../pdb2reaction/workflows/all.py) (4,979 LOC, skim) | one full subcommand top-to-bottom; trace `extract → MEP → tsopt → IRC → freq → dft` |
+| 4 | 20 | [`pdb2reaction/workflows/all.py`](../pdb2reaction/workflows/all.py) (5,113 LOC, skim) | one full subcommand top-to-bottom; trace `extract → MEP → tsopt → IRC → freq → dft` |
 | 5 | 7 | [`CONTRIBUTING.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/CONTRIBUTING.md) §3 + §4 | 5 add-a-X recipes + the "do not touch" hidden constraints |
 
 After step 5 you can read any other file by following the file index in §4. The package is intentionally **flat-within-each-layer** — there is no nested package below `pdb2reaction/<layer>/`, so you never need to navigate more than two directories deep.

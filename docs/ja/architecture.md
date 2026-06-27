@@ -22,7 +22,7 @@
 | **L3 Domain** | `pdb2reaction/domain/` | 化学的に意味を持つヘルパーロジック（結合変化検出、結合サマリ、元素情報伝播） | `core/` |
 | **L4a Infra (MLIP)** | `pdb2reaction/backends/` | MLIP バックエンドディスパッチャ + バックエンドごとのアダプタ（UMA / Orb / MACE / AIMNet2）+ xTB ALPB デルタ補正 | `core/` |
 | **L4b Infra (I/O)** | `pdb2reaction/io/` | 出力レイアウト、サマリ、軌跡、PDB 修正、エネルギーダイアグラム、Hessian キャッシュ | `core/` |
-| **L5 Foundation** | `pdb2reaction/core/` | defaults（単一真実源）、utils（PDB / XYZ / plot ヘルパー）、将来の `errors.py` / `types.py` / `logging.py` | (none) |
+| **L5 Foundation** | `pdb2reaction/core/` | defaults（単一真実源）、utils（PDB / XYZ / plot ヘルパー）、logging、将来の `errors.py` / `types.py` | (none) |
 | (bundle, not a layer) | `<repo>/pysisyphus/`, `<repo>/thermoanalysis/` | repo 内部 fork（optimizer / thermochemistry） | (sibling, layer-external) |
 
 **依存方向（一方向）**: `L1 → L2 → {L3, L4} → L5`。この方向性ルールは CI のマーカーカバレッジ（`.github/scripts/check_engineering_markers.py`）で強制されます。同梱 fork は階層グラフの外側に位置し、絶対パッケージパス（`from pysisyphus.X import Y`）を介してどの階層からでも import できます。
@@ -93,7 +93,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 
 **L1 `cli/`**（約 6 ファイル）。Click コマンドを構築し argv をパースするのはこの階層だけです。`app.py` は root `Click.Group` と `_LAZY_SUBCOMMANDS` レジストリを保持します。各エントリは **絶対モジュールパス**（`pdb2reaction.workflows.all`, `pdb2reaction.io.trj2fig`, …）を使うため、リゾルバは `default_group.py` 自体の所在に依存しません。`common_options.py` はサブコマンド間で共有される option-decorator ファクトリ（`@add_print_every_option`, `@add_irc_pos_def_option`, `@add_precision_option`, `@add_coord_type_option`, `@add_ml_charge_spin_options`）を集約します。サブコマンド本体はこれらのデコレータを `@click.pass_context` の上に積み重ね、`--help` テキストを揃えて保ちます。
 
-**L2 `workflows/`**（17 ファイル）。サブコマンド 1 つにつき 1 ファイル。各ファイルは `cli` という名前の単一の `@click.command()` とそのプライベートヘルパーを所有します。大きなステージランナー（`all.py` = 4,979 LOC, `path_search.py` = 2,790 LOC, `tsopt.py` = 2,063 LOC, `extract.py` = 2,159 LOC）は、現在のレイアウトでは単一ファイルのまま残されています。
+**L2 `workflows/`**（18 ファイル）。サブコマンド 1 つにつき 1 ファイル。各ファイルは `cli` という名前の単一の `@click.command()` とそのプライベートヘルパーを所有します。大きなステージランナー（`all.py` = 5,113 LOC, `path_search.py` = 2,755 LOC, `tsopt.py` = 2,116 LOC, `extract.py` = 2,151 LOC）は、現在のレイアウトでは単一ファイルのまま残されています。
 
 **L3 `domain/`**。`torch` / `numpy` / `pysisyphus.constants`（数値バックエンド）を import してよい化学的に意味を持つヘルパーロジックですが、MLIP ランタイム（`fairchem`, `orb_models`, `mace`, `aimnet`）を import しては **いけません**。`# DOMAIN_PURE` モジュール docstring マーカーと `.github/scripts/check_engineering_markers.py` がこの deny list を強制します。domain ヘルパーはどの L2 ステージランナーからでも再利用可能です。
 
@@ -149,7 +149,7 @@ CLI サブコマンドリゾルバ（`cli/app.py:_LAZY_SUBCOMMANDS`）は **絶�
 | 1 | 3 | [`README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/README.md) | 1 段落のエレベーターピッチ + 単一コマンド使用法 |
 | 2 | 5 | このファイル（`docs/architecture.md`）§2 + §4 | 6 階層のディレクトリツリー、依存方向、各関心事の所在 |
 | 3 | 5 | [`pdb2reaction/cli/app.py`](../../pdb2reaction/cli/app.py) | Click root group、`_LAZY_SUBCOMMANDS` レジストリ（≈ 18 エントリ）、絶対パス解決 |
-| 4 | 20 | [`pdb2reaction/workflows/all.py`](../../pdb2reaction/workflows/all.py)（4,979 LOC, 流し読み） | 1 つの完全なサブコマンドを上から下まで; `extract → MEP → tsopt → IRC → freq → dft` を追う |
+| 4 | 20 | [`pdb2reaction/workflows/all.py`](../../pdb2reaction/workflows/all.py)（5,113 LOC, 流し読み） | 1 つの完全なサブコマンドを上から下まで; `extract → MEP → tsopt → IRC → freq → dft` を追う |
 | 5 | 7 | [`CONTRIBUTING.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/CONTRIBUTING.md) §3 + §4 | 5 つの add-a-X レシピ + 「触るな」という隠れた制約 |
 
 ステップ 5 の後は、§4 のファイル索引を辿ることで他のどのファイルでも読めます。本パッケージは意図的に **各階層内でフラット** です。`pdb2reaction/<layer>/` の下にネストしたパッケージは存在しないため、2 ディレクトリより深く辿る必要は決してありません。
