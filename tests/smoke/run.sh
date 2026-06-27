@@ -180,7 +180,7 @@ pdb2reaction opt -i r.pdb -q -1 --dist-freeze "[(1,2,1.5),(3,4)]" --dry-run --ou
 
 # --- refine-path ---
 
-# test41: all (pdb+pdb, --refine-path — now the default, kept explicit for clarity)
+# test41: all (pdb+pdb, --refine-path true = recursive path_search opt-in; the default is now single-pass path-opt)
 pdb2reaction -i r.pdb p.pdb -q -1 --refine-path true --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test41 > test41.out 2>&1
 
 # --- Polish-train new CLI flags (A1 + W3 + B4 wires; all opt-in, defaults preserve Table 1 numerics) ---
@@ -356,3 +356,13 @@ if grep -q "Covalent-bond changes (start vs final): Yes" test70_scan_complex_fre
   echo "[bond-check] test70: unexpected covalent-bond changes in non-reactive DLC+freeze scan" >> test70_scan_complex_freeze_dlc.out
   exit 1
 fi
+
+# --- refine-path opt-in (recursive path_search) extra coverage ---
+# Since the `all` default is now single-pass path-opt, exercise the recursive
+# path_search opt-in (`--refine-path true`) across more input modes than test41.
+
+# test71: all --scan-lists --refine-path true (single-PDB scan -> recursive path_search)
+pdb2reaction all -i r.pdb -q -1 --scan-lists "[(1,5,1.4)]" --refine-path true --max-cycles 5 --thresh gau_loose --no-tsopt --no-thermo --no-dft --out-dir test71_rp_scan > test71_rp_scan.out 2>&1
+
+# test72: all (complex multi-input) --refine-path true (recursive path_search on the extracted model)
+pdb2reaction all -i r_complex.pdb p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --no-exclude-backbone --refine-path true --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --no-tsopt --no-thermo --no-dft --out-dir test72_rp_complex > test72_rp_complex.out 2>&1

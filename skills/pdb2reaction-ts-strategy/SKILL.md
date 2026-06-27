@@ -1,6 +1,6 @@
 ---
 name: pdb2reaction-ts-strategy
-description: Decision know-how for pure-MLIP enzyme reaction-barrier runs with pdb2reaction — precision (fp32 vs fp64) per GPU class, the two TS-candidate routes (path-search MEP vs distance-restrained `scan`), fixing a bad imaginary-mode count (fp64 / `--coord-type dlc` / `--flatten`), reading a P-start scan barrier as the REVERSE direction, staged (`-s` repeated) vs concerted (one `-s`, many tuples) scans, and the same-atom-set rule for any mutant-vs-WT / mechanism-vs-mechanism comparison. TRIGGER when choosing precision, building a TS candidate, debugging imaginary modes, interpreting a barrier number, choosing staged vs concerted, or setting up a controlled barrier comparison. SKIP for install / HPC scheduler / output-parsing / structure-format-editing questions (use the dedicated skills). pdb2reaction is a PURE-MLIP cluster tool — no ML/MM layers, so the comparison rule is enforced by feeding the SAME prepared atom set, not by a layer flag.
+description: Decision know-how for pure-MLIP enzyme reaction-barrier runs with pdb2reaction — precision (fp32 vs fp64) per GPU class, the two TS-candidate routes (path-search MEP vs distance-restrained `scan`), fixing a bad imaginary-mode count (fp64 / `--coord-type dlc` / `--flatten`), reading a P-start scan barrier as the REVERSE direction, staged (`-s` repeated) vs concerted (one `-s`, many tuples) scans, and the same-atom-set rule for any mutant-vs-WT / mechanism-vs-mechanism comparison. TRIGGER when choosing precision, building a TS candidate, debugging imaginary modes, interpreting a barrier number, choosing staged vs concerted, or setting up a controlled barrier comparison. SKIP for install / HPC scheduler / output-parsing / structure-format-editing questions (use the dedicated skills). pdb2reaction is a PURE-MLIP cluster tool, so the comparison rule is enforced by feeding the SAME prepared atom set to every compared run.
 ---
 
 # pdb2reaction TS strategy
@@ -97,12 +97,11 @@ experiment and the barrier difference is not interpretable.
 
 | Aspect | pdb2reaction (pure-MLIP) |
 |---|---|
-| ML/MM layers | NONE — p2r is a pure-MLIP cluster; there is no layer-detection flag, no B-factor layer encoding, no geometric layer split |
 | How the rule is enforced | Prepare ONE cluster atom set, then mutate / change mechanism on THAT same set so atom count + residues stay identical across all compared runs |
 | Non-standard ligand charge | Keep `-l 'RES:Q'` (or `-l 'GPP:-3,SAM:1'`) consistent across compared runs so charge differences don't confound the comparison |
 
 - Do NOT re-extract each variant independently (different `--radius` / residue inclusion silently changes the atom set → mismatch, uncontrolled comparison). Build the shared cluster once and edit in place.
-- There is no B-factor / layer-transplant mechanism in p2r — controlled comparison is achieved entirely by reusing one shared prepared atom set, not by any layer flag.
+- Controlled comparison is achieved entirely by reusing one shared prepared atom set across every variant.
 
 ## See also
 

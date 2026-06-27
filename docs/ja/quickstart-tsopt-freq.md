@@ -2,7 +2,7 @@
 
 ## 目的
 
-既に手元にある TS 候補構造に対して、`tsopt → irc → freq →（任意で dft）` の検証・熱力学チェーンだけを `pdb2reaction all` で一括実行します。上流の `extract` / `path-search` はスキップされます。
+既に手元にある TS 候補構造に対して、`tsopt → irc → freq →（任意で dft）` の検証・熱力学チェーンだけを `pdb2reaction all` で一括実行します。上流の `extract` / `path-opt` はスキップされます。
 
 ## 事前に必要なもの
 

@@ -58,7 +58,7 @@ skill (`SKILL.md` plus `core.md`) before doing anything else.
 | Stage | Role |
 |---|---|
 | `extract` | active-site cluster + link-H caps + total charge |
-| `path-search` | MEP (GSM or DMF), recursive bond-change segmentation → `seg_01`, `seg_02`, … (one per elementary step) |
+| `path-opt` / `path-search` | MEP (GSM or DMF): single-pass `path-opt` by default; `--refine-path True` runs recursive `path-search` with bond-change segmentation → `seg_01`, `seg_02`, … (one per elementary step) |
 | `tsopt` | TS refinement per segment (RS-I-RFO default; Dimer alternative) |
 | `irc` | forward / backward IRC, endpoint LBFGS optimization |
 | `freq` | Hessian, vibrational frequencies, QRRHO thermochemistry |

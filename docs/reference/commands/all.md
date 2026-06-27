@@ -7,7 +7,8 @@ Usage: pdb2reaction all [OPTIONS]
   MEP search → merge to full PDBs in one shot. If exactly one input is provided:
   (a) with --scan-lists, run staged scan on the active site model (or full
   structure when extraction is skipped) and use stage results as inputs for
-  path_search; (b) with --tsopt True and no --scan-lists, run TSOPT-only mode.
+  path-opt (path_search with --refine-path True); (b) with --tsopt True and no
+  --scan-lists, run TSOPT-only mode.
 
 Options:
   -v, --verbose LEVEL             Console verbosity 0-3 (default 2). 0=silent;
@@ -106,11 +107,12 @@ Options:
   --convert-files BOOLEAN         Convert XYZ/TRJ outputs into PDB/GJF
                                   companions based on the input format.
                                   [default: True]
-  --refine-path BOOLEAN           Run recursive path_search on the full ordered
-                                  series (default). Use --refine-path False to
-                                  run a single-pass path-opt GSM between each
-                                  adjacent pair and concatenate the segments (no
-                                  path_search).  [default: True]
+  --refine-path BOOLEAN           Run a single-pass path-opt GSM between each
+                                  adjacent pair and concatenate the segments
+                                  (default; no path_search). Use --refine-path
+                                  True to run recursive path_search on the full
+                                  ordered series for automatic multistep
+                                  discovery.  [default: False]
   --thresh [gau_loose|gau|gau_tight|gau_vtight|baker|never]
                                   Convergence preset (gau_loose|gau|gau_tight|ga
                                   u_vtight|baker|never). Defaults to 'gau' when

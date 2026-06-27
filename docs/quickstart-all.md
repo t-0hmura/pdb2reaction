@@ -47,8 +47,8 @@ result_all/
 │       ├── irc/finished_irc_trj.xyz
 │       └── freq/                  # Present with --thermo
 └── _work/                         # Pipeline scratch (safe to delete)
-    └── path_search/               # Raw MEP-engine output
-        └── summary.json           # Path-search engine results
+    └── path_opt/                  # Raw MEP-engine output (path_search/ with --refine-path True)
+        └── summary.json           # MEP engine results
 ```
 
 **What to check:**

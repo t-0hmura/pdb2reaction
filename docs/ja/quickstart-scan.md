@@ -61,7 +61,7 @@ result_scan/
     │   │   ├── scan_trj.xyz       # スキャン軌跡
     │   │   └── scan.pdb
     │   └── stage_02/              # スキャンステージ 2（マルチステージ時）
-    └── path_search/               # MEP 探索（--refine-path False 時は path_opt/）
+    └── path_opt/                  # MEP 探索（--refine-path True 時は path_search/）
 ```
 
 **確認ポイント:**

@@ -47,8 +47,8 @@ result_all/
 │       ├── irc/finished_irc_trj.xyz
 │       └── freq/                  # --thermo 時
 └── _work/                         # パイプライン作業領域（削除可）
-    └── path_search/               # MEP エンジン生出力
-        └── summary.json           # path-search エンジンの結果
+    └── path_opt/                  # MEP エンジン生出力
+        └── summary.json           # path-opt エンジンの結果
 ```
 
 **確認ポイント:**

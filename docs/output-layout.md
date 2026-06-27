@@ -55,10 +55,10 @@ result_all/
 │     └─ ts/ · irc/ · freq/{R,TS,P}/ · dft/         # per-stage working files (--tsopt / --thermo / --dft)
 └─ _work/                                      # pipeline scratch (safe to rm -rf)
    ├─ models/ · scan/ · add_elem_info/ · fix_altloc/
-   └─ path_search/                             # raw MEP-engine output (path_opt/ with --refine-path False)
+   └─ path_opt/                                # raw MEP-engine output (path_search/ with --refine-path True)
 ```
 
-In TSOPT-only mode there is no MEP stage, so `_work/path_search/` is absent and the deliverables live under `segments/seg_01/`. See [all](all.md) for the full per-mode breakdown.
+In TSOPT-only mode there is no MEP stage, so `_work/path_opt/` is absent and the deliverables live under `segments/seg_01/`. See [all](all.md) for the full per-mode breakdown.
 
 ## Agent recipe
 

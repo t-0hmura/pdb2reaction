@@ -24,18 +24,20 @@ Result: `result_mep/segments/seg_NN/{reactant,ts,product}.pdb`,
 ### 2. Multi-step recursive (multi-input MEP, recursive segmentation)
 
 You have R and P. The mechanism is multi-step, but you don't have
-intermediates handy. Path-search recursively segments by detecting
-bond changes.
+intermediates handy. With `--refine-path True`, path-search recursively
+segments by detecting bond changes (the default single-pass `path-opt`
+does not).
 
 ```bash
 pdb2reaction all -i 1.R.pdb 3.P.pdb \
     -c '...' -l '...' \
+    --refine-path True \
     --tsopt --thermo \
     -o result_mep
 ```
 
-The output `summary.json["n_segments"]` may be > 1 — that's the
-recursion finding intermediates the inputs didn't contain.
+With `--refine-path True`, the output `summary.json["n_segments"]` may be
+> 1 — that's the recursion finding intermediates the inputs didn't contain.
 
 ### 3. Single-input scan-list (when only R is available)
 
@@ -65,8 +67,10 @@ pdb2reaction all -i 1.R.pdb 2.IM1.pdb 3.IM2.pdb 4.P.pdb \
     -o result_mep_4pt
 ```
 
-Recursive segmentation still runs *between* adjacent endpoints, so
-you don't have to provide every elementary step.
+With `--refine-path True`, recursive segmentation still runs *between*
+adjacent endpoints, so you don't have to provide every elementary step;
+the default single-pass `path-opt` assumes each adjacent pair is one
+elementary step.
 
 ### 5. TS-only validation (existing TS candidate)
 
@@ -103,11 +107,12 @@ Composite the energies with `energy-diagram` (see below).
 Run the pipeline as separate subcommands instead of one `pdb2reaction all` when you want
 to **judge each stage's success before spending GPU time on the next** — e.g. confirm
 path-search found the right segments / bond changes before optimizing a TS, or validate
-the TS (one imaginary mode + correct IRC connectivity) before thermo / DFT. `pdb2reaction
-all` runs exactly this chain unconditionally:
+the TS (one imaginary mode + correct IRC connectivity) before thermo / DFT. By default
+`pdb2reaction all` runs this chain (the MEP stage is single-pass `path-opt`; pass
+`--refine-path True` to swap in recursive `path-search`):
 
 ```
-[extract] → path-search → (per reactive seg) tsopt → freq → irc → [freq R/TS/P] → [dft] → energy-diagram
+[extract] → path-opt → (per reactive seg) tsopt → freq → irc → [freq R/TS/P] → [dft] → energy-diagram
 ```
 
 pdb2reaction runs the whole pipeline on a cluster model (the active-site cluster)

@@ -97,7 +97,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 
 **L3 `domain/`**。`torch` / `numpy` / `pysisyphus.constants`（数値バックエンド）を import してよい化学的に意味を持つヘルパーロジックですが、MLIP ランタイム（`fairchem`, `orb_models`, `mace`, `aimnet`）を import しては **いけません**。`# DOMAIN_PURE` モジュール docstring マーカーと `.github/scripts/check_engineering_markers.py` がこの deny list を強制します。domain ヘルパーはどの L2 ステージランナーからでも再利用可能です。
 
-**L4a `backends/`**（約 8 ファイル）。MLIP バックエンドディスパッチャ（`__init__.py` + `base.py`）と、サポートする各 MLIP につき 1 つのアダプタ（`uma.py`, `orb.py`, `mace.py`, `aimnet2.py`）。`solvent.py` と `xtb_alpb_correction.py` は xTB ALPB 暗黙溶媒デルタ補正（オプトインの MLIP ラッパー）を担います。`pdb2reaction` は純 MLIP のクラスターモデルパッケージであり、こちら側には ML/MM ONIOM 計算機コアも MM 力場カップリングも存在しません。
+**L4a `backends/`**（約 8 ファイル）。MLIP バックエンドディスパッチャ（`__init__.py` + `base.py`）と、サポートする各 MLIP につき 1 つのアダプタ（`uma.py`, `orb.py`, `mace.py`, `aimnet2.py`）。`solvent.py` と `xtb_alpb_correction.py` は xTB ALPB 暗黙溶媒デルタ補正（オプトインの MLIP ラッパー）を担います。`pdb2reaction` は純 MLIP のクラスターモデル専用パッケージであり、すべてのバックエンドは MLIP 計算機として統一的に扱われます。
 
 **L4b `io/`**。出力側の I/O に関する事項: ステージごとのサマリライタ、エネルギーダイアグラム、軌跡レンダリング、PDB altloc 修正、インメモリ Hessian キャッシュ。`io/` は `workflows/` に依存しません。出力フォーマットはここが所有し、ステージランナーが消費します。
 

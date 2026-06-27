@@ -1943,7 +1943,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     help=(
         "Run active site model extraction → (optional single-structure staged scan) → MEP search → merge to full PDBs in one shot.\n"
         "If exactly one input is provided: (a) with --scan-lists, run staged scan on the active site model (or full structure "
-        "when extraction is skipped) and use stage results as inputs for path_search; "
+        "when extraction is skipped) and use stage results as inputs for path-opt (path_search with --refine-path True); "
         "(b) with --tsopt True and no --scan-lists, run TSOPT-only mode."
     ),
     context_settings={
@@ -2191,12 +2191,12 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     "--refine-path",
     "refine_path",
     type=click.BOOL,
-    default=True,
+    default=False,
     show_default=True,
     help=(
-        "Run recursive path_search on the full ordered series (default). "
-        "Use --refine-path False to run a single-pass path-opt GSM between each adjacent pair "
-        "and concatenate the segments (no path_search)."
+        "Run a single-pass path-opt GSM between each adjacent pair and concatenate the "
+        "segments (default; no path_search). Use --refine-path True to run recursive "
+        "path_search on the full ordered series for automatic multistep discovery."
     ),
 )
 @click.option(
@@ -2539,15 +2539,15 @@ def cli(
 ) -> None:
     """
     The **all** command composes `extract` → (optional `scan` on model or full input) → MEP search
-    (recursive `path_search` by default, or concatenated `path-opt` with ``--refine-path False``) and hides
+    (single-pass `path-opt` by default, or recursive `path_search` with ``--refine-path True``) and hides
     ref-template bookkeeping.
     With single input:
-      - with --scan-lists: run staged scan and use stage results as inputs for path_search (or path-opt),
+      - with --scan-lists: run staged scan and use stage results as inputs for path-opt (or path_search),
       - with --tsopt True and no --scan-lists: run TSOPT-only mode (no MEP search).
 
-    By default, the recursive ``path_search`` workflow is used.  With ``--refine-path False``, a single-pass
-    ``path-opt`` GSM is run between each adjacent pair of inputs and the segments are concatenated into the
-    final MEP.
+    By default, a single-pass ``path-opt`` GSM is run between each adjacent pair of inputs and the segments
+    are concatenated into the final MEP.  With ``--refine-path True``, the recursive ``path_search`` workflow
+    is used instead for automatic multistep discovery.
     """
     # Engage pipeline-scoped default-verbosity suppression for the duration of
     # this `all` run (reset per-invocation by DefaultGroup.parse_args). Standalone

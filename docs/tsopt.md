@@ -187,7 +187,7 @@ This is a read-time interpretation, not a flag. Always confirm which endpoint th
 
 For a mutant-vs-WT (or mechanism-vs-mechanism) barrier comparison, **every compared model must use the identical atom set** — the same atom count and the same residues. Otherwise the comparison is not controlled and the barrier difference is not interpretable.
 
-`pdb2reaction` is a pure-MLIP cluster tool: there is no ML/MM layer concept, no layer-detection flag, and no geometric layer split. The same-atom-set rule is therefore enforced by construction:
+`pdb2reaction` operates on a single pure-MLIP cluster atom set, so the same-atom-set rule is enforced by construction:
 
 - Prepare **one** cluster atom set, then apply the mutation (or change the mechanism) **on that same set**, so the atom count and residues stay identical across every compared run. Edit the shared cluster in place — do **not** re-extract each variant independently, because a different `--radius` or residue inclusion silently changes the atom set and breaks the comparison.
 - Keep the non-standard ligand charge consistent across all compared runs with `-l 'RES:Q'` (e.g. `-l 'GPP:-3,SAM:1'`), so a charge difference never confounds the barrier comparison.

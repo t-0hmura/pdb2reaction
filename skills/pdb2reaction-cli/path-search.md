@@ -8,7 +8,9 @@ endpoints. Detects bond changes along the candidate MEP and
 exactly one transition state. Output: one `seg_NN/` per elementary
 step, plus a stitched `mep.pdb` and energy diagrams.
 
-This is the engine behind `pdb2reaction all` in endpoint-MEP mode.
+This is the engine behind `pdb2reaction all` in endpoint-MEP mode when
+`--refine-path True` is set; by default `all` uses single-pass `path-opt`
+for its MEP stage instead.
 
 ## Synopsis
 

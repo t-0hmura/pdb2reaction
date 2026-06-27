@@ -97,7 +97,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 
 **L3 `domain/`**. Chemistry-aware helper logic that may import `torch` / `numpy` / `pysisyphus.constants` (numeric back-ends), but **may not import** MLIP runtimes (`fairchem`, `orb_models`, `mace`, `aimnet`). The `# DOMAIN_PURE` module-docstring marker plus `.github/scripts/check_engineering_markers.py` enforce the deny list. Domain helpers are reusable by any L2 stage runner.
 
-**L4a `backends/`** (~8 files). MLIP backend dispatcher (`__init__.py` + `base.py`) plus one adapter per supported MLIP (`uma.py`, `orb.py`, `mace.py`, `aimnet2.py`). `solvent.py` and `xtb_alpb_correction.py` carry the xTB ALPB implicit-solvent delta correction (an opt-in MLIP wrapper). `pdb2reaction` is a pure-MLIP cluster-model package — there is no ML/MM ONIOM calculator core and no MM force-field coupling on this side.
+**L4a `backends/`** (~8 files). MLIP backend dispatcher (`__init__.py` + `base.py`) plus one adapter per supported MLIP (`uma.py`, `orb.py`, `mace.py`, `aimnet2.py`). `solvent.py` and `xtb_alpb_correction.py` carry the xTB ALPB implicit-solvent delta correction (an opt-in MLIP wrapper). `pdb2reaction` is a pure-MLIP cluster-model package.
 
 **L4b `io/`**. Output-side I/O concerns: per-stage summary writer, energy diagram, trajectory rendering, PDB altloc fix, in-memory Hessian cache. `io/` never depends on `workflows/`; output format is owned here and consumed by stage runners.
 

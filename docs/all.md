@@ -1,6 +1,6 @@
 # `all`
 
-`pdb2reaction all` runs the entire workflow end-to-end so you can go from structures to a validated mechanism in one command, instead of chaining `extract` → `scan` / `path-search` → `tsopt` → `irc` / `freq` / `dft` by hand. Starting from one or more PDB inputs, it extracts an active-site cluster model, runs an optional staged scan, performs an MEP search (recursive `path-search` by default; `--refine-path False` falls back to single-pass `path-opt`), and optionally chains TS optimization, IRC, vibrational analysis, and single-point DFT. The default MLIP backend is UMA; choose an alternative with `-b/--backend`.
+`pdb2reaction all` runs the entire workflow end-to-end so you can go from structures to a validated mechanism in one command, instead of chaining `extract` → `scan` / `path-search` → `tsopt` → `irc` / `freq` / `dft` by hand. Starting from one or more PDB inputs, it extracts an active-site cluster model, runs an optional staged scan, performs an MEP search (single-pass `path-opt` by default; `--refine-path True` runs recursive `path-search`), and optionally chains TS optimization, IRC, vibrational analysis, and single-point DFT. The default MLIP backend is UMA; choose an alternative with `-b/--backend`.
 
 `all` runs in one of three modes, chosen by what you pass:
 
@@ -59,7 +59,7 @@ Full system(s) (PDB / XYZ / GJF)
   │   └─ active-site cluster model(s)
   │       ├─ (optional) staged scan `scan` — single-structure workflows
   │       │   └─ ordered intermediates
-  │       └─ MEP search `path-search` (recursive) or `path-opt`
+  │       └─ MEP search `path-opt` (default) or `path-search` (recursive, `--refine-path True`)
   │           └─ MEP trajectory `mep_trj.xyz` + energy diagrams
   └─ (optional) TS optimisation + IRC `tsopt` → `irc`
       ├─ (optional) thermochemistry `freq`
@@ -71,8 +71,8 @@ Full system(s) (PDB / XYZ / GJF)
 0. **Preflight** (automatic) — `add-elem-info` fills missing element symbols and runs only on PDB inputs that lack them (an empty element field in cols 77–78), and `fix-altloc` resolves alternate conformations and runs only on PDB inputs that contain alternate conformations (altLoc). When you invoke individual subcommands (e.g. `extract`, `opt`) you must run these manually if needed.
 1. **Active-site model (binding-pocket) extraction** (when `-c/--center` is set) — runs `extract` to build the active-site cluster from the substrate selection (see Inputs for the `-c/--center` syntax). Forwarded extractor toggles: `--radius`, `--radius-het2het`, `--include-h2o`, `--exclude-backbone`, `--add-linkh`, `--selected-resn`, `--verbose`. Per-input PDBs are saved under `<out-dir>/_work/models/`; when multiple structures are supplied, the active-site models are unioned per residue selection. The **first active-site model's net charge** is propagated to scan / MEP / TSOPT.
 2. **Optional staged scan** (single-input only) — each `--scan-lists/-s` literal is a list of `(i, j, target_Å)` tuples. Atom indices use the original input ordering (1-based) and are remapped to the active-site model ordering. PDB selector strings like `'TYR,285,CA'` are also accepted (space / comma / slash / backtick / backslash delimiters; token order is flexible). Stages run sequentially (stage 2 starts from stage 1's result), and the stage endpoints become the ordered intermediates that feed the MEP step.
-3. **MEP search** — by default runs recursive `path-search`, which automatically detects multistep reactions and builds a detailed MEP per elementary step. Complex multistep mechanisms may need manual trial-and-error to converge a satisfactory pathway. `--refine-path False` falls back to single-pass `path-opt` GSM / DMF on each adjacent pair. The raw engine output is written under `<out-dir>/_work/path_search/` (or `_work/path_opt/`); the merged products (`mep.pdb`, `mep_trj.xyz`, `energy_diagram_MEP.png`) are promoted to the top level. For multi-input runs, full-system PDB templates are forwarded automatically for reference merging.
-4. **Merge to full systems** (default with `--refine-path`) — when reference templates exist, the merged `mep_w_ref.pdb` is promoted to `<out-dir>/`, and per-segment `mep_w_ref_seg_NN.pdb` files remain under `<out-dir>/_work/path_search/`. `--refine-path False` skips the full-system merge.
+3. **MEP search** — by default runs single-pass `path-opt` GSM / DMF on each adjacent pair. `--refine-path True` switches to recursive `path-search`, which automatically detects multistep reactions and builds a detailed MEP per elementary step (complex multistep mechanisms may need manual trial-and-error to converge a satisfactory pathway). The raw engine output is written under `<out-dir>/_work/path_opt/` (or `_work/path_search/` with `--refine-path True`); the merged products (`mep.pdb`, `mep_trj.xyz`, `energy_diagram_MEP.png`) are promoted to the top level. For multi-input runs, full-system PDB templates are forwarded automatically for reference merging.
+4. **Merge to full systems** (with `--refine-path True`) — when reference templates exist, the merged `mep_w_ref.pdb` is promoted to `<out-dir>/`, and per-segment `mep_w_ref_seg_NN.pdb` files remain under `<out-dir>/_work/path_search/`. The default single-pass `path-opt` run skips the full-system merge.
 5. **Per-segment post-processing** (reactive segments only — bridge segments without bond changes are skipped):
    - `--tsopt` — TS optimization on each HEI active-site model, followed by EulerPC IRC, then IRC-endpoint re-optimization with `--thresh-post` (default `baker`). The endpoint optimization working directory is deleted automatically after completion.
    - `--thermo` — `freq` on (R, TS, P) for vibrational + thermochemistry data and an MLIP Gibbs diagram.
@@ -107,10 +107,10 @@ out_dir/   (default: ./result_all/)
    ├─ scan/                    # Staged scan results (with --scan-lists)
    ├─ add_elem_info/           # Preflight element-symbol fills
    ├─ fix_altloc/              # Preflight altLoc resolution
-   └─ path_search/             # Raw MEP-engine output (path_opt/ when --refine-path False)
+   └─ path_opt/                # Raw MEP-engine output (path_search/ with --refine-path True)
 ```
 
-In **TSOPT-only mode** (single input + `--tsopt`, no `--scan-lists`) there is no MEP stage: the optimized R/TS/P plus `ts/`, `irc/`, `freq/`, and `dft/` land directly under `segments/seg_01/`, and `_work/path_search/` is absent.
+In **TSOPT-only mode** (single input + `--tsopt`, no `--scan-lists`) there is no MEP stage: the optimized R/TS/P plus `ts/`, `irc/`, `freq/`, and `dft/` land directly under `segments/seg_01/`, and the MEP work directory (`_work/path_opt/`) is absent.
 
 ```{note}
 **The canonical structures are `segments/seg_NN/reactant.*`, `ts.*`, `product.*`** — cite these when reporting mechanisms. The `ts/`, `irc/`, `freq/`, and `dft/` subdirectories inside the same `seg_NN/` hold the per-stage working files (e.g. `ts/vib/imag_*_trj.xyz`, `irc/*_trj.xyz`) for debugging a single stage. The raw MEP-search engine output under `_work/path_search/` is scratch — the products you need (`mep.pdb`, `mep_trj.xyz`, `energy_diagram_MEP.png`) are already promoted to the root.
@@ -205,7 +205,7 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | `--opt-mode [grad\|hess]` | Workflow preset (`grad` → L-BFGS / Dimer, `hess` → RFO / RS-I-RFO). Token-to-algorithm mapping depends on scope — see {ref}`opt-mode-semantics` for the per-subcommand table; note that `all`'s pre-opt default (`grad`) differs from `tsopt`'s default (`hess`). | `grad` |
 | `--thresh TEXT` | Convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
 | `--preopt / --no-preopt` | Pre-optimize active-site model endpoints before MEP search. Standalone `scan` / `scan2d` / `scan3d` default `--preopt` to `False`. | `True` |
-| `--refine-path / --no-refine-path` | On (default) → recursive `path-search`; off → chain `path-opt` segments without recursive refinement. | `True` |
+| `--refine-path BOOL` | `False` (default) → single-pass `path-opt` per adjacent pair; `True` → recursive `path-search` with automatic bond-change segmentation. | `False` |
 
 ### MLIP calculator
 

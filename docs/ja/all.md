@@ -1,6 +1,6 @@
 # `all`
 
-`pdb2reaction all` は、抽出から解析までの一連の処理を **まとめて実行する最上位コマンド** です。`extract` → `scan` / `path-search` → `tsopt` → `irc` / `freq` / `dft` を手動で連結する代わりに、構造から検証済みの機構までを 1 コマンドで得られます。1 つ以上の PDB 入力から活性部位モデル（バインディングポケット）を抽出し、（任意の）段階的スキャンを行い、MEP 探索（デフォルトで再帰的 `path-search`、`--refine-path False` で単一パス `path-opt` に切り替え）を実行したうえで、必要に応じて TS 最適化・IRC・振動解析・DFT 一点計算まで連結します。MLIP バックエンドはデフォルトで UMA を使用しますが、`-b/--backend` オプションで ORB・MACE・AIMNet2 も選択できます。
+`pdb2reaction all` は、抽出から解析までの一連の処理を **まとめて実行する最上位コマンド** です。`extract` → `scan` / `path-search` → `tsopt` → `irc` / `freq` / `dft` を手動で連結する代わりに、構造から検証済みの機構までを 1 コマンドで得られます。1 つ以上の PDB 入力から活性部位モデル（バインディングポケット）を抽出し、（任意の）段階的スキャンを行い、MEP 探索（デフォルトで単一パス `path-opt`、`--refine-path True` で再帰的 `path-search` に切り替え）を実行したうえで、必要に応じて TS 最適化・IRC・振動解析・DFT 一点計算まで連結します。MLIP バックエンドはデフォルトで UMA を使用しますが、`-b/--backend` オプションで ORB・MACE・AIMNet2 も選択できます。
 
 `all` は与える入力に応じて次の 3 つのモードのいずれかで動作します。
 
@@ -89,13 +89,13 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  - 単一リテラルは 1 ステージスキャンを実行し、複数リテラルは**順次**実行されるため、ステージ 2 はステージ 1 の結果から開始されます。複数リテラルは 1 つの `-s/--scan-lists` に並べて指定します（例: `-s '[(…)]' '[(…)]'`）。
  - ステージエンドポイント（`stage_XX/result.pdb`）が、後続 MEP ステップへ渡される順序付き中間体となる
 
-3. **活性部位モデルでの MEP 探索（再帰的 `path-search`）**
- - デフォルトでは、再帰的 `path-search` を実行し、多段階反応を自動検出して各素反応の詳細な MEP を構築します。エンジン生出力は `<out-dir>/_work/path_search/` に書かれ、マージ済み成果物（`mep.pdb`、`mep_trj.xyz`、`energy_diagram_MEP.png`）はルート直下へ昇格します。複雑な多段階反応では手動での試行錯誤が必要な場合があります。
- - `--refine-path False` を指定すると、単一パス `path-opt` GSM/DMF に切り替わります（エンジン生出力は `<out-dir>/_work/path_opt/`）。
- - 複数入力 PDB の場合、全系テンプレートが参照マージ用に `path-search` に自動的に渡されます。単一構造スキャンの場合は、元の全系 PDB テンプレートが全ステージで再利用されます。
+3. **活性部位モデルでの MEP 探索（デフォルトで単一パス `path-opt`、`--refine-path True` で再帰的 `path-search`）**
+ - デフォルトでは、単一パス `path-opt`（GSM/DMF）を実行します。エンジン生出力は `<out-dir>/_work/path_opt/` に書かれ、マージ済み成果物（`mep.pdb`、`mep_trj.xyz`、`energy_diagram_MEP.png`）はルート直下へ昇格します。
+ - `--refine-path True` を指定すると、再帰的 `path-search` に切り替わり、多段階反応を自動検出して各素反応の詳細な MEP を構築します（エンジン生出力は `<out-dir>/_work/path_search/`）。複雑な多段階反応では手動での試行錯誤が必要な場合があります。
+ - 複数入力 PDB の場合、参照マージ用の全系テンプレートが MEP エンジン（デフォルトは `path-opt`、`--refine-path True` 時は `path-search`）に自動的に渡されます（全系マージ自体は `--refine-path True` 時のみ実行）。単一構造スキャンの場合は、元の全系 PDB テンプレートが全ステージで再利用されます。
 
-4. **活性部位モデルを全系にマージ**（デフォルトの `--refine-path` 使用時）
- - `--refine-path` が True（デフォルト）かつ参照 PDB テンプレートがある場合、マージ済みの `mep_w_ref.pdb` が `<out-dir>/` 直下へ昇格し、セグメントごとの `mep_w_ref_seg_NN.pdb` は `<out-dir>/_work/path_search/` に残ります。`--refine-path False`（`path-opt` モード）では全系マージは行われません。
+4. **活性部位モデルを全系にマージ**（`--refine-path True` 使用時のみ）
+ - `--refine-path True` を指定し、かつ参照 PDB テンプレートがある場合、マージ済みの `mep_w_ref.pdb` が `<out-dir>/` 直下へ昇格し、セグメントごとの `mep_w_ref_seg_NN.pdb` は `<out-dir>/_work/path_search/` に残ります。デフォルトの `path-opt` モードでは全系マージは行われません。
 
 5. **オプションのセグメントごとの後処理**（反応セグメントのみ — 結合変化のあるセグメント。ブリッジセグメントはスキップ）
  - `--tsopt`: 各 HEI 活性部位モデルで TS 最適化を実行し、EulerPC IRC で追跡した後、IRC エンドポイントを `--thresh-post`（デフォルト `baker`）で再最適化します。エンドポイント最適化の作業ディレクトリは完了後に自動削除されます。
@@ -134,13 +134,13 @@ out_dir/ (デフォルト:./result_all/)
    ├─ scan/                     # 段階的スキャン結果（--scan-lists 提供時）
    ├─ add_elem_info/            # 前処理: 元素記号補完
    ├─ fix_altloc/               # 前処理: altLoc 解決
-   └─ path_search/              # MEP エンジン生出力（--refine-path False 時は path_opt/）
+   └─ path_opt/                 # MEP エンジン生出力（--refine-path True 時は path_search/）
 ```
 
-**TSOPT のみモード**（単一入力 + `--tsopt`、`--scan-lists` なし）では MEP ステージが無く、最適化済み R/TS/P と `ts/`・`irc/`・`freq/`・`dft/` は `segments/seg_01/` 直下に生成され、`_work/path_search/` は存在しません。
+**TSOPT のみモード**（単一入力 + `--tsopt`、`--scan-lists` なし）では MEP ステージが無く、最適化済み R/TS/P と `ts/`・`irc/`・`freq/`・`dft/` は `segments/seg_01/` 直下に生成され、MEP 作業ディレクトリ（`_work/path_opt/`）は存在しません。
 
 ```{note}
-**正規構造は `segments/seg_NN/reactant.*`・`ts.*`・`product.*`** です — 機構を報告する際はこれらを引用してください。同じ `seg_NN/` 内の `ts/`・`irc/`・`freq/`・`dft/` サブディレクトリは各ステージの作業ファイル（例: `ts/vib/imag_*_trj.xyz`、`irc/*_trj.xyz`）を保持し、特定ステージのデバッグに使います。`_work/path_search/` 配下の MEP エンジン生出力は作業領域であり、必要な成果物（`mep.pdb`、`mep_trj.xyz`、`energy_diagram_MEP.png`）は既にルートへ昇格済みです。
+**正規構造は `segments/seg_NN/reactant.*`・`ts.*`・`product.*`** です — 機構を報告する際はこれらを引用してください。同じ `seg_NN/` 内の `ts/`・`irc/`・`freq/`・`dft/` サブディレクトリは各ステージの作業ファイル（例: `ts/vib/imag_*_trj.xyz`、`irc/*_trj.xyz`）を保持し、特定ステージのデバッグに使います。`_work/path_opt/` 配下の MEP エンジン生出力は作業領域であり、必要な成果物（`mep.pdb`、`mep_trj.xyz`、`energy_diagram_MEP.png`）は既にルートへ昇格済みです。
 ```
 
 `-v 2` ではコンソールに活性部位モデルの電荷解決結果、YAML 設定、スキャンステージ、MEP（GSM/DMF）の進行状況、各ステージの所要時間が出力されます。詳細は {ref}`ja-verbosity-levels` を参照してください。
@@ -236,7 +236,7 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 | `--opt-mode [grad\|hess]` | ワークフロープリセット（`grad` → L-BFGS/Dimer、`hess` → RFO/RSIRFO）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨。トークンのマッピングはスコープ依存で、`all` の pre-opt デフォルト（`grad`）と `tsopt` のデフォルト（`hess`）は一致しません。詳細は {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
 | `--thresh TEXT` | 収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
 | `--preopt/--no-preopt` | MEP 前に活性部位モデル端点を事前最適化。単体の `scan`、`scan2d`、`scan3d` では `--preopt` のデフォルトは `False`（`--preopt` を渡すと有効化） | `True` |
-| `--refine-path / --no-refine-path` | 有効（デフォルト）の場合は再帰的 `path-search`、無効の場合は `path-opt` を連結して再帰的精密化なしで実行。 | `True` |
+| `--refine-path BOOL` | `True` の場合は再帰的 `path-search`、`False`（デフォルト）の場合は `path-opt` を連結して再帰的精密化なしで実行。 | `False` |
 
 ### MLIP 計算機オプション
 

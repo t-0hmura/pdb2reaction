@@ -5,9 +5,10 @@
 You have **only the reactant** (no product structure) and you can
 articulate the chemistry as a sequence of staged distance scans —
 e.g. "first push the methyl from S of SAM to C7 of GPP, then snap H11
-to OE2 of GLU 186". `pdb2reaction all` runs each stage in order, ties
-the resulting trajectories into an MEP, and the recursive bond-change
-segmentation slots in any intermediates it finds.
+to OE2 of GLU 186". `pdb2reaction all` runs each stage in order and ties
+the resulting trajectories into an MEP. By default the MEP stage is
+single-pass `path-opt`; pass `--refine-path True` to run the recursive
+bond-change segmentation that slots in any intermediates it finds.
 
 ## Synopsis
 
@@ -76,7 +77,7 @@ Same overall layout as `all.md`, plus per-stage scan output:
 | Path | When | Content |
 |---|---|---|
 | `<out_dir>/_work/scan/stage_NN/{scan_trj.xyz,result.{xyz,pdb,gjf}}` | always | raw distance-restraint scan trajectory + per-stage final geometry (scratch) |
-| `<out_dir>/_work/path_search/mep_seg_NN_trj.xyz`, `mep_seg_NN.{pdb,gjf}` | always (`_work/path_opt/` when `--refine-path False`) | per-segment MEP strings (scratch) |
+| `<out_dir>/_work/path_opt/mep_seg_NN_trj.xyz`, `mep_seg_NN.{pdb,gjf}` | always (`_work/path_search/` when `--refine-path True`) | per-segment MEP strings (scratch) |
 | `<out_dir>/segments/seg_NN/` | always | per-segment deliverables + post-processing (ts/irc/freq/dft) + energy diagrams |
 | `<out_dir>/segments/seg_NN/{reactant,ts,product}.{pdb,xyz,gjf}` | always | canonical R/TS/P per segment |
 | `<out_dir>/summary.json` | always | machine-readable result |
@@ -93,7 +94,7 @@ its `summary.json`.
 |---|---|---|
 | Stage k goes to a different geometry than expected | Distance restraint not strong enough; SCF found a side product | Tighten the target distance, or split a complex stage into two simpler ones |
 | `--scan-lists` triggers a Python literal-eval error | Quoting mistake | Wrap each stage in single quotes outside, double quotes inside; backticks survive bash without escaping |
-| Path search reports more segments than expected | Bond-change detector found a "free" intermediate | Usually correct; inspect the IM geometry in `seg_01/product.{pdb,xyz,gjf}` (= `seg_02/reactant.{pdb,xyz,gjf}`); the extension follows the `-i` input format. |
+| Path search reports more segments than expected (`--refine-path True` only) | Bond-change detector found a "free" intermediate | Usually correct; inspect the IM geometry in `seg_01/product.{pdb,xyz,gjf}` (= `seg_02/reactant.{pdb,xyz,gjf}`); the extension follows the `-i` input format. The default single-pass `path-opt` does not add segments. |
 
 ## Caveats
 

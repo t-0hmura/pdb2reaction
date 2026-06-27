@@ -20,7 +20,7 @@ Working examples (BezA C6-methyltransferase, both multi-structure MEP and scan m
 ### Pipeline (the `all` subcommand)
 
 ```text
-PDB(s) → [extract] → [scan] (optional, --scan-lists) → [path-search] (MEP) → [tsopt] → [irc] → [freq] → [dft] (optional)
+PDB(s) → [extract] → [scan] (optional, --scan-lists) → [path-opt] (MEP) → [tsopt] → [irc] → [freq] → [dft] (optional)
 ```
 
 Each stage is also a standalone subcommand; `all` orchestrates them and writes unified `summary.json` + `summary.log`.

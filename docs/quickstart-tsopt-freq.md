@@ -2,7 +2,7 @@
 
 ## Goal
 
-Validate an existing TS candidate end-to-end without running extract or path-search. `pdb2reaction all --tsopt` chains `tsopt → irc → freq → (dft)` from a single input structure and emits canonical reactant / TS / product geometries and thermochemistry.
+Validate an existing TS candidate end-to-end without running extract or the MEP (path-opt) stage. `pdb2reaction all --tsopt` chains `tsopt → irc → freq → (dft)` from a single input structure and emits canonical reactant / TS / product geometries and thermochemistry.
 
 ## Prerequisites
 

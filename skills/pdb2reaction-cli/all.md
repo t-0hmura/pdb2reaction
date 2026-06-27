@@ -3,7 +3,9 @@
 ## Purpose
 
 `all` is the meta-command that chains the entire workflow:
-extract → path-search → tsopt → irc → freq → (optional) dft. It
+extract → path-opt → tsopt → irc → freq → (optional) dft. The MEP
+stage runs single-pass `path-opt` by default; pass `--refine-path True`
+to run recursive `path-search` instead. It
 resolves three input modes via flag context (see the three companion
 mds: `all-endpoint-mep.md`, `all-scan-list.md`, `all-ts-only.md`).
 
@@ -30,6 +32,7 @@ pdb2reaction all -i <input(s)> [-c <substrate>] [-l 'RES:Q,...'] \
 | `-m, --multiplicity` | int | 1 | Spin multiplicity (2S+1) |
 | `-r, --radius` | float | 2.6 | Pocket radius (Å) when `-c` triggers extraction |
 | `-s, --scan-lists` | repeated | none | Staged distance scans (mode 2 — `all-scan-list.md`) |
+| `--refine-path` | BOOL | `False` | MEP engine: `False` runs single-pass `path-opt`; `True` runs recursive `path-search` (bond-change segmentation that discovers hidden intermediates between endpoints) |
 | `--tsopt` | BOOL | `False` | Run TS optimization + IRC per reactive segment (also required to enter TS-only mode with a single `-i`) |
 | `--thermo` | BOOL | `False` | Run freq + thermochemistry on R / TS / P |
 | `--dft` | BOOL | `False` | Run DFT single point on R / TS / P |
@@ -59,7 +62,7 @@ True").
 
 ## Output tree (typical)
 
-Three zones: deliverables at `<out_dir>/`, per-segment deliverables under `<out_dir>/segments/seg_NN/`, scratch under `<out_dir>/_work/`. `<work_path>` = `_work/path_search/` (default) or `_work/path_opt/` (`--refine-path False`).
+Three zones: deliverables at `<out_dir>/`, per-segment deliverables under `<out_dir>/segments/seg_NN/`, scratch under `<out_dir>/_work/`. `<work_path>` = `_work/path_opt/` (default) or `_work/path_search/` (`--refine-path True`).
 
 | Path | When | Content |
 |---|---|---|
@@ -103,7 +106,7 @@ To rerun a specific stage (for example after a walltime hit), call the
 standalone subcommands directly on the segment outputs `all` produced:
 
 ```bash
-pdb2reaction tsopt -i _work/path_search/hei_seg_03.xyz -o segments/seg_03/ts -b uma
+pdb2reaction tsopt -i _work/path_opt/hei_seg_03.xyz -o segments/seg_03/ts -b uma
 pdb2reaction irc   -i segments/seg_03/ts/final_geometry.xyz -o segments/seg_03/irc -b uma
 pdb2reaction freq  -i segments/seg_03/ts/final_geometry.xyz -o segments/seg_03/freq -b uma
 ```
@@ -120,7 +123,8 @@ analysis scripts keep working.
   duplicated into `segments/seg_NN/<stage>/result.json`.
 - The `segments/seg_NN/` deliverable directory is **only populated on success**
   for that segment. Failed segments leave scratch artifacts under
-  `_work/path_search/seg_NNN_<tag>/` (3-digit) but not the `segments/seg_NN/`
+  `<work_path>/seg_NNN_<tag>/` (3-digit; `_work/path_opt/` by default,
+  `_work/path_search/` with `--refine-path True`) but not the `segments/seg_NN/`
   2-digit deliverable copy.
 
 ## See also

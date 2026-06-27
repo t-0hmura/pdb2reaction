@@ -30,9 +30,11 @@ pdb2reaction all -i 1.R.pdb 2.IM.pdb 3.P.pdb \
     -o result_mep_3pt
 ```
 
-The recursive bond-change segmentation in `path-search` will still run
-inside each adjacent pair, so you don't have to provide every
-elementary step — just the "obvious" ones from the literature.
+With `--refine-path True`, the recursive bond-change segmentation in
+`path-search` runs inside each adjacent pair, so you don't have to
+provide every elementary step — just the "obvious" ones from the
+literature. By default `all` runs single-pass `path-opt` between adjacent
+pairs only and does not auto-discover hidden intermediates.
 
 ## Mode-specific flags
 
@@ -72,9 +74,9 @@ Same as `all.md`. Specifically for endpoint-MEP mode:
 
 | Path | When | Content |
 |---|---|---|
-| `<out_dir>/mep.pdb`, `mep_trj.xyz`, `mep_w_ref.pdb`, `energy_diagram_MEP.png` | always | stitched MEP (promoted from `_work/path_search/`) |
-| `<out_dir>/_work/path_search/mep_seg_NN_trj.xyz`, `mep_seg_NN.{pdb,gjf}` | always | per-segment MEP frames (no bare `.xyz`); scratch |
-| `<out_dir>/_work/path_search/seg_NNN_<tag>/` | always | recursive-splitter scratch (3-digit, `_mep` / `_maxdepth` / `_bridge`); internal |
+| `<out_dir>/mep.pdb`, `mep_trj.xyz`, `mep_w_ref.pdb`, `energy_diagram_MEP.png` | always | stitched MEP (promoted from `<work_path>` = `_work/path_opt/` by default, `_work/path_search/` with `--refine-path True`) |
+| `<out_dir>/_work/path_opt/mep_seg_NN_trj.xyz`, `mep_seg_NN.{pdb,gjf}` | always (`_work/path_search/` with `--refine-path True`) | per-segment MEP frames (no bare `.xyz`); scratch |
+| `<out_dir>/_work/path_search/seg_NNN_<tag>/` | `--refine-path True` | recursive-splitter scratch (3-digit, `_mep` / `_maxdepth` / `_bridge`); internal |
 | `<out_dir>/segments/seg_NN/` | always | per-segment deliverables + post-processing (ts/irc/freq/dft) + energy diagrams |
 | `<out_dir>/segments/seg_NN/{reactant,ts,product}.pdb` | always | canonical R/TS/P (after IRC + LBFGS endpoint opt) |
 | `<out_dir>/summary.json["segments"]` | always | list of `{index, barrier_kcal, delta_kcal, bond_changes, ...}` |
@@ -92,10 +94,11 @@ Same as `all.md`. Specifically for endpoint-MEP mode:
 - The "right" choice between `--mep-mode gsm` and `--mep-mode dmf`
   depends on system size and how much you trust the initial MEP guess;
   GSM is the safer default.
-- Path search may discover **more** segments than you have inputs:
-  if `summary.json["n_segments"] > len(inputs) - 1`, that's the
-  recursive bond-change segmentation finding intermediates the inputs
-  didn't contain. Often this is the *correct* answer.
+- With `--refine-path True`, path search may discover **more** segments
+  than you have inputs: if `summary.json["n_segments"] > len(inputs) - 1`,
+  that's the recursive bond-change segmentation finding intermediates the
+  inputs didn't contain. Often this is the *correct* answer. The default
+  single-pass `path-opt` yields one segment per adjacent input pair.
 
 ## See also
 

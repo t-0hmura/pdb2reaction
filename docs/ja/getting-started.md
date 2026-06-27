@@ -50,7 +50,7 @@ PDB (R, P)
 [scan]  （オプション, --scan-lists/-s）段階的距離拘束スキャン
   |
   v
-[path-search]  MEP 探索（再帰的 path-search、デフォルト; `--refine-path False` で path-opt に切替）
+[path-opt]  MEP 探索（デフォルトは単一パス path-opt; `--refine-path True` で再帰的 path-search に切替）
   |
   v
 [tsopt]  TS 最適化 (RS-I-RFO; 代替として Dimer)
@@ -144,8 +144,8 @@ pdb2reaction all [OPTIONS]...
 
 | モード | 概要 | クイックスタート |
 |------|-----|--------------|
-| **複数構造 MEP**（2 つ以上の PDB） | 反応座標に沿った複数の PDB（R → … → P）を受け取り、各構造のクラスターモデル抽出 → 再帰的 MEP 探索 → 必要に応じてセグメントごとに TS / IRC / freq / DFT を実行 | [クイックスタート: `pdb2reaction all`](quickstart-all.md) |
-| **単一構造 + 段階的スキャン**（1 PDB + `--scan-lists/-s`） | 1 つの PDB をクラスターモデル上で段階的距離スキャンにかけ、各ステージを再帰的 `path-search`（`--refine-path False` で単一パス `path-opt`）に渡して MEP を構築 | [クイックスタート: 単一構造の段階的スキャン](quickstart-scan.md) |
+| **複数構造 MEP**（2 つ以上の PDB） | 反応座標に沿った複数の PDB（R → … → P）を受け取り、各構造のクラスターモデル抽出 → MEP 探索（デフォルトは単一パス path-opt; `--refine-path True` で再帰的 path-search）→ 必要に応じてセグメントごとに TS / IRC / freq / DFT を実行 | [クイックスタート: `pdb2reaction all`](quickstart-all.md) |
+| **単一構造 + 段階的スキャン**（1 PDB + `--scan-lists/-s`） | 1 つの PDB をクラスターモデル上で段階的距離スキャンにかけ、各ステージを単一パス `path-opt`（`--refine-path True` で再帰的 `path-search`）に渡して MEP を構築 | [クイックスタート: 単一構造の段階的スキャン](quickstart-scan.md) |
 | **単一構造 TSOPT のみ**（1 PDB + `--tsopt`） | MEP/経路探索を完全にスキップし、TS 候補を最適化 → 双方向 IRC → 端点最適化、必要なら R/TS/P に freq / DFT を実行 | [クイックスタート: TS のみモード](quickstart-tsopt-freq.md) |
 
 ```{important}

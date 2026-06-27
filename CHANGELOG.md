@@ -6,9 +6,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
-## [0.4.0] — 2026-06-15
+## [0.4.0] — 2026-06-28
+
+### Changed
+- **Behavior change (default):** `all --refine-path` now defaults to `False`.
+  The `all` pipeline's MEP stage runs a single-pass `path-opt` by default; pass
+  `--refine-path True` to run the recursive `path-search` (automatic multi-step
+  bond-change segmentation), which was the previous default. The default MEP
+  work directory is now `_work/path_opt/` (was `_work/path_search/`). The
+  standalone `path-search` subcommand is unchanged. Docs/skills updated
+  throughout to reflect the new default.
 
 ### Fixed
+- Bond-change detection (`domain/bond_changes.compare_structures`) is now
+  row-chunked instead of building dense N×N distance matrices, removing a CUDA
+  out-of-memory failure on large solvated clusters (~20k+ atoms) during
+  `path-search` / `scan` kink detection on 16–24 GB GPUs.
 - OPC / TIP4P 4-point water with a virtual site (Amber `EPW`, element `EP`) is
   now tolerated by the structure readers instead of crashing on the massless
   extra point.

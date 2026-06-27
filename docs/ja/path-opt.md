@@ -159,7 +159,7 @@ CLI 規約の {ref}`ja-exit-codes` を参照してください。
 - [path-search](path-search.md) — 自動精密化を伴う再帰的 MEP 探索（2+構造用）
 - [tsopt](tsopt.md) — HEI を TS 候補として最適化（内部で虚振動数チェック済み）。続けて IRC で接続性を確認
 - [extract](extract.md) — path-opt 入力用の活性部位モデル PDB を生成
-- [all](all.md) — 一気通貫ワークフロー（デフォルトで再帰的 path-search を使用; `--refine-path False` で path-opt に切替。`--refine-path` フラグは `pdb2reaction all` にのみ属します — 定義は {ref}`ja-mep-search-options` を参照してください）
+- [all](all.md) — 一気通貫ワークフロー（デフォルトで単一パス path-opt を使用; `--refine-path True` で再帰的 path-search に切替。`--refine-path` フラグは `pdb2reaction all` にのみ属します — 定義は {ref}`ja-mep-search-options` を参照してください）
 - [YAML リファレンス](yaml-reference.md) — `gs`、`dmf`、`stopt`、`opt` の完全な設定オプション
 - [用語集](glossary.md) — MEP、GSM、DMF、HEI の定義
 - [典型エラー別レシピ](recipes-common-errors.md) — 症状起点の切り分け

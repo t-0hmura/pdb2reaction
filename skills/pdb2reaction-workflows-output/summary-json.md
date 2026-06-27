@@ -141,8 +141,9 @@ When `summary.json["status"] != "success"`, look at:
 
 Even on failed runs, partial outputs are kept:
 
-- `_work/path_search/seg_NNN_<tag>/` (3-digit scratch) exists for any
-  segment that completed path-search (even if downstream stages failed).
+- `_work/path_opt/seg_NNN_<tag>/` (3-digit scratch; `_work/path_search/`
+  with `--refine-path True`) exists for any segment that completed the MEP
+  stage (even if downstream stages failed).
 - `segments/seg_NN/` (deliverable) is **only populated** for
   fully-successful segments.
 

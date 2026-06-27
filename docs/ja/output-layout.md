@@ -54,7 +54,7 @@ result_all/
 │     └─ ts/ · irc/ · freq/{R,TS,P}/ · dft/         # per-stage working files (--tsopt / --thermo / --dft)
 └─ _work/                                      # pipeline scratch (safe to rm -rf)
    ├─ models/ · scan/ · add_elem_info/ · fix_altloc/
-   └─ path_search/                             # raw MEP-engine output (path_opt/ with --refine-path False)
+   └─ path_opt/                                # raw MEP-engine output (path_search/ with --refine-path True)
 ```
 
 TSOPT のみのモードでは MEP ステージがないため、`_work/path_search/` は存在せず、成果物は `segments/seg_01/` 下に置かれます。モードごとの完全な内訳は [all](all.md) を参照してください。

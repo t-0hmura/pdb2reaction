@@ -152,7 +152,7 @@ See {ref}`exit-codes` in CLI Conventions.
 - [path-search](path-search.md) — Recursive MEP search with automatic refinement (for 2+ structures)
 - [tsopt](tsopt.md) — Optimize the HEI as a TS candidate (includes imaginary-frequency check; follow with IRC)
 - [extract](extract.md) — Generate active site model (binding pocket) PDBs for path-opt inputs
-- [all](all.md) — End-to-end workflow (uses recursive path-search by default; add `--refine-path False` for single-pass path-opt. The `--refine-path` flag lives on `pdb2reaction all` only — see [all.md → MEP search](all.md#mep-search) for its definition.)
+- [all](all.md) — End-to-end workflow (defaults to single-pass path-opt; add `--refine-path True` for recursive path-search. The `--refine-path` flag lives on `pdb2reaction all` only — see [all.md → MEP search](all.md#mep-search) for its definition.)
 - [YAML Reference](yaml-reference.md) — Full `gs`, `dmf`, `stopt`, `opt` configuration options
 - [Glossary](glossary.md) — Definitions of MEP, GSM, DMF, HEI
 - [Common Error Recipes](recipes-common-errors.md) — Symptom-first failure routing
