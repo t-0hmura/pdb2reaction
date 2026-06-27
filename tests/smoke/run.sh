@@ -199,13 +199,13 @@ pdb2reaction opt -i r.pdb -q -1 --opt-mode hess --max-cycles 5 --thresh gau_loos
 
 # --- Determinism gate ---
 
-# test47: `all` pipeline determinism monitor.
-# Runs the full pipeline twice with identical inputs / args and reports how many
-# .pdb / .xyz outputs drift between the two runs. Determinism is best-effort:
-# default fp32/fp64 GPU runs carry ~ULP scatter/atomic non-determinism, and the
-# only way to bit-exactness would be a discouraged monkey-patch path, so this is
-# an informational monitor and never gates the smoke.
-det_args="-i r.pdb p.pdb -q -1 --refine-path false --max-cycles 5 --thresh gau_loose --thresh-post gau_loose"
+# test47: `all` pipeline determinism GATE (`--deterministic`).
+# Runs the full pipeline twice with identical inputs / args + `--deterministic`
+# and REQUIRES the two runs to be bit-identical. Default (non-deterministic) GPU
+# runs carry ~ULP scatter/atomic non-determinism and are not asserted here;
+# `--deterministic` enables torch deterministic algorithms and MUST be
+# bit-reproducible, so any drift is a real regression and fails the smoke.
+det_args="-i r.pdb p.pdb -q -1 --refine-path false --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --deterministic"
 pdb2reaction $det_args --out-dir test47_a > test47_a.out 2>&1
 pdb2reaction $det_args --out-dir test47_b > test47_b.out 2>&1
 {
@@ -219,9 +219,13 @@ pdb2reaction $det_args --out-dir test47_b > test47_b.out 2>&1
       cmp -s "$path_a" "$path_b" || { drifted=$((drifted + 1)); echo "DRIFT: $rel"; }
     fi
   done < <(find test47_a -type f \( -name "*.pdb" -o -name "*.xyz" \))
-  echo "[det_check] all pipeline: compared $total .pdb/.xyz file(s); $drifted differ"
-  echo "[det_check] informational only (determinism is best-effort; not gating)."
+  echo "[det_check] all pipeline (--deterministic): compared $total .pdb/.xyz file(s); $drifted differ"
 } > test47.out 2>&1
+if [ "${drifted:-0}" -ne 0 ]; then
+  echo "[smoke] FAIL test47: --deterministic runs are not bit-reproducible ($drifted file(s) differ)"
+  cat test47.out
+  exit 1
+fi
 
 # --- --coord-type CLI plumbing (throttled, fast) ---
 
@@ -283,6 +287,9 @@ pdb2reaction opt -i r.pdb -q -1 --coord-type tric --max-cycles 3 --thresh gau_lo
 
 # test53m: opt --precision fp64 (alternate precision)
 pdb2reaction opt -i r.pdb -q -1 --precision fp64 --max-cycles 3 --thresh gau_loose --out-dir test53m_opt_fp64 > test53m_opt_fp64.out 2>&1
+
+# test53n: opt --precision fp32 (explicit fp32 dispatch; default is fp32, this pins the explicit path alongside test53m fp64)
+pdb2reaction opt -i r.pdb -q -1 --precision fp32 --max-cycles 3 --thresh gau_loose --out-dir test53n_opt_fp32 > test53n_opt_fp32.out 2>&1
 
 # test54: full `all` with `--backend orb` — exercises the non-default MLIP backend.
 pdb2reaction all -i r.pdb p.pdb -q -1 --backend orb --out-dir test54 > test54.out 2>&1
