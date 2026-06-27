@@ -100,7 +100,7 @@ After a run, check `surface.csv`, the per-point structures under `grid/`, and th
 out_dir/ (default:./result_scan2d/)
 ├─ surface.csv # Structured grid table
 ├─ scan2d_map.png # 2D contour (requires Kaleido; the run stops if PNG export fails)
-├─ scan2d_landscape.html # 3D surface visualization (You can open it with Web browser)
+├─ scan2d_landscape.html # 3D surface visualization (you can open it with a web browser)
 ├─ grid/point_iDDD_jDDD.xyz # DDD = round(d × 100) in Å (e.g. d1=1.30 Å, d2=3.10 Å -> point_i130_j310.xyz)
 ├─ grid/point_iDDD_jDDD.pdb # PDB companions when conversion is enabled and templates exist
 ├─ grid/point_iDDD_jDDD.gjf # Gaussian companions when templates exist and conversion is enabled

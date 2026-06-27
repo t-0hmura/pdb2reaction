@@ -84,7 +84,7 @@ The key deliverables are `surface.csv`, per-point geometries under `grid/`, and 
 ```
 out_dir/ (default:./result_scan3d/)
 ├─ surface.csv # Grid metadata; may include a reference row (i=j=k=-1)
-├─ scan3d_density.html # 3D energy isosurface visualization (You can open it with Web browser)
+├─ scan3d_density.html # 3D energy isosurface visualization (you can open it with a web browser)
 ├─ grid/point_i###_j###_k###.xyz # Relaxed geometry for each grid point (Å×100 tags)
 ├─ grid/point_i###_j###_k###.pdb # PDB companions when conversion is enabled and templates exist
 ├─ grid/point_i###_j###_k###.gjf # Gaussian companions when templates exist and conversion is enabled

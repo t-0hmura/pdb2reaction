@@ -157,7 +157,7 @@ Agent Skills for Claude Code / Codex / Cursor etc. in [`skills/`](skills/) — c
 ## Known limitations
 
 - **MACE + UMA cannot coexist** (`e3nn` version conflict). Use separate conda envs.
-- **DFT single-point** is practical up to ~300 atoms; larger systems need high computational cost.
+- **DFT single-point** is practical up to ~300 atoms; larger systems incur high computational cost.
 - **ORB backend** sometimes converges TS with extra soft imaginary modes — for clean single-saddle spectra prefer UMA / MACE.
 - **CPU-only execution** is 10–100× slower than GPU.
 

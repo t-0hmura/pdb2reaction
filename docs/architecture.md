@@ -85,8 +85,8 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 ├── tests/ smoke / unit
 ├── .github/ workflows/ + scripts/ (docs-quality lint helpers; CI-only)
 └── (repo-top sibling, layer-external bundled forks)
- pysisyphus/ ~90 file, repo-internal fork (slimmed; CLI driver + QM backends + wavefunction + dead optimisers / IRC / NEB variants removed)
- thermoanalysis/ 5 file, repo-internal fork
+ pysisyphus/ ~90 files, repo-internal fork (slimmed; CLI driver + QM backends + wavefunction + dead optimisers / IRC / NEB variants removed)
+ thermoanalysis/ 5 files, repo-internal fork
 ```
 
 ### 2.3 Per-layer responsibility detail

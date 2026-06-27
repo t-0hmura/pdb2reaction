@@ -87,7 +87,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(1, 5, 1.35)]' --print-parsed
   | 単独の `pdb2reaction scan` | `--max-step-size 0.20 Å` | `--bias-k 300 eV/Å²` |
 
   どちらの形式でも、または YAML の `bias` ブロックで上書き可能です（[scan](scan.md) / [yaml-reference](yaml-reference.md#bias) 参照）。
-- 各スキャン stage は、最終リラックス構造に対する bond-change check（`has_bond_change`）で終了します。stage ごとの結果は scan ログに記録され、`--out-json` 指定時には scan 出力ディレクトリに書き出される集約 `result.json`（その `stages` 配列内）にも記録されます。
+- 各スキャン stage は、最終緩和構造に対する結合変化チェック（`has_bond_change`）で終了します。stage ごとの結果は scan ログに記録され、`--out-json` 指定時には scan 出力ディレクトリに書き出される集約 `result.json`（その `stages` 配列内）にも記録されます。
 - 再帰的 MEP refinement（`path-search`）は scan の端点を**無条件**に消費します。実行されるかどうかのゲートは、scan stage の bond-change フラグ（`has_bond_change`）ではなく `--refine-path` です。
 - `pdb2reaction all --help-advanced` で全オプション（スキャン制御を含む）を確認できます。
 - 単独の `scan` サブコマンド（MEP 精密化なし）については [scan](scan.md) を参照してください。
