@@ -68,7 +68,7 @@ out_dir/ (デフォルト:./result_freq/)
 | `--workers INT` | MLIP 予測器の並列度（workers > 1 で解析ヘシアン無効）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1` |
 | `--workers-per-node INT` | ノードあたりのワーカー数。並列予測器に渡されます | `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
-| `--freeze-links/--no-freeze-links` | PDB のみ。リンク水素の親を凍結し `geom.freeze_atoms` にマージ。リンク水素の詳細は [extract](extract.md) を参照 | `True` |
+| `--freeze-links/--no-freeze-links` | PDB 入力（または `--ref-pdb` 付き XYZ/GJF）。リンク水素の親を凍結し `geom.freeze_atoms` にマージ。リンク水素の詳細は [extract](extract.md) を参照 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
 | `--max-write INT` | エクスポートするモード数 | `10` |
 | `--amplitude-ang FLOAT` | モードアニメーション振幅（Å） | `0.8` |

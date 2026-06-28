@@ -114,16 +114,16 @@ pdb2reaction opt -i input.pdb -q 0 -b orb --solvent water --solvent-model cpcmx
 - **マルチワーカー推論** – `workers>1` で `fairchem-core` の `ParallelMLIPPredictUnit` を起動し、`workers_per_node` をノードごとに指定可能。バッチ処理速度の向上に有効です。
 
 (ja-workers-fd-downgrade)=
-### `workers > 1` による暗黙的な FD ダウングレード（UMA バックエンド）
+### `workers > 1` は解析ヘシアンを無効化する（UMA バックエンド）
 
 ```{warning}
-UMA バックエンドを `workers > 1` で使用する場合、`hessian_calc_mode="Analytical"` を明示的に指定していても解析ヘシアンは暗黙的に有限差分へ切り替わります（内部フラグ、ユーザーから設定不可）。**このダウングレード発生時にログマーカーは出力されません。**診断する唯一の方法は、同じ原子数の解析ヘシアン基準ランと比較してヘシアン計算時間が FD 相当に長くなっていることの確認です。このダウングレード規則は `--workers` / `--workers-per-node` を持つすべてのサブコマンド（`opt`, `tsopt`, `freq`, `irc`, `sp`, `all`, `path-opt`, `path-search`, scan 系）に適用されます。UMA 以外のバックエンド（ORB / MACE / AIMNet2）では `workers` / `workers_per_node` は `_BACKEND_ACCEPTED_KEYS` で暗黙的に除外されるため、このダウングレード規則は該当しません。
+UMA バックエンドを `workers > 1` で使用する場合、`hessian_calc_mode="Analytical"` を明示指定すると解析ヘシアンは利用できず `RuntimeError` が送出されます（黙って有限差分へフォールバックはしません）。解析ヘシアンが必要なら `hessian_calc_mode="FiniteDifference"`（デフォルト）を使うか、`workers = 1` を指定してください。この規則は `--workers` / `--workers-per-node` を持つすべてのサブコマンド（`opt`, `tsopt`, `freq`, `irc`, `sp`, `all`, `path-opt`, `path-search`, scan 系）に適用されます。UMA 以外のバックエンド（ORB / MACE / AIMNet2）では `workers` / `workers_per_node` は `_BACKEND_ACCEPTED_KEYS` で暗黙的に除外されるため、この規則は該当しません。
 ```
 
 (ja-hessian-evaluation)=
 ### ヘシアン評価モード
 
-`hessian_calc_mode="Analytical"` は選択されたデバイス上で 2 階自動微分を行い、`"FiniteDifference"`（デフォルト）は力の中心差分を計算します。複数の推論ワーカーを要求した状態では、`Analytical` を明示指定していても解析ヘシアンは警告なく有限差分へダウングレードされます（上記の注記を参照）。解析ヘシアンが必要な場合は `workers = 1` を指定してください。
+`hessian_calc_mode="Analytical"` は選択されたデバイス上で 2 階自動微分を行い、`"FiniteDifference"`（デフォルト）は力の中心差分を計算します。複数の推論ワーカーを要求した状態では、`Analytical` を明示指定すると解析ヘシアンは利用できず `RuntimeError` が送出されます（上記の注記を参照）。解析ヘシアンが必要な場合は `workers = 1` を指定してください。
 
 ## HPC での使用例: PBS + Open MPI + Ray
 
@@ -141,7 +141,7 @@ UMA バックエンドを `workers > 1` で使用する場合、`hessian_calc_mo
 | `model` | UMA モデル名 (`uma-s-1p1`, `uma-m-1p1`) | `"uma-s-1p1"` |
 | `task_name` | UMA バッチに記録されるタスクタグ | `"omol"` |
 | `device` | `"cuda"` / `"cpu"` / `"auto"` | `"auto"` |
-| `workers` / `workers_per_node` | 並列 UMA 予測器（UMA バックエンド限定。ORB / MACE / AIMNet2 では無視されます）。`workers>1` の場合、解析ヘシアンは**警告なく**有限差分へダウングレードされます。`hessian_calc_mode` のデフォルトはそもそも FD のため、`Analytical` を明示的に選んだ場合のみ影響があります | `1` / `1` |
+| `workers` / `workers_per_node` | 並列 UMA 予測器（UMA バックエンド限定。ORB / MACE / AIMNet2 では無視されます）。`workers>1` の場合、解析ヘシアンは利用できず、`Analytical` を明示指定すると `RuntimeError` が送出されます。`hessian_calc_mode` のデフォルトはそもそも FD のため、`Analytical` を明示的に選んだ場合のみ影響があります | `1` / `1` |
 | `max_neigh`, `radius`, `r_edges` | 近傍構築のオプション上書き | `None`, `None`, `False` |
 | `freeze_atoms` | 1 始まりの凍結原子インデックス | _None_ |
 | `hessian_calc_mode` | `"Analytical"` または `"FiniteDifference"` | `"FiniteDifference"` |
