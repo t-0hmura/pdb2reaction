@@ -26,7 +26,7 @@ description: Per-subcommand reference for pdb2reaction's 18 CLI subcommands (ext
 | `scan` | 1D distance scan w/ restraints | `pdb2reaction scan -i 1.R.pdb -s '[(a,b,1.6)]' -o out` | `out/scan_trj.xyz`, per-stage `stage_NN/result.xyz` |
 | `scan2d` | 2D distance grid scan | `pdb2reaction scan2d -i 1.R.pdb -s '[(a,b,1.3,3.1),(c,d,1.2,3.2)]' -o out` | `out/surface.csv` + `out/grid/point_i<d1Å>_j<d2Å>.xyz` + `out/scan2d_map.png` |
 | `scan3d` | 3D distance grid scan | `pdb2reaction scan3d -i 1.R.pdb -s '[(a,b,L,H),(c,d,L,H),(e,f,L,H)]' -o out` | `out/surface.csv` + `out/grid/point_i<d1Å>_j<d2Å>_k<d3Å>.xyz` + `out/scan3d_density.html` |
-| `trj2fig` | Energy profile from XYZ trj | `pdb2reaction trj2fig -i trj.xyz` | `trj.xyz.png` |
+| `trj2fig` | Energy profile from XYZ trj | `pdb2reaction trj2fig -i trj.xyz` | `energy.png` (default when no `-o`) |
 | `energy-diagram` | Diagram from energy values | `pdb2reaction energy-diagram -i "[0.0, 21.5, -0.7]" --label-x "['R','TS','P']"` | `energy_diagram.png` |
 | `add-elem-info` | Add PDB element column (cols 77-78) | `pdb2reaction add-elem-info -i raw.pdb -o fixed.pdb` | `fixed.pdb` |
 | `fix-altloc` | Resolve PDB alternate locations | `pdb2reaction fix-altloc -i raw.pdb -o fixed.pdb` | `fixed.pdb` (single conformation per residue) |
@@ -105,7 +105,7 @@ pdb2reaction bond-summary -i reactant.pdb -i product.pdb
 
 | Pitfall | Fix |
 |---|---|
-| `--scan-lists` syntax error | The list is a Python literal-eval expression. Quote with single-quotes outside, double-quotes inside, and watch ` ` vs ``\``. |
+| `--scan-lists` syntax error | The list is a Python literal-eval expression. Quote with single-quotes outside, double-quotes inside, and do not confuse the backtick (`` ` ``) with the backslash (`\`). |
 | Wrong charge silently | Always run `--show-config` once before a long job; it prints the resolved charge. |
 | Forgetting to pin `-b` for production | The default is `-b uma`; specify `-b uma` / `-b orb` / `-b mace` / `-b aimnet2` explicitly so a future default change cannot silently re-route the run. |
 | `--config` YAML ignored | YAML is read **after** built-in defaults but **before** explicit CLI flags. Anything also given on CLI overrides YAML. |

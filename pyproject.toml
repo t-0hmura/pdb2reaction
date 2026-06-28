@@ -34,7 +34,7 @@ classifiers = [
 dependencies = [
     # pdb2reaction core dependencies
     "fairchem-core",
-    "pydmf",
+    "pydmf>=1.2",  # >=1.2 ships the PyTorch backend dmf.torch (the default --mep-mode dmf / --dmf-backend gpu)
     "torch~=2.8.0",
     "numpy>=2.0,<2.5",
     "biopython",

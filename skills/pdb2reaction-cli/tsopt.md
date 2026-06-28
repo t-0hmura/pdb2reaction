@@ -18,7 +18,7 @@ externally-generated TS guess.
 ```bash
 pdb2reaction tsopt -i ts_guess.{pdb,xyz,gjf} \
     [-q 0 -m 1] [-l 'RES:Q,...'] \
-    [--opt-mode grad|hess|dimer|rsirfo] \
+    [--opt-mode grad|hess|dimer|rsirfo|trim|rsprfo] \
     [--max-cycles 10000] \
     [-b uma|orb|mace|aimnet2] [-o ./result_tsopt/]
 ```
@@ -29,7 +29,7 @@ pdb2reaction tsopt -i ts_guess.{pdb,xyz,gjf} \
 |---|---|---|---|
 | `-i, --input` | path | required | TS candidate; `.pdb` / `.xyz` / `.gjf` |
 | `-q` / `-l` / `-m` | — | — | Charge / spin (common conventions) |
-| `--opt-mode` | str | `hess` | `grad`/`dimer` (Hessian-Guided Dimer) or `hess`/`rsirfo` (RS-I-RFO) |
+| `--opt-mode` | str | `hess` | `grad`/`dimer` (Hessian-Guided Dimer), `hess`/`rsirfo` (RS-I-RFO), `trim` (TRIM/Helgaker), or `rsprfo` (RS-P-RFO/Banerjee) |
 | `--max-cycles` | int | 10000 | Optimization step cap |
 | `--hessian-calc-mode` | str | (live default) | `Analytical` or `FiniteDifference` (default: `FiniteDifference`); selects how the initial Hessian is computed |
 | `-b, --backend` | str | `uma` | MLIP backend |
@@ -90,6 +90,8 @@ print(d["files"]["final_geometry_xyz"]) # path under out_dir
 |---|---|---|
 | `hess` / `rsirfo` (default) | RS-I-RFO with full Hessian | Default. Robust for tricky / multi-imaginary-mode candidates; slower per cycle but converges in fewer cycles |
 | `grad` / `dimer` | Hessian-Guided Dimer | Alternative when RS-I-RFO fails to converge or full-Hessian recomputation is prohibitive on large clusters. |
+| `trim` | TRIM / Helgaker | Standalone `--opt-mode` value (not an alias of grad/hess) |
+| `rsprfo` | RS-P-RFO / Banerjee | Standalone `--opt-mode` value (not an alias of grad/hess) |
 
 
 ## Validation: imaginary modes

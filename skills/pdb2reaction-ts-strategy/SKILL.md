@@ -34,7 +34,7 @@ All flags below verified against `pdb2reaction/cli/common_options.py`, `core/def
 | Route | Subcommand | When | Mechanics |
 |---|---|---|---|
 | (a) MEP / path search | `path-search` | Have both endpoints (R and P); want the TS bracketed automatically | Recursive GSM/DMF MEP with bond-change detection; auto-segments a multi-step path, refines each reactive segment, returns `hei_seg_NN.xyz` (highest-energy image per segment) |
-| (b) Distance-restrained build-up | `scan` | Have only the reactant (or want to drive a specific reacting distance) | Staged harmonic restraints `E=½k(r−target)²` (default `k=10.0`, `HarmonicBiasCalculator`) drive each reacting distance with full relaxation, walking up to a TS candidate |
+| (b) Distance-restrained build-up | `scan` | Have only the reactant (or want to drive a specific reacting distance) | Staged harmonic restraints `E=½k(r−target)²` (scan default `k=300` via `BIAS_KW`; the `10.0` in `HarmonicBiasCalculator` is only an unused constructor fallback) drive each reacting distance with full relaxation, walking up to a TS candidate |
 
 - There is **no** `opt --restraint` flag. `opt` is plain unrestrained minimization; the restrained route is `scan`.
 - `scan` supports `--preopt` / `--endopt` to relax the endpoints around the driven path.
@@ -101,7 +101,6 @@ experiment and the barrier difference is not interpretable.
 | Non-standard ligand charge | Keep `-l 'RES:Q'` (or `-l 'GPP:-3,SAM:1'`) consistent across compared runs so charge differences don't confound the comparison |
 
 - Do NOT re-extract each variant independently (different `--radius` / residue inclusion silently changes the atom set → mismatch, uncontrolled comparison). Build the shared cluster once and edit in place.
-- Controlled comparison is achieved entirely by reusing one shared prepared atom set across every variant.
 
 ## See also
 

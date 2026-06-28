@@ -49,7 +49,7 @@ pdb2reaction scan3d -i 1.R.pdb -l 'SAM:1' \
 | `<out_dir>/grid/preopt_i<d1Å>_j<d2Å>_k<d3Å>.{xyz,pdb,gjf}` | always | starting-structure snapshot (preoptimized only when `--preopt` is set) |
 | `<out_dir>/grid/inner_path_d1_NNN_d2_MMM_trj.xyz` | `--dump` | inner-loop trajectory |
 | `<out_dir>/scan3d_density.html` | always (with input csv when `--csv` is passed) | interactive 3D iso-surface |
-| `<out_dir>/surface.csv` | unless `--csv` (post-mortem reuses the input csv) | 3D energy surface (d1_A, d2_A, d3_A, energy_hartree, energy_kcal, plus axis labels) |
+| `<out_dir>/surface.csv` | unless `--csv` (post-mortem reuses the input csv) | 3D energy surface (i, j, k, d1_A, d2_A, d3_A, energy_hartree, bias_converged, energy_kcal, plus axis labels) |
 
 `result.json` stores grid metadata and energy values; `surface.csv`
 holds the per-grid-point tabulation ready for slicing / contour plotting

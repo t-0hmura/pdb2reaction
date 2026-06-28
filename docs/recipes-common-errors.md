@@ -11,12 +11,12 @@ Each row deep-links into the relevant [Troubleshooting](troubleshooting.md) sect
 | --- | --- | --- |
 | **Input & extraction** | | |
 | Missing element columns / extraction aborts | `add-elem-info` on the original PDB | {ref}`Input / extraction problems <input-extraction-problems>` |
-| `[multi] Atom count mismatch` / `[multi] Atom order mismatch` | Regenerate all PDBs with the same prep tool + settings; never reorder atoms after MM topology generation | {ref}`Input / extraction problems <input-extraction-problems>` |
+| `[multi] Atom count mismatch` / `[multi] Atom order mismatch` | Regenerate all PDBs with the same prep tool + settings; never reorder atoms once the initial atom order is fixed | {ref}`Input / extraction problems <input-extraction-problems>` |
 | **Charge & spin** | | |
 | `-q/--charge is required` errors | Set `-q/--charge` or `--ligand-charge/-l` explicitly | {ref}`Charge / spin problems <charge-spin-problems>` |
 | Energies/states look wrong after a run | Re-check charge/multiplicity policy in CLI conventions | {ref}`Charge / spin problems <charge-spin-problems>` |
 | **Calculation & convergence** | | |
-| `--hessian-calc-mode Analytical` is silently downgraded to FiniteDifference when `--workers > 1` (no warning) | Drop to `--workers 1` if you need analytical Hessians, or use FiniteDifference (the default) | {ref}`workers > 1 Hessian downgrade <workers-fd-downgrade>` |
+| `--hessian-calc-mode Analytical` raises a `RuntimeError` when `--workers > 1` (no silent downgrade) | Drop to `--workers 1` if you need analytical Hessians, or use FiniteDifference (the default) | {ref}`workers > 1 Hessian downgrade <workers-fd-downgrade>` |
 | CUDA out-of-memory at runtime (`torch.cuda.OutOfMemoryError`) | Re-extract with smaller `--radius` (extract / all only), switch to `--opt-mode grad`, keep default FD Hessian, or move to a larger GPU | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
 | TS converged but extra small imaginary modes remain | Add `--flatten` (available on `tsopt`, `opt`, and `pdb2reaction all`) | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
 | TSOPT does not converge | For the gradient-based optimizers (Limited-memory BFGS (L-BFGS) / Dimer): reduce `max_step`. For the Hessian-based optimizers (Rational Function Optimization (RFO) / Restricted-Step Image RFO (RS-I-RFO)): reduce `trust_radius`/`trust_min`/`trust_max`. Increase cycles, validate TS quality first | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |

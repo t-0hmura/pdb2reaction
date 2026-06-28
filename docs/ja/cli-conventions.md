@@ -284,7 +284,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 **受け付けるエイリアス**もサブコマンド固有です:
 
 - `opt` は `grad` / `lbfgs` と `hess` / `rfo` を受け付けます。
-- `tsopt` は `grad` / `dimer` と `hess` / `rsirfo` を受け付けます。
+- `tsopt` は `grad` / `dimer` と `hess` / `rsirfo` に加え、`trim`（TRIM/Helgaker）と `rsprfo`（RS-P-RFO/Banerjee）も単独の `--opt-mode` 値として受け付けます。
 - `scan` / `scan2d` / `scan3d` / `path-opt` / `path-search` / `all` は `grad` / `hess` のみ受け付けます（アルゴリズム名 alias なし）。`all` の `--opt-mode-post` も `grad` / `hess` のみです。
 
 したがって `tsopt` に対する `--opt-mode grad` は L-BFGS 最小化ではなく **Dimer TS 探索**です。曖昧さを避けたい場合は、各サブコマンドが受け付けるアルゴリズム名を使用してください: `opt` では `--opt-mode lbfgs|rfo`、`tsopt` では `--opt-mode dimer|rsirfo`。（他のサブコマンドは `grad` / `hess` のみ受け付けます。）

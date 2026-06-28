@@ -38,7 +38,7 @@ pdb2reaction freq -i geom.{pdb,xyz,gjf} \
 pdb2reaction freq -i ts.xyz -q 0 -m 1 -b uma --out-json -o result_freq
 ```
 
-`--out-json` enables the `result.json` shown below; omit it for `frequencies_cm-1.txt` only.
+`--out-json` enables the `result.json` shown below; without it you still get the text / trajectory outputs (just no `result.json`).
 
 ### Higher temperature for activation enthalpy
 
@@ -83,7 +83,7 @@ Default thermochemistry uses the QRRHO (Grimme) treatment with a
 - high-frequency vibrations use the standard harmonic-oscillator
   partition function.
 
-Inspect the active QRRHO knob via `pdb2reaction.core.defaults.THERMO_KW`.
+`THERMO_KW` (`pdb2reaction.core.defaults`) exposes `temperature` / `pressure_atm` / `dump`; the QRRHO rotor cutoff is internal to `thermoanalysis` and is not a `THERMO_KW` knob.
 
 ## Partial-Hessian Vibrational Analysis (PHVA)
 

@@ -38,7 +38,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 │ └──... (Sphinx site, unchanged)
 ├── pdb2reaction/ ← package body, 6-layer physical dir
 │ ├── __init__.py PEP 562 lazy: _LAZY_SYMBOLS / _LAZY_MODULES + __getattr__
-│ ├── __main__.py `from pdb2reaction.cli.app import cli`
+│ ├── __main__.py `from .cli import cli`
 │ ├── _version.py / py.typed
 │ │
 │ ├── cli/ # === L1 Interface ===
@@ -95,13 +95,13 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 
 **L2 `workflows/`**（18 ファイル）。サブコマンド 1 つにつき 1 ファイル。各ファイルは `cli` という名前の単一の `@click.command()` とそのプライベートヘルパーを所有します。大きなステージランナー（`all.py` = 5,113 LOC, `path_search.py` = 2,755 LOC, `tsopt.py` = 2,116 LOC, `extract.py` = 2,151 LOC）は、現在のレイアウトでは単一ファイルのまま残されています。
 
-**L3 `domain/`**。`torch` / `numpy` / `pysisyphus.constants`（数値バックエンド）を import してよい化学的に意味を持つヘルパーロジックですが、MLIP ランタイム（`fairchem`, `orb_models`, `mace`, `aimnet`）を import しては **いけません**。`# DOMAIN_PURE` モジュール docstring マーカーと `.github/scripts/check_engineering_markers.py` がこの deny list を強制します。domain ヘルパーはどの L2 ステージランナーからでも再利用可能です。
+**L3 `domain/`**。`torch` / `numpy` / `pysisyphus.constants`（数値バックエンド）を import してよい化学的に意味を持つヘルパーロジックですが、MLIP ランタイム（`fairchem`, `orb_models`, `mace`, `aimnet`）を import しては **いけません**。この MLIP 非依存は `.github/scripts/check_engineering_markers.py` がリポジトリ全体で強制します。なお `# DOMAIN_PURE` docstring マーカーはこれとは別のゲートで、backend 非依存を保つべき特定の **workflow モジュール**（`workflows/dft.py` / `workflows/tsopt.py` / `workflows/sp.py`）にのみ付与され、`domain/` のファイルには付きません。domain ヘルパーはどの L2 ステージランナーからでも再利用可能です。
 
 **L4a `backends/`**（約 8 ファイル）。MLIP バックエンドディスパッチャ（`__init__.py` + `base.py`）と、サポートする各 MLIP につき 1 つのアダプタ（`uma.py`, `orb.py`, `mace.py`, `aimnet2.py`）。`solvent.py` と `xtb_alpb_correction.py` は xTB ALPB 暗黙溶媒デルタ補正（オプトインの MLIP ラッパー）を担います。`pdb2reaction` は純 MLIP のクラスターモデル専用パッケージであり、すべてのバックエンドは MLIP 計算機として統一的に扱われます。
 
 **L4b `io/`**。出力側の I/O に関する事項: ステージごとのサマリライタ、エネルギーダイアグラム、軌跡レンダリング、PDB altloc 修正、インメモリ Hessian キャッシュ。`io/` は `workflows/` に依存しません。出力フォーマットはここが所有し、ステージランナーが消費します。
 
-**L5 `core/`**。最下層。`defaults.py` はすべての CLI デフォルトの **単一真実源** です。どこか他の場所に数値を追加する前に、まずここを grep してください。`utils.py` は PDB / XYZ / プロットヘルパーの約 2,560-LOC の寄せ集めです。
+**L5 `core/`**。最下層。`defaults.py` はすべての CLI デフォルトの **単一真実源** です。どこか他の場所に数値を追加する前に、まずここを grep してください。`utils.py` は PDB / XYZ / プロットヘルパーの約 3,200-LOC の寄せ集めです。
 
 ### 2.4 遅延 import の仕組み（概念図）
 

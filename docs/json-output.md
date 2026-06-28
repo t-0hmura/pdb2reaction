@@ -27,7 +27,7 @@ Every `result.json` (and the mirrored `summary.json`) automatically includes:
 | `schema_version` | string | Envelope schema version; current value lives at `pdb2reaction.core.utils.RESULT_JSON_SCHEMA_VERSION` — pin against that constant rather than the literal in this doc. Bumps signal a structural change. |
 | `command` | string | Subcommand name (e.g. `"opt"`) |
 | `pdb2reaction_version` | string | Package version |
-| `status` | string | One of `success`, `partial`, `error`, `unknown` |
+| `status` | string | Value depends on the subcommand (see each section below): e.g. `converged` / `not_converged` (opt, tsopt), `completed` (irc, freq), `ok` / `partial` (bond-summary), `success` / `partial` (all, path-search), and `error` on failure |
 | `elapsed_seconds` | float | Wall-clock time (seconds) |
 | `environment` | object | Hardware info (see below) |
 
@@ -251,8 +251,9 @@ See also the extended [`summary.json` section](#summary-json-path-search-all) fo
 > **Note:** `dft` writes `result.json` only on a successful SCF (exit 0). A
 > non-converged SCF returns exit code 3 and skips `result.json`; SCF status
 > is encoded by the `converged: bool` field plus the exit code, not by a
-> `status` field. The generic "not_converged" / "error" envelope above does
-> not apply to `dft`.
+> `status` field. The generic `not_converged` status does not apply to `dft`;
+> an unhandled exception, however, still writes the standard `error` envelope
+> (`result.json` + `summary.json`).
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -322,7 +323,7 @@ When `--json` is enabled, `bond-summary` prints JSON to **stdout** (no `result.j
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `status` | string | `"ok"` |
+| `status` | string | `"ok"` (every pair compared cleanly) or `"partial"` (some pairs failed) |
 | `comparisons` | object[] | Per-pair comparison with `structure_a` (string), `structure_b` (string), `bonds_formed` (int count), `bonds_broken` (int count). |
 
 (summary-json-path-search-all)=

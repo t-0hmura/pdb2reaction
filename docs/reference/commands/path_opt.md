@@ -17,6 +17,10 @@ Options:
                                   product); accepts .pdb or .xyz.  [required]
   --mep-mode [gsm|dmf]            MEP optimizer: Growing String Method (gsm) or
                                   Direct Max Flux (dmf).  [default: gsm]
+  --dmf-backend [cpu|gpu]         DMF compute backend (--mep-mode dmf only): gpu
+                                  (dmf.torch / CUDA) or cpu (dmf / NumPy). On a
+                                  GPU out-of-memory, retry with cpu.  [default:
+                                  gpu]
   -q, --charge INTEGER            Total charge. Required unless a .gjf template
                                   provides charge metadata or --ligand-charge is
                                   supplied for PDB inputs.

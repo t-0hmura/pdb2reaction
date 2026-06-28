@@ -145,7 +145,7 @@ pdb2reaction freq  -i seg_NN/ts/final_geometry.xyz -l 'SAM:1,GPP:-3' -b uma -o s
 pdb2reaction irc   -i seg_NN/ts/final_geometry.xyz -l 'SAM:1,GPP:-3' -b uma -o seg_NN/irc
 ```
 
-**GATE** in order: tsopt `result.json` `status` is `converged` (or `completed`; not
+**GATE** in order: tsopt `result.json` `status` is `converged` (not
 `not_converged`) → freq `result.json` `n_imaginary == 1` (exactly one imaginary frequency)
 whose mode moves the reacting atoms (0 or >1 → fix via fp64 / `--coord-type dlc` /
 `--flatten`, see `pdb2reaction-ts-strategy/SKILL.md` §3, before trusting the barrier) → irc
@@ -187,12 +187,12 @@ failed-run diagnostics live in [`summary-json.md`](summary-json.md).
 
 | Path | When | Content |
 |---|---|---|
-| `<out_dir>/segments/seg_NN/energy_diagram_UMA.png` | always | per-segment MLIP |
+| `<out_dir>/segments/seg_NN/energy_diagram_UMA.png` | `--tsopt` | per-segment MLIP (only when post-processing runs) |
 | `<out_dir>/segments/seg_NN/energy_diagram_G_UMA.png` | `--thermo` | + QRRHO Gibbs |
 | `<out_dir>/segments/seg_NN/energy_diagram_DFT.png` | `--dft` | DFT//MLIP electronic |
 | `<out_dir>/segments/seg_NN/energy_diagram_G_DFT_plus_UMA.png` | `--dft --thermo` | DFT//MLIP + Gibbs |
 | `<out_dir>/energy_diagram_MEP.png` | always | bare MEP energies (promoted to root) |
-| `<out_dir>/energy_diagram_UMA_all.png` | always | aggregated MLIP |
+| `<out_dir>/energy_diagram_UMA_all.png` | `--tsopt` | aggregated MLIP (only when post-processing runs) |
 | `<out_dir>/energy_diagram_G_UMA_all.png` | `--thermo` | aggregated + Gibbs |
 | `<out_dir>/energy_diagram_DFT_all.png` | `--dft` | aggregated DFT |
 | `<out_dir>/energy_diagram_G_DFT_plus_UMA_all.png` | `--dft --thermo` | aggregated DFT + Gibbs |

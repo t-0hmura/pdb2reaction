@@ -114,8 +114,9 @@ Full byte-by-byte / per-keyword detail: see `pdb.md`, `xyz.md`, `gjf.md`.
   organic / biological cluster.
 - Use `-m 2` for radicals, `-m 3+` for unusual high-spin metal centers.
 - `-q` (total charge) must be explicitly given for XYZ inputs (XYZ has
-  no header). `-l 'RES:Q'` derives `-q` for PDB / GJF inputs from
-  per-residue charges plus `pdb2reaction`'s amino-acid table.
+  no header). `-l 'RES:Q'` derives `-q` for PDB input (or XYZ with
+  `--ref-pdb`) from per-residue charges plus `pdb2reaction`'s amino-acid
+  table.
 
 If you're not sure about charge or spin, do **not** guess silently —
 follow `charge-multiplicity.md`.

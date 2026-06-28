@@ -70,7 +70,7 @@ Common flag set:
 Inspect the live default kwargs:
 
 ```bash
-python -c "import pdb2reaction.core.defaults as d; print(d.GEOM_KW_DEFAULT, d.CALC_KW_DEFAULT)"
+python -c "from pdb2reaction.workflows.dft import DFT_KW; print(DFT_KW)"
 ```
 
 ## Failure diagnosis

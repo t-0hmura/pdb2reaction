@@ -41,7 +41,8 @@ pdb2reaction all -i <input(s)> [-c <substrate>] [-l 'RES:Q,...'] \
 | `--solvent` | str | none | xTB-ALPB solvent name (`water`, `methanol`, …) |
 | `-o, --out-dir` | path | `./result_all/` | Top-level output directory |
 | `--config` | path | none | YAML config applied before CLI flags |
-| `--show-config` / `--dry-run` | flag | off | Print resolved config and exit |
+| `--show-config` | flag | off | Print the resolved config and continue running |
+| `--dry-run` | flag | off | Validate inputs + print the execution plan, then exit without running |
 | `--help-advanced` | flag | — | Reveal hidden flags (freeze, advanced overrides) |
 
 Run `pdb2reaction all --help-advanced` for the full list (it changes
@@ -68,7 +69,8 @@ Three zones: deliverables at `<out_dir>/`, per-segment deliverables under `<out_
 |---|---|---|
 | `<out_dir>/summary.json` | always | machine-readable per-stage results |
 | `<out_dir>/summary.log` | always | human-readable text + dir tree |
-| `<out_dir>/mep.{pdb,gjf}`, `mep_trj.xyz`, `mep_w_ref.pdb` | always | stitched MEP across segments (promoted to root) |
+| `<out_dir>/mep.pdb`, `mep_trj.xyz` | always (PDB input; `mep.gjf` only with GJF input) | stitched MEP across segments (promoted to root) |
+| `<out_dir>/mep_w_ref.pdb` | with `--ref-full-pdb` | MEP merged into the full-system template |
 | `<out_dir>/energy_diagram_MEP.png` | always | bare all-segment MEP energies |
 | `<out_dir>/energy_diagram_{UMA,G_UMA,DFT,G_DFT_plus_UMA}_all.png` | combos of `--thermo`/`--dft` | aggregated multi-segment diagrams |
 | `<out_dir>/segments/seg_NN/{reactant,ts,product}.{pdb,xyz}` | always | canonical R/TS/P (2-digit) |

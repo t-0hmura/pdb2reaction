@@ -7,8 +7,6 @@ older `pdb2reaction` run, or a manual guess) and want to run only the
 validation + thermochemistry stages — `tsopt → irc → freq → (dft)` —
 without the upstream extract / path-search.
 
-Scope: validate a known TS candidate (no upstream extract / path-search).
-
 ## Synopsis
 
 ```bash

@@ -19,10 +19,10 @@ pdb2reaction/                          ← the package body, one folder per laye
 │               #       (`uma.py`, `orb.py`, `mace.py`, `aimnet2.py`) +
 │               #       xTB ALPB solvent correction.
 ├── io/         # L4b — summary writer, energy diagram, trajectory plot,
-│               #       Hessian cache, PDB altloc fix, harmonic restraints.
+│               #       Hessian cache, PDB altloc fix.
 └── core/       # L5 — `defaults.py` (single source of truth for every CLI
                 #       default), `utils.py` (PDB / XYZ / plot helpers),
-                #       `logging.py`, `_pysis_quiet.py`.
+                #       `logging.py`.
 
 pysisyphus/        ← bundled fork of the optimiser / TS / IRC engine.
                      Slimmed to the subset pdb2reaction actually uses; see its
@@ -57,6 +57,6 @@ Dependency direction is one-way: `L1 → L2 → {L3, L4} → L5`. The bundled fo
 4. **Bundled-fork edits** to `pysisyphus/` / `thermoanalysis/` outside the 5 divergent files require `[CHEMISTRY-RULE:N]` commit prefix and a HEAVY benchmark.
 
 ## See also
-- Full architecture (~350 lines): [`docs/architecture.md`](../../docs/architecture.md)
+- Full architecture (~320 lines): [`docs/architecture.md`](../../docs/architecture.md)
 - Contributor recipe + per-step gate cycle: [`CONTRIBUTING.md`](../../CONTRIBUTING.md)
 - Engineering-marker coverage check: [`.github/scripts/check_engineering_markers.py`](../../.github/scripts/check_engineering_markers.py)

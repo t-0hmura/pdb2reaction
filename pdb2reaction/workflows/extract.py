@@ -255,11 +255,9 @@ def _gather_extract_variadic(
     "-i", "--input", "complex_pdb",
     type=str, multiple=True, required=True,
     help=(
-        "Protein-substrate complex PDB(s). Repeat -i for each file "
-        "(e.g. '-i a.pdb -i b.pdb'); space-separated '-i a.pdb b.pdb' "
-        "is NOT supported and is now rejected with an explicit error "
-        "(it used to silently drop b.pdb). If "
-        "multiple, they must have identical atom counts and ordering."
+        "Protein-substrate complex PDB(s). Multiple files may be given space-separated after a "
+        "single -i ('-i a.pdb b.pdb') or by repeating -i ('-i a.pdb -i b.pdb'). "
+        "If multiple, they must have identical atom counts and ordering."
     ),
 )
 @click.option(
@@ -349,52 +347,16 @@ def cli(
     ligand_charge: Optional[str],
     out_json: bool,
 ) -> None:
-    # Recover values from REPEATED -i / -o tokens that Click pushed into
-    # ctx.args (e.g. ``-i a.pdb -i b.pdb``). Space-separated positionals
-    # (``-i a.pdb b.pdb``) are NOT supported and are rejected as orphans below.
-    extra_inputs = _gather_extract_variadic(ctx.args, ("-i", "--input"))
-    input_list = list(complex_pdb) + extra_inputs if extra_inputs else list(complex_pdb)
+    # Accept space-separated multi-input / -output (``-i a.pdb b.pdb``), consistent with
+    # `all` / `path-opt` / `path-search`: collect every value following each -i / -o from the
+    # raw argv (a single -i may be followed by several paths; repeated -i / -o also works).
+    import sys
+    from pdb2reaction.core.utils import collect_option_values
 
-    extra_outputs = _gather_extract_variadic(ctx.args, ("-o", "--output"))
-    output_list: Optional[List[str]]
-    if output_pdb or extra_outputs:
-        output_list = list(output_pdb) + extra_outputs if extra_outputs else list(output_pdb)
-    else:
-        output_list = None
-
-    # Any ctx.args token not consumed above is an orphan. Surface it as
-    # BadParameter so `-i a.pdb b.pdb` (where b.pdb falls into ctx.args
-    # because Click's multiple=True binds only the first -i value) is
-    # rejected loudly instead of silently dropping b.pdb.
-    # Account for tokens consumed by the variadic gatherers above (which
-    # walk from a flag forward until the next known flag) and surface
-    # anything that survives so the
-    # user can fix the invocation rather than silently lose data.
-    _consumed: set = set()
-    for flag_pair in (("-i", "--input"), ("-o", "--output")):
-        names_set = set(flag_pair)
-        stop_set = set(_EXTRACT_ALL_FLAGS)
-        i = 0
-        while i < len(ctx.args):
-            if ctx.args[i] in names_set:
-                _consumed.add(i)
-                j = i + 1
-                while j < len(ctx.args) and ctx.args[j] not in stop_set:
-                    _consumed.add(j)
-                    j += 1
-                i = j
-            else:
-                i += 1
-    orphans = [tok for idx, tok in enumerate(ctx.args) if idx not in _consumed]
-    if orphans:
-        raise click.UsageError(
-            "extract received unexpected argument(s) that would be silently "
-            f"dropped: {orphans!r}. If these are extra inputs, repeat -i "
-            "for each one (e.g. '-i a.pdb -i b.pdb' — space-separated "
-            "'-i a.pdb b.pdb' is not supported because Click's option "
-            "parser only takes the first); if they are extra outputs, "
-            "repeat -o; if they are typos, remove them."
-        )
+    _argv = sys.argv[1:]
+    input_list = collect_option_values(_argv, ("-i", "--input")) or list(complex_pdb)
+    _outs = collect_option_values(_argv, ("-o", "--output"))
+    output_list: Optional[List[str]] = _outs if _outs else (list(output_pdb) if output_pdb else None)
 
     ns = argparse.Namespace(
         complex_pdb=input_list,

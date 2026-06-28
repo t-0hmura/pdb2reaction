@@ -11,7 +11,7 @@ R → … → P の **2 構造以上**から、連続的な最小エネルギー
 コマンド形式:
 
 ```bash
-pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1] \
+pdb2reaction path-search -i R.pdb [-i I.pdb ...] -i P.pdb [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1] \
  [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
  [--workers N] [--workers-per-node N] \
  [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET] [--thresh-stopt PRESET] \
@@ -27,7 +27,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
 2 端点（反応物 → 生成物）:
 
 ```bash
-pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
+pdb2reaction path-search -i reactant.pdb -i product.pdb -q 0 -m 1 \
  --out-dir ./result_path_search
 ```
 
@@ -35,7 +35,7 @@ pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
 
 ```bash
 # 中間体を明示して多段の経路を与える
-pdb2reaction path-search -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 -m 1 \
+pdb2reaction path-search -i R.pdb -i IM1.pdb -i IM2.pdb -i P.pdb -q -1 -m 1 \
  --out-dir ./result_path_search_multi
 ```
 
@@ -43,7 +43,7 @@ pdb2reaction path-search -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 -m 1 \
 
 ```bash
 # テンプレート参照を使って全系マージ出力を有効化する
-pdb2reaction path-search -i R.pdb IM1.pdb P.pdb -q 0 -m 1 \
+pdb2reaction path-search -i R.pdb -i IM1.pdb -i P.pdb -q 0 -m 1 \
  --ref-full-pdb holo_template.pdb --out-dir ./result_path_search_merge
 ```
 
@@ -51,7 +51,7 @@ DMF + minima リファインで探索する:
 
 ```bash
 # DMF + minima リファインで探索する
-pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
+pdb2reaction path-search -i reactant.pdb -i product.pdb -q 0 -m 1 \
  --mep-mode dmf --refine-mode minima --out-dir ./result_path_search_dmf
 ```
 
@@ -60,7 +60,7 @@ pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
 1. **ペアごとの初期セグメント（GSM/DMF）** – 各隣接入力（A→B）間で `GrowingString` または DMF を実行し、粗い MEP と最高エネルギー画像（HEI）を取得。
 2. **HEI 周辺の局所緩和** – `refine-mode=peak` なら HEI±1、`refine-mode=minima` なら HEI 近傍の局所極小点を、選択した単一構造オプティマイザー（`opt-mode`）で精密化し `End1`/`End2` を得る。
    > **デフォルト:** `--refine-mode` 省略時は GSM では `peak`、DMF では `minima` が選択されます。
-3. **ねじれ vs. 精密化の決定** – `End1` と `End2` 間に共有結合変化がなければ *ねじれ*（kink: 共有結合変化を伴わない構造変化区間。[用語集](glossary.md) 参照）とみなし、`search.kink_max_nodes` の線形ノードを挿入して個別最適化。結合変化がある場合は *反応セグメント*（端点間に共有結合変化が検出される区間。[用語集](glossary.md) 参照）として扱い、`End1` と `End2` 間に **精密化セグメント (GSM/DMF)** を起動して障壁を鋭利化。
+3. **ねじれ vs. 精密化の決定** – `End1` と `End2` 間に共有結合変化がなければ *ねじれ*（kink: 共有結合変化を伴わない構造変化区間。[用語集](glossary.md) 参照）とみなし、`search.kink_max_nodes` の線形ノードを挿入して個別最適化。結合変化がある場合は *反応セグメント*（端点間に共有結合変化が検出される区間。[用語集](glossary.md) 参照）として扱い、`End1` と `End2` 間に **精密化セグメント (GSM/DMF)** を起動して障壁を先鋭化。
 4. **選択的再帰** – `(A→End1)` と `(End2→B)` の結合変化を `bond` しきい値で比較し、共有結合更新が残るサブ区間のみ再帰的に探索。再帰深度は `search.max_depth` で制限。
 5. **スティッチング & ブリッジング** – 解決済みのサブパスを連結し、RMSD ≤ `search.stitch_rmsd_thresh` の重複エンドポイントを除去。RMSD ギャップが `search.bridge_rmsd_thresh` を超える場合は *ブリッジセグメント*（非隣接の中間体間を接続するセグメント。[用語集](glossary.md) 参照）を GSM/DMF で挿入。境界で結合変化が検出される場合はブリッジではなく新規の再帰セグメントで置換。
 6. **アライメント & マージング（オプション）** – `--align`（デフォルト）で事前最適化構造を先頭入力へ剛体アライメントし、`freeze_atoms` を整合。`--ref-full-pdb` を指定すると活性部位モデル軌跡をフルサイズ PDB テンプレートへマージ（`--align` により先頭テンプレートの再利用が可能）。
@@ -108,7 +108,7 @@ out_dir/ (デフォルト:./result_path_search/)
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | **入力と電荷** | | |
-| `-i, --input PATH...` | 反応順序の 2 つ以上の構造（反応物 → 生成物）。すべてのファイルを単一の `-i`/`--input` の後ろに並べて指定 | 必須 |
+| `-i, --input PATH` | 反応順序の 2 つ以上の構造（反応物 → 生成物）。各ファイルごとに `-i`/`--input` を繰り返す（例: `-i R.pdb -i IM1.pdb -i P.pdb`。`path-opt` は単一 `-i` の後ろに 2 ファイルを置く点が異なる） | 必須 |
 | `-q, --charge INT` | 総電荷。非 `.gjf` 入力では `--ligand-charge` の導出が成功しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
 | `-l, --ligand-charge TEXT` | スカラー整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力のみ。XYZ/GJF は `-q` 必須） | _None_ |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |

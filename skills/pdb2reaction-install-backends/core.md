@@ -27,6 +27,7 @@ Available extras (canonical list lives in `pyproject.toml`):
 | `[orb]` | `orb-models` | Using `-b orb` |
 | `[aimnet]` | `aimnet>=0.2.0` | Using `-b aimnet2` |
 | `[dft]` | `pyscf`, `gpu4pyscf-cuda12x` (x86_64), `cupy-cuda12x`, `basis-set-exchange` | `pdb2reaction dft` subcommand |
+| `[mcp]` | `mcp[cli]>=1.0` | Running the MCP server |
 | `[ci]` | CPU-only test deps; CI installs the torch CPU wheel separately via the PyTorch CPU index | Running unit tests / docs builds |
 | `[dev]` | `pytest` family | Contributing |
 | `[docs]` | `sphinx`, `myst-parser`, `furo`, `sphinx-copybutton`, `sphinx-autobuild` | Building the Sphinx docs site |
@@ -64,8 +65,8 @@ print('defaults:', sorted(n for n in dir(d) if not n.startswith('_'))[:10], '...
 "
 ```
 
-`pdb2reaction --help` should list ~17 subcommands (`all`, `extract`,
-`path-search`, `path-opt`, `opt`, `tsopt`, `freq`, `irc`, `dft`, `scan`,
+`pdb2reaction --help` should list ~18 subcommands (`all`, `extract`,
+`path-search`, `path-opt`, `opt`, `tsopt`, `freq`, `irc`, `dft`, `sp`, `scan`,
 `scan2d`, `scan3d`, `trj2fig`, `energy-diagram`, `add-elem-info`,
 `fix-altloc`, `bond-summary`).
 
@@ -82,9 +83,11 @@ Inside that directory:
 | `cli/app.py` | Click entry point |
 | `core/defaults.py` | All default kwarg dicts (read with `import pdb2reaction.core.defaults`) |
 | `backends/` | UMA / Orb / MACE / AIMNet2 calculator factories |
-| `pysisyphus/` | Bundled GPU-tensor pysisyphus fork |
-| `thermoanalysis/` | Bundled QRRHO thermochemistry |
 | `workflows/{extract,path_search,tsopt,irc,freq,dft,all}.py` | Subcommand implementations |
+
+`pysisyphus/` and `thermoanalysis/` are **not** inside `pdb2reaction/` — they
+install as separate top-level packages (siblings of `pdb2reaction/` in
+`site-packages/`).
 
 ## Upgrading
 

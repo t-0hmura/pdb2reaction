@@ -83,6 +83,10 @@ Options:
                                   True]
   --mep-mode [gsm|dmf]            MEP optimizer: Growing String Method (gsm) or
                                   Direct Max Flux (dmf).  [default: gsm]
+  --dmf-backend [cpu|gpu]         DMF compute backend (--mep-mode dmf only): gpu
+                                  (dmf.torch / CUDA) or cpu (dmf / NumPy). On a
+                                  GPU out-of-memory, retry with cpu.  [default:
+                                  gpu]
   --max-nodes INTEGER             Max internal nodes for **segment** GSM (String
                                   has max_nodes+2 images including endpoints).
                                   [default: 20]

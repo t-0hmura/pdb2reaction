@@ -15,13 +15,12 @@ Options:
                                   [0<=x<=3]
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
-  -i, --input TEXT                Protein-substrate complex PDB(s). Repeat -i
-                                  for each file (e.g. '-i a.pdb -i b.pdb');
-                                  space-separated '-i a.pdb b.pdb' is NOT
-                                  supported and is now rejected with an explicit
-                                  error (it used to silently drop b.pdb). If
-                                  multiple, they must have identical atom counts
-                                  and ordering.  [required]
+  -i, --input TEXT                Protein-substrate complex PDB(s). Multiple
+                                  files may be given space-separated after a
+                                  single -i ('-i a.pdb b.pdb') or by repeating
+                                  -i ('-i a.pdb -i b.pdb'). If multiple, they
+                                  must have identical atom counts and ordering.
+                                  [required]
   -c, --center TEXT               Substrate specification: a PDB path, a
                                   comma/space-separated residue-ID list like
                                   '123,124' or 'A:123,B:456' (insertion codes

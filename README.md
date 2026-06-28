@@ -22,10 +22,9 @@ Also, inputs are not limited to full enzyme PDBs: pass a small molecule as `.xyz
 | Tool | Use case |
 |---|---|
 | **`pdb2reaction`** (this repo) | Pure-MLIP reaction paths for **cluster models and small molecules** from PDB / XYZ / GJF. |
-| [**mlmm-toolkit**](https://github.com/t-0hmura/mlmm_toolkit) | **ML/MM ONIOM** with the full protein environment; automates MM parameterization and ML-region assignment from a single PDB. |
 | [**uma_pysis**](https://github.com/t-0hmura/uma_pysis) | Lightweight **YAML-driven UMA–pysisyphus interface** for light reaction mechanism investigation (GS / TS / IRC / ΔG). |
 
-> `pdb2reaction` and `mlmm-toolkit` bundle the same GPU-optimized pysisyphus fork; it is **not** compatible with upstream pysisyphus — do not install them side by side.
+> `pdb2reaction` bundles a GPU-optimized pysisyphus fork that is **not** compatible with upstream pysisyphus — do not install it into an environment that already has upstream pysisyphus.
 
 ## Documentation
 

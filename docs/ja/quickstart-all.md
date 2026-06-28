@@ -77,7 +77,7 @@ result_all/
 
 - `pdb2reaction all --help` は主要オプション、`pdb2reaction all --help-advanced` は全オプションを表示します。
 
-## 次の導線
+## 次のステップ
 
 - 単一構造の段階的スキャン: [クイックスタート: `pdb2reaction all --scan-lists`](quickstart-scan.md)
 - TS 候補の検証: [クイックスタート: TS のみモード](quickstart-tsopt-freq.md)

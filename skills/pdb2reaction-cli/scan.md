@@ -28,7 +28,7 @@ pdb2reaction scan -i input.pdb \
 | `--solvent` | str | `none` | xTB-ALPB solvent |
 | `-o, --out-dir` | path | `./result_scan/` | Output directory |
 | `--ref-pdb` | path | none | Residue context for XYZ/GJF inputs |
-| `--config` / `--show-config` / `--dry-run` / `--help-advanced` | — | — | Standard |
+| `--config` / `--dry-run` / `--help-advanced` | — | — | Standard (`scan` has no `--show-config`) |
 
 The tuple grammar in `-s` accepts atom-index ints (`(1, 5, 1.4)`) or atom
 specs (`("CS1 SAM 320", "C7 GPP 321", 1.60)`). Multiple stages chain

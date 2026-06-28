@@ -1600,6 +1600,14 @@ def _merge_final_and_write(final_images: List[Any],
     help="MEP optimizer: Growing String Method (gsm) or Direct Max Flux (dmf).",
 )
 @click.option(
+    "--dmf-backend",
+    type=click.Choice(["cpu", "gpu"], case_sensitive=False),
+    default="gpu",
+    show_default=True,
+    help="DMF compute backend (--mep-mode dmf only): gpu (dmf.torch / CUDA) or cpu (dmf / NumPy). "
+    "On a GPU out-of-memory, retry with cpu.",
+)
+@click.option(
     "--refine-mode",
     type=click.Choice(["peak", "minima"], case_sensitive=False),
     default=None,
@@ -1795,6 +1803,7 @@ def cli(
     ctx: click.Context,
     input_paths: Sequence[Path],
     mep_mode: str,
+    dmf_backend: str,
     refine_mode: Optional[str],
     charge: Optional[int],
     ligand_charge: Optional[str],
@@ -1992,6 +2001,8 @@ def cli(
             stopt_cfg["max_cycles"] = int(max_cycles)
             stopt_cfg["stop_in_when_full"] = int(max_cycles)
             dmf_cfg["max_cycles"] = int(max_cycles)
+        if cli_param_overridden(ctx, "dmf_backend"):
+            dmf_cfg["backend"] = str(dmf_backend).lower()
         if cli_param_overridden(ctx, "climb"):
             gs_cfg["climb"] = bool(climb)
             gs_cfg["climb_lanczos"] = bool(climb)

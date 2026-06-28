@@ -22,7 +22,7 @@ is the canonical machine-readable artifact for downstream analysis
 | `overall_reaction_energy_kcal` | R → P total energy difference |
 | `segments` | Lightweight per-segment summary (see below) |
 | `post_segments` | Per-segment post-processing details (tsopt / IRC / freq / DFT outputs) |
-| `key_output_files` | Map of role → path (str) for top-level files; `seg_NN` entries are `{description, files}` dicts |
+| `key_output_files` | Top-level entries map filename → description (str); `seg_NN` entries are `{description, files}` dicts |
 | `pipeline_mode` | One of `"path-search"`, `"path-opt"`, `"tsopt-only"` |
 | `mlip_backend` | Which backend produced the energies |
 | `energy_diagrams` | List of energy-diagram entries (PNG / HTML paths and metadata) |
@@ -35,7 +35,7 @@ Lightweight, MEP-level:
 | Key | Description |
 |---|---|
 | `index` | Segment index (1-based int; written zero-padded as `seg_01/`, `seg_02/`, …) |
-| `tag` | Segment tag (`"reactive"` / `"non-reactive"`) |
+| `tag` | Segment-name string (`seg_NN` / `*_bridge`). To select reactive segments, filter `kind != "bridge"` |
 | `kind` | Segment kind (`"seg"`, `"bridge"`, or `"tsopt"`) |
 | `barrier_kcal` | TS – R energy (kcal/mol) — the rate constant input |
 | `delta_kcal` | P – R energy (kcal/mol) |

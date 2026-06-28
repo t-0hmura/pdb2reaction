@@ -55,7 +55,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `-i, --input FILE` | — | PDB / XYZ / GJF structure file (required) |
 | `-q, --charge INT` | — | total charge of the system (required for non-GJF; GJF inherits the template) |
 | `-l, --ligand-charge TEXT` | — | per-residue charge mapping (e.g. `SAM:1,GPP:-3`), used to derive `-q` automatically |
-| `-m, --multiplicity INT` | `1` | spin multiplicity, 2S+1 (required for non-GJF; GJF inherits the template) |
+| `-m, --multiplicity INT` | `1` | spin multiplicity, 2S+1 (optional; defaults to 1. GJF inherits the template) |
 | `-b, --backend [uma\|orb\|mace\|aimnet2]` | `uma` | MLIP backend selection |
 | `--hess / --no-hess` | `--no-hess` | also compute and write `hessian.npy` |
 | `--hessian-calc-mode [Analytical\|FiniteDifference]` | auto | force a specific Hessian mode (only applies with `--hess`) |

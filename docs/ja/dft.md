@@ -1,6 +1,6 @@
 # `dft`
 
-GPU4PySCF または CPU PySCF を使用して DFT 一点計算を実行し、エネルギーと布居解析（population analysis: Mulliken、meta-Löwdin、IAO 電荷）を報告します。デフォルトの汎関数/基底関数は ωB97M-V/def2-tzvpd です。小規模な活性部位モデルの DFT 一点エネルギー（および布居解析）を得る場面、多くは MLIP で最適化した R/TS/P 構造の精密化に使用します。バックエンドは `--engine`（デフォルト `gpu`）で選択します。GPU が利用できない場合や移植性・デバッグ目的の実行には `cpu` を使用します。
+GPU4PySCF または CPU PySCF を使用して DFT 一点計算を実行し、エネルギーと布居解析（population analysis: Mulliken、meta-Löwdin、IAO 電荷）を報告します。デフォルトの汎関数/基底関数は ωB97M-V/def2-tzvpd です。小規模な活性部位モデルの DFT 一点エネルギー（および布居解析）を得たい場面で使用します。多くは、MLIP で最適化した R/TS/P 構造の精密化に用います。バックエンドは `--engine`（デフォルト `gpu`）で選択します。GPU が利用できない場合や移植性・デバッグ目的の実行には `cpu` を使用します。
 
 > `--engine`（単体の `dft`）と `--dft-engine`（`pdb2reaction all` から転送する場合）の命名規則は {ref}`ja-engine-vs-dft-engine` を参照してください。
 

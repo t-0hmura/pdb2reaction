@@ -187,7 +187,7 @@ workers. **Two important caveats:**
    backend (see `pdb2reaction/backends/__init__.py:_BACKEND_ACCEPTED_KEYS`).
    ORB / MACE / AIMNet2 silently drop the kwarg.
 2. When `workers > 1`, requesting `hessian_calc_mode=Analytical` raises
-   a `RuntimeError` (`pdb2reaction/backends/uma.py:160`); use
+   a `RuntimeError` (`pdb2reaction/backends/uma.py`); use
    `FiniteDifference` (the default) or drop to `workers = 1`.
    See `docs/uma-pysis.md` `(workers-fd-downgrade)=`.
 

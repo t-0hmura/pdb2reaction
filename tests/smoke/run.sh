@@ -373,3 +373,13 @@ pdb2reaction all -i r.pdb -q -1 --scan-lists "[(1,5,1.4)]" --refine-path true --
 
 # test72: all (complex multi-input) --refine-path true (recursive path_search on the extracted model)
 pdb2reaction all -i r_complex.pdb p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --no-exclude-backbone --refine-path true --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --no-tsopt --no-thermo --no-dft --out-dir test72_rp_complex > test72_rp_complex.out 2>&1
+
+# test73: extract MULTI-INPUT via space-separated '-i a.pdb b.pdb' (one flag, two paths).
+# Regression guard: a single -i with several space-separated paths must NOT drop the 2nd input.
+# A single -o yields one multi-MODEL PDB, so both endpoints must appear (-> exactly 2 MODEL records).
+pdb2reaction extract -i r_complex.pdb p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --no-exclude-backbone -o model_multi.pdb > test73_multi_extract.out 2>&1
+n_models=$(grep -c '^MODEL' model_multi.pdb 2>/dev/null)
+if [ "${n_models:-0}" -ne 2 ]; then
+  echo "[extract-multi] test73: space-separated '-i a b' yielded ${n_models:-0} MODEL records (expected 2); the 2nd input was dropped" >> test73_multi_extract.out
+  exit 1
+fi

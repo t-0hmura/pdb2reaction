@@ -81,7 +81,7 @@ result_ts_only/
 
 | 症状 | 原因 | 対処 |
 |---|---|---|
-| `post_segments[0].ts_imag.n_imag == 0` | TS 候補が極小に崩落 | TS 候補を取り直す（例: `path-search`）。TS のみモードでは失った鞍点を回復できません |
+| `post_segments[0].ts_imag.n_imag == 0` | TS 候補が極小に落ちてしまう | TS 候補を取り直す（例: `path-search`）。TS のみモードでは失った鞍点を回復できません |
 | `n_imag >= 2` | 縮退した負モードあり | `--flatten` で余剰モードを除去。`hessian_dimer.flatten_max_iter` は [tsopt](tsopt.md) を参照 |
 | `segments[0].bond_changes` が空（`""` または `(no covalent changes detected)`）、または IRC が想定と違う終点に到達 | 虚振動が反応座標方向と一致していない、または TS が同一井戸を結んでいる | `segments/seg_01/ts/vib/imag_*_trj.xyz` を PyMOL で可視化し、虚振動が想定の反応方向か確認。違う場合は TS 候補を取り直す |
 | `freq/{R,P}/frequencies_cm-1.txt` に虚振動が残る | IRC の終点が真の極小に達していない | 収束を厳しくする（`--thresh-post baker`）か YAML で IRC max cycles を伸ばす。[freq](freq.md) を参照 |
@@ -92,7 +92,7 @@ result_ts_only/
 - VRAM に余裕がある場合は `--hessian-calc-mode Analytical` を推奨します（デフォルトは `FiniteDifference`）。
 - 全オプションを確認するには `pdb2reaction all --help-advanced`。
 
-## 次の導線
+## 次のステップ
 
 - 複数構造からの MEP 経路: [クイックスタート: `pdb2reaction all`](quickstart-all.md)
 - 単一構造からのスキャン駆動: [クイックスタート: `pdb2reaction all --scan-lists`](quickstart-scan.md)

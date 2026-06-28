@@ -186,7 +186,7 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 
 CPU のみでの実行は可能ですが 10〜100 倍遅く、TS / IRC / ヘシアンの一連のワークフローには推奨されません。
 
-## 次の導線
+## 次のステップ
 
 - [はじめに](getting-started.md) — プロジェクト概要、パイプラインの各ステージ、ワークフローモード
 - [クイックスタート: `pdb2reaction all`](quickstart-all.md) — 2 つの PDB から end-to-end 実行

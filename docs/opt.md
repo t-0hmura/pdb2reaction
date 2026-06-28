@@ -118,7 +118,7 @@ opt:
   out_dir: ./result_opt/  # opt-specific default
 ```
 
-The only `opt`-specific default is `out_dir: ./result_opt/` (also applied to `lbfgs.out_dir`/`rfo.out_dir`). The CLI accepts `grad|lbfgs` and `hess|rfo`; in YAML, use `lbfgs` or `rfo` directly.
+The only `opt`-specific default is `out_dir: ./result_opt/` (also applied to `lbfgs.out_dir`/`rfo.out_dir`).
 
 Full schema (every key and default): [YAML Reference](yaml-reference.md).
 

@@ -90,7 +90,7 @@ Five "add-a-X" recipes cover ~90 % of contributor changes. Each names the exact 
 | step | action | file |
 |---|---|---|
 | 1 | Create `pdb2reaction/backends/xyz.py` with `XYZCalculator(MLIPCalculator)` (pysisyphus path) and `XYZASECalculator(...)` (ASE path) | new file in L4a |
-| 2 | Subclass `MLIPCalculator` (`backends/base.py:120`) and implement `_compute_energy_forces_ev(elem, coord_ang)`; the base class supplies the finite-difference Hessian assembly and ASE adapter (see `backends/uma.py:336` for the reference implementation) | `pdb2reaction/backends/base.py` |
+| 2 | Subclass `MLIPCalculator` (`backends/base.py:120`) and implement `_compute_energy_forces_ev(elem, coord_ang)`; the base class supplies the finite-difference Hessian assembly and ASE adapter (see `backends/uma.py:314` for the reference implementation) | `pdb2reaction/backends/base.py` |
 | 3 | Register in `BACKEND_REGISTRY` dict with `module / pysis_cls / ase_cls` keys, and add the accepted-kwargs set to `_BACKEND_ACCEPTED_KEYS` and `_ASE_ACCEPTED_KEYS` | `pdb2reaction/backends/__init__.py` |
 | 4 | Add `xyz` to `resolve_backend` fallback order if it should participate in `--backend auto` | `pdb2reaction/backends/__init__.py` |
 | 5 | Document model identifiers, install command, accepted kwargs in `docs/backends.md`; add a smoke entry in `tests/smoke/run.sh` | `docs/backends.md`, `tests/smoke/run.sh` |
@@ -166,7 +166,6 @@ Logic edits to these files are forbidden in this release line (annotation-only i
 
 - `pysisyphus/irc/IRC.py`
 - `pysisyphus/optimizers/hessian_updates.py`
-- `pysisyphus/run.py`
 - `pysisyphus/tsoptimizers/TSHessianOptimizer.py`
 - `thermoanalysis/QCData.py`
 

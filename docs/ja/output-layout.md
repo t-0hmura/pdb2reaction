@@ -45,16 +45,16 @@
 
 ```text
 result_all/
-├─ summary.log · summary.json                 # authored at the root
-├─ mep.pdb · mep_w_ref.pdb · mep_trj.xyz       # MEP deliverables promoted from the engine
+├─ summary.log · summary.json                 # ルートに書き出し
+├─ mep.pdb · mep_w_ref.pdb · mep_trj.xyz       # エンジンから昇格された MEP 成果物
 ├─ energy_diagram_MEP.png · energy_diagram_*.png
 ├─ segments/
-│  └─ seg_NN/                                  # 2-digit per-reactive-segment deliverables
-│     ├─ reactant.{pdb,xyz,gjf} · ts.* · product.*   # canonical R/TS/P
-│     └─ ts/ · irc/ · freq/{R,TS,P}/ · dft/         # per-stage working files (--tsopt / --thermo / --dft)
-└─ _work/                                      # pipeline scratch (safe to rm -rf)
+│  └─ seg_NN/                                  # 反応セグメント別の成果物（2桁番号）
+│     ├─ reactant.{pdb,xyz,gjf} · ts.* · product.*   # 正準の R/TS/P
+│     └─ ts/ · irc/ · freq/{R,TS,P}/ · dft/         # ステージ別の作業ファイル（--tsopt / --thermo / --dft）
+└─ _work/                                      # パイプラインのスクラッチ（rm -rf 可）
    ├─ models/ · scan/ · add_elem_info/ · fix_altloc/
-   └─ path_opt/                                # raw MEP-engine output (path_search/ with --refine-path True)
+   └─ path_opt/                                # MEP エンジンの生出力（--refine-path 時は path_search/）
 ```
 
 TSOPT のみのモードでは MEP ステージがないため、`_work/path_opt/` は存在せず、成果物は `segments/seg_01/` 下に置かれます。モードごとの完全な内訳は [all](all.md) を参照してください。
@@ -77,4 +77,4 @@ if summary["status"] == "error":
         raise RuntimeError(summary["error"])
 ```
 
-`summary.json` は、サブコマンドが `write_result_json` を呼ぶ限り（失敗パスを含む — 失敗エンベロープはスキーマバージョン + エラークラスチェーンを保持します）必ず存在することが保証されます。その横に書き出される `result.json` は内容が同一です。
+`summary.json` は、サブコマンドが `write_result_json` を呼ぶ限り（失敗パスを含む — 失敗エンベロープはスキーマバージョン + エラークラスチェーンを保持します）必ず存在することが保証されます。

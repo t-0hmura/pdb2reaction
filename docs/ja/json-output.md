@@ -318,7 +318,7 @@ cat result_opt/result.json | python -m json.tool
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `status` | string | `"ok"` |
+| `status` | string | `"ok"`（全ペアが正常に比較できた場合）または `"partial"`（一部のペアが失敗した場合） |
 | `comparisons` | object[] | ペアごとの比較（`structure_a` (string), `structure_b` (string), `bonds_formed` (int), `bonds_broken` (int)） |
 
 (ja-summary-json-path-search-all)=

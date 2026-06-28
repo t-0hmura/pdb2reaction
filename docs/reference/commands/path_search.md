@@ -17,6 +17,10 @@ Options:
                                   Repeat -i/--input for each path.  [required]
   --mep-mode [gsm|dmf]            MEP optimizer: Growing String Method (gsm) or
                                   Direct Max Flux (dmf).  [default: gsm]
+  --dmf-backend [cpu|gpu]         DMF compute backend (--mep-mode dmf only): gpu
+                                  (dmf.torch / CUDA) or cpu (dmf / NumPy). On a
+                                  GPU out-of-memory, retry with cpu.  [default:
+                                  gpu]
   --refine-mode [peak|minima]     Refinement seed selection around the highest-
                                   energy image: 'peak' uses HEI±1, 'minima' uses
                                   the nearest local minima in each direction.

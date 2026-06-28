@@ -59,7 +59,7 @@ pdb2reaction sp -i structure.pdb -q 0 -m 1 --hess
 | `-i, --input FILE` | — | PDB / XYZ / GJF の構造ファイル（必須） |
 | `-q, --charge INT` | — | 系の総電荷（非 GJF では必須；GJF はテンプレートから継承） |
 | `-l, --ligand-charge TEXT` | — | 残基別の電荷マッピング（例: `SAM:1,GPP:-3`）。`-q` の自動導出に使用 |
-| `-m, --multiplicity INT` | `1` | スピン多重度、2S+1（非 GJF では必須；GJF はテンプレートから継承） |
+| `-m, --multiplicity INT` | `1` | スピン多重度、2S+1（任意；省略時は 1。GJF はテンプレートから継承） |
 | `-b, --backend [uma\|orb\|mace\|aimnet2]` | `uma` | MLIP バックエンドの選択 |
 | `--hess / --no-hess` | `--no-hess` | `hessian.npy` も計算して書き出す |
 | `--hessian-calc-mode [Analytical\|FiniteDifference]` | auto | 特定の Hessian モードを強制（`--hess` 指定時のみ有効） |

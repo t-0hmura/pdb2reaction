@@ -146,7 +146,7 @@ L-BFGS と RFO の両方で使用される共有オプティマイザー制御:
 
 ### opt 固有のデフォルト
 
-`opt` サブコマンドは `opt.out_dir`（および `lbfgs.out_dir` / `rfo.out_dir`）を `./result_opt/` に設定します。CLI は `grad|lbfgs` および `hess|rfo` を受け付けますが、YAML では `lbfgs` または `rfo` を直接指定してください。
+`opt` サブコマンドは `opt.out_dir`（および `lbfgs.out_dir` / `rfo.out_dir`）を `./result_opt/` に設定します。
 
 `geom`、`calc`、`opt`、`lbfgs`、`rfo` の完全な YAML スキーマは [YAML リファレンス](yaml-reference.md) を参照してください。
 
@@ -161,8 +161,6 @@ L-BFGS と RFO の両方で使用される共有オプティマイザー制御:
 場合でも、無駄にサイクルを消費せずに停止できます。なお chain-of-states オプティマイザー
 （イメージごとのエネルギー配列を保持するもの）ではこのフォールバックはスキップされます。
 ```
-
-- **命名規則の注意:** CLI は `grad|lbfgs` および `hess|rfo` を受け付けます。YAML では `lbfgs` または `rfo` を直接指定してください。
 
 ## 関連項目
 

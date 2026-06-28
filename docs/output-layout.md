@@ -78,4 +78,4 @@ if summary["status"] == "error":
         raise RuntimeError(summary["error"])
 ```
 
-`summary.json` is guaranteed to exist whenever a subcommand calls `write_result_json` (including failure paths — failure envelopes carry the schema version + error class chain). The `result.json` written alongside it is identical in content.
+`summary.json` is written (best-effort) whenever a subcommand calls `write_result_json`, including failure paths — failure envelopes carry the schema version + error class chain.

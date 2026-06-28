@@ -72,7 +72,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 │ │ └── xtb_alpb_correction.py xTB ALPB delta correction
 │ │
 │ ├── io/ # === L4b Infra (I/O) ===
-│ │ ├── summary.py summary.json / summary.md writer
+│ │ ├── summary.py summary.json / summary.log writer
 │ │ ├── energy_diagram.py Plotly diagram
 │ │ ├── trj2fig.py trajectory → PNG / SVG / PDF / HTML / CSV
 │ │ ├── pdb_fix.py altloc resolution
@@ -101,7 +101,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 
 **L4b `io/`**. Output-side I/O concerns: per-stage summary writer, energy diagram, trajectory rendering, PDB altloc fix, in-memory Hessian cache. `io/` never depends on `workflows/`; output format is owned here and consumed by stage runners.
 
-**L5 `core/`**. The lowest layer. `defaults.py` is the **single source of truth** for every CLI default — grep here before adding a number anywhere else. `utils.py` is a ~2,560-LOC grab-bag of PDB / XYZ / plotting helpers.
+**L5 `core/`**. The lowest layer. `defaults.py` is the **single source of truth** for every CLI default — grep here before adding a number anywhere else. `utils.py` is a ~3,200-LOC grab-bag of PDB / XYZ / plotting helpers.
 
 ### 2.4 Lazy-import mechanism (conceptual diagram)
 
@@ -211,7 +211,7 @@ See [Backends](backends.md) for the add-a-backend recipe.
 
 | concern | file |
 |---|---|
-| `summary.json` / `summary.md` writer | `pdb2reaction/io/summary.py` |
+| `summary.json` / `summary.log` writer | `pdb2reaction/io/summary.py` |
 | Plotly energy diagram | `pdb2reaction/io/energy_diagram.py` |
 | Trajectory → PNG / SVG / PDF / HTML / CSV | `pdb2reaction/io/trj2fig.py` |
 | PDB altloc resolution | `pdb2reaction/io/pdb_fix.py` |

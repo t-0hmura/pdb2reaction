@@ -101,6 +101,15 @@ class DMFMepResult:
     hei_idx: int
 
 
+def _is_cuda_oom(exc: BaseException) -> bool:
+    """True if `exc` looks like a CUDA out-of-memory (torch.cuda.OutOfMemoryError or a
+    RuntimeError carrying 'out of memory'), so the DMF gpu backend can advise --dmf-backend cpu."""
+    if type(exc).__name__ == "OutOfMemoryError":
+        return True
+    msg = str(exc).lower()
+    return "out of memory" in msg or "cuda oom" in msg
+
+
 def _run_dmf_mep(
     geoms: Sequence[Any],
     calc_cfg: Dict[str, Any],
@@ -112,7 +121,9 @@ def _run_dmf_mep(
 ) -> DMFMepResult:
     """Run Direct Max Flux (DMF) MEP optimization between two endpoints.
 
-    Uses pydmf (CPU version) with harmonic constraints for frozen atoms.
+    Uses pydmf with harmonic constraints for frozen atoms. The backend is selected by
+    ``dmf_cfg["backend"]``: ``"gpu"`` (default) imports the PyTorch backend ``dmf.torch``
+    (runs on CUDA), ``"cpu"`` imports the NumPy backend ``dmf``.
 
     References:
     [1] S.-i. Koda and  S. Saito, Locating Transition States by Variational Reaction Path Optimization with an Energy-Derivative-Free Objective Function, JCTC, 20, 2798–2811 (2024). [doi: 10.1021/acs.jctc.3c01246]
@@ -120,18 +131,21 @@ def _run_dmf_mep(
     [3] S.-i. Koda and  S. Saito, Correlated Flat-bottom Elastic Network Model for Improved Bond Rearrangement in Reaction Paths, JCTC, 21, 3513−3522 (2025). [doi: 10.1021/acs.jctc.4c01549]
     """
 
+    dmf_backend = str((dmf_cfg or {}).get("backend", "gpu")).strip().lower()
     try:
         from ase.io import read as ase_read
         from ase.io import write as ase_write
         from ase.calculators.mixing import SumCalculator
-        from dmf import DirectMaxFlux, interpolate_fbenm
+        if dmf_backend == "cpu":
+            from dmf import DirectMaxFlux, interpolate_fbenm
+        else:
+            from dmf.torch import DirectMaxFlux, interpolate_fbenm
     except Exception as e:
         raise click.ClickException(
-            "DMF mode (--mep-mode dmf) requires ase, cyipopt, and pydmf — "
-            "and pydmf pulls in an MPI stack (mpi4py + a working libmpi.so). "
-            "If the import error below mentions mpi4py / libmpi, install MPI "
-            "(e.g. `conda install mpi4py openmpi`) or use `--mep-mode gsm` "
-            f"instead. Import error: {e}"
+            "DMF mode (--mep-mode dmf) requires ase, cyipopt, and pydmf>=1.2 "
+            "(`pip install 'pydmf[torch]'` for the default GPU backend; the `cpu` "
+            "backend needs only `pip install pydmf`). "
+            f"Import error: {e}"
         ) from e
 
     from pdb2reaction.workflows.restraints import HarmonicFixAtoms
@@ -420,6 +434,14 @@ def _optimize_single(
     help="MEP optimizer: Growing String Method (gsm) or Direct Max Flux (dmf).",
 )
 @click.option(
+    "--dmf-backend",
+    type=click.Choice(["cpu", "gpu"], case_sensitive=False),
+    default="gpu",
+    show_default=True,
+    help="DMF compute backend (--mep-mode dmf only): gpu (dmf.torch / CUDA) or cpu (dmf / NumPy). "
+    "On a GPU out-of-memory, retry with cpu.",
+)
+@click.option(
     "-q",
     "--charge",
     type=int,
@@ -614,6 +636,7 @@ def cli(
     ctx: click.Context,
     input_paths: Sequence[Path],
     mep_mode: str,
+    dmf_backend: str,
     charge: Optional[int],
     ligand_charge: Optional[str],
     workers: int,
@@ -727,6 +750,8 @@ def cli(
             stopt_cfg["max_cycles"] = int(max_cycles)
             stopt_cfg["stop_in_when_full"] = int(max_cycles)
             dmf_cfg["max_cycles"] = int(max_cycles)
+        if cli_param_overridden(ctx, "dmf_backend"):
+            dmf_cfg["backend"] = str(dmf_backend).lower()
         if cli_param_overridden(ctx, "climb"):
             gs_cfg["climb"] = bool(climb)
             gs_cfg["climb_lanczos"] = bool(climb)
@@ -992,7 +1017,14 @@ def cli(
                     dmf_cfg=dmf_cfg,
                 )
             except Exception as e:
-                click.echo(f"[dmf] ERROR: DMF optimization failed: {e}", err=True)
+                if str(dmf_cfg.get("backend", "gpu")).lower() != "cpu" and _is_cuda_oom(e):
+                    click.echo(
+                        "[dmf] GPU out of memory. Retry with `--dmf-backend cpu` "
+                        "(NumPy backend; slower but not limited by GPU memory).",
+                        err=True,
+                    )
+                else:
+                    click.echo(f"[dmf] ERROR: DMF optimization failed: {e}", err=True)
                 sys.exit(3)
 
             try:

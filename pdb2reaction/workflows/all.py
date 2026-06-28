@@ -2128,6 +2128,14 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     help="MEP optimizer: Growing String Method (gsm) or Direct Max Flux (dmf).",
 )
 @click.option(
+    "--dmf-backend",
+    type=click.Choice(["cpu", "gpu"], case_sensitive=False),
+    default="gpu",
+    show_default=True,
+    help="DMF compute backend (--mep-mode dmf only): gpu (dmf.torch / CUDA) or cpu (dmf / NumPy). "
+    "On a GPU out-of-memory, retry with cpu.",
+)
+@click.option(
     "--max-nodes",
     type=int,
     default=20,
@@ -2491,6 +2499,7 @@ def cli(
     spin: int,
     freeze_links_flag: bool,
     mep_mode: str,
+    dmf_backend: str,
     max_nodes: int,
     max_cycles: int,
     climb: bool,
@@ -3897,6 +3906,8 @@ def cli(
                 str(int(spin)),
                 "--mep-mode",
                 mep_mode_kind,
+                "--dmf-backend",
+                str(dmf_backend).lower(),
                 "--max-nodes",
                 str(int(max_nodes)),
                 "--opt-mode",

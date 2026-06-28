@@ -92,7 +92,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(1, 5, 1.35)]' --print-parsed
 - `pdb2reaction all --help-advanced` で全オプション（スキャン制御を含む）を確認できます。
 - 単独の `scan` サブコマンド（MEP 精密化なし）については [scan](scan.md) を参照してください。
 
-## 次の導線
+## 次のステップ
 
 - 全オプション: [all](all.md)
 - TS 候補の検証: [クイックスタート: TS のみモード](quickstart-tsopt-freq.md)

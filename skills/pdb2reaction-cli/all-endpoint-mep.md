@@ -31,9 +31,9 @@ pdb2reaction all -i 1.R.pdb 2.IM.pdb 3.P.pdb \
 ```
 
 With `--refine-path True`, the recursive bond-change segmentation in
-`path-search` runs inside each adjacent pair, so you don't have to
-provide every elementary step — just the "obvious" ones from the
-literature. By default `all` runs single-pass `path-opt` between adjacent
+`path-search` runs **once over the full ordered series of inputs**, so you
+don't have to provide every elementary step — just the "obvious" ones from
+the literature. By default `all` runs single-pass `path-opt` between adjacent
 pairs only and does not auto-discover hidden intermediates.
 
 ## Mode-specific flags
