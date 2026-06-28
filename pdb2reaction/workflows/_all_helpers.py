@@ -63,6 +63,7 @@ class AllContext:
     # Freeze / MEP
     freeze_links_flag: Optional[bool]
     mep_mode: str
+    dmf_backend: str
     max_nodes: int
     max_cycles: int
     climb: bool
