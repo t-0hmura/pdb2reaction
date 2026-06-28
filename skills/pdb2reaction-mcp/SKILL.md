@@ -99,6 +99,7 @@ Beyond the default RS-I-RFO, `find_transition_state` accepts:
 
 - `opt_mode="trim"` — Helgaker trust-region image-minimisation TS opt
 - `opt_mode="rsprfo"` — Banerjee restricted-step P-RFO TS opt
+- `opt_mode="dimer"` (alias `grad`) — Hessian-guided Dimer TS opt
 
 ## Sandbox / safety notes
 

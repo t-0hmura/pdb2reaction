@@ -69,8 +69,8 @@ Three zones: deliverables at `<out_dir>/`, per-segment deliverables under `<out_
 |---|---|---|
 | `<out_dir>/summary.json` | always | machine-readable per-stage results |
 | `<out_dir>/summary.log` | always | human-readable text + dir tree |
-| `<out_dir>/mep.pdb`, `mep_trj.xyz` | always (PDB input; `mep.gjf` only with GJF input) | stitched MEP across segments (promoted to root) |
-| `<out_dir>/mep_w_ref.pdb` | with `--ref-full-pdb` | MEP merged into the full-system template |
+| `<out_dir>/mep.pdb`, `mep_trj.xyz` | `mep_trj.xyz` always; `mep.pdb` for PDB input | stitched MEP across segments (promoted to root) |
+| `<out_dir>/mep_w_ref.pdb` | `-c` extraction with all-PDB inputs (auto) | MEP merged into the full-system template |
 | `<out_dir>/energy_diagram_MEP.png` | always | bare all-segment MEP energies |
 | `<out_dir>/energy_diagram_{UMA,G_UMA,DFT,G_DFT_plus_UMA}_all.png` | combos of `--thermo`/`--dft` | aggregated multi-segment diagrams |
 | `<out_dir>/segments/seg_NN/{reactant,ts,product}.{pdb,xyz}` | always | canonical R/TS/P (2-digit) |

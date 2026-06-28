@@ -8,7 +8,7 @@ PDB is `pdb2reaction`'s primary input. Column-based, fixed-width fields.
 |---|---|
 | `ATOM` | Standard amino-acid / nucleic-acid atoms (residue ≤ 3 letters, in `pdb2reaction`'s AMINO_ACIDS table) |
 | `HETATM` | Ligand, metal, water, cofactor, link-H atoms |
-| `TER` | Chain terminator — used by `extract` to identify chain breaks |
+| `TER` | Chain terminator; `extract` infers chain breaks from C–N peptide-adjacency distance, not by parsing TER directly |
 | `END`, `ENDMDL` | File terminator — informational only |
 | `CRYST1` | Unit cell — read but not written by `pdb2reaction` (cluster model only) |
 
@@ -71,7 +71,7 @@ pdb2reaction extract -i complex.pdb -c 'A:44' -o cluster.pdb
 > hand, or use the substrate-PDB form (`-c <substrate.pdb>`).
 
 The pocket radius around the centers is set by `-r <Å>` (default 2.6 Å).
-All residues with at least one heavy atom inside the radius are kept.
+All residues with at least one atom (any element, including H) inside the radius are kept.
 
 ## Per-residue charge mapping (`-l / --ligand-charge`)
 

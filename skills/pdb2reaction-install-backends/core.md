@@ -26,7 +26,7 @@ Available extras (canonical list lives in `pyproject.toml`):
 | (none) | UMA via `fairchem-core`, base deps | Default; UMA backend works out of the box |
 | `[orb]` | `orb-models` | Using `-b orb` |
 | `[aimnet]` | `aimnet>=0.2.0` | Using `-b aimnet2` |
-| `[dft]` | `pyscf`, `gpu4pyscf-cuda12x` (x86_64), `cupy-cuda12x`, `basis-set-exchange` | `pdb2reaction dft` subcommand |
+| `[dft]` | `pyscf`, `gpu4pyscf-cuda12x` (x86_64), `cupy-cuda12x` (x86_64), `basis-set-exchange` | `pdb2reaction dft` subcommand |
 | `[mcp]` | `mcp[cli]>=1.0` | Running the MCP server |
 | `[ci]` | CPU-only test deps; CI installs the torch CPU wheel separately via the PyTorch CPU index | Running unit tests / docs builds |
 | `[dev]` | `pytest` family | Contributing |

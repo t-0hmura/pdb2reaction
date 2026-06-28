@@ -68,8 +68,8 @@ on the CLI.
 ## Effect on the calculation
 
 - **Forces:**
-  - Hard freeze (`opt` / `tsopt` / `scan` / `freq` / `irc`, `path-search --mep-mode gsm`): forces on frozen DOFs are zeroed; optimizer cannot move them.
-  - Soft restraint (`path-opt`, `path-search --mep-mode dmf`): `HarmonicFixAtoms` adds a stiff harmonic penalty around the initial Cartesians; frozen atoms can drift slightly.
+  - Hard freeze (`opt` / `tsopt` / `scan` / `freq` / `irc`, `path-opt` / `path-search` `--mep-mode gsm`): forces on frozen DOFs are zeroed; optimizer cannot move them.
+  - Soft restraint (`path-opt` / `path-search` `--mep-mode dmf`): `HarmonicFixAtoms` adds a stiff harmonic penalty around the initial Cartesians; frozen atoms can drift slightly.
 - **Hessian:** rows and columns of frozen DOFs are either removed
   (`calc.return_partial_hessian: true`, the global calculator default
   and explicitly re-asserted by `opt` / `tsopt` / `scan` / `freq` / `irc`)

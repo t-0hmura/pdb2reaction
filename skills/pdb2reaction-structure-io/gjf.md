@@ -1,6 +1,6 @@
 # Gaussian gjf format (gjf.md)
 
-`gjf` (or `.com`) is the Gaussian input format. From `pdb2reaction`'s
+`gjf` is the Gaussian input format (only the `.gjf` extension is recognized for header parsing; rename `.com` → `.gjf` first). From `pdb2reaction`'s
 perspective it is **XYZ with a Gaussian header** (link-0 `%`-block + route
 line + title + charge / multiplicity), and everything from the coordinate
 block onward is the same as XYZ.

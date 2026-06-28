@@ -35,8 +35,9 @@ H   0.123  4.567  8.901
 ...
 ```
 
-The comment is parsed by `read_xyz_energies` (a regex that pulls the
-first numeric token), and emitted on write by `xyz_string_with_energy`
+The comment is parsed by `read_xyz_energies` (which prefers an explicit
+`E=`/`Energy:` token, else the lone numeric token — the last bare number
+when several are present), and emitted on write by `xyz_string_with_energy`
 (per-frame) / `write_xyz_trj_with_energy` (trajectory) in
 `pdb2reaction.core.utils`. ASE-style extxyz tags (`Lattice="..."`,
 `Properties=species:S:1:pos:R:3`, `pbc="F F F"`) are **not** produced

@@ -14,13 +14,14 @@ pdb2reaction/                          ← the package body, one folder per laye
 ├── workflows/  # L2 — one file per CLI subcommand (`all.py`, `tsopt.py`,
 │               #      `freq.py`, `irc.py`, `dft.py`, `extract.py`, ...).
 ├── domain/     # L3 — chemistry-aware helpers (bond changes, bond summary,
-│               #      element-info repair). No torch / no MLIP dependency.
+│               #      element-info repair). May use torch/numpy; no MLIP SDK
+│               #      (fairchem/orb_models/mace/aimnet) dependency.
 ├── backends/   # L4a — MLIP backend dispatcher + per-backend adapters
 │               #       (`uma.py`, `orb.py`, `mace.py`, `aimnet2.py`) +
 │               #       xTB ALPB solvent correction.
 ├── io/         # L4b — summary writer, energy diagram, trajectory plot,
 │               #       Hessian cache, PDB altloc fix.
-└── core/       # L5 — `defaults.py` (single source of truth for every CLI
+└── core/       # L5 — `defaults.py` (primary source of truth for most CLI
                 #       default), `utils.py` (PDB / XYZ / plot helpers),
                 #       `logging.py`.
 
@@ -40,7 +41,7 @@ Dependency direction is one-way: `L1 → L2 → {L3, L4} → L5`. The bundled fo
 
 | concern | open this |
 |---|---|
-| Default for any CLI flag | `pdb2reaction/core/defaults.py` (single source of truth — grep here before any other file) |
+| Default for any CLI flag | `pdb2reaction/core/defaults.py` (primary source for most defaults — grep here first; a few workflow-local defaults live inline, e.g. path-opt `--mep-mode`) |
 | Subcommand body / orchestration | `pdb2reaction/workflows/<subcmd>.py` |
 | New MLIP backend | `pdb2reaction/backends/<backend>.py` + register in `backends/__init__.py:BACKEND_REGISTRY` |
 | `--help` / option decorator | `pdb2reaction/cli/common_options.py` (shared) or the subcommand file (inline) |

@@ -41,10 +41,11 @@ following priority (`add_elem_info.guess_element`):
    `N` → N, `O` → O); monatomic metals/halogens use the residue.
 2. **Polymers and water** (protein, nucleic acid, water): use the
    PDB convention element subset (`H`/`C`/`N`/`O`/`S`/`P`/`Se`).
-3. **Other ligands** (`_normalize_symbol`): strip non-letter
-   characters from the atom name, then test the first two letters
-   (`Xx` casing) against the full IUPAC element table; if no match,
-   fall back to the first letter. A leading `D` is treated as `H`.
+3. **Other ligands**: single-letter prefixes `H`/`C`/`N`/`O`/`P` are
+   matched first (with the `CL`→Cl exception, and a leading `D` treated
+   as `H`); names that don't match fall through to `_normalize_symbol`,
+   which strips non-letter characters and tests the first two letters
+   (`Xx` casing) against the full IUPAC element table, then the first letter.
 4. Unresolved → reported in the diagnostic summary (truncated at 50
    entries); the existing element field is left unchanged.
 

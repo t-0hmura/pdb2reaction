@@ -31,7 +31,7 @@ During this release, **only annotation edits are allowed** on this directory:
 
 - any change to numerical behaviour, control flow, or function signatures of `QCData.py`
 - any new external dependency
-- any rename of public symbols (would break `pdb2reaction/freq.py` callers)
+- any rename of public symbols (would break `pdb2reaction/workflows/freq.py` callers)
 
 Logic edits to `QCData.py` would only be justified to track an upstream improvement; they must be explicitly requested via a `[CHEMISTRY-RULE]` commit and verified against the existing thermochemistry golden tests.
 
@@ -42,5 +42,5 @@ If you `pip install thermoanalysis` into the same environment as `pdb2reaction`,
 ## See also
 
 - [`../docs/architecture.md`](../docs/architecture.md) §5.3, §6 — repo-internal fork policy
-- [`../CONTRIBUTING.md`](../CONTRIBUTING.md) §4.2 — do-not-touch list (5 divergent files)
+- [`../CONTRIBUTING.md`](../CONTRIBUTING.md) §4.3 — Divergent files in bundled forks (4 files)
 - `THIRD_PARTY_NOTICES.txt` — thermoanalysis upstream attribution

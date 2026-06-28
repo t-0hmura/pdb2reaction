@@ -68,7 +68,7 @@ pdb2reaction tsopt -i hei.xyz -l 'SAM:1,GPP:-3' \
 | `<out_dir>/final_geometry.xyz` | always | converged TS |
 | `<out_dir>/final_geometry.pdb` | `--convert-files` (default on) | PDB companion |
 | `<out_dir>/final_geometry.gjf` | input is `.gjf` | Gaussian companion |
-| `<out_dir>/optimization_trj.xyz`, `optimization.pdb` | `--dump`, `--opt-mode rsirfo`/`hess` | full optimization trajectory + PDB |
+| `<out_dir>/optimization_trj.xyz`, `optimization.pdb` | `--dump`, `--opt-mode hess`/`rsirfo`/`trim`/`rsprfo` | full optimization trajectory + PDB |
 | `<out_dir>/optimization_all_trj.xyz`, `optimization_all.pdb` | `--dump`, `--opt-mode grad`/`dimer` | full optimization trajectory + PDB |
 | `<out_dir>/vib/imag_<freq>cm-1_trj.xyz`, `.pdb` | always (imag-mode count) | imaginary-mode displacement (XYZ + PDB) |
 

@@ -72,8 +72,8 @@ pdb2reaction path-search -i 1.R.pdb 3.P.pdb \
 | `<out_dir>/mep_w_ref.pdb`, `mep_w_ref_seg_NN.pdb` | reference PDB available | full / per-segment MEP merged with reference |
 | `<out_dir>/mep_plot.png` | always | MEP energy plot |
 | `<out_dir>/seg_NNN_<tag>/{final_geometries_trj.xyz, mep_plot.png, hei.{xyz,pdb,gjf}}` | always | per-string scratch (3-digit, `_mep` / `_maxdepth`) |
-| `<out_dir>/mep_seg_NN_trj.xyz`, `mep_seg_NN.{pdb,gjf}` | always | canonical per-segment MEP frames |
-| `<out_dir>/hei_seg_NN.{xyz,pdb,gjf}` | always | canonical HEI per segment (TS seed) |
+| `<out_dir>/mep_seg_NN_trj.xyz`, `mep_seg_NN.{pdb,gjf}` | bond-change (non-bridge) segments; `.pdb`/`.gjf` need a reference PDB / GJF template | canonical per-segment MEP frames |
+| `<out_dir>/hei_seg_NN.{xyz,pdb,gjf}` | bond-change (non-bridge) segments; `.pdb`/`.gjf` need a reference / template | canonical HEI per segment (TS seed) |
 | `<out_dir>/energy_diagram_MEP.png` | always | bare MEP energies |
 
 Standalone `path-search` does **not** run post-processing —

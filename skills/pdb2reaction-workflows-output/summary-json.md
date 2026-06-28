@@ -48,7 +48,7 @@ Present when `--tsopt`, `--thermo`, or `--dft` was passed:
 | Key | Description |
 |---|---|
 | `index` / `tag` / `kind` / `bond_changes` | Mirror of the corresponding `segments[i]` row |
-| `mep_barrier_kcal` / `mep_delta_kcal` | Refined barriers from the post-IRC / tsopt re-evaluation |
+| `mep_barrier_kcal` / `mep_delta_kcal` | MEP-level (un-refined) barrier / ΔE, mirroring `segments[i]` (refined post-IRC/tsopt energies live in the per-segment `uma` block) |
 | `post_dir` | Subdirectory holding tsopt / freq / IRC outputs for this segment |
 | `irc_plot` / `irc_traj` | Paths to the IRC trace PNG and trajectory XYZ |
 | `uma` | Per-stage MLIP energy block (or whichever backend was used) |
@@ -70,8 +70,9 @@ Two locations get written for each elementary step:
 `reactant_irc.xyz` / `product_irc.xyz` only when debugging
 IRC vs. post-IRC re-optimization divergence.
 
-`bond_changes` are computed from `reactant.xyz` / `product.xyz`
-(post-IRC re-optimization), not from the raw IRC endpoints.
+`bond_changes` are computed from the MEP segment endpoints (first/last MEP
+frames) in the default path-opt and path-search modes; only in tsopt-only
+mode are they computed from the post-IRC `reactant.xyz` / `product.xyz`.
 
 ## Programmatic key extraction
 

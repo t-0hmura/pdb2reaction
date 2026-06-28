@@ -191,7 +191,7 @@ failed-run diagnostics live in [`summary-json.md`](summary-json.md).
 | `<out_dir>/segments/seg_NN/energy_diagram_G_UMA.png` | `--thermo` | + QRRHO Gibbs |
 | `<out_dir>/segments/seg_NN/energy_diagram_DFT.png` | `--dft` | DFT//MLIP electronic |
 | `<out_dir>/segments/seg_NN/energy_diagram_G_DFT_plus_UMA.png` | `--dft --thermo` | DFT//MLIP + Gibbs |
-| `<out_dir>/energy_diagram_MEP.png` | always | bare MEP energies (promoted to root) |
+| `<out_dir>/energy_diagram_MEP.png` | MEP modes (not TS-only) | bare MEP energies (promoted to root) |
 | `<out_dir>/energy_diagram_UMA_all.png` | `--tsopt` | aggregated MLIP (only when post-processing runs) |
 | `<out_dir>/energy_diagram_G_UMA_all.png` | `--thermo` | aggregated + Gibbs |
 | `<out_dir>/energy_diagram_DFT_all.png` | `--dft` | aggregated DFT |
