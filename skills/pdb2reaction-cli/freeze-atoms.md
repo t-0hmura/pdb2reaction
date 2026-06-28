@@ -83,13 +83,13 @@ on the CLI.
 
 All subcommands that touch geometry honor all three sources:
 
-| Subcommand | `--freeze-links` (PDB only) | `--freeze-atoms` | YAML `geom.freeze_atoms` |
+| Subcommand | `--freeze-links` (PDB, or XYZ/GJF + `--ref-pdb`) | `--freeze-atoms` | YAML `geom.freeze_atoms` |
 |---|:---:|:---:|:---:|
 | `extract` | inserts `LKH/HL`; flag is for downstream | n/a | n/a |
 | `opt`, `tsopt`, `freq`, `irc` | ✓ | ✓ | ✓ |
 | `path-opt`, `path-search` | ✓ | ✓ | ✓ |
 | `scan`, `scan2d`, `scan3d` | ✓ | ✓ | ✓ |
-| `all` | ✓ | ✓ | ✓ |
+| `all` | ✓ | ✗ (use YAML `geom.freeze_atoms`) | ✓ |
 
 ## Common pitfalls
 

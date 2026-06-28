@@ -36,7 +36,7 @@ All flags below verified against `pdb2reaction/cli/common_options.py`, `core/def
 | (a) MEP / path search | `path-search` | Have both endpoints (R and P); want the TS bracketed automatically | Recursive GSM/DMF MEP with bond-change detection; auto-segments a multi-step path, refines each reactive segment, returns `hei_seg_NN.xyz` (highest-energy image per segment) |
 | (b) Distance-restrained build-up | `scan` | Have only the reactant (or want to drive a specific reacting distance) | Staged harmonic restraints `E=½k(r−target)²` (scan default `k=300` via `BIAS_KW`; the `10.0` in `HarmonicBiasCalculator` is only an unused constructor fallback) drive each reacting distance with full relaxation, walking up to a TS candidate |
 
-- There is **no** `opt --restraint` flag. `opt` is plain unrestrained minimization; the restrained route is `scan`.
+- There is **no** `opt --restraint` flag, but `opt` **does** support harmonic distance restraints via `--dist-freeze` (with `--bias-k`); `scan` is the route for *driving/walking* a reacting coordinate up to a TS candidate.
 - `scan` supports `--preopt` / `--endopt` to relax the endpoints around the driven path.
 - Feed either route's TS candidate into `tsopt → freq → irc` to confirm it (see `pdb2reaction-cli`).
 
