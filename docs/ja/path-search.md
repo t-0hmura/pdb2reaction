@@ -122,6 +122,7 @@ out_dir/ (デフォルト:./result_path_search/)
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
 | **MEP 探索** | | |
 | `--mep-mode {gsm\|dmf}` | セグメント生成器: GSM（string）または DMF（direct flux） | `gsm` |
+| `--dmf-backend {cpu\|gpu}` | DMF 計算バックエンド（`--mep-mode dmf` 時のみ）: `gpu`（`dmf.torch`/CUDA）または `cpu`（`dmf`/NumPy）。GPU メモリ不足時は `cpu` で再実行 | `gpu` |
 | `--preopt/--no-preopt` | 選択された単一構造オプティマイザー（L-BFGS/RFO）で MEP 探索前に各エンドポイントを事前最適化。 | `True` |
 | `--max-nodes INT` | MEP セグメントごとの内部ノード（GSM string image または DMF image） | `20` |
 | `--max-cycles INT` | 最大 MEP 最適化サイクル（GSM/DMF） | `300` |

@@ -117,6 +117,7 @@ The table is grouped by purpose; within each group the most-used options come fi
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
 | **MEP search** | | |
 | `--mep-mode {gsm\|dmf}` | Segment generator: GSM (string-based) or DMF (Direct Max Flux). | `gsm` |
+| `--dmf-backend {cpu\|gpu}` | DMF compute backend (`--mep-mode dmf` only): `gpu` (`dmf.torch`/CUDA) or `cpu` (`dmf`/NumPy). On a GPU out-of-memory, retry with `cpu`. | `gpu` |
 | `--preopt/--no-preopt` | Pre-optimize each endpoint with the selected single-structure optimizer (L-BFGS/RFO) before MEP search. | `True` |
 | `--max-nodes INT` | Internal nodes per MEP segment (GSM string images or DMF images). | `20` |
 | `--max-cycles INT` | Maximum MEP optimization cycles (GSM/DMF). | `300` |
