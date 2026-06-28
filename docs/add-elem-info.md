@@ -1,6 +1,6 @@
 # `add-elem-info`
 
-Repair the element-symbol columns (77–78) of ATOM/HETATM records in a PDB file. The file is re-parsed with `Bio.PDB.PDBParser`, each element is inferred from the atom name and residue context, and only columns 77–78 are rewritten. Use it when a PDB file has missing or wrong element columns and downstream subcommands (`extract`, `opt`, `tsopt`, ...) reject it. The `all` command auto-invokes `add-elem-info` as a preflight, so manual use is only needed before standalone subcommands.
+Repair the element-symbol columns (77–78) of ATOM/HETATM records in a PDB file. The file is re-parsed with `Bio.PDB.PDBParser`, each element is inferred from the atom name and residue context, and the structure is re-written via `Bio.PDB.PDBIO` with the element columns repaired. Use it when a PDB file has missing or wrong element columns and downstream subcommands (`extract`, `opt`, `tsopt`, ...) reject it. The `all` command auto-invokes `add-elem-info` as a preflight, so manual use is only needed before standalone subcommands.
 
 ## Examples
 
@@ -47,8 +47,9 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite
 The full flag list is in the generated [command reference](reference/commands/index.md).
 
 ## Notes
-- Only columns 77–78 are modified; coordinates, occupancies, B-factors, charges, altlocs,
-  insertion codes, and record ordering stay untouched.
+- The structure is re-serialized via `Bio.PDB.PDBIO` (not an in-place column edit): ATOM/HETATM
+  coordinates, occupancies, B-factors, altlocs, and insertion codes round-trip, but PDBIO does
+  not preserve non-ATOM records (HEADER/REMARK/CONECT/ANISOU) or the legacy charge column (79–80).
 - ATOM and HETATM records across all models/chains/residues are supported.
 - Deuterium labels map to hydrogen; selenium (`SE*`) and halogens are recognized automatically.
 - Re-running on a PDB that already carries valid element symbols is a no-op (atoms pass through unchanged). See [all](all.md) for how the `all` preflight invokes `add-elem-info` automatically only when element columns are missing.

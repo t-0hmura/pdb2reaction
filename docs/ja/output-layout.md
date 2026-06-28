@@ -6,8 +6,8 @@
 
 | ファイル名 | 書き出し元 | 用途 |
 |---|---|---|
-| `summary.json` | `all`、`path-search`、および `write_result_json` を実行するすべてのステージ別サブコマンド | 正式な JSON エンベロープ（[JSON 出力リファレンス](json-output.md) を参照）。最初にこれを読んでください。`write_result_json` を呼ばない純粋なユーティリティ系サブコマンド（例: `fix-altloc`、`add-elem-info`、`bond-summary`）はこれを出力しません。 |
-| `result.json` | `write_result_json` を呼ぶステージ別サブコマンド（`opt`、`tsopt`、`freq`、`irc`、`sp`、`scan` / `scan2d` / `scan3d`、`path-opt`、`dft`、`extract`） | 別名ファイル — `summary.json` と内容（ペイロード）が同一です。単一ファイル名の規約に従う場合は `summary.json` を読んでください。`result.json` は同じ内容を持ち、`summary.json` のみを利用するなら削除して構いません。 |
+| `summary.json` | `all`、`path-search`、およびステージ別サブコマンド（**`--out-json` 指定時のみ**。既定は `--no-out-json`） | 正式な JSON エンベロープ（[JSON 出力リファレンス](json-output.md) を参照）。最初にこれを読んでください。純粋なユーティリティ系サブコマンド（例: `fix-altloc`、`add-elem-info`、`bond-summary`）はこれを出力しません。 |
+| `result.json` | ステージ別サブコマンド（**`--out-json` 指定時のみ**。既定 `--no-out-json`）（`opt`、`tsopt`、`freq`、`irc`、`sp`、`scan` / `scan2d` / `scan3d`、`path-opt`、`dft`、`extract`） | 別名ファイル — `summary.json` と内容（ペイロード）が同一です。単一ファイル名の規約に従う場合は `summary.json` を読んでください。`result.json` は同じ内容を持ち、`summary.json` のみを利用するなら削除して構いません。 |
 | `summary.log` | `path-search`、`all` | 人間可読な実行ログ（セグメント／ステージごとに 1 行）。 |
 | `final_geometry.xyz` | `opt`、`tsopt` | 最適化された構造（XYZ、完全精度）。 |
 | `mep.pdb` / `mep_trj.xyz` | `path-search` | 反応経路のフレーム（PDB / XYZ）。 |
@@ -77,4 +77,4 @@ if summary["status"] == "error":
         raise RuntimeError(summary["error"])
 ```
 
-`summary.json` は、サブコマンドが `write_result_json` を呼ぶ限り（失敗パスを含む — 失敗エンベロープはスキーマバージョン + エラークラスチェーンを保持します）必ず存在することが保証されます。
+`summary.json` / `result.json` は `all` と `path-search` が書き出し、ステージ別サブコマンドでは **`--out-json` 指定時のみ**（既定 `--no-out-json`）書き出されます。書き出される場合はスキーマバージョン + status（失敗パスではエラークラスチェーンも）を保持しますが、ステージ別サブコマンドで既定のまま `summary.json` が存在すると仮定しないでください。

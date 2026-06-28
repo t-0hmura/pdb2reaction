@@ -95,7 +95,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 
 **L2 `workflows/`** (18 files). One file per subcommand. Each file owns a single `@click.command()` named `cli` and its private helpers. Large stage runners (`all.py` = 5,113 LOC, `path_search.py` = 2,755 LOC, `tsopt.py` = 2,116 LOC, `extract.py` = 2,151 LOC) remain as single files in the current layout.
 
-**L3 `domain/`**. Chemistry-aware helper logic that may import `torch` / `numpy` / `pysisyphus.constants` (numeric back-ends), but **may not import** MLIP runtimes (`fairchem`, `orb_models`, `mace`, `aimnet`). The `# DOMAIN_PURE` module-docstring marker plus `.github/scripts/check_engineering_markers.py` enforce the deny list. Domain helpers are reusable by any L2 stage runner.
+**L3 `domain/`**. Chemistry-aware helper logic that may import `torch` / `numpy` / `pysisyphus.constants` (numeric back-ends), but **may not import** MLIP runtimes (`fairchem`, `orb_models`, `mace`, `aimnet`). `.github/scripts/check_engineering_markers.py` enforces this deny list via an external-library import-scope check across non-`backends/` files. (The `# DOMAIN_PURE` docstring marker itself lives on selected workflow modules — `workflows/dft.py`, `tsopt.py`, `sp.py` — not on `domain/`.) Domain helpers are reusable by any L2 stage runner.
 
 **L4a `backends/`** (~8 files). MLIP backend dispatcher (`__init__.py` + `base.py`) plus one adapter per supported MLIP (`uma.py`, `orb.py`, `mace.py`, `aimnet2.py`). `solvent.py` and `xtb_alpb_correction.py` carry the xTB ALPB implicit-solvent delta correction (an opt-in MLIP wrapper). `pdb2reaction` is a pure-MLIP cluster-model package.
 

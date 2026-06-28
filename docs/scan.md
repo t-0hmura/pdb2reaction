@@ -50,8 +50,8 @@ pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <n
     (`--endopt`) before reporting covalent bond changes and writing the
     `result.*` files.
 6. Repeat for every stage. Concatenated scan trajectories (`scan_trj.xyz` and
-    `scan.pdb`) are always written. Pass `--dump` (or set `opt.dump: true` in
-    YAML) to additionally emit per-step optimizer trajectory files.
+    `scan.pdb`) are always written. Pass `--dump` to additionally emit per-step
+    optimizer trajectory files (`opt.dump` from YAML is run-scoped and ignored).
 
 ## Outputs
 
@@ -108,9 +108,10 @@ The full flag list is in the generated [command reference](reference/commands/in
 
 ### Shared YAML sections
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical keys to those documented in
-  [YAML Reference](yaml-reference.md). `opt.dump` (YAML) and `--dump` (CLI) are the
-  same toggle for per-step optimizer trajectory files; the scan-stage trajectories
-  `scan_trj.xyz`/`scan.pdb` are always written regardless.
+  [YAML Reference](yaml-reference.md). Per-step optimizer trajectories are controlled
+  by `--dump` (CLI) only — `opt.dump` and `opt.out_dir` from YAML are run-scoped and
+  overwritten (not YAML-tunable); the scan-stage trajectories `scan_trj.xyz`/`scan.pdb`
+  are always written regardless.
 - `--relax-max-cycles` applies only when explicitly provided **and** YAML does not set `opt.max_cycles` (default `10000`).
 
 ### Section `bias`
@@ -133,7 +134,7 @@ calc:
 opt:
  thresh: gau             # convergence preset
  max_cycles: 10000       # optimizer cycle cap
- out_dir: ./result_scan/ # output directory (scan default)
+ # out_dir is run-scoped: set via -o/--out-dir, not YAML (a YAML value here is ignored)
 lbfgs:
  max_step: 0.3           # maximum step length (grad mode)
 rfo:

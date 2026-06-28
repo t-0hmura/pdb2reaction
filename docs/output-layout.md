@@ -6,8 +6,8 @@ Each `pdb2reaction` subcommand writes to its output directory under the filename
 
 | Filename | Written by | Purpose |
 |---|---|---|
-| `summary.json` | `all`, `path-search`, and every per-stage subcommand that runs `write_result_json` | Authoritative JSON envelope (see [JSON Output Reference](json-output.md)). Read this first. Pure utility subcommands that do not call `write_result_json` (e.g. `fix-altloc`, `add-elem-info`, `bond-summary`) do not emit it. |
-| `result.json` | per-stage subcommands that call `write_result_json` (`opt`, `tsopt`, `freq`, `irc`, `sp`, `scan` / `scan2d` / `scan3d`, `path-opt`, `dft`, `extract`) | Alternate filename — identical payload to `summary.json`. Read `summary.json` for the single-filename convention; `result.json` carries the same content and can be deleted if you only consume `summary.json`. |
+| `summary.json` | `all`, `path-search`, and per-stage subcommands **only when `--out-json` is passed** (default `--no-out-json`) | Authoritative JSON envelope (see [JSON Output Reference](json-output.md)). Read this first. Pure utility subcommands (e.g. `fix-altloc`, `add-elem-info`, `bond-summary`) never emit it. |
+| `result.json` | per-stage subcommands **only when `--out-json` is passed** — default `--no-out-json` (`opt`, `tsopt`, `freq`, `irc`, `sp`, `scan` / `scan2d` / `scan3d`, `path-opt`, `dft`, `extract`) | Alternate filename — identical payload to `summary.json`. Read `summary.json` for the single-filename convention; `result.json` carries the same content and can be deleted if you only consume `summary.json`. |
 | `summary.log` | `path-search`, `all` | Human-readable run log (one row per segment / stage). |
 | `final_geometry.xyz` | `opt`, `tsopt` | Optimized geometry (XYZ, full precision). |
 | `mep.pdb` / `mep_trj.xyz` | `path-search` | Reaction path frames (PDB / XYZ). |
@@ -78,4 +78,4 @@ if summary["status"] == "error":
         raise RuntimeError(summary["error"])
 ```
 
-`summary.json` is written (best-effort) whenever a subcommand calls `write_result_json`, including failure paths — failure envelopes carry the schema version + error class chain.
+`summary.json` / `result.json` are written by `all` and `path-search`, and by per-stage subcommands **only when `--out-json` is passed** (default `--no-out-json`). When written, the envelope carries the schema version + status (and, on the failure path, the error class chain); do not assume a per-stage `summary.json` exists by default.
