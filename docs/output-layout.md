@@ -40,7 +40,7 @@ A subcommand run on its own writes a **flat** result directory. The same writer,
 
 - **Standalone subcommand** → flat `result_<subcmd>/` with the files above. There is no `segments/` and no `_work/`; those only appear when `all` coordinates several writers in one run.
 - **Inside `all`, leaf writers nest unchanged.** A per-segment leaf output at `segments/seg_NN/<subcmd>/` is structurally identical to the standalone `result_<subcmd>/` — `all` simply hands the same writer a different output directory.
-- **`path-search` / `path-opt` are the engine exception.** Run standalone, each is itself a deliverable: `path-search` → `result_path_search/` (`summary.log`, `mep.pdb`, `mep_trj.xyz`, `mep_plot.png`, `energy_diagram_MEP.png`), and `path-opt` → `result_path_opt/` (`final_geometries_trj.xyz`, `hei.xyz`, and energy-profile PNGs). Inside `all`, the raw engine output is treated as scratch under `_work/path_opt/` (or `_work/path_search/` with `--refine-path`), and only the merged products (`mep.pdb`, `mep_trj.xyz`, `mep_w_ref.pdb`, `energy_diagram_MEP.png`) are promoted to the pipeline root.
+- **`path-search` / `path-opt` are the engine exception.** Run standalone, each is itself a deliverable: `path-search` → `result_path_search/` (`summary.log`, `mep.pdb`, `mep_trj.xyz`, `mep_plot.png`, `energy_diagram_MEP.png`), and `path-opt` → `result_path_opt/` (`final_geometries_trj.xyz`, `hei.xyz`). Inside `all`, the raw engine output is treated as scratch under `_work/path_opt/` (or `_work/path_search/` with `--refine-path`), and only the merged products (`mep.pdb`, `mep_trj.xyz`, `mep_w_ref.pdb`, `energy_diagram_MEP.png`) are promoted to the pipeline root.
 
 The `all` tree therefore has three zones:
 

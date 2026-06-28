@@ -11,7 +11,7 @@ Recursive decomposition automatically detects multistep reactions and builds a d
 Command form:
 
 ```bash
-pdb2reaction path-search -i R.pdb [-i I.pdb ...] -i P.pdb [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1]
+pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1]
  [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx]
  [--workers N] [--workers-per-node N]
  [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET] [--thresh-stopt PRESET]
@@ -27,7 +27,7 @@ pdb2reaction path-search -i R.pdb [-i I.pdb ...] -i P.pdb [-q CHARGE] [-l, --lig
 Two endpoints (reactant → product):
 
 ```bash
-pdb2reaction path-search -i reactant.pdb -i product.pdb -q 0 -m 1 \
+pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
  --out-dir ./result_path_search
 ```
 
@@ -35,7 +35,7 @@ Provide explicit intermediates for a multistep path:
 
 ```bash
 # Provide explicit intermediates for a multistep path
-pdb2reaction path-search -i R.pdb -i IM1.pdb -i IM2.pdb -i P.pdb -q -1 -m 1 \
+pdb2reaction path-search -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 -m 1 \
  --out-dir ./result_path_search_multi
 ```
 
@@ -43,7 +43,7 @@ Enable merged full-system outputs with template references:
 
 ```bash
 # Enable merged full-system outputs with template references
-pdb2reaction path-search -i R.pdb -i IM1.pdb -i P.pdb -q 0 -m 1 \
+pdb2reaction path-search -i R.pdb IM1.pdb P.pdb -q 0 -m 1 \
  --ref-full-pdb holo_template.pdb --out-dir ./result_path_search_merge
 ```
 
@@ -51,7 +51,7 @@ Use DMF mode with minima refinement:
 
 ```bash
 # Use DMF mode with minima refinement
-pdb2reaction path-search -i reactant.pdb -i product.pdb -q 0 -m 1 \
+pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
  --mep-mode dmf --refine-mode minima --out-dir ./result_path_search_dmf
 ```
 
@@ -103,7 +103,7 @@ The table is grouped by purpose; within each group the most-used options come fi
 | Option | Description | Default |
 | --- | --- | --- |
 | **Input & charge** | | |
-| `-i, --input PATH` | Two or more structures in reaction order (reactant → product). Repeat `-i`/`--input` for each file, e.g. `-i R.pdb -i IM1.pdb -i P.pdb` (this differs from `path-opt`, which takes the two files after a single `-i`). | Required |
+| `-i, --input PATH...` | Two or more structures in reaction order (reactant → product). Pass all files after a single `-i`/`--input`. | Required |
 | `-q, --charge INT` | Net charge. Required for non-`.gjf` inputs unless `--ligand-charge/-l` derivation succeeds (PDB inputs). Overrides `--ligand-charge/-l` when both are set. | Required unless template/derivation applies |
 | `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB residue charges. Used when `-q` is omitted (PDB inputs only — XYZ/GJF must supply `-q` explicitly). | _None_ |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
