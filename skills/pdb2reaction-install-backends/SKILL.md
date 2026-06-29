@@ -49,7 +49,31 @@ Files in this skill directory:
 | TS + IRC on known organic + 1st-row metal cluster | start with **UMA-s-1.1** (`uma.md`); if accuracy is borderline, add **MACE-OMOL-0** in a separate env (`mace.md`) |
 | Fast screen across many candidates | **Orb-v3** (`orb.md`) |
 | Small organics, no metals | **AIMNet2** (`aimnet2.md`) — limited element coverage, light |
+| Couple a non-MLIP engine (GFN-xTB / DFTB+ / ORCA / any ASE calc) | **`--calc-file my_calc.py`** — custom backend (see below) |
 | DFT//MLIP refinement | add **`dft.md`** regardless of MLIP choice |
+
+## Custom backend — any ASE Calculator (`--calc-file`)
+
+To drive energies/gradients with an engine that is not a built-in MLIP
+(GFN-xTB, DFTB+, ORCA, Psi4, …), write a Python file exposing a
+`get_calculator()` factory that returns an [ASE](https://wiki.fysik.dtu.dk/ase/)
+Calculator, and pass it with `--calc-file` (selects the `custom` backend,
+overriding `-b`):
+
+```bash
+# my_calc.py:
+#   from ase.calculators.emt import EMT
+#   def get_calculator(charge=0, spin=1, device="auto", **kwargs):
+#       return EMT()              # swap for tblite.ase.TBLite(...) etc.
+pdb2reaction sp -i model.xyz --calc-file my_calc.py -q 0 -m 1
+```
+
+- Works on every subcommand (`sp` / `opt` / `tsopt` / `freq` / `irc` /
+  `scan{,2d,3d}` / `path-opt` / `path-search`) **and the `all` pipeline**
+  (forwarded to each child stage). Rename the factory with `--calc-factory NAME`.
+- Energy/forces follow the ASE eV / eV·Å⁻¹ contract; Hessians use the
+  finite-difference path. Frozen atoms (`--freeze-links` / `--freeze-atoms`) are
+  honored. Full guide: `docs/backends.md` (Custom backend section).
 
 ## Why two envs for MACE
 
