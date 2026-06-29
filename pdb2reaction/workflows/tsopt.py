@@ -94,7 +94,7 @@ from pdb2reaction.core.utils import (
 )
 from pdb2reaction.cli.common_options import (
     add_ml_charge_spin_options,
-    add_precision_option,
+    add_precision_option, add_backend_model_option,
     add_deterministic_option, add_allow_charge_mult_mismatch_option,
     add_coord_type_option,
     add_print_every_option,
@@ -1499,6 +1499,7 @@ def _build_rsirfo_kwargs(
               show_default=True, help="xTB solvent model.")
 @add_ml_charge_spin_options()
 @add_precision_option()
+@add_backend_model_option()
 @add_deterministic_option()
 @add_allow_charge_mult_mismatch_option()
 @add_coord_type_option()
@@ -1531,6 +1532,7 @@ def cli(
     solvent: str,
     solvent_model: str,
     precision: Optional[str],
+    backend_model: Optional[str],
     cli_coord_type: Optional[str],
     print_every: Optional[int],
 ) -> None:
@@ -1597,8 +1599,9 @@ def cli(
         if cli_param_overridden(ctx, "solvent_model"):
             calc_cfg["solvent_model"] = solvent_model
         if precision is not None:
-            from pdb2reaction.backends import apply_precision_to_calc_cfg
+            from pdb2reaction.backends import apply_precision_to_calc_cfg, apply_backend_model_to_calc_cfg
             apply_precision_to_calc_cfg(calc_cfg, precision)
+            apply_backend_model_to_calc_cfg(calc_cfg, backend_model)
         apply_backend_defaults(calc_cfg)
         if cli_param_overridden(ctx, "max_cycles"):
             opt_cfg["max_cycles"] = int(max_cycles)

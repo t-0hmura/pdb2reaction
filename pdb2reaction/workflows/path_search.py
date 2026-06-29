@@ -120,7 +120,7 @@ from pdb2reaction.io.summary import write_summary_log
 from pdb2reaction.io.trj2fig import run_trj2fig
 from pdb2reaction.domain.bond_changes import has_bond_change
 from pdb2reaction.workflows.align_freeze import align_and_refine_sequence_inplace, kabsch_R_t
-from pdb2reaction.cli.common_options import add_coord_type_option, add_precision_option, add_deterministic_option
+from pdb2reaction.cli.common_options import add_coord_type_option, add_precision_option, add_backend_model_option, add_deterministic_option
 from pdb2reaction.cli.decorators import run_cli, resolve_yaml_sources, load_merged_yaml_cfg
 
 logger = logging.getLogger(__name__)
@@ -1797,6 +1797,7 @@ def _merge_final_and_write(final_images: List[Any],
               show_default=True, help="xTB solvent model.")
 @add_coord_type_option(choices=("cart", "dlc"))
 @add_precision_option()
+@add_backend_model_option()
 @add_deterministic_option()
 @click.pass_context
 def cli(
@@ -1833,6 +1834,7 @@ def cli(
     solvent_model: str,
     cli_coord_type: Optional[str],
     precision: Optional[str],
+    backend_model: Optional[str],
 ) -> None:
     set_convert_file_enabled(convert_files)
     prepared_inputs: List[PreparedInputStructure] = []
@@ -2158,8 +2160,9 @@ def cli(
         if cli_param_overridden(ctx, "solvent_model"):
             calc_cfg["solvent_model"] = solvent_model
         if precision is not None:
-            from pdb2reaction.backends import apply_precision_to_calc_cfg
+            from pdb2reaction.backends import apply_precision_to_calc_cfg, apply_backend_model_to_calc_cfg
             apply_precision_to_calc_cfg(calc_cfg, precision)
+            apply_backend_model_to_calc_cfg(calc_cfg, backend_model)
         apply_backend_defaults(calc_cfg)
 
         shared_calc = create_calculator(**calc_cfg)

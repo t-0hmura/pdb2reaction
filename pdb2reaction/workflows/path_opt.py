@@ -71,7 +71,7 @@ from pdb2reaction.core.utils import (
 )
 from pdb2reaction.workflows.align_freeze import align_and_refine_sequence_inplace
 from pdb2reaction.workflows._path_yaml_helpers import apply_single_opt_yaml_layer
-from pdb2reaction.cli.common_options import add_coord_type_option, add_precision_option, add_deterministic_option, add_allow_charge_mult_mismatch_option
+from pdb2reaction.cli.common_options import add_coord_type_option, add_precision_option, add_backend_model_option, add_deterministic_option, add_allow_charge_mult_mismatch_option
 from pdb2reaction.cli.decorators import resolve_yaml_sources, load_merged_yaml_cfg, _write_error_json, render_cli_exception
 
 logger = logging.getLogger(__name__)
@@ -629,6 +629,7 @@ def _optimize_single(
               show_default=True, help="xTB solvent model.")
 @add_coord_type_option(choices=("cart", "dlc"))
 @add_precision_option()
+@add_backend_model_option()
 @add_deterministic_option()
 @add_allow_charge_mult_mismatch_option()
 @click.pass_context
@@ -666,6 +667,7 @@ def cli(
     solvent_model: str,
     cli_coord_type: Optional[str],
     precision: Optional[str],
+    backend_model: Optional[str],
 ) -> None:
     config_yaml, override_yaml, _ = resolve_yaml_sources(
         config_yaml=config_yaml,
@@ -832,8 +834,9 @@ def cli(
         if cli_param_overridden(ctx, "solvent_model"):
             calc_cfg["solvent_model"] = solvent_model
         if precision is not None:
-            from pdb2reaction.backends import apply_precision_to_calc_cfg
+            from pdb2reaction.backends import apply_precision_to_calc_cfg, apply_backend_model_to_calc_cfg
             apply_precision_to_calc_cfg(calc_cfg, precision)
+            apply_backend_model_to_calc_cfg(calc_cfg, backend_model)
         apply_backend_defaults(calc_cfg)
 
         # For display: resolved configuration

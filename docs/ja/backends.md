@@ -64,6 +64,9 @@ pdb2reaction irc   -i ts.pdb -q 0 --precision fp64 ...
 ORB の `precision` / MACE の `default_dtype` へ自動的にルーティングされます。AIMNet2 では
 fp32 は何もしない指定（no-op）として扱われ、fp64 は拒否されます（モデル入力が上流で float32 にキャストされるため）。
 
+`--backend-model NAME` は選択中の `--backend` のモデル変種を上書きします
+（例: `--backend uma --backend-model uma-s-1p2`）。未指定ならバックエンド既定のモデルを使用します。
+
 または YAML 設定で:
 
 ```yaml

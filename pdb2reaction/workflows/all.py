@@ -129,7 +129,7 @@ from pdb2reaction.core.utils import (
     cli_param_overridden,
     verbose_level,
 )
-from pdb2reaction.cli.common_options import add_coord_type_option, add_precision_option, add_deterministic_option, add_allow_charge_mult_mismatch_option
+from pdb2reaction.cli.common_options import add_coord_type_option, add_precision_option, add_backend_model_option, add_deterministic_option, add_allow_charge_mult_mismatch_option
 
 logger = logging.getLogger(__name__)
 
@@ -676,6 +676,7 @@ def _write_args_yaml_with_freeze_atoms(
     freeze_atoms: Sequence[int],
     coord_type: Optional[str] = None,
     precision: Optional[str] = None,
+    backend_model: Optional[str] = None,
 ) -> Optional[Path]:
     """
     Write ``freeze_atoms`` and (optionally) ``coord_type`` / ``precision`` into a
@@ -693,7 +694,7 @@ def _write_args_yaml_with_freeze_atoms(
     without per-call argv plumbing. ``precision`` is propagated the same way
     via ``calc.precision`` so ``all --precision fp64`` reaches every child.
     """
-    if not freeze_atoms and coord_type is None and precision is None:
+    if not freeze_atoms and coord_type is None and precision is None and backend_model is None:
         return args_yaml
 
     cfg = {} if args_yaml is None else load_yaml_dict(args_yaml)
@@ -714,12 +715,15 @@ def _write_args_yaml_with_freeze_atoms(
         geom_cfg["coord_type"] = coord_type
     cfg["geom"] = geom_cfg
 
-    if precision is not None:
+    if precision is not None or backend_model is not None:
         calc_cfg = cfg.get("calc")
         if not isinstance(calc_cfg, dict):
             calc_cfg = {}
         calc_cfg = dict(calc_cfg)
-        calc_cfg["precision"] = precision
+        if precision is not None:
+            calc_cfg["precision"] = precision
+        if backend_model is not None:
+            calc_cfg["model"] = backend_model
         cfg["calc"] = calc_cfg
 
     tmp_dir = Path(tempfile.mkdtemp(prefix="tmp_path_search_"))
@@ -2474,6 +2478,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
 )
 @add_coord_type_option(choices=("cart", "dlc"))
 @add_precision_option()
+@add_backend_model_option()
 @add_deterministic_option()
 @add_allow_charge_mult_mismatch_option()
 @click.pass_context
@@ -2545,6 +2550,7 @@ def cli(
     dft_engine: str,
     cli_coord_type: Optional[str],
     precision: Optional[str],
+    backend_model: Optional[str],
 ) -> None:
     """
     The **all** command composes `extract` → (optional `scan` on model or full input) → MEP search
@@ -3074,6 +3080,7 @@ def cli(
             else None
         ),
         precision=precision,
+        backend_model=backend_model,
     )
 
     calc_cfg_shared = _build_calc_cfg(

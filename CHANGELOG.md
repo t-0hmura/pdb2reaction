@@ -87,6 +87,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   in §2.3.
 
 ### Added
+- `--backend-model NAME` flag on every backend-using subcommand (`opt`,
+  `tsopt`, `freq`, `irc`, `scan` / `scan2d` / `scan3d`, `path-opt`,
+  `path-search`, `sp`, `all`) to override the model variant for the selected
+  `--backend` (e.g. `--backend uma --backend-model uma-s-1p2`), routed to the
+  backend's `model` kwarg. Previously settable only through `--config` YAML.
 - `--deterministic` flag on every compute subcommand (`opt`, `tsopt`,
   `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`,
   `all`, `sp`) for bit-reproducible GPU runs (deterministic algorithms +

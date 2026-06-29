@@ -48,6 +48,7 @@ from pdb2reaction.core.utils import (
 from pdb2reaction.cli.common_options import (
     add_ml_charge_spin_options,
     add_precision_option,
+    add_backend_model_option,
     add_deterministic_option, add_allow_charge_mult_mismatch_option,
     add_print_every_option,
 )
@@ -135,6 +136,7 @@ H_EVAA_2_AU = EV2AU / (ANG2BOHR * ANG2BOHR)
 )
 @add_ml_charge_spin_options()
 @add_precision_option()
+@add_backend_model_option()
 @add_deterministic_option()
 @add_allow_charge_mult_mismatch_option()
 @add_print_every_option()
@@ -159,6 +161,7 @@ def cli(
     solvent: str,
     solvent_model: str,
     precision: Optional[str],
+    backend_model: Optional[str],
     print_every: Optional[int],
 ) -> None:
     """Compute a single-point MLIP energy + forces (and optionally Hessian)."""
@@ -208,6 +211,8 @@ def cli(
             calc_cfg["solvent_model"] = str(solvent_model)
         if cli_param_overridden(ctx, "precision") and precision is not None:
             calc_cfg["precision"] = str(precision)
+        if cli_param_overridden(ctx, "backend_model") and backend_model is not None:
+            calc_cfg["model"] = str(backend_model)
         if cli_param_overridden(ctx, "print_every") and print_every is not None:
             calc_cfg["print_every"] = int(print_every)
 

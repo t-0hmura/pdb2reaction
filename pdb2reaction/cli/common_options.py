@@ -143,6 +143,32 @@ def add_precision_option() -> Callable[[Callable], Callable]:
     return decorator
 
 
+def add_backend_model_option() -> Callable[[Callable], Callable]:
+    """Attach ``--backend-model NAME`` to a Click command.
+
+    Backend-agnostic model-variant override. The CLI body routes the value into
+    the active backend's ``model`` kwarg via
+    ``pdb2reaction.backends.apply_backend_model_to_calc_cfg``. Unset keeps the
+    backend's built-in default model (uma-s-1p1 / orb_v3_conservative_omol /
+    MACE-OMOL-0 / aimnet2). Same wire targets as ``add_precision_option``.
+    """
+    def decorator(func: Callable) -> Callable:
+        return click.option(
+            "--backend-model",
+            "backend_model",
+            type=str,
+            default=None,
+            show_default=False,
+            help=(
+                "Model variant for the selected --backend (e.g. "
+                "uma-s-1p1 / uma-m-1p1 for uma, orb_v3_conservative_omol for orb, "
+                "MACE-OMOL-0 / MACE-OFF23_small for mace). "
+                "Default: the backend's built-in model."
+            ),
+        )(func)
+    return decorator
+
+
 def _deterministic_callback(ctx, param, value):
     """Eager callback: activate strict-deterministic mode when --deterministic
     is set. Process-global, so it covers every backend used in the run and

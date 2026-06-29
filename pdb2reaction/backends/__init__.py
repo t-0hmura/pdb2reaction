@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import importlib
 import warnings
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from .base import BackendError, MLIPCalculator
 
@@ -149,6 +149,22 @@ def apply_precision_to_calc_cfg(calc_cfg: Dict[str, Any], precision: str) -> Non
                 stacklevel=2,
             )
         calc_cfg["hessian_double"] = True
+
+
+def apply_backend_model_to_calc_cfg(calc_cfg: Dict[str, Any], backend_model: Optional[str] = None) -> None:
+    """Route the unified ``--backend-model`` CLI value into the ``model`` kwarg
+    (the active backend's model variant). Mutates ``calc_cfg`` in place; a no-op
+    when unset, so the backend keeps its built-in default model.
+
+    Also consumes (pops) any raw ``backend_model`` token already in ``calc_cfg``
+    (e.g. propagated through a ``--config`` YAML), since it is not a Calculator
+    kwarg; that token is used when no explicit argument is passed.
+    """
+    raw = calc_cfg.pop("backend_model", None)
+    val = backend_model if backend_model is not None else raw
+    if val is None or str(val).strip() == "":
+        return  # keep the backend default model
+    calc_cfg["model"] = str(val).strip()
 
 
 def _import_cls(backend: str, cls_key: str):
