@@ -113,6 +113,8 @@ class AllContext:
     cli_coord_type: Optional[str]
     precision: Optional[str]
     backend_model: Optional[str]
+    calc_file: Optional[str] = None
+    calc_factory: str = "get_calculator"
 
 
 def build_energy_level_dict(
