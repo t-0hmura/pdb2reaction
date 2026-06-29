@@ -1,6 +1,6 @@
 # `scan2d`
 
-調和拘束と MLIP 緩和により、2 距離 `(d₁, d₂)` のグリッドスキャンを行い、`(d₁, d₂)` 上の 2D ポテンシャル面を得ます。TS 領域の特定や、MEP 精密化前の反応ランドスケープの可視化に使います。`scan2d` は `--max-step-size` に基づいて両軸の線形グリッドを作成し、各格子点を対応する拘束付きで緩和して、可視化用にバイアスなしの MLIP エネルギーを記録します。入力は 1 つの構造 + `-s/--scan-lists scan2d.yaml`（推奨）、または四つ組をちょうど 2 つ含む `-s/--scan-lists` の **単一** インラインリテラルです。デフォルトのバックエンドは UMA で、`-b/--backend` で他のバックエンドも選択できます。L-BFGS の代わりに RFOptimizer を使う場合は `--opt-mode hess` を指定してください。
+調和拘束と MLIP 緩和により、2 距離 `(d₁, d₂)` のグリッドスキャンを行い、`(d₁, d₂)` 上の 2D ポテンシャル面を得ます。TS 領域の特定や、MEP 精密化前の反応ランドスケープの可視化に使います。`scan2d` は `--max-step-size` に基づいて両軸の線形グリッドを作成し、各格子点を対応する拘束付きで緩和して、可視化用にバイアスなしの MLIP エネルギーを記録します。入力は 1 つの構造 + `-s/--scan-lists scan2d.yaml`（推奨）、またはちょうど 2 つの 4 要素タプルを含む `-s/--scan-lists` の **単一** インラインリテラルです。デフォルトのバックエンドは UMA で、`-b/--backend` で他のバックエンドも選択できます。L-BFGS の代わりに RFOptimizer を使う場合は `--opt-mode hess` を指定してください。
 
 XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定すると、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
 
@@ -51,7 +51,7 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 
 ### スキャンリスト仕様
 
-`scan2d` はちょうど **2 つ**の四つ組 `(i, j, low_Å, high_Å)` を受け付けます（YAML/JSON では `pairs` キー、インラインでは単一リテラル）。`scan` と異なり、リテラルは **1 つだけ**を受け付けます（複数ステージは非対応）。
+`scan2d` はちょうど **2 つ**の4 要素タプル `(i, j, low_Å, high_Å)` を受け付けます（YAML/JSON では `pairs` キー、インラインでは単一リテラル）。`scan` と異なり、リテラルは **1 つだけ**を受け付けます（複数ステージは非対応）。
 
 YAML/JSON ファイル書式、インライン Python リテラル構文、原子セレクタ、クォート規則については
 {ref}`CLI 規約: スキャンリスト仕様 <ja-scan-list-spec>` を参照してください。
@@ -59,7 +59,7 @@ YAML/JSON ファイル書式、インライン Python リテラル構文、原�
 ## 処理の流れ
 
 1. `geom_loader` で入力構造をロードし、電荷とスピンを解決します。`--preopt` の場合は無バイアスの事前最適化を実行します。`-q` が省略され `--ligand-charge` がある場合、構造は酵素--基質複合体として扱われ、PDB 入力（または `--ref-pdb` 付き XYZ/GJF）では `extract.py` の電荷サマリーから総電荷を導出します。事前最適化構造は `grid/preopt_iDDD_jDDD.*`（`DDD = round(d × 100)` Å）に保存され、`surface.csv` には `i = j = -1` のエントリとしてバイアスなしエネルギーが記録されます。
-2. `-s/--scan-lists`（YAML/JSON ファイルパスまたはインライン Python リテラル）を 2 つの四つ組に解析し、インデックスを正規化します（デフォルトは 1 始まり）。PDB 入力では、各エントリに整数インデックスまたは `'TYR,285,CA'` のようなセレクタ文字列を指定できます。区切りは空白・カンマ・スラッシュ・バッククォート・バックスラッシュのいずれも可で、トークン順序は任意です（フォールバックは resname, resseq, atom を想定）。線形グリッドは `ceil(|high − low| / h) + 1` 点（両端を含む）で構成します（`h = --max-step-size`）。長さ 0 の範囲は 1 点に縮退します。その後、各軸は事前最適化構造に最も近い距離が `i = 0` / `j = 0` になるよう並べ替えられます。
+2. `-s/--scan-lists`（YAML/JSON ファイルパスまたはインライン Python リテラル）を 2 つの4 要素タプルに解析し、インデックスを正規化します（デフォルトは 1 始まり）。PDB 入力では、各エントリに整数インデックスまたは `'TYR,285,CA'` のようなセレクタ文字列を指定できます。区切りは空白・カンマ・スラッシュ・バッククォート・バックスラッシュのいずれも可で、トークン順序は任意です（フォールバックは resname, resseq, atom を想定）。線形グリッドは `ceil(|high − low| / h) + 1` 点（両端を含む）で構成します（`h = --max-step-size`）。長さ 0 の範囲は 1 点に縮退します。その後、各軸は事前最適化構造に最も近い距離が `i = 0` / `j = 0` になるよう並べ替えられます。
 3. 外側ループで `d1[i]`（近い順）を走査します。各値で **d₁ 拘束のみ**を適用して緩和し、その構造をスナップショットとして保存します。次に内側ループで `d2[j]` を走査し、**d₁ と d₂ の両拘束**を適用して、最も近い既収束構造から緩和を開始します。
 4. 各 `(i, j)` について、`<out-dir>/grid/point_iDDD_jDDD.xyz`（`DDD = round(d × 100)` Å。例 `d1=1.30 Å, d2=3.10 Å` → `point_i130_j310.xyz`）に構造を保存し、バイアス収束の可否を記録し、バイアスを除去した MLIP エネルギーを評価します。`--dump` の場合、外側ループごとの内側軌跡が `inner_path_d1_###_trj.xyz`（`###` は外側ステップ index）として保存されます。
 5. すべての点を走査したら、`i,j,d1_A,d2_A,energy_hartree,bias_converged,energy_kcal,d1_label,d2_label` の列を持つ `<out-dir>/surface.csv` を作成し、`--baseline {min|first}` で kcal/mol の基準をシフトします。`--baseline first` では基準点が `(low₁, low₂)` ではなく再並べ替え後の最初の格子点（`i = j = 0`）になります。`scan2d_map.png`（2D コンター）と `scan2d_landscape.html`（3D サーフェス）を `<out-dir>/` に生成します。`--zmin/--zmax` でカラースケールを固定できます。
@@ -78,11 +78,11 @@ out_dir/ (デフォルト:./result_scan2d/)
 ├─ scan2d_map.png # 2D コンター（Kaleido 必須; PNG 出力に失敗すると実行が停止）
 ├─ scan2d_landscape.html # 3D サーフェス可視化
 ├─ grid/point_iDDD_jDDD.xyz # DDD = round(d × 100) Å (例: d1=1.30 Å, d2=3.10 Å → point_i130_j310.xyz)
-├─ grid/point_iDDD_jDDD.pdb # 変換有効時の PDB コンパニオン
-├─ grid/point_iDDD_jDDD.gjf # テンプレートがある場合の Gaussian コンパニオン
+├─ grid/point_iDDD_jDDD.pdb # 変換有効時に対応する PDB
+├─ grid/point_iDDD_jDDD.gjf # テンプレートがある場合に対応する Gaussian
 ├─ grid/preopt_iDDD_jDDD.xyz # 事前最適化構造（--preopt が True の場合）、DDD = round(d × 100)
-├─ grid/preopt_iDDD_jDDD.pdb # 変換有効時の PDB コンパニオン
-├─ grid/preopt_iDDD_jDDD.gjf # テンプレートがある場合の Gaussian コンパニオン
+├─ grid/preopt_iDDD_jDDD.pdb # 変換有効時に対応する PDB
+├─ grid/preopt_iDDD_jDDD.gjf # テンプレートがある場合に対応する Gaussian
 └─ grid/inner_path_d1_###_trj.xyz # --dump の場合のみ（### は外側ステップ index、PDB 入力時は.pdb にも変換）
 ```
 
@@ -92,10 +92,10 @@ out_dir/ (デフォルト:./result_scan2d/)
 | --- | --- | --- |
 | `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル | 必須 |
 | `-q, --charge INT` | 総電荷（CLI > テンプレート/`--ligand-charge`）。両方指定時は `-q` が優先 | テンプレート/導出がない場合は必須 |
-| `-l, --ligand-charge TEXT` | スカラー整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
+| `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `--workers`, `--workers-per-node` | MLIP 予測器の並列度（workers > 1 で解析ヘシアン無効; UMA バックエンドのみ; `workers_per_node` は並列予測器へ転送）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
-| `-s, --scan-lists TEXT` | スキャンターゲット: YAML/JSON スペックファイルパス（推奨）または **単一**のインライン Python リテラルで 2 つの四つ組 `(i,j,lowÅ,highÅ)` を指定。`i`/`j` は整数インデックスまたは PDB セレクタ（`'TYR,285,CA'`） | 必須 |
+| `-s, --scan-lists TEXT` | スキャンターゲット: YAML/JSON スペックファイルパス（推奨）または **単一**のインライン Python リテラルで 2 つの4 要素タプル `(i,j,lowÅ,highÅ)` を指定。`i`/`j` は整数インデックスまたは PDB セレクタ（`'TYR,285,CA'`） | 必須 |
 | `--one-based/--zero-based` | `(i, j)` のインデックスを 1 始まり/0 始まりとして解釈 | `True` |
 | `--print-parsed/--no-print-parsed` | `-s/--scan-lists` 解釈後のペア情報を表示 | `False` |
 | `--max-step-size FLOAT` | 各距離の 1 増分あたりの最大変化量（Å）。グリッド密度を決定 | `0.20` |

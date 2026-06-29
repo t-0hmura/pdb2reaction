@@ -72,16 +72,16 @@ pdb2reaction path-search -i reactant.pdb -i product.pdb -q 0 -m 1 \
 ```
 out_dir/ (デフォルト:./result_path_search/)
 ├─ mep_trj.xyz # 主要 MEP 軌跡
-├─ mep.pdb # 入力がPDB テンプレートで変換が有効な場合のPDB コンパニオン
-├─ mep.gjf # Gaussian テンプレート検出時の Gaussian コンパニオン
+├─ mep.pdb # 入力がPDB テンプレートで変換が有効な場合に対応する PDB
+├─ mep.gjf # Gaussian テンプレート検出時に対応する Gaussian
 ├─ mep_w_ref.pdb # マージされた全系MEP（参照 PDB/テンプレートが必要）
 ├─ mep_seg_XX_trj.xyz # セグメントごとの MEP 軌跡（XYZ）
-├─ mep_seg_XX.pdb # セグメントごとの PDB コンパニオン（変換有効時）
-├─ mep_seg_XX.gjf # セグメントごとの Gaussian コンパニオン（テンプレート検出時）
+├─ mep_seg_XX.pdb # セグメントごとに対応する PDB（変換有効時）
+├─ mep_seg_XX.gjf # セグメントごとに対応する Gaussian（テンプレート検出時）
 ├─ mep_w_ref_seg_XX.pdb # 共有結合変化がある場合のマージされたセグメントごとのパス
 ├─ hei_seg_XX.xyz # セグメントごとの最高エネルギー画像
-├─ hei_seg_XX.pdb # HEI PDB コンパニオン（変換有効時）
-├─ hei_seg_XX.gjf # HEI Gaussian コンパニオン（テンプレート検出時）
+├─ hei_seg_XX.pdb # HEI に対応する PDB（変換有効時）
+├─ hei_seg_XX.gjf # HEI に対応する Gaussian（テンプレート検出時）
 ├─ hei_w_ref_seg_XX.pdb # 全系コンテキストでマージされた HEI（参照 PDB が必要）
 ├─ summary.json # すべての再帰セグメントの障壁と分類サマリー
 ├─ summary.log # 結果要約
@@ -110,7 +110,7 @@ out_dir/ (デフォルト:./result_path_search/)
 | **入力と電荷** | | |
 | `-i, --input PATH` | 反応順序の 2 つ以上の構造（反応物 → 生成物）。各ファイルごとに `-i`/`--input` を繰り返すか、単一の `-i` の後ろに複数ファイルを並べる（例: `-i R.pdb -i IM1.pdb -i P.pdb` または `-i R.pdb IM1.pdb P.pdb`） | 必須 |
 | `-q, --charge INT` | 総電荷。非 `.gjf` 入力では `--ligand-charge` の導出が成功しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
-| `-l, --ligand-charge TEXT` | スカラー整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力のみ。XYZ/GJF は `-q` 必須） | _None_ |
+| `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力のみ。XYZ/GJF は `-q` 必須） | _None_ |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | **バックエンドと計算** | | |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
@@ -140,7 +140,7 @@ out_dir/ (デフォルト:./result_path_search/)
 | **出力と設定** | | |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_path_search/` |
 | `--dump/--no-dump` | MEP（GSM/DMF）と単一構造軌跡をダンプ。リスタート YAML は YAML で有効化した場合のみ書き出されます | `False` |
-| `--convert-files/--no-convert-files` | PDB/Gaussian 入力の XYZ/TRJ → PDB/GJF コンパニオンを切り替え。XYZ/GJF 入力では主軌跡の PDB コンパニオンは生成されません。 | `True` |
+| `--convert-files/--no-convert-files` | PDB/Gaussian 入力の XYZ/TRJ → 対応する PDB/GJF を切り替え。XYZ/GJF 入力では主軌跡に対応する PDB は生成されません。 | `True` |
 | `--config FILE` | 明示 CLI 指定より前に適用されるベース YAML | _None_ |
 | `--show-config/--no-show-config` | 解決済み設定（YAML レイヤ情報を含む）を表示して実行継続 | `False` |
 | `--dry-run/--no-dry-run` | 実行せずに検証と実行計画表示のみを行う | `False` |

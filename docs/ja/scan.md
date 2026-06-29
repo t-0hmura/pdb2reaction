@@ -50,8 +50,8 @@ out_dir/ (デフォルト:./result_scan/)
 │ └─ result.gjf # Gaussian テンプレートがあり変換有効時
 ├─ stage_XX/ # ステージごとのフォルダ
 │ ├─ result.xyz
-│ ├─ result.pdb # 最終構造の PDB コンパニオン（変換有効時）
-│ ├─ result.gjf # テンプレートがある場合の Gaussian コンパニオン（変換有効時）
+│ ├─ result.pdb # 最終構造に対応する PDB（変換有効時）
+│ ├─ result.gjf # テンプレートがある場合に対応する Gaussian（変換有効時）
 │ ├─ scan_trj.xyz # 常に生成（連結バイアス軌跡）
 │ └─ scan.pdb # PDB 入力で変換有効時に常に生成（scan.gjf は生成されない）
 ├─ scan_trj.xyz # 全ステージ連結のスキャン軌跡
@@ -64,7 +64,7 @@ out_dir/ (デフォルト:./result_scan/)
 
 - `result_scan/stage_01/result.pdb`（または `result.xyz`）
 - `result_scan/stage_02/result.pdb`（または `result.xyz`）
-- `result_scan/stage_*/scan_trj.xyz`（常に生成。`scan.pdb` コンパニオンは PDB 入力 + 変換有効時のみ）
+- `result_scan/stage_*/scan_trj.xyz`（常に生成。`scan.pdb`（対応する PDB）は PDB 入力 + 変換有効時のみ）
 
 ## CLI オプション
 
@@ -72,10 +72,10 @@ out_dir/ (デフォルト:./result_scan/)
 | --- | --- | --- |
 | `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル（PDB / XYZ / GJF / TRJ） | 必須 |
 | `-q, --charge INT` | 総電荷（CLI > テンプレート）。`-q` を省略して `--ligand-charge` がある場合は電荷が導出され、明示的な `-q` が最優先 | `.gjf` テンプレートまたは `--ligand-charge` がない場合は必須 |
-| `-l, --ligand-charge TEXT` | スカラー整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
+| `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `--workers`, `--workers-per-node` | MLIP 予測器の並列度（workers > 1 で解析ヘシアンは無効化; UMA バックエンドのみ; `workers_per_node` は並列予測器に渡されます）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
-| `-s, --scan-lists TEXT` | スキャンターゲット: YAML/JSON スペックファイルパス（推奨）またはインライン Python リテラル（`(i,j,targetÅ)` 三つ組もしくは `(i,j,start,end)` 四つ組（双方向スキャン））。各リテラルが 1 ステージ; 1 つのフラグの後に複数リテラルを渡す。`i`/`j` は整数インデックスまたは PDB 原子セレクタ（`'TYR,285,CA'`） | 必須 |
+| `-s, --scan-lists TEXT` | スキャンターゲット: YAML/JSON スペックファイルパス（推奨）またはインライン Python リテラル（`(i,j,targetÅ)` 3 要素タプルもしくは `(i,j,start,end)` 4 要素タプル（双方向スキャン））。各リテラルが 1 ステージ; 1 つのフラグの後に複数リテラルを渡す。`i`/`j` は整数インデックスまたは PDB 原子セレクタ（`'TYR,285,CA'`） | 必須 |
 | `--one-based/--zero-based` | 原子インデックスを 1 始まり/0 始まりとして解釈。これらは同一フラグの相互排他エイリアス（`--one-based` → `True`、`--zero-based` → `False`） | `True` |
 | `--print-parsed/--no-print-parsed` | `-s/--scan-lists` 解釈後のステージ情報を表示 | `False` |
 | `--max-step-size FLOAT` | 1 ステップあたりのスキャン結合の最大変化量（Å）。ステップ数を決定 | `0.20` |
@@ -85,7 +85,7 @@ out_dir/ (デフォルト:./result_scan/)
 | `--freeze-links/--no-freeze-links` | PDB 入力時にリンク水素の親原子を凍結 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
 | `--dump/--no-dump` | ステップごとの最適化器軌跡ファイルを書き出します（`opt_cfg["dump"]` に転送）。`scan_trj.xyz`/`scan.pdb` はこのフラグに関係なく常に書き出されます | `False` |
-| `--convert-files/--no-convert-files` | PDB/Gaussian 入力で XYZ/TRJ → PDB/GJF コンパニオン変換を切り替え（軌跡変換は PDB のみ） | `True` |
+| `--convert-files/--no-convert-files` | PDB/Gaussian 入力で XYZ/TRJ → 対応する PDB/GJF への変換を切り替え（軌跡変換は PDB のみ） | `True` |
 | `--ref-pdb FILE` | XYZ/GJF 入力時の参照 PDB トポロジー（XYZ 座標は保持） | _None_ |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_scan/` |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
@@ -304,7 +304,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 - `-s/--scan-lists` には単一フラグの後に複数リテラルを並べます。ターゲット距離は正の値である必要があります。原子インデックスは内部で 0 始まりに正規化されます。PDB 入力ではセレクタ文字列を使用でき、空白・カンマ・スラッシュ・バッククォート・バックスラッシュで区切れます。トークン順序は任意です。
 - `--freeze-links` が有効な場合、リンク水素の親原子は自動的に凍結されます（{ref}`リンク水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
-- ステージ結果（`result.xyz` と任意の PDB/GJF コンパニオン）は常に書き出されます。全ステージ連結のスキャン軌跡（`scan_trj.xyz` および PDB 入力で変換有効時の `scan.pdb`）も常に書き出されます。`--dump`（または YAML で `opt.dump: true`）を指定すると、最適化器によるステップごとのダンプが有効になります。
+- ステージ結果（`result.xyz` と任意の対応する PDB/GJF）は常に書き出されます。全ステージ連結のスキャン軌跡（`scan_trj.xyz` および PDB 入力で変換有効時の `scan.pdb`）も常に書き出されます。`--dump`（または YAML で `opt.dump: true`）を指定すると、最適化器によるステップごとのダンプが有効になります。
 
 ## 関連項目
 

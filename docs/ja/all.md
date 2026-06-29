@@ -196,7 +196,7 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 | `-i, --input PATH...` | 反応順序の 2 つ以上の完全構造（`--scan-lists` または `--tsopt` のみ単一入力可） | 必須 |
 | `--ref-pdb FILE` | `-i` で XYZ 入力を使用する場合のトポロジー参照 PDB | _None_ |
 | `-o, --out-dir PATH` | トップレベル出力ディレクトリ | `./result_all/` |
-| `--convert-files/--no-convert-files` | XYZ/TRJ → PDB/GJF コンパニオンの全体切替 | `True` |
+| `--convert-files/--no-convert-files` | XYZ/TRJ → 対応する PDB/GJF の全体切替 | `True` |
 | `--dump/--no-dump` | MEP(GSM/DMF)軌跡を出力。`path-search`/`path-opt` には常時転送され、`scan`/`tsopt` には明示指定時のみ転送。`freq` はデフォルトで dump=True なので `--no-dump` で無効化 | `False` |
 | `--config FILE` | 先に適用するベース YAML | _None_ |
 | `--show-config/--no-show-config` | 実行前に解決済み設定を表示 | `False` |

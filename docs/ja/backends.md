@@ -21,7 +21,7 @@ ase_calc = create_ase_calculator(backend="uma", model="uma-s-1p1", device="cuda"
 
 `create_calculator(...)` は `**kwargs` を各バックエンドの
 `_BACKEND_ACCEPTED_KEYS` セットと照合してフィルタするため、ワークフロー側のコードは
-スーパーセットを渡しても問題なく、未知のキーは黙って破棄されます。同じパターンが
+スーパーセットを渡しても問題なく、未知のキーは警告なく破棄されます。同じパターンが
 `create_ase_calculator()` にも適用されます。
 
 `backend="auto"` は UMA → Orb → MACE → AIMNet2 の順で解決し、最初にインポートに

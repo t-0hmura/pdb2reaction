@@ -6,7 +6,7 @@
 - `workers-per-node` — そのうち各ノードで動作する数（デフォルト `1`）。ノードあたりの GPU / メモリ負荷を制御します。
 
 ```{warning}
-UMA バックエンドを `workers > 1` で実行している状態では `hessian_calc_mode="Analytical"` を明示指定すると `RuntimeError` が送出されます（黙って有限差分へダウングレードはされません）。解析ヘシアンが必要なら `workers = 1` に下げるか、デフォルトの `FiniteDifference` を使用してください。{ref}`ja-hessian-evaluation` を参照してください。ORB / MACE / AIMNet2 は `workers` / `workers_per_node` を受け付けないため、この規則は適用されません。
+UMA バックエンドを `workers > 1` で実行している状態では `hessian_calc_mode="Analytical"` を明示指定すると `RuntimeError` が送出されます（警告なく有限差分へダウングレードはされません）。解析ヘシアンが必要なら `workers = 1` に下げるか、デフォルトの `FiniteDifference` を使用してください。{ref}`ja-hessian-evaluation` を参照してください。ORB / MACE / AIMNet2 は `workers` / `workers_per_node` を受け付けないため、この規則は適用されません。
 ```
 
 以下の PBS スクリプトは Open MPI を使用して複数ノードで Ray クラスタを構築する一例です。**テンプレートとして扱ってください**: モジュール名、conda パス、ポート、PBS リソース要求は環境に合わせて調整が必要です。

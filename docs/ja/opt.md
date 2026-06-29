@@ -81,7 +81,7 @@ out_dir/
 | --- | --- | --- |
 | `-i, --input PATH` | `geom_loader` が受け入れる入力構造（`.pdb`、`.xyz`、`_trj.xyz`、`.gjf`） | 必須 |
 | `-q, --charge INT` | 総電荷。`.gjf` テンプレートまたは `--ligand-charge`（PDB 入力または `--ref-pdb` 付き XYZ/GJF）が提供しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
-| `-l, --ligand-charge TEXT` | スカラー整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
+| `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `--workers INT` | MLIP 予測器の並列度（workers > 1 で解析ヘシアン無効）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1` |
 | `--workers-per-node INT` | ノードあたりのワーカー数。並列予測器に渡されます | `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1）。`.gjf` テンプレートまたは `1` にフォールバック | テンプレート/`1` |
@@ -94,7 +94,7 @@ out_dir/
 | `--opt-mode TEXT` | 最適化モード: `grad`（`lbfgs`）または `hess`（`rfo`）。`lbfgs`/`rfo` も指定可。サブコマンド別の対応表（`opt` は L-BFGS/RFO、`tsopt` は Dimer/RS-I-RFO）は {ref}`ja-opt-mode-semantics` を参照 | `grad` |
 | `--flatten/--no-flatten` | 最適化後の虚振動数モードフラット化ループを有効/無効化 | `False` |
 | `--dump/--no-dump` | 軌跡ダンプ（`optimization_trj.xyz`）を出力 | `False` |
-| `--convert-files/--no-convert-files` | PDB 入力用の XYZ/TRJ → PDB コンパニオンおよび Gaussian テンプレート用の XYZ → GJF コンパニオンの出力を切り替え | `True` |
+| `--convert-files/--no-convert-files` | PDB 入力用の XYZ/TRJ → 対応する PDB および Gaussian テンプレート用の XYZ → 対応する GJF の出力を切り替え | `True` |
 | `--ref-pdb FILE` | 入力が XYZ/GJF の場合に使用する参照 PDB トポロジー | _None_ |
 | `-o, --out-dir TEXT` | すべてのファイルの出力ディレクトリ | `./result_opt/` |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`、`gau`、`gau_tight`、`gau_vtight`、`baker`、`never`） | `gau` |

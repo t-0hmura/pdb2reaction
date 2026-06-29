@@ -22,7 +22,7 @@
 | **L3 Domain** | `pdb2reaction/domain/` | 化学的に意味を持つヘルパーロジック（結合変化検出、結合サマリ、元素情報伝播） | `core/` |
 | **L4a Infra (MLIP)** | `pdb2reaction/backends/` | MLIP バックエンドディスパッチャ + バックエンドごとのアダプタ（UMA / Orb / MACE / AIMNet2）+ xTB ALPB デルタ補正 | `core/` |
 | **L4b Infra (I/O)** | `pdb2reaction/io/` | 出力レイアウト、サマリ、軌跡、PDB 修正、エネルギーダイアグラム、Hessian キャッシュ | `core/` |
-| **L5 Foundation** | `pdb2reaction/core/` | defaults（単一真実源）、utils（PDB / XYZ / plot ヘルパー）、logging、将来の `errors.py` / `types.py` | (none) |
+| **L5 Foundation** | `pdb2reaction/core/` | defaults（ソース）、utils（PDB / XYZ / plot ヘルパー）、logging、将来の `errors.py` / `types.py` | (none) |
 | (bundle, not a layer) | `<repo>/pysisyphus/`, `<repo>/thermoanalysis/` | repo 内部 fork（optimizer / thermochemistry） | (sibling, layer-external) |
 
 **依存方向（一方向）**: `L1 → L2 → {L3, L4} → L5`。この方向性ルールは CI のマーカーカバレッジ（`.github/scripts/check_engineering_markers.py`）で強制されます。同梱 fork は階層グラフの外側に位置し、絶対パッケージパス（`from pysisyphus.X import Y`）を介してどの階層からでも import できます。
@@ -101,7 +101,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 
 **L4b `io/`**。出力側の I/O に関する事項: ステージごとのサマリライタ、エネルギーダイアグラム、軌跡レンダリング、PDB altloc 修正、インメモリ Hessian キャッシュ。`io/` は `workflows/` に依存しません。出力フォーマットはここが所有し、ステージランナーが消費します。
 
-**L5 `core/`**。最下層。`defaults.py` はすべての CLI デフォルトの **単一真実源** です。どこか他の場所に数値を追加する前に、まずここを grep してください。`utils.py` は PDB / XYZ / プロットヘルパーの約 3,200-LOC の寄せ集めです。
+**L5 `core/`**。最下層。`defaults.py` はすべての CLI デフォルトの **ソース** です。どこか他の場所に数値を追加する前に、まずここを grep してください。`utils.py` は PDB / XYZ / プロットヘルパーの約 3,200-LOC の寄せ集めです。
 
 ### 2.4 遅延 import の仕組み（概念図）
 
@@ -222,7 +222,7 @@ add-a-backend レシピは [Backends](backends.md) を参照してください�
 
 | concern | file |
 |---|---|
-| **すべての CLI デフォルト（単一真実源）** | `pdb2reaction/core/defaults.py` |
+| **すべての CLI デフォルト（ソース）** | `pdb2reaction/core/defaults.py` |
 | PDB / XYZ / plot ヘルパー | `pdb2reaction/core/utils.py` |
 | `-v` / `-vv` logging 配線 | `pdb2reaction/core/logging.py` |
 
@@ -271,7 +271,7 @@ IRC / TSopt / Freq ステージは、CUDA メモリを解放するためにス�
 
 同梱された `pysisyphus/` と `thermoanalysis/` パッケージは **fork** です。`pip install pysisyphus` または `pip install thermoanalysis` を本パッケージの隣に再インストールすると、次が静かに壊れます:
 
-- `pysisyphus/irc/IRC.py` — 初期変位のメモリ衛生 + オプトインの `require_pos_def_hessian` kwarg
+- `pysisyphus/irc/IRC.py` — 初期変位のメモリ管理 + オプトインの `require_pos_def_hessian` kwarg
 - `pysisyphus/optimizers/hessian_updates.py` — advanced index 上での Bofill scatter、GPU OOM 回避のための CPU 専用 `bofill_update` パス
 - `pysisyphus/tsoptimizers/TSHessianOptimizer.py` — RSIRFO kwargs（fork 間でホストパッケージの import パスが分岐）
 - `pysisyphus/calculators/{Calculator,Dimer}.py` — GPU 対応バックエンドフック（30 以上の QM バックエンドは削除済み。抽象 base + Dimer TS calculator のみ残存）
@@ -312,6 +312,6 @@ Fresh-eyes ツアー（§3）の後は、この深さ優先の読み順に従っ
 5. `pdb2reaction/backends/__init__.py` + `base.py` — MLIP ディスパッチャとバックエンドごとのアダプタ契約。
 6. `pdb2reaction/workflows/tsopt.py` — RS-I-RFO + Bofill scatter（CHEMISTRY-RULE:7）。
 7. `pdb2reaction/workflows/freq.py` — クラスターモデル上での振動解析。
-8. `pdb2reaction/workflows/irc.py` — VRAM 衛生 + IRC 積分。
+8. `pdb2reaction/workflows/irc.py` — VRAM 管理 + IRC 積分。
 9. `pdb2reaction/workflows/dft.py` — gpu4pyscf による一点 DFT（CHEMISTRY-RULE:4 + :5）。
 10. `pdb2reaction/core/utils.py` — 共有 PDB / XYZ / plot ヘルパー。

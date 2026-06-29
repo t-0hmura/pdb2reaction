@@ -64,7 +64,7 @@ out_dir/ (デフォルト:./result_freq/)
 | --- | --- | --- |
 | `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル（`.pdb` / `.xyz` / `.trj` / ...） | 必須 |
 | `-q, --charge INT` | 総電荷。省略時は `--ligand-charge` から導出可能。明示的な `-q` は導出値より優先される | `.gjf` テンプレートまたは `--ligand-charge` が提供しない限り必須 |
-| `-l, --ligand-charge TEXT` | スカラー整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
+| `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `--workers INT` | MLIP 予測器の並列度（workers > 1 で解析ヘシアン無効）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1` |
 | `--workers-per-node INT` | ノードあたりのワーカー数。並列予測器に渡されます | `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
@@ -79,7 +79,7 @@ out_dir/ (デフォルト:./result_freq/)
 | `--pressure FLOAT` | 熱化学計算の圧力（atm）。CLI では `--pressure` ですが、対応する YAML キー（`thermo:` 配下）は `pressure_atm`（単位接尾辞付き）です。いずれも atm で指定し、内部で Pa に変換されます | `1.0` |
 | `--dump/--no-dump` | `thermoanalysis.yaml` を書き込み。単体の `freq` ではデフォルト `False` ですが、`pdb2reaction all --thermo` から呼び出された場合、freq ステージはデフォルトで `dump=True` になります。無効化するには `all` に `--dump False` を渡してください（`--no-dump` トグルは単体 `freq` 専用です） | `False` |
 | `--hessian-calc-mode CHOICE` | MLIP ヘシアンモード（`Analytical` または `FiniteDifference`） | `FiniteDifference` |
-| `--convert-files/--no-convert-files` | PDB テンプレートが利用可能な場合に XYZ/TRJ → PDB コンパニオンを出力するかどうか（GJF は出力しない） | `True` |
+| `--convert-files/--no-convert-files` | PDB テンプレートが利用可能な場合に XYZ/TRJ に対応する PDB を出力するかどうか（GJF は出力しない） | `True` |
 | `--ref-pdb FILE` | 入力が XYZ/GJF の場合に使用する参照 PDB トポロジー（XYZ 座標は保持） | _None_ |
 | `--config FILE` | 明示 CLI 適用前に読み込むベース YAML | _None_ |
 | `--show-config/--no-show-config` | 解決済み YAML レイヤー/設定を表示して続行 | `False` |

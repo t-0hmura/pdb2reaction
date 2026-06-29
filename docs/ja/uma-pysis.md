@@ -40,7 +40,7 @@ from pdb2reaction.backends import create_calculator, create_ase_calculator
 
 | 関数 | 説明 |
 |----------|-------------|
-| `create_calculator(backend="uma", **kwargs)` | pysisyphus 互換の MLIP 計算機を生成します。`charge`、`spin`、`model`、`device`、`solvent`、`solvent_model`、`hessian_calc_mode`、`freeze_atoms` などバックエンド固有の kwargs も受け付けます。未知のキーはバックエンドごとに黙って除外されます |
+| `create_calculator(backend="uma", **kwargs)` | pysisyphus 互換の MLIP 計算機を生成します。`charge`、`spin`、`model`、`device`、`solvent`、`solvent_model`、`hessian_calc_mode`、`freeze_atoms` などバックエンド固有の kwargs も受け付けます。未知のキーはバックエンドごとに警告なく除外されます |
 | `create_ase_calculator(backend="uma", **kwargs)` | ASE 互換の MLIP 計算機を生成します（DMF ワークフローや ASE ベースのツールで使用）。kwargs は `create_calculator` と同じです |
 
 ### 例
@@ -117,7 +117,7 @@ pdb2reaction opt -i input.pdb -q 0 -b orb --solvent water --solvent-model cpcmx
 ### `workers > 1` は解析ヘシアンを無効化する（UMA バックエンド）
 
 ```{warning}
-UMA バックエンドを `workers > 1` で使用する場合、`hessian_calc_mode="Analytical"` を明示指定すると解析ヘシアンは利用できず `RuntimeError` が送出されます（黙って有限差分へフォールバックはしません）。解析ヘシアンが必要なら `hessian_calc_mode="FiniteDifference"`（デフォルト）を使うか、`workers = 1` を指定してください。この規則は `--workers` / `--workers-per-node` を持つすべてのサブコマンド（`opt`, `tsopt`, `freq`, `irc`, `sp`, `all`, `path-opt`, `path-search`, scan 系）に適用されます。UMA 以外のバックエンド（ORB / MACE / AIMNet2）では `workers` / `workers_per_node` は `_BACKEND_ACCEPTED_KEYS` で暗黙的に除外されるため、この規則は該当しません。
+UMA バックエンドを `workers > 1` で使用する場合、`hessian_calc_mode="Analytical"` を明示指定すると解析ヘシアンは利用できず `RuntimeError` が送出されます（警告なく有限差分へフォールバックはしません）。解析ヘシアンが必要なら `hessian_calc_mode="FiniteDifference"`（デフォルト）を使うか、`workers = 1` を指定してください。この規則は `--workers` / `--workers-per-node` を持つすべてのサブコマンド（`opt`, `tsopt`, `freq`, `irc`, `sp`, `all`, `path-opt`, `path-search`, scan 系）に適用されます。UMA 以外のバックエンド（ORB / MACE / AIMNet2）では `workers` / `workers_per_node` は `_BACKEND_ACCEPTED_KEYS` で暗黙的に除外されるため、この規則は該当しません。
 ```
 
 (ja-hessian-evaluation)=

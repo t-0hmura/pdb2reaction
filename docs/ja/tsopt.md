@@ -81,9 +81,9 @@ out_dir/ (デフォルト:./result_tsopt/)
 ├─ final_geometry.pdb # 入力がPDBの場合（変換有効時）
 ├─ final_geometry.gjf # 入力がGaussianの場合（変換有効時）
 ├─ optimization_all_trj.xyz # --dumpがTrueのときの dimer モードダンプ
-├─ optimization_all.pdb # PDB 入力の dimer モードPDB コンパニオン（変換有効時、--dump）
+├─ optimization_all.pdb # PDB 入力の dimer モードに対応する PDB（変換有効時、--dump）
 ├─ optimization_trj.xyz # --dumpがTrueのときの rsirfo モード軌跡
-├─ optimization.pdb # rsirfo モードPDB コンパニオン（変換有効時、--dump）
+├─ optimization.pdb # rsirfo モードに対応する PDB（変換有効時、--dump）
 ├─ vib/
 │ ├─ imag_±XXXX.Xcm-1_trj.xyz
 │ └─ imag_±XXXX.Xcm-1.pdb
@@ -112,7 +112,7 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
 | **入力と電荷** | | |
 | `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル（`.pdb` / `.xyz` / `.gjf` / `.trj`） | 必須 |
 | `-q, --charge INT` | 総電荷。`.gjf` テンプレートまたは `--ligand-charge`（PDB 入力または `--ref-pdb` 付き XYZ/GJF）が提供しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
-| `-l, --ligand-charge TEXT` | スカラー整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
+| `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | `--ref-pdb FILE` | 入力が XYZ/GJF の場合に使用する参照 PDB トポロジー | _None_ |
 | **バックエンドと計算** | | |
@@ -135,7 +135,7 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
 | `--max-cycles INT` | `opt.max_cycles` に渡されるマクロサイクル上限 | `10000` |
 | **出力と設定** | | |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_tsopt/` |
-| `--convert-files/--no-convert-files` | PDB または Gaussian 入力用の XYZ/TRJ → PDB/GJF コンパニオン出力を切り替え | `True` |
+| `--convert-files/--no-convert-files` | PDB または Gaussian 入力用の XYZ/TRJ → 対応する PDB/GJF 出力を切り替え | `True` |
 | `--dump/--no-dump` | 軌跡をダンプ | `False` |
 | `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 | `--config FILE` | 明示 CLI オプションより前に適用するベース YAML 設定ファイル | _None_ |
@@ -192,7 +192,7 @@ pdb2reaction tsopt -i ts_candidate.xyz -q -1 -m 1 \
 
 `pdb2reaction` ではクラスターの原子集合を直接指定するため、同一原子集合の規則は構成上で担保できます。
 
-- **1 つ**のクラスター原子集合を用意し、変異（または機構変更）を**その同じ集合上で**適用することで、比較するすべての実行で原子数と残基を同一に保ちます。共有クラスターをその場で編集してください。各変異体を独立に再抽出**しない**こと。`--radius` や残基の含め方が異なると原子集合が黙って変わり、比較が壊れます。
+- **1 つ**のクラスター原子集合を用意し、変異（または機構変更）を**その同じ集合上で**適用することで、比較するすべての実行で原子数と残基を同一に保ちます。共有クラスターをその場で編集してください。各変異体を独立に再抽出**しない**こと。`--radius` や残基の含め方が異なると原子集合が警告なく変わり、比較が壊れます。
 - 非標準リガンドの電荷は `-l 'RES:Q'`（例 `-l 'GPP:-3,SAM:1'`）で比較するすべての実行に揃え、電荷差がバリア比較を交絡しないようにします。
 
 ```bash

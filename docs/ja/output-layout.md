@@ -11,11 +11,11 @@
 | `summary.log` | `path-search`、`all` | 人間可読な実行ログ（セグメント／ステージごとに 1 行）。 |
 | `final_geometry.xyz` | `opt`、`tsopt` | 最適化された構造（XYZ、完全精度）。 |
 | `mep.pdb` / `mep_trj.xyz` | `path-search` | 反応経路のフレーム（PDB / XYZ）。 |
-| `final_geometries_trj.xyz` / `hei.xyz` | `path-opt` | スタンドアロンの path-opt 軌跡（経路全体）と最高エネルギーイメージ（変換が有効な場合は `.pdb` / `.gjf` コンパニオンも）。 |
+| `final_geometries_trj.xyz` / `hei.xyz` | `path-opt` | スタンドアロンの path-opt 軌跡（経路全体）と最高エネルギーイメージ（変換が有効な場合は対応する `.pdb` / `.gjf` も）。 |
 | `mep_plot.png` | `path-search` | MEP のエネルギープロファイル（PNG）。（`all` では代わりにスタイル付きの `energy_diagram_MEP.png` をルートに昇格します。） |
-| `finished_irc_trj.xyz` / `forward_irc_trj.xyz` / `backward_irc_trj.xyz` | `irc` | IRC 軌跡（経路全体およびブランチ別。参照 PDB が利用可能な場合は `.pdb` コンパニオンも）。 |
+| `finished_irc_trj.xyz` / `forward_irc_trj.xyz` / `backward_irc_trj.xyz` | `irc` | IRC 軌跡（経路全体およびブランチ別。参照 PDB が利用可能な場合は対応する `.pdb` も）。 |
 | `frequencies_cm-1.txt` | `freq` | 振動モードの一覧。 |
-| `*.gjf` | 各種（`--convert-files` 指定時） | Gaussian 形式のコンパニオン構造。 |
+| `*.gjf` | 各種（`--convert-files` 指定時） | Gaussian 形式の構造ファイル。 |
 
 ## デフォルトの `--out-dir`
 

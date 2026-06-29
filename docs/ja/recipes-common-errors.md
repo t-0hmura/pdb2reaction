@@ -15,7 +15,7 @@
 | `-q/--charge is required` 系エラー | `-q/--charge` または `-l/--ligand-charge` を明示指定してください | {ref}`電荷 / スピンの問題 <ts-charge-spin>` |
 | 計算は通るが状態/エネルギーが不自然 | [CLI 規約](cli-conventions.md) の電荷解決順序を再確認してください | {ref}`電荷 / スピンの問題 <ts-charge-spin>` |
 | **計算 / 収束** | | |
-| `--workers > 1` で `--hessian-calc-mode Analytical` を指定すると `RuntimeError` が送出される（黙って `FiniteDifference` にダウングレードはされない） | 解析 Hessian が必要なら `--workers 1` に下げる、不要なら `FiniteDifference`（デフォルト）のまま | {ref}`workers > 1 によるヘシアンのダウングレード <ja-workers-fd-downgrade>` |
+| `--workers > 1` で `--hessian-calc-mode Analytical` を指定すると `RuntimeError` が送出される（警告なく `FiniteDifference` にダウングレードはされない） | 解析 Hessian が必要なら `--workers 1` に下げる、不要なら `FiniteDifference`（デフォルト）のまま | {ref}`workers > 1 によるヘシアンのダウングレード <ja-workers-fd-downgrade>` |
 | 実行時に CUDA OOM | `--radius` を縮小して再抽出（extract / all のみ）、`--opt-mode grad` に切替、有限差分 Hessian のまま、または VRAM の大きい GPU へ | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | TS は収束したが小さい虚振動が複数残る | `--flatten` を追加（`tsopt`、`opt`、`pdb2reaction all` 共通） | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | TSOPT が収束しない | L-BFGS/Dimer: `max_step` を**縮小**。RFO/RS-I-RFO: `trust_radius`/`trust_min`/`trust_max` を**縮小**。サイクル上限を増やし、TS 品質を確認 | {ref}`計算 / 収束の問題 <ts-calc-conv>` |

@@ -70,7 +70,7 @@ DMF モードは追加で `cyipopt` が必要です（`--mep-mode dmf` 実行前
 out_dir/
 ├─ final_geometries_trj.xyz # XYZ経路（コメント行にエネルギーを保持）
 ├─ final_geometries.pdb # PDB 参照が利用可能で変換が有効な場合の全画像 PDB
-├─ final_geometries.gjf # Gaussian テンプレート検出時の Gaussian コンパニオン（変換有効時）
+├─ final_geometries.gjf # Gaussian テンプレート検出時の対応する Gaussian（変換有効時）
 ├─ hei.xyz # 最高エネルギー画像（コメント行にエネルギーを保持）
 ├─ hei.pdb # PDB 参照が利用可能な場合のHEI（変換有効時）
 ├─ hei.gjf # Gaussian テンプレートを使用して書き込まれたHEI（変換有効時）
@@ -108,7 +108,7 @@ out_dir/
 | `--climb/--no-climb` | クライミングイメージ精密化を有効化（Lanczos 接線も同時切替） | `True` |
 | `--dump/--no-dump` | MEP 軌跡をダンプ（GSM/DMF）。リスタート YAML は YAML で有効化した場合のみ書き出されます | `False` |
 | `--opt-mode TEXT` | エンドポイント事前最適化用の単一構造オプティマイザー（`grad` = L-BFGS、`hess` = RFO） | `grad` |
-| `--convert-files/--no-convert-files` | PDB/Gaussian 入力用の XYZ/TRJ → PDB/GJF コンパニオン出力の切り替え | `True` |
+| `--convert-files/--no-convert-files` | PDB/Gaussian 入力用の XYZ/TRJ → 対応する PDB/GJF 出力の切り替え | `True` |
 | `--ref-pdb FILE` | XYZ/GJF 入力用の参照 PDB トポロジー（XYZ 座標は保持し PDB 変換を有効化） | _None_ |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_path_opt/` |
 | `--thresh TEXT` | エンドポイント事前最適化のみの収束プリセットを上書き（`opt.lbfgs/rfo.thresh`） | `gau` |

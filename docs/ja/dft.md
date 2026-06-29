@@ -75,7 +75,7 @@ out_dir/ (デフォルト:./result_dft/)
 | --- | --- | --- |
 | `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル（`.pdb`/`.xyz`/`_trj.xyz`/`.gjf`/…） | 必須 |
 | `-q, --charge INT` | PySCF に提供される総電荷。`.gjf` テンプレートまたは `--ligand-charge`（PDB 入力または `--ref-pdb` 付き XYZ/GJF）が提供しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
-| `-l, --ligand-charge TEXT` | スカラー整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
+| `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `-m, --multiplicity INT` | スピン多重度（2S+1）。PySCF 用に `2S` に変換 | `.gjf` テンプレート値または `1` |
 | `--func-basis TEXT` | `FUNC/BASIS` 形式の汎関数/基底ペア | `wb97m-v/def2-tzvpd` |
 | `--max-cycle INT` | 最大 SCF 反復 | `100` |
@@ -133,7 +133,7 @@ dft:
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - **デフォルト基底のコスト:** `def2-tzvpd` はトリプルゼータのディフューズ拡張セットであり、大きな系では計算コストが高くなります。探索的な計算には小さい基底（例: `6-31g**` や `def2-svp`）を検討してください。
-- **GPU メモリ、def2-TZVPD:** 16–24 GB GPU ではデフォルトの `def2-tzvpd` で **150 原子以上** の系は OOM になります。厳しい設定は十分な VRAM を持つ GPU 上で**小さい**活性部位モデルにのみ適します。代替として `--func-basis 'wb97m-v/def2-svp'` を使用するか（def2-SVP と def2-TZVPD のバリアハイト差は通常 1–3 kcal/mol）、全系を本番運用するなら外部 DFT プログラム（ORCA, Gaussian）を使用してください。
+- **GPU メモリ、def2-TZVPD:** 16–24 GB GPU ではデフォルトの `def2-tzvpd` で **150 原子以上** の系は OOM になります。厳しい設定は十分な VRAM を持つ GPU 上で**小さい**活性部位モデルにのみ適します。代替として `--func-basis 'wb97m-v/def2-svp'` を使用するか（def2-SVP と def2-TZVPD の反応障壁の差は通常 1–3 kcal/mol）、全系を本番運用するなら外部 DFT プログラム（ORCA, Gaussian）を使用してください。
 - **Blackwell アーキテクチャ GPU（RTX 50xx）:** GPU4PySCF は小規模な系（~100 原子）でもメモリ不足エラーが発生する場合があります。これらの GPU では `--engine cpu` または外部 DFT プログラム（ORCA, Gaussian）を使用してください。
 - **CPU バックエンド:** `--engine cpu` は活性部位モデル（**≲150 原子**）と小さい基底関数（例: `def2-svp`）に限り実用的で、より大きな系を CPU で計算すると非常に低速になるため、全系計算には外部 DFT プログラムの利用を推奨します。
 - **総合的なシステムサイズ上限:** DFT 一点計算は **約 300 原子** までのシステムで実用的です。それ以上のシステムでは計算時間とメモリ使用量が実用範囲を超え、A100 や H200 等の高性能 GPU を搭載した HPC クラスタの利用が必要になる場合があります。酵素系では、DFT 実行前に小さな活性部位モデル（バインディングポケット）を抽出してください。

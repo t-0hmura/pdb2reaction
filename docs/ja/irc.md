@@ -45,18 +45,18 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --step-size 0.20 \
 
 1. **入力準備** – `geom_loader` がサポートする任意のフォーマットを受け入れます。参照 PDB が利用可能な場合（PDB 入力時、または `--ref-pdb` で指定した場合）、EulerPC 軌跡はそのトポロジーで PDB に変換されます。PDB 入力に対して `--freeze-links` はリンク水素の親原子を凍結し、`geom.freeze_atoms` を拡張します。
 2. **EulerPC 積分** – EulerPC 予測子-修正子積分器が遷移状態から IRC 経路をたどります。`--forward`/`--backward` フラグに従って順方向および/または逆方向の分岐が実行されます。各ステップでは、質量加重の最急降下方向に沿う Euler 予測子（勾配は現在のヘシアンを用いた 2 次の Taylor 展開で近似）を適用し、続いて距離加重補間（DWI）面上で修正 Bulirsch–Stoer 修正子を適用します。
-3. **軌跡出力** – 完了済み、順方向、逆方向の IRC 軌跡が XYZ ファイルとして書き込まれます。参照 PDB が利用可能な場合、PDB コンパニオンも生成されます（`--convert-files`）。
+3. **軌跡出力** – 完了済み、順方向、逆方向の IRC 軌跡が XYZ ファイルとして書き込まれます。参照 PDB が利用可能な場合、対応する PDB も生成されます（`--convert-files`）。
 
 ## 出力
 
 ```
 out_dir/ (デフォルト:./result_irc/)
 ├─ <prefix>finished_irc_trj.xyz   # 完全な IRC 軌跡
-├─ <prefix>finished_irc.pdb       # 参照 PDB が利用可能な場合の軌跡コンパニオン（変換有効時）
+├─ <prefix>finished_irc.pdb       # 参照 PDB が利用可能な場合の軌跡に対応する PDB（変換有効時）
 ├─ <prefix>forward_irc_trj.xyz    # 順方向分岐が実行された場合
-├─ <prefix>forward_irc.pdb        # 順方向分岐の PDB コンパニオン（同条件）
+├─ <prefix>forward_irc.pdb        # 順方向分岐に対応する PDB（同条件）
 ├─ <prefix>backward_irc_trj.xyz   # 逆方向分岐が実行された場合
-└─ <prefix>backward_irc.pdb       # 逆方向分岐の PDB コンパニオン（同条件）
+└─ <prefix>backward_irc.pdb       # 逆方向分岐に対応する PDB（同条件）
 ```
 コンソールには確定済みの `geom`/`calc`/`irc` 設定と実行時間の要約が表示されます。
 
@@ -68,7 +68,7 @@ out_dir/ (デフォルト:./result_irc/)
 | --- | --- | --- |
 | `-i, --input PATH` | `geom_loader` が受け入れる遷移状態構造 | 必須 |
 | `-q, --charge INT` | 総電荷; YAML が `calc.charge` を指定していない場合に使用。`.gjf` テンプレートまたは `--ligand-charge/-l`（PDB 入力または `--ref-pdb` 付き XYZ/GJF）が提供しない限り必須。両方が設定された場合でも、明示的な `-q` は `--ligand-charge/-l` より優先されます | テンプレート/導出が適用されない限り必須 |
-| `-l, --ligand-charge TEXT` | スカラー整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
+| `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `--workers INT` | MLIP 予測器の並列度（workers > 1 で解析ヘシアン無効）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1` |
 | `--workers-per-node INT` | ノードあたりのワーカー数。並列予測器に渡されます | `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1）。YAML が `calc.spin` を指定していない場合に使用 | `.gjf` テンプレート値または `1` |
@@ -80,7 +80,7 @@ out_dir/ (デフォルト:./result_irc/)
 | `--freeze-links/--no-freeze-links` | PDB 入力用、リンク H 親を凍結（`geom.freeze_atoms` にマージ）。詳細は [extract](extract.md) を参照 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
 | `-o, --out-dir TEXT` | 出力ディレクトリ（YAML が `irc.out_dir` を指定していない場合に使用） | `./result_irc/` |
-| `--convert-files/--no-convert-files` | 参照 PDB が利用可能な場合に XYZ/TRJ → PDB コンパニオンを出力するかどうか | `True` |
+| `--convert-files/--no-convert-files` | 参照 PDB が利用可能な場合に XYZ/TRJ → 対応する PDB を出力するかどうか | `True` |
 | `--ref-pdb FILE` | 入力が XYZ/GJF の場合に使用する参照 PDB トポロジー | _None_ |
 | `--hessian-calc-mode CHOICE` | MLIP ヘシアンモード（YAML が `calc.hessian_calc_mode` を指定していない場合に使用） | `FiniteDifference` |
 | `--config FILE` | 明示 CLI 適用前に読み込むベース YAML | _None_ |
