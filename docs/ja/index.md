@@ -47,7 +47,7 @@
 | トピック | ページ |
 |-------|------|
 | **CLI 規約と入力要件** | [CLI 規約](cli-conventions.md) |
-| **クラスター境界の凍結原子（リンク水素・ `--freeze-atoms`）** | [凍結原子](freeze-atoms.md) |
+| **クラスター境界の凍結原子（キャップ水素・ `--freeze-atoms`）** | [凍結原子](freeze-atoms.md) |
 | **よくあるエラーと対処** | [トラブルシューティング](troubleshooting.md) |
 | **CLI コマンドリファレンス（英語のみ、自動生成）** | [コマンドリファレンス（英語のみ）](../reference/commands/index.md) |
 | **YAML 設定オプション** | [YAML リファレンス](yaml-reference.md) |

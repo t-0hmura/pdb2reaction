@@ -7,7 +7,7 @@ PDB is `pdb2reaction`'s primary input. Column-based, fixed-width fields.
 | Record | Used for |
 |---|---|
 | `ATOM` | Standard amino-acid / nucleic-acid atoms (residue ≤ 3 letters, in `pdb2reaction`'s AMINO_ACIDS table) |
-| `HETATM` | Ligand, metal, water, cofactor, link-H atoms |
+| `HETATM` | Ligand, metal, water, cofactor, cap-H atoms |
 | `TER` | Chain terminator; `extract` infers chain breaks from C–N peptide-adjacency distance, not by parsing TER directly |
 | `END`, `ENDMDL` | File terminator — informational only |
 | `CRYST1` | Unit cell — read but not written by `pdb2reaction` (cluster model only) |
@@ -90,15 +90,15 @@ all residues kept (post extraction).
 If you don't know a ligand's formal charge, see
 `charge-multiplicity.md` for the lookup workflow.
 
-## Link-hydrogen capping
+## Cap-hydrogen capping
 
 When `extract` cuts a covalent bond between an in-cluster atom (`A`)
 and an out-of-cluster atom (`B`), it places a hydrogen `H_link` along
-the `A→B` direction at 1.09 Å (standard C-H length). The link hydrogen
+the `A→B` direction at 1.09 Å (standard C-H length). The cap hydrogen
 is written as a `HETATM` with atom name `HL` and residue name `LKH`
 (hard-coded in `_format_linkH_block`).
 
-Link hydrogens carry **no formal charge**; they do not enter the
+Cap hydrogens carry **no formal charge**; they do not enter the
 charge sum.
 
 The atoms that **donate** hydrogens (i.e. atom `A`, the cluster-side

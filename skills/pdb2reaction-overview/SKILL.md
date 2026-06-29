@@ -16,7 +16,7 @@ a single `pdb2reaction all` invocation.
 Three things make it different from gluing together generic tools:
 
 1. **PDB-native automation.** A residue-aware extractor cuts an active-site
-   cluster, sums residue/ligand formal charges, and places link hydrogens
+   cluster, sums residue/ligand formal charges, and places cap hydrogens
    along severed covalent bonds without manual atom mapping.
 2. **GPU-accelerated pysisyphus fork (bundled).** Geometry optimizers, TS
    searches (RS-I-RFO default, Dimer alternative), and IRC integrators keep the heavy tensor
@@ -57,7 +57,7 @@ skill (`SKILL.md` plus `core.md`) before doing anything else.
 
 | Stage | Role |
 |---|---|
-| `extract` | active-site cluster + link-H caps + total charge |
+| `extract` | active-site cluster + cap-H caps + total charge |
 | `path-opt` / `path-search` | MEP (GSM or DMF): single-pass `path-opt` by default; `--refine-path True` runs recursive `path-search` with bond-change segmentation → `seg_01`, `seg_02`, … (one per elementary step) |
 | `tsopt` | TS refinement per segment (RS-I-RFO default; Dimer alternative) |
 | `irc` | forward / backward EulerPC IRC (caches endpoint Hessians) |
@@ -94,7 +94,7 @@ python -c "import pdb2reaction.core.defaults as d; print(sorted(n for n in dir(d
 | `pdb2reaction/core/defaults.py` | All default kwarg dicts (UMA_CALC_KW, RSIRFO_KW, IRC_KW, …) — single source of truth |
 | `pdb2reaction/backends/__init__.py` | `BACKEND_REGISTRY`, `create_calculator(...)` factory |
 | `pdb2reaction/workflows/all.py` | End-to-end orchestration for `pdb2reaction all` |
-| `pdb2reaction/workflows/extract.py` | PDB → cluster, residue table, link-H placement |
+| `pdb2reaction/workflows/extract.py` | PDB → cluster, residue table, cap-H placement |
 | `pdb2reaction/workflows/path_search.py` | Recursive MEP search, bond-change segmentation |
 | `pdb2reaction/workflows/tsopt.py` | RS-I-RFO (default) / Dimer (alternative) transition-state search |
 | `pdb2reaction/workflows/irc.py` | EulerPC IRC (caches endpoint Hessians) |

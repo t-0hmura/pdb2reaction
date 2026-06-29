@@ -14,7 +14,7 @@ is the canonical machine-readable artifact for downstream analysis
 | `charge` / `spin` | Resolved cluster charge / multiplicity |
 | `environment` | `{device, gpu_name, gpu_vram_gb, cuda_version, cpu, n_cpus, ram_gb}` |
 | `config` | Full effective config after CLI + YAML + defaults merge |
-| `freeze_atoms` | Indices held fixed during optimization (link-H parents). 0-based internal indices; `summary.log` echoes them as 1-based. |
+| `freeze_atoms` | Indices held fixed during optimization (cap-H parents). 0-based internal indices; `summary.log` echoes them as 1-based. |
 | `n_images` | MEP image count in path-search / path-opt; IRC trajectory frame count in tsopt-only mode |
 | `n_segments` | Total MEP segment count (reactive + bridge) |
 | `n_segments_reactive` | Reactive segment count (kind != "bridge") |

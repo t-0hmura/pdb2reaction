@@ -289,7 +289,7 @@ See also the extended [`summary.json` section](#summary-json-path-search-all) fo
 | `ion_total_charge` | float | Ion charge sum |
 | `ion_charges` | list | `[[name, charge], ...]` |
 | `unknown_residue_charges` | object | `{resname: charge}` |
-| `n_link_hydrogens` | int | Link hydrogens added at severed C/N bonds |
+| `n_link_hydrogens` | int | Cap hydrogens added at severed C/N bonds |
 | `exclude_backbone` | bool | Whether backbone atoms were excluded |
 | `include_h2o` | bool | Whether crystallographic waters were included |
 | `ligand_charge_input` | string | User-supplied `--ligand-charge` mapping |

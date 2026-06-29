@@ -128,7 +128,7 @@ The tables below cover the options that need explanation; the full flag list is 
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
 | `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. Used unless YAML sets `opt.max_cycles`. | `10000` |
 | `--opt-mode TEXT` | `grad` → L-BFGS, `hess` → RFOptimizer. | `grad` |
-| `--freeze-links/--no-freeze-links` | When the input is PDB, freeze parents of link hydrogens. | `True` |
+| `--freeze-links/--no-freeze-links` | When the input is PDB, freeze parents of cap hydrogens. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
 | `--dump/--no-dump` | Write `inner_path_d1_###_trj.xyz` for each outer step. | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
@@ -149,7 +149,7 @@ The tables below cover the options that need explanation; the full flag list is 
 ```yaml
 geom:
  coord_type: cart # coordinate type: cartesian vs dlc internals
- freeze_atoms: [] # 1-based frozen atoms merged with CLI/link detection
+ freeze_atoms: [] # 1-based frozen atoms merged with CLI/cap detection
 calc:
  charge: 0 # total charge (CLI/template override)
  spin: 1 # spin multiplicity 2S+1
@@ -185,7 +185,7 @@ More YAML options for `opt` are available in [YAML Reference](yaml-reference.md)
   trust radii; optimizer scratch files live under temporary directories.
 - The bias is always removed before final energies are recorded so you can reuse
   `surface.csv` in downstream fitting or visualization scripts.
-- `--freeze-links` merges user `freeze_atoms` with detected link-H parents for
+- `--freeze-links` merges user `freeze_atoms` with detected cap-H parents for
   PDB inputs, keeping extracted active site models rigid.
 - `--relax-max-cycles` applies only when explicitly provided and YAML does not set `opt.max_cycles` (default `10000`).
 

@@ -95,7 +95,7 @@ large clusters.
 `pdb2reaction` does **not** read PDB B-factors as a freeze list. The
 freeze set is assembled (in priority order) from CLI `--freeze-atoms`
 (1-based atom indices), CLI `--freeze-links/--no-freeze-links` (auto
-freeze of `LKH/HL` link-H parents written by `extract`), and YAML
+freeze of `LKH/HL` cap-H parents written by `extract`), and YAML
 `geom.freeze_atoms`. See `freeze-atoms.md`.
 
 ## Caveats

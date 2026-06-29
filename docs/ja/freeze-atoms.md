@@ -2,22 +2,22 @@
 
 ## 概要
 
-クラスターモデルでは切り出し境界の少数の原子を固定しないと、最適化器が末端のフラグメントを非物理的な構造へ引き込んでしまいます。`pdb2reaction` は **リンク水素**（`extract` が切断結合に付加）と、3 通りの `freeze_atoms` 指定でこれを扱います。
+クラスターモデルでは切り出し境界の少数の原子を固定しないと、最適化器が末端のフラグメントを非物理的な構造へ引き込んでしまいます。`pdb2reaction` は **キャップ水素**（`extract` が切断結合に付加）と、3 通りの `freeze_atoms` 指定でこれを扱います。
 
-`extract` サブコマンドでタンパク質から残基を切り出すと、境界の結合は **リンク水素**（残基 `LKH`、原子 `HL`、元の結合ベクトル方向に 1.09 Å）でキャップされます。リンク水素の親原子を自由なまま放置すると、勾配降下によってキャップと親原子が一緒に動き、境界形状が変形します。関連する原子を凍結すれば、構造最適化・MEP 探索・IRC・振動解析を通じて境界が固定されます。
+`extract` サブコマンドでタンパク質から残基を切り出すと、境界の結合は **キャップ水素**（残基 `LKH`、原子 `HL`、元の結合ベクトル方向に 1.09 Å）でキャップされます。キャップ水素の親原子を自由なまま放置すると、勾配降下によってキャップと親原子が一緒に動き、境界形状が変形します。関連する原子を凍結すれば、構造最適化・MEP 探索・IRC・振動解析を通じて境界が固定されます。
 
 ## 凍結原子の 3 通りの指定方法
 
 ### 1. `--freeze-links/--no-freeze-links`（デフォルト `True`）
 
-`extract` が付加したリンク水素の親原子を自動的に凍結します。下流の全サブコマンドでデフォルト有効です。
+`extract` が付加したキャップ水素の親原子を自動的に凍結します。下流の全サブコマンドでデフォルト有効です。
 
 ```bash
 pdb2reaction extract -i complex.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' -o model.pdb
 pdb2reaction opt -i model.pdb -q 0 -m 1   # --freeze-links は True、LKH 親原子を自動凍結
 ```
 
-XYZ/GJF 入力には `LKH` レコードがないため `--freeze-links` は無効で、次の 2 つの方法を使ってください。`--ref-pdb FILE` を渡すと XYZ/GJF 実行が PDB トポロジーを継承し、リンク水素検出が復活します。
+XYZ/GJF 入力には `LKH` レコードがないため `--freeze-links` は無効で、次の 2 つの方法を使ってください。`--ref-pdb FILE` を渡すと XYZ/GJF 実行が PDB トポロジーを継承し、キャップ水素検出が復活します。
 
 ### 2. `--freeze-atoms 'i,j,k,...'`（CLI 明示指定）
 
@@ -82,7 +82,7 @@ pdb2reaction tsopt -i ts.xyz -q 0 -m 1 --config tsopt.yaml
 
 ## 関連項目
 
-- [`extract`](extract.md) — リンク水素の挿入箇所（残基 `LKH`、原子 `HL`、1.09 Å）。アルゴリズム詳細は {ref}`リンク水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照。
+- [`extract`](extract.md) — キャップ水素の挿入箇所（残基 `LKH`、原子 `HL`、1.09 Å）。アルゴリズム詳細は {ref}`キャップ水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照。
 - [YAML リファレンス](yaml-reference.md) — `geom.freeze_atoms` スキーマとマージ順序。
 - [CLI 規約](cli-conventions.md) — サブコマンド共通のフラグ規約。
-- [用語集](glossary.md) — 活性部位モデル、クラスターモデル、リンク水素。
+- [用語集](glossary.md) — 活性部位モデル、クラスターモデル、キャップ水素。

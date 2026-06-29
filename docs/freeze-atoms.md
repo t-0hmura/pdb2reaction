@@ -2,22 +2,22 @@
 
 ## Overview
 
-Cluster models need a small set of atoms held in place at the truncation boundary so the optimizer cannot pull the dangling fragment into something unphysical. `pdb2reaction` handles this through **link hydrogens** (added at severed bonds by `extract`) and three layers of `freeze_atoms` specification.
+Cluster models need a small set of atoms held in place at the truncation boundary so the optimizer cannot pull the dangling fragment into something unphysical. `pdb2reaction` handles this through **cap hydrogens** (added at severed bonds by `extract`) and three layers of `freeze_atoms` specification.
 
-When a residue is sliced out of a larger protein using the `extract` sub-command, the bond at the boundary is capped with a **link hydrogen** (residue `LKH`, atom `HL`, 1.09 Å along the original bond vector). If the parent atom of that link hydrogen is left free, gradient descent will quietly relax the cap+parent pair into a different geometry, deforming the boundary. Freezing the relevant atoms keeps the boundary stationary throughout optimization, MEP search, IRC, and vibrational analysis.
+When a residue is sliced out of a larger protein using the `extract` sub-command, the bond at the boundary is capped with a **cap hydrogen** (residue `LKH`, atom `HL`, 1.09 Å along the original bond vector). If the parent atom of that cap hydrogen is left free, gradient descent will quietly relax the cap+parent pair into a different geometry, deforming the boundary. Freezing the relevant atoms keeps the boundary stationary throughout optimization, MEP search, IRC, and vibrational analysis.
 
 ## Three ways to specify frozen atoms
 
 ### 1. `--freeze-links/--no-freeze-links` (default `True`)
 
-Auto-freezes the parent atoms of link hydrogens added by `extract`. Active by default in every downstream subcommand. Recipe:
+Auto-freezes the parent atoms of cap hydrogens added by `extract`. Active by default in every downstream subcommand. Recipe:
 
 ```bash
 pdb2reaction extract -i complex.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' -o model.pdb
 pdb2reaction opt -i model.pdb -q 0 -m 1   # --freeze-links is True; LKH parents auto-frozen
 ```
 
-For XYZ/GJF inputs, no `LKH` atoms are present, so `--freeze-links` has no effect; use the next two methods instead. `--ref-pdb FILE` lets XYZ/GJF runs inherit a PDB topology and resurrect link-hydrogen detection.
+For XYZ/GJF inputs, no `LKH` atoms are present, so `--freeze-links` has no effect; use the next two methods instead. `--ref-pdb FILE` lets XYZ/GJF runs inherit a PDB topology and resurrect cap-hydrogen detection.
 
 ### 2. `--freeze-atoms 'i,j,k,...'` (CLI explicit list)
 
@@ -82,7 +82,7 @@ There is no mode that substitutes one for another; every entry that appears in a
 
 ## See Also
 
-- [`extract`](extract.md) — Where link hydrogens are inserted (residue `LKH`, atom `HL`, 1.09 Å along severed bond vector). Full algorithmic detail at {ref}`Link hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`.
+- [`extract`](extract.md) — Where cap hydrogens are inserted (residue `LKH`, atom `HL`, 1.09 Å along severed bond vector). Full algorithmic detail at {ref}`Cap hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`.
 - [YAML Reference](yaml-reference.md) — `geom.freeze_atoms` schema and merge order.
 - [CLI Conventions](cli-conventions.md) — flag conventions shared across subcommands.
-- [Glossary](glossary.md) — Active Site Model, Cluster Model, Link Hydrogen.
+- [Glossary](glossary.md) — Active Site Model, Cluster Model, Cap Hydrogen.

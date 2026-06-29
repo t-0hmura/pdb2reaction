@@ -36,7 +36,7 @@ description: Per-subcommand reference for pdb2reaction's 18 CLI subcommands (ext
 
 | md | Topic |
 |---|---|
-| `freeze-atoms.md` | Cluster-boundary frozen atoms — link hydrogens (`LKH/HL`), `--freeze-links`, `--freeze-atoms`, YAML `geom.freeze_atoms`. The three sources are unioned; required for cluster models. |
+| `freeze-atoms.md` | Cluster-boundary frozen atoms — cap hydrogens (`LKH/HL`), `--freeze-links`, `--freeze-atoms`, YAML `geom.freeze_atoms`. The three sources are unioned; required for cluster models. |
 
 ## Common flag conventions
 

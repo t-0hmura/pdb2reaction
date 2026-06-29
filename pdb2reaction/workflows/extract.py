@@ -243,7 +243,7 @@ def _gather_extract_variadic(
     help=(
         "Extract an active site model around substrate residues (from a PDB or "
         "residue IDs/names), with biochemically aware truncation and optional "
-        "link-H; supports multi-structure input and multi-MODEL output."
+        "cap-H; supports multi-structure input and multi-MODEL output."
     ),
     context_settings={
         "help_option_names": ["-h", "--help"],
@@ -302,7 +302,7 @@ def _gather_extract_variadic(
     "--add-linkh/--no-add-linkh",
     "add_linkh",
     default=True, show_default=True,
-    help="Add carbon-only link-H at 1.09 angstrom along cut-bond directions.",
+    help="Add cap hydrogens (carbon boundaries only) at 1.09 angstrom along cut-bond directions.",
 )
 @click.option(
     "--selected-resn",

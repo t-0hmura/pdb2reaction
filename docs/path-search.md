@@ -113,7 +113,7 @@ The table is grouped by purpose; within each group the most-used options come fi
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 | **Active-region freezing** | | |
-| `--freeze-links/--no-freeze-links` | When loading PDB active site models, freeze the parent atoms of link hydrogens. See [extract](extract.md) for link-hydrogen details. | `True` |
+| `--freeze-links/--no-freeze-links` | When loading PDB active site models, freeze the parent atoms of cap hydrogens. See [extract](extract.md) for cap-hydrogen details. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
 | **MEP search** | | |
 | `--mep-mode {gsm\|dmf}` | Segment generator: GSM (string-based) or DMF (Direct Max Flux). | `gsm` |

@@ -219,10 +219,10 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 | `--radius-het2het FLOAT` | ヘテロ–ヘテロカットオフ（Å）。`0` を渡すと空の選択を避けるため内部で `0.001 Å` に自動補正されます（単体の `extract` と同じ挙動） | `0.0` |
 | `--include-h2o/--no-include-h2o` | 水分子を含める（HOH/WAT/TIP3/SOL） | `True` |
 | `--exclude-backbone/--no-exclude-backbone` | 非基質アミノ酸の主鎖原子を除去 | `False` |
-| `--add-linkh/--no-add-linkh` | 切断結合にリンク水素を付加 | `True` |
+| `--add-linkh/--no-add-linkh` | 切断結合にキャップ水素を付加 | `True` |
 | `--selected-resn TEXT` | 強制包含残基。**名前とは裏腹にこのフラグは残基 ID（コロン区切り整数、オプションでチェーン/挿入コード付き、例 `A:123A`）を受け付け、3 文字残基名は受け付けません。** 残基名ベースの選択には `-c/--center 'GPP,SAM'` を使用してください | `""` |
 | `--modified-residue TEXT` | 修飾アミノ酸残基名をカンマ区切りで指定（任意で電荷付き）。主鎖切断と電荷計算にアミノ酸として扱う。例: `HD1,HD2,HD3` または `HD1:0,SEP:-2` | `""` |
-| `--freeze-links/--no-freeze-links` | 活性部位モデル PDB でリンク H の親を凍結 | `True` |
+| `--freeze-links/--no-freeze-links` | 活性部位モデル PDB でキャップ H の親を凍結 | `True` |
 
 (ja-mep-search-options)=
 ### MEP 探索オプション

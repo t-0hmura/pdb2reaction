@@ -37,7 +37,7 @@ Options:
   --backward / --no-backward      Run the backward IRC; used unless YAML sets
                                   irc.backward. Defaults to True.
   --freeze-links / --no-freeze-links
-                                  Freeze parent atoms of link hydrogens (PDB
+                                  Freeze parent atoms of cap hydrogens (PDB
                                   input or XYZ/GJF with --ref-pdb).  [default:
                                   freeze-links]
   --freeze-atoms TEXT             Comma-separated 1-based atom indices to freeze

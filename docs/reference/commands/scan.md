@@ -48,7 +48,7 @@ Options:
   --opt-mode [grad|hess]          Relaxation mode: grad (=LBFGS) or hess (=RFO).
                                   [default: grad]
   --freeze-links / --no-freeze-links
-                                  Freeze parent atoms of link hydrogens (PDB
+                                  Freeze parent atoms of cap hydrogens (PDB
                                   input or XYZ/GJF with --ref-pdb).  [default:
                                   freeze-links]
   --freeze-atoms TEXT             Comma-separated 1-based atom indices to freeze

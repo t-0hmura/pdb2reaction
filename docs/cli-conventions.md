@@ -21,7 +21,7 @@ Every boolean CLI flag accepts **all four forms permanently** (no deprecation cy
 
 All four forms route through a single root-CLI `bool_compat` synthesizer; `tests/test_bool_compat_cli.py` walks every registered bool option against every form on every release, so a missing entry is caught by CI.
 
-Common toggles: `--tsopt` / `--thermo` / `--dft` (post-processing stages) · `--freeze-links` (freeze link-H parents, default `True`) · `--dump` (write trajectory files) · `--preopt` / `--endopt` (pre/post optimization) · `--climb` (climbing-image MEP) · `--convert-files` (generate PDB / GJF companions).
+Common toggles: `--tsopt` / `--thermo` / `--dft` (post-processing stages) · `--freeze-links` (freeze cap-H parents, default `True`) · `--dump` (write trajectory files) · `--preopt` / `--endopt` (pre/post optimization) · `--climb` (climbing-image MEP) · `--convert-files` (generate PDB / GJF companions).
 
 ### Contributing a new bool flag
 

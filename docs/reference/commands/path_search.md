@@ -42,7 +42,7 @@ Options:
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1; defaults from a .gjf
                                   template when available, otherwise 1).
   --freeze-links / --no-freeze-links
-                                  Freeze parent atoms of link hydrogens (PDB
+                                  Freeze parent atoms of cap hydrogens (PDB
                                   input only).  [default: freeze-links]
   --freeze-atoms TEXT             Comma-separated 1-based atom indices to freeze
                                   (e.g., '1,3,5').

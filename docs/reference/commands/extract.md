@@ -4,7 +4,7 @@
 Usage: pdb2reaction extract [OPTIONS]
 
   Extract an active site model around substrate residues (from a PDB or residue
-  IDs/names), with biochemically aware truncation and optional link-H; supports
+  IDs/names), with biochemically aware truncation and optional cap-H; supports
   multi-structure input and multi-MODEL output.
 
 Options:
@@ -41,8 +41,9 @@ Options:
   --exclude-backbone / --no-exclude-backbone
                                   Delete main-chain atoms from non-substrate
                                   amino acids.  [default: no-exclude-backbone]
-  --add-linkh / --no-add-linkh    Add carbon-only link-H at 1.09 angstrom along
-                                  cut-bond directions.  [default: add-linkh]
+  --add-linkh / --no-add-linkh    Add cap hydrogens (carbon boundaries only) at
+                                  1.09 angstrom along cut-bond directions.
+                                  [default: add-linkh]
   --selected-resn TEXT            Comma/space-separated residue IDs to force-
                                   include.
   --modified-residue TEXT         Comma-separated residue names (with optional

@@ -1,6 +1,6 @@
 ---
 name: pdb2reaction-architecture
-description: Where the source code lives in `pdb2reaction`. 6 physical layer directories (`cli` / `workflows` / `domain` / `backends` / `io` / `core`) + 2 repo-internal forks (`pysisyphus` / `thermoanalysis`). Tells an agent which directory to grep for a given concern (Click option, stage runner, MLIP backend, output writer, chemistry default, link-atom math) before touching code. TRIGGER on questions like "where is X implemented", "which file defines flag Y", "how is the repo organised", "what's safe to refactor". SKIP for usage questions — those belong to `pdb2reaction-cli` / `-overview`.
+description: Where the source code lives in `pdb2reaction`. 6 physical layer directories (`cli` / `workflows` / `domain` / `backends` / `io` / `core`) + 2 repo-internal forks (`pysisyphus` / `thermoanalysis`). Tells an agent which directory to grep for a given concern (Click option, stage runner, MLIP backend, output writer, chemistry default, cap-atom math) before touching code. TRIGGER on questions like "where is X implemented", "which file defines flag Y", "how is the repo organised", "what's safe to refactor". SKIP for usage questions — those belong to `pdb2reaction-cli` / `-overview`.
 ---
 
 # pdb2reaction architecture (one-screen map)
@@ -46,7 +46,7 @@ Dependency direction is one-way: `L1 → L2 → {L3, L4} → L5`. The bundled fo
 | New MLIP backend | `pdb2reaction/backends/<backend>.py` + register in `backends/__init__.py:BACKEND_REGISTRY` |
 | `--help` / option decorator | `pdb2reaction/cli/common_options.py` (shared) or the subcommand file (inline) |
 | Output schema (summary.json, trajectory, energy diagram) | `pdb2reaction/io/` |
-| Chemistry rule (link-atom, ECP injection, scatter) | search `# CHEMISTRY-RULE:` markers (lab-sign-off required to edit) |
+| Chemistry rule (cap-atom, ECP injection, scatter) | search `# CHEMISTRY-RULE:` markers (lab-sign-off required to edit) |
 | TS / IRC / optimiser internals | `pysisyphus/` (annotation-only — chemistry-rule risk) |
 | MCP server / agent integration | `pdb2reaction/mcp/` — see [`pdb2reaction-mcp`](../pdb2reaction-mcp/SKILL.md) |
 

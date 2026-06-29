@@ -45,8 +45,9 @@ Options:
   --exclude-backbone BOOLEAN      Remove backbone atoms on non‑substrate amino
                                   acids (with PRO/HYP safeguards).  [default:
                                   False]
-  --add-linkh BOOLEAN             Add link hydrogens for severed bonds (carbon-
-                                  only) in active site models.  [default: True]
+  --add-linkh BOOLEAN             Add cap hydrogens for severed bonds (carbon
+                                  boundaries only) in active site models.
+                                  [default: True]
   --selected-resn TEXT            Force-include residues by residue ID (not
                                   name; e.g. '123', 'A:123A', 'B:456');
                                   comma/space separated. Use '-c/--center
@@ -78,7 +79,7 @@ Options:
                                   'water'). 'none' to disable.  [default: none]
   --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1).  [default: 1]
-  --freeze-links BOOLEAN          Freeze parent atoms of link hydrogens (PDB
+  --freeze-links BOOLEAN          Freeze parent atoms of cap hydrogens (PDB
                                   input or XYZ/GJF with --ref-pdb).  [default:
                                   True]
   --mep-mode [gsm|dmf]            MEP optimizer: Growing String Method (gsm) or

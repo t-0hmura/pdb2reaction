@@ -1669,7 +1669,7 @@ def _merge_final_and_write(final_images: List[Any],
     "freeze_links_flag",
     default=True,
     show_default=True,
-    help="Freeze parent atoms of link hydrogens (PDB input only).",
+    help="Freeze parent atoms of cap hydrogens (PDB input only).",
 )
 @click.option(
     "--freeze-atoms",

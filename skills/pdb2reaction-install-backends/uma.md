@@ -84,7 +84,7 @@ UMA accepts these calculator kwargs (canonical list in
 | `device` | `'cuda'`, `'cpu'`, or `'auto'` |
 | `model` | `'uma-s-1p1'`, `'uma-s-1p2'`, or `'uma-m-1p1'` |
 | `task_name` | `'omol'` (default — organic molecules + 1st-row metals) |
-| `freeze_atoms` | Indices of atoms held fixed (link-atom parents, frozen residues) |
+| `freeze_atoms` | Indices of atoms held fixed (cap-atom parents, frozen residues) |
 | `hessian_calc_mode` | `'FiniteDifference'` (default) or `'Analytical'` |
 | `return_partial_hessian`, `hessian_double` | Memory / numerical-precision toggles |
 | `workers`, `workers_per_node` | Multi-GPU inference (uses Ray) |

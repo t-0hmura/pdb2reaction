@@ -118,7 +118,7 @@ out_dir/ (デフォルト:./result_path_search/)
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 | **活性領域の凍結** | | |
-| `--freeze-links/--no-freeze-links` | PDB 活性部位モデル読み込み時、リンク水素の親原子を凍結。詳細は [extract](extract.md) を参照 | `True` |
+| `--freeze-links/--no-freeze-links` | PDB 活性部位モデル読み込み時、キャップ水素の親原子を凍結。詳細は [extract](extract.md) を参照 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
 | **MEP 探索** | | |
 | `--mep-mode {gsm\|dmf}` | セグメント生成器: GSM（string）または DMF（direct flux） | `gsm` |
@@ -149,7 +149,7 @@ out_dir/ (デフォルト:./result_path_search/)
 
 ## YAML 設定
 
-YAML ルートはマッピングでなければなりません。共通セクションは [YAML リファレンス](yaml-reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（PDB 入力では `--freeze-links` が `geom.freeze_atoms` を補強します。詳細は {ref}`リンク水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）、`stopt` は `path-opt`（[path-opt.md](path-opt.md)）に記載の StringOptimizer 設定を継承します。
+YAML ルートはマッピングでなければなりません。共通セクションは [YAML リファレンス](yaml-reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（PDB 入力では `--freeze-links` が `geom.freeze_atoms` を補強します。詳細は {ref}`キャップ水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）、`stopt` は `path-opt`（[path-opt.md](path-opt.md)）に記載の StringOptimizer 設定を継承します。
 
 `bond` と `search` は `path-search` の再帰ロジックの中核であり、ここで詳述します。`gs`、`dmf`、`stopt`、`opt.lbfgs`、`opt.rfo` は `path-search` 固有の `out_dir` 上書きのみ再掲します。
 

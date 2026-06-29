@@ -23,7 +23,7 @@ Options:
   --workers-per-node INTEGER      Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
   --freeze-links / --no-freeze-links
-                                  Freeze parent atoms of link hydrogens (PDB
+                                  Freeze parent atoms of cap hydrogens (PDB
                                   input or XYZ/GJF with --ref-pdb).  [default:
                                   freeze-links]
   --freeze-atoms TEXT             Comma-separated 1-based atom indices to freeze

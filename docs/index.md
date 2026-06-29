@@ -136,7 +136,7 @@ ja/glossary
 | CLI conventions / YAML / Glossary | [CLI Conventions](cli-conventions.md) · [YAML Reference](yaml-reference.md) · [Glossary](glossary.md) |
 | Bit-reproducible runs (`--deterministic`) | [Reproducibility](reproducibility.md) |
 | MLIP backend settings / HPC examples | [MLIP Calculator](uma-pysis.md) · [HPC Examples](hpc-example.md) |
-| Cluster boundary atoms (link H, `--freeze-atoms`) | [Frozen Atoms](freeze-atoms.md) |
+| Cluster boundary atoms (cap H, `--freeze-atoms`) | [Frozen Atoms](freeze-atoms.md) |
 
 ## Subcommands
 

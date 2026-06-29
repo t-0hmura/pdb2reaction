@@ -36,7 +36,7 @@ Options:
                                   omitted (requires PDB input or --ref-pdb).
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1).
   --freeze-links / --no-freeze-links
-                                  Freeze parent atoms of link hydrogens (PDB
+                                  Freeze parent atoms of cap hydrogens (PDB
                                   input or XYZ/GJF with --ref-pdb).  [default:
                                   freeze-links]
   --freeze-atoms TEXT             Comma-separated 1-based atom indices to freeze

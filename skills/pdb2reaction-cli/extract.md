@@ -3,7 +3,7 @@
 ## Purpose
 
 Cuts an active-site cluster from a PDB around a substrate selection.
-Severed covalent bonds are capped with hydrogens (link-H), residue
+Severed covalent bonds are capped with hydrogens (cap-H), residue
 charges are summed (`-l 'RES:Q'` for non-standard residues), and the
 extracted cluster is written as a PDB ready for any other subcommand.
 
@@ -26,7 +26,7 @@ pdb2reaction extract -i complex.pdb -c <substrate-spec> [-l 'RES:Q,...'] \
 | `-o, --output` | path | `model.pdb` (single input); `model_<filename>.pdb` (multi) | Output PDB path; multi inputs emit one per file |
 | `--include-h2o / --no-include-h2o` | flag | `--include-h2o` | Include water residues found within radius |
 | `--exclude-backbone / --no-exclude-backbone` | flag | `--no-exclude-backbone` | Trim backbone atoms outside the active site |
-| `--add-linkh / --no-add-linkh` | flag | `--add-linkh` | Cap severed bonds with link hydrogens |
+| `--add-linkh / --no-add-linkh` | flag | `--add-linkh` | Cap severed bonds with cap hydrogens |
 | `--selected-resn` | str | none | Force-include extra residue IDs (`'A:123,B:456'`); IDs only — passing residue names raises `ValueError` |
 | `--modified-residue` | str | none | Comma-separated residue names (with optional charge) to **treat as amino acids** for backbone truncation and charge assignment. Examples: `'HD1,HD2,HD3'` (charge defaults to 0) or `'HD1:0,SEP:-2'`. |
 | `--out-json / --no-out-json` | flag | off | Write a JSON summary alongside the PDB |
@@ -62,8 +62,8 @@ pdb2reaction extract -i complex.pdb -c substrate.pdb -r 3.5 -o cluster.pdb
 ## Output
 
 ```
-cluster.pdb                  # extracted cluster, link-H caps applied
-result.json (if --out-json)  # extraction stats: charges, atom counts, link-H count, file list
+cluster.pdb                  # extracted cluster, cap-H caps applied
+result.json (if --out-json)  # extraction stats: charges, atom counts, cap-H count, file list
 ```
 
 ```python
@@ -76,7 +76,7 @@ print(d["files"])              # {basename: full_path} for each written PDB
 print(d["protein_charge"], d["ligand_total_charge"], d["ion_total_charge"])
 ```
 
-Frozen-atom indices (link-H parents) are surfaced by the *downstream*
+Frozen-atom indices (cap-H parents) are surfaced by the *downstream*
 subcommands via `freeze_atoms` in their summary.json — `extract` itself
 just writes the cluster PDB.
 

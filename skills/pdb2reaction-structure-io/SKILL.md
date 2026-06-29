@@ -21,7 +21,7 @@ element symbols. Per-format details are in:
 
 | File | Topic |
 |---|---|
-| `pdb.md` | PDB column-by-column layout, residue selectors, link-H placement |
+| `pdb.md` | PDB column-by-column layout, residue selectors, cap-H placement |
 | `xyz.md` | XYZ format, ASE extension comment line |
 | `gjf.md` | Gaussian gjf header (`%link0 → route → charge multiplicity → coords`) |
 | `charge-multiplicity.md` | Deciding `-q` and `-m` for an unfamiliar substrate (literature lookup workflow) |
@@ -123,7 +123,7 @@ follow `charge-multiplicity.md`.
 
 ## See also
 
-- [`pdb2reaction-cli/extract.md`](../pdb2reaction-cli/extract.md) — residue selectors and link-H caps.
+- [`pdb2reaction-cli/extract.md`](../pdb2reaction-cli/extract.md) — residue selectors and cap-H caps.
 - `pdb2reaction-cli/SKILL.md` — common flag conventions across
   subcommands.
 - `pdb2reaction-workflows-output/SKILL.md` — what comes out of the

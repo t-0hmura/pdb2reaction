@@ -284,7 +284,7 @@ cat result_opt/result.json | python -m json.tool
 | `ion_total_charge` | float | イオン電荷合計 |
 | `ion_charges` | list | `[[名前, 電荷], ...]` |
 | `unknown_residue_charges` | object | `{残基名: 電荷}` |
-| `n_link_hydrogens` | int | 切断された C/N 結合に追加されたリンク水素数 |
+| `n_link_hydrogens` | int | 切断された C/N 結合に追加されたキャップ水素数 |
 | `exclude_backbone` | bool | バックボーンを除外したか |
 | `include_h2o` | bool | 結晶水を含めたか |
 | `ligand_charge_input` | string | ユーザ指定 `--ligand-charge` マッピング |

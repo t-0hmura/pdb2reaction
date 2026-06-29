@@ -73,9 +73,9 @@
 | **PDB** | Protein Data Bank | A file format and database for macromolecular 3D structures. |
 | **XYZ** | — | A simple text format listing atomic symbols and Cartesian coordinates. |
 | **GJF** | Gaussian Job File | An input format for Gaussian; pdb2reaction reads charge/multiplicity and coordinates from these files. |
-| **Active Site Model** | Active Site Model (Binding Pocket) | The extraction region around the substrate(s), defined by `-c/--center` and `-r/--radius`. pdb2reaction uses "active site model" and "cluster model" interchangeably when describing the downstream calculation input; strictly, "active site model" refers to the geometric selection and "cluster model" to the same selection after it has been capped with link hydrogens and prepared for QM/MLIP calculation. |
-| **Cluster Model** | — | The QM/MLIP computational subsystem obtained by taking the extracted active site model and capping severed covalent bonds with link hydrogens. |
-| **Link Hydrogen** | — | A hydrogen atom added to cap severed bonds when extracting an active site model from a larger structure. |
+| **Active Site Model** | Active Site Model (Binding Pocket) | The extraction region around the substrate(s), defined by `-c/--center` and `-r/--radius`. pdb2reaction uses "active site model" and "cluster model" interchangeably when describing the downstream calculation input; strictly, "active site model" refers to the geometric selection and "cluster model" to the same selection after it has been capped with cap hydrogens and prepared for QM/MLIP calculation. |
+| **Cluster Model** | — | The QM/MLIP computational subsystem obtained by taking the extracted active site model and capping severed covalent bonds with cap hydrogens. |
+| **Cap Hydrogen** | — | A hydrogen atom added to cap severed bonds when extracting an active site model from a larger structure. |
 | **Backbone** | — | The main chain of a protein (N–Cα–C–O atoms). Can be excluded during active site model extraction with `--exclude-backbone`. |
 
 ## Thermochemistry

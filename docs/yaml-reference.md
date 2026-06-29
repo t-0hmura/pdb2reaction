@@ -108,7 +108,7 @@ Geometry loading and coordinate handling.
 ```yaml
 geom:
  coord_type: cart # Coordinate type: "cart" (Cartesian) or "dlc" (delocalized internals)
- freeze_atoms: [] # 1-based atom indices to freeze; if `--freeze-links` is on (PDB input, or XYZ/GJF with `--ref-pdb`), the auto-detected link-H parent indices are merged in
+ freeze_atoms: [] # 1-based atom indices to freeze; if `--freeze-links` is on (PDB input, or XYZ/GJF with `--ref-pdb`), the auto-detected cap-H parent indices are merged in
 ```
 
 **Notes:**

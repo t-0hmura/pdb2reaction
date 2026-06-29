@@ -22,7 +22,7 @@ integers. Wrong values silently produce wrong-chemistry trajectories.
 
 **For PDB inputs, prefer `-l`**: give only the non-standard-residue charges
 and let the total be auto-derived (standard AAs from the internal table +
-ions + your ligand charges; waters / link-H are neutral). It matches
+ions + your ligand charges; waters / cap-H are neutral). It matches
 `extract`'s reported total and stays correct when the cluster (radius / rep)
 changes — so you never hand-enter a per-pocket total. Reserve `-q` for
 `.xyz` / `.gjf` inputs (no residues to sum) or to deliberately override.

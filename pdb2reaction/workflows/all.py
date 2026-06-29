@@ -2041,7 +2041,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     type=click.BOOL,
     default=True,
     show_default=True,
-    help="Add link hydrogens for severed bonds (carbon-only) in active site models.",
+    help="Add cap hydrogens for severed bonds (carbon boundaries only) in active site models.",
 )
 @click.option(
     "--selected-resn",
@@ -2122,7 +2122,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     type=click.BOOL,
     default=True,
     show_default=True,
-    help="Freeze parent atoms of link hydrogens (PDB input or XYZ/GJF with --ref-pdb).",
+    help="Freeze parent atoms of cap hydrogens (PDB input or XYZ/GJF with --ref-pdb).",
 )
 @click.option(
     "--mep-mode",

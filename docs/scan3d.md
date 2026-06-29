@@ -109,7 +109,7 @@ Grid-point geometries use `Å×100` tags, so `point_i130_j310_k200.xyz` correspo
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 | **Active-region freezing** | | |
-| `--freeze-links/--no-freeze-links` | When the input is PDB, freeze parents of link hydrogens. | `True` |
+| `--freeze-links/--no-freeze-links` | When the input is PDB, freeze parents of cap hydrogens. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
 | **Scan targets** | | |
 | `-s, --scan-lists TEXT` | Scan targets: a YAML/JSON spec file path (recommended) or **single** inline Python literal with three quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required unless `--csv` is provided |
@@ -146,7 +146,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 ```yaml
 geom:
  coord_type: cart # coordinate type: cartesian vs dlc internals
- freeze_atoms: [] # 1-based frozen atoms merged with CLI/link detection
+ freeze_atoms: [] # 1-based frozen atoms merged with CLI/cap detection
 calc:
  charge: 0 # total charge (CLI/template override)
  spin: 1 # spin multiplicity 2S+1
@@ -179,7 +179,7 @@ bias:
   `(i,j,k)=(0,0,0)` grid point when present.
 - 3D visualization uses RBF interpolation on a 50×50×50 grid with
   semi-transparent step-colored isosurfaces (no cross-sectional planes).
-- `--freeze-links` merges user `freeze_atoms` with detected link-H parents for
+- `--freeze-links` merges user `freeze_atoms` with detected cap-H parents for
   PDB inputs, keeping extracted active site models rigid.
 - Add `--print-parsed` when you want to verify parsed pair targets from `--scan-lists/-s`.
 - `--relax-max-cycles` is applied only when explicitly provided and YAML does not set `opt.max_cycles` (default `10000`); a YAML `opt.max_cycles` value takes precedence.

@@ -91,7 +91,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
 | `--relax-max-cycles INT` | Cap on optimizer cycles during preopt, each biased step, and end-of-stage cleanups. Used unless YAML sets `opt.max_cycles`. | `10000` |
 | `--opt-mode TEXT` | `grad` → L-BFGS, `hess` → RFOptimizer. See {ref}`opt-mode-semantics` for how the same token maps to different optimizers under `tsopt`. | `grad` |
-| `--freeze-links/--no-freeze-links` | When the input is PDB, freeze the parents of link hydrogens. | `True` |
+| `--freeze-links/--no-freeze-links` | When the input is PDB, freeze the parents of cap hydrogens. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
 | `--dump/--no-dump` | Forward to the per-step optimizer (`opt_cfg["dump"]`), emitting per-step optimizer trajectory files. `scan_trj.xyz`/`scan.pdb` are always written regardless. | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs (trajectory conversion only writes PDB). | `True` |
@@ -219,7 +219,7 @@ This is equivalent to two manual stages with a geometry reset between them. Mixe
 
 - The scan input is one structure plus `-s/--scan-lists scan.yaml` (recommended) or one or more `--scan-lists/-s` inline literals (each literal = one stage). YAML/JSON file paths avoid shell-quoting pitfalls and version better; inline literals are fine for simple single-stage scans.
 - Provide multiple literals after a single `--scan-lists/-s` flag. Tuples must have positive targets. Atom indices are normalized to 0-based internally for computation. For PDB inputs, `i`/`j` can be integer indices or selector strings (see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`).
-- When `--freeze-links` is active, link-hydrogen parent atoms are automatically frozen (see {ref}`Link hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
+- When `--freeze-links` is active, cap-hydrogen parent atoms are automatically frozen (see {ref}`Cap hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
 
 ## See Also
 

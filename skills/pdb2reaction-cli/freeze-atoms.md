@@ -3,13 +3,13 @@
 Cluster models pulled from a larger protein need a small set of atoms held
 in place at the truncation boundary, otherwise the optimizer pulls the
 dangling fragment into something unphysical. `pdb2reaction` handles this
-with **link hydrogens** + three layers of `freeze_atoms`.
+with **cap hydrogens** + three layers of `freeze_atoms`.
 
-## Background: link hydrogens (`LKH/HL`)
+## Background: cap hydrogens (`LKH/HL`)
 
 When `extract` cuts a C–X covalent bond between an in-cluster carbon (`A`)
 and an out-of-cluster atom (`B`), it places a hydrogen along `A→B` at 1.09 Å
-(carbon-only; non-C boundaries are not capped). The cap is written as a
+(cap hydrogens at carbon boundaries only; non-carbon boundaries are not capped). The cap is written as a
 `HETATM` with residue name `LKH`, atom name `HL`. The cluster-side parent
 atom `A` of each cap is what needs to be frozen.
 
@@ -107,6 +107,6 @@ All subcommands that touch geometry honor all three sources:
 
 ## See also
 
-- `pdb2reaction-cli/extract.md` — link-hydrogen insertion details.
+- `pdb2reaction-cli/extract.md` — cap-hydrogen insertion details.
 - `pdb2reaction-structure-io/pdb.md` — the `LKH/HL` record format.
 - User-facing docs: `docs/freeze-atoms.md` (full guide with cross-refs).

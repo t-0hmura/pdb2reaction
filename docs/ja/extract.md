@@ -1,6 +1,6 @@
 # `extract`
 
-タンパク質–リガンド PDB（単一構造またはアンサンブル）から、後続の MEP/TSOPT/freq/DFT 用の活性部位クラスターモデル（バインディングポケット）を切り出します。基質は `-c/--center` で残基名（`'GPP,SAM'`）、残基 ID（`'A:123A'`）、または PDB パスとして指定します。切断された結合はリンク水素でキャップされます（`--add-linkh` 有効時、デフォルト）。非標準残基の電荷には `--ligand-charge/-l` を使用してください。
+タンパク質–リガンド PDB（単一構造またはアンサンブル）から、後続の MEP/TSOPT/freq/DFT 用の活性部位クラスターモデル（バインディングポケット）を切り出します。基質は `-c/--center` で残基名（`'GPP,SAM'`）、残基 ID（`'A:123A'`）、または PDB パスとして指定します。切断された結合はキャップ水素でキャップされます（`--add-linkh` 有効時、デフォルト）。非標準残基の電荷には `--ligand-charge/-l` を使用してください。
 
 ## 実行例
 
@@ -75,9 +75,9 @@ pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
 - `--exclude-backbone` の場合、**非基質**アミノ酸の主鎖原子を除去（PRO/HYP 保護と PRO 近傍保持は適用）
 - 非アミノ酸残基は主鎖様の原子名（N/CA/HA/H/H1/H2/H3）を持つ原子を失わない
 
-### リンク水素（`--add-linkh`）
+### キャップ水素（`--add-linkh`）
 
-- 切断された結合ベクトルに沿って 1.09 Åで炭素のみのリンク水素を追加（CB–CA、CA–N、CA–C; PRO/HYP は CA–C のみ）
+- 切断された結合ベクトル（CB–CA、CA–N、CA–C; PRO/HYP は CA–C のみ）に沿って 1.09 Å のキャップ水素を炭素境界にのみ付加（非炭素境界はキャップしない）
 - `TER` の後に残基 `LKH`（チェーン `L`）の連続した `HETATM` レコードとして `HL` という名前で挿入されます。シリアル番号は本体ブロックからの連番です
 - マルチ構造モードでは全モデルで同じ結合にキャップを付け、座標はモデルごとに保持されます
 
@@ -98,7 +98,7 @@ pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
 ## 出力
 
 ```text
-<output>.pdb # TERレコード後にオプションのリンク水素を含む活性部位モデル PDB
+<output>.pdb # TERレコード後にオプションのキャップ水素を含む活性部位モデル PDB
  # 単一入力 → デフォルトでmodel.pdb
  # -oなしの複数入力 → 構造ごとにmodel_<original_basename>.pdb
  # 複数入力で1つの-oパス → 単一のマルチMODEL PDB
@@ -119,7 +119,7 @@ pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
 | `--radius-het2het FLOAT` | 独立したヘテロ-ヘテロカットオフ（Å、非 C/H） | `0.0`（0 の場合は内部で 0.001 Å） |
 | `--include-h2o/--no-include-h2o` | HOH/WAT/H2O/DOD/TIP/TIP3/SOL 水を含める | `True` |
 | `--exclude-backbone/--no-exclude-backbone` | 非基質アミノ酸の主鎖原子を除去 | `False` |
-| `--add-linkh/--no-add-linkh` | 切断された結合に 1.09 Åで炭素のみのリンク水素を追加 | `True` |
+| `--add-linkh/--no-add-linkh` | 切断された結合に 1.09 Å のキャップ水素を炭素境界にのみ付加（非炭素境界はキャップしない） | `True` |
 | `--selected-resn TEXT` | **残基 ID**（オプションのチェーン/挿入コード付き、例: `A:123A`）で強制的に含める残基。残基 ID 仕様の詳細は CLI 規約の {ref}`ja-selected-resn-takes-ids` を参照 | `""` |
 | `--modified-residue TEXT` | 修飾アミノ酸残基名をカンマ区切りで指定（任意で各残基に電荷付き）。主鎖切断と電荷計算にアミノ酸として扱う。例: `HD1,HD2,HD3` または `HD1:0,SEP:-2`。残基ごとに `:charge` 接尾辞を省略した場合、その残基の電荷は `0` になります（例: `HD1,HD2:-1` では `HD1` が電荷 0、`HD2` が電荷 −1）。フラグ全体のデフォルトは空文字列（無効） | `""` |
 | `-l, --ligand-charge TEXT` | 総電荷または残基名ごとのマッピング（例: `GPP:-3,SAM:1`） | _None_ |
@@ -139,7 +139,7 @@ pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
 
 ## MCPB 等で生成された非標準残基を含む系
 
-Amber の `MCPB.py`（Metal Center Parameter Builder）等で金属配位残基のパラメータを生成した場合、金属配位アミノ酸に非標準の残基名（`HD1`, `HE1`, `CM1`, `AP1` 等）が割り当てられます。これらは `extract` の内部辞書 `AMINO_ACIDS` に含まれないため、**主鎖原子の切断・リンク水素の付加が正しく行われません**。
+Amber の `MCPB.py`（Metal Center Parameter Builder）等で金属配位残基のパラメータを生成した場合、金属配位アミノ酸に非標準の残基名（`HD1`, `HE1`, `CM1`, `AP1` 等）が割り当てられます。これらは `extract` の内部辞書 `AMINO_ACIDS` に含まれないため、**主鎖原子の切断・キャップ水素の付加が正しく行われません**。
 
 このような系では、`extract` の実行時に以下のような警告が表示されます:
 
@@ -169,8 +169,8 @@ pdb2reaction extract -i complex.pdb -c 'SUB' -o model.pdb \
 手動構築の手順:
 
 1. 活性部位周辺の残基を選定し、切断箇所を決定する
-2. 切断された共有結合の親原子（残る側の原子）に、リンク水素を付加する
-3. リンク水素は残基名 `LKH`（チェーン `L`）、原子名 `HL` で記述する
+2. 切断された共有結合の親原子（残る側の原子）に、キャップ水素を付加する
+3. キャップ水素は残基名 `LKH`（チェーン `L`）、原子名 `HL` で記述する
 4. 結合方向に沿って **1.09 Å** の位置に配置する
 ```
 
@@ -255,15 +255,15 @@ HOH, WAT, H2O, DOD, TIP, TIP3, SOL
 ---
 
 (ja-link-hydrogen-and-frozen-atoms)=
-## リンク水素と凍結原子
+## キャップ水素と凍結原子
 
-pdb2reaction が活性部位モデルを抽出する際、切断された結合は**リンク水素**でキャップされます。デフォルト（`--freeze-links`）では、リンク水素の親原子が最適化や経路探索中に凍結され、境界での非物理的な再配置を防ぎます。
+pdb2reaction が活性部位モデルを抽出する際、切断された結合は**キャップ水素**でキャップされます。デフォルト（`--freeze-links`）では、キャップ水素の親原子が最適化や経路探索中に凍結され、境界での非物理的な再配置を防ぎます。
 
 - **力**: 凍結原子の力はゼロ化されます。
 - **ヘシアン**: 凍結自由度は除去（`return_partial_hessian: true`）またはフル行列でゼロ化されます。
 - **振動解析**: 凍結原子がある場合、`freq` は自動的に部分ヘシアン振動解析（PHVA: Partial Hessian Vibrational Analysis）を行い、活性ブロックのみを対角化します。
 
-凍結原子は `geom.freeze_atoms` YAML キー（1 始まりインデックス）で手動設定も可能です。CLI で検出されたリンク原子は YAML 指定の原子とマージされます。
+凍結原子は `geom.freeze_atoms` YAML キー（1 始まりインデックス）で手動設定も可能です。CLI で検出されたキャップ原子は YAML 指定の原子とマージされます。
 
 ## 関連項目
 
@@ -274,4 +274,4 @@ pdb2reaction が活性部位モデルを抽出する際、切断された結合�
 - [scan](scan.md) — 抽出された活性部位モデルでの段階的スキャン
 - [add-elem-info](add-elem-info.md) — 抽出前に欠落した PDB 元素カラムを修正
 - [トラブルシューティング](troubleshooting.md) — よくある抽出エラー
-- [用語集](glossary.md) — 活性部位モデル、クラスターモデル、リンク水素の定義
+- [用語集](glossary.md) — 活性部位モデル、クラスターモデル、キャップ水素の定義

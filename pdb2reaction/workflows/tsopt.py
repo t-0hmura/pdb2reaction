@@ -1398,7 +1398,7 @@ def _build_rsirfo_kwargs(
     "freeze_links",
     default=True,
     show_default=True,
-    help="Freeze parent atoms of link hydrogens (PDB input or XYZ/GJF with --ref-pdb).",
+    help="Freeze parent atoms of cap hydrogens (PDB input or XYZ/GJF with --ref-pdb).",
 )
 @click.option(
     "--freeze-atoms",
