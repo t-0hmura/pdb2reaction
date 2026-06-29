@@ -197,6 +197,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   (sdist only, fails under PEP517 build isolation): install from PyG's
   prebuilt-wheel index, e.g.
   `pip install "pdb2reaction[orb]" -f https://data.pyg.org/whl/torch-2.8.0+cu129.html`.
+- Switched the README overview image to an absolute URL so it renders on PyPI.
 - Cleanup pass on in-source comments and docs: removed personal-name
   attribution, internal-channel references, private memo filenames, and
   internal review-process markers (phase IDs, dated user-correspondence

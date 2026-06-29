@@ -2,7 +2,7 @@
 
 ## Overview
 
-<img src="./docs/overview.png" alt="pdb2reaction workflow overview" width="90%">
+<img src="https://raw.githubusercontent.com/t-0hmura/pdb2reaction/main/docs/overview.png" alt="pdb2reaction workflow overview" width="90%">
 
 `pdb2reaction` is a Python CLI for elucidating **enzymatic reaction pathways** from **PDB structures** using machine-learning interatomic potentials (MLIPs). Given (i) two or more PDB files (R → ... → P), (ii) one PDB with `--scan-lists`, or (iii) one TS candidate with `--tsopt`, it extracts an **active-site cluster model**, runs an **MEP search**, and optionally chains **TS optimization → IRC → thermochemical correction → DFT single-point**. Each stage is also exposed as an [individual subcommand](#cli-subcommands).
 
