@@ -383,3 +383,8 @@ if [ "${n_models:-0}" -ne 2 ]; then
   echo "[extract-multi] test73: space-separated '-i a b' yielded ${n_models:-0} MODEL records (expected 2); the 2nd input was dropped" >> test73_multi_extract.out
   exit 1
 fi
+
+# test74: --backend-model routing — the override must reach the resolved config.
+# dry-run + show-config (no model download, fast): proves --backend-model is honored.
+pdb2reaction opt -i r.pdb -q -1 --backend-model uma-s-1p2 --show-config --dry-run --out-dir test74_backend_model > test74_backend_model.out 2>&1
+grep -q 'uma-s-1p2' test74_backend_model.out || { echo "[smoke] FAIL test74: --backend-model uma-s-1p2 not reflected in resolved config" >> test74_backend_model.out; exit 1; }

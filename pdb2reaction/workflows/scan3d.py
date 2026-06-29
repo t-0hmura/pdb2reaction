@@ -301,8 +301,10 @@ def cli(
         if cli_param_overridden(ctx, "solvent_model"):
             calc_cfg["solvent_model"] = solvent_model
         if precision is not None:
-            from pdb2reaction.backends import apply_precision_to_calc_cfg, apply_backend_model_to_calc_cfg
+            from pdb2reaction.backends import apply_precision_to_calc_cfg
             apply_precision_to_calc_cfg(calc_cfg, precision)
+        if backend_model is not None:
+            from pdb2reaction.backends import apply_backend_model_to_calc_cfg
             apply_backend_model_to_calc_cfg(calc_cfg, backend_model)
         if cli_param_overridden(ctx, "print_every") and print_every is not None:
             opt_cfg["print_every"] = int(print_every)
