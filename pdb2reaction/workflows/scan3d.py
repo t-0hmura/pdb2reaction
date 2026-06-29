@@ -83,6 +83,7 @@ from pdb2reaction.cli.common_options import (
     add_coord_type_option,
     add_print_every_option,
     add_precision_option, add_backend_model_option,
+    add_calc_file_option,
     add_deterministic_option, add_allow_charge_mult_mismatch_option,
 )
 
@@ -176,6 +177,7 @@ def _extract_axis_label(df: pd.DataFrame, column: str, fallback: Optional[str]) 
 @add_print_every_option()
 @add_precision_option()
 @add_backend_model_option()
+@add_calc_file_option()
 @add_deterministic_option()
 @add_allow_charge_mult_mismatch_option()
 @click.pass_context
@@ -216,6 +218,8 @@ def cli(
     print_every: Optional[int],
     precision: Optional[str],
     backend_model: Optional[str],
+    calc_file: Optional[str],
+    calc_factory: str,
 ) -> None:
     set_convert_file_enabled(convert_files)
     config_yaml, override_yaml, _ = resolve_yaml_sources(
@@ -306,6 +310,8 @@ def cli(
         if backend_model is not None:
             from pdb2reaction.backends import apply_backend_model_to_calc_cfg
             apply_backend_model_to_calc_cfg(calc_cfg, backend_model)
+        from pdb2reaction.backends import apply_calc_file_to_calc_cfg
+        apply_calc_file_to_calc_cfg(calc_cfg, calc_file, calc_factory)
         if cli_param_overridden(ctx, "print_every") and print_every is not None:
             opt_cfg["print_every"] = int(print_every)
         if cli_param_overridden(ctx, "cli_coord_type") and cli_coord_type is not None:

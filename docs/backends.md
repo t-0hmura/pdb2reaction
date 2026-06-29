@@ -78,6 +78,50 @@ calc:
 
 Requires `fairchem-core ≥ 2.0` for the `InferenceSettings` API.
 
+## Custom backend — bring your own ASE Calculator (`--calc-file`)
+
+Beyond the built-in MLIP backends, any [ASE](https://wiki.fysik.dtu.dk/ase/)
+Calculator can be supplied at run time with `--calc-file`, without modifying
+pdb2reaction. This couples the pipeline to GFN-xTB (via `tblite` / `xtb-python`),
+DFTB+, ORCA, Psi4, or any ASE-compatible engine — the boundary is the standard
+ASE Calculator interface (energy in eV, forces in eV/Å).
+
+Write a Python file exposing a `get_calculator` factory that returns an ASE
+Calculator:
+
+```python
+# my_calc.py  (minimal illustrative example)
+from ase.calculators.emt import EMT
+
+def get_calculator(charge=0, spin=1, device="auto", **kwargs):
+    return EMT()
+```
+
+Swap `EMT()` for the engine you want — e.g. `tblite.ase.TBLite(...)` for
+GFN-xTB, the DFTB+ ASE calculator, or `ase.calculators.orca.ORCA(...)`. Then
+pass the file to any single-stage subcommand (it selects the `custom` backend,
+overriding `--backend`):
+
+    pdb2reaction sp     -i model.xyz --calc-file my_calc.py -q 0 -m 1
+    pdb2reaction opt    -i model.xyz --calc-file my_calc.py
+    pdb2reaction tsopt  -i ts.xyz    --calc-file my_calc.py
+    pdb2reaction freq   -i ts.xyz    --calc-file my_calc.py
+
+Notes:
+
+- The factory receives `charge`, `spin` (multiplicity; also offered as `mult` /
+  `multiplicity`), and `device` when its signature accepts them, or
+  unconditionally if it declares `**kwargs`, so engines that need the total
+  charge (e.g. xTB) can be configured. Use a different factory name with
+  `--calc-factory NAME`; a module-level Calculator instance is also accepted.
+- Hessians use the finite-difference path inherited from `MLIPCalculator`, so
+  `freq` and `tsopt --opt-mode hess` work with any engine. Frozen atoms
+  (`--freeze-links` / `--freeze-atoms`) are honored as usual.
+- Available on the standalone subcommands (`sp`, `opt`, `tsopt`, `freq`, `irc`,
+  `scan` / `scan2d` / `scan3d`, `path-opt`, `path-search`). For a permanent,
+  installable backend with its own `--backend` name instead, see the recipe
+  below.
+
 ## Add-a-backend recipe (5 steps)
 
 To add a new backend `XYZModel` exposed as `--backend xyz`:

@@ -39,6 +39,13 @@ BACKEND_REGISTRY: Dict[str, Dict[str, str]] = {
         "pysis_cls": "AIMNet2Calculator",
         "ase_cls": "AIMNet2ASECalculator",
     },
+    # User-supplied ASE Calculator loaded from a Python file (``--calc-file``).
+    # Not auto-resolvable (needs a file); selected by passing ``--calc-file``.
+    "custom": {
+        "module": "pdb2reaction.backends.custom",
+        "pysis_cls": "CustomCalculator",
+        "ase_cls": "make_custom_ase_calculator",
+    },
 }
 
 # Keys accepted by each backend (used to filter calc_cfg kwargs)
@@ -68,6 +75,12 @@ _BACKEND_ACCEPTED_KEYS: Dict[str, set] = {
         "print_timing",
         "model",
     },
+    "custom": {
+        "charge", "spin", "device", "freeze_atoms", "hessian_calc_mode",
+        "return_partial_hessian", "hessian_double", "out_hess_torch",
+        "print_timing",
+        "calc_file", "calc_factory",
+    },
 }
 
 # Keys accepted by ASE calculator factories
@@ -76,6 +89,7 @@ _ASE_ACCEPTED_KEYS: Dict[str, set] = {
     "orb": {"model", "device", "precision", "compile_model"},
     "mace": {"model", "device", "default_dtype"},
     "aimnet2": {"model", "device"},
+    "custom": {"calc_file", "calc_factory", "charge", "spin", "device"},
 }
 
 VALID_BACKENDS = tuple(BACKEND_REGISTRY.keys())
@@ -165,6 +179,37 @@ def apply_backend_model_to_calc_cfg(calc_cfg: Dict[str, Any], backend_model: Opt
     if val is None or str(val).strip() == "":
         return  # keep the backend default model
     calc_cfg["model"] = str(val).strip()
+
+
+def apply_calc_file_to_calc_cfg(
+    calc_cfg: Dict[str, Any],
+    calc_file: Optional[str] = None,
+    calc_factory: Optional[str] = None,
+) -> None:
+    """Route the ``--calc-file`` CLI value into the ``custom`` backend.
+
+    When a calc-file is given, switch the backend to ``custom`` (loading an
+    arbitrary ASE Calculator from the user Python file) and store the file path
+    and factory name. Mutates ``calc_cfg`` in place; a no-op when no calc-file
+    is set, so the normal ``--backend`` selection is untouched.
+
+    Also consumes (pops) any raw ``calc_file`` / ``calc_factory`` already in
+    ``calc_cfg`` (e.g. propagated through a ``--config`` YAML); an explicit CLI
+    argument takes precedence over the YAML token.
+    """
+    raw_file = calc_cfg.pop("calc_file", None)
+    raw_factory = calc_cfg.pop("calc_factory", None)
+    chosen = calc_file if calc_file is not None else raw_file
+    if chosen is None or str(chosen).strip() == "":
+        return  # no calc-file: keep the --backend selection
+    calc_cfg["backend"] = "custom"
+    calc_cfg["calc_file"] = str(chosen)
+    factory = calc_factory if calc_factory is not None else raw_factory
+    if factory is not None and str(factory).strip() != "":
+        calc_cfg["calc_factory"] = str(factory).strip()
+    # A user ASE Calculator has no MLIP model variant: drop the inherited UMA
+    # default so run headers don't mislabel it as 'uma-s-1p1'.
+    calc_cfg.pop("model", None)
 
 
 def _import_cls(backend: str, cls_key: str):
@@ -296,4 +341,7 @@ __all__ = [
     "create_ase_calculator",
     "create_calculator",
     "resolve_backend",
+    "apply_precision_to_calc_cfg",
+    "apply_backend_model_to_calc_cfg",
+    "apply_calc_file_to_calc_cfg",
 ]

@@ -169,6 +169,46 @@ def add_backend_model_option() -> Callable[[Callable], Callable]:
     return decorator
 
 
+def add_calc_file_option() -> Callable[[Callable], Callable]:
+    """Attach ``--calc-file PATH`` (+ ``--calc-factory NAME``) to a Click command.
+
+    When set, pdb2reaction loads an arbitrary ASE Calculator from the user
+    Python file and uses it as the energy/gradient backend (overriding
+    ``--backend``). The CLI body routes the value via
+    ``pdb2reaction.backends.apply_calc_file_to_calc_cfg``, which switches the
+    backend to ``custom``. The file must expose a factory
+    ``get_calculator(charge, spin, device, **kwargs) -> ase Calculator``
+    (rename via ``--calc-factory``). Lets users couple GFN-xTB (tblite),
+    DFTB+, ORCA, or any ASE-compatible engine without modifying pdb2reaction.
+    Same wire targets as ``add_precision_option``.
+    """
+    def decorator(func: Callable) -> Callable:
+        func = click.option(
+            "--calc-factory",
+            "calc_factory",
+            type=str,
+            default="get_calculator",
+            show_default=True,
+            help=(
+                "Name of the callable in --calc-file that returns an ASE "
+                "Calculator (or a module-level Calculator instance)."
+            ),
+        )(func)
+        func = click.option(
+            "--calc-file",
+            "calc_file",
+            type=click.Path(exists=True, dir_okay=False),
+            default=None,
+            help=(
+                "Python file exposing get_calculator(...) -> an ASE Calculator, "
+                "used as the energy/gradient backend (overrides --backend). "
+                "Couples GFN-xTB / DFTB+ / any ASE engine. See --calc-factory."
+            ),
+        )(func)
+        return func
+    return decorator
+
+
 def _deterministic_callback(ctx, param, value):
     """Eager callback: activate strict-deterministic mode when --deterministic
     is set. Process-global, so it covers every backend used in the run and

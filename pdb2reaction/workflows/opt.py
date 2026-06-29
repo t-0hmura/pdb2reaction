@@ -68,6 +68,7 @@ from pdb2reaction.cli.common_options import (
     add_coord_type_option,
     add_print_every_option,
     add_precision_option, add_backend_model_option,
+    add_calc_file_option,
     add_deterministic_option, add_allow_charge_mult_mismatch_option,
 )
 from pdb2reaction.cli.decorators import run_cli, resolve_yaml_sources, load_merged_yaml_cfg
@@ -398,6 +399,7 @@ def _flatten_all_imag_modes_for_geom(
 @add_print_every_option()
 @add_precision_option()
 @add_backend_model_option()
+@add_calc_file_option()
 @add_deterministic_option()
 @add_allow_charge_mult_mismatch_option()
 @click.pass_context
@@ -433,6 +435,8 @@ def cli(
     print_every: Optional[int],
     precision: Optional[str],
     backend_model: Optional[str],
+    calc_file: Optional[str],
+    calc_factory: str,
 ) -> None:
     time_start = time.perf_counter()
 
@@ -505,6 +509,8 @@ def cli(
             if backend_model is not None:
                 from pdb2reaction.backends import apply_backend_model_to_calc_cfg
                 apply_backend_model_to_calc_cfg(calc_cfg, backend_model)
+            from pdb2reaction.backends import apply_calc_file_to_calc_cfg
+            apply_calc_file_to_calc_cfg(calc_cfg, calc_file, calc_factory)
             apply_backend_defaults(calc_cfg)
             if cli_param_overridden(ctx, "max_cycles"):
                 opt_cfg["max_cycles"] = int(max_cycles)

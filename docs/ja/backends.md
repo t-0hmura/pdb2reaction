@@ -76,6 +76,48 @@ calc:
 
 `InferenceSettings` API のため `fairchem-core ≥ 2.0` が必要です。
 
+## カスタムバックエンド — 任意の ASE Calculator を使う（`--calc-file`）
+
+組み込みの MLIP バックエンドに加えて、`--calc-file` で任意の
+[ASE](https://wiki.fysik.dtu.dk/ase/) Calculator を実行時に指定できます
+（pdb2reaction 本体の変更は不要）。これにより GFN-xTB（`tblite` / `xtb-python`
+経由）、DFTB+、ORCA、Psi4 など ASE 互換の任意エンジンと結合できます。境界は標準の
+ASE Calculator インターフェース（エネルギー eV、力 eV/Å）です。
+
+ASE Calculator を返す `get_calculator` ファクトリを持つ Python ファイルを用意します:
+
+```python
+# my_calc.py（最小の例）
+from ase.calculators.emt import EMT
+
+def get_calculator(charge=0, spin=1, device="auto", **kwargs):
+    return EMT()
+```
+
+`EMT()` を使いたいエンジンに差し替えてください — 例えば GFN-xTB なら
+`tblite.ase.TBLite(...)`、DFTB+ の ASE calculator、`ase.calculators.orca.ORCA(...)`
+など。このファイルを単一ステージのサブコマンドに渡すと、`custom` バックエンドが
+選択され `--backend` を上書きします:
+
+    pdb2reaction sp     -i model.xyz --calc-file my_calc.py -q 0 -m 1
+    pdb2reaction opt    -i model.xyz --calc-file my_calc.py
+    pdb2reaction tsopt  -i ts.xyz    --calc-file my_calc.py
+    pdb2reaction freq   -i ts.xyz    --calc-file my_calc.py
+
+補足:
+
+- ファクトリには、シグネチャが受け取る場合（または `**kwargs` を宣言している場合）に
+  `charge`・`spin`（多重度。`mult` / `multiplicity` でも渡されます）・`device` が
+  渡されるため、全電荷が必要なエンジン（xTB など）も設定できます。ファクトリ名を
+  変える場合は `--calc-factory NAME`、モジュール直下の Calculator インスタンスも
+  受け付けます。
+- Hessian は `MLIPCalculator` から継承する有限差分経路を使うため、`freq` や
+  `tsopt --opt-mode hess` も任意エンジンで動作します。凍結原子（`--freeze-links` /
+  `--freeze-atoms`）も通常どおり尊重されます。
+- 単一ステージのサブコマンド（`sp`・`opt`・`tsopt`・`freq`・`irc`・`scan` /
+  `scan2d` / `scan3d`・`path-opt`・`path-search`）で利用できます。独自の
+  `--backend` 名を持つ恒久的なバックエンドにする場合は、以下のレシピを参照してください。
+
 ## バックエンド追加レシピ（5 ステップ）
 
 `--backend xyz` として公開する新しいバックエンド `XYZModel` を追加するには:

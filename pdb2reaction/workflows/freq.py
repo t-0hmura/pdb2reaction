@@ -51,7 +51,7 @@ from pdb2reaction.core.utils import (
     merge_freeze_atom_indices,
     echo_resolved_device,
 )
-from pdb2reaction.cli.common_options import add_ml_charge_spin_options, add_precision_option, add_backend_model_option, add_deterministic_option, add_allow_charge_mult_mismatch_option, add_coord_type_option
+from pdb2reaction.cli.common_options import add_ml_charge_spin_options, add_precision_option, add_backend_model_option, add_calc_file_option, add_deterministic_option, add_allow_charge_mult_mismatch_option, add_coord_type_option
 from pdb2reaction.cli.decorators import resolve_yaml_sources, load_merged_yaml_cfg, render_cli_exception
 
 logger = logging.getLogger(__name__)
@@ -610,6 +610,7 @@ CALC_KW = FREQ_CALC_KW
 @add_ml_charge_spin_options()
 @add_precision_option()
 @add_backend_model_option()
+@add_calc_file_option()
 @add_deterministic_option()
 @add_allow_charge_mult_mismatch_option()
 @add_coord_type_option()
@@ -647,6 +648,8 @@ def cli(
     solvent_model: str,
     precision: Optional[str],
     backend_model: Optional[str],
+    calc_file: Optional[str],
+    calc_factory: str,
     cli_coord_type: Optional[str],
 ) -> None:
     config_yaml, override_yaml, _ = resolve_yaml_sources(
@@ -709,6 +712,8 @@ def cli(
     if backend_model is not None:
         from pdb2reaction.backends import apply_backend_model_to_calc_cfg
         apply_backend_model_to_calc_cfg(calc_cfg, backend_model)
+    from pdb2reaction.backends import apply_calc_file_to_calc_cfg
+    apply_calc_file_to_calc_cfg(calc_cfg, calc_file, calc_factory)
     apply_backend_defaults(calc_cfg)
     if cli_param_overridden(ctx, "hessian_calc_mode") and hessian_calc_mode is not None:
         calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
