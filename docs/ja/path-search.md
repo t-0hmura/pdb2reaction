@@ -4,7 +4,7 @@ R → … → P の **2 構造以上**から、連続的な最小エネルギー
 
 経路は 2 つのエンジンのいずれかで生成します。GSM（デフォルト、`--mep-mode gsm`、string ベース）か、DMF（`--mep-mode dmf`、direct flux）です。共有結合変化が検出される領域のみを選択的に精密化します（`--refine-mode peak` は HEI±1 を最適化、`--refine-mode minima` は最寄り局所極小点へ外側探索、デフォルトは GSM で `peak`、DMF で `minima`）。解決済みのサブパスを連結して 1 本の軌跡にまとめ、各セグメントの最高エネルギー画像（HEI）を TS 候補として出力します（tsopt + IRC で検証）。
 
-再帰的分解により多段階反応を自動検出し、各素反応ステップの詳細な MEP を構築します。複雑な多段階反応の機構を満足な経路として得るには、入力中間体やスキャン仕様、収束閾値の調整など手動での試行錯誤が必要になることがあります。
+再帰的分解により多段階反応を自動検出し、各素反応ステップの詳細な MEP を構築します。複雑な多段階反応について妥当な MEP を得るには、入力中間体やスキャン仕様、収束閾値の調整など手動での試行錯誤が必要になることがあります。
 
 ## 実行例
 
@@ -47,10 +47,10 @@ pdb2reaction path-search -i R.pdb -i IM1.pdb -i P.pdb -q 0 -m 1 \
  --ref-full-pdb holo_template.pdb --out-dir ./result_path_search_merge
 ```
 
-DMF + minima リファインで探索する:
+DMF + minima 精密化で探索する:
 
 ```bash
-# DMF + minima リファインで探索する
+# DMF + minima 精密化で探索する
 pdb2reaction path-search -i reactant.pdb -i product.pdb -q 0 -m 1 \
  --mep-mode dmf --refine-mode minima --out-dir ./result_path_search_dmf
 ```
@@ -58,7 +58,7 @@ pdb2reaction path-search -i reactant.pdb -i product.pdb -q 0 -m 1 \
 ## 処理の流れ
 
 1. **ペアごとの初期セグメント（GSM/DMF）** – 各隣接入力（A→B）間で `GrowingString` または DMF を実行し、粗い MEP と最高エネルギー画像（HEI）を取得。
-2. **HEI 周辺の局所緩和** – `refine-mode=peak` なら HEI±1、`refine-mode=minima` なら HEI 近傍の局所極小点を、選択した単一構造オプティマイザー（`opt-mode`）で精密化し `End1`/`End2` を得る。
+2. **HEI 周辺の局所緩和** – `refine-mode=peak` なら HEI±1、`refine-mode=minima` なら HEI 近傍の局所極小点を、選択した単一構造オプティマイザ（`opt-mode`）で精密化し `End1`/`End2` を得る。
    > **デフォルト:** `--refine-mode` 省略時は GSM では `peak`、DMF では `minima` が選択されます。
 3. **ねじれ vs. 精密化の決定** – `End1` と `End2` 間に共有結合変化がなければ *ねじれ*（kink: 共有結合変化を伴わない構造変化区間。[用語集](glossary.md) 参照）とみなし、`search.kink_max_nodes` の線形ノードを挿入して個別最適化。結合変化がある場合は *反応セグメント*（端点間に共有結合変化が検出される区間。[用語集](glossary.md) 参照）として扱い、`End1` と `End2` 間に **精密化セグメント (GSM/DMF)** を起動して障壁を先鋭化。
 4. **選択的再帰** – `(A→End1)` と `(End2→B)` の結合変化を `bond` しきい値で比較し、共有結合更新が残るサブ区間のみ再帰的に探索。再帰深度は `search.max_depth` で制限。
@@ -86,7 +86,7 @@ out_dir/ (デフォルト:./result_path_search/)
 ├─ summary.json # すべての再帰セグメントの障壁と分類サマリー
 ├─ summary.log # 結果要約
 ├─ mep_plot.png # `trj2fig` で生成した ΔE プロファイル（kcal/mol、反応物基準）
-├─ energy_diagram_MEP.png # MEP 状態エネルギーダイアグラムの静的エクスポート（反応物基準）
+├─ energy_diagram_MEP.png # MEP 状態エネルギーダイアグラムの静止画出力（反応物基準）
 └─ seg_NNN_*/ # セグメントごとの GSM/DMF ダンプ、HEI スナップショット、kink/精密化の診断情報
 ```
 
@@ -101,7 +101,7 @@ out_dir/ (デフォルト:./result_path_search/)
 
 ## CLI オプション
 
-完全なフラグ一覧は生成された [コマンドリファレンス](../reference/commands/index.md) を参照してください。以下の表は説明が必要なオプションのみを扱い、網羅的な一覧を手で複製しません。
+完全なフラグ一覧は生成された [コマンドリファレンス](../reference/commands/index.md) を参照してください。以下の表は説明が必要なオプションのみを扱います。
 
 表は目的ごとにグループ化しており、各グループ内では使用頻度の高いオプションを先に並べています。
 
@@ -114,7 +114,7 @@ out_dir/ (デフォルト:./result_path_search/)
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | **バックエンドと計算** | | |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
-| `--workers`, `--workers-per-node` | MLIP 予測器の並列度（workers > 1 で解析ヘシアン無効; UMA バックエンドのみ; `workers_per_node` は並列予測器に渡されます）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1`, `1` |
+| `--workers`, `--workers-per-node` | MLIP 予測器の並列度（workers > 1 で解析Hessian無効; UMA バックエンドのみ; `workers_per_node` は並列予測器に渡されます）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1`, `1` |
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 | **活性領域の凍結** | | |
@@ -123,16 +123,16 @@ out_dir/ (デフォルト:./result_path_search/)
 | **MEP 探索** | | |
 | `--mep-mode {gsm\|dmf}` | セグメント生成器: GSM（string）または DMF（direct flux） | `gsm` |
 | `--dmf-backend {cpu\|gpu}` | DMF 計算バックエンド（`--mep-mode dmf` 時のみ）: `gpu`（`dmf.torch`/CUDA）または `cpu`（`dmf`/NumPy）。GPU メモリ不足時は `cpu` で再実行 | `gpu` |
-| `--preopt/--no-preopt` | 選択された単一構造オプティマイザー（L-BFGS/RFO）で MEP 探索前に各エンドポイントを事前最適化。 | `True` |
+| `--preopt/--no-preopt` | 選択された単一構造オプティマイザ（L-BFGS/RFO）で MEP 探索前に各エンドポイントを事前最適化。 | `True` |
 | `--max-nodes INT` | MEP セグメントごとの内部ノード（GSM string image または DMF image） | `20` |
 | `--max-cycles INT` | 最大 MEP 最適化サイクル（GSM/DMF） | `300` |
 | `--climb/--no-climb` | GSM セグメントのクライミングイメージを有効化（ブリッジは無効） | `True` |
 | **精密化** | | |
 | `--refine-mode {peak\|minima}` | 精密化シード: `peak` は HEI±1、`minima` は HEI から最寄り局所極小点へ外側探索。未指定時は GSM で `peak`、DMF で `minima` | _Auto_ |
-| `--opt-mode TEXT` | HEI±1/ねじれノード用の単一構造オプティマイザー（`grad`=L-BFGS、`hess`=RFO）。同じトークンが `tsopt` では Dimer / RS-I-RFO へ対応する点については {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
+| `--opt-mode TEXT` | HEI±1/ねじれノード用の単一構造オプティマイザ（`grad`=L-BFGS、`hess`=RFO）。同じトークンが `tsopt` では Dimer / RS-I-RFO へ対応する点については {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
 | **収束閾値** | | |
 | `--thresh TEXT` | 単一構造最適化のみの収束プリセットを上書き（`opt.lbfgs/rfo.thresh`） | `gau` |
-| `--thresh-stopt TEXT` | ストリングオプティマイザーの収束プリセットを上書き（`stopt.thresh`） | `gau_loose` |
+| `--thresh-stopt TEXT` | ストリングオプティマイザの収束プリセットを上書き（`stopt.thresh`） | `gau_loose` |
 | **マージとアライメント** | | |
 | `--align/--no-align` | 探索前にすべての入力を最初の構造にアライメント | `True` |
 | `--ref-full-pdb PATH...` | フルサイズテンプレート PDB（入力と同数。`--align` があれば先頭のみ再利用可） | _None_ |

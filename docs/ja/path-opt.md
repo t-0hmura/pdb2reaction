@@ -4,7 +4,7 @@
 
 反応物と生成物の **2 端点**（R → P）が揃っており、再帰的な精密化なしで MEP の初期推定だけが必要な場面で使用します。ストリングベースの経路生成には GSM（デフォルト）を、Direct Max Flux 生成器には `--mep-mode dmf` で DMF を選択します。
 
-MLIP バックエンド（デフォルト: UMA、`-b/--backend` で ORB ・ MACE ・ AIMNet2 も選択可能）で各イメージのエネルギー/勾配/ヘシアンを評価します。最適化の前に剛体アライメントを行い、ストリングの安定性を向上させます。`freeze_atoms` を指定した場合、RMSD フィットにはその原子群のみを使用しますが、変換自体は全原子に適用されます。
+MLIP バックエンド（デフォルト: UMA、`-b/--backend` で ORB ・ MACE ・ AIMNet2 も選択可能）で各イメージのエネルギー/勾配/Hessianを評価します。最適化の前に剛体アライメントを行い、ストリングの安定性を向上させます。`freeze_atoms` を指定した場合、RMSD フィットにはその原子群のみを使用しますが、変換自体は全原子に適用されます。
 
 ```{note}
 **DMF モードでの凍結原子**は、GSM で使用される pysisyphus のハード座標凍結ではなく、`HarmonicFixAtoms`（k=300 eV/Å² の調和拘束）を使用します。そのため、DMF での凍結原子は参照位置からわずかに移動する可能性があり、GSM モードの剛体凍結とは挙動が異なります。
@@ -52,7 +52,7 @@ pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
 DMF モードは追加で `cyipopt` が必要です（`--mep-mode dmf` 実行前に conda-forge からインストールしてください）。`pydmf` は `pdb2reaction` の依存として同梱されています。デフォルトの `--dmf-backend gpu` は PyTorch/CUDA の `dmf.torch` バックエンドを使用します。GPU メモリ不足時は `--dmf-backend cpu`（`dmf`/NumPy）を指定してください。
 ```
 
-キャップ親原子を凍結し、climb を切って短時間で確認するには `--freeze-links --no-climb` を追加します。
+キャップ親原子を凍結し、クライミングを無効化して短時間で確認するには `--freeze-links --no-climb` を追加します。
 
 ## 処理の流れ
 
@@ -75,7 +75,7 @@ out_dir/
 ├─ hei.pdb # PDB 参照が利用可能な場合のHEI（変換有効時）
 ├─ hei.gjf # Gaussian テンプレートを使用して書き込まれたHEI（変換有効時）
 ├─ align_refine/ # 剛体アライメント/リファイン段階の中間ファイル（アライメント実行時）
-└─ <オプティマイザーダンプ> # `--dump` 指定時の軌跡ダンプ（リスタート YAML は YAML の `dump_restart` 経由のみ）
+└─ <オプティマイザダンプ> # `--dump` 指定時の軌跡ダンプ（リスタート YAML は YAML の `dump_restart` 経由のみ）
 ```
 
 主要な出力ファイル:
@@ -90,14 +90,14 @@ out_dir/
 
 ## CLI オプション
 
-完全なフラグ一覧は生成された [コマンドリファレンス](../reference/commands/index.md) を参照してください。以下の表は説明が必要なオプションのみを扱い、網羅的な一覧を手で複製しません。
+完全なフラグ一覧は生成された [コマンドリファレンス](../reference/commands/index.md) を参照してください。以下の表は説明が必要なオプションのみを扱い、ここでは重複して記載していません。
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `-i, --input PATH PATH` | 反応物と生成物構造（`.pdb`/`.xyz`）。入力は 2 構造のみ。形式は `geom_loader` に準拠 | 必須 |
 | `-q, --charge INT` | 総電荷（`calc.charge`）。`.gjf` 以外では `--ligand-charge` 導出が成功しない限り必須（PDB 入力または `--ref-pdb` 付き XYZ/GJF）。`.gjf` テンプレートがあればそれを使用し、電荷メタデータが無い `.gjf` 入力は `-q` が無いと中断。両方指定時は `-q` が優先。解決順序は {ref}`CLI 規約: 電荷の指定 <ja-charge-specification>` を参照 | テンプレート/導出がない限り必須 |
 | `-l, --ligand-charge TEXT` | 総電荷または残基別マッピング（`-q` 省略時）。PDB 入力（または `--ref-pdb` 付き XYZ/GJF）で extract と同じ全系電荷導出を起動します | _None_ |
-| `--workers`, `--workers-per-node` | MLIP 予測器の並列度（workers > 1 で解析ヘシアン無効; UMA バックエンドのみ; `workers_per_node` は並列予測器に渡されます）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1`, `1` |
+| `--workers`, `--workers-per-node` | MLIP 予測器の並列度（workers > 1 で解析Hessian無効; UMA バックエンドのみ; `workers_per_node` は並列予測器に渡されます）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度（`calc.spin`） | テンプレート/`1` |
 | `--freeze-links/--no-freeze-links` | PDB 入力（または `--ref-pdb` 付き XYZ/GJF）: キャップ H 親を凍結（YAML とマージ）。詳細は [extract](extract.md) を参照 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
@@ -107,12 +107,12 @@ out_dir/
 | `--max-cycles INT` | MEP 最適化サイクル上限（`stopt.max_cycles`、`stopt.stop_in_when_full`、`dmf.max_cycles` を同時設定） | `300` |
 | `--climb/--no-climb` | クライミングイメージ精密化を有効化（Lanczos 接線も同時切替） | `True` |
 | `--dump/--no-dump` | MEP 軌跡をダンプ（GSM/DMF）。リスタート YAML は YAML で有効化した場合のみ書き出されます | `False` |
-| `--opt-mode TEXT` | エンドポイント事前最適化用の単一構造オプティマイザー（`grad` = L-BFGS、`hess` = RFO） | `grad` |
+| `--opt-mode TEXT` | エンドポイント事前最適化用の単一構造オプティマイザ（`grad` = L-BFGS、`hess` = RFO） | `grad` |
 | `--convert-files/--no-convert-files` | PDB/Gaussian 入力用の XYZ/TRJ → 対応する PDB/GJF 出力の切り替え | `True` |
 | `--ref-pdb FILE` | XYZ/GJF 入力用の参照 PDB トポロジー（XYZ 座標は保持し PDB 変換を有効化） | _None_ |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_path_opt/` |
 | `--thresh TEXT` | エンドポイント事前最適化のみの収束プリセットを上書き（`opt.lbfgs/rfo.thresh`） | `gau` |
-| `--thresh-stopt TEXT` | ストリングオプティマイザー（GSM 成長およびクライミング精密化）の収束プリセットを上書き（`stopt.thresh`; `gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau_loose` |
+| `--thresh-stopt TEXT` | ストリングオプティマイザ（GSM 成長およびクライミング精密化）の収束プリセットを上書き（`stopt.thresh`; `gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau_loose` |
 | `--config FILE` | 明示 CLI 指定より前に適用されるベース YAML | _None_ |
 | `--show-config/--no-show-config` | 解決済み設定（YAML レイヤ情報を含む）を表示して実行継続 | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |

@@ -34,7 +34,7 @@ reported:
 
 ```bash
 module load <CUDA_MODULE>           # exact name from `module avail cuda`
-module load gcc                     # required when system /usr/bin/gcc is too old for the CUDA toolkit, or when pip will build any C/CUDA extension from source (e.g. gpu4pyscf source build, sm_120 / Blackwell, niche wheels)
+module load gcc                     # toolchain for the CUDA build (see note below)
 module load <OPENMPI_MODULE>        # only when running multi-node Ray (`--workers > 1`); single-node runs do not need it
 nvcc --version                      # confirm
 echo "$CUDA_HOME"                   # often set by the module
@@ -42,7 +42,7 @@ echo "$CUDA_HOME"                   # often set by the module
 
 Add `module load <CUDA_MODULE>` (and `gcc`, plus `<OPENMPI_MODULE>` if
 relevant) to **every** PBS / SLURM script that uses the GPU (see
-`pdb2reaction-hpc/SKILL.md`).
+`pdb2reaction-hpc/SKILL.md`). `module load gcc` is required when the system `/usr/bin/gcc` is too old for the CUDA toolkit, or when pip builds any C/CUDA extension from source (e.g. gpu4pyscf source build, sm_120 / Blackwell, niche wheels).
 
 **Setup B — system install** (e.g. `/usr/local/cuda` on a workstation):
 

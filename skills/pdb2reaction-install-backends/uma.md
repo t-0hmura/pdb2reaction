@@ -6,7 +6,7 @@ range of the four backends.
 
 ## Install
 
-UMA pulls in via `fairchem-core`, which is a **core dependency**, so
+UMA ships via `fairchem-core`, a **core dependency**, so
 you don't need an extras flag:
 
 ```bash

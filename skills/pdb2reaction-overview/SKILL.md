@@ -57,7 +57,7 @@ skill (`SKILL.md` plus `core.md`) before doing anything else.
 
 | Stage | Role |
 |---|---|
-| `extract` | active-site cluster + cap-H caps + total charge |
+| `extract` | active-site cluster + cap-H atoms + total charge |
 | `path-opt` / `path-search` | MEP (GSM or DMF): single-pass `path-opt` by default; `--refine-path True` runs recursive `path-search` with bond-change segmentation → `seg_01`, `seg_02`, … (one per elementary step) |
 | `tsopt` | TS refinement per segment (RS-I-RFO default; Dimer alternative) |
 | `irc` | forward / backward EulerPC IRC (caches endpoint Hessians) |
@@ -75,7 +75,7 @@ its own subcommand (`pdb2reaction tsopt -i ts.xyz`).
 |---|---|---|
 | `uma` (default) | UMA-s-1.1, UMA-s-1.2, UMA-m-1.1 (Meta FAIR) | Broadest coverage, default for most workflows |
 | `mace` | MACE-OMOL-0 | Strong on organic + 1st-row metals; needs separate env (e3nn conflict) |
-| `orb` | Orb-v3-omol | Mechanism recovery usually fine; TS spectrum often carries extra small imaginary modes |
+| `orb` | Orb-v3-omol | Mechanism recovery usually fine; TS frequency set sometimes shows extra small imaginary modes |
 | `aimnet2` | AIMNet2 | Element coverage limited; small organics |
 
 Backend-specific install notes live in

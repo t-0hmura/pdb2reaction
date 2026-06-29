@@ -4,7 +4,7 @@
 
 <img src="./overview.png" alt="pdb2reaction workflow overview" width="90%">
 
-`pdb2reaction` is a Python CLI for **elucidating enzymatic reaction pathways from PDB structures** using machine-learning interatomic potentials (MLIPs). The default backend is Meta's UMA; `orb`, `mace`, and `aimnet2` are also supported via `-b/--backend`. Foundation-model MLIPs make cluster-model TS optimization, IRC verification, and QRRHO thermochemistry tractable on a single GPU — lowering the DFT-bound cost barrier that previously throttled mechanistic screening.
+`pdb2reaction` is a Python CLI for **elucidating enzymatic reaction pathways from PDB structures** using machine-learning interatomic potentials (MLIPs). The default backend is Meta's UMA; `orb`, `mace`, and `aimnet2` are also supported via `-b/--backend`. Foundation-model MLIPs make cluster-model TS optimization, IRC verification, and QRRHO thermochemistry tractable on a single GPU — cutting the DFT-bound cost that previously limited mechanistic screening.
 
 A single command generates a reasonable initial reaction path:
 
@@ -13,7 +13,7 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'               
 pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --thermo --dft   # full
 ```
 
-Given (i) ≥ 2 PDBs (R → ... → P), (ii) one PDB with `--scan-lists/-s`, or (iii) one TS candidate with `--tsopt`, `pdb2reaction` extracts an **active-site cluster model**, runs an **MEP search** (GSM / DMF), and optionally chains TS optimization, IRC, thermochemical correction, and single-point DFT. The same pipeline also runs without active-site extraction: pass a small molecule as `.xyz` / `.gjf` (set the net charge with `-q`), or a cluster model you built yourself as a PDB — omit `--center/-c` in either case and the structure is analyzed as given.
+Given (i) ≥ 2 PDBs (R → ... → P), (ii) one PDB with `--scan-lists/-s`, or (iii) one TS candidate with `--tsopt`, `pdb2reaction` extracts an **active-site cluster model**, runs an **MEP search** (GSM / DMF), and optionally chains TS optimization, IRC, thermochemical correction, and single-point DFT. The same pipeline also runs without active-site extraction: pass a small molecule as `.xyz` / `.gjf` (set the net charge with `-q`), or a cluster model you built yourself as a PDB — omit `-c/--center` in either case and the structure is analyzed as given.
 
 Working examples (BezA C6-methyltransferase, both multi-structure MEP and scan modes): [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples). For setup see [Installation](installation.md); for symptom-first diagnosis see [Common Error Recipes](recipes-common-errors.md) and [Troubleshooting](troubleshooting.md).
 

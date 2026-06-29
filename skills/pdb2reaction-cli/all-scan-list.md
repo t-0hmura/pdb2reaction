@@ -45,7 +45,7 @@ tuples, where each tuple is `(atom_a, atom_b, target_distance_Å)`.
 
 The parser (`utils.resolve_atom_spec_index`) auto-detects the role of each token by type (integer = resid, known residue name = resname, otherwise atom name); chain IDs are not part of the spec.
 
-Multiple bonds per stage drive simultaneously. If you want them done
+Multiple bonds in one stage are driven simultaneously. If you want them done
 **sequentially**, split them into separate `--scan-lists` arguments.
 
 Examples:

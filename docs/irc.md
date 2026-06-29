@@ -1,6 +1,6 @@
 # `irc`
 
-Runs EulerPC (Euler Predictor-Corrector)-based intrinsic reaction coordinate (IRC) integration from an optimized transition state (validated by `tsopt`) toward reactants and products, confirming endpoint connectivity (R ↔ TS ↔ P). By default both forward and backward branches are computed; use `--no-backward` (or `--no-forward`) to follow only one direction. Setting `--hessian-calc-mode Analytical` is strongly recommended when VRAM permits. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB output conversion. A typical workflow is `tsopt` → `irc`.
+Runs EulerPC (Euler Predictor-Corrector)-based intrinsic reaction coordinate (IRC) integration from an optimized transition state (validated by `tsopt`) toward reactants and products, confirming endpoint connectivity (R ↔ TS ↔ P). By default both forward and backward branches are computed; use `--no-backward` (or `--no-forward`) to follow only one direction. Setting `--hessian-calc-mode Analytical` is strongly recommended when VRAM permits. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling conversion of the output to PDB format. A typical workflow is `tsopt` → `irc`.
 
 ## Examples
 

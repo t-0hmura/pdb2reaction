@@ -69,7 +69,7 @@ AIMNet2 accepts (from `backends/__init__.py:_BACKEND_ACCEPTED_KEYS['aimnet2']`):
 |---|---|
 | `KeyError` on element during atom-type lookup | Unsupported element; switch to UMA or MACE. |
 | `RuntimeError: charge mismatch` | AIMNet2 charge is per-atom-network output; supply `-q TOTAL` matching the cluster. |
-| Convergence failures on radicals | AIMNet2 is closed-shell trained. Use `-m 1` only. |
+| Convergence failures on radicals | AIMNet2 was trained only on closed-shell systems; use `-m 1` only. |
 
 ## See also
 

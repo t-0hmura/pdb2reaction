@@ -4,9 +4,9 @@
 Usage: pdb2reaction all [OPTIONS]
 
   Run active site model extraction → (optional single-structure staged scan) →
-  MEP search → merge to full PDBs in one shot. If exactly one input is provided:
-  (a) with --scan-lists, run staged scan on the active site model (or full
-  structure when extraction is skipped) and use stage results as inputs for
+  MEP search → merge to full PDBs in a single run. If exactly one input is
+  provided: (a) with --scan-lists, run staged scan on the active site model (or
+  full structure when extraction is skipped) and use stage results as inputs for
   path-opt (path_search with --refine-path True); (b) with --tsopt True and no
   --scan-lists, run TSOPT-only mode.
 
@@ -86,8 +86,8 @@ Options:
                                   Direct Max Flux (dmf).  [default: gsm]
   --dmf-backend [cpu|gpu]         DMF compute backend (--mep-mode dmf only): gpu
                                   (dmf.torch / CUDA) or cpu (dmf / NumPy). On a
-                                  GPU out-of-memory, retry with cpu.  [default:
-                                  gpu]
+                                  GPU out-of-memory error, retry with cpu.
+                                  [default: gpu]
   --max-nodes INTEGER             Max internal nodes for **segment** GSM (String
                                   has max_nodes+2 images including endpoints).
                                   [default: 20]
@@ -214,8 +214,9 @@ Options:
                                   XYZ inputs. Enables PDB output conversion in
                                   TSOPT-only, scan, and path_search pipelines.
   --coord-type [cart|dlc]         Optimization coordinate system (cart|dlc).
-                                  cart is the robust default used in published
-                                  numbers; dlc speeds up torsion-rich opts.
+                                  cart is the reliable default used for the
+                                  published results; dlc speeds up torsion-rich
+                                  optimizations.
   --precision [fp32|fp64]         MLIP backend precision: fp32 (default) or
                                   fp64. Routed to backend-specific kwargs (UMA
                                   precision / ORB precision / MACE

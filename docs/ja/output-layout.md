@@ -6,13 +6,13 @@
 
 | ファイル名 | 書き出し元 | 用途 |
 |---|---|---|
-| `summary.json` | `all`、`path-search`、およびステージ別サブコマンド（**`--out-json` 指定時のみ**。既定は `--no-out-json`） | 正式な JSON エンベロープ（[JSON 出力リファレンス](json-output.md) を参照）。最初にこれを読んでください。純粋なユーティリティ系サブコマンド（例: `fix-altloc`、`add-elem-info`、`bond-summary`）はこれを出力しません。 |
-| `result.json` | ステージ別サブコマンド（**`--out-json` 指定時のみ**。既定 `--no-out-json`）（`opt`、`tsopt`、`freq`、`irc`、`sp`、`scan` / `scan2d` / `scan3d`、`path-opt`、`dft`、`extract`） | 別名ファイル — `summary.json` と内容（ペイロード）が同一です。単一ファイル名の規約に従う場合は `summary.json` を読んでください。`result.json` は同じ内容を持ち、`summary.json` のみを利用するなら削除して構いません。 |
+| `summary.json` | `all`、`path-search`、およびステージ別サブコマンド（**`--out-json` 指定時のみ**。デフォルトは `--no-out-json`） | 標準的な JSON 形式（[JSON 出力リファレンス](json-output.md) を参照）。最初にこれを読んでください。純粋なユーティリティ系サブコマンド（例: `fix-altloc`、`add-elem-info`、`bond-summary`）はこれを出力しません。 |
+| `result.json` | ステージ別サブコマンド（**`--out-json` 指定時のみ**。デフォルト `--no-out-json`）（`opt`、`tsopt`、`freq`、`irc`、`sp`、`scan` / `scan2d` / `scan3d`、`path-opt`、`dft`、`extract`） | 別名ファイル — `summary.json` と内容（ペイロード）が同一です。単一ファイル名の規約に従う場合は `summary.json` を読んでください。`summary.json` のみ利用なら中間ファイルとみなし無視して構いません。 |
 | `summary.log` | `path-search`、`all` | 人間可読な実行ログ（セグメント／ステージごとに 1 行）。 |
 | `final_geometry.xyz` | `opt`、`tsopt` | 最適化された構造（XYZ、完全精度）。 |
 | `mep.pdb` / `mep_trj.xyz` | `path-search` | 反応経路のフレーム（PDB / XYZ）。 |
 | `final_geometries_trj.xyz` / `hei.xyz` | `path-opt` | スタンドアロンの path-opt 軌跡（経路全体）と最高エネルギーイメージ（変換が有効な場合は対応する `.pdb` / `.gjf` も）。 |
-| `mep_plot.png` | `path-search` | MEP のエネルギープロファイル（PNG）。（`all` では代わりにスタイル付きの `energy_diagram_MEP.png` をルートに昇格します。） |
+| `mep_plot.png` | `path-search` | MEP のエネルギープロファイル（PNG）。（`all` では代わりに整形済みの `energy_diagram_MEP.png` をルートに配置します。） |
 | `finished_irc_trj.xyz` / `forward_irc_trj.xyz` / `backward_irc_trj.xyz` | `irc` | IRC 軌跡（経路全体およびブランチ別。参照 PDB が利用可能な場合は対応する `.pdb` も）。 |
 | `frequencies_cm-1.txt` | `freq` | 振動モードの一覧。 |
 | `*.gjf` | 各種（`--convert-files` 指定時） | Gaussian 形式の構造ファイル。 |
@@ -40,13 +40,13 @@
 
 - **スタンドアロンのサブコマンド** → 上記のファイルを含むフラットな `result_<subcmd>/`。`segments/` も `_work/` もありません。これらは `all` が 1 回の実行で複数の書き出し処理を協調させるときにのみ現れます。
 - **`all` の内部では、リーフの書き出し処理はそのままネストされます。** `segments/seg_NN/<subcmd>/` にあるセグメント別のリーフ出力は、スタンドアロンの `result_<subcmd>/` と構造的に同一です — `all` は同じ書き出し処理に別の出力ディレクトリを渡すだけです。
-- **`path-search` / `path-opt` はエンジンの例外です。** スタンドアロンで実行すると、それぞれの出力が成果物となります: `path-search` → `result_path_search/`（`summary.log`、`mep.pdb`、`mep_trj.xyz`、`mep_plot.png`、`energy_diagram_MEP.png`）、`path-opt` → `result_path_opt/`（`final_geometries_trj.xyz`、`hei.xyz`）。`all` の内部では、その生のエンジン出力は `_work/path_opt/`（`--refine-path` 指定時は `_work/path_search/`）下のスクラッチとして扱われ、マージされた成果物（`mep.pdb`、`mep_trj.xyz`、`mep_w_ref.pdb`、`energy_diagram_MEP.png`）のみがパイプラインのルートに昇格されます。
+- **`path-search` / `path-opt` はエンジンの例外です。** スタンドアロンで実行すると、それぞれの出力が成果物となります: `path-search` → `result_path_search/`（`summary.log`、`mep.pdb`、`mep_trj.xyz`、`mep_plot.png`、`energy_diagram_MEP.png`）、`path-opt` → `result_path_opt/`（`final_geometries_trj.xyz`、`hei.xyz`）。`all` の内部では、その生のエンジン出力は `_work/path_opt/`（`--refine-path` 指定時は `_work/path_search/`）下のスクラッチとして扱われ、マージされた成果物（`mep.pdb`、`mep_trj.xyz`、`mep_w_ref.pdb`、`energy_diagram_MEP.png`）のみがパイプラインのルートに配置されます。
 したがって `all` のツリーには 3 つのゾーンがあります。
 
 ```text
 result_all/
 ├─ summary.log · summary.json                 # ルートに書き出し
-├─ mep.pdb · mep_w_ref.pdb · mep_trj.xyz       # エンジンから昇格された MEP 成果物
+├─ mep.pdb · mep_w_ref.pdb · mep_trj.xyz       # エンジンから配置された MEP 成果物
 ├─ energy_diagram_MEP.png · energy_diagram_*.png
 ├─ segments/
 │  └─ seg_NN/                                  # 反応セグメント別の成果物（2桁番号）
@@ -77,4 +77,4 @@ if summary["status"] == "error":
         raise RuntimeError(summary["error"])
 ```
 
-`summary.json` / `result.json` は `all` と `path-search` が書き出し、ステージ別サブコマンドでは **`--out-json` 指定時のみ**（既定 `--no-out-json`）書き出されます。書き出される場合はスキーマバージョン + status（失敗パスではエラークラスチェーンも）を保持しますが、ステージ別サブコマンドで既定のまま `summary.json` が存在すると仮定しないでください。
+`summary.json` / `result.json` は `all` と `path-search` が書き出し、ステージ別サブコマンドでは **`--out-json` 指定時のみ**（デフォルト `--no-out-json`）書き出されます。書き出される場合はスキーマバージョン + status（失敗パスではエラークラスチェーンも）を保持しますが、ステージ別サブコマンドでデフォルトのまま `summary.json` が存在すると仮定しないでください。

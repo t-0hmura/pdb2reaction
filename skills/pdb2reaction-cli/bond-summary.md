@@ -3,7 +3,7 @@
 ## Purpose
 
 Detect bond changes between consecutive structures. Reports formed /
-broken bonds using the same algorithm `path-search` invokes for
+broken bonds with the same algorithm that `path-search` uses for
 recursive segmentation and that `irc` reports under `bond_changes`.
 
 Use it as a sanity check on R vs P, or to understand how a recursive
@@ -59,7 +59,7 @@ Bond broken (2):
 
 ## Caveats
 
-- Atom ordering must match across all inputs. If they don't, run
+- Atom ordering must match across all inputs. If it doesn't, run
   `pdb2reaction extract` first to canonicalize.
 - The default `1.2` × covalent-radius cutoff (with internal margin
   fraction `0.05`) is geometry-only — it does not classify covalent

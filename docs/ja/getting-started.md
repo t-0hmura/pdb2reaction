@@ -4,7 +4,7 @@
 
 <img src="../overview.png" alt="pdb2reaction workflow overview" width="90%">
 
-`pdb2reaction` は、機械学習原子間ポテンシャル（MLIP: Machine Learning Interatomic Potential）を用いて **PDB 構造から酵素反応経路を解明する** Python 製の CLI ツールキットです。MLIP は DFT 参照データ（エネルギー・原子間力、および周期境界条件の学習データを持つ foundation model では応力テンソルも）で学習されたニューラルネットワークモデルで、DFT のポテンシャルエネルギー曲面をごく一部の計算コストで近似します。
+`pdb2reaction` は、機械学習原子間ポテンシャル（MLIP: Machine Learning Interatomic Potential）を用いて **PDB 構造から酵素反応経路を解明する** Python 製の CLI ツールキットです。MLIP は DFT 参照データ（エネルギー・原子間力、および周期境界条件の学習データを持つ foundation model では応力テンソルも）で学習されたニューラルネットワークモデルで、DFT のポテンシャルエネルギー曲面をごくわずかな計算コストで近似します。
 
 多くのケースでは、次のような **1 コマンド** で反応経路の初期案を得られます。
 ```bash
@@ -26,13 +26,13 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --ther
 - Growing String Method (GSM) や Direct Max Flux (DMF) などの経路最適化手法で **最小エネルギー経路 (MEP: Minimum Energy Path)** を探索
 - 必要に応じて **遷移状態（TS: Transition State）** を最適化し、**IRC（固有反応座標: Intrinsic Reaction Coordinate）計算**・**振動解析**・**DFT 一点計算** を実行
 
-計算には機械学習原子間ポテンシャル（MLIP）を用います。デフォルトのバックエンドは Meta の **UMA** ですが、`-b/--backend` により **ORB**、**MACE**、**AIMNet2** も選択できます。foundation-model 級の MLIP（UMA、ORB-v3、MACE-OMOL-0）により、クラスターモデルの TS 最適化・IRC 検証・QRRHO 熱化学が単一 GPU で実行可能となり、これまで機構スクリーニングのボトルネックだった DFT コストの壁が大きく下がっています。想定される主な用途は以下の通りです。
+計算には機械学習原子間ポテンシャル（MLIP）を用います。デフォルトのバックエンドは Meta の **UMA** ですが、`-b/--backend` により **ORB**、**MACE**、**AIMNet2** も選択できます。foundation-model 級の MLIP（UMA、ORB-v3、MACE-OMOL-0）により、クラスターモデルの TS 最適化・IRC 検証・QRRHO 熱化学が単一 GPU で実行可能となり、これまで機構スクリーニングのボトルネックだった DFT コストが大きく下がっています。想定される主な用途は以下の通りです。
 
 - DFT 等の量子化学計算では検証に時間がかかる規模の**反応機構解析の試行錯誤**
 - 量子化学計算に向けた**初期構造の作成**（反応物・ TS ・生成物のクラスターモデル）
 - 基質バリアントや酵素変異体にわたる**反応経路の大量計算**
 
-本 CLI は最小限の手動設定で**多段階の酵素反応機構**を生成します。小分子系や、利用者が自分で構築したクラスターモデルにもそのまま適用可能です。活性部位抽出を行わない全系ワークフロー（`--center/-c` と `--ligand-charge/-l` を省略）では、`.xyz` / `.gjf` 形式の小分子（`-q` で正味電荷を指定）や、すでに切り出した PDB のクラスターモデルをそのまま入力できます。
+本 CLI は最小限の手動設定で**多段階の酵素反応機構**を生成します。小分子系や、ユーザーが自分で構築したクラスターモデルにもそのまま適用可能です。活性部位抽出を行わない全系ワークフロー（`--center/-c` と `--ligand-charge/-l` を省略）では、`.xyz` / `.gjf` 形式の小分子（`-q` で正味電荷を指定）や、すでに切り出した PDB のクラスターモデルをそのまま入力できます。
 
 **HPC クラスターやマルチ GPU 環境**では、UMA 推論をノード間で並列化することで、大規模なクラスターモデル（必要なら **完全なタンパク質–リガンド複合体**）にも対応できます。`workers` と `workers_per_node` で並列度を設定してください（詳細は [MLIP バックエンド](uma-pysis.md)）。
 

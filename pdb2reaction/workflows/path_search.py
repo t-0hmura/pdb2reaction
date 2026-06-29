@@ -1605,7 +1605,7 @@ def _merge_final_and_write(final_images: List[Any],
     default="gpu",
     show_default=True,
     help="DMF compute backend (--mep-mode dmf only): gpu (dmf.torch / CUDA) or cpu (dmf / NumPy). "
-    "On a GPU out-of-memory, retry with cpu.",
+    "On a GPU out-of-memory error, retry with cpu.",
 )
 @click.option(
     "--refine-mode",

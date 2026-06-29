@@ -15,7 +15,7 @@ block onward is the same as XYZ.
 | Charge / multiplicity | — | required (`<q> <m>`) |
 | Atom count | line 1 (`<n_atoms>`) | — |
 | Comment line | line 2 (free text) | — |
-| Coordinates (`<element> x y z`) | lines 3 … | after charge/mult, terminated by blank |
+| Coordinates (`<element> x y z`) | lines 3 … | after charge/mult, terminated by a blank line |
 | Connectivity / ECP (optional) | — | after coordinates, blank-separated |
 
 ## What `pdb2reaction` reads from a `.gjf`

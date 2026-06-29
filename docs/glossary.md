@@ -61,7 +61,7 @@
 | **SP** | Single Point | A calculation at a fixed geometry (no optimization); often used for higher-level energy refinement. |
 | **Spin Multiplicity** | — | 2S+1, where S is total spin. Singlet = 1, doublet = 2, triplet = 3, etc. Specified with `-m/--multiplicity` (default: 1). |
 | **ALPB** | Analytical Linearized Poisson-Boltzmann | An implicit-solvent model available via xTB (`--solvent-model alpb`, default). |
-| **CPCM-X** | Extended Conductor-like Polarizable Continuum Solvation Model | An implicit-solvent model available via xTB (`--solvent-model cpcmx`); "X" stands for "eXtended", obtained by coupling CPCM with COSMO-RS-style σ-profiles and an SMD-style non-electrostatic term to give realistic solvation free energies across arbitrary solvents (Stahn, Ehlert, Grimme, *J. Phys. Chem. A* 2023). |
+| **CPCM-X** | Extended Conductor-like Polarizable Continuum Solvation Model | An implicit-solvent model available via xTB (`--solvent-model cpcmx`); "X" stands for "eXtended", obtained by coupling CPCM with COSMO-RS-style σ-profiles and an SMD-style non-electrostatic term to give realistic solvation free energies for arbitrary solvents (Stahn, Ehlert, Grimme, *J. Phys. Chem. A* 2023). |
 | **cyipopt** | — | Python bindings for the IPOPT interior-point optimizer. Required by the DMF (`--mep-mode dmf`) path refinement pipeline. |
 | **IPOPT** | Interior Point OPTimizer | Open-source nonlinear constrained optimizer (Wächter & Biegler 2006) used by the DMF path-refinement solver via `cyipopt` bindings. |
 | **SCF** | Self-Consistent Field | Iterative procedure that converges the electronic wavefunction in DFT/HF; controlled in `pdb2reaction dft` by `--max-cycle` and `--conv-tol`. |
@@ -74,7 +74,7 @@
 | **XYZ** | — | A simple text format listing atomic symbols and Cartesian coordinates. |
 | **GJF** | Gaussian Job File | An input format for Gaussian; pdb2reaction reads charge/multiplicity and coordinates from these files. |
 | **Active Site Model** | Active Site Model (Binding Pocket) | The extraction region around the substrate(s), defined by `-c/--center` and `-r/--radius`. pdb2reaction uses "active site model" and "cluster model" interchangeably when describing the downstream calculation input; strictly, "active site model" refers to the geometric selection and "cluster model" to the same selection after it has been capped with cap hydrogens and prepared for QM/MLIP calculation. |
-| **Cluster Model** | — | The QM/MLIP computational subsystem obtained by taking the extracted active site model and capping severed covalent bonds with cap hydrogens. |
+| **Cluster Model** | — | The QM/MLIP computational subsystem obtained by taking the extracted active site model and capping severed covalent bonds with hydrogen atoms (cap hydrogens). |
 | **Cap Hydrogen** | — | A hydrogen atom added to cap severed bonds when extracting an active site model from a larger structure. |
 | **Backbone** | — | The main chain of a protein (N–Cα–C–O atoms). Can be excluded during active site model extraction with `--exclude-backbone`. |
 

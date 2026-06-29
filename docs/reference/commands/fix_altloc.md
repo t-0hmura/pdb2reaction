@@ -4,7 +4,7 @@
 Usage: pdb2reaction fix-altloc [OPTIONS]
 
   Blank PDB altLoc column (col 17) without shifting, and keep one altLoc per
-  atom by default rule: highest occupancy, then earliest appearance.
+  atom using the default rule: highest occupancy, then earliest appearance.
 
 Options:
   -v, --verbose LEVEL           Console verbosity 0-3 (default 2). 0=silent;

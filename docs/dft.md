@@ -67,7 +67,7 @@ out_dir/ (default:./result_dft/)
  - `energy`: energy in hartree and kcal/mol, convergence flag, engine metadata
   (`engine`: `gpu4pyscf(rks_lowmem)` / `gpu4pyscf` / `pyscf(cpu)`; `used_gpu`; `used_lowmem`).
  - `charges`: Mulliken, meta-Löwdin, and IAO atomic charges (`null` when a method fails).
- - `spin_densities`: Mulliken, meta-Löwdin, and IAO spin densities (UKS-only for spins).
+ - `spin_densities`: Mulliken, meta-Löwdin, and IAO spin densities (UKS only for spins).
 - It also summarizes charge, multiplicity, spin (2S), functional, basis,
   convergence knobs, and resolved output directory.
 

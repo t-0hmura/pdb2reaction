@@ -38,7 +38,7 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 3. Convert energies to either kcal/mol (default) or hartree and, when a
     reference is active, subtract the reference value to produce ΔE.
 4. Build the Plotly figure (strong ticks, spline interpolation, markers, no
-    title) and export it to every requested extension.
+    title) and export it in every requested output format.
 5. Optionally emit a CSV table with columns `frame`, `energy_hartree`, and the
     appropriate ΔE/E column in the requested unit.
 

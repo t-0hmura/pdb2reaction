@@ -2,7 +2,7 @@
 
 `pdb2reaction tsopt` refines a transition-state (TS) *candidate* into an optimized first-order saddle point, with a built-in imaginary-frequency check. The candidate can be the highest-energy image (HEI) from `path-opt` / `path-search`, or a user-supplied structure.
 
-Pick the optimizer with `--opt-mode`. In most systems, use `--opt-mode hess` — the default **RS-I-RFO** (Restricted-Step Image Rational Function Optimization); it uses a full Hessian and is more reliable. Switch to `--opt-mode grad` — the **Hessian-Guided Dimer** — when RS-I-RFO fails to converge or full-Hessian recomputation is prohibitive. Enable `--flatten` (disabled by default) when the candidate has multiple imaginary frequencies and you need surplus-mode cleanup.
+Pick the optimizer with `--opt-mode`. For most systems, `--opt-mode hess` is recommended — the default **RS-I-RFO** (Restricted-Step Image Rational Function Optimization); it uses a full Hessian and is more reliable. Switch to `--opt-mode grad` — the **Hessian-Guided Dimer** — when RS-I-RFO fails to converge or full-Hessian recomputation is prohibitive. Enable `--flatten` (disabled by default) when the candidate has multiple imaginary frequencies and you need surplus-mode cleanup.
 
 After convergence, `tsopt` performs a final Hessian calculation and imaginary-frequency check automatically — a validated TS should show **exactly one** imaginary frequency. A separate [`freq`](freq.md) run is only needed for full vibrational analysis or thermochemistry. Always confirm endpoint connectivity with [`irc`](irc.md).
 
@@ -17,7 +17,7 @@ If you need a TS guess first, run [`path-opt`](path-opt.md) (two structures) or 
 | Route | Subcommand | Use when | What it does |
 | --- | --- | --- | --- |
 | (a) MEP / path search | [`path-search`](path-search.md) | You have both endpoints (reactant **and** product) and want the TS bracketed automatically | Recursive minimum-energy-path search (GSM / DMF) with bond-change detection; it auto-segments a multi-step path, refines each reactive segment, and returns the highest-energy image per segment (`hei_seg_NN.xyz`) |
-| (b) Distance-restrained scan | [`scan`](scan.md) | You have only the reactant, or want to drive a specific reacting distance directly | Harmonic distance restraints, `E = ½k(r − target)²`, drive each reacting distance with full relaxation, walking the system up to a TS candidate |
+| (b) Distance-restrained scan | [`scan`](scan.md) | You have only the reactant, or want to drive a specific reacting distance directly | Harmonic distance restraints, `E = ½k(r − target)²`, drive each reacting distance with full relaxation, advancing the system toward a TS candidate |
 
 There is no `opt --restraint` flag: `opt` is plain unrestrained minimization, and the distance-restrained build-up route is `scan` (which can relax the endpoints around the driven path with `--preopt` / `--endopt`). Feed the candidate from either route into `tsopt → freq → irc` to optimize and validate it.
 
@@ -126,7 +126,7 @@ The tables below cover the options that need explanation. The full flag list is 
 | **TS optimizer & mode** | | |
 | `--opt-mode TEXT` | TS optimizer preset (Choice: `grad` / `hess` / `dimer` / `rsirfo` / `trim` / `rsprfo`). `grad` and `dimer` → Hessian-Guided Dimer; `hess` and `rsirfo` → RS-I-RFO (default); `trim` → TRIM (Helgaker, non-microiter); `rsprfo` → RS-P-RFO (Banerjee, non-microiter). On `opt`, the same `grad` token picks L-BFGS minimization instead — see {ref}`opt-mode-semantics`. | `hess` |
 | `--flatten / --no-flatten` | Enable the surplus-imaginary-mode flattening loop (`False` forces `flatten_max_iter = 0`). After TS optimization converges, iteratively flattens surplus negative-eigenvalue modes until only one imaginary frequency remains (or the iteration cap is reached). Applies to both Dimer (dimer loop) and RS-I-RFO (post-convergence). | `False` |
-| `--coord-type TEXT` | Optimization coordinate system (`cart` / `redund` / `dlc` / `tric`). `cart` is the robust default behind the published numbers; `dlc` (delocalized internal coordinates) is slower but converges more robustly to a clean first-order saddle on torsion-rich systems. Needs a Hessian-based optimizer (`tsopt` RS-I-RFO / Dimer qualify); `path-opt` / `path-search` accept only `cart` / `dlc`. | `cart` |
+| `--coord-type TEXT` | Optimization coordinate system (`cart` / `redund` / `dlc` / `tric`). `cart` is the default behind the published numbers; `dlc` (delocalized internal coordinates) is slower but converges more robustly to a clean first-order saddle on torsion-rich systems. Needs a Hessian-based optimizer (`tsopt` RS-I-RFO / Dimer qualify); `path-opt` / `path-search` accept only `cart` / `dlc`. | `cart` |
 | `--precision [fp32\|fp64]` | MLIP backend precision, routed to the backend-native kwarg (UMA `precision` / ORB `precision` / MACE `default_dtype`; `aimnet2`: `fp32` no-op, `fp64` rejected). On datacenter GPUs use `fp64` for low numerical-noise Hessians; see [Reproducibility](reproducibility.md#choosing-precision-by-gpu-class). | `fp32` |
 | **Thresholds & cycles** | | |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |

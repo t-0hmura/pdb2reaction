@@ -49,7 +49,7 @@ pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
 ```
 
 ```{note}
-DMF mode additionally requires `cyipopt` (install from conda-forge before running with `--mep-mode dmf`). `pydmf` ships with `pdb2reaction` as a dependency. The default `--dmf-backend gpu` uses the PyTorch/CUDA `dmf.torch` backend; pass `--dmf-backend cpu` (`dmf`/NumPy) on a GPU out-of-memory.
+DMF mode additionally requires `cyipopt` (install from conda-forge before running with `--mep-mode dmf`). `pydmf` ships with `pdb2reaction` as a dependency. The default `--dmf-backend gpu` uses the PyTorch/CUDA `dmf.torch` backend; pass `--dmf-backend cpu` (`dmf`/NumPy) on a GPU out-of-memory error.
 ```
 
 A quick pass that freezes cap parents and disables climb: add `--freeze-links --no-climb`.
@@ -96,7 +96,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
 | `--max-nodes INT` | Number of internal nodes. **GSM:** total images = `max_nodes + 2` (the two endpoints are fixed). **DMF:** number of *movable* images along the chain (no implicit endpoint expansion). | `20` |
 | `--mep-mode {gsm\|dmf}` | Select GSM (string-based) or DMF (Direct Max Flux) path generator. | `gsm` |
-| `--dmf-backend {cpu\|gpu}` | DMF compute backend (`--mep-mode dmf` only): `gpu` (`dmf.torch`/CUDA) or `cpu` (`dmf`/NumPy). On a GPU out-of-memory, retry with `cpu`. | `gpu` |
+| `--dmf-backend {cpu\|gpu}` | DMF compute backend (`--mep-mode dmf` only): `gpu` (`dmf.torch`/CUDA) or `cpu` (`dmf`/NumPy). On a GPU out-of-memory error, retry with `cpu`. | `gpu` |
 | `--max-cycles INT` | MEP optimizer cycle cap (sets `stopt.max_cycles`, `stopt.stop_in_when_full`, and `dmf.max_cycles`). | `300` |
 | `--climb/--no-climb` | Enable climbing-image refinement (and Lanczos tangent). | `True` |
 | `--dump/--no-dump` | Dump MEP trajectories (GSM/DMF). Restart YAML is written only when enabled in YAML. | `False` |

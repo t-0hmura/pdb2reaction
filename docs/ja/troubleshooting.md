@@ -193,7 +193,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 ### 最適化が `max_cycles` に達し、`max(force)` が閾値をわずかに超える
 
 症状:
-- オプティマイザーが `max_cycles` 上限まで回りきり、最終サマリで `max(force)` や `rms(force)` が目標をわずかに上回る（例: `baker` の 3×10⁻⁴ au に対して 4×10⁻⁴ au）。
+- オプティマイザが `max_cycles` 上限まで回りきり、最終サマリで `max(force)` や `rms(force)` が目標をわずかに上回る（例: `baker` の 3×10⁻⁴ au に対して 4×10⁻⁴ au）。
 - 一方で、エネルギー自体は明らかに平坦化しており、10⁻⁵–10⁻⁴ au レベルで振動している。
 
 原因:
@@ -203,7 +203,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 - **平坦なエネルギー地形によるフォールバック収束**が自動でこの状況を処理します: `opt.energy_plateau: true` のとき、直近 `opt.energy_plateau_window`（デフォルト 50）ステップのエネルギーレンジが `opt.energy_plateau_thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`）を下回ると収束と判定されます。多くの場合、ユーザー側での対応は不要です。
 - 自動フォールバックを上書きしたい場合は、力の閾値を手動で緩めてください: `--thresh gau`（`opt` のデフォルト）または `--thresh gau_loose`。
 - `opt.energy_plateau_thresh` / `opt.energy_plateau_window` は YAML からチューニングでき、`opt.energy_plateau: false` で無効化できます。
-- 注意: この平坦地形フォールバックは **chain-of-states オプティマイザー**（`path-opt`、`path-search` の string/GSM（Growing String Method）/DMF（Direct Max Flux）段階）では**スキップ**されます（単一のスカラーエネルギー履歴ではなく、イメージごとのエネルギー配列を保持しているため）。
+- 注意: この平坦地形フォールバックは **chain-of-states オプティマイザ**（`path-opt`、`path-search` の string/GSM（Growing String Method）/DMF（Direct Max Flux）段階）では**スキップ**されます（単一のスカラーエネルギー履歴ではなく、イメージごとのエネルギー配列を保持しているため）。
 
 ---
 
@@ -211,10 +211,10 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 
 症状:
 - TS 最適化が多くのサイクルを回しても収束しない
-- 最適化後もヘシアン行列に複数の負の固有値が残る（虚振動数が 2 本以上）
+- 最適化後もHessian行列に複数の負の固有値が残る（虚振動数が 2 本以上）
 
 対処の例（CLI フラグと YAML キーは補完的、必要に応じて併用してください）:
-- オプティマイザーモードを切り替えてください: `--opt-mode grad`（Dimer 法）または `--opt-mode hess`（RS-I-RFO 法、デフォルト）
+- オプティマイザモードを切り替えてください: `--opt-mode grad`（Dimer 法）または `--opt-mode hess`（RS-I-RFO 法、デフォルト）
 - 余分な虚振動数モードのフラット化を有効にしてください: `--flatten`（単独の `tsopt`、`opt`、および `pdb2reaction all` で利用可能。デフォルトは無効）
 - 最大サイクル数を増やしてください: `--max-cycles 20000`（単独の `tsopt` の場合）、`--tsopt-max-cycles 20000`（`all` の場合）
 - より厳しい収束閾値を使ってください: `--thresh baker` または `--thresh gau_tight`
@@ -250,8 +250,8 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 ## パフォーマンス / 安定性のヒント
 
 - **VRAM 不足**: `--radius` の値を減らして活性部位モデルを小さくする、`--max-nodes` を減らす、軽い最適化設定にする（`--opt-mode grad`）
-- **解析ヘシアン（Analytical Hessian）が遅いまたは OOM**: デフォルトの `FiniteDifference` を維持してください。`--hessian-calc-mode Analytical` は 16 GB 以上の VRAM がある場合のみ使用してください。16 GB で収まるのは ~200 原子程度までです（下記の VRAM 目安表を参照）
-- **workers > 1**: HPC で UMA の処理速度は改善しますが、解析ヘシアンとは併用できません（`workers > 1` で解析ヘシアンを要求すると `RuntimeError` が発生します）。明示的に `--hessian-calc-mode FiniteDifference` を指定するか、ヘシアンを使うモードでは `--workers 1` で実行してください
+- **解析Hessian（Analytical Hessian）が遅いまたは OOM**: デフォルトの `FiniteDifference` を維持してください。`--hessian-calc-mode Analytical` は 16 GB 以上の VRAM がある場合のみ使用してください。16 GB で収まるのは ~200 原子程度までです（下記の VRAM 目安表を参照）
+- **workers > 1**: HPC で UMA の処理速度は改善しますが、解析Hessianとは併用できません（`workers > 1` で解析Hessianを要求すると `RuntimeError` が発生します）。明示的に `--hessian-calc-mode FiniteDifference` を指定するか、Hessianを使うモードでは `--workers 1` で実行してください
 - **大規模系（1000 原子以上）**: より小さな活性部位モデル（`--radius 2.5` Å）を抽出するか、マルチ GPU セットアップでの実行を検討してください
 - **HPC で DFT を回すとき（数百原子規模）**: PySCF / GPU4PySCF は積分・中間ファイルを `$PYSCF_TMPDIR`（未設定なら `$TMPDIR`、最後は `/tmp`）に書き出します。ノードローカル `/tmp` は容量が小さい / `tmpfs` であることが多く、SCF の途中で枯渇する場合があります。`dft` 起動前に `PYSCF_TMPDIR` をジョブの作業ファイルシステム配下に設定してください（例: `export PYSCF_TMPDIR="$PBS_O_WORKDIR"`）
 
@@ -269,13 +269,13 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 **推奨:**
 - まずデフォルトの UMA モデルで高速スクリーニングし、その後 MACE または大型 UMA で主要結果を相互確認してください。
 - SAM 依存 S~N~2 / メチル転移反応では、MACE とデフォルト UMA は相補的に働く傾向があるので、片方の TS が疑わしいときはもう片方で検証するのが有効です。
-- Orb は反応座標自体は正しく捉えるものの、TS が虚振動を複数持つ状態に収束しやすく、clean な単一虚振動 TS は保証されません。Orb は反応機構の構造変化を確認する用途であれば使用できますが、定量的な反応速度論や振動解析には UMA / MACE / DFT で再評価するか backend を切り替えてください。
+- Orb は反応座標自体は正しく捉えるものの、TS が虚振動を複数持つ状態に収束しやすく、クリーンな単一虚振動 TS は保証されません。Orb は反応機構の構造変化を確認する用途であれば使用できますが、定量的な反応速度論や振動解析には UMA / MACE / DFT で再評価するか backend を切り替えてください。
 
 ## GPU メモリ (VRAM) 目安
 
 系のサイズ別のおおよその VRAM 使用量は次のとおりです。
 
-| 原子数 | L-BFGS 最適化 | ヘシアン（解析的） | ヘシアン（有限差分） |
+| 原子数 | L-BFGS 最適化 | Hessian（解析的） | Hessian（有限差分） |
 |-------|------------|-----------------|------------------|
 | 50 | ~2 GB | ~3 GB | ~2 GB |
 | 100 | ~3 GB | ~6 GB | ~3 GB |

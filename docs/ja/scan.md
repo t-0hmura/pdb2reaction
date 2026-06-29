@@ -1,6 +1,6 @@
 # `scan`
 
-調和拘束で結合長をスキャンして反応座標を駆動します。`pdb2reaction scan` は、単一構造から特定の原子間距離を駆動し、もっともらしい反応経路を探索する場面（`path-search` / `path-opt` の前処理として使われることが多い）で使用します。MLIP バックエンド（デフォルト: UMA、`-b/--backend` で ORB ・ MACE ・ AIMNet2 も選択可能）と調和拘束を用いて、段階的な結合長スキャンを実行します。各ステップで一時ターゲットを更新し、拘束ポテンシャルを適用したうえで構造全体を L-BFGS（`--opt-mode grad`）または RFOptimizer（`--opt-mode hess`）で緩和します。XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定すると、XYZ 座標を保持したまま PDB/GJF へのフォーマット対応変換が可能になります。
+調和拘束で結合長をスキャンして反応座標を駆動します。`pdb2reaction scan` は、単一構造から特定の原子間距離を駆動し、妥当な反応経路を探索する場面（`path-search` / `path-opt` の前処理として使われることが多い）で使用します。MLIP バックエンド（デフォルト: UMA、`-b/--backend` で ORB ・ MACE ・ AIMNet2 も選択可能）と調和拘束を用いて、段階的な結合長スキャンを実行します。各ステップで一時ターゲットを更新し、拘束ポテンシャルを適用したうえで構造全体を L-BFGS（`--opt-mode grad`）または RFOptimizer（`--opt-mode hess`）で緩和します。XYZ/GJF 入力では、`--ref-pdb` で参照 PDB トポロジーを指定すると、XYZ 座標を保持したまま PDB/GJF 形式へ変換できます。
 
 ## 実行例
 
@@ -73,7 +73,7 @@ out_dir/ (デフォルト:./result_scan/)
 | `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル（PDB / XYZ / GJF / TRJ） | 必須 |
 | `-q, --charge INT` | 総電荷（CLI > テンプレート）。`-q` を省略して `--ligand-charge` がある場合は電荷が導出され、明示的な `-q` が最優先 | `.gjf` テンプレートまたは `--ligand-charge` がない場合は必須 |
 | `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
-| `--workers`, `--workers-per-node` | MLIP 予測器の並列度（workers > 1 で解析ヘシアンは無効化; UMA バックエンドのみ; `workers_per_node` は並列予測器に渡されます）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1`, `1` |
+| `--workers`, `--workers-per-node` | MLIP 予測器の並列度（workers > 1 で解析Hessianは無効化; UMA バックエンドのみ; `workers_per_node` は並列予測器に渡されます）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
 | `-s, --scan-lists TEXT` | スキャンターゲット: YAML/JSON スペックファイルパス（推奨）またはインライン Python リテラル（`(i,j,targetÅ)` 3 要素タプルもしくは `(i,j,start,end)` 4 要素タプル（双方向スキャン））。各リテラルが 1 ステージ; 1 つのフラグの後に複数リテラルを渡す。`i`/`j` は整数インデックスまたは PDB 原子セレクタ（`'TYR,285,CA'`） | 必須 |
 | `--one-based/--zero-based` | 原子インデックスを 1 始まり/0 始まりとして解釈。これらは同一フラグの相互排他エイリアス（`--one-based` → `True`、`--zero-based` → `False`） | `True` |
@@ -81,7 +81,7 @@ out_dir/ (デフォルト:./result_scan/)
 | `--max-step-size FLOAT` | 1 ステップあたりのスキャン結合の最大変化量（Å）。ステップ数を決定 | `0.20` |
 | `--bias-k FLOAT` | 調和バイアス強度 `k`（eV·Å⁻²） | `300` |
 | `--relax-max-cycles INT` | 前処理・各バイアスステップ・後処理における最適化サイクルの上限。YAML で `opt.max_cycles` が指定されていない場合に使用 | `10000` |
-| `--opt-mode TEXT` | `grad` → L-BFGS、`hess` → RFOptimizer。同じトークンが `tsopt` では Dimer / RS-I-RFO へ対応する点については {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
+| `--opt-mode TEXT` | `grad` → L-BFGS、`hess` → RFOptimizer。同じトークンが `tsopt` では Dimer / RS-I-RFO に対応する点については {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
 | `--freeze-links/--no-freeze-links` | PDB 入力時にキャップ水素の親原子を凍結 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
 | `--dump/--no-dump` | ステップごとの最適化器軌跡ファイルを書き出します（`opt_cfg["dump"]` に転送）。`scan_trj.xyz`/`scan.pdb` はこのフラグに関係なく常に書き出されます | `False` |
@@ -239,7 +239,7 @@ YAML/JSON ファイル書式、インライン Python リテラル構文、原�
 
 ### 段階的スキャン vs 協奏的スキャン
 
-1 つのリテラル内の `(i, j, target)` タプルの数とリテラルの数が、座標を*一緒に*駆動する（協奏的）か*順次*駆動する（段階的）かを決めます。
+1 つのリテラル内の `(i, j, target)` タプルの数とリテラルの数が、座標を*同時に*駆動する（協奏的）か*順次*駆動する（段階的）かを決めます。
 
 | モード | 構文 | 使う場面 |
 | --- | --- | --- |

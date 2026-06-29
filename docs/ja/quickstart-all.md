@@ -10,7 +10,7 @@
 - **水素原子が追加済み**の 2 つの PDB ファイル（反応物 R と生成物 P）
 - すべての入力 PDB で同じ原子が同じ順序で含まれていること
 
-> **ファイル名について:** 例の `1.R.pdb` と `3.P.pdb` は geranyl pyrophosphate (GPP) C6-メチル基転移酵素 BezA のサンプルディレクトリ（[`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples)）に同梱された反応物/生成物 PDB に対応します（`1.R.pdb` = 反応物状態、`3.P.pdb` = 生成物状態、追加の反応物/生成物/中間体構造を含む run 向けに `2.*.pdb` の中間状態も利用可能）。ご自身の反応では、2 つ以上の全系 PDB に置き換えてください。下記コマンドをそのまま試すには、まず同梱例を取得してください: `git clone https://github.com/t-0hmura/pdb2reaction && cd pdb2reaction/examples`。
+> **ファイル名について:** 例の `1.R.pdb` と `3.P.pdb` は geranyl pyrophosphate (GPP) C6-メチル基転移酵素 BezA のサンプルディレクトリ（[`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples)）に同梱された反応物/生成物 PDB に対応します（`1.R.pdb` = 反応物状態、`3.P.pdb` = 生成物状態、追加の反応物/生成物/中間体構造を含む実行向けに `2.*.pdb` の中間状態も利用可能）。ご自身の反応では、2 つ以上の全系 PDB に置き換えてください。下記コマンドをそのまま試すには、まず同梱例を取得してください: `git clone https://github.com/t-0hmura/pdb2reaction && cd pdb2reaction/examples`。
 
 ## 最小コマンド
 
@@ -36,7 +36,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 result_all/
 ├── summary.log                    # テキストサマリ
 ├── summary.json                   # 機械可読な結果
-├── mep.pdb                        # マージ済み MEP 経路（ルート直下に昇格）
+├── mep.pdb                        # マージ済み MEP 経路（ルート直下に配置）
 ├── energy_diagram_MEP.png         # 全セグメントの MEP エネルギープロファイル
 ├── segments/
 │   └── seg_01/                    # 反応セグメント別の成果物
@@ -53,7 +53,7 @@ result_all/
 
 **確認ポイント:**
 
-1. `summary.json` — `status` フィールド（`"success"` / `"partial"` / `"failed"`）とセグメントごとの `barrier_kcal` を確認。`summary.log` は同じ情報を人間可読形式でミラーします
+1. `summary.json` — `status` フィールド（`"success"` / `"partial"` / `"failed"`）とセグメントごとの `barrier_kcal` を確認。`summary.log` は同じ内容をテキスト形式の要約として出力します
 2. `segments/seg_01/*.pdb` — PyMOL で R/TS/P 構造が化学的に妥当か確認
 3. `energy_diagram_*.png` — 明確な障壁があるエネルギープロファイル
 

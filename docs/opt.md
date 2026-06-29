@@ -28,7 +28,7 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --thresh gau_tight --dump \
  --out-dir ./result_opt_tight
 ```
 
-Add a harmonic distance restraint. The example uses `--bias-k 20.0` (a loose restraint suitable for a light guide near the target distance); the default `bias.k` is 300 eV·Å⁻² and is better when you want the restraint to dominate during optimization:
+Add a harmonic distance restraint. The example uses `--bias-k 20.0` (a loose restraint suitable for gently guiding the structure toward the target distance); the default `bias.k` is 300 eV·Å⁻² and is better when you want the restraint to dominate during optimization:
 
 ```bash
 pdb2reaction opt -i input.pdb -q 0 -m 1 \

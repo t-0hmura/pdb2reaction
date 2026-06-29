@@ -27,8 +27,8 @@
 | [`extract`](extract.md) | タンパク質–リガンド複合体から活性部位モデル（バインディングポケット）を抽出 |
 | [`fix-altloc`](fix-altloc.md) | PDB の代替位置指示子を解決 |
 | [`add-elem-info`](add-elem-info.md) | PDB の元素カラム（77–78）を修復 |
-| [`opt`](opt.md) | 単一構造の構造最適化（L-BFGS or RFO。[+ 任意 flatten]） |
-| [`tsopt`](tsopt.md) | 遷移状態最適化（Dimer or RS-I-RFO。[+ 任意 flatten]） |
+| [`opt`](opt.md) | 単一構造の構造最適化（L-BFGS または RFO。[+ 任意 flatten]） |
+| [`tsopt`](tsopt.md) | 遷移状態最適化（Dimer または RS-I-RFO。[+ 任意 flatten]） |
 | [`path-opt`](path-opt.md) | GSM または DMF による 1 段階の MEP 最適化（2 構造から） |
 | [`path-search`](path-search.md) | 自動精密化を伴う多段階の再帰的 MEP 探索（2 構造以上） |
 | [`scan`](scan.md) | 拘束付き 1D 結合長スキャン |
@@ -71,7 +71,7 @@
 
 ## エージェントスキル
 
-`pdb2reaction` は、CLI サブコマンド・構造 I/O・バックエンドインストール・ワークフロー・出力解析・HPC 運用をカバーする AI エージェント向け命令を `skills/` に同梱しています。完全なスキル索引とインストール手順は [`skills/README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/skills/README.md) を参照してください。
+`pdb2reaction` は、CLI サブコマンド・構造 I/O・バックエンドインストール・ワークフロー・出力解析・HPC 運用をカバーする AI エージェント向けの手順書を `skills/` に同梱しています。完全なスキル索引とインストール手順は [`skills/README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/skills/README.md) を参照してください。
 
 ## 引用
 

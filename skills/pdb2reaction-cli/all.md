@@ -5,7 +5,7 @@
 `all` is the meta-command that chains the entire workflow:
 extract → path-opt → tsopt → irc → freq → (optional) dft. The MEP
 stage runs single-pass `path-opt` by default; pass `--refine-path True`
-to run recursive `path-search` instead. It
+to run recursive `path-search` instead. `all`
 resolves three input modes via flag context (see the three companion
 mds: `all-endpoint-mep.md`, `all-scan-list.md`, `all-ts-only.md`).
 

@@ -9,7 +9,7 @@
 - 入力構造: `.pdb`
 - 対象状態に対応した電荷（`-q/--charge` または `-l/--ligand-charge`）・多重度（`-m`）
 
-## 方法 A: `-s/--scan-lists` インラインリテラル（既定）
+## 方法 A: `-s/--scan-lists` インラインリテラル（デフォルト）
 
 `-s/--scan-lists` はコマンドライン上で Python リテラル文字列を直接受け取ります。原子セレクタの構文（残基/原子トークン、区切り文字、順序）と外側/内側のクォートのルールについては、{ref}`CLI 規約: スキャンリスト仕様 <ja-scan-list-spec>` を参照してください。
 
@@ -50,8 +50,8 @@ pdb2reaction -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 -s \
 result_scan/
 ├── summary.log
 ├── summary.json
-├── mep.pdb                        # MEP 全体パス（ルートへ昇格）
-├── energy_diagram_MEP.png         # MEP エネルギー図（ルートへ昇格）
+├── mep.pdb                        # MEP 全体パス（ルートへ配置）
+├── energy_diagram_MEP.png         # MEP エネルギー図（ルートへ配置）
 ├── segments/
 │   └── seg_01/                    # 反応セグメントごとの成果物
 └── _work/                         # パイプラインの作業領域（削除可）
@@ -67,7 +67,7 @@ result_scan/
 **確認ポイント:**
 
 1. `_work/scan/stage_01/scan_trj.xyz` — 結合距離の変化を PyMOL で確認
-2. `mep.pdb` — 最適化後の MEP 軌跡（出力ルートへ昇格）
+2. `mep.pdb` — 最適化後の MEP 軌跡（出力ルートへ配置）
 3. `summary.log` — 障壁高さと結合変化
 
 **ヒント:** `--print-parsed` を付けて（Ctrl-C で中断して）スキャン設定を事前確認:
@@ -79,7 +79,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(1, 5, 1.35)]' --print-parsed
 ## 補足
 
 - `-s/--scan-lists` は `all` ではインライン Python リテラルのみを受け取ります。単独の `scan` サブコマンドはこれに加えて YAML/JSON スペックファイルパスも受け取れます（[scan](scan.md) を参照）。
-- スキャン step のデフォルトは両コマンドで同じで、フラグ名のみが異なります（`all` では prefix 付き、単独の `scan` では prefix なし）:
+- スキャンステップのデフォルトは両コマンドで同じで、フラグ名のみが異なります（`all` では prefix 付き、単独の `scan` では prefix なし）:
 
   | コマンド | 距離ごとの step 幅 | 調和バイアス強度 |
   | --- | --- | --- |
@@ -87,8 +87,8 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(1, 5, 1.35)]' --print-parsed
   | 単独の `pdb2reaction scan` | `--max-step-size 0.20 Å` | `--bias-k 300 eV/Å²` |
 
   どちらの形式でも、または YAML の `bias` ブロックで上書き可能です（[scan](scan.md) / [yaml-reference](yaml-reference.md#bias) 参照）。
-- 各スキャン stage は、最終緩和構造に対する結合変化チェック（`has_bond_change`）で終了します。stage ごとの結果は scan ログに記録され、`--out-json` 指定時には scan 出力ディレクトリに書き出される集約 `result.json`（その `stages` 配列内）にも記録されます。
-- 再帰的 MEP refinement（`path-search`）は scan の端点を**無条件**に消費します。実行されるかどうかのゲートは、scan stage の bond-change フラグ（`has_bond_change`）ではなく `--refine-path` です。
+- 各スキャンステージは、最終緩和構造に対する結合変化チェック（`has_bond_change`）で終了します。ステージごとの結果は scan ログに記録され、`--out-json` 指定時には scan 出力ディレクトリに書き出される集約 `result.json`（その `stages` 配列内）にも記録されます。
+- 再帰的 MEP refinement（`path-search`）は scan の端点を**無条件**に入力として取り込みます。実行されるかどうかのゲートは、scan stage の bond-change フラグ（`has_bond_change`）ではなく `--refine-path` です。
 - `pdb2reaction all --help-advanced` で全オプション（スキャン制御を含む）を確認できます。
 - 単独の `scan` サブコマンド（MEP 精密化なし）については [scan](scan.md) を参照してください。
 

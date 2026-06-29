@@ -192,7 +192,7 @@ If a `scan` (or path) **starts from the product** side, the raw barrier it repor
 | --- | --- |
 | A product-start scan | `E(TS) − E(reactant)` — **not** the raw product-start number |
 
-This is a read-time interpretation, not a flag. Always confirm which endpoint the scan started from before quoting a barrier, especially when the workflow was seeded from a crystallographic product complex.
+This is something to interpret when reading results, not a CLI flag. Always confirm which endpoint the scan started from before quoting a barrier, especially when the workflow was seeded from a crystallographic product complex.
 
 ### Bidirectional scan (4-tuple)
 

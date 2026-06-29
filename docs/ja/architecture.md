@@ -7,7 +7,7 @@
 `pdb2reaction` は、活性部位クラスターモデルに対して **純 MLIP による酵素反応経路解析** を実行する Python 製 CLI です。PDB と基質名を起点に、活性部位クラスターを切り出し、切断された結合をキャップ水素でキャップし、MLIP ポテンシャル上で RS-I-RFO TS 最適化による Hessian ベースの TS 探索を行い、反応経路を生成します（extract → MEP → tsopt → IRC → freq → dft）。
 
 
-同梱された 2 つの fork（`pysisyphus/`、`thermoanalysis/`）は、リポジトリ最上位に repo 内部モジュールとして配置されています。これらは意図的に上流の PyPI 配布版では **ありません**。本パッケージと並べて PyPI から再インストールすると、ローカルの拡張が静かに壊れます。§6 を参照してください。
+同梱された 2 つの fork（`pysisyphus/`、`thermoanalysis/`）は、リポジトリ最上位に repo 内部モジュールとして配置されています。これらは意図的に上流の PyPI 配布版では **ありません**。本パッケージと並べて PyPI から再インストールすると、ローカルの拡張が気づかないうちに動かなくなります。§6 を参照してください。
 
 ---
 
@@ -91,7 +91,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 
 ### 2.3 階層ごとの責務詳細
 
-**L1 `cli/`**（約 6 ファイル）。Click コマンドを構築し argv をパースするのはこの階層だけです。`app.py` は root `Click.Group` と `_LAZY_SUBCOMMANDS` レジストリを保持します。各エントリは **絶対モジュールパス**（`pdb2reaction.workflows.all`, `pdb2reaction.io.trj2fig`, …）を使うため、リゾルバは `default_group.py` 自体の所在に依存しません。`common_options.py` はサブコマンド間で共有される option-decorator ファクトリ（`@add_print_every_option`, `@add_irc_pos_def_option`, `@add_precision_option`, `@add_coord_type_option`, `@add_ml_charge_spin_options`）を集約します。サブコマンド本体はこれらのデコレータを `@click.pass_context` の上に積み重ね、`--help` テキストを揃えて保ちます。
+**L1 `cli/`**（約 6 ファイル）。Click コマンドを構築し argv をパースするのはこの階層だけです。`app.py` は root `Click.Group` と `_LAZY_SUBCOMMANDS` レジストリを保持します。各エントリは **絶対モジュールパス**（`pdb2reaction.workflows.all`, `pdb2reaction.io.trj2fig`, …）を使うため、リゾルバは `default_group.py` 自体の所在に依存しません。`common_options.py` はサブコマンド間で共有される option-decorator ファクトリ（`@add_print_every_option`, `@add_irc_pos_def_option`, `@add_precision_option`, `@add_coord_type_option`, `@add_ml_charge_spin_options`）を集約します。サブコマンド本体はこれらのデコレータを `@click.pass_context` の上に積み重ね、`--help` テキストの一貫性を保ちます。
 
 **L2 `workflows/`**（18 ファイル）。サブコマンド 1 つにつき 1 ファイル。各ファイルは `cli` という名前の単一の `@click.command()` とそのプライベートヘルパーを所有します。大きなステージランナー（`all.py` = 5,131 LOC, `path_search.py` = 2,771 LOC, `tsopt.py` = 2,121 LOC, `extract.py` = 2,113 LOC）は、現在のレイアウトでは単一ファイルのまま残されています。
 
@@ -134,9 +134,9 @@ pdb2reaction myaction                 ──► pdb2reaction/cli/app.py
 遅延 import 互換性の 2 階層と CLI ディスパッチ:
 
 1. **Root シンボル属性**（`from pdb2reaction import <Symbol>`）— `pdb2reaction/__init__.py:_LAZY_SYMBOLS` + PEP 562 `__getattr__` が処理します。シンボルは初回アクセス時に layer-dir パスから読み込まれ、`pdb2reaction` import 時の import コストはゼロのまま保たれます。
-2. **Root モジュール属性**（`from pdb2reaction import <module>`）— `_LAZY_MODULES` が処理します。`__getattr__` は `importlib.import_module` を介してモジュールオブジェクト自体を返します。`pdb2reaction` は現在、消費されるモジュール属性パスを 0 件しか持ちません（レジストリは空です。root 属性アクセスは将来の拡張のために予約されています）。
+2. **Root モジュール属性**（`from pdb2reaction import <module>`）— `_LAZY_MODULES` が処理します。`__getattr__` は `importlib.import_module` を介してモジュールオブジェクト自体を返します。`pdb2reaction` は現在、参照されるモジュール属性パスは 0 件です（レジストリは空です。root 属性アクセスは将来の拡張のために予約されています）。
 
-CLI サブコマンドリゾルバ（`cli/app.py:_LAZY_SUBCOMMANDS`）は **絶対** モジュールパス（例: `"pdb2reaction.workflows.all"`）を使うため、`default_group.py` を `cli/` に移動してもサブコマンド探索が静かに壊れることはありません（レジストリはもはや `__package__` に依存しません）。
+CLI サブコマンドリゾルバ（`cli/app.py:_LAZY_SUBCOMMANDS`）は **絶対** モジュールパス（例: `"pdb2reaction.workflows.all"`）を使うため、`default_group.py` を `cli/` に移動してもサブコマンド探索が気づかないうちに動かなくなることはありません（レジストリはもはや `__package__` に依存しません）。
 
 ---
 
@@ -241,7 +241,7 @@ touch 制限の境界については各ディレクトリの `README.md` を参�
 
 ### 5.1 化学ルール（grep レシピ）
 
-正確性に直結する 3 つのルールが `backends/`、`workflows/`、`core/defaults.py` に散在しています。これらは smoke テストでは検出 **されません**。ここでの静かな drift は反応経路の精度を壊します。インラインの `# CHEMISTRY-RULE:N` マーカーと `# DOMAIN_PURE` モジュール docstring マーカーがルールを識別し、`.github/scripts/check_engineering_markers.py` が CI でマーカーの完全性を強制します。
+正確性に直結する 3 つのルールが `backends/`、`workflows/`、`core/defaults.py` に散在しています。これらは smoke テストでは検出 **されません**。ここでの静かな乖離は反応経路の精度を壊します。インラインの `# CHEMISTRY-RULE:N` マーカーと `# DOMAIN_PURE` モジュール docstring マーカーがルールを識別し、`.github/scripts/check_engineering_markers.py` が CI でマーカーの完全性を強制します。
 
 編集前にすべての化学ルールを見つけるには:
 
@@ -269,7 +269,7 @@ IRC / TSopt / Freq ステージは、CUDA メモリを解放するためにス�
 
 ### 5.3 同梱 fork: 上流を並べてインストールしない
 
-同梱された `pysisyphus/` と `thermoanalysis/` パッケージは **fork** です。`pip install pysisyphus` または `pip install thermoanalysis` を本パッケージの隣に再インストールすると、次が静かに壊れます:
+同梱された `pysisyphus/` と `thermoanalysis/` パッケージは **fork** です。`pip install pysisyphus` または `pip install thermoanalysis` を本パッケージとは別に PyPI 版を再インストールすると、次が気づかないうちに動かなくなります:
 
 - `pysisyphus/irc/IRC.py` — 初期変位のメモリ管理 + オプトインの `require_pos_def_hessian` kwarg
 - `pysisyphus/optimizers/hessian_updates.py` — advanced index 上での Bofill scatter、GPU OOM 回避のための CPU 専用 `bofill_update` パス
@@ -284,7 +284,7 @@ IRC / TSopt / Freq ステージは、CUDA メモリを解放するためにス�
 
 ### 5.5 `_LAZY_SUBCOMMANDS` レジストリは絶対パスを使う必要がある
 
-`pdb2reaction/cli/app.py:_LAZY_SUBCOMMANDS` はすべてのサブコマンドを **絶対** モジュールパスで解決します。いずれかのエントリを相対 dotted import（`".all"` など）に戻すと、`default_group.py` が移動した際にサブコマンド探索が静かに壊れます。リゾルバの `__package__` がパッケージルートから drift するためです。内部設計ノートを参照してください。
+`pdb2reaction/cli/app.py:_LAZY_SUBCOMMANDS` はすべてのサブコマンドを **絶対** モジュールパスで解決します。いずれかのエントリを相対 dotted import（`".all"` など）に戻すと、`default_group.py` が移動した際にサブコマンド探索が気づかないうちに動かなくなります。リゾルバの `__package__` がパッケージルートから乖離するためです。内部設計ノートを参照してください。
 
 ---
 

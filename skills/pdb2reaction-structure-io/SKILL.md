@@ -36,7 +36,7 @@ element symbols. Per-format details are in:
 
 ## Editing approach (agent-side)
 
-When an agent must edit a structure file, the basic posture is:
+When an agent must edit a structure file, the basic approach is:
 
 1. **Read the file first** to understand current layout (residues, atom
    counts, charge / multiplicity if present).

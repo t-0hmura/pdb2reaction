@@ -224,7 +224,7 @@ cat result_opt/result.json | python -m json.tool
 | `solvent` | string | 暗黙溶媒 or `"none"` |
 | `image_energies_hartree` | float[] | 全イメージエネルギー |
 | `n_images` | int | イメージ数 |
-| `hei_index` | int | 最高エネルギー画像のインデックス |
+| `hei_index` | int | 最高エネルギーイメージのインデックス |
 | `hei_energy_hartree` | float | HEI エネルギー |
 | `barrier_kcal` | float | 前方障壁 (kcal/mol) |
 | `delta_kcal` | float | 反応エネルギー (kcal/mol) |

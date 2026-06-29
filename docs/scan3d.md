@@ -1,6 +1,6 @@
 # `scan3d`
 
-Perform a three-distance grid scan with harmonic restraints and machine-learned interatomic potential (MLIP) relaxations, producing a 3D potential-energy volume over the three distances `(d₁, d₂, d₃)`. Use it when such a volume is needed, or when an existing `surface.csv` needs re-plotting.
+Perform a three-distance grid scan with harmonic restraints and machine-learned interatomic potential (MLIP) relaxations, sampling the potential energy on a 3D grid over the three distances `(d₁, d₂, d₃)`. Use it when such a volume is needed, or when an existing `surface.csv` needs re-plotting.
 
 There are two ways to drive the command. To run a new scan, supply targets with `--scan-lists/-s`, either as a YAML/JSON spec file (recommended) or as an inline Python literal. To re-plot an existing `surface.csv` without re-evaluating energies, pass it via `--csv`. During a scan, `scan3d` nests loops over d₁ → d₂ → d₃ and relaxes each point with the appropriate harmonic restraints active.
 

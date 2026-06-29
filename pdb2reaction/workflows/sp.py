@@ -100,7 +100,7 @@ H_EVAA_2_AU = EV2AU / (ANG2BOHR * ANG2BOHR)
 @click.option(
     "--convert-files/--no-convert-files", "convert_files",
     default=True, show_default=True,
-    help="Auto-convert output XYZ-like files into matching PDB beside them when the input had PDB metadata.",
+    help="Auto-convert output XYZ-like files into companion PDB files written alongside them when the input had PDB metadata.",
 )
 @click.option(
     "--config", "config_yaml",

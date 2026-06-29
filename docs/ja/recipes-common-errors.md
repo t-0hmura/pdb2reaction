@@ -16,7 +16,7 @@
 | `-q/--charge is required` 系エラー | `-q/--charge` または `-l/--ligand-charge` を明示指定してください | {ref}`電荷 / スピンの問題 <ts-charge-spin>` |
 | 計算は通るが状態/エネルギーが不自然 | [CLI 規約](cli-conventions.md) の電荷解決順序を再確認してください | {ref}`電荷 / スピンの問題 <ts-charge-spin>` |
 | **計算 / 収束** | | |
-| `--workers > 1` で `--hessian-calc-mode Analytical` を指定すると `RuntimeError` が送出される（警告なく `FiniteDifference` にダウングレードはされない） | 解析 Hessian が必要なら `--workers 1` に下げる、不要なら `FiniteDifference`（デフォルト）のまま | {ref}`workers > 1 によるヘシアンのダウングレード <ja-workers-fd-downgrade>` |
+| `--workers > 1` で `--hessian-calc-mode Analytical` を指定すると `RuntimeError` が送出される（警告なく `FiniteDifference` にダウングレードはされない） | 解析 Hessian が必要なら `--workers 1` に下げる、不要なら `FiniteDifference`（デフォルト）のまま | {ref}`workers > 1 によるHessianのダウングレード <ja-workers-fd-downgrade>` |
 | 実行時に CUDA OOM | `--radius` を縮小して再抽出（extract / all のみ）、`--opt-mode grad` に切替、有限差分 Hessian のまま、または VRAM の大きい GPU へ | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | TS は収束したが小さい虚振動が複数残る | `--flatten` を追加（`tsopt`、`opt`、`pdb2reaction all` 共通） | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | TSOPT が収束しない | L-BFGS/Dimer: `max_step` を**縮小**。RFO/RS-I-RFO: `trust_radius`/`trust_min`/`trust_max` を**縮小**。サイクル上限を増やし、TS 品質を確認 | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
@@ -68,8 +68,8 @@
  - TSOPT が停滞、IRC が不安定、MEP 精密化が途中停止。
 - 最初の確認:
  - TS 候補が虚振動数 1 本のみを持ち、対応する虚振動モードが反応座標方向の変位を示すか。検出カットオフは `hessian_dimer.neg_freq_thresh_cm`（デフォルト 5 cm⁻¹）。
- - 虚振動数の本数が誤っている場合（偽の 2 本目の小さいモード、または支配的な反応モードが無い）は、`--precision fp64` で精度を上げる、および／または `--coord-type dlc` に切り替え、残った小さいモードは `--flatten` を追加します。これらのレバーは補完的です。{ref}`tsopt: 最適化後に虚振動数の本数が誤っている場合 <ja-wrong-imaginary-mode-count>` を参照。
- - ステップサイズ / 信頼半径（YAML キー `max_step`, `trust_radius`/`trust_min`/`trust_max`）と、最適化モード / フラット化（CLI フラグ `--opt-mode`, `--flatten`）は補完的に併用してください。YAML セクション構成は [YAML リファレンス](yaml-reference.md)、正規の修正手順は {ref}`計算 / 収束の問題 <ts-calc-conv>` を参照。
+ - 虚振動数の本数が誤っている場合（偽の 2 本目の小さいモード、または支配的な反応モードが無い）は、`--precision fp64` で精度を上げる、および／または `--coord-type dlc` に切り替え、残った小さいモードは `--flatten` を追加します。これらの手法は補完的です。{ref}`tsopt: 最適化後に虚振動数の本数が誤っている場合 <ja-wrong-imaginary-mode-count>` を参照。
+ - ステップサイズ / 信頼半径（YAML キー `max_step`, `trust_radius`/`trust_min`/`trust_max`）と、最適化モード / フラット化（CLI フラグ `--opt-mode`, `--flatten`）は併用してください。YAML セクション構成は [YAML リファレンス](yaml-reference.md)、正規の修正手順は {ref}`計算 / 収束の問題 <ts-calc-conv>` を参照。
  - `max_cycles` 到達時に力のノルムが閾値をわずかに超えているだけで、エネルギー地形がほぼ平坦になっている場合は {ref}`計算 / 収束の問題 <ts-calc-conv>` を参照してください — `opt.energy_plateau` フォールバックが自動処理します。
 - 典型的な修正手順:
  - 小規模ケースで条件を詰め、安定化後に本番条件へ戻す。

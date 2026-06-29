@@ -20,7 +20,7 @@ pdb2reaction opt -i input.pdb [-q 0 -m 1] \
 | flag | type | default | description |
 |---|---|---|---|
 | `-i, --input` | path | required | `.pdb` / `.xyz` / `.gjf` |
-| `-q` / `-l` / `-m` | — | — | Charge / spin (common conventions) |
+| `-q` / `-l` / `-m` | — | — | Charge / spin |
 | `--opt-mode` | str | `grad` | `grad` (L-BFGS) or `hess` (RFO); aliases `lbfgs` / `rfo` |
 | `--max-cycles` | int | `10000` | Stop after N cycles; see `OPT_BASE_KW["max_cycles"]` |
 | `-b, --backend` | str | `uma` | MLIP backend |
@@ -68,7 +68,7 @@ pdb2reaction path-opt -i /tmp/relax_R/final_geometry.xyz /tmp/relax_P/final_geom
 
 | Mode | Algorithm | When |
 |---|---|---|
-| `grad` / `lbfgs` | L-BFGS | Default, fast, robust for most well-conditioned minima |
+| `grad` / `lbfgs` | L-BFGS | Default, fast, reliable for most well-conditioned minima |
 | `hess` / `rfo` | RFO with Hessian updates | Stiffer convergence; useful when L-BFGS oscillates |
 
 ## Caveats

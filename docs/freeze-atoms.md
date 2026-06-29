@@ -2,7 +2,7 @@
 
 ## Overview
 
-Cluster models need a small set of atoms held in place at the truncation boundary so the optimizer cannot pull the dangling fragment into something unphysical. `pdb2reaction` handles this through **cap hydrogens** (added at severed bonds by `extract`) and three layers of `freeze_atoms` specification.
+Cluster models need a small set of atoms held in place at the truncation boundary so the optimizer cannot pull the dangling fragment into something unphysical. `pdb2reaction` handles this through **cap hydrogens** (added at severed bonds by `extract`) and three sources of `freeze_atoms` specification.
 
 When a residue is sliced out of a larger protein using the `extract` sub-command, the bond at the boundary is capped with a **cap hydrogen** (residue `LKH`, atom `HL`, 1.09 Å along the original bond vector). If the parent atom of that cap hydrogen is left free, gradient descent will quietly relax the cap+parent pair into a different geometry, deforming the boundary. Freezing the relevant atoms keeps the boundary stationary throughout optimization, MEP search, IRC, and vibrational analysis.
 
@@ -17,7 +17,7 @@ pdb2reaction extract -i complex.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' -o model.pdb
 pdb2reaction opt -i model.pdb -q 0 -m 1   # --freeze-links is True; LKH parents auto-frozen
 ```
 
-For XYZ/GJF inputs, no `LKH` atoms are present, so `--freeze-links` has no effect; use the next two methods instead. `--ref-pdb FILE` lets XYZ/GJF runs inherit a PDB topology and resurrect cap-hydrogen detection.
+For XYZ/GJF inputs, no `LKH` atoms are present, so `--freeze-links` has no effect; use the next two methods instead. `--ref-pdb FILE` lets XYZ/GJF runs inherit a PDB topology and re-enable cap-hydrogen detection.
 
 ### 2. `--freeze-atoms 'i,j,k,...'` (CLI explicit list)
 

@@ -99,7 +99,7 @@ If you prefer to build the environment piece by piece:
     pip install torch --index-url https://download.pytorch.org/whl/cu129
     ```
 
-    PyTorch must be built for your CUDA driver version. Check compatibility at [PyTorch Get Started](https://pytorch.org/get-started/locally/). CPU-only execution is supported but significantly slower (10-100x).
+    PyTorch must be built for your CUDA driver version. Check compatibility at [PyTorch Get Started](https://pytorch.org/get-started/locally/). CPU-only execution is supported but significantly slower (10–100×).
 
 5. **Install `pdb2reaction` itself and Chrome for visualization**
 

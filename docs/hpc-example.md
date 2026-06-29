@@ -148,13 +148,13 @@ The 24 h template above is a default ceiling, not a target. Most jobs finish wel
 
 - **Cluster-model `opt` / `tsopt`** (~50–100 atoms, single GPU): minutes to a few hours.
 - **`pdb2reaction all` end-to-end** (extract → MEP → TSOPT → IRC → freq → DFT) on a small substrate: typically a few hours; high-end multi-GPU nodes can shorten the DFT stage substantially.
-- **MEP (`path-search` / `path-opt`)**: scales with `--max-nodes` (images per segment) and `--max-cycles` (GSM optimizer iterations) — recursive `path-search` campaigns multiply both by segment count, so multistep mechanisms can occupy a single GPU for many hours.
+- **MEP (`path-search` / `path-opt`)**: scales with `--max-nodes` (images per segment) and `--max-cycles` (GSM optimizer iterations) — recursive `path-search` runs multiply both by the segment count, so multistep mechanisms can occupy a single GPU for many hours.
 
 Walltime scales roughly inversely with effective parallelism (the total `workers` count) on the UMA backend. ORB / MACE / AIMNet2 do not parallelize across workers, so adding more nodes does not shorten their wall-clock time.
 
 ## Precision on datacenter GPUs
 
-On the HPC datacenter cards these templates target (H100 / H200 / A100), run production TS optimizations and Hessians with `--precision fp64`: the fp64 throughput cost is small on these cards and it gives deterministic-grade, low numerical-noise results. Keep the default `--precision fp32` for screening and on consumer GPUs (RTX 50xx / 40xx), where fp64 is substantially slower. See [Reproducibility → Choosing precision by GPU class](reproducibility.md#choosing-precision-by-gpu-class) for the routing details and the `--deterministic` pairing.
+On the HPC datacenter cards these templates target (H100 / H200 / A100), run production TS optimizations and Hessians with `--precision fp64`: the fp64 throughput cost is small on these cards and it gives near-deterministic, low numerical-noise results. Keep the default `--precision fp32` for screening and on consumer GPUs (RTX 50xx / 40xx), where fp64 is substantially slower. See [Reproducibility → Choosing precision by GPU class](reproducibility.md#choosing-precision-by-gpu-class) for the routing details and the `--deterministic` pairing.
 
 ## See Also
 

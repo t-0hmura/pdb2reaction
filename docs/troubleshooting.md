@@ -94,7 +94,7 @@ The minimum energy path (MEP) search can stall or skip an expected bond change. 
 ## Performance / stability tips
 
 - **OOM** — shrink active-site model (`--radius`), lower `--max-nodes`, use lighter `--opt-mode grad`.
-- **Analytical Hessian** — keep the default `FiniteDifference`; only set `--hessian-calc-mode Analytical` if you have 16 GB+ VRAM, and note it fits 16 GB only up to ~200 atoms (see the VRAM table below).
+- **Analytical Hessian** — keep the default `FiniteDifference`; only set `--hessian-calc-mode Analytical` if you have 16 GB+ VRAM, and note that on 16 GB it is feasible only up to ~200 atoms (see the VRAM table below).
 - **`workers > 1`** — improves UMA throughput on HPC, but is incompatible with the analytical Hessian (it raises a `RuntimeError`); pass `--hessian-calc-mode FiniteDifference` explicitly, or run with `--workers 1` for Hessian-based modes.
 - **Large systems (1000+ atoms)** — extract a smaller active-site model (`--radius 2.5`) or run multi-GPU.
 - **DFT scratch on HPC (~hundreds of atoms)** — PySCF / GPU4PySCF spills integrals to `$PYSCF_TMPDIR` (or `$TMPDIR` / `/tmp` if unset). Node-local `/tmp` is often small / `tmpfs`-backed and can fill up mid-SCF. Set `export PYSCF_TMPDIR="$PBS_O_WORKDIR"` before launching `dft`.
@@ -110,7 +110,7 @@ Order-of-magnitude per-step L-BFGS cost on small-to-medium cluster models, measu
 | `mace` (`MACE-OMOL-0`) | 0.37 | ~4 GB | Separate env (`e3nn` conflict with fairchem-core). |
 | `orb` (`orb_v3_conservative_omol`) | 0.02 | ~2 GB | Fastest; see caveat. |
 
-Start with the default UMA model for rapid screening, then cross-check key results with MACE or `uma-m-1p1`. For SAM-dependent S~N~2 / methyltransfer chemistries MACE and default UMA are complementary — try both when one produces a suspect TS. The Orb backend often identifies the correct reaction coordinate but tends to converge TSs with extra small imaginary modes — good for initial *mechanism recovery*, but for quantitative kinetics or freq analysis re-score Orb geometries with UMA / MACE / DFT.
+Start with the default UMA model for rapid screening, then cross-check key results with MACE or `uma-m-1p1`. For SAM-dependent S~N~2 / methyltransfer chemistries MACE and default UMA are complementary — try both when one produces a suspect TS. The Orb backend often identifies the correct reaction coordinate but tends to converge to TS geometries with extra small imaginary modes — good for initial *mechanism recovery*, but for quantitative kinetics or freq analysis re-score Orb geometries with UMA / MACE / DFT.
 
 ## GPU memory (VRAM) requirements
 

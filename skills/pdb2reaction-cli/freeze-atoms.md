@@ -2,7 +2,7 @@
 
 Cluster models pulled from a larger protein need a small set of atoms held
 in place at the truncation boundary, otherwise the optimizer pulls the
-dangling fragment into something unphysical. `pdb2reaction` handles this
+dangling fragment into an unphysical geometry. `pdb2reaction` handles this
 with **cap hydrogens** + three layers of `freeze_atoms`.
 
 ## Background: cap hydrogens (`LKH/HL`)
@@ -46,7 +46,7 @@ Or inherit topology from a reference PDB:
 
 ```bash
 pdb2reaction tsopt -i ts_candidate.xyz -q 0 -m 1 \
-  --ref-pdb model.pdb                              # --freeze-links resurrected
+  --ref-pdb model.pdb                              # --freeze-links re-enabled
 ```
 
 ### Long list — keep it in YAML

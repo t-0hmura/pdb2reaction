@@ -1,6 +1,6 @@
 # `extract`
 
-タンパク質–リガンド PDB（単一構造またはアンサンブル）から、後続の MEP/TSOPT/freq/DFT 用の活性部位クラスターモデル（バインディングポケット）を切り出します。基質は `-c/--center` で残基名（`'GPP,SAM'`）、残基 ID（`'A:123A'`）、または PDB パスとして指定します。切断された結合はキャップ水素でキャップされます（`--add-linkh` 有効時、デフォルト）。非標準残基の電荷には `--ligand-charge/-l` を使用してください。
+タンパク質–リガンド PDB（単一構造またはアンサンブル）から、後続の MEP/TSOPT/freq/DFT 用の活性部位クラスターモデル（バインディングポケット）を切り出します。基質は `-c/--center` で残基名（`'GPP,SAM'`）、残基 ID（`'A:123A'`）、または PDB パスとして指定します。切断された結合にはキャップ水素が付加されます（`--add-linkh` 有効時、デフォルト）。非標準残基の電荷には `--ligand-charge/-l` を使用してください。
 
 ## 実行例
 
@@ -59,7 +59,7 @@ pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
 - **標準カットオフ（`--radius`、デフォルト 2.6 Å）:**
  - `--no-exclude-backbone` の場合、カットオフ内の任意の原子が残基を対象にする
  - `--exclude-backbone` の場合、アミノ酸残基は**非主鎖**原子（N/H*/CA/HA*/C/O/OXT 以外）で基質に接触する必要がある。非アミノ酸残基は任意の原子で接触判定される。
-- **独立したヘテロ-ヘテロカットオフ（`--radius-het2het`）:** 基質ヘテロ原子（非 C/H）がタンパク質ヘテロ原子の指定した Å 以内にある場合に残基を追加。`--exclude-backbone` 有効時はタンパク質側原子も非主鎖でなければならない。
+- **独立したヘテロ-ヘテロカットオフ（`--radius-het2het`）:** 基質ヘテロ原子（非 C/H）がタンパク質ヘテロ原子の指定距離（Å）以内にある場合に残基を追加。`--exclude-backbone` 有効時はタンパク質側原子も非主鎖でなければならない。
 - **水処理:** HOH/WAT/H2O/DOD/TIP/TIP3/SOL はデフォルトで含まれる（`--include-h2o`）
 - **強制包含:** `--selected-resn` は**残基 ID** を受け入れます（例: `A:123A`）。残基 ID 仕様の詳細は CLI 規約の {ref}`ja-selected-resn-takes-ids` を参照。
 - **近傍セーフガード:**
@@ -121,7 +121,7 @@ pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
 | `--exclude-backbone/--no-exclude-backbone` | 非基質アミノ酸の主鎖原子を除去 | `False` |
 | `--add-linkh/--no-add-linkh` | 切断された結合に 1.09 Å のキャップ水素を炭素境界にのみ付加（非炭素境界はキャップしない） | `True` |
 | `--selected-resn TEXT` | **残基 ID**（オプションのチェーン/挿入コード付き、例: `A:123A`）で強制的に含める残基。残基 ID 仕様の詳細は CLI 規約の {ref}`ja-selected-resn-takes-ids` を参照 | `""` |
-| `--modified-residue TEXT` | 修飾アミノ酸残基名をカンマ区切りで指定（任意で各残基に電荷付き）。主鎖切断と電荷計算にアミノ酸として扱う。例: `HD1,HD2,HD3` または `HD1:0,SEP:-2`。残基ごとに `:charge` 接尾辞を省略した場合、その残基の電荷は `0` になります（例: `HD1,HD2:-1` では `HD1` が電荷 0、`HD2` が電荷 −1）。フラグ全体のデフォルトは空文字列（無効） | `""` |
+| `--modified-residue TEXT` | 修飾アミノ酸残基名をカンマ区切りで指定（任意で各残基に電荷付き）。主鎖切断と電荷計算でアミノ酸として扱います。例: `HD1,HD2,HD3` または `HD1:0,SEP:-2`。残基ごとに `:charge` 接尾辞を省略した場合、その残基の電荷は `0` になります（例: `HD1,HD2:-1` では `HD1` が電荷 0、`HD2` が電荷 −1）。フラグ全体のデフォルトは空文字列（無効） | `""` |
 | `-l, --ligand-charge TEXT` | 総電荷または残基名ごとのマッピング（例: `GPP:-3,SAM:1`） | _None_ |
 | `--out-json/--no-out-json` | 抽出された PDB(s) の隣に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 
@@ -260,8 +260,8 @@ HOH, WAT, H2O, DOD, TIP, TIP3, SOL
 pdb2reaction が活性部位モデルを抽出する際、切断された結合は**キャップ水素**でキャップされます。デフォルト（`--freeze-links`）では、キャップ水素の親原子が最適化や経路探索中に凍結され、境界での非物理的な再配置を防ぎます。
 
 - **力**: 凍結原子の力はゼロ化されます。
-- **ヘシアン**: 凍結自由度は除去（`return_partial_hessian: true`）またはフル行列でゼロ化されます。
-- **振動解析**: 凍結原子がある場合、`freq` は自動的に部分ヘシアン振動解析（PHVA: Partial Hessian Vibrational Analysis）を行い、活性ブロックのみを対角化します。
+- **Hessian**: 凍結自由度は除去（`return_partial_hessian: true`）またはフル行列でゼロ化されます。
+- **振動解析**: 凍結原子がある場合、`freq` は自動的に部分Hessian振動解析（PHVA: Partial Hessian Vibrational Analysis）を行い、活性ブロックのみを対角化します。
 
 凍結原子は `geom.freeze_atoms` YAML キー（1 始まりインデックス）で手動設定も可能です。CLI で検出されたキャップ原子は YAML 指定の原子とマージされます。
 

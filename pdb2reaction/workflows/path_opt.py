@@ -439,7 +439,7 @@ def _optimize_single(
     default="gpu",
     show_default=True,
     help="DMF compute backend (--mep-mode dmf only): gpu (dmf.torch / CUDA) or cpu (dmf / NumPy). "
-    "On a GPU out-of-memory, retry with cpu.",
+    "On a GPU out-of-memory error, retry with cpu.",
 )
 @click.option(
     "-q",

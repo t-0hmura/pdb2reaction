@@ -30,8 +30,9 @@ Options:
                                   to FiniteDifference.
   --convert-files / --no-convert-files
                                   Auto-convert output XYZ-like files into
-                                  matching PDB beside them when the input had
-                                  PDB metadata.  [default: convert-files]
+                                  companion PDB files written alongside them
+                                  when the input had PDB metadata.  [default:
+                                  convert-files]
   --config FILE                   YAML config file with sections (calc:, geom:,
                                   …).
   --show-config / --no-show-config

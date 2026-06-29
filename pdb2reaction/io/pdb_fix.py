@@ -411,7 +411,7 @@ def _run_fix_altloc(
     name="fix-altloc",
     help=(
         "Blank PDB altLoc column (col 17) without shifting, and keep one altLoc "
-        "per atom by default rule: highest occupancy, then earliest appearance."
+        "per atom using the default rule: highest occupancy, then earliest appearance."
     ),
     context_settings={"help_option_names": ["-h", "--help"]},
 )

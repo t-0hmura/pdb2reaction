@@ -1,6 +1,6 @@
 # `energy-diagram`
 
-Draw a state energy diagram directly from numeric values you provide — it does not read structure files and runs no quantum / thermo / MLIP calculation (`--thermo` / `--dft`). Use it when numeric state energies are already known (e.g. from `summary.json`) and only the formatted diagram is needed. It produces one image file and an optional machine-readable sidecar.
+Draw a state energy diagram directly from numeric values you provide — it does not read structure files and runs no quantum / thermo / MLIP calculations (`--thermo` / `--dft`). Use it when numeric state energies are already known (e.g. from `summary.json`) and only the formatted diagram is needed. It produces one image file and an optional machine-readable sidecar.
 
 ## Examples
 

@@ -10,7 +10,7 @@ Run the end-to-end workflow once from two full PDB structures.
 - Two PDB files (reactant R and product P) with **hydrogen atoms** already added
 - The same atoms in the same order across all input PDB files
 
-> **About the example filenames:** `1.R.pdb` and `3.P.pdb` mirror the numbered reactant/product files shipped in the geranyl pyrophosphate (GPP) C6-methyltransferase BezA example directory ([`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) — `1.R.pdb` = reactant state, `3.P.pdb` = product state, with intermediate `2.*.pdb` files available for runs that include additional reactant/product/intermediate structures). Replace them with the two (or more) full-system PDBs for your own reaction. To run the commands below verbatim, first fetch the bundled example: `git clone https://github.com/t-0hmura/pdb2reaction && cd pdb2reaction/examples`.
+> **About the example filenames:** `1.R.pdb` and `3.P.pdb` mirror the numbered reactant/product files shipped in the geranyl pyrophosphate (GPP) C6-methyltransferase BezA example directory ([`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) — `1.R.pdb` = reactant state, `3.P.pdb` = product state, with intermediate `2.*.pdb` files for multi-step runs). Replace them with the two (or more) full-system PDBs for your own reaction. To run the commands below verbatim, first fetch the bundled example: `git clone https://github.com/t-0hmura/pdb2reaction && cd pdb2reaction/examples`.
 
 ## Minimal command
 
@@ -53,7 +53,7 @@ result_all/
 
 **What to check:**
 
-1. `summary.json` — check the `status` field (`"success"`, `"partial"`, or `"failed"`) and the per-segment `barrier_kcal` values; `summary.log` mirrors the same information in human-readable form
+1. `summary.json` — check the `status` field (`"success"`, `"partial"`, or `"failed"`) and the per-segment `barrier_kcal` values; `summary.log` presents the same information in human-readable form
 2. `segments/seg_01/*.pdb` — open in PyMOL to verify the R/TS/P structures make chemical sense
 3. `energy_diagram_*.png` — the energy profile should show a clear barrier
 

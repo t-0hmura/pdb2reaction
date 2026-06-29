@@ -1,6 +1,6 @@
 # `dft`
 
-GPU4PySCF または CPU PySCF を使用して DFT 一点計算を実行し、エネルギーと布居解析（population analysis: Mulliken、meta-Löwdin、IAO 電荷）を報告します。デフォルトの汎関数/基底関数は ωB97M-V/def2-tzvpd です。小規模な活性部位モデルの DFT 一点エネルギー（および布居解析）を得たい場面で使用します。多くは、MLIP で最適化した R/TS/P 構造の精密化に用います。バックエンドは `--engine`（デフォルト `gpu`）で選択します。GPU が利用できない場合や移植性・デバッグ目的の実行には `cpu` を使用します。
+GPU4PySCF または CPU PySCF を使用して DFT 一点計算を実行し、エネルギーと布居解析（population analysis: Mulliken、meta-Löwdin、IAO 電荷）を出力します。デフォルトの汎関数/基底関数は ωB97M-V/def2-tzvpd です。小規模な活性部位モデルの DFT 一点エネルギー（および布居解析）を得たい場面で使用します。多くは、MLIP で最適化した R/TS/P 構造の精密化に用います。バックエンドは `--engine`（デフォルト `gpu`）で選択します。GPU が利用できない場合や移植性・デバッグ目的の実行には `cpu` を使用します。
 
 > `--engine`（単体の `dft`）と `--dft-engine`（`pdb2reaction all` から転送する場合）の命名規則は {ref}`ja-engine-vs-dft-engine` を参照してください。
 
@@ -52,8 +52,8 @@ pdb2reaction dft -i input.pdb -l 'LIG:0' -m 1 \
 ## 処理の流れ
 
 1. **入力処理** – `geom_loader` でロード可能な任意のファイル（.pdb/.xyz/_trj.xyz/…）を受け入れ、座標は `input_geometry.xyz` として再エクスポートされます。XYZ/GJF 入力では `--ref-pdb` が参照 PDB トポロジーを提供し、原子数検証や（`--ligand-charge` 使用時の）電荷導出に使われます。DFT 段階自体は PDB/GJF 出力を生成しません。
-2. **SCF ビルド** – `--func-basis` を汎関数と基底に解析します。`--engine` で GPU/CPU を制御します（`gpu` は GPU4PySCF 必須でエラー終了、`cpu` は CPU 固定）。closed-shell + GPU + `--lowmem`（デフォルト）では SCF オブジェクトに `gpu4pyscf.dft.rks_lowmem.RKS` を使用し、メモリ効率の良い直接 JK で密度フィッティングをスキップします。open-shell GPU、CPU、または `--no-lowmem` の経路では密度フィッティングが PySCF のデフォルト設定で自動的に有効化されます。非局所補正（例: VV10）はバックエンドのデフォルトを超える明示的な設定は行いません。
-3. **布居解析 & 出力** – 収束後（または失敗後）、エネルギー（Hartree/kcal·mol⁻¹）、収束メタデータ、バックエンド情報、および原子ごとの Mulliken/meta-Löwdin/IAO 電荷とスピン密度を要約する `result.yaml` を書き込みます。解析に失敗した列は `null` に設定され、警告が出力されます。
+2. **SCF ビルド** – `--func-basis` を汎関数と基底に解析します。`--engine` で GPU/CPU を制御します（`gpu` は GPU4PySCF 必須でエラー終了、`cpu` は CPU 固定）。closed-shell + GPU + `--lowmem`（デフォルト）では SCF オブジェクトに `gpu4pyscf.dft.rks_lowmem.RKS` を使用し、メモリ効率の良い直接 JK で密度フィッティングをスキップします。open-shell GPU、CPU、または `--no-lowmem` の経路では密度フィッティングが PySCF のデフォルト設定で自動的に有効化されます。非局所補正（例: VV10）はバックエンドのデフォルトに従い、明示的な上書きは行いません。
+3. **布居解析 & 出力** – 収束後（または失敗後）、エネルギー（Hartree/kcal·mol⁻¹）、収束メタデータ、バックエンド情報、および原子ごとの Mulliken/meta-Löwdin/IAO 電荷とスピン密度を要約する `result.yaml` を書き込みます。解析に失敗した項目は `null` に設定され、警告が出力されます。
 
 ## 出力
 
@@ -108,7 +108,7 @@ dft:
  conv_tol: 1.0e-09 # SCF convergence tolerance (Hartree)
  max_cycle: 100 # maximum SCF iterations
  grid_level: 3 # PySCF grid level
- verbose: 0 # PySCF verbosity (0-9); CLI -v 2/3 では実行時 PySCF verbosity が >=4
+ verbose: 0 # PySCF verbose レベル (0-9); CLI -v 2/3 では実行時 PySCF verbose レベル が >=4
  out_dir: ./result_dft/ # output directory root
 ```
 
@@ -119,7 +119,7 @@ dft:
 - `conv_tol` (`1e-9`): SCF 収束閾値（Hartree）
 - `max_cycle` (`100`): 最大 SCF 反復
 - `grid_level` (`3`): PySCF `grids.level`
-- `verbose` (`0`): PySCF 冗長度（0–9）。デフォルトは quiet。CLI `-v 2/3` では実行時に PySCF 冗長度が最低 `4` へ上がります。
+- `verbose` (`0`): PySCF verbose レベル（0–9）。デフォルトは quiet。CLI `-v 2/3` では実行時に PySCF verbose レベルが最低 `4` へ上がります。
 - `out_dir` (`"./result_dft/"`): 出力ディレクトリ
 - `lowmem` (`True`): closed-shell の GPU 経路で `gpu4pyscf.dft.rks_lowmem.RKS` を使用（密度フィッティングをスキップ）。open-shell、CPU エンジン、`rks_lowmem` 非搭載の旧 `gpu4pyscf` では標準 RKS/UKS に自動フォールバック。
 
@@ -133,15 +133,15 @@ dft:
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 - **デフォルト基底のコスト:** `def2-tzvpd` はトリプルゼータのディフューズ拡張セットであり、大きな系では計算コストが高くなります。探索的な計算には小さい基底（例: `6-31g**` や `def2-svp`）を検討してください。
-- **GPU メモリ、def2-TZVPD:** 16–24 GB GPU ではデフォルトの `def2-tzvpd` で **150 原子以上** の系は OOM になります。厳しい設定は十分な VRAM を持つ GPU 上で**小さい**活性部位モデルにのみ適します。代替として `--func-basis 'wb97m-v/def2-svp'` を使用するか（def2-SVP と def2-TZVPD の反応障壁の差は通常 1–3 kcal/mol）、全系を本番運用するなら外部 DFT プログラム（ORCA, Gaussian）を使用してください。
+- **GPU メモリ、def2-TZVPD:** 16–24 GB GPU ではデフォルトの `def2-tzvpd` で **150 原子以上** の系は OOM になります。厳しい設定は十分な VRAM を持つ GPU 上で**小さい**活性部位モデルにのみ適します。代替として `--func-basis 'wb97m-v/def2-svp'` を使用するか（def2-SVP と def2-TZVPD の反応障壁の差は通常 1–3 kcal/mol）、全系を本番計算するなら外部 DFT プログラム（ORCA, Gaussian）を使用してください。
 - **Blackwell アーキテクチャ GPU（RTX 50xx）:** GPU4PySCF は小規模な系（~100 原子）でもメモリ不足エラーが発生する場合があります。これらの GPU では `--engine cpu` または外部 DFT プログラム（ORCA, Gaussian）を使用してください。
 - **CPU バックエンド:** `--engine cpu` は活性部位モデル（**≲150 原子**）と小さい基底関数（例: `def2-svp`）に限り実用的で、より大きな系を CPU で計算すると非常に低速になるため、全系計算には外部 DFT プログラムの利用を推奨します。
-- **総合的なシステムサイズ上限:** DFT 一点計算は **約 300 原子** までのシステムで実用的です。それ以上のシステムでは計算時間とメモリ使用量が実用範囲を超え、A100 や H200 等の高性能 GPU を搭載した HPC クラスタの利用が必要になる場合があります。酵素系では、DFT 実行前に小さな活性部位モデル（バインディングポケット）を抽出してください。
+- **系サイズの上限:** DFT 一点計算は **約 300 原子** までの系で実用的です。それ以上の系では計算時間とメモリ使用量が実用範囲を超え、A100 や H200 等の高性能 GPU を搭載した HPC クラスタの利用が必要になる場合があります。酵素系では、DFT 実行前に小さな活性部位モデル（バインディングポケット）を抽出してください。
 - **HPC スクラッチ領域:** PySCF / GPU4PySCF は積分や中間ファイルを `$PYSCF_TMPDIR`（未設定なら `$TMPDIR`、最後は `/tmp`）に書き出します。HPC ノードの `/tmp` は容量が小さい、または `tmpfs` (memory-backed) であることが多く、数百原子規模では SCF 途中で枯渇します。`dft` を起動する前に `PYSCF_TMPDIR` をジョブの作業ファイルシステム配下に向けてください（例: `export PYSCF_TMPDIR="$PBS_O_WORKDIR"`）。
 - GPU4PySCF のコンパイル済みホイールは非 x86 環境では動作しない場合があります。ソースからビルドしてください（参照: https://github.com/pyscf/gpu4pyscf）。
 - 補助基底の推定は未実装です。密度フィッティングの挙動は処理の流れ（SCF ビルド）と `--lowmem` CLI オプションで説明しています。
 - YAML 入力ファイルのルートはマッピングでなければなりません。`dft` セクションは任意です。マッピング以外のルートは `load_yaml_dict` でエラーになります。
-- IAO の電荷/スピン解析は難しい系で失敗する場合があり、`result.yaml` の該当列は `null` となり警告が出力されます。
+- IAO の電荷/スピン解析は難しい系で失敗する場合があり、`result.yaml` の該当項目は `null` となり警告が出力されます。
 
 ## 関連項目
 

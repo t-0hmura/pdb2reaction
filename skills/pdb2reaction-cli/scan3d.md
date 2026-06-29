@@ -58,7 +58,7 @@ in pandas or matplotlib.
 ## Caveats
 
 - Output volume scales as `n_steps1 × n_steps2 × n_steps3`. Keep grid
-  sizes modest (5×5×5 = 125 points already).
+  sizes modest (a 5×5×5 grid is already 125 points).
 - For inherently 1D or 2D mechanisms, `scan.md` / `scan2d.md` are
   drastically cheaper.
 - `--csv` is the post-mortem entry point: rerun energy diagrams or

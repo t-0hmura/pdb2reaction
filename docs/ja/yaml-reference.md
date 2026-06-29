@@ -15,7 +15,7 @@
 
 1. **組み込みデフォルト** — `pdb2reaction/core/defaults.py` に定義されたハードコード値。
 2. **`--config`** — デフォルトを上書きする YAML ファイル（例: `--config my_settings.yaml`）。
-3. **CLI フラグ** — コマンドラインで明示的に指定したオプション（例: `-q -1`, `--thresh gau_loose`）。*明示的に指定された*値のみが YAML を上書きし、CLI デフォルトのままのオプションは YAML の値を隠しません。
+3. **CLI フラグ** — コマンドラインで明示的に指定したオプション（例: `-q -1`, `--thresh gau_loose`）。*明示的に指定された*値のみが YAML を上書きし、CLI デフォルトのままのオプションは YAML の値を上書きしません（YAML の値が有効なまま）。
 
 例: YAML で `charge: 0` を設定し、CLI で `-q -1` を渡した場合、電荷は `-1` になります。
 
@@ -71,7 +71,7 @@ TS 最適化はより厳しい "baker" プリセットを、通常の極小化�
 ```{note}
 **`--thresh` を持たないサブコマンド。** `irc`、`freq`、`dft` には `--thresh` が**ありません**:
 
-- `irc` — 収束は `irc.rms_grad_thresh`、`irc.energy_thresh`、`irc.max_cycles` で制御されます（[`irc` セクション](#ja-irc-section) を参照）。IRC は予測子–修正子積分器に従うため、力ベース極小化用のプリセットファミリは適用されません。
+- `irc` — 収束は `irc.rms_grad_thresh`、`irc.energy_thresh`、`irc.max_cycles` で制御されます（[`irc` セクション](#ja-irc-section) を参照）。IRC は予測子–修正子積分器に従うため、力ベース極小化用のプリセット群は適用されません。
 - `freq` — 最適化ステップが無いため `--thresh` は存在しません。数値精度は `--hessian-calc-mode` と MLIP 自体の精度で決まります。
 - `dft` — SCF 収束は `dft.conv_tol`（デフォルト `1e-9` Hartree）と `dft.max_cycle` で制御されます。`gau`/`baker` プリセットファミリは使用しません。[`dft` セクション](#ja-dft-section) を参照してください。
 ```
@@ -113,7 +113,7 @@ geom:
 
 **注記:**
 - `freeze_atoms` は PDB 入力時の `--freeze-links` 検出原子とマージされます。
-- 凍結原子は力がゼロ化され、ヘシアンの該当列もゼロ化されます。
+- 凍結原子は力がゼロ化され、Hessianの該当列もゼロ化されます。
 - `irc` では `geom.coord_type` が YAML/CLI マージ後に `cart` へ強制されます。
 
 ---
@@ -140,9 +140,9 @@ calc:
  hessian_double: true # Assemble/return Hessian in float64
  # freeze_atoms: null # geom.freeze_atoms から継承されるため直接指定しない
  hessian_calc_mode: FiniteDifference # Hessian mode: "Analytical" or "FiniteDifference"
- return_partial_hessian: true  # active-DOF ブロックのヘシアンを返す
- print_timing: true # ヘシアン計算のタイミング内訳を表示
- print_vram: true # ヘシアン計算中の CUDA VRAM 使用量を表示 (UMA バックエンドのみ)
+ return_partial_hessian: true  # active-DOF ブロックのHessianを返す
+ print_timing: true # Hessian計算のタイミング内訳を表示
+ print_vram: true # Hessian計算中の CUDA VRAM 使用量を表示 (UMA バックエンドのみ)
  # Solvent correction (xTB)
  solvent: none           # Implicit solvent name (e.g. "water", "methanol") or "none" to disable
  solvent_model: alpb     # xTB solvent model: "alpb" or "cpcmx"
@@ -151,11 +151,11 @@ calc:
 ```
 
 **注記:**
-- `backend` で MLIP エンジンを選択。すべてのバックエンド（UMA, ORB, MACE, AIMNet2）が解析ヘシアン（`hessian_calc_mode: Analytical`）と有限差分ヘシアンの両方に対応。マルチワーカー推論は UMA バックエンド限定。
+- `backend` で MLIP エンジンを選択。すべてのバックエンド（UMA, ORB, MACE, AIMNet2）が解析Hessian（`hessian_calc_mode: Analytical`）と有限差分Hessianの両方に対応。マルチワーカー推論は UMA バックエンド限定。
 - `workers` / `workers_per_node` は UMA バックエンドでのみ有効。
 - `solvent` で xTB ベースの暗黙溶媒補正を有効化（デルタ補正方式）。`xtb` のインストールが必要。
 - VRAM が十分な場合は `hessian_calc_mode: Analytical` を使用してください。
-- `workers > 1` の場合、解析ヘシアンは無効化されます — `workers > 1` で `hessian_calc_mode: Analytical` を明示指定すると `RuntimeError` が送出されます（警告なく有限差分へダウングレードはされません）。デフォルトの `FiniteDifference` を使うか、解析ヘシアンが必要な場合は `workers = 1` に下げてください。詳細は {ref}`MLIP Calculator のヘシアン評価モード <ja-hessian-evaluation>` を参照してください。
+- `workers > 1` の場合、解析Hessianは無効化されます — `workers > 1` で `hessian_calc_mode: Analytical` を明示指定すると `RuntimeError` が送出されます（警告なく有限差分へダウングレードはされません）。デフォルトの `FiniteDifference` を使うか、解析Hessianが必要な場合は `workers = 1` に下げてください。詳細は {ref}`MLIP Calculator のHessian評価モード <ja-hessian-evaluation>` を参照してください。
 - 電荷/スピンは `.gjf` テンプレートがあればそれを継承します。
 - `freq` はデフォルトで `calc.return_partial_hessian = true`（PHVA）を設定します（YAML で上書き可能）。
 - IRC は `geom.coord_type = cart` と `calc.return_partial_hessian = true` を常に強制します（YAML より優先、partial Hessian で active-DOF 処理）。
@@ -193,11 +193,11 @@ opt:
 **平坦なエネルギー地形によるフォールバック収束:**
 `energy_plateau: true` の場合、直近 `energy_plateau_window` ステップのエネルギーレンジ
 （max − min）が `energy_plateau_thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`、50 ステップ）
-を下回ると、オプティマイザーは収束したと判定します。これにより、MLIP の力のノイズフロア
+を下回ると、オプティマイザは収束したと判定します。これにより、MLIP の力のノイズフロア
 （典型的には ~4×10⁻⁴ au）が力ベースの収束閾値（例: `baker` max_force = 3×10⁻⁴ au）を
 上回る場合でも、エネルギー地形が明らかに平坦化していれば無駄なサイクルを消費せずに
 停止できます。
-ただし chain-of-states（COS）オプティマイザー（`stopt`、`gs`、DMF など）は単一のスカラー
+ただし chain-of-states（COS）オプティマイザ（`stopt`、`gs`、DMF など）は単一のスカラー
 エネルギー履歴ではなくイメージごとのエネルギー配列を保持するため、このフォールバックは
 **スキップ**されます。
 
@@ -568,7 +568,7 @@ bias:
 | `bias.k` | `scan`, `scan2d`, `scan3d` | `--bias-k` |
 | `dmf.k_fix` | `path-opt` / `path-search` で `mep_mode: dmf` を使用する場合 | —（YAML 専用） |
 
-`opt` も `--bias-k`（`--dist-freeze` 原子ペアに適用）を受け付けますが、これは CLI フラグからのみ読み取られ、同じ `300.0` を既定値とします。`bias:` YAML セクションは参照しません。
+`opt` も `--bias-k`（`--dist-freeze` 原子ペアに適用）を受け付けますが、これは CLI フラグからのみ読み取られ、同じ `300.0` をデフォルト値とします。`bias:` YAML セクションは参照しません。
 
 調和拘束の強さを調整したい場合はこれらのいずれかを上書きしてください。値を小さく（例: `20.0`）すると、柔らかい誘導項としてジオメトリが緩和しやすくなります。デフォルトの `300.0` はほぼ剛体的に固定する値です。
 

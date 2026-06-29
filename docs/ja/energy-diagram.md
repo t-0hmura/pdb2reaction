@@ -34,7 +34,7 @@ pdb2reaction energy-diagram -i "[0, 12.5, 4.3]" --label-x "['R','TS','P']" --lab
 ## 出力
 ```
 OUTPUT.(png|jpg|jpeg|svg|pdf)
-result.json   # 任意のサイドカー（--out-json 指定時）。status / n_points / files + 標準エンベロープ。per-point の energies・labels は含まれない
+result.json   # 任意のサイドカー（--out-json 指定時）。status / n_points / files。per-point の energies・labels は含まれない
 ```
 - `-o/--output` を省略した場合、カレントディレクトリに `energy_diagram.png` を出力します。
 - 出力拡張子がない場合は `.png` が自動で補完されます。

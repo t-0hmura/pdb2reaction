@@ -83,7 +83,7 @@ python -c "from pdb2reaction.workflows.dft import DFT_KW; print(DFT_KW)"
 | `gpu4pyscf` import succeeds but SCF stalls at start | cuTENSOR not installed | `pip install cutensor-cu12` (normally pulled in transitively by `gpu4pyscf-cuda12x`) |
 | aarch64: `--engine gpu` requested but no `gpu4pyscf` | x86_64-only wheel | Re-run with `--engine cpu` or build from source (see Install). |
 
-## Memory rough-cuts
+## Rough memory estimates
 
 | Atoms | def2-SVP / wB97M-V | def2-TZVPD / wB97M-V |
 |---|---|---|

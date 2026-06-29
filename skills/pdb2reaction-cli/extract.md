@@ -76,7 +76,7 @@ print(d["files"])              # {basename: full_path} for each written PDB
 print(d["protein_charge"], d["ligand_total_charge"], d["ion_total_charge"])
 ```
 
-Frozen-atom indices (cap-H parents) are surfaced by the *downstream*
+Frozen-atom indices (cap-H parents) are reported by the *downstream*
 subcommands via `freeze_atoms` in their summary.json — `extract` itself
 just writes the cluster PDB.
 
@@ -86,8 +86,8 @@ just writes the cluster PDB.
   between substrate.pdb and complex.pdb for the `is_exact_match` coordinate
   check. `add-elem-info` and `fix-altloc` should run before extract if the
   PDB came out of PyMOL / Maestro.
-- `-r` < 2 Å usually leaves the cluster missing essential coordinating
-  atoms; 3.0–4.5 Å is typical.
+- `-r` < 2 Å usually omits essential coordinating atoms from the
+  cluster; 3.0–4.5 Å is typical.
 - Ligand charges come **only** from `-l`; the internal table covers
   standard amino acids and a small list of common cofactors. For
   uncommon ligands, see [`pdb2reaction-structure-io/charge-multiplicity.md`](../pdb2reaction-structure-io/charge-multiplicity.md).

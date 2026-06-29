@@ -6,14 +6,14 @@
 
 `pdb2reaction` is a Python CLI for elucidating **enzymatic reaction pathways** from **PDB structures** using machine-learning interatomic potentials (MLIPs). Given (i) two or more PDB files (R → ... → P), (ii) one PDB with `--scan-lists`, or (iii) one TS candidate with `--tsopt`, it extracts an **active-site cluster model**, runs an **MEP search**, and optionally chains **TS optimization → IRC → thermochemical correction → DFT single-point**. Each stage is also exposed as an [individual subcommand](#cli-subcommands).
 
-An initial reaction path is one command:
+Test a reaction mechanism in a single command:
 
 ```bash
-# Multi-PDB mode (R + P endpoints → MEP, with TS optimisation + thermo)
+# Multi-PDB mode (R + P endpoints → MEP, with TS optimization + thermo)
 pdb2reaction all -i R.pdb P.pdb -c 'LIG' -l 'LIG:-1' --tsopt --thermo
 ```
 
-Also, inputs are not limited to full enzyme PDBs: pass a small molecule as `.xyz` / `.gjf`, or a cluster model you built yourself as a PDB, and omit `--center/-c` to skip extraction — the same end-to-end pipeline then runs on the structure as given.
+Inputs are not limited to full enzyme PDBs: pass a small molecule as `.xyz` / `.gjf`, or a cluster model you built yourself as a PDB, and omit `--center/-c` to skip extraction — the same end-to-end pipeline then runs on the structure as given.
 
 > **Prerequisites:** input PDBs must already contain hydrogens; multiple PDBs must share the same atoms in the same order (only coordinates differ). Small-molecule `.xyz` / `.gjf` inputs work when `--center/-c` and `--ligand-charge/-l` are omitted.
 
@@ -22,7 +22,7 @@ Also, inputs are not limited to full enzyme PDBs: pass a small molecule as `.xyz
 | Tool | Use case |
 |---|---|
 | **`pdb2reaction`** (this repo) | Pure-MLIP reaction paths for **cluster models and small molecules** from PDB / XYZ / GJF. |
-| [**uma_pysis**](https://github.com/t-0hmura/uma_pysis) | Lightweight **YAML-driven UMA–pysisyphus interface** for light reaction mechanism investigation (GS / TS / IRC / ΔG). |
+| [**uma_pysis**](https://github.com/t-0hmura/uma_pysis) | Lightweight **YAML-driven UMA–pysisyphus interface** for quick/exploratory reaction-mechanism studies (GS / TS / IRC / ΔG). |
 
 > `pdb2reaction` bundles a GPU-optimized pysisyphus fork that is **not** compatible with upstream pysisyphus — do not install it into an environment that already has upstream pysisyphus.
 
@@ -37,8 +37,8 @@ Also, inputs are not limited to full enzyme PDBs: pass a small molecule as `.xyz
 | Component | Requirement |
 |---|---|
 | OS / Python | Linux recommended. Python >= 3.11. |
-| GPU / CUDA / VRAM | NVIDIA GPU, CUDA >= 12.6 (12.8~ recommended; required for RTX 50-series). 8 GB~ VRAM recommended. |
-| RAM / Disk | 16 GB~ RAM recommended; 20 GB free disk for the conda env, UMA cache, and artifacts. |
+| GPU / CUDA / VRAM | NVIDIA GPU, CUDA >= 12.6 (12.8+ recommended; required for RTX 50-series). 8 GB+ VRAM recommended. |
+| RAM / Disk | 16 GB+ RAM recommended; 20 GB free disk for the conda env, UMA cache, and artifacts. |
 
 CPU-only execution works but is 10–100× slower; not recommended for full TS / IRC / Hessian workflows. Full requirement and tuning details: [docs/installation.md](docs/installation.md).
 

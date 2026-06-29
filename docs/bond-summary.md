@@ -75,7 +75,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 ## Notes
 
 - All input structures must have **identical atom counts and element ordering**.
-- Bond detection uses the same algorithm as the internal `bond_changes` module used by the `all` workflow for IRC endpoint validation.
+- Bond detection uses the same algorithm the `all` workflow applies for IRC endpoint validation.
 - To adjust sensitivity to borderline bonds (e.g., metal coordination at 2.0–2.4 Å), increase `--bond-factor` (e.g., `1.30`).
 
 ## See Also

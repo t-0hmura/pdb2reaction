@@ -41,7 +41,7 @@ With `--refine-path True`, the output `summary.json["n_segments"]` may be
 
 ### 3. Single-input scan-list (when only R is available)
 
-You have just the reactant. Articulate the reaction as a sequence of
+You have just the reactant. Express the reaction as a sequence of
 distance-restraint scans.
 
 ```bash

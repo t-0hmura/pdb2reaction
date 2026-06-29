@@ -10,7 +10,7 @@ SCF call that adds a continuum-solvation term.
 |---|---|
 | You need a quick, approximate solvent correction for a bare cluster | Full QM/MM embedding or explicit waters (out of scope) |
 | Comparing barrier heights between gas-phase and solvated approximation | Reporting absolute solvent free energies (xTB-ALPB is empirical) |
-| Substrate is in a public-friendly solvent (water, DMSO, methanol, …) | Solvent isn't in the ALPB parameter set (unusual organics) |
+| Substrate is in a common solvent (water, DMSO, methanol, …) | Solvent isn't in the ALPB parameter set (unusual organics) |
 
 ## Install
 
@@ -72,9 +72,9 @@ E_total = E_MLIP_or_DFT (in vacuo) + ΔE_ALPB (xTB)
 ```
 
 The ALPB term is computed from the same atomic positions as the
-backbone calculator, so it's geometry-consistent. Whenever `--solvent`
-is set, the ALPB gradient is added to the MLIP / DFT forces so the
-optimizer feels the solvent — there is no separate flag to toggle this.
+backend calculator, so it's geometry-consistent. Whenever `--solvent`
+is set, the ALPB gradient is added to the MLIP forces so the
+optimizer treats the implicit solvent effect — there is no separate flag to toggle this.
 
 ## Known gotchas
 

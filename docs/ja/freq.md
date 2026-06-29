@@ -1,6 +1,6 @@
 # `freq`
 
-MLIP バックエンド（デフォルト: UMA、`-b/--backend` で ORB ・ MACE ・ AIMNet2 も選択可能）を用いて振動数と熱化学量（ZPE、ギブズ自由エネルギーなど）を計算します。完全な振動解析（極小点に虚振動数がないこと、TS にちょうど 1 つあること等の確認）や、これらの熱化学補正が必要な場合に使用します。VRAM に余裕がある場合、`--hessian-calc-mode Analytical` によりヘシアン計算を高速化できます。虚振動数は負の値で表示されます。
+MLIP バックエンド（デフォルト: UMA、`-b/--backend` で ORB ・ MACE ・ AIMNet2 も選択可能）を用いて振動数と熱化学量（ZPE、ギブズ自由エネルギーなど）を計算します。完全な振動解析（極小点に虚振動数がないこと、TS にちょうど 1 つあること等の確認）が必要な場合や、これらの熱化学補正が必要な場合に使用します。VRAM に余裕がある場合、`--hessian-calc-mode Analytical` によりHessian計算を高速化できます。虚振動数は負の値で表示されます。
 
 ## 実行例
 
@@ -18,10 +18,10 @@ freeze-links + 熱化学ダンプを有効化して実行する:
 pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 --freeze-links --dump --out-dir ./result_freq_phva
 ```
 
-VRAM に余裕があるノードで解析的ヘシアンを使う:
+VRAM に余裕があるノードで解析的Hessianを使う:
 
 ```bash
-# VRAM に余裕があるノードで解析的ヘシアンを使う
+# VRAM に余裕があるノードで解析的Hessianを使う
 pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 \
  --hessian-calc-mode Analytical --out-dir ./result_freq_analytical
 ```
@@ -29,11 +29,11 @@ pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 \
 ## 処理の流れ
 
 - **構造の読み込みと凍結処理**: 構造は `pysisyphus.helpers.geom_loader` で読み込まれます。PDB 入力では `--freeze-links` によりキャップ水素を検出して親原子を凍結し、その結果を `geom.freeze_atoms` にマージします。マージされたインデックスはログに表示され、MLIP バックエンドと PHVA に伝播されます。
-- **MLIP バックエンド**: `--hessian-calc-mode` で解析的または有限差分ヘシアンを選択します。MLIP バックエンドは原子が凍結されている場合、部分（活性）ヘシアンブロックを返すことがあります。ヘシアン評価モードの詳細は {ref}`ja-hessian-evaluation` を参照してください。
-- **PHVA と並進・回転射影**: 凍結原子がある場合、固有値解析は活性部分空間内で行われ、並進・回転モードはその空間内で射影されます。3N×3N ヘシアンと活性ブロックヘシアンの両方に対応し、振動数は cm⁻¹ で報告されます（負の値は虚振動数）。
+- **MLIP バックエンド**: `--hessian-calc-mode` で解析的または有限差分Hessianを選択します。MLIP バックエンドは原子が凍結されている場合、部分（活性）Hessianブロックを返すことがあります。Hessian評価モードの詳細は {ref}`ja-hessian-evaluation` を参照してください。
+- **PHVA と並進・回転射影**: 凍結原子がある場合、固有値解析は活性部分空間内で行われ、並進・回転モードはその空間内で射影されます。3N×3N Hessianと活性ブロックHessianの両方に対応し、振動数は cm⁻¹ で出力されます（負の値は虚振動数）。
 - **モードのエクスポート**: `--max-write` でアニメーション化するモード数を制限できます。モードは値順 (`value`) でソートされ、`--sort abs` を指定すると絶対値順になります。正弦波アニメーションの振幅（`--amplitude-ang`）とフレーム数（`--n-frames`）は YAML のデフォルトに従います。すべての入力に対して `_trj.xyz` が出力され、PDB テンプレートが存在し `--convert-files` が有効な場合のみ `.pdb` も出力されます（ASE 変換がフォールバックとして使用されます）。
 - **熱化学**: `thermoanalysis` がインストールされている場合、QRRHO に準じたサマリー（EE、ZPE、E/H/G 補正、熱容量、エントロピー）が PHVA 振動数に基づいて出力されます。CLI の圧力（atm）は内部で Pa に変換されます。`--dump` を指定すると `thermoanalysis.yaml` も書き込まれます。
-- **性能**: GPU メモリ使用量を抑えるため、ヘシアンは 1 つだけ保持します。
+- **性能**: GPU メモリ使用量を抑えるため、Hessianは 1 つだけ保持します。
 
 ## 出力
 
@@ -65,7 +65,7 @@ out_dir/ (デフォルト:./result_freq/)
 | `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル（`.pdb` / `.xyz` / `.trj` / ...） | 必須 |
 | `-q, --charge INT` | 総電荷。省略時は `--ligand-charge` から導出可能。明示的な `-q` は導出値より優先される | `.gjf` テンプレートまたは `--ligand-charge` が提供しない限り必須 |
 | `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
-| `--workers INT` | MLIP 予測器の並列度（workers > 1 で解析ヘシアン無効）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1` |
+| `--workers INT` | MLIP 予測器の並列度（workers > 1 で解析Hessian無効）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1` |
 | `--workers-per-node INT` | ノードあたりのワーカー数。並列予測器に渡されます | `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | `--freeze-links/--no-freeze-links` | PDB 入力（または `--ref-pdb` 付き XYZ/GJF）。キャップ水素の親を凍結し `geom.freeze_atoms` にマージ。キャップ水素の詳細は [extract](extract.md) を参照 | `True` |
@@ -78,7 +78,7 @@ out_dir/ (デフォルト:./result_freq/)
 | `--temperature FLOAT` | 熱化学計算の温度（K） | `298.15` |
 | `--pressure FLOAT` | 熱化学計算の圧力（atm）。CLI では `--pressure` ですが、対応する YAML キー（`thermo:` 配下）は `pressure_atm`（単位接尾辞付き）です。いずれも atm で指定し、内部で Pa に変換されます | `1.0` |
 | `--dump/--no-dump` | `thermoanalysis.yaml` を書き込み。単体の `freq` ではデフォルト `False` ですが、`pdb2reaction all --thermo` から呼び出された場合、freq ステージはデフォルトで `dump=True` になります。無効化するには `all` に `--dump False` を渡してください（`--no-dump` トグルは単体 `freq` 専用です） | `False` |
-| `--hessian-calc-mode CHOICE` | MLIP ヘシアンモード（`Analytical` または `FiniteDifference`） | `FiniteDifference` |
+| `--hessian-calc-mode CHOICE` | MLIP Hessianモード（`Analytical` または `FiniteDifference`） | `FiniteDifference` |
 | `--convert-files/--no-convert-files` | PDB テンプレートが利用可能な場合に XYZ/TRJ に対応する PDB を出力するかどうか（GJF は出力しない） | `True` |
 | `--ref-pdb FILE` | 入力が XYZ/GJF の場合に使用する参照 PDB トポロジー（XYZ 座標は保持） | _None_ |
 | `--config FILE` | 明示 CLI 適用前に読み込むベース YAML | _None_ |

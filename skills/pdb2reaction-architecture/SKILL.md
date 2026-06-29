@@ -21,14 +21,14 @@ pdb2reaction/                          ← the package body, one folder per laye
 │               #       xTB ALPB solvent correction.
 ├── io/         # L4b — summary writer, energy diagram, trajectory plot,
 │               #       Hessian cache, PDB altloc fix.
-└── core/       # L5 — `defaults.py` (primary source of truth for most CLI
-                #       default), `utils.py` (PDB / XYZ / plot helpers),
+└── core/       # L5 — `defaults.py` (primary source of truth for most
+                #       CLI defaults), `utils.py` (PDB / XYZ / plot helpers),
                 #       `logging.py`.
 
 pysisyphus/        ← bundled fork of the optimiser / TS / IRC engine.
                      Slimmed to the subset pdb2reaction actually uses; see its
                      own README for the 5 divergent files (chemistry-rule
-                     load-bearing). Annotation-only edits in normal workflow.
+                     load-bearing). Only annotation edits are expected in the normal workflow.
 
 thermoanalysis/    ← bundled fork for ΔG / ZPE / partition functions.
                      QCData.py is the only consumer; same touch restriction
@@ -41,7 +41,7 @@ Dependency direction is one-way: `L1 → L2 → {L3, L4} → L5`. The bundled fo
 
 | concern | open this |
 |---|---|
-| Default for any CLI flag | `pdb2reaction/core/defaults.py` (primary source for most defaults — grep here first; a few workflow-local defaults live inline, e.g. path-opt `--mep-mode`) |
+| Default for any CLI flag | `pdb2reaction/core/defaults.py` (primary source of truth for most defaults — grep here first; a few workflow-local defaults live inline, e.g. path-opt `--mep-mode`) |
 | Subcommand body / orchestration | `pdb2reaction/workflows/<subcmd>.py` |
 | New MLIP backend | `pdb2reaction/backends/<backend>.py` + register in `backends/__init__.py:BACKEND_REGISTRY` |
 | `--help` / option decorator | `pdb2reaction/cli/common_options.py` (shared) or the subcommand file (inline) |

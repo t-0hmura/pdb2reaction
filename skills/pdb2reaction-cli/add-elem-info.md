@@ -4,9 +4,9 @@
 
 Repair the element column (PDB cols 77–78) when it is blank or
 inconsistent with the atom name (a common state for tleap-emitted PDBs;
-without it, `extract`'s element-aware truncation logic fails).
+without a correct element column, `extract`'s element-aware truncation logic fails).
 
-`pdb2reaction all` preflight-runs this only when the element field is
+`pdb2reaction all` runs this as a preflight step only when the element field is
 missing. Call it explicitly when invoking `extract` / `opt` / `tsopt`
 directly on a raw RCSB PDB.
 

@@ -19,8 +19,8 @@ Options:
                                   Direct Max Flux (dmf).  [default: gsm]
   --dmf-backend [cpu|gpu]         DMF compute backend (--mep-mode dmf only): gpu
                                   (dmf.torch / CUDA) or cpu (dmf / NumPy). On a
-                                  GPU out-of-memory, retry with cpu.  [default:
-                                  gpu]
+                                  GPU out-of-memory error, retry with cpu.
+                                  [default: gpu]
   -q, --charge INTEGER            Total charge. Required unless a .gjf template
                                   provides charge metadata or --ligand-charge is
                                   supplied for PDB inputs.
@@ -95,8 +95,9 @@ Options:
                                   'water'). 'none' to disable.  [default: none]
   --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
   --coord-type [cart|dlc]         Optimization coordinate system (cart|dlc).
-                                  cart is the robust default used in published
-                                  numbers; dlc speeds up torsion-rich opts.
+                                  cart is the reliable default used for the
+                                  published results; dlc speeds up torsion-rich
+                                  optimizations.
   --precision [fp32|fp64]         MLIP backend precision: fp32 (default) or
                                   fp64. Routed to backend-specific kwargs (UMA
                                   precision / ORB precision / MACE

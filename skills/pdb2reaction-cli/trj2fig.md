@@ -20,7 +20,7 @@ pdb2reaction trj2fig -i trajectory.xyz [-o energy.png|energy.html|energy.csv]
 | `-o, --out` | path | `energy.png` | Output figure path; suffix selects format (`.png` / `.svg` / `.pdf` / `.jpg` / `.html` / `.csv`) |
 | `--unit` | choice | `kcal` | `kcal` or `hartree` |
 | `-r, --reference` | int / `init` / `None` | `init` | Reference frame for ΔE: `init` (initial frame; last frame if `--reverse-x`), `None` (absolute E), or a 0-based integer index |
-| `-q, --charge` / `-m, --multiplicity` / `-b, --backend` / `--solvent` / `--solvent-model` | — | — | Recompute every frame's energy via the MLIP backend when `-q/--charge` and/or `-m/--multiplicity` is supplied (instead of reading the comment line) |
+| `-q, --charge` / `-m, --multiplicity` / `-b, --backend` / `--solvent` / `--solvent-model` | — | — | Recompute every frame's energy via the MLIP backend when `-q/--charge` and/or `-m/--multiplicity` are supplied (instead of reading the comment line) |
 | `--reverse-x/--no-reverse-x` | flag | `--no-reverse-x` | Flip the x-axis |
 
 ## Examples
@@ -45,7 +45,7 @@ pdb2reaction trj2fig -i mep.xyz -o mep.html
   several bare numbers are present, the last one, with a warning). So
   bare floats like `-12345.67` and ASE-style `... energy=-1234.56`
   both work. If the comment line has no numeric token at all, the
-  reader raises (no silent flat plot).
+  reader raises an error (rather than emitting a silent flat plot).
 - For a labeled energy diagram (R / TS / IM / P), use `energy-diagram.md`
   instead.
 

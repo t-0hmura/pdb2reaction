@@ -77,7 +77,7 @@ Walk these in order; each step has a fast pass/fail check before you move on.
 
 - `n_imag` must be exactly `1`. `nu_imag_max_cm` (negative cm⁻¹) is the imaginary wavenumber.
 - A chemistry-relevant TS sits in **|ν| ≈ 100–2000 cm⁻¹**. If `|nu_imag_max_cm|` is below ~50 cm⁻¹, the "imag" mode is a soft delocalised motion, not a reactive coordinate — IRC will wander. Re-pick the TS guess, tighten `--thresh-post`, or raise `irc.imag_below` in the YAML (default `0.0` cm⁻¹) to skip very-soft modes when initializing IRC.
-- Visualise the mode: `pymol result_ts_only/segments/seg_01/ts/vib/imag_*_trj.xyz` — the animation should swing precisely the bond(s) you expect to break/form, not whole-residue tumbling.
+- Visualise the mode: `pymol result_ts_only/segments/seg_01/ts/vib/imag_*_trj.xyz` — the animation should swing precisely the bond(s) you expect to break/form, not show whole-molecule/residue tumbling.
 
 **3. IRC connectivity** — open the IRC trajectory in PyMOL:
 

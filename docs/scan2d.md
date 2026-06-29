@@ -1,6 +1,6 @@
 # `scan2d`
 
-Perform a two-distance (d₁, d₂) grid scan with harmonic restraints and MLIP relaxations, producing a 2D potential-energy map over `(d₁, d₂)` — use it to locate a TS region or visualize the reaction landscape before MEP refinement. `scan2d` constructs linear grids for both distances using `--max-step-size`, relaxes each grid point with the appropriate restraints active, and records unbiased MLIP energies for visualization. Input is one structure plus `-s/--scan-lists scan2d.yaml` (recommended), or a single `--scan-lists/-s` inline literal containing exactly two quadruples. The default backend is UMA; select an alternative with `-b/--backend`. Use `--opt-mode hess` when you need RFOptimizer instead of L-BFGS.
+Perform a two-distance (d₁, d₂) grid scan with harmonic restraints and MLIP relaxations, producing a 2D potential-energy map over `(d₁, d₂)`. Use it to locate a TS region or visualize the reaction landscape before MEP refinement. `scan2d` constructs linear grids for both distances using `--max-step-size`, relaxes each grid point with the appropriate restraints active, and records unbiased MLIP energies for visualization. Input is one structure plus `-s/--scan-lists scan2d.yaml` (recommended), or a single `--scan-lists/-s` inline literal containing exactly two quadruples. The default backend is UMA; select an alternative with `-b/--backend`. Use `--opt-mode hess` when you need RFOptimizer instead of L-BFGS.
 
 For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
 
@@ -100,7 +100,7 @@ After a run, check `surface.csv`, the per-point structures under `grid/`, and th
 out_dir/ (default:./result_scan2d/)
 ├─ surface.csv # Structured grid table
 ├─ scan2d_map.png # 2D contour (requires Kaleido; the run stops if PNG export fails)
-├─ scan2d_landscape.html # 3D surface visualization (you can open it with a web browser)
+├─ scan2d_landscape.html # 3D surface visualization (open in a browser)
 ├─ grid/point_iDDD_jDDD.xyz # DDD = round(d × 100) in Å (e.g. d1=1.30 Å, d2=3.10 Å -> point_i130_j310.xyz)
 ├─ grid/point_iDDD_jDDD.pdb # PDB companions when conversion is enabled and templates exist
 ├─ grid/point_iDDD_jDDD.gjf # Gaussian companions when templates exist and conversion is enabled

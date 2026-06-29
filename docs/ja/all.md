@@ -90,19 +90,19 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  - ステージエンドポイント（`stage_XX/result.pdb`）が、後続 MEP ステップへ渡される順序付き中間体となる
 
 3. **活性部位モデルでの MEP 探索（デフォルトで単一パス `path-opt`、`--refine-path True` で再帰的 `path-search`）**
- - デフォルトでは、単一パス `path-opt`（GSM/DMF）を実行します。エンジン生出力は `<out-dir>/_work/path_opt/` に書かれ、マージ済み成果物（`mep.pdb`、`mep_trj.xyz`、`energy_diagram_MEP.png`）はルート直下へ昇格します。
+ - デフォルトでは、単一パス `path-opt`（GSM/DMF）を実行します。エンジン生出力は `<out-dir>/_work/path_opt/` に書かれ、マージ済み成果物（`mep.pdb`、`mep_trj.xyz`、`energy_diagram_MEP.png`）はルート直下へ配置します。
  - `--refine-path True` を指定すると、再帰的 `path-search` に切り替わり、多段階反応を自動検出して各素反応の詳細な MEP を構築します（エンジン生出力は `<out-dir>/_work/path_search/`）。複雑な多段階反応では手動での試行錯誤が必要な場合があります。
  - 複数入力 PDB の場合、参照マージ用の全系テンプレートが MEP エンジン（デフォルトは `path-opt`、`--refine-path True` 時は `path-search`）に自動的に渡されます（全系マージ自体は `--refine-path True` 時のみ実行）。単一構造スキャンの場合は、元の全系 PDB テンプレートが全ステージで再利用されます。
 
 4. **活性部位モデルを全系にマージ**（`--refine-path True` 使用時のみ）
- - `--refine-path True` を指定し、かつ参照 PDB テンプレートがある場合、マージ済みの `mep_w_ref.pdb` が `<out-dir>/` 直下へ昇格し、セグメントごとの `mep_w_ref_seg_NN.pdb` は `<out-dir>/_work/path_search/` に残ります。デフォルトの `path-opt` モードでは全系マージは行われません。
+ - `--refine-path True` を指定し、かつ参照 PDB テンプレートがある場合、マージ済みの `mep_w_ref.pdb` が `<out-dir>/` 直下へ配置し、セグメントごとの `mep_w_ref_seg_NN.pdb` は `<out-dir>/_work/path_search/` に残ります。デフォルトの `path-opt` モードでは全系マージは行われません。
 
 5. **オプションのセグメントごとの後処理**（反応セグメントのみ — 結合変化のあるセグメント。ブリッジセグメントはスキップ）
  - `--tsopt`: 各 HEI 活性部位モデルで TS 最適化を実行し、EulerPC IRC で追跡した後、IRC エンドポイントを `--thresh-post`（デフォルト `baker`）で再最適化します。エンドポイント最適化の作業ディレクトリは完了後に自動削除されます。
  - `--thermo`: (R, TS, P) で `freq` を呼び出し、振動/熱化学データと MLIP Gibbs ダイアグラムを取得
  - `--dft`: (R, TS, P) で DFT 一点計算を実行し、DFT ダイアグラムを構築。`--thermo` と組み合わせると DFT//MLIP Gibbs ダイアグラムも生成
   - 共有の上書きオプション: `--opt-mode`、`--opt-mode-post`（TSOPT/IRC 後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU 優先）など
- - ヘシアン評価モードの詳細は {ref}`ja-hessian-evaluation` を参照してください。
+ - Hessian評価モードの詳細は {ref}`ja-hessian-evaluation` を参照してください。
 
 6. **TSOPT のみモード**（単一入力、`--tsopt`、`--scan-lists` なし）
  - MEP/マージステージをスキップし、活性部位モデル（または抽出がスキップされた場合は全入力構造）で `tsopt` → EulerPC IRC を実行し、高エネルギー側の IRC 終端を反応物 (R) として識別したうえで、エネルギーダイアグラム一式とオプションの freq/DFT 出力を生成します。
@@ -115,7 +115,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 out_dir/ (デフォルト:./result_all/)
 ├─ summary.log                  # 結果要約（ルート直下に生成）
 ├─ summary.json                 # JSON 結果
-├─ mep.pdb                      # マージ済み MEP 経路（エンジンから昇格）
+├─ mep.pdb                      # マージ済み MEP 経路（エンジンから配置）
 ├─ mep_w_ref.pdb               # 全系テンプレートへマージした MEP（複数入力時）
 ├─ mep_trj.xyz                 # MEP 全体軌道
 ├─ energy_diagram_MEP.png      # 全セグメントの MEP 障壁
@@ -140,7 +140,7 @@ out_dir/ (デフォルト:./result_all/)
 **TSOPT のみモード**（単一入力 + `--tsopt`、`--scan-lists` なし）では MEP ステージが無く、最適化済み R/TS/P と `ts/`・`irc/`・`freq/`・`dft/` は `segments/seg_01/` 直下に生成され、MEP 作業ディレクトリ（`_work/path_opt/`）は存在しません。
 
 ```{note}
-**正規構造は `segments/seg_NN/reactant.*`・`ts.*`・`product.*`** です — 機構を報告する際はこれらを引用してください。同じ `seg_NN/` 内の `ts/`・`irc/`・`freq/`・`dft/` サブディレクトリは各ステージの作業ファイル（例: `ts/vib/imag_*_trj.xyz`、`irc/*_trj.xyz`）を保持し、特定ステージのデバッグに使います。`_work/path_opt/` 配下の MEP エンジン生出力は作業領域であり、必要な成果物（`mep.pdb`、`mep_trj.xyz`、`energy_diagram_MEP.png`）は既にルートへ昇格済みです。
+**正規構造は `segments/seg_NN/reactant.*`・`ts.*`・`product.*`** です — 機構を報告する際はこれらを引用してください。同じ `seg_NN/` 内の `ts/`・`irc/`・`freq/`・`dft/` サブディレクトリは各ステージの作業ファイル（例: `ts/vib/imag_*_trj.xyz`、`irc/*_trj.xyz`）を保持し、特定ステージのデバッグに使います。`_work/path_opt/` 配下の MEP エンジン生出力は作業領域であり、必要な成果物（`mep.pdb`、`mep_trj.xyz`、`energy_diagram_MEP.png`）は既にルートへ配置済みです。
 ```
 
 `-v 2` ではコンソールに活性部位モデルの電荷解決結果、YAML 設定、スキャンステージ、MEP（GSM/DMF）の進行状況、各ステージの所要時間が出力されます。詳細は {ref}`ja-verbosity-levels` を参照してください。
@@ -242,8 +242,8 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `--workers`, `--workers-per-node` | MLIP 予測器の並列度（workers > 1 で解析ヘシアン無効; UMA バックエンドのみ）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1`, `1` |
-| `--hessian-calc-mode [Analytical\|FiniteDifference]` | 共有 MLIP ヘシアンエンジン | `FiniteDifference` |
+| `--workers`, `--workers-per-node` | MLIP 予測器の並列度（workers > 1 で解析Hessian無効; UMA バックエンドのみ）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1`, `1` |
+| `--hessian-calc-mode [Analytical\|FiniteDifference]` | 共有 MLIP Hessianエンジン | `FiniteDifference` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--solvent TEXT` | xTB 補正用の暗黙溶媒名（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |

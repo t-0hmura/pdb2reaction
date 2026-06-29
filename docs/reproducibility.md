@@ -64,7 +64,7 @@ cast to float32 upstream). Which value to pick depends on the GPU class:
 
 | GPU class | Recommended | Why |
 | --- | --- | --- |
-| HPC datacenter (H100 / H200 / A100) | `--precision fp64` | Deterministic-grade, low numerical-noise TS optimization and Hessians; the fp64 throughput cost is small on these cards. |
+| HPC datacenter (H100 / H200 / A100) | `--precision fp64` | Near-deterministic, low numerical-noise TS optimization and Hessians; the fp64 throughput cost is small on these cards. |
 | Consumer (RTX 50xx / 40xx) | `--precision fp32` (default) | fp64 is substantially slower here; fp32 is the speed / screening baseline. |
 
 fp64 has a non-trivial effect on TS optimization and Hessians for the
@@ -73,8 +73,7 @@ for screening. For bit-identical reruns, combine it with `--deterministic`.
 
 ## AIMNet2 limitations
 
-AIMNet2 supports neither route to high reproducibility, and both combinations
-are rejected with a clear error rather than run misleadingly:
+AIMNet2 does not support these features:
 
 - **`--precision fp64`** — AIMNet2's model inputs are cast to float32 upstream,
   so an "fp64" run would not actually be fp64.

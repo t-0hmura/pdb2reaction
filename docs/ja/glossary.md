@@ -21,17 +21,17 @@
 
 | 用語 | 正式名称 | 説明 |
 |------|----------|------|
-| **BFGS** | Broyden-Fletcher-Goldfarb-Shanno | 準ニュートン型のヘシアン更新スキーム（`hessian_update: bfgs`） |
-| **L-BFGS** | Limited-memory BFGS | 勾配履歴からヘシアンを近似する準ニュートン法。`opt --opt-mode grad` で使用 |
-| **RFO** | Rational Function Optimization | 明示的なヘシアン情報を使用する信頼領域最適化法。`opt --opt-mode hess` で使用 |
-| **RS-I-RFO** | Restricted-Step Image-RFO | ヘシアン行列の 1 つの負固有値方向に沿って一次鞍点を探索する RFO 変種。`tsopt --opt-mode hess` のデフォルト |
-| **Dimer** | Dimer Method | 完全なヘシアンを計算せずに最低曲率モードを推定する TS 最適化法。`tsopt --opt-mode grad` で使用。pdb2reaction は Hessian Guided Dimer 変種を使い、活性部分空間の正確なヘシアンを周期的に評価してダイマー方向を更新します |
-| **Bofill** | Bofill Update | SR1（対称ランク 1）と PSB（Powell-symmetric-Broyden）を混合したヘシアン更新スキーム。鞍点探索に適します。`hessian_update: bofill` で選択され、RS-I-RFO と Dimer のフラット化ループで使用されます |
-| **SR1** | Symmetric Rank-One | ランク 1 のヘシアン更新スキーム。Bofill の 2 要素のうち 1 つ |
-| **PSB** | Powell-Symmetric-Broyden | 対称ヘシアン更新スキーム。Bofill の 2 要素のうちもう 1 つ |
+| **BFGS** | Broyden-Fletcher-Goldfarb-Shanno | 準ニュートン型のHessian更新スキーム（`hessian_update: bfgs`） |
+| **L-BFGS** | Limited-memory BFGS | 勾配履歴からHessianを近似する準ニュートン法。`opt --opt-mode grad` で使用 |
+| **RFO** | Rational Function Optimization | 明示的なHessian情報を使用する信頼領域最適化法。`opt --opt-mode hess` で使用 |
+| **RS-I-RFO** | Restricted-Step Image-RFO | Hessian行列の 1 つの負固有値方向に沿って一次鞍点を探索する RFO 変種。`tsopt --opt-mode hess` のデフォルト |
+| **Dimer** | Dimer Method | 完全なHessianを計算せずに最低曲率モードを推定する TS 最適化法。`tsopt --opt-mode grad` で使用。pdb2reaction は Hessian Guided Dimer 変種を使い、活性部分空間の正確なHessianを周期的に評価してダイマー方向を更新します |
+| **Bofill** | Bofill Update | SR1（対称ランク 1）と PSB（Powell-symmetric-Broyden）を混合したHessian更新スキーム。鞍点探索に適します。`hessian_update: bofill` で選択され、RS-I-RFO と Dimer のフラット化ループで使用されます |
+| **SR1** | Symmetric Rank-One | ランク 1 のHessian更新スキーム。Bofill の 2 要素のうち 1 つ |
+| **PSB** | Powell-Symmetric-Broyden | 対称Hessian更新スキーム。Bofill の 2 要素のうちもう 1 つ |
 | **EulerPC** | Euler Predictor-Corrector | IRC 計算の積分スキーム。勾配方向への予測ステップと経路を修正する補正ステップの 2 段階で構成されます |
-| **PHVA** | Partial Hessian Vibrational Analysis（部分ヘシアン振動解析） | 凍結されていない活性自由度のみで振動解析を行う手法。`freeze_atoms` 設定時に自動適用されます |
-| **Active DOF** | Active Degrees of Freedom（活性自由度） | `freeze_atoms` に列挙されていない原子が持つ 3N 個のデカルト座標。PHVA、部分ヘシアン TS 最適化、解析的ヘシアン経路はすべてこの活性部分空間のみで動作し、凍結原子は縮約ヘシアンの行・列を寄与しません |
+| **PHVA** | Partial Hessian Vibrational Analysis（部分Hessian振動解析） | 凍結されていない活性自由度のみで振動解析を行う手法。`freeze_atoms` 設定時に自動適用されます |
+| **Active DOF** | Active Degrees of Freedom（活性自由度） | `freeze_atoms` に列挙されていない原子が持つ 3N 個のデカルト座標。PHVA、部分Hessian TS 最適化、解析的Hessian経路はすべてこの活性部分空間のみで動作し、凍結原子は縮約Hessianの行・列を寄与しません |
 | **DLC** | Delocalized Internal Coordinates（非局在化内部座標） | 原子間距離・角度・二面角から構成される冗長内部座標系。`coord_type: dlc` で利用可能（デフォルトは `cart` = デカルト座標） |
 
 ## 機械学習・計算機
@@ -47,7 +47,7 @@
 | **fairchem** | — | Meta がオープンソースで公開している基盤モデルツールキット。UMA 系のチェックポイントを提供します。pdb2reaction は UMA 予測器のロードに `fairchem-core` へ依存します |
 | **ASE** | Atomic Simulation Environment | pdb2reaction の MLIP バックエンド全てが利用する Calculator API を提供する Python フレームワーク（Larsen et al., *J. Phys. Condens. Matter* 2017）。 |
 | **task_name** | — | UMA の推論バッチに記録されるタスクタグ（YAML: `calc.task_name`、デフォルト `omol`）。チェックポイントが学習したタスク/プリセットを選択します |
-| **解析ヘシアン** | Analytical Hessian | エネルギーの正確な二階微分を計算。高速だが VRAM を多く消費。`--hessian-calc-mode Analytical` で選択 |
+| **解析Hessian** | Analytical Hessian | エネルギーの正確な二階微分を計算。高速だが VRAM を多く消費。`--hessian-calc-mode Analytical` で選択 |
 | **有限差分** | Finite Difference | 微小変位による微分近似。低速だがメモリ効率が良い。`--hessian-calc-mode FiniteDifference`（デフォルト）で選択 |
 
 ## 量子化学
@@ -57,7 +57,7 @@
 | **QM** | Quantum Mechanics | DFT、HF、post-HF などの第一原理電子状態計算 |
 | **DFT** | Density Functional Theory | 電子密度汎関数に基づく電子状態計算法 |
 | **DFT//MLIP** | — | 複合計算法の表記: MLIP で最適化した構造の上で DFT による単点エネルギーを評価する手法。MLIP の構造最適化・分子動力学と DFT のエネルギー精密化を組み合わせます。`//` 区切りは量子化学の標準慣習「エネルギー計算レベル // 構造最適化レベル」に従います |
-| **Hessian（ヘシアン行列）** | — | エネルギーの二階微分行列。固有値から振動数を、固有ベクトルから振動モード（変位ベクトル）を得ます。振動解析や TS 最適化に使用します |
+| **Hessian（Hessian行列）** | — | エネルギーの二階微分行列。固有値から振動数を、固有ベクトルから振動モード（変位ベクトル）を得ます。振動解析や TS 最適化に使用します |
 | **SP** | Single Point | 固定構造での計算（最適化なし）。高精度エネルギー補正によく使用 |
 | **スピン多重度** | Spin Multiplicity | 2S+1（S は全スピン量子数）。一重項（singlet）= 1、二重項（doublet）= 2、三重項（triplet）= 3 など。`-m/--multiplicity` で指定（デフォルト: 1） |
 | **ALPB** | Analytical Linearized Poisson-Boltzmann | xTB で利用可能な暗黙溶媒モデル（`--solvent-model alpb`、デフォルト） |
@@ -102,7 +102,7 @@
 | **Bohr** | 原子単位系の長さ。1 Bohr ≈ 0.529 Å |
 | **Å（オングストローム）** | 10⁻¹⁰ m。原子間距離の標準単位 |
 | **cm⁻¹** | 波数（逆センチメートル）。振動数の標準単位。虚振動数は負の値で表されます |
-| **虚振動数** | ヘシアン行列の負の固有値に対応する振動数。TS では 1 本のみ存在（一次鞍点）。負の cm⁻¹ 値で報告されます。検出閾値は `hessian_dimer.neg_freq_thresh_cm`（デフォルト 5 cm⁻¹） |
+| **虚振動数** | Hessian行列の負の固有値に対応する振動数。TS では 1 本のみ存在（一次鞍点）。負の cm⁻¹ 値で報告されます。検出閾値は `hessian_dimer.neg_freq_thresh_cm`（デフォルト 5 cm⁻¹） |
 
 (ja-frequency-thresholds)=
 ### 振動数閾値: 5 cm⁻¹（虚振動検出）と 100 cm⁻¹（QRRHO rotor cutoff）

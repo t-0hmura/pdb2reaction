@@ -2,11 +2,11 @@
 
 大規模バッチや複数ノードの `pdb2reaction` 実行では、`workers` / `workers_per_node`（{ref}`MLIP 計算機 <ja-configuration-reference>` 参照）をスケジューラ配下の Ray クラスタでノード間に分散できます。
 
-- `workers` — 全ノードを通じた UMA 予測プロセスの総数（デフォルト `1`）。
+- `workers` — 全ノードにわたる UMA 予測プロセスの総数（デフォルト `1`）。
 - `workers-per-node` — そのうち各ノードで動作する数（デフォルト `1`）。ノードあたりの GPU / メモリ負荷を制御します。
 
 ```{warning}
-UMA バックエンドを `workers > 1` で実行している状態では `hessian_calc_mode="Analytical"` を明示指定すると `RuntimeError` が送出されます（警告なく有限差分へダウングレードはされません）。解析ヘシアンが必要なら `workers = 1` に下げるか、デフォルトの `FiniteDifference` を使用してください。{ref}`ja-hessian-evaluation` を参照してください。ORB / MACE / AIMNet2 は `workers` / `workers_per_node` を受け付けないため、この規則は適用されません。
+UMA バックエンドを `workers > 1` で実行している状態では `hessian_calc_mode="Analytical"` を明示指定すると `RuntimeError` が発生します（警告なく有限差分へダウングレードはされません）。解析的Hessianが必要なら `workers = 1` に下げるか、デフォルトの `FiniteDifference` を使用してください。{ref}`ja-hessian-evaluation` を参照してください。ORB / MACE / AIMNet2 は `workers` / `workers_per_node` を受け付けないため、この規則は適用されません。
 ```
 
 以下の PBS スクリプトは Open MPI を使用して複数ノードで Ray クラスタを構築する一例です。**テンプレートとして扱ってください**: モジュール名、conda パス、ポート、PBS リソース要求は環境に合わせて調整が必要です。
@@ -144,19 +144,19 @@ pdb2reaction opt -i test.pdb -q -5 -m 1 --workers ${NNODES} --workers-per-node $
 
 ## ウォールタイム見積り
 
-上の 24 時間テンプレートはデフォルトの上限であり目標値ではありません。多くのジョブはこれを大きく下回って完了します。実行環境の wall-clock パターンに合わせて選んでください。
+上の 24 時間テンプレートはデフォルトの上限であり目標値ではありません。多くのジョブはこれを大きく下回って完了します。実行環境のウォールタイム特性（パターン）に合わせて選んでください。
 
 - **クラスターモデルの `opt` / `tsopt`**（~50–100 原子、単一 GPU）: 数分〜数時間
-- **`pdb2reaction all` 一気通貫**（extract → MEP → TSOPT → IRC → freq → DFT、小型基質）: 通常数時間。ハイエンド multi-GPU ノードでは DFT 段が大きく短縮可能
+- **`pdb2reaction all` 一気通貫**（extract → MEP → TSOPT → IRC → freq → DFT、小型基質）: 通常数時間。ハイエンド multi-GPU ノードでは DFT 段階が大きく短縮可能
 - **MEP（`path-search` / `path-opt`）**: `--max-nodes`（セグメントあたりのイメージ数）と `--max-cycles`（GSM 最適化サイクル数）の双方でスケール。再帰的 `path-search` キャンペーンではこれにセグメント数が掛かるため、多段階反応では単一 GPU で何時間にも及び得る
 
-UMA backend の場合、ウォールタイムは有効並列度（`workers` の総数）に概ね反比例します。ORB / MACE / AIMNet2 は worker 並列を持たないので、ノードを増やしても wall-clock は短くなりません。
+UMA backend の場合、ウォールタイムは有効並列度（`workers` の総数）に概ね反比例します。ORB / MACE / AIMNet2 は worker 並列を持たないので、ノードを増やしてもウォールタイムは短くなりません。
 
 ## データセンター GPU での精度
 
-これらのテンプレートが対象とする HPC データセンターカード（H100 / H200 / A100）では、本番の TS 最適化と Hessian を `--precision fp64` で実行してください。これらのカードでは fp64 のスループットコストが小さく、判断に足る品質で数値ノイズの少ない結果が得られます。スクリーニングやコンシューマー GPU（RTX 50xx / 40xx、fp64 が大幅に遅い）ではデフォルトの `--precision fp32` のままにします。振り分けの詳細と `--deterministic` との併用は {ref}`再現性: GPU クラスによる精度の選択 <ja-precision-by-gpu-class>` を参照してください。
+これらのテンプレートが対象とする HPC データセンターカード（H100 / H200 / A100）では、本番の TS 最適化と Hessian を `--precision fp64` で実行してください。これらのカードでは fp64 のスループットコストが小さく、実用的な品質で数値ノイズの少ない結果が得られます。スクリーニングやコンシューマー GPU（RTX 50xx / 40xx、fp64 が大幅に遅い）ではデフォルトの `--precision fp32` のままにします。振り分けの詳細と `--deterministic` との併用は {ref}`再現性: GPU クラスによる精度の選択 <ja-precision-by-gpu-class>` を参照してください。
 
 ## 関連項目
 
-- [MLIP 計算機](uma-pysis.md) — 設定リファレンスとヘシアン評価モード
+- [MLIP 計算機](uma-pysis.md) — 設定リファレンスとHessian評価モード
 - [opt](opt.md) / [all](all.md) — `workers` / `workers_per_node` を取るサブコマンド

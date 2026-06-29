@@ -4,7 +4,7 @@
 
 ## 1. Overview
 
-`pdb2reaction` is a Python CLI that performs **pure-MLIP enzymatic reaction-path analysis** on an active-site cluster model. From a PDB plus a substrate name, it extracts the active-site cluster, caps severed bonds with cap hydrogens, and runs Hessian-based RS-I-RFO TS optimization on the MLIP potential to produce the reaction path (extract → MEP → tsopt → IRC → freq → dft).
+`pdb2reaction` is a Python CLI that performs **pure-MLIP enzymatic reaction-path analysis** on an active-site cluster model. From a PDB plus a substrate name, it extracts the active-site cluster, adds cap hydrogens to severed bonds, and runs Hessian-based RS-I-RFO TS optimization on the MLIP potential to produce the reaction path (extract → MEP → tsopt → IRC → freq → dft).
 
 
 Two bundled forks (`pysisyphus/`, `thermoanalysis/`) live at the repo top as repo-internal modules. They are deliberately **not** the upstream PyPI distributions; reinstalling them from PyPI alongside this package silently breaks the local extensions. See §6.
@@ -46,7 +46,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 │ │ ├── common_options.py @add_print_every_option / @add_irc_pos_def_option / @add_precision_option / @add_coord_type_option / @add_ml_charge_spin_options
 │ │ ├── decorators.py resolve_yaml_sources / load_merged_yaml_cfg / _write_error_json
 │ │ ├── help_pages.py --help-advanced pager
-│ │ ├── bool_compat.py --flag / --no-flag normalisation
+│ │ ├── bool_compat.py --flag / --no-flag normalization
 │ │ └── default_group.py subcommand resolver, lazy module import
 │ │
 │ ├── workflows/ # === L2 Application ===
@@ -62,7 +62,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 │ ├── domain/ # === L3 Domain ===
 │ │ ├── bond_changes.py R↔P bond detection
 │ │ ├── bond_summary.py post-IRC diagnostic
-│ │ └── add_elem_info.py PDB element column normaliser
+│ │ └── add_elem_info.py PDB element column normalizer
 │ │
 │ ├── backends/ # === L4a Infra (MLIP) ===
 │ │ ├── __init__.py backend dispatch + registry

@@ -5,8 +5,8 @@
 Transition-state optimization. The default algorithm is RS-I-RFO
 (full-Hessian; `--opt-mode hess`/`rsirfo`). Hessian-Guided Dimer
 (`--opt-mode grad`/`dimer`) is the **alternative** TS optimizer when
-RS-I-RFO struggles (e.g. unstable full-Hessian eigenstructure or very
-large clusters where full-Hessian recomputation is prohibitive); the
+RS-I-RFO fails to converge (e.g. unstable full-Hessian eigenstructure or very
+large clusters where full-Hessian recomputation is prohibitive). The
 dimer still uses an initial Hessian to set the search direction, then
 updates the lowest mode via dimer rotation rather than recomputing the
 full Hessian each cycle. Use after `path-search` or `scan` to refine a
@@ -45,7 +45,7 @@ pdb2reaction tsopt -i ts_guess.{pdb,xyz,gjf} \
 pdb2reaction tsopt -i hei.xyz -q 0 -m 1 -b uma --out-json -o result_tsopt
 ```
 
-### Dimer mode (alternative when RS-I-RFO struggles)
+### Dimer mode (alternative when RS-I-RFO fails to converge)
 
 ```bash
 pdb2reaction tsopt -i hei.xyz -q 0 -m 1 \

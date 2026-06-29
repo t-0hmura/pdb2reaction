@@ -71,7 +71,7 @@ status (`converged` / `not_converged`).
   `not_converged`, try running `pdb2reaction opt` on each endpoint
   first to pre-relax to local minima.
 - For large systems, GSM's per-node Hessian-free curvature estimation
-  may stall (informal rule of thumb) — try `--mep-mode dmf` or raise
+  may stall; as a rough heuristic, try `--mep-mode dmf` or raise
   `--max-nodes`.
 
 ## See also

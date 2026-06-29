@@ -568,7 +568,7 @@ bias:
 | `bias.k` | `scan`, `scan2d`, `scan3d` | `--bias-k` |
 | `dmf.k_fix` | `path-opt` / `path-search` when `mep_mode: dmf` | — (YAML only) |
 
-`opt` also accepts `--bias-k` (applied to `--dist-freeze` pairs) but reads it only from the CLI flag, which defaults to the same `300.0` constant; it does not honour the `bias:` YAML section.
+`opt` also accepts `--bias-k` (applied to `--dist-freeze` pairs) but reads it only from the CLI flag, which defaults to the same `300.0` constant; it does not honor the `bias:` YAML section.
 
 Override any of these to tune how stiff the harmonic restraint is. A smaller value (e.g. `20.0`) is appropriate when the geometry should relax against a soft guidance term; the default `300.0` enforces near-rigid pinning.
 

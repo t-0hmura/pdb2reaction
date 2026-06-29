@@ -99,8 +99,8 @@ def add_coord_type_option(
             show_default=False,
             help=(
                 f"Optimization coordinate system ({options_str}). cart is the "
-                f"robust default used in published numbers; dlc speeds up "
-                f"torsion-rich opts."
+                f"reliable default used for the published results; dlc speeds up "
+                f"torsion-rich optimizations."
             ),
         )(func)
     return decorator

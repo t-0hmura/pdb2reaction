@@ -23,7 +23,7 @@ pdb2reaction scan -i input.pdb \
 |---|---|---|---|
 | `-i, --input` | path | required | Reactant `.pdb` / `.xyz` / `.gjf` |
 | `-s, --scan-lists` | str | required | Inline Python literal `'[(a,b,target),...]'`, or YAML/JSON spec path. **Pass multiple stages as space-separated literals after a single `-s`** — repeating `-s` is rejected. |
-| `-q` / `-l` / `-m` | — | — | Charge / spin (common conventions) |
+| `-q` / `-l` / `-m` | — | — | Charge / spin |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `--solvent` | str | `none` | xTB-ALPB solvent |
 | `-o, --out-dir` | path | `./result_scan/` | Output directory |

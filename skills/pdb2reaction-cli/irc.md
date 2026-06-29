@@ -4,7 +4,7 @@
 
 Intrinsic Reaction Coordinate (IRC) integration from a TS geometry.
 Uses **EulerPC** (the only supported integrator; not exposed as a CLI
-flag). Forward and backward branches are run from a TS geometry; output
+flag). Forward and backward branches are run from there; output
 is a stitched IRC trajectory and raw endpoint geometries. (For LBFGS-refined
 R / P, use `pdb2reaction all`.)
 
@@ -22,7 +22,7 @@ pdb2reaction irc -i ts.{pdb,xyz,gjf} \
 | flag | type | default | description |
 |---|---|---|---|
 | `-i, --input` | path | required | Optimized TS geometry |
-| `-q` / `-l` / `-m` | — | — | Charge / spin (common conventions) |
+| `-q` / `-l` / `-m` | — | — | Charge / spin |
 | `--max-cycles` | int | 125 | Max IRC steps per branch (forward + backward) |
 | `--step-size` | float | `0.10` | Step in Bohr (unweighted Cartesian); maps to `IRC_KW["step_length"]` |
 | `-b, --backend` | str | `uma` | MLIP backend |

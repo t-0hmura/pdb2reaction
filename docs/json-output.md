@@ -16,7 +16,7 @@ The `all` and `path-search` commands always write `summary.json` (no `--out-json
 
 ### `summary.json` mirror
 
-`write_result_json` mirrors every per-stage `result.json` payload to `summary.json` alongside it. Agent scripts can read a single filename (`summary.json`) across every subcommand; the `result.json` written next to it carries the identical payload.
+`write_result_json` mirrors every per-stage `result.json` payload to `summary.json` alongside it. Agent scripts can read a single filename (`summary.json`) across every subcommand; the `result.json` written next to it contains the same payload.
 
 ## Common envelope
 
@@ -24,7 +24,7 @@ Every `result.json` (and the mirrored `summary.json`) automatically includes:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `schema_version` | string | Envelope schema version; current value lives at `pdb2reaction.core.utils.RESULT_JSON_SCHEMA_VERSION` — pin against that constant rather than the literal in this doc. Bumps signal a structural change. |
+| `schema_version` | string | Envelope schema version; current value lives at `pdb2reaction.core.utils.RESULT_JSON_SCHEMA_VERSION` — pin against that constant rather than the literal in this doc. A version bump signals a structural change. |
 | `command` | string | Subcommand name (e.g. `"opt"`) |
 | `pdb2reaction_version` | string | Package version |
 | `status` | string | Value depends on the subcommand (see each section below): e.g. `converged` / `not_converged` (opt, tsopt), `completed` (irc, freq), `ok` / `partial` (bond-summary), `success` / `partial` (all, path-search), and `error` on failure |
@@ -97,7 +97,7 @@ All fields from `opt`, plus:
 | `opt_mode` | string | `"rsirfo"` or `"dimer"` |
 
 The `files` object may include `imaginary_mode_files` (list of vib file paths).
-Convergence details are available for rsirfo mode; dimer mode also reports `status: "converged"` or `"not_converged"` (from `runner.is_converged`), but provides `n_opt_cycles` only and omits the per-cycle force/step convergence detail keys that rsirfo provides.
+Convergence details are available for rsirfo mode; dimer mode also reports `status: "converged"` or `"not_converged"` (from `runner.is_converged`), but provides `n_opt_cycles` only and omits the per-cycle force/step convergence keys that rsirfo reports.
 
 ### `freq`
 
@@ -323,7 +323,7 @@ When `--json` is enabled, `bond-summary` prints JSON to **stdout** (no `result.j
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `status` | string | `"ok"` (every pair compared cleanly) or `"partial"` (some pairs failed) |
+| `status` | string | `"ok"` (every pair compared without error) or `"partial"` (some pairs failed) |
 | `comparisons` | object[] | Per-pair comparison with `structure_a` (string), `structure_b` (string), `bonds_formed` (int count), `bonds_broken` (int count). |
 
 (summary-json-path-search-all)=

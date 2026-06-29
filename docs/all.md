@@ -61,7 +61,7 @@ Full system(s) (PDB / XYZ / GJF)
   │       │   └─ ordered intermediates
   │       └─ MEP search `path-opt` (default) or `path-search` (recursive, `--refine-path True`)
   │           └─ MEP trajectory `mep_trj.xyz` + energy diagrams
-  └─ (optional) TS optimisation + IRC `tsopt` → `irc`
+  └─ (optional) TS optimization + IRC `tsopt` → `irc`
       ├─ (optional) thermochemistry `freq`
       └─ (optional) single-point DFT `dft`
 ```
@@ -98,7 +98,7 @@ out_dir/   (default: ./result_all/)
 │     ├─ reactant.{pdb,xyz,gjf}   # Canonical R/TS/P (output format matches input format)
 │     ├─ ts.{pdb,xyz,gjf}
 │     ├─ product.{pdb,xyz,gjf}
-│     ├─ ts/                   # TS optimisation output + vibrational analysis (--tsopt)
+│     ├─ ts/                   # TS optimization output + vibrational analysis (--tsopt)
 │     ├─ irc/                  # IRC trajectories + plots (--tsopt)
 │     ├─ freq/{R,TS,P}/        # frequencies_cm-1.txt + thermoanalysis.yaml (--thermo)
 │     └─ dft/                  # DFT single-point results (--dft)

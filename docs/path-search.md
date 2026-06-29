@@ -64,7 +64,7 @@ pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
  - If no covalent bond change is detected between `End1` and `End2`, treat the region as a *kink* — a conformational rearrangement with no bond breaking or formation (see [Glossary](glossary.md)): insert `search.kink_max_nodes` linear nodes and optimize each individually.
  - Otherwise, the region is a *reactive segment* — a segment in which covalent bond changes are detected between the endpoints (see [Glossary](glossary.md)). Launch a **refinement segment (GSM/DMF)** between `End1` and `End2` to sharpen the barrier.
 4. **Selective recursion** – compare bond changes for `(A→End1)` and `(End2→B)` using the `bond` thresholds. Recurse only on sub-intervals that still contain covalent updates. Recursion depth is capped by `search.max_depth`.
-5. **Stitching & bridging** – concatenate resolved subpaths, dropping duplicate endpoints when RMSD ≤ `search.stitch_rmsd_thresh`. If the RMSD gap between two stitched pieces exceeds `search.bridge_rmsd_thresh`, insert a *bridge segment* — a connecting segment between two non-adjacent intermediates (see [Glossary](glossary.md)) — using GSM/DMF. When the interface itself shows a bond change, a brand-new recursive segment replaces the bridge.
+5. **Stitching & bridging** – concatenate resolved subpaths, dropping duplicate endpoints when RMSD ≤ `search.stitch_rmsd_thresh`. If the RMSD gap between two stitched pieces exceeds `search.bridge_rmsd_thresh`, insert a *bridge segment* — a connecting segment between two non-adjacent intermediates (see [Glossary](glossary.md)) — using GSM/DMF. When the interface itself shows a bond change, a new recursive segment replaces the bridge.
 6. **Alignment & merging (optional)** – with `--align` (default), pre-optimized structures are rigidly aligned to the first input and `freeze_atoms` are reconciled. Provide `--ref-full-pdb` to merge active site model trajectories back into full-size PDB templates (one template per input unless alignment allows reuse of the first file).
 
 Bond-change detection relies on `bond_changes.compare_structures` with thresholds surfaced under the `bond` YAML section. All MLIP backends are constructed once and shared across structures for efficiency.
@@ -117,7 +117,7 @@ The table is grouped by purpose; within each group the most-used options come fi
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
 | **MEP search** | | |
 | `--mep-mode {gsm\|dmf}` | Segment generator: GSM (string-based) or DMF (Direct Max Flux). | `gsm` |
-| `--dmf-backend {cpu\|gpu}` | DMF compute backend (`--mep-mode dmf` only): `gpu` (`dmf.torch`/CUDA) or `cpu` (`dmf`/NumPy). On a GPU out-of-memory, retry with `cpu`. | `gpu` |
+| `--dmf-backend {cpu\|gpu}` | DMF compute backend (`--mep-mode dmf` only): `gpu` (`dmf.torch`/CUDA) or `cpu` (`dmf`/NumPy). On a GPU out-of-memory error, retry with `cpu`. | `gpu` |
 | `--preopt/--no-preopt` | Pre-optimize each endpoint with the selected single-structure optimizer (L-BFGS/RFO) before MEP search. | `True` |
 | `--max-nodes INT` | Internal nodes per MEP segment (GSM string images or DMF images). | `20` |
 | `--max-cycles INT` | Maximum MEP optimization cycles (GSM/DMF). | `300` |

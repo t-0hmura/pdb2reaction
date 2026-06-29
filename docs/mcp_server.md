@@ -19,7 +19,7 @@ This adds the `mcp[cli]` dependency and registers two console scripts:
 
 18 tools, one per CLI subcommand. Each tool returns a structured dict with:
 
-- `schema_version`: envelope version. Live value: `pdb2reaction.mcp._runner.MCP_SUBCMD_RESULT_SCHEMA_VERSION`. Bumps signal a field-set / value-type change; pin against the constant rather than the literal in this doc.
+- `schema_version`: envelope version. Live value: `pdb2reaction.mcp._runner.MCP_SUBCMD_RESULT_SCHEMA_VERSION`. A version bump signals a field-set / value-type change; pin against the constant rather than the literal in this doc.
 - `status`: `ok` | `failed` | `summary_missing` | `summary_parse_error`
 - `exit_code`: subprocess exit code
 - `out_dir`: working directory the CLI wrote to

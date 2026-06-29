@@ -62,10 +62,10 @@ pdb2reaction irc   -i ts.pdb -q 0 --precision fp64 ...
 
 `--precision` はバックエンド非依存です。UMA の `precision` /
 ORB の `precision` / MACE の `default_dtype` へ自動的にルーティングされます。AIMNet2 では
-fp32 は何もしない指定（no-op）として扱われ、fp64 は拒否されます（モデル入力が上流で float32 にキャストされるため）。
+fp32 は何もしない指定（no-op）として扱われ、fp64 は拒否されます（モデル入力が前段で float32 にキャストされるため）。
 
 `--backend-model NAME` は選択中の `--backend` のモデル変種を上書きします
-（例: `--backend uma --backend-model uma-s-1p2`）。未指定ならバックエンド既定のモデルを使用します。
+（例: `--backend uma --backend-model uma-s-1p2`）。未指定ならバックエンドデフォルトのモデルを使用します。
 
 または YAML 設定で:
 
@@ -92,7 +92,7 @@ calc:
    必要に応じて `_compute_analytical_hessian_ev(elem,
    coord_ang) -> hessian_eV_Ang2` をオーバーライドします。
    そうでなければ、基底クラスが FD-Hessian の組み立て + 単位変換
-   （eV/Å → Hartree/Bohr）を無償で提供します。
+   （eV/Å → Hartree/Bohr）を行います。
 3. **`BACKEND_REGISTRY` に登録**（`backends/__init__.py`）: 既存のエントリの隣に
    `"xyz": {"module": "pdb2reaction.backends.xyz", "pysis_cls": "XYZCalculator",
    "ase_cls": "XYZASECalculator"}` を追加します。

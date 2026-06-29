@@ -9,11 +9,11 @@
 # 推奨
 --tsopt --thermo --no-dft
 
-# 互換記法として受理
+# 互換記法として受け付け
 --tsopt True --thermo yes --dft 0
 ```
 
-サブコマンドのソース側登録形式（value-style `type=click.BOOL` / flag-pair）に関係なく両形式を受理します。`bool_compat` が value-style flag に `--no-<flag>` synthetic alias を、flag-pair に value-style alias を生成するため、toggle と value 表記はサブコマンド横断で互換です。
+`bool_compat` が value-style flag に `--no-<flag>` synthetic alias を、flag-pair に value-style alias を生成するため、toggle と value 表記はサブコマンド横断で互換です。
 
 よく使うブール値オプション：
 - `--tsopt`, `--thermo`, `--dft` — 後処理ステージの有効化
@@ -119,7 +119,7 @@ PDB 入力では、`--ligand-charge/-l` を使うと**非標準残基（基質�
 ```
 
 ```{tip}
-非標準の残基（基質、補因子、特殊なリガンド）には必ず `--ligand-charge/-l` を指定し、正しい電荷伝播を確保してください。
+非標準の残基（基質、補因子、特殊なリガンド）には必ず `--ligand-charge/-l` を指定し、電荷が正しく伝播するようにしてください。
 ```
 
 ## スピン多重度
@@ -248,7 +248,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 (ja-exit-codes)=
 ## 終了コード
 
-`pdb2reaction` サブコマンドは概ね共通の終了コード規約に従いますが、実際に送出されるコードはサブコマンドごとに異なります（下表「主な発生元」列を参照）。各サブコマンドが返し得る終了コードの一覧は、当該サブコマンドのページを確認してください。
+`pdb2reaction` サブコマンドは概ね共通の終了コード規約に従いますが、実際に返されるコードはサブコマンドごとに異なります（下表「主な発生元」列を参照）。各サブコマンドが返し得る終了コードの一覧は、当該サブコマンドのページを確認してください。
 
 | コード | 意味 | 主な発生元 |
 |--------|------|-----------|
@@ -297,7 +297,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 (ja-pressure-vs-pressure-atm)=
 ### `--pressure` (CLI) vs `pressure_atm` (YAML)
 
-- **CLI フラグ:** `--pressure FLOAT`（`freq` サブコマンド; `all` では `--freq-pressure` として公開）。
+- **CLI フラグ:** `--pressure FLOAT`（`freq` サブコマンド; `all` では `--freq-pressure` として提供されます）。
 - **YAML キー:** `thermo.pressure_atm`（単位接尾辞付き）。
 - 両方とも値は **atm** 単位で扱われ、内部で Pa に変換されます。
 

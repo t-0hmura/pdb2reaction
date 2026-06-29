@@ -55,7 +55,7 @@ pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
 ### Residue inclusion
 
 - Always include the substrate residues from `-c/--center`.
-- **Standard cutoff (`--radius`, default 2.6 Å)**: with `--no-exclude-backbone` (default), any atom within the cutoff qualifies a residue. With `--exclude-backbone`, amino-acid residues must contact the substrate with a **non-backbone** atom (not N / H* / CA / HA* / C / O / OXT). Non-amino acids always use any atom.
+- **Standard cutoff (`--radius`, default 2.6 Å)**: with `--no-exclude-backbone` (default), any atom within the cutoff makes its residue qualify (i.e. includes the residue). With `--exclude-backbone`, amino-acid residues must contact the substrate with a **non-backbone** atom (not N / H* / CA / HA* / C / O / OXT). Non-amino acids always use any atom.
 - **Independent hetero–hetero cutoff (`--radius-het2het`)**: adds residues when a substrate hetero atom (non C/H) lies within the specified Å of a protein hetero atom. With backbone exclusion enabled, the protein atom must be non-backbone.
 - **Water handling**: HOH / WAT / H2O / DOD / TIP / TIP3 / SOL are included by default (`--include-h2o`).
 - **Forced inclusion**: `--selected-resn` accepts residue **IDs** (e.g. `A:123A`). See {ref}`selected-resn-takes-ids` in CLI Conventions for the residue-ID requirement.
@@ -73,13 +73,13 @@ pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
 
 ### Cap hydrogens (`--add-linkh`)
 
-- Cap hydrogens are placed at 1.09 Å along severed bond vectors at carbon boundaries only; non-carbon boundaries are not capped (CB–CA, CA–N, CA–C; PRO / HYP use CA–C only).
+- Cap hydrogens are placed at 1.09 Å along severed bond vectors at carbon boundaries only (CB–CA, CA–N, CA–C; PRO / HYP use CA–C only); non-carbon boundaries are not capped.
 - Inserted after a `TER` as contiguous `HETATM` records named `HL` in residue `LKH` (chain `L`). Serial numbers continue from the main block.
 - In multi-structure mode the same bonds are capped across all models; coordinates remain model-specific.
 
 ### Charge summary (`--ligand-charge/-l`)
 
-Amino acids and common ions draw charges from internal dictionaries; waters are zero. Unknown residues default to 0 unless `--ligand-charge/-l` supplies either a total charge (distributed across unknown substrate residues, or all unknowns when no unknown substrate) or a per-resname mapping like `GPP:-3,SAM:1`.
+Amino acids and common ions draw charges from internal dictionaries; waters are zero. Unknown residues default to 0 unless `--ligand-charge/-l` supplies either a total charge (distributed across unknown substrate residues, or across all unknown residues when there is no unknown substrate residue) or a per-resname mapping like `GPP:-3,SAM:1`.
 
 ### Multi-structure ensembles
 
@@ -91,7 +91,7 @@ Amino acids and common ions draw charges from internal dictionaries; waters are 
 | One `-o` path | single multi-MODEL PDB |
 | N outputs matching N inputs | N individual PDBs |
 
-Diagnostics echo raw vs. kept atom counts per model along with residue IDs.
+Diagnostics report raw vs. kept atom counts per model along with residue IDs.
 
 ## Outputs
 
@@ -246,7 +246,7 @@ Frozen atoms can also be set manually via the `geom.freeze_atoms` YAML key (1-ba
 
 - [Common Error Recipes](recipes-common-errors.md) — Symptom-first failure routing
 - [all](all.md) — End-to-end workflow that calls extract internally via `-c/--center`
-- [path-search](path-search.md) — MEP search on extracted active site models
+- [path-search](path-search.md) — MEP search on extracted active-site models
 - [scan](scan.md) — Staged scan on extracted active site models
 - [add-elem-info](add-elem-info.md) — Fix missing PDB element columns before extraction
 - [Troubleshooting](troubleshooting.md) — Common extraction errors

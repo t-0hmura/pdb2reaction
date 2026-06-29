@@ -19,7 +19,7 @@ pip install "pdb2reaction[mcp]"
 
 18 個のツールがあり、それぞれが CLI サブコマンドに 1 対 1 で対応します。各ツールは次のフィールドを持つ構造化された dict を返します。
 
-- `schema_version`: エンベロープのバージョン。実際の値は `pdb2reaction.mcp._runner.MCP_SUBCMD_RESULT_SCHEMA_VERSION`。値が上がるとフィールドセットや値の型の変更を意味するため、本ドキュメント中のリテラルではなく定数に対して固定してください。
+- `schema_version`: エンベロープのバージョン。実際の値は `pdb2reaction.mcp._runner.MCP_SUBCMD_RESULT_SCHEMA_VERSION`。値が上がるとフィールドセットや値の型の変更を意味するため、本ドキュメントに書かれたリテラル値ではなく、この定数を参照するようにしてください。
 - `status`: `ok` | `failed` | `summary_missing` | `summary_parse_error`
 - `exit_code`: サブプロセスの終了コード
 - `out_dir`: CLI が書き込んだ作業ディレクトリ
