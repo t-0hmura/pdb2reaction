@@ -129,7 +129,7 @@ from pdb2reaction.core.utils import (
     cli_param_overridden,
     verbose_level,
 )
-from pdb2reaction.cli.common_options import add_coord_type_option, add_precision_option, add_backend_model_option, add_deterministic_option, add_allow_charge_mult_mismatch_option
+from pdb2reaction.cli.common_options import add_coord_type_option, add_precision_option, add_backend_model_option, add_calc_file_option, add_deterministic_option, add_allow_charge_mult_mismatch_option
 
 logger = logging.getLogger(__name__)
 
@@ -355,6 +355,21 @@ def _resolve_override_dir(default: Path, override: Path | None) -> Path:
 
 
 CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
+
+
+def _forward_calc_file_argv(child_args: List[str], calc_cfg: Dict[str, Any]) -> bool:
+    """Forward --calc-file/--calc-factory to a child stage's argv when the custom
+    ML backend is active. Children validate -b against the MLIP choices (which
+    exclude 'custom'), so the calc-file is forwarded instead of '-b custom'.
+    Returns True when it forwarded, so callers skip the --backend forward."""
+    cf = calc_cfg.get("calc_file")
+    if not cf:
+        return False
+    child_args.extend(["--calc-file", str(cf)])
+    fac = calc_cfg.get("calc_factory")
+    if fac and str(fac) != "get_calculator":
+        child_args.extend(["--calc-factory", str(fac)])
+    return True
 
 
 def _build_calc_cfg(
@@ -1340,10 +1355,11 @@ def _run_freq_for_state(
     if hess_mode:
         args.extend(["--hessian-calc-mode", str(hess_mode)])
 
-    # Pass backend so freq uses the same MLIP
-    _freq_backend = overrides.get("backend", "uma")
-    if _freq_backend != "uma":
-        args.extend(["--backend", _freq_backend])
+    # Pass backend so freq uses the same MLIP (or the custom calc-file).
+    if not _forward_calc_file_argv(args, overrides):
+        _freq_backend = overrides.get("backend", "uma")
+        if _freq_backend != "uma":
+            args.extend(["--backend", _freq_backend])
 
     # Forward MLIP runtime knobs when the parent CLI explicitly set them; values are
     # injected into overrides by the cli() body before this helper is called.
@@ -1596,10 +1612,11 @@ def _run_tsopt_on_hei(
         if hess_mode:
             ts_args.extend(["--hessian-calc-mode", str(hess_mode)])
 
-        # Pass backend from calc_cfg so tsopt uses the same MLIP
-        backend_name = calc_cfg.get("backend", "uma")
-        if backend_name != "uma":
-            ts_args.extend(["--backend", backend_name])
+        # Pass backend from calc_cfg so tsopt uses the same MLIP (or custom calc-file).
+        if not _forward_calc_file_argv(ts_args, calc_cfg):
+            backend_name = calc_cfg.get("backend", "uma")
+            if backend_name != "uma":
+                ts_args.extend(["--backend", backend_name])
 
         # Forward MLIP runtime knobs when CLI-explicit (calc_cfg only contains keys
         # supplied via --workers / --workers-per-node / --solvent / --solvent-model;
@@ -1736,10 +1753,11 @@ def _irc_and_match(
     if ref_pdb_template is not None:
         irc_args.extend(["--ref-pdb", str(ref_pdb_template)])
 
-    # Pass backend from calc_cfg so IRC uses the same MLIP
-    backend_name = calc_cfg.get("backend", "uma")
-    if backend_name != "uma":
-        irc_args.extend(["--backend", backend_name])
+    # Pass backend from calc_cfg so IRC uses the same MLIP (or custom calc-file).
+    if not _forward_calc_file_argv(irc_args, calc_cfg):
+        backend_name = calc_cfg.get("backend", "uma")
+        if backend_name != "uma":
+            irc_args.extend(["--backend", backend_name])
 
     # Forward MLIP runtime knobs from calc_cfg when CLI-explicit (only set in the
     # shared calc_cfg when user passed them; otherwise downstream irc CLI would
@@ -2479,6 +2497,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
 @add_coord_type_option(choices=("cart", "dlc"))
 @add_precision_option()
 @add_backend_model_option()
+@add_calc_file_option()
 @add_deterministic_option()
 @add_allow_charge_mult_mismatch_option()
 @click.pass_context
@@ -2551,6 +2570,8 @@ def cli(
     cli_coord_type: Optional[str],
     precision: Optional[str],
     backend_model: Optional[str],
+    calc_file: Optional[str],
+    calc_factory: str,
 ) -> None:
     """
     The **all** command composes `extract` → (optional `scan` on model or full input) → MEP search
@@ -3094,10 +3115,18 @@ def cli(
         solvent_model=solvent_model if cli_param_overridden(ctx, "solvent_model") else None,
     )
 
+    # --calc-file overrides --backend with a user ASE Calculator (custom backend).
+    from pdb2reaction.backends import apply_calc_file_to_calc_cfg
+    apply_calc_file_to_calc_cfg(calc_cfg_shared, calc_file, calc_factory)
+
     # Inject backend into freq_overrides so _run_freq_for_state passes it
     _backend_shared = calc_cfg_shared.get("backend", "uma")
     if _backend_shared != "uma":
         freq_overrides["backend"] = _backend_shared
+    if calc_cfg_shared.get("calc_file"):
+        freq_overrides["calc_file"] = calc_cfg_shared["calc_file"]
+        if calc_cfg_shared.get("calc_factory"):
+            freq_overrides["calc_factory"] = calc_cfg_shared["calc_factory"]
     # Inject MLIP runtime knobs (workers / workers_per_node / solvent / solvent_model)
     # when CLI-explicit so _run_freq_for_state forwards them to the freq subprocess.
     # Without this, freq silently runs with workers=1 / no solvent even when the parent
@@ -3748,7 +3777,7 @@ def cli(
         _append_cli_arg(scan_args, "--relax-max-cycles", scan_relax_max_cycles)
         if args_yaml is not None:
             scan_args.extend(["--config", str(args_yaml)])
-        if cli_param_overridden(ctx, "backend"):
+        if not _forward_calc_file_argv(scan_args, calc_cfg_shared) and cli_param_overridden(ctx, "backend"):
             scan_args.extend(["--backend", str(backend)])
         if cli_param_overridden(ctx, "solvent"):
             scan_args.extend(["--solvent", str(solvent)])
@@ -3947,7 +3976,7 @@ def cli(
                 po_args.extend(["--thresh", str(thresh)])
             if args_yaml is not None:
                 po_args.extend(["--config", str(args_yaml)])
-            if cli_param_overridden(ctx, "backend"):
+            if not _forward_calc_file_argv(po_args, calc_cfg_shared) and cli_param_overridden(ctx, "backend"):
                 po_args.extend(["--backend", str(backend)])
             if cli_param_overridden(ctx, "solvent"):
                 po_args.extend(["--solvent", str(solvent)])
@@ -4297,7 +4326,7 @@ def cli(
         _append_toggle_arg(ps_args, "--convert-files", bool(convert_files))
         if args_yaml is not None:
             ps_args.extend(["--config", str(args_yaml)])
-        if cli_param_overridden(ctx, "backend"):
+        if not _forward_calc_file_argv(ps_args, calc_cfg_shared) and cli_param_overridden(ctx, "backend"):
             ps_args.extend(["--backend", str(backend)])
         if cli_param_overridden(ctx, "solvent"):
             ps_args.extend(["--solvent", str(solvent)])
