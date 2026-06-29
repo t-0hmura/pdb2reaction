@@ -248,7 +248,7 @@ cat result_opt/result.json | python -m json.tool
 
 ### `dft`
 
-> **注:** `dft` は SCF が収束した場合 (exit 0) のみ `result.json` を書き出します。SCF が収束しなかった場合は exit code 3 を返し `result.json` は作成されません。SCF 状態は `converged: bool` フィールドと exit code で表現され、`status` フィールドは持ちません。上記の汎用 "not_converged" / "error" envelope は `dft` には適用されません。
+> **注:** `dft` は SCF が収束した場合 (exit 0) のみ `result.json` を書き出します。SCF が収束しなかった場合は exit code 3 を返し `result.json` は作成されません。SCF 状態は `converged: bool` フィールドと exit code で表現され、`status` フィールドは持ちません。上記の汎用 "not_converged" ステータスは `dft` には適用されません。ただし、想定外の例外（unhandled exception）が発生した場合は、他サブコマンドと同じ標準の "error" エンベロープ（`result.json` + ミラーの `summary.json`）が書き出されます。
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|

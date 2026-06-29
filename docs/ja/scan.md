@@ -38,7 +38,7 @@ pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <n
     各結合について変位 `Δ = target − current` を計算し、`h = --max-step-size` として `N = ceil(max(|Δ|) / h)` ステップに分割します。各結合は `δ = Δ / N` ずつ更新されます。
 4. すべてのステップを順に進め、一時ターゲットを更新しながら調和ポテンシャル `E = Σ ½ k (|ri − rj| − target)²` を適用し、MLIP バックエンドで最適化します。最適化サイクルの上限は `--relax-max-cycles` で設定します（YAML で `opt.max_cycles` が指定されていない場合）。
 5. 各ステージの最終ステップ後、必要に応じて無バイアス緩和（`--endopt`）を実行し、共有結合の変化を報告して `result.*` を出力します。
-6. すべてのステージについて繰り返します。全ステージ連結のスキャン軌跡（`scan_trj.xyz` および `scan.pdb`）は常に書き出されます。`--dump`（または YAML で `opt.dump: true`）を指定すると、ステップごとの最適化軌跡ファイルも書き出されます。
+6. すべてのステージについて繰り返します。全ステージ連結のスキャン軌跡（`scan_trj.xyz` および `scan.pdb`）は常に書き出されます。`--dump`（CLI フラグ）を指定すると、ステップごとの最適化軌跡ファイルも書き出されます（YAML の `opt.dump` は実行時スコープで上書きされるため無効です）。
 
 ## 出力
 
@@ -98,7 +98,7 @@ out_dir/ (デフォルト:./result_scan/)
 | `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 
 ### 共有 YAML セクション
-- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml-reference.md) と同じキーを使用します。`opt.dump` は YAML で設定可能ですが、ステージ軌跡の出力は `--dump` で制御します。
+- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml-reference.md) と同じキーを使用します。`opt.dump` は実行時スコープで常に上書きされる（YAML では設定できない）ため、ステージ軌跡の出力は `--dump`（CLI）で制御します。
 - `--relax-max-cycles` は**明示的に指定され**、かつ YAML で `opt.max_cycles` が設定されていない場合にのみ適用されます（デフォルト `10000`）。
 
 ### セクション `bias`
@@ -304,7 +304,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 - `-s/--scan-lists` には単一フラグの後に複数リテラルを並べます。ターゲット距離は正の値である必要があります。原子インデックスは内部で 0 始まりに正規化されます。PDB 入力ではセレクタ文字列を使用でき、空白・カンマ・スラッシュ・バッククォート・バックスラッシュで区切れます。トークン順序は任意です。
 - `--freeze-links` が有効な場合、キャップ水素の親原子は自動的に凍結されます（{ref}`キャップ水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
-- ステージ結果（`result.xyz` と任意の対応する PDB/GJF）は常に書き出されます。全ステージ連結のスキャン軌跡（`scan_trj.xyz` および PDB 入力で変換有効時の `scan.pdb`）も常に書き出されます。`--dump`（または YAML で `opt.dump: true`）を指定すると、最適化器によるステップごとのダンプが有効になります。
+- ステージ結果（`result.xyz` と任意の対応する PDB/GJF）は常に書き出されます。全ステージ連結のスキャン軌跡（`scan_trj.xyz` および PDB 入力で変換有効時の `scan.pdb`）も常に書き出されます。`--dump`（CLI）を指定すると、最適化器によるステップごとのダンプが有効になります（YAML の `opt.dump` は実行時スコープで上書きされるため無効です）。
 
 ## 関連項目
 

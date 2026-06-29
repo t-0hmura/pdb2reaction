@@ -162,7 +162,7 @@ pdb2reaction extract -i complex.pdb -c PRE --modified-residue "SEP,TPO,MLY" -o p
 
 ---
 
-### DMF モードが動かない（`cyipopt` がない、または `No module named pydmf`）
+### DMF モードが動かない（`cyipopt` がない、または `No module named 'dmf'`）
 DMF（`--mep-mode dmf`）を使うときに IPOPT/`cyipopt` の import エラーが出る場合:
 
 対処:
@@ -171,7 +171,7 @@ DMF（`--mep-mode dmf`）を使うときに IPOPT/`cyipopt` の import エラー
   ```bash
   conda install -c conda-forge cyipopt
   ```
-- `pydmf` は `pdb2reaction` の依存として同梱されています。`No module named pydmf` が出る場合は `pip install --force-reinstall pdb2reaction` で再インストールしてください。
+- `pydmf` は `pdb2reaction` の依存として同梱されています。`No module named 'dmf'` が出る場合は `pip install --force-reinstall pdb2reaction` で再インストールしてください。
 
 ---
 

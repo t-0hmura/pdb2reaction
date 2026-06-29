@@ -29,7 +29,7 @@
 | `-q` / `--charge` | `charge` | `calc` |
 | `-m` / `--multiplicity` | `spin` | `calc` |
 | `-b` / `--backend` | `backend` | `calc` |
-| _(YAML のみ)_ | `model` | `calc` |
+| `--backend-model` | `model` | `calc` |
 | `--solvent` | `solvent` | `calc` |
 | _(YAML のみ)_ | `device` | `calc` |
 | `--thresh` | `thresh` | `opt` |
@@ -37,7 +37,7 @@
 | `--dump` | `dump` | `opt` |
 | `--opt-mode` | `opt_mode` | `opt`, `tsopt`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, `all` |
 | `--freeze-atoms` | `freeze_atoms` | `geom` |
-| _(YAML のみ)_ | `coord_type` | `geom` |
+| `--coord-type` | `coord_type` | `geom` |
 | `--temperature`（freq、`all --freq-temperature`） | `temperature` | `thermo` |
 | `--pressure`（freq、`all --freq-pressure`） | `pressure_atm` | `thermo` |
 | `--engine`（`dft` サブコマンド） / `--dft-engine`（`all` ラッパー） | `engine` | `dft` |

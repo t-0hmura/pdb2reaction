@@ -9,10 +9,11 @@ PDB is `pdb2reaction`'s primary input. Column-based, fixed-width fields.
 | `ATOM` | Standard amino-acid / nucleic-acid atoms (residue ≤ 3 letters, in `pdb2reaction`'s AMINO_ACIDS table) |
 | `HETATM` | Ligand, metal, water, cofactor, cap-H atoms |
 | `TER` | Chain terminator; `extract` infers chain breaks from C–N peptide-adjacency distance, not by parsing TER directly |
-| `END`, `ENDMDL` | File terminator — informational only |
+| `END` | File terminator — informational only |
+| `MODEL` / `ENDMDL` | `extract` writes multi-MODEL output for multi-structure input, and `fix-altloc` processes each MODEL block. Multi-MODEL **input** is not read — `extract` uses only the first model and warns. |
 | `CRYST1` | Unit cell — read but not written by `pdb2reaction` (cluster model only) |
 
-`pdb2reaction` ignores `MODEL`, `ANISOU`, `LINK`, `SSBOND`, etc. If a
+`pdb2reaction` ignores `ANISOU`, `LINK`, `SSBOND`, etc. If a
 downstream step complains, strip them with a one-line `awk` / `grep`
 filter.
 

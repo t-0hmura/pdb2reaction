@@ -11,6 +11,7 @@
 | --- | --- | --- |
 | **入力 / 抽出** | | |
 | 元素カラム欠落で抽出が止まる | 元の PDB に `add-elem-info` を適用してください | {ref}`入力 / 抽出の問題 <ts-input-extraction>` |
+| `[multi] Atom count mismatch` / `[multi] Atom order mismatch` | 同じ前処理ツール・設定で全 PDB を再生成。最初に原子順序を固定したら並べ替えない | {ref}`入力 / 抽出の問題 <ts-input-extraction>` |
 | **電荷 / スピン** | | |
 | `-q/--charge is required` 系エラー | `-q/--charge` または `-l/--ligand-charge` を明示指定してください | {ref}`電荷 / スピンの問題 <ts-charge-spin>` |
 | 計算は通るが状態/エネルギーが不自然 | [CLI 規約](cli-conventions.md) の電荷解決順序を再確認してください | {ref}`電荷 / スピンの問題 <ts-charge-spin>` |
@@ -23,10 +24,11 @@
 | opt/TSOPT が `max_cycles` で停止し、`max(force)` が閾値をわずかに超える | 通常は `opt.energy_plateau` フォールバックが自動で処理します。手動回避は `--thresh gau` または `--thresh gau_loose` | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | MEP 探索（GSM/DMF）が失敗 | `--max-nodes` をデフォルト 20 から増やす、`--preopt` 有効化（デフォルト: `all`/`path-search`/`path-opt` で `True`、`scan*` で `False`）、別の `--mep-mode` を試す | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | **インストール / 環境** | | |
-| DMF モードの import エラー（`cyipopt`）、または `No module named pydmf` | `conda install -c conda-forge cyipopt`（`pydmf` は `pdb2reaction` の依存として自動インストールされる） | {ref}`インストール / 環境の問題 <ts-install-env>` |
+| DMF モードの import エラー（`cyipopt`）、または `No module named 'dmf'` | `conda install -c conda-forge cyipopt`（`pydmf` は `pdb2reaction` の依存として自動インストールされる） | {ref}`インストール / 環境の問題 <ts-install-env>` |
 | UMA モデルで 401/403 / gated repo エラー | `hf auth login` でログインし、UMA モデルのライセンスに同意してください | {ref}`インストール / 環境の問題 <ts-install-env>` |
 | `e3nn` / `fairchem-core` の import 競合（UMA env に MACE を入れた） | MACE 専用 conda env を使用（`mace-torch` は `e3nn==0.4.4` を pin し、`fairchem-core` の `e3nn>=0.5` と共存不可）。`pip uninstall -y fairchem-core && pip install mace-torch` | {ref}`インストール / 環境の問題 <ts-install-env>` |
 | CUDA/GPU 実行時エラー | `torch.cuda.is_available()` と CUDA バージョンの整合を確認してください | {ref}`インストール / 環境の問題 <ts-install-env>` |
+| `ImportError: orb-models is required`（AIMNet2 / MACE も同様） | バックエンド extras をインストール: `pip install "pdb2reaction[orb]"`（MACE は別 env） | {ref}`インストール / 環境の問題 <ts-install-env>` |
 | 図の出力失敗 | `plotly_get_chrome -y` で Chrome ランタイムを導入してください | {ref}`インストール / 環境の問題 <ts-install-env>` |
 
 ## レシピ 1: MEP 前に抽出で止まる

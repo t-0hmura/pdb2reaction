@@ -77,6 +77,8 @@ out_dir/
 
 ## CLI オプション
 
+完全なフラグ一覧は生成された [コマンドリファレンス](reference/commands/index.md) にあります。以下の表は説明が必要なオプションのみを扱い、`--backend-model`・`--precision` などを含む網羅的な一覧は手動で重複記載していません。
+
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `-i, --input PATH` | `geom_loader` が受け入れる入力構造（`.pdb`、`.xyz`、`_trj.xyz`、`.gjf`） | 必須 |

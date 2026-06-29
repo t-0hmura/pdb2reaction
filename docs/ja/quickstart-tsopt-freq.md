@@ -52,10 +52,9 @@ result_ts_only/
 ├── summary.json                               # status: success | partial | failed
 └── segments/
     └── seg_01/                                # TS のみモードの成果物
-        ├── structures/                        # 正準 R/TS/P（TS のみモード）
-        │   ├── reactant.pdb
-        │   ├── ts.pdb
-        │   └── product.pdb
+        ├── reactant.pdb                       # 正準 R/TS/P は seg_01/ 直下（TS のみモード）
+        ├── ts.pdb
+        ├── product.pdb
         ├── ts/
         │   ├── final_geometry.{xyz,pdb}
         │   └── vib/imag_*_trj.xyz             # 虚振動モードアニメーション

@@ -39,6 +39,7 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 ```
 <output>.[png|jpg|jpeg|html|svg|pdf] # 指定された拡張子すべてを出力（デフォルト: energy.png）
 <output>.csv # CSV指定時のみ
+result.json # --out-json 指定時の機械可読サマリ
 ```
 - `-o` や位置引数が無い場合は `energy.png` をカレントディレクトリに書き出します。
 - CSV には `frame`, `energy_hartree` と、参照がある場合は `delta_kcal`/`delta_hartree`、参照がない場合は `energy_kcal`/`energy_hartree` が含まれます。

@@ -93,7 +93,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 
 **L1 `cli/`** (~6 files). Only this layer constructs Click commands and parses argv. `app.py` holds the root `Click.Group` plus the `_LAZY_SUBCOMMANDS` registry — every entry uses an **absolute module path** (`pdb2reaction.workflows.all`, `pdb2reaction.io.trj2fig`, …) so the resolver is independent of where `default_group.py` itself lives. `common_options.py` collects the option-decorator factories shared across subcommands (`@add_print_every_option`, `@add_irc_pos_def_option`, `@add_precision_option`, `@add_coord_type_option`, `@add_ml_charge_spin_options`); subcommand bodies stack these decorators above `@click.pass_context` to keep `--help` text in lock-step.
 
-**L2 `workflows/`** (18 files). One file per subcommand. Each file owns a single `@click.command()` named `cli` and its private helpers. Large stage runners (`all.py` = 5,113 LOC, `path_search.py` = 2,755 LOC, `tsopt.py` = 2,116 LOC, `extract.py` = 2,151 LOC) remain as single files in the current layout.
+**L2 `workflows/`** (18 files). One file per subcommand. Each file owns a single `@click.command()` named `cli` and its private helpers. Large stage runners (`all.py` = 5,131 LOC, `path_search.py` = 2,771 LOC, `tsopt.py` = 2,121 LOC, `extract.py` = 2,113 LOC) remain as single files in the current layout.
 
 **L3 `domain/`**. Chemistry-aware helper logic that may import `torch` / `numpy` / `pysisyphus.constants` (numeric back-ends), but **may not import** MLIP runtimes (`fairchem`, `orb_models`, `mace`, `aimnet`). `.github/scripts/check_engineering_markers.py` enforces this deny list via an external-library import-scope check across non-`backends/` files. (The `# DOMAIN_PURE` docstring marker itself lives on selected workflow modules — `workflows/dft.py`, `tsopt.py`, `sp.py` — not on `domain/`.) Domain helpers are reusable by any L2 stage runner.
 
@@ -149,7 +149,7 @@ For a contributor opening the repo for the first time, follow this path top-to-b
 | 1 | 3 | [`README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/README.md) | one-paragraph elevator pitch + single-command usage |
 | 2 | 5 | this file (`docs/architecture.md`) §2 + §4 | 6-layer dir tree, dependency direction, where each concern lives |
 | 3 | 5 | [`pdb2reaction/cli/app.py`](../pdb2reaction/cli/app.py) | Click root group, `_LAZY_SUBCOMMANDS` registry (≈ 18 entries), absolute-path resolution |
-| 4 | 20 | [`pdb2reaction/workflows/all.py`](../pdb2reaction/workflows/all.py) (5,113 LOC, skim) | one full subcommand top-to-bottom; trace `extract → MEP → tsopt → IRC → freq → dft` |
+| 4 | 20 | [`pdb2reaction/workflows/all.py`](../pdb2reaction/workflows/all.py) (5,131 LOC, skim) | one full subcommand top-to-bottom; trace `extract → MEP → tsopt → IRC → freq → dft` |
 | 5 | 7 | [`CONTRIBUTING.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/CONTRIBUTING.md) §3 + §4 | 5 add-a-X recipes + the "do not touch" hidden constraints |
 
 After step 5 you can read any other file by following the file index in §4. The package is intentionally **flat-within-each-layer** — there is no nested package below `pdb2reaction/<layer>/`, so you never need to navigate more than two directories deep.

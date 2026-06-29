@@ -48,7 +48,7 @@ pdb2reaction scan2d -i 1.R.pdb -l 'SAM:1,GPP:-3' \
 |---|---|---|
 | `<out_dir>/result.json` | `--out-json` | machine-readable result |
 | `<out_dir>/grid/point_iDDD_jDDD.xyz` (DDD = round(d×100), Å) | always | final relaxed grid point |
-| `<out_dir>/grid/preopt_i<d1Å>_j<d2Å>.{xyz,pdb,gjf}` | `--preopt` | pre-relaxation snapshot |
+| `<out_dir>/grid/preopt_iDDD_jDDD.{xyz,pdb,gjf}` (DDD = round(d×100), Å) | `--preopt` | pre-relaxation snapshot |
 | `<out_dir>/grid/inner_path_d1_NNN_trj.xyz` | `--dump` | inner-loop trajectory |
 | `<out_dir>/scan2d_map.png` | always | 2D energy surface heatmap |
 | `<out_dir>/scan2d_landscape.html` | always | interactive 3D landscape |

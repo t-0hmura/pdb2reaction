@@ -94,6 +94,7 @@ PDB 入力では、`--ligand-charge/-l` を使うと**非標準残基（基質�
 ```bash
 -l 'SAM:1,GPP:-3' # SAM は +1、GPP は -3
 -l 'LIG:-2' # LIG は -2
+-l -3 # 単一の整数を渡すとリガンド総電荷を直接指定（マッピングの代替）
 ```
 
 ### 総電荷の明示的上書き
@@ -339,6 +340,7 @@ pdb2reaction -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result/
 - **組み込みデフォルト** — すべてのパラメータのハードコード値（`pdb2reaction/core/defaults.py` を参照）。
 - **`--config`** — デフォルトを上書きする YAML ファイル。サイト共通やプロジェクト共通の設定に便利です。
 - **CLI オプション** — コマンドラインで明示的に指定されたフラグ（例: `--backend orb`）。*明示的に指定された*値のみが YAML を上書きし、CLI デフォルトのままのオプションは YAML の値を隠しません。
+- **既知の例外**: `flatten_max_iter` — `--flatten` を渡さない場合、CLI 初期化が `flatten_max_iter = 0` をシードし、`defaults.py` の `50` を上書きします。
 
 この優先順位は `all`, `opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, `dft` に共通です。あわせて {ref}`YAML リファレンス: 設定の優先順位 <ja-yaml-configuration-precedence>` を参照してください。
 
