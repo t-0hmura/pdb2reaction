@@ -16,40 +16,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   work directory is now `_work/path_opt/` (was `_work/path_search/`). The
   standalone `path-search` subcommand is unchanged. Docs/skills updated
   throughout to reflect the new default.
-
-### Fixed
-- Bond-change detection (`domain/bond_changes.compare_structures`) is now
-  row-chunked instead of building dense N×N distance matrices, removing a CUDA
-  out-of-memory failure on large solvated clusters (~20k+ atoms) during
-  `path-search` / `scan` kink detection on 16–24 GB GPUs.
-- OPC / TIP4P 4-point water with a virtual site (Amber `EPW`, element `EP`) is
-  now tolerated by the structure readers instead of crashing on the massless
-  extra point.
-- MCP `run_single_point_dft` emitted `--functional` / `--basis` (two flags
-  the `dft` CLI does not accept) so every call failed; it now passes the
-  single combined `--func-basis FUNC/BASIS` argument.
-- `MLIPCalculator.__init__` no longer swallows malformed `freeze_atoms`
-  input with `except Exception: freeze_iter=[]`. A typo in the CLI
-  string used to silently un-freeze every atom and let TS opt walk
-  through what the user thought was frozen. Narrowed to (TypeError,
-  ValueError) and raises with the offending value.
-- `MLIPCalculator._compute_full_hessian_au` referenced `torch` but the
-  module never imported it; any analytical-Hessian backend that
-  returned a torch tensor would crash with `NameError: torch is not
-  defined`. Added the missing `import torch`.
-- `path_search._run.freeze_atoms_for_log` pre-initialised before its
-  inner try block; the comprehension is also assigned later in the
-  nested function, so Python treats the name as local and the previous
-  raise hit `UnboundLocalError` instead of falling back to the empty
-  list from the cli() scope.
-- `workflows/all.py` GPU-release block before the DFT subprocess fork
-  rebinds names to `None` explicitly instead of calling
-  `del locals()[name]` — the latter is a CPython no-op (locals()
-  returns a copy of the frame namespace) and the torch.nn.Module
-  references stayed pinned through the subsequent gc.collect() +
-  empty_cache(), so the subprocess started with the GPU still occupied.
-
-### Changed
 - `--dft-func-basis` is now surfaced in the primary `pdb2reaction <subcmd>
   --help` (previously only under `--help-advanced`), so the DFT//MLIP
   functional/basis is discoverable without the advanced listing.
@@ -86,7 +52,45 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   exist in this repo) and refreshes the per-file LOC numbers cited
   in §2.3.
 
+### Fixed
+- Bond-change detection (`domain/bond_changes.compare_structures`) is now
+  row-chunked instead of building dense N×N distance matrices, removing a CUDA
+  out-of-memory failure on large solvated clusters (~20k+ atoms) during
+  `path-search` / `scan` kink detection on 16–24 GB GPUs.
+- OPC / TIP4P 4-point water with a virtual site (Amber `EPW`, element `EP`) is
+  now tolerated by the structure readers instead of crashing on the massless
+  extra point.
+- MCP `run_single_point_dft` emitted `--functional` / `--basis` (two flags
+  the `dft` CLI does not accept) so every call failed; it now passes the
+  single combined `--func-basis FUNC/BASIS` argument.
+- `MLIPCalculator.__init__` no longer swallows malformed `freeze_atoms`
+  input with `except Exception: freeze_iter=[]`. A typo in the CLI
+  string used to silently un-freeze every atom and let TS opt walk
+  through what the user thought was frozen. Narrowed to (TypeError,
+  ValueError) and raises with the offending value.
+- `MLIPCalculator._compute_full_hessian_au` referenced `torch` but the
+  module never imported it; any analytical-Hessian backend that
+  returned a torch tensor would crash with `NameError: torch is not
+  defined`. Added the missing `import torch`.
+- `path_search._run.freeze_atoms_for_log` pre-initialised before its
+  inner try block; the comprehension is also assigned later in the
+  nested function, so Python treats the name as local and the previous
+  raise hit `UnboundLocalError` instead of falling back to the empty
+  list from the cli() scope.
+- `workflows/all.py` GPU-release block before the DFT subprocess fork
+  rebinds names to `None` explicitly instead of calling
+  `del locals()[name]` — the latter is a CPython no-op (locals()
+  returns a copy of the frame namespace) and the torch.nn.Module
+  references stayed pinned through the subsequent gc.collect() +
+  empty_cache(), so the subprocess started with the GPU still occupied.
+
 ### Added
+- `--calc-file PATH` (with `--calc-factory NAME`): load an arbitrary ASE
+  Calculator from a user Python file as a `custom` backend — usable on every
+  subcommand and forwarded through the `all` pipeline. Couple GFN-xTB, DFTB+,
+  ORCA, or any ASE-compatible engine without modifying the package; energy /
+  forces follow the ASE eV / eV·Å⁻¹ contract and Hessians use the
+  finite-difference path. See `docs/backends.md`.
 - `--backend-model NAME` flag on every backend-using subcommand (`opt`,
   `tsopt`, `freq`, `irc`, `scan` / `scan2d` / `scan3d`, `path-opt`,
   `path-search`, `sp`, `all`) to override the model variant for the selected
