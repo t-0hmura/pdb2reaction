@@ -357,12 +357,16 @@ def cli(
             # Stop here AFTER parsing --scan-lists (the help text promises that
             # --dry-run validates the scan-lists spec). Input has been resolved,
             # charge/spin parity has been validated against the prepared
-            # geometry, and --scan-lists is parsed below before exit.
+            # geometry, and --scan-lists is parsed below before exit. Load the
+            # PDB atom metadata (as the real run does) so string atom specs in
+            # --scan-lists can be resolved and validated during --dry-run too.
+            _dry_meta = (load_pdb_atom_metadata(source_path)
+                         if source_path.suffix.lower() == ".pdb" else [])
             _dry_parsed, _ = parse_scan_list_quads_checked(
                 scan_list_raw,
                 expected_len=2,
                 one_based=bool(one_based),
-                atom_meta=[],
+                atom_meta=_dry_meta,
                 option_name="--scan-lists",
             )
             click.echo("[scan2d] --dry-run: input, charge/spin parity, and --scan-lists parse OK.")
