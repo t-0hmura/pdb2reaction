@@ -70,7 +70,7 @@ The fallback is **skipped for chain-of-states optimizers** (optimizers that move
 
 Try the following, in order:
 
-1. Switch the optimizer mode: `--opt-mode grad` (Dimer Method) ↔ `--opt-mode hess` (Restricted-Step Image-RFO, RS-I-RFO).
+1. Switch the optimizer mode: `--opt-mode grad` (Dimer Method) ↔ `--opt-mode hess` (Restricted-Step Partitioned-RFO, RS-P-RFO).
 2. Add `--flatten` (available on standalone `tsopt` / `opt` / `pdb2reaction all`).
 3. Raise the cycle limit: `--max-cycles 20000` (standalone `tsopt`) or `--tsopt-max-cycles 20000` (`all`).
 4. Tighten the force threshold: `--thresh baker` / `gau_tight`.

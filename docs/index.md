@@ -147,7 +147,7 @@ ja/glossary
 | [`fix-altloc`](fix-altloc.md) | Resolve PDB alternate locations |
 | [`add-elem-info`](add-elem-info.md) | Repair PDB element columns (77–78) |
 | [`opt`](opt.md) | Single-structure geometry optimization (L-BFGS or RFO; optional flatten) |
-| [`tsopt`](tsopt.md) | Transition state optimization (Dimer or RS-I-RFO; optional flatten) |
+| [`tsopt`](tsopt.md) | Transition state optimization (Dimer or RS-P-RFO; optional flatten) |
 | [`path-opt`](path-opt.md) | Single-step MEP optimization via GSM or DMF (from 2 structures) |
 | [`path-search`](path-search.md) | Recursive multi-step MEP search with automatic refinement (2+ structures) |
 | [`scan`](scan.md) | 1D bond-length driven scan with restraints |

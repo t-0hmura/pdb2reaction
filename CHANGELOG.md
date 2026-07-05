@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+## [0.4.2] — 2026-07-05
+
+### Changed
+- **Behavior change (default):** the default TS optimizer is now **RS-P-RFO** (Restricted-Step
+  Partitioned RFO, Banerjee), changed from RS-I-RFO. This affects `tsopt --opt-mode hess` (the
+  default) and the `all` TSOPT / post-IRC stage. At equal wall-time RS-P-RFO converges to a clean
+  first-order saddle (single imaginary mode) more robustly on backends where RS-I-RFO tends to land
+  on high-order saddles. RS-I-RFO remains available via `--opt-mode rsirfo`. The `hess`/`heavy`
+  aliases now resolve to `rsprfo`; `rsirfo` is a distinct explicit alias. All three RFO-family
+  optimizers still share the `rsirfo` YAML block. Docs updated throughout.
+
 ## [0.4.1] — 2026-07-05
 
 ### Fixed

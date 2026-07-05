@@ -318,9 +318,9 @@ THERMO_KW: Dict[str, Any] = {
 
 TSOPT_MODE_ALIASES = (
     (("grad", "light", "dimer"), "dimer"),
-    (("hess", "heavy", "rsirfo"), "rsirfo"),
+    (("hess", "heavy", "rsprfo"), "rsprfo"),
+    (("rsirfo",), "rsirfo"),
     (("trim",), "trim"),
-    (("rsprfo",), "rsprfo"),
 )
 
 

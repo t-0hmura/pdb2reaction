@@ -41,9 +41,9 @@ Options:
                                   [default: no-flatten]
   --opt-mode [grad|hess|dimer|rsirfo|trim|rsprfo]
                                   TS optimizer: 'grad'/'dimer' → Hessian Guided
-                                  Dimer; 'hess'/'rsirfo' → RS-I-RFO; 'trim' →
-                                  TRIM (Helgaker); 'rsprfo' → RS-P-RFO
-                                  (Banerjee).  [default: hess]
+                                  Dimer; 'hess'/'rsprfo' → RS-P-RFO (Banerjee,
+                                  default); 'trim' → TRIM (Helgaker); 'rsirfo' →
+                                  RS-I-RFO.  [default: hess]
   --dump / --no-dump              Write the per-cycle optimization trajectory
                                   ('optimization_trj.xyz' for rsirfo/hess,
                                   'optimization_all_trj.xyz' for grad/dimer) in

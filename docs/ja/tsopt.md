@@ -2,13 +2,13 @@
 
 `pdb2reaction tsopt` は、遷移状態（TS）*候補*を一次鞍点に最適化します。虚振動数チェックを内蔵しています。候補には `path-opt` / `path-search` の最高エネルギー像（HEI: highest-energy image）、または自前の構造を使えます。
 
-optimizer は `--opt-mode` で選びます。ほとんどの系では `--opt-mode hess`（デフォルトの **RS-I-RFO**: Restricted-Step Image Rational Function Optimization）を使ってください。完全 Hessian を用いるため、一般的により堅牢です。RS-I-RFO で収束しない場合や完全 Hessian の再計算コストが過大な場合は、`--opt-mode grad`（**Hessian-Guided Dimer**）に切り替えます。候補に複数の虚振動数があり余分なモードの除去が必要な場合は、`--flatten`（デフォルト無効）を有効化します。
+optimizer は `--opt-mode` で選びます。ほとんどの系では `--opt-mode hess`（デフォルトの **RS-P-RFO**: Restricted-Step Partitioned Rational Function Optimization、Banerjee）を使ってください。完全 Hessian を用いるため、一般的により堅牢です。RS-P-RFO で収束しない場合や完全 Hessian の再計算コストが過大な場合は、`--opt-mode grad`（**Hessian-Guided Dimer**）に切り替えます。候補に複数の虚振動数があり余分なモードの除去が必要な場合は、`--flatten`（デフォルト無効）を有効化します。
 
 収束後、`tsopt` は最終的な Hessian 計算と虚振動数チェックを自動で行います。妥当な TS では虚振動数が **ちょうど 1 つ** です。別途の [`freq`](freq.md) は、完全な振動解析や熱化学補正が必要な場合にのみ実行します。端点の接続性は必ず [`irc`](irc.md) で確認してください。
 
 TS 初期構造がまず必要な場合は、2 端点なら [path-opt](path-opt.md)、2 構造以上なら [path-search](path-search.md) を実行し、得られた HEI を `tsopt` → `irc` の順で最適化・検証してください。XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定し、XYZ 座標を保持したまま、形式に応じた PDB/GJF 出力への変換ができます。
 
-> **命名規則の注意:** CLI は `grad|dimer`（= Dimer）および `hess|rsirfo`（= RS-I-RFO、デフォルト）を受け付けます。YAML ではトップレベルの `hessian_dimer:`（Dimer）または `rsirfo:`（RS-I-RFO）ブロックを直接指定してください。
+> **命名規則の注意:** CLI は `grad|dimer`（= Dimer）、`hess|rsprfo`（= RS-P-RFO、デフォルト）、および `rsirfo`（= RS-I-RFO）/ `trim`（= TRIM）を受け付けます。YAML ではトップレベルの `hessian_dimer:`（Dimer）ブロック、または `rsirfo:` ブロック（RS-P-RFO・RS-I-RFO・TRIM が共用）を直接指定してください。
 
 ## TS 候補を得る 2 つの経路
 
@@ -23,7 +23,7 @@ TS 初期構造がまず必要な場合は、2 端点なら [path-opt](path-opt.
 
 ## 実行例
 
-PDB 候補のデフォルト RS-I-RFO 最適化:
+PDB 候補のデフォルト RS-P-RFO 最適化:
 
 ```bash
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --out-dir ./result_tsopt
@@ -37,18 +37,18 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
  --opt-mode grad --hessian-calc-mode Analytical --out-dir ./result_tsopt_grad
 ```
 
-rsirfo モードを YAML 上書きと併用:
+RS-P-RFO モードを YAML 上書きと併用:
 
 ```bash
-# rsirfo モードを YAML 上書きと併用する
+# RS-P-RFO モードを YAML 上書きと併用する
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
  --opt-mode hess --config tsopt.yaml --out-dir ./result_tsopt_hess
 ```
 
-rsirfo モードで flatten を有効化:
+RS-P-RFO モードで flatten を有効化:
 
 ```bash
-# rsirfo モードで flatten を有効化して実行する
+# RS-P-RFO モードで flatten を有効化して実行する
 pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
  --opt-mode hess --flatten --out-dir ./result_tsopt_flatten
 ```
@@ -126,8 +126,8 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
 | `--freeze-links/--no-freeze-links` | PDB 入力（または `--ref-pdb` 付き XYZ/GJF）。キャップ水素の親を凍結（`geom.freeze_atoms` にマージ）。キャップ水素の詳細は [extract](extract.md) を参照 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
 | **TS optimizer とモード** | | |
-| `--opt-mode TEXT` | TS optimizer プリセット（Choice: `grad` / `hess` / `dimer` / `rsirfo` / `trim` / `rsprfo`）。`grad`/`dimer` → Hessian-Guided Dimer; `hess`/`rsirfo` → RS-I-RFO（デフォルト）; `trim` → TRIM（Helgaker、non-microiter）; `rsprfo` → RS-P-RFO（Banerjee、non-microiter）。サブコマンド別の対応表（`opt` は L-BFGS/RFO、`tsopt` は Dimer/RS-I-RFO）は {ref}`ja-opt-mode-semantics` を参照 | `hess` |
-| `--flatten/--no-flatten` | 余分な虚振動数モードのフラット化ループを有効化（`False` は `flatten_max_iter=0` を強制）。TS 最適化が収束した後、Hessian行列の余分な負の固有値モードを反復的にフラット化し、虚振動数が 1 つだけ残るか反復上限に達するまで繰り返します。dimer（dimer ループ）および RS-I-RFO（収束後）の両方に適用 | `False` |
+| `--opt-mode TEXT` | TS optimizer プリセット（Choice: `grad` / `hess` / `dimer` / `rsirfo` / `trim` / `rsprfo`）。`grad`/`dimer` → Hessian-Guided Dimer; `hess`/`rsprfo` → RS-P-RFO（Banerjee、デフォルト、non-microiter）; `rsirfo` → RS-I-RFO; `trim` → TRIM（Helgaker、non-microiter）。サブコマンド別の対応表（`opt` は L-BFGS/RFO、`tsopt` は Dimer/RS-P-RFO）は {ref}`ja-opt-mode-semantics` を参照 | `hess` |
+| `--flatten/--no-flatten` | 余分な虚振動数モードのフラット化ループを有効化（`False` は `flatten_max_iter=0` を強制）。TS 最適化が収束した後、Hessian行列の余分な負の固有値モードを反復的にフラット化し、虚振動数が 1 つだけ残るか反復上限に達するまで繰り返します。dimer（dimer ループ）および RS-P-RFO / RS-I-RFO（収束後）の両方に適用 | `False` |
 | `--coord-type TEXT` | 最適化座標系（`cart` / `redund` / `dlc` / `tric`）。`cart` は公表値の基準となる確実なデフォルト。`dlc`（非局在内部座標）は低速だが、ねじれの多い系で一次鞍点へより堅牢に収束する。Hessianベースの最適化器が必要（`tsopt` の RS-I-RFO / Dimer は該当）。`path-opt` / `path-search` は `cart` / `dlc` のみ受け付ける | `cart` |
 | `--precision [fp32\|fp64]` | MLIP バックエンド精度。バックエンド固有のキー（UMA `precision` / ORB `precision` / MACE `default_dtype`。`aimnet2`: `fp32` は no-op、`fp64` は拒否）へ振り分け。データセンター GPU では数値ノイズの少ない Hessian のために `fp64` を使用。{ref}`再現性: GPU クラスによる精度の選択 <ja-precision-by-gpu-class>` を参照 | `fp32` |
 | **閾値とサイクル** | | |
@@ -163,7 +163,7 @@ TS 候補に複数の虚振動数がある場合は、`--flatten` を追加し�
 | --- | --- | --- |
 | 精度を上げる | `--precision fp64` | よりクリーンな Hessian が数値ノイズ由来の虚振動数モードを除去（データセンター GPU で使用） |
 | 内部座標 | `--coord-type dlc` | 非局在内部座標。低速だが、ねじれの多い系で一次鞍点へより堅牢に収束 |
-| 小さいモードのフラット化 | `--flatten` | 余分な虚振動数モードのフラット化ループを実行（`grad`: dimer ループ、`hess`: RS-I-RFO 後の処理）。`--no-flatten` は `flatten_max_iter = 0` を強制 |
+| 小さいモードのフラット化 | `--flatten` | 余分な虚振動数モードのフラット化ループを実行（`grad`: dimer ループ、`hess`: RS-P-RFO 後の処理）。`--no-flatten` は `flatten_max_iter = 0` を強制 |
 
 まず `--precision fp64` および／または `--coord-type dlc` を試し、残った小さいモードは `--flatten` で除去します。
 
@@ -239,9 +239,9 @@ hessian_dimer:
      out_dir: ./result_tsopt/ # tsopt の上書き（defaults.py の値は ./result_opt/）
 ```
 
-### RS-I-RFO モード（`--opt-mode hess`、デフォルト）
+### RS-P-RFO / RS-I-RFO モード（`--opt-mode hess`、デフォルト → RS-P-RFO）
 
-`--opt-mode hess`（RS-I-RFO、デフォルト）で使用します。
+`--opt-mode hess`（RS-P-RFO、デフォルト）で使用します（`rsirfo` は RS-I-RFO、`trim` は TRIM を選択。3 つともこのブロックを共用します）。
 
 `rsirfo` ブロック全体は [`rsirfo`](yaml-reference.md#rsirfo) に記載されています（trust-region と Hessian-update の各キーは [`rfo`](yaml-reference.md#rfo) からも継承）。`tsopt` 固有の上書きは以下のとおりです:
 
@@ -263,7 +263,7 @@ TS 収束が遅い場合や最適化中に TS モードが失われる場合は�
 ## 注記
 
 - 虚振動数モード**検出**の閾値はデフォルトで 5.0 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm` で変更可能）。この閾値未満の振動数は虚振動数としてカウントされません。選択した `root` は最適化中にどの振動モードを追跡するかを制御します。`root` は YAML（`rsirfo.root` または `hessian_dimer.root`、デフォルト `0`）で設定します。`tsopt` に `--root` CLI フラグはありません（[`irc`](irc.md) とは異なります）。
-- `--opt-mode` はワークフロー選択用です（デフォルト: `rsirfo`）。YAML のモードマッピングを手動で変更するのではなく、目的のアルゴリズムに合ったモードを選択してください。
+- `--opt-mode` はワークフロー選択用です（デフォルト: `rsprfo`）。YAML のモードマッピングを手動で変更するのではなく、目的のアルゴリズムに合ったモードを選択してください。
 - Dimer モードは初期Hessianの対角化前に並進/回転射影（凍結原子がある場合は PHVA）を適用し、`freq` と同じ実装に揃えています。RS-I-RFO モードは活性 DOF のデカルトHessianを TR 射影なしで直接扱います（凍結原子により剛体対称性が失われるためです）。
 - 設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
 

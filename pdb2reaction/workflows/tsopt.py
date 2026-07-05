@@ -1437,7 +1437,7 @@ def _build_rsirfo_kwargs(
     show_default=True,
     help=(
         "TS optimizer: 'grad'/'dimer' → Hessian Guided Dimer; "
-        "'hess'/'rsirfo' → RS-I-RFO; 'trim' → TRIM (Helgaker); 'rsprfo' → RS-P-RFO (Banerjee)."
+        "'hess'/'rsprfo' → RS-P-RFO (Banerjee, default); 'trim' → TRIM (Helgaker); 'rsirfo' → RS-I-RFO."
     ),
 )
 @click.option(

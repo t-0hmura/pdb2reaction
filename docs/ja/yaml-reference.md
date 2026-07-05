@@ -58,7 +58,7 @@ TS 最適化はより厳しい "baker" プリセットを、通常の極小化�
 |------------|---------------------|-----------------------|
 | `opt` | `gau` | `OPT_BASE_KW`（→ `lbfgs` / `rfo`） |
 | `tsopt`（Hessian Dimer） | `baker` | `HESSIAN_DIMER_KW`、内側の `LBFGS_TS_KW` |
-| `tsopt`（RS-I-RFO） | `baker` | `RSIRFO_KW` |
+| `tsopt`（RS-P-RFO / RS-I-RFO） | `baker` | `RSIRFO_KW` |
 | `scan` | `gau` | `OPT_BASE_KW` |
 | `scan2d`, `scan3d` | `baker` | `scan_common.py` (`thresh_default="baker"`) |
 | `path-search`（各ステップの opt） | `gau` | `OPT_BASE_KW` |
@@ -97,7 +97,7 @@ TS 最適化はより厳しい "baker" プリセットを、通常の極小化�
 | [`bond`](#bond) | 結合変化検出設定 | scan, path-search |
 | [`search`](#search) | 再帰的経路探索設定 | path-search |
 | [`hessian_dimer`](#hessian_dimer) | Hessian Guided Dimer TS 最適化 | tsopt |
-| [`rsirfo`](#rsirfo) | RS-I-RFO TS 最適化 | tsopt, all |
+| [`rsirfo`](#rsirfo) | RS-P-RFO / RS-I-RFO TS 最適化 | tsopt, all |
 
 ## 共通セクション
 
@@ -374,7 +374,7 @@ stopt:
 
 TS 最適化は `--opt-mode` で**2 つのアルゴリズム**を切り替えます:
 - `--opt-mode dimer`（または `grad`）→ `hessian_dimer` セクション
-- `--opt-mode rsirfo`（または `hess`、デフォルト）→ `rsirfo` セクション
+- `--opt-mode rsprfo`（または `hess`、デフォルト）、`rsirfo`、`trim` → `rsirfo` セクション
 
 共通オプティマイザ設定（`thresh`, `max_cycles`, `dump`）は上記 `opt` セクションから読み込まれます。
 
@@ -430,7 +430,7 @@ hessian_dimer:
 
 ### `rsirfo`
 
-RS-I-RFO TS 最適化（tsopt --opt-mode hess）。
+RS-I-RFO / RS-P-RFO TS 最適化（tsopt `--opt-mode rsirfo`、`rsprfo`（`hess` デフォルト）、`trim` が使用）。
 
 ```yaml
 rsirfo:

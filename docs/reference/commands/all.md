@@ -98,12 +98,13 @@ Options:
                                   climbing).  [default: True]
   --opt-mode [grad|hess]          Optimizer mode forwarded to scan/tsopt and
                                   used for single optimizations: grad
-                                  (=LBFGS/Dimer) or hess (=RFO/RSIRFO).
-                                  [default: grad]
+                                  (=LBFGS/Dimer) or hess (=RFO for scan/opt; RS-
+                                  P-RFO for tsopt).  [default: grad]
   --opt-mode-post [grad|hess]     Optimizer mode override for TSOPT/post-IRC
                                   endpoint optimizations. If unset, uses --opt-
                                   mode when explicitly provided; otherwise falls
-                                  back to the default ('hess').  [default: hess]
+                                  back to the default ('hess' = RS-P-RFO).
+                                  [default: hess]
   --dump BOOLEAN                  Dump GSM/MEP trajectories. Always forwarded to
                                   path_search/path-opt; scan/tsopt receive it
                                   only when explicitly set here. The freq stage

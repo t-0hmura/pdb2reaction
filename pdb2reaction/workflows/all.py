@@ -2185,7 +2185,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     show_default=True,
     help=(
         "Optimizer mode forwarded to scan/tsopt and used for single optimizations: "
-        "grad (=LBFGS/Dimer) or hess (=RFO/RSIRFO)."
+        "grad (=LBFGS/Dimer) or hess (=RFO for scan/opt; RS-P-RFO for tsopt)."
     ),
 )
 @click.option(
@@ -2195,7 +2195,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     show_default=True,
     help=(
         "Optimizer mode override for TSOPT/post-IRC endpoint optimizations. "
-        "If unset, uses --opt-mode when explicitly provided; otherwise falls back to the default ('hess')."
+        "If unset, uses --opt-mode when explicitly provided; otherwise falls back to the default ('hess' = RS-P-RFO)."
     ),
 )
 @click.option(
