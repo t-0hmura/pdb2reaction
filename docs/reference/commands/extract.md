@@ -34,7 +34,8 @@ Options:
                                   active site model inclusion.  [default: 2.6]
   --radius-het2het FLOAT          Cutoff (angstrom) for substrate hetero-atom
                                   (non-C/H) to neighbor hetero-atom proximity. 0
-                                  disables.  [default: 0]
+                                  is treated as 0.001 angstrom (effectively
+                                  off).  [default: 0]
   --include-h2o / --no-include-h2o
                                   Include waters (HOH/WAT/TIP3/SOL).  [default:
                                   include-h2o]
