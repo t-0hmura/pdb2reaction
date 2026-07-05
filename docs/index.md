@@ -156,7 +156,7 @@ ja/glossary
 | [`freq`](freq.md) | Vibrational frequency analysis & thermochemistry |
 | [`irc`](irc.md) | Intrinsic Reaction Coordinate calculation |
 | [`dft`](dft.md) | Single-point DFT calculations (GPU4PySCF / PySCF) |
-| [`sp`](sp.md) | Single-point MLIP energy + forces |
+| [`sp`](sp.md) | Single-point MLIP energy + forces / Hessian |
 | [`trj2fig`](trj2fig.md) | Plot energy profiles from XYZ trajectories |
 | [`energy-diagram`](energy-diagram.md) | Draw an energy diagram from numeric values |
 | [`bond-summary`](bond-summary.md) | Detect and report covalent bond changes between consecutive structures |

@@ -41,7 +41,7 @@ from pdb2reaction.backends import create_calculator, create_ase_calculator
 | Function | Description |
 |----------|-------------|
 | `create_calculator(backend="uma", **kwargs)` | Create a pysisyphus-compatible MLIP calculator. Accepts `charge`, `spin`, `model`, `device`, `solvent`, `solvent_model`, `hessian_calc_mode`, `freeze_atoms`, and other backend-specific kwargs. Unknown keys are silently filtered per-backend. |
-| `create_ase_calculator(backend="uma", **kwargs)` | Create an ASE-compatible MLIP calculator (used for DMF workflows and ASE-based tools). Same kwargs as `create_calculator`. |
+| `create_ase_calculator(backend="uma", **kwargs)` | Create an ASE-compatible MLIP calculator (used for DMF workflows and ASE-based tools). Accepts only `model`, `device`, `precision`, `task_name`, and `workers`/`workers_per_node` — `charge`/`spin` (and `solvent`/`hessian_calc_mode`) are silently filtered and instead read from each frame's `atoms.info`. |
 
 ### Example
 
@@ -91,7 +91,7 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 |---------|---------|-------------------|-------------|-------|
 | **UMA** | included | Yes (autograd) | Yes | Default backend (`fairchem-core`) |
 | **ORB** | `pip install "pdb2reaction[orb]"` | Yes (autograd) | No | orb-models (conservative models only) |
-| **MACE** | `pip uninstall -y fairchem-core && pip install mace-torch` | Yes (`calc.get_hessian`) | No | mace-torch >= 0.3.8 |
+| **MACE** | `pip install 'mace-torch>=0.3.8'` (coexists with `fairchem-core`; `< 0.3.8` needs `pip uninstall -y fairchem-core`) | Yes (`calc.get_hessian`) | No | mace-torch >= 0.3.8 |
 | **AIMNet2** | `pip install "pdb2reaction[aimnet]"` | Yes (native) | No | aimnet |
 
 ### Implicit solvent correction
@@ -138,7 +138,8 @@ Common constructor keywords (defaults shown in the rightmost column):
 | `backend` | MLIP backend engine. | `"uma"` |
 | `charge` | Total system charge. | `0` |
 | `spin` | Spin multiplicity (2S+1). | `1` |
-| `model` | UMA pretrained model name (`uma-s-1p1`, `uma-m-1p1`). | `"uma-s-1p1"` |
+| `model` | UMA pretrained model name (`uma-s-1p1`, `uma-s-1p2`). | `"uma-s-1p1"` |
+| `precision` | MLIP numerical precision (`"fp32"` or `"fp64"`). | `"fp32"` |
 | `task_name` | Task tag recorded in UMA batches. | `"omol"` |
 | `device` | "cuda", "cpu", or automatic selection. | `"auto"` |
 | `workers` / `workers_per_node` | Parallel UMA predictors (UMA backend; ignored by ORB / MACE / AIMNet2); requesting `workers > 1` makes analytical Hessians unavailable — an explicit `Analytical` request raises a `RuntimeError`. FD is the default `hessian_calc_mode` anyway, so this usually matters only when `Analytical` was explicitly requested. | `1` / `1` |

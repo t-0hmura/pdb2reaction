@@ -187,7 +187,7 @@ The same `--opt-mode` token selects **different algorithms** by subcommand, and 
 | `all` (TSOPT preset, `--opt-mode-post`) | Dimer | RS-I-RFO | `hess` |
 | `all` (post-IRC endpoint, `--opt-mode-post`) | L-BFGS | RFO | `hess` |
 
-Algorithm aliases are accepted on `opt` (`lbfgs` / `rfo`) and `tsopt` (`dimer` / `rsirfo`); all other subcommands accept only `grad` / `hess`. So `--opt-mode grad` on `tsopt` is a **Dimer** TS search, not L-BFGS minimization — use `--opt-mode dimer|rsirfo` on `tsopt` and `--opt-mode lbfgs|rfo` on `opt` to be unambiguous.
+Algorithm aliases are accepted on `opt` (`lbfgs` / `rfo`) and `tsopt` (`dimer` / `rsirfo` / `trim` / `rsprfo`); all other subcommands accept only `grad` / `hess`. So `--opt-mode grad` on `tsopt` is a **Dimer** TS search, not L-BFGS minimization — use `--opt-mode dimer|rsirfo` on `tsopt` and `--opt-mode lbfgs|rfo` on `opt` to be unambiguous.
 
 ## CLI ↔ YAML name mismatches
 

@@ -50,6 +50,8 @@ pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
 
 ```{note}
 DMF mode additionally requires `cyipopt` (install from conda-forge before running with `--mep-mode dmf`). `pydmf` ships with `pdb2reaction` as a dependency. The default `--dmf-backend gpu` uses the PyTorch/CUDA `dmf.torch` backend; pass `--dmf-backend cpu` (`dmf`/NumPy) on a GPU out-of-memory error.
+
+`--mep-mode dmf` runs on the gas-phase ASE PES and is **incompatible with `--solvent`** (the run aborts with an error). Use `--mep-mode gsm` for solvent-corrected paths — its per-image evaluation goes through the solvent-aware pysisyphus calculator.
 ```
 
 A quick pass that freezes cap parents and disables climb: add `--freeze-links --no-climb`.

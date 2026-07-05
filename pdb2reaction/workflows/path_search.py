@@ -1000,10 +1000,10 @@ def _build_multistep_path(
     )
 
     try:
-        lr_changed, lr_summary = has_bond_change(left_end, right_end, bond_cfg)
+        lr_changed, _ = has_bond_change(left_end, right_end, bond_cfg)
     except Exception as e:
         click.echo(f"[{tag0}] WARNING: Failed to evaluate bond changes for kink detection: {e}", err=True)
-        lr_changed, lr_summary = True, ""
+        lr_changed, _ = True, ""
     use_kink = (not lr_changed)
 
     if use_kink:

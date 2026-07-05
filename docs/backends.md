@@ -48,7 +48,7 @@ first one whose import succeeds.
 |---------|---------|------------------|------------------|
 | `uma` | `pip install fairchem-core` + HF auth | `uma-s-1p1` / `uma-s-1p2` | `precision="fp32" \| "fp64"` |
 | `orb` | `pip install orb-models` | `orb_v3_conservative_omol` | `precision="float32-high" \|...` |
-| `mace` | dedicated env: `pip uninstall -y fairchem-core && pip install mace-torch` (`e3nn` pin conflicts with UMA) | `MACE-OMOL-0` | `default_dtype="float64"` |
+| `mace` | `pip install 'mace-torch>=0.3.8'` (coexists with `fairchem-core`; only `mace-torch < 0.3.8` needs a dedicated env: `pip uninstall -y fairchem-core`, due to the older `e3nn` pin) | `MACE-OMOL-0` | `default_dtype="float64"` |
 | `aimnet2` | `pip install aimnet` | `aimnet2` | n/a |
 
 ### UMA fp64
