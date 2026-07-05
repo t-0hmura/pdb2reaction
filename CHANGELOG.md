@@ -6,6 +6,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+## [0.4.1] — 2026-07-05
+
+### Fixed
+- **Charge/spin were silently dropped on the pysisyphus MLIP path.** `AtomicData.from_ase`
+  was called without `r_data_keys`, so fairchem-core ≥2.x ran every UMA calculation at
+  charge=0/spin=0 regardless of `-q`/`-m` (a regression against older fairchem, which read
+  `atoms.info` unconditionally). Now passes `r_data_keys=["spin","charge"]`: charge is honored
+  and `spin` is the spin multiplicity (2S+1). The ASE/DMF path was unaffected.
+- `--opt-mode trim` crashed with frozen atoms (partial Hessian); TRIM now reduces the gradient
+  to and expands the step from the active subspace, like RS-I-RFO / RS-P-RFO.
+- The DMF path optimizer was pinned to fp32 while the HEI was ranked at the requested precision;
+  `create_ase_calculator` now honors `--precision`. `--mep-mode dmf` now errors under `--solvent`
+  (the ASE path has no implicit-solvent wrapper) and points to `--mep-mode gsm`.
+
+### Changed
+- Documentation/CLI corrections to match the code (tsopt `--opt-mode` aliases include
+  `trim`/`rsprfo`; MACE install note; `create_ase_calculator` kwargs; `--radius-het2het` help).
+
 ## [0.4.0] — 2026-06-28
 
 ### Changed
