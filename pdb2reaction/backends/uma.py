@@ -178,12 +178,21 @@ class UMAcore:
         # re-upcasted (and emit the fairchem `Upcasting atomic coordinates`
         # WARNING on every call). fp32 path keeps fairchem's default.
         target_dtype = torch.float64 if self.precision == "fp64" else torch.float32
+        # `r_data_keys=["spin", "charge"]` is REQUIRED: fairchem's AtomicData.from_ase
+        # only reads charge/spin from atoms.info when the key is listed here — otherwise
+        # it silently defaults BOTH to 0 (see fairchem AtomicData.from_ase). Older
+        # fairchem read atoms.info unconditionally; a fairchem version bump gated it on
+        # r_data_keys, so omitting this makes the whole pysisyphus path run at
+        # charge=0/spin=0 regardless of the user-requested charge. The ASE/DMF path
+        # (FAIRChemCalculator) already passes r_data_keys, which is why only this
+        # (pysisyphus) path was affected.
         data = self._AtomicData.from_ase(
             atoms,
             max_neigh=max_neigh,
             radius=radius,
             r_edges=r_edges,
             target_dtype=target_dtype,
+            r_data_keys=["spin", "charge"],
         )
         data.dataset = self.task_name
         batch = self._collater([data], otf_graph=True)
