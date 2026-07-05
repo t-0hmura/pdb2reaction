@@ -41,7 +41,7 @@ from pdb2reaction.backends import create_calculator, create_ase_calculator
 | 関数 | 説明 |
 |----------|-------------|
 | `create_calculator(backend="uma", **kwargs)` | pysisyphus 互換の MLIP 計算機を生成します。`charge`、`spin`、`model`、`device`、`solvent`、`solvent_model`、`hessian_calc_mode`、`freeze_atoms` などバックエンド固有の kwargs も受け付けます。未知のキーはバックエンドごとに警告なく除外されます |
-| `create_ase_calculator(backend="uma", **kwargs)` | ASE 互換の MLIP 計算機を生成します（DMF ワークフローや ASE ベースのツールで使用）。kwargs は `create_calculator` と同じです |
+| `create_ase_calculator(backend="uma", **kwargs)` | ASE 互換の MLIP 計算機を生成します（DMF ワークフローや ASE ベースのツールで使用）。受け付けるのは `model`・`device`・`precision`・`task_name`・`workers`/`workers_per_node` のみで、`charge`/`spin`（および `solvent`/`hessian_calc_mode`）は除外され、各フレームの `atoms.info` から読み取られます。 |
 
 ### 例
 
@@ -138,7 +138,8 @@ UMA バックエンドを `workers > 1` で使用する場合、`hessian_calc_mo
 | `backend` | MLIP バックエンドエンジン | `"uma"` |
 | `charge` | 総電荷 | `0` |
 | `spin` | スピン多重度（2S+1） | `1` |
-| `model` | UMA モデル名 (`uma-s-1p1`, `uma-m-1p1`) | `"uma-s-1p1"` |
+| `model` | UMA モデル名 (`uma-s-1p1`, `uma-s-1p2`) | `"uma-s-1p1"` |
+| `precision` | MLIP 数値精度 (`"fp32"` または `"fp64"`) | `"fp32"` |
 | `task_name` | UMA バッチに記録されるタスクタグ | `"omol"` |
 | `device` | `"cuda"` / `"cpu"` / `"auto"` | `"auto"` |
 | `workers` / `workers_per_node` | 並列 UMA 予測器（UMA バックエンド限定。ORB / MACE / AIMNet2 では無視されます）。`workers>1` の場合、解析Hessianは利用できず、`Analytical` を明示指定すると `RuntimeError` が送出されます。`hessian_calc_mode` のデフォルトはそもそも FD のため、`Analytical` を明示的に選んだ場合のみ影響があります | `1` / `1` |

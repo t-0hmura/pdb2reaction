@@ -50,6 +50,8 @@ pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
 
 ```{note}
 DMF モードは追加で `cyipopt` が必要です（`--mep-mode dmf` 実行前に conda-forge からインストールしてください）。`pydmf` は `pdb2reaction` の依存として同梱されています。デフォルトの `--dmf-backend gpu` は PyTorch/CUDA の `dmf.torch` バックエンドを使用します。GPU メモリ不足時は `--dmf-backend cpu`（`dmf`/NumPy）を指定してください。
+
+`--mep-mode dmf` は気相の ASE PES 上で動作するため、**`--solvent` とは併用できません**（エラーで停止します）。溶媒補正した経路が必要な場合は `--mep-mode gsm` を使用してください（各画像の評価が溶媒対応の pysisyphus 計算機を通ります）。
 ```
 
 キャップ親原子を凍結し、クライミングを無効化して短時間で確認するには `--freeze-links --no-climb` を追加します。

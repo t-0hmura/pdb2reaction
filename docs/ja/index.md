@@ -37,7 +37,7 @@
 | [`freq`](freq.md) | 振動解析と熱化学 |
 | [`irc`](irc.md) | 固有反応座標（IRC: Intrinsic Reaction Coordinate）計算 |
 | [`dft`](dft.md) | DFT 一点計算（GPU4PySCF / PySCF） |
-| [`sp`](sp.md) | MLIP による一点計算（エネルギー + 力） |
+| [`sp`](sp.md) | MLIP による一点計算（エネルギー + 力 / Hessian） |
 | [`trj2fig`](trj2fig.md) | XYZ 軌跡からエネルギープロファイルをプロット |
 | [`energy-diagram`](energy-diagram.md) | 数値入力からエネルギーダイアグラムを作成 |
 | [`bond-summary`](bond-summary.md) | 連続構造間の共有結合変化を検出・レポート |

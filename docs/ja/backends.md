@@ -46,7 +46,7 @@ ase_calc = create_ase_calculator(backend="uma", model="uma-s-1p1", device="cuda"
 |---------|---------|------------------|------------------|
 | `uma` | `pip install fairchem-core` + HF auth | `uma-s-1p1` / `uma-s-1p2` | `precision="fp32" \| "fp64"` |
 | `orb` | `pip install orb-models` | `orb_v3_conservative_omol` | `precision="float32-high" \|...` |
-| `mace` | 専用 env: `pip uninstall -y fairchem-core && pip install mace-torch`（`e3nn` の pin が UMA と競合するため） | `MACE-OMOL-0` | `default_dtype="float64"` |
+| `mace` | `pip install 'mace-torch>=0.3.8'`（`fairchem-core` と共存可。`mace-torch < 0.3.8` のみ古い `e3nn` の pin により専用 env が必要: `pip uninstall -y fairchem-core`） | `MACE-OMOL-0` | `default_dtype="float64"` |
 | `aimnet2` | `pip install aimnet` | `aimnet2` | n/a |
 
 ### UMA fp64
