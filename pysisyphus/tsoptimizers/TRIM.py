@@ -3,6 +3,7 @@
 
 
 import numpy as np
+import torch
 
 from scipy.optimize import newton
 from pysisyphus._array import as_numpy
@@ -14,6 +15,20 @@ class TRIM(TSHessianOptimizer):
     def optimize(self):
         energy, gradient, H, eigvals, eigvecs, resetted = self.housekeeping()
         self.update_ts_mode(eigvals, eigvecs)
+
+        # When the Hessian is a partial (active-block) Hessian — e.g. a frozen
+        # active site — the eigvecs span only the active DOFs, but the gradient
+        # may still be in full-coord space. Mirror RSIRFO/RSPRFO's reduction so
+        # eigvecs.T @ gradient is shape-compatible. Without this, TRIM crashes
+        # with a `coords(3N,) + step(3N_active,)` broadcast error under
+        # freeze_atoms (partial Hessian is the default), which RSIRFO/RSPRFO
+        # already guard against.
+        if isinstance(H, torch.Tensor):
+            if gradient.size(0) != eigvecs.size(0):
+                gradient = self.active_from_full(gradient)
+        else:
+            if gradient.size != eigvecs.shape[0]:
+                gradient = self.active_from_full(gradient)
 
         # TRIM uses scipy.optimize.newton + np.nan_to_num internally and is not
         # microiter-capable; coerce torch tensors from the MLIP Hessian path to
@@ -73,5 +88,10 @@ class TRIM(TSHessianOptimizer):
         self.log(f"norm(step)={step_norm:.6f}")
 
         self.predicted_energy_changes.append(self.quadratic_model(gradient, as_numpy(self.H), step))
+
+        # Expand the step back to full-coord space when the active subspace is in
+        # use, so Optimizer.run() can do `geometry.coords + step` without a shape
+        # mismatch (same convention as RSIRFOptimizer / RSPRFOptimizer).
+        step = self.full_from_active(step)
 
         return step
