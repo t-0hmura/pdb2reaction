@@ -248,7 +248,7 @@ ResidueKey = Tuple[str, str, int, str, str]
 @click.option(
     "--radius-het2het",
     type=float, default=0, show_default=True,
-    help="Cutoff (angstrom) for substrate hetero-atom (non-C/H) to neighbor hetero-atom proximity. 0 disables.",
+    help="Cutoff (angstrom) for substrate hetero-atom (non-C/H) to neighbor hetero-atom proximity. 0 is treated as 0.001 angstrom (effectively off).",
 )
 @click.option(
     "--include-h2o/--no-include-h2o",

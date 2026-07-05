@@ -11,7 +11,9 @@ Two bundled forks (`pysisyphus/`, `thermoanalysis/`) live at the repo top as rep
 
 ---
 
-## 2. Layered structure (6 physical directories)
+## 2. Layered structure (6 core layers)
+
+> The package also ships a 7th, optional-integration subpackage `pdb2reaction/mcp/` (MCP server: `server.py`, `_tools.py`, `_runner.py`; entry points `p2r-mcp` / `pdb2reaction-mcp`). It sits outside the 6-layer core graph below and is documented in [mcp_server.md](mcp_server.md).
 
 ### 2.1 Layer table
 
