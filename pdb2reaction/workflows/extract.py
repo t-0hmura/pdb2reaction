@@ -199,43 +199,6 @@ ResidueKey = Tuple[str, str, int, str, str]
 
 
 
-_EXTRACT_ALL_FLAGS = (
-    "-i", "--input",
-    "-c", "--center",
-    "-o", "--output",
-    "-r", "--radius",
-    "--radius-het2het",
-    "--include-h2o", "--no-include-h2o",
-    "--exclude-backbone", "--no-exclude-backbone",
-    "--add-linkh", "--no-add-linkh",
-    "--selected-resn",
-    "-l",
-    "--ligand-charge",
-    "-v", "--verbose",
-    "-h", "--help", "--help-advanced",
-)
-
-
-def _gather_extract_variadic(
-    ctx_args: List[str],
-    flag_names: Sequence[str],
-) -> List[str]:
-    """Collect variadic positional values after *flag_names* from Click extra args."""
-    names_set = set(flag_names)
-    stop_set = set(_EXTRACT_ALL_FLAGS)
-    vals: List[str] = []
-    i = 0
-    while i < len(ctx_args):
-        tok = ctx_args[i]
-        if tok in names_set:
-            j = i + 1
-            while j < len(ctx_args) and ctx_args[j] not in stop_set:
-                vals.append(ctx_args[j])
-                j += 1
-            i = j
-        else:
-            i += 1
-    return vals
 
 
 @click.command(

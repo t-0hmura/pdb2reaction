@@ -50,12 +50,17 @@ dimer.log
 # fixtures; safe to ignore if someone runs smoke from a clone).
 tests/smoke/test*/
 tests/smoke/test*.out
+tests/smoke/test*.png
 tests/smoke/result_*/
 tests/smoke/internal_coords.log
 tests/smoke/p_complex_model.pdb
 tests/smoke/model_r.pdb
+tests/smoke/model_multi.pdb
 tests/smoke/r_complex_elem.pdb
 tests/smoke/r_complex_fixalt.pdb
+# local HPC launcher + its log (personal paths / cluster env; never distributed)
+tests/smoke/*.pbs
+tests/smoke/*_smoke.out
 cos.log
 
 # release-process scratch — not distributed in the repo

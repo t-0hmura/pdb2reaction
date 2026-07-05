@@ -35,16 +35,6 @@ def _is_conservative_orb_model(model_name: str) -> bool:
     return ("conservative" in norm) and ("direct" not in norm)
 
 
-def _unique_ordered(items):
-    seen = set()
-    out = []
-    for item in items:
-        if item not in seen:
-            seen.add(item)
-            out.append(item)
-    return out
-
-
 class OrbCalculator(MLIPCalculator):
     """ORB backend via orb-models."""
 
