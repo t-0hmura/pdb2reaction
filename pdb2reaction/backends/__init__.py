@@ -85,7 +85,11 @@ _BACKEND_ACCEPTED_KEYS: Dict[str, set] = {
 
 # Keys accepted by ASE calculator factories
 _ASE_ACCEPTED_KEYS: Dict[str, set] = {
-    "uma": {"model", "device", "task_name", "workers", "workers_per_node"},
+    # `precision` is accepted so the ASE/DMF path can match the pysisyphus eval
+    # PES (e.g. under --precision fp64); UMAASECalculator honours it. Without it
+    # the DMF path optimizer was pinned to fp32 while the HEI energy ranker ran
+    # fp64 → frames optimized on one PES, ranked on another.
+    "uma": {"model", "device", "task_name", "workers", "workers_per_node", "precision"},
     "orb": {"model", "device", "precision", "compile_model"},
     "mace": {"model", "device", "default_dtype"},
     "aimnet2": {"model", "device"},

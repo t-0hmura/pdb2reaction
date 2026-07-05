@@ -131,6 +131,21 @@ def _run_dmf_mep(
     [3] S.-i. Koda and  S. Saito, Correlated Flat-bottom Elastic Network Model for Improved Bond Rearrangement in Reaction Paths, JCTC, 21, 3513−3522 (2025). [doi: 10.1021/acs.jctc.4c01549]
     """
 
+    # DMF optimizes on the ASE-path PES, which has no implicit-solvent wrapper
+    # (solvent is a pysisyphus-path-only xTB correction). Under --solvent the DMF
+    # path would be optimized gas-phase while the rest of the pipeline uses the
+    # solvent PES — an opt-PES ≠ score-PES mismatch. Refuse and direct the user to
+    # GSM, whose per-image eval goes through the solvent-aware pysisyphus calculator.
+    _solvent = str(calc_cfg.get("solvent", "none") or "none").strip().lower()
+    if _solvent not in ("", "none"):
+        raise click.ClickException(
+            f"--mep-mode dmf is not compatible with --solvent '{_solvent}': the DMF path "
+            "optimizer runs on the gas-phase ASE PES (no implicit-solvent wrapper), so the "
+            "path would be optimized without solvent while the rest of the pipeline uses the "
+            "solvent PES. Use --mep-mode gsm (its eval uses the solvent-corrected pysisyphus "
+            "calculator), or drop --solvent."
+        )
+
     dmf_backend = str((dmf_cfg or {}).get("backend", "gpu")).strip().lower()
     try:
         from ase.io import read as ase_read
@@ -180,6 +195,12 @@ def _run_dmf_mep(
         task_name=str(calc_cfg.get("task_name", "omol")),
         workers=int(calc_cfg.get("workers", 1)),
         workers_per_node=int(calc_cfg.get("workers_per_node", 1)),
+        # Match the DMF optimizer PES to the pysisyphus HEI-ranking PES (calc_eval
+        # below carries the full calc_cfg incl. precision). `solvent` has no ASE
+        # equivalent, so DMF cannot run solvent-corrected — that case is rejected
+        # up front (see the --solvent guard at the top of this function), hence
+        # only precision needs matching here.
+        precision=str(calc_cfg.get("precision", "fp32")),
     )
 
     dmf_cfg = deep_update(dict(DMF_KW), dmf_cfg)
