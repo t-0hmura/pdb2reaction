@@ -288,6 +288,20 @@ class OrbCalculator(MLIPCalculator):
                 )
             return out.reshape(-1)[0]
 
+        # Disable aot_autograd's donated-buffer optimization for the duration of
+        # the Hessian's double backward. Orb's conservative model enables it, and
+        # it frees intermediate buffers after the FIRST backward — the second
+        # backward (for the Hessian) then raises "non-empty donated buffers
+        # requires create_graph=False and retain_graph=False". The precision
+        # guard (float32-high/float64) is NOT sufficient: the optimization fires
+        # even at float64, so force it off here. Restored in the finally block.
+        _prev_donated = None
+        try:
+            _prev_donated = torch._functorch.config.donated_buffer
+            torch._functorch.config.donated_buffer = False
+        except Exception:
+            _prev_donated = None
+
         state = _prepare_model_for_autograd_hessian(self._model_obj, torch)
         try:
             H = torch.autograd.functional.hessian(
@@ -303,6 +317,14 @@ class OrbCalculator(MLIPCalculator):
             raise BackendError(f"Orb analytical Hessian failed: {exc}") from exc
         finally:
             _restore_model_after_autograd_hessian(self._model_obj, state)
+            if _prev_donated is not None:
+                # Best-effort restore of the process-global functorch flag toggled
+                # above; non-fatal (Hessian already computed) so it must not mask
+                # the result. Narrowed to AttributeError (torch without this knob).
+                try:
+                    torch._functorch.config.donated_buffer = _prev_donated
+                except AttributeError:
+                    pass
             if str(self.device_str).startswith("cuda"):
                 try:
                     torch.cuda.empty_cache()

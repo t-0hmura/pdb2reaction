@@ -6,6 +6,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+## [0.4.3] — 2026-07-06
+### Fixed
+- **ORB analytical Hessian failed with a donated-buffer error on some environments.**
+  `OrbCalculator._compute_analytical_hessian_ev` builds the Hessian via a double backward
+  (`torch.autograd.functional.hessian`). Where Orb's conservative model / the torch aot_autograd
+  stack enables the donated-buffer optimization, the second backward raised *"This backward
+  function was compiled with non-empty donated buffers which requires create_graph=False and
+  retain_graph=False."* The precision guard (`float32-high`/`float64`) was **not** sufficient — the
+  optimization fires even at float64 on affected torch/orb builds. Now explicitly sets
+  `torch._functorch.config.donated_buffer=False` for the duration of the Hessian and restores it
+  afterward. It is a no-op where the optimization is not enabled, and fixes
+  `--hessian-calc-mode Analytical` with `-b orb`. The failure is environment-dependent (it appears
+  only with certain torch/orb builds; it does not reproduce with torch 2.8.0 / orb 0.5.5).
+
 ## [0.4.2] — 2026-07-05
 
 ### Changed
