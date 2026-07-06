@@ -70,7 +70,7 @@ The fallback is **skipped for chain-of-states optimizers** (optimizers that move
 
 Try the following, in order:
 
-1. Switch the optimizer mode: `--opt-mode grad` (Dimer Method) ↔ `--opt-mode hess` (Restricted-Step Partitioned-RFO, RS-P-RFO).
+1. Switch the optimizer mode: `--opt-mode grad` (Dimer Method) ↔ `--opt-mode hess` (Restricted-Step Image-RFO, RS-I-RFO).
 2. Add `--flatten` (available on standalone `tsopt` / `opt` / `pdb2reaction all`).
 3. Raise the cycle limit: `--max-cycles 20000` (standalone `tsopt`) or `--tsopt-max-cycles 20000` (`all`).
 4. Tighten the force threshold: `--thresh baker` / `gau_tight`.
@@ -105,7 +105,7 @@ Order-of-magnitude per-step L-BFGS cost on small-to-medium cluster models, measu
 
 | Backend (`-b/--backend`, model id) | s/step | VRAM | Notes |
 |---|---|---|---|
-| `uma` (`uma-s-1p1`, default) | 0.03 | ~2 GB | Fast, good for exploration. |
+| `uma` (`uma-s-1p2`, default) | 0.03 | ~2 GB | Fast, good for exploration. |
 | `uma` (`uma-m-1p1`) | 0.22 | ~8 GB | Medium model, higher VRAM. |
 | `mace` (`MACE-OMOL-0`) | 0.37 | ~4 GB | Separate env (`e3nn` conflict with fairchem-core). |
 | `orb` (`orb_v3_conservative_omol`) | 0.02 | ~2 GB | Fastest; see caveat. |
@@ -123,7 +123,7 @@ Approximate VRAM by system size:
 | 200 | ~4 GB | ~12 GB | ~4 GB |
 | 500 | ~6 GB | OOM on 16 GB | ~6 GB |
 
-On `torch.cuda.OutOfMemoryError`: switch to `--hessian-calc-mode FiniteDifference`, reduce `--radius`, or pick a smaller model (`calc.model: uma-s-1p1` instead of `uma-m-1p1` in YAML).
+On `torch.cuda.OutOfMemoryError`: switch to `--hessian-calc-mode FiniteDifference`, reduce `--radius`, or pick a smaller model (`calc.model: uma-s-1p2` instead of `uma-m-1p1` in YAML).
 
 ## How to report an issue
 

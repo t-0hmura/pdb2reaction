@@ -233,7 +233,7 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 | `--max-nodes INT` | MEP 内部ノード数。**GSM:** 総イメージ数 = `max_nodes + 2`（端点 2 つは固定）。**DMF:** チェーン上の *可動* イメージ数（端点の暗黙的拡張なし） | `20` |
 | `--max-cycles INT` | MEP 最大最適化サイクル | `300` |
 | `--climb/--no-climb` | 標準 GSM セグメントでクライミングイメージを有効化（ブリッジセグメントは常に無効） | `True` |
-| `--opt-mode [grad\|hess]` | ワークフロープリセット（`grad` → L-BFGS/Dimer、`hess` → RFO/RSPRFO）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨。トークンのマッピングはスコープ依存で、`all` の pre-opt デフォルト（`grad`）と `tsopt` のデフォルト（`hess`）は一致しません。詳細は {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
+| `--opt-mode [grad\|hess]` | ワークフロープリセット（`grad` → L-BFGS/Dimer、`hess` → RFO/RSIRFO）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨。トークンのマッピングはスコープ依存で、`all` の pre-opt デフォルト（`grad`）と `tsopt` のデフォルト（`hess`）は一致しません。詳細は {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
 | `--thresh TEXT` | 収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
 | `--preopt/--no-preopt` | MEP 前に活性部位モデル端点を事前最適化。単体の `scan`、`scan2d`、`scan3d` では `--preopt` のデフォルトは `False`（`--preopt` を渡すと有効化） | `True` |
 | `--refine-path BOOL` | `True` の場合は再帰的 `path-search`、`False`（デフォルト）の場合は `path-opt` を連結して再帰的精密化なしで実行。 | `False` |
@@ -255,7 +255,7 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 | `--tsopt/--no-tsopt` | セグメントごとの TS 最適化+ IRC を実行 | `False` |
 | `--thermo/--no-thermo` | R/TS/P で振動解析を実行 | `False` |
 | `--dft/--no-dft` | R/TS/P で DFT 一点計算を実行 | `False` |
-| `--opt-mode-post [grad\|hess]` | TSOPT/IRC 後最適化のプリセット上書き（`grad` → Dimer/L-BFGS、`hess` → RSPRFO/RFO） | `hess` |
+| `--opt-mode-post [grad\|hess]` | TSOPT/IRC 後最適化のプリセット上書き（`grad` → Dimer/L-BFGS、`hess` → RSIRFO/RFO） | `hess` |
 | `--thresh-post TEXT` | IRC 後エンドポイント最適化の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
 | `--flatten/--no-flatten` | 余分な虚振動モードのフラット化 | `False` |
 
@@ -263,9 +263,9 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 `--dft` による DFT 一点計算（PySCF/GPU4PySCF）は、約 300 原子を超えるモデルでは計算コストが非常に大きくなります。そのような系では、A100 や H200 等の高性能 GPU を搭載した HPC クラスタの利用が必要になる場合があります。
 ```
 
-TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode`（明示指定時のみ）→ TSOPT のデフォルト（`hess` → `rsprfo`）の順で決まります。
+TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode`（明示指定時のみ）→ TSOPT のデフォルト（`hess` → `rsirfo`）の順で決まります。
 
-例: `--opt-mode grad --opt-mode-post hess` は、経路最適化に L-BFGS、TS 精密化に RS-P-RFO を使用します。
+例: `--opt-mode grad --opt-mode-post hess` は、経路最適化に L-BFGS、TS 精密化に RS-I-RFO を使用します。
 
 ### TSOPT 上書き
 
@@ -336,7 +336,7 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 **最小例:**
 ```yaml
 calc:
- model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
+ model: uma-s-1p2 # uma-s-1p2 | uma-m-1p1
  hessian_calc_mode: Analytical # VRAM に余裕がある場合推奨
 gs:
  max_nodes: 12

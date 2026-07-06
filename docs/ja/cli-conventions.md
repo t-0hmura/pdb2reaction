@@ -274,18 +274,18 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 | サブコマンド | `grad` エイリアス | `hess` エイリアス | デフォルト |
 |------------|------------------|------------------|-----------|
 | `opt` | L-BFGS (`lbfgs`) | RFO (`rfo`) | `grad` (L-BFGS) |
-| `tsopt` | Dimer (`dimer`) | RS-P-RFO (`rsprfo`) | `hess` (RS-P-RFO) |
+| `tsopt` | Dimer (`dimer`) | RS-I-RFO (`rsirfo`) | `hess` (RS-I-RFO) |
 | `path-opt`（端点 preopt） | L-BFGS | RFO | `grad` |
 | `path-search`（HEI±1 / kink ノードの単一構造 optimizer） | L-BFGS | RFO | `grad` |
 | `scan` / `scan2d` / `scan3d`（grid relaxation） | L-BFGS | RFO | `grad` |
 | `all`（pre-opt 段階、`--opt-mode`） | L-BFGS | RFO | `grad` |
-| `all`（post-opt — TSOPT プリセット、`--opt-mode-post`） | Dimer (`dimer`) | RS-P-RFO (`rsprfo`) | `hess` |
+| `all`（post-opt — TSOPT プリセット、`--opt-mode-post`） | Dimer (`dimer`) | RS-I-RFO (`rsirfo`) | `hess` |
 | `all`（post-opt — IRC 後エンドポイント最適化、`--opt-mode-post`） | L-BFGS | RFO | `hess` |
 
 **受け付けるエイリアス**もサブコマンド固有です:
 
 - `opt` は `grad` / `lbfgs` と `hess` / `rfo` を受け付けます。
-- `tsopt` は `grad` / `dimer` と `hess` / `rsprfo` に加え、`rsirfo`（RS-I-RFO）、`trim`（TRIM/Helgaker）も単独の `--opt-mode` 値として受け付けます。
+- `tsopt` は `grad` / `dimer` と `hess` / `rsirfo` に加え、`rsprfo`（RS-P-RFO）、`trim`（TRIM/Helgaker）も単独の `--opt-mode` 値として受け付けます。
 - `scan` / `scan2d` / `scan3d` / `path-opt` / `path-search` / `all` は `grad` / `hess` のみ受け付けます（アルゴリズム名 alias なし）。`all` の `--opt-mode-post` も `grad` / `hess` のみです。
 
 したがって `tsopt` に対する `--opt-mode grad` は L-BFGS 最小化ではなく **Dimer TS 探索**です。曖昧さを避けたい場合は、各サブコマンドが受け付けるアルゴリズム名を使用してください: `opt` では `--opt-mode lbfgs|rfo`、`tsopt` では `--opt-mode dimer|rsirfo`。（他のサブコマンドは `grad` / `hess` のみ受け付けます。）

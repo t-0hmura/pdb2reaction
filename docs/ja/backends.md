@@ -11,12 +11,12 @@ calc = create_calculator(
     backend="uma",        # one of: "uma", "orb", "mace", "aimnet2", "auto"
     charge=0, spin=1,
     device="cuda", workers=1,
-    model="uma-s-1p1",
+    model="uma-s-1p2",
 )
 # calc is a pysisyphus-compatible MLIPCalculator; pass it to any stage runner.
 
 # ASE-based stages (e.g. DMF path optimization) use the ASE factory:
-ase_calc = create_ase_calculator(backend="uma", model="uma-s-1p1", device="cuda")
+ase_calc = create_ase_calculator(backend="uma", model="uma-s-1p2", device="cuda")
 ```
 
 `create_calculator(...)` は `**kwargs` を各バックエンドの
@@ -44,7 +44,7 @@ ase_calc = create_ase_calculator(backend="uma", model="uma-s-1p1", device="cuda"
 
 | backend | install | model identifier | precision option |
 |---------|---------|------------------|------------------|
-| `uma` | `pip install fairchem-core` + HF auth | `uma-s-1p1` / `uma-s-1p2` | `precision="fp32" \| "fp64"` |
+| `uma` | `pip install fairchem-core` + HF auth | `uma-s-1p2` / `uma-s-1p1` | `precision="fp32" \| "fp64"` |
 | `orb` | `pip install orb-models` | `orb_v3_conservative_omol` | `precision="float32-high" \|...` |
 | `mace` | `pip install 'mace-torch>=0.3.8'`（`fairchem-core` と共存可。`mace-torch < 0.3.8` のみ古い `e3nn` の pin により専用 env が必要: `pip uninstall -y fairchem-core`） | `MACE-OMOL-0` | `default_dtype="float64"` |
 | `aimnet2` | `pip install aimnet` | `aimnet2` | n/a |

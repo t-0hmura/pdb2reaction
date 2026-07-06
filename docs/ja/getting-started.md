@@ -53,7 +53,7 @@ PDB (R, P)
 [path-opt]  MEP 探索（デフォルトは単一パス path-opt; `--refine-path True` で再帰的 path-search に切替）
   |
   v
-[tsopt]  TS 最適化 (RS-P-RFO; 代替として Dimer)
+[tsopt]  TS 最適化 (RS-I-RFO; 代替として Dimer)
   |
   v
 [irc]  固有反応座標

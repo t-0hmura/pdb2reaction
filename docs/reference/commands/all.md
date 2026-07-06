@@ -99,11 +99,11 @@ Options:
   --opt-mode [grad|hess]          Optimizer mode forwarded to scan/tsopt and
                                   used for single optimizations: grad
                                   (=LBFGS/Dimer) or hess (=RFO for scan/opt; RS-
-                                  P-RFO for tsopt).  [default: grad]
+                                  I-RFO for tsopt).  [default: grad]
   --opt-mode-post [grad|hess]     Optimizer mode override for TSOPT/post-IRC
                                   endpoint optimizations. If unset, uses --opt-
                                   mode when explicitly provided; otherwise falls
-                                  back to the default ('hess' = RS-P-RFO).
+                                  back to the default ('hess' = RS-I-RFO).
                                   [default: hess]
   --dump BOOLEAN                  Dump GSM/MEP trajectories. Always forwarded to
                                   path_search/path-opt; scan/tsopt receive it
@@ -224,7 +224,7 @@ Options:
                                   default_dtype). aimnet2: fp32 no-op; fp64
                                   rejected.
   --backend-model TEXT            Model variant for the selected --backend (e.g.
-                                  uma-s-1p1 / uma-m-1p1 for uma,
+                                  uma-s-1p2 / uma-m-1p1 for uma,
                                   orb_v3_conservative_omol for orb, MACE-OMOL-0
                                   / MACE-OFF23_small for mace). Default: the
                                   backend's built-in model.

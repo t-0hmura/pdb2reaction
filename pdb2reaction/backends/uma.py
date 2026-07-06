@@ -41,6 +41,7 @@ except Exception:
 from pysisyphus.constants import BOHR2ANG, ANG2BOHR, AU2EV
 
 from .base import MLIPCalculator, BackendError
+from pdb2reaction.core.defaults import DEFAULT_UMA_MODEL
 
 
 # Strict deterministic-mode setup for UMA is opt-in (default no-op).
@@ -72,7 +73,7 @@ class UMAcore:
         *,
         charge: int = 0,
         spin: int = 1,
-        model: str = "uma-s-1p1",
+        model: str = DEFAULT_UMA_MODEL,
         task_name: str = "omol",
         device: str = "auto",
         workers: int = 1,
@@ -261,7 +262,7 @@ class UMACalculator(MLIPCalculator):
     def __init__(
         self,
         *,
-        model: str = "uma-s-1p1",
+        model: str = DEFAULT_UMA_MODEL,
         task_name: str = "omol",
         workers: int = 1,
         workers_per_node: int = 1,
@@ -583,7 +584,7 @@ class UMAASECalculator(FAIRChemCalculator):
     def __init__(
         self,
         *,
-        model: str = "uma-s-1p1",
+        model: str = DEFAULT_UMA_MODEL,
         device: str = "auto",
         task_name: str = "omol",
         workers: int = 1,

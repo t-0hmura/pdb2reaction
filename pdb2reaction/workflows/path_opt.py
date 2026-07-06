@@ -43,6 +43,7 @@ from pdb2reaction.core.defaults import (
     GS_KW,
     STOPT_KW,
     OUT_DIR_PATH_OPT,
+    DEFAULT_UMA_MODEL,
     apply_backend_defaults,
 )
 from pdb2reaction.core.utils import (
@@ -190,7 +191,7 @@ def _run_dmf_mep(
 
     calc_uma = create_ase_calculator(
         backend=calc_cfg.get("backend", "uma"),
-        model=str(calc_cfg.get("model", "uma-s-1p1")),
+        model=str(calc_cfg.get("model", DEFAULT_UMA_MODEL)),
         device=str(calc_cfg.get("device", "auto")),
         task_name=str(calc_cfg.get("task_name", "omol")),
         workers=int(calc_cfg.get("workers", 1)),

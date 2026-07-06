@@ -46,7 +46,7 @@ Files in this skill directory:
 
 | Goal | Recommendation |
 |---|---|
-| TS + IRC on known organic + 1st-row metal cluster | start with **UMA-s-1.1** (`uma.md`); if accuracy is borderline, add **MACE-OMOL-0** in a separate env (`mace.md`) |
+| TS + IRC on known organic + 1st-row metal cluster | start with **UMA-s-1.2** (`uma.md`); if accuracy is borderline, add **MACE-OMOL-0** in a separate env (`mace.md`) |
 | Fast screen across many candidates | **Orb-v3** (`orb.md`) |
 | Small organics, no metals | **AIMNet2** (`aimnet2.md`) — limited element coverage, light |
 | Couple a non-MLIP engine (GFN-xTB / DFTB+ / ORCA / any ASE calc) | **`--calc-file my_calc.py`** — custom backend (see below) |

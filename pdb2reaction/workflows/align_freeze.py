@@ -25,6 +25,7 @@ from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
 from pysisyphus.constants import BOHR2ANG
 
 from pdb2reaction.backends import create_calculator
+from pdb2reaction.core.defaults import DEFAULT_UMA_MODEL
 from pdb2reaction.core.utils import as_list
 
 
@@ -138,7 +139,7 @@ def _set_all_coords_disabling_freeze(geom, coords3d_bohr: np.ndarray) -> None:
 
 
 def _attach_calc_if_needed(geom, shared_calc=None, *, charge=0, spin=1,
-                           model="uma-s-1p1", device="auto") -> None:
+                           model=DEFAULT_UMA_MODEL, device="auto") -> None:
     """
     Set `shared_calc` when provided; otherwise attach UMA if no calculator is present.
     """
@@ -296,7 +297,7 @@ def scan_freeze_atoms_toward_target_inplace(
     out_dir: Path = Path("./result_align_refine/"),
     charge: int = 0,
     spin: int = 1,
-    model: str = "uma-s-1p1",
+    model: str = DEFAULT_UMA_MODEL,
     device: str = "auto",
     verbose: bool = True,
 ) -> Dict[str, Any]:
@@ -426,7 +427,7 @@ def align_and_refine_pair_inplace(
     thresh: str = "gau",
     charge: int = 0,
     spin: int = 1,
-    model: str = "uma-s-1p1",
+    model: str = DEFAULT_UMA_MODEL,
     device: str = "auto",
     verbose: bool = True,
 ) -> Dict[str, Any]:
@@ -472,7 +473,7 @@ def align_and_refine_sequence_inplace(
     thresh: str = "gau",
     charge: int = 0,
     spin: int = 1,
-    model: str = "uma-s-1p1",
+    model: str = DEFAULT_UMA_MODEL,
     device: str = "auto",
     verbose: bool = True,
 ) -> List[Dict[str, Any]]:

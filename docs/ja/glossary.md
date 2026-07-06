@@ -24,7 +24,7 @@
 | **BFGS** | Broyden-Fletcher-Goldfarb-Shanno | 準ニュートン型のHessian更新スキーム（`hessian_update: bfgs`） |
 | **L-BFGS** | Limited-memory BFGS | 勾配履歴からHessianを近似する準ニュートン法。`opt --opt-mode grad` で使用 |
 | **RFO** | Rational Function Optimization | 明示的なHessian情報を使用する信頼領域最適化法。`opt --opt-mode hess` で使用 |
-| **RS-I-RFO** | Restricted-Step Image-RFO | Hessian行列の 1 つの負固有値方向に沿って一次鞍点を探索する RFO 変種。`tsopt --opt-mode rsirfo` で選択（`hess` のデフォルトは RS-P-RFO） |
+| **RS-I-RFO** | Restricted-Step Image-RFO | Hessian行列の 1 つの負固有値方向に沿って一次鞍点を探索する RFO 変種。`tsopt --opt-mode rsirfo` で選択（`hess` のデフォルトは RS-I-RFO） |
 | **Dimer** | Dimer Method | 完全なHessianを計算せずに最低曲率モードを推定する TS 最適化法。`tsopt --opt-mode grad` で使用。pdb2reaction は Hessian Guided Dimer 変種を使い、活性部分空間の正確なHessianを周期的に評価してダイマー方向を更新します |
 | **Bofill** | Bofill Update | SR1（対称ランク 1）と PSB（Powell-symmetric-Broyden）を混合したHessian更新スキーム。鞍点探索に適します。`hessian_update: bofill` で選択され、RS-I-RFO と Dimer のフラット化ループで使用されます |
 | **SR1** | Symmetric Rank-One | ランク 1 のHessian更新スキーム。Bofill の 2 要素のうち 1 つ |

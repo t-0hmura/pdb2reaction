@@ -58,7 +58,7 @@ TS 最適化はより厳しい "baker" プリセットを、通常の極小化�
 |------------|---------------------|-----------------------|
 | `opt` | `gau` | `OPT_BASE_KW`（→ `lbfgs` / `rfo`） |
 | `tsopt`（Hessian Dimer） | `baker` | `HESSIAN_DIMER_KW`、内側の `LBFGS_TS_KW` |
-| `tsopt`（RS-P-RFO / RS-I-RFO） | `baker` | `RSIRFO_KW` |
+| `tsopt`（RS-I-RFO / RS-P-RFO） | `baker` | `RSIRFO_KW` |
 | `scan` | `gau` | `OPT_BASE_KW` |
 | `scan2d`, `scan3d` | `baker` | `scan_common.py` (`thresh_default="baker"`) |
 | `path-search`（各ステップの opt） | `gau` | `OPT_BASE_KW` |
@@ -97,7 +97,7 @@ TS 最適化はより厳しい "baker" プリセットを、通常の極小化�
 | [`bond`](#bond) | 結合変化検出設定 | scan, path-search |
 | [`search`](#search) | 再帰的経路探索設定 | path-search |
 | [`hessian_dimer`](#hessian_dimer) | Hessian Guided Dimer TS 最適化 | tsopt |
-| [`rsirfo`](#rsirfo) | RS-P-RFO / RS-I-RFO TS 最適化 | tsopt, all |
+| [`rsirfo`](#rsirfo) | RS-I-RFO / RS-P-RFO TS 最適化 | tsopt, all |
 
 ## 共通セクション
 
@@ -128,7 +128,7 @@ calc:
  precision: fp32 # fp32 (baseline) | fp64 (full-precision base inference); backends may override (ORB float32-high, MACE float64)
  charge: 0 # Total system charge (overridden by CLI -q)
  spin: 1 # Spin multiplicity 2S+1 (overridden by CLI -m)
- model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
+ model: uma-s-1p2 # uma-s-1p2 | uma-m-1p1
  task_name: omol # Task tag recorded in UMA batches
  device: auto # Device: "cuda", "cpu", or "auto"
  max_neigh: null # Maximum neighbors for graph construction
@@ -374,7 +374,7 @@ stopt:
 
 TS 最適化は `--opt-mode` で**2 つのアルゴリズム**を切り替えます:
 - `--opt-mode dimer`（または `grad`）→ `hessian_dimer` セクション
-- `--opt-mode rsprfo`（または `hess`、デフォルト）、`rsirfo`、`trim` → `rsirfo` セクション
+- `--opt-mode rsirfo`（または `hess`、デフォルト）、`rsprfo`、`trim` → `rsirfo` セクション
 
 共通オプティマイザ設定（`thresh`, `max_cycles`, `dump`）は上記 `opt` セクションから読み込まれます。
 
@@ -430,7 +430,7 @@ hessian_dimer:
 
 ### `rsirfo`
 
-RS-I-RFO / RS-P-RFO TS 最適化（tsopt `--opt-mode rsirfo`、`rsprfo`（`hess` デフォルト）、`trim` が使用）。
+RS-I-RFO / RS-P-RFO TS 最適化（tsopt `--opt-mode rsirfo`（`hess` デフォルト）、`rsprfo`、`trim` が使用）。
 
 ```yaml
 rsirfo:
@@ -599,7 +599,7 @@ calc:
  backend: uma
  charge: 0
  spin: 1
- model: uma-s-1p1 # uma-s-1p1 | uma-m-1p1
+ model: uma-s-1p2 # uma-s-1p2 | uma-m-1p1
  device: auto
  hessian_calc_mode: Analytical # Recommended when VRAM permits
  solvent: none                 # Set to e.g. "water" for implicit solvent

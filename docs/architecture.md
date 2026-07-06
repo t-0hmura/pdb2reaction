@@ -4,7 +4,7 @@
 
 ## 1. Overview
 
-`pdb2reaction` is a Python CLI that performs **pure-MLIP enzymatic reaction-path analysis** on an active-site cluster model. From a PDB plus a substrate name, it extracts the active-site cluster, adds cap hydrogens to severed bonds, and runs Hessian-based RS-P-RFO TS optimization on the MLIP potential to produce the reaction path (extract → MEP → tsopt → IRC → freq → dft).
+`pdb2reaction` is a Python CLI that performs **pure-MLIP enzymatic reaction-path analysis** on an active-site cluster model. From a PDB plus a substrate name, it extracts the active-site cluster, adds cap hydrogens to severed bonds, and runs Hessian-based RS-I-RFO TS optimization on the MLIP potential to produce the reaction path (extract → MEP → tsopt → IRC → freq → dft).
 
 
 Two bundled forks (`pysisyphus/`, `thermoanalysis/`) live at the repo top as repo-internal modules. They are deliberately **not** the upstream PyPI distributions; reinstalling them from PyPI alongside this package silently breaks the local extensions. See §6.

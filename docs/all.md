@@ -202,7 +202,7 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | `--max-nodes INT` | MEP internal nodes per segment. **GSM**: total images = `max_nodes + 2` (endpoints fixed). **DMF**: number of *movable* images along the chain (no implicit endpoint expansion). | `20` |
 | `--max-cycles INT` | MEP maximum optimization cycles. | `300` |
 | `--climb / --no-climb` | Enable climbing image for standard GSM segments (bridge segments always disable climbing). | `True` |
-| `--opt-mode [grad\|hess]` | Workflow preset (`grad` → L-BFGS / Dimer, `hess` → RFO / RS-P-RFO). Token-to-algorithm mapping depends on scope — see {ref}`opt-mode-semantics` for the per-subcommand table; note that `all`'s pre-opt default (`grad`) differs from `tsopt`'s default (`hess`). | `grad` |
+| `--opt-mode [grad\|hess]` | Workflow preset (`grad` → L-BFGS / Dimer, `hess` → RFO / RS-I-RFO). Token-to-algorithm mapping depends on scope — see {ref}`opt-mode-semantics` for the per-subcommand table; note that `all`'s pre-opt default (`grad`) differs from `tsopt`'s default (`hess`). | `grad` |
 | `--thresh TEXT` | Convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
 | `--preopt / --no-preopt` | Pre-optimize active-site model endpoints before MEP search. Standalone `scan` / `scan2d` / `scan3d` default `--preopt` to `False`. | `True` |
 | `--refine-path BOOL` | `False` (default) → single-pass `path-opt` per adjacent pair; `True` → recursive `path-search` with automatic bond-change segmentation. | `False` |
@@ -224,7 +224,7 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | `--tsopt / --no-tsopt` | Run TS optimization + IRC per reactive segment. | `False` |
 | `--thermo / --no-thermo` | Run vibrational analysis (`freq`) on R / TS / P. | `False` |
 | `--dft / --no-dft` | Run single-point DFT on R / TS / P. | `False` |
-| `--opt-mode-post [grad\|hess]` | Optimizer preset for TSOPT + post-IRC (`grad` → Dimer / L-BFGS, `hess` → RS-P-RFO / RFO). | `hess` |
+| `--opt-mode-post [grad\|hess]` | Optimizer preset for TSOPT + post-IRC (`grad` → Dimer / L-BFGS, `hess` → RS-I-RFO / RFO). | `hess` |
 | `--thresh-post TEXT` | Convergence preset for post-IRC endpoint optimizations. | `baker` |
 | `--flatten / --no-flatten` | Enable surplus-imaginary-mode flattening in `tsopt`. | `False` |
 
@@ -232,7 +232,7 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 `--dft` single-point calculations (PySCF / GPU4PySCF) are very expensive for models above ~300 atoms — HPC clusters with high-end GPUs (e.g. A100, H200) are typically required.
 ```
 
-TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (only when explicitly provided) → TSOPT default (`hess` → `rsprfo`). Example: `--opt-mode grad --opt-mode-post hess` uses L-BFGS for path optimization and RS-P-RFO for TS refinement.
+TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (only when explicitly provided) → TSOPT default (`hess` → `rsirfo`). Example: `--opt-mode grad --opt-mode-post hess` uses L-BFGS for path optimization and RS-I-RFO for TS refinement.
 
 ### TSOPT / freq / DFT / scan overrides
 
@@ -279,7 +279,7 @@ TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (on
 ```yaml
 # Minimal example
 calc:
-  model: uma-s-1p1            # uma-s-1p1 | uma-m-1p1
+  model: uma-s-1p2            # uma-s-1p2 | uma-m-1p1
   hessian_calc_mode: Analytical   # recommended when VRAM permits
 gs:
   max_nodes: 12

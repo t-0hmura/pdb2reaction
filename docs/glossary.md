@@ -24,7 +24,7 @@
 | **BFGS** | Broyden-Fletcher-Goldfarb-Shanno | A quasi-Newton Hessian update scheme (`hessian_update: bfgs`). |
 | **L-BFGS** | Limited-memory BFGS | A quasi-Newton optimization algorithm that approximates the Hessian using a limited history of gradients. Used in `opt --opt-mode grad`. |
 | **RFO** | Rational Function Optimization | A trust-region optimization method that uses explicit Hessian information. Used in `opt --opt-mode hess`. |
-| **RS-I-RFO** | Restricted-Step Image-RFO | A variant of RFO for saddle point (TS) optimization that follows one negative eigenvalue. Selectable via `tsopt --opt-mode rsirfo` (the `hess` default is RS-P-RFO). |
+| **RS-I-RFO** | Restricted-Step Image-RFO | A variant of RFO for saddle point (TS) optimization that follows one negative eigenvalue. Selectable via `tsopt --opt-mode rsirfo` (the `hess` default is RS-I-RFO). |
 | **Dimer** | Dimer Method | A TS optimization method that estimates the lowest curvature mode without computing the full Hessian. Used in `tsopt --opt-mode grad`. pdb2reaction uses a Hessian-Guided Dimer variant that periodically evaluates an exact active-subspace Hessian to update the dimer direction. |
 | **Bofill** | Bofill Update | A Hessian update scheme that blends SR1 (symmetric rank-one) and PSB (Powell-symmetric-Broyden) updates, well suited to saddle-point searches. Selected via `hessian_update: bofill` and used by RS-I-RFO and the Dimer flatten loop. |
 | **SR1** | Symmetric Rank-One | A rank-one Hessian update scheme; one of the two components blended by Bofill. |

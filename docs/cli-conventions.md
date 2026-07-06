@@ -179,12 +179,12 @@ The same `--opt-mode` token selects **different algorithms** by subcommand, and 
 | Subcommand | `grad` alias selects | `hess` alias selects | Default |
 |---|---|---|---|
 | `opt` | L-BFGS (`lbfgs`) | RFO (`rfo`) | `grad` (L-BFGS) |
-| `tsopt` | Dimer (`dimer`) | RS-P-RFO (`rsprfo`) | `hess` (RS-P-RFO) |
+| `tsopt` | Dimer (`dimer`) | RS-I-RFO (`rsirfo`) | `hess` (RS-I-RFO) |
 | `path-opt` (endpoint preopt) | L-BFGS | RFO | `grad` |
 | `path-search` (HEI±1 / kink-node single-structure) | L-BFGS | RFO | `grad` |
 | `scan` / `scan2d` / `scan3d` (per-grid relaxation) | L-BFGS | RFO | `grad` |
 | `all` (pre-opt, `--opt-mode`) | L-BFGS | RFO | `grad` |
-| `all` (TSOPT preset, `--opt-mode-post`) | Dimer | RS-P-RFO | `hess` |
+| `all` (TSOPT preset, `--opt-mode-post`) | Dimer | RS-I-RFO | `hess` |
 | `all` (post-IRC endpoint, `--opt-mode-post`) | L-BFGS | RFO | `hess` |
 
 Algorithm aliases are accepted on `opt` (`lbfgs` / `rfo`) and `tsopt` (`dimer` / `rsirfo` / `trim` / `rsprfo`); all other subcommands accept only `grad` / `hess`. So `--opt-mode grad` on `tsopt` is a **Dimer** TS search, not L-BFGS minimization — use `--opt-mode dimer|rsirfo` on `tsopt` and `--opt-mode lbfgs|rfo` on `opt` to be unambiguous.

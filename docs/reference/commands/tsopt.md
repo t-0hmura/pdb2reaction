@@ -41,9 +41,9 @@ Options:
                                   [default: no-flatten]
   --opt-mode [grad|hess|dimer|rsirfo|trim|rsprfo]
                                   TS optimizer: 'grad'/'dimer' → Hessian Guided
-                                  Dimer; 'hess'/'rsprfo' → RS-P-RFO (Banerjee,
-                                  default); 'trim' → TRIM (Helgaker); 'rsirfo' →
-                                  RS-I-RFO.  [default: hess]
+                                  Dimer; 'hess'/'rsirfo' → RS-I-RFO (default);
+                                  'rsprfo' → RS-P-RFO (Banerjee); 'trim' → TRIM
+                                  (Helgaker).  [default: hess]
   --dump / --no-dump              Write the per-cycle optimization trajectory
                                   ('optimization_trj.xyz' for rsirfo/hess,
                                   'optimization_all_trj.xyz' for grad/dimer) in
@@ -85,7 +85,7 @@ Options:
                                   default_dtype). aimnet2: fp32 no-op; fp64
                                   rejected.
   --backend-model TEXT            Model variant for the selected --backend (e.g.
-                                  uma-s-1p1 / uma-m-1p1 for uma,
+                                  uma-s-1p2 / uma-m-1p1 for uma,
                                   orb_v3_conservative_omol for orb, MACE-OMOL-0
                                   / MACE-OFF23_small for mace). Default: the
                                   backend's built-in model.

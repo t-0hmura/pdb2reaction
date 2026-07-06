@@ -129,7 +129,7 @@ out_dir/ (デフォルト:./result_path_search/)
 | `--climb/--no-climb` | GSM セグメントのクライミングイメージを有効化（ブリッジは無効） | `True` |
 | **精密化** | | |
 | `--refine-mode {peak\|minima}` | 精密化シード: `peak` は HEI±1、`minima` は HEI から最寄り局所極小点へ外側探索。未指定時は GSM で `peak`、DMF で `minima` | _Auto_ |
-| `--opt-mode TEXT` | HEI±1/ねじれノード用の単一構造オプティマイザ（`grad`=L-BFGS、`hess`=RFO）。同じトークンが `tsopt` では Dimer / RS-P-RFO へ対応する点については {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
+| `--opt-mode TEXT` | HEI±1/ねじれノード用の単一構造オプティマイザ（`grad`=L-BFGS、`hess`=RFO）。同じトークンが `tsopt` では Dimer / RS-I-RFO へ対応する点については {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
 | **収束閾値** | | |
 | `--thresh TEXT` | 単一構造最適化のみの収束プリセットを上書き（`opt.lbfgs/rfo.thresh`） | `gau` |
 | `--thresh-stopt TEXT` | ストリングオプティマイザの収束プリセットを上書き（`stopt.thresh`） | `gau_loose` |

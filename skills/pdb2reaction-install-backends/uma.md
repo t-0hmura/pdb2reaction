@@ -43,7 +43,7 @@ the token has access to the UMA model repos
 
 ## CLI usage
 
-`uma` is the default — `pdb2reaction all -i ...` uses UMA-s-1.1 unless
+`uma` is the default — `pdb2reaction all -i ...` uses UMA-s-1.2 unless
 overridden:
 
 ```bash
@@ -59,8 +59,8 @@ Two equivalent notations are common:
 
 | config string (`calc.model`) | paper notation | HuggingFace repo | Notes |
 |---|---|---|---|
-| `uma-s-1p1` (default) | UMA-s-1.1 | `facebook/UMA-S-1.1` | Smaller / faster, sufficient for most workflows |
-| `uma-s-1p2` | UMA-s-1.2 | `facebook/UMA-S-1.2` | Successor checkpoint (still small) |
+| `uma-s-1p1` | UMA-s-1.1 | `facebook/UMA-S-1.1` | Smaller / faster, sufficient for most workflows |
+| `uma-s-1p2` (default) | UMA-s-1.2 | `facebook/UMA-S-1.2` | Successor checkpoint (still small) |
 | `uma-m-1p1` | UMA-m-1.1 | `facebook/UMA-M-1.1` | Larger, slightly more accurate, ~3× slower |
 
 `p` is the dot replacement used by fairchem-core's config parser

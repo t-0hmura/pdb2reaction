@@ -11,7 +11,7 @@ import numpy as np
 from pdb2reaction.backends.uma import UMACalculator
 
 # Example: a neutral singlet diatomic on GPU when available
-calc = UMACalculator(charge=0, spin=1, model="uma-s-1p1", device="auto")
+calc = UMACalculator(charge=0, spin=1, model="uma-s-1p2", device="auto")
 
 # UMACalculator expects coordinates in Bohr (shape: [n_atoms, 3])
 coords_bohr = np.array([
@@ -138,7 +138,7 @@ Common constructor keywords (defaults shown in the rightmost column):
 | `backend` | MLIP backend engine. | `"uma"` |
 | `charge` | Total system charge. | `0` |
 | `spin` | Spin multiplicity (2S+1). | `1` |
-| `model` | UMA pretrained model name (`uma-s-1p1`, `uma-s-1p2`). | `"uma-s-1p1"` |
+| `model` | UMA pretrained model name (`uma-s-1p1`, `uma-s-1p2`). | `"uma-s-1p2"` |
 | `precision` | MLIP numerical precision (`"fp32"` or `"fp64"`). | `"fp32"` |
 | `task_name` | Task tag recorded in UMA batches. | `"omol"` |
 | `device` | "cuda", "cpu", or automatic selection. | `"auto"` |

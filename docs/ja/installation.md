@@ -178,7 +178,7 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 
 ## システム要件
 
-**GPU / CUDA / VRAM:** 実行環境の CUDA に合った CUDA タグの PyTorch wheel をインストールしてください（CUDA 12.6 なら `cu126`、CUDA 12.9 なら `cu129`。RTX 50 系では 12.9 が必須です）。VRAM は 8 GB 以上を推奨します。大きな ML 領域の解析的Hessianでは GPU 容量が大きいほど有利です。`tests/smoke/` のスイートはデフォルトの `uma-s-1p1` モデルでピーク約 0.9 GB のため、本番の TS / IRC / Hessianのワークフローが収まらない小容量 GPU でも実行できます。
+**GPU / CUDA / VRAM:** 実行環境の CUDA に合った CUDA タグの PyTorch wheel をインストールしてください（CUDA 12.6 なら `cu126`、CUDA 12.9 なら `cu129`。RTX 50 系では 12.9 が必須です）。VRAM は 8 GB 以上を推奨します。大きな ML 領域の解析的Hessianでは GPU 容量が大きいほど有利です。`tests/smoke/` のスイートはデフォルトの `uma-s-1p2` モデルでピーク約 0.9 GB のため、本番の TS / IRC / Hessianのワークフローが収まらない小容量 GPU でも実行できます。
 
 **RAM:** 16 GB 以上を推奨します（GPU 計算と並行して大規模な活性部位モデルを扱う場合は余裕があるほど安心です）。
 

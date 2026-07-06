@@ -1,6 +1,6 @@
 # pdb2reaction ドキュメント
 
-*バージョン: v0.4.0*
+*バージョン: v0.4.4*
 
 ---
 
@@ -28,7 +28,7 @@
 | [`fix-altloc`](fix-altloc.md) | PDB の代替位置指示子を解決 |
 | [`add-elem-info`](add-elem-info.md) | PDB の元素カラム（77–78）を修復 |
 | [`opt`](opt.md) | 単一構造の構造最適化（L-BFGS または RFO。[+ 任意 flatten]） |
-| [`tsopt`](tsopt.md) | 遷移状態最適化（Dimer または RS-P-RFO。[+ 任意 flatten]） |
+| [`tsopt`](tsopt.md) | 遷移状態最適化（Dimer または RS-I-RFO。[+ 任意 flatten]） |
 | [`path-opt`](path-opt.md) | GSM または DMF による 1 段階の MEP 最適化（2 構造から） |
 | [`path-search`](path-search.md) | 自動精密化を伴う多段階の再帰的 MEP 探索（2 構造以上） |
 | [`scan`](scan.md) | 拘束付き 1D 結合長スキャン |
@@ -95,7 +95,7 @@
   title        = {pdb2reaction},
   year         = {2026},
   month        = {6},
-  version      = {0.4.0},
+  version      = {0.4.4},
   url          = {https://github.com/t-0hmura/pdb2reaction},
   license      = {GPL-3.0},
   doi          = {10.5281/zenodo.19197865}

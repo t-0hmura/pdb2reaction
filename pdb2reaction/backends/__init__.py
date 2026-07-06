@@ -6,7 +6,7 @@ Usage::
     from pdb2reaction.backends import create_calculator, create_ase_calculator
 
     calc = create_calculator(backend="uma", charge=0, spin=1, ...)
-    ase_calc = create_ase_calculator(backend="uma", model="uma-s-1p1", ...)
+    ase_calc = create_ase_calculator(backend="uma", model="uma-s-1p2", ...)
 """
 
 from __future__ import annotations
@@ -212,7 +212,7 @@ def apply_calc_file_to_calc_cfg(
     if factory is not None and str(factory).strip() != "":
         calc_cfg["calc_factory"] = str(factory).strip()
     # A user ASE Calculator has no MLIP model variant: drop the inherited UMA
-    # default so run headers don't mislabel it as 'uma-s-1p1'.
+    # default so run headers don't mislabel it as 'uma-s-1p2'.
     calc_cfg.pop("model", None)
 
 

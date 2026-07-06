@@ -70,6 +70,7 @@ from pdb2reaction.core.defaults import (
     OUT_DIR_TSOPT,
     HESSIAN_DIMER_CLI_KW,
     RSIRFO_KW,
+    DEFAULT_UMA_MODEL,
     apply_backend_defaults,
 )
 from pdb2reaction.core.utils import (
@@ -794,7 +795,7 @@ class HessianDimer:
         self.is_converged = False
 
         # UMA settings
-        self.uma_kwargs = dict(charge=0, spin=1, model="uma-s-1p1",
+        self.uma_kwargs = dict(charge=0, spin=1, model=DEFAULT_UMA_MODEL,
                                task_name="omol", device="auto") if uma_kwargs is None else dict(uma_kwargs)
 
         # Geometry & masses (use provided geom kwargs so freeze_atoms etc. apply)
@@ -1437,7 +1438,7 @@ def _build_rsirfo_kwargs(
     show_default=True,
     help=(
         "TS optimizer: 'grad'/'dimer' → Hessian Guided Dimer; "
-        "'hess'/'rsprfo' → RS-P-RFO (Banerjee, default); 'trim' → TRIM (Helgaker); 'rsirfo' → RS-I-RFO."
+        "'hess'/'rsirfo' → RS-I-RFO (default); 'rsprfo' → RS-P-RFO (Banerjee); 'trim' → TRIM (Helgaker)."
     ),
 )
 @click.option(

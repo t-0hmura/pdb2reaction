@@ -129,7 +129,7 @@ defaults (`device`, `bond_factor`, `margin_fraction`, `delta_fraction`): see
 geom:
  coord_type: cart        # cartesian vs dlc internals
 calc:
- model: uma-s-1p1        # uma-s-1p1 | uma-m-1p1
+ model: uma-s-1p2        # uma-s-1p2 | uma-m-1p1
  task_name: omol         # UMA task name
 opt:
  thresh: gau             # convergence preset

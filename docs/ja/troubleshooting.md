@@ -214,7 +214,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 - 最適化後もHessian行列に複数の負の固有値が残る（虚振動数が 2 本以上）
 
 対処の例（CLI フラグと YAML キーは補完的、必要に応じて併用してください）:
-- オプティマイザモードを切り替えてください: `--opt-mode grad`（Dimer 法）または `--opt-mode hess`（RS-P-RFO 法、デフォルト）
+- オプティマイザモードを切り替えてください: `--opt-mode grad`（Dimer 法）または `--opt-mode hess`（RS-I-RFO 法、デフォルト）
 - 余分な虚振動数モードのフラット化を有効にしてください: `--flatten`（単独の `tsopt`、`opt`、および `pdb2reaction all` で利用可能。デフォルトは無効）
 - 最大サイクル数を増やしてください: `--max-cycles 20000`（単独の `tsopt` の場合）、`--tsopt-max-cycles 20000`（`all` の場合）
 - より厳しい収束閾値を使ってください: `--thresh baker` または `--thresh gau_tight`
@@ -261,7 +261,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 
 | バックエンド (`-b/--backend`、モデル ID) | 速度 (中央値 s/step) | VRAM | 備考 |
 |------------|---------------------|------|------|
-| `uma` (`uma-s-1p1`、デフォルト) | 0.03 s | ~2 GB | 高速、探索向き |
+| `uma` (`uma-s-1p2`、デフォルト) | 0.03 s | ~2 GB | 高速、探索向き |
 | `uma` (`uma-m-1p1`) | 0.22 s | ~8 GB | 中規模モデル、VRAM 大 |
 | `mace` (`MACE-OMOL-0`) | 0.37 s | ~4 GB | 別 conda 環境が必要（`e3nn` 競合） |
 | `orb` (`orb_v3_conservative_omol`) | 0.02 s | ~2 GB | 最速。注意点は下を参照 |
@@ -285,7 +285,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 `torch.cuda.OutOfMemoryError` が出た場合は次を試してください。
 - `--hessian-calc-mode FiniteDifference` を指定する（速度は落ちますが VRAM 使用量を抑えられます）
 - `--radius` を小さくしてクラスターモデルのサイズを縮小する
-- より小さいモデルを使う（YAML 設定で `calc.model: uma-m-1p1` の代わりに `uma-s-1p1` を指定）
+- より小さいモデルを使う（YAML 設定で `calc.model: uma-m-1p1` の代わりに `uma-s-1p2` を指定）
 
 ## 不具合報告のときに添えると助かる情報
 

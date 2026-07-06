@@ -11,7 +11,7 @@ import numpy as np
 from pdb2reaction.backends.uma import UMACalculator
 
 # 例: 中性一重項の2原子系（GPUが利用可能ならGPU、なければCPU）
-calc = UMACalculator(charge=0, spin=1, model="uma-s-1p1", device="auto")
+calc = UMACalculator(charge=0, spin=1, model="uma-s-1p2", device="auto")
 
 # UMACalculator には Bohr 単位の座標（形状: [n_atoms, 3]）を渡します
 coords_bohr = np.array([
@@ -138,7 +138,7 @@ UMA バックエンドを `workers > 1` で使用する場合、`hessian_calc_mo
 | `backend` | MLIP バックエンドエンジン | `"uma"` |
 | `charge` | 総電荷 | `0` |
 | `spin` | スピン多重度（2S+1） | `1` |
-| `model` | UMA モデル名 (`uma-s-1p1`, `uma-s-1p2`) | `"uma-s-1p1"` |
+| `model` | UMA モデル名 (`uma-s-1p1`, `uma-s-1p2`) | `"uma-s-1p2"` |
 | `precision` | MLIP 数値精度 (`"fp32"` または `"fp64"`) | `"fp32"` |
 | `task_name` | UMA バッチに記録されるタスクタグ | `"omol"` |
 | `device` | `"cuda"` / `"cpu"` / `"auto"` | `"auto"` |

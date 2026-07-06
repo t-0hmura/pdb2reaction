@@ -6,6 +6,25 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+## [0.4.4] — 2026-07-06
+
+### Changed
+- **Behavior change (default): the default TS optimizer is once again RS-I-RFO** (Restricted-Step
+  Image RFO), reverting the RS-P-RFO default introduced in 0.4.2. The 0.4.2 choice was based on a
+  benchmark that predates the 0.4.1 charge/spin fix; on the corrected (charge-honoring) benchmark,
+  RS-I-RFO produces clean first-order saddles at least as reliably as RS-P-RFO across the reliable
+  backends, and it keeps the default consistent with the mlmm_toolkit microiteration path.
+  `hess`/`heavy` resolve to `rsirfo` again; RS-P-RFO stays available via `--opt-mode rsprfo` and
+  TRIM via `--opt-mode trim`.
+- **Behavior change (default): the default UMA model is now `uma-s-1p2`** (was `uma-s-1p1`). At the
+  same small-model cost it is more robust on the benchmark (fewer optimization/frequency errors and
+  a few more clean saddles). Other models (`uma-s-1p1`, `uma-m-1p1`, MACE-OMOL, Orb-v3-omol) remain
+  selectable via `-b` / `--backend-model` / config.
+- **Centralized the default UMA model** in a single constant `DEFAULT_UMA_MODEL`
+  (`pdb2reaction/core/defaults.py`); the `uma-s-1p1` defaults previously hardcoded across backends
+  and workflows now all reference it. Docstrings, the `--opt-mode` CLI help, the summary-log legend,
+  docs, and skills were updated for consistency with both default changes.
+
 ## [0.4.3] — 2026-07-06
 ### Fixed
 - **ORB analytical Hessian failed with a donated-buffer error on some environments.**

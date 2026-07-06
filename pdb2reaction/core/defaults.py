@@ -36,11 +36,16 @@ GEOM_KW_DEFAULT: Dict[str, Any] = {
 
 # Calculator defaults (UMA)
 
+# Single source of truth for the default UMA model name. Every code default
+# (backend factory, calculators, workflows) references this instead of a
+# hardcoded literal so the release model can be bumped in one place.
+DEFAULT_UMA_MODEL = "uma-s-1p2"
+
 CALC_KW_DEFAULT: Dict[str, Any] = {
     "backend": "uma",
     "charge": 0,
     "spin": 1,
-    "model": "uma-s-1p1",
+    "model": DEFAULT_UMA_MODEL,
     "task_name": "omol",
     "device": "auto",
     "max_neigh": None,
@@ -318,8 +323,8 @@ THERMO_KW: Dict[str, Any] = {
 
 TSOPT_MODE_ALIASES = (
     (("grad", "light", "dimer"), "dimer"),
-    (("hess", "heavy", "rsprfo"), "rsprfo"),
-    (("rsirfo",), "rsirfo"),
+    (("hess", "heavy", "rsirfo"), "rsirfo"),
+    (("rsprfo",), "rsprfo"),
     (("trim",), "trim"),
 )
 
