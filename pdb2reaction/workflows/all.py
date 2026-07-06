@@ -3114,6 +3114,14 @@ def cli(
         solvent=solvent if cli_param_overridden(ctx, "solvent") else None,
         solvent_model=solvent_model if cli_param_overridden(ctx, "solvent_model") else None,
     )
+    # calc_cfg_shared feeds the run summary (mlip_backend / uma_model). _build_calc_cfg does
+    # not apply --backend-model, so without this the summary records the DEFAULT UMA model even
+    # when --backend-model overrides it (the actual calc already honors --backend-model via its
+    # own config path; this only corrects the recorded provenance). Use the same canonical helper
+    # as path_search for consistency.
+    if backend_model is not None:
+        from pdb2reaction.backends import apply_backend_model_to_calc_cfg
+        apply_backend_model_to_calc_cfg(calc_cfg_shared, backend_model)
 
     # --calc-file overrides --backend with a user ASE Calculator (custom backend).
     from pdb2reaction.backends import apply_calc_file_to_calc_cfg

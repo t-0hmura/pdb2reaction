@@ -6,6 +6,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+## [0.4.5] — 2026-07-07
+
+### Fixed
+- **Run summary recorded the default UMA model instead of the `--backend-model` override.** The
+  `all` workflow's shared calc config — used only to populate the run summary's `mlip_backend`
+  field (`summary.json`) and the `UMA model:` line (`summary.log`) — was built without applying
+  `--backend-model`. A run launched with e.g. `--backend-model uma-s-1p1` therefore recorded
+  `uma-s-1p2` (the default) in the summary. The **actual computation always honored
+  `--backend-model`** via a separate config path (verified: two deterministic runs with different
+  `--backend-model` values produce different results), so this was a provenance/display bug only
+  — no effect on energies, geometries, TS, or benchmark classifications. Now applies
+  `--backend-model` to the shared config via the same `apply_backend_model_to_calc_cfg` helper the
+  `path-search` subcommand already uses. `path-search` and the default (no-override) case were
+  unaffected.
+
 ## [0.4.4] — 2026-07-06
 
 ### Changed
