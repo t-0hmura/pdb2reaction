@@ -6,7 +6,36 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
-## [0.4.7] — 2026-07-07
+## [0.4.8] — 2026-07-07
+
+Release of the 0.4.4–0.4.6 changes listed below.
+
+## [0.4.6] — 2026-07-07
+
+### Fixed
+- **`--precision` was not applied to the in-process calculators.** The `all` workflow's shared calc
+  config feeds the in-process `create_calculator` calls (TS re-evaluation, pre-alignment, R/P/TS
+  endpoint energies that produce the reported barrier), but `_build_calc_cfg` was building it
+  without applying `--precision`, so those calculators ran at the default fp32 even under
+  `--precision fp64` (the MEP/TSopt/IRC/freq subprocesses honored fp64 via the args YAML) — an fp32
+  electronic barrier on top of fp64 geometry and thermal corrections. Now applies `--precision` via
+  the backend-aware `apply_precision_to_calc_cfg` helper (handles orb/mace key names, rejects
+  aimnet2 + fp64). The default (`--precision fp32`) is unchanged.
+
+## [0.4.5] — 2026-07-07
+
+### Fixed
+- **`--backend-model` was not applied to the in-process calculators — the reported barrier, not
+  just the summary.** The `all` workflow's shared calc config feeds both the run summary
+  (`mlip_backend` / `UMA model:`) and the in-process `create_calculator` calls (TS re-evaluation,
+  pre-alignment, R/P/TS endpoint energies), but `_build_calc_cfg` was building it without applying
+  `--backend-model`. A `--backend-model uma-s-1p1` run therefore used the DEFAULT UMA model for the
+  reported electronic barrier even though the MEP/TSopt/IRC/freq subprocesses (via the args YAML)
+  used the requested model — a mixed-model barrier, not merely a mislabeled summary. Now applies
+  `--backend-model` via the same `apply_backend_model_to_calc_cfg` helper the `path-search`
+  subcommand already uses. `path-search` and the default (no-override) case were unaffected.
+
+## [0.4.4] — 2026-07-06
 
 ### Changed
 - **Default TS optimizer is once again RS-I-RFO** (Restricted-Step Image RFO), reverting the
@@ -20,23 +49,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   Other models (`uma-s-1p1`, `uma-m-1p1`, MACE-OMOL, Orb-v3-omol) remain selectable via `-b` /
   `--backend-model` / config. Centralized in a single constant `DEFAULT_UMA_MODEL`
   (`pdb2reaction/core/defaults.py`).
-
-### Fixed
-- **`--backend-model` was not applied to the in-process calculators — the reported barrier, not
-  just the summary.** The `all` workflow's shared calc config feeds both the run summary
-  (`mlip_backend` / `UMA model:`) and the in-process `create_calculator` calls (TS re-evaluation,
-  pre-alignment, R/P/TS endpoint energies), but `_build_calc_cfg` was building it without applying
-  `--backend-model`. A `--backend-model uma-s-1p1` run therefore used the DEFAULT UMA model for the
-  reported electronic barrier even though the MEP/TSopt/IRC/freq subprocesses (via the args YAML)
-  used the requested model — a mixed-model barrier, not merely a mislabeled summary. Now applies
-  `--backend-model` via the same `apply_backend_model_to_calc_cfg` helper the `path-search`
-  subcommand already uses. `path-search` and the default (no-override) case were unaffected.
-- **`--precision` was not applied to those same in-process calculators.** They ran at the default
-  fp32 even under `--precision fp64` (the MEP/TSopt/IRC/freq subprocesses honored fp64 via the args
-  YAML), so a `--precision fp64` run reported an fp32 electronic barrier on top of fp64 geometry and
-  thermal corrections. Now applies `--precision` via the backend-aware `apply_precision_to_calc_cfg`
-  helper (handles orb/mace key names, rejects aimnet2 + fp64). The default (`--precision fp32`) is
-  unchanged.
 
 ## [0.4.3] — 2026-07-06
 ### Fixed
