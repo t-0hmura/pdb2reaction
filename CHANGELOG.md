@@ -6,52 +6,41 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
-## [0.4.6] — 2026-07-07
+## [0.4.7] — 2026-07-07
 
-### Fixed
-- **In-process calculators ignored `--precision` (fp32 energy on an fp64 run).** Same class of bug
-  as the `--backend-model` fix in 0.4.5: the `all` workflow's shared calc config feeds the
-  in-process `create_calculator` calls (the TS re-evaluation, pre-alignment, and R/P/TS
-  endpoint-energy sites that produce the reported barrier), but `_build_calc_cfg` does not apply
-  `--precision`, so those calculators ran at the default fp32 even under `--precision fp64`. The
-  MEP/TSopt/IRC/freq subprocesses honored fp64 via the args YAML, so a `--precision fp64` run
-  reported an fp32 electronic barrier on top of fp64 geometry and thermal corrections. Now applies
-  `--precision` to the shared config via the backend-aware `apply_precision_to_calc_cfg` helper
-  (handles orb/mace key names, rejects aimnet2 + fp64). The default (`--precision fp32`) is
-  unchanged.
-
-## [0.4.5] — 2026-07-07
-
-### Fixed
-- **`--backend-model` was not applied to the in-process calculators — reported barrier, not just
-  the summary.** The `all` workflow's shared calc config is built by `_build_calc_cfg`, which does
-  not apply `--backend-model`. That config feeds both the run summary (`mlip_backend` /
-  `UMA model:`) and the in-process `create_calculator` calls (TS re-evaluation, pre-alignment,
-  R/P/TS endpoint energies). A run launched with e.g. `--backend-model uma-s-1p1` therefore used
-  the DEFAULT UMA model for the reported electronic barrier even though the MEP/TSopt/IRC/freq
-  subprocesses (via the args YAML) used the requested model — a mixed-model barrier, not merely a
-  mislabeled summary. Now applies `--backend-model` to the shared config via the same
-  `apply_backend_model_to_calc_cfg` helper the `path-search` subcommand already uses. `path-search`
-  and the default (no-override) case were unaffected.
-
-## [0.4.4] — 2026-07-06
+Consolidated release. Supersedes the withdrawn 0.4.4–0.4.6 tags — identical code, but those
+releases were removed because their GitHub release titles did not match their tags (which would
+carry a wrong title into the PyPI / Zenodo records). 0.4.7 is the first clean tag of this set.
 
 ### Changed
-- **Behavior change (default): the default TS optimizer is once again RS-I-RFO** (Restricted-Step
-  Image RFO), reverting the RS-P-RFO default introduced in 0.4.2. The 0.4.2 choice was based on a
-  benchmark that predates the 0.4.1 charge/spin fix; on the corrected (charge-honoring) benchmark,
-  RS-I-RFO produces clean first-order saddles at least as reliably as RS-P-RFO across the reliable
-  backends, and it keeps the default consistent with the mlmm_toolkit microiteration path.
-  `hess`/`heavy` resolve to `rsirfo` again; RS-P-RFO stays available via `--opt-mode rsprfo` and
-  TRIM via `--opt-mode trim`.
-- **Behavior change (default): the default UMA model is now `uma-s-1p2`** (was `uma-s-1p1`). At the
-  same small-model cost it is more robust on the benchmark (fewer optimization/frequency errors and
-  a few more clean saddles). Other models (`uma-s-1p1`, `uma-m-1p1`, MACE-OMOL, Orb-v3-omol) remain
-  selectable via `-b` / `--backend-model` / config.
-- **Centralized the default UMA model** in a single constant `DEFAULT_UMA_MODEL`
-  (`pdb2reaction/core/defaults.py`); the `uma-s-1p1` defaults previously hardcoded across backends
-  and workflows now all reference it. Docstrings, the `--opt-mode` CLI help, the summary-log legend,
-  docs, and skills were updated for consistency with both default changes.
+- **Default TS optimizer is once again RS-I-RFO** (Restricted-Step Image RFO), reverting the
+  RS-P-RFO default introduced in 0.4.2 (which predated the 0.4.1 charge/spin fix). On the corrected
+  (charge-honoring) benchmark, RS-I-RFO produces clean first-order saddles at least as reliably as
+  RS-P-RFO across the reliable backends, and keeps the default consistent with the mlmm_toolkit
+  microiteration path. `hess`/`heavy` resolve to `rsirfo` again; RS-P-RFO stays available via
+  `--opt-mode rsprfo`, TRIM via `--opt-mode trim`.
+- **Default UMA model is now `uma-s-1p2`** (was `uma-s-1p1`). At the same small-model cost it is
+  more robust on the benchmark (fewer optimization/frequency errors, a few more clean saddles).
+  Other models (`uma-s-1p1`, `uma-m-1p1`, MACE-OMOL, Orb-v3-omol) remain selectable via `-b` /
+  `--backend-model` / config. Centralized in a single constant `DEFAULT_UMA_MODEL`
+  (`pdb2reaction/core/defaults.py`).
+
+### Fixed
+- **`--backend-model` was not applied to the in-process calculators — the reported barrier, not
+  just the summary.** The `all` workflow's shared calc config feeds both the run summary
+  (`mlip_backend` / `UMA model:`) and the in-process `create_calculator` calls (TS re-evaluation,
+  pre-alignment, R/P/TS endpoint energies), but `_build_calc_cfg` was building it without applying
+  `--backend-model`. A `--backend-model uma-s-1p1` run therefore used the DEFAULT UMA model for the
+  reported electronic barrier even though the MEP/TSopt/IRC/freq subprocesses (via the args YAML)
+  used the requested model — a mixed-model barrier, not merely a mislabeled summary. Now applies
+  `--backend-model` via the same `apply_backend_model_to_calc_cfg` helper the `path-search`
+  subcommand already uses. `path-search` and the default (no-override) case were unaffected.
+- **`--precision` was not applied to those same in-process calculators.** They ran at the default
+  fp32 even under `--precision fp64` (the MEP/TSopt/IRC/freq subprocesses honored fp64 via the args
+  YAML), so a `--precision fp64` run reported an fp32 electronic barrier on top of fp64 geometry and
+  thermal corrections. Now applies `--precision` via the backend-aware `apply_precision_to_calc_cfg`
+  helper (handles orb/mace key names, rejects aimnet2 + fp64). The default (`--precision fp32`) is
+  unchanged.
 
 ## [0.4.3] — 2026-07-06
 ### Fixed
