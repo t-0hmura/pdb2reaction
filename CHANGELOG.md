@@ -6,20 +6,33 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+## [0.4.6] — 2026-07-07
+
+### Fixed
+- **In-process calculators ignored `--precision` (fp32 energy on an fp64 run).** Same class of bug
+  as the `--backend-model` fix in 0.4.5: the `all` workflow's shared calc config feeds the
+  in-process `create_calculator` calls (the TS re-evaluation, pre-alignment, and R/P/TS
+  endpoint-energy sites that produce the reported barrier), but `_build_calc_cfg` does not apply
+  `--precision`, so those calculators ran at the default fp32 even under `--precision fp64`. The
+  MEP/TSopt/IRC/freq subprocesses honored fp64 via the args YAML, so a `--precision fp64` run
+  reported an fp32 electronic barrier on top of fp64 geometry and thermal corrections. Now applies
+  `--precision` to the shared config via the backend-aware `apply_precision_to_calc_cfg` helper
+  (handles orb/mace key names, rejects aimnet2 + fp64). The default (`--precision fp32`) is
+  unchanged.
+
 ## [0.4.5] — 2026-07-07
 
 ### Fixed
-- **Run summary recorded the default UMA model instead of the `--backend-model` override.** The
-  `all` workflow's shared calc config — used only to populate the run summary's `mlip_backend`
-  field (`summary.json`) and the `UMA model:` line (`summary.log`) — was built without applying
-  `--backend-model`. A run launched with e.g. `--backend-model uma-s-1p1` therefore recorded
-  `uma-s-1p2` (the default) in the summary. The **actual computation always honored
-  `--backend-model`** via a separate config path (verified: two deterministic runs with different
-  `--backend-model` values produce different results), so this was a provenance/display bug only
-  — no effect on energies, geometries, TS, or benchmark classifications. Now applies
-  `--backend-model` to the shared config via the same `apply_backend_model_to_calc_cfg` helper the
-  `path-search` subcommand already uses. `path-search` and the default (no-override) case were
-  unaffected.
+- **`--backend-model` was not applied to the in-process calculators — reported barrier, not just
+  the summary.** The `all` workflow's shared calc config is built by `_build_calc_cfg`, which does
+  not apply `--backend-model`. That config feeds both the run summary (`mlip_backend` /
+  `UMA model:`) and the in-process `create_calculator` calls (TS re-evaluation, pre-alignment,
+  R/P/TS endpoint energies). A run launched with e.g. `--backend-model uma-s-1p1` therefore used
+  the DEFAULT UMA model for the reported electronic barrier even though the MEP/TSopt/IRC/freq
+  subprocesses (via the args YAML) used the requested model — a mixed-model barrier, not merely a
+  mislabeled summary. Now applies `--backend-model` to the shared config via the same
+  `apply_backend_model_to_calc_cfg` helper the `path-search` subcommand already uses. `path-search`
+  and the default (no-override) case were unaffected.
 
 ## [0.4.4] — 2026-07-06
 

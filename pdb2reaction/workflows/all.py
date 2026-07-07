@@ -3122,6 +3122,15 @@ def cli(
     if backend_model is not None:
         from pdb2reaction.backends import apply_backend_model_to_calc_cfg
         apply_backend_model_to_calc_cfg(calc_cfg_shared, backend_model)
+    # Same class of fix as --backend-model above: _build_calc_cfg does not apply --precision, so
+    # without this the in-process calculators (create_calculator(**calc_cfg_shared) at the TS
+    # re-eval / pre-align / endpoint R,P,TS energy sites) run at the default fp32 even when
+    # --precision fp64 is requested — mixing an fp32 electronic energy with the fp64 subprocess
+    # geometry and thermal correction. Apply via the backend-aware helper (orb/mace key names +
+    # aimnet2 fp64 rejection), before the calc-file override may switch to a custom backend.
+    if precision is not None:
+        from pdb2reaction.backends import apply_precision_to_calc_cfg
+        apply_precision_to_calc_cfg(calc_cfg_shared, precision)
 
     # --calc-file overrides --backend with a user ASE Calculator (custom backend).
     from pdb2reaction.backends import apply_calc_file_to_calc_cfg
