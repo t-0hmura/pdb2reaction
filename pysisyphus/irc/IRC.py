@@ -422,8 +422,8 @@ class IRC:
         nus = eigval_to_wavenumber(eigvals)
         nu_root = nus[self.root]
         assert nu_root <= self.imag_below, (
-            f"Wavenumber {nu_root:.2f} cm⁻¹ of imaginary mode {self.root} is above "
-            f"the threshold of {self.imag_below:.2f} cm⁻¹."
+            f"Wavenumber {nu_root:.2f} cm⁻¹ (mode {self.root}) is not an imaginary mode, so "
+            f"the structure is not a transition state. Re-run the TS optimization."
         )
         neg_inds = eigvals < -1e-8
         assert sum(neg_inds) > 0, "The hessian does not have any negative eigenvalues!"
