@@ -8,10 +8,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [0.4.7] — 2026-07-07
 
-Consolidated release. Supersedes the withdrawn 0.4.4–0.4.6 tags — identical code, but those
-releases were removed because their GitHub release titles did not match their tags (which would
-carry a wrong title into the PyPI / Zenodo records). 0.4.7 is the first clean tag of this set.
-
 ### Changed
 - **Default TS optimizer is once again RS-I-RFO** (Restricted-Step Image RFO), reverting the
   RS-P-RFO default introduced in 0.4.2 (which predated the 0.4.1 charge/spin fix). On the corrected
