@@ -169,6 +169,29 @@ def apply_precision_to_calc_cfg(calc_cfg: Dict[str, Any], precision: str) -> Non
         calc_cfg["hessian_double"] = True
 
 
+def apply_effective_precision(
+    calc_cfg: Dict[str, Any], cli_precision: Optional[str]
+) -> None:
+    """Dispatch precision to backend kwargs — the CLI flag first, else the config.
+
+    The ``--precision`` CLI flag wins. Otherwise honor a unified precision token
+    carried by config ``calc.precision``: the ``all`` pipeline propagates the run
+    precision to its child stages by writing ``calc.precision`` into the per-run
+    config (``_write_args_yaml_with_freeze_atoms``) but invokes the child CLIs
+    (tsopt / freq / irc / scan / opt) with ``--config`` and *no* ``--precision``.
+    Dispatching only on the CLI flag therefore left ``calc.precision``
+    undispatched in every pipeline child, so ORB silently fell back to its
+    default ``float32-high`` (TF32) even under ``--precision fp64`` — computing
+    TF32 geometries and Hessians (the cached TS Hessian reused by the freq step
+    in particular carried TF32 noise into ~10 spurious imaginary modes). The
+    guard on the unified tokens leaves an already backend-dispatched value in a
+    hand-edited config untouched (re-dispatching e.g. ``'float64'`` would raise).
+    """
+    eff = cli_precision if cli_precision is not None else calc_cfg.get("precision")
+    if eff is not None and str(eff).lower() in ("fp32", "fp64"):
+        apply_precision_to_calc_cfg(calc_cfg, str(eff).lower())
+
+
 def apply_backend_model_to_calc_cfg(calc_cfg: Dict[str, Any], backend_model: Optional[str] = None) -> None:
     """Route the unified ``--backend-model`` CLI value into the ``model`` kwarg
     (the active backend's model variant). Mutates ``calc_cfg`` in place; a no-op

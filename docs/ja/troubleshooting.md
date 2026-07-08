@@ -214,7 +214,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 - 最適化後もHessian行列に複数の負の固有値が残る（虚振動数が 2 本以上）
 
 対処の例（CLI フラグと YAML キーは補完的、必要に応じて併用してください）:
-- オプティマイザモードを切り替えてください: `--opt-mode grad`（Dimer 法）または `--opt-mode hess`（RS-I-RFO 法、デフォルト）
+- オプティマイザモードを切り替えてください: `--opt-mode grad`（Dimer 法）または `--opt-mode hess`（RS-P-RFO 法、デフォルト）
 - 余分な虚振動数モードのフラット化を有効にしてください: `--flatten`（単独の `tsopt`、`opt`、および `pdb2reaction all` で利用可能。デフォルトは無効）
 - 最大サイクル数を増やしてください: `--max-cycles 20000`（単独の `tsopt` の場合）、`--tsopt-max-cycles 20000`（`all` の場合）
 - より厳しい収束閾値を使ってください: `--thresh baker` または `--thresh gau_tight`

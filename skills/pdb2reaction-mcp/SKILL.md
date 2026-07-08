@@ -41,7 +41,7 @@ See [`examples/mcp_client_config.json`](../../examples/mcp_client_config.json) f
 | MCP tool | wraps | purpose |
 |---|---|---|
 | `optimize_geometry` | `pdb2reaction opt` | Optimise one structure |
-| `find_transition_state` | `pdb2reaction tsopt` | TS search (RS-I-RFO / Dimer / TRIM / RS-P-RFO) |
+| `find_transition_state` | `pdb2reaction tsopt` | TS search (RS-P-RFO / Dimer / TRIM / RS-I-RFO) |
 | `run_irc` | `pdb2reaction irc` | IRC integration from a TS geometry |
 | `compute_frequencies` | `pdb2reaction freq` | Vibrational analysis + thermochemistry |
 | `run_single_point` | `pdb2reaction sp` | Single-point MLIP energy + forces (+optional Hessian) |
@@ -95,7 +95,7 @@ so an MCP client can pattern-match on the hierarchy instead of substring-matchin
 
 ## `find_transition_state` opt-mode kwarg
 
-Beyond the default RS-I-RFO, `find_transition_state` accepts:
+Beyond the default RS-P-RFO, `find_transition_state` accepts:
 
 - `opt_mode="trim"` — Helgaker trust-region image-minimisation TS opt
 - `opt_mode="rsprfo"` — Banerjee restricted-step P-RFO TS opt

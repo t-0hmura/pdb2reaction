@@ -150,9 +150,9 @@ def register_all(mcp) -> None:
         """Optimize a transition-state candidate (CLI: `pdb2reaction tsopt`).
 
         opt_mode = one of {"grad", "hess", "dimer", "rsirfo", "trim", "rsprfo"}.
-        - "hess" / "rsirfo" (default): RS-I-RFO.
+        - "hess" / "rsprfo" (default): RS-P-RFO (Banerjee 1985).
         - "grad" / "dimer": Hessian-guided Dimer.
-        - "trim" (Helgaker 1991) / "rsprfo" (Banerjee 1985): alternative TS optimizers.
+        - "trim" (Helgaker 1991) / "rsirfo": alternative TS optimizers.
 
         Returns: SubcmdResult dict with summary.json (ts_energy, n_imaginary_modes,
         imaginary_frequencies_cm, n_opt_cycles, files map).

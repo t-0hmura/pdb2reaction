@@ -6,6 +6,37 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+## [0.4.9] — 2026-07-08
+
+### Changed
+- **Default TS optimizer: RS-I-RFO → RS-P-RFO** (the `hess`/`heavy` alias). On the
+  confounding-free optimizer comparison (uniform finite-difference `n_imag` across all arms,
+  same path-opt HEI), RS-P-RFO produces clean first-order saddles at least as often as RS-I-RFO
+  on the reliable backends and markedly more often on ORB, at comparable optimizer wall time.
+  RS-I-RFO remains available via `--opt-mode rsirfo`.
+
+### Fixed
+- **`--precision fp64` was silently downgraded to `float32-high` (TF32) for ORB in every pipeline
+  child stage — geometry, Hessian, IRC, scan — inflating ORB imaginary-mode counts.** The `all`
+  pipeline propagates the run precision to its child CLIs by writing `calc.precision` into the
+  per-run config (`_write_args_yaml_with_freeze_atoms`) and invoking them (`tsopt`, `freq`, `opt`,
+  `irc`, `scan`) via `_run_cli_main` with `--config` but *not* `--precision`. Each child dispatched a
+  precision to backend-specific kwargs only when the `--precision` **flag** was passed, so the
+  config-borne `calc.precision` was never dispatched and ORB fell back to its default `float32-high`
+  (TF32) matmul precision even under `--precision fp64`. The TS optimizer therefore optimized on a
+  TF32 potential and cached a TF32 Hessian (`hessian_cache`) that the freq step reused — its
+  finite-difference noise surfaced as ~10 spurious low (−20…−250 cm⁻¹) imaginary modes, so ORB
+  transition states were misclassified as higher-order saddles (HOSP) in the benchmark. UMA was
+  unaffected (its unified `fp64` token equals its backend kwarg value); MACE was unaffected (its
+  `default_dtype` defaults to `float64`). Fixed by a shared `apply_effective_precision` helper — the
+  `--precision` flag still wins, but the config's `calc.precision` is dispatched when the flag is
+  absent (a guard leaves already backend-dispatched values untouched) — wired into every workflow
+  CLI that consumes a precision: the pipeline children `tsopt`/`freq`/`opt`/`irc`/`scan` **and the
+  MEP drivers `path_search`/`path_opt`** (so the reaction path, its highest-energy image, and the TS
+  starting guess are computed at the requested precision too), plus the standalone
+  `sp`/`scan2d`/`scan3d` entry points. Verified end-to-end: a fixed-pipeline fp64 ORB `c04` TS
+  returns 1 imaginary (was 11), matching an independent bare fp64 recompute.
+
 ## [0.4.8] — 2026-07-07
 
 Release of the 0.4.4–0.4.6 changes listed below.

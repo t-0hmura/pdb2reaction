@@ -1,5 +1,5 @@
 """
-Transition-state optimization using Hessian Guided Dimer (grad/dimer) or RS-I-RFO (hess/rsirfo).
+Transition-state optimization using Hessian Guided Dimer (grad/dimer) or RS-P-RFO (hess/rsprfo).
 
 Example:
     pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 --opt-mode hess --out-dir ./result_tsopt/
@@ -120,6 +120,7 @@ logger = logging.getLogger(__name__)
 # and share the kwargs surface built by `_build_rsirfo_kwargs`, so they are
 # interchangeable at construction time.
 TSOPT_CLASS_MAP = {"rsirfo": RSIRFOptimizer, "trim": TRIM, "rsprfo": RSPRFOptimizer}
+TSOPT_DISPLAY_NAME = {"rsirfo": "RS-I-RFO", "rsprfo": "RS-P-RFO", "trim": "TRIM"}
 
 
 def _mw_projected_hessian_inplace(H: torch.Tensor,
@@ -1370,7 +1371,7 @@ def _build_rsirfo_kwargs(
 
 
 @click.command(
-    help="Transition state optimization (Dimer or RS-I-RFO).",
+    help="Transition state optimization (Dimer or RS-P-RFO).",
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.option(
@@ -1429,7 +1430,7 @@ def _build_rsirfo_kwargs(
     "flatten",
     default=False,
     show_default=True,
-    help="Enable the extra-imaginary-mode flattening loop (grad: dimer loop, hess: post-RSIRFO).",
+    help="Enable the extra-imaginary-mode flattening loop (grad: dimer loop, hess: post-RS-P-RFO).",
 )
 @click.option(
     "--opt-mode",
@@ -1438,7 +1439,7 @@ def _build_rsirfo_kwargs(
     show_default=True,
     help=(
         "TS optimizer: 'grad'/'dimer' → Hessian Guided Dimer; "
-        "'hess'/'rsirfo' → RS-I-RFO (default); 'rsprfo' → RS-P-RFO (Banerjee); 'trim' → TRIM (Helgaker)."
+        "'hess'/'rsprfo' → RS-P-RFO (Banerjee, default); 'trim' → TRIM (Helgaker); 'rsirfo' → RS-I-RFO."
     ),
 )
 @click.option(
@@ -1603,9 +1604,8 @@ def cli(
             calc_cfg["solvent"] = solvent
         if cli_param_overridden(ctx, "solvent_model"):
             calc_cfg["solvent_model"] = solvent_model
-        if precision is not None:
-            from pdb2reaction.backends import apply_precision_to_calc_cfg
-            apply_precision_to_calc_cfg(calc_cfg, precision)
+        from pdb2reaction.backends import apply_effective_precision
+        apply_effective_precision(calc_cfg, precision)
         if backend_model is not None:
             from pdb2reaction.backends import apply_backend_model_to_calc_cfg
             apply_backend_model_to_calc_cfg(calc_cfg, backend_model)
@@ -1877,7 +1877,7 @@ def cli(
                     del _dimer_freqs, _dimer_energy, _dimer_device
 
             else:
-                # RS-I-RFO (hess)
+                # hess-family optimizer (RS-P-RFO default / RS-I-RFO / TRIM)
                 #  - Build geometry now and attach UMA calculator
                 coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
                 coord_kwargs = dict(geom_cfg)
@@ -1899,7 +1899,7 @@ def cli(
 
                 optimizer = TSOPT_CLASS_MAP[kind](geometry, **rsirfo_kwargs)
 
-                click.echo("\n====== TS optimization (RS-I-RFO) ======\n", narrative=True)
+                click.echo("\n====== TS optimization (" + TSOPT_DISPLAY_NAME.get(kind, kind.upper()) + ") ======\n", narrative=True)
                 optimizer.run()
                 emit_optimizer_terminal_status(
                     "tsopt",
@@ -1975,7 +1975,7 @@ def cli(
 
                         _attach_rsirfo_calc()
                         optimizer = TSOPT_CLASS_MAP[kind](geometry, **rsirfo_kwargs)
-                        click.echo("\n====== TS optimization (RS-I-RFO, flatten retry) ======\n", narrative=True)
+                        click.echo("\n====== TS optimization (" + TSOPT_DISPLAY_NAME.get(kind, kind.upper()) + ", flatten retry) ======\n", narrative=True)
                         optimizer.run()
                         emit_optimizer_terminal_status(
                             "tsopt",
@@ -2045,7 +2045,7 @@ def cli(
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
 
-                # Collect result data for --out-json (rsirfo mode)
+                # Collect result data for --out-json (hess-family: rsprfo/rsirfo/trim)
                 if out_json:
                     _rsirfo_imag = [float(f) for f in freqs_cm if f < -abs(neg_freq_thresh_cm)]
                     _rsirfo_energy = float(geometry.energy) if geometry.energy is not None else None
@@ -2054,7 +2054,7 @@ def cli(
                         "energy_hartree": _rsirfo_energy,
                         "n_imaginary_modes": len(_rsirfo_imag),
                         "imaginary_frequencies_cm": _rsirfo_imag,
-                        "opt_mode": "rsirfo",
+                        "opt_mode": kind,
                         "n_atoms": len(geometry.atoms),
                         "n_opt_cycles": last_optimizer.cur_cycle if hasattr(last_optimizer, "cur_cycle") else None,
                         "backend": calc_cfg.get("backend", backend),

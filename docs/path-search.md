@@ -124,7 +124,7 @@ The table is grouped by purpose; within each group the most-used options come fi
 | `--climb/--no-climb` | Enable climbing image for GSM segments (bridge segments always run without climbing). | `True` |
 | **Refinement** | | |
 | `--refine-mode {peak\|minima}` | Seeds for refinement: `peak` optimizes HEI±1; `minima` searches outward from the HEI toward the nearest local minima on each side. Defaults to `peak` for GSM and `minima` for DMF when omitted. | _Auto_ |
-| `--opt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes. `grad` maps to L-BFGS; `hess` maps to RFO. See {ref}`opt-mode-semantics` for how the same token maps across subcommands (tsopt uses Dimer/RS-I-RFO, not L-BFGS/RFO). | `grad` |
+| `--opt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes. `grad` maps to L-BFGS; `hess` maps to RFO. See {ref}`opt-mode-semantics` for how the same token maps across subcommands (tsopt uses Dimer/RS-P-RFO, not L-BFGS/RFO). | `grad` |
 | **Convergence thresholds** | | |
 | `--thresh TEXT` | Override convergence preset for single-structure optimizations only (`opt.lbfgs/rfo.thresh`). | `gau` |
 | `--thresh-stopt TEXT` | Override convergence preset for the string optimizer (`stopt.thresh`). | `gau_loose` |

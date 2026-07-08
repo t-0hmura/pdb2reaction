@@ -4,7 +4,7 @@
 
 ## 1. Overview
 
-`pdb2reaction` is a Python CLI that performs **pure-MLIP enzymatic reaction-path analysis** on an active-site cluster model. From a PDB plus a substrate name, it extracts the active-site cluster, adds cap hydrogens to severed bonds, and runs Hessian-based RS-I-RFO TS optimization on the MLIP potential to produce the reaction path (extract → MEP → tsopt → IRC → freq → dft).
+`pdb2reaction` is a Python CLI that performs **pure-MLIP enzymatic reaction-path analysis** on an active-site cluster model. From a PDB plus a substrate name, it extracts the active-site cluster, adds cap hydrogens to severed bonds, and runs Hessian-based RS-P-RFO TS optimization on the MLIP potential to produce the reaction path (extract → MEP → tsopt → IRC → freq → dft).
 
 
 Two bundled forks (`pysisyphus/`, `thermoanalysis/`) live at the repo top as repo-internal modules. They are deliberately **not** the upstream PyPI distributions; reinstalling them from PyPI alongside this package silently breaks the local extensions. See §6.
@@ -181,7 +181,7 @@ After step 5 you can read any other file by following the file index in §4. The
 | 1D / 2D / 3D scans + shared | `pdb2reaction/workflows/scan{,2d,3d,_common}.py` |
 | MEP search (GSM) | `pdb2reaction/workflows/path_search.py` |
 | MEP optimizer core (pysisyphus COS) | `pdb2reaction/workflows/path_opt.py` |
-| TS optimization (RSIRFO + Bofill + macro/micro) | `pdb2reaction/workflows/tsopt.py` |
+| TS optimization (RS-P-RFO + Bofill + macro/micro) | `pdb2reaction/workflows/tsopt.py` |
 | Vibrational analysis (PHVA + UMA active block) | `pdb2reaction/workflows/freq.py` |
 | IRC integration (macro / micro) | `pdb2reaction/workflows/irc.py` |
 | Single-point DFT (gpu4pyscf subprocess) | `pdb2reaction/workflows/dft.py` |
@@ -312,7 +312,7 @@ After the Fresh-eyes tour (§3), follow this depth-first reading order:
 3. `pdb2reaction/workflows/all.py` — one full pipeline top-to-bottom.
 4. `pdb2reaction/workflows/extract.py` — active-site cluster cap.
 5. `pdb2reaction/backends/__init__.py` + `base.py` — MLIP dispatcher and per-backend adapter contract.
-6. `pdb2reaction/workflows/tsopt.py` — RS-I-RFO + Bofill scatter (CHEMISTRY-RULE:7).
+6. `pdb2reaction/workflows/tsopt.py` — RS-P-RFO + Bofill scatter (CHEMISTRY-RULE:7).
 7. `pdb2reaction/workflows/freq.py` — vibrational analysis on the cluster model.
 8. `pdb2reaction/workflows/irc.py` — VRAM hygiene + IRC integration.
 9. `pdb2reaction/workflows/dft.py` — single-point DFT with gpu4pyscf (CHEMISTRY-RULE:4 + :5).

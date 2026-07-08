@@ -19,7 +19,7 @@ Three things make it different from gluing together generic tools:
    cluster, sums residue/ligand formal charges, and places cap hydrogens
    along severed covalent bonds without manual atom mapping.
 2. **GPU-accelerated pysisyphus fork (bundled).** Geometry optimizers, TS
-   searches (RS-I-RFO default, Dimer alternative), and IRC integrators keep the heavy tensor
+   searches (RS-P-RFO default, Dimer alternative), and IRC integrators keep the heavy tensor
    work on the same device as the MLIP — no CPU round-trip per step.
 3. **Recursive bond-change-driven path search.** When the reactant and
    product differ by more than one elementary step, the path search
@@ -59,7 +59,7 @@ skill (`SKILL.md` plus `core.md`) before doing anything else.
 |---|---|
 | `extract` | active-site cluster + cap-H atoms + total charge |
 | `path-opt` / `path-search` | MEP (GSM or DMF): single-pass `path-opt` by default; `--refine-path True` runs recursive `path-search` with bond-change segmentation → `seg_01`, `seg_02`, … (one per elementary step) |
-| `tsopt` | TS refinement per segment (RS-I-RFO default; Dimer alternative) |
+| `tsopt` | TS refinement per segment (RS-P-RFO default; Dimer alternative) |
 | `irc` | forward / backward EulerPC IRC (caches endpoint Hessians) |
 | `freq` | Hessian, vibrational frequencies, QRRHO thermochemistry |
 | `dft` | (optional) ωB97M-V/def2-TZVPD single point on R, TS, P |
@@ -96,7 +96,7 @@ python -c "import pdb2reaction.core.defaults as d; print(sorted(n for n in dir(d
 | `pdb2reaction/workflows/all.py` | End-to-end orchestration for `pdb2reaction all` |
 | `pdb2reaction/workflows/extract.py` | PDB → cluster, residue table, cap-H placement |
 | `pdb2reaction/workflows/path_search.py` | Recursive MEP search, bond-change segmentation |
-| `pdb2reaction/workflows/tsopt.py` | RS-I-RFO (default) / Dimer (alternative) transition-state search |
+| `pdb2reaction/workflows/tsopt.py` | RS-P-RFO (default) / Dimer (alternative) transition-state search |
 | `pdb2reaction/workflows/irc.py` | EulerPC IRC (caches endpoint Hessians) |
 | `pdb2reaction/workflows/freq.py` | Hessian, frequencies, QRRHO thermochemistry |
 | `pdb2reaction/workflows/dft.py` | PySCF / GPU4PySCF single-point driver |

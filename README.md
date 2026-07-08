@@ -118,7 +118,7 @@ Pipeline scratch lives under `_work/` (safe to delete). Full layout and filename
 | `fix-altloc` | Resolve PDB alternate conformations | [fix-altloc](docs/fix-altloc.md) |
 | `add-elem-info` | Repair PDB element columns (77–78) | [add-elem-info](docs/add-elem-info.md) |
 | `opt` | Geometry optimization (L-BFGS / RFO) | [opt](docs/opt.md) |
-| `tsopt` | TS optimization (Dimer / RS-I-RFO) | [tsopt](docs/tsopt.md) |
+| `tsopt` | TS optimization (Dimer / RS-P-RFO) | [tsopt](docs/tsopt.md) |
 | `path-opt` | MEP via GSM or DMF | [path-opt](docs/path-opt.md) |
 | `path-search` | Recursive MEP search with refinement | [path-search](docs/path-search.md) |
 | `scan` / `scan2d` / `scan3d` | 1D / 2D / 3D bond-distance scans | [scan](docs/scan.md) · [scan2d](docs/scan2d.md) · [scan3d](docs/scan3d.md) |

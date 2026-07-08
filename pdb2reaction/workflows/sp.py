@@ -213,8 +213,11 @@ def cli(
             calc_cfg["solvent"] = str(solvent)
         if cli_param_overridden(ctx, "solvent_model"):
             calc_cfg["solvent_model"] = str(solvent_model)
-        if cli_param_overridden(ctx, "precision") and precision is not None:
-            calc_cfg["precision"] = str(precision)
+        from pdb2reaction.backends import apply_effective_precision
+        apply_effective_precision(
+            calc_cfg,
+            precision if cli_param_overridden(ctx, "precision") else None,
+        )
         if cli_param_overridden(ctx, "backend_model") and backend_model is not None:
             calc_cfg["model"] = str(backend_model)
         # --calc-file overrides --backend with a user ASE Calculator (custom backend).

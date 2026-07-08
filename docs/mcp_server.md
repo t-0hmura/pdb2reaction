@@ -43,7 +43,7 @@ When a subcommand fails, the parsed `summary` (or sibling `result.json`) carries
 | MCP tool | CLI subcmd | Purpose |
 |---|---|---|
 | `optimize_geometry` | `pdb2reaction opt` | Optimize a single molecular geometry |
-| `find_transition_state` | `pdb2reaction tsopt` | TS search (RS-I-RFO / Dimer / TRIM / RS-P-RFO) |
+| `find_transition_state` | `pdb2reaction tsopt` | TS search (RS-P-RFO / Dimer / TRIM / RS-I-RFO) |
 | `run_irc` | `pdb2reaction irc` | IRC integration from a TS geometry |
 | `compute_frequencies` | `pdb2reaction freq` | Vibrational analysis + thermochemistry |
 | `run_single_point` | `pdb2reaction sp` | Single-point MLIP energy + forces (+optional Hessian) |

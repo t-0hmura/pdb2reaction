@@ -94,7 +94,7 @@ All fields from `opt`, plus:
 |-------|------|-------------|
 | `n_imaginary_modes` | int | Number of imaginary frequencies |
 | `imaginary_frequencies_cm` | float[] | Imaginary frequencies (cm⁻¹, negative) |
-| `opt_mode` | string | `"rsirfo"` or `"dimer"` |
+| `opt_mode` | string | `"rsprfo"` (default), `"rsirfo"`, `"trim"`, or `"dimer"` |
 
 The `files` object may include `imaginary_mode_files` (list of vib file paths).
 Convergence details are available for rsirfo mode; dimer mode also reports `status: "converged"` or `"not_converged"` (from `runner.is_converged`), but provides `n_opt_cycles` only and omits the per-cycle force/step convergence keys that rsirfo reports.

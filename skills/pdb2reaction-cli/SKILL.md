@@ -18,7 +18,7 @@ description: Per-subcommand reference for pdb2reaction's 18 CLI subcommands (ext
 | `path-search` | Recursive MEP w/ bond-change segmentation | `pdb2reaction path-search -i 1.R.pdb 3.P.pdb -o out` | `out/hei_seg_NN.xyz` + `out/summary.json` |
 | `path-opt` | Single-segment MEP refinement | `pdb2reaction path-opt -i 1.R.pdb 2.P.pdb -o out` | `out/final_geometries_trj.xyz` |
 | `opt` | Geometry minimization (LBFGS / RFO) | `pdb2reaction opt -i geom.pdb -o out` | `out/final_geometry.xyz` |
-| `tsopt` | TS optimization (RS-I-RFO / Dimer) | `pdb2reaction tsopt -i ts.xyz -q 0 -m 1 -o out` | `out/final_geometry.xyz`; `result.json.n_imaginary_modes`==1 for true TS |
+| `tsopt` | TS optimization (RS-P-RFO / Dimer) | `pdb2reaction tsopt -i ts.xyz -q 0 -m 1 -o out` | `out/final_geometry.xyz`; `result.json.n_imaginary_modes`==1 for true TS |
 | `freq` | Hessian + QRRHO thermo | `pdb2reaction freq -i geom.xyz -q 0 -m 1 -o out` | `out/frequencies_cm-1.txt`, `out/thermoanalysis.yaml` |
 | `sp` | Single-point MLIP energy + forces (+optional Hessian) | `pdb2reaction sp -i geom.pdb -q 0 -m 1 -o out` | `out/forces.npy` (+ `out/hessian.npy` with `--hess`); energy printed to stdout; `out/result.json` + `out/summary.json` only with `--out-json` |
 | `irc` | IRC from a TS | `pdb2reaction irc -i ts.xyz -q 0 -m 1 -o out` | `out/{forward,backward,finished}_irc_trj.xyz` |

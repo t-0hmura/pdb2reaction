@@ -43,7 +43,7 @@ pip install "pdb2reaction[mcp]"
 | MCP ツール | CLI サブコマンド | 目的 |
 |---|---|---|
 | `optimize_geometry` | `pdb2reaction opt` | 単一の分子構造を最適化 |
-| `find_transition_state` | `pdb2reaction tsopt` | TS 探索（RS-I-RFO / Dimer / TRIM / RS-P-RFO） |
+| `find_transition_state` | `pdb2reaction tsopt` | TS 探索（RS-P-RFO / Dimer / TRIM / RS-I-RFO） |
 | `run_irc` | `pdb2reaction irc` | TS 構造からの IRC 積分 |
 | `compute_frequencies` | `pdb2reaction freq` | 振動解析 + 熱化学 |
 | `run_single_point` | `pdb2reaction sp` | MLIP の一点エネルギー + 原子間力（+ オプションで Hessian） |

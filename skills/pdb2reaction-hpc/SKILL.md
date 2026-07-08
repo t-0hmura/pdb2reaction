@@ -96,8 +96,8 @@ on a single mid-range GPU. Adjust generously.
 | `extract` | < 1 min | Pure Python, CPU |
 | `path-search` (GSM) | 5–30 min | Scales with `--max-nodes` |
 | `path-search` (DMF) | 10–60 min | Slower than GSM but more robust |
-| `tsopt` (RS-I-RFO, default) | 5–60 min | Full-Hessian rebuilds dominate |
-| `tsopt` (Dimer, alternative) | 1–10 min | Initial Hessian + dimer rotation, with periodic Hessian refreshes when curvature drifts; cheaper per cycle than full-Hessian RS-I-RFO when full-Hessian recomputation is too expensive |
+| `tsopt` (RS-P-RFO, default) | 5–60 min | Full-Hessian rebuilds dominate |
+| `tsopt` (Dimer, alternative) | 1–10 min | Initial Hessian + dimer rotation, with periodic Hessian refreshes when curvature drifts; cheaper per cycle than full-Hessian RS-P-RFO when full-Hessian recomputation is too expensive |
 | `irc` | 5–30 min | Forward + backward; `--max-cycles` cap 125 each direction |
 | `freq` | 5–30 min | Hessian once + diagonalization |
 | `dft` (ωB97M-V/def2-tzvpd, GPU) | 1–10 h | Heavy; `def2-svp` shrinks this 3–10× |

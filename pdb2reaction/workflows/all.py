@@ -1202,7 +1202,7 @@ def _optimize_endpoint_geom(
 
     Args:
         geom: pysisyphus Geometry with calculator attached.
-        opt_mode_default: "grad"/"lbfgs"/"dimer" or "hess"/"rfo"/"rsirfo".
+        opt_mode_default: "grad"/"lbfgs"/"dimer" or "hess"/"rfo"/"rsprfo".
         out_dir: base directory for the optimization outputs.
         tag: tag prefix for the subdirectory.
         dump: whether to dump optimizer trajectory.
@@ -1215,7 +1215,7 @@ def _optimize_endpoint_geom(
     mode = (opt_mode_default or "hess").lower()
     if mode in ("grad", "lbfgs", "dimer"):
         run_sequence = ("lbfgs",)
-    elif mode in ("hess", "rfo", "rsirfo"):
+    elif mode in ("hess", "rfo", "rsprfo"):
         run_sequence = ("rfo",)
     else:
         run_sequence = ("rfo",)
@@ -1584,7 +1584,7 @@ def _run_tsopt_on_hei(
         tsopt_mode = None if opt_mode is None else str(opt_mode).strip().lower()
         if tsopt_mode in ("grad", "lbfgs", "dimer"):
             tsopt_mode = "grad"
-        elif tsopt_mode in ("hess", "rfo", "rsirfo"):
+        elif tsopt_mode in ("hess", "rfo", "rsprfo"):
             tsopt_mode = "hess"
 
         ts_args: List[str] = [
@@ -2185,7 +2185,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     show_default=True,
     help=(
         "Optimizer mode forwarded to scan/tsopt and used for single optimizations: "
-        "grad (=LBFGS/Dimer) or hess (=RFO for scan/opt; RS-I-RFO for tsopt)."
+        "grad (=LBFGS/Dimer) or hess (=RFO for scan/opt; RS-P-RFO for tsopt)."
     ),
 )
 @click.option(
@@ -2195,7 +2195,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     show_default=True,
     help=(
         "Optimizer mode override for TSOPT/post-IRC endpoint optimizations. "
-        "If unset, uses --opt-mode when explicitly provided; otherwise falls back to the default ('hess' = RS-I-RFO)."
+        "If unset, uses --opt-mode when explicitly provided; otherwise falls back to the default ('hess' = RS-P-RFO)."
     ),
 )
 @click.option(
@@ -2335,7 +2335,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     "flatten",
     default=False,
     show_default=True,
-    help="Enable the extra-imaginary-mode flattening loop in tsopt (grad: dimer loop, hess: post-RSIRFO); --no-flatten forces flatten_max_iter=0.",
+    help="Enable the extra-imaginary-mode flattening loop in tsopt (grad: dimer loop, hess: post-RS-P-RFO); --no-flatten forces flatten_max_iter=0.",
 )
 @click.option(
     "--freq-out-dir",
@@ -2635,7 +2635,7 @@ def cli(
         "lbfgs": "grad",
         "rfo": "hess",
         "dimer": "grad",
-        "rsirfo": "hess",
+        "rsprfo": "hess",
     }
     opt_mode_norm = _mode_alias.get(str(opt_mode).strip().lower(), "hess")
     opt_mode_post_norm = (

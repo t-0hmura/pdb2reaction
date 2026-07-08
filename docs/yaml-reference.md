@@ -58,7 +58,7 @@ This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan
 |------------|-------------------|------------------------|
 | `opt` | `gau` | `OPT_BASE_KW` (→ `lbfgs` / `rfo`) |
 | `tsopt` (Hessian Dimer) | `baker` | `HESSIAN_DIMER_KW`, inner `LBFGS_TS_KW` |
-| `tsopt` (RS-I-RFO / RS-P-RFO) | `baker` | `RSIRFO_KW` |
+| `tsopt` (RS-P-RFO / RS-I-RFO) | `baker` | `RSIRFO_KW` |
 | `scan` | `gau` | `OPT_BASE_KW` |
 | `scan2d`, `scan3d` | `baker` | `scan_common.py` (`thresh_default="baker"`) |
 | `path-search` (per-step opt) | `gau` | `OPT_BASE_KW` |
@@ -97,7 +97,7 @@ Accepted values: `gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`
 | [`bond`](#bond) | Bond-change detection settings | scan, path-search |
 | [`search`](#search) | Recursive path search settings | path-search |
 | [`hessian_dimer`](#hessian_dimer) | Hessian Guided Dimer TS optimization | tsopt |
-| [`rsirfo`](#rsirfo) | RS-I-RFO / RS-P-RFO TS optimization | tsopt, all |
+| [`rsirfo`](#rsirfo) | RS-P-RFO / RS-I-RFO TS optimization | tsopt, all |
 
 ## Shared Sections
 
@@ -374,7 +374,7 @@ stopt:
 
 TS optimization uses **two mutually exclusive** algorithm sections, selected by `--opt-mode`:
 - `--opt-mode dimer` (or `grad`) → uses `hessian_dimer` section
-- `--opt-mode rsirfo` (or `hess`, default), `rsprfo`, or `trim` → uses `rsirfo` section
+- `--opt-mode rsprfo` (or `hess`, default), `rsirfo`, or `trim` → uses `rsirfo` section
 
 Shared optimizer settings (`thresh`, `max_cycles`, `dump`) are read from the `opt` section above.
 
@@ -430,7 +430,7 @@ hessian_dimer:
 
 ### `rsirfo`
 
-RS-I-RFO / RS-P-RFO TS optimization settings (used by tsopt `--opt-mode rsirfo` (the `hess` default), `rsprfo`, and `trim`).
+RS-I-RFO / RS-P-RFO TS optimization settings (used by tsopt `--opt-mode rsirfo`, `rsprfo` (the `hess` default), and `trim`).
 
 ```yaml
 rsirfo:

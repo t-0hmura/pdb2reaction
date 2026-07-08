@@ -2,10 +2,10 @@
 
 ## Purpose
 
-Transition-state optimization. The default algorithm is RS-I-RFO
-(full-Hessian; `--opt-mode hess`/`rsirfo`). Hessian-Guided Dimer
+Transition-state optimization. The default algorithm is RS-P-RFO
+(full-Hessian; `--opt-mode hess`/`rsprfo`). Hessian-Guided Dimer
 (`--opt-mode grad`/`dimer`) is the **alternative** TS optimizer when
-RS-I-RFO fails to converge (e.g. unstable full-Hessian eigenstructure or very
+RS-P-RFO fails to converge (e.g. unstable full-Hessian eigenstructure or very
 large clusters where full-Hessian recomputation is prohibitive). The
 dimer still uses an initial Hessian to set the search direction, then
 updates the lowest mode via dimer rotation rather than recomputing the
@@ -29,7 +29,7 @@ pdb2reaction tsopt -i ts_guess.{pdb,xyz,gjf} \
 |---|---|---|---|
 | `-i, --input` | path | required | TS candidate; `.pdb` / `.xyz` / `.gjf` |
 | `-q` / `-l` / `-m` | — | — | Charge / spin (common conventions) |
-| `--opt-mode` | str | `hess` | `grad`/`dimer` (Hessian-Guided Dimer), `hess`/`rsirfo` (RS-I-RFO), `trim` (TRIM/Helgaker), or `rsprfo` (RS-P-RFO/Banerjee) |
+| `--opt-mode` | str | `hess` | `grad`/`dimer` (Hessian-Guided Dimer), `hess`/`rsprfo` (RS-P-RFO), `rsirfo` (RS-I-RFO), or `trim` (TRIM/Helgaker) |
 | `--max-cycles` | int | 10000 | Optimization step cap |
 | `--hessian-calc-mode` | str | (live default) | `Analytical` or `FiniteDifference` (default: `FiniteDifference`); selects how the initial Hessian is computed |
 | `-b, --backend` | str | `uma` | MLIP backend |
@@ -39,13 +39,13 @@ pdb2reaction tsopt -i ts_guess.{pdb,xyz,gjf} \
 
 ## Examples
 
-### Default RS-I-RFO
+### Default RS-P-RFO
 
 ```bash
 pdb2reaction tsopt -i hei.xyz -q 0 -m 1 -b uma --out-json -o result_tsopt
 ```
 
-### Dimer mode (alternative when RS-I-RFO fails to converge)
+### Dimer mode (alternative when RS-P-RFO fails to converge)
 
 ```bash
 pdb2reaction tsopt -i hei.xyz -q 0 -m 1 \
@@ -88,10 +88,10 @@ print(d["files"]["final_geometry_xyz"]) # path under out_dir
 
 | Mode | Algorithm | When |
 |---|---|---|
-| `hess` / `rsirfo` (default) | RS-I-RFO with full Hessian | Default. Robust for tricky / multi-imaginary-mode candidates; slower per cycle but converges in fewer cycles |
-| `grad` / `dimer` | Hessian-Guided Dimer | Alternative when RS-I-RFO fails to converge or full-Hessian recomputation is prohibitive on large clusters. |
+| `hess` / `rsprfo` (default) | RS-P-RFO with full Hessian | Default. Robust for tricky / multi-imaginary-mode candidates; slower per cycle but converges in fewer cycles |
+| `grad` / `dimer` | Hessian-Guided Dimer | Alternative when RS-P-RFO fails to converge or full-Hessian recomputation is prohibitive on large clusters. |
 | `trim` | TRIM / Helgaker | Standalone `--opt-mode` value (not an alias of grad/hess) |
-| `rsprfo` | RS-P-RFO / Banerjee | Standalone `--opt-mode` value (not an alias of grad/hess) |
+| `rsirfo` | RS-I-RFO | Standalone `--opt-mode` value (not an alias of grad/hess) |
 
 
 ## Validation: imaginary modes

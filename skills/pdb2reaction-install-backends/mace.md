@@ -89,4 +89,4 @@ MACE accepts (from `backends/__init__.py:_BACKEND_ACCEPTED_KEYS['mace']`):
 - `env-cuda.md` — torch + CUDA prereq.
 - `core.md` — `pdb2reaction` install (do this **inside** `<your_mace_env>`).
 - `uma.md` — primary backend; keep it in a separate env.
-- [`pdb2reaction-cli/tsopt.md`](../pdb2reaction-cli/tsopt.md) — TS solver choice (RS-I-RFO default; Dimer alternative) interacts with backend.
+- [`pdb2reaction-cli/tsopt.md`](../pdb2reaction-cli/tsopt.md) — TS solver choice (RS-P-RFO default; Dimer alternative) interacts with backend.

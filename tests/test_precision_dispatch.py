@@ -12,7 +12,11 @@ import warnings
 
 import pytest
 
-from pdb2reaction.backends import BackendError, apply_precision_to_calc_cfg
+from pdb2reaction.backends import (
+    BackendError,
+    apply_effective_precision,
+    apply_precision_to_calc_cfg,
+)
 
 
 def test_fp64_routes_uma_precision_kwarg() -> None:
@@ -57,3 +61,47 @@ def test_fp64_rejected_for_aimnet2() -> None:
 def test_invalid_precision_rejected() -> None:
     with pytest.raises(BackendError):
         apply_precision_to_calc_cfg({"backend": "uma"}, "fp16")
+
+
+def test_orb_fp32_maps_to_reduced_tf32_precision() -> None:
+    """Root cause of the ORB freq HOSP inflation: ORB's fp32 is the reduced
+    'float32-high' (TF32) matmul mode, not true single precision — so an ORB
+    finite-difference Hessian at fp32 carries TF32 force noise (spurious imag)."""
+    cfg = {"backend": "orb"}
+    apply_precision_to_calc_cfg(cfg, "fp32")
+    assert cfg["precision"] == "float32-high"
+
+
+def test_orb_fp64_maps_to_true_float64() -> None:
+    """The fix's target: dispatching fp64 to ORB selects true float64, which
+    suppresses the TF32 finite-difference noise (13 imaginary -> 3 at a c04 TS)."""
+    cfg = {"backend": "orb"}
+    apply_precision_to_calc_cfg(cfg, "fp64")
+    assert cfg["precision"] == "float64"
+
+
+def test_config_borne_precision_dispatched_when_no_cli_flag() -> None:
+    """freq.py cli(): when the --precision *flag* is absent, the config's unified
+    ``calc.precision`` (written by ``all`` via _write_args_yaml_with_freeze_atoms)
+    must still be dispatched, so ``all --precision fp64`` reaches the ORB freq
+    Hessian instead of leaving ORB at its default TF32. Mirrors the cli()
+    resolution: flag wins, else the config value if it is a unified token."""
+    calc_cfg = {"backend": "orb", "precision": "fp64"}
+    apply_effective_precision(calc_cfg, None)  # no --precision flag → honor config
+    assert calc_cfg["precision"] == "float64"
+
+
+def test_already_dispatched_config_precision_is_passed_through() -> None:
+    """The ('fp32','fp64') guard: a hand-edited config carrying an already
+    backend-dispatched value ('float64') must NOT be re-dispatched — re-dispatch
+    would raise BackendError since 'float64' is not a unified token."""
+    calc_cfg = {"backend": "orb", "precision": "float64"}
+    apply_effective_precision(calc_cfg, None)  # 'float64' not a unified token → untouched
+    assert calc_cfg["precision"] == "float64"
+
+
+def test_cli_precision_flag_wins_over_config() -> None:
+    """The ``--precision`` flag overrides the config's ``calc.precision``."""
+    calc_cfg = {"backend": "orb", "precision": "fp32"}
+    apply_effective_precision(calc_cfg, "fp64")  # explicit flag wins
+    assert calc_cfg["precision"] == "float64"

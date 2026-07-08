@@ -323,8 +323,8 @@ THERMO_KW: Dict[str, Any] = {
 
 TSOPT_MODE_ALIASES = (
     (("grad", "light", "dimer"), "dimer"),
-    (("hess", "heavy", "rsirfo"), "rsirfo"),
-    (("rsprfo",), "rsprfo"),
+    (("hess", "heavy", "rsprfo"), "rsprfo"),
+    (("rsirfo",), "rsirfo"),
     (("trim",), "trim"),
 )
 
@@ -383,7 +383,7 @@ HESSIAN_DIMER_CLI_KW: Dict[str, Any] = {
     "lbfgs": {**LBFGS_TS_KW},
 }
 
-# RS-I-RFO defaults for TS optimization (heavy mode)
+# RFO-family shared defaults for TS optimization (hess/heavy → RS-P-RFO default; also RS-I-RFO / TRIM)
 
 # Keys from RFO_KW that are RFOptimizer-specific (not used by TSHessianOptimizer)
 _RFO_ONLY_KEYS = {"gediis", "gdiis", "gdiis_thresh", "gediis_thresh", "gdiis_test_direction", "adapt_step_func", "rfo_overlaps"}

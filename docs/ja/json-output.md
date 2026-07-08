@@ -94,7 +94,7 @@ cat result_opt/result.json | python -m json.tool
 |-----------|------|------|
 | `n_imaginary_modes` | int | 虚振動の数 |
 | `imaginary_frequencies_cm` | float[] | 虚振動数 (cm⁻¹, 負の値) |
-| `opt_mode` | string | `"rsirfo"` / `"dimer"` |
+| `opt_mode` | string | `"rsprfo"` (default) / `"rsirfo"` / `"trim"` / `"dimer"` |
 
 `files` には `imaginary_mode_files`（vib ファイルリスト）を含む場合があります。
 収束詳細 (force/step) は rsirfo モードで利用可能です。dimer モードも `runner.is_converged` に応じて `status` に `"converged"` / `"not_converged"` を返しますが、`n_opt_cycles` のみを出力し、rsirfo モードが出すサイクルごとの力・ステップ収束の詳細キーは省略されます。

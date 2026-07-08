@@ -86,7 +86,7 @@ Same as `all.md`. Specifically for endpoint-MEP mode:
 | Symptom in `summary.json` | Likely cause | Fix |
 |---|---|---|
 | `status == "partial"` with `bond-summary` reporting extra changes between inputs vs the optimized MEP | Bond-change detector found extra changes; the reaction in the inputs and the reaction the optimizer found don't match. | Check which bonds changed via `bond-summary -i 1.R.pdb 3.P.pdb`; rerun the standalone `pdb2reaction path-search` with `--refine-mode minima`, or supply the missing intermediate(s) explicitly via additional `-i` inputs. |
-| `tsopt.n_imaginary_modes > 1` for a segment | Multi-imaginary-mode TS — common with Orb on tricky systems | Re-run that segment with `pdb2reaction tsopt --opt-mode dimer -b uma` (default is already RS-I-RFO; the dimer is the lighter alternative when full-Hessian RS-I-RFO is unstable). |
+| `tsopt.n_imaginary_modes > 1` for a segment | Multi-imaginary-mode TS — common with Orb on tricky systems | Re-run that segment with `pdb2reaction tsopt --opt-mode dimer -b uma` (default is already RS-P-RFO; the dimer is the lighter alternative when full-Hessian RS-P-RFO is unstable). |
 | Different atom counts across `-i` inputs | Inconsistent extractions | Re-extract per the snippet above, verify with `wc -l 1.R.pdb 3.P.pdb`. |
 
 ## Caveats

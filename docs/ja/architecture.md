@@ -4,7 +4,7 @@
 
 ## 1. 概要
 
-`pdb2reaction` は、活性部位クラスターモデルに対して **純 MLIP による酵素反応経路解析** を実行する Python 製 CLI です。PDB と基質名を起点に、活性部位クラスターを切り出し、切断された結合をキャップ水素でキャップし、MLIP ポテンシャル上で RS-I-RFO TS 最適化による Hessian ベースの TS 探索を行い、反応経路を生成します（extract → MEP → tsopt → IRC → freq → dft）。
+`pdb2reaction` は、活性部位クラスターモデルに対して **純 MLIP による酵素反応経路解析** を実行する Python 製 CLI です。PDB と基質名を起点に、活性部位クラスターを切り出し、切断された結合をキャップ水素でキャップし、MLIP ポテンシャル上で RS-P-RFO TS 最適化による Hessian ベースの TS 探索を行い、反応経路を生成します（extract → MEP → tsopt → IRC → freq → dft）。
 
 
 同梱された 2 つの fork（`pysisyphus/`、`thermoanalysis/`）は、リポジトリ最上位に repo 内部モジュールとして配置されています。これらは意図的に上流の PyPI 配布版では **ありません**。本パッケージと並べて PyPI から再インストールすると、ローカルの拡張が気づかないうちに動かなくなります。§6 を参照してください。
@@ -179,7 +179,7 @@ CLI サブコマンドリゾルバ（`cli/app.py:_LAZY_SUBCOMMANDS`）は **絶�
 | 1D / 2D / 3D スキャン + 共有 | `pdb2reaction/workflows/scan{,2d,3d,_common}.py` |
 | MEP 探索（GSM） | `pdb2reaction/workflows/path_search.py` |
 | MEP optimizer コア（pysisyphus COS） | `pdb2reaction/workflows/path_opt.py` |
-| TS 最適化（RSIRFO + Bofill + macro/micro） | `pdb2reaction/workflows/tsopt.py` |
+| TS 最適化（RS-P-RFO + Bofill + macro/micro） | `pdb2reaction/workflows/tsopt.py` |
 | 振動解析（PHVA + UMA active block） | `pdb2reaction/workflows/freq.py` |
 | IRC 積分（macro / micro） | `pdb2reaction/workflows/irc.py` |
 | 一点 DFT（gpu4pyscf サブプロセス） | `pdb2reaction/workflows/dft.py` |
@@ -310,7 +310,7 @@ Fresh-eyes ツアー（§3）の後は、この深さ優先の読み順に従っ
 3. `pdb2reaction/workflows/all.py` — 1 つの完全なパイプラインを上から下まで。
 4. `pdb2reaction/workflows/extract.py` — 活性部位クラスターキャップ。
 5. `pdb2reaction/backends/__init__.py` + `base.py` — MLIP ディスパッチャとバックエンドごとのアダプタ契約。
-6. `pdb2reaction/workflows/tsopt.py` — RS-I-RFO + Bofill scatter（CHEMISTRY-RULE:7）。
+6. `pdb2reaction/workflows/tsopt.py` — RS-P-RFO + Bofill scatter（CHEMISTRY-RULE:7）。
 7. `pdb2reaction/workflows/freq.py` — クラスターモデル上での振動解析。
 8. `pdb2reaction/workflows/irc.py` — VRAM 管理 + IRC 積分。
 9. `pdb2reaction/workflows/dft.py` — gpu4pyscf による一点 DFT（CHEMISTRY-RULE:4 + :5）。
