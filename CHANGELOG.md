@@ -36,6 +36,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   starting guess are computed at the requested precision too), plus the standalone
   `sp`/`scan2d`/`scan3d` entry points. Verified end-to-end: a fixed-pipeline fp64 ORB `c04` TS
   returns 1 imaginary (was 11), matching an independent bare fp64 recompute.
+- **Additional correctness and reporting fixes** (none change the default-UMA benchmark
+  classification, but they could mislead `all`/`extract`/`dft`/`scan` consumers):
+  - `all`: the `rate_limiting_step` headline barrier in `summary.json` was the un-refined MEP band
+    value while labeled with the refined method (`UMA`/`UMA_Gibbs`); it now reports the
+    TSOPT+IRC-refined barrier matching the method, keeping the raw value as `mep_barrier_kcal`.
+    Config-borne precision now reaches the in-process shared calculator. Gibbs diagrams no longer
+    silently fall back to electronic energies (mislabeled "+ Thermal Correction") when
+    thermochemistry is unavailable; `--dump False` no longer suppresses the thermo channel; the
+    single-TS `--dft` branch no longer drops the DFT//UMA Gibbs.
+  - `extract`: the terminal-cap charge correction no longer double-counts Amber terminal residue
+    names (e.g. `CGLU`); an explicit `--ligand-charge` matching no residue now warns instead of being
+    silently ignored; the multi-structure atom-order guard now raises on any full-signature mismatch
+    (a swapped middle atom no longer slips past the first/last-10 spot-check).
+  - `dft`: split-form `dft.func`/`dft.basis` from a `--config` YAML are no longer overwritten by the
+    default combined `func_basis`.
+  - `scan`: per-step energies are recorded unbiased (bare PES) instead of carrying the harmonic-bias
+    penalty; `scan2d`/`scan3d` evaluate energy from Cartesian coordinates (fixing NaN/garbage for the
+    `redund`/`dlc`/`tric` coordinate types).
 
 ## [0.4.8] — 2026-07-07
 

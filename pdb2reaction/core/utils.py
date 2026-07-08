@@ -2516,7 +2516,10 @@ def unbiased_energy_hartree(geom, base_calc) -> float:
     """Evaluate UMA energy (Hartree) without harmonic bias."""
     import numpy as np
 
-    coords_bohr = np.asarray(geom.coords)
+    # geom.coords3d is always Cartesian (Bohr); geom.coords returns the
+    # internal-coordinate vector for redund/dlc/tric coord types, which would
+    # feed get_energy() a non-Cartesian array -> NaN/garbage energy (scan2d/3d).
+    coords_bohr = np.asarray(geom.coords3d)
     elems = getattr(geom, "atoms", None)
     if elems is None:
         return float("nan")

@@ -961,12 +961,37 @@ def _enrich_summary(
         if best_method is None:
             best_method = "MEP"
 
+        # Prefer the refined TSOPT+IRC barrier (post_segments' uma/gibbs_uma) matching
+        # best_method; segments[*].barrier_kcal is only the un-refined MEP band and must
+        # NOT be reported under a UMA/Gibbs label (the two can differ by several kcal/mol).
+        # An agent reading this field gets the TS/IRC-refined ΔE‡/ΔG‡, with the raw MEP
+        # value kept alongside as `mep_barrier_kcal` for transparency.
+        method_key = {"UMA_Gibbs": "gibbs_uma", "UMA": "uma"}.get(best_method)
+        post_by_idx = {
+            ps.get("index"): ps
+            for ps in (post_segments or [])
+            if isinstance(ps, dict)
+        }
         max_barrier = -1e9
         for s in reactive:
-            b = s.get("barrier_kcal", 0) or 0
+            idx = s.get("index")
+            refined = (post_by_idx.get(idx) or {}).get(method_key) if method_key else None
+            if isinstance(refined, dict) and refined.get("barrier_kcal") is not None:
+                b = refined.get("barrier_kcal") or 0
+                cur_method = best_method
+            else:
+                # No refined TS/IRC value for this segment: fall back to the MEP band,
+                # but label it MEP honestly rather than claiming a UMA/Gibbs number.
+                b = s.get("barrier_kcal", 0) or 0
+                cur_method = "MEP"
             if b > max_barrier:
                 max_barrier = b
-                rls = {"segment": s.get("index"), "barrier_kcal": round(b, 2), "method": best_method}
+                rls = {
+                    "segment": idx,
+                    "barrier_kcal": round(b, 2),
+                    "method": cur_method,
+                    "mep_barrier_kcal": round(s.get("barrier_kcal", 0) or 0, 2),
+                }
 
     # Overall reaction energy from the best all-segment diagram
     overall_rxn_e = None
@@ -2722,8 +2747,11 @@ def cli(
         freq_overrides["temperature"] = float(freq_temperature)
     if freq_pressure is not None:
         freq_overrides["pressure"] = float(freq_pressure)
-    if dump_override_requested:
-        freq_overrides["dump"] = bool(dump)
+    # all.py reads thermochemistry EXCLUSIVELY from freq's thermoanalysis.yaml
+    # (its in-memory return is discarded via _run_cli_main). Always let freq
+    # write that yaml so `--dump False` cannot silently zero out tR/tT/tP and
+    # relabel electronic energies as Gibbs.
+    freq_overrides["dump"] = True
     if hessian_calc_mode is not None:
         freq_overrides["hessian_calc_mode"] = hessian_calc_mode
 
@@ -3128,9 +3156,8 @@ def cli(
     # --precision fp64 is requested — mixing an fp32 electronic energy with the fp64 subprocess
     # geometry and thermal correction. Apply via the backend-aware helper (orb/mace key names +
     # aimnet2 fp64 rejection), before the calc-file override may switch to a custom backend.
-    if precision is not None:
-        from pdb2reaction.backends import apply_precision_to_calc_cfg
-        apply_precision_to_calc_cfg(calc_cfg_shared, precision)
+    from pdb2reaction.backends import apply_effective_precision
+    apply_effective_precision(calc_cfg_shared, precision)
 
     # --calc-file overrides --backend with a user ASE Calculator (custom backend).
     from pdb2reaction.backends import apply_calc_file_to_calc_cfg
@@ -3353,21 +3380,29 @@ def cli(
             thermo_payloads = {"R": tR, "TS": tT, "P": tP}
             try:
                 GR = float(
-                    tR.get("sum_EE_and_thermal_free_energy_ha", e_react)
+                    tR.get("sum_EE_and_thermal_free_energy_ha", np.nan)
                 )
-                GT = float(tT.get("sum_EE_and_thermal_free_energy_ha", eT))
+                GT = float(tT.get("sum_EE_and_thermal_free_energy_ha", np.nan))
                 GP = float(
-                    tP.get("sum_EE_and_thermal_free_energy_ha", e_prod)
+                    tP.get("sum_EE_and_thermal_free_energy_ha", np.nan)
                 )
-                diag_payload = _write_segment_energy_diagram(
-                    tsroot / "energy_diagram_G_UMA",
-                    labels=["R", "TS", "P"],
-                    energies_au=[GR, GT, GP],
-                    title_note="(UMA + Thermal Correction)",
-                    ylabel="ΔG (kcal/mol)",
-                )
-                if diag_payload:
-                    energy_diagrams.append(diag_payload)
+                if not all(np.isfinite([GR, GT, GP])):
+                    _echo(
+                        "[thermo] NOTE: thermochemistry unavailable (freq --dump "
+                        "off, 'thermoanalysis' missing, or freq failed); Gibbs "
+                        "diagram skipped.",
+                        err=True,
+                    )
+                elif True:
+                    diag_payload = _write_segment_energy_diagram(
+                        tsroot / "energy_diagram_G_UMA",
+                        labels=["R", "TS", "P"],
+                        energies_au=[GR, GT, GP],
+                        title_note="(UMA + Thermal Correction)",
+                        ylabel="ΔG (kcal/mol)",
+                    )
+                    if diag_payload:
+                        energy_diagrams.append(diag_payload)
             except Exception as e:
                 _echo(
                     f"[thermo] WARNING: failed to build Gibbs diagram: {e}",
@@ -3384,13 +3419,14 @@ def cli(
             # subsequent gc.collect() + torch.cuda.empty_cache() can actually
             # reclaim the GPU pages before the DFT subprocess fork.
             g_ts = None
-            g_react_opt = None
-            g_prod_opt = None
             calc = None
-            tR = None
-            tT = None
-            tP = None
-            thermo_payloads = None
+            # DO NOT null g_react_opt / g_prod_opt / thermo_payloads / tR / tT /
+            # tP here: their calculators were already released above (~L3326),
+            # and these objects are consumed downstream — bond-change detection
+            # (~L3501), DFT//UMA Gibbs (~L3466), and the gibbs_uma log (~L3601).
+            # Nulling them raised a swallowed AttributeError that silently
+            # dropped the DFT//UMA Gibbs diagram and forced a bogus
+            # "(no covalent changes detected)" summary. They hold no GPU tensors.
             gc.collect()
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
@@ -3440,31 +3476,38 @@ def cli(
                 try:
                     dG_R = float(
                         (thermo_payloads.get("R", {}) or {}).get(
-                            "thermal_correction_free_energy_ha", 0.0
+                            "thermal_correction_free_energy_ha", np.nan
                         )
                     )
                     dG_T = float(
                         (thermo_payloads.get("TS", {}) or {}).get(
-                            "thermal_correction_free_energy_ha", 0.0
+                            "thermal_correction_free_energy_ha", np.nan
                         )
                     )
                     dG_P = float(
                         (thermo_payloads.get("P", {}) or {}).get(
-                            "thermal_correction_free_energy_ha", 0.0
+                            "thermal_correction_free_energy_ha", np.nan
                         )
                     )
                     GR_dftUMA = eR_dft + dG_R
                     GT_dftUMA = eT_dft + dG_T
                     GP_dftUMA = eP_dft + dG_P
-                    diag_payload = _write_segment_energy_diagram(
-                        tsroot / "energy_diagram_G_DFT_plus_UMA",
-                        labels=["R", "TS", "P"],
-                        energies_au=[GR_dftUMA, GT_dftUMA, GP_dftUMA],
-                        title_note=f"({dft_func_basis_use} // UMA + Thermal Correction)",
-                        ylabel="ΔG (kcal/mol)",
-                    )
-                    if diag_payload:
-                        energy_diagrams.append(diag_payload)
+                    if not all(np.isfinite([GR_dftUMA, GT_dftUMA, GP_dftUMA])):
+                        _echo(
+                            "[dft//uma] NOTE: thermochemistry unavailable; "
+                            "DFT//UMA Gibbs diagram skipped.",
+                            err=True,
+                        )
+                    else:
+                        diag_payload = _write_segment_energy_diagram(
+                            tsroot / "energy_diagram_G_DFT_plus_UMA",
+                            labels=["R", "TS", "P"],
+                            energies_au=[GR_dftUMA, GT_dftUMA, GP_dftUMA],
+                            title_note=f"({dft_func_basis_use} // UMA + Thermal Correction)",
+                            ylabel="ΔG (kcal/mol)",
+                        )
+                        if diag_payload:
+                            energy_diagrams.append(diag_payload)
                 except Exception as e:
                     _echo(
                         f"[dft//uma] WARNING: failed to build DFT//UMA Gibbs diagram: {e}",
@@ -3574,10 +3617,13 @@ def cli(
                     diagram_path=str(tsroot / "energy_diagram_UMA.png"),
                     structures=_structs_seg,
                 )
-                if do_thermo and thermo_payloads:
-                    GR = float(thermo_payloads.get("R", {}).get("sum_EE_and_thermal_free_energy_ha", e_react))
-                    GT = float(thermo_payloads.get("TS", {}).get("sum_EE_and_thermal_free_energy_ha", eT))
-                    GP = float(thermo_payloads.get("P", {}).get("sum_EE_and_thermal_free_energy_ha", e_prod))
+                _gkey = "sum_EE_and_thermal_free_energy_ha"
+                if do_thermo and thermo_payloads and all(
+                    _gkey in (thermo_payloads.get(_s) or {}) for _s in ("R", "TS", "P")
+                ):
+                    GR = float(thermo_payloads["R"][_gkey])
+                    GT = float(thermo_payloads["TS"][_gkey])
+                    GP = float(thermo_payloads["P"][_gkey])
                     segment_log["gibbs_uma"] = build_energy_level_dict(
                         labels=["R", "TS", "P"],
                         energies_au=[GR, GT, GP],
@@ -4872,22 +4918,13 @@ def cli(
                         segment_log["ts_imag_freq_cm"] = ts_freq_info["nu_imag_max_cm"]
                 try:
                     GR = float(
-                        tR.get(
-                            "sum_EE_and_thermal_free_energy_ha",
-                            uma_ref_energies.get("R", np.nan),
-                        )
+                        tR.get("sum_EE_and_thermal_free_energy_ha", np.nan)
                     )
                     GT = float(
-                        tT.get(
-                            "sum_EE_and_thermal_free_energy_ha",
-                            uma_ref_energies.get("TS", np.nan),
-                        )
+                        tT.get("sum_EE_and_thermal_free_energy_ha", np.nan)
                     )
                     GP = float(
-                        tP.get(
-                            "sum_EE_and_thermal_free_energy_ha",
-                            uma_ref_energies.get("P", np.nan),
-                        )
+                        tP.get("sum_EE_and_thermal_free_energy_ha", np.nan)
                     )
                     gibbs_vals = [GR, GT, GP]
                     if all(np.isfinite(gibbs_vals)):
@@ -5014,17 +5051,17 @@ def cli(
                     try:
                         dG_R = float(
                             (thermo_payloads.get("R", {}) or {}).get(
-                                "thermal_correction_free_energy_ha", 0.0
+                                "thermal_correction_free_energy_ha", np.nan
                             )
                         )
                         dG_T = float(
                             (thermo_payloads.get("TS", {}) or {}).get(
-                                "thermal_correction_free_energy_ha", 0.0
+                                "thermal_correction_free_energy_ha", np.nan
                             )
                         )
                         dG_P = float(
                             (thermo_payloads.get("P", {}) or {}).get(
-                                "thermal_correction_free_energy_ha", 0.0
+                                "thermal_correction_free_energy_ha", np.nan
                             )
                         )
                         GR_dftUMA = eR_dft + dG_R

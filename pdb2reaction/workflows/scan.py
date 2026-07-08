@@ -65,6 +65,7 @@ from pdb2reaction.core.utils import (
     make_snapshot_geometry,
     resolve_freeze_atoms,
     xyz_string_with_energy,
+    unbiased_energy_hartree,
     yaml_freeze_to_internal,
     _parse_freeze_atoms,
     merge_freeze_atom_indices,
@@ -754,8 +755,13 @@ def cli(
                     except OptimizationError as e:
                         click.echo(f"[stage {k}] step {s}: OptimizationError — {e}", narrative=True)
 
-                    trj_blocks.append(xyz_string_with_energy(geom))
-                    stage_energies.append(float(geom.energy) if geom.energy is not None else None)
+                    # Record the UNBIASED (bare PES) energy: geom.energy here
+                    # carries the harmonic-bias penalty (the biased calculator is
+                    # attached during scan steps), which would inflate the barrier
+                    # non-uniformly. scan2d/scan3d already use unbiased_energy_hartree.
+                    E_unbiased_h = unbiased_energy_hartree(geom, base_calc)
+                    trj_blocks.append(xyz_string_with_energy(geom, energy=E_unbiased_h))
+                    stage_energies.append(E_unbiased_h)
                     with open(stage_trj_path, "a") as _tf:
                         _tf.write(trj_blocks[-1])
 

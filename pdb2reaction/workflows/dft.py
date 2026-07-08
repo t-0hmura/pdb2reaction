@@ -497,14 +497,14 @@ def cli(
             if cli_param_overridden(ctx, "lowmem"):
                 dft_cfg["lowmem"] = bool(lowmem)
 
-            func_basis_value = str(
-                dft_cfg.get(
-                    "func_basis",
-                    f"{DFT_DEFAULT_FUNC}/{DFT_DEFAULT_BASIS}",
-                )
-            )
+            # Combined "FUNC/BASIS" only overrides the split-form dft.func /
+            # dft.basis when it was actually supplied (CLI --func-basis or
+            # config dft.func_basis); otherwise preserve YAML split-form values
+            # (or the DFT_KW defaults, which always seed func/basis).
             if cli_param_overridden(ctx, "func_basis"):
                 func_basis_value = func_basis
+            else:
+                func_basis_value = dft_cfg.get("func_basis")
             if func_basis_value:
                 cfg_func, cfg_basis = _parse_func_basis(func_basis_value)
                 dft_cfg["func"] = cfg_func

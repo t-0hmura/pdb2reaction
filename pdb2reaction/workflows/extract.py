@@ -164,6 +164,20 @@ AMINO_ACIDS: Dict[str, int] = {
     "NTER": +1,  # generic N-terminus
 }
 
+# Amber terminal residue names whose AMINO_ACIDS value already BAKES IN the
+# ionized-terminus formal charge (e.g. CGLU=-2, NLYS=+2). For these the
+# kept-cap correction in compute_charge_summary must NOT be applied again.
+C_TERMINAL_RESNAMES: frozenset = frozenset({
+    "CALA", "CARG", "CASN", "CASP", "CCYS", "CCYX", "CGLN", "CGLU", "CGLY",
+    "CHID", "CHIE", "CHIP", "CHYP", "CILE", "CLEU", "CLYS", "CMET", "CPHE",
+    "CPRO", "CSER", "CTHR", "CTRP", "CTYR", "CVAL", "CTER",
+})
+N_TERMINAL_RESNAMES: frozenset = frozenset({
+    "NALA", "NARG", "NASN", "NASP", "NCYS", "NCYX", "NGLN", "NGLU", "NGLY",
+    "NHID", "NHIE", "NHIP", "NILE", "NLEU", "NLYS", "NMET", "NPHE", "NPRO",
+    "NSER", "NTHR", "NTRP", "NTYR", "NVAL", "NTER",
+})
+
 # Common ions (by residue name) and their formal charges.
 # Keys MUST be all-uppercase to match the case-folded lookup at compute_charge_summary
 # (rn = res.get_resname().upper(); if rn in ION). Mixed-case keys are unreachable.
@@ -1255,10 +1269,12 @@ def compute_charge_summary(structure,
             # TER-break caps have neither OXT nor NH3+ Hs, so they stay neutral.
             if keep_ccap_ids or keep_ncap_ids:
                 atom_names = {a.get_name() for a in res}
-                if fid in keep_ccap_ids and "OXT" in atom_names:
+                if fid in keep_ccap_ids and "OXT" in atom_names \
+                        and rn not in C_TERMINAL_RESNAMES:
                     q -= 1.0
                     terminal_corrections.append((res.get_resname(), res.id[1], -1))
-                if fid in keep_ncap_ids and {"H1", "H2", "H3"} <= atom_names:
+                if fid in keep_ncap_ids and {"H1", "H2", "H3"} <= atom_names \
+                        and rn not in N_TERMINAL_RESNAMES:
                     q += 1.0
                     terminal_corrections.append((res.get_resname(), res.id[1], 1))
             aa_charge += q
@@ -1287,6 +1303,11 @@ def compute_charge_summary(structure,
             # recompute totals
             total = sum(per_map.values())
             aa_charge = sum(q for k, q in per_map.items() if k[4] in AMINO_ACIDS)
+        else:
+            _echo_warning(
+                "[extract] --ligand-charge %s was provided but no unknown "
+                "(non-dictionary) residues were found to apply it to; the value "
+                "is ignored — check the substrate/ligand resname.", total_spec)
     elif mapping_spec is not None:
         # Per‑resname mapping. Unspecified unknown residues remain 0.
         for fid in unknown_fids:
@@ -1484,14 +1505,11 @@ def _assert_atom_ordering_identical(structs: List[PDB.Structure.Structure]):
         sigi = signature(structs[i])
         if len(sigi) != len(sig0):
             raise ValueError(f"[multi] Atom count mismatch between input #1 and input #{i+1}: {len(sig0)} vs {len(sigi)}")
-        check_pairs = [(0, min(10, len(sig0))),
-                       (max(0, len(sig0)-10), len(sig0))]
-        mismatch = False
-        for a, b in check_pairs:
-            if sig0[a:b] != sigi[a:b]:
-                mismatch = True
-                break
-        if mismatch and sig0 != sigi:
+        # Full per-atom signature identity: a swapped MIDDLE atom (e.g. OE1/OE2
+        # order flip in a mid-chain GLU) must raise, not just first/last-10.
+        # A prior first10/last10 spot-check AND-gate let reordered middles pass
+        # silently -> positionally-mispaired R/P endpoints -> nonphysical coord.
+        if sig0 != sigi:
             raise ValueError(f"[multi] Atom order mismatch between input #1 and input #{i+1}.")
 
 
