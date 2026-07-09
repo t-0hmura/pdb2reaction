@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+## [0.4.9] — 2026-07-10
+
 ### Changed
 - **`--precision` now defaults per backend instead of globally to fp32: ORB and MACE
   run fp64 when no precision is given, UMA keeps fp32.** ORB's fp32 is the reduced
@@ -13,43 +15,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   upstream, so a fp32 finite-difference Hessian from either carried enough force
   noise to invent imaginary modes. Pass `--precision fp32` explicitly to restore
   the previous behaviour for screening runs.
-
-### Fixed
-- **MACE ignored its own `float64` default and ran fp32 unless `--precision fp64` was
-  passed by hand.** The calculator config carried a literal `"fp32"` default, which
-  was indistinguishable from an explicit `--precision fp32`; it dispatched
-  `default_dtype="float32"` and left `MACE_BACKEND_DEFAULTS["default_dtype"]` unused,
-  since backend defaults only fill keys still at their UMA value. Unspecified
-  precision now resolves through an `"auto"` sentinel.
-- **ORB precision string is normalized before it reaches the loader.** A `--config`
-  YAML `calc.precision: float32` (or `fp32`/`fp64`) previously bypassed the unified
-  dispatch and was passed verbatim; orb_models silently demotes the invalid
-  `"float32"` to the slow `"highest"` matmul mode, which also blocks the
-  double-backward analytical Hessian. Aliased to `float32-high` / `float64`.
-- **ORB no longer silently drops a requested precision when the model loader fails.**
-  The loader fallback chain retried with `precision` (then `device`) removed, so a
-  failed fp64 load could succeed at orb_models' default precision unnoticed. Only the
-  optional `compile` kwarg is probed-and-dropped now; a load that fails with
-  `precision` raises.
-- **Custom (`--calc-file`) backend now sets `charge`/`spin` in `atoms.info` per frame.**
-  A user ASE Calculator that reads them (any OMol-style wrapper) previously ran
-  neutral/singlet, matching the ORB/MACE backends' existing behaviour.
-- **`summary.json` `mlip_backend` records the backend name, not the model.** It stored
-  the model string (and `"unknown"` for `--calc-file` runs), duplicating `uma_model`;
-  the provenance field now reports `uma`/`orb`/`mace`/`aimnet2`/`custom`.
-- **`--backend-model` supplied via a `--config` YAML is now honoured.** The call sites
-  guarded the dispatch helper on the CLI value being non-`None`, so a YAML-only
-  `calc.backend_model` was dropped and the run silently used the backend's default
-  model. `sp` also switched from an inline assignment to the shared helper.
-
-### Documentation
-- Corrected the `--workers` help on every subcommand: an analytical Hessian request
-  with `workers>1` auto-downgrades to finite differences with a warning (it does not
-  raise a `RuntimeError`). The warning is now actually emitted at the downgrade point.
-
-## [0.4.9] — 2026-07-08
-
-### Changed
 - **Default TS optimizer: RS-I-RFO → RS-P-RFO** (the `hess`/`heavy` alias). On the
   confounding-free optimizer comparison (uniform finite-difference `n_imag` across all arms,
   same path-opt HEI), RS-P-RFO produces clean first-order saddles at least as often as RS-I-RFO
@@ -77,6 +42,32 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   starting guess are computed at the requested precision too), plus the standalone
   `sp`/`scan2d`/`scan3d` entry points. Verified end-to-end: a fixed-pipeline fp64 ORB `c04` TS
   returns 1 imaginary (was 11), matching an independent bare fp64 recompute.
+- **MACE ignored its own `float64` default and ran fp32 unless `--precision fp64` was
+  passed by hand.** The calculator config carried a literal `"fp32"` default, which
+  was indistinguishable from an explicit `--precision fp32`; it dispatched
+  `default_dtype="float32"` and left `MACE_BACKEND_DEFAULTS["default_dtype"]` unused,
+  since backend defaults only fill keys still at their UMA value. Unspecified
+  precision now resolves through an `"auto"` sentinel.
+- **ORB precision string is normalized before it reaches the loader.** A `--config`
+  YAML `calc.precision: float32` (or `fp32`/`fp64`) previously bypassed the unified
+  dispatch and was passed verbatim; orb_models silently demotes the invalid
+  `"float32"` to the slow `"highest"` matmul mode, which also blocks the
+  double-backward analytical Hessian. Aliased to `float32-high` / `float64`.
+- **ORB no longer silently drops a requested precision when the model loader fails.**
+  The loader fallback chain retried with `precision` (then `device`) removed, so a
+  failed fp64 load could succeed at orb_models' default precision unnoticed. Only the
+  optional `compile` kwarg is probed-and-dropped now; a load that fails with
+  `precision` raises.
+- **Custom (`--calc-file`) backend now sets `charge`/`spin` in `atoms.info` per frame.**
+  A user ASE Calculator that reads them (any OMol-style wrapper) previously ran
+  neutral/singlet, matching the ORB/MACE backends' existing behaviour.
+- **`summary.json` `mlip_backend` records the backend name, not the model.** It stored
+  the model string (and `"unknown"` for `--calc-file` runs), duplicating `uma_model`;
+  the provenance field now reports `uma`/`orb`/`mace`/`aimnet2`/`custom`.
+- **`--backend-model` supplied via a `--config` YAML is now honoured.** The call sites
+  guarded the dispatch helper on the CLI value being non-`None`, so a YAML-only
+  `calc.backend_model` was dropped and the run silently used the backend's default
+  model. `sp` also switched from an inline assignment to the shared helper.
 - **Additional correctness and reporting fixes** (none change the default-UMA benchmark
   classification, but they could mislead `all`/`extract`/`dft`/`scan` consumers):
   - `all`: the `rate_limiting_step` headline barrier in `summary.json` was the un-refined MEP band
@@ -95,6 +86,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   - `scan`: per-step energies are recorded unbiased (bare PES) instead of carrying the harmonic-bias
     penalty; `scan2d`/`scan3d` evaluate energy from Cartesian coordinates (fixing NaN/garbage for the
     `redund`/`dlc`/`tric` coordinate types).
+
+### Documentation
+- Corrected the `--workers` help on every subcommand: an analytical Hessian request
+  with `workers>1` auto-downgrades to finite differences with a warning (it does not
+  raise a `RuntimeError`). The warning is now actually emitted at the downgrade point.
 
 ## [0.4.8] — 2026-07-07
 
