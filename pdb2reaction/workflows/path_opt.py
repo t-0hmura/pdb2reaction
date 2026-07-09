@@ -475,7 +475,7 @@ def _optimize_single(
     type=int,
     default=UMA_CALC_KW["workers"],
     show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: the analytical Hessian raises a RuntimeError when workers>1; run with --workers 1 for Hessian-based modes.",
+    help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: when workers>1 the analytical Hessian is unavailable and auto-downgrades to finite differences with a warning; run with --workers 1 to force analytical.",
 )
 @click.option(
     "--workers-per-node",
@@ -860,9 +860,10 @@ def cli(
             calc_cfg["solvent_model"] = solvent_model
         from pdb2reaction.backends import apply_effective_precision
         apply_effective_precision(calc_cfg, precision)
-        if backend_model is not None:
-            from pdb2reaction.backends import apply_backend_model_to_calc_cfg
-            apply_backend_model_to_calc_cfg(calc_cfg, backend_model)
+        from pdb2reaction.backends import apply_backend_model_to_calc_cfg
+        # Unconditional: also pops a raw backend_model token from a --config YAML
+        # (the helper no-ops when neither the CLI arg nor the YAML names one).
+        apply_backend_model_to_calc_cfg(calc_cfg, backend_model)
         from pdb2reaction.backends import apply_calc_file_to_calc_cfg
         apply_calc_file_to_calc_cfg(calc_cfg, calc_file, calc_factory)
         apply_backend_defaults(calc_cfg)

@@ -35,6 +35,24 @@ def _is_conservative_orb_model(model_name: str) -> bool:
     return ("conservative" in norm) and ("direct" not in norm)
 
 
+# orb_models validates the matmul-precision string strictly: the bare "float32"
+# is NOT a valid value and silently demotes to the slow "highest" mode, which
+# also turns on the donated-buffer aot_autograd path that breaks double-backward
+# Hessians (see the precision comment on OrbCalculator.__init__). Normalize the
+# legacy / unified tokens to the canonical orb_models strings before they reach
+# the loader, so a --config YAML carrying calc.precision: float32 (or fp32/fp64)
+# cannot slip a demoted precision through.
+_PRECISION_ALIASES = {
+    "float32": "float32-high",
+    "fp32": "float32-high",
+    "fp64": "float64",
+}
+
+
+def _normalize_orb_precision(precision: str) -> str:
+    return _PRECISION_ALIASES.get(str(precision).lower(), str(precision))
+
+
 class OrbCalculator(MLIPCalculator):
     """ORB backend via orb-models."""
 
@@ -93,7 +111,7 @@ class OrbCalculator(MLIPCalculator):
         self.device_str = device
 
         self.model_name = str(model)
-        self.precision = str(precision)
+        self.precision = _normalize_orb_precision(precision)
         self.compile_model = bool(compile_model)
 
         if not _is_conservative_orb_model(self.model_name):
@@ -132,11 +150,14 @@ class OrbCalculator(MLIPCalculator):
         raise BackendError(f"Unknown Orb model '{model_name}'.")
 
     def _load_model(self):
+        # Only the `compile` kwarg is probed-and-dropped (older orb-models lack
+        # it). `precision` is NEVER dropped: a loader that fails WITH precision
+        # must raise, not silently retry at orb-models' default precision — a
+        # discarded precision= is exactly the silent numerical change the unified
+        # --precision flag exists to prevent.
         bases = [
             {"device": self.device_str, "precision": self.precision, "compile": self.compile_model},
             {"device": self.device_str, "precision": self.precision},
-            {"device": self.device_str},
-            {},
         ]
         last_exc = None
         for kwargs in bases:

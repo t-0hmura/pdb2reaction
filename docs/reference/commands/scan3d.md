@@ -32,10 +32,10 @@ Options:
                                   unless --ligand-charge is provided (PDB inputs
                                   or XYZ/GJF with --ref-pdb).
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
-                                  predictor. NOTE: the analytical Hessian raises
-                                  a RuntimeError when workers>1; run with
-                                  --workers 1 for Hessian-based modes.
-                                  [default: 1]
+                                  predictor. NOTE: when workers>1 the analytical
+                                  Hessian is unavailable and auto-downgrades to
+                                  finite differences with a warning; run with
+                                  --workers 1 to force analytical.  [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
   -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,

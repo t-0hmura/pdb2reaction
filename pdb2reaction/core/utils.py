@@ -959,8 +959,12 @@ def cli_param_overridden(ctx: click.Context, name: str) -> bool:
     try:
         source = ctx.get_parameter_source(name)
     except Exception as exc:
+        # On a failed source query the param name is unknown to the context, so
+        # treat it as NOT explicitly provided: falling through to --config
+        # YAML / defaults is safer than letting a Click DEFAULT value outrank an
+        # explicit YAML entry. Matches mlmm's make_is_param_explicit.
         logger.debug("cli_param_overridden: failed to query source for %r: %s", name, exc)
-        return True
+        return False
     return source not in (None, ParameterSource.DEFAULT)
 
 

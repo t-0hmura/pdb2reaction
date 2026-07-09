@@ -2133,7 +2133,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     type=int,
     default=CALC_KW["workers"],
     show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: analytical Hessian raises a RuntimeError when workers>1; pass --hessian-calc-mode FiniteDifference explicitly.",
+    help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: when workers>1 the analytical Hessian is unavailable (the parallel predictor exposes no autograd model); it auto-downgrades to finite differences with a warning.",
 )
 @click.option(
     "--workers-per-node",
@@ -3147,9 +3147,10 @@ def cli(
     # when --backend-model overrides it (the actual calc already honors --backend-model via its
     # own config path; this only corrects the recorded provenance). Use the same canonical helper
     # as path_search for consistency.
-    if backend_model is not None:
-        from pdb2reaction.backends import apply_backend_model_to_calc_cfg
-        apply_backend_model_to_calc_cfg(calc_cfg_shared, backend_model)
+    from pdb2reaction.backends import apply_backend_model_to_calc_cfg
+    # Unconditional: also pops a raw backend_model token from a --config YAML
+    # (the helper no-ops when neither the CLI arg nor the YAML names one).
+    apply_backend_model_to_calc_cfg(calc_cfg_shared, backend_model)
     # Same class of fix as --backend-model above: _build_calc_cfg does not apply --precision, so
     # without this the in-process calculators (create_calculator(**calc_cfg_shared) at the TS
     # re-eval / pre-align / endpoint R,P,TS energy sites) run at the default fp32 even when
@@ -3567,7 +3568,7 @@ def cli(
             version="",
             pipeline_mode="tsopt-only",
             out_dir=out_dir,
-            mlip_backend=calc_cfg_shared.get("model", "unknown"),
+            mlip_backend=calc_cfg_shared.get("backend", "uma"),
             charge=q_int,
             spin=spin,
             command=command_str,
@@ -4256,7 +4257,7 @@ def cli(
             version="",
             pipeline_mode="path-opt",
             out_dir=out_dir,
-            mlip_backend=calc_cfg_shared.get("model", "unknown"),
+            mlip_backend=calc_cfg_shared.get("backend", "uma"),
             charge=q_int,
             spin=spin,
             command=command_str,
@@ -5174,7 +5175,7 @@ def cli(
             version="",
             pipeline_mode="path-search" if refine_path else "path-opt",
             out_dir=out_dir,
-            mlip_backend=calc_cfg_shared.get("model", "unknown"),
+            mlip_backend=calc_cfg_shared.get("backend", "uma"),
             charge=q_int,
             spin=spin,
             command=command_str,

@@ -77,7 +77,7 @@ H_EVAA_2_AU = EV2AU / (ANG2BOHR * ANG2BOHR)
 )
 @click.option(
     "--workers", type=int, default=UMA_CALC_KW["workers"], show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: analytical Hessian raises a RuntimeError when workers>1; pass --hessian-calc-mode FiniteDifference explicitly.",
+    help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: when workers>1 the analytical Hessian is unavailable (the parallel predictor exposes no autograd model); it auto-downgrades to finite differences with a warning.",
 )
 @click.option(
     "--workers-per-node", "workers_per_node",
@@ -218,8 +218,12 @@ def cli(
             calc_cfg,
             precision if cli_param_overridden(ctx, "precision") else None,
         )
-        if cli_param_overridden(ctx, "backend_model") and backend_model is not None:
-            calc_cfg["model"] = str(backend_model)
+        from pdb2reaction.backends import apply_backend_model_to_calc_cfg
+        # Use the canonical helper like the other subcommands (was an inline
+        # calc_cfg["model"]=... that never popped a --config YAML backend_model
+        # token). Unconditional: the helper no-ops when neither the CLI arg nor
+        # the YAML names a model.
+        apply_backend_model_to_calc_cfg(calc_cfg, backend_model)
         # --calc-file overrides --backend with a user ASE Calculator (custom backend).
         apply_calc_file_to_calc_cfg(calc_cfg, calc_file, calc_factory)
         if cli_param_overridden(ctx, "print_every") and print_every is not None:

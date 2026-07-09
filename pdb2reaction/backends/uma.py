@@ -511,6 +511,18 @@ class UMACalculator(MLIPCalculator):
         assert core is not None
         force_fd = (core.parallel_predict or (not core.has_torch_model))
 
+        # Parallel predictor (workers>1) has no autograd model, so an explicit
+        # analytical request cannot be honoured. Downgrade to finite differences
+        # loudly rather than silently — the CLI help promises this warning.
+        if force_fd and (self.hessian_calc_mode or "").strip().lower() in ("analytical", "analytic"):
+            import warnings
+            warnings.warn(
+                "analytical Hessian is unavailable when workers>1 (the parallel "
+                "predictor exposes no autograd model); falling back to finite "
+                "differences. Run with --workers 1 to force the analytical Hessian.",
+                stacklevel=2,
+            )
+
         vram_base_alloc: Optional[float] = None
         vram_base_reserved: Optional[float] = None
         vram_total: Optional[float] = None

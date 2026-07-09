@@ -67,9 +67,10 @@ Options:
                                   extractor/GJF/--ligand-charge-derived values;
                                   emits a warning when used).
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
-                                  predictor. NOTE: analytical Hessian raises a
-                                  RuntimeError when workers>1; pass --hessian-
-                                  calc-mode FiniteDifference explicitly.
+                                  predictor. NOTE: when workers>1 the analytical
+                                  Hessian is unavailable (the parallel predictor
+                                  exposes no autograd model); it auto-downgrades
+                                  to finite differences with a warning.
                                   [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]

@@ -226,6 +226,13 @@ class CustomCalculator(MLIPCalculator):
             symbols=list(elem),
             positions=np.asarray(coord_ang, dtype=float).reshape(-1, 3),
         )
+        # Expose charge/spin per frame the same way the ORB/MACE backends do
+        # (orb.py:211-212): a user Calculator that reads them (any OMol-style
+        # wrapper) would otherwise run neutral/singlet. The construction-time
+        # kwargs reach the factory only once, so a factory that ignores its
+        # charge= argument has no other channel.
+        atoms.info["charge"] = int(self.charge)
+        atoms.info["spin"] = int(self.mult)
         atoms.calc = self._ase_calc
         energy_ev = float(atoms.get_potential_energy())
         forces_ev_ang = np.asarray(atoms.get_forces(), dtype=float).reshape(-1, 3)
