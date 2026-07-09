@@ -118,6 +118,20 @@ _PRECISION_DISPATCH: Dict[str, Dict[str, tuple]] = {
     },
 }
 
+# Precision used when the user names none (`--precision` absent and no
+# ``calc.precision`` in the config, i.e. the ``"auto"`` token of
+# ``CALC_KW_DEFAULT``). Not a single global default: ORB's fp32 is the reduced
+# TF32 matmul mode and MACE ships fp64 upstream, so a fp32 finite-difference
+# Hessian from either carries enough force noise to invent imaginary modes.
+# UMA is fp32 upstream (fairchem) and stays there.
+_BACKEND_DEFAULT_PRECISION: Dict[str, str] = {
+    "uma": "fp32",
+    "orb": "fp64",
+    "mace": "fp64",
+    "aimnet2": "fp32",  # no precision knob; fp32 is a no-op
+    "custom": "fp32",   # the user's own Calculator owns its dtype
+}
+
 
 def apply_precision_to_calc_cfg(calc_cfg: Dict[str, Any], precision: str) -> None:
     """Route the unified ``--precision`` CLI value into backend-specific kwargs.
@@ -146,9 +160,16 @@ def apply_precision_to_calc_cfg(calc_cfg: Dict[str, Any], precision: str) -> Non
                 f"its model inputs are cast to float32 upstream, so the run "
                 f"would not actually be fp64."
             )
+        calc_cfg["precision"] = val
         return
     kw_name, kw_val = mapping[backend]
     calc_cfg[kw_name] = kw_val
+    if kw_name != "precision":
+        # MACE carries its choice in ``default_dtype``; keep ``precision`` as the
+        # canonical token so the run-summary line and the ``all`` pipeline's
+        # child-config propagation never surface the raw ``"auto"`` sentinel.
+        # Filtered out of the MACE kwargs by _BACKEND_ACCEPTED_KEYS.
+        calc_cfg["precision"] = val
     if val == "fp64":
         # fp64 model precision implies a fp64 Hessian. Leaving ``hessian_double``
         # off while the forward pass is fp64 is internally inconsistent: the
@@ -172,7 +193,8 @@ def apply_precision_to_calc_cfg(calc_cfg: Dict[str, Any], precision: str) -> Non
 def apply_effective_precision(
     calc_cfg: Dict[str, Any], cli_precision: Optional[str]
 ) -> None:
-    """Dispatch precision to backend kwargs — the CLI flag first, else the config.
+    """Dispatch precision to backend kwargs — the CLI flag, else the config, else
+    the backend's default (``_BACKEND_DEFAULT_PRECISION``).
 
     The ``--precision`` CLI flag wins. Otherwise honor a unified precision token
     carried by config ``calc.precision``: the ``all`` pipeline propagates the run
@@ -186,9 +208,22 @@ def apply_effective_precision(
     in particular carried TF32 noise into ~10 spurious imaginary modes). The
     guard on the unified tokens leaves an already backend-dispatched value in a
     hand-edited config untouched (re-dispatching e.g. ``'float64'`` would raise).
+
+    When neither names a precision the token is ``CALC_KW_DEFAULT``'s ``"auto"``
+    (or absent), which resolves per backend rather than to one global fp32: a
+    literal ``"fp32"`` default here was indistinguishable from an explicit
+    ``--precision fp32``, so it dispatched fp32 to ORB and MACE and shadowed
+    ``MACE_BACKEND_DEFAULTS["default_dtype"] = "float64"`` (``apply_backend_defaults``
+    only fills keys still at their UMA default). MACE and ORB therefore ran their
+    TS optimizations and Hessians at fp32 unless ``--precision fp64`` was passed
+    by hand, which is what broke the imaginary-mode counts of the bezA/COMT
+    backend matrix.
     """
     eff = cli_precision if cli_precision is not None else calc_cfg.get("precision")
-    if eff is not None and str(eff).lower() in ("fp32", "fp64"):
+    if eff is None or str(eff).lower() == "auto":
+        backend = resolve_backend(calc_cfg.get("backend") or "uma")
+        eff = _BACKEND_DEFAULT_PRECISION.get(backend, "fp32")
+    if str(eff).lower() in ("fp32", "fp64"):
         apply_precision_to_calc_cfg(calc_cfg, str(eff).lower())
 
 

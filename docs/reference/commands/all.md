@@ -99,11 +99,11 @@ Options:
   --opt-mode [grad|hess]          Optimizer mode forwarded to scan/tsopt and
                                   used for single optimizations: grad
                                   (=LBFGS/Dimer) or hess (=RFO for scan/opt; RS-
-                                  I-RFO for tsopt).  [default: grad]
+                                  P-RFO for tsopt).  [default: grad]
   --opt-mode-post [grad|hess]     Optimizer mode override for TSOPT/post-IRC
                                   endpoint optimizations. If unset, uses --opt-
                                   mode when explicitly provided; otherwise falls
-                                  back to the default ('hess' = RS-I-RFO).
+                                  back to the default ('hess' = RS-P-RFO).
                                   [default: hess]
   --dump BOOLEAN                  Dump GSM/MEP trajectories. Always forwarded to
                                   path_search/path-opt; scan/tsopt receive it
@@ -158,7 +158,7 @@ Options:
                                   paths are resolved against the default).
   --flatten / --no-flatten        Enable the extra-imaginary-mode flattening
                                   loop in tsopt (grad: dimer loop, hess: post-
-                                  RSIRFO); --no-flatten forces
+                                  RS-P-RFO); --no-flatten forces
                                   flatten_max_iter=0.  [default: no-flatten]
   --freq-out-dir DIRECTORY        Override freq output base directory (relative
                                   paths resolved against the default).
@@ -218,8 +218,9 @@ Options:
                                   cart is the reliable default used for the
                                   published results; dlc speeds up torsion-rich
                                   optimizations.
-  --precision [fp32|fp64]         MLIP backend precision: fp32 (default) or
-                                  fp64. Routed to backend-specific kwargs (UMA
+  --precision [fp32|fp64]         MLIP backend precision: fp32 or fp64. Unset
+                                  defaults per backend (uma: fp32; orb, mace:
+                                  fp64). Routed to backend-specific kwargs (UMA
                                   precision / ORB precision / MACE
                                   default_dtype). aimnet2: fp32 no-op; fp64
                                   rejected.

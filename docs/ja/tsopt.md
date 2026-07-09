@@ -129,7 +129,7 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
 | `--opt-mode TEXT` | TS optimizer プリセット（Choice: `grad` / `hess` / `dimer` / `rsirfo` / `trim` / `rsprfo`）。`grad`/`dimer` → Hessian-Guided Dimer; `hess`/`rsprfo` → RS-P-RFO（Banerjee、デフォルト、non-microiter）; `rsirfo` → RS-I-RFO; `trim` → TRIM（Helgaker、non-microiter）。サブコマンド別の対応表（`opt` は L-BFGS/RFO、`tsopt` は Dimer/RS-P-RFO）は {ref}`ja-opt-mode-semantics` を参照 | `hess` |
 | `--flatten/--no-flatten` | 余分な虚振動数モードのフラット化ループを有効化（`False` は `flatten_max_iter=0` を強制）。TS 最適化が収束した後、Hessian行列の余分な負の固有値モードを反復的にフラット化し、虚振動数が 1 つだけ残るか反復上限に達するまで繰り返します。dimer（dimer ループ）および RS-P-RFO / RS-I-RFO（収束後）の両方に適用 | `False` |
 | `--coord-type TEXT` | 最適化座標系（`cart` / `redund` / `dlc` / `tric`）。`cart` は公表値の基準となる確実なデフォルト。`dlc`（非局在内部座標）は低速だが、ねじれの多い系で一次鞍点へより堅牢に収束する。Hessianベースの最適化器が必要（`tsopt` の RS-P-RFO / Dimer は該当）。`path-opt` / `path-search` は `cart` / `dlc` のみ受け付ける | `cart` |
-| `--precision [fp32\|fp64]` | MLIP バックエンド精度。バックエンド固有のキー（UMA `precision` / ORB `precision` / MACE `default_dtype`。`aimnet2`: `fp32` は no-op、`fp64` は拒否）へ振り分け。データセンター GPU では数値ノイズの少ない Hessian のために `fp64` を使用。{ref}`再現性: GPU クラスによる精度の選択 <ja-precision-by-gpu-class>` を参照 | `fp32` |
+| `--precision [fp32\|fp64]` | MLIP バックエンド精度。バックエンド固有のキー（UMA `precision` / ORB `precision` / MACE `default_dtype`。`aimnet2`: `fp32` は no-op、`fp64` は拒否）へ振り分け。データセンター GPU では数値ノイズの少ない Hessian のために `fp64` を使用。{ref}`再現性: GPU クラスによる精度の選択 <ja-precision-by-gpu-class>` を参照 | バックエンド既定 (uma `fp32`、orb・mace `fp64`) |
 | **閾値とサイクル** | | |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`、`gau`、`gau_tight`、`gau_vtight`、`baker`、`never`） | `baker` |
 | `--max-cycles INT` | `opt.max_cycles` に渡されるマクロサイクル上限 | `10000` |

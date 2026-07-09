@@ -88,8 +88,9 @@ Options:
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1).
   --print-every INTEGER RANGE     Print optimizer status every N cycles (debug
                                   knob).  [x>=1]
-  --precision [fp32|fp64]         MLIP backend precision: fp32 (default) or
-                                  fp64. Routed to backend-specific kwargs (UMA
+  --precision [fp32|fp64]         MLIP backend precision: fp32 or fp64. Unset
+                                  defaults per backend (uma: fp32; orb, mace:
+                                  fp64). Routed to backend-specific kwargs (UMA
                                   precision / ORB precision / MACE
                                   default_dtype). aimnet2: fp32 no-op; fp64
                                   rejected.

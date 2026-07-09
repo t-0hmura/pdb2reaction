@@ -51,10 +51,22 @@ first one whose import succeeds.
 | `mace` | `pip install 'mace-torch>=0.3.8'` (coexists with `fairchem-core`; only `mace-torch < 0.3.8` needs a dedicated env: `pip uninstall -y fairchem-core`, due to the older `e3nn` pin) | `MACE-OMOL-0` | `default_dtype="float64"` |
 | `aimnet2` | `pip install aimnet` | `aimnet2` | n/a |
 
-### UMA fp64
+### Precision
 
-Switching OMol-trained UMA from default fp32 to fp64 can have non-trivial impact
-on TSopt and Hessian results. Enable via:
+`--precision` is backend-agnostic: it routes to UMA `precision` /
+ORB `precision` / MACE `default_dtype` automatically; AIMNet2 treats fp32 as a no-op and rejects fp64 (its model inputs are cast to float32 upstream).
+
+When `--precision` is not given, each backend takes its own default:
+
+| backend | default | why |
+|---------|---------|-----|
+| `uma` | fp32 | The upstream fairchem baseline. |
+| `orb` | fp64 | ORB's fp32 is the reduced `float32-high` (TF32) matmul mode, whose force noise inflates finite-difference Hessians into spurious imaginary modes. |
+| `mace` | fp64 | MACE ships `default_dtype="float64"` upstream. |
+| `aimnet2` | fp32 | No precision knob. |
+
+Switching OMol-trained UMA from its default fp32 to fp64 can have non-trivial
+impact on TSopt and Hessian results. Enable via:
 
 ```bash
 pdb2reaction tsopt -i ts.pdb -q 0 --precision fp64 ...
@@ -62,8 +74,9 @@ pdb2reaction freq -i opt.pdb -q 0 --precision fp64 ...
 pdb2reaction irc -i ts.pdb -q 0 --precision fp64 ...
 ```
 
-`--precision` is backend-agnostic: it routes to UMA `precision` /
-ORB `precision` / MACE `default_dtype` automatically; AIMNet2 treats fp32 as a no-op and rejects fp64 (its model inputs are cast to float32 upstream).
+Conversely `--precision fp32` explicitly lowers ORB / MACE precision for throughput.
+This is not recommended outside screening. If you do use it, expect noisier Hessians
+and check the imaginary-mode count.
 
 `--backend-model NAME` overrides the model variant for the selected `--backend`
 (e.g. `--backend uma --backend-model uma-s-1p2`); unset keeps the backend's

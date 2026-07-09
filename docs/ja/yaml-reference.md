@@ -125,7 +125,7 @@ MLIP バックエンドの設定。複数バックエンド（UMA, ORB, MACE, AI
 ```yaml
 calc:
  backend: uma           # MLIP backend: "uma", "orb", "mace", or "aimnet2"
- precision: fp32 # fp32 (baseline) | fp64 (full-precision base inference); backends may override (ORB float32-high, MACE float64)
+ precision: auto # auto (バックエンド既定: uma fp32、orb/mace fp64) | fp32 | fp64; バックエンド固有キー (ORB precision, MACE default_dtype) へ振り分け
  charge: 0 # Total system charge (overridden by CLI -q)
  spin: 1 # Spin multiplicity 2S+1 (overridden by CLI -m)
  model: uma-s-1p2 # uma-s-1p2 | uma-m-1p1

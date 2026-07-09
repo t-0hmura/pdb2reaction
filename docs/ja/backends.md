@@ -49,9 +49,22 @@ ase_calc = create_ase_calculator(backend="uma", model="uma-s-1p2", device="cuda"
 | `mace` | `pip install 'mace-torch>=0.3.8'`（`fairchem-core` と共存可。`mace-torch < 0.3.8` のみ古い `e3nn` の pin により専用 env が必要: `pip uninstall -y fairchem-core`） | `MACE-OMOL-0` | `default_dtype="float64"` |
 | `aimnet2` | `pip install aimnet` | `aimnet2` | n/a |
 
-### UMA fp64
+### 精度（precision）
 
-OMol で学習された UMA をデフォルトの fp32 から fp64 に切り替えると、TSopt + Hessian に
+`--precision` はバックエンド非依存です。UMA の `precision` /
+ORB の `precision` / MACE の `default_dtype` へ自動的にルーティングされます。AIMNet2 では
+fp32 は何もしない指定（no-op）として扱われ、fp64 は拒否されます（モデル入力が前段で float32 にキャストされるため）。
+
+`--precision` を指定しない場合、既定値はバックエンドごとに決まります。
+
+| backend | 既定 | 理由 |
+|---------|------|------|
+| `uma` | fp32 | 上流 fairchem のベースライン。 |
+| `orb` | fp64 | ORB の fp32 は縮約された `float32-high`（TF32）matmul であり、その力のノイズが有限差分 Hessian に偽の虚振動を生じさせる。 |
+| `mace` | fp64 | MACE は上流で `default_dtype="float64"` を既定とする。 |
+| `aimnet2` | fp32 | 精度の切り替えを持たない。 |
+
+OMol で学習された UMA を既定の fp32 から fp64 に切り替えると、TSopt + Hessian に
 無視できない影響が生じることがあります。以下で有効化します。
 
 ```bash
@@ -60,9 +73,7 @@ pdb2reaction freq  -i opt.pdb -q 0 --precision fp64 ...
 pdb2reaction irc   -i ts.pdb -q 0 --precision fp64 ...
 ```
 
-`--precision` はバックエンド非依存です。UMA の `precision` /
-ORB の `precision` / MACE の `default_dtype` へ自動的にルーティングされます。AIMNet2 では
-fp32 は何もしない指定（no-op）として扱われ、fp64 は拒否されます（モデル入力が前段で float32 にキャストされるため）。
+逆に `--precision fp32` はスループットのために ORB / MACE の精度を明示的に落とします（スクリーニング用途以外では非推奨）。使用する場合は、Hessian のノイズが増えるため、虚振動の本数を確認してください。
 
 `--backend-model NAME` は選択中の `--backend` のモデル変種を上書きします
 （例: `--backend uma --backend-model uma-s-1p2`）。未指定ならバックエンドデフォルトのモデルを使用します。

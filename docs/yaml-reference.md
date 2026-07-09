@@ -125,7 +125,7 @@ MLIP backend configuration. Supports multiple backends (UMA, ORB, MACE, AIMNet2)
 ```yaml
 calc:
  backend: uma           # MLIP backend: "uma", "orb", "mace", or "aimnet2"
- precision: fp32 # fp32 (baseline) | fp64 (full-precision base inference); backends may override (ORB float32-high, MACE float64)
+ precision: auto # auto (per backend: uma fp32, orb/mace fp64) | fp32 | fp64; routed to the backend-native kwarg (ORB precision, MACE default_dtype)
  charge: 0 # Total system charge (overridden by CLI -q)
  spin: 1 # Spin multiplicity 2S+1 (overridden by CLI -m)
  model: uma-s-1p2 # uma-s-1p2 | uma-m-1p1

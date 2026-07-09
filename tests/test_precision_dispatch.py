@@ -105,3 +105,54 @@ def test_cli_precision_flag_wins_over_config() -> None:
     calc_cfg = {"backend": "orb", "precision": "fp32"}
     apply_effective_precision(calc_cfg, "fp64")  # explicit flag wins
     assert calc_cfg["precision"] == "float64"
+
+
+@pytest.mark.parametrize("token", [None, "auto"])
+def test_unspecified_precision_defaults_to_fp64_for_orb(token) -> None:
+    """No --precision flag and no config token → ORB gets true float64, not the
+    reduced 'float32-high' (TF32) matmul mode."""
+    calc_cfg = {"backend": "orb", "precision": token}
+    apply_effective_precision(calc_cfg, None)
+    assert calc_cfg["precision"] == "float64"
+
+
+@pytest.mark.parametrize("token", [None, "auto"])
+def test_unspecified_precision_defaults_to_fp64_for_mace(token) -> None:
+    """MACE ships fp64 upstream; the unspecified default must reach
+    ``default_dtype`` (a literal 'fp32' default used to dispatch float32 here and
+    shadow MACE_BACKEND_DEFAULTS, breaking imaginary-mode counts)."""
+    calc_cfg = {"backend": "mace", "precision": token}
+    apply_effective_precision(calc_cfg, None)
+    assert calc_cfg["default_dtype"] == "float64"
+    assert calc_cfg["hessian_double"] is True
+
+
+@pytest.mark.parametrize("token", [None, "auto"])
+def test_unspecified_precision_stays_fp32_for_uma(token) -> None:
+    """UMA's upstream (fairchem) baseline is fp32 and the paper's numbers rest on
+    it: the orb/mace fp64 default must not leak to UMA."""
+    calc_cfg = {"backend": "uma", "precision": token}
+    apply_effective_precision(calc_cfg, None)
+    assert calc_cfg["precision"] == "fp32"
+
+
+def test_explicit_fp32_still_reaches_orb_and_mace() -> None:
+    """The sentinel exists to keep an explicit ``--precision fp32`` distinguishable
+    from 'unspecified'; fp32 must still downgrade both backends."""
+    orb_cfg = {"backend": "orb", "precision": "auto"}
+    apply_effective_precision(orb_cfg, "fp32")
+    assert orb_cfg["precision"] == "float32-high"
+
+    mace_cfg = {"backend": "mace", "precision": "auto"}
+    apply_effective_precision(mace_cfg, "fp32")
+    assert mace_cfg["default_dtype"] == "float32"
+
+
+def test_auto_sentinel_never_survives_dispatch() -> None:
+    """``"auto"`` is internal: every backend must overwrite it with a concrete
+    token, since ``calc.precision`` is echoed in the run summary and propagated
+    into the ``all`` pipeline's child configs."""
+    for backend in ("uma", "orb", "mace", "aimnet2"):
+        calc_cfg = {"backend": backend, "precision": "auto"}
+        apply_effective_precision(calc_cfg, None)
+        assert calc_cfg["precision"] != "auto", backend

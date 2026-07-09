@@ -119,6 +119,12 @@ def add_precision_option() -> Callable[[Callable], Callable]:
     - ``aimnet2`` -> fp32 is a no-op; fp64 is rejected (its model inputs
       are cast to float32 upstream, so fp64 cannot be honoured)
 
+    Unset resolves per backend (``backends._BACKEND_DEFAULT_PRECISION``):
+    UMA fp32 (its upstream fairchem baseline), ORB and MACE fp64. ORB's
+    fp32 is the reduced TF32 matmul mode and MACE ships fp64 upstream, so
+    a fp32 finite-difference Hessian from either carries enough force noise
+    to invent imaginary modes.
+
     fp64 base precision can have non-trivial TSopt/Hessian impact for
     OMol-trained UMA; for ORB/MACE the higher precision similarly costs
     throughput and can stabilise gradients/Hessians.
@@ -135,7 +141,8 @@ def add_precision_option() -> Callable[[Callable], Callable]:
             default=None,
             show_default=False,
             help=(
-                "MLIP backend precision: fp32 (default) or fp64. Routed to "
+                "MLIP backend precision: fp32 or fp64. Unset defaults per "
+                "backend (uma: fp32; orb, mace: fp64). Routed to "
                 "backend-specific kwargs (UMA precision / ORB precision / "
                 "MACE default_dtype). aimnet2: fp32 no-op; fp64 rejected."
             ),

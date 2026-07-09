@@ -56,16 +56,18 @@ optimizer linear algebra cannot silently run in a lower precision than the model
 ### Choosing precision by GPU class
 
 `--precision` selects the floating-point precision of MLIP inference
-(`fp32` | `fp64`, case-insensitive; default `fp32`, the screening-speed
-baseline). It is backend-agnostic — the CLI routes the value into each backend's
-native key (UMA `precision`, ORB `precision`, MACE `default_dtype`; for
-`aimnet2`, `fp32` is a no-op and `fp64` is rejected because its model inputs are
-cast to float32 upstream). Which value to pick depends on the GPU class:
+(`fp32` | `fp64`, case-insensitive). It is backend-agnostic — the CLI routes the
+value into each backend's native key (UMA `precision`, ORB `precision`, MACE
+`default_dtype`; for `aimnet2`, `fp32` is a no-op and `fp64` is rejected because
+its model inputs are cast to float32 upstream). Left unset, UMA runs fp32 (the
+screening-speed baseline) while ORB and MACE run fp64 — see
+[Backends → Precision](backends.md#precision). Which value to pick depends on the
+GPU class:
 
 | GPU class | Recommended | Why |
 | --- | --- | --- |
 | HPC datacenter (H100 / H200 / A100) | `--precision fp64` | Near-deterministic, low numerical-noise TS optimization and Hessians; the fp64 throughput cost is small on these cards. |
-| Consumer (RTX 50xx / 40xx) | `--precision fp32` (default) | fp64 is substantially slower here; fp32 is the speed / screening baseline. |
+| Consumer (RTX 50xx / 40xx) | `--precision fp32` | fp64 is substantially slower here; fp32 is the speed / screening baseline. Expect noisier ORB / MACE Hessians than at their fp64 default. |
 
 fp64 has a non-trivial effect on TS optimization and Hessians for the
 OMol-trained UMA backend, so use it for final / production numbers — not only

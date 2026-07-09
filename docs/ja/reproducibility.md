@@ -36,12 +36,12 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt True --deterministic
 (ja-precision-by-gpu-class)=
 ### GPU クラスによる精度の選択
 
-`--precision` は MLIP 推論の浮動小数点精度（`fp32` | `fp64`、大文字小文字を区別しない。デフォルトは `fp32` でスクリーニング速度の基準）を選択します。バックエンド非依存であり、CLI は値を各バックエンド固有のキー（UMA `precision`、ORB `precision`、MACE `default_dtype`）に振り分けます。`aimnet2` では `fp32` は no-op で、`fp64` はモデル入力が上流で float32 にキャストされるため拒否されます。どちらの値を選ぶかは GPU クラスによって決まります。
+`--precision` は MLIP 推論の浮動小数点精度（`fp32` | `fp64`、大文字小文字を区別しない）を選択します。バックエンド非依存であり、CLI は値を各バックエンド固有のキー（UMA `precision`、ORB `precision`、MACE `default_dtype`）に振り分けます。`aimnet2` では `fp32` は no-op で、`fp64` はモデル入力が上流で float32 にキャストされるため拒否されます。指定しない場合、UMA は fp32（スクリーニング速度の基準）、ORB と MACE は fp64 が既定です（{doc}`バックエンド <backends>` の「精度」節を参照）。どちらの値を選ぶかは GPU クラスによって決まります。
 
 | GPU クラス | 推奨 | 理由 |
 | --- | --- | --- |
 | HPC データセンター（H100 / H200 / A100） | `--precision fp64` | 実用的な品質で数値ノイズの少ない TS 最適化と Hessian が得られ、これらのカードでは fp64 のスループットコストが小さい。 |
-| コンシューマー（RTX 50xx / 40xx） | `--precision fp32`（デフォルト） | ここでは fp64 が大幅に遅く、実用性と速度を考慮して fp32 がデフォルト。fp32 は fp64 より数値精度は落ちるが、コンシューマー GPU（RTX 5090 など）でのスクリーニング用途には実用十分で、`--deterministic` を併用すれば再現性も確保できる。なお、厳密性が必要な場合や不安定な PES では fp64 で改善する可能性がある。 |
+| コンシューマー（RTX 50xx / 40xx） | `--precision fp32` | ここでは fp64 が大幅に遅く、実用性と速度を考慮して fp32 を選ぶ（ORB / MACE は既定の fp64 から落ちるため Hessian のノイズは増える）。fp32 は fp64 より数値精度は落ちるが、コンシューマー GPU（RTX 5090 など）でのスクリーニング用途には実用十分で、`--deterministic` を併用すれば再現性も確保できる。なお、厳密性が必要な場合や不安定な PES では fp64 で改善する可能性がある。 |
 
 OMol で学習された UMA バックエンドでは fp64 が TS 最適化と Hessian に無視できない影響を与えるため、スクリーニングだけでなく最終結果・本番計算の数値には fp64 を使用してください。ビット単位で同一の再実行が必要な場合は `--deterministic` と併用します。
 

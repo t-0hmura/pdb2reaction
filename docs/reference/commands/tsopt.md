@@ -3,7 +3,7 @@
 ```text
 Usage: pdb2reaction tsopt [OPTIONS]
 
-  Transition state optimization (Dimer or RS-I-RFO).
+  Transition state optimization (Dimer or RS-P-RFO).
 
 Options:
   -v, --verbose LEVEL             Console verbosity 0-3 (default 2). 0=silent;
@@ -37,13 +37,13 @@ Options:
   --max-cycles INTEGER            Maximum number of optimization cycles.
                                   [default: 10000]
   --flatten / --no-flatten        Enable the extra-imaginary-mode flattening
-                                  loop (grad: dimer loop, hess: post-RSIRFO).
+                                  loop (grad: dimer loop, hess: post-RS-P-RFO).
                                   [default: no-flatten]
   --opt-mode [grad|hess|dimer|rsirfo|trim|rsprfo]
                                   TS optimizer: 'grad'/'dimer' → Hessian Guided
-                                  Dimer; 'hess'/'rsirfo' → RS-I-RFO (default);
-                                  'rsprfo' → RS-P-RFO (Banerjee); 'trim' → TRIM
-                                  (Helgaker).  [default: hess]
+                                  Dimer; 'hess'/'rsprfo' → RS-P-RFO (Banerjee,
+                                  default); 'trim' → TRIM (Helgaker); 'rsirfo' →
+                                  RS-I-RFO.  [default: hess]
   --dump / --no-dump              Write the per-cycle optimization trajectory
                                   ('optimization_trj.xyz' for rsirfo/hess,
                                   'optimization_all_trj.xyz' for grad/dimer) in
@@ -79,8 +79,9 @@ Options:
                                   GPP:-3,SAM:1) used to derive charge when -q is
                                   omitted (requires PDB input or --ref-pdb).
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1).
-  --precision [fp32|fp64]         MLIP backend precision: fp32 (default) or
-                                  fp64. Routed to backend-specific kwargs (UMA
+  --precision [fp32|fp64]         MLIP backend precision: fp32 or fp64. Unset
+                                  defaults per backend (uma: fp32; orb, mace:
+                                  fp64). Routed to backend-specific kwargs (UMA
                                   precision / ORB precision / MACE
                                   default_dtype). aimnet2: fp32 no-op; fp64
                                   rejected.

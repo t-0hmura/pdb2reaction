@@ -6,6 +6,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+### Changed
+- **`--precision` now defaults per backend instead of globally to fp32: ORB and MACE
+  run fp64 when no precision is given, UMA keeps fp32.** ORB's fp32 is the reduced
+  `float32-high` (TF32) matmul mode and MACE ships `default_dtype="float64"`
+  upstream, so a fp32 finite-difference Hessian from either carried enough force
+  noise to invent imaginary modes. Pass `--precision fp32` explicitly to restore
+  the previous behaviour for screening runs.
+
+### Fixed
+- **MACE ignored its own `float64` default and ran fp32 unless `--precision fp64` was
+  passed by hand.** The calculator config carried a literal `"fp32"` default, which
+  was indistinguishable from an explicit `--precision fp32`; it dispatched
+  `default_dtype="float32"` and left `MACE_BACKEND_DEFAULTS["default_dtype"]` unused,
+  since backend defaults only fill keys still at their UMA value. Unspecified
+  precision now resolves through an `"auto"` sentinel.
+
 ## [0.4.9] — 2026-07-08
 
 ### Changed

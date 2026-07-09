@@ -53,7 +53,11 @@ CALC_KW_DEFAULT: Dict[str, Any] = {
     "r_edges": False,
     "workers": 1,
     "workers_per_node": 1,
-    "precision": "fp32",  # "fp32" (established baseline) | "fp64" (full-precision base inference; non-trivial TSopt/Hessian impact)
+    # "auto" (resolve per backend: uma fp32, orb/mace fp64 — see
+    # backends._BACKEND_DEFAULT_PRECISION) | "fp32" | "fp64". The sentinel keeps
+    # "user named no precision" distinguishable from an explicit "--precision fp32";
+    # a literal "fp32" here dispatched reduced precision to ORB and MACE.
+    "precision": "auto",
     "hessian_calc_mode": "FiniteDifference",
     "out_hess_torch": True,
     "hessian_double": True,
@@ -76,7 +80,10 @@ UMA_CALC_KW: Dict[str, Any] = {
 
 ORB_BACKEND_DEFAULTS: Dict[str, Any] = {
     "model": "orb_v3_conservative_omol",
-    "precision": "float32-high",
+    # float64, not orb_models' "float32-high": that mode is TF32 matmul, whose
+    # force noise inflates finite-difference Hessians into spurious imaginary
+    # modes. Mirrors backends._BACKEND_DEFAULT_PRECISION["orb"] = "fp64".
+    "precision": "float64",
     "compile_model": False,
 }
 

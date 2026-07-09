@@ -154,7 +154,7 @@ Walltime scales roughly inversely with effective parallelism (the total `workers
 
 ## Precision on datacenter GPUs
 
-On the HPC datacenter cards these templates target (H100 / H200 / A100), run production TS optimizations and Hessians with `--precision fp64`: the fp64 throughput cost is small on these cards and it gives near-deterministic, low numerical-noise results. Keep the default `--precision fp32` for screening and on consumer GPUs (RTX 50xx / 40xx), where fp64 is substantially slower. See [Reproducibility → Choosing precision by GPU class](reproducibility.md#choosing-precision-by-gpu-class) for the routing details and the `--deterministic` pairing.
+On the HPC datacenter cards these templates target (H100 / H200 / A100), run production TS optimizations and Hessians with `--precision fp64`: the fp64 throughput cost is small on these cards and it gives near-deterministic, low numerical-noise results. Pass `--precision fp32` for screening and on consumer GPUs (RTX 50xx / 40xx), where fp64 is substantially slower — this is UMA's default already, and downgrades ORB / MACE from theirs. See [Reproducibility → Choosing precision by GPU class](reproducibility.md#choosing-precision-by-gpu-class) for the routing details and the `--deterministic` pairing.
 
 ## See Also
 
