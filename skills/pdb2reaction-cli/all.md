@@ -27,8 +27,8 @@ pdb2reaction all -i <input(s)> [-c <substrate>] [-l 'RES:Q,...'] \
 |---|---|---|---|
 | `-i, --input` | path(s) | required | One or more reaction-ordered structures, or a TS-candidate alone |
 | `-c, --center` | str | (uses input as-is) | Substrate selector: residue-name list `'RES1,RES2,...'`, residue-ID list `'A:44,B:321'`, or a PDB path. Chain-qualified residue *names* (`'B:SAM'`) are not supported — use the residue ID instead. |
-| `-l, --ligand-charge` | str | none | Per-residue charges, e.g. `'SAM:1,GPP:-3'` |
-| `-q, --charge` | int | derived from `-l` | Total cluster charge override |
+| `-l, --ligand-charge` | str | none | Per-resname charges, e.g. `'SAM:1,GPP:-3'` (or a bare number = total). The per-resname mapping is honored **whether or not extraction runs**: with `-c` it feeds the extractor summary; with `-c` omitted (extraction skipped, pre-carved model passed as-is) the same mapping is applied to the **full input PDB** to derive the total. Prefer `-l` — `-q` is rarely needed. |
+| `-q, --charge` | int | derived from `-l` | Total charge override; applies regardless of residues and **emits a warning**. Normally unnecessary — let `-l` derive the total. |
 | `-m, --multiplicity` | int | 1 | Spin multiplicity (2S+1) |
 | `-r, --radius` | float | 2.6 | Pocket radius (Å) when `-c` triggers extraction |
 | `-s, --scan-lists` | repeated | none | Staged distance scans (mode 2 — `all-scan-list.md`) |

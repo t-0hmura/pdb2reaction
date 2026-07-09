@@ -54,7 +54,7 @@ description: Per-subcommand reference for pdb2reaction's 18 CLI subcommands (ext
 | `--ref-pdb` | Reference PDB used to derive residue context for XYZ inputs |
 | `--solvent` | xTB-ALPB solvent name (e.g. `water`); `none` to disable |
 
-Charge precedence: explicit `-q` > `-l 'RES:Q'` derivation > `--config` YAML > `defaults.py`.
+Charge precedence: explicit `-q` > `-l 'RES:Q'` derivation > `--config` YAML > `defaults.py`. The `-l` per-resname mapping is applied **whether or not extraction runs** — with `-c` it feeds the extractor, with `-c` omitted (pre-carved model passed as-is) the same mapping is applied to the full input PDB to derive the total. **Prefer `-l`; `-q` is a total-charge override that emits a warning and is normally unnecessary.**
 
 ## Canonical recipes
 

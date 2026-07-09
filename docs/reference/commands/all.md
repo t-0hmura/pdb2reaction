@@ -59,10 +59,15 @@ Options:
                                   'HD1,HD2,HD3' or 'HD1:0,SEP:-2'.  [default:
                                   ""]
   -l, --ligand-charge TEXT        Total charge (number) or per-resname mapping
-                                  like 'GPP:-3,SAM:1'. Used for extractor charge
-                                  summaries; when extraction is skipped, PDB
-                                  inputs derive the total charge and numeric
-                                  values act as a total-charge fallback.
+                                  like 'GPP:-3,SAM:1'. The per-resname mapping
+                                  is applied whether or not extraction runs:
+                                  with -c/--center it feeds the extractor charge
+                                  summary; with -c omitted (extraction skipped)
+                                  the same mapping is applied to the full input
+                                  PDB to derive the total system charge. A bare
+                                  number sets the total directly. PDB inputs
+                                  only. To force a total charge regardless of
+                                  residues, use -q/--charge (emits a warning).
   -q, --charge INTEGER            Force the total system charge (overrides
                                   extractor/GJF/--ligand-charge-derived values;
                                   emits a warning when used).
