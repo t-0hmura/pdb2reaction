@@ -937,7 +937,9 @@ def _enrich_summary(
     single machine-readable output consumed by MCP tools and AI agents.
     It should contain ALL information present in summary.log.
     """
-    from pdb2reaction._version import __version__
+    # Import through the package fallback: _version.py is generated only by a
+    # build/install and is intentionally absent from a fresh source checkout.
+    from pdb2reaction import __version__
 
     segments = summary.get("segments", [])
     reactive = [s for s in segments if s.get("kind") != "bridge"]

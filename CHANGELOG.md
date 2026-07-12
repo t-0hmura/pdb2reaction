@@ -6,6 +6,26 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+### Fixed
+- **ORB analytical Hessians tolerate in-place mutations inside Orb's
+  message-passing graph.** The complete `torch.autograd.functional.hessian`
+  forward and double backward now run under
+  `allow_mutation_on_saved_tensors`, preventing the saved-tensor version error
+  seen on Jomon and Miyabi while preserving the existing donated-buffer guard.
+- **Minimization RFO no longer accepts an energy-increasing trial and continues
+  from the wrong basin.** A trial that was predicted to descend but raises the
+  actual energy is rolled back together with every optimizer history, the trust
+  radius is reduced, and the step is retried. BFGS Hessian updates are also
+  skipped when the required positive `s·y` curvature condition fails instead
+  of injecting a large negative eigenvalue. Repeated rejections caused by a
+  low-precision backend's energy resolution stop safely at an emergency trust
+  floor and retain the lower-energy geometry instead of exhausting all cycles.
+  This fixes the post-IRC endpoint optimizations that converged hundreds of
+  kcal/mol above their starting structures in `all` workflows.
+- `all` summary generation imports the package-level version fallback, so a
+  fresh source checkout without the build-generated `_version.py` can complete
+  and write `summary.json`.
+
 ## [0.4.11] — 2026-07-13
 
 ### Changed

@@ -8,6 +8,7 @@ Requires: ``pip install "pdb2reaction[orb]"`` (orb-models).
 
 from __future__ import annotations
 
+from contextlib import nullcontext
 from typing import Optional, Sequence
 
 import numpy as np
@@ -51,6 +52,30 @@ _PRECISION_ALIASES = {
 
 def _normalize_orb_precision(precision: str) -> str:
     return _PRECISION_ALIASES.get(str(precision).lower(), str(precision))
+
+
+def _autograd_hessian_with_mutation_guard(torch, energy_fn, flat0):
+    """Run the complete Hessian forward/backward under PyTorch's mutation guard.
+
+    Orb message-passing kernels can mutate tensors that autograd saved during the
+    force backward pass.  That is harmless for the value being computed, but a
+    second backward for the Hessian normally rejects the changed version counter.
+    PyTorch's guard clones a saved tensor when it is mutated.  The context must
+    cover both the forward and every backward performed by ``functional.hessian``.
+
+    ``nullcontext`` keeps compatibility with older torch releases that predate
+    ``allow_mutation_on_saved_tensors``; those releases retain their prior
+    behaviour and still produce the original, actionable BackendError below.
+    """
+    graph = getattr(torch.autograd, "graph", None)
+    mutation_guard = getattr(graph, "allow_mutation_on_saved_tensors", nullcontext)
+    with mutation_guard():
+        return torch.autograd.functional.hessian(
+            energy_fn,
+            flat0,
+            vectorize=False,
+            create_graph=False,
+        )
 
 
 class OrbCalculator(MLIPCalculator):
@@ -325,9 +350,7 @@ class OrbCalculator(MLIPCalculator):
 
         state = _prepare_model_for_autograd_hessian(self._model_obj, torch)
         try:
-            H = torch.autograd.functional.hessian(
-                energy_fn, flat0, vectorize=False, create_graph=False,
-            )
+            H = _autograd_hessian_with_mutation_guard(torch, energy_fn, flat0)
         except (torch.cuda.OutOfMemoryError, RuntimeError) as exc:
             msg = str(exc).lower()
             if "out of memory" in msg and "cuda" in msg:

@@ -163,6 +163,10 @@ RFO_KW: Dict[str, Any] = {
     "trust_min": 1e-4,
     "trust_max": 0.10,
     "max_energy_incr": None,
+    "reject_uphill": True,
+    "uphill_tolerance": 1e-8,
+    "rejection_trust_floor": 1e-7,
+    "max_rejections_at_floor": 3,
     "hessian_update": "bfgs",
     "hessian_init": "calc",
     "hessian_recalc": 500,
@@ -393,7 +397,19 @@ HESSIAN_DIMER_CLI_KW: Dict[str, Any] = {
 # RFO-family shared defaults for TS optimization (hess/heavy → RS-P-RFO default; also RS-I-RFO / TRIM)
 
 # Keys from RFO_KW that are RFOptimizer-specific (not used by TSHessianOptimizer)
-_RFO_ONLY_KEYS = {"gediis", "gdiis", "gdiis_thresh", "gediis_thresh", "gdiis_test_direction", "adapt_step_func", "rfo_overlaps"}
+_RFO_ONLY_KEYS = {
+    "gediis",
+    "gdiis",
+    "gdiis_thresh",
+    "gediis_thresh",
+    "gdiis_test_direction",
+    "adapt_step_func",
+    "rfo_overlaps",
+    "reject_uphill",
+    "uphill_tolerance",
+    "rejection_trust_floor",
+    "max_rejections_at_floor",
+}
 
 RSIRFO_KW: Dict[str, Any] = {
     **{k: v for k, v in RFO_KW.items() if k not in _RFO_ONLY_KEYS},
