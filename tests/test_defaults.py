@@ -1,14 +1,14 @@
 # tests/test_defaults.py
 """Tests for pdb2reaction.defaults configuration constants."""
 
-import pytest
-
 from pdb2reaction.core.defaults import (
     GEOM_KW_DEFAULT,
     CALC_KW_DEFAULT,
     OPT_BASE_KW,
     LBFGS_KW,
+    LBFGS_TS_KW,
     RFO_KW,
+    RSIRFO_KW,
     IRC_KW,
     BOND_KW,
     BIAS_KW,
@@ -44,6 +44,17 @@ class TestDefaultsStructure:
     def test_rfo_has_max_cycles(self):
         assert "max_cycles" in RFO_KW
         assert RFO_KW["max_cycles"] > 0
+
+    def test_minimizer_trial_rejection_defaults(self):
+        assert LBFGS_KW["reject_uphill"] is True
+        assert RFO_KW["reject_uphill"] is True
+        assert LBFGS_TS_KW["reject_uphill"] is False
+
+    def test_ts_saddle_safeguards_are_enabled(self):
+        assert RSIRFO_KW["check_eigval_structure"] is True
+        assert RSIRFO_KW["reject_mode_loss"] is True
+        assert RSIRFO_KW["verify_saddle"] is True
+        assert RSIRFO_KW["saddle_imaginary_threshold_cm"] == 5.0
 
     def test_irc_kw_has_step_length(self):
         assert "step_length" in IRC_KW

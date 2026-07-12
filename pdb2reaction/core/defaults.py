@@ -153,6 +153,10 @@ LBFGS_KW: Dict[str, Any] = {
     "double_damp": True,
     "mu_reg": None,
     "max_mu_reg_adaptions": 10,
+    "reject_uphill": True,
+    "uphill_tolerance": 1e-8,
+    "rejection_step_floor": 1e-7,
+    "max_rejections_at_floor": 3,
 }
 
 
@@ -383,6 +387,9 @@ HESSIAN_DIMER_KW: Dict[str, Any] = {
 LBFGS_TS_KW: Dict[str, Any] = {
     **LBFGS_KW,
     "thresh": "baker",
+    # A dimer follows an effective saddle-search force; physical energy need
+    # not decrease monotonically along that trajectory.
+    "reject_uphill": False,
 }
 
 # Hessian Guided Dimer CLI-level defaults
@@ -414,6 +421,7 @@ _RFO_ONLY_KEYS = {
 RSIRFO_KW: Dict[str, Any] = {
     **{k: v for k, v in RFO_KW.items() if k not in _RFO_ONLY_KEYS},
     "thresh": "baker",
+    "check_eigval_structure": True,
     "trust_max": 0.10,
     "roots": [0],
     "hessian_ref": None,
@@ -428,6 +436,15 @@ RSIRFO_KW: Dict[str, Any] = {
     "max_line_search": True,
     "assert_neg_eigval": False,
     "track_mode_by_overlap": False,
+    "reject_mode_loss": True,
+    "mode_loss_trust_floor": 1e-5,
+    "max_mode_loss_rejections": 5,
+    "verify_saddle": True,
+    # Keep exact optimizer-side PHVA verification aligned with the final
+    # frequency analysis (HESSIAN_DIMER_KW["neg_freq_thresh_cm"]).
+    "saddle_imaginary_threshold_cm": 5.0,
+    "saddle_recovery_step": 0.01,
+    "saddle_recovery_max_cycles": 50,
 }
 
 # Freq calc defaults (alias of UMA_CALC_KW)

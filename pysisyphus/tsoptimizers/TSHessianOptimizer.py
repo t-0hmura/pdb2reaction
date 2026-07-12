@@ -1,3 +1,4 @@
+from dataclasses import replace
 from typing import List, Optional
 
 import h5py
@@ -40,6 +41,13 @@ class TSHessianOptimizer(HessianOptimizer):
         max_line_search: bool = False,
         assert_neg_eigval: bool = False,
         track_mode_by_overlap: bool = False,
+        reject_mode_loss: bool = True,
+        mode_loss_trust_floor: float = 1e-5,
+        max_mode_loss_rejections: int = 5,
+        verify_saddle: bool = True,
+        saddle_imaginary_threshold_cm: float = 5.0,
+        saddle_recovery_step: float = 0.01,
+        saddle_recovery_max_cycles: int = 50,
         **kwargs,
     ) -> None:
         """Baseclass for transition state optimizers utilizing Hessian information.
@@ -92,6 +100,26 @@ class TSHessianOptimizer(HessianOptimizer):
             Check for the existences for at least one significant negative eigenvalue.
             If enabled and no negative eigenvalue is present the optimization will be
             aborted.
+        reject_mode_loss
+            Once a negative mode has been found, reject trials that leave the
+            negative-curvature region and retry with a smaller trust radius.
+        mode_loss_trust_floor
+            Emergency trust-radius floor for mode-loss retries.
+        max_mode_loss_rejections
+            Rejections allowed at the emergency floor before stopping without
+            reporting convergence.
+        verify_saddle
+            Recalculate the exact Hessian near apparent convergence and verify
+            the saddle with a mass-weighted, translation/rotation-projected
+            vibrational analysis.
+        saddle_imaginary_threshold_cm
+            Minimum absolute imaginary frequency required by exact saddle
+            verification, in cm^-1.
+        saddle_recovery_step
+            Minimum uphill displacement used to escape a near-flat local minimum
+            exposed by exact-Hessian validation.
+        saddle_recovery_max_cycles
+            Maximum recovery cycles allowed to regain negative curvature.
 
         Other Parameters
         ----------------
@@ -169,6 +197,40 @@ class TSHessianOptimizer(HessianOptimizer):
         self.min_line_search = min_line_search
         self.max_line_search = max_line_search
         self.assert_neg_eigval = assert_neg_eigval
+        self.reject_mode_loss = bool(reject_mode_loss)
+        self.mode_loss_trust_floor = float(mode_loss_trust_floor)
+        if self.mode_loss_trust_floor <= 0.0:
+            raise ValueError("mode_loss_trust_floor must be positive")
+        self.max_mode_loss_rejections = int(max_mode_loss_rejections)
+        if self.max_mode_loss_rejections < 1:
+            raise ValueError("max_mode_loss_rejections must be at least 1")
+        self.verify_saddle = bool(verify_saddle)
+        self.saddle_imaginary_threshold_cm = abs(
+            float(saddle_imaginary_threshold_cm)
+        )
+        if self.saddle_imaginary_threshold_cm <= 0.0:
+            raise ValueError("saddle_imaginary_threshold_cm must be positive")
+        self.saddle_recovery_step = float(saddle_recovery_step)
+        if self.saddle_recovery_step <= 0.0:
+            raise ValueError("saddle_recovery_step must be positive")
+        self.saddle_recovery_max_cycles = int(saddle_recovery_max_cycles)
+        if self.saddle_recovery_max_cycles < 1:
+            raise ValueError("saddle_recovery_max_cycles must be at least 1")
+        self.negative_mode_seen = False
+        self.rejected_mode_loss_steps = 0
+        self.mode_loss_rejections_at_floor = 0
+        self.exact_saddle_checks = 0
+        self.saddle_recovery_cycles = 0
+        self.saddle_recovery_steps = 0
+        self._saddle_recovery_active = False
+        self._saddle_recovery_mode = None
+        self._saddle_recovery_sign = None
+        self._physical_ts_mode = None
+        self._last_recovery_mode_curvature = None
+        self._last_recovery_mode_frequency_cm = None
+        self._last_exact_frequencies_cm = None
+        self._last_exact_n_imaginary = None
+        self._last_exact_saddle_cycle = None
 
         self.ts_modes = list()
         self.max_micro_cycles = max_micro_cycles
@@ -320,15 +382,532 @@ class TSHessianOptimizer(HessianOptimizer):
         # modified by using a reference hessian.
         self.ts_modes = eigvecs[:, self.roots].T
         self.ts_mode_eigvals = eigvals[self.roots]
+        self.negative_mode_seen = self._has_required_negative_modes(eigvals)
         self.log(
             f"Using root(s) {self.roots} with eigenvalues "
             f"{array2string(self.ts_mode_eigvals, precision=6)} as TS mode.\n"
         )
 
+    def _has_required_negative_modes(self, eigvals):
+        neg = eigvals < -self.small_eigval_thresh
+        if isinstance(neg, torch.Tensor):
+            neg_num = int(neg.sum().item())
+        else:
+            neg_num = int(np.count_nonzero(neg))
+        return neg_num >= len(self.roots)
+
+    def _mw_frequencies_and_modes(self):
+        """Return PHVA frequencies/modes using the final ``freq`` criterion.
+
+        The frequency helper assumes a Cartesian full or atom-wise active
+        Hessian.  Other coordinate systems retain the legacy raw-Hessian
+        criterion because converting their Hessian back to Cartesian space is
+        outside this optimizer's responsibility.
+        """
+        if self.geometry.coord_type not in ("cart", "cartesian"):
+            return None
+
+        H = self.cur_H
+        if H is None:
+            return None
+
+        n_atoms = len(self.geometry.atoms)
+        n_full = 3 * n_atoms
+        frozen = {
+            int(index)
+            for index in np.asarray(self.geometry.freeze_atoms, dtype=int)
+            if 0 <= int(index) < n_atoms
+        }
+        n_active = n_full - 3 * len(frozen)
+        if tuple(H.shape) not in ((n_full, n_full), (n_active, n_active)):
+            self.log(
+                "Skipping PHVA saddle verification for a non atom-wise "
+                f"partial Hessian with shape {tuple(H.shape)}."
+            )
+            return None
+
+        from pdb2reaction.workflows.freq import _frequencies_cm_and_modes
+
+        if isinstance(H, torch.Tensor):
+            H_in = H.detach().clone().to(dtype=torch.float64)
+            device = H_in.device
+        else:
+            H_in = torch.as_tensor(
+                np.array(H, dtype=np.float64, copy=True), dtype=torch.float64
+            )
+            device = H_in.device
+
+        freqs_cm, modes = _frequencies_cm_and_modes(
+            H_in,
+            list(self.geometry.atomic_numbers),
+            self.geometry.cart_coords.reshape(-1, 3).copy(),
+            device,
+            freeze_idx=sorted(frozen) or None,
+        )
+        return np.asarray(freqs_cm, dtype=float), modes
+
+    def _recovery_mode_from_mw(self, modes, mode_index):
+        """Convert a full mass-weighted vibration to active Cartesian DOFs."""
+        if modes is None or len(modes) == 0:
+            return None
+
+        from pysisyphus.constants import AMU2AU
+        from pdb2reaction.workflows.freq import _mw_mode_to_cart, _safe_masses_amu
+
+        mode_mw = modes[int(mode_index)]
+        masses_au = torch.as_tensor(
+            _safe_masses_amu(self.geometry.atomic_numbers) * AMU2AU,
+            dtype=mode_mw.dtype,
+            device=mode_mw.device,
+        )
+        mode_full = _mw_mode_to_cart(mode_mw, masses_au)
+        mode = np.asarray(self.active_from_full(mode_full), dtype=float)
+        expected = int(self.cur_H.shape[0])
+        norm = float(np.linalg.norm(mode))
+        if mode.size != expected or not np.isfinite(norm) or norm <= 0.0:
+            return None
+        return mode / norm
+
+    def _fallback_recovery_mode(self, eigvecs):
+        root = int(self.roots[0]) if len(self.roots) else 0
+        root = min(max(root, 0), eigvecs.shape[1] - 1)
+        mode = eigvecs[:, root]
+        if isinstance(mode, torch.Tensor):
+            return mode.detach().clone()
+        return np.asarray(mode, dtype=float).copy()
+
+    def _verify_exact_vibrational_structure(self, eigvals, eigvecs):
+        """Verify exact curvature in the same space used by final TS freq."""
+        try:
+            frequency_data = self._mw_frequencies_and_modes()
+        except Exception as err:
+            self.table.print(
+                "Exact PHVA saddle verification failed; stopping without "
+                f"convergence ({type(err).__name__}: {err})."
+            )
+            self.request_stop("exact PHVA saddle verification failed")
+            return False, None, True
+
+        if frequency_data is None:
+            # Preserve support for internal/custom partial coordinate spaces.
+            return self._has_required_negative_modes(eigvals), None, False
+
+        freqs_cm, modes = frequency_data
+        self._last_exact_frequencies_cm = freqs_cm.copy()
+        neg_mask = freqs_cm < -self.saddle_imaginary_threshold_cm
+        n_imaginary = int(np.count_nonzero(neg_mask))
+        self._last_exact_n_imaginary = n_imaginary
+        has_saddle_modes = n_imaginary >= len(self.roots)
+        self._last_exact_saddle_cycle = (
+            self.cur_cycle if has_saddle_modes else None
+        )
+        lowest = f"{float(freqs_cm[0]):+.2f} cm^-1" if freqs_cm.size else "n/a"
+        self.table.print(
+            "Exact PHVA saddle validation: "
+            f"n_imag={n_imaginary}, lowest={lowest}."
+        )
+
+        physical_mode = None
+        if freqs_cm.size:
+            physical_mode = self._recovery_mode_from_mw(
+                modes, int(np.argmin(freqs_cm))
+            )
+        if not has_saddle_modes and physical_mode is None:
+            physical_mode = self._fallback_recovery_mode(eigvecs)
+        return has_saddle_modes, physical_mode, True
+
+    def _recovery_mode_has_negative_curvature(self, H, mode=None):
+        """Test the target recovery direction, ignoring unrelated TR artifacts."""
+        if mode is None:
+            mode = self._saddle_recovery_mode
+        if mode is None:
+            return False
+        if isinstance(H, torch.Tensor):
+            mode_t = torch.as_tensor(mode, dtype=H.dtype, device=H.device)
+            mode_t = mode_t / torch.linalg.norm(mode_t)
+            curvature = float((mode_t @ H @ mode_t).detach().cpu())
+            mode_np = mode_t.detach().cpu().numpy()
+        else:
+            mode_arr = np.asarray(mode, dtype=float)
+            mode_arr = mode_arr / np.linalg.norm(mode_arr)
+            curvature = float(mode_arr @ np.asarray(H) @ mode_arr)
+            mode_np = mode_arr
+        self._last_recovery_mode_curvature = curvature
+
+        # Use the same physical frequency threshold as exact PHVA.  Testing
+        # only curvature < 0 would immediately accept a sub-threshold soft
+        # mode that final frequency analysis intentionally discards.
+        if self.geometry.coord_type in ("cart", "cartesian"):
+            from ase import units
+            from pysisyphus.constants import AU2EV, BOHR2ANG
+            from pdb2reaction.workflows.freq import _safe_masses_amu
+
+            masses_3n = np.repeat(
+                _safe_masses_amu(self.geometry.atomic_numbers), 3
+            )
+            masses = np.asarray(self.active_from_full(masses_3n), dtype=float)
+            if masses.size == mode_np.size:
+                mass_norm = float(np.dot(masses, mode_np**2))
+                if mass_norm > 0.0:
+                    omega2 = curvature / mass_norm
+                    conversion = (
+                        units._hbar
+                        * 1e10
+                        / np.sqrt(units._e * units._amu)
+                        * np.sqrt(AU2EV)
+                        / BOHR2ANG
+                        / units.invcm
+                    )
+                    frequency_cm = float(
+                        np.copysign(conversion * np.sqrt(abs(omega2)), omega2)
+                    )
+                    self._last_recovery_mode_frequency_cm = frequency_cm
+                    return frequency_cm < -self.saddle_imaginary_threshold_cm
+
+        return curvature < -self.small_eigval_thresh
+
+    def _near_terminal_without_eigval_check(self):
+        """Whether force/energy or plateau criteria are nearly terminal."""
+        if not self.forces:
+            return False
+        forces = np.asarray(self.forces[-1])
+        force_ok = True
+        if "max_force_thresh" in self.convergence:
+            force_ok &= np.abs(forces).max() <= self.max_force_thresh
+        if "rms_force_thresh" in self.convergence:
+            force_ok &= np.sqrt(np.mean(forces**2)) <= self.rms_force_thresh
+
+        energy_ok = True
+        if self.thresh == "baker":
+            energy_ok = len(self.energies) >= 2 and abs(
+                float(self.energies[-1] - self.energies[-2])
+            ) < 1e-6
+
+        step_ok = True
+        if self.steps:
+            incoming_step = np.asarray(self.steps[-1])
+            if "max_step_thresh" in self.convergence:
+                step_ok &= np.abs(incoming_step).max() <= self.max_step_thresh
+            if "rms_step_thresh" in self.convergence:
+                step_ok &= (
+                    np.sqrt(np.mean(incoming_step**2)) <= self.rms_step_thresh
+                )
+
+        plateau = False
+        if self.energy_plateau and len(self.energies) >= self.energy_plateau_window:
+            window = self.energies[-self.energy_plateau_window :]
+            plateau = float(np.max(window) - np.min(window)) < self.energy_plateau_thresh
+        physical_mode_already_verified = (
+            self._physical_ts_mode is not None
+            and self._last_exact_n_imaginary is not None
+            and self._last_exact_n_imaginary >= len(self.roots)
+        )
+        if not physical_mode_already_verified:
+            # Initial/restarted minima and newly recovered curvature need one
+            # immediate exact check. This also handles a one-step landing on a
+            # stationary point before Baker has a repeated energy.
+            return bool(force_ok or plateau)
+
+        # Once exact PHVA has confirmed the physical saddle mode, avoid an
+        # O(3N) finite-difference Hessian on every low-force iteration. Recheck
+        # only when the incoming step and Baker energy are terminal too, or
+        # when the plateau fallback would otherwise stop the run.
+        return bool((force_ok and energy_ok and step_ok) or plateau)
+
+    def _restore_hessian_trial_state(self, snapshot):
+        self.H = snapshot["H"]
+        self.hessian_recalc_in = snapshot["hessian_recalc_in"]
+        self.adapt_norm = snapshot["adapt_norm"]
+        self._sy_buffer_S = snapshot["sy_S"]
+        self._sy_buffer_Y = snapshot["sy_Y"]
+
+    def _reject_lost_mode_trial(self, snapshot):
+        self.trust_radius = max(
+            self.trust_radius / 4.0,
+            min(self.mode_loss_trust_floor, self.trust_radius),
+        )
+        self._restore_hessian_trial_state(snapshot)
+        self.reject_current_trial()
+        self.rejected_mode_loss_steps += 1
+        at_floor = self.trust_radius <= self.mode_loss_trust_floor * (1.0 + 1e-12)
+        self.mode_loss_rejections_at_floor = (
+            self.mode_loss_rejections_at_floor + 1 if at_floor else 0
+        )
+        self.table.print(
+            "Rejected TS trial that lost the required saddle mode; restored the "
+            f"previous saddle-side geometry (trust={self.trust_radius:.3e})."
+        )
+        if self.mode_loss_rejections_at_floor >= self.max_mode_loss_rejections:
+            self.request_stop(
+                "repeated TS mode-loss trials at the emergency trust floor"
+            )
+
+        energy = self.energies[-1]
+        gradient_full = -np.asarray(self.forces[-1])
+        gradient, H, eigvals, eigvecs = self._hessian_system(gradient_full)
+        return energy, gradient, H, eigvals, eigvecs, True
+
+    def _refresh_exact_saddle_model(self, gradient_full):
+        self.H = self.geometry.hessian
+        if self.using_active_dofs:
+            self.H = self.active_hessian(self.H)
+        if self.hessian_recalc is not None:
+            self.hessian_recalc_in = self.hessian_recalc
+        self.exact_saddle_checks += 1
+        return self._hessian_system(np.asarray(gradient_full))
+
+    def housekeeping(self):
+        recovery_active_at_entry = self._saddle_recovery_active
+        can_reject_trial = (
+            self.reject_mode_loss
+            and self.negative_mode_seen
+            and not self._saddle_recovery_active
+            and len(self.coords) > 1
+            and len(self.steps) > 0
+            and len(self.predicted_energy_changes) > 0
+        )
+        snapshot = None
+        if can_reject_trial:
+            snapshot = {
+                # update_hessian replaces self.H instead of mutating it, so a
+                # reference is sufficient and avoids an extra NxN copy.
+                "H": self.H,
+                "hessian_recalc_in": self.hessian_recalc_in,
+                "adapt_norm": self.adapt_norm,
+                "sy_S": list(self._sy_buffer_S),
+                "sy_Y": list(self._sy_buffer_Y),
+            }
+
+        energy, gradient, H, eigvals, eigvecs, resetted = super().housekeeping()
+        has_negative = self._has_required_negative_modes(eigvals)
+        if recovery_active_at_entry:
+            has_negative = self._recovery_mode_has_negative_curvature(H)
+        elif self._physical_ts_mode is not None:
+            # Once a physical saddle mode has been recovered/verified, follow
+            # that mode rather than allowing an unrelated raw-Hessian
+            # translation/rotation artifact to satisfy the mode guard.
+            has_negative = self._recovery_mode_has_negative_curvature(
+                H, self._physical_ts_mode
+            )
+
+        # The historical n_imag=0 failures all terminated through the energy-
+        # plateau fallback.  Validate an apparent terminal point with the exact
+        # Hessian before it can be reported as a TS.
+        exact_checked = False
+        if (
+            self.verify_saddle
+            and self._near_terminal_without_eigval_check()
+            and not self._saddle_recovery_active
+        ):
+            gradient, H, eigvals, eigvecs = self._refresh_exact_saddle_model(
+                -np.asarray(self.forces[-1])
+            )
+            has_negative, physical_mode, physical_checked = (
+                self._verify_exact_vibrational_structure(eigvals, eigvecs)
+            )
+            exact_checked = True
+            resetted = True
+            if not has_negative:
+                self._saddle_recovery_active = True
+                self._saddle_recovery_mode = physical_mode
+                self._saddle_recovery_sign = None
+                self._physical_ts_mode = None
+                self.saddle_recovery_cycles = 0
+                self.table.print(
+                    "Exact saddle validation found no physical imaginary mode; "
+                    "continuing with saddle-recovery steps instead of accepting "
+                    "a local minimum."
+                )
+            elif physical_checked:
+                self._saddle_recovery_mode = None
+                self._physical_ts_mode = physical_mode
+
+        if has_negative:
+            self.negative_mode_seen = True
+            self.mode_loss_rejections_at_floor = 0
+            if self._saddle_recovery_active:
+                self.table.print("Recovered negative curvature; resuming TS optimization.")
+                mode = self._saddle_recovery_mode
+                if isinstance(mode, torch.Tensor):
+                    mode = mode.detach().clone()
+                elif mode is not None:
+                    mode = np.asarray(mode, dtype=float).copy()
+                self._physical_ts_mode = mode
+            self._saddle_recovery_active = False
+            self._saddle_recovery_mode = None
+            self._saddle_recovery_sign = None
+            self.saddle_recovery_cycles = 0
+        elif self._saddle_recovery_active:
+            if recovery_active_at_entry:
+                self.saddle_recovery_cycles += 1
+            if self.saddle_recovery_cycles >= self.saddle_recovery_max_cycles:
+                self.request_stop(
+                    "exact-Hessian saddle recovery did not regain negative curvature"
+                )
+        elif can_reject_trial and not exact_checked:
+            return self._reject_lost_mode_trial(snapshot)
+
+        return energy, gradient, H, eigvals, eigvecs, resetted
+
+    def check_convergence(self, *args, **kwargs):
+        converged, conv_info = super().check_convergence(*args, **kwargs)
+        if self._saddle_recovery_active or self.stop_requested:
+            converged = False
+        elif (
+            self._last_exact_saddle_cycle == self.cur_cycle
+            and self._last_exact_n_imaginary is not None
+            and self._last_exact_n_imaginary >= len(self.roots)
+            and conv_info.max_force_converged
+            and conv_info.rms_force_converged
+            and conv_info.max_step_converged
+            and conv_info.rms_step_converged
+            and conv_info.desired_eigval_structure
+        ):
+            # The exact PHVA and current force/step criteria make a repeated
+            # zero-displacement cycle unnecessary. Preserve Baker's strict
+            # energy rule everywhere else.
+            converged = True
+            conv_info = replace(conv_info, energy_converged=True)
+        return converged, conv_info
+
+    def apply_saddle_recovery_step(self, step):
+        """Ensure a finite uphill component while escaping a local minimum."""
+        if not self._saddle_recovery_active or self.stop_requested:
+            return step
+        mode = self._saddle_recovery_mode
+        if mode is None:
+            mode = self.ts_modes[0]
+        amplitude = min(self.trust_radius, self.saddle_recovery_step)
+        if isinstance(step, torch.Tensor):
+            if not isinstance(mode, torch.Tensor):
+                mode = torch.as_tensor(mode, dtype=step.dtype, device=step.device)
+            mode = mode / torch.linalg.norm(mode)
+            component = torch.dot(step, mode)
+            comp_value = float(component.detach().cpu())
+            if self._saddle_recovery_sign is None and self.steps:
+                incoming = self.active_from_full(np.asarray(self.steps[-1]))
+                incoming = torch.as_tensor(
+                    incoming, dtype=step.dtype, device=step.device
+                )
+                incoming_component = float(torch.dot(incoming, mode).detach().cpu())
+                if abs(incoming_component) > 1e-14:
+                    sign = -1.0 if incoming_component > 0.0 else 1.0
+                elif abs(comp_value) > 1e-14:
+                    sign = 1.0 if comp_value > 0.0 else -1.0
+                else:
+                    pivot = int(torch.argmax(torch.abs(mode)).item())
+                    sign = 1.0 if float(mode[pivot].detach().cpu()) >= 0.0 else -1.0
+                self._saddle_recovery_sign = sign
+            elif self._saddle_recovery_sign is None:
+                if abs(comp_value) > 1e-14:
+                    sign = 1.0 if comp_value > 0.0 else -1.0
+                else:
+                    pivot = int(torch.argmax(torch.abs(mode)).item())
+                    sign = 1.0 if float(mode[pivot].detach().cpu()) >= 0.0 else -1.0
+                self._saddle_recovery_sign = sign
+            sign = self._saddle_recovery_sign
+            if sign * comp_value < amplitude:
+                step = step + (sign * amplitude - component) * mode
+                component = torch.dot(step, mode)
+                orthogonal = step - component * mode
+                orthogonal_norm = torch.linalg.norm(orthogonal)
+                orthogonal_limit = np.sqrt(
+                    max(self.trust_radius**2 - amplitude**2, 0.0)
+                )
+                if float(orthogonal_norm.detach().cpu()) > orthogonal_limit:
+                    if orthogonal_limit == 0.0:
+                        orthogonal = torch.zeros_like(orthogonal)
+                    else:
+                        orthogonal = orthogonal * (
+                            orthogonal_limit / orthogonal_norm
+                        )
+                    step = component * mode + orthogonal
+        else:
+            mode = np.asarray(mode, dtype=float)
+            mode = mode / np.linalg.norm(mode)
+            component = float(np.dot(step, mode))
+            if self._saddle_recovery_sign is None and self.steps:
+                incoming = np.asarray(self.active_from_full(self.steps[-1]), dtype=float)
+                incoming_component = float(np.dot(incoming, mode))
+                if abs(incoming_component) > 1e-14:
+                    sign = -1.0 if incoming_component > 0.0 else 1.0
+                elif abs(component) > 1e-14:
+                    sign = 1.0 if component > 0.0 else -1.0
+                else:
+                    pivot = int(np.argmax(np.abs(mode)))
+                    sign = 1.0 if mode[pivot] >= 0.0 else -1.0
+                self._saddle_recovery_sign = sign
+            elif self._saddle_recovery_sign is None:
+                if abs(component) > 1e-14:
+                    sign = 1.0 if component > 0.0 else -1.0
+                else:
+                    pivot = int(np.argmax(np.abs(mode)))
+                    sign = 1.0 if mode[pivot] >= 0.0 else -1.0
+                self._saddle_recovery_sign = sign
+            sign = self._saddle_recovery_sign
+            if sign * component < amplitude:
+                step = step + (sign * amplitude - component) * mode
+                component = float(np.dot(step, mode))
+                orthogonal = step - component * mode
+                orthogonal_norm = float(np.linalg.norm(orthogonal))
+                orthogonal_limit = np.sqrt(
+                    max(self.trust_radius**2 - amplitude**2, 0.0)
+                )
+                if orthogonal_norm > orthogonal_limit:
+                    if orthogonal_limit == 0.0:
+                        orthogonal = np.zeros_like(orthogonal)
+                    else:
+                        orthogonal *= orthogonal_limit / orthogonal_norm
+                    step = component * mode + orthogonal
+        self.saddle_recovery_steps += 1
+        return step
+
     def update_ts_mode(self, eigvals, eigvecs):
         neg_eigval_inds = eigvals < -self.small_eigval_thresh
         neg_num = neg_eigval_inds.sum()
         self.log_negative_eigenvalues(eigvals)
+
+        # A recovered/PHVA-verified vibration is the chemically meaningful TS
+        # direction. Select the raw-Hessian eigenvector with maximum overlap
+        # among significant negative roots, so a spurious TR root cannot take
+        # over merely because it has the lowest unprojected eigenvalue.
+        if self._physical_ts_mode is not None and len(self.roots) == 1:
+            reference = self._physical_ts_mode
+            if isinstance(eigvecs, torch.Tensor):
+                reference = torch.as_tensor(
+                    reference, dtype=eigvecs.dtype, device=eigvecs.device
+                )
+                if reference.shape[0] != eigvecs.shape[0]:
+                    reference = self.active_from_full(reference)
+                overlaps = torch.abs(eigvecs.T @ reference)
+                negative = eigvals < -self.small_eigval_thresh
+                if bool(negative.any()):
+                    overlaps = torch.where(
+                        negative, overlaps, torch.full_like(overlaps, -1.0)
+                    )
+                    selected = int(torch.argmax(overlaps).item())
+                else:
+                    selected = None
+            else:
+                reference = np.asarray(reference, dtype=float)
+                if reference.shape[0] != eigvecs.shape[0]:
+                    reference = self.active_from_full(reference)
+                overlaps = np.abs(eigvecs.T @ reference)
+                negative = eigvals < -self.small_eigval_thresh
+                selected = (
+                    int(np.argmax(np.where(negative, overlaps, -1.0)))
+                    if np.any(negative)
+                    else None
+                )
+            if selected is not None:
+                self.roots = np.array([selected], dtype=int)
+                self.ts_modes = eigvecs[:, self.roots].T
+                self.ts_mode_eigvals = eigvals[self.roots]
+                self.log(
+                    "Following PHVA-verified TS mode at raw-Hessian root "
+                    f"{selected}."
+                )
+                return
 
         # --- DEBUG: dump all negative eigvals + overlaps with prev TS mode ---
         # all_freqs = self._all_mw_freqs_cm()
@@ -443,23 +1022,13 @@ class TSHessianOptimizer(HessianOptimizer):
     def _all_mw_freqs_cm(self):
         """Return all mass-weighted frequencies (cm⁻¹) from current Hessian."""
         try:
-            from pdb2reaction.freq import _frequencies_cm_and_modes
-            from ase.data import atomic_numbers as _AN
-            H = self.cur_H
-            if isinstance(H, torch.Tensor):
-                H_in = H.detach().clone().double().cpu()
-            else:
-                H_in = torch.from_numpy(np.array(H, dtype=np.float64))
-            Z = [_AN[s] for s in self.geometry.atoms]
-            coords_bohr = self.geometry.cart_coords.reshape(-1, 3).copy()
-            freeze = list(self.geometry.freeze_atoms) or None
-            freqs_cm, _ = _frequencies_cm_and_modes(
-                H_in, Z, coords_bohr, torch.device("cpu"), freeze_idx=freeze,
-            )
-            del H_in
+            result = self._mw_frequencies_and_modes()
+            if result is None:
+                return []
+            freqs_cm, _ = result
             return [float(f) for f in freqs_cm]
-        except Exception:
-            import traceback; traceback.print_exc()
+        except Exception as err:
+            self.log(f"Mass-weighted frequency analysis failed: {err}")
             return []
 
     @staticmethod

@@ -542,37 +542,15 @@ class HessianOptimizer(Optimizer):
             )
         return unexpected_increase
 
-    def reject_current_uphill_step(self):
-        """Restore the last accepted point and discard a failed trial step.
-
-        ``Optimizer.run`` records the trial coordinates before calling
-        ``optimize``.  Energy, force, step, and model-prediction histories must
-        therefore be rolled back together; otherwise the next trust-radius and
-        BFGS updates would compare mismatched points.
-        """
-        actual_change = float(self.energies[-1] - self.energies[-2])
-        previous_cart_coords = self.cart_coords[-2].copy()
-
-        # Restore Cartesian coordinates so internal-coordinate geometries are
-        # returned to the exact accepted structure, not merely an approximate
-        # internal-to-Cartesian back transformation.
-        self.geometry.cart_coords = previous_cart_coords
-
-        self.coords.pop()
-        self.cart_coords.pop()
-        self.energies.pop()
-        self.forces.pop()
-        self.steps.pop()
+    def _rollback_trial_state(self):
+        if not self.predicted_energy_changes:
+            raise RuntimeError("Missing model prediction for Hessian trial rejection.")
         self.predicted_energy_changes.pop()
-        # These per-cycle records are appended beside coords in Optimizer.run.
-        if len(self.image_inds) > len(self.coords):
-            self.image_inds.pop()
-        if len(self.image_nums) > len(self.coords):
-            self.image_nums.pop()
 
-        # Keep the surviving coordinate record bitwise aligned with Geometry.
-        self.coords[-1] = self.geometry.coords.copy()
-        self.cart_coords[-1] = self.geometry.cart_coords.copy()
+    def reject_current_uphill_step(self):
+        """Reject an uphill minimization trial through the shared transaction."""
+        actual_change = float(self.energies[-1] - self.energies[-2])
+        self.reject_current_trial()
         self.rejected_uphill_steps += 1
         self.table.print(
             "Rejected uphill RFO trial and restored the previous geometry "
@@ -999,6 +977,18 @@ class HessianOptimizer(Optimizer):
                 self.rejections_at_floor = 0
                 self.update_hessian()
 
+        gradient, H, eigvals, eigvecs = self._hessian_system(gradient_full)
+
+        resetted = not can_update
+        return energy, gradient, H, eigvals, eigvecs, resetted
+
+    def _hessian_system(self, gradient_full):
+        """Return the active Hessian eigensystem for ``gradient_full``.
+
+        Keeping this transformation separate lets a safeguarded optimizer
+        restore or exactly recalculate its Hessian and rebuild a consistent
+        eigensystem without appending duplicate energy/force history entries.
+        """
         # Convert gradient to match H device/dtype AFTER update_hessian(),
         # so that hessian_recalc (which may replace self.H with a new tensor
         # on a different device) is accounted for.
@@ -1044,9 +1034,8 @@ class HessianOptimizer(Optimizer):
         # Neglect small eigenvalues
         eigvals, eigvecs = self.filter_small_eigvals(eigvals, eigvecs)
 
-        resetted = not can_update
         self.cur_H = H
-        return energy, gradient, H, eigvals, eigvecs, resetted
+        return gradient, H, eigvals, eigvecs
 
     def get_augmented_hessian(self, eigvals, gradient, alpha=1.0):
         if isinstance(gradient, torch.Tensor):

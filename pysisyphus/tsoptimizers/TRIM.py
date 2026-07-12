@@ -46,6 +46,16 @@ class TRIM(TSHessianOptimizer):
         # -vector of the mode to follow uphill.
         eigvals_ = eigvals.copy()
         eigvals_[self.roots] *= -1
+        if self._physical_ts_mode is not None:
+            residual_negative = eigvals_ < -self.small_eigval_thresh
+            residual_count = int(np.count_nonzero(residual_negative))
+            if residual_count:
+                eigvals_[residual_negative] *= -1
+                self.log(
+                    "Stabilized "
+                    f"{residual_count} residual negative image-Hessian root(s) "
+                    "outside the PHVA-verified TS mode."
+                )
         gradient_ = gradient_.copy()
         gradient_[self.roots] *= -1
 
@@ -87,6 +97,7 @@ class TRIM(TSHessianOptimizer):
         step_norm = np.linalg.norm(step)
         self.log(f"norm(step)={step_norm:.6f}")
 
+        step = self.apply_saddle_recovery_step(step)
         self.predicted_energy_changes.append(self.quadratic_model(gradient, as_numpy(self.H), step))
 
         # Expand the step back to full-coord space when the active subspace is in

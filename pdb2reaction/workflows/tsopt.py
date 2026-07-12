@@ -1329,7 +1329,12 @@ GEOM_KW = dict(GEOM_KW_DEFAULT)
 CALC_KW = dict(UMA_CALC_KW)
 
 # Optimizer base (common) — used by both RSIRFO and the inner LBFGS of Hessian Guided Dimer
-OPT_BASE_KW_LOCAL = {**OPT_BASE_KW, "out_dir": OUT_DIR_TSOPT, "thresh": "baker"}
+OPT_BASE_KW_LOCAL = {
+    **OPT_BASE_KW,
+    "out_dir": OUT_DIR_TSOPT,
+    "thresh": "baker",
+    "check_eigval_structure": True,
+}
 
 # hessian_dimer_KW kept as alias for backward compatibility with internal references
 hessian_dimer_KW = HESSIAN_DIMER_CLI_KW
@@ -1661,6 +1666,12 @@ def cli(
                         simple_cfg["lbfgs"].setdefault("print_every", opt_print_every)
             except (TypeError, ValueError):
                 pass
+
+        # Optimizer-side exact validation and the final reported PHVA must use
+        # the same definition of an imaginary mode.
+        rsirfo_cfg["saddle_imaginary_threshold_cm"] = float(
+            simple_cfg.get("neg_freq_thresh_cm", 5.0)
+        )
 
         # Convert 1-based YAML freeze_atoms to 0-based internal
         if geom_cfg.get("freeze_atoms"):
@@ -2026,7 +2037,13 @@ def cli(
                 # --- RSIRFO: write all final imaginary modes ---
                 neg_idx = _echo_imaginary_modes(freqs_cm, neg_freq_thresh_cm)
                 if len(neg_idx) == 0:
-                    click.echo("[INFO] No imaginary mode found at the end for RSIRFO.")
+                    last_optimizer.is_converged = False
+                    click.echo(
+                        "[WARNING] No imaginary mode found in the final exact "
+                        "Hessian; this geometry is not a first-order saddle and "
+                        "is marked not_converged.",
+                        err=True,
+                    )
                 else:
                     vib_dir = out_dir_path / "vib"
                     ref_pdb_mode = source_path if source_path.suffix.lower() == ".pdb" else None
@@ -2068,6 +2085,33 @@ def cli(
                         "max_cycles": opt_cfg.get("max_cycles", simple_cfg.get("max_cycles")),
                         "input_file": str(input_path),
                         "files": {"final_geometry_xyz": str(final_xyz_path.name)},
+                        "safeguards": {
+                            "rejected_mode_loss_trials": int(
+                                getattr(last_optimizer, "rejected_mode_loss_steps", 0)
+                            ),
+                            "exact_saddle_checks": int(
+                                getattr(last_optimizer, "exact_saddle_checks", 0)
+                            ),
+                            "saddle_recovery_steps": int(
+                                getattr(last_optimizer, "saddle_recovery_steps", 0)
+                            ),
+                            "last_exact_n_imaginary": getattr(
+                                last_optimizer, "_last_exact_n_imaginary", None
+                            ),
+                            "last_recovery_mode_curvature": getattr(
+                                last_optimizer,
+                                "_last_recovery_mode_curvature",
+                                None,
+                            ),
+                            "last_recovery_mode_frequency_cm": getattr(
+                                last_optimizer,
+                                "_last_recovery_mode_frequency_cm",
+                                None,
+                            ),
+                            "stop_reason": str(
+                                getattr(last_optimizer, "stop_reason", "")
+                            ),
+                        },
                     }
                     # Convergence details from optimizer
                     if hasattr(last_optimizer, 'max_forces') and last_optimizer.max_forces:

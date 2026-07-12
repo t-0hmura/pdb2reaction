@@ -22,6 +22,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   floor and retain the lower-energy geometry instead of exhausting all cycles.
   This fixes the post-IRC endpoint optimizations that converged hundreds of
   kcal/mol above their starting structures in `all` workflows.
+- **Trial rejection is now shared by the optimizer base and also protects
+  LBFGS minimizations.** Coordinates, Cartesian coordinates, energy, force,
+  step, image, and optimizer-specific histories are restored atomically before
+  retrying with a smaller step limit. Chain-of-states and dimer TS searches are
+  excluded because their physical energy need not decrease monotonically.
+- **Hessian TS optimizers no longer report a local minimum as a converged
+  transition state.** RS-P-RFO, RS-I-RFO, and TRIM now require significant
+  negative curvature; the energy-plateau fallback cannot bypass that
+  requirement. A trial that loses all negative modes is rolled back with its
+  Hessian state and retried at a smaller trust radius. Apparent convergence is
+  verified with the same mass-weighted, translation/rotation-projected PHVA
+  criterion used by the final frequency analysis, so spurious negative raw
+  Hessian roots cannot mask `n_imag=0`. A near-flat minimum triggers a bounded
+  uphill recovery along its lowest physical vibration instead of being
+  accepted; after recovery, all three Hessian TS optimizers keep following that
+  PHVA mode and stabilize residual nonphysical negative image-Hessian roots.
+  Final exact-Hessian analysis with no imaginary mode is reported as
+  `not_converged`.
 - `all` summary generation imports the package-level version fallback, so a
   fresh source checkout without the build-generated `_version.py` can complete
   and write `summary.json`.
