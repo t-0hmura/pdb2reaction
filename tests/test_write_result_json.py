@@ -57,3 +57,19 @@ def test_disable_summary_mirror() -> None:
 
 def test_status_enum_documented() -> None:
     assert RESULT_JSON_STATUS_VALUES == ("success", "partial", "error", "unknown")
+
+
+def test_mlip_backend_and_model_are_recorded_separately() -> None:
+    with tempfile.TemporaryDirectory() as d:
+        write_result_json(
+            Path(d),
+            {
+                "status": "success",
+                "backend": "orb",
+                "model": "orb_v3_conservative_omol",
+            },
+            command="freq",
+        )
+        result = json.loads((Path(d) / "result.json").read_text())
+    assert result["mlip_backend"] == "orb"
+    assert result["mlip_model"] == "orb_v3_conservative_omol"

@@ -22,8 +22,14 @@ python -c "from pdb2reaction.backends import create_calculator; create_calculato
 
 ## HuggingFace authentication (required)
 
-UMA model weights are gated on HuggingFace and need an authenticated
-download:
+Every UMA checkpoint lives in one **gated** HuggingFace repo,
+`facebook/UMA`. Two steps unlock the download.
+
+**1. Accept the license.** Open <https://huggingface.co/facebook/UMA>
+and accept the FAIR Chemistry License v1 (approval is manual). Use the
+same HF account that owns the token in step 2.
+
+**2. Authenticate.**
 
 ```bash
 pip install huggingface_hub[cli]
@@ -37,9 +43,11 @@ The token is cached in `~/.cache/huggingface/`. Once it's there, future
 runs (and PBS jobs) pick it up automatically.
 
 If you hit `huggingface_hub.errors.GatedRepoError` or
-`401 Client Error: Unauthorized`, re-run `hf auth login` and make sure
-the token has access to the UMA model repos
-(`facebook/UMA-S-1.1`, `facebook/UMA-M-1.1`).
+`401 Client Error: Unauthorized`, check that the account behind your
+token has been granted access on <https://huggingface.co/facebook/UMA>
+(step 1), then re-run `hf auth login`. `facebook/UMA` is the only repo
+that needs access: the individual models are checkpoint *files* inside
+it, not separate repos.
 
 ## CLI usage
 
@@ -55,13 +63,14 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb \
 
 Available models (select with the `--backend-model` CLI flag, or via the
 `calc.model:` field in `--config` YAML / `pdb2reaction.core.defaults.UMA_CALC_KW`).
-Two equivalent notations are common:
+Two equivalent notations are common; all three checkpoints are served
+from the single `facebook/UMA` repo:
 
-| config string (`calc.model`) | paper notation | HuggingFace repo | Notes |
+| config string (`calc.model`) | paper notation | checkpoint in `facebook/UMA` | Notes |
 |---|---|---|---|
-| `uma-s-1p1` | UMA-s-1.1 | `facebook/UMA-S-1.1` | Smaller / faster, sufficient for most workflows |
-| `uma-s-1p2` (default) | UMA-s-1.2 | `facebook/UMA-S-1.2` | Successor checkpoint (still small) |
-| `uma-m-1p1` | UMA-m-1.1 | `facebook/UMA-M-1.1` | Larger, slightly more accurate, ~3× slower |
+| `uma-s-1p1` | UMA-s-1.1 | `checkpoints/uma-s-1p1.pt` | Smaller / faster, sufficient for most workflows |
+| `uma-s-1p2` (default) | UMA-s-1.2 | `checkpoints/uma-s-1p2.pt` | Successor checkpoint (still small) |
+| `uma-m-1p1` | UMA-m-1.1 | `checkpoints/uma-m-1p1.pt` | Larger, slightly more accurate, ~3× slower |
 
 `p` is the dot replacement used by fairchem-core's config parser
 (`1p1` ↔ `1.1`). Pass the model name via `--backend-model` (e.g.
@@ -87,6 +96,7 @@ UMA accepts these calculator kwargs (canonical list in
 | `freeze_atoms` | Indices of atoms held fixed (cap-atom parents, frozen residues) |
 | `hessian_calc_mode` | `'FiniteDifference'` (default) or `'Analytical'` |
 | `return_partial_hessian`, `hessian_double` | Memory / numerical-precision toggles |
+| `precision` | `'fp32'` (UMA's default — the fairchem baseline) or `'fp64'` for full-precision base inference (needs fairchem-core ≥ 2.0). `--precision fp64` also forces a fp64 Hessian, and can change TSopt / Hessian numerics non-trivially |
 | `workers`, `workers_per_node` | Multi-GPU inference (uses Ray) |
 | `max_neigh`, `radius` | Neighbor-list cutoffs |
 

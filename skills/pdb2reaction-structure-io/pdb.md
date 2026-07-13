@@ -109,6 +109,21 @@ re-derives the parent atom of each `LKH/HL` record at runtime via a
 nearest-neighbor search in Cartesian space. The B-factor column on
 the LKH atoms is hard-coded to 0.00 by `_format_linkH_block`.
 
+## Manual cluster-boundary checklist
+
+- Make a retained backbone fragment terminate consistently at alpha carbons
+  (`CA`) at both main-chain ends, then cap the open valences.
+- For side-chain/ligand/cofactor truncation, choose an aliphatic C–C single
+  bond whenever possible (`CA–CB` or farther from the reactive center). Do not
+  cut peptide C–N, polar C–N/C–O, aromatic/conjugated, disulfide, or
+  metal-coordination bonds; move the boundary or include the bonded partner.
+- One intended cap per severed valence; visually inspect bond lengths and
+  valence. Keep cap parents frozen with `--freeze-links` in production.
+- Apply exactly the same atom selection, order, and cap topology to R/IM/P.
+  Never re-extract compared states independently.
+- Recompute net charge/multiplicity after truncation. A geometrically neat
+  cluster with the wrong electron count is still an invalid MLIP input.
+
 ## Common edits
 
 ### Rename residue 44 in chain A from CYS to CSS

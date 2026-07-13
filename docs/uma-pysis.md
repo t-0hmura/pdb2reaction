@@ -114,7 +114,7 @@ The correction uses a delta approach: ΔE = E_xTB(solvent) - E_xTB(vacuum), adde
 - **Multi-worker inference** – `workers>1` spawns `fairchem-core`'s `ParallelMLIPPredictUnit` with `workers_per_node` workers per node, useful for batch throughput.
 
 (workers-fd-downgrade)=
-### `workers > 1` disables analytical Hessians (UMA backend)
+### `workers > 1` is incompatible with analytical Hessians (UMA backend)
 
 ```{warning}
 When the UMA backend is used with `workers > 1`, an explicitly requested analytical Hessian (`hessian_calc_mode="Analytical"`) is unavailable because the parallel predictor exposes no autograd model. The run raises `RuntimeError` instead of silently changing the requested method. Use `workers = 1` for an analytical Hessian, or select `FiniteDifference`. This applies to every subcommand that exposes `--workers` / `--workers-per-node` (`opt`, `tsopt`, `freq`, `irc`, `sp`, `all`, `path-opt`, `path-search`, and the scan family). On non-UMA backends (ORB, MACE, AIMNet2) `workers` / `workers_per_node` are filtered out per `_BACKEND_ACCEPTED_KEYS`, so this rule does not apply.

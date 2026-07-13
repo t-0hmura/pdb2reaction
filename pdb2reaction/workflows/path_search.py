@@ -7,6 +7,7 @@ Example:
 For detailed documentation, see: docs/path-search.md
 
 Table of contents (top-level definitions; refresh manually after structural edits):
+    def _normalized_path_tangent
     def _bond_changes_block
     def _calc_rmsd
     def _rmsd_between
@@ -124,6 +125,82 @@ from pdb2reaction.cli.common_options import add_coord_type_option, add_precision
 from pdb2reaction.cli.decorators import run_cli, resolve_yaml_sources, load_merged_yaml_cfg
 
 logger = logging.getLogger(__name__)
+
+
+def _normalized_path_tangent(
+    coords: Sequence[np.ndarray],
+    index: int,
+    energies: Optional[Sequence[float]] = None,
+) -> Optional[np.ndarray]:
+    """Return the Cartesian path tangent used for the HEI-to-TS handoff.
+
+    When finite image energies are available, use the standard improved
+    upwinding tangent from the chain-of-states optimizer.  It suppresses the
+    low-energy side of a kink at an extremum and is the direction used by the
+    converged string itself.  Older trajectories without readable energies
+    fall back to the spacing-independent bisector of normalized secants.
+    Endpoints use their only available secant.
+    """
+    if len(coords) < 2 or not 0 <= int(index) < len(coords):
+        return None
+
+    arrays = [np.asarray(item, dtype=float).reshape(-1) for item in coords]
+
+    def _unit(vector: np.ndarray) -> Optional[np.ndarray]:
+        norm = float(np.linalg.norm(vector))
+        if not np.isfinite(norm) or norm <= 0.0:
+            return None
+        return vector / norm
+
+    if index == 0:
+        return _unit(arrays[1] - arrays[0])
+    if index == len(arrays) - 1:
+        return _unit(arrays[-1] - arrays[-2])
+
+    incoming_raw = arrays[index] - arrays[index - 1]
+    outgoing_raw = arrays[index + 1] - arrays[index]
+    incoming = _unit(incoming_raw)
+    outgoing = _unit(outgoing_raw)
+    if incoming is None:
+        return outgoing
+    if outgoing is None:
+        return incoming
+
+    if energies is not None and len(energies) == len(arrays):
+        energy_values = np.asarray(energies, dtype=float)
+        prev_energy = float(energy_values[index - 1])
+        image_energy = float(energy_values[index])
+        next_energy = float(energy_values[index + 1])
+        if np.all(np.isfinite((prev_energy, image_energy, next_energy))):
+            if next_energy > image_energy > prev_energy:
+                upwinding = outgoing_raw
+            elif next_energy < image_energy < prev_energy:
+                upwinding = incoming_raw
+            else:
+                next_delta = abs(next_energy - image_energy)
+                prev_delta = abs(prev_energy - image_energy)
+                delta_max = max(next_delta, prev_delta)
+                delta_min = min(next_delta, prev_delta)
+                if next_energy >= prev_energy:
+                    upwinding = (
+                        outgoing_raw * delta_max
+                        + incoming_raw * delta_min
+                    )
+                else:
+                    upwinding = (
+                        outgoing_raw * delta_min
+                        + incoming_raw * delta_max
+                    )
+            tangent = _unit(upwinding)
+            if tangent is not None:
+                return tangent
+
+    tangent = _unit(incoming + outgoing)
+    if tangent is not None:
+        return tangent
+    # An exact reversal has no unique bisector. Try the chord before declining
+    # the handoff rather than emitting a non-finite reference mode.
+    return _unit(arrays[index + 1] - arrays[index - 1])
 
 
 
@@ -1679,7 +1756,7 @@ def _merge_final_and_write(final_images: List[Any],
     show_default=False,
     help="Comma-separated 1-based atom indices to freeze (e.g., '1,3,5').",
 )
-@click.option("--max-nodes", type=int, default=20, show_default=True,
+@click.option("--max-nodes", type=int, default=GS_KW["max_nodes"], show_default=True,
               help=("Number of internal nodes (string has max_nodes+2 images including endpoints). "
                     "Used for *segment* GSM unless overridden by YAML search.max_nodes_segment."))
 @click.option("--max-cycles", type=int, default=300, show_default=True, help="Maximum GSM optimization cycles.")
@@ -2404,6 +2481,20 @@ def cli(
                     hei_trj = out_dir_path / f"hei_seg_{seg_idx:02d}.xyz"
                     write_xyz_trj_with_energy([hei_img], hei_E, hei_trj)
                     click.echo(f"[write] Wrote segment HEI (active site model) → '{hei_trj}'", detail=True)
+                    if len(idxs) >= 2:
+                        tangent = _normalized_path_tangent(
+                            [image.cart_coords for image in seg_imgs],
+                            imax_rel,
+                            energies=energies_seg,
+                        )
+                        if tangent is not None:
+                            mode_path = out_dir_path / f"hei_mode_seg_{seg_idx:02d}.txt"
+                            np.savetxt(mode_path, tangent, fmt="%.17e")
+                            click.echo(
+                                "[write] Wrote HEI path-tangent reference mode "
+                                f"→ '{mode_path}'",
+                                detail=True,
+                            )
                     if needs_pdb or needs_gjf:
                         try:
                             convert_xyz_like_outputs(
@@ -2687,6 +2778,7 @@ def cli(
         summary["pipeline_mode"] = "path-search"
         summary["status"] = "success" if summary.get("energy_diagrams") else "partial"
         summary["mlip_backend"] = calc_cfg.get("backend", "uma")
+        summary["mlip_model"] = calc_cfg.get("model")
         summary["charge"] = calc_cfg.get("charge")
         summary["spin"] = calc_cfg.get("spin")
         summary["command"] = command_str

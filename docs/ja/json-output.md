@@ -30,6 +30,11 @@ cat result_opt/result.json | python -m json.tool
 | `status` | string | `success` / `partial` / `error` / `unknown` のいずれか |
 | `elapsed_seconds` | float | 実行時間（秒） |
 | `environment` | object | ハードウェア情報（下表参照） |
+| `mlip_backend` | string | MLIP workflowで使用したバックエンド名 |
+| `mlip_model` | string \| null | バックエンドと分離して記録する正確なmodel/checkpoint名 |
+
+各leaf schemaの`backend` / `model`も維持されますが、command横断の処理では
+`mlip_backend` / `mlip_model`を使用してください。
 
 **`environment`**:
 
@@ -95,9 +100,16 @@ cat result_opt/result.json | python -m json.tool
 | `n_imaginary_modes` | int | 虚振動の数 |
 | `imaginary_frequencies_cm` | float[] | 虚振動数 (cm⁻¹, 負の値) |
 | `opt_mode` | string | `"rsprfo"` (default) / `"rsirfo"` / `"trim"` / `"dimer"` |
+| `reference_mode_file` | string\|null | `--ref-mode` で渡した advanced path-mode ファイル。通常は `all` が生成して内部指定します |
+| `safeguards` | object | mode-loss rejection、exact saddle check、最終目的モードの index/overlap、高次鞍点でのMEP再anchor flag、停止理由、有界 path-mode restart の診断情報 |
 
 `files` には `imaginary_mode_files`（vib ファイルリスト）を含む場合があります。
-収束詳細 (force/step) は rsirfo モードで利用可能です。dimer モードも `runner.is_converged` に応じて `status` に `"converged"` / `"not_converged"` を返しますが、`n_opt_cycles` のみを出力し、rsirfo モードが出すサイクルごとの力・ステップ収束の詳細キーは省略されます。
+Hessian mode の `status: "converged"` には、最終 exact PHVA で有意な
+虚振動がちょうど1個必要です。高次鞍点と `n_imag=0` 構造は
+`not_converged` です。収束詳細 (force/step) は rsirfo モードで利用可能です。
+dimer モードも `status` に `"converged"` / `"not_converged"` を返しますが、
+`n_opt_cycles` のみを出力し、Hessian mode の収束詳細と `safeguards` は
+省略されます。
 
 ### `freq`
 
@@ -151,10 +163,13 @@ cat result_opt/result.json | python -m json.tool
 | `energy_product_hartree` | float | 生成物エネルギー |
 | `forward_converged` | bool \| null | 前方 IRC 収束? インテグレータがフラグを公開しない場合は `null` |
 | `backward_converged` | bool \| null | 後方 IRC 収束? インテグレータがフラグを公開しない場合は `null` |
+| `forward_energy_increased` | bool \| null | 前方の最終stepでenergyが上昇したか |
+| `backward_energy_increased` | bool \| null | 後方の最終stepでenergyが上昇したか |
 | `backend` | string | MLIP バックエンド |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
 | `model` | string | MLIP モデル名 |
+| `never_stop` | bool | energy上昇／平坦化停止を無視したか |
 | `n_freeze_atoms` | int | 凍結原子数 |
 | `solvent` | string | 暗黙溶媒 or `"none"` |
 | `bond_changes` | object | `{formed: [...], broken: [...]}` の各リストは元素記号付き 1 始まりの原子ペア文字列（例 `"C7-O12"`）。比較が失敗または `finished_first.xyz`/`finished_last.xyz` が存在しない場合はキー自体が省略されます。 |
@@ -240,7 +255,8 @@ cat result_opt/result.json | python -m json.tool
 | `n_segments` | int | 再帰 MEP のセグメント数 |
 | `segments` | object[] | セグメントごとの `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes`（`{title: [entries]}` dict のリスト。bridge セグメントは `""`）。 |
 | `energy_diagrams` | object[] | セグメントごとのラベル付きエネルギープロファイル (kcal/mol) |
-| `mlip_backend` | string | バックエンド / モデル名 |
+| `mlip_backend` | string | バックエンド名 |
+| `mlip_model` | string \| null | バックエンドと分離して記録するモデル名 |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
 
@@ -332,7 +348,8 @@ cat result_opt/result.json | python -m json.tool
 | `n_segments` | int | セグメント数 |
 | `segments` | object[] | セグメントごとの `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` |
 | `energy_diagrams` | object[] | エネルギーダイアグラム（ラベル + kcal/mol） |
-| `mlip_backend` | string | モデル名 |
+| `mlip_backend` | string | バックエンド名 |
+| `mlip_model` | string \| null | バックエンドと分離して記録するモデル名 |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
 | `environment` | object | ハードウェア情報 |

@@ -25,6 +25,7 @@ is the canonical machine-readable artifact for downstream analysis
 | `key_output_files` | Top-level entries map filename → description (str); `seg_NN` entries are `{description, files}` dicts |
 | `pipeline_mode` | One of `"path-search"`, `"path-opt"`, `"tsopt-only"` |
 | `mlip_backend` | Which backend produced the energies |
+| `mlip_model` | Exact model/checkpoint identifier, kept separate from `mlip_backend` |
 | `energy_diagrams` | List of energy-diagram entries (PNG / HTML paths and metadata) |
 | `out_dir` | Output directory absolute path |
 
@@ -37,8 +38,8 @@ Lightweight, MEP-level:
 | `index` | Segment index (1-based int; written zero-padded as `seg_01/`, `seg_02/`, …) |
 | `tag` | Segment-name string (`seg_NN` / `*_bridge`). To select reactive segments, filter `kind != "bridge"` |
 | `kind` | Segment kind (`"seg"`, `"bridge"`, or `"tsopt"`) |
-| `barrier_kcal` | TS – R energy (kcal/mol) — the rate constant input |
-| `delta_kcal` | P – R energy (kcal/mol) |
+| `barrier_kcal` | MEP-level band: highest MEP image − first MEP image (kcal/mol). In `tsopt-only` mode it is instead the refined TS − R energy. Whenever `--tsopt` ran, report ΔE‡ from `post_segments[i]["uma"]["barrier_kcal"]` (and ΔG‡ from `post_segments[i]["gibbs_uma"]["barrier_kcal"]` with `--thermo`) — the MEP band and the refined value can differ by several kcal/mol. |
+| `delta_kcal` | MEP-level P − R energy (kcal/mol; last MEP image − first). The refined ΔE is `post_segments[i]["uma"]["delta_kcal"]`. |
 | `bond_changes` | List of single-key dicts: `[{"Bond formed (k)": ["A-B : 3.17 Å --> 1.68 Å", ...]}, {"Bond broken (k)": [...]}]`. **Standalone `irc result.json["bond_changes"]` uses a different shape**: `{"formed": [str], "broken": [str]}` (flat dict). The list-of-dicts form here is the `path_search` / `all` summary.json shape. See "Bond-change interpretation" below for cutoff / algorithm. |
 
 ## Per-segment post-processing keys (`summary.json["post_segments"][i]`)
@@ -55,6 +56,8 @@ Present when `--tsopt`, `--thermo`, or `--dft` was passed:
 | `ts_imag` | Dict `{n_imag, nu_imag_max_cm, min_abs_imag_cm, min_freq_cm}` describing the TS spectrum |
 | `ts_imag_freq_cm` | Peak imaginary frequency (cm⁻¹); same as `ts_imag.nu_imag_max_cm` |
 | `gibbs_uma` | QRRHO Gibbs energies (when `--thermo`) |
+| `dft` | DFT//MLIP single-point energies (when `--dft`). Same shape as `uma`: `{labels, energies_au, energies_kcal, barrier_kcal, delta_kcal, diagram, structures}`. If DFT failed for any of R/TS/P, the block is `{"status": "failed", "failed_states": [...]}` instead, and no DFT diagram is written. |
+| `gibbs_dft_uma` | DFT electronic energy + MLIP QRRHO thermal correction (when `--dft` **and** `--thermo`, and all three DFT single-points succeeded). Same shape as `uma`; read `barrier_kcal` here for the DFT//MLIP ΔG‡. |
 
 ## R/TS/P canonical paths
 
@@ -79,17 +82,27 @@ mode are they computed from the post-IRC `reactant.xyz` / `product.xyz`.
 ```python
 import json
 
-# Per-segment barriers
+# Reportable per-segment barriers (TSOPT + IRC refined; present when --tsopt ran)
 d = json.load(open("result_all/summary.json"))
-for seg in d["segments"]:
-    print(f"seg_{seg['index']:02d}: ΔE‡ = {seg['barrier_kcal']:.1f} kcal/mol, "
-          f"ΔE = {seg['delta_kcal']:.1f} kcal/mol")
+for ps in d.get("post_segments", []):
+    uma = ps.get("uma") or {}
+    gibbs = ps.get("gibbs_uma") or {}            # only when --thermo ran
+    if uma.get("barrier_kcal") is None:
+        continue
+    line = (f"seg_{ps['index']:02d}: ΔE‡ = {uma['barrier_kcal']:.1f} kcal/mol, "
+            f"ΔE = {uma['delta_kcal']:.1f} kcal/mol")
+    if gibbs.get("barrier_kcal") is not None:
+        line += f", ΔG‡ = {gibbs['barrier_kcal']:.1f} kcal/mol"
+    print(line)
 
-# Rate-limiting barrier
-rls = d["rate_limiting_step"]                # {"segment", "barrier_kcal", "method"}
-idx = rls["segment"] - 1                     # segments[] is 0-indexed; rls["segment"] is 1-based
+# MEP-level band (un-refined) — keep the "MEP" label when printing it
+for seg in d["segments"]:
+    print(f"seg_{seg['index']:02d}: MEP band = {seg['barrier_kcal']:.1f} kcal/mol (un-refined)")
+
+# Rate-limiting barrier — already refined; rls["method"] names the level it came from
+rls = d["rate_limiting_step"]   # {"segment", "barrier_kcal", "method", "mep_barrier_kcal"}
 print(f"rate-limiting: seg_{rls['segment']:02d}, barrier = "
-      f"{d['segments'][idx]['barrier_kcal']:.1f} kcal/mol")
+      f"{rls['barrier_kcal']:.1f} kcal/mol ({rls['method']})")
 
 # Imaginary-mode check on every TS (post-processing data)
 for ps in d.get("post_segments", []):
@@ -116,8 +129,11 @@ detected change, with the change kind encoded in the key name:
 ]
 ```
 
-The `(k)` integer is the consecutive-frame-pair index for multi-step
-IRC traces. Each string carries `<atom>-<atom> : <d_R> Å --> <d_P> Å`.
+The `(k)` integer is the number of bonds listed in that section, so
+`"Bond formed (2)"` means two bonds were formed and its list holds two
+strings. A section with no change is emitted without `(k)`, as
+`{"Bond formed": ["None"]}`. Each string carries
+`<atom>-<atom> : <d_R> Å --> <d_P> Å`.
 
 Reading rules (cutoff: 1.20× covalent radii, margin 0.05; algorithm in [`pdb2reaction-cli/bond-summary.md`](../pdb2reaction-cli/bond-summary.md)):
 

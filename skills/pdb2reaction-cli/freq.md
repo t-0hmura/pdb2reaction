@@ -43,7 +43,7 @@ pdb2reaction freq -i ts.xyz -q 0 -m 1 -b uma --out-json -o result_freq
 ### Higher temperature for activation enthalpy
 
 ```bash
-pdb2reaction freq -i ts.xyz -l 'SAM:1' \
+pdb2reaction freq -i ts.pdb -l 'SAM:1' \
     --temperature 310.15 --pressure 1.0 \
     -b uma -o result_freq_310K
 ```

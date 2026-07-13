@@ -317,6 +317,9 @@ IRC_KW: Dict[str, Any] = {
     "max_pred_steps": 500,
     "loose_cycles": 3,
     "corr_func": "mbs",
+    # Opt-in: ignore transient energy rises/plateaus so EulerPC can cross a
+    # small shoulder. Physical/integrator convergence and max_cycles remain.
+    "never_stop": False,
 }
 
 
@@ -444,7 +447,8 @@ RSIRFO_KW: Dict[str, Any] = {
     # frequency analysis (HESSIAN_DIMER_KW["neg_freq_thresh_cm"]).
     "saddle_imaginary_threshold_cm": 5.0,
     "saddle_recovery_step": 0.01,
-    "saddle_recovery_max_cycles": 50,
+    "saddle_recovery_check_interval": 50,
+    "saddle_recovery_max_cycles": 200,
 }
 
 # Freq calc defaults (alias of UMA_CALC_KW)

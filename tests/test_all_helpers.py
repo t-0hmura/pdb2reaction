@@ -28,8 +28,8 @@ def test_all_context_fields_match_cli_signature() -> None:
     assert not extra, f"AllContext has extra fields: {sorted(extra)}"
     # Absolute count guard catches symmetric add+remove pairs where the
     # name sets stay equal but the field count drifts.
-    assert len(ctx_field_names) == 69, (
-        f"AllContext field count drifted from 69 to {len(ctx_field_names)}; "
+    assert len(ctx_field_names) == 71, (
+        f"AllContext field count drifted from 71 to {len(ctx_field_names)}; "
         f"update this assertion alongside the cli() signature change."
     )
 
@@ -123,7 +123,7 @@ def test_build_pipeline_summary_payload_dft_disabled_drops_basis() -> None:
         dft_func_basis_use="wb97m-v/def2-tzvpd",
         opt_mode=None,
         mep_mode_kind=None,
-        mlip_backend="uma",
+        mlip_backend="orb",
         mlip_model=None,
         command_str="",
         q_int=0,

@@ -216,6 +216,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 対処の例（CLI フラグと YAML キーは補完的、必要に応じて併用してください）:
 - オプティマイザモードを切り替えてください: `--opt-mode grad`（Dimer 法）または `--opt-mode hess`（RS-P-RFO 法、デフォルト）
 - 余分な虚振動数モードのフラット化を有効にしてください: `--flatten`（単独の `tsopt`、`opt`、および `pdb2reaction all` で利用可能。デフォルトは無効）
+- coarse MEPのHEIが悪い場合は、`all`を`--refine-path True`付きで再実行してください。ただし悪いpathを不要な複数segmentへ分割してcostを増大させることがあるためデフォルトOFFです。まずcoarse MEPを確認してください
 - 最大サイクル数を増やしてください: `--max-cycles 20000`（単独の `tsopt` の場合）、`--tsopt-max-cycles 20000`（`all` の場合）
 - より厳しい収束閾値を使ってください: `--thresh baker` または `--thresh gau_tight`
 - YAML でステップサイズ / 信頼半径を縮小してください — L-BFGS/Dimer: `lbfgs.max_step` / `hessian_dimer.lbfgs.max_step`、RFO/RS-I-RFO: `rfo.trust_radius` / `rfo.trust_min` / `rfo.trust_max`（および `rsirfo` セクション）。セクション構成は [YAML リファレンス](yaml-reference.md) を参照
@@ -230,6 +231,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 
 対処の例:
 - ステップサイズを減らしてください: `--step-size 0.05`（デフォルト: 0.10 bohr、質量重み付けなしのデカルト座標）
+- 数frameで止まる場合は特に、小さいstepを最初に試してください。小さなenergy上昇／平坦な肩を意図的に越える場合は`--never-stop`を追加できます（opt-in。軌跡と端点を必ず確認）
 - 最大サイクル数を増やしてください: `--max-cycles 200`
 - IRC 実行前に TS 候補の虚振動数が **ちょうど 1 本** であることを確認してください。検出カットオフは `hessian_dimer.neg_freq_thresh_cm`（デフォルト 5 cm⁻¹）。
 

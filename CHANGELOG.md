@@ -6,6 +6,23 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+## [0.4.12] — 2026-07-13
+
+### Changed
+- **`path-opt --max-nodes` defaults to 20 internal nodes.** The Click option
+  now reads the value from the shared `GS_KW` source of truth, keeping
+  standalone `path-opt`, `all`, YAML defaults, generated help, and agent skills
+  synchronized.
+- **IRC gains an opt-in `--never-stop` energy-stop bypass.** It continues
+  across transient energy rises or plateaus while retaining physical gradient/
+  integrator convergence and the `max_cycles` hard cap. Standalone IRC now
+  recommends a smaller `--step-size` when a branch stops after only a few
+  frames; `all` forwards `--irc-step-size` and `--irc-never-stop`.
+- **MLIP provenance uses separate backend/model fields.** Machine-readable
+  outputs consistently expose `mlip_backend` and `mlip_model`, and human
+  summaries label both generically instead of calling every checkpoint a UMA
+  model.
+
 ### Fixed
 - **ORB analytical Hessians tolerate in-place mutations inside Orb's
   message-passing graph.** The complete `torch.autograd.functional.hessian`
@@ -38,8 +55,103 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   uphill recovery along its lowest physical vibration instead of being
   accepted; after recovery, all three Hessian TS optimizers keep following that
   PHVA mode and stabilize residual nonphysical negative image-Hessian roots.
+  Exact validation is now bound to its Cartesian coordinate snapshot. A
+  verified trial that is later rolled back therefore cannot authorize
+  convergence at a different `n_imag=0` geometry. Conversely, exact first-order
+  curvature plus converged current forces is authoritative over a stale raw
+  quasi-Newton root or a large proposed next step along a pseudo-zero model
+  mode, preventing an already valid saddle from being driven into a basin.
   Final exact-Hessian analysis with no imaginary mode is reported as
-  `not_converged`.
+  `not_converged`. Bounded saddle recovery now checks an exact physical
+  Hessian every 50 steps for up to 200 steps. If the physical curvature has
+  crossed negative while the Bofill model still says positive, optimization
+  resumes from that geometry; otherwise the run stops at the explicit bound.
+- **Path searches now pass the HEI reaction direction into Hessian TS
+  optimization.** `path-search` writes the standard energy-upwinding Cartesian
+  tangent at each HEI, and `all` regenerates the same tangent from stored MEP
+  energies for older artifacts instead of trusting a stale mode file. A
+  spacing-independent secant bisector remains the fallback when legacy
+  trajectories do not contain readable energies,
+  and the advanced/internal `tsopt --ref-mode` option uses it for initial root
+  selection, overlap mode tracking, and `n_imag=0` recovery. Cartesian path
+  directions are transformed through the Wilson B matrix for
+  redundant/DLC/TRIC optimizations instead of being compared directly with
+  internal-coordinate Hessian eigenvectors. When exact PHVA finds several negative
+  modes, the path-correlated mode is retained instead of assuming that the
+  lowest-frequency mode is the intended reaction. The MEP tangent selects the
+  initial root; when a discrete tangent spans near-tied roots, the
+  lowest-curvature root within 90% of the maximum overlap is selected instead
+  of letting a marginally larger overlap choose a stiff vibration. Before the
+  target has ever become negative, local-minimum recovery and exact
+  mode-identity validation retain the complete path vector instead of replacing
+  it with one positive-curvature raw-Hessian eigenmode. Continuous eigenmode
+  transport becomes authoritative only after exact PHVA verifies the first
+  physical negative-curvature crossing.
+  A transient negative quasi-Newton eigenvalue no longer arms permanent
+  mode-loss rollback for a path-guided run that began in the convex region;
+  neither an initial raw negative root nor a transient quasi-Newton sign is
+  sufficient. The latch now requires exact PHVA or an explicit recovery
+  crossing of the requested physical mode.
+  Overlap tracking then transports a captured mode through the complete
+  positive/negative spectrum as it rotates during optimization. Exact
+  validation matches this transported direction against all physical modes,
+  so an unrelated single imaginary mode cannot replace an intended mode that
+  has turned positive and falsely satisfy the first-order count. The same identity check
+  applies when several unrelated negative modes remain: path recovery takes
+  precedence until the requested mode itself is negative, so extra-mode
+  flattening cannot preserve an arbitrary wrong mode and manufacture an
+  `n_imag=1` result. Exact validation now
+  distinguishes having negative curvature from having the requested saddle
+  order. A persistent higher-order saddle stops after three terminal exact
+  checks instead of recalculating Hessians indefinitely; path-guided runs then
+  automatically flatten only the non-path negative modes for up to twenty
+  bounded retries. Each retry retains the normal three-check exact window so
+  the requested saddle mode can be re-established after an orthogonal flatten
+  displacement instead of softening both modes toward a local minimum. On
+  every cleanup retry, an energy-selected displacement that does not already
+  give the requested first-order saddle triggers optimization of the opposite
+  sign; the two branches are compared by requested-mode retention, saddle
+  order, surplus imaginary-mode strength, and residual force. This prevents a
+  lower-energy descent branch from being chosen when it erases the intended
+  reaction mode.
+  Because individual eigenvectors can exchange identity inside a
+  multi-negative subspace, higher-order exact checks re-anchor the mode to keep
+  against the immutable MEP tangent; after the first physical crossing,
+  order-zero/one checks retain continuous overlap transport. Each retry then
+  inherits that PHVA-identified path mode
+  instead of preserving an arbitrary negative root after the flatten
+  displacement.
+  The exact PHVA Cartesian mode is retained in a separate snapshot while the
+  raw-Hessian eigenvector continues to update for per-cycle root tracking, so
+  flattening keeps the physically identified reaction mode rather than the
+  wrong extra mode without freezing normal mode transport.
+  Flatten displacements now un-mass-weight each normal mode
+  exactly once; the former second atom-wise mass factor rotated the Cartesian
+  direction away from the verified negative-curvature eigenvector. Higher-order
+  saddles cannot be reported as a first-order TS.
+  A guarded mode-loss stop restores the best exact first-order candidate while
+  keeping the run status non-converged. If a path-guided Hessian TS run still
+  fails at order zero/one, `tsopt` performs bounded same-optimizer restarts from
+  ±0.10 Å and then ±0.20 Å along the HEI tangent. If a kinked tangent finds
+  only unrelated modes, the same bounded shells are tried along the soft,
+  path-correlated Hessian root selected at the original HEI. Every attempt and
+  its direction source are recorded, and the original result is kept when none
+  reaches a verified first-order saddle.
+  Failed multistart restoration also reconnects the loaded calculator before
+  collecting the final JSON energy instead of raising on a detached geometry.
+  Ordinary standalone `tsopt` runs do not require `--ref-mode`; `all` supplies
+  it automatically when an MEP-derived direction is available.
+- **Rejected endpoint RFO plateaus no longer masquerade as convergence.** When
+  uphill trials repeat at the emergency trust floor, RFO preserves the last
+  accepted lower-energy geometry and terminates with an explicit non-converged
+  reason, matching the LBFGS safeguard.
+- **In-process Hessian handoff is coordinate-safe across TS, frequency, IRC,
+  and endpoint optimization.** Cache entries now carry a copied Cartesian
+  coordinate snapshot and are reused only for a matching geometry. Each IRC
+  direction is cleared before integration and cached only when that direction
+  actually ran, preventing a one-sided or failed IRC from reusing a stale
+  endpoint Hessian from an earlier segment. Forward/backward endpoint Hessians
+  retain their direction metadata when mapped to reactant/product RFO seeds.
 - `all` summary generation imports the package-level version fallback, so a
   fresh source checkout without the build-generated `_version.py` can complete
   and write `summary.json`.
@@ -123,8 +235,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   A user ASE Calculator that reads them (any OMol-style wrapper) previously ran
   neutral/singlet, matching the ORB/MACE backends' existing behaviour.
 - **`summary.json` `mlip_backend` records the backend name, not the model.** It stored
-  the model string (and `"unknown"` for `--calc-file` runs), duplicating `uma_model`;
-  the provenance field now reports `uma`/`orb`/`mace`/`aimnet2`/`custom`.
+  the model string (and `"unknown"` for `--calc-file` runs); `mlip_backend`
+  now reports `uma`/`orb`/`mace`/`aimnet2`/`custom`, while `mlip_model`
+  separately records the selected checkpoint.
+- **Explicit UMA analytical Hessians are no longer silently downgraded when
+  `workers > 1`.** This incompatible combination now raises before model
+  loading, with instructions to select FiniteDifference or `workers=1`.
 - **`--backend-model` supplied via a `--config` YAML is now honoured.** The call sites
   guarded the dispatch helper on the CLI value being non-`None`, so a YAML-only
   `calc.backend_model` was dropped and the run silently used the backend's default
@@ -150,8 +266,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ### Documentation
 - Corrected the `--workers` help on every subcommand: an analytical Hessian request
-  with `workers>1` auto-downgrades to finite differences with a warning (it does not
-  raise a `RuntimeError`). The warning is now actually emitted at the downgrade point.
+  with `workers>1` raises a clear error instead of silently changing the requested
+  Hessian method.
+- Added TS/IRC recovery guidance and manual cluster-boundary rules to the user
+  documentation and agent skills. Recursive `--refine-path True` remains off by
+  default because a poor path can be split into unnecessary, expensive segments.
 
 ## [0.4.8] — 2026-07-07
 

@@ -36,7 +36,7 @@ from pdb2reaction.backends.uma import UMACalculator
 
 
 def test_workers_gt_one_with_analytical_hessian_is_an_error():
-    with pytest.raises(BackendError, match=r"workers>1"):
+    with pytest.raises(BackendError, match=r"workers\s*>\s*1"):
         UMACalculator(workers=2, hessian_calc_mode="Analytical")
 
 

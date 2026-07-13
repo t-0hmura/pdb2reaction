@@ -12,19 +12,20 @@ The upstream `pysisyphus` does not natively handle:
 - **VRAM-aware stage handoff** — explicit `del` between IRC / tsopt / freq stages to free CUDA memory before the next stage loads its model
 - **Initial-displacement memory hygiene** in IRC for large systems (16 GB+ Hessians)
 - **bofill_update advanced-indexing scatter** when only a subset of internal coordinates is updated (GPU OOM on the naive path)
+- **Atomic trial rollback and first-order-saddle validation** for MLIP optimizations, including coordinate-bound exact PHVA checks and path-mode tracking
 
-The bundled fork patches these in five files and keeps everything else identical to upstream, so future upstream improvements remain easy to cherry-pick.
+The bundled fork keeps these divergences explicit and limits changes outside the files listed below, so future upstream improvements remain reviewable.
 
 ## Divergent files (do NOT replace with upstream)
 
 | file | divergence | rule |
 |------|------------|------|
 | `pysisyphus/irc/IRC.py` | initial-displacement memory hygiene for large-system IRC; opt-in `require_pos_def_hessian` PSD convergence guard | chemistry-rule adjacent, freq-stage VRAM invariant |
-| `pysisyphus/optimizers/HessianOptimizer.py` | opt-in `trust_band` rho-band trust update, `hessian_update_window` multistep TS-BFGS, `weighted_trust` per-coord-type L_inf trust; `get_xp`-based torch/numpy dispatch where shared API allows | TSopt step-control / trust radius |
+| `pysisyphus/optimizers/HessianOptimizer.py` | opt-in `trust_band` rho-band trust update, `hessian_update_window` multistep TS-BFGS, `weighted_trust` per-coord-type L_inf trust; coordinate/history rollback for rejected minimizer trials; `get_xp`-based torch/numpy dispatch where shared API allows | optimizer step control / trust radius |
 | `pysisyphus/optimizers/hessian_updates.py` | `bofill_update` advanced-indexing scatter (CHEMISTRY-RULE:7); `multistep_ts_bfgs_update` helper; re-exports `_outer / _dot` from `_array` shim | scatter on subset of internals |
 | `pysisyphus/optimizers/restrict_step.py` | `per_coord_type_weights` + `weighted_max_internal_step` helpers | weighted L∞ trust check |
 | `pysisyphus/optimizers/gdiis.py` | `get_xp`-based torch/numpy dispatch (xp.linalg.norm / xp.sum) | torch/numpy backend share |
-| `pysisyphus/tsoptimizers/TSHessianOptimizer.py` | RSIRFO kwargs and step-control for MLIP-driven TS search | tsopt convergence |
+| `pysisyphus/tsoptimizers/TSHessianOptimizer.py` | RSIRFO kwargs, mode-loss rollback, exact PHVA saddle-order validation, path-mode identity and bounded recovery for MLIP-driven TS search | tsopt convergence |
 | `pysisyphus/_array.py` | torch/numpy backend dispatch shim (`get_xp`, `_outer`, `_dot`, `_eigh`, `as_numpy`, `to_xp`) | used by `hessian_updates.py` + `HessianOptimizer.py` + `gdiis.py` |
 
 
@@ -48,7 +49,7 @@ into `CALC_DICT` must use pdb2reaction's own subcommand layer
 
 ## release scope
 
-During this release, **only annotation edits are allowed** on this directory:
+During routine polish, **only annotation edits are allowed** on this directory:
 
 - docstring additions / improvements
 - type hints
@@ -57,11 +58,14 @@ During this release, **only annotation edits are allowed** on this directory:
 
 **Forbidden** during polish:
 
-- any change to numerical behaviour, control flow, or function signatures of the 4 divergent files above
+- any change to numerical behaviour, control flow, or function signatures of the divergent files listed above
 - any new external dependency
 - any rename of public symbols (would break `pdb2reaction/tsopt.py`, `irc.py`, `path_opt.py` callers)
 
-Logic edits that the user must explicitly request via a `[CHEMISTRY-RULE]` commit and that go through HEAVY benchmark verification before merge.
+Logic edits require an explicit user request and HEAVY benchmark verification
+before merge. The v0.4.12 optimizer-safeguard changes are such an explicitly
+requested exception; their regression and GPU benchmark evidence is recorded
+in the release validation and changelog.
 
 ## Upstream compatibility
 
@@ -70,5 +74,5 @@ If you `pip install pysisyphus` into the same environment as `pdb2reaction`, Pyt
 ## See also
 
 - [`../docs/architecture.md`](../docs/architecture.md) §5.3, §6 — repo-internal fork policy
-- [`../CONTRIBUTING.md`](../CONTRIBUTING.md) §4.2 — do-not-touch list (5 divergent files)
+- [`../CONTRIBUTING.md`](../CONTRIBUTING.md) §4.3 — Divergent files in bundled forks; logic edits are forbidden in `pysisyphus/irc/IRC.py`, `pysisyphus/optimizers/hessian_updates.py`, `pysisyphus/tsoptimizers/TSHessianOptimizer.py`, and `thermoanalysis/QCData.py`
 - `THIRD_PARTY_NOTICES.txt` — pysisyphus upstream attribution

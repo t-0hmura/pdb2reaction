@@ -1,6 +1,6 @@
 ---
 name: pdb2reaction-ts-strategy
-description: Decision know-how for pure-MLIP enzyme reaction-barrier runs with pdb2reaction — precision (fp32 vs fp64) per GPU class, the two TS-candidate routes (path-search MEP vs distance-restrained `scan`), fixing a bad imaginary-mode count (fp64 / `--coord-type dlc` / `--flatten`), reading a P-start scan barrier as the REVERSE direction, staged (`-s` repeated) vs concerted (one `-s`, many tuples) scans, and the same-atom-set rule for any mutant-vs-WT / mechanism-vs-mechanism comparison. TRIGGER when choosing precision, building a TS candidate, debugging imaginary modes, interpreting a barrier number, choosing staged vs concerted, or setting up a controlled barrier comparison. SKIP for install / HPC scheduler / output-parsing / structure-format-editing questions (use the dedicated skills). pdb2reaction is a PURE-MLIP cluster tool, so the comparison rule is enforced by feeding the SAME prepared atom set to every compared run.
+description: Decision know-how for pure-MLIP enzyme reaction-barrier runs with pdb2reaction — precision (fp32 vs fp64) per GPU class, the two TS-candidate routes (path-search MEP vs distance-restrained `scan`), fixing a bad imaginary-mode count (fp64 / `--coord-type dlc` / `--flatten`), reading a P-start scan barrier as the REVERSE direction, staged vs concerted scans (always ONE `-s`: several space-separated literals = stages, many tuples in one literal = concerted), and the same-atom-set rule for any mutant-vs-WT / mechanism-vs-mechanism comparison. TRIGGER when choosing precision, building a TS candidate, debugging imaginary modes, interpreting a barrier number, choosing staged vs concerted, or setting up a controlled barrier comparison. SKIP for install / HPC scheduler / output-parsing / structure-format-editing questions (use the dedicated skills). pdb2reaction is a PURE-MLIP cluster tool, so the comparison rule is enforced by feeding the SAME prepared atom set to every compared run.
 ---
 
 # pdb2reaction TS strategy
@@ -11,13 +11,15 @@ All flags below verified against `pdb2reaction/cli/common_options.py`, `core/def
 
 ## 1. Precision: `--precision fp32|fp64`
 
-`--precision` is backend-agnostic; the CLI routes it per backend. Effective default `fp32`
-(`UMA_CALC_KW['precision']='fp32'`, option default `None` falls through).
+`--precision` is backend-agnostic; the CLI routes it per backend. Unset = the `auto` sentinel
+(`CALC_KW_DEFAULT['precision'] = 'auto'`), resolved **per backend** by
+`backends._BACKEND_DEFAULT_PRECISION`: `uma` → fp32, `orb` → fp64, `mace` → fp64, `aimnet2` → fp32.
+So ORB and MACE run fp64 Hessians by default; only UMA defaults to fp32.
 
 | GPU class | Use | Why |
 |---|---|---|
 | HPC datacenter (H100 / H200 / A100) | `--precision fp64` | Deterministic, low numerical-noise TSopt / Hessian; fp64 throughput penalty is small on these cards |
-| Consumer (RTX 50xx / 40xx) | `--precision fp32` (default) | fp64 is much slower here; fp32 is the speed / screening baseline |
+| Consumer (RTX 50xx / 40xx) | `--precision fp32` as an explicit screening choice (it is also UMA's unset default) | fp64 is much slower here; fp32 is the speed / screening baseline. Keep ORB / MACE at their fp64 default for any Hessian you trust — fp32 there means TF32 / float32 finite differences, whose force noise invents imaginary modes |
 
 | Backend | fp32 routes to | fp64 routes to |
 |---|---|---|
@@ -27,7 +29,7 @@ All flags below verified against `pdb2reaction/cli/common_options.py`, `core/def
 | `aimnet2` | no-op (already fp32) | REJECTED (inputs cast to float32 upstream) |
 
 - fp64 has non-trivial TSopt / Hessian impact for OMol-trained UMA — use it for final / production numbers, not just screening.
-- Combine with `--deterministic` (see `pdb2reaction-workflows-output` / docs `reproducibility.md`) for bit-identical reruns.
+- Combine with `--deterministic` (documented in docs `reproducibility.md`) for bit-identical reruns.
 
 ## 2. Two routes to a TS candidate
 
@@ -37,7 +39,7 @@ All flags below verified against `pdb2reaction/cli/common_options.py`, `core/def
 | (b) Distance-restrained build-up | `scan` | Have only the reactant (or want to drive a specific reacting distance) | Staged harmonic restraints `E=½k(r−target)²` (scan default `k=300` via `BIAS_KW`; the `10.0` in `HarmonicBiasCalculator` is only an unused constructor fallback) drive each reacting distance with full relaxation, walking up to a TS candidate |
 
 - There is **no** `opt --restraint` flag, but `opt` **does** support harmonic distance restraints via `--dist-freeze` (with `--bias-k`); `scan` is the route for *driving/walking* a reacting coordinate up to a TS candidate.
-- `scan` supports `--preopt` / `--endopt` to relax the endpoints around the driven path.
+- `scan` supports `--preopt` (unbiased optimization of the **initial structure** before the scan) and `--endopt` (unbiased optimization of **each stage's result**, run after that stage); both default off.
 - Feed either route's TS candidate into `tsopt → freq → irc` to confirm it (see `pdb2reaction-cli`).
 
 ## 3. Wrong imaginary-mode count after TS-opt
@@ -55,6 +57,10 @@ Detection cutoff `hessian_dimer.neg_freq_thresh_cm` (default 5 cm⁻¹).
 - `--coord-type` choices: `cart` (default, robust, published numbers) | `redund` | `dlc` | `tric`. On `path-opt` / `path-search` only `cart` / `dlc` are accepted.
 - Try `--precision fp64` and/or `--coord-type dlc` first; add `--flatten` for residual small modes. They are complementary.
 - Example: a mutant CM TS came out as the dominant Claisen mode −223 cm⁻¹ plus a residual −12.5 cm⁻¹; `--flatten` clears the spurious extra mode to a clean single-imaginary saddle.
+- If a path-derived HEI is simply poor, rerun the parent `all` command with
+  `--refine-path True` so recursive `path-search` resolves the MEP before
+  TSOPT. This is deliberately off by default: a bad/noisy path can be split
+  into unnecessary segments and multiply MEP, TSOPT, IRC, and frequency cost.
 
 ## 4. P-start scan → barrier is the REVERSE direction
 
@@ -69,12 +75,15 @@ barrier. This is a read-time interpretation, not a flag.
 
 ## 5. Staged vs concerted scan
 
-`-s/--scan-lists` is `multiple=True`. One flag = one stage; tuples inside it run together.
+Pass a **single** `-s/--scan-lists` followed by one or more space-separated Python literals: each
+literal is one stage, and the tuples inside a literal move together within that stage. Repeating the
+flag is rejected (`Use a single --scan-lists followed by multiple values; repeated flags are not
+accepted.`).
 
 | Mode | Syntax | Use |
 |---|---|---|
-| Concerted | one `-s` with several coordinate tuples | Coordinates move together in one stage; no mechanism breakdown needed |
-| Staged | `-s` repeated (each `-s` = one sequential stage, `stage_NN/`) | Mechanism known up front; cleaner per-step control |
+| Concerted | one `-s`, one literal holding several coordinate tuples | Coordinates move together in one stage; no mechanism breakdown needed |
+| Staged | one `-s`, several literals separated by spaces (each literal = one sequential stage, `stage_NN/`) | Mechanism known up front; cleaner per-step control |
 
 - When the mechanism IS known, **staged is generally preferred** (per-step barriers, per-stage output dirs).
 - When the mechanism is unknown / multi-step, let `path-search` auto-segment instead of guessing stages.
@@ -83,10 +92,10 @@ barrier. This is a read-time interpretation, not a flag.
 ```bash
 # concerted (one stage, two coords move together)
 pdb2reaction scan -i R.pdb -s '[("Ca RES 10","Cb RES 11",1.6),("H RES 11","O GLU 20",1.0)]' -o out
-# staged (stage_01 then stage_02)
+# staged (stage_01 then stage_02) — ONE -s, two space-separated literals
 pdb2reaction scan -i R.pdb \
   -s '[("Ca RES 10","Cb RES 11",1.6)]' \
-  -s '[("H RES 11","O GLU 20",1.0)]' -o out
+     '[("H RES 11","O GLU 20",1.0)]' -o out
 ```
 
 ## 6. Controlled comparison: SAME atom set across all models

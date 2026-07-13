@@ -145,12 +145,15 @@ Each task directory has its own `run.sh` that the worker invokes via
 
 ## SLURM analog
 
-The SLURM equivalent uses `srun --multi-prog` or per-task `sbatch
---array=...` with the same flock-based counter. The skeleton:
+The SLURM equivalent is a job array (`sbatch --array=...`). SLURM
+assigns each task its own `SLURM_ARRAY_TASK_ID`, which indexes the
+task list directly — the scheduler owns the counter, so the array
+script needs no state file and no flock. The skeleton:
 
 ```bash
 #SBATCH --job-name=pdb2reaction_array
-#SBATCH --array=1-<N_TASKS>%<N_NODES>
+# `%` caps how many array tasks run concurrently (it is not a node count)
+#SBATCH --array=1-<N_TASKS>%<MAX_CONCURRENT>
 #SBATCH ...
 
 cd "${SLURM_SUBMIT_DIR}"

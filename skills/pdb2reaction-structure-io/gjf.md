@@ -27,7 +27,7 @@ block onward is the same as XYZ.
 | Multiplicity | `-m` (CLI overrides) |
 | Route line | **Ignored** — backend / `--func-basis` decides the QM method |
 | Frozen flag (`-1` in column 2) | **Preserved on round-trip** but does **not** drive the runtime freeze list. Use `--freeze-atoms` / `--freeze-links` / YAML `geom.freeze_atoms`. |
-| Connectivity / ECP / custom basis (after coords) | Discarded |
+| Connectivity / ECP / custom basis (after coords) | **Ignored by the calculation, but preserved verbatim** — the whole post-coordinate block is stored on the gjf template (`core/utils.py`) and re-emitted at the bottom of every `.gjf` companion written by `--convert-files`. It is copied unchanged from the input, so a connectivity block always describes the *input* bonding pattern; strip it from the template when the output geometry (TS / IRC frames) has different bonding, so a downstream Gaussian job reads connectivity that matches its own coordinates. |
 
 ## Minimal CLI usage
 

@@ -195,6 +195,7 @@ def register_all(mcp) -> None:
         multiplicity: Optional[int] = None,
         max_cycles: Optional[int] = None,
         step_size: Optional[float] = None,
+        never_stop: Optional[bool] = None,
         root: Optional[int] = None,
         forward: Optional[bool] = None,
         backward: Optional[bool] = None,
@@ -216,6 +217,8 @@ def register_all(mcp) -> None:
         Opt-in:
         - irc_pos_def=True: convergence additionally requires positive-definite
           mass-weighted Hessian, blocking the IRC 'shoulder' false-convergence.
+        - never_stop=True: ignore energy-rise/plateau stops while retaining
+          physical/integrator convergence and the max-cycle cap.
 
         Returns: SubcmdResult dict with summary.json (forward / backward
         energies, n_steps, files map).
@@ -230,6 +233,8 @@ def register_all(mcp) -> None:
             argv.extend(["--max-cycles", str(max_cycles)])
         if step_size is not None:
             argv.extend(["--step-size", str(step_size)])
+        if never_stop is not None:
+            argv.append("--never-stop" if never_stop else "--no-never-stop")
         if root is not None:
             argv.extend(["--root", str(root)])
         if forward is not None:
@@ -562,6 +567,9 @@ def register_all(mcp) -> None:
         backend: Optional[str] = None,
         precision: Optional[str] = None,
         refine_path: Optional[bool] = None,
+        flatten: Optional[bool] = None,
+        irc_step_size: Optional[float] = None,
+        irc_never_stop: Optional[bool] = None,
         do_tsopt: Optional[bool] = None,
         do_dft: Optional[bool] = None,
         do_thermo: Optional[bool] = None,
@@ -603,6 +611,14 @@ def register_all(mcp) -> None:
             argv.extend(["--precision", precision])
         if refine_path is not None:
             argv.extend(["--refine-path", "true" if refine_path else "false"])
+        if flatten is not None:
+            argv.append("--flatten" if flatten else "--no-flatten")
+        if irc_step_size is not None:
+            argv.extend(["--irc-step-size", str(irc_step_size)])
+        if irc_never_stop is not None:
+            argv.append(
+                "--irc-never-stop" if irc_never_stop else "--no-irc-never-stop"
+            )
         if do_tsopt is not None:
             argv.extend(["--tsopt", "true" if do_tsopt else "false"])
         if do_dft is not None:

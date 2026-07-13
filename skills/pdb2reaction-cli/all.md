@@ -28,12 +28,15 @@ pdb2reaction all -i <input(s)> [-c <substrate>] [-l 'RES:Q,...'] \
 | `-i, --input` | path(s) | required | One or more reaction-ordered structures, or a TS-candidate alone |
 | `-c, --center` | str | (uses input as-is) | Substrate selector: residue-name list `'RES1,RES2,...'`, residue-ID list `'A:44,B:321'`, or a PDB path. Chain-qualified residue *names* (`'B:SAM'`) are not supported — use the residue ID instead. |
 | `-l, --ligand-charge` | str | none | Per-resname charges, e.g. `'SAM:1,GPP:-3'` (or a bare number = total). The per-resname mapping is honored **whether or not extraction runs**: with `-c` it feeds the extractor summary; with `-c` omitted (extraction skipped, pre-carved model passed as-is) the same mapping is applied to the **full input PDB** to derive the total. Prefer `-l` — `-q` is rarely needed. |
-| `-q, --charge` | int | derived from `-l` | Total charge override; applies regardless of residues and **emits a warning**. Normally unnecessary — let `-l` derive the total. |
+| `-q, --charge` | int | derived from `-l` | Total system charge. With `-c` (extraction runs) `-q` acts as an **assertion**: it must **match** the extract-derived charge, otherwise the run aborts with `BadParameter` (this is also checked by `--dry-run`). With `-c` omitted (pre-carved input passed as-is) `-q` sets the total directly and **emits a warning**. Normally unnecessary — let `-l` derive the total. |
 | `-m, --multiplicity` | int | 1 | Spin multiplicity (2S+1) |
 | `-r, --radius` | float | 2.6 | Pocket radius (Å) when `-c` triggers extraction |
 | `-s, --scan-lists` | repeated | none | Staged distance scans (mode 2 — `all-scan-list.md`) |
-| `--refine-path` | BOOL | `False` | MEP engine: `False` runs single-pass `path-opt`; `True` runs recursive `path-search` (bond-change segmentation that discovers hidden intermediates between endpoints) |
+| `--refine-path` | BOOL | `False` | MEP engine: `False` runs single-pass `path-opt`; `True` runs recursive `path-search`, often improving a poor TS seed but potentially splitting a bad path into unnecessary segments and greatly increasing cost |
 | `--tsopt` | BOOL | `False` | Run TS optimization + IRC per reactive segment (also required to enter TS-only mode with a single `-i`) |
+| `--flatten/--no-flatten` | flag | off | Enable surplus-imaginary-mode cleanup when TSOPT does not reach a first-order saddle |
+| `--irc-step-size` | float | IRC default `0.10` | Forward a smaller EulerPC maximum step; try `0.05` when an IRC branch stops after only a few frames |
+| `--irc-never-stop/--no-irc-never-stop` | flag | off | Ignore IRC energy-rise/plateau stops only; gradient/integrator convergence and max cycles remain active |
 | `--thermo` | BOOL | `False` | Run freq + thermochemistry on R / TS / P |
 | `--dft` | BOOL | `False` | Run DFT single point on R / TS / P |
 | `--dft-func-basis` | str | `wb97m-v/def2-tzvpd` | DFT functional/basis (when `--dft`) |
@@ -105,12 +108,15 @@ Per-segment fields include `barrier_kcal`, `delta_kcal`, `bond_changes`,
 ## Re-running individual stages
 
 To rerun a specific stage (for example after a walltime hit), call the
-standalone subcommands directly on the segment outputs `all` produced:
+standalone subcommands directly on the segment outputs `all` produced.
+Each standalone subcommand resolves charge on its own, so an `.xyz` input
+needs an explicit `-q <total_charge>`; take the value from the parent run's
+`summary.json` (`d["charge"]`). Spin defaults to 1 (`-m` to override):
 
 ```bash
-pdb2reaction tsopt -i _work/path_opt/hei_seg_03.xyz -o segments/seg_03/ts -b uma
-pdb2reaction irc   -i segments/seg_03/ts/final_geometry.xyz -o segments/seg_03/irc -b uma
-pdb2reaction freq  -i segments/seg_03/ts/final_geometry.xyz -o segments/seg_03/freq -b uma
+pdb2reaction tsopt -i _work/path_opt/hei_seg_03.xyz -q <total_charge> -o segments/seg_03/ts -b uma
+pdb2reaction irc   -i segments/seg_03/ts/final_geometry.xyz -q <total_charge> -o segments/seg_03/irc -b uma
+pdb2reaction freq  -i segments/seg_03/ts/final_geometry.xyz -q <total_charge> -o segments/seg_03/freq -b uma
 ```
 
 The directory layout matches what `all` produces, so downstream

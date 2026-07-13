@@ -10,7 +10,7 @@ Command synopsis:
 pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] \
  [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
  [--workers N] [--workers-per-node N] [-m 2S+1] \
- [--max-cycles N] [--step-size Δs] [--root k] \
+ [--max-cycles N] [--step-size Δs] [--never-stop/--no-never-stop] [--root k] \
  [--forward/--no-forward] [--backward/--no-backward] \
  [--freeze-links/--no-freeze-links] \
  [--out-dir DIR] [--config FILE] \
@@ -41,6 +41,23 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --step-size 0.20 \
  --hessian-calc-mode Analytical --out-dir ./result_irc_analytical
 ```
 
+If a branch stops after only one or two steps, first reduce the maximum
+EulerPC step. `0.05` Bohr is a useful retry value:
+
+```bash
+pdb2reaction irc -i ts.pdb -q 0 -m 1 --step-size 0.05 \
+ --out-dir ./result_irc_small_step
+```
+
+For a path that contains a small numerical uphill or flat shoulder, add
+`--never-stop`. This opt-in mode ignores energy-increase and energy-change
+stops, but still obeys gradient/integrator convergence and `--max-cycles`:
+
+```bash
+pdb2reaction irc -i ts.pdb -q 0 -m 1 --step-size 0.05 --never-stop \
+ --max-cycles 250 --out-dir ./result_irc_continue
+```
+
 ## Workflow
 
 1. **Input preparation** – Any format supported by `geom_loader` is accepted. When a reference PDB is available (input is `.pdb` or `--ref-pdb` is supplied), EulerPC trajectories are converted to PDB using that topology, and `--freeze-links` augments `geom.freeze_atoms` by freezing parents of cap hydrogens for PDB inputs.
@@ -69,11 +86,12 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `-i, --input PATH` | Transition-state structure accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge; used unless YAML sets `calc.charge`. Required unless a `.gjf` template or `--ligand-charge/-l` (PDB inputs or XYZ/GJF with `--ref-pdb`) supplies it. Explicit `-q` still overrides `--ligand-charge/-l` when both are set. | Required unless template/derivation applies |
 | `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB residue charges. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
-| `--workers INT` | MLIP predictor parallelism (workers > 1 disables analytic Hessians). See {ref}`workers-fd-downgrade` for diagnostic notes. | `1` |
+| `--workers INT` | UMA predictor parallelism. `workers > 1` cannot be combined with an explicit analytical Hessian request; use `workers = 1` or finite differences. See {ref}`workers-fd-downgrade`. | `1` |
 | `--workers-per-node INT` | Workers per node, forwarded to the parallel predictor. | `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1); used unless YAML sets `calc.spin`. | `.gjf` template value or `1` |
 | `--max-cycles INT` | Maximum IRC steps; used unless YAML sets `irc.max_cycles`. | `125` |
 | `--step-size FLOAT` | Step length in unweighted Cartesian coordinates (Bohr); used unless YAML sets `irc.step_length`. | `0.10` |
+| `--never-stop/--no-never-stop` | Ignore transient energy increases/plateaus so EulerPC can cross a small shoulder. It does not disable gradient/integrator convergence or the `max_cycles` hard cap. | `False` |
 | `--root INT` | **0-based** index into the projected Hessian's eigenvalues sorted in **ascending order** (most-negative first), used to pick the mode for the initial IRC displacement. For a validated TS with exactly one imaginary mode, leave `--root 0` (the sole negative eigenvalue). Use `--root 1`, `--root 2`, … only if you know the active imaginary mode is ranked above more-negative spurious modes. Used unless YAML sets `irc.root`. | `0` |
 | `--forward/--no-forward` | Run forward branch (`irc.forward`), used unless YAML sets `irc.forward`. | `True` |
 | `--backward/--no-backward` | Run backward branch (`irc.backward`), used unless YAML sets `irc.backward`. | `True` |
@@ -112,7 +130,8 @@ See {ref}`exit-codes` in CLI Conventions.
 
 ## Notes
 
-- The MLIP backend (UMA by default) is reused throughout the IRC; aggressive `step_length` values can destabilize EulerPC.
+- The MLIP backend (UMA by default) is reused throughout the IRC; aggressive `step_length` values can destabilize EulerPC. A branch that stops almost immediately should be retried with a smaller `--step-size` (for example `0.05`) before changing other controls.
+- `--never-stop` is intentionally off by default. It is useful for a small numerical hill/shoulder, but it can also trace farther than the chemically intended basin; inspect the trajectory and endpoint connectivity.
 - When `--freeze-links` is active, cap-hydrogen parent atoms are automatically frozen (see {ref}`Cap hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
 
 ## See Also

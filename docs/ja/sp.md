@@ -21,10 +21,10 @@ pdb2reaction sp -i FILE -q INT -m INT [-b uma|orb|mace|aimnet2] [--hess] [option
 pdb2reaction sp -i structure.pdb -q 0 -m 1
 ```
 
-完全な Hessian も計算（UMA → 解析的、その他のバックエンド → 有限差分）:
+完全な Hessian も計算（自動モードでは UMA は解析的、その他は有限差分）:
 
 ```bash
-# also compute the full Hessian (UMA → analytical; other backends → finite-difference)
+# also compute the full Hessian (automatic backend selection)
 pdb2reaction sp -i structure.pdb -q 0 -m 1 --hess
 ```
 
@@ -46,9 +46,9 @@ pdb2reaction sp -i structure.pdb -q 0 -m 1 --hess
 `--hess` を設定すると、バックエンドの選択が Hessian の計算戦略を決めます。
 
 - `--backend uma`（デフォルト）→ UMA の torch autograd 経路による `Analytical` Hessian
-- `--backend orb` / `mace` / `aimnet2` → `FiniteDifference` にフォールバック（上流に解析的 Hessian の実装がないため）
+- `--backend orb` / `mace` / `aimnet2` → 自動モードでは `FiniteDifference`
 
-解析的実装とのサニティチェックを行いたい場合は、`--hessian-calc-mode` で UMA でも `FiniteDifference` を強制できます。一方、非 UMA バックエンドで `Analytical` を強制しても効果はなく、それらのバックエンドは常に `FiniteDifference` にフォールバックします。
+UMA、ORB、MACE、AIMNet2 はすべて解析 Hessian を実装しています。明示的に使う場合は `--hessian-calc-mode Analytical`、数値的なクロスチェックには `FiniteDifference` を指定します。UMA では `workers > 1` と明示的な解析 Hessian を併用できずエラーになるため、`workers = 1` または有限差分を使用してください。
 
 ## CLI オプション
 

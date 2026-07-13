@@ -1,7 +1,18 @@
 # Charge and multiplicity (charge-multiplicity.md)
 
-`pdb2reaction` needs total charge (`-q`) and multiplicity (`-m`) as
-integers. Wrong values silently produce wrong-chemistry trajectories.
+Every run needs a total charge and a multiplicity, and a wrong value silently produces
+wrong-chemistry trajectories rather than an error.
+
+**For a PDB input, give the charge with `-l 'RES:Q'` — the per-residue mapping — and let
+`pdb2reaction` derive the total.** You name only the non-standard residues (ligands, metals,
+non-default protonation states); the standard amino acids and ions come from the internal table,
+and waters and cap hydrogens are neutral. This is the robust route: the derived total always
+matches what `extract` reports, and it stays correct when the cluster changes (a different
+`-c/--center`, a different radius, a different representative structure), whereas a hand-entered
+total silently becomes wrong the moment the pocket boundary moves.
+
+Use `-q INTEGER` when there are no residues to sum (`.xyz` / `.gjf` inputs without `--ref-pdb`),
+or to deliberately override the derivation. Multiplicity is always given with `-m`.
 
 ## Multiplicity (`-m`)
 
@@ -18,19 +29,16 @@ integers. Wrong values silently produce wrong-chemistry trajectories.
 > oxidation state and use the high-spin/low-spin assignment from the
 > primary literature for that enzyme.
 
-## Charge (`-q`, or summed via `-l 'RES:Q'`)
+## Charge — derive it with `-l 'RES:Q'`
 
-**For PDB inputs, prefer `-l`**: give only the non-standard-residue charges
-and let the total be auto-derived (standard AAs from the internal table +
-ions + your ligand charges; waters / cap-H are neutral). It matches
-`extract`'s reported total and stays correct when the cluster (radius / rep)
-changes — so you never hand-enter a per-pocket total. Reserve `-q` for
-`.xyz` / `.gjf` inputs (no residues to sum) or to deliberately override.
-
-1. **Per-residue mapping (recommended for PDB)** — pass `-l 'RES1:Q1,RES2:Q2,...'`
-   and let `pdb2reaction` sum amino-acid + ligand charges.
-2. **Direct total / override** — pass `-q INTEGER` if you already know the
-   total charge of the cluster (or to override the `-l` derivation).
+1. **Per-residue mapping (the route to use for PDB)** — pass `-l 'RES1:Q1,RES2:Q2,...'`
+   and let `pdb2reaction` sum amino-acid + ion + ligand charges into the total.
+   The mapping is honored whether or not extraction runs: with `-c` it feeds the
+   extractor's charge summary; with `-c` omitted (a pre-carved model passed as-is)
+   the same mapping is applied to the full input PDB.
+2. **Direct total / override** — pass `-q INTEGER` for an input with no residues to
+   sum (`.xyz` / `.gjf` without `--ref-pdb`), or to override the `-l` derivation.
+   `-q` wins over `-l` when both are given.
 
 The amino-acid table is internal:
 
@@ -49,7 +57,7 @@ When you don't know a ligand's formal charge:
 
 - **Lookup**: primary mechanism paper → PubChem / ChEBI `Formal Charge` → RCSB ligand summary (e.g. `https://www.rcsb.org/ligand/SAM`).
 - **Derive from SMILES** if needed: `sum(a.GetFormalCharge() for a in Chem.MolFromSmiles(smi).GetAtoms())`.
-- **Sanity-check**: `pdb2reaction extract … --verbose` echoes the per-residue charge sum used for `cluster.pdb`; `--show-config` / `--dry-run` on `all` / `opt` / `tsopt` / `dft` / `path-opt` / `path-search` / `freq` / `irc` (not `extract`) print the resolved charge before running.
+- **Sanity-check before a long job**: run it once with `--dry-run` (`all` / `opt` / `tsopt` / `dft` / `path-opt` / `path-search` / `freq` / `irc`; not `extract`). It prints the resolved charge and the electron-parity check, then exits without computing. `--show-config` prints the same resolved configuration but then proceeds with the full run, so it is not a preview. `pdb2reaction extract … --verbose` echoes the per-residue charge sum used for `cluster.pdb`.
 
 ### Protonation state at physiological pH
 
@@ -98,12 +106,37 @@ Always confirm against the relevant mechanism.
 | NAD⁺ | `NAD` | −1 |
 | FAD | `FAD` | −2 |
 | Pyridoxal phosphate (PLP) | `PLP` | −2 |
-| Mg²⁺ | `MG` | +2 |
-| Zn²⁺ | `ZN` | +2 |
-| Mn²⁺ / Mn³⁺ | `MN` | +2 / +3 |
-| Fe²⁺ / Fe³⁺ | `FE` / `FE2` / `FE3` | +2 / +3 |
 | Heme (Fe(III) protoporphyrin) | `HEM` | +1 (with Fe³⁺ + porphyrin²⁻) |
 | Phosphate ion (free) | `PO4` | −2 to −3 |
+
+### Monatomic ions are summed from the internal `ION` table
+
+`-l` is applied only to residues that are in **none** of `AMINO_ACIDS`,
+`ION` or the water set (`extract.py:1281-1318`): an ion resname takes its
+charge from `ION`, and a token such as `-l 'MG:2'` or `-l 'FE:2'` is
+parsed, matched against nothing, and dropped without a warning. List only
+true ligands / non-standard residues in `-l` — the ions are already
+counted in the total that `extract` reports.
+
+The built-in values follow the PDB CCD resnames, so the oxidation state
+lives in the resname:
+
+| Ion | Resname (PDB) | `ION` value |
+|---|---|---|
+| Mg²⁺ | `MG` | +2 |
+| Zn²⁺ | `ZN` | +2 |
+| Mn²⁺ | `MN` | +2 |
+| Fe³⁺ | `FE` | +3 |
+| Fe²⁺ | `FE2` | +2 |
+| Cu²⁺ / Cu⁺ | `CU` / `CU1` | +2 / +1 |
+| Na⁺ / K⁺ | `NA` / `K` | +1 |
+| Cl⁻ | `CL` | −1 |
+
+Dump the whole table with the `python -c` one-liner above (`FE3` is not a
+key in it). When the deposited resname disagrees with the oxidation state
+the mechanism requires — an `FE` record that is really Fe(II), say — set
+the cluster total explicitly with `-q`, which overrides the `-l`
+derivation (`core/utils.py:1915`).
 
 ## Multiplicity for metals (look-up shortcuts)
 

@@ -91,14 +91,14 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 
 3. **活性部位モデルでの MEP 探索（デフォルトで単一パス `path-opt`、`--refine-path True` で再帰的 `path-search`）**
  - デフォルトでは、単一パス `path-opt`（GSM/DMF）を実行します。エンジン生出力は `<out-dir>/_work/path_opt/` に書かれ、マージ済み成果物（`mep.pdb`、`mep_trj.xyz`、`energy_diagram_MEP.png`）はルート直下へ配置します。
- - `--refine-path True` を指定すると、再帰的 `path-search` に切り替わり、多段階反応を自動検出して各素反応の詳細な MEP を構築します（エンジン生出力は `<out-dir>/_work/path_search/`）。複雑な多段階反応では手動での試行錯誤が必要な場合があります。
+ - `--refine-path True` を指定すると、再帰的 `path-search` に切り替わり、多段階反応を自動検出して各素反応の詳細な MEP を構築します。粗いMEPから得たHEIでTSOPTが失敗する場合の精密化に有効です。一方、悪い／ノイズの多いpathを不要な複数segmentへ分割して計算時間を大幅に増やすことがあるため、意図せぬcost増大を避けてデフォルトOFFです（エンジン生出力は `<out-dir>/_work/path_search/`）。
  - 複数入力 PDB の場合、参照マージ用の全系テンプレートが MEP エンジン（デフォルトは `path-opt`、`--refine-path True` 時は `path-search`）に自動的に渡されます（全系マージ自体は `--refine-path True` 時のみ実行）。単一構造スキャンの場合は、元の全系 PDB テンプレートが全ステージで再利用されます。
 
 4. **活性部位モデルを全系にマージ**（`--refine-path True` 使用時のみ）
  - `--refine-path True` を指定し、かつ参照 PDB テンプレートがある場合、マージ済みの `mep_w_ref.pdb` が `<out-dir>/` 直下へ配置し、セグメントごとの `mep_w_ref_seg_NN.pdb` は `<out-dir>/_work/path_search/` に残ります。デフォルトの `path-opt` モードでは全系マージは行われません。
 
 5. **オプションのセグメントごとの後処理**（反応セグメントのみ — 結合変化のあるセグメント。ブリッジセグメントはスキップ）
- - `--tsopt`: 各 HEI 活性部位モデルで TS 最適化を実行し、EulerPC IRC で追跡した後、IRC エンドポイントを `--thresh-post`（デフォルト `baker`）で再最適化します。エンドポイント最適化の作業ディレクトリは完了後に自動削除されます。
+ - `--tsopt`: 各 HEI 活性部位モデルで TS 最適化を実行し、EulerPC IRC で追跡した後、IRC エンドポイントを `--thresh-post`（デフォルト `baker`）で再最適化します。Hessian TS 最適化には MEP energy-upwinding Cartesian接線を反応参照モードとして自動的に渡します（energyを読めない旧trajectoryだけは正規化secantの二等分線へfallback）。エンドポイント最適化の作業ディレクトリは完了後に自動削除されます。
  - `--thermo`: (R, TS, P) で `freq` を呼び出し、振動/熱化学データと MLIP Gibbs ダイアグラムを取得
  - `--dft`: (R, TS, P) で DFT 一点計算を実行し、DFT ダイアグラムを構築。`--thermo` と組み合わせると DFT//MLIP Gibbs ダイアグラムも生成
   - 共有の上書きオプション: `--opt-mode`、`--opt-mode-post`（TSOPT/IRC 後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU 優先）など
@@ -242,7 +242,7 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `--workers`, `--workers-per-node` | MLIP 予測器の並列度（workers > 1 で解析Hessian無効; UMA バックエンドのみ）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1`, `1` |
+| `--workers`, `--workers-per-node` | UMA 予測器の並列度。`workers > 1` と明示的な解析 Hessian は併用できないため、`workers = 1` または有限差分を使用。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1`, `1` |
 | `--hessian-calc-mode [Analytical\|FiniteDifference]` | 共有 MLIP Hessianエンジン | `FiniteDifference` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--solvent TEXT` | xTB 補正用の暗黙溶媒名（例: `water`）。`none` で無効化 | `none` |
@@ -258,6 +258,8 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 | `--opt-mode-post [grad\|hess]` | TSOPT/IRC 後最適化のプリセット上書き（`grad` → Dimer/L-BFGS、`hess` → RSPRFO/RFO） | `hess` |
 | `--thresh-post TEXT` | IRC 後エンドポイント最適化の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
 | `--flatten/--no-flatten` | 余分な虚振動モードのフラット化 | `False` |
+| `--irc-step-size FLOAT` | IRCのEulerPC最大step（Bohr）を上書き。数frameですぐ止まる場合は`0.05`など小さい値で再試行 | IRC既定`0.10` |
+| `--irc-never-stop/--no-irc-never-stop` | 一時的なIRC energy上昇／平坦化による停止を無視。gradient/integrator収束と最大cycle上限は維持 | `False` |
 
 ```{warning}
 `--dft` による DFT 一点計算（PySCF/GPU4PySCF）は、約 300 原子を超えるモデルでは計算コストが非常に大きくなります。そのような系では、A100 や H200 等の高性能 GPU を搭載した HPC クラスタの利用が必要になる場合があります。

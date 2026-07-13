@@ -76,8 +76,8 @@ Every tool returns the same structured dict so the calling agent can dispatch on
     "schema_version": "1.0",         # pin to MCP_SUBCMD_RESULT_SCHEMA_VERSION
     "status": "ok" | "failed" | "summary_missing" | "summary_parse_error",
     "exit_code": int,                # subprocess exit code
-    "out_dir": str | None,           # working directory the CLI wrote to
-    "summary": dict,                 # parsed summary.json (CLI output schema)
+    "out_dir": str | None,           # working directory the CLI wrote to (None for the I/O helpers)
+    "summary": dict,                 # parsed summary.json; {} for the I/O helpers
     "stderr_tail": str,              # last ~60 lines of stderr
     "stdout_tail": str,              # last ~60 lines of stdout
     "hint": str | None,              # parsed `; recover: <hint>` suffix
@@ -85,7 +85,9 @@ Every tool returns the same structured dict so the calling agent can dispatch on
 }
 ```
 
-A failed subcommand additionally surfaces a structured exception envelope inside `summary`:
+`summary` and `out_dir` carry data for the 12 tools that run their subcommand against an output directory (the stage runners, the scans, `optimize_path`, `search_paths`, `run_full_pipeline`, `run_single_point_dft`). The 6 structure / I/O helper tools (`extract_active_site`, `add_element_info`, `fix_altloc`, `plot_trajectory`, `plot_energy_diagram`, `detect_bond_changes`) run with `out_dir=None` and write no summary.json: they always return `summary={}` and `out_dir=None`, with `status` taken straight from the exit code (`ok` / `failed`). Read their result from `stdout_tail`, and their failure reason from `stderr_tail` / `exit_code`.
+
+For those 12 summary-writing tools, a failed subcommand additionally surfaces a structured exception envelope inside `summary`:
 
 - `error_class_chain` — list of class names walking the MRO (e.g. `["CudaOutOfMemoryError", "RuntimeError", "Exception"]`)
 - `error_module` — module path of the originating exception class
@@ -95,17 +97,26 @@ so an MCP client can pattern-match on the hierarchy instead of substring-matchin
 
 ## `find_transition_state` opt-mode kwarg
 
-Beyond the default RS-P-RFO, `find_transition_state` accepts:
+`find_transition_state` forwards `opt_mode` to `pdb2reaction tsopt --opt-mode`, which accepts six values (default `"hess"`):
 
+- `opt_mode="hess"` (default; alias `"rsprfo"`) — Banerjee restricted-step P-RFO TS opt
+- `opt_mode="grad"` (alias `"dimer"`) — Hessian-guided Dimer TS opt
 - `opt_mode="trim"` — Helgaker trust-region image-minimisation TS opt
-- `opt_mode="rsprfo"` — Banerjee restricted-step P-RFO TS opt
-- `opt_mode="dimer"` (alias `grad`) — Hessian-guided Dimer TS opt
+- `opt_mode="rsirfo"` — restricted-step I-RFO TS opt
 
 ## Sandbox / safety notes
 
+IRC recovery knobs are exposed directly: `run_irc(step_size=0.05,
+never_stop=True)` and `run_full_pipeline(irc_step_size=0.05,
+irc_never_stop=True)`. Reduce the step first for an immediately stopping IRC;
+`never_stop` ignores energy-rise/plateau stops but retains convergence and the
+cycle cap. The full pipeline also exposes `flatten` and `refine_path`; recursive
+refinement can split a poor path into extra segments and increase cost.
+
 - The MCP server inherits the calling environment's PATH, conda env, and CUDA setup. Long-running tools (opt / tsopt / irc) launch the `pdb2reaction` CLI in a subprocess — set `timeout_seconds` on each call to bound runaway computations.
-- Output files land under the `out_dir` kwarg (defaults to a unique `tempfile.mkdtemp("p2r_mcp_<subcmd>_…")` so concurrent agent calls don't collide).
-- The server does not modify `~/.bashrc` / login env, install software, or write outside `out_dir`. All MLIP weights / PDB inputs must already exist on disk.
+- The 12 stage / scan / pipeline tools take an `out_dir` kwarg and write their output (including `summary.json`) there; left unset, it defaults to a unique `tempfile.mkdtemp("p2r_mcp_<subcmd>_…")` so concurrent agent calls don't collide.
+- The 6 structure / I-O helpers (`extract_active_site`, `add_element_info`, `fix_altloc`, `plot_trajectory`, `plot_energy_diagram`, `detect_bond_changes`) take no `out_dir`: each writes to the path given by its required `output_pdb` / `output_png` argument (`detect_bond_changes` writes no file). They return `status: "ok"` with `out_dir: null` and an empty `summary` — read their result from `stdout_tail` and the file they wrote.
+- The server leaves `~/.bashrc` / login env untouched, installs no software, and writes only to the destinations above (`out_dir`, or the explicit `output_pdb` / `output_png` path). All MLIP weights / PDB inputs must already exist on disk.
 
 ## See also
 - Full MCP server doc: [`docs/mcp_server.md`](../../docs/mcp_server.md)

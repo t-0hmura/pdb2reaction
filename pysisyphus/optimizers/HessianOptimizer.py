@@ -163,7 +163,8 @@ class HessianOptimizer(Optimizer):
             uphill trial; it may be smaller than ``trust_min``.
         max_rejections_at_floor
             Repeated rejected trials allowed at the emergency floor before the
-            lower-energy geometry is retained as a numerical plateau.
+            lower-energy geometry is retained and the run stops as
+            non-converged.
 
         Other Parameters
         ----------------
@@ -562,7 +563,11 @@ class HessianOptimizer(Optimizer):
             self.uphill_rejection_stalled = True
             self.table.print(
                 "Repeated uphill RFO trials at the emergency trust floor; "
-                "retaining the lower-energy geometry as a numerical plateau."
+                "retaining the lower-energy geometry and stopping without "
+                "claiming convergence."
+            )
+            self.request_stop(
+                "repeated uphill RFO trials at the emergency trust floor"
             )
 
     def set_new_trust_radius(self, coeff, last_step_norm, min_radius=None):

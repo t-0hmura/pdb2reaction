@@ -8,6 +8,14 @@ optimizer は `--opt-mode` で選びます。ほとんどの系では `--opt-mod
 
 TS 初期構造がまず必要な場合は、2 端点なら [path-opt](path-opt.md)、2 構造以上なら [path-search](path-search.md) を実行し、得られた HEI を `tsopt` → `irc` の順で最適化・検証してください。XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定し、XYZ 座標を保持したまま、形式に応じた PDB/GJF 出力への変換ができます。
 
+`--ref-mode` は通常の単独 `tsopt` に必要なoptionではなく、主に `all` 内部のMEP→TS handoffです。`all` はMEP energyを使った標準のupwinding Cartesian 3N接線を自動生成して渡し、energyを読めない旧trajectoryだけは正規化secantの二等分線へfallbackします。外部の経路計算から意図的に反応方向を渡すexpert standalone runだけが `--ref-mode PATH` を直接指定します。
+
+離散接線が複数のHessian modeに分散し、最大overlapの90%以内に候補が複数ある場合、初期rootはその中で最も負／軟らかい曲率を選びます。その後はモードの回転を許して正・負を含むHessian全スペクトル上でoverlap追跡します。目的モードが一度も負曲率を得ていない`n_imag=0`回復では、単一の正曲率固有モードへ縮退させず、経路ベクトル全体を保持します。exact PHVAのmode同一性判定も、目的の負曲率を初めて確認するまでは不変のMEP接線を基準にし、確認後だけtransport済みmodeへ切り替えます。負曲率を捕捉した後の回復にはtransport済みmodeを使います。有界回復は50 stepごとに最大200 stepまでexact PHVAを再計算し、Bofill modelが正曲率のままでも物理モードが負へ交差した時点でTS最適化を再開します。経路付きrunでは、初期raw rootまたはquasi-Newton rootの一時的な負符号だけではmode-loss rollbackを固定せず、exact PHVAまたは明示的recovery crossingで物理的な目的モードを確認してから有効にします。経路情報のない局所極小だけから、どの隣接鞍点が目的かを一意には決められません。exact PHVAは目的モードを全物理モードと照合するため、目的モードが正曲率になったときに別の虚振動1個を代用して成功扱いにはしません。
+
+一方、複数負モードの部分空間では固有ベクトル同士が連続的に入れ替わり得るため、高次鞍点のexact checkだけは保持モードを不変のMEP接線へ再anchorしてから、それ以外を最大20回の有界retryでflattenします。最初の物理的な負曲率確認後は`n_imag=0/1`でtransportを維持するので、真のモード回転は妨げません。各retryは標準の3回のexact checkを維持して、直交flatten変位後に反応モードを再確立します。各cleanup retryでenergy-selected側が目的の一次鞍点にならなければ反対符号も最適化し、目的モード保持・一次鞍点への近さ・余剰虚振動の強さ・残留力で良い分岐を選ぶため、変位点のenergyだけで誤った下降側を選びません。直前のPHVAで同定したpath modeを引き継ぎ、任意の別rootは選びません。exact PHVAのCartesian modeとcycle内のraw-Hessian root追跡用固有ベクトルは別々に保持します。
+
+最初の経路誘導Hessian runが検証済み鞍点に到達しない場合は、同じoptimizerをHEI接線方向の±0.10 Å、続いて±0.20 Åから有界restartします。kinkした離散接線が無関係なモードだけを見つけた場合は、初期HEIで選んだ軟らかいpath相関Hessian rootに沿って同じshellを試します。最大8試行の方向sourceと結果を`result.json`に記録し、全て失敗した場合は元の結果を保持して`not_converged`とします。
+
 > **命名規則の注意:** CLI は `grad|dimer`（= Dimer）、`hess|rsprfo`（= RS-P-RFO、デフォルト）、および `rsirfo`（= RS-I-RFO）/ `trim`（= TRIM）を受け付けます。YAML ではトップレベルの `hessian_dimer:`（Dimer）ブロック、または `rsirfo:` ブロック（RS-P-RFO・RS-I-RFO・TRIM が共用）を直接指定してください。
 
 ## TS 候補を得る 2 つの経路
@@ -117,7 +125,7 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
 | `--ref-pdb FILE` | 入力が XYZ/GJF の場合に使用する参照 PDB トポロジー | _None_ |
 | **バックエンドと計算** | | |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
-| `--workers INT` | MLIP 予測器の並列度（workers > 1 で解析Hessian無効）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1` |
+| `--workers INT` | UMA 予測器の並列度。`workers > 1` と明示的な解析 Hessian は併用できないため、`workers = 1` または有限差分を使用。{ref}`ja-workers-fd-downgrade` を参照 | `1` |
 | `--workers-per-node INT` | ノードあたりのワーカー数。並列予測器に渡されます | `1` |
 | `--hessian-calc-mode CHOICE` | MLIP Hessianモード（`Analytical` または `FiniteDifference`） | `FiniteDifference` |
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
@@ -127,7 +135,8 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
 | **TS optimizer とモード** | | |
 | `--opt-mode TEXT` | TS optimizer プリセット（Choice: `grad` / `hess` / `dimer` / `rsirfo` / `trim` / `rsprfo`）。`grad`/`dimer` → Hessian-Guided Dimer; `hess`/`rsprfo` → RS-P-RFO（Banerjee、デフォルト、non-microiter）; `rsirfo` → RS-I-RFO; `trim` → TRIM（Helgaker、non-microiter）。サブコマンド別の対応表（`opt` は L-BFGS/RFO、`tsopt` は Dimer/RS-P-RFO）は {ref}`ja-opt-mode-semantics` を参照 | `hess` |
-| `--flatten/--no-flatten` | 余分な虚振動数モードのフラット化ループを有効化（`False` は `flatten_max_iter=0` を強制）。TS 最適化が収束した後、Hessian行列の余分な負の固有値モードを反復的にフラット化し、虚振動数が 1 つだけ残るか反復上限に達するまで繰り返します。dimer（dimer ループ）および RS-P-RFO / RS-I-RFO（収束後）の両方に適用 | `False` |
+| `--ref-mode PATH` | advanced/internal MEP handoff用のCartesian 3N方向（空白区切りtextまたは`.npy`）。`all`が自動指定し、通常の単独runでは省略します。外部経路を使うexpert runではroot選択、overlap追跡、`n_imag=0`回復に使用します | _None_ |
+| `--flatten/--no-flatten` | 一般の余剰虚振動モード flatten を有効化します。TS 最適化後、虚振動数が 1 つになるか上限に達するまで繰り返します。dimer および RS-P-RFO / RS-I-RFO に適用します。`--ref-mode` 付き Hessian run では、保持すべき負モードを参照方向で特定できるため、最大 20 回の cleanup が自動的に有効になります | `False` |
 | `--coord-type TEXT` | 最適化座標系（`cart` / `redund` / `dlc` / `tric`）。`cart` は公表値の基準となる確実なデフォルト。`dlc`（非局在内部座標）は低速だが、ねじれの多い系で一次鞍点へより堅牢に収束する。Hessianベースの最適化器が必要（`tsopt` の RS-P-RFO / Dimer は該当）。`path-opt` / `path-search` は `cart` / `dlc` のみ受け付ける | `cart` |
 | `--precision [fp32\|fp64]` | MLIP バックエンド精度。バックエンド固有のキー（UMA `precision` / ORB `precision` / MACE `default_dtype`。`aimnet2`: `fp32` は no-op、`fp64` は拒否）へ振り分け。データセンター GPU では数値ノイズの少ない Hessian のために `fp64` を使用。{ref}`再現性: GPU クラスによる精度の選択 <ja-precision-by-gpu-class>` を参照 | バックエンド既定 (uma `fp32`、orb・mace `fp64`) |
 | **閾値とサイクル** | | |
@@ -150,8 +159,19 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
 
 - CLI `--flatten` **未指定** → YAML で `hessian_dimer.flatten_max_iter` を**明示的に指定**しない限り `flatten_max_iter = 0`（余剰モード除去ループ無効）。フラット化のカウンタは Dimer・RS-I-RFO のどちらの経路でも `hessian_dimer` ブロックからのみ読み取られます。`defaults.py` の値 50 は**無視**されます。
 - CLI `--flatten` 指定 → YAML / `defaults.py` の値が有効（デフォルト `flatten_max_iter = 50`）。引き続き YAML で上書きできます。
+- 例外として、`all`が内部指定する`--ref-mode`付きHessian TS runでexact PHVAが高次鞍点を確認した場合は、参照モード以外を除く最大20回の有界cleanupが自動的に有効になります。
 
 TS 候補に複数の虚振動数がある場合は、`--flatten` を追加して余分なモードの除去ループを有効にしてください。
+
+pathのHEIからTS最適化がなお失敗する場合は、原因に応じて2通りを試します。
+
+1. 余分な虚振動が残る場合は`--flatten`を追加します。
+2. `all` workflowでは`--refine-path True`で再帰的`path-search`を実行し、
+   TSOPT前のHEIを精密化します。
+
+2番目は意図的にデフォルトOFFです。悪い／ノイズの多いpathを不要な素反応segmentへ
+分割し、MEP・TSOPT・IRC・freqの計算量を何倍にもする可能性があります。まず未精密化
+MEPを確認し、粗いHEIが原因と判断できる場合に有効化してください。
 ```
 
 (ja-wrong-imaginary-mode-count)=
@@ -250,6 +270,8 @@ rsirfo:
  trust_max: 0.10 # 最大信頼半径 (bohr)
  out_dir: ./result_tsopt/ # tsopt の上書き（defaults.py の値は ./result_opt/）
  hessian_recalc: 500 # N マクロステップごとに exact Hessian を再計算
+ saddle_recovery_check_interval: 50 # n_imag=0 回復中の exact PHVA 間隔
+ saddle_recovery_max_cycles: 200 # n_imag=0 回復の有界上限
 ```
 
 ```{tip}

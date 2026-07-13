@@ -55,7 +55,7 @@ pdb2reaction tsopt -i hei.xyz -q 0 -m 1 \
 ### Tighter convergence on an ill-conditioned saddle
 
 ```bash
-pdb2reaction tsopt -i hei.xyz -l 'SAM:1,GPP:-3' \
+pdb2reaction tsopt -i hei.pdb -l 'SAM:1,GPP:-3' \
     --opt-mode rsirfo --max-cycles 200 -b mace \
     -o result_tsopt_rsirfo
 ```
@@ -120,7 +120,10 @@ of frozen residues) or real chemical second-order saddle points.
   with `irc.md` to confirm the TS connects the expected R and P.
 - `--max-cycles` defaults to 10000 as a safety upper bound; if a run
   burns through many cycles without converging, the TS guess is usually
-  too far off — re-run `path-search` rather than raising the cap.
+  too far off. Add `--flatten` for surplus imaginary modes. If the seed came
+  from `all`, `--refine-path True` can produce a better HEI, but recursive
+  segmentation may multiply MEP/TSOPT/IRC/freq cost and is therefore off by
+  default; inspect the coarse MEP before enabling it.
 - Backend choice matters here more than for minima: UMA / MACE are
   usually safer than Orb for TS curvature.
 

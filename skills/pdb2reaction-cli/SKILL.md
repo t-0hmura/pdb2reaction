@@ -1,13 +1,13 @@
 ---
 name: pdb2reaction-cli
-description: Per-subcommand reference for pdb2reaction's 18 CLI subcommands (extract / path-search / tsopt / freq / irc / dft / scan / opt / sp / all / …). SKILL.md is a 1-line input→output cheatsheet; each subcommand also has its own md (`extract.md` / `tsopt.md` / …) for flags, validation, caveats. See `freeze-atoms.md` for cluster-boundary frozen-atom mechanics. TRIGGER on questions about a specific subcommand, flag, or shell invocation. SKIP for install / HPC / output-parsing / structure-format-editing questions.
+description: Per-subcommand reference for pdb2reaction's 18 CLI subcommands (extract / path-search / tsopt / freq / irc / dft / scan / opt / sp / all / …). SKILL.md is a 1-line input→output cheatsheet; most subcommands also have their own md (`extract.md` / `tsopt.md` / …) for flags, validation, caveats. See `freeze-atoms.md` for cluster-boundary frozen-atom mechanics. TRIGGER on questions about a specific subcommand, flag, or shell invocation. SKIP for install / HPC / output-parsing / structure-format-editing questions.
 ---
 
 # pdb2reaction CLI
 
 ## Cheatsheet (input → output)
 
-`-l 'RES:Q,...'` (or `-q <int>`) and `-m <int>` are required for non-trivial inputs; omitted below for brevity. `-b` defaults to `uma`. Full flags: `<sub>.md` next to this file, or `pdb2reaction <sub> --help`.
+`-l 'RES:Q,...'` (or `-q <int>`) and `-m <int>` are required for non-trivial inputs; omitted below for brevity. `-b` defaults to `uma`. Full flags: `<sub>.md` next to this file, or `pdb2reaction <sub> --help`. Every subcommand except `sp` has an md; for `sp`, use its cheatsheet row below plus `pdb2reaction sp --help`.
 
 | sub | role | minimal command | primary output |
 |---|---|---|---|
@@ -19,7 +19,7 @@ description: Per-subcommand reference for pdb2reaction's 18 CLI subcommands (ext
 | `path-opt` | Single-segment MEP refinement | `pdb2reaction path-opt -i 1.R.pdb 2.P.pdb -o out` | `out/final_geometries_trj.xyz` |
 | `opt` | Geometry minimization (LBFGS / RFO) | `pdb2reaction opt -i geom.pdb -o out` | `out/final_geometry.xyz` |
 | `tsopt` | TS optimization (RS-P-RFO / Dimer) | `pdb2reaction tsopt -i ts.xyz -q 0 -m 1 -o out` | `out/final_geometry.xyz`; `result.json.n_imaginary_modes`==1 for true TS |
-| `freq` | Hessian + QRRHO thermo | `pdb2reaction freq -i geom.xyz -q 0 -m 1 -o out` | `out/frequencies_cm-1.txt`, `out/thermoanalysis.yaml` |
+| `freq` | Hessian + QRRHO thermo | `pdb2reaction freq -i geom.xyz -q 0 -m 1 -o out` | `out/frequencies_cm-1.txt` always (thermo printed to stdout); `out/thermoanalysis.yaml` with `--dump` (`all --thermo` sets it) |
 | `sp` | Single-point MLIP energy + forces (+optional Hessian) | `pdb2reaction sp -i geom.pdb -q 0 -m 1 -o out` | `out/forces.npy` (+ `out/hessian.npy` with `--hess`); energy printed to stdout; `out/result.json` + `out/summary.json` only with `--out-json` |
 | `irc` | IRC from a TS | `pdb2reaction irc -i ts.xyz -q 0 -m 1 -o out` | `out/{forward,backward,finished}_irc_trj.xyz` |
 | `dft` | Single-point DFT (PySCF / GPU4PySCF) | `pdb2reaction dft -i geom.pdb --func-basis 'wb97m-v/def2-tzvpd' -o out` | `out/result.yaml` always (energy.hartree, energy.engine); `out/result.json` with `--out-json` |
@@ -49,7 +49,8 @@ description: Per-subcommand reference for pdb2reaction's 18 CLI subcommands (ext
 | `-b, --backend` | MLIP backend: `uma` / `orb` / `mace` / `aimnet2` |
 | `-o, --out-dir` | Output directory, subcommand-specific default |
 | `--config` | YAML configuration file applied before CLI flags |
-| `--show-config` / `--dry-run` | Print resolved config without running |
+| `--show-config` | Print the resolved configuration, then **continue** with the full run |
+| `--dry-run` | Validate options and print the execution plan, then **exit** without computing |
 | `--help-advanced` | Reveal hidden / advanced flags |
 | `--ref-pdb` | Reference PDB used to derive residue context for XYZ inputs |
 | `--solvent` | xTB-ALPB solvent name (e.g. `water`); `none` to disable |
@@ -106,7 +107,7 @@ pdb2reaction bond-summary -i reactant.pdb -i product.pdb
 | Pitfall | Fix |
 |---|---|
 | `--scan-lists` syntax error | The list is a Python literal-eval expression. Quote with single-quotes outside, double-quotes inside, and do not confuse the backtick (`` ` ``) with the backslash (`\`). |
-| Wrong charge silently | Always run `--show-config` once before a long job; it prints the resolved charge. |
+| Wrong charge silently | Run the job once with `--dry-run` first: it validates options, prints the resolved/extract-derived charge and the electron-parity check, then exits without computing. (`--show-config` also prints the resolved config, but it then proceeds with the full run.) |
 | Forgetting to pin `-b` for production | The default is `-b uma`; specify `-b uma` / `-b orb` / `-b mace` / `-b aimnet2` explicitly so a future default change cannot silently re-route the run. |
 | `--config` YAML ignored | YAML is read **after** built-in defaults but **before** explicit CLI flags. Anything also given on CLI overrides YAML. |
 | `--help-advanced` flags differ between versions | They are subject to change; if a flag isn't in `--help`, check `--help-advanced` and version-pin if the workflow is shared. |

@@ -78,7 +78,7 @@ Same as `all.md`. Specifically for endpoint-MEP mode:
 | `<out_dir>/_work/path_opt/mep_seg_NN_trj.xyz`, `mep_seg_NN.{pdb,gjf}` | always (`_work/path_search/` with `--refine-path True`) | per-segment MEP frames (no bare `.xyz`); scratch |
 | `<out_dir>/_work/path_search/seg_NNN_<tag>/` | `--refine-path True` | recursive-splitter scratch (3-digit, `_mep` / `_maxdepth` / `_bridge`); internal |
 | `<out_dir>/segments/seg_NN/` | always | per-segment deliverables + post-processing (ts/irc/freq/dft) + energy diagrams |
-| `<out_dir>/segments/seg_NN/{reactant,ts,product}.pdb` | always | canonical R/TS/P (after IRC + LBFGS endpoint opt) |
+| `<out_dir>/segments/seg_NN/{reactant,ts,product}.pdb` | always | canonical R/TS/P (after IRC + RFO endpoint opt; LBFGS via `--opt-mode-post grad`) |
 | `<out_dir>/summary.json["segments"]` | always | list of `{index, barrier_kcal, delta_kcal, bond_changes, ...}` |
 
 ## Distinctive failure modes

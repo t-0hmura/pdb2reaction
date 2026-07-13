@@ -82,7 +82,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge (CLI > template). When omitted, charge can be inferred from `--ligand-charge/-l`; explicit `-q` overrides any derived value. | Required unless a `.gjf` template or `--ligand-charge/-l` supplies it |
 | `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB residue charges. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
-| `--workers`, `--workers-per-node` | MLIP predictor parallelism (workers > 1 disables analytic Hessians; UMA backend only; `workers_per_node` forwarded to the parallel predictor). See {ref}`workers-fd-downgrade` for diagnostic notes. | `1`, `1` |
+| `--workers`, `--workers-per-node` | UMA predictor parallelism; `workers_per_node` is forwarded to the parallel predictor. `workers > 1` cannot be combined with an explicit analytical Hessian request. See {ref}`workers-fd-downgrade`. | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
 | `-s, --scan-lists TEXT` | Scan targets: a YAML/JSON spec file path (recommended) or inline Python literal with `(i,j,targetÅ)` triples or `(i,j,start,end)` 4-tuples for bidirectional scans. Each inline literal is one stage; supply multiple literals after a single flag. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
 | `--one-based/--zero-based` | Interpret atom indices as 1- or 0-based. These are mutually exclusive toggle aliases for the same flag (`--one-based` sets it to `True`, `--zero-based` sets it to `False`). | `True` |
@@ -160,8 +160,8 @@ The number of `(i, j, target)` tuples inside one literal and the number of liter
 
 | Mode | Syntax | Use when |
 | --- | --- | --- |
-| Concerted | one `-s` with several coordinate tuples | The coordinates move together in a single step; you do not need to break the mechanism into stages |
-| Staged | `-s` repeated (one literal per sequential stage) | The mechanism is known up front and you want clean per-step control and per-stage output |
+| Concerted | one `-s`, one literal holding several coordinate tuples | The coordinates move together in a single step; you do not need to break the mechanism into stages |
+| Staged | one `-s`, several space-separated literals (one literal per sequential stage) | The mechanism is known up front and you want clean per-step control and per-stage output |
 
 When the mechanism **is** known, the staged form is generally preferred — it gives per-step barriers and per-stage geometries. When the mechanism is unknown or multi-step, let [`path-search`](path-search.md) auto-segment the path instead of guessing the stages yourself. (A 4-tuple `(i, j, low, high)` expands into a bidirectional 2-stage scan; see [Bidirectional scan](#bidirectional-scan-4-tuple).)
 

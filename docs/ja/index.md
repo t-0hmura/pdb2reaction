@@ -1,6 +1,6 @@
 # pdb2reaction ドキュメント
 
-*バージョン: v0.4.11*
+*バージョン: v0.4.12*
 
 ---
 
@@ -95,7 +95,7 @@
   title        = {pdb2reaction},
   year         = {2026},
   month        = {6},
-  version      = {0.4.11},
+  version      = {0.4.12},
   url          = {https://github.com/t-0hmura/pdb2reaction},
   license      = {GPL-3.0},
   doi          = {10.5281/zenodo.19197865}

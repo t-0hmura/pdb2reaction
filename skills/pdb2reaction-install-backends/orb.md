@@ -63,7 +63,7 @@ Orb accepts (canonical list in
 | `charge`, `spin` | Total charge and spin multiplicity |
 | `device` | `'cuda'`, `'cpu'`, `'auto'` |
 | `model` | Override the default Orb checkpoint |
-| `precision` | `'float32-high'` (default; TF32-style mixed precision) or `'float64'` for tighter convergence. **`'float32'` is invalid** — Orb silently falls back to a slow path. |
+| `precision` | `'float64'` is the default: an unset `--precision` resolves per backend (`ORB_BACKEND_DEFAULTS["precision"]`, `_BACKEND_DEFAULT_PRECISION["orb"] = "fp64"`). `'float32-high'` selects ORB's TF32 matmul mode — fast, but its force noise inflates finite-difference Hessians into spurious imaginary modes, so keep it for screening only. pdb2reaction normalizes `'float32'`/`'fp32'` → `'float32-high'` and `'fp64'` → `'float64'` before the loader (raw orb_models rejects `'float32'` and demotes to a slow path). |
 | `compile_model` | `True` to torch-compile (faster after first call, slower start) |
 | `freeze_atoms`, `hessian_calc_mode`, `return_partial_hessian`, `hessian_double` | Same as UMA |
 
@@ -82,7 +82,7 @@ re-run survivors with UMA or MACE for the final TS / IRC.
 
 | Symptom | Cause / fix |
 |---|---|
-| `RuntimeError: ... mat1 and mat2 shapes ... ` during Hessian | Default `precision='float32-high'` insufficient on near-degenerate modes; try `precision='float64'`. |
+| `RuntimeError: ... mat1 and mat2 shapes ... ` during Hessian | Appears once the run has been downgraded to `float32-high` (TF32) — e.g. `--precision fp32`, or a `--config` YAML carrying `calc.precision: fp32`. Keep the `'float64'` default for every Hessian / freq step. |
 | `compile_model=True` adds torch-compile overhead on first call | Subsequent calls are faster. Disable for short jobs. |
 | TS converges with > 1 imaginary mode | Common with Orb on aromatic or metalloenzyme systems. Re-run that step with UMA/MACE. |
 

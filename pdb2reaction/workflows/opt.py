@@ -686,8 +686,20 @@ def cli(
 
             # Seed cached IRC endpoint Hessian for RFO when available
             if main_kind == "rfo":
-                from pdb2reaction.io.hessian_cache import load as _hess_load
+                from pdb2reaction.io.hessian_cache import (
+                    load as _hess_load,
+                    matches_cart_coords as _hess_matches_coords,
+                )
                 _cached = _hess_load("irc_endpoint")
+                if _cached is not None and not _hess_matches_coords(
+                    _cached, geometry.cart_coords
+                ):
+                    click.echo(
+                        "[opt] Cached IRC Hessian does not match the input "
+                        "geometry; calculating a fresh Hessian.",
+                        err=True,
+                    )
+                    _cached = None
                 if _cached is not None:
                     click.echo("[opt] Reusing IRC endpoint Hessian for RFO seeding.")
                     _active_dofs = _cached.get("active_dofs")

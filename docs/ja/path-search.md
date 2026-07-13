@@ -82,6 +82,7 @@ out_dir/ (デフォルト:./result_path_search/)
 ├─ hei_seg_XX.xyz # セグメントごとの最高エネルギー画像
 ├─ hei_seg_XX.pdb # HEI に対応する PDB（変換有効時）
 ├─ hei_seg_XX.gjf # HEI に対応する Gaussian（テンプレート検出時）
+├─ hei_mode_seg_XX.txt # HEI の energy-upwinding Cartesian 接線
 ├─ hei_w_ref_seg_XX.pdb # 全系コンテキストでマージされた HEI（参照 PDB が必要）
 ├─ summary.json # すべての再帰セグメントの障壁と分類サマリー
 ├─ summary.log # 結果要約
@@ -114,7 +115,7 @@ out_dir/ (デフォルト:./result_path_search/)
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | **バックエンドと計算** | | |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
-| `--workers`, `--workers-per-node` | MLIP 予測器の並列度（workers > 1 で解析Hessian無効; UMA バックエンドのみ; `workers_per_node` は並列予測器に渡されます）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1`, `1` |
+| `--workers`, `--workers-per-node` | UMA 予測器の並列度（`workers_per_node` は並列予測器へ転送）。`workers > 1` と明示的な解析 Hessian は併用不可。{ref}`ja-workers-fd-downgrade` を参照 | `1`, `1` |
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 | **活性領域の凍結** | | |

@@ -13,7 +13,7 @@ R / P, use `pdb2reaction all`.)
 ```bash
 pdb2reaction irc -i ts.{pdb,xyz,gjf} \
     [-q 0 -m 1] [-l 'RES:Q,...'] \
-    [--max-cycles 125] [--step-size 0.1] \
+    [--max-cycles 125] [--step-size 0.1] [--never-stop] \
     [-b uma|orb|mace|aimnet2] [-o ./result_irc/]
 ```
 
@@ -25,6 +25,7 @@ pdb2reaction irc -i ts.{pdb,xyz,gjf} \
 | `-q` / `-l` / `-m` | — | — | Charge / spin |
 | `--max-cycles` | int | 125 | Max IRC steps per branch (forward + backward) |
 | `--step-size` | float | `0.10` | Step in Bohr (unweighted Cartesian); maps to `IRC_KW["step_length"]` |
+| `--never-stop / --no-never-stop` | bool | `False` | Ignore energy-rise/plateau stops so a small shoulder can be crossed; gradient/integrator convergence and `max_cycles` still apply |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `-o, --out-dir` | path | `./result_irc/` | Output directory |
 | `--config` / `--show-config` / `--dry-run` / `--help-advanced` | — | — | Standard |
@@ -46,6 +47,11 @@ pdb2reaction irc -i ts.xyz -q -1 -m 1 \
     --max-cycles 250 --step-size 0.05 \
     -b uma -o result_irc_long
 ```
+
+If IRC stops after only a few frames, **reduce `--step-size` first**
+(usually from `0.10` to `0.05`). If the trajectory visibly contains a small
+uphill/flat shoulder, retry with `--never-stop`; this is opt-in and the
+trajectory/endpoints must be inspected because it may pass the nearest basin.
 
 ## Output
 

@@ -125,8 +125,9 @@ dependencies:
 #   pip install mace-torch              # pulls the e3nn version MACE needs
 ```
 
-`<cu_index>` is one of `cpu`, `cu118`, `cu121`, `cu124`, `cu126`, `cu128`, `cu129` — see
-`env-cuda.md` for the driver version → index mapping.
+`<cu_index>` is one of `cpu`, `cu126`, `cu128`, `cu129` — the only indexes that publish a
+`torch~=2.8.0` wheel, which is what this release pins. See `env-cuda.md` for the driver
+version → index mapping.
 
 ## Verify the install
 

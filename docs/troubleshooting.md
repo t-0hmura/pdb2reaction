@@ -72,13 +72,14 @@ Try the following, in order:
 
 1. Switch the optimizer mode: `--opt-mode grad` (Dimer Method) ↔ `--opt-mode hess` (Restricted-Step Partitioned-RFO, RS-P-RFO).
 2. Add `--flatten` (available on standalone `tsopt` / `opt` / `pdb2reaction all`).
-3. Raise the cycle limit: `--max-cycles 20000` (standalone `tsopt`) or `--tsopt-max-cycles 20000` (`all`).
-4. Tighten the force threshold: `--thresh baker` / `gau_tight`.
-5. Reduce step sizes / trust radii via YAML: `lbfgs.max_step`, `hessian_dimer.lbfgs.max_step`, `rfo.trust_radius` / `trust_min` / `trust_max`, the `rsirfo` block — see [YAML Reference](yaml-reference.md).
+3. If the HEI came from a coarse MEP, retry `all` with `--refine-path True`. This may split a poor path into unnecessary segments and multiply cost, so it is off by default and should follow inspection of the coarse MEP.
+4. Raise the cycle limit: `--max-cycles 20000` (standalone `tsopt`) or `--tsopt-max-cycles 20000` (`all`).
+5. Tighten the force threshold: `--thresh baker` / `gau_tight`.
+6. Reduce step sizes / trust radii via YAML: `lbfgs.max_step`, `hessian_dimer.lbfgs.max_step`, `rfo.trust_radius` / `trust_min` / `trust_max`, the `rsirfo` block — see [YAML Reference](yaml-reference.md).
 
 ### IRC does not terminate properly
 
-Reduce `--step-size 0.05` (default 0.10 bohr); raise `--max-cycles 200`; confirm the TS candidate has exactly one imaginary frequency before IRC (detection cutoff `hessian_dimer.neg_freq_thresh_cm`, default 5 cm⁻¹).
+Reduce `--step-size 0.05` (default 0.10 bohr), especially when a branch stops after only a few frames; raise `--max-cycles 200`; confirm the TS candidate has exactly one imaginary frequency before IRC (detection cutoff `hessian_dimer.neg_freq_thresh_cm`, default 5 cm⁻¹). If a small uphill/flat shoulder is intentional, add opt-in `--never-stop`; it ignores only energy-based stops, so inspect the resulting trajectory and endpoints.
 
 ### MEP search (GSM / DMF) fails or misses bonds
 

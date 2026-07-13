@@ -77,6 +77,32 @@ pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
 - Inserted after a `TER` as contiguous `HETATM` records named `HL` in residue `LKH` (chain `L`). Serial numbers continue from the main block.
 - In multi-structure mode the same bonds are capped across all models; coordinates remain model-specific.
 
+### Building or auditing a cluster model manually
+
+Treat every severed bond as a chemical modeling decision, not just a geometric
+radius cutoff.
+
+- For a retained protein-backbone fragment, choose the residue span so its two
+  main-chain ends terminate consistently at alpha carbons (PDB atom name
+  `CA`), then satisfy the terminal valences with caps.
+- At side-chain, ligand, or cofactor boundaries, cut a non-polar **C–C single
+  bond** whenever possible (commonly `CA–CB` or a more distant aliphatic C–C
+  bond). Do not cut a peptide C–N bond, C–O/C–N polar bond, aromatic/conjugated
+  bond, disulfide, or metal-coordination bond merely because it crosses the
+  distance cutoff; include the bonded partner or move the boundary.
+- Verify every cluster-side boundary atom has the intended valence and exactly
+  one cap. Keep cap parents frozen (`--freeze-links`, the default) in
+  production optimizations.
+- R/IM/P structures must contain the same atoms in the same order. Apply the
+  selection/capping pattern from one structure to all states rather than
+  re-extracting them independently.
+- Recalculate the total charge and multiplicity after truncation and inspect
+  the boundary visually before starting an MEP/Hessian calculation.
+
+The automatic extractor covers common protein cases, but unusual covalent
+cofactors, modified residues, metal sites, or a boundary that violates these
+rules should be corrected manually.
+
 ### Charge summary (`--ligand-charge/-l`)
 
 Amino acids and common ions draw charges from internal dictionaries; waters are zero. Unknown residues default to 0 unless `--ligand-charge/-l` supplies either a total charge (distributed across unknown substrate residues, or across all unknown residues when there is no unknown substrate residue) or a per-resname mapping like `GPP:-3,SAM:1`.

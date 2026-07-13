@@ -1,7 +1,5 @@
 # Architecture: pdb2reaction
 
----
-
 ## 1. Overview
 
 `pdb2reaction` is a Python CLI that performs **pure-MLIP enzymatic reaction-path analysis** on an active-site cluster model. From a PDB plus a substrate name, it extracts the active-site cluster, adds cap hydrogens to severed bonds, and runs Hessian-based RS-P-RFO TS optimization on the MLIP potential to produce the reaction path (extract → MEP → tsopt → IRC → freq → dft).
@@ -27,7 +25,7 @@ Two bundled forks (`pysisyphus/`, `thermoanalysis/`) live at the repo top as rep
 | **L5 Foundation** | `pdb2reaction/core/` | defaults (single source of truth), utils (PDB / XYZ / plot helpers), logging, future `errors.py` / `types.py` | (none) |
 | (bundle, not a layer) | `<repo>/pysisyphus/`, `<repo>/thermoanalysis/` | repo-internal forks (optimizer / thermochemistry) | (sibling, layer-external) |
 
-**Dependency direction (one-way)**: `L1 → L2 → {L3, L4} → L5`. The directional rule is enforced by CI marker coverage (`.github/scripts/check_engineering_markers.py`). Bundled forks sit outside the layer graph and may be imported from any layer via their absolute package path (`from pysisyphus.X import Y`).
+**Dependency direction (design intent, one-way)**: `L1 → L2 → {L3, L4} → L5`. Treat this as an intent that reviewers uphold by hand; CI gates adjacent invariants rather than layer direction — `.github/scripts/check_engineering_markers.py` verifies `# CHEMISTRY-RULE:{4,5,7}` marker coverage, the `# DOMAIN_PURE` markers on `workflows/dft.py` and `workflows/tsopt.py`, and that the MLIP SDKs (`fairchem` / `orb_models` / `mace` / `aimnet`) are imported only under `backends/`. Back-edges present in the current tree: `workflows/*` → `cli.common_options` / `cli.decorators` (e.g. `workflows/all.py:133`), `domain/add_elem_info.py:25` → `workflows.extract`, and `core/utils.py:39` → `domain.add_elem_info`. Bundled forks sit outside the layer graph and may be imported from any layer via their absolute package path (`from pysisyphus.X import Y`).
 
 ### 2.2 ASCII map of the package tree
 

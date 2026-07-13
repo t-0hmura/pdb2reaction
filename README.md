@@ -96,6 +96,11 @@ pdb2reaction -i reactant.xyz product.xyz -q 0 --tsopt --thermo --out-dir result_
 pdb2reaction -i cluster_R.pdb cluster_P.pdb -q 0 --tsopt --thermo --out-dir result_cluster
 ```
 
+For hand-built clusters, standardize backbone ends at Cα (`CA`), place other
+boundaries on aliphatic C–C single bonds whenever possible, avoid cutting
+peptide/polar/conjugated/metal bonds, and use the identical atom order and cap
+topology for every state. See [the cluster-boundary checklist](docs/extract.md#building-or-auditing-a-cluster-model-manually).
+
 Per-stage walkthrough (`extract` → `opt` → `path-opt` → `tsopt` → `freq` → `irc` → `dft`): [docs/getting-started.md](docs/getting-started.md) and [docs/quickstart-all.md](docs/quickstart-all.md).
 
 ## Output

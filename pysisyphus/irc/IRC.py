@@ -54,6 +54,7 @@ class IRC:
         dump_fn="irc_data.h5",
         dump_every=5,
         require_pos_def_hessian=False,
+        never_stop=False,
     ):
         """Base class for IRC calculations.
 
@@ -99,6 +100,10 @@ class IRC:
             given threshold. If given, it should be a negative number.
         force_inflection : bool, optional
             Don't indicate convergence before passing an inflection point.
+        never_stop : bool, optional
+            Ignore energy-increase and energy-change stopping conditions so a
+            short uphill/flat section does not terminate the path. Gradient
+            convergence, integrator convergence, and max_cycles still apply.
         check_bonds : bool, optional, default=True
             Report whether bonds are formed/broken along the IRC, w.r.t the TS.
         out_dir : str, optional
@@ -146,6 +151,7 @@ class IRC:
         # the gradient is small but the Hessian still has a negative mode
         # (= we haven't reached a true minimum yet). See sella/optimize/irc.py:167-170.
         self.require_pos_def_hessian = bool(require_pos_def_hessian)
+        self.never_stop = bool(never_stop)
         assert imag_below <= 0.0
         self.imag_below = imag_below
         self.force_inflection = force_inflection
@@ -186,6 +192,16 @@ class IRC:
         self.cycle_places = ceil(log(self.max_cycles, 10))
 
         self.mm_inv2 = self.geometry.mm_sqrt_inv[np.ix_(self._act_dofs, self._act_dofs)]
+
+    def _energy_stop_message(self):
+        """Return the legacy energy-based stop reason, if it is enabled."""
+        if self.never_stop:
+            return ""
+        if self.energy_increased:
+            return "Energy increased!"
+        if self.energy_converged:
+            return "Energy converged!"
+        return ""
 
     def get_path_for_fn(self, fn):
         return self.out_dir / f"{self.prefix}{fn}"
@@ -658,12 +674,20 @@ class IRC:
                 and (rms_grad <= self.hard_rms_grad_thresh)
             ):
                 break_msg = "rms(grad) below hard threshold."
-            # TODO: Allow some threshold?
-            elif self.energy_increased:
-                break_msg = "Energy increased!"
-            elif self.energy_converged:
-                break_msg = "Energy converged!"
-                self.converged = True
+            else:
+                break_msg = self._energy_stop_message()
+                if break_msg == "Energy converged!":
+                    self.converged = True
+
+            if self.never_stop and not break_msg:
+                if self.energy_increased:
+                    self.table.print(
+                        "Energy increased; continuing because never_stop=True."
+                    )
+                elif self.energy_converged:
+                    self.table.print(
+                        "Energy change converged; continuing because never_stop=True."
+                    )
 
             if break_msg:
                 self.table.print(break_msg)
@@ -716,6 +740,7 @@ class IRC:
         setattr(self, f"{prefix}_is_converged", self.converged)
         setattr(self, f"{prefix}_energy_increased", self.energy_increased)
         setattr(self, f"{prefix}_energy_converged", self.energy_converged)
+        setattr(self, f"{prefix}_never_stop", self.never_stop)
         setattr(self, f"{prefix}_cycle", self.cur_cycle)
         self.dump_ends(".", prefix, getattr(self, mw_coords_name))
 

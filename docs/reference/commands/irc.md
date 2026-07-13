@@ -29,6 +29,11 @@ Options:
   --step-size FLOAT               Step length in Bohr (unweighted Cartesian
                                   coordinates); used unless YAML sets
                                   irc.step_length. Default: 0.10 Bohr.
+  --never-stop / --no-never-stop  Ignore transient energy increases/plateaus and
+                                  keep tracing through small shoulders.
+                                  Gradient/integrator convergence and --max-
+                                  cycles still stop the run. Used unless YAML
+                                  sets irc.never_stop; default off.
   --root INTEGER                  Imaginary mode index used for the initial
                                   displacement; used unless YAML sets irc.root.
                                   Defaults to 0.

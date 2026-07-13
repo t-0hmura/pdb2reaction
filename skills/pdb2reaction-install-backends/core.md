@@ -17,7 +17,16 @@ automatically with `pip install pdb2reaction`.
 conda activate <YOUR_ENV>
 pip install pdb2reaction                         # core (UMA via fairchem-core); Orb requires the [orb] extra
 pip install 'pdb2reaction[orb,aimnet,dft]'        # extras as needed
+plotly_get_chrome -y                             # headless Chrome for Plotly PNG export (~150 MB, needs network)
 ```
+
+`plotly_get_chrome -y` belongs to the **required** install — it is the third
+command in the "Required" block of `docs/installation.md`. Plotly's static-image
+export runs through Kaleido, which drives a headless Chromium. With Chrome in
+place, PNG output works everywhere; without it `energy-diagram`, `scan2d` and
+`trj2fig` (png/pdf/svg targets) raise at the plotting step, and `path-search` /
+`all` warn and finish without the diagram PNG — so the symptom appears at the end
+of a run, far from the env build.
 
 Available extras (canonical list lives in `pyproject.toml`):
 

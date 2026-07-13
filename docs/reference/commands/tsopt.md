@@ -15,6 +15,11 @@ Options:
                                   and exit.
   -i, --input FILE                Input structure file (.pdb, .xyz, _trj.xyz,
                                   ...).  [required]
+  --ref-mode FILE                 Advanced/internal path-mode hint for Hessian
+                                  TS recovery (.npy or whitespace Cartesian 3N
+                                  text). The all workflow supplies this
+                                  automatically from its MEP; ordinary
+                                  standalone tsopt runs normally omit it.
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
                                   predictor. NOTE: with UMA, workers>1 plus an
                                   explicit Analytical Hessian request is an

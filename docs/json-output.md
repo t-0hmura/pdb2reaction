@@ -30,6 +30,11 @@ Every `result.json` (and the mirrored `summary.json`) automatically includes:
 | `status` | string | Value depends on the subcommand (see each section below): e.g. `converged` / `not_converged` (opt, tsopt), `completed` (irc, freq), `ok` / `partial` (bond-summary), `success` / `partial` (all, path-search), and `error` on failure |
 | `elapsed_seconds` | float | Wall-clock time (seconds) |
 | `environment` | object | Hardware info (see below) |
+| `mlip_backend` | string | Backend identifier, added when the workflow uses an MLIP backend |
+| `mlip_model` | string \| null | Exact model/checkpoint identifier, kept separate from the backend |
+
+Leaf schemas also retain their local `backend` / `model` fields; consumers
+should prefer `mlip_backend` / `mlip_model` for a uniform cross-command key.
 
 ### Error envelope (when `status == "error"`)
 
@@ -95,9 +100,16 @@ All fields from `opt`, plus:
 | `n_imaginary_modes` | int | Number of imaginary frequencies |
 | `imaginary_frequencies_cm` | float[] | Imaginary frequencies (cm⁻¹, negative) |
 | `opt_mode` | string | `"rsprfo"` (default), `"rsirfo"`, `"trim"`, or `"dimer"` |
+| `reference_mode_file` | string\|null | Advanced path-mode file supplied through `--ref-mode`; normally generated and passed by `all` |
+| `safeguards` | object | Hessian-TS rejection/recovery diagnostics, including rejected mode-loss trials, exact saddle checks, final target-mode identity/overlap and higher-order MEP re-anchoring flag, stop reason, and bounded path-mode restart attempts |
 
 The `files` object may include `imaginary_mode_files` (list of vib file paths).
-Convergence details are available for rsirfo mode; dimer mode also reports `status: "converged"` or `"not_converged"` (from `runner.is_converged`), but provides `n_opt_cycles` only and omits the per-cycle force/step convergence keys that rsirfo reports.
+For Hessian modes, `status: "converged"` requires the final exact PHVA result
+to contain exactly one significant imaginary mode. Higher-order saddles and
+`n_imag=0` structures are reported as `not_converged`. Convergence details are
+available for rsirfo mode; dimer mode also reports `status: "converged"` or
+`"not_converged"`, but provides `n_opt_cycles` only and omits the per-cycle
+force/step convergence keys and Hessian-mode `safeguards` object.
 
 ### `freq`
 
@@ -151,10 +163,13 @@ Convergence details are available for rsirfo mode; dimer mode also reports `stat
 | `energy_product_hartree` | float | Product energy |
 | `forward_converged` | bool \| null | Forward IRC converged? `null` when the integrator did not expose the flag |
 | `backward_converged` | bool \| null | Backward IRC converged? `null` when the integrator did not expose the flag |
+| `forward_energy_increased` | bool \| null | Final forward step raised the energy |
+| `backward_energy_increased` | bool \| null | Final backward step raised the energy |
 | `backend` | string | MLIP backend |
 | `charge` | int | System charge |
 | `spin` | int | Spin multiplicity |
 | `model` | string | Model identifier |
+| `never_stop` | bool | Whether energy-rise/plateau stops were bypassed |
 | `n_freeze_atoms` | int | Frozen atoms |
 | `solvent` | string | Implicit solvent or `"none"` |
 | `bond_changes` | object | `{formed: [...], broken: [...]}` of element-prefixed 1-based atom-pair strings (e.g. `"C7-O12"`); key is omitted when the comparison fails or `finished_first.xyz`/`finished_last.xyz` are absent. |
@@ -240,7 +255,8 @@ Convergence details are available for rsirfo mode; dimer mode also reports `stat
 | `n_segments` | int | Recursive MEP segment count |
 | `segments` | object[] | Per-segment `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` (list of `{title: [entries]}` dicts; bridge segments emit `""`). |
 | `energy_diagrams` | object[] | Per-segment labeled energy profiles (kcal/mol) |
-| `mlip_backend` | string | Backend/model identifier |
+| `mlip_backend` | string | Backend identifier |
+| `mlip_model` | string \| null | Model identifier, recorded separately from the backend |
 | `charge` | int | System charge |
 | `spin` | int | Spin multiplicity |
 
@@ -337,7 +353,8 @@ The `all` and `path-search` commands write `summary.json` with a richer structur
 | `n_segments` | int | Segment count |
 | `segments` | object[] | Per-segment `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` (list of `{title: [entries]}` dicts produced by `_bond_changes_block`; bridge segments emit `""`). |
 | `energy_diagrams` | object[] | Energy profiles with labels and kcal/mol values |
-| `mlip_backend` | string | Model identifier |
+| `mlip_backend` | string | Backend identifier |
+| `mlip_model` | string \| null | Model identifier, recorded separately from the backend |
 | `charge` | int | System charge |
 | `spin` | int | Spin multiplicity |
 | `environment` | object | Hardware info |

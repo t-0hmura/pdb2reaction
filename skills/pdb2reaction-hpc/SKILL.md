@@ -17,6 +17,8 @@ Placeholders filled from `pdb2reaction-env-detect/SKILL.md`.
 #PBS -N <jobname>
 #PBS -q <YOUR_QUEUE>
 #PBS -l nodes=1:ppn=<NCPU>:gpus=<NGPU>,mem=<MEM>GB,walltime=<HH:MM:SS>
+#PBS -j oe
+#PBS -o pbs.out
 
 set -euo pipefail
 cd "${PBS_O_WORKDIR}"
@@ -150,7 +152,11 @@ re-run on the partial output by invoking the standalone subcommands
 directly:
 
 - `tsopt`, `freq`, `irc`, `dft` — re-run on the previous output.
-- `path-search` — pass the partial `mep.pdb` as `-i`.
+- `path-search` — has no resume; restart it with two or more structures in
+  reaction order (`-i A.pdb -i B.pdb …`; the CLI requires at least two `-i`
+  paths). Reuse the original endpoints, or split the partial multi-model
+  `mep.pdb` / `mep_trj.xyz` trajectory into single-structure files and pass
+  those frames as separate `-i` flags.
 
 For walltime-truncated `all` runs, point `--out-dir` at a persistent
 location and pick up where you left off by chaining the appropriate

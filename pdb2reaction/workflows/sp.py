@@ -320,6 +320,7 @@ def cli(
             "status": "ok",
             "input": str(prepared_inputs[0].source_path),
             "backend": calc_cfg["backend"],
+            "model": calc_cfg.get("model"),
             "charge": calc_cfg["charge"],
             "spin": calc_cfg["spin"],
             "energy_au": energy_au,

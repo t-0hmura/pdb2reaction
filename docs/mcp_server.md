@@ -69,13 +69,20 @@ When a subcommand fails, the parsed `summary` (or sibling `result.json`) carries
 | `plot_energy_diagram` | `pdb2reaction energy-diagram` | Categorical energy diagram |
 | `detect_bond_changes` | `pdb2reaction bond-summary` | Bond-change diff between two PDBs |
 
-## Opt-in IRC convergence guard
+## Opt-in IRC controls
 
 `run_irc` (CLI: `pdb2reaction irc`) accepts `irc_pos_def: bool` — when set,
 IRC convergence additionally requires a positive-definite mass-weighted
 Hessian, blocking the IRC "shoulder" false-convergence where the rms-only
 criterion calls success before reaching the local minimum. Defaults to
 `None` (rms-only, legacy).
+
+`run_irc` also accepts `step_size` and `never_stop`. When a branch stops after
+only a few frames, reduce `step_size` (typically to `0.05`) first. Set
+`never_stop=True` only to cross a small energy-rise/plateau shoulder; gradient/
+integrator convergence and max cycles remain active. `run_full_pipeline`
+forwards the same controls as `irc_step_size` / `irc_never_stop` and exposes
+`flatten` plus `refine_path` for TS recovery.
 
 `find_transition_state` (CLI: `pdb2reaction tsopt`) also exposes the
 alternative TS optimizers via `--opt-mode`:

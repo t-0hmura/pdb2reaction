@@ -1,7 +1,5 @@
 # アーキテクチャ: pdb2reaction
 
----
-
 ## 1. 概要
 
 `pdb2reaction` は、活性部位クラスターモデルに対して **純 MLIP による酵素反応経路解析** を実行する Python 製 CLI です。PDB と基質名を起点に、活性部位クラスターを切り出し、切断された結合をキャップ水素でキャップし、MLIP ポテンシャル上で RS-P-RFO TS 最適化による Hessian ベースの TS 探索を行い、反応経路を生成します（extract → MEP → tsopt → IRC → freq → dft）。

@@ -9,15 +9,18 @@ NVIDIA's userland driver is forward-compatible: a newer driver runs older
 torch wheels, but not the other way around. Pick the **highest** torch
 CUDA index whose minimum driver is ≤ your driver version.
 
+`pdb2reaction` pins `torch~=2.8.0`, and torch 2.8.0 wheels are published only on the
+indexes below. `cu118`, `cu121` and `cu124` carry no 2.8.0 wheel at all, so pointing pip at
+them silently resolves to an older torch (or fails).
+
 | Driver version | Torch CUDA index (`<cu_index>`) | Notes |
 |---|---|---|
-| ≥ 450 (CUDA 11.8 baseline) | `cu118` | Maximum back-compat, slow on 5xx-series GPUs |
-| ≥ 525 (CUDA 12.0+) | `cu121` | |
-| ≥ 545 (CUDA 12.3+) | `cu124` (when available) | |
-| ≥ 560 (CUDA 12.6+) | `cu126` | |
-| ≥ 570 (CUDA 12.8+) | `cu128` | (when available) |
+| ≥ 560 (CUDA 12.6+) | `cu126` | Oldest index that ships torch 2.8.0 |
+| ≥ 570 (CUDA 12.8+) | `cu128` | |
 | ≥ 575 (CUDA 12.9+) | `cu129` | Recent / Blackwell-class GPUs |
 | no GPU | `cpu` | CPU-only inference |
+
+A driver older than 560 needs a driver upgrade, not an older index.
 
 Check what wheels actually exist:
 

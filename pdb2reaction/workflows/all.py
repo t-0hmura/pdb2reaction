@@ -38,6 +38,7 @@ Table of contents (top-level definitions; refresh manually after structural edit
     def _enrich_summary
     def _json_safe
     def _find_with_suffixes
+    def _ensure_hei_path_tangent
     def _write_segment_energy_diagram
     def _build_global_segment_labels
     def _merge_irc_trajectories_to_single_plot
@@ -1096,6 +1097,71 @@ def _find_with_suffixes(base_no_ext: Path, suffixes: Sequence[str]) -> Optional[
     return None
 
 
+def _ensure_hei_path_tangent(
+    mep_trj: Path,
+    hei_path: Path,
+    mode_path: Path,
+) -> Optional[Path]:
+    """Write the central MEP tangent at the image matching ``hei_path``.
+
+    The normalized Cartesian difference is unit-independent.  This fallback
+    also makes older path-search artifacts usable; new path-search runs emit
+    the same reference-mode file directly when selecting the HEI.
+    """
+    if not mep_trj.exists() or not hei_path.exists():
+        return None
+    try:
+        from ase.io import read as ase_read
+
+        images = list(ase_read(str(mep_trj), index=":"))
+        hei = ase_read(str(hei_path), index=0)
+        if len(images) < 2:
+            return None
+        hei_numbers = np.asarray(hei.numbers)
+        if any(
+            len(image) != len(hei)
+            or not np.array_equal(np.asarray(image.numbers), hei_numbers)
+            for image in images
+        ):
+            return None
+        hei_pos = np.asarray(hei.positions, dtype=float)
+        distances = [
+            float(np.linalg.norm(np.asarray(image.positions) - hei_pos))
+            for image in images
+        ]
+        index = int(np.argmin(distances))
+        energies = None
+        raw_blocks = read_xyz_as_blocks(mep_trj)
+        if len(raw_blocks) == len(images):
+            parsed_energies = []
+            for block in raw_blocks:
+                try:
+                    parsed_energies.append(float(block[1].split()[0]))
+                except (IndexError, TypeError, ValueError):
+                    parsed_energies.append(float("nan"))
+            if np.all(np.isfinite(parsed_energies)):
+                energies = parsed_energies
+        tangent = _path_search._normalized_path_tangent(
+            [np.asarray(image.positions, dtype=float) for image in images],
+            index,
+            energies=energies,
+        )
+        if tangent is None:
+            return None
+        mode_path.parent.mkdir(parents=True, exist_ok=True)
+        np.savetxt(mode_path, tangent, fmt="%.17e")
+        _echo(
+            f"[tsopt] Derived HEI path-tangent reference mode → {mode_path}"
+        )
+        return mode_path
+    except Exception as exc:
+        _echo(
+            f"[tsopt] WARNING: Could not derive HEI path tangent: {exc}",
+            err=True,
+        )
+        return None
+
+
 def _write_segment_energy_diagram(
     prefix: Path,
     labels: List[str],
@@ -1273,8 +1339,20 @@ def _optimize_endpoint_geom(
 
         # Seed cached IRC endpoint Hessian for RFO when available
         if sopt_kind == "rfo":
-            from pdb2reaction.io.hessian_cache import load as _hess_load
+            from pdb2reaction.io.hessian_cache import (
+                load as _hess_load,
+                matches_cart_coords as _hess_matches_coords,
+            )
             _cached = _hess_load("irc_endpoint")
+            if _cached is not None and not _hess_matches_coords(
+                _cached, geom.cart_coords
+            ):
+                _echo(
+                    "[endpoint-opt] Cached IRC Hessian does not match this "
+                    "endpoint geometry; calculating a fresh Hessian.",
+                    err=True,
+                )
+                _cached = None
             if _cached is not None:
                 _echo_detail("[endpoint-opt] Reusing IRC endpoint Hessian for RFO seeding.")
                 _active_dofs = _cached.get("active_dofs")
@@ -1634,6 +1712,10 @@ def _run_tsopt_on_hei(
         if tsopt_mode is not None:
             ts_args.extend(["--opt-mode", tsopt_mode])
 
+        reference_mode = overrides.get("reference_mode")
+        if reference_mode is not None:
+            ts_args.extend(["--ref-mode", str(reference_mode)])
+
         _append_cli_arg(ts_args, "--max-cycles", overrides.get("max_cycles"))
         _append_toggle_arg(ts_args, "--dump", overrides.get("dump"))
         _append_cli_arg(ts_args, "--thresh", overrides.get("thresh"))
@@ -1734,6 +1816,8 @@ def _irc_and_match(
     calc_cfg: Dict[str, Any],
     args_yaml: Optional[Path],
     convert_files: bool,
+    irc_step_size: Optional[float] = None,
+    irc_never_stop: Optional[bool] = None,
     seg_tag: Optional[str] = None,
     mep_dir: Optional[Path] = None,
 ) -> Dict[str, Any]:
@@ -1808,6 +1892,10 @@ def _irc_and_match(
 
     if args_yaml is not None:
         irc_args.extend(["--config", str(args_yaml)])
+    if irc_step_size is not None:
+        irc_args.extend(["--step-size", str(float(irc_step_size))])
+    if irc_never_stop is not None:
+        _append_toggle_arg(irc_args, "--never-stop", bool(irc_never_stop))
     _echo()
     _echo_detail(f"[irc] Running EulerPC IRC → out={irc_dir}")
     _run_cli_main("irc", _irc_cli.cli, irc_args, on_nonzero="raise", prefix="irc")
@@ -2195,7 +2283,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
 @click.option(
     "--max-nodes",
     type=int,
-    default=20,
+    default=_path_search.GS_KW["max_nodes"],
     show_default=True,
     help="Max internal nodes for **segment** GSM (String has max_nodes+2 images including endpoints).",
 )
@@ -2375,6 +2463,24 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     default=False,
     show_default=True,
     help="Enable the extra-imaginary-mode flattening loop in tsopt (grad: dimer loop, hess: post-RS-P-RFO); --no-flatten forces flatten_max_iter=0.",
+)
+@click.option(
+    "--irc-step-size",
+    type=float,
+    default=None,
+    help=(
+        "Override IRC --step-size (Bohr). If an IRC stops after only a few "
+        "frames, retry with a smaller value such as 0.05."
+    ),
+)
+@click.option(
+    "--irc-never-stop/--no-irc-never-stop",
+    default=None,
+    help=(
+        "Override IRC energy-stop handling. When enabled, transient energy "
+        "rises/plateaus do not stop tracing; physical convergence and the "
+        "IRC max-cycle limit still apply. Default off."
+    ),
 )
 @click.option(
     "--freq-out-dir",
@@ -2593,6 +2699,8 @@ def cli(
     tsopt_max_cycles: Optional[int],
     tsopt_out_dir: Optional[Path],
     flatten: bool,
+    irc_step_size: Optional[float],
+    irc_never_stop: Optional[bool],
     freq_out_dir: Optional[Path],
     freq_max_write: Optional[int],
     freq_amplitude_ang: Optional[float],
@@ -3242,6 +3350,8 @@ def cli(
             calc_cfg=calc_cfg_shared,
             args_yaml=args_yaml,
             convert_files=convert_files,
+            irc_step_size=irc_step_size,
+            irc_never_stop=irc_never_stop,
             seg_tag=None,
         )
         gL = irc_res["left_min_geom"]
@@ -3274,10 +3384,15 @@ def cli(
         ensure_dir(endpoint_opt_dir)
 
         # Map IRC left/right Hessians → R/P endpoint (left=forward, right=backward)
-        from pdb2reaction.io.hessian_cache import load as _hess_load, store as _hess_store
+        from pdb2reaction.io.hessian_cache import (
+            discard as _hess_discard,
+            load as _hess_load,
+            store as _hess_store,
+        )
         _react_hk = "irc_left" if eL >= eR_raw else "irc_right"
         _prod_hk  = "irc_right" if eL >= eR_raw else "irc_left"
 
+        _hess_discard("irc_endpoint")
         _c = _hess_load(_react_hk)
         if _c:
             _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"))
@@ -3297,6 +3412,7 @@ def cli(
             )
             g_react_opt = g_react_irc
 
+        _hess_discard("irc_endpoint")
         _c = _hess_load(_prod_hk)
         if _c:
             _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"))
@@ -4643,6 +4759,15 @@ def cli(
         uma_ref_energies: Dict[str, float] = {}
 
         if do_tsopt:
+            _seg_tsopt_overrides = dict(tsopt_overrides)
+            _hei_mode_path = seg_root / f"hei_mode_seg_{seg_idx:02d}.txt"
+            _hei_mode_path = _ensure_hei_path_tangent(
+                seg_root / f"mep_seg_{seg_idx:02d}_trj.xyz",
+                hei_model_path,
+                _hei_mode_path,
+            )
+            if _hei_mode_path is not None:
+                _seg_tsopt_overrides["reference_mode"] = _hei_mode_path
             ts_pdb, g_ts = _run_tsopt_on_hei(
                 hei_model_path,
                 q_int,
@@ -4654,7 +4779,7 @@ def cli(
                 tsopt_opt_mode_default,
                 ref_pdb_for_seg,
                 convert_files,
-                overrides=tsopt_overrides,
+                overrides=_seg_tsopt_overrides,
             )
 
             irc_res = _irc_and_match(
@@ -4671,6 +4796,8 @@ def cli(
                 calc_cfg=calc_cfg_shared,
                 args_yaml=args_yaml,
                 convert_files=convert_files,
+                irc_step_size=irc_step_size,
+                irc_never_stop=irc_never_stop,
                 seg_tag=str(seg_tag),
             )
 
@@ -4706,10 +4833,15 @@ def cli(
             # Map IRC left/right Hessians → R/P endpoint
             # When reverse_irc is True, _irc_and_match swapped left/right to match GSM endpoints,
             # so "irc_left" (=forward) now corresponds to gR and "irc_right" (=backward) to gL.
-            from pdb2reaction.io.hessian_cache import load as _hess_load, store as _hess_store
+            from pdb2reaction.io.hessian_cache import (
+                discard as _hess_discard,
+                load as _hess_load,
+                store as _hess_store,
+            )
             _left_hk  = "irc_right" if reverse_irc else "irc_left"
             _right_hk = "irc_left"  if reverse_irc else "irc_right"
 
+            _hess_discard("irc_endpoint")
             _c = _hess_load(_left_hk)
             if _c:
                 _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"))
@@ -4729,6 +4861,7 @@ def cli(
                 )
                 g_react_opt = gL
 
+            _hess_discard("irc_endpoint")
             _c = _hess_load(_right_hk)
             if _c:
                 _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"))

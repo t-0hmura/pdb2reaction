@@ -141,8 +141,10 @@ def test_rfo_retains_lower_energy_point_after_rejections_at_floor(tmp_path) -> N
 
     assert opt.uphill_rejection_stalled is True
     assert opt.rejections_at_floor == opt.max_rejections_at_floor
+    assert opt.stop_requested is True
+    assert "emergency trust floor" in opt.stop_reason
     np.testing.assert_allclose(geom.coords, accepted)
-    # The ordinary force/step thresholds fail at this test point; only the
-    # explicit rejected-trial plateau should terminate the retry loop.
+    # The ordinary force/step thresholds fail at this test point.  Retaining
+    # the last accepted geometry is safe, but it must not be called converged.
     converged, _ = opt.check_convergence(np.full(3, 0.01))
-    assert converged is True
+    assert converged is False

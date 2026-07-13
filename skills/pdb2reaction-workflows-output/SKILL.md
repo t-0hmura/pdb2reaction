@@ -18,8 +18,13 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb \
     -o result_mep
 ```
 
-Result: `result_mep/segments/seg_NN/{reactant,ts,product}.pdb`,
-`summary.json["segments"][0]["barrier_kcal"]`.
+Result: `result_mep/segments/seg_NN/{reactant,ts,product}.pdb`.
+Barriers come from `post_segments` (TSOPT+IRC-refined): ΔE‡ =
+`summary.json["post_segments"][0]["uma"]["barrier_kcal"]`, and with `--thermo`
+ΔG‡ = `summary.json["post_segments"][0]["gibbs_uma"]["barrier_kcal"]`.
+`summary.json["rate_limiting_step"]` gives the highest barrier with an explicit
+`method` label; `summary.json["segments"][*]["barrier_kcal"]` is the raw MEP band
+(also mirrored as `mep_barrier_kcal`) and is reported only under an MEP label.
 
 ### 2. Multi-step recursive (multi-input MEP, recursive segmentation)
 
@@ -83,21 +88,27 @@ pdb2reaction freq  -i result_tsopt/final_geometry.xyz -q -1 -m 1 -b uma -o resul
 pdb2reaction irc   -i result_tsopt/final_geometry.xyz -q -1 -m 1 -b uma -o result_irc
 ```
 
-Or use `pdb2reaction all` with a single `-i` (collapses to TS-only
-mode automatically; see [`pdb2reaction-cli/all-ts-only.md`](../pdb2reaction-cli/all-ts-only.md)).
+Or run `pdb2reaction all` with a single `-i` **plus `--tsopt`** — that
+combination selects TS-only mode (`pipeline_mode: "tsopt-only"` in the
+summary). A single `-i` needs either `--tsopt` or `--scan-lists`; on its
+own it is rejected with a `BadParameter` error. See
+[`pdb2reaction-cli/all-ts-only.md`](../pdb2reaction-cli/all-ts-only.md).
 
 ### 6. DFT//MLIP refinement
 
-After any of the above, refine R / TS / P energies at DFT level:
+After any of the above, refine R / TS / P energies at DFT level. The
+structures to feed `dft` are the deliverables of the preceding run, which live
+at `<out_dir>/segments/seg_NN/{reactant,ts,product}.pdb` (below, `<out_dir>` is
+`result_mep` from workflow 1):
 
 ```bash
-pdb2reaction dft -i seg_01/reactant.pdb \
+pdb2reaction dft -i result_mep/segments/seg_01/reactant.pdb \
     -l 'SAM:1,GPP:-3' \
     --func-basis 'wb97m-v/def2-tzvpd' \
     --engine gpu \
     -o dft_R
-pdb2reaction dft -i seg_01/ts.pdb       -l '...' --func-basis '...' -o dft_TS
-pdb2reaction dft -i seg_01/product.pdb  -l '...' --func-basis '...' -o dft_P
+pdb2reaction dft -i result_mep/segments/seg_01/ts.pdb      -l '...' --func-basis '...' -o dft_TS
+pdb2reaction dft -i result_mep/segments/seg_01/product.pdb -l '...' --func-basis '...' -o dft_P
 ```
 
 Composite the energies with `energy-diagram` (see below).
@@ -137,13 +148,23 @@ atoms ([`pdb2reaction-cli/bond-summary.md`](../pdb2reaction-cli/bond-summary.md)
 `pdb2reaction-ts-strategy/SKILL.md`). Wrong segmentation / spurious changes → fix
 chemistry or inputs **before** any TS work (don't optimize a TS for the wrong step).
 
-**Stage 2 — per reactive segment: TS → validate → connectivity** (seed = `ps/hei_seg_NN.xyz`)
+**Stage 2 — per reactive segment: TS → validate → connectivity** (seed = `ps/hei_seg_NN.pdb`)
 
 ```bash
-pdb2reaction tsopt -i ps/hei_seg_NN.xyz            -l 'SAM:1,GPP:-3' -b uma -o seg_NN/ts
-pdb2reaction freq  -i seg_NN/ts/final_geometry.xyz -l 'SAM:1,GPP:-3' -b uma -o seg_NN/freq
-pdb2reaction irc   -i seg_NN/ts/final_geometry.xyz -l 'SAM:1,GPP:-3' -b uma -o seg_NN/irc
+pdb2reaction tsopt -i ps/hei_seg_NN.pdb            -l 'SAM:1,GPP:-3' -b uma --out-json -o seg_NN/ts
+pdb2reaction freq  -i seg_NN/ts/final_geometry.pdb -l 'SAM:1,GPP:-3' -b uma --out-json -o seg_NN/freq
+pdb2reaction irc   -i seg_NN/ts/final_geometry.pdb -l 'SAM:1,GPP:-3' -b uma --out-json -o seg_NN/irc
 ```
+
+Feed the **PDB** companions here, not the `.xyz` ones: `-l/--ligand-charge` derives the total
+charge from PDB residue names, so it is rejected on a bare `.xyz`/`.gjf` input
+(`--ligand-charge is only supported for PDB inputs`). The stages write both — `path-search`
+emits `hei_seg_NN.pdb` beside `hei_seg_NN.xyz`, and `tsopt` emits `final_geometry.pdb` beside
+`final_geometry.xyz` — whenever the run started from a PDB. If you only have the `.xyz`, either
+pass `-q` with the total charge, or keep `-l` and add `--ref-pdb <topology.pdb>`.
+
+Pass `--out-json` on each standalone subcommand: it writes the `result.json` that the gate
+below reads (these subcommands default to `--no-out-json`).
 
 **GATE** in order: tsopt `result.json` `status` is `converged` (not
 `not_converged`) → freq `result.json` `n_imaginary == 1` (exactly one imaginary frequency)
@@ -187,15 +208,15 @@ failed-run diagnostics live in [`summary-json.md`](summary-json.md).
 
 | Path | When | Content |
 |---|---|---|
-| `<out_dir>/segments/seg_NN/energy_diagram_UMA.png` | `--tsopt` | per-segment MLIP (only when post-processing runs) |
-| `<out_dir>/segments/seg_NN/energy_diagram_G_UMA.png` | `--thermo` | + QRRHO Gibbs |
+| `<out_dir>/segments/seg_NN/energy_diagram_MLIP.png` | `--tsopt` | per-segment MLIP (only when post-processing runs) |
+| `<out_dir>/segments/seg_NN/energy_diagram_G_MLIP.png` | `--thermo` | + QRRHO Gibbs |
 | `<out_dir>/segments/seg_NN/energy_diagram_DFT.png` | `--dft` | DFT//MLIP electronic |
-| `<out_dir>/segments/seg_NN/energy_diagram_G_DFT_plus_UMA.png` | `--dft --thermo` | DFT//MLIP + Gibbs |
+| `<out_dir>/segments/seg_NN/energy_diagram_G_DFT_plus_MLIP.png` | `--dft --thermo` | DFT//MLIP + Gibbs |
 | `<out_dir>/energy_diagram_MEP.png` | MEP modes (not TS-only) | bare MEP energies (promoted to root) |
-| `<out_dir>/energy_diagram_UMA_all.png` | `--tsopt` | aggregated MLIP (only when post-processing runs) |
-| `<out_dir>/energy_diagram_G_UMA_all.png` | `--thermo` | aggregated + Gibbs |
+| `<out_dir>/energy_diagram_MLIP_all.png` | `--tsopt` | aggregated MLIP (only when post-processing runs) |
+| `<out_dir>/energy_diagram_G_MLIP_all.png` | `--thermo` | aggregated + Gibbs |
 | `<out_dir>/energy_diagram_DFT_all.png` | `--dft` | aggregated DFT |
-| `<out_dir>/energy_diagram_G_DFT_plus_UMA_all.png` | `--dft --thermo` | aggregated DFT + Gibbs |
+| `<out_dir>/energy_diagram_G_DFT_plus_MLIP_all.png` | `--dft --thermo` | aggregated DFT + Gibbs |
 
 In TS-only mode the per-segment diagrams land under `segments/seg_01/`.
 

@@ -851,8 +851,23 @@ def cli(
 
     try:
         freeze_list = list(calc_cfg.get("freeze_atoms", []))
-        from pdb2reaction.io.hessian_cache import load as _hess_load
+        from pdb2reaction.io.hessian_cache import (
+            load as _hess_load,
+            matches_cart_coords as _hess_matches_coords,
+        )
         _cached_ts = _hess_load("ts")
+        if _cached_ts is not None and not _hess_matches_coords(
+            _cached_ts,
+            geometry.cart_coords,
+            # The all-workflow may pass the TS through a three-decimal PDB.
+            atol=1.1e-3,
+        ):
+            click.echo(
+                "[freq] Cached TS Hessian does not match the input geometry; "
+                "calculating a fresh Hessian.",
+                err=True,
+            )
+            _cached_ts = None
         if _cached_ts is not None:
             click.echo("[freq] Reusing cached TS Hessian.", narrative=True)
             H = _cached_ts["hessian"]

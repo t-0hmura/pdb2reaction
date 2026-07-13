@@ -59,6 +59,7 @@ When an agent must edit a structure file, the basic approach is:
 | `tsopt` | ✓ | ✓ | ✓ |
 | `freq` | ✓ | ✓ | ✓ |
 | `irc` | ✓ | ✓ | ✓ |
+| `sp` | ✓ | ✓ | ✓ |
 | `dft` | ✓ | ✓ | ✓ |
 | `scan`, `scan2d`, `scan3d` | ✓ | ✓ | ✓ |
 | `all` | ✓ | ✓ (single segment) | ✓ |
@@ -69,7 +70,9 @@ PDB-utility subcommands (`fix-altloc`, `add-elem-info`) take PDB only;
 
 If you pass an XYZ to a subcommand that needs residue context (e.g.
 `-l 'GLU:-1'`), supply `--ref-pdb <path>` so the residue mapping can be
-recovered.
+recovered. `sp` is the exception: it reads PDB / XYZ / GJF but exposes no
+`--ref-pdb`, so feed it a PDB directly when you need residue context for
+`-l`, or pass explicit `-q` / `-m` with an XYZ.
 
 ## Quick reference: which fields where
 

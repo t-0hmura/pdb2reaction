@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 
 from click.testing import CliRunner
+import pytest
 
 import pdb2reaction.io.energy_diagram as energy_diagram
 from pdb2reaction.cli import cli as root_cli
@@ -156,3 +158,40 @@ def test_verbose_is_a_per_subcommand_option() -> None:
         bad = runner.invoke(root_cli, cmd)
         assert bad.exit_code != 0, cmd
         assert "is not in the range" in bad.output, cmd
+
+
+def test_tsopt_ref_mode_is_documented_as_advanced_all_handoff() -> None:
+    runner = CliRunner()
+    primary_help = runner.invoke(root_cli, ["tsopt", "--help"])
+    advanced_help = runner.invoke(root_cli, ["tsopt", "--help-advanced"])
+    old_name = runner.invoke(
+        root_cli,
+        ["tsopt", "--reference-mode", "unused.npy"],
+    )
+
+    assert primary_help.exit_code == 0, primary_help.output
+    assert "--ref-mode" not in primary_help.output
+
+    assert advanced_help.exit_code == 0, advanced_help.output
+    assert "--ref-mode" in advanced_help.output
+    assert "--reference-mode" not in advanced_help.output
+    assert "all workflow supplies" in advanced_help.output
+    assert "standalone tsopt" in advanced_help.output
+
+    assert old_name.exit_code != 0
+    assert "No such option: --reference-mode" in old_name.output
+
+
+@pytest.mark.parametrize(
+    ("command", "help_flag"),
+    [("path-opt", "--help"), ("path-search", "--help"), ("all", "--help-advanced")],
+)
+def test_path_workflow_max_nodes_defaults_to_twenty(
+    command: str, help_flag: str
+) -> None:
+    result = CliRunner().invoke(root_cli, [command, help_flag])
+
+    assert result.exit_code == 0, result.output
+    option_start = result.output.index("--max-nodes")
+    option_help = result.output[option_start : option_start + 500]
+    assert re.search(r"\[default:\s*20\]", option_help)

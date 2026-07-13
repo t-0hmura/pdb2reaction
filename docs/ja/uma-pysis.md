@@ -114,7 +114,7 @@ pdb2reaction opt -i input.pdb -q 0 -b orb --solvent water --solvent-model cpcmx
 - **マルチワーカー推論** – `workers>1` で `fairchem-core` の `ParallelMLIPPredictUnit` を起動し、`workers_per_node` をノードごとに指定可能。バッチ処理速度の向上に有効です。
 
 (ja-workers-fd-downgrade)=
-### `workers > 1` は解析Hessianを無効化する（UMA バックエンド）
+### `workers > 1` と解析 Hessian は併用できない（UMA バックエンド）
 
 ```{warning}
 UMA バックエンドを `workers > 1` で使用する場合、並列 predictor が autograd model を公開しないため、`hessian_calc_mode="Analytical"` は利用できません。要求した数値手法を暗黙変更せず、`RuntimeError` で停止します。解析 Hessian には `workers = 1`、並列実行には `FiniteDifference` を指定してください。この規則は `--workers` / `--workers-per-node` を持つすべてのサブコマンド（`opt`, `tsopt`, `freq`, `irc`, `sp`, `all`, `path-opt`, `path-search`, scan 系）に適用されます。UMA 以外のバックエンド（ORB / MACE / AIMNet2）では `workers` / `workers_per_node` は `_BACKEND_ACCEPTED_KEYS` で除外されるため、この規則は該当しません。

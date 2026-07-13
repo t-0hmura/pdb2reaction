@@ -8,10 +8,13 @@ description: Orientation for pdb2reaction — what it is, when to use it, and ho
 ## Purpose
 
 `pdb2reaction` is a command-line toolkit that takes a protein–ligand PDB and
-runs the entire MLIP-driven reaction-path workflow — active-site extraction,
-minimum-energy-path (MEP) search, transition-state (TS) optimization, IRC
-validation, vibrational analysis, and an optional DFT single-point — through
-a single `pdb2reaction all` invocation.
+drives the MLIP-driven reaction-path workflow from a single `pdb2reaction all`
+invocation. By default `all` runs active-site extraction → pre-optimization →
+minimum-energy-path (MEP) search, and stops at the MEP's highest-energy image
+(a TS *candidate*). The post-processing stages are opt-in flags: `--tsopt`
+adds transition-state (TS) optimization + IRC validation, `--thermo` adds
+vibrational analysis + QRRHO thermochemistry, `--dft` adds the DFT
+single-point — e.g. `pdb2reaction all -i R.pdb P.pdb -q -1 --tsopt --thermo`.
 
 Three things make it different from gluing together generic tools:
 
@@ -33,7 +36,7 @@ Three things make it different from gluing together generic tools:
 | Cluster-model enzyme reaction mechanism (single or multi-step) | Primary use case |
 | Validate a TS candidate with IRC + thermochemistry on MLIP | `pdb2reaction tsopt → irc → freq` |
 | DFT//MLIP barrier refinement | `pdb2reaction dft -i <ts.pdb>` after IRC |
-| Single-point energies on an arbitrary geometry (MLIP or DFT) | `pdb2reaction opt` / `pdb2reaction dft` |
+| Single-point energies on an arbitrary geometry (MLIP or DFT) | `pdb2reaction sp` (MLIP energy + forces, optional Hessian via `--hess`) / `pdb2reaction dft` |
 
 ## When *not* to use it
 
@@ -47,7 +50,8 @@ Three things make it different from gluing together generic tools:
 ```bash
 pdb2reaction --version           # confirm install
 pdb2reaction --help              # list subcommands
-pdb2reaction all --help          # end-to-end flag list
+pdb2reaction all --help          # end-to-end primary flags
+pdb2reaction all --help-advanced # every flag (--mep-mode, --opt-mode, --precision, ...)
 ```
 
 If `pdb2reaction` is not on PATH, see the `pdb2reaction-install-backends`
@@ -95,7 +99,8 @@ python -c "import pdb2reaction.core.defaults as d; print(sorted(n for n in dir(d
 | `pdb2reaction/backends/__init__.py` | `BACKEND_REGISTRY`, `create_calculator(...)` factory |
 | `pdb2reaction/workflows/all.py` | End-to-end orchestration for `pdb2reaction all` |
 | `pdb2reaction/workflows/extract.py` | PDB → cluster, residue table, cap-H placement |
-| `pdb2reaction/workflows/path_search.py` | Recursive MEP search, bond-change segmentation |
+| `pdb2reaction/workflows/path_opt.py` | Single-pass pairwise MEP (GSM or DMF) between adjacent endpoints — the default MEP route |
+| `pdb2reaction/workflows/path_search.py` | Recursive MEP search with bond-change segmentation — the `--refine-path True` route |
 | `pdb2reaction/workflows/tsopt.py` | RS-P-RFO (default) / Dimer (alternative) transition-state search |
 | `pdb2reaction/workflows/irc.py` | EulerPC IRC (caches endpoint Hessians) |
 | `pdb2reaction/workflows/freq.py` | Hessian, frequencies, QRRHO thermochemistry |
@@ -109,8 +114,11 @@ python -c "import pdb2reaction.core.defaults as d; print(sorted(n for n in dir(d
 |---|---|
 | Pick a subcommand and run it | `pdb2reaction-cli/SKILL.md` then the per-subcommand md |
 | Read or edit a `.pdb` / `.xyz` / `.gjf` input | `pdb2reaction-structure-io/{SKILL,pdb,xyz,gjf}.md` |
-| Decide charge / multiplicity for a substrate | [`pdb2reaction-structure-io/charge-multiplicity.md`](../pdb2reaction-structure-io/charge-multiplicity.md) |
+| Decide charge / multiplicity for a substrate | [`pdb2reaction-structure-io/charge-multiplicity.md`](../pdb2reaction-structure-io/charge-multiplicity.md) — for a PDB input, name the ligand/metal charges with `-l 'RES:Q'` and let the total be derived; it tracks the cluster boundary, whereas a hand-entered `-q` does not |
 | Install the toolkit or a specific backend | `pdb2reaction-install-backends/SKILL.md` + the relevant backend md |
 | Build a recipe (multi-step / scan-list / endpoint MEP) | `pdb2reaction-workflows-output/SKILL.md` |
+| Choose a TS-search strategy, or fix a bad imaginary-mode count | `pdb2reaction-ts-strategy/SKILL.md` |
 | Submit on a PBS or SLURM cluster | `pdb2reaction-hpc/SKILL.md` |
 | Detect what cluster / GPU / scheduler you are on | `pdb2reaction-env-detect/SKILL.md` |
+| Drive the tool from an MCP client (18 MCP tools, `SubcmdResult` schema) | `pdb2reaction-mcp/SKILL.md` |
+| Find which package layer to grep before touching code | `pdb2reaction-architecture/SKILL.md` |

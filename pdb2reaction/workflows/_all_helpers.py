@@ -97,6 +97,8 @@ class AllContext:
     tsopt_max_cycles: Optional[int]
     tsopt_out_dir: Optional[Path]
     flatten: bool
+    irc_step_size: Optional[float]
+    irc_never_stop: Optional[bool]
     freq_out_dir: Optional[Path]
     freq_max_write: Optional[int]
     freq_amplitude_ang: Optional[float]
@@ -126,7 +128,7 @@ def build_energy_level_dict(
     diagram_path: str,
     structures: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Assemble a segment_log sub-dict for one energy level (UMA / Gibbs / DFT).
+    """Assemble a segment_log sub-dict for one energy level (MLIP / Gibbs / DFT).
 
     Extracted from the 4-way repeated R/TS/P pattern in
     ``workflows/all.py:cli()`` TSOPT segment_log construction. Pure

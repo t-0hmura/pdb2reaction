@@ -84,6 +84,7 @@ out_dir/ (default:./result_path_search/)
 ├─ hei_seg_XX.xyz # Per-segment highest-energy image
 ├─ hei_seg_XX.pdb # HEI PDB companion (when conversion is enabled)
 ├─ hei_seg_XX.gjf # HEI Gaussian companion (when a template is detected)
+├─ hei_mode_seg_XX.txt # energy-upwinding Cartesian tangent through the HEI
 ├─ hei_w_ref_seg_XX.pdb # Merged HEI in full-system context (requires ref PDB)
 ├─ summary.json # Barrier and classification summary for every recursive segment
 ├─ summary.log # Text summary
@@ -109,7 +110,7 @@ The table is grouped by purpose; within each group the most-used options come fi
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | **Backend & compute** | | |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
-| `--workers`, `--workers-per-node` | MLIP predictor parallelism (workers > 1 disables analytic Hessians; UMA backend only; `workers_per_node` forwarded to the parallel predictor). See {ref}`workers-fd-downgrade` for diagnostic notes. | `1`, `1` |
+| `--workers`, `--workers-per-node` | UMA predictor parallelism; `workers_per_node` is forwarded to the parallel predictor. `workers > 1` cannot be combined with an explicit analytical Hessian request. See {ref}`workers-fd-downgrade`. | `1`, `1` |
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 | **Active-region freezing** | | |

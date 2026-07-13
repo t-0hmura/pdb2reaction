@@ -64,7 +64,7 @@ class RFOptimizer(HessianOptimizer):
             Emergency trust-radius floor for repeated rejected trials.
         max_rejections_at_floor
             Rejections allowed at the emergency floor before retaining the
-            lower-energy point as a numerical plateau.
+            lower-energy point and stopping without convergence.
 
         Other Parameters
         ----------------
@@ -92,10 +92,6 @@ class RFOptimizer(HessianOptimizer):
         self.successful_gediis = 0
         self.successful_gdiis = 0
         self.successful_line_search = 0
-
-    def check_convergence(self, *args, **kwargs):
-        converged, conv_info = super().check_convergence(*args, **kwargs)
-        return converged or self.uphill_rejection_stalled, conv_info
 
     def optimize(self):
         energy, gradient, H, big_eigvals, big_eigvecs, resetted = self.housekeeping()
@@ -207,7 +203,8 @@ class RFOptimizer(HessianOptimizer):
         if self.uphill_rejection_stalled:
             print(
                 "RFO stopped at the rejected-trial trust floor; "
-                "the previous lower-energy geometry was retained."
+                "the previous lower-energy geometry was retained without "
+                "claiming convergence."
             )
         msg = (
             f"Successful invocations:\n"

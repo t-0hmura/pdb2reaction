@@ -523,7 +523,7 @@ def _optimize_single(
 @click.option(
     "--max-nodes",
     type=int,
-    default=20,
+    default=GS_KW["max_nodes"],
     show_default=True,
     help="Maximum number of internal nodes (string has up to max_nodes+2 images including endpoints).",
 )

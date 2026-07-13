@@ -17,10 +17,10 @@ Energy + forces (UMA backend, neutral closed-shell):
 pdb2reaction sp -i structure.pdb -q 0 -m 1
 ```
 
-Also compute the full Hessian (UMA → analytical; other backends → finite-difference):
+Also compute the full Hessian (automatic mode uses analytical for UMA and finite differences for other backends):
 
 ```bash
-# also compute the full Hessian (UMA → analytical; other backends → finite-difference)
+# also compute the full Hessian (automatic backend selection)
 pdb2reaction sp -i structure.pdb -q 0 -m 1 --hess
 ```
 
@@ -42,9 +42,9 @@ pdb2reaction sp -i structure.pdb -q 0 -m 1 --hess
 When `--hess` is set, the backend choice picks the Hessian computation strategy:
 
 - `--backend uma` (default) → `Analytical` Hessian via the UMA torch autograd path
-- `--backend orb` / `mace` / `aimnet2` → falls back to `FiniteDifference` (no analytical Hessian implementation upstream)
+- `--backend orb` / `mace` / `aimnet2` → `FiniteDifference` in automatic mode
 
-`--hessian-calc-mode` lets you force `FiniteDifference` even on UMA if you want a sanity check against the analytical implementation. Forcing `Analytical` on a non-UMA backend has no effect — those backends always fall back to `FiniteDifference`.
+UMA, ORB, MACE, and AIMNet2 all implement analytical Hessians. Use `--hessian-calc-mode Analytical` to request one explicitly, or force `FiniteDifference` for a numerical cross-check. With UMA, `workers > 1` cannot be combined with an explicit analytical Hessian request and raises an error; use `workers = 1` or finite differences.
 
 ## CLI options
 

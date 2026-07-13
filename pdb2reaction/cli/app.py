@@ -206,6 +206,7 @@ _COMMAND_BOOL_TOGGLE_OPTIONS: dict[str, frozenset[str]] = {
             "--dry-run",
             "--forward",
             "--freeze-links",
+            "--never-stop",
             "--out-json",
             "--show-config",
         }
@@ -487,6 +488,7 @@ _SUBCOMMAND_PRIMARY_HELP_OPTIONS: dict[str, frozenset[str]] = {
             "-b", "--backend",
             "--max-cycles",
             "--step-size",
+            "--never-stop",
             "--forward",
             "--backward",
             "--config",

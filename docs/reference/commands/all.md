@@ -168,6 +168,14 @@ Options:
                                   loop in tsopt (grad: dimer loop, hess: post-
                                   RS-P-RFO); --no-flatten forces
                                   flatten_max_iter=0.  [default: no-flatten]
+  --irc-step-size FLOAT           Override IRC --step-size (Bohr). If an IRC
+                                  stops after only a few frames, retry with a
+                                  smaller value such as 0.05.
+  --irc-never-stop / --no-irc-never-stop
+                                  Override IRC energy-stop handling. When
+                                  enabled, transient energy rises/plateaus do
+                                  not stop tracing; physical convergence and the
+                                  IRC max-cycle limit still apply. Default off.
   --freq-out-dir DIRECTORY        Override freq output base directory (relative
                                   paths resolved against the default).
   --freq-max-write INTEGER        Override freq --max-write value. Defaults to

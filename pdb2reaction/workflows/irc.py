@@ -18,6 +18,7 @@ import sys
 import gc
 
 import click
+import numpy as np
 import time
 import torch
 
@@ -119,6 +120,16 @@ def _echo_convert_trj_if_exists(
     help=(
         "Step length in Bohr (unweighted Cartesian coordinates); used unless YAML sets irc.step_length. "
         "Default: 0.10 Bohr."
+    ),
+)
+@click.option(
+    "--never-stop/--no-never-stop",
+    "never_stop",
+    default=None,
+    help=(
+        "Ignore transient energy increases/plateaus and keep tracing through "
+        "small shoulders. Gradient/integrator convergence and --max-cycles "
+        "still stop the run. Used unless YAML sets irc.never_stop; default off."
     ),
 )
 @click.option(
@@ -241,6 +252,7 @@ def cli(
     spin: Optional[int],
     max_cycles: Optional[int],
     step_size: Optional[float],
+    never_stop: Optional[bool],
     root: Optional[int],
     forward: Optional[bool],
     backward: Optional[bool],
@@ -327,6 +339,8 @@ def cli(
                 irc_cfg["max_cycles"] = int(max_cycles)
             if cli_param_overridden(ctx, "step_size") and step_size is not None:
                 irc_cfg["step_length"] = float(step_size)
+            if cli_param_overridden(ctx, "never_stop") and never_stop is not None:
+                irc_cfg["never_stop"] = bool(never_stop)
             if cli_param_overridden(ctx, "root") and root is not None:
                 irc_cfg["root"] = int(root)
             if cli_param_overridden(ctx, "forward") and forward is not None:
@@ -436,8 +450,25 @@ def cli(
             echo_resolved_device()
 
             # Seed cached TS Hessian if available (from tsopt in ``all`` workflow)
-            from pdb2reaction.io.hessian_cache import load as _hess_load, store as _hess_store
+            from pdb2reaction.io.hessian_cache import (
+                discard as _hess_discard,
+                load as _hess_load,
+                matches_cart_coords as _hess_matches_coords,
+                store as _hess_store,
+            )
             cached = _hess_load("ts")
+            if cached is not None and not _hess_matches_coords(
+                cached,
+                geometry.cart_coords,
+                # The all-workflow may pass the TS through a three-decimal PDB.
+                atol=1.1e-3,
+            ):
+                click.echo(
+                    "[irc] Cached TS Hessian does not match the IRC start "
+                    "geometry; calculating a fresh Hessian.",
+                    err=True,
+                )
+                cached = None
             if cached is not None:
                 click.echo("[irc] Reusing cached TS Hessian from tsopt.")
                 _dev = calc_cfg.get("device", "auto")
@@ -463,11 +494,34 @@ def cli(
             eulerpc = EulerPC(geometry, **irc_cfg)
 
             click.echo("\n====== IRC (EulerPC) ======\n", narrative=True)
+            # Clear per-direction values before running: a failed or one-sided
+            # IRC must never expose an endpoint from an earlier segment.
+            _hess_discard("irc_left")
+            _hess_discard("irc_right")
             eulerpc.run()
 
+            # A one- or two-step branch usually indicates that the Euler step
+            # skipped across a shallow feature or immediately triggered an
+            # energy stop. Give an actionable remedy in the normal CLI output.
+            _quick_directions = []
+            for _direction in ("forward", "backward"):
+                if not getattr(eulerpc, _direction, False):
+                    continue
+                _n_frames = len(getattr(eulerpc, f"{_direction}_energies", []))
+                if 0 < _n_frames <= 3:
+                    _quick_directions.append(_direction)
+            if _quick_directions:
+                click.echo(
+                    "[irc] IRC stopped after only a few frames in "
+                    + ", ".join(_quick_directions)
+                    + ". Retry with a smaller maximum step, for example "
+                    "--step-size 0.05. If a small uphill/flat section is "
+                    "intentional, also consider --never-stop; it is opt-in.",
+                    err=True,
+                )
+
             # Cache IRC endpoint Hessians (Bofill-updated mw → Cartesian)
-            def _unmw_and_store(mw_H, key):
-                import numpy as np
+            def _unmw_and_store(mw_H, key, endpoint_cart_coords, direction):
                 act = eulerpc._act_dofs
                 m_sqrt = geometry.masses_rep ** 0.5
                 ms_act = m_sqrt[act]
@@ -481,13 +535,39 @@ def cli(
                         torch.cuda.empty_cache()
                 else:
                     H_cart_act_np = np.diag(ms_act) @ mw_H @ np.diag(ms_act)
-                _hess_store(key, H_cart_act_np, active_dofs=list(act))
+                _hess_store(
+                    key,
+                    H_cart_act_np,
+                    active_dofs=list(act),
+                    meta={
+                        "cart_coords": endpoint_cart_coords,
+                        "irc_direction": direction,
+                    },
+                )
 
-            if getattr(eulerpc, "forward_mw_hessian", None) is not None:
-                _unmw_and_store(eulerpc.forward_mw_hessian, "irc_left")
+            if eulerpc.forward and getattr(eulerpc, "forward_mw_hessian", None) is not None:
+                _forward_endpoint = (
+                    np.asarray(eulerpc.forward_mw_coords[0], dtype=float)
+                    / np.asarray(eulerpc.m_sqrt, dtype=float)
+                )
+                _unmw_and_store(
+                    eulerpc.forward_mw_hessian,
+                    "irc_left",
+                    _forward_endpoint,
+                    "forward",
+                )
                 click.echo("[irc] Cached forward endpoint Hessian as 'irc_left'.")
-            if getattr(eulerpc, "mw_hessian", None) is not None:
-                _unmw_and_store(eulerpc.mw_hessian, "irc_right")
+            if eulerpc.backward and getattr(eulerpc, "mw_hessian", None) is not None:
+                _backward_endpoint = (
+                    np.asarray(eulerpc.backward_mw_coords[-1], dtype=float)
+                    / np.asarray(eulerpc.m_sqrt, dtype=float)
+                )
+                _unmw_and_store(
+                    eulerpc.mw_hessian,
+                    "irc_right",
+                    _backward_endpoint,
+                    "backward",
+                )
                 click.echo("[irc] Cached backward endpoint Hessian as 'irc_right'.")
 
             suffix_prefix = irc_cfg.get("prefix", "")
@@ -540,10 +620,13 @@ def cli(
                     "energy_product_hartree": _e_product,
                     "forward_converged": getattr(eulerpc, 'forward_is_converged', None),
                     "backward_converged": getattr(eulerpc, 'backward_is_converged', None),
+                    "forward_energy_increased": getattr(eulerpc, 'forward_energy_increased', None),
+                    "backward_energy_increased": getattr(eulerpc, 'backward_energy_increased', None),
                     "backend": calc_cfg.get("backend", backend),
                     "charge": calc_cfg["charge"],
                     "spin": calc_cfg["spin"],
                     "model": calc_cfg.get("model"),
+                    "never_stop": bool(irc_cfg.get("never_stop", False)),
                     "n_freeze_atoms": len(geom_cfg.get("freeze_atoms", [])),
                     "solvent": calc_cfg.get("solvent", "none"),
                     "step_length": irc_cfg.get("step_length"),

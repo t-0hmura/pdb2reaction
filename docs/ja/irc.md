@@ -10,7 +10,7 @@
 pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] \
  [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
  [--workers N] [--workers-per-node N] [-m 2S+1] \
- [--max-cycles N] [--step-size Δs] [--root k] \
+ [--max-cycles N] [--step-size Δs] [--never-stop/--no-never-stop] [--root k] \
  [--forward/--no-forward] [--backward/--no-backward] \
  [--freeze-links/--no-freeze-links] \
  [--out-dir DIR] [--config FILE] \
@@ -41,6 +41,23 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --step-size 0.20 \
  --hessian-calc-mode Analytical --out-dir ./result_irc_analytical
 ```
 
+分岐が1〜2 stepですぐ停止する場合は、まずEulerPCの最大stepを小さくします。
+再試行の目安は`0.05` Bohrです。
+
+```bash
+pdb2reaction irc -i ts.pdb -q 0 -m 1 --step-size 0.05 \
+ --out-dir ./result_irc_small_step
+```
+
+小さな数値的な山や平坦な肩を越えて追跡する必要がある場合は
+`--never-stop`を追加します。このopt-inモードはenergy上昇／変化量による
+停止だけを無視し、gradient/integratorの収束と`--max-cycles`は維持します。
+
+```bash
+pdb2reaction irc -i ts.pdb -q 0 -m 1 --step-size 0.05 --never-stop \
+ --max-cycles 250 --out-dir ./result_irc_continue
+```
+
 ## 処理の流れ
 
 1. **入力準備** – `geom_loader` がサポートする任意のフォーマットを受け入れます。参照 PDB が利用可能な場合（PDB 入力時、または `--ref-pdb` で指定した場合）、EulerPC 軌跡はそのトポロジーで PDB に変換されます。PDB 入力に対して `--freeze-links` はキャップ水素の親原子を凍結し、`geom.freeze_atoms` を拡張します。
@@ -69,11 +86,12 @@ out_dir/ (デフォルト:./result_irc/)
 | `-i, --input PATH` | `geom_loader` が受け入れる遷移状態構造 | 必須 |
 | `-q, --charge INT` | 総電荷; YAML が `calc.charge` を指定していない場合に使用。`.gjf` テンプレートまたは `--ligand-charge/-l`（PDB 入力または `--ref-pdb` 付き XYZ/GJF）が提供しない限り必須。両方が設定された場合でも、明示的な `-q` は `--ligand-charge/-l` より優先されます | テンプレート/導出が適用されない限り必須 |
 | `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
-| `--workers INT` | MLIP 予測器の並列度（workers > 1 で解析Hessian無効）。診断上の注意は {ref}`ja-workers-fd-downgrade` を参照 | `1` |
+| `--workers INT` | UMA 予測器の並列度。`workers > 1` と明示的な解析 Hessian は併用できないため、`workers = 1` または有限差分を使用。{ref}`ja-workers-fd-downgrade` を参照 | `1` |
 | `--workers-per-node INT` | ノードあたりのワーカー数。並列予測器に渡されます | `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1）。YAML が `calc.spin` を指定していない場合に使用 | `.gjf` テンプレート値または `1` |
 | `--max-cycles INT` | 最大 IRC ステップ（YAML が `irc.max_cycles` を指定していない場合に使用） | `125` |
 | `--step-size FLOAT` | ステップ長（Bohr、非質量加重デカルト座標）（YAML が `irc.step_length` を指定していない場合に使用） | `0.10` |
+| `--never-stop/--no-never-stop` | 一時的なenergy上昇／平坦化による停止を無視し、小さな肩を越えて追跡します。gradient/integratorの収束と`max_cycles`上限は無効化しません | `False` |
 | `--root INT` | 射影Hessianの固有値を**昇順**（最も負の値を先頭）に並べたときの**0 始まり**のインデックス。初期 IRC 変位に使用するモードを指定します。虚振動が 1 個だけの妥当な TS では `--root 0`（唯一の負の固有値）のままにしてください。`--root 1`、`--root 2` などは、活性な虚モードがより負のスプリアス（疑似）モードよりも上位にランクされていることが分かっている場合にのみ使用します。YAML が `irc.root` を指定していない場合に使用 | `0` |
 | `--forward/--no-forward` | 順方向分岐を実行（YAML が `irc.forward` を指定していない場合に使用） | `True` |
 | `--backward/--no-backward` | 逆方向分岐を実行（YAML が `irc.backward` を指定していない場合に使用） | `True` |
@@ -112,7 +130,8 @@ calc:
 
 ## 注意事項
 
-- MLIP バックエンド（デフォルト: UMA）は IRC 全体で再利用されます。`step_length` を大きくし過ぎると EulerPC が不安定になることがあります。
+- MLIP バックエンド（デフォルト: UMA）は IRC 全体で再利用されます。`step_length` を大きくし過ぎると EulerPC が不安定になることがあります。ほぼ直ちに停止する分岐は、まず小さい `--step-size`（例: `0.05`）で再試行してください。
+- `--never-stop` は意図せぬ追跡と計算時間増大を避けるためデフォルトOFFです。小さな山／肩には有効ですが、最寄りの化学的basinを通過する可能性もあるため軌跡と端点接続を確認してください。
 - `--freeze-links` が有効な場合、キャップ水素の親原子が自動的に凍結されます（{ref}`キャップ水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
 
 ## 関連項目

@@ -2996,6 +2996,13 @@ def write_result_json(
     data.setdefault("command", command)
     data.setdefault("pdb2reaction_version", __version__)
     data.setdefault("schema_version", RESULT_JSON_SCHEMA_VERSION)
+    # Preserve MLIP provenance as two independent, backend-neutral fields.
+    # Existing leaf workflows commonly populate backend/model; normalize them
+    # here so every result.json has the same machine-readable contract.
+    if data.get("backend") is not None:
+        data.setdefault("mlip_backend", data.get("backend"))
+    if "model" in data:
+        data.setdefault("mlip_model", data.get("model"))
     if elapsed_seconds is not None:
         data["elapsed_seconds"] = round(elapsed_seconds, 3)
     data.setdefault("environment", _collect_environment_info())

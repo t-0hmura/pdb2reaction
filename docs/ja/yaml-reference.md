@@ -134,7 +134,7 @@ calc:
  max_neigh: null # Maximum neighbors for graph construction
  radius: null # Cutoff radius for neighbor search
  r_edges: false # Store radial edges
- workers: 1 # MLIP inference workers (workers>1 disables analytical Hessians; UMA backend only)
+ workers: 1 # UMA inference workers (workers>1 + explicit Analytical is an error)
  workers_per_node: 1 # Workers per node for parallel predictor
  out_hess_torch: true # Return Hessian as torch.Tensor
  hessian_double: true # Assemble/return Hessian in float64
@@ -453,6 +453,8 @@ rsirfo:
  max_line_search: true # Enforce maximum line-search step
  assert_neg_eigval: false # Require negative eigenvalue at convergence
  track_mode_by_overlap: false # 前回の Hessian との重なりで追跡対象 TS モードを選ぶ
+ saddle_recovery_check_interval: 50 # n_imag=0 回復中の exact PHVA 間隔
+ saddle_recovery_max_cycles: 200 # n_imag=0 回復の有界上限
  # Also inherits rfo-like settings: trust_radius, trust_update, etc.
 ```
 
@@ -470,6 +472,7 @@ IRC 積分設定。
 ```yaml
 irc:
  step_length: 0.1 # Integration step length
+ never_stop: false # 一時的なenergy上昇/平坦化では停止しない（収束判定とmax_cyclesは維持）
  max_cycles: 125 # Maximum steps along IRC
  downhill: false # Follow downhill direction only
  forward: true # Propagate in forward direction
