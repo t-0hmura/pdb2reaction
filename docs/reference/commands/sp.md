@@ -15,10 +15,9 @@ Options:
                                   and exit.
   -i, --input FILE                Input structure (PDB / XYZ / GJF).  [required]
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
-                                  predictor. NOTE: when workers>1 the analytical
-                                  Hessian is unavailable (the parallel predictor
-                                  exposes no autograd model); it auto-downgrades
-                                  to finite differences with a warning.
+                                  predictor. NOTE: with UMA, workers>1 plus an
+                                  explicit Analytical Hessian request is an
+                                  error; use workers=1 or FiniteDifference.
                                   [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
@@ -26,9 +25,10 @@ Options:
   --hess / --no-hess              Also compute the full Hessian and save to
                                   hessian.npy.  [default: no-hess]
   --hessian-calc-mode [analytical|finitedifference]
-                                  Hessian backend when --hess is set. Analytical
-                                  only works for UMA; other backends fall back
-                                  to FiniteDifference.
+                                  Hessian backend when --hess is set. UMA, ORB,
+                                  MACE, and AIMNet2 support Analytical;
+                                  automatic mode uses Analytical for UMA and
+                                  FiniteDifference for other backends.
   --convert-files / --no-convert-files
                                   Auto-convert output XYZ-like files into
                                   companion PDB files written alongside them

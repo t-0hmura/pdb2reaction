@@ -92,7 +92,7 @@ out_dir/   (default: ./result_all/)
 ├─ mep_w_ref.pdb               # MEP merged into the full-system template (multi-input runs)
 ├─ mep_trj.xyz                 # Full MEP trajectory
 ├─ energy_diagram_MEP.png      # All-segment MEP barriers
-├─ energy_diagram_*.png        # Aggregated post-processing diagrams (UMA / Gibbs / DFT, with --tsopt etc.)
+├─ energy_diagram_*.png        # Aggregated post-processing diagrams (MLIP / Gibbs / DFT, with --tsopt etc.)
 ├─ segments/                   # Per-reactive-segment deliverables (bridge segments are skipped)
 │  └─ seg_NN/                  # 2-digit index, e.g. seg_01, seg_02
 │     ├─ reactant.{pdb,xyz,gjf}   # Canonical R/TS/P (output format matches input format)
@@ -125,11 +125,11 @@ Energy-diagram filenames encode method and scope:
 | File | Generated when | Content |
 |---|---|---|
 | `energy_diagram_MEP.png` | `path-opt` / `path-search` completes | All-segment MEP barriers (raw GSM / DMF values) |
-| `energy_diagram_UMA.png` | per-segment `tsopt` + IRC completes | R → TS → P (MLIP energy) |
-| `energy_diagram_G_UMA.png` | per-segment thermo completes | R → TS → P (MLIP Gibbs) |
+| `energy_diagram_MLIP.png` | per-segment `tsopt` + IRC completes | R → TS → P (MLIP energy) |
+| `energy_diagram_G_MLIP.png` | per-segment thermo completes | R → TS → P (MLIP Gibbs) |
 | `energy_diagram_DFT.png` | per-segment DFT completes | R → TS → P (DFT energy) |
-| `energy_diagram_G_DFT_plus_UMA.png` | per-segment DFT + thermo | R → TS → P (DFT energy + MLIP thermal correction) |
-| `energy_diagram_UMA_all.png` / `_G_UMA_all.png` / `_DFT_all.png` / `_G_DFT_plus_UMA_all.png` | all segments aggregated (variants for MLIP / Gibbs / DFT / DFT//MLIP Gibbs) | Combined across all segments |
+| `energy_diagram_G_DFT_plus_MLIP.png` | per-segment DFT + thermo | R → TS → P (DFT energy + MLIP thermal correction) |
+| `energy_diagram_MLIP_all.png` / `_G_MLIP_all.png` / `_DFT_all.png` / `_G_DFT_plus_MLIP_all.png` | all segments aggregated (variants for MLIP / Gibbs / DFT / DFT//MLIP Gibbs) | Combined across all segments |
 | `irc_plot.png` (per `segments/seg_NN/irc/`) | per-segment IRC completes | IRC profile (MLIP energy along the trajectory) |
 | `irc_plot_all.png` | all segments aggregated | IRC profiles concatenated across segments |
 
@@ -138,7 +138,7 @@ Energy-diagram filenames encode method and scope:
 The log is organised into numbered sections:
 
 - **[1] Global MEP overview** — image / segment counts, MEP trajectory plot paths, aggregate MEP energy diagram.
-- **[2] Segment-level MEP summary (UMA path)** — per-segment barriers (ΔE‡), reaction energies (ΔE), bond-change summaries.
+- **[2] Segment-level MEP summary (MLIP path)** — per-segment barriers (ΔE‡), reaction energies (ΔE), bond-change summaries.
 - **[3] Per-segment post-processing (TSOPT / Thermo / DFT)** — TS imaginary-frequency checks, IRC outputs, MLIP / thermo / DFT energy tables.
 - **[4] Energy diagrams (overview)** — diagram tables for MEP / MLIP / Gibbs / DFT plus an optional cross-method summary.
 - **[5] Output directory structure** — a compact tree of generated files with inline annotations.
@@ -170,7 +170,7 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | `--dump / --no-dump` | Dump MEP (GSM / DMF) trajectories. Always forwarded to `path-search` / `path-opt`; forwarded to `scan` / `tsopt` only when explicitly set. `freq` defaults to `dump=True` unless you pass `--no-dump`. | `False` |
 | `--config FILE` | Base YAML applied first. | _None_ |
 | `--show-config / --no-show-config` | Print resolved configuration before execution. | `False` |
-| `--dry-run / --no-dry-run` | Validate and print plan without running stages. | `False` |
+| `--dry-run / --no-dry-run` | Validate options and print the plan. With `--center`, run extraction in a temporary directory to validate derived charge and electron parity. No scan/MEP/TSOPT/freq/DFT stage runs, and no persistent output is produced. | `False` |
 
 ### Charge / spin
 

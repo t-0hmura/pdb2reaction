@@ -1634,7 +1634,7 @@ def _merge_final_and_write(final_images: List[Any],
     type=int,
     default=UMA_CALC_KW["workers"],
     show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: when workers>1 the analytical Hessian is unavailable and auto-downgrades to finite differences with a warning; run with --workers 1 to force analytical.",
+    help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
 )
 @click.option(
     "--workers-per-node",
@@ -2728,6 +2728,8 @@ def cli(
                 "mep_plot": str(out_dir_path / "mep_plot.png") if (out_dir_path / "mep_plot.png").exists() else None,
                 "diagram": diag_for_log,
             }
+            mlip_backend = str(calc_cfg.get("backend", "uma"))
+            mlip_model = calc_cfg.get("model")
             summary_payload = {
                 "root_out_dir": str(out_dir_path),
                 "path_dir": str(out_dir_path),
@@ -2739,7 +2741,8 @@ def cli(
                 "dft": False,
                 "opt_mode": opt_mode,
                 "mep_mode": mep_mode,
-                "uma_model": calc_cfg.get("model"),
+                "mlip_backend": mlip_backend,
+                "mlip_model": mlip_model,
                 "command": command_str,
                 "charge": calc_cfg.get("charge"),
                 "spin": calc_cfg.get("spin"),

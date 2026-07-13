@@ -119,7 +119,7 @@ out_dir/ (デフォルト:./result_all/)
 ├─ mep_w_ref.pdb               # 全系テンプレートへマージした MEP（複数入力時）
 ├─ mep_trj.xyz                 # MEP 全体軌道
 ├─ energy_diagram_MEP.png      # 全セグメントの MEP 障壁
-├─ energy_diagram_*.png        # 集約後処理ダイアグラム（UMA / Gibbs / DFT、--tsopt 等で生成）
+├─ energy_diagram_*.png        # 集約後処理ダイアグラム（MLIP / Gibbs / DFT、--tsopt 等で生成）
 ├─ segments/                    # 反応セグメント別の成果物（ブリッジセグメントはスキップ）
 │  └─ seg_NN/                   # 2 桁インデックス、例: seg_01, seg_02
 │     ├─ reactant.{pdb,xyz,gjf}   #   正規 R/TS/P（出力形式は入力形式と一致）
@@ -152,14 +152,14 @@ out_dir/ (デフォルト:./result_all/)
 | ファイル名 | 生成タイミング | 内容 |
 |---|---|---|
 | `energy_diagram_MEP.png` | path-opt/path-search 完了時 | 全セグメント MEP 障壁（生の GSM/DMF 値） |
-| `energy_diagram_UMA.png` | セグメントごとの tsopt+IRC 完了時 | R→TS→P（MLIP エネルギー） |
-| `energy_diagram_G_UMA.png` | セグメントごとの thermo 完了時 | R→TS→P（MLIP ギブズ自由エネルギー） |
+| `energy_diagram_MLIP.png` | セグメントごとの tsopt+IRC 完了時 | R→TS→P（MLIP エネルギー） |
+| `energy_diagram_G_MLIP.png` | セグメントごとの thermo 完了時 | R→TS→P（MLIP ギブズ自由エネルギー） |
 | `energy_diagram_DFT.png` | セグメントごとの DFT 完了時 | R→TS→P（DFT エネルギー） |
-| `energy_diagram_G_DFT_plus_UMA.png` | セグメントごとの DFT+thermo 完了時 | R→TS→P（DFT エネルギー + MLIP 熱補正） |
-| `energy_diagram_UMA_all.png` | 全セグメント集約時 | 全セグメント統合（MLIP） |
-| `energy_diagram_G_UMA_all.png` | 全セグメント + thermo | 全セグメント統合（MLIP ギブズ） |
+| `energy_diagram_G_DFT_plus_MLIP.png` | セグメントごとの DFT+thermo 完了時 | R→TS→P（DFT エネルギー + MLIP 熱補正） |
+| `energy_diagram_MLIP_all.png` | 全セグメント集約時 | 全セグメント統合（MLIP） |
+| `energy_diagram_G_MLIP_all.png` | 全セグメント + thermo | 全セグメント統合（MLIP ギブズ） |
 | `energy_diagram_DFT_all.png` | 全セグメント + DFT | 全セグメント統合（DFT） |
-| `energy_diagram_G_DFT_plus_UMA_all.png` | 全セグメント + DFT + thermo | 全セグメント統合（DFT//MLIP ギブズ） |
+| `energy_diagram_G_DFT_plus_MLIP_all.png` | 全セグメント + DFT + thermo | 全セグメント統合（DFT//MLIP ギブズ） |
 | `irc_plot.png`（`segments/seg_NN/irc/` 配下） | セグメント IRC 完了 | セグメントごとの IRC プロファイル（MLIP エネルギー） |
 | `irc_plot_all.png` | 全セグメント集約 | 全セグメントの IRC プロファイル連結 |
 
@@ -200,7 +200,7 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 | `--dump/--no-dump` | MEP(GSM/DMF)軌跡を出力。`path-search`/`path-opt` には常時転送され、`scan`/`tsopt` には明示指定時のみ転送。`freq` はデフォルトで dump=True なので `--no-dump` で無効化 | `False` |
 | `--config FILE` | 先に適用するベース YAML | _None_ |
 | `--show-config/--no-show-config` | 実行前に解決済み設定を表示 | `False` |
-| `--dry-run/--no-dry-run` | 実行せず検証と計画表示のみ行う | `False` |
+| `--dry-run/--no-dry-run` | 設定を検証して計画を表示。`--center` 指定時は一時ディレクトリで extract を実行し、導出電荷と電子数 parity を検証する。scan/MEP/TSOPT/freq/DFT は実行せず、永続出力も作らない | `False` |
 
 ### 電荷・スピンオプション
 

@@ -251,7 +251,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 
 - **VRAM 不足**: `--radius` の値を減らして活性部位モデルを小さくする、`--max-nodes` を減らす、軽い最適化設定にする（`--opt-mode grad`）
 - **解析Hessian（Analytical Hessian）が遅いまたは OOM**: デフォルトの `FiniteDifference` を維持してください。`--hessian-calc-mode Analytical` は 16 GB 以上の VRAM がある場合のみ使用してください。16 GB で収まるのは ~200 原子程度までです（下記の VRAM 目安表を参照）
-- **workers > 1**: HPC で UMA の処理速度は改善しますが、解析Hessianとは併用できません（`workers > 1` で解析Hessianを要求すると `RuntimeError` が発生します）。明示的に `--hessian-calc-mode FiniteDifference` を指定するか、Hessianを使うモードでは `--workers 1` で実行してください
+- **workers > 1**: HPC で UMA の処理速度は改善しますが、並列 predictor は解析 Hessian を持ちません。`Analytical` を明示すると `RuntimeError` で停止します。解析 Hessian には `--workers 1`、並列実行には `FiniteDifference` を指定してください
 - **大規模系（1000 原子以上）**: より小さな活性部位モデル（`--radius 2.5` Å）を抽出するか、マルチ GPU セットアップでの実行を検討してください
 - **HPC で DFT を回すとき（数百原子規模）**: PySCF / GPU4PySCF は積分・中間ファイルを `$PYSCF_TMPDIR`（未設定なら `$TMPDIR`、最後は `/tmp`）に書き出します。ノードローカル `/tmp` は容量が小さい / `tmpfs` であることが多く、SCF の途中で枯渇する場合があります。`dft` 起動前に `PYSCF_TMPDIR` をジョブの作業ファイルシステム配下に設定してください（例: `export PYSCF_TMPDIR="$PBS_O_WORKDIR"`）
 

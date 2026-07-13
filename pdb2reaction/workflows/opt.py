@@ -254,7 +254,7 @@ def _flatten_all_imag_modes_for_geom(
     type=int,
     default=UMA_CALC_KW["workers"],
     show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: when workers>1 the analytical Hessian (used for RFO seeding) is unavailable and auto-downgrades to finite differences with a warning; run with --workers 1 to force analytical.",
+    help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
 )
 @click.option(
     "--workers-per-node",

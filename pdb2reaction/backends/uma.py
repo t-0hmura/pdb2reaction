@@ -283,6 +283,13 @@ class UMACalculator(MLIPCalculator):
         print_timing: bool = True,
         **kwargs,
     ):
+        mode = str(hessian_calc_mode or "FiniteDifference").strip().lower()
+        if max(int(workers or 1), 1) > 1 and mode in ("analytical", "analytic"):
+            raise BackendError(
+                "Analytical Hessian cannot be combined with UMA workers>1: "
+                "the parallel predictor exposes no autograd model. Use workers=1 "
+                "or select hessian_calc_mode='FiniteDifference'."
+            )
         super().__init__(
             charge=charge,
             spin=spin,
@@ -512,15 +519,13 @@ class UMACalculator(MLIPCalculator):
         force_fd = (core.parallel_predict or (not core.has_torch_model))
 
         # Parallel predictor (workers>1) has no autograd model, so an explicit
-        # analytical request cannot be honoured. Downgrade to finite differences
-        # loudly rather than silently — the CLI help promises this warning.
+        # analytical request cannot be honoured. Fail instead of silently
+        # changing the requested numerical method.
         if force_fd and (self.hessian_calc_mode or "").strip().lower() in ("analytical", "analytic"):
-            import warnings
-            warnings.warn(
-                "analytical Hessian is unavailable when workers>1 (the parallel "
-                "predictor exposes no autograd model); falling back to finite "
-                "differences. Run with --workers 1 to force the analytical Hessian.",
-                stacklevel=2,
+            raise BackendError(
+                "Analytical Hessian is unavailable because the UMA predictor "
+                "does not expose an autograd model. Use workers=1 or select "
+                "hessian_calc_mode='FiniteDifference'."
             )
 
         vram_base_alloc: Optional[float] = None

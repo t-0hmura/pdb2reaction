@@ -72,10 +72,9 @@ Options:
                                   extractor/GJF/--ligand-charge-derived values;
                                   emits a warning when used).
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
-                                  predictor. NOTE: when workers>1 the analytical
-                                  Hessian is unavailable (the parallel predictor
-                                  exposes no autograd model); it auto-downgrades
-                                  to finite differences with a warning.
+                                  predictor. NOTE: with UMA, workers>1 plus an
+                                  explicit Analytical Hessian request is an
+                                  error; use workers=1 or FiniteDifference.
                                   [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
@@ -138,9 +137,12 @@ Options:
   --show-config / --no-show-config
                                   Print resolved configuration and continue
                                   execution.  [default: no-show-config]
-  --dry-run / --no-dry-run        Validate options and print the execution plan
-                                  without running any stage.  [default: no-dry-
-                                  run]
+  --dry-run / --no-dry-run        Validate options and print the execution plan.
+                                  With --center, runs extraction in a temporary
+                                  directory to validate derived charge and
+                                  electron parity; no computational stage or
+                                  persistent output is produced.  [default: no-
+                                  dry-run]
   --preopt BOOLEAN                If True, run initial single-structure
                                   optimizations of the active site model inputs.
                                   [default: True]

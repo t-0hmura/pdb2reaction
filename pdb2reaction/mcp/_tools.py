@@ -668,10 +668,9 @@ def register_all(mcp) -> None:
 
         ``do_hess=True`` additionally writes the full Hessian to
         ``hessian.npy``. ``hessian_calc_mode`` selects the Hessian
-        backend ("Analytical" only works for UMA; other backends fall
-        back to FiniteDifference). NOTE: analytical Hessian raises a
-        RuntimeError when ``workers > 1``; pass
-        ``hessian_calc_mode="FiniteDifference"`` explicitly in that case.
+        backend. UMA, ORB, MACE, and AIMNet2 support analytical Hessians.
+        With UMA and ``workers > 1``, an explicit analytical request raises
+        ``RuntimeError``; use ``workers=1`` or select finite differences.
         """
         od = _resolve_out_dir(out_dir, "sp")
         argv: list[str] = ["pdb2reaction", "sp", "-i", input_pdb, "-q", str(charge)]

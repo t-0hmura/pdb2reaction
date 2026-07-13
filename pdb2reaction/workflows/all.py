@@ -922,6 +922,7 @@ def _enrich_summary(
     version: str,
     pipeline_mode: str,
     mlip_backend: str,
+    mlip_model: Optional[str],
     charge: int,
     spin: int,
     command: str = "",
@@ -952,21 +953,21 @@ def _enrich_summary(
     if reactive:
         for diag in reversed(summary.get("energy_diagrams", [])):
             name = diag.get("name", "")
-            if "G_UMA" in name and "all" in name:
-                best_method = "UMA_Gibbs"
+            if "G_MLIP" in name and "all" in name:
+                best_method = "MLIP_Gibbs"
                 break
-            elif "UMA" in name and "all" in name:
-                best_method = "UMA"
+            elif "MLIP" in name and "all" in name:
+                best_method = "MLIP"
                 break
         if best_method is None:
             best_method = "MEP"
 
         # Prefer the refined TSOPT+IRC barrier (post_segments' uma/gibbs_uma) matching
         # best_method; segments[*].barrier_kcal is only the un-refined MEP band and must
-        # NOT be reported under a UMA/Gibbs label (the two can differ by several kcal/mol).
+        # NOT be reported under an MLIP/Gibbs label (the two can differ by several kcal/mol).
         # An agent reading this field gets the TS/IRC-refined ΔE‡/ΔG‡, with the raw MEP
         # value kept alongside as `mep_barrier_kcal` for transparency.
-        method_key = {"UMA_Gibbs": "gibbs_uma", "UMA": "uma"}.get(best_method)
+        method_key = {"MLIP_Gibbs": "gibbs_uma", "MLIP": "uma"}.get(best_method)
         post_by_idx = {
             ps.get("index"): ps
             for ps in (post_segments or [])
@@ -981,7 +982,7 @@ def _enrich_summary(
                 cur_method = best_method
             else:
                 # No refined TS/IRC value for this segment: fall back to the MEP band,
-                # but label it MEP honestly rather than claiming a UMA/Gibbs number.
+                # but label it MEP honestly rather than claiming an MLIP/Gibbs number.
                 b = s.get("barrier_kcal", 0) or 0
                 cur_method = "MEP"
             if b > max_barrier:
@@ -1008,6 +1009,7 @@ def _enrich_summary(
     summary["pipeline_mode"] = pipeline_mode
     summary["status"] = status
     summary["mlip_backend"] = mlip_backend
+    summary["mlip_model"] = mlip_model
     summary["charge"] = charge
     summary["spin"] = spin
     summary["n_segments_reactive"] = n_reactive
@@ -1024,7 +1026,9 @@ def _enrich_summary(
     if freeze_atoms:
         summary["freeze_atoms"] = freeze_atoms
 
-    # Per-segment post-processing results (TS freq, IRC, UMA/Gibbs/DFT energies, structures)
+    # Per-segment post-processing results. Legacy UMA-named machine keys are
+    # retained for Supporting Data compatibility; provenance lives in the
+    # top-level mlip_backend/mlip_model fields.
     if post_segments:
         summary["post_segments"] = _json_safe(post_segments)
 
@@ -2137,7 +2141,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     type=int,
     default=CALC_KW["workers"],
     show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: when workers>1 the analytical Hessian is unavailable (the parallel predictor exposes no autograd model); it auto-downgrades to finite differences with a warning.",
+    help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
 )
 @click.option(
     "--workers-per-node",
@@ -2297,7 +2301,11 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     "dry_run",
     default=False,
     show_default=True,
-    help="Validate options and print the execution plan without running any stage.",
+    help=(
+        "Validate options and print the execution plan. With --center, runs extraction "
+        "in a temporary directory to validate derived charge and electron parity; no "
+        "computational stage or persistent output is produced."
+    ),
 )
 @click.option(
     "--preopt",
@@ -3146,7 +3154,7 @@ def cli(
         solvent=solvent if cli_param_overridden(ctx, "solvent") else None,
         solvent_model=solvent_model if cli_param_overridden(ctx, "solvent_model") else None,
     )
-    # calc_cfg_shared feeds the run summary (mlip_backend / uma_model). _build_calc_cfg does
+    # calc_cfg_shared feeds the run summary (mlip_backend / mlip_model). _build_calc_cfg does
     # not apply --backend-model, so without this the summary records the DEFAULT UMA model even
     # when --backend-model overrides it (the actual calc already honors --backend-model via its
     # own config path; this only corrects the recorded provenance). Use the same canonical helper
@@ -3321,10 +3329,10 @@ def cli(
         e_prod = float(g_prod_opt.energy)
 
         diag_payload = _write_segment_energy_diagram(
-            tsroot / "energy_diagram_UMA",
+            tsroot / "energy_diagram_MLIP",
             labels=["R", "TS", "P"],
             energies_au=[e_react, eT, e_prod],
-            title_note="(UMA, TSOPT + IRC)",
+            title_note="(MLIP, TSOPT + IRC)",
         )
         if diag_payload:
             energy_diagrams.append(diag_payload)
@@ -3400,10 +3408,10 @@ def cli(
                     )
                 elif True:
                     diag_payload = _write_segment_energy_diagram(
-                        tsroot / "energy_diagram_G_UMA",
+                        tsroot / "energy_diagram_G_MLIP",
                         labels=["R", "TS", "P"],
                         energies_au=[GR, GT, GP],
-                        title_note="(UMA + Thermal Correction)",
+                        title_note="(MLIP + Thermal Correction)",
                         ylabel="ΔG (kcal/mol)",
                     )
                     if diag_payload:
@@ -3428,9 +3436,9 @@ def cli(
             # DO NOT null g_react_opt / g_prod_opt / thermo_payloads / tR / tT /
             # tP here: their calculators were already released above (~L3326),
             # and these objects are consumed downstream — bond-change detection
-            # (~L3501), DFT//UMA Gibbs (~L3466), and the gibbs_uma log (~L3601).
+            # (~L3501), DFT//MLIP Gibbs (~L3466), and the Gibbs log (~L3601).
             # Nulling them raised a swallowed AttributeError that silently
-            # dropped the DFT//UMA Gibbs diagram and forced a bogus
+            # dropped the DFT//MLIP Gibbs diagram and forced a bogus
             # "(no covalent changes detected)" summary. They hold no GPU tensors.
             gc.collect()
             if torch.cuda.is_available():
@@ -3470,7 +3478,7 @@ def cli(
                         tsroot / "energy_diagram_DFT",
                         labels=["R", "TS", "P"],
                         energies_au=[eR_dft, eT_dft, eP_dft],
-                        title_note=f"({dft_func_basis_use} // UMA)",
+                        title_note=f"({dft_func_basis_use} // MLIP)",
                     )
                     if diag_payload:
                         energy_diagrams.append(diag_payload)
@@ -3499,23 +3507,23 @@ def cli(
                     GP_dftUMA = eP_dft + dG_P
                     if not all(np.isfinite([GR_dftUMA, GT_dftUMA, GP_dftUMA])):
                         _echo(
-                            "[dft//uma] NOTE: thermochemistry unavailable; "
-                            "DFT//UMA Gibbs diagram skipped.",
+                            "[dft//mlip] NOTE: thermochemistry unavailable; "
+                            "DFT//MLIP Gibbs diagram skipped.",
                             err=True,
                         )
                     else:
                         diag_payload = _write_segment_energy_diagram(
-                            tsroot / "energy_diagram_G_DFT_plus_UMA",
+                            tsroot / "energy_diagram_G_DFT_plus_MLIP",
                             labels=["R", "TS", "P"],
                             energies_au=[GR_dftUMA, GT_dftUMA, GP_dftUMA],
-                            title_note=f"({dft_func_basis_use} // UMA + Thermal Correction)",
+                            title_note=f"({dft_func_basis_use} // MLIP + Thermal Correction)",
                             ylabel="ΔG (kcal/mol)",
                         )
                         if diag_payload:
                             energy_diagrams.append(diag_payload)
                 except Exception as e:
                     _echo(
-                        f"[dft//uma] WARNING: failed to build DFT//UMA Gibbs diagram: {e}",
+                        f"[dft//mlip] WARNING: failed to build DFT//MLIP Gibbs diagram: {e}",
                         err=True,
                     )
 
@@ -3573,6 +3581,7 @@ def cli(
             pipeline_mode="tsopt-only",
             out_dir=out_dir,
             mlip_backend=calc_cfg_shared.get("backend", "uma"),
+            mlip_model=calc_cfg_shared.get("model"),
             charge=q_int,
             spin=spin,
             command=command_str,
@@ -3619,7 +3628,7 @@ def cli(
                     energies_au=[e_react, eT, e_prod],
                     ref_energy=e_react,
                     au_to_kcal=AU2KCALPERMOL,
-                    diagram_path=str(tsroot / "energy_diagram_UMA.png"),
+                    diagram_path=str(tsroot / "energy_diagram_MLIP.png"),
                     structures=_structs_seg,
                 )
                 _gkey = "sum_EE_and_thermal_free_energy_ha"
@@ -3634,7 +3643,7 @@ def cli(
                         energies_au=[GR, GT, GP],
                         ref_energy=GR,
                         au_to_kcal=AU2KCALPERMOL,
-                        diagram_path=str(tsroot / "energy_diagram_G_UMA.png"),
+                        diagram_path=str(tsroot / "energy_diagram_G_MLIP.png"),
                         structures=_structs_seg,
                     )
                 if do_dft:
@@ -3658,10 +3667,12 @@ def cli(
                             energies_au=[GR_dftUMA, GT_dftUMA, GP_dftUMA],
                             ref_energy=GR_dftUMA,
                             au_to_kcal=AU2KCALPERMOL,
-                            diagram_path=str(tsroot / "energy_diagram_G_DFT_plus_UMA.png"),
+                            diagram_path=str(tsroot / "energy_diagram_G_DFT_plus_MLIP.png"),
                             structures=_structs_seg,
                         )
 
+                _mlip_backend = calc_cfg_shared.get("backend", "uma")
+                _mlip_model = calc_cfg_shared.get("model")
                 summary_payload = {
                     "root_out_dir": str(out_dir),
                     "path_dir": str(tsroot),
@@ -3673,7 +3684,8 @@ def cli(
                     "dft": do_dft,
                     "opt_mode": tsopt_opt_mode_default,
                     "mep_mode": mep_mode_kind,
-                    "uma_model": calc_cfg_shared.get("model"),
+                    "mlip_backend": _mlip_backend,
+                    "mlip_model": _mlip_model,
                     "command": command_str,
                     "charge": q_int,
                     "spin": spin,
@@ -3733,10 +3745,10 @@ def cli(
 
         try:
             for stem in (
-                "energy_diagram_UMA",
-                "energy_diagram_G_UMA",
+                "energy_diagram_MLIP",
+                "energy_diagram_G_MLIP",
                 "energy_diagram_DFT",
-                "energy_diagram_G_DFT_plus_UMA",
+                "energy_diagram_G_DFT_plus_MLIP",
             ):
                 src = tsroot / f"{stem}.png"
                 if src.exists():
@@ -4262,6 +4274,7 @@ def cli(
             pipeline_mode="path-opt",
             out_dir=out_dir,
             mlip_backend=calc_cfg_shared.get("backend", "uma"),
+            mlip_model=calc_cfg_shared.get("model"),
             charge=q_int,
             spin=spin,
             command=command_str,
@@ -4333,6 +4346,8 @@ def cli(
                 "mep_plot": str(out_dir / "energy_diagram_MEP.png") if (out_dir / "energy_diagram_MEP.png").exists() else None,
                 "diagram": diag_for_log,
             }
+            _mlip_backend = calc_cfg_shared.get("backend", "uma")
+            _mlip_model = calc_cfg_shared.get("model")
             summary_payload = {
                 "root_out_dir": str(out_dir),
                 "path_dir": str(path_dir),
@@ -4344,7 +4359,8 @@ def cli(
                 "dft": do_dft,
                 "opt_mode": opt_mode.lower() if opt_mode else None,
                 "mep_mode": mep_mode_kind,
-                "uma_model": calc_cfg_shared.get("model"),
+                "mlip_backend": _mlip_backend,
+                "mlip_model": _mlip_model,
                 "command": command_str,
                 "charge": q_int,
                 "spin": spin,
@@ -4524,7 +4540,8 @@ def cli(
                 dft_func_basis_use=dft_func_basis_use,
                 opt_mode=opt_mode,
                 mep_mode_kind=mep_mode_kind,
-                uma_model=calc_cfg_shared.get("model"),
+                mlip_backend=calc_cfg_shared.get("backend", "uma"),
+                mlip_model=calc_cfg_shared.get("model"),
                 command_str=command_str,
                 q_int=q_int,
                 spin=spin,
@@ -4745,10 +4762,10 @@ def cli(
             eP = float(g_prod_opt.energy)
             uma_ref_energies = {"R": eR, "TS": eT, "P": eP}
             diag_payload = _write_segment_energy_diagram(
-                seg_dir / "energy_diagram_UMA",
+                seg_dir / "energy_diagram_MLIP",
                 labels=["R", f"TS{seg_idx}", "P"],
                 energies_au=[eR, eT, eP],
-                title_note="(UMA, TSOPT + IRC)",
+                title_note="(MLIP, TSOPT + IRC)",
             )
             if diag_payload:
                 energy_diagrams.append(diag_payload)
@@ -4759,7 +4776,7 @@ def cli(
                 "labels": ["R", f"TS{seg_idx}", "P"],
                 "energies_au": [eR, eT, eP],
                 "energies_kcal": [0.0, (eT - eR) * AU2KCALPERMOL, (eP - eR) * AU2KCALPERMOL],
-                "diagram": str(seg_dir / "energy_diagram_UMA.png"),
+                "diagram": str(seg_dir / "energy_diagram_MLIP.png"),
                 "structures": state_structs,
                 "barrier_kcal": (eT - eR) * AU2KCALPERMOL,
                 "delta_kcal": (eP - eR) * AU2KCALPERMOL,
@@ -4934,10 +4951,10 @@ def cli(
                     gibbs_vals = [GR, GT, GP]
                     if all(np.isfinite(gibbs_vals)):
                         diag_payload = _write_segment_energy_diagram(
-                            seg_dir / "energy_diagram_G_UMA",
+                            seg_dir / "energy_diagram_G_MLIP",
                             labels=["R", f"TS{seg_idx}", "P"],
                             energies_au=gibbs_vals,
-                            title_note="(UMA + Thermal Correction)",
+                            title_note="(MLIP + Thermal Correction)",
                             ylabel="ΔG (kcal/mol)",
                         )
                         if diag_payload:
@@ -4951,7 +4968,7 @@ def cli(
                                 (GT - GR) * AU2KCALPERMOL,
                                 (GP - GR) * AU2KCALPERMOL,
                             ],
-                            "diagram": str(seg_dir / "energy_diagram_G_UMA.png"),
+                            "diagram": str(seg_dir / "energy_diagram_G_MLIP.png"),
                             "structures": state_structs,
                             "barrier_kcal": (GT - GR) * AU2KCALPERMOL,
                             "delta_kcal": (GP - GR) * AU2KCALPERMOL,
@@ -5076,10 +5093,10 @@ def cli(
                             np.isfinite([GR_dftUMA, GT_dftUMA, GP_dftUMA])
                         ):
                             diag_payload = _write_segment_energy_diagram(
-                                seg_dir / "energy_diagram_G_DFT_plus_UMA",
+                                seg_dir / "energy_diagram_G_DFT_plus_MLIP",
                                 labels=["R", f"TS{seg_idx}", "P"],
                                 energies_au=[GR_dftUMA, GT_dftUMA, GP_dftUMA],
-                                title_note=f"({dft_func_basis_use} // UMA  + Thermal Correction)",
+                                title_note=f"({dft_func_basis_use} // MLIP + Thermal Correction)",
                                 ylabel="ΔG (kcal/mol)",
                             )
                             if diag_payload:
@@ -5095,19 +5112,19 @@ def cli(
                                     (GT_dftUMA - GR_dftUMA) * AU2KCALPERMOL,
                                     (GP_dftUMA - GR_dftUMA) * AU2KCALPERMOL,
                                 ],
-                                "diagram": str(seg_dir / "energy_diagram_G_DFT_plus_UMA.png"),
+                                "diagram": str(seg_dir / "energy_diagram_G_DFT_plus_MLIP.png"),
                                 "structures": state_structs,
                                 "barrier_kcal": (GT_dftUMA - GR_dftUMA) * AU2KCALPERMOL,
                                 "delta_kcal": (GP_dftUMA - GR_dftUMA) * AU2KCALPERMOL,
                             }
                         else:
                             _echo(
-                                "[dft//uma] WARNING: DFT//UMA Gibbs energies non-finite; diagram skipped.",
+                                "[dft//mlip] WARNING: DFT//MLIP Gibbs energies non-finite; diagram skipped.",
                                 err=True,
                             )
                     except Exception as e:
                         _echo(
-                            f"[dft//uma] WARNING: failed to build DFT//UMA Gibbs diagram: {e}",
+                            f"[dft//mlip] WARNING: failed to build DFT//MLIP Gibbs diagram: {e}",
                             err=True,
                         )
 
@@ -5116,10 +5133,10 @@ def cli(
         tsopt_all_labels = _build_global_segment_labels(len(tsopt_seg_energies))
         if tsopt_all_labels and len(tsopt_all_labels) == len(tsopt_all_energies):
             diag_payload = _write_segment_energy_diagram(
-                out_dir / "energy_diagram_UMA_all",
+                out_dir / "energy_diagram_MLIP_all",
                 labels=tsopt_all_labels,
                 energies_au=tsopt_all_energies,
-                title_note="(UMA, TSOPT + IRC; all segments)",
+                title_note="(MLIP, TSOPT + IRC; all segments)",
             )
             if diag_payload:
                 energy_diagrams.append(diag_payload)
@@ -5129,10 +5146,10 @@ def cli(
         g_uma_all_labels = _build_global_segment_labels(len(g_uma_seg_energies))
         if g_uma_all_labels and len(g_uma_all_labels) == len(g_uma_all_energies):
             diag_payload = _write_segment_energy_diagram(
-                out_dir / "energy_diagram_G_UMA_all",
+                out_dir / "energy_diagram_G_MLIP_all",
                 labels=g_uma_all_labels,
                 energies_au=g_uma_all_energies,
-                title_note="(UMA + Thermal Correction; all segments)",
+                title_note="(MLIP + Thermal Correction; all segments)",
                 ylabel="ΔG (kcal/mol)",
             )
             if diag_payload:
@@ -5156,10 +5173,10 @@ def cli(
         g_dftuma_all_labels = _build_global_segment_labels(len(g_dftuma_seg_energies))
         if g_dftuma_all_labels and len(g_dftuma_all_labels) == len(g_dftuma_all_energies):
             diag_payload = _write_segment_energy_diagram(
-                out_dir / "energy_diagram_G_DFT_plus_UMA_all",
+                out_dir / "energy_diagram_G_DFT_plus_MLIP_all",
                 labels=g_dftuma_all_labels,
                 energies_au=g_dftuma_all_energies,
-                title_note=f"({dft_func_basis_use} // UMA  + Thermal Correction; all segments)",
+                title_note=f"({dft_func_basis_use} // MLIP + Thermal Correction; all segments)",
                 ylabel="ΔG (kcal/mol)",
             )
             if diag_payload:
@@ -5180,6 +5197,7 @@ def cli(
             pipeline_mode="path-search" if refine_path else "path-opt",
             out_dir=out_dir,
             mlip_backend=calc_cfg_shared.get("backend", "uma"),
+            mlip_model=calc_cfg_shared.get("model"),
             charge=q_int,
             spin=spin,
             command=command_str,

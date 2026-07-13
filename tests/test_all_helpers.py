@@ -90,7 +90,8 @@ def test_build_pipeline_summary_payload_shape() -> None:
             dft_func_basis_use="wb97m-v/def2-tzvpd",
             opt_mode="GRAD",
             mep_mode_kind="dmf",
-            uma_model="uma-s-1p1",
+            mlip_backend="mace",
+            mlip_model="mace-off23-small",
             command_str="pdb2reaction all -i foo.pdb",
             q_int=-1,
             spin=1,
@@ -101,7 +102,9 @@ def test_build_pipeline_summary_payload_shape() -> None:
     assert payload["dft_func_basis"] == "wb97m-v/def2-tzvpd"
     assert payload["opt_mode"] == "grad"
     assert payload["mep_mode"] == "dmf"
-    assert payload["uma_model"] == "uma-s-1p1"
+    assert payload["mlip_backend"] == "mace"
+    assert payload["mlip_model"] == "mace-off23-small"
+    assert "uma_model" not in payload
     assert payload["charge"] == -1
     assert payload["spin"] == 1
     assert payload["freeze_atoms"] == [10, 20, 30]
@@ -120,7 +123,8 @@ def test_build_pipeline_summary_payload_dft_disabled_drops_basis() -> None:
         dft_func_basis_use="wb97m-v/def2-tzvpd",
         opt_mode=None,
         mep_mode_kind=None,
-        uma_model=None,
+        mlip_backend="uma",
+        mlip_model=None,
         command_str="",
         q_int=0,
         spin=1,

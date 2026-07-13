@@ -77,7 +77,7 @@ H_EVAA_2_AU = EV2AU / (ANG2BOHR * ANG2BOHR)
 )
 @click.option(
     "--workers", type=int, default=UMA_CALC_KW["workers"], show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: when workers>1 the analytical Hessian is unavailable (the parallel predictor exposes no autograd model); it auto-downgrades to finite differences with a warning.",
+    help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
 )
 @click.option(
     "--workers-per-node", "workers_per_node",
@@ -96,7 +96,11 @@ H_EVAA_2_AU = EV2AU / (ANG2BOHR * ANG2BOHR)
     "--hessian-calc-mode", "hessian_calc_mode",
     type=click.Choice(["Analytical", "FiniteDifference"], case_sensitive=False),
     default=None, show_default=False,
-    help="Hessian backend when --hess is set. Analytical only works for UMA; other backends fall back to FiniteDifference.",
+    help=(
+        "Hessian backend when --hess is set. UMA, ORB, MACE, and AIMNet2 "
+        "support Analytical; automatic mode uses Analytical for UMA and "
+        "FiniteDifference for other backends."
+    ),
 )
 @click.option(
     "--convert-files/--no-convert-files", "convert_files",
@@ -362,5 +366,3 @@ def cli(
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-
-

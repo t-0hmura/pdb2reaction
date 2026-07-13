@@ -16,11 +16,10 @@ Options:
   -i, --input FILE                Input structure file (.pdb, .xyz, _trj.xyz,
                                   ...).  [required]
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
-                                  predictor. NOTE: when workers>1 the analytical
-                                  Hessian (used for RFO seeding) is unavailable
-                                  and auto-downgrades to finite differences with
-                                  a warning; run with --workers 1 to force
-                                  analytical.  [default: 1]
+                                  predictor. NOTE: with UMA, workers>1 plus an
+                                  explicit Analytical Hessian request is an
+                                  error; use workers=1 or FiniteDifference.
+                                  [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
   --dist-freeze TEXT              Distance restraints: inline Python literal

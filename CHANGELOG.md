@@ -6,6 +6,29 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+## [0.4.11] — 2026-07-13
+
+### Changed
+- UMA now rejects `workers > 1` together with an explicit analytical Hessian
+  request before loading the model. Use `workers = 1` or select
+  `FiniteDifference`; the requested numerical method is no longer changed
+  implicitly.
+- `all` diagram filenames and human-readable labels are backend-neutral
+  (`MLIP` / `DFT//MLIP`), and summaries record both `mlip_backend` and
+  `mlip_model` without an UMA-specific model field.
+
+### Documentation
+- Corrected `sp` and MCP Hessian documentation: UMA, ORB, MACE, and AIMNet2
+  support analytical Hessians.
+- Clarified that `all --dry-run` runs extraction in a temporary directory when
+  `--center` is set to validate derived charge and electron parity, while no
+  computational stage or persistent output is produced.
+
+## [0.4.10] — 2026-07-13
+
+- Metadata-only release of the v0.4.9 code after simplifying `CITATION.cff` for
+  Zenodo ingestion.
+
 ## [0.4.9] — 2026-07-10
 
 ### Changed

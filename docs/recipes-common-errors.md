@@ -16,7 +16,7 @@ Each row deep-links into the relevant [Troubleshooting](troubleshooting.md) sect
 | `-q/--charge is required` errors | Set `-q/--charge` or `--ligand-charge/-l` explicitly | {ref}`Charge / spin problems <charge-spin-problems>` |
 | Energies/states look wrong after a run | Re-check charge/multiplicity policy in CLI conventions | {ref}`Charge / spin problems <charge-spin-problems>` |
 | **Calculation & convergence** | | |
-| `--hessian-calc-mode Analytical` raises a `RuntimeError` when `--workers > 1` (no silent downgrade) | Drop to `--workers 1` if you need analytical Hessians, or use FiniteDifference (the default) | {ref}`workers > 1 Hessian downgrade <workers-fd-downgrade>` |
+| UMA raises `RuntimeError` for `--workers > 1` plus `--hessian-calc-mode Analytical` | Use `--workers 1` for an analytical Hessian, or select FiniteDifference | {ref}`workers > 1 Hessian restriction <workers-fd-downgrade>` |
 | CUDA out-of-memory at runtime (`torch.cuda.OutOfMemoryError`) | Re-extract with smaller `--radius` (extract / all only), switch to `--opt-mode grad`, keep default FD Hessian, or move to a larger GPU | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
 | TS converged but extra small imaginary modes remain | Add `--flatten` (available on `tsopt`, `opt`, and `pdb2reaction all`) | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
 | TSOPT does not converge | For the gradient-based optimizers (Limited-memory BFGS (L-BFGS) / Dimer): reduce `max_step`. For the Hessian-based optimizers (Rational Function Optimization (RFO) / Restricted-Step Partitioned RFO (RS-P-RFO, `tsopt` default) / Restricted-Step Image RFO (RS-I-RFO)): reduce `trust_radius`/`trust_min`/`trust_max`. Increase cycles, validate TS quality first | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
@@ -101,4 +101,3 @@ make -C build xtb-exe -j8
 ```
 
 Set `CPXHOME` to `<xtb-checkout>/build/_deps/cpcmx-src/` at runtime (the directory must contain `cpcmx.toml` and the `DB/` parameter folder), and either prepend `<xtb-checkout>/build` to `$PATH` or set `calc.xtb_cmd` (YAML) / `--xtb-cmd` (where exposed) to the custom binary.
-

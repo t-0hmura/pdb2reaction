@@ -15,7 +15,7 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence
 
 from pysisyphus.constants import AU2KCALPERMOL
 from pdb2reaction import __version__
-from pdb2reaction.core.defaults import SEGMENTS_DIRNAME, WORK_DIRNAME, UMA_CALC_KW as CALC_KW
+from pdb2reaction.core.defaults import SEGMENTS_DIRNAME, WORK_DIRNAME
 
 logger = logging.getLogger(__name__)
 
@@ -302,9 +302,9 @@ def _classify_diagram_method(diag: Dict[str, Any]) -> str:
         return "gibbs_dft_uma"
     if "dft" in name:
         return "dft"
-    if "g_uma" in name or "gibbs" in name or "gibbs" in ylabel_txt:
+    if "g_mlip" in name or "gibbs" in name or "gibbs" in ylabel_txt:
         return "gibbs_uma"
-    if "uma" in name:
+    if "mlip" in name:
         return "uma"
     return "mep"
 
@@ -387,8 +387,10 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
     version_base = payload.get("code_version") or __version__
     version_txt = f"pdb2reaction {version_base}"
     lines.append(f"Code version       : {version_txt}")
-    uma_model = payload.get("uma_model") or CALC_KW.get("model") or "-"
-    lines.append(f"UMA model          : {uma_model}")
+    mlip_backend = str(payload.get("mlip_backend") or "uma")
+    mlip_model = payload.get("mlip_model")
+    lines.append(f"MLIP backend       : {mlip_backend}")
+    lines.append(f"MLIP model         : {mlip_model or '-'}")
     lines.append(f"Total charge (ML)  : {charge if charge is not None else '-'}")
     lines.append(f"Multiplicity (2S+1): {spin if spin is not None else '-'}")
 
@@ -442,7 +444,7 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
 
     segments: Iterable[Dict[str, Any]] = payload.get("segments", []) or []
     lines.append("")
-    lines.append("[2] Segment-level MEP summary (UMA path)")
+    lines.append("[2] Segment-level MEP summary (MLIP path)")
     if segments:
         for seg in segments:
             idx = int(seg.get("index", 0) or 0)
@@ -497,12 +499,12 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
                     f"    IRC trajectory   : {_shorten_path(seg.get('irc_traj'), root_out_path)}"
                 )
             _emit_energy_block(
-                lines, "UMA energies (TSOPT+IRC)", seg.get("uma"), root_out_path
+                lines, "MLIP energies (TSOPT+IRC)", seg.get("uma"), root_out_path
             )
-            _emit_energy_block(lines, "UMA Gibbs (thermo)", seg.get("gibbs_uma"), root_out_path)
+            _emit_energy_block(lines, "MLIP Gibbs (thermo)", seg.get("gibbs_uma"), root_out_path)
             _emit_energy_block(lines, "DFT single-point", seg.get("dft"), root_out_path)
             _emit_energy_block(
-                lines, "DFT//UMA Gibbs", seg.get("gibbs_dft_uma"), root_out_path
+                lines, "DFT//MLIP Gibbs", seg.get("gibbs_dft_uma"), root_out_path
             )
 
             entry = segment_entries.setdefault(
@@ -545,14 +547,14 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
         table_rows = [
             ("MEP ΔE‡ [kcal/mol]", "mep_barrier"),
             ("MEP ΔE  [kcal/mol]", "mep_delta"),
-            ("UMA ΔE‡ [kcal/mol]", "uma_barrier"),
-            ("UMA ΔE  [kcal/mol]", "uma_delta"),
-            ("UMA ΔG‡ [kcal/mol]", "gibbs_uma_barrier"),
-            ("UMA ΔG  [kcal/mol]", "gibbs_uma_delta"),
-            ("DFT//UMA ΔE‡ [kcal/mol]", "dft_barrier"),
-            ("DFT//UMA ΔE  [kcal/mol]", "dft_delta"),
-            ("DFT//UMA ΔG‡ [kcal/mol]", "gibbs_dft_uma_barrier"),
-            ("DFT//UMA ΔG  [kcal/mol]", "gibbs_dft_uma_delta"),
+            ("MLIP ΔE‡ [kcal/mol]", "uma_barrier"),
+            ("MLIP ΔE  [kcal/mol]", "uma_delta"),
+            ("MLIP ΔG‡ [kcal/mol]", "gibbs_uma_barrier"),
+            ("MLIP ΔG  [kcal/mol]", "gibbs_uma_delta"),
+            ("DFT//MLIP ΔE‡ [kcal/mol]", "dft_barrier"),
+            ("DFT//MLIP ΔE  [kcal/mol]", "dft_delta"),
+            ("DFT//MLIP ΔG‡ [kcal/mol]", "gibbs_dft_uma_barrier"),
+            ("DFT//MLIP ΔG  [kcal/mol]", "gibbs_dft_uma_delta"),
         ]
         sorted_entries = [segment_entries[k] for k in sorted(segment_entries.keys())]
         headers = [f"{int(e.get('index', 0)):d}({e.get('tag', '-')})" for e in sorted_entries]
@@ -611,10 +613,10 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
 
         table_rows: List[tuple[str, str]] = [
             ("MEP ΔE  [kcal/mol]", "mep"),
-            ("UMA ΔE  [kcal/mol]", "uma"),
-            ("UMA ΔG  [kcal/mol]", "gibbs_uma"),
-            ("DFT//UMA ΔE  [kcal/mol]", "dft"),
-            ("DFT//UMA ΔG  [kcal/mol]", "gibbs_dft_uma"),
+            ("MLIP ΔE  [kcal/mol]", "uma"),
+            ("MLIP ΔG  [kcal/mol]", "gibbs_uma"),
+            ("DFT//MLIP ΔE  [kcal/mol]", "dft"),
+            ("DFT//MLIP ΔG  [kcal/mol]", "gibbs_dft_uma"),
         ]
 
         label_width = max(len(label) for label, _ in table_rows) + 2
@@ -651,12 +653,12 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
         "mep.pdb": "Full MEP as single PDB (all segments)",
         "mep_trj.xyz": "Full MEP as XYZ trajectory",
         "mep_w_ref.pdb": "Full MEP with protein reference frame",
-        "mep_plot.png": "UMA MEP energy plot",
+        "mep_plot.png": "MLIP MEP energy plot",
         "energy_diagram_MEP.png": "Compressed MEP diagram",
-        "energy_diagram_UMA_all.png": "UMA R–TS–P energies (all segments)",
-        "energy_diagram_G_UMA_all.png": "UMA Gibbs R–TS–P (all segments)",
+        "energy_diagram_MLIP_all.png": "MLIP R–TS–P energies (all segments)",
+        "energy_diagram_G_MLIP_all.png": "MLIP Gibbs R–TS–P (all segments)",
         "energy_diagram_DFT_all.png": "DFT R–TS–P (all segments)",
-        "energy_diagram_G_DFT_plus_UMA_all.png": "DFT//UMA Gibbs R–TS–P (all segments)",
+        "energy_diagram_G_DFT_plus_MLIP_all.png": "DFT//MLIP Gibbs R–TS–P (all segments)",
         "irc_plot_all.png": "Aggregated IRC plot",
     }
 

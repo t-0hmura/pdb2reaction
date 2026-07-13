@@ -117,13 +117,13 @@ pdb2reaction opt -i input.pdb -q 0 -b orb --solvent water --solvent-model cpcmx
 ### `workers > 1` は解析Hessianを無効化する（UMA バックエンド）
 
 ```{warning}
-UMA バックエンドを `workers > 1` で使用する場合、`hessian_calc_mode="Analytical"` を明示指定すると解析Hessianは利用できず `RuntimeError` が送出されます（警告なく有限差分へフォールバックはしません）。解析Hessianが必要なら `hessian_calc_mode="FiniteDifference"`（デフォルト）を使うか、`workers = 1` を指定してください。この規則は `--workers` / `--workers-per-node` を持つすべてのサブコマンド（`opt`, `tsopt`, `freq`, `irc`, `sp`, `all`, `path-opt`, `path-search`, scan 系）に適用されます。UMA 以外のバックエンド（ORB / MACE / AIMNet2）では `workers` / `workers_per_node` は `_BACKEND_ACCEPTED_KEYS` で暗黙的に除外されるため、この規則は該当しません。
+UMA バックエンドを `workers > 1` で使用する場合、並列 predictor が autograd model を公開しないため、`hessian_calc_mode="Analytical"` は利用できません。要求した数値手法を暗黙変更せず、`RuntimeError` で停止します。解析 Hessian には `workers = 1`、並列実行には `FiniteDifference` を指定してください。この規則は `--workers` / `--workers-per-node` を持つすべてのサブコマンド（`opt`, `tsopt`, `freq`, `irc`, `sp`, `all`, `path-opt`, `path-search`, scan 系）に適用されます。UMA 以外のバックエンド（ORB / MACE / AIMNet2）では `workers` / `workers_per_node` は `_BACKEND_ACCEPTED_KEYS` で除外されるため、この規則は該当しません。
 ```
 
 (ja-hessian-evaluation)=
 ### Hessian評価モード
 
-`hessian_calc_mode="Analytical"` は選択されたデバイス上で 2 階自動微分を行い、`"FiniteDifference"`（デフォルト）は力の中心差分を計算します。複数の推論ワーカーを要求した状態では、`Analytical` を明示指定すると解析Hessianは利用できず `RuntimeError` が送出されます（上記の注記を参照）。解析Hessianが必要な場合は `workers = 1` を指定してください。
+`hessian_calc_mode="Analytical"` は選択されたデバイス上で 2 階自動微分を行い、`"FiniteDifference"`（デフォルト）は力の中心差分を計算します。UMA で複数の推論ワーカーと `Analytical` を併用すると `RuntimeError` になります（上記の注記を参照）。解析 Hessian には `workers = 1`、並列実行には有限差分を指定してください。
 
 ## HPC での使用例: PBS + Open MPI + Ray
 

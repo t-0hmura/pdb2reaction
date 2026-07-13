@@ -95,7 +95,7 @@ The minimum energy path (MEP) search can stall or skip an expected bond change. 
 
 - **OOM** — shrink active-site model (`--radius`), lower `--max-nodes`, use lighter `--opt-mode grad`.
 - **Analytical Hessian** — keep the default `FiniteDifference`; only set `--hessian-calc-mode Analytical` if you have 16 GB+ VRAM, and note that on 16 GB it is feasible only up to ~200 atoms (see the VRAM table below).
-- **`workers > 1`** — improves UMA throughput on HPC, but is incompatible with the analytical Hessian (it raises a `RuntimeError`); pass `--hessian-calc-mode FiniteDifference` explicitly, or run with `--workers 1` for Hessian-based modes.
+- **`workers > 1`** — improves UMA throughput on HPC, but the parallel predictor has no analytical Hessian. An explicit `Analytical` request raises `RuntimeError`; use `--workers 1` for an analytical Hessian, or select `FiniteDifference`.
 - **Large systems (1000+ atoms)** — extract a smaller active-site model (`--radius 2.5`) or run multi-GPU.
 - **DFT scratch on HPC (~hundreds of atoms)** — PySCF / GPU4PySCF spills integrals to `$PYSCF_TMPDIR` (or `$TMPDIR` / `/tmp` if unset). Node-local `/tmp` is often small / `tmpfs`-backed and can fill up mid-SCF. Set `export PYSCF_TMPDIR="$PBS_O_WORKDIR"` before launching `dft`.
 

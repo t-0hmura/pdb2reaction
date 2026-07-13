@@ -6,7 +6,7 @@ For large-batch or multi-node `pdb2reaction` runs, `workers` / `workers_per_node
 - `workers-per-node` — how many of those run on each node (default `1`); controls per-node GPU/memory pressure.
 
 ```{warning}
-When you run the UMA backend with `workers > 1`, requesting `hessian_calc_mode="Analytical"` raises a `RuntimeError` (it is not silently downgraded). Drop to `workers = 1` if you need analytical Hessians, or use `FiniteDifference` (the default). See {ref}`hessian-evaluation`. ORB / MACE / AIMNet2 do not accept `workers` / `workers_per_node` and are unaffected by this rule.
+When you run the UMA backend with `workers > 1`, requesting `hessian_calc_mode="Analytical"` raises a `RuntimeError` because the parallel predictor exposes no autograd model. Use `workers = 1` for an analytical Hessian, or select `FiniteDifference`. ORB / MACE / AIMNet2 do not accept `workers` / `workers_per_node` and are unaffected by this rule. See {ref}`hessian-evaluation`.
 ```
 
 The following PBS script illustrates one way to build a multi-node Ray cluster on an Open MPI–equipped HPC system. **Treat it as a template**: you will need to adjust module names, conda path, ports, and resource requests to match your environment.

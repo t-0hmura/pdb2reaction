@@ -1386,7 +1386,7 @@ def _build_rsirfo_kwargs(
     type=int,
     default=CALC_KW["workers"],
     show_default=True,
-    help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: when workers>1 the analytical Hessian is unavailable (the parallel predictor exposes no autograd model); it auto-downgrades to finite differences with a warning.",
+    help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
 )
 @click.option(
     "--workers-per-node",

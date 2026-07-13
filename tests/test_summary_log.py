@@ -8,6 +8,7 @@ from pdb2reaction.io.summary import (
     _shorten_path,
     _format_energy_rows,
     _format_bond_changes,
+    write_summary_log,
 )
 
 
@@ -94,3 +95,42 @@ class TestFormatBondChanges:
         assert len(lines) == 2
         assert "C1-O2 formed" in lines[0]
         assert "N3-H4 broken" in lines[1]
+
+
+def test_summary_log_uses_mlip_provenance_and_labels(tmp_path):
+    dest = tmp_path / "summary.log"
+    payload = {
+        "root_out_dir": str(tmp_path),
+        "pipeline_mode": "path-opt",
+        "mlip_backend": "mace",
+        "mlip_model": "mace-off23-small",
+        "segments": [{"index": 1, "tag": "seg_01", "kind": "seg"}],
+        "post_segments": [
+            {
+                "index": 1,
+                "tag": "seg_01",
+                "kind": "seg",
+                "uma": {"barrier_kcal": 12.3, "delta_kcal": -1.2},
+                "gibbs_uma": {"barrier_kcal": 13.4, "delta_kcal": -0.7},
+                "gibbs_dft_uma": {"barrier_kcal": 14.5, "delta_kcal": -0.2},
+            }
+        ],
+        "energy_diagrams": [
+            {
+                "name": "energy_diagram_MLIP_all",
+                "labels": ["R", "TS", "P"],
+                "energies_kcal": [0.0, 12.3, -1.2],
+                "ylabel": "ΔE (kcal/mol)",
+            }
+        ],
+    }
+
+    write_summary_log(dest, payload)
+    text = dest.read_text(encoding="utf-8")
+
+    assert "MLIP backend       : mace" in text
+    assert "MLIP model         : mace-off23-small" in text
+    assert "MLIP energies (TSOPT+IRC)" in text
+    assert "DFT//MLIP Gibbs" in text
+    assert "UMA model" not in text
+    assert "DFT//UMA" not in text

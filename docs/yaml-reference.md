@@ -155,7 +155,7 @@ calc:
 - `workers` / `workers_per_node` are effective with the UMA backend only.
 - `solvent` enables xTB-based implicit solvent corrections (delta correction approach). Requires `xtb` to be installed.
 - `hessian_calc_mode: Analytical` is recommended when sufficient VRAM is available
-- `workers > 1` disables analytical Hessians — when `workers > 1`, requesting `hessian_calc_mode: Analytical` raises a `RuntimeError` rather than silently falling back to finite differences. Use `FiniteDifference` (the default), or drop to `workers = 1` if you need analytical Hessians. See {ref}`the MLIP Calculator hessian-evaluation note <hessian-evaluation>` for details.
+- `workers > 1` disables analytical Hessians for the UMA parallel predictor. An explicit `hessian_calc_mode: Analytical` request raises `RuntimeError`; use `workers = 1` or select `FiniteDifference`. See {ref}`the MLIP Calculator hessian-evaluation note <hessian-evaluation>` for details.
 - Charge/spin inherit `.gjf` template metadata when available
 - `freq` sets `calc.return_partial_hessian = true` by default (PHVA); YAML can override.
 - IRC forces `geom.coord_type = cart` and `calc.return_partial_hessian = true` regardless of YAML (partial Hessian with active-DOF processing).
