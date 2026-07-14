@@ -193,31 +193,12 @@ def apply_precision_to_calc_cfg(calc_cfg: Dict[str, Any], precision: str) -> Non
 def apply_effective_precision(
     calc_cfg: Dict[str, Any], cli_precision: Optional[str]
 ) -> None:
-    """Dispatch precision to backend kwargs — the CLI flag, else the config, else
-    the backend's default (``_BACKEND_DEFAULT_PRECISION``).
+    """Apply CLI, config, or backend-default precision in that order.
 
-    The ``--precision`` CLI flag wins. Otherwise honor a unified precision token
-    carried by config ``calc.precision``: the ``all`` pipeline propagates the run
-    precision to its child stages by writing ``calc.precision`` into the per-run
-    config (``_write_args_yaml_with_freeze_atoms``) but invokes the child CLIs
-    (tsopt / freq / irc / scan / opt) with ``--config`` and *no* ``--precision``.
-    Dispatching only on the CLI flag therefore left ``calc.precision``
-    undispatched in every pipeline child, so ORB silently fell back to its
-    default ``float32-high`` (TF32) even under ``--precision fp64`` — computing
-    TF32 geometries and Hessians (the cached TS Hessian reused by the freq step
-    in particular carried TF32 noise into ~10 spurious imaginary modes). The
-    guard on the unified tokens leaves an already backend-dispatched value in a
-    hand-edited config untouched (re-dispatching e.g. ``'float64'`` would raise).
-
-    When neither names a precision the token is ``CALC_KW_DEFAULT``'s ``"auto"``
-    (or absent), which resolves per backend rather than to one global fp32: a
-    literal ``"fp32"`` default here was indistinguishable from an explicit
-    ``--precision fp32``, so it dispatched fp32 to ORB and MACE and shadowed
-    ``MACE_BACKEND_DEFAULTS["default_dtype"] = "float64"`` (``apply_backend_defaults``
-    only fills keys still at their UMA default). MACE and ORB therefore ran their
-    TS optimizations and Hessians at fp32 unless ``--precision fp64`` was passed
-    by hand, which is what broke the imaginary-mode counts of the bezA/COMT
-    backend matrix.
+    The unified ``calc.precision`` value is dispatched for pipeline children as
+    well as standalone commands. An absent or ``auto`` value resolves through
+    ``_BACKEND_DEFAULT_PRECISION``; already backend-specific values are left
+    untouched.
     """
     eff = cli_precision if cli_precision is not None else calc_cfg.get("precision")
     if eff is None or str(eff).lower() == "auto":

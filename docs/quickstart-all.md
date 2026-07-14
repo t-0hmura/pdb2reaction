@@ -7,8 +7,8 @@ Run the end-to-end workflow once from two full PDB structures.
 ## Prerequisites
 
 - pdb2reaction installed (see [Installation](installation.md))
-- Two PDB files (reactant R and product P) with **hydrogen atoms** already added
-- The same atoms in the same order across all input PDB files
+- Two PDB/mmCIF files (reactant R and product P) with **hydrogen atoms** already added
+- The same atom identities in the same order across all reaction-ordered input files
 
 > **About the example filenames:** `1.R.pdb` and `3.P.pdb` mirror the numbered reactant/product files shipped in the geranyl pyrophosphate (GPP) C6-methyltransferase BezA example directory ([`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) — `1.R.pdb` = reactant state, `3.P.pdb` = product state, with intermediate `2.*.pdb` files for multi-step runs). Replace them with the two (or more) full-system PDBs for your own reaction. To run the commands below verbatim, first fetch the bundled example: `git clone https://github.com/t-0hmura/pdb2reaction && cd pdb2reaction/examples`.
 
@@ -26,7 +26,12 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  --tsopt --thermo --dft --out-dir ./result_all
 ```
 
-> **VRAM warning:** `--dft` launches GPU4PySCF single-point jobs on the extracted cluster model and can easily OOM on GPUs with < 24 GB VRAM for clusters above ~200 atoms. If you hit `CUDA out of memory`, either drop `--dft` and run `pdb2reaction dft` separately with a smaller basis / trimmed cluster, or move the DFT step to a larger-VRAM node. The `[dft]` extra must also be installed (see [Installation](installation.md) Step 7).
+> **VRAM warning:** `--dft` launches GPU4PySCF single-point jobs on the
+> extracted cluster. Memory use depends on the structure, basis, functional,
+> precision, and software stack; pilot a representative state and monitor peak
+> memory on the target node. On OOM, run `pdb2reaction dft` separately with a
+> smaller basis / trimmed cluster or use a larger node. The `[dft]` extra must
+> also be installed (see [Installation](installation.md) Step 7).
 
 ## Expected output
 
@@ -38,23 +43,21 @@ result_all/
 ├── summary.json                   # Machine-readable results
 ├── mep.pdb                        # Merged MEP path (promoted to the root)
 ├── energy_diagram_MEP.png         # All-segment MEP energy profile
-├── segments/
-│   └── seg_01/                    # Per-reactive-segment deliverables
-│       ├── reactant.pdb           # Canonical IRC-optimized R/TS/P
-│       ├── ts.pdb
-│       ├── product.pdb
-│       ├── ts/final_geometry.pdb  # Present with --tsopt
-│       ├── irc/finished_irc_trj.xyz
-│       └── freq/                  # Present with --thermo
 └── _work/                         # Pipeline scratch (safe to delete)
-    └── path_opt/                  # Raw MEP-engine output (path_search/ with --refine-path True)
+    └── path_opt/                  # Raw MEP-engine output (path_search/ with --refine-path)
+        ├── hei_seg_01.{xyz,pdb}   # Highest-energy MEP image
         └── summary.json           # MEP engine results
 ```
+
+The minimal command stops after the MEP stage and therefore does **not** create
+`segments/`. With `--tsopt`, a successfully validated reactive segment adds
+`segments/seg_01/{reactant.pdb,ts.pdb,product.pdb}`, `ts/`, and `irc/`; adding
+`--thermo` also adds `freq/`.
 
 **What to check:**
 
 1. `summary.json` — check the `status` field (`"success"`, `"partial"`, or `"failed"`) and the per-segment `barrier_kcal` values; `summary.log` presents the same information in human-readable form
-2. `segments/seg_01/*.pdb` — open in PyMOL to verify the R/TS/P structures make chemical sense
+2. `_work/path_opt/hei_seg_01.pdb` — inspect the highest-energy image; with `--tsopt`, also inspect the canonical `segments/seg_01/*.pdb` R/TS/P structures
 3. `energy_diagram_*.png` — the energy profile should show a clear barrier
 
 **Sample terminal output (successful run):**

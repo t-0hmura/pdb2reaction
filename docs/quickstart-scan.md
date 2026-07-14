@@ -52,8 +52,6 @@ result_scan/
 ├── summary.json
 ├── mep.pdb                        # Full MEP path (promoted to the root)
 ├── energy_diagram_MEP.png         # MEP energy plot (promoted to the root)
-├── segments/
-│   └── seg_01/                    # Per-reactive-segment deliverables
 └── _work/                         # Pipeline scratch (safe to delete)
     ├── scan/
     │   ├── preopt/                # Pre-optimized structure
@@ -61,13 +59,18 @@ result_scan/
     │   │   ├── scan_trj.xyz       # Scan trajectory
     │   │   └── scan.pdb
     │   └── stage_02/              # Scan stage 2 (if multi-stage)
-    └── path_opt/                  # MEP search (path_search/ with --refine-path True)
+    └── path_opt/                  # MEP search (path_search/ with --refine-path)
+        └── hei_seg_01.{xyz,pdb}   # Highest-energy MEP image
 ```
+
+This minimal command stops after the MEP stage and does **not** create
+`segments/`. Add `--tsopt` to create canonical per-segment R/TS/P and IRC
+outputs after successful validation; add `--thermo` for `freq/` outputs.
 
 **What to check:**
 
 1. `_work/scan/stage_01/scan_trj.xyz` — open in PyMOL to verify bond distances change as expected
-2. `mep.pdb` — the optimized MEP trajectory (promoted to the output root)
+2. `mep.pdb` and `_work/path_opt/hei_seg_01.pdb` — inspect the optimized MEP and its highest-energy image
 3. `summary.log` — barrier heights and bond change summary
 
 **Tip:** Use `--print-parsed` (and abort with Ctrl-C) to verify scan targets before letting the full run proceed:

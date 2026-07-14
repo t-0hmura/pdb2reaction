@@ -1,44 +1,4 @@
-"""
-Recursive MEP construction using GSM/DMF with bond-change detection and refinement.
-
-Example:
-    pdb2reaction path-search -i reactant.pdb product.pdb -q 0
-
-For detailed documentation, see: docs/path-search.md
-
-Table of contents (top-level definitions; refresh manually after structural edits):
-    def _normalized_path_tangent
-    def _bond_changes_block
-    def _calc_rmsd
-    def _rmsd_between
-    def _gs_cfg_with_overrides
-    def _new_geom_from_coords
-    def _make_linear_interpolations
-    def _tag_images
-    def _segment_base_id
-    def _is_local_minimum
-    def _find_nearest_local_minimum
-    class GSMResult
-    class SegmentReport
-    def _run_mep_between
-    def _ase_atoms_to_geom
-    def _run_dmf_between
-    def _refine_between
-    def _bridge_segments
-    def _stitch_paths
-    class CombinedPath
-    def _trailing_kink_count
-    def _build_multistep_path
-    def _atom_key_from_res_atom
-    def _structure_to_arrays
-    def _load_structures_and_chain_align
-    def _model_keys_from_pdb
-    def _write_model_block
-    def _chunk_remark_indices
-    def _merge_pair_to_full
-    def _merge_final_and_write
-    def cli
-"""
+"""Recursive GSM/DMF paths with bond-change detection and refinement."""
 
 from __future__ import annotations
 
@@ -119,6 +79,13 @@ from pdb2reaction.core.utils import (
 )
 from pdb2reaction.io.summary import write_summary_log
 from pdb2reaction.io.trj2fig import run_trj2fig
+from pdb2reaction.io.structure_formats import (
+    attach_template_metadata,
+    atom_site_from_biopython_atom,
+    coordinate_template_for,
+    register_output_template_and_write_cif,
+    residue_auth_identity,
+)
 from pdb2reaction.domain.bond_changes import has_bond_change
 from pdb2reaction.workflows.align_freeze import align_and_refine_sequence_inplace, kabsch_R_t
 from pdb2reaction.cli.common_options import add_coord_type_option, add_precision_option, add_backend_model_option, add_calc_file_option, add_deterministic_option
@@ -1256,12 +1223,12 @@ def _atom_key_from_res_atom(res: PDB.Residue.Residue, atom: PDB.Atom.Atom) -> Tu
     - RESSEQ is numeric (without insertion code).
     - ICODE is '' when blank (or ' ' in PDB).
     """
-    resname = (res.get_resname() or "").strip().upper()
-    het, resseq, icode = res.id
-    icode_txt = "" if (icode == " " or icode is None) else str(icode).strip().upper()
-    resseq_txt = str(int(resseq))
-    chain_id = (res.get_parent().id or "").strip().upper()
-    atname = atom.get_name().strip().upper()
+    chain_id, resseq_txt, icode_txt, resname = residue_auth_identity(res)
+    retained_atom = atom_site_from_biopython_atom(atom)
+    atname = (retained_atom.atom_name if retained_atom is not None else atom.get_name()).strip().upper()
+    resname = resname.strip().upper()
+    chain_id = chain_id.strip().upper()
+    icode_txt = icode_txt.strip().upper()
     return (resname, resseq_txt, icode_txt, chain_id, atname)
 
 
@@ -1288,7 +1255,13 @@ def _load_structures_and_chain_align(ref_paths: Sequence[Path]) -> Tuple[List[PD
     Load all full templates and rigidly chain‑align them into the coordinate frame of the first template.
     """
     parser = PDBParser(QUIET=True)
-    structs: List[PDB.Structure.Structure] = [parser.get_structure(f"ref{i:02d}", str(p)) for i, p in enumerate(ref_paths)]
+    structs: List[PDB.Structure.Structure] = []
+    for i, path in enumerate(ref_paths):
+        structure = parser.get_structure(f"ref{i:02d}", str(path))
+        template = coordinate_template_for(path)
+        if template is not None:
+            attach_template_metadata(structure, template)
+        structs.append(structure)
     N_expected = None
     coords_list: List[np.ndarray] = []
     atoms_list: List[List[PDB.Atom.Atom]] = []
@@ -1323,12 +1296,32 @@ def _model_keys_from_pdb(model_pdb: Path) -> List[Tuple[str, str, str, str, str]
     """
     parser = PDBParser(QUIET=True)
     st = parser.get_structure("model", str(model_pdb))
+    template = coordinate_template_for(model_pdb)
+    if template is not None:
+        attach_template_metadata(st, template)
     keys: List[Tuple[str, str, str, str, str]] = []
     for a in st.get_atoms():
         res = a.get_parent()
         k = _atom_key_from_res_atom(res, a)
         keys.append(k)
     return keys
+
+
+def _coordinate_template_for_refs(
+    ref_pdbs: Sequence[Path],
+    preferred_index: int = 0,
+):
+    """Choose retained public IDs from a preferred or any bridged reference."""
+
+    if 0 <= preferred_index < len(ref_pdbs):
+        preferred = coordinate_template_for(ref_pdbs[preferred_index])
+        if preferred is not None:
+            return preferred
+    for ref_path in ref_pdbs:
+        template = coordinate_template_for(ref_path)
+        if template is not None:
+            return template
+    return None
 
 
 def _write_model_block(structure: PDB.Structure.Structure,
@@ -1340,7 +1333,10 @@ def _write_model_block(structure: PDB.Structure.Structure,
     io.set_structure(structure)
     from io import StringIO
     buf = StringIO()
-    io.save(buf)
+    # Internal bridges wrap atom serials at 99,999. Preserve those safe serials
+    # instead of asking Biopython to generate an unrepresentable six-digit PDB
+    # serial for very large structures; the public companion is mmCIF.
+    io.save(buf, preserve_atom_numbering=True)
     body = "\n".join([ln for ln in buf.getvalue().splitlines() if ln.strip() != "END"])
     rem = ""
     for line in remark_lines:
@@ -1491,7 +1487,7 @@ def _merge_final_and_write(final_images: List[Any],
     if len(ref_pdbs) != len(model_inputs):
         raise click.BadParameter(
             "--ref-full-pdb must match the number of --input after preprocessing "
-            "(caller should replicate the first ref for all pairs when --align True).; "
+            "(caller should replicate the first ref for all pairs when --align).; "
             f"recover: provide --ref-full-pdb {len(model_inputs)} times "
             f"(currently {len(ref_pdbs)}), or omit it to default to --input itself."
         )
@@ -1573,6 +1569,12 @@ def _merge_final_and_write(final_images: List[Any],
             f.write("ENDMDL\n")
         f.write("END\n")
     click.echo(f"[merge] Wrote concatenated full-system trajectory → '{final_path}'")
+    final_cif = register_output_template_and_write_cif(
+        final_path,
+        _coordinate_template_for_refs(ref_pdbs),
+    )
+    if final_cif is not None:
+        click.echo(f"[merge] Wrote concatenated full-system mmCIF → '{final_cif}'")
 
     # Per‑segment merged MEPs (bond‑change segments only) + HEI merged only for bond‑change segments
     for s in segments:
@@ -1618,6 +1620,12 @@ def _merge_final_and_write(final_images: List[Any],
                     f.write("ENDMDL\n")
                 f.write("END\n")
             click.echo(f"[merge] Wrote per-segment merged trajectory → '{out_seg}'")
+            seg_cif = register_output_template_and_write_cif(
+                out_seg,
+                _coordinate_template_for_refs(ref_pdbs, pi),
+            )
+            if seg_cif is not None:
+                click.echo(f"[merge] Wrote per-segment merged mmCIF → '{seg_cif}'")
 
         # Per‑segment HEI merged to reference (only for bond‑change segments)
         if s.kind != "bridge" and s.summary and s.summary.strip() != "(no covalent changes detected)":
@@ -1648,6 +1656,12 @@ def _merge_final_and_write(final_images: List[Any],
                         f.write("ENDMDL\n")
                     f.write("END\n")
                 click.echo(f"[merge] Wrote merged HEI for segment → '{out_hei}'")
+                hei_cif = register_output_template_and_write_cif(
+                    out_hei,
+                    _coordinate_template_for_refs(ref_pdbs, pi),
+                )
+                if hei_cif is not None:
+                    click.echo(f"[merge] Wrote merged HEI mmCIF → '{hei_cif}'")
             except Exception as e:
                 click.echo(f"[merge] WARNING: Failed to write merged HEI for segment {seg_idx:02d}: {e}", err=True)
 
@@ -1667,7 +1681,7 @@ def _merge_final_and_write(final_images: List[Any],
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     multiple=True,
     required=True,
-    help="Two or more structures in reaction order. Repeat -i/--input for each path.",
+    help="Two or more PDB, mmCIF, XYZ, or GJF structures in reaction order. Repeat -i/--input for each path.",
 )
 @click.option(
     "--mep-mode",
@@ -1703,7 +1717,7 @@ def _merge_final_and_write(final_images: List[Any],
     show_default=False,
     help=(
         "Total charge. Required for non-.gjf inputs unless --ligand-charge derives it "
-        "from PDB inputs."
+        "from PDB/mmCIF inputs."
     ),
 )
 @click.option(
@@ -1729,7 +1743,7 @@ def _merge_final_and_write(final_images: List[Any],
     show_default=False,
     help=(
         "Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) used to derive charge "
-        "when -q is omitted (PDB inputs only)."
+        "when -q is omitted (PDB/mmCIF inputs only)."
     ),
 )
 @click.option(
@@ -1746,7 +1760,7 @@ def _merge_final_and_write(final_images: List[Any],
     "freeze_links_flag",
     default=True,
     show_default=True,
-    help="Freeze parent atoms of cap hydrogens (PDB input only).",
+    help="Freeze parent atoms of cap hydrogens (PDB/mmCIF input only).",
 )
 @click.option(
     "--freeze-atoms",
@@ -1757,8 +1771,9 @@ def _merge_final_and_write(final_images: List[Any],
     help="Comma-separated 1-based atom indices to freeze (e.g., '1,3,5').",
 )
 @click.option("--max-nodes", type=int, default=GS_KW["max_nodes"], show_default=True,
-              help=("Number of internal nodes (string has max_nodes+2 images including endpoints). "
-                    "Used for *segment* GSM unless overridden by YAML search.max_nodes_segment."))
+              help=("Number of movable internal images per GSM/DMF segment; the complete segment "
+                    "has max_nodes+2 images including endpoints. Overridden by YAML "
+                    "search.max_nodes_segment."))
 @click.option("--max-cycles", type=int, default=300, show_default=True, help="Maximum GSM optimization cycles.")
 @click.option(
     "--climb/--no-climb",
@@ -1784,7 +1799,7 @@ def _merge_final_and_write(final_images: List[Any],
     "convert_files",
     default=True,
     show_default=True,
-    help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
+    help="Convert XYZ/TRJ outputs into PDB/CIF/GJF companions based on the input format.",
 )
 @click.option("-o", "--out-dir", "out_dir", type=str, default=OUT_DIR_PATH_SEARCH, show_default=True, help="Output directory.")
 @click.option(
@@ -1852,8 +1867,8 @@ def _merge_final_and_write(final_images: List[Any],
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     multiple=True,
     default=None,
-    help=("Full-size template PDBs in the same reaction order as --input. "
-          "With --align True, only the *first* provided reference PDB is used for all pairs "
+    help=("Full-size template PDB/mmCIF files in the same reaction order as --input. "
+          "With --align, only the *first* provided reference structure is used for all pairs "
           "in the final merge (you may pass just one).")
 )
 @click.option(
@@ -1862,7 +1877,7 @@ def _merge_final_and_write(final_images: List[Any],
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     multiple=True,
     default=None,
-    help=("Pocket reference PDBs used only for the final full-system merge. "
+    help=("Pocket reference PDB/mmCIF files used only for the final full-system merge. "
           "Useful when --input uses XYZ/GJF intermediates but PDB snapshots exist for merging. "
           "Must match the number and order of --input.")
 )
@@ -1914,10 +1929,11 @@ def cli(
     precision: Optional[str],
     backend_model: Optional[str],
     calc_file: Optional[str],
-    calc_factory: str,
+    calc_factory: Optional[str],
 ) -> None:
     set_convert_file_enabled(convert_files)
     prepared_inputs: List[PreparedInputStructure] = []
+    prepared_auxiliary: List[PreparedInputStructure] = []
     global _PRIMARY_GJF_TEMPLATE
     _PRIMARY_GJF_TEMPLATE = None
     command_str = " ".join(sys.argv)
@@ -1944,7 +1960,7 @@ def cli(
             p = Path(tok)
             if (not p.exists()) or p.is_dir():
                 raise click.BadParameter(
-                    f"Reference PDB path '{tok}' not found or is a directory. "
+                    f"Reference PDB/mmCIF path '{tok}' not found or is a directory. "
                     f"When using '--ref-full-pdb', multiple files may follow a single option."
                 )
             ref_parsed.append(p)
@@ -1957,7 +1973,7 @@ def cli(
             p = Path(tok)
             if (not p.exists()) or p.is_dir():
                 raise click.BadParameter(
-                    f"Pocket reference PDB path '{tok}' not found or is a directory. "
+                    f"Pocket reference PDB/mmCIF path '{tok}' not found or is a directory. "
                     f"When using '--ref-pdb', multiple files may follow a single option."
                 )
             model_ref_parsed.append(p)
@@ -1972,10 +1988,26 @@ def cli(
         config_yaml=config_yaml,
         override_yaml=None,
     )
+    from pdb2reaction.core.utils import resolve_configured_charge_spin
+    charge, spin = resolve_configured_charge_spin(
+        merged_yaml_cfg, charge=charge, spin=spin, ligand_charge=ligand_charge,
+    )
 
     time_start = time.perf_counter()
 
+    def _prepare_many(paths: Sequence[Path]) -> List[PreparedInputStructure]:
+        prepared_batch: List[PreparedInputStructure] = []
+        try:
+            for path in paths:
+                prepared_batch.append(prepare_input_structure(Path(path)))
+        except BaseException:
+            for prepared in reversed(prepared_batch):
+                prepared.cleanup()
+            raise
+        return prepared_batch
+
     def _run() -> None:
+        nonlocal prepared_inputs, prepared_auxiliary, ref_pdb_paths, model_ref_pdb_paths
         global _PRIMARY_GJF_TEMPLATE
         if len(input_paths) < 2:
             raise click.BadParameter(
@@ -1997,7 +2029,17 @@ def cli(
                 raise click.BadParameter("--ref-pdb must be given for each --input (same count and order).")
 
         p_list = [Path(p) for p in input_paths]
-        prepared_inputs = [prepare_input_structure(p) for p in p_list]
+        prepared_inputs = _prepare_many(p_list)
+        if ref_pdb_paths:
+            prepared_full_refs = _prepare_many(ref_pdb_paths)
+            prepared_auxiliary.extend(prepared_full_refs)
+            ref_pdb_paths = tuple(prepared.source_path for prepared in prepared_full_refs)
+        if model_ref_pdb_paths:
+            prepared_model_refs = _prepare_many(model_ref_pdb_paths)
+            prepared_auxiliary.extend(prepared_model_refs)
+            model_ref_pdb_paths = tuple(
+                prepared.source_path for prepared in prepared_model_refs
+            )
         any_non_gjf = any(not prep.is_gjf for prep in prepared_inputs)
         if _PRIMARY_GJF_TEMPLATE is None:
             _PRIMARY_GJF_TEMPLATE = next((prep.gjf_template for prep in prepared_inputs if prep.gjf_template), None)
@@ -2256,9 +2298,9 @@ def cli(
         # If any input is PDB, treat as "PDB input" for final output handling.
         # Fall back to --ref-pdb (model_ref_pdb_paths) when inputs are XYZ.
         ref_pdb_for_segments: Optional[Path] = None
-        for p in p_list:
-            if p.suffix.lower() == ".pdb":
-                ref_pdb_for_segments = p.resolve()
+        for prepared in prepared_inputs:
+            if prepared.source_path.suffix.lower() == ".pdb":
+                ref_pdb_for_segments = prepared.source_path.resolve()
                 break
         if ref_pdb_for_segments is None and model_ref_pdb_paths:
             for p in model_ref_pdb_paths:
@@ -2301,7 +2343,7 @@ def cli(
             except Exception as e:
                 click.echo(f"[align] WARNING: Alignment failed; continuing without alignment: {e}", err=True)
         else:
-            click.echo("[align] Skipping input alignment as requested by --align False.")
+            click.echo("[align] Skipping input alignment as requested by --no-align.")
 
         _mep_search_start = time.perf_counter()
         click.echo("\n====== Multistep MEP search (multi-structure) started ======\n", narrative=True)
@@ -2407,7 +2449,8 @@ def cli(
 
         # Final MEP output rule:
         # - Always write 'mep_trj.xyz' (XYZ) for intermediate handoff.
-        # - If reference PDBs are available, also emit 'mep.pdb' (and GJF when applicable).
+        # - If reference topologies are available, also emit mep.pdb and a
+        #   public CIF/GJF companion when applicable.
         main_prepared = prepared_inputs[0]
         needs_pdb = ref_pdb_for_segments is not None
         needs_gjf = main_prepared.is_gjf
@@ -2515,10 +2558,10 @@ def cli(
         if do_merge:
             _merge_start = time.perf_counter()
             click.echo("\n====== Full-system merge (active site model → templates) started ======\n", narrative=True)
-            # With --align True, use only the first reference PDB for all pairs (replicate it).
+            # With --align, use only the first reference PDB for all pairs (replicate it).
             if align:
                 if not ref_pdb_paths or len(ref_pdb_paths) < 1:
-                    raise click.BadParameter("--ref-full-pdb must provide at least one file when performing final merge with --align True.")
+                    raise click.BadParameter("--ref-full-pdb must provide at least one file when performing final merge with --align.")
                 first_ref = Path(ref_pdb_paths[0])
                 ref_list_for_merge = [first_ref for _ in input_paths]
             else:
@@ -2775,6 +2818,8 @@ def cli(
         except Exception:
             __version__ = "unknown"
         summary["pdb2reaction_version"] = __version__
+        from pdb2reaction.core.utils import RESULT_JSON_SCHEMA_VERSION
+        summary["schema_version"] = RESULT_JSON_SCHEMA_VERSION
         summary["pipeline_mode"] = "path-search"
         summary["status"] = "success" if summary.get("energy_diagrams") else "partial"
         summary["mlip_backend"] = calc_cfg.get("backend", "uma")
@@ -2817,6 +2862,7 @@ def cli(
                 "n_images": len(combined_all.images),
                 "n_segments": len(combined_all.segments),
                 "traj_pdb": str(out_dir_path / "mep.pdb") if (out_dir_path / "mep.pdb").exists() else None,
+                "traj_cif": str(out_dir_path / "mep.cif") if (out_dir_path / "mep.cif").exists() else None,
                 "mep_plot": str(out_dir_path / "mep_plot.png") if (out_dir_path / "mep_plot.png").exists() else None,
                 "diagram": diag_for_log,
             }
@@ -2867,5 +2913,7 @@ def cli(
         )
     finally:
         for prepared in prepared_inputs:
+            prepared.cleanup()
+        for prepared in prepared_auxiliary:
             prepared.cleanup()
         _PRIMARY_GJF_TEMPLATE = None

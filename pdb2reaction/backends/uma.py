@@ -48,9 +48,9 @@ from pdb2reaction.core.defaults import DEFAULT_UMA_MODEL
 # It lives in `pdb2reaction.backends._determinism` and is enabled via the
 # `--deterministic` CLI flag or `PDB2REACTION_STRICT_DETERMINISTIC=1`; the
 # backend factory and the CLI option callback drive it.
-# The supported reproducibility route is `--precision fp64`: when every stage
-# runs in fp64, the residual non-determinism from CUDA atomic ordering is at
-# the ~1e-15 level, below any chemically meaningful threshold.
+# Precision controls numerical accuracy but does not guarantee determinism.
+# Strict same-stack repeatability is opt-in and must be verified with the
+# end-to-end two-run smoke gate on the installed software/hardware stack.
 
 
 # ---- Unit conversion constants ----

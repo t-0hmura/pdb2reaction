@@ -251,7 +251,8 @@ def run_trj2fig(
     if not traj.is_file():
         raise FileNotFoundError(traj)
 
-    if charge is None and multiplicity is None:
+    recomputed = charge is not None or multiplicity is not None
+    if not recomputed:
         energies = read_energies_xyz(traj)
     else:
         energies = recompute_energies(
@@ -269,6 +270,13 @@ def run_trj2fig(
     return {
         "energies_hartree": energies,
         "out_paths": out_paths,
+        "energy_source": "mlip_recomputed" if recomputed else "trajectory_comment",
+        # A CLI backend default is not provenance when no calculator ran.
+        "backend": backend if recomputed else None,
+        "charge": int(charge if charge is not None else 0) if recomputed else None,
+        "multiplicity": int(multiplicity if multiplicity is not None else 1) if recomputed else None,
+        "solvent": str(solvent) if recomputed else None,
+        "solvent_model": str(solvent_model) if recomputed else None,
     }
 
 
@@ -378,7 +386,12 @@ def cli(
             "n_frames": len(energies),
             "min_energy_hartree": float(min(energies)) if energies else None,
             "max_energy_hartree": float(max(energies)) if energies else None,
-            "backend": backend,
+            "energy_source": info["energy_source"],
+            "backend": info["backend"],
+            "charge": info["charge"],
+            "multiplicity": info["multiplicity"],
+            "solvent": info["solvent"],
+            "solvent_model": info["solvent_model"],
             "files": {p.name: str(p) for p in written_paths},
         }
         write_result_json(out_dir, result_data, command="trj2fig")

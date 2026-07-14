@@ -13,8 +13,8 @@ Options:
                                   paths, DEBUG logging).  [0<=x<=3]
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
-  -i, --input FILE                Input structure file (.pdb, .xyz, _trj.xyz,
-                                  ...).  [required]
+  -i, --input FILE                Input structure file (.pdb, .cif, .mmcif,
+                                  .xyz, .gjf, _trj.xyz, ...).  [required]
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
                                   predictor. NOTE: with UMA, workers>1 plus an
                                   explicit Analytical Hessian request is an
@@ -33,17 +33,22 @@ Options:
   --bias-k FLOAT                  Harmonic restraint strength k [eV/Å^2] for
                                   --dist-freeze.  [default: 300]
   --freeze-links / --no-freeze-links
-                                  Freeze parent atoms of cap hydrogens (PDB
-                                  input or XYZ/GJF with --ref-pdb).  [default:
-                                  freeze-links]
+                                  Freeze parent atoms of cap hydrogens
+                                  (PDB/mmCIF input or XYZ/GJF with --ref-pdb).
+                                  [default: freeze-links]
   --freeze-atoms TEXT             Comma-separated 1-based atom indices to freeze
                                   (e.g., '1,3,5').
+  --tr-projection [constrained|legacy-active]
+                                  Rigid translation/rotation treatment used by
+                                  --flatten PHVA. 'constrained' respects frozen
+                                  anchors; 'legacy-active' treats the active
+                                  fragment as isolated.  [default: constrained]
   --convert-files / --no-convert-files
-                                  Convert XYZ/TRJ outputs into PDB/GJF
+                                  Convert XYZ/TRJ outputs into PDB/CIF/GJF
                                   companions based on the input format.
                                   [default: convert-files]
-  --ref-pdb FILE                  Reference PDB topology to use when the input
-                                  is XYZ/GJF (keeps XYZ coordinates).
+  --ref-pdb FILE                  Reference PDB/mmCIF topology to use when the
+                                  input is XYZ/GJF (keeps XYZ coordinates).
   --max-cycles INTEGER            Maximum number of optimization cycles.
                                   [default: 10000]
   --opt-mode [grad|hess|lbfgs|rfo]
@@ -84,7 +89,8 @@ Options:
                                   templates inherit the charge automatically).
   -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
                                   GPP:-3,SAM:1) used to derive charge when -q is
-                                  omitted (requires PDB input or --ref-pdb).
+                                  omitted (requires PDB/mmCIF input or --ref-
+                                  pdb).
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1).
   --print-every INTEGER RANGE     Print optimizer status every N cycles (debug
                                   knob).  [x>=1]
@@ -105,13 +111,13 @@ Options:
                                   / DFTB+ / any ASE engine. See --calc-factory.
   --calc-factory TEXT             Name of the callable in --calc-file that
                                   returns an ASE Calculator (or a module-level
-                                  Calculator instance).  [default:
-                                  get_calculator]
+                                  Calculator instance). CLI overrides config
+                                  YAML; otherwise defaults to get_calculator.
   --deterministic / --no-deterministic
-                                  Strict bit-reproducible GPU runs
+                                  Request strict same-stack PyTorch determinism
                                   (deterministic algorithms + index_reduce_
-                                  shim). Slower; raises if unsupported. Default
-                                  off.
+                                  shim). Slower; raises for detected unsupported
+                                  ops; custom calculators are outside its scope.
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
                                   parity check (logs that it was skipped). For
                                   an intentional open-shell or modified-residue

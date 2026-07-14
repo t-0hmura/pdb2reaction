@@ -1,22 +1,16 @@
 # Orb backend (orb.md)
 
-Orb-v3 (Orbital Materials) is a fast MLIP useful for **screening** large
-candidate sets where you can tolerate slightly lower TS-region accuracy
-than UMA / MACE.
+Orb-v3 (Orbital Materials) is available as an alternative MLIP integration.
+pdb2reaction uses fp64 by default because its own ORB benchmark found noisy
+finite-difference Hessians in the explicit reduced-fp32 mode. Runtime and
+domain suitability must be measured for the actual system, and TS results
+need the same frequency/IRC validation as every backend.
 
 ## Install
 
 ```bash
 pip install 'pdb2reaction[orb]'         # pulls orb-models
 ```
-
-> **torch_scatter has no PyPI binary wheel** (only an sdist), so `[orb]` source-builds it and fails
-> under PEP517 isolation (`No module named 'torch'`). Install from PyG's prebuilt-wheel index matching
-> your torch+CUDA tag (single command, no compiler needed):
-> ```bash
-> pip install 'pdb2reaction[orb]' -f https://data.pyg.org/whl/torch-2.8.0+cu129.html
-> ```
-> Fallback (CUDA toolchain present): `pip install torch` → `pip install torch_scatter --no-build-isolation` → `[orb]`.
 
 Or, if `pdb2reaction` is already installed:
 
@@ -43,7 +37,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb \
 ```
 
 Default model: `orb_v3_conservative_omol`. The `_conservative_`
-checkpoint uses energy-conservative forces (forces = ∇E); the `_omol`
+checkpoint uses energy-derived conservative forces; the `_omol`
 suffix indicates training on the OMol25 dataset (organics +
 biomolecules + transition-metal complexes).
 
@@ -64,31 +58,32 @@ Orb accepts (canonical list in
 | `device` | `'cuda'`, `'cpu'`, `'auto'` |
 | `model` | Override the default Orb checkpoint |
 | `precision` | `'float64'` is the default: an unset `--precision` resolves per backend (`ORB_BACKEND_DEFAULTS["precision"]`, `_BACKEND_DEFAULT_PRECISION["orb"] = "fp64"`). `'float32-high'` selects ORB's TF32 matmul mode — fast, but its force noise inflates finite-difference Hessians into spurious imaginary modes, so keep it for screening only. pdb2reaction normalizes `'float32'`/`'fp32'` → `'float32-high'` and `'fp64'` → `'float64'` before the loader (raw orb_models rejects `'float32'` and demotes to a slow path). |
-| `compile_model` | `True` to torch-compile (faster after first call, slower start) |
+| `compile_model` | Request torch compilation; startup/runtime benefit is version, model, and workload dependent, so benchmark it |
 | `freeze_atoms`, `hessian_calc_mode`, `return_partial_hessian`, `hessian_double` | Same as UMA |
 
-## Strengths and weaknesses
+## Integration constraints
 
-| Strength | Weakness |
+| Property | Interpretation |
 |---|---|
-| Faster per call than UMA on large systems | TS curvature less accurate than UMA / MACE; many TS searches end up with multiple imaginary modes |
-| Trained on broad organic chemistry | Not the right tool for fine-grained `wB97M-V` benchmarking |
-| Easy install, no auth gate | Smaller user community than UMA |
+| No gated model login in the standard install path | Weight availability can still depend on the installed orb-models release/network cache |
+| Explicit fp32 maps to `float32-high` (reduced CUDA matmul, commonly TF32) | Use for screening only when its numerical effect is acceptable; pdb2reaction defaults ORB to fp64 |
+| Conservative OMol checkpoint selected by default | This identifies model construction/training family, not guaranteed accuracy for a particular reaction |
 
-In practice: use Orb-v3 to **filter** down a list of candidates, then
-re-run survivors with UMA or MACE for the final TS / IRC.
+For final results, keep fp64 and require exactly one independently
+recomputed imaginary mode plus the expected IRC connectivity. Cross-check
+with another backend when the chemistry or mode assignment remains ambiguous.
 
 ## Known gotchas
 
 | Symptom | Cause / fix |
 |---|---|
-| `RuntimeError: ... mat1 and mat2 shapes ... ` during Hessian | Appears once the run has been downgraded to `float32-high` (TF32) — e.g. `--precision fp32`, or a `--config` YAML carrying `calc.precision: fp32`. Keep the `'float64'` default for every Hessian / freq step. |
-| `compile_model=True` adds torch-compile overhead on first call | Subsequent calls are faster. Disable for short jobs. |
-| TS converges with > 1 imaginary mode | Common with Orb on aromatic or metalloenzyme systems. Re-run that step with UMA/MACE. |
+| Extra low-magnitude imaginary modes after a finite-difference Hessian | Check the effective precision and keep the backend-default `'float64'`; explicit `--precision fp32` selects `float32-high`/TF32 and can amplify force noise. Recompute independently before classifying the stationary point. |
+| `compile_model=True` changes startup/runtime behavior | Benchmark compiled and uncompiled modes with the installed torch/orb versions; disable it if compilation fails or does not amortize. |
+| TS result has more than one imaginary mode | Treat it as not converged: inspect modes, retry from a better MEP seed and/or `--flatten`, then cross-check with UMA/MACE if ambiguity remains. |
 
 ## See also
 
 - `env-cuda.md` — torch / CUDA prerequisites.
-- `uma.md` — recommended primary backend for production runs.
-- `mace.md` — alternative high-accuracy backend (separate env).
+- `uma.md` — default backend integration.
+- `mace.md` — alternative OMol backend integration (separate env).
 - [`pdb2reaction-cli/tsopt.md`](../pdb2reaction-cli/tsopt.md) — diagnosing TS convergence problems.

@@ -2,8 +2,9 @@
 
 XYZ is a simple plain-text dump of elements and Cartesian coordinates, with
 no residue or charge information embedded. `pdb2reaction` writes XYZ for trajectories,
-optimized stationary points, and IRC paths; it accepts XYZ as input
-when `-q` and `-m` are supplied (or `--ref-pdb` plus `-m`).
+optimized stationary points, and IRC paths. For XYZ input, resolve the total
+charge explicitly with `-q`, or from a matching `--ref-pdb` plus `-l`; verify
+and normally state `-m` explicitly rather than relying on the singlet default.
 
 ## Layout
 

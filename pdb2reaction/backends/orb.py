@@ -86,13 +86,13 @@ class OrbCalculator(MLIPCalculator):
         *,
         model: str = "orb_v3_conservative_omol",
         # orb_models expects a precision string such as "float32-high",
-        # "float32-highest", or "float64".  The historical default
-        # "float32" is not a valid value and silently falls through to
-        # the slow "highest" matmul precision, which also enables the
-        # donated-buffer aot_autograd optimization that blocks
-        # double-backward Hessians.  Default to "float32-high" so the
-        # fast path is active.
-        precision: str = "float32-high",
+        # "float32-highest", or "float64".  The historical value "float32"
+        # is not valid and silently falls through to the slow "highest" mode,
+        # which can also block double-backward Hessians.  Keep the direct API
+        # consistent with the CLI/backend default: float64 avoids the TF32 force
+        # noise observed in trusted finite-difference Hessians.  Callers may
+        # request "float32-high" explicitly for screening.
+        precision: str = "float64",
         compile_model: bool = False,
         # Base class parameters
         charge: int = 0,
@@ -386,7 +386,7 @@ class OrbASECalculator:
         *,
         model: str = "orb_v3_conservative_omol",
         device: str = "auto",
-        precision: str = "float32-high",
+        precision: str = "float64",
         compile_model: bool = False,
     ):
         calc = OrbCalculator(

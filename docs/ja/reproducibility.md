@@ -1,53 +1,57 @@
 # 再現性と決定性
 
-GPU 上の MLIP 推論は**デフォルトではビット単位で再現可能ではありません**。並列リダクション（アトミック加算、scatter 演算）はハードウェアのスケジューリングに依存した順序で累積されるため、同一入力による 2 回の実行でも浮動小数点の ULP レベルで差異が生じます。`pdb2reaction` の場合、このドリフトの実際の大きさは**座標で ~1e-7 Å**、エネルギーで 1e-7 a.u. 未満であり、化学的に意味のある閾値をはるかに下回ります。結果は*科学的には*再現可能ですが、*ビット単位では*同一ではありません。
+GPU 上の MLIP 推論は、デフォルトではビット単位で再現しないことがあります。並列リダクション（atomic add、scatter 演算）の累積順序が hardware scheduling に依存するためです。project の UMA smoke benchmark では小さい drift が観測されていますが、その大きさは別 backend/model/GPU/software stack や長い optimizer trajectory に対する保証ではありません。科学的再現性は file identity だけでなく、化学的に意味のある observable で評価してください。
 
-ビット単位で同一の出力が必要な場合（例: ゴールデンファイル回帰テスト、監査のための厳密な再実行）は、`--deterministic` フラグを使用してください。
+同一 stack での再実行性（例: golden-file 回帰 test）が必要な場合は、backend/model、package version、GPU、input、command を固定して `--deterministic` を使用してください。
 
 ## `--deterministic`
 
-`--deterministic` はすべての計算サブコマンド（`opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, `all`, `sp`）で受け付けられます。`torch.use_deterministic_algorithms` に加えて `index_reduce_` の shim を有効化し、GPU 実行がビット単位で再現可能になるようにします。
+`--deterministic` はすべての計算サブコマンド（`opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, `all`, `sp`）で受け付けられます。`torch.use_deterministic_algorithms` と `index_reduce_` shim を有効化して PyTorch に strict determinism を要求しますが、任意の custom ASE calculator やすべての third-party custom kernel を制御することはできません。
 
 ```bash
 pdb2reaction opt -i input.pdb -q 0 --deterministic
-pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt True --deterministic
+pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --deterministic
 ```
 
 - これは**プロセス全体に作用します**。`all` で設定すると内部のすべてのステージに伝播するため、ステージごとに渡す必要はありません。
-- これは**より低速です**。決定的な scatter/reduce カーネルはデフォルトのものよりスループットが低くなります。厳密な再現性が必要な場合にのみ使用してください。
-- これは**明示的に失敗します**。現在の PyTorch ビルドが実行中の演算に対して決定的なカーネルを提供できない場合、再現不可能な出力を警告なく生成するのではなく、コマンドが例外を送出します。
+- これは**より低速です**。決定的な scatter/reduce カーネルはデフォルトのものよりスループットが低くなります。厳密な同一 stack 再実行性が必要な場合にのみ使用してください。
+- PyTorch が非決定的と認識する演算に決定的 kernel がなければ**明示的に失敗します**。PyTorch の管理外にある外部/custom kernel まで検出する保証ではありません。
 - 環境変数 `PDB2REACTION_STRICT_DETERMINISTIC=1` は、CI や直接の Python API（`create_calculator`）に対する同等のエントリポイントです。
 
-### バックエンド別の検証済み挙動
+### backend ごとの適用範囲
 
 | バックエンド | `--deterministic` |
 |---|---|
-| `uma` | エネルギー**および**原子間力がビット単位で同一 |
-| `orb` | エネルギー**および**原子間力がビット単位で同一 |
-| `mace` | エネルギー**および**原子間力がビット単位で同一 |
+| `uma` | 同一 stack の end-to-end smoke gate で2実行の出力座標を比較 |
+| `orb` / `mace` | PyTorch strict mode は有効になるが、installed third-party backend version ごとに smoke test が必要 |
 | `aimnet2` | **非対応 — 拒否されます**（下記参照） |
+| `custom` | user 提供 ASE calculator が determinism を所有し、この flag だけでは保証されない |
 
 ## 精度と再現性
 
-`--precision fp64` での実行はデフォルトのドリフトを*低減します*（フルの `all` パイプラインで差異が生じる軌跡ファイルの数をおおむね半減させます）が、GPU 実行をビット単位で同一にすることは**ありません**。リダクション順序に起因する非決定性は精度とは独立しているためです。ビット単位の厳密性が得られるのは `--deterministic` のみです。
+`--precision` の変更は数値誤差や optimizer trajectory を変え得ますが、fp64 だけで GPU 実行がビット単位で同一になるわけではありません。リダクション順序に起因する非決定性は精度とは独立しています。strict mode が対象とするのは同一 stack の再実行性であり、version や hardware を跨ぐ identity ではありません。
 
-`--precision fp64` と（内部的で常時有効な）fp64 Hessian は独立した設定項目です。`--precision fp64` を渡すと、追加で Hessian も fp64 に強制されるため、optimizer の線形代数がモデルより低い精度で警告なく実行されることはありません。
+モデル精度と Hessian dtype は独立した設定項目です。Hessian は fp64 が既定ですが、`calc.hessian_double: false` でモデルの native dtype を明示的に選べます。`--precision fp64` を渡すと Hessian も fp64 に強制されるため、optimizer の線形代数がモデルより低い精度で警告なく実行されることはありません。
 
 (ja-precision-by-gpu-class)=
-### GPU クラスによる精度の選択
+### backend と用途による精度の選択
 
-`--precision` は MLIP 推論の浮動小数点精度（`fp32` | `fp64`、大文字小文字を区別しない）を選択します。バックエンド非依存であり、CLI は値を各バックエンド固有のキー（UMA `precision`、ORB `precision`、MACE `default_dtype`）に振り分けます。`aimnet2` では `fp32` は no-op で、`fp64` はモデル入力が上流で float32 にキャストされるため拒否されます。指定しない場合、UMA は fp32（スクリーニング速度の基準）、ORB と MACE は fp64 が既定です（{doc}`バックエンド <backends>` の「精度」節を参照）。どちらの値を選ぶかは GPU クラスによって決まります。
+`--precision` は MLIP 推論の浮動小数点精度（`fp32` | `fp64`、大文字小文字を区別しない）を選択します。バックエンド非依存であり、CLI は値を各バックエンド固有のキー（UMA `precision`、ORB `precision`、MACE `default_dtype`）に振り分けます。`aimnet2` では `fp32` は no-op で、`fp64` はモデル入力が上流で float32 にキャストされるため拒否されます。指定しない場合、UMA は fp32、ORB と MACE は fp64 が既定です（{doc}`バックエンド <backends>` の「精度」節を参照）。GPU class は cost に影響しますが、TS の妥当性基準は変えません。
 
-| GPU クラス | 推奨 | 理由 |
+| 用途 | 推奨 | 理由 |
 | --- | --- | --- |
-| HPC データセンター（H100 / H200 / A100） | `--precision fp64` | 実用的な品質で数値ノイズの少ない TS 最適化と Hessian が得られ、これらのカードでは fp64 のスループットコストが小さい。 |
-| コンシューマー（RTX 50xx / 40xx） | `--precision fp32` | ここでは fp64 が大幅に遅く、実用性と速度を考慮して fp32 を選ぶ（ORB / MACE は既定の fp64 から落ちるため Hessian のノイズは増える）。fp32 は fp64 より数値精度は落ちるが、コンシューマー GPU（RTX 5090 など）でのスクリーニング用途には実用十分で、`--deterministic` を併用すれば再現性も確保できる。なお、厳密性が必要な場合や不安定な PES では fp64 で改善する可能性がある。 |
+| 通常実行 | 未指定 (`auto`) | UMA/AIMNet2 fp32、ORB/MACE fp64 という tested default を保つ。 |
+| 速度優先screening | 必要な場合だけ明示的 `--precision fp32` | ORB/MACE の既定を下げるため、その finite-difference Hessian を最終結果として信頼しない。 |
+| 最終 TS/Hessian | ORB/MACE は fp64 を維持し、noise が問題なら UMA fp64 を検討 | precision にかかわらず独立 freq と IRC が必要。 |
 
-OMol で学習された UMA バックエンドでは fp64 が TS 最適化と Hessian に無視できない影響を与えるため、スクリーニングだけでなく最終結果・本番計算の数値には fp64 を使用してください。ビット単位で同一の再実行が必要な場合は `--deterministic` と併用します。
+OMol で学習された UMA バックエンドでは fp64 が TS 最適化と Hessian に影響し得ます。hardware cost を測定し、本番設定を記録してください。`--deterministic` は別の同一-stack再実行性 control であり、低精度 PES の精度を改善するものではありません。
 
 AIMNet2 はこれらの機能には対応していません:
 
 - **`--precision fp64`** — AIMNet2 のモデル入力は上流で float32 にキャストされるため、「fp64」実行は実際には fp64 になりません。
 - **`--deterministic`** — AIMNet2 はカスタム CUDA カーネルを通じて原子間力を計算しますが、これは `torch.use_deterministic_algorithms` の制御外にあるため、原子間力はビット単位で再現可能ではありません（エネルギーは再現可能です）。PyTorch の決定的モードはこのカスタム演算を検出も制御もしないため、この制限は明示的に報告されます。
 
-ビット単位で再現可能な実行には `uma`、`orb`、または `mace` を使用してください。
+厳密な同一 stack 再実行性が必要なら、対応 backend に
+`--deterministic` を付け、installed stack で2実行の smoke test を通して
+ください。UMA には project の end-to-end gate がありますが、ORB/MACE は
+installed third-party version ごとの gate が必要です。

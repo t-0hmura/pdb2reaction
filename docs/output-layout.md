@@ -6,16 +6,17 @@ Each `pdb2reaction` subcommand writes to its output directory under the filename
 
 | Filename | Written by | Purpose |
 |---|---|---|
-| `summary.json` | `all`, `path-search`, and per-stage subcommands **only when `--out-json` is passed** (default `--no-out-json`) | Authoritative JSON envelope (see [JSON Output Reference](json-output.md)). Read this first. Pure utility subcommands (e.g. `fix-altloc`, `add-elem-info`, `bond-summary`) never emit it. |
-| `result.json` | per-stage subcommands **only when `--out-json` is passed** — default `--no-out-json` (`opt`, `tsopt`, `freq`, `irc`, `sp`, `scan` / `scan2d` / `scan3d`, `path-opt`, `dft`, `extract`) | Alternate filename — identical payload to `summary.json`. Read `summary.json` for the single-filename convention; `result.json` carries the same content and can be deleted if you only consume `summary.json`. |
+| `summary.json` | always by `all` and `path-search` | Authoritative aggregate JSON envelope (see [JSON Output Reference](json-output.md)). Read this first. |
+| `summary.json` | successful per-stage runs when `--out-json` is passed (default `--no-out-json`); caught runtime errors may write a best-effort error envelope without the flag | Stage JSON envelope. Pure utility subcommands (e.g. `fix-altloc`, `add-elem-info`, `bond-summary`) do not use this stage envelope. |
+| `result.json` | same conditions as the per-stage `summary.json` (`opt`, `tsopt`, `freq`, `irc`, `sp`, `scan` / `scan2d` / `scan3d`, `path-opt`, `dft`, `extract`) | Alternate filename — identical payload to `summary.json`. Read `summary.json` for the single-filename convention; `result.json` carries the same content and can be deleted if you only consume `summary.json`. |
 | `summary.log` | `path-search`, `all` | Human-readable run log (one row per segment / stage). |
 | `final_geometry.xyz` | `opt`, `tsopt` | Optimized geometry (XYZ, full precision). |
-| `mep.pdb` / `mep_trj.xyz` | `path-search` | Reaction path frames (PDB / XYZ). |
-| `final_geometries_trj.xyz` / `hei.xyz` | `path-opt` | Standalone path-opt trajectory (full path) and highest-energy image (`.pdb` / `.gjf` companions when conversion is enabled). |
+| `mep.pdb` / `mep.cif` / `mep_trj.xyz` | `path-search` | Reaction path frames; `.cif` is added for mmCIF/oversized-PDB topology when conversion is enabled. |
+| `final_geometries_trj.xyz` / `hei.xyz` | `path-opt` | Standalone path-opt trajectory (full path) and highest-energy image (`.pdb` / `.cif` / `.gjf` companions when applicable and conversion is enabled). |
 | `mep_plot.png` | `path-search` | Energy profile (PNG) of the MEP. (`all` promotes the styled `energy_diagram_MEP.png` to the root instead.) |
-| `finished_irc_trj.xyz` / `forward_irc_trj.xyz` / `backward_irc_trj.xyz` | `irc` | IRC trajectories (full path plus per-branch; `.pdb` companions when a reference PDB is available). |
+| `finished_irc_trj.xyz` / `forward_irc_trj.xyz` / `backward_irc_trj.xyz` | `irc` | IRC trajectories (full path plus per-branch; `.pdb` and, for bridge topology, `.cif` companions when a reference topology is available). |
 | `frequencies_cm-1.txt` | `freq` | Vibrational mode listing. |
-| `*.gjf` | various (when `--convert-files`) | Gaussian-format companion structure. |
+| `*.cif` / `*.gjf` | various (when `--convert-files`) | Identifier-preserving mmCIF or Gaussian-format companion structure, according to the input template. |
 
 ## Default `--out-dir`
 
@@ -40,22 +41,22 @@ A subcommand run on its own writes a **flat** result directory. The same writer,
 
 - **Standalone subcommand** → flat `result_<subcmd>/` with the files above. There is no `segments/` and no `_work/`; those only appear when `all` coordinates several writers in one run.
 - **Inside `all`, leaf writers nest unchanged.** A per-segment leaf output at `segments/seg_NN/<subcmd>/` is structurally identical to the standalone `result_<subcmd>/` — `all` simply hands the same writer a different output directory.
-- **`path-search` / `path-opt` are the engine exception.** Run standalone, each is itself a deliverable: `path-search` → `result_path_search/` (`summary.log`, `mep.pdb`, `mep_trj.xyz`, `mep_plot.png`, `energy_diagram_MEP.png`), and `path-opt` → `result_path_opt/` (`final_geometries_trj.xyz`, `hei.xyz`). Inside `all`, the raw engine output is treated as scratch under `_work/path_opt/` (or `_work/path_search/` with `--refine-path`), and only the merged products (`mep.pdb`, `mep_trj.xyz`, `mep_w_ref.pdb`, `energy_diagram_MEP.png`) are promoted to the pipeline root.
+- **`path-search` / `path-opt` are the engine exception.** Run standalone, each is itself a deliverable: `path-search` → `result_path_search/` (`summary.log`, `mep.pdb`, optional `mep.cif`, `mep_trj.xyz`, `mep_plot.png`, `energy_diagram_MEP.png`), and `path-opt` → `result_path_opt/` (`final_geometries_trj.xyz`, `hei.xyz`). Inside `all`, the raw engine output is treated as scratch under `_work/path_opt/` (or `_work/path_search/` with `--refine-path`), and only the merged products (`mep.pdb`, optional `mep.cif`, `mep_trj.xyz`, `mep_w_ref.pdb` / `.cif`, `energy_diagram_MEP.png`) are promoted to the pipeline root.
 
 The `all` tree therefore has three zones:
 
 ```text
 result_all/
 ├─ summary.log · summary.json                 # authored at the root
-├─ mep.pdb · mep_w_ref.pdb · mep_trj.xyz       # MEP deliverables promoted from the engine
+├─ mep.{pdb,cif} · mep_w_ref.{pdb,cif} · mep_trj.xyz # CIF for bridge input
 ├─ energy_diagram_MEP.png · energy_diagram_*.png
 ├─ segments/
 │  └─ seg_NN/                                  # 2-digit per-reactive-segment deliverables
-│     ├─ reactant.{pdb,xyz,gjf} · ts.* · product.*   # canonical R/TS/P
+│     ├─ reactant.{pdb,cif,xyz,gjf} · ts.* · product.* # canonical R/TS/P
 │     └─ ts/ · irc/ · freq/{R,TS,P}/ · dft/         # per-stage working files (--tsopt / --thermo / --dft)
 └─ _work/                                      # pipeline scratch (safe to rm -rf)
    ├─ models/ · scan/ · add_elem_info/ · fix_altloc/
-   └─ path_opt/                                # raw MEP-engine output (path_search/ with --refine-path True)
+   └─ path_opt/                                # raw MEP-engine output (path_search/ with --refine-path)
 ```
 
 In TSOPT-only mode there is no MEP stage, so `_work/path_opt/` is absent and the deliverables live under `segments/seg_01/`. See [all](all.md) for the full per-mode breakdown.
@@ -78,4 +79,8 @@ if summary["status"] == "error":
         raise RuntimeError(summary["error"])
 ```
 
-`summary.json` / `result.json` are written by `all` and `path-search`, and by per-stage subcommands **only when `--out-json` is passed** (default `--no-out-json`). When written, the envelope carries the schema version + status (and, on the failure path, the error class chain); do not assume a per-stage `summary.json` exists by default.
+`summary.json` / `result.json` are written on successful per-stage runs only
+when `--out-json` is passed (default `--no-out-json`). A caught runtime error
+may emit a best-effort error envelope even without the flag; validation exits
+or failures before output setup may emit none. When written, the envelope
+carries schema version + status (and, on the error path, the class chain).

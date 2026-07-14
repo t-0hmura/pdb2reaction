@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import subprocess
+
+from pdb2reaction.mcp import _runner
 from pdb2reaction.mcp._runner import (
     SubcmdResult,
     SubcmdResultDict,
@@ -33,3 +36,18 @@ def test_subcmd_result_dict_keys_match_to_dict() -> None:
     r = SubcmdResult(status="ok", exit_code=0)
     runtime_keys = set(r.to_dict().keys())
     assert runtime_keys <= typed_keys
+
+
+def test_timeout_hint_names_public_tool_argument(monkeypatch) -> None:
+    def raise_timeout(*_args, **_kwargs):
+        raise subprocess.TimeoutExpired(cmd=["pdb2reaction", "opt"], timeout=12.0)
+
+    monkeypatch.setattr(_runner.subprocess, "run", raise_timeout)
+    result = _runner.run_subcmd(
+        ["pdb2reaction", "opt"],
+        timeout=12.0,
+    )
+
+    assert result.status == "failed"
+    assert result.exit_code == 124
+    assert "timeout_seconds" in (result.hint or "")

@@ -13,7 +13,8 @@ Options:
                                   [0<=x<=3]
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
-  -i, --input FILE                Input structure (PDB / XYZ / GJF).  [required]
+  -i, --input FILE                Input structure (PDB / mmCIF / XYZ / GJF).
+                                  [required]
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
                                   predictor. NOTE: with UMA, workers>1 plus an
                                   explicit Analytical Hessian request is an
@@ -22,18 +23,20 @@ Options:
   --workers-per-node INTEGER      Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
   -o, --out-dir TEXT              Output directory.  [default: ./result_sp/]
-  --hess / --no-hess              Also compute the full Hessian and save to
-                                  hessian.npy.  [default: no-hess]
+  --hess / --no-hess              Also compute a Hessian and save it to
+                                  hessian.npy (active block when YAML
+                                  geom.freeze_atoms is non-empty).  [default:
+                                  no-hess]
   --hessian-calc-mode [analytical|finitedifference]
                                   Hessian backend when --hess is set. UMA, ORB,
                                   MACE, and AIMNet2 support Analytical;
                                   automatic mode uses Analytical for UMA and
                                   FiniteDifference for other backends.
   --convert-files / --no-convert-files
-                                  Auto-convert output XYZ-like files into
-                                  companion PDB files written alongside them
-                                  when the input had PDB metadata.  [default:
-                                  convert-files]
+                                  Auto-convert XYZ-like outputs to PDB
+                                  companions; mmCIF/oversized-PDB inputs also
+                                  receive CIF companions with original IDs.
+                                  [default: convert-files]
   --config FILE                   YAML config file with sections (calc:, geom:,
                                   …).
   --show-config / --no-show-config
@@ -53,7 +56,8 @@ Options:
                                   templates inherit the charge automatically).
   -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
                                   GPP:-3,SAM:1) used to derive charge when -q is
-                                  omitted (requires PDB input or --ref-pdb).
+                                  omitted (requires PDB/mmCIF input or --ref-
+                                  pdb).
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1).
   --precision [fp32|fp64]         MLIP backend precision: fp32 or fp64. Unset
                                   defaults per backend (uma: fp32; orb, mace:
@@ -72,13 +76,13 @@ Options:
                                   / DFTB+ / any ASE engine. See --calc-factory.
   --calc-factory TEXT             Name of the callable in --calc-file that
                                   returns an ASE Calculator (or a module-level
-                                  Calculator instance).  [default:
-                                  get_calculator]
+                                  Calculator instance). CLI overrides config
+                                  YAML; otherwise defaults to get_calculator.
   --deterministic / --no-deterministic
-                                  Strict bit-reproducible GPU runs
+                                  Request strict same-stack PyTorch determinism
                                   (deterministic algorithms + index_reduce_
-                                  shim). Slower; raises if unsupported. Default
-                                  off.
+                                  shim). Slower; raises for detected unsupported
+                                  ops; custom calculators are outside its scope.
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
                                   parity check (logs that it was skipped). For
                                   an intentional open-shell or modified-residue

@@ -47,8 +47,8 @@
 | **fairchem** | — | Meta がオープンソースで公開している基盤モデルツールキット。UMA 系のチェックポイントを提供します。pdb2reaction は UMA 予測器のロードに `fairchem-core` へ依存します |
 | **ASE** | Atomic Simulation Environment | pdb2reaction の MLIP バックエンド全てが利用する Calculator API を提供する Python フレームワーク（Larsen et al., *J. Phys. Condens. Matter* 2017）。 |
 | **task_name** | — | UMA の推論バッチに記録されるタスクタグ（YAML: `calc.task_name`、デフォルト `omol`）。チェックポイントが学習したタスク/プリセットを選択します |
-| **解析Hessian** | Analytical Hessian | エネルギーの正確な二階微分を計算。高速だが VRAM を多く消費。`--hessian-calc-mode Analytical` で選択 |
-| **有限差分** | Finite Difference | 微小変位による微分近似。低速だがメモリ効率が良い。`--hessian-calc-mode FiniteDifference`（デフォルト）で選択 |
+| **解析Hessian** | Analytical Hessian | 選択した MLIP エネルギーを自動微分し、有限変位の打切り誤差を避ける（浮動小数点・autograd の挙動は残る）。速度と accelerator memory は backend/model/系に依存。`--hessian-calc-mode Analytical` で選択 |
+| **有限差分** | Finite Difference | 原子を有限変位させて Hessian を近似する移植性のあるデフォルト。通常は accelerator memory のピークが小さいが、速度と変位誤差は対象系に依存。`--hessian-calc-mode FiniteDifference` で選択 |
 
 ## 量子化学
 

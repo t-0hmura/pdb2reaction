@@ -4,7 +4,7 @@
 
 <img src="./overview.png" alt="pdb2reaction workflow overview" width="90%">
 
-`pdb2reaction` is a Python CLI for **elucidating enzymatic reaction pathways from PDB structures** using machine-learning interatomic potentials (MLIPs). The default backend is Meta's UMA; `orb`, `mace`, and `aimnet2` are also supported via `-b/--backend`. Foundation-model MLIPs make cluster-model TS optimization, IRC verification, and QRRHO thermochemistry tractable on a single GPU — cutting the DFT-bound cost that previously limited mechanistic screening.
+`pdb2reaction` is a Python CLI for **elucidating enzymatic reaction pathways from PDB or mmCIF structures** using machine-learning interatomic potentials (MLIPs). The default backend is Meta's UMA; `orb`, `mace`, and `aimnet2` are also supported via `-b/--backend`. Foundation-model MLIPs can make cluster-model TS optimization, IRC verification, and QRRHO thermochemistry practical on a single GPU, depending on cluster size, backend/model, Hessian mode, precision, and hardware.
 
 A single command generates a reasonable initial reaction path:
 
@@ -13,14 +13,14 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'               
 pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --thermo --dft   # full
 ```
 
-Given (i) ≥ 2 PDBs (R → ... → P), (ii) one PDB with `--scan-lists/-s`, or (iii) one TS candidate with `--tsopt`, `pdb2reaction` extracts an **active-site cluster model**, runs an **MEP search** (GSM / DMF), and optionally chains TS optimization, IRC, thermochemical correction, and single-point DFT. The same pipeline also runs without active-site extraction: pass a small molecule as `.xyz` / `.gjf` (set the net charge with `-q`), or a cluster model you built yourself as a PDB — omit `-c/--center` in either case and the structure is analyzed as given.
+Given (i) ≥ 2 structures (R → ... → P), (ii) one structure with `--scan-lists/-s`, or (iii) one TS candidate with `--tsopt`, `pdb2reaction` optionally extracts an **active-site cluster model** when `-c` is supplied, runs the selected MEP/scan/TS-only entry mode, and optionally chains TS optimization, IRC, thermochemical correction, and single-point DFT. Without active-site extraction, pass a small molecule as `.xyz` / `.gjf` (set the net charge with `-q`), or a cluster model you built yourself as PDB/mmCIF; omit `-c/--center` and the structure is analyzed as given.
 
 Working examples (BezA C6-methyltransferase, both multi-structure MEP and scan modes): [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples). For setup see [Installation](installation.md); for symptom-first diagnosis see [Common Error Recipes](recipes-common-errors.md) and [Troubleshooting](troubleshooting.md).
 
 ### Pipeline (the `all` subcommand)
 
 ```text
-PDB(s) → [extract] → [scan] (optional, --scan-lists) → [path-opt] (MEP) → [tsopt] → [irc] → [freq] → [dft] (optional)
+PDB/mmCIF structure(s) → [extract] → [scan] (optional, --scan-lists) → [path-opt] (MEP) → [tsopt] → [irc] → [freq] → [dft] (optional)
 ```
 
 Each stage is also a standalone subcommand; `all` orchestrates them and writes unified `summary.json` + `summary.log`.
@@ -31,13 +31,13 @@ Each stage is also a standalone subcommand; `all` orchestrates them and writes u
 |---|---|
 | `summary.json` | Machine-readable results (barriers, energies, bond changes, environment) |
 | `summary.log` | Human-readable text summary with directory tree |
-| `segments/seg_NN/` | IRC-optimized R/TS/P structures per reaction step |
-| `mep.pdb` | Merged MEP trajectory (PyMOL / VMD) |
+| `segments/seg_NN/` | Created when a reactive segment enters requested post-processing; canonical R/TS/P appear after successful `--tsopt` + IRC/endpoint processing |
+| `mep.pdb` / `mep.cif` | Merged MEP trajectory; CIF companion preserves bridged input identifiers |
 | `energy_diagram_*.png` | Energy profile plots (electronic / Gibbs-corrected) |
 
 ```{important}
-- Input PDBs must already contain **hydrogen atoms**.
-- When you provide multiple PDBs, they must contain the same atoms in the same order (only coordinates may differ).
+- Input PDB/mmCIF structures must already contain **hydrogen atoms**.
+- Multiple structures must contain the same atoms in the same order (only coordinates may differ).
 ```
 
 ### CLI conventions
@@ -46,7 +46,7 @@ Each stage is also a standalone subcommand; `all` orchestrates them and writes u
 |---|---|---|
 | Residue selectors | `'SAM,GPP'` or `'A:123,B:456'` | Quote multi-value strings. |
 | Charge mapping | `-l 'SAM:1,GPP:-3'` | Colon separates name and charge; comma separates entries. |
-| Atom selectors | `'TYR,285,CA'` or `'TYR 285 CA'` | Delimiters: space / comma / slash / backtick / backslash. |
+| Atom selectors | `'TYR,285,CA'` or `'A:TYR:285:CA'` | Use positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` when identifiers repeat. |
 
 Full table: [CLI Conventions](cli-conventions.md).
 
@@ -59,6 +59,7 @@ Full table: [CLI Conventions](cli-conventions.md).
 - [Quickstart: `pdb2reaction all`](quickstart-all.md) — multi-structure MEP
 - [Quickstart: single-structure staged scan](quickstart-scan.md) — one PDB + `--scan-lists`
 - [Quickstart: TS-only mode](quickstart-tsopt-freq.md) — `pdb2reaction all --tsopt`
+- [Interactive Colab GUI](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb) — upload PDB/mmCIF, pick exact residues/atoms in 3D, validate, then run
 
 ## Command line basics
 
@@ -71,15 +72,15 @@ pdb2reaction [OPTIONS]...    # equivalent to:  pdb2reaction all [OPTIONS]...
 Two key options on the workflows that use cluster extraction:
 
 - `-i/--input` — one or more full structures (reactant, intermediate(s), product).
-- `-c/--center` — substrate / extraction center (residue names, residue IDs, or PDB paths). Omit to skip extraction and feed the full input structure directly.
+- `-c/--center` — substrate / extraction center (residue names, residue IDs, chain-qualified selectors, or PDB/mmCIF paths). Omit to skip extraction and feed the full input structure directly.
 
 ## Main workflow modes
 
 | Mode | Trigger | Use when | Quickstart |
 |---|---|---|---|
-| Multi-structure MEP | `-i R.pdb [I1.pdb ...] P.pdb` | You have ≥ 2 endpoints / intermediates. | [quickstart-all](quickstart-all.md) |
-| Staged scan | `-i ONE.pdb --scan-lists '[...]' [ '[...]' ...]` | You'd rather define the reaction coordinates than provide endpoints. | [quickstart-scan](quickstart-scan.md) |
-| TS-only | `-i TS_CANDIDATE.pdb --tsopt` | You already have a TS guess. | [quickstart-tsopt-freq](quickstart-tsopt-freq.md) |
+| Multi-structure MEP | `-i R.cif [I1.cif ...] P.cif` | You have ≥ 2 PDB/mmCIF endpoints or intermediates. | [quickstart-all](quickstart-all.md) |
+| Staged scan | `-i ONE.cif --scan-lists '[...]' [ '[...]' ...]` | You'd rather define the reaction coordinates than provide endpoints. | [quickstart-scan](quickstart-scan.md) |
+| TS-only | `-i TS_CANDIDATE.cif --tsopt` | You already have a TS guess. | [quickstart-tsopt-freq](quickstart-tsopt-freq.md) |
 
 ```{important}
 Single-input runs require **either** `--scan-lists/-s` or `--tsopt` — a bare `-i ONE.pdb` will not trigger a full workflow.
@@ -89,8 +90,8 @@ Single-input runs require **either** `--scan-lists/-s` or `--tsopt` — a bare `
 
 | Option | Description |
 |---|---|
-| `-i, --input PATH...` | Input structures. ≥ 2 PDBs → MEP; 1 PDB + `--scan-lists` → staged scan; 1 PDB + `--tsopt` → TS-only. |
-| `-c, --center TEXT` | Substrate / extraction center (residue names, residue IDs, or PDB paths). |
+| `-i, --input PATH...` | Input structures. ≥ 2 structures → MEP; 1 structure + `--scan-lists` → staged scan; 1 structure + `--tsopt` → TS-only. |
+| `-c, --center TEXT` | Substrate / extraction center (residue names, residue IDs, chain-qualified selectors, or PDB/mmCIF paths). |
 | `-l, --ligand-charge TEXT` | Charge mapping (`'SAM:1,GPP:-3'`) or single integer. |
 | `-q, --charge INT` / `-m, --multiplicity INT` | Net system charge / spin multiplicity. |
 | `--tsopt` / `--thermo` / `--dft` | TS optimization + IRC / vibrational analysis / single-point DFT. |
@@ -100,7 +101,11 @@ Full option matrix: [CLI Conventions](cli-conventions.md) and the generated CLI 
 
 ## Run summaries
 
-Every `pdb2reaction all` run writes `summary.log` (human) + `summary.json` (machine) with the CLI command, global MEP statistics, per-segment barriers / bond changes, and MLIP / thermo / DFT energies (when enabled). Each `segments/seg_NN/` carries its own per-stage summaries.
+An `all` run that reaches aggregate summary writing produces root
+`summary.log` (human) + `summary.json` (machine) with the CLI command, global
+MEP statistics, per-segment barriers/bond changes, and enabled post-stage
+energies. Segment directories contain conditional stage artifacts; they do not
+each carry an aggregate summary pair.
 
 ## HPC / multi-GPU
 

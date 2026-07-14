@@ -6,11 +6,12 @@ What it does
 ------------
 1) Blank the PDB altLoc column (column 17, 1-based) with a single space.
    - This is a 1-character replacement (no shifting / no reformatting).
-2) If the same atom appears multiple times due to alternate locations
-   (altLoc like A/B/... or custom labels like H/L),
-   keep the "best" one by the default rule:
-      - Highest occupancy first
-      - If tied (or occupancy missing), keep the earliest one in the file
+2) Select one coherent non-blank altLoc label per residue (A/B/... or custom
+   labels such as H/L):
+      - Highest mean occupancy across that residue's labelled atoms
+      - If tied (or occupancy is missing), keep the earliest label in the file
+   Blank/shared atoms are retained. Atoms that exist only in an unselected
+   conformer are dropped instead of being merged into a hybrid residue.
 
 Handled records
 ---------------
@@ -126,34 +127,86 @@ def atom_identity_key(line: str) -> Tuple[str, str, str, str, str, str, str]:
     return (record, atom_name, res_name, chain_id, res_seq, i_code, seg_id)
 
 
+def residue_identity_key(line: str) -> Tuple[str, str, str, str, str]:
+    """Return the residue identity used for coherent altLoc selection."""
+    core, _ = split_newline(line)
+    core = ensure_len(core, 76)
+    return (
+        core[17:20],  # residue name
+        core[21:22],  # chain ID
+        core[22:26],  # residue sequence number
+        core[26:27],  # insertion code
+        core[72:76],  # segID (optional/non-standard)
+    )
+
+
+def altloc_label(line: str) -> str:
+    """Return the stripped one-character altLoc label (empty for blank)."""
+    core, _ = split_newline(line)
+    core = ensure_len(core, ALTLOC_IDX + 1)
+    return core[ALTLOC_IDX].strip()
+
+
 def process_block(lines: List[str]) -> List[str]:
     """
-    Two-pass processing for a block (either the whole file if no MODEL,
+    Multi-pass processing for a block (either the whole file if no MODEL,
     or the content between MODEL and ENDMDL):
 
-    Pass 1: determine the best coordinate line per atom key
-            by (occupancy desc, first-appearance asc).
-    Pass 2: output only the chosen coordinate lines (altLoc blanked),
-            and keep only ANISOU lines whose serial is chosen (altLoc blanked).
-            All other records are passed through unchanged.
+    Pass 1: choose one non-blank altLoc label per residue by mean occupancy,
+            breaking ties by first appearance.
+    Pass 2: among blank/shared records and records carrying the selected label,
+            choose at most one coordinate line per atom identity.
+    Pass 3: output the selected coordinates with altLoc blanked and keep only
+            matching ANISOU records. Other record types pass through unchanged.
 
-    Handling of different atom counts between altLoc states:
-    --------------------------------------------------------
-    When different altLoc states have different atoms (e.g., altLoc A has
-    atoms N,CA,CB,CG while altLoc B has N,CA,CB,CD), this function:
-    - For DUPLICATE atoms (same identity key, e.g., N,CA,CB): selects the best
-      one based on occupancy
-    - For UNIQUE atoms (only in one altLoc, e.g., CG in A, CD in B): keeps ALL
-      of them in the output
-
-    This ensures the output structure contains all unique atoms from all altLoc
-    states, with duplicates resolved to the best conformer.
+    Selecting at residue scope is essential. Per-atom selection can combine A
+    and B coordinates, and retaining atoms unique to every label creates a
+    structure that corresponds to no deposited conformer.
     """
-    # key -> (occ_val_for_compare, line_index, serial5)
+    # residue -> label -> [occupancy sum, number of parsed occupancies,
+    #                       first line index]
+    label_stats: Dict[
+        Tuple[str, str, str, str, str],
+        Dict[str, List[float | int]],
+    ] = {}
+
+    for idx, line in enumerate(lines):
+        if not line.startswith(COORD_RECORDS):
+            continue
+        label = altloc_label(line)
+        if not label:
+            continue
+        residue = residue_identity_key(line)
+        per_label = label_stats.setdefault(residue, {})
+        if label not in per_label:
+            per_label[label] = [0.0, 0, idx]
+        occ = parse_occupancy(line)
+        if occ is not None:
+            per_label[label][0] = float(per_label[label][0]) + occ
+            per_label[label][1] = int(per_label[label][1]) + 1
+
+    selected_labels: Dict[Tuple[str, str, str, str, str], str] = {}
+    for residue, per_label in label_stats.items():
+        def score(item: Tuple[str, List[float | int]]) -> Tuple[float, int]:
+            _label, (occ_sum, occ_count, first_idx) = item
+            mean_occ = (
+                float(occ_sum) / int(occ_count)
+                if int(occ_count) > 0
+                else float("-inf")
+            )
+            return mean_occ, -int(first_idx)
+
+        selected_labels[residue] = max(per_label.items(), key=score)[0]
+
+    # atom key -> (occupancy for comparison, line index, serial field)
     best: Dict[Tuple[str, str, str, str, str, str, str], Tuple[float, int, str]] = {}
 
     for idx, line in enumerate(lines):
         if line.startswith(COORD_RECORDS):
+            label = altloc_label(line)
+            selected = selected_labels.get(residue_identity_key(line))
+            if label and label != selected:
+                continue
             key = atom_identity_key(line)
             occ = parse_occupancy(line)
             occ_val = occ if occ is not None else float("-inf")
@@ -163,7 +216,8 @@ def process_block(lines: List[str]) -> List[str]:
                 best[key] = (occ_val, idx, serial)
             else:
                 best_occ, best_idx, _best_serial = best[key]
-                # Prefer higher occupancy; if tied, prefer earlier line (smaller idx)
+                # Resolve malformed duplicate records after coherent label
+                # selection. Prefer higher occupancy, then earliest line.
                 if (occ_val > best_occ) or (occ_val == best_occ and idx < best_idx):
                     best[key] = (occ_val, idx, serial)
 
@@ -410,8 +464,8 @@ def _run_fix_altloc(
 @click.command(
     name="fix-altloc",
     help=(
-        "Blank PDB altLoc column (col 17) without shifting, and keep one altLoc "
-        "per atom using the default rule: highest occupancy, then earliest appearance."
+        "Blank PDB altLoc column (col 17) without shifting, and select one "
+        "coherent label per residue by highest mean occupancy, then earliest appearance."
     ),
     context_settings={"help_option_names": ["-h", "--help"]},
 )

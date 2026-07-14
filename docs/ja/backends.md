@@ -46,7 +46,7 @@ ase_calc = create_ase_calculator(backend="uma", model="uma-s-1p2", device="cuda"
 |---------|---------|------------------|------------------|
 | `uma` | `pip install fairchem-core` + HF auth | `uma-s-1p2` / `uma-s-1p1` | `precision="fp32" \| "fp64"` |
 | `orb` | `pip install orb-models` | `orb_v3_conservative_omol` | `precision="float32-high" \|...` |
-| `mace` | `pip install 'mace-torch>=0.3.8'`（`fairchem-core` と共存可。`mace-torch < 0.3.8` のみ古い `e3nn` の pin により専用 env が必要: `pip uninstall -y fairchem-core`） | `MACE-OMOL-0` | `default_dtype="float64"` |
+| `mace` | 専用 conda env で pdb2reaction を入れた後、`pip uninstall -y fairchem-core && pip install 'mace-torch>=0.3.8'`（現行版どうしも `e3nn` 要件が競合） | `MACE-OMOL-0` | `default_dtype="float64"` |
 | `aimnet2` | `pip install aimnet` | `aimnet2` | n/a |
 
 ### 精度（precision）
@@ -110,10 +110,12 @@ def get_calculator(charge=0, spin=1, device="auto", **kwargs):
 など。このファイルを単一ステージのサブコマンドに渡すと、`custom` バックエンドが
 選択され `--backend` を上書きします:
 
-    pdb2reaction sp     -i model.xyz --calc-file my_calc.py -q 0 -m 1
-    pdb2reaction opt    -i model.xyz --calc-file my_calc.py
-    pdb2reaction tsopt  -i ts.xyz    --calc-file my_calc.py
-    pdb2reaction freq   -i ts.xyz    --calc-file my_calc.py
+```bash
+pdb2reaction sp     -i model.xyz --calc-file my_calc.py -q 0 -m 1
+pdb2reaction opt    -i model.xyz --calc-file my_calc.py -q 0 -m 1
+pdb2reaction tsopt  -i ts.xyz    --calc-file my_calc.py -q 0 -m 1
+pdb2reaction freq   -i ts.xyz    --calc-file my_calc.py -q 0 -m 1
+```
 
 補足:
 

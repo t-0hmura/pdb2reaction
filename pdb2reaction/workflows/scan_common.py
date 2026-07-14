@@ -44,7 +44,7 @@ def add_scan_common_options(
             required=False,
             help=(
                 "Total charge. Required for non-.gjf inputs unless --ligand-charge is provided "
-                "(PDB inputs or XYZ/GJF with --ref-pdb)."
+                "(PDB/mmCIF inputs or XYZ/GJF with --ref-pdb)."
             ),
         ),
         click.option(
@@ -70,7 +70,7 @@ def add_scan_common_options(
             show_default=False,
             help=(
                 "Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) used to derive charge "
-                "when -q is omitted (requires PDB input or --ref-pdb)."
+                "when -q is omitted (requires PDB/mmCIF input or --ref-pdb)."
             ),
         ),
         click.option(
@@ -129,7 +129,7 @@ def add_scan_common_options(
             "freeze_links",
             default=freeze_links_default,
             show_default=True,
-            help="Freeze parent atoms of cap hydrogens (PDB input or XYZ/GJF with --ref-pdb).",
+            help="Freeze parent atoms of cap hydrogens (PDB/mmCIF input or XYZ/GJF with --ref-pdb).",
         ),
         click.option(
             "--freeze-atoms",
@@ -151,13 +151,13 @@ def add_scan_common_options(
             "convert_files",
             default=convert_files_default,
             show_default=True,
-            help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
+            help="Convert XYZ/TRJ outputs into PDB/CIF/GJF companions based on the input topology/template.",
         ),
         click.option(
             "--ref-pdb",
             type=click.Path(path_type=Path, exists=True, dir_okay=False),
             default=None,
-            help="Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
+            help="Reference PDB/mmCIF topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
         ),
         click.option(
             "-o",

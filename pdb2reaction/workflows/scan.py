@@ -185,7 +185,7 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help="Input structure file (.pdb, .xyz, _trj.xyz, ...).",
+    help="Input structure file (.pdb, .cif, .mmcif, .xyz, _trj.xyz, ...).",
 )
 @click.option(
     "-s", "--scan-lists",
@@ -194,6 +194,7 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
     multiple=True,
     required=False,
     help="Scan targets: inline Python literal (e.g. '[(1,5,1.4)]') or a YAML/JSON spec file path. "
+         "Atom strings accept positional CHAIN:RESNAME:RESSEQ[ICODE]:ATOM. "
          "Multiple inline literals define sequential stages.",
 )
 @add_scan_common_options(
@@ -201,8 +202,8 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
     workers_per_node_default=UMA_CALC_KW["workers_per_node"],
     out_dir_default=OUT_DIR_SCAN,
     baseline_help="(unused)",
-    dump_help="Write per-step optimizer trajectory files. "
-              "scan_trj.xyz and scan.pdb are always written to out-dir regardless of this flag.",
+    dump_help="Write per-step optimizer trajectory files. scan_trj.xyz is always written; "
+              "PDB/CIF companions additionally require conversion topology.",
     max_step_help="Maximum change in any scanned bond length per step [Å].",
     thresh_default=None,
     include_baseline=False,
@@ -284,13 +285,21 @@ def cli(
     precision: Optional[str],
     backend_model: Optional[str],
     calc_file: Optional[str],
-    calc_factory: str,
+    calc_factory: Optional[str],
 ) -> None:
     set_convert_file_enabled(convert_files)
     config_yaml, override_yaml, _ = resolve_yaml_sources(
         config_yaml=config_yaml,
         override_yaml=None,
         args_yaml_legacy=None,
+    )
+    merged_yaml_cfg = load_merged_yaml_cfg(
+        config_yaml=config_yaml,
+        override_yaml=None,
+    )
+    from pdb2reaction.core.utils import resolve_configured_charge_spin
+    charge, spin = resolve_configured_charge_spin(
+        merged_yaml_cfg, charge=charge, spin=spin, ligand_charge=ligand_charge,
     )
 
     cycles_overridden = cli_param_overridden(ctx, "relax_max_cycles")
@@ -335,10 +344,7 @@ def cli(
 
         def _run() -> None:
 
-            yaml_cfg = load_merged_yaml_cfg(
-                config_yaml=config_yaml,
-                override_yaml=None,
-            )
+            yaml_cfg = merged_yaml_cfg
             yaml_opt = yaml_cfg.get("opt") if isinstance(yaml_cfg, dict) else None
             relax_override_requested = cycles_overridden and not (
                 isinstance(yaml_opt, dict) and "max_cycles" in yaml_opt
@@ -549,7 +555,7 @@ def cli(
                         err=True,
                     )
 
-            # Build UMA calculator (only uma_pysis is supported)
+            # Build the configured MLIP calculator.
             base_calc = create_calculator(**calc_cfg)
             echo_resolved_device()
 
@@ -573,7 +579,7 @@ def cli(
                 try:
                     optimizer0.run()
                 except ZeroStepLength:
-                    click.echo(f"[preopt] ZeroStepLength — continuing.")
+                    click.echo("[preopt] ZeroStepLength — continuing.")
                 except OptimizationError as e:
                     click.echo(f"[preopt] OptimizationError — {e}")
 
@@ -915,7 +921,7 @@ def cli(
                         "scan_trj_xyz": "scan_trj.xyz",
                     },
                 }
-                for ext in (".pdb",):
+                for ext in (".pdb", ".cif"):
                     f = out_dir_path / f"scan{ext}"
                     if f.exists():
                         result_data["files"][f"scan_{ext[1:]}"] = f.name

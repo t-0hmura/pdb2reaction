@@ -33,7 +33,10 @@ During this release, **only annotation edits are allowed** on this directory:
 - any new external dependency
 - any rename of public symbols (would break `pdb2reaction/workflows/freq.py` callers)
 
-Logic edits to `QCData.py` would only be justified to track an upstream improvement; they must be explicitly requested via a `[CHEMISTRY-RULE]` commit and verified against the existing thermochemistry golden tests.
+Logic edits to `QCData.py` require a demonstrated I/O or numerical need and
+verification against the thermochemistry golden tests. Use a
+`[CHEMISTRY-RULE:N]` prefix only if a marked chemistry rule is actually
+changed; the bundled-fork location alone does not imply that prefix.
 
 ## Upstream compatibility
 
@@ -42,5 +45,5 @@ If you `pip install thermoanalysis` into the same environment as `pdb2reaction`,
 ## See also
 
 - [`../docs/architecture.md`](../docs/architecture.md) §5.3, §6 — repo-internal fork policy
-- [`../CONTRIBUTING.md`](../CONTRIBUTING.md) §4.3 — Divergent files in bundled forks (4 files)
+- [`../CONTRIBUTING.md`](../CONTRIBUTING.md) §4.3 — validation policy for logic edits in bundled forks
 - `THIRD_PARTY_NOTICES.txt` — thermoanalysis upstream attribution

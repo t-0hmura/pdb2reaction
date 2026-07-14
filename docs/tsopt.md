@@ -6,7 +6,7 @@ Pick the optimizer with `--opt-mode`. For most systems, `--opt-mode hess` is rec
 
 After convergence, `tsopt` performs a final Hessian calculation and imaginary-frequency check automatically — a validated TS should show **exactly one** imaginary frequency. A separate [`freq`](freq.md) run is only needed for full vibrational analysis or thermochemistry. Always confirm endpoint connectivity with [`irc`](irc.md).
 
-If you need a TS guess first, run [`path-opt`](path-opt.md) (two structures) or [`path-search`](path-search.md) (two or more structures), then optimize the HEI with `tsopt` → `irc`. For XYZ / GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping the XYZ coordinates, enabling format-aware PDB / GJF output conversion.
+If you need a TS guess first, run [`path-opt`](path-opt.md) (two structures) or [`path-search`](path-search.md) (two or more structures), then optimize the HEI with `tsopt` → `irc`. For XYZ / GJF inputs, `--ref-pdb` supplies a reference PDB/mmCIF topology while keeping the XYZ coordinates, enabling format-aware PDB / CIF / GJF companion output.
 
 `--ref-mode` is an advanced/internal handoff, not a normal requirement for
 standalone `tsopt`. The `all` workflow supplies it automatically from the MEP
@@ -34,10 +34,11 @@ physical mode crosses negative even when the quasi-Newton model lags behind.
 Exact validation matches that authoritative mode
 against all physical normal modes; a different imaginary mode cannot substitute
 for the tracked mode if it has become positive. Persistent higher-order candidates stop after three exact
-terminal checks and automatically flatten the non-path negative modes for up
-to twenty retries. Because individual eigenvectors can exchange identity inside
-a multi-negative subspace, each higher-order exact check re-anchors the mode to
-retain against the immutable MEP tangent before flattening; after the first
+terminal checks. When `--flatten` is explicitly enabled, the subsequent cleanup
+removes non-path negative modes within the configured iteration budget. Because
+individual eigenvectors can exchange identity inside a multi-negative subspace,
+each higher-order exact check re-anchors the mode to retain against the immutable
+MEP tangent before flattening; after the first
 physical crossing, order-zero and first-order checks use overlap transport so
 genuine mode rotation is preserved. A retry keeps the standard three-check exact window so the retained
 saddle direction can be re-established after the orthogonal displacement.
@@ -110,14 +111,14 @@ Add `--dump` to keep the full optimization trajectory for inspection.
 - **Charge / spin** are resolved via the standard priority chain (see {ref}`CLI Conventions: Charge specification <charge-specification>`).
 - **Geometry loading + freeze-links** — structures are read through `pysisyphus.helpers.geom_loader`. When `--freeze-links` is active, cap-hydrogen parent atoms are automatically frozen (see {ref}`Cap hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
 - **MLIP Hessians** (default UMA) — `--hessian-calc-mode` toggles analytical vs finite-difference; both honour active (PHVA) subspaces. The MLIP backend may return only the active block when frozen atoms are present. See {ref}`hessian-evaluation` for the full Hessian-evaluation matrix.
-- **Dimer mode** — the Hessian-Guided Dimer stage periodically refreshes the dimer direction by evaluating an exact Hessian (active subspace, projected to remove translation/rotation, i.e. TR-projected). The lowest eigenpair uses `torch.lobpcg` when `root == 0`, falling back to `torch.linalg.eigh`. With `--flatten`, the active Hessian is updated via a Bofill update (an SR1/MS ↔ PSB blend; toggle via `hessian_dimer.flatten_loop_bofill`) using displacements Δx and gradient differences Δg. Each flatten loop:
+- **Dimer mode** — the Hessian-Guided Dimer stage periodically refreshes the dimer direction by evaluating an exact Hessian in the active subspace. Its `--tr-projection` treatment defaults to `constrained`, which removes only full-system rigid motions compatible with frozen anchors. The lowest eigenpair uses `torch.lobpcg` when `root == 0`, falling back to `torch.linalg.eigh`. With `--flatten`, the active Hessian is updated via a Bofill update (an SR1/MS ↔ PSB blend; toggle via `hessian_dimer.flatten_loop_bofill`) using displacements Δx and gradient differences Δg. Each flatten loop:
   - estimates imaginary modes, flattens once, and refreshes the dimer direction;
   - runs a Dimer + L-BFGS micro-segment;
   - optionally performs a Bofill update.
 
   Once only one imaginary mode remains, a final exact Hessian is computed for frequency analysis. If `root != 0`, that root seeds only the initial dimer direction; subsequent refreshes follow the most negative mode (`root = 0`).
 - **RS-I-RFO mode** — runs the RS-I-RFO optimizer with optional Hessian reference files, R+S splitting safeguards, and micro-cycle controls defined in the `rsirfo` YAML section. With `--flatten`, when more than one imaginary mode remains after convergence the workflow flattens extra modes and reruns RS-I-RFO until only one imaginary mode remains or the flatten-iteration cap is reached.
-- **Mode export + conversion** — all detected imaginary modes are written to `vib/imag_*_trj.xyz` and mirrored to `.pdb` when the input was PDB and conversion is enabled. The optimization trajectory and final geometry are also converted to PDB via the input template when `--dump`; Gaussian templates receive a `.gjf` companion for the final geometry only.
+- **Mode export + conversion** — all detected imaginary modes are written to `vib/imag_*_trj.xyz`. With conversion enabled, PDB inputs receive `.pdb` companions and mmCIF/oversized-PDB bridge inputs receive `.pdb` plus `.cif`; Gaussian templates receive a `.gjf` companion for the final geometry only.
 
 ## Outputs
 
@@ -126,15 +127,19 @@ Validate a run by opening `final_geometry.*` (the optimized saddle point) and th
 ```text
 out_dir/   (default: ./result_tsopt/)
 ├─ final_geometry.xyz              # Always written
-├─ final_geometry.pdb              # When the input was PDB (conversion enabled)
+├─ final_geometry.pdb              # PDB/mmCIF topology input (conversion enabled)
+├─ final_geometry.cif              # mmCIF/oversized-PDB bridge input
 ├─ final_geometry.gjf              # When the input was Gaussian (conversion enabled)
 ├─ optimization_all_trj.xyz        # Dimer-mode dump (--dump)
-├─ optimization_all.pdb            # Dimer-mode PDB companion (--dump, PDB input)
+├─ optimization_all.pdb            # Dimer-mode PDB companion (--dump, topology input)
+├─ optimization_all.cif            # Bridge-input companion with original IDs
 ├─ optimization_trj.xyz            # RSIRFO-mode trajectory (--dump)
-├─ optimization.pdb                # RSIRFO-mode PDB companion (--dump)
+├─ optimization.pdb                # RFO-mode PDB companion (--dump)
+├─ optimization.cif                # Bridge-input companion with original IDs
 ├─ vib/
 │  ├─ imag_±XXXX.Xcm-1_trj.xyz
-│  └─ imag_±XXXX.Xcm-1.pdb
+│  ├─ imag_±XXXX.Xcm-1.pdb
+│  └─ imag_±XXXX.Xcm-1.cif         # Bridge input
 └─ .dimer_mode.dat                 # Dimer-mode orientation seed
 ```
 
@@ -159,32 +164,33 @@ The tables below cover the options that need explanation. The full flag list is 
 | Option | Description | Default |
 | --- | --- | --- |
 | **Input & charge** | | |
-| `-i, --input PATH` | Structure file accepted by `geom_loader` (`.pdb` / `.xyz` / `.gjf` / `.trj`). | Required |
-| `-q, --charge INT` | Net charge. Required unless a `.gjf` template or `--ligand-charge/-l` (PDB inputs or XYZ / GJF with `--ref-pdb`) supplies it. Overrides `--ligand-charge/-l` when both are set. | Required unless template / derivation applies |
-| `-l, --ligand-charge TEXT` | Either a scalar integer (e.g. `-1`) for the total ligand charge, or a per-residue mapping (e.g. `GPP:-3,SAM:1`) that derives the total from PDB residue charges. Used when `-q` is omitted. | _None_ |
+| `-i, --input PATH` | Structure file accepted by the input bridge (`.pdb` / `.cif` / `.mmcif` / `.xyz` / `.gjf` / `.trj`). | Required |
+| `-q, --charge INT` | Net charge. Required unless a `.gjf` template or `--ligand-charge/-l` (PDB/mmCIF inputs or XYZ / GJF with `--ref-pdb`) supplies it. Overrides `--ligand-charge/-l` when both are set. | Required unless template / derivation applies |
+| `-l, --ligand-charge TEXT` | Either a scalar integer (e.g. `-1`) for the total ligand charge, or a per-residue mapping (e.g. `GPP:-3,SAM:1`) that derives the total from PDB/mmCIF residue metadata. Used when `-q` is omitted. | _None_ |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--ref-pdb FILE` | Reference PDB topology when the input is XYZ / GJF (keeps XYZ coordinates). | _None_ |
 | **Backend & compute** | | |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
-| `--workers INT`, `--workers-per-node INT` | UMA predictor parallelism. `workers > 1` cannot be combined with an explicit analytical Hessian request; use `workers = 1` or finite differences. See {ref}`workers-fd-downgrade`. | `1`, `1` |
+| `--workers INT`, `--workers-per-node INT` | UMA predictor parallelism. `workers > 1` cannot be combined with an explicit analytical Hessian request; use `workers = 1` or finite differences. See {ref}`workers-analytical-error`. | `1`, `1` |
 | `--hessian-calc-mode CHOICE` | MLIP Hessian mode (`Analytical` or `FiniteDifference`). | `FiniteDifference` |
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 | **Active-region freezing** | | |
 | `--freeze-links / --no-freeze-links` | PDB input (or XYZ/GJF with `--ref-pdb`). Freeze parents of cap hydrogens (merged into `geom.freeze_atoms`). | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g. `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
+| `--tr-projection [constrained\|legacy-active]` | Rigid-mode treatment for Dimer orientation, flattening, and exact PHVA validation. `constrained` respects frozen anchors; `legacy-active` is an isolated-active comparison treatment. This is unrelated to `--ref-mode`. | `constrained` |
 | **TS optimizer & mode** | | |
 | `--opt-mode TEXT` | TS optimizer preset (Choice: `grad` / `hess` / `dimer` / `rsirfo` / `trim` / `rsprfo`). `grad` and `dimer` → Hessian-Guided Dimer; `hess` and `rsprfo` → RS-P-RFO (Banerjee, default, non-microiter); `rsirfo` → RS-I-RFO; `trim` → TRIM (Helgaker, non-microiter). On `opt`, the same `grad` token picks L-BFGS minimization instead — see {ref}`opt-mode-semantics`. | `hess` |
 | `--ref-mode PATH` | Advanced/internal MEP handoff containing a Cartesian 3N direction as whitespace text or `.npy`. `all` supplies it automatically; ordinary standalone runs omit it. Expert use covers external-path root selection, overlap tracking, and `n_imag=0` recovery. | _None_ |
-| `--flatten / --no-flatten` | Enable general surplus-imaginary-mode flattening. After TS optimization, iteratively flattens surplus negative-eigenvalue modes until only one imaginary frequency remains (or the iteration cap is reached). Applies to both Dimer (dimer loop) and RS-P-RFO / RS-I-RFO (post-convergence). A Hessian run with `--ref-mode` also enables a bounded twenty-retry cleanup automatically, because the reference identifies which negative mode must be retained. | `False` |
-| `--coord-type TEXT` | Optimization coordinate system (`cart` / `redund` / `dlc` / `tric`). `cart` is the default behind the published numbers; `dlc` (delocalized internal coordinates) is slower but converges more robustly to a clean first-order saddle on torsion-rich systems. Needs a Hessian-based optimizer (`tsopt` RS-P-RFO / Dimer qualify); `path-opt` / `path-search` accept only `cart` / `dlc`. | `cart` |
-| `--precision [fp32\|fp64]` | MLIP backend precision, routed to the backend-native kwarg (UMA `precision` / ORB `precision` / MACE `default_dtype`; `aimnet2`: `fp32` no-op, `fp64` rejected). On datacenter GPUs use `fp64` for low numerical-noise Hessians; see [Reproducibility](reproducibility.md#choosing-precision-by-gpu-class). | per backend (uma `fp32`; orb, mace `fp64`) |
+| `--flatten / --no-flatten` | Enable general surplus-imaginary-mode flattening. After TS optimization, iteratively flattens surplus negative-eigenvalue modes until only one imaginary frequency remains (or the iteration cap is reached). Applies to both Dimer (dimer loop) and RS-P-RFO / RS-I-RFO (post-convergence). `--ref-mode` identifies which negative mode must be retained but does not enable flattening by itself. | `False` |
+| `--coord-type TEXT` | Optimization coordinate system (`cart` / `redund` / `dlc` / `tric`). `cart` is the default behind the published numbers. `dlc` changes the conditioning, but neither representation is uniformly faster or more reliable; compare them on the problematic seed. Hessian-based `tsopt` modes support all four, while `path-opt` / `path-search` accept only `cart` / `dlc`. | `cart` |
+| `--precision [fp32\|fp64]` | MLIP backend precision, routed to the backend-native kwarg (UMA `precision` / ORB `precision` / MACE `default_dtype`; `aimnet2`: `fp32` no-op, `fp64` rejected). Use `fp64` for low numerical-noise Hessians where the backend supports it; see [Reproducibility](reproducibility.md#choosing-precision-by-backend-and-purpose). | per backend (uma `fp32`; orb, mace `fp64`) |
 | **Thresholds & cycles** | | |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
 | `--max-cycles INT` | Macro-cycle cap forwarded to `opt.max_cycles`. | `10000` |
 | **Output & config** | | |
 | `-o, --out-dir TEXT` | Output directory. | `./result_tsopt/` |
-| `--convert-files / --no-convert-files` | Toggle XYZ / TRJ → PDB / GJF companions for PDB or Gaussian inputs. | `True` |
+| `--convert-files / --no-convert-files` | Toggle XYZ/TRJ → PDB/CIF/GJF companions according to the input topology/template. | `True` |
 | `--dump / --no-dump` | Dump trajectories. | `False` |
 | `--out-json / --no-out-json` | Write a machine-readable `result.json` to `out_dir`. Schema: [JSON Output Schema](json-output.md). | `False` |
 | `--config FILE` | Base YAML configuration applied before explicit CLI options. | _None_ |
@@ -199,13 +205,14 @@ The tables below cover the options that need explanation. The full flag list is 
 
 - CLI `--flatten` **not** passed → `flatten_max_iter = 0` unless **explicitly set in YAML** via `hessian_dimer.flatten_max_iter` (the flatten counter is read only from the `hessian_dimer` block for both Dimer and RS-I-RFO paths). The `defaults.py` value of 50 is ignored.
 - CLI `--flatten` passed → the YAML / `defaults.py` value applies (default `flatten_max_iter = 50`); you can still override via YAML.
+- CLI `--no-flatten` passed → `flatten_max_iter = 0`, overriding YAML.
 
 If your TS candidate has multiple imaginary frequencies, add `--flatten` to enable the surplus-mode cleanup loop.
 
 If TS optimization still fails from a path HEI, there are two distinct retries:
 
 1. Add `--flatten` when the candidate retains surplus imaginary modes.
-2. In the `all` workflow, use `--refine-path True` to run recursive
+2. In the `all` workflow, use `--refine-path` to run recursive
    `path-search` and obtain a better-resolved HEI before TSOPT.
 
 The second retry is intentionally not the default: a poor or noisy path can be
@@ -220,8 +227,8 @@ A true first-order saddle has **exactly one** imaginary frequency, and its mode 
 
 | Lever | Flag | Effect |
 | --- | --- | --- |
-| Raise precision | `--precision fp64` | A cleaner Hessian removes numerical-noise imaginary modes (use on a datacenter GPU). |
-| Internal coordinates | `--coord-type dlc` | Delocalized internal coordinates — slower, but more robust convergence to a clean first-order saddle on torsion-rich systems. |
+| Raise precision | `--precision fp64` | Can reduce numerical-noise modes for UMA, ORB, and MACE; AIMNet2 rejects fp64. It does not remove genuine negative curvature. |
+| Internal coordinates | `--coord-type dlc` | Changes the optimization conditioning. Benchmark `cart` and `dlc` on the problematic seed because neither is uniformly faster or more reliable. |
 | Flatten small modes | `--flatten` | Runs an extra-imaginary-mode flattening loop (`grad`: dimer loop; `hess`: post-RS-P-RFO step); `--no-flatten` forces `flatten_max_iter = 0`. |
 
 Try `--precision fp64` and/or `--coord-type dlc` first, then add `--flatten` to clean up any residual small modes:
@@ -230,8 +237,6 @@ Try `--precision fp64` and/or `--coord-type dlc` first, then add `--flatten` to 
 pdb2reaction tsopt -i ts_candidate.xyz -q -1 -m 1 \
     --precision fp64 --coord-type dlc --flatten -o result_tsopt
 ```
-
-For example, a mutant chorismate-mutase TS converged to the dominant Claisen mode at −223 cm⁻¹ plus a residual −12.5 cm⁻¹; `--flatten` drives it to a clean single-imaginary saddle.
 
 See also [Common Error Recipes → Convergence and post-processing failures](recipes-common-errors.md).
 
@@ -247,15 +252,27 @@ This is a read-time interpretation, not a flag. Always confirm which endpoint th
 
 ### Controlled mutant-vs-WT comparison
 
-For a mutant-vs-WT (or mechanism-vs-mechanism) barrier comparison, **every compared model must use the identical atom set** — the same atom count and the same residues. Otherwise the comparison is not controlled and the barrier difference is not interpretable.
+Do not confuse the MEP input contract with a cross-variant comparison. Within
+each R→IM→P path, all structures must contain the same atoms in the same order.
+A real WT→mutant substitution may change residue identity and atom count, so
+raw total energies from WT and mutant must not be subtracted directly. Compare
+the activation energy or free energy computed within each system instead:
 
-`pdb2reaction` operates on a single pure-MLIP cluster atom set, so the same-atom-set rule is enforced by construction:
+`ΔΔG‡ = (G_TS − G_R)_mutant − (G_TS − G_R)_WT`.
 
-- Prepare **one** cluster atom set, then apply the mutation (or change the mechanism) **on that same set**, so the atom count and residues stay identical across every compared run. Edit the shared cluster in place — do **not** re-extract each variant independently, because a different `--radius` or residue inclusion silently changes the atom set and breaks the comparison.
-- Keep the non-standard ligand charge consistent across all compared runs with `-l 'RES:Q'` (e.g. `-l 'GPP:-3,SAM:1'`), so a charge difference never confounds the barrier comparison.
+- Match the selected residue **positions** and cluster-boundary/cap policy as
+  closely as chemically meaningful, with the intended mutation as the only
+  designed composition change. Audit independent radius-based extractions,
+  because a boundary residue can enter one cluster but not the other.
+- Keep protonation, charge-assignment convention, backend/model, precision,
+  constraints, and thermochemistry settings controlled. The verified total
+  charge itself may legitimately differ if the mutation changes protonation or
+  formal charge; do not force equal `-q` values to make the comparison look symmetric.
+- For two mechanisms of the **same composition**, use one common atom set and
+  ordering across the compared paths.
 
 ```bash
-# WT and mutant share one prepared cluster (identical atom count + residues)
+# Each path is internally atom-consistent; the two clusters use matched boundaries.
 pdb2reaction all -i wt_cluster.pdb     -l 'GPP:-3,SAM:1' --tsopt --thermo -o result_wt
 pdb2reaction all -i mutant_cluster.pdb -l 'GPP:-3,SAM:1' --tsopt --thermo -o result_mutant
 ```
@@ -271,7 +288,14 @@ opt:
 ```
 
 ```{note}
-**Energy-plateau fallback.** The RS-I-RFO optimizer honours the shared `energy_plateau` setting: if the energy range (max − min) over the last `energy_plateau_window` (default 50) steps falls below `energy_plateau_thresh` (default `1×10⁻⁴ au ≈ 0.06 kcal/mol`), the run is declared converged. This matters for large TS systems where the MLIP force noise floor (~4×10⁻⁴ au) exceeds the `baker` `max_force` threshold (3×10⁻⁴ au), making the force criterion unreachable even though the energy has plainly flattened. Set `energy_plateau: false` to disable.
+**Energy-plateau fallback.** Hessian-family TS optimizers (RS-P-RFO,
+RS-I-RFO, and TRIM) honour the shared `energy_plateau` setting. An energy
+range below `energy_plateau_thresh` (default `1×10⁻⁴ au` over the last 50
+steps) triggers exact-Hessian/PHVA terminal validation; it does not bypass the
+required first-order saddle and physical convergence checks. This can avoid
+wasted cycles when a backend/model/system-specific force floor prevents the
+selected force threshold from being reached. Set `energy_plateau: false` to
+disable the trigger.
 ```
 
 ### Dimer mode (`--opt-mode grad`)
@@ -307,7 +331,7 @@ Set `rsirfo.track_mode_by_overlap: true` if the TS mode switches root during opt
 - Imaginary-frequency **detection** threshold defaults to 5.0 cm⁻¹ (configurable via `hessian_dimer.neg_freq_thresh_cm`). Frequencies with magnitudes below this threshold are not counted as imaginary.
 - The selected `root` controls which vibrational mode is followed during optimization. It is set via YAML (`rsirfo.root` or `hessian_dimer.root`; default `0`); `tsopt` has no `--root` CLI flag, unlike [`irc`](irc.md).
 - Use `--opt-mode` to choose the algorithm directly (`rsprfo` by default) rather than editing YAML mode mappings.
-- Dimer mode applies translation / rotation projection (PHVA when frozen atoms are present) before the initial Hessian diagonalization, matching the `freq` implementation. RS-I-RFO mode operates directly on the active-DOF Cartesian Hessian without TR projection (frozen atoms remove the rigid-body symmetry).
+- Dimer orientation, flattening, and final exact PHVA validation use the same `--tr-projection` implementation as `freq`. Hessian RFO optimization itself operates on the active-DOF Cartesian Hessian without this projection. See [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries).
 - See {ref}`CLI Conventions: Configuration precedence <configuration-precedence>` for the full resolution order.
 
 ## See Also

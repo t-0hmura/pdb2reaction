@@ -34,3 +34,16 @@ def test_never_stop_ignores_energy_only_stops() -> None:
     assert _irc_stop_probe(
         never_stop=True, increased=False, converged=True
     )._energy_stop_message() == ""
+
+
+def test_directional_endpoint_energy_fields_keep_legacy_aliases() -> None:
+    from pdb2reaction.workflows.irc import _directional_endpoint_energy_fields
+
+    fields = _directional_endpoint_energy_fields([-10.0, -9.0, -11.0], -8.5)
+
+    assert fields["energy_first_hartree"] == -10.0
+    assert fields["energy_last_hartree"] == -11.0
+    assert fields["energy_ts_hartree"] == -8.5
+    assert fields["endpoint_energy_orientation"] == "finished_first_to_finished_last"
+    assert fields["energy_reactant_hartree"] == fields["energy_first_hartree"]
+    assert fields["energy_product_hartree"] == fields["energy_last_hartree"]

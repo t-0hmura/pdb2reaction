@@ -2,7 +2,10 @@
 
 ## 1. 概要
 
-`pdb2reaction` は、活性部位クラスターモデルに対して **純 MLIP による酵素反応経路解析** を実行する Python 製 CLI です。PDB と基質名を起点に、活性部位クラスターを切り出し、切断された結合をキャップ水素でキャップし、MLIP ポテンシャル上で RS-P-RFO TS 最適化による Hessian ベースの TS 探索を行い、反応経路を生成します（extract → MEP → tsopt → IRC → freq → dft）。
+`pdb2reaction` は、活性部位cluster modelに対して酵素反応経路解析を実行する
+Python CLIです。geometry/path stageには組み込みMLIPまたはcustom ASE calculatorを
+使用し、任意でPySCF/GPU4PySCF DFT一点計算を追加できます
+（extract → MEP → tsopt → IRC → freq → dft）。
 
 
 同梱された 2 つの fork（`pysisyphus/`、`thermoanalysis/`）は、リポジトリ最上位に repo 内部モジュールとして配置されています。これらは意図的に上流の PyPI 配布版では **ありません**。本パッケージと並べて PyPI から再インストールすると、ローカルの拡張が気づかないうちに動かなくなります。§6 を参照してください。
@@ -20,10 +23,10 @@
 | **L3 Domain** | `pdb2reaction/domain/` | 化学的に意味を持つヘルパーロジック（結合変化検出、結合サマリ、元素情報伝播） | `core/` |
 | **L4a Infra (MLIP)** | `pdb2reaction/backends/` | MLIP バックエンドディスパッチャ + バックエンドごとのアダプタ（UMA / Orb / MACE / AIMNet2）+ xTB ALPB デルタ補正 | `core/` |
 | **L4b Infra (I/O)** | `pdb2reaction/io/` | 出力レイアウト、サマリ、軌跡、PDB 修正、エネルギーダイアグラム、Hessian キャッシュ | `core/` |
-| **L5 Foundation** | `pdb2reaction/core/` | defaults（ソース）、utils（PDB / XYZ / plot ヘルパー）、logging、将来の `errors.py` / `types.py` | (none) |
+| **L5 Foundation** | `pdb2reaction/core/` | defaults（共有defaultの主要source）、utils（structure / coordinate / plot helper）、logging、将来の `errors.py` / `types.py` | (none、設計意図) |
 | (bundle, not a layer) | `<repo>/pysisyphus/`, `<repo>/thermoanalysis/` | repo 内部 fork（optimizer / thermochemistry） | (sibling, layer-external) |
 
-**依存方向（一方向）**: `L1 → L2 → {L3, L4} → L5`。この方向性ルールは CI のマーカーカバレッジ（`.github/scripts/check_engineering_markers.py`）で強制されます。同梱 fork は階層グラフの外側に位置し、絶対パッケージパス（`from pysisyphus.X import Y`）を介してどの階層からでも import できます。
+**依存方向（設計意図）**: `L1 → L2 → {L3, L4} → L5`。reviewで維持する意図であり、CIは隣接するmarker/import invariantを検査しますが、layer方向そのものを強制しません。現行back-edgeは `workflows/* → cli.common_options/cli.decorators`、`domain/add_elem_info.py → workflows.extract`、`core/utils.py → domain.add_elem_info/io.structure_formats/workflows.extract`、`io/structure_formats.py → domain.add_elem_info`、`io/trj2fig.py → backends` です。同梱forkはlayer graph外にあり、絶対package path（`from pysisyphus.X import Y`）で各layerからimportできます。
 
 ### 2.2 パッケージツリーの ASCII マップ
 
@@ -74,10 +77,11 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 │ │ ├── energy_diagram.py Plotly diagram
 │ │ ├── trj2fig.py trajectory → PNG / SVG / PDF / HTML / CSV
 │ │ ├── pdb_fix.py altloc resolution
+│ │ ├── structure_formats.py PDB/mmCIF bridge + identifier復元
 │ │ └── hessian_cache.py in-memory Hessian cache
 │ │
 │ └── core/ # === L5 Foundation ===
-│   ├── defaults.py C1 single source of truth for every default
+│   ├── defaults.py 共有defaultの主要source
 │   └── utils.py PDB / XYZ / plot helpers
 │
 ├── tests/ smoke / unit
@@ -89,17 +93,17 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 
 ### 2.3 階層ごとの責務詳細
 
-**L1 `cli/`**（約 6 ファイル）。Click コマンドを構築し argv をパースするのはこの階層だけです。`app.py` は root `Click.Group` と `_LAZY_SUBCOMMANDS` レジストリを保持します。各エントリは **絶対モジュールパス**（`pdb2reaction.workflows.all`, `pdb2reaction.io.trj2fig`, …）を使うため、リゾルバは `default_group.py` 自体の所在に依存しません。`common_options.py` はサブコマンド間で共有される option-decorator ファクトリ（`@add_print_every_option`, `@add_irc_pos_def_option`, `@add_precision_option`, `@add_coord_type_option`, `@add_ml_charge_spin_options`）を集約します。サブコマンド本体はこれらのデコレータを `@click.pass_context` の上に積み重ね、`--help` テキストの一貫性を保ちます。
+**L1 `cli/`** は root group、lazy registry、argv 正規化、段階的help、共有option-decoratorを所有します。実際の `@click.command()` とcommand固有optionは workflow／utility module側にもあります。rootはそれらを解決して呼び出します。`_LAZY_SUBCOMMANDS` の各entryは **絶対module path** を使います。
 
-**L2 `workflows/`**（18 ファイル）。サブコマンド 1 つにつき 1 ファイル。各ファイルは `cli` という名前の単一の `@click.command()` とそのプライベートヘルパーを所有します。大きなステージランナー（`all.py` = 5,131 LOC, `path_search.py` = 2,771 LOC, `tsopt.py` = 2,121 LOC, `extract.py` = 2,113 LOC）は、現在のレイアウトでは単一ファイルのまま残されています。
+**L2 `workflows/`** は計算command moduleに加え、`scan_common.py`、`restraints.py`、`align_freeze.py` などの共有stage helperを含みます。command moduleは通常 `cli` という `@click.command()` を1つ公開しますが、utility commandは `io/`／`domain/` にもあるため、「subcommandごとに必ず1file」「workflow fileはすべてcommand」という規則ではありません。
 
 **L3 `domain/`**。`torch` / `numpy` / `pysisyphus.constants`（数値バックエンド）を import してよい化学的に意味を持つヘルパーロジックですが、MLIP ランタイム（`fairchem`, `orb_models`, `mace`, `aimnet`）を import しては **いけません**。この MLIP 非依存は `.github/scripts/check_engineering_markers.py` がリポジトリ全体で強制します。なお `# DOMAIN_PURE` docstring マーカーはこれとは別のゲートで、backend 非依存を保つべき特定の **workflow モジュール**（`workflows/dft.py` / `workflows/tsopt.py` / `workflows/sp.py`）にのみ付与され、`domain/` のファイルには付きません。domain ヘルパーはどの L2 ステージランナーからでも再利用可能です。
 
-**L4a `backends/`**（約 8 ファイル）。MLIP バックエンドディスパッチャ（`__init__.py` + `base.py`）と、サポートする各 MLIP につき 1 つのアダプタ（`uma.py`, `orb.py`, `mace.py`, `aimnet2.py`）。`solvent.py` と `xtb_alpb_correction.py` は xTB ALPB 暗黙溶媒デルタ補正（オプトインの MLIP ラッパー）を担います。`pdb2reaction` は純 MLIP のクラスターモデル専用パッケージであり、すべてのバックエンドは MLIP 計算機として統一的に扱われます。
+**L4a `backends/`**。MLIP バックエンドディスパッチャ（`__init__.py` + `base.py`）と、サポートする各 MLIP につき1つのadapter（`uma.py`, `orb.py`, `mace.py`, `aimnet2.py`）があります。`solvent.py` と `xtb_alpb_correction.py` は xTB ALPB 暗黙溶媒delta補正を担います。
 
-**L4b `io/`**。出力側の I/O に関する事項: ステージごとのサマリライタ、エネルギーダイアグラム、軌跡レンダリング、PDB altloc 修正、インメモリ Hessian キャッシュ。`io/` は `workflows/` に依存しません。出力フォーマットはここが所有し、ステージランナーが消費します。
+**L4b `io/`**。出力側I/O: stage summary、energy diagram、trajectory render、PDB altloc修正、PDB/mmCIF bridge/template identifier復元、in-memory Hessian cache。output formatはここが所有しstage runnerが利用します。foundation外importは上記back-edge一覧を参照してください。
 
-**L5 `core/`**。最下層。`defaults.py` はすべての CLI デフォルトの **ソース** です。どこか他の場所に数値を追加する前に、まずここを grep してください。`utils.py` は PDB / XYZ / プロットヘルパーの約 3,200-LOC の寄せ集めです。
+**L5 `core/`** は最下層です。`defaults.py` は共有される数値／CLI defaultの **主要source** です。まずここをgrepし、path engine choiceなど正当なcommand-local defaultも確認します。`utils.py` は設定・構造・座標・plotの共有helperを含みます。
 
 ### 2.4 遅延 import の仕組み（概念図）
 
@@ -146,8 +150,8 @@ CLI サブコマンドリゾルバ（`cli/app.py:_LAZY_SUBCOMMANDS`）は **絶�
 |------|---------|------|-----------------|
 | 1 | 3 | [`README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/README.md) | 1 段落のエレベーターピッチ + 単一コマンド使用法 |
 | 2 | 5 | このファイル（`docs/architecture.md`）§2 + §4 | 6 階層のディレクトリツリー、依存方向、各関心事の所在 |
-| 3 | 5 | [`pdb2reaction/cli/app.py`](../../pdb2reaction/cli/app.py) | Click root group、`_LAZY_SUBCOMMANDS` レジストリ（≈ 18 エントリ）、絶対パス解決 |
-| 4 | 20 | [`pdb2reaction/workflows/all.py`](../../pdb2reaction/workflows/all.py)（5,131 LOC, 流し読み） | 1 つの完全なサブコマンドを上から下まで; `extract → MEP → tsopt → IRC → freq → dft` を追う |
+| 3 | 5 | [`pdb2reaction/cli/app.py`](../../pdb2reaction/cli/app.py) | Click root group、`_LAZY_SUBCOMMANDS` registry、絶対path解決 |
+| 4 | 20 | [`pdb2reaction/workflows/all.py`](../../pdb2reaction/workflows/all.py)（流し読み） | 1つの完全なsubcommandを上から下まで追う |
 | 5 | 7 | [`CONTRIBUTING.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/CONTRIBUTING.md) §3 + §4 | 5 つの add-a-X レシピ + 「触るな」という隠れた制約 |
 
 ステップ 5 の後は、§4 のファイル索引を辿ることで他のどのファイルでも読めます。本パッケージは意図的に **各階層内でフラット** です。`pdb2reaction/<layer>/` の下にネストしたパッケージは存在しないため、2 ディレクトリより深く辿る必要は決してありません。
@@ -220,7 +224,7 @@ add-a-backend レシピは [Backends](backends.md) を参照してください�
 
 | concern | file |
 |---|---|
-| **すべての CLI デフォルト（ソース）** | `pdb2reaction/core/defaults.py` |
+| **共有／数値default（主要source。command-local例外も確認）** | `pdb2reaction/core/defaults.py` |
 | PDB / XYZ / plot ヘルパー | `pdb2reaction/core/utils.py` |
 | `-v` / `-vv` logging 配線 | `pdb2reaction/core/logging.py` |
 
@@ -276,9 +280,9 @@ IRC / TSopt / Freq ステージは、CUDA メモリを解放するためにス�
 - `pysisyphus/_array.py` — `optimizers/hessian_updates.py`（および徐々に他のホットパスファイル）で使われる `get_xp` / `_outer` / `_dot` / `_eigh` shim
 - `thermoanalysis/QCData.py` — 上流との branding / I/O 差分
 
-### 5.4 `pyproject.toml` の配列は 0-diff
+### 5.4 パッケージ変更には隔離インストール検証が必要
 
-`[tool.setuptools.packages.find].include` と `dependencies` は、本リリース中は **0-diff 配列** として扱われます。`include` glob（`pdb2reaction*`）は新しい層サブパッケージをすでに自動探索します。`vendor/` や `internal/` のコンテナディレクトリを追加したり、新しいランタイム依存をピン留めしたりするとインストール契約が壊れ、リリーススコープで禁止されています。Reflow / コメント編集は問題ありません。**配列の内容** は凍結されています。
+`include` glob（`pdb2reaction*`）は新しい層サブパッケージを自動探索するため、通常の内部ファイル追加で package discovery を変える必要はありません。package discovery や runtime dependency を変更する場合は、sdist と wheel を作成し、wheel の内容を検査し、クリーン環境でインストールした後に CLI smoke test を実行してください。これは付随的な refactor ではなく release contract の変更です。
 
 ### 5.5 `_LAZY_SUBCOMMANDS` レジストリは絶対パスを使う必要がある
 

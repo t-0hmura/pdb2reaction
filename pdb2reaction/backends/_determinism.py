@@ -14,12 +14,12 @@ Design notes:
   The shim is applied before strict mode is turned on.
 - **Fail loud.** If the patch target is gone under a torch upgrade, or strict
   mode rejects an op with no deterministic kernel, raise — never silently
-  degrade to ``warn_only`` (that would claim determinism while leaving
-  non-deterministic kernels live).
-- **Cost.** Buys bit-identical GPU output across runs, at a throughput penalty
-  (deterministic scatter/reduce kernels are slower) and the fragility of a
-  runtime monkey-patch. Default OFF: default GPU runs carry ~1e-7 A
-  scatter/atomic drift that is chemically negligible.
+  degrade to ``warn_only``.
+- **Scope.** Requests same-software/hardware-stack determinism for operations
+  controlled by PyTorch. It cannot guarantee cross-version/cross-hardware
+  identity or control arbitrary third-party/custom kernels and calculators.
+- **Cost.** Deterministic scatter/reduce kernels may be slower, and the runtime
+  monkey-patch is version-sensitive. Default OFF.
 """
 from __future__ import annotations
 

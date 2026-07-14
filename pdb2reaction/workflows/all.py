@@ -1,60 +1,4 @@
-"""
-End-to-end enzymatic reaction workflow: extraction, MEP search, TS optimization, IRC, and post-processing.
-
-Example:
-    pdb2reaction all -i reactant.pdb product.pdb -c 'GPP,SAM' -l 'GPP:-3,SAM:1'
-
-For detailed documentation, see: docs/all.md
-
-Table of contents (top-level definitions; refresh manually after structural edits):
-    class _EchoState
-    def _echo
-    def _echo_section
-    def _copy_logged
-    def _run_cli_main
-    def _append_cli_arg
-    def _append_toggle_arg
-    def _resolve_override_dir
-    def _build_calc_cfg
-    def _parse_atom_key_from_line
-    def _key_variants
-    def _build_variant_occurrence_table
-    def _model_key_to_index
-    def _read_full_atom_keys_in_file_order
-    def _format_atom_key_for_msg
-    def _parse_scan_lists_literals
-    def _format_scan_stage
-    def _convert_scan_lists_to_model_indices
-    def _pdb_needs_elem_fix
-    def _set_yaml_freeze_atoms
-    def _get_freeze_atoms
-    def _freeze_atoms_for_log
-    def _write_args_yaml_with_freeze_atoms
-    def _read_summary
-    def _geom_from_angstrom
-    def _load_segment_endpoints
-    def _save_single_geom_as_pdb_for_tools
-    def _copy_structures_to_seg_dir
-    def _enrich_summary
-    def _json_safe
-    def _find_with_suffixes
-    def _ensure_hei_path_tangent
-    def _write_segment_energy_diagram
-    def _build_global_segment_labels
-    def _merge_irc_trajectories_to_single_plot
-    def _optimize_endpoint_geom
-    def _run_freq_for_state
-    def _read_imaginary_frequency
-    def _dft_succeeded
-    def _dft_energy_ha
-    def _run_dft_for_state
-    def _run_dft_sequence
-    def _run_tsopt_on_hei
-    def _irc_and_match
-    def _show_advanced_help
-    def _configure_all_help_visibility
-    def cli
-"""
+"""End-to-end extraction, reaction-path, TS, IRC, and analysis workflow."""
 
 from __future__ import annotations
 
@@ -97,6 +41,12 @@ from pdb2reaction.core.defaults import GEOM_KW_DEFAULT, OUT_DIR_ALL, SEGMENTS_DI
 DEFAULT_COORD_TYPE = GEOM_KW_DEFAULT["coord_type"]
 from pdb2reaction.io.trj2fig import run_trj2fig
 from pdb2reaction.io.summary import write_summary_log
+from pdb2reaction.io.structure_formats import (
+    coordinate_template_for,
+    register_coordinate_template,
+    register_output_template_and_write_cif,
+    unregister_coordinate_template,
+)
 from pdb2reaction.core.utils import (
     build_energy_diagram,
     collect_option_values,
@@ -246,6 +196,9 @@ def _copy_logged(src: Path, dst: Path, *, label: Optional[str] = None, echo: boo
     """Copy files with consistent warning messages; return success."""
     try:
         shutil.copy2(src, dst)
+        template = coordinate_template_for(src)
+        if template is not None:
+            register_coordinate_template(dst, template)
         if echo:
             shown = label or src.name
             _echo_detail(f"[all] Copied {shown} → {dst}")
@@ -265,6 +218,7 @@ def _move_logged(src: Path, dst: Path, *, label: Optional[str] = None, echo: boo
     """
     try:
         dst = Path(dst)
+        template = coordinate_template_for(src)
         dst.parent.mkdir(parents=True, exist_ok=True)
         # shutil.move treats an existing destination *directory* as a target to
         # move into; clear any existing destination *file* first so the result
@@ -272,6 +226,9 @@ def _move_logged(src: Path, dst: Path, *, label: Optional[str] = None, echo: boo
         if dst.is_file():
             dst.unlink()
         shutil.move(str(src), str(dst))
+        if template is not None:
+            register_coordinate_template(dst, template)
+            unregister_coordinate_template(src)
         if echo:
             shown = label or src.name
             _echo_detail(f"[all] Moved {shown} → {dst}")
@@ -592,7 +549,7 @@ def _convert_scan_lists_to_model_indices(
         raise click.BadParameter(
             f"--scan-lists #{stage_idx} tuple #{tuple_idx} ({side_label}) references atom index {idx_one_based} "
             f"(key {msg_key}) which is not present in the active site model after extraction. "
-            "Increase extraction coverage (e.g., --radius/--radius-het2het, --selected-resn, or set --exclude-backbone False), "
+            "Increase extraction coverage (e.g., --radius/--radius-het2het, --selected-resn, or set --no-exclude-backbone), "
             "or choose atoms that survive in the active site model."
         )
 
@@ -691,11 +648,13 @@ def _write_args_yaml_with_freeze_atoms(
     args_yaml: Optional[Path],
     freeze_atoms: Sequence[int],
     coord_type: Optional[str] = None,
+    tr_projection: Optional[str] = None,
     precision: Optional[str] = None,
     backend_model: Optional[str] = None,
 ) -> Optional[Path]:
     """
-    Write ``freeze_atoms`` and (optionally) ``coord_type`` / ``precision`` into a
+    Write ``freeze_atoms`` and (optionally) ``coord_type`` /
+    ``tr_projection`` / ``precision`` into a
     YAML config under ``geom`` / ``calc`` and produce a temporary YAML file.
     Returns the new YAML path, or the original ``args_yaml`` when nothing was
     provided.
@@ -710,7 +669,13 @@ def _write_args_yaml_with_freeze_atoms(
     without per-call argv plumbing. ``precision`` is propagated the same way
     via ``calc.precision`` so ``all --precision fp64`` reaches every child.
     """
-    if not freeze_atoms and coord_type is None and precision is None and backend_model is None:
+    if (
+        not freeze_atoms
+        and coord_type is None
+        and tr_projection is None
+        and precision is None
+        and backend_model is None
+    ):
         return args_yaml
 
     cfg = {} if args_yaml is None else load_yaml_dict(args_yaml)
@@ -729,6 +694,8 @@ def _write_args_yaml_with_freeze_atoms(
         geom_cfg["freeze_atoms"] = sorted(int(i) + 1 for i in freeze_atoms)
     if coord_type is not None:
         geom_cfg["coord_type"] = coord_type
+    if tr_projection is not None:
+        geom_cfg["tr_projection"] = tr_projection
     cfg["geom"] = geom_cfg
 
     if precision is not None or backend_model is not None:
@@ -890,10 +857,14 @@ def _copy_structures_to_seg_dir(
             continue
         dst_name = name_map.get(key, key.lower())
 
-        if input_suffix == ".pdb":
+        if input_suffix in {".pdb", ".cif", ".mmcif"}:
             src_pdb = src.with_suffix(".pdb")
             if src_pdb.exists():
-                shutil.copy2(src_pdb, seg_dir / f"{dst_name}.pdb")
+                dst_pdb = seg_dir / f"{dst_name}.pdb"
+                _copy_logged(src_pdb, dst_pdb, echo=False)
+                template = coordinate_template_for(src_pdb)
+                if template is not None:
+                    register_output_template_and_write_cif(dst_pdb, template)
             else:
                 shutil.copy2(src, seg_dir / f"{dst_name}.xyz")
         elif input_suffix == ".gjf":
@@ -915,6 +886,86 @@ def _copy_structures_to_seg_dir(
             shutil.copy2(src, seg_dir / f"{dst_name}.xyz")
 
     return seg_dir
+
+
+def _derive_pipeline_status(
+    summary: dict,
+    *,
+    post_segments: Optional[list],
+    config: Optional[dict],
+) -> Tuple[str, List[str]]:
+    """Return the aggregate pipeline status and machine-readable reasons.
+
+    A usable MEP is the baseline for ``success``.  When the final
+    post-processing records are available, every requested optional stage must
+    also have produced its expected result, and a thermochemistry run must
+    confirm exactly one TS imaginary mode.  Optional-stage failures therefore
+    remain visible even when an earlier MLIP energy diagram exists.
+    """
+
+    segments = summary.get("segments") or []
+    has_diagrams = bool(summary.get("energy_diagrams"))
+    reasons: List[str] = []
+
+    if not segments and not has_diagrams:
+        return "failed", ["no usable path segments or energy diagrams were produced"]
+    if not has_diagrams:
+        reasons.append("no usable energy diagram was produced")
+
+    cfg = config or {}
+    requested = any(bool(cfg.get(name)) for name in ("tsopt", "thermo", "dft"))
+
+    # ``None`` means this is an intermediate summary written before the final
+    # per-segment records exist.  An explicit list, including an empty one,
+    # means post-processing is complete and can be validated.
+    if post_segments is not None and requested:
+        logs = [item for item in post_segments if isinstance(item, dict)]
+        if not logs:
+            reasons.append("requested post-processing produced no segment records")
+
+        for ordinal, item in enumerate(logs, start=1):
+            index = item.get("index", ordinal)
+            prefix = f"segment {index}"
+
+            if cfg.get("tsopt"):
+                if not isinstance(item.get("mlip"), dict):
+                    reasons.append(f"{prefix}: TSOPT/IRC refined MLIP energies are missing")
+                if not item.get("irc_traj"):
+                    reasons.append(f"{prefix}: IRC trajectory is missing")
+
+            if cfg.get("thermo"):
+                if not isinstance(item.get("gibbs_mlip"), dict):
+                    reasons.append(f"{prefix}: MLIP thermochemistry result is missing")
+                ts_imag = item.get("ts_imag")
+                if not isinstance(ts_imag, dict) or ts_imag.get("n_imag") is None:
+                    reasons.append(f"{prefix}: TS imaginary-mode validation is missing")
+                elif int(ts_imag["n_imag"]) != 1:
+                    reasons.append(
+                        f"{prefix}: TS imaginary-mode validation found "
+                        f"n_imag={int(ts_imag['n_imag'])}, expected 1"
+                    )
+
+            if cfg.get("dft"):
+                dft = item.get("dft")
+                if not isinstance(dft, dict):
+                    reasons.append(f"{prefix}: DFT result is missing")
+                elif dft.get("status") == "failed":
+                    failed_states = dft.get("failed_states") or []
+                    detail = f" ({', '.join(map(str, failed_states))})" if failed_states else ""
+                    reasons.append(f"{prefix}: DFT failed{detail}")
+
+                if cfg.get("thermo") and not isinstance(item.get("gibbs_dft_mlip"), dict):
+                    reasons.append(f"{prefix}: DFT//MLIP thermochemistry result is missing")
+
+    # The TS-only branch records the DFT aggregate before its post-segment
+    # payload is assembled.  Preserve that explicit failure signal in both the
+    # intermediate and final summary.
+    if cfg.get("dft") and cfg.get("dft_status") == "failed":
+        reasons.append("DFT failed for one or more TS-only states")
+
+    # De-duplicate while preserving diagnostic order.
+    reasons = list(dict.fromkeys(reasons))
+    return ("partial" if reasons else "success"), reasons
 
 
 def _enrich_summary(
@@ -941,41 +992,58 @@ def _enrich_summary(
     # Import through the package fallback: _version.py is generated only by a
     # build/install and is intentionally absent from a fresh source checkout.
     from pdb2reaction import __version__
+    from pdb2reaction.core.utils import RESULT_JSON_SCHEMA_VERSION
 
     segments = summary.get("segments", [])
     reactive = [s for s in segments if s.get("kind") != "bridge"]
     n_reactive = len(reactive)
 
-    # Determine status
-    has_diagrams = bool(summary.get("energy_diagrams"))
-    status = "success" if has_diagrams else ("partial" if segments else "failed")
+    status, status_reasons = _derive_pipeline_status(
+        summary,
+        post_segments=post_segments,
+        config=config,
+    )
 
-    # Rate-limiting step (highest barrier among reactive segments)
+    # Rate-limiting step (highest barrier among reactive segments). Select the
+    # highest-level method that covers every reactive segment; PNG creation and
+    # energy-diagram list order must not determine the scientific method.
     best_method = None
     rls = None
     if reactive:
-        for diag in reversed(summary.get("energy_diagrams", [])):
-            name = diag.get("name", "")
-            if "G_MLIP" in name and "all" in name:
-                best_method = "MLIP_Gibbs"
-                break
-            elif "MLIP" in name and "all" in name:
-                best_method = "MLIP"
-                break
-        if best_method is None:
-            best_method = "MEP"
-
-        # Prefer the refined TSOPT+IRC barrier (post_segments' uma/gibbs_uma) matching
-        # best_method; segments[*].barrier_kcal is only the un-refined MEP band and must
-        # NOT be reported under an MLIP/Gibbs label (the two can differ by several kcal/mol).
-        # An agent reading this field gets the TS/IRC-refined ΔE‡/ΔG‡, with the raw MEP
-        # value kept alongside as `mep_barrier_kcal` for transparency.
-        method_key = {"MLIP_Gibbs": "gibbs_uma", "MLIP": "uma"}.get(best_method)
         post_by_idx = {
             ps.get("index"): ps
             for ps in (post_segments or [])
             if isinstance(ps, dict)
         }
+        method_key = None
+        for candidate_method, candidate_key in (
+            ("DFT//MLIP_Gibbs", "gibbs_dft_mlip"),
+            ("DFT", "dft"),
+            ("MLIP_Gibbs", "gibbs_mlip"),
+            ("MLIP", "mlip"),
+        ):
+            covered = True
+            for segment in reactive:
+                block = (post_by_idx.get(segment.get("index")) or {}).get(candidate_key)
+                barrier = block.get("barrier_kcal") if isinstance(block, dict) else None
+                try:
+                    covered = barrier is not None and bool(np.isfinite(float(barrier)))
+                except (TypeError, ValueError):
+                    covered = False
+                if not covered:
+                    break
+            if covered:
+                best_method = candidate_method
+                method_key = candidate_key
+                break
+        if best_method is None:
+            best_method = "MEP"
+
+        # Prefer the refined TSOPT+IRC barrier (post_segments' mlip/gibbs_mlip) matching
+        # best_method; segments[*].barrier_kcal is only the un-refined MEP band and must
+        # NOT be reported under an MLIP/Gibbs label (the two can differ by several kcal/mol).
+        # An agent reading this field gets the TS/IRC-refined ΔE‡/ΔG‡, with the raw MEP
+        # value kept alongside as `mep_barrier_kcal` for transparency.
         max_barrier = -1e9
         for s in reactive:
             idx = s.get("index")
@@ -999,18 +1067,51 @@ def _enrich_summary(
 
     # Overall reaction energy from the best all-segment diagram
     overall_rxn_e = None
-    for diag in reversed(summary.get("energy_diagrams", [])):
-        name = diag.get("name", "")
-        if "all" in name:
-            energies = diag.get("energies_kcal", [])
-            if len(energies) >= 2:
-                overall_rxn_e = round(energies[-1] - energies[0], 2)
+    overall_rxn_method = None
+    diagrams_by_name = {
+        str(diag.get("name", "")): diag
+        for diag in summary.get("energy_diagrams", [])
+        if isinstance(diag, dict)
+    }
+    method_rank = {
+        "MEP": 0,
+        "MLIP": 1,
+        "MLIP_Gibbs": 2,
+        "DFT": 3,
+        "DFT//MLIP_Gibbs": 4,
+    }
+    max_overall_rank = method_rank.get(best_method or "MEP", 0)
+    for diagram_name, method in (
+        ("energy_diagram_G_DFT_plus_MLIP_all", "DFT//MLIP_Gibbs"),
+        ("energy_diagram_DFT_all", "DFT"),
+        ("energy_diagram_G_MLIP_all", "MLIP_Gibbs"),
+        ("energy_diagram_MLIP_all", "MLIP"),
+        ("energy_diagram_MEP", "MEP"),
+        ("MEP", "MEP"),
+    ):
+        if method_rank[method] > max_overall_rank:
+            continue
+        diag = diagrams_by_name.get(diagram_name)
+        energies = diag.get("energies_kcal", []) if diag else []
+        if len(energies) >= 2:
+            try:
+                first, last = float(energies[0]), float(energies[-1])
+            except (TypeError, ValueError):
+                continue
+            if np.isfinite(first) and np.isfinite(last):
+                overall_rxn_e = round(last - first, 2)
+                overall_rxn_method = method
                 break
 
     # Core metadata
     summary["pdb2reaction_version"] = __version__
+    summary["schema_version"] = RESULT_JSON_SCHEMA_VERSION
     summary["pipeline_mode"] = pipeline_mode
     summary["status"] = status
+    if status_reasons:
+        summary["status_reasons"] = status_reasons
+    else:
+        summary.pop("status_reasons", None)
     summary["mlip_backend"] = mlip_backend
     summary["mlip_model"] = mlip_model
     summary["charge"] = charge
@@ -1020,6 +1121,7 @@ def _enrich_summary(
         summary["rate_limiting_step"] = rls
     if overall_rxn_e is not None:
         summary["overall_reaction_energy_kcal"] = overall_rxn_e
+        summary["overall_reaction_energy_method"] = overall_rxn_method
     if command:
         summary["command"] = command
 
@@ -1029,9 +1131,8 @@ def _enrich_summary(
     if freeze_atoms:
         summary["freeze_atoms"] = freeze_atoms
 
-    # Per-segment post-processing results. Legacy UMA-named machine keys are
-    # retained for Supporting Data compatibility; provenance lives in the
-    # top-level mlip_backend/mlip_model fields.
+    # Per-segment post-processing results use backend-neutral machine keys;
+    # concrete provenance lives in top-level mlip_backend/mlip_model fields.
     if post_segments:
         summary["post_segments"] = _json_safe(post_segments)
 
@@ -1186,10 +1287,14 @@ def _write_segment_energy_diagram(
     if title_note:
         fig.update_layout(title=title_note)
     png = prefix.with_suffix(".png")
+    image_written = False
+    image_error: Optional[str] = None
     try:
         fig.write_image(str(png), scale=2)
+        image_written = True
         _echo(f"[diagram] Wrote energy diagram → {png.name}")
     except Exception as e:
+        image_error = str(e)
         _echo(f"[diagram] WARNING: Failed to write energy diagram {png.name}: {e}", err=True)
 
     payload: Dict[str, Any] = {
@@ -1201,7 +1306,10 @@ def _write_segment_energy_diagram(
     if title_note:
         payload["title"] = title_note
     payload["energies_au"] = list(energies_au)
-    payload["image"] = str(png)
+    payload["image"] = str(png) if image_written else None
+    payload["image_written"] = image_written
+    if image_error:
+        payload["image_error"] = image_error
     return payload
 
 
@@ -1656,6 +1764,17 @@ def _run_dft_sequence(
     return results
 
 
+def _validate_tsopt_result_payload(payload: Dict[str, Any]) -> None:
+    """Reject a TS result that is not a verified first-order saddle."""
+    status = str(payload.get("status") or "unknown")
+    n_imag = payload.get("n_imaginary_modes")
+    if status != "converged" or n_imag != 1:
+        raise click.ClickException(
+            "[tsopt] TS optimization did not produce a validated first-order "
+            f"saddle (status={status!r}, n_imag={n_imag!r}); IRC was not started."
+        )
+
+
 def _run_tsopt_on_hei(
     hei_pdb: Path,
     charge: int,
@@ -1673,7 +1792,7 @@ def _run_tsopt_on_hei(
     Run tsopt CLI on a HEI model structure; return (final_geom_path, ts_geom).
 
     Prefer the XYZ output to preserve coordinate precision between workflow steps, while still writing
-    PDB/GJF companions when requested by the original input type.
+    PDB/CIF/GJF companions when requested by the original input type.
     """
     overrides = overrides or {}
     prepared_input = prepare_input_structure(hei_pdb)
@@ -1752,10 +1871,24 @@ def _run_tsopt_on_hei(
             ts_args.extend(["--config", str(args_yaml)])
         if ref_pdb is not None:
             ts_args.extend(["--ref-pdb", str(ref_pdb)])
+        ts_args.append("--out-json")
 
         _echo()
         _echo_detail(f"[tsopt] Running tsopt on HEI → out={ts_dir}")
         _run_cli_main("tsopt", _tsopt.cli, ts_args, on_nonzero="raise", prefix="tsopt")
+
+        result_path = ts_dir / "result.json"
+        if not result_path.exists():
+            raise click.ClickException(
+                f"[tsopt] Missing machine-readable TS validation result: {result_path}"
+            )
+        try:
+            tsopt_result = json.loads(result_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise click.ClickException(
+                f"[tsopt] Could not read TS validation result '{result_path}': {exc}"
+            ) from exc
+        _validate_tsopt_result_payload(tsopt_result)
 
         ts_pdb = ts_dir / "final_geometry.pdb"
         ts_xyz = ts_dir / "final_geometry.xyz"
@@ -1793,6 +1926,7 @@ def _run_tsopt_on_hei(
             coord_type=DEFAULT_COORD_TYPE,
             freeze_atoms=_freeze_atoms_for_log(),
         )
+        g_ts._tsopt_result = tsopt_result
 
         calc_args = dict(calc_cfg)
         calc = create_calculator(**calc_args)
@@ -1926,8 +2060,11 @@ def _irc_and_match(
     g_left.set_calculator(shared_calc)
     g_right.set_calculator(shared_calc)
 
-    left_tag = "backward"
-    right_tag = "forward"
+    # EulerPC reverses the forward branch before stitching, so the first raw
+    # endpoint is forward and the last is backward. These diagnostic tags may
+    # swap below when the endpoints are oriented to the MEP left/right states.
+    left_tag = "forward"
+    right_tag = "backward"
     reverse_irc = False
 
     path_root = mep_dir if mep_dir is not None else seg_dir.parent
@@ -2082,10 +2219,10 @@ def _configure_all_help_visibility(command: click.Command) -> None:
 
 @click.command(
     help=(
-        "Run active site model extraction → (optional single-structure staged scan) → MEP search → merge to full PDBs in a single run.\n"
+        "Run active site model extraction → optional staged scan → MEP search → full-structure merge in one run.\n"
         "If exactly one input is provided: (a) with --scan-lists, run staged scan on the active site model (or full structure "
-        "when extraction is skipped) and use stage results as inputs for path-opt (path_search with --refine-path True); "
-        "(b) with --tsopt True and no --scan-lists, run TSOPT-only mode."
+        "when extraction is skipped) and use stage results as inputs for path-opt (path_search with --refine-path); "
+        "(b) with --tsopt and no --scan-lists, run TSOPT-only mode."
     ),
     context_settings={
         "help_option_names": ["-h", "--help"],
@@ -2110,10 +2247,10 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     multiple=True,
     required=True,
     help=(
-        "Two or more **full structures** (PDB/XYZ/GJF) in reaction order (reactant [intermediates ...] product), "
-        "or a single **full structure** (with --scan-lists or with --tsopt True). "
-        "Extraction (-c/--center) requires PDB inputs. When using --scan-lists without extraction, "
-        "the input may be PDB/XYZ/GJF (integer indices only for non-PDB inputs). "
+        "Two or more **full structures** (PDB/mmCIF/XYZ/GJF) in reaction order (reactant [intermediates ...] product), "
+        "or a single **full structure** (with --scan-lists or with --tsopt). "
+        "Extraction (-c/--center) accepts PDB/mmCIF. mmCIF is processed through an internal PDB "
+        "bridge and emitted again as mmCIF; oversized PDBs use the same safe bridge. "
         "Repeat -i/--input for each file."
     ),
 )
@@ -2126,9 +2263,9 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     default=None,
     help=(
         "Substrate specification for the extractor: "
-        "a PDB path, a residue-ID list like '123,124' or 'A:123,B:456' "
+        "a PDB/mmCIF path, a residue-ID list like '123,124' or 'A:123,B:456' "
         "(insertion codes OK: '123A' / 'A:123A'), "
-        "or a residue-name list like 'GPP,SAM'. "
+        "a residue-name list like 'GPP,SAM', or chain-qualified 'A:SAM' / 'A:SAM:123'. "
         "When omitted, extraction is skipped and the **full input structure(s)** are used directly as active site models."
     ),
 )
@@ -2186,8 +2323,9 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     default="",
     show_default=True,
     help=(
-        "Force-include residues by residue ID (not name; e.g. '123', 'A:123A', 'B:456'); "
-        "comma/space separated. Use '-c/--center GPP,SAM' for residue-name selection."
+        "Force-include residues using the same selectors as -c/--center: IDs ('123', "
+        "'A:123A'), names ('SAM'), or chain-qualified names ('A:SAM', 'A:SAM:123'); "
+        "comma/space separated."
     ),
 )
 @click.option(
@@ -2210,9 +2348,9 @@ def _configure_all_help_visibility(command: click.Command) -> None:
         "Total charge (number) or per-resname mapping like 'GPP:-3,SAM:1'. "
         "The per-resname mapping is applied whether or not extraction runs: with "
         "-c/--center it feeds the extractor charge summary; with -c omitted "
-        "(extraction skipped) the same mapping is applied to the full input PDB to "
+        "(extraction skipped) the same mapping is applied to the full input PDB/mmCIF to "
         "derive the total system charge. A bare number sets the total directly. "
-        "PDB inputs only. To force a total charge regardless of residues, use "
+        "PDB/mmCIF inputs only. To force a total charge regardless of residues, use "
         "-q/--charge (emits a warning)."
     ),
 )
@@ -2223,7 +2361,9 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     type=int,
     default=None,
     help=(
-        "Force the total system charge (overrides extractor/GJF/--ligand-charge-derived values; emits a warning when used)."
+        "Total system charge. With -c/--center, this is an assertion and must "
+        "match the extractor-derived charge; omit it to auto-derive. Without "
+        "extraction it explicitly sets/overrides the total and emits a warning."
     ),
 )
 @click.option(
@@ -2263,7 +2403,17 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     type=click.BOOL,
     default=True,
     show_default=True,
-    help="Freeze parent atoms of cap hydrogens (PDB input or XYZ/GJF with --ref-pdb).",
+    help="Freeze parent atoms of cap hydrogens (PDB/mmCIF input or XYZ/GJF with --ref-pdb).",
+)
+@click.option(
+    "--tr-projection",
+    type=click.Choice(["constrained", "legacy-active"], case_sensitive=False),
+    default=GEOM_KW_DEFAULT["tr_projection"],
+    show_default=True,
+    help=(
+        "Rigid translation/rotation treatment forwarded to TSopt, IRC, freq, "
+        "and flatten PHVA. The default respects frozen anchors."
+    ),
 )
 @click.option(
     "--mep-mode",
@@ -2285,7 +2435,8 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     type=int,
     default=_path_search.GS_KW["max_nodes"],
     show_default=True,
-    help="Max internal nodes for **segment** GSM (String has max_nodes+2 images including endpoints).",
+    help=("Movable internal images per GSM/DMF segment; the complete segment has "
+          "max_nodes+2 images including endpoints."),
 )
 @click.option(
     "--max-cycles",
@@ -2329,7 +2480,8 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     help=(
         "Dump GSM/MEP trajectories. Always forwarded to path_search/path-opt; "
         "scan/tsopt receive it only when explicitly set here. "
-        "The freq stage uses dump=True by default; set --dump False explicitly to disable it."
+        "When --thermo is enabled, freq always retains thermoanalysis.yaml because "
+        "the composite workflow consumes that file; --no-dump does not suppress it."
     ),
 )
 @click.option(
@@ -2338,7 +2490,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     type=click.BOOL,
     default=True,
     show_default=True,
-    help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
+    help="Convert XYZ/TRJ outputs into PDB/CIF/GJF companions based on the input format.",
 )
 @click.option(
     "--refine-path",
@@ -2348,7 +2500,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     show_default=True,
     help=(
         "Run a single-pass path-opt GSM between each adjacent pair and concatenate the "
-        "segments (default; no path_search). Use --refine-path True to run recursive "
+        "segments (default; no path_search). Use --refine-path to run recursive "
         "path_search on the full ordered series for automatic multistep discovery."
     ),
 )
@@ -2442,7 +2594,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     show_default=True,
     help=(
         "Run DFT single-point on (R, TS, P) and build DFT energy diagram. "
-        "With --thermo True, also generate a DFT//MLIP Gibbs diagram."
+        "With --thermo, also generate a DFT//MLIP Gibbs diagram."
     ),
 )
 @click.option(
@@ -2575,8 +2727,9 @@ def _configure_all_help_visibility(command: click.Command) -> None:
         "Scan targets: inline Python literal or a YAML/JSON spec file path. "
         "Multiple inline literals define sequential stages, e.g. "
         "'[(12,45,1.35)]' '[(10,55,2.20),(23,34,1.80)]'. "
-        "Indices refer to the original full input PDB (1-based). When extraction is used, they are "
-        "auto-mapped to the active site model after extraction."
+        "Indices refer to the original full input ordering (1-based); atom strings may use "
+        "CHAIN:RESNAME:RESSEQ[ICODE]:ATOM. When extraction is used, selections are auto-mapped "
+        "to the active site model after extraction."
     ),
 )
 @click.option(
@@ -2635,8 +2788,8 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
     help=(
-        "Reference PDB for topology when -i provides XYZ inputs. "
-        "Enables PDB output conversion in TSOPT-only, scan, and path_search pipelines."
+        "Reference PDB/mmCIF for topology when -i provides XYZ inputs. "
+        "Enables topology-aware PDB/mmCIF output conversion in TSOPT-only, scan, and path_search pipelines."
     ),
 )
 @add_coord_type_option(choices=("cart", "dlc"))
@@ -2667,6 +2820,7 @@ def cli(
     solvent_model: str,
     spin: int,
     freeze_links_flag: bool,
+    tr_projection: str,
     mep_mode: str,
     dmf_backend: str,
     max_nodes: int,
@@ -2718,18 +2872,18 @@ def cli(
     precision: Optional[str],
     backend_model: Optional[str],
     calc_file: Optional[str],
-    calc_factory: str,
+    calc_factory: Optional[str],
 ) -> None:
     """
     The **all** command composes `extract` → (optional `scan` on model or full input) → MEP search
-    (single-pass `path-opt` by default, or recursive `path_search` with ``--refine-path True``) and hides
+    (single-pass `path-opt` by default, or recursive `path_search` with ``--refine-path``) and hides
     ref-template bookkeeping.
     With single input:
       - with --scan-lists: run staged scan and use stage results as inputs for path-opt (or path_search),
-      - with --tsopt True and no --scan-lists: run TSOPT-only mode (no MEP search).
+      - with --tsopt and no --scan-lists: run TSOPT-only mode (no MEP search).
 
     By default, a single-pass ``path-opt`` GSM is run between each adjacent pair of inputs and the segments
-    are concatenated into the final MEP.  With ``--refine-path True``, the recursive ``path_search`` workflow
+    are concatenated into the final MEP.  With ``--refine-path``, the recursive ``path_search`` workflow
     is used instead for automatic multistep discovery.
     """
     # Engage pipeline-scoped default-verbosity suppression for the duration of
@@ -2754,15 +2908,61 @@ def cli(
     energy_diagrams: List[Dict[str, Any]] = []
 
     dump_override_requested = False
+    flatten_override_requested = False
     try:
         dump_source = ctx.get_parameter_source("dump")
         dump_override_requested = dump_source not in (None, ParameterSource.DEFAULT)
+        flatten_source = ctx.get_parameter_source("flatten")
+        flatten_override_requested = flatten_source not in (None, ParameterSource.DEFAULT)
     except Exception as exc:
-        logger.debug("Failed to check dump parameter source: %s", exc)
+        logger.debug("Failed to check dump/flatten parameter source: %s", exc)
         dump_override_requested = False
+        flatten_override_requested = False
 
     args_yaml = config_yaml
     merged_yaml_cfg = load_yaml_dict(config_yaml) if config_yaml is not None else {}
+
+    # `calc.charge` / `calc.spin` are workflow inputs below explicit CLI
+    # values and --ligand-charge, but above GJF metadata and defaults.
+    calc_yaml_cfg = merged_yaml_cfg.get("calc") if isinstance(merged_yaml_cfg, dict) else None
+    charge_override_label = "-q/--charge"
+    if (
+        charge_override is None
+        and ligand_charge is None
+        and isinstance(calc_yaml_cfg, dict)
+        and calc_yaml_cfg.get("charge") is not None
+    ):
+        try:
+            charge_override = int(calc_yaml_cfg["charge"])
+        except (TypeError, ValueError) as exc:
+            raise click.BadParameter(
+                f"calc.charge must be an integer, got {calc_yaml_cfg['charge']!r}."
+            ) from exc
+        charge_override_label = "YAML calc.charge"
+    charge_override_remove_hint = (
+        "remove calc.charge from the YAML"
+        if charge_override_label == "YAML calc.charge"
+        else "omit -q/--charge"
+    )
+
+    spin_cli_explicit = cli_param_overridden(ctx, "spin")
+    spin_configured = False
+    if (
+        not spin_cli_explicit
+        and isinstance(calc_yaml_cfg, dict)
+        and calc_yaml_cfg.get("spin") is not None
+    ):
+        try:
+            spin = int(calc_yaml_cfg["spin"])
+        except (TypeError, ValueError) as exc:
+            raise click.BadParameter(
+                f"calc.spin must be an integer multiplicity, got {calc_yaml_cfg['spin']!r}."
+            ) from exc
+        if spin < 1:
+            raise click.BadParameter(
+                f"calc.spin must be an integer multiplicity >= 1, got {spin}."
+            )
+        spin_configured = True
 
     opt_mode_set = False
     opt_mode_post_set = False
@@ -2815,8 +3015,34 @@ def cli(
     if (len(input_paths) < 2) and not (is_single and (has_scan or do_tsopt)):
         raise click.BadParameter(
             "Provide at least two structures with -i/--input in reaction order, "
-            "or use a single structure with --scan-lists, or a single structure with --tsopt True."
+            "or use a single structure with --scan-lists, or a single structure with --tsopt."
         )
+
+    # Normalize mmCIF and PDBs beyond fixed-column limits once, before any
+    # extract/dry-run preflight. The prepared objects remain alive for this
+    # composite workflow, while every child stage sees an ordinary PDB path.
+    user_input_paths = tuple(Path(path) for path in input_paths)
+    prepared_all_inputs = []
+    try:
+        for path in user_input_paths:
+            prepared = prepare_input_structure(path)
+            prepared_all_inputs.append(prepared)
+            # Click runs close callbacks on normal return and on command
+            # errors, so temporary PDB bridges and registry entries cannot
+            # leak from this long composite workflow.
+            ctx.call_on_close(prepared.cleanup)
+    except BaseException:
+        for prepared in reversed(prepared_all_inputs):
+            prepared.cleanup()
+        raise
+    input_paths = tuple(prepared.source_path for prepared in prepared_all_inputs)
+    for user_path, prepared in zip(user_input_paths, prepared_all_inputs):
+        if prepared.source_path != user_path:
+            _echo(
+                f"[all] Structure bridge: {user_path} → internal PDB "
+                f"({prepared.structure_template.reason if prepared.structure_template else 'normalized'})",
+                narrative=True,
+            )
 
     if single_tsopt_mode:
         all_mode = "tsopt-only"
@@ -2853,7 +3079,8 @@ def cli(
         tsopt_overrides["hessian_calc_mode"] = hessian_calc_mode
     if thresh_post is not None:
         tsopt_overrides["thresh"] = str(thresh_post)
-    tsopt_overrides["flatten"] = bool(flatten)
+    if flatten_override_requested:
+        tsopt_overrides["flatten"] = bool(flatten)
 
     freq_overrides: Dict[str, Any] = {}
     # backend will be injected after calc_cfg_shared is built (see below)
@@ -2871,7 +3098,7 @@ def cli(
         freq_overrides["pressure"] = float(freq_pressure)
     # all.py reads thermochemistry EXCLUSIVELY from freq's thermoanalysis.yaml
     # (its in-memory return is discarded via _run_cli_main). Always let freq
-    # write that yaml so `--dump False` cannot silently zero out tR/tT/tP and
+    # write that yaml so `--no-dump` cannot silently zero out tR/tT/tP and
     # relabel electronic energies as Gibbs.
     freq_overrides["dump"] = True
     if hessian_calc_mode is not None:
@@ -2894,7 +3121,7 @@ def cli(
                 "effective_args_yaml": str(args_yaml) if args_yaml else None,
             },
             "all": {
-                "inputs": [str(p) for p in input_paths],
+                "inputs": [str(p) for p in user_input_paths],
                 "center": (None if center_spec is None else str(center_spec)),
                 "out_dir": str(out_dir),
                 "charge_override": charge_override,
@@ -2907,6 +3134,7 @@ def cli(
                 "opt_mode_post": (None if opt_mode_post is None else str(opt_mode_post)),
                 "dump": bool(dump),
                 "convert_files": bool(convert_files),
+                "tr_projection": str(tr_projection),
                 "refine_path": bool(refine_path),
                 "preopt": bool(preopt),
                 "tsopt": bool(do_tsopt),
@@ -2941,6 +3169,11 @@ def cli(
         _skip_extract_dry = center_spec is None or str(center_spec).strip() == ""
         if not _skip_extract_dry:
             _dry_tmp = Path(tempfile.mkdtemp(prefix="pdb2reaction_dry_extract_"))
+            # Click closes registered callbacks on both normal return and
+            # exceptions, so charge/parity failures cannot leak this directory.
+            ctx.call_on_close(
+                lambda path=_dry_tmp: shutil.rmtree(path, ignore_errors=True)
+            )
             _first_in = input_paths[0].resolve() if input_paths else None
             if _first_in is None:
                 raise click.BadParameter("[all] --dry-run requires at least one -i input.")
@@ -2973,8 +3206,8 @@ def cli(
                 _echo(f"[all] --dry-run extract: model total_charge = {_q_extracted:+d}", narrative=True)
                 if charge_override is not None and int(charge_override) != int(_q_extracted):
                     raise click.BadParameter(
-                        f"[all] -q {int(charge_override)} does not match extract-derived "
-                        f"charge {int(_q_extracted):+d}. Either omit -q to auto-derive, "
+                        f"[all] {charge_override_label} {int(charge_override):+d} does not match extract-derived "
+                        f"charge {int(_q_extracted):+d}. Either {charge_override_remove_hint} to auto-derive, "
                         f"pass --ligand-charge for non-standard residues, or set -q to {int(_q_extracted):+d}."
                     )
                 _q_check = int(charge_override) if charge_override is not None else int(_q_extracted)
@@ -2992,9 +3225,31 @@ def cli(
                     raise click.BadParameter(f"[all] --dry-run parity check failed: {e}")
                 _echo(f"[all] --dry-run parity check OK: charge={_q_check:+d}, spin(multiplicity)={int(spin)}", narrative=True)
             shutil.rmtree(_dry_tmp, ignore_errors=True)
-        _echo("[all] Dry-run mode: no search/post-processing was executed (extract pre-check ran).", narrative=True)
+        extract_note = (
+            "extract pre-check ran" if not _skip_extract_dry
+            else "extraction was not requested"
+        )
         _echo(
-            "[all] Planned stages: extract -> optional scan -> path_opt/path_search -> optional tsopt/irc/freq/dft.",
+            f"[all] Dry-run mode: no search/post-processing was executed ({extract_note}).",
+            narrative=True,
+        )
+        planned_stages: List[str] = []
+        if not _skip_extract_dry:
+            planned_stages.append("extract")
+        if has_scan:
+            planned_stages.append("scan")
+        if not single_tsopt_mode:
+            planned_stages.append("path_search" if refine_path else "path_opt")
+        if do_tsopt:
+            planned_stages.extend(["tsopt", "irc"])
+        if do_thermo:
+            planned_stages.append("freq")
+        if do_dft:
+            planned_stages.append("dft")
+        _echo(
+            "[all] Planned stages: " + (
+                " -> ".join(planned_stages) if planned_stages else "validation only"
+            ) + ".",
             narrative=True,
         )
         _emit_final_summary(out_dir, time_start)
@@ -3131,13 +3386,7 @@ def cli(
         gjf_charge: Optional[int] = None
         gjf_spin: Optional[int] = None
 
-        user_provided_spin = True
-        try:
-            spin_source = ctx.get_parameter_source("spin")
-            user_provided_spin = spin_source not in (None, ParameterSource.DEFAULT)
-        except Exception as exc:
-            logger.debug("Failed to check spin parameter source: %s", exc)
-            user_provided_spin = True
+        user_provided_spin = spin_cli_explicit or spin_configured
 
         ligand_charge_numeric: Optional[float] = None
         if ligand_charge is not None:
@@ -3156,12 +3405,13 @@ def cli(
                 except Exception as e:
                     _echo(
                         f"[all] NOTE: failed to derive total charge from full complex: {e}; "
-                        "falling back to legacy handling.",
+                        "a numeric --ligand-charge will be treated as the total charge; "
+                        "a residue mapping still requires successful metadata resolution.",
                         err=True,
                     )
             else:
                 _echo(
-                    "[all] NOTE: --ligand-charge derivation requires a PDB input; skipping full-complex derivation.",
+                    "[all] NOTE: --ligand-charge derivation requires PDB/mmCIF residue metadata; skipping full-complex derivation.",
                     err=True,
                 )
 
@@ -3205,13 +3455,13 @@ def cli(
         q_int = int(charge_override)
         if (not skip_extract) and resolved_charge is not None and int(resolved_charge) != q_int:
             raise click.BadParameter(
-                f"[all] -q {q_int:+d} does not match extract-derived charge "
-                f"{int(resolved_charge):+d}. Either omit -q to auto-derive, "
+                f"[all] {charge_override_label} {q_int:+d} does not match extract-derived charge "
+                f"{int(resolved_charge):+d}. Either {charge_override_remove_hint} to auto-derive, "
                 f"pass --ligand-charge for non-standard residues, or set -q to "
                 f"{int(resolved_charge):+d}."
             )
         override_msg = (
-            f"[all] -q/--charge override supplied; using TOTAL system charge {q_int:+d}"
+            f"[all] {charge_override_label} supplied; using TOTAL system charge {q_int:+d}"
         )
         if resolved_charge is not None:
             override_msg += f" (matches workflow-derived {int(resolved_charge):+d})"
@@ -3225,8 +3475,11 @@ def cli(
     # Resolve --ref-pdb for topology
     ref_pdb_for_topology: Optional[Path] = None
     if ref_pdb_cli is not None:
-        ref_pdb_for_topology = ref_pdb_cli.resolve()
-        _echo(f"[all] --ref-pdb provided: {ref_pdb_for_topology}")
+        prepared_ref = prepare_input_structure(ref_pdb_cli.resolve())
+        prepared_all_inputs.append(prepared_ref)
+        ctx.call_on_close(prepared_ref.cleanup)
+        ref_pdb_for_topology = prepared_ref.source_path
+        _echo(f"[all] --ref-pdb provided: {ref_pdb_cli.resolve()}")
 
     freeze_ref: Optional[Path] = None
     if freeze_links_flag:
@@ -3250,6 +3503,11 @@ def cli(
             if cli_param_overridden(ctx, "cli_coord_type") and cli_coord_type is not None
             else None
         ),
+        tr_projection=(
+            str(tr_projection).lower()
+            if cli_param_overridden(ctx, "tr_projection")
+            else None
+        ),
         precision=precision,
         backend_model=backend_model,
     )
@@ -3264,21 +3522,10 @@ def cli(
         solvent=solvent if cli_param_overridden(ctx, "solvent") else None,
         solvent_model=solvent_model if cli_param_overridden(ctx, "solvent_model") else None,
     )
-    # calc_cfg_shared feeds the run summary (mlip_backend / mlip_model). _build_calc_cfg does
-    # not apply --backend-model, so without this the summary records the DEFAULT UMA model even
-    # when --backend-model overrides it (the actual calc already honors --backend-model via its
-    # own config path; this only corrects the recorded provenance). Use the same canonical helper
-    # as path_search for consistency.
+    # Resolve model and precision in the shared calculator mapping so both
+    # in-process evaluations and recorded provenance use the same settings.
     from pdb2reaction.backends import apply_backend_model_to_calc_cfg
-    # Unconditional: also pops a raw backend_model token from a --config YAML
-    # (the helper no-ops when neither the CLI arg nor the YAML names one).
     apply_backend_model_to_calc_cfg(calc_cfg_shared, backend_model)
-    # Same class of fix as --backend-model above: _build_calc_cfg does not apply --precision, so
-    # without this the in-process calculators (create_calculator(**calc_cfg_shared) at the TS
-    # re-eval / pre-align / endpoint R,P,TS energy sites) run at the default fp32 even when
-    # --precision fp64 is requested — mixing an fp32 electronic energy with the fp64 subprocess
-    # geometry and thermal correction. Apply via the backend-aware helper (orb/mace key names +
-    # aimnet2 fp64 rejection), before the calc-file override may switch to a custom backend.
     from pdb2reaction.backends import apply_effective_precision
     apply_effective_precision(calc_cfg_shared, precision)
 
@@ -3524,7 +3771,7 @@ def cli(
                         "diagram skipped.",
                         err=True,
                     )
-                elif True:
+                else:
                     diag_payload = _write_segment_energy_diagram(
                         tsroot / "energy_diagram_G_MLIP",
                         labels=["R", "TS", "P"],
@@ -3541,23 +3788,11 @@ def cli(
                 )
 
         if do_dft:
-            # DO NOT INLINE: (single-TS path): Geometry retains calculator → torch.nn.Module pinned. Two layers (null calculator + del local name) prevent closure/hook capture from resurrecting model before subprocess fork.
-            # ── Aggressively release GPU memory before DFT subprocess ──
-            # `del locals()[name]` is a CPython no-op: locals() returns a
-            # *copy* of the frame namespace, so deletion never propagated
-            # to the real binding and the torch.nn.Module references stayed
-            # pinned. Rebind each name to None explicitly instead, so the
-            # subsequent gc.collect() + torch.cuda.empty_cache() can actually
-            # reclaim the GPU pages before the DFT subprocess fork.
+            # Release calculator-owning references before the DFT subprocess.
+            # Keep endpoint geometries and thermochemistry payloads: they are
+            # still consumed by bond analysis, diagrams, and summary output.
             g_ts = None
             calc = None
-            # DO NOT null g_react_opt / g_prod_opt / thermo_payloads / tR / tT /
-            # tP here: their calculators were already released above (~L3326),
-            # and these objects are consumed downstream — bond-change detection
-            # (~L3501), DFT//MLIP Gibbs (~L3466), and the Gibbs log (~L3601).
-            # Nulling them raised a swallowed AttributeError that silently
-            # dropped the DFT//MLIP Gibbs diagram and forced a bogus
-            # "(no covalent changes detected)" summary. They hold no GPU tensors.
             gc.collect()
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
@@ -3620,10 +3855,10 @@ def cli(
                             "thermal_correction_free_energy_ha", np.nan
                         )
                     )
-                    GR_dftUMA = eR_dft + dG_R
-                    GT_dftUMA = eT_dft + dG_T
-                    GP_dftUMA = eP_dft + dG_P
-                    if not all(np.isfinite([GR_dftUMA, GT_dftUMA, GP_dftUMA])):
+                    GR_dft_mlip = eR_dft + dG_R
+                    GT_dft_mlip = eT_dft + dG_T
+                    GP_dft_mlip = eP_dft + dG_P
+                    if not all(np.isfinite([GR_dft_mlip, GT_dft_mlip, GP_dft_mlip])):
                         _echo(
                             "[dft//mlip] NOTE: thermochemistry unavailable; "
                             "DFT//MLIP Gibbs diagram skipped.",
@@ -3633,7 +3868,7 @@ def cli(
                         diag_payload = _write_segment_energy_diagram(
                             tsroot / "energy_diagram_G_DFT_plus_MLIP",
                             labels=["R", "TS", "P"],
-                            energies_au=[GR_dftUMA, GT_dftUMA, GP_dftUMA],
+                            energies_au=[GR_dft_mlip, GT_dft_mlip, GP_dft_mlip],
                             title_note=f"({dft_func_basis_use} // MLIP + Thermal Correction)",
                             ylabel="ΔG (kcal/mol)",
                         )
@@ -3741,7 +3976,7 @@ def cli(
                         segment_log["ts_imag_freq_cm"] = ts_freq_info["nu_imag_max_cm"]
                 from pdb2reaction.workflows._all_helpers import build_energy_level_dict
                 _structs_seg = {"R": pR, "TS": pT, "P": pP}
-                segment_log["uma"] = build_energy_level_dict(
+                segment_log["mlip"] = build_energy_level_dict(
                     labels=["R", "TS", "P"],
                     energies_au=[e_react, eT, e_prod],
                     ref_energy=e_react,
@@ -3756,7 +3991,7 @@ def cli(
                     GR = float(thermo_payloads["R"][_gkey])
                     GT = float(thermo_payloads["TS"][_gkey])
                     GP = float(thermo_payloads["P"][_gkey])
-                    segment_log["gibbs_uma"] = build_energy_level_dict(
+                    segment_log["gibbs_mlip"] = build_energy_level_dict(
                         labels=["R", "TS", "P"],
                         energies_au=[GR, GT, GP],
                         ref_energy=GR,
@@ -3780,10 +4015,10 @@ def cli(
                             "failed_states": [s for s, e in zip(["R", "TS", "P"], [eR_dft, eT_dft, eP_dft]) if e is None],
                         }
                     if do_thermo and _dft_all_ok:
-                        segment_log["gibbs_dft_uma"] = build_energy_level_dict(
+                        segment_log["gibbs_dft_mlip"] = build_energy_level_dict(
                             labels=["R", "TS", "P"],
-                            energies_au=[GR_dftUMA, GT_dftUMA, GP_dftUMA],
-                            ref_energy=GR_dftUMA,
+                            energies_au=[GR_dft_mlip, GT_dft_mlip, GP_dft_mlip],
+                            ref_energy=GR_dft_mlip,
                             au_to_kcal=AU2KCALPERMOL,
                             diagram_path=str(tsroot / "energy_diagram_G_DFT_plus_MLIP.png"),
                             structures=_structs_seg,
@@ -3830,6 +4065,16 @@ def cli(
 
                 # Refresh summary.json with post_segments and key_output_files
                 summary["post_segments"] = _json_safe([segment_log])
+                _status, _status_reasons = _derive_pipeline_status(
+                    summary,
+                    post_segments=[segment_log],
+                    config=summary.get("config"),
+                )
+                summary["status"] = _status
+                if _status_reasons:
+                    summary["status_reasons"] = _status_reasons
+                else:
+                    summary.pop("status_reasons", None)
                 # Rebuild key_output_files now that seg_01/ exists
                 try:
                     _kf: Dict[str, Any] = {}
@@ -4426,7 +4671,9 @@ def cli(
 
             for name in (
                 "mep.pdb",
+                "mep.cif",
                 "mep_w_ref.pdb",
+                "mep_w_ref.cif",
             ):
                 src = path_dir / name
                 if src.exists():
@@ -4461,6 +4708,7 @@ def cli(
                 "n_images": summary.get("n_images"),
                 "n_segments": summary.get("n_segments"),
                 "traj_pdb": str(out_dir / "mep.pdb") if (out_dir / "mep.pdb").exists() else None,
+                "traj_cif": str(out_dir / "mep.cif") if (out_dir / "mep.cif").exists() else None,
                 "mep_plot": str(out_dir / "energy_diagram_MEP.png") if (out_dir / "energy_diagram_MEP.png").exists() else None,
                 "diagram": diag_for_log,
             }
@@ -4577,7 +4825,9 @@ def cli(
 
             for name in (
                 "mep.pdb",
+                "mep.cif",
                 "mep_w_ref.pdb",
+                "mep_w_ref.cif",
             ):
                 src = path_dir / name
                 if src.exists():
@@ -4610,11 +4860,11 @@ def cli(
         )
         _echo_detail(f"[all] Final products can be found under: {out_dir}")
         _echo_detail(
-            "  - mep_w_ref.pdb            (full-system merged trajectory)"
+            "  - mep_w_ref.pdb/.cif       (full-system merged trajectory)"
         )
         _echo_detail(f"[all] Raw per-segment merged trajectories stay under: {path_dir}")
         _echo_detail(
-            "  - mep_w_ref_seg_XX.pdb     (per-segment merged trajectories for covalent-change segments)"
+            "  - mep_w_ref_seg_XX.pdb/.cif (per-segment merged trajectories for covalent-change segments)"
         )
     elif refine_path:
         _echo_detail(
@@ -4709,9 +4959,9 @@ def cli(
 
     # Per-category per-segment energies
     tsopt_seg_energies: List[Tuple[float, float, float]] = []
-    g_uma_seg_energies: List[Tuple[float, float, float]] = []
+    g_mlip_seg_energies: List[Tuple[float, float, float]] = []
     dft_seg_energies: List[Tuple[float, float, float]] = []
-    g_dftuma_seg_energies: List[Tuple[float, float, float]] = []
+    g_dft_mlip_seg_energies: List[Tuple[float, float, float]] = []
     irc_trj_for_all: List[Tuple[Path, bool]] = []
     post_segment_logs: List[Dict[str, Any]] = []
 
@@ -4756,7 +5006,6 @@ def cli(
         struct_dir = seg_dir / "structures"
         ensure_dir(struct_dir)
         state_structs: Dict[str, Path] = {}
-        uma_ref_energies: Dict[str, float] = {}
 
         if do_tsopt:
             _seg_tsopt_overrides = dict(tsopt_overrides)
@@ -4895,7 +5144,6 @@ def cli(
             eR = float(g_react_opt.energy)
             eT = float(gT.energy)
             eP = float(g_prod_opt.energy)
-            uma_ref_energies = {"R": eR, "TS": eT, "P": eP}
             diag_payload = _write_segment_energy_diagram(
                 seg_dir / "energy_diagram_MLIP",
                 labels=["R", f"TS{seg_idx}", "P"],
@@ -4907,7 +5155,7 @@ def cli(
 
             tsopt_seg_energies.append((eR, eT, eP))
 
-            segment_log["uma"] = {
+            segment_log["mlip"] = {
                 "labels": ["R", f"TS{seg_idx}", "P"],
                 "energies_au": [eR, eT, eP],
                 "energies_kcal": [0.0, (eT - eR) * AU2KCALPERMOL, (eP - eR) * AU2KCALPERMOL],
@@ -4934,7 +5182,7 @@ def cli(
                 seg_root / f"mep_seg_{seg_idx:02d}", [".xyz", ".pdb"]
             )
 
-            # Decide reference PDB (if any) for freeze-atoms detection / PDB conversion
+            # Decide reference topology (if any) for freeze-atoms detection and conversion.
             freeze_ref: Optional[Path] = ref_pdb_for_seg
             if freeze_ref is None and seg_model_path is not None and seg_model_path.suffix.lower() == ".pdb":
                 freeze_ref = seg_model_path
@@ -5094,8 +5342,8 @@ def cli(
                         )
                         if diag_payload:
                             energy_diagrams.append(diag_payload)
-                        g_uma_seg_energies.append((GR, GT, GP))
-                        segment_log["gibbs_uma"] = {
+                        g_mlip_seg_energies.append((GR, GT, GP))
+                        segment_log["gibbs_mlip"] = {
                             "labels": ["R", f"TS{seg_idx}", "P"],
                             "energies_au": gibbs_vals,
                             "energies_kcal": [
@@ -5221,36 +5469,36 @@ def cli(
                                 "thermal_correction_free_energy_ha", np.nan
                             )
                         )
-                        GR_dftUMA = eR_dft + dG_R
-                        GT_dftUMA = eT_dft + dG_T
-                        GP_dftUMA = eP_dft + dG_P
+                        GR_dft_mlip = eR_dft + dG_R
+                        GT_dft_mlip = eT_dft + dG_T
+                        GP_dft_mlip = eP_dft + dG_P
                         if all(
-                            np.isfinite([GR_dftUMA, GT_dftUMA, GP_dftUMA])
+                            np.isfinite([GR_dft_mlip, GT_dft_mlip, GP_dft_mlip])
                         ):
                             diag_payload = _write_segment_energy_diagram(
                                 seg_dir / "energy_diagram_G_DFT_plus_MLIP",
                                 labels=["R", f"TS{seg_idx}", "P"],
-                                energies_au=[GR_dftUMA, GT_dftUMA, GP_dftUMA],
+                                energies_au=[GR_dft_mlip, GT_dft_mlip, GP_dft_mlip],
                                 title_note=f"({dft_func_basis_use} // MLIP + Thermal Correction)",
                                 ylabel="ΔG (kcal/mol)",
                             )
                             if diag_payload:
                                 energy_diagrams.append(diag_payload)
-                            g_dftuma_seg_energies.append(
-                                (GR_dftUMA, GT_dftUMA, GP_dftUMA)
+                            g_dft_mlip_seg_energies.append(
+                                (GR_dft_mlip, GT_dft_mlip, GP_dft_mlip)
                             )
-                            segment_log["gibbs_dft_uma"] = {
+                            segment_log["gibbs_dft_mlip"] = {
                                 "labels": ["R", f"TS{seg_idx}", "P"],
-                                "energies_au": [GR_dftUMA, GT_dftUMA, GP_dftUMA],
+                                "energies_au": [GR_dft_mlip, GT_dft_mlip, GP_dft_mlip],
                                 "energies_kcal": [
-                                    (GR_dftUMA - GR_dftUMA) * AU2KCALPERMOL,
-                                    (GT_dftUMA - GR_dftUMA) * AU2KCALPERMOL,
-                                    (GP_dftUMA - GR_dftUMA) * AU2KCALPERMOL,
+                                    (GR_dft_mlip - GR_dft_mlip) * AU2KCALPERMOL,
+                                    (GT_dft_mlip - GR_dft_mlip) * AU2KCALPERMOL,
+                                    (GP_dft_mlip - GR_dft_mlip) * AU2KCALPERMOL,
                                 ],
                                 "diagram": str(seg_dir / "energy_diagram_G_DFT_plus_MLIP.png"),
                                 "structures": state_structs,
-                                "barrier_kcal": (GT_dftUMA - GR_dftUMA) * AU2KCALPERMOL,
-                                "delta_kcal": (GP_dftUMA - GR_dftUMA) * AU2KCALPERMOL,
+                                "barrier_kcal": (GT_dft_mlip - GR_dft_mlip) * AU2KCALPERMOL,
+                                "delta_kcal": (GP_dft_mlip - GR_dft_mlip) * AU2KCALPERMOL,
                             }
                         else:
                             _echo(
@@ -5263,7 +5511,7 @@ def cli(
                             err=True,
                         )
 
-    if tsopt_seg_energies:
+    if len(tsopt_seg_energies) == len(reactive):
         tsopt_all_energies = [e for triple in tsopt_seg_energies for e in triple]
         tsopt_all_labels = _build_global_segment_labels(len(tsopt_seg_energies))
         if tsopt_all_labels and len(tsopt_all_labels) == len(tsopt_all_energies):
@@ -5276,21 +5524,21 @@ def cli(
             if diag_payload:
                 energy_diagrams.append(diag_payload)
 
-    if do_thermo and g_uma_seg_energies:
-        g_uma_all_energies = [e for triple in g_uma_seg_energies for e in triple]
-        g_uma_all_labels = _build_global_segment_labels(len(g_uma_seg_energies))
-        if g_uma_all_labels and len(g_uma_all_labels) == len(g_uma_all_energies):
+    if do_thermo and len(g_mlip_seg_energies) == len(reactive):
+        g_mlip_all_energies = [e for triple in g_mlip_seg_energies for e in triple]
+        g_mlip_all_labels = _build_global_segment_labels(len(g_mlip_seg_energies))
+        if g_mlip_all_labels and len(g_mlip_all_labels) == len(g_mlip_all_energies):
             diag_payload = _write_segment_energy_diagram(
                 out_dir / "energy_diagram_G_MLIP_all",
-                labels=g_uma_all_labels,
-                energies_au=g_uma_all_energies,
+                labels=g_mlip_all_labels,
+                energies_au=g_mlip_all_energies,
                 title_note="(MLIP + Thermal Correction; all segments)",
                 ylabel="ΔG (kcal/mol)",
             )
             if diag_payload:
                 energy_diagrams.append(diag_payload)
 
-    if do_dft and dft_seg_energies:
+    if do_dft and len(dft_seg_energies) == len(reactive):
         dft_all_energies = [e for triple in dft_seg_energies for e in triple]
         dft_all_labels = _build_global_segment_labels(len(dft_seg_energies))
         if dft_all_labels and len(dft_all_labels) == len(dft_all_energies):
@@ -5303,14 +5551,14 @@ def cli(
             if diag_payload:
                 energy_diagrams.append(diag_payload)
 
-    if do_dft and do_thermo and g_dftuma_seg_energies:
-        g_dftuma_all_energies = [e for triple in g_dftuma_seg_energies for e in triple]
-        g_dftuma_all_labels = _build_global_segment_labels(len(g_dftuma_seg_energies))
-        if g_dftuma_all_labels and len(g_dftuma_all_labels) == len(g_dftuma_all_energies):
+    if do_dft and do_thermo and len(g_dft_mlip_seg_energies) == len(reactive):
+        g_dft_mlip_all_energies = [e for triple in g_dft_mlip_seg_energies for e in triple]
+        g_dft_mlip_all_labels = _build_global_segment_labels(len(g_dft_mlip_seg_energies))
+        if g_dft_mlip_all_labels and len(g_dft_mlip_all_labels) == len(g_dft_mlip_all_energies):
             diag_payload = _write_segment_energy_diagram(
                 out_dir / "energy_diagram_G_DFT_plus_MLIP_all",
-                labels=g_dftuma_all_labels,
-                energies_au=g_dftuma_all_energies,
+                labels=g_dft_mlip_all_labels,
+                energies_au=g_dft_mlip_all_energies,
                 title_note=f"({dft_func_basis_use} // MLIP + Thermal Correction; all segments)",
                 ylabel="ΔG (kcal/mol)",
             )

@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import argparse
 import io as _io
-import logging
 import os
+from pathlib import Path
 import re
 from typing import Dict, List, Set, Tuple, Iterable, Any, Optional, Sequence
 
@@ -21,11 +21,17 @@ import numpy as np
 from Bio import PDB
 from Bio.PDB import NeighborSearch
 
+from pdb2reaction.io.structure_formats import (
+    CIF_SUFFIXES,
+    attach_template_metadata,
+    coordinate_template_for,
+    register_output_template_and_write_cif,
+    residue_auth_identity,
+    template_from_selected_structure,
+)
+
 # Public API
 __all__ = ["extract", "extract_api"]
-
-logger = logging.getLogger(__name__)
-
 
 def _format_echo_message(msg: str, *args: Any) -> str:
     if not args:
@@ -59,19 +65,17 @@ def _echo_info(msg: str, *args: Any, level: int = 2) -> None:
         required = 1 if level <= 1 else (2 if level == 2 else 3)
         if _lvl < required:
             return
-    click.echo(_format_echo_message(msg, *args),
-               narrative=(level <= 1), detail=(level == 2))
+    rendered = _format_echo_message(msg, *args)
+    if is_console_gating():
+        click.echo(rendered, narrative=(level <= 1), detail=(level == 2))
+    else:
+        # Programmatic extract_api callers do not install the CLI echo shim,
+        # so passing private verbosity tags to vanilla Click would raise.
+        click.echo(rendered)
 
 
 def _echo_warning(msg: str, *args: Any) -> None:
     click.echo(f"WARNING: {_format_echo_message(msg, *args)}", err=True)
-
-
-def _configure_extract_logger(verbose: bool) -> None:
-    """Deprecated no-op. Extract INFO visibility is now governed by the unified
-    global `-v/--verbose` level via the console gate; kept as a shim so existing
-    call sites stay valid."""
-    return
 
 
 BACKBONE_ATOMS: Set[str] = {
@@ -209,7 +213,7 @@ EXACT_EPS = 1e-3         # Å tolerance for exact match
 WATER_RES = {"HOH","WAT","H2O","DOD","TIP","TIP3","SOL"}
 
 # Type for cross-structure residue identity (chain, hetflag, resseq, icode, resname)
-ResidueKey = Tuple[str, str, int, str, str]
+ResidueKey = Tuple[str, str, str, str, str]
 
 
 
@@ -218,9 +222,9 @@ ResidueKey = Tuple[str, str, int, str, str]
 @click.command(
     name="extract",
     help=(
-        "Extract an active site model around substrate residues (from a PDB or "
+        "Extract an active site model around substrate residues (from PDB/mmCIF or "
         "residue IDs/names), with biochemically aware truncation and optional "
-        "cap-H; supports multi-structure input and multi-MODEL output."
+        "cap-H; mmCIF inputs also produce mmCIF outputs."
     ),
     context_settings={
         "help_option_names": ["-h", "--help"],
@@ -232,8 +236,9 @@ ResidueKey = Tuple[str, str, int, str, str]
     "-i", "--input", "complex_pdb",
     type=str, multiple=True, required=True,
     help=(
-        "Protein-substrate complex PDB(s). Multiple files may be given space-separated after a "
-        "single -i ('-i a.pdb b.pdb') or by repeating -i ('-i a.pdb -i b.pdb'). "
+        "Protein-substrate complex PDB/mmCIF file(s). Multiple files may be given space-separated "
+        "after one -i or by repeating -i. PDBs beyond fixed-column residue/atom limits are "
+        "handled through an internal safe bridge. "
         "If multiple, they must have identical atom counts and ordering."
     ),
 )
@@ -241,17 +246,19 @@ ResidueKey = Tuple[str, str, int, str, str]
     "-c", "--center", "substrate_pdb",
     type=str, required=True,
     help=(
-        "Substrate specification: a PDB path, a comma/space-separated residue-ID list "
+        "Substrate specification: a PDB/mmCIF path, a comma/space-separated residue-ID list "
         "like '123,124' or 'A:123,B:456' (insertion codes supported), "
-        "or a residue-name list like 'GPP,SAM'."
+        "a residue-name list like 'GPP,SAM', or a chain-qualified name like "
+        "'A:SAM' (all matches in chain A) / 'A:SAM:123' (one residue)."
     ),
 )
 @click.option(
     "-o", "--output", "output_pdb",
     type=str, multiple=True, default=(),
     help=(
-        "Output PDB path(s). One path for multi-MODEL PDB, or N paths for per-file output. "
-        "If omitted: single input -> model.pdb; multiple inputs -> model_{filename}.pdb."
+        "Internal/output PDB path(s). For mmCIF or oversized-PDB input, a .cif companion with "
+        "the original chain/residue IDs is written automatically. One path creates multi-MODEL "
+        "output; N paths create one output per input."
     ),
 )
 @click.option(
@@ -284,7 +291,7 @@ ResidueKey = Tuple[str, str, int, str, str]
 @click.option(
     "--selected-resn",
     type=str, default="",
-    help="Comma/space-separated residue IDs to force-include.",
+    help="Comma/space-separated residue IDs/names to force-include; chain-qualified A:SAM is supported.",
 )
 @click.option(
     "--modified-residue",
@@ -347,7 +354,7 @@ def cli(
         selected_resn=selected_resn,
         modified_residue=modified_residue,
         ligand_charge=ligand_charge,
-        verbose=True,  # INFO lines now gated by the unified global -v level
+        verbose=True,  # Retained API field; output follows the global -v gate.
     )
     result = extract(ns, api=out_json)
 
@@ -387,10 +394,20 @@ def cli(
 
 def load_structure(path: str, name: str) -> PDB.Structure.Structure:
     """
-    Load a PDB file into a Biopython Structure object.
+    Load PDB/mmCIF through the common internal-PDB bridge.
     """
-    parser = PDB.PDBParser(QUIET=True)
-    structure = parser.get_structure(name, path)
+    from pathlib import Path
+    from pdb2reaction.core.utils import prepare_input_structure
+
+    prepared = prepare_input_structure(Path(path))
+    try:
+        parser = PDB.PDBParser(QUIET=True)
+        structure = parser.get_structure(name, str(prepared.geom_path))
+        template = prepared.structure_template or coordinate_template_for(prepared.geom_path)
+        if template is not None:
+            attach_template_metadata(structure, template)
+    finally:
+        prepared.cleanup()
     models = list(structure.get_models())
     if len(models) > 1:
         _echo_warning(
@@ -406,7 +423,8 @@ def load_structure(path: str, name: str) -> PDB.Structure.Structure:
     if missing_elem:
         raise ValueError(
             f"Element symbols are missing in '{path}'. "
-            f"Please run `pdb2reaction add-elem-info -i {path}` to populate element columns before running extract."
+            f"For PDB input, run `pdb2reaction add-elem-info -i {path}` before extract; "
+            "mmCIF must provide _atom_site.type_symbol."
         )
     return structure
 
@@ -417,11 +435,9 @@ def _fmt_res_id(res: PDB.Residue.Residue) -> str:
     """
     Return a compact residue tag like 'A:123A SER' or '123 SER'.
     """
-    chain = res.get_parent().id or ""
-    het, resseq, icode = res.id
-    icode_txt = "" if icode == " " else icode
+    chain, resseq, icode_txt, resname = residue_auth_identity(res)
     chain_txt = f"{chain}:" if chain else ""
-    return f"{chain_txt}{resseq}{icode_txt} {res.get_resname()}"
+    return f"{chain_txt}{resseq}{icode_txt} {resname}"
 
 
 def _fmt_fid(structure, fid: Tuple) -> str:
@@ -453,19 +469,19 @@ def find_substrate_residues(complex_struct, substrate_struct) -> List[PDB.Residu
     substrate_res_list = list(substrate_struct.get_residues())
     matched: List[PDB.Residue.Residue] = []
     for lig in substrate_res_list:
-        lig_name = lig.get_resname()
+        _, _, _, lig_name = residue_auth_identity(lig)
         lig_atoms = {a.get_name(): a.get_vector() for a in lig}
-        candidates = [r for r in complex_struct.get_residues()
-                      if r.get_resname() == lig_name and len(r) == len(lig_atoms)]
+        candidates = [
+            r
+            for r in complex_struct.get_residues()
+            if residue_auth_identity(r)[3] == lig_name and len(r) == len(lig_atoms)
+        ]
         for cand in candidates:
             if is_exact_match(lig_atoms, cand):
                 matched.append(cand)
                 break
         else:
-            chain_id = lig.get_full_id()[2] if len(lig.get_full_id()) > 2 else ""
-            resseq = lig.id[1]
-            icode = lig.id[2] if len(lig.id) > 2 else " "
-            icode_str = "" if icode == " " else icode
+            chain_id, resseq, icode_str, _ = residue_auth_identity(lig)
             raise ValueError(
                 f"Exact match not found for substrate residue {lig_name} chain {chain_id} {resseq}{icode_str}"
             )
@@ -477,7 +493,7 @@ def find_substrate_residues(complex_struct, substrate_struct) -> List[PDB.Residu
 _RES_TOKEN_RE = re.compile(r"""
     ^\s*
     (?:(?P<chain>[^:\s,]+)\s*:\s*)?   # optional chain like A or A_long
-    (?P<resseq>\d+)                   # residue sequence number
+    (?P<resseq>[-+]?\d+)              # residue sequence number
     (?P<icode>[A-Za-z]?)              # optional insertion code (single letter)
     \s*$
 """, re.VERBOSE)
@@ -528,13 +544,17 @@ def find_substrate_by_idspec(complex_struct, spec: str) -> List[PDB.Residue.Resi
         matches: List[PDB.Residue.Residue] = []
         for model in complex_struct:
             for chain in model:
-                if chain_req is not None and chain.id != chain_req:
-                    continue
                 for res in chain.get_residues():
-                    _, resseq, icode = res.id
-                    if resseq != resseq_req:
+                    auth_chain, auth_resseq, auth_icode, _ = residue_auth_identity(res)
+                    if chain_req is not None and auth_chain != chain_req:
                         continue
-                    if icode_req is not None and icode != icode_req:
+                    try:
+                        numeric_resseq = int(auth_resseq)
+                    except ValueError:
+                        continue
+                    if numeric_resseq != resseq_req:
+                        continue
+                    if icode_req is not None and auth_icode != icode_req:
                         continue
                     fid = res.get_full_id()
                     if fid not in seen:
@@ -549,6 +569,82 @@ def find_substrate_by_idspec(complex_struct, spec: str) -> List[PDB.Residue.Resi
     return found
 
 # ---------- Residue-name-based substrate selection ----------
+
+_CHAIN_RESNAME_TOKEN_RE = re.compile(
+    r"^\s*(?P<chain>[^:\s,]+)\s*:\s*(?P<resname>[^:\s,]+)"
+    r"(?:\s*:\s*(?P<resseq>[-+]?\d+)(?P<icode>[A-Za-z]?))?\s*$"
+)
+
+
+def _parse_chain_resname_tokens(
+    spec: str,
+) -> List[Tuple[str, str, int | None, str | None]]:
+    """Parse ``CHAIN:RESNAME`` and ``CHAIN:RESNAME:RESSEQ`` selectors."""
+
+    if not spec or not spec.strip():
+        raise ValueError("Empty -c/--center specification.")
+    parsed: List[Tuple[str, str, int | None, str | None]] = []
+    for token in [item.strip() for item in re.split(r"[,\s]+", spec) if item.strip()]:
+        match = _CHAIN_RESNAME_TOKEN_RE.match(token)
+        if match is None:
+            raise ValueError(
+                f"Invalid chain/residue-name selector '{token}'. Use 'A:SAM' or 'A:SAM:123'."
+            )
+        parsed.append(
+            (
+                match.group("chain"),
+                match.group("resname").upper(),
+                int(match.group("resseq")) if match.group("resseq") else None,
+                match.group("icode") or None,
+            )
+        )
+    return parsed
+
+
+def find_substrate_by_chain_resname(
+    complex_struct,
+    spec: str,
+) -> List[PDB.Residue.Residue]:
+    """Resolve chain-qualified residue names, optionally narrowed by resSeq."""
+
+    selectors = _parse_chain_resname_tokens(spec)
+    found: List[PDB.Residue.Residue] = []
+    seen: Set[Tuple] = set()
+    for chain_req, resname_req, resseq_req, icode_req in selectors:
+        matches: List[PDB.Residue.Residue] = []
+        for residue in complex_struct.get_residues():
+            chain, resseq, icode, resname = residue_auth_identity(residue)
+            if chain != chain_req or resname.upper() != resname_req:
+                continue
+            if resseq_req is not None:
+                try:
+                    if int(resseq) != resseq_req:
+                        continue
+                except ValueError:
+                    continue
+            if icode_req is not None and icode != icode_req:
+                continue
+            matches.append(residue)
+        if not matches:
+            suffix = f":{resseq_req}{icode_req or ''}" if resseq_req is not None else ""
+            raise ValueError(
+                f"Residue selector '{chain_req}:{resname_req}{suffix}' not found in complex."
+            )
+        if len(matches) > 1:
+            sample = ", ".join(_fmt_res_id(residue) for residue in matches[:5])
+            _echo_warning(
+                "[extract] Selector '%s:%s' matched %d residues. Using all: %s",
+                chain_req,
+                resname_req,
+                len(matches),
+                sample,
+            )
+        for residue in matches:
+            fid = residue.get_full_id()
+            if fid not in seen:
+                seen.add(fid)
+                found.append(residue)
+    return found
 
 def find_substrate_by_resname(complex_struct, spec: str) -> List[PDB.Residue.Residue]:
     """
@@ -565,7 +661,11 @@ def find_substrate_by_resname(complex_struct, spec: str) -> List[PDB.Residue.Res
     found: List[PDB.Residue.Residue] = []
     seen_fids: Set[Tuple] = set()
     for rn in tokens:
-        matches = [r for r in complex_struct.get_residues() if r.get_resname().upper() == rn]
+        matches = [
+            r
+            for r in complex_struct.get_residues()
+            if residue_auth_identity(r)[3].upper() == rn
+        ]
         if not matches:
             raise ValueError(f"Residue name '{rn}' not found in complex.")
         if len(matches) > 1:
@@ -585,18 +685,24 @@ def find_substrate_by_resname(complex_struct, spec: str) -> List[PDB.Residue.Res
 
 def resolve_substrate_residues(complex_struct, center_spec: str) -> List[PDB.Residue.Residue]:
     """
-    Determine substrate residues from a PDB path, residue-ID list, or residue-name list.
+    Determine substrate residues from a PDB/mmCIF path, ID list, or name selector.
     """
-    if center_spec.lower().endswith(".pdb"):
+    if Path(center_spec).suffix.lower() in ({".pdb"} | set(CIF_SUFFIXES)):
         substrate_struct = load_structure(center_spec, "substrate")
         return find_substrate_residues(complex_struct, substrate_struct)
     # If it parses as ID-spec, treat as IDs (and propagate any not-found errors).
     try:
         _parse_res_tokens(center_spec)
-        return find_substrate_by_idspec(complex_struct, center_spec)
     except ValueError:
-        # Otherwise, interpret as residue-name list (e.g., 'GPP,SAM').
+        pass
+    else:
+        return find_substrate_by_idspec(complex_struct, center_spec)
+    try:
+        _parse_chain_resname_tokens(center_spec)
+    except ValueError:
+        # Otherwise, interpret as an unqualified residue-name list (e.g., GPP,SAM).
         return find_substrate_by_resname(complex_struct, center_spec)
+    return find_substrate_by_chain_resname(complex_struct, center_spec)
 
 
 #   Polypeptide adjacency (C–N) helper
@@ -1135,10 +1241,9 @@ def _residue_key_from_res(res: PDB.Residue.Residue) -> ResidueKey:
     """
     Build a cross-structure residue key from a residue.
     """
-    chain_id = res.get_parent().id
-    hetflag, resseq, icode = res.id
-    icode_str = icode if icode != " " else ""
-    return (chain_id, hetflag, int(resseq), icode_str, res.get_resname())
+    chain_id, resseq, icode, resname = residue_auth_identity(res)
+    hetflag = str(res.id[0])
+    return (chain_id, hetflag, str(resseq), icode, resname)
 
 def _residue_key_from_fid(structure, fid: Tuple) -> ResidueKey:
     """
@@ -1310,12 +1415,27 @@ def compute_charge_summary(structure,
                 "is ignored — check the substrate/ligand resname.", total_spec)
     elif mapping_spec is not None:
         # Per‑resname mapping. Unspecified unknown residues remain 0.
+        matched_resnames: Set[str] = set()
         for fid in unknown_fids:
             res = structure[fid[1]][fid[2]].child_dict[fid[3]]
             rn = res.get_resname().upper()
             if rn in mapping_spec:
                 key = _residue_key_from_fid(structure, fid)
                 per_map[key] = float(mapping_spec[rn])
+                matched_resnames.add(rn)
+        unmatched_resnames = sorted(set(mapping_spec) - matched_resnames)
+        if unmatched_resnames:
+            _echo_warning(
+                "[extract] --ligand-charge mapping entr%s %s matched no "
+                "unknown (non-dictionary) selected residue%s and %s ignored. "
+                "Standard/modified amino acids, ions, and water use the "
+                "internal charge tables; otherwise check the input and "
+                "residue selector. Use -q to override the derived total charge.",
+                "y" if len(unmatched_resnames) == 1 else "ies",
+                ", ".join(unmatched_resnames),
+                "" if len(unmatched_resnames) == 1 else "s",
+                "was" if len(unmatched_resnames) == 1 else "were",
+            )
         # recompute totals
         total = sum(per_map.values())
         aa_charge = sum(q for k, q in per_map.items() if k[4] in AMINO_ACIDS)
@@ -1424,20 +1544,18 @@ def _substrate_residues_for_structs(structs: List[PDB.Structure.Structure],
 
     Behavior
     --------
-    * If `center_spec` is a PDB path: exact‑match on the first structure only,
+    * If `center_spec` is a PDB/mmCIF path: exact-match on the first structure only,
       then propagate to others by a residue‑ID list derived from the first match.
     * If `center_spec` is an ID list: apply to all structures.
     * If `center_spec` is a residue‑name list: apply to all structures; names may match multiple residues
       (all included; WARNING logged per structure).
     """
-    if center_spec.lower().endswith(".pdb"):
+    if Path(center_spec).suffix.lower() in ({".pdb"} | set(CIF_SUFFIXES)):
         sub_first = resolve_substrate_residues(structs[0], center_spec)
         tokens = []
         for res in sub_first:
-            chain = res.get_parent().id
+            chain, num, icode_txt, _ = residue_auth_identity(res)
             chain_txt = (chain or "").strip()
-            het, num, icode = res.id
-            icode_txt = "" if icode == " " else icode
             if chain_txt:
                 tokens.append(f"{chain}:{num}{icode_txt}")
             else:
@@ -1451,9 +1569,15 @@ def _substrate_residues_for_structs(structs: List[PDB.Structure.Structure],
         # Distinguish ID-spec vs resname list by attempting to parse as IDs first.
         try:
             _parse_res_tokens(center_spec)
+        except ValueError:
+            pass
+        else:
             return [find_substrate_by_idspec(st, center_spec) for st in structs]
+        try:
+            _parse_chain_resname_tokens(center_spec)
         except ValueError:
             return [find_substrate_by_resname(st, center_spec) for st in structs]
+        return [find_substrate_by_chain_resname(st, center_spec) for st in structs]
 
 def _disulfide_partner_keys(structure, candidate_keys: Set[ResidueKey],
                             cutoff: float = DISULFIDE_CUTOFF) -> Set[ResidueKey]:
@@ -1495,8 +1619,8 @@ def _assert_atom_ordering_identical(structs: List[PDB.Structure.Structure]):
             for chain in model:
                 for res in chain.get_residues():
                     het, resseq, icode = res.id
-                    icode_txt = icode if icode != " " else ""
-                    base = f"{chain.id}|{het}|{resseq}{icode_txt}|{res.get_resname()}"
+                    auth_chain, auth_resseq, auth_icode, auth_resname = residue_auth_identity(res)
+                    base = f"{auth_chain}|{het}|{auth_resseq}{auth_icode}|{auth_resname}"
                     for atom in res:
                         sig.append(base + f"|{atom.get_name()}")
         return sig
@@ -1616,7 +1740,7 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
     if getattr(args, "selected_resn", ""):
         forced_union: Set[ResidueKey] = set()
         for st in structs:
-            forced_res = find_substrate_by_idspec(st, args.selected_resn)
+            forced_res = resolve_substrate_residues(st, args.selected_resn)
             forced_union |= {_residue_key_from_res(r) for r in forced_res}
         if forced_union:
             _echo_info("[extract:multi] Force-include (--selected-resn): +%d residues.", len(forced_union))
@@ -1698,11 +1822,12 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
     io = PDB.PDBIO()
     model_texts: List[str] = []
     model_counts: List[Dict[str, int]] = []
+    output_templates = []
 
     for m, (st, sel_fids, skip_map) in enumerate(zip(structs, selected_ids_per_struct, skip_maps_per_struct), start=1):
         io.set_structure(st)
         buf = _io.StringIO()
-        io.save(buf, AS_Select(sel_fids, skip_map))
+        io.save(buf, AS_Select(sel_fids, skip_map), preserve_atom_numbering=True)
         main_text = _strip_trailing_END(buf.getvalue())
 
         # Atom-count diagnostics
@@ -1730,6 +1855,14 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
             main_text = "".join(parts)
 
         model_texts.append(main_text)
+        output_templates.append(
+            template_from_selected_structure(
+                st,
+                sel_fids,
+                skip_map,
+                link_coordinates=link_coords if args.add_linkh else (),
+            )
+        )
 
     outputs: List[str] = []
     if per_file_outputs:
@@ -1739,9 +1872,17 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
                 content += "\n"
             content += "END\n"
             out_path = args.output_pdb[idx]
+            Path(out_path).expanduser().parent.mkdir(parents=True, exist_ok=True)
             with open(out_path, "w") as fh:
                 fh.write(content)
             outputs.append(out_path)
+            cif_path = register_output_template_and_write_cif(
+                out_path,
+                output_templates[idx],
+            )
+            if cif_path is not None:
+                outputs.append(str(cif_path))
+                _echo_info("[extract:multi] mmCIF model saved to %s", cif_path, level=1)
             _echo_info("[extract:multi] Single‑model active site model saved to %s", out_path, level=1)
     else:
         buf_models: List[str] = []
@@ -1752,11 +1893,19 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
             model_block.append("ENDMDL\n")
             buf_models.append("".join(model_block))
         out_path = args.output_pdb[0]
+        Path(out_path).expanduser().parent.mkdir(parents=True, exist_ok=True)
         with open(out_path, "w") as fh:
             for blk in buf_models:
                 fh.write(blk)
             fh.write("END\n")
         outputs.append(out_path)
+        cif_path = register_output_template_and_write_cif(
+            out_path,
+            output_templates[0] if output_templates else None,
+        )
+        if cif_path is not None:
+            outputs.append(str(cif_path))
+            _echo_info("[extract:multi] Multi-model mmCIF saved to %s", cif_path, level=1)
         _echo_info("[extract:multi] Multi‑MODEL active site model saved to %s", out_path, level=1)
 
     # ==== Charge summary (first model only) ====
@@ -1827,8 +1976,6 @@ def extract(args: argparse.Namespace, api=False) -> Dict[str, Any]:
             "use the 'pdb2reaction extract' CLI or extract_api() for keyword API."
         )
 
-    _configure_extract_logger(bool(args.verbose))
-
     # Augment AMINO_ACIDS with user-specified modified residues
     # Save original state so repeated API calls don't accumulate mutations.
     _amino_acids_snapshot = dict(AMINO_ACIDS)
@@ -1898,7 +2045,7 @@ def _extract_body(args, api):
 
         # Force-include residues via --selected-resn
         if getattr(args, "selected_resn", ""):
-            forced_res = find_substrate_by_idspec(complex_struct, args.selected_resn)
+            forced_res = resolve_substrate_residues(complex_struct, args.selected_resn)
             add_n = 0
             for r in forced_res:
                 fid = r.get_full_id()
@@ -1966,11 +2113,13 @@ def _extract_body(args, api):
         io.set_structure(complex_struct)
 
         buf = _io.StringIO()
-        io.save(buf, AS_Select(selected_ids, skip_map))
+        io.save(buf, AS_Select(selected_ids, skip_map), preserve_atom_numbering=True)
         main_pdb_text = buf.getvalue()
 
         output_path = args.output_pdb[0]
+        Path(output_path).expanduser().parent.mkdir(parents=True, exist_ok=True)
         outputs: List[str] = []
+        link_coords: List[Tuple[float, float, float]] = []
 
         if args.add_linkh:
             link_coords = compute_linkH_atoms(complex_struct, selected_ids, skip_map)
@@ -1999,6 +2148,17 @@ def _extract_body(args, api):
                 fh.write(main_pdb_text)
             _echo_info("[extract] Binding-Pocket (Active Site) saved to %s", output_path, level=1)
             outputs.append(output_path)
+
+        output_template = template_from_selected_structure(
+            complex_struct,
+            selected_ids,
+            skip_map,
+            link_coordinates=link_coords if args.add_linkh else (),
+        )
+        cif_path = register_output_template_and_write_cif(output_path, output_template)
+        if cif_path is not None:
+            outputs.append(str(cif_path))
+            _echo_info("[extract] mmCIF active-site model saved to %s", cif_path, level=1)
 
         # Charge summary (single model)
         charge_summary = compute_charge_summary(
@@ -2042,10 +2202,10 @@ def extract_api(complex_pdb: List[str],
     Args
     ----
     complex_pdb : list[str]
-        Input PDB path(s). len==1 → single, len>1 → multi.
+        Input PDB/mmCIF path(s). len==1 → single, len>1 → multi.
     center : str
-        Substrate spec: a PDB path, a residue‑ID list 'A:123,456' (insertion codes OK),
-        or a residue‑name list 'GPP,SAM'.
+        Substrate spec: a PDB/mmCIF path, residue IDs such as 'A:123,456',
+        residue names such as 'GPP,SAM', or chain-qualified names such as 'A:SAM'.
     output : list[str] | None
         Output path(s): one path for multi‑MODEL PDB, or N paths for per‑file outputs.
         If None, defaults to ['model.pdb'].
@@ -2068,7 +2228,8 @@ def extract_api(complex_pdb: List[str],
         Either a total charge (float/str) for unknown residues (prefer unknown substrate),
         or a mapping like {'GPP': -3, 'SAM': -1}. In mapping mode, other unknown residues remain 0.
     verbose : bool
-        Enable INFO logging.
+        Retained API field. Console output follows the active global CLI
+        verbosity context.
 
     Returns
     -------

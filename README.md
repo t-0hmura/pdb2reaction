@@ -4,7 +4,7 @@
 
 <img src="https://raw.githubusercontent.com/t-0hmura/pdb2reaction/main/docs/overview.png" alt="pdb2reaction workflow overview" width="90%">
 
-`pdb2reaction` is a Python CLI for elucidating **enzymatic reaction pathways** from **PDB structures** using machine-learning interatomic potentials (MLIPs). Given (i) two or more PDB files (R → ... → P), (ii) one PDB with `--scan-lists`, or (iii) one TS candidate with `--tsopt`, it extracts an **active-site cluster model**, runs an **MEP search**, and optionally chains **TS optimization → IRC → thermochemical correction → DFT single-point**. Each stage is also exposed as an [individual subcommand](#cli-subcommands).
+`pdb2reaction` is a Python CLI for elucidating **enzymatic reaction pathways** from **PDB or mmCIF structures** using machine-learning interatomic potentials (MLIPs). Given (i) two or more reaction-ordered structures, (ii) one structure with `--scan-lists`, or (iii) one TS candidate with `--tsopt`, it can run an **MEP search** and optionally chain **TS optimization → IRC → thermochemical correction → DFT single-point**. Active-site extraction is performed only when `-c/--center` is supplied; otherwise the PDB/mmCIF/XYZ/GJF model is used as-is. Each stage is also exposed as an [individual subcommand](#cli-subcommands).
 
 Test a reaction mechanism in a single command:
 
@@ -13,9 +13,9 @@ Test a reaction mechanism in a single command:
 pdb2reaction all -i R.pdb P.pdb -c 'LIG' -l 'LIG:-1' --tsopt --thermo
 ```
 
-Inputs are not limited to full enzyme PDBs: pass a small molecule as `.xyz` / `.gjf`, or a cluster model you built yourself as a PDB, and omit `--center/-c` to skip extraction — the same end-to-end pipeline then runs on the structure as given.
+Inputs are not limited to full enzyme PDBs: mmCIF is accepted directly, including multi-character chains and large residue IDs. You can also pass a small molecule as `.xyz` / `.gjf`, or a cluster model you built yourself as PDB/mmCIF, and omit `--center/-c` to skip extraction.
 
-> **Prerequisites:** input PDBs must already contain hydrogens; multiple PDBs must share the same atoms in the same order (only coordinates differ). Small-molecule `.xyz` / `.gjf` inputs work when `--center/-c` and `--ligand-charge/-l` are omitted.
+> **Prerequisites:** PDB/mmCIF inputs must already contain hydrogens; reaction-ordered structures must share the same atom identities and order (only coordinates differ). Small-molecule `.xyz` / `.gjf` inputs work when `--center/-c` and `--ligand-charge/-l` are omitted.
 
 ## Related tools
 
@@ -28,25 +28,36 @@ Inputs are not limited to full enzyme PDBs: pass a small molecule as `.xyz` / `.
 
 ## Documentation
 
-- [Getting Started](docs/getting-started.md) · [Installation](docs/installation.md) · [Examples](examples/) · [Troubleshooting](docs/troubleshooting.md)
+- [Getting Started](docs/getting-started.md) · [mmCIF and large structures](docs/cif.md) · [Installation](docs/installation.md) · [Examples](examples/) · [Troubleshooting](docs/troubleshooting.md)
 - [YAML Reference](docs/yaml-reference.md) · [JSON Output Schema](docs/json-output.md)
 - Full site: <https://t-0hmura.github.io/pdb2reaction/>
+
+## Colab GUI
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb)
+
+[`examples/pdb2reaction_colab.ipynb`](examples/pdb2reaction_colab.ipynb) provides
+a notebook-native PDB/mmCIF uploader, 3D chain-qualified residue/atom picking,
+backend/model options, an editable exact command, a separate `--dry-run`
+validation action, and result/trajectory views. It installs the release-matched
+tag and one backend into the user's own GPU runtime; MACE and UMA still require
+separate runtimes.
 
 ## System requirements
 
 | Component | Requirement |
 |---|---|
 | OS / Python | Linux recommended. Python >= 3.11. |
-| GPU / CUDA / VRAM | NVIDIA GPU, CUDA >= 12.6 (12.8+ recommended; required for RTX 50-series). 8 GB+ VRAM recommended. |
-| RAM / Disk | 16 GB+ RAM recommended; 20 GB free disk for the conda env, UMA cache, and artifacts. |
+| GPU / CUDA / VRAM | CUDA-capable NVIDIA GPU recommended for production, with a compatible driver and official PyTorch 2.8 CUDA wheel (`cu126`, `cu128`, or `cu129`). Required VRAM is backend/model/system/workflow dependent; pilot the real calculation. |
+| RAM / Disk | Size for the selected environment, model cache, structures, trajectories, and DFT scratch; no atom-count-only minimum is reliable. |
 
-CPU-only execution works but is 10–100× slower; not recommended for full TS / IRC / Hessian workflows. Full requirement and tuning details: [docs/installation.md](docs/installation.md).
+CPU-only execution works but is usually much slower; benchmark the selected backend/model. Full requirement and tuning details: [docs/installation.md](docs/installation.md).
 
 ## Installation
 
 ```bash
-# 1. CUDA-enabled PyTorch (match your CUDA runtime)
-pip install torch --index-url https://download.pytorch.org/whl/cu129
+# 1. CUDA-enabled PyTorch (choose the official 2.8 wheel for your driver/GPU)
+pip install 'torch==2.8.0' --index-url https://download.pytorch.org/whl/cu126
 
 # 2. pdb2reaction (editable from a local clone, or `pip install pdb2reaction`)
 pip install -e .
@@ -105,11 +116,12 @@ Per-stage walkthrough (`extract` → `opt` → `path-opt` → `tsopt` → `freq`
 
 ## Output
 
-A run writes its deliverables to `--out-dir` (default `./result_all/`):
+A non-dry `all` run writes the deliverables reached by its enabled stages to
+`--out-dir` (default `./result_all/`):
 
 - `segments/seg_NN/{reactant,ts,product}.*` — the canonical R / TS / P structures to cite
-- `mep.pdb` / `mep_trj.xyz` — the merged reaction path
-- `energy_diagram_MEP.png` — barrier diagram across all segments
+- `mep_trj.xyz` (plus `mep.pdb` when topology is available and `mep.cif` for bridged inputs) — the merged reaction path in MEP/scan-list modes
+- `energy_diagram_MEP.png` — MEP diagram when MEP construction and static-image export succeed
 - `summary.log` (human-readable) / `summary.json` (machine-readable)
 
 Pipeline scratch lives under `_work/` (safe to delete). Full layout and filename conventions: [docs/output-layout.md](docs/output-layout.md).
@@ -150,7 +162,7 @@ Issues: <https://github.com/t-0hmura/pdb2reaction/issues>.
 @misc{ohmura2026pdb2reaction,
   author = {Ohmura, Takuto and Sato, Hajime and Terada, Tohru},
   title  = {pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials},
-  year   = {2026}, doi = {10.26434/chemrxiv.15003538}, note = {ChemRxiv preprint}
+  year   = {2026}, doi = {10.26434/chemrxiv.15003538/v1}, note = {ChemRxiv preprint}
 }
 ```
 
@@ -161,9 +173,9 @@ Agent Skills for Claude Code / Codex / Cursor etc. in [`skills/`](skills/) — c
 ## Known limitations
 
 - **MACE + UMA cannot coexist** (`e3nn` version conflict). Use separate conda envs.
-- **DFT single-point** is practical up to ~300 atoms; larger systems incur high computational cost.
-- **ORB backend** sometimes converges TS with extra soft imaginary modes — for clean single-saddle spectra prefer UMA / MACE.
-- **CPU-only execution** is 10–100× slower than GPU.
+- **DFT single-point cost** depends strongly on basis, functional, grid, elements, and hardware; pilot one representative structure before batching.
+- **Every backend's TS** requires an independent frequency calculation and IRC connectivity check. ORB `fp32`/TF32 is unsuitable for trusted finite-difference Hessians; the pdb2reaction ORB default is fp64.
+- **CPU-only execution** is supported but usually much slower than GPU.
 
 ## Contributing
 

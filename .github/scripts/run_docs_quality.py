@@ -51,12 +51,15 @@ def main() -> int:
         env[GENERIC_TIMEOUT_ENV] = str(args.dump_timeout_sec)
 
     steps: list[tuple[str, list[str]]] = [
-        ("Regenerate references", [sys.executable, ".github/scripts/generate_reference.py"]),
         ("Verify generated CLI reference is up-to-date",
-         ["git", "diff", "--exit-code", "docs/reference/commands"]),
+         [sys.executable, ".github/scripts/generate_reference.py", "--check"]),
+        ("Check canonical boolean style",
+         [sys.executable, ".github/scripts/check_bool_style.py"]),
         ("Check skills/**.md command examples against live CLI",
          [sys.executable, ".github/scripts/check_skill_commands.py"]),
-        ("Check skill drift (prose tables / JSON snippets — warning-only)",
+        ("Check skill structure and high-risk semantics",
+         [sys.executable, ".github/scripts/check_skill_quality.py"]),
+        ("Check skill drift (prose tables / JSON snippets)",
          [sys.executable, ".github/scripts/check_skill_drift.py"]),
         ("Check intro template headings", [sys.executable, ".github/scripts/check_intro_template.py"]),
         ("Check markdown local links", [sys.executable, ".github/scripts/check_markdown_links.py"]),

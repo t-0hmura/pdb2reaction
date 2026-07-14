@@ -90,6 +90,12 @@ def _capture_help(command_name: str, *, advanced: bool) -> str:
             f"Failed to collect help for '{TOOL_NAME} {command_name}' "
             f"(advanced={advanced}):\n{result.output}"
         )
+    if "[Unavailable]" in result.output:
+        raise RuntimeError(
+            f"Cannot generate help for '{TOOL_NAME} {command_name}': the lazy "
+            "subcommand could not be imported. Install the repository's "
+            "development/runtime dependencies and retry."
+        )
     # Strip pre-banner noise (version line, bundled-pysisyphus
     # rc-file warning) so docs stay stable across environments where
     # `~/.pysisyphusrc` may or may not exist.
@@ -136,7 +142,12 @@ def _render() -> list[RenderedFile]:
     command_docs = _collect_command_docs()
     rendered: list[RenderedFile] = []
 
-    for doc in command_docs:
+    total = len(command_docs)
+    for index, doc in enumerate(command_docs, start=1):
+        print(
+            f"[reference] Rendering {index}/{total}: {TOOL_NAME} {doc.name}",
+            flush=True,
+        )
         try:
             help_text = _capture_help(doc.name, advanced=True)
         except RuntimeError:

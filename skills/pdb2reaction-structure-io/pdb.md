@@ -1,21 +1,24 @@
 # PDB format (pdb.md)
 
 PDB is `pdb2reaction`'s primary input. Column-based, fixed-width fields.
+For 10,000 or more residues, atom serials beyond 99,999, residue IDs beyond
+four columns, or multi-character chain IDs, use mmCIF; see `cif.md`.
 
 ## Record types `pdb2reaction` cares about
 
 | Record | Used for |
 |---|---|
-| `ATOM` | Standard amino-acid / nucleic-acid atoms (residue ≤ 3 letters, in `pdb2reaction`'s AMINO_ACIDS table) |
-| `HETATM` | Ligand, metal, water, cofactor, cap-H atoms |
+| `ATOM` | Polymer atoms by PDB convention (normally amino acids or nucleic acids) |
+| `HETATM` | Non-polymer atoms by PDB convention (normally ligand, metal, water, cofactor, or generated cap H) |
 | `TER` | Chain terminator; `extract` infers chain breaks from C–N peptide-adjacency distance, not by parsing TER directly |
 | `END` | File terminator — informational only |
 | `MODEL` / `ENDMDL` | `extract` writes multi-MODEL output for multi-structure input, and `fix-altloc` processes each MODEL block. Multi-MODEL **input** is not read — `extract` uses only the first model and warns. |
-| `CRYST1` | Unit cell — read but not written by `pdb2reaction` (cluster model only) |
+| `CRYST1` | Unit-cell metadata is not used by the cluster calculations and is omitted from generated cluster PDBs |
 
-`pdb2reaction` ignores `ANISOU`, `LINK`, `SSBOND`, etc. If a
-downstream step complains, strip them with a one-line `awk` / `grep`
-filter.
+`pdb2reaction` does not use `ANISOU`, `LINK`, `SSBOND`, and related
+connectivity annotations for its calculations. Preserve the original file;
+if a parser-specific cleanup is needed, write a separate derived PDB and
+validate atom identity/order afterward.
 
 ## Column layout (`ATOM` / `HETATM`)
 
@@ -25,7 +28,7 @@ Columns are 1-based, inclusive on both ends.
 |---|---|---|---|---|
 | 1–6 | Record name | 6 | left-just `ATOM  ` / `HETATM` | `ATOM  ` |
 | 7–11 | Atom serial | 5 | right-just int | `   42` |
-| 13–16 | Atom name | 4 | left-just (with 1-char element prefix) | ` CB ` |
+| 13–16 | Atom name | 4 | fixed-width; PDB alignment depends on element/name, so preserve a parser's formatting | ` CB ` |
 | 17 | Alt-loc indicator | 1 | char | ` ` or `A`/`B` |
 | 18–20 | Residue name | 3 | upper-case 3-letter code | `SAM` |
 | 22 | Chain ID | 1 | char | `A` |
@@ -36,17 +39,19 @@ Columns are 1-based, inclusive on both ends.
 | 47–54 | Z | 8 | right-just float, 3 decimals | `   6.935` |
 | 55–60 | Occupancy | 6 | right-just float, 2 decimals | `  1.00` |
 | 61–66 | Temperature factor | 6 | right-just float, 2 decimals | `  0.00` |
-| 77–78 | Element symbol | 2 | right-just upper-case | ` C` |
+| 77–78 | Element symbol | 2 | right-justified canonical symbol (` C`, `Fe`, `Mg`) | ` C` |
 | 79–80 | Formal charge | 2 | right-just (e.g. `2+`, `1-`) | `  ` |
 
-`pdb2reaction.add-elem-info` repairs columns 77-78 when they are blank,
-which they often are after PyMOL/Maestro export. Always run it before
-`extract` if the elements are missing.
+The record type does not decide the charge: `pdb2reaction` uses the residue
+name and its internal amino-acid/ion/water tables, plus `-l` for unknown
+residues. `pdb2reaction add-elem-info` repairs columns 77-78 when they are
+blank, which can happen after structure-editor export. Run it only when
+elements are missing, then validate the resulting symbols before extraction.
 
 ## Residue selectors (the `-c / --center` flag)
 
 `pdb2reaction extract` (and any subcommand that also extracts internally)
-uses three forms:
+uses five forms:
 
 ```bash
 # Form 1 — comma-separated residue names. Matches every residue with
@@ -58,18 +63,18 @@ pdb2reaction extract -i complex.pdb -c substrate.pdb -o cluster.pdb
 
 # Form 3 — chain-aware: `chainID:resSeq` (numeric resSeq is honored)
 pdb2reaction extract -i complex.pdb -c 'A:44' -o cluster.pdb
+
+# Form 4 — every residue with a name in one chain
+pdb2reaction extract -i complex.pdb -c 'A:SAM' -o cluster.pdb
+
+# Form 5 — chain + residue name + sequence number (one intended residue)
+pdb2reaction extract -i complex.pdb -c 'A:SAM:44' -o cluster.pdb
 ```
 
-> **Caveat**: only `chainID:resSeq` (numeric) is parsed as chain-aware
-> in `extract.py`. Tokens like `'A:SAM'` (chain:resName) fail the
-> `_parse_res_tokens` regex (which requires a numeric resSeq), and
-> `resolve_substrate_residues` then silently falls through to the
-> resname splitter (`[,\s]+`); since the literal token `'A:SAM'` is
-> not a known resname, the call raises
-> `ValueError("Residue name 'A:SAM' not found in complex.")`. To
-> restrict by chain you must supply numeric resSeq. To select all SAM
-> in chain A, run `extract` with `-c 'SAM'` first then trim chains by
-> hand, or use the substrate-PDB form (`-c <substrate.pdb>`).
+`chainID:resName` selects every matching residue in that chain and warns when
+multiple residues match. Add the numeric `:resSeq` component when exactly one
+is intended. This is especially useful when the same ligand/cofactor name is
+repeated across chains. mmCIF chain IDs may contain multiple characters.
 
 The pocket radius around the centers is set by `-r <Å>` (default 2.6 Å).
 All residues with at least one atom (any element, including H) inside the radius are kept.
@@ -79,35 +84,39 @@ All residues with at least one atom (any element, including H) inside the radius
 ```bash
 pdb2reaction extract -i complex.pdb \
     -c 'SAM,GPP,MG' \
-    -l 'SAM:1,GPP:-3,MG:2' \
+    -l 'SAM:1,GPP:-3' \
     -o cluster.pdb
 ```
 
 Standard amino acids are looked up from `pdb2reaction`'s internal
-`AMINO_ACIDS` table — you only need to provide ligand / metal /
-non-standard residues in `-l`. The total cluster charge is the sum of
-all residues kept (post extraction).
+`AMINO_ACIDS` table and recognized monatomic ions from `ION`; provide only
+unknown/non-standard ligand residues in `-l`. For example, `MG` is already
+`+2`; adding `MG:2` to `-l` does not override it and emits an unmatched-entry
+warning. The total cluster charge is the sum of all retained residues after
+extraction.
 
 If you don't know a ligand's formal charge, see
 `charge-multiplicity.md` for the lookup workflow.
 
 ## Cap-hydrogen capping
 
-When `extract` cuts a covalent bond between an in-cluster atom (`A`)
-and an out-of-cluster atom (`B`), it places a hydrogen `H_link` along
-the `A→B` direction at 1.09 Å (standard C-H length). The cap hydrogen
+When `extract` truncates one of its supported carbon-boundary bonds, it
+places a hydrogen `H_link` from the retained carbon (`A`) toward the removed
+partner (`B`) at 1.09 Å (standard C-H length). It does not generically cap
+arbitrary C–X/non-carbon cuts. The cap hydrogen
 is written as a `HETATM` with atom name `HL` and residue name `LKH`
 (hard-coded in `_format_linkH_block`).
 
 Cap hydrogens carry **no formal charge**; they do not enter the
 charge sum.
 
-The atoms that **donate** hydrogens (i.e. atom `A`, the cluster-side
-parent of each cap) are frozen during optimization. The PDB itself
-carries no encoded freeze list — `pdb2reaction.core.utils.detect_freeze_links`
-re-derives the parent atom of each `LKH/HL` record at runtime via a
-nearest-neighbor search in Cartesian space. The B-factor column on
-the LKH atoms is hard-coded to 0.00 by `_format_linkH_block`.
+For geometry commands, cap-parent atoms (atom `A`, the cluster-side parent of
+each cap) are detected and frozen by default through `--freeze-links`; users
+can explicitly disable that behavior. The PDB itself carries no encoded
+freeze list — `pdb2reaction.core.utils.detect_freeze_links` re-derives each
+parent of an `LKH/HL` record at runtime via a nearest-neighbor search in
+Cartesian space. The B-factor column on LKH atoms is hard-coded to 0.00 by
+`_format_linkH_block` and is not a freeze flag.
 
 ## Manual cluster-boundary checklist
 
@@ -119,8 +128,14 @@ the LKH atoms is hard-coded to 0.00 by `_format_linkH_block`.
   metal-coordination bonds; move the boundary or include the bonded partner.
 - One intended cap per severed valence; visually inspect bond lengths and
   valence. Keep cap parents frozen with `--freeze-links` in production.
-- Apply exactly the same atom selection, order, and cap topology to R/IM/P.
-  Never re-extract compared states independently.
+- Within one R/IM/P reaction path, require exactly the same atom identities,
+  order, cluster boundary, and cap topology. Prefer one multi-input extraction;
+  if states must be prepared separately, explicitly harmonize and validate all
+  four properties before path calculations.
+- WT/mutant or other cross-variant models may necessarily differ in atom
+  identity. Keep the modeling protocol and boundary definition comparable,
+  document the differences, and compare reaction observables such as barriers
+  rather than trying to combine unlike structures into one path.
 - Recompute net charge/multiplicity after truncation. A geometrically neat
   cluster with the wrong electron count is still an invalid MLIP input.
 
@@ -177,15 +192,15 @@ B-factors edited above are passed through verbatim by `extract` /
 ## Validation hooks
 
 ```bash
-# atom count + residue count
+# atom count + unique residue-identity count (chain, residue number, insertion code)
 grep -c '^ATOM\|^HETATM' my.pdb
-awk '/^ATOM|^HETATM/{print substr($0,18,3)}' my.pdb | sort -u
+awk '/^ATOM|^HETATM/{print substr($0,22,6)}' my.pdb | sort -u | wc -l
 
 # any missing element columns?
-awk '/^ATOM|^HETATM/{e=substr($0,77,2); if(e=="  ") print NR, $0}' my.pdb
+awk '/^ATOM|^HETATM/{e=substr($0,77,2); if(e ~ /^[[:space:]]*$/) print NR, $0}' my.pdb
 
 # any duplicate atom names within one residue (often breaks downstream parsers)?
-awk '/^ATOM|^HETATM/{key=substr($0,22,5)"-"substr($0,13,4); print key}' my.pdb \
+awk '/^ATOM|^HETATM/{key=substr($0,22,6)"-"substr($0,13,4); print key}' my.pdb \
     | sort | uniq -c | awk '$1>1'
 ```
 

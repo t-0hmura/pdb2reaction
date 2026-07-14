@@ -3,12 +3,12 @@
 ```text
 Usage: pdb2reaction all [OPTIONS]
 
-  Run active site model extraction → (optional single-structure staged scan) →
-  MEP search → merge to full PDBs in a single run. If exactly one input is
-  provided: (a) with --scan-lists, run staged scan on the active site model (or
-  full structure when extraction is skipped) and use stage results as inputs for
-  path-opt (path_search with --refine-path True); (b) with --tsopt True and no
-  --scan-lists, run TSOPT-only mode.
+  Run active site model extraction → optional staged scan → MEP search → full-
+  structure merge in one run. If exactly one input is provided: (a) with --scan-
+  lists, run staged scan on the active site model (or full structure when
+  extraction is skipped) and use stage results as inputs for path-opt
+  (path_search with --refine-path); (b) with --tsopt and no --scan-lists, run
+  TSOPT-only mode.
 
 Options:
   -v, --verbose LEVEL             Console verbosity 0-3 (default 2). 0=silent;
@@ -18,22 +18,24 @@ Options:
                                   paths, DEBUG logging).  [0<=x<=3]
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
-  -i, --input FILE                Two or more **full structures** (PDB/XYZ/GJF)
-                                  in reaction order (reactant [intermediates
-                                  ...] product), or a single **full structure**
-                                  (with --scan-lists or with --tsopt True).
-                                  Extraction (-c/--center) requires PDB inputs.
-                                  When using --scan-lists without extraction,
-                                  the input may be PDB/XYZ/GJF (integer indices
-                                  only for non-PDB inputs). Repeat -i/--input
-                                  for each file.  [required]
+  -i, --input FILE                Two or more **full structures**
+                                  (PDB/mmCIF/XYZ/GJF) in reaction order
+                                  (reactant [intermediates ...] product), or a
+                                  single **full structure** (with --scan-lists
+                                  or with --tsopt). Extraction (-c/--center)
+                                  accepts PDB/mmCIF. mmCIF is processed through
+                                  an internal PDB bridge and emitted again as
+                                  mmCIF; oversized PDBs use the same safe
+                                  bridge. Repeat -i/--input for each file.
+                                  [required]
   -c, --center TEXT               Substrate specification for the extractor: a
-                                  PDB path, a residue-ID list like '123,124' or
-                                  'A:123,B:456' (insertion codes OK: '123A' /
-                                  'A:123A'), or a residue-name list like
-                                  'GPP,SAM'. When omitted, extraction is skipped
-                                  and the **full input structure(s)** are used
-                                  directly as active site models.
+                                  PDB/mmCIF path, a residue-ID list like
+                                  '123,124' or 'A:123,B:456' (insertion codes
+                                  OK: '123A' / 'A:123A'), a residue-name list
+                                  like 'GPP,SAM', or chain-qualified 'A:SAM' /
+                                  'A:SAM:123'. When omitted, extraction is
+                                  skipped and the **full input structure(s)**
+                                  are used directly as active site models.
   -o, --out-dir DIRECTORY         Top-level output directory for the pipeline.
                                   [default: result_all]
   -r, --radius FLOAT              Inclusion cutoff (Å) around substrate atoms.
@@ -48,11 +50,11 @@ Options:
   --add-linkh BOOLEAN             Add cap hydrogens for severed bonds (carbon
                                   boundaries only) in active site models.
                                   [default: True]
-  --selected-resn TEXT            Force-include residues by residue ID (not
-                                  name; e.g. '123', 'A:123A', 'B:456');
-                                  comma/space separated. Use '-c/--center
-                                  GPP,SAM' for residue-name selection.
-                                  [default: ""]
+  --selected-resn TEXT            Force-include residues using the same
+                                  selectors as -c/--center: IDs ('123',
+                                  'A:123A'), names ('SAM'), or chain-qualified
+                                  names ('A:SAM', 'A:SAM:123'); comma/space
+                                  separated.  [default: ""]
   --modified-residue TEXT         Comma-separated residue names (with optional
                                   charge) to treat as amino acids for backbone
                                   truncation and charge assignment. Examples:
@@ -64,13 +66,16 @@ Options:
                                   with -c/--center it feeds the extractor charge
                                   summary; with -c omitted (extraction skipped)
                                   the same mapping is applied to the full input
-                                  PDB to derive the total system charge. A bare
-                                  number sets the total directly. PDB inputs
-                                  only. To force a total charge regardless of
-                                  residues, use -q/--charge (emits a warning).
-  -q, --charge INTEGER            Force the total system charge (overrides
-                                  extractor/GJF/--ligand-charge-derived values;
-                                  emits a warning when used).
+                                  PDB/mmCIF to derive the total system charge. A
+                                  bare number sets the total directly. PDB/mmCIF
+                                  inputs only. To force a total charge
+                                  regardless of residues, use -q/--charge (emits
+                                  a warning).
+  -q, --charge INTEGER            Total system charge. With -c/--center, this is
+                                  an assertion and must match the extractor-
+                                  derived charge; omit it to auto-derive.
+                                  Without extraction it explicitly
+                                  sets/overrides the total and emits a warning.
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
                                   predictor. NOTE: with UMA, workers>1 plus an
                                   explicit Analytical Hessian request is an
@@ -84,18 +89,23 @@ Options:
                                   'water'). 'none' to disable.  [default: none]
   --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1).  [default: 1]
-  --freeze-links BOOLEAN          Freeze parent atoms of cap hydrogens (PDB
-                                  input or XYZ/GJF with --ref-pdb).  [default:
-                                  True]
+  --freeze-links BOOLEAN          Freeze parent atoms of cap hydrogens
+                                  (PDB/mmCIF input or XYZ/GJF with --ref-pdb).
+                                  [default: True]
+  --tr-projection [constrained|legacy-active]
+                                  Rigid translation/rotation treatment forwarded
+                                  to TSopt, IRC, freq, and flatten PHVA. The
+                                  default respects frozen anchors.  [default:
+                                  constrained]
   --mep-mode [gsm|dmf]            MEP optimizer: Growing String Method (gsm) or
                                   Direct Max Flux (dmf).  [default: gsm]
   --dmf-backend [cpu|gpu]         DMF compute backend (--mep-mode dmf only): gpu
                                   (dmf.torch / CUDA) or cpu (dmf / NumPy). On a
                                   GPU out-of-memory error, retry with cpu.
                                   [default: gpu]
-  --max-nodes INTEGER             Max internal nodes for **segment** GSM (String
-                                  has max_nodes+2 images including endpoints).
-                                  [default: 20]
+  --max-nodes INTEGER             Movable internal images per GSM/DMF segment;
+                                  the complete segment has max_nodes+2 images
+                                  including endpoints.  [default: 20]
   --max-cycles INTEGER            Maximum GSM optimization cycles.  [default:
                                   300]
   --climb BOOLEAN                 Enable climbing image for standard GSM
@@ -112,16 +122,18 @@ Options:
                                   [default: hess]
   --dump BOOLEAN                  Dump GSM/MEP trajectories. Always forwarded to
                                   path_search/path-opt; scan/tsopt receive it
-                                  only when explicitly set here. The freq stage
-                                  uses dump=True by default; set --dump False
-                                  explicitly to disable it.  [default: False]
-  --convert-files BOOLEAN         Convert XYZ/TRJ outputs into PDB/GJF
+                                  only when explicitly set here. When --thermo
+                                  is enabled, freq always retains
+                                  thermoanalysis.yaml because the composite
+                                  workflow consumes that file; --no-dump does
+                                  not suppress it.  [default: False]
+  --convert-files BOOLEAN         Convert XYZ/TRJ outputs into PDB/CIF/GJF
                                   companions based on the input format.
                                   [default: True]
   --refine-path BOOLEAN           Run a single-pass path-opt GSM between each
                                   adjacent pair and concatenate the segments
                                   (default; no path_search). Use --refine-path
-                                  True to run recursive path_search on the full
+                                  to run recursive path_search on the full
                                   ordered series for automatic multistep
                                   discovery.  [default: False]
   --thresh [gau_loose|gau|gau_tight|gau_vtight|baker|never]
@@ -157,7 +169,7 @@ Options:
                                   (or TSOPT-only mode) and build Gibbs free-
                                   energy diagram (MLIP).  [default: False]
   --dft BOOLEAN                   Run DFT single-point on (R, TS, P) and build
-                                  DFT energy diagram. With --thermo True, also
+                                  DFT energy diagram. With --thermo, also
                                   generate a DFT//MLIP Gibbs diagram.  [default:
                                   False]
   --tsopt-max-cycles INTEGER      Override tsopt --max-cycles value. Defaults to
@@ -207,9 +219,11 @@ Options:
                                   literals define sequential stages, e.g.
                                   '[(12,45,1.35)]'
                                   '[(10,55,2.20),(23,34,1.80)]'. Indices refer
-                                  to the original full input PDB (1-based). When
-                                  extraction is used, they are auto-mapped to
-                                  the active site model after extraction.
+                                  to the original full input ordering (1-based);
+                                  atom strings may use
+                                  CHAIN:RESNAME:RESSEQ[ICODE]:ATOM. When
+                                  extraction is used, selections are auto-mapped
+                                  to the active site model after extraction.
   --scan-out-dir DIRECTORY        Override the scan output directory (default:
                                   <out-dir>/scan/). Relative paths are resolved
                                   against the default parent.
@@ -227,9 +241,10 @@ Options:
                                   --preopt when omitted.
   --scan-endopt BOOLEAN           Override scan --endopt flag. Defaults to
                                   False.
-  --ref-pdb FILE                  Reference PDB for topology when -i provides
-                                  XYZ inputs. Enables PDB output conversion in
-                                  TSOPT-only, scan, and path_search pipelines.
+  --ref-pdb FILE                  Reference PDB/mmCIF for topology when -i
+                                  provides XYZ inputs. Enables topology-aware
+                                  PDB/mmCIF output conversion in TSOPT-only,
+                                  scan, and path_search pipelines.
   --coord-type [cart|dlc]         Optimization coordinate system (cart|dlc).
                                   cart is the reliable default used for the
                                   published results; dlc speeds up torsion-rich
@@ -251,13 +266,13 @@ Options:
                                   / DFTB+ / any ASE engine. See --calc-factory.
   --calc-factory TEXT             Name of the callable in --calc-file that
                                   returns an ASE Calculator (or a module-level
-                                  Calculator instance).  [default:
-                                  get_calculator]
+                                  Calculator instance). CLI overrides config
+                                  YAML; otherwise defaults to get_calculator.
   --deterministic / --no-deterministic
-                                  Strict bit-reproducible GPU runs
+                                  Request strict same-stack PyTorch determinism
                                   (deterministic algorithms + index_reduce_
-                                  shim). Slower; raises if unsupported. Default
-                                  off.
+                                  shim). Slower; raises for detected unsupported
+                                  ops; custom calculators are outside its scope.
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
                                   parity check (logs that it was skipped). For
                                   an intentional open-shell or modified-residue

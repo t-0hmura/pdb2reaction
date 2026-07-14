@@ -3,31 +3,38 @@
 Every run needs a total charge and a multiplicity, and a wrong value silently produces
 wrong-chemistry trajectories rather than an error.
 
-**For a PDB input, give the charge with `-l 'RES:Q'` — the per-residue mapping — and let
-`pdb2reaction` derive the total.** You name only the non-standard residues (ligands, metals,
-non-default protonation states); the standard amino acids and ions come from the internal table,
-and waters and cap hydrogens are neutral. This is the robust route: the derived total always
-matches what `extract` reports, and it stays correct when the cluster changes (a different
-`-c/--center`, a different radius, a different representative structure), whereas a hand-entered
-total silently becomes wrong the moment the pocket boundary moves.
+**For PDB/mmCIF input, give the charge with `-l 'RES:Q'` — the per-residue mapping — and let
+`pdb2reaction` derive the total.** Name only unknown/non-standard ligand residues; standard
+amino acids and recognized ions come from internal tables,
+and waters and cap hydrogens are neutral. This route makes the reported total
+follow the residues retained by `extract`. It is still only chemically correct
+when residue names, protonation/oxidation states, ligand mappings, and the
+chosen cluster boundary are correct; inspect the charge breakdown whenever the
+model changes.
 
-Use `-q INTEGER` when there are no residues to sum (`.xyz` / `.gjf` inputs without `--ref-pdb`),
-or to deliberately override the derivation. Multiplicity is always given with `-m`.
+Use `-q INTEGER` when there are no residues to sum (notably `.xyz` without
+`--ref-pdb`), or to deliberately override the derivation in ordinary geometry
+commands. A valid `.gjf` already carries charge and multiplicity in its header;
+CLI `-q` / `-m` override it. The `all` workflow is intentionally stricter when
+`-c/--center` triggers extraction: there `-q` is an assertion and must match the
+extract-derived total. Set multiplicity explicitly whenever it is not the known
+singlet default.
 
 ## Multiplicity (`-m`)
 
 | Default | Use case |
 |---|---|
-| **1 (singlet, closed shell)** | The default for almost every organic / biological / metal-coordination system whose textbook description is closed-shell. |
+| **1 (singlet, closed shell)** | Use only when the modeled electron count and electronic state are known to be closed-shell. Do not infer singlet merely because the structure is biological or metal-bound. |
 | 2 (doublet) | Radical species, unpaired-electron transition states (e.g. radical SAM enzymes, Fe(III) low-spin) |
 | 3 (triplet) | O₂, some carbenes, Ni(II) (d⁸) high-spin tetrahedral / weak-field octahedral |
 | 4 (quartet) | Co²⁺ (d⁷) high-spin, Cr³⁺ / V²⁺ (d³) |
 | 5 (quintet) | Mn(III), Fe(II) high-spin |
 | 6 (sextet) | Mn(II) high-spin, S=5/2 ferric |
 
-> If the system contains a known paramagnetic metal, look up the
-> oxidation state and use the high-spin/low-spin assignment from the
-> primary literature for that enzyme.
+> The entries are examples, not a spin-state calculator. For metals, radicals,
+> antiferromagnetically coupled centers, or uncertain protonation/oxidation
+> states, derive total charge and multiplicity for the **whole retained
+> cluster** from the mechanism and primary literature.
 
 ## Charge — derive it with `-l 'RES:Q'`
 
@@ -35,10 +42,13 @@ or to deliberately override the derivation. Multiplicity is always given with `-
    and let `pdb2reaction` sum amino-acid + ion + ligand charges into the total.
    The mapping is honored whether or not extraction runs: with `-c` it feeds the
    extractor's charge summary; with `-c` omitted (a pre-carved model passed as-is)
-   the same mapping is applied to the full input PDB.
+   the same mapping is applied to the full input PDB/mmCIF structure.
 2. **Direct total / override** — pass `-q INTEGER` for an input with no residues to
-   sum (`.xyz` / `.gjf` without `--ref-pdb`), or to override the `-l` derivation.
-   `-q` wins over `-l` when both are given.
+   sum (`.xyz` without `--ref-pdb`), to replace a GJF header deliberately, or
+   to override the `-l` derivation in ordinary geometry commands. In those
+   commands `-q` wins over `-l` when both are given. Exception: `all` with
+   `-c/--center` compares `-q` with the extracted total and aborts on a mismatch;
+   `-q` does not silently replace extraction's charge result.
 
 The amino-acid table is internal:
 
@@ -49,7 +59,12 @@ python -c "from pdb2reaction.workflows.extract import AMINO_ACIDS, ION; print(di
 (`AMINO_ACIDS` and `ION` are `Dict[str, int]` mapping residue/ion
 name to formal charge.)
 
-For non-standard residues / ligands / metals, you must supply `-l`.
+For unknown/non-standard ligand residues, supply `-l`. Recognized monatomic
+ions use the internal `ION` table and must not be repeated in `-l`. A mapping
+does not override a standard amino-acid or recognized-ion entry. For a
+non-default protonation/oxidation state represented by such a resname, either
+use an appropriate distinct residue name during model construction or provide
+the verified total with `-q` as a deliberate override.
 
 ## Lookup workflow for an unfamiliar substrate
 
@@ -57,7 +72,14 @@ When you don't know a ligand's formal charge:
 
 - **Lookup**: primary mechanism paper → PubChem / ChEBI `Formal Charge` → RCSB ligand summary (e.g. `https://www.rcsb.org/ligand/SAM`).
 - **Derive from SMILES** if needed: `sum(a.GetFormalCharge() for a in Chem.MolFromSmiles(smi).GetAtoms())`.
-- **Sanity-check before a long job**: run it once with `--dry-run` (`all` / `opt` / `tsopt` / `dft` / `path-opt` / `path-search` / `freq` / `irc`; not `extract`). It prints the resolved charge and the electron-parity check, then exits without computing. `--show-config` prints the same resolved configuration but then proceeds with the full run, so it is not a preview. `pdb2reaction extract … --verbose` echoes the per-residue charge sum used for `cluster.pdb`.
+- **Sanity-check before a long job**: use `--dry-run` on calculation
+  subcommands that expose it; `extract` itself has no dry-run mode. It exits
+  before MLIP/DFT stages. `all -c/--center ... --dry-run` deliberately performs
+  extraction in a temporary directory so it can print and validate the
+  extracted model's charge and electron parity; the temporary directory is
+  removed afterward. `--show-config` prints the resolved configuration but then
+  proceeds with the full run, so it is not a preview. `pdb2reaction extract ...
+  --verbose 2` prints the per-residue charge sum used for `cluster.pdb`.
 
 ### Protonation state at physiological pH
 
@@ -77,22 +99,20 @@ Many ligands have multiple protonation states. Common rule of thumb:
 Check the literature for the cluster you are modeling — biological
 mechanisms sometimes invoke an unusual protonation state.
 
-## Permission to web-search
+## Source policy for an unknown value
 
-When the agent does not know a charge / multiplicity:
-
-- **Confirm with the user before running a web search.** Many users
-  prefer to point to the relevant paper themselves.
-- If web search is allowed, prefer authoritative sources in this order:
-  primary research paper → PubChem / ChEBI → general databases →
-  general web. Cite the source in the agent's output.
-- If neither user input nor a clean web source is available, **stop
-  and ask** — do not silently default to `-q 0 -m 1` for a metal
-  cluster.
+When the agent does not know a charge / multiplicity, follow the active
+agent/tool browsing policy and use authoritative sources in this order:
+the mechanism's primary paper or deposited structure documentation, then
+PubChem/ChEBI/RCSB CCD. Cite the source and state the modeled protonation and
+oxidation state. If the sources do not determine one unambiguous state, stop
+and ask the user; never silently default a metal/radical cluster to
+`-q 0 -m 1`.
 
 ## Quick-reference ligand charges (commonly seen)
 
-Always confirm against the relevant mechanism.
+These are common examples, not defaults. Confirm the exact deposited/modelled
+protonation state against the relevant mechanism before using a value.
 
 | Ligand | Resname (PDB) | Charge at pH 7 |
 |---|---|---|
@@ -112,11 +132,11 @@ Always confirm against the relevant mechanism.
 ### Monatomic ions are summed from the internal `ION` table
 
 `-l` is applied only to residues that are in **none** of `AMINO_ACIDS`,
-`ION` or the water set (`extract.py:1281-1318`): an ion resname takes its
-charge from `ION`, and a token such as `-l 'MG:2'` or `-l 'FE:2'` is
-parsed, matched against nothing, and dropped without a warning. List only
-true ligands / non-standard residues in `-l` — the ions are already
-counted in the total that `extract` reports.
+`ION` or the water set: an ion resname takes its charge from `ION`. A token
+such as `-l 'MG:2'` or `-l 'FE:2'` therefore matches no unknown residue,
+produces a warning, and is ignored. List only true ligands / non-standard
+residues in `-l` — the ions are already counted in the total that `extract`
+reports.
 
 The built-in values follow the PDB CCD resnames, so the oxidation state
 lives in the resname:
@@ -135,8 +155,9 @@ lives in the resname:
 Dump the whole table with the `python -c` one-liner above (`FE3` is not a
 key in it). When the deposited resname disagrees with the oxidation state
 the mechanism requires — an `FE` record that is really Fe(II), say — set
-the cluster total explicitly with `-q`, which overrides the `-l`
-derivation (`core/utils.py:1915`).
+the cluster total explicitly with `-q` in an ordinary geometry command. For
+`all -c/--center`, correct the residue naming/mapping instead because `-q` is a
+consistency assertion, not an override.
 
 ## Multiplicity for metals (look-up shortcuts)
 

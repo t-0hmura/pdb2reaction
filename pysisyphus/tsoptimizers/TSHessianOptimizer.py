@@ -679,13 +679,19 @@ class TSHessianOptimizer(HessianOptimizer):
             )
             device = H_in.device
 
+        projection_info = {}
         freqs_cm, modes = _frequencies_cm_and_modes(
             H_in,
             list(self.geometry.atomic_numbers),
             self.geometry.cart_coords.reshape(-1, 3).copy(),
             device,
             freeze_idx=sorted(frozen) or None,
+            tr_projection=getattr(
+                self.geometry, "tr_projection", "constrained"
+            ),
+            projection_info=projection_info,
         )
+        self._last_rigid_projection_info = projection_info
         return np.asarray(freqs_cm, dtype=float), modes
 
     def _recovery_mode_from_mw(self, modes, mode_index):
@@ -1175,9 +1181,8 @@ class TSHessianOptimizer(HessianOptimizer):
                 H, self._physical_ts_mode
             )
 
-        # The historical n_imag=0 failures all terminated through the energy-
-        # plateau fallback.  Validate an apparent terminal point with the exact
-        # Hessian before it can be reported as a TS.
+        # Validate an apparent terminal point with the exact Hessian before it
+        # can be reported as a transition state.
         exact_checked = False
         if (
             self.verify_saddle

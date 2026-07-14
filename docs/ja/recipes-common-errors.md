@@ -16,7 +16,7 @@
 | `-q/--charge is required` 系エラー | `-q/--charge` または `-l/--ligand-charge` を明示指定してください | {ref}`電荷 / スピンの問題 <ts-charge-spin>` |
 | 計算は通るが状態/エネルギーが不自然 | [CLI 規約](cli-conventions.md) の電荷解決順序を再確認してください | {ref}`電荷 / スピンの問題 <ts-charge-spin>` |
 | **計算 / 収束** | | |
-| UMA の `--workers > 1` と `--hessian-calc-mode Analytical` の併用で `RuntimeError` | 解析 Hessian には `--workers 1`、並列実行には `FiniteDifference` を指定 | {ref}`workers > 1 のHessian制約 <ja-workers-fd-downgrade>` |
+| UMA の `--workers > 1` と `--hessian-calc-mode Analytical` の併用で `BackendError` | 解析 Hessian には `--workers 1`、並列実行には `FiniteDifference` を指定 | {ref}`workers > 1 のHessian制約 <ja-workers-analytical-error>` |
 | 実行時に CUDA OOM | `--radius` を縮小して再抽出（extract / all のみ）、`--opt-mode grad` に切替、有限差分 Hessian のまま、または VRAM の大きい GPU へ | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | TS は収束したが小さい虚振動が複数残る | `--flatten` を追加（`tsopt`、`opt`、`pdb2reaction all` 共通） | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | TSOPT が収束しない | L-BFGS/Dimer: `max_step` を**縮小**。RFO/RS-P-RFO（`tsopt` デフォルト）/RS-I-RFO: `trust_radius`/`trust_min`/`trust_max` を**縮小**。サイクル上限を増やし、TS 品質を確認 | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
@@ -39,7 +39,7 @@
  - 入力構造が同じ前処理フローで作られ、原子順が揃っているか。
  - `extract` / `all` 前に元素カラムが埋まっているか。
 - 典型的な修正手順:
- - `pdb2reaction add-elem-info -i input.pdb -o input_fixed.pdb` で元素列を修復 — 抽出再実行 — 活性部位モデルサイズ（`--radius`）/残基選択（`--selected-resn`）を再確認。残基 ID 仕様の詳細は CLI 規約の {ref}`ja-selected-resn-takes-ids` を参照。
+ - `pdb2reaction add-elem-info -i input.pdb -o input_fixed.pdb` で元素列を修復 — 抽出再実行 — 活性部位モデルサイズ（`--radius`）/残基選択（`--selected-resn`）を再確認。残基名・ID・chain付きselectorの指定形式は CLI 規約の {ref}`ja-selected-resn-takes-ids` を参照。
 
 ## レシピ 2: 電荷/スピンの解決で止まる
 

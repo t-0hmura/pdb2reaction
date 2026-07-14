@@ -2,18 +2,15 @@
 
 ## ブール値オプション
 
-ブール値オプションは root CLI で正規化されます。
-次の 2 記法を受け付けます。
+手入力のコマンド、docs、skill では flag pair を使用します。
 
 ```bash
-# 推奨
 --tsopt --thermo --no-dft
-
-# 互換記法として受け付け
---tsopt True --thermo yes --dft 0
 ```
 
-`bool_compat` が value-style flag に `--no-<flag>` synthetic alias を、flag-pair に value-style alias を生成するため、toggle と value 表記はサブコマンド横断で互換です。
+旧来の value-style 表記も後方互換のため入力としては受理しますが、
+canonical な表記ではなく、docs・skill・生成コマンドからは出力しません。
+root CLI の `bool_compat` が互換入力を正規化します。
 
 よく使うブール値オプション：
 - `--tsopt`, `--thermo`, `--dft` — 後処理ステージの有効化
@@ -21,7 +18,7 @@
 - `--dump` — 軌跡ファイルの出力
 - `--preopt`, `--endopt` — 前処理/後処理最適化の切り替え
 - `--climb` — MEP 探索でクライミングイメージを有効化
-- `--convert-files` — 対応する PDB/GJF ファイルの生成
+- `--convert-files` — 入力トポロジー／テンプレートに応じた PDB/CIF/GJF companion の生成
 
 ## 段階的ヘルプ（`all`）
 
@@ -67,9 +64,16 @@ pdb2reaction all --help-advanced # 全オプション
 -c 'A:123A' # チェーン A、残基 123、挿入コード A
 ```
 
-### PDB ファイルによる指定
+### chain + 残基名による指定
+```bash
+-c 'A:SAM' # chain A 内の SAM をすべて選択
+-c 'A:SAM:123' # chain A、残基名 SAM、残基番号 123 の1残基
+```
+
+### PDB/mmCIF ファイルによる指定
 ```bash
 -c substrate.pdb # 別の PDB から座標を使用して基質を特定
+-c substrate.cif # 別の mmCIF も使用可能
 ```
 
 ```{note}
@@ -77,18 +81,19 @@ pdb2reaction all --help-advanced # 全オプション
 ```
 
 (ja-selected-resn-takes-ids)=
-### `--selected-resn` は残基 ID を取る（残基名ではない）
+### `--selected-resn` も同じ残基selectorを使う
 
-```{warning}
-**`--selected-resn` は残基 ID を受け付け、残基名は受け付けません。** `extract` と `all` の `--selected-resn` フラグは、名前に反して **残基 ID**（コロン区切り整数、オプションでチェーン/挿入コード付き、例 `A:123A`）を受け付け、3 文字残基名は受け付けません。残基名トークン（例 `'TYR,GLU'`）を渡すと `ValueError("Invalid residue specifier 'TYR'. Use '123', '123A', 'A:123', or 'A:123A'.")` が発生します。残基名ベースの基質選択には `-c/--center 'GPP,SAM'` を使用してください。正式な説明は [`extract` の CLI オプション表](extract.md) を参照してください。
-```
+`extract` と `all` の `--selected-resn` は、残基ID・残基名・chain付き
+残基名を受け付けます。`A:123A` は挿入コード付きの1残基、`A:SAM`
+はchain A内の全SAM、`A:SAM:123` はそのうち1残基を強制包含します。
+chainを付けない `TYR` は全matchを包含し、複数match時に警告します。
 
 ---
 
 (ja-charge-specification)=
 ## 電荷の指定
 
-PDB 入力では、`--ligand-charge/-l` を使うと**非標準残基（基質・補因子・金属イオンなど）の電荷だけ**を指定すれば、標準アミノ酸やイオンの電荷と合算して全系の電荷が自動計算されます。大きな酵素–基質系で総電荷を手動で数える必要がなくなります。
+PDB/mmCIF 入力では、`--ligand-charge/-l` を使うと**非標準残基（基質・補因子・金属イオンなど）の電荷だけ**を指定すれば、標準アミノ酸やイオンの電荷と合算して全系の電荷が自動計算されます。大きな酵素–基質系で総電荷を手動で数える必要がなくなります。
 
 ### 残基別マッピング（推奨）
 ```bash
@@ -108,14 +113,14 @@ PDB 入力では、`--ligand-charge/-l` を使うと**非標準残基（基質�
 2. 活性部位モデル（バインディングポケット）抽出（アミノ酸、イオン、`--ligand-charge/-l` の合計） — `all` などで `-c/--center` を指定し抽出が有効な場合のみ
 3. フォールバックとしての `--ligand-charge/-l`（抽出がスキップされた場合）
 4. `.gjf` テンプレートのメタデータ
-5. デフォルト: なし（未解決の場合は実行を中断します。`-q`、`.gjf` 電荷メタデータ、または PDB 入力の `--ligand-charge/-l` のいずれかで解決してください）
+5. デフォルト: なし（未解決の場合は実行を中断します。`-q`、`.gjf` 電荷メタデータ、または PDB/mmCIF 入力の `--ligand-charge/-l` のいずれかで解決してください）
 
 ```{note}
 ステップ 2（抽出による電荷導出）は `-c/--center` を伴う `all` などのコマンドでのみ作動します。`opt`/`tsopt`/`freq` などの単独サブコマンドや、`-c` を指定しない場合は抽出がスキップされ、解決順は 1 → 3 → 4 → 5 となります。
 ```
 
 ```{note}
-`--ligand-charge/-l` による導出は、PDB 入力のみ（`--ref-pdb` を付けた XYZ/GJF 入力を含む）で電荷が**まだ解決されていない**場合に適用されます。未解決の場合は、`.gjf` メタデータへフォールバックする前に `--ligand-charge/-l` 導出を先に試行します。
+`--ligand-charge/-l` による導出は、PDB/mmCIF トポロジー（`--ref-pdb` を付けた XYZ/GJF 入力を含む）で電荷が**まだ解決されていない**場合に適用されます。未解決の場合は、`.gjf` メタデータへフォールバックする前に `--ligand-charge/-l` 導出を先に試行します。
 ```
 
 ```{tip}
@@ -146,6 +151,7 @@ PDB 入力では、`--ligand-charge/-l` を使うと**非標準残基（基質�
 ### PDB 形式のセレクタ文字列
 ```bash
 --scan-lists '[("TYR,285,CA", "SAM,309,C10", 2.20)]'
+--scan-lists '[("A:TYR:285:CA", "B:SAM:309:C10", 2.20)]' # chain付き
 ```
 
 セレクタのフィールドは以下で区切れます。
@@ -155,7 +161,7 @@ PDB 入力では、`--ligand-charge/-l` を使うと**非標準残基（基質�
 - バッククォート: `` 'TYR`285`CA' ``
 - バックスラッシュ: `'TYR\285\CA'`
 
-3 つのトークン（残基名、残基番号、原子名）は任意の順序で指定できます。パーサーは順序が標準的でない場合にフォールバックヒューリスティックを使用します。
+3つのtoken（残基名、残基番号、原子名）は任意の順序で指定できます。残基名や番号が重複するときは、位置固定の4-field形式`CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`を使います。
 
 ---
 
@@ -185,7 +191,7 @@ pairs: # scan2d（要素は 2 つちょうど） / scan3d（要素は 3 つち�
 - `stages` / `pairs` は必須です。
 - `scan` の各ステージは `(i, j, target_Å)` 3 要素タプルのリストです。
 - `scan2d`/`scan3d` の各軸は `(i, j, low_Å, high_Å)` の 4 要素タプルです。
-- インデックスは整数または PDB セレクタのどちらでも指定できます（インラインリテラルと同じ）。
+- indexは整数、3-field selector、または位置固定`CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`で指定できます。
 
 #### インライン Python リテラルの書式
 
@@ -208,6 +214,7 @@ pairs: # scan2d（要素は 2 つちょうど） / scan3d（要素は 3 つち�
 | --- | --- | --- |
 | 整数インデックス | `(1, 5, 2.0)` | デフォルトは 1 始まり（`--one-based`） |
 | PDB セレクタ | `("TYR,285,CA", "SAM,309,C10", 2.0)` | 残基名、残基番号、原子名の 3 要素タプル |
+| chain付きselector | `("A:TYR:285:CA", "B:SAM:309:C10", 2.0)` | 位置固定`CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` |
 
 PDB セレクタのトークンは、カンマ `,`、スペース、スラッシュ `/`、バッククォート `` ` ``、バックスラッシュ `\` のいずれでも区切れます。トークンの順序も任意です。
 
@@ -238,6 +245,11 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 - **水素原子**を含む必要があります（`reduce`、`pdb2pqr`、または Open Babel で追加）
 - 列 77–78 に**元素記号**が必要（欠けている場合は `pdb2reaction add-elem-info` を使用）
 - 複数の PDB は**同じ原子を同じ順序**で持つ必要があります（座標のみ異なる）
+
+### mmCIFファイル
+- multi-character chain、PDB欄を超えるresidue／atom ID、10,000残基以上では`.cif`／`.mmcif`を使用
+- 共通bridgeが内部PDBで計算し、出力CIFへ元IDを復元
+- 反応順に並べる複数入力は、形式変換後も同じ原子identityと順序が必要
 
 ### XYZ および GJF ファイル
 - 活性部位モデル抽出をスキップする場合に使用可能（`-c/--center` を省略）
@@ -340,7 +352,7 @@ pdb2reaction -i r.pdb p.pdb -q -1 --config my_settings.yaml --out-dir result/
 - **組み込みデフォルト** — すべてのパラメータのハードコード値（`pdb2reaction/core/defaults.py` を参照）。
 - **`--config`** — デフォルトを上書きする YAML ファイル。サイト共通やプロジェクト共通の設定に便利です。
 - **CLI オプション** — コマンドラインで明示的に指定されたフラグ（例: `--backend orb`）。*明示的に指定された*値のみが YAML を上書きし、CLI デフォルトのままのオプションは YAML の値を隠しません。
-- **既知の例外**: `flatten_max_iter` — `--flatten` を渡さない場合、CLI 初期化が `flatten_max_iter = 0` をシードし、`defaults.py` の `50` を上書きします。
+- **既知のデフォルト例外**: `flatten_max_iter` は YAML 適用前に 0 で初期化されます。toggle 未指定なら明示した YAML 値を保持し、`--flatten` は YAML／組み込みの正値を有効化、`--no-flatten` は 0 を強制します。{ref}`ja-flatten-precedence-caveat` を参照してください。
 
 この優先順位は `all`, `opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, `dft` に共通です。あわせて {ref}`YAML リファレンス: 設定の優先順位 <ja-yaml-configuration-precedence>` を参照してください。
 

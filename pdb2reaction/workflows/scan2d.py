@@ -233,7 +233,7 @@ def _build_scan_context(
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help="Input structure file (.pdb, .xyz, _trj.xyz, ...).",
+    help="Input structure file (.pdb, .cif, .mmcif, .xyz, _trj.xyz, ...).",
 )
 @click.option(
     "-s", "--scan-lists",
@@ -244,7 +244,8 @@ def _build_scan_context(
         "Scan targets: inline Python literal or a YAML/JSON spec file path. "
         "scan2d expects EXACTLY 2 quadruples (i, j, low, high) — one per "
         "scanned bond axis — e.g. '[(12,45,1.30,3.10),(10,55,1.20,3.20)]'. "
-        "Atom indices may also be PDB-style strings like 'CE  SAM   216'. "
+        "Atom indices may also be strings like 'CE SAM 216'; use positional "
+        "CHAIN:RESNAME:RESSEQ[ICODE]:ATOM when chain qualification is needed. "
         "Step count per axis is set via --max-step-size, NOT inside the tuple "
         "(scan2d does not accept a 5th element; the scan command's 3-tuple "
         "(i, j, target) form is rejected here too)."
@@ -327,7 +328,7 @@ def cli(
     precision: Optional[str],
     backend_model: Optional[str],
     calc_file: Optional[str],
-    calc_factory: str,
+    calc_factory: Optional[str],
 ) -> None:
 
     set_convert_file_enabled(convert_files)
@@ -335,6 +336,14 @@ def cli(
         config_yaml=config_yaml,
         override_yaml=None,
         args_yaml_legacy=None,
+    )
+    merged_yaml_cfg = load_merged_yaml_cfg(
+        config_yaml=config_yaml,
+        override_yaml=None,
+    )
+    from pdb2reaction.core.utils import resolve_configured_charge_spin
+    charge, spin = resolve_configured_charge_spin(
+        merged_yaml_cfg, charge=charge, spin=spin, ligand_charge=ligand_charge,
     )
 
     cycles_overridden = cli_param_overridden(ctx, "relax_max_cycles")
@@ -381,10 +390,7 @@ def cli(
         try:
             time_start = time.perf_counter()
 
-            yaml_cfg = load_merged_yaml_cfg(
-                config_yaml=config_yaml,
-                override_yaml=None,
-            )
+            yaml_cfg = merged_yaml_cfg
             yaml_opt = yaml_cfg.get("opt") if isinstance(yaml_cfg, dict) else None
             relax_override_requested = cycles_overridden and not (
                 isinstance(yaml_opt, dict) and "max_cycles" in yaml_opt
@@ -594,7 +600,7 @@ def cli(
                         ref_pdb_path=ref_pdb_path,
                         out_pdb_path=grid_dir / f"preopt_i{d1_tag}_j{d2_tag}.pdb",
                         out_gjf_path=grid_dir / f"preopt_i{d1_tag}_j{d2_tag}.gjf",
-                        context=f"'{preopt_xyz_path.name}' to PDB/GJF",
+                        context=f"'{preopt_xyz_path.name}' to PDB/CIF/GJF",
                     )
 
                     E_pre_h = unbiased_energy_hartree(geom_outer, base_calc)
@@ -783,7 +789,7 @@ def cli(
                             ref_pdb_path=ref_pdb_path,
                             out_pdb_path=grid_dir / f"point_i{d1_tag}_j{d2_tag}.pdb",
                             out_gjf_path=grid_dir / f"point_i{d1_tag}_j{d2_tag}.gjf",
-                            context=f"'{xyz_path.name}' to PDB/GJF",
+                            context=f"'{xyz_path.name}' to PDB/CIF/GJF",
                         )
                     except Exception as e:
                         click.echo(

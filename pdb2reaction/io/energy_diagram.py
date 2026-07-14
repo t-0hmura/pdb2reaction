@@ -3,7 +3,8 @@ Minimal energy-diagram utility from numeric inputs.
 
 Examples:
     pdb2reaction energy-diagram -i 0 -i 12.5 -i 4.3 -o energy.png
-    pdb2reaction energy-diagram -i "[-205.1, -190.4, -198.7]" --label-x R TS P
+    pdb2reaction energy-diagram -i "[-205.1, -190.4, -198.7]" \
+        --label-x R --label-x TS --label-x P
 """
 
 from __future__ import annotations
@@ -106,54 +107,13 @@ def _parse_label_x(tokens: Sequence[str]) -> List[str]:
     return [str(x) for x in labels if str(x).strip()]
 
 
-def _gather_variadic_values(
-    ctx_args: List[str],
-    flag_names: Sequence[str],
-    all_flags: Sequence[str],
-) -> List[str]:
-    """Collect variadic positional values after *flag_names* from Click extra args.
-
-    Stops at the next recognized flag or end-of-args.
-    """
-    names_set = set(flag_names)
-    stop_set = set(all_flags)
-    vals: List[str] = []
-    i = 0
-    while i < len(ctx_args):
-        tok = ctx_args[i]
-        if tok in names_set:
-            j = i + 1
-            while j < len(ctx_args) and ctx_args[j] not in stop_set:
-                vals.append(ctx_args[j])
-                j += 1
-            i = j
-        else:
-            i += 1
-    return vals
-
-
-_ALL_FLAGS = (
-    "-i", "--input",
-    "-o", "--output",
-    "--label-x", "--label-y",
-    "-h", "--help", "--help-advanced",
-    # Bool-toggle pair must appear here so variadic recovery does not absorb
-    # `--out-json`/`--no-out-json` as a numeric token after `-i ...`.
-    "--out-json", "--no-out-json",
-)
-
-
 @click.command(
     name="energy-diagram",
     help=(
         "Plot an energy diagram from numeric inputs only. "
         "Pass values by repeating -i or as one list-like string."
     ),
-    context_settings={
-        "help_option_names": ["-h", "--help"],
-        "ignore_unknown_options": True,
-        "allow_extra_args": True,
-    },
+    context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.option(
     "-i",
@@ -204,31 +164,16 @@ _ALL_FLAGS = (
     show_default=True,
     help="Write machine-readable result.json next to the output image.",
 )
-@click.pass_context
 def cli(
-    ctx: click.Context,
     input_values: Sequence[str],
     output_path: Path,
     label_x: Sequence[str],
     label_y: str,
     out_json: bool,
 ) -> None:
-    # Click with ignore_unknown_options may not capture all variadic
-    # positional values after -i / --label-x.  Re-parse from ctx.args
-    # (the extra args Click could not match) to recover them.
-    extra_inputs = _gather_variadic_values(
-        ctx.args, ("-i", "--input"), _ALL_FLAGS,
-    )
-    input_tokens = list(input_values) + extra_inputs if extra_inputs else list(input_values)
+    energies = _parse_numeric_inputs(input_values)
 
-    extra_labels = _gather_variadic_values(
-        ctx.args, ("--label-x",), _ALL_FLAGS,
-    )
-    label_tokens = list(label_x) + extra_labels if extra_labels else list(label_x)
-
-    energies = _parse_numeric_inputs(input_tokens)
-
-    labels = _parse_label_x(label_tokens)
+    labels = _parse_label_x(label_x)
     if labels:
         if len(labels) != len(energies):
             raise click.BadParameter(

@@ -1,5 +1,5 @@
 """
-Single-structure geometry optimization using LBFGS or RFO with UMA calculator.
+Single-structure geometry optimization using LBFGS or RFO with an MLIP calculator.
 
 Example:
     pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hess
@@ -24,6 +24,7 @@ from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
 from pysisyphus.constants import ANG2BOHR, BOHR2ANG, AU2EV
+from pysisyphus.tr_projection import normalize_tr_projection_mode
 from pdb2reaction.workflows.restraints import HarmonicBiasCalculator
 
 from pdb2reaction.core.defaults import (
@@ -148,7 +149,7 @@ def _convert_outputs(
     get_trj_fn,
     final_xyz_path: Path,
 ) -> None:
-    """Convert outputs (final geometry and trajectory) to PDB/GJF when requested by the input type."""
+    """Convert outputs to PDB/CIF/GJF companions requested by the input type."""
     needs_pdb = prepared_input.source_path.suffix.lower() == ".pdb"
     needs_gjf = prepared_input.is_gjf
     if not (needs_pdb or needs_gjf):
@@ -186,7 +187,7 @@ def _convert_outputs(
 def _flatten_all_imag_modes_for_geom(
     geom,
     masses_amu: np.ndarray,
-    uma_kwargs: dict,
+    calc_kwargs: dict,
     freqs_cm: np.ndarray,
     modes: torch.Tensor,
     neg_freq_thresh_cm: float,
@@ -203,7 +204,7 @@ def _flatten_all_imag_modes_for_geom(
     targets = [int(x) for x in neg_idx_all[order]]
     mass_scale = np.sqrt(12.011 / masses_amu)[:, None]
     amp_bohr = float(flatten_amp_ang) / BOHR2ANG
-    E_ref = _calc_energy(geom, uma_kwargs)
+    E_ref = _calc_energy(geom, calc_kwargs)
 
     m3 = np.repeat(masses_amu, 3).reshape(-1, 3)
     for idx in targets:
@@ -218,10 +219,10 @@ def _flatten_all_imag_modes_for_geom(
         minus = ref - disp
 
         geom.coords = plus.reshape(-1)
-        E_plus = _calc_energy(geom, uma_kwargs)
+        E_plus = _calc_energy(geom, calc_kwargs)
 
         geom.coords = minus.reshape(-1)
-        E_minus = _calc_energy(geom, uma_kwargs)
+        E_minus = _calc_energy(geom, calc_kwargs)
 
         use_plus = E_plus <= E_minus
         geom.coords = (plus if use_plus else minus).reshape(-1)
@@ -247,7 +248,7 @@ def _flatten_all_imag_modes_for_geom(
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help="Input structure file (.pdb, .xyz, _trj.xyz, ...).",
+    help="Input structure file (.pdb, .cif, .mmcif, .xyz, .gjf, _trj.xyz, ...).",
 )
 @click.option(
     "--workers",
@@ -293,7 +294,7 @@ def _flatten_all_imag_modes_for_geom(
     "--freeze-links/--no-freeze-links",
     default=True,
     show_default=True,
-    help="Freeze parent atoms of cap hydrogens (PDB input or XYZ/GJF with --ref-pdb).",
+    help="Freeze parent atoms of cap hydrogens (PDB/mmCIF input or XYZ/GJF with --ref-pdb).",
 )
 @click.option(
     "--freeze-atoms",
@@ -304,17 +305,28 @@ def _flatten_all_imag_modes_for_geom(
     help="Comma-separated 1-based atom indices to freeze (e.g., '1,3,5').",
 )
 @click.option(
+    "--tr-projection",
+    type=click.Choice(["constrained", "legacy-active"], case_sensitive=False),
+    default=GEOM_KW_DEFAULT["tr_projection"],
+    show_default=True,
+    help=(
+        "Rigid translation/rotation treatment used by --flatten PHVA. "
+        "'constrained' respects frozen anchors; 'legacy-active' treats the "
+        "active fragment as isolated."
+    ),
+)
+@click.option(
     "--convert-files/--no-convert-files",
     "convert_files",
     default=True,
     show_default=True,
-    help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
+    help="Convert XYZ/TRJ outputs into PDB/CIF/GJF companions based on the input format.",
 )
 @click.option(
     "--ref-pdb",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help="Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
+    help="Reference PDB/mmCIF topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
 )
 @click.option(
     "--max-cycles",
@@ -416,6 +428,7 @@ def cli(
     bias_k: float,
     freeze_links: bool,
     freeze_atoms_text: Optional[str],
+    tr_projection: str,
     convert_files: bool,
     ref_pdb: Optional[Path],
     max_cycles: int,
@@ -436,7 +449,7 @@ def cli(
     precision: Optional[str],
     backend_model: Optional[str],
     calc_file: Optional[str],
-    calc_factory: str,
+    calc_factory: Optional[str],
 ) -> None:
     time_start = time.perf_counter()
 
@@ -448,6 +461,10 @@ def cli(
     merged_yaml_cfg, config_layer_cfg, override_layer_cfg = load_merged_yaml_cfg(
         config_yaml=config_yaml,
         override_yaml=None,
+    )
+    from pdb2reaction.core.utils import resolve_configured_charge_spin
+    charge, spin = resolve_configured_charge_spin(
+        merged_yaml_cfg, charge=charge, spin=spin, ligand_charge=ligand_charge,
     )
 
     set_convert_file_enabled(convert_files)
@@ -522,6 +539,8 @@ def cli(
                 opt_cfg["thresh"] = str(thresh)
             if cli_param_overridden(ctx, "cli_coord_type") and cli_coord_type is not None:
                 geom_cfg["coord_type"] = str(cli_coord_type).lower()
+            if cli_param_overridden(ctx, "tr_projection"):
+                geom_cfg["tr_projection"] = str(tr_projection).lower()
             if cli_param_overridden(ctx, "print_every") and print_every is not None:
                 opt_cfg["print_every"] = int(print_every)
 
@@ -535,6 +554,12 @@ def cli(
                     (rfo_cfg, (("rfo",),)),
                 ],
             )
+            try:
+                geom_cfg["tr_projection"] = normalize_tr_projection_mode(
+                    geom_cfg.get("tr_projection")
+                )
+            except ValueError as exc:
+                raise click.ClickException(str(exc)) from exc
 
             # Convert 1-based YAML freeze_atoms to 0-based internal
             if geom_cfg.get("freeze_atoms"):
@@ -622,6 +647,7 @@ def cli(
                             "flatten": bool(flatten),
                             "convert_files": bool(convert_files),
                             "freeze_links": bool(freeze_links),
+                            "tr_projection": geom_cfg["tr_projection"],
                             "will_run_optimization": True,
                             "will_write_final_geometry": True,
                         },
@@ -642,7 +668,7 @@ def cli(
                 **coord_kwargs,
             )
 
-            # Attach UMA calculator
+            # Attach the configured MLIP calculator.
             base_calc = create_calculator(**calc_cfg)
             geometry.set_calculator(base_calc)
             echo_resolved_device()
@@ -730,13 +756,14 @@ def cli(
                 max_cycles=int(opt_cfg.get("max_cycles", 0)) or None,
             )
             last_optimizer = optimizer
+            rigid_projection_info: Dict[str, Any] = {}
 
             if flatten:
                 click.echo("\n====== Optimization (Flatten loop) ======\n", narrative=True)
 
                 geometry.set_calculator(None)
-                uma_kwargs_for_flatten = dict(calc_cfg)
-                uma_kwargs_for_flatten["out_hess_torch"] = True
+                calc_kwargs_for_flatten = dict(calc_cfg)
+                calc_kwargs_for_flatten["out_hess_torch"] = True
                 device = _torch_device(calc_cfg.get("device", "auto"))
                 freeze_idx = list(geom_cfg.get("freeze_atoms", [])) if len(geom_cfg.get("freeze_atoms", [])) > 0 else None
                 masses_amu = _safe_masses_amu(geometry.atomic_numbers)
@@ -745,14 +772,24 @@ def cli(
                     geometry.set_calculator(opt_calc)
 
                 def _calc_freqs_and_modes() -> Tuple[np.ndarray, torch.Tensor]:
-                    H = _calc_full_hessian_torch(geometry, uma_kwargs_for_flatten, device)
+                    H = _calc_full_hessian_torch(geometry, calc_kwargs_for_flatten, device)
                     freqs_local, modes_local = _frequencies_cm_and_modes(
                         H,
                         geometry.atomic_numbers,
                         geometry.cart_coords.reshape(-1, 3),
                         device,
                         freeze_idx=freeze_idx,
+                        tr_projection=geom_cfg["tr_projection"],
+                        projection_info=rigid_projection_info,
                     )
+                    rigid_projection_info.update({
+                        "hessian_space": (
+                            "full" if H.shape[0] == 3 * len(geometry.atomic_numbers)
+                            else "active"
+                        ),
+                        "raw_hessian_shape": list(H.shape),
+                        "source": "opt_flatten",
+                    })
                     del H
                     return freqs_local, modes_local
 
@@ -769,7 +806,7 @@ def cli(
                     did_flatten = _flatten_all_imag_modes_for_geom(
                         geometry,
                         masses_amu,
-                        uma_kwargs_for_flatten,
+                        calc_kwargs_for_flatten,
                         freqs_cm,
                         modes,
                         OPT_FLATTEN_NEG_FREQ_THRESH_CM,
@@ -806,6 +843,7 @@ def cli(
                     )
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
+                click.echo(pretty_block("rigid_projection", rigid_projection_info))
 
             # Final geometry location (Optimizer sets final_fn during run)
             final_xyz_path = (
@@ -839,11 +877,13 @@ def cli(
                     "solvent": calc_cfg.get("solvent", "none"),
                     "thresh": opt_cfg.get("thresh", "gau"),
                     "max_cycles": opt_cfg.get("max_cycles"),
-                    "input_file": str(source_path),
+                    "input_file": str(prepared_input.display_path),
                     "files": {
                         "final_geometry_xyz": str(final_xyz_path.name),
                     },
                 }
+                if rigid_projection_info:
+                    result_data["rigid_projection"] = dict(rigid_projection_info)
                 if hasattr(last_optimizer, 'max_forces') and last_optimizer.max_forces:
                     result_data["final_max_force"] = float(last_optimizer.max_forces[-1])
                     result_data["final_rms_force"] = float(last_optimizer.rms_forces[-1])
@@ -854,13 +894,13 @@ def cli(
                 if hasattr(last_optimizer, 'max_steps') and last_optimizer.max_steps:
                     result_data["final_max_step"] = float(last_optimizer.max_steps[-1])
                     result_data["final_rms_step"] = float(last_optimizer.rms_steps[-1])
-                # Add PDB/GJF if generated
-                for ext in (".pdb", ".gjf"):
+                # Add PDB/CIF/GJF companions if generated.
+                for ext in (".pdb", ".cif", ".gjf"):
                     f = out_dir_path / f"final_geometry{ext}"
                     if f.exists():
                         result_data["files"][f"final_geometry_{ext[1:]}"] = f.name
                 # Add trajectory files if they exist
-                for name in ("optimization_trj.xyz", "optimization.pdb"):
+                for name in ("optimization_trj.xyz", "optimization.pdb", "optimization.cif"):
                     _tf = out_dir_path / name
                     if _tf.exists():
                         key = name.replace(".", "_").replace("-", "_")

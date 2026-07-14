@@ -1,6 +1,9 @@
 # Installing pdb2reaction itself (core.md)
 
-`pdb2reaction` is a pure-Python package; no native C/C++ build is needed.
+The `pdb2reaction` source distribution itself is Python, but several runtime
+dependencies ship compiled CPU/CUDA wheels. Installing pdb2reaction does not
+compile a project-local C/C++ extension; source builds of PyTorch/GPU4PySCF or
+other dependencies are a separate matter.
 The bundled `pysisyphus` (GPU-tensor fork) and `thermoanalysis` install
 automatically with `pip install pdb2reaction`.
 
@@ -17,13 +20,15 @@ automatically with `pip install pdb2reaction`.
 conda activate <YOUR_ENV>
 pip install pdb2reaction                         # core (UMA via fairchem-core); Orb requires the [orb] extra
 pip install 'pdb2reaction[orb,aimnet,dft]'        # extras as needed
-plotly_get_chrome -y                             # headless Chrome for Plotly PNG export (~150 MB, needs network)
+plotly_get_chrome -y                             # headless Chrome for Plotly PNG export (needs network)
 ```
 
-`plotly_get_chrome -y` belongs to the **required** install — it is the third
-command in the "Required" block of `docs/installation.md`. Plotly's static-image
-export runs through Kaleido, which drives a headless Chromium. With Chrome in
-place, PNG output works everywhere; without it `energy-diagram`, `scan2d` and
+Static Plotly export requires a Kaleido-compatible Chrome/Chromium runtime.
+`plotly_get_chrome -y` is the documented way to install one when a compatible
+system browser is not already discoverable; it is not necessary to download a
+second browser blindly. Verify PNG output with a smoke test because
+headless/system-library policy varies by host. Without a usable runtime,
+`energy-diagram`, `scan2d` and
 `trj2fig` (png/pdf/svg targets) raise at the plotting step, and `path-search` /
 `all` warn and finish without the diagram PNG — so the symptom appears at the end
 of a run, far from the env build.
@@ -74,7 +79,7 @@ print('defaults:', sorted(n for n in dir(d) if not n.startswith('_'))[:10], '...
 "
 ```
 
-`pdb2reaction --help` should list ~18 subcommands (`all`, `extract`,
+`pdb2reaction --help` should list 18 subcommands (`all`, `extract`,
 `path-search`, `path-opt`, `opt`, `tsopt`, `freq`, `irc`, `dft`, `sp`, `scan`,
 `scan2d`, `scan3d`, `trj2fig`, `energy-diagram`, `add-elem-info`,
 `fix-altloc`, `bond-summary`).
@@ -90,7 +95,7 @@ Inside that directory:
 | File / dir | Purpose |
 |---|---|
 | `cli/app.py` | Click entry point |
-| `core/defaults.py` | All default kwarg dicts (read with `import pdb2reaction.core.defaults`) |
+| `core/defaults.py` | Shared backend/workflow defaults (read with `import pdb2reaction.core.defaults`); command-specific defaults also live in workflow modules, so inspect live `--help` |
 | `backends/` | UMA / Orb / MACE / AIMNet2 calculator factories |
 | `workflows/{extract,path_search,tsopt,irc,freq,dft,all}.py` | Subcommand implementations |
 

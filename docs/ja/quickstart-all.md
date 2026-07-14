@@ -26,7 +26,12 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  --tsopt --thermo --dft --out-dir ./result_all
 ```
 
-> **VRAM 注意:** `--dft` は抽出されたクラスターモデルに対して GPU4PySCF の一点計算を走らせます。~200 原子を超える系では VRAM が 24 GB 未満の GPU で容易に OOM を起こします。`CUDA out of memory` になった場合は、`--dft` を外して基底を縮小または原子数を削減した上で別途 `pdb2reaction dft` を実行するか、より大容量の GPU ノードへ移してください。事前に `[dft]` extra のインストールも必要です（[インストール](installation.md) 手順 7 を参照）。
+> **VRAM 注意:** `--dft` は抽出clusterに対してGPU4PySCFの一点計算を
+> 実行します。必要memoryは構造・基底・汎関数・精度・software stackに依存するため、
+> 対象nodeで代表構造をpilot実行してpeak memoryを測定してください。OOM時は、より
+> 小さい基底／縮小clusterで `pdb2reaction dft` を単独実行するか、より大きいnodeを
+> 使用します。`[dft]` extraのinstallも必要です
+> （[インストール](installation.md) 手順7）。
 
 ## 期待される出力
 
@@ -38,23 +43,21 @@ result_all/
 ├── summary.json                   # 機械可読な結果
 ├── mep.pdb                        # マージ済み MEP 経路（ルート直下に配置）
 ├── energy_diagram_MEP.png         # 全セグメントの MEP エネルギープロファイル
-├── segments/
-│   └── seg_01/                    # 反応セグメント別の成果物
-│       ├── reactant.pdb           # 正規 IRC 最適化 R/TS/P
-│       ├── ts.pdb
-│       ├── product.pdb
-│       ├── ts/final_geometry.pdb  # --tsopt 時
-│       ├── irc/finished_irc_trj.xyz
-│       └── freq/                  # --thermo 時
 └── _work/                         # パイプライン作業領域（削除可）
     └── path_opt/                  # MEP エンジン生出力
+        ├── hei_seg_01.{xyz,pdb}   # MEP の最高エネルギー像
         └── summary.json           # path-opt エンジンの結果
 ```
+
+最小コマンドは MEP ステージ終了時に停止するため、`segments/` は作成しません。
+`--tsopt` を付け、反応セグメントの検証に成功すると
+`segments/seg_01/{reactant.pdb,ts.pdb,product.pdb}`、`ts/`、`irc/` が追加され、
+`--thermo` も付けると `freq/` が追加されます。
 
 **確認ポイント:**
 
 1. `summary.json` — `status` フィールド（`"success"` / `"partial"` / `"failed"`）とセグメントごとの `barrier_kcal` を確認。`summary.log` は同じ内容をテキスト形式の要約として出力します
-2. `segments/seg_01/*.pdb` — PyMOL で R/TS/P 構造が化学的に妥当か確認
+2. `_work/path_opt/hei_seg_01.pdb` — 最高エネルギー像を確認。`--tsopt` 時は正規 `segments/seg_01/*.pdb` の R/TS/P も確認
 3. `energy_diagram_*.png` — 明確な障壁があるエネルギープロファイル
 
 **成功時のターミナル出力例:**

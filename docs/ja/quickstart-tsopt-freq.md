@@ -14,7 +14,7 @@
   - `.gjf` ヘッダから自動取得（Gaussian 入力を渡した場合のみ）
 - `-m/--multiplicity` — デフォルトは `1`（一重項）。ラジカル種では明示が必要です
 - `.xyz` 入力では `-q` と `-m` が必須です。`-l` 形式で電荷を渡したい場合は `--ref-pdb cluster.pdb` を併用してください
-- TS のみモードに入る条件は **3 つすべて成立**: (1) `-i` 入力がちょうど 1 つ、(2) `--scan-lists` が無い、(3) `--tsopt`（または `--tsopt True`）が指定されている。そうでない場合 CLI は入力ゲートで `BadParameter` を送出します（`Provide at least two structures with -i/--input in reaction order, or use a single structure with --scan-lists, or a single structure with --tsopt True.`）。
+- TS のみモードに入る条件は **3 つすべて成立**: (1) `-i` 入力がちょうど 1 つ、(2) `--scan-lists` が無い、(3) `--tsopt` が指定されている。そうでない場合 CLI は入力ゲートで `BadParameter` を送出します（`Provide at least two structures with -i/--input in reaction order, or use a single structure with --scan-lists, or a single structure with --tsopt.`）。
 
 ## 最小コマンド
 
@@ -40,7 +40,12 @@ pdb2reaction all -i ts_candidate.pdb -l 'SAM:1,GPP:-3' \
     -o ./result_ts_only
 ```
 
-> **VRAM 注意:** `--dft` は GPU4PySCF で一点計算を実行します。クラスター > 200 原子 / VRAM < 24 GB では `CUDA out of memory` の可能性あり。OOM 時は `--dft` を外して `pdb2reaction dft` を小さい基底または縮小クラスターで単独実行するか、VRAM の大きいノードに移してください。`[dft]` extra のインストールも必要です（[インストール](installation.md) を参照）。
+> **VRAM 注意:** `--dft` は GPU4PySCF で一点計算を実行します。必要メモリは
+> 構造・基底・汎関数・精度・software stackに依存するため、対象nodeで代表構造を
+> pilot実行し、peak memoryを測定してください。OOM時は `--dft` を外し、より小さい
+> 基底または縮小clusterで `pdb2reaction dft` を単独実行するか、より大きいnodeへ
+> 移してください。`[dft]` extraのinstallも必要です
+> （[インストール](installation.md) を参照）。
 
 ## 期待される出力
 
@@ -64,14 +69,13 @@ result_ts_only/
         │   ├── frequencies_cm-1.txt
         │   └── thermoanalysis.yaml
         └── dft/{R,TS,P}/                      # --dft 時のみ
-            ├── result.yaml                    # 常に出力（--dft 時）
-            └── result.json                    # --out-json で opt-in
+            └── result.yaml                    # 常に出力（--dft 時）
 ```
 
 **確認ポイント（実行順）:**
 
-1. `summary.json` の `status` が `"success"` であること。`segments[0].barrier_kcal` と `segments[0].delta_kcal` も確認。
-2. `post_segments[0].ts_imag.n_imag == 1` — 一次鞍点の必要条件。
+1. `summary.json` の `status` が `"success"` であること。これは要求した結果が揃い、TS虚振動validatorも通過したことを表します。`"partial"` なら利用可能なpathはありますが、要求stageの失敗・欠損またはvalidator不通過があるため `status_reasons` を確認します。`"failed"` は利用可能なpath結果が無い状態です。`segments[0].barrier_kcal` と `segments[0].delta_kcal` も確認します。
+2. `post_segments[0].ts_imag.n_imag == 1` — 一次鞍点の必要条件です。振動数の大きさだけで反応性を判定せず、modeを可視化してIRC接続を確認します。系ごとのnoise評価で柔らかい非反応modeを特定した場合だけ、YAMLの opt-in filter `irc.imag_below` を既定の `0.0` より負側へ設定します。IRCが受理するのは `ν <= imag_below` のmodeです。
 3. `segments/seg_01/irc/{forward,backward}_irc_trj.xyz` を PyMOL で開き、R 端・P 端まで到達していることを確認。
 4. `segments[0].bond_changes` が空でなく、想定どおりの結合切断・形成が記録されていること。
 5. `segments/seg_01/freq/{R,TS,P}/frequencies_cm-1.txt` で R / P に虚振動が無く、TS で 1 つだけあること。
@@ -88,7 +92,7 @@ result_ts_only/
 ## 補足
 
 - `tsopt` 単独でのパラメータ調整（`--opt-mode`、`--max-cycles`、Hessian オプション）は [tsopt](tsopt.md) を参照。
-- VRAM に余裕がある場合は `--hessian-calc-mode Analytical` を推奨します（デフォルトは `FiniteDifference`）。
+- デフォルトの `FiniteDifference` を基準にし、選択した backend/model と対象系で速度・メモリ・結果を検証できた場合にだけ `--hessian-calc-mode Analytical` を明示してください。
 - 全オプションを確認するには `pdb2reaction all --help-advanced`。
 
 ## 次のステップ

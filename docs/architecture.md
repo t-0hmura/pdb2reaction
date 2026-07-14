@@ -2,7 +2,10 @@
 
 ## 1. Overview
 
-`pdb2reaction` is a Python CLI that performs **pure-MLIP enzymatic reaction-path analysis** on an active-site cluster model. From a PDB plus a substrate name, it extracts the active-site cluster, adds cap hydrogens to severed bonds, and runs Hessian-based RS-P-RFO TS optimization on the MLIP potential to produce the reaction path (extract → MEP → tsopt → IRC → freq → dft).
+`pdb2reaction` is a Python CLI for enzymatic reaction-path analysis on an
+active-site cluster model. It uses built-in MLIPs or a custom ASE calculator
+for geometry/path stages and can add an optional PySCF/GPU4PySCF DFT
+single-point stage (extract → MEP → tsopt → IRC → freq → dft).
 
 
 Two bundled forks (`pysisyphus/`, `thermoanalysis/`) live at the repo top as repo-internal modules. They are deliberately **not** the upstream PyPI distributions; reinstalling them from PyPI alongside this package silently breaks the local extensions. See §6.
@@ -22,10 +25,10 @@ Two bundled forks (`pysisyphus/`, `thermoanalysis/`) live at the repo top as rep
 | **L3 Domain** | `pdb2reaction/domain/` | chemistry-aware helper logic (bond change detection, bond summary, element-info propagation) | `core/` |
 | **L4a Infra (MLIP)** | `pdb2reaction/backends/` | MLIP backend dispatcher + per-backend adapter (UMA / Orb / MACE / AIMNet2) + xTB ALPB delta correction | `core/` |
 | **L4b Infra (I/O)** | `pdb2reaction/io/` | output layout, summary, trajectory, PDB fix, energy diagram, Hessian cache | `core/` |
-| **L5 Foundation** | `pdb2reaction/core/` | defaults (single source of truth), utils (PDB / XYZ / plot helpers), logging, future `errors.py` / `types.py` | (none) |
+| **L5 Foundation** | `pdb2reaction/core/` | defaults (primary source for shared defaults), utils (structure / coordinate / plot helpers), logging, future `errors.py` / `types.py` | (none, by design intent) |
 | (bundle, not a layer) | `<repo>/pysisyphus/`, `<repo>/thermoanalysis/` | repo-internal forks (optimizer / thermochemistry) | (sibling, layer-external) |
 
-**Dependency direction (design intent, one-way)**: `L1 → L2 → {L3, L4} → L5`. Treat this as an intent that reviewers uphold by hand; CI gates adjacent invariants rather than layer direction — `.github/scripts/check_engineering_markers.py` verifies `# CHEMISTRY-RULE:{4,5,7}` marker coverage, the `# DOMAIN_PURE` markers on `workflows/dft.py` and `workflows/tsopt.py`, and that the MLIP SDKs (`fairchem` / `orb_models` / `mace` / `aimnet`) are imported only under `backends/`. Back-edges present in the current tree: `workflows/*` → `cli.common_options` / `cli.decorators` (e.g. `workflows/all.py:133`), `domain/add_elem_info.py:25` → `workflows.extract`, and `core/utils.py:39` → `domain.add_elem_info`. Bundled forks sit outside the layer graph and may be imported from any layer via their absolute package path (`from pysisyphus.X import Y`).
+**Dependency direction (design intent, one-way)**: `L1 → L2 → {L3, L4} → L5`. Treat this as an intent that reviewers uphold by hand; CI gates adjacent invariants rather than layer direction — `.github/scripts/check_engineering_markers.py` verifies `# CHEMISTRY-RULE:{4,5,7}` marker coverage, the `# DOMAIN_PURE` markers on `workflows/dft.py` and `workflows/tsopt.py`, and that the MLIP SDKs (`fairchem` / `orb_models` / `mace` / `aimnet`) are imported only under `backends/`. Current back-edges are: `workflows/* → cli.common_options/cli.decorators`; `domain/add_elem_info.py → workflows.extract`; `core/utils.py → domain.add_elem_info`, `io.structure_formats`, and `workflows.extract`; `io/structure_formats.py → domain.add_elem_info`; and `io/trj2fig.py → backends`. Bundled forks sit outside the layer graph and may be imported from any layer via their absolute package path (`from pysisyphus.X import Y`).
 
 ### 2.2 ASCII map of the package tree
 
@@ -38,7 +41,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 │ └──... (Sphinx site, unchanged)
 ├── pdb2reaction/ ← package body, 6-layer physical dir
 │ ├── __init__.py PEP 562 lazy: _LAZY_SYMBOLS / _LAZY_MODULES + __getattr__
-│ ├── __main__.py `from pdb2reaction.cli.app import cli`
+│ ├── __main__.py `from .cli import cli`
 │ ├── _version.py / py.typed
 │ │
 │ ├── cli/ # === L1 Interface ===
@@ -76,32 +79,33 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 │ │ ├── energy_diagram.py Plotly diagram
 │ │ ├── trj2fig.py trajectory → PNG / SVG / PDF / HTML / CSV
 │ │ ├── pdb_fix.py altloc resolution
+│ │ ├── structure_formats.py PDB/mmCIF bridge + identifier restoration
 │ │ └── hessian_cache.py in-memory Hessian cache
 │ │
 │ └── core/ # === L5 Foundation ===
-│   ├── defaults.py C1 single source of truth for every default
+│   ├── defaults.py primary source for shared defaults
 │   └── utils.py PDB / XYZ / plot helpers
 │
 ├── tests/ smoke / unit
 ├── .github/ workflows/ + scripts/ (docs-quality lint helpers; CI-only)
 └── (repo-top sibling, layer-external bundled forks)
- pysisyphus/ ~90 files, repo-internal fork (slimmed; CLI driver + QM backends + wavefunction + dead optimisers / IRC / NEB variants removed)
- thermoanalysis/ 5 files, repo-internal fork
+ pysisyphus/ repo-internal fork (slimmed to the numerical features used here)
+ thermoanalysis/ repo-internal fork
 ```
 
 ### 2.3 Per-layer responsibility detail
 
-**L1 `cli/`** (~6 files). Only this layer constructs Click commands and parses argv. `app.py` holds the root `Click.Group` plus the `_LAZY_SUBCOMMANDS` registry — every entry uses an **absolute module path** (`pdb2reaction.workflows.all`, `pdb2reaction.io.trj2fig`, …) so the resolver is independent of where `default_group.py` itself lives. `common_options.py` collects the option-decorator factories shared across subcommands (`@add_print_every_option`, `@add_irc_pos_def_option`, `@add_precision_option`, `@add_coord_type_option`, `@add_ml_charge_spin_options`); subcommand bodies stack these decorators above `@click.pass_context` to keep `--help` text in lock-step.
+**L1 `cli/`** owns the root group, lazy registry, argv normalization, progressive help, and shared option-decorator factories. Workflow and utility modules own their actual `@click.command()` objects and may define command-local options inline; the root resolves and invokes those objects. Every `_LAZY_SUBCOMMANDS` entry uses an **absolute module path** (`pdb2reaction.workflows.all`, `pdb2reaction.io.trj2fig`, …).
 
-**L2 `workflows/`** (18 files). One file per subcommand. Each file owns a single `@click.command()` named `cli` and its private helpers. Large stage runners (`all.py` = 5,131 LOC, `path_search.py` = 2,771 LOC, `tsopt.py` = 2,121 LOC, `extract.py` = 2,113 LOC) remain as single files in the current layout.
+**L2 `workflows/`** contains compute-command modules plus shared stage helpers such as `scan_common.py`, `restraints.py`, and `align_freeze.py`. A command module normally exposes one `@click.command()` named `cli`; utility commands also live in `io/` and `domain/`, so neither “one file per subcommand” nor “every workflow file is a command” is an invariant.
 
 **L3 `domain/`**. Chemistry-aware helper logic that may import `torch` / `numpy` / `pysisyphus.constants` (numeric back-ends), but **may not import** MLIP runtimes (`fairchem`, `orb_models`, `mace`, `aimnet`). `.github/scripts/check_engineering_markers.py` enforces this deny list via an external-library import-scope check across non-`backends/` files. (The `# DOMAIN_PURE` docstring marker itself lives on selected workflow modules — `workflows/dft.py`, `tsopt.py`, `sp.py` — not on `domain/`.) Domain helpers are reusable by any L2 stage runner.
 
-**L4a `backends/`** (~8 files). MLIP backend dispatcher (`__init__.py` + `base.py`) plus one adapter per supported MLIP (`uma.py`, `orb.py`, `mace.py`, `aimnet2.py`). `solvent.py` and `xtb_alpb_correction.py` carry the xTB ALPB implicit-solvent delta correction (an opt-in MLIP wrapper). `pdb2reaction` is a pure-MLIP cluster-model package.
+**L4a `backends/`**. MLIP backend dispatcher (`__init__.py` + `base.py`) plus one adapter per supported MLIP (`uma.py`, `orb.py`, `mace.py`, `aimnet2.py`). `solvent.py` and `xtb_alpb_correction.py` carry the xTB ALPB implicit-solvent delta correction (an opt-in MLIP wrapper); the dispatcher also exposes the custom ASE-calculator boundary.
 
-**L4b `io/`**. Output-side I/O concerns: per-stage summary writer, energy diagram, trajectory rendering, PDB altloc fix, in-memory Hessian cache. `io/` never depends on `workflows/`; output format is owned here and consumed by stage runners.
+**L4b `io/`**. Output-side I/O concerns: per-stage summary writer, energy diagram, trajectory rendering, PDB altloc fix, PDB/mmCIF bridge/template restoration, and in-memory Hessian cache. Output format is owned here and consumed by stage runners; current non-foundation imports are listed in the back-edge inventory above.
 
-**L5 `core/`**. The lowest layer. `defaults.py` is the **single source of truth** for every CLI default — grep here before adding a number anywhere else. `utils.py` is a ~3,200-LOC grab-bag of PDB / XYZ / plotting helpers.
+**L5 `core/`** is the lowest layer. `defaults.py` is the **primary source** for shared numerical and CLI defaults; grep it first, then inspect justified command-local defaults (for example, path-engine choices). `utils.py` contains shared configuration, structure, coordinate, and plotting helpers.
 
 ### 2.4 Lazy-import mechanism (conceptual diagram)
 
@@ -148,8 +152,8 @@ For a contributor opening the repo for the first time, follow this path top-to-b
 |------|---------|------|-----------------|
 | 1 | 3 | [`README.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/README.md) | one-paragraph elevator pitch + single-command usage |
 | 2 | 5 | this file (`docs/architecture.md`) §2 + §4 | 6-layer dir tree, dependency direction, where each concern lives |
-| 3 | 5 | [`pdb2reaction/cli/app.py`](../pdb2reaction/cli/app.py) | Click root group, `_LAZY_SUBCOMMANDS` registry (≈ 18 entries), absolute-path resolution |
-| 4 | 20 | [`pdb2reaction/workflows/all.py`](../pdb2reaction/workflows/all.py) (5,131 LOC, skim) | one full subcommand top-to-bottom; trace `extract → MEP → tsopt → IRC → freq → dft` |
+| 3 | 5 | [`pdb2reaction/cli/app.py`](../pdb2reaction/cli/app.py) | Click root group, `_LAZY_SUBCOMMANDS` registry, absolute-path resolution |
+| 4 | 20 | [`pdb2reaction/workflows/all.py`](../pdb2reaction/workflows/all.py) (skim) | one full subcommand top-to-bottom; trace `extract → MEP → tsopt → IRC → freq → dft` |
 | 5 | 7 | [`CONTRIBUTING.md`](https://github.com/t-0hmura/pdb2reaction/blob/main/CONTRIBUTING.md) §3 + §4 | 5 add-a-X recipes + the "do not touch" hidden constraints |
 
 After step 5 you can read any other file by following the file index in §4. The package is intentionally **flat-within-each-layer** — there is no nested package below `pdb2reaction/<layer>/`, so you never need to navigate more than two directories deep.
@@ -222,7 +226,7 @@ See [Backends](backends.md) for the add-a-backend recipe.
 
 | concern | file |
 |---|---|
-| **Every CLI default (single source of truth)** | `pdb2reaction/core/defaults.py` |
+| **Shared/default numerical settings (primary source; verify command-local exceptions)** | `pdb2reaction/core/defaults.py` |
 | PDB / XYZ / plot helpers | `pdb2reaction/core/utils.py` |
 | `-v` / `-vv` logging wiring | `pdb2reaction/core/logging.py` |
 
@@ -278,9 +282,14 @@ The bundled `pysisyphus/` and `thermoanalysis/` packages are **forks**. Reinstal
 - `pysisyphus/_array.py` — `get_xp` / `_outer` / `_dot` / `_eigh` shim used by `optimizers/hessian_updates.py` (and progressively by other hot-path files)
 - `thermoanalysis/QCData.py` — branding / I/O diff vs upstream
 
-### 5.4 `pyproject.toml` arrays are 0-diff
+### 5.4 Packaging changes require an isolated-install gate
 
-`[tool.setuptools.packages.find].include` and `dependencies` are treated as **0-diff arrays** during this release. The `include` glob (`pdb2reaction*`) already auto-discovers any new layer subpackage; adding a `vendor/` or `internal/` container directory, or pinning a new runtime dependency, breaks the install contract and is forbidden by the release scope. Reflow / comment edits are fine; **array contents** are frozen.
+The `include` glob (`pdb2reaction*`) already auto-discovers new layer
+subpackages, so ordinary internal files need no package-discovery edit. If a
+feature really changes package discovery or runtime dependencies, build both
+sdist and wheel, inspect wheel contents, install the wheel in a clean
+environment, and run the CLI smoke suite. Treat this as a release-contract
+change, not as an incidental refactor.
 
 ### 5.5 `_LAZY_SUBCOMMANDS` registry must use absolute paths
 
@@ -294,10 +303,13 @@ The bundled `pysisyphus/` and `thermoanalysis/` packages are **forks**. Reinstal
 
 | dir | upstream PyPI? | purpose | scope of edits allowed |
 |---|---|---|---|
-| `pysisyphus/` | NO — fork, do not `pip install pysisyphus` alongside | optimizer, TS, IRC, COS, calculators | annotation-only in this release line (docstring + type hints); logic edits forbidden |
-| `thermoanalysis/` | NO — fork (branding diff) | ΔG, ZPE, partition functions, `QCData` | same as `pysisyphus/` |
+| `pysisyphus/` | NO — fork, do not `pip install pysisyphus` alongside | optimizer, TS, IRC, COS, calculators | maintained locally; behavior changes need a focused regression test and matching numerical benchmark |
+| `thermoanalysis/` | NO — fork (branding/I/O diff) | ΔG, ZPE, partition functions, `QCData` | maintained locally; numerical/I/O changes need thermochemistry golden tests |
 
-Each dir carries its own `README.md` listing the divergent files and the touch-restriction boundary. From the layer model these forks live **outside** the L1..L5 graph: any layer may import them via the absolute package path (`from pysisyphus.X import Y`) without breaking the `L1 → L2 → {L3, L4} → L5` direction.
+Each directory carries a `README.md` listing its divergent files and required
+validation. From the layer model these forks live **outside** the L1..L5
+graph: any layer may import them via the absolute package path
+(`from pysisyphus.X import Y`) without breaking the layer direction.
 
 ---
 

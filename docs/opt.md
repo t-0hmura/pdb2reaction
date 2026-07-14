@@ -46,11 +46,11 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hess \
 ## Workflow
 
 - **Optimizer naming**: the CLI accepts `grad|lbfgs` and `hess|rfo`; in the YAML `opt_mode` key, use `lbfgs` or `rfo` directly. See {ref}`opt-mode-semantics` for the per-subcommand token→algorithm mapping.
-- **Flatten loop**: `--flatten` enables post-optimization flattening of imaginary vibrational modes. In `opt`, all detected imaginary modes are flattened each iteration until none remain or the internal loop cap is reached.
+- **Flatten loop**: `--flatten` enables post-optimization flattening of imaginary vibrational modes. In `opt`, all detected imaginary modes are flattened each iteration until none remain or the internal loop cap is reached. Its PHVA eigensolver uses `--tr-projection`; the default `constrained` mode respects frozen anchors.
 - **Restraints**: `--dist-freeze` consumes Python-literal tuples `(i, j, target_Å)` where `target_Å` is the target distance in Å; omitting the third element restrains the starting distance. `--bias-k` sets a global harmonic strength (eV·Å⁻²). Indices default to 1-based but can be flipped to 0-based with `--zero-based`.
 - **Charge/spin resolution**: Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: Charge specification <charge-specification>` for details).
 - **Freeze atoms**: When `--freeze-links` is active, cap-hydrogen parent atoms are automatically frozen (see {ref}`Cap hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
-- **Dumping & conversion**: `--dump` mirrors `opt.dump=True` and writes `optimization_trj.xyz`; when conversion is enabled, trajectories are mirrored to `.pdb` for PDB inputs. `opt.dump_restart` can emit restart YAML snapshots.
+- **Dumping & conversion**: `--dump` mirrors `opt.dump=True` and writes `optimization_trj.xyz`; when conversion is enabled, PDB inputs receive `.pdb` companions and mmCIF/oversized-PDB bridge inputs receive both `.pdb` and `.cif`. `opt.dump_restart` can emit restart YAML snapshots.
 - **Exit codes**: See {ref}`exit-codes` in CLI Conventions.
 
 ## Outputs
@@ -58,10 +58,12 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hess \
 ```
 out_dir/
 ├─ final_geometry.xyz # Always written
-├─ final_geometry.pdb # Only when the input was a PDB and conversion is enabled
+├─ final_geometry.pdb # PDB/mmCIF topology input, conversion enabled
+├─ final_geometry.cif # mmCIF/oversized-PDB bridge input, conversion enabled
 ├─ final_geometry.gjf # When a Gaussian template was detected and conversion is enabled
 ├─ optimization_trj.xyz # Only if dumping is enabled
-├─ optimization.pdb # PDB conversion of the trajectory (PDB inputs, conversion enabled)
+├─ optimization.pdb # PDB conversion of the trajectory (topology input, conversion enabled)
+├─ optimization.cif # Bridge-input trajectory with original IDs restored
 └─ restart*.yml # Optional restarts when opt.dump_restart is set
 ```
 The console prints the resolved `geom`, `calc`, `opt`, and `lbfgs`/`rfo` blocks, along with cycle-by-cycle progress and total runtime.
@@ -75,22 +77,23 @@ The full flag list is in the generated [command reference](reference/commands/in
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Input structure accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Net charge. Required unless a `.gjf` template or `--ligand-charge/-l` (PDB inputs or XYZ/GJF with `--ref-pdb`) supplies it. Overrides `--ligand-charge/-l` when both are set. | Required unless template/derivation applies |
-| `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB residue charges. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
-| `--workers INT` | UMA predictor parallelism. `workers > 1` cannot be combined with an explicit analytical Hessian request; use `workers = 1` or finite differences. See {ref}`workers-fd-downgrade`. | `1` |
+| `-q, --charge INT` | Net charge. Required unless a `.gjf` template or `--ligand-charge/-l` (PDB/mmCIF inputs or XYZ/GJF with `--ref-pdb`) supplies it. Overrides `--ligand-charge/-l` when both are set. | Required unless template/derivation applies |
+| `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB/mmCIF residue metadata. Used when `-q` is omitted (PDB/mmCIF inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
+| `--workers INT` | UMA predictor parallelism. `workers > 1` cannot be combined with an explicit analytical Hessian request; use `workers = 1` or finite differences. See {ref}`workers-analytical-error`. | `1` |
 | `--workers-per-node INT` | Workers per node, forwarded to the parallel predictor. | `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). Falls back to `.gjf` template or `1`. | Template/`1` |
 | `--dist-freeze TEXT` | Repeatable string parsed as Python literal describing `(i,j,target_Å)` tuples for harmonic restraints. | _None_ |
 | `--one-based/--zero-based` | Interpret `--dist-freeze` indices as 1-based (default) or 0-based. | `True` |
 | `--bias-k FLOAT` | Harmonic bias strength applied to every `--dist-freeze` tuple (eV·Å⁻²). | `300` |
-| `--freeze-links/--no-freeze-links` | Toggle cap-hydrogen parent freezing (PDB input or XYZ/GJF with `--ref-pdb`). See [extract](extract.md) for cap-hydrogen details. | `True` |
+| `--freeze-links/--no-freeze-links` | Toggle cap-hydrogen parent freezing (PDB/mmCIF input or XYZ/GJF with `--ref-pdb`). See [extract](extract.md) for cap-hydrogen details. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
+| `--tr-projection [constrained\|legacy-active]` | Rigid-mode treatment used only by `--flatten` PHVA. `constrained` respects frozen anchors; `legacy-active` is an isolated-active comparison treatment. | `constrained` |
 | `--max-cycles INT` | Hard limit on optimization iterations (`opt.max_cycles`). | `10000` |
 | `--opt-mode TEXT` | Optimizer preset: `grad` (`lbfgs`) or `hess` (`rfo`). Aliases `lbfgs`/`rfo` are accepted. On `opt`, `grad` = L-BFGS minimization; on `tsopt`, `grad` = Hessian-Guided Dimer TS search. For the full subcommand-dependent table, see {ref}`opt-mode-semantics`. | `grad` |
 | `--flatten/--no-flatten` | Enable/disable the post-optimization imaginary-mode flattening loop. | `False` |
 | `--dump/--no-dump` | Emit trajectory dumps (`optimization_trj.xyz`). | `False` |
-| `--convert-files/--no-convert-files` | Enable or disable XYZ/TRJ → PDB companions for PDB inputs and XYZ → GJF companions for Gaussian templates. | `True` |
-| `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
+| `--convert-files/--no-convert-files` | Enable or disable XYZ/TRJ → PDB/CIF companions for PDB/mmCIF topology inputs and XYZ → GJF companions for Gaussian templates. | `True` |
+| `--ref-pdb FILE` | Reference PDB or mmCIF topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `-o, --out-dir TEXT` | Output directory for all files. | `./result_opt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
 | `--config FILE` | Base YAML configuration file. | _None_ |
@@ -129,10 +132,12 @@ Full schema (every key and default): [YAML Reference](yaml-reference.md).
 is declared converged if the energy range (max − min) over the last
 `energy_plateau_window` steps falls below `energy_plateau_thresh`
 (default `1×10⁻⁴ au ≈ 0.06 kcal/mol` over 50 steps). This prevents wasted cycles when
-the MLIP force noise floor (~4×10⁻⁴ au) exceeds the force-based convergence threshold
-(e.g. `baker` max_force = 3×10⁻⁴ au). The fallback is skipped for chain-of-states
+the measured force noise/flatness prevents the selected force threshold from being
+reached. The noise level is backend/model/system dependent. The fallback is skipped for chain-of-states
 optimizers, which store per-image energy arrays.
 ```
+
+`--tr-projection` has no effect unless `--flatten` runs; it does not change L-BFGS or RFO optimization steps. See [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries).
 
 ## See Also
 

@@ -1,6 +1,6 @@
 # インストール
 
-`pdb2reaction` は、CUDA 対応 GPU を備えた Linux 環境（ローカルワークステーションまたは HPC クラスター）での動作を前提としています。特に **PyTorch**、**fairchem-core (UMA)**、**gpu4pyscf-cuda12x** などの依存関係は、動作する CUDA インストールを必要とします。
+`pdb2reaction` は Linux 環境（ローカルワークステーションまたは HPC クラスター）向けで、本番計算では通常 CUDA 対応 GPU を使用します。prebuilt の **PyTorch** wheel は CUDA runtime library を同梱するため、必要なのは互換 NVIDIA driver であり、local CUDA toolkit ではありません。toolkit が必要なのは CUDA extension や GPU package を source build する場合です。
 
 詳細は上流プロジェクトを参照してください:
 
@@ -9,7 +9,7 @@
 
 ## クイックスタート
 
-以下は多くの CUDA 12.9 クラスターで動作する最小限のセットアップ例です。モジュール名やバージョンはお使いの環境に合わせて調整してください。この例はデフォルトの GSM による MEP 探索（`--mep-mode gsm`）を前提としています。DMF（`--mep-mode dmf`）を使用する場合は、先に conda で cyipopt をインストールしてください。
+以下はデフォルトの GSM による MEP 探索（`--mep-mode gsm`）を前提とした最小セットアップです。DMF（`--mep-mode dmf`）を使用する場合は、先に conda で cyipopt をインストールしてください。PyTorch 2.8.0 は `cu126`、`cu128`、`cu129` wheel を配布しているため、site で検証済みの driver・GPU architecture に合う index を選びます。
 
 ### 必須
 
@@ -17,9 +17,10 @@
 # 1) CUDA 対応の PyTorchビルドをインストール
 # 2) pdb2reactionをインストール
 # 3) Plotly 静的画像 (PNG) エクスポート用のヘッドレス Chrome をインストール
-#    ~150 MB の Chromium バイナリをダウンロード（インターネット接続必要）
+#    Chromium binaryをdownload（internet接続が必要）
 
-pip install torch --index-url https://download.pytorch.org/whl/cu129
+TORCH_INDEX=cu126  # GPU/site stack が必要とする場合は cu128/cu129
+pip install 'torch==2.8.0' --index-url "https://download.pytorch.org/whl/${TORCH_INDEX}"
 pip install pdb2reaction
 plotly_get_chrome -y
 ```
@@ -49,7 +50,7 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
   conda install -c conda-forge cyipopt -y
   ```
 
-- *環境モジュール*を使用する HPC クラスターでは、PyTorch をインストールする**前に** CUDA をロードしてください。`module avail cuda` で利用可能なバージョンを確認し、ターゲットの PyTorch wheel に合うバージョン（例: `cu126` ↔ CUDA 12.6、`cu129` ↔ CUDA 12.9）をロードしてください:
+- HPC site が local build extension 用に CUDA module を要求する場合のみ、site 指定の module をロードします。prebuilt PyTorch wheel のインストールだけのために別の CUDA runtime を追加せず、まず NVIDIA driver と wheel の組合せを検証してください。
 
   ```bash
   module load cuda/<your-version>   # 例: cuda/12.6 または cuda/12.9
@@ -67,11 +68,11 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 
 環境を段階的に構築する場合:
 
-1. **CUDA をロード（HPC で環境モジュールを使用する場合）**
+1. **site/build が必要とする場合のみ CUDA toolkit をロード**
 
-    `module avail cuda` で利用可能なバージョンを確認し、ターゲットの
-    PyTorch wheel に合うバージョン（例: `cu126` は CUDA 12.6、`cu129`
-    は CUDA 12.9）をロードしてください:
+    prebuilt PyTorch wheel に `nvcc` は不要です。依存 package を source
+    build する場合は `module avail cuda` を確認し、cluster が指定する
+    compiler/toolkit の組合せをロードしてください:
 
     ```bash
     module load cuda/<your-version>
@@ -93,13 +94,15 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 
 4. **適切な CUDA ビルドの PyTorch をインストール**
 
-    CUDA 12.9 の場合:
+    Blackwell より前の GPU に対する保守的な例:
 
     ```bash
-    pip install torch --index-url https://download.pytorch.org/whl/cu129
+    pip install 'torch==2.8.0' --index-url https://download.pytorch.org/whl/cu126
     ```
 
-    PyTorch は CUDA ドライバーバージョンに合わせたビルドが必要です。互換性は [PyTorch Get Started](https://pytorch.org/get-started/locally/) で確認してください。CPU のみの実行もサポートされますが、大幅に遅くなります（10-100 倍）。
+    公式 2.8.0 matrix には `cu128`、`cu129`、`cpu` もあります。driver と
+    GPU architecture で選び、`torch.cuda.is_available()` で検証します。
+    `nvidia-smi` の "CUDA Version" 表示を local toolkit の選択値として扱わないでください。
 
 5. **`pdb2reaction` 本体と可視化用 Chrome をインストール**
 
@@ -125,10 +128,7 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
     pdb2reaction はデフォルトで UMA を使用します。他のバックエンドを使用する場合は、対応するオプション依存関係をインストールしてください:
 
     ```bash
-    # ORB バックエンド。orb-models が引く torch_scatter は prebuilt wheel が PyPI でなく
-    # PyG の index にあるため、pip はソースビルドし、build isolation で
-    # "No module named 'torch'" と失敗することがあります。torch+CUDA タグに合わせて PyG index を追加:
-    #   pip install "pdb2reaction[orb]" -f https://data.pyg.org/whl/torch-2.8.0+cu129.html
+    # ORB バックエンド
     pip install "pdb2reaction[orb]"
 
     # AIMNet2 バックエンド
@@ -174,17 +174,23 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
     python -c "import torch; print('CUDA:', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'N/A')"
     ```
 
-    `CUDA: False` の場合、CUDA モジュールのロードと PyTorch ビルドの CUDA バージョンを確認してください。
+    `CUDA: False` の場合、version を変える前に installed wheel、scheduler
+    の GPU visibility、driver、environment library を確認してください:
+
+    ```bash
+    python -m torch.utils.collect_env
+    python -m pip check
+    ```
 
 ## システム要件
 
-**GPU / CUDA / VRAM:** 実行環境の CUDA に合った CUDA タグの PyTorch wheel をインストールしてください（CUDA 12.6 なら `cu126`、CUDA 12.9 なら `cu129`。RTX 50 系では 12.9 が必須です）。VRAM は 8 GB 以上を推奨します。大きな ML 領域の解析的Hessianでは GPU 容量が大きいほど有利です。`tests/smoke/` のスイートはデフォルトの `uma-s-1p2` モデルでピーク約 0.9 GB のため、本番の TS / IRC / Hessianのワークフローが収まらない小容量 GPU でも実行できます。
+**GPU / CUDA / VRAM:** PyTorch 2.8.0 の公式 CUDA wheel（`cu126`、`cu128`、`cu129`）から、driver と GPU architecture の両方に対応するものを選びます。新しい GPU architecture では新しい wheel が必要なことがありますが、prebuilt wheel と同じ番号の local toolkit は不要です。必要VRAMはbackend/model、原子数、Hessian mode、precision、active自由度に依存します。代表的なproduction stageをpilot実行してpeak allocationを測定してください。smoke suiteはcorrectness checkでありproduction memoryの見積りではありません。
 
-**RAM:** 16 GB 以上を推奨します（GPU 計算と並行して大規模な活性部位モデルを扱う場合は余裕があるほど安心です）。
+**RAM:** 代表runで必要量を測定します。dense Hessian、model load、並行worker/process stageが支配的になり得ます。
 
-**ディスク:** 空き容量約 20 GB を見込んでください。内訳は conda 環境（約 8 GB）、UMA の Hugging Face モデルキャッシュ（約 1〜4 GB）、静的 PNG エクスポート用に Plotly が取得するヘッドレス Chromium（約 150 MB、`plotly_get_chrome` 経由）です。
+**ディスク:** 選択したenvironment、backend weight cache、生成trajectory/Hessian、`plotly_get_chrome` が任意installするChromiumを含めて見積もります。production前に対象filesystem上の実sizeを確認してください。
 
-CPU のみでの実行は可能ですが 10〜100 倍遅く、TS / IRC / Hessianの一連のワークフローには推奨されません。
+CPU のみでも実行できますが、通常は大幅に遅くなります。backend/model ごとに測定し、固定の GPU/CPU 比を仮定しないでください。
 
 ## 次のステップ
 
@@ -194,4 +200,3 @@ CPU のみでの実行は可能ですが 10〜100 倍遅く、TS / IRC / Hessian
 - [クイックスタート: TS のみモード](quickstart-tsopt-freq.md) — TS 候補を end-to-end で検証
 - [CLI 規約](cli-conventions.md) — フラグの優先順位、原子/残基セレクタ、共通オプション
 - [トラブルシューティング](troubleshooting.md) と [典型エラー別レシピ](recipes-common-errors.md)
-

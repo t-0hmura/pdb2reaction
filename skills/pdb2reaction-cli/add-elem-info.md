@@ -7,8 +7,8 @@ inconsistent with the atom name (a common state for tleap-emitted PDBs;
 without a correct element column, `extract`'s element-aware truncation logic fails).
 
 `pdb2reaction all` runs this as a preflight step only when the element field is
-missing. Call it explicitly when invoking `extract` / `opt` / `tsopt`
-directly on a raw RCSB PDB.
+missing. Call it explicitly before a standalone geometry workflow only when
+the input has missing or demonstrably wrong element fields.
 
 ## Synopsis
 
@@ -60,6 +60,6 @@ following priority (`add_elem_info.guess_element`):
 
 ## See also
 
-- `fix-altloc.md` — typically run together as a "PDB cleanup" step.
+- `fix-altloc.md` — separate cleanup for inputs that actually contain altLocs.
 - `extract.md` — depends on a well-formed element column.
 - [`pdb2reaction-structure-io/pdb.md`](../pdb2reaction-structure-io/pdb.md) — PDB column layout reference.

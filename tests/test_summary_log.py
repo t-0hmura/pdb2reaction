@@ -110,9 +110,9 @@ def test_summary_log_uses_mlip_provenance_and_labels(tmp_path):
                 "index": 1,
                 "tag": "seg_01",
                 "kind": "seg",
-                "uma": {"barrier_kcal": 12.3, "delta_kcal": -1.2},
-                "gibbs_uma": {"barrier_kcal": 13.4, "delta_kcal": -0.7},
-                "gibbs_dft_uma": {"barrier_kcal": 14.5, "delta_kcal": -0.2},
+                "mlip": {"barrier_kcal": 12.3, "delta_kcal": -1.2},
+                "gibbs_mlip": {"barrier_kcal": 13.4, "delta_kcal": -0.7},
+                "gibbs_dft_mlip": {"barrier_kcal": 14.5, "delta_kcal": -0.2},
             }
         ],
         "energy_diagrams": [

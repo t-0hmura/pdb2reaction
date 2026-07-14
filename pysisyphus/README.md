@@ -13,6 +13,7 @@ The upstream `pysisyphus` does not natively handle:
 - **Initial-displacement memory hygiene** in IRC for large systems (16 GB+ Hessians)
 - **bofill_update advanced-indexing scatter** when only a subset of internal coordinates is updated (GPU OOM on the naive path)
 - **Atomic trial rollback and first-order-saddle validation** for MLIP optimizations, including coordinate-bound exact PHVA checks and path-mode tracking
+- **Frozen-boundary PHVA** that removes only full-system rigid motions compatible with fixed anchors
 
 The bundled fork keeps these divergences explicit and limits changes outside the files listed below, so future upstream improvements remain reviewable.
 
@@ -20,12 +21,14 @@ The bundled fork keeps these divergences explicit and limits changes outside the
 
 | file | divergence | rule |
 |------|------------|------|
-| `pysisyphus/irc/IRC.py` | initial-displacement memory hygiene for large-system IRC; opt-in `require_pos_def_hessian` PSD convergence guard | chemistry-rule adjacent, freq-stage VRAM invariant |
+| `pysisyphus/Geometry.py`, `pysisyphus/tr_projection.py` | ordered full/active PHVA metadata, non-mutating normal modes, and constrained rigid-null projection | frozen-boundary vibrational physics |
+| `pysisyphus/irc/IRC.py` | initial-displacement memory hygiene for large-system IRC; constrained rigid-null treatment; opt-in `require_pos_def_hessian` PSD convergence guard | chemistry-rule adjacent, freq-stage VRAM invariant |
+| `pysisyphus/optimizers/Optimizer.py`, `LBFGS.py`, `RFOptimizer.py` | atomic coordinate/history rollback and uphill-trial rejection for minimizers | optimizer state integrity |
 | `pysisyphus/optimizers/HessianOptimizer.py` | opt-in `trust_band` rho-band trust update, `hessian_update_window` multistep TS-BFGS, `weighted_trust` per-coord-type L_inf trust; coordinate/history rollback for rejected minimizer trials; `get_xp`-based torch/numpy dispatch where shared API allows | optimizer step control / trust radius |
 | `pysisyphus/optimizers/hessian_updates.py` | `bofill_update` advanced-indexing scatter (CHEMISTRY-RULE:7); `multistep_ts_bfgs_update` helper; re-exports `_outer / _dot` from `_array` shim | scatter on subset of internals |
 | `pysisyphus/optimizers/restrict_step.py` | `per_coord_type_weights` + `weighted_max_internal_step` helpers | weighted L∞ trust check |
 | `pysisyphus/optimizers/gdiis.py` | `get_xp`-based torch/numpy dispatch (xp.linalg.norm / xp.sum) | torch/numpy backend share |
-| `pysisyphus/tsoptimizers/TSHessianOptimizer.py` | RSIRFO kwargs, mode-loss rollback, exact PHVA saddle-order validation, path-mode identity and bounded recovery for MLIP-driven TS search | tsopt convergence |
+| `pysisyphus/tsoptimizers/{TSHessianOptimizer,RSIRFOptimizer,RSPRFOptimizer,TRIM}.py` | mode-loss rollback, exact PHVA saddle-order validation, path-mode identity, and bounded recovery for MLIP-driven TS search | tsopt convergence |
 | `pysisyphus/_array.py` | torch/numpy backend dispatch shim (`get_xp`, `_outer`, `_dot`, `_eigh`, `as_numpy`, `to_xp`) | used by `hessian_updates.py` + `HessianOptimizer.py` + `gdiis.py` |
 
 
@@ -62,10 +65,10 @@ During routine polish, **only annotation edits are allowed** on this directory:
 - any new external dependency
 - any rename of public symbols (would break `pdb2reaction/tsopt.py`, `irc.py`, `path_opt.py` callers)
 
-Logic edits require an explicit user request and HEAVY benchmark verification
-before merge. The v0.4.12 optimizer-safeguard changes are such an explicitly
-requested exception; their regression and GPU benchmark evidence is recorded
-in the release validation and changelog.
+Logic edits require a demonstrated defect or approved numerical feature, a
+focused regression test, and the relevant HEAVY/GPU benchmark before merge.
+The v0.4.12 optimizer-safeguard changes follow that policy; their regression
+and GPU benchmark evidence is recorded in the release validation and changelog.
 
 ## Upstream compatibility
 
@@ -74,5 +77,5 @@ If you `pip install pysisyphus` into the same environment as `pdb2reaction`, Pyt
 ## See also
 
 - [`../docs/architecture.md`](../docs/architecture.md) §5.3, §6 — repo-internal fork policy
-- [`../CONTRIBUTING.md`](../CONTRIBUTING.md) §4.3 — Divergent files in bundled forks; logic edits are forbidden in `pysisyphus/irc/IRC.py`, `pysisyphus/optimizers/hessian_updates.py`, `pysisyphus/tsoptimizers/TSHessianOptimizer.py`, and `thermoanalysis/QCData.py`
+- [`../CONTRIBUTING.md`](../CONTRIBUTING.md) §4.3 — validation policy for logic edits in bundled forks
 - `THIRD_PARTY_NOTICES.txt` — pysisyphus upstream attribution

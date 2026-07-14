@@ -4,28 +4,29 @@ Conventions shared across all `pdb2reaction` commands.
 
 ## Boolean options
 
-Every boolean CLI flag accepts **all four forms permanently** (no deprecation cycle planned):
+Use paired flags in commands, documentation, and agent instructions:
 
 | Form | Example |
 |---|---|
 | Positive flag | `--tsopt` |
 | Negative flag | `--no-tsopt` |
-| Positive value | `--tsopt True`, `--tsopt yes`, `--tsopt 1`, `--tsopt on` |
-| Negative value | `--tsopt False`, `--tsopt no`, `--tsopt 0`, `--tsopt off` |
+| Enable | `--tsopt` |
+| Disable | `--no-tsopt` |
 
 ```bash
---tsopt --thermo --no-dft                # toggle form
---tsopt True --thermo yes --dft 0        # value form
---tsopt true --thermo on --dft off       # mix is fine
+--tsopt --thermo --no-dft
 ```
 
-All four forms route through a single root-CLI `bool_compat` synthesizer; `tests/test_bool_compat_cli.py` walks every registered bool option against every form on every release, so a missing entry is caught by CI.
+Older value-style invocations remain accepted for compatibility, but are not
+the canonical syntax and must not be emitted by docs, skills, or generated
+commands. The root CLI normalizes both forms and
+`tests/test_bool_compat_cli.py` keeps the compatibility path covered.
 
-Common toggles: `--tsopt` / `--thermo` / `--dft` (post-processing stages) · `--freeze-links` (freeze cap-H parents, default `True`) · `--dump` (write trajectory files) · `--preopt` / `--endopt` (pre/post optimization) · `--climb` (climbing-image MEP) · `--convert-files` (generate PDB / GJF companions).
+Common toggles: `--tsopt` / `--thermo` / `--dft` (post-processing stages) · `--freeze-links` (freeze cap-H parents, default `True`) · `--dump` (write trajectory files) · `--preopt` / `--endopt` (pre/post optimization) · `--climb` (climbing-image MEP) · `--convert-files` (generate format-aware PDB / CIF / GJF companions).
 
 ### Contributing a new bool flag
 
-When adding a boolean flag inside a subcommand, always route it through one of the `add_*_option()` factories in `pdb2reaction/cli/common_options.py` and register the long name in the matching `_COMMAND_BOOL_*_OPTIONS` table in `pdb2reaction/cli/app.py`. Avoid writing `@click.option("--foo/--no-foo", ...)` or `type=click.BOOL` directly in the subcommand body — that bypasses the registry, falls out of test coverage, and silently drops the value form.
+When adding a boolean flag inside a subcommand, always route it through one of the `add_*_option()` factories in `pdb2reaction/cli/common_options.py` and register the long name in the matching `_COMMAND_BOOL_*_OPTIONS` table in `pdb2reaction/cli/app.py`. Avoid writing `@click.option("--foo/--no-foo", ...)` or `type=click.BOOL` directly in the subcommand body — that bypasses the registry and falls out of compatibility-test coverage.
 
 ## Progressive help
 
@@ -57,20 +58,23 @@ A semantic failure is a failure at any level: a `Traceback` that appears only at
 |---|---|---|
 | By residue name | `-c 'SAM,GPP'` / `-c 'LIG'` | If multiple residues share a name, **all** matches are included (warning logged). |
 | By residue ID | `-c '123,456'` / `-c 'A:123,B:456'` / `-c '123A'` / `-c 'A:123A'` | Optional chain prefix; trailing letter = insertion code. |
-| By PDB file | `-c substrate.pdb` | Use coordinates from a separate PDB to locate substrates. |
+| By chain + name | `-c 'A:SAM'` / `-c 'A:SAM:123'` | First form selects all SAM in chain A; add resSeq to select one. |
+| By structure file | `-c substrate.pdb` / `-c substrate.cif` | Use coordinates from a separate PDB/mmCIF to locate substrates. |
 
 (selected-resn-takes-ids)=
-### `--selected-resn` takes residue IDs (not names)
+### `--selected-resn` uses the same residue selectors
 
-```{warning}
-**`--selected-resn` (on `extract` and `all`) accepts residue *IDs*, not names** — colon-separated integers with optional chains / insertion codes (e.g. `A:123A`). Passing residue-name tokens (e.g. `'TYR,GLU'`) raises `ValueError("Invalid residue specifier 'TYR'. Use '123', '123A', 'A:123', or 'A:123A'.")`. Use `-c/--center 'GPP,SAM'` for residue-name selection. Canonical description on the [`extract` page](extract.md).
-```
+`--selected-resn` on `extract` and `all` accepts numeric IDs, residue names,
+and chain-qualified names. For example, `A:123A` force-includes one insertion-
+code residue, `A:SAM` includes every SAM in chain A, and `A:SAM:123` narrows
+that selection to one residue. An unqualified name such as `TYR` includes all
+matches and warns when more than one is present.
 
 (charge-specification)=
 
 ## Charge specification
 
-For PDB inputs, `--ligand-charge/-l` lets you specify charges only for non-standard residues (substrates, cofactors, metal ions). The total system charge is then **automatically derived** by summing standard amino-acid charges, ions, and your ligand charges.
+For PDB/mmCIF inputs, `--ligand-charge/-l` lets you specify charges only for non-standard residues (substrates, cofactors, metal ions). The total system charge is then **automatically derived** by summing standard amino-acid charges, ions, and your ligand charges.
 
 ```bash
 -l 'SAM:1,GPP:-3'        # per-residue mapping (recommended; `=` separator also accepted)
@@ -81,13 +85,13 @@ For PDB inputs, `--ligand-charge/-l` lets you specify charges only for non-stand
 
 **Resolution order** (highest priority first):
 
-1. `-q/--charge` explicit CLI override.
-2. Active-site model extraction summary (amino acids + ions + `--ligand-charge`; only when `-c/--center` is set and extraction runs — e.g. `all`, `extract`).
-3. `--ligand-charge/-l` fallback when extraction is skipped (PDB input, or XYZ / GJF with `--ref-pdb`).
+1. `-q/--charge` or `--ligand-charge/-l` supplied explicitly on the CLI.
+2. `calc.charge` from `--config` (when neither CLI charge form is supplied).
+3. Active-site model extraction summary (amino acids + ions + `--ligand-charge`; only when `-c/--center` is set and extraction runs — e.g. `all`, `extract`). In `all`, `-q` or `calc.charge` is checked as an assertion against this value.
 4. `.gjf` template metadata.
-5. Default: abort if unresolved (provide `-q`, `.gjf` charge metadata, or PDB `--ligand-charge/-l`).
+5. Abort if unresolved.
 
-For per-stage subcommands (`opt` / `tsopt` / `freq` …) or when `-c` is omitted, extraction is skipped and resolution becomes `1 → 3 → 4 → 5`. Ligand-derived charge is attempted before `.gjf` metadata fallback.
+For per-stage subcommands (`opt` / `tsopt` / `freq` …) or when `-c` is omitted, extraction is skipped. Ligand-derived or configured charge is resolved before `.gjf` metadata.
 
 ```{tip}
 Always provide `--ligand-charge/-l` for non-standard residues (substrates, cofactors, unusual ligands) to ensure correct charge propagation.
@@ -108,9 +112,13 @@ Use `-m/--multiplicity` consistently in `all` and per-stage subcommands.
 ```bash
 --scan-lists '[(1, 5, 2.0)]'                                          # 1-based integer indices
 --scan-lists '[("TYR,285,CA", "SAM,309,C10", 2.20)]'                  # PDB-style selector strings
+--scan-lists '[("A:TYR:285:CA", "B:SAM:309:C10", 2.20)]'              # chain-qualified
 ```
 
-Selector field delimiters: space · comma · slash · backtick · backslash. The three tokens (residue name / residue number / atom name) may appear in any order — the parser falls back to a heuristic for non-standard orderings.
+Three-field selector delimiters are space · comma · slash · backtick ·
+backslash, and their residue-name / residue-number / atom-name tokens may
+appear in any order. To disambiguate repeated names or numbering, use the
+positional four-field form `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`.
 
 (scan-list-spec)=
 
@@ -134,7 +142,7 @@ pairs:                     # scan2d (exactly 2 entries) / scan3d (exactly 3 entr
   - [2, 8, 1.20, 3.20]
 ```
 
-Each `scan` stage is a list of `(i, j, target_Å)` triples; each `scan2d` / `scan3d` axis is `(i, j, low_Å, high_Å)`. Indices may be integers or PDB selectors.
+Each `scan` stage is a list of `(i, j, target_Å)` triples; each `scan2d` / `scan3d` axis is `(i, j, low_Å, high_Å)`. Indices may be integers, three-field selectors, or positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` selectors.
 
 **Inline literal**: wrap in **single quotes** so the shell does not interpret parens / spaces; use double-quoted PDB selectors inside.
 
@@ -150,6 +158,7 @@ For `scan`, one literal = one **stage**; multiple stages → multiple literals a
 ## Input file requirements
 
 - **PDB** — must contain hydrogens (add via `reduce` / `pdb2pqr` / Open Babel) and element symbols in cols 77–78 (`pdb2reaction add-elem-info` if missing). Multiple PDBs must share identical atoms in the same order.
+- **mmCIF** — use `.cif` / `.mmcif` for multi-character chains, large residue/atom identifiers, or 10,000+ residues. The common bridge calculates through an internal PDB and restores original IDs in CIF output. Reaction-ordered inputs still require identical atoms and order.
 - **XYZ / GJF** — accepted when active-site extraction is skipped (omit `-c/--center`). `.gjf` files can provide charge / spin defaults from embedded metadata.
 
 (exit-codes)=
@@ -220,7 +229,10 @@ built-in defaults  <  --config (YAML)  <  CLI options
 
 Built-in defaults are in `pdb2reaction/core/defaults.py`. Only *explicitly supplied* CLI values override YAML; options left at their CLI default do not mask YAML values. Applies uniformly to all calc subcommands. Full schema: [YAML Reference](yaml-reference.md).
 
-- **Known exception**: `flatten_max_iter` — when `--flatten` is not passed, the CLI initializer seeds `flatten_max_iter = 0`, overriding `defaults.py`'s 50. See {ref}`flatten-precedence-caveat`.
+- **Known default exception**: `flatten_max_iter` starts at 0 before YAML is
+  applied. An omitted toggle therefore retains an explicit YAML value;
+  `--flatten` enables the configured/built-in positive value and
+  `--no-flatten` forces 0. See {ref}`flatten-precedence-caveat`.
 
 ## Output directory
 

@@ -1,18 +1,21 @@
 # Gaussian gjf format (gjf.md)
 
 `gjf` is the Gaussian input format (only the `.gjf` extension is recognized for header parsing; rename `.com` → `.gjf` first). From `pdb2reaction`'s
-perspective it is **XYZ with a Gaussian header** (link-0 `%`-block + route
-line + title + charge / multiplicity), and everything from the coordinate
-block onward is the same as XYZ.
+perspective it provides Cartesian coordinates plus a Gaussian-style header.
+The parser needs the standard blank-separated layout, charge/multiplicity
+line, and coordinate block; it does not use the route line to configure the
+calculation. Unlike XYZ,
+the coordinate block has no atom-count/comment header and may be followed by
+connectivity, ECP, or custom-basis sections.
 
 ## XYZ → GJF block-by-block
 
 | Block | XYZ | GJF |
 |---|---|---|
 | Link0 (`%nproc`, `%mem`, `%chk`) | — | optional, top of file |
-| Route line (`# <method> <basis> <keywords>`) | — | required |
-| Title | — | required (free text) |
-| Charge / multiplicity | — | required (`<q> <m>`) |
+| Route line (`# <method> <basis> <keywords>`) | — | required by a standard Gaussian input; ignored by `pdb2reaction` |
+| Title | — | required by a standard Gaussian input (free text) |
+| Charge / multiplicity | — | required by Gaussian and by `pdb2reaction` (`<q> <m>`) |
 | Atom count | line 1 (`<n_atoms>`) | — |
 | Comment line | line 2 (free text) | — |
 | Coordinates (`<element> x y z`) | lines 3 … | after charge/mult, terminated by a blank line |
@@ -44,11 +47,17 @@ pdb2reaction dft -i ts.gjf --func-basis 'wb97m-v/def2-tzvpd' --engine gpu
 
 ## Generating gjf from pdb2reaction outputs
 
-`pdb2reaction extract` itself writes only PDB. Use one of:
+`pdb2reaction extract` does not generate GJF. It writes its internal PDB model
+and, for mmCIF/oversized-PDB input, a CIF companion. To generate GJF, use one
+of:
 
-- `--convert-files` (default on) on any geometry-touching subcommand
-  reuses the user-supplied gjf template's header to emit `.gjf`
-  companions to every output `.xyz`.
+- `--convert-files` (default on) on a geometry-touching subcommand reuses the
+  user-supplied gjf template's header to emit `.gjf` companions. A single-frame
+  output is a normal template-based Gaussian input. For a multi-frame
+  trajectory, the current converter writes one header followed by
+  blank-separated coordinate blocks and one copied suffix; treat that file as
+  a coordinate archive, **not** as a directly executable Gaussian QST/Link1
+  input. Split the desired frame and generate a single-frame job first.
 - Programmatic conversion:
   ```python
   from pathlib import Path
@@ -62,7 +71,7 @@ appropriate functional / basis depends on the downstream calculation.
 
 ## See also
 
-- `pdb.md`, `xyz.md` — the other two input formats.
+- `pdb.md`, `cif.md`, `xyz.md` — the other input formats.
 - `charge-multiplicity.md` — deriving `-q` / `-m` when the gjf header is
   missing or wrong.
 - [`pdb2reaction-cli/dft.md`](../pdb2reaction-cli/dft.md) — gjf is the

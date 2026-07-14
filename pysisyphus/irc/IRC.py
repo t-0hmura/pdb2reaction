@@ -245,9 +245,8 @@ class IRC:
         if H is None:
             return False
         try:
+            H = self._project_active(H)
             if isinstance(H, torch.Tensor):
-                # Active-DOF projection has happened upstream; eigh on whichever
-                # representation IRC currently holds. .cpu() to keep VRAM clean.
                 evals = torch.linalg.eigvalsh(H.detach().cpu()).numpy()
             else:
                 evals = np.linalg.eigvalsh(np.asarray(H))
@@ -279,24 +278,27 @@ class IRC:
             return self.mm_inv2 @ H_act @ self.mm_inv2       # in‑place not possible → tiny matrix
         return self.mm_inv2.dot(H_act).dot(self.mm_inv2)
     
-    # Eckart projector that *ignores* frozen atoms
+    # Rigid projector for the Cartesian-constrained active space.
     def _project_active(self, mw_H_act, *, return_P=False):
-        if self.geometry.is_analytical_2d or mw_H_act.shape[0] <= 6:
+        if self.geometry.is_analytical_2d:
             return (mw_H_act, None) if return_P else mw_H_act
 
-        from pysisyphus.Geometry import get_trans_rot_projector
+        from pysisyphus.tr_projection import active_tr_basis, compact_project_hessian
 
-        coords_act  = self.geometry.coords3d[self._act_atoms].flatten()
-        masses_act  = self.geometry.masses[self._act_atoms]
-        P           = get_trans_rot_projector(coords_act, masses=masses_act, full=False)
-
-        if isinstance(mw_H_act, torch.Tensor):
-            P = torch.as_tensor(P, dtype=mw_H_act.dtype, device=mw_H_act.device)
-            proj = (P @ mw_H_act @ P.T)
-            proj = 0.5 * (proj + proj.T)   # restore symmetry
-        else:
-            proj = P.dot(mw_H_act).dot(P.T)
-            proj = 0.5 * (proj + proj.T)
+        coords = torch.as_tensor(
+            self.geometry.coords3d,
+            dtype=mw_H_act.dtype if isinstance(mw_H_act, torch.Tensor) else torch.float64,
+            device=mw_H_act.device if isinstance(mw_H_act, torch.Tensor) else "cpu",
+        )
+        masses = torch.as_tensor(self.geometry.masses, dtype=coords.dtype, device=coords.device)
+        basis, info = active_tr_basis(
+            coords,
+            masses,
+            self._act_atoms,
+            mode=getattr(self.geometry, "tr_projection", "constrained"),
+        )
+        self.rigid_projection_info = info
+        proj, P = compact_project_hessian(mw_H_act, basis)
         return (proj, P) if return_P else proj
 
     # Expand an active‑vector (or ‑step) to 3N
@@ -432,7 +434,7 @@ class IRC:
             cart_displs = self.mm_inv2 @ mw_cart_displs
         else:
             eigvals, eigvecs = np.linalg.eigh(proj_hessian)    
-            mw_cart_displs = P.T.dot(eigvecs)
+            mw_cart_displs = eigvecs if P is None else P.T.dot(eigvecs)
             cart_displs = self.mm_inv2.dot(mw_cart_displs)
         
         nus = eigval_to_wavenumber(eigvals)

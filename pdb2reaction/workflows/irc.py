@@ -54,6 +54,22 @@ from pdb2reaction.cli.decorators import resolve_yaml_sources, load_merged_yaml_c
 logger = logging.getLogger(__name__)
 
 
+def _directional_endpoint_energy_fields(all_energies: Any, ts_energy: Any) -> Dict[str, Any]:
+    """Build standalone IRC energy fields without assigning chemical R/P identity."""
+    first = float(all_energies[0]) if len(all_energies) > 0 else None
+    last = float(all_energies[-1]) if len(all_energies) > 0 else None
+    ts = float(ts_energy) if ts_energy is not None else None
+    return {
+        "energy_first_hartree": first,
+        "energy_ts_hartree": ts,
+        "energy_last_hartree": last,
+        "endpoint_energy_orientation": "finished_first_to_finished_last",
+        # Compatibility aliases: directional only, not chemical assignments.
+        "energy_reactant_hartree": first,
+        "energy_product_hartree": last,
+    }
+
+
 def _echo_convert_trj_if_exists(
     trj_path: Path,
     prepared_input: "PreparedInputStructure",
@@ -87,7 +103,7 @@ def _echo_convert_trj_if_exists(
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help="Input structure file (.pdb, .xyz, _trj.xyz, etc.).",
+    help="Input structure file (.pdb, .cif, .mmcif, .xyz, .gjf, _trj.xyz, etc.).",
 )
 @click.option(
     "--workers",
@@ -109,7 +125,7 @@ def _echo_convert_trj_if_exists(
     type=int,
     default=None,
     help=(
-        "Maximum number of IRC steps; used unless YAML sets irc.max_cycles. "
+        "Maximum number of IRC steps; an explicit value overrides YAML irc.max_cycles. "
         "Defaults to 125 when not provided."
     ),
 )
@@ -118,7 +134,7 @@ def _echo_convert_trj_if_exists(
     type=float,
     default=None,
     help=(
-        "Step length in Bohr (unweighted Cartesian coordinates); used unless YAML sets irc.step_length. "
+        "Step length in Bohr (unweighted Cartesian coordinates); an explicit value overrides YAML irc.step_length. "
         "Default: 0.10 Bohr."
     ),
 )
@@ -129,7 +145,7 @@ def _echo_convert_trj_if_exists(
     help=(
         "Ignore transient energy increases/plateaus and keep tracing through "
         "small shoulders. Gradient/integrator convergence and --max-cycles "
-        "still stop the run. Used unless YAML sets irc.never_stop; default off."
+        "still stop the run. An explicit toggle overrides YAML irc.never_stop; default off."
     ),
 )
 @click.option(
@@ -137,7 +153,7 @@ def _echo_convert_trj_if_exists(
     type=int,
     default=None,
     help=(
-        "Imaginary mode index used for the initial displacement; used unless YAML sets irc.root. "
+        "Imaginary mode index used for the initial displacement; an explicit value overrides YAML irc.root. "
         "Defaults to 0."
     ),
 )
@@ -146,7 +162,7 @@ def _echo_convert_trj_if_exists(
     "forward",
     default=None,
     help=(
-        "Run the forward IRC; used unless YAML sets irc.forward. "
+        "Run the forward IRC; an explicit toggle overrides YAML irc.forward. "
         "Defaults to True."
     ),
 )
@@ -155,7 +171,7 @@ def _echo_convert_trj_if_exists(
     "backward",
     default=None,
     help=(
-        "Run the backward IRC; used unless YAML sets irc.backward. "
+        "Run the backward IRC; an explicit toggle overrides YAML irc.backward. "
         "Defaults to True."
     ),
 )
@@ -164,7 +180,7 @@ def _echo_convert_trj_if_exists(
     "freeze_links_flag",
     default=True,
     show_default=True,
-    help="Freeze parent atoms of cap hydrogens (PDB input or XYZ/GJF with --ref-pdb).",
+    help="Freeze parent atoms of cap hydrogens (PDB/mmCIF input or XYZ/GJF with --ref-pdb).",
 )
 @click.option(
     "--freeze-atoms",
@@ -175,17 +191,27 @@ def _echo_convert_trj_if_exists(
     help="Comma-separated 1-based atom indices to freeze (e.g., '1,3,5').",
 )
 @click.option(
+    "--tr-projection",
+    type=click.Choice(["constrained", "legacy-active"], case_sensitive=False),
+    default=None,
+    help=(
+        "Rigid-mode treatment for a frozen/partial Hessian. 'constrained' "
+        "removes only full-system rigid motions compatible with the anchors "
+        "(default); 'legacy-active' is the isolated-active comparison treatment."
+    ),
+)
+@click.option(
     "--convert-files/--no-convert-files",
     "convert_files",
     default=True,
     show_default=True,
-    help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
+    help="Convert XYZ/TRJ outputs into PDB/CIF/GJF companions based on the input format.",
 )
 @click.option(
     "--ref-pdb",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help="Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
+    help="Reference PDB/mmCIF topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
 )
 @click.option(
     "-o", "--out-dir",
@@ -198,7 +224,7 @@ def _echo_convert_trj_if_exists(
     "--hessian-calc-mode",
     type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
     default=None,
-    help="How the ML backend builds the Hessian (Analytical or FiniteDifference); used unless YAML sets calc.hessian_calc_mode. Defaults to 'FiniteDifference'.",
+    help="How the ML backend builds the Hessian (Analytical or FiniteDifference); an explicit value overrides YAML calc.hessian_calc_mode. Defaults to 'FiniteDifference'.",
 )
 @click.option(
     "--config",
@@ -258,6 +284,7 @@ def cli(
     backward: Optional[bool],
     freeze_links_flag: bool,
     freeze_atoms_text: Optional[str],
+    tr_projection: Optional[str],
     convert_files: bool,
     ref_pdb: Optional[Path],
     out_dir: str,
@@ -272,7 +299,7 @@ def cli(
     precision: Optional[str],
     backend_model: Optional[str],
     calc_file: Optional[str],
-    calc_factory: str,
+    calc_factory: Optional[str],
     irc_pos_def: Optional[bool],
 ) -> None:
     config_yaml, override_yaml, _ = resolve_yaml_sources(
@@ -283,6 +310,10 @@ def cli(
     merged_yaml_cfg, config_layer_cfg, override_layer_cfg = load_merged_yaml_cfg(
         config_yaml=config_yaml,
         override_yaml=None,
+    )
+    from pdb2reaction.core.utils import resolve_configured_charge_spin
+    charge, spin = resolve_configured_charge_spin(
+        merged_yaml_cfg, charge=charge, spin=spin, ligand_charge=ligand_charge,
     )
 
     set_convert_file_enabled(convert_files)
@@ -349,6 +380,8 @@ def cli(
                 irc_cfg["backward"] = bool(backward)
             if cli_param_overridden(ctx, "out_dir"):
                 irc_cfg["out_dir"] = str(out_dir)
+            if cli_param_overridden(ctx, "tr_projection") and tr_projection is not None:
+                geom_cfg["tr_projection"] = str(tr_projection).lower()
             # CLI knobs → irc_cfg. require_pos_def_hessian gates PSD-Hessian convergence.
             if cli_param_overridden(ctx, "irc_pos_def") and irc_pos_def is not None:
                 irc_cfg["require_pos_def_hessian"] = bool(irc_pos_def)
@@ -367,6 +400,10 @@ def cli(
                     (calc_cfg, (("calc",),)),
                     (irc_cfg, (("irc",),)),
                 ],
+            )
+            from pysisyphus.tr_projection import normalize_tr_projection_mode
+            geom_cfg["tr_projection"] = normalize_tr_projection_mode(
+                geom_cfg.get("tr_projection")
             )
 
             # Convert 1-based YAML freeze_atoms to 0-based internal
@@ -412,6 +449,7 @@ def cli(
                             "output_dir": str(out_dir_path),
                             "freeze_links": bool(freeze_links_flag),
                             "convert_files": bool(convert_files),
+                            "tr_projection": geom_cfg["tr_projection"],
                             "will_run_irc": True,
                             "will_write_trajectories": True,
                         },
@@ -492,6 +530,21 @@ def cli(
                 del h_init
 
             eulerpc = EulerPC(geometry, **irc_cfg)
+            from pysisyphus.tr_projection import active_tr_basis
+            _basis, _rigid_info = active_tr_basis(
+                torch.as_tensor(geometry.coords3d, dtype=torch.float64),
+                torch.as_tensor(geometry.masses, dtype=torch.float64),
+                eulerpc._act_atoms,
+                mode=geometry.tr_projection,
+            )
+            del _basis
+            eulerpc.rigid_projection_info = _rigid_info
+            click.echo(
+                "[irc] Rigid projection: "
+                f"treatment={_rigid_info.treatment}, "
+                f"rank={_rigid_info.effective_rank}, "
+                f"full_rigid_rank={_rigid_info.full_rigid_rank}."
+            )
 
             click.echo("\n====== IRC (EulerPC) ======\n", narrative=True)
             # Clear per-direction values before running: a failed or one-sided
@@ -596,28 +649,24 @@ def cli(
                 _all_e = eulerpc.all_energies
                 _n_fwd = len(getattr(eulerpc, "forward_energies", [])) if hasattr(eulerpc, "forward_energies") else 0
                 _n_bwd = len(getattr(eulerpc, "backward_energies", [])) if hasattr(eulerpc, "backward_energies") else 0
-                _ts_e = float(eulerpc.ts_energy) if hasattr(eulerpc, "ts_energy") else None
-                # Forward endpoint = first element of all_energies (reactant side)
-                # Backward endpoint = last element of all_energies (product side)
-                _e_reactant = float(_all_e[0]) if len(_all_e) > 0 else None
-                _e_product = float(_all_e[-1]) if len(_all_e) > 0 else None
+                _ts_e = eulerpc.ts_energy if hasattr(eulerpc, "ts_energy") else None
                 _irc_files = {}
                 for _fn in ("finished_irc_trj.xyz", "forward_irc_trj.xyz", "backward_irc_trj.xyz"):
                     _fp = out_dir_path / f"{suffix_prefix}{_fn}"
                     if _fp.exists():
                         _irc_files[_fn.replace("_trj.xyz", "")] = _fp.name
-                for _fn in ("finished_irc.pdb", "forward_irc.pdb", "backward_irc.pdb"):
+                for _fn in (
+                    "finished_irc.pdb", "forward_irc.pdb", "backward_irc.pdb",
+                    "finished_irc.cif", "forward_irc.cif", "backward_irc.cif",
+                ):
                     _fp = out_dir_path / f"{suffix_prefix}{_fn}"
                     if _fp.exists():
-                        _irc_files[_fn.replace(".pdb", "_pdb")] = _fp.name
+                        _irc_files[_fn.replace(".", "_")] = _fp.name
                 result_data = {
                     "status": "completed",
                     "n_frames_forward": _n_fwd,
                     "n_frames_backward": _n_bwd,
                     "n_frames_total": len(_all_e),
-                    "energy_reactant_hartree": _e_reactant,
-                    "energy_ts_hartree": _ts_e,
-                    "energy_product_hartree": _e_product,
                     "forward_converged": getattr(eulerpc, 'forward_is_converged', None),
                     "backward_converged": getattr(eulerpc, 'backward_is_converged', None),
                     "forward_energy_increased": getattr(eulerpc, 'forward_energy_increased', None),
@@ -627,6 +676,15 @@ def cli(
                     "spin": calc_cfg["spin"],
                     "model": calc_cfg.get("model"),
                     "never_stop": bool(irc_cfg.get("never_stop", False)),
+                    "rigid_projection": {
+                        **getattr(eulerpc, "rigid_projection_info", _rigid_info).as_dict(),
+                        "hessian_space": (
+                            "active" if len(eulerpc._act_atoms) < len(geometry.atoms) else "full"
+                        ),
+                        "hessian_shape": list(eulerpc.init_hessian.shape),
+                        "hessian_source": "cache" if cached is not None else "fresh",
+                        "hessian_representation": "cartesian-unweighted-unprojected",
+                    },
                     "n_freeze_atoms": len(geom_cfg.get("freeze_atoms", [])),
                     "solvent": calc_cfg.get("solvent", "none"),
                     "step_length": irc_cfg.get("step_length"),
@@ -634,6 +692,7 @@ def cli(
                     "input_file": str(input_path),
                     "files": _irc_files,
                 }
+                result_data.update(_directional_endpoint_energy_fields(_all_e, _ts_e))
 
                 # Bond changes between IRC endpoints
                 try:
@@ -649,6 +708,7 @@ def cli(
                             "formed": [f"{_elems[i]}{i+1}-{_elems[j]}{j+1}" for i, j in sorted(_bc.formed_covalent)],
                             "broken": [f"{_elems[i]}{i+1}-{_elems[j]}{j+1}" for i, j in sorted(_bc.broken_covalent)],
                         }
+                        result_data["bond_changes_direction"] = "finished_first_to_finished_last"
                 except Exception:
                     pass
 

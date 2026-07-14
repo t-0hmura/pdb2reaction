@@ -12,7 +12,9 @@ pdb2reaction opt -i r.pdb -q -1 --out-json --out-dir result_opt
 cat result_opt/result.json | python -m json.tool
 ```
 
-The `all` and `path-search` commands always write `summary.json` (no `--out-json` flag needed).
+The `all` and `path-search` commands write `summary.json` without an
+`--out-json` flag once execution reaches their summary writer. Early
+CLI/input validation can fail before the file exists.
 
 ### `summary.json` mirror
 
@@ -20,21 +22,41 @@ The `all` and `path-search` commands always write `summary.json` (no `--out-json
 
 ## Common envelope
 
-Every `result.json` (and the mirrored `summary.json`) automatically includes:
+The shared writer supplies the fields below; rows explicitly marked optional
+are present only when the producer supplies the corresponding data:
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `schema_version` | string | Envelope schema version; current value lives at `pdb2reaction.core.utils.RESULT_JSON_SCHEMA_VERSION` — pin against that constant rather than the literal in this doc. A version bump signals a structural change. |
-| `command` | string | Subcommand name (e.g. `"opt"`) |
+| `command` | string | Leaf envelopes use the subcommand name (e.g. `"opt"`); aggregate `all` / `path-search` summaries record the full invocation string |
 | `pdb2reaction_version` | string | Package version |
-| `status` | string | Value depends on the subcommand (see each section below): e.g. `converged` / `not_converged` (opt, tsopt), `completed` (irc, freq), `ok` / `partial` (bond-summary), `success` / `partial` (all, path-search), and `error` on failure |
-| `elapsed_seconds` | float | Wall-clock time (seconds) |
+| `status` | string | Value depends on the subcommand (see each section below): e.g. `converged` / `not_converged` (opt, tsopt), `completed` (irc, freq), `ok` / `partial` (bond-summary), `success` / `partial` / `failed` (aggregate workflows), and `error` on failure |
+| `elapsed_seconds` | float | Optional wall-clock time; omitted by producers that do not pass timing to the shared writer |
 | `environment` | object | Hardware info (see below) |
-| `mlip_backend` | string | Backend identifier, added when the workflow uses an MLIP backend |
-| `mlip_model` | string \| null | Exact model/checkpoint identifier, kept separate from the backend |
+| `mlip_backend` | string | Optional backend identifier, added when the payload represents an MLIP stage and supplies backend provenance |
+| `mlip_model` | string \| null | Optional exact model/checkpoint identifier, kept separate from the backend |
 
 Leaf schemas also retain their local `backend` / `model` fields; consumers
 should prefer `mlip_backend` / `mlip_model` for a uniform cross-command key.
+
+### Rigid projection provenance
+
+`freq`, `irc`, and `tsopt` results include a `rigid_projection` object; `opt` includes it when `--flatten` runs. `freq --dump` also writes the same object to `thermoanalysis.yaml`.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `treatment` | string | Selected `--tr-projection` mode: `"constrained"` or `"legacy-active"` |
+| `algorithm` | string | Projection-kernel identifier |
+| `effective_rank` | int | Number of rigid directions removed from the active Hessian |
+| `full_rigid_rank` | int | Rank of the full-system rigid basis before frozen-anchor constraints |
+| `frozen_constraint_rank` | int | Rank removed by the frozen-anchor constraints |
+| `active_atom_count` / `frozen_atom_count` | int | Active and frozen atom counts |
+| `active_atoms` / `frozen_atoms` | int[] | 0-based atom indices used by the projection kernel |
+| `hessian_space` | string | `"full"` or `"active"` input Hessian space |
+| `hessian_source` / `source` | string | Hessian provenance. `freq`/`irc` use `hessian_source`; `opt`/`tsopt` use `source`. |
+| `hessian_shape` / `raw_hessian_shape` | int[2] | Input Hessian shape. `freq`/`irc` use `hessian_shape`; `opt`/`tsopt` use `raw_hessian_shape`. |
+
+`constrained` removes only full-system rigid motions that leave frozen anchors fixed. `legacy-active` is an isolated-active comparison treatment and is not a bitwise replay guarantee for near-linear or degenerate structures. See [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries).
 
 ### Error envelope (when `status == "error"`)
 
@@ -60,11 +82,29 @@ should prefer `mlip_backend` / `mlip_model` for a uniform cross-command key.
 
 ## Error handling
 
-If a job fails (e.g., crash, OOM, convergence failure leading to `sys.exit`), `result.json` is still written with `"status": "error"` plus an `"error_type"` field describing the failure class. Check the `.out` log file for a full traceback. The authoritative signal is `status == "error"`, not the absence of `result.json`.
+Caught runtime exceptions write a best-effort `result.json` with
+`"status": "error"` and an `"error_type"`. Usage/validation exits and failures
+before the output directory is resolved may not create JSON, so a nonzero exit
+code or missing expected JSON is also a failure signal. Check stderr/job logs
+for the authoritative diagnostic.
 
 For jobs that complete but did not converge, `result.json` is written with `"status": "not_converged"` and the final force/step values, allowing an AI agent to decide whether to retry with more cycles.
 
 ## Subcommand schemas
+
+### `sp`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | string | `"ok"` |
+| `stage` | string | `"sp"` |
+| `input` | string | Prepared public input path |
+| `backend` / `model` | string / string \| null | MLIP provenance (also mirrored to `mlip_backend` / `mlip_model`) |
+| `charge` / `spin` | int / int | Total charge and multiplicity |
+| `energy_au` | float | Single-point energy (Hartree) |
+| `forces_path` | string | Path to `forces.npy` |
+| `hessian_path` | string \| null | Path to `hessian.npy`, or null without `--hess` |
+| `elapsed` | string | Human-readable elapsed-time text |
 
 ### `opt`
 
@@ -73,7 +113,7 @@ For jobs that complete but did not converge, `result.json` is written with `"sta
 | `status` | string | `"converged"` or `"not_converged"` |
 | `energy_hartree` | float | Final energy (Hartree) |
 | `n_opt_cycles` | int | Optimization cycles completed |
-| `opt_mode` | string | `"grad"` or `"hess"` |
+| `opt_mode` | string | `"grad"`, `"hess"`, `"lbfgs"`, or `"rfo"` |
 | `backend` | string | MLIP backend (`"uma"`, `"orb"`, `"mace"`, `"aimnet2"`) |
 | `charge` | int | System charge |
 | `spin` | int | Spin multiplicity |
@@ -90,6 +130,7 @@ For jobs that complete but did not converge, `result.json` is written with `"sta
 | `final_rms_step` | float | Last RMS displacement |
 | `convergence_thresholds` | object | `{max_force_thresh, rms_force_thresh, max_step_thresh, rms_step_thresh}` (Hartree/Bohr) |
 | `files` | object | Output file map |
+| `rigid_projection` | object | Optional; present when `--flatten` runs. See [projection provenance](#rigid-projection-provenance). |
 
 ### `tsopt`
 
@@ -102,11 +143,14 @@ All fields from `opt`, plus:
 | `opt_mode` | string | `"rsprfo"` (default), `"rsirfo"`, `"trim"`, or `"dimer"` |
 | `reference_mode_file` | string\|null | Advanced path-mode file supplied through `--ref-mode`; normally generated and passed by `all` |
 | `safeguards` | object | Hessian-TS rejection/recovery diagnostics, including rejected mode-loss trials, exact saddle checks, final target-mode identity/overlap and higher-order MEP re-anchoring flag, stop reason, and bounded path-mode restart attempts |
+| `rigid_projection` | object | Rigid-mode and exact-Hessian provenance; see [projection provenance](#rigid-projection-provenance) |
 
 The `files` object may include `imaginary_mode_files` (list of vib file paths).
-For Hessian modes, `status: "converged"` requires the final exact PHVA result
-to contain exactly one significant imaginary mode. Higher-order saddles and
-`n_imag=0` structures are reported as `not_converged`. Convergence details are
+For Cartesian Hessian modes, `status: "converged"` requires the final exact
+PHVA result to contain exactly one significant imaginary mode. Supported
+internal-coordinate Hessian modes instead require one negative root in the
+exact optimizer-space Hessian. Higher-order saddles and `n_imag=0` structures
+are reported as `not_converged`. Convergence details are
 available for rsirfo mode; dimer mode also reports `status: "converged"` or
 `"not_converged"`, but provides `n_opt_cycles` only and omits the per-cycle
 force/step convergence keys and Hessian-mode `safeguards` object.
@@ -132,6 +176,7 @@ force/step convergence keys and Hessian-mode `safeguards` object.
 | `pressure_atm` | float | Pressure (atm) |
 | `input_file` | string | Input filename |
 | `files` | object | `{"frequencies_txt": "frequencies_cm-1.txt"}` |
+| `rigid_projection` | object | Rigid-mode and Hessian provenance; also written to `thermoanalysis.yaml` with `--dump` |
 
 **`thermochemistry`** (null if thermoanalysis unavailable):
 
@@ -158,9 +203,11 @@ force/step convergence keys and Hessian-mode `safeguards` object.
 | `n_frames_forward` | int | Forward IRC frames |
 | `n_frames_backward` | int | Backward IRC frames |
 | `n_frames_total` | int | Total frames |
-| `energy_reactant_hartree` | float | Reactant energy |
+| `energy_first_hartree` | float | Energy of the first stitched-path endpoint; standalone IRC does not assign chemical identity |
 | `energy_ts_hartree` | float | TS energy |
-| `energy_product_hartree` | float | Product energy |
+| `energy_last_hartree` | float | Energy of the last stitched-path endpoint; standalone IRC does not assign chemical identity |
+| `endpoint_energy_orientation` | string | `"finished_first_to_finished_last"` |
+| `energy_reactant_hartree` / `energy_product_hartree` | float | Legacy aliases for first / last, respectively; do not infer chemical R/P identity from these names |
 | `forward_converged` | bool \| null | Forward IRC converged? `null` when the integrator did not expose the flag |
 | `backward_converged` | bool \| null | Backward IRC converged? `null` when the integrator did not expose the flag |
 | `forward_energy_increased` | bool \| null | Final forward step raised the energy |
@@ -172,11 +219,13 @@ force/step convergence keys and Hessian-mode `safeguards` object.
 | `never_stop` | bool | Whether energy-rise/plateau stops were bypassed |
 | `n_freeze_atoms` | int | Frozen atoms |
 | `solvent` | string | Implicit solvent or `"none"` |
-| `bond_changes` | object | `{formed: [...], broken: [...]}` of element-prefixed 1-based atom-pair strings (e.g. `"C7-O12"`); key is omitted when the comparison fails or `finished_first.xyz`/`finished_last.xyz` are absent. |
+| `bond_changes` | object | Directed first→last `{formed: [...], broken: [...]}` of element-prefixed 1-based atom-pair strings (e.g. `"C7-O12"`); key is omitted when the comparison fails or `finished_first.xyz`/`finished_last.xyz` are absent. |
+| `bond_changes_direction` | string | `"finished_first_to_finished_last"` when `bond_changes` is present |
 | `step_length` | float | IRC step length (Bohr) |
 | `max_cycles` | int | Maximum IRC steps |
 | `input_file` | string | Input filename |
 | `files` | object | Trajectory files (xyz + pdb) |
+| `rigid_projection` | object | Rigid-mode and initial-Hessian provenance; see [projection provenance](#rigid-projection-provenance) |
 
 ### `scan`
 
@@ -237,6 +286,9 @@ force/step convergence keys and Hessian-mode `safeguards` object.
 | `spin` | int | Spin multiplicity |
 | `model` | string | Model identifier |
 | `solvent` | string | Implicit solvent or `"none"` |
+| `preopt` | bool | Whether endpoint pre-optimization was enabled |
+| `reactant_energy_hartree` | float | First-image energy (Hartree) |
+| `product_energy_hartree` | float | Last-image energy (Hartree) |
 | `image_energies_hartree` | float[] | All image energies |
 | `n_images` | int | Image count |
 | `hei_index` | int | Highest-energy image index |
@@ -247,7 +299,10 @@ force/step convergence keys and Hessian-mode `safeguards` object.
 
 ### `path-search`
 
-`path-search` has no `--out-json` flag; it **always** writes a `summary.json` to the output directory with the shared envelope (`command`, `pdb2reaction_version`, `environment`) plus:
+`path-search` has no `--out-json` flag. Once execution reaches its summary
+writer it writes `summary.json` with the shared envelope (`command`,
+`pdb2reaction_version`, `environment`) plus the fields below; early CLI/input
+validation can fail before the file exists.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -264,15 +319,17 @@ See also the extended [`summary.json` section](#summary-json-path-search-all) fo
 
 ### `dft`
 
-> **Note:** `dft` writes `result.json` only on a successful SCF (exit 0). A
+> **Note:** `dft` writes `result.json` only on a successful SCF (exit 0), with
+> `status: "converged"`. A
 > non-converged SCF returns exit code 3 and skips `result.json`; SCF status
-> is encoded by the `converged: bool` field plus the exit code, not by a
-> `status` field. The generic `not_converged` status does not apply to `dft`;
+> is encoded by the exit code when no result exists. The generic
+> `not_converged` status does not apply to `dft`;
 > an unhandled exception, however, still writes the standard `error` envelope
 > (`result.json` + `summary.json`).
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `status` | string | `"converged"` |
 | `converged` | bool | SCF converged? |
 | `charge` | int | System charge |
 | `spin` | int | Spin multiplicity |
@@ -297,21 +354,21 @@ See also the extended [`summary.json` section](#summary-json-path-search-all) fo
 | Field | Type | Description |
 |-------|------|-------------|
 | `status` | string | `"ok"` |
-| `n_atoms_raw` | int | Atoms in input PDB |
-| `n_atoms_extracted` | int | Atoms after extraction |
+| `n_atoms_raw` | int | Atoms in selected residues before backbone/truncation filtering (not the whole input structure) |
+| `n_atoms_extracted` | int | Selected atoms kept after truncation, before cap-H addition |
 | `total_charge` | float | Computed total charge |
 | `protein_charge` | float | Protein charge |
 | `ligand_total_charge` | float | Ligand charge sum |
 | `ion_total_charge` | float | Ion charge sum |
 | `ion_charges` | list | `[[name, charge], ...]` |
 | `unknown_residue_charges` | object | `{resname: charge}` |
-| `n_link_hydrogens` | int | Cap hydrogens added at severed C/N bonds |
+| `n_link_hydrogens` | int | Cap hydrogens added at carbon-parent truncation bonds |
 | `exclude_backbone` | bool | Whether backbone atoms were excluded |
 | `include_h2o` | bool | Whether crystallographic waters were included |
 | `ligand_charge_input` | string | User-supplied `--ligand-charge` mapping |
 | `center` | string | Center residue |
 | `radius` | float | Extraction radius (angstrom) |
-| `input_files` | string[] | Input PDB paths |
+| `input_files` | string[] | Original input PDB/mmCIF paths |
 | `files` | object | Output PDB / cluster filenames |
 
 ### `trj2fig`
@@ -322,7 +379,10 @@ See also the extended [`summary.json` section](#summary-json-path-search-all) fo
 | `n_frames` | int | Number of trajectory frames |
 | `min_energy_hartree` | float | Minimum energy across frames |
 | `max_energy_hartree` | float | Maximum energy across frames |
-| `backend` | string | MLIP backend |
+| `energy_source` | string | `"trajectory_comment"` or `"mlip_recomputed"` |
+| `backend` | string or null | MLIP backend only when frame energies were recomputed; null in comment-energy mode |
+| `charge` / `multiplicity` | int or null | Resolved recomputation state, otherwise null |
+| `solvent` / `solvent_model` | string or null | Recomputed-calculator solvent settings, otherwise null |
 | `files` | object | Output plot files |
 
 ### `energy-diagram`
@@ -363,8 +423,9 @@ The `all` command additionally includes:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `rate_limiting_step` | object | RLS segment index and barrier |
+| `rate_limiting_step` | object | Highest barrier at the highest method complete across every reactive segment (`DFT//MLIP_Gibbs` > `DFT` > `MLIP_Gibbs` > `MLIP` > `MEP`), with explicit `method` and raw `mep_barrier_kcal` |
 | `overall_reaction_energy_kcal` | float | Overall reaction energy |
+| `overall_reaction_energy_method` | string | Method of the overall reaction energy (`MEP`, `MLIP`, `MLIP_Gibbs`, `DFT`, or `DFT//MLIP_Gibbs`) |
 | `post_segments` | list | Per-segment TS/IRC/freq/DFT results |
 | `key_output_files` | object | Curated output file listing |
 

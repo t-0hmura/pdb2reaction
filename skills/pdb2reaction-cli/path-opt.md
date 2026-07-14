@@ -2,11 +2,12 @@
 
 ## Purpose
 
-MEP optimization for **one** segment between two endpoints. The
-building block of `path-search` (which runs `path-opt` internally
-once per segment, then bond-segments any multi-step paths). Use it
-standalone to refine one segment without re-running the whole
-recursive search.
+MEP optimization for **one** segment between two endpoints. It exposes the
+same GSM / optional-DMF path engines that the recursive `path-search` workflow
+uses, but is a separate command: it does not recursively split the path or
+classify bond-change segments. Use it standalone when one endpoint pair is the
+intended candidate unit; the result still needs TS/frequency/IRC validation
+before calling it elementary.
 
 ## Synopsis
 
@@ -21,9 +22,11 @@ pdb2reaction path-opt -i reactant.pdb product.pdb \
 
 | flag | type | default | description |
 |---|---|---|---|
-| `-i, --input` | path(s) | required (= 2) | Reactant and product, identical atom ordering |
+| `-i, --input` | path(s) | required (= 2) | Reactant and product with identical atom identities and ordering |
 | `--mep-mode` | str | `gsm` | `gsm` (Growing String) or `dmf` (Direct Max Flux) |
 | `--max-nodes` | int | 20 | Max internal nodes (final string ≤ `max-nodes + 2`) |
+| `--preopt / --no-preopt` | flag | `--preopt` | Optimize each endpoint before constructing the string |
+| `--fix-ends / --no-fix-ends` | flag | `--fix-ends` | Keep endpoint images fixed during path optimization |
 | `-q, --charge` / `-l` / `-m` | — | — | Charge / spin (common conventions) |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `--solvent` | str | none | xTB-ALPB solvent name |
@@ -37,42 +40,51 @@ pdb2reaction path-opt -i reactant.pdb product.pdb \
 pdb2reaction path-opt -i R.xyz P.xyz -q 0 -m 1 -b uma -o result_path_opt
 ```
 
-### DMF for tough strings
+### Optional DMF engine
 
 ```bash
 pdb2reaction path-opt -i R.pdb P.pdb -l 'GPP:-3' --mep-mode dmf -b mace \
     -o result_path_opt_dmf
 ```
 
+DMF is optional and cannot be combined with `--solvent`: its ASE path has no
+xTB solvent wrapper, so pdb2reaction rejects that PES mismatch. Use GSM for a
+solvent-corrected path.
+
 ## Output
 
 | Path | When | Content |
 |---|---|---|
 | `<out_dir>/result.json` | `--out-json` | machine-readable result |
-| `<out_dir>/final_geometries_trj.xyz` | always | converged string trajectory |
-| `<out_dir>/final_geometries.{pdb,gjf}` | `--convert-files` (default on) AND PDB reference / GJF template present | PDB / GJF companions |
-| `<out_dir>/hei.{xyz,pdb,gjf}` | `hei.xyz` always; `.pdb`/`.gjf` when a PDB reference / GJF template is present + `--convert-files` | highest-energy image (TS candidate) |
+| `<out_dir>/final_geometries_trj.xyz` | completed path optimizer run | final string trajectory; inspect JSON `status` before calling it converged |
+| `<out_dir>/final_geometries.{pdb,cif,gjf}` | `--convert-files` (default on) AND topology/template present; CIF needs a bridged input/reference | PDB / CIF / GJF companions |
+| `<out_dir>/hei.{xyz,pdb,cif,gjf}` | path result reaches HEI writing; non-XYZ companions need a topology/template plus `--convert-files` | highest-energy image (TS candidate) |
 | `<out_dir>/dmf_initial_trj.xyz`, `dmf_ipopt.out` | `--mep-mode dmf` | DMF-mode artifacts |
 
-`result.json` reports converged string energies and the path-opt
-status (`converged` / `not_converged`).
+`result.json` reports the final string energies and status. The status is
+`converged` / `not_converged` when the selected engine exposes a convergence
+flag, or `completed` when that engine completed but did not expose one.
+`completed` must not be relabelled as convergence.
 
 ## When to use vs path-search
 
 - **`path-search`** if you want recursive bond-change segmentation
   for a possibly multi-step mechanism.
-- **`path-opt`** if you already know the segment is a single-step
-  reaction and just want the MEP between two endpoints, without the
-  segmentation overhead.
+- **`path-opt`** if one endpoint pair is the intended candidate unit and you
+  want its MEP without recursive segmentation. TS/frequency/IRC must still
+  establish whether it is one elementary step.
 
 ## Caveats
 
-- Convergence is sensitive to initial endpoint geometries. If
-  `not_converged`, try running `pdb2reaction opt` on each endpoint
-  first to pre-relax to local minima.
-- For large systems, GSM's per-node Hessian-free curvature estimation
-  may stall; as a rough heuristic, try `--mep-mode dmf` or raise
-  `--max-nodes`.
+- Convergence is sensitive to endpoint geometries. Endpoint preoptimization is
+  already enabled by default; if `not_converged`, inspect its result and the
+  string before deciding whether separate `opt`, a different endpoint, or a
+  path-engine setting is appropriate.
+- If GSM stalls after endpoint/preoptimization checks, DMF is an optional
+  alternative where its separate dependencies are installed. Changing the
+  engine or raising `--max-nodes` increases cost and does not repair an
+  inconsistent endpoint pair; inspect the resulting path rather than treating
+  engine completion as validation.
 
 ## See also
 

@@ -194,11 +194,12 @@ def add_calc_file_option() -> Callable[[Callable], Callable]:
             "--calc-factory",
             "calc_factory",
             type=str,
-            default="get_calculator",
-            show_default=True,
+            default=None,
+            show_default=False,
             help=(
                 "Name of the callable in --calc-file that returns an ASE "
-                "Calculator (or a module-level Calculator instance)."
+                "Calculator (or a module-level Calculator instance). "
+                "CLI overrides config YAML; otherwise defaults to get_calculator."
             ),
         )(func)
         func = click.option(
@@ -232,15 +233,16 @@ def _deterministic_callback(ctx, param, value):
 def add_deterministic_option() -> Callable[[Callable], Callable]:
     """Attach ``--deterministic/--no-deterministic`` to a Click command.
 
-    Bit-reproducible mode: turns on ``torch.use_deterministic_algorithms`` plus
-    an ``index_reduce_`` shim so repeated GPU runs are bit-identical. It is a
+    Strict PyTorch determinism: turns on ``torch.use_deterministic_algorithms`` plus
+    an ``index_reduce_`` shim to support same-stack repeatability. It is a
     process-global side effect applied via an eager, value-less callback, so it
     propagates to all backends and to the in-process child stages of ``all``
     without per-stage forwarding. Slower than the default, and raises (rather
     than silently degrading) if the torch build cannot honour strict mode.
-    Default off; default runs carry ~1e-7 A scatter/atomic non-determinism that
-    is chemically negligible. The env var ``PDB2REACTION_STRICT_DETERMINISTIC=1`` is the
-    equivalent entry point for CI / the direct Python API.
+    Default off. This cannot guarantee identity across package versions or
+    hardware, nor control an arbitrary custom ASE calculator. The env var
+    ``PDB2REACTION_STRICT_DETERMINISTIC=1`` is the equivalent entry point for
+    CI / the direct Python API.
     """
     def decorator(func: Callable) -> Callable:
         return click.option(
@@ -251,8 +253,9 @@ def add_deterministic_option() -> Callable[[Callable], Callable]:
             expose_value=False,
             callback=_deterministic_callback,
             help=(
-                "Strict bit-reproducible GPU runs (deterministic algorithms + "
-                "index_reduce_ shim). Slower; raises if unsupported. Default off."
+                "Request strict same-stack PyTorch determinism (deterministic "
+                "algorithms + index_reduce_ shim). Slower; raises for detected "
+                "unsupported ops; custom calculators are outside its scope."
             ),
         )(func)
     return decorator
@@ -320,7 +323,7 @@ def add_ml_charge_spin_options() -> Callable[[Callable], Callable]:
             show_default=False,
             help=(
                 "Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) used to derive "
-                "charge when -q is omitted (requires PDB input or --ref-pdb)."
+                "charge when -q is omitted (requires PDB/mmCIF input or --ref-pdb)."
             ),
         ),
         click.option(

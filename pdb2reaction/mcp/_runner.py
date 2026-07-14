@@ -166,7 +166,7 @@ def run_subcmd(
             exit_code=124,
             stderr_tail=f"TIMEOUT after {timeout}s: {exc}",
             hint=(
-                "Increase the `timeout` parameter or rerun with a smaller "
+                "Increase the `timeout_seconds` tool argument or rerun with a smaller "
                 "system / fewer cycles."
             ),
             argv=list(argv),
@@ -206,5 +206,4 @@ def run_subcmd(
         hint=hint,
         argv=list(argv),
     )
-
 

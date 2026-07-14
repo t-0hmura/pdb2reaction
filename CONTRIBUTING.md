@@ -17,13 +17,13 @@ This document is for **contributors and maintainers**. For end-user usage, see [
 | 1. Unit tests | `pytest tests/ -q` | `pytest tests/ -q` | logic regression; **never delete or skip the failing test** — root-cause it |
 | 2. Engineering markers | `# CHEMISTRY-RULE:N` coverage, `# DOMAIN_PURE` coverage, external-library import scope | `python .github/scripts/check_engineering_markers.py` | a required marker is missing, or an MLIP SDK is imported outside `backends/` |
 | 3. Help registry drift | CLI `--help` and `--help-advanced` compliance with registry | `python .github/scripts/check_help_registry.py` | CLI option mismatch — re-run after CLI changes |
-| 4. Smoke | `tests/smoke/run.sh` exercises the canonical CLI surface (`extract` → `path-search` → `tsopt` → `irc` → `freq` → `all`) on a representative cluster system | qsub `tests/smoke/run.sh` on HPC | functional regression — root-cause before merge |
+| 4. Smoke | `tests/smoke/run.sh` exercises the canonical CLI surface (`extract` → `path-search` → `tsopt` → `irc` → `freq` → `all`) on a representative cluster system | copy `tests/smoke/` to scratch, then invoke `bash run.sh` from a site-specific scheduler wrapper | functional regression — root-cause before merge |
 
 ### 1.2 Before any patch
 
-1. Read [`docs/architecture.md`](docs/architecture.md) §5 "Hidden constraints" once per session — VRAM `del` invariant, chemistry rules, repo-internal fork policy, `pyproject.toml` 0-diff arrays, `_LAZY_SUBCOMMANDS` absolute-path rule.
-2. Grep [`pdb2reaction/core/defaults.py`](pdb2reaction/core/defaults.py) for any default value you are about to touch — that file is the single source of truth.
-3. If you are about to edit any file under `pysisyphus/` or `thermoanalysis/` — re-read the per-dir `README.md` in that dir to confirm logic edits are forbidden in this release line (annotation-only is allowed).
+1. Read [`docs/architecture.md`](docs/architecture.md) §5 "Hidden constraints" once per session — VRAM `del` invariant, chemistry rules, repo-internal fork policy, packaging-change gates, and the `_LAZY_SUBCOMMANDS` absolute-path rule.
+2. Grep [`pdb2reaction/core/defaults.py`](pdb2reaction/core/defaults.py) first for any default you are about to touch; it is the primary source for shared defaults, with a small number of justified command-local exceptions.
+3. Before editing `pysisyphus/` or `thermoanalysis/`, read that directory's `README.md`, identify the local divergence you are changing, and select a focused regression test plus the matching numerical benchmark. Never replace a divergent file wholesale with upstream.
 4. Identify which layer your change belongs to (`cli/`, `workflows/`, `domain/`, `backends/`, `io/`, `core/`). Stay inside one layer per commit when possible; the dependency direction is `L1 → L2 → {L3, L4} → L5` and must not be inverted.
 
 ### 1.3 `--dump` / `-v` usage examples
@@ -35,15 +35,20 @@ pdb2reaction all -i R.pdb P.pdb -q 0 -b uma --out-dir ./result_all
 # -v LEVEL (0-3) is a per-subcommand option; -v 3 is full DEBUG
 pdb2reaction all -i R.pdb P.pdb -q 0 -b uma -v 3 --out-dir ./result_all
 
-# --dump on freq: write thermoanalysis.yaml alongside the standard outputs
+# the freq --dump flag: write thermoanalysis.yaml alongside the standard outputs
 pdb2reaction freq -i opt.pdb -q 0 --dump
 ```
 
 Use `--dump` when reproducing a HEAVY-tier regression or attaching artefacts to a bug report. Use `-v 3` when diagnosing an import-time or stage-bridge issue; the additional log volume is acceptable for short runs.
 
-### 1.4 Downstream parser freeze rule
+### 1.4 Downstream output compatibility
 
-The contents of `summary.log` and `summary.json` are **frozen byte-for-byte**. Even cosmetic edits ("Step 1" → "step 1", added trailing periods, reflowed JSON keys) break downstream regex parsers. If a log line genuinely needs to change, treat it as an intentional behaviour change and name the reason in the commit body so downstream maintainers can update their parsers.
+Treat `summary.json` as a versioned public schema and `summary.log` as
+human-readable output. Do not rename/remove machine-readable keys or paths
+accidentally: document an intentional schema change, update both English and
+Japanese references, add a compatibility/migration test when needed, and bump
+the schema version for a structural break. Human-readable labels may be fixed,
+but tests must ensure that backend/model provenance remains truthful.
 
 ---
 
@@ -51,8 +56,8 @@ The contents of `summary.log` and `summary.json` are **frozen byte-for-byte**. E
 
 See [`docs/architecture.md`](docs/architecture.md) for the full 6-layer dir tree, file index, dependency direction, and recommended reading order. Short version:
 
-- `pdb2reaction/cli/` — L1 Interface (Click group, decorator factories, help, bool compat, subcommand resolver).
-- `pdb2reaction/workflows/` — L2 Application (one file per subcommand stage runner).
+- `pdb2reaction/cli/` — L1 Interface (root group, registry, shared decorators, help, bool compatibility, resolver).
+- `pdb2reaction/workflows/` — L2 Application (compute-command modules plus shared stage helpers; utility commands also live in `io/` / `domain/`).
 - `pdb2reaction/domain/` — L3 Domain (chemistry-aware helpers: bond changes, bond summary, element info).
 - `pdb2reaction/backends/` — L4a Infra (MLIP dispatcher + per-backend adapter).
 - `pdb2reaction/io/` — L4b Infra (summary, trajectory, diagram, PDB fix, Hessian cache).
@@ -74,12 +79,14 @@ Five "add-a-X" recipes cover ~90 % of contributor changes. Each names the exact 
 | step | action | file |
 |---|---|---|
 | 1 | Add a Python module `pdb2reaction/workflows/myaction.py` with a top-level `@click.command(...)` named `cli` | new file in L2 |
-| 2 | Register defaults (every default value) in `pdb2reaction/core/defaults.py` under a new `MYACTION_DEFAULTS` dict | `pdb2reaction/core/defaults.py` (L5) |
+| 2 | Register shared/numerical defaults in `pdb2reaction/core/defaults.py`; keep a command-local default only when its scope is genuinely local and document the exception | `pdb2reaction/core/defaults.py` or the new module |
 | 3 | Wire the command into the lazy registry — add `"myaction": ("pdb2reaction.workflows.myaction", "cli", "<short description>")` to `_LAZY_SUBCOMMANDS` | `pdb2reaction/cli/app.py` (L1) |
-| 4 | If your subcommand has value-style bool flags (`--flag True`), add it to `_COMMAND_BOOL_VALUE_OPTIONS` in the same file | `pdb2reaction/cli/app.py` |
+| 4 | Register every boolean option in the matching `_COMMAND_BOOL_*_OPTIONS` table so `--flag` / `--no-flag` and legacy input normalization stay covered | `pdb2reaction/cli/app.py` |
 | 5 | Add a docs page `docs/myaction.md` (and `docs/ja/myaction.md` if you maintain the JP set); add a unit test in `tests/test_myaction.py` | new files |
 
-**Gate that catches mistakes**: the unit-test suite (step 3) will fail if the subcommand cannot be discovered or instantiated; the engineering-marker check (step 4) will fail if a new backend SDK leaks outside `backends/`.
+**Gates that catch mistakes**: gate stage 1 exercises the unit/regression test;
+stage 3 catches registry/help drift (including boolean registration); stage 4
+must cover the new command when it belongs to the canonical smoke surface.
 
 **Note on absolute paths**: `_LAZY_SUBCOMMANDS` entries MUST use **absolute** module paths (`pdb2reaction.workflows.myaction`). Relative dotted strings (`".myaction"`) silently break subcommand discovery if `default_group.py` ever moves; see `docs/architecture.md` §5.5.
 
@@ -90,12 +97,14 @@ Five "add-a-X" recipes cover ~90 % of contributor changes. Each names the exact 
 | step | action | file |
 |---|---|---|
 | 1 | Create `pdb2reaction/backends/xyz.py` with `XYZCalculator(MLIPCalculator)` (pysisyphus path) and `XYZASECalculator(...)` (ASE path) | new file in L4a |
-| 2 | Subclass `MLIPCalculator` (`backends/base.py:120`) and implement `_compute_energy_forces_ev(elem, coord_ang)`; the base class supplies the finite-difference Hessian assembly and ASE adapter (see `backends/uma.py:314` for the reference implementation) | `pdb2reaction/backends/base.py` |
+| 2 | Subclass `MLIPCalculator` (`backends/base.py:120`) and implement `_compute_energy_forces_ev(elem, coord_ang)`; the base supplies the pysis calculator contract and finite-difference Hessian assembly. Implement the separate ASE adapter in the backend module (see `backends/uma.py`) | `pdb2reaction/backends/base.py`, `pdb2reaction/backends/xyz.py` |
 | 3 | Register in `BACKEND_REGISTRY` dict with `module / pysis_cls / ase_cls` keys, and add the accepted-kwargs set to `_BACKEND_ACCEPTED_KEYS` and `_ASE_ACCEPTED_KEYS` | `pdb2reaction/backends/__init__.py` |
 | 4 | Add `xyz` to `resolve_backend` fallback order if it should participate in `--backend auto` | `pdb2reaction/backends/__init__.py` |
 | 5 | Document model identifiers, install command, accepted kwargs in `docs/backends.md`; add a smoke entry in `tests/smoke/run.sh` | `docs/backends.md`, `tests/smoke/run.sh` |
 
-**Gate that catches mistakes**: the smoke run (step 5) will exercise the new backend end-to-end and the engineering-marker check (step 4) will confirm the new backend's external SDK import stays inside `backends/`.
+**Gates that catch mistakes**: gate stage 2 confirms the external SDK import
+stays inside `backends/`; gate stage 4 exercises the backend end to end after
+the recipe's smoke entry (step 5) is added.
 
 ### 3.3 Add an output format
 
@@ -106,7 +115,7 @@ Five "add-a-X" recipes cover ~90 % of contributor changes. Each names the exact 
 | 1 | Add a writer function in `pdb2reaction/io/summary.py` that consumes the same in-memory summary dict | `pdb2reaction/io/summary.py` (L4b) |
 | 2 | Default emit path / on-or-off flag lives in `pdb2reaction/core/defaults.py` | `pdb2reaction/core/defaults.py` (L5) |
 | 3 | Wire into `@add_common_dump_options` factory if the user can opt out (the factory is **future**, expected to land in a later release; until then, attach a per-subcommand `@click.option("--dump-<artefact>",...)` directly to the L2 stage runner) | `pdb2reaction/cli/decorators.py` (future) |
-| 4 | Update the `files` map written into `summary.json` to advertise the new artefact (per `docs/json-output.md`) | `pdb2reaction/io/summary.py` |
+| 4 | Update the aggregate `files` / `key_output_files` enrichment to advertise the new artefact (per `docs/json-output.md`); update the human-readable tree separately if needed | `pdb2reaction/workflows/all.py` (`_enrich_summary`), and `pdb2reaction/io/summary.py` for `summary.log` parity |
 | 5 | Add docs in `docs/json-output.md` + a unit test for round-trip serialisation | `docs/json-output.md`, new test |
 
 **Gate that catches mistakes**: the smoke run (step 5) will exercise the new artefact end-to-end; any change to a downstream-parser-visible log line is governed by §1.4.
@@ -120,7 +129,7 @@ Five "add-a-X" recipes cover ~90 % of contributor changes. Each names the exact 
 | 1 | Implement the stage as a standalone subcommand first (Recipe 3.1) | `pdb2reaction/workflows/validate.py` |
 | 2 | Add an internal entry to the `all` pipeline orchestrator, preserving the VRAM `del` pattern between stages | `pdb2reaction/workflows/all.py` |
 | 3 | Add a `_StageContext` field if the stage needs persistent context (future, `core/types.py`) | `pdb2reaction/core/types.py` (future) |
-| 4 | Update `pdb2reaction/io/summary.py` to record the new stage's entry in `summary.json` | `pdb2reaction/io/summary.py` |
+| 4 | Record the new stage in the aggregate producer; update the human-readable writer separately if the stage belongs in `summary.log` | `pdb2reaction/workflows/all.py` (`_enrich_summary`), `pdb2reaction/workflows/path_search.py` when relevant, and `pdb2reaction/io/summary.py` for log parity |
 | 5 | Update `tests/smoke/run.sh` to include the new stage in the representative run | `tests/smoke/run.sh` |
 
 **Gate that catches mistakes**: the smoke run (step 5) — a new stage in `all` is a behaviour change and should be exercised end-to-end before merge.
@@ -162,18 +171,28 @@ The IRC / TSopt / Freq stages explicitly `del calc`, `del geom`, `del hess` betw
 
 ### 4.3 Divergent files in bundled forks
 
-Logic edits to these files are forbidden in this release line (annotation-only is allowed: docstring + type hints):
+The files listed in `pysisyphus/README.md` and
+`thermoanalysis/README.md` are maintained parts of pdb2reaction. Logic edits
+are allowed when they fix a demonstrated defect, but require all of the
+following:
 
-- `pysisyphus/irc/IRC.py`
-- `pysisyphus/optimizers/hessian_updates.py`
-- `pysisyphus/tsoptimizers/TSHessianOptimizer.py`
-- `thermoanalysis/QCData.py`
+1. a regression test reproducing the defect;
+2. numerical validation appropriate to the change (optimizer/IRC GPU matrix
+   or thermochemistry golden data);
+3. preservation of upstream attribution and the public symbols used by the
+   workflows; and
+4. an updated divergence table when the local behavior changes.
 
-Do not `pip install pysisyphus` or `pip install thermoanalysis` from PyPI alongside this package — silent runtime breakage.
+Do not install upstream `pysisyphus` or `thermoanalysis` alongside this
+package and never overwrite a divergent file wholesale.
 
-### 4.4 `pyproject.toml` arrays are 0-diff
+### 4.4 Packaging-change gate
 
-`pyproject.toml [tool.setuptools.packages.find].include` and `dependencies` arrays must not change in this release line. Adding a `vendor/` or `internal/` container directory, or pinning a new runtime dependency, breaks the install contract and is forbidden by the release scope. Reflow / comment edits to `pyproject.toml` are fine; **array contents** are frozen. (The `pdb2reaction*` glob already auto-discovers any new layer subpackage — no `include`-array edit is needed when adding a file inside an existing layer dir.)
+Changes to `[tool.setuptools.packages.find].include` or runtime dependencies
+are allowed only when required by the feature. Verify an sdist and wheel,
+inspect wheel contents, install the wheel into a clean environment, and run
+the CLI smoke suite. The existing `pdb2reaction*` glob already discovers new
+subpackages below the package, so most internal files need no discovery edit.
 
 ### 4.5 `_LAZY_SUBCOMMANDS` absolute-path rule
 
@@ -183,9 +202,10 @@ Entries in `pdb2reaction/cli/app.py:_LAZY_SUBCOMMANDS` MUST use absolute module 
 
 Default basis set (def2-TZVPD), default functional (ωB97M-V), default convergence thresholds, default ECP handling, default solvent models — **none** of these are open for change without a `[CHEMISTRY-RULE]` commit and explicit lab decision. Grep `pdb2reaction/workflows/dft.py` (`DFT_DEFAULT_FUNC` / `DFT_DEFAULT_BASIS`) for the DFT functional/basis and `pdb2reaction/core/defaults.py` for the other defaults; if you think a change is justified, open an issue first.
 
-### 4.7 Downstream-parser-visible log lines
+### 4.7 Downstream-parser-visible output
 
-Any `summary.log` or `summary.json` line that downstream parsers consume is **frozen byte-for-byte**. See §1.4 above.
+Apply the versioned-schema and provenance rules in §1.4. Do not make a
+machine-readable compatibility break as a side effect of wording cleanup.
 
 ---
 

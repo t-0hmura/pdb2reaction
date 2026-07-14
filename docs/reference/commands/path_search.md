@@ -13,8 +13,9 @@ Options:
                                   paths, DEBUG logging).  [0<=x<=3]
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
-  -i, --input FILE                Two or more structures in reaction order.
-                                  Repeat -i/--input for each path.  [required]
+  -i, --input FILE                Two or more PDB, mmCIF, XYZ, or GJF structures
+                                  in reaction order. Repeat -i/--input for each
+                                  path.  [required]
   --mep-mode [gsm|dmf]            MEP optimizer: Growing String Method (gsm) or
                                   Direct Max Flux (dmf).  [default: gsm]
   --dmf-backend [cpu|gpu]         DMF compute backend (--mep-mode dmf only): gpu
@@ -27,8 +28,8 @@ Options:
                                   Defaults to peak for gsm and minima for dmf
                                   when omitted.
   -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
-                                  unless --ligand-charge derives it from PDB
-                                  inputs.
+                                  unless --ligand-charge derives it from
+                                  PDB/mmCIF inputs.
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
                                   predictor. NOTE: with UMA, workers>1 plus an
                                   explicit Analytical Hessian request is an
@@ -38,17 +39,18 @@ Options:
                                   predictor (workers>1).  [default: 1]
   -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
                                   GPP:-3,SAM:1) used to derive charge when -q is
-                                  omitted (PDB inputs only).
+                                  omitted (PDB/mmCIF inputs only).
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1; defaults from a .gjf
                                   template when available, otherwise 1).
   --freeze-links / --no-freeze-links
-                                  Freeze parent atoms of cap hydrogens (PDB
-                                  input only).  [default: freeze-links]
+                                  Freeze parent atoms of cap hydrogens
+                                  (PDB/mmCIF input only).  [default: freeze-
+                                  links]
   --freeze-atoms TEXT             Comma-separated 1-based atom indices to freeze
                                   (e.g., '1,3,5').
-  --max-nodes INTEGER             Number of internal nodes (string has
-                                  max_nodes+2 images including endpoints). Used
-                                  for *segment* GSM unless overridden by YAML
+  --max-nodes INTEGER             Number of movable internal images per GSM/DMF
+                                  segment; the complete segment has max_nodes+2
+                                  images including endpoints. Overridden by YAML
                                   search.max_nodes_segment.  [default: 20]
   --max-cycles INTEGER            Maximum GSM optimization cycles.  [default:
                                   300]
@@ -60,7 +62,7 @@ Options:
   --dump / --no-dump              Write GSM/single-optimization trajectories
                                   during the run.  [default: no-dump]
   --convert-files / --no-convert-files
-                                  Convert XYZ/TRJ outputs into PDB/GJF
+                                  Convert XYZ/TRJ outputs into PDB/CIF/GJF
                                   companions based on the input format.
                                   [default: convert-files]
   -o, --out-dir TEXT              Output directory.  [default:
@@ -91,16 +93,16 @@ Options:
                                   and --ref-full-pdb is provided, the first
                                   reference PDB will be used for all pairs in
                                   the final merge.  [default: align]
-  --ref-full-pdb FILE             Full-size template PDBs in the same reaction
-                                  order as --input. With --align True, only the
-                                  *first* provided reference PDB is used for all
-                                  pairs in the final merge (you may pass just
-                                  one).
-  --ref-pdb FILE                  Pocket reference PDBs used only for the final
-                                  full-system merge. Useful when --input uses
-                                  XYZ/GJF intermediates but PDB snapshots exist
-                                  for merging. Must match the number and order
-                                  of --input.
+  --ref-full-pdb FILE             Full-size template PDB/mmCIF files in the same
+                                  reaction order as --input. With --align, only
+                                  the *first* provided reference structure is
+                                  used for all pairs in the final merge (you may
+                                  pass just one).
+  --ref-pdb FILE                  Pocket reference PDB/mmCIF files used only for
+                                  the final full-system merge. Useful when
+                                  --input uses XYZ/GJF intermediates but PDB
+                                  snapshots exist for merging. Must match the
+                                  number and order of --input.
   -b, --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
   --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
@@ -127,12 +129,12 @@ Options:
                                   / DFTB+ / any ASE engine. See --calc-factory.
   --calc-factory TEXT             Name of the callable in --calc-file that
                                   returns an ASE Calculator (or a module-level
-                                  Calculator instance).  [default:
-                                  get_calculator]
+                                  Calculator instance). CLI overrides config
+                                  YAML; otherwise defaults to get_calculator.
   --deterministic / --no-deterministic
-                                  Strict bit-reproducible GPU runs
+                                  Request strict same-stack PyTorch determinism
                                   (deterministic algorithms + index_reduce_
-                                  shim). Slower; raises if unsupported. Default
-                                  off.
+                                  shim). Slower; raises for detected unsupported
+                                  ops; custom calculators are outside its scope.
   -h, --help                      Show this message and exit.
 ```

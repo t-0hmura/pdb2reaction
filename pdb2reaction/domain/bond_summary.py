@@ -5,7 +5,7 @@ Usage:
     pdb2reaction bond-summary -i A.xyz B.xyz [C.xyz ...]
 
 Compares consecutive pairs of structures (A→B, B→C, …) and reports
-covalent bonds formed and broken. Supports XYZ, PDB, and GJF formats.
+covalent bonds formed and broken. Supports XYZ, PDB, mmCIF, and GJF formats.
 
 For detailed documentation, see: docs/bond-summary.md
 """
@@ -21,12 +21,14 @@ from pdb2reaction.domain.bond_changes import compare_structures, summarize_chang
 
 
 def _load_geom(path: str):
-    """Load a geometry from XYZ, PDB, or GJF file."""
+    """Load a geometry from XYZ, PDB, mmCIF, or GJF file."""
     p = Path(path)
     suffix = p.suffix.lower()
-    if suffix == ".pdb":
+    if suffix in {".pdb", ".cif", ".mmcif"}:
+        from pdb2reaction.core.utils import prepare_input_structure
         from pysisyphus.io.pdb import geom_from_pdb
-        return geom_from_pdb(str(p))
+        with prepare_input_structure(p) as prepared:
+            return geom_from_pdb(str(prepared.geom_path))
     elif suffix == ".gjf":
         from pysisyphus.io.gaussian import geom_from_gaussian_input
         return geom_from_gaussian_input(str(p))
@@ -38,7 +40,7 @@ def _load_geom(path: str):
 @click.command("bond-summary", help="Detect bond changes between consecutive structures.")
 @click.option(
     "-i", "--input", "inputs", multiple=True,
-    help="Input structure files (XYZ/PDB/GJF). Repeat -i for each file.",
+    help="Input structure files (XYZ/PDB/mmCIF/GJF). Repeat -i for each file.",
 )
 @click.argument("extra_inputs", nargs=-1, type=click.Path(exists=True))
 @click.option(

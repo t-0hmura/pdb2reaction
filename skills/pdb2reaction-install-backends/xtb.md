@@ -1,8 +1,8 @@
 # xTB / ALPB solvent layer (xtb.md)
 
-`pdb2reaction` can apply an xTB-ALPB **implicit solvent correction** to
-any backend-computed energy. The correction is a separate semi-empirical
-SCF call that adds a continuum-solvation term.
+`pdb2reaction` can apply an xTB implicit-solvent **delta correction** to
+its MLIP/custom calculator. It evaluates xTB with and without implicit solvent
+on the same coordinates, then adds their difference to the base calculator.
 
 ## When to use
 
@@ -63,18 +63,22 @@ To turn off: omit `--solvent` or pass `--solvent none`.
 `--solvent-model` selects `alpb` (default, conda-forge binary) or
 `cpcmx` (requires a source build with CPCM-X enabled).
 
-## How it composes with MLIP / DFT
+## How it composes with the base calculator
 
 The corrected energy at each step is:
 
 ```
-E_total = E_MLIP_or_DFT (in vacuo) + ΔE_ALPB (xTB)
+E_total = E_base + [E_xTB(solvent) - E_xTB(vacuum)]
 ```
 
-The ALPB term is computed from the same atomic positions as the
-backend calculator, so it's geometry-consistent. Whenever `--solvent`
-is set, the ALPB gradient is added to the MLIP forces so the
-optimizer treats the implicit solvent effect — there is no separate flag to toggle this.
+The force and Hessian corrections use the same subtraction. Thus optimizers,
+IRC, and frequency calculations see a position-consistent corrected surface;
+this is not the full xTB energy added on top of MLIP. Each correction requires
+both vacuum and solvent xTB evaluations, so it materially increases cost.
+
+This wrapper is used by MLIP/custom-calculator workflows. The standalone
+`pdb2reaction dft` command has no `--solvent` option and is not automatically
+combined with this correction.
 
 ## Known gotchas
 
@@ -88,9 +92,11 @@ optimizer treats the implicit solvent effect — there is no separate flag to to
 
 - `core.md` — `pdb2reaction` install (xTB layer is plumbed via the
   bundled `backends/xtb_alpb_correction.py` and `backends/solvent.py`).
-- `dft.md` — note that xTB-ALPB does **not** stack with PySCF's own
-  PCM/COSMO; pick one.
+- `dft.md` — the standalone DFT command is a separate refinement and does not
+  accept this xTB correction.
 - `pdb2reaction-cli/SKILL.md` — `--solvent` is accepted by `all`,
   `tsopt`, `freq`, `irc`, `opt`, `sp`, `path-search`, `path-opt`, `scan`,
-  `scan2d`, `scan3d`, and `trj2fig`. Not accepted by `dft` or
-  `extract`.
+  `scan2d`, and `scan3d`. `trj2fig` also accepts it, but only uses it when
+  `-q` and/or `-m` triggers MLIP recomputation of every frame; comment-energy
+  plotting does not run a calculator. It is not accepted by `dft`, `extract`,
+  or the structure-only utilities.

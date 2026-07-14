@@ -1,5 +1,5 @@
 """
-Pairwise MEP optimization via GSM or DMF with UMA calculator.
+Pairwise MEP optimization via GSM or DMF with an MLIP calculator.
 
 Example:
     pdb2reaction path-opt -i reac.pdb prod.pdb -q 0 -m 1
@@ -278,7 +278,7 @@ def _run_dmf_mep(
                 ref_positions=ref_positions,
                 k_fix=k_fix,
             )
-            # Combine UMA calculator with harmonic constraints
+            # Combine the configured MLIP calculator with harmonic constraints.
             image.calc = SumCalculator([calc_uma, harmonic_calc])
         else:
             image.calc = calc_uma
@@ -446,7 +446,7 @@ def _optimize_single(
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     nargs=2,
     required=True,
-    help="Two endpoint structures (reactant and product); accepts .pdb or .xyz.",
+    help="Two endpoint structures (reactant and product); accepts PDB, mmCIF, XYZ, or GJF.",
 )
 @click.option(
     "--mep-mode",
@@ -468,7 +468,7 @@ def _optimize_single(
     "--charge",
     type=int,
     required=False,
-    help="Total charge. Required unless a .gjf template provides charge metadata or --ligand-charge is supplied for PDB inputs.",
+    help="Total charge. Required unless a .gjf template provides charge metadata or --ligand-charge is supplied for PDB/mmCIF inputs.",
 )
 @click.option(
     "--workers",
@@ -493,7 +493,7 @@ def _optimize_single(
     show_default=False,
     help=(
         "Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) used to derive charge "
-        "when -q is omitted (requires PDB input or --ref-pdb)."
+        "when -q is omitted (requires PDB/mmCIF input or --ref-pdb)."
     ),
 )
 @click.option(
@@ -510,7 +510,7 @@ def _optimize_single(
     "freeze_links_flag",
     default=True,
     show_default=True,
-    help="Freeze parent atoms of cap hydrogens (PDB input or XYZ/GJF with --ref-pdb).",
+    help="Freeze parent atoms of cap hydrogens (PDB/mmCIF input or XYZ/GJF with --ref-pdb).",
 )
 @click.option(
     "--freeze-atoms",
@@ -525,7 +525,8 @@ def _optimize_single(
     type=int,
     default=GS_KW["max_nodes"],
     show_default=True,
-    help="Maximum number of internal nodes (string has up to max_nodes+2 images including endpoints).",
+    help=("Number of movable internal images for GSM or DMF; the complete path "
+          "has max_nodes+2 images including the two endpoints."),
 )
 @click.option(
     "--max-cycles",
@@ -558,13 +559,13 @@ def _optimize_single(
     "convert_files",
     default=True,
     show_default=True,
-    help="Convert XYZ/TRJ outputs into PDB/GJF companions based on the input format.",
+    help="Convert XYZ/TRJ outputs into PDB/CIF/GJF companions based on the input format.",
 )
 @click.option(
     "--ref-pdb",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help="Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
+    help="Reference PDB/mmCIF topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
 )
 @click.option(
     "-o", "--out-dir",
@@ -692,7 +693,7 @@ def cli(
     precision: Optional[str],
     backend_model: Optional[str],
     calc_file: Optional[str],
-    calc_factory: str,
+    calc_factory: Optional[str],
 ) -> None:
     config_yaml, override_yaml, _ = resolve_yaml_sources(
         config_yaml=config_yaml,
@@ -703,10 +704,21 @@ def cli(
         config_yaml=config_yaml,
         override_yaml=None,
     )
+    from pdb2reaction.core.utils import resolve_configured_charge_spin
+    charge, spin = resolve_configured_charge_spin(
+        merged_yaml_cfg, charge=charge, spin=spin, ligand_charge=ligand_charge,
+    )
 
     input_paths = tuple(Path(p) for p in input_paths)
     set_convert_file_enabled(convert_files)
-    prepared_inputs = [prepare_input_structure(p) for p in input_paths]
+    prepared_inputs = []
+    try:
+        for path in input_paths:
+            prepared_inputs.append(prepare_input_structure(path))
+    except BaseException:
+        for prepared in reversed(prepared_inputs):
+            prepared.cleanup()
+        raise
     # Initialize early so that early-failure except handlers do not raise
     # an UnboundLocalError when referencing out_dir_path / time_start, which
     # would mask the real exception. Reassigned to the resolved value once
@@ -1131,10 +1143,14 @@ def cli(
                         "hei_xyz": "hei.xyz",
                     },
                 }
-                for ext in (".pdb", ".gjf"):
+                for ext in (".pdb", ".cif", ".gjf"):
                     f = out_dir_path / f"hei{ext}"
                     if f.exists():
                         result_data["files"][f"hei_{ext[1:]}"] = f.name
+                for ext in (".pdb", ".cif"):
+                    f = out_dir_path / f"final_geometries{ext}"
+                    if f.exists():
+                        result_data["files"][f"final_geometries_{ext[1:]}"] = f.name
                 write_result_json(
                     out_dir_path, result_data,
                     command="path-opt",
@@ -1250,7 +1266,7 @@ def cli(
                         err=True,
                     )
             else:
-                click.echo("[convert] Skipped HEI conversion (no PDB/GJF template).")
+                click.echo("[convert] Skipped HEI conversion (no PDB/CIF/GJF template).")
 
         except Exception as e:
             click.echo(f"[HEI] ERROR: Failed to dump HEI: {e}", err=True)
@@ -1293,10 +1309,14 @@ def cli(
                     "hei_xyz": "hei.xyz",
                 },
             }
-            for ext in (".pdb", ".gjf"):
+            for ext in (".pdb", ".cif", ".gjf"):
                 f = out_dir_path / f"hei{ext}"
                 if f.exists():
                     result_data_gsm["files"][f"hei_{ext[1:]}"] = f.name
+            for ext in (".pdb", ".cif"):
+                f = out_dir_path / f"final_geometries{ext}"
+                if f.exists():
+                    result_data_gsm["files"][f"final_geometries_{ext[1:]}"] = f.name
             write_result_json(
                 out_dir_path, result_data_gsm,
                 command="path-opt",

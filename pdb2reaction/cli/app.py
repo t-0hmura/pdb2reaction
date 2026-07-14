@@ -105,15 +105,8 @@ _LAZY_SUBCOMMANDS: dict[str, tuple[str, str, str]] = {
     "bond-summary": ("pdb2reaction.domain.bond_summary", "cli", "Detect bond changes between structures."),
 }
 
-# DO NOT INLINE: `--flag True/False` legacy syntax needs `type=click.BOOL`, which auto-detector cannot distinguish from regular bool-typed options. Manual list is the only correct fallback; do not unify with the auto-detected toggle registry.
-# Only the ``all`` subcommand is listed here because it uses Click's
-# ``type=click.BOOL`` (value-style) booleans that cannot be auto-detected
-# from ``is_bool_flag``.  For all other subcommands the ``DefaultGroup``
-# in ``default_group.py`` inspects the Click command's parameters at
-# runtime and auto-discovers ``is_bool_flag`` / ``BoolParamType`` options,
-# so they do not need to be repeated in these manual registries.
-# All subcommands now use native Click options. The parser-wrapper
-# infrastructure below is kept empty for forward compatibility.
+# ``all`` retains value-style Click booleans for its established interface;
+# toggle-style options on other commands are discovered at runtime.
 _COMMAND_BOOL_VALUE_OPTIONS: dict[str, frozenset[str]] = {
     "all": frozenset(
         {

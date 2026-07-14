@@ -7,17 +7,16 @@ Catches three classes of staleness:
 
 1. **Unknown CLI flags** — any ``--flag-name`` token that exists nowhere
    in the Click subcommand graph. Either a typo or a removed flag.
-2. **Stale status enum literals** — ``"status": "completed"`` left
-   over from pre-0.3.x; canonical result.json statuses are
-   ``"success"`` / ``"partial"`` / ``"error"`` / ``"unknown"``
-   (see ``RESULT_JSON_STATUS_VALUES`` in ``pdb2reaction/core/utils.py``).
+2. **Unknown status literals** — result status is command-specific:
+   optimizers use ``converged`` / ``not_converged``; completed stage
+   runners use ``completed`` or ``ok``; aggregate workflows use
+   ``success`` / ``partial`` / ``failed``; failures use ``error``.
 3. **Renamed strings** — file names and JSON keys that were renamed in
    the source (``opt_trj.xyz`` → ``optimization_trj.xyz``,
    ``"n_cycles"`` → ``"n_opt_cycles"``, etc.). Maintained as a small
    allowlist of (old, new) pairs.
 
-Warning-only: always exits 0. Run on PR / push to surface drift early
-without blocking merges.
+Exits non-zero on drift so incorrect agent instructions cannot merge.
 """
 
 from __future__ import annotations
@@ -33,6 +32,7 @@ SKILLS_DIR = REPO_ROOT / "skills"
 
 sys.path.insert(0, str(REPO_ROOT))
 from pdb2reaction.cli import cli as root_cli  # noqa: E402
+from pdb2reaction.core.utils import RESULT_JSON_STATUS_VALUES  # noqa: E402
 
 
 # Renamed file/key/string literals — (old, new, note).
@@ -46,7 +46,11 @@ RENAMED_STRINGS: list[tuple[str, str, str]] = [
     ("\"gradient_max\"", "\"final_max_force\"", "result.json key renamed"),
     ("\"structure_path\"", "files.final_geometry_xyz",
      "structure_path is no longer a top-level result.json key"),
-    ("\"status\": \"completed\"", "\"status\": \"success\"", "status enum"),
+    ("energy_diagram_UMA", "energy_diagram_MLIP", "backend-neutral diagram filename"),
+    ("energy_diagram_G_UMA", "energy_diagram_G_MLIP", "backend-neutral diagram filename"),
+    ("energy_diagram_G_DFT_plus_UMA", "energy_diagram_G_DFT_plus_MLIP", "backend-neutral diagram filename"),
+    ("DFT//UMA", "DFT//MLIP", "backend-neutral human-readable method label"),
+    ("uma_model", "mlip_model", "backend-neutral provenance field"),
     ("opt.log", "(none — pysisyphus loggers are silenced; use --dump)",
      "skill referenced a log file that is not produced"),
     ("tsopt.log", "(none — pysisyphus loggers are silenced; use --dump)",
@@ -57,12 +61,9 @@ RENAMED_STRINGS: list[tuple[str, str, str]] = [
      "skill referenced a log file that is not produced"),
 ]
 
-# Canonical status literals: the per-stage result.json enum
-# (``RESULT_JSON_STATUS_VALUES``: success / partial / error / unknown)
-# plus the ``failed`` value emitted by aggregate summary.json
-# (``all`` / ``path-search``). ``completed`` is the only pre-0.3.x
-# leftover we still want to flag.
-CANONICAL_STATUS: set[str] = {"success", "partial", "error", "unknown", "failed"}
+# Status is command-specific; this is the union of public values documented in
+# docs/json-output.md and emitted by the workflows.
+CANONICAL_STATUS: set[str] = set(RESULT_JSON_STATUS_VALUES)
 
 # MCP runner-level status vocabulary (pdb2reaction/mcp/_runner.py): a
 # distinct enum from the CLI summary.json status above, valid only inside
@@ -177,14 +178,13 @@ def main() -> int:
         for w in all_warnings:
             print(w)
         print(
-            "\nNote: warning-only — this check does not fail CI. "
-            "Address the items above (or update RENAMED_STRINGS / "
+            "\nAddress the items above (or update RENAMED_STRINGS / "
             "CANONICAL_STATUS in .github/scripts/check_skill_drift.py if a "
-            "rename is intentional)."
+            "documented schema change is intentional)."
         )
     else:
         print(f"[skill-drift] OK: no warnings across {n_files} file(s)")
-    return 0
+    return 1 if all_warnings else 0
 
 
 if __name__ == "__main__":

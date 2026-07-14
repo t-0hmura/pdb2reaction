@@ -4,7 +4,7 @@ R → … → P の **2 構造以上**から、連続的な最小エネルギー
 
 経路は 2 つのエンジンのいずれかで生成します。GSM（デフォルト、`--mep-mode gsm`、string ベース）か、DMF（`--mep-mode dmf`、direct flux）です。共有結合変化が検出される領域のみを選択的に精密化します（`--refine-mode peak` は HEI±1 を最適化、`--refine-mode minima` は最寄り局所極小点へ外側探索、デフォルトは GSM で `peak`、DMF で `minima`）。解決済みのサブパスを連結して 1 本の軌跡にまとめ、各セグメントの最高エネルギー画像（HEI）を TS 候補として出力します（tsopt + IRC で検証）。
 
-再帰的分解により多段階反応を自動検出し、各素反応ステップの詳細な MEP を構築します。複雑な多段階反応について妥当な MEP を得るには、入力中間体やスキャン仕様、収束閾値の調整など手動での試行錯誤が必要になることがあります。
+再帰的分解は結合変化の情報を使い、多段階反応の候補となるより狭い反応セグメントを提案します。これは幾何構造に基づくヒューリスティクであり、各セグメントが 1 つの素反応または 1 つの TS を含むことを証明しません。各 HEI を `tsopt`、虚振動 1 本の確認、IRC 接続性で必ず検証してください。複雑な機構では、入力中間体、スキャン仕様、収束閾値の手動調整が必要な場合があります。
 
 ## 実行例
 
@@ -72,18 +72,24 @@ pdb2reaction path-search -i reactant.pdb -i product.pdb -q 0 -m 1 \
 ```
 out_dir/ (デフォルト:./result_path_search/)
 ├─ mep_trj.xyz # 主要 MEP 軌跡
-├─ mep.pdb # 入力がPDB テンプレートで変換が有効な場合に対応する PDB
+├─ mep.pdb # PDB/mmCIF topology入力で変換有効時
+├─ mep.cif # mmCIF/oversized-PDB入力。元IDを復元
 ├─ mep.gjf # Gaussian テンプレート検出時に対応する Gaussian
-├─ mep_w_ref.pdb # マージされた全系MEP（参照 PDB/テンプレートが必要）
+├─ mep_w_ref.pdb # マージされた全系MEP（参照topologyが必要）
+├─ mep_w_ref.cif # bridge templateを元IDで復元
 ├─ mep_seg_XX_trj.xyz # セグメントごとの MEP 軌跡（XYZ）
-├─ mep_seg_XX.pdb # セグメントごとに対応する PDB（変換有効時）
+├─ mep_seg_XX.pdb # セグメントごとのPDB（変換有効時）
+├─ mep_seg_XX.cif # bridge入力のCIF
 ├─ mep_seg_XX.gjf # セグメントごとに対応する Gaussian（テンプレート検出時）
-├─ mep_w_ref_seg_XX.pdb # 共有結合変化がある場合のマージされたセグメントごとのパス
+├─ mep_w_ref_seg_XX.pdb # 共有結合変化がある場合のマージ済みsegment
+├─ mep_w_ref_seg_XX.cif # bridge templateのCIF
 ├─ hei_seg_XX.xyz # セグメントごとの最高エネルギー画像
 ├─ hei_seg_XX.pdb # HEI に対応する PDB（変換有効時）
+├─ hei_seg_XX.cif # bridge入力のCIF
 ├─ hei_seg_XX.gjf # HEI に対応する Gaussian（テンプレート検出時）
 ├─ hei_mode_seg_XX.txt # HEI の energy-upwinding Cartesian 接線
-├─ hei_w_ref_seg_XX.pdb # 全系コンテキストでマージされた HEI（参照 PDB が必要）
+├─ hei_w_ref_seg_XX.pdb # 全系コンテキストでマージされた HEI
+├─ hei_w_ref_seg_XX.cif # bridge templateのCIF
 ├─ summary.json # すべての再帰セグメントの障壁と分類サマリー
 ├─ summary.log # 結果要約
 ├─ mep_plot.png # `trj2fig` で生成した ΔE プロファイル（kcal/mol、反応物基準）
@@ -111,11 +117,11 @@ out_dir/ (デフォルト:./result_path_search/)
 | **入力と電荷** | | |
 | `-i, --input PATH` | 反応順序の 2 つ以上の構造（反応物 → 生成物）。各ファイルごとに `-i`/`--input` を繰り返すか、単一の `-i` の後ろに複数ファイルを並べる（例: `-i R.pdb -i IM1.pdb -i P.pdb` または `-i R.pdb IM1.pdb P.pdb`） | 必須 |
 | `-q, --charge INT` | 総電荷。非 `.gjf` 入力では `--ligand-charge` の導出が成功しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
-| `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力のみ。XYZ/GJF は `-q` 必須） | _None_ |
+| `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）または残基別マッピング（例: `GPP:-3,SAM:1`）から PDB/mmCIF トポロジーの全系電荷を導出。裸のXYZでは使用不可だが、`--ref-pdb`でトポロジーを付与すれば使用可。正しいGJFはヘッダーの電荷・多重度を自動継承する | _None_ |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | **バックエンドと計算** | | |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
-| `--workers`, `--workers-per-node` | UMA 予測器の並列度（`workers_per_node` は並列予測器へ転送）。`workers > 1` と明示的な解析 Hessian は併用不可。{ref}`ja-workers-fd-downgrade` を参照 | `1`, `1` |
+| `--workers`, `--workers-per-node` | UMA 予測器の並列度（`workers_per_node` は並列予測器へ転送）。`workers > 1` と明示的な解析 Hessian は併用不可。{ref}`ja-workers-analytical-error` を参照 | `1`, `1` |
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 | **活性領域の凍結** | | |
@@ -137,11 +143,11 @@ out_dir/ (デフォルト:./result_path_search/)
 | **マージとアライメント** | | |
 | `--align/--no-align` | 探索前にすべての入力を最初の構造にアライメント | `True` |
 | `--ref-full-pdb PATH...` | フルサイズテンプレート PDB（入力と同数。`--align` があれば先頭のみ再利用可） | _None_ |
-| `--ref-pdb PATH...` | 入力が XYZ/GJF の場合に最終的な全系マージで用いるポケット参照 PDB（入力と同数・同順） | _None_ |
+| `--ref-pdb PATH...` | XYZ/GJF入力の全系マージに使うactive-site PDB/mmCIF参照（入力と同数・同順） | _None_ |
 | **出力と設定** | | |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_path_search/` |
 | `--dump/--no-dump` | MEP（GSM/DMF）と単一構造軌跡をダンプ。リスタート YAML は YAML で有効化した場合のみ書き出されます | `False` |
-| `--convert-files/--no-convert-files` | PDB/Gaussian 入力の XYZ/TRJ → 対応する PDB/GJF を切り替え。XYZ/GJF 入力では主軌跡に対応する PDB は生成されません。 | `True` |
+| `--convert-files/--no-convert-files` | XYZ/TRJ → PDB/CIF/GJFを切り替え。bridge入力は元IDのCIFを追加し、XYZ/GJFは参照topologyなしではPDBを生成しません。 | `True` |
 | `--config FILE` | 明示 CLI 指定より前に適用されるベース YAML | _None_ |
 | `--show-config/--no-show-config` | 解決済み設定（YAML レイヤ情報を含む）を表示して実行継続 | `False` |
 | `--dry-run/--no-dry-run` | 実行せずに検証と実行計画表示のみを行う | `False` |
@@ -150,7 +156,7 @@ out_dir/ (デフォルト:./result_path_search/)
 
 ## YAML 設定
 
-YAML ルートはマッピングでなければなりません。共通セクションは [YAML リファレンス](yaml-reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（PDB 入力では `--freeze-links` が `geom.freeze_atoms` を補強します。詳細は {ref}`キャップ水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）、`stopt` は `path-opt`（[path-opt.md](path-opt.md)）に記載の StringOptimizer 設定を継承します。
+YAML ルートはマッピングでなければなりません。共通セクションは [YAML リファレンス](yaml-reference.md) を再利用します: `geom`/`calc` は単一構造設定を反映し（PDB/mmCIF トポロジーでは `--freeze-links` が `geom.freeze_atoms` を補強します。詳細は {ref}`キャップ水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）、`stopt` は `path-opt`（[path-opt.md](path-opt.md)）に記載の StringOptimizer 設定を継承します。
 
 `bond` と `search` は `path-search` の再帰ロジックの中核であり、ここで詳述します。`gs`、`dmf`、`stopt`、`opt.lbfgs`、`opt.rfo` は `path-search` 固有の `out_dir` 上書きのみ再掲します。
 
@@ -198,6 +204,6 @@ search:
 - [path-opt](path-opt.md) — 単一パス MEP 最適化（再帰的精密化なし）
 - [tsopt](tsopt.md) — HEI を遷移状態として最適化
 - [extract](extract.md) — path-search 入力用の活性部位モデル PDB を生成
-- [all](all.md) — 一気通貫ワークフロー（デフォルトで単一パス path-opt を使用; `--refine-path True` で再帰的 path-search に切替）
+- [all](all.md) — 一気通貫ワークフロー（デフォルトで単一パス path-opt を使用; `--refine-path` で再帰的 path-search に切替）
 - [YAML リファレンス](yaml-reference.md) — `gs`、`dmf`、`bond`、`search` の完全な設定オプション
 - [用語集](glossary.md) — MEP、GSM、DMF、HEI の定義

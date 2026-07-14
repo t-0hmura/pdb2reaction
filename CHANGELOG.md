@@ -6,155 +6,35 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
-## [0.4.12] — 2026-07-13
+### Added
+- Add a lossless mmCIF/large-PDB bridge, exact chain/residue/atom selectors,
+  safe duplicate atom-name handling, and CIF output companions with original IDs.
+- Add a release-pinned Colab GUI for structure preparation, 3D atom picking,
+  validated execution, backend controls, and result inspection.
+- Add opt-in IRC `--never-stop` / `all --irc-never-stop` traversal of transient
+  energy rises while retaining convergence and cycle limits.
 
 ### Changed
-- **`path-opt --max-nodes` defaults to 20 internal nodes.** The Click option
-  now reads the value from the shared `GS_KW` source of truth, keeping
-  standalone `path-opt`, `all`, YAML defaults, generated help, and agent skills
-  synchronized.
-- **IRC gains an opt-in `--never-stop` energy-stop bypass.** It continues
-  across transient energy rises or plateaus while retaining physical gradient/
-  integrator convergence and the `max_cycles` hard cap. Standalone IRC now
-  recommends a smaller `--step-size` when a branch stops after only a few
-  frames; `all` forwards `--irc-step-size` and `--irc-never-stop`.
-- **MLIP provenance uses separate backend/model fields.** Machine-readable
-  outputs consistently expose `mlip_backend` and `mlip_model`, and human
-  summaries label both generically instead of calling every checkpoint a UMA
-  model.
+- Derive the existing `path-opt --max-nodes 20` default from shared
+  configuration; GSM/DMF count movable images, excluding the two endpoints.
+- Use constrained frozen-boundary rigid projection for PHVA, IRC, Dimer, and TS
+  validation; retain isolated-active comparison mode and record provenance.
+- Replace UMA-specific summary keys with `mlip`, `gibbs_mlip`, and
+  `gibbs_dft_mlip`; this breaking JSON contract is `schema_version: "2.0"`.
 
 ### Fixed
-- **ORB analytical Hessians tolerate in-place mutations inside Orb's
-  message-passing graph.** The complete `torch.autograd.functional.hessian`
-  forward and double backward now run under
-  `allow_mutation_on_saved_tensors`, preventing the saved-tensor version error
-  seen on Jomon and Miyabi while preserving the existing donated-buffer guard.
-- **Minimization RFO no longer accepts an energy-increasing trial and continues
-  from the wrong basin.** A trial that was predicted to descend but raises the
-  actual energy is rolled back together with every optimizer history, the trust
-  radius is reduced, and the step is retried. BFGS Hessian updates are also
-  skipped when the required positive `s·y` curvature condition fails instead
-  of injecting a large negative eigenvalue. Repeated rejections caused by a
-  low-precision backend's energy resolution stop safely at an emergency trust
-  floor and retain the lower-energy geometry instead of exhausting all cycles.
-  This fixes the post-IRC endpoint optimizations that converged hundreds of
-  kcal/mol above their starting structures in `all` workflows.
-- **Trial rejection is now shared by the optimizer base and also protects
-  LBFGS minimizations.** Coordinates, Cartesian coordinates, energy, force,
-  step, image, and optimizer-specific histories are restored atomically before
-  retrying with a smaller step limit. Chain-of-states and dimer TS searches are
-  excluded because their physical energy need not decrease monotonically.
-- **Hessian TS optimizers no longer report a local minimum as a converged
-  transition state.** RS-P-RFO, RS-I-RFO, and TRIM now require significant
-  negative curvature; the energy-plateau fallback cannot bypass that
-  requirement. A trial that loses all negative modes is rolled back with its
-  Hessian state and retried at a smaller trust radius. Apparent convergence is
-  verified with the same mass-weighted, translation/rotation-projected PHVA
-  criterion used by the final frequency analysis, so spurious negative raw
-  Hessian roots cannot mask `n_imag=0`. A near-flat minimum triggers a bounded
-  uphill recovery along its lowest physical vibration instead of being
-  accepted; after recovery, all three Hessian TS optimizers keep following that
-  PHVA mode and stabilize residual nonphysical negative image-Hessian roots.
-  Exact validation is now bound to its Cartesian coordinate snapshot. A
-  verified trial that is later rolled back therefore cannot authorize
-  convergence at a different `n_imag=0` geometry. Conversely, exact first-order
-  curvature plus converged current forces is authoritative over a stale raw
-  quasi-Newton root or a large proposed next step along a pseudo-zero model
-  mode, preventing an already valid saddle from being driven into a basin.
-  Final exact-Hessian analysis with no imaginary mode is reported as
-  `not_converged`. Bounded saddle recovery now checks an exact physical
-  Hessian every 50 steps for up to 200 steps. If the physical curvature has
-  crossed negative while the Bofill model still says positive, optimization
-  resumes from that geometry; otherwise the run stops at the explicit bound.
-- **Path searches now pass the HEI reaction direction into Hessian TS
-  optimization.** `path-search` writes the standard energy-upwinding Cartesian
-  tangent at each HEI, and `all` regenerates the same tangent from stored MEP
-  energies for older artifacts instead of trusting a stale mode file. A
-  spacing-independent secant bisector remains the fallback when legacy
-  trajectories do not contain readable energies,
-  and the advanced/internal `tsopt --ref-mode` option uses it for initial root
-  selection, overlap mode tracking, and `n_imag=0` recovery. Cartesian path
-  directions are transformed through the Wilson B matrix for
-  redundant/DLC/TRIC optimizations instead of being compared directly with
-  internal-coordinate Hessian eigenvectors. When exact PHVA finds several negative
-  modes, the path-correlated mode is retained instead of assuming that the
-  lowest-frequency mode is the intended reaction. The MEP tangent selects the
-  initial root; when a discrete tangent spans near-tied roots, the
-  lowest-curvature root within 90% of the maximum overlap is selected instead
-  of letting a marginally larger overlap choose a stiff vibration. Before the
-  target has ever become negative, local-minimum recovery and exact
-  mode-identity validation retain the complete path vector instead of replacing
-  it with one positive-curvature raw-Hessian eigenmode. Continuous eigenmode
-  transport becomes authoritative only after exact PHVA verifies the first
-  physical negative-curvature crossing.
-  A transient negative quasi-Newton eigenvalue no longer arms permanent
-  mode-loss rollback for a path-guided run that began in the convex region;
-  neither an initial raw negative root nor a transient quasi-Newton sign is
-  sufficient. The latch now requires exact PHVA or an explicit recovery
-  crossing of the requested physical mode.
-  Overlap tracking then transports a captured mode through the complete
-  positive/negative spectrum as it rotates during optimization. Exact
-  validation matches this transported direction against all physical modes,
-  so an unrelated single imaginary mode cannot replace an intended mode that
-  has turned positive and falsely satisfy the first-order count. The same identity check
-  applies when several unrelated negative modes remain: path recovery takes
-  precedence until the requested mode itself is negative, so extra-mode
-  flattening cannot preserve an arbitrary wrong mode and manufacture an
-  `n_imag=1` result. Exact validation now
-  distinguishes having negative curvature from having the requested saddle
-  order. A persistent higher-order saddle stops after three terminal exact
-  checks instead of recalculating Hessians indefinitely; path-guided runs then
-  automatically flatten only the non-path negative modes for up to twenty
-  bounded retries. Each retry retains the normal three-check exact window so
-  the requested saddle mode can be re-established after an orthogonal flatten
-  displacement instead of softening both modes toward a local minimum. On
-  every cleanup retry, an energy-selected displacement that does not already
-  give the requested first-order saddle triggers optimization of the opposite
-  sign; the two branches are compared by requested-mode retention, saddle
-  order, surplus imaginary-mode strength, and residual force. This prevents a
-  lower-energy descent branch from being chosen when it erases the intended
-  reaction mode.
-  Because individual eigenvectors can exchange identity inside a
-  multi-negative subspace, higher-order exact checks re-anchor the mode to keep
-  against the immutable MEP tangent; after the first physical crossing,
-  order-zero/one checks retain continuous overlap transport. Each retry then
-  inherits that PHVA-identified path mode
-  instead of preserving an arbitrary negative root after the flatten
-  displacement.
-  The exact PHVA Cartesian mode is retained in a separate snapshot while the
-  raw-Hessian eigenvector continues to update for per-cycle root tracking, so
-  flattening keeps the physically identified reaction mode rather than the
-  wrong extra mode without freezing normal mode transport.
-  Flatten displacements now un-mass-weight each normal mode
-  exactly once; the former second atom-wise mass factor rotated the Cartesian
-  direction away from the verified negative-curvature eigenvector. Higher-order
-  saddles cannot be reported as a first-order TS.
-  A guarded mode-loss stop restores the best exact first-order candidate while
-  keeping the run status non-converged. If a path-guided Hessian TS run still
-  fails at order zero/one, `tsopt` performs bounded same-optimizer restarts from
-  ±0.10 Å and then ±0.20 Å along the HEI tangent. If a kinked tangent finds
-  only unrelated modes, the same bounded shells are tried along the soft,
-  path-correlated Hessian root selected at the original HEI. Every attempt and
-  its direction source are recorded, and the original result is kept when none
-  reaches a verified first-order saddle.
-  Failed multistart restoration also reconnects the loaded calculator before
-  collecting the final JSON energy instead of raising on a detached geometry.
-  Ordinary standalone `tsopt` runs do not require `--ref-mode`; `all` supplies
-  it automatically when an MEP-derived direction is available.
-- **Rejected endpoint RFO plateaus no longer masquerade as convergence.** When
-  uphill trials repeat at the emergency trust floor, RFO preserves the last
-  accepted lower-energy geometry and terminates with an explicit non-converged
-  reason, matching the LBFGS safeguard.
-- **In-process Hessian handoff is coordinate-safe across TS, frequency, IRC,
-  and endpoint optimization.** Cache entries now carry a copied Cartesian
-  coordinate snapshot and are reused only for a matching geometry. Each IRC
-  direction is cleared before integration and cached only when that direction
-  actually ran, preventing a one-sided or failed IRC from reusing a stale
-  endpoint Hessian from an earlier segment. Forward/backward endpoint Hessians
-  retain their direction metadata when mapped to reactant/product RFO seeds.
-- `all` summary generation imports the package-level version fallback, so a
-  fresh source checkout without the build-generated `_version.py` can complete
-  and write `summary.json`.
+- Make ORB analytical Hessians robust to double-backward saved-tensor mutation,
+  and atomically roll back rejected RFO/L-BFGS trials and optimizer state.
+- Reject `n_imag=0` TS minima using exact Cartesian PHVA or internal-coordinate
+  optimizer-space order; restore lost path curvature and flatten only extra modes.
+- Make TS/frequency/IRC/endpoint Hessian reuse coordinate- and direction-safe,
+  and block `all` post-processing unless TS validation reports `n_imag = 1`.
+- Preserve CLI-over-YAML precedence for charge/spin, flatten, custom calculator
+  factory, and scan configuration across standalone and `all` workflows.
+
+### Documentation
+- Rebuild and validate docs, CLI references, and agent skills for TS/IRC recovery,
+  cluster construction, backends, CIF/large structures, and provenance.
 
 ## [0.4.11] — 2026-07-13
 
@@ -307,8 +187,7 @@ Release of the 0.4.4–0.4.6 changes listed below.
 - **Default TS optimizer is once again RS-I-RFO** (Restricted-Step Image RFO), reverting the
   RS-P-RFO default introduced in 0.4.2 (which predated the 0.4.1 charge/spin fix). On the corrected
   (charge-honoring) benchmark, RS-I-RFO produces clean first-order saddles at least as reliably as
-  RS-P-RFO across the reliable backends, and keeps the default consistent with the mlmm_toolkit
-  microiteration path. `hess`/`heavy` resolve to `rsirfo` again; RS-P-RFO stays available via
+  RS-P-RFO across the reliable backends. `hess`/`heavy` resolve to `rsirfo` again; RS-P-RFO stays available via
   `--opt-mode rsprfo`, TRIM via `--opt-mode trim`.
 - **Default UMA model is now `uma-s-1p2`** (was `uma-s-1p1`). At the same small-model cost it is
   more robust on the benchmark (fewer optimization/frequency errors, a few more clean saddles).

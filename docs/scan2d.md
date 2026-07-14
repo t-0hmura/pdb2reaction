@@ -2,7 +2,7 @@
 
 Perform a two-distance (d₁, d₂) grid scan with harmonic restraints and MLIP relaxations, producing a 2D potential-energy map over `(d₁, d₂)`. Use it to locate a TS region or visualize the reaction landscape before MEP refinement. `scan2d` constructs linear grids for both distances using `--max-step-size`, relaxes each grid point with the appropriate restraints active, and records unbiased MLIP energies for visualization. Input is one structure plus `-s/--scan-lists scan2d.yaml` (recommended), or a single `--scan-lists/-s` inline literal containing exactly two quadruples. The default backend is UMA; select an alternative with `-b/--backend`. Use `--opt-mode hess` when you need RFOptimizer instead of L-BFGS.
 
-For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
+mmCIF inputs use the internal PDB bridge and emit CIF with restored IDs. For XYZ/GJF inputs, `--ref-pdb` accepts a PDB or mmCIF reference topology while keeping XYZ coordinates.
 
 ## Examples
 
@@ -62,14 +62,15 @@ see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
     run an unbiased preoptimization when `--preopt`. If `-q` is omitted but
     `--ligand-charge/-l` is provided, the structure is treated as an enzyme–substrate
     complex and `extract.py`’s charge summary derives the total charge before the
-    scan (for PDB inputs, or XYZ/GJF when `--ref-pdb` is supplied). The preoptimized
+    scan (for PDB/mmCIF inputs, or XYZ/GJF when `--ref-pdb` is supplied). The preoptimized
     structure is saved under `grid/preopt_iDDD_jDDD.*` and its unbiased energy is
     stored in `surface.csv` with indices `i = j = -1`.
 2. Parse targets from `--scan-lists/-s` (YAML/JSON file or inline literal) into two quadruples, normalize indices
-    (1-based by default). For PDB inputs, each atom entry can be an integer index
+    (1-based by default). For PDB/mmCIF topology inputs, each atom entry can be an integer index
     or a selector string like `'TYR,285,CA'`; delimiters may be spaces, commas,
     slashes, backticks, or backslashes, and token order is flexible (fallback
-    assumes resname, resseq, atom). Construct linear grids with
+    is flexible); use positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` for repeated
+    names or numbering. Construct linear grids with
     `ceil(|high − low| / h) + 1` points (both endpoints included), where
     `h = --max-step-size`. Zero-length spans collapse to a single point.
     Each axis is then reordered so that the distance closest to the preoptimized
@@ -103,11 +104,13 @@ out_dir/ (default:./result_scan2d/)
 ├─ scan2d_landscape.html # 3D surface visualization (open in a browser)
 ├─ grid/point_iDDD_jDDD.xyz # DDD = round(d × 100) in Å (e.g. d1=1.30 Å, d2=3.10 Å -> point_i130_j310.xyz)
 ├─ grid/point_iDDD_jDDD.pdb # PDB companions when conversion is enabled and templates exist
+├─ grid/point_iDDD_jDDD.cif # Bridge-input companions with original IDs
 ├─ grid/point_iDDD_jDDD.gjf # Gaussian companions when templates exist and conversion is enabled
 ├─ grid/preopt_iDDD_jDDD.xyz # Starting structure (present when --preopt is True), DDD = round(d × 100)
 ├─ grid/preopt_iDDD_jDDD.pdb # PDB companion when conversion is enabled
+├─ grid/preopt_iDDD_jDDD.cif # Bridge-input companion
 ├─ grid/preopt_iDDD_jDDD.gjf # Gaussian companion when templates exist and conversion is enabled
-└─ grid/inner_path_d1_###_trj.xyz # Present only when --dump is True (### = outer step index; mirrored to .pdb for PDB inputs with conversion)
+└─ grid/inner_path_d1_###_trj.xyz # Present only when --dump is True (format companions require topology + conversion)
 ```
 
 ## CLI options
@@ -118,10 +121,10 @@ The tables below cover the options that need explanation; the full flag list is 
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge (CLI > template/`--ligand-charge/-l`). Overrides `--ligand-charge/-l` when both are set. | Required unless template/derivation applies |
-| `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB residue charges. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
-| `--workers`, `--workers-per-node` | UMA predictor parallelism; `workers_per_node` is forwarded to the parallel predictor. `workers > 1` cannot be combined with an explicit analytical Hessian request. See {ref}`workers-fd-downgrade`. | `1`, `1` |
+| `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB/mmCIF residue metadata. Used when `-q` is omitted (PDB/mmCIF inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
+| `--workers`, `--workers-per-node` | UMA predictor parallelism; `workers_per_node` is forwarded to the parallel predictor. `workers > 1` cannot be combined with an explicit analytical Hessian request. See {ref}`workers-analytical-error`. | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
-| `-s, --scan-lists TEXT` | Scan targets: a YAML/JSON spec file path (recommended) or **single** inline Python literal with two quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
+| `-s, --scan-lists TEXT` | Scan targets: a YAML/JSON spec file path (recommended) or **single** inline Python literal with two quadruples `(i,j,lowÅ,highÅ)`. `i`/`j` can be integer indices, three-field selectors, or positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`. | Required |
 | `--one-based/--zero-based` | Interpret `(i, j)` indices as 1- or 0-based. | `True` |
 | `--print-parsed/--no-print-parsed` | Print parsed pair tuples after `--scan-lists/-s` resolution. | `False` |
 | `--max-step-size FLOAT` | Maximum change allowed for either distance per increment (Å). Determines the grid density. | `0.20` |
@@ -131,8 +134,8 @@ The tables below cover the options that need explanation; the full flag list is 
 | `--freeze-links/--no-freeze-links` | When the input is PDB, freeze parents of cap hydrogens. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
 | `--dump/--no-dump` | Write `inner_path_d1_###_trj.xyz` for each outer step. | `False` |
-| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
-| `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
+| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/CIF/GJF companions. | `True` |
+| `--ref-pdb FILE` | Reference PDB or mmCIF topology for XYZ/GJF input (keeps XYZ coordinates). | _None_ |
 | `-o, --out-dir TEXT` | Output directory root for grids and plots. | `./result_scan2d/` |
 | `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
 | `--config FILE` | Base YAML configuration file (applied first). | _None_ |

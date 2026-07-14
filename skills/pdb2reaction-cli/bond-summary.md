@@ -22,7 +22,7 @@ pdb2reaction bond-summary A.xyz B.xyz [C.xyz ...]
 
 | flag | type | default | description |
 |---|---|---|---|
-| `-i, --input` | path | required (≥2) | Repeat `-i` for each structure (XYZ / PDB / GJF). Atom ordering must be identical across all inputs. |
+| `-i, --input` | path(s) | required (≥2) | Repeat `-i`, place later files positionally after one `-i`, or use positional files only. Atom ordering must be identical across all inputs. |
 | `--device` | str | `cpu` | Compute device for distance calculations |
 | `--bond-factor` | float | `1.2` | Covalent-radius multiplier for bond cutoff |
 | `--one-based / --zero-based` | flag | `--one-based` | Atom-index numbering convention in the report |
@@ -40,6 +40,27 @@ pdb2reaction bond-summary -i 1.R.pdb -i 3.P.pdb
 # Multi-frame check across an MEP
 pdb2reaction bond-summary -i frame_01.xyz -i frame_05.xyz -i frame_10.xyz
 ```
+
+With `--json`, stdout is one envelope and no file is written:
+
+```json
+{
+  "status": "ok",
+  "comparisons": [
+    {
+      "structure_a": "1.R.pdb",
+      "structure_b": "2.P.pdb",
+      "bonds_formed": 2,
+      "bonds_broken": 2
+    }
+  ]
+}
+```
+
+The status is `ok` when every consecutive pair succeeds, `partial` when
+some pairs fail, and `failed` when all pairs fail. Any failed comparison
+also gives process exit code 1; its error is printed on stderr and that pair
+is omitted from `comparisons`.
 
 ## Output
 
@@ -59,13 +80,18 @@ Bond broken (2):
 
 ## Caveats
 
-- Atom ordering must match across all inputs. If it doesn't, run
-  `pdb2reaction extract` first to canonicalize.
+- Atom identity and ordering must match across all inputs. `extract` validates
+  that contract for multi-input extraction but does not atom-map an already
+  mismatched series; map/reorder the full structures first, then extract them
+  together if a common cluster boundary is needed.
 - The default `1.2` × covalent-radius cutoff (with internal margin
   fraction `0.05`) is geometry-only — it does not classify covalent
   vs ionic vs hydrogen-bonded; metal–ligand interactions may hover
-  near the cutoff. Raise `--bond-factor` to 1.5 / 1.6 for permissive
-  detection.
+  near the cutoff. If deliberately testing cutoff sensitivity, a larger
+  `--bond-factor` is more permissive but can introduce false-positive bonds;
+  report the chosen value and inspect the pairs.
+- The JSON form reports bond-change *counts*, not the atom-pair details shown
+  by the text form.
 - Bond-change blocks are also embedded in `summary.json`'s per-segment
   output as a list of `{"Bond formed (k)": [...], "Bond broken (k)": [...]}`
   dicts (one per consecutive pair). See `../pdb2reaction-workflows-output/SKILL.md`.

@@ -37,6 +37,7 @@ This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan
 | `--dump` | `dump` | `opt` |
 | `--opt-mode` | `opt_mode` | `opt`, `tsopt`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, `all` |
 | `--freeze-atoms` | `freeze_atoms` | `geom` |
+| `--tr-projection` | `tr_projection` | `geom` |
 | `--coord-type` | `coord_type` | `geom` |
 | `--temperature` (freq, `all --freq-temperature`) | `temperature` | `thermo` |
 | `--pressure` (freq, `all --freq-pressure`) | `pressure_atm` | `thermo` |
@@ -108,12 +109,14 @@ Geometry loading and coordinate handling.
 ```yaml
 geom:
  coord_type: cart # Coordinate type: "cart" (Cartesian) or "dlc" (delocalized internals)
- freeze_atoms: [] # 1-based atom indices to freeze; if `--freeze-links` is on (PDB input, or XYZ/GJF with `--ref-pdb`), the auto-detected cap-H parent indices are merged in
+ freeze_atoms: [] # 1-based atom indices to freeze; if `--freeze-links` is on (PDB/mmCIF input, or XYZ/GJF with `--ref-pdb`), the auto-detected cap-H parent indices are merged in
+ tr_projection: constrained # constrained | legacy-active; rigid-mode treatment for Cartesian PHVA
 ```
 
 **Notes:**
-- `freeze_atoms` from YAML is merged with atoms detected via `--freeze-links` for PDB inputs
+- `freeze_atoms` from YAML is merged with atoms detected via `--freeze-links` for PDB/mmCIF topology inputs
 - Frozen atoms have zeroed forces; their Hessian columns are also zeroed
+- `tr_projection: constrained` removes only full-system rigid motions that leave frozen anchors fixed. `legacy-active` is an isolated-active comparison treatment; see [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries)
 - For `irc`, `geom.coord_type` is forced to `cart` after YAML/CLI merging
 
 ---
@@ -154,8 +157,8 @@ calc:
 - `backend` selects the MLIP engine. All backends (UMA, ORB, MACE, AIMNet2) support both analytical (autograd) and finite-difference Hessians; multi-worker inference is UMA-only.
 - `workers` / `workers_per_node` are effective with the UMA backend only.
 - `solvent` enables xTB-based implicit solvent corrections (delta correction approach). Requires `xtb` to be installed.
-- `hessian_calc_mode: Analytical` is recommended when sufficient VRAM is available
-- `workers > 1` disables analytical Hessians for the UMA parallel predictor. An explicit `hessian_calc_mode: Analytical` request raises `RuntimeError`; use `workers = 1` or select `FiniteDifference`. See {ref}`the MLIP Calculator hessian-evaluation note <hessian-evaluation>` for details.
+- `FiniteDifference` is the portable default. `Analytical` avoids finite-displacement error, but runtime and memory are backend/model/system dependent; select it only after validating the target setup.
+- `workers > 1` disables analytical Hessians for the UMA parallel predictor. An explicit `hessian_calc_mode: Analytical` request raises `BackendError` (a `RuntimeError` subclass); use `workers = 1` or select `FiniteDifference`. See {ref}`the MLIP Calculator hessian-evaluation note <hessian-evaluation>` for details.
 - Charge/spin inherit `.gjf` template metadata when available
 - `freq` sets `calc.return_partial_hessian = true` by default (PHVA); YAML can override.
 - IRC forces `geom.coord_type = cart` and `calc.return_partial_hessian = true` regardless of YAML (partial Hessian with active-DOF processing).
@@ -287,7 +290,7 @@ gs:
 ```
 
 ```{note}
-**`max_nodes` semantics differ between GSM and DMF.** For **GSM** (`mep-mode gsm`), `gs.max_nodes` is the number of **internal images** — the total path length is `max_nodes + 2` because the two endpoints are fixed. For **DMF** (`mep-mode dmf`), the CLI flag `--max-nodes` instead counts the **number of movable images** with no implicit endpoint expansion. See [`path-opt`](path-opt.md) for per-method details.
+`gs.max_nodes` / `--max-nodes` is the number of movable internal images for both **GSM** and **DMF**. Both engines retain two endpoints, so the complete path contains `max_nodes + 2` images. See [`path-opt`](path-opt.md).
 ```
 
 ---
@@ -297,7 +300,7 @@ gs:
 Direct Max Flux settings for MEP optimization.
 
 ```{note}
-**`--max-nodes` for DMF means "number of movable images"** — unlike GSM, DMF does not add +2 for fixed endpoints. See the `gs.max_nodes` note above for the contrast.
+For DMF, `--max-nodes` is forwarded as `DirectMaxFlux(nmove=...)`; the installed DMF API defines `nmove` as movable interior evaluation points and constructs `nmove + 2` images including endpoints.
 ```
 
 ```yaml
@@ -423,7 +426,12 @@ hessian_dimer:
 ```
 
 ```{note}
-**`flatten_max_iter` CLI precedence exception.** The YAML value `hessian_dimer.flatten_max_iter: 50` (and the analogous `rsirfo.flatten_max_iter` override) is **overridden to `0` by the CLI unless `--flatten` is explicitly passed**, regardless of the normal `defaults < YAML < CLI` ordering. See {ref}`flatten-precedence-caveat` for the full behavior table.
+**`flatten_max_iter` default exception.** The CLI seeds
+`hessian_dimer.flatten_max_iter = 0` before applying YAML, so an omitted toggle
+keeps an explicit YAML value while leaving flattening off when YAML is silent.
+`--flatten` enables the configured value (or the built-in 50), and
+`--no-flatten` forces zero. `rsirfo` has no separate flatten counter. See
+{ref}`flatten-precedence-caveat` for the full behavior table.
 ```
 
 ---
@@ -459,7 +467,11 @@ rsirfo:
 ```
 
 ```{note}
-**`--flatten` precedence.** The flatten loop for both Hessian-Dimer and RS-I-RFO paths is configured under the `hessian_dimer:` YAML section (key `flatten_max_iter`, default 50); `rsirfo:` does not define its own flatten counter. The CLI overrides `flatten_max_iter` to `0` unless `--flatten` is explicitly passed on the command line. See {ref}`flatten-precedence-caveat`.
+**`--flatten` precedence.** The flatten loop for Hessian-Dimer and RFO TS paths
+is configured under `hessian_dimer.flatten_max_iter`; `rsirfo` has no separate
+counter. With neither toggle, an explicit YAML value is retained. `--flatten`
+uses that value or the built-in 50, while `--no-flatten` forces zero. See
+{ref}`flatten-precedence-caveat`.
 ```
 
 ## IRC Section
@@ -599,6 +611,7 @@ Below is a complete example combining multiple sections:
 geom:
  coord_type: cart
  freeze_atoms: []
+ tr_projection: constrained
 
 calc:
  backend: uma
@@ -606,7 +619,7 @@ calc:
  spin: 1
  model: uma-s-1p2 # uma-s-1p2 | uma-m-1p1
  device: auto
- hessian_calc_mode: Analytical # Recommended when VRAM permits
+ hessian_calc_mode: FiniteDifference # Portable default; benchmark Analytical before opting in
  solvent: none                 # Set to e.g. "water" for implicit solvent
 
 gs:

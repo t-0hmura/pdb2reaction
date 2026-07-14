@@ -116,3 +116,37 @@ def test_sp_cli_with_calc_file(tmp_path: Path) -> None:
     )
     assert result.exit_code == 0, result.output
     assert "custom" in result.output
+
+
+def test_sp_yaml_custom_factory_is_not_overwritten_by_cli_default(
+    tmp_path: Path,
+) -> None:
+    calc_file = _write(
+        tmp_path / "toy_build.py", TOY_CALC.replace("def get_calculator", "def build")
+    )
+    xyz = _write(tmp_path / "water.xyz", WATER_XYZ)
+    config = _write(
+        tmp_path / "config.yaml",
+        f"calc:\n  calc_file: {calc_file}\n  calc_factory: build\n",
+    )
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "sp",
+            "-i",
+            str(xyz),
+            "--config",
+            str(config),
+            "-q",
+            "0",
+            "-m",
+            "1",
+            "--show-config",
+            "--dry-run",
+        ],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0, result.output
+    assert "backend: custom" in result.output
+    assert "calc_factory: build" in result.output

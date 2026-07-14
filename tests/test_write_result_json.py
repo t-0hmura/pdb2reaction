@@ -14,6 +14,7 @@ from pdb2reaction.core.utils import (
 
 
 def test_writes_result_and_summary_mirror() -> None:
+    assert RESULT_JSON_SCHEMA_VERSION == "2.0"
     with tempfile.TemporaryDirectory() as d:
         path = write_result_json(
             Path(d),
@@ -55,8 +56,26 @@ def test_disable_summary_mirror() -> None:
         assert not (Path(d) / "summary.json").exists()
 
 
+def test_missing_status_defaults_to_unknown() -> None:
+    with tempfile.TemporaryDirectory() as d:
+        path = write_result_json(Path(d), {"value": 1}, command="test")
+        assert path is not None
+        payload = json.loads(path.read_text())
+        assert payload["status"] == "unknown"
+
+
 def test_status_enum_documented() -> None:
-    assert RESULT_JSON_STATUS_VALUES == ("success", "partial", "error", "unknown")
+    assert RESULT_JSON_STATUS_VALUES == (
+        "completed",
+        "converged",
+        "error",
+        "failed",
+        "not_converged",
+        "ok",
+        "partial",
+        "success",
+        "unknown",
+    )
 
 
 def test_mlip_backend_and_model_are_recorded_separately() -> None:

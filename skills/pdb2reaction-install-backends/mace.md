@@ -1,7 +1,8 @@
 # MACE backend (mace.md)
 
-MACE backend uses `MACE-OMOL-0` (OMol25; 83 elements). Requires a
-dedicated env (e3nn pin conflict with UMA).
+The MACE backend defaults to `MACE-OMOL-0`. It requires a dedicated
+environment because its current `e3nn` requirement conflicts with UMA's
+`fairchem-core` stack.
 
 ## Critical: separate environment required
 
@@ -23,6 +24,14 @@ pip install pdb2reaction
 pip uninstall -y fairchem-core
 pip install mace-torch
 ```
+
+This workaround deliberately leaves the installed `pdb2reaction` distribution's
+declared `fairchem-core` requirement unsatisfied, so `pip check` reports it as
+missing even though the MACE backend can run. Do not treat that report as proof
+that fairchem should be reinstalled in this env. A later
+`pip install --upgrade pdb2reaction` may pull fairchem back in; repeat the
+uninstall/install swap and the smoke check afterward. This packaging limitation
+is why the environment must remain MACE-only.
 
 If you accidentally keep both UMA and MACE in one env, you'll see
 errors like:
@@ -65,24 +74,28 @@ MACE accepts (from `backends/__init__.py:_BACKEND_ACCEPTED_KEYS['mace']`):
 | `charge`, `spin` | Total charge and spin multiplicity |
 | `device` | `'cuda'`, `'cpu'`, `'auto'` |
 | `model` | Override the default MACE checkpoint |
-| `default_dtype` | `'float64'` (default; from `MACE_BACKEND_DEFAULTS`) or `'float32'` for faster, lower-precision inference |
+| `default_dtype` | `'float64'` (default; from `MACE_BACKEND_DEFAULTS`) or `'float32'`; benchmark the performance/numerical tradeoff on the target calculation |
 | `freeze_atoms`, `hessian_calc_mode`, `return_partial_hessian`, `hessian_double`, `out_hess_torch`, `print_timing` | Standard cross-backend |
 
 ## Strengths and weaknesses
 
 | Strength | Weakness |
 |---|---|
-| Mature, widely benchmarked | Separate env required (e3nn pin conflict with UMA) |
+| OMol model is available through the ASE-compatible MACE runtime | Separate env required (e3nn pin conflict with UMA) |
 | — | No multi-GPU sharding API |
-| — | First call slow (model load + torch graph build) |
+| — | First-call time may include download, model loading, and runtime initialization |
+
+Model availability is not evidence that a reaction lies in its reliable domain.
+Validate stationary points with an independent frequency calculation, the
+intended imaginary displacement, and IRC connectivity.
 
 ## Known gotchas
 
 | Symptom | Cause / fix |
 |---|---|
 | `e3nn` import error | UMA + MACE in the same env. Use a fresh env. |
-| `RuntimeError: Expected all tensors to be on the same device` | Mixed `cpu`/`cuda` tensors after a `.to()` round-trip. Restart Python and ensure `device='cuda'` consistently. |
-| Slow Hessian on the default `default_dtype='float64'` | Expected: float64 Hessian is materially slower than float32. Switch to `default_dtype='float32'` if precision allows. |
+| `RuntimeError: Expected all tensors to be on the same device` | Capture the full traceback and verify that the requested device and every custom tensor agree; the message alone does not identify a pdb2reaction cause. Reproduce in a fresh process before changing the environment. |
+| Hessian is slow with the default `default_dtype='float64'` | Benchmark fp32 and fp64 on the actual GPU. Explicit fp32 is a screening option, not a trusted replacement for the final frequency/IRC validation. |
 
 ## See also
 

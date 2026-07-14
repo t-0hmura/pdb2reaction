@@ -55,9 +55,20 @@ There is no mode that substitutes one for another; every entry that appears in a
 
 - **Forces:** zeroed for every frozen DOF in `opt` / `tsopt` / `scan` / `freq` / `irc` and in `path-opt` / `path-search` `--mep-mode gsm` (hard freeze; the optimizer cannot move them).
 - **Hessian:** rows and columns of frozen DOFs are either removed (`calc.return_partial_hessian: true`, the global calculator default; explicitly forced again by `opt` / `tsopt` / `scan` / `freq` / `irc`) or zeroed in the full matrix.
-- **Vibrational analysis:** when frozen atoms are present, `freq` automatically performs partial Hessian vibrational analysis (PHVA) on the active block.
+- **Vibrational analysis:** when frozen atoms are present, `freq` automatically performs partial Hessian vibrational analysis (PHVA) on the active block. The rigid-mode treatment is described below.
 - **`path-opt --mep-mode dmf` and `path-search --mep-mode dmf` (soft restraint):** instead of zeroing forces, these stages add a `HarmonicFixAtoms` calculator (default `k_fix = 300 eV/Å²`, ASE units) per image so frozen atoms relax with a harmonic restraint, not a hard constraint. Coordinates may drift slightly from the input geometry.
 - **MEP / IRC:** `path-opt` / `path-search` `--mep-mode gsm` and `irc` apply the hard freeze along the resolved path / IRC trajectory; `--mep-mode dmf` (path-opt or path-search) uses the soft restraint above.
+
+## Rigid modes with frozen boundaries
+
+`geom.tr_projection` and `--tr-projection` select how Cartesian PHVA-related eigensolvers treat rigid translation and rotation:
+
+- **`constrained` (default):** construct the full-system rigid motions and remove only combinations that leave every frozen anchor fixed. For a generic nonlinear geometry, the effective rank is 6, 3, 1, or 0 with 0, 1, 2, or at least 3 non-collinear frozen anchors, respectively. Production cluster boundaries usually contain several non-collinear anchors, so their effective rank is normally 0 and no active mode is removed.
+- **`legacy-active`:** treat the mobile fragment as an isolated molecule and remove its rigid modes. Use this only as an isolated-active comparison treatment on well-conditioned, nondegenerate structures. The current common projection kernel handles degeneracies; near-linear or degenerate cases are not guaranteed to replay older results bitwise.
+
+This setting is used by `freq`, `irc`, TS exact-PHVA checks and Dimer orientation, and `opt`/`tsopt` flattening. It is unrelated to `tsopt --ref-mode`, which supplies a Cartesian reaction direction from an MEP. An all-frozen system has no active vibrational DOF and raises an explicit error.
+
+When JSON output is enabled, `result.json["rigid_projection"]` records the treatment, effective rank, and Hessian source and shape. `freq --dump` records the same provenance in `thermoanalysis.yaml`; see [JSON Output Schema](json-output.md#rigid-projection-provenance).
 
 ## Subcommand coverage
 
@@ -79,6 +90,7 @@ There is no mode that substitutes one for another; every entry that appears in a
 - **Re-numbered atoms.** `--freeze-atoms` and `geom.freeze_atoms` are 1-based and tied to input atom order; if you re-extract and the order changes, regenerate the index list.
 - **XYZ/GJF without a topology.** No `LKH` records exist, so `--freeze-links` is a no-op. Provide `--ref-pdb FILE` or an explicit `--freeze-atoms` list.
 - **`--no-freeze-links`.** Disables the auto-freeze. Useful only for diagnostic runs that intentionally let the boundary relax; production cluster-model runs should leave `--freeze-links` on.
+- **All atoms frozen.** PHVA and IRC require at least one active atom and stop with an explicit error. Reduce the freeze set rather than suppressing the check.
 
 ## See Also
 

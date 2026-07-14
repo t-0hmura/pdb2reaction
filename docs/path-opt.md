@@ -15,7 +15,7 @@ An MLIP backend (UMA by default; switch with `-b/--backend` to ORB, MACE, or AIM
 Command form:
 
 ```bash
-pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
+pdb2reaction path-opt -i REACTANT.{pdb|cif|mmcif|xyz|gjf} PRODUCT.{pdb|cif|mmcif|xyz|gjf} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
  [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
  [--workers N] [--workers-per-node N] \
  [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--max-nodes N] [--max-cycles N] \
@@ -70,7 +70,8 @@ A quick pass that freezes cap parents and disables climb: add `--freeze-links --
 ```text
 out_dir/
 ├─ final_geometries_trj.xyz # XYZ path; comment line holds energies when provided
-├─ final_geometries.pdb # PDB of every image when a PDB reference is available (input PDB or --ref-pdb) and conversion enabled
+├─ final_geometries.pdb # PDB of every image when PDB/mmCIF topology is available and conversion enabled
+├─ final_geometries.cif # Bridged mmCIF/oversized-PDB input: original IDs restored
 ├─ final_geometries.gjf # Gaussian companion when a Gaussian template is detected (conversion enabled)
 ├─ hei.xyz # Highest-energy image with its energy on the comment line
 ├─ hei.pdb # HEI converted to PDB when a PDB reference is available (conversion enabled)
@@ -89,21 +90,21 @@ The full flag list is in the generated [command reference](reference/commands/in
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `-i, --input PATH PATH` | Reactant and product structures (`.pdb`/`.xyz`). | Required |
-| `-q, --charge INT` | Total charge (`calc.charge`). Required for non-`.gjf` inputs unless `--ligand-charge/-l` derivation succeeds (PDB inputs or XYZ/GJF with `--ref-pdb`). `.gjf` templates can supply it; if `.gjf` inputs lack charge metadata, the run aborts unless `-q` is provided. Overrides `--ligand-charge/-l` when both are set. | Required unless template/derivation applies |
-| `-l, --ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex for PDB inputs (or XYZ/GJF when `--ref-pdb` is supplied). | _None_ |
-| `--workers`, `--workers-per-node` | UMA predictor parallelism; `workers_per_node` is forwarded to the parallel predictor. `workers > 1` cannot be combined with an explicit analytical Hessian request. See {ref}`workers-fd-downgrade`. | `1`, `1` |
+| `-i, --input PATH PATH` | Reactant and product structures (`.pdb`/`.cif`/`.mmcif`/`.xyz`/`.gjf`). | Required |
+| `-q, --charge INT` | Total charge (`calc.charge`). Required for non-`.gjf` inputs unless `--ligand-charge/-l` derivation succeeds (PDB/mmCIF inputs or XYZ/GJF with `--ref-pdb`). `.gjf` templates can supply it; if `.gjf` inputs lack charge metadata, the run aborts unless `-q` is provided. Overrides `--ligand-charge/-l` when both are set. | Required unless template/derivation applies |
+| `-l, --ligand-charge TEXT` | Total charge or per-resname mapping used when `-q` is omitted. Triggers extract-style charge derivation on the full complex for PDB/mmCIF inputs (or XYZ/GJF when `--ref-pdb` is supplied). | _None_ |
+| `--workers`, `--workers-per-node` | UMA predictor parallelism; `workers_per_node` is forwarded to the parallel predictor. `workers > 1` cannot be combined with an explicit analytical Hessian request. See {ref}`workers-analytical-error`. | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (`calc.spin`). | Template/`1` |
-| `--freeze-links/--no-freeze-links` | PDB input (or XYZ/GJF with `--ref-pdb`): freeze cap-H parents (merged with YAML). See [extract](extract.md) for cap-hydrogen details. | `True` |
+| `--freeze-links/--no-freeze-links` | PDB/mmCIF input (or XYZ/GJF with `--ref-pdb`): freeze cap-H parents (merged with YAML). See [extract](extract.md) for cap-hydrogen details. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
-| `--max-nodes INT` | Number of internal nodes. **GSM:** total images = `max_nodes + 2` (the two endpoints are fixed). **DMF:** number of *movable* images along the chain (no implicit endpoint expansion). | `20` |
+| `--max-nodes INT` | Number of movable internal images for GSM or DMF. Both engines retain two endpoints, so total images = `max_nodes + 2`. | `20` |
 | `--mep-mode {gsm\|dmf}` | Select GSM (string-based) or DMF (Direct Max Flux) path generator. | `gsm` |
 | `--dmf-backend {cpu\|gpu}` | DMF compute backend (`--mep-mode dmf` only): `gpu` (`dmf.torch`/CUDA) or `cpu` (`dmf`/NumPy). On a GPU out-of-memory error, retry with `cpu`. | `gpu` |
 | `--max-cycles INT` | MEP optimizer cycle cap (sets `stopt.max_cycles`, `stopt.stop_in_when_full`, and `dmf.max_cycles`). | `300` |
 | `--climb/--no-climb` | Enable climbing-image refinement (and Lanczos tangent). | `True` |
 | `--dump/--no-dump` | Dump MEP trajectories (GSM/DMF). Restart YAML is written only when enabled in YAML. | `False` |
 | `--opt-mode TEXT` | Single-structure optimizer for endpoint preoptimization (`grad` = L-BFGS, `hess` = RFO). | `grad` |
-| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs. | `True` |
+| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/CIF/GJF companions according to the input topology/template. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology for XYZ/GJF inputs (keeps XYZ coordinates) to enable PDB conversions. | _None_ |
 | `-o, --out-dir TEXT` | Output directory. | `./result_path_opt/` |
 | `--thresh TEXT` | Override convergence preset for endpoint preoptimization only (`opt.lbfgs/rfo.thresh`). | `gau` |
@@ -125,12 +126,12 @@ The full flag list is in the generated [command reference](reference/commands/in
 
 See [YAML Reference](yaml-reference.md) for full key listings:
 
-- [`geom`](yaml-reference.md#geom) — `--freeze-links` augments `freeze_atoms` for PDB inputs.
+- [`geom`](yaml-reference.md#geom) — `--freeze-links` augments `freeze_atoms` for PDB/mmCIF topology inputs.
 - [`calc`](yaml-reference.md#calc) — MLIP backend setup.
 - [`gs`](yaml-reference.md#gs) — Growing String representation (GSM mode).
 - [`dmf`](yaml-reference.md#dmf) — Direct Max Flux + (C)FB-ENM interpolation (DMF mode).
 - [`stopt`](yaml-reference.md#stopt) — StringOptimizer settings.
-- [`opt.lbfgs`](yaml-reference.md#lbfgs) / [`opt.rfo`](yaml-reference.md#rfo) — Endpoint single-structure preoptimization. YAML overrides CLI `--preopt-max-cycles`.
+- [`opt.lbfgs`](yaml-reference.md#lbfgs) / [`opt.rfo`](yaml-reference.md#rfo) — Endpoint single-structure preoptimization. An explicitly supplied CLI `--preopt-max-cycles` overrides the YAML value; when omitted, YAML remains effective.
 
 ### `path-opt`-specific defaults
 
@@ -155,7 +156,7 @@ See {ref}`exit-codes` in CLI Conventions.
 - [path-search](path-search.md) — Recursive MEP search with automatic refinement (for 2+ structures)
 - [tsopt](tsopt.md) — Optimize the HEI as a TS candidate (includes imaginary-frequency check; follow with IRC)
 - [extract](extract.md) — Generate active site model (binding pocket) PDBs for path-opt inputs
-- [all](all.md) — End-to-end workflow (defaults to single-pass path-opt; add `--refine-path True` for recursive path-search. The `--refine-path` flag lives on `pdb2reaction all` only — see [all.md → MEP search](all.md#mep-search) for its definition.)
+- [all](all.md) — End-to-end workflow (defaults to single-pass path-opt; add `--refine-path` for recursive path-search. The `--refine-path` flag lives on `pdb2reaction all` only — see [all.md → MEP search](all.md#mep-search) for its definition.)
 - [YAML Reference](yaml-reference.md) — Full `gs`, `dmf`, `stopt`, `opt` configuration options
 - [Glossary](glossary.md) — Definitions of MEP, GSM, DMF, HEI
 - [Common Error Recipes](recipes-common-errors.md) — Symptom-first failure routing

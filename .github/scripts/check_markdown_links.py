@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate local markdown links under docs/."""
+"""Validate local markdown links under docs/ and skills/."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DOCS_ROOT = REPO_ROOT / "docs"
+MARKDOWN_ROOTS = (REPO_ROOT / "docs", REPO_ROOT / "skills")
 LINK_RE = re.compile(r"(?<!\!)\[[^\]]+\]\(([^)]+)\)")
 EXTERNAL_PREFIXES = ("http://", "https://", "mailto:", "tel:")
 
@@ -54,7 +54,12 @@ def _iter_toctree_targets(path: Path) -> list[tuple[int, str]]:
             continue
         if not stripped or stripped.startswith(":"):
             continue
-        targets.append((lineno, stripped.split()[0]))
+        # Handle MyST toctree "Title <target>" syntax.
+        angle = re.match(r".*<([^>]+)>\s*$", stripped)
+        if angle:
+            targets.append((lineno, angle.group(1).strip()))
+        else:
+            targets.append((lineno, stripped.split()[0]))
     return targets
 
 
@@ -99,7 +104,7 @@ def _check_path(path: Path, errors: list[str]) -> None:
 
 def main() -> int:
     errors: list[str] = []
-    pages = sorted(DOCS_ROOT.rglob("*.md"))
+    pages = sorted(path for root in MARKDOWN_ROOTS for path in root.rglob("*.md"))
     for md in pages:
         _check_path(md, errors)
 
@@ -109,7 +114,7 @@ def main() -> int:
             print(f"- {e}")
         return 1
 
-    print(f"[link-check] validated local links in {len(pages)} pages.")
+    print(f"[link-check] validated local links in {len(pages)} docs/skills pages.")
     return 0
 
 

@@ -3,7 +3,8 @@
 Each `@mcp.tool()`-decorated function:
 - Declares typed parameters → FastMCP auto-generates JSON schema for the agent.
 - Translates kwargs into the corresponding pdb2reaction CLI argv.
-- Runs the CLI via subprocess and parses `<out_dir>/summary.json`.
+- Runs the CLI via subprocess and, for output-directory tools, parses
+  `<out_dir>/summary.json`.
 - Returns a structured dict via `SubcmdResult.to_dict()`.
 
 Each tool also accepts:
@@ -68,7 +69,7 @@ def register_all(mcp) -> None:
     @mcp.tool()
     def optimize_geometry(
         input_pdb: str,
-        charge: int,
+        charge: Optional[int] = None,
         *,
         ligand_charge: Optional[str] = None,
         multiplicity: Optional[int] = None,
@@ -91,12 +92,20 @@ def register_all(mcp) -> None:
     ) -> dict[str, Any]:
         """Optimize a single molecular geometry (CLI: `pdb2reaction opt`).
 
+        For PDB/mmCIF, omit charge and set ligand_charge to derive the total from
+        residue names. For XYZ without residue context, set charge; a valid GJF
+        header already supplies charge/multiplicity. If both charge forms are
+        supplied, the explicit total charge takes precedence.
+
         Default `opt_mode="grad"` matches the CLI default; pass `"hess"` for
         RFO Hessian-based optimization. Returns: SubcmdResult dict with
-        summary.json contents (final_energy, n_cycles, converged, files map).
+        summary.json contents (status, energy_hartree, n_opt_cycles,
+        final_max_force/final_rms_force, files map).
         """
         od = _resolve_out_dir(out_dir, "opt")
-        argv: list[str] = ["pdb2reaction", "opt", "-i", input_pdb, "-q", str(charge)]
+        argv: list[str] = ["pdb2reaction", "opt", "-i", input_pdb]
+        if charge is not None:
+            argv.extend(["-q", str(charge)])
         if ligand_charge:
             argv.extend(["-l", ligand_charge])
         if multiplicity is not None:
@@ -125,7 +134,7 @@ def register_all(mcp) -> None:
     @mcp.tool()
     def find_transition_state(
         ts_pdb: str,
-        charge: int,
+        charge: Optional[int] = None,
         *,
         ligand_charge: Optional[str] = None,
         multiplicity: Optional[int] = None,
@@ -149,16 +158,21 @@ def register_all(mcp) -> None:
     ) -> dict[str, Any]:
         """Optimize a transition-state candidate (CLI: `pdb2reaction tsopt`).
 
+        For PDB/mmCIF, omit charge and set ligand_charge to derive the total from
+        residue names. An explicit charge overrides ligand_charge.
+
         opt_mode = one of {"grad", "hess", "dimer", "rsirfo", "trim", "rsprfo"}.
         - "hess" / "rsprfo" (default): RS-P-RFO (Banerjee 1985).
         - "grad" / "dimer": Hessian-guided Dimer.
         - "trim" (Helgaker 1991) / "rsirfo": alternative TS optimizers.
 
-        Returns: SubcmdResult dict with summary.json (ts_energy, n_imaginary_modes,
-        imaginary_frequencies_cm, n_opt_cycles, files map).
+        Returns: SubcmdResult dict with summary.json (status, energy_hartree,
+        n_imaginary_modes, imaginary_frequencies_cm, n_opt_cycles, files map).
         """
         od = _resolve_out_dir(out_dir, "tsopt")
-        argv: list[str] = ["pdb2reaction", "tsopt", "-i", ts_pdb, "-q", str(charge)]
+        argv: list[str] = ["pdb2reaction", "tsopt", "-i", ts_pdb]
+        if charge is not None:
+            argv.extend(["-q", str(charge)])
         if ligand_charge:
             argv.extend(["-l", ligand_charge])
         if multiplicity is not None:
@@ -189,7 +203,7 @@ def register_all(mcp) -> None:
     @mcp.tool()
     def run_irc(
         ts_pdb: str,
-        charge: int,
+        charge: Optional[int] = None,
         *,
         ligand_charge: Optional[str] = None,
         multiplicity: Optional[int] = None,
@@ -214,17 +228,24 @@ def register_all(mcp) -> None:
     ) -> dict[str, Any]:
         """Run IRC integration from a TS geometry (CLI: `pdb2reaction irc`).
 
+        For PDB/mmCIF, omit charge and set ligand_charge to derive the total from
+        residue names. An explicit charge overrides ligand_charge.
+
         Opt-in:
         - irc_pos_def=True: convergence additionally requires positive-definite
           mass-weighted Hessian, blocking the IRC 'shoulder' false-convergence.
         - never_stop=True: ignore energy-rise/plateau stops while retaining
           physical/integrator convergence and the max-cycle cap.
 
-        Returns: SubcmdResult dict with summary.json (forward / backward
-        energies, n_steps, files map).
+        Returns: SubcmdResult dict with summary.json (forward/backward frame
+        counts and convergence/energy-stop flags, endpoint/TS energies,
+        bond_changes when available, and files map). A CLI status of
+        ``completed`` does not by itself mean both directions converged.
         """
         od = _resolve_out_dir(out_dir, "irc")
-        argv: list[str] = ["pdb2reaction", "irc", "-i", ts_pdb, "-q", str(charge)]
+        argv: list[str] = ["pdb2reaction", "irc", "-i", ts_pdb]
+        if charge is not None:
+            argv.extend(["-q", str(charge)])
         if ligand_charge:
             argv.extend(["-l", ligand_charge])
         if multiplicity is not None:
@@ -260,7 +281,7 @@ def register_all(mcp) -> None:
     @mcp.tool()
     def compute_frequencies(
         input_pdb: str,
-        charge: int,
+        charge: Optional[int] = None,
         *,
         ligand_charge: Optional[str] = None,
         multiplicity: Optional[int] = None,
@@ -282,11 +303,16 @@ def register_all(mcp) -> None:
     ) -> dict[str, Any]:
         """Vibrational analysis + thermochemistry (CLI: `pdb2reaction freq`).
 
+        For PDB/mmCIF, omit charge and set ligand_charge to derive the total from
+        residue names. An explicit charge overrides ligand_charge.
+
         Returns: SubcmdResult dict with summary.json (frequencies_cm,
         ZPE, thermal corrections, n_imaginary, mode trajectory files).
         """
         od = _resolve_out_dir(out_dir, "freq")
-        argv: list[str] = ["pdb2reaction", "freq", "-i", input_pdb, "-q", str(charge)]
+        argv: list[str] = ["pdb2reaction", "freq", "-i", input_pdb]
+        if charge is not None:
+            argv.extend(["-q", str(charge)])
         if ligand_charge:
             argv.extend(["-l", ligand_charge])
         if multiplicity is not None:
@@ -318,9 +344,10 @@ def register_all(mcp) -> None:
     @mcp.tool()
     def scan_1d(
         input_pdb: str,
-        charge: int,
         scan_lists: str,
         *,
+        charge: Optional[int] = None,
+        additional_scan_stages: Optional[list[str]] = None,
         ligand_charge: Optional[str] = None,
         multiplicity: Optional[int] = None,
         max_step_size: Optional[float] = None,
@@ -342,12 +369,23 @@ def register_all(mcp) -> None:
     ) -> dict[str, Any]:
         """1D distance scan with harmonic restraints (CLI: `pdb2reaction scan`).
 
-        scan_lists: list-of-tuples literal, e.g. "[(1,5,1.4)]" = pull atom 1↔5
-        target distance 1.4 Å.
+        scan_lists is the first list-of-tuples literal, e.g.
+        "[(1,5,1.4)]" = pull atom 1↔5 to 1.4 Å. Put later sequential
+        stage literals in additional_scan_stages; the CLI receives exactly one
+        --scan-lists occurrence followed by all stage values.
+
+        For PDB/mmCIF, omit charge and set ligand_charge to derive the total from
+        residue names. An explicit charge overrides ligand_charge.
         """
         od = _resolve_out_dir(out_dir, "scan")
-        argv: list[str] = ["pdb2reaction", "scan", "-i", input_pdb, "-q", str(charge),
-                           "--scan-lists", scan_lists]
+        argv: list[str] = [
+            "pdb2reaction", "scan", "-i", input_pdb,
+            "--scan-lists", scan_lists,
+        ]
+        if additional_scan_stages:
+            argv.extend(additional_scan_stages)
+        if charge is not None:
+            argv.extend(["-q", str(charge)])
         if ligand_charge:
             argv.extend(["-l", ligand_charge])
         if multiplicity is not None:
@@ -393,7 +431,11 @@ def register_all(mcp) -> None:
         extra_args: Optional[list[str]] = None,
         timeout_seconds: Optional[float] = None,
     ) -> dict[str, Any]:
-        """2D distance scan (CLI: `pdb2reaction scan2d`)."""
+        """2D distance scan (CLI: `pdb2reaction scan2d`).
+
+        For PDB/mmCIF, omit charge and set ligand_charge to derive the total from
+        residue names. An explicit charge overrides ligand_charge.
+        """
         od = _resolve_out_dir(out_dir, "scan2d")
         argv: list[str] = ["pdb2reaction", "scan2d", "-i", input_pdb, "--scan-lists", scan_lists]
         if charge is not None:
@@ -435,7 +477,11 @@ def register_all(mcp) -> None:
         extra_args: Optional[list[str]] = None,
         timeout_seconds: Optional[float] = None,
     ) -> dict[str, Any]:
-        """3D distance scan (CLI: `pdb2reaction scan3d`)."""
+        """3D distance scan (CLI: `pdb2reaction scan3d`).
+
+        For PDB/mmCIF, omit charge and set ligand_charge to derive the total from
+        residue names. An explicit charge overrides ligand_charge.
+        """
         od = _resolve_out_dir(out_dir, "scan3d")
         argv: list[str] = ["pdb2reaction", "scan3d", "-i", input_pdb, "--scan-lists", scan_lists]
         if charge is not None:
@@ -465,7 +511,7 @@ def register_all(mcp) -> None:
     def optimize_path(
         reactant_pdb: str,
         product_pdb: str,
-        charge: int,
+        charge: Optional[int] = None,
         *,
         ligand_charge: Optional[str] = None,
         multiplicity: Optional[int] = None,
@@ -482,11 +528,16 @@ def register_all(mcp) -> None:
     ) -> dict[str, Any]:
         """Optimize a reaction-path segment (CLI: `pdb2reaction path-opt`).
 
-        Two-endpoint MEP optimization (GSM / NEB family).
+        Two-endpoint MEP optimization (GSM or optional DMF).
+        For PDB/mmCIF endpoints, omit charge and set ligand_charge to derive the
+        total. An explicit charge overrides ligand_charge.
         """
         od = _resolve_out_dir(out_dir, "path_opt")
-        argv: list[str] = ["pdb2reaction", "path-opt", "-i", reactant_pdb, product_pdb,
-                           "-q", str(charge)]
+        argv: list[str] = [
+            "pdb2reaction", "path-opt", "-i", reactant_pdb, product_pdb,
+        ]
+        if charge is not None:
+            argv.extend(["-q", str(charge)])
         if ligand_charge:
             argv.extend(["-l", ligand_charge])
         if multiplicity is not None:
@@ -514,8 +565,10 @@ def register_all(mcp) -> None:
     @mcp.tool()
     def search_paths(
         input_pdb: str,
-        charge: int,
+        charge: Optional[int] = None,
         *,
+        product_pdb: str,
+        intermediate_pdbs: Optional[list[str]] = None,
         ligand_charge: Optional[str] = None,
         multiplicity: Optional[int] = None,
         max_nodes: Optional[int] = None,
@@ -527,9 +580,19 @@ def register_all(mcp) -> None:
         extra_args: Optional[list[str]] = None,
         timeout_seconds: Optional[float] = None,
     ) -> dict[str, Any]:
-        """Recursive reaction-pathway search (CLI: `pdb2reaction path-search`)."""
+        """Recursive reaction-pathway search (CLI: `pdb2reaction path-search`).
+
+        input_pdb and product_pdb are the required reactant/product endpoints.
+        intermediate_pdbs, when supplied, are inserted between them in reaction
+        order. At least two endpoint files are therefore always sent to the CLI.
+        For PDB/mmCIF endpoints, omit charge and set ligand_charge to derive the
+        total. An explicit charge overrides ligand_charge.
+        """
         od = _resolve_out_dir(out_dir, "path_search")
-        argv: list[str] = ["pdb2reaction", "path-search", "-i", input_pdb, "-q", str(charge)]
+        endpoint_paths = [input_pdb, *(intermediate_pdbs or []), product_pdb]
+        argv: list[str] = ["pdb2reaction", "path-search", "-i", *endpoint_paths]
+        if charge is not None:
+            argv.extend(["-q", str(charge)])
         if ligand_charge:
             argv.extend(["-l", ligand_charge])
         if multiplicity is not None:
@@ -561,6 +624,7 @@ def register_all(mcp) -> None:
         extract_ligand: Optional[str] = None,
         extract_radius: Optional[float] = None,
         scan_lists: Optional[str] = None,
+        additional_scan_stages: Optional[list[str]] = None,
         max_cycles: Optional[int] = None,
         thresh: Optional[str] = None,
         thresh_post: Optional[str] = None,
@@ -577,14 +641,22 @@ def register_all(mcp) -> None:
         extra_args: Optional[list[str]] = None,
         timeout_seconds: Optional[float] = None,
     ) -> dict[str, Any]:
-        """End-to-end workflow extract → MEP → TS → IRC → freq → DFT (CLI: `pdb2reaction`).
+        """End-to-end workflow extract → MEP → TS → IRC → freq → DFT (CLI: `pdb2reaction all`).
 
-        This is the `all` subcommand (registered as the root cli group default).
+        scan_lists is the first scan stage; put any later sequential stages in
+        additional_scan_stages. The generated CLI contains one --scan-lists
+        occurrence followed by all values.
+
+        For PDB/mmCIF input, prefer ligand_charge with charge omitted so the total is
+        derived after extraction. When extraction is active, an explicit charge is
+        an assertion against that derived total and a mismatch aborts; without
+        extraction it is the total override.
+
         Returns: SubcmdResult dict with the full pipeline summary.json including
         per-stage results, activation energies, reaction energies.
         """
         od = _resolve_out_dir(out_dir, "all")
-        argv: list[str] = ["pdb2reaction", "-i", reactant_pdb]
+        argv: list[str] = ["pdb2reaction", "all", "-i", reactant_pdb]
         if product_pdb:
             argv.append(product_pdb)
         if charge is not None:
@@ -597,8 +669,11 @@ def register_all(mcp) -> None:
             argv.extend(["-c", extract_ligand])
         if extract_radius is not None:
             argv.extend(["-r", str(extract_radius)])
-        if scan_lists:
-            argv.extend(["--scan-lists", scan_lists])
+        scan_stage_values = ([scan_lists] if scan_lists else []) + list(
+            additional_scan_stages or []
+        )
+        if scan_stage_values:
+            argv.extend(["--scan-lists", *scan_stage_values])
         if max_cycles is not None:
             argv.extend(["--max-cycles", str(max_cycles)])
         if thresh:
@@ -633,7 +708,7 @@ def register_all(mcp) -> None:
     @mcp.tool()
     def run_single_point_dft(
         input_pdb: str,
-        charge: int,
+        charge: Optional[int] = None,
         *,
         ligand_charge: Optional[str] = None,
         multiplicity: Optional[int] = None,
@@ -644,11 +719,16 @@ def register_all(mcp) -> None:
     ) -> dict[str, Any]:
         """Single-point DFT energy via gpu4pyscf subprocess (CLI: `pdb2reaction dft`).
 
+        For PDB/mmCIF, omit charge and set ligand_charge to derive the total from
+        residue names. An explicit charge overrides ligand_charge.
+
         ``func_basis`` is the single combined CLI argument (``FUNC/BASIS``,
         e.g. ``"wb97m-v/def2-tzvpd"``).
         """
         od = _resolve_out_dir(out_dir, "dft")
-        argv: list[str] = ["pdb2reaction", "dft", "-i", input_pdb, "-q", str(charge)]
+        argv: list[str] = ["pdb2reaction", "dft", "-i", input_pdb]
+        if charge is not None:
+            argv.extend(["-q", str(charge)])
         if ligand_charge:
             argv.extend(["-l", ligand_charge])
         if multiplicity is not None:
@@ -664,7 +744,7 @@ def register_all(mcp) -> None:
     @mcp.tool()
     def run_single_point(
         input_pdb: str,
-        charge: int,
+        charge: Optional[int] = None,
         *,
         ligand_charge: Optional[str] = None,
         multiplicity: Optional[int] = None,
@@ -682,14 +762,20 @@ def register_all(mcp) -> None:
     ) -> dict[str, Any]:
         """Single-point MLIP energy / forces / optional Hessian (CLI: `pdb2reaction sp`).
 
+        For PDB/mmCIF, omit charge and set ligand_charge to derive the total from
+        residue names. An explicit charge overrides ligand_charge.
+
         ``do_hess=True`` additionally writes the full Hessian to
         ``hessian.npy``. ``hessian_calc_mode`` selects the Hessian
         backend. UMA, ORB, MACE, and AIMNet2 support analytical Hessians.
         With UMA and ``workers > 1``, an explicit analytical request raises
-        ``RuntimeError``; use ``workers=1`` or select finite differences.
+        ``BackendError`` (a ``RuntimeError`` subclass); use ``workers=1`` or
+        select finite differences.
         """
         od = _resolve_out_dir(out_dir, "sp")
-        argv: list[str] = ["pdb2reaction", "sp", "-i", input_pdb, "-q", str(charge)]
+        argv: list[str] = ["pdb2reaction", "sp", "-i", input_pdb]
+        if charge is not None:
+            argv.extend(["-q", str(charge)])
         if ligand_charge:
             argv.extend(["-l", ligand_charge])
         if multiplicity is not None:
@@ -725,7 +811,8 @@ def register_all(mcp) -> None:
         """Extract an active-site model (CLI: `pdb2reaction extract`).
 
         Cuts a sphere of radius `radius_angstrom` around the ligand `ligand_id`
-        (PDB residue 3-letter code). Returns the written PDB path.
+        (residue name, ID, or chain-qualified selector). PDB/mmCIF inputs are
+        accepted; bridged inputs return both the internal PDB and public CIF paths.
         `exclude_backbone=None` (default) defers to the CLI default
         (`--no-exclude-backbone`); pass True / False to override explicitly.
         """
@@ -812,7 +899,7 @@ def register_all(mcp) -> None:
         extra_args: Optional[list[str]] = None,
         timeout_seconds: Optional[float] = None,
     ) -> dict[str, Any]:
-        """Detect bond changes between two PDB structures (CLI: `pdb2reaction bond-summary`)."""
+        """Detect bond changes between two PDB/mmCIF structures (CLI: `pdb2reaction bond-summary`)."""
         argv: list[str] = ["pdb2reaction", "bond-summary", "-i", reactant_pdb, product_pdb]
         if extra_args:
             argv.extend(extra_args)

@@ -337,7 +337,7 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help="Input structure file (.pdb, .xyz, _trj.xyz, etc.).",
+    help="Input structure file (.pdb, .cif, .mmcif, .xyz, .gjf, _trj.xyz, etc.).",
 )
 @click.option(
     "-q",
@@ -346,7 +346,7 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     required=False,
     help=(
         "Total charge. Required for non-.gjf inputs unless --ligand-charge is provided "
-        "(PDB inputs or XYZ/GJF with --ref-pdb)."
+        "(PDB/mmCIF inputs or XYZ/GJF with --ref-pdb)."
     ),
 )
 @click.option(
@@ -357,7 +357,7 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     show_default=False,
     help=(
         "Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) used to derive charge "
-        "when -q is omitted (requires PDB input or --ref-pdb)."
+        "when -q is omitted (requires PDB/mmCIF input or --ref-pdb)."
     ),
 )
 @click.option("-m", "--multiplicity", "spin", type=int, default=None, show_default=False, help="Spin multiplicity (2S+1; inherits from .gjf when available; otherwise defaults to 1).")
@@ -366,13 +366,13 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     "convert_files",
     default=True,
     show_default=True,
-    help="Accepted for interface consistency; dft does not emit PDB/GJF outputs.",
+    help="Accepted for interface consistency; dft does not emit PDB/CIF/GJF outputs.",
 )
 @click.option(
     "--ref-pdb",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
-    help="Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
+    help="Reference PDB/mmCIF topology to use when the input is XYZ/GJF (keeps XYZ coordinates).",
 )
 @click.option(
     "--func-basis",
@@ -460,6 +460,10 @@ def cli(
     merged_yaml_cfg, _, _ = load_merged_yaml_cfg(
         config_yaml=config_yaml,
         override_yaml=None,
+    )
+    from pdb2reaction.core.utils import resolve_configured_charge_spin
+    charge, spin = resolve_configured_charge_spin(
+        merged_yaml_cfg, charge=charge, spin=spin, ligand_charge=ligand_charge,
     )
 
     set_convert_file_enabled(convert_files)
@@ -800,6 +804,7 @@ def cli(
             if out_json:
                 from pdb2reaction.core.utils import write_result_json
                 result_data: Dict[str, Any] = {
+                    "status": "converged",
                     "converged": converged,
                     "charge": resolved_charge,
                     "spin": multiplicity,

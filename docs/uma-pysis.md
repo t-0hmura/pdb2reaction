@@ -91,7 +91,7 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 |---------|---------|-------------------|-------------|-------|
 | **UMA** | included | Yes (autograd) | Yes | Default backend (`fairchem-core`) |
 | **ORB** | `pip install "pdb2reaction[orb]"` | Yes (autograd) | No | orb-models (conservative models only) |
-| **MACE** | `pip install 'mace-torch>=0.3.8'` (coexists with `fairchem-core`; `< 0.3.8` needs `pip uninstall -y fairchem-core`) | Yes (`calc.get_hessian`) | No | mace-torch >= 0.3.8 |
+| **MACE** | dedicated env: install pdb2reaction, then `pip uninstall -y fairchem-core && pip install 'mace-torch>=0.3.8'` (`e3nn` requirements conflict) | Yes (`calc.get_hessian`) | No | mace-torch >= 0.3.8 |
 | **AIMNet2** | `pip install "pdb2reaction[aimnet]"` | Yes (native) | No | aimnet |
 
 ### Implicit solvent correction
@@ -113,17 +113,17 @@ The correction uses a delta approach: ΔE = E_xTB(solvent) - E_xTB(vacuum), adde
 - **Precision control** – energies and forces are always returned as float64. Set `hessian_double=False` to obtain the Hessian matrix in the model's native dtype (typically float32).
 - **Multi-worker inference** – `workers>1` spawns `fairchem-core`'s `ParallelMLIPPredictUnit` with `workers_per_node` workers per node, useful for batch throughput.
 
-(workers-fd-downgrade)=
+(workers-analytical-error)=
 ### `workers > 1` is incompatible with analytical Hessians (UMA backend)
 
 ```{warning}
-When the UMA backend is used with `workers > 1`, an explicitly requested analytical Hessian (`hessian_calc_mode="Analytical"`) is unavailable because the parallel predictor exposes no autograd model. The run raises `RuntimeError` instead of silently changing the requested method. Use `workers = 1` for an analytical Hessian, or select `FiniteDifference`. This applies to every subcommand that exposes `--workers` / `--workers-per-node` (`opt`, `tsopt`, `freq`, `irc`, `sp`, `all`, `path-opt`, `path-search`, and the scan family). On non-UMA backends (ORB, MACE, AIMNet2) `workers` / `workers_per_node` are filtered out per `_BACKEND_ACCEPTED_KEYS`, so this rule does not apply.
+When the UMA backend is used with `workers > 1`, an explicitly requested analytical Hessian (`hessian_calc_mode="Analytical"`) is unavailable because the parallel predictor exposes no autograd model. The run raises `BackendError` (a `RuntimeError` subclass) instead of silently changing the requested method. Use `workers = 1` for an analytical Hessian, or select `FiniteDifference`. This applies to every subcommand that exposes `--workers` / `--workers-per-node` (`opt`, `tsopt`, `freq`, `irc`, `sp`, `all`, `path-opt`, `path-search`, and the scan family). On non-UMA backends (ORB, MACE, AIMNet2) `workers` / `workers_per_node` are filtered out per `_BACKEND_ACCEPTED_KEYS`, so this rule does not apply.
 ```
 
 (hessian-evaluation)=
 ### Hessian evaluation mode
 
-`hessian_calc_mode="Analytical"` uses second-order autograd on the selected device; `"FiniteDifference"` (default) computes central differences of forces. With multiple UMA inference workers, an analytical request raises `RuntimeError` (see the note above); use `workers = 1` or select finite differences.
+`hessian_calc_mode="Analytical"` uses second-order autograd on the selected device; `"FiniteDifference"` (default) computes central differences of forces. With multiple UMA inference workers, an analytical request raises `BackendError` (see the note above); use `workers = 1` or select finite differences.
 
 ## HPC example: PBS + Open MPI + Ray
 
@@ -142,7 +142,7 @@ Common constructor keywords (defaults shown in the rightmost column):
 | `precision` | MLIP numerical precision (`"fp32"` or `"fp64"`). | `"fp32"` |
 | `task_name` | Task tag recorded in UMA batches. | `"omol"` |
 | `device` | "cuda", "cpu", or automatic selection. | `"auto"` |
-| `workers` / `workers_per_node` | Parallel UMA predictors (UMA backend; ignored by ORB / MACE / AIMNet2); with `workers > 1`, an explicit `Analytical` request raises `RuntimeError`. Use `workers = 1` or select finite differences. | `1` / `1` |
+| `workers` / `workers_per_node` | Parallel UMA predictors (UMA backend; ignored by ORB / MACE / AIMNet2); with `workers > 1`, an explicit `Analytical` request raises `BackendError` (a `RuntimeError` subclass). Use `workers = 1` or select finite differences. | `1` / `1` |
 | `max_neigh`, `radius`, `r_edges` | Optional overrides for UMA neighborhood construction. | `None`, `None`, `False` |
 | `freeze_atoms` | List of 1-based atom indices to freeze. | _None_ |
 | `hessian_calc_mode` | "Analytical" or "FiniteDifference" for Hessian evaluation. | `"FiniteDifference"` |

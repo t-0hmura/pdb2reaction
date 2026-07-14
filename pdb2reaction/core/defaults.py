@@ -32,6 +32,7 @@ WORK_DIRNAME = "_work"  # pipeline-wide scratch (rm -rf safe)
 GEOM_KW_DEFAULT: Dict[str, Any] = {
     "coord_type": "cart",
     "freeze_atoms": [],
+    "tr_projection": "constrained",
 }
 
 # Calculator defaults (UMA)
@@ -53,7 +54,7 @@ CALC_KW_DEFAULT: Dict[str, Any] = {
     "r_edges": False,
     "workers": 1,
     "workers_per_node": 1,
-    # "auto" (resolve per backend: uma fp32, orb/mace fp64 — see
+    # "auto" (resolve per backend: uma/aimnet2 fp32, orb/mace fp64 — see
     # backends._BACKEND_DEFAULT_PRECISION) | "fp32" | "fp64". The sentinel keeps
     # "user named no precision" distinguishable from an explicit "--precision fp32";
     # a literal "fp32" here dispatched reduced precision to ORB and MACE.

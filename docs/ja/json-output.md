@@ -12,7 +12,9 @@ pdb2reaction opt -i r.pdb -q -1 --out-json --out-dir result_opt
 cat result_opt/result.json | python -m json.tool
 ```
 
-`all` / `path-search` は常に `summary.json` を出力します（`--out-json` 不要）。
+`all` / `path-search` は summary writer まで到達すれば `--out-json` なしで
+`summary.json` を出力します。早期の CLI/input 検証で失敗した場合は、file が
+作られないことがあります。
 
 ### `summary.json` ミラー
 
@@ -20,21 +22,40 @@ cat result_opt/result.json | python -m json.tool
 
 ## 共通エンベロープ
 
-すべての `result.json` に自動付与されるフィールド:
+shared writerが供給するfieldを示します。「任意」と明記したrowはproducerが対応dataを渡した場合だけ存在します:
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `schema_version` | string | エンベロープのスキーマバージョン。現在値は `pdb2reaction.core.utils.RESULT_JSON_SCHEMA_VERSION` にあります（このドキュメント中のリテラルではなく、この定数を参照してください）。値が上がった場合は構造変更を意味します。 |
-| `command` | string | サブコマンド名（例: `"opt"`） |
+| `command` | string | leaf envelope はサブコマンド名（例: `"opt"`）、aggregate `all` / `path-search` summary は完全な invocation string |
 | `pdb2reaction_version` | string | パッケージバージョン |
-| `status` | string | `success` / `partial` / `error` / `unknown` のいずれか |
-| `elapsed_seconds` | float | 実行時間（秒） |
+| `status` | string | commandごとに異なります（下記参照）。`converged` / `not_converged`（opt, tsopt）、`completed`（irc, freq）、`ok` / `partial`（bond-summary）、`success` / `partial` / `failed`（aggregate workflow）、失敗時の `error` などです |
+| `elapsed_seconds` | float | 任意の実行時間（秒）。shared writerへ時間を渡さないproducerでは省略 |
 | `environment` | object | ハードウェア情報（下表参照） |
-| `mlip_backend` | string | MLIP workflowで使用したバックエンド名 |
-| `mlip_model` | string \| null | バックエンドと分離して記録する正確なmodel/checkpoint名 |
+| `mlip_backend` | string | 任意。payloadがMLIP stageを表しbackend provenanceを渡した場合に追加 |
+| `mlip_model` | string \| null | 任意。backendと分離した正確なmodel/checkpoint名 |
 
 各leaf schemaの`backend` / `model`も維持されますが、command横断の処理では
 `mlip_backend` / `mlip_model`を使用してください。
+
+### Rigid projection provenance
+
+`freq`、`irc`、`tsopt`のresultは`rigid_projection` objectを含み、`opt`では`--flatten`実行時に含みます。`freq --dump`は同じobjectを`thermoanalysis.yaml`にも書きます。
+
+| フィールド | 型 | 説明 |
+|-----------|------|------|
+| `treatment` | string | 選択した`--tr-projection` mode: `"constrained"` / `"legacy-active"` |
+| `algorithm` | string | 射影kernelの識別子 |
+| `effective_rank` | int | active Hessianから除去した剛体方向の数 |
+| `full_rigid_rank` | int | 凍結anchor拘束前の全系剛体basisのrank |
+| `frozen_constraint_rank` | int | 凍結anchor拘束によって除かれたrank |
+| `active_atom_count` / `frozen_atom_count` | int | active／frozen原子数 |
+| `active_atoms` / `frozen_atoms` | int[] | 射影kernelが使用した0始まり原子index |
+| `hessian_space` | string | 入力Hessian空間: `"full"` / `"active"` |
+| `hessian_source` / `source` | string | Hessian provenance。`freq`/`irc`は`hessian_source`、`opt`/`tsopt`は`source`を使用 |
+| `hessian_shape` / `raw_hessian_shape` | int[2] | 入力Hessian shape。`freq`/`irc`は`hessian_shape`、`opt`/`tsopt`は`raw_hessian_shape`を使用 |
+
+`constrained`は凍結anchorを動かさない全系剛体運動だけを除去します。`legacy-active`はisolated-active比較用であり、near-linear／縮退構造に対する旧結果のbitwise replayは保証しません。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
 
 **`environment`**:
 
@@ -60,11 +81,28 @@ cat result_opt/result.json | python -m json.tool
 
 ## エラー処理
 
-ジョブが失敗した場合（クラッシュ、OOM、収束失敗による `sys.exit` など）でも、`"status": "error"` と失敗種別を表す `"error_type"` を含む `result.json` が書き出されます。詳細なトレースバックは `.out` ログファイルを参照してください。失敗判定には `result.json` の不在ではなく `status == "error"` を使用してください。
+捕捉されたruntime exceptionでは、`"status": "error"` と `"error_type"` を
+含む `result.json` をbest effortで書きます。usage/validation exitやout-dir確定前の
+失敗ではJSONが作られない場合があるため、nonzero exit codeまたは期待JSONの欠損も
+failure signalです。stderr/job logを確認してください。
 
 収束しなかったが完了したジョブでは、`"status": "not_converged"` と最終 force/step 値を含む `result.json` が書き出されるため、AI エージェントはサイクル数を増やして再試行するかどうかをこの情報をもとに判断できます。
 
 ## サブコマンド別スキーマ
+
+### `sp`
+
+| フィールド | 型 | 説明 |
+|-----------|------|------|
+| `status` | string | `"ok"` |
+| `stage` | string | `"sp"` |
+| `input` | string | 準備後の公開入力path |
+| `backend` / `model` | string / string \| null | MLIP provenance（`mlip_backend` / `mlip_model` にもmirror） |
+| `charge` / `spin` | int / int | 総電荷とspin多重度 |
+| `energy_au` | float | 一点energy (Hartree) |
+| `forces_path` | string | `forces.npy` のpath |
+| `hessian_path` | string \| null | `hessian.npy` のpath。`--hess` 無指定時はnull |
+| `elapsed` | string | 人間可読の経過時間 |
 
 ### `opt`
 
@@ -73,7 +111,7 @@ cat result_opt/result.json | python -m json.tool
 | `status` | string | `"converged"` / `"not_converged"` |
 | `energy_hartree` | float | 最終エネルギー (Hartree) |
 | `n_opt_cycles` | int | 最適化サイクル数 |
-| `opt_mode` | string | `"grad"` / `"hess"` |
+| `opt_mode` | string | `"grad"` / `"hess"` / `"lbfgs"` / `"rfo"` |
 | `backend` | string | MLIP バックエンド (`"uma"`, `"orb"`, `"mace"`, `"aimnet2"`) |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
@@ -90,6 +128,7 @@ cat result_opt/result.json | python -m json.tool
 | `final_rms_step` | float | 最終 RMS 変位 |
 | `convergence_thresholds` | object | `{max_force_thresh, rms_force_thresh, max_step_thresh, rms_step_thresh}` (Hartree/Bohr) |
 | `files` | object | 出力ファイルマップ |
+| `rigid_projection` | object | 任意。`--flatten`実行時に含む。[projection provenance](#rigid-projection-provenance)を参照 |
 
 ### `tsopt`
 
@@ -102,11 +141,14 @@ cat result_opt/result.json | python -m json.tool
 | `opt_mode` | string | `"rsprfo"` (default) / `"rsirfo"` / `"trim"` / `"dimer"` |
 | `reference_mode_file` | string\|null | `--ref-mode` で渡した advanced path-mode ファイル。通常は `all` が生成して内部指定します |
 | `safeguards` | object | mode-loss rejection、exact saddle check、最終目的モードの index/overlap、高次鞍点でのMEP再anchor flag、停止理由、有界 path-mode restart の診断情報 |
+| `rigid_projection` | object | 剛体モードとexact Hessianのprovenance。[projection provenance](#rigid-projection-provenance)を参照 |
 
 `files` には `imaginary_mode_files`（vib ファイルリスト）を含む場合があります。
-Hessian mode の `status: "converged"` には、最終 exact PHVA で有意な
-虚振動がちょうど1個必要です。高次鞍点と `n_imag=0` 構造は
-`not_converged` です。収束詳細 (force/step) は rsirfo モードで利用可能です。
+Cartesian Hessian mode の `status: "converged"` には、最終 exact PHVA で
+有意な虚振動がちょうど1個必要です。対応する内部座標 mode では、代わりに
+exact optimizer-space Hessian の負の固有値が1個であることを要求します。
+高次鞍点と `n_imag=0` 構造は `not_converged` です。収束詳細 (force/step) は
+rsirfo モードで利用可能です。
 dimer モードも `status` に `"converged"` / `"not_converged"` を返しますが、
 `n_opt_cycles` のみを出力し、Hessian mode の収束詳細と `safeguards` は
 省略されます。
@@ -132,6 +174,7 @@ dimer モードも `status` に `"converged"` / `"not_converged"` を返しま�
 | `pressure_atm` | float | 圧力 (atm) |
 | `input_file` | string | 入力ファイル名 |
 | `files` | object | `{"frequencies_txt": "frequencies_cm-1.txt"}` |
+| `rigid_projection` | object | 剛体モードとHessian provenance。`--dump`時は`thermoanalysis.yaml`にも記録 |
 
 **`thermochemistry`** (thermoanalysis 利用不可時は null):
 
@@ -158,9 +201,11 @@ dimer モードも `status` に `"converged"` / `"not_converged"` を返しま�
 | `n_frames_forward` | int | 前方 IRC フレーム数 |
 | `n_frames_backward` | int | 後方 IRC フレーム数 |
 | `n_frames_total` | int | 全フレーム数 |
-| `energy_reactant_hartree` | float | 反応物エネルギー |
+| `energy_first_hartree` | float | stitched path の最初の端点エネルギー。standalone IRC は化学的identityを割り当てない |
 | `energy_ts_hartree` | float | TS エネルギー |
-| `energy_product_hartree` | float | 生成物エネルギー |
+| `energy_last_hartree` | float | stitched path の最後の端点エネルギー。standalone IRC は化学的identityを割り当てない |
+| `endpoint_energy_orientation` | string | `"finished_first_to_finished_last"` |
+| `energy_reactant_hartree` / `energy_product_hartree` | float | first / last の旧alias。key名から化学的R/P identityを推定しないこと |
 | `forward_converged` | bool \| null | 前方 IRC 収束? インテグレータがフラグを公開しない場合は `null` |
 | `backward_converged` | bool \| null | 後方 IRC 収束? インテグレータがフラグを公開しない場合は `null` |
 | `forward_energy_increased` | bool \| null | 前方の最終stepでenergyが上昇したか |
@@ -172,11 +217,13 @@ dimer モードも `status` に `"converged"` / `"not_converged"` を返しま�
 | `never_stop` | bool | energy上昇／平坦化停止を無視したか |
 | `n_freeze_atoms` | int | 凍結原子数 |
 | `solvent` | string | 暗黙溶媒 or `"none"` |
-| `bond_changes` | object | `{formed: [...], broken: [...]}` の各リストは元素記号付き 1 始まりの原子ペア文字列（例 `"C7-O12"`）。比較が失敗または `finished_first.xyz`/`finished_last.xyz` が存在しない場合はキー自体が省略されます。 |
+| `bond_changes` | object | first→last 方向の `{formed: [...], broken: [...]}`。各リストは元素記号付き1始まりの原子ペア文字列（例 `"C7-O12"`）。比較が失敗または `finished_first.xyz`/`finished_last.xyz` が存在しない場合はキー自体が省略されます。 |
+| `bond_changes_direction` | string | `bond_changes` がある場合は `"finished_first_to_finished_last"` |
 | `step_length` | float | IRC ステップ長 (Bohr) |
 | `max_cycles` | int | 最大 IRC ステップ数 |
 | `input_file` | string | 入力ファイル名 |
 | `files` | object | 軌跡ファイル (xyz + pdb) |
+| `rigid_projection` | object | 剛体モードと初期Hessianのprovenance。[projection provenance](#rigid-projection-provenance)を参照 |
 
 ### `scan`
 
@@ -237,6 +284,9 @@ dimer モードも `status` に `"converged"` / `"not_converged"` を返しま�
 | `spin` | int | スピン多重度 |
 | `model` | string | MLIP モデル名 |
 | `solvent` | string | 暗黙溶媒 or `"none"` |
+| `preopt` | bool | 端点pre-optimizationを有効にしたか |
+| `reactant_energy_hartree` | float | 最初のimage energy (Hartree) |
+| `product_energy_hartree` | float | 最後のimage energy (Hartree) |
 | `image_energies_hartree` | float[] | 全イメージエネルギー |
 | `n_images` | int | イメージ数 |
 | `hei_index` | int | 最高エネルギーイメージのインデックス |
@@ -247,7 +297,10 @@ dimer モードも `status` に `"converged"` / `"not_converged"` を返しま�
 
 ### `path-search`
 
-`path-search` は `--out-json` フラグを持たず、`summary.json` を出力ディレクトリに**常に**書き出します。共通エンベロープ（`command`, `pdb2reaction_version`, `environment`）に加え、以下を含みます:
+`path-search` は `--out-json` フラグを持ちません。summary writerまで到達すれば
+共通エンベロープ（`command`, `pdb2reaction_version`, `environment`）を持つ
+`summary.json` を書き出しますが、早期のCLI/input検証ではfileが作られない場合があります。
+追加fieldは以下です:
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
@@ -264,10 +317,14 @@ dimer モードも `status` に `"converged"` / `"not_converged"` を返しま�
 
 ### `dft`
 
-> **注:** `dft` は SCF が収束した場合 (exit 0) のみ `result.json` を書き出します。SCF が収束しなかった場合は exit code 3 を返し `result.json` は作成されません。SCF 状態は `converged: bool` フィールドと exit code で表現され、`status` フィールドは持ちません。上記の汎用 "not_converged" ステータスは `dft` には適用されません。ただし、想定外の例外（unhandled exception）が発生した場合は、他サブコマンドと同じ標準の "error" エンベロープ（`result.json` + ミラーの `summary.json`）が書き出されます。
+> **注:** `dft` はSCF収束時 (exit 0) のみ `status: "converged"` を含む
+> `result.json` を書きます。非収束時はexit code 3でJSONを作らないため、exit codeが
+> signalです。汎用 `not_converged` statusは `dft` に適用しません。捕捉された想定外の
+> exceptionでは標準error envelopeをbest effortで書きます。
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
+| `status` | string | `"converged"` |
 | `converged` | bool | SCF 収束? |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
@@ -292,15 +349,15 @@ dimer モードも `status` に `"converged"` / `"not_converged"` を返しま�
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `status` | string | `"ok"` |
-| `n_atoms_raw` | int | 入力 PDB の原子数 |
-| `n_atoms_extracted` | int | 抽出後の原子数 |
+| `n_atoms_raw` | int | 選択残基に含まれるbackbone/truncation filter前の原子数（入力全体ではない） |
+| `n_atoms_extracted` | int | truncation後に保持した原子数（cap-H追加前） |
 | `total_charge` | float | 合計電荷 |
 | `protein_charge` | float | タンパク質電荷 |
 | `ligand_total_charge` | float | リガンド電荷合計 |
 | `ion_total_charge` | float | イオン電荷合計 |
 | `ion_charges` | list | `[[名前, 電荷], ...]` |
 | `unknown_residue_charges` | object | `{残基名: 電荷}` |
-| `n_link_hydrogens` | int | 切断された C/N 結合に追加されたキャップ水素数 |
+| `n_link_hydrogens` | int | 炭素原子側に残る切断結合へ追加されたキャップ水素数 |
 | `exclude_backbone` | bool | バックボーンを除外したか |
 | `include_h2o` | bool | 結晶水を含めたか |
 | `ligand_charge_input` | string | ユーザ指定 `--ligand-charge` マッピング |
@@ -317,7 +374,10 @@ dimer モードも `status` に `"converged"` / `"not_converged"` を返しま�
 | `n_frames` | int | 軌跡フレーム数 |
 | `min_energy_hartree` | float | フレーム中の最小エネルギー |
 | `max_energy_hartree` | float | フレーム中の最大エネルギー |
-| `backend` | string | MLIP バックエンド |
+| `energy_source` | string | `"trajectory_comment"` または `"mlip_recomputed"` |
+| `backend` | string または null | フレームを再計算した場合のみ MLIP backend。comment energy mode では null |
+| `charge` / `multiplicity` | int または null | 再計算時の解決済み電子状態。それ以外は null |
+| `solvent` / `solvent_model` | string または null | 再計算 calculator の溶媒設定。それ以外は null |
 | `files` | object | 出力プロットファイル |
 
 ### `energy-diagram`
@@ -358,8 +418,9 @@ dimer モードも `status` に `"converged"` / `"not_converged"` を返しま�
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `rate_limiting_step` | object | 律速段階のセグメント番号と障壁 |
+| `rate_limiting_step` | object | 全reactive segmentを完全に覆う最高method（`DFT//MLIP_Gibbs` > `DFT` > `MLIP_Gibbs` > `MLIP` > `MEP`）での最大障壁。`method` と raw `mep_barrier_kcal` を明記 |
 | `overall_reaction_energy_kcal` | float | 全体反応エネルギー |
+| `overall_reaction_energy_method` | string | 全体反応energyのmethod (`MEP`, `MLIP`, `MLIP_Gibbs`, `DFT`, `DFT//MLIP_Gibbs`) |
 | `post_segments` | list | セグメントごとの TS/IRC/freq/DFT 結果 |
 | `key_output_files` | object | 主要出力ファイル一覧 |
 

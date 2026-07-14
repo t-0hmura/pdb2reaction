@@ -1,23 +1,23 @@
 # `extract`
 
-タンパク質–リガンド PDB（単一構造またはアンサンブル）から、後続の MEP/TSOPT/freq/DFT 用の活性部位クラスターモデル（バインディングポケット）を切り出します。基質は `-c/--center` で残基名（`'GPP,SAM'`）、残基 ID（`'A:123A'`）、または PDB パスとして指定します。切断された結合にはキャップ水素が付加されます（`--add-linkh` 有効時、デフォルト）。非標準残基の電荷には `--ligand-charge/-l` を使用してください。
+タンパク質–リガンド PDB/mmCIF から活性部位クラスターモデルを切り出します。`-c/--center` は残基名、残基ID、chain付き残基名（`A:SAM`）、chain+残基名+番号（`A:SAM:123`）、または PDB/mmCIF パスを受け付けます。mmCIF および PDB 固定幅の上限に達する構造は内部で安全なPDB IDへ再割当てし、元のIDを復元したCIFも出力します。
 
 ## 実行例
 
 コマンド形式:
 
 ```bash
-pdb2reaction extract -i COMPLEX.pdb [-i COMPLEX2.pdb ...]
- -c SUBSTRATE_SPEC
- [-o MODEL.pdb [-o MODEL2.pdb ...]]
- [--radius Å] [--radius-het2het Å]
- [--include-h2o/--no-include-h2o]
- [--exclude-backbone/--no-exclude-backbone]
- [--add-linkh/--no-add-linkh]
- [--selected-resn LIST]
- [--modified-residue LIST]
- [-l, --ligand-charge MAP_OR_NUMBER]
- [--out-json/--no-out-json]
+pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb ...] \
+ -c SUBSTRATE_SPEC \
+ [-o MODEL.pdb [MODEL2.pdb ...]] \
+ [--radius Å] [--radius-het2het Å] \
+ [--include-h2o/--no-include-h2o] \
+ [--exclude-backbone/--no-exclude-backbone] \
+ [--add-linkh/--no-add-linkh] \
+ [--selected-resn LIST] \
+ [--modified-residue LIST] \
+ [-l, --ligand-charge MAP_OR_NUMBER] \
+ [--out-json/--no-out-json] \
  [-v LEVEL]
 ```
 
@@ -61,7 +61,7 @@ pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
  - `--exclude-backbone` の場合、アミノ酸残基は**非主鎖**原子（N/H*/CA/HA*/C/O/OXT 以外）で基質に接触する必要がある。非アミノ酸残基は任意の原子で接触判定される。
 - **独立したヘテロ-ヘテロカットオフ（`--radius-het2het`）:** 基質ヘテロ原子（非 C/H）がタンパク質ヘテロ原子の指定距離（Å）以内にある場合に残基を追加。`--exclude-backbone` 有効時はタンパク質側原子も非主鎖でなければならない。
 - **水処理:** HOH/WAT/H2O/DOD/TIP/TIP3/SOL はデフォルトで含まれる（`--include-h2o`）
-- **強制包含:** `--selected-resn` は**残基 ID** を受け入れます（例: `A:123A`）。残基 ID 仕様の詳細は CLI 規約の {ref}`ja-selected-resn-takes-ids` を参照。
+- **強制包含:** `--selected-resn` は `--center` と同じ残基ID・残基名・chain付きselectorを受け入れます。詳細は {ref}`ja-selected-resn-takes-ids` を参照。
 - **近傍セーフガード:**
  - `--no-exclude-backbone` で主鎖原子が基質に接触した場合、ペプチド隣接の N/C 側残基（C–N ≤ 1.9 Å）を自動的に含める。末端は N/H*または C/O/OXT のキャップを保持。
  - ジスルフィド結合（SG–SG ≤ 2.5 Å）は両方の Cys を包含。
@@ -107,7 +107,7 @@ pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
 
 ### マルチ構造アンサンブル
 
-- 複数の入力 PDB を受け付けます（先頭/末尾で原子順序の一致を検証）。各構造は独立に処理され、選択残基の**和集合**を全モデルに適用することで出力の一貫性を保ちます。
+- 複数の入力 PDB/mmCIF を受け付けます（全原子のidentity/orderを検証）。各構造は独立に処理され、選択残基の**和集合**を全モデルに適用します。
 - 出力ポリシー:
  - `-o` なし & 複数入力 → 構造ごとに `model_<original_basename>.pdb`。
  - `-o` を 1 つだけ指定 → 単一のマルチ MODEL PDB。
@@ -118,10 +118,11 @@ pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
 
 ```text
 <output>.pdb # TERレコード後にオプションのキャップ水素を含む活性部位モデル PDB
+<output>.cif # mmCIF/oversized-PDB入力時。元のchain/residue IDを復元
  # 単一入力 → デフォルトでmodel.pdb
  # -oなしの複数入力 → 構造ごとにmodel_<original_basename>.pdb
  # 複数入力で1つの-oパス → 単一のマルチMODEL PDB
- # 出力ディレクトリは自動作成されません。事前に存在を確認してください
+ # 親出力directoryは自動作成されます
 ```
 
 - verbose モードが有効な場合、モデル#1 の電荷サマリー（タンパク質/リガンド/イオン/総計）がログに記録されます。
@@ -131,29 +132,30 @@ pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `-i, --input PATH...` | 1 つ以上のタンパク質-リガンド PDB ファイル（同一の原子順序が必要） | 必須 |
-| `-c, --center SPEC` | 基質指定（PDB パス、残基 ID、または残基名） | 必須 |
+| `-i, --input PATH...` | 1つ以上のタンパク質–リガンド PDB/mmCIF（同一の原子identity/orderが必要） | 必須 |
+| `-c, --center SPEC` | PDB/mmCIFパス、残基ID/名、`CHAIN:RESNAME`、`CHAIN:RESNAME:RESSEQ` | 必須 |
 | `-o, --output PATH...` | 活性部位モデル PDB 出力。1 パス ⇒ マルチ MODEL、N パス ⇒ 入力ごと。複数入力で `-o` 1 つの場合は単一のマルチ MODEL PDB を生成。N 個の `-o` が N 個の入力と一致する場合は N 個の個別 PDB を生成 | 自動（`model.pdb` または `model_<input>.pdb`） |
 | `-r, --radius FLOAT` | 包含のための原子-原子距離カットオフ（Å、0 の場合は内部で 0.001 Å） | `2.6` |
 | `--radius-het2het FLOAT` | 独立したヘテロ-ヘテロカットオフ（Å、非 C/H） | `0.0`（0 の場合は内部で 0.001 Å） |
 | `--include-h2o/--no-include-h2o` | HOH/WAT/H2O/DOD/TIP/TIP3/SOL 水を含める | `True` |
 | `--exclude-backbone/--no-exclude-backbone` | 非基質アミノ酸の主鎖原子を除去 | `False` |
 | `--add-linkh/--no-add-linkh` | 切断された結合に 1.09 Å のキャップ水素を炭素境界にのみ付加（非炭素境界はキャップしない） | `True` |
-| `--selected-resn TEXT` | **残基 ID**（オプションのチェーン/挿入コード付き、例: `A:123A`）で強制的に含める残基。残基 ID 仕様の詳細は CLI 規約の {ref}`ja-selected-resn-takes-ids` を参照 | `""` |
+| `--selected-resn TEXT` | `--center` と同じselectorで残基を強制包含 | `""` |
 | `--modified-residue TEXT` | 修飾アミノ酸残基名をカンマ区切りで指定（任意で各残基に電荷付き）。主鎖切断と電荷計算でアミノ酸として扱います。例: `HD1,HD2,HD3` または `HD1:0,SEP:-2`。残基ごとに `:charge` 接尾辞を省略した場合、その残基の電荷は `0` になります（例: `HD1,HD2:-1` では `HD1` が電荷 0、`HD2` が電荷 −1）。フラグ全体のデフォルトは空文字列（無効） | `""` |
 | `-l, --ligand-charge TEXT` | 総電荷または残基名ごとのマッピング（例: `GPP:-3,SAM:1`） | _None_ |
 | `--out-json/--no-out-json` | 抽出された PDB(s) の隣に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 
 ### 基質指定（`-c/--center`）
 
-- **PDB パス**: 座標が先頭入力と完全一致（許容誤差 1e-3 Å）。残基 ID は他構造へ伝播。
+- **PDB/mmCIF パス**: 座標が先頭入力と完全一致（許容誤差 1e-3 Å）。残基 ID は他構造へ伝播。
 - **残基 ID**: `'123,124'`, `'A:123,B:456'`, `'123A'`, `'A:123A'`（挿入コード対応）。
 - **残基名**: カンマ区切り（大文字小文字は無視）。同名残基が複数ある場合は**すべて**含め、警告を出力。
+- **chain + 残基名**: `A:SAM` はchain A内のSAMをすべて選択し、`A:SAM:123` は1残基に限定。
 
 ## 注記
 
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
-- 抽出された活性部位モデルが小さすぎると、エネルギーや障壁の計算値が不正確になることがあります。その場合は抽出半径を大きくする（例: `-r 4.0` 以上）ことで、タンパク質環境をより多く含めて精度を改善できます。
+- 対象系ごとに抽出半径の収束性と化学的完全性を検証してください。`-r` を大きくすると環境を多く含められますが、精度が単調に改善する保証はなく計算costも増えます。
 - INFO ログに残基選択、切断数、電荷内訳の要約が出力されます。
 
 ## MCPB 等で生成された非標準残基を含む系

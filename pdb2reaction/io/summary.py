@@ -299,13 +299,13 @@ def _classify_diagram_method(diag: Dict[str, Any]) -> str:
     ylabel_txt = str(diag.get("ylabel", "")).lower()
 
     if "g_dft" in name or "gibbs_dft" in name or ("gibbs" in ylabel_txt and "dft" in name):
-        return "gibbs_dft_uma"
+        return "gibbs_dft_mlip"
     if "dft" in name:
         return "dft"
     if "g_mlip" in name or "gibbs" in name or "gibbs" in ylabel_txt:
-        return "gibbs_uma"
+        return "gibbs_mlip"
     if "mlip" in name:
-        return "uma"
+        return "mlip"
     return "mep"
 
 
@@ -499,12 +499,12 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
                     f"    IRC trajectory   : {_shorten_path(seg.get('irc_traj'), root_out_path)}"
                 )
             _emit_energy_block(
-                lines, "MLIP energies (TSOPT+IRC)", seg.get("uma"), root_out_path
+                lines, "MLIP energies (TSOPT+IRC)", seg.get("mlip"), root_out_path
             )
-            _emit_energy_block(lines, "MLIP Gibbs (thermo)", seg.get("gibbs_uma"), root_out_path)
+            _emit_energy_block(lines, "MLIP Gibbs (thermo)", seg.get("gibbs_mlip"), root_out_path)
             _emit_energy_block(lines, "DFT single-point", seg.get("dft"), root_out_path)
             _emit_energy_block(
-                lines, "DFT//MLIP Gibbs", seg.get("gibbs_dft_uma"), root_out_path
+                lines, "DFT//MLIP Gibbs", seg.get("gibbs_dft_mlip"), root_out_path
             )
 
             entry = segment_entries.setdefault(
@@ -516,30 +516,30 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
                 entry["mep_barrier"] = seg.get("mep_barrier_kcal")
             if seg.get("mep_delta_kcal") is not None:
                 entry["mep_delta"] = seg.get("mep_delta_kcal")
-            if seg.get("uma"):
-                uma_payload = seg.get("uma") or {}
-                if uma_payload.get("barrier_kcal") is not None:
-                    entry["uma_barrier"] = uma_payload.get("barrier_kcal")
-                if uma_payload.get("delta_kcal") is not None:
-                    entry["uma_delta"] = uma_payload.get("delta_kcal")
-            if seg.get("gibbs_uma"):
-                g_payload = seg.get("gibbs_uma") or {}
+            if seg.get("mlip"):
+                mlip_payload = seg.get("mlip") or {}
+                if mlip_payload.get("barrier_kcal") is not None:
+                    entry["mlip_barrier"] = mlip_payload.get("barrier_kcal")
+                if mlip_payload.get("delta_kcal") is not None:
+                    entry["mlip_delta"] = mlip_payload.get("delta_kcal")
+            if seg.get("gibbs_mlip"):
+                g_payload = seg.get("gibbs_mlip") or {}
                 if g_payload.get("barrier_kcal") is not None:
-                    entry["gibbs_uma_barrier"] = g_payload.get("barrier_kcal")
+                    entry["gibbs_mlip_barrier"] = g_payload.get("barrier_kcal")
                 if g_payload.get("delta_kcal") is not None:
-                    entry["gibbs_uma_delta"] = g_payload.get("delta_kcal")
+                    entry["gibbs_mlip_delta"] = g_payload.get("delta_kcal")
             if seg.get("dft"):
                 dft_payload = seg.get("dft") or {}
                 if dft_payload.get("barrier_kcal") is not None:
                     entry["dft_barrier"] = dft_payload.get("barrier_kcal")
                 if dft_payload.get("delta_kcal") is not None:
                     entry["dft_delta"] = dft_payload.get("delta_kcal")
-            if seg.get("gibbs_dft_uma"):
-                gd_payload = seg.get("gibbs_dft_uma") or {}
+            if seg.get("gibbs_dft_mlip"):
+                gd_payload = seg.get("gibbs_dft_mlip") or {}
                 if gd_payload.get("barrier_kcal") is not None:
-                    entry["gibbs_dft_uma_barrier"] = gd_payload.get("barrier_kcal")
+                    entry["gibbs_dft_mlip_barrier"] = gd_payload.get("barrier_kcal")
                 if gd_payload.get("delta_kcal") is not None:
-                    entry["gibbs_dft_uma_delta"] = gd_payload.get("delta_kcal")
+                    entry["gibbs_dft_mlip_delta"] = gd_payload.get("delta_kcal")
     else:
         lines.append("  (no post-processing results)")
 
@@ -547,14 +547,14 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
         table_rows = [
             ("MEP ΔE‡ [kcal/mol]", "mep_barrier"),
             ("MEP ΔE  [kcal/mol]", "mep_delta"),
-            ("MLIP ΔE‡ [kcal/mol]", "uma_barrier"),
-            ("MLIP ΔE  [kcal/mol]", "uma_delta"),
-            ("MLIP ΔG‡ [kcal/mol]", "gibbs_uma_barrier"),
-            ("MLIP ΔG  [kcal/mol]", "gibbs_uma_delta"),
+            ("MLIP ΔE‡ [kcal/mol]", "mlip_barrier"),
+            ("MLIP ΔE  [kcal/mol]", "mlip_delta"),
+            ("MLIP ΔG‡ [kcal/mol]", "gibbs_mlip_barrier"),
+            ("MLIP ΔG  [kcal/mol]", "gibbs_mlip_delta"),
             ("DFT//MLIP ΔE‡ [kcal/mol]", "dft_barrier"),
             ("DFT//MLIP ΔE  [kcal/mol]", "dft_delta"),
-            ("DFT//MLIP ΔG‡ [kcal/mol]", "gibbs_dft_uma_barrier"),
-            ("DFT//MLIP ΔG  [kcal/mol]", "gibbs_dft_uma_delta"),
+            ("DFT//MLIP ΔG‡ [kcal/mol]", "gibbs_dft_mlip_barrier"),
+            ("DFT//MLIP ΔG  [kcal/mol]", "gibbs_dft_mlip_delta"),
         ]
         sorted_entries = [segment_entries[k] for k in sorted(segment_entries.keys())]
         headers = [f"{int(e.get('index', 0)):d}({e.get('tag', '-')})" for e in sorted_entries]
@@ -613,10 +613,10 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
 
         table_rows: List[tuple[str, str]] = [
             ("MEP ΔE  [kcal/mol]", "mep"),
-            ("MLIP ΔE  [kcal/mol]", "uma"),
-            ("MLIP ΔG  [kcal/mol]", "gibbs_uma"),
+            ("MLIP ΔE  [kcal/mol]", "mlip"),
+            ("MLIP ΔG  [kcal/mol]", "gibbs_mlip"),
             ("DFT//MLIP ΔE  [kcal/mol]", "dft"),
-            ("DFT//MLIP ΔG  [kcal/mol]", "gibbs_dft_uma"),
+            ("DFT//MLIP ΔG  [kcal/mol]", "gibbs_dft_mlip"),
         ]
 
         label_width = max(len(label) for label, _ in table_rows) + 2

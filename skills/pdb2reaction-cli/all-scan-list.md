@@ -7,7 +7,7 @@ articulate the chemistry as a sequence of staged distance scans —
 e.g. "first push the methyl from S of SAM to C7 of GPP, then snap H11
 to OE2 of GLU 186". `pdb2reaction all` runs each stage in order and ties
 the resulting trajectories into an MEP. By default the MEP stage is
-single-pass `path-opt`; pass `--refine-path True` to run the recursive
+single-pass `path-opt`; pass `--refine-path` to run the recursive
 bond-change segmentation that slots in any intermediates it finds.
 
 ## Synopsis
@@ -22,7 +22,8 @@ pdb2reaction all -i 1.R.pdb \
     -o result_scan
 ```
 
-Each `--scan-lists '...'` argument is **one stage**. Stages run
+Use exactly one `--scan-lists` flag. Each space-separated literal following
+that flag is **one stage**. Stages run
 sequentially; the final geometry of stage *k* is the input geometry of
 stage *k+1*.
 
@@ -35,18 +36,27 @@ tuples, where each tuple is `(atom_a, atom_b, target_distance_Å)`.
 [ ("<atom-spec>", "<atom-spec>", <float>) , ... ]
 ```
 
-`<atom-spec>` is a string of three tokens (atom name, residue name, residue index) in **any order**, separated by whitespace, comma, slash, backtick, or backslash. Tokens are matched by type (atom name / resname / numeric index) rather than position. Common conventions:
+`<atom-spec>` is either three tokens (atom name, residue name, residue index)
+in **any order**, or the positional four-field form
+`CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`. The latter is required when repeated residue
+numbers or names would otherwise be ambiguous. Three-field tokens may be
+separated by whitespace, comma, slash, backtick, or backslash.
 
 | Form | Example |
 |---|---|
 | `"NAME RESNAME RESID"` (whitespace) | `"CS1 SAM 320"` |
 | `"NAME,RESNAME,RESID"` (comma) | `"CS1,SAM,320"` |
 | `"RESNAME/RESID/NAME"` (slash) | `"SAM/320/CS1"` |
+| `"CHAIN:RESNAME:RESSEQ[ICODE]:ATOM"` | `"A:SAM:320:CS1"` |
 
-The parser (`utils.resolve_atom_spec_index`) auto-detects the role of each token by type (integer = resid, known residue name = resname, otherwise atom name); chain IDs are not part of the spec.
+The parser (`utils.resolve_atom_spec_index`) auto-detects roles in the
+three-field form. The four-field chain-qualified form is positional and must
+use the order shown above; this keeps numeric or repeated chain IDs
+unambiguous.
 
 Multiple bonds in one stage are driven simultaneously. If you want them done
-**sequentially**, split them into separate `--scan-lists` arguments.
+**sequentially**, split them into separate literal values after the same
+`--scan-lists` occurrence. Repeating the flag is rejected.
 
 Examples:
 
@@ -63,12 +73,14 @@ Examples:
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--scan-lists` | required | One or more stages of distance-restraint scans |
+| `--scan-lists` | required once | One or more following literal values, one per distance-restraint stage |
 | `--mep-mode` | `gsm` | After scans complete, MEP refinement uses GSM unless `dmf` |
 
-Unlike endpoint-MEP mode, `-i` is **a single PDB** (the reactant). The
-toolkit synthesizes intermediate / product geometries from the scan
-trajectories.
+Unlike endpoint-MEP mode, `-i` is **one reactant structure** in
+PDB/mmCIF/XYZ/GJF format. The toolkit synthesizes intermediate/product
+geometries from the scan trajectories. XYZ/GJF inputs cannot use residue
+selectors or `-c` extraction; use numeric atom selectors and provide a verified
+explicit charge (or a valid GJF header).
 
 ## Output
 
@@ -76,11 +88,11 @@ Same overall layout as `all.md`, plus per-stage scan output:
 
 | Path | When | Content |
 |---|---|---|
-| `<out_dir>/_work/scan/stage_NN/{scan_trj.xyz,result.{xyz,pdb,gjf}}` | always | raw distance-restraint scan trajectory + per-stage final geometry (scratch) |
-| `<out_dir>/_work/path_opt/mep_seg_NN_trj.xyz`, `mep_seg_NN.{pdb,gjf}` | always (`_work/path_search/` when `--refine-path True`) | per-segment MEP strings (scratch) |
-| `<out_dir>/segments/seg_NN/` | always | per-segment deliverables + post-processing (ts/irc/freq/dft) + energy diagrams |
-| `<out_dir>/segments/seg_NN/{reactant,ts,product}.{pdb,xyz,gjf}` | always | canonical R/TS/P per segment |
-| `<out_dir>/summary.json` | always | machine-readable result |
+| `<out_dir>/_work/scan/stage_NN/{scan_trj.xyz,result.{xyz,pdb,cif,gjf}}` | corresponding scan stage reaches output; companions depend on topology/template | raw distance-restraint scan trajectory + per-stage final geometry (scratch) |
+| `<out_dir>/_work/path_opt/mep_seg_NN_trj.xyz`, `mep_seg_NN.{pdb,cif,gjf}` | corresponding MEP segment succeeds (`_work/path_search/` with `--refine-path`); companions depend on topology/template | per-segment MEP strings (scratch) |
+| `<out_dir>/segments/seg_NN/` | a candidate segment enters post-processing | per-segment deliverables; may be partial after failure |
+| `<out_dir>/segments/seg_NN/{reactant,ts,product}.{pdb,cif,xyz,gjf}` | successful `--tsopt` + IRC/endpoint processing; companions depend on topology/template | canonical R/TS/P per processed segment; CIF restores bridge-input IDs |
+| `<out_dir>/summary.json` | pipeline summary/error handling reaches output | machine-readable result; check top-level and per-stage status |
 
 For per-stage scan diagnostics (target distances, convergence, energies),
 run `pdb2reaction scan` standalone with `--out-json` and parse
@@ -92,18 +104,21 @@ its `summary.json`.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Stage k goes to a different geometry than expected | Distance restraint not strong enough; SCF found a side product | Tighten the target distance, or split a complex stage into two simpler ones |
-| `--scan-lists` triggers a Python literal-eval error | Quoting mistake | Wrap each stage in single quotes outside, double quotes inside; backticks survive bash without escaping |
-| Path search reports more segments than expected (`--refine-path True` only) | Bond-change detector found a "free" intermediate | Usually correct; inspect the IM geometry in `seg_01/product.{pdb,xyz,gjf}` (= `seg_02/reactant.{pdb,xyz,gjf}`); the extension follows the `-i` input format. The default single-pass `path-opt` does not add segments. |
+| Stage k goes to a different geometry than expected | The restrained MLIP optimization relaxed into another basin, or the chosen coordinate under-specifies the mechanism | Inspect the trajectory, revise/add a chemically meaningful coordinate, or split a complex stage into simpler stages; do not merely assume the side product is valid |
+| `--scan-lists` triggers a Python literal-eval error | Quoting mistake | Wrap each stage in outer single quotes and use double quotes inside. Prefer whitespace/comma/slash atom selectors; a backtick is safe only while it remains inside those outer single quotes. |
+| Path search reports more segments than expected (`--refine-path` only) | Bond-change segmentation proposed an additional candidate intermediate | Inspect and validate the IM and adjacent TS/IRC results; extra segmentation is not proof that the intermediate is chemically real. The default single-pass `path-opt` does not add segments. |
 
 ## Caveats
 
-- The atom specs must match the **exact** atom names in the input PDB
+- The atom specs must match the **exact** atom names in the input PDB/mmCIF
   (case sensitive). PyMOL/Maestro sometimes rename `CB` ↔ `CB1`.
+- If a three-field spec matches more than one atom, add the auth chain ID as
+  `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`; do not guess from the first match.
 - `--scan-lists` is incompatible with multiple `-i` inputs (the latter
   triggers `all-endpoint-mep.md`).
-- Each stage can take longer than path-search itself; budget walltime
-  accordingly.
+- Every stage adds a restrained optimization before the MEP calculation;
+  benchmark a pilot stage and budget from measured timings rather than assuming
+  a fixed scan-to-path-search cost ratio.
 
 ## See also
 

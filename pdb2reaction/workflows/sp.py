@@ -26,7 +26,6 @@ import torch
 import yaml
 
 from pysisyphus.helpers import geom_loader
-from pysisyphus.constants import ANG2BOHR, AU2EV
 
 from pdb2reaction.backends import create_calculator, apply_calc_file_to_calc_cfg
 from pdb2reaction.core.defaults import (
@@ -44,6 +43,7 @@ from pdb2reaction.core.utils import (
     resolve_freeze_atoms,
     set_convert_file_enabled,
     validate_charge_spin_for_prepared,
+    yaml_freeze_to_internal,
 )
 from pdb2reaction.cli.common_options import (
     add_ml_charge_spin_options,
@@ -58,12 +58,7 @@ from pdb2reaction.cli.decorators import (
     load_merged_yaml_cfg,
     resolve_yaml_sources,
 )
-from pdb2reaction.workflows.freq import _calc_full_hessian_torch, _torch_device
-
 logger = logging.getLogger(__name__)
-
-EV2AU = 1.0 / AU2EV
-H_EVAA_2_AU = EV2AU / (ANG2BOHR * ANG2BOHR)
 
 
 @click.command(
@@ -73,7 +68,7 @@ H_EVAA_2_AU = EV2AU / (ANG2BOHR * ANG2BOHR)
     "-i", "--input", "input_path",
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     required=True,
-    help="Input structure (PDB / XYZ / GJF).",
+    help="Input structure (PDB / mmCIF / XYZ / GJF).",
 )
 @click.option(
     "--workers", type=int, default=UMA_CALC_KW["workers"], show_default=True,
@@ -90,7 +85,7 @@ H_EVAA_2_AU = EV2AU / (ANG2BOHR * ANG2BOHR)
 )
 @click.option(
     "--hess/--no-hess", "do_hess", default=False, show_default=True,
-    help="Also compute the full Hessian and save to hessian.npy.",
+    help="Also compute a Hessian and save it to hessian.npy (active block when YAML geom.freeze_atoms is non-empty).",
 )
 @click.option(
     "--hessian-calc-mode", "hessian_calc_mode",
@@ -105,7 +100,7 @@ H_EVAA_2_AU = EV2AU / (ANG2BOHR * ANG2BOHR)
 @click.option(
     "--convert-files/--no-convert-files", "convert_files",
     default=True, show_default=True,
-    help="Auto-convert output XYZ-like files into companion PDB files written alongside them when the input had PDB metadata.",
+    help="Auto-convert XYZ-like outputs to PDB companions; mmCIF/oversized-PDB inputs also receive CIF companions with original IDs.",
 )
 @click.option(
     "--config", "config_yaml",
@@ -169,7 +164,7 @@ def cli(
     precision: Optional[str],
     backend_model: Optional[str],
     calc_file: Optional[str],
-    calc_factory: str,
+    calc_factory: Optional[str],
     print_every: Optional[int],
 ) -> None:
     """Compute a single-point MLIP energy + forces (and optionally Hessian)."""
@@ -180,6 +175,10 @@ def cli(
     )
     merged_yaml_cfg, config_layer_cfg, _override_layer_cfg = load_merged_yaml_cfg(
         config_yaml=config_yaml, override_yaml=None,
+    )
+    from pdb2reaction.core.utils import resolve_configured_charge_spin
+    charge, spin = resolve_configured_charge_spin(
+        merged_yaml_cfg, charge=charge, spin=spin, ligand_charge=ligand_charge,
     )
 
     prepared_inputs = [prepare_input_structure(input_path)]
@@ -235,6 +234,11 @@ def cli(
 
         apply_backend_defaults(calc_cfg)
 
+        # YAML uses human-facing 1-based atom indices; pysisyphus and the
+        # calculator adapters use 0-based indices internally.
+        if geom_cfg.get("freeze_atoms"):
+            geom_cfg["freeze_atoms"] = yaml_freeze_to_internal(geom_cfg["freeze_atoms"])
+
         resolved_charge, resolved_spin = resolve_charge_spin(
             prepared_inputs, charge=charge, spin=spin,
             ligand_charge=ligand_charge, prefix="[sp]",
@@ -277,6 +281,18 @@ def cli(
             "charge/spin": f"{calc_cfg.get('charge')}/{calc_cfg.get('spin')}",
             "out": str(out_dir_path),
         })
+        hessian_mode: Optional[str] = None
+        if sp_cfg["hess"]:
+            hessian_mode = sp_cfg.get("hessian_calc_mode") or (
+                "Analytical" if calc_cfg["backend"] == "uma" else "FiniteDifference"
+            )
+            # Every built-in pysis calculator implements the same get_hessian
+            # contract. Propagate the resolved request before constructing the
+            # calculator; otherwise ORB/MACE/AIMNet2 silently retain their FD
+            # default even when the CLI explicitly requested Analytical.
+            calc_cfg["hessian_calc_mode"] = hessian_mode
+            calc_cfg["out_hess_torch"] = True
+
         calc = create_calculator(**calc_cfg)
         geom.set_calculator(calc)
 
@@ -294,20 +310,22 @@ def cli(
         # Optional Hessian
         hessian_path: Optional[Path] = None
         if sp_cfg["hess"]:
-            mode = sp_cfg.get("hessian_calc_mode") or ("Analytical" if calc_cfg["backend"] == "uma" else "FiniteDifference")
-            click.echo(f"[sp] computing full Hessian (mode={mode}) …")
+            assert hessian_mode is not None
+            click.echo(f"[sp] computing Hessian (mode={hessian_mode}) …")
             t0 = time.perf_counter()
-            if mode.lower() == "analytical" and calc_cfg["backend"] == "uma":
-                device = _torch_device()
-                H_tensor = _calc_full_hessian_torch(geom, calc_cfg, device)
-                H_np = H_tensor.detach().cpu().numpy()
-                # C-NEED: sp dumps Hessian to npy; release GPU copy now.
-                del H_tensor
+            hess_results = calc.get_hessian(geom.atoms, geom.cart_coords)
+            try:
+                geom.set_results(hess_results)
+            except Exception:
+                logger.debug("Failed to cache SP Hessian on Geometry", exc_info=True)
+            H_raw = hess_results["hessian"]
+            if isinstance(H_raw, torch.Tensor):
+                H_np = H_raw.detach().cpu().numpy()
+                del H_raw
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
             else:
-                # FiniteDifference via pysisyphus geom.hessian path
-                H_np = np.asarray(geom.hessian, dtype=float)
+                H_np = np.asarray(H_raw, dtype=float)
             elapsed_h = time.perf_counter() - t0
             hessian_path = out_dir_path / "hessian.npy"
             np.save(hessian_path, H_np)
@@ -318,7 +336,7 @@ def cli(
         summary = {
             "stage": "sp",
             "status": "ok",
-            "input": str(prepared_inputs[0].source_path),
+            "input": str(prepared_inputs[0].display_path),
             "backend": calc_cfg["backend"],
             "model": calc_cfg.get("model"),
             "charge": calc_cfg["charge"],
@@ -356,6 +374,8 @@ def cli(
         )
         sys.exit(1)
     finally:
+        for prepared in prepared_inputs:
+            prepared.cleanup()
         try:
             del geom  # type: ignore[name-defined]
         except NameError:

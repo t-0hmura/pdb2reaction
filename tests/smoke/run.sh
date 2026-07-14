@@ -5,16 +5,25 @@
 # This script assumes the calling environment already has:
 #   - a Python with `pdb2reaction` installed and importable
 #   - CUDA available
-#   - a writeable working directory (the smoke artefacts land in `test*/`)
+#   - a writable scratch copy of this directory (artefacts land in `testNN*`)
 # It does NOT activate conda, load modules, or contain HPC scheduler
-# directives. Run it directly from your active env:
+# directives. Copy the fixtures to scratch, then run from that copy:
 #
-#   bash tests/smoke/run.sh
+#   cp -a tests/smoke /path/to/scratch/p2r-smoke
+#   cd /path/to/scratch/p2r-smoke
+#   bash run.sh
 #
 # If you need an HPC scheduler wrapper, keep that in
 # your own out-of-tree submission script and have it invoke this file as
 # the body.
 set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null || true)"
+if [[ -n "$REPO_ROOT" ]]; then
+  echo "ERROR: copy tests/smoke to writable scratch and run that copy; do not run the repository script in place." >&2
+  exit 2
+fi
 
 # Deterministic run gate: pin PYTHONHASHSEED so Set / dict iteration order
 # does not leak hash randomisation into the produced output. Combined with the
@@ -24,8 +33,9 @@ export PYTHONHASHSEED=0
 # Reduce CUDA allocator fragmentation across the 40+ stage processes.
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 
-# Clean previous results
-rm -rf test* p_complex_model.pdb model_r.pdb r_complex_elem.pdb r_complex_fixalt.pdb
+# Clean only artifacts authored by this harness. The digit-qualified glob must
+# not be widened to `test*`, which would also match the repository's tests/.
+rm -rf -- test[0-9]* p_complex_model.pdb model_r.pdb r_complex_elem.pdb r_complex_fixalt.pdb
 
 P_COMPLEX_MODEL_FREEZE_ATOMS="1,32"
 
@@ -68,13 +78,13 @@ pdb2reaction path-search -i r.pdb p.pdb -q -1 --max-nodes 5 --max-cycles 5 --out
 # --- Input format tests (all command) ---
 
 # test12: all (pdb+pdb, --no-refine-path for single-pass path-opt)
-pdb2reaction -i r.pdb p.pdb -q -1 --refine-path false --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test12 > test12.out 2>&1
+pdb2reaction -i r.pdb p.pdb -q -1 --no-refine-path --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test12 > test12.out 2>&1
 
 # test13: all (xyz+xyz, --ref-pdb for PDB conversion, --no-refine-path for single-pass path-opt)
-pdb2reaction -i r.xyz p.xyz -q -1 --ref-pdb r.pdb --refine-path false --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test13 > test13.out 2>&1
+pdb2reaction -i r.xyz p.xyz -q -1 --ref-pdb r.pdb --no-refine-path --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test13 > test13.out 2>&1
 
 # test14: all (gjf+gjf, --no-refine-path for single-pass path-opt)
-pdb2reaction -i r.gjf p.gjf --refine-path false --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test14 > test14.out 2>&1
+pdb2reaction -i r.gjf p.gjf --no-refine-path --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test14 > test14.out 2>&1
 
 # test15: all (scan-lists, pdb)
 pdb2reaction -i r.pdb -q -1 --scan-lists "[(1,5,1.4)]" --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test15 > test15.out 2>&1
@@ -91,7 +101,7 @@ pdb2reaction opt -i p_complex.pdb --ligand-charge 'PRE:-2' --max-cycles 3 --thre
 pdb2reaction -i p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' --scan-lists "[('PRE 8 C3','PRE 8 O1\'',1.4),('PRE 8 C1','PRE 8 C8',3.3)]" -r 5.0 --no-exclude-backbone --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test18 > test18.out 2>&1
 
 # test19: all (complex, multi-input, --no-refine-path for single-pass path-opt)
-pdb2reaction -i r_complex.pdb p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --no-exclude-backbone --refine-path false --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test19 > test19.out 2>&1
+pdb2reaction -i r_complex.pdb p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --no-exclude-backbone --no-refine-path --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test19 > test19.out 2>&1
 
 # --- TSOPT-only mode ---
 
@@ -104,7 +114,7 @@ pdb2reaction -i ts.pdb -q 0 --tsopt --opt-mode-post hess --max-cycles 5 --thresh
 # --- MEP mode ---
 
 # test22: all (pdb+pdb, mep-mode dmf, --no-refine-path for single-pass path-opt)
-pdb2reaction -i r.pdb p.pdb -q -1 --mep-mode dmf --refine-path false --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test22 > test22.out 2>&1
+pdb2reaction -i r.pdb p.pdb -q -1 --mep-mode dmf --no-refine-path --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test22 > test22.out 2>&1
 
 # --- TSOPT for complex systems ---
 
@@ -180,8 +190,8 @@ pdb2reaction opt -i r.pdb -q -1 --dist-freeze "[(1,2,1.5),(3,4)]" --dry-run --ou
 
 # --- refine-path ---
 
-# test41: all (pdb+pdb, --refine-path true = recursive path_search opt-in; the default is now single-pass path-opt)
-pdb2reaction -i r.pdb p.pdb -q -1 --refine-path true --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test41 > test41.out 2>&1
+# test41: all (pdb+pdb, --refine-path = recursive path_search opt-in; the default is now single-pass path-opt)
+pdb2reaction -i r.pdb p.pdb -q -1 --refine-path --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test41 > test41.out 2>&1
 
 # --- Polish-train new CLI flags (A1 + W3 + B4 wires; all opt-in, defaults preserve Table 1 numerics) ---
 
@@ -205,7 +215,7 @@ pdb2reaction opt -i r.pdb -q -1 --opt-mode hess --max-cycles 5 --thresh gau_loos
 # runs carry ~ULP scatter/atomic non-determinism and are not asserted here;
 # `--deterministic` enables torch deterministic algorithms and MUST be
 # bit-reproducible, so any drift is a real regression and fails the smoke.
-det_args="-i r.pdb p.pdb -q -1 --refine-path false --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --deterministic"
+det_args="-i r.pdb p.pdb -q -1 --no-refine-path --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --deterministic"
 pdb2reaction $det_args --out-dir test47_a > test47_a.out 2>&1
 pdb2reaction $det_args --out-dir test47_b > test47_b.out 2>&1
 {
@@ -230,10 +240,10 @@ fi
 # --- --coord-type CLI plumbing (throttled, fast) ---
 
 # test48: `all --coord-type cart` — explicit cart (== default), verifies CLI plumbing.
-pdb2reaction all -i r.pdb p.pdb -q -1 --coord-type cart --refine-path false --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test48 > test48.out 2>&1
+pdb2reaction all -i r.pdb p.pdb -q -1 --coord-type cart --no-refine-path --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test48 > test48.out 2>&1
 
 # test49: `all --coord-type dlc` — DLC propagated to child opt / tsopt / path-opt stages.
-pdb2reaction all -i r.pdb p.pdb -q -1 --coord-type dlc --refine-path false --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test49 > test49.out 2>&1
+pdb2reaction all -i r.pdb p.pdb -q -1 --coord-type dlc --no-refine-path --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test49 > test49.out 2>&1
 
 # test50: `sp` (single-point) — energy + forces.
 pdb2reaction sp -i r.pdb -q -1 --out-dir test50 > test50.out 2>&1
@@ -332,14 +342,15 @@ pdb2reaction path-search -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --max
 pdb2reaction path-search -i r.pdb p.pdb -q -1 --opt-mode hess --workers 1 --max-nodes 5 --max-cycles 3 --no-endopt --out-dir test66_ps_hess > test66_ps_hess.out 2>&1
 
 # test67: all --tsopt (MEP->HEI->TSopt+IRC handoff through the `all` orchestrator)
-# Throttled cycles (--tsopt-max-cycles 5) can leave the TS just short of a clean
-# saddle, so IRC may refuse to initiate (no imaginary mode below threshold). That
-# specific throttled-run outcome is tolerated; any other failure stays fatal.
+# Throttled cycles (--tsopt-max-cycles 5) can leave the TS short of a validated
+# first-order saddle. Only the orchestrator's exact TS-validation refusal is
+# tolerated; unrelated failures remain fatal.
 rc=0
 pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --max-cycles 3 --tsopt-max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test67_all_tsopt > test67_all_tsopt.out 2>&1 || rc=$?
 if [ "${rc:-0}" -ne 0 ]; then
-  if grep -qiE "IRC|did not converge|not converged" test67_all_tsopt.out; then
-    echo "[smoke] test67: IRC non-convergence on throttled run (rc=$rc) — tolerated, continuing"
+  if grep -Fq "TS optimization did not produce a validated first-order saddle" test67_all_tsopt.out \
+    && grep -Fq "IRC was not started." test67_all_tsopt.out; then
+    echo "[smoke] test67: exact TS validation rejected the throttled run (rc=$rc) — tolerated, continuing"
   else
     echo "[smoke] FAIL test67 (rc=$rc) — real pipeline failure"
     tail -40 test67_all_tsopt.out
@@ -366,13 +377,13 @@ fi
 
 # --- refine-path opt-in (recursive path_search) extra coverage ---
 # Since the `all` default is now single-pass path-opt, exercise the recursive
-# path_search opt-in (`--refine-path true`) across more input modes than test41.
+# path_search opt-in (`--refine-path`) across more input modes than test41.
 
-# test71: all --scan-lists --refine-path true (single-PDB scan -> recursive path_search)
-pdb2reaction all -i r.pdb -q -1 --scan-lists "[(1,5,1.4)]" --refine-path true --max-cycles 5 --thresh gau_loose --no-tsopt --no-thermo --no-dft --out-dir test71_rp_scan > test71_rp_scan.out 2>&1
+# test71: all --scan-lists --refine-path (single-PDB scan -> recursive path_search)
+pdb2reaction all -i r.pdb -q -1 --scan-lists "[(1,5,1.4)]" --refine-path --max-cycles 5 --thresh gau_loose --no-tsopt --no-thermo --no-dft --out-dir test71_rp_scan > test71_rp_scan.out 2>&1
 
-# test72: all (complex multi-input) --refine-path true (recursive path_search on the extracted model)
-pdb2reaction all -i r_complex.pdb p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --no-exclude-backbone --refine-path true --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --no-tsopt --no-thermo --no-dft --out-dir test72_rp_complex > test72_rp_complex.out 2>&1
+# test72: all (complex multi-input) --refine-path (recursive path_search on the extracted model)
+pdb2reaction all -i r_complex.pdb p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --no-exclude-backbone --refine-path --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --no-tsopt --no-thermo --no-dft --out-dir test72_rp_complex > test72_rp_complex.out 2>&1
 
 # test73: extract MULTI-INPUT via space-separated '-i a.pdb b.pdb' (one flag, two paths).
 # Regression guard: a single -i with several space-separated paths must NOT drop the 2nd input.
@@ -388,3 +399,19 @@ fi
 # dry-run + show-config (no model download, fast): proves --backend-model is honored.
 pdb2reaction opt -i r.pdb -q -1 --backend-model uma-s-1p2 --show-config --dry-run --out-dir test74_backend_model > test74_backend_model.out 2>&1
 grep -q 'uma-s-1p2' test74_backend_model.out || { echo "[smoke] FAIL test74: --backend-model uma-s-1p2 not reflected in resolved config" >> test74_backend_model.out; exit 1; }
+
+# test75: mmCIF input crosses the internal PDB bridge for a real MLIP run and
+# restores the original long chain / large residue identifiers in public CIF.
+pdb2reaction opt -i r_complex.cif -q 0 --max-cycles 1 --thresh gau_loose --out-dir test75_opt_cif > test75_opt_cif.out 2>&1
+test -s test75_opt_cif/final_geometry.pdb || { echo "[smoke] FAIL test75: final PDB missing" >> test75_opt_cif.out; exit 1; }
+test -s test75_opt_cif/final_geometry.cif || { echo "[smoke] FAIL test75: final CIF missing" >> test75_opt_cif.out; exit 1; }
+grep -q 'LONG_CHAIN' test75_opt_cif/final_geometry.cif || { echo "[smoke] FAIL test75: auth chain was not restored" >> test75_opt_cif.out; exit 1; }
+grep -q '10001' test75_opt_cif/final_geometry.cif || { echo "[smoke] FAIL test75: auth residue number was not restored" >> test75_opt_cif.out; exit 1; }
+
+# test76: chain + residue-name + residue-number selection remains exact after
+# mmCIF normalization, and extract emits both its internal PDB and public CIF.
+pdb2reaction extract -i r_complex.cif -c 'LONG_CHAIN:PRE:10001' -r 0.1 --no-add-linkh -o model_from_cif.pdb -v 0 > test76_extract_cif.out 2>&1
+test -s model_from_cif.pdb || { echo "[smoke] FAIL test76: extracted PDB missing" >> test76_extract_cif.out; exit 1; }
+test -s model_from_cif.cif || { echo "[smoke] FAIL test76: extracted CIF missing" >> test76_extract_cif.out; exit 1; }
+
+echo "[smoke] PASS: all GPU and structure-I/O cases completed."

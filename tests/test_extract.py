@@ -57,6 +57,57 @@ class TestParseResTokens:
         result = _parse_res_tokens("A:10,B:20")
         assert len(result) == 2
 
+    def test_negative_resseq(self):
+        from pdb2reaction.workflows.extract import _parse_res_tokens
+
+        assert _parse_res_tokens("A:-2") == [("A", -2, None)]
+
+
+def test_chain_resname_selector_limits_repeated_ligands_to_requested_chain():
+    import io
+    from Bio import PDB
+    from pdb2reaction.workflows.extract import resolve_substrate_residues
+
+    pdb_text = (
+        "HETATM    1  C1  SAM A  10       0.000   0.000   0.000  1.00  0.00           C\n"
+        "HETATM    2  C1  SAM A  20       1.000   0.000   0.000  1.00  0.00           C\n"
+        "HETATM    3  C1  SAM B  10       2.000   0.000   0.000  1.00  0.00           C\n"
+        "END\n"
+    )
+    structure = PDB.PDBParser(QUIET=True).get_structure("repeated", io.StringIO(pdb_text))
+
+    chain_matches = resolve_substrate_residues(structure, "A:SAM")
+    assert [residue.id[1] for residue in chain_matches] == [10, 20]
+    exact_match = resolve_substrate_residues(structure, "A:SAM:20")
+    assert len(exact_match) == 1
+    assert exact_match[0].get_parent().id == "A"
+    assert exact_match[0].id[1] == 20
+
+
+def test_chain_resname_parser_accepts_ccd_and_negative_ids():
+    from pdb2reaction.workflows.extract import _parse_chain_resname_tokens
+
+    assert _parse_chain_resname_tokens("A:1AB:-2C") == [("A", "1AB", -2, "C")]
+
+
+def test_valid_selector_not_found_error_is_not_reinterpreted_as_resname():
+    import io
+
+    import pytest
+    from Bio import PDB
+    from pdb2reaction.workflows.extract import resolve_substrate_residues
+
+    pdb_text = (
+        "HETATM    1  C1  SAM A  10       0.000   0.000   0.000  1.00  0.00           C\n"
+        "END\n"
+    )
+    structure = PDB.PDBParser(QUIET=True).get_structure("single", io.StringIO(pdb_text))
+
+    with pytest.raises(ValueError, match="A:999"):
+        resolve_substrate_residues(structure, "A:999")
+    with pytest.raises(ValueError, match="A:SAM:999"):
+        resolve_substrate_residues(structure, "A:SAM:999")
+
 
 class TestMaxSerialFromPdbText:
     def test_basic(self):
@@ -224,3 +275,73 @@ def test_compute_charge_summary_terminus_cap_charges():
     assert compute_charge_summary(
         structure, sel, set(), keep_ncap_ids={nterm}, keep_ccap_ids={cterm}
     )["protein_charge"] == 0.0
+
+
+def _charge_test_structure():
+    """Return a tiny selected LIG + MG structure for charge-mapping tests."""
+    import numpy as np
+    from Bio.PDB import Atom, Chain, Model, Residue, Structure
+
+    structure = Structure.Structure("charge")
+    model = Model.Model(0)
+    chain = Chain.Chain("A")
+    structure.add(model)
+    model.add(chain)
+
+    ligand = Residue.Residue(("H_LIG", 1, " "), "LIG", " ")
+    ligand.add(Atom.Atom("C1", np.zeros(3), 0.0, 1.0, " ", " C1 ", 1, "C"))
+    chain.add(ligand)
+
+    magnesium = Residue.Residue(("H_MG", 2, " "), "MG", " ")
+    magnesium.add(Atom.Atom("MG", np.ones(3), 0.0, 1.0, " ", " MG ", 2, "MG"))
+    chain.add(magnesium)
+    return structure, ligand, magnesium
+
+
+def test_compute_charge_summary_ligand_mapping_matches_unknown(monkeypatch):
+    from pdb2reaction.workflows import extract as extract_module
+
+    structure, ligand, magnesium = _charge_test_structure()
+    warnings = []
+    monkeypatch.setattr(
+        extract_module,
+        "_echo_warning",
+        lambda msg, *args: warnings.append(extract_module._format_echo_message(msg, *args)),
+    )
+
+    result = extract_module.compute_charge_summary(
+        structure,
+        {ligand.get_full_id(), magnesium.get_full_id()},
+        {ligand.get_full_id()},
+        "LIG:-2",
+    )
+
+    assert result["ligand_total_charge"] == -2.0
+    assert result["ion_total_charge"] == 2.0
+    assert result["total_charge"] == 0.0
+    assert warnings == []
+
+
+def test_compute_charge_summary_warns_for_unmatched_mapping_entries(monkeypatch):
+    from pdb2reaction.workflows import extract as extract_module
+
+    structure, ligand, magnesium = _charge_test_structure()
+    warnings = []
+    monkeypatch.setattr(
+        extract_module,
+        "_echo_warning",
+        lambda msg, *args: warnings.append(extract_module._format_echo_message(msg, *args)),
+    )
+
+    result = extract_module.compute_charge_summary(
+        structure,
+        {ligand.get_full_id(), magnesium.get_full_id()},
+        {ligand.get_full_id()},
+        "LIG:-2,MG:99,ABS:1",
+    )
+
+    assert result["total_charge"] == 0.0
+    assert len(warnings) == 1
+    assert "ABS, MG" in warnings[0]
+    assert "matched no unknown" in warnings[0]
+    assert "Use -q to override" in warnings[0]

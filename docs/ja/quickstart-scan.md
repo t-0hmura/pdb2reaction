@@ -52,8 +52,6 @@ result_scan/
 ├── summary.json
 ├── mep.pdb                        # MEP 全体パス（ルートへ配置）
 ├── energy_diagram_MEP.png         # MEP エネルギー図（ルートへ配置）
-├── segments/
-│   └── seg_01/                    # 反応セグメントごとの成果物
 └── _work/                         # パイプラインの作業領域（削除可）
     ├── scan/
     │   ├── preopt/                # 事前最適化構造
@@ -61,13 +59,18 @@ result_scan/
     │   │   ├── scan_trj.xyz       # スキャン軌跡
     │   │   └── scan.pdb
     │   └── stage_02/              # スキャンステージ 2（マルチステージ時）
-    └── path_opt/                  # MEP 探索（--refine-path True 時は path_search/）
+    └── path_opt/                  # MEP 探索（--refine-path 時は path_search/）
+        └── hei_seg_01.{xyz,pdb}   # MEP の最高エネルギー像
 ```
+
+この最小コマンドは MEP ステージ終了時に停止するため、`segments/` は作成しません。
+`--tsopt` を追加し、検証に成功するとセグメント別の正規 R/TS/P と IRC 出力が作成され、
+`--thermo` も追加すると `freq/` が作成されます。
 
 **確認ポイント:**
 
 1. `_work/scan/stage_01/scan_trj.xyz` — 結合距離の変化を PyMOL で確認
-2. `mep.pdb` — 最適化後の MEP 軌跡（出力ルートへ配置）
+2. `mep.pdb` と `_work/path_opt/hei_seg_01.pdb` — 最適化後の MEP と最高エネルギー像を確認
 3. `summary.log` — 障壁高さと結合変化
 
 **ヒント:** `--print-parsed` を付けて（Ctrl-C で中断して）スキャン設定を事前確認:

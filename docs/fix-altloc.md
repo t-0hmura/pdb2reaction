@@ -1,6 +1,13 @@
 # `fix-altloc`
 
-Remove alternate-location (altLoc) indicators from PDB files by selecting the best conformer for each atom based on occupancy and dropping duplicates. For each atom, the highest-occupancy conformer is kept (ties broken by file order) and column 17 is blanked. Run it before any cluster extraction or geometry stage (`extract`, `opt`, `tsopt`, ...) that cannot consume multi-conformer input.
+Remove alternate-location (altLoc) indicators from PDB files by selecting one
+coherent non-blank altLoc label per residue. The label with the highest mean
+occupancy across that residue's labelled atoms is selected; ties are broken by
+the label's first appearance. Blank/shared atoms are retained, coordinates from
+other labels are dropped, and column 17 is blanked on surviving records.
+Geometry workflows apply the same residue-coherent rule automatically through
+the common input bridge. Use this command when a cleaned PDB file itself is a
+deliverable, for directory processing, or to inspect the choice.
 
 ## Examples
 
@@ -25,13 +32,15 @@ pdb2reaction fix-altloc -i ./structures --inplace --recursive
 
 1. Check if the input file contains any non-blank altLoc characters (column 17).
  - If no altLoc is found and `--force` is not set, skip the file.
-2. For each ATOM/HETATM record, build an identity key ignoring the altLoc field:
- - record name, atom name, residue name, chain ID, residue sequence, insertion code, segID
-3. Among atoms with the same identity key, select the one with:
- - Highest occupancy (columns 55–60)
- - If tied, the earliest appearance in the file
-4. Write output with:
- - Only the selected atoms retained
+2. Group labelled ATOM/HETATM records by residue (residue name, chain ID,
+   residue sequence, insertion code, and segID).
+3. Select one non-blank label per residue using:
+ - Highest mean parsed occupancy across that label's atoms (columns 55–60)
+ - If tied or unavailable, the label that appears first in the file
+4. Keep blank/shared atoms plus atoms from the selected label. Resolve any
+   remaining duplicate atom identities by occupancy and file order.
+5. Write output with:
+ - Only blank/shared atoms and the selected residue conformer retained
  - altLoc column (17) blanked to a single space
  - ANISOU records filtered to match retained atoms
 
@@ -42,16 +51,11 @@ pdb2reaction fix-altloc -i ./structures --inplace --recursive
 
 ### Handling different atom counts between altLoc states
 
-When different altLoc states contain different atoms (e.g., altLoc A has atoms
-N, CA, CB, CG while altLoc B has N, CA, CB, CD), `fix-altloc` handles this correctly:
-
-- **Duplicate atoms** (same residue + atom name in multiple altLocs, e.g., N, CA, CB):
-  The best one is selected based on occupancy (highest first, then earliest in file).
-- **Unique atoms** (only present in one altLoc, e.g., CG in A, CD in B):
-  ALL unique atoms are preserved in the output.
-
-This ensures the output structure contains all atoms from all altLoc states,
-with only true duplicates resolved to a single conformer.
+When altLoc states contain different atoms (for example A has N, CA, CB, CG
+while B has N, CA, CB, CD), only atoms belonging to the selected residue label
+are retained. An atom unique to an unselected label is dropped. This avoids the
+old per-atom behavior that produced an A/B hybrid corresponding to no deposited
+conformer.
 
 **Example:**
 ```
@@ -67,7 +71,6 @@ Output:
  ATOM 1 N ALA A 1... 0.50 # from A (higher occ)
  ATOM 2 CA ALA A 1... 0.50 # from A (higher occ)
  ATOM 3 CG ALA A 1... 0.50 # kept (A only)
- ATOM 6 CD ALA A 1... 0.40 # kept (B only)
 ```
 
 ## Outputs
@@ -108,12 +111,16 @@ The full flag list is in the generated [command reference](reference/commands/in
 - By default, if a file contains **no altLoc characters** (all column 17 positions are blank), the file is **skipped** and no output is written. Use `--force` to process files regardless of altLoc presence.
 - Atom serial numbers are **NOT renumbered** (gaps may remain after duplicate removal).
 - `CONECT` and other connectivity/annotation records are **NOT updated**.
-- Only column 17 (altLoc) is modified; coordinates, occupancies, B-factors, charges,
-  insertion codes, and record ordering stay untouched (except for duplicate removal).
+- Surviving coordinate records retain their coordinates, occupancies, B-factors,
+  charges, insertion codes, and relative order; records from unselected altLoc
+  labels are removed and column 17 is blanked.
 - MODEL/ENDMDL blocks are processed independently.
+- The residue-level occupancy rule is still a heuristic. If the active-site
+  conformer must be selected by chemical contacts or a deposited ensemble
+  interpretation, select it explicitly in a structure editor and inspect it.
 
 ## See Also
 
 - [Common Error Recipes](recipes-common-errors.md)
 - [Troubleshooting](troubleshooting.md)
-- [all](all.md) -- end-to-end workflow that auto-invokes `add-elem-info` then `fix-altloc` as preflight
+- [all](all.md) -- end-to-end workflow using the common altloc/large-structure bridge

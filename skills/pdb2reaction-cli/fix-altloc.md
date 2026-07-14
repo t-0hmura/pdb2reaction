@@ -2,12 +2,15 @@
 
 ## Purpose
 
-Blank the PDB altLoc column (col 17) without shifting any other field,
-and keep **one** altLoc per atom. The default rule is **highest
-occupancy first, then earliest appearance** — there is no letter-based
-selection. `pdb2reaction all` runs this as a preflight step only when altLoc
-is detected. Call it explicitly when invoking `extract` / `opt` / `tsopt`
-directly on a raw RCSB PDB.
+Blank the PDB altLoc column (col 17) without shifting any other field and
+select one coherent non-blank altLoc label per residue. The default rule is
+**highest mean occupancy across that residue's labelled atoms, then earliest
+label appearance** — there is no hard-coded preference for A. Blank/shared
+atoms are retained; atoms unique to an unselected conformer are dropped rather
+than merged into a hybrid residue. Geometry workflows apply the same
+residue-coherent selection through the common input bridge. Call this utility
+when a cleaned PDB itself is needed, for directory processing, or to inspect
+the selected conformer before calculation.
 
 ## Synopsis
 
@@ -23,9 +26,9 @@ pdb2reaction fix-altloc -i in.pdb [-o out.pdb] [--inplace] [--overwrite] [--recu
 | flag | type | default | description |
 |---|---|---|---|
 | `-i, --input` | path | required | Input PDB file or directory |
-| `-o, --out` | path | derived | Output file (if input is file) or directory (if directory). Omit to overwrite in place via `--inplace`. |
+| `-o, --out` | path | derived | Output file (file input) or directory (directory input). Without `--inplace`, omission creates `<stem>_clean.pdb` or `<directory>_clean/`. |
 | `--inplace / --no-inplace` | flag | `--no-inplace` | Overwrite input file(s) in place; writes a `.bak` next to each file |
-| `--overwrite / --no-overwrite` | flag | `--no-overwrite` | Overwrite an existing output file |
+| `--overwrite / --no-overwrite` | flag | `--no-overwrite` | Overwrite existing files in non-inplace output mode; `--inplace` already replaces each input after creating its backup |
 | `--recursive / --no-recursive` | flag | `--no-recursive` | Recurse into sub-directories when `-i` is a directory |
 | `--force / --no-force` | flag | `--no-force` | Process files even if no altLoc detected (default skips them) |
 
@@ -39,7 +42,7 @@ pdb2reaction fix-altloc -i raw.pdb -o cleaned.pdb
 pdb2reaction fix-altloc -i raw_pdbs/ -o cleaned_pdbs/
 
 # In place (overwrite)
-pdb2reaction fix-altloc -i raw.pdb --inplace --overwrite
+pdb2reaction fix-altloc -i raw.pdb --inplace
 ```
 
 ## Output
@@ -50,14 +53,16 @@ pdb2reaction fix-altloc -i raw.pdb --inplace --overwrite
 
 ## Caveats
 
-- The selection rule (highest occupancy, then earliest) is the only
-  rule. If the active site has a high-occupancy alt-loc that is **not**
-  the chemistry you want, edit the PDB by hand or run a different tool.
-- `add-elem-info` and `fix-altloc` are typically run together on raw
-  RCSB downloads; order does not matter.
+- Selection is residue-level, but it is still an occupancy heuristic. If the
+  active-site conformer must be chosen by ligand contacts or mechanism rather
+  than occupancy, select it with a structure editor and validate the result.
+- Use `add-elem-info` only when element fields are missing/wrong and
+  `fix-altloc` only when alternate locations are present; neither cleanup is a
+  mandatory rewrite of every RCSB file.
 
 ## See also
 
 - `add-elem-info.md` — usually run together.
-- `extract.md` — expects altloc-resolved PDB input.
+- `extract.md` — automatically resolves one coherent altloc per residue; use
+  this utility only when a separate cleaned PDB deliverable is needed.
 - `../pdb2reaction-structure-io/pdb.md` — col 17 (altLoc) reference.

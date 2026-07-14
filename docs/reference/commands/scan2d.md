@@ -13,22 +13,24 @@ Options:
                                   paths, DEBUG logging).  [0<=x<=3]
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
-  -i, --input FILE                Input structure file (.pdb, .xyz, _trj.xyz,
-                                  ...).  [required]
+  -i, --input FILE                Input structure file (.pdb, .cif, .mmcif,
+                                  .xyz, _trj.xyz, ...).  [required]
   -s, --scan-lists TEXT           Scan targets: inline Python literal or a
                                   YAML/JSON spec file path. scan2d expects
                                   EXACTLY 2 quadruples (i, j, low, high) — one
                                   per scanned bond axis — e.g.
                                   '[(12,45,1.30,3.10),(10,55,1.20,3.20)]'. Atom
-                                  indices may also be PDB-style strings like 'CE
-                                  SAM   216'. Step count per axis is set via
-                                  --max-step-size, NOT inside the tuple (scan2d
-                                  does not accept a 5th element; the scan
-                                  command's 3-tuple (i, j, target) form is
-                                  rejected here too).  [required]
+                                  indices may also be strings like 'CE SAM 216';
+                                  use positional
+                                  CHAIN:RESNAME:RESSEQ[ICODE]:ATOM when chain
+                                  qualification is needed. Step count per axis
+                                  is set via --max-step-size, NOT inside the
+                                  tuple (scan2d does not accept a 5th element;
+                                  the scan command's 3-tuple (i, j, target) form
+                                  is rejected here too).  [required]
   -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
-                                  unless --ligand-charge is provided (PDB inputs
-                                  or XYZ/GJF with --ref-pdb).
+                                  unless --ligand-charge is provided (PDB/mmCIF
+                                  inputs or XYZ/GJF with --ref-pdb).
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
                                   predictor. NOTE: with UMA, workers>1 plus an
                                   explicit Analytical Hessian request is an
@@ -38,7 +40,8 @@ Options:
                                   predictor (workers>1).  [default: 1]
   -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
                                   GPP:-3,SAM:1) used to derive charge when -q is
-                                  omitted (requires PDB input or --ref-pdb).
+                                  omitted (requires PDB/mmCIF input or --ref-
+                                  pdb).
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1).
   --one-based / --zero-based      Interpret (i,j) indices in --scan-lists as
                                   1-based (default) or 0-based.  [default: one-
@@ -55,20 +58,20 @@ Options:
   --opt-mode [grad|hess]          Relaxation mode: grad (=LBFGS) or hess (=RFO).
                                   [default: grad]
   --freeze-links / --no-freeze-links
-                                  Freeze parent atoms of cap hydrogens (PDB
-                                  input or XYZ/GJF with --ref-pdb).  [default:
-                                  freeze-links]
+                                  Freeze parent atoms of cap hydrogens
+                                  (PDB/mmCIF input or XYZ/GJF with --ref-pdb).
+                                  [default: freeze-links]
   --freeze-atoms TEXT             Comma-separated 1-based atom indices to freeze
                                   (e.g., '1,3,5').
   --dump / --no-dump              Write inner scan trajectories per d1-step as
                                   TRJ under result_scan2d/grid/.  [default: no-
                                   dump]
   --convert-files / --no-convert-files
-                                  Convert XYZ/TRJ outputs into PDB/GJF
-                                  companions based on the input format.
-                                  [default: convert-files]
-  --ref-pdb FILE                  Reference PDB topology to use when the input
-                                  is XYZ/GJF (keeps XYZ coordinates).
+                                  Convert XYZ/TRJ outputs into PDB/CIF/GJF
+                                  companions based on the input
+                                  topology/template.  [default: convert-files]
+  --ref-pdb FILE                  Reference PDB/mmCIF topology to use when the
+                                  input is XYZ/GJF (keeps XYZ coordinates).
   -o, --out-dir TEXT              Base output directory.  [default:
                                   ./result_scan2d/]
   --thresh [gau_loose|gau|gau_tight|gau_vtight|baker|never]
@@ -123,13 +126,13 @@ Options:
                                   / DFTB+ / any ASE engine. See --calc-factory.
   --calc-factory TEXT             Name of the callable in --calc-file that
                                   returns an ASE Calculator (or a module-level
-                                  Calculator instance).  [default:
-                                  get_calculator]
+                                  Calculator instance). CLI overrides config
+                                  YAML; otherwise defaults to get_calculator.
   --deterministic / --no-deterministic
-                                  Strict bit-reproducible GPU runs
+                                  Request strict same-stack PyTorch determinism
                                   (deterministic algorithms + index_reduce_
-                                  shim). Slower; raises if unsupported. Default
-                                  off.
+                                  shim). Slower; raises for detected unsupported
+                                  ops; custom calculators are outside its scope.
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
                                   parity check (logs that it was skipped). For
                                   an intentional open-shell or modified-residue

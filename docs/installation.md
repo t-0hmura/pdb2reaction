@@ -1,6 +1,6 @@
 # Installation
 
-`pdb2reaction` is intended for Linux environments (local workstations or HPC clusters) with a CUDA-capable GPU. Several dependencies – notably **PyTorch**, **fairchem-core (UMA)**, and **gpu4pyscf-cuda12x** – expect a working CUDA installation.
+`pdb2reaction` is intended for Linux environments (local workstations or HPC clusters), and production runs normally use a CUDA-capable GPU. Prebuilt **PyTorch** wheels include their CUDA runtime libraries: they need a compatible NVIDIA driver, but not a local CUDA toolkit. A toolkit is needed only when building a CUDA extension or GPU package from source.
 
 Refer to the upstream projects for additional details:
 
@@ -9,7 +9,7 @@ Refer to the upstream projects for additional details:
 
 ## Quick start
 
-Below is a minimal setup example that works on many CUDA 12.9 clusters. Adjust module names and versions to match your system. This example assumes the default GSM MEP mode (`--mep-mode gsm`). For DMF (`--mep-mode dmf`), install cyipopt via conda first.
+This example assumes the default GSM MEP mode (`--mep-mode gsm`). For DMF (`--mep-mode dmf`), install cyipopt via conda first. PyTorch 2.8.0 publishes `cu126`, `cu128`, and `cu129` wheels; choose the site's tested index for its driver and GPU architecture.
 
 ### Required
 
@@ -17,9 +17,10 @@ Below is a minimal setup example that works on many CUDA 12.9 clusters. Adjust m
 # 1) Install a CUDA-enabled PyTorch build
 # 2) Install pdb2reaction
 # 3) Install headless Chrome for Plotly static image export (PNG)
-#    Downloads ~150 MB Chromium binary; requires internet access.
+#    Downloads a Chromium binary; requires internet access.
 
-pip install torch --index-url https://download.pytorch.org/whl/cu129
+TORCH_INDEX=cu126  # use cu128/cu129 when required by the GPU/site stack
+pip install 'torch==2.8.0' --index-url "https://download.pytorch.org/whl/${TORCH_INDEX}"
 pip install pdb2reaction
 plotly_get_chrome -y
 ```
@@ -49,7 +50,7 @@ You only need to do this once per machine / environment.
   conda install -c conda-forge cyipopt -y
   ```
 
-- If you are on an HPC cluster that uses *environment modules*, load CUDA **before** installing PyTorch. Run `module avail cuda` to see which CUDA versions your site provides, then load the one matching your target PyTorch wheel (e.g. `cu126` ↔ CUDA 12.6, `cu129` ↔ CUDA 12.9):
+- If an HPC site requires a CUDA module for locally built extensions, load the exact module documented by that site. Do not load a second CUDA runtime merely to install a prebuilt PyTorch wheel; first test the wheel with the NVIDIA driver alone.
 
   ```bash
   module load cuda/<your-version>   # e.g. cuda/12.6 or cuda/12.9
@@ -67,11 +68,11 @@ You only need to do this once per machine / environment.
 
 If you prefer to build the environment piece by piece:
 
-1. **Load CUDA (if you use environment modules on an HPC cluster)**
+1. **Load a CUDA toolkit only when the site/build requires one**
 
-    Run `module avail cuda` to see what is provided, then load the
-    version matching your target PyTorch wheel (e.g. `cu126` for CUDA
-    12.6, `cu129` for CUDA 12.9):
+    A prebuilt PyTorch wheel does not require `nvcc`. If a dependency must be
+    built from source, use `module avail cuda` and load the compiler/toolkit
+    combination documented by the cluster:
 
     ```bash
     module load cuda/<your-version>
@@ -93,13 +94,16 @@ If you prefer to build the environment piece by piece:
 
 4. **Install PyTorch with the right CUDA build**
 
-    For CUDA 12.9:
+    Conservative pre-Blackwell example:
 
     ```bash
-    pip install torch --index-url https://download.pytorch.org/whl/cu129
+    pip install 'torch==2.8.0' --index-url https://download.pytorch.org/whl/cu126
     ```
 
-    PyTorch must be built for your CUDA driver version. Check compatibility at [PyTorch Get Started](https://pytorch.org/get-started/locally/). CPU-only execution is supported but significantly slower (10–100×).
+    The official 2.8.0 matrix also provides `cu128`, `cu129`, and `cpu`.
+    Select by driver and GPU architecture, then verify with
+    `torch.cuda.is_available()`; the `nvidia-smi` "CUDA Version" banner is not a
+    local-toolkit version selector. See [PyTorch's version matrix](https://pytorch.org/get-started/previous-versions/).
 
 5. **Install `pdb2reaction` itself and Chrome for visualization**
 
@@ -125,10 +129,7 @@ If you prefer to build the environment piece by piece:
     pdb2reaction uses UMA by default. To use alternative backends, install the corresponding optional dependency:
 
     ```bash
-    # ORB backend. orb-models pulls torch_scatter, whose prebuilt wheels live on PyG's
-    # index (not PyPI), so pip source-builds it and may fail under build isolation
-    # ("No module named 'torch'"). Add PyG's index matching your torch+CUDA tag, e.g.:
-    #   pip install "pdb2reaction[orb]" -f https://data.pyg.org/whl/torch-2.8.0+cu129.html
+    # ORB backend
     pip install "pdb2reaction[orb]"
 
     # AIMNet2 backend
@@ -174,17 +175,24 @@ If you prefer to build the environment piece by piece:
     python -c "import torch; print('CUDA:', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'N/A')"
     ```
 
-    If `CUDA: False`, check that the correct CUDA module is loaded and the PyTorch build matches your CUDA driver version.
+    If `CUDA: False`, inspect the installed wheel, scheduler GPU visibility,
+    driver, and environment libraries before changing versions:
+
+    ```bash
+    python -m torch.utils.collect_env
+    python -m pip check
+    ```
 
 ## System requirements
 
-**GPU / CUDA / VRAM.** Install a PyTorch wheel whose CUDA tag matches your runtime — `cu126` for CUDA 12.6 or `cu129` for CUDA 12.9 (12.9 is required for RTX 50-series). 8 GB VRAM or more is recommended; larger GPUs help for analytical Hessians on big ML regions. The `tests/smoke/` suite peaks at ~0.9 GB on the default `uma-s-1p2` model, so it fits small GPUs even though production TS / IRC / Hessian workflows do not.
+**GPU / CUDA / VRAM.** Use one of PyTorch 2.8.0's official CUDA wheels (`cu126`, `cu128`, or `cu129`) that supports both the driver and GPU architecture. Newer GPU architectures may require a newer wheel; a local toolkit with the same numeric version is not required for prebuilt wheels. Required VRAM depends on backend/model, atom count, Hessian mode, precision, and active degrees of freedom. Pilot a representative production stage and monitor peak allocation; the smoke suite is a correctness check, not a production-memory estimate.
 
-**RAM.** 16 GB or more recommended (more headroom helps for large active-site models alongside the GPU calculation).
+**RAM.** Size host memory from a representative run; dense Hessians, model loading, and concurrent worker/process stages can dominate.
 
-**Disk.** Budget ~20 GB free: conda environment (~8 GB), UMA Hugging Face model cache (~1–4 GB), and the headless Chromium Plotly fetches for static PNG export (~150 MB, via `plotly_get_chrome`).
+**Disk.** Budget from the selected environment, backend weight caches, generated trajectories/Hessians, and optional Chromium installed by `plotly_get_chrome`. Check actual cache/environment sizes on the target filesystem before production runs.
 
-CPU-only execution works but is 10–100× slower and is not recommended for full TS / IRC / Hessian workflows.
+CPU-only execution works but is usually much slower. Benchmark the selected
+backend and model; there is no reliable fixed GPU/CPU ratio.
 
 ## Next steps
 
@@ -194,4 +202,3 @@ CPU-only execution works but is 10–100× slower and is not recommended for ful
 - [Quickstart: TS-only mode](quickstart-tsopt-freq.md) — validate a TS candidate end-to-end
 - [CLI Conventions](cli-conventions.md) — flag precedence, atom/residue selectors, shared options
 - [Troubleshooting](troubleshooting.md) and [Common Error Recipes](recipes-common-errors.md)
-

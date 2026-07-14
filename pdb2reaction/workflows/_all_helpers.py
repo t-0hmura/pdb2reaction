@@ -62,6 +62,7 @@ class AllContext:
     spin: int
     # Freeze / MEP
     freeze_links_flag: Optional[bool]
+    tr_projection: str
     mep_mode: str
     dmf_backend: str
     max_nodes: int
@@ -116,7 +117,7 @@ class AllContext:
     precision: Optional[str]
     backend_model: Optional[str]
     calc_file: Optional[str] = None
-    calc_factory: str = "get_calculator"
+    calc_factory: Optional[str] = None
 
 
 def build_energy_level_dict(

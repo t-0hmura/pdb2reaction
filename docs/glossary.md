@@ -47,8 +47,8 @@
 | **fairchem** | — | Meta's open-source foundation-model toolkit that ships the UMA family of checkpoints. pdb2reaction depends on `fairchem-core` to load UMA predictors. |
 | **ASE** | Atomic Simulation Environment | Python framework providing the Calculator API used by all MLIP backends in pdb2reaction (Larsen et al., *J. Phys. Condens. Matter* 2017). |
 | **task_name** | — | UMA task tag recorded in each inference batch (YAML: `calc.task_name`, default `omol`). Selects the UMA task/preset that a checkpoint was trained for. |
-| **Analytical Hessian** | — | Exact evaluation of the Hessian matrix via automatic differentiation; faster than finite differences but requires more VRAM. Selected with `--hessian-calc-mode Analytical`. |
-| **Finite Difference** | — | Approximation of the Hessian via finite nuclear displacements; slower but more memory-efficient. Selected with `--hessian-calc-mode FiniteDifference` (default). |
+| **Analytical Hessian** | — | Automatic differentiation of the selected MLIP energy (up to floating-point/autograd behavior), avoiding finite-displacement truncation error. Runtime and accelerator-memory cost are backend/model/system dependent. Selected with `--hessian-calc-mode Analytical`. |
+| **Finite Difference** | — | Approximation of the Hessian from finite nuclear displacements. It is the portable default and usually uses less peak accelerator memory, but runtime and displacement error depend on the setup. Selected with `--hessian-calc-mode FiniteDifference`. |
 
 ## Quantum Chemistry
 

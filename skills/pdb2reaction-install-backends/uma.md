@@ -1,8 +1,9 @@
 # UMA backend (uma.md)
 
 UMA (**U**niversal **M**odel for **A**toms, Meta FAIR) is the default
-backend for `pdb2reaction`. It covers the broadest element / chemistry
-range of the four backends.
+backend integration for `pdb2reaction`. Model-domain coverage and accuracy
+must be checked for the chemistry being studied; the default status is not a
+claim that it is always the most accurate or broadest choice.
 
 ## Install
 
@@ -16,7 +17,7 @@ pip install pdb2reaction                              # fairchem-core comes alon
 Confirm:
 
 ```bash
-python -c "import fairchem; print('fairchem :', fairchem.__version__)"
+python -c "from importlib.metadata import version; print('fairchem-core:', version('fairchem-core'))"
 python -c "from pdb2reaction.backends import create_calculator; create_calculator(backend='uma', charge=0, spin=1)"
 ```
 
@@ -68,9 +69,9 @@ from the single `facebook/UMA` repo:
 
 | config string (`calc.model`) | paper notation | checkpoint in `facebook/UMA` | Notes |
 |---|---|---|---|
-| `uma-s-1p1` | UMA-s-1.1 | `checkpoints/uma-s-1p1.pt` | Smaller / faster, sufficient for most workflows |
-| `uma-s-1p2` (default) | UMA-s-1.2 | `checkpoints/uma-s-1p2.pt` | Successor checkpoint (still small) |
-| `uma-m-1p1` | UMA-m-1.1 | `checkpoints/uma-m-1p1.pt` | Larger, slightly more accurate, ~3× slower |
+| `uma-s-1p1` | UMA-s-1.1 | `checkpoints/uma-s-1p1.pt` | Small 1.1 checkpoint |
+| `uma-s-1p2` (default) | UMA-s-1.2 | `checkpoints/uma-s-1p2.pt` | Small 1.2 checkpoint selected by pdb2reaction |
+| `uma-m-1p1` | UMA-m-1.1 | `checkpoints/uma-m-1p1.pt` | Medium 1.1 checkpoint; benchmark cost and result quality for the target system |
 
 `p` is the dot replacement used by fairchem-core's config parser
 (`1p1` ↔ `1.1`). Pass the model name via `--backend-model` (e.g.
@@ -92,7 +93,7 @@ UMA accepts these calculator kwargs (canonical list in
 | `charge`, `spin` | Total charge and spin multiplicity |
 | `device` | `'cuda'`, `'cpu'`, or `'auto'` |
 | `model` | `'uma-s-1p1'`, `'uma-s-1p2'`, or `'uma-m-1p1'` |
-| `task_name` | `'omol'` (default — organic molecules + 1st-row metals) |
+| `task_name` | `'omol'` (default — the OMol25 molecular/polymer domain, which spans organic/inorganic molecules, transition-metal complexes, and electrolytes; validate applicability to the target system) |
 | `freeze_atoms` | Indices of atoms held fixed (cap-atom parents, frozen residues) |
 | `hessian_calc_mode` | `'FiniteDifference'` (default) or `'Analytical'` |
 | `return_partial_hessian`, `hessian_double` | Memory / numerical-precision toggles |
@@ -103,9 +104,11 @@ UMA accepts these calculator kwargs (canonical list in
 These are passed through `--config` YAML or the appropriate flag of the
 subcommand; see `pdb2reaction-cli/SKILL.md`.
 
-## Multi-GPU inference (advanced)
+## Multi-worker inference (advanced)
 
-Under heavy MEP search load you can shard inference across multiple GPUs.
+Under heavy MEP search load, fairchem can run a parallel predictor worker
+pool. GPU/process placement depends on the Ray/scheduler setup and must be
+validated on the target cluster.
 Configure via a YAML config (`--config`):
 
 ```yaml
@@ -128,9 +131,11 @@ This spawns a Ray worker pool. Limitations:
   In a single-node configuration the Ray pool is started locally.
 - All workers in a single-node pool must see the same GPUs
   (e.g. `CUDA_VISIBLE_DEVICES=0,1,2,3`).
-- Adds overhead for small graphs — disable for systems below ~100 atoms.
+- Adds process/communication overhead; benchmark a representative task before
+  assuming more workers reduce wall time.
 - **Analytical Hessian unavailable**: when `workers > 1`, requesting
-  `hessian_calc_mode=Analytical` raises a `RuntimeError`; use
+  `hessian_calc_mode=Analytical` raises `BackendError` (a `RuntimeError`
+  subclass) rather than changing the explicitly requested method; use
   `FiniteDifference` (the default) or drop to `workers = 1`. See
   `pdb2reaction/docs/uma-pysis.md` for the full caveat.
 
@@ -139,9 +144,9 @@ This spawns a Ray worker pool. Limitations:
 | Symptom | Cause / fix |
 |---|---|
 | `e3nn` install conflict | UMA's `fairchem-core` pin clashes with `mace-torch`. Use a separate env for MACE (see `mace.md`). |
-| `uma-m-1.1` runs out of VRAM during freq | `'FiniteDifference'` is already the default; if you've overridden it with `--hessian-calc-mode Analytical`, drop the flag or use `uma-s-1.1`. |
-| First call is slow (10–30 s) | One-time model download + JIT compile. The cache lives at `~/.cache/huggingface/hub/`. |
-| Multi-worker run crashes with `Ray actor died` | Mismatched CUDA versions across processes; fall back to single-worker. |
+| `uma-m-1p1` runs out of VRAM during freq | `'FiniteDifference'` is already the default; if you've overridden it with `--hessian-calc-mode Analytical`, drop the flag or use the current small default `uma-s-1p2` (`uma-s-1p1` selects the older small checkpoint). |
+| First call is slower than later calls | Check whether checkpoint download/cache population or model initialization dominates. The Hugging Face cache normally lives at `~/.cache/huggingface/hub/`. |
+| Multi-worker run crashes with `Ray actor died` | The message is non-specific. Capture the actor traceback and scheduler/Ray logs, verify identical environments and visible devices on every worker, then reproduce with one worker before changing CUDA packages. |
 
 ## See also
 

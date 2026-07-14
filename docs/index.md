@@ -18,6 +18,7 @@ freeze-atoms
 recipes-common-errors
 troubleshooting
 cli-conventions
+cif
 reproducibility
 ```
 
@@ -78,6 +79,7 @@ ja/freeze-atoms
 ja/recipes-common-errors
 ja/troubleshooting
 ja/cli-conventions
+ja/cif
 ja/reproducibility
 ```
 
@@ -133,8 +135,8 @@ ja/glossary
 | Choosing precision / TS route / imaginary-mode fix / controlled comparison | [`tsopt`](tsopt.md) |
 | Staged-vs-concerted scan / barrier direction | [`scan`](scan.md) |
 | Run failure / error | [Common Error Recipes](recipes-common-errors.md) · [Troubleshooting](troubleshooting.md) |
-| CLI conventions / YAML / Glossary | [CLI Conventions](cli-conventions.md) · [YAML Reference](yaml-reference.md) · [Glossary](glossary.md) |
-| Bit-reproducible runs (`--deterministic`) | [Reproducibility](reproducibility.md) |
+| CLI conventions / structure formats / YAML | [CLI Conventions](cli-conventions.md) · [mmCIF and large structures](cif.md) · [YAML Reference](yaml-reference.md) |
+| Same-stack repeatability (`--deterministic`) | [Reproducibility](reproducibility.md) |
 | MLIP backend settings / HPC examples | [MLIP Calculator](uma-pysis.md) · [HPC Examples](hpc-example.md) |
 | Cluster boundary atoms (cap H, `--freeze-atoms`) | [Frozen Atoms](freeze-atoms.md) |
 
@@ -142,7 +144,7 @@ ja/glossary
 
 | Subcommand | Description |
 |------------|-------------|
-| [`all`](all.md) | End-to-end workflow: extraction → scan → MEP → TS optimization → IRC → thermochemistry → DFT |
+| [`all`](all.md) | Optional extraction; endpoint-MEP, scan-list, or TS-only entry mode; optional TS/IRC, thermochemistry, and DFT stages |
 | [`extract`](extract.md) | Extract active site model (binding pocket) from protein–ligand complex |
 | [`fix-altloc`](fix-altloc.md) | Resolve PDB alternate locations |
 | [`add-elem-info`](add-elem-info.md) | Repair PDB element columns (77–78) |
@@ -180,7 +182,7 @@ pdb2reaction <subcommand> --help-advanced
 @misc{ohmura2026pdb2reaction,
   author = {Ohmura, Takuto and Sato, Hajime and Terada, Tohru},
   title  = {pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials},
-  year   = {2026}, doi = {10.26434/chemrxiv.15003538}, note = {ChemRxiv preprint}
+  year   = {2026}, doi = {10.26434/chemrxiv.15003538/v1}, note = {ChemRxiv preprint}
 }
 ```
 

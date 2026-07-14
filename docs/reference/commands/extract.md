@@ -3,9 +3,9 @@
 ```text
 Usage: pdb2reaction extract [OPTIONS]
 
-  Extract an active site model around substrate residues (from a PDB or residue
-  IDs/names), with biochemically aware truncation and optional cap-H; supports
-  multi-structure input and multi-MODEL output.
+  Extract an active site model around substrate residues (from PDB/mmCIF or
+  residue IDs/names), with biochemically aware truncation and optional cap-H;
+  mmCIF inputs also produce mmCIF outputs.
 
 Options:
   -v, --verbose LEVEL             Console verbosity 0-3 (default 2). 0=silent;
@@ -15,21 +15,25 @@ Options:
                                   [0<=x<=3]
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
-  -i, --input TEXT                Protein-substrate complex PDB(s). Multiple
-                                  files may be given space-separated after a
-                                  single -i ('-i a.pdb b.pdb') or by repeating
-                                  -i ('-i a.pdb -i b.pdb'). If multiple, they
-                                  must have identical atom counts and ordering.
-                                  [required]
-  -c, --center TEXT               Substrate specification: a PDB path, a
+  -i, --input TEXT                Protein-substrate complex PDB/mmCIF file(s).
+                                  Multiple files may be given space-separated
+                                  after one -i or by repeating -i. PDBs beyond
+                                  fixed-column residue/atom limits are handled
+                                  through an internal safe bridge. If multiple,
+                                  they must have identical atom counts and
+                                  ordering.  [required]
+  -c, --center TEXT               Substrate specification: a PDB/mmCIF path, a
                                   comma/space-separated residue-ID list like
                                   '123,124' or 'A:123,B:456' (insertion codes
-                                  supported), or a residue-name list like
-                                  'GPP,SAM'.  [required]
-  -o, --output TEXT               Output PDB path(s). One path for multi-MODEL
-                                  PDB, or N paths for per-file output. If
-                                  omitted: single input -> model.pdb; multiple
-                                  inputs -> model_{filename}.pdb.
+                                  supported), a residue-name list like
+                                  'GPP,SAM', or a chain-qualified name like
+                                  'A:SAM' (all matches in chain A) / 'A:SAM:123'
+                                  (one residue).  [required]
+  -o, --output TEXT               Internal/output PDB path(s). For mmCIF or
+                                  oversized-PDB input, a .cif companion with the
+                                  original chain/residue IDs is written
+                                  automatically. One path creates multi-MODEL
+                                  output; N paths create one output per input.
   -r, --radius FLOAT              Cutoff (angstrom) around substrate atoms for
                                   active site model inclusion.  [default: 2.6]
   --radius-het2het FLOAT          Cutoff (angstrom) for substrate hetero-atom
@@ -45,8 +49,9 @@ Options:
   --add-linkh / --no-add-linkh    Add cap hydrogens (carbon boundaries only) at
                                   1.09 angstrom along cut-bond directions.
                                   [default: add-linkh]
-  --selected-resn TEXT            Comma/space-separated residue IDs to force-
-                                  include.
+  --selected-resn TEXT            Comma/space-separated residue IDs/names to
+                                  force-include; chain-qualified A:SAM is
+                                  supported.
   --modified-residue TEXT         Comma-separated residue names (with optional
                                   charge) to treat as amino acids for backbone
                                   truncation and charge assignment. Examples:

@@ -69,6 +69,21 @@ When a subcommand fails, the parsed `summary` (or sibling `result.json`) carries
 | `plot_energy_diagram` | `pdb2reaction energy-diagram` | Categorical energy diagram |
 | `detect_bond_changes` | `pdb2reaction bond-summary` | Bond-change diff between two PDBs |
 
+### Charge and ordered inputs
+
+For tools exposing `charge` and `ligand_charge`, omit `charge` and supply a
+per-resname `ligand_charge` mapping for PDB inputs when you want the total to be
+derived. XYZ input without PDB residue context needs an explicit total `charge`.
+A valid GJF charge/multiplicity header supplies both values automatically unless
+you deliberately override them. If `charge` and `ligand_charge` are both
+supplied, explicit `charge` wins.
+
+`search_paths` requires `input_pdb` (reactant) and `product_pdb`; pass any
+ordered intermediates as `intermediate_pdbs`. For staged 1D/full-pipeline scans,
+put the first literal in `scan_lists` and later literals in
+`additional_scan_stages`; the adapter emits one `--scan-lists` flag followed by
+all stage values.
+
 ## Opt-in IRC controls
 
 `run_irc` (CLI: `pdb2reaction irc`) accepts `irc_pos_def: bool` — when set,
@@ -142,9 +157,11 @@ async with stdio_client(server_params) as (read, write):
   CUDA setup. Long-running tools (opt / tsopt / irc) launch the
   `pdb2reaction` CLI in a subprocess — the agent should set `timeout_seconds`
   on each tool call to bound runaway computations.
-- Output files land under the `out_dir` kwarg (defaults to a unique
+- Stage/pipeline output files land under the `out_dir` kwarg (defaults to a unique
   `tempfile.mkdtemp(prefix="p2r_mcp_<subcmd>_…")` so concurrent agent calls
-  don't collide).
+  don't collide). Helper tools use their explicit output path. Expert
+  `extra_args` can request additional paths or in-place behavior; inspect the
+  returned `argv` when applying a filesystem policy.
 - The server does not modify `~/.bashrc` / login env, install software,
-  or write outside `out_dir`. All MLIP weights / PDB inputs must
-  already exist on disk.
+  or authenticate model registries. All MLIP weights / PDB inputs must already
+  exist on disk.

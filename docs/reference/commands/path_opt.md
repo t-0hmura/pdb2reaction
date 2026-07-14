@@ -14,7 +14,8 @@ Options:
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
   -i, --input FILE...             Two endpoint structures (reactant and
-                                  product); accepts .pdb or .xyz.  [required]
+                                  product); accepts PDB, mmCIF, XYZ, or GJF.
+                                  [required]
   --mep-mode [gsm|dmf]            MEP optimizer: Growing String Method (gsm) or
                                   Direct Max Flux (dmf).  [default: gsm]
   --dmf-backend [cpu|gpu]         DMF compute backend (--mep-mode dmf only): gpu
@@ -23,7 +24,7 @@ Options:
                                   [default: gpu]
   -q, --charge INTEGER            Total charge. Required unless a .gjf template
                                   provides charge metadata or --ligand-charge is
-                                  supplied for PDB inputs.
+                                  supplied for PDB/mmCIF inputs.
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
                                   predictor. NOTE: with UMA, workers>1 plus an
                                   explicit Analytical Hessian request is an
@@ -33,17 +34,18 @@ Options:
                                   predictor (workers>1).  [default: 1]
   -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
                                   GPP:-3,SAM:1) used to derive charge when -q is
-                                  omitted (requires PDB input or --ref-pdb).
+                                  omitted (requires PDB/mmCIF input or --ref-
+                                  pdb).
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1).
   --freeze-links / --no-freeze-links
-                                  Freeze parent atoms of cap hydrogens (PDB
-                                  input or XYZ/GJF with --ref-pdb).  [default:
-                                  freeze-links]
+                                  Freeze parent atoms of cap hydrogens
+                                  (PDB/mmCIF input or XYZ/GJF with --ref-pdb).
+                                  [default: freeze-links]
   --freeze-atoms TEXT             Comma-separated 1-based atom indices to freeze
                                   (e.g., '1,3,5').
-  --max-nodes INTEGER             Maximum number of internal nodes (string has
-                                  up to max_nodes+2 images including endpoints).
-                                  [default: 20]
+  --max-nodes INTEGER             Number of movable internal images for GSM or
+                                  DMF; the complete path has max_nodes+2 images
+                                  including the two endpoints.  [default: 20]
   --max-cycles INTEGER            Maximum string optimizer cycles (GSM/DMF path
                                   optimization).  [default: 300]
   --climb / --no-climb            Search for a transition state (climbing image)
@@ -54,11 +56,11 @@ Options:
   --dump / --no-dump              Write optimizer trajectory and restarts during
                                   the run.  [default: no-dump]
   --convert-files / --no-convert-files
-                                  Convert XYZ/TRJ outputs into PDB/GJF
+                                  Convert XYZ/TRJ outputs into PDB/CIF/GJF
                                   companions based on the input format.
                                   [default: convert-files]
-  --ref-pdb FILE                  Reference PDB topology to use when the input
-                                  is XYZ/GJF (keeps XYZ coordinates).
+  --ref-pdb FILE                  Reference PDB/mmCIF topology to use when the
+                                  input is XYZ/GJF (keeps XYZ coordinates).
   -o, --out-dir TEXT              Output directory.  [default:
                                   ./result_path_opt/]
   --thresh [gau_loose|gau|gau_tight|gau_vtight|baker|never]
@@ -115,13 +117,13 @@ Options:
                                   / DFTB+ / any ASE engine. See --calc-factory.
   --calc-factory TEXT             Name of the callable in --calc-file that
                                   returns an ASE Calculator (or a module-level
-                                  Calculator instance).  [default:
-                                  get_calculator]
+                                  Calculator instance). CLI overrides config
+                                  YAML; otherwise defaults to get_calculator.
   --deterministic / --no-deterministic
-                                  Strict bit-reproducible GPU runs
+                                  Request strict same-stack PyTorch determinism
                                   (deterministic algorithms + index_reduce_
-                                  shim). Slower; raises if unsupported. Default
-                                  off.
+                                  shim). Slower; raises for detected unsupported
+                                  ops; custom calculators are outside its scope.
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
                                   parity check (logs that it was skipped). For
                                   an intentional open-shell or modified-residue

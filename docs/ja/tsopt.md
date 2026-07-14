@@ -6,13 +6,13 @@ optimizer は `--opt-mode` で選びます。ほとんどの系では `--opt-mod
 
 収束後、`tsopt` は最終的な Hessian 計算と虚振動数チェックを自動で行います。妥当な TS では虚振動数が **ちょうど 1 つ** です。別途の [`freq`](freq.md) は、完全な振動解析や熱化学補正が必要な場合にのみ実行します。端点の接続性は必ず [`irc`](irc.md) で確認してください。
 
-TS 初期構造がまず必要な場合は、2 端点なら [path-opt](path-opt.md)、2 構造以上なら [path-search](path-search.md) を実行し、得られた HEI を `tsopt` → `irc` の順で最適化・検証してください。XYZ/GJF 入力では `--ref-pdb` で参照 PDB トポロジーを指定し、XYZ 座標を保持したまま、形式に応じた PDB/GJF 出力への変換ができます。
+TS 初期構造がまず必要な場合は、2 端点なら [path-opt](path-opt.md)、2 構造以上なら [path-search](path-search.md) を実行し、得られた HEI を `tsopt` → `irc` の順で最適化・検証してください。mmCIF入力は内部PDBへ変換され、成果物には元IDを復元したCIFも生成されます。XYZ/GJF入力では`--ref-pdb`にPDBまたはmmCIF topologyを指定できます。
 
 `--ref-mode` は通常の単独 `tsopt` に必要なoptionではなく、主に `all` 内部のMEP→TS handoffです。`all` はMEP energyを使った標準のupwinding Cartesian 3N接線を自動生成して渡し、energyを読めない旧trajectoryだけは正規化secantの二等分線へfallbackします。外部の経路計算から意図的に反応方向を渡すexpert standalone runだけが `--ref-mode PATH` を直接指定します。
 
 離散接線が複数のHessian modeに分散し、最大overlapの90%以内に候補が複数ある場合、初期rootはその中で最も負／軟らかい曲率を選びます。その後はモードの回転を許して正・負を含むHessian全スペクトル上でoverlap追跡します。目的モードが一度も負曲率を得ていない`n_imag=0`回復では、単一の正曲率固有モードへ縮退させず、経路ベクトル全体を保持します。exact PHVAのmode同一性判定も、目的の負曲率を初めて確認するまでは不変のMEP接線を基準にし、確認後だけtransport済みmodeへ切り替えます。負曲率を捕捉した後の回復にはtransport済みmodeを使います。有界回復は50 stepごとに最大200 stepまでexact PHVAを再計算し、Bofill modelが正曲率のままでも物理モードが負へ交差した時点でTS最適化を再開します。経路付きrunでは、初期raw rootまたはquasi-Newton rootの一時的な負符号だけではmode-loss rollbackを固定せず、exact PHVAまたは明示的recovery crossingで物理的な目的モードを確認してから有効にします。経路情報のない局所極小だけから、どの隣接鞍点が目的かを一意には決められません。exact PHVAは目的モードを全物理モードと照合するため、目的モードが正曲率になったときに別の虚振動1個を代用して成功扱いにはしません。
 
-一方、複数負モードの部分空間では固有ベクトル同士が連続的に入れ替わり得るため、高次鞍点のexact checkだけは保持モードを不変のMEP接線へ再anchorしてから、それ以外を最大20回の有界retryでflattenします。最初の物理的な負曲率確認後は`n_imag=0/1`でtransportを維持するので、真のモード回転は妨げません。各retryは標準の3回のexact checkを維持して、直交flatten変位後に反応モードを再確立します。各cleanup retryでenergy-selected側が目的の一次鞍点にならなければ反対符号も最適化し、目的モード保持・一次鞍点への近さ・余剰虚振動の強さ・残留力で良い分岐を選ぶため、変位点のenergyだけで誤った下降側を選びません。直前のPHVAで同定したpath modeを引き継ぎ、任意の別rootは選びません。exact PHVAのCartesian modeとcycle内のraw-Hessian root追跡用固有ベクトルは別々に保持します。
+一方、複数負モードの部分空間では固有ベクトル同士が連続的に入れ替わり得るため、高次鞍点のexact checkだけは保持モードを不変のMEP接線へ再anchorします。`--flatten`を明示した場合に限り、設定した反復上限内でそれ以外の負モードを除去します。最初の物理的な負曲率確認後は`n_imag=0/1`でtransportを維持するので、真のモード回転は妨げません。各retryは標準の3回のexact checkを維持して、直交flatten変位後に反応モードを再確立します。各cleanup retryでenergy-selected側が目的の一次鞍点にならなければ反対符号も最適化し、目的モード保持・一次鞍点への近さ・余剰虚振動の強さ・残留力で良い分岐を選ぶため、変位点のenergyだけで誤った下降側を選びません。直前のPHVAで同定したpath modeを引き継ぎ、任意の別rootは選びません。exact PHVAのCartesian modeとcycle内のraw-Hessian root追跡用固有ベクトルは別々に保持します。
 
 最初の経路誘導Hessian runが検証済み鞍点に到達しない場合は、同じoptimizerをHEI接線方向の±0.10 Å、続いて±0.20 Åから有界restartします。kinkした離散接線が無関係なモードだけを見つけた場合は、初期HEIで選んだ軟らかいpath相関Hessian rootに沿って同じshellを試します。最大8試行の方向sourceと結果を`result.json`に記録し、全て失敗した場合は元の結果を保持して`not_converged`とします。
 
@@ -69,11 +69,11 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
 - **構造ロードと freeze-links**: 構造は `pysisyphus.helpers.geom_loader` で読み込まれます。`--freeze-links` が有効な場合、キャップ水素の親原子は自動的に凍結されます（{ref}`キャップ水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
 - **MLIP Hessian（デフォルト: UMA）**: `--hessian-calc-mode` で解析的Hessianと有限差分Hessianを切り替えます。いずれも活性（PHVA）部分空間を考慮します。凍結原子が存在する場合、MLIP バックエンドは活性ブロックのみを返すことがあります。Hessian評価モードの詳細は {ref}`ja-hessian-evaluation` を参照してください。
 - **Dimer モード詳細**:
- - Hessian Guided Dimer 段階は、正確なHessian（活性サブスペース、TR 射影）を周期的に評価してダイマー方向を更新します。`root == 0` のときは最小固有対に `torch.lobpcg` を優先し、失敗時は `torch.linalg.eigh` にフォールバックします。
+ - Hessian Guided Dimer 段階は、active部分空間のexact Hessianを周期的に評価してダイマー方向を更新します。`--tr-projection`のデフォルト`constrained`は、凍結anchorを動かさない全系剛体運動だけを除去します。`root == 0` のときは最小固有対に `torch.lobpcg` を優先し、失敗時は `torch.linalg.eigh` にフォールバックします。
  - `--flatten` が有効な場合、フラット化ループはΔx とΔg を用い、Bofill（SR1/MS ↔ PSB ブレンド; `hessian_dimer.flatten_loop_bofill` で切替）で活性Hessianを更新します。各ループは虚振動数モード推定 → 1 回フラット化 → ダイマー方向再更新 → dimer+L-BFGS マイクロ区間 → （任意で）Bofill 更新を実行します。虚振動数モードが 1 つになったら最終的な正確なHessianで振動解析を行います。
  - `root != 0` の場合は初期ダイマー方向のみその root を使用し、以降の更新は最も負のモード（`root = 0`）に従います。
 - **RS-I-RFO モード**: RS-I-RFO を実行し、任意のHessian参照や R+S 分割セーフガード、マイクロサイクル制御は `rsirfo` セクションで設定します。`--flatten` が有効で収束後も虚振動数モードが複数残る場合、追加モードをフラット化して RS-I-RFO を再実行し、虚振動数モードが 1 つになるか上限に達するまで繰り返します。
-- **モード出力と変換**: 検出された虚振動数モードはすべて `vib/imag_*_trj.xyz` に書き出されます。PDB 入力で変換が有効な場合は `.pdb` としても出力されます。最適化軌跡と最終構造は `--dump` 時に入力テンプレート経由で PDB に変換されます。Gaussian テンプレートでは最終構造のみ `.gjf` が生成されます。
+- **モード出力と変換**: 検出された虚振動数モードはすべて `vib/imag_*_trj.xyz` に書き出されます。変換が有効な場合、PDB入力はPDB companion、mmCIF／oversized-PDB入力はPDBと元IDを復元したCIFを出力します。Gaussian templateでは最終構造のみ`.gjf`を生成します。
 
 ## 出力
 
@@ -87,14 +87,18 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
 out_dir/ (デフォルト:./result_tsopt/)
 ├─ final_geometry.xyz # 常に書き込み
 ├─ final_geometry.pdb # 入力がPDBの場合（変換有効時）
+├─ final_geometry.cif # mmCIF/oversized-PDB入力（変換有効時）
 ├─ final_geometry.gjf # 入力がGaussianの場合（変換有効時）
 ├─ optimization_all_trj.xyz # --dumpがTrueのときの dimer モードダンプ
 ├─ optimization_all.pdb # PDB 入力の dimer モードに対応する PDB（変換有効時、--dump）
+├─ optimization_all.cif # bridge入力の元ID復元CIF
 ├─ optimization_trj.xyz # --dumpがTrueのときの rsirfo モード軌跡
 ├─ optimization.pdb # rsirfo モードに対応する PDB（変換有効時、--dump）
+├─ optimization.cif # bridge入力の元ID復元CIF
 ├─ vib/
 │ ├─ imag_±XXXX.Xcm-1_trj.xyz
-│ └─ imag_±XXXX.Xcm-1.pdb
+│ ├─ imag_±XXXX.Xcm-1.pdb
+│ └─ imag_±XXXX.Xcm-1.cif # bridge入力
 └─.dimer_mode.dat # dimer モード方向シード
 ```
 
@@ -118,33 +122,34 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | **入力と電荷** | | |
-| `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル（`.pdb` / `.xyz` / `.gjf` / `.trj`） | 必須 |
-| `-q, --charge INT` | 総電荷。`.gjf` テンプレートまたは `--ligand-charge`（PDB 入力または `--ref-pdb` 付き XYZ/GJF）が提供しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
-| `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
+| `-i, --input PATH` | 入力bridgeが受け入れる構造（`.pdb` / `.cif` / `.mmcif` / `.xyz` / `.gjf` / `.trj`） | 必須 |
+| `-q, --charge INT` | 総電荷。`.gjf` テンプレートまたは `--ligand-charge`（PDB/mmCIF 入力または `--ref-pdb` 付き XYZ/GJF）が提供しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
+| `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB/mmCIF 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB/mmCIF 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
-| `--ref-pdb FILE` | 入力が XYZ/GJF の場合に使用する参照 PDB トポロジー | _None_ |
+| `--ref-pdb FILE` | XYZ/GJF入力に使用する参照PDBまたはmmCIF topology | _None_ |
 | **バックエンドと計算** | | |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
-| `--workers INT` | UMA 予測器の並列度。`workers > 1` と明示的な解析 Hessian は併用できないため、`workers = 1` または有限差分を使用。{ref}`ja-workers-fd-downgrade` を参照 | `1` |
+| `--workers INT` | UMA 予測器の並列度。`workers > 1` と明示的な解析 Hessian は併用できないため、`workers = 1` または有限差分を使用。{ref}`ja-workers-analytical-error` を参照 | `1` |
 | `--workers-per-node INT` | ノードあたりのワーカー数。並列予測器に渡されます | `1` |
 | `--hessian-calc-mode CHOICE` | MLIP Hessianモード（`Analytical` または `FiniteDifference`） | `FiniteDifference` |
 | `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 | **活性領域の凍結** | | |
-| `--freeze-links/--no-freeze-links` | PDB 入力（または `--ref-pdb` 付き XYZ/GJF）。キャップ水素の親を凍結（`geom.freeze_atoms` にマージ）。キャップ水素の詳細は [extract](extract.md) を参照 | `True` |
+| `--freeze-links/--no-freeze-links` | PDB/mmCIF 入力（または `--ref-pdb` 付き XYZ/GJF）。キャップ水素の親を凍結（`geom.freeze_atoms` にマージ）。キャップ水素の詳細は [extract](extract.md) を参照 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
+| `--tr-projection [constrained\|legacy-active]` | Dimer方向、flatten、exact PHVA検証の剛体モード処理。`constrained`は凍結anchorを尊重し、`legacy-active`はisolated-active比較用。`--ref-mode`とは無関係 | `constrained` |
 | **TS optimizer とモード** | | |
 | `--opt-mode TEXT` | TS optimizer プリセット（Choice: `grad` / `hess` / `dimer` / `rsirfo` / `trim` / `rsprfo`）。`grad`/`dimer` → Hessian-Guided Dimer; `hess`/`rsprfo` → RS-P-RFO（Banerjee、デフォルト、non-microiter）; `rsirfo` → RS-I-RFO; `trim` → TRIM（Helgaker、non-microiter）。サブコマンド別の対応表（`opt` は L-BFGS/RFO、`tsopt` は Dimer/RS-P-RFO）は {ref}`ja-opt-mode-semantics` を参照 | `hess` |
 | `--ref-mode PATH` | advanced/internal MEP handoff用のCartesian 3N方向（空白区切りtextまたは`.npy`）。`all`が自動指定し、通常の単独runでは省略します。外部経路を使うexpert runではroot選択、overlap追跡、`n_imag=0`回復に使用します | _None_ |
-| `--flatten/--no-flatten` | 一般の余剰虚振動モード flatten を有効化します。TS 最適化後、虚振動数が 1 つになるか上限に達するまで繰り返します。dimer および RS-P-RFO / RS-I-RFO に適用します。`--ref-mode` 付き Hessian run では、保持すべき負モードを参照方向で特定できるため、最大 20 回の cleanup が自動的に有効になります | `False` |
-| `--coord-type TEXT` | 最適化座標系（`cart` / `redund` / `dlc` / `tric`）。`cart` は公表値の基準となる確実なデフォルト。`dlc`（非局在内部座標）は低速だが、ねじれの多い系で一次鞍点へより堅牢に収束する。Hessianベースの最適化器が必要（`tsopt` の RS-P-RFO / Dimer は該当）。`path-opt` / `path-search` は `cart` / `dlc` のみ受け付ける | `cart` |
+| `--flatten/--no-flatten` | 一般の余剰虚振動モード flatten を有効化します。TS 最適化後、虚振動数が 1 つになるか上限に達するまで繰り返します。dimer および RS-P-RFO / RS-I-RFO に適用します。`--ref-mode` は保持すべき負モードを特定しますが、それ自体では flatten を有効化しません | `False` |
+| `--coord-type TEXT` | 最適化座標系（`cart` / `redund` / `dlc` / `tric`）。`cart` は公表値の基準です。`dlc` は条件付けを変えますが、どちらも一律に高速・堅牢ではないため問題のseedで比較してください。Hessian系`tsopt`は4種類すべて、`path-opt` / `path-search`は`cart` / `dlc`のみ受け付けます | `cart` |
 | `--precision [fp32\|fp64]` | MLIP バックエンド精度。バックエンド固有のキー（UMA `precision` / ORB `precision` / MACE `default_dtype`。`aimnet2`: `fp32` は no-op、`fp64` は拒否）へ振り分け。データセンター GPU では数値ノイズの少ない Hessian のために `fp64` を使用。{ref}`再現性: GPU クラスによる精度の選択 <ja-precision-by-gpu-class>` を参照 | バックエンド既定 (uma `fp32`、orb・mace `fp64`) |
 | **閾値とサイクル** | | |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`、`gau`、`gau_tight`、`gau_vtight`、`baker`、`never`） | `baker` |
 | `--max-cycles INT` | `opt.max_cycles` に渡されるマクロサイクル上限 | `10000` |
 | **出力と設定** | | |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_tsopt/` |
-| `--convert-files/--no-convert-files` | PDB または Gaussian 入力用の XYZ/TRJ → 対応する PDB/GJF 出力を切り替え | `True` |
+| `--convert-files/--no-convert-files` | PDB/mmCIF/Gaussian入力用の XYZ/TRJ → PDB/CIF/GJF 出力を切り替え | `True` |
 | `--dump/--no-dump` | 軌跡をダンプ | `False` |
 | `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 | `--config FILE` | 明示 CLI オプションより前に適用するベース YAML 設定ファイル | _None_ |
@@ -155,18 +160,18 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
 ### `--flatten` 優先順位の注意
 
 ```{note}
-**`--flatten` はデフォルトで無効です（優先順位の注意）。** `defaults.py` では `flatten_max_iter: 50` が定義されており（下記インライン YAML 表記でも `flatten_max_iter: 50`）、それにもかかわらず CLI の初期化器はコマンドラインで `--flatten` が **明示的に** 渡されない限り `flatten_max_iter = 0` を強制します。実効値は以下のとおりです:
+**`--flatten` はデフォルトで無効です（優先順位の注意）。** `defaults.py` では `flatten_max_iter: 50` が定義されていますが、CLI は YAML 適用前の初期値を `0` にします。実効値は以下のとおりです:
 
 - CLI `--flatten` **未指定** → YAML で `hessian_dimer.flatten_max_iter` を**明示的に指定**しない限り `flatten_max_iter = 0`（余剰モード除去ループ無効）。フラット化のカウンタは Dimer・RS-I-RFO のどちらの経路でも `hessian_dimer` ブロックからのみ読み取られます。`defaults.py` の値 50 は**無視**されます。
 - CLI `--flatten` 指定 → YAML / `defaults.py` の値が有効（デフォルト `flatten_max_iter = 50`）。引き続き YAML で上書きできます。
-- 例外として、`all`が内部指定する`--ref-mode`付きHessian TS runでexact PHVAが高次鞍点を確認した場合は、参照モード以外を除く最大20回の有界cleanupが自動的に有効になります。
+- CLI `--no-flatten` 指定 → YAML より優先して `flatten_max_iter = 0`。
 
 TS 候補に複数の虚振動数がある場合は、`--flatten` を追加して余分なモードの除去ループを有効にしてください。
 
 pathのHEIからTS最適化がなお失敗する場合は、原因に応じて2通りを試します。
 
 1. 余分な虚振動が残る場合は`--flatten`を追加します。
-2. `all` workflowでは`--refine-path True`で再帰的`path-search`を実行し、
+2. `all` workflowでは`--refine-path`で再帰的`path-search`を実行し、
    TSOPT前のHEIを精密化します。
 
 2番目は意図的にデフォルトOFFです。悪い／ノイズの多いpathを不要な素反応segmentへ
@@ -181,8 +186,8 @@ MEPを確認し、粗いHEIが原因と判断できる場合に有効化して�
 
 | レバー | フラグ | 効果 |
 | --- | --- | --- |
-| 精度を上げる | `--precision fp64` | よりクリーンな Hessian が数値ノイズ由来の虚振動数モードを除去（データセンター GPU で使用） |
-| 内部座標 | `--coord-type dlc` | 非局在内部座標。低速だが、ねじれの多い系で一次鞍点へより堅牢に収束 |
+| 精度を上げる | `--precision fp64` | UMA / ORB / MACE で数値ノイズ由来のmodeを減らせる場合があります。AIMNet2はfp64を受け付けず、真の負曲率は除去できません |
+| 内部座標 | `--coord-type dlc` | 最適化の条件付けを変えます。`cart` / `dlc`のどちらも一律に高速・堅牢ではないため、問題のseedで比較してください |
 | 小さいモードのフラット化 | `--flatten` | 余分な虚振動数モードのフラット化ループを実行（`grad`: dimer ループ、`hess`: RS-P-RFO 後の処理）。`--no-flatten` は `flatten_max_iter = 0` を強制 |
 
 まず `--precision fp64` および／または `--coord-type dlc` を試し、残った小さいモードは `--flatten` で除去します。
@@ -191,8 +196,6 @@ MEPを確認し、粗いHEIが原因と判断できる場合に有効化して�
 pdb2reaction tsopt -i ts_candidate.xyz -q -1 -m 1 \
     --precision fp64 --coord-type dlc --flatten -o result_tsopt
 ```
-
-例えば、ある変異型コリスミ酸ムターゼの TS は支配的な Claisen モード −223 cm⁻¹ に加え残留 −12.5 cm⁻¹ を伴って収束しましたが、`--flatten` でクリーンな単一虚振動数の鞍点へ駆動できます。
 
 [よくあるエラーのレシピ → 収束・後処理で止まる](recipes-common-errors.md) も参照してください。
 
@@ -208,15 +211,24 @@ pdb2reaction tsopt -i ts_candidate.xyz -q -1 -m 1 \
 
 ### 条件を揃えた変異体 vs WT 比較
 
-変異体 vs WT（または機構 vs 機構）のバリア比較では、**比較するすべてのモデルが同一の原子集合**（同じ原子数・同じ残基）を使わなければなりません。さもなければ対照が揃わず比較にならず、バリア差は解釈できません。
+MEP の入力契約と系をまたぐ比較を混同しないでください。各 R→IM→P
+経路の内部では、すべての構造が同じ原子を同じ順序で持つ必要があります。
+一方、実際の WT→変異体置換では残基種や原子数が変わり得るため、WT と
+変異体の全エネルギーを直接差し引いてはいけません。各系の内部で求めた
+活性化エネルギーまたは自由エネルギーを比較します。
 
-`pdb2reaction` ではクラスターの原子集合を直接指定するため、同一原子集合の規則は仕組み上保証されます。
+`ΔΔG‡ = (G_TS − G_R)_mutant − (G_TS − G_R)_WT`
 
-- **1 つ**のクラスター原子集合を用意し、変異（または機構変更）を**その同じ集合上で**適用することで、比較するすべての実行で原子数と残基を同一に保ちます。共有クラスターをその場で編集してください。各変異体を独立に再抽出**しない**こと。`--radius` や残基の含め方が異なると原子集合が警告なく変わり、比較が壊れます。
-- 非標準リガンドの電荷は `-l 'RES:Q'`（例 `-l 'GPP:-3,SAM:1'`）で比較するすべての実行に揃え、電荷差がバリア比較を交絡しないようにします。
+- 意図した変異以外については、選択する残基**位置**とクラスター境界・cap
+  の方針を化学的に妥当な範囲で揃えます。半径による独立抽出では境界残基が
+  一方だけに入ることがあるため、選択結果を監査してください。
+- protonation、電荷決定方法、backend/model、precision、拘束、熱化学条件を
+  揃えます。変異が formal charge や protonation を変える場合、検証済み全電荷
+  は正当に異なり得るので、見かけを対称にするため同じ `-q` を強制しません。
+- **同じ組成**の機構どうしを比較する場合は、共通の原子集合と順序を使います。
 
 ```bash
-# WT と変異体は 1 つの用意したクラスターを共有（原子数・残基が同一）
+# 各経路内では原子を一致させ、2つのclusterでは境界条件を揃える
 pdb2reaction all -i wt_cluster.pdb     -l 'GPP:-3,SAM:1' --tsopt --thermo -o result_wt
 pdb2reaction all -i mutant_cluster.pdb -l 'GPP:-3,SAM:1' --tsopt --thermo -o result_mutant
 ```
@@ -238,12 +250,12 @@ opt:
 ```
 
 ```{note}
-**平坦なエネルギー地形によるフォールバック収束。** RS-I-RFO は共通の
-`energy_plateau` 設定を参照します。直近 `energy_plateau_window` ステップ（デフォルト 50）の
-エネルギーレンジ（max − min）が `energy_plateau_thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`）
-を下回ると収束と判定されます。大規模 TS 系では MLIP の力のノイズフロア（~4×10⁻⁴ au）が
-`baker` max_force 閾値（3×10⁻⁴ au）を上回ることがあり、エネルギー地形がすでに平坦になっていても
-力ベース判定に到達しないためです。無効化するには `energy_plateau: false` を指定してください。
+**energy plateau fallback。** Hessian-family TS optimizer（RS-P-RFO、
+RS-I-RFO、TRIM）は共通の `energy_plateau` 設定を参照します。直近50 stepの
+energy rangeが `energy_plateau_thresh`（default `1×10⁻⁴ au`）を下回ると、
+exact-Hessian/PHVA terminal validationを開始します。これは一次鞍点とphysical convergenceの
+検査を迂回する無条件収束ではありません。backend/model/system依存のforce floorが選択閾値への
+到達を妨げる場合に無駄なcycleを避けられます。無効化には `energy_plateau: false` を指定します。
 ```
 
 ### Dimer モード（`--opt-mode grad`）
@@ -286,7 +298,7 @@ TS 収束が遅い場合や最適化中に TS モードが失われる場合は�
 
 - 虚振動数モード**検出**の閾値はデフォルトで 5.0 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm` で変更可能）。この閾値未満の振動数は虚振動数としてカウントされません。選択した `root` は最適化中にどの振動モードを追跡するかを制御します。`root` は YAML（`rsirfo.root` または `hessian_dimer.root`、デフォルト `0`）で設定します。`tsopt` に `--root` CLI フラグはありません（[`irc`](irc.md) とは異なります）。
 - `--opt-mode` はワークフロー選択用です（デフォルト: `rsprfo`）。YAML のモードマッピングを手動で変更するのではなく、目的のアルゴリズムに合ったモードを選択してください。
-- Dimer モードは初期Hessianの対角化前に並進/回転射影（凍結原子がある場合は PHVA）を適用し、`freq` と同じ実装に揃えています。RS-I-RFO モードは活性 DOF のデカルトHessianを TR 射影なしで直接扱います（凍結原子により剛体対称性が失われるためです）。
+- Dimer方向、flatten、最終exact PHVA検証は`freq`と同じ`--tr-projection`実装を使用します。Hessian RFO最適化自体は、この射影を行わずactive-DOF Cartesian Hessianを扱います。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
 - 設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
 
 ## 関連項目

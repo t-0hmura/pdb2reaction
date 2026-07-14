@@ -6,26 +6,30 @@
 - `workers-per-node` — そのうち各ノードで動作する数（デフォルト `1`）。ノードあたりの GPU / メモリ負荷を制御します。
 
 ```{warning}
-UMA バックエンドを `workers > 1` で実行している状態で `hessian_calc_mode="Analytical"` を指定すると、並列 predictor が autograd model を持たないため `RuntimeError` で停止します。解析 Hessian には `workers = 1`、並列実行には `FiniteDifference` を指定してください。{ref}`ja-hessian-evaluation` を参照してください。ORB / MACE / AIMNet2 は `workers` / `workers_per_node` を受け付けないため、この規則は適用されません。
+UMA バックエンドを `workers > 1` で実行している状態で `hessian_calc_mode="Analytical"` を指定すると、並列 predictor が autograd model を持たないため `BackendError`（`RuntimeError` のサブクラス）で停止します。解析 Hessian には `workers = 1`、並列実行には `FiniteDifference` を指定してください。{ref}`ja-hessian-evaluation` を参照してください。ORB / MACE / AIMNet2 は `workers` / `workers_per_node` を受け付けないため、この規則は適用されません。
 ```
 
 以下の PBS スクリプトは Open MPI を使用して複数ノードで Ray クラスタを構築する一例です。**テンプレートとして扱ってください**: モジュール名、conda パス、ポート、PBS リソース要求は環境に合わせて調整が必要です。
 
 ```bash
-#!/bin/bash
-#PBS -l select=4:mpiprocs=72
+#!/usr/bin/env bash
+# nodeごとにMPI rank 1、GPU 1を明示要求。ncpus/ngpusはsiteに合わせる。
+#PBS -l select=4:ncpus=72:mpiprocs=1:ngpus=1
 #PBS -l walltime=24:00:00
 #PBS -j oe
 #PBS -N pdb2reaction
 
-cd "$PBS_O_WORKDIR"
+set -euo pipefail
+cd -- "${PBS_O_WORKDIR:?PBS_O_WORKDIR is unset}"
 
 # --- Environment setting ---
 source /etc/profile.d/modules.sh
 module purge
-module load gcc ompi cuda/<your-version>     # 例: cuda/12.6 または cuda/12.9
+CUDA_MODULE=${CUDA_MODULE:-cuda/12.6}        # site の module 名に変更
+P2R_CONDA_ENV=${P2R_CONDA_ENV:-p2r}         # install 済み env 名に変更
+module load gcc ompi "${CUDA_MODULE}"
 source ~/apps/miniconda3/etc/profile.d/conda.sh
-conda activate <your-env>
+conda activate "${P2R_CONDA_ENV}"
 # -------------------
 
 
@@ -34,15 +38,17 @@ conda activate <your-env>
 export CUDA_DEVICE_ORDER=PCI_BUS_ID
 export NCCL_SOCKET_FAMILY=AF_INET
 
-# CUDA_VISIBLE_DEVICES fallback (if scheduler doesn't set)
+# 未割当GPUを勝手に選ばずfail closedにする
 if [[ -z "${CUDA_VISIBLE_DEVICES:-}" || "${CUDA_VISIBLE_DEVICES}" == "NoDevFiles" ]]; then
- export CUDA_VISIBLE_DEVICES=0
+ echo "PBS allocation exposed no GPU (CUDA_VISIBLE_DEVICES is empty)." >&2
+ exit 2
 fi
 export GPUS_PER_NODE="$(awk -F',' '{print NF}' <<< "${CUDA_VISIBLE_DEVICES}")"
 
 # --- Nodes ---
 mapfile -t NODES < <(awk '!seen[$0]++' "$PBS_NODEFILE")
 NNODES="${#NODES[@]}"
+TOTAL_WORKERS=$((NNODES * GPUS_PER_NODE))
 
 HEAD_NODE="${NODES[0]}"
 HEAD_IP="$(getent ahostsv4 "${HEAD_NODE}" | awk 'NR==1{print $1}')"
@@ -78,19 +84,24 @@ BASH=(bash --noprofile --norc -c)
 
 cleanup() {
  echo "Stopping Ray..."
- [[ -n "${RAY_LAUNCH_PID:-}" ]] && kill "${RAY_LAUNCH_PID}" >/dev/null 2>&1 || true
- "${MPI[@]}" "${BASH[@]}" "ray stop -f >/dev/null 2>&1 || true" || true
+ if [[ -n "${RAY_LAUNCH_PID:-}" ]]; then
+  # 下で独立sessionとして起動した、このjobのprocess groupだけを停止する。
+  # bare `ray stop -f` は共有node上の別jobまで停止し得るため使わない。
+  kill -TERM -- "-${RAY_LAUNCH_PID}" >/dev/null 2>&1 || true
+  wait "${RAY_LAUNCH_PID}" 2>/dev/null || true
+ fi
 }
 trap cleanup EXIT
 
-# Prepare node-local /tmp + stop any leftover ray
-"${MPI[@]}" "${BASH[@]}" "mkdir -p '${RAY_TEMP_DIR}'; ray stop -f >/dev/null 2>&1 || true"
+# job固有のport/tmp pathで分離し、他のRay jobは停止しない
+"${MPI[@]}" "${BASH[@]}" "mkdir -p '${RAY_TEMP_DIR}'"
+command -v setsid >/dev/null
 
 # --- Launch Ray (rank0=head) ---
-"${MPI[@]}" "${BASH[@]}" "
+setsid "${MPI[@]}" "${BASH[@]}" "
 
 # Keep env stable inside remote shell as well
-export PYTHONPATH='${PYTHONPATH}'
+export PYTHONPATH='${PYTHONPATH:-}'
 export CUDA_DEVICE_ORDER=PCI_BUS_ID
 export NCCL_SOCKET_FAMILY=AF_INET
 export TMPDIR='${RAY_TEMP_DIR}'
@@ -98,9 +109,10 @@ export TMPDIR='${RAY_TEMP_DIR}'
 # Avoid NCCL \"duplicate GPU\" when hostid is identical across nodes
 export NCCL_HOSTID=\$(hostname -s)
 
-# Per-node GPU count
+# remote rankでも未割当GPUを捏造しない
 if [[ -z \"\${CUDA_VISIBLE_DEVICES:-}\" || \"\${CUDA_VISIBLE_DEVICES}\" == \"NoDevFiles\" ]]; then
- export CUDA_VISIBLE_DEVICES=0
+ echo \"[\$(hostname -s)] no scheduler-visible GPU\" >&2
+ exit 2
 fi
 GPUS=\$(awk -F',' '{print NF}' <<<\"\${CUDA_VISIBLE_DEVICES}\")
 
@@ -110,7 +122,7 @@ IP=\$(getent ahostsv4 \"\${HOST}\" | awk 'NR==1{print \$1}')
 echo \"[\${HOST}] IP=\${IP} CUDA_VISIBLE_DEVICES=\${CUDA_VISIBLE_DEVICES} (GPUS=\${GPUS}) NCCL_HOSTID=\${NCCL_HOSTID}\"
 
 if [[ \"\${OMPI_COMM_WORLD_RANK:-0}\" == \"0\" ]]; then
- echo \"[\${HOST}] ray HEAD on \${HEAD_IP}:\${RAY_PORT}\"
+ echo \"[\${HOST}] ray HEAD on ${HEAD_IP}:${RAY_PORT}\"
  ray start --head --node-ip-address='${HEAD_IP}' --port='${RAY_PORT}' \
  --object-manager-port='${RAY_OBJECT_MANAGER_PORT}' --node-manager-port='${RAY_NODE_MANAGER_PORT}' \
  --runtime-env-agent-port='${RAY_RUNTIME_ENV_AGENT_PORT}' \
@@ -120,8 +132,13 @@ if [[ \"\${OMPI_COMM_WORLD_RANK:-0}\" == \"0\" ]]; then
  --temp-dir='${RAY_TEMP_DIR}' \
  --disable-usage-stats --include-dashboard=false --block
 else
- until (echo > /dev/tcp/\${HEAD_IP}/\${RAY_PORT}) >/dev/null 2>&1; do sleep 1; done
- echo \"[\${HOST}] ray WORKER -> \${RAY_HEAD_ADDR}\"
+ connected=0
+ for _attempt in \$(seq 1 120); do
+  if (echo > /dev/tcp/${HEAD_IP}/${RAY_PORT}) >/dev/null 2>&1; then connected=1; break; fi
+  sleep 1
+ done
+ (( connected == 1 )) || { echo \"Ray head did not become reachable\" >&2; exit 2; }
+ echo \"[\${HOST}] ray WORKER -> ${RAY_HEAD_ADDR}\"
  ray start --address='${RAY_HEAD_ADDR}' --node-ip-address=\"\${IP}\" \
  --object-manager-port='${RAY_OBJECT_MANAGER_PORT}' --node-manager-port='${RAY_NODE_MANAGER_PORT}' \
  --runtime-env-agent-port='${RAY_RUNTIME_ENV_AGENT_PORT}' \
@@ -135,26 +152,55 @@ fi
 
 RAY_LAUNCH_PID=$!
 
-sleep 10 # Wait for workers
-ray status || true
+# 全node/GPU resourceを確認するbounded readiness gate
+export EXPECTED_RAY_NODES="${NNODES}"
+export EXPECTED_RAY_GPUS="${TOTAL_WORKERS}"
+ready=0
+for _attempt in $(seq 1 120); do
+ if ! kill -0 "${RAY_LAUNCH_PID}" 2>/dev/null; then
+  echo "Ray launcher exited before the cluster became ready." >&2
+  break
+ fi
+ if python - <<'PY'
+import os
+import ray
+
+ray.init(address="auto", ignore_reinit_error=True, logging_level="ERROR")
+live_nodes = sum(bool(node.get("Alive")) for node in ray.nodes())
+gpu_total = float(ray.cluster_resources().get("GPU", 0.0))
+expected_nodes = int(os.environ["EXPECTED_RAY_NODES"])
+expected_gpus = float(os.environ["EXPECTED_RAY_GPUS"])
+ray.shutdown()
+if live_nodes < expected_nodes or gpu_total < expected_gpus:
+    raise SystemExit(1)
+PY
+ then
+  ready=1
+  break
+ fi
+ sleep 2
+done
+(( ready == 1 )) || { echo "Ray readiness timed out." >&2; exit 2; }
+ray status
 # --- Ray setup end ---
 
-pdb2reaction opt -i test.pdb -q -5 -m 1 --workers ${NNODES} --workers-per-node ${GPUS_PER_NODE}
+pdb2reaction opt -i test.pdb -q -5 -m 1 \
+ --workers "${TOTAL_WORKERS}" --workers-per-node "${GPUS_PER_NODE}"
 ```
 
 ## ウォールタイム見積り
 
-上の 24 時間テンプレートはデフォルトの上限であり目標値ではありません。多くのジョブはこれを大きく下回って完了します。実行環境のウォールタイム特性（パターン）に合わせて選んでください。
+上の24時間templateは例示の上限であり、実測targetではありません。対象stackで代表pilotを行ってbudgetを決めます。
 
-- **クラスターモデルの `opt` / `tsopt`**（~50–100 原子、単一 GPU）: 数分〜数時間
-- **`pdb2reaction all` 一気通貫**（extract → MEP → TSOPT → IRC → freq → DFT、小型基質）: 通常数時間。ハイエンド multi-GPU ノードでは DFT 段階が大きく短縮可能
-- **MEP（`path-search` / `path-opt`）**: `--max-nodes`（セグメントあたりのイメージ数）と `--max-cycles`（GSM 最適化サイクル数）の双方でスケール。再帰的 `path-search` キャンペーンではこれにセグメント数が掛かるため、多段階反応では単一 GPU で何時間にも及び得る
+- **cluster modelの `opt` / `tsopt`**: 選択backend/model、Hessian mode、precision、収束設定を代表構造で実測
+- **`pdb2reaction all` 一気通貫**（extract → MEP → TSOPT → IRC → freq → DFT）: 代表 segment を実測してください。同梱 DFT command は一般的な multi-GPU SCF driver ではないため、GPU request を増やしても自動的には scale しません。
+- **MEP（`path-search` / `path-opt`）**: costは `--max-nodes`、optimizer iteration、再帰segment数で増えます。全mechanismのbudget前に代表segmentを実測
 
-UMA backend の場合、ウォールタイムは有効並列度（`workers` の総数）に概ね反比例します。ORB / MACE / AIMNet2 は worker 並列を持たないので、ノードを増やしてもウォールタイムは短くなりません。
+UMA `workers` は大規模/batched workload の inference throughput を改善し得ますが、optimizer stage には逐次処理があり、worker 数に反比例して短縮するわけではありません。node を増やす前に benchmark してください。ORB / MACE / AIMNet2 は pdb2reaction の UMA worker pool を使用しません。
 
-## データセンター GPU での精度
+## scheduler job での精度
 
-これらのテンプレートが対象とする HPC データセンターカード（H100 / H200 / A100）では、本番の TS 最適化と Hessian を `--precision fp64` で実行してください。これらのカードでは fp64 のスループットコストが小さく、実用的な品質で数値ノイズの少ない結果が得られます。スクリーニングやコンシューマー GPU（RTX 50xx / 40xx、fp64 が大幅に遅い）では `--precision fp32` を指定します（UMA では既定どおり、ORB / MACE では既定の fp64 からの引き下げになります）。振り分けの詳細と `--deterministic` との併用は {ref}`再現性: GPU クラスによる精度の選択 <ja-precision-by-gpu-class>` を参照してください。
+精度は backend と用途で選び、割り当て GPU 上の cost を実測します。未指定なら tested default（UMA/AIMNet2 fp32、ORB/MACE fp64）を保ちます。明示的 fp32 は screening には使えますが ORB/MACE の既定を下げ、その finite-difference Hessian を最終検証には使えません。precision は determinism も first-order saddle も保証しません。{ref}`backend と用途による精度の選択 <ja-precision-by-gpu-class>` を参照してください。
 
 ## 関連項目
 

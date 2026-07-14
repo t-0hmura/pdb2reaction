@@ -32,7 +32,9 @@ pdb2reaction dft -i input.pdb -q 0 -m 1 \
  --engine gpu --out-dir ./result_dft_tight
 ```
 
-> **Caveat:** The tight `def2-tzvpd` setting above suits only small active-site models (≲150 atoms on a GPU with sufficient VRAM). See [Notes](#notes) for size / basis / backend thresholds.
+> **Caveat:** The tight `def2-tzvpd` setting is expensive. There is no
+> universal atom-count/VRAM cutoff; pilot a representative structure and see
+> [Notes](#notes).
 
 Force CPU backend for portability.
 
@@ -51,7 +53,7 @@ When `-q` is omitted but `--ligand-charge/-l` is provided, the input is treated 
 
 ## Workflow
 
-1. **Input handling** – Any file loadable by `geom_loader` (.pdb/.xyz/_trj.xyz/…) is accepted. Coordinates are re-exported as `input_geometry.xyz`. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology for atom-count validation and (if you also use `--ligand-charge/-l`) charge derivation; the DFT stage itself does **not** emit PDB/GJF outputs.
+1. **Input handling** – PDB, mmCIF, XYZ, GJF, and other files loadable by `geom_loader` are accepted. Coordinates are re-exported as `input_geometry.xyz`. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB/mmCIF topology for atom-count validation and (if you also use `--ligand-charge/-l`) charge derivation; the DFT stage itself does **not** emit PDB/CIF/GJF outputs.
 2. **SCF build** – `--func-basis` is parsed into functional and basis. `--engine` controls GPU/CPU preference (`gpu` requires GPU4PySCF and raises an error if unavailable; `cpu` forces CPU). On the closed-shell GPU path with `--lowmem` (default), the SCF object is `gpu4pyscf.dft.rks_lowmem.RKS`, which uses a memory-efficient direct-JK pipeline (no density fitting); on the open-shell GPU, CPU, or `--no-lowmem` paths, density fitting is enabled automatically with PySCF defaults. Nonlocal corrections (e.g., VV10) are not configured explicitly beyond the backend defaults.
 3. **Population analysis & outputs** – After convergence (or failure) the command writes `result.yaml` summarizing the energy (in hartree and kcal/mol), convergence metadata, backend info, and per-atom Mulliken/meta-Löwdin/IAO charges and spin densities (UKS only for spins). Any failed analysis column is set to `null` with a warning.
 
@@ -78,8 +80,8 @@ The full flag list is in the generated [command reference](reference/commands/in
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
-| `-q, --charge INT` | Total charge supplied to PySCF (`calc.charge`). Required unless a `.gjf` template or `--ligand-charge/-l` (PDB inputs or XYZ/GJF with `--ref-pdb`) supplies it. Overrides `--ligand-charge/-l` when both are set. | Required unless template/derivation applies |
-| `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB residue charges. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
+| `-q, --charge INT` | Total charge supplied to PySCF (`calc.charge`). Required unless a `.gjf` template or `--ligand-charge/-l` (PDB/mmCIF inputs or XYZ/GJF with `--ref-pdb`) supplies it. Overrides `--ligand-charge/-l` when both are set. | Required unless template/derivation applies |
+| `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB/mmCIF residue metadata. Used when `-q` is omitted (PDB/mmCIF inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). Converted to `2S` for PySCF. | `.gjf` template value or `1` |
 | `--func-basis TEXT` | Functional/basis pair in `FUNC/BASIS` form (quote strings with `*`). | `wb97m-v/def2-tzvpd` |
 | `--max-cycle INT` | Maximum SCF iterations (`dft.max_cycle`). | `100` |
@@ -124,9 +126,9 @@ See {ref}`exit-codes` in CLI Conventions.
 
 ## Notes
 
-- **System size / basis cost:** `def2-tzvpd` is expensive; on 16-24 GB GPUs it OOMs above ~150 atoms, and DFT single points are practical only up to ~300 atoms. Use `--func-basis 'wb97m-v/def2-svp'` (1-3 kcal/mol barrier-height error) or an external program (ORCA, Gaussian) for larger systems, and extract a small active-site model first.
-- **Blackwell GPUs (RTX 50xx):** GPU4PySCF may OOM even at ~100 atoms; use `--engine cpu` or an external DFT program.
-- **CPU backend:** `--engine cpu` is practical only for small models (<=150 atoms) and small basis sets; larger systems are prohibitively slow.
+- **System size / basis cost:** `def2-tzvpd` is expensive, but there is no universal atom-count or VRAM cutoff. Basis-function count, elements, functional, grid, density-fitting path, and GPU all matter. Pilot one representative structure and monitor peak memory. A smaller basis such as `def2-svp` is cheaper but changes the method; do not attach a universal barrier-error estimate to that change.
+- **New GPU architectures:** an OOM or unsupported-kernel failure can reflect package/kernel compatibility as well as true memory demand. Diagnose the actual GPU4PySCF/CuPy versions and traceback before switching engine; do not treat all Blackwell cards as one known failure mode.
+- **CPU backend:** `--engine cpu` is supported, but feasibility is method/system/hardware dependent. Time a representative single point rather than applying a fixed atom-count cutoff.
 - **HPC scratch:** PySCF / GPU4PySCF write to `$PYSCF_TMPDIR` (then `$TMPDIR`, `/tmp`); on nodes with a small or tmpfs `/tmp`, set `PYSCF_TMPDIR` to the job filesystem (e.g. `export PYSCF_TMPDIR="$PBS_O_WORKDIR"`) before launching.
 - Compiled GPU4PySCF wheels may not support non-x86 systems; build from source in that case (see https://github.com/pyscf/gpu4pyscf).
 - No auxiliary basis guessing is implemented; density-fitting behavior is described under Workflow (SCF build) and the `--lowmem` CLI option.

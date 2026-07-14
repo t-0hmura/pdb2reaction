@@ -4,8 +4,8 @@
 
 2D distance scan with harmonic restraints. Drives two bonds toward
 target distances simultaneously and produces a 2D grid of relaxed
-geometries. Useful for mapping concerted-vs-stepwise reaction
-surfaces (e.g. SN2 attack + leaving-group departure).
+geometries. It can help inspect coupling between two chosen coordinates, but
+the grid alone does not prove a concerted or stepwise mechanism.
 
 ## Synopsis
 
@@ -20,7 +20,7 @@ pdb2reaction scan2d -i input.pdb \
 
 | flag | type | default | description |
 |---|---|---|---|
-| `-i, --input` | path | required | Reactant `.pdb` / `.xyz` / `.gjf` |
+| `-i, --input` | path | required | Reactant `.pdb` / `.cif` / `.mmcif` / `.xyz` / `.gjf` |
 | `-s, --scan-lists` | str | required | Inline Python literal containing **two** 4-tuples `(i, j, low, high)` (one per axis), or a YAML/JSON spec file. |
 | `-q` / `-l` / `-m` | — | — | Charge / spin |
 | `-b, --backend` | str | `uma` | MLIP backend |
@@ -47,21 +47,23 @@ pdb2reaction scan2d -i 1.R.pdb -l 'SAM:1,GPP:-3' \
 | Path | When | Content |
 |---|---|---|
 | `<out_dir>/result.json` | `--out-json` | machine-readable result |
-| `<out_dir>/grid/point_iDDD_jDDD.xyz` (DDD = round(d×100), Å) | always | final relaxed grid point |
-| `<out_dir>/grid/preopt_iDDD_jDDD.{xyz,pdb,gjf}` (DDD = round(d×100), Å) | `--preopt` | pre-relaxation snapshot |
+| `<out_dir>/grid/point_iDDD_jDDD.{xyz,pdb,cif,gjf}` (DDD = round(d×100), Å) | each attempted grid point reaches output | final attempted grid geometry; format companions depend on the input topology and `--convert-files`; `surface.csv` records `bias_converged` |
+| `<out_dir>/grid/preopt_iDDD_jDDD.{xyz,pdb,cif,gjf}` (DDD = round(d×100), Å) | `--preopt` | pre-relaxation snapshot; format companions depend on the input topology and `--convert-files` |
 | `<out_dir>/grid/inner_path_d1_NNN_trj.xyz` | `--dump` | inner-loop trajectory |
-| `<out_dir>/scan2d_map.png` | always | 2D energy surface heatmap |
-| `<out_dir>/scan2d_landscape.html` | always | interactive 3D landscape |
-| `<out_dir>/surface.csv` | always | 2D energy surface (i, j, d1_A, d2_A, energy_hartree, bias_converged, energy_kcal, plus axis labels) |
+| `<out_dir>/scan2d_map.png` | successful grid + interpolation/PNG export | 2D energy surface heatmap |
+| `<out_dir>/scan2d_landscape.html` | successful grid + interpolation | interactive 3D landscape |
+| `<out_dir>/surface.csv` | at least one grid record | 2D energy surface (i, j, d1_A, d2_A, energy_hartree, bias_converged, energy_kcal, plus axis labels) |
 
-`result.json` stores grid metadata and energy values; `surface.csv` is
-ready for downstream contour plotting.
+`result.json` stores grid metadata and file paths; per-point energies and
+convergence flags are in `surface.csv`. `result.json["status"] == "completed"`
+means the grid and plots were written, not that every `bias_converged` value is
+true.
 
 ## Caveats
 
 - `-s` literal must contain **exactly two** tuples for `scan2d`.
-- Output volume scales as `n_steps1 × n_steps2`. Keep grids modest;
-  10×10 = 100 single-point optimizations.
+- Output volume scales as `n_steps1 × n_steps2`; a 10×10 grid attempts 100
+  restrained geometry optimizations.
 - Atom-spec syntax is identical to `scan.md`.
 
 ## See also

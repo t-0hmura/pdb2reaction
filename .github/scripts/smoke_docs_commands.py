@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -53,8 +54,6 @@ def _extract_commands_from_block(lines: list[str]) -> list[str]:
     for cmd in commands:
         if not cmd.startswith(TOOL_NAME):
             continue
-        if any(mark in cmd for mark in ("<", ">", "[", "]")):
-            continue
         filtered.append(cmd)
     return filtered
 
@@ -88,6 +87,10 @@ def _extract_docs_commands() -> list[str]:
 
 def _subcommand_from_tokens(tokens: list[str]) -> str:
     if len(tokens) < 2 or tokens[1].startswith("-"):
+        return "all"
+    if tokens[1].startswith("<") or tokens[1].startswith("["):
+        # Generic usage templates still participate in token validation; use
+        # `all` as the representative command for shared help flags.
         return "all"
     return tokens[1]
 
@@ -211,6 +214,75 @@ def _run_help_smoke(commands: list[str]) -> None:
     print(f"[help-smoke] validated {len(subcommands)} subcommands from docs.")
 
 
+def _validate_option_names(commands: list[str]) -> None:
+    """Validate every authored option token, including placeholder examples.
+
+    Executing a subcommand's ``--help`` only proves that the command exists;
+    Click's eager help can return before parsing an invalid option.  This
+    static pass checks each option token against the live command object and
+    deliberately retains examples containing ``<placeholder>`` notation.
+    """
+    root_ctx = root_cli.make_context(TOOL_NAME, [], resilient_parsing=True)
+    errors: list[str] = []
+    checked = 0
+    shell_breaks = {"|", "||", "&&", ";"}
+
+    for raw in commands:
+        try:
+            tokens = shlex.split(raw)
+        except ValueError as exc:
+            errors.append(f"cannot parse shell words: {raw!r}: {exc}")
+            continue
+        if not tokens or tokens[0] != TOOL_NAME:
+            continue
+
+        subcmd = _subcommand_from_tokens(tokens)
+        command = root_cli.get_command(root_ctx, subcmd)
+        if command is None:
+            errors.append(f"unknown subcommand {subcmd!r}: {raw}")
+            continue
+        allowed = {
+            opt
+            for param in command.params
+            if hasattr(param, "opts")
+            for opt in (*param.opts, *getattr(param, "secondary_opts", ()))
+        }
+        allowed.update({"-h", "--help", "--help-advanced", "--version"})
+
+        start = 2 if len(tokens) > 1 and tokens[1] == subcmd else 1
+        for token in tokens[start:]:
+            token = token.lstrip("[").rstrip("] ,")
+            if token in shell_breaks:
+                break
+            if token == "--":
+                break
+            if not token.startswith("-") or token == "-":
+                continue
+            # Negative numeric option values are not option names.
+            try:
+                float(token)
+                continue
+            except ValueError:
+                pass
+            # Synopsis blocks often compress aliases/pairs into one shell word
+            # (`-b/--backend`, `--dump/--no-dump`, or `--one-based|--zero-based`).
+            # Validate each advertised spelling independently.
+            names = [
+                part.split("=", 1)[0].removesuffix("...")
+                for part in re.split(r"[/|]", token)
+                if part.startswith("-")
+            ]
+            for name in names:
+                if name not in allowed:
+                    errors.append(f"unknown option {name!r} for {subcmd}: {raw}")
+        checked += 1
+
+    root_ctx.close()
+    if errors:
+        raise RuntimeError("[option-smoke] docs option validation failed:\n" + "\n".join(errors))
+    print(f"[option-smoke] validated option names in {checked} docs examples.")
+
+
 def _run_all_dry_run_smoke(commands: list[str]) -> None:
     try:
         probe = subprocess.run(
@@ -293,6 +365,7 @@ def main() -> int:
         raise RuntimeError("No commands were extracted from docs markdown code fences.")
 
     _run_help_smoke(commands)
+    _validate_option_names(commands)
     _run_all_dry_run_smoke(commands)
     return 0
 

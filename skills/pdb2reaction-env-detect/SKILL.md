@@ -26,11 +26,22 @@ the bottom.
 ### 1. Scheduler
 
 ```bash
-if   command -v qsub   >/dev/null; then SCHED=pbs    # Torque or PBSPro
-elif command -v sbatch >/dev/null; then SCHED=slurm
-else SCHED=local
+if [[ -n "${PBS_JOBID:-}${PBS_ENVIRONMENT:-}" ]]; then
+  SCHED=pbs
+elif [[ -n "${SLURM_JOB_ID:-}${SLURM_CLUSTER_NAME:-}" ]]; then
+  SCHED=slurm
+else
+  has_pbs=0; has_slurm=0
+  command -v qsub >/dev/null && has_pbs=1
+  command -v sbatch >/dev/null && has_slurm=1
+  if (( has_pbs && has_slurm )); then SCHED=ambiguous
+  elif (( has_pbs )); then SCHED=pbs
+  elif (( has_slurm )); then SCHED=slurm
+  else SCHED=local
+  fi
 fi
 echo "scheduler: $SCHED"
+[[ "$SCHED" != ambiguous ]] || echo "Both clients are visible; select from site documentation or an active allocation before submitting." >&2
 ```
 
 ### 2. Architecture and OS
@@ -41,9 +52,11 @@ uname -s                          # Linux / Darwin
 lscpu | grep -E "^(Architecture|Model name|CPU\(s\)):"
 ```
 
-`aarch64` (ARM64) means **`gpu4pyscf-cuda12x` is not available** — DFT must
-fall back to CPU PySCF. Other backends (UMA / MACE / Orb / AIMNet2) work
-on aarch64 if the wheels exist for your driver.
+On `aarch64` (ARM64), the packaged **`gpu4pyscf-cuda12x` PyPI wheel is not
+available**, so the supported extra uses CPU PySCF. An expert may instead use
+a separately source-built GPU4PySCF environment, but must validate imports and
+a representative SCF before selecting `--engine gpu`. Other backends (UMA /
+MACE / Orb / AIMNet2) work when compatible wheels exist for the platform.
 
 ### 3. GPU
 
@@ -71,8 +84,12 @@ command -v nvcc && nvcc --version
 ls "$(conda info --base 2>/dev/null)/envs"/*/bin/nvcc 2>/dev/null
 ```
 
-If none of the three returns anything, CUDA is not installed locally —
-either install it or run CPU-only.
+If none of the three returns anything, a local CUDA **toolkit** is not
+installed. That does not prevent a prebuilt CUDA-enabled PyTorch wheel from
+using the GPU: the wheel supplies its CUDA runtime libraries and needs the
+NVIDIA driver. Install/load a toolkit only when a dependency must compile a
+CUDA extension (or when building PyTorch/GPU4PySCF from source). See
+`pdb2reaction-install-backends/env-cuda.md` before changing the environment.
 
 ### 5. PBS scheduler details (when `SCHED=pbs`)
 
@@ -83,8 +100,9 @@ pbsnodes -a 2>/dev/null | grep -E "^[a-z0-9]|^ *(np|properties|gpus)" | head
 qstat -u "$USER"                  # your running / queued jobs
 ```
 
-The output of `pbsnodes -a` tells you per-node `np` (CPU count) and
-`gpus` (GPU count) — these become `<NCPU>` and `<NGPU>` in PBS preambles.
+The output of `pbsnodes -a` gives node capacities. They are upper bounds, not
+automatic requests: choose `<NCPU>`, `<NGPU>`, and memory from the measured
+workload and queue policy (most single-backend geometry jobs request one GPU).
 
 ### 6. SLURM scheduler details (when `SCHED=slurm`)
 
@@ -119,28 +137,43 @@ command -v module >/dev/null && module list 2>&1
 |---|---|
 | `<YOUR_QUEUE>` | A queue from `qstat -Q` (PBS); inspect with `qstat -Qf <queue>` to check `resources_max.walltime` covers your job |
 | `<YOUR_PARTITION>` | A partition from `sinfo -o "%P %l %N %G"` (SLURM) whose `TIMELIMIT` covers your job |
-| `<NCPU>` | `np` from `pbsnodes -a` (PBS) or `--cpus-per-task` budget (SLURM) |
-| `<NGPU>` | `gpus = N` from `pbsnodes -a` (PBS) or `--gres=gpu:N` (SLURM) |
-| `<MEM>` | A safe fraction of the per-node memory: `pbsnodes -a \| grep totalmem` (PBS) or `sinfo -o "%m"` (SLURM, returns MB — divide by 1024 for the GB value the HPC SKILL.md `--mem=<MEM>G` template expects) |
+| `<N_NODES>` | Number of nodes for a tested multi-node dispatcher/worker setup, within queue/site limits; do not infer it from task count alone |
+| `<NCPU>` | Requested CPU budget, no larger than node/queue capacity; size from measured CPU-side work and xTB/DFT threading, not automatically the whole node |
+| `<NGPU>` | Requested GPU count supported by the chosen backend/workflow; usually 1 unless using a tested UMA worker configuration |
+| `<MEM>` | Measured peak RAM plus headroom, no larger than queue/node capacity (`pbsnodes -a` / `sinfo -o "%m"` reveal capacity, not the required request) |
 | `<CUDA_MODULE>` | A line from `module avail 2>&1 \| grep -i cuda` (e.g. `cuda/12.9`; naming varies: `cuda`, `cudatoolkit`, `nvhpc`, …) |
 | `<YOUR_ENV>` | The conda env that imported `pdb2reaction` in step 7 |
 | `<HH:MM:SS>` | Your estimated walltime, capped by the queue's `resources_max.walltime` |
 
 ## Recipe: full one-shot probe
 
-Paste this into the host once. The output is enough to populate every
-placeholder used by other `pdb2reaction-*` skills.
+Paste this into the host once. It prints a discovery report to stdout; scheduler policy
+and a representative pilot run are still needed to choose resource requests.
 
 ```bash
 {
   echo "=== Scheduler ==="
-  command -v qsub   >/dev/null && echo "PBS"
-  command -v sbatch >/dev/null && echo "SLURM"
-  command -v qsub >/dev/null || command -v sbatch >/dev/null || echo "local only"
+  if [[ -n "${PBS_JOBID:-}${PBS_ENVIRONMENT:-}" ]]; then
+    SCHED=pbs
+  elif [[ -n "${SLURM_JOB_ID:-}${SLURM_CLUSTER_NAME:-}" ]]; then
+    SCHED=slurm
+  else
+    has_pbs=0; has_slurm=0
+    command -v qsub >/dev/null && has_pbs=1
+    command -v sbatch >/dev/null && has_slurm=1
+    if (( has_pbs && has_slurm )); then SCHED=ambiguous
+    elif (( has_pbs )); then SCHED=pbs
+    elif (( has_slurm )); then SCHED=slurm
+    else SCHED=local
+    fi
+  fi
+  echo "scheduler: $SCHED"
+  [[ "$SCHED" != ambiguous ]] || echo "Both clients are visible; select from site documentation or an active allocation before submitting." >&2
 
   echo
   echo "=== Architecture ==="
   uname -mrs
+  command -v lscpu >/dev/null && lscpu | grep -E "^(Architecture|Model name|CPU\(s\)):"
 
   echo
   echo "=== GPU ==="
@@ -149,14 +182,21 @@ placeholder used by other `pdb2reaction-*` skills.
   echo
   echo "=== CUDA modulefiles ==="
   command -v module >/dev/null && module avail cuda 2>&1 | head -20
+  command -v nvcc >/dev/null && nvcc --version
 
   echo
   echo "=== PBS queues (if PBS) ==="
-  command -v qstat >/dev/null && qstat -Q 2>/dev/null
+  if [[ "$SCHED" == pbs ]]; then
+    command -v qstat >/dev/null && qstat -Q 2>/dev/null
+    command -v pbsnodes >/dev/null && \
+      pbsnodes -a 2>/dev/null | grep -E "^[^[:space:]]|^[[:space:]]+(np|properties|gpus|resources_available\.(ncpus|ngpus|mem)|totalmem)" | head -80
+  fi
 
   echo
   echo "=== SLURM partitions (if SLURM) ==="
-  command -v sinfo >/dev/null && sinfo -o "%P %l %N %G" 2>/dev/null
+  if [[ "$SCHED" == slurm ]]; then
+    command -v sinfo >/dev/null && sinfo -o "%P %l %c %m %N %G" 2>/dev/null
+  fi
 
   echo
   echo "=== Conda envs with pdb2reaction ==="
@@ -164,8 +204,13 @@ placeholder used by other `pdb2reaction-*` skills.
     conda run -n "$env" python -c \
       'import pdb2reaction; print("'"$env"':", pdb2reaction.__version__)' 2>/dev/null
   done
-} 2>&1 | tee env_probe.txt
+} 2>&1
 ```
+
+Do not persist the raw report in a project/repository: it can contain private
+hostnames, paths, scheduler policy, and environment names. If a file is needed
+temporarily, create it under `${TMPDIR:-/tmp}` with mode `0600`, redact it, and
+delete it after extracting the placeholder values.
 
 ## See also
 - `pdb2reaction-hpc/SKILL.md` — uses `<YOUR_QUEUE>`, `<NCPU>`, `<NGPU>`,

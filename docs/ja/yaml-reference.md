@@ -37,6 +37,7 @@
 | `--dump` | `dump` | `opt` |
 | `--opt-mode` | `opt_mode` | `opt`, `tsopt`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, `all` |
 | `--freeze-atoms` | `freeze_atoms` | `geom` |
+| `--tr-projection` | `tr_projection` | `geom` |
 | `--coord-type` | `coord_type` | `geom` |
 | `--temperature`（freq、`all --freq-temperature`） | `temperature` | `thermo` |
 | `--pressure`（freq、`all --freq-pressure`） | `pressure_atm` | `thermo` |
@@ -109,11 +110,13 @@ TS 最適化はより厳しい "baker" プリセットを、通常の極小化�
 geom:
  coord_type: cart # Coordinate type: "cart" (Cartesian) or "dlc" (delocalized internals)
  freeze_atoms: [] # 1-based indices of atoms to freeze; merged with CLI --freeze-links detection
+ tr_projection: constrained # constrained | legacy-active; Cartesian PHVAの剛体モード処理
 ```
 
 **注記:**
-- `freeze_atoms` は PDB 入力時の `--freeze-links` 検出原子とマージされます。
+- `freeze_atoms` は PDB/mmCIF トポロジー入力時の `--freeze-links` 検出原子とマージされます。
 - 凍結原子は力がゼロ化され、Hessianの該当列もゼロ化されます。
+- `tr_projection: constrained` は凍結anchorを動かさない全系剛体運動だけを除去します。`legacy-active`はisolated-active比較用です。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
 - `irc` では `geom.coord_type` が YAML/CLI マージ後に `cart` へ強制されます。
 
 ---
@@ -154,8 +157,8 @@ calc:
 - `backend` で MLIP エンジンを選択。すべてのバックエンド（UMA, ORB, MACE, AIMNet2）が解析Hessian（`hessian_calc_mode: Analytical`）と有限差分Hessianの両方に対応。マルチワーカー推論は UMA バックエンド限定。
 - `workers` / `workers_per_node` は UMA バックエンドでのみ有効。
 - `solvent` で xTB ベースの暗黙溶媒補正を有効化（デルタ補正方式）。`xtb` のインストールが必要。
-- VRAM が十分な場合は `hessian_calc_mode: Analytical` を使用してください。
-- UMA の `workers > 1` では解析 Hessian が無効になります。`hessian_calc_mode: Analytical` を明示すると `RuntimeError` で停止します。解析 Hessian には `workers = 1`、並列実行には `FiniteDifference` を指定してください。詳細は {ref}`MLIP Calculator のHessian評価モード <ja-hessian-evaluation>` を参照してください。
+- 移植性のあるデフォルトは `FiniteDifference` です。`Analytical` は有限変位誤差を避けられますが、速度・メモリ量は backend/model/系に依存するため、対象環境で検証してから選択してください。
+- UMA の `workers > 1` では解析 Hessian が無効になります。`hessian_calc_mode: Analytical` を明示すると `BackendError`（`RuntimeError` のサブクラス）で停止します。解析 Hessian には `workers = 1`、並列実行には `FiniteDifference` を指定してください。詳細は {ref}`MLIP Calculator のHessian評価モード <ja-hessian-evaluation>` を参照してください。
 - 電荷/スピンは `.gjf` テンプレートがあればそれを継承します。
 - `freq` はデフォルトで `calc.return_partial_hessian = true`（PHVA）を設定します（YAML で上書き可能）。
 - IRC は `geom.coord_type = cart` と `calc.return_partial_hessian = true` を常に強制します（YAML より優先、partial Hessian で active-DOF 処理）。
@@ -193,9 +196,9 @@ opt:
 **平坦なエネルギー地形によるフォールバック収束:**
 `energy_plateau: true` の場合、直近 `energy_plateau_window` ステップのエネルギーレンジ
 （max − min）が `energy_plateau_thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`、50 ステップ）
-を下回ると、オプティマイザは収束したと判定します。これにより、MLIP の力のノイズフロア
-（典型的には ~4×10⁻⁴ au）が力ベースの収束閾値（例: `baker` max_force = 3×10⁻⁴ au）を
-上回る場合でも、エネルギー地形が明らかに平坦化していれば無駄なサイクルを消費せずに
+を下回ると、optimizerは収束したと判定します。これにより、backend/model/system依存の
+force noise/flatnessが選択したforce閾値への到達を妨げる場合でも、energy landscapeが
+明らかに平坦化していれば無駄なcycleを消費せずに
 停止できます。
 ただし chain-of-states（COS）オプティマイザ（`stopt`、`gs`、DMF など）は単一のスカラー
 エネルギー履歴ではなくイメージごとのエネルギー配列を保持するため、このフォールバックは
@@ -287,7 +290,7 @@ gs:
 ```
 
 ```{note}
-**GSM と DMF で `max_nodes` の意味が異なります。** **GSM**（`mep-mode gsm`）では `gs.max_nodes` は **内部画像数** を指し、エンドポイント2点が固定されるため総パス長は `max_nodes + 2` となります。**DMF**（`mep-mode dmf`）では CLI の `--max-nodes` は **可動画像数** を指し、エンドポイントの暗黙的な追加はありません。詳細は [`path-opt`](path-opt.md) を参照してください。
+`gs.max_nodes` / `--max-nodes` は **GSM** と **DMF** のどちらでも可動内部画像数です。両エンジンとも端点2つを保持するため、総パス長は `max_nodes + 2` です。詳細は [`path-opt`](path-opt.md) を参照してください。
 ```
 
 ---
@@ -297,7 +300,7 @@ gs:
 Direct Max Flux（DMF）による MEP 最適化。
 
 ```{note}
-**DMF の `--max-nodes` は「可動画像数」を意味します** — GSM と異なり、DMF は固定エンドポイント2点を加算しません。上記の `gs.max_nodes` の注記と比較してください。
+DMF では `--max-nodes` を `DirectMaxFlux(nmove=...)` に渡します。DMF API の `nmove` は可動内部評価点を指し、端点を含む総画像数は `nmove + 2` です。
 ```
 
 ```yaml
@@ -423,7 +426,12 @@ hessian_dimer:
 ```
 
 ```{note}
-**`flatten_max_iter` の CLI 優先順位の例外。** YAML の `hessian_dimer.flatten_max_iter: 50`（および対応する `rsirfo.flatten_max_iter`）は、通常の `defaults < YAML < CLI` の順序とは異なり、**コマンドラインで `--flatten` が明示的に渡されない限り CLI によって `0` に上書きされます**。完全な動作表は {ref}`ja-flatten-precedence-caveat` を参照してください。
+**`flatten_max_iter` のデフォルト例外。** CLI は YAML 適用前に
+`hessian_dimer.flatten_max_iter = 0` を初期値とします。このため toggle
+未指定時は明示した YAML 値を保持し、YAML に値が無ければ flatten は無効です。
+`--flatten` は YAML 値（無ければ組み込み値 50）を有効化し、
+`--no-flatten` は 0 を強制します。`rsirfo` に独立した flatten counter はありません。
+完全な動作表は {ref}`ja-flatten-precedence-caveat` を参照してください。
 ```
 
 ---
@@ -459,7 +467,11 @@ rsirfo:
 ```
 
 ```{note}
-**`--flatten` の優先順位。** Hessian-Dimer と RS-I-RFO 両経路の flatten ループは `hessian_dimer:` YAML セクションの `flatten_max_iter` キー（デフォルト 50）で設定します。`rsirfo:` には独自の flatten カウンタはありません。CLI は `--flatten` がコマンドラインで明示的に渡されない限り `flatten_max_iter` を `0` に上書きします。{ref}`ja-flatten-precedence-caveat` を参照してください。
+**`--flatten` の優先順位。** Hessian-Dimer と RFO TS 経路の flatten
+ループは `hessian_dimer.flatten_max_iter` で設定し、`rsirfo` に独立した
+counter はありません。toggle 未指定なら明示した YAML 値を保持し、
+`--flatten` はその値（無ければ組み込み値 50）、`--no-flatten` は 0 を使います。
+{ref}`ja-flatten-precedence-caveat` を参照してください。
 ```
 
 ## IRC セクション
@@ -597,6 +609,7 @@ bond:
 geom:
  coord_type: cart
  freeze_atoms: []
+ tr_projection: constrained
 
 calc:
  backend: uma
@@ -604,7 +617,7 @@ calc:
  spin: 1
  model: uma-s-1p2 # uma-s-1p2 | uma-m-1p1
  device: auto
- hessian_calc_mode: Analytical # Recommended when VRAM permits
+ hessian_calc_mode: FiniteDifference # 移植性のある既定値。Analytical は事前検証して選択
  solvent: none                 # Set to e.g. "water" for implicit solvent
 
 gs:

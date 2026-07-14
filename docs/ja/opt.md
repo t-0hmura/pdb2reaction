@@ -1,6 +1,6 @@
 # `opt`
 
-このコマンドは pysisyphus の L-BFGS（`lbfgs`）または RFOptimizer（`rfo`）を用い、MLIP（デフォルト: UMA、`-b/--backend` で ORB ・ MACE ・ AIMNet2 も選択可能）のエネルギー・勾配・Hessianで単一構造を局所極小点へ最適化します。距離拘束や虚振動数モードのフラット化も任意で併用できます。入力構造は `.pdb`、`.xyz`、`_trj.xyz`、その他 `geom_loader` がサポートする任意の形式に対応しています。L-BFGS 最小化には `--opt-mode grad`（alias `lbfgs`、デフォルト）、RFOptimizer には `--opt-mode hess`（alias `rfo`）を選択します。
+このコマンドは pysisyphus の L-BFGS（`lbfgs`）または RFOptimizer（`rfo`）を用い、MLIP（デフォルト: UMA、`-b/--backend` で ORB ・ MACE ・ AIMNet2 も選択可能）のエネルギー・勾配・Hessianで単一構造を局所極小点へ最適化します。距離拘束や虚振動数モードのフラット化も任意で併用できます。入力構造は `.pdb`、`.cif`、`.mmcif`、`.xyz`、`_trj.xyz`、その他 `geom_loader` がサポートする形式に対応しています。L-BFGS 最小化には `--opt-mode grad`（alias `lbfgs`、デフォルト）、RFOptimizer には `--opt-mode hess`（alias `rfo`）を選択します。
 
 ## 実行例
 
@@ -47,11 +47,11 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hess \
 
 - **オプティマイザ**: `--opt-mode grad`（alias: `lbfgs`、デフォルト）→ L-BFGS、`--opt-mode hess`（alias: `rfo`）→ RFOptimizer。サブコマンド別のトークン→アルゴリズム対応は {ref}`ja-opt-mode-semantics` を参照。
   > **命名規則の注意:** CLI は `grad|lbfgs` および `hess|rfo` を受け付けます。YAML では `lbfgs` または `rfo` を直接指定してください。
-- **Flatten loop**: `--flatten` を有効にすると、最適化後に虚振動数モードのフラット化ループを実行します。`opt` では各反復で検出された虚振動数モードをすべてフラット化し、虚振動数が残らなくなるか内部ループ上限に達するまで繰り返します。
+- **Flatten loop**: `--flatten` を有効にすると、最適化後に虚振動数モードのフラット化ループを実行します。`opt` では各反復で検出された虚振動数モードをすべてフラット化し、虚振動数が残らなくなるか内部ループ上限に達するまで繰り返します。PHVAの固有値解析には`--tr-projection`を使用し、デフォルトの`constrained`は凍結anchorを尊重します。
 - **拘束**: `--dist-freeze` は Python リテラルタプル `(i, j, target_Å)` を解釈します（`target_Å` は目標距離、単位は Å）。3 番目の要素を省略すると開始距離を拘束します。`--bias-k` はグローバル調和強度（eV·Å⁻²）を設定します。インデックスはデフォルトで 1 始まりですが、`--zero-based` で 0 始まりに切り替えられます。
 - **電荷/スピン解決**: 電荷の解決順序の詳細は {ref}`CLI 規約: 電荷の指定 <ja-charge-specification>` を参照してください。
 - **凍結原子**: `--freeze-links` が有効な場合、キャップ水素の親原子は自動的に凍結されます（{ref}`キャップ水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
-- **ダンプ & 変換**: `--dump` は `opt.dump=True` を反映し `optimization_trj.xyz` を出力します。変換が有効な場合、PDB 入力では軌跡が `optimization.pdb` としても出力されます。`opt.dump_restart` を有効にするとリスタート YAML が出力されます。
+- **ダンプ & 変換**: `--dump` は `opt.dump=True` を反映し `optimization_trj.xyz` を出力します。変換が有効な場合、PDB入力はPDB companion、mmCIF／oversized-PDB入力はPDBと元IDを復元したCIFを出力します。`opt.dump_restart` を有効にするとリスタート YAML が出力されます。
 - **終了コード**: 終了コードは CLI 規約の {ref}`ja-exit-codes` を参照。
 
 ## 出力
@@ -59,10 +59,12 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hess \
 ```
 out_dir/
 ├─ final_geometry.xyz # 常に出力
-├─ final_geometry.pdb # 入力がPDBで変換が有効な場合のみ
+├─ final_geometry.pdb # PDB/mmCIF topology入力、変換有効時
+├─ final_geometry.cif # mmCIF/oversized-PDB入力、変換有効時
 ├─ final_geometry.gjf # Gaussian テンプレートが検出され変換が有効な場合
 ├─ optimization_trj.xyz # ダンプが有効な場合のみ
-├─ optimization.pdb # 軌跡のPDB変換（PDB 入力、変換有効時）
+├─ optimization.pdb # 軌跡のPDB変換（topology入力、変換有効時）
+├─ optimization.cif # bridge入力。元IDを復元した軌跡
 └─ restart*.yml # opt.dump_restart 設定時のリスタートファイル（任意）
 ```
 コンソールには解決済みの `geom`/`calc`/`opt`/`lbfgs`/`rfo` ブロックとサイクル進行、総実行時間が出力されます。
@@ -81,23 +83,24 @@ out_dir/
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `-i, --input PATH` | `geom_loader` が受け入れる入力構造（`.pdb`、`.xyz`、`_trj.xyz`、`.gjf`） | 必須 |
-| `-q, --charge INT` | 総電荷。`.gjf` テンプレートまたは `--ligand-charge`（PDB 入力または `--ref-pdb` 付き XYZ/GJF）が提供しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
-| `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
-| `--workers INT` | UMA 予測器の並列度。`workers > 1` と明示的な解析 Hessian は併用できないため、`workers = 1` または有限差分を使用。{ref}`ja-workers-fd-downgrade` を参照 | `1` |
+| `-i, --input PATH` | 入力bridgeが受け入れる構造（`.pdb`、`.cif`、`.mmcif`、`.xyz`、`_trj.xyz`、`.gjf`） | 必須 |
+| `-q, --charge INT` | 総電荷。`.gjf` テンプレートまたは `--ligand-charge`（PDB/mmCIF 入力または `--ref-pdb` 付き XYZ/GJF）が提供しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
+| `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB/mmCIF 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB/mmCIF 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
+| `--workers INT` | UMA 予測器の並列度。`workers > 1` と明示的な解析 Hessian は併用できないため、`workers = 1` または有限差分を使用。{ref}`ja-workers-analytical-error` を参照 | `1` |
 | `--workers-per-node INT` | ノードあたりのワーカー数。並列予測器に渡されます | `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1）。`.gjf` テンプレートまたは `1` にフォールバック | テンプレート/`1` |
 | `--dist-freeze TEXT` | 調和拘束用の `(i,j,target_Å)` タプルを記述する Python リテラル文字列（繰り返し指定可） | _None_ |
 | `--one-based/--zero-based` | `--dist-freeze` インデックスを 1 始まり（デフォルト）または 0 始まりとして解釈 | `True` |
 | `--bias-k FLOAT` | すべての `--dist-freeze` タプルに適用される調和バイアス強度（eV·Å⁻²） | `300` |
-| `--freeze-links/--no-freeze-links` | キャップ水素の親原子の凍結を切り替え（PDB 入力、または `--ref-pdb` 付き XYZ/GJF） | `True` |
+| `--freeze-links/--no-freeze-links` | キャップ水素の親原子の凍結を切り替え（PDB/mmCIF 入力、または `--ref-pdb` 付き XYZ/GJF） | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
+| `--tr-projection [constrained\|legacy-active]` | `--flatten` PHVAだけで使う剛体モード処理。`constrained`は凍結anchorを尊重し、`legacy-active`はisolated-active比較用 | `constrained` |
 | `--max-cycles INT` | 最適化反復の上限 | `10000` |
 | `--opt-mode TEXT` | 最適化モード: `grad`（`lbfgs`）または `hess`（`rfo`）。`lbfgs`/`rfo` も指定可。サブコマンド別の対応表（`opt` は L-BFGS/RFO、`tsopt` は Dimer/RS-P-RFO）は {ref}`ja-opt-mode-semantics` を参照 | `grad` |
 | `--flatten/--no-flatten` | 最適化後の虚振動数モードフラット化ループを有効/無効化 | `False` |
 | `--dump/--no-dump` | 軌跡ダンプ（`optimization_trj.xyz`）を出力 | `False` |
-| `--convert-files/--no-convert-files` | PDB 入力用の XYZ/TRJ → 対応する PDB および Gaussian テンプレート用の XYZ → 対応する GJF の出力を切り替え | `True` |
-| `--ref-pdb FILE` | 入力が XYZ/GJF の場合に使用する参照 PDB トポロジー | _None_ |
+| `--convert-files/--no-convert-files` | PDB/mmCIF topology入力用の XYZ/TRJ → PDB/CIF、および Gaussian template用の XYZ → GJF を切り替え | `True` |
+| `--ref-pdb FILE` | XYZ/GJF入力に使用する参照PDBまたはmmCIF topology | _None_ |
 | `-o, --out-dir TEXT` | すべてのファイルの出力ディレクトリ | `./result_opt/` |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`、`gau`、`gau_tight`、`gau_vtight`、`baker`、`never`） | `gau` |
 | `--config FILE` | ベース YAML 設定ファイル | _None_ |
@@ -128,6 +131,7 @@ opt:
 ### `geom`
 - `coord_type`（`"cart"`）: デカルト座標 vs `"dlc"` 非局在化内部座標
 - `freeze_atoms`（`[]`）: 1 始まりの凍結原子インデックス。CLI のキャップ検出結果と自動的にマージされます
+- `tr_projection`（`"constrained"`）: `--flatten` PHVAの剛体モード処理。通常のL-BFGS／RFO stepには影響しません
 
 ### `calc`
 - MLIP バックエンド設定（`model`、`task_name`、デバイス選択、近傍半径、Hessian形式など）
@@ -158,9 +162,9 @@ L-BFGS と RFO の両方で使用される共有オプティマイザ制御:
 **平坦なエネルギー地形によるフォールバック収束。** `energy_plateau: true`
 のとき、直近 `energy_plateau_window` ステップのエネルギーレンジ（max − min）が
 `energy_plateau_thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`、50 ステップ）を
-下回ると、オプティマイザは収束したと判定します。これにより、MLIP の力のノイズフロア
-（~4×10⁻⁴ au）が力ベースの収束閾値（例: `baker` max_force = 3×10⁻⁴ au）を上回る
-場合でも、無駄にサイクルを消費せずに停止できます。なお chain-of-states オプティマイザ
+下回ると、optimizerは収束したと判定します。これにより、backend/model/system依存の
+force noise/flatnessが選択したforce閾値への到達を妨げる場合でも、無駄なcycleを
+消費せずに停止できます。なお chain-of-states optimizer
 （イメージごとのエネルギー配列を保持するもの）ではこのフォールバックはスキップされます。
 ```
 

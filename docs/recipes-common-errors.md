@@ -16,7 +16,7 @@ Each row deep-links into the relevant [Troubleshooting](troubleshooting.md) sect
 | `-q/--charge is required` errors | Set `-q/--charge` or `--ligand-charge/-l` explicitly | {ref}`Charge / spin problems <charge-spin-problems>` |
 | Energies/states look wrong after a run | Re-check charge/multiplicity policy in CLI conventions | {ref}`Charge / spin problems <charge-spin-problems>` |
 | **Calculation & convergence** | | |
-| UMA raises `RuntimeError` for `--workers > 1` plus `--hessian-calc-mode Analytical` | Use `--workers 1` for an analytical Hessian, or select FiniteDifference | {ref}`workers > 1 Hessian restriction <workers-fd-downgrade>` |
+| UMA raises `BackendError` for `--workers > 1` plus `--hessian-calc-mode Analytical` | Use `--workers 1` for an analytical Hessian, or select FiniteDifference | {ref}`workers > 1 Hessian restriction <workers-analytical-error>` |
 | CUDA out-of-memory at runtime (`torch.cuda.OutOfMemoryError`) | Re-extract with smaller `--radius` (extract / all only), switch to `--opt-mode grad`, keep default FD Hessian, or move to a larger GPU | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
 | TS converged but extra small imaginary modes remain | Add `--flatten` (available on `tsopt`, `opt`, and `pdb2reaction all`) | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
 | TSOPT does not converge | For the gradient-based optimizers (Limited-memory BFGS (L-BFGS) / Dimer): reduce `max_step`. For the Hessian-based optimizers (Rational Function Optimization (RFO) / Restricted-Step Partitioned RFO (RS-P-RFO, `tsopt` default) / Restricted-Step Image RFO (RS-I-RFO)): reduce `trust_radius`/`trust_min`/`trust_max`. Increase cycles, validate TS quality first | {ref}`Calculation / convergence problems <calculation-convergence-problems>` |
@@ -41,7 +41,7 @@ First checks:
 - Ensure element columns are present before running `extract` or `all`.
 
 Typical fix path:
-- Repair elements with `pdb2reaction add-elem-info -i input.pdb -o input_fixed.pdb` — rerun extraction — confirm active site model size (`--radius`) and residue inclusion (`--selected-resn`). See {ref}`selected-resn-takes-ids` in CLI Conventions for the residue-ID requirement.
+- Repair elements with `pdb2reaction add-elem-info -i input.pdb -o input_fixed.pdb` — rerun extraction — confirm active site model size (`--radius`) and residue inclusion (`--selected-resn`). See {ref}`selected-resn-takes-ids` in CLI Conventions for accepted residue names, IDs, and chain-qualified selector forms.
 
 ## Recipe 2: Charge/spin validation fails
 

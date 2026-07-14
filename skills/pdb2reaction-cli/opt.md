@@ -3,7 +3,7 @@
 ## Purpose
 
 Single-structure geometry optimization with L-BFGS or RFO.
-Use this to relax a starting geometry to its nearest local minimum
+Use this to relax a starting geometry toward a local minimum
 before feeding it to `path-search` / `path-opt`, or as a post-IRC
 endpoint refinement.
 
@@ -19,10 +19,11 @@ pdb2reaction opt -i input.pdb [-q 0 -m 1] \
 
 | flag | type | default | description |
 |---|---|---|---|
-| `-i, --input` | path | required | `.pdb` / `.xyz` / `.gjf` |
+| `-i, --input` | path | required | `.pdb` / `.cif` / `.mmcif` / `.xyz` / `.gjf` |
 | `-q` / `-l` / `-m` | — | — | Charge / spin |
 | `--opt-mode` | str | `grad` | `grad` (L-BFGS) or `hess` (RFO); aliases `lbfgs` / `rfo` |
 | `--max-cycles` | int | `10000` | Stop after N cycles; see `OPT_BASE_KW["max_cycles"]` |
+| `--tr-projection` | str | `constrained` | Rigid-mode treatment used only by `--flatten` PHVA; `legacy-active` is isolated-active comparison only |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `--solvent` | str | none | xTB-ALPB solvent |
 | `-o, --out-dir` | path | `./result_opt/` | Output directory |
@@ -36,7 +37,7 @@ pdb2reaction opt -i input.pdb [-q 0 -m 1] \
 pdb2reaction opt -i my.pdb -l 'SAM:1' -b uma -o result_opt
 ```
 
-### RFO for stiffer convergence
+### RFO alternative when L-BFGS is problematic
 
 ```bash
 pdb2reaction opt -i my.xyz -q -1 -m 1 --opt-mode rfo -b mace -o result_opt_rfo
@@ -45,9 +46,10 @@ pdb2reaction opt -i my.xyz -q -1 -m 1 --opt-mode rfo -b mace -o result_opt_rfo
 ### Pre-relax endpoints before path-opt
 
 ```bash
-pdb2reaction opt -i 1.R.pdb -l '...' -o /tmp/relax_R
-pdb2reaction opt -i 3.P.pdb -l '...' -o /tmp/relax_P
-pdb2reaction path-opt -i /tmp/relax_R/final_geometry.xyz /tmp/relax_P/final_geometry.xyz ...
+pdb2reaction opt -i 1.R.pdb -q 0 -m 1 -o /tmp/relax_R
+pdb2reaction opt -i 3.P.pdb -q 0 -m 1 -o /tmp/relax_P
+pdb2reaction path-opt -i /tmp/relax_R/final_geometry.pdb /tmp/relax_P/final_geometry.pdb \
+    -q 0 -m 1 -o result_path_opt
 ```
 
 ## Output
@@ -55,31 +57,37 @@ pdb2reaction path-opt -i /tmp/relax_R/final_geometry.xyz /tmp/relax_P/final_geom
 | Path | When | Content |
 |---|---|---|
 | `<out_dir>/result.json` | `--out-json` | machine-readable result |
-| `<out_dir>/final_geometry.xyz` | always | converged geometry |
-| `<out_dir>/final_geometry.pdb` | `--convert-files` (default on) | PDB companion |
+| `<out_dir>/final_geometry.xyz` | completed optimizer run | final geometry; inspect `result.json["status"]` before calling it converged |
+| `<out_dir>/final_geometry.pdb` | `--convert-files` (default on) and PDB/mmCIF topology/reference available | normalized PDB companion used between pipeline stages |
+| `<out_dir>/final_geometry.cif` | `--convert-files` and input/reference required the mmCIF or oversized-PDB bridge | public companion with original chain/residue IDs |
 | `<out_dir>/optimization_trj.xyz` | `--dump` | full optimization trajectory |
+| `<out_dir>/optimization.{pdb,cif}` | `--dump`, `--convert-files`, and conversion topology; CIF only for bridge inputs | topology-bearing trajectory companions |
 
 `result.json` (only when `--out-json` is passed) keys: `status`
 (`converged` / `not_converged`; `error` on failure), `n_opt_cycles`, `energy_hartree`,
 `final_max_force`, `final_rms_force`, and the `files` block whose
-`final_geometry_xyz` entry points at the converged geometry.
+`final_geometry_xyz` entry points at the final attempted geometry. When
+`--flatten` runs, `rigid_projection` records the treatment, effective rank,
+and raw Hessian source and shape.
 
 ## `--opt-mode` choice
 
 | Mode | Algorithm | When |
 |---|---|---|
-| `grad` / `lbfgs` | L-BFGS | Default, fast, reliable for most well-conditioned minima |
-| `hess` / `rfo` | RFO with Hessian updates | Stiffer convergence; useful when L-BFGS oscillates |
+| `grad` / `lbfgs` | L-BFGS | Software default; gradient-history method with no full initial Hessian |
+| `hess` / `rfo` | RFO with Hessian updates | Alternative when L-BFGS oscillates or its step history is poorly conditioned; relative cost/convergence is system dependent |
 
 ## Caveats
 
 - Not a TS optimizer — for TS use `tsopt.md`.
-- L-BFGS occasionally walks past a saddle on shallow surfaces; if the
-  resulting geometry has imaginary frequencies (run `freq` to check),
-  re-run with `--opt-mode rfo`.
+- Optimizer convergence alone does not prove a minimum. Run `freq`; if a
+  chemically meaningful imaginary mode remains, improve the starting
+  geometry or retry with `--opt-mode rfo`, then verify again.
 - `--config` YAML is the way to override less-common settings (step
   limits, trust radius, etc.); inspect `OPT_BASE_KW` and `LBFGS_KW`
   in `pdb2reaction.core.defaults`.
+- `--tr-projection` does not change L-BFGS or RFO steps. It applies only when
+  `--flatten` runs; see `freeze-atoms.md`.
 
 ## See also
 

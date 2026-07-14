@@ -7,9 +7,10 @@ with **cap hydrogens** + three layers of `freeze_atoms`.
 
 ## Background: cap hydrogens (`LKH/HL`)
 
-When `extract` cuts a C–X covalent bond between an in-cluster carbon (`A`)
-and an out-of-cluster atom (`B`), it places a hydrogen along `A→B` at 1.09 Å
-(cap hydrogens at carbon boundaries only; non-carbon boundaries are not capped). The cap is written as a
+When `extract` recognizes one of its supported carbon-boundary truncations
+between an in-cluster carbon (`A`) and an out-of-cluster atom (`B`), it places a
+hydrogen along `A→B` at 1.09 Å. It does not generically cap arbitrary bond
+types or non-carbon boundaries. The cap is written as a
 `HETATM` with residue name `LKH`, atom name `HL`. The cluster-side parent
 atom `A` of each cap is what needs to be frozen.
 
@@ -17,7 +18,7 @@ atom `A` of each cap is what needs to be frozen.
 
 | Source | Where | Default | Applies to |
 |---|---|---|---|
-| `--freeze-links` / `--no-freeze-links` | CLI flag | `True` | PDB inputs (auto-detects `LKH` parents) |
+| `--freeze-links` / `--no-freeze-links` | CLI flag | `True` | PDB/mmCIF topology (auto-detects `LKH` parents after bridging) |
 | `--freeze-atoms 'i,j,k,...'` | CLI flag | empty | any input format; 1-based indices |
 | `geom.freeze_atoms: [...]` | YAML via `--config` | empty | any input format; 1-based indices |
 
@@ -30,9 +31,10 @@ in any source is frozen.
 
 ```bash
 pdb2reaction extract -i complex.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' -o model.pdb
-pdb2reaction opt -i model.pdb -q 0 -m 1            # --freeze-links is True by default
-pdb2reaction tsopt -i model.pdb -q 0 -m 1
-pdb2reaction freq -i tsopt_final.pdb -q 0 -m 1     # auto PHVA on frozen-atom set
+pdb2reaction opt -i model.pdb -l 'SAM:1,GPP:-3' -m 1  # --freeze-links defaults on
+pdb2reaction tsopt -i model.pdb -l 'SAM:1,GPP:-3' -m 1 -o result_tsopt
+pdb2reaction freq -i result_tsopt/final_geometry.pdb \
+  -l 'SAM:1,GPP:-3' -m 1 -o result_freq  # auto PHVA
 ```
 
 ### XYZ / GJF input (no LKH residue → must specify explicitly)
@@ -42,7 +44,7 @@ pdb2reaction tsopt -i ts_candidate.xyz -q 0 -m 1 \
   --freeze-atoms '12,15,28,29,42'
 ```
 
-Or inherit topology from a reference PDB:
+Or inherit topology from a reference PDB/mmCIF:
 
 ```bash
 pdb2reaction tsopt -i ts_candidate.xyz -q 0 -m 1 \
@@ -55,6 +57,7 @@ pdb2reaction tsopt -i ts_candidate.xyz -q 0 -m 1 \
 # tsopt.yaml
 geom:
   freeze_atoms: [12, 15, 28, 29, 42, 88, 91, 92]
+  tr_projection: constrained
 ```
 
 ```bash
@@ -76,12 +79,29 @@ on the CLI.
   or zeroed in the full matrix.
 - **`freq`:** when the frozen-atom set is non-empty, automatically runs
   Partial Hessian Vibrational Analysis (PHVA) on the active block.
-- **`irc` / `path-opt` / `path-search`:** frozen atoms keep their
-  initial Cartesian coordinates at every image and every step.
+- **`irc` and GSM `path-opt` / `path-search`:** hard-frozen atoms keep their
+  initial Cartesian coordinates. DMF uses the soft restraint described above,
+  so small displacement is possible and must be inspected.
+
+## Rigid-mode treatment for PHVA
+
+Use `geom.tr_projection` or `--tr-projection` in `freq`, `irc`, `opt`, `tsopt`, and `all`:
+
+| Value | Behavior |
+|---|---|
+| `constrained` (default) | Remove only full-system rigid motions that leave every frozen anchor fixed. Generic effective ranks are 6 / 3 / 1 / 0 for 0 / 1 / 2 / at least 3 non-collinear anchors. A normal multi-anchor cluster boundary therefore usually has rank 0. |
+| `legacy-active` | Treat the active fragment as isolated. Use only for well-conditioned, nondegenerate comparison runs. The current common kernel handles degeneracies; near-linear or degenerate cases do not guarantee bitwise replay of older results. |
+
+This flag controls Cartesian PHVA-related eigensolvers: `freq`, the initial IRC mode, Dimer orientation, exact TS validation, and opt/TS flattening. It is unrelated to `tsopt --ref-mode`, which supplies an MEP reaction direction. An all-frozen structure is invalid because it has no active vibrational DOF.
+
+With JSON output, inspect `result.json["rigid_projection"]` for `treatment`, `effective_rank`, and Hessian source/shape. `freq --dump` writes the same provenance to `thermoanalysis.yaml`.
 
 ## Subcommand coverage
 
-All subcommands that touch geometry honor all three sources:
+The geometry workflows below honor the listed sources. `sp` has no freeze
+CLI flags, but it honors 1-based YAML `geom.freeze_atoms`; with `--hess`, the
+default partial-Hessian setting writes the active block. `extract` only creates
+the cap records for downstream use.
 
 | Subcommand | `--freeze-links` (PDB, or XYZ/GJF + `--ref-pdb`) | `--freeze-atoms` | YAML `geom.freeze_atoms` |
 |---|:---:|:---:|:---:|
@@ -90,6 +110,7 @@ All subcommands that touch geometry honor all three sources:
 | `path-opt`, `path-search` | ✓ | ✓ | ✓ |
 | `scan`, `scan2d`, `scan3d` | ✓ | ✓ | ✓ |
 | `all` | ✓ | ✗ (use YAML `geom.freeze_atoms`) | ✓ |
+| `sp` | ✗ | ✗ | ✓ |
 
 ## Common pitfalls
 
@@ -104,6 +125,7 @@ All subcommands that touch geometry honor all three sources:
 - **`--no-freeze-links`** is a diagnostic flag (let the boundary relax
   on purpose to inspect the result). Production cluster-model runs
   should leave `--freeze-links` on.
+- **All atoms frozen** → PHVA and IRC stop with an explicit error. Keep at least one active atom.
 
 ## See also
 

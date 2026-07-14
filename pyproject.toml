@@ -7,7 +7,8 @@ name = "pdb2reaction"
 description = "pdb2reaction - Automated enzyme reaction path elucidation from PDB structures"
 readme = "README.md"
 authors = [{name = "Takuto Ohmura", email = "ohmura.takuto@gmail.com"}]
-license = {file = "LICENSE"}
+license = "GPL-3.0-only"
+license-files = ["LICENSE"]
 dynamic = ["version"]
 requires-python = ">=3.11"
 keywords = [
@@ -20,7 +21,6 @@ keywords = [
     "MLIP",
 ]
 classifiers = [
-    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -34,7 +34,7 @@ classifiers = [
 dependencies = [
     # pdb2reaction core dependencies
     "fairchem-core",
-    "pydmf>=1.2",  # >=1.2 ships the PyTorch backend dmf.torch (the default --mep-mode dmf / --dmf-backend gpu)
+    "pydmf>=1.2",  # >=1.2 ships dmf.torch for optional --mep-mode dmf / --dmf-backend gpu (the CLI default is gsm)
     "torch~=2.8.0",
     "numpy>=2.0,<2.5",
     "biopython",
@@ -143,4 +143,3 @@ pdb2reaction = ["py.typed"]
 version_file = "pdb2reaction/_version.py"
 version_scheme = "guess-next-dev"
 local_scheme = "node-and-date"
-

@@ -1,22 +1,26 @@
 # `extract`
 
-`pdb2reaction extract` carves an active-site cluster model (binding pocket) from a protein–ligand PDB (single structure or ensemble) for downstream MEP / TSOPT / freq / DFT runs. Specify the substrate with `-c/--center` as a residue name (`'GPP,SAM'`), residue ID (`'A:123A'`), or a PDB path. Cap hydrogens are placed at severed bonds when `--add-linkh` is on (default). Use `--ligand-charge/-l` for non-standard residue charges.
+`pdb2reaction extract` carves an active-site cluster from a protein–ligand
+PDB/mmCIF. Select by residue name (`GPP,SAM`), ID (`A:123A`), chain-qualified
+name (`A:SAM`), exact named ID (`A:SAM:123`), or a PDB/mmCIF file. mmCIF and
+PDBs at the fixed-column size boundary are safely reindexed internally and
+also produce CIF output with the original identifiers.
 
 ## Examples
 
 Command form:
 
 ```bash
-pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb ...]
-    -c SUBSTRATE_SPEC
-    [-o MODEL.pdb [MODEL2.pdb ...]]
-    [--radius Å] [--radius-het2het Å]
-    [--include-h2o / --no-include-h2o]
-    [--exclude-backbone / --no-exclude-backbone]
-    [--add-linkh / --no-add-linkh]
-    [--selected-resn LIST] [--modified-residue LIST]
-    [-l, --ligand-charge MAP_OR_NUMBER]
-    [--out-json / --no-out-json]
+pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb ...] \
+    -c SUBSTRATE_SPEC \
+    [-o MODEL.pdb [MODEL2.pdb ...]] \
+    [--radius Å] [--radius-het2het Å] \
+    [--include-h2o / --no-include-h2o] \
+    [--exclude-backbone / --no-exclude-backbone] \
+    [--add-linkh / --no-add-linkh] \
+    [--selected-resn LIST] [--modified-residue LIST] \
+    [-l, --ligand-charge MAP_OR_NUMBER] \
+    [--out-json / --no-out-json] \
     [-v LEVEL]
 ```
 
@@ -58,7 +62,9 @@ pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
 - **Standard cutoff (`--radius`, default 2.6 Å)**: with `--no-exclude-backbone` (default), any atom within the cutoff makes its residue qualify (i.e. includes the residue). With `--exclude-backbone`, amino-acid residues must contact the substrate with a **non-backbone** atom (not N / H* / CA / HA* / C / O / OXT). Non-amino acids always use any atom.
 - **Independent hetero–hetero cutoff (`--radius-het2het`)**: adds residues when a substrate hetero atom (non C/H) lies within the specified Å of a protein hetero atom. With backbone exclusion enabled, the protein atom must be non-backbone.
 - **Water handling**: HOH / WAT / H2O / DOD / TIP / TIP3 / SOL are included by default (`--include-h2o`).
-- **Forced inclusion**: `--selected-resn` accepts residue **IDs** (e.g. `A:123A`). See {ref}`selected-resn-takes-ids` in CLI Conventions for the residue-ID requirement.
+- **Forced inclusion**: `--selected-resn` accepts the same ID/name/chain-qualified selectors as `--center`; see {ref}`selected-resn-takes-ids`.
+- **Chain/name disambiguation**: `A:SAM` selects every SAM in chain A and
+  warns on multiple matches; `A:SAM:123` selects one intended residue.
 - **Neighbor safeguards**:
   - When backbone exclusion is off and a residue contacts the substrate with a backbone atom, the peptide-adjacent N / C neighbors (C–N ≤ 1.9 Å) are auto-included; termini keep caps (N/H* or C/O/OXT).
   - Disulfide bonds (SG–SG ≤ 2.5 Å) bring both cysteines.
@@ -109,7 +115,9 @@ Amino acids and common ions draw charges from internal dictionaries; waters are 
 
 ### Multi-structure ensembles
 
-`extract` accepts multiple input PDBs (identical atom ordering is validated at the head and tail of each file). Each structure is processed independently and the **union** of selected residues is applied to every model so outputs stay consistent.
+`extract` accepts multiple PDB/mmCIF inputs. Full per-atom identity and order
+are validated; each structure is processed independently and the **union** of
+selected residues is applied to every model.
 
 | Output policy | Layout |
 |---|---|
@@ -123,10 +131,11 @@ Diagnostics report raw vs. kept atom counts per model along with residue IDs.
 
 ```text
 <output>.pdb        # Active-site model PDB(s) with optional cap hydrogens after a TER record
+<output>.cif        # mmCIF/oversized-PDB input: original auth chain/residue IDs restored
                     # Single input → model.pdb by default
                     # Multiple inputs without -o → model_<original_basename>.pdb per structure
                     # One -o path with multiple inputs → single multi-MODEL PDB
-                    # Output directories are not created automatically; ensure they exist
+                    # Parent output directories are created automatically
 ```
 
 Charge summary (protein / ligand / ion / total) is logged for model #1 when verbose mode is enabled. Programmatic use (`extract_api`) returns `{"outputs": [...], "counts": [...], "charge_summary": {...}, "n_link_hydrogens": N}`.
@@ -137,28 +146,32 @@ Defaults shown are used when the option is not specified. The full flag list is 
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `-i, --input PATH...` | One or more protein–ligand PDB files (identical atom ordering required). | Required |
-| `-c, --center SPEC` | Substrate specification (PDB path, residue IDs, or residue names). | Required |
+| `-i, --input PATH...` | One or more protein–ligand PDB/mmCIF files (identical atom identity/order required). | Required |
+| `-c, --center SPEC` | PDB/mmCIF path, residue IDs/names, `CHAIN:RESNAME`, or `CHAIN:RESNAME:RESSEQ`. | Required |
 | `-o, --output PATH...` | Active-site model PDB output(s); see [Outputs](#outputs) for naming/layout. | Auto (`model.pdb` or `model_<input>.pdb`) |
 | `-r, --radius FLOAT` | Atom–atom distance cutoff (Å) for inclusion (internally `0.001 Å` when zero). | `2.6` |
 | `--radius-het2het FLOAT` | Independent hetero–hetero cutoff (Å, non C/H). | `0.0` (internally `0.001 Å` when zero) |
 | `--include-h2o / --no-include-h2o` | Include HOH / WAT / H2O / DOD / TIP / TIP3 / SOL waters. | `True` |
 | `--exclude-backbone / --no-exclude-backbone` | Remove backbone atoms on non-substrate amino acids (PRO / HYP safeguards). | `False` |
 | `--add-linkh / --no-add-linkh` | Add cap hydrogens at 1.09 Å along severed bonds at carbon boundaries only (non-carbon boundaries are not capped). | `True` |
-| `--selected-resn TEXT` | Force-include residues by **residue ID** (with optional chains / insertion codes, e.g. `A:123A`). See {ref}`selected-resn-takes-ids`. | `""` |
+| `--selected-resn TEXT` | Force-include by the same ID/name/chain-qualified selectors as `--center`. | `""` |
 | `--modified-residue TEXT` | Comma-separated residue names (with optional per-residue charge) to treat as amino acids for backbone truncation and charge assignment (e.g. `HD1,HD2,HD3` or `HD1:0,SEP:-2`). A residue given without a trailing `:charge` defaults to charge 0. | `""` |
 | `-l, --ligand-charge TEXT` | Total charge or per-resname mapping (e.g. `GPP:-3,SAM:1`). | _None_ |
 | `--out-json / --no-out-json` | Write a machine-readable `result.json` alongside the extracted PDB(s). Schema: [JSON Output Schema](json-output.md). | `False` |
 
 ### Substrate specification (`-c/--center`)
 
-- **PDB path**: coordinates must match the first input exactly (tolerance 1e-3 Å); residue IDs propagate to other structures.
+- **PDB/mmCIF path**: coordinates must match the first input exactly (tolerance 1e-3 Å); residue IDs propagate to other structures.
 - **Residue IDs**: `'123,124'`, `'A:123,B:456'`, `'123A'`, `'A:123A'` (insertion codes supported).
 - **Residue names**: comma-separated, case-insensitive. If multiple residues share a name, **all** matches are included and a warning is logged.
+- **Chain + name**: `'A:SAM'` selects all matching residues in chain A;
+  `'A:SAM:123'` narrows it to one residue.
 
 ## Notes
 
-- If the extracted active-site model is too small, calculated energies and barriers may be unreliable — increase `-r` (e.g. 4.0 Å or higher) to include more of the protein environment.
+- Validate extraction-radius convergence and chemical completeness for the
+  target system. Increasing `-r` includes more environment but does not
+  guarantee monotonic accuracy and increases computational cost.
 - INFO logs summarize residue selection, truncation counts, and charge breakdowns.
 
 ## Systems with non-standard residues (MCPB, etc.)
@@ -198,7 +211,7 @@ If `--modified-residue` does not cover your use case, **manual active-site model
 This appendix exists mainly for debugging cases where `extract` misclassifies residues due to **non-standard residue or atom naming**. If your inputs follow standard PDB conventions, you can usually skip it.
 
 ```{important}
-For `extract` to work correctly, **residue and atom names in the input PDB must conform to standard PDB naming conventions**. The tool relies on internal dictionaries to recognize amino acids, ions, water molecules, and backbone atoms. Non-standard naming will cause residues to be misclassified or charges to be incorrectly assigned.
+For `extract` to work correctly, **residue and atom names in PDB/mmCIF must follow the expected PDB chemical-component naming conventions**. The tool relies on internal dictionaries to recognize amino acids, ions, waters, and backbone atoms. Non-standard naming can misclassify residues or assign incorrect charges.
 ```
 
 ### `AMINO_ACIDS`

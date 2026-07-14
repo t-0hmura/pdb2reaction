@@ -312,7 +312,8 @@ class DefaultGroup(click.Group):
         """
         import logging as _logging
 
-        # DO NOT INLINE: list mirrors pysisyphus/__init__.py handler creators (no public "silence all" API exists; enumeration is the supported workaround as of pysisyphus 0.x).
+        # pysisyphus has no public aggregate logger, so enumerate the loggers
+        # whose handlers are installed during its module imports.
         _PYSIS_LOGGERS = (
             "pysisyphus", "calculator", "cos", "dimer", "dynamics",
             "gdiis", "internal_coords", "irc", "optimizer",

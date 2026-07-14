@@ -12,8 +12,8 @@ Options:
                               blocks, per-file paths, DEBUG logging).  [0<=x<=3]
   --help-advanced             Show all options (including advanced settings) and
                               exit.
-  -i, --input TEXT            Input structure files (XYZ/PDB/GJF). Repeat -i for
-                              each file.
+  -i, --input TEXT            Input structure files (XYZ/PDB/mmCIF/GJF). Repeat
+                              -i for each file.
   --device TEXT               Compute device for distance calculations.
                               [default: cpu]
   --bond-factor FLOAT         Scaling factor for covalent radii sum.  [default:

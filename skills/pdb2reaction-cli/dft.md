@@ -10,7 +10,7 @@ input.
 ## Synopsis
 
 ```bash
-pdb2reaction dft -i geom.{pdb,xyz,gjf} \
+pdb2reaction dft -i geom.{pdb,cif,mmcif,xyz,gjf} \
     [-q 0 -m 1] [-l 'RES:Q,...'] \
     [--func-basis 'wb97m-v/def2-tzvpd'] \
     [--engine gpu|cpu] \
@@ -21,9 +21,9 @@ pdb2reaction dft -i geom.{pdb,xyz,gjf} \
 
 | flag | type | default | description |
 |---|---|---|---|
-| `-i, --input` | path | required | `.pdb` / `.xyz` / `.gjf` |
+| `-i, --input` | path | required | `.pdb` / `.cif` / `.mmcif` / `.xyz` / `.gjf` |
 | `-q` / `-l` / `-m` | — | — | Charge / spin (required for `.xyz` without `--ref-pdb`) |
-| `--ref-pdb` | path | none | Reference PDB so `-l` works on `.xyz` input |
+| `--ref-pdb` | path | none | Reference PDB/mmCIF so `-l` works on `.xyz` input |
 | `--func-basis` | str | `wb97m-v/def2-tzvpd` | `'FUNC/BASIS'` |
 | `--engine` | str | `gpu` | `gpu` (GPU4PySCF) or `cpu` (PySCF) |
 | `--lowmem / --no-lowmem` | toggle | `--lowmem` | Closed-shell GPU uses `rks_lowmem.RKS` (no DF); open-shell / CPU / older gpu4pyscf automatically fall back to RKS/UKS+DF |
@@ -57,9 +57,9 @@ pdb2reaction dft -i ts.xyz -q 0 -m 1 \
 
 | Path | When | Content |
 |---|---|---|
-| `<out_dir>/result.yaml` | always | energy + per-atom Mulliken / Loewdin / IAO charges & spin densities |
+| `<out_dir>/result.yaml` | successful DFT calculation | energy + per-atom Mulliken / Loewdin / IAO charges & spin densities |
 | `<out_dir>/result.json` | `--out-json` | machine-readable result |
-| `<out_dir>/input_geometry.xyz` | always | geometry snapshot sent to PySCF |
+| `<out_dir>/input_geometry.xyz` | input preparation succeeds | geometry snapshot sent to PySCF |
 
 `result.json` keys (written only when `--out-json` is passed):
 
@@ -80,20 +80,26 @@ IAO charges, spin densities.
 
 | Symptom | Fix |
 |---|---|
-| `OSError: libcusolver.so.11 not found` | [`pdb2reaction-install-backends/env-cuda.md`](../pdb2reaction-install-backends/env-cuda.md) (LD_LIBRARY_PATH order) |
-| `cupy ... invalid device ordinal` | `unset CUDA_VISIBLE_DEVICES` |
-| `RuntimeError: CUDA out of memory` | Lower `grid_level`, switch to `def2-svp`, or `--engine cpu` |
+| `OSError: libcusolver.so.11 not found` | Capture `pip check` and compare the clean-environment library-loading test in [`env-cuda.md`](../pdb2reaction-install-backends/env-cuda.md); do not guess a library path. |
+| `cupy ... invalid device ordinal` | Keep the scheduler-provided `CUDA_VISIBLE_DEVICES` and select a valid local ordinal (usually device 0 in a one-GPU allocation). Do not unset the scheduler's isolation variable. |
+| `RuntimeError: CUDA out of memory` | First try the same method with `--engine cpu` or a larger-memory GPU. Lowering the grid or basis changes the scientific method, so do it only as an explicit new calculation and label it accordingly. |
 | aarch64 `--engine gpu` raises `ClickException` ("GPU backend failed...") | PyPI wheel is x86_64-only; re-submit with `--engine cpu` or build `gpu4pyscf` from source (https://github.com/pyscf/gpu4pyscf) |
 
 ## Caveats
 
 - `pdb2reaction dft` runs only **single points**, not optimization.
-  `tsopt` / `opt` accept only MLIP backends (`-b uma|orb|mace|aimnet2`),
-  so DFT-level geometry refinement requires a separate QM code (e.g.
-  Gaussian, ORCA, PySCF).
-- `--func-basis` follows PySCF naming; cross-check with
-  `python -c "from pyscf import gto; print(gto.basis._BASIS_DEFAULT)"`.
-- The standalone `dft` subcommand does not accept `--solvent` / `--solvent-model` / `-b/--backend`. xTB-ALPB solvent corrections are MLIP-stage flags (`scan` / `scan2d` / `scan3d`, `path-search`, `path-opt`, `tsopt`, `freq`, `irc`, `opt`, `all`); to combine with DFT, run them at the MLIP stage and then the `dft` single point on the MLIP-optimized geometry.
+  The built-in `tsopt` / `opt` backend choices are MLIPs
+  (`-b uma|orb|mace|aimnet2`), but those optimizers can also use an
+  arbitrary ASE Calculator through `--calc-file`. There is no built-in
+  PySCF/GPU4PySCF geometry optimizer; DFT-level refinement therefore needs
+  either a suitable ASE calculator adapter or a separate QM program.
+- `--func-basis` follows PySCF naming. Test a basis name directly, for example
+  `python -c "from pyscf import gto; print(len(gto.basis.load('def2-tzvpd', 'C')))"`.
+- The standalone `dft` subcommand does not accept `--solvent` /
+  `--solvent-model` / `-b/--backend`. xTB-ALPB is an MLIP-stage correction.
+  A DFT single point on a solvent-corrected-MLIP geometry still reports the
+  configured PySCF energy only; it does not add an implicit-solvent or xTB
+  correction to the DFT result.
 
 ## See also
 

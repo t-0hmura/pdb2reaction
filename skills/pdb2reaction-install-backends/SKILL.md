@@ -68,8 +68,9 @@ overriding `-b`):
 pdb2reaction sp -i model.xyz --calc-file my_calc.py -q 0 -m 1
 ```
 
-- Works on every subcommand (`sp` / `opt` / `tsopt` / `freq` / `irc` /
-  `scan{,2d,3d}` / `path-opt` / `path-search`) **and the `all` pipeline**
+- Works on every listed calculator-backed geometry subcommand (`sp` / `opt` /
+  `tsopt` / `freq` / `irc` / `scan{,2d,3d}` / `path-opt` / `path-search`) and
+  **the `all` pipeline**
   (forwarded to each child stage). Rename the factory with `--calc-factory NAME`.
 - Energy/forces follow the ASE eV / eV·Å⁻¹ contract; Hessians use the
   finite-difference path. Frozen atoms (`--freeze-links` / `--freeze-atoms`) are
@@ -125,9 +126,10 @@ dependencies:
 #   pip install mace-torch              # pulls the e3nn version MACE needs
 ```
 
-`<cu_index>` is one of `cpu`, `cu126`, `cu128`, `cu129` — the only indexes that publish a
-`torch~=2.8.0` wheel, which is what this release pins. See `env-cuda.md` for the driver
-version → index mapping.
+`<cu_index>` is one of `cpu`, `cu126`, `cu128`, `cu129` — the indexes in
+PyTorch's official 2.8.0 install matrix, which is the version family this
+release pins. See `env-cuda.md`; do not infer the correct index only from the
+"CUDA Version" banner printed by `nvidia-smi`.
 
 ## Verify the install
 
@@ -151,11 +153,11 @@ go back to `env-cuda.md`.
 
 | Symptom | Likely cause | Where to look |
 |---|---|---|
-| `import torch` fails with `libcudart.so.12 not found` | Torch wheel CUDA index mismatches the driver | `env-cuda.md` (driver → cu index table) |
+| `import torch` fails with `libcudart.so.12 not found` | Incomplete/mixed wheel install or a library-path collision (not enough evidence by itself to blame the driver) | `env-cuda.md` diagnostics |
 | `e3nn` version conflict on `pip install` | UMA + MACE in the same env | Use a separate env for MACE (this file, `mace.md`) |
 | `gpu4pyscf` import fails on aarch64 | PyPI wheel is x86_64-only | `dft.md` — build `gpu4pyscf` from source (https://github.com/pyscf/gpu4pyscf) or use CPU PySCF |
 | `huggingface_hub.errors.GatedRepoError` on UMA load | UMA model is gated, not authenticated | `uma.md` — `hf auth login` (older `huggingface_hub < 0.34`: `huggingface-cli login`) |
-| `OSError: libcusolver.so.11 not found` | torch's bundled CUDA libs missing or shadowed | `env-cuda.md` — `LD_LIBRARY_PATH` order |
+| `OSError: libcusolver.so.11 not found` | CUDA wheel dependency missing or shadowed by environment libraries | `env-cuda.md` — compare a clean environment before editing library paths |
 | `RuntimeError: CUDA out of memory` during freq | Hessian evaluation too large for VRAM | switch to `--hessian-calc-mode FiniteDifference` (see `pdb2reaction-cli/freq.md`) or reduce the active region |
 
 ## See also

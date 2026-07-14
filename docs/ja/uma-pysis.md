@@ -113,17 +113,17 @@ pdb2reaction opt -i input.pdb -q 0 -b orb --solvent water --solvent-model cpcmx
 - **精度制御** – エネルギー/力は常に float64。`hessian_double=False` でHessianをモデルのネイティブ dtype（通常 float32）で返します。
 - **マルチワーカー推論** – `workers>1` で `fairchem-core` の `ParallelMLIPPredictUnit` を起動し、`workers_per_node` をノードごとに指定可能。バッチ処理速度の向上に有効です。
 
-(ja-workers-fd-downgrade)=
+(ja-workers-analytical-error)=
 ### `workers > 1` と解析 Hessian は併用できない（UMA バックエンド）
 
 ```{warning}
-UMA バックエンドを `workers > 1` で使用する場合、並列 predictor が autograd model を公開しないため、`hessian_calc_mode="Analytical"` は利用できません。要求した数値手法を暗黙変更せず、`RuntimeError` で停止します。解析 Hessian には `workers = 1`、並列実行には `FiniteDifference` を指定してください。この規則は `--workers` / `--workers-per-node` を持つすべてのサブコマンド（`opt`, `tsopt`, `freq`, `irc`, `sp`, `all`, `path-opt`, `path-search`, scan 系）に適用されます。UMA 以外のバックエンド（ORB / MACE / AIMNet2）では `workers` / `workers_per_node` は `_BACKEND_ACCEPTED_KEYS` で除外されるため、この規則は該当しません。
+UMA バックエンドを `workers > 1` で使用する場合、並列 predictor が autograd model を公開しないため、`hessian_calc_mode="Analytical"` は利用できません。要求した数値手法を暗黙変更せず、`BackendError`（`RuntimeError` のサブクラス）で停止します。解析 Hessian には `workers = 1`、並列実行には `FiniteDifference` を指定してください。この規則は `--workers` / `--workers-per-node` を持つすべてのサブコマンド（`opt`, `tsopt`, `freq`, `irc`, `sp`, `all`, `path-opt`, `path-search`, scan 系）に適用されます。UMA 以外のバックエンド（ORB / MACE / AIMNet2）では `workers` / `workers_per_node` は `_BACKEND_ACCEPTED_KEYS` で除外されるため、この規則は該当しません。
 ```
 
 (ja-hessian-evaluation)=
 ### Hessian評価モード
 
-`hessian_calc_mode="Analytical"` は選択されたデバイス上で 2 階自動微分を行い、`"FiniteDifference"`（デフォルト）は力の中心差分を計算します。UMA で複数の推論ワーカーと `Analytical` を併用すると `RuntimeError` になります（上記の注記を参照）。解析 Hessian には `workers = 1`、並列実行には有限差分を指定してください。
+`hessian_calc_mode="Analytical"` は選択されたデバイス上で 2 階自動微分を行い、`"FiniteDifference"`（デフォルト）は力の中心差分を計算します。UMA で複数の推論ワーカーと `Analytical` を併用すると `BackendError` になります（上記の注記を参照）。解析 Hessian には `workers = 1`、並列実行には有限差分を指定してください。
 
 ## HPC での使用例: PBS + Open MPI + Ray
 
@@ -142,7 +142,7 @@ UMA バックエンドを `workers > 1` で使用する場合、並列 predictor
 | `precision` | MLIP 数値精度 (`"fp32"` または `"fp64"`) | `"fp32"` |
 | `task_name` | UMA バッチに記録されるタスクタグ | `"omol"` |
 | `device` | `"cuda"` / `"cpu"` / `"auto"` | `"auto"` |
-| `workers` / `workers_per_node` | 並列 UMA 予測器（UMA バックエンド限定。ORB / MACE / AIMNet2 では無視されます）。`workers>1` の場合、解析Hessianは利用できず、`Analytical` を明示指定すると `RuntimeError` が送出されます。`hessian_calc_mode` のデフォルトはそもそも FD のため、`Analytical` を明示的に選んだ場合のみ影響があります | `1` / `1` |
+| `workers` / `workers_per_node` | 並列 UMA 予測器（UMA バックエンド限定。ORB / MACE / AIMNet2 では無視されます）。`workers>1` の場合、解析Hessianは利用できず、`Analytical` を明示指定すると `BackendError`（`RuntimeError` のサブクラス）が送出されます。`hessian_calc_mode` のデフォルトはそもそも FD のため、`Analytical` を明示的に選んだ場合のみ影響があります | `1` / `1` |
 | `max_neigh`, `radius`, `r_edges` | 近傍構築のオプション上書き | `None`, `None`, `False` |
 | `freeze_atoms` | 1 始まりの凍結原子インデックス | _None_ |
 | `hessian_calc_mode` | `"Analytical"` または `"FiniteDifference"` | `"FiniteDifference"` |

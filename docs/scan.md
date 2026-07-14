@@ -1,6 +1,6 @@
 # `scan`
 
-Drive a reaction coordinate by scanning bond distances with harmonic restraints. Use `pdb2reaction scan` to drive specific distances in a single structure and explore a plausible path (often before `path-search`/`path-opt`). It performs a staged, bond-length–driven scan using an MLIP backend (UMA by default) and harmonic restraints. At each step, the temporary targets are updated, restraint wells are applied, and the structure is relaxed with L-BFGS (`--opt-mode grad`) or RFOptimizer (`--opt-mode hess`). For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB topology while keeping XYZ coordinates, enabling format-aware PDB/GJF output conversion.
+Drive a reaction coordinate by scanning bond distances with harmonic restraints. Use `pdb2reaction scan` to drive specific distances in a single structure and explore a plausible path (often before `path-search`/`path-opt`). It performs a staged, bond-length–driven scan using an MLIP backend (UMA by default) and harmonic restraints. At each step, the temporary targets are updated, restraint wells are applied, and the structure is relaxed with L-BFGS (`--opt-mode grad`) or RFOptimizer (`--opt-mode hess`). mmCIF inputs run through the internal PDB bridge and emit CIF with restored IDs. For XYZ/GJF inputs, `--ref-pdb` accepts a PDB or mmCIF reference topology.
 
 ## Examples
 
@@ -39,7 +39,8 @@ pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <n
     `(i, j)` indices (1-based by default). When the input is a PDB, each entry
     may be either an integer index or an atom selector string like `'TYR,285,CA'`;
     selector fields can be separated by spaces, commas, slashes, backticks, or
-    backslashes and may be in any order (fallback assumes resname, resseq, atom).
+    backslashes and may be in any order. For repeated names or numbering, use
+    positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`.
     Compute the per-bond displacement
     `Δ = target − current` and split it into `N = ceil(max(|Δ|) / h)` steps using
     `h = --max-step-size`. Every bond receives its own `δ = Δ / N` increment.
@@ -59,16 +60,20 @@ pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <n
 out_dir/ (default:./result_scan/)
 ├─ preopt/ # Present when --preopt is True
 │ ├─ result.xyz
-│ ├─ result.pdb # PDB companion for PDB inputs when conversion is enabled
+│ ├─ result.pdb # PDB companion when reference topology exists and conversion is enabled
+│ ├─ result.cif # Bridge-input companion with original IDs
 │ └─ result.gjf # When a Gaussian template exists and conversion is enabled
 ├─ stage_XX/ # One folder per stage
 │ ├─ result.xyz
 │ ├─ result.pdb # PDB mirror of the final structure (conversion enabled)
+│ ├─ result.cif # Bridge-input companion with original IDs
 │ ├─ result.gjf # Gaussian mirror when templates exist and conversion is enabled
 │ ├─ scan_trj.xyz # Always written (concatenated biased trajectory)
-│ └─ scan.pdb # Always written for PDB inputs when conversion is enabled (no scan.gjf is produced)
+│ ├─ scan.pdb # Written when reference topology exists and conversion is enabled (no scan.gjf is produced)
+│ └─ scan.cif # Bridge-input trajectory with original IDs
 ├─ scan_trj.xyz # Combined trajectory across all stages
-└─ scan.pdb # Combined PDB trajectory (when conversion is enabled)
+├─ scan.pdb # Combined PDB trajectory (when conversion is enabled)
+└─ scan.cif # Combined bridge-input CIF trajectory
 ```
 
 - Console summaries of the resolved `geom`, `calc`, `opt`, `bias`, `bond`, and optimizer blocks plus per-stage bond-change reports.
@@ -81,10 +86,10 @@ The full flag list is in the generated [command reference](reference/commands/in
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge (CLI > template). When omitted, charge can be inferred from `--ligand-charge/-l`; explicit `-q` overrides any derived value. | Required unless a `.gjf` template or `--ligand-charge/-l` supplies it |
-| `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB residue charges. Used when `-q` is omitted (PDB inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
-| `--workers`, `--workers-per-node` | UMA predictor parallelism; `workers_per_node` is forwarded to the parallel predictor. `workers > 1` cannot be combined with an explicit analytical Hessian request. See {ref}`workers-fd-downgrade`. | `1`, `1` |
+| `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB/mmCIF residue metadata. Used when `-q` is omitted (PDB/mmCIF inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
+| `--workers`, `--workers-per-node` | UMA predictor parallelism; `workers_per_node` is forwarded to the parallel predictor. `workers > 1` cannot be combined with an explicit analytical Hessian request. See {ref}`workers-analytical-error`. | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
-| `-s, --scan-lists TEXT` | Scan targets: a YAML/JSON spec file path (recommended) or inline Python literal with `(i,j,targetÅ)` triples or `(i,j,start,end)` 4-tuples for bidirectional scans. Each inline literal is one stage; supply multiple literals after a single flag. `i`/`j` can be integer indices or PDB atom selectors like `'TYR,285,CA'`. | Required |
+| `-s, --scan-lists TEXT` | Scan targets: a YAML/JSON spec file path (recommended) or inline Python literal with `(i,j,targetÅ)` triples or `(i,j,start,end)` 4-tuples for bidirectional scans. Each inline literal is one stage; supply multiple literals after a single flag. `i`/`j` can be integer indices, three-field selectors, or positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`. | Required |
 | `--one-based/--zero-based` | Interpret atom indices as 1- or 0-based. These are mutually exclusive toggle aliases for the same flag (`--one-based` sets it to `True`, `--zero-based` sets it to `False`). | `True` |
 | `--print-parsed/--no-print-parsed` | Print parsed stage tuples after `--scan-lists/-s` resolution. | `False` |
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
@@ -94,8 +99,8 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--freeze-links/--no-freeze-links` | When the input is PDB, freeze the parents of cap hydrogens. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
 | `--dump/--no-dump` | Forward to the per-step optimizer (`opt_cfg["dump"]`), emitting per-step optimizer trajectory files. `scan_trj.xyz`/`scan.pdb` are always written regardless. | `False` |
-| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/GJF companions for PDB/Gaussian inputs (trajectory conversion only writes PDB). | `True` |
-| `--ref-pdb FILE` | Reference PDB topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
+| `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/CIF/GJF companions; bridge trajectories include CIF. | `True` |
+| `--ref-pdb FILE` | Reference PDB or mmCIF topology for XYZ/GJF input (keeps XYZ coordinates). | _None_ |
 | `-o, --out-dir TEXT` | Output directory root. | `./result_scan/` |
 | `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
 | `--config FILE` | Base YAML configuration file (applied first). | _None_ |
@@ -168,6 +173,7 @@ When the mechanism **is** known, the staged form is generally preferred — it g
 ```bash
 # Concerted: two coordinates move together in one stage
 pdb2reaction scan -i reactant.pdb \
+    -q 0 -m 1 \
     -s '[("Ca RES 10","Cb RES 11",1.6),("H RES 11","O GLU 20",1.0)]' -o result_concerted
 ```
 
@@ -218,7 +224,7 @@ This is equivalent to two manual stages with a geometry reset between them. Mixe
 ## Notes
 
 - The scan input is one structure plus `-s/--scan-lists scan.yaml` (recommended) or one or more `--scan-lists/-s` inline literals (each literal = one stage). YAML/JSON file paths avoid shell-quoting pitfalls and version better; inline literals are fine for simple single-stage scans.
-- Provide multiple literals after a single `--scan-lists/-s` flag. Tuples must have positive targets. Atom indices are normalized to 0-based internally for computation. For PDB inputs, `i`/`j` can be integer indices or selector strings (see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`).
+- Provide multiple literals after a single `--scan-lists/-s` flag. Tuples must have positive targets. Atom indices are normalized to 0-based internally for computation. For PDB/mmCIF topology inputs, `i`/`j` can be integer indices or selector strings (see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`).
 - When `--freeze-links` is active, cap-hydrogen parent atoms are automatically frozen (see {ref}`Cap hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
 
 ## See Also

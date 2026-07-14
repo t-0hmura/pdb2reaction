@@ -16,6 +16,7 @@ from pysisyphus.tsoptimizers.TRIM import TRIM
 from pdb2reaction.workflows.tsopt import (
     FLATTEN_RETRY_HIGHER_ORDER_CHECKS,
     PATH_MODE_RESTART_AMPLITUDES_ANG,
+    _effective_flatten_iterations,
     _flatten_branch_needs_alternate,
     _flatten_once_with_modes_for_geom,
     _mirrored_flatten_start,
@@ -23,6 +24,33 @@ from pdb2reaction.workflows.tsopt import (
     _select_flatten_targets_for_geom,
     _transported_path_mode_full,
 )
+
+
+@pytest.mark.parametrize(
+    ("configured", "has_reference", "n_imag", "target_negative", "expected"),
+    [
+        (0, False, 2, None, (0, False)),
+        (0, True, 2, True, (0, False)),
+        (50, False, 2, None, (50, False)),
+        (50, True, 1, False, (50, False)),
+        (50, True, 2, True, (50, False)),
+        (50, True, 2, False, (0, True)),
+        (50, True, 2, None, (0, True)),
+    ],
+)
+def test_flatten_budget_is_explicit_and_path_safe(
+    configured: int,
+    has_reference: bool,
+    n_imag: int,
+    target_negative: bool | None,
+    expected: tuple[int, bool],
+) -> None:
+    assert _effective_flatten_iterations(
+        configured,
+        has_reference_mode=has_reference,
+        n_imag=n_imag,
+        target_mode_is_negative=target_negative,
+    ) == expected
 
 
 def test_path_mode_restarts_use_two_bounded_displacement_shells() -> None:

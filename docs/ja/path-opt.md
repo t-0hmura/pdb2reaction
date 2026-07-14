@@ -15,7 +15,7 @@ MLIP バックエンド（デフォルト: UMA、`-b/--backend` で ORB ・ MACE
 コマンド形式:
 
 ```bash
-pdb2reaction path-opt -i REACTANT.{pdb|xyz} PRODUCT.{pdb|xyz} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
+pdb2reaction path-opt -i REACTANT.{pdb|cif|mmcif|xyz|gjf} PRODUCT.{pdb|cif|mmcif|xyz|gjf} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
  [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
  [--workers N] [--workers-per-node N] \
  [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--max-nodes N] [--max-cycles N] \
@@ -96,22 +96,22 @@ out_dir/
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `-i, --input PATH PATH` | 反応物と生成物構造（`.pdb`/`.xyz`）。入力は 2 構造のみ。形式は `geom_loader` に準拠 | 必須 |
-| `-q, --charge INT` | 総電荷（`calc.charge`）。`.gjf` 以外では `--ligand-charge` 導出が成功しない限り必須（PDB 入力または `--ref-pdb` 付き XYZ/GJF）。`.gjf` テンプレートがあればそれを使用し、電荷メタデータが無い `.gjf` 入力は `-q` が無いと中断。両方指定時は `-q` が優先。解決順序は {ref}`CLI 規約: 電荷の指定 <ja-charge-specification>` を参照 | テンプレート/導出がない限り必須 |
-| `-l, --ligand-charge TEXT` | 総電荷または残基別マッピング（`-q` 省略時）。PDB 入力（または `--ref-pdb` 付き XYZ/GJF）で extract と同じ全系電荷導出を起動します | _None_ |
-| `--workers`, `--workers-per-node` | UMA 予測器の並列度（`workers_per_node` は並列予測器へ転送）。`workers > 1` と明示的な解析 Hessian は併用不可。{ref}`ja-workers-fd-downgrade` を参照 | `1`, `1` |
+| `-i, --input PATH PATH` | 反応物と生成物構造（`.pdb`/`.cif`/`.mmcif`/`.xyz`/`.gjf`）。入力は2構造のみ | 必須 |
+| `-q, --charge INT` | 総電荷（`calc.charge`）。`.gjf` 以外では `--ligand-charge` 導出が成功しない限り必須（PDB/mmCIF 入力または `--ref-pdb` 付き XYZ/GJF）。`.gjf` テンプレートがあればそれを使用し、電荷メタデータが無い `.gjf` 入力は `-q` が無いと中断。両方指定時は `-q` が優先。解決順序は {ref}`CLI 規約: 電荷の指定 <ja-charge-specification>` を参照 | テンプレート/導出がない限り必須 |
+| `-l, --ligand-charge TEXT` | 総電荷または残基別マッピング（`-q` 省略時）。PDB/mmCIF 入力（または `--ref-pdb` 付き XYZ/GJF）で extract と同じ全系電荷導出を起動します | _None_ |
+| `--workers`, `--workers-per-node` | UMA 予測器の並列度（`workers_per_node` は並列予測器へ転送）。`workers > 1` と明示的な解析 Hessian は併用不可。{ref}`ja-workers-analytical-error` を参照 | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度（`calc.spin`） | テンプレート/`1` |
-| `--freeze-links/--no-freeze-links` | PDB 入力（または `--ref-pdb` 付き XYZ/GJF）: キャップ H 親を凍結（YAML とマージ）。詳細は [extract](extract.md) を参照 | `True` |
+| `--freeze-links/--no-freeze-links` | PDB/mmCIF 入力（または `--ref-pdb` 付き XYZ/GJF）: キャップ H 親を凍結（YAML とマージ）。詳細は [extract](extract.md) を参照 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
-| `--max-nodes INT` | 内部ノード数。**GSM:** 総イメージ数 = `max_nodes + 2`（端点 2 つは固定）。**DMF:** チェーン上の*移動可能な*イメージ数（端点の暗黙的展開なし） | `20` |
+| `--max-nodes INT` | GSM/DMF の可動内部イメージ数。両エンジンとも端点2つを保持するため、総イメージ数は `max_nodes + 2` | `20` |
 | `--mep-mode {gsm\|dmf}` | GSM（ストリングベース）または DMF（Direct Max Flux）経路生成器を選択 | `gsm` |
 | `--dmf-backend {cpu\|gpu}` | DMF 計算バックエンド（`--mep-mode dmf` 時のみ）: `gpu`（`dmf.torch`/CUDA）または `cpu`（`dmf`/NumPy）。GPU メモリ不足時は `cpu` で再実行 | `gpu` |
 | `--max-cycles INT` | MEP 最適化サイクル上限（`stopt.max_cycles`、`stopt.stop_in_when_full`、`dmf.max_cycles` を同時設定） | `300` |
 | `--climb/--no-climb` | クライミングイメージ精密化を有効化（Lanczos 接線も同時切替） | `True` |
 | `--dump/--no-dump` | MEP 軌跡をダンプ（GSM/DMF）。リスタート YAML は YAML で有効化した場合のみ書き出されます | `False` |
 | `--opt-mode TEXT` | エンドポイント事前最適化用の単一構造オプティマイザ（`grad` = L-BFGS、`hess` = RFO） | `grad` |
-| `--convert-files/--no-convert-files` | PDB/Gaussian 入力用の XYZ/TRJ → 対応する PDB/GJF 出力の切り替え | `True` |
-| `--ref-pdb FILE` | XYZ/GJF 入力用の参照 PDB トポロジー（XYZ 座標は保持し PDB 変換を有効化） | _None_ |
+| `--convert-files/--no-convert-files` | 入力トポロジー／テンプレートに応じた XYZ/TRJ → PDB/CIF/GJF companion 生成の切り替え | `True` |
+| `--ref-pdb FILE` | XYZ/GJF 入力用の参照 PDB/mmCIF トポロジー（XYZ 座標を保持して変換を有効化） | _None_ |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_path_opt/` |
 | `--thresh TEXT` | エンドポイント事前最適化のみの収束プリセットを上書き（`opt.lbfgs/rfo.thresh`） | `gau` |
 | `--thresh-stopt TEXT` | ストリングオプティマイザ（GSM 成長およびクライミング精密化）の収束プリセットを上書き（`stopt.thresh`; `gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau_loose` |
@@ -132,12 +132,12 @@ out_dir/
 
 完全なキー一覧は [YAML リファレンス](yaml-reference.md) を参照:
 
-- [`geom`](yaml-reference.md#geom) — PDB 入力では `--freeze-links` が `freeze_atoms` にマージされます。
+- [`geom`](yaml-reference.md#geom) — PDB/mmCIF トポロジーでは `--freeze-links` が `freeze_atoms` にマージされます。
 - [`calc`](yaml-reference.md#calc) — MLIP バックエンド設定。
 - [`gs`](yaml-reference.md#gs) — Growing String 表現（GSM モード）。
 - [`dmf`](yaml-reference.md#dmf) — Direct Max Flux + (C)FB-ENM 補間（DMF モード）。
 - [`stopt`](yaml-reference.md#stopt) — StringOptimizer 設定。
-- [`opt.lbfgs`](yaml-reference.md#lbfgs) / [`opt.rfo`](yaml-reference.md#rfo) — エンドポイント単一構造事前最適化。YAML が CLI の `--preopt-max-cycles` を上書きします。
+- [`opt.lbfgs`](yaml-reference.md#lbfgs) / [`opt.rfo`](yaml-reference.md#rfo) — endpoint単一構造事前最適化。CLIで `--preopt-max-cycles` を明示した場合はYAMLより優先し、省略時はYAML値を使用します。
 
 ### `path-opt` 固有のデフォルト
 
@@ -162,7 +162,7 @@ CLI 規約の {ref}`ja-exit-codes` を参照してください。
 - [path-search](path-search.md) — 自動精密化を伴う再帰的 MEP 探索（2+構造用）
 - [tsopt](tsopt.md) — HEI を TS 候補として最適化（内部で虚振動数チェック済み）。続けて IRC で接続性を確認
 - [extract](extract.md) — path-opt 入力用の活性部位モデル PDB を生成
-- [all](all.md) — 一気通貫ワークフロー（デフォルトで単一パス path-opt を使用; `--refine-path True` で再帰的 path-search に切替。`--refine-path` フラグは `pdb2reaction all` にのみ属します — 定義は {ref}`ja-mep-search-options` を参照してください）
+- [all](all.md) — 一気通貫ワークフロー（デフォルトで単一パス path-opt を使用; `--refine-path` で再帰的 path-search に切替。`--refine-path` フラグは `pdb2reaction all` にのみ属します — 定義は {ref}`ja-mep-search-options` を参照してください）
 - [YAML リファレンス](yaml-reference.md) — `gs`、`dmf`、`stopt`、`opt` の完全な設定オプション
 - [用語集](glossary.md) — MEP、GSM、DMF、HEI の定義
 - [典型エラー別レシピ](recipes-common-errors.md) — 症状起点の切り分け

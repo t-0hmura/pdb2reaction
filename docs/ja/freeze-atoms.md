@@ -55,9 +55,20 @@ pdb2reaction tsopt -i ts.xyz -q 0 -m 1 --config tsopt.yaml
 
 - **力（Force）:** `opt` / `tsopt` / `scan` / `freq` / `irc` と `path-opt` / `path-search` の `--mep-mode gsm` では凍結 DOF の力をゼロ化（hard freeze）。
 - **Hessian:** 凍結 DOF の行・列は除去される（`calc.return_partial_hessian: true`。calculator のグローバルデフォルトで、`opt` / `tsopt` / `scan` / `freq` / `irc` で再度強制設定）か、フル行列でゼロ化されます。
-- **振動解析:** 凍結原子があるとき `freq` は自動で Partial Hessian Vibrational Analysis（PHVA）を実行し、active ブロックのみ対角化します。
+- **振動解析:** 凍結原子があるとき `freq` は自動で Partial Hessian Vibrational Analysis（PHVA）を実行し、active ブロックのみ対角化します。剛体モードの扱いは次節を参照してください。
 - **`path-opt --mep-mode dmf` と `path-search --mep-mode dmf`（soft restraint）:** ゼロ化の代わりに `HarmonicFixAtoms`（デフォルト `k_fix = 300 eV/Å²`、ASE 単位系）を各 image に追加し、凍結原子を調和拘束で緩和させます（hard 拘束ではなく、初期座標から微小ずれが生じ得ます）。
 - **MEP / IRC:** `path-opt` / `path-search` の `--mep-mode gsm` と `irc` は解かれた経路 / IRC 軌跡で hard freeze を適用、`--mep-mode dmf`（path-opt / path-search）は上記 soft restraint を使用。
+
+## 凍結境界での剛体モード
+
+`geom.tr_projection` / `--tr-projection` は、Cartesian PHVA 関連の固有値解析で剛体並進・回転をどう扱うかを指定します。
+
+- **`constrained`（デフォルト）:** 全系の剛体運動のうち、すべての凍結anchor（固定点）を動かさない組合せだけを除去します。一般的な非線形構造では、凍結anchorが0、1、2、3個以上（非共線）のとき、effective rankはそれぞれ6、3、1、0です。通常のクラスターモデル境界には非共線なanchorが複数あるため、effective rankは通常0で、active modeを除去しません。
+- **`legacy-active`:** 可動fragmentを孤立分子として扱い、その剛体モードを除去します。well-conditionedで縮退のない通常構造に対するisolated-active比較専用です。現行の共通射影kernelが縮退を処理するため、near-linear／縮退構造で旧結果をbitwiseに再現することは保証しません。
+
+この設定は`freq`、`irc`、TSのexact PHVA checkとDimer方向、`opt` / `tsopt`のflattenで使用します。MEPからCartesian反応方向を渡す`tsopt --ref-mode`とは無関係です。全原子を凍結した系にはactiveな振動DOFがないため、明示的なエラーで停止します。
+
+JSON出力を有効にすると、`result.json["rigid_projection"]`にtreatment、effective rank、Hessianのsourceとshapeを記録します。`freq --dump`では同じprovenanceを`thermoanalysis.yaml`にも記録します。詳細は[JSON出力スキーマ](json-output.md#rigid-projection-provenance)を参照してください。
 
 ## サブコマンド対応表
 
@@ -79,6 +90,7 @@ pdb2reaction tsopt -i ts.xyz -q 0 -m 1 --config tsopt.yaml
 - **原子インデックスの再番号化**: `--freeze-atoms` と `geom.freeze_atoms` は 1 始まりで入力の原子順に依存します。再抽出で順序が変わったらインデックスを再生成してください。
 - **トポロジーなしの XYZ/GJF**: `LKH` レコードが無く `--freeze-links` は no-op です。`--ref-pdb FILE` または明示的な `--freeze-atoms` を使用してください。
 - **`--no-freeze-links` の使いどころ**: 自動凍結を切る診断目的のみ。本番のクラスターモデル実行では `--freeze-links` を有効のままにしてください。
+- **全原子を凍結した場合**: PHVAとIRCには少なくとも1個のactive atomが必要なため、明示的なエラーで停止します。checkを回避せず、freeze setを減らしてください。
 
 ## 関連項目
 

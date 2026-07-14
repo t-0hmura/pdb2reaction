@@ -6,26 +6,30 @@ For large-batch or multi-node `pdb2reaction` runs, `workers` / `workers_per_node
 - `workers-per-node` — how many of those run on each node (default `1`); controls per-node GPU/memory pressure.
 
 ```{warning}
-When you run the UMA backend with `workers > 1`, requesting `hessian_calc_mode="Analytical"` raises a `RuntimeError` because the parallel predictor exposes no autograd model. Use `workers = 1` for an analytical Hessian, or select `FiniteDifference`. ORB / MACE / AIMNet2 do not accept `workers` / `workers_per_node` and are unaffected by this rule. See {ref}`hessian-evaluation`.
+When you run the UMA backend with `workers > 1`, requesting `hessian_calc_mode="Analytical"` raises `BackendError` (a `RuntimeError` subclass) because the parallel predictor exposes no autograd model. Use `workers = 1` for an analytical Hessian, or select `FiniteDifference`. ORB / MACE / AIMNet2 do not accept `workers` / `workers_per_node` and are unaffected by this rule. See {ref}`hessian-evaluation`.
 ```
 
 The following PBS script illustrates one way to build a multi-node Ray cluster on an Open MPI–equipped HPC system. **Treat it as a template**: you will need to adjust module names, conda path, ports, and resource requests to match your environment.
 
 ```bash
-#!/bin/bash
-#PBS -l select=4:mpiprocs=72
+#!/usr/bin/env bash
+# One MPI rank and one allocated GPU per node; adapt ncpus/ngpus to the site.
+#PBS -l select=4:ncpus=72:mpiprocs=1:ngpus=1
 #PBS -l walltime=24:00:00
 #PBS -j oe
 #PBS -N pdb2reaction
 
-cd "$PBS_O_WORKDIR"
+set -euo pipefail
+cd -- "${PBS_O_WORKDIR:?PBS_O_WORKDIR is unset}"
 
 # --- Environment setting ---
 source /etc/profile.d/modules.sh
 module purge
-module load gcc ompi cuda/<your-version>     # e.g. cuda/12.6 or cuda/12.9
+CUDA_MODULE=${CUDA_MODULE:-cuda/12.6}        # change to the site's module name
+P2R_CONDA_ENV=${P2R_CONDA_ENV:-p2r}         # change to the installed environment
+module load gcc ompi "${CUDA_MODULE}"
 source ~/apps/miniconda3/etc/profile.d/conda.sh
-conda activate <your-env>
+conda activate "${P2R_CONDA_ENV}"
 # -------------------
 
 
@@ -34,15 +38,17 @@ conda activate <your-env>
 export CUDA_DEVICE_ORDER=PCI_BUS_ID
 export NCCL_SOCKET_FAMILY=AF_INET
 
-# CUDA_VISIBLE_DEVICES fallback (if scheduler doesn't set)
+# Fail closed: never select an unallocated device.
 if [[ -z "${CUDA_VISIBLE_DEVICES:-}" || "${CUDA_VISIBLE_DEVICES}" == "NoDevFiles" ]]; then
- export CUDA_VISIBLE_DEVICES=0
+ echo "PBS allocation exposed no GPU (CUDA_VISIBLE_DEVICES is empty)." >&2
+ exit 2
 fi
 export GPUS_PER_NODE="$(awk -F',' '{print NF}' <<< "${CUDA_VISIBLE_DEVICES}")"
 
 # --- Nodes ---
 mapfile -t NODES < <(awk '!seen[$0]++' "$PBS_NODEFILE")
 NNODES="${#NODES[@]}"
+TOTAL_WORKERS=$((NNODES * GPUS_PER_NODE))
 
 HEAD_NODE="${NODES[0]}"
 HEAD_IP="$(getent ahostsv4 "${HEAD_NODE}" | awk 'NR==1{print $1}')"
@@ -78,19 +84,24 @@ BASH=(bash --noprofile --norc -c)
 
 cleanup() {
  echo "Stopping Ray..."
- [[ -n "${RAY_LAUNCH_PID:-}" ]] && kill "${RAY_LAUNCH_PID}" >/dev/null 2>&1 || true
- "${MPI[@]}" "${BASH[@]}" "ray stop -f >/dev/null 2>&1 || true" || true
+ if [[ -n "${RAY_LAUNCH_PID:-}" ]]; then
+  # The launcher was started in its own session below. Stop only this job's
+  # process group; a bare `ray stop -f` can kill another job on a shared node.
+  kill -TERM -- "-${RAY_LAUNCH_PID}" >/dev/null 2>&1 || true
+  wait "${RAY_LAUNCH_PID}" 2>/dev/null || true
+ fi
 }
 trap cleanup EXIT
 
-# Prepare node-local /tmp + stop any leftover ray
-"${MPI[@]}" "${BASH[@]}" "mkdir -p '${RAY_TEMP_DIR}'; ray stop -f >/dev/null 2>&1 || true"
+# Unique ports and temp paths isolate this job; never stop unrelated Ray jobs.
+"${MPI[@]}" "${BASH[@]}" "mkdir -p '${RAY_TEMP_DIR}'"
+command -v setsid >/dev/null
 
 # --- Launch Ray (rank0=head) ---
-"${MPI[@]}" "${BASH[@]}" "
+setsid "${MPI[@]}" "${BASH[@]}" "
 
 # Keep env stable inside remote shell as well
-export PYTHONPATH='${PYTHONPATH}'
+export PYTHONPATH='${PYTHONPATH:-}'
 export CUDA_DEVICE_ORDER=PCI_BUS_ID
 export NCCL_SOCKET_FAMILY=AF_INET
 export TMPDIR='${RAY_TEMP_DIR}'
@@ -98,9 +109,10 @@ export TMPDIR='${RAY_TEMP_DIR}'
 # Avoid NCCL \"duplicate GPU\" when hostid is identical across nodes
 export NCCL_HOSTID=\$(hostname -s)
 
-# Per-node GPU count
+# Per-node GPU count. Never fabricate a device in the remote rank.
 if [[ -z \"\${CUDA_VISIBLE_DEVICES:-}\" || \"\${CUDA_VISIBLE_DEVICES}\" == \"NoDevFiles\" ]]; then
- export CUDA_VISIBLE_DEVICES=0
+ echo \"[\$(hostname -s)] no scheduler-visible GPU\" >&2
+ exit 2
 fi
 GPUS=\$(awk -F',' '{print NF}' <<<\"\${CUDA_VISIBLE_DEVICES}\")
 
@@ -110,7 +122,7 @@ IP=\$(getent ahostsv4 \"\${HOST}\" | awk 'NR==1{print \$1}')
 echo \"[\${HOST}] IP=\${IP} CUDA_VISIBLE_DEVICES=\${CUDA_VISIBLE_DEVICES} (GPUS=\${GPUS}) NCCL_HOSTID=\${NCCL_HOSTID}\"
 
 if [[ \"\${OMPI_COMM_WORLD_RANK:-0}\" == \"0\" ]]; then
- echo \"[\${HOST}] ray HEAD on \${HEAD_IP}:\${RAY_PORT}\"
+ echo \"[\${HOST}] ray HEAD on ${HEAD_IP}:${RAY_PORT}\"
  ray start --head --node-ip-address='${HEAD_IP}' --port='${RAY_PORT}' \
  --object-manager-port='${RAY_OBJECT_MANAGER_PORT}' --node-manager-port='${RAY_NODE_MANAGER_PORT}' \
  --runtime-env-agent-port='${RAY_RUNTIME_ENV_AGENT_PORT}' \
@@ -120,8 +132,13 @@ if [[ \"\${OMPI_COMM_WORLD_RANK:-0}\" == \"0\" ]]; then
  --temp-dir='${RAY_TEMP_DIR}' \
  --disable-usage-stats --include-dashboard=false --block
 else
- until (echo > /dev/tcp/\${HEAD_IP}/\${RAY_PORT}) >/dev/null 2>&1; do sleep 1; done
- echo \"[\${HOST}] ray WORKER -> \${RAY_HEAD_ADDR}\"
+ connected=0
+ for _attempt in \$(seq 1 120); do
+  if (echo > /dev/tcp/${HEAD_IP}/${RAY_PORT}) >/dev/null 2>&1; then connected=1; break; fi
+  sleep 1
+ done
+ (( connected == 1 )) || { echo \"Ray head did not become reachable\" >&2; exit 2; }
+ echo \"[\${HOST}] ray WORKER -> ${RAY_HEAD_ADDR}\"
  ray start --address='${RAY_HEAD_ADDR}' --node-ip-address=\"\${IP}\" \
  --object-manager-port='${RAY_OBJECT_MANAGER_PORT}' --node-manager-port='${RAY_NODE_MANAGER_PORT}' \
  --runtime-env-agent-port='${RAY_RUNTIME_ENV_AGENT_PORT}' \
@@ -135,26 +152,63 @@ fi
 
 RAY_LAUNCH_PID=$!
 
-sleep 10 # Wait for workers
-ray status || true
+# Bounded readiness gate: require every allocated node and GPU resource.
+export EXPECTED_RAY_NODES="${NNODES}"
+export EXPECTED_RAY_GPUS="${TOTAL_WORKERS}"
+ready=0
+for _attempt in $(seq 1 120); do
+ if ! kill -0 "${RAY_LAUNCH_PID}" 2>/dev/null; then
+  echo "Ray launcher exited before the cluster became ready." >&2
+  break
+ fi
+ if python - <<'PY'
+import os
+import ray
+
+ray.init(address="auto", ignore_reinit_error=True, logging_level="ERROR")
+live_nodes = sum(bool(node.get("Alive")) for node in ray.nodes())
+gpu_total = float(ray.cluster_resources().get("GPU", 0.0))
+expected_nodes = int(os.environ["EXPECTED_RAY_NODES"])
+expected_gpus = float(os.environ["EXPECTED_RAY_GPUS"])
+ray.shutdown()
+if live_nodes < expected_nodes or gpu_total < expected_gpus:
+    raise SystemExit(1)
+PY
+ then
+  ready=1
+  break
+ fi
+ sleep 2
+done
+(( ready == 1 )) || { echo "Ray readiness timed out." >&2; exit 2; }
+ray status
 # --- Ray setup end ---
 
-pdb2reaction opt -i test.pdb -q -5 -m 1 --workers ${NNODES} --workers-per-node ${GPUS_PER_NODE}
+pdb2reaction opt -i test.pdb -q -5 -m 1 \
+ --workers "${TOTAL_WORKERS}" --workers-per-node "${GPUS_PER_NODE}"
 ```
 
 ## Walltime budgeting
 
-The 24 h template above is a default ceiling, not a target. Most jobs finish well under that; pick a budget that fits your system's wall-clock pattern:
+The 24 h template above is an example ceiling, not a measured target. Pick a budget from representative pilots on the target stack:
 
-- **Cluster-model `opt` / `tsopt`** (~50–100 atoms, single GPU): minutes to a few hours.
-- **`pdb2reaction all` end-to-end** (extract → MEP → TSOPT → IRC → freq → DFT) on a small substrate: typically a few hours; high-end multi-GPU nodes can shorten the DFT stage substantially.
-- **MEP (`path-search` / `path-opt`)**: scales with `--max-nodes` (images per segment) and `--max-cycles` (GSM optimizer iterations) — recursive `path-search` runs multiply both by the segment count, so multistep mechanisms can occupy a single GPU for many hours.
+- **Cluster-model `opt` / `tsopt`**: time the selected backend/model, Hessian mode, precision, and convergence settings on a representative structure.
+- **`pdb2reaction all` end-to-end** (extract → MEP → TSOPT → IRC → freq → DFT): time a representative segment. The bundled DFT command is not a general multi-GPU SCF driver, so requesting more GPUs does not make that stage scale automatically.
+- **MEP (`path-search` / `path-opt`)**: cost grows with `--max-nodes`, optimizer iterations, and recursive segment count; measure one representative segment before budgeting the full mechanism.
 
-Walltime scales roughly inversely with effective parallelism (the total `workers` count) on the UMA backend. ORB / MACE / AIMNet2 do not parallelize across workers, so adding more nodes does not shorten their wall-clock time.
+UMA `workers` can improve inference throughput for suitable large/batched work,
+but optimizer stages contain sequential work and do not scale inversely with
+worker count. Benchmark before reserving more nodes. ORB / MACE / AIMNet2 do
+not use pdb2reaction's UMA worker pool.
 
-## Precision on datacenter GPUs
+## Precision in scheduled jobs
 
-On the HPC datacenter cards these templates target (H100 / H200 / A100), run production TS optimizations and Hessians with `--precision fp64`: the fp64 throughput cost is small on these cards and it gives near-deterministic, low numerical-noise results. Pass `--precision fp32` for screening and on consumer GPUs (RTX 50xx / 40xx), where fp64 is substantially slower — this is UMA's default already, and downgrades ORB / MACE from theirs. See [Reproducibility → Choosing precision by GPU class](reproducibility.md#choosing-precision-by-gpu-class) for the routing details and the `--deterministic` pairing.
+Choose precision by backend and purpose, then measure its cost on the allocated
+GPU. Leaving it unset preserves the backend defaults (UMA/AIMNet2 fp32,
+ORB/MACE fp64). Explicit fp32 is useful for screening but downgrades ORB/MACE
+and their finite-difference Hessians; it is not a final-validation setting.
+Precision does not imply determinism or prove a first-order saddle. See
+[Reproducibility → Choosing precision by backend and purpose](reproducibility.md#choosing-precision-by-backend-and-purpose).
 
 ## See Also
 

@@ -61,7 +61,7 @@ Please run `pdb2reaction add-elem-info -i...` to populate element columns before
 
 対処の例:
 - `--radius` を増やしてください（例: 2.6 → 3.5 Å）
-- `--selected-resn` で残基を強制包含してください（例: `--selected-resn 'A:123,B:456'`）。残基 ID 仕様の詳細は CLI 規約の {ref}`ja-selected-resn-takes-ids` を参照。
+- `--selected-resn` で残基を強制包含してください（例: `--selected-resn 'A:123,B:456'`）。残基名・ID・chain付きselectorの指定形式は CLI 規約の {ref}`ja-selected-resn-takes-ids` を参照。
 - 以前に `--exclude-backbone` を明示的に有効化していて、その削除が強すぎる場合は当該フラグを外す（または `--no-exclude-backbone` を渡す）ことで主鎖原子を保持できます
 
 ---
@@ -148,17 +148,11 @@ pdb2reaction extract -i complex.pdb -c PRE --modified-residue "SEP,TPO,MLY" -o p
 
 ---
 
-### `[orb]` のインストールで torch_scatter のビルドに失敗する
-症状:
-- `pip install "pdb2reaction[orb]"` が **torch_scatter** のビルド時に `No module named 'torch'` で失敗する。
+### ORB backend の import に失敗する
 
 対処:
-- torch_scatter は PyPI にバイナリ wheel がなく（sdist のみ）、PEP517 のビルド分離下ではソースビルドが失敗します。torch+CUDA タグに一致する PyG の prebuilt-wheel インデックスからインストールします:
-
-  ```bash
-  pip install "pdb2reaction[orb]" -f https://data.pyg.org/whl/torch-2.8.0+cu129.html
-  ```
-- フォールバック（CUDA ツールチェーンがある場合）: `pip install torch_scatter --no-build-isolation`
+- 現行 extra を `pip install "pdb2reaction[orb]"` で導入し、`python -m pip check` を実行します。
+- 現行 `orb-models` は `torch_scatter` を依存に持ちません。実際の error が、別途導入した `torch_scatter` 自体を名指ししていない限り、PyG index や source-build 手順を追加しないでください。
 
 ---
 
@@ -193,11 +187,11 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 ### 最適化が `max_cycles` に達し、`max(force)` が閾値をわずかに超える
 
 症状:
-- オプティマイザが `max_cycles` 上限まで回りきり、最終サマリで `max(force)` や `rms(force)` が目標をわずかに上回る（例: `baker` の 3×10⁻⁴ au に対して 4×10⁻⁴ au）。
-- 一方で、エネルギー自体は明らかに平坦化しており、10⁻⁵–10⁻⁴ au レベルで振動している。
+- optimizerが `max_cycles` 上限まで回り、最終summaryで `max(force)` や `rms(force)` が選択閾値をわずかに上回る。
+- 一方で、energyは選択した `energy_plateau_thresh` の範囲内で平坦化している。
 
 原因:
-- MLIP（機械学習ポテンシャル）の勾配（力）計算には小さな確率的ノイズフロアがあり（10⁻⁴ Hartree/Bohr オーダー）、これが力ベースの収束閾値（`baker` = 3×10⁻⁴ au）を上回る場合があります。その結果、構造はすでに収束しているにもかかわらず、力閾値を満たすことができません。
+- MLIPのforce noise/flatnessはbackend、model、precision、system、hardware stackに依存し、選択したforce閾値への到達を妨げる場合があります。
 
 対処:
 - **平坦なエネルギー地形によるフォールバック収束**が自動でこの状況を処理します: `opt.energy_plateau: true` のとき、直近 `opt.energy_plateau_window`（デフォルト 50）ステップのエネルギーレンジが `opt.energy_plateau_thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`）を下回ると収束と判定されます。多くの場合、ユーザー側での対応は不要です。
@@ -216,7 +210,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 対処の例（CLI フラグと YAML キーは補完的、必要に応じて併用してください）:
 - オプティマイザモードを切り替えてください: `--opt-mode grad`（Dimer 法）または `--opt-mode hess`（RS-P-RFO 法、デフォルト）
 - 余分な虚振動数モードのフラット化を有効にしてください: `--flatten`（単独の `tsopt`、`opt`、および `pdb2reaction all` で利用可能。デフォルトは無効）
-- coarse MEPのHEIが悪い場合は、`all`を`--refine-path True`付きで再実行してください。ただし悪いpathを不要な複数segmentへ分割してcostを増大させることがあるためデフォルトOFFです。まずcoarse MEPを確認してください
+- coarse MEPのHEIが悪い場合は、`all`を`--refine-path`付きで再実行してください。ただし悪いpathを不要な複数segmentへ分割してcostを増大させることがあるためデフォルトOFFです。まずcoarse MEPを確認してください
 - 最大サイクル数を増やしてください: `--max-cycles 20000`（単独の `tsopt` の場合）、`--tsopt-max-cycles 20000`（`all` の場合）
 - より厳しい収束閾値を使ってください: `--thresh baker` または `--thresh gau_tight`
 - YAML でステップサイズ / 信頼半径を縮小してください — L-BFGS/Dimer: `lbfgs.max_step` / `hessian_dimer.lbfgs.max_step`、RFO/RS-I-RFO: `rfo.trust_radius` / `rfo.trust_min` / `rfo.trust_max`（および `rsirfo` セクション）。セクション構成は [YAML リファレンス](yaml-reference.md) を参照
@@ -251,43 +245,33 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 
 ## パフォーマンス / 安定性のヒント
 
-- **VRAM 不足**: `--radius` の値を減らして活性部位モデルを小さくする、`--max-nodes` を減らす、軽い最適化設定にする（`--opt-mode grad`）
-- **解析Hessian（Analytical Hessian）が遅いまたは OOM**: デフォルトの `FiniteDifference` を維持してください。`--hessian-calc-mode Analytical` は 16 GB 以上の VRAM がある場合のみ使用してください。16 GB で収まるのは ~200 原子程度までです（下記の VRAM 目安表を参照）
-- **workers > 1**: HPC で UMA の処理速度は改善しますが、並列 predictor は解析 Hessian を持ちません。`Analytical` を明示すると `RuntimeError` で停止します。解析 Hessian には `--workers 1`、並列実行には `FiniteDifference` を指定してください
-- **大規模系（1000 原子以上）**: より小さな活性部位モデル（`--radius 2.5` Å）を抽出するか、マルチ GPU セットアップでの実行を検討してください
-- **HPC で DFT を回すとき（数百原子規模）**: PySCF / GPU4PySCF は積分・中間ファイルを `$PYSCF_TMPDIR`（未設定なら `$TMPDIR`、最後は `/tmp`）に書き出します。ノードローカル `/tmp` は容量が小さい / `tmpfs` であることが多く、SCF の途中で枯渇する場合があります。`dft` 起動前に `PYSCF_TMPDIR` をジョブの作業ファイルシステム配下に設定してください（例: `export PYSCF_TMPDIR="$PBS_O_WORKDIR"`）
+- **VRAM 不足**: 必要な残基が残ることを確認してから活性部位モデルを小さくする、`--max-nodes` を減らす、full-Hessian optimizer が不要なら `--opt-mode grad` を使う
+- **解析 Hessian が遅いまたは OOM**: 対象 backend/model と代表的な原子数で試験するまでは、移植性のあるデフォルト `FiniteDifference` を維持してください。解析 autograd は通常メモリピークが大きくなりますが、一般化できる原子数・VRAM の境界値はありません
+- **workers > 1**: hardware と workload によっては UMA throughput が向上しますが、並列 predictor は解析 Hessian を持ちません。`Analytical` を明示すると `BackendError`（`RuntimeError` のサブクラス）で停止します。解析 Hessian には `--workers 1`、並列実行には `FiniteDifference` を指定してください
+- **大規模系**: 化学的に妥当な小さい活性部位モデルを作り、半径・境界位置への感度を確認してください。multi-GPU の対応範囲は backend/workflow ごとに異なり、GPU 数を増やしても worker 当たりのメモリが減るとは限りません
+- **HPC で DFT を回すとき**: 選択した計算が temporary disk を使う場合は、容量と性能を確認した filesystem に `PYSCF_TMPDIR` を設定してください。`/tmp`、`$PBS_O_WORKDIR`、shared filesystem のどれが適切かは site ごとに異なります
 
 ## バックエンド選択ガイド
 
-以下は 16 GB VRAM の consumer GPU で小〜中規模クラスターモデルを L-BFGS 1 ステップ動かした場合の目安値です。バックエンド選択の参考用で、厳密なベンチマークではありません。
-
-| バックエンド (`-b/--backend`、モデル ID) | 速度 (中央値 s/step) | VRAM | 備考 |
-|------------|---------------------|------|------|
-| `uma` (`uma-s-1p2`、デフォルト) | 0.03 s | ~2 GB | 高速、探索向き |
-| `uma` (`uma-m-1p1`) | 0.22 s | ~8 GB | 中規模モデル、VRAM 大 |
-| `mace` (`MACE-OMOL-0`) | 0.37 s | ~4 GB | 別 conda 環境が必要（`e3nn` 競合） |
-| `orb` (`orb_v3_conservative_omol`) | 0.02 s | ~2 GB | 最速。注意点は下を参照 |
-
-**推奨:**
-- まずデフォルトの UMA モデルで高速スクリーニングし、その後 MACE または大型 UMA で主要結果を相互確認してください。
-- SAM 依存 S~N~2 / メチル転移反応では、MACE とデフォルト UMA は相補的に働く傾向があるので、片方の TS が疑わしいときはもう片方で検証するのが有効です。
-- Orb は反応座標自体は正しく捉えるものの、TS が虚振動を複数持つ状態に収束しやすく、クリーンな単一虚振動 TS は保証されません。Orb は反応機構の構造変化を確認する用途であれば使用できますが、定量的な反応速度論や振動解析には UMA / MACE / DFT で再評価するか backend を切り替えてください。
+backend 名だけから速度・メモリ量・化学的精度を推定しないでください。
+backend、model、precision、package version、GPU、原子数、workflow option
+を記録し、実際の計算と同条件で pilot を行います。UMA はデフォルトで、
+multi-worker inference を持つ唯一の built-in backend です。ORB は明示 fp32
+の `float32-high`/TF32 matmul が有限差分 Hessian を noisy にし得るため fp64
+がデフォルトです。MACE は対応 package stack が `fairchem-core` と競合する
+ため、現状は専用環境が必要です。AIMNet2 の charge/spin 対応範囲は選択した
+model に依存します。どの backend でも、optimizer の収束、意図した有意な
+虚振動 1 本、正しい IRC endpoint を確認して TS を採用し、科学的主張に
+必要なら cross-backend または DFT で検証してください。
 
 ## GPU メモリ (VRAM) 目安
 
-系のサイズ別のおおよその VRAM 使用量は次のとおりです。
-
-| 原子数 | L-BFGS 最適化 | Hessian（解析的） | Hessian（有限差分） |
-|-------|------------|-----------------|------------------|
-| 50 | ~2 GB | ~3 GB | ~2 GB |
-| 100 | ~3 GB | ~6 GB | ~3 GB |
-| 200 | ~4 GB | ~12 GB | ~4 GB |
-| 500 | ~6 GB | 16 GB で OOM | ~6 GB |
-
-`torch.cuda.OutOfMemoryError` が出た場合は次を試してください。
-- `--hessian-calc-mode FiniteDifference` を指定する（速度は落ちますが VRAM 使用量を抑えられます）
-- `--radius` を小さくしてクラスターモデルのサイズを縮小する
-- より小さいモデルを使う（YAML 設定で `calc.model: uma-m-1p1` の代わりに `uma-s-1p2` を指定）
+VRAM は原子数だけでは決まりません。model architecture、neighbor 数、
+precision、Hessian mode、凍結自由度、software version が影響します。同じ
+設定の代表的な pilot でピークを測り、一時的な増加の余裕を残してください。
+`torch.cuda.OutOfMemoryError` では `FiniteDifference` を維持または選択し、
+対応している小さい model を使うか、化学と境界位置を確認して cluster を
+縮小します。
 
 ## 不具合報告のときに添えると助かる情報
 

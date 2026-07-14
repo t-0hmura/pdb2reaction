@@ -9,8 +9,8 @@ are reported with file:line.
 This is intentionally conservative:
 * shell line continuations (\\) are joined.
 * placeholders / templates (``<arg>``, ``{xyz,pdb,gjf}``) are skipped.
-* values for known boolean flags (``--tsopt true``, ``--no-tsopt``) are
-  accepted as flag-only.
+* legacy value-style booleans remain parser-compatible, but authored guidance
+  must use canonical ``--flag`` / ``--no-flag`` toggles.
 * free-form prose example fragments inside backticks (single-line
   ``pdb2reaction extract --foo``) are also checked.
 
@@ -101,12 +101,24 @@ def _check_command(cmd_text: str, flags_per_cmd: dict[str, set[str]]):
         return []
     if len(tokens) < 2 or tokens[0] != "pdb2reaction":
         return []
-    sub = tokens[1]
-    if sub not in flags_per_cmd:
+    first = tokens[1]
+    if first in {"--help", "--version"}:
         return []
+    if first.startswith(("<", "{", "[")):
+        return []
+    if first.startswith("-"):
+        # The root command defaults to ``all`` when its first token is an
+        # option (for example ``pdb2reaction -i R.pdb P.pdb``).
+        sub = "all"
+        arg_tokens = tokens[1:]
+    else:
+        sub = first
+        arg_tokens = tokens[2:]
+    if sub not in flags_per_cmd:
+        return [f"<unknown-subcommand:{sub}>"]
     valid = flags_per_cmd[sub]
     bad: list[str] = []
-    for tok in tokens[2:]:
+    for tok in arg_tokens:
         if tok.startswith("<") or tok.startswith("{") or tok.startswith("["):
             continue
         if not tok.startswith("-"):

@@ -9,7 +9,7 @@ Validate an existing TS candidate end-to-end without running extract or the MEP 
 - pdb2reaction installed (see [Installation](installation.md))
 - One TS candidate geometry: `.pdb` (preferred — carries residue / charge info) or `.xyz`
 - Charge: exactly one of `-q/--charge INT`, `--ligand-charge/-l 'RES:Q,...'`, or a `.gjf` header. For `.xyz` inputs `-q` and `-m` are mandatory — pass `--ref-pdb cluster.pdb` if you want `-l 'RES:Q'` resolution.
-- TS-only mode activates when **all three** hold: exactly one `-i` input, no `--scan-lists`, and `--tsopt` (or `--tsopt True`). Otherwise the CLI raises `BadParameter` at the input gate (`Provide at least two structures with -i/--input in reaction order, or use a single structure with --scan-lists, or a single structure with --tsopt True.`)
+- TS-only mode activates when **all three** hold: exactly one `-i` input, no `--scan-lists`, and `--tsopt`. Otherwise the CLI raises `BadParameter` at the input gate (`Provide at least two structures with -i/--input in reaction order, or use a single structure with --scan-lists, or a single structure with --tsopt.`)
 
 ## Minimal command
 
@@ -35,7 +35,13 @@ pdb2reaction all -i ts_candidate.pdb -l 'SAM:1,GPP:-3' \
     -o ./result_ts_only
 ```
 
-> **VRAM warning:** `--dft` launches GPU4PySCF single-point jobs and can OOM on GPUs with < 24 GB VRAM for clusters above ~200 atoms. If you hit `CUDA out of memory`, drop `--dft` and run `pdb2reaction dft` separately with a smaller basis or trimmed cluster, or move the DFT step to a larger-VRAM node. The `[dft]` extra must also be installed (see [Installation](installation.md)).
+> **VRAM warning:** `--dft` launches GPU4PySCF single-point jobs. Memory use
+> depends on the structure, basis, functional, precision, and software stack;
+> pilot a representative state and monitor peak memory on the target node. If
+> it runs out of memory, drop `--dft` and run `pdb2reaction dft` separately
+> with a smaller basis or trimmed cluster, or move the DFT step to a larger
+> node. The `[dft]` extra must also be installed (see
+> [Installation](installation.md)).
 
 ## Expected output
 
@@ -59,8 +65,7 @@ result_ts_only/
         │   ├── frequencies_cm-1.txt
         │   └── thermoanalysis.yaml
         └── dft/{R,TS,P}/                      # --dft only
-            ├── result.yaml                    # always (when --dft)
-            └── result.json                    # --out-json opt-in
+            └── result.yaml                    # always (when --dft)
 ```
 
 ## Inspecting the result
@@ -69,14 +74,21 @@ Walk these in order; each step has a fast pass/fail check before you move on.
 
 **1. Top-level verdict** — open `result_ts_only/summary.json`:
 
-- `status` should be `"success"` (`"partial"` = stages ran but one validator flagged; `"failed"` = a stage errored).
+- `status` should be `"success"`: all requested result records exist and the
+  TS imaginary-mode validator passed. `"partial"` means a usable path exists
+  but a requested post-stage result is missing/failed or a validator did not
+  pass; inspect `status_reasons`. `"failed"` means no usable path result was
+  produced.
 - `rate_limiting_step.barrier_kcal` and `segments[0].delta_kcal` are the headline ΔE‡ and ΔE in kcal/mol.
-- `post_segments[0].gibbs_uma.barrier_kcal` / `.delta_kcal` are the same numbers with ZPE + thermal corrections applied (ΔG‡, ΔG at 298.15 K, 1 atm).
+- `post_segments[0].gibbs_mlip.barrier_kcal` / `.delta_kcal` are the same numbers with ZPE + thermal corrections applied (ΔG‡, ΔG at 298.15 K, 1 atm).
 
 **2. Imaginary mode at the saddle** — `post_segments[0].ts_imag`:
 
 - `n_imag` must be exactly `1`. `nu_imag_max_cm` (negative cm⁻¹) is the imaginary wavenumber.
-- A chemistry-relevant TS sits in **|ν| ≈ 100–2000 cm⁻¹**. If `|nu_imag_max_cm|` is below ~50 cm⁻¹, the "imag" mode is a soft delocalised motion, not a reactive coordinate — IRC will wander. Re-pick the TS guess, tighten `--thresh-post`, or raise `irc.imag_below` in the YAML (default `0.0` cm⁻¹) to skip very-soft modes when initializing IRC.
+- Magnitude alone does not establish chemical relevance: inspect the mode and
+  verify IRC connectivity. If a system-specific noise analysis identifies soft
+  nonreactive modes, set the opt-in YAML filter `irc.imag_below` below its
+  `0.0` cm⁻¹ default; IRC accepts only modes with `ν <= imag_below`.
 - Visualise the mode: `pymol result_ts_only/segments/seg_01/ts/vib/imag_*_trj.xyz` — the animation should swing precisely the bond(s) you expect to break/form, not show whole-molecule/residue tumbling.
 
 **3. IRC connectivity** — open the IRC trajectory in PyMOL:
@@ -90,7 +102,7 @@ The merged trajectory (forward + backward) should land on the intended reactant 
 **4. Endpoint minima and thermochemistry** — for each of R, TS, P:
 
 - `result_ts_only/segments/seg_01/freq/{R,TS,P}/frequencies_cm-1.txt` — R and P should list zero negative frequencies; TS exactly one (matching step 2).
-- `result_ts_only/segments/seg_01/freq/{R,TS,P}/thermoanalysis.yaml` — fields are `electronic_energy_ha`, `zpe_correction_ha`, `sum_EE_and_ZPE_ha`, and `sum_EE_and_thermal_free_energy_ha` (the absolute Gibbs energy in hartree, at `temperature_K: 298.15`, `pressure_atm: 1.0`). Subtract R from TS for ΔG‡; p2r already reports the difference in `gibbs_uma.barrier_kcal`.
+- `result_ts_only/segments/seg_01/freq/{R,TS,P}/thermoanalysis.yaml` — fields are `electronic_energy_ha`, `zpe_correction_ha`, `sum_EE_and_ZPE_ha`, and `sum_EE_and_thermal_free_energy_ha` (the absolute Gibbs energy in hartree, at `temperature_K: 298.15`, `pressure_atm: 1.0`). Subtract R from TS for ΔG‡; p2r already reports the difference in `gibbs_mlip.barrier_kcal`.
 
 **5. Visual structure check** — load the canonical R/TS/P PDBs:
 
@@ -112,7 +124,7 @@ In PyMOL: `align` the three states, label the reactive atoms (`label name C12+O1
 ## Tips
 
 - For finer control over `tsopt` parameters (`--opt-mode`, `--max-cycles`, Hessian options), run the standalone subcommand — see [tsopt](tsopt.md).
-- `--hessian-calc-mode Analytical` is recommended when VRAM permits (default: `FiniteDifference`).
+- Keep the default `FiniteDifference` unless analytical autograd has been validated for the chosen backend/model and system; its speed and memory cost are setup-dependent.
 - Inspect the full option surface with `pdb2reaction all --help-advanced`.
 
 ## Next step

@@ -23,7 +23,7 @@
 
 | サブコマンド | 説明 |
 |---------|------|
-| [`all`](all.md) | end-to-end ワークフロー: 抽出 → スキャン → MEP 探索 → TS 最適化 → IRC → 熱化学 → DFT |
+| [`all`](all.md) | 任意の抽出、endpoint-MEP / scan-list / TS-only の入力mode、任意の TS/IRC・熱化学・DFT stageを統括 |
 | [`extract`](extract.md) | タンパク質–リガンド複合体から活性部位モデル（バインディングポケット）を抽出 |
 | [`fix-altloc`](fix-altloc.md) | PDB の代替位置指示子を解決 |
 | [`add-elem-info`](add-elem-info.md) | PDB の元素カラム（77–78）を修復 |
@@ -46,7 +46,7 @@
 
 | トピック | ページ |
 |-------|------|
-| **CLI 規約と入力要件** | [CLI 規約](cli-conventions.md) |
+| **CLI 規約と入力要件** | [CLI 規約](cli-conventions.md) · [mmCIF と大規模構造](cif.md) |
 | **クラスター境界の凍結原子（キャップ水素・ `--freeze-atoms`）** | [凍結原子](freeze-atoms.md) |
 | **よくあるエラーと対処** | [トラブルシューティング](troubleshooting.md) |
 | **CLI コマンドリファレンス（英語のみ、自動生成）** | [コマンドリファレンス（英語のみ）](../reference/commands/index.md) |
@@ -58,14 +58,12 @@
 
 ### ハードウェア
 - **OS**: Linux
-- **GPU**: CUDA 12.x 互換
-- **VRAM**: 8 GB 以上推奨
-- **RAM**: 16 GB 以上推奨
+- **GPU（本番計算で推奨）**: 使用backendとPyTorch wheelに対応するNVIDIA driver。CPU-only実行も対応するが低速
+- **VRAM / RAM**: backend/model、系、Hessian mode、precision、並行度に依存。代表stageをpilot実行してpeak使用量を測定
 
 ### ソフトウェア
 - Python >= 3.11
-- CUDA サポート付き PyTorch
-- CUDA 12.x ツールキット
+- CPU版またはCUDA対応PyTorch。prebuilt wheelはCUDA runtimeを同梱し、local CUDA toolkitは通常不要（source build時のみ必要）
 
 セットアップは [インストール](installation.md) を参照してください。
 
@@ -82,7 +80,7 @@
   author       = {Ohmura, Takuto and Sato, Hajime and Terada, Tohru},
   title        = {pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials},
   year         = {2026},
-  doi          = {10.26434/chemrxiv.15003538},
+  doi          = {10.26434/chemrxiv.15003538/v1},
   note         = {ChemRxiv preprint}
 }
 ```
@@ -94,7 +92,7 @@
   author       = {Ohmura, Takuto},
   title        = {pdb2reaction},
   year         = {2026},
-  month        = {6},
+  month        = {7},
   version      = {0.4.12},
   url          = {https://github.com/t-0hmura/pdb2reaction},
   license      = {GPL-3.0},

@@ -21,9 +21,10 @@ import os
 import re
 import tempfile
 import time
+from collections import Counter
 from collections.abc import Iterable as _Iterable, Mapping, Sequence as _Sequence
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from numbers import Real, Integral
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, List, Tuple, Callable, Iterator
@@ -38,6 +39,18 @@ import plotly.graph_objs as go
 
 from pdb2reaction.domain.add_elem_info import guess_element
 from pdb2reaction.core.defaults import RFO_KW
+from pdb2reaction.io.structure_formats import (
+    CIF_SUFFIXES,
+    CoordinateTemplate,
+    cleanup_normalized_structure,
+    coordinate_template_for,
+    is_cif_path,
+    normalize_structure_to_pdb,
+    pdb_requires_normalization,
+    register_coordinate_template,
+    unregister_coordinate_template,
+    write_xyz_as_mmcif,
+)
 from pysisyphus.constants import ANG2BOHR
 from pysisyphus.helpers import geom_loader
 
@@ -962,7 +975,7 @@ def cli_param_overridden(ctx: click.Context, name: str) -> bool:
         # On a failed source query the param name is unknown to the context, so
         # treat it as NOT explicitly provided: falling through to --config
         # YAML / defaults is safer than letting a Click DEFAULT value outrank an
-        # explicit YAML entry. Matches mlmm's make_is_param_explicit.
+        # explicit YAML entry.
         logger.debug("cli_param_overridden: failed to query source for %r: %s", name, exc)
         return False
     return source not in (None, ParameterSource.DEFAULT)
@@ -1339,6 +1352,11 @@ def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -
         for line_idx, line in enumerate(ref_lines):
             if line_idx in atom_line_set:
                 x, y, z = positions[atom_idx]
+                if not all(-999.999 <= float(value) <= 9999.999 for value in (x, y, z)):
+                    raise ValueError(
+                        "Coordinates exceed the fixed-column PDB range required by the "
+                        "internal bridge. Translate the structure closer to the origin."
+                    )
                 # PDB coordinate columns: 31-38 (x), 39-46 (y), 47-54 (z)
                 new_line = line[:30] + f"{x:8.3f}{y:8.3f}{z:8.3f}" + line[54:]
                 frame_lines.append(new_line)
@@ -1359,6 +1377,20 @@ def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -
             if multi_frame:
                 fh.write("ENDMDL\n")
         first_write = False
+
+    # A CIF/oversized-PDB input is represented by a registered internal PDB.
+    # Propagate that metadata to every derived PDB and emit the public mmCIF
+    # companion directly from the unrounded XYZ coordinates.
+    template = coordinate_template_for(ref_pdb_path)
+    if template is not None and not first_write:
+        try:
+            write_xyz_as_mmcif(xyz_path, template, out_pdb_path.with_suffix(".cif"))
+        except BaseException:
+            unregister_coordinate_template(out_pdb_path)
+            raise
+        register_coordinate_template(out_pdb_path, template)
+    elif not first_write:
+        unregister_coordinate_template(out_pdb_path)
 
 
 # Gaussian input (.gjf) helpers
@@ -1671,11 +1703,25 @@ class PreparedInputStructure:
     source_path: Path
     geom_path: Path
     gjf_template: Optional[GjfTemplate] = None
+    original_path: Optional[Path] = None
+    structure_template: Optional[CoordinateTemplate] = None
     _tmp_geom_path: Optional[Path] = None
+    _normalized_structures: List[Tuple[Path, Path]] = field(default_factory=list)
 
     @property
     def is_gjf(self) -> bool:
         return self.gjf_template is not None
+
+    @property
+    def is_cif(self) -> bool:
+        return bool(
+            self.original_path is not None
+            and self.original_path.suffix.lower() in CIF_SUFFIXES
+        )
+
+    @property
+    def display_path(self) -> Path:
+        return self.original_path or self.source_path
 
     def cleanup(self) -> None:
         if self._tmp_geom_path and self._tmp_geom_path.exists():
@@ -1683,12 +1729,23 @@ class PreparedInputStructure:
                 self._tmp_geom_path.unlink()
             except FileNotFoundError:
                 pass
+        for internal_path, tmp_dir in self._normalized_structures:
+            cleanup_normalized_structure(internal_path, tmp_dir)
+        self._normalized_structures.clear()
 
     def __enter__(self) -> "PreparedInputStructure":
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
         self.cleanup()
+
+    def __del__(self) -> None:
+        # Best-effort safety net for callers that miss explicit/context-manager
+        # cleanup; interpreter shutdown does not guarantee finalizer timing.
+        try:
+            self.cleanup()
+        except Exception:
+            pass
 
 
 def _parse_coord_line(line: str) -> GjfCoordinateLine:
@@ -1776,8 +1833,27 @@ def parse_gjf_template(path: Path) -> GjfTemplate:
 
 
 def prepare_input_structure(path: Path) -> PreparedInputStructure:
-    if path.suffix.lower() != ".gjf":
-        return PreparedInputStructure(source_path=path, geom_path=path)
+    path = Path(path)
+    suffix = path.suffix.lower()
+    registered_template = coordinate_template_for(path)
+    if registered_template is not None:
+        return PreparedInputStructure(
+            source_path=path,
+            geom_path=path,
+            original_path=registered_template.source_path,
+            structure_template=registered_template,
+        )
+    if is_cif_path(path) or (suffix == ".pdb" and pdb_requires_normalization(path)):
+        internal, structure_template, tmp_dir = normalize_structure_to_pdb(path)
+        return PreparedInputStructure(
+            source_path=internal,
+            geom_path=internal,
+            original_path=path.resolve(),
+            structure_template=structure_template,
+            _normalized_structures=[(internal, tmp_dir)],
+        )
+    if suffix != ".gjf":
+        return PreparedInputStructure(source_path=path, geom_path=path, original_path=path)
     template = parse_gjf_template(path)
     tmp = tempfile.NamedTemporaryFile("w+", suffix=".xyz", delete=False)
     try:
@@ -1790,6 +1866,7 @@ def prepare_input_structure(path: Path) -> PreparedInputStructure:
         source_path=path,
         geom_path=tmp_path,
         gjf_template=template,
+        original_path=path,
         _tmp_geom_path=tmp_path,
     )
 
@@ -1815,15 +1892,25 @@ def apply_ref_pdb_override(
     prepared_input: PreparedInputStructure,
     ref_pdb: Optional[Path],
 ) -> Optional[Path]:
-    """Use a reference PDB topology while keeping XYZ coordinates for geometry loading."""
+    """Use a reference PDB/mmCIF topology while keeping input coordinates."""
     if ref_pdb is None:
         return None
     ref_pdb = Path(ref_pdb).resolve()
-    if ref_pdb.suffix.lower() != ".pdb":
-        raise click.BadParameter("--ref-pdb must be a .pdb file.")
-    _validate_ref_pdb_atom_count(prepared_input.geom_path, ref_pdb)
-    prepared_input.source_path = ref_pdb
-    return ref_pdb
+    if ref_pdb.suffix.lower() not in ({".pdb"} | set(CIF_SUFFIXES)):
+        raise click.BadParameter("--ref-pdb must be a .pdb, .cif, or .mmcif file.")
+    prepared_ref = prepare_input_structure(ref_pdb)
+    try:
+        _validate_ref_pdb_atom_count(prepared_input.geom_path, prepared_ref.geom_path)
+    except BaseException:
+        prepared_ref.cleanup()
+        raise
+    prepared_input.source_path = prepared_ref.source_path
+    prepared_input.structure_template = prepared_ref.structure_template
+    if prepared_ref.structure_template is not None:
+        prepared_input.original_path = ref_pdb
+        prepared_input._normalized_structures.extend(prepared_ref._normalized_structures)
+        prepared_ref._normalized_structures.clear()
+    return prepared_input.source_path
 
 
 def fill_charge_spin_from_gjf(
@@ -1836,6 +1923,55 @@ def fill_charge_spin_from_gjf(
             charge = template.charge
         if spin is None:
             spin = template.spin
+    return charge, spin
+
+
+def resolve_configured_charge_spin(
+    yaml_cfg: Mapping[str, Any],
+    *,
+    charge: Optional[int],
+    spin: Optional[int],
+    ligand_charge: Optional[float | str | Dict[str, float]] = None,
+) -> Tuple[Optional[int], Optional[int]]:
+    """Apply ``calc.charge`` / ``calc.spin`` below explicit CLI inputs.
+
+    The public YAML schema has always exposed these two calculator fields, but
+    the workflow-level charge resolver used to overwrite them before it ever
+    saw their configured values.  Keep the precedence explicit and shared:
+
+    ``CLI -q/-m or --ligand-charge > YAML calc.charge/spin > GJF > defaults``.
+
+    ``--ligand-charge`` is a user request to derive the total charge from the
+    selected residues, so a configured ``calc.charge`` must not bypass it.
+    """
+    calc_cfg = yaml_cfg.get("calc") if isinstance(yaml_cfg, Mapping) else None
+    if not isinstance(calc_cfg, Mapping):
+        return charge, spin
+
+    if charge is None and ligand_charge is None and "charge" in calc_cfg:
+        raw_charge = calc_cfg.get("charge")
+        if raw_charge is not None:
+            try:
+                charge = int(raw_charge)
+            except (TypeError, ValueError) as exc:
+                raise click.BadParameter(
+                    f"calc.charge must be an integer, got {raw_charge!r}."
+                ) from exc
+
+    if spin is None and "spin" in calc_cfg:
+        raw_spin = calc_cfg.get("spin")
+        if raw_spin is not None:
+            try:
+                spin = int(raw_spin)
+            except (TypeError, ValueError) as exc:
+                raise click.BadParameter(
+                    f"calc.spin must be an integer multiplicity, got {raw_spin!r}."
+                ) from exc
+            if spin < 1:
+                raise click.BadParameter(
+                    f"calc.spin must be an integer multiplicity >= 1, got {spin}."
+                )
+
     return charge, spin
 
 
@@ -1918,7 +2054,7 @@ def resolve_charge_spin(
                 if cleanup_on_error:
                     cleanup_on_error()
                 raise click.ClickException(
-                    "--ligand-charge is only supported for PDB inputs; it cannot be used with .xyz or .gjf files."
+                    "--ligand-charge is only supported for PDB/mmCIF inputs; it cannot be used with .xyz or .gjf files without --ref-pdb."
                 )
         resolved_charge = _derive_charge_from_ligand_charge(
             inputs[0], ligand_charge, prefix=prefix
@@ -1974,7 +2110,7 @@ _CONVERT_FILES_ENABLED: bool = True
 
 
 def set_convert_file_enabled(enabled: bool) -> None:
-    """Globally enable or disable XYZ/TRJ conversions to PDB/GJF outputs.
+    """Globally enable or disable XYZ/TRJ conversions to PDB/CIF/GJF outputs.
 
     The toggle mirrors the ``--convert-files {True|False}`` CLI flag used
     by every workflow. When disabled, format-aware conversions are skipped even
@@ -1988,12 +2124,22 @@ def set_convert_file_enabled(enabled: bool) -> None:
 def convert_xyz_to_gjf(xyz_path: Path, template: GjfTemplate, out_path: Path) -> None:
     """Render single- or multi-frame XYZ/TRJ coordinates into a Gaussian template.
 
-    Multi-frame trajectories are emitted as blank-separated geometries suitable
-    for QST-style Gaussian inputs.
+    A single frame produces a normal template-based Gaussian input. Multi-frame
+    trajectories retain the historical one-header, blank-separated coordinate
+    archive layout; that layout is not by itself an executable Gaussian
+    QST/Link1 input and callers must split/select a frame before submission.
     """
     traj = read(xyz_path, index=":", format="xyz")
     if not traj:
         raise ValueError(f"No frames found in {xyz_path}.")
+    if len(traj) > 1:
+        logger.warning(
+            "Writing multi-frame GJF coordinate archive %s from %s. The "
+            "one-header, blank-separated layout is not directly executable "
+            "as a Gaussian QST/Link1 job; select one frame before submission.",
+            out_path,
+            xyz_path,
+        )
     new_lines: List[str] = list(template.prefix_lines)
     for frame_idx, atoms in enumerate(traj):
         if len(atoms) != template.natoms:
@@ -2003,7 +2149,7 @@ def convert_xyz_to_gjf(xyz_path: Path, template: GjfTemplate, out_path: Path) ->
             )
         coords = atoms.get_positions()
         if frame_idx > 0:
-            new_lines.append("")  # Blank line between multiple geometries (QST-style)
+            new_lines.append("")  # Historical coordinate-archive separator.
         for idx, coord_line in enumerate(template.coord_lines):
             new_lines.append(coord_line.render(tuple(map(float, coords[idx]))))
     new_lines.extend(template.suffix_lines)
@@ -2023,7 +2169,7 @@ def convert_xyz_like_outputs(
     context: str = "outputs",
     on_error: str = "raise",
 ) -> bool:
-    """Convert an XYZ/TRJ file to PDB outputs (and XYZ to GJF) based on the original input type.
+    """Convert XYZ/TRJ to requested PDB/CIF/GJF companion outputs.
 
     Parameters
     ----------
@@ -2178,7 +2324,7 @@ def nearest_index(point, pool):
 
 
 def load_pdb_atom_metadata(pdb_path: Path) -> List[Dict[str, Any]]:
-    """Return per-atom metadata (serial, name, resname, resseq, element) in file order."""
+    """Return per-atom PDB metadata in file order, restoring original CIF IDs."""
 
     atoms: List[Dict[str, Any]] = []
     with open(pdb_path, "r") as f:
@@ -2190,6 +2336,8 @@ def load_pdb_atom_metadata(pdb_path: Path) -> List[Dict[str, Any]]:
             resseq_txt = line[22:26].strip()
             atom_name = line[12:16].strip()
             res_name = line[17:20].strip()
+            chain_id = line[21:22].strip()
+            icode = line[26:27].strip()
             element_txt = line[76:78].strip()
             is_hetatm = line.startswith("HETATM")
 
@@ -2212,7 +2360,28 @@ def load_pdb_atom_metadata(pdb_path: Path) -> List[Dict[str, Any]]:
                     "name": atom_name,
                     "resname": res_name,
                     "resseq": resseq,
+                    "chain": chain_id,
+                    "icode": icode,
                     "element": element_txt,
+                }
+            )
+
+    template = coordinate_template_for(pdb_path)
+    if template is not None:
+        if len(atoms) != template.natoms:
+            raise ValueError(
+                f"PDB metadata atom count ({len(atoms)}) does not match retained "
+                f"template ({template.natoms}) for {pdb_path}."
+            )
+        for meta, record in zip(atoms, template.records):
+            meta.update(
+                {
+                    "name": record.atom_name,
+                    "resname": record.resname,
+                    "resseq": int(record.resseq) if re.fullmatch(r"[-+]?\d+", record.resseq) else record.resseq,
+                    "chain": record.chain_id,
+                    "icode": record.icode,
+                    "element": record.element,
                 }
             )
 
@@ -2223,7 +2392,7 @@ def _split_atom_spec_tokens(spec: str) -> List[str]:
     # Split an atom selector string into tokens using whitespace, comma, slash, backtick, or backslash.
     # Split the atom specification without parsing spaces by replacing spaces with commas before splitting.
     # Without replacing, it didn't work well for specs like "ALA 25 CA", somehow.
-    tokens = [t for t in re.split(r"[\s/`,\\]+", spec.strip().replace(' ',',')) if t]
+    tokens = [t for t in re.split(r"[\s/:`,\\]+", spec.strip().replace(' ',',')) if t]
     return tokens
 
 
@@ -2231,57 +2400,79 @@ def resolve_atom_spec_index(spec: str, atom_meta: Sequence[Dict[str, Any]]) -> i
     """
     Resolve an atom selector string into a 0-based atom index using PDB metadata.
 
-    The selector must contain three fields (resname, resseq, atomname) separated by
-    whitespace, comma, slash, backtick, or backslash. Field order is flexible; when
-    unordered matching fails, the ordered interpretation (resname, resseq, atomname)
-    is used as a fallback.
+    Three fields select by residue name, residue number, and atom name; their
+    order remains flexible for compatibility. A fourth chain-ID field uses the
+    unambiguous positional form ``CHAIN:RESNAME:RESSEQ[ICODE]:ATOM``.
     """
     tokens = _split_atom_spec_tokens(spec)
-    if len(tokens) != 3:
+    if len(tokens) not in {3, 4}:
         raise ValueError(
-            f"Atom spec '{spec}' must have exactly 3 fields (resname, resseq, atomname)."
+            f"Atom spec '{spec}' must have 3 fields (resname, resseq, atomname) "
+            "or 4 fields including chain ID."
         )
 
     tokens_upper = [t.upper() for t in tokens]
+    canonical_four = spec.count(":") == 3 and all(
+        part.strip() for part in spec.split(":")
+    )
+    canonical_parts = [part.strip() for part in spec.split(":")] if canonical_four else []
     matches: List[int] = []
     for idx, meta in enumerate(atom_meta):
         resname = (meta.get("resname") or "").strip().upper()
         resseq = meta.get("resseq")
         atom = (meta.get("name") or "").strip().upper()
+        chain_text = (meta.get("chain") or "").strip()
+        chain = chain_text.upper()
         if resseq is None:
             continue
-        fields = {resname, str(resseq), atom}
-        if all(tok in fields for tok in tokens_upper):
+        resseq_text = str(resseq)
+        if canonical_four:
+            chain_token = canonical_parts[0]
+            resname_token = canonical_parts[1].upper()
+            resseq_token = canonical_parts[2].upper()
+            atom_token = canonical_parts[3].upper()
+            numbered = re.fullmatch(r"(?P<number>[-+]?\d+)(?P<icode>[A-Z]?)", resseq_token)
+            if numbered is not None:
+                try:
+                    same_resseq = int(numbered.group("number")) == int(resseq_text)
+                except ValueError:
+                    same_resseq = numbered.group("number") == resseq_text.upper()
+                requested_icode = numbered.group("icode")
+                if requested_icode:
+                    same_resseq = same_resseq and requested_icode == str(meta.get("icode") or "").upper()
+            else:
+                same_resseq = resseq_token == resseq_text.upper()
+            is_match = (
+                chain_token == chain_text
+                and resname_token == resname
+                and same_resseq
+                and atom_token == atom
+            )
+        else:
+            normalized_tokens = [
+                str(int(token)) if re.fullmatch(r"[-+]?\d+", token) else token
+                for token in tokens_upper
+            ]
+            expected = [resname, resseq_text, atom]
+            if len(tokens) == 4:
+                expected.append(chain)
+            is_match = Counter(normalized_tokens) == Counter(expected)
+        if is_match:
             matches.append(idx)
 
     if len(matches) == 1:
         return matches[0]
     if len(matches) > 1:
         raise ValueError(
-            f"Atom spec '{spec}' matches {len(matches)} atoms; use an explicit atom index."
+            f"Atom spec '{spec}' matches {len(matches)} atoms; add chain ID as "
+            "CHAIN:RESNAME:RESSEQ[ICODE]:ATOM or use an explicit atom index."
         )
 
-    resname, resseq_txt, atom = tokens_upper
-    if not resseq_txt.isdigit():
+    if len(tokens) == 4 and not canonical_four:
         raise ValueError(
-            f"Atom spec '{spec}' could not be resolved and residue number '{tokens[1]}' is not numeric."
+            f"Atom spec '{spec}' did not match any atom. Use the positional "
+            "CHAIN:RESNAME:RESSEQ[ICODE]:ATOM form for chain-qualified selectors."
         )
-    resseq_int = int(resseq_txt)
-    ordered_matches = [
-        idx
-        for idx, meta in enumerate(atom_meta)
-        if (meta.get("resname") or "").strip().upper() == resname
-        and meta.get("resseq") == resseq_int
-        and (meta.get("name") or "").strip().upper() == atom
-    ]
-    if len(ordered_matches) == 1:
-        return ordered_matches[0]
-    if len(ordered_matches) > 1:
-        raise ValueError(
-            f"Atom spec '{spec}' matches {len(ordered_matches)} atoms after ordered fallback; "
-            "use an explicit atom index."
-        )
-
     raise ValueError(f"Atom spec '{spec}' did not match any atom.")
 
 
@@ -2303,8 +2494,13 @@ def atom_label_from_meta(atom_meta: Sequence[Dict[str, Any]], index: int) -> str
     resname = (meta.get("resname") or "?").strip() or "?"
     resseq = meta.get("resseq")
     resseq_txt = "?" if resseq is None else str(resseq)
+    icode = (meta.get("icode") or "").strip()
+    if icode:
+        resseq_txt += icode
     atom = (meta.get("name") or "?").strip() or "?"
-    return f"{resname}-{resseq_txt}-{atom}"
+    chain = (meta.get("chain") or "").strip()
+    prefix = f"{chain}:" if chain else ""
+    return f"{prefix}{resname}:{resseq_txt}:{atom}"
 
 
 def axis_label_csv(
@@ -2434,7 +2630,7 @@ def parse_dist_freeze_list(
     """Parse ``--dist-freeze`` entries: ``(i,j)`` or ``(i,j,target_A)``.
 
     Uses the same :func:`resolve_scan_index` as ``--scan-lists``, so string
-    atom specs (e.g. ``'A:SER123:OG'``) are supported when PDB metadata is
+    atom specs (e.g. ``'A:SER:123:OG'``) are supported when PDB metadata is
     available.
     """
     try:
@@ -2517,7 +2713,7 @@ def parse_dist_freeze_spec(
 
 
 def unbiased_energy_hartree(geom, base_calc) -> float:
-    """Evaluate UMA energy (Hartree) without harmonic bias."""
+    """Evaluate the underlying MLIP energy (Hartree) without harmonic bias."""
     import numpy as np
 
     # geom.coords3d is always Cartesian (Bohr); geom.coords returns the
@@ -2784,7 +2980,7 @@ def parse_scan_spec_quads(
 def format_pdb_atom_metadata_header() -> str:
     """Column legend for :func:`format_pdb_atom_metadata`, aligned to match values."""
 
-    return f"{'id':>5} {'atom':<4} {'res':<4} {'resid':>4} {'el':<2}"
+    return f"{'id':>5} {'atom':<4} {'res':<4} {'resid':>6} {'chain':<8} {'el':<2}"
 
 
 def format_pdb_atom_metadata(atom_meta: Sequence[Dict[str, Any]], index: int) -> str:
@@ -2792,7 +2988,7 @@ def format_pdb_atom_metadata(atom_meta: Sequence[Dict[str, Any]], index: int) ->
 
     fallback_serial = index + 1
     if index < 0 or index >= len(atom_meta):
-        return f"{fallback_serial:>5} {'?':<4} {'?':<4} {'?':>4} {'?':<2}"
+        return f"{fallback_serial:>5} {'?':<4} {'?':<4} {'?':>6} {'?':<8} {'?':<2}"
 
     meta = atom_meta[index]
     serial = meta.get("serial") or fallback_serial
@@ -2800,9 +2996,10 @@ def format_pdb_atom_metadata(atom_meta: Sequence[Dict[str, Any]], index: int) ->
     resname = meta.get("resname") or "?"
     resseq = meta.get("resseq")
     resseq_txt = "?" if resseq is None else str(resseq)
+    chain = (meta.get("chain") or "?").strip() or "?"
     element = (meta.get("element") or "?").strip() or "?"
 
-    return f"{serial:>5} {name:<4} {resname:<4} {resseq_txt:>4} {element:<2}"
+    return f"{serial:>5} {name:<4} {resname:<4} {resseq_txt:>6} {chain:<8} {element:<2}"
 
 
 def detect_freeze_links(pdb_path):
@@ -2955,13 +3152,23 @@ def _collect_environment_info() -> dict:
     return env
 
 
-# Schema version for the result/summary JSON envelope. Bump when the
-# envelope keys / value types change. 1.0 = baseline envelope (command,
-# pdb2reaction_version, status, elapsed_seconds, files, environment).
-RESULT_JSON_SCHEMA_VERSION = "1.0"
+# Schema version for result/summary JSON. Version 2.0 removes the UMA-specific
+# all-workflow energy keys in favor of backend-neutral MLIP keys.
+RESULT_JSON_SCHEMA_VERSION = "2.0"
 
-# Allowed values for the `status` field. Documented in docs/json-output.md.
-RESULT_JSON_STATUS_VALUES = ("success", "partial", "error", "unknown")
+# Union of public command-specific values for the ``status`` field. Individual
+# commands intentionally use narrower enums; see docs/json-output.md.
+RESULT_JSON_STATUS_VALUES = (
+    "completed",
+    "converged",
+    "error",
+    "failed",
+    "not_converged",
+    "ok",
+    "partial",
+    "success",
+    "unknown",
+)
 
 
 def write_result_json(
@@ -2996,6 +3203,7 @@ def write_result_json(
     data.setdefault("command", command)
     data.setdefault("pdb2reaction_version", __version__)
     data.setdefault("schema_version", RESULT_JSON_SCHEMA_VERSION)
+    data.setdefault("status", "unknown")
     # Preserve MLIP provenance as two independent, backend-neutral fields.
     # Existing leaf workflows commonly populate backend/model; normalize them
     # here so every result.json has the same machine-readable contract.

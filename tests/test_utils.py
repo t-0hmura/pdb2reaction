@@ -126,6 +126,61 @@ def test_resolve_charge_spin_skips_ligand_validation_when_charge_is_explicit(
     assert spin == 2
 
 
+def test_resolve_configured_charge_spin_precedence() -> None:
+    from pdb2reaction.core.utils import resolve_configured_charge_spin
+
+    cfg = {"calc": {"charge": -2, "spin": 3}}
+    assert resolve_configured_charge_spin(
+        cfg, charge=None, spin=None,
+    ) == (-2, 3)
+    assert resolve_configured_charge_spin(
+        cfg, charge=1, spin=2,
+    ) == (1, 2)
+    # An explicit residue-derived charge request outranks calc.charge while
+    # the independent configured multiplicity remains effective.
+    assert resolve_configured_charge_spin(
+        cfg, charge=None, spin=None, ligand_charge="LIG:-1",
+    ) == (None, 3)
+
+
+def test_prepared_cli_input_uses_ref_pdb_for_xyz_ligand_charge(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    """XYZ coordinates may derive -l charge from an atom-matched --ref-pdb."""
+    from pdb2reaction.core import utils as u
+
+    xyz = tmp_path / "geom.xyz"
+    xyz.write_text("1\nframe\nC 0.0 0.0 0.0\n")
+    ref = tmp_path / "model.pdb"
+    ref.write_text(
+        "HETATM    1  C1  LIG A   1       0.000   0.000   0.000  1.00  0.00           C  \n"
+        "END\n"
+    )
+    seen: dict[str, Path] = {}
+
+    def fake_derive(prepared, ligand_charge, *, prefix):
+        seen["source_path"] = prepared.source_path
+        assert ligand_charge == "LIG:-2"
+        return -2
+
+    monkeypatch.setattr(u, "_derive_charge_from_ligand_charge", fake_derive)
+
+    with u.prepared_cli_input(
+        xyz,
+        ref_pdb=ref,
+        charge=None,
+        spin=None,
+        ligand_charge="LIG:-2",
+    ) as (prepared, charge, spin):
+        assert prepared.geom_path == xyz
+        assert prepared.source_path == ref.resolve()
+        assert charge == -2
+        assert spin == 1
+
+    assert seen["source_path"] == ref.resolve()
+
+
 def test_validate_charge_spin_water_neutral_singlet_passes() -> None:
     from pdb2reaction.core.utils import validate_charge_spin
 
@@ -139,3 +194,34 @@ def test_validate_charge_spin_water_neutral_doublet_raises() -> None:
 
     with pytest.raises(ValueError, match="electron count inconsistent"):
         validate_charge_spin(["O", "H", "H"], charge=0, multiplicity=2)
+
+
+def test_multiframe_gjf_conversion_warns_that_output_is_coordinate_archive(
+    caplog,
+    tmp_path: Path,
+) -> None:
+    """Do not let agents/users mistake the historical multi-frame layout for QST."""
+    import logging
+
+    from pdb2reaction.core.utils import convert_xyz_to_gjf, parse_gjf_template
+
+    gjf = tmp_path / "template.gjf"
+    gjf.write_text(
+        "%chk=test.chk\n"
+        "#p hf/sto-3g\n\n"
+        "title\n\n"
+        "0 1\n"
+        "H 0.000000 0.000000 0.000000\n\n"
+    )
+    xyz = tmp_path / "trajectory.xyz"
+    xyz.write_text(
+        "1\nframe 1\nH 0.0 0.0 0.0\n"
+        "1\nframe 2\nH 0.1 0.0 0.0\n"
+    )
+    out = tmp_path / "trajectory.gjf"
+
+    with caplog.at_level(logging.WARNING):
+        convert_xyz_to_gjf(xyz, parse_gjf_template(gjf), out)
+
+    assert "not directly executable as a Gaussian QST/Link1 job" in caplog.text
+    assert out.exists()

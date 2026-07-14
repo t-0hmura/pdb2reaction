@@ -115,10 +115,12 @@ GFN-xTB, the DFTB+ ASE calculator, or `ase.calculators.orca.ORCA(...)`. Then
 pass the file to any single-stage subcommand (it selects the `custom` backend,
 overriding `--backend`):
 
-    pdb2reaction sp     -i model.xyz --calc-file my_calc.py -q 0 -m 1
-    pdb2reaction opt    -i model.xyz --calc-file my_calc.py
-    pdb2reaction tsopt  -i ts.xyz    --calc-file my_calc.py
-    pdb2reaction freq   -i ts.xyz    --calc-file my_calc.py
+```bash
+pdb2reaction sp     -i model.xyz --calc-file my_calc.py -q 0 -m 1
+pdb2reaction opt    -i model.xyz --calc-file my_calc.py -q 0 -m 1
+pdb2reaction tsopt  -i ts.xyz    --calc-file my_calc.py -q 0 -m 1
+pdb2reaction freq   -i ts.xyz    --calc-file my_calc.py -q 0 -m 1
+```
 
 Notes:
 
