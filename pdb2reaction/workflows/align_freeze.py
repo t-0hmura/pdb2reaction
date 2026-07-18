@@ -26,6 +26,7 @@ from pysisyphus.constants import BOHR2ANG
 
 from pdb2reaction.backends import create_calculator
 from pdb2reaction.core.defaults import DEFAULT_UMA_MODEL
+from pdb2reaction.core.output import emit
 from pdb2reaction.core.utils import as_list
 
 
@@ -215,7 +216,7 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
         after = _rmsd(P, Q_aln)
         mode = "one_anchor"
         if verbose:
-            click.echo(f"[align] one-anchor: RMSD {before:.6f} Å → {after:.6f} Å (idx={i})", detail=True)
+            emit(f"[align] one-anchor: RMSD {before:.6f} Å → {after:.6f} Å (idx={i})", detail=True)
         return {"before_A": before, "after_A": after, "n_used": 1, "mode": mode}
 
     # ---- 2 anchors ----
@@ -249,7 +250,7 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
             after = _rmsd(P, Q1)
             mode = "two_anchor"
             if verbose:
-                click.echo(f"[align] two-anchors: RMSD {before:.6f} Å → {after:.6f} Å (idx=({i0},{i1}))", detail=True)
+                emit(f"[align] two-anchors: RMSD {before:.6f} Å → {after:.6f} Å (idx=({i0},{i1}))", detail=True)
             return {"before_A": before, "after_A": after, "n_used": 2, "mode": mode}
         # If the axis is degenerate, fall through to the generic Kabsch case.
         report_all_atoms = True
@@ -277,7 +278,7 @@ def align_second_to_first_kabsch_inplace(g_ref, g_mob,
     after_report = _rmsd(P, Q_aln) if report_all_atoms else after_sel
 
     if verbose:
-        click.echo(f"[align] kabsch:     RMSD {before_report:.6f} Å → {after_report:.6f} Å (used {n_used})", detail=True)
+        emit(f"[align] kabsch:     RMSD {before_report:.6f} Å → {after_report:.6f} Å (used {n_used})", detail=True)
 
     return {"before_A": before_report, "after_A": after_report, "n_used": n_used, "mode": mode}
 
@@ -351,7 +352,7 @@ def scan_freeze_atoms_toward_target_inplace(
             max_rem_bohr = float(rem_bohr.max()) if len(rem_bohr) else 0.0
             max_remaining_A = max_rem_bohr * BOHR2ANG
             if verbose:
-                click.echo(f"[scan] step {istep:03d}: max remaining = {max_remaining_A:.6f} Å", detail=True)
+                emit(f"[scan] step {istep:03d}: max remaining = {max_remaining_A:.6f} Å", detail=True)
 
             if max_rem_bohr <= step_bohr + 1e-12:
                 # Final step: enforce exact coincidence
@@ -497,7 +498,7 @@ def align_and_refine_sequence_inplace(
         pair_out = out_dir / f"pair_{i:02d}"
 
         if verbose:
-            click.echo(f"[stage] [align+scan] Pair {i:02d}: image {i} (ref) ← image {i+1} (mobile)", narrative=True)
+            emit(f"[stage] [align+scan] Pair {i:02d}: image {i} (ref) ← image {i+1} (mobile)", narrative=True)
 
         res = align_and_refine_pair_inplace(
             g_ref, g_mob,

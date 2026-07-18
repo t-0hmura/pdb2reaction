@@ -46,16 +46,21 @@ def _ensure_help_advanced_option(command: click.Command) -> click.Command:
     return command
 
 
-def _configure_subcommand_help_visibility(
-    command_name: str,
+def _hide_advanced_options(
     command: click.Command,
-    primary_options_by_subcommand: dict[str, frozenset[str]],
+    primary_options: frozenset[str] | None,
 ) -> click.Command:
-    """Hide advanced options from default --help for selected subcommands."""
+    """Hide every non-primary option from default ``--help`` (once).
+
+    ``primary_options`` is the set of option strings (``-i``, ``--input``, …)
+    that stay visible in the basic help. The hidden options are recorded on
+    ``command._advanced_hidden_options`` so ``--help-advanced`` can un-hide and
+    the ``try/finally`` in the callback can re-hide them. Idempotent: a command
+    that is already configured is returned untouched, so repeated wiring cannot
+    double-hide.
+    """
     if hasattr(command, "_advanced_hidden_options"):
         return command
-
-    primary_options = primary_options_by_subcommand.get(command_name)
     if not primary_options:
         return command
 
@@ -73,3 +78,13 @@ def _configure_subcommand_help_visibility(
 
     setattr(command, "_advanced_hidden_options", tuple(hidden_options))
     return command
+
+
+def _configure_subcommand_help_visibility(
+    command_name: str,
+    command: click.Command,
+    primary_options_by_subcommand: dict[str, frozenset[str]],
+) -> click.Command:
+    """Hide advanced options from default --help for selected subcommands."""
+    primary_options = primary_options_by_subcommand.get(command_name)
+    return _hide_advanced_options(command, primary_options)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import click
+import pytest
 from click.testing import CliRunner
 
 from pdb2reaction.cli.help_pages import (
@@ -114,18 +115,66 @@ def test_help_advanced_shows_hidden_options() -> None:
     assert "--advanced-opt" in advanced.output
 
 
-def test_lazy_import_failure_is_reported_as_click_exception() -> None:
+def test_external_lazy_dependency_failure_is_reported_as_click_exception(
+    monkeypatch,
+) -> None:
     cli = _make_group(
         lazy_subcommands={
-            "broken": (".__this_module_should_not_exist__", "cli", "Broken command")
+            "broken": (".workflows.broken", "cli", "Broken command")
         }
+    )
+
+    def _raise_external(*_args, **_kwargs):
+        raise ModuleNotFoundError(
+            "No module named 'optional_backend'", name="optional_backend"
+        )
+
+    monkeypatch.setattr(
+        "pdb2reaction.cli.default_group.importlib.import_module", _raise_external
     )
 
     runner = CliRunner()
     result = runner.invoke(cli, ["broken"])
     assert result.exit_code != 0
     assert "Command 'broken' is unavailable because the module could not be imported." in result.output
-    assert "Missing dependency:" in result.output
+    assert "Missing dependency: optional_backend" in result.output
+
+
+@pytest.mark.parametrize(
+    "exc",
+    [
+        ModuleNotFoundError(
+            "No module named 'pdb2reaction.internal_missing'",
+            name="pdb2reaction.internal_missing",
+        ),
+        ModuleNotFoundError(
+            "No module named 'pysisyphus.internal_missing'",
+            name="pysisyphus.internal_missing",
+        ),
+        ModuleNotFoundError(
+            "No module named 'thermoanalysis.internal_missing'",
+            name="thermoanalysis.internal_missing",
+        ),
+        ImportError("cannot import name 'internal_symbol'"),
+    ],
+)
+def test_internal_lazy_import_defects_are_not_masked(monkeypatch, exc) -> None:
+    cli = _make_group(
+        lazy_subcommands={
+            "broken": (".workflows.broken", "cli", "Broken command")
+        }
+    )
+
+    def _raise_internal(*_args, **_kwargs):
+        raise exc
+
+    monkeypatch.setattr(
+        "pdb2reaction.cli.default_group.importlib.import_module", _raise_internal
+    )
+
+    with pytest.raises(type(exc)) as exc_info:
+        cli.get_command(click.Context(cli), "broken")
+    assert exc_info.value is exc
 
 
 def test_bool_toggle_accepts_value_style_syntax_via_auto_detection() -> None:

@@ -163,3 +163,65 @@ def test_helper_extra_args_are_appended_once(
 
     argv = calls[-1]["argv"]
     assert argv.count("--verbose") == 1
+
+
+@pytest.mark.parametrize(
+    "extra_args",
+    [
+        ["-o", "other"],
+        ["-oother"],
+        ["--out-dir", "other"],
+        ["--out-dir=other"],
+        ["--out-json"],
+        ["--no-out-json"],
+    ],
+)
+def test_managed_summary_output_spellings_are_rejected_before_spawn(
+    registered_tools,
+    tmp_path: Path,
+    extra_args: list[str],
+) -> None:
+    tools, calls = registered_tools
+
+    with pytest.raises(ValueError, match="managed output option"):
+        tools["optimize_geometry"](
+            "model.xyz",
+            charge=0,
+            out_dir=str(tmp_path / "opt"),
+            extra_args=extra_args,
+        )
+
+    assert calls == []
+
+
+@pytest.mark.parametrize(
+    "extra_args",
+    [["-o", "other"], ["-oother"], ["--out=other"], ["--output", "other"]],
+)
+def test_typed_utility_output_spellings_are_rejected_before_spawn(
+    registered_tools,
+    extra_args: list[str],
+) -> None:
+    tools, calls = registered_tools
+
+    with pytest.raises(ValueError, match="managed output option"):
+        tools["add_element_info"](
+            "raw.pdb",
+            "fixed.pdb",
+            extra_args=extra_args,
+        )
+
+    assert calls == []
+
+
+def test_bool_extra_args_keep_toggle_syntax(registered_tools, tmp_path: Path) -> None:
+    tools, calls = registered_tools
+
+    tools["optimize_geometry"](
+        "model.xyz",
+        charge=0,
+        out_dir=str(tmp_path / "opt"),
+        extra_args=["--convert-files", "--no-deterministic"],
+    )
+
+    assert calls[-1]["argv"][-2:] == ["--convert-files", "--no-deterministic"]

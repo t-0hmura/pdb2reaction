@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from copy import deepcopy
+from typing import Any, Dict, Mapping, Optional
+from pysisyphus.tr_projection import DEFAULT_TR_PROJECTION
 
 # Convergence preset choices (single source of truth so opt/tsopt/
 # path_opt/path_search/scan/all all reject unknown --thresh values at
@@ -32,7 +34,7 @@ WORK_DIRNAME = "_work"  # pipeline-wide scratch (rm -rf safe)
 GEOM_KW_DEFAULT: Dict[str, Any] = {
     "coord_type": "cart",
     "freeze_atoms": [],
-    "tr_projection": "constrained",
+    "tr_projection": DEFAULT_TR_PROJECTION,
 }
 
 # Calculator defaults (UMA)
@@ -242,6 +244,32 @@ DMF_KW: Dict[str, Any] = {
     },
     "k_fix": 300.0,
 }
+
+
+def fresh_dmf_config(
+    overrides: Optional[Mapping[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Return an invocation-local DMF configuration.
+
+    ``DMF_KW`` contains nested mappings.  A shallow ``dict(DMF_KW)`` copy
+    therefore shares those nested mappings with the canonical defaults and
+    can leak one request's YAML values into later in-process requests.  This
+    factory owns the recursive copy and merge so every request starts from an
+    independent tree.
+    """
+
+    config = deepcopy(DMF_KW)
+
+    def _merge(dst: Dict[str, Any], src: Mapping[str, Any]) -> None:
+        for key, value in src.items():
+            if isinstance(value, Mapping) and isinstance(dst.get(key), dict):
+                _merge(dst[key], value)
+            else:
+                dst[key] = deepcopy(value)
+
+    if overrides:
+        _merge(config, overrides)
+    return config
 
 # GrowingString (path representation) defaults
 

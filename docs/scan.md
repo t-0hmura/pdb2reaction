@@ -46,7 +46,8 @@ pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <n
     `h = --max-step-size`. Every bond receives its own `δ = Δ / N` increment.
 4. March through all steps, updating the temporary targets, applying the
     harmonic wells `E = Σ ½ k (|ri − rj| − target)²`, and minimizing with the MLIP backend.
-    Optimizer cycles are capped by `--relax-max-cycles` unless YAML specifies `opt.max_cycles`.
+    Optimizer cycles come from YAML `opt.max_cycles` unless an explicit
+    `--relax-max-cycles` overrides it.
 5. After the last step of each stage, optionally run an unbiased relaxation
     (`--endopt`) before reporting covalent bond changes and writing the
     `result.*` files.
@@ -94,7 +95,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--print-parsed/--no-print-parsed` | Print parsed stage tuples after `--scan-lists/-s` resolution. | `False` |
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
-| `--relax-max-cycles INT` | Cap on optimizer cycles during preopt, each biased step, and end-of-stage cleanups. Used unless YAML sets `opt.max_cycles`. | `10000` |
+| `--relax-max-cycles INT` | Cap on optimizer cycles during preopt, each biased step, and end-of-stage cleanups. An explicit value overrides YAML `opt.max_cycles`. | `10000` |
 | `--opt-mode TEXT` | `grad` → L-BFGS, `hess` → RFOptimizer. See {ref}`opt-mode-semantics` for how the same token maps to different optimizers under `tsopt`. | `grad` |
 | `--freeze-links/--no-freeze-links` | When the input is PDB, freeze the parents of cap hydrogens. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
@@ -117,7 +118,7 @@ The full flag list is in the generated [command reference](reference/commands/in
   by `--dump` (CLI) only — `opt.dump` and `opt.out_dir` from YAML are run-scoped and
   overwritten (not YAML-tunable); the scan-stage trajectories `scan_trj.xyz`/`scan.pdb`
   are always written regardless.
-- `--relax-max-cycles` applies only when explicitly provided **and** YAML does not set `opt.max_cycles` (default `10000`).
+- An explicitly provided `--relax-max-cycles` overrides YAML `opt.max_cycles`; when omitted, YAML wins, then the default `10000` applies.
 
 ### Section `bias`
 - `k` (`300`): Harmonic strength in eV·Å⁻².

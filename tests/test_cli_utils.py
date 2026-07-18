@@ -75,3 +75,26 @@ class TestLoadMergedYamlCfg:
         merged, cfg, ovr = load_merged_yaml_cfg(cfg_file, ovr_file)
         assert merged["opt"]["max_cycles"] == 50  # Override wins
         assert merged["opt"]["thresh"] == "gau"  # Config preserved
+
+    def test_merge_keeps_source_layers_and_effective_tree_independent(self, tmp_path):
+        cfg_file = tmp_path / "config.yaml"
+        cfg_file.write_text(
+            yaml.dump({"opt": {"max_cycles": 100, "nested": {"left": 1}}})
+        )
+        ovr_file = tmp_path / "override.yaml"
+        ovr_file.write_text(
+            yaml.dump({"opt": {"max_cycles": 50, "nested": {"right": 2}}})
+        )
+
+        merged, cfg, ovr = load_merged_yaml_cfg(cfg_file, ovr_file)
+
+        assert cfg["opt"] == {"max_cycles": 100, "nested": {"left": 1}}
+        assert ovr["opt"] == {"max_cycles": 50, "nested": {"right": 2}}
+        assert merged["opt"] == {
+            "max_cycles": 50,
+            "nested": {"left": 1, "right": 2},
+        }
+
+        merged["opt"]["nested"]["left"] = 99
+        assert cfg["opt"]["nested"]["left"] == 1
+        assert "left" not in ovr["opt"]["nested"]

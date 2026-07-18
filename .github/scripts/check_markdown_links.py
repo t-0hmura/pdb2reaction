@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""Validate local markdown links under docs/ and skills/."""
+"""Validate local markdown links across all public markdown roots.
+
+The set of pages checked is one explicit ``public_markdown_paths()`` contract
+(README, CONTRIBUTING, docs/**, skills/**, examples/** where present) rather
+than an implicit docs-only directory walk, so a broken link in any advertised
+page is caught. Sphinx ``{toctree}`` targets are parsed for docs pages only;
+every public page gets ordinary local-link resolution.
+"""
 
 from __future__ import annotations
 
@@ -8,9 +15,38 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-MARKDOWN_ROOTS = (REPO_ROOT / "docs", REPO_ROOT / "skills")
+DOCS_ROOT = REPO_ROOT / "docs"
 LINK_RE = re.compile(r"(?<!\!)\[[^\]]+\]\(([^)]+)\)")
 EXTERNAL_PREFIXES = ("http://", "https://", "mailto:", "tel:")
+
+
+def public_markdown_paths() -> list[Path]:
+    """Every public markdown page whose local links must resolve.
+
+    README and CONTRIBUTING at the repo root, plus every markdown page under
+    ``docs/``, ``skills/`` and ``examples/`` where those roots exist.
+    """
+    paths: list[Path] = []
+    for name in ("README.md", "CONTRIBUTING.md"):
+        candidate = REPO_ROOT / name
+        if candidate.exists():
+            paths.append(candidate)
+    for root_name in ("docs", "skills", "examples"):
+        root = REPO_ROOT / root_name
+        if root.is_dir():
+            paths.extend(root.rglob("*.md"))
+    return sorted(set(paths))
+
+
+def _is_docs_page(path: Path) -> bool:
+    return DOCS_ROOT in path.parents
+
+
+def _rel(path: Path) -> str:
+    try:
+        return str(path.relative_to(REPO_ROOT))
+    except ValueError:
+        return str(path)
 
 
 def _normalize_target(raw: str) -> str:
@@ -89,22 +125,25 @@ def _check_path(path: Path, errors: list[str]) -> None:
         resolved = (path.parent / target_path).resolve()
         if not resolved.exists():
             errors.append(
-                f"{path.relative_to(REPO_ROOT)}:{lineno}: broken local link -> {target}"
+                f"{_rel(path)}:{lineno}: broken local link -> {target}"
             )
 
+    # Sphinx toctree directives only appear in docs pages.
+    if not _is_docs_page(path):
+        return
     for lineno, target in _iter_toctree_targets(path):
         resolved = _resolve_doc_target(path, target)
         if resolved is None:
             continue
         if not resolved.exists():
             errors.append(
-                f"{path.relative_to(REPO_ROOT)}:{lineno}: broken toctree target -> {target}"
+                f"{_rel(path)}:{lineno}: broken toctree target -> {target}"
             )
 
 
 def main() -> int:
     errors: list[str] = []
-    pages = sorted(path for root in MARKDOWN_ROOTS for path in root.rglob("*.md"))
+    pages = public_markdown_paths()
     for md in pages:
         _check_path(md, errors)
 
@@ -114,7 +153,7 @@ def main() -> int:
             print(f"- {e}")
         return 1
 
-    print(f"[link-check] validated local links in {len(pages)} docs/skills pages.")
+    print(f"[link-check] validated local links in {len(pages)} public markdown pages.")
     return 0
 
 

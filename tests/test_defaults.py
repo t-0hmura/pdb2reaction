@@ -1,6 +1,8 @@
 # tests/test_defaults.py
 """Tests for pdb2reaction.defaults configuration constants."""
 
+from copy import deepcopy
+
 from pdb2reaction.core.defaults import (
     GEOM_KW_DEFAULT,
     CALC_KW_DEFAULT,
@@ -16,6 +18,8 @@ from pdb2reaction.core.defaults import (
     THERMO_KW,
     OPT_MODE_ALIASES,
     TSOPT_MODE_ALIASES,
+    DMF_KW,
+    fresh_dmf_config,
 )
 
 
@@ -100,3 +104,25 @@ class TestDefaultsConsistency:
 
     def test_solvent_default_is_none(self):
         assert CALC_KW_DEFAULT.get("solvent", "none") == "none"
+
+    def test_fresh_dmf_config_isolates_nested_request_overrides(self):
+        canonical = deepcopy(DMF_KW)
+
+        first = fresh_dmf_config(
+            {
+                "fbenm_options": {"delta_scale": 9.0},
+                "cfbenm_options": {"eps": 8.0},
+                "dmf_options": {"beta": 7.0},
+            }
+        )
+        first["fbenm_options"]["bond_scale"] = 6.0
+
+        second = fresh_dmf_config()
+        assert first["fbenm_options"]["delta_scale"] == 9.0
+        assert first["cfbenm_options"]["eps"] == 8.0
+        assert first["dmf_options"]["beta"] == 7.0
+        assert second == canonical
+        assert DMF_KW == canonical
+        assert second["fbenm_options"] is not DMF_KW["fbenm_options"]
+        assert second["cfbenm_options"] is not DMF_KW["cfbenm_options"]
+        assert second["dmf_options"] is not DMF_KW["dmf_options"]

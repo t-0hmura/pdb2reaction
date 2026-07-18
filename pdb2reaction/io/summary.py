@@ -285,6 +285,46 @@ def _format_directory_tree(
     return lines
 
 
+def _format_selected_directory_tree(
+    root: Path,
+    relative_paths: Sequence[str],
+    annotations: Dict[str, str],
+) -> List[str]:
+    """Render only caller-selected current-run files and their ancestors."""
+
+    tree: Dict[str, Any] = {}
+    for raw in relative_paths:
+        relative = Path(str(raw))
+        if relative.is_absolute() or ".." in relative.parts or not relative.parts:
+            continue
+        node = tree
+        for part in relative.parts[:-1]:
+            child = node.setdefault(part, {})
+            if not isinstance(child, dict):
+                break
+            node = child
+        else:
+            node.setdefault(relative.parts[-1], None)
+
+    lines = [f"  {root.name}/" + _tree_annotate(annotations, ".")]
+
+    def render(node: Dict[str, Any], prefix: str, parts: tuple[str, ...]) -> None:
+        entries = sorted(node.items(), key=lambda item: (item[1] is None, item[0].lower()))
+        for index, (name, child) in enumerate(entries):
+            last = index == len(entries) - 1
+            connector = "└─" if last else "├─"
+            rel_parts = parts + (name,)
+            rel = Path(*rel_parts).as_posix()
+            is_dir = isinstance(child, dict)
+            shown = name + ("/" if is_dir else "")
+            lines.append(f"{prefix}{connector} {shown}{_tree_annotate(annotations, rel)}")
+            if is_dir:
+                render(child, prefix + ("   " if last else "│  "), rel_parts)
+
+    render(tree, "  ", ())
+    return lines
+
+
 def _segment_table_value(entry: Dict[str, Any], key: str, col_width: int) -> str:
     if entry.get("kind") == "bridge" and not key.startswith("mep_"):
         return "---".rjust(col_width)
@@ -387,7 +427,7 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
     version_base = payload.get("code_version") or __version__
     version_txt = f"pdb2reaction {version_base}"
     lines.append(f"Code version       : {version_txt}")
-    mlip_backend = str(payload.get("mlip_backend") or "uma")
+    mlip_backend = str(payload.get("mlip_backend") or "-")
     mlip_model = payload.get("mlip_model")
     lines.append(f"MLIP backend       : {mlip_backend}")
     lines.append(f"MLIP model         : {mlip_model or '-'}")
@@ -662,7 +702,21 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
         "irc_plot_all.png": "Aggregated IRC plot",
     }
 
-    if root_out_path:
+    selected_current = payload.get("current_output_paths")
+    if root_out_path and isinstance(selected_current, (list, tuple)):
+        selected_relative = [Path(str(path)).as_posix() for path in selected_current]
+        for rel in selected_relative:
+            note = default_notes.get(rel)
+            if note:
+                annotations.setdefault(rel, note)
+        lines.extend(
+            _format_selected_directory_tree(
+                root_out_path,
+                selected_relative,
+                annotations,
+            )
+        )
+    elif root_out_path:
         path_dir = payload.get("path_dir")
         if path_dir:
             try:

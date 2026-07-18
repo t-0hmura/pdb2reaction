@@ -23,6 +23,7 @@ import tempfile
 import time
 
 import click
+from pdb2reaction.core.output import emit
 import numpy as np
 import pandas as pd
 from scipy.interpolate import Rbf
@@ -44,13 +45,17 @@ from pdb2reaction.core.defaults import (
 )
 from pdb2reaction.backends import create_calculator
 from pdb2reaction.workflows.restraints import HarmonicBiasCalculator
+from pdb2reaction.workflows._outcomes import (
+    attach_outcomes,
+    make_scan_point,
+    optimizer_converged_bit,
+    scan_scientific_status,
+    seed_eligible_mask,
+)
 from pdb2reaction.core.utils import (
     axis_label_csv,
     axis_label_html,
-    is_scan_spec_file,
     make_sopt_optimizer,
-    parse_scan_list_quads_checked,
-    parse_scan_spec_quads,
     unbiased_energy_hartree,
     values_from_bounds,
     pretty_block,
@@ -73,12 +78,16 @@ from pdb2reaction.core.utils import (
     echo_resolved_device,
 )
 from pdb2reaction.workflows.scan_common import (
+    GridScanRequest,
     add_scan_common_options,
+    parse_grid_scan_request,
+)
+from pdb2reaction.workflows.scan2d import _build_scan_context
+from pdb2reaction.cli.decorators import (
+    _write_error_json,
     load_merged_yaml_cfg,
     resolve_yaml_sources,
 )
-from pdb2reaction.workflows.scan2d import _build_scan_context
-from pdb2reaction.cli.decorators import _write_error_json
 from pdb2reaction.cli.common_options import (
     add_coord_type_option,
     add_print_every_option,
@@ -102,6 +111,39 @@ def _extract_axis_label(df: pd.DataFrame, column: str, fallback: Optional[str]) 
     if values.empty:
         return fallback
     return str(values.iloc[0])
+
+
+def _result_calculator_fields(
+    calc_cfg: Dict[str, Any],
+    *,
+    backend: Optional[str],
+    charge: Optional[int],
+    spin: Optional[int],
+    plot_only: bool,
+) -> Dict[str, Any]:
+    """Return a stable fresh-run/CSV-only calculator provenance schema."""
+    if plot_only:
+        return {
+            "charge": None,
+            "spin": None,
+            "backend": None,
+            "model": None,
+            "mlip_backend": None,
+            "mlip_model": None,
+            "mlip_precision": None,
+            "solvent": None,
+        }
+
+    from pdb2reaction.core.utils import calculator_provenance
+
+    return {
+        "charge": charge,
+        "spin": spin,
+        "backend": calc_cfg.get("backend", backend),
+        "model": calc_cfg.get("model"),
+        **calculator_provenance(calc_cfg),
+        "solvent": calc_cfg.get("solvent", "none"),
+    }
 
 
 @click.command(
@@ -228,7 +270,7 @@ def cli(
         override_yaml=None,
         args_yaml_legacy=None,
     )
-    merged_yaml_cfg = load_merged_yaml_cfg(
+    merged_yaml_cfg, _, _ = load_merged_yaml_cfg(
         config_yaml=config_yaml,
         override_yaml=None,
     )
@@ -238,7 +280,10 @@ def cli(
     )
 
     cycles_overridden = cli_param_overridden(ctx, "relax_max_cycles")
+    thresh_overridden = cli_param_overridden(ctx, "thresh")
     _scan3d_tmp_root: Optional[Path] = None
+    scan_request: Optional[GridScanRequest] = None
+    scan_atom_meta: List[Dict[str, Any]] = []
 
     def _run_scan3d(
         prepared_input: Optional["PreparedInputStructure"],
@@ -250,11 +295,6 @@ def cli(
         time_start = time.perf_counter()
 
         yaml_cfg = merged_yaml_cfg
-        yaml_opt = yaml_cfg.get("opt") if isinstance(yaml_cfg, dict) else None
-        relax_override_requested = cycles_overridden and not (
-            isinstance(yaml_opt, dict) and "max_cycles" in yaml_opt
-        )
-
         (
             geom_cfg,
             calc_cfg,
@@ -269,7 +309,7 @@ def cli(
             yaml_cfg=yaml_cfg,
             geom_kw=dict(GEOM_KW_DEFAULT),
             calc_kw=dict(UMA_CALC_KW),
-            opt_kw=dict(OPT_BASE_KW),
+            opt_kw={**OPT_BASE_KW, "thresh": "baker"},
             lbfgs_kw=dict(LBFGS_KW),
             rfo_kw=dict(RFO_KW),
             bias_kw=dict(BIAS_KW),
@@ -278,7 +318,7 @@ def cli(
             workers=workers,
             workers_per_node=workers_per_node,
             out_dir=out_dir,
-            thresh=thresh,
+            thresh=thresh if thresh_overridden else None,
             # bias_k is None when neither CLI --bias-k nor YAML bias.k set
             # (the common-decorator default flipped to None to enable YAML
             # override). `build_scan_configs` handles None via
@@ -286,11 +326,15 @@ def cli(
             bias_k=bias_k,
             opt_mode=opt_mode,
             relax_max_cycles=relax_max_cycles,
-            relax_override_requested=relax_override_requested,
+            relax_max_cycles_overridden=cycles_overridden,
             max_step_size=max_step_size,
             source_path=source,
             freeze_links=freeze_links,
             set_charge_spin=(csv_path is None),
+            workers_overridden=cli_param_overridden(ctx, "workers"),
+            workers_per_node_overridden=cli_param_overridden(
+                ctx, "workers_per_node"
+            ),
         )
 
         # Merge CLI --freeze-atoms (already 0-based)
@@ -324,40 +368,17 @@ def cli(
             geom_cfg["coord_type"] = str(cli_coord_type).lower()
         apply_backend_defaults(calc_cfg)
 
-        pdb_atom_meta: List[Dict[str, Any]] = []
+        pdb_atom_meta: List[Dict[str, Any]] = list(scan_atom_meta)
         d1_label_csv = None
         d2_label_csv = None
         d3_label_csv = None
         if csv_path is None:
-            if source and source.suffix.lower() == ".pdb":
-                pdb_atom_meta = load_pdb_atom_metadata(source)
-
-            if scan_list_raw is None:
-                raise click.BadParameter(
-                    "--scan-lists is required.; "
-                    'recover: pass --scan-lists "[(i,j,low,high),(i,j,low,high),(i,j,low,high)]" '
-                    "— exactly 3 quadruples (1-based atom indices) for scan3d."
-                )
-            scan_one_based = bool(one_based)
-            scan_source = "--scan-lists"
-            if is_scan_spec_file(scan_list_raw):
-                spec_path = Path(scan_list_raw)
-                parsed, raw_pairs, scan_one_based = parse_scan_spec_quads(
-                    spec_path,
-                    expected_len=3,
-                    one_based_default=one_based,
-                    atom_meta=pdb_atom_meta,
-                    option_name="--scan-lists",
-                )
-                scan_source = f"--scan-lists ({spec_path})"
-            else:
-                parsed, raw_pairs = parse_scan_list_quads_checked(
-                    scan_list_raw,
-                    expected_len=3,
-                    one_based=scan_one_based,
-                    atom_meta=pdb_atom_meta,
-                    option_name="--scan-lists",
-                )
+            if scan_request is None:
+                raise RuntimeError("scan3d request was not prepared before execution")
+            parsed = list(scan_request.pairs)
+            raw_pairs = list(scan_request.raw_pairs)
+            scan_one_based = scan_request.one_based
+            scan_source = scan_request.source
             (i1, j1, low1, high1), (i2, j2, low2, high2), (i3, j3, low3, high3) = parsed
             d1_label_csv = axis_label_csv("d1", i1, j1, scan_one_based, pdb_atom_meta, raw_pairs[0])
             d2_label_csv = axis_label_csv("d2", i2, j2, scan_one_based, pdb_atom_meta, raw_pairs[1])
@@ -385,15 +406,15 @@ def cli(
             )
 
             if pdb_atom_meta:
-                click.echo("[scan3d] PDB atom details for scanned pairs:", detail=True)
+                emit("[scan3d] PDB atom details for scanned pairs:", detail=True)
                 legend = format_pdb_atom_metadata_header()
-                click.echo(f"        legend: {legend}", detail=True)
-                click.echo(f"  d1 i: {format_pdb_atom_metadata(pdb_atom_meta, i1)}", detail=True)
-                click.echo(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j1)}", detail=True)
-                click.echo(f"  d2 i: {format_pdb_atom_metadata(pdb_atom_meta, i2)}", detail=True)
-                click.echo(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j2)}", detail=True)
-                click.echo(f"  d3 i: {format_pdb_atom_metadata(pdb_atom_meta, i3)}", detail=True)
-                click.echo(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j3)}", detail=True)
+                emit(f"        legend: {legend}", detail=True)
+                emit(f"  d1 i: {format_pdb_atom_metadata(pdb_atom_meta, i1)}", detail=True)
+                emit(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j1)}", detail=True)
+                emit(f"  d2 i: {format_pdb_atom_metadata(pdb_atom_meta, i2)}", detail=True)
+                emit(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j2)}", detail=True)
+                emit(f"  d3 i: {format_pdb_atom_metadata(pdb_atom_meta, i3)}", detail=True)
+                emit(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j3)}", detail=True)
 
         final_dir = out_dir_path
 
@@ -430,6 +451,7 @@ def cli(
             biased = HarmonicBiasCalculator(base_calc, k=float(bias_cfg["k"]))
 
             # Optional pre-optimization of the starting structure
+            _preopt_conv: Optional[bool] = None
             if preopt:
                 click.echo("[preopt] Unbiased relaxation of the initial structure ...")
                 geom_outer.set_calculator(base_calc)
@@ -441,17 +463,18 @@ def cli(
                     rfo_cfg,
                     opt_cfg,
                     max_step_bohr=max_step_bohr_local,
-                    relax_max_cycles=relax_max_cycles,
-                    relax_override_requested=relax_override_requested,
                     out_dir=tmp_opt_dir,
                     prefix="preopt",
                 )
                 try:
                     optimizer0.run()
+                    _preopt_conv = optimizer_converged_bit(optimizer0)
                 except ZeroStepLength:
                     click.echo("[preopt] ZeroStepLength — continuing.")
+                    _preopt_conv = optimizer_converged_bit(optimizer0)
                 except OptimizationError as e:
                     click.echo(f"[preopt] OptimizationError — {e}")
+                    _preopt_conv = False
 
             # Measure the three bias distances on the starting structure
             # (pre-optimized when --preopt, otherwise the input geometry)
@@ -499,7 +522,8 @@ def cli(
                 "d2_A": float(d2_ref),
                 "d3_A": float(d3_ref),
                 "energy_hartree": float(E_pre_h),
-                "bias_converged": True,
+                "bias_converged": _preopt_conv,
+                "artifact_written": True,
             }
 
             # Build and reorder the grids so that we scan from values closest to the reference distances
@@ -521,10 +545,10 @@ def cli(
             )
 
             N1, N2, N3 = len(d1_values), len(d2_values), len(d3_values)
-            click.echo(f"[grid] d1 steps = {N1}  values(A)={list(map(lambda x: f'{x:.3f}', d1_values))}", narrative=True)
-            click.echo(f"[grid] d2 steps = {N2}  values(A)={list(map(lambda x: f'{x:.3f}', d2_values))}", narrative=True)
-            click.echo(f"[grid] d3 steps = {N3}  values(A)={list(map(lambda x: f'{x:.3f}', d3_values))}", narrative=True)
-            click.echo(f"[grid] total grid points = {N1 * N2 * N3}", narrative=True)
+            emit(f"[grid] d1 steps = {N1}  values(A)={list(map(lambda x: f'{x:.3f}', d1_values))}", narrative=True)
+            emit(f"[grid] d2 steps = {N2}  values(A)={list(map(lambda x: f'{x:.3f}', d2_values))}", narrative=True)
+            emit(f"[grid] d3 steps = {N3}  values(A)={list(map(lambda x: f'{x:.3f}', d3_values))}", narrative=True)
+            emit(f"[grid] total grid points = {N1 * N2 * N3}", narrative=True)
 
             max_step_bohr = float(max_step_size) * ANG2BOHR
 
@@ -540,7 +564,7 @@ def cli(
 
             # ===== 3D nested scan: d1 (outer) → d2 (middle) → d3 (inner) =====
             for i_idx, d1_target in enumerate(d1_values):
-                click.echo(f"[stage] d1 step {i_idx + 1}/{N1}: target = {d1_target:.3f} Å", narrative=True)
+                emit(f"[stage] d1 step {i_idx + 1}/{N1}: target = {d1_target:.3f} Å", narrative=True)
 
                 # Choose initial geometry for this d1 from the previously scanned
                 # structure with the closest d1 value (or the reference structure).
@@ -563,8 +587,6 @@ def cli(
                     rfo_cfg,
                     opt_cfg,
                     max_step_bohr=max_step_bohr,
-                    relax_max_cycles=relax_max_cycles,
-                    relax_override_requested=relax_override_requested,
                     out_dir=tmp_opt_dir,
                     prefix=f"d1_{i_idx:03d}",
                 )
@@ -616,8 +638,6 @@ def cli(
                         rfo_cfg,
                         opt_cfg,
                         max_step_bohr=max_step_bohr,
-                        relax_max_cycles=relax_max_cycles,
-                        relax_override_requested=relax_override_requested,
                         out_dir=tmp_opt_dir,
                         prefix=f"d1_{i_idx:03d}_d2_{j_idx:03d}",
                     )
@@ -667,20 +687,19 @@ def cli(
                             rfo_cfg,
                             opt_cfg,
                             max_step_bohr=max_step_bohr,
-                            relax_max_cycles=relax_max_cycles,
-                            relax_override_requested=relax_override_requested,
                             out_dir=tmp_opt_dir,
                             prefix=f"d1_{i_idx:03d}_d2_{j_idx:03d}_d3_{k_idx:03d}",
                         )
+                        converged: Optional[bool] = None
                         try:
                             opt3.run()
-                            converged = True
+                            converged = optimizer_converged_bit(opt3)
                         except ZeroStepLength:
                             click.echo(
                                 f"[d1 {i_idx}, d2 {j_idx}, d3 {k_idx}] ZeroStepLength — recorded anyway.",
                                 err=True,
                             )
-                            converged = False
+                            converged = optimizer_converged_bit(opt3)
                         except OptimizationError as e:
                             click.echo(
                                 f"[d1 {i_idx}, d2 {j_idx}, d3 {k_idx}] OptimizationError — {e}",
@@ -688,8 +707,11 @@ def cli(
                             )
                             converged = False
 
-                        # Cache final geometry for nearest-neighbor reuse
-                        d3_store[k_idx] = _snapshot_geometry(geom_inner)
+                        # Cache final geometry for nearest-neighbor reuse ONLY when
+                        # the point explicitly converged; a failed point must not
+                        # seed the next d3 target (M48).
+                        if converged is True:
+                            d3_store[k_idx] = _snapshot_geometry(geom_inner)
 
                         E_h = unbiased_energy_hartree(geom_inner, base_calc)
 
@@ -697,12 +719,14 @@ def cli(
                         tag_j = distance_tag(d2_target)
                         tag_k = distance_tag(d3_target)
                         xyz_path = grid_dir / f"point_i{tag_i}_j{tag_j}_k{tag_k}.xyz"
+                        _artifact_written = False
                         try:
                             s = geom_inner.as_xyz()
                             if not s.endswith("\n"):
                                 s += "\n"
                             with open(xyz_path, "w") as f:
                                 f.write(s)
+                            _artifact_written = True
                         except Exception as e:
                             click.echo(f"[write] WARNING: failed to write {xyz_path.name}: {e}", err=True)
                         else:
@@ -730,7 +754,8 @@ def cli(
                                 "d2_A": float(d2_target),
                                 "d3_A": float(d3_target),
                                 "energy_hartree": E_h,
-                                "bias_converged": bool(converged),
+                                "bias_converged": converged,
+                                "artifact_written": bool(_artifact_written),
                             }
                         )
 
@@ -790,18 +815,32 @@ def cli(
                 )
                 sys.exit(1)
 
+            # Reference minimum only from seed-eligible points (M48): a failed /
+            # nonconverged point never defines the baseline. Legacy CSV rows
+            # without a convergence column are ineligible-by-policy, so the raw
+            # fallback below preserves their re-plot behavior.
+            _seed_ok = pd.Series(
+                seed_eligible_mask(df.to_dict("records")), index=df.index
+            )
+            _elig_df3 = df[_seed_ok]
+
+            def _eligible_min3() -> float:
+                if not _elig_df3.empty:
+                    return float(_elig_df3["energy_hartree"].min())
+                return float(df["energy_hartree"].min())
+
             if baseline == "first":
-                ref_mask = (df["i"] == 0) & (df["j"] == 0) & (df["k"] == 0)
+                ref_mask = (df["i"] == 0) & (df["j"] == 0) & (df["k"] == 0) & _seed_ok
                 if not ref_mask.any():
                     click.echo(
-                        "[baseline] 'first' requested but (i=0,j=0,k=0) missing; using global minimum instead.",
+                        "[baseline] 'first' requested but no eligible (i=0,j=0,k=0); using eligible minimum instead.",
                         err=True,
                     )
-                    ref = float(df["energy_hartree"].min())
+                    ref = _eligible_min3()
                 else:
                     ref = float(df.loc[ref_mask, "energy_hartree"].iloc[0])
             else:
-                ref = float(df["energy_hartree"].min())
+                ref = _eligible_min3()
 
             df["energy_kcal"] = (df["energy_hartree"] - ref) * AU2KCALPERMOL
 
@@ -811,7 +850,10 @@ def cli(
             df["d1_label"] = d1_label_csv
             df["d2_label"] = d2_label_csv
             df["d3_label"] = d3_label_csv
-            df.to_csv(surface_csv, index=False)
+            # Keep the internal-only artifact-provenance column out of the public
+            # CSV so a genuinely converged run's surface.csv schema is unchanged.
+            _csv_drop3 = [c for c in ("artifact_written",) if c in df.columns]
+            df.drop(columns=_csv_drop3).to_csv(surface_csv, index=False)
             click.echo(f"[write] Wrote '{surface_csv}'.")
 
         # ===== 3D RBF interpolation & visualization (isosurface only) =====
@@ -1003,20 +1045,37 @@ def cli(
         fig3d.write_html(str(html3d))
         click.echo(f"[plot] Wrote '{html3d}'.")
 
-        click.echo("\n====== 3D Scan finished ======\n", narrative=True)
-        click.echo(format_elapsed("[time] Elapsed Time for 3D Scan", time_start), narrative=True)
+        emit("\n====== 3D Scan finished ======\n", narrative=True)
+        emit(format_elapsed("[time] Elapsed Time for 3D Scan", time_start), narrative=True)
 
         # result.json (if --out-json)
         if out_json:
-            from pdb2reaction.core.utils import write_result_json, atom_label_from_meta
-            min_energy = float(df["energy_hartree"].min()) if (not df.empty and "energy_hartree" in df.columns) else None
+            from pdb2reaction.core.utils import atom_label_from_meta, write_result_json
+            if not df.empty and "energy_hartree" in df.columns:
+                if csv_path is None:
+                    # Fresh scan: minimum only from seed-eligible points (M48).
+                    _seed_ok_json = pd.Series(
+                        seed_eligible_mask(df.to_dict("records")), index=df.index
+                    )
+                    if _seed_ok_json.any():
+                        min_energy = float(df.loc[_seed_ok_json, "energy_hartree"].min())
+                    else:
+                        min_energy = None
+                else:
+                    # Plot-only from an existing CSV: preserve legacy raw minimum.
+                    min_energy = float(df["energy_hartree"].min())
+            else:
+                min_energy = None
+
             result_data: Dict[str, Any] = {
                 "status": "completed",
-                "charge": charge_val,
-                "spin": spin_val,
-                "backend": calc_cfg.get("backend", backend),
-                "model": calc_cfg.get("model"),
-                "solvent": calc_cfg.get("solvent", "none"),
+                **_result_calculator_fields(
+                    calc_cfg,
+                    backend=backend,
+                    charge=charge_val,
+                    spin=spin_val,
+                    plot_only=csv_path is not None,
+                ),
                 "n_grid_points": len(df),
                 "min_energy_hartree": min_energy,
                 "files": {
@@ -1039,6 +1098,31 @@ def cli(
                 result_data["pair3"] = _pair3
                 result_data["grid_shape"] = [len(d1_values), len(d2_values), len(d3_values)]
                 result_data["files"]["surface_csv"] = "surface.csv"
+                # Additive truthful outcomes (fresh scan only; plot-only has no
+                # per-point convergence provenance). Legacy ``status`` stays
+                # "completed".
+                _point_outcomes3 = [
+                    make_scan_point(
+                        f"i{rec.get('i')}_j{rec.get('j')}_k{rec.get('k')}",
+                        executed=True,
+                        converged=rec.get("bias_converged"),
+                        energy=rec.get("energy_hartree"),
+                        artifact_written=bool(rec.get("artifact_written", False)),
+                    )
+                    for rec in records
+                ]
+                _sci3, _sci3_reasons = scan_scientific_status(_point_outcomes3)
+                result_data["execution_status"] = "completed"
+                result_data["n_points_attempted"] = len(_point_outcomes3)
+                result_data["n_points_usable"] = sum(
+                    1 for p in _point_outcomes3 if p.seed_eligible
+                )
+                attach_outcomes(
+                    result_data,
+                    point_outcomes=_point_outcomes3,
+                    scientific_status=_sci3,
+                    scientific_status_reasons=_sci3_reasons,
+                )
             write_result_json(
                 final_dir, result_data,
                 command="scan3d",
@@ -1060,17 +1144,27 @@ def cli(
                 prefix="[scan3d]",
             ) as (prepared_input, charge_val, spin_val):
                 validate_charge_spin_for_prepared(prepared_input, charge_val, spin_val)
+                scan_atom_meta = (
+                    load_pdb_atom_metadata(prepared_input.source_path)
+                    if prepared_input.source_path.suffix.lower() == ".pdb"
+                    else []
+                )
+                scan_request = parse_grid_scan_request(
+                    scan_list_raw,
+                    dimensions=3,
+                    one_based=one_based,
+                    atom_meta=scan_atom_meta,
+                )
                 if dry_run:
-                    # Stop here. Input has been resolved, charge/spin parity
-                    # has been validated against the prepared geometry, and
-                    # the scan-lists literal has been parsed by Click. Print
-                    # the plan and exit without burning GPU/queue time.
-                    click.echo("[scan3d] --dry-run: input, charge/spin parity, and option parsing OK.")
+                    click.echo("[scan3d] --dry-run: input, charge/spin parity, and --scan-lists parse OK.")
                     click.echo(f"[scan3d] input geometry  : {prepared_input.geom_path}")
                     click.echo(f"[scan3d] resolved charge : {int(charge_val):+d}")
                     click.echo(f"[scan3d] resolved spin   : {int(spin_val)} (multiplicity)")
                     click.echo(f"[scan3d] out_dir         : {Path(out_dir).resolve()}")
-                    click.echo(f"[scan3d] --scan-lists    : {scan_list_raw if scan_list_raw else '(none)'}")
+                    click.echo(
+                        f"[scan3d] --scan-lists    : {scan_request.raw_value} "
+                        f"→ {len(scan_request.pairs)} axis tuples"
+                    )
                     click.echo(f"[scan3d] preopt={bool(preopt)}  freeze_links={bool(freeze_links)}")
                     click.echo("[scan3d] No 3D scan was executed.")
                     return
@@ -1092,6 +1186,11 @@ def cli(
     except KeyboardInterrupt:
         click.echo("Interrupted by user.", err=True)
         sys.exit(130)
+    except click.ClickException:
+        # Request validation is part of Click's usage boundary.  Let Click
+        # render the clean diagnostic and conventional exit status instead of
+        # treating malformed user input as an internal scan failure.
+        raise
     except Exception as e:
         _write_error_json(Path(out_dir).resolve(), "scan3d", e, "UnhandledError", None)
         tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))

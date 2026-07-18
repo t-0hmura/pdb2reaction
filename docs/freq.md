@@ -50,6 +50,15 @@ pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 \
   corrections, heat capacities, entropies) is printed using PHVA frequencies. CLI pressure in
   atm is converted internally to Pa. When `--dump`, a `thermoanalysis.yaml` snapshot is
   also written.
+- **Frequency-treatment policy**: `freq` applies the **standalone-freq policy** — QRRHO with a
+  100 cm⁻¹ rotor cutoff, unit frequency/ZPE scaling, **no** imaginary-frequency inversion, and
+  **no** positive-frequency floor. This is deliberately different from the internal
+  `Geometry.get_thermoanalysis` policy used by some bundled-engine paths, which additionally
+  inverts small imaginaries (from −15 cm⁻¹) and floors positive frequencies below 25 cm⁻¹.
+  Neither is a universal scientific default; each is tied to its entry point. The effective
+  policy (`kind`, `rotor_cutoff_cm`, `frequency_scale`, `zpe_scale`, `invert_imag_from_cm`,
+  `positive_frequency_floor_cm`) is serialized under `thermo_policy` in `thermoanalysis.yaml`
+  and in `result.json`.
 - **Performance**: the implementation minimizes GPU memory usage by keeping a single Hessian resident.
 
 ## Outputs

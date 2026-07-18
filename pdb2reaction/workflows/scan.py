@@ -20,6 +20,7 @@ import sys
 import textwrap
 
 import click
+from pdb2reaction.core.output import emit
 import numpy as np
 import time
 
@@ -41,20 +42,18 @@ from pdb2reaction.core.defaults import (
 )
 from pdb2reaction.backends import create_calculator
 from pdb2reaction.workflows.restraints import HarmonicBiasCalculator
+from pdb2reaction.workflows._outcomes import optimizer_converged_bit
 from pdb2reaction.core.utils import (
+    optimizer_terminal_status,
     build_sopt_kwargs,
     make_sopt_optimizer,
     build_scan_configs,
-    collect_single_option_values,
     cli_param_overridden,
     pretty_block,
     strip_inherited_keys,
     format_geom_for_echo,
     format_elapsed,
     normalize_choice,
-    is_scan_spec_file,
-    parse_scan_list_triples,
-    parse_scan_spec_stages,
     prepared_cli_input,
     validate_charge_spin_for_prepared,
     set_convert_file_enabled,
@@ -71,7 +70,11 @@ from pdb2reaction.core.utils import (
     merge_freeze_atom_indices,
     echo_resolved_device,
 )
-from pdb2reaction.cli.decorators import run_cli
+from pdb2reaction.cli.decorators import (
+    load_merged_yaml_cfg,
+    resolve_yaml_sources,
+    run_cli,
+)
 from pdb2reaction.cli.common_options import (
     add_coord_type_option,
     add_print_every_option,
@@ -82,8 +85,8 @@ from pdb2reaction.cli.common_options import (
 from pdb2reaction.domain.bond_changes import has_bond_change
 from pdb2reaction.workflows.scan_common import (
     add_scan_common_options,
-    load_merged_yaml_cfg,
-    resolve_yaml_sources,
+    collect_staged_scan_values,
+    parse_staged_scan_request,
 )
 
 logger = logging.getLogger(__name__)
@@ -100,7 +103,7 @@ def _ensure_stage_dir(base: Path, k: int) -> Path:
 
 def _echo_scan_summary(stages: List[Dict[str, Any]]) -> None:
     """Print a readable end-of-run summary."""
-    click.echo("\n====== Scan summary ======\n", narrative=True)
+    emit("\n====== Scan summary ======\n", narrative=True)
     for idx_s, s in enumerate(stages):
         idx = int(s.get("index", 0))
         pairs_1b = list(s.get("pairs_1based", []))
@@ -116,12 +119,12 @@ def _echo_scan_summary(stages: List[Dict[str, Any]]) -> None:
         triples = [f"({i}, {j}, {f'{t:.3f}'.rstrip('0').rstrip('.')})" for (i, j), t in zip(pairs_1b, rT)]
         targets_str = "[" + ", ".join(triples) + "]"
 
-        click.echo(f"[stage {idx}] Targets (i,j,target Å): {targets_str}", narrative=True)
-        click.echo(f"[stage {idx}] initial distances (Å) = [" + ", ".join(f"'{v:.3f}'" for v in r0) + "]", narrative=True)
-        click.echo(f"[stage {idx}] target distances  (Å) = [" + ", ".join(f"'{v:.3f}'" for v in rT) + "]", narrative=True)
-        click.echo(f"[stage {idx}] per_pair_step     (Å) = [" + ", ".join(f"'{v:.3f}'" for v in dA) + "]", narrative=True)
-        click.echo(f"[stage {idx}] steps N = {N}", narrative=True)
-        click.echo(f"[stage {idx}] Covalent-bond changes (start vs final): {'Yes' if changed else 'No'}", narrative=True)
+        emit(f"[stage {idx}] Targets (i,j,target Å): {targets_str}", narrative=True)
+        emit(f"[stage {idx}] initial distances (Å) = [" + ", ".join(f"'{v:.3f}'" for v in r0) + "]", narrative=True)
+        emit(f"[stage {idx}] target distances  (Å) = [" + ", ".join(f"'{v:.3f}'" for v in rT) + "]", narrative=True)
+        emit(f"[stage {idx}] per_pair_step     (Å) = [" + ", ".join(f"'{v:.3f}'" for v in dA) + "]", narrative=True)
+        emit(f"[stage {idx}] steps N = {N}", narrative=True)
+        emit(f"[stage {idx}] Covalent-bond changes (start vs final): {'Yes' if changed else 'No'}", narrative=True)
         if changed and summary_txt:
             click.echo(textwrap.indent(summary_txt, prefix="  "))
         if not changed:
@@ -293,7 +296,7 @@ def cli(
         override_yaml=None,
         args_yaml_legacy=None,
     )
-    merged_yaml_cfg = load_merged_yaml_cfg(
+    merged_yaml_cfg, _, _ = load_merged_yaml_cfg(
         config_yaml=config_yaml,
         override_yaml=None,
     )
@@ -303,6 +306,7 @@ def cli(
     )
 
     cycles_overridden = cli_param_overridden(ctx, "relax_max_cycles")
+    thresh_overridden = cli_param_overridden(ctx, "thresh")
 
     with prepared_cli_input(
         input_path,
@@ -320,24 +324,25 @@ def cli(
         ref_pdb = source_path.resolve() if needs_pdb else None
         time_start = time.perf_counter()
         out_dir_path = Path(out_dir).resolve()
-        # Required-flag check must happen before --dry-run early-exit so dry-run
-        # honours the docs' promise that "input/option parsing OK" is verified.
-        cli_scan_values = collect_single_option_values(
-            sys.argv[1:], ("-s", "--scan-lists"), "--scan-lists"
+        pdb_atom_meta: List[Dict[str, Any]] = []
+        if source_path.suffix.lower() == ".pdb":
+            pdb_atom_meta = load_pdb_atom_metadata(source_path)
+        cli_scan_values = collect_staged_scan_values(scan_lists_raw, ctx.args)
+        scan_request = parse_staged_scan_request(
+            cli_scan_values,
+            one_based=one_based,
+            atom_meta=pdb_atom_meta,
         )
-        if not cli_scan_values:
-            raise click.BadParameter("--scan-lists is required.")
         if dry_run:
-            # Stop here. Input has been resolved, charge/spin parity has
-            # been validated against the prepared geometry, and the
-            # scan-lists literal has been parsed by Click's option. Print
-            # the plan and exit without burning GPU/queue time.
-            click.echo("[scan] --dry-run: input, charge/spin parity, and option parsing OK.")
+            click.echo("[scan] --dry-run: input, charge/spin parity, and --scan-lists parse OK.")
             click.echo(f"[scan] input geometry  : {geom_input_path}")
             click.echo(f"[scan] resolved charge : {int(resolved_charge):+d}")
             click.echo(f"[scan] resolved spin   : {int(resolved_spin)} (multiplicity)")
             click.echo(f"[scan] out_dir         : {out_dir_path}")
-            click.echo(f"[scan] --scan-lists    : {cli_scan_values}")
+            click.echo(
+                f"[scan] --scan-lists    : {scan_request.raw_values} "
+                f"→ {len(scan_request.stages)} stage(s)"
+            )
             click.echo(f"[scan] preopt={bool(preopt)}  endopt={bool(endopt)}  freeze_links={bool(freeze_links)}")
             click.echo("[scan] No scan / preopt was executed.")
             return
@@ -345,11 +350,6 @@ def cli(
         def _run() -> None:
 
             yaml_cfg = merged_yaml_cfg
-            yaml_opt = yaml_cfg.get("opt") if isinstance(yaml_cfg, dict) else None
-            relax_override_requested = cycles_overridden and not (
-                isinstance(yaml_opt, dict) and "max_cycles" in yaml_opt
-            )
-
             geom_cfg = dict(GEOM_KW_DEFAULT)
             calc_cfg = dict(UMA_CALC_KW)
             opt_cfg  = dict(OPT_BASE_KW)
@@ -372,8 +372,10 @@ def cli(
                 workers=workers,
                 workers_per_node=workers_per_node,
                 out_dir=out_dir,
-                thresh=thresh,
+                thresh=thresh if thresh_overridden else None,
                 bias_k=bias_k,
+                relax_max_cycles=relax_max_cycles,
+                relax_max_cycles_overridden=cycles_overridden,
                 workers_overridden=cli_param_overridden(ctx, "workers"),
                 workers_per_node_overridden=cli_param_overridden(ctx, "workers_per_node"),
             )
@@ -428,8 +430,6 @@ def cli(
             echo_geom = format_geom_for_echo(geom_cfg)
             echo_calc = format_geom_for_echo(calc_cfg)
             echo_opt  = dict(opt_cfg)
-            if relax_override_requested:
-                echo_opt["max_cycles"] = int(relax_max_cycles)
             echo_opt["out_dir"] = str(out_dir_path)
             echo_bias = dict(bias_cfg)
             echo_bond = dict(bond_cfg)
@@ -443,69 +443,21 @@ def cli(
                 rfo_cfg,
                 opt_cfg,
                 max_step_bohr_for_log,
-                relax_max_cycles,
-                relax_override_requested,
-                out_dir_path,
-                str(opt_cfg.get("prefix", "")),
+                out_dir=out_dir_path,
+                prefix=str(opt_cfg.get("prefix", "")),
             )
             echo_sopt = strip_inherited_keys(echo_sopt, opt_cfg)
             click.echo(pretty_block("lbfgs" if kind == "lbfgs" else "rfo", echo_sopt))
             click.echo(pretty_block("bias", echo_bias))
             click.echo(pretty_block("bond", echo_bond))
 
-            pdb_atom_meta: List[Dict[str, Any]] = []
-            if source_path.suffix.lower() == ".pdb":
-                pdb_atom_meta = load_pdb_atom_metadata(source_path)
-
-            # cli_scan_values was collected + required-checked above the
-            # dry-run early-exit (closure capture).
-
-            stages: List[List[Tuple[int, int, float]]]
-            scan_one_based = bool(one_based)
-            scan_source = "--scan-lists"
-            _bidir_reset_before: set = set()
-            _bidir_snapshot_before: set = set()
-            if len(cli_scan_values) == 1 and is_scan_spec_file(cli_scan_values[0]):
-                spec_path = Path(cli_scan_values[0])
-                stages, scan_one_based = parse_scan_spec_stages(
-                    spec_path,
-                    one_based_default=one_based,
-                    atom_meta=pdb_atom_meta,
-                    option_name="--scan-lists",
-                )
-                scan_source = f"--scan-lists ({spec_path})"
-            else:
-                stages = []
-                for idx, raw in enumerate(cli_scan_values, start=1):
-                    parsed, _ = parse_scan_list_triples(
-                        raw,
-                        one_based=scan_one_based,
-                        atom_meta=pdb_atom_meta,
-                        option_name=f"--scan-lists #{idx}",
-                    )
-                    for t in parsed:
-                        for dist in t[2:]:
-                            if dist <= 0.0:
-                                raise click.BadParameter(
-                                    f"Non-positive target length in --scan-lists #{idx}: {t}."
-                                )
-                    # Expand 4-tuples into two stages with reset marker
-                    has_4tuple = any(len(t) == 4 for t in parsed)
-                    if has_4tuple:
-                        for t in parsed:
-                            if len(t) == 4:
-                                i, j, start, end = t
-                                stage_a_idx = len(stages)
-                                stages.append([(i, j, start)])
-                                _bidir_snapshot_before.add(stage_a_idx)
-                                _bidir_reset_before.add(stage_a_idx + 1)
-                                stages.append([(i, j, end)])
-                            else:
-                                stages.append([t])
-                    else:
-                        stages.append(parsed)
+            stages = [list(stage) for stage in scan_request.stages]
+            scan_one_based = scan_request.one_based
+            scan_source = scan_request.source
+            _bidir_reset_before = set(scan_request.bidirectional_reset_before)
+            _bidir_snapshot_before = set(scan_request.bidirectional_snapshot_before)
             K = len(stages)
-            click.echo(f"[scan] Received {K} stage(s).", narrative=True)
+            emit(f"[scan] Received {K} stage(s).", narrative=True)
             if print_parsed:
                 click.echo(
                     pretty_block(
@@ -519,17 +471,17 @@ def cli(
                 )
 
             if pdb_atom_meta:
-                click.echo("[scan] PDB atom details for scanned pairs:", detail=True)
+                emit("[scan] PDB atom details for scanned pairs:", detail=True)
                 legend = format_pdb_atom_metadata_header()
-                click.echo(f"        legend: {legend}", detail=True)
+                emit(f"        legend: {legend}", detail=True)
                 for stage_idx, tuples in enumerate(stages, start=1):
-                    click.echo(f"  Stage {stage_idx}:", detail=True)
+                    emit(f"  Stage {stage_idx}:", detail=True)
                     for pair_idx, (i, j, _) in enumerate(tuples, start=1):
-                        click.echo(
+                        emit(
                             f"    pair {pair_idx} i: {format_pdb_atom_metadata(pdb_atom_meta, i)}",
                             detail=True,
                         )
-                        click.echo(
+                        emit(
                             f"           j: {format_pdb_atom_metadata(pdb_atom_meta, j)}",
                             detail=True,
                         )
@@ -571,10 +523,8 @@ def cli(
                     rfo_cfg,
                     opt_cfg,
                     max_step_bohr,
-                    relax_max_cycles,
-                    relax_override_requested,
-                    pre_dir,
-                    "preopt",
+                    out_dir=pre_dir,
+                    prefix="preopt",
                 )
                 try:
                     optimizer0.run()
@@ -622,13 +572,13 @@ def cli(
                     _bidir_pass1_trj = []
                 # Bidirectional support: restore geometry before pass 2
                 if stage_idx_0 in _bidir_reset_before and _bidir_saved_geom is not None:
-                    click.echo("[bidir] Restoring initial geometry for reverse-direction pass.", narrative=True)
+                    emit("[bidir] Restoring initial geometry for reverse-direction pass.", narrative=True)
                     geom.coords = _bidir_saved_geom.coords.copy()
 
                 stage_dir = _ensure_stage_dir(out_dir_path, k)
-                click.echo(f"[stage] Stage {k}/{K}", narrative=True)
+                emit(f"[stage] Stage {k}/{K}", narrative=True)
                 tuples_1b = [(i+1, j+1, t) for (i, j, t) in tuples]
-                click.echo(f"Targets (i,j,target Å, 1-based): {tuples_1b}", narrative=True)
+                emit(f"Targets (i,j,target Å, 1-based): {tuples_1b}", narrative=True)
 
                 # Snapshot beginning geometry of this stage for bond-change comparison
                 start_geom_for_stage = _snapshot_geometry(geom)
@@ -637,9 +587,9 @@ def cli(
                 R_bohr = np.array(geom.coords3d, dtype=float)      # (N,3) Bohr
                 R_ang  = R_bohr * BOHR2ANG                         # (N,3) Å
                 Nsteps, r0, rT, step_widths = _schedule_for_stage(R_ang, tuples, float(max_step_size))
-                click.echo(f"[stage {k}] initial distances (Å) = {['{:.3f}'.format(x) for x in r0]}", narrative=True)
-                click.echo(f"[stage {k}] target distances  (Å) = {['{:.3f}'.format(x) for x in rT]}", narrative=True)
-                click.echo(f"[stage {k}] steps N = {Nsteps}", narrative=True)
+                emit(f"[stage {k}] initial distances (Å) = {['{:.3f}'.format(x) for x in r0]}", narrative=True)
+                emit(f"[stage {k}] target distances  (Å) = {['{:.3f}'.format(x) for x in rT]}", narrative=True)
+                emit(f"[stage {k}] steps N = {Nsteps}", narrative=True)
 
                 # Record per-stage summary
                 srec: Dict[str, Any] = {
@@ -650,6 +600,17 @@ def cli(
                     "per_pair_step_A": [float(f"{x:.3f}") for x in step_widths],
                     "num_steps": int(Nsteps),
                     "converged": None,  # updated after relaxation / endopt
+                    # M14/P14: additive terminal status of the last optimizer
+                    # (stalled/converged/not_converged) plus its stop_reason.
+                    # A stalled leaf keeps ``converged`` False, so C6 aggregation
+                    # already treats it as a non-successful required leaf.
+                    "optimizer_status": None,
+                    "stop_reason": None,
+                    # M09: per-step convergence (not just the last optimizer) so a
+                    # middle step that fails is not hidden by a converged final step.
+                    "step_converged": [],
+                    "endopt_converged": None,
+                    "endopt_requested": bool(endopt),
                     "bond_change": {"changed": None, "summary": ""},
                 }
                 stages_summary.append(srec)
@@ -665,7 +626,7 @@ def cli(
                     # No stepping; optionally perform end-of-stage unbiased optimization
                     if endopt:
                         geom.set_calculator(base_calc)
-                        click.echo(f"[stage {k}] endopt (unbiased) ...", narrative=True)
+                        emit(f"[stage {k}] endopt (unbiased) ...", narrative=True)
                         end_optimizer = None
                         try:
                             end_optimizer = make_sopt_optimizer(
@@ -675,17 +636,19 @@ def cli(
                                 rfo_cfg,
                                 opt_cfg,
                                 max_step_bohr,
-                                relax_max_cycles,
-                                relax_override_requested,
-                                stage_dir,
-                                "endopt",
+                                out_dir=stage_dir,
+                                prefix="endopt",
                             )
                             end_optimizer.run()
                         except ZeroStepLength:
-                            click.echo(f"[stage {k}] endopt ZeroStepLength — continuing.", narrative=True)
+                            emit(f"[stage {k}] endopt ZeroStepLength — continuing.", narrative=True)
                         except OptimizationError as e:
-                            click.echo(f"[stage {k}] endopt OptimizationError — {e}", narrative=True)
+                            emit(f"[stage {k}] endopt OptimizationError — {e}", narrative=True)
                         srec["converged"] = getattr(end_optimizer, 'is_converged', None) if end_optimizer is not None else None
+                        srec["endopt_converged"] = srec["converged"]
+                        if end_optimizer is not None:
+                            srec["optimizer_status"] = optimizer_terminal_status(end_optimizer)
+                            srec["stop_reason"] = getattr(end_optimizer, "stop_reason", "") or None
 
                     # No scan steps: empty energy trajectory
                     srec["energies_hartree"] = []
@@ -693,7 +656,7 @@ def cli(
                     # Bond changes: start vs final (possibly endopt)
                     try:
                         changed, summary = has_bond_change(start_geom_for_stage, geom, bond_cfg)
-                        click.echo(f"[stage {k}] Covalent-bond changes (start vs final): {'Yes' if changed else 'No'}", narrative=True)
+                        emit(f"[stage {k}] Covalent-bond changes (start vs final): {'Yes' if changed else 'No'}", narrative=True)
                         if changed and summary and summary.strip():
                             click.echo(textwrap.indent(summary.strip(), prefix="  "))
                         if not changed:
@@ -749,18 +712,19 @@ def cli(
                         rfo_cfg,
                         opt_cfg,
                         max_step_bohr,
-                        relax_max_cycles,
-                        relax_override_requested,
-                        stage_dir,
-                        prefix,
+                        out_dir=stage_dir,
+                        prefix=prefix,
                     )
-                    click.echo(f"\n[stage {k}] step {s}/{Nsteps}: relaxation ({kind}) ...", narrative=True)
+                    emit(f"\n[stage {k}] step {s}/{Nsteps}: relaxation ({kind}) ...", narrative=True)
                     try:
                         optimizer.run()
+                        srec["step_converged"].append(optimizer_converged_bit(optimizer))
                     except ZeroStepLength:
-                        click.echo(f"[stage {k}] step {s}: ZeroStepLength — continuing to next step.", narrative=True)
+                        emit(f"[stage {k}] step {s}: ZeroStepLength — continuing to next step.", narrative=True)
+                        srec["step_converged"].append(optimizer_converged_bit(optimizer))
                     except OptimizationError as e:
-                        click.echo(f"[stage {k}] step {s}: OptimizationError — {e}", narrative=True)
+                        emit(f"[stage {k}] step {s}: OptimizationError — {e}", narrative=True)
+                        srec["step_converged"].append(False)
 
                     # Record the UNBIASED (bare PES) energy: geom.energy here
                     # carries the harmonic-bias penalty (the biased calculator is
@@ -775,7 +739,7 @@ def cli(
                 # Optional end-of-stage UNBIASED optimization
                 if endopt:
                     geom.set_calculator(base_calc)
-                    click.echo(f"[stage {k}] endopt (unbiased) ...", narrative=True)
+                    emit(f"[stage {k}] endopt (unbiased) ...", narrative=True)
                     end_optimizer = None
                     try:
                         end_optimizer = make_sopt_optimizer(
@@ -785,20 +749,23 @@ def cli(
                             rfo_cfg,
                             opt_cfg,
                             max_step_bohr,
-                            relax_max_cycles,
-                            relax_override_requested,
-                            stage_dir,
-                            "endopt",
+                            out_dir=stage_dir,
+                            prefix="endopt",
                         )
                         end_optimizer.run()
                     except ZeroStepLength:
-                        click.echo(f"[stage {k}] endopt ZeroStepLength — continuing.", narrative=True)
+                        emit(f"[stage {k}] endopt ZeroStepLength — continuing.", narrative=True)
                     except OptimizationError as e:
-                        click.echo(f"[stage {k}] endopt OptimizationError — {e}", narrative=True)
+                        emit(f"[stage {k}] endopt OptimizationError — {e}", narrative=True)
 
                 # Record convergence of the last optimizer (endopt if used, else last scan step)
                 _last_opt = end_optimizer if (endopt and end_optimizer is not None) else optimizer
                 srec["converged"] = getattr(_last_opt, 'is_converged', None)
+                if _last_opt is not None:
+                    srec["optimizer_status"] = optimizer_terminal_status(_last_opt)
+                    srec["stop_reason"] = getattr(_last_opt, "stop_reason", "") or None
+                if endopt and end_optimizer is not None:
+                    srec["endopt_converged"] = getattr(end_optimizer, 'is_converged', None)
 
                 # Store per-step energies in stage record
                 srec["energies_hartree"] = stage_energies
@@ -806,7 +773,7 @@ def cli(
                 # Bond changes: start vs final (possibly endopt)
                 try:
                     changed, summary = has_bond_change(start_geom_for_stage, geom, bond_cfg)
-                    click.echo(f"[stage {k}] Covalent-bond changes (start vs final): {'Yes' if changed else 'No'}", narrative=True)
+                    emit(f"[stage {k}] Covalent-bond changes (start vs final): {'Yes' if changed else 'No'}", narrative=True)
                     if changed and summary and summary.strip():
                         click.echo(textwrap.indent(summary.strip(), prefix="  "))
                     if not changed:
@@ -884,13 +851,21 @@ def cli(
 
             _echo_scan_summary(stages_summary)
 
-            click.echo("\n====== Scan finished ======\n", narrative=True)
-            click.echo(format_elapsed("[time] Elapsed Time for Scan", time_start), narrative=True)
+            emit("\n====== Scan finished ======\n", narrative=True)
+            emit(format_elapsed("[time] Elapsed Time for Scan", time_start), narrative=True)
 
             # result.json (if --out-json)
             if out_json:
-                from pdb2reaction.core.utils import write_result_json
+                from pdb2reaction.core.utils import calculator_provenance, write_result_json
+                from pdb2reaction.workflows._outcomes import (
+                    aggregate_workflow_truth,
+                    attach_outcomes,
+                    combine_step_convergence as _combine_step_convergence,
+                    make_leaf,
+                )
+
                 json_stages = []
+                _stage_leaves = []
                 for srec in stages_summary:
                     stage_entry: Dict[str, Any] = {
                         "index": srec["index"],
@@ -905,13 +880,46 @@ def cli(
                     stage_entry["final_energy_hartree"] = srec.get("final_energy_hartree")
                     # Per-step energy trajectory
                     stage_entry["energies_hartree"] = srec.get("energies_hartree", [])
+                    # C7 (M14/P14): surface the optimizer terminal status + stall
+                    # reason so a stalled scan stage is not silently dropped from
+                    # result.json (additive; absent for stages that never set it).
+                    if srec.get("optimizer_status"):
+                        stage_entry["optimizer_status"] = srec["optimizer_status"]
+                    if srec.get("stop_reason"):
+                        stage_entry["stop_reason"] = srec["stop_reason"]
                     json_stages.append(stage_entry)
+
+                    # M09: the stage leaf is usable only when EVERY step converged
+                    # and (when requested) the endopt converged. A converged final
+                    # step must not hide an earlier failed step.
+                    _steps = list(srec.get("step_converged") or [])
+                    _stage_conv = _combine_step_convergence(_steps)
+                    if srec.get("endopt_requested"):
+                        _eo = srec.get("endopt_converged")
+                        _stage_conv = _combine_step_convergence(
+                            _steps + [_eo if isinstance(_eo, bool) else None]
+                        )
+                    _fe = srec.get("final_energy_hartree")
+                    _stage_leaves.append(
+                        make_leaf(
+                            "scan",
+                            f"stage_{srec['index']}",
+                            executed=True,
+                            converged=_stage_conv,
+                            energy_valid=(_fe is not None),
+                        )
+                    )
+                _truth = aggregate_workflow_truth(
+                    _stage_leaves,
+                    [f"stage_{srec['index']}" for srec in stages_summary],
+                )
                 result_data: Dict[str, Any] = {
                     "status": "completed",
                     "charge": resolved_charge,
                     "spin": resolved_spin,
                     "backend": calc_cfg.get("backend", backend),
                     "model": calc_cfg.get("model"),
+                    **calculator_provenance(calc_cfg),
                     "solvent": calc_cfg.get("solvent", "none"),
                     "preopt": bool(preopt),
                     "max_step_size_angstrom": float(max_step_size),
@@ -925,6 +933,8 @@ def cli(
                     f = out_dir_path / f"scan{ext}"
                     if f.exists():
                         result_data["files"][f"scan_{ext[1:]}"] = f.name
+                # Additive truthful outcomes; legacy ``status`` stays "completed".
+                attach_outcomes(result_data, truth=_truth, stage_outcomes=_stage_leaves)
                 write_result_json(
                     out_dir_path, result_data,
                     command="scan",

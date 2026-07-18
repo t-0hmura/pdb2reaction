@@ -23,7 +23,8 @@ mmCIF/oversized-PDB inputs also receive `.cif` companions with original IDs.
 Barriers come from `post_segments` (TSOPT+IRC-refined): ΔE‡ =
 `summary.json["post_segments"][0]["mlip"]["barrier_kcal"]`, and with `--thermo`
 ΔG‡ = `summary.json["post_segments"][0]["gibbs_mlip"]["barrier_kcal"]`.
-Read top-level `mlip_backend` and `mlip_model` for the exact provenance.
+Read top-level `mlip_backend`, `mlip_model`, and `mlip_precision` for the exact
+provenance.
 `summary.json["rate_limiting_step"]` gives the highest barrier with an explicit
 `method` label; `summary.json["segments"][*]["barrier_kcal"]` is the raw MEP band
 (also mirrored as `mep_barrier_kcal`) and is reported only under an MEP label.

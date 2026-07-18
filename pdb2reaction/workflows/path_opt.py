@@ -19,6 +19,7 @@ import sys
 import time
 
 import click
+from pdb2reaction.core.output import emit
 import numpy as np
 import torch
 
@@ -40,10 +41,10 @@ from pdb2reaction.core.defaults import (
     RFO_KW,
     OPT_MODE_ALIASES,
     DMF_KW,
+    fresh_dmf_config,
     GS_KW,
     STOPT_KW,
     OUT_DIR_PATH_OPT,
-    DEFAULT_UMA_MODEL,
     apply_backend_defaults,
 )
 from pdb2reaction.core.utils import (
@@ -100,6 +101,12 @@ class DMFMepResult:
     images: List[Any]
     energies: List[float]
     hei_idx: int
+    # M09: truthful convergence of the DMF (IPOPT) solve. ``None`` means the
+    # engine exposed no readable convergence signal (fail-closed: not "converged"
+    # and never promoted to success by artifact existence).
+    is_converged: Optional[bool] = None
+    reason: str = ""
+    ipopt_status: Optional[int] = None
 
 
 def _is_cuda_oom(exc: BaseException) -> bool:
@@ -109,6 +116,17 @@ def _is_cuda_oom(exc: BaseException) -> bool:
         return True
     msg = str(exc).lower()
     return "out of memory" in msg or "cuda oom" in msg
+
+
+def _create_dmf_ase_calculator(calc_cfg: Dict[str, Any]):
+    """Create the DMF evaluator from the complete resolved calculator map.
+
+    The central ASE factory owns backend-specific key filtering. Copying here
+    keeps the caller's canonical configuration immutable while preserving every
+    accepted ORB, MACE, UMA, or custom-calculator field.
+    """
+
+    return create_ase_calculator(**dict(calc_cfg))
 
 
 def _run_dmf_mep(
@@ -189,22 +207,9 @@ def _run_dmf_mep(
         img.info["charge"] = charge
         img.info["spin"] = spin
 
-    calc_uma = create_ase_calculator(
-        backend=calc_cfg.get("backend", "uma"),
-        model=str(calc_cfg.get("model", DEFAULT_UMA_MODEL)),
-        device=str(calc_cfg.get("device", "auto")),
-        task_name=str(calc_cfg.get("task_name", "omol")),
-        workers=int(calc_cfg.get("workers", 1)),
-        workers_per_node=int(calc_cfg.get("workers_per_node", 1)),
-        # Match the DMF optimizer PES to the pysisyphus HEI-ranking PES (calc_eval
-        # below carries the full calc_cfg incl. precision). `solvent` has no ASE
-        # equivalent, so DMF cannot run solvent-corrected — that case is rejected
-        # up front (see the --solvent guard at the top of this function), hence
-        # only precision needs matching here.
-        precision=str(calc_cfg.get("precision", "fp32")),
-    )
+    ase_calc = _create_dmf_ase_calculator(calc_cfg)
 
-    dmf_cfg = deep_update(dict(DMF_KW), dmf_cfg)
+    dmf_cfg = fresh_dmf_config(dmf_cfg)
     fbenm_opts: Dict[str, Any] = dict(dmf_cfg.get("fbenm_options", {}))
     cfbenm_opts: Dict[str, Any] = dict(dmf_cfg.get("cfbenm_options", {}))
     dmf_opts: Dict[str, Any] = dict(dmf_cfg.get("dmf_options", {}))
@@ -279,9 +284,9 @@ def _run_dmf_mep(
                 k_fix=k_fix,
             )
             # Combine the configured MLIP calculator with harmonic constraints.
-            image.calc = SumCalculator([calc_uma, harmonic_calc])
+            image.calc = SumCalculator([ase_calc, harmonic_calc])
         else:
-            image.calc = calc_uma
+            image.calc = ase_calc
 
     mxflx.add_ipopt_options({"output_file": str(out_dir_path / "dmf_ipopt.out")})
     # Same default-mode IPOPT quiet as the FB-ENM interpolation above:
@@ -296,12 +301,28 @@ def _run_dmf_mep(
                 mxflx.add_ipopt_options({"max_iter": max_iter})
         except Exception:
             pass
-    mxflx.solve(tol="tight")
+    # IPOPT returns (x_opt, info); info["status"] == 0 is Solve_Succeeded and
+    # 1 is Solved_To_Acceptable_Level. Anything else (max-iter, infeasible) is
+    # NOT convergence. A missing/unreadable status fails closed to unknown.
+    _solve_ret = mxflx.solve(tol="tight")
+    _info = (
+        _solve_ret[1]
+        if isinstance(_solve_ret, (tuple, list)) and len(_solve_ret) >= 2
+        else None
+    )
+    from pdb2reaction.workflows._outcomes import ipopt_status_to_converged
+    _dmf_status: Optional[int] = None
+    if isinstance(_info, dict) and _info.get("status") is not None:
+        try:
+            _dmf_status = int(_info["status"])
+        except (TypeError, ValueError):
+            _dmf_status = None
+    _dmf_conv, _dmf_reason = ipopt_status_to_converged(_dmf_status)
 
     # Free DMF calculator before creating eval calculator to avoid GPU OOM
     for image in mxflx.images:
         image.calc = None
-    calc_uma = None
+    ase_calc = None
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
@@ -340,7 +361,14 @@ def _run_dmf_mep(
         )
 
     # Free eval calculator before returning (caller may create a new one)
-    result = DMFMepResult(images=list(mxflx.images), energies=list(energies), hei_idx=int(hei_idx))
+    result = DMFMepResult(
+        images=list(mxflx.images),
+        energies=list(energies),
+        hei_idx=int(hei_idx),
+        is_converged=_dmf_conv,
+        reason=_dmf_reason,
+        ipopt_status=_dmf_status,
+    )
     calc_eval = mxflx = None
     gc.collect()
     if torch.cuda.is_available():
@@ -360,6 +388,11 @@ def _optimize_single(
 ):
     """
     Single-structure optimization (LBFGS or RFO) shared by path_opt and path_search.
+
+    Returns ``(geometry, converged)`` where ``converged`` is the optimizer's
+    fail-closed tri-state convergence bit (``optimizer_converged_bit``): a
+    non-raising ``run()`` is not convergence (M50), so the caller must gate on
+    this bit rather than assume a completed optimization converged.
     """
     g.set_calculator(shared_calc)
 
@@ -373,8 +406,14 @@ def _optimize_single(
     else:
         opt = RFOptimizer(g, **args)
 
-    click.echo(f"\n====== [{tag}] Single-structure {opt_kind.upper()} ======\n", narrative=True)
+    emit(f"\n====== [{tag}] Single-structure {opt_kind.upper()} ======\n", narrative=True)
     opt.run()
+    # M50/C6: capture the optimizer's explicit convergence bit before any
+    # geometry post-processing. A normal (non-raising) run() is NOT convergence;
+    # thread this to the caller so a nonconverged single-structure optimization
+    # cannot silently become a usable (e.g. kink-segment) reactive leaf.
+    from pdb2reaction.workflows._outcomes import optimizer_converged_bit
+    converged = optimizer_converged_bit(opt)
 
     try:
         final_xyz = Path(opt.final_fn)
@@ -426,13 +465,16 @@ def _optimize_single(
                 err=True,
             )
         g_final.set_calculator(shared_calc)
-        return g_final
+        return g_final, converged
     except Exception as exc:
         click.echo(
             f"[path-opt] WARNING: Failed to load optimized geometry; returning input: {exc}",
             err=True,
         )
-        return g
+        # Could not even load the optimized geometry: return the input geometry
+        # and fail closed on convergence (None) rather than claim the discarded
+        # optimization converged.
+        return g, None
 
 
 
@@ -732,7 +774,7 @@ def cli(
 
         geom_cfg = dict(GEOM_KW_DEFAULT)
         calc_cfg = dict(UMA_CALC_KW)
-        dmf_cfg = dict(DMF_KW)
+        dmf_cfg = fresh_dmf_config()
         gs_cfg = dict(GS_KW)
         stopt_cfg = dict(STOPT_KW)
         stopt_cfg["out_dir"] = out_dir
@@ -976,7 +1018,7 @@ def cli(
 
         # Optional endpoint pre-optimization (LBFGS/RFO) before alignment/GSM
         if preopt:
-            click.echo("\n====== Preoptimizing endpoints via single-structure optimizer ======\n", narrative=True)
+            emit("\n====== Preoptimizing endpoints via single-structure optimizer ======\n", narrative=True)
             ref_pdb_for_preopt: Optional[Path] = None
             for p in source_paths:
                 if p.suffix.lower() == ".pdb":
@@ -1000,7 +1042,7 @@ def cli(
             for i, g in enumerate(geoms):
                 tag = f"{_seg_prefix}init{i:02d}"
                 try:
-                    g_opt = _optimize_single(
+                    g_opt, _ = _optimize_single(
                         g,
                         shared_calc,
                         single_opt_kind,
@@ -1106,11 +1148,11 @@ def cli(
                 click.echo(f"[HEI] ERROR: Failed to dump HEI: {e}", err=True)
                 sys.exit(5)
 
-            click.echo(format_elapsed("[time] Elapsed Time for Path Opt", time_start), narrative=True)
+            emit(format_elapsed("[time] Elapsed Time for Path Opt", time_start), narrative=True)
 
             # result.json (if --out-json) — DMF path
             if out_json:
-                from pdb2reaction.core.utils import write_result_json
+                from pdb2reaction.core.utils import calculator_provenance, write_result_json
                 from pysisyphus.constants import AU2KCALPERMOL as _AU2KCAL
                 _dmf_energies = list(dmf_res.energies)
                 _dmf_hei = int(dmf_res.hei_idx)
@@ -1120,14 +1162,24 @@ def cli(
                 _barrier = (_dmf_hei_E - _dmf_e0) * _AU2KCAL
                 _delta = (_dmf_eN - _dmf_e0) * _AU2KCAL
                 _dmf_converged = getattr(dmf_res, 'is_converged', None)
+                _dmf_reason = getattr(dmf_res, 'reason', "") or ""
                 result_data: Dict[str, Any] = {
-                    "status": "converged" if _dmf_converged else ("not_converged" if _dmf_converged is False else "completed"),
-                    "converged": _dmf_converged,
+                    # Legacy byte-compat: the pre-C6 DMFMepResult exposed no
+                    # readable is_converged, so both the legacy `status` and the
+                    # legacy `converged` fields always read "completed" / null.
+                    # The new IPOPT convergence truth is carried ONLY by the
+                    # additive scientific_status / stage_outcomes (attached below);
+                    # both legacy values are pinned to their base so no downstream
+                    # consumer of `status`/`converged` observes a non-additive flip
+                    # on a genuinely-converged run (M09 / C6).
+                    "status": "completed",
+                    "converged": None,
                     "mep_mode": "dmf",
                     "backend": calc_cfg.get("backend", backend),
                     "charge": calc_cfg["charge"],
                     "spin": calc_cfg["spin"],
                     "model": calc_cfg.get("model"),
+                    **calculator_provenance(calc_cfg),
                     "solvent": calc_cfg.get("solvent", "none"),
                     "preopt": bool(preopt),
                     "reactant_energy_hartree": float(_dmf_e0),
@@ -1151,6 +1203,25 @@ def cli(
                     f = out_dir_path / f"final_geometries{ext}"
                     if f.exists():
                         result_data["files"][f"final_geometries_{ext[1:]}"] = f.name
+                # Additive truthful outcomes: the DMF path is a required leaf that
+                # is usable only when the IPOPT solve explicitly converged. A
+                # nonconverged solve keeps its trajectory artifact but is not
+                # promoted to a usable path (M09).
+                from pdb2reaction.workflows._outcomes import (
+                    aggregate_workflow_truth as _agg_truth,
+                    attach_outcomes as _attach,
+                    make_leaf as _mk_leaf,
+                )
+                _dmf_leaf = _mk_leaf(
+                    "path-opt",
+                    "dmf_mep",
+                    executed=True,
+                    converged=_dmf_converged,
+                    artifacts=["final_geometries_trj.xyz"],
+                    reason=_dmf_reason,
+                )
+                _dmf_truth = _agg_truth([_dmf_leaf], ["dmf_mep"])
+                _attach(result_data, truth=_dmf_truth, stage_outcomes=[_dmf_leaf])
                 write_result_json(
                     out_dir_path, result_data,
                     command="path-opt",
@@ -1179,7 +1250,7 @@ def cli(
             **{k: v for k, v in opt_args.items() if k != "type"},
         )
 
-        click.echo("\n====== Growing String optimization ======\n", narrative=True)
+        emit("\n====== Growing String optimization ======\n", narrative=True)
         optimizer.run()
 
         final_trj = out_dir_path / "final_geometries_trj.xyz"
@@ -1272,11 +1343,11 @@ def cli(
             click.echo(f"[HEI] ERROR: Failed to dump HEI: {e}", err=True)
             sys.exit(5)
 
-        click.echo(format_elapsed("[time] Elapsed Time for Path Opt", time_start), narrative=True)
+        emit(format_elapsed("[time] Elapsed Time for Path Opt", time_start), narrative=True)
 
         # result.json (if --out-json) — GSM path
         if out_json:
-            from pdb2reaction.core.utils import write_result_json
+            from pdb2reaction.core.utils import calculator_provenance, write_result_json
             from pysisyphus.constants import AU2KCALPERMOL as _AU2KCAL
             _gsm_energies = list(map(float, energies))
             _gsm_hei = int(hei_idx)
@@ -1294,6 +1365,7 @@ def cli(
                 "charge": calc_cfg["charge"],
                 "spin": calc_cfg["spin"],
                 "model": calc_cfg.get("model"),
+                **calculator_provenance(calc_cfg),
                 "solvent": calc_cfg.get("solvent", "none"),
                 "preopt": bool(preopt),
                 "reactant_energy_hartree": float(_gsm_e0),
@@ -1317,6 +1389,22 @@ def cli(
                 f = out_dir_path / f"final_geometries{ext}"
                 if f.exists():
                     result_data_gsm["files"][f"final_geometries_{ext[1:]}"] = f.name
+            # Additive truthful outcomes: the GSM path is usable only when the
+            # optimizer explicitly converged (M09).
+            from pdb2reaction.workflows._outcomes import (
+                aggregate_workflow_truth as _agg_truth,
+                attach_outcomes as _attach,
+                make_leaf as _mk_leaf,
+            )
+            _gsm_leaf = _mk_leaf(
+                "path-opt",
+                "gsm_mep",
+                executed=True,
+                converged=_converged,
+                artifacts=["final_geometries_trj.xyz"],
+            )
+            _gsm_truth = _agg_truth([_gsm_leaf], ["gsm_mep"])
+            _attach(result_data_gsm, truth=_gsm_truth, stage_outcomes=[_gsm_leaf])
             write_result_json(
                 out_dir_path, result_data_gsm,
                 command="path-opt",

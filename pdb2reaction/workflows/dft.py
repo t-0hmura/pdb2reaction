@@ -21,6 +21,7 @@ import time
 from functools import reduce
 
 import click
+from pdb2reaction.core.output import emit
 import yaml
 import numpy as np
 
@@ -787,7 +788,7 @@ def cli(
             (out_dir_path / "result.yaml").write_text(
                 yaml.safe_dump(result_yaml, sort_keys=False, allow_unicode=True)
             )
-            click.echo(f"[write] Wrote '{out_dir_path / 'result.yaml'}'.", detail=True)
+            emit(f"[write] Wrote '{out_dir_path / 'result.yaml'}'.", detail=True)
             # summary.md and key_* outputs are disabled.
             click.echo("")
             click.echo(f"E_total (Hartree): {e_h:.12f}")
@@ -798,7 +799,7 @@ def cli(
                 click.echo("WARNING: SCF did not converge to the requested tolerance.", err=True)
                 sys.exit(3)
 
-            click.echo(format_elapsed("[time] Elapsed Time for DFT", time_start), narrative=True)
+            emit(format_elapsed("[time] Elapsed Time for DFT", time_start), narrative=True)
 
             # result.json (if --out-json)
             if out_json:

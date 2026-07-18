@@ -15,6 +15,7 @@ import time
 from typing import Any, Dict, List, Optional, Sequence
 
 import click
+from pdb2reaction.core.output import emit
 import numpy as np
 import torch
 
@@ -29,6 +30,27 @@ H_EVAA_2_AU = EV2AU / ANG2BOHR / ANG2BOHR # eV Å⁻² → Hartree Bohr⁻²
 
 class BackendError(RuntimeError):
     """Raised for backend-specific runtime failures."""
+
+
+def normalize_hessian_calc_mode(value: Optional[str]) -> str:
+    """Return the canonical Hessian method or reject an unknown token.
+
+    Calculator construction is also a direct public API, so it cannot rely on
+    Click's ``Choice`` validation at the command boundary.  Keeping the method
+    vocabulary here makes every backend obey the same two-value contract.
+    """
+
+    text = "FiniteDifference" if value is None else str(value).strip()
+    canonical = {
+        "finitedifference": "FiniteDifference",
+        "analytical": "Analytical",
+    }.get(text.casefold())
+    if canonical is None:
+        raise BackendError(
+            "Unsupported hessian_calc_mode "
+            f"{value!r}. Choose from: FiniteDifference, Analytical."
+        )
+    return canonical
 
 
 def _prepare_model_for_autograd_hessian(model_obj, torch_mod):
@@ -151,7 +173,7 @@ class MLIPCalculator(Calculator):
         super().__init__(charge=charge, mult=spin, **kwargs)
 
         self.device_str = device
-        self.hessian_calc_mode = hessian_calc_mode
+        self.hessian_calc_mode = normalize_hessian_calc_mode(hessian_calc_mode)
         self.return_partial_hessian = bool(return_partial_hessian)
         self.hessian_double = bool(hessian_double)
         self.out_hess_torch = bool(out_hess_torch)
@@ -188,7 +210,8 @@ class MLIPCalculator(Calculator):
         """Return Hessian in eV/Å² as (3N,3N) ndarray or torch Tensor.
 
         Raise ``NotImplementedError`` if analytical Hessian is not available
-        for this backend.  The base class will fall back to FD.
+        for this backend. Explicit analytical requests are never changed to
+        finite differences by the base dispatcher.
         """
         raise NotImplementedError(
             f"Analytical Hessian is not available for {self.__class__.__name__}."
@@ -404,10 +427,17 @@ class MLIPCalculator(Calculator):
 
         mode_label = "FiniteDifference"
 
-        mode = (self.hessian_calc_mode or "FiniteDifference").strip().lower()
-        use_analytical = mode in ("analytical", "analytic")
+        mode = normalize_hessian_calc_mode(self.hessian_calc_mode)
+        use_analytical = mode == "Analytical"
 
-        if use_analytical and self._supports_analytical_hessian():
+        if use_analytical and not self._supports_analytical_hessian():
+            raise BackendError(
+                "Analytical Hessian is not available for "
+                f"{self.__class__.__name__}. Select "
+                "hessian_calc_mode='FiniteDifference'."
+            )
+
+        if use_analytical:
             mode_label = "Analytical"
             t0 = time.perf_counter()
             e_ev, F_ev = self._compute_energy_forces_ev(elem, coord_ang)
@@ -457,7 +487,7 @@ class MLIPCalculator(Calculator):
             }
 
         if self.print_timing:
-            click.echo(f"[hessian] Completed {mode_label} Hessian: {mode_elapsed:.2f} s", detail=True)
+            emit(f"[hessian] Completed {mode_label} Hessian: {mode_elapsed:.2f} s", detail=True)
             from pdb2reaction.core.utils import verbose_level
             if verbose_level() >= 3:
                 click.echo(f"[HessianTiming] mode: {mode_label} | elapsed: {mode_elapsed:.2f} s")

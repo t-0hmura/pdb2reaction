@@ -15,7 +15,7 @@ import importlib
 import warnings
 from typing import Any, Dict, Optional
 
-from .base import BackendError, MLIPCalculator
+from .base import BackendError, MLIPCalculator, normalize_hessian_calc_mode
 
 # Lazy-import registry.  Modules are imported only when the backend is used.
 BACKEND_REGISTRY: Dict[str, Dict[str, str]] = {
@@ -302,6 +302,13 @@ def create_calculator(backend: str = "uma", **kwargs) -> MLIPCalculator:
         ``xtb_acc``) are extracted and used to wrap the base calculator with
         ``SolventCorrectedCalculator`` when ``solvent != 'none'``.
     """
+    # Validate the cross-backend numerical method before importing or loading a
+    # backend. Direct API callers receive the same strict enum as CLI callers.
+    if "hessian_calc_mode" in kwargs:
+        kwargs["hessian_calc_mode"] = normalize_hessian_calc_mode(
+            kwargs["hessian_calc_mode"]
+        )
+
     # Extract solvent keys before backend filtering
     solvent = str(kwargs.pop("solvent", "none"))
     solvent_model = str(kwargs.pop("solvent_model", "alpb"))
@@ -381,6 +388,7 @@ __all__ = [
     "VALID_BACKENDS",
     "BackendError",
     "MLIPCalculator",
+    "normalize_hessian_calc_mode",
     "create_ase_calculator",
     "create_calculator",
     "resolve_backend",

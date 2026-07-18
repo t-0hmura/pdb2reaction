@@ -73,3 +73,11 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "def _effective_out_dir(argv=None):" in app
     assert "out = _effective_out_dir(a)" in app
     assert "_results(out)" in app
+    assert "'mep_mode': {'all', 'path-opt', 'path-search'}" in app
+    assert "sub in TOOL_CAPABILITIES['threshold']" in app
+    assert "elif sub == 'dft':" in app
+    assert "cmd += ['--func-basis', fb]" in app
+    assert "adv_mep.disabled = sub not in TOOL_CAPABILITIES['mep_mode']" in app
+    assert "d['all_mode'] = _wv('all_mode', 'mep')" in app
+    assert "all_mode.value = saved_all_mode" in app
+    assert "bytes(c).decode('utf-8')" in app

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
 
+from click.testing import CliRunner
 import numpy as np
 import pytest
 
@@ -126,3 +128,59 @@ class TestCompareStructures:
         text = summarize_changes(_line_geom(r2), res, one_based=True)
         assert "C1-C2" in text
         assert "Å -->" in text
+
+
+def _write_ordinary_gjf(path: Path, *, product: bool) -> None:
+    fluorine_x = 1.35 if product else 4.0
+    chlorine_x = -4.0 if product else -1.8
+    path.write_text(
+        "%chk=test.chk\n"
+        "# hf/sto-3g\n\n"
+        "ordinary Gaussian input\n\n"
+        "0 1\n"
+        "C   0.000000  0.000000  0.000000\n"
+        "H   0.000000  1.000000  0.000000\n"
+        "H   0.000000 -1.000000  0.000000\n"
+        "H   0.000000  0.000000  1.000000\n"
+        f"F   {fluorine_x:.6f}  0.000000  0.000000\n"
+        f"Cl  {chlorine_x:.6f}  0.000000  0.000000\n\n",
+        encoding="utf-8",
+    )
+
+
+def test_bond_summary_loads_ordinary_gjf_through_p2r_preparation(
+    tmp_path: Path,
+) -> None:
+    from pysisyphus.constants import BOHR2ANG
+    from pdb2reaction.domain.bond_summary import _load_geom
+
+    reactant = tmp_path / "reactant.gjf"
+    _write_ordinary_gjf(reactant, product=False)
+
+    geom = _load_geom(str(reactant))
+    assert tuple(geom.atoms) == ("C", "H", "H", "H", "F", "Cl")
+    np.testing.assert_allclose(
+        np.asarray(geom.coords3d)[:, 0] * BOHR2ANG,
+        [0.0, 0.0, 0.0, 0.0, 4.0, -1.8],
+        atol=1.0e-10,
+    )
+
+
+def test_real_bond_summary_cli_reports_ordinary_gjf_bond_changes(
+    tmp_path: Path,
+) -> None:
+    from pdb2reaction.cli import cli as root_cli
+
+    reactant = tmp_path / "reactant.gjf"
+    product = tmp_path / "product.gjf"
+    _write_ordinary_gjf(reactant, product=False)
+    _write_ordinary_gjf(product, product=True)
+
+    result = CliRunner().invoke(
+        root_cli,
+        ["bond-summary", str(reactant), str(product)],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "C1-F5" in result.output
+    assert "C1-Cl6" in result.output

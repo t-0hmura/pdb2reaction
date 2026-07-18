@@ -70,7 +70,7 @@ the original result is retained.
 | (a) MEP / path search | [`path-search`](path-search.md) | You have both endpoints (reactant **and** product) and want the TS bracketed automatically | Recursive minimum-energy-path search (GSM / DMF) with bond-change detection; it auto-segments a multi-step path, refines each reactive segment, and returns the highest-energy image per segment (`hei_seg_NN.xyz`) |
 | (b) Distance-restrained scan | [`scan`](scan.md) | You have only the reactant, or want to drive a specific reacting distance directly | Harmonic distance restraints, `E = ½k(r − target)²`, drive each reacting distance with full relaxation, advancing the system toward a TS candidate |
 
-There is no `opt --restraint` flag: `opt` is plain unrestrained minimization, and the distance-restrained build-up route is `scan` (which can relax the endpoints around the driven path with `--preopt` / `--endopt`). Feed the candidate from either route into `tsopt → freq → irc` to optimize and validate it.
+There is no `opt --restraint` flag: `opt` restrains distances with `--dist-freeze` (harmonic, `--bias-k`) rather than driving them, and the distance-driven build-up route is `scan` (which can relax the endpoints around the driven path with `--preopt` / `--endopt`). Feed the candidate from either route into `tsopt → freq → irc` to optimize and validate it.
 
 ## Examples
 
@@ -111,7 +111,7 @@ Add `--dump` to keep the full optimization trajectory for inspection.
 - **Charge / spin** are resolved via the standard priority chain (see {ref}`CLI Conventions: Charge specification <charge-specification>`).
 - **Geometry loading + freeze-links** — structures are read through `pysisyphus.helpers.geom_loader`. When `--freeze-links` is active, cap-hydrogen parent atoms are automatically frozen (see {ref}`Cap hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
 - **MLIP Hessians** (default UMA) — `--hessian-calc-mode` toggles analytical vs finite-difference; both honour active (PHVA) subspaces. The MLIP backend may return only the active block when frozen atoms are present. See {ref}`hessian-evaluation` for the full Hessian-evaluation matrix.
-- **Dimer mode** — the Hessian-Guided Dimer stage periodically refreshes the dimer direction by evaluating an exact Hessian in the active subspace. Its `--tr-projection` treatment defaults to `constrained`, which removes only full-system rigid motions compatible with frozen anchors. The lowest eigenpair uses `torch.lobpcg` when `root == 0`, falling back to `torch.linalg.eigh`. With `--flatten`, the active Hessian is updated via a Bofill update (an SR1/MS ↔ PSB blend; toggle via `hessian_dimer.flatten_loop_bofill`) using displacements Δx and gradient differences Δg. Each flatten loop:
+- **Dimer mode** — the Hessian-Guided Dimer stage periodically refreshes the dimer direction by evaluating an exact Hessian in the active subspace. Its `--tr-projection` treatment defaults to `constrained`, which removes only full-system rigid motions compatible with frozen anchors. Every stored, rotated, and trial orientation has frozen Cartesian components set to zero, and every off-centre force evaluation retains the central image's frozen coordinates exactly. The lowest eigenpair uses `torch.lobpcg` when `root == 0`, falling back to `torch.linalg.eigh`. With `--flatten`, the active Hessian is updated via a Bofill update (an SR1/MS ↔ PSB blend; toggle via `hessian_dimer.flatten_loop_bofill`) using displacements Δx and gradient differences Δg. Each flatten loop:
   - estimates imaginary modes, flattens once, and refreshes the dimer direction;
   - runs a Dimer + L-BFGS micro-segment;
   - optionally performs a Bofill update.
@@ -331,7 +331,7 @@ Set `rsirfo.track_mode_by_overlap: true` if the TS mode switches root during opt
 - Imaginary-frequency **detection** threshold defaults to 5.0 cm⁻¹ (configurable via `hessian_dimer.neg_freq_thresh_cm`). Frequencies with magnitudes below this threshold are not counted as imaginary.
 - The selected `root` controls which vibrational mode is followed during optimization. It is set via YAML (`rsirfo.root` or `hessian_dimer.root`; default `0`); `tsopt` has no `--root` CLI flag, unlike [`irc`](irc.md).
 - Use `--opt-mode` to choose the algorithm directly (`rsprfo` by default) rather than editing YAML mode mappings.
-- Dimer orientation, flattening, and final exact PHVA validation use the same `--tr-projection` implementation as `freq`. Hessian RFO optimization itself operates on the active-DOF Cartesian Hessian without this projection. See [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries).
+- Dimer orientation, rotation forces, flattening, and final exact PHVA validation use the same `--tr-projection` implementation as `freq`. The Dimer rebuilds this basis whenever its central image changes. `constrained` never subtracts translations of the active fragment unless they are actual rigid null directions compatible with every frozen anchor. Hessian RFO optimization itself operates on the active-DOF Cartesian Hessian without this projection. See [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries).
 - See {ref}`CLI Conventions: Configuration precedence <configuration-precedence>` for the full resolution order.
 
 ## See Also

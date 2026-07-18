@@ -75,3 +75,67 @@ def test_all_dry_run_cleans_extract_tempdir_on_failure(tmp_path, monkeypatch):
     assert result.exit_code != 0
     assert "synthetic extract failure" in result.output
     assert not dry_dir.exists()
+
+
+def test_all_dry_run_cleans_session_owned_extract_tempdir_on_success(
+    tmp_path, monkeypatch,
+):
+    all_workflow = importlib.import_module("pdb2reaction.workflows.all")
+    pdb = tmp_path / "input.pdb"
+    pdb.write_text(
+        "HETATM    1  H1  SAM A   1       0.000   0.000   0.000  1.00  0.00           H  \n"
+        "HETATM    2  H2  SAM A   1       0.000   0.000   0.740  1.00  0.00           H  \n"
+        "END\n",
+        encoding="utf-8",
+    )
+    dry_dir = tmp_path / "dry_extract"
+
+    def fake_mkdtemp(*args, **kwargs):
+        dry_dir.mkdir()
+        return str(dry_dir)
+
+    def successful_extract(**kwargs):
+        output = kwargs["output"][0]
+        all_workflow.shutil.copy2(pdb, output)
+        return {"charge_summary": {"total_charge": 0.0}}
+
+    monkeypatch.setattr(all_workflow.tempfile, "mkdtemp", fake_mkdtemp)
+    monkeypatch.setattr(all_workflow, "extract_api", successful_extract)
+
+    result = CliRunner().invoke(
+        root_cli,
+        ["all", "-i", str(pdb), "-c", "SAM", "-q", "0", "--tsopt", "--dry-run"],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert not dry_dir.exists()
+
+
+def test_all_dry_run_does_not_report_prior_summary(tmp_path):
+    xyz = tmp_path / "ts.xyz"
+    xyz.write_text("2\nH2\nH 0 0 0\nH 0 0 0.74\n", encoding="utf-8")
+    out_dir = tmp_path / "existing"
+    out_dir.mkdir()
+    (out_dir / "summary.json").write_text(
+        '{"status": "STALE_SENTINEL", "n_segments_reactive": 99}',
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "all",
+            "-i",
+            str(xyz),
+            "-q",
+            "0",
+            "--tsopt",
+            "--dry-run",
+            "--out-dir",
+            str(out_dir),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "STALE_SENTINEL" not in result.output
+    assert "Reactive segments: 99" not in result.output

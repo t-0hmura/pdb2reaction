@@ -14,6 +14,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CLI_MODULE = "pdb2reaction"
+CALC_FILE = Path(__file__).with_name("docs_harmonic_calc.py")
 TIMEOUT_ENV = "PDB2REACTION_DUMP_CASE_TIMEOUT_SEC"
 GENERIC_TIMEOUT_ENV = "DOCS_DUMP_CASE_TIMEOUT_SEC"
 DEFAULT_CASE_TIMEOUT_SEC = 300.0
@@ -111,8 +112,7 @@ def _validate_case(case: Case, timeout_sec: float | None = None) -> None:
 def main() -> int:
     runnable, reason = _check_runnable()
     if not runnable:
-        print(f"[dump-smoke] skipped: {reason}")
-        return 0
+        raise RuntimeError(f"[dump-smoke] required trajectory smoke cannot run: {reason}")
 
     timeout_raw = ""
     timeout_env = TIMEOUT_ENV
@@ -135,6 +135,7 @@ def main() -> int:
         base = Path(td)
         tiny_xyz = base / "tiny.xyz"
         _write_tiny_xyz(tiny_xyz)
+        calc_args = ["--calc-file", str(CALC_FILE)]
 
         cases = [
             Case(
@@ -147,6 +148,7 @@ def main() -> int:
                     "0",
                     "-m",
                     "1",
+                    *calc_args,
                     "--opt-mode",
                     "grad",
                     "--max-cycles",
@@ -167,6 +169,7 @@ def main() -> int:
                     "0",
                     "-m",
                     "1",
+                    *calc_args,
                     "--opt-mode",
                     "hess",
                     "--max-cycles",
@@ -187,6 +190,7 @@ def main() -> int:
                     "0",
                     "-m",
                     "1",
+                    *calc_args,
                     "--opt-mode",
                     "grad",
                     "--max-cycles",
@@ -207,6 +211,7 @@ def main() -> int:
                     "0",
                     "-m",
                     "1",
+                    *calc_args,
                     "--opt-mode",
                     "hess",
                     "--max-cycles",
@@ -228,6 +233,7 @@ def main() -> int:
                     "0",
                     "-m",
                     "1",
+                    *calc_args,
                     "--opt-mode",
                     "hess",
                     "--max-cycles",
@@ -249,6 +255,7 @@ def main() -> int:
                     "0",
                     "-m",
                     "1",
+                    *calc_args,
                     "--opt-mode",
                     "hess",
                     "--max-cycles",

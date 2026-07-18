@@ -6,23 +6,84 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+> Upgrade warning: unchanged inputs can produce different geometries, energies/barriers,
+> vibrational classifications, thermochemistry, and scientific/terminal status. Consumers of
+> `result.json`/`summary.json` must review the Breaking changes and Machine-readable output sections.
+
+### Breaking changes
+- **JSON schema 2.0 (breaking).** `post_segments[].uma` became `.mlip`, `gibbs_uma` became
+  `gibbs_mlip`, and `gibbs_dft_uma` became `gibbs_dft_mlip`; the old keys were removed. This is
+  `schema_version: "2.0"`. Update parsers before upgrading.
+- **MCP `search_paths` now requires `product_pdb` (keyword-only).** It previously took
+  `search_paths(input_pdb, charge=None, *, …)` and sent only the input endpoint; it now requires
+  `product_pdb: str` and sends both endpoints. Existing calls that omit the product fail with
+  `TypeError`. Migration: pass `product_pdb=<product structure>`.
+- **`all -q/--charge` under `-c/--center` now asserts instead of overriding.** A supplied charge
+  that disagrees with the extractor-derived charge previously overrode it with a warning; a mismatch
+  now aborts. Migration: omit `-q` to use the derived charge, pass `--ligand-charge`, or set `-q` to
+  the derived value.
+
 ### Added
-- Add a lossless mmCIF/large-PDB bridge, exact chain/residue/atom selectors,
-  safe duplicate atom-name handling, and CIF output companions with original IDs.
+- Add an mmCIF/large-PDB bridge (atom-identity–preserving; multi-model input keeps the first model,
+  with a warning), exact chain/residue/atom selectors, safe duplicate atom-name handling, and CIF
+  output companions with original IDs.
 - Add a release-pinned Colab GUI for structure preparation, 3D atom picking,
   validated execution, backend controls, and result inspection.
 - Add opt-in IRC `--never-stop` / `all --irc-never-stop` traversal of transient
   energy rises while retaining convergence and cycle limits.
+- Add `tsopt --ref-mode PATH` to seed TS mode-following with a reference mode;
+  `all` auto-supplies the MEP tangent at the HEI image.
+- Add `all --irc-step-size`, forwarded to the IRC child as `--step-size`.
 
 ### Changed
 - Derive the existing `path-opt --max-nodes 20` default from shared
   configuration; GSM/DMF count movable images, excluding the two endpoints.
-- Use constrained frozen-boundary rigid projection for PHVA, IRC, Dimer, and TS
-  validation; retain isolated-active comparison mode and record provenance.
-- Replace UMA-specific summary keys with `mlip`, `gibbs_mlip`, and
-  `gibbs_dft_mlip`; this breaking JSON contract is `schema_version: "2.0"`.
+- Project only rigid modes that are an actual null space of the frozen system for
+  PHVA, IRC, Dimer, and TS validation, and record the effective mode. The former
+  active-fragment projection could hide a real imaginary mode, so `n_imag`, ZPE
+  and ΔG‡ move on frozen-boundary systems. The superseded `--tr-projection
+  legacy-active` treatment is deprecated: it now warns and must not be used for
+  pass/HOSP transition-state certification; install the pinned pre-fix release to
+  reproduce old results bitwise.
+- Reject energy-increasing trial steps by default in the RFO/L-BFGS minimizers
+  (`reject_uphill`), reject TS trial steps that lose the saddle mode
+  (`reject_mode_loss`), require an eigenvalue-structure check and an explicit
+  saddle verification before a TS optimization may stop (`check_eigval_structure`,
+  `verify_saddle`), and add saddle recovery. These are default-on optimizer
+  behavior changes: an optimization can now stop at a different geometry, or
+  report a different terminal status, than it did in v0.4.11.
+- Record backend, model, and canonical effective precision in calculator-backed
+  leaf and aggregate JSON outputs.
+- Break the product import cycle by relocating shared charge/residue services and
+  lowering the normal-mode kernel into the bundled engine; no CLI, numerical, or
+  JSON change.
+- Keep finite-difference Hessian assembly, low-rank Bofill updates, and mass
+  scaling device-resident on GPU runs, avoiding per-step host round-trips.
+- Seed TS optimization from the MEP tangent: `all` writes the HEI tangent and
+  passes it to the TSOPT child as `--ref-mode`, so the located saddle, `n_imag`,
+  and barrier can differ from v0.4.11.
+- Skip the BFGS Hessian update when the curvature `s·y ≤ 0` (previously logged and
+  applied); this changes the Hessian, step, and geometry for BFGS runs that hit
+  non-positive curvature.
+- Decide IRC endpoint minimality on an exact endpoint Hessian (active-space
+  projected) under the opt-in `--irc-pos-def`, replacing the integrator's
+  quasi-Newton Hessian; the endpoint can converge at a different geometry.
+- Select one `fix-altloc` label per residue by mean occupancy (was per-atom
+  highest-occupancy); a different conformer can be written, moving downstream
+  geometry and energy.
+- Seed `scan2d`/`scan3d` grid points only from explicitly converged relaxations,
+  and reference relative and minimum energies to the seed-eligible points only, so
+  every `energy_kcal`/`min_energy_hartree` shifts when any grid point fails.
+- Isolate Direct-Max-Flux configuration per invocation (`fresh_dmf_config`
+  deep-copy); repeated in-process/MCP path-optimization runs no longer share
+  mutated nested defaults.
 
 ### Fixed
+- Keep Hessian-Dimer orientations and off-centre images on the frozen Cartesian
+  constraint manifold, refreshing constraint-compatible rigid null modes at
+  each central image.
+- Resolve the `sp --hess` frozen active-block contract before calculator
+  construction so `--show-config`/`--dry-run` and runtime configuration agree.
 - Make ORB analytical Hessians robust to double-backward saved-tensor mutation,
   and atomically roll back rejected RFO/L-BFGS trials and optimizer state.
 - Reject `n_imag=0` TS minima using exact Cartesian PHVA or internal-coordinate
@@ -31,10 +92,56 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   and block `all` post-processing unless TS validation reports `n_imag = 1`.
 - Preserve CLI-over-YAML precedence for charge/spin, flatten, custom calculator
   factory, and scan configuration across standalone and `all` workflows.
+- Leave calculator/solvent provenance null when `scan3d --csv` redraws external
+  data, and honor EulerPC's normalized IRC filename prefix in conversion/JSON.
+- Apply the ZPE scale factor exactly once in thermochemistry, so a non-unity
+  factor no longer enters the reported ZPE and `U`/`H`/`G` quadratically.
+- Isolate each Dimer's random state from the process-global NumPy RNG, and raise
+  a clear error for an invalid rotation method.
+- Run the `opt --flatten` loop when the optimizer stalls on an energy plateau.
+  The loop rebuilds the Hessian and displaces along the remaining imaginary
+  modes, so a stall is exactly when it is wanted; only a flatten *retry* that
+  stalls again stops the loop.
+- Keep optimizing when `opt.dump_restart` is set on an optimizer class whose
+  restart state is not declared: the unsupported checkpoint is refused once,
+  further dumping is disabled, and the run continues instead of aborting.
+- Resolve the rigid-mode default from one place, so the `freq`/IRC/TS-optimizer
+  fallbacks can no longer drift apart from the documented default.
+- Convert `sp`'s YAML `geom.freeze_atoms` from 1-based to 0-based like every other
+  command; `sp` previously froze the atom one index too low.
+- Zero frozen-atom entries of the xTB-solvent and harmonic-restraint force and
+  Hessian deltas, restoring the frozen-atom invariant the base calculator enforces;
+  `HarmonicBiasCalculator` now defines `get_hessian` (restraint runs previously used
+  the unbiased base Hessian). Forces, convergence, and frequencies change when a
+  frozen atom lies in the partial-Hessian block or a restrained pair references one.
+- Return no thermochemistry from the `all` frequency stage on a nonzero exit instead
+  of parsing a stale `thermoanalysis.yaml`, so a failed `freq` no longer contributes
+  wrong ZPE/`U`/`H`/`G`/Gibbs numbers.
+
+### Machine-readable output
+- `result.json`/`summary.json` gained additive field families — a `run_id` (from
+  `PDB2REACTION_RUN_ID`; a conflicting id is rejected); `execution_status` and
+  `scientific_status` with reasons and expected/observed item ids; per-stage and
+  per-point outcomes; per-segment `converged`, `irc`, and `endpoint_opt` records;
+  `endpoint_assignment` provenance; `current_output_paths`; and resolved
+  calculator/precision provenance. These are additive for consumers that tolerate
+  unknown fields; strict schemas, exhaustive decoders, and snapshot diffs may still
+  need updating. `scientific_status` also participates in usability/promotion
+  decisions, not only provenance.
+- `key_output_files` now lists only the artifacts claimed by the current
+  invocation's run manifest rather than files discovered under the output tree, so a
+  reused `-o/--out-dir` no longer reports stale files from an earlier run.
+- Write `result.json`/`summary.json` by staged atomic replace (fsync + `os.replace`,
+  mirror first) and raise on a write failure that was previously swallowed;
+  XYZ→PDB/CIF conversion builds the whole output in memory and validates every frame
+  (atom count, element order, shape, finiteness, PDB column width) before writing,
+  raising where v0.4.11 warned-and-skipped or emitted a corrupt record. Valid-input
+  output bytes are unchanged.
 
 ### Documentation
 - Rebuild and validate docs, CLI references, and agent skills for TS/IRC recovery,
   cluster construction, backends, CIF/large structures, and provenance.
+- Run trajectory smoke and strict Sphinx/CFF validation in CI without passing skips.
 
 ## [0.4.11] — 2026-07-13
 

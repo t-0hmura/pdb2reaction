@@ -14,16 +14,20 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional, Sequence, TypedDict
+
+from pdb2reaction.core.result_commit import RUN_ID_ENV
 
 
 # Schema version for the MCP tool return envelope. Bump when the field
 # set / value types in `SubcmdResultDict` change. 1.0 matches the
 # baseline (status / exit_code / out_dir / summary / stderr_tail /
 # stdout_tail / hint / argv / schema_version).
-MCP_SUBCMD_RESULT_SCHEMA_VERSION = "1.0"
+MCP_SUBCMD_RESULT_SCHEMA_VERSION = "1.1"
 
 # Allowed values for the `status` field. Documented in docs/mcp_server.md.
 MCP_SUBCMD_RESULT_STATUSES = (
@@ -31,6 +35,7 @@ MCP_SUBCMD_RESULT_STATUSES = (
     "failed",
     "summary_missing",
     "summary_parse_error",
+    "summary_run_mismatch",
 )
 
 
@@ -51,6 +56,7 @@ class SubcmdResultDict(TypedDict, total=False):
     stdout_tail: str
     hint: Optional[str]
     argv: list[str]
+    run_id: str
 
 
 @dataclass
@@ -58,7 +64,7 @@ class SubcmdResult:
     """Structured result of a single pdb2reaction subcmd invocation.
 
     `status` is one of :data:`MCP_SUBCMD_RESULT_STATUSES`. The envelope
-    carries `schema_version = "1.0"` so MCP clients can pin the contract
+    carries `schema_version = "1.1"` so MCP clients can pin the contract
     and migrate when the structure changes.
     """
 
@@ -70,6 +76,7 @@ class SubcmdResult:
     stdout_tail: str = ""
     hint: Optional[str] = None
     argv: list[str] = field(default_factory=list)
+    run_id: str = ""
 
     def to_dict(self) -> SubcmdResultDict:
         """Serialise to a plain dict the MCP framework can ship over JSON-RPC."""
@@ -83,7 +90,120 @@ class SubcmdResult:
             "stdout_tail": self.stdout_tail,
             "hint": self.hint,
             "argv": self.argv,
+            "run_id": self.run_id,
         }
+
+
+_PRODUCT_ALIASES = {"pdb2reaction", "p2r"}
+
+
+def _bind_server_argv(argv: Sequence[str]) -> list[str]:
+    """Bind product console aliases to this interpreter and imported package."""
+
+    requested = list(argv)
+    if requested and Path(requested[0]).name in _PRODUCT_ALIASES:
+        return [sys.executable, "-m", "pdb2reaction", *requested[1:]]
+    return requested
+
+
+def _child_env(
+    *,
+    run_id: str,
+    env_overrides: Optional[dict[str, str]] = None,
+) -> dict[str, str]:
+    """Build a child environment tied to this source tree and invocation."""
+
+    env = os.environ.copy()
+    if env_overrides:
+        env.update(env_overrides)
+
+    source_root = str(Path(__file__).resolve().parents[2])
+    existing = [part for part in env.get("PYTHONPATH", "").split(os.pathsep) if part]
+    env["PYTHONPATH"] = os.pathsep.join(
+        [source_root, *(part for part in existing if part != source_root)]
+    )
+    # The runner owns the identity even if an inherited/override environment
+    # carried an older invocation's value.
+    env[RUN_ID_ENV] = run_id
+    return env
+
+
+def _read_current_summary(
+    summary_path: Path,
+    *,
+    run_id: str,
+    expected_primary: bool = False,
+) -> tuple[str, dict[str, Any], Optional[str]]:
+    """Read a summary only when it belongs to the current invocation."""
+
+    if not summary_path.exists():
+        return "summary_missing", {}, None
+    try:
+        loaded = json.loads(summary_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        return (
+            "summary_parse_error",
+            {},
+            f"{summary_path.name} present but not valid JSON: {exc}",
+        )
+    if not isinstance(loaded, dict):
+        return (
+            "summary_parse_error",
+            {},
+            f"{summary_path.name} must contain a JSON object",
+        )
+    if loaded.get("run_id") != run_id:
+        return (
+            "summary_run_mismatch",
+            {},
+            f"{summary_path.name} does not belong to current run_id {run_id}",
+        )
+    # Leaf commands publish summary.json first and authoritative result.json
+    # last.  If a primary replace failed, the files can be missing/mixed or
+    # carry different generations.  ``expected_primary`` is derived from the
+    # invoked command, so an unrelated stale result.json cannot invalidate a
+    # legitimate one-file aggregate summary.
+    primary_path = summary_path.with_name("result.json")
+    if expected_primary:
+        if not primary_path.exists():
+            return (
+                "summary_run_mismatch",
+                {},
+                "current leaf summary is missing authoritative result.json",
+            )
+        try:
+            primary = json.loads(primary_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as exc:
+            return (
+                "summary_run_mismatch",
+                {},
+                f"result.json is not a valid current-run primary: {exc}",
+            )
+        if (
+            not isinstance(primary, dict)
+            or primary.get("run_id") != run_id
+            or primary != loaded
+        ):
+            return (
+                "summary_run_mismatch",
+                {},
+                "summary.json and authoritative result.json are different generations",
+            )
+    return "ok", loaded, None
+
+
+_SUMMARY_ONLY_COMMANDS = {"all", "path-search"}
+
+
+def _expects_result_primary(argv: Sequence[str]) -> bool:
+    """Return whether a managed summary command publishes a result.json pair."""
+
+    requested = list(argv)
+    if not requested or Path(requested[0]).name not in _PRODUCT_ALIASES:
+        return False
+    if len(requested) < 2:
+        return False
+    return requested[1] not in _SUMMARY_ONLY_COMMANDS
 
 
 def _tail(text: str, max_lines: int = 60) -> str:
@@ -137,13 +257,13 @@ def run_subcmd(
     summary_filename
         Override for the summary file (default ``summary.json``).
     """
-    env = os.environ.copy()
-    if env_overrides:
-        env.update(env_overrides)
+    run_id = str(uuid.uuid4())
+    executed_argv = _bind_server_argv(argv)
+    env = _child_env(run_id=run_id, env_overrides=env_overrides)
 
     try:
         proc = subprocess.run(
-            list(argv),
+            executed_argv,
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -158,7 +278,8 @@ def run_subcmd(
                 "The pdb2reaction CLI is not on PATH. Install pdb2reaction "
                 "into the environment that hosts the MCP server."
             ),
-            argv=list(argv),
+            argv=executed_argv,
+            run_id=run_id,
         )
     except subprocess.TimeoutExpired as exc:
         return SubcmdResult(
@@ -169,7 +290,8 @@ def run_subcmd(
                 "Increase the `timeout_seconds` tool argument or rerun with a smaller "
                 "system / fewer cycles."
             ),
-            argv=list(argv),
+            argv=executed_argv,
+            run_id=run_id,
         )
 
     exit_code = proc.returncode
@@ -181,13 +303,12 @@ def run_subcmd(
     summary_status: str = "summary_missing"
     if out_dir is not None:
         summary_path = Path(out_dir) / summary_filename
-        if summary_path.exists():
-            try:
-                summary = json.loads(summary_path.read_text())
-                summary_status = "ok"
-            except (json.JSONDecodeError, OSError) as exc:
-                summary_status = "summary_parse_error"
-                hint = hint or f"{summary_filename} present but not valid JSON: {exc}"
+        summary_status, summary, summary_hint = _read_current_summary(
+            summary_path,
+            run_id=run_id,
+            expected_primary=_expects_result_primary(argv),
+        )
+        hint = hint or summary_hint
 
     if exit_code != 0:
         status = "failed"
@@ -204,6 +325,6 @@ def run_subcmd(
         stderr_tail=stderr_tail,
         stdout_tail=stdout_tail,
         hint=hint,
-        argv=list(argv),
+        argv=executed_argv,
+        run_id=run_id,
     )
-

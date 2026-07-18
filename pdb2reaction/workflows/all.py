@@ -14,6 +14,7 @@ import signal
 import sys
 import tempfile
 import click
+from pdb2reaction.core.output import emit
 from click.core import ParameterSource
 import time
 import yaml
@@ -76,11 +77,32 @@ from pdb2reaction.core.utils import (
     read_xyz_as_blocks,
     read_xyz_first_last,
     xyz_blocks_first_last,
-    set_freeze_atoms_or_warn,
     cli_param_overridden,
+    calculator_provenance,
     verbose_level,
 )
+from pdb2reaction.core.result_commit import (
+    apply_current_run_id,
+    commit_exact,
+    commit_json,
+)
+from pdb2reaction.workflows._run_session import (
+    CalculatorLease,
+    InvocationManifest,
+    RunSession,
+    claim_public_output as _claim_public_output,
+    claim_path_deliverables as _claim_path_deliverables,
+    current_key_output_files as _current_key_output_files,
+    declare_public_output as _declare_public_output,
+    declare_path_deliverables as _declare_path_deliverables,
+    public_output_key as _public_output_key,
+    refresh_current_public_outputs as _refresh_current_public_outputs,
+)
 from pdb2reaction.cli.common_options import add_coord_type_option, add_precision_option, add_backend_model_option, add_calc_file_option, add_deterministic_option, add_allow_charge_mult_mismatch_option
+# Advanced-help visibility/callback: one product-local implementation lives in
+# cli.help_pages; the `all` command routes through it (a presentation-layer
+# dependency) instead of keeping a private copy.
+from pdb2reaction.cli.help_pages import _hide_advanced_options, _show_advanced_subcommand_help
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +120,8 @@ class _EchoState:
         self._started = False
 
     def echo(self, *args, **kwargs) -> None:
-        click.echo(*args, **kwargs)
+        kwargs.setdefault("narrative", False)
+        emit(*args, **kwargs)
         self._started = True
 
     def section(self, message: str, **kwargs) -> None:
@@ -108,8 +131,8 @@ class _EchoState:
         # tag so the spacing around a shown banner survives the gate.
         narrative = kwargs.setdefault("narrative", True)
         if self._started:
-            click.echo(narrative=narrative)
-        click.echo(message, **kwargs)
+            emit(narrative=narrative)
+        emit(message, **kwargs)
         self._started = True
 
 
@@ -137,7 +160,11 @@ def _echo_section(message: str, **kwargs) -> None:
     _echo_state.section(message, **kwargs)
 
 
-def _emit_final_summary(out_dir: Path | None, time_start: float) -> None:
+def _emit_final_summary(
+    out_dir: Path | None,
+    time_start: float,
+    manifest: Optional[InvocationManifest] = None,
+) -> None:
     """Print a visual `====== Pipeline summary ======` block + Elapsed line.
 
     Reads ``summary.json`` if present and lifts the most-asked-for numbers
@@ -149,8 +176,11 @@ def _emit_final_summary(out_dir: Path | None, time_start: float) -> None:
     """
     summary: Dict[str, Any] = {}
     if out_dir is not None:
-        summary_path = Path(out_dir) / "summary.json"
-        if summary_path.exists():
+        summary_path = (Path(out_dir) / "summary.json").resolve(strict=False)
+        current_summary = manifest is None or any(
+            path == summary_path for path in manifest.paths("output.public.")
+        )
+        if current_summary and summary_path.exists():
             try:
                 _loaded = json.loads(summary_path.read_text(encoding="utf-8"))
                 if isinstance(_loaded, dict):
@@ -195,7 +225,10 @@ from pdb2reaction.workflows import irc as _irc_cli
 def _copy_logged(src: Path, dst: Path, *, label: Optional[str] = None, echo: bool = True) -> bool:
     """Copy files with consistent warning messages; return success."""
     try:
-        shutil.copy2(src, dst)
+        if Path(src).name == "summary.json" and Path(dst).name == "summary.json":
+            commit_exact(Path(dst), Path(src).read_bytes())
+        else:
+            shutil.copy2(src, dst)
         template = coordinate_template_for(src)
         if template is not None:
             register_coordinate_template(dst, template)
@@ -207,6 +240,53 @@ def _copy_logged(src: Path, dst: Path, *, label: Optional[str] = None, echo: boo
         shown = label or src
         _echo(f"[all] WARNING: Failed to copy {shown} to {dst}: {e}", err=True)
         return False
+
+
+def _is_pipeline_public_destination(root: Path, path: Path) -> bool:
+    """Return whether a lexical destination belongs to the public layout."""
+
+    try:
+        _public_output_key(root, path)
+    except ValueError:
+        return False
+    return True
+
+
+def _write_summary_json(path: Path, summary: dict) -> Path:
+    """Publish an aggregate summary atomically with the active run identity."""
+
+    identified = apply_current_run_id(_json_safe(summary))
+    summary.clear()
+    summary.update(identified)
+    return commit_json(Path(path), summary)
+
+
+def _persist_run_manifest(manifest: InvocationManifest, out_dir: Path) -> Path:
+    """Persist current-run ownership under the private ``_work`` tree."""
+
+    return manifest.write_internal(
+        Path(out_dir) / WORK_DIRNAME / "_run_manifest.json"
+    )
+
+
+def _publish_manifest_summary(
+    path: Path,
+    summary: dict,
+    *,
+    manifest: InvocationManifest,
+    key: str,
+    out_dir: Path,
+) -> Path:
+    """Atomically publish and claim one aggregate summary generation."""
+
+    destination = Path(path).resolve(strict=False)
+    if key not in manifest.expected:
+        manifest.declare(key, [destination])
+    summary["run_id"] = manifest.run_id
+    published = _write_summary_json(destination, summary)
+    manifest.claim_one(key)
+    _persist_run_manifest(manifest, out_dir)
+    return published
 
 
 def _move_logged(src: Path, dst: Path, *, label: Optional[str] = None, echo: bool = True) -> bool:
@@ -247,14 +327,22 @@ def _run_cli_main(
     on_nonzero: str = "warn",
     on_exception: str = "raise",
     prefix: Optional[str] = None,
-) -> None:
-    """Run a Click command with a temporary argv and consistent error handling."""
+) -> Optional[int]:
+    """Run a Click command with a temporary argv and consistent error handling.
+
+    Returns the child exit code (0 on success, nonzero on a warned failure, 1 on
+    a swallowed exception, ``None`` when unknown). Callers that need truthful
+    stage results — e.g. FREQ/DFT thermochemistry — must gate on this code rather
+    than infer success from an output file's existence (M28).
+    """
     saved = list(sys.argv)
     label = prefix or cmd_name
+    exit_code: Optional[int] = 0
     # In-proc subcommand dispatch — flag the child's banner / device echo to
     # stay silent so a 4-stage `all` pipeline doesn't reprint the same lines
     # `pdb2reaction ver. X` / `[calc] Resolved device: cuda` once per stage.
-    from pdb2reaction.core.utils import set_child_mode
+    from pdb2reaction.core.utils import is_child_mode, set_child_mode
+    prior_child_mode = is_child_mode()
     set_child_mode(True)
     try:
         sys.argv = ["pdb2reaction", cmd_name] + list(args)
@@ -263,16 +351,18 @@ def _run_cli_main(
     except SystemExit as e:
         code = getattr(e, "code", 1)
         if code not in (None, 0):
+            exit_code = code if isinstance(code, int) else 1
             if on_nonzero == "raise":
                 raise click.ClickException(f"[{label}] {cmd_name} exit code {code}.")
             _echo(f"[{label}] WARNING: {cmd_name} exited with code {code}", err=True)
     except Exception as e:
+        exit_code = 1
         if on_exception == "raise":
             raise click.ClickException(f"[{label}] {cmd_name} failed: {e}")
         _echo(f"[{label}] WARNING: {cmd_name} failed: {e}", err=True)
     finally:
         sys.argv = saved
-        set_child_mode(False)
+        set_child_mode(prior_child_mode)
         # DO NOT INLINE: required between every staged subcommand call (cyclic-ref break before allocator-cache reclaim).
         # Release GPU memory between pipeline stages to prevent OOM.
         # gc.collect() breaks cyclic refs inside torch.nn.Module.
@@ -280,6 +370,7 @@ def _run_cli_main(
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         _echo("")
+    return exit_code
 
 
 def _append_cli_arg(args: List[str], flag: str, value: Any | None) -> None:
@@ -651,6 +742,7 @@ def _write_args_yaml_with_freeze_atoms(
     tr_projection: Optional[str] = None,
     precision: Optional[str] = None,
     backend_model: Optional[str] = None,
+    session: Optional[RunSession] = None,
 ) -> Optional[Path]:
     """
     Write ``freeze_atoms`` and (optionally) ``coord_type`` /
@@ -677,6 +769,8 @@ def _write_args_yaml_with_freeze_atoms(
         and backend_model is None
     ):
         return args_yaml
+    if session is None:
+        raise ValueError("A RunSession is required when generating child YAML.")
 
     cfg = {} if args_yaml is None else load_yaml_dict(args_yaml)
     if not isinstance(cfg, dict):
@@ -710,13 +804,10 @@ def _write_args_yaml_with_freeze_atoms(
         cfg["calc"] = calc_cfg
 
     tmp_dir = Path(tempfile.mkdtemp(prefix="tmp_path_search_"))
+    session.resources.own_path(tmp_dir)
     out_path = tmp_dir / "args_freeze_atoms.yaml"
     with out_path.open("w", encoding="utf-8") as fh:
         yaml.safe_dump(cfg, fh, sort_keys=False, allow_unicode=True)
-
-    # Register cleanup so the temp directory is removed when the process exits.
-    import atexit, shutil as _shutil
-    atexit.register(lambda d=tmp_dir: _shutil.rmtree(d, ignore_errors=True))
 
     return out_path
 
@@ -741,6 +832,29 @@ def _read_summary(summary_path: Path) -> List[Dict[str, Any]]:
         return []
 
 
+def _read_path_opt_segment_converged(seg_dir: Path) -> Optional[bool]:
+    """Read a path-opt segment child's truthful MEP convergence (tri-state).
+
+    Reads the additive ``stage_outcomes`` leaf ``converged`` bit from the child's
+    ``result.json`` — truthful for both GSM (real optimizer bit) and DMF (real
+    IPOPT bit), independent of the byte-compat legacy ``converged`` field.
+    Returns ``None`` when no readable signal exists (fail-closed: a missing or
+    unreadable child result never promotes the segment to converged).
+    """
+    try:
+        rj = seg_dir / "result.json"
+        if not rj.exists():
+            return None
+        data = json.loads(rj.read_text(encoding="utf-8")) or {}
+        for leaf in data.get("stage_outcomes") or []:
+            if isinstance(leaf, dict) and isinstance(leaf.get("converged"), bool):
+                return bool(leaf["converged"])
+        return None
+    except Exception as exc:
+        logger.debug("Failed to read path-opt segment convergence %s: %s", seg_dir, exc)
+        return None
+
+
 def _geom_from_angstrom(
     elems: Sequence[str],
     coords_ang: np.ndarray,
@@ -756,41 +870,6 @@ def _geom_from_angstrom(
         coord_type=DEFAULT_COORD_TYPE,
         freeze_atoms=freeze_atoms,
     )
-
-
-def _load_segment_endpoints(
-    path_dir: Path,
-    seg_tag: str,
-    freeze_atoms: Sequence[int],
-) -> Optional[Tuple[Any, Any]]:
-    """
-    Load left/right endpoints for a segment from
-    ``<path_dir>/<seg_tag>_refine_mep/final_geometries_trj.xyz``.
-    If it does not exist, load structures from
-    ``<path_dir>/<seg_tag>_mep/final_geometries_trj.xyz``.
-
-    Uses seg_tag (e.g. 'seg_000') and returns (gL_ref, gR_ref).
-    """
-    base_tag = _path_search._segment_base_id(seg_tag)
-    refine_trj = path_dir / f"{base_tag}_refine_mep" / "final_geometries_trj.xyz"
-    gsm_trj = path_dir / f"{base_tag}_mep" / "final_geometries_trj.xyz"
-
-    if refine_trj.exists():
-        trj_path = refine_trj
-    elif gsm_trj.exists():
-        trj_path = gsm_trj
-    else:
-        return None
-
-    # Read first/last frames explicitly to support `_trj.xyz` trajectories.
-    elems, c_first, c_last = read_xyz_first_last(trj_path)
-    gL_ref = _geom_from_angstrom(elems, c_first, freeze_atoms)
-    gR_ref = _geom_from_angstrom(elems, c_last, freeze_atoms)
-
-    set_freeze_atoms_or_warn(gL_ref, freeze_atoms, context="all")
-    set_freeze_atoms_or_warn(gR_ref, freeze_atoms, context="all")
-
-    return gL_ref, gR_ref
 
 
 def _save_single_geom_as_pdb_for_tools(
@@ -828,6 +907,7 @@ def _copy_structures_to_seg_dir(
     input_suffix: str,
     prepared_input: Any = None,
     ref_pdb_path: Optional[Path] = None,
+    manifest: Optional[InvocationManifest] = None,
 ) -> Path:
     """Copy R/TS/P structures to ``out_dir/seg_XX/`` in the input format.
 
@@ -851,6 +931,27 @@ def _copy_structures_to_seg_dir(
 
     name_map = {"R": "reactant", "TS": "ts", "P": "product"}
 
+    def declare_destination(path: Path) -> None:
+        if manifest is not None:
+            _declare_public_output(
+                manifest,
+                out_dir,
+                path,
+            )
+
+    def claim_destination(path: Path) -> None:
+        if manifest is not None:
+            _claim_public_output(
+                manifest,
+                out_dir,
+                path,
+            )
+
+    def copy_destination(src: Path, dst: Path) -> None:
+        declare_destination(dst)
+        shutil.copy2(src, dst)
+        claim_destination(dst)
+
     for key, src_xyz in state_structs.items():
         src = Path(src_xyz)
         if not src.exists():
@@ -861,29 +962,38 @@ def _copy_structures_to_seg_dir(
             src_pdb = src.with_suffix(".pdb")
             if src_pdb.exists():
                 dst_pdb = seg_dir / f"{dst_name}.pdb"
-                _copy_logged(src_pdb, dst_pdb, echo=False)
+                declare_destination(dst_pdb)
+                if not _copy_logged(src_pdb, dst_pdb, echo=False):
+                    continue
+                claim_destination(dst_pdb)
                 template = coordinate_template_for(src_pdb)
                 if template is not None:
+                    dst_cif = dst_pdb.with_suffix(".cif")
+                    declare_destination(dst_cif)
                     register_output_template_and_write_cif(dst_pdb, template)
+                    claim_destination(dst_cif)
             else:
-                shutil.copy2(src, seg_dir / f"{dst_name}.xyz")
+                copy_destination(src, seg_dir / f"{dst_name}.xyz")
         elif input_suffix == ".gjf":
             if (
                 prepared_input is not None
                 and getattr(prepared_input, "gjf_template", None) is not None
             ):
+                dst_gjf = seg_dir / f"{dst_name}.gjf"
+                declare_destination(dst_gjf)
                 try:
                     convert_xyz_to_gjf(
                         src,
                         prepared_input.gjf_template,
-                        seg_dir / f"{dst_name}.gjf",
+                        dst_gjf,
                     )
+                    claim_destination(dst_gjf)
                 except Exception:
-                    shutil.copy2(src, seg_dir / f"{dst_name}.xyz")
+                    copy_destination(src, seg_dir / f"{dst_name}.xyz")
             else:
-                shutil.copy2(src, seg_dir / f"{dst_name}.xyz")
+                copy_destination(src, seg_dir / f"{dst_name}.xyz")
         else:
-            shutil.copy2(src, seg_dir / f"{dst_name}.xyz")
+            copy_destination(src, seg_dir / f"{dst_name}.xyz")
 
     return seg_dir
 
@@ -968,6 +1078,195 @@ def _derive_pipeline_status(
     return ("partial" if reasons else "success"), reasons
 
 
+_STATUS_SEVERITY = {"success": 0, "partial": 1, "failed": 2}
+
+
+def _pipeline_aggregate_truth(
+    summary: dict,
+    *,
+    post_segments: Optional[list],
+    config: Optional[dict],
+    legacy_status: str,
+    legacy_reasons: Optional[Sequence[str]] = None,
+):
+    """Compose the truthful ``all``-pipeline aggregate from per-segment leaves.
+
+    One required :class:`LeafOutcome` is built per reactive MEP segment.  A
+    segment is usable only when every post-processing convergence signal is
+    explicitly ``True``: the IRC leaf (every requested direction converged, read
+    from the child's ``result.json``) and, when present, both endpoint
+    optimizations.  A dict-present / trajectory-present but nonconverged leaf
+    never counts toward completeness (C6 fail-closed) — a never_stop / max-cycle
+    IRC therefore cannot yield ``scientific_status == "success"``.
+
+    The convergence-gated aggregate is then composed with the legacy completeness
+    axis (``legacy_status`` from :func:`_derive_pipeline_status`, which already
+    covers DFT / thermo / n_imag): ``scientific_status`` is the MORE severe of
+    the two so the new field is never less truthful than the legacy ``status``.
+    The legacy ``status`` string itself is untouched (byte-compatible).
+    """
+
+    from pdb2reaction.workflows._outcomes import (
+        AggregateTruth,
+        aggregate_workflow_truth,
+        make_leaf,
+    )
+
+    segments = summary.get("segments") or []
+    reactive = [
+        s for s in segments if isinstance(s, dict) and s.get("kind") != "bridge"
+    ]
+    cfg = config or {}
+    tsopt_requested = bool(cfg.get("tsopt"))
+    legacy_reasons = list(legacy_reasons or [])
+
+    post_by_idx: Dict[Any, dict] = {}
+    if post_segments is not None:
+        for ps in post_segments:
+            if isinstance(ps, dict) and ps.get("index") is not None:
+                post_by_idx[ps.get("index")] = ps
+
+    def _and3(a: Optional[bool], b: Optional[bool]) -> Optional[bool]:
+        if a is False or b is False:
+            return False
+        if a is None or b is None:
+            return None
+        return True
+
+    leaves: List[Any] = []
+    expected: List[str] = []
+    for s in reactive:
+        idx = s.get("index")
+        if idx is None:
+            continue
+        seg_id = f"segment_{idx}"
+        expected.append(seg_id)
+        post = post_by_idx.get(idx)
+        reason = ""
+        artifacts: List[str] = []
+        # The segment's own reported convergence, threaded from path_search's
+        # SegmentReport / the path-opt child leaf.  A missing field is None
+        # (fail-closed), never a silent True (C6).
+        _seg_conv = s.get("converged")
+        seg_converged: Optional[bool] = _seg_conv if isinstance(_seg_conv, bool) else None
+        if post is not None:
+            # Post-processing ran: gate on the truthful IRC / endpoint records.
+            converged: Optional[bool] = True
+            irc = post.get("irc")
+            if isinstance(irc, dict):
+                _u = irc.get("usable")
+                _irc_conv = True if _u is True else (False if _u is False else None)
+                converged = _and3(converged, _irc_conv)
+                if _irc_conv is not True and not reason:
+                    reason = f"irc:{irc.get('reason') or 'not_usable'}"
+                _traj = irc.get("traj")
+                if _traj:
+                    artifacts.append(str(_traj))
+            elif tsopt_requested:
+                # IRC requested but no truthful directional record: fail closed
+                # rather than trust the trajectory file's existence.
+                converged = _and3(converged, None)
+                if not reason:
+                    reason = "irc_missing"
+            eo = post.get("endpoint_opt")
+            if isinstance(eo, dict):
+                for _k in ("reactant_converged", "product_converged"):
+                    if _k in eo:
+                        _v = eo.get(_k)
+                        converged = _and3(converged, _v if isinstance(_v, bool) else None)
+                        if not (isinstance(_v, bool) and _v) and not reason:
+                            reason = f"endpoint_opt:{_k}"
+        elif tsopt_requested:
+            # tsopt was requested but this segment's IRC/endpoint post-processing
+            # has not run yet (the intermediate MEP summary is written before
+            # post-processing). Fail closed rather than promote a reactive leaf on
+            # the MEP trajectory's existence alone: a required post stage is
+            # missing, so the segment is not yet usable (C6).
+            converged = None
+            reason = "post_missing"
+        else:
+            # Path-only final summary (no tsopt): the segment's own reported
+            # convergence is the whole truth. A missing/unknown field fails
+            # closed (None) — never default to True.
+            converged = seg_converged
+            if converged is not True and not reason:
+                reason = "not_converged" if converged is False else "convergence_unknown"
+        leaves.append(
+            make_leaf(
+                "all",
+                seg_id,
+                required=True,
+                executed=True,
+                converged=converged,
+                reason=reason,
+                artifacts=artifacts,
+            )
+        )
+
+    if leaves:
+        agg = aggregate_workflow_truth(leaves, expected)
+        agg_sci = agg.scientific_status
+        agg_exec = agg.execution_status
+        agg_reasons = list(agg.status_reasons)
+        observed = list(agg.observed_item_ids)
+    else:
+        # No reactive-segment leaves to gate on (degenerate/endpoint-only
+        # summary): mirror the legacy completeness axis rather than manufacture a
+        # spurious failure.
+        agg_sci = legacy_status
+        agg_exec = "failed" if legacy_status == "failed" else "completed"
+        agg_reasons = []
+        observed = list(expected)
+
+    # Compose with the legacy completeness axis: keep the MORE severe verdict.
+    if _STATUS_SEVERITY.get(legacy_status, 0) >= _STATUS_SEVERITY.get(agg_sci, 0):
+        scientific = legacy_status
+    else:
+        scientific = agg_sci
+    execution = "failed" if (legacy_status == "failed" or agg_exec == "failed") else "completed"
+    reasons = legacy_reasons + [r for r in agg_reasons if r not in legacy_reasons]
+
+    return AggregateTruth(
+        execution_status=execution,
+        scientific_status=scientific,
+        status_reasons=tuple(reasons),
+        expected_item_ids=tuple(expected),
+        observed_item_ids=tuple(observed),
+    )
+
+
+def _apply_pipeline_truth(
+    summary: dict,
+    *,
+    post_segments: Optional[list],
+    config: Optional[dict],
+    legacy_status: str,
+    legacy_reasons: Optional[Sequence[str]] = None,
+) -> None:
+    """Write the additive C6 truth axes onto ``summary`` in place.
+
+    Never touches the legacy overloaded ``status`` field; only adds
+    ``execution_status`` / ``scientific_status`` / expected+observed IDs and the
+    distinct ``scientific_status_reasons`` key.
+    """
+
+    truth = _pipeline_aggregate_truth(
+        summary,
+        post_segments=post_segments,
+        config=config,
+        legacy_status=legacy_status,
+        legacy_reasons=legacy_reasons,
+    )
+    summary["execution_status"] = truth.execution_status
+    summary["scientific_status"] = truth.scientific_status
+    summary["expected_item_ids"] = list(truth.expected_item_ids)
+    summary["observed_item_ids"] = list(truth.observed_item_ids)
+    if truth.scientific_status != "success" and truth.status_reasons:
+        summary["scientific_status_reasons"] = list(truth.status_reasons)
+    else:
+        summary.pop("scientific_status_reasons", None)
+
+
 def _enrich_summary(
     summary: dict,
     *,
@@ -975,6 +1274,7 @@ def _enrich_summary(
     pipeline_mode: str,
     mlip_backend: str,
     mlip_model: Optional[str],
+    mlip_precision: Optional[str] = None,
     charge: int,
     spin: int,
     command: str = "",
@@ -982,6 +1282,7 @@ def _enrich_summary(
     config: Optional[dict] = None,
     freeze_atoms: Optional[str] = None,
     out_dir: Optional[Path] = None,
+    manifest: Optional[InvocationManifest] = None,
 ) -> dict:
     """Add machine-readable metadata to summary dict for AI agent consumption.
 
@@ -1112,10 +1413,27 @@ def _enrich_summary(
         summary["status_reasons"] = status_reasons
     else:
         summary.pop("status_reasons", None)
+    # Additive C6 truth axes: keep the legacy overloaded ``status`` intact and
+    # expose the execution/scientific split plus expected/observed segment IDs so
+    # a forward-compatible consumer can tell "the pipeline ran" from "the science
+    # is complete and usable". ``scientific_status`` is computed from truthful
+    # per-segment LeafOutcomes (IRC directional + endpoint-opt convergence)
+    # composed with the legacy completeness axis, so a nonconverged IRC/endpoint
+    # leaf whose trajectory still exists cannot make the pipeline a success.
+    _apply_pipeline_truth(
+        summary,
+        post_segments=post_segments,
+        config=config,
+        legacy_status=status,
+        legacy_reasons=status_reasons,
+    )
     summary["mlip_backend"] = mlip_backend
     summary["mlip_model"] = mlip_model
+    summary["mlip_precision"] = mlip_precision
     summary["charge"] = charge
     summary["spin"] = spin
+    if manifest is not None:
+        summary["run_id"] = manifest.run_id
     summary["n_segments_reactive"] = n_reactive
     if rls:
         summary["rate_limiting_step"] = rls
@@ -1141,30 +1459,15 @@ def _enrich_summary(
         # Real pipeline root. Fallback to the legacy module_dir.parent for any
         # caller that does not pass out_dir explicitly.
         root = Path(out_dir) if out_dir is not None else Path(summary["out_dir"]).parent
-        key_files: Dict[str, Any] = {}
-        # Root-level deliverables (MEP products + authored/mirrored summaries live at root)
-        for name, desc in [
-            ("summary.log", "Human-readable results summary"),
-            ("summary.json", "Machine-readable results summary"),
-            ("mep_trj.xyz", "Full MEP trajectory"),
-            ("mep.pdb", "Full MEP as PDB"),
-            ("energy_diagram_MEP.png", "MEP energy plot"),
-            ("irc_plot_all.png", "Aggregated IRC plot"),
-        ]:
-            if (root / name).exists():
-                key_files.setdefault(name, desc)
-        # Per-segment deliverables under segments/seg_NN/
-        seg_parent = root / SEGMENTS_DIRNAME
-        if seg_parent.exists():
-            for child in sorted(seg_parent.iterdir()):
-                if child.is_dir() and child.name.startswith("seg_"):
-                    seg_files = [f.name for f in sorted(child.iterdir()) if f.is_file()]
-                    key_files[child.name] = {
-                        "description": f"Per-segment results for {child.name}",
-                        "files": seg_files,
-                    }
+        key_files = (
+            _current_key_output_files(manifest, root)
+            if manifest is not None
+            else {}
+        )
         if key_files:
             summary["key_output_files"] = key_files
+        else:
+            summary.pop("key_output_files", None)
 
     # Environment info
     try:
@@ -1173,6 +1476,9 @@ def _enrich_summary(
     except Exception:
         pass
 
+    identified = apply_current_run_id(summary)
+    summary.clear()
+    summary.update(identified)
     return summary
 
 
@@ -1185,17 +1491,6 @@ def _json_safe(obj):
     if isinstance(obj, (list, tuple)):
         return [_json_safe(item) for item in obj]
     return obj
-
-
-def _find_with_suffixes(base_no_ext: Path, suffixes: Sequence[str]) -> Optional[Path]:
-    """
-    Given a base path without extension, return the first existing file among base.suffix for suffixes.
-    """
-    for s in suffixes:
-        p = base_no_ext.with_suffix(s)
-        if p.exists():
-            return p
-    return None
 
 
 def _ensure_hei_path_tangent(
@@ -1401,7 +1696,8 @@ def _optimize_endpoint_geom(
     tag: str,
     dump: bool,
     thresh: Optional[str],
-) -> Tuple[Any, Path]:
+    calc_identity_cfg: Optional[Dict[str, Any]] = None,
+) -> Tuple[Any, Path, Optional[bool]]:
     """
     Optimize an endpoint geometry using LBFGS/RFO with settings mirroring path_search defaults.
 
@@ -1414,8 +1710,12 @@ def _optimize_endpoint_geom(
         thresh: optional convergence preset to override defaults.
 
     Returns:
-        (optimized_geometry, final_xyz_path)
+        ``(optimized_geometry, final_xyz_path, is_converged)``.  ``is_converged``
+        is the fail-closed tri-state convergence bit of the final optimizer (M42):
+        an endpoint whose optimization did not explicitly converge is retained as
+        a geometry/artifact but must not promote its segment to a usable success.
     """
+    from pdb2reaction.workflows._outcomes import optimizer_converged_bit
     geom.set_calculator(getattr(geom, "calculator", None))
     mode = (opt_mode_default or "hess").lower()
     if mode in ("grad", "lbfgs", "dimer"):
@@ -1426,6 +1726,7 @@ def _optimize_endpoint_geom(
         run_sequence = ("rfo",)
 
     final_xyz: Optional[Path] = None
+    _endpoint_conv: Optional[bool] = None
     for sopt_kind in run_sequence:
         if sopt_kind == "lbfgs":
             base_cfg = dict(_path_search.LBFGS_KW)
@@ -1445,22 +1746,21 @@ def _optimize_endpoint_geom(
         if thresh is not None:
             cfg["thresh"] = str(thresh)
 
-        # Seed cached IRC endpoint Hessian for RFO when available
+        # Seed cached IRC endpoint Hessian for RFO when available, but only on
+        # a full evaluation-identity match (run/system/evaluator/active
+        # space/potential).  Without a resolved evaluator config we cannot
+        # prove compatibility, so a fresh Hessian is computed instead.
         if sopt_kind == "rfo":
             from pdb2reaction.io.hessian_cache import (
-                load as _hess_load,
-                matches_cart_coords as _hess_matches_coords,
+                load_matching as _hess_load_matching,
+                identity_from_context as _hess_identity,
             )
-            _cached = _hess_load("irc_endpoint")
-            if _cached is not None and not _hess_matches_coords(
-                _cached, geom.cart_coords
-            ):
-                _echo(
-                    "[endpoint-opt] Cached IRC Hessian does not match this "
-                    "endpoint geometry; calculating a fresh Hessian.",
-                    err=True,
+            _cached = None
+            if calc_identity_cfg is not None:
+                _cached = _hess_load_matching(
+                    "irc_endpoint",
+                    _hess_identity(geom, calc_identity_cfg, role="irc_endpoint"),
                 )
-                _cached = None
             if _cached is not None:
                 _echo_detail("[endpoint-opt] Reusing IRC endpoint Hessian for RFO seeding.")
                 _active_dofs = _cached.get("active_dofs")
@@ -1484,11 +1784,13 @@ def _optimize_endpoint_geom(
         opt = OptClass(geom, **cfg)
         try:
             opt.run()
+            _endpoint_conv = optimizer_converged_bit(opt)
         except (OptimizationError, ZeroStepLength) as e:
             _echo(
                 f"[endpoint-opt] WARNING: optimization for '{tag}' terminated early ({e}); using last geometry.",
                 err=True,
             )
+            _endpoint_conv = False
 
         final_xyz = Path(opt.final_fn) if isinstance(opt.final_fn, (str, Path)) else opt.final_fn
 
@@ -1505,7 +1807,7 @@ def _optimize_endpoint_geom(
     except Exception as exc:
         logger.debug("Failed to propagate freeze_atoms to optimized endpoint geometry: %s", exc)
     g_final.set_calculator(getattr(geom, "calculator", None))
-    return g_final, final_xyz
+    return g_final, final_xyz, _endpoint_conv
 
 
 def _run_freq_for_state(
@@ -1595,8 +1897,18 @@ def _run_freq_for_state(
 
     if args_yaml is not None:
         args.extend(["--config", str(args_yaml)])
-    _run_cli_main("freq", _freq_cli.cli, args, on_nonzero="warn", prefix="freq")
+    _freq_rc = _run_cli_main("freq", _freq_cli.cli, args, on_nonzero="warn", prefix="freq")
     y = fdir / "thermoanalysis.yaml"
+    # M28: a nonzero freq exit means the thermochemistry is NOT usable, even if a
+    # thermoanalysis.yaml (from a prior run or a partial write) exists with finite
+    # fields. Never infer FREQ success from the filename or a finite number.
+    if _freq_rc not in (None, 0):
+        _echo(
+            f"[freq] WARNING: freq exited with code {_freq_rc}; thermochemistry is "
+            "unusable and will not enter any Gibbs diagram.",
+            err=True,
+        )
+        return {}
     if y.exists():
         try:
             return yaml.safe_load(y.read_text(encoding="utf-8")) or {}
@@ -1787,6 +2099,9 @@ def _run_tsopt_on_hei(
     ref_pdb: Optional[Path],
     convert_files: bool,
     overrides: Optional[Dict[str, Any]] = None,
+    manifest: Optional[InvocationManifest] = None,
+    artifact_prefix: str = "tsopt",
+    public_root: Optional[Path] = None,
 ) -> Tuple[Path, Any]:
     """
     Run tsopt CLI on a HEI model structure; return (final_geom_path, ts_geom).
@@ -1795,6 +2110,7 @@ def _run_tsopt_on_hei(
     PDB/CIF/GJF companions when requested by the original input type.
     """
     overrides = overrides or {}
+    manifest = manifest or InvocationManifest()
     prepared_input = prepare_input_structure(hei_pdb)
     try:
         apply_ref_pdb_override(prepared_input, ref_pdb)
@@ -1875,12 +2191,37 @@ def _run_tsopt_on_hei(
 
         _echo()
         _echo_detail(f"[tsopt] Running tsopt on HEI → out={ts_dir}")
+        result_key = f"{artifact_prefix}.result"
+        geometry_key = f"{artifact_prefix}.geometry"
+        result_destination = ts_dir / "result.json"
+        geometry_destinations = [
+            ts_dir / "final_geometry.xyz",
+            ts_dir / "final_geometry.pdb",
+            ts_dir / "final_geometry.gjf",
+        ]
+        manifest.declare(result_key, [result_destination])
+        manifest.declare(
+            geometry_key,
+            geometry_destinations,
+        )
+        if public_root is not None:
+            for destination in [result_destination, *geometry_destinations]:
+                if _is_pipeline_public_destination(public_root, destination):
+                    _declare_public_output(
+                        manifest,
+                        public_root,
+                        destination,
+                    )
         _run_cli_main("tsopt", _tsopt.cli, ts_args, on_nonzero="raise", prefix="tsopt")
 
-        result_path = ts_dir / "result.json"
-        if not result_path.exists():
-            raise click.ClickException(
-                f"[tsopt] Missing machine-readable TS validation result: {result_path}"
+        result_path = manifest.claim_one(result_key)
+        if public_root is not None and _is_pipeline_public_destination(
+            public_root, result_path
+        ):
+            _claim_public_output(
+                manifest,
+                public_root,
+                result_path,
             )
         try:
             tsopt_result = json.loads(result_path.read_text(encoding="utf-8"))
@@ -1891,15 +2232,13 @@ def _run_tsopt_on_hei(
         _validate_tsopt_result_payload(tsopt_result)
 
         ts_pdb = ts_dir / "final_geometry.pdb"
-        ts_xyz = ts_dir / "final_geometry.xyz"
         ts_gjf = ts_dir / "final_geometry.gjf"
+        ts_geom_path = manifest.claim_one(geometry_key)
 
-        ts_geom_path: Optional[Path] = None
-
-        if ts_xyz.exists():
+        if ts_geom_path.suffix.lower() == ".xyz":
             try:
                 convert_xyz_like_outputs(
-                    ts_xyz,
+                    ts_geom_path,
                     prepared_input,
                     ref_pdb_path=ref_pdb,
                     out_pdb_path=ts_pdb if needs_pdb else None,
@@ -1908,18 +2247,14 @@ def _run_tsopt_on_hei(
             except Exception as e:
                 _echo(f"[tsopt] WARNING: Failed to convert TS geometry: {e}", err=True)
 
-        if ts_xyz.exists():
-            ts_geom_path = ts_xyz
-        elif needs_pdb and ts_pdb.exists():
-            ts_geom_path = ts_pdb
-        elif ts_pdb.exists():
-            ts_geom_path = ts_pdb
-        elif needs_gjf and ts_gjf.exists():
-            ts_geom_path = ts_gjf
-        elif ts_gjf.exists():
-            ts_geom_path = ts_gjf
-        else:
-            raise click.ClickException("[tsopt] TS outputs not found.")
+        if public_root is not None:
+            for destination in geometry_destinations:
+                if _is_pipeline_public_destination(public_root, destination):
+                    _claim_public_output(
+                        manifest,
+                        public_root,
+                        destination,
+                    )
 
         g_ts = geom_loader(
             ts_geom_path,
@@ -1928,13 +2263,140 @@ def _run_tsopt_on_hei(
         )
         g_ts._tsopt_result = tsopt_result
 
-        calc_args = dict(calc_cfg)
-        calc = create_calculator(**calc_args)
-        g_ts.set_calculator(calc)
-
         return ts_geom_path, g_ts
     finally:
         prepared_input.cleanup()
+
+
+def _orient_irc_endpoints(
+    g_left: Any,
+    g_right: Any,
+    *,
+    endpoint_trajectory: Optional[Path],
+    freeze_atoms: Sequence[int],
+    seg_tag: Optional[str],
+) -> Tuple[Any, Any, str, str, bool]:
+    """Orient IRC endpoints against one already-claimed MEP trajectory."""
+
+    left_tag = "forward"
+    right_tag = "backward"
+    reverse_irc = False
+    if seg_tag is None:
+        _echo_detail("[irc] TSOPT-only mode: Use raw irc orientation.")
+        return g_left, g_right, left_tag, right_tag, reverse_irc
+    if endpoint_trajectory is None:
+        _echo(
+            f"[irc] WARNING: current MEP endpoints were not claimed for segment tag '{seg_tag}'; "
+            "using raw IRC orientation.",
+            err=True,
+        )
+        return g_left, g_right, left_tag, right_tag, reverse_irc
+
+    try:
+        elems, c_first, c_last = read_xyz_first_last(endpoint_trajectory)
+        gL_end = _geom_from_angstrom(elems, c_first, freeze_atoms)
+        gR_end = _geom_from_angstrom(elems, c_last, freeze_atoms)
+        bond_cfg = dict(_path_search.BOND_KW)
+
+        def _matches(x, y) -> bool:
+            try:
+                changed, _ = _path_search.has_bond_change(x, y, bond_cfg)
+                return not changed
+            except Exception as exc:
+                logger.debug(
+                    "Bond-change check failed during IRC endpoint matching: %s", exc
+                )
+                return False
+
+        L_L = _matches(g_left, gL_end)
+        L_R = _matches(g_left, gR_end)
+        R_L = _matches(g_right, gL_end)
+        R_R = _matches(g_right, gR_end)
+        matched_bond = False
+        if L_L and R_R:
+            matched_bond = True
+        elif L_R and R_L:
+            matched_bond = True
+            g_left, g_right = g_right, g_left
+            left_tag, right_tag = right_tag, left_tag
+            reverse_irc = True
+
+        if not matched_bond:
+            try:
+                d_LL = _path_search._rmsd_between(g_left, gL_end)
+                d_LR = _path_search._rmsd_between(g_left, gR_end)
+                d_RL = _path_search._rmsd_between(g_right, gL_end)
+                d_RR = _path_search._rmsd_between(g_right, gR_end)
+                if d_LR + d_RL < d_LL + d_RR:
+                    g_left, g_right = g_right, g_left
+                    left_tag, right_tag = right_tag, left_tag
+                    reverse_irc = True
+            except Exception as exc:
+                _echo(
+                    f"[irc] WARNING: segment endpoint mapping via RMSD failed: {exc}",
+                    err=True,
+                )
+    except Exception as exc:
+        _echo(f"[irc] WARNING: segment endpoint mapping failed: {exc}", err=True)
+    return g_left, g_right, left_tag, right_tag, reverse_irc
+
+
+def _read_irc_outcome(irc_dir: Path) -> Dict[str, Any]:
+    """Read the IRC child's ``result.json`` into a fail-closed usability record.
+
+    The IRC leaf is *usable* only when the child reports ``scientific_status ==
+    "success"`` — i.e. every requested direction explicitly converged (M42).  A
+    missing / unreadable result, or any nonconverged requested direction, yields
+    ``usable=False`` while the endpoint trajectory remains a reportable artifact.
+    """
+
+    outcome: Dict[str, Any] = {
+        "usable": False,
+        "reason": "irc_result_missing",
+        "scientific_status": None,
+        "forward_converged": None,
+        "backward_converged": None,
+        "n_frames_forward": None,
+        "n_frames_backward": None,
+        "traj": None,
+    }
+    result_path = irc_dir / "result.json"
+    if not result_path.exists():
+        return outcome
+    try:
+        data = json.loads(result_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        outcome["reason"] = "irc_result_unreadable"
+        return outcome
+    if not isinstance(data, dict):
+        outcome["reason"] = "irc_result_unreadable"
+        return outcome
+
+    sci = data.get("scientific_status")
+    outcome["scientific_status"] = sci
+    outcome["forward_converged"] = data.get("forward_converged")
+    outcome["backward_converged"] = data.get("backward_converged")
+    outcome["n_frames_forward"] = data.get("n_frames_forward")
+    outcome["n_frames_backward"] = data.get("n_frames_backward")
+    _files = data.get("files") if isinstance(data.get("files"), dict) else {}
+    outcome["traj"] = _files.get("finished_irc")
+
+    if sci == "success":
+        outcome["usable"] = True
+        outcome["reason"] = "ok"
+    elif isinstance(sci, str):
+        outcome["usable"] = False
+        reasons = data.get("scientific_status_reasons")
+        outcome["reason"] = (
+            ";".join(str(r) for r in reasons)
+            if isinstance(reasons, list) and reasons
+            else f"irc_{sci}"
+        )
+    else:
+        # No truthful status field: fail closed rather than trust file existence.
+        outcome["usable"] = False
+        outcome["reason"] = "irc_status_unknown"
+    return outcome
 
 
 def _irc_and_match(
@@ -1953,7 +2415,11 @@ def _irc_and_match(
     irc_step_size: Optional[float] = None,
     irc_never_stop: Optional[bool] = None,
     seg_tag: Optional[str] = None,
-    mep_dir: Optional[Path] = None,
+    endpoint_trajectory: Optional[Path] = None,
+    session: Optional[RunSession] = None,
+    manifest: Optional[InvocationManifest] = None,
+    artifact_prefix: str = "irc",
+    public_root: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """
     Run IRC via the irc CLI (EulerPC), then map the IRC endpoints to (left, right).
@@ -1972,6 +2438,7 @@ def _irc_and_match(
       and ``finished_irc_trj.xyz``, together with a flag indicating whether the IRC
       trajectory should be reversed when constructing the global IRC plot.
     """
+    manifest = manifest or InvocationManifest()
     freeze_atoms: List[int] = _get_freeze_atoms(seg_model_pdb, freeze_links_flag)
 
     irc_dir = seg_dir / "irc"
@@ -2030,17 +2497,57 @@ def _irc_and_match(
         irc_args.extend(["--step-size", str(float(irc_step_size))])
     if irc_never_stop is not None:
         _append_toggle_arg(irc_args, "--never-stop", bool(irc_never_stop))
+    # M42: request the child's machine-readable result.json so the aggregate can
+    # gate on truthful per-direction IRC convergence instead of trajectory-file
+    # existence. A never_stop / max-cycle direction still writes its trajectory,
+    # but the child reports it as nonconverged and we must not promote it.
+    _append_toggle_arg(irc_args, "--out-json", True)
     _echo()
     _echo_detail(f"[irc] Running EulerPC IRC → out={irc_dir}")
+    trajectory_key = f"{artifact_prefix}.trajectory"
+    plot_key = f"{artifact_prefix}.plot"
+    pdb_key = f"{artifact_prefix}.pdb"
+    trajectory_destination = irc_dir / "finished_irc_trj.xyz"
+    plot_destination = irc_dir / "irc_plot.png"
+    pdb_destination = irc_dir / "finished_irc.pdb"
+    manifest.declare(trajectory_key, [trajectory_destination])
+    manifest.declare(plot_key, [plot_destination])
+    manifest.declare(pdb_key, [pdb_destination])
+    if public_root is not None:
+        for destination in (
+            trajectory_destination,
+            plot_destination,
+            pdb_destination,
+        ):
+            if _is_pipeline_public_destination(public_root, destination):
+                _declare_public_output(
+                    manifest,
+                    public_root,
+                    destination,
+                )
     _run_cli_main("irc", _irc_cli.cli, irc_args, on_nonzero="raise", prefix="irc")
 
+    # M42: read the child's truthful per-direction convergence. The IRC leaf is
+    # usable only when EVERY requested direction explicitly converged; a
+    # trajectory can exist for a nonconverged (never_stop / max-cycle) direction,
+    # so promotion must gate on this outcome, not on file existence.
+    irc_outcome = _read_irc_outcome(irc_dir)
+
     finished_pdb = irc_dir / "finished_irc.pdb"
-    finished_trj = irc_dir / "finished_irc_trj.xyz"
+    finished_trj = manifest.claim_one(trajectory_key)
+    if public_root is not None and _is_pipeline_public_destination(
+        public_root, finished_trj
+    ):
+        _claim_public_output(
+            manifest,
+            public_root,
+            finished_trj,
+        )
     irc_plot = irc_dir / "irc_plot.png"
 
     # Ensure we have a PDB for visualization if possible
     try:
-        if finished_trj.exists() and (not finished_pdb.exists()):
+        if manifest.claim_optional(pdb_key) is None:
             ref_for_conv: Optional[Path] = None
             if seg_model_pdb.suffix.lower() == ".pdb":
                 ref_for_conv = seg_model_pdb
@@ -2051,104 +2558,71 @@ def _irc_and_match(
     except Exception as e:
         _echo(f"[irc] WARNING: failed to convert finished_irc_trj.xyz to PDB: {e}", err=True)
 
+    manifest.claim_optional(pdb_key)
+    if public_root is not None and _is_pipeline_public_destination(
+        public_root, pdb_destination
+    ):
+        _claim_public_output(
+            manifest,
+            public_root,
+            pdb_destination,
+        )
     elems, c_first, c_last = read_xyz_first_last(finished_trj)
-
-    calc_args = dict(calc_cfg)
-    shared_calc = create_calculator(**calc_args)
     g_left = _geom_from_angstrom(elems, c_first, freeze_atoms)
     g_right = _geom_from_angstrom(elems, c_last, freeze_atoms)
-    g_left.set_calculator(shared_calc)
-    g_right.set_calculator(shared_calc)
-
-    # EulerPC reverses the forward branch before stitching, so the first raw
-    # endpoint is forward and the last is backward. These diagnostic tags may
-    # swap below when the endpoints are oriented to the MEP left/right states.
-    left_tag = "forward"
-    right_tag = "backward"
-    reverse_irc = False
-
-    path_root = mep_dir if mep_dir is not None else seg_dir.parent
-
-    # Preferred mapping: use endpoints from path_search/<seg_tag>_~~~_mep
-    if seg_tag is not None:
-        try:
-            endpoints = _load_segment_endpoints(path_root, seg_tag, freeze_atoms)
-            if endpoints is not None:
-                gL_end, gR_end = endpoints
-                bond_cfg = dict(_path_search.BOND_KW)
-
-                def _matches(x, y) -> bool:
-                    try:
-                        changed, _ = _path_search.has_bond_change(x, y, bond_cfg)
-                        return not changed
-                    except Exception as exc:
-                        logger.debug("Bond-change check failed during IRC endpoint matching: %s", exc)
-                        return False
-
-                L_L = _matches(g_left, gL_end)
-                L_R = _matches(g_left, gR_end)
-                R_L = _matches(g_right, gL_end)
-                R_R = _matches(g_right, gR_end)
-
-                matched_bond = False
-                if L_L and R_R:
-                    matched_bond = True
-                    # orientation already consistent
-                elif L_R and R_L:
-                    matched_bond = True
-                    g_left, g_right = g_right, g_left
-                    left_tag, right_tag = right_tag, left_tag
-                    reverse_irc = True
-
-                if not matched_bond:
-                    # Fallback: minimize total RMSD between (left,right) and (L_end,R_end)
-                    try:
-                        d_LL = _path_search._rmsd_between(g_left, gL_end)
-                        d_LR = _path_search._rmsd_between(g_left, gR_end)
-                        d_RL = _path_search._rmsd_between(g_right, gL_end)
-                        d_RR = _path_search._rmsd_between(g_right, gR_end)
-                        opt1 = d_LL + d_RR  # left->L_end, right->R_end
-                        opt2 = d_LR + d_RL  # left->R_end, right->L_end
-                        if opt2 < opt1:
-                            g_left, g_right = g_right, g_left
-                            left_tag, right_tag = right_tag, left_tag
-                            reverse_irc = True
-                    except Exception as e:
-                        _echo(
-                            f"[irc] WARNING: segment endpoint mapping via RMSD failed: {e}",
-                            err=True,
-                        )
-            else:
-                _echo(
-                    f"[irc] WARNING: LBFGS endpoints not found for segment tag '{seg_tag}' in the segment directories; "
-                    "using raw IRC orientation.",
-                    err=True,
-                )
-        except Exception as e:
-            _echo(f"[irc] WARNING: segment endpoint mapping failed: {e}", err=True)
-    else:
-        # TSOPT-only mode: use raw IRC orientation.
-        _echo_detail("[irc] TSOPT-only mode: Use raw irc orientation.")
-
-    # Per-segment IRC plot
+    shared_calc = create_calculator(**calc_cfg)
+    lease = CalculatorLease(shared_calc)
+    if session is not None:
+        session.resources.add(lease.release)
     try:
-        if finished_trj.exists():
-            run_trj2fig(finished_trj, [irc_plot], unit="kcal", reference="init", reverse_x=False)
-            close_matplotlib_figures()
-    except Exception as e:
-        _echo(f"[irc] WARNING: failed to plot finished IRC trajectory: {e}", err=True)
+        lease.attach(g_ts)
+        lease.attach(g_left)
+        lease.attach(g_right)
+        g_left, g_right, left_tag, right_tag, reverse_irc = _orient_irc_endpoints(
+            g_left,
+            g_right,
+            endpoint_trajectory=endpoint_trajectory,
+            freeze_atoms=freeze_atoms,
+            seg_tag=seg_tag,
+        )
 
-    return {
-        "left_min_geom": g_left,
-        "right_min_geom": g_right,
-        "ts_geom": g_ts,
-        "left_tag": left_tag,
-        "right_tag": right_tag,
-        "freeze_atoms": freeze_atoms,
-        "irc_plot_path": irc_plot if irc_plot.exists() else None,
-        "irc_trj_path": finished_trj if finished_trj.exists() else None,
-        "reverse_irc": reverse_irc,
-    }
+        try:
+            run_trj2fig(
+                finished_trj,
+                [irc_plot],
+                unit="kcal",
+                reference="init",
+                reverse_x=False,
+            )
+            close_matplotlib_figures()
+        except Exception as e:
+            _echo(f"[irc] WARNING: failed to plot finished IRC trajectory: {e}", err=True)
+        current_plot = manifest.claim_optional(plot_key)
+        if public_root is not None and _is_pipeline_public_destination(
+            public_root, plot_destination
+        ):
+            _claim_public_output(
+                manifest,
+                public_root,
+                plot_destination,
+            )
+
+        return {
+            "left_min_geom": g_left,
+            "right_min_geom": g_right,
+            "ts_geom": g_ts,
+            "left_tag": left_tag,
+            "right_tag": right_tag,
+            "freeze_atoms": freeze_atoms,
+            "irc_plot_path": current_plot,
+            "irc_trj_path": finished_trj,
+            "reverse_irc": reverse_irc,
+            "calculator_lease": lease,
+            "irc_outcome": irc_outcome,
+        }
+    except BaseException:
+        lease.release()
+        raise
 
 
 
@@ -2180,43 +2654,6 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 )
 
 
-def _show_advanced_help(
-    ctx: click.Context, _param: click.Parameter, value: bool
-) -> None:
-    """Print full option help (including hidden advanced options) and exit."""
-    if not value or ctx.resilient_parsing:
-        return
-
-    hidden = getattr(ctx.command, "_advanced_hidden_options", ())
-    restored: list[click.Option] = []
-    for opt in hidden:
-        if opt.hidden:
-            opt.hidden = False
-            restored.append(opt)
-    try:
-        click.echo(ctx.command.get_help(ctx))
-    finally:
-        for opt in restored:
-            opt.hidden = True
-    ctx.exit()
-
-
-def _configure_all_help_visibility(command: click.Command) -> None:
-    """Hide advanced options from default --help while keeping them functional."""
-    hidden_options: list[click.Option] = []
-    for param in command.params:
-        if not isinstance(param, click.Option):
-            continue
-        names = set(param.opts + param.secondary_opts)
-        if names & _ALL_PRIMARY_HELP_OPTIONS:
-            continue
-        if param.hidden:
-            continue
-        param.hidden = True
-        hidden_options.append(param)
-    setattr(command, "_advanced_hidden_options", tuple(hidden_options))
-
-
 @click.command(
     help=(
         "Run active site model extraction → optional staged scan → MEP search → full-structure merge in one run.\n"
@@ -2235,7 +2672,7 @@ def _configure_all_help_visibility(command: click.Command) -> None:
     is_flag=True,
     is_eager=True,
     expose_value=False,
-    callback=_show_advanced_help,
+    callback=_show_advanced_subcommand_help,
     help="Show all options (including advanced settings) and exit.",
 )
 # ===== Inputs =====
@@ -2886,10 +3323,49 @@ def cli(
     are concatenated into the final MEP.  With ``--refine-path``, the recursive ``path_search`` workflow
     is used instead for automatic multistep discovery.
     """
-    # Engage pipeline-scoped default-verbosity suppression for the duration of
-    # this `all` run (reset per-invocation by DefaultGroup.parse_args). Standalone
-    # leaf/report commands are unaffected and keep full output at default.
-    from pdb2reaction.core.utils import set_pipeline_mode
+    global _FREEZE_ATOMS_GLOBAL, _FREEZE_ATOMS_YAML
+    from pdb2reaction.core.utils import (
+        is_child_mode,
+        is_convert_file_enabled,
+        pipeline_mode_enabled,
+        set_child_mode,
+        set_pipeline_mode,
+    )
+
+    # Register one invocation owner before the first process-global mutation.
+    session = RunSession()
+    ctx.call_on_close(session.close)
+    session.own_run_id_environment()
+    ctx.meta["pdb2reaction_run_session"] = session
+    prior_pipeline_mode = pipeline_mode_enabled()
+    prior_child_mode = is_child_mode()
+    prior_convert_files = is_convert_file_enabled()
+    prior_echo_started = bool(_echo_state._started)
+    prior_freeze_global = (
+        None if _FREEZE_ATOMS_GLOBAL is None else list(_FREEZE_ATOMS_GLOBAL)
+    )
+    prior_freeze_yaml = (
+        None if _FREEZE_ATOMS_YAML is None else list(_FREEZE_ATOMS_YAML)
+    )
+    prior_sigint = signal.getsignal(signal.SIGINT)
+
+    def _restore_invocation_state() -> None:
+        global _FREEZE_ATOMS_GLOBAL, _FREEZE_ATOMS_YAML
+        signal.signal(signal.SIGINT, prior_sigint)
+        _FREEZE_ATOMS_GLOBAL = (
+            None if prior_freeze_global is None else list(prior_freeze_global)
+        )
+        _FREEZE_ATOMS_YAML = (
+            None if prior_freeze_yaml is None else list(prior_freeze_yaml)
+        )
+        _echo_state._started = prior_echo_started
+        set_convert_file_enabled(prior_convert_files)
+        set_child_mode(prior_child_mode)
+        set_pipeline_mode(prior_pipeline_mode)
+
+    session.resources.add(_restore_invocation_state)
+
+    # Engage pipeline-scoped default-verbosity suppression for this invocation.
     set_pipeline_mode(True)
     argv_all = sys.argv[1:]
 
@@ -2899,7 +3375,6 @@ def cli(
     signal.signal(signal.SIGINT, _sigint_handler)
 
     _echo_state.reset()
-    global _FREEZE_ATOMS_GLOBAL, _FREEZE_ATOMS_YAML
     _FREEZE_ATOMS_GLOBAL = None
     _FREEZE_ATOMS_YAML = None
     set_convert_file_enabled(convert_files)
@@ -3023,18 +3498,10 @@ def cli(
     # composite workflow, while every child stage sees an ordinary PDB path.
     user_input_paths = tuple(Path(path) for path in input_paths)
     prepared_all_inputs = []
-    try:
-        for path in user_input_paths:
-            prepared = prepare_input_structure(path)
-            prepared_all_inputs.append(prepared)
-            # Click runs close callbacks on normal return and on command
-            # errors, so temporary PDB bridges and registry entries cannot
-            # leak from this long composite workflow.
-            ctx.call_on_close(prepared.cleanup)
-    except BaseException:
-        for prepared in reversed(prepared_all_inputs):
-            prepared.cleanup()
-        raise
+    for path in user_input_paths:
+        prepared = prepare_input_structure(path)
+        prepared_all_inputs.append(prepared)
+        session.resources.own_cleanup(prepared)
     input_paths = tuple(prepared.source_path for prepared in prepared_all_inputs)
     for user_path, prepared in zip(user_input_paths, prepared_all_inputs):
         if prepared.source_path != user_path:
@@ -3153,7 +3620,7 @@ def cli(
         _echo_section("====== [all] Effective configuration ======")
         # `--show-config` is an explicit output request; dry-run's automatic
         # config dump is level-3 debug context so -v 1/2 stay compact.
-        click.echo(
+        emit(
             yaml.safe_dump(config_payload, sort_keys=False, allow_unicode=True).rstrip(),
             narrative=show_config,
         )
@@ -3169,11 +3636,7 @@ def cli(
         _skip_extract_dry = center_spec is None or str(center_spec).strip() == ""
         if not _skip_extract_dry:
             _dry_tmp = Path(tempfile.mkdtemp(prefix="pdb2reaction_dry_extract_"))
-            # Click closes registered callbacks on both normal return and
-            # exceptions, so charge/parity failures cannot leak this directory.
-            ctx.call_on_close(
-                lambda path=_dry_tmp: shutil.rmtree(path, ignore_errors=True)
-            )
+            session.resources.own_path(_dry_tmp)
             _first_in = input_paths[0].resolve() if input_paths else None
             if _first_in is None:
                 raise click.BadParameter("[all] --dry-run requires at least one -i input.")
@@ -3224,7 +3687,6 @@ def cli(
                 except ValueError as e:
                     raise click.BadParameter(f"[all] --dry-run parity check failed: {e}")
                 _echo(f"[all] --dry-run parity check OK: charge={_q_check:+d}, spin(multiplicity)={int(spin)}", narrative=True)
-            shutil.rmtree(_dry_tmp, ignore_errors=True)
         extract_note = (
             "extract pre-check ran" if not _skip_extract_dry
             else "extraction was not requested"
@@ -3252,7 +3714,7 @@ def cli(
             ) + ".",
             narrative=True,
         )
-        _emit_final_summary(out_dir, time_start)
+        _emit_final_summary(out_dir, time_start, session.manifest)
         return
 
     yaml_cfg = load_yaml_dict(args_yaml)
@@ -3262,6 +3724,70 @@ def cli(
     first_input = input_paths[0].resolve() if input_paths else None
 
     out_dir = out_dir.resolve()
+    # Public ownership is established at each producer immediately before its
+    # exact destination is written.  No root/segments traversal participates
+    # in provenance admission.
+    manifest = session.manifest
+
+    def _declare_public(path: Path) -> str:
+        return _declare_public_output(
+            manifest,
+            out_dir,
+            path,
+        )
+
+    def _claim_public(path: Path) -> Optional[Path]:
+        return _claim_public_output(
+            manifest,
+            out_dir,
+            path,
+        )
+
+    def _copy_public_logged(
+        src: Path,
+        dst: Path,
+        *,
+        label: Optional[str] = None,
+        echo: bool = True,
+    ) -> bool:
+        _declare_public(dst)
+        copied = _copy_logged(src, dst, label=label, echo=echo)
+        if copied:
+            _claim_public(dst)
+        return copied
+
+    def _move_public_logged(
+        src: Path,
+        dst: Path,
+        *,
+        label: Optional[str] = None,
+        echo: bool = True,
+    ) -> bool:
+        _declare_public(dst)
+        moved = _move_logged(src, dst, label=label, echo=echo)
+        if moved:
+            _claim_public(dst)
+        return moved
+
+    def _write_public_energy_diagram(
+        prefix: Path,
+        labels: List[str],
+        energies_au: List[float],
+        title_note: str,
+        ylabel: str = "ΔE (kcal/mol)",
+    ) -> Optional[Dict[str, Any]]:
+        destination = prefix.with_suffix(".png")
+        _declare_public(destination)
+        payload = _write_segment_energy_diagram(
+            prefix,
+            labels=labels,
+            energies_au=energies_au,
+            title_note=title_note,
+            ylabel=ylabel,
+        )
+        _claim_public(destination)
+        return payload
+
     models_dir = out_dir / WORK_DIRNAME / "models"
     path_dir = out_dir / WORK_DIRNAME / ("path_search" if refine_path else "path_opt")
     scan_dir = _resolve_override_dir(out_dir / WORK_DIRNAME / "scan", scan_out_dir)
@@ -3343,6 +3869,11 @@ def cli(
         _echo_section(
             f"====== [all] Stage 1/{stage_total} — Active site model extraction ======"
         )
+        for model_index, model_output in enumerate(model_outputs, start=1):
+            manifest.declare(
+                f"extract.model.{model_index:02d}",
+                [model_output],
+            )
         try:
             ex_res = extract_api(
                 complex_pdb=[str(p) for p in extract_inputs],
@@ -3360,6 +3891,10 @@ def cli(
             )
         except Exception as e:
             raise click.ClickException(f"[all] Extractor failed: {e}")
+
+        for model_index in range(1, len(model_outputs) + 1):
+            manifest.claim_one(f"extract.model.{model_index:02d}")
+        _persist_run_manifest(manifest, out_dir)
 
         _echo("[all] Active site model files:")
         for op in model_outputs:
@@ -3477,7 +4012,7 @@ def cli(
     if ref_pdb_cli is not None:
         prepared_ref = prepare_input_structure(ref_pdb_cli.resolve())
         prepared_all_inputs.append(prepared_ref)
-        ctx.call_on_close(prepared_ref.cleanup)
+        session.resources.own_cleanup(prepared_ref)
         ref_pdb_for_topology = prepared_ref.source_path
         _echo(f"[all] --ref-pdb provided: {ref_pdb_cli.resolve()}")
 
@@ -3510,6 +4045,7 @@ def cli(
         ),
         precision=precision,
         backend_model=backend_model,
+        session=session,
     )
 
     calc_cfg_shared = _build_calc_cfg(
@@ -3532,6 +4068,10 @@ def cli(
     # --calc-file overrides --backend with a user ASE Calculator (custom backend).
     from pdb2reaction.backends import apply_calc_file_to_calc_cfg
     apply_calc_file_to_calc_cfg(calc_cfg_shared, calc_file, calc_factory)
+    _shared_provenance = calculator_provenance(calc_cfg_shared)
+    _mlip_backend_shared = str(_shared_provenance["mlip_backend"])
+    _mlip_model_shared = _shared_provenance["mlip_model"]
+    _mlip_precision_shared = _shared_provenance["mlip_precision"]
 
     # Inject backend into freq_overrides so _run_freq_for_state passes it
     _backend_shared = calc_cfg_shared.get("backend", "uma")
@@ -3582,6 +4122,9 @@ def cli(
             _tsopt_ref,
             convert_files,
             overrides=tsopt_overrides,
+            manifest=manifest,
+            artifact_prefix="post.01.tsopt",
+            public_root=out_dir,
         )
 
         irc_res = _irc_and_match(
@@ -3600,10 +4143,16 @@ def cli(
             irc_step_size=irc_step_size,
             irc_never_stop=irc_never_stop,
             seg_tag=None,
+            session=session,
+            manifest=manifest,
+            artifact_prefix="post.01.irc",
+            public_root=out_dir,
         )
+        _persist_run_manifest(manifest, out_dir)
         gL = irc_res["left_min_geom"]
         gR = irc_res["right_min_geom"]
         gT = irc_res["ts_geom"]
+        calculator_lease = irc_res["calculator_lease"]
         irc_plot_path = irc_res.get("irc_plot_path")
 
         eL = float(gL.energy)
@@ -3616,6 +4165,22 @@ def cli(
         else:
             g_react_irc, e_react_irc = gR, eR_raw
             g_prod_irc, e_prod_irc = gL, eL
+
+        # P12: record the endpoint-assignment provenance. In TS-only mode the
+        # higher-energy IRC endpoint is presented as the reactant (with a
+        # deterministic left-side tie rule). This is an energy-order presentation
+        # convention, NOT a chemically established reaction direction; the R/P
+        # labels, files, barrier and delta are unchanged, but a consumer must not
+        # read chemical direction into them. See docs/all.md / docs/ja/all.md.
+        endpoint_assignment = {
+            "policy": "higher_energy_endpoint_as_reactant",
+            "chemical_direction_known": False,
+            "left_role": "reactant" if eL >= eR_raw else "product",
+            "right_role": "product" if eL >= eR_raw else "reactant",
+            "left_energy_hartree": float(eL),
+            "right_energy_hartree": float(eR_raw),
+            "tie_rule": "on equal energy (eL == eR) the left endpoint is the reactant",
+        }
 
         ensure_dir(struct_dir)
         model_ref = ref_pdb_for_topology or ts_initial_pdb
@@ -3642,15 +4207,17 @@ def cli(
         _hess_discard("irc_endpoint")
         _c = _hess_load(_react_hk)
         if _c:
-            _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"))
+            _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"), identity=_c.get("identity"))
+        _react_opt_conv: Optional[bool] = None
         try:
-            g_react_opt, _ = _optimize_endpoint_geom(
+            g_react_opt, _, _react_opt_conv = _optimize_endpoint_geom(
                 g_react_irc,
                 tsopt_opt_mode_default,
                 endpoint_opt_dir,
                 "reactant",
                 dump=dump,
                 thresh=thresh_post,
+                calc_identity_cfg=calc_cfg_shared,
             )
         except Exception as e:
             _echo(
@@ -3658,19 +4225,22 @@ def cli(
                 err=True,
             )
             g_react_opt = g_react_irc
+            _react_opt_conv = None
 
         _hess_discard("irc_endpoint")
         _c = _hess_load(_prod_hk)
         if _c:
-            _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"))
+            _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"), identity=_c.get("identity"))
+        _prod_opt_conv: Optional[bool] = None
         try:
-            g_prod_opt, _ = _optimize_endpoint_geom(
+            g_prod_opt, _, _prod_opt_conv = _optimize_endpoint_geom(
                 g_prod_irc,
                 tsopt_opt_mode_default,
                 endpoint_opt_dir,
                 "product",
                 dump=dump,
                 thresh=thresh_post,
+                calc_identity_cfg=calc_cfg_shared,
             )
         except Exception as e:
             _echo(
@@ -3678,6 +4248,7 @@ def cli(
                 err=True,
             )
             g_prod_opt = g_prod_irc
+            _prod_opt_conv = None
 
         # Clean up endpoint_opt as a temporary working directory
         shutil.rmtree(endpoint_opt_dir, ignore_errors=True)
@@ -3693,7 +4264,7 @@ def cli(
         e_react = float(g_react_opt.energy)
         e_prod = float(g_prod_opt.energy)
 
-        diag_payload = _write_segment_energy_diagram(
+        diag_payload = _write_public_energy_diagram(
             tsroot / "energy_diagram_MLIP",
             labels=["R", "TS", "P"],
             energies_au=[e_react, eT, e_prod],
@@ -3704,6 +4275,7 @@ def cli(
 
         # DO NOT INLINE: (segment path, freq-pre): same closure-capture mechanism: null calculator on retained Geometry before freq subprocess so VRAM reports do not double-count.
         # ── Release GPU memory before freq/thermo/DFT ──
+        calculator_lease.release()
         for _g in [locals().get(n) for n in ("gL", "gR", "gT", "g_react_irc", "g_prod_irc", "g_react_opt", "g_prod_opt")]:
             if _g is not None and hasattr(_g, "calculator"):
                 _g.calculator = None
@@ -3772,7 +4344,7 @@ def cli(
                         err=True,
                     )
                 else:
-                    diag_payload = _write_segment_energy_diagram(
+                    diag_payload = _write_public_energy_diagram(
                         tsroot / "energy_diagram_G_MLIP",
                         labels=["R", "TS", "P"],
                         energies_au=[GR, GT, GP],
@@ -3827,7 +4399,7 @@ def cli(
                 _echo(f"[dft] WARNING: DFT failed for state(s): {', '.join(_failed_states)}. Skipping DFT diagrams.", err=True)
             if _dft_all_ok:
                 try:
-                    diag_payload = _write_segment_energy_diagram(
+                    diag_payload = _write_public_energy_diagram(
                         tsroot / "energy_diagram_DFT",
                         labels=["R", "TS", "P"],
                         energies_au=[eR_dft, eT_dft, eP_dft],
@@ -3865,7 +4437,7 @@ def cli(
                             err=True,
                         )
                     else:
-                        diag_payload = _write_segment_energy_diagram(
+                        diag_payload = _write_public_energy_diagram(
                             tsroot / "energy_diagram_G_DFT_plus_MLIP",
                             labels=["R", "TS", "P"],
                             energies_au=[GR_dft_mlip, GT_dft_mlip, GP_dft_mlip],
@@ -3915,6 +4487,8 @@ def cli(
             "out_dir": str(tsroot),
             "n_images": n_images,
             "n_segments": 1,
+            # P12: presentation-convention provenance for the R/P assignment.
+            "endpoint_assignment": endpoint_assignment,
             "segments": [
                 {
                     "index": 1,
@@ -3923,6 +4497,7 @@ def cli(
                     "barrier_kcal": float(barrier),
                     "delta_kcal": float(delta),
                     "bond_changes": _path_search._bond_changes_block(bond_summary),
+                    "endpoint_assignment": endpoint_assignment,
                 }
             ],
         }
@@ -3933,8 +4508,9 @@ def cli(
             version="",
             pipeline_mode="tsopt-only",
             out_dir=out_dir,
-            mlip_backend=calc_cfg_shared.get("backend", "uma"),
-            mlip_model=calc_cfg_shared.get("model"),
+            mlip_backend=_mlip_backend_shared,
+            mlip_model=_mlip_model_shared,
+            mlip_precision=_mlip_precision_shared,
             charge=q_int,
             spin=spin,
             command=command_str,
@@ -3949,12 +4525,18 @@ def cli(
                 "mep_mode": mep_mode_kind,
             },
             freeze_atoms=_freeze_atoms_for_log(),
+            manifest=manifest,
         )
         try:
-            with open(tsroot / "summary.json", "w") as f:
-                json.dump(summary, f, indent=2, ensure_ascii=False)
+            _publish_manifest_summary(
+                tsroot / "summary.json",
+                summary,
+                manifest=manifest,
+                key="ts.summary.01",
+                out_dir=out_dir,
+            )
             _echo_detail(f"[write] Wrote '{tsroot / 'summary.json'}'.")
-            _copy_logged(tsroot / "summary.json", out_dir / "summary.json", label="summary.json")
+            _copy_public_logged(tsroot / "summary.json", out_dir / "summary.json", label="summary.json")
             try:
                 ts_freq_info = (
                     _read_imaginary_frequency(freq_root / "TS") if do_thermo else None
@@ -3969,6 +4551,16 @@ def cli(
                     "post_dir": str(tsroot),
                     "irc_plot": str(irc_plot_path) if isinstance(irc_plot_path, Path) else None,
                     "irc_traj": str(irc_trj_path) if isinstance(irc_trj_path, Path) else None,
+                    # M42: truthful IRC directional convergence + endpoint-opt
+                    # convergence so the aggregate gates on convergence, not on
+                    # trajectory-file existence.
+                    "irc": irc_res.get("irc_outcome"),
+                    "endpoint_opt": {
+                        "reactant_converged": _react_opt_conv,
+                        "product_converged": _prod_opt_conv,
+                    },
+                    # P12: presentation-convention provenance (energy-order R/P).
+                    "endpoint_assignment": endpoint_assignment,
                 }
                 if ts_freq_info is not None:
                     segment_log["ts_imag"] = ts_freq_info
@@ -4024,8 +4616,6 @@ def cli(
                             structures=_structs_seg,
                         )
 
-                _mlip_backend = calc_cfg_shared.get("backend", "uma")
-                _mlip_model = calc_cfg_shared.get("model")
                 summary_payload = {
                     "root_out_dir": str(out_dir),
                     "path_dir": str(tsroot),
@@ -4037,8 +4627,9 @@ def cli(
                     "dft": do_dft,
                     "opt_mode": tsopt_opt_mode_default,
                     "mep_mode": mep_mode_kind,
-                    "mlip_backend": _mlip_backend,
-                    "mlip_model": _mlip_model,
+                    "mlip_backend": _mlip_backend_shared,
+                    "mlip_model": _mlip_model_shared,
+                    "mlip_precision": _mlip_precision_shared,
                     "command": command_str,
                     "charge": q_int,
                     "spin": spin,
@@ -4048,13 +4639,24 @@ def cli(
                     "energy_diagrams": summary.get("energy_diagrams", []),
                     "post_segments": [segment_log],
                     "key_files": {},
+                    "current_output_paths": [
+                        path.relative_to(out_dir).as_posix()
+                        for path in _refresh_current_public_outputs(
+                            manifest, out_dir
+                        )
+                        if path.is_relative_to(out_dir)
+                    ],
                 }
                 # Copy R/TS/P to seg_01/ BEFORE writing summary.log (so tree includes seg_01/)
                 try:
                     _input_suffix = first_input.suffix.lower() if first_input else ".xyz"
                     _tsonly_structs = {"R": pR, "TS": pT, "P": pP}
                     _seg_out = _copy_structures_to_seg_dir(
-                        _tsonly_structs, out_dir, 1, _input_suffix,
+                        _tsonly_structs,
+                        out_dir,
+                        1,
+                        _input_suffix,
+                        manifest=manifest,
                     )
                     _echo(f"[all] Wrote R/TS/P for segment 01 → {_seg_out}", narrative=True)
                 except Exception as e:
@@ -4075,29 +4677,36 @@ def cli(
                     summary["status_reasons"] = _status_reasons
                 else:
                     summary.pop("status_reasons", None)
-                # Rebuild key_output_files now that seg_01/ exists
+                # Recompute the additive C6 truth axes now that the real
+                # post_segment (IRC + endpoint-opt convergence) is available; the
+                # intermediate _enrich_summary call ran before post-processing.
+                _apply_pipeline_truth(
+                    summary,
+                    post_segments=[segment_log],
+                    config=summary.get("config"),
+                    legacy_status=_status,
+                    legacy_reasons=_status_reasons,
+                )
+                summary["key_output_files"] = _current_key_output_files(
+                    manifest, out_dir
+                )
                 try:
-                    _kf: Dict[str, Any] = {}
-                    for _n, _d in [("summary.log", "Human-readable results summary"),
-                                   ("irc_plot_all.png", "Aggregated IRC plot")]:
-                        if (out_dir / _n).exists():
-                            _kf[_n] = _d
-                    for _child in sorted(out_dir.iterdir()) if out_dir.exists() else []:
-                        if _child.is_dir() and _child.name.startswith("seg_"):
-                            _kf[_child.name] = {"files": sorted(f.name for f in _child.iterdir() if f.is_file())}
-                    if _kf:
-                        summary["key_output_files"] = _kf
-                except Exception:
-                    pass
-                try:
-                    with open(tsroot / "summary.json", "w") as f:
-                        json.dump(summary, f, indent=2, ensure_ascii=False)
-                    _copy_logged(tsroot / "summary.json", out_dir / "summary.json", label="summary.json", echo=False)
-                except Exception:
-                    pass
+                    _publish_manifest_summary(
+                        tsroot / "summary.json",
+                        summary,
+                        manifest=manifest,
+                        key="ts.summary.01",
+                        out_dir=out_dir,
+                    )
+                    _copy_public_logged(tsroot / "summary.json", out_dir / "summary.json", label="summary.json", echo=False)
+                except Exception as exc:
+                    _echo(
+                        f"[write] WARNING: Failed to refresh summary.json in TSOPT-only mode: {exc}",
+                        err=True,
+                    )
 
                 write_summary_log(tsroot / "summary.log", summary_payload)
-                _copy_logged(tsroot / "summary.log", out_dir / "summary.log", label="summary.log", echo=False)
+                _copy_public_logged(tsroot / "summary.log", out_dir / "summary.log", label="summary.log", echo=False)
             except Exception as e:
                 _echo(f"[write] WARNING: Failed to write summary.log in TSOPT-only mode: {e}", err=True)
         except Exception as e:
@@ -4107,6 +4716,9 @@ def cli(
             )
 
         try:
+            current_public_set = set(
+                _refresh_current_public_outputs(manifest, out_dir)
+            )
             for stem in (
                 "energy_diagram_MLIP",
                 "energy_diagram_G_MLIP",
@@ -4114,9 +4726,9 @@ def cli(
                 "energy_diagram_G_DFT_plus_MLIP",
             ):
                 src = tsroot / f"{stem}.png"
-                if src.exists():
+                if src.resolve(strict=False) in current_public_set:
                     dst = out_dir / f"{stem}_all.png"
-                    _copy_logged(src, dst, label=src.name)
+                    _copy_public_logged(src, dst, label=src.name)
         except Exception as e:
             _echo(
                 f"[all] WARNING: Failed to mirror *_all diagrams in TSOPT-only mode: {e}",
@@ -4124,19 +4736,38 @@ def cli(
             )
 
         try:
-            if isinstance(irc_plot_path, Path) and irc_plot_path.exists():
+            if isinstance(irc_plot_path, Path):
                 dst = out_dir / "irc_plot_all.png"
-                _copy_logged(irc_plot_path, dst, label="irc_plot_all.png")
+                _copy_public_logged(irc_plot_path, dst, label="irc_plot_all.png")
         except Exception as e:
             _echo(
                 f"[all] WARNING: Failed to mirror IRC plot in TSOPT-only mode: {e}",
                 err=True,
             )
 
+        summary["key_output_files"] = _current_key_output_files(
+            manifest, out_dir
+        )
+        _publish_manifest_summary(
+            tsroot / "summary.json",
+            summary,
+            manifest=manifest,
+            key="ts.summary.01",
+            out_dir=out_dir,
+        )
+        _copy_public_logged(
+            tsroot / "summary.json",
+            out_dir / "summary.json",
+            label="summary.json",
+            echo=False,
+        )
+        _refresh_current_public_outputs(manifest, out_dir)
+        _persist_run_manifest(manifest, out_dir)
+
         _echo_section(
             "====== [all] TSOPT-only pipeline successfully finished ======"
         )
-        _emit_final_summary(out_dir, time_start)
+        _emit_final_summary(out_dir, time_start, manifest)
         return
 
     # Stage 1b: optional staged scan (single-structure)
@@ -4238,47 +4869,64 @@ def cli(
         )
         _echo("[all] pdb2reaction scan " + " ".join(scan_args))
 
+        for stage_idx in range(1, len(scan_stage_literals) + 1):
+            stage_root = scan_dir / f"stage_{stage_idx:02d}" / "result"
+            manifest.declare(
+                f"scan.stage.{stage_idx:02d}",
+                [stage_root.with_suffix(suffix) for suffix in (".xyz", ".pdb", ".gjf")],
+            )
+            manifest.declare(
+                f"scan.stage_ref.{stage_idx:02d}",
+                [stage_root.with_suffix(".pdb")],
+            )
+        if scan_preopt_use:
+            preopt_root = scan_dir / "preopt" / "result"
+            manifest.declare(
+                "scan.preopt",
+                [preopt_root.with_suffix(suffix) for suffix in (".xyz", ".pdb", ".gjf")],
+            )
+            manifest.declare("scan.preopt_ref", [preopt_root.with_suffix(".pdb")])
+
         _run_cli_main("scan", _scan_cli.cli, scan_args, on_nonzero="raise", prefix="all")
 
-        stage_results: List[Path] = []
-        for st in sorted(scan_dir.glob("stage_*")):
-            res = _find_with_suffixes(st / "result", [".xyz", ".pdb", ".gjf"])
-            if res:
-                stage_results.append(res.resolve())
-        if not stage_results:
-            raise click.ClickException(
-                "[all] No stage result structures found under scan/ "
-                "(looked for result.[pdb|xyz|gjf])."
-            )
+        stage_results = [
+            manifest.claim_one(f"scan.stage.{stage_idx:02d}")
+            for stage_idx in range(1, len(scan_stage_literals) + 1)
+        ]
+        stage_ref_results = {
+            stage_idx: manifest.claim_optional(f"scan.stage_ref.{stage_idx:02d}")
+            for stage_idx in range(1, len(scan_stage_literals) + 1)
+        }
+        preopt_result = manifest.claim_optional("scan.preopt") if scan_preopt_use else None
+        preopt_ref_result = (
+            manifest.claim_optional("scan.preopt_ref") if scan_preopt_use else None
+        )
+        _persist_run_manifest(manifest, out_dir)
         _echo_detail("[all] Collected scan stage active site model files:")
         for p in stage_results:
             _echo_detail(f"  - {p}")
 
         initial_path_for_path = scan_input_pdb
         initial_ref_pdb_for_path = ref_pdb_for_topology or (scan_input_pdb if scan_input_pdb.suffix.lower() == ".pdb" else None)
-        if scan_preopt_use:
-            preopt_xyz = (scan_dir / "preopt" / "result.xyz").resolve()
-            preopt_pdb = (scan_dir / "preopt" / "result.pdb").resolve()
-            if preopt_xyz.exists():
-                initial_path_for_path = preopt_xyz
-                if preopt_pdb.exists():
-                    initial_ref_pdb_for_path = preopt_pdb
-                _echo_detail(f"[all] Using scan preopt XYZ as initial path endpoint: {initial_path_for_path}")
+        if preopt_result is not None:
+            initial_path_for_path = preopt_result
+            if preopt_ref_result is not None:
+                initial_ref_pdb_for_path = preopt_ref_result
+            _echo_detail(f"[all] Using current scan preopt result as initial path endpoint: {initial_path_for_path}")
         models_for_path = [initial_path_for_path] + stage_results
 
         if initial_ref_pdb_for_path is not None:
             candidate_pdbs: List[Path] = [initial_ref_pdb_for_path]
             missing_pdb = False
-            for stage_path in stage_results:
-                if stage_path.suffix.lower() == ".pdb":
+            for stage_idx, stage_path in enumerate(stage_results, start=1):
+                stage_ref = stage_ref_results.get(stage_idx)
+                if stage_ref is not None:
+                    candidate_pdbs.append(stage_ref)
+                elif stage_path.suffix.lower() == ".pdb":
                     candidate_pdbs.append(stage_path)
                 else:
-                    pdb_candidate = stage_path.with_suffix(".pdb")
-                    if pdb_candidate.exists():
-                        candidate_pdbs.append(pdb_candidate)
-                    else:
-                        missing_pdb = True
-                        break
+                    missing_pdb = True
+                    break
             if not missing_pdb:
                 model_ref_pdbs = candidate_pdbs
             else:
@@ -4369,6 +5017,9 @@ def cli(
         if len(models_for_path) < 2:
             raise click.ClickException("[all] Need at least two structures for path-opt MEP concatenation.")
 
+        _declare_path_deliverables(manifest, path_dir)
+        if "path.summary" not in manifest.expected:
+            manifest.declare("path.summary", [path_dir / "summary.json"])
         combined_blocks: List[str] = []
         path_opt_segments: List[Dict[str, Any]] = []
         for idx, (pL, pR) in enumerate(zip(models_for_path, models_for_path[1:]), start=1):
@@ -4433,6 +5084,33 @@ def cli(
             )
             _echo("[all] pdb2reaction path-opt " + " ".join(po_args))
 
+            seg_trj_expected = seg_dir / "final_geometries_trj.xyz"
+            child_hei_base = seg_dir / "hei"
+            manifest.declare(
+                f"path.segment.{idx:02d}.trajectory",
+                [seg_trj_expected],
+            )
+            manifest.declare(
+                f"path.segment.{idx:02d}.endpoint_trajectory",
+                [seg_trj_expected],
+            )
+            manifest.declare(
+                f"path.segment.{idx:02d}.hei_child",
+                [child_hei_base.with_suffix(suffix) for suffix in (".xyz", ".pdb", ".gjf")],
+            )
+            manifest.declare(
+                f"path.segment.{idx:02d}.hei_child_ref",
+                [child_hei_base.with_suffix(".pdb")],
+            )
+            manifest.declare(
+                f"path.segment.{idx:02d}.hei_child_gjf",
+                [child_hei_base.with_suffix(".gjf")],
+            )
+            manifest.declare(
+                f"path.segment.{idx:02d}.summary",
+                [seg_dir / "summary.json"],
+            )
+
             _run_cli_main(
                 "path-opt",
                 _path_opt.cli,
@@ -4441,11 +5119,15 @@ def cli(
                 prefix=f"all seg {idx:02d}",
             )
 
-            seg_trj = seg_dir / "final_geometries_trj.xyz"
-            if not seg_trj.exists():
-                raise click.ClickException(
-                    f"[all] path-opt segment {idx} did not produce final_geometries_trj.xyz"
-                )
+            seg_trj = manifest.claim_one(f"path.segment.{idx:02d}.trajectory")
+            child_hei = manifest.claim_optional(f"path.segment.{idx:02d}.hei_child")
+            child_hei_ref = manifest.claim_optional(
+                f"path.segment.{idx:02d}.hei_child_ref"
+            )
+            child_hei_gjf = manifest.claim_optional(
+                f"path.segment.{idx:02d}.hei_child_gjf"
+            )
+            manifest.claim_optional(f"path.segment.{idx:02d}.summary")
 
             try:
                 mirror_dir = path_dir / f"{seg_tag}_mep"
@@ -4454,6 +5136,7 @@ def cli(
                 ensure_dir(mirror_dir)
                 if seg_trj.resolve() != mirror_trj.resolve():
                     shutil.copy2(seg_trj, mirror_trj)
+                manifest.claim_one(f"path.segment.{idx:02d}.endpoint_trajectory")
             except Exception as e:
                 _echo(
                     f"[all] WARNING: failed to mirror path-opt trajectory for segment {idx:02d}: {e}",
@@ -4462,34 +5145,51 @@ def cli(
 
             try:
                 seg_mep_trj = path_dir / f"mep_seg_{idx:02d}_trj.xyz"
+                manifest.declare(f"path.mep.{idx:02d}.trajectory", [seg_mep_trj])
                 shutil.copy2(seg_trj, seg_mep_trj)
+                manifest.claim_one(f"path.mep.{idx:02d}.trajectory")
                 if models_for_path[0].suffix.lower() == ".pdb":
+                    seg_mep_pdb = path_dir / f"mep_seg_{idx:02d}.pdb"
+                    manifest.declare(f"path.mep.{idx:02d}.pdb", [seg_mep_pdb])
                     _path_search._convert_to_pdb_logged(
                         seg_mep_trj,
                         ref_pdb_path=models_for_path[0],
-                        out_path=path_dir / f"mep_seg_{idx:02d}.pdb",
+                        out_path=seg_mep_pdb,
                     )
+                    manifest.claim_one(f"path.mep.{idx:02d}.pdb")
             except Exception as e:
                 _echo(
                     f"[all] WARNING: failed to emit per-segment trajectory copies for segment {idx:02d}: {e}",
                     err=True,
                 )
 
-            hei_src = seg_dir / "hei.xyz"
-            if hei_src.exists():
+            if child_hei is not None:
                 try:
-                    shutil.copy2(hei_src, path_dir / f"hei_seg_{idx:02d}.xyz")
-                    hei_pdb_src = seg_dir / "hei.pdb"
-                    if hei_pdb_src.exists():
-                        shutil.copy2(hei_pdb_src, path_dir / f"hei_seg_{idx:02d}.pdb")
-                    hei_gjf_src = seg_dir / "hei.gjf"
-                    if hei_gjf_src.exists():
-                        shutil.copy2(hei_gjf_src, path_dir / f"hei_seg_{idx:02d}.gjf")
+                    hei_destination = path_dir / f"hei_seg_{idx:02d}{child_hei.suffix}"
+                    manifest.declare(f"path.hei.{idx:02d}", [hei_destination])
+                    shutil.copy2(child_hei, hei_destination)
+                    manifest.claim_one(f"path.hei.{idx:02d}")
+                    if child_hei_ref is not None and child_hei_ref != child_hei:
+                        hei_pdb_destination = path_dir / f"hei_seg_{idx:02d}.pdb"
+                        manifest.declare(
+                            f"path.hei_ref.{idx:02d}", [hei_pdb_destination]
+                        )
+                        shutil.copy2(child_hei_ref, hei_pdb_destination)
+                        manifest.claim_one(f"path.hei_ref.{idx:02d}")
+                    if child_hei_gjf is not None and child_hei_gjf != child_hei:
+                        hei_gjf_destination = path_dir / f"hei_seg_{idx:02d}.gjf"
+                        manifest.declare(
+                            f"path.hei_gjf.{idx:02d}", [hei_gjf_destination]
+                        )
+                        shutil.copy2(child_hei_gjf, hei_gjf_destination)
+                        manifest.claim_one(f"path.hei_gjf.{idx:02d}")
                 except Exception as e:
                     _echo(
                         f"[all] WARNING: failed to prepare HEI artifacts for segment {idx:02d}: {e}",
                         err=True,
                     )
+
+            _persist_run_manifest(manifest, out_dir)
 
             raw_blocks = read_xyz_as_blocks(seg_trj, strict=True)
             blocks = ["\n".join(b) + "\n" for b in raw_blocks]
@@ -4528,6 +5228,10 @@ def cli(
                     "traj": seg_trj,
                     "inputs": (pL, pR),
                     "first_last": first_last,
+                    # Truthful per-segment convergence from the path-opt child, so
+                    # the no-tsopt aggregate fails closed on a nonconverged MEP
+                    # segment instead of assuming it converged (C6).
+                    "converged": _read_path_opt_segment_converged(seg_dir),
                 }
             )
 
@@ -4550,9 +5254,12 @@ def cli(
                 mep_pdb = _path_search._convert_to_pdb_logged(
                     final_trj, ref_pdb_path=models_for_path[0], out_path=path_dir / "mep.pdb"
                 )
-                if mep_pdb and mep_pdb.exists():
-                    dst = out_dir / mep_pdb.name
-                    shutil.copy2(mep_pdb, dst)
+                current_mep_pdb = manifest.claim_optional(
+                    "path.deliverable.mep.pdb"
+                )
+                if mep_pdb and current_mep_pdb is not None:
+                    dst = out_dir / current_mep_pdb.name
+                    _copy_public_logged(current_mep_pdb, dst, echo=False)
                     _echo_detail(f"[all] Copied concatenated MEP PDB → {dst}")
         except Exception as e:
             _echo(
@@ -4617,6 +5324,10 @@ def cli(
                     "index": seg_idx,
                     "tag": info.get("tag", f"seg_{seg_idx:02d}"),
                     "kind": "seg",
+                    # Additive C6: the path-opt child's truthful convergence, so
+                    # the no-tsopt path-opt aggregate gates on real per-segment
+                    # convergence rather than assuming the segment converged.
+                    "converged": info.get("converged"),
                     "barrier_kcal": float(barrier),
                     "delta_kcal": float(delta),
                     "bond_changes": _path_search._bond_changes_block(bond_summary),
@@ -4636,8 +5347,9 @@ def cli(
             version="",
             pipeline_mode="path-opt",
             out_dir=out_dir,
-            mlip_backend=calc_cfg_shared.get("backend", "uma"),
-            mlip_model=calc_cfg_shared.get("model"),
+            mlip_backend=_mlip_backend_shared,
+            mlip_model=_mlip_model_shared,
+            mlip_precision=_mlip_precision_shared,
             charge=q_int,
             spin=spin,
             command=command_str,
@@ -4650,48 +5362,45 @@ def cli(
                 "mep_mode": mep_mode_kind,
             },
             freeze_atoms=_freeze_atoms_for_log(),
+            manifest=manifest,
         )
-        try:
-            with open(path_dir / "summary.json", "w") as f:
-                json.dump(summary, f, indent=2, ensure_ascii=False)
-            _echo_detail(f"[write] Wrote '{path_dir / 'summary.json'}'.")
-        except Exception as e:
-            _echo(f"[write] WARNING: Failed to write summary.json for path-opt branch: {e}", err=True)
+        _publish_manifest_summary(
+            path_dir / "summary.json",
+            summary,
+            manifest=manifest,
+            key="path.summary",
+            out_dir=out_dir,
+        )
+        _echo_detail(f"[write] Wrote '{path_dir / 'summary.json'}'.")
 
         try:
             # MEP deliverables are MOVED to the pipeline root so they are not
             # duplicated under _work/path_opt (path_dir).  The path-opt branch
             # authors the energy diagram lower-cased (energy_diagram_mep.png);
             # glob both casings and land it at root under the canonical name.
-            for cand in ("energy_diagram_MEP.png", "energy_diagram_mep.png"):
-                src = path_dir / cand
-                if src.exists():
-                    _move_logged(src, out_dir / "energy_diagram_MEP.png", label=cand)
-                    break
-
-            for name in (
-                "mep.pdb",
-                "mep.cif",
-                "mep_w_ref.pdb",
-                "mep_w_ref.cif",
-            ):
-                src = path_dir / name
-                if src.exists():
-                    _move_logged(src, out_dir / name, label=name)
-
-            for stem in ("mep", "mep_w_ref"):
-                for ext in ("_trj.xyz", ".xyz"):
-                    src = path_dir / f"{stem}{ext}"
-                    if src.exists():
-                        _move_logged(src, out_dir / src.name, label=src.name)
+            path_deliverables = _claim_path_deliverables(manifest)
+            diagram = path_deliverables.get("diagram")
+            if diagram is not None:
+                _move_public_logged(
+                    diagram,
+                    out_dir / "energy_diagram_MEP.png",
+                    label=diagram.name,
+                )
+            for name, src in path_deliverables.items():
+                if name == "diagram":
+                    continue
+                _move_public_logged(src, out_dir / src.name, label=src.name)
 
             # summary.json / summary.log stay COPIES: the path_dir copy is
             # re-read (segments) and re-authored later, and the root copy is
             # consumed by the final-summary banner.
-            for name in ("summary.json", "summary.log"):
-                src = path_dir / name
-                if src.exists():
-                    _copy_logged(src, out_dir / name, label=name)
+            _copy_public_logged(
+                manifest.path("path.summary"),
+                out_dir / "summary.json",
+                label="summary.json",
+            )
+            _refresh_current_public_outputs(manifest, out_dir)
+            _persist_run_manifest(manifest, out_dir)
         except Exception as e:
             _echo(
                 f"[all] WARNING: Failed to relocate path-opt summary files: {e}",
@@ -4703,17 +5412,19 @@ def cli(
                 if isinstance(diag, dict) and str(diag.get("name", "")).lower().endswith("mep"):
                     diag_for_log = diag
                     break
+            current_public = _refresh_current_public_outputs(
+                manifest, out_dir
+            )
+            current_public_set = set(current_public)
             # MEP products were moved up to out_dir above; reference the root.
             mep_info = {
                 "n_images": summary.get("n_images"),
                 "n_segments": summary.get("n_segments"),
-                "traj_pdb": str(out_dir / "mep.pdb") if (out_dir / "mep.pdb").exists() else None,
-                "traj_cif": str(out_dir / "mep.cif") if (out_dir / "mep.cif").exists() else None,
-                "mep_plot": str(out_dir / "energy_diagram_MEP.png") if (out_dir / "energy_diagram_MEP.png").exists() else None,
+                "traj_pdb": str(out_dir / "mep.pdb") if (out_dir / "mep.pdb").resolve(strict=False) in current_public_set else None,
+                "traj_cif": str(out_dir / "mep.cif") if (out_dir / "mep.cif").resolve(strict=False) in current_public_set else None,
+                "mep_plot": str(out_dir / "energy_diagram_MEP.png") if (out_dir / "energy_diagram_MEP.png").resolve(strict=False) in current_public_set else None,
                 "diagram": diag_for_log,
             }
-            _mlip_backend = calc_cfg_shared.get("backend", "uma")
-            _mlip_model = calc_cfg_shared.get("model")
             summary_payload = {
                 "root_out_dir": str(out_dir),
                 "path_dir": str(path_dir),
@@ -4725,8 +5436,9 @@ def cli(
                 "dft": do_dft,
                 "opt_mode": opt_mode.lower() if opt_mode else None,
                 "mep_mode": mep_mode_kind,
-                "mlip_backend": _mlip_backend,
-                "mlip_model": _mlip_model,
+                "mlip_backend": _mlip_backend_shared,
+                "mlip_model": _mlip_model_shared,
+                "mlip_precision": _mlip_precision_shared,
                 "command": command_str,
                 "charge": q_int,
                 "spin": spin,
@@ -4735,9 +5447,14 @@ def cli(
                 "segments": summary.get("segments", []),
                 "energy_diagrams": summary.get("energy_diagrams", []),
                 "key_files": {},
+                "current_output_paths": [
+                    path.relative_to(out_dir).as_posix()
+                    for path in current_public
+                    if path.is_relative_to(out_dir)
+                ],
             }
             write_summary_log(path_dir / "summary.log", summary_payload)
-            _copy_logged(path_dir / "summary.log", out_dir / "summary.log", label="summary.log")
+            _copy_public_logged(path_dir / "summary.log", out_dir / "summary.log", label="summary.log")
         except Exception as e:
             _echo(
                 f"[write] WARNING: Failed to write summary.log for path-opt branch: {e}",
@@ -4804,6 +5521,40 @@ def cli(
         )
         _echo("[all] pdb2reaction path-search " + " ".join(ps_args))
 
+        path_stage_candidates: List[Path] = [path_dir / "summary.json"]
+        for pattern in (
+            "hei_seg_*.*",
+            "mep_seg_*_trj.xyz",
+            "seg_*_mep/final_geometries_trj.xyz",
+            "seg_*_refine_mep/final_geometries_trj.xyz",
+        ):
+            path_stage_candidates.extend(path_dir.glob(pattern))
+        for name in (
+            "energy_diagram_MEP.png",
+            "energy_diagram_mep.png",
+            "mep.pdb",
+            "mep.cif",
+            "mep_w_ref.pdb",
+            "mep_w_ref.cif",
+            "mep_trj.xyz",
+            "mep.xyz",
+            "mep_w_ref_trj.xyz",
+            "mep_w_ref.xyz",
+        ):
+            path_stage_candidates.append(path_dir / name)
+        path_stage_snapshot = InvocationManifest.snapshot(path_stage_candidates)
+        if "path.summary" not in manifest.expected:
+            manifest.declare(
+                "path.summary",
+                [path_dir / "summary.json"],
+                snapshot=path_stage_snapshot,
+            )
+        _declare_path_deliverables(
+            manifest,
+            path_dir,
+            snapshot=path_stage_snapshot,
+        )
+
         _run_cli_main(
             "path_search",
             _path_search.cli,
@@ -4812,40 +5563,101 @@ def cli(
             prefix="all",
         )
 
+        claimed_summary = manifest.claim_one("path.summary")
+        try:
+            path_summary_payload = json.loads(
+                claimed_summary.read_text(encoding="utf-8")
+            )
+        except (OSError, json.JSONDecodeError) as exc:
+            raise click.ClickException(
+                f"[all] Could not read current path-search summary '{claimed_summary}': {exc}"
+            ) from exc
+        if not isinstance(path_summary_payload, dict):
+            raise click.ClickException(
+                f"[all] Current path-search summary is not a JSON object: {claimed_summary}"
+            )
+        path_segments = path_summary_payload.get("segments") or []
+        if not isinstance(path_segments, list):
+            raise click.ClickException(
+                f"[all] Current path-search summary has a non-list segments field: {claimed_summary}"
+            )
+        for segment in path_segments:
+            if not isinstance(segment, dict):
+                continue
+            try:
+                current_idx = int(segment.get("index", 0) or 0)
+            except (TypeError, ValueError):
+                continue
+            if current_idx <= 0:
+                continue
+            current_tag = str(segment.get("tag") or f"seg_{current_idx:03d}")
+            base_tag = _path_search._segment_base_id(current_tag)
+            hei_base = path_dir / f"hei_seg_{current_idx:02d}"
+            manifest.declare(
+                f"path.hei.{current_idx:02d}",
+                [hei_base.with_suffix(suffix) for suffix in (".xyz", ".pdb", ".gjf")],
+                snapshot=path_stage_snapshot,
+            )
+            manifest.declare(
+                f"path.hei_ref.{current_idx:02d}",
+                [hei_base.with_suffix(".pdb")],
+                snapshot=path_stage_snapshot,
+            )
+            manifest.declare(
+                f"path.hei_gjf.{current_idx:02d}",
+                [hei_base.with_suffix(".gjf")],
+                snapshot=path_stage_snapshot,
+            )
+            manifest.declare(
+                f"path.mep.{current_idx:02d}.trajectory",
+                [path_dir / f"mep_seg_{current_idx:02d}_trj.xyz"],
+                snapshot=path_stage_snapshot,
+            )
+            manifest.declare(
+                f"path.segment.{current_idx:02d}.endpoint_trajectory",
+                [
+                    path_dir / f"{base_tag}_refine_mep" / "final_geometries_trj.xyz",
+                    path_dir / f"{base_tag}_mep" / "final_geometries_trj.xyz",
+                ],
+                snapshot=path_stage_snapshot,
+            )
+            manifest.claim_optional(f"path.hei.{current_idx:02d}")
+            manifest.claim_optional(f"path.hei_ref.{current_idx:02d}")
+            manifest.claim_optional(f"path.hei_gjf.{current_idx:02d}")
+            manifest.claim_optional(f"path.mep.{current_idx:02d}.trajectory")
+            manifest.claim_optional(
+                f"path.segment.{current_idx:02d}.endpoint_trajectory"
+            )
+        path_deliverables = _claim_path_deliverables(manifest)
+        _persist_run_manifest(manifest, out_dir)
+
         try:
             # MEP deliverables are MOVED to the pipeline root so they are not
             # duplicated under _work/path_search (path_dir).  path_search emits
             # the canonical energy_diagram_MEP.png; glob both casings defensively
             # and land it at root under the canonical name.
-            for cand in ("energy_diagram_MEP.png", "energy_diagram_mep.png"):
-                src = path_dir / cand
-                if src.exists():
-                    _move_logged(src, out_dir / "energy_diagram_MEP.png", label=cand)
-                    break
-
-            for name in (
-                "mep.pdb",
-                "mep.cif",
-                "mep_w_ref.pdb",
-                "mep_w_ref.cif",
-            ):
-                src = path_dir / name
-                if src.exists():
-                    _move_logged(src, out_dir / name, label=name)
-
-            for stem in ("mep", "mep_w_ref"):
-                for ext in ("_trj.xyz", ".xyz"):
-                    src = path_dir / f"{stem}{ext}"
-                    if src.exists():
-                        _move_logged(src, out_dir / src.name, label=src.name)
+            diagram = path_deliverables.get("diagram")
+            if diagram is not None:
+                _move_public_logged(
+                    diagram,
+                    out_dir / "energy_diagram_MEP.png",
+                    label=diagram.name,
+                )
+            for name, src in path_deliverables.items():
+                if name == "diagram":
+                    continue
+                _move_public_logged(src, out_dir / src.name, label=src.name)
 
             # summary.json / summary.log stay COPIES: the path_dir copy is
             # re-read (segments) and re-authored later, and the root copy is
             # consumed by the final-summary banner.
-            for name in ("summary.json", "summary.log"):
-                src = path_dir / name
-                if src.exists():
-                    _copy_logged(src, out_dir / name, label=name)
+            _copy_public_logged(
+                claimed_summary,
+                out_dir / "summary.json",
+                label="summary.json",
+            )
+            _refresh_current_public_outputs(manifest, out_dir)
+            _persist_run_manifest(manifest, out_dir)
         except Exception as e:
             _echo(
                 f"[all] WARNING: Failed to relocate path_search summary files: {e}",
@@ -4882,9 +5694,28 @@ def cli(
     )
     _echo_section("====== [all] Pipeline (core path) successfully finished ======")
 
-    summary_path = path_dir / "summary.json"
-    summary_loaded = json.loads(summary_path.read_text(encoding="utf-8")) if summary_path.exists() else {}
-    summary: Dict[str, Any] = summary_loaded if isinstance(summary_loaded, dict) else {}
+    summary_path = manifest.path("path.summary")
+    try:
+        summary_loaded = json.loads(summary_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise click.ClickException(
+            f"[all] Could not read current path summary '{summary_path}': {exc}"
+        ) from exc
+    if not isinstance(summary_loaded, dict):
+        raise click.ClickException(
+            f"[all] Current path summary is not a JSON object: {summary_path}"
+        )
+    summary: Dict[str, Any] = summary_loaded
+    _publish_manifest_summary(
+        summary_path,
+        summary,
+        manifest=manifest,
+        key="path.summary",
+        out_dir=out_dir,
+    )
+    _copy_public_logged(summary_path, out_dir / "summary.json", label="summary.json", echo=False)
+    _refresh_current_public_outputs(manifest, out_dir)
+    _persist_run_manifest(manifest, out_dir)
     segments = _read_summary(summary_path)
     if not energy_diagrams:
         existing_diagrams = summary.get("energy_diagrams", [])
@@ -4908,28 +5739,69 @@ def cli(
                 dft_func_basis_use=dft_func_basis_use,
                 opt_mode=opt_mode,
                 mep_mode_kind=mep_mode_kind,
-                mlip_backend=calc_cfg_shared.get("backend", "uma"),
-                mlip_model=calc_cfg_shared.get("model"),
+                mlip_backend=_mlip_backend_shared,
+                mlip_model=_mlip_model_shared,
+                mlip_precision=_mlip_precision_shared,
                 command_str=command_str,
                 q_int=q_int,
                 spin=spin,
                 freeze_atoms=_freeze_atoms_for_log(),
                 post_segment_logs=post_segment_logs,
             )
+            current_public = _refresh_current_public_outputs(
+                manifest, out_dir
+            )
+            current_public_set = set(current_public)
+            summary_payload["current_output_paths"] = [
+                path.relative_to(out_dir).as_posix()
+                for path in current_public
+                if path.is_relative_to(out_dir)
+            ]
+            mep_payload = summary_payload.get("mep") or {}
+            for field, name in (
+                ("traj_pdb", "mep.pdb"),
+                ("mep_plot", "energy_diagram_MEP.png"),
+            ):
+                candidate = (out_dir / name).resolve(strict=False)
+                mep_payload[field] = str(out_dir / name) if candidate in current_public_set else None
             write_summary_log(path_dir / "summary.log", summary_payload)
-            try:
-                shutil.copy2(path_dir / "summary.log", out_dir / "summary.log")
+            copied = _copy_public_logged(
+                path_dir / "summary.log",
+                out_dir / "summary.log",
+                label="summary.log",
+                echo=False,
+            )
+            if copied:
                 _echo_detail(f"[all] Copied summary.log → {out_dir / 'summary.log'}")
-            except (OSError, shutil.Error) as exc:
-                logger.debug("Failed to copy summary.log to %s: %s", out_dir, exc)
         except (OSError, KeyError, ValueError, TypeError) as e:
             _echo(f"[write] WARNING: Failed to write summary.log: {e}", err=True)
+
+    def _finalize_current_summary() -> None:
+        summary["key_output_files"] = _current_key_output_files(
+            manifest, out_dir
+        )
+        _publish_manifest_summary(
+            summary_path,
+            summary,
+            manifest=manifest,
+            key="path.summary",
+            out_dir=out_dir,
+        )
+        _copy_public_logged(
+            summary_path,
+            out_dir / "summary.json",
+            label="summary.json",
+            echo=False,
+        )
+        _refresh_current_public_outputs(manifest, out_dir)
+        _persist_run_manifest(manifest, out_dir)
 
     if not (do_tsopt or do_thermo or do_dft):
         if energy_diagrams:
             summary["energy_diagrams"] = list(energy_diagrams)
         _write_pipeline_summary_log([])
-        _emit_final_summary(out_dir, time_start)
+        _finalize_current_summary()
+        _emit_final_summary(out_dir, time_start, manifest)
         return
 
     # Stage 4: post-processing per reactive segment
@@ -4939,7 +5811,9 @@ def cli(
 
     if not segments:
         _echo("[post] No segments found in summary; nothing to do.", narrative=True)
-        _emit_final_summary(out_dir, time_start)
+        _write_pipeline_summary_log([])
+        _finalize_current_summary()
+        _emit_final_summary(out_dir, time_start, manifest)
         return
 
     reactive = [
@@ -4954,7 +5828,9 @@ def cli(
     ]
     if not reactive:
         _echo("[post] No bond-change segments. Skipping TS/thermo/DFT.", narrative=True)
-        _emit_final_summary(out_dir, time_start)
+        _write_pipeline_summary_log([])
+        _finalize_current_summary()
+        _emit_final_summary(out_dir, time_start, manifest)
         return
 
     # Per-category per-segment energies
@@ -4985,11 +5861,13 @@ def cli(
         }
         post_segment_logs.append(segment_log)
 
-        hei_base = seg_root / f"hei_seg_{seg_idx:02d}"
-        hei_model_path = _find_with_suffixes(hei_base, [".xyz", ".pdb", ".gjf"])
+        hei_key = f"path.hei.{seg_idx:02d}"
+        hei_model_path = (
+            manifest.produced[hei_key][0] if hei_key in manifest.produced else None
+        )
         if hei_model_path is None:
             _echo(
-                f"[post] WARNING: HEI active site model file not found for segment {seg_idx:02d} (searched .pdb/.xyz/.gjf); skipping TSOPT.",
+                f"[post] WARNING: current invocation did not claim an HEI model for segment {seg_idx:02d}; skipping TSOPT.",
                 err=True,
             )
             continue
@@ -4997,9 +5875,9 @@ def cli(
         if hei_model_path.suffix.lower() == ".pdb":
             ref_pdb_for_seg = hei_model_path
         else:
-            candidate_ref = hei_base.with_suffix(".pdb")
-            if candidate_ref.exists():
-                ref_pdb_for_seg = candidate_ref
+            hei_ref_key = f"path.hei_ref.{seg_idx:02d}"
+            if hei_ref_key in manifest.produced:
+                ref_pdb_for_seg = manifest.produced[hei_ref_key][0]
             elif ref_pdb_for_topology is not None:
                 ref_pdb_for_seg = ref_pdb_for_topology
 
@@ -5010,10 +5888,18 @@ def cli(
         if do_tsopt:
             _seg_tsopt_overrides = dict(tsopt_overrides)
             _hei_mode_path = seg_root / f"hei_mode_seg_{seg_idx:02d}.txt"
-            _hei_mode_path = _ensure_hei_path_tangent(
-                seg_root / f"mep_seg_{seg_idx:02d}_trj.xyz",
-                hei_model_path,
-                _hei_mode_path,
+            mep_key = f"path.mep.{seg_idx:02d}.trajectory"
+            current_mep = (
+                manifest.produced[mep_key][0] if mep_key in manifest.produced else None
+            )
+            _hei_mode_path = (
+                _ensure_hei_path_tangent(
+                    current_mep,
+                    hei_model_path,
+                    _hei_mode_path,
+                )
+                if current_mep is not None
+                else None
             )
             if _hei_mode_path is not None:
                 _seg_tsopt_overrides["reference_mode"] = _hei_mode_path
@@ -5029,12 +5915,21 @@ def cli(
                 ref_pdb_for_seg,
                 convert_files,
                 overrides=_seg_tsopt_overrides,
+                manifest=manifest,
+                artifact_prefix=f"post.{seg_idx:02d}.tsopt",
+                public_root=out_dir,
+            )
+
+            endpoint_key = f"path.segment.{seg_idx:02d}.endpoint_trajectory"
+            current_endpoint_trajectory = (
+                manifest.produced[endpoint_key][0]
+                if endpoint_key in manifest.produced
+                else None
             )
 
             irc_res = _irc_and_match(
                 seg_idx=seg_idx,
                 seg_dir=seg_dir,
-                mep_dir=path_dir,
                 ref_pdb_for_seg=ts_pdb,
                 seg_model_pdb=hei_model_path,
                 ref_pdb_template=ref_pdb_for_seg,
@@ -5048,11 +5943,18 @@ def cli(
                 irc_step_size=irc_step_size,
                 irc_never_stop=irc_never_stop,
                 seg_tag=str(seg_tag),
+                endpoint_trajectory=current_endpoint_trajectory,
+                session=session,
+                manifest=manifest,
+                artifact_prefix=f"post.{seg_idx:02d}.irc",
+                public_root=out_dir,
             )
+            _persist_run_manifest(manifest, out_dir)
 
             gL = irc_res["left_min_geom"]
             gR = irc_res["right_min_geom"]
             gT = irc_res["ts_geom"]
+            calculator_lease = irc_res["calculator_lease"]
             irc_plot_path = irc_res.get("irc_plot_path")
             irc_trj_path = irc_res.get("irc_trj_path")
             reverse_irc = bool(irc_res.get("reverse_irc", False))
@@ -5061,6 +5963,9 @@ def cli(
                 segment_log["irc_plot"] = str(irc_plot_path)
             if isinstance(irc_trj_path, Path) and irc_trj_path.exists():
                 segment_log["irc_traj"] = str(irc_trj_path)
+
+            # M42: truthful IRC directional convergence for the aggregate gate.
+            segment_log["irc"] = irc_res.get("irc_outcome")
 
             if isinstance(irc_trj_path, Path) and irc_trj_path.exists():
                 irc_trj_for_all.append((irc_trj_path, reverse_irc))
@@ -5093,15 +5998,17 @@ def cli(
             _hess_discard("irc_endpoint")
             _c = _hess_load(_left_hk)
             if _c:
-                _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"))
+                _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"), identity=_c.get("identity"))
+            _react_opt_conv: Optional[bool] = None
             try:
-                g_react_opt, _ = _optimize_endpoint_geom(
+                g_react_opt, _, _react_opt_conv = _optimize_endpoint_geom(
                     gL,
                     tsopt_opt_mode_default,
                     endpoint_opt_dir,
                     f"seg_{seg_idx:02d}_reactant",
                     dump=dump,
                     thresh=thresh_post,
+                    calc_identity_cfg=calc_cfg_shared,
                 )
             except Exception as e:
                 _echo(
@@ -5109,19 +6016,22 @@ def cli(
                     err=True,
                 )
                 g_react_opt = gL
+                _react_opt_conv = None
 
             _hess_discard("irc_endpoint")
             _c = _hess_load(_right_hk)
             if _c:
-                _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"))
+                _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"), identity=_c.get("identity"))
+            _prod_opt_conv: Optional[bool] = None
             try:
-                g_prod_opt, _ = _optimize_endpoint_geom(
+                g_prod_opt, _, _prod_opt_conv = _optimize_endpoint_geom(
                     gR,
                     tsopt_opt_mode_default,
                     endpoint_opt_dir,
                     f"seg_{seg_idx:02d}_product",
                     dump=dump,
                     thresh=thresh_post,
+                    calc_identity_cfg=calc_cfg_shared,
                 )
             except Exception as e:
                 _echo(
@@ -5129,6 +6039,15 @@ def cli(
                     err=True,
                 )
                 g_prod_opt = gR
+                _prod_opt_conv = None
+
+            # M42: record endpoint-opt convergence so a nonconverged endpoint
+            # (whose geometry is still used for the diagram) does not silently
+            # promote its segment to a usable success.
+            segment_log["endpoint_opt"] = {
+                "reactant_converged": _react_opt_conv,
+                "product_converged": _prod_opt_conv,
+            }
 
             shutil.rmtree(endpoint_opt_dir, ignore_errors=True)
             _echo_detail("[endpoint-opt] Clean endpoint-opt working dir.")
@@ -5144,7 +6063,7 @@ def cli(
             eR = float(g_react_opt.energy)
             eT = float(gT.energy)
             eP = float(g_prod_opt.energy)
-            diag_payload = _write_segment_energy_diagram(
+            diag_payload = _write_public_energy_diagram(
                 seg_dir / "energy_diagram_MLIP",
                 labels=["R", f"TS{seg_idx}", "P"],
                 energies_au=[eR, eT, eP],
@@ -5168,7 +6087,11 @@ def cli(
             try:
                 _input_suffix = first_input.suffix.lower() if first_input else ".xyz"
                 _seg_out = _copy_structures_to_seg_dir(
-                    state_structs, out_dir, seg_idx, _input_suffix,
+                    state_structs,
+                    out_dir,
+                    seg_idx,
+                    _input_suffix,
+                    manifest=manifest,
                 )
                 _echo(f"[all] Wrote R/TS/P for segment {seg_idx:02d} → {_seg_out}", narrative=True)
             except Exception as e:
@@ -5178,8 +6101,11 @@ def cli(
                 )
 
         elif do_thermo or do_dft:
-            seg_model_path = _find_with_suffixes(
-                seg_root / f"mep_seg_{seg_idx:02d}", [".xyz", ".pdb"]
+            seg_model_key = f"path.mep.{seg_idx:02d}.pdb"
+            seg_model_path = (
+                manifest.produced[seg_model_key][0]
+                if seg_model_key in manifest.produced
+                else None
             )
 
             # Decide reference topology (if any) for freeze-atoms detection and conversion.
@@ -5192,13 +6118,23 @@ def cli(
             freeze_atoms: List[int] = _get_freeze_atoms(freeze_ref, freeze_links_flag)
 
             try:
-                endpoints = _load_segment_endpoints(seg_root, str(seg_tag), freeze_atoms)
-                if endpoints is None:
+                endpoint_key = f"path.segment.{seg_idx:02d}.endpoint_trajectory"
+                endpoint_path = (
+                    manifest.produced[endpoint_key][0]
+                    if endpoint_key in manifest.produced
+                    else None
+                )
+                if endpoint_path is None:
                     _echo(
-                        f"[post] WARNING: final_geometries_trj.xyz not found for segment {seg_idx:02d}; cannot run thermo/DFT without --tsopt. Skipping segment.",
+                        f"[post] WARNING: current endpoint trajectory was not claimed for segment {seg_idx:02d}; cannot run thermo/DFT without --tsopt. Skipping segment.",
                         err=True,
                     )
                     continue
+                elems, c_first, c_last = read_xyz_first_last(endpoint_path)
+                endpoints = (
+                    _geom_from_angstrom(elems, c_first, freeze_atoms),
+                    _geom_from_angstrom(elems, c_last, freeze_atoms),
+                )
                 gL, gR = endpoints
             except Exception as e:
                 _echo(
@@ -5244,12 +6180,15 @@ def cli(
         # ── Release GPU memory before freq/thermo/DFT ──
         # Geometry objects from IRC/endpoint-opt hold calculator references;
         # freq/DFT run as CLI subprocesses and don't need them.
+        if do_tsopt:
+            calculator_lease.release()
         for _g in (
             locals().get("gL"), locals().get("gR"), locals().get("gT"),
             locals().get("g_ts"), locals().get("g_react_opt"), locals().get("g_prod_opt"),
         ):
             if _g is not None and hasattr(_g, "calculator"):
                 _g.calculator = None
+        calc = None
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -5333,7 +6272,7 @@ def cli(
                     )
                     gibbs_vals = [GR, GT, GP]
                     if all(np.isfinite(gibbs_vals)):
-                        diag_payload = _write_segment_energy_diagram(
+                        diag_payload = _write_public_energy_diagram(
                             seg_dir / "energy_diagram_G_MLIP",
                             labels=["R", f"TS{seg_idx}", "P"],
                             energies_au=gibbs_vals,
@@ -5424,7 +6363,7 @@ def cli(
                     }
                 if _dft_all_ok:
                     try:
-                        diag_payload = _write_segment_energy_diagram(
+                        diag_payload = _write_public_energy_diagram(
                             seg_dir / "energy_diagram_DFT",
                             labels=["R", f"TS{seg_idx}", "P"],
                             energies_au=[eR_dft, eT_dft, eP_dft],
@@ -5475,7 +6414,7 @@ def cli(
                         if all(
                             np.isfinite([GR_dft_mlip, GT_dft_mlip, GP_dft_mlip])
                         ):
-                            diag_payload = _write_segment_energy_diagram(
+                            diag_payload = _write_public_energy_diagram(
                                 seg_dir / "energy_diagram_G_DFT_plus_MLIP",
                                 labels=["R", f"TS{seg_idx}", "P"],
                                 energies_au=[GR_dft_mlip, GT_dft_mlip, GP_dft_mlip],
@@ -5515,7 +6454,7 @@ def cli(
         tsopt_all_energies = [e for triple in tsopt_seg_energies for e in triple]
         tsopt_all_labels = _build_global_segment_labels(len(tsopt_seg_energies))
         if tsopt_all_labels and len(tsopt_all_labels) == len(tsopt_all_energies):
-            diag_payload = _write_segment_energy_diagram(
+            diag_payload = _write_public_energy_diagram(
                 out_dir / "energy_diagram_MLIP_all",
                 labels=tsopt_all_labels,
                 energies_au=tsopt_all_energies,
@@ -5528,7 +6467,7 @@ def cli(
         g_mlip_all_energies = [e for triple in g_mlip_seg_energies for e in triple]
         g_mlip_all_labels = _build_global_segment_labels(len(g_mlip_seg_energies))
         if g_mlip_all_labels and len(g_mlip_all_labels) == len(g_mlip_all_energies):
-            diag_payload = _write_segment_energy_diagram(
+            diag_payload = _write_public_energy_diagram(
                 out_dir / "energy_diagram_G_MLIP_all",
                 labels=g_mlip_all_labels,
                 energies_au=g_mlip_all_energies,
@@ -5542,7 +6481,7 @@ def cli(
         dft_all_energies = [e for triple in dft_seg_energies for e in triple]
         dft_all_labels = _build_global_segment_labels(len(dft_seg_energies))
         if dft_all_labels and len(dft_all_labels) == len(dft_all_energies):
-            diag_payload = _write_segment_energy_diagram(
+            diag_payload = _write_public_energy_diagram(
                 out_dir / "energy_diagram_DFT_all",
                 labels=dft_all_labels,
                 energies_au=dft_all_energies,
@@ -5555,7 +6494,7 @@ def cli(
         g_dft_mlip_all_energies = [e for triple in g_dft_mlip_seg_energies for e in triple]
         g_dft_mlip_all_labels = _build_global_segment_labels(len(g_dft_mlip_seg_energies))
         if g_dft_mlip_all_labels and len(g_dft_mlip_all_labels) == len(g_dft_mlip_all_energies):
-            diag_payload = _write_segment_energy_diagram(
+            diag_payload = _write_public_energy_diagram(
                 out_dir / "energy_diagram_G_DFT_plus_MLIP_all",
                 labels=g_dft_mlip_all_labels,
                 energies_au=g_dft_mlip_all_energies,
@@ -5567,9 +6506,11 @@ def cli(
 
     # Aggregated IRC plot over all reactive segments (single trj + trj2fig)
     if irc_trj_for_all:
+        _declare_public(out_dir / "irc_plot_all.png")
         _merge_irc_trajectories_to_single_plot(
             irc_trj_for_all, out_dir / "irc_plot_all.png"
         )
+        _claim_public(out_dir / "irc_plot_all.png")
 
     # Refresh summary.json with final energy diagram metadata (including aggregated diagrams)
     try:
@@ -5579,8 +6520,9 @@ def cli(
             version="",
             pipeline_mode="path-search" if refine_path else "path-opt",
             out_dir=out_dir,
-            mlip_backend=calc_cfg_shared.get("backend", "uma"),
-            mlip_model=calc_cfg_shared.get("model"),
+            mlip_backend=_mlip_backend_shared,
+            mlip_model=_mlip_model_shared,
+            mlip_precision=_mlip_precision_shared,
             charge=q_int,
             spin=spin,
             command=command_str,
@@ -5594,13 +6536,24 @@ def cli(
                 "mep_mode": mep_mode_kind,
             },
             freeze_atoms=_freeze_atoms_for_log(),
+            manifest=manifest,
         )
-        with open(path_dir / "summary.json", "w") as f:
-            json.dump(summary, f, indent=2, ensure_ascii=False)
+        _publish_manifest_summary(
+            path_dir / "summary.json",
+            summary,
+            manifest=manifest,
+            key="path.summary",
+            out_dir=out_dir,
+        )
         _echo_detail(f"[write] Updated '{path_dir / 'summary.json'}' with energy diagrams.")
         try:
             dst_summary = out_dir / "summary.json"
-            shutil.copy2(path_dir / "summary.json", dst_summary)
+            _copy_public_logged(
+                path_dir / "summary.json",
+                dst_summary,
+                label="summary.json",
+                echo=False,
+            )
             _echo_detail(f"[all] Copied summary.json → {dst_summary}")
         except Exception as e:
             _echo(
@@ -5608,13 +6561,17 @@ def cli(
                 err=True,
             )
         _write_pipeline_summary_log(post_segment_logs)
+        # summary.log becomes current-run owned only after the writer returns;
+        # republish JSON once more so key_output_files includes that final root
+        # artifact as well as every earlier producer-owned output.
+        _finalize_current_summary()
     except Exception as e:
         _echo(
             f"[write] WARNING: Failed to refresh summary.json with energy diagram metadata: {e}",
             err=True,
         )
 
-    _emit_final_summary(out_dir, time_start)
+    _emit_final_summary(out_dir, time_start, manifest)
 
 
-_configure_all_help_visibility(cli)
+_hide_advanced_options(cli, _ALL_PRIMARY_HELP_OPTIONS)

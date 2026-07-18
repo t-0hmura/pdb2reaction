@@ -15,6 +15,7 @@ import time
 import re
 
 import click
+from pdb2reaction.core.output import emit
 import numpy as np
 import json
 
@@ -37,7 +38,7 @@ from pdb2reaction.core.defaults import (
     LBFGS_KW,
     RFO_KW,
     OPT_MODE_ALIASES,
-    DMF_KW,
+    fresh_dmf_config,
     GS_KW,
     STOPT_KW,
     BOND_KW,
@@ -77,6 +78,7 @@ from pdb2reaction.core.utils import (
     _parse_freeze_atoms,
     merge_freeze_atom_indices,
 )
+from pdb2reaction.core.result_commit import apply_current_run_id, commit_json
 from pdb2reaction.io.summary import write_summary_log
 from pdb2reaction.io.trj2fig import run_trj2fig
 from pdb2reaction.io.structure_formats import (
@@ -355,6 +357,10 @@ class GSMResult:
     images: List[Any]
     energies: List[float]
     hei_idx: int
+    # M09: truthful convergence of the string/DMF optimizer that produced this
+    # MEP. ``None`` means no readable convergence signal (fail-closed: never
+    # promoted to a usable segment by artifact existence alone).
+    is_converged: Optional[bool] = None
 
 
 # ---- Per‑segment summary for the console report ----
@@ -366,6 +372,10 @@ class SegmentReport:
     summary: str  # summarize_changes string (empty for bridges)
     kind: str = "seg"          # "seg" or "bridge"
     seg_index: int = 0         # 1‑based index along final MEP (assigned later)
+    # M09: the segment's optimizer convergence, threaded from GSMResult. A
+    # reactive segment whose optimizer did not explicitly converge is unusable
+    # and cannot make the path aggregate a scientific success.
+    converged: Optional[bool] = None
 
 
 _PRIMARY_GJF_TEMPLATE: Optional[GjfTemplate] = None
@@ -410,8 +420,11 @@ def _run_mep_between(
         **{k: v for k, v in _opt_args.items() if k != "type"}
     )
 
-    click.echo(f"\n====== [{tag}] GSM ======\n", narrative=True)
+    emit(f"\n====== [{tag}] GSM ======\n", narrative=True)
     optimizer.run()
+
+    from pdb2reaction.workflows._outcomes import optimizer_converged_bit
+    _seg_converged = optimizer_converged_bit(optimizer)
 
     energies = list(map(float, np.array(gs.energy, dtype=float)))
     images = list(gs.images)
@@ -442,7 +455,7 @@ def _run_mep_between(
         if wrote_with_energy:
             run_trj2fig(final_trj, [seg_dir / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
             close_matplotlib_figures()
-            click.echo(f"[{tag}] Saved energy plot → '{seg_dir / 'mep_plot.png'}'", detail=True)
+            emit(f"[{tag}] Saved energy plot → '{seg_dir / 'mep_plot.png'}'", detail=True)
         else:
             click.echo(f"[{tag}] WARNING: Energies missing; skipping plot.", err=True)
     except Exception as e:
@@ -516,7 +529,8 @@ def _run_mep_between(
     except Exception as e:
         click.echo(f"[{tag}] WARNING: Failed to write HEI structure: {e}", err=True)
 
-    return GSMResult(images=images, energies=energies, hei_idx=hei_idx)
+    return GSMResult(images=images, energies=energies, hei_idx=hei_idx,
+                     is_converged=_seg_converged)
 
 
 def _ase_atoms_to_geom(atoms, coord_type: str, template_g=None, shared_calc=None):
@@ -597,7 +611,7 @@ def _run_dmf_between(
     try:
         run_trj2fig(final_trj, [seg_dir / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
         close_matplotlib_figures()
-        click.echo(f"[{tag}] Saved energy plot → '{seg_dir / 'mep_plot.png'}'", detail=True)
+        emit(f"[{tag}] Saved energy plot → '{seg_dir / 'mep_plot.png'}'", detail=True)
     except Exception as e:
         click.echo(f"[{tag}] WARNING: Failed to plot energy: {e}", err=True)
 
@@ -607,7 +621,8 @@ def _run_dmf_between(
             _ase_atoms_to_geom(atoms, coord_type=gA.coord_type, template_g=gA, shared_calc=shared_calc)
         )
 
-    return GSMResult(images=imgs, energies=energies, hei_idx=int(dmf_res.hei_idx))
+    return GSMResult(images=imgs, energies=energies, hei_idx=int(dmf_res.hei_idx),
+                     is_converged=getattr(dmf_res, "is_converged", None))
 
 
 def _refine_between(
@@ -713,7 +728,7 @@ def _stitch_paths(
     If covalent changes are detected across an interface, build and insert a *new* recursive segment
     using `segment_builder` instead of bridging. Update `segments_out` accordingly.
     """
-    dmf_cfg = dict(dmf_cfg or DMF_KW)
+    dmf_cfg = fresh_dmf_config(dmf_cfg)
     all_imgs: List[Any] = []
     all_E: List[float] = []
 
@@ -751,7 +766,7 @@ def _stitch_paths(
                 adj_changed, adj_summary = False, ""
 
         if adj_changed and segment_builder is not None:
-            click.echo(f"[{tag}] Covalent changes detected at interface — inserting a new recursive segment.", narrative=True)
+            emit(f"[{tag}] Covalent changes detected at interface — inserting a new recursive segment.", narrative=True)
             if adj_summary:
                 click.echo(textwrap.indent(adj_summary, prefix="  "))
             sub = segment_builder(tail, head, f"{tag}_mid")
@@ -813,7 +828,8 @@ def _stitch_paths(
                         barrier_kcal=float(barrier_kcal),
                         delta_kcal=float(delta_kcal),
                         summary="",
-                        kind="bridge"
+                        kind="bridge",
+                        converged=getattr(br, "is_converged", None),
                     )
                     insert_pos: Optional[int] = None
                     try:
@@ -851,6 +867,62 @@ class CombinedPath:
     images: List[Any]
     energies: List[float]
     segments: List[SegmentReport]
+
+
+def _path_leaves_and_expected(
+    segments: Sequence[SegmentReport],
+    *,
+    raw_artifacts: Sequence[str] = (),
+    engine_converged: Optional[bool] = True,
+):
+    """Build path :class:`LeafOutcome` list + expected reactive-segment IDs.
+
+    Reactive segments (``kind != "bridge"``) are required leaves; bridges are
+    optional connectors.  When there is no reactive segment at all — the
+    endpoint-HEI branch returns ``segments=[]`` even though an R/P energy diagram
+    can still be drawn — an unusable ``raw_path`` leaf is emitted so the aggregate
+    mapper cannot promote the diagnostic diagram to success (M59).  The raw
+    trajectory/diagram remain reportable as artifacts.
+    """
+
+    from pdb2reaction.workflows._outcomes import LeafOutcome, make_leaf
+
+    leaves: List[Any] = []
+    reactive = [s for s in segments if getattr(s, "kind", "seg") != "bridge"]
+    for s in segments:
+        is_reactive = getattr(s, "kind", "seg") != "bridge"
+        # M09: a reactive segment is usable only when its optimizer explicitly
+        # converged. A nonconverged (max-cycle) StringOptimizer segment retains
+        # its trajectory artifact but must not count toward completeness.
+        _seg_conv = getattr(s, "converged", None)
+        leaves.append(
+            make_leaf(
+                "path",
+                f"segment_{int(s.seg_index)}",
+                required=is_reactive,
+                executed=True,
+                converged=_seg_conv,
+            )
+        )
+    expected = [f"segment_{int(s.seg_index)}" for s in reactive]
+    if not reactive:
+        reason = "endpoint_hei"
+        if engine_converged is False:
+            reason = "endpoint_hei;engine_nonconverged"
+        leaves.append(
+            LeafOutcome(
+                stage="path",
+                item_id="raw_path",
+                required=True,
+                executed=True,
+                converged=engine_converged if isinstance(engine_converged, bool) else None,
+                usable=False,
+                reason=reason,
+                artifacts=tuple(str(a) for a in raw_artifacts),
+            )
+        )
+        expected = ["reactive_segment_1"]
+    return leaves, expected
 
 
 def _trailing_kink_count(segments: Sequence[SegmentReport]) -> int:
@@ -950,6 +1022,7 @@ def _build_multistep_path(
             delta_kcal=float(delta_kcal),
             summary=step_summary if changed else "(no covalent changes detected)",
             kind="seg",
+            converged=getattr(gsm, "is_converged", None),
         )
 
         _tag_images(
@@ -1020,9 +1093,9 @@ def _build_multistep_path(
     else:
         left_img = gsm0.images[hei - 1]
         right_img = gsm0.images[hei + 1]
-        click.echo(f"[{tag0}] Refining HEI±1 (peak mode).", narrative=True)
+        emit(f"[{tag0}] Refining HEI±1 (peak mode).", narrative=True)
 
-    left_end = _optimize_single(
+    left_end, left_conv = _optimize_single(
         left_img,
         shared_calc,
         single_opt_kind,
@@ -1032,7 +1105,7 @@ def _build_multistep_path(
         prepared_input=prepared_input,
         ref_pdb=ref_pdb_path,
     )
-    right_end = _optimize_single(
+    right_end, right_conv = _optimize_single(
         right_img,
         shared_calc,
         single_opt_kind,
@@ -1052,14 +1125,15 @@ def _build_multistep_path(
 
     if use_kink:
         n_inter = int(search_cfg.get("kink_max_nodes", 3))
-        click.echo(f"[{tag0}] Kink detected (no covalent changes between End1 and End2). "
+        emit(f"[{tag0}] Kink detected (no covalent changes between End1 and End2). "
                    f"Using {n_inter} linear interpolation nodes + single-structure optimizations instead of GSM.",
                    narrative=True)
         inter_geoms = _make_linear_interpolations(left_end, right_end, n_inter)
         opt_inters: List[Any] = []
+        inter_convs: List[Optional[bool]] = []
         for i, g_int in enumerate(inter_geoms, 1):
             g_int.set_calculator(shared_calc)
-            g_opt = _optimize_single(
+            g_opt, _inter_conv = _optimize_single(
                 g_int,
                 shared_calc,
                 single_opt_kind,
@@ -1070,10 +1144,21 @@ def _build_multistep_path(
                 ref_pdb=ref_pdb_path,
             )
             opt_inters.append(g_opt)
+            inter_convs.append(_inter_conv)
         step_imgs = [left_end] + opt_inters + [right_end]
         step_E = [float(img.energy) for img in step_imgs]
         _kink_hei = int(np.argmax(step_E[1:-1])) + 1 if len(step_E) > 2 else int(np.argmax(step_E))
-        ref1 = GSMResult(images=step_imgs, energies=step_E, hei_idx=_kink_hei)
+        # A kink segment is assembled from single-structure optimizations (not a
+        # StringOptimizer). It is usable only when EVERY endpoint/intermediate
+        # optimization explicitly converged; fold their convergence rather than
+        # hardcode True, so a nonconverged (max-cycle) single-structure opt cannot
+        # silently become a usable reactive leaf (M09/C6, fail-closed).
+        from pdb2reaction.workflows._outcomes import combine_step_convergence
+        _kink_converged = combine_step_convergence(
+            [left_conv] + inter_convs + [right_conv]
+        )
+        ref1 = GSMResult(images=step_imgs, energies=step_E, hei_idx=_kink_hei,
+                         is_converged=_kink_converged)
         step_tag_for_report = f"{tag0}_kink"
     else:
         ref1 = _refine_between(
@@ -1102,10 +1187,10 @@ def _build_multistep_path(
     left_changed, left_summary = has_bond_change(gA, left_end, bond_cfg)
     right_changed, right_summary = has_bond_change(right_end, gB, bond_cfg)
 
-    click.echo(f"[{tag0}] Covalent changes (A vs left_end): {'Yes' if left_changed else 'No'}", narrative=True)
+    emit(f"[{tag0}] Covalent changes (A vs left_end): {'Yes' if left_changed else 'No'}", narrative=True)
     if left_changed:
         click.echo(textwrap.indent(left_summary, prefix="  "))
-    click.echo(f"[{tag0}] Covalent changes (right_end vs B): {'Yes' if right_changed else 'No'}", narrative=True)
+    emit(f"[{tag0}] Covalent changes (right_end vs B): {'Yes' if right_changed else 'No'}", narrative=True)
     if right_changed:
         click.echo(textwrap.indent(right_summary, prefix="  "))
 
@@ -1122,7 +1207,8 @@ def _build_multistep_path(
         barrier_kcal=float(barrier_kcal),
         delta_kcal=float(delta_kcal),
         summary=step_summary if _changed else "(no covalent changes detected)",
-        kind="seg"
+        kind="seg",
+        converged=getattr(ref1, "is_converged", None),
     )
 
     parts: List[Tuple[List[Any], List[float]]] = []
@@ -2046,7 +2132,7 @@ def cli(
 
         geom_cfg = dict(GEOM_KW_DEFAULT)
         calc_cfg = dict(UMA_CALC_KW)
-        dmf_cfg  = dict(DMF_KW)
+        dmf_cfg  = fresh_dmf_config()
         gs_cfg   = dict(GS_KW)
         stopt_cfg = dict(STOPT_KW)
         stopt_cfg["out_dir"] = out_dir
@@ -2312,7 +2398,7 @@ def cli(
             new_geoms: List[Any] = []
             for i, g in enumerate(geoms):
                 tag = f"init{i:02d}"
-                g_opt = _optimize_single(
+                g_opt, _ = _optimize_single(
                     g,
                     shared_calc,
                     single_opt_kind,
@@ -2331,7 +2417,7 @@ def cli(
         align_thresh = str(single_opt_cfg.get("thresh", "gau"))
         if align:
             try:
-                click.echo("\n====== Aligning all inputs to the first structure (freeze-guided scan + relaxation) ======\n", narrative=True)
+                emit("\n====== Aligning all inputs to the first structure (freeze-guided scan + relaxation) ======\n", narrative=True)
                 _ = align_and_refine_sequence_inplace(
                     geoms,
                     thresh=align_thresh,
@@ -2346,7 +2432,7 @@ def cli(
             click.echo("[align] Skipping input alignment as requested by --no-align.")
 
         _mep_search_start = time.perf_counter()
-        click.echo("\n====== Multistep MEP search (multi-structure) started ======\n", narrative=True)
+        emit("\n====== Multistep MEP search (multi-structure) started ======\n", narrative=True)
         seg_counter = [0]
 
         bridge_max_nodes = int(search_cfg.get("max_nodes_bridge", 5))
@@ -2377,7 +2463,7 @@ def cli(
         for i in range(len(geoms) - 1):
             gA, gB = geoms[i], geoms[i + 1]
             pair_tag = f"pair_{i:02d}"
-            click.echo(f"[stage] Processing pair {i:02d}: image {i} → {i+1}", narrative=True)
+            emit(f"[stage] Processing pair {i:02d}: image {i} → {i+1}", narrative=True)
             pair_path = _build_multistep_path(
                 gA, gB,
                 shared_calc,
@@ -2421,13 +2507,13 @@ def cli(
                     prepared_inputs=prepared_inputs,
                 )
                 seg_reports_all.extend(pair_path.segments)
-            click.echo(
+            emit(
                 f"[stage] Pair {i:02d} done: images={len(pair_path.images)}, "
                 f"segments={len(pair_path.segments)}",
                 detail=True,
             )
 
-        click.echo(
+        emit(
             "====== Multistep MEP search (multi-structure) finished "
             f"(pairs={max(len(geoms) - 1, 0)}, segments={len(seg_reports_all)}, "
             f"elapsed={time.perf_counter() - _mep_search_start:.1f}s) ======\n",
@@ -2457,11 +2543,11 @@ def cli(
 
         final_trj = out_dir_path / "mep_trj.xyz"
         write_xyz_trj_with_energy(combined_all.images, combined_all.energies, final_trj)
-        click.echo(f"[write] Wrote '{final_trj}'.", detail=True)
+        emit(f"[write] Wrote '{final_trj}'.", detail=True)
         try:
             run_trj2fig(final_trj, [out_dir_path / "mep_plot.png"], unit="kcal", reference="init", reverse_x=False)
             close_matplotlib_figures()
-            click.echo(f"[plot] Saved energy plot → '{out_dir_path / 'mep_plot.png'}'", detail=True)
+            emit(f"[plot] Saved energy plot → '{out_dir_path / 'mep_plot.png'}'", detail=True)
         except Exception as e:
             click.echo(f"[plot] WARNING: Failed to plot final energy: {e}", err=True)
 
@@ -2475,7 +2561,7 @@ def cli(
                     out_gjf_path=out_dir_path / "mep.gjf" if needs_gjf else None,
                 )
                 if did_convert:
-                    click.echo("[convert] Wrote final MEP outputs.", detail=True)
+                    emit("[convert] Wrote final MEP outputs.", detail=True)
             except Exception as e:
                 click.echo(f"[convert] WARNING: Failed to convert final MEP outputs: {e}", err=True)
 
@@ -2499,7 +2585,7 @@ def cli(
                     seg_Es = [combined_all.energies[j] for j in idxs]
                     seg_trj = out_dir_path / f"mep_seg_{seg_idx:02d}_trj.xyz"
                     write_xyz_trj_with_energy(seg_imgs, seg_Es, seg_trj)
-                    click.echo(f"[write] Wrote per-segment active site model trajectory → '{seg_trj}'", detail=True)
+                    emit(f"[write] Wrote per-segment active site model trajectory → '{seg_trj}'", detail=True)
                     if needs_pdb or needs_gjf:
                         try:
                             convert_xyz_like_outputs(
@@ -2523,7 +2609,7 @@ def cli(
                     hei_E = [combined_all.energies[imax_abs]]
                     hei_trj = out_dir_path / f"hei_seg_{seg_idx:02d}.xyz"
                     write_xyz_trj_with_energy([hei_img], hei_E, hei_trj)
-                    click.echo(f"[write] Wrote segment HEI (active site model) → '{hei_trj}'", detail=True)
+                    emit(f"[write] Wrote segment HEI (active site model) → '{hei_trj}'", detail=True)
                     if len(idxs) >= 2:
                         tangent = _normalized_path_tangent(
                             [image.cart_coords for image in seg_imgs],
@@ -2533,7 +2619,7 @@ def cli(
                         if tangent is not None:
                             mode_path = out_dir_path / f"hei_mode_seg_{seg_idx:02d}.txt"
                             np.savetxt(mode_path, tangent, fmt="%.17e")
-                            click.echo(
+                            emit(
                                 "[write] Wrote HEI path-tangent reference mode "
                                 f"→ '{mode_path}'",
                                 detail=True,
@@ -2557,7 +2643,7 @@ def cli(
 
         if do_merge:
             _merge_start = time.perf_counter()
-            click.echo("\n====== Full-system merge (active site model → templates) started ======\n", narrative=True)
+            emit("\n====== Full-system merge (active site model → templates) started ======\n", narrative=True)
             # With --align, use only the first reference PDB for all pairs (replicate it).
             if align:
                 if not ref_pdb_paths or len(ref_pdb_paths) < 1:
@@ -2575,7 +2661,7 @@ def cli(
                 out_dir=out_dir_path,
                 model_ref_pdbs=[Path(p) for p in model_ref_pdb_paths] if model_ref_pdb_paths else None,
             )
-            click.echo(
+            emit(
                 f"====== Full-system merge finished (elapsed={time.perf_counter() - _merge_start:.1f}s) ======\n",
                 narrative=True,
             )
@@ -2586,16 +2672,16 @@ def cli(
             logger.debug("Failed to evaluate overall bond changes: %s", exc)
             overall_changed, overall_summary = False, ""
 
-        click.echo("\n====== MEP summary started ======\n", narrative=True)
+        emit("\n====== MEP summary started ======\n", narrative=True)
 
-        click.echo("[overall] Covalent-bond changes between first and last image:", narrative=True)
+        emit("[overall] Covalent-bond changes between first and last image:", narrative=True)
         if overall_changed and overall_summary.strip():
             click.echo(textwrap.indent(overall_summary.strip(), prefix="  "))
         else:
             click.echo("  (no covalent changes detected)")
 
         if combined_all.segments:
-            click.echo("[segments] Along the final MEP order (ΔE‡, ΔE). Bridges are shown between connected segments:", narrative=True)
+            emit("[segments] Along the final MEP order (ΔE‡, ΔE). Bridges are shown between connected segments:", narrative=True)
             for i, seg in enumerate(combined_all.segments, 1):
                 kind_label = "BRIDGE" if seg.kind == "bridge" else "SEG"
                 click.echo(f"  [{i:02d}] ({kind_label}) {seg.tag}  |  ΔE‡ = {seg.barrier_kcal:.2f} kcal/mol,  ΔE = {seg.delta_kcal:.2f} kcal/mol")
@@ -2604,7 +2690,7 @@ def cli(
         else:
             click.echo("[segments] (no segment reports)")
 
-        click.echo("====== MEP summary finished ======\n", narrative=True)
+        emit("====== MEP summary finished ======\n", narrative=True)
 
         diagram_payload: Optional[Dict[str, Any]] = None
         try:
@@ -2782,12 +2868,12 @@ def cli(
             try:
                 png_path = out_dir_path / "energy_diagram_MEP.png"
                 fig.write_image(str(png_path), scale=2)
-                click.echo(f"[diagram] Wrote energy diagram (PNG) → '{png_path}'", detail=True)
+                emit(f"[diagram] Wrote energy diagram (PNG) → '{png_path}'", detail=True)
             except Exception as e:
                 click.echo(f"[diagram] NOTE: PNG export skipped (install 'kaleido' to enable): {e}")
 
             chain_text = " ".join(chain_tokens)
-            click.echo(f"[diagram] State label sequence: {chain_text}", detail=True)
+            emit(f"[diagram] State label sequence: {chain_text}", detail=True)
 
         except Exception as e:
             click.echo(f"[diagram] WARNING: Failed to build energy diagram: {e}", err=True)
@@ -2801,6 +2887,11 @@ def cli(
                     "index": int(s.seg_index),
                     "tag": s.tag,
                     "kind": s.kind,
+                    # Additive C6: the segment's own StringOptimizer convergence
+                    # (tri-state) so a downstream consumer / the `all`-pipeline
+                    # no-tsopt aggregate can gate on real per-segment convergence
+                    # instead of assuming a segment converged.
+                    "converged": s.converged,
                     "barrier_kcal": float(s.barrier_kcal),
                     "delta_kcal": float(s.delta_kcal),
                     "bond_changes": (
@@ -2821,9 +2912,35 @@ def cli(
         from pdb2reaction.core.utils import RESULT_JSON_SCHEMA_VERSION
         summary["schema_version"] = RESULT_JSON_SCHEMA_VERSION
         summary["pipeline_mode"] = "path-search"
-        summary["status"] = "success" if summary.get("energy_diagrams") else "partial"
-        summary["mlip_backend"] = calc_cfg.get("backend", "uma")
-        summary["mlip_model"] = calc_cfg.get("model")
+        from pdb2reaction.workflows._outcomes import (
+            aggregate_workflow_truth as _agg_truth,
+            attach_outcomes as _attach_outcomes,
+        )
+        _raw_arts = [
+            _f for _f in ("mep.pdb", "mep.cif", "mep_plot.png", "energy_diagram_MEP.png")
+            if (out_dir_path / _f).exists()
+        ]
+        _path_leaves, _path_expected = _path_leaves_and_expected(
+            combined_all.segments, raw_artifacts=_raw_arts
+        )
+        _path_truth = _agg_truth(_path_leaves, _path_expected)
+        # Legacy byte-compat: `status` stays the diagram-based value it always
+        # had — "success" when an energy diagram was produced, else "partial".
+        # The ONE intended change (M59) is the endpoint-HEI demotion: when there
+        # is no reactive segment (segments=[]), a raw R/P diagram is a diagnostic
+        # artifact only and must not read "success". All other convergence truth
+        # is carried by the additive scientific_status, not this legacy field.
+        _reactive_segs = [
+            s for s in combined_all.segments if getattr(s, "kind", "seg") != "bridge"
+        ]
+        _legacy_status = "success" if summary.get("energy_diagrams") else "partial"
+        if _legacy_status == "success" and not _reactive_segs:
+            _legacy_status = "partial"  # M59 endpoint-HEI demotion
+        summary["status"] = _legacy_status
+        _attach_outcomes(summary, truth=_path_truth, stage_outcomes=_path_leaves)
+        from pdb2reaction.core.utils import calculator_provenance
+
+        summary.update(calculator_provenance(calc_cfg))
         summary["charge"] = calc_cfg.get("charge")
         summary["spin"] = calc_cfg.get("spin")
         summary["command"] = command_str
@@ -2833,9 +2950,9 @@ def cli(
         except Exception:
             pass
 
-        with open(out_dir_path / "summary.json", "w") as f:
-            json.dump(summary, f, indent=2, ensure_ascii=False)
-        click.echo(f"[write] Wrote '{out_dir_path / 'summary.json'}'.", detail=True)
+        summary = apply_current_run_id(summary)
+        commit_json(out_dir_path / "summary.json", summary)
+        emit(f"[write] Wrote '{out_dir_path / 'summary.json'}'.", detail=True)
 
         try:
             # `freeze_atoms_for_log` is also assigned later in this function
@@ -2866,8 +2983,9 @@ def cli(
                 "mep_plot": str(out_dir_path / "mep_plot.png") if (out_dir_path / "mep_plot.png").exists() else None,
                 "diagram": diag_for_log,
             }
-            mlip_backend = str(calc_cfg.get("backend", "uma"))
-            mlip_model = calc_cfg.get("model")
+            _provenance = calculator_provenance(calc_cfg)
+            mlip_backend = str(_provenance["mlip_backend"])
+            mlip_model = _provenance["mlip_model"]
             summary_payload = {
                 "root_out_dir": str(out_dir_path),
                 "path_dir": str(out_dir_path),
@@ -2881,6 +2999,7 @@ def cli(
                 "mep_mode": mep_mode,
                 "mlip_backend": mlip_backend,
                 "mlip_model": mlip_model,
+                "mlip_precision": _provenance["mlip_precision"],
                 "command": command_str,
                 "charge": calc_cfg.get("charge"),
                 "spin": calc_cfg.get("spin"),
@@ -2891,12 +3010,12 @@ def cli(
                 "key_files": {},
             }
             write_summary_log(out_dir_path / "summary.log", summary_payload)
-            click.echo(f"[write] Wrote '{out_dir_path / 'summary.log'}'.", detail=True)
+            emit(f"[write] Wrote '{out_dir_path / 'summary.log'}'.", detail=True)
         except Exception as e:
             click.echo(f"[write] WARNING: Failed to write summary.log: {e}", err=True)
 
         # summary.md and key_* outputs are disabled.
-        click.echo(format_elapsed("[time] Elapsed for Path Search", time_start), narrative=True)
+        emit(format_elapsed("[time] Elapsed for Path Search", time_start), narrative=True)
 
     out_dir_path = Path(out_dir).resolve()
     try:

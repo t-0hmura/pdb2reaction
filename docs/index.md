@@ -1,6 +1,6 @@
 # pdb2reaction Documentation
 
-*Version: v0.4.12* — Python CLI for enzymatic reaction-path elucidation from PDB structures using machine-learning interatomic potentials (MLIPs).
+*Version: v{{ release }}* — Python CLI for enzymatic reaction-path elucidation from PDB structures using machine-learning interatomic potentials (MLIPs).
 
 <img src="./overview.png" alt="pdb2reaction workflow overview" width="90%">
 

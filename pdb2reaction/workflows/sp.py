@@ -247,6 +247,17 @@ def cli(
         calc_cfg["charge"] = int(resolved_charge)
         calc_cfg["spin"] = int(resolved_spin)
 
+        # Resolve this before --show-config/--dry-run and make the calculator
+        # contract explicit. Geometry.set_calculator() also propagates its
+        # freeze set at runtime; carrying it here keeps reported and runtime
+        # configuration identical and avoids relying on that later side effect.
+        resolve_freeze_atoms(
+            geom_cfg, prepared_inputs[0].geom_path, freeze_links=False
+        )
+        calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
+        if sp_cfg["hess"]:
+            calc_cfg["return_partial_hessian"] = True
+
         out_dir_path = Path(sp_cfg["out_dir"]).resolve()
 
         if show_config:
@@ -262,7 +273,6 @@ def cli(
             return
 
         out_dir_path.mkdir(parents=True, exist_ok=True)
-        resolve_freeze_atoms(geom_cfg, prepared_inputs[0].geom_path, freeze_links=False)
 
         coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
         coord_kwargs = dict(geom_cfg)
@@ -333,14 +343,25 @@ def cli(
 
         # Summary
         elapsed_total = format_elapsed("[sp] Elapsed Time", time_start)
+        _custom_calculator = (
+            f"{Path(str(calc_cfg['calc_file'])).name}:"
+            f"{calc_cfg.get('calc_factory', 'get_calculator')}"
+            if calc_cfg["backend"] == "custom" and calc_cfg.get("calc_file")
+            else None
+        )
+        from pdb2reaction.core.utils import calculator_provenance
+
         summary = {
             "stage": "sp",
             "status": "ok",
             "input": str(prepared_inputs[0].display_path),
             "backend": calc_cfg["backend"],
-            "model": calc_cfg.get("model"),
+            "model": _custom_calculator or calc_cfg.get("model"),
+            "custom_calculator": _custom_calculator,
+            **calculator_provenance(calc_cfg),
             "charge": calc_cfg["charge"],
             "spin": calc_cfg["spin"],
+            "n_atoms": len(geom.atoms),
             "energy_au": energy_au,
             "forces_path": str(forces_path),
             "hessian_path": str(hessian_path) if hessian_path else None,

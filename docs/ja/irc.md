@@ -78,6 +78,11 @@ out_dir/ (デフォルト:./result_irc/)
 ├─ <prefix>backward_irc.pdb       # 逆方向分岐に対応する PDB（同条件）
 └─ <prefix>backward_irc.cif       # bridge入力
 ```
+
+`irc.prefix`が空でない場合、EulerPCはファイル名との間に`_`を1つ補います。たとえば
+`prefix: trial`は`trial_finished_irc_trj.xyz`を生成し、`result.json.files`にも
+正規化後の名前を記録します。
+
 コンソールには確定済みの `geom`/`calc`/`irc` 設定と実行時間の要約が表示されます。
 
 ## CLI オプション

@@ -45,7 +45,7 @@ ase_calc = create_ase_calculator(backend="uma", model="uma-s-1p2", device="cuda"
 | backend | install | model identifier | precision option |
 |---------|---------|------------------|------------------|
 | `uma` | `pip install fairchem-core` + HF auth | `uma-s-1p2` / `uma-s-1p1` | `precision="fp32" \| "fp64"` |
-| `orb` | `pip install orb-models` | `orb_v3_conservative_omol` | `precision="float32-high" \|...` |
+| `orb` | `pip install orb-models` | `orb_v3_conservative_omol` | `precision="float32-high" \| "float32-highest" \| "float64"`（`fp32` / `float32` は正規化される別名） |
 | `mace` | 専用 conda env で pdb2reaction を入れた後、`pip uninstall -y fairchem-core && pip install 'mace-torch>=0.3.8'`（現行版どうしも `e3nn` 要件が競合） | `MACE-OMOL-0` | `default_dtype="float64"` |
 | `aimnet2` | `pip install aimnet` | `aimnet2` | n/a |
 
@@ -107,14 +107,15 @@ def get_calculator(charge=0, spin=1, device="auto", **kwargs):
 
 `EMT()` を使いたいエンジンに差し替えてください — 例えば GFN-xTB なら
 `tblite.ase.TBLite(...)`、DFTB+ の ASE calculator、`ase.calculators.orca.ORCA(...)`
-など。このファイルを単一ステージのサブコマンドに渡すと、`custom` バックエンドが
-選択され `--backend` を上書きします:
+など。このファイルを各stageまたは`all`に渡すと、`custom`バックエンドが選択され
+`--backend`を上書きします:
 
 ```bash
 pdb2reaction sp     -i model.xyz --calc-file my_calc.py -q 0 -m 1
 pdb2reaction opt    -i model.xyz --calc-file my_calc.py -q 0 -m 1
 pdb2reaction tsopt  -i ts.xyz    --calc-file my_calc.py -q 0 -m 1
 pdb2reaction freq   -i ts.xyz    --calc-file my_calc.py -q 0 -m 1
+pdb2reaction all    -i R.pdb P.pdb -c 'LIG' --calc-file my_calc.py -q 0 -m 1
 ```
 
 補足:
@@ -127,9 +128,10 @@ pdb2reaction freq   -i ts.xyz    --calc-file my_calc.py -q 0 -m 1
 - Hessian は `MLIPCalculator` から継承する有限差分経路を使うため、`freq` や
   `tsopt --opt-mode hess` も任意エンジンで動作します。凍結原子（`--freeze-links` /
   `--freeze-atoms`）も通常どおり尊重されます。
-- 単一ステージのサブコマンド（`sp`・`opt`・`tsopt`・`freq`・`irc`・`scan` /
-  `scan2d` / `scan3d`・`path-opt`・`path-search`）で利用できます。独自の
-  `--backend` 名を持つ恒久的なバックエンドにする場合は、以下のレシピを参照してください。
+- `all`および単独subcommand（`sp`・`opt`・`tsopt`・`freq`・`irc`・`scan` /
+  `scan2d` / `scan3d`・`path-opt`・`path-search`）で利用できます。`all`は同じfactoryを
+  calculatorを使う子stageへ転送します。独自の`--backend`名を持つ恒久的なbackendに
+  する場合は、以下のレシピを参照してください。
 
 ## バックエンド追加レシピ（5 ステップ）
 

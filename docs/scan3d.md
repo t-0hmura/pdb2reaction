@@ -121,7 +121,7 @@ Grid-point geometries use `Å×100` tags, so `point_i130_j310_k200.xyz` correspo
 | **Refinement** | | |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
 | `--opt-mode TEXT` | `grad` → L-BFGS, `hess` → RFOptimizer. | `grad` |
-| `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. Used unless YAML sets `opt.max_cycles`. | `10000` |
+| `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. An explicit value overrides YAML `opt.max_cycles`. | `10000` |
 | `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
 | `--preopt/--no-preopt` | Run an unbiased optimization before scanning. | `False` |
 | **Merge & alignment** | | |
@@ -184,7 +184,7 @@ bias:
 - `--freeze-links` merges user `freeze_atoms` with detected cap-H parents for
   PDB inputs, keeping extracted active site models rigid.
 - Add `--print-parsed` when you want to verify parsed pair targets from `--scan-lists/-s`.
-- `--relax-max-cycles` is applied only when explicitly provided and YAML does not set `opt.max_cycles` (default `10000`); a YAML `opt.max_cycles` value takes precedence.
+- An explicitly provided `--relax-max-cycles` overrides YAML `opt.max_cycles`; when omitted, YAML wins, then the default `10000` applies.
 
 ## See Also
 - [scan](scan.md) -- 1D bond-distance scan

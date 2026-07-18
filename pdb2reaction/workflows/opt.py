@@ -16,6 +16,7 @@ import logging
 import sys
 
 import click
+from pdb2reaction.core.output import emit
 import numpy as np
 import torch
 import time
@@ -63,6 +64,7 @@ from pdb2reaction.core.utils import (
     echo_resolved_device,
     emit_optimizer_terminal_status,
     optimizer_cycle_count,
+    optimizer_terminal_status,
 )
 from pdb2reaction.cli.common_options import (
     add_ml_charge_spin_options,
@@ -88,6 +90,19 @@ H_EVAA_2_AU = EV2AU / (ANG2BOHR * ANG2BOHR)  # (eV/Å^2) → (Hartree/Bohr^2)
 OPT_FLATTEN_NEG_FREQ_THRESH_CM = 5.0
 OPT_FLATTEN_AMP_ANG = 0.10
 OPT_FLATTEN_MAX_ITER = 50
+
+
+def _opt_result_provenance(calc_cfg: Dict[str, Any]) -> Dict[str, Any]:
+    """Build legacy and canonical result fields from one resolved calculator."""
+
+    from pdb2reaction.core.utils import calculator_provenance
+
+    provenance = calculator_provenance(calc_cfg)
+    return {
+        "backend": provenance["mlip_backend"],
+        "model": provenance["mlip_model"],
+        **provenance,
+    }
 
 
 def _parse_dist_freeze_args(
@@ -192,6 +207,7 @@ def _flatten_all_imag_modes_for_geom(
     modes: torch.Tensor,
     neg_freq_thresh_cm: float,
     flatten_amp_ang: float,
+    calculator=None,
 ) -> bool:
     """
     Flatten all imaginary modes for a geometry in a single pass.
@@ -202,27 +218,33 @@ def _flatten_all_imag_modes_for_geom(
 
     order = np.argsort(freqs_cm[neg_idx_all])  # most negative first
     targets = [int(x) for x in neg_idx_all[order]]
-    mass_scale = np.sqrt(12.011 / masses_amu)[:, None]
     amp_bohr = float(flatten_amp_ang) / BOHR2ANG
-    E_ref = _calc_energy(geom, calc_kwargs)
+    E_ref = _calc_energy(geom, calc_kwargs, calc=calculator)
 
     m3 = np.repeat(masses_amu, 3).reshape(-1, 3)
     for idx in targets:
         v_mw = modes[idx].detach().cpu().numpy().reshape(-1, 3)
+        # A returned mode row is a mass-weighted eigenvector q of
+        # M^(-1/2) H M^(-1/2).  The Cartesian normal-mode direction is
+        # u = M^(-1/2) q / ||M^(-1/2) q||, computed once here (divide by
+        # sqrt(m) then L2-normalize).  The flatten displacement is
+        # amp_bohr * u so ||disp|| == amp_bohr.  A second per-atom mass
+        # factor would rotate the direction toward M^(-1) q and change the
+        # amplitude; there is no such factor.
         v_cart = v_mw / np.sqrt(m3)
         v_cart /= np.linalg.norm(v_cart)
 
-        disp = amp_bohr * mass_scale * v_cart
+        disp = amp_bohr * v_cart
         ref = geom.cart_coords.reshape(-1, 3)
 
         plus = ref + disp
         minus = ref - disp
 
         geom.coords = plus.reshape(-1)
-        E_plus = _calc_energy(geom, calc_kwargs)
+        E_plus = _calc_energy(geom, calc_kwargs, calc=calculator)
 
         geom.coords = minus.reshape(-1)
-        E_minus = _calc_energy(geom, calc_kwargs)
+        E_minus = _calc_energy(geom, calc_kwargs, calc=calculator)
 
         use_plus = E_plus <= E_minus
         geom.coords = (plus if use_plus else minus).reshape(-1)
@@ -236,6 +258,73 @@ def _flatten_all_imag_modes_for_geom(
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
     return True
+
+
+def _seed_rfo_initial_hessian(
+    geometry,
+    calc_cfg: Dict[str, Any],
+    calculator,
+    *,
+    restraints_active: bool,
+) -> Optional[str]:
+    """Seed RFO without mixing a cached and active potential.
+
+    Returns ``"restrained"`` or ``"irc_cache"`` when a seed was installed,
+    otherwise ``None`` so the optimizer can obtain its normal initial Hessian.
+    """
+
+    if restraints_active:
+        click.echo(
+            "[opt] Distance restraints are active; calculating "
+            "the initial RFO Hessian on the restrained PES."
+        )
+        hessian = _calc_full_hessian_torch(
+            geometry,
+            dict(calc_cfg),
+            _torch_device(calc_cfg.get("device", "auto")),
+            calculator=calculator,
+        )
+        geometry.cart_hessian = hessian
+        click.echo(
+            f"[opt] Initial restrained Hessian seeded "
+            f"(shape={hessian.shape[0]}x{hessian.shape[1]})."
+        )
+        return "restrained"
+
+    from pdb2reaction.io.hessian_cache import (
+        load_matching as hessian_cache_load_matching,
+        identity_from_context as hessian_cache_identity,
+    )
+
+    # Reuse an IRC endpoint Hessian only when the full evaluation identity
+    # matches this endpoint's run/system/evaluator/active space/potential.
+    cached = hessian_cache_load_matching(
+        "irc_endpoint",
+        hessian_cache_identity(geometry, calc_cfg, role="irc_endpoint"),
+    )
+    if cached is None:
+        return None
+
+    click.echo("[opt] Reusing IRC endpoint Hessian for RFO seeding.")
+    active_dofs = cached.get("active_dofs")
+    raw_hessian = cached["hessian"]
+    if isinstance(raw_hessian, torch.Tensor):
+        initial_hessian = raw_hessian.clone()
+    else:
+        initial_hessian = torch.as_tensor(raw_hessian, dtype=torch.float64)
+    if active_dofs is not None:
+        geometry.within_partial_hessian = {
+            "active_n_dof": len(active_dofs),
+            "full_n_dof": geometry.cart_coords.size,
+            "active_dofs": active_dofs,
+            "active_atoms": sorted(set(dof // 3 for dof in active_dofs)),
+        }
+    geometry.cart_hessian = initial_hessian
+    click.echo(
+        f"[opt] Initial Hessian seeded "
+        f"(shape={initial_hessian.shape[0]}x{initial_hessian.shape[1]})."
+    )
+    return "irc_cache"
 
 
 
@@ -710,56 +799,39 @@ def cli(
                     return RFOptimizer(geometry, **rfo_args)
                 raise click.BadParameter(f"Unknown optimizer kind '{run_kind}'.")
 
-            # Seed cached IRC endpoint Hessian for RFO when available
+            # Seed RFO from the active PES. A coordinate-only IRC cache cannot
+            # represent a newly configured distance restraint, so restrained
+            # runs evaluate the exact wrapper and bypass that cache entirely.
             if main_kind == "rfo":
-                from pdb2reaction.io.hessian_cache import (
-                    load as _hess_load,
-                    matches_cart_coords as _hess_matches_coords,
+                _seed_rfo_initial_hessian(
+                    geometry,
+                    calc_cfg,
+                    opt_calc,
+                    restraints_active=bool(resolved_dist_freeze),
                 )
-                _cached = _hess_load("irc_endpoint")
-                if _cached is not None and not _hess_matches_coords(
-                    _cached, geometry.cart_coords
-                ):
-                    click.echo(
-                        "[opt] Cached IRC Hessian does not match the input "
-                        "geometry; calculating a fresh Hessian.",
-                        err=True,
-                    )
-                    _cached = None
-                if _cached is not None:
-                    click.echo("[opt] Reusing IRC endpoint Hessian for RFO seeding.")
-                    _active_dofs = _cached.get("active_dofs")
-                    _h_raw = _cached["hessian"]
-                    if isinstance(_h_raw, torch.Tensor):
-                        _h_init = _h_raw.clone()
-                    else:
-                        _h_init = torch.as_tensor(_h_raw, dtype=torch.float64)
-                    if _active_dofs is not None:
-                        geometry.within_partial_hessian = {
-                            "active_n_dof": len(_active_dofs),
-                            "full_n_dof": geometry.cart_coords.size,
-                            "active_dofs": _active_dofs,
-                            "active_atoms": sorted(set(d // 3 for d in _active_dofs)),
-                        }
-                    geometry.cart_hessian = _h_init
-                    click.echo(f"[opt] Initial Hessian seeded (shape={_h_init.shape[0]}x{_h_init.shape[1]}).")
-                    del _h_init
 
             main_label = "LBFGS" if main_kind == "lbfgs" else "RFO"
             optimizer = _build_optimizer(main_kind)
-            click.echo(f"\n====== Optimization ({main_label}) ======\n", narrative=True)
+            emit(f"\n====== Optimization ({main_label}) ======\n", narrative=True)
             optimizer.run()
             emit_optimizer_terminal_status(
                 "opt",
                 converged=getattr(optimizer, "is_converged", None),
                 cycles=optimizer_cycle_count(optimizer),
                 max_cycles=int(opt_cfg.get("max_cycles", 0)) or None,
+                stalled=getattr(optimizer, "is_stalled", False),
+                stop_reason=getattr(optimizer, "stop_reason", None) or None,
             )
             last_optimizer = optimizer
             rigid_projection_info: Dict[str, Any] = {}
 
+            # A stalled optimization is precisely when the flatten loop is
+            # wanted: it rebuilds the Hessian and displaces along the remaining
+            # imaginary modes to leave the plateau.  M14/P14's no-retry rule
+            # belongs inside the loop (a flatten *retry* that stalls again is
+            # not making progress and stops there), not in front of it.
             if flatten:
-                click.echo("\n====== Optimization (Flatten loop) ======\n", narrative=True)
+                emit("\n====== Optimization (Flatten loop) ======\n", narrative=True)
 
                 geometry.set_calculator(None)
                 calc_kwargs_for_flatten = dict(calc_cfg)
@@ -772,7 +844,12 @@ def cli(
                     geometry.set_calculator(opt_calc)
 
                 def _calc_freqs_and_modes() -> Tuple[np.ndarray, torch.Tensor]:
-                    H = _calc_full_hessian_torch(geometry, calc_kwargs_for_flatten, device)
+                    H = _calc_full_hessian_torch(
+                        geometry,
+                        calc_kwargs_for_flatten,
+                        device,
+                        calculator=opt_calc,
+                    )
                     freqs_local, modes_local = _frequencies_cm_and_modes(
                         H,
                         geometry.atomic_numbers,
@@ -797,7 +874,7 @@ def cli(
                 neg_mask = freqs_cm < -abs(OPT_FLATTEN_NEG_FREQ_THRESH_CM)
                 n_imag = int(np.sum(neg_mask))
                 ims = [float(x) for x in freqs_cm if x < -abs(OPT_FLATTEN_NEG_FREQ_THRESH_CM)]
-                click.echo(f"[Imaginary modes] n={n_imag}  ({ims})", narrative=True)
+                emit(f"[Imaginary modes] n={n_imag}  ({ims})", narrative=True)
 
                 for it in range(OPT_FLATTEN_MAX_ITER):
                     if n_imag == 0:
@@ -811,6 +888,7 @@ def cli(
                         modes,
                         OPT_FLATTEN_NEG_FREQ_THRESH_CM,
                         OPT_FLATTEN_AMP_ANG,
+                        calculator=opt_calc,
                     )
                     if not did_flatten:
                         click.echo("[flatten] No eligible imaginary modes to flatten; stopping.")
@@ -819,22 +897,32 @@ def cli(
                     _attach_opt_calc()
                     optimizer = _build_optimizer(flatten_kind)
                     restart_label = "LBFGS" if flatten_kind == "lbfgs" else "RFO"
-                    click.echo(f"\n====== Optimization ({restart_label}, flatten retry) ======\n", narrative=True)
+                    emit(f"\n====== Optimization ({restart_label}, flatten retry) ======\n", narrative=True)
                     optimizer.run()
                     emit_optimizer_terminal_status(
                         "opt",
                         converged=getattr(optimizer, "is_converged", None),
                         cycles=optimizer_cycle_count(optimizer),
                         max_cycles=int(opt_cfg.get("max_cycles", 0)) or None,
+                        stalled=getattr(optimizer, "is_stalled", False),
+                        stop_reason=getattr(optimizer, "stop_reason", None) or None,
                     )
                     last_optimizer = optimizer
+
+                    # Stop retrying a stalled optimization (M14/P14).
+                    if getattr(optimizer, "is_stalled", False):
+                        click.echo(
+                            "[flatten] Optimization stalled (energy plateau); "
+                            "stopping the flatten loop."
+                        )
+                        break
 
                     geometry.set_calculator(None)
                     freqs_cm, modes = _calc_freqs_and_modes()
                     neg_mask = freqs_cm < -abs(OPT_FLATTEN_NEG_FREQ_THRESH_CM)
                     n_imag = int(np.sum(neg_mask))
                     ims = [float(x) for x in freqs_cm if x < -abs(OPT_FLATTEN_NEG_FREQ_THRESH_CM)]
-                    click.echo(f"[Imaginary modes] n={n_imag}  ({ims})", narrative=True)
+                    emit(f"[Imaginary modes] n={n_imag}  ({ims})", narrative=True)
 
                 if n_imag > 0:
                     click.echo(
@@ -859,19 +947,18 @@ def cli(
                 final_xyz_path=final_xyz_path,
             )
 
-            click.echo(format_elapsed("[time] Elapsed Time for Opt", time_start), narrative=True)
+            emit(format_elapsed("[time] Elapsed Time for Opt", time_start), narrative=True)
 
             if out_json:
                 from pdb2reaction.core.utils import write_result_json
                 result_data = {
-                    "status": "converged" if last_optimizer.is_converged else "not_converged",
+                    "status": optimizer_terminal_status(last_optimizer),
                     "energy_hartree": float(geometry.energy) if geometry.energy is not None else None,
                     "n_opt_cycles": last_optimizer.cur_cycle if hasattr(last_optimizer, "cur_cycle") else None,
                     "opt_mode": opt_cfg.get("opt_mode", opt_mode),
-                    "backend": backend,
                     "charge": calc_cfg["charge"],
                     "spin": calc_cfg["spin"],
-                    "model": calc_cfg.get("model"),
+                    **_opt_result_provenance(calc_cfg),
                     "n_atoms": len(geometry.atoms),
                     "n_freeze_atoms": len(geom_cfg.get("freeze_atoms", [])),
                     "solvent": calc_cfg.get("solvent", "none"),
@@ -882,6 +969,12 @@ def cli(
                         "final_geometry_xyz": str(final_xyz_path.name),
                     },
                 }
+                # Additive stop_reason, present only for a non-converged stop
+                # (stalled/stopped) so a genuinely converged run's JSON stays
+                # byte-compatible (M14/P14).
+                _opt_stop_reason = getattr(last_optimizer, "stop_reason", "") or ""
+                if _opt_stop_reason:
+                    result_data["stop_reason"] = _opt_stop_reason
                 if rigid_projection_info:
                     result_data["rigid_projection"] = dict(rigid_projection_info)
                 if hasattr(last_optimizer, 'max_forces') and last_optimizer.max_forces:

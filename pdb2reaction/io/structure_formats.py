@@ -19,6 +19,12 @@ from typing import Any, Iterable, Optional, Sequence
 
 import numpy as np
 
+from pdb2reaction.io.altloc import (
+    choose_altloc_label,
+    occupancy_rank,
+    parsed_occupancy,
+)
+
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +47,7 @@ class AtomSiteRecord:
     icode: str
     occupancy: float
     bfactor: float
+    occupancy_known: bool = True
     formal_charge: str = "."
     label_atom_id: str = ""
     label_comp_id: str = ""
@@ -173,19 +180,14 @@ def _coherent_altloc_records(
         if not labels:
             selected.extend(residue_records)
             continue
-        chosen = ""
-        chosen = max(
-            labels,
-            key=lambda label: (
-                np.mean(
-                    [
-                        record.occupancy
-                        for record in residue_records
-                        if record.altloc.strip() == label
-                    ]
-                ),
-                -labels.index(label),
-            ),
+        chosen = choose_altloc_label(
+            (
+                record.altloc.strip(),
+                record.occupancy if record.occupancy_known else None,
+                index,
+            )
+            for index, record in enumerate(residue_records)
+            if record.altloc.strip()
         )
 
         chosen_by_name: dict[str, list[AtomSiteRecord]] = {}
@@ -210,13 +212,13 @@ def _coherent_altloc_records(
                 continue
             candidates = chosen_by_name[name]
             winner = max(
-                candidates,
-                key=lambda candidate: (
-                    candidate.occupancy,
-                    -candidates.index(candidate),
+                enumerate(candidates),
+                key=lambda item: occupancy_rank(
+                    item[1].occupancy if item[1].occupancy_known else None,
+                    item[0],
                 ),
             )
-            selected.append(replace(winner, altloc=""))
+            selected.append(replace(winner[1], altloc=""))
             emitted_chosen.add(name)
             kept += 1
         removed += len(residue_records) - kept
@@ -250,7 +252,7 @@ def read_mmcif_atom_sites(path: Path | str) -> list[AtomSiteRecord]:
     xs = _column(data, "_atom_site.Cartn_x", nrows, "nan")
     ys = _column(data, "_atom_site.Cartn_y", nrows, "nan")
     zs = _column(data, "_atom_site.Cartn_z", nrows, "nan")
-    occupancies = _column(data, "_atom_site.occupancy", nrows, "1.0")
+    occupancies = _column(data, "_atom_site.occupancy", nrows, "?")
     bfactors = _column(data, "_atom_site.B_iso_or_equiv", nrows, "0.0")
     charges = _column(data, "_atom_site.pdbx_formal_charge", nrows, ".")
     models = _column(data, "_atom_site.pdbx_PDB_model_num", nrows, "1")
@@ -274,6 +276,8 @@ def read_mmcif_atom_sites(path: Path | str) -> list[AtomSiteRecord]:
         resname = _first_present(auth_comp[idx], label_comp[idx], default="UNK")
         chain = _first_present(auth_asym[idx], label_asym[idx], default="_")
         resseq = _first_present(auth_seq[idx], label_seq[idx], default=str(idx + 1))
+        parsed_occ = parsed_occupancy(occupancies[idx])
+        occupancy_known = parsed_occ is not None
         record = AtomSiteRecord(
             group_pdb=(groups[idx].upper() if groups[idx] else "HETATM"),
             element=element[idx].strip().title(),
@@ -283,8 +287,9 @@ def read_mmcif_atom_sites(path: Path | str) -> list[AtomSiteRecord]:
             chain_id=chain.strip(),
             resseq=resseq.strip(),
             icode=(icodes[idx] if _present(icodes[idx]) else "").strip(),
-            occupancy=_float_or(occupancies[idx], 1.0),
+            occupancy=1.0 if parsed_occ is None else parsed_occ,
             bfactor=_float_or(bfactors[idx], 0.0),
+            occupancy_known=occupancy_known,
             formal_charge=charges[idx] if _present(charges[idx]) else ".",
             label_atom_id=label_atom[idx].strip() or atom_name.strip(),
             label_comp_id=label_comp[idx].strip() or resname.strip(),
@@ -454,7 +459,10 @@ def read_pdb_atom_sites(
                 raise ValueError(
                     f"Cannot parse coordinates at {path}:{line_number}."
                 ) from exc
-            occupancy = _float_or(line[54 + coord_offset : 60 + coord_offset].strip(), 1.0)
+            occupancy_text = line[54 + coord_offset : 60 + coord_offset].strip()
+            parsed_occ = parsed_occupancy(occupancy_text)
+            occupancy = 1.0 if parsed_occ is None else parsed_occ
+            occupancy_known = parsed_occ is not None
             bfactor = _float_or(line[60 + coord_offset : 66 + coord_offset].strip(), 0.0)
             element = line[76 + coord_offset : 78 + coord_offset].strip().title()
             formal_charge = _formal_charge_from_pdb(
@@ -485,6 +493,7 @@ def read_pdb_atom_sites(
                     icode=icode,
                     occupancy=occupancy,
                     bfactor=bfactor,
+                    occupancy_known=occupancy_known,
                     formal_charge=formal_charge,
                     label_atom_id=atom_name,
                     label_comp_id=resname,
@@ -811,17 +820,136 @@ _ATOM_SITE_COLUMNS = (
 )
 
 
-def write_mmcif_frames(
+def _pdb_coordinate_field(value: float) -> str:
+    """Format one PDB coordinate without overflowing its eight columns."""
+
+    coordinate = float(value)
+    if not np.isfinite(coordinate):
+        raise ValueError("PDB coordinate frames must contain only finite values.")
+    field = f"{coordinate:8.3f}"
+    if len(field) != 8:
+        raise ValueError(
+            "Coordinates exceed the fixed-column PDB range required by the "
+            "internal bridge. Translate the structure closer to the origin."
+        )
+    return field
+
+
+def render_pdb_coordinate_frames(
+    ref_pdb_path: Path | str,
+    frame_symbols: Sequence[Sequence[str]],
+    frames: Sequence[np.ndarray],
+) -> str:
+    """Render validated coordinate frames on one fixed PDB topology.
+
+    Every frame is validated before any caller-visible path is replaced.  The
+    ordered element list is part of the topology contract; atom count alone is
+    insufficient because an element permutation can silently corrupt atom
+    identities while retaining a valid array shape.
+    """
+
+    ref_pdb_path = Path(ref_pdb_path)
+    ref_text = ref_pdb_path.read_text(encoding="utf-8")
+    ref_lines = [
+        line
+        for line in ref_text.splitlines(keepends=True)
+        if not (line.startswith(("MODEL", "ENDMDL")) or line.strip() == "END")
+    ]
+    atom_line_indices = [
+        index
+        for index, line in enumerate(ref_lines)
+        if line.startswith(("ATOM  ", "HETATM"))
+    ]
+    if not atom_line_indices:
+        raise ValueError(f"No ATOM/HETATM records in reference PDB: {ref_pdb_path}")
+
+    reference_records, _ = read_pdb_atom_sites(ref_pdb_path, warn_altloc=False)
+    if len(reference_records) != len(atom_line_indices):
+        raise ValueError(
+            "Reference PDB topology contains multiple models or unresolved alternate "
+            "locations; normalize it before coordinate overlay."
+        )
+    expected_symbols = tuple(record.element.title() for record in reference_records)
+    if len(frame_symbols) != len(frames):
+        raise ValueError("frame_symbols must contain one ordered element list per frame.")
+    if not frames:
+        raise ValueError("No coordinate frames were provided for PDB rendering.")
+
+    validated_frames: list[np.ndarray] = []
+    for frame_index, (symbols, positions) in enumerate(
+        zip(frame_symbols, frames), start=1
+    ):
+        normalized_symbols = tuple(str(symbol).strip().title() for symbol in symbols)
+        if len(normalized_symbols) != len(expected_symbols):
+            raise ValueError(
+                f"Atom count mismatch in XYZ frame {frame_index}: "
+                f"got {len(normalized_symbols)}, expected {len(expected_symbols)}."
+            )
+        if normalized_symbols != expected_symbols:
+            mismatch = next(
+                index
+                for index, (actual, expected) in enumerate(
+                    zip(normalized_symbols, expected_symbols), start=1
+                )
+                if actual != expected
+            )
+            raise ValueError(
+                f"Ordered elements differ from the reference topology in XYZ frame "
+                f"{frame_index} at atom {mismatch}: got {normalized_symbols[mismatch - 1]}, "
+                f"expected {expected_symbols[mismatch - 1]}."
+            )
+        array = np.asarray(positions, dtype=float)
+        if array.shape != (len(expected_symbols), 3):
+            raise ValueError(
+                f"Coordinate frame {frame_index} has shape {array.shape}; expected "
+                f"({len(expected_symbols)}, 3)."
+            )
+        if not np.all(np.isfinite(array)):
+            raise ValueError(
+                f"XYZ frame {frame_index} contains non-finite coordinates."
+            )
+        # Formatting is itself validation: values close to a decimal boundary
+        # can round outside the nominal fixed-column range.
+        for value in array.flat:
+            _pdb_coordinate_field(float(value))
+        validated_frames.append(array)
+
+    atom_line_set = set(atom_line_indices)
+    multi_frame = len(validated_frames) > 1
+    output: list[str] = []
+    for model_number, positions in enumerate(validated_frames, start=1):
+        if multi_frame:
+            output.append(f"MODEL     {model_number:>4d}\n")
+        atom_index = 0
+        for line_index, line in enumerate(ref_lines):
+            if line_index not in atom_line_set:
+                output.append(line)
+                continue
+            x, y, z = positions[atom_index]
+            output.append(
+                line[:30]
+                + _pdb_coordinate_field(x)
+                + _pdb_coordinate_field(y)
+                + _pdb_coordinate_field(z)
+                + line[54:]
+            )
+            atom_index += 1
+        if output and not output[-1].endswith("\n"):
+            output.append("\n")
+        if multi_frame:
+            output.append("ENDMDL\n")
+    return "".join(output)
+
+
+def render_mmcif_frames(
     frames: Sequence[np.ndarray],
     template: CoordinateTemplate,
-    out_path: Path | str,
     *,
     occupancy_frames: Optional[Sequence[np.ndarray]] = None,
     bfactor_frames: Optional[Sequence[np.ndarray]] = None,
-) -> None:
-    """Write one or more coordinate frames with retained atom-site metadata."""
+) -> str:
+    """Render one or more coordinate frames with retained atom-site metadata."""
 
-    out_path = Path(out_path)
     lines = ["data_pdb2reaction\n", "#\n", "loop_\n"]
     lines.extend(f"_atom_site.{column}\n" for column in _ATOM_SITE_COLUMNS)
     if occupancy_frames is not None and len(occupancy_frames) != len(frames):
@@ -834,6 +962,10 @@ def write_mmcif_frames(
         if array.shape != (template.natoms, 3):
             raise ValueError(
                 f"Coordinate frame has shape {array.shape}; expected ({template.natoms}, 3)."
+            )
+        if not np.all(np.isfinite(array)):
+            raise ValueError(
+                f"Coordinate frame {model_number} contains non-finite values."
             )
         occupancies = None
         if occupancy_frames is not None:
@@ -878,7 +1010,26 @@ def write_mmcif_frames(
             lines.append(" ".join(_cif_quote(value) for value in values) + "\n")
             atom_id += 1
     lines.append("#\n")
-    out_path.write_text("".join(lines), encoding="utf-8")
+    return "".join(lines)
+
+
+def write_mmcif_frames(
+    frames: Sequence[np.ndarray],
+    template: CoordinateTemplate,
+    out_path: Path | str,
+    *,
+    occupancy_frames: Optional[Sequence[np.ndarray]] = None,
+    bfactor_frames: Optional[Sequence[np.ndarray]] = None,
+) -> None:
+    """Write rendered mmCIF frames to *out_path*."""
+
+    rendered = render_mmcif_frames(
+        frames,
+        template,
+        occupancy_frames=occupancy_frames,
+        bfactor_frames=bfactor_frames,
+    )
+    Path(out_path).write_text(rendered, encoding="utf-8")
 
 
 def _pdb_frame_data(

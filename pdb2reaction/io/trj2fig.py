@@ -20,6 +20,7 @@ from ase import Atoms
 from ase.io import read
 from pysisyphus.constants import AU2KCALPERMOL, ANG2BOHR
 
+from pdb2reaction.core.output import emit
 from pdb2reaction.core.utils import read_xyz_energies
 
 logger = logging.getLogger(__name__)
@@ -203,14 +204,14 @@ def save_outputs(
         elif ext == ".html":
             assert fig is not None
             fig.write_html(out)
-            click.echo(f"[trj2fig] Saved figure -> {out}", detail=True)
+            emit(f"[trj2fig] Saved figure -> {out}", detail=True)
         elif ext in {".png", ".jpg", ".jpeg", ".pdf", ".svg"}:
             assert fig is not None
             kw = {"engine": "kaleido"}
             if ext == ".png":
                 kw["scale"] = 2  # high-resolution PNG
             fig.write_image(out, **kw)
-            click.echo(f"[trj2fig] Saved figure -> {out}", detail=True)
+            emit(f"[trj2fig] Saved figure -> {out}", detail=True)
         else:
             raise ValueError(f"Unsupported format: {ext}")
 
@@ -231,7 +232,7 @@ def write_csv(
         w.writerow(["frame", "energy_hartree", colname])
         for i, (eh, y) in enumerate(zip(energies_hartree, series)):
             w.writerow([i, f"{eh:.8f}", f"{y:.6f}"])
-    click.echo(f"[trj2fig] Saved CSV -> {out}", detail=True)
+    emit(f"[trj2fig] Saved CSV -> {out}", detail=True)
 
 
 def run_trj2fig(

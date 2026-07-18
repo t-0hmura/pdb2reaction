@@ -134,3 +134,39 @@ def test_summary_log_uses_mlip_provenance_and_labels(tmp_path):
     assert "DFT//MLIP Gibbs" in text
     assert "UMA model" not in text
     assert "DFT//UMA" not in text
+
+
+def test_summary_log_does_not_invent_default_backend(tmp_path):
+    dest = tmp_path / "summary.log"
+
+    write_summary_log(dest, {})
+
+    text = dest.read_text(encoding="utf-8")
+    assert "MLIP backend       : -" in text
+    assert "MLIP backend       : uma" not in text
+
+
+def test_summary_log_tree_lists_only_current_run_paths(tmp_path):
+    current = tmp_path / "segments" / "seg_01" / "structures" / "ts.pdb"
+    stale = tmp_path / "segments" / "seg_02" / "structures" / "old.pdb"
+    stale_diagram = tmp_path / "irc_plot_all.png"
+    for path in (current, stale, stale_diagram):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("x", encoding="utf-8")
+    dest = tmp_path / "summary.log"
+
+    write_summary_log(
+        dest,
+        {
+            "root_out_dir": str(tmp_path),
+            "current_output_paths": [
+                "segments/seg_01/structures/ts.pdb",
+            ],
+        },
+    )
+
+    text = dest.read_text(encoding="utf-8")
+    assert "seg_01/" in text
+    assert "ts.pdb" in text
+    assert "seg_02" not in text
+    assert "irc_plot_all.png" not in text

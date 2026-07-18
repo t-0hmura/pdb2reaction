@@ -78,6 +78,11 @@ out_dir/ (default:./result_irc/)
 ├─ <prefix>backward_irc.pdb       # Backward-branch PDB companion (same gating)
 └─ <prefix>backward_irc.cif       # Bridge-input companion
 ```
+
+When `irc.prefix` is non-empty, EulerPC inserts one underscore before the
+filename; for example, `prefix: trial` produces
+`trial_finished_irc_trj.xyz`. `result.json.files` records the normalized names.
+
 - Console summaries of resolved `geom`, `calc`, and `irc` configurations plus wall-clock timing.
 
 ## CLI options

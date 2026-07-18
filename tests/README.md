@@ -18,11 +18,23 @@ regressions. They are suitable for CI.
 GPU smoke fixtures and commands live in `tests/smoke/`.
 
 ```bash
-cd tests/smoke
+cp -a tests/smoke /path/to/writable-scratch/p2r-smoke
+cd /path/to/writable-scratch/p2r-smoke
 bash run.sh
 ```
 
 `tests/smoke/run.sh` assumes the caller has already configured the Python
-environment and CUDA runtime. Scheduler wrappers and environment activation
-must stay out of the repository.
+environment and CUDA runtime. It verifies that distribution metadata, the
+imported module, and the module CLI report one consistent version, without
+pinning a release number. Every CLI case is executed through
+`python -m pdb2reaction` from the same interpreter. Scheduler wrappers and
+environment activation stay out of the repository.
 
+The default strict lane numerically compares UMA and ORB analytical Hessians
+with finite differences. Run the same required checker in the isolated MACE
+and AIMNet2 environments:
+
+```bash
+bash run_backend_hessian.sh mace
+bash run_backend_hessian.sh aimnet2
+```

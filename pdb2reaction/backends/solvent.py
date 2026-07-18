@@ -29,6 +29,10 @@ import numpy as np
 from pysisyphus.constants import BOHR2ANG, AU2EV
 
 from .base import MLIPCalculator
+from pdb2reaction.core.pes_composition import (
+    clone_pes_result,
+    compose_additive_pes_result,
+)
 
 # Unit conversion (atomic units ↔ eV/Å)
 _EV2AU = 1.0 / AU2EV
@@ -79,6 +83,7 @@ class SolventCorrectedCalculator(MLIPCalculator):
             hessian_calc_mode=base.hessian_calc_mode,
             return_partial_hessian=base.return_partial_hessian,
             hessian_double=base.hessian_double,
+            out_hess_torch=base.out_hess_torch,
             print_timing=base.print_timing,
         )
 
@@ -123,50 +128,56 @@ class SolventCorrectedCalculator(MLIPCalculator):
 
 
     def get_energy(self, elem, coords):
-        result = self.base.get_energy(elem, coords)
+        base_result = self.base.get_energy(elem, coords)
         if not self._enabled:
-            return result
+            return clone_pes_result(base_result)
         coord_ang = np.asarray(coords, dtype=np.float64).reshape(-1, 3) * BOHR2ANG
         de_ev, _, _ = self._solvent_delta(elem, coord_ang, need_forces=False)
-        result["energy"] += de_ev * _EV2AU
-        return result
+        return compose_additive_pes_result(
+            base_result,
+            n_atoms=len(elem),
+            energy_delta=de_ev * _EV2AU,
+        )
 
     def get_forces(self, elem, coords):
-        result = self.base.get_forces(elem, coords)
+        base_result = self.base.get_forces(elem, coords)
         if not self._enabled:
-            return result
+            return clone_pes_result(base_result)
         coord_ang = np.asarray(coords, dtype=np.float64).reshape(-1, 3) * BOHR2ANG
         de_ev, df_ev_ang, _ = self._solvent_delta(elem, coord_ang, need_forces=True)
-        result["energy"] += de_ev * _EV2AU
+        df_au = None
         if df_ev_ang is not None:
             df_au = np.asarray(df_ev_ang, dtype=np.float64).reshape(-1) * _F_EVAA_2_AU
-            result["forces"] = np.asarray(result["forces"], dtype=np.float64) + df_au
-        return result
+        return compose_additive_pes_result(
+            base_result,
+            n_atoms=len(elem),
+            energy_delta=de_ev * _EV2AU,
+            force_delta_full=df_au,
+            constrained_atoms=self.freeze_atoms,
+        )
 
     def get_hessian(self, elem, coords):
-        result = self.base.get_hessian(elem, coords)
+        base_result = self.base.get_hessian(elem, coords)
         if not self._enabled:
-            return result
+            return clone_pes_result(base_result)
         coord_ang = np.asarray(coords, dtype=np.float64).reshape(-1, 3) * BOHR2ANG
         de_ev, df_ev_ang, dh_ev_ang2 = self._solvent_delta(
             elem, coord_ang, need_forces=True, need_hessian=True
         )
-        result["energy"] += de_ev * _EV2AU
+        df_au = None
         if df_ev_ang is not None:
             df_au = np.asarray(df_ev_ang, dtype=np.float64).reshape(-1) * _F_EVAA_2_AU
-            f_base = result["forces"]
-            if hasattr(f_base, "detach"):
-                f_base = f_base.detach().cpu().numpy()
-            result["forces"] = np.asarray(f_base, dtype=np.float64) + df_au
+        dh_au = None
         if dh_ev_ang2 is not None:
             dh_au = np.asarray(dh_ev_ang2, dtype=np.float64) * _H_EVAA_2_AU
-            n_atoms = len(elem)
-            dh_au = self._apply_active_trim_np(dh_au, n_atoms)
-            h_base = result["hessian"]
-            if hasattr(h_base, "detach"):
-                h_base = h_base.detach().cpu().numpy()
-            result["hessian"] = np.asarray(h_base, dtype=np.float64) + dh_au
-        return result
+        return compose_additive_pes_result(
+            base_result,
+            n_atoms=len(elem),
+            energy_delta=de_ev * _EV2AU,
+            force_delta_full=df_au,
+            hessian_delta_full=dh_au,
+            constrained_atoms=self.freeze_atoms,
+        )
 
     # Pass through subclass hooks (unused since we override get_* directly)
     def _compute_energy_forces_ev(self, elem, coord_ang):

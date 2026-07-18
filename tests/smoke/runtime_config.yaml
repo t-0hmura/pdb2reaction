@@ -1,0 +1,9 @@
+calc:
+  backend: uma
+  model: uma-s-1p2
+  precision: fp64
+  charge: -1
+  spin: 1
+opt:
+  max_cycles: 3
+  thresh: gau_loose

@@ -33,9 +33,51 @@ export PYTHONHASHSEED=0
 # Reduce CUDA allocator fragmentation across the 40+ stage processes.
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 
+# Every capability in this lane is required. Missing prerequisites block the
+# release lane before case 1; they are never converted into a passing skip.
+command -v xtb >/dev/null 2>&1 || {
+  echo "[smoke] BLOCKED: xtb is required by the solvent cell" >&2
+  exit 2
+}
+python - <<'PY'
+from importlib.metadata import version
+from pathlib import Path
+import subprocess
+import sys
+
+import pdb2reaction
+import torch
+
+installed = version("pdb2reaction")
+if pdb2reaction.__version__ != installed:
+    raise SystemExit(
+        "[smoke] BLOCKED: distribution/module version mismatch: "
+        f"metadata={installed}, module={pdb2reaction.__version__}"
+    )
+cli_version = subprocess.run(
+    [sys.executable, "-m", "pdb2reaction", "--version"],
+    check=True,
+    capture_output=True,
+    text=True,
+).stdout.strip().split()[-1]
+if cli_version != installed:
+    raise SystemExit(
+        "[smoke] BLOCKED: distribution/CLI version mismatch: "
+        f"metadata={installed}, cli={cli_version}"
+    )
+if not torch.cuda.is_available():
+    raise SystemExit("[smoke] BLOCKED: CUDA is required by this lane")
+print(
+    "[smoke] package pdb2reaction "
+    f"version={installed} source={Path(pdb2reaction.__file__).resolve()}"
+)
+PY
+pdb2reaction() { python -m pdb2reaction "$@"; }
+python assert_tr_cuda_parity.py
+
 # Clean only artifacts authored by this harness. The digit-qualified glob must
 # not be widened to `test*`, which would also match the repository's tests/.
-rm -rf -- test[0-9]* p_complex_model.pdb model_r.pdb r_complex_elem.pdb r_complex_fixalt.pdb
+rm -rf -- test[0-9]* p_complex_model.pdb model_r.pdb model_multi.pdb model_from_cif.pdb model_from_cif.cif r_complex_elem.pdb r_complex_fixalt.pdb
 
 P_COMPLEX_MODEL_FREEZE_ATOMS="1,32"
 
@@ -54,7 +96,7 @@ pdb2reaction tsopt -i ts.pdb -q 0 --max-cycles 5 --thresh gau_loose --out-dir te
 pdb2reaction freq -i r.pdb -q -1 --out-dir test4 > test4.out 2>&1
 
 # test5: irc
-pdb2reaction irc -i ts.pdb -q 0 --max-cycles 3 --out-dir test5 > test5.out 2>&1
+pdb2reaction irc -i ts.pdb -q 0 --max-cycles 3 --never-stop --out-dir test5 > test5.out 2>&1
 
 # test6: dft (lightweight: hf/sto-3g, cpu)
 pdb2reaction dft -i h2.gjf --func-basis 'hf/sto-3g' --grid-level 0 --conv-tol 1e-5 --max-cycle 40 --engine cpu --out-dir test6 > test6.out 2>&1
@@ -106,7 +148,8 @@ pdb2reaction -i r_complex.pdb p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r
 # --- TSOPT-only mode ---
 
 # test20: all (ts input, --tsopt + --thermo)
-pdb2reaction -i ts.pdb -q 0 --tsopt --opt-mode-post grad --thermo --max-cycles 100 --thresh gau --thresh-post gau_loose --out-dir test20 > test20.out 2>&1
+pdb2reaction -i ts.pdb -q 0 --tsopt --opt-mode-post grad --thermo --irc-never-stop --max-cycles 100 --thresh gau --thresh-post gau_loose --out-dir test20 > test20.out 2>&1
+python assert_release_result.py all test20 --require-thermo >> test20.out 2>&1
 
 # test21: all (ts input, --tsopt, opt-mode hess)
 pdb2reaction -i ts.pdb -q 0 --tsopt --opt-mode-post hess --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test21 > test21.out 2>&1
@@ -176,12 +219,8 @@ pdb2reaction scan2d -i p_complex_model.pdb --ligand-charge 'PRE:-2' --freeze-ato
 
 # --- Solvent correction (requires xTB) ---
 
-# test39: opt (solvent water) — skip if xtb is not available
-if command -v xtb &>/dev/null; then
-  pdb2reaction opt -i r.pdb -q -1 --opt-mode grad --max-cycles 3 --thresh gau_loose --solvent water --out-dir test39 > test39.out 2>&1
-else
-  echo "SKIP test39: xtb not found" > test39.out
-fi
+# test39: opt (solvent water; xTB is a lane preflight requirement)
+pdb2reaction opt -i r.pdb -q -1 --opt-mode grad --max-cycles 3 --thresh gau_loose --solvent water --out-dir test39 > test39.out 2>&1
 
 # --- dist-freeze ---
 
@@ -218,21 +257,30 @@ pdb2reaction opt -i r.pdb -q -1 --opt-mode hess --max-cycles 5 --thresh gau_loos
 det_args="-i r.pdb p.pdb -q -1 --no-refine-path --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --deterministic"
 pdb2reaction $det_args --out-dir test47_a > test47_a.out 2>&1
 pdb2reaction $det_args --out-dir test47_b > test47_b.out 2>&1
-{
-  total=0
-  drifted=0
-  while IFS= read -r path_a; do
-    rel="${path_a#test47_a/}"
-    path_b="test47_b/$rel"
-    if [ -f "$path_b" ]; then
-      total=$((total + 1))
-      cmp -s "$path_a" "$path_b" || { drifted=$((drifted + 1)); echo "DRIFT: $rel"; }
-    fi
-  done < <(find test47_a -type f \( -name "*.pdb" -o -name "*.xyz" \))
-  echo "[det_check] all pipeline (--deterministic): compared $total .pdb/.xyz file(s); $drifted differ"
-} > test47.out 2>&1
-if [ "${drifted:-0}" -ne 0 ]; then
-  echo "[smoke] FAIL test47: --deterministic runs are not bit-reproducible ($drifted file(s) differ)"
+find test47_a -type f \( -name "*.pdb" -o -name "*.xyz" \) -printf '%P\n' | LC_ALL=C sort > test47_a.manifest
+find test47_b -type f \( -name "*.pdb" -o -name "*.xyz" \) -printf '%P\n' | LC_ALL=C sort > test47_b.manifest
+if ! cmp -s test47_a.manifest test47_b.manifest; then
+  echo "[smoke] FAIL test47: deterministic runs produced different file manifests" > test47.out
+  comm -3 test47_a.manifest test47_b.manifest >> test47.out
+  cat test47.out
+  exit 1
+fi
+total=$(wc -l < test47_a.manifest)
+if [ "$total" -eq 0 ]; then
+  echo "[smoke] FAIL test47: deterministic gate found no PDB/XYZ artifacts" > test47.out
+  cat test47.out
+  exit 1
+fi
+drifted=0
+while IFS= read -r rel; do
+  if ! cmp -s "test47_a/$rel" "test47_b/$rel"; then
+    drifted=$((drifted + 1))
+    echo "DRIFT: $rel" >> test47.out
+  fi
+done < test47_a.manifest
+echo "[det_check] compared $total PDB/XYZ files; $drifted differ" >> test47.out
+if [ "$drifted" -ne 0 ]; then
+  echo "[smoke] FAIL test47: --deterministic runs differ" >> test47.out
   cat test47.out
   exit 1
 fi
@@ -268,11 +316,11 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --out-dir test52 > test52.out 2>&1
 # keeps the no-cap default-behaviour check.
 pdb2reaction all -i r.pdb p.pdb -q -1 --coord-type dlc --no-refine-path --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --no-tsopt --no-thermo --no-dft --out-dir test53 > test53.out 2>&1
 
-# --- Per-stage internal-coord code-path verify (opt + scan only) ---
+# --- Per-stage internal-coordinate code paths ---
 # Each test scoped at max-cycles 3 + thresh gau_loose to exercise the
-# --coord-type code path without long convergence. Excluded subcmds:
-#   - tsopt: bundled pysisyphus RSIRFOptimizer + internal coords trip a
-#     shape mismatch in HessianOptimizer.full_from_active.
+# --coord-type code path without long convergence. Frequency analysis remains
+# Cartesian because the only thing an internal-coordinate flag would add is
+# an unrelated B-matrix construction:
 #   - freq: vibrational analysis uses cart Hessian regardless of
 #     --coord-type; the only thing the flag adds is an SVD on the internal
 #     B-matrix that occasionally fails on cuSOLVER. freq + cart is already
@@ -280,6 +328,14 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --coord-type dlc --no-refine-path --max-cy
 
 # test53a: opt --coord-type dlc
 pdb2reaction opt -i r.pdb -q -1 --coord-type dlc --max-cycles 3 --thresh gau_loose --out-dir test53a_opt_dlc > test53a_opt_dlc.out 2>&1
+
+# test53b-e: Hessian TS optimization must accept every documented coordinate
+# system. The DLC case includes frozen atoms and therefore exercises the
+# partial-Cartesian-Hessian -> internal-coordinate handoff regression.
+pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode hess --coord-type cart --max-cycles 2 --thresh gau_loose --out-dir test53b_ts_cart > test53b_ts_cart.out 2>&1
+pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode hess --coord-type redund --max-cycles 2 --thresh gau_loose --out-dir test53c_ts_redund > test53c_ts_redund.out 2>&1
+pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode hess --coord-type dlc --freeze-atoms 1,3,5 --max-cycles 2 --thresh gau_loose --out-dir test53d_ts_dlc_freeze > test53d_ts_dlc_freeze.out 2>&1
+pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode hess --coord-type tric --max-cycles 2 --thresh gau_loose --out-dir test53e_ts_tric > test53e_ts_tric.out 2>&1
 
 # test53d: scan --coord-type dlc (1D)
 pdb2reaction scan -i r.pdb -q -1 --coord-type dlc --scan-lists "[(1,5,1.4)]" --max-step-size 2.0 --relax-max-cycles 3 --no-preopt --no-endopt --out-dir test53d_scan_dlc > test53d_scan_dlc.out 2>&1
@@ -303,6 +359,7 @@ pdb2reaction opt -i r.pdb -q -1 --precision fp32 --max-cycles 3 --thresh gau_loo
 
 # test54: full `all` with `--backend orb` — exercises the non-default MLIP backend.
 pdb2reaction all -i r.pdb p.pdb -q -1 --backend orb --out-dir test54 > test54.out 2>&1
+python assert_release_result.py provenance test54 --expected-backend orb --expected-model orb_v3_conservative_omol --expected-precision fp64 >> test54.out 2>&1
 
 # ---- Coverage-gap regression (subcommand-specific code paths; coverage audit 2026-06-05) ----
 # test55: opt --dist-freeze + --bias-k (harmonic restraint actually applied at runtime, not dry-run)
@@ -311,7 +368,7 @@ pdb2reaction opt -i r.pdb -q -1 --dist-freeze "[(1,2,1.5)]" --bias-k 150 --max-c
 # test56: opt --freeze-atoms (explicit user-frozen DOF, distinct from --freeze-links)
 pdb2reaction opt -i r.pdb -q -1 --freeze-atoms '1,3,5' --max-cycles 3 --thresh gau_loose --no-flatten --out-dir test56_opt_freeze > test56_opt_freeze.out 2>&1
 
-# test57: freq --hessian-calc-mode Analytical (analytical ML Hessian vs FD)
+# test57: freq --hessian-calc-mode Analytical (workflow analytical path)
 pdb2reaction freq -i r.pdb -q -1 --hessian-calc-mode Analytical --max-write 3 --out-dir test57_freq_anahess > test57_freq_anahess.out 2>&1
 
 # test58: irc --hessian-calc-mode analytical (IRC-initiating Hessian path)
@@ -341,22 +398,10 @@ pdb2reaction path-search -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --max
 # test66: path-search --opt-mode hess (RFO single-structure preopt; keep preopt ON)
 pdb2reaction path-search -i r.pdb p.pdb -q -1 --opt-mode hess --workers 1 --max-nodes 5 --max-cycles 3 --no-endopt --out-dir test66_ps_hess > test66_ps_hess.out 2>&1
 
-# test67: all --tsopt (MEP->HEI->TSopt+IRC handoff through the `all` orchestrator)
-# Throttled cycles (--tsopt-max-cycles 5) can leave the TS short of a validated
-# first-order saddle. Only the orchestrator's exact TS-validation refusal is
-# tolerated; unrelated failures remain fatal.
-rc=0
-pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --max-cycles 3 --tsopt-max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test67_all_tsopt > test67_all_tsopt.out 2>&1 || rc=$?
-if [ "${rc:-0}" -ne 0 ]; then
-  if grep -Fq "TS optimization did not produce a validated first-order saddle" test67_all_tsopt.out \
-    && grep -Fq "IRC was not started." test67_all_tsopt.out; then
-    echo "[smoke] test67: exact TS validation rejected the throttled run (rc=$rc) — tolerated, continuing"
-  else
-    echo "[smoke] FAIL test67 (rc=$rc) — real pipeline failure"
-    tail -40 test67_all_tsopt.out
-    exit "$rc"
-  fi
-fi
+# test67: required positive MEP -> TSopt -> IRC -> thermo handoff.
+pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --thermo --flatten --irc-never-stop --max-cycles 5 --tsopt-max-cycles 100 --thresh gau_loose --thresh-post gau --out-dir test67_all_tsopt > test67_all_tsopt.out 2>&1
+python assert_release_result.py all test67_all_tsopt --require-thermo >> test67_all_tsopt.out 2>&1
+grep -Fq '[irc] Reusing cached TS Hessian from tsopt.' test67_all_tsopt.out || { echo '[smoke] FAIL test67: IRC did not report cached TS Hessian reuse' >> test67_all_tsopt.out; exit 1; }
 
 # test68: all --scan-lists (single-PDB scan->path mode of `all`)
 pdb2reaction all -i r.pdb -q -1 --scan-lists "[(1,5,1.4)]" --max-cycles 5 --thresh gau_loose --no-tsopt --no-thermo --no-dft --out-dir test68_all_scan > test68_all_scan.out 2>&1
@@ -397,8 +442,8 @@ fi
 
 # test74: --backend-model routing — the override must reach the resolved config.
 # dry-run + show-config (no model download, fast): proves --backend-model is honored.
-pdb2reaction opt -i r.pdb -q -1 --backend-model uma-s-1p2 --show-config --dry-run --out-dir test74_backend_model > test74_backend_model.out 2>&1
-grep -q 'uma-s-1p2' test74_backend_model.out || { echo "[smoke] FAIL test74: --backend-model uma-s-1p2 not reflected in resolved config" >> test74_backend_model.out; exit 1; }
+pdb2reaction opt -i r.pdb -q -1 --backend-model uma-m-1p1 --show-config --dry-run --out-dir test74_backend_model > test74_backend_model.out 2>&1
+grep -Eq '^\[backend\] uma \(uma-m-1p1, fp32\)$' test74_backend_model.out || { echo "[smoke] FAIL test74: non-default backend model missing from resolved runtime summary" >> test74_backend_model.out; exit 1; }
 
 # test75: mmCIF input crosses the internal PDB bridge for a real MLIP run and
 # restores the original long chain / large residue identifiers in public CIF.
@@ -413,5 +458,34 @@ grep -q '10001' test75_opt_cif/final_geometry.cif || { echo "[smoke] FAIL test75
 pdb2reaction extract -i r_complex.cif -c 'LONG_CHAIN:PRE:10001' -r 0.1 --no-add-linkh -o model_from_cif.pdb -v 0 > test76_extract_cif.out 2>&1
 test -s model_from_cif.pdb || { echo "[smoke] FAIL test76: extracted PDB missing" >> test76_extract_cif.out; exit 1; }
 test -s model_from_cif.cif || { echo "[smoke] FAIL test76: extracted CIF missing" >> test76_extract_cif.out; exit 1; }
+python assert_cif_selection.py model_from_cif.pdb model_from_cif.cif >> test76_extract_cif.out 2>&1
 
-echo "[smoke] PASS: all GPU and structure-I/O cases completed."
+# test77: runtime YAML precedence reaches a real calculation (config-only
+# charge/model/precision, with CLI max-cycles overriding the YAML budget).
+pdb2reaction opt -i r.pdb --config runtime_config.yaml --show-config --max-cycles 1 --out-json --out-dir test77_config > test77_config.out 2>&1
+python assert_release_result.py opt-config test77_config --expected-charge -1 --expected-model uma-s-1p2 --expected-max-cycles 1 --expected-precision fp64 >> test77_config.out 2>&1
+
+# test78: a user ASE calculator that implements energy/forces only supports
+# finite-difference Hessian consumers.
+pdb2reaction sp -i r.pdb -q -1 --calc-file harmonic_calc.py --hess --hessian-calc-mode FiniteDifference --out-json --out-dir test78_custom > test78_custom.out 2>&1
+python assert_release_result.py sp-hessian test78_custom >> test78_custom.out 2>&1
+
+# test79: explicit Analytical + workers>1 is a required rejection contract.
+rc=0
+pdb2reaction sp -i r.pdb -q -1 --hess --hessian-calc-mode Analytical --workers 2 --out-dir test79_workers > test79_workers.out 2>&1 || rc=$?
+if [ "$rc" -ne 1 ] || ! grep -Fq "Analytical Hessian cannot be combined with UMA workers>1: the parallel predictor exposes no autograd model. Use workers=1 or select hessian_calc_mode='FiniteDifference'." test79_workers.out || [ -e test79_workers/hessian.npy ]; then
+  echo "[smoke] FAIL test79: Analytical + workers>1 was not rejected exactly" >> test79_workers.out
+  exit 1
+fi
+
+# test80: force the never-stop energy-convergence guard to fire, then require
+# both IRC branches to continue past it.
+pdb2reaction irc -i ts.pdb -q 0 --config never_stop_config.yaml --never-stop --max-cycles 2 --out-json --out-dir test80_irc_never_stop > test80_irc_never_stop.out 2>&1
+python assert_release_result.py irc-never-stop test80_irc_never_stop >> test80_irc_never_stop.out 2>&1
+
+# Numerical analytical-vs-FD agreement for every backend installed in the
+# default strict environment. MACE/AIMNet2 use this same required wrapper in
+# their dependency-isolated cluster environments.
+bash run_backend_hessian.sh uma orb > backend_hessian.out 2>&1
+
+echo "[smoke] PASS: required core-GPU and structure-I/O lane completed with zero skips."

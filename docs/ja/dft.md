@@ -69,7 +69,7 @@ out_dir/ (デフォルト:./result_dft/)
  - `energy`: Hartree/kcal·mol⁻¹、収束フラグ、エンジン情報（`engine`: `gpu4pyscf(rks_lowmem)`/`gpu4pyscf`/`pyscf(cpu)`、`used_gpu`、`used_lowmem`）
  - `charges`: Mulliken/meta-Löwdin/IAO 原子電荷（失敗時は `null`）
  - `spin_densities`: Mulliken/meta-Löwdin/IAO スピン密度（UKS のみ、失敗時は `null`）
-- 電荷・多重度（2S）、汎関数/基底、収束設定、出力ディレクトリも要約されます。
+- 電荷・多重度・スピン(2S)、汎関数/基底、収束設定、出力ディレクトリも要約されます。
 
 ## CLI オプション
 

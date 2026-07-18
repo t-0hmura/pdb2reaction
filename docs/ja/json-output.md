@@ -29,14 +29,15 @@ shared writerが供給するfieldを示します。「任意」と明記したro
 | `schema_version` | string | エンベロープのスキーマバージョン。現在値は `pdb2reaction.core.utils.RESULT_JSON_SCHEMA_VERSION` にあります（このドキュメント中のリテラルではなく、この定数を参照してください）。値が上がった場合は構造変更を意味します。 |
 | `command` | string | leaf envelope はサブコマンド名（例: `"opt"`）、aggregate `all` / `path-search` summary は完全な invocation string |
 | `pdb2reaction_version` | string | パッケージバージョン |
-| `status` | string | commandごとに異なります（下記参照）。`converged` / `not_converged`（opt, tsopt）、`completed`（irc, freq）、`ok` / `partial`（bond-summary）、`success` / `partial` / `failed`（aggregate workflow）、失敗時の `error` などです |
+| `status` | string | commandごとに異なります（下記参照）。`converged` / `not_converged` / `stalled`（opt, tsopt）、`completed`（irc, freq）、`ok` / `partial`（bond-summary）、`success` / `partial` / `failed`（aggregate workflow）、失敗時の `error` などです |
 | `elapsed_seconds` | float | 任意の実行時間（秒）。shared writerへ時間を渡さないproducerでは省略 |
 | `environment` | object | ハードウェア情報（下表参照） |
-| `mlip_backend` | string | 任意。payloadがMLIP stageを表しbackend provenanceを渡した場合に追加 |
+| `mlip_backend` | string \| null | 任意のMLIP backend識別子。plot-only commandがcalculatorを評価していない場合はnull |
 | `mlip_model` | string \| null | 任意。backendと分離した正確なmodel/checkpoint名 |
+| `mlip_precision` | string \| null | 実効精度の共通token（`fp32` / `fp64`）。dtypeをuser codeが管理するcustom calculatorではnull |
 
 各leaf schemaの`backend` / `model`も維持されますが、command横断の処理では
-`mlip_backend` / `mlip_model`を使用してください。
+`mlip_backend` / `mlip_model` / `mlip_precision`を使用してください。
 
 ### Rigid projection provenance
 
@@ -88,6 +89,8 @@ failure signalです。stderr/job logを確認してください。
 
 収束しなかったが完了したジョブでは、`"status": "not_converged"` と最終 force/step 値を含む `result.json` が書き出されるため、AI エージェントはサイクル数を増やして再試行するかどうかをこの情報をもとに判断できます。
 
+オプティマイザは `"status": "stalled"` を返すこともあります。これは、設定した force/step の収束基準を満たさないまま、設定ウィンドウにわたってエネルギーが減少しなくなった状態（エネルギープラトー）です。stalled は converged とは別の非収束アウトカムであり、`converged` として報告されることは決してありません。`tsopt` では、停滞した探索を繰り返さないよう flatten/再試行ループも停止します。`opt --flatten` の flatten ループは停止しません — このループは残った虚振動方向へ変位してプラトーから脱出するためのものだからです。存在する場合は `stop_reason` にエネルギー範囲・ウィンドウ・満たせなかった基準が記録されます。stalled は（例えば摂動した構造やより厳しいステップ制御で）再試行し得るものであり、`max_cycles` 枯渇や一般的な失敗のエイリアスではありません。
+
 ## サブコマンド別スキーマ
 
 ### `sp`
@@ -97,8 +100,10 @@ failure signalです。stderr/job logを確認してください。
 | `status` | string | `"ok"` |
 | `stage` | string | `"sp"` |
 | `input` | string | 準備後の公開入力path |
-| `backend` / `model` | string / string \| null | MLIP provenance（`mlip_backend` / `mlip_model` にもmirror） |
+| `backend` / `model` | string / string \| null | local MLIP provenance（共通の`mlip_*` fieldにもmirror） |
+| `custom_calculator` | string \| null | `--calc-file`時の`filename:factory`。組み込みbackendではnull |
 | `charge` / `spin` | int / int | 総電荷とspin多重度 |
+| `n_atoms` | int | 原子数 |
 | `energy_au` | float | 一点energy (Hartree) |
 | `forces_path` | string | `forces.npy` のpath |
 | `hessian_path` | string \| null | `hessian.npy` のpath。`--hess` 無指定時はnull |
@@ -108,11 +113,12 @@ failure signalです。stderr/job logを確認してください。
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `status` | string | `"converged"` / `"not_converged"` |
+| `status` | string | `"converged"` / `"not_converged"` / `"stalled"`（エネルギープラトー、上記参照） |
+| `stop_reason` | string | 非収束停止（stalled/stopped）時のみ出力。エネルギープラトーの範囲・ウィンドウと満たせなかった基準を記録 |
 | `energy_hartree` | float | 最終エネルギー (Hartree) |
 | `n_opt_cycles` | int | 最適化サイクル数 |
 | `opt_mode` | string | `"grad"` / `"hess"` / `"lbfgs"` / `"rfo"` |
-| `backend` | string | MLIP バックエンド (`"uma"`, `"orb"`, `"mace"`, `"aimnet2"`) |
+| `backend` | string | MLIP バックエンド (`"uma"`, `"orb"`, `"mace"`, `"aimnet2"`、または `--calc-file` 時の `"custom"`) |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
 | `model` | string | MLIP モデル名 |
@@ -147,11 +153,13 @@ failure signalです。stderr/job logを確認してください。
 Cartesian Hessian mode の `status: "converged"` には、最終 exact PHVA で
 有意な虚振動がちょうど1個必要です。対応する内部座標 mode では、代わりに
 exact optimizer-space Hessian の負の固有値が1個であることを要求します。
-高次鞍点と `n_imag=0` 構造は `not_converged` です。収束詳細 (force/step) は
+高次鞍点と `n_imag=0` 構造は `not_converged` です。エネルギープラトーによる
+`stalled`（上記参照）も同様に `converged` として報告されず、以降の flatten/
+再試行を停止します。収束詳細 (force/step) は
 rsirfo モードで利用可能です。
-dimer モードも `status` に `"converged"` / `"not_converged"` を返しますが、
-`n_opt_cycles` のみを出力し、Hessian mode の収束詳細と `safeguards` は
-省略されます。
+dimer モードも `status` に `"converged"` / `"not_converged"` / `"stalled"` を
+返しますが、`n_opt_cycles` のみを出力し、Hessian mode の収束詳細と
+`safeguards` は省略されます。
 
 ### `freq`
 
@@ -214,7 +222,8 @@ dimer モードも `status` に `"converged"` / `"not_converged"` を返しま�
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
 | `model` | string | MLIP モデル名 |
-| `never_stop` | bool | energy上昇／平坦化停止を無視したか |
+| `never_stop` | bool | opt-inのenergy上昇／平坦化bypass modeを有効にしたか |
+| `never_stop_energy_bypasses` | int | 実際にbypassしたenergy上昇／平坦化停止event数 |
 | `n_freeze_atoms` | int | 凍結原子数 |
 | `solvent` | string | 暗黙溶媒 or `"none"` |
 | `bond_changes` | object | first→last 方向の `{formed: [...], broken: [...]}`。各リストは元素記号付き1始まりの原子ペア文字列（例 `"C7-O12"`）。比較が失敗または `finished_first.xyz`/`finished_last.xyz` が存在しない場合はキー自体が省略されます。 |
@@ -222,7 +231,7 @@ dimer モードも `status` に `"converged"` / `"not_converged"` を返しま�
 | `step_length` | float | IRC ステップ長 (Bohr) |
 | `max_cycles` | int | 最大 IRC ステップ数 |
 | `input_file` | string | 入力ファイル名 |
-| `files` | object | 軌跡ファイル (xyz + pdb) |
+| `files` | object | 軌跡ファイル（XYZと、利用可能なPDB/CIF companion） |
 | `rigid_projection` | object | 剛体モードと初期Hessianのprovenance。[projection provenance](#rigid-projection-provenance)を参照 |
 
 ### `scan`
@@ -232,9 +241,9 @@ dimer モードも `status` に `"converged"` / `"not_converged"` を返しま�
 | `status` | string | `"completed"` |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
-| `backend` | string | MLIP バックエンド |
-| `model` | string | MLIP モデル名 |
-| `solvent` | string | 暗黙溶媒 or `"none"` |
+| `backend` | string | MLIPバックエンド |
+| `model` | string | MLIPモデル名 |
+| `solvent` | string | 暗黙溶媒または`"none"` |
 | `preopt` | bool | 事前最適化を実行したか |
 | `max_step_size_angstrom` | float | 1 ステップ当たりの最大結合長変位 (Å) |
 | `n_stages` | int | スキャンステージ数 |
@@ -260,11 +269,11 @@ dimer モードも `status` に `"converged"` / `"not_converged"` を返しま�
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `status` | string | `"completed"` |
-| `charge` | int | 系の電荷 |
-| `spin` | int | スピン多重度 |
-| `backend` | string | MLIP バックエンド |
-| `model` | string | MLIP モデル名 |
-| `solvent` | string | 暗黙溶媒 or `"none"` |
+| `charge` | int \| null | 系の電荷。plot-onlyの`scan3d --csv`ではnull |
+| `spin` | int \| null | スピン多重度。plot-onlyの`scan3d --csv`ではnull |
+| `backend` | string \| null | MLIPバックエンド。plot-onlyの`scan3d --csv`ではnull |
+| `model` | string \| null | MLIPモデル名。plot-onlyの`scan3d --csv`ではnull |
+| `solvent` | string \| null | 暗黙溶媒または`"none"`。importしたenergyにはcalculator provenanceがないため、plot-onlyの`scan3d --csv`ではnull |
 | `max_step_size_angstrom` | float | 1 ステップ当たりの最大結合長変位 (Å, `scan2d` のみ) |
 | `n_grid_points` | int | グリッド点数 |
 | `grid_shape` | int[] | グリッド次元 (`scan3d --csv` 再プロット時には省略) |
@@ -310,6 +319,7 @@ dimer モードも `status` に `"converged"` / `"not_converged"` を返しま�
 | `energy_diagrams` | object[] | セグメントごとのラベル付きエネルギープロファイル (kcal/mol) |
 | `mlip_backend` | string | バックエンド名 |
 | `mlip_model` | string \| null | バックエンドと分離して記録するモデル名 |
+| `mlip_precision` | string \| null | 実効`fp32` / `fp64` token。custom calculatorではnull |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
 
@@ -410,6 +420,7 @@ dimer モードも `status` に `"converged"` / `"not_converged"` を返しま�
 | `energy_diagrams` | object[] | エネルギーダイアグラム（ラベル + kcal/mol） |
 | `mlip_backend` | string | バックエンド名 |
 | `mlip_model` | string \| null | バックエンドと分離して記録するモデル名 |
+| `mlip_precision` | string \| null | 実効`fp32` / `fp64` token。custom calculatorではnull |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
 | `environment` | object | ハードウェア情報 |

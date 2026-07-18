@@ -9,7 +9,8 @@ What it does
 2) Select one coherent non-blank altLoc label per residue (A/B/... or custom
    labels such as H/L):
       - Highest mean occupancy across that residue's labelled atoms
-      - If tied (or occupancy is missing), keep the earliest label in the file
+      - A label with no parsed occupancies ranks below any parsed mean
+      - Break equal scores by earliest appearance (including all-missing cases)
    Blank/shared atoms are retained. Atoms that exist only in an unselected
    conformer are dropped instead of being merged into a hybrid residue.
 
@@ -36,6 +37,12 @@ from pathlib import Path
 from typing import Dict, Iterable, Iterator, List, Optional, Set, Tuple
 
 import click
+
+from pdb2reaction.io.altloc import (
+    choose_altloc_label,
+    occupancy_rank,
+    parsed_occupancy,
+)
 
 COORD_RECORDS = ("ATOM  ", "HETATM")
 ANISOU_RECORD = "ANISOU"
@@ -92,10 +99,7 @@ def parse_occupancy(line: str) -> Optional[float]:
     s = core[OCC_SLICE].strip()
     if not s:
         return None
-    try:
-        return float(s)
-    except ValueError:
-        return None
+    return parsed_occupancy(s)
 
 
 def atom_identity_key(line: str) -> Tuple[str, str, str, str, str, str, str]:
@@ -163,11 +167,9 @@ def process_block(lines: List[str]) -> List[str]:
     and B coordinates, and retaining atoms unique to every label creates a
     structure that corresponds to no deposited conformer.
     """
-    # residue -> label -> [occupancy sum, number of parsed occupancies,
-    #                       first line index]
-    label_stats: Dict[
+    label_observations: Dict[
         Tuple[str, str, str, str, str],
-        Dict[str, List[float | int]],
+        List[Tuple[str, Optional[float], int]],
     ] = {}
 
     for idx, line in enumerate(lines):
@@ -177,26 +179,25 @@ def process_block(lines: List[str]) -> List[str]:
         if not label:
             continue
         residue = residue_identity_key(line)
-        per_label = label_stats.setdefault(residue, {})
-        if label not in per_label:
-            per_label[label] = [0.0, 0, idx]
-        occ = parse_occupancy(line)
-        if occ is not None:
-            per_label[label][0] = float(per_label[label][0]) + occ
-            per_label[label][1] = int(per_label[label][1]) + 1
+        label_observations.setdefault(residue, []).append(
+            (label, parse_occupancy(line), idx)
+        )
 
     selected_labels: Dict[Tuple[str, str, str, str, str], str] = {}
-    for residue, per_label in label_stats.items():
-        def score(item: Tuple[str, List[float | int]]) -> Tuple[float, int]:
-            _label, (occ_sum, occ_count, first_idx) = item
-            mean_occ = (
-                float(occ_sum) / int(occ_count)
-                if int(occ_count) > 0
-                else float("-inf")
-            )
-            return mean_occ, -int(first_idx)
+    for residue, observations in label_observations.items():
+        selected_labels[residue] = choose_altloc_label(observations)
 
-        selected_labels[residue] = max(per_label.items(), key=score)[0]
+    # A selected labelled record supersedes a blank/shared record for the same
+    # atom identity regardless of the blank record's occupancy.  This matches
+    # the typed structure path and avoids choosing different coordinates in the
+    # two renderers.
+    selected_label_keys: Set[Tuple[str, str, str, str, str, str, str]] = set()
+    for line in lines:
+        if not line.startswith(COORD_RECORDS):
+            continue
+        label = altloc_label(line)
+        if label and label == selected_labels.get(residue_identity_key(line)):
+            selected_label_keys.add(atom_identity_key(line))
 
     # atom key -> (occupancy for comparison, line index, serial field)
     best: Dict[Tuple[str, str, str, str, str, str, str], Tuple[float, int, str]] = {}
@@ -208,18 +209,24 @@ def process_block(lines: List[str]) -> List[str]:
             if label and label != selected:
                 continue
             key = atom_identity_key(line)
+            if not label and key in selected_label_keys:
+                continue
             occ = parse_occupancy(line)
-            occ_val = occ if occ is not None else float("-inf")
             serial = atom_serial_5(line)
 
             if key not in best:
-                best[key] = (occ_val, idx, serial)
+                best[key] = (occ if occ is not None else float("-inf"), idx, serial)
             else:
                 best_occ, best_idx, _best_serial = best[key]
                 # Resolve malformed duplicate records after coherent label
                 # selection. Prefer higher occupancy, then earliest line.
-                if (occ_val > best_occ) or (occ_val == best_occ and idx < best_idx):
-                    best[key] = (occ_val, idx, serial)
+                best_value = None if best_occ == float("-inf") else best_occ
+                if occupancy_rank(occ, idx) > occupancy_rank(best_value, best_idx):
+                    best[key] = (
+                        occ if occ is not None else float("-inf"),
+                        idx,
+                        serial,
+                    )
 
     chosen_serials: Set[str] = set(v[2] for v in best.values())
 

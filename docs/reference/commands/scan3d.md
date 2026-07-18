@@ -56,8 +56,8 @@ Options:
                                   when omitted; explicit CLI value overrides
                                   YAML.
   --relax-max-cycles INTEGER      Maximum optimizer cycles per grid relaxation.
-                                  When explicitly provided, used unless YAML
-                                  sets opt.max_cycles.  [default: 10000]
+                                  An explicitly provided value overrides YAML
+                                  opt.max_cycles.  [default: 10000]
   --opt-mode [grad|hess]          Relaxation mode: grad (=LBFGS) or hess (=RFO).
                                   [default: grad]
   --freeze-links / --no-freeze-links

@@ -36,7 +36,8 @@ pdb2reaction fix-altloc -i ./structures --inplace --recursive
    residue sequence, insertion code, and segID).
 3. Select one non-blank label per residue using:
  - Highest mean parsed occupancy across that label's atoms (columns 55–60)
- - If tied or unavailable, the label that appears first in the file
+ - A label with no parsed occupancies ranks below every label with a parsed mean
+ - Equal scores, including the all-missing case, are resolved by first appearance
 4. Keep blank/shared atoms plus atoms from the selected label. Resolve any
    remaining duplicate atom identities by occupancy and file order.
 5. Write output with:

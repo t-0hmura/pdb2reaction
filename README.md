@@ -82,7 +82,7 @@ CUDA module loads, alternative-backend recipes, DMF/`cyipopt` setup, Plotly Chro
 
 ## Quick Examples
 
-Examples use GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)) — runnable MEP and scan commands are in [`examples/run.sh`](examples/).
+Examples use GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)) — runnable MEP and scan commands are in [`examples/run.sh`](examples/run.sh).
 
 ```bash
 # Multi-structure MEP (R + P → MEP, with TS + thermochemistry)

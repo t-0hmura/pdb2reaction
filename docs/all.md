@@ -10,6 +10,10 @@ PDB; coordinate outputs also include CIF with the original identifiers.
 - **Single-structure staged scan** (`[mode] all (scan-lists)`) — give one structure plus one or more `--scan-lists/-s` literals, each defining a scan stage; the staged scan produces the ordered intermediates that drive the MEP step.
 - **TSOPT-only** — give a single input and set `--tsopt` (no `--scan-lists`). `all` skips the MEP / merge stages, runs `tsopt` + EulerPC IRC on the active-site model (or the full input if extraction is skipped), and identifies the higher-energy endpoint as the reactant.
 
+```{note}
+The TSOPT-only reactant/product labels follow an **energy-order presentation convention**, not a chemically established reaction direction: the higher-energy IRC endpoint is presented as the reactant (on an exact energy tie the left endpoint is the reactant). The R/P labels, `reactant_irc`/`product_irc` filenames, barrier and delta are computed under this convention. The machine-readable summary records it explicitly under `endpoint_assignment` (`policy = "higher_energy_endpoint_as_reactant"`, `chemical_direction_known = false`); read that field and do not infer chemical direction from the labels alone. Neutral endpoint names are deferred to a future major schema.
+```
+
 ```{important}
 Without `--tsopt`, the workflow produces **TS candidates** (highest-energy images from MEP search). Adding `--tsopt` refines them into optimized TS structures validated by an imaginary-frequency check. IRC starts only when the optimizer reports a converged first-order saddle (`n_imag = 1`); otherwise `all` stops before downstream post-processing. Always inspect the results (imaginary-frequency count and IRC endpoint connectivity) before mechanistic interpretation.
 ```

@@ -35,8 +35,23 @@ ConfigureSubcommandHelpVisibilityFunc = Callable[
 ]
 BuildUnavailableCommandFunc = Callable[[str, ImportError], click.Command]
 
+_INTERNAL_MODULE_ROOTS = ("pdb2reaction", "pysisyphus", "thermoanalysis")
 
-# DO NOT INLINE: lazy subcommand loading + this placeholder let `--help` render the full command tree even when one backend (pysisyphus / torch / pyscf) is missing or import-failed.
+
+def _is_external_missing_dependency(exc: ModuleNotFoundError) -> bool:
+    """Return whether *exc* names a genuinely external missing dependency."""
+
+    missing = exc.name
+    if not missing:
+        return False
+    return not any(
+        missing == root or missing.startswith(f"{root}.")
+        for root in _INTERNAL_MODULE_ROOTS
+    )
+
+
+# DO NOT INLINE: lazy subcommand loading + this placeholder let `--help` render
+# the full command tree when a genuinely optional external dependency is absent.
 def build_unavailable_command(command_name: str, exc: ImportError) -> click.Command:
     """Return a placeholder command that reports import failure details at runtime."""
     missing = exc.name if isinstance(exc, ModuleNotFoundError) else None
@@ -379,7 +394,9 @@ class DefaultGroup(click.Group):
         try:
             module = importlib.import_module(module_name, package=__package__)
             loaded_cmd = getattr(module, attr_name)
-        except (ModuleNotFoundError, ImportError) as exc:
+        except ModuleNotFoundError as exc:
+            if not _is_external_missing_dependency(exc):
+                raise
             loaded_cmd = self._build_unavailable_command(cmd_name, exc)
 
         if cmd_name not in self._parser_wrapper_subcommands:

@@ -209,9 +209,11 @@ class TestIonDictCaseFolding:
         and the other charge is silently lost. Guard against future reintroduction."""
         import ast
 
-        from pdb2reaction.workflows import extract as _extract_mod
+        # The ION literal now lives in the canonical leaf data module
+        # (re-exported by extract); parse it where it is defined.
+        from pdb2reaction.domain import residue_data as _res_mod
 
-        src = open(_extract_mod.__file__).read()
+        src = open(_res_mod.__file__).read()
         tree = ast.parse(src)
         for node in ast.walk(tree):
             if (
@@ -228,7 +230,7 @@ class TestIonDictCaseFolding:
                     f"ION dict has source-level duplicate uppercase keys: {sorted(dupes)}"
                 )
                 return
-        raise AssertionError("ION dict literal not found in extract.py via AST")
+        raise AssertionError("ION dict literal not found in residue_data.py via AST")
 
 
 def test_compute_charge_summary_terminus_cap_charges():
@@ -300,13 +302,16 @@ def _charge_test_structure():
 
 def test_compute_charge_summary_ligand_mapping_matches_unknown(monkeypatch):
     from pdb2reaction.workflows import extract as extract_module
+    from pdb2reaction.io import charge as charge_module
 
     structure, ligand, magnesium = _charge_test_structure()
     warnings = []
+    # compute_charge_summary now lives in io.charge (re-exported by extract);
+    # patch the warning sink where the engine looks it up.
     monkeypatch.setattr(
-        extract_module,
+        charge_module,
         "_echo_warning",
-        lambda msg, *args: warnings.append(extract_module._format_echo_message(msg, *args)),
+        lambda msg, *args: warnings.append(charge_module._format_echo_message(msg, *args)),
     )
 
     result = extract_module.compute_charge_summary(
@@ -324,13 +329,14 @@ def test_compute_charge_summary_ligand_mapping_matches_unknown(monkeypatch):
 
 def test_compute_charge_summary_warns_for_unmatched_mapping_entries(monkeypatch):
     from pdb2reaction.workflows import extract as extract_module
+    from pdb2reaction.io import charge as charge_module
 
     structure, ligand, magnesium = _charge_test_structure()
     warnings = []
     monkeypatch.setattr(
-        extract_module,
+        charge_module,
         "_echo_warning",
-        lambda msg, *args: warnings.append(extract_module._format_echo_message(msg, *args)),
+        lambda msg, *args: warnings.append(charge_module._format_echo_message(msg, *args)),
     )
 
     result = extract_module.compute_charge_summary(

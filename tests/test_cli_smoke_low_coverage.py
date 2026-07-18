@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 from pathlib import Path
 import re
@@ -130,6 +131,33 @@ def test_fix_altloc_uses_residue_level_mean_occupancy(tmp_path: Path) -> None:
         if line.startswith("ATOM")
     ]
     assert serials == [1, 2]
+
+
+def test_fix_altloc_prefers_any_parsed_mean_over_missing_only_label(tmp_path: Path) -> None:
+    """A missing-only label must not beat a later label with parsed occupancy."""
+    missing_a = (
+        "ATOM      1  CA AALA A   1       1.000   0.000   0.000  0.70 10.00           C\n"
+    )
+    missing_a = missing_a[:54] + "      " + missing_a[60:]
+    parsed_b = (
+        "ATOM      2  CA BALA A   1       1.100   0.000   0.000  0.10 10.00           C\n"
+    )
+    in_pdb = _write_text(tmp_path / "altloc_missing.pdb", missing_a + parsed_b + "END\n")
+    out_pdb = tmp_path / "altloc_missing_clean.pdb"
+
+    result = CliRunner().invoke(
+        root_cli,
+        ["fix-altloc", "-i", str(in_pdb), "-o", str(out_pdb)],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0, result.output
+    serials = [
+        int(line[6:11])
+        for line in out_pdb.read_text(encoding="utf-8").splitlines()
+        if line.startswith("ATOM")
+    ]
+    assert serials == [2]
 
 
 def test_trj2fig_csv_smoke(tmp_path: Path) -> None:
@@ -430,7 +458,6 @@ def test_scan_passes_merged_yaml_mapping_to_runtime(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Guard against unpacking the loader's mapping instead of passing it on."""
-    import sys
     import pdb2reaction.workflows.scan as scan_workflow
 
     config = tmp_path / "scan.yaml"
@@ -453,13 +480,31 @@ def test_scan_passes_merged_yaml_mapping_to_runtime(
         "--scan-lists", "[(1, 2, 1.0)]",
         "--out-dir", str(tmp_path / "out"),
     ]
-    # scan deliberately re-reads raw argv to preserve repeated -s groups.
-    monkeypatch.setattr(sys, "argv", ["pdb2reaction", *args])
     result = CliRunner().invoke(root_cli, args)
 
     assert result.exit_code != 0
     assert isinstance(seen.get("yaml_cfg"), dict)
     assert seen["yaml_cfg"]["bias"]["k"] == 17.5
+
+
+def test_scan_single_flag_multi_stage_form_does_not_depend_on_process_argv(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import sys
+
+    input_path = Path(__file__).parent / "smoke" / "r.pdb"
+    monkeypatch.setattr(sys, "argv", ["unrelated-process", "--not-the-command"])
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "scan", "-i", str(input_path), "-q", "-1",
+            "--scan-lists", "[(1, 2, 1.0)]", "[(2, 3, 1.0)]",
+            "--dry-run", "--out-dir", str(tmp_path / "out"),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "2 stage(s)" in result.output
 
 
 @pytest.mark.parametrize(
@@ -487,3 +532,139 @@ def test_grid_scans_accept_yaml_only_charge_and_spin(
 
     assert result.exit_code == 0, result.output
     assert "resolved charge : -1" in result.output
+
+
+@pytest.mark.parametrize("command", ["scan", "scan2d", "scan3d"])
+def test_scan_dry_run_and_execution_reject_the_same_malformed_request(
+    tmp_path: Path, command: str,
+) -> None:
+    input_path = Path(__file__).parent / "smoke" / "r.pdb"
+    base_args = [
+        command,
+        "-i",
+        str(input_path),
+        "-q",
+        "-1",
+        "--scan-lists",
+        "not-a-valid-literal[",
+        "--out-dir",
+        str(tmp_path / command),
+    ]
+
+    real = CliRunner().invoke(root_cli, base_args)
+    dry = CliRunner().invoke(root_cli, [*base_args, "--dry-run"])
+
+    assert real.exit_code != 0
+    assert dry.exit_code != 0
+    diagnostic = "Invalid literal for --scan-lists"
+    assert diagnostic in real.output
+    assert diagnostic in dry.output
+    assert "Resolved device" not in real.output
+    assert "Resolved device" not in dry.output
+
+
+@pytest.mark.parametrize("command", ["scan", "scan2d", "scan3d"])
+@pytest.mark.parametrize("suffix", [".yaml", ".json"])
+def test_scan_dry_run_and_execution_reject_the_same_malformed_spec_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    command: str,
+    suffix: str,
+) -> None:
+    workflow = importlib.import_module(f"pdb2reaction.workflows.{command}")
+    calculator_calls: list[dict[str, object]] = []
+    device_calls: list[bool] = []
+
+    def _unexpected_calculator(**kwargs):
+        calculator_calls.append(kwargs)
+        raise AssertionError("calculator creation must follow scan-spec validation")
+
+    def _unexpected_device_echo() -> None:
+        device_calls.append(True)
+        raise AssertionError("device resolution must follow scan-spec validation")
+
+    monkeypatch.setattr(workflow, "create_calculator", _unexpected_calculator)
+    monkeypatch.setattr(workflow, "echo_resolved_device", _unexpected_device_echo)
+
+    input_path = Path(__file__).parent / "smoke" / "r.pdb"
+    spec = tmp_path / f"malformed-{command}{suffix}"
+    spec.write_text("one_based: true\npairs: [\n", encoding="utf-8")
+    out_dir = tmp_path / f"out-{command}-{suffix[1:]}"
+    base_args = [
+        command,
+        "-i",
+        str(input_path),
+        "-q",
+        "-1",
+        "--scan-lists",
+        str(spec),
+        "--out-dir",
+        str(out_dir),
+    ]
+
+    real = CliRunner().invoke(root_cli, base_args)
+    dry = CliRunner().invoke(root_cli, [*base_args, "--dry-run"])
+
+    assert real.exit_code == dry.exit_code == 2
+    assert type(real.exception) is type(dry.exception) is SystemExit
+    diagnostic = f"Failed to parse --scan-lists file '{spec}'"
+    assert diagnostic in real.output
+    assert diagnostic in dry.output
+    assert "Unhandled exception" not in real.output
+    assert "Unhandled exception" not in dry.output
+    assert "Resolved device" not in real.output
+    assert "Resolved device" not in dry.output
+    assert calculator_calls == []
+    assert device_calls == []
+    assert not out_dir.exists()
+
+
+@pytest.mark.parametrize(
+    ("command", "spec_text", "expected"),
+    [
+        (
+            "scan",
+            "one_based: true\nstages:\n  - [[1, 2, 1.0]]\n",
+            "1 stage(s)",
+        ),
+        (
+            "scan2d",
+            "one_based: true\npairs:\n  - [1, 2, 0.7, 1.0]\n  - [2, 3, 0.7, 1.0]\n",
+            "2 axis tuples",
+        ),
+        (
+            "scan3d",
+            "one_based: true\npairs:\n  - [1, 2, 0.7, 1.0]\n  - [2, 3, 0.7, 1.0]\n  - [1, 3, 0.7, 1.0]\n",
+            "3 axis tuples",
+        ),
+    ],
+)
+def test_scan_dry_run_parses_yaml_request_through_execution_adapter(
+    tmp_path: Path,
+    command: str,
+    spec_text: str,
+    expected: str,
+) -> None:
+    input_path = Path(__file__).parent / "smoke" / "r.pdb"
+    spec = tmp_path / f"{command}.yaml"
+    spec.write_text(spec_text, encoding="utf-8")
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            command,
+            "-i",
+            str(input_path),
+            "-q",
+            "-1",
+            "--scan-lists",
+            str(spec),
+            "--dry-run",
+            "--out-dir",
+            str(tmp_path / "out"),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "--scan-lists parse OK" in result.output
+    assert expected in result.output

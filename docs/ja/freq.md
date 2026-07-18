@@ -33,6 +33,7 @@ pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 \
 - **PHVAと剛体モード**: 凍結原子がある場合、固有値解析はactive部分空間内で行います。デフォルトの`constrained`は、すべての凍結anchorを動かさない全系剛体運動だけを除去するため、通常の複数anchorクラスターモデルではeffective rankは通常0です。3N×3N Hessianとactive block Hessianの両方に対応します。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
 - **モードのエクスポート**: `--max-write` でアニメーション化するモード数を制限できます。モードは値順 (`value`) でソートされ、`--sort abs` を指定すると絶対値順になります。すべての入力に `_trj.xyz` を出力し、`--convert-files` 有効時はtopology入力に`.pdb`、mmCIF／oversized-PDB入力に元IDを復元した`.cif`も出力します。
 - **熱化学**: `thermoanalysis` がインストールされている場合、QRRHO に準じたサマリー（EE、ZPE、E/H/G 補正、熱容量、エントロピー）が PHVA 振動数に基づいて出力されます。CLI の圧力（atm）は内部で Pa に変換されます。`--dump` を指定すると `thermoanalysis.yaml` も書き込まれます。
+- **振動数処理ポリシー**: `freq` は **standalone-freq ポリシー**（QRRHO、rotor cutoff 100 cm⁻¹、周波数・ZPE スケール 1、虚振動数の反転**なし**、正振動数のフロア**なし**）を適用します。これは一部の bundled-engine 経路が使う内部の `Geometry.get_thermoanalysis` ポリシー（小さな虚振動数を −15 cm⁻¹ から反転し、25 cm⁻¹ 未満の正振動数をフロアする）とは意図的に異なります。いずれも普遍的な科学的デフォルトではなく、各エントリポイントに固有です。有効なポリシー（`kind`、`rotor_cutoff_cm`、`frequency_scale`、`zpe_scale`、`invert_imag_from_cm`、`positive_frequency_floor_cm`）は `thermoanalysis.yaml` と `result.json` の `thermo_policy` にシリアライズされます。
 - **性能**: GPU メモリ使用量を抑えるため、Hessianは 1 つだけ保持します。
 
 ## 出力

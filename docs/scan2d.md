@@ -68,8 +68,8 @@ see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
 2. Parse targets from `--scan-lists/-s` (YAML/JSON file or inline literal) into two quadruples, normalize indices
     (1-based by default). For PDB/mmCIF topology inputs, each atom entry can be an integer index
     or a selector string like `'TYR,285,CA'`; delimiters may be spaces, commas,
-    slashes, backticks, or backslashes, and token order is flexible (fallback
-    is flexible); use positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` for repeated
+    slashes, backticks, or backslashes, and token order is flexible; use positional
+    `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` for repeated
     names or numbering. Construct linear grids with
     `ceil(|high − low| / h) + 1` points (both endpoints included), where
     `h = --max-step-size`. Zero-length spans collapse to a single point.
@@ -129,7 +129,7 @@ The tables below cover the options that need explanation; the full flag list is 
 | `--print-parsed/--no-print-parsed` | Print parsed pair tuples after `--scan-lists/-s` resolution. | `False` |
 | `--max-step-size FLOAT` | Maximum change allowed for either distance per increment (Å). Determines the grid density. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
-| `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. Used unless YAML sets `opt.max_cycles`. | `10000` |
+| `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. An explicit value overrides YAML `opt.max_cycles`. | `10000` |
 | `--opt-mode TEXT` | `grad` → L-BFGS, `hess` → RFOptimizer. | `grad` |
 | `--freeze-links/--no-freeze-links` | When the input is PDB, freeze parents of cap hydrogens. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
@@ -190,7 +190,7 @@ More YAML options for `opt` are available in [YAML Reference](yaml-reference.md)
   `surface.csv` in downstream fitting or visualization scripts.
 - `--freeze-links` merges user `freeze_atoms` with detected cap-H parents for
   PDB inputs, keeping extracted active site models rigid.
-- `--relax-max-cycles` applies only when explicitly provided and YAML does not set `opt.max_cycles` (default `10000`).
+- An explicitly provided `--relax-max-cycles` overrides YAML `opt.max_cycles`; when omitted, YAML wins, then the default `10000` applies.
 
 ## See Also
 - [scan](scan.md) -- 1D bond-distance scan

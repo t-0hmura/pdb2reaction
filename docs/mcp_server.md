@@ -20,13 +20,21 @@ This adds the `mcp[cli]` dependency and registers two console scripts:
 18 tools, one per CLI subcommand. Each tool returns a structured dict with:
 
 - `schema_version`: envelope version. Live value: `pdb2reaction.mcp._runner.MCP_SUBCMD_RESULT_SCHEMA_VERSION`. A version bump signals a field-set / value-type change; pin against the constant rather than the literal in this doc.
-- `status`: `ok` | `failed` | `summary_missing` | `summary_parse_error`
+- `status`: `ok` | `failed` | `summary_missing` | `summary_parse_error` | `summary_run_mismatch`
 - `exit_code`: subprocess exit code
 - `out_dir`: working directory the CLI wrote to
 - `summary`: parsed `summary.json` (CLI output schema; see [JSON Output Reference](json-output.md) for the per-stage shape)
 - `stderr_tail` / `stdout_tail`: last ~60 lines of process output
 - `hint`: parsed `; recover: <hint>` suffix from CLI error messages, if any
 - `argv`: the full argv that was executed (for reproducibility)
+- `run_id`: UUID generated for this subprocess invocation. A parsed summary is
+  returned only when it carries this exact ID; stale or mixed-generation
+  output is reported as `summary_run_mismatch` with an empty `summary`.
+
+Product CLI aliases are bound to the MCP server's current Python interpreter
+as `python -m pdb2reaction`, and the imported package source root is first in
+the child `PYTHONPATH`. The child keeps the caller's current working directory,
+so relative scientific input paths retain their original meaning.
 
 ### Structured error envelope
 
@@ -160,8 +168,9 @@ async with stdio_client(server_params) as (read, write):
 - Stage/pipeline output files land under the `out_dir` kwarg (defaults to a unique
   `tempfile.mkdtemp(prefix="p2r_mcp_<subcmd>_…")` so concurrent agent calls
   don't collide). Helper tools use their explicit output path. Expert
-  `extra_args` can request additional paths or in-place behavior; inspect the
-  returned `argv` when applying a filesystem policy.
+  `extra_args` can request additional non-managed behavior; it cannot override
+  typed output paths, `--out-dir`, or the managed `--out-json/--no-out-json`
+  toggle. Inspect the returned `argv` when applying a filesystem policy.
 - The server does not modify `~/.bashrc` / login env, install software,
   or authenticate model registries. All MLIP weights / PDB inputs must already
   exist on disk.

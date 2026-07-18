@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import List
 
 import click
+from pdb2reaction.core.output import emit
 
 from pdb2reaction.domain.bond_changes import compare_structures, summarize_changes
 
@@ -24,14 +25,18 @@ def _load_geom(path: str):
     """Load a geometry from XYZ, PDB, mmCIF, or GJF file."""
     p = Path(path)
     suffix = p.suffix.lower()
-    if suffix in {".pdb", ".cif", ".mmcif"}:
+    if suffix in {".pdb", ".cif", ".mmcif", ".gjf"}:
         from pdb2reaction.core.utils import prepare_input_structure
-        from pysisyphus.io.pdb import geom_from_pdb
         with prepare_input_structure(p) as prepared:
+            if suffix == ".gjf":
+                # The existing p2r preparation path is the canonical ordinary
+                # Gaussian-input parser and owns its temporary XYZ bridge.
+                from pysisyphus.helpers import geom_from_xyz_file
+
+                return geom_from_xyz_file(str(prepared.geom_path))
+            from pysisyphus.io.pdb import geom_from_pdb
+
             return geom_from_pdb(str(prepared.geom_path))
-    elif suffix == ".gjf":
-        from pysisyphus.io.gaussian import geom_from_gaussian_input
-        return geom_from_gaussian_input(str(p))
     else:
         from pysisyphus.helpers import geom_from_xyz_file
         return geom_from_xyz_file(str(p))
@@ -136,7 +141,7 @@ def cli(inputs: tuple, extra_inputs: tuple, device: str, bond_factor: float, one
         # detail console output via the core.utils click.echo chokepoint).
         # `force=True` bypasses the verbosity gate; see
         # pdb2reaction.core.utils._patch_click_echo.
-        click.echo(
+        emit(
             _json.dumps(
                 {"status": status, "comparisons": comparisons_json},
                 indent=2, ensure_ascii=False,

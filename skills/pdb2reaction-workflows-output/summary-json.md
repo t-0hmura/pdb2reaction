@@ -33,6 +33,7 @@ corresponding command page and in [`pdb2reaction-cli`](../pdb2reaction-cli/SKILL
 | `pipeline_mode` | One of `"path-search"`, `"path-opt"`, `"tsopt-only"` |
 | `mlip_backend` | Which backend produced the energies |
 | `mlip_model` | Exact model/checkpoint identifier, kept separate from `mlip_backend` |
+| `mlip_precision` | Effective `fp32` / `fp64` token; null for a custom calculator |
 | `energy_diagrams` | Energy data plus optional image metadata. Check `image_written` and that `image` is non-null before treating a PNG as an artifact; energies remain available after renderer failure. |
 | `out_dir` | Output directory absolute path |
 
@@ -59,7 +60,7 @@ Present when `--tsopt`, `--thermo`, or `--dft` was passed:
 | `mep_barrier_kcal` / `mep_delta_kcal` | MEP-level (un-refined) barrier / ΔE, mirroring `segments[i]` (refined post-IRC/tsopt energies live in the per-segment `mlip` block) |
 | `post_dir` | Subdirectory holding tsopt / freq / IRC outputs for this segment |
 | `irc_plot` / `irc_traj` | Paths to the IRC trace PNG and trajectory XYZ |
-| `mlip` | Selected MLIP backend's electronic-energy block. Read top-level `mlip_backend` / `mlip_model` for exact provenance. |
+| `mlip` | Selected MLIP backend's electronic-energy block. Read top-level `mlip_backend` / `mlip_model` / `mlip_precision` for exact provenance. |
 | `ts_imag` | Dict `{n_imag, nu_imag_max_cm, min_abs_imag_cm, min_freq_cm}` describing the TS spectrum |
 | `ts_imag_freq_cm` | Peak imaginary frequency (cm⁻¹); same as `ts_imag.nu_imag_max_cm` |
 | `gibbs_mlip` | MLIP electronic energy + QRRHO thermal correction (when `--thermo`) |
@@ -68,8 +69,8 @@ Present when `--tsopt`, `--thermo`, or `--dft` was passed:
 
 `mlip`, `gibbs_mlip`, and `gibbs_dft_mlip` are the only emitted identifiers;
 no compatibility aliases are written. Energy-diagram filenames use `MLIP` as
-the backend-neutral layer label, while top-level `mlip_backend` / `mlip_model`
-record the exact provenance.
+the backend-neutral layer label, while top-level `mlip_backend`, `mlip_model`,
+and `mlip_precision` record the exact provenance.
 
 ## R/TS/P canonical paths
 

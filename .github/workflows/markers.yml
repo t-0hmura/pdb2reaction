@@ -17,6 +17,8 @@ jobs:
           python-version: "3.11"
       - name: Run engineering-marker coverage checks
         run: python .github/scripts/check_engineering_markers.py
+      - name: Run import-graph gate (no product cycle / layer back-edge / engine->product import)
+        run: python .github/scripts/check_import_graph.py
 
   help-registry:
     runs-on: ubuntu-latest

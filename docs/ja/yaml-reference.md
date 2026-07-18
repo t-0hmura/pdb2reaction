@@ -17,6 +17,9 @@
 2. **`--config`** — デフォルトを上書きする YAML ファイル（例: `--config my_settings.yaml`）。
 3. **CLI フラグ** — コマンドラインで明示的に指定したオプション（例: `-q -1`, `--thresh gau_loose`）。*明示的に指定された*値のみが YAML を上書きし、CLI デフォルトのままのオプションは YAML の値を上書きしません（YAML の値が有効なまま）。
 
+公開 CLI が提供する設定レイヤはこの 3 つです。組み込み Python 呼び出しとの
+互換性のために内部で保持している引数は、追加の公開 CLI 設定レイヤではありません。
+
 例: YAML で `charge: 0` を設定し、CLI で `-q -1` を渡した場合、電荷は `-1` になります。
 
 この優先順位は `all`, `opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, `dft` に共通です。あわせて {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
@@ -409,7 +412,7 @@ hessian_dimer:
    rotation_interpolate: true # Interpolate rotation steps
    rotation_disable: false # Disable rotations entirely
    rotation_disable_pos_curv: true # Disable when positive curvature detected
-   rotation_remove_trans: true # Remove translational components
+   rotation_remove_trans: true # 選択した剛体null成分を除去
    trans_force_f_perp: true # Project forces perpendicular to translation
    bonds: null # Bond list for constraints
    N_hessian: null # Hessian size override

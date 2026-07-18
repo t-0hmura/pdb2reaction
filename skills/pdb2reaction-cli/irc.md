@@ -66,6 +66,10 @@ trajectory/endpoints must be inspected because it may pass the nearest basin.
 | `<out_dir>/{forward,backward,finished}_irc.cif` | `--convert-files` and input/reference required the mmCIF or oversized-PDB bridge | public trajectories with original IDs |
 | `<out_dir>/result.json` | `--out-json` | machine-readable result |
 
+With a non-empty YAML `irc.prefix`, EulerPC inserts one underscore before each
+filename (`prefix: trial` → `trial_finished_irc_trj.xyz`); read the normalized
+names from `result.json.files`.
+
 `result.json` keys:
 
 ```python
@@ -79,12 +83,16 @@ print(d.get("bond_changes_direction"))
 print(d["status"])                 # "completed" means the runner returned and wrote output
 print(d["forward_converged"], d["backward_converged"])
 print(d["forward_energy_increased"], d["backward_energy_increased"])
+print(d["never_stop"], d["never_stop_energy_bypasses"])
 print(d["rigid_projection"]["treatment"], d["rigid_projection"]["effective_rank"])
 ```
 
 `completed` is not an IRC convergence verdict. Check the enabled direction's
 `*_converged`, `*_energy_increased`, frame count, endpoints, and bond changes.
 An energy-stop can produce `completed` with `*_converged == false`.
+`never_stop` records whether the opt-in mode was enabled;
+`never_stop_energy_bypasses` records how many energy-rise/plateau stops it
+actually bypassed.
 The older `energy_reactant_hartree` / `energy_product_hartree` keys are retained
 as directional first/last aliases only. Standalone IRC has no endpoint
 references, so compare `finished_first.xyz` and `finished_last.xyz` with the

@@ -98,13 +98,17 @@ def test_all_context_fields_match_cli_signature() -> None:
 
 def test_all_tr_projection_is_injected_into_child_config() -> None:
     from pdb2reaction.workflows.all import _write_args_yaml_with_freeze_atoms
+    from pdb2reaction.workflows._run_session import RunSession
 
+    session = RunSession()
     path = _write_args_yaml_with_freeze_atoms(
-        None, [], tr_projection="legacy-active"
+        None, [], tr_projection="legacy-active", session=session
     )
     assert path is not None
     payload = yaml.safe_load(path.read_text(encoding="utf-8"))
     assert payload["geom"]["tr_projection"] == "legacy-active"
+    session.close()
+    assert not path.exists()
 
 
 def test_build_energy_level_dict_kcal_projection() -> None:
@@ -191,6 +195,7 @@ def test_build_pipeline_summary_payload_shape() -> None:
             mep_mode_kind="dmf",
             mlip_backend="mace",
             mlip_model="mace-off23-small",
+            mlip_precision="fp64",
             command_str="pdb2reaction all -i foo.pdb",
             q_int=-1,
             spin=1,
@@ -203,6 +208,7 @@ def test_build_pipeline_summary_payload_shape() -> None:
     assert payload["mep_mode"] == "dmf"
     assert payload["mlip_backend"] == "mace"
     assert payload["mlip_model"] == "mace-off23-small"
+    assert payload["mlip_precision"] == "fp64"
     assert "uma_model" not in payload
     assert payload["charge"] == -1
     assert payload["spin"] == 1
@@ -224,6 +230,7 @@ def test_build_pipeline_summary_payload_dft_disabled_drops_basis() -> None:
         mep_mode_kind=None,
         mlip_backend="orb",
         mlip_model=None,
+        mlip_precision="fp64",
         command_str="",
         q_int=0,
         spin=1,
@@ -262,6 +269,24 @@ def test_enrich_summary_uses_backend_neutral_refined_energy_keys(tmp_path: Path)
     assert result["rate_limiting_step"]["barrier_kcal"] == 12.5
     assert result["rate_limiting_step"]["method"] == "MLIP_Gibbs"
     assert result["schema_version"]
+
+
+def test_aggregate_summary_writer_injects_current_run_id_atomically(
+    tmp_path: Path, monkeypatch
+) -> None:
+    import json
+
+    from pdb2reaction.core.result_commit import RUN_ID_ENV
+    from pdb2reaction.workflows.all import _write_summary_json
+
+    monkeypatch.setenv(RUN_ID_ENV, "aggregate-current")
+    summary = {"status": "success", "segments": []}
+
+    path = _write_summary_json(tmp_path / "summary.json", summary)
+
+    assert path == tmp_path / "summary.json"
+    assert json.loads(path.read_text(encoding="utf-8"))["run_id"] == "aggregate-current"
+    assert summary["run_id"] == "aggregate-current"
 
 
 def test_enrich_summary_labels_overall_reaction_energy_method(tmp_path: Path) -> None:

@@ -73,6 +73,7 @@ def test_status_enum_documented() -> None:
         "not_converged",
         "ok",
         "partial",
+        "stalled",
         "success",
         "unknown",
     )

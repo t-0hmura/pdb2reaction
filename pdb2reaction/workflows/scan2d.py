@@ -24,6 +24,7 @@ import tempfile
 import time
 
 import click
+from pdb2reaction.core.output import emit
 import numpy as np
 import pandas as pd
 from scipy.interpolate import Rbf
@@ -46,14 +47,18 @@ from pdb2reaction.core.defaults import (
 )
 from pdb2reaction.backends import create_calculator
 from pdb2reaction.workflows.restraints import HarmonicBiasCalculator
+from pdb2reaction.workflows._outcomes import (
+    attach_outcomes,
+    make_scan_point,
+    optimizer_converged_bit,
+    scan_scientific_status,
+    seed_eligible_mask,
+)
 from pdb2reaction.core.utils import (
     axis_label_csv,
     axis_label_html,
     build_sopt_kwargs,
-    is_scan_spec_file,
     make_sopt_optimizer,
-    parse_scan_list_quads_checked,
-    parse_scan_spec_quads,
     unbiased_energy_hartree,
     values_from_bounds,
     pretty_block,
@@ -83,10 +88,13 @@ from pdb2reaction.core.utils import (
 )
 from pdb2reaction.workflows.scan_common import (
     add_scan_common_options,
+    parse_grid_scan_request,
+)
+from pdb2reaction.cli.decorators import (
+    _write_error_json,
     load_merged_yaml_cfg,
     resolve_yaml_sources,
 )
-from pdb2reaction.cli.decorators import _write_error_json
 from pdb2reaction.cli.common_options import (
     add_coord_type_option,
     add_print_every_option,
@@ -123,10 +131,10 @@ def _build_scan_context(
     workers_per_node: int,
     out_dir: str,
     thresh: Optional[str],
-    bias_k: float,
+    bias_k: Optional[float],
     opt_mode: str,
     relax_max_cycles: int,
-    relax_override_requested: bool,
+    relax_max_cycles_overridden: bool,
     max_step_size: float,
     source_path: Optional[Path],
     freeze_links: bool,
@@ -159,6 +167,8 @@ def _build_scan_context(
         out_dir=out_dir,
         thresh=thresh,
         bias_k=bias_k,
+        relax_max_cycles=relax_max_cycles,
+        relax_max_cycles_overridden=relax_max_cycles_overridden,
         set_charge_spin=set_charge_spin,
         workers_overridden=workers_overridden,
         workers_per_node_overridden=workers_per_node_overridden,
@@ -185,8 +195,6 @@ def _build_scan_context(
     echo_geom = format_geom_for_echo(geom_cfg)
     echo_calc = format_geom_for_echo(calc_cfg)
     echo_opt = dict(opt_cfg)
-    if relax_override_requested:
-        echo_opt["max_cycles"] = int(relax_max_cycles)
     echo_opt["out_dir"] = str(out_dir_path)
     echo_bias = dict(bias_cfg)
     click.echo(pretty_block("geom", echo_geom))
@@ -199,10 +207,8 @@ def _build_scan_context(
         rfo_cfg,
         opt_cfg,
         max_step_bohr_for_log,
-        relax_max_cycles,
-        relax_override_requested,
-        out_dir_path,
-        str(opt_cfg.get("prefix", "")),
+        out_dir=out_dir_path,
+        prefix=str(opt_cfg.get("prefix", "")),
     )
     echo_sopt = strip_inherited_keys(echo_sopt, opt_cfg)
     click.echo(
@@ -337,7 +343,7 @@ def cli(
         override_yaml=None,
         args_yaml_legacy=None,
     )
-    merged_yaml_cfg = load_merged_yaml_cfg(
+    merged_yaml_cfg, _, _ = load_merged_yaml_cfg(
         config_yaml=config_yaml,
         override_yaml=None,
     )
@@ -347,6 +353,7 @@ def cli(
     )
 
     cycles_overridden = cli_param_overridden(ctx, "relax_max_cycles")
+    thresh_overridden = cli_param_overridden(ctx, "thresh")
 
     with prepared_cli_input(
         input_path,
@@ -359,31 +366,28 @@ def cli(
         validate_charge_spin_for_prepared(prepared_input, resolved_charge, resolved_spin)
         geom_input_path = prepared_input.geom_path
         source_path = prepared_input.source_path
+        pdb_atom_meta: List[Dict[str, Any]] = []
+        if source_path.suffix.lower() == ".pdb":
+            pdb_atom_meta = load_pdb_atom_metadata(source_path)
+        scan_request = parse_grid_scan_request(
+            scan_list_raw,
+            dimensions=2,
+            one_based=one_based,
+            atom_meta=pdb_atom_meta,
+        )
 
         tmp_root = None
         out_dir_path = Path(out_dir).resolve()
         if dry_run:
-            # Stop here AFTER parsing --scan-lists (the help text promises that
-            # --dry-run validates the scan-lists spec). Input has been resolved,
-            # charge/spin parity has been validated against the prepared
-            # geometry, and --scan-lists is parsed below before exit. Load the
-            # PDB atom metadata (as the real run does) so string atom specs in
-            # --scan-lists can be resolved and validated during --dry-run too.
-            _dry_meta = (load_pdb_atom_metadata(source_path)
-                         if source_path.suffix.lower() == ".pdb" else [])
-            _dry_parsed, _ = parse_scan_list_quads_checked(
-                scan_list_raw,
-                expected_len=2,
-                one_based=bool(one_based),
-                atom_meta=_dry_meta,
-                option_name="--scan-lists",
-            )
             click.echo("[scan2d] --dry-run: input, charge/spin parity, and --scan-lists parse OK.")
             click.echo(f"[scan2d] input geometry  : {geom_input_path}")
             click.echo(f"[scan2d] resolved charge : {int(resolved_charge):+d}")
             click.echo(f"[scan2d] resolved spin   : {int(resolved_spin)} (multiplicity)")
             click.echo(f"[scan2d] out_dir         : {out_dir_path}")
-            click.echo(f"[scan2d] --scan-lists    : {scan_list_raw} → {len(_dry_parsed)} axis tuples")
+            click.echo(
+                f"[scan2d] --scan-lists    : {scan_request.raw_value} "
+                f"→ {len(scan_request.pairs)} axis tuples"
+            )
             click.echo(f"[scan2d] preopt={bool(preopt)}  freeze_links={bool(freeze_links)}")
             click.echo("[scan2d] No 2D scan was executed.")
             return
@@ -391,11 +395,6 @@ def cli(
             time_start = time.perf_counter()
 
             yaml_cfg = merged_yaml_cfg
-            yaml_opt = yaml_cfg.get("opt") if isinstance(yaml_cfg, dict) else None
-            relax_override_requested = cycles_overridden and not (
-                isinstance(yaml_opt, dict) and "max_cycles" in yaml_opt
-            )
-
             (
                 geom_cfg,
                 calc_cfg,
@@ -410,7 +409,7 @@ def cli(
                 yaml_cfg=yaml_cfg,
                 geom_kw=dict(GEOM_KW_DEFAULT),
                 calc_kw=dict(UMA_CALC_KW),
-                opt_kw=dict(OPT_BASE_KW),
+                opt_kw={**OPT_BASE_KW, "thresh": "baker"},
                 lbfgs_kw=dict(LBFGS_KW),
                 rfo_kw=dict(RFO_KW),
                 bias_kw=dict(BIAS_KW),
@@ -419,7 +418,7 @@ def cli(
                 workers=workers,
                 workers_per_node=workers_per_node,
                 out_dir=out_dir,
-                thresh=thresh,
+                thresh=thresh if thresh_overridden else None,
                 # bias_k is None when neither CLI --bias-k nor YAML bias.k set
                 # (the common-decorator default flipped to None to enable YAML
                 # override). `build_scan_configs` handles None via
@@ -427,7 +426,7 @@ def cli(
                 bias_k=bias_k,
                 opt_mode=opt_mode,
                 relax_max_cycles=relax_max_cycles,
-                relax_override_requested=relax_override_requested,
+                relax_max_cycles_overridden=cycles_overridden,
                 max_step_size=max_step_size,
                 source_path=source_path,
                 freeze_links=freeze_links,
@@ -466,32 +465,10 @@ def cli(
                 geom_cfg["coord_type"] = str(cli_coord_type).lower()
             apply_backend_defaults(calc_cfg)
 
-            pdb_atom_meta: List[Dict[str, Any]] = []
-            if source_path.suffix.lower() == ".pdb":
-                pdb_atom_meta = load_pdb_atom_metadata(source_path)
-
-            if scan_list_raw is None:
-                raise click.BadParameter("--scan-lists is required.")
-            scan_one_based = bool(one_based)
-            scan_source = "--scan-lists"
-            if is_scan_spec_file(scan_list_raw):
-                spec_path = Path(scan_list_raw)
-                parsed, raw_pairs, scan_one_based = parse_scan_spec_quads(
-                    spec_path,
-                    expected_len=2,
-                    one_based_default=one_based,
-                    atom_meta=pdb_atom_meta,
-                    option_name="--scan-lists",
-                )
-                scan_source = f"--scan-lists ({spec_path})"
-            else:
-                parsed, raw_pairs = parse_scan_list_quads_checked(
-                    scan_list_raw,
-                    expected_len=2,
-                    one_based=scan_one_based,
-                    atom_meta=pdb_atom_meta,
-                    option_name="--scan-lists",
-                )
+            parsed = list(scan_request.pairs)
+            raw_pairs = list(scan_request.raw_pairs)
+            scan_one_based = scan_request.one_based
+            scan_source = scan_request.source
             (i1, j1, low1, high1), (i2, j2, low2, high2) = parsed
             d1_label_csv = axis_label_csv("d1", i1, j1, scan_one_based, pdb_atom_meta, raw_pairs[0])
             d2_label_csv = axis_label_csv("d2", i2, j2, scan_one_based, pdb_atom_meta, raw_pairs[1])
@@ -516,13 +493,13 @@ def cli(
             )
 
             if pdb_atom_meta:
-                click.echo("[scan2d] PDB atom details for scanned pairs:", detail=True)
+                emit("[scan2d] PDB atom details for scanned pairs:", detail=True)
                 legend = format_pdb_atom_metadata_header()
-                click.echo(f"        legend: {legend}", detail=True)
-                click.echo(f"  d1 i: {format_pdb_atom_metadata(pdb_atom_meta, i1)}", detail=True)
-                click.echo(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j1)}", detail=True)
-                click.echo(f"  d2 i: {format_pdb_atom_metadata(pdb_atom_meta, i2)}", detail=True)
-                click.echo(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j2)}", detail=True)
+                emit(f"        legend: {legend}", detail=True)
+                emit(f"  d1 i: {format_pdb_atom_metadata(pdb_atom_meta, i1)}", detail=True)
+                emit(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j1)}", detail=True)
+                emit(f"  d2 i: {format_pdb_atom_metadata(pdb_atom_meta, i2)}", detail=True)
+                emit(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j2)}", detail=True)
 
             # Temporary and grid directories
             tmp_root = Path(tempfile.mkdtemp(prefix="scan2d_tmp_"))
@@ -566,17 +543,19 @@ def cli(
                     rfo_cfg,
                     opt_cfg,
                     max_step_bohr=max_step_bohr_local,
-                    relax_max_cycles=relax_max_cycles,
-                    relax_override_requested=relax_override_requested,
                     out_dir=tmp_opt_dir,
                     prefix="preopt",
                 )
+                _preopt_conv: Optional[bool] = None
                 try:
                     optimizer0.run()
+                    _preopt_conv = optimizer_converged_bit(optimizer0)
                 except ZeroStepLength:
                     click.echo("[preopt] ZeroStepLength — continuing.")
+                    _preopt_conv = optimizer_converged_bit(optimizer0)
                 except OptimizationError as e:
                     click.echo(f"[preopt] OptimizationError — {e}")
+                    _preopt_conv = False
 
                 # Measure optimized distances and record preopt structure
                 try:
@@ -611,13 +590,17 @@ def cli(
                             "d1_A": float(d1_ref),
                             "d2_A": float(d2_ref),
                             "energy_hartree": E_pre_h,
-                            "bias_converged": True,
+                            "bias_converged": _preopt_conv,
+                            "artifact_written": True,
                         }
                     )
                     # Store preoptimized geometry as a candidate for nearest-start
-                    visited_geoms.append(
-                        (float(d1_ref), float(d2_ref), _snapshot_geometry(geom_outer))
-                    )
+                    # ONLY when the preopt explicitly converged; a nonconverged
+                    # preopt must never steer later grid points as a seed.
+                    if _preopt_conv is True:
+                        visited_geoms.append(
+                            (float(d1_ref), float(d2_ref), _snapshot_geometry(geom_outer))
+                        )
 
                     click.echo(
                         f"[preopt] Recorded preoptimized structure at d1={d1_ref:.3f} Å, d2={d2_ref:.3f} Å."
@@ -644,7 +627,7 @@ def cli(
             click.echo(
                 f"[grid] d2 steps = {N2}  values(A)={list(map(lambda x:f'{x:.3f}', d2_values))}"
             )
-            click.echo(f"[grid] total grid points = {N1*N2}", narrative=True)
+            emit(f"[grid] total grid points = {N1*N2}", narrative=True)
 
             # Track the start index of the previous row's entries in visited_geoms
             # so we can prune old rows and bound memory usage.
@@ -674,8 +657,6 @@ def cli(
                     rfo_cfg,
                     opt_cfg,
                     max_step_bohr=max_step_bohr,
-                    relax_max_cycles=relax_max_cycles,
-                    relax_override_requested=relax_override_requested,
                     out_dir=tmp_opt_dir,
                     prefix=f"d1_{i_idx:03d}",
                 )
@@ -751,20 +732,19 @@ def cli(
                         rfo_cfg,
                         opt_cfg,
                         max_step_bohr=max_step_bohr,
-                        relax_max_cycles=relax_max_cycles,
-                        relax_override_requested=relax_override_requested,
                         out_dir=tmp_opt_dir,
                         prefix=f"d1_{i_idx:03d}_d2_{j_idx:03d}",
                     )
+                    converged: Optional[bool] = None
                     try:
                         opt2.run()
-                        converged = True
+                        converged = optimizer_converged_bit(opt2)
                     except ZeroStepLength:
                         click.echo(
                             f"[d1 {i_idx}, d2 {j_idx}] ZeroStepLength — recorded anyway.",
                             err=True,
                         )
-                        converged = False
+                        converged = optimizer_converged_bit(opt2)
                     except OptimizationError as e:
                         click.echo(
                             f"[d1 {i_idx}, d2 {j_idx}] OptimizationError — {e}"
@@ -777,12 +757,14 @@ def cli(
                     d1_tag = distance_tag(d1_target)
                     d2_tag = distance_tag(d2_target)
                     xyz_path = grid_dir / f"point_i{d1_tag}_j{d2_tag}.xyz"
+                    _artifact_written = False
                     try:
                         s = geom_inner.as_xyz()
                         if not s.endswith("\n"):
                             s += "\n"
                         with open(xyz_path, "w") as f:
                             f.write(s)
+                        _artifact_written = True
                         convert_xyz_like_outputs(
                             xyz_path,
                             prepared_input,
@@ -797,19 +779,22 @@ def cli(
                             err=True,
                         )
 
-                    # Store this converged grid point for nearest-start initialization
-                    try:
-                        coords_inner = np.asarray(getattr(geom_inner, "coords3d"), dtype=float)
-                        d1_cur = distance_A_from_coords(coords_inner, i1, j1)
-                        d2_cur = distance_A_from_coords(coords_inner, i2, j2)
-                        visited_geoms.append(
-                            (float(d1_cur), float(d2_cur), _snapshot_geometry(geom_inner))
-                        )
-                    except Exception as e:
-                        click.echo(
-                            f"[nearest-start] WARNING: failed to store geometry for d1={d1_target:.3f}, d2={d2_target:.3f}: {e}",
-                            err=True,
-                        )
+                    # Store this grid point for nearest-start initialization ONLY
+                    # when it explicitly converged; a nonconverged/failed point
+                    # must never become the seed for a later target (M48).
+                    if converged is True:
+                        try:
+                            coords_inner = np.asarray(getattr(geom_inner, "coords3d"), dtype=float)
+                            d1_cur = distance_A_from_coords(coords_inner, i1, j1)
+                            d2_cur = distance_A_from_coords(coords_inner, i2, j2)
+                            visited_geoms.append(
+                                (float(d1_cur), float(d2_cur), _snapshot_geometry(geom_inner))
+                            )
+                        except Exception as e:
+                            click.echo(
+                                f"[nearest-start] WARNING: failed to store geometry for d1={d1_target:.3f}, d2={d2_target:.3f}: {e}",
+                                err=True,
+                            )
 
                     if dump and trj_blocks is not None:
                         sblock = geom_inner.as_xyz()
@@ -824,7 +809,8 @@ def cli(
                             "d1_A": float(d1_target),
                             "d2_A": float(d2_target),
                             "energy_hartree": E_h,
-                            "bias_converged": bool(converged),
+                            "bias_converged": converged,
+                            "artifact_written": bool(_artifact_written),
                         }
                     )
 
@@ -855,21 +841,38 @@ def cli(
                 click.echo("No grid records produced; aborting.")
                 sys.exit(1)
 
+            # Seed / reference-minimum eligibility (M48): only points whose
+            # optimizer explicitly converged with a finite unbiased energy may
+            # define the baseline or the reported minimum. Failed/nonconverged
+            # rows are retained in surface.csv for diagnostics but excluded here.
+            df["seed_eligible"] = seed_eligible_mask(records)
+            _elig_df = df[df["seed_eligible"]]
+
+            def _eligible_min() -> float:
+                if not _elig_df.empty:
+                    return float(_elig_df["energy_hartree"].min())
+                # No eligible point: fall back to the raw min so the surface still
+                # renders, but the scientific_status below reports the failure.
+                return float(df["energy_hartree"].min())
+
             if baseline == "first":
-                mask = (df["i"] == 0) & (df["j"] == 0)
+                mask = (df["i"] == 0) & (df["j"] == 0) & df["seed_eligible"]
                 if mask.sum() == 0:
-                    click.echo("WARNING: baseline='first' but grid point (0,0) not found; falling back to min.", err=True)
-                    ref = float(df["energy_hartree"].min())
+                    click.echo("WARNING: baseline='first' but no eligible grid point (0,0); falling back to eligible min.", err=True)
+                    ref = _eligible_min()
                 else:
                     ref = float(df.loc[mask, "energy_hartree"].iloc[0])
             else:
-                ref = float(df["energy_hartree"].min())
+                ref = _eligible_min()
             df["energy_kcal"] = (df["energy_hartree"] - ref) * AU2KCALPERMOL
             df["d1_label"] = d1_label_csv
             df["d2_label"] = d2_label_csv
 
             surface_csv = final_dir / "surface.csv"
-            df.to_csv(surface_csv, index=False)
+            # Keep internal-only eligibility columns out of the public CSV so a
+            # genuinely converged run's surface.csv schema is unchanged (M48/P07).
+            _csv_drop = [c for c in ("seed_eligible", "artifact_written") if c in df.columns]
+            df.drop(columns=_csv_drop).to_csv(surface_csv, index=False)
             click.echo(f"[write] Wrote '{surface_csv}'.")
 
             # ===== Plots (RBF on a fixed 50×50 grid, unified layout, placed under final_dir) =====
@@ -1123,13 +1126,25 @@ def cli(
             fig3d.write_html(str(html3d))
             click.echo(f"[plot] Wrote '{html3d}'.")
 
-            click.echo("\n====== 2D Scan finished ======\n", narrative=True)
-            click.echo(format_elapsed("[time] Elapsed Time for 2D Scan", time_start), narrative=True)
+            emit("\n====== 2D Scan finished ======\n", narrative=True)
+            emit(format_elapsed("[time] Elapsed Time for 2D Scan", time_start), narrative=True)
 
             # result.json (if --out-json)
             if out_json:
-                from pdb2reaction.core.utils import write_result_json, atom_label_from_meta
-                min_energy = float(df["energy_hartree"].min()) if not df.empty else None
+                from pdb2reaction.core.utils import (
+                    atom_label_from_meta,
+                    calculator_provenance,
+                    write_result_json,
+                )
+                # Reported minimum energy is drawn only from seed-eligible points
+                # (converged + finite + artifact written); a failed point with a
+                # numerically lower energy must never become min_energy_hartree.
+                if "seed_eligible" in df.columns and df["seed_eligible"].any():
+                    min_energy = float(df.loc[df["seed_eligible"], "energy_hartree"].min())
+                elif not df.empty:
+                    min_energy = None
+                else:
+                    min_energy = None
                 _pair1: Dict[str, Any] = {"i": int(i1 + 1), "j": int(j1 + 1), "low": float(low1), "high": float(high1)}
                 _pair2: Dict[str, Any] = {"i": int(i2 + 1), "j": int(j2 + 1), "low": float(low2), "high": float(high2)}
                 if pdb_atom_meta:
@@ -1143,6 +1158,7 @@ def cli(
                     "spin": resolved_spin,
                     "backend": calc_cfg.get("backend", backend),
                     "model": calc_cfg.get("model"),
+                    **calculator_provenance(calc_cfg),
                     "solvent": calc_cfg.get("solvent", "none"),
                     "max_step_size_angstrom": float(max_step_size),
                     "n_grid_points": len(df),
@@ -1156,6 +1172,31 @@ def cli(
                         "scan2d_landscape_html": "scan2d_landscape.html",
                     },
                 }
+                # Additive truthful outcomes: every attempted point, with its
+                # seed-eligibility, plus an aggregate scientific_status. Legacy
+                # ``status`` stays "completed" (the process completed).
+                _point_outcomes = [
+                    make_scan_point(
+                        f"i{rec.get('i')}_j{rec.get('j')}",
+                        executed=True,
+                        converged=rec.get("bias_converged"),
+                        energy=rec.get("energy_hartree"),
+                        artifact_written=bool(rec.get("artifact_written", False)),
+                    )
+                    for rec in records
+                ]
+                _sci, _sci_reasons = scan_scientific_status(_point_outcomes)
+                result_data["execution_status"] = "completed"
+                result_data["n_points_attempted"] = len(_point_outcomes)
+                result_data["n_points_usable"] = sum(
+                    1 for p in _point_outcomes if p.seed_eligible
+                )
+                attach_outcomes(
+                    result_data,
+                    point_outcomes=_point_outcomes,
+                    scientific_status=_sci,
+                    scientific_status_reasons=_sci_reasons,
+                )
                 write_result_json(
                     final_dir, result_data,
                     command="scan2d",

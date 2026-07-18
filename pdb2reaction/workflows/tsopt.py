@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import click
+from pdb2reaction.core.output import emit
 import numpy as np
 import torch
 from ase import Atoms
@@ -21,10 +22,13 @@ from ase.io import write
 from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
+from pysisyphus.intcoords.exceptions import RebuiltInternalsException
 from pysisyphus.constants import BOHR2ANG, AMU2AU, AU2EV
 from pysisyphus.calculators.Dimer import Dimer  # Dimer calculator (orientation-projected forces)
 from pysisyphus.tr_projection import (
     active_tr_basis,
+    compact_project_hessian,
+    full_cartesian_tr_basis,
     normalize_tr_projection_mode,
     project_hessian_inplace,
 )
@@ -67,8 +71,10 @@ from pdb2reaction.core.utils import (
     _parse_freeze_atoms,
     merge_freeze_atom_indices,
     echo_resolved_device,
+    PreparedInputStructure,
     emit_optimizer_terminal_status,
     optimizer_cycle_count,
+    optimizer_terminal_status,
 )
 from pdb2reaction.cli.common_options import (
     add_ml_charge_spin_options,
@@ -90,6 +96,17 @@ from pdb2reaction.workflows.freq import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _set_cartesian_flatten_coords(geom, cart_coords: np.ndarray) -> None:
+    """Install a Cartesian TS trial and accept a completed internals rebuild."""
+
+    try:
+        geom.cart_coords = np.asarray(cart_coords, dtype=float).reshape(-1)
+    except RebuiltInternalsException:
+        # The Cartesian setter installs the requested geometry before it uses
+        # this exception to report that its primitive internals were rebuilt.
+        geom.clear()
 
 
 # TS optimizer class map. All three classes inherit from TSHessianOptimizer
@@ -251,11 +268,15 @@ def _mw_projected_hessian_inplace(H: torch.Tensor,
                                   masses_au_t: torch.Tensor,
                                   freeze_idx: Optional[List[int]] = None,
                                   tr_projection: str = "constrained",
-                                  projection_info: Optional[dict] = None) -> torch.Tensor:
+                                  projection_info: Optional[dict] = None,
+                                  compact: bool = False):
     """
     Mass-weight H in-place, optionally restrict to active DOF subspace (PHVA) and
     project out TR motions (in that subspace), also in-place. Symmetrizes after TR projection.
-    Returns the (possibly reduced) Hessian to be diagonalized.
+    Returns the active Hessian to be diagonalized.  With ``compact=True``,
+    diagonalization is performed in the true orthogonal complement of the
+    rigid basis and ``(H_compact, lift)`` is returned.  This avoids selecting
+    artificial zero eigenvectors introduced by a same-size ``P H P`` matrix.
     """
     if H.dtype != torch.float64:
         H = H.to(dtype=torch.float64)
@@ -280,7 +301,11 @@ def _mw_projected_hessian_inplace(H: torch.Tensor,
                 active_idx,
                 mode=tr_projection,
             )
-            project_hessian_inplace(H, Q)
+            if compact:
+                H, lift = compact_project_hessian(H, Q)
+            else:
+                project_hessian_inplace(H, Q)
+                lift = None
             if projection_info is not None:
                 projection_info.clear()
                 projection_info.update(info.as_dict())
@@ -299,7 +324,11 @@ def _mw_projected_hessian_inplace(H: torch.Tensor,
                 list(range(int(N))),
                 mode=tr_projection,
             )
-            project_hessian_inplace(H, Q)
+            if compact:
+                H, lift = compact_project_hessian(H, Q)
+            else:
+                project_hessian_inplace(H, Q)
+                lift = None
             if projection_info is not None:
                 projection_info.clear()
                 projection_info.update(info.as_dict())
@@ -309,7 +338,7 @@ def _mw_projected_hessian_inplace(H: torch.Tensor,
             del Q
         if torch.cuda.is_available() and device.type == "cuda":
             torch.cuda.empty_cache()
-        return H
+        return (H, lift) if compact else H
 
 
 def _omega2_to_freq_cm(omega2: torch.Tensor) -> float:
@@ -336,25 +365,30 @@ def _mode_direction_by_root(H: torch.Tensor,
     """
     with torch.no_grad():
         # In-place: mass weight + (active-subspace) TR projection
-        Hmw_proj = _mw_projected_hessian_inplace(
+        Hmw_proj, lift = _mw_projected_hessian_inplace(
             H,
             coords_bohr_t,
             masses_au_t,
             freeze_idx=freeze_idx,
             tr_projection=tr_projection,
             projection_info=projection_info,
+            compact=True,
         )
+        if Hmw_proj.shape[0] == 0:
+            raise RuntimeError(
+                "No Dimer orientation remains after rigid-null projection."
+            )
 
         # Solve eigenproblem in the (possibly reduced) space
         if int(root) == 0:
             try:
                 w, v_mw_sub = torch.lobpcg(Hmw_proj, k=1, largest=False)
-                u_mw_sub = v_mw_sub[:, 0]
+                u_mw_reduced = v_mw_sub[:, 0]
                 omega2 = w[0]
             except Exception:
                 evals_f, evecs_f = torch.linalg.eigh(Hmw_proj)
                 pick = int(torch.argmin(evals_f).item())
-                u_mw_sub = evecs_f[:, pick]
+                u_mw_reduced = evecs_f[:, pick]
                 omega2 = evals_f[pick]
                 del evals_f, evecs_f
         else:
@@ -366,9 +400,13 @@ def _mode_direction_by_root(H: torch.Tensor,
             else:
                 k = max(0, min(int(root), neg_inds.numel() - 1))
                 pick = int(neg_inds[k].item())
-            u_mw_sub = evecs_mw[:, pick]
+            u_mw_reduced = evecs_mw[:, pick]
             omega2 = evals[pick]
             del evals, evecs_mw
+
+        u_mw_sub = (
+            lift.T @ u_mw_reduced if lift is not None else u_mw_reduced
+        )
 
         # Embed back to full 3N (frozen DOF as zeros) if we solved in subspace
         N = coords_bohr_t.shape[0]
@@ -393,7 +431,7 @@ def _mode_direction_by_root(H: torch.Tensor,
         mode = v.reshape(-1, 3).detach().cpu().numpy()
         freq_cm = _omega2_to_freq_cm(omega2)
 
-        del masses_amu_t, m3, inv_sqrt_m, v, u_mw, u_mw_sub, omega2
+        del masses_amu_t, m3, inv_sqrt_m, v, u_mw, u_mw_sub, u_mw_reduced, omega2
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         return mode, freq_cm
@@ -581,14 +619,14 @@ def _flatten_once_with_modes_for_geom(
         plus = ref + disp
         minus = ref - disp
 
-        geom.coords = plus.reshape(-1)
+        _set_cartesian_flatten_coords(geom, plus)
         E_plus = _calc_energy(geom, calc_kwargs)
 
-        geom.coords = minus.reshape(-1)
+        _set_cartesian_flatten_coords(geom, minus)
         E_minus = _calc_energy(geom, calc_kwargs)
 
         use_plus = E_plus <= E_minus
-        geom.coords = (plus if use_plus else minus).reshape(-1)
+        _set_cartesian_flatten_coords(geom, plus if use_plus else minus)
         E_keep = E_plus if use_plus else E_minus
         delta_e = E_keep - E_ref
         click.echo(
@@ -606,7 +644,8 @@ def _mw_tr_project_active_inplace(H: torch.Tensor,
                                   masses_all_au_t: torch.Tensor,
                                   active_idx: Sequence[int],
                                   tr_projection: str = "constrained",
-                                  projection_info: Optional[dict] = None) -> torch.Tensor:
+                                  projection_info: Optional[dict] = None,
+                                  compact: bool = False):
     """
     Mass-weight & project TR in the *active* subspace (in-place; no explicit symmetrization).
     """
@@ -625,12 +664,16 @@ def _mw_tr_project_active_inplace(H: torch.Tensor,
             active_idx,
             mode=tr_projection,
         )
-        project_hessian_inplace(H, Q)
+        if compact:
+            H, lift = compact_project_hessian(H, Q)
+        else:
+            project_hessian_inplace(H, Q)
+            lift = None
         if projection_info is not None:
             projection_info.clear()
             projection_info.update(info.as_dict())
         del masses_act_au_t, masses_amu_t, m3, inv_sqrt_m_col, inv_sqrt_m_row, Q
-        return H
+        return (H, lift) if compact else H
 
 
 
@@ -653,15 +696,19 @@ def _mode_direction_by_root_from_Hact(H: torch.Tensor,
         coords_all = torch.as_tensor(coords_bohr.reshape(-1, 3), dtype=H.dtype, device=device)
         masses_act_au = masses_au_t[active_idx].to(device=device, dtype=H.dtype)
         # mass-weight + TR in active space
-        Hmw = H.clone()
-        _mw_tr_project_active_inplace(
-            Hmw,
+        Hmw, lift = _mw_tr_project_active_inplace(
+            H.clone(),
             coords_all,
             masses_au_t,
             active_idx,
             tr_projection=tr_projection,
             projection_info=projection_info,
+            compact=True,
         )
+        if Hmw.shape[0] == 0:
+            raise RuntimeError(
+                "No Dimer orientation remains after rigid-null projection."
+            )
         # Bounded-peak symmetrization (helper writes both triangles).
         from pdb2reaction.core.utils import symmetrize_inplace
         symmetrize_inplace(Hmw)
@@ -670,12 +717,12 @@ def _mode_direction_by_root_from_Hact(H: torch.Tensor,
         if int(root) == 0:
             try:
                 w, V = torch.lobpcg(Hmw, k=1, largest=False)
-                u_mw = V[:, 0]
+                u_mw_reduced = V[:, 0]
                 omega2 = w[0]
             except Exception:
                 vals, vecs = torch.linalg.eigh(Hmw)
                 pick = int(torch.argmin(vals).item())
-                u_mw = vecs[:, pick]
+                u_mw_reduced = vecs[:, pick]
                 omega2 = vals[pick]
                 del vals, vecs
         else:
@@ -687,9 +734,11 @@ def _mode_direction_by_root_from_Hact(H: torch.Tensor,
             else:
                 k = max(0, min(int(root), neg_inds.numel() - 1))
                 pick = int(neg_inds[k].item())
-            u_mw = vecs[:, pick]
+            u_mw_reduced = vecs[:, pick]
             omega2 = vals[pick]
             del vals, vecs
+
+        u_mw = lift.T @ u_mw_reduced if lift is not None else u_mw_reduced
 
         # Mass un-weight to Cartesian in the active space, then embed to full 3N
         masses_act_amu = (masses_act_au / AMU2AU).to(dtype=H.dtype, device=device)
@@ -704,7 +753,8 @@ def _mode_direction_by_root_from_Hact(H: torch.Tensor,
         mode = full.reshape(-1, 3).detach().cpu().numpy()
         freq_cm = _omega2_to_freq_cm(omega2)
 
-        del coords_all, masses_act_au, masses_act_amu, m3, v_cart_act, full, mask_t, Hmw, u_mw, omega2
+        del coords_all, masses_act_au, masses_act_amu, m3, v_cart_act
+        del full, mask_t, Hmw, u_mw, u_mw_reduced, omega2, lift
         if torch.cuda.is_available() and H.is_cuda:
             torch.cuda.empty_cache()
         return mode, freq_cm
@@ -806,7 +856,7 @@ def _echo_imaginary_modes(
     Print and return imaginary-mode indices.
     """
     neg_idx, ims = _imaginary_mode_indices_and_values(freqs_cm, neg_freq_thresh_cm)
-    click.echo(f"[Imaginary modes] n={len(neg_idx)}  ({ims})", narrative=True)
+    emit(f"[Imaginary modes] n={len(neg_idx)}  ({ims})", narrative=True)
     return neg_idx
 
 
@@ -881,6 +931,22 @@ def _write_all_imaginary_modes(
 
 #                   HessianDimer (Hessian Guided Dimer)
 
+def _tsopt_terminal_status(optimizer: Any, *, saddle_verified: bool) -> str:
+    """Compose a TS optimizer's public status (M14/P14).
+
+    Precedence, per the C7 contract: a stall wins (energy-plateau outcome is
+    never a converged saddle); otherwise a genuine first-order saddle
+    (``is_converged`` and ``saddle_verified``) is ``converged``; anything else
+    is ``not_converged``.  n_imag / stop_reason are recorded separately so a
+    stall does not hide saddle-order evidence.
+    """
+    if getattr(optimizer, "is_stalled", False):
+        return "stalled"
+    if getattr(optimizer, "is_converged", False) and saddle_verified:
+        return "converged"
+    return "not_converged"
+
+
 class HessianDimer:
     """
     Hessian Guided Dimer TS search with periodic Hessian updates.
@@ -934,8 +1000,10 @@ class HessianDimer:
                  ) -> None:
 
         self.fn = fn
-        self.out_dir = Path(out_dir); self.out_dir.mkdir(parents=True, exist_ok=True)
-        self.vib_dir = self.out_dir / "vib"; self.vib_dir.mkdir(parents=True, exist_ok=True)
+        self.out_dir = Path(out_dir)
+        self.out_dir.mkdir(parents=True, exist_ok=True)
+        self.vib_dir = self.out_dir / "vib"
+        self.vib_dir.mkdir(parents=True, exist_ok=True)
         # Use prepared_input.source_path if available (may be overridden by --ref-pdb),
         # otherwise fall back to fn directly.
         _src = (prepared_input.source_path if prepared_input is not None else Path(fn))
@@ -969,6 +1037,13 @@ class HessianDimer:
         # result.json status reflects whether the TS-opt actually converged.
         self.is_converged = False
 
+        # Additive M14/P14 stall state propagated from a child LBFGS whose
+        # energy plateaued (energy stopped decreasing while its force/step
+        # criteria stayed unmet).  A stall stops all later segments/loops and
+        # is never reported as a converged TS.
+        self.is_stalled = False
+        self.stop_reason = ""
+
         # UMA settings
         self.uma_kwargs = dict(charge=0, spin=1, model=DEFAULT_UMA_MODEL,
                                task_name="omol", device="auto") if uma_kwargs is None else dict(uma_kwargs)
@@ -983,7 +1058,7 @@ class HessianDimer:
         self.masses_au_t = torch.as_tensor(self.masses_amu * AMU2AU, dtype=torch.float32)
 
         # Preserve freeze list (for PHVA)
-        self.freeze_atoms: List[int] = list(gkw.get("freeze_atoms", [])) if "freeze_atoms" in gkw else []
+        self.freeze_atoms: List[int] = [int(i) for i in self.geom.freeze_atoms]
 
         # Device
         self.device = _torch_device(device)
@@ -997,6 +1072,15 @@ class HessianDimer:
 
         self._raw_hessian_cache_cpu: Optional[torch.Tensor] = None
         self._raw_hessian_coords_cpu: Optional[np.ndarray] = None
+
+    @property
+    def termination_status(self) -> str:
+        """Public terminal outcome: ``stalled`` > ``converged`` > ``not_converged``."""
+        if self.is_stalled:
+            return "stalled"
+        if self.is_converged:
+            return "converged"
+        return "not_converged"
 
     def _cache_raw_hessian_cpu(self, H: torch.Tensor) -> None:
         """
@@ -1071,11 +1155,38 @@ class HessianDimer:
         # Dimer calculator using current mode as initial N
         calc_sp = create_calculator(**self.uma_kwargs)
 
-        # Merge user dimer kwargs (but enforce N_raw & write_orientations)
+        n_atoms = len(self.geom.atomic_numbers)
+        active_idx = _active_indices(n_atoms, self.freeze_atoms)
+        rigid_masses = self.masses_au_t.detach().to(device="cpu", dtype=torch.float64)
+        projection_mode = self.tr_projection
+        rigid_basis, projection = full_cartesian_tr_basis(
+            torch.as_tensor(self.geom.cart_coords.reshape(-1, 3), dtype=torch.float64),
+            rigid_masses,
+            active_idx,
+            mode=projection_mode,
+        )
+
+        def rigid_basis_at(coords_flat: np.ndarray) -> np.ndarray:
+            basis, _ = full_cartesian_tr_basis(
+                torch.as_tensor(coords_flat.reshape(-1, 3), dtype=torch.float64),
+                rigid_masses,
+                active_idx,
+                mode=projection_mode,
+            )
+            return basis.detach().cpu().numpy()
+
+        self.rigid_projection_info.clear()
+        self.rigid_projection_info.update(projection.as_dict())
+
+        # Merge user dimer kwargs, while enforcing the geometry's exact Cartesian
+        # constraints and its selected rigid-null treatment.
         dimer_kwargs = dict(self.dimer_kwargs)
         dimer_kwargs.update({
             "calculator": calc_sp,
             "N_raw": str(self.mode_path),
+            "frozen_atoms": self.freeze_atoms,
+            "rigid_basis": rigid_basis.detach().cpu().numpy(),
+            "rigid_basis_getter": rigid_basis_at,
             "write_orientations": False,
             "seed": 0,
             "mem": self.mem,
@@ -1097,6 +1208,11 @@ class HessianDimer:
         opt.run()
         steps = opt.cur_cycle + 1
         converged = opt.is_converged
+        # Propagate an energy-plateau stall from the child LBFGS (M14/P14). A
+        # stalled child is not converged; the caller stops all later segments.
+        if getattr(opt, "is_stalled", False):
+            self.is_stalled = True
+            self.stop_reason = getattr(opt, "stop_reason", "") or self.stop_reason
         self.geom.set_calculator(None)
 
         # Append to concatenated trajectory if dump enabled
@@ -1135,6 +1251,9 @@ class HessianDimer:
             steps, ok = self._dimer_segment(threshold, steps_this)
             self._cycles_spent += steps
             steps_in_this_call += steps
+            # A stalled child stops all further segments in this loop (M14/P14).
+            if self.is_stalled:
+                break
             if ok:
                 loop_converged = True
                 if np.array_equal(self.geom.cart_coords, coords_before):
@@ -1165,7 +1284,7 @@ class HessianDimer:
                     tr_projection=self.tr_projection,
                     projection_info=self.rigid_projection_info,
                 )
-            click.echo(f"[Dimer mode] root={self.root} freq={mode_freq_cm:+.2f} cm^-1", narrative=True)
+            emit(f"[Dimer mode] root={self.root} freq={mode_freq_cm:+.2f} cm^-1", narrative=True)
             np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
             del H, coords_bohr_t, mode_xyz, mode_freq_cm
             if torch.cuda.is_available():
@@ -1288,15 +1407,17 @@ class HessianDimer:
             plus = ref + disp
             minus = ref - disp
 
-            self.geom.coords = plus.reshape(-1)
+            _set_cartesian_flatten_coords(self.geom, plus)
             E_plus = _calc_energy(self.geom, self.uma_kwargs)
 
-            self.geom.coords = minus.reshape(-1)
+            _set_cartesian_flatten_coords(self.geom, minus)
             E_minus = _calc_energy(self.geom, self.uma_kwargs)
 
             # keep lower-energy side and continue from there
             use_plus = E_plus <= E_minus
-            self.geom.coords = (plus if use_plus else minus).reshape(-1)
+            _set_cartesian_flatten_coords(
+                self.geom, plus if use_plus else minus
+            )
             E_keep = E_plus if use_plus else E_minus
             delta_e = E_keep - E_ref
             click.echo(
@@ -1337,7 +1458,7 @@ class HessianDimer:
                 tr_projection=self.tr_projection,
                 projection_info=self.rigid_projection_info,
             )
-        click.echo(f"[Dimer mode] root={self.root} freq={mode_freq_cm:+.2f} cm^-1", narrative=True)
+        emit(f"[Dimer mode] root={self.root} freq={mode_freq_cm:+.2f} cm^-1", narrative=True)
         np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
         del mode_xyz, coords_bohr_t, H, mode_freq_cm
         if torch.cuda.is_available():
@@ -1355,37 +1476,42 @@ class HessianDimer:
         _steps_loose, zero_step_loose, conv_loose = self._dimer_loop(self.thresh_loose)
         self.is_converged = conv_loose
 
-        # (3) Update mode & normal loop
-        H = self._calc_full_hessian_cached(allow_reuse=zero_step_loose)
-        coords_bohr_t = torch.as_tensor(self.geom.cart_coords.reshape(-1, 3),
-                                        dtype=H.dtype, device=H.device)
-        if H.size(0) == 3 * N:
-            mode_xyz, mode_freq_cm = _mode_direction_by_root(
-                H, coords_bohr_t, self.masses_au_t,
-                root=self.root, freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None,
-                tr_projection=self.tr_projection,
-                projection_info=self.rigid_projection_info,
-            )
-        else:
-            click.echo("[CHECK] Using active-block Hessian from UMA (partial Hessian). Skip full-space TR check.")
-            mode_xyz, mode_freq_cm = _mode_direction_by_root_from_Hact(
-                H, self.geom.cart_coords.reshape(-1, 3), self.geom.atomic_numbers,
-                self.masses_au_t, active_idx, self.device, root=self.root,
-                tr_projection=self.tr_projection,
-                projection_info=self.rigid_projection_info,
-            )
-        click.echo(f"[Dimer mode] root={self.root} freq={mode_freq_cm:+.2f} cm^-1", narrative=True)
-        np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
-        del mode_xyz, coords_bohr_t, H, mode_freq_cm
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+        # (3) Update mode & normal loop. A stalled loose loop stops all further
+        # optimization work (M14/P14): skip the Hessian/mode update and the
+        # normal + flatten loops so a stalled TS search is never retried.
+        zero_step_normal = zero_step_loose
+        if not self.is_stalled:
+            H = self._calc_full_hessian_cached(allow_reuse=zero_step_loose)
+            coords_bohr_t = torch.as_tensor(self.geom.cart_coords.reshape(-1, 3),
+                                            dtype=H.dtype, device=H.device)
+            if H.size(0) == 3 * N:
+                mode_xyz, mode_freq_cm = _mode_direction_by_root(
+                    H, coords_bohr_t, self.masses_au_t,
+                    root=self.root, freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None,
+                    tr_projection=self.tr_projection,
+                    projection_info=self.rigid_projection_info,
+                )
+            else:
+                click.echo("[CHECK] Using active-block Hessian from UMA (partial Hessian). Skip full-space TR check.")
+                mode_xyz, mode_freq_cm = _mode_direction_by_root_from_Hact(
+                    H, self.geom.cart_coords.reshape(-1, 3), self.geom.atomic_numbers,
+                    self.masses_au_t, active_idx, self.device, root=self.root,
+                    tr_projection=self.tr_projection,
+                    projection_info=self.rigid_projection_info,
+                )
+            emit(f"[Dimer mode] root={self.root} freq={mode_freq_cm:+.2f} cm^-1", narrative=True)
+            np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
+            del mode_xyz, coords_bohr_t, H, mode_freq_cm
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
-        click.echo("Normal dimer loop...")
-        _steps_normal, zero_step_normal, conv_normal = self._dimer_loop(self.thresh)
-        self.is_converged = conv_normal
+            click.echo("Normal dimer loop...")
+            _steps_normal, zero_step_normal, conv_normal = self._dimer_loop(self.thresh)
+            self.is_converged = conv_normal
 
-        # (4) Flatten loop — exact Hessian each iteration & optional Bofill update
-        if self.flatten_max_iter > 0:
+        # (4) Flatten loop — exact Hessian each iteration & optional Bofill update.
+        # A stalled optimization never enters the flatten/retry loop (M14/P14).
+        if self.flatten_max_iter > 0 and not self.is_stalled:
             if self.flatten_loop_bofill:
                 click.echo("Flatten loop with Bofill-updated active Hessian (flatten displacements only)...")
             else:
@@ -1416,7 +1542,7 @@ class HessianDimer:
                 )
                 n_imag = int(np.sum(freqs_cm < -abs(self.neg_freq_thresh_cm)))
                 ims = [float(x) for x in freqs_cm if x < -abs(self.neg_freq_thresh_cm)]
-                click.echo(f"[Imaginary modes] n={n_imag}  ({ims})", narrative=True)
+                emit(f"[Imaginary modes] n={n_imag}  ({ims})", narrative=True)
                 if n_imag <= 1:
                     break
 
@@ -1448,12 +1574,17 @@ class HessianDimer:
                     tr_projection=self.tr_projection,
                     projection_info=self.rigid_projection_info,
                 )
-                click.echo(f"[Dimer mode] root={self.root} freq={mode_freq_cm:+.2f} cm^-1", narrative=True)
+                emit(f"[Dimer mode] root={self.root} freq={mode_freq_cm:+.2f} cm^-1", narrative=True)
                 np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
 
                 # (e) Re-optimize with Dimer (consumes global cycle budget)
                 _steps_flat, zero_step_flat, conv_flat = self._dimer_loop(self.thresh)
                 self.is_converged = conv_flat
+
+                # A stall inside the flatten loop stops the remaining iterations
+                # (M14/P14): do not keep retrying a stalled optimization.
+                if self.is_stalled:
+                    break
 
                 # (f) After dimer optimization, recompute an exact Hessian for the next iteration
                 H = self._calc_full_hessian_cached(allow_reuse=zero_step_flat)
@@ -1465,8 +1596,15 @@ class HessianDimer:
         # Surface non-convergence: if the last optimization loop exhausted the
         # global cycle budget without the optimizer reporting convergence, the
         # final geometry is NOT a converged TS. Emit a visible WARNING (the
-        # result.json status is set from self.is_converged at the call site).
-        if not self.is_converged:
+        # result.json status is set from self.termination_status at the call
+        # site). A stall is a distinct energy-plateau outcome (M14/P14).
+        if self.is_stalled:
+            click.echo(
+                f"[tsopt] WARNING: TS optimization stalled (energy plateau): "
+                f"{self.stop_reason}",
+                err=True,
+            )
+        elif not self.is_converged:
             click.echo(
                 f"[tsopt] WARNING: max cycles reached without convergence "
                 f"(max_total_cycles={self.max_total_cycles}, "
@@ -1513,7 +1651,7 @@ class HessianDimer:
 
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-        click.echo(f"[DONE] Saved final geometry → {final_xyz}", detail=True)
+        emit(f"[DONE] Saved final geometry → {final_xyz}", detail=True)
         click.echo(f"[DONE] Mode files → {self.vib_dir}")
 
 
@@ -2030,13 +2168,15 @@ def cli(
                     prepared_input=prepared_input,
                 )
 
-                click.echo("\n====== TS optimization (Hessian Guided Dimer) ======\n", narrative=True)
+                emit("\n====== TS optimization (Hessian Guided Dimer) ======\n", narrative=True)
                 runner.run()
                 emit_optimizer_terminal_status(
                     "tsopt",
                     converged=getattr(runner, "is_converged", None),
                     cycles=getattr(runner, "_cycles_spent", None),
                     max_cycles=int(opt_cfg.get("max_cycles", 0)) or None,
+                    stalled=getattr(runner, "is_stalled", False),
+                    stop_reason=getattr(runner, "stop_reason", None) or None,
                 )
 
                 needs_pdb = source_path.suffix.lower() == ".pdb"
@@ -2096,10 +2236,8 @@ def cli(
                     _dimer_neg_thresh = float(simple_cfg.get("neg_freq_thresh_cm", 5.0))
                     _dimer_imag = [float(f) for f in _dimer_freqs if f < -abs(_dimer_neg_thresh)]
                     _tsopt_result_data = {
-                        "status": (
-                            "converged"
-                            if runner.is_converged and len(_dimer_imag) == 1
-                            else "not_converged"
+                        "status": _tsopt_terminal_status(
+                            runner, saddle_verified=(len(_dimer_imag) == 1)
                         ),
                         "energy_hartree": _dimer_energy,
                         "n_imaginary_modes": len(_dimer_imag),
@@ -2119,6 +2257,11 @@ def cli(
                         "files": {"final_geometry_xyz": "final_geometry.xyz"},
                         "rigid_projection": dict(runner.rigid_projection_info),
                     }
+                    # Additive stop_reason, present only for a non-converged
+                    # stop so a converged TS run's JSON stays byte-compatible.
+                    _dimer_stop_reason = getattr(runner, "stop_reason", "") or ""
+                    if _dimer_stop_reason:
+                        _tsopt_result_data["stop_reason"] = _dimer_stop_reason
                     for ext in (".pdb", ".cif", ".gjf"):
                         f = out_dir_path / f"final_geometry{ext}"
                         if f.exists():
@@ -2180,13 +2323,15 @@ def cli(
 
                 optimizer = TSOPT_CLASS_MAP[kind](geometry, **rsirfo_kwargs)
 
-                click.echo("\n====== TS optimization (" + TSOPT_DISPLAY_NAME.get(kind, kind.upper()) + ") ======\n", narrative=True)
+                emit("\n====== TS optimization (" + TSOPT_DISPLAY_NAME.get(kind, kind.upper()) + ") ======\n", narrative=True)
                 optimizer.run()
                 emit_optimizer_terminal_status(
                     "tsopt",
                     converged=getattr(optimizer, "is_converged", None),
                     cycles=optimizer_cycle_count(optimizer),
                     max_cycles=int(opt_cfg.get("max_cycles", 0)) or None,
+                    stalled=getattr(optimizer, "is_stalled", False),
+                    stop_reason=getattr(optimizer, "stop_reason", None) or None,
                 )
                 last_optimizer = optimizer
 
@@ -2203,7 +2348,10 @@ def cli(
 
                 def _calc_freqs_and_modes() -> Tuple[np.ndarray, torch.Tensor]:
                     H = _calc_full_hessian_torch(geometry, calc_kwargs_for_rsirfo, device)
-                    from pdb2reaction.io.hessian_cache import store as _hess_store
+                    from pdb2reaction.io.hessian_cache import (
+                        store as _hess_store,
+                        identity_from_context as _hess_identity,
+                    )
                     freeze_atoms = list(geom_cfg.get("freeze_atoms", []))
                     if freeze_atoms and H.shape[0] < 3 * len(geometry.atomic_numbers):
                         all_dofs = set(range(3 * len(geometry.atomic_numbers)))
@@ -2213,6 +2361,8 @@ def cli(
                         _active_dofs = sorted(all_dofs - frozen_dofs)
                     else:
                         _active_dofs = None
+                    _ts_calc_cfg = dict(calc_cfg)
+                    _ts_calc_cfg.setdefault("freeze_atoms", freeze_atoms)
                     _hess_store(
                         "ts",
                         H,
@@ -2221,6 +2371,7 @@ def cli(
                             "cart_coords": geometry.cart_coords,
                             "source": "tsopt_exact",
                         },
+                        identity=_hess_identity(geometry, _ts_calc_cfg, role="ts"),
                     )
                     freqs_local, modes_local = _frequencies_cm_and_modes(
                         H,
@@ -2249,7 +2400,7 @@ def cli(
                 neg_mask = freqs_cm < -abs(neg_freq_thresh_cm)
                 n_imag = int(np.sum(neg_mask))
                 ims = [float(x) for x in freqs_cm if x < -abs(neg_freq_thresh_cm)]
-                click.echo(f"[Imaginary modes] n={n_imag}  ({ims})", narrative=True)
+                emit(f"[Imaginary modes] n={n_imag}  ({ims})", narrative=True)
 
                 # A local minimum plus its Hessian does not identify the
                 # intended neighboring saddle.  When the path supplied that
@@ -2265,6 +2416,7 @@ def cli(
                 )
                 if (
                     not last_optimizer.is_converged
+                    and not getattr(last_optimizer, "is_stalled", False)
                     and reference_mode is not None
                     and (n_imag <= 1 or target_mode_is_negative is False)
                 ):
@@ -2300,7 +2452,7 @@ def cli(
                             optimizer = TSOPT_CLASS_MAP[kind](
                                 geometry, **restart_kwargs
                             )
-                            click.echo(
+                            emit(
                                 "\n====== TS optimization ("
                                 + TSOPT_DISPLAY_NAME.get(kind, kind.upper())
                                 + ", path-mode restart "
@@ -2317,6 +2469,8 @@ def cli(
                                 max_cycles=(
                                     int(opt_cfg.get("max_cycles", 0)) or None
                                 ),
+                                stalled=getattr(optimizer, "is_stalled", False),
+                                stop_reason=getattr(optimizer, "stop_reason", None) or None,
                             )
                             last_optimizer = optimizer
                             geometry.set_calculator(None)
@@ -2340,7 +2494,7 @@ def cli(
                                 ),
                             }
                             saddle_multistart_attempts.append(attempt)
-                            click.echo(
+                            emit(
                                 "[path-mode restart] "
                                 f"source={mode_source}, "
                                 f"displacement={amplitude_ang:+.2f} Å, "
@@ -2393,7 +2547,7 @@ def cli(
                                 for x in freqs_cm
                                 if x < -abs(neg_freq_thresh_cm)
                             ]
-                            click.echo(
+                            emit(
                                 "[path-mode restart] Retaining the best "
                                 "path-negative higher-order candidate for "
                                 "bounded extra-mode flattening.",
@@ -2439,7 +2593,11 @@ def cli(
                         "path-correlated mode is not negative.",
                         err=True,
                     )
-                if flatten_max_iter > 0 and n_imag > 1:
+                if (
+                    flatten_max_iter > 0
+                    and n_imag > 1
+                    and not getattr(last_optimizer, "is_stalled", False)
+                ):
                     click.echo("[flatten] Extra imaginary modes detected; starting RSIRFO flatten loop.")
                     masses_amu = _safe_masses_amu(geometry.atomic_numbers)
                     roots = rsirfo_kwargs.get("roots", [0])
@@ -2466,7 +2624,7 @@ def cli(
                         branch_optimizer = TSOPT_CLASS_MAP[kind](
                             geometry, **retry_kwargs
                         )
-                        click.echo(
+                        emit(
                             "\n====== TS optimization ("
                             + TSOPT_DISPLAY_NAME.get(kind, kind.upper())
                             + f", flatten retry {branch_label}) ======\n",
@@ -2482,6 +2640,8 @@ def cli(
                             max_cycles=(
                                 int(opt_cfg.get("max_cycles", 0)) or None
                             ),
+                            stalled=getattr(branch_optimizer, "is_stalled", False),
+                            stop_reason=getattr(branch_optimizer, "stop_reason", None) or None,
                         )
                         geometry.set_calculator(None)
                         branch_freqs, branch_modes = _calc_freqs_and_modes()
@@ -2494,7 +2654,7 @@ def cli(
                             for value in branch_freqs
                             if value < -abs(neg_freq_thresh_cm)
                         ]
-                        click.echo(
+                        emit(
                             f"[Imaginary modes:{branch_label}] "
                             f"n={branch_n_imag}  ({branch_ims})",
                             narrative=True,
@@ -2619,7 +2779,7 @@ def cli(
                             )
                             if alternate_score < primary_score:
                                 selected_result = alternate_result
-                            click.echo(
+                            emit(
                                 "[flatten] Signed-branch probe selected "
                                 f"{selected_result['label']} "
                                 f"(primary={primary_score}, "
@@ -2734,7 +2894,9 @@ def cli(
                         geometry, calc_cfg, calc=calc
                     )
                     _tsopt_result_data = {
-                        "status": "converged" if last_optimizer.is_converged else "not_converged",
+                        "status": _tsopt_terminal_status(
+                            last_optimizer, saddle_verified=True
+                        ),
                         "energy_hartree": _rsirfo_energy,
                         "n_imaginary_modes": len(_rsirfo_imag),
                         "imaginary_frequencies_cm": _rsirfo_imag,
@@ -2806,6 +2968,21 @@ def cli(
                                     False,
                                 )
                             ),
+                            "initial_reference_root_index": getattr(
+                                last_optimizer,
+                                "_initial_reference_root_index",
+                                None,
+                            ),
+                            "initial_reference_root_overlap": getattr(
+                                last_optimizer,
+                                "_initial_reference_root_overlap",
+                                None,
+                            ),
+                            "initial_reference_root_eigenvalue": getattr(
+                                last_optimizer,
+                                "_initial_reference_root_eigenvalue",
+                                None,
+                            ),
                             "last_recovery_mode_curvature": getattr(
                                 last_optimizer,
                                 "_last_recovery_mode_curvature",
@@ -2869,11 +3046,12 @@ def cli(
                 )
 
             # summary.md and key_* outputs are disabled.
-            click.echo(format_elapsed("[time] Elapsed Time for TS Opt", time_start), narrative=True)
+            emit(format_elapsed("[time] Elapsed Time for TS Opt", time_start), narrative=True)
 
             # result.json (if --out-json)
             if out_json:
-                from pdb2reaction.core.utils import write_result_json
+                from pdb2reaction.core.utils import calculator_provenance, write_result_json
+                _tsopt_result_data.update(calculator_provenance(calc_cfg))
                 write_result_json(
                     out_dir_path, _tsopt_result_data,
                     command="tsopt",

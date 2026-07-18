@@ -72,6 +72,9 @@ def test_cif_is_normalized_and_output_restores_auth_ids(tmp_path: Path) -> None:
         assert data["_atom_site.auth_seq_id"] == ["10001", "10001"]
         assert np.allclose([float(value) for value in data["_atom_site.Cartn_x"]], [3.0, 6.0])
     finally:
+        from pdb2reaction.io.structure_formats import unregister_coordinate_template
+
+        unregister_coordinate_template(out_pdb)
         prepared.cleanup()
 
 
@@ -88,6 +91,188 @@ def test_pdb_output_rejects_coordinate_field_overflow(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="fixed-column PDB range"):
         convert_xyz_to_pdb(xyz, ref, tmp_path / "out.pdb")
+
+
+@pytest.mark.parametrize(
+    ("invalid_frame", "message"),
+    [
+        ("1\nlate-count\nC 2.0 0.0 0.0\n", "Atom count mismatch"),
+        (
+            "2\npermuted\nO 2.0 0.0 0.0\nC 3.0 0.0 0.0\n",
+            "Ordered elements differ",
+        ),
+        (
+            "2\nnon-finite\nC nan 0.0 0.0\nO 3.0 0.0 0.0\n",
+            "non-finite",
+        ),
+        (
+            "2\noverflow\nC 9999.9999 0.0 0.0\nO 3.0 0.0 0.0\n",
+            "fixed-column PDB range",
+        ),
+    ],
+)
+def test_xyz_overlay_validates_all_frames_before_any_output_mutation(
+    tmp_path: Path,
+    invalid_frame: str,
+    message: str,
+) -> None:
+    from pdb2reaction.core.utils import convert_xyz_to_pdb, prepare_input_structure
+    from pdb2reaction.io.structure_formats import (
+        coordinate_template_for,
+        register_coordinate_template,
+    )
+
+    source = tmp_path / "topology.cif"
+    _write_minimal_cif(source)
+    xyz = tmp_path / "trajectory.xyz"
+    xyz.write_text(
+        "2\nvalid-first\nC 0.0 0.0 0.0\nO 1.0 0.0 0.0\n" + invalid_frame,
+        encoding="utf-8",
+    )
+    out_pdb = tmp_path / "existing.pdb"
+    out_cif = out_pdb.with_suffix(".cif")
+    out_pdb.write_bytes(b"existing-pdb-generation\n")
+    out_cif.write_bytes(b"existing-cif-generation\n")
+
+    prepared = prepare_input_structure(source)
+    try:
+        assert prepared.structure_template is not None
+        previous_template = prepared.structure_template
+        register_coordinate_template(out_pdb, previous_template)
+        with pytest.raises(ValueError, match=message):
+            convert_xyz_to_pdb(xyz, prepared.source_path, out_pdb)
+        assert out_pdb.read_bytes() == b"existing-pdb-generation\n"
+        assert out_cif.read_bytes() == b"existing-cif-generation\n"
+        assert coordinate_template_for(out_pdb) is previous_template
+    finally:
+        from pdb2reaction.io.structure_formats import unregister_coordinate_template
+
+        unregister_coordinate_template(out_pdb)
+        prepared.cleanup()
+
+
+def test_xyz_overlay_valid_multiframe_publishes_pdb_cif_and_registry(
+    tmp_path: Path,
+) -> None:
+    from Bio.PDB.MMCIF2Dict import MMCIF2Dict
+    from pdb2reaction.core.utils import convert_xyz_to_pdb, prepare_input_structure
+    from pdb2reaction.io.structure_formats import coordinate_template_for
+
+    source = tmp_path / "topology.cif"
+    _write_minimal_cif(source)
+    xyz = tmp_path / "trajectory.xyz"
+    xyz.write_text(
+        "2\nframe-1\nC 0.0 0.0 0.0\nO 1.0 0.0 0.0\n"
+        "2\nframe-2\nC 2.0 0.0 0.0\nO 3.0 0.0 0.0\n",
+        encoding="utf-8",
+    )
+    out_pdb = tmp_path / "trajectory.pdb"
+
+    prepared = prepare_input_structure(source)
+    try:
+        convert_xyz_to_pdb(xyz, prepared.source_path, out_pdb)
+        text = out_pdb.read_text(encoding="utf-8")
+        assert text.count("MODEL") == 2
+        assert text.count("ENDMDL") == 2
+        data = MMCIF2Dict(str(out_pdb.with_suffix(".cif")))
+        assert data["_atom_site.pdbx_PDB_model_num"] == ["1", "1", "2", "2"]
+        assert coordinate_template_for(out_pdb) is prepared.structure_template
+    finally:
+        from pdb2reaction.io.structure_formats import unregister_coordinate_template
+
+        unregister_coordinate_template(out_pdb)
+        prepared.cleanup()
+
+
+def test_xyz_overlay_companion_publish_failure_keeps_existing_generation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from pdb2reaction.core import result_commit
+    from pdb2reaction.core.utils import convert_xyz_to_pdb, prepare_input_structure
+    from pdb2reaction.io.structure_formats import (
+        coordinate_template_for,
+        register_coordinate_template,
+    )
+
+    source = tmp_path / "topology.cif"
+    _write_minimal_cif(source)
+    xyz = tmp_path / "frame.xyz"
+    xyz.write_text("2\nframe\nC 2 0 0\nO 3 0 0\n", encoding="utf-8")
+    out_pdb = tmp_path / "existing.pdb"
+    out_cif = out_pdb.with_suffix(".cif")
+    out_pdb.write_bytes(b"old-pdb\n")
+    out_cif.write_bytes(b"old-cif\n")
+
+    prepared = prepare_input_structure(source)
+    try:
+        assert prepared.structure_template is not None
+        previous_template = prepared.structure_template
+        register_coordinate_template(out_pdb, previous_template)
+        replace = result_commit._replace_exact
+
+        def fail_companion(staged: Path, destination: Path) -> None:
+            if destination == out_cif:
+                raise OSError("injected companion publication failure")
+            replace(staged, destination)
+
+        monkeypatch.setattr(result_commit, "_replace_exact", fail_companion)
+        with pytest.raises(result_commit.ResultCommitError, match="companion publication"):
+            convert_xyz_to_pdb(xyz, prepared.source_path, out_pdb)
+        assert out_pdb.read_bytes() == b"old-pdb\n"
+        assert out_cif.read_bytes() == b"old-cif\n"
+        assert coordinate_template_for(out_pdb) is previous_template
+    finally:
+        from pdb2reaction.io.structure_formats import unregister_coordinate_template
+
+        unregister_coordinate_template(out_pdb)
+        prepared.cleanup()
+
+
+def test_xyz_overlay_primary_publish_failure_rolls_back_companion(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from pdb2reaction.core import result_commit
+    from pdb2reaction.core.utils import convert_xyz_to_pdb, prepare_input_structure
+    from pdb2reaction.io.structure_formats import (
+        coordinate_template_for,
+        register_coordinate_template,
+    )
+
+    source = tmp_path / "topology.cif"
+    _write_minimal_cif(source)
+    xyz = tmp_path / "frame.xyz"
+    xyz.write_text("2\nframe\nC 2 0 0\nO 3 0 0\n", encoding="utf-8")
+    out_pdb = tmp_path / "existing.pdb"
+    out_cif = out_pdb.with_suffix(".cif")
+    out_pdb.write_bytes(b"old-pdb\n")
+    out_cif.write_bytes(b"old-cif\n")
+
+    prepared = prepare_input_structure(source)
+    try:
+        assert prepared.structure_template is not None
+        previous_template = prepared.structure_template
+        register_coordinate_template(out_pdb, previous_template)
+        replace = result_commit._replace_exact
+        failed = False
+
+        def fail_primary_once(staged: Path, destination: Path) -> None:
+            nonlocal failed
+            if destination == out_pdb and not failed:
+                failed = True
+                raise OSError("injected primary publication failure")
+            replace(staged, destination)
+
+        monkeypatch.setattr(result_commit, "_replace_exact", fail_primary_once)
+        with pytest.raises(result_commit.ResultCommitError, match="primary publication"):
+            convert_xyz_to_pdb(xyz, prepared.source_path, out_pdb)
+        assert out_pdb.read_bytes() == b"old-pdb\n"
+        assert out_cif.read_bytes() == b"old-cif\n"
+        assert coordinate_template_for(out_pdb) is previous_template
+    finally:
+        from pdb2reaction.io.structure_formats import unregister_coordinate_template
+
+        unregister_coordinate_template(out_pdb)
+        prepared.cleanup()
 
 
 def test_pdb_with_more_than_ten_thousand_residues_uses_safe_bridge(tmp_path: Path) -> None:
@@ -248,6 +433,137 @@ def test_duplicate_atom_names_without_altloc_are_preserved(tmp_path: Path) -> No
     assert not pdb_requires_normalization(source)
 
 
+def _altloc_atom_line(
+    serial: int,
+    label: str,
+    x: float,
+    occupancy: float | str | None,
+) -> str:
+    if occupancy is None:
+        occupancy_field = "      "
+    elif isinstance(occupancy, str):
+        occupancy_field = f"{occupancy:>6s}"
+    else:
+        occupancy_field = f"{occupancy:6.2f}"
+    return (
+        f"ATOM  {serial:5d}  CA {label}ALA A   1    "
+        f"{x:8.3f}{0.0:8.3f}{0.0:8.3f}{occupancy_field}{10.0:6.2f}           C\n"
+    )
+
+
+@pytest.mark.parametrize(
+    ("occupancy_a", "occupancy_b", "expected_serial"),
+    [
+        (None, 0.10, 2),
+        (0.00, None, 1),
+        (0.50, 0.50, 1),
+        ("nan", 0.10, 2),
+        ("inf", 0.10, 2),
+    ],
+)
+def test_altloc_policy_matches_typed_and_text_preserving_pdb_paths(
+    tmp_path: Path,
+    occupancy_a: float | str | None,
+    occupancy_b: float | str | None,
+    expected_serial: int,
+) -> None:
+    from pdb2reaction.io.pdb_fix import clean_pdb_file
+    from pdb2reaction.io.structure_formats import read_pdb_atom_sites
+
+    source = tmp_path / "altloc-policy.pdb"
+    source.write_text(
+        _altloc_atom_line(1, "A", 1.0, occupancy_a)
+        + _altloc_atom_line(2, "B", 2.0, occupancy_b)
+        + "END\n",
+        encoding="utf-8",
+    )
+    cleaned = tmp_path / "cleaned.pdb"
+
+    records, _ = read_pdb_atom_sites(source)
+    clean_pdb_file(source, cleaned)
+    retained = next(
+        line
+        for line in cleaned.read_text(encoding="utf-8").splitlines()
+        if line.startswith("ATOM")
+    )
+
+    assert len(records) == 1
+    assert records[0].x == pytest.approx(float(expected_serial))
+    assert records[0].altloc == ""
+    assert int(retained[6:11]) == expected_serial
+    assert retained[16] == " "
+    assert float(retained[30:38]) == pytest.approx(records[0].x)
+
+
+def test_selected_altloc_supersedes_same_atom_blank_record_in_both_paths(
+    tmp_path: Path,
+) -> None:
+    from pdb2reaction.io.pdb_fix import clean_pdb_file
+    from pdb2reaction.io.structure_formats import read_pdb_atom_sites
+
+    source = tmp_path / "altloc-shared.pdb"
+    source.write_text(
+        _altloc_atom_line(1, " ", 9.0, 1.00)
+        + _altloc_atom_line(2, "A", 2.0, 0.60)
+        + _altloc_atom_line(3, "B", 3.0, 0.40)
+        + "END\n",
+        encoding="utf-8",
+    )
+    cleaned = tmp_path / "cleaned.pdb"
+
+    records, _ = read_pdb_atom_sites(source)
+    clean_pdb_file(source, cleaned)
+    retained = next(
+        line
+        for line in cleaned.read_text(encoding="utf-8").splitlines()
+        if line.startswith("ATOM")
+    )
+
+    assert [record.x for record in records] == [2.0]
+    assert int(retained[6:11]) == 2
+    assert float(retained[30:38]) == pytest.approx(2.0)
+
+
+def test_cif_altloc_treats_unknown_occupancy_as_missing(tmp_path: Path) -> None:
+    from pdb2reaction.io.structure_formats import read_mmcif_atom_sites
+
+    source = tmp_path / "missing-altloc.cif"
+    source.write_text(
+        """data_alt
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_entity_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.pdbx_PDB_model_num
+ATOM 1 C CA A ALA A 1 1 ? 1 0 0 ? 0 1 ALA A CA 1
+ATOM 2 C CA B ALA A 1 1 ? 2 0 0 0.1 0 1 ALA A CA 1
+#
+""",
+        encoding="utf-8",
+    )
+
+    records = read_mmcif_atom_sites(source)
+    assert len(records) == 1
+    assert records[0].x == pytest.approx(2.0)
+    assert records[0].altloc == ""
+
+
 def test_failed_internal_pdb_write_removes_temporary_bridge(
     tmp_path: Path, monkeypatch
 ) -> None:
@@ -324,6 +640,40 @@ def test_sp_dry_run_cleans_temporary_cif_bridge(tmp_path: Path, monkeypatch) -> 
     )
 
     assert result.exit_code == 0, result.output
+    assert bridge_dirs
+    assert all(not path.exists() for path in bridge_dirs)
+
+
+@pytest.mark.parametrize("extra", [(), ("--freeze-atoms", "not-an-index")])
+def test_freq_owns_prepared_cif_through_dry_run_and_preexecution_errors(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    extra: tuple[str, ...],
+) -> None:
+    from click.testing import CliRunner
+    from pdb2reaction.cli import cli as root_cli
+    from pdb2reaction.core import utils
+
+    source = tmp_path / "input.cif"
+    _write_minimal_cif(source)
+    bridge_dirs = []
+    normalize = utils.normalize_structure_to_pdb
+
+    def record_bridge(path):
+        result = normalize(path)
+        bridge_dirs.append(result[2])
+        return result
+
+    monkeypatch.setattr(utils, "normalize_structure_to_pdb", record_bridge)
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "freq", "-i", str(source), "-q", "0", "--dry-run",
+            "-o", str(tmp_path / "out"), *extra,
+        ],
+    )
+
+    assert result.exit_code == (0 if not extra else 1), result.output
     assert bridge_dirs
     assert all(not path.exists() for path in bridge_dirs)
 
@@ -684,6 +1034,7 @@ def test_all_segment_copy_emits_cif_for_bridge_input(tmp_path: Path) -> None:
         unregister_coordinate_template,
     )
     from pdb2reaction.workflows.all import _copy_structures_to_seg_dir
+    from pdb2reaction.workflows._run_session import InvocationManifest
 
     xyz = tmp_path / "reactant.xyz"
     xyz.write_text("1\nframe\nC 1.0 2.0 3.0\n", encoding="utf-8")
@@ -706,9 +1057,14 @@ def test_all_segment_copy_emits_cif_for_bridge_input(tmp_path: Path) -> None:
     )
     template = CoordinateTemplate((record,), tmp_path / "input.cif", "mmcif", "test")
     register_coordinate_template(pdb, template)
+    manifest = InvocationManifest()
     try:
         seg_dir = _copy_structures_to_seg_dir(
-            {"R": xyz}, tmp_path / "result", 1, ".cif"
+            {"R": xyz},
+            tmp_path / "result",
+            1,
+            ".cif",
+            manifest=manifest,
         )
         out_pdb = seg_dir / "reactant.pdb"
         out_cif = seg_dir / "reactant.cif"
@@ -719,6 +1075,7 @@ def test_all_segment_copy_emits_cif_for_bridge_input(tmp_path: Path) -> None:
         assert data["_atom_site.auth_seq_id"] == ["10001"]
         assert data["_atom_site.occupancy"] == ["0.75"]
         assert data["_atom_site.B_iso_or_equiv"] == ["42.00"]
+        assert manifest.paths("output.public.") == [out_pdb, out_cif]
     finally:
         unregister_coordinate_template(pdb)
 

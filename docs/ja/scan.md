@@ -36,7 +36,7 @@ pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <n
 2. `--preopt` の場合、バイアスをかける前に無バイアスの前処理最適化を実行し、開始構造を緩和します。
 3. `-s/--scan-lists`からstage targetを読み取り、indexを正規化します。3-field selector（例: `'TYR,285,CA'`）は順不同です。残基名や番号が重複するときは、位置固定の`CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`を使います。
     各結合について変位 `Δ = target − current` を計算し、`h = --max-step-size` として `N = ceil(max(|Δ|) / h)` ステップに分割します。各結合は `δ = Δ / N` ずつ更新されます。
-4. すべてのステップを順に進め、一時ターゲットを更新しながら調和ポテンシャル `E = Σ ½ k (|ri − rj| − target)²` を適用し、MLIP バックエンドで最適化します。最適化サイクルの上限は `--relax-max-cycles` で設定します（YAML で `opt.max_cycles` が指定されていない場合）。
+4. すべてのステップを順に進め、一時ターゲットを更新しながら調和ポテンシャル `E = Σ ½ k (|ri − rj| − target)²` を適用し、MLIP バックエンドで最適化します。最適化サイクルの上限は YAML `opt.max_cycles` から読み、明示した `--relax-max-cycles` がそれを上書きします。
 5. 各ステージの最終ステップ後、必要に応じて無バイアス緩和（`--endopt`）を実行し、共有結合の変化を報告して `result.*` を出力します。
 6. すべてのステージについて繰り返します。全ステージ連結のスキャン軌跡（`scan_trj.xyz` および `scan.pdb`）は常に書き出されます。`--dump`（CLI フラグ）を指定すると、ステップごとの最適化軌跡ファイルも書き出されます（YAML の `opt.dump` は実行時スコープで上書きされるため無効です）。
 
@@ -84,7 +84,7 @@ out_dir/ (デフォルト:./result_scan/)
 | `--print-parsed/--no-print-parsed` | `-s/--scan-lists` 解釈後のステージ情報を表示 | `False` |
 | `--max-step-size FLOAT` | 1 ステップあたりのスキャン結合の最大変化量（Å）。ステップ数を決定 | `0.20` |
 | `--bias-k FLOAT` | 調和バイアス強度 `k`（eV·Å⁻²） | `300` |
-| `--relax-max-cycles INT` | 前処理・各バイアスステップ・後処理における最適化サイクルの上限。YAML で `opt.max_cycles` が指定されていない場合に使用 | `10000` |
+| `--relax-max-cycles INT` | 前処理・各バイアスステップ・後処理における最適化サイクルの上限。明示値は YAML `opt.max_cycles` を上書き | `10000` |
 | `--opt-mode TEXT` | `grad` → L-BFGS、`hess` → RFOptimizer。同じトークンが `tsopt` では Dimer / RS-P-RFO に対応する点については {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
 | `--freeze-links/--no-freeze-links` | PDB/mmCIF トポロジー入力時にキャップ水素の親原子を凍結 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
@@ -103,7 +103,7 @@ out_dir/ (デフォルト:./result_scan/)
 
 ### 共有 YAML セクション
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml-reference.md) と同じキーを使用します。`opt.dump` は実行時スコープで常に上書きされる（YAML では設定できない）ため、ステージ軌跡の出力は `--dump`（CLI）で制御します。
-- `--relax-max-cycles` は**明示的に指定され**、かつ YAML で `opt.max_cycles` が設定されていない場合にのみ適用されます（デフォルト `10000`）。
+- 明示した `--relax-max-cycles` は YAML `opt.max_cycles` を上書きします。省略時は YAML が優先され、いずれもなければデフォルト `10000` です。
 
 ### セクション `bias`
 - `k`（`300`）: 調和バイアス強度（eV·Å⁻²）。
@@ -307,7 +307,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
 
 - スキャンの入力は 1 つの構造 + `-s/--scan-lists scan.yaml`（推奨）または `-s/--scan-lists` の 1 個以上のインラインリテラル（1 リテラル = 1 ステージ）です。YAML/JSON ファイルパスはシェルのクォート問題を避けられ、バージョン管理にも向きます。インライン Python リテラルは単純な単一ステージのスキャンには十分です。
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
-- `-s/--scan-lists` には単一フラグの後に複数リテラルを並べます。ターゲット距離は正の値である必要があります。原子インデックスは内部で 0 始まりに正規化されます。PDB/mmCIF トポロジーではセレクタ文字列を使用できます。3フィールドの従来形は順不同ですが、chainまで指定する4フィールド形は `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` の位置固です。繰り返し残基では4フィールド形を使用してください。
+- `-s/--scan-lists` には単一フラグの後に複数リテラルを並べます。ターゲット距離は正の値である必要があります。原子インデックスは内部で 0 始まりに正規化されます。PDB/mmCIF トポロジーではセレクタ文字列を使用できます。3フィールドの従来形は順不同ですが、chainまで指定する4フィールド形は `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` の位置固定です。繰り返し残基では4フィールド形を使用してください。
 - `--freeze-links` が有効な場合、キャップ水素の親原子は自動的に凍結されます（{ref}`キャップ水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
 - ステージ結果（`result.xyz` と、変換有効時の対応する PDB/CIF/GJF companion）は常に書き出されます。全ステージ連結のスキャン軌跡（`scan_trj.xyz` と、参照トポロジーがある場合の `scan.pdb`／bridge入力の `scan.cif`）も常に書き出されます。`--dump`（CLI）を指定すると、最適化器によるステップごとのダンプが有効になります（YAML の `opt.dump` は実行時スコープで上書きされるため無効です）。
 

@@ -13,6 +13,7 @@ import time
 from typing import Any, Dict, Optional, Sequence
 
 import click
+from pdb2reaction.core.output import emit
 import numpy as np
 import torch
 import torch.nn as nn
@@ -40,7 +41,7 @@ except Exception:
 
 from pysisyphus.constants import BOHR2ANG, ANG2BOHR, AU2EV
 
-from .base import MLIPCalculator, BackendError
+from .base import MLIPCalculator, BackendError, normalize_hessian_calc_mode
 from pdb2reaction.core.defaults import DEFAULT_UMA_MODEL
 
 
@@ -250,6 +251,22 @@ class UMAcore:
 
         return {"energy": energy, "forces": forces_np, "hessian": H}
 
+    def forces_tensor(self, coord_ang: np.ndarray) -> torch.Tensor:
+        """Device-native forces (eV/Ang) for the FD Hessian assembler (C14 H05).
+
+        Returns the force tensor on the model's execution device, skipping the
+        ``.cpu().numpy()`` round-trip and the scalar energy ``.item()`` sync that
+        ``compute()`` performs for each displacement. Only valid on the native
+        torch-model path (``has_torch_model and not parallel_predict``); other
+        providers must use ``compute()``. The returned values are the same tensor
+        ``compute()`` would convert to NumPy, so the assembled central-difference
+        Hessian is bit-identical to the NumPy round-trip path.
+        """
+        atoms = Atoms(self.elem, positions=coord_ang)
+        batch = self._ase_to_batch(atoms)
+        res = self.predict.predict(batch)
+        return res["forces"].detach()
+
 
 class UMACalculator(MLIPCalculator):
     """UMA (fairchem) backend.
@@ -283,8 +300,8 @@ class UMACalculator(MLIPCalculator):
         print_timing: bool = True,
         **kwargs,
     ):
-        mode = str(hessian_calc_mode or "FiniteDifference").strip().lower()
-        if max(int(workers or 1), 1) > 1 and mode in ("analytical", "analytic"):
+        mode = normalize_hessian_calc_mode(hessian_calc_mode)
+        if max(int(workers or 1), 1) > 1 and mode == "Analytical":
             raise BackendError(
                 "Analytical Hessian cannot be combined with UMA workers>1: "
                 "the parallel predictor exposes no autograd model. Use workers=1 "
@@ -295,7 +312,7 @@ class UMACalculator(MLIPCalculator):
             spin=spin,
             device=device,
             freeze_atoms=freeze_atoms,
-            hessian_calc_mode=hessian_calc_mode,
+            hessian_calc_mode=mode,
             return_partial_hessian=return_partial_hessian,
             hessian_double=hessian_double,
             print_timing=print_timing,
@@ -367,7 +384,7 @@ class UMACalculator(MLIPCalculator):
             )
         from pdb2reaction.core.utils import verbose_level
         if self.print_timing:
-            click.echo(
+            emit(
                 f"[hessian] Completed {mode_label} Hessian: {total_elapsed_s:.2f} s"
                 f"{hessian_vram_summary}",
                 detail=True,
@@ -456,19 +473,27 @@ class UMACalculator(MLIPCalculator):
         coord_plus = coord_ang.copy()
         coord_minus = coord_ang.copy()
 
+        # C14 (H05): on the native torch-model path, read forces directly as a
+        # device tensor and assemble each column without a GPU->CPU->GPU
+        # round-trip (and without the per-displacement scalar energy sync). The
+        # NumPy round-trip is retained for non-native providers.
+        native_tensor = getattr(core, "has_torch_model", False) and not getattr(
+            core, "parallel_predict", False
+        )
+
         for i_local, k in enumerate(active_dof_idx):
             a = k // 3
             c = k % 3
             coord_plus[a, c] = coord_ang[a, c] + eps_ang
-            res_p = core.compute(coord_plus, forces=True, hessian=False)
-            Fp = res_p["forces"].reshape(-1)
-
             coord_minus[a, c] = coord_ang[a, c] - eps_ang
-            res_m = core.compute(coord_minus, forces=True, hessian=False)
-            Fm = res_m["forces"].reshape(-1)
-
-            Fp_t = torch.from_numpy(Fp).to(dev, dtype=hessian_dtype)
-            Fm_t = torch.from_numpy(Fm).to(dev, dtype=hessian_dtype)
+            if native_tensor:
+                Fp_t = core.forces_tensor(coord_plus).reshape(-1).to(dev, dtype=hessian_dtype)
+                Fm_t = core.forces_tensor(coord_minus).reshape(-1).to(dev, dtype=hessian_dtype)
+            else:
+                Fp = core.compute(coord_plus, forces=True, hessian=False)["forces"].reshape(-1)
+                Fm = core.compute(coord_minus, forces=True, hessian=False)["forces"].reshape(-1)
+                Fp_t = torch.from_numpy(Fp).to(dev, dtype=hessian_dtype)
+                Fm_t = torch.from_numpy(Fm).to(dev, dtype=hessian_dtype)
             col = -(Fp_t - Fm_t) / (2.0 * eps_ang)
             if _partial_alloc:
                 H[i_local, :] = col
@@ -485,7 +510,11 @@ class UMACalculator(MLIPCalculator):
                 # H is already (n_active, dof) — single index_select(1) extracts to (n_active, n_active).
                 H = H.index_select(1, idx)
             else:
-                H = H.index_select(0, idx).index_select(1, idx)
+                # C14 (H10): bounded row-chunk active square extraction avoids
+                # the full (n_active, dof) row temporary of the chained form.
+                from pysisyphus._array import active_square
+
+                H = active_square(H, idx)
             H = H.view(n_active_atoms, 3, n_active_atoms, 3)
         else:
             H = H.view(n_atoms, 3, n_atoms, 3)
@@ -511,6 +540,7 @@ class UMACalculator(MLIPCalculator):
         }
 
     def get_hessian(self, elem, coords):
+        mode = normalize_hessian_calc_mode(self.hessian_calc_mode)
         self._ensure_core(elem)
         coord_ang = np.asarray(coords, dtype=np.float64).reshape(-1, 3) * BOHR2ANG
 
@@ -521,7 +551,7 @@ class UMACalculator(MLIPCalculator):
         # Parallel predictor (workers>1) has no autograd model, so an explicit
         # analytical request cannot be honoured. Fail instead of silently
         # changing the requested numerical method.
-        if force_fd and (self.hessian_calc_mode or "").strip().lower() in ("analytical", "analytic"):
+        if force_fd and mode == "Analytical":
             raise BackendError(
                 "Analytical Hessian is unavailable because the UMA predictor "
                 "does not expose an autograd model. Use workers=1 or select "
@@ -542,8 +572,7 @@ class UMACalculator(MLIPCalculator):
         mode_elapsed_s = 0.0
         mode_label = "FiniteDifference"
 
-        mode = (self.hessian_calc_mode or "FiniteDifference").strip().lower()
-        if (not force_fd) and (mode in ("analytical", "analytic")):
+        if (not force_fd) and mode == "Analytical":
             mode_label = "Analytical"
             t0 = time.perf_counter()
             try:

@@ -26,6 +26,49 @@ from typing import Any, Optional
 from pdb2reaction.mcp._runner import run_subcmd
 
 
+_SUMMARY_OUTPUT_RESERVED = frozenset(
+    {"-o", "--out-dir", "--out-json", "--no-out-json"}
+)
+_UTILITY_OUTPUT_RESERVED = frozenset({"-o", "--out", "--output"})
+
+
+def _validate_extra_args(
+    extra_args: Optional[list[str]],
+    *,
+    reserved: frozenset[str],
+) -> None:
+    """Reject spellings that could override a typed/managed output contract."""
+
+    for raw in extra_args or ():
+        token = str(raw)
+        for option in reserved:
+            if token == option:
+                raise ValueError(
+                    f"extra_args cannot override managed output option {option!r}"
+                )
+            if option.startswith("--") and token.startswith(f"{option}="):
+                raise ValueError(
+                    f"extra_args cannot override managed output option {option!r}"
+                )
+            if option == "-o" and token.startswith("-o") and token != "-o":
+                raise ValueError(
+                    "extra_args cannot override managed output option '-o'"
+                )
+
+
+def _append_extra_args(
+    argv: list[str],
+    extra_args: Optional[list[str]],
+    *,
+    reserved: frozenset[str] = _SUMMARY_OUTPUT_RESERVED,
+) -> None:
+    """Validate one expert tail before appending it to the subprocess argv."""
+
+    _validate_extra_args(extra_args, reserved=reserved)
+    if extra_args:
+        argv.extend(extra_args)
+
+
 def _resolve_out_dir(out_dir: Optional[str], prefix: str) -> Path:
     """Pick a usable output directory: explicit > unique temp."""
     if out_dir:
@@ -127,8 +170,7 @@ def register_all(mcp) -> None:
         ))
         argv.append("--out-json")
         argv.extend(["--out-dir", str(od)])
-        if extra_args:
-            argv.extend(extra_args)
+        _append_extra_args(argv, extra_args)
         return run_subcmd(argv, out_dir=od, timeout=timeout_seconds).to_dict()
 
     @mcp.tool()
@@ -196,8 +238,7 @@ def register_all(mcp) -> None:
         ))
         argv.append("--out-json")
         argv.extend(["--out-dir", str(od)])
-        if extra_args:
-            argv.extend(extra_args)
+        _append_extra_args(argv, extra_args)
         return run_subcmd(argv, out_dir=od, timeout=timeout_seconds).to_dict()
 
     @mcp.tool()
@@ -274,8 +315,7 @@ def register_all(mcp) -> None:
         ))
         argv.append("--out-json")
         argv.extend(["--out-dir", str(od)])
-        if extra_args:
-            argv.extend(extra_args)
+        _append_extra_args(argv, extra_args)
         return run_subcmd(argv, out_dir=od, timeout=timeout_seconds).to_dict()
 
     @mcp.tool()
@@ -335,8 +375,7 @@ def register_all(mcp) -> None:
         ))
         argv.append("--out-json")
         argv.extend(["--out-dir", str(od)])
-        if extra_args:
-            argv.extend(extra_args)
+        _append_extra_args(argv, extra_args)
         return run_subcmd(argv, out_dir=od, timeout=timeout_seconds).to_dict()
 
     # Scans (1D / 2D / 3D)
@@ -410,8 +449,7 @@ def register_all(mcp) -> None:
         ))
         argv.append("--out-json")
         argv.extend(["--out-dir", str(od)])
-        if extra_args:
-            argv.extend(extra_args)
+        _append_extra_args(argv, extra_args)
         return run_subcmd(argv, out_dir=od, timeout=timeout_seconds).to_dict()
 
     @mcp.tool()
@@ -456,8 +494,7 @@ def register_all(mcp) -> None:
             argv.extend(["--precision", precision])
         argv.append("--out-json")
         argv.extend(["--out-dir", str(od)])
-        if extra_args:
-            argv.extend(extra_args)
+        _append_extra_args(argv, extra_args)
         return run_subcmd(argv, out_dir=od, timeout=timeout_seconds).to_dict()
 
     @mcp.tool()
@@ -502,8 +539,7 @@ def register_all(mcp) -> None:
             argv.extend(["--precision", precision])
         argv.append("--out-json")
         argv.extend(["--out-dir", str(od)])
-        if extra_args:
-            argv.extend(extra_args)
+        _append_extra_args(argv, extra_args)
         return run_subcmd(argv, out_dir=od, timeout=timeout_seconds).to_dict()
 
 
@@ -558,8 +594,7 @@ def register_all(mcp) -> None:
             argv.extend(["--precision", precision])
         argv.append("--out-json")
         argv.extend(["--out-dir", str(od)])
-        if extra_args:
-            argv.extend(extra_args)
+        _append_extra_args(argv, extra_args)
         return run_subcmd(argv, out_dir=od, timeout=timeout_seconds).to_dict()
 
     @mcp.tool()
@@ -608,8 +643,7 @@ def register_all(mcp) -> None:
         if precision:
             argv.extend(["--precision", precision])
         argv.extend(["--out-dir", str(od)])
-        if extra_args:
-            argv.extend(extra_args)
+        _append_extra_args(argv, extra_args)
         return run_subcmd(argv, out_dir=od, timeout=timeout_seconds).to_dict()
 
 
@@ -701,8 +735,7 @@ def register_all(mcp) -> None:
         if do_thermo is not None:
             argv.extend(["--thermo", "true" if do_thermo else "false"])
         argv.extend(["--out-dir", str(od)])
-        if extra_args:
-            argv.extend(extra_args)
+        _append_extra_args(argv, extra_args)
         return run_subcmd(argv, out_dir=od, timeout=timeout_seconds).to_dict()
 
     @mcp.tool()
@@ -737,8 +770,7 @@ def register_all(mcp) -> None:
             argv.extend(["--func-basis", func_basis])
         argv.append("--out-json")
         argv.extend(["--out-dir", str(od)])
-        if extra_args:
-            argv.extend(extra_args)
+        _append_extra_args(argv, extra_args)
         return run_subcmd(argv, out_dir=od, timeout=timeout_seconds).to_dict()
 
     @mcp.tool()
@@ -790,8 +822,7 @@ def register_all(mcp) -> None:
         ))
         argv.append("--out-json")
         argv.extend(["--out-dir", str(od)])
-        if extra_args:
-            argv.extend(extra_args)
+        _append_extra_args(argv, extra_args)
         return run_subcmd(argv, out_dir=od, timeout=timeout_seconds).to_dict()
 
     # Structure / I/O helpers (no out_dir, no summary.json)
@@ -825,8 +856,7 @@ def register_all(mcp) -> None:
             argv.append("--exclude-backbone")
         elif exclude_backbone is False:
             argv.append("--no-exclude-backbone")
-        if extra_args:
-            argv.extend(extra_args)
+        _append_extra_args(argv, extra_args, reserved=_UTILITY_OUTPUT_RESERVED)
         return run_subcmd(argv, out_dir=None, timeout=timeout_seconds).to_dict()
 
     @mcp.tool()
@@ -842,8 +872,7 @@ def register_all(mcp) -> None:
         argv: list[str] = ["pdb2reaction", "add-elem-info", "-i", input_pdb, "-o", output_pdb]
         if overwrite:
             argv.append("--overwrite")
-        if extra_args:
-            argv.extend(extra_args)
+        _append_extra_args(argv, extra_args, reserved=_UTILITY_OUTPUT_RESERVED)
         return run_subcmd(argv, out_dir=None, timeout=timeout_seconds).to_dict()
 
     @mcp.tool()
@@ -856,8 +885,7 @@ def register_all(mcp) -> None:
     ) -> dict[str, Any]:
         """Resolve PDB alternate locations (CLI: `pdb2reaction fix-altloc`)."""
         argv: list[str] = ["pdb2reaction", "fix-altloc", "-i", input_pdb, "-o", output_pdb]
-        if extra_args:
-            argv.extend(extra_args)
+        _append_extra_args(argv, extra_args, reserved=_UTILITY_OUTPUT_RESERVED)
         return run_subcmd(argv, out_dir=None, timeout=timeout_seconds).to_dict()
 
     @mcp.tool()
@@ -870,8 +898,7 @@ def register_all(mcp) -> None:
     ) -> dict[str, Any]:
         """Plot an energy profile from a trajectory (CLI: `pdb2reaction trj2fig`)."""
         argv: list[str] = ["pdb2reaction", "trj2fig", "-i", input_trj_xyz, "-o", output_png]
-        if extra_args:
-            argv.extend(extra_args)
+        _append_extra_args(argv, extra_args, reserved=_UTILITY_OUTPUT_RESERVED)
         return run_subcmd(argv, out_dir=None, timeout=timeout_seconds).to_dict()
 
     @mcp.tool()
@@ -887,8 +914,7 @@ def register_all(mcp) -> None:
         `energies`: Python-literal list of floats, e.g. "[0, 12.5, 4.3, 18.7, -1.2]".
         """
         argv: list[str] = ["pdb2reaction", "energy-diagram", "-i", energies, "-o", output_png]
-        if extra_args:
-            argv.extend(extra_args)
+        _append_extra_args(argv, extra_args, reserved=_UTILITY_OUTPUT_RESERVED)
         return run_subcmd(argv, out_dir=None, timeout=timeout_seconds).to_dict()
 
     @mcp.tool()
@@ -901,6 +927,5 @@ def register_all(mcp) -> None:
     ) -> dict[str, Any]:
         """Detect bond changes between two PDB/mmCIF structures (CLI: `pdb2reaction bond-summary`)."""
         argv: list[str] = ["pdb2reaction", "bond-summary", "-i", reactant_pdb, product_pdb]
-        if extra_args:
-            argv.extend(extra_args)
+        _append_extra_args(argv, extra_args, reserved=frozenset())
         return run_subcmd(argv, out_dir=None, timeout=timeout_seconds).to_dict()

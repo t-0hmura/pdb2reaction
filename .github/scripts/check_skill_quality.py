@@ -242,7 +242,12 @@ def _validate_high_risk_semantics(errors: list[str]) -> None:
     _require(irc_page, ("reduce `--step-size` first", "`--never-stop`"), errors)
     _require(
         irc_page,
-        ("`completed` is not an IRC convergence verdict", "`*_converged`"),
+        (
+            "`completed` is not an IRC convergence verdict",
+            "`*_converged`",
+            "`never_stop_energy_bypasses`",
+            "inserts one underscore",
+        ),
         errors,
     )
     _require(
@@ -317,6 +322,7 @@ def _validate_high_risk_semantics(errors: list[str]) -> None:
         summary_page,
         (
             "top-level `mlip_backend` / `mlip_model`",
+            "`mlip_precision`",
             "`mlip`, `gibbs_mlip`, and `gibbs_dft_mlip` are the only emitted identifiers",
             "no compatibility aliases are written",
             "filenames use `MLIP`",

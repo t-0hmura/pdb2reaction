@@ -104,21 +104,28 @@ def test_sp_converts_yaml_freeze_atoms_to_internal_indices(
     cfg = tmp_path / "config.yaml"
     cfg.write_text("geom:\n  freeze_atoms: [1]\n")
     loaded: list[dict] = []
+    created: list[dict] = []
 
     def fake_loader(*_args, **kwargs):
         loaded.append(dict(kwargs))
         return _FakeGeometry()
 
+    def fake_create_calculator(**kwargs):
+        created.append(dict(kwargs))
+        return _FakeCalculator()
+
     monkeypatch.setattr(sp, "geom_loader", fake_loader)
-    monkeypatch.setattr(sp, "create_calculator", lambda **_kwargs: _FakeCalculator())
+    monkeypatch.setattr(sp, "create_calculator", fake_create_calculator)
 
     result = CliRunner().invoke(
         root_cli,
         [
             "sp", "-i", str(inp), "-q", "0", "-m", "1",
-            "--config", str(cfg), "-o", str(tmp_path / "out"),
+            "--config", str(cfg), "--hess", "-o", str(tmp_path / "out"),
         ],
     )
 
     assert result.exit_code == 0, result.output
     assert loaded[0]["freeze_atoms"] == [0]
+    assert created[0]["freeze_atoms"] == [0]
+    assert created[0]["return_partial_hessian"] is True

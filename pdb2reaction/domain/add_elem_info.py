@@ -21,8 +21,9 @@ from typing import Optional
 import click
 from Bio.PDB import PDBParser, PDBIO
 
-# Reuse residue/ion dictionaries from extract.py to keep definitions in sync
-from pdb2reaction.workflows.extract import AMINO_ACIDS, ION, WATER_RES
+# Reuse the canonical residue/ion/water tables (leaf data module) to keep
+# element inference and charge inference reading one source of truth.
+from pdb2reaction.domain.residue_data import AMINO_ACIDS, ION, WATER_RES
 
 # Element symbols (IUPAC, 1–118)
 ELEMENTS: set[str] = {

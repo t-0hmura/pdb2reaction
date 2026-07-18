@@ -46,13 +46,18 @@ thermoanalysis/    ← bundled fork for ΔG / ZPE / partition functions.
                      tests; do not replace it with the upstream package.
 ```
 
-The intended dependency direction is `L1 → L2 → {L3, L4} → L5`, but it is
-not yet a mechanically enforced or perfectly clean layering rule. Known
-back-edges include `workflows/* → cli.common_options/cli.decorators`,
-`domain/add_elem_info.py → workflows.extract`, and
-`core/utils.py → domain.add_elem_info`. Treat the arrow as a refactoring goal,
-inspect current imports before moving code, and do not claim CI proves the full
-layer graph. The bundled forks sit outside it and may be imported by any layer.
+The intended dependency direction is `L1 → L2 → {L3, L4} → L5`. The full
+top-to-bottom direction is still a refactoring goal rather than a mechanically
+enforced rule, but a subset **is** now enforced: `.github/scripts/check_import_graph.py`
+(a static AST import graph) proves the product graph is acyclic and that no
+`core`/`domain` module imports a `workflows/*` module (and no `pysisyphus/**`
+file imports `pdb2reaction`). Remaining allowed downward edges include
+`workflows/* → cli.common_options/cli.decorators/cli.help_pages`,
+`core/utils.py → domain.add_elem_info/io.structure_formats/io.charge`, and
+`io/charge.py → domain.residue_data`. The residue tables (`domain/residue_data.py`)
+and charge engine (`io/charge.py`) are re-exported from `workflows/extract.py`,
+so inspect current imports before moving code. The bundled forks sit outside the
+layer graph and may be imported by any layer.
 
 ## Where to look first
 
@@ -80,3 +85,4 @@ layer graph. The bundled forks sit outside it and may be imported by any layer.
 - Full architecture (~320 lines): [`docs/architecture.md`](../../docs/architecture.md)
 - Contributor recipe + per-step gate cycle: [`CONTRIBUTING.md`](../../CONTRIBUTING.md)
 - Engineering-marker coverage check: [`.github/scripts/check_engineering_markers.py`](../../.github/scripts/check_engineering_markers.py)
+- Import-graph gate (no product cycle / no `core`·`domain` → `workflows` / no `pysisyphus` → product): [`.github/scripts/check_import_graph.py`](../../.github/scripts/check_import_graph.py) (tests in `tests/test_import_graph.py`)

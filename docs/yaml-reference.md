@@ -17,6 +17,10 @@ built-in defaults  <  --config (YAML)  <  CLI flags
 2. **`--config`** — a YAML file that overrides defaults (e.g., `--config my_settings.yaml`).
 3. **CLI flags** — explicit command-line options (e.g., `-q -1`, `--thresh gau_loose`). Only *explicitly supplied* flags override YAML; options left at their CLI default do not mask YAML values.
 
+These are the three layers exposed by the public CLI. Internal compatibility
+parameters used by embedded Python callers do not add another public
+command-line configuration layer.
+
 For example, if the YAML sets `charge: 0` but the CLI passes `-q -1`, the charge will be `-1`.
 
 This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, and `dft`. See also {ref}`CLI Conventions: Configuration precedence <configuration-precedence>`.
@@ -409,7 +413,7 @@ hessian_dimer:
    rotation_interpolate: true # Interpolate rotation steps
    rotation_disable: false # Disable rotations entirely
    rotation_disable_pos_curv: true # Disable when positive curvature detected
-   rotation_remove_trans: true # Remove translational components
+   rotation_remove_trans: true # Remove the selected rigid-null components
    trans_force_f_perp: true # Project forces perpendicular to translation
    bonds: null # Bond list for constraints
    N_hessian: null # Hessian size override

@@ -1,15 +1,180 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 import logging
 from pathlib import Path
-from typing import Callable, Dict, Any
+from typing import Any, Callable, Sequence
 
 import click
 
 from pdb2reaction.core.defaults import THRESH_CHOICES
-from pdb2reaction.core.utils import deep_update, load_yaml_dict
+from pdb2reaction.core.utils import (
+    is_scan_spec_file,
+    parse_scan_list_quads_checked,
+    parse_scan_list_triples,
+    parse_scan_spec_quads,
+    parse_scan_spec_stages,
+)
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class StagedScanRequest:
+    """One fully parsed 1D scan request shared by planning and execution."""
+
+    stages: tuple[tuple[tuple[int, int, float], ...], ...]
+    one_based: bool
+    source: str
+    raw_values: tuple[str, ...]
+    bidirectional_reset_before: frozenset[int] = frozenset()
+    bidirectional_snapshot_before: frozenset[int] = frozenset()
+
+
+@dataclass(frozen=True)
+class GridScanRequest:
+    """One fully parsed 2D/3D scan request shared by planning and execution."""
+
+    pairs: tuple[tuple[int, int, float, float], ...]
+    raw_pairs: tuple[tuple[Any, Any, float, float], ...]
+    one_based: bool
+    source: str
+    raw_value: str
+
+
+def collect_staged_scan_values(
+    option_values: Sequence[str],
+    extra_args: Sequence[str],
+    *,
+    option_name: str = "--scan-lists",
+) -> tuple[str, ...]:
+    """Recover the legacy one-flag/many-values form without reading ``sys.argv``.
+
+    Click consumes the first value after the single ``--scan-lists`` option and
+    leaves subsequent positional stage literals in ``Context.args``.  Repeated
+    option flags remain rejected, matching the established public behavior.
+    """
+
+    values = tuple(str(value) for value in option_values)
+    if len(values) > 1:
+        raise click.BadParameter(
+            f"Use a single {option_name} followed by multiple values; repeated flags are not accepted."
+        )
+    extras = tuple(str(value) for value in extra_args)
+    unexpected = next((value for value in extras if value.startswith("-")), None)
+    if unexpected is not None:
+        raise click.BadParameter(f"Unexpected option or argument: {unexpected}")
+    combined = values + extras
+    if not combined:
+        raise click.BadParameter(f"{option_name} is required.")
+    return combined
+
+
+def parse_staged_scan_request(
+    raw_values: Sequence[str],
+    *,
+    one_based: bool,
+    atom_meta: Sequence[dict[str, Any]],
+    option_name: str = "--scan-lists",
+) -> StagedScanRequest:
+    """Parse one complete staged request before dry-run or execution branches."""
+
+    values = tuple(str(value) for value in raw_values)
+    if not values:
+        raise click.BadParameter(f"{option_name} is required.")
+
+    scan_one_based = bool(one_based)
+    source = option_name
+    reset_before: set[int] = set()
+    snapshot_before: set[int] = set()
+    stages: list[list[tuple[int, int, float]]]
+    if len(values) == 1 and is_scan_spec_file(values[0]):
+        spec_path = Path(values[0])
+        stages, scan_one_based = parse_scan_spec_stages(
+            spec_path,
+            one_based_default=one_based,
+            atom_meta=atom_meta,
+            option_name=option_name,
+        )
+        source = f"{option_name} ({spec_path})"
+    else:
+        stages = []
+        for value_index, raw in enumerate(values, start=1):
+            parsed, _ = parse_scan_list_triples(
+                raw,
+                one_based=scan_one_based,
+                atom_meta=atom_meta,
+                option_name=f"{option_name} #{value_index}",
+            )
+            for entry in parsed:
+                if any(float(distance) <= 0.0 for distance in entry[2:]):
+                    raise click.BadParameter(
+                        f"Non-positive target length in {option_name} #{value_index}: {entry}."
+                    )
+            if any(len(entry) == 4 for entry in parsed):
+                for entry in parsed:
+                    if len(entry) == 4:
+                        i, j, start, end = entry
+                        stage_index = len(stages)
+                        stages.append([(i, j, start)])
+                        snapshot_before.add(stage_index)
+                        reset_before.add(stage_index + 1)
+                        stages.append([(i, j, end)])
+                    else:
+                        stages.append([entry])
+            else:
+                stages.append(parsed)
+
+    return StagedScanRequest(
+        stages=tuple(tuple(stage) for stage in stages),
+        one_based=scan_one_based,
+        source=source,
+        raw_values=values,
+        bidirectional_reset_before=frozenset(reset_before),
+        bidirectional_snapshot_before=frozenset(snapshot_before),
+    )
+
+
+def parse_grid_scan_request(
+    raw_value: str | None,
+    *,
+    dimensions: int,
+    one_based: bool,
+    atom_meta: Sequence[dict[str, Any]],
+    option_name: str = "--scan-lists",
+) -> GridScanRequest:
+    """Parse one literal or YAML/JSON grid request exactly once."""
+
+    if raw_value is None:
+        raise click.BadParameter(f"{option_name} is required.")
+    raw = str(raw_value)
+    scan_one_based = bool(one_based)
+    source = option_name
+    if is_scan_spec_file(raw):
+        spec_path = Path(raw)
+        parsed, raw_pairs, scan_one_based = parse_scan_spec_quads(
+            spec_path,
+            expected_len=dimensions,
+            one_based_default=one_based,
+            atom_meta=atom_meta,
+            option_name=option_name,
+        )
+        source = f"{option_name} ({spec_path})"
+    else:
+        parsed, raw_pairs = parse_scan_list_quads_checked(
+            raw,
+            expected_len=dimensions,
+            one_based=scan_one_based,
+            atom_meta=atom_meta,
+            option_name=option_name,
+        )
+    return GridScanRequest(
+        pairs=tuple(parsed),
+        raw_pairs=tuple(raw_pairs),
+        one_based=scan_one_based,
+        source=source,
+        raw_value=raw,
+    )
 
 
 def add_scan_common_options(
@@ -113,8 +278,8 @@ def add_scan_common_options(
             default=relax_max_cycles_default,
             show_default=True,
             help=(
-                "Maximum optimizer cycles per grid relaxation. When explicitly provided, "
-                "used unless YAML sets opt.max_cycles."
+                "Maximum optimizer cycles per grid relaxation. An explicitly "
+                "provided value overrides YAML opt.max_cycles."
             ),
         ),
         click.option(
@@ -250,30 +415,3 @@ def add_scan_common_options(
         return func
 
     return decorator
-
-
-
-def resolve_yaml_sources(
-    config_yaml: Path | None,
-    override_yaml: Path | None,
-    args_yaml_legacy: Path | None,
-) -> tuple[Path | None, Path | None, bool]:
-    """Resolve YAML layers and legacy alias usage for scan-family commands."""
-    if override_yaml is not None and args_yaml_legacy is not None:
-        raise click.BadParameter(
-            "Use a single YAML source option."
-        )
-    if args_yaml_legacy is not None:
-        return config_yaml, args_yaml_legacy, True
-    return config_yaml, override_yaml, False
-
-
-def load_merged_yaml_cfg(
-    config_yaml: Path | None,
-    override_yaml: Path | None,
-) -> Dict[str, Any]:
-    """Load and deep-merge scan YAML layers as config < override."""
-    merged: Dict[str, Any] = {}
-    deep_update(merged, load_yaml_dict(config_yaml))
-    deep_update(merged, load_yaml_dict(override_yaml))
-    return merged

@@ -7,6 +7,7 @@ import sys
 import textwrap
 import time
 import traceback
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Tuple, Type
 
@@ -20,7 +21,12 @@ def resolve_yaml_sources(
     override_yaml: Optional[Path],
     args_yaml_legacy: Optional[Path],
 ) -> Tuple[Optional[Path], Optional[Path], bool]:
-    """Resolve which YAML files to use, raising on conflicting options."""
+    """Resolve internal YAML-source compatibility inputs.
+
+    Public commands expose one ``--config`` layer. ``override_yaml`` and
+    ``args_yaml_legacy`` remain callable compatibility inputs for embedded
+    callers; they are not additional public CLI layers.
+    """
     if override_yaml is not None and args_yaml_legacy is not None:
         raise click.BadParameter(
             "Use a single YAML source option."
@@ -42,9 +48,12 @@ def load_merged_yaml_cfg(
     """
     config_dict = load_yaml_dict(config_yaml)
     override_dict = load_yaml_dict(override_yaml)
-    merged: Dict[str, Any] = {}
-    deep_update(merged, config_dict)
-    deep_update(merged, override_dict)
+    # Keep the returned provenance layers immutable from the perspective of
+    # callers. ``deep_update`` assigns previously unseen nested mappings by
+    # reference, so both inputs must be copied before forming the effective
+    # tree.
+    merged: Dict[str, Any] = deepcopy(config_dict)
+    deep_update(merged, deepcopy(override_dict))
     return merged, config_dict, override_dict
 
 

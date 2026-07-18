@@ -18,7 +18,11 @@ CLI/input validation can fail before the file exists.
 
 ### `summary.json` mirror
 
-`write_result_json` mirrors every per-stage `result.json` payload to `summary.json` alongside it. Agent scripts can read a single filename (`summary.json`) across every subcommand; the `result.json` written next to it contains the same payload.
+`write_result_json` serializes each per-stage payload once, atomically publishes
+the `summary.json` mirror first, and publishes authoritative `result.json`
+last. A successful return means both files contain identical bytes. If an I/O
+failure interrupts publication, the writer raises instead of hiding mirror
+divergence; MCP consumers additionally require the current run identity.
 
 ## Common envelope
 
@@ -30,14 +34,17 @@ are present only when the producer supplies the corresponding data:
 | `schema_version` | string | Envelope schema version; current value lives at `pdb2reaction.core.utils.RESULT_JSON_SCHEMA_VERSION` — pin against that constant rather than the literal in this doc. A version bump signals a structural change. |
 | `command` | string | Leaf envelopes use the subcommand name (e.g. `"opt"`); aggregate `all` / `path-search` summaries record the full invocation string |
 | `pdb2reaction_version` | string | Package version |
-| `status` | string | Value depends on the subcommand (see each section below): e.g. `converged` / `not_converged` (opt, tsopt), `completed` (irc, freq), `ok` / `partial` (bond-summary), `success` / `partial` / `failed` (aggregate workflows), and `error` on failure |
+| `status` | string | Value depends on the subcommand (see each section below): e.g. `converged` / `not_converged` / `stalled` (opt, tsopt), `completed` (irc, freq), `ok` / `partial` (bond-summary), `success` / `partial` / `failed` (aggregate workflows), and `error` on failure |
+| `run_id` | string | Optional current MCP invocation UUID. It is injected only when the product-specific run environment is active; a conflicting producer value is rejected. |
 | `elapsed_seconds` | float | Optional wall-clock time; omitted by producers that do not pass timing to the shared writer |
 | `environment` | object | Hardware info (see below) |
-| `mlip_backend` | string | Optional backend identifier, added when the payload represents an MLIP stage and supplies backend provenance |
+| `mlip_backend` | string \| null | Optional backend identifier; null when a plot-only command did not evaluate a calculator |
 | `mlip_model` | string \| null | Optional exact model/checkpoint identifier, kept separate from the backend |
+| `mlip_precision` | string \| null | Effective public precision token (`fp32` or `fp64`); null for a custom calculator whose dtype is controlled by user code |
 
 Leaf schemas also retain their local `backend` / `model` fields; consumers
-should prefer `mlip_backend` / `mlip_model` for a uniform cross-command key.
+should prefer `mlip_backend` / `mlip_model` / `mlip_precision` for a uniform
+cross-command provenance contract.
 
 ### Rigid projection provenance
 
@@ -90,6 +97,8 @@ for the authoritative diagnostic.
 
 For jobs that complete but did not converge, `result.json` is written with `"status": "not_converged"` and the final force/step values, allowing an AI agent to decide whether to retry with more cycles.
 
+An optimizer may also report `"status": "stalled"`: the energy stopped decreasing over the configured window (an energy plateau) while the configured force/step convergence criteria remained unmet. A stall is a distinct, non-converged outcome — it is never reported as `converged`. In `tsopt` it also stops the flatten/retry loop rather than repeating a non-progressing search; `opt --flatten` still runs its flatten loop, which exists to displace along the remaining imaginary modes and leave the plateau. When present, a `stop_reason` string records the energy range, window, and the failed criteria. A stall may be retried (e.g. from a perturbed geometry or with tighter step control); it is not an alias for `max_cycles` exhaustion or a generic failure.
+
 ## Subcommand schemas
 
 ### `sp`
@@ -99,8 +108,10 @@ For jobs that complete but did not converge, `result.json` is written with `"sta
 | `status` | string | `"ok"` |
 | `stage` | string | `"sp"` |
 | `input` | string | Prepared public input path |
-| `backend` / `model` | string / string \| null | MLIP provenance (also mirrored to `mlip_backend` / `mlip_model`) |
+| `backend` / `model` | string / string \| null | Local MLIP provenance, mirrored to the common `mlip_*` fields |
+| `custom_calculator` | string \| null | `filename:factory` for `--calc-file`, otherwise null |
 | `charge` / `spin` | int / int | Total charge and multiplicity |
+| `n_atoms` | int | Atom count |
 | `energy_au` | float | Single-point energy (Hartree) |
 | `forces_path` | string | Path to `forces.npy` |
 | `hessian_path` | string \| null | Path to `hessian.npy`, or null without `--hess` |
@@ -110,11 +121,12 @@ For jobs that complete but did not converge, `result.json` is written with `"sta
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `status` | string | `"converged"` or `"not_converged"` |
+| `status` | string | `"converged"`, `"not_converged"`, or `"stalled"` (energy plateau; see above) |
+| `stop_reason` | string | Present only for a non-converged stop (stalled/stopped); records the energy plateau range/window and failed criteria |
 | `energy_hartree` | float | Final energy (Hartree) |
 | `n_opt_cycles` | int | Optimization cycles completed |
 | `opt_mode` | string | `"grad"`, `"hess"`, `"lbfgs"`, or `"rfo"` |
-| `backend` | string | MLIP backend (`"uma"`, `"orb"`, `"mace"`, `"aimnet2"`) |
+| `backend` | string | MLIP backend (`"uma"`, `"orb"`, `"mace"`, `"aimnet2"`, or `"custom"` with `--calc-file`) |
 | `charge` | int | System charge |
 | `spin` | int | Spin multiplicity |
 | `model` | string | MLIP model identifier |
@@ -150,10 +162,12 @@ For Cartesian Hessian modes, `status: "converged"` requires the final exact
 PHVA result to contain exactly one significant imaginary mode. Supported
 internal-coordinate Hessian modes instead require one negative root in the
 exact optimizer-space Hessian. Higher-order saddles and `n_imag=0` structures
-are reported as `not_converged`. Convergence details are
-available for rsirfo mode; dimer mode also reports `status: "converged"` or
-`"not_converged"`, but provides `n_opt_cycles` only and omits the per-cycle
-force/step convergence keys and Hessian-mode `safeguards` object.
+are reported as `not_converged`. An energy-plateau `stalled` outcome (see the
+general note above) is likewise never reported as `converged` and stops further
+flatten/retry work. Convergence details are
+available for rsirfo mode; dimer mode also reports `status: "converged"`,
+`"not_converged"`, or `"stalled"`, but provides `n_opt_cycles` only and omits
+the per-cycle force/step convergence keys and Hessian-mode `safeguards` object.
 
 ### `freq`
 
@@ -216,7 +230,8 @@ force/step convergence keys and Hessian-mode `safeguards` object.
 | `charge` | int | System charge |
 | `spin` | int | Spin multiplicity |
 | `model` | string | Model identifier |
-| `never_stop` | bool | Whether energy-rise/plateau stops were bypassed |
+| `never_stop` | bool | Whether opt-in energy-rise/plateau bypass mode was enabled |
+| `never_stop_energy_bypasses` | int | Number of energy-rise/plateau stop events actually bypassed |
 | `n_freeze_atoms` | int | Frozen atoms |
 | `solvent` | string | Implicit solvent or `"none"` |
 | `bond_changes` | object | Directed first→last `{formed: [...], broken: [...]}` of element-prefixed 1-based atom-pair strings (e.g. `"C7-O12"`); key is omitted when the comparison fails or `finished_first.xyz`/`finished_last.xyz` are absent. |
@@ -224,7 +239,7 @@ force/step convergence keys and Hessian-mode `safeguards` object.
 | `step_length` | float | IRC step length (Bohr) |
 | `max_cycles` | int | Maximum IRC steps |
 | `input_file` | string | Input filename |
-| `files` | object | Trajectory files (xyz + pdb) |
+| `files` | object | Trajectory files (XYZ plus available PDB/CIF companions) |
 | `rigid_projection` | object | Rigid-mode and initial-Hessian provenance; see [projection provenance](#rigid-projection-provenance) |
 
 ### `scan`
@@ -262,11 +277,11 @@ force/step convergence keys and Hessian-mode `safeguards` object.
 | Field | Type | Description |
 |-------|------|-------------|
 | `status` | string | `"completed"` |
-| `charge` | int | System charge |
-| `spin` | int | Spin multiplicity |
-| `backend` | string | MLIP backend |
-| `model` | string | Model identifier |
-| `solvent` | string | Implicit solvent or `"none"` |
+| `charge` | int \| null | System charge; null for plot-only `scan3d --csv` |
+| `spin` | int \| null | Spin multiplicity; null for plot-only `scan3d --csv` |
+| `backend` | string \| null | MLIP backend; null for plot-only `scan3d --csv` |
+| `model` | string \| null | Model identifier; null for plot-only `scan3d --csv` |
+| `solvent` | string \| null | Implicit solvent or `"none"`; null for plot-only `scan3d --csv` because imported energies have no calculator provenance |
 | `max_step_size_angstrom` | float | Max bond-length step per increment (Å, `scan2d` only) |
 | `n_grid_points` | int | Total grid points |
 | `grid_shape` | int[] | Grid dimensions (only when running fresh; absent under `scan3d --csv`) |
@@ -312,6 +327,7 @@ validation can fail before the file exists.
 | `energy_diagrams` | object[] | Per-segment labeled energy profiles (kcal/mol) |
 | `mlip_backend` | string | Backend identifier |
 | `mlip_model` | string \| null | Model identifier, recorded separately from the backend |
+| `mlip_precision` | string \| null | Effective `fp32` / `fp64` token; null for custom calculators |
 | `charge` | int | System charge |
 | `spin` | int | Spin multiplicity |
 
@@ -415,6 +431,7 @@ The `all` and `path-search` commands write `summary.json` with a richer structur
 | `energy_diagrams` | object[] | Energy profiles with labels and kcal/mol values |
 | `mlip_backend` | string | Backend identifier |
 | `mlip_model` | string \| null | Model identifier, recorded separately from the backend |
+| `mlip_precision` | string \| null | Effective `fp32` / `fp64` token; null for custom calculators |
 | `charge` | int | System charge |
 | `spin` | int | Spin multiplicity |
 | `environment` | object | Hardware info |

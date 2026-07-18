@@ -18,6 +18,7 @@ import sys
 import gc
 
 import click
+from pdb2reaction.core.output import emit
 import numpy as np
 import time
 import torch
@@ -68,6 +69,11 @@ def _directional_endpoint_energy_fields(all_energies: Any, ts_energy: Any) -> Di
         "energy_reactant_hartree": first,
         "energy_product_hartree": last,
     }
+
+
+def _irc_output_path(eulerpc: EulerPC, filename: str) -> Path:
+    """Resolve an engine-authored IRC filename, including normalized prefix."""
+    return Path(eulerpc.get_path_for_fn(filename))
 
 
 def _echo_convert_trj_if_exists(
@@ -490,25 +496,20 @@ def cli(
             # Seed cached TS Hessian if available (from tsopt in ``all`` workflow)
             from pdb2reaction.io.hessian_cache import (
                 discard as _hess_discard,
-                load as _hess_load,
-                matches_cart_coords as _hess_matches_coords,
+                load_matching as _hess_load_matching,
                 store as _hess_store,
+                identity_from_context as _hess_identity,
             )
-            cached = _hess_load("ts")
-            if cached is not None and not _hess_matches_coords(
-                cached,
-                geometry.cart_coords,
-                # The all-workflow may pass the TS through a three-decimal PDB.
+            # Reuse the tsopt TS Hessian only on a full evaluation-identity
+            # match; the all-workflow may pass the TS through a three-decimal
+            # PDB, so the coordinate field keeps the wider bohr tolerance.
+            cached = _hess_load_matching(
+                "ts",
+                _hess_identity(geometry, calc_cfg, role="ts"),
                 atol=1.1e-3,
-            ):
-                click.echo(
-                    "[irc] Cached TS Hessian does not match the IRC start "
-                    "geometry; calculating a fresh Hessian.",
-                    err=True,
-                )
-                cached = None
+            )
             if cached is not None:
-                click.echo("[irc] Reusing cached TS Hessian from tsopt.")
+                emit("[irc] Reusing cached TS Hessian from tsopt.", narrative=True)
                 _dev = calc_cfg.get("device", "auto")
                 if _dev == "auto":
                     _dev = "cuda" if torch.cuda.is_available() else "cpu"
@@ -546,7 +547,7 @@ def cli(
                 f"full_rigid_rank={_rigid_info.full_rigid_rank}."
             )
 
-            click.echo("\n====== IRC (EulerPC) ======\n", narrative=True)
+            emit("\n====== IRC (EulerPC) ======\n", narrative=True)
             # Clear per-direction values before running: a failed or one-sided
             # IRC must never expose an endpoint from an earlier segment.
             _hess_discard("irc_left")
@@ -596,9 +597,31 @@ def cli(
                         "cart_coords": endpoint_cart_coords,
                         "irc_direction": direction,
                     },
+                    identity=_hess_identity(
+                        geometry,
+                        calc_cfg,
+                        role=key,
+                        cart_coords=endpoint_cart_coords,
+                    ),
                 )
 
-            if eulerpc.forward and getattr(eulerpc, "forward_mw_hessian", None) is not None:
+            # M42: cache an endpoint Hessian ONLY for a requested direction that
+            # explicitly CONVERGED. A nonconverged (e.g. max-cycle) direction may
+            # still carry a Bofill-updated Hessian, but promoting it would let a
+            # nonconverged endpoint seed downstream RFO as if it were a real
+            # minimum. Keys were discarded above; keep them discarded when the
+            # direction did not converge so no stale/never-converged Hessian is
+            # reused.
+            from pdb2reaction.workflows._outcomes import (
+                irc_hessian_cache_eligible as _irc_hess_eligible,
+            )
+            _fwd_conv = _irc_hess_eligible(eulerpc, "forward_is_converged")
+            _bwd_conv = _irc_hess_eligible(eulerpc, "backward_is_converged")
+            if (
+                eulerpc.forward
+                and _fwd_conv
+                and getattr(eulerpc, "forward_mw_hessian", None) is not None
+            ):
                 _forward_endpoint = (
                     np.asarray(eulerpc.forward_mw_coords[0], dtype=float)
                     / np.asarray(eulerpc.m_sqrt, dtype=float)
@@ -610,7 +633,13 @@ def cli(
                     "forward",
                 )
                 click.echo("[irc] Cached forward endpoint Hessian as 'irc_left'.")
-            if eulerpc.backward and getattr(eulerpc, "mw_hessian", None) is not None:
+            else:
+                _hess_discard("irc_left")
+            if (
+                eulerpc.backward
+                and _bwd_conv
+                and getattr(eulerpc, "mw_hessian", None) is not None
+            ):
                 _backward_endpoint = (
                     np.asarray(eulerpc.backward_mw_coords[-1], dtype=float)
                     / np.asarray(eulerpc.m_sqrt, dtype=float)
@@ -622,44 +651,40 @@ def cli(
                     "backward",
                 )
                 click.echo("[irc] Cached backward endpoint Hessian as 'irc_right'.")
+            else:
+                _hess_discard("irc_right")
 
-            suffix_prefix = irc_cfg.get("prefix", "")
-            _echo_convert_trj_if_exists(
-                out_dir_path / f"{suffix_prefix}{'finished_irc_trj.xyz'}",
-                prepared_input,
-                out_pdb=out_dir_path / f"{suffix_prefix}{'finished_irc.pdb'}" if prepared_input.source_path.suffix.lower() == ".pdb" else None,
-            )
-            _echo_convert_trj_if_exists(
-                out_dir_path / f"{suffix_prefix}{'forward_irc_trj.xyz'}",
-                prepared_input,
-                out_pdb=out_dir_path / f"{suffix_prefix}{'forward_irc.pdb'}" if prepared_input.source_path.suffix.lower() == ".pdb" else None,
-            )
-            _echo_convert_trj_if_exists(
-                out_dir_path / f"{suffix_prefix}{'backward_irc_trj.xyz'}",
-                prepared_input,
-                out_pdb=out_dir_path / f"{suffix_prefix}{'backward_irc.pdb'}" if prepared_input.source_path.suffix.lower() == ".pdb" else None,
-            )
+            for _stem in ("finished", "forward", "backward"):
+                _echo_convert_trj_if_exists(
+                    _irc_output_path(eulerpc, f"{_stem}_irc_trj.xyz"),
+                    prepared_input,
+                    out_pdb=(
+                        _irc_output_path(eulerpc, f"{_stem}_irc.pdb")
+                        if prepared_input.source_path.suffix.lower() == ".pdb"
+                        else None
+                    ),
+                )
 
             # summary.md and key_* outputs are disabled.
-            click.echo(format_elapsed("[time] Elapsed Time for IRC", time_start), narrative=True)
+            emit(format_elapsed("[time] Elapsed Time for IRC", time_start), narrative=True)
 
             # result.json (if --out-json)
             if out_json:
-                from pdb2reaction.core.utils import write_result_json
+                from pdb2reaction.core.utils import calculator_provenance, write_result_json
                 _all_e = eulerpc.all_energies
                 _n_fwd = len(getattr(eulerpc, "forward_energies", [])) if hasattr(eulerpc, "forward_energies") else 0
                 _n_bwd = len(getattr(eulerpc, "backward_energies", [])) if hasattr(eulerpc, "backward_energies") else 0
                 _ts_e = eulerpc.ts_energy if hasattr(eulerpc, "ts_energy") else None
                 _irc_files = {}
                 for _fn in ("finished_irc_trj.xyz", "forward_irc_trj.xyz", "backward_irc_trj.xyz"):
-                    _fp = out_dir_path / f"{suffix_prefix}{_fn}"
+                    _fp = _irc_output_path(eulerpc, _fn)
                     if _fp.exists():
                         _irc_files[_fn.replace("_trj.xyz", "")] = _fp.name
                 for _fn in (
                     "finished_irc.pdb", "forward_irc.pdb", "backward_irc.pdb",
                     "finished_irc.cif", "forward_irc.cif", "backward_irc.cif",
                 ):
-                    _fp = out_dir_path / f"{suffix_prefix}{_fn}"
+                    _fp = _irc_output_path(eulerpc, _fn)
                     if _fp.exists():
                         _irc_files[_fn.replace(".", "_")] = _fp.name
                 result_data = {
@@ -675,7 +700,12 @@ def cli(
                     "charge": calc_cfg["charge"],
                     "spin": calc_cfg["spin"],
                     "model": calc_cfg.get("model"),
+                    **calculator_provenance(calc_cfg),
                     "never_stop": bool(irc_cfg.get("never_stop", False)),
+                    "never_stop_energy_bypasses": int(
+                        getattr(eulerpc, "never_stop_energy_increase_bypasses", 0)
+                        + getattr(eulerpc, "never_stop_energy_convergence_bypasses", 0)
+                    ),
                     "rigid_projection": {
                         **getattr(eulerpc, "rigid_projection_info", _rigid_info).as_dict(),
                         "hessian_space": (
@@ -694,11 +724,41 @@ def cli(
                 }
                 result_data.update(_directional_endpoint_energy_fields(_all_e, _ts_e))
 
+                # M42: one truthful LeafOutcome per requested IRC direction. A
+                # requested direction is usable only when it explicitly
+                # converged; a disabled direction is optional (not a failure).
+                # Legacy ``status`` stays "completed" (the IRC process ran).
+                from pdb2reaction.workflows._outcomes import (
+                    aggregate_workflow_truth as _agg_truth,
+                    attach_outcomes as _attach,
+                    irc_direction_leaves as _irc_dir_leaves,
+                )
+                _dir_leaves, _dir_expected = _irc_dir_leaves(
+                    (
+                        (
+                            "forward",
+                            bool(getattr(eulerpc, "forward", False)),
+                            getattr(eulerpc, "forward_is_converged", None),
+                            _n_fwd,
+                            [_irc_files["forward_irc"]] if "forward_irc" in _irc_files else [],
+                        ),
+                        (
+                            "backward",
+                            bool(getattr(eulerpc, "backward", False)),
+                            getattr(eulerpc, "backward_is_converged", None),
+                            _n_bwd,
+                            [_irc_files["backward_irc"]] if "backward_irc" in _irc_files else [],
+                        ),
+                    )
+                )
+                _irc_truth = _agg_truth(_dir_leaves, _dir_expected)
+                _attach(result_data, truth=_irc_truth, stage_outcomes=_dir_leaves)
+
                 # Bond changes between IRC endpoints
                 try:
                     from pdb2reaction.domain.bond_changes import compare_structures
-                    _irc_first = out_dir_path / "finished_first.xyz"
-                    _irc_last = out_dir_path / "finished_last.xyz"
+                    _irc_first = _irc_output_path(eulerpc, "finished_first.xyz")
+                    _irc_last = _irc_output_path(eulerpc, "finished_last.xyz")
                     if _irc_first.exists() and _irc_last.exists():
                         _g1 = geom_loader(str(_irc_first))
                         _g2 = geom_loader(str(_irc_last))
