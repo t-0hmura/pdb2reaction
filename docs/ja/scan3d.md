@@ -41,10 +41,10 @@ pdb2reaction scan3d -i input.pdb -q 0 \
  -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20),("TYR,285,CG","SAM,309,C12",1.10,3.00)]'
 ```
 
-LBFGS 緩和、内側軌跡ダンプ、HTML 等値面プロット。
+L-BFGS 緩和、内側軌跡ダンプ、HTML 等値面プロット。
 
 ```bash
-# LBFGS 緩和、内側軌跡ダンプ、HTML 等値面プロット
+# L-BFGS 緩和、内側軌跡ダンプ、HTML 等値面プロット
 pdb2reaction scan3d -i input.pdb -q 0 \
  -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20),("TYR,285,CG","SAM,309,C12",1.10,3.00)]' \
  --max-step-size 0.20 --dump -o ./result_scan3d/ --opt-mode grad \
@@ -146,7 +146,7 @@ opt:
  out_dir: ./result_scan3d/ # output directory
 lbfgs:
  max_step: 0.3 # maximum step length
- out_dir: ./result_scan3d/ # LBFGS-specific output directory
+ out_dir: ./result_scan3d/ # L-BFGS-specific output directory
 rfo:
  trust_radius: 0.10 # trust-region radius
  out_dir: ./result_scan3d/ # RFO-specific output directory

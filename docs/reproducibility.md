@@ -4,7 +4,7 @@ MLIP inference on a GPU may be **non-bit-reproducible by default**: parallel
 reductions (atomic adds, scatter operations) accumulate in a
 hardware-scheduling-dependent order, so two runs with identical inputs differ
 at the floating-point ULP level. Small drift was observed in the project's UMA
-smoke benchmark, but its size is not a guarantee for another backend, model,
+smoke benchmark, but its size does not guarantee the same for another backend, model,
 GPU, software stack, or long optimizer trajectory. Assess scientific
 reproducibility using chemically relevant observables, not file identity alone.
 

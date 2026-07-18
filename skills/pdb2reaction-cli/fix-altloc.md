@@ -4,7 +4,7 @@
 
 Blank the PDB altLoc column (col 17) without shifting any other field and
 select one coherent non-blank altLoc label per residue. The default rule is
-**highest mean occupancy across that residue's labelled atoms, then earliest
+**highest mean occupancy across that residue's labeled atoms, then earliest
 label appearance** — there is no hard-coded preference for A. Blank/shared
 atoms are retained; atoms unique to an unselected conformer are dropped rather
 than merged into a hybrid residue. Geometry workflows apply the same

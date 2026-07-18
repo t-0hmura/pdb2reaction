@@ -81,7 +81,7 @@ Same as `all.md`. Specifically for endpoint-MEP mode:
 | `<out_dir>/_work/path_opt/mep_seg_NN_trj.xyz`, `mep_seg_NN.{pdb,gjf}` | successful MEP (`_work/path_search/` with `--refine-path`) | per-segment MEP frames (no bare `.xyz`); scratch |
 | `<out_dir>/_work/path_search/seg_NNN_<tag>/` | `--refine-path` | recursive-splitter scratch (3-digit, `_mep` / `_maxdepth` / `_bridge`); internal |
 | `<out_dir>/segments/seg_NN/` | a reactive segment enters requested post-processing | per-segment outputs; may be partial after a failed stage, so inspect JSON status |
-| `<out_dir>/segments/seg_NN/{reactant,ts,product}.{pdb,xyz}` | successful `--tsopt` + IRC/endpoint processing | canonical R/TS/P (after IRC + RFO endpoint opt; LBFGS via `--opt-mode-post grad`) |
+| `<out_dir>/segments/seg_NN/{reactant,ts,product}.{pdb,xyz}` | successful `--tsopt` + IRC/endpoint processing | canonical R/TS/P (after IRC + RFO endpoint opt; L-BFGS via `--opt-mode-post grad`) |
 | `<out_dir>/summary.json["segments"]` | pipeline reaches its summary writer | list of `{index, barrier_kcal, delta_kcal, bond_changes, ...}`; early validation can produce no summary |
 
 ## Distinctive failure modes

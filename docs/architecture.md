@@ -99,7 +99,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 
 **L2 `workflows/`** contains compute-command modules plus shared stage helpers such as `scan_common.py`, `restraints.py`, and `align_freeze.py`. A command module normally exposes one `@click.command()` named `cli`; utility commands also live in `io/` and `domain/`, so neither “one file per subcommand” nor “every workflow file is a command” is an invariant.
 
-**L3 `domain/`**. Chemistry-aware helper logic that may import `torch` / `numpy` / `pysisyphus.constants` (numeric back-ends), but **may not import** MLIP runtimes (`fairchem`, `orb_models`, `mace`, `aimnet`). `.github/scripts/check_engineering_markers.py` enforces this deny list via an external-library import-scope check across non-`backends/` files. (The `# DOMAIN_PURE` docstring marker itself lives on selected workflow modules — `workflows/dft.py`, `tsopt.py`, `sp.py` — not on `domain/`.) Domain helpers are reusable by any L2 stage runner.
+**L3 `domain/`**. Chemistry-aware helper logic that may import `torch` / `numpy` / `pysisyphus.constants` (numeric backends), but **may not import** MLIP runtimes (`fairchem`, `orb_models`, `mace`, `aimnet`). `.github/scripts/check_engineering_markers.py` enforces this deny list via an external-library import-scope check across non-`backends/` files. (The `# DOMAIN_PURE` docstring marker itself lives on selected workflow modules — `workflows/dft.py`, `tsopt.py`, `sp.py` — not on `domain/`.) Domain helpers are reusable by any L2 stage runner.
 
 **L4a `backends/`**. MLIP backend dispatcher (`__init__.py` + `base.py`) plus one adapter per supported MLIP (`uma.py`, `orb.py`, `mace.py`, `aimnet2.py`). `solvent.py` and `xtb_alpb_correction.py` carry the xTB ALPB implicit-solvent delta correction (an opt-in MLIP wrapper); the dispatcher also exposes the custom ASE-calculator boundary.
 
@@ -179,7 +179,7 @@ After step 5 you can read any other file by following the file index in §4. The
 | concern | file |
 |---|---|
 | Full pipeline orchestrator | `pdb2reaction/workflows/all.py` |
-| Geometry optimization (LBFGS / RFO) | `pdb2reaction/workflows/opt.py` |
+| Geometry optimization (L-BFGS / RFO) | `pdb2reaction/workflows/opt.py` |
 | 1D / 2D / 3D scans + shared | `pdb2reaction/workflows/scan{,2d,3d,_common}.py` |
 | MEP search (GSM) | `pdb2reaction/workflows/path_search.py` |
 | MEP optimizer core (pysisyphus COS) | `pdb2reaction/workflows/path_opt.py` |

@@ -110,8 +110,8 @@ Add `--dump` to keep the full optimization trajectory for inspection.
 
 - **Charge / spin** are resolved via the standard priority chain (see {ref}`CLI Conventions: Charge specification <charge-specification>`).
 - **Geometry loading + freeze-links** — structures are read through `pysisyphus.helpers.geom_loader`. When `--freeze-links` is active, cap-hydrogen parent atoms are automatically frozen (see {ref}`Cap hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
-- **MLIP Hessians** (default UMA) — `--hessian-calc-mode` toggles analytical vs finite-difference; both honour active (PHVA) subspaces. The MLIP backend may return only the active block when frozen atoms are present. See {ref}`hessian-evaluation` for the full Hessian-evaluation matrix.
-- **Dimer mode** — the Hessian-Guided Dimer stage periodically refreshes the dimer direction by evaluating an exact Hessian in the active subspace. Its `--tr-projection` treatment defaults to `constrained`, which removes only full-system rigid motions compatible with frozen anchors. Every stored, rotated, and trial orientation has frozen Cartesian components set to zero, and every off-centre force evaluation retains the central image's frozen coordinates exactly. The lowest eigenpair uses `torch.lobpcg` when `root == 0`, falling back to `torch.linalg.eigh`. With `--flatten`, the active Hessian is updated via a Bofill update (an SR1/MS ↔ PSB blend; toggle via `hessian_dimer.flatten_loop_bofill`) using displacements Δx and gradient differences Δg. Each flatten loop:
+- **MLIP Hessians** (default UMA) — `--hessian-calc-mode` toggles analytical vs finite-difference; both honor active (PHVA) subspaces. The MLIP backend may return only the active block when frozen atoms are present. See {ref}`hessian-evaluation` for the full Hessian-evaluation matrix.
+- **Dimer mode** — the Hessian-Guided Dimer stage periodically refreshes the dimer direction by evaluating an exact Hessian in the active subspace. Its `--tr-projection` treatment defaults to `constrained`, which removes only full-system rigid motions compatible with frozen anchors. Every stored, rotated, and trial orientation has frozen Cartesian components set to zero, and every off-center force evaluation retains the central image's frozen coordinates exactly. The lowest eigenpair uses `torch.lobpcg` when `root == 0`, falling back to `torch.linalg.eigh`. With `--flatten`, the active Hessian is updated via a Bofill update (an SR1/MS ↔ PSB blend; toggle via `hessian_dimer.flatten_loop_bofill`) using displacements Δx and gradient differences Δg. Each flatten loop:
   - estimates imaginary modes, flattens once, and refreshes the dimer direction;
   - runs a Dimer + L-BFGS micro-segment;
   - optionally performs a Bofill update.
@@ -289,7 +289,7 @@ opt:
 
 ```{note}
 **Energy-plateau fallback.** Hessian-family TS optimizers (RS-P-RFO,
-RS-I-RFO, and TRIM) honour the shared `energy_plateau` setting. An energy
+RS-I-RFO, and TRIM) honor the shared `energy_plateau` setting. An energy
 range below `energy_plateau_thresh` (default `1×10⁻⁴ au` over the last 50
 steps) triggers exact-Hessian/PHVA terminal validation; it does not bypass the
 required first-order saddle and physical convergence checks. This can avoid

@@ -17,7 +17,7 @@ pdb2reaction all -i ts_candidate.xyz \
     -o result_ts_only
 ```
 
-Or with a residue-labelled PDB/mmCIF from which `-l` can derive the charge:
+Or with a residue-labeled PDB/mmCIF from which `-l` can derive the charge:
 
 ```bash
 pdb2reaction all -i ts_candidate.pdb \

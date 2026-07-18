@@ -11,10 +11,10 @@ Minimal run with explicit charge and spin:
 pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 --out-dir ./result_freq
 ```
 
-PHVA with link freezing and dump thermo payload:
+PHVA with cap-hydrogen parent freezing and dump thermo payload:
 
 ```bash
-# PHVA with link freezing and dump thermo payload
+# PHVA with cap-hydrogen parent freezing and dump thermo payload
 pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 --freeze-links --dump --out-dir ./result_freq_phva
 ```
 

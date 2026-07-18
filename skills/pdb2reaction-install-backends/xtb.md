@@ -50,7 +50,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb \
 
 Available solvents (pass to `--solvent`): the keyword is forwarded
 verbatim to xTB's ALPB parameter set, so use the spelling xTB
-recognises. Common entries include `water`, `methanol`, `acetone`,
+recognizes. Common entries include `water`, `methanol`, `acetone`,
 `acetonitrile`, `dmso`, `dmf`, `chcl3`, `ch2cl2`, `hexane`,
 `benzene`, `toluene`, `thf`, `nhexan`, `phenol`, `octanol`,
 `woctanol`, `aniline`, `furane`, `ether`, `noctane`, `co2`. The

@@ -64,7 +64,7 @@ solvent-corrected path.
 `result.json` reports the final string energies and status. The status is
 `converged` / `not_converged` when the selected engine exposes a convergence
 flag, or `completed` when that engine completed but did not expose one.
-`completed` must not be relabelled as convergence.
+`completed` must not be relabeled as convergence.
 
 ## When to use vs path-search
 

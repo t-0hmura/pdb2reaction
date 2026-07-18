@@ -195,7 +195,7 @@ below reads (these subcommands default to `--no-out-json`).
 `not_converged`) → freq `result.json` `n_imaginary == 1` (exactly one imaginary frequency)
 whose mode moves the reacting atoms (0 or >1 → fix via fp64 / `--coord-type dlc` /
 `--flatten`, see `pdb2reaction-ts-strategy/SKILL.md` §3, before trusting the barrier) → irc
-`result.json` `status == "completed"` **plus** both enabled direction's
+`result.json` `status == "completed"` **plus** both enabled directions'
 `*_converged` / `*_energy_increased` fields and frame counts are acceptable;
 then confirm the first/last endpoints connect the intended R and P (bond
 changes match this step). `completed` alone only means the runner returned.

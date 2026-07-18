@@ -89,7 +89,7 @@ Walk these in order; each step has a fast pass/fail check before you move on.
   verify IRC connectivity. If a system-specific noise analysis identifies soft
   nonreactive modes, set the opt-in YAML filter `irc.imag_below` below its
   `0.0` cm⁻¹ default; IRC accepts only modes with `ν <= imag_below`.
-- Visualise the mode: `pymol result_ts_only/segments/seg_01/ts/vib/imag_*_trj.xyz` — the animation should swing precisely the bond(s) you expect to break/form, not show whole-molecule/residue tumbling.
+- Visualize the mode: `pymol result_ts_only/segments/seg_01/ts/vib/imag_*_trj.xyz` — the animation should swing precisely the bond(s) you expect to break/form, not show whole-molecule/residue tumbling.
 
 **3. IRC connectivity** — open the IRC trajectory in PyMOL:
 

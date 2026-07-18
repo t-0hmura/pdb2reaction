@@ -138,7 +138,7 @@ ja/glossary
 | CLI conventions / structure formats / YAML | [CLI Conventions](cli-conventions.md) · [mmCIF and large structures](cif.md) · [YAML Reference](yaml-reference.md) |
 | Same-stack repeatability (`--deterministic`) | [Reproducibility](reproducibility.md) |
 | MLIP backend settings / HPC examples | [MLIP Calculator](uma-pysis.md) · [HPC Examples](hpc-example.md) |
-| Cluster boundary atoms (cap H, `--freeze-atoms`) | [Frozen Atoms](freeze-atoms.md) |
+| Cluster boundary atoms (cap-H, `--freeze-atoms`) | [Frozen Atoms](freeze-atoms.md) |
 
 ## Subcommands
 

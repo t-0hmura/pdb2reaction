@@ -79,9 +79,9 @@ segment:
 
 | Path | Content |
 |---|---|
-| `<out_dir>/segments/seg_NN/{reactant,ts,product}.{xyz,pdb,cif}` | **CANONICAL** — TSOPT TS plus post-IRC endpoint optimization (RFO default; LBFGS via `--opt-mode-post grad`). CIF is present only for bridged mmCIF/oversized-PDB topology and restores original IDs. In MEP modes, IRC ends are oriented to the MEP left/right states by bond pattern then RMSD. In TS-only mode, lacking endpoint references, the higher-energy end is named reactant and the lower product; inspect chemical identity. |
+| `<out_dir>/segments/seg_NN/{reactant,ts,product}.{xyz,pdb,cif}` | **CANONICAL** — TSOPT TS plus post-IRC endpoint optimization (RFO default; L-BFGS via `--opt-mode-post grad`). CIF is present only for bridged mmCIF/oversized-PDB topology and restores original IDs. In MEP modes, IRC ends are oriented to the MEP left/right states by bond pattern then RMSD. In TS-only mode, lacking endpoint references, the higher-energy end is named reactant and the lower product; inspect chemical identity. |
 | `<out_dir>/segments/seg_NN/structures/{reactant,ts,product}.{xyz,pdb,cif}` | nested copy of canonical; CIF follows the same bridge condition |
-| `<out_dir>/segments/seg_NN/structures/{reactant,product}_irc.{xyz,pdb,cif}` | raw IRC endpoints (pre-RFO/LBFGS re-optimization); for debugging IRC vs. post-IRC re-optimization divergence |
+| `<out_dir>/segments/seg_NN/structures/{reactant,product}_irc.{xyz,pdb,cif}` | raw IRC endpoints (pre-RFO/L-BFGS re-optimization); for debugging IRC vs. post-IRC re-optimization divergence |
 
 **Rule of thumb**: read from `segments/seg_NN/` for downstream stages. Use
 `reactant_irc.xyz` / `product_irc.xyz` only when debugging

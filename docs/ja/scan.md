@@ -157,7 +157,7 @@ opt:
  prefix: "" # filename prefix
  out_dir: ./result_scan/ # output directory
 lbfgs:
- thresh: gau # LBFGS convergence preset
+ thresh: gau # L-BFGS convergence preset
  max_cycles: 10000 # iteration limit
  print_every: 100 # logging stride
  min_step_norm: 1.0e-08 # minimum accepted step norm
@@ -177,7 +177,7 @@ lbfgs:
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
  out_dir: ./result_scan/ # output directory
- keep_last: 7 # history size for LBFGS buffers
+ keep_last: 7 # history size for L-BFGS buffers
  beta: 1.0 # initial damping beta
  gamma_mult: false # multiplicative gamma update toggle
  max_step: 0.3 # maximum step length

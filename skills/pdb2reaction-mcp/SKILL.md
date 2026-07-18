@@ -40,7 +40,7 @@ See [`examples/mcp_client_config.json`](../../examples/mcp_client_config.json) f
 
 | MCP tool | wraps | purpose |
 |---|---|---|
-| `optimize_geometry` | `pdb2reaction opt` | Optimise one structure |
+| `optimize_geometry` | `pdb2reaction opt` | Optimize one structure |
 | `find_transition_state` | `pdb2reaction tsopt` | TS search (RS-P-RFO / Dimer / TRIM / RS-I-RFO) |
 | `run_irc` | `pdb2reaction irc` | IRC integration from a TS geometry |
 | `compute_frequencies` | `pdb2reaction freq` | Vibrational analysis + thermochemistry |
@@ -51,7 +51,7 @@ See [`examples/mcp_client_config.json`](../../examples/mcp_client_config.json) f
 | MCP tool | wraps | purpose |
 |---|---|---|
 | `scan_1d` / `scan_2d` / `scan_3d` | `pdb2reaction scan{,2d,3d}` | Restraint-driven distance scans |
-| `optimize_path` | `pdb2reaction path-opt` | Two-endpoint MEP optimisation |
+| `optimize_path` | `pdb2reaction path-opt` | Two-endpoint MEP optimization |
 | `search_paths` | `pdb2reaction path-search` | Recursive reaction-pathway search |
 | `run_full_pipeline` | `pdb2reaction all` | Configurable end-to-end pipeline; TS/IRC, thermo/freq, and DFT stages run only when their tool arguments enable them |
 | `run_single_point_dft` | `pdb2reaction dft` | Single-point DFT via GPU4PySCF by default; CPU PySCF is available through `extra_args=["--engine", "cpu"]` |
@@ -125,7 +125,7 @@ flag is rejected.
 
 - `opt_mode="hess"` (default; alias `"rsprfo"`) — Banerjee restricted-step P-RFO TS opt
 - `opt_mode="grad"` (alias `"dimer"`) — Hessian-guided Dimer TS opt
-- `opt_mode="trim"` — Helgaker trust-region image-minimisation TS opt
+- `opt_mode="trim"` — Helgaker trust-region image-minimization TS opt
 - `opt_mode="rsirfo"` — restricted-step I-RFO TS opt
 
 ## Sandbox / safety notes

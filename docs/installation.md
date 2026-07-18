@@ -159,7 +159,7 @@ If you prefer to build the environment piece by piece:
     conda install -c conda-forge xtb
     ```
 
-    **For CPCM-X solvation model** the conda-forge xtb does not include CPCM-X; build from source. See {ref}`recipe-cpcmx-build` for the recipe.
+    **For CPCM-X solvation model**, the conda-forge xtb does not include CPCM-X; build from source. See {ref}`recipe-cpcmx-build` for the recipe.
 
     To use a custom xTB binary, set the `xtb_cmd` key in your YAML config or use `calc.xtb_cmd` in Python.
 

@@ -1,6 +1,6 @@
 ---
 name: pdb2reaction-architecture
-description: Where the source code lives in `pdb2reaction`. 6 physical layer directories (`cli` / `workflows` / `domain` / `backends` / `io` / `core`) + 2 repo-internal forks (`pysisyphus` / `thermoanalysis`). Tells an agent which directory to grep for a given concern (Click option, stage runner, MLIP backend, output writer, chemistry default, cap-atom math) before touching code. TRIGGER on questions like "where is X implemented", "which file defines flag Y", "how is the repo organised", "what's safe to refactor". SKIP for usage questions — those belong to `pdb2reaction-cli` / `-overview`.
+description: Where the source code lives in `pdb2reaction`. 6 physical layer directories (`cli` / `workflows` / `domain` / `backends` / `io` / `core`) + 2 repo-internal forks (`pysisyphus` / `thermoanalysis`). Tells an agent which directory to grep for a given concern (Click option, stage runner, MLIP backend, output writer, chemistry default, cap-atom math) before touching code. TRIGGER on questions like "where is X implemented", "which file defines flag Y", "how is the repo organized", "what's safe to refactor". SKIP for usage questions — those belong to `pdb2reaction-cli` / `-overview`.
 ---
 
 # pdb2reaction architecture (one-screen map)
@@ -9,7 +9,7 @@ description: Where the source code lives in `pdb2reaction`. 6 physical layer dir
 
 ```
 pdb2reaction/                          ← the package body, one folder per layer
-├── cli/        # L1 — Click root group, --help-advanced, bool normalisation,
+├── cli/        # L1 — Click root group, --help-advanced, bool normalization,
 │               #      shared option-decorator factories, subcommand resolver.
 ├── workflows/  # L2 — the 13 stage subcommands, one module each (`all.py`,
 │               #      `scan.py`, `opt.py`, `path_opt.py`, `path_search.py`,
@@ -32,7 +32,7 @@ pdb2reaction/                          ← the package body, one folder per laye
                 #       CLI defaults), `utils.py` (PDB / XYZ / plot helpers),
                 #       `logging.py`.
 
-pysisyphus/        ← bundled fork of the optimiser / TS / IRC engine.
+pysisyphus/        ← bundled fork of the optimizer / TS / IRC engine.
                      Slimmed to the subset pdb2reaction actually uses; its own
                      README's "Divergent files" table is the authoritative list
                      of locally maintained numerical code. Read that table
@@ -71,7 +71,7 @@ layer graph and may be imported by any layer.
 | Human summary log / trajectory conversion / energy diagram | `pdb2reaction/io/` (the machine JSON schema is not owned solely by this layer) |
 | Chemistry rule (#4 gpu4pyscf `rks_lowmem`, #5 def2 auto-ECP, #7 Bofill advanced-indexing) | grep `# CHEMISTRY-RULE:` — the only three markers in the package: `workflows/dft.py` (#4, #5) and `workflows/tsopt.py` (#7); lab sign-off required to edit |
 | Cap-atom (link-H) geometry | `pdb2reaction/workflows/extract.py` (`compute_linkH_atoms`) — chemistry-sensitive, and reached by opening the file (it carries no `CHEMISTRY-RULE` marker) |
-| TS / IRC / optimiser internals | `pysisyphus/` — read `pysisyphus/README.md`, add a focused regression test, and run the relevant numerical benchmark for behavior changes |
+| TS / IRC / optimizer internals | `pysisyphus/` — read `pysisyphus/README.md`, add a focused regression test, and run the relevant numerical benchmark for behavior changes |
 | MCP server / agent integration | `pdb2reaction/mcp/` — see [`pdb2reaction-mcp`](../pdb2reaction-mcp/SKILL.md) |
 
 ## Hidden constraints to remember

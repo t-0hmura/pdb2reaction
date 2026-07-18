@@ -59,7 +59,7 @@ Detection cutoff `hessian_dimer.neg_freq_thresh_cm` (default 5 cm⁻¹).
 | Lever | Flag | Effect |
 |---|---|---|
 | Raise precision where supported | `--precision fp64` | Can reduce numerical-noise modes for UMA/ORB/MACE; does not remove a genuine second negative-curvature direction |
-| Coordinate representation | `--coord-type dlc` | Delocalised internal coordinates can change conditioning relative to Cartesian coordinates; benchmark both on the problematic seed because neither is uniformly faster or more reliable |
+| Coordinate representation | `--coord-type dlc` | Delocalized internal coordinates can change conditioning relative to Cartesian coordinates; benchmark both on the problematic seed because neither is uniformly faster or more reliable |
 | Flatten spurious modes | `--flatten` | Extra-imaginary-mode flattening loop (`grad`: dimer loop; `hess`: post-RS-P-RFO); `--no-flatten` forces `flatten_max_iter=0`. On `tsopt`, `opt`, `all` |
 
 - `--coord-type` choices: `cart` (default) | `redund` | `dlc` | `tric`. On `path-opt` / `path-search` only `cart` / `dlc` are accepted.

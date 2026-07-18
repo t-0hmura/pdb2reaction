@@ -180,7 +180,7 @@ directly:
 
 For walltime-truncated `all` runs, point `--out-dir` at a persistent
 location and pick up where you left off by chaining the appropriate
-subcommands against the artefacts that `all` already produced.
+subcommands against the artifacts that `all` already produced.
 
 ## Parallel job submission patterns
 

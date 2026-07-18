@@ -23,7 +23,7 @@ defaults to `uma`. Full flags: the matching `<sub>.md` next to this file, or
 | `extract` | Active-site cluster cut | `pdb2reaction extract -i raw.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' -r 2.6 -o cluster.pdb` | `cluster.pdb` (`-o` is the output file path, not a directory) |
 | `path-search` | Recursive MEP w/ bond-change segmentation | `pdb2reaction path-search -i 1.R.pdb 3.P.pdb -q 0 -m 1 -o out` | `out/hei_seg_NN.xyz` + `out/summary.json` |
 | `path-opt` | Single-segment MEP refinement | `pdb2reaction path-opt -i 1.R.pdb 2.P.pdb -q 0 -m 1 -o out` | `out/final_geometries_trj.xyz` |
-| `opt` | Geometry minimization (LBFGS / RFO) | `pdb2reaction opt -i geom.pdb -q 0 -m 1 -o out` | `out/final_geometry.xyz` |
+| `opt` | Geometry minimization (L-BFGS / RFO) | `pdb2reaction opt -i geom.pdb -q 0 -m 1 -o out` | `out/final_geometry.xyz` |
 | `tsopt` | TS optimization (RS-P-RFO / Dimer) | `pdb2reaction tsopt -i ts.xyz -q 0 -m 1 -o out` | `out/final_geometry.xyz`; one imaginary mode is necessary but mode displacement and IRC connectivity are also required for TS validation |
 | `freq` | Hessian + QRRHO thermo | `pdb2reaction freq -i geom.xyz -q 0 -m 1 -o out` | after successful evaluation, `out/frequencies_cm-1.txt`; `out/thermoanalysis.yaml` with `--dump` (`all --thermo` sets it) |
 | `sp` | Single-point MLIP energy + forces (+optional Hessian) | `pdb2reaction sp -i geom.pdb -q 0 -m 1 -o out` | `out/forces.npy` (+ `out/hessian.npy` with `--hess`); energy printed to stdout; `out/result.json` + `out/summary.json` only with `--out-json` |

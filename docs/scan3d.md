@@ -161,7 +161,7 @@ opt:
  out_dir: ./result_scan3d/ # output directory
 lbfgs:
  max_step: 0.3 # maximum step length
- out_dir: ./result_scan3d/ # LBFGS-specific output directory
+ out_dir: ./result_scan3d/ # L-BFGS-specific output directory
 rfo:
  trust_radius: 0.10 # trust-region radius
  out_dir: ./result_scan3d/ # RFO-specific output directory

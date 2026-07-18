@@ -47,7 +47,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 │ │ ├── common_options.py @add_print_every_option / @add_irc_pos_def_option / @add_precision_option / @add_coord_type_option / @add_ml_charge_spin_options
 │ │ ├── decorators.py resolve_yaml_sources / load_merged_yaml_cfg / _write_error_json
 │ │ ├── help_pages.py --help-advanced pager
-│ │ ├── bool_compat.py --flag / --no-flag normalisation
+│ │ ├── bool_compat.py --flag / --no-flag normalization
 │ │ └── default_group.py subcommand resolver, lazy module import
 │ │
 │ ├── workflows/ # === L2 Application ===
@@ -63,7 +63,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 │ ├── domain/ # === L3 Domain ===
 │ │ ├── bond_changes.py R↔P bond detection
 │ │ ├── bond_summary.py post-IRC diagnostic
-│ │ └── add_elem_info.py PDB element column normaliser
+│ │ └── add_elem_info.py PDB element column normalizer
 │ │
 │ ├── backends/ # === L4a Infra (MLIP) ===
 │ │ ├── __init__.py backend dispatch + registry
@@ -87,7 +87,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 ├── tests/ smoke / unit
 ├── .github/ workflows/ + scripts/ (docs-quality lint helpers; CI-only)
 └── (repo-top sibling, layer-external bundled forks)
- pysisyphus/ ~90 file, repo-internal fork (slimmed; CLI driver + QM backends + wavefunction + dead optimisers / IRC / NEB variants removed)
+ pysisyphus/ ~90 file, repo-internal fork (slimmed; CLI driver + QM backends + wavefunction + dead optimizers / IRC / NEB variants removed)
  thermoanalysis/ 5 file, repo-internal fork
 ```
 
@@ -177,7 +177,7 @@ CLI サブコマンドリゾルバ（`cli/app.py:_LAZY_SUBCOMMANDS`）は **絶�
 | concern | file |
 |---|---|
 | 全パイプラインオーケストレータ | `pdb2reaction/workflows/all.py` |
-| 構造最適化（LBFGS / RFO） | `pdb2reaction/workflows/opt.py` |
+| 構造最適化（L-BFGS / RFO） | `pdb2reaction/workflows/opt.py` |
 | 1D / 2D / 3D スキャン + 共有 | `pdb2reaction/workflows/scan{,2d,3d,_common}.py` |
 | MEP 探索（GSM） | `pdb2reaction/workflows/path_search.py` |
 | MEP optimizer コア（pysisyphus COS） | `pdb2reaction/workflows/path_opt.py` |

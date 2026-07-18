@@ -2,7 +2,7 @@
 
 Remove alternate-location (altLoc) indicators from PDB files by selecting one
 coherent non-blank altLoc label per residue. The label with the highest mean
-occupancy across that residue's labelled atoms is selected; ties are broken by
+occupancy across that residue's labeled atoms is selected; ties are broken by
 the label's first appearance. Blank/shared atoms are retained, coordinates from
 other labels are dropped, and column 17 is blanked on surviving records.
 Geometry workflows apply the same residue-coherent rule automatically through
@@ -32,7 +32,7 @@ pdb2reaction fix-altloc -i ./structures --inplace --recursive
 
 1. Check if the input file contains any non-blank altLoc characters (column 17).
  - If no altLoc is found and `--force` is not set, skip the file.
-2. Group labelled ATOM/HETATM records by residue (residue name, chain ID,
+2. Group labeled ATOM/HETATM records by residue (residue name, chain ID,
    residue sequence, insertion code, and segID).
 3. Select one non-blank label per residue using:
  - Highest mean parsed occupancy across that label's atoms (columns 55–60)

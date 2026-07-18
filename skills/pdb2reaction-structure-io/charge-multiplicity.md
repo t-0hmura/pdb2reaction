@@ -111,7 +111,7 @@ and ask the user; never silently default a metal/radical cluster to
 
 ## Quick-reference ligand charges (commonly seen)
 
-These are common examples, not defaults. Confirm the exact deposited/modelled
+These are common examples, not defaults. Confirm the exact deposited/modeled
 protonation state against the relevant mechanism before using a value.
 
 | Ligand | Resname (PDB) | Charge at pH 7 |

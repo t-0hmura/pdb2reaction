@@ -123,7 +123,7 @@ In **TSOPT-only mode** (single input + `--tsopt`, no `--scan-lists`) there is no
 **The canonical structures are `segments/seg_NN/reactant.*`, `ts.*`, `product.*`** — cite these when reporting mechanisms. The `ts/`, `irc/`, `freq/`, and `dft/` subdirectories inside the same `seg_NN/` hold the per-stage working files (e.g. `ts/vib/imag_*_trj.xyz`, `irc/*_trj.xyz`) for debugging a single stage. The raw MEP-search engine output under `_work/path_opt/` is scratch — the products you need (`mep.pdb`, bridge-input `mep.cif`, `mep_trj.xyz`, `energy_diagram_MEP.png`) are already promoted to the root.
 ```
 
-At `-v 2` the console summarises active-site charge resolution, YAML contents, scan stages, MEP progress (GSM / DMF), and per-stage timing; see {ref}`verbosity-levels`.
+At `-v 2` the console summarizes active-site charge resolution, YAML contents, scan stages, MEP progress (GSM / DMF), and per-stage timing; see {ref}`verbosity-levels`.
 
 ### Plot file naming
 
@@ -142,7 +142,7 @@ Energy-diagram filenames encode method and scope:
 
 ### Reading `summary.log`
 
-The log is organised into numbered sections:
+The log is organized into numbered sections:
 
 - **[1] Global MEP overview** — image / segment counts, MEP trajectory plot paths, aggregate MEP energy diagram.
 - **[2] Segment-level MEP summary (MLIP path)** — per-segment barriers (ΔE‡), reaction energies (ΔE), bond-change summaries.
@@ -306,7 +306,7 @@ Full schema: [YAML Reference](yaml-reference.md).
 ## Notes
 
 ```{tip}
-For large active-site models, the single-structure scan workflow tends to produce more reliable reaction barriers than the multi-structure MEP workflow. When multiple full PDB structures are provided, structural differences in regions unrelated to the reaction coordinate can accumulate and overestimate the barrier. The scan workflow avoids this by driving only the relevant coordinates from a single starting structure. The effect becomes more pronounced as the model size grows.
+For large active-site models, the single-structure scan workflow tends to produce more reliable reaction barriers than the multi-structure MEP workflow. When multiple full PDB structures are provided, structural differences in regions unrelated to the reaction coordinate can accumulate and inflate the barrier. The scan workflow avoids this by driving only the relevant coordinates from a single starting structure. The effect becomes more pronounced as the model size grows.
 ```
 
 - Reference PDB templates for merging are derived automatically from the original inputs; the explicit `--ref-full-pdb` option of `path-search` is hidden in this wrapper.

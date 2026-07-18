@@ -103,7 +103,7 @@ both `finished_first_to_finished_last`.
 For RFO-optimized canonical `reactant.{xyz,pdb}` / `product.{xyz,pdb}`
 under `<out_dir>/segments/seg_NN/`, run `pdb2reaction all` (it calls `irc`
 internally and post-processes the endpoints). Set `opt-mode-post: grad` in the
-`all` YAML only when you deliberately want LBFGS endpoint refinement.
+`all` YAML only when you deliberately want L-BFGS endpoint refinement.
 
 ## Bond-change check
 

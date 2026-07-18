@@ -40,7 +40,7 @@ pdb2reaction scan2d -i input.pdb -q 0 \
  -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20)]'
 ```
 
-LBFGS, dumped inner trajectories, and Plotly outputs:
+L-BFGS, dumped inner trajectories, and Plotly outputs:
 
 ```bash
 pdb2reaction scan2d -i input.pdb -q 0 \
@@ -165,7 +165,7 @@ opt:
  out_dir: ./result_scan2d/ # output directory
 lbfgs:
  max_step: 0.3 # maximum step length
- out_dir: ./result_scan2d/ # LBFGS-specific output directory
+ out_dir: ./result_scan2d/ # L-BFGS-specific output directory
 rfo:
  trust_radius: 0.10 # trust-region radius
  out_dir: ./result_scan2d/ # RFO-specific output directory
