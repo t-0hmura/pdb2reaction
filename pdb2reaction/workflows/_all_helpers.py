@@ -98,6 +98,7 @@ class AllContext:
     tsopt_max_cycles: Optional[int]
     tsopt_out_dir: Optional[Path]
     flatten: bool
+    reject_uphill: bool
     irc_step_size: Optional[float]
     irc_never_stop: Optional[bool]
     freq_out_dir: Optional[Path]

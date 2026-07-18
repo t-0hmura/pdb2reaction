@@ -90,8 +90,8 @@ def test_all_context_fields_match_cli_signature() -> None:
     assert not extra, f"AllContext has extra fields: {sorted(extra)}"
     # Absolute count guard catches symmetric add+remove pairs where the
     # name sets stay equal but the field count drifts.
-    assert len(ctx_field_names) == 72, (
-        f"AllContext field count drifted from 72 to {len(ctx_field_names)}; "
+    assert len(ctx_field_names) == 73, (
+        f"AllContext field count drifted from 73 to {len(ctx_field_names)}; "
         f"update this assertion alongside the cli() signature change."
     )
 

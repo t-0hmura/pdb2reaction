@@ -432,6 +432,17 @@ def _seed_rfo_initial_hessian(
     help="Optimization mode: grad (lbfgs) or hess (rfo). Aliases lbfgs/rfo are accepted.",
 )
 @click.option(
+    "--reject-uphill/--no-reject-uphill",
+    "reject_uphill",
+    default=True,
+    show_default=True,
+    help=(
+        "Reject energy-raising RFO trial steps in hess mode (roll back to the "
+        "lower-energy geometry and shrink the trust radius). Applies to "
+        "--opt-mode hess; ignored in grad/lbfgs mode."
+    ),
+)
+@click.option(
     "--flatten/--no-flatten",
     "flatten",
     default=False,
@@ -522,6 +533,7 @@ def cli(
     ref_pdb: Optional[Path],
     max_cycles: int,
     opt_mode: str,
+    reject_uphill: bool,
     flatten: bool,
     dump: bool,
     out_dir: str,
@@ -632,6 +644,8 @@ def cli(
                 geom_cfg["tr_projection"] = str(tr_projection).lower()
             if cli_param_overridden(ctx, "print_every") and print_every is not None:
                 opt_cfg["print_every"] = int(print_every)
+            if cli_param_overridden(ctx, "reject_uphill"):
+                rfo_cfg["reject_uphill"] = bool(reject_uphill)
 
             apply_yaml_overrides(
                 override_layer_cfg,

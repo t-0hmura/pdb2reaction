@@ -1,0 +1,138 @@
+"""Contract for the --reject-uphill/--no-reject-uphill endpoint re-opt toggle.
+
+The flag lets a user opt out of the post-IRC endpoint RFO uphill-rejection
+safeguard (default on, resting on an unconfirmed divergence hypothesis) so the
+on/off effect can be measured. These tests pin three falsifiable facts:
+
+1. the shipped default is unchanged (``RFO_KW["reject_uphill"] is True``);
+2. the default path (flag not passed -> ``reject_uphill=None``) leaves the
+   endpoint RFO config byte-identical to ``RFO_KW`` (no behavior change);
+3. an explicit toggle threads ``True``/``False`` into the *endpoint* RFO config
+   through the real ``_optimize_endpoint_geom`` code path (rfo branch only).
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import click
+import pytest
+from click.testing import CliRunner
+
+import pdb2reaction.workflows.all as allmod
+from pdb2reaction.cli import cli as root_cli
+from pdb2reaction.core.defaults import RFO_KW
+
+
+def test_shipped_default_is_reject_uphill_on() -> None:
+    # The None-path preserves whatever RFO_KW declares; this pins that default.
+    assert RFO_KW["reject_uphill"] is True
+
+
+@pytest.mark.parametrize("command", ["opt", "all"])
+def test_toggle_is_exposed_with_default_on(command: str) -> None:
+    ctx = click.Context(root_cli)
+    cmd = root_cli.get_command(ctx, command)
+    param = next(
+        (p for p in cmd.params if isinstance(p, click.Option) and p.name == "reject_uphill"),
+        None,
+    )
+    assert param is not None, f"{command} is missing --reject-uphill"
+    assert param.opts == ["--reject-uphill"]
+    assert param.secondary_opts == ["--no-reject-uphill"]
+    assert param.is_bool_flag is True
+    assert param.default is True
+
+
+class _StopBeforeRun(Exception):
+    """Raised by the stub optimizer to capture cfg without running an opt."""
+
+
+class _GeomStub:
+    calculator = None
+    freeze_atoms: list[int] = []
+
+    def set_calculator(self, _calc) -> None:  # noqa: D401 - test stub
+        pass
+
+
+@pytest.mark.parametrize(
+    "reject_uphill, expected",
+    [(None, True), (True, True), (False, False)],
+    ids=["default-none", "explicit-on", "explicit-off"],
+)
+def test_endpoint_rfo_receives_reject_uphill(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, reject_uphill, expected
+) -> None:
+    captured: dict[str, object] = {}
+
+    class _StubRFO:
+        def __init__(self, geom, **cfg) -> None:
+            captured["cfg"] = cfg
+            raise _StopBeforeRun()
+
+    # OptClass = RFOptimizer is resolved from the module global at call time.
+    monkeypatch.setattr(allmod, "RFOptimizer", _StubRFO)
+
+    with pytest.raises(_StopBeforeRun):
+        allmod._optimize_endpoint_geom(
+            _GeomStub(),
+            "hess",  # -> rfo branch
+            tmp_path,
+            "reactant",
+            dump=False,
+            thresh=None,
+            calc_identity_cfg=None,  # no cached Hessian seed -> straight to opt
+            reject_uphill=reject_uphill,
+        )
+
+    cfg = captured["cfg"]
+    assert cfg["reject_uphill"] is expected
+
+
+def test_opt_cli_accepts_the_toggle() -> None:
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("s.pdb").write_text("END\n", encoding="utf-8")
+        result = runner.invoke(
+            root_cli,
+            ["opt", "-i", "s.pdb", "-q", "0", "--opt-mode", "hess",
+             "--dry-run", "--no-reject-uphill"],
+        )
+    assert result.exit_code == 0, result.output
+
+
+def test_all_cli_accepts_the_toggle() -> None:
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("s.pdb").write_text("END\n", encoding="utf-8")
+        result = runner.invoke(
+            root_cli,
+            ["all", "-i", "s.pdb", "--tsopt", "True", "--dry-run", "True",
+             "--no-reject-uphill"],
+        )
+    assert result.exit_code == 0, result.output
+
+
+@pytest.mark.parametrize(
+    "extra, expected_eff",
+    [(["--no-reject-uphill"], False), ([], None), (["--reject-uphill"], True)],
+    ids=["off-arm", "default-unchanged", "on-arm"],
+)
+def test_all_gate_resolves_endpoint_reject_uphill(tmp_path: Path, extra, expected_eff) -> None:
+    """Positive control for the benchmark's on/off arms.
+
+    Parse `all` the way the CLI does and reproduce the exact resolution line
+    ``_reject_uphill_eff = bool(reject_uphill) if cli_param_overridden(...) else None``.
+    If the explicit-gate silently missed ``--no-reject-uphill``, the off-arm
+    would run with reject_uphill still ON and the A/B would be on-vs-on.
+    """
+    from pdb2reaction.workflows.all import cli as all_cli
+    from pdb2reaction.core.utils import cli_param_overridden
+
+    pdb = tmp_path / "x.pdb"
+    pdb.write_text("END\n", encoding="utf-8")
+    ctx = all_cli.make_context("all", ["-i", str(pdb), "--tsopt", "True", *extra])
+    gate = cli_param_overridden(ctx, "reject_uphill")
+    eff = bool(ctx.params["reject_uphill"]) if gate else None
+    assert eff is expected_eff

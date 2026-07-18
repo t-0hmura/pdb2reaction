@@ -55,6 +55,12 @@ Options:
                                   Optimization mode: grad (lbfgs) or hess (rfo).
                                   Aliases lbfgs/rfo are accepted.  [default:
                                   grad]
+  --reject-uphill / --no-reject-uphill
+                                  Reject energy-raising RFO trial steps in hess
+                                  mode (roll back to the lower-energy geometry
+                                  and shrink the trust radius). Applies to
+                                  --opt-mode hess; ignored in grad/lbfgs mode.
+                                  [default: reject-uphill]
   --flatten / --no-flatten        Enable/disable imaginary-mode flatten loop
                                   after optimization.  [default: no-flatten]
   --dump / --no-dump              Write optimization trajectory to

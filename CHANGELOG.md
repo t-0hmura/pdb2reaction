@@ -34,6 +34,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Add `tsopt --ref-mode PATH` to seed TS mode-following with a reference mode;
   `all` auto-supplies the MEP tangent at the HEI image.
 - Add `all --irc-step-size`, forwarded to the IRC child as `--step-size`.
+- Add `opt`/`all --reject-uphill/--no-reject-uphill` (default on) to opt out of the
+  RFO uphill-rejection safeguard; on `all` it applies to post-IRC endpoint
+  re-optimization only.
 
 ### Changed
 - Derive the existing `path-opt --max-nodes 20` default from shared
@@ -51,7 +54,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   saddle verification before a TS optimization may stop (`check_eigval_structure`,
   `verify_saddle`), and add saddle recovery. These are default-on optimizer
   behavior changes: an optimization can now stop at a different geometry, or
-  report a different terminal status, than it did in v0.4.11.
+  report a different terminal status, than it did in v0.4.11. The `reject_uphill`
+  safeguard rests on an as-yet-unconfirmed endpoint-divergence hypothesis and stays
+  on provisionally; it can be toggled with `opt`/`all --reject-uphill/--no-reject-uphill`
+  (post-IRC endpoint re-optimization only on `all`), and a future release may change
+  the default once its net effect is measured.
 - Record backend, model, and canonical effective precision in calculator-backed
   leaf and aggregate JSON outputs.
 - Break the product import cycle by relocating shared charge/residue services and

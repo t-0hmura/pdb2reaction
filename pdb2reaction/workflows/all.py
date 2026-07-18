@@ -1697,6 +1697,7 @@ def _optimize_endpoint_geom(
     dump: bool,
     thresh: Optional[str],
     calc_identity_cfg: Optional[Dict[str, Any]] = None,
+    reject_uphill: Optional[bool] = None,
 ) -> Tuple[Any, Path, Optional[bool]]:
     """
     Optimize an endpoint geometry using LBFGS/RFO with settings mirroring path_search defaults.
@@ -1745,6 +1746,12 @@ def _optimize_endpoint_geom(
         cfg["max_cycles"] = int(cfg.get("max_cycles", 300))
         if thresh is not None:
             cfg["thresh"] = str(thresh)
+        # RFO-only endpoint re-optimization uphill-rejection toggle (min-scoped).
+        # ``None`` leaves RFO_KW's own default in place (byte-identical behavior);
+        # an explicit bool is threaded from the ``all`` command's
+        # --reject-uphill/--no-reject-uphill flag.
+        if sopt_kind == "rfo" and reject_uphill is not None:
+            cfg["reject_uphill"] = bool(reject_uphill)
 
         # Seed cached IRC endpoint Hessian for RFO when available, but only on
         # a full evaluation-identity match (run/system/evaluator/active
@@ -3054,6 +3061,18 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     help="Enable the extra-imaginary-mode flattening loop in tsopt (grad: dimer loop, hess: post-RS-P-RFO); --no-flatten forces flatten_max_iter=0.",
 )
 @click.option(
+    "--reject-uphill/--no-reject-uphill",
+    "reject_uphill",
+    default=True,
+    show_default=True,
+    help=(
+        "Reject energy-raising RFO trial steps during post-IRC endpoint "
+        "re-optimization ONLY (roll back to the lower-energy geometry and shrink "
+        "the trust radius). Does not affect TS optimization or path search. "
+        "--no-reject-uphill disables it for the endpoint re-optimization."
+    ),
+)
+@click.option(
     "--irc-step-size",
     type=float,
     default=None,
@@ -3290,6 +3309,7 @@ def cli(
     tsopt_max_cycles: Optional[int],
     tsopt_out_dir: Optional[Path],
     flatten: bool,
+    reject_uphill: bool,
     irc_step_size: Optional[float],
     irc_never_stop: Optional[bool],
     freq_out_dir: Optional[Path],
@@ -3421,6 +3441,13 @@ def cli(
     )
 
     spin_cli_explicit = cli_param_overridden(ctx, "spin")
+    # Post-IRC endpoint re-optimization uphill-rejection toggle. ``None`` unless
+    # the flag was explicitly passed, so the default path keeps RFO_KW's own
+    # reject_uphill (unchanged behavior); an explicit --reject-uphill/--no-...
+    # is threaded into _optimize_endpoint_geom (endpoint re-opt) only.
+    _reject_uphill_eff = (
+        bool(reject_uphill) if cli_param_overridden(ctx, "reject_uphill") else None
+    )
     spin_configured = False
     if (
         not spin_cli_explicit
@@ -4218,6 +4245,7 @@ def cli(
                 dump=dump,
                 thresh=thresh_post,
                 calc_identity_cfg=calc_cfg_shared,
+                reject_uphill=_reject_uphill_eff,
             )
         except Exception as e:
             _echo(
@@ -4241,6 +4269,7 @@ def cli(
                 dump=dump,
                 thresh=thresh_post,
                 calc_identity_cfg=calc_cfg_shared,
+                reject_uphill=_reject_uphill_eff,
             )
         except Exception as e:
             _echo(
@@ -6009,6 +6038,7 @@ def cli(
                     dump=dump,
                     thresh=thresh_post,
                     calc_identity_cfg=calc_cfg_shared,
+                    reject_uphill=_reject_uphill_eff,
                 )
             except Exception as e:
                 _echo(
@@ -6032,6 +6062,7 @@ def cli(
                     dump=dump,
                     thresh=thresh_post,
                     calc_identity_cfg=calc_cfg_shared,
+                    reject_uphill=_reject_uphill_eff,
                 )
             except Exception as e:
                 _echo(
