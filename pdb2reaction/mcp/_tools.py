@@ -925,7 +925,7 @@ def register_all(mcp) -> None:
         extra_args: Optional[list[str]] = None,
         timeout_seconds: Optional[float] = None,
     ) -> dict[str, Any]:
-        """Detect bond changes between two PDB/mmCIF structures (CLI: `pdb2reaction bond-summary`)."""
+        """Detect bond changes between two structures in XYZ/PDB/mmCIF/GJF format (CLI: `pdb2reaction bond-summary`)."""
         argv: list[str] = ["pdb2reaction", "bond-summary", "-i", reactant_pdb, product_pdb]
         _append_extra_args(argv, extra_args, reserved=frozenset())
         return run_subcmd(argv, out_dir=None, timeout=timeout_seconds).to_dict()
