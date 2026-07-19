@@ -54,11 +54,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   saddle verification before a TS optimization may stop (`check_eigval_structure`,
   `verify_saddle`), and add saddle recovery. These are default-on optimizer
   behavior changes: an optimization can now stop at a different geometry, or
-  report a different terminal status, than it did in v0.4.11. The `reject_uphill`
-  safeguard rests on an as-yet-unconfirmed endpoint-divergence hypothesis and stays
-  on provisionally; it can be toggled with `opt`/`all --reject-uphill/--no-reject-uphill`
-  (post-IRC endpoint re-optimization only on `all`), and a future release may change
-  the default once its net effect is measured.
+  report a different terminal status, than it did in v0.4.11. The
+  `reject_uphill` safeguard is on by default. Its net effect has now been
+  measured: it rescues real post-IRC endpoint divergences (an endpoint
+  re-optimization that would otherwise settle at a spurious uphill minimum) with
+  no regression on already-converged endpoints, so it is kept on as a confirmed
+  net-positive safeguard. Toggle it with `opt`/`all
+  --reject-uphill/--no-reject-uphill` (post-IRC endpoint re-optimization only on
+  `all`).
 - Record backend, model, and canonical effective precision in calculator-backed
   leaf and aggregate JSON outputs.
 - Break the product import cycle by relocating shared charge/residue services and
