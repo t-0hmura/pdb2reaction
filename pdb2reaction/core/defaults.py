@@ -435,7 +435,9 @@ HESSIAN_DIMER_CLI_KW: Dict[str, Any] = {
 
 # RFO-family shared defaults for TS optimization (hess/heavy → RS-P-RFO default; also RS-I-RFO / TRIM)
 
-# Keys from RFO_KW that are RFOptimizer-specific (not used by TSHessianOptimizer)
+# Keys to drop from RFO_KW for TS optimizers: the gdiis/gediis family the base
+# Optimizer rejects (it has no **kwargs), plus the reject_uphill group (accepted
+# by TSHessianOptimizer but deliberately not forced on TS opts).
 _RFO_ONLY_KEYS = {
     "gediis",
     "gdiis",
