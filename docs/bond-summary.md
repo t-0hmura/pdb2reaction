@@ -1,6 +1,6 @@
 # `bond-summary`
 
-Detect and report covalent bond changes between consecutive molecular structures (R → TS → P or multi-intermediate chains) via element-specific covalent-radius perception. For *N* input files it produces *N − 1* comparison blocks (A→B, B→C, …) and prints them to stdout; no file is written. Use it to audit which covalent bonds form or break between sequential structures along a reaction path — e.g. validating an IRC endpoint pair, screening multistep mechanisms, or sanity-checking `all` post-processing manually. Supported input formats are **XYZ**, **PDB**, and **GJF** (auto-detected by extension); distances are reported in Ångström.
+Detect and report covalent bond changes between consecutive molecular structures (R → TS → P or multi-intermediate chains) via element-specific covalent-radius perception. For *N* input files it produces *N − 1* comparison blocks (A→B, B→C, …) and prints them to stdout; no file is written. Use it to audit which covalent bonds form or break between sequential structures along a reaction path — e.g. validating an IRC endpoint pair, screening multistep mechanisms, or sanity-checking `all` post-processing manually. Supported input formats are **XYZ**, **PDB**, **mmCIF**, and **GJF** (auto-detected by extension); distances are reported in Ångström.
 
 ## Examples
 
@@ -64,7 +64,7 @@ if changed:
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `-i, --input FILE` | Input structure file in XYZ, PDB, or GJF format (auto-detected by extension; repeat for each file, ≥ 2 required) | — |
+| `-i, --input FILE` | Input structure file in XYZ, PDB, mmCIF, or GJF format (auto-detected by extension; repeat for each file, ≥ 2 required) | — |
 | `--device TEXT` | Compute device (`cpu`, `cuda`) | `cpu` |
 | `--bond-factor FLOAT` | Scaling factor for covalent radii sum | `1.20` |
 | `--one-based / --zero-based` | Atom index convention in output | `--one-based` |
