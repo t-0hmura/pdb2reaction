@@ -399,7 +399,11 @@ pdb2reaction path-search -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --max
 pdb2reaction path-search -i r.pdb p.pdb -q -1 --opt-mode hess --workers 1 --max-nodes 5 --max-cycles 3 --no-endopt --out-dir test66_ps_hess > test66_ps_hess.out 2>&1
 
 # test67: required positive MEP -> TSopt -> IRC -> thermo handoff.
-pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --thermo --flatten --irc-never-stop --max-cycles 5 --tsopt-max-cycles 100 --thresh gau_loose --thresh-post gau --out-dir test67_all_tsopt > test67_all_tsopt.out 2>&1
+# --tsopt-max-cycles must cover the opt-in --flatten repair (which draws from this
+# global budget); this system converges to n_imag=1 with no flatten iterations, but
+# 200 keeps the budget above flatten_max_iter (=50, ~135 cycles) so a soft spectator
+# mode could never be starved short of a clean saddle. Product default is 10000.
+pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --thermo --flatten --irc-never-stop --max-cycles 5 --tsopt-max-cycles 200 --thresh gau_loose --thresh-post gau --out-dir test67_all_tsopt > test67_all_tsopt.out 2>&1
 python assert_release_result.py all test67_all_tsopt --require-thermo >> test67_all_tsopt.out 2>&1
 grep -Fq '[irc] Reusing cached TS Hessian from tsopt.' test67_all_tsopt.out || { echo '[smoke] FAIL test67: IRC did not report cached TS Hessian reuse' >> test67_all_tsopt.out; exit 1; }
 
