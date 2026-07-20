@@ -423,10 +423,10 @@ hessian_dimer:
    seed: null # RNG seed for rotations
    write_orientations: true # Write rotation orientations
    forward_hessian: true # Propagate Hessian forward
-   lbfgs:
-     # Same keys as lbfgs section
-     thresh: baker
-     max_cycles: 10000
+ lbfgs:                    # sibling of `dimer` under `hessian_dimer`, not nested inside it
+   # Same keys as the top-level lbfgs section
+   thresh: baker
+   max_cycles: 10000
 ```
 
 ```{note}
