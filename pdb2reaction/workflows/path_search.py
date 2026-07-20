@@ -1858,9 +1858,9 @@ def _merge_final_and_write(final_images: List[Any],
 )
 @click.option("--max-nodes", type=int, default=GS_KW["max_nodes"], show_default=True,
               help=("Number of movable internal images per GSM/DMF segment; the complete segment "
-                    "has max_nodes+2 images including endpoints. Overridden by YAML "
-                    "search.max_nodes_segment."))
-@click.option("--max-cycles", type=int, default=300, show_default=True, help="Maximum GSM optimization cycles.")
+                    "has max_nodes+2 images including endpoints. When not given, YAML "
+                    "search.max_nodes_segment applies."))
+@click.option("--max-cycles", type=int, default=300, show_default=True, help="Maximum string optimizer cycles (GSM/DMF path optimization).")
 @click.option(
     "--climb/--no-climb",
     default=True,

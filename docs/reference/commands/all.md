@@ -222,9 +222,8 @@ Options:
                                   3.
   --dft-engine [gpu|cpu]          DFT backend: gpu (GPU4PySCF, raises error if
                                   unavailable) or cpu (PySCF).  [default: gpu]
-  -s, --scan-lists TEXT           Scan targets: inline Python literal or a
-                                  YAML/JSON spec file path. Multiple inline
-                                  literals define sequential stages, e.g.
+  -s, --scan-lists TEXT           Scan targets: inline Python literal. Multiple
+                                  inline literals define sequential stages, e.g.
                                   '[(12,45,1.35)]'
                                   '[(10,55,2.20),(23,34,1.80)]'. Indices refer
                                   to the original full input ordering (1-based);

@@ -39,7 +39,7 @@ This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan
 | `--thresh` | `thresh` | `opt` |
 | `--max-cycles` | `max_cycles` | `opt` |
 | `--dump` | `dump` | `opt` |
-| `--opt-mode` | `opt_mode` | `opt`, `tsopt`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, `all` |
+| `--opt-mode` | _(CLI only)_ | — |
 | `--freeze-atoms` | `freeze_atoms` | `geom` |
 | `--tr-projection` | `tr_projection` | `geom` |
 | `--coord-type` | `coord_type` | `geom` |
@@ -164,7 +164,7 @@ calc:
 - `FiniteDifference` is the portable default. `Analytical` avoids finite-displacement error, but runtime and memory are backend/model/system dependent; select it only after validating the target setup.
 - `workers > 1` disables analytical Hessians for the UMA parallel predictor. An explicit `hessian_calc_mode: Analytical` request raises `BackendError` (a `RuntimeError` subclass); use `workers = 1` or select `FiniteDifference`. See {ref}`the MLIP Calculator hessian-evaluation note <hessian-evaluation>` for details.
 - Charge/spin inherit `.gjf` template metadata when available
-- `freq` sets `calc.return_partial_hessian = true` by default (PHVA); YAML can override.
+- `freq` forces `calc.return_partial_hessian = true` (PHVA) regardless of YAML.
 - IRC forces `geom.coord_type = cart` and `calc.return_partial_hessian = true` regardless of YAML (partial Hessian with active-DOF processing).
 
 ---

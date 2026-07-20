@@ -119,7 +119,7 @@ In PyMOL: `align` the three states, label the reactive atoms (`label name C12+O1
 | `post_segments[0].ts_imag.n_imag == 0` | TS guess collapsed to a minimum | Re-do the TS guess with `path-search`; `all` passes its MEP tangent internally for bounded recovery. An ordinary TS-only run without path information cannot identify the intended neighboring saddle |
 | `n_imag >= 2` | Near-degenerate negative modes | Add `--flatten` to flatten extras; see [tsopt](tsopt.md) for `hessian_dimer.flatten_max_iter` |
 | `segments[0].bond_changes` is empty (`""` or `"(no covalent changes detected)"`) or IRC reaches the wrong endpoint | Imaginary mode not along the intended coordinate, or TS connects two essentially identical wells | Visualize `segments/seg_01/ts/vib/imag_*_trj.xyz` in PyMOL; if the mode is wrong, re-pick the TS guess |
-| `freq/{R,P}/frequencies_cm-1.txt` shows residual imaginary modes | IRC endpoint is not a true minimum | Tighten convergence (`--thresh-post baker`) or extend IRC max cycles in YAML; see [freq](freq.md) |
+| `freq/{R,P}/frequencies_cm-1.txt` shows residual imaginary modes | IRC endpoint is not a true minimum | Tighten convergence (`--thresh-post gau_tight`; `baker` is the default, so passing it changes nothing) or extend IRC max cycles in YAML; see [freq](freq.md) |
 
 ## Tips
 

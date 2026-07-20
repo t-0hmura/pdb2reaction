@@ -50,10 +50,11 @@ Options:
                                   (e.g., '1,3,5').
   --max-nodes INTEGER             Number of movable internal images per GSM/DMF
                                   segment; the complete segment has max_nodes+2
-                                  images including endpoints. Overridden by YAML
-                                  search.max_nodes_segment.  [default: 20]
-  --max-cycles INTEGER            Maximum GSM optimization cycles.  [default:
-                                  300]
+                                  images including endpoints. When not given,
+                                  YAML search.max_nodes_segment applies.
+                                  [default: 20]
+  --max-cycles INTEGER            Maximum string optimizer cycles (GSM/DMF path
+                                  optimization).  [default: 300]
   --climb / --no-climb            Enable climbing image for standard GSM
                                   segments (bridge segments always disable
                                   climbing).  [default: climb]

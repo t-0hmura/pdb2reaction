@@ -129,6 +129,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   wrong ZPE/`U`/`H`/`G`/Gibbs numbers.
 
 ### Machine-readable output
+- Bump the MCP subcommand-result envelope `schema_version` from `1.0` to `1.1`
+  (`MCP_SUBCMD_RESULT_SCHEMA_VERSION`). Clients that pin the contract on this
+  constant must update their expected value.
 - `result.json`/`summary.json` gained additive field families — a `run_id` (from
   `PDB2REACTION_RUN_ID`; a conflicting id is rejected); `execution_status` and
   `scientific_status` with reasons and expected/observed item ids; per-stage and
@@ -384,7 +387,7 @@ Release of the 0.4.4–0.4.6 changes listed below.
   "Analysis") in a configurable, deterministic order; subcommands not
   listed in any section fall through to a trailing "Other" bucket so
   we never hide an entry silently.
-- CLI exception renderer appends `Try 'pdb2reaction <subcmd> -h for
+- CLI exception renderer appends `Try 'pdb2reaction <subcmd> -h' for
   help.` to every user-input-style error so first-time users see a
   recovery path, and routes the full traceback through
   `logging.getLogger(...).exception` so log scrapers / `-v` users get

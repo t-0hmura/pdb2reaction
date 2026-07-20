@@ -3180,7 +3180,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     multiple=True,
     required=False,
     help=(
-        "Scan targets: inline Python literal or a YAML/JSON spec file path. "
+        "Scan targets: inline Python literal. "
         "Multiple inline literals define sequential stages, e.g. "
         "'[(12,45,1.35)]' '[(10,55,2.20),(23,34,1.80)]'. "
         "Indices refer to the original full input ordering (1-based); atom strings may use "

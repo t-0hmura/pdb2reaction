@@ -124,7 +124,7 @@ positional four-field form `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`.
 
 ### Scan-list spec
 
-`--scan-lists/-s` (on `scan`, `scan2d`, `scan3d`, and `all`) accepts either a YAML / JSON spec file or one or more inline Python literals. Use a file for complex multi-stage runs; inline literals work for short cases.
+`--scan-lists/-s` (on `scan`, `scan2d`, `scan3d`, and `all`) accepts one or more inline Python literals. The standalone `scan` / `scan2d` / `scan3d` commands additionally accept a YAML / JSON spec file path; use a file for complex multi-stage runs, inline literals for short cases.
 
 **YAML / JSON spec file** (root = mapping; key is `stages` for `scan`, `pairs` for `scan2d` / `scan3d`):
 

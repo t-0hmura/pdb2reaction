@@ -5,9 +5,9 @@ For full details, keep [Troubleshooting](troubleshooting.md) open in parallel.
 
 ## Quick routing
 
-Each row deep-links into the relevant [Troubleshooting](troubleshooting.md) section via the section title in the **Then read** column.
+Each row deep-links into the relevant reference section (mostly [Troubleshooting](troubleshooting.md)) via the section title in the **Then read** column.
 
-| Symptom | Start here | Then read (section in `troubleshooting.md`) |
+| Symptom | Start here | Then read (reference section) |
 | --- | --- | --- |
 | **Input & extraction** | | |
 | Missing element columns / extraction aborts | `add-elem-info` on the original PDB | {ref}`Input / extraction problems <input-extraction-problems>` |

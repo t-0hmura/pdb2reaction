@@ -34,7 +34,7 @@ are present only when the producer supplies the corresponding data:
 | `schema_version` | string | Envelope schema version; current value lives at `pdb2reaction.core.utils.RESULT_JSON_SCHEMA_VERSION` — pin against that constant rather than the literal in this doc. A version bump signals a structural change. |
 | `command` | string | Leaf envelopes use the subcommand name (e.g. `"opt"`); aggregate `all` / `path-search` summaries record the full invocation string |
 | `pdb2reaction_version` | string | Package version |
-| `status` | string | Value depends on the subcommand (see each section below): e.g. `converged` / `not_converged` / `stalled` (opt, tsopt), `completed` (irc, freq), `ok` / `partial` (bond-summary), `success` / `partial` / `failed` (aggregate workflows), and `error` on failure |
+| `status` | string | Value depends on the subcommand (see each section below): e.g. `converged` / `not_converged` / `stalled` (opt, tsopt), `completed` (irc, freq), `ok` / `partial` / `failed` (bond-summary), `success` / `partial` / `failed` (aggregate workflows), and `error` on failure |
 | `run_id` | string | Optional current MCP invocation UUID. It is injected only when the product-specific run environment is active; a conflicting producer value is rejected. |
 | `elapsed_seconds` | float | Optional wall-clock time; omitted by producers that do not pass timing to the shared writer |
 | `environment` | object | Hardware info (see below) |
@@ -57,6 +57,7 @@ cross-command provenance contract.
 | `effective_rank` | int | Number of rigid directions removed from the active Hessian |
 | `full_rigid_rank` | int | Rank of the full-system rigid basis before frozen-anchor constraints |
 | `frozen_constraint_rank` | int | Rank removed by the frozen-anchor constraints |
+| `svd_rtol` | float | Relative SVD tolerance used for the rank decision |
 | `active_atom_count` / `frozen_atom_count` | int | Active and frozen atom counts |
 | `active_atoms` / `frozen_atoms` | int[] | 0-based atom indices used by the projection kernel |
 | `hessian_space` | string | `"full"` or `"active"` input Hessian space |
@@ -415,7 +416,7 @@ When `--json` is enabled, `bond-summary` prints JSON to **stdout** (no `result.j
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `status` | string | `"ok"` (every pair compared without error) or `"partial"` (some pairs failed) |
+| `status` | string | `"ok"` (every pair compared without error), `"partial"` (some pairs failed), or `"failed"` (no pair compared successfully) |
 | `comparisons` | object[] | Per-pair comparison with `structure_a` (string), `structure_b` (string), `bonds_formed` (int count), `bonds_broken` (int count). |
 
 (summary-json-path-search-all)=

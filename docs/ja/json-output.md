@@ -29,7 +29,8 @@ shared writerが供給するfieldを示します。「任意」と明記したro
 | `schema_version` | string | エンベロープのスキーマバージョン。現在値は `pdb2reaction.core.utils.RESULT_JSON_SCHEMA_VERSION` にあります（このドキュメント中のリテラルではなく、この定数を参照してください）。値が上がった場合は構造変更を意味します。 |
 | `command` | string | leaf envelope はサブコマンド名（例: `"opt"`）、aggregate `all` / `path-search` summary は完全な invocation string |
 | `pdb2reaction_version` | string | パッケージバージョン |
-| `status` | string | commandごとに異なります（下記参照）。`converged` / `not_converged` / `stalled`（opt, tsopt）、`completed`（irc, freq）、`ok` / `partial`（bond-summary）、`success` / `partial` / `failed`（aggregate workflow）、失敗時の `error` などです |
+| `status` | string | commandごとに異なります（下記参照）。`converged` / `not_converged` / `stalled`（opt, tsopt）、`completed`（irc, freq）、`ok` / `partial` / `failed`（bond-summary）、`success` / `partial` / `failed`（aggregate workflow）、失敗時の `error` などです |
+| `run_id` | string | 任意。現在の MCP 呼び出し UUID。プロダクト固有の実行環境が有効な場合のみ注入され、producer 側の値と衝突する場合は拒否されます。 |
 | `elapsed_seconds` | float | 任意の実行時間（秒）。shared writerへ時間を渡さないproducerでは省略 |
 | `environment` | object | ハードウェア情報（下表参照） |
 | `mlip_backend` | string \| null | 任意のMLIP backend識別子。plot-only commandがcalculatorを評価していない場合はnull |
@@ -50,6 +51,7 @@ shared writerが供給するfieldを示します。「任意」と明記したro
 | `effective_rank` | int | active Hessianから除去した剛体方向の数 |
 | `full_rigid_rank` | int | 凍結anchor拘束前の全系剛体basisのrank |
 | `frozen_constraint_rank` | int | 凍結anchor拘束によって除かれたrank |
+| `svd_rtol` | float | rank 判定に用いる相対 SVD 許容値 |
 | `active_atom_count` / `frozen_atom_count` | int | active／frozen原子数 |
 | `active_atoms` / `frozen_atoms` | int[] | 射影kernelが使用した0始まり原子index |
 | `hessian_space` | string | 入力Hessian空間: `"full"` / `"active"` |
@@ -373,7 +375,7 @@ dimer モードも `status` に `"converged"` / `"not_converged"` / `"stalled"` 
 | `ligand_charge_input` | string | ユーザ指定 `--ligand-charge` マッピング |
 | `center` | string | 中心残基 |
 | `radius` | float | 抽出半径 (angstrom) |
-| `input_files` | string[] | 入力 PDB パス |
+| `input_files` | string[] | 入力 PDB / mmCIF パス |
 | `files` | object | 出力 PDB / クラスターファイル |
 
 ### `trj2fig`
@@ -404,7 +406,7 @@ dimer モードも `status` に `"converged"` / `"not_converged"` / `"stalled"` 
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `status` | string | `"ok"`（全ペアが正常に比較できた場合）または `"partial"`（一部のペアが失敗した場合） |
+| `status` | string | `"ok"`（全ペアが正常に比較できた場合）、`"partial"`（一部のペアが失敗した場合）、`"failed"`（正常に比較できたペアが無い場合） |
 | `comparisons` | object[] | ペアごとの比較（`structure_a` (string), `structure_b` (string), `bonds_formed` (int), `bonds_broken` (int)） |
 
 (ja-summary-json-path-search-all)=

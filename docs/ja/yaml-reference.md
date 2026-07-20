@@ -38,7 +38,7 @@
 | `--thresh` | `thresh` | `opt` |
 | `--max-cycles` | `max_cycles` | `opt` |
 | `--dump` | `dump` | `opt` |
-| `--opt-mode` | `opt_mode` | `opt`, `tsopt`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, `all` |
+| `--opt-mode` | _(CLI のみ)_ | — |
 | `--freeze-atoms` | `freeze_atoms` | `geom` |
 | `--tr-projection` | `tr_projection` | `geom` |
 | `--coord-type` | `coord_type` | `geom` |
@@ -163,7 +163,7 @@ calc:
 - 移植性のあるデフォルトは `FiniteDifference` です。`Analytical` は有限変位誤差を避けられますが、速度・メモリ量は backend/model/系に依存するため、対象環境で検証してから選択してください。
 - UMA の `workers > 1` では解析 Hessian が無効になります。`hessian_calc_mode: Analytical` を明示すると `BackendError`（`RuntimeError` のサブクラス）で停止します。解析 Hessian には `workers = 1`、並列実行には `FiniteDifference` を指定してください。詳細は {ref}`MLIP Calculator のHessian評価モード <ja-hessian-evaluation>` を参照してください。
 - 電荷/スピンは `.gjf` テンプレートがあればそれを継承します。
-- `freq` はデフォルトで `calc.return_partial_hessian = true`（PHVA）を設定します（YAML で上書き可能）。
+- `freq` は YAML の指定によらず `calc.return_partial_hessian = true`（PHVA）を強制します。
 - IRC は `geom.coord_type = cart` と `calc.return_partial_hessian = true` を常に強制します（YAML より優先、partial Hessian で active-DOF 処理）。
 
 ---
