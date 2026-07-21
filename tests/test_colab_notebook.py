@@ -56,7 +56,7 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "MODELS = {'mace': ['MACE-OMOL-0']" in app
     assert "options=['auto', 'fp32', 'fp64']" in app
     assert "unknown options; use Validate" in app
-    assert "py3Dmol.view(width='100%', height=440)" in app
+    assert "py3Dmol.view(width='100%', height=380)" in app
     assert "rxworkspace" in app
     assert "rxviewer" in app
     assert "rxinspector" in app
@@ -64,7 +64,56 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "overflow-wrap:anywhere" in app
     assert "max_width='100%'" in app
     assert "No structure loaded" in app
-    assert "['1 Input', '2 Select', '3 Options', '4 Results']" in app
+    # Colab renders ipywidgets' Tab as an empty block, so the tab strip is Buttons
+    # + a swapping VBox. Pin the four pages, the navigation entry point, and guard
+    # against a Tab regression.
+    assert "_TAB_PAGES = [('1 Input', input_box), ('2 Select', select_box)," in app
+    assert "('3 Options', options_box), ('4 Results', results_box)]" in app
+    assert "def _tab_go(i):" in app
+    assert "W.Tab(" not in app
+    # Accordion has the same Colab rendering defect, so every collapsible (NGLView,
+    # freezing/measurement, advanced flags) is the same Button + VBox pattern.
+    assert "def _collapsible(title, child, on_open=None):" in app
+    assert "W.Accordion(" not in app
+    assert "adv_acc = _collapsible(" in app
+    assert "freeze_acc = _collapsible(" in app
+    assert "ngl_acc = _collapsible(" in app
+    # "all workflow" mode and the depth switches only apply to `all`.
+    assert "all_mode_box = W.VBox([W.HTML('<b>all workflow</b>" in app
+    assert "depth_box = W.VBox([W.HTML('<b>Depth</b> (off = fast MEP only):')," in app
+    assert "W.HBox([w_ts, w_th, adv_dft])" in app
+    assert "for _name in ('all_mode_box', 'depth_box'):" in app
+    # -r/--radius is an extraction option: only all and extract accept it.
+    assert "if sub in ('all', 'extract') and r and r > 0: cmd += ['-r', str(r)]" in app
+    assert "adv_radius.disabled = sub not in FLAG_SUBS['adv_radius']" in app
+    assert "req='1 file + scan-lists" in app
+    # `--tr-projection legacy-active` is deprecated (it warns and must not be used
+    # for pass/HOSP transition-state certification): never offer it in the GUI.
+    assert "legacy-active" not in app
+    assert "--tr-projection" not in app
+    # SPEC is the single source of truth for per-subcommand branching: input
+    # requirement, Select panels, Options flag visibility and Results lookup all
+    # read it, so a new subcommand is one table entry rather than N conditionals.
+    assert "SPEC = {" in app
+    assert "SUBREQ = {k: v['req'] for k, v in SPEC.items()}" in app
+    assert "FLAG_SUBS = {" in app
+    assert "'mep_mode': FLAG_SUBS['adv_mep']," in app
+    assert "'threshold': FLAG_SUBS['adv_thresh']," in app
+    assert "if 'freeze' in SPEC.get(sub, {}).get('panels', ()) and S['freeze_atoms']:" in app
+    assert "_panels = SPEC.get(sub, {}).get('panels', ())" in app
+    # Surfaced key flags + their emission.
+    assert "key_opts_box = W.VBox([" in app
+    assert "cmd += ['--flatten']" in app
+    assert "cmd += ['--refine-path']" in app
+    assert "cmd += ['--max-cycles', str(int(mc))]" in app
+    # Hover help is the HTML `title` global attribute (renders in Colab, where
+    # widget-level tooltips on an HTML box do not), with a ⓘ affordance.
+    assert "def _hdr(html, tip):" in app
+    assert "&#9432;" in app
+    assert 'title="%s"' in app
+    # Standalone opt/tsopt/path-opt users need a cluster model first.
+    assert "b_extract = W.Button(description='Extract cluster model'" in app
+    assert "cmd = [CLI, 'extract', '-i', *S['inputs'], '-o', out, '-c', ','.join(cen)]" in app
     assert "utility_bar = W.HBox([b_rebuild, b_copy, b_clear])" in app
     assert "ps.get('mlip')" in app
     assert "ps.get('gibbs_mlip')" in app
@@ -73,7 +122,7 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "def _effective_out_dir(argv=None):" in app
     assert "out = _effective_out_dir(a)" in app
     assert "_results(out)" in app
-    assert "'mep_mode': {'all', 'path-opt', 'path-search'}" in app
+    assert "'adv_mep':     {'all', 'path-opt', 'path-search'}," in app
     assert "sub in TOOL_CAPABILITIES['threshold']" in app
     assert "elif sub == 'dft':" in app
     assert "cmd += ['--func-basis', fb]" in app
