@@ -126,7 +126,7 @@ This spawns a Ray worker pool. Limitations:
 
 - `pdb2reaction` does **not** launch a cross-node Ray cluster by
   itself; for multi-node use, start the Ray cluster externally
-  under your scheduler (see `pdb2reaction/docs/hpc-example.md` for
+  under your scheduler (see `docs/hpc-example.md` for
   a PBS template) and `pdb2reaction` will join it via `RAY_ADDRESS`.
   In a single-node configuration the Ray pool is started locally.
 - All workers in a single-node pool must see the same GPUs
@@ -137,7 +137,7 @@ This spawns a Ray worker pool. Limitations:
   `hessian_calc_mode=Analytical` raises `BackendError` (a `RuntimeError`
   subclass) rather than changing the explicitly requested method; use
   `FiniteDifference` (the default) or drop to `workers = 1`. See
-  `pdb2reaction/docs/uma-pysis.md` for the full caveat.
+  `docs/uma-pysis.md` for the full caveat.
 
 ## Known gotchas
 

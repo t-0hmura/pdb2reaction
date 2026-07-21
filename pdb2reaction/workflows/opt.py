@@ -24,6 +24,7 @@ from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
+from pysisyphus.intcoords.exceptions import RebuiltInternalsException
 from pysisyphus.constants import ANG2BOHR, BOHR2ANG, AU2EV
 from pysisyphus.tr_projection import normalize_tr_projection_mode
 from pdb2reaction.workflows.restraints import HarmonicBiasCalculator
@@ -199,6 +200,19 @@ def _convert_outputs(
             click.echo("[convert] WARNING: 'optimization_trj.xyz' not found; skipping conversion.", err=True)
 
 
+def _set_cartesian_flatten_coords(geom, cart_coords: np.ndarray) -> None:
+    """Install a Cartesian trial while accepting an internal-basis rebuild."""
+
+    try:
+        geom.cart_coords = np.asarray(cart_coords, dtype=float).reshape(-1)
+    except RebuiltInternalsException:
+        # Geometry has already installed the Cartesian coordinates and rebuilt
+        # its primitive set before signalling this control-flow exception.
+        # Flatten probes evaluate directly through the active calculator, so a
+        # state clear is sufficient; no optimizer reset is involved here.
+        geom.clear()
+
+
 def _flatten_all_imag_modes_for_geom(
     geom,
     masses_amu: np.ndarray,
@@ -240,14 +254,14 @@ def _flatten_all_imag_modes_for_geom(
         plus = ref + disp
         minus = ref - disp
 
-        geom.coords = plus.reshape(-1)
+        _set_cartesian_flatten_coords(geom, plus)
         E_plus = _calc_energy(geom, calc_kwargs, calc=calculator)
 
-        geom.coords = minus.reshape(-1)
+        _set_cartesian_flatten_coords(geom, minus)
         E_minus = _calc_energy(geom, calc_kwargs, calc=calculator)
 
         use_plus = E_plus <= E_minus
-        geom.coords = (plus if use_plus else minus).reshape(-1)
+        _set_cartesian_flatten_coords(geom, plus if use_plus else minus)
         E_keep = E_plus if use_plus else E_minus
         delta_e = E_keep - E_ref
         click.echo(

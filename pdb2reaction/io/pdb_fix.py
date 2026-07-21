@@ -200,7 +200,7 @@ def process_block(lines: List[str]) -> List[str]:
             selected_label_keys.add(atom_identity_key(line))
 
     # atom key -> (occupancy for comparison, line index, serial field)
-    best: Dict[Tuple[str, str, str, str, str, str, str], Tuple[float, int, str]] = {}
+    best: Dict[Tuple[str, ...], Tuple[float, int, str]] = {}
 
     for idx, line in enumerate(lines):
         if line.startswith(COORD_RECORDS):
@@ -211,6 +211,12 @@ def process_block(lines: List[str]) -> List[str]:
             key = atom_identity_key(line)
             if not label and key in selected_label_keys:
                 continue
+            # A residue with no altloc label has no conformers to resolve;
+            # preserve every blank record (small-molecule PDBs commonly reuse
+            # generic atom names such as C/H within one residue). Make the key
+            # unique per line so duplicates are not collapsed by atom identity.
+            if selected is None:
+                key = (*key, str(idx))
             occ = parse_occupancy(line)
             serial = atom_serial_5(line)
 
@@ -234,6 +240,9 @@ def process_block(lines: List[str]) -> List[str]:
     for idx, line in enumerate(lines):
         if line.startswith(COORD_RECORDS):
             key = atom_identity_key(line)
+            # No-altloc residues were keyed uniquely above; mirror that here.
+            if selected_labels.get(residue_identity_key(line)) is None:
+                key = (*key, str(idx))
             # Keep only the selected "best" line for this key
             if key in best and best[key][1] == idx:
                 out.append(blank_altloc(line))

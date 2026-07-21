@@ -319,11 +319,11 @@ class MLIPCalculator(Calculator):
             H = H[:, idx]
             H = 0.5 * (H + H.T)
         else:
-            # Legacy path: symmetrise full (dof, dof) then optionally extract.
+            # Legacy path: symmetrise full (dof, dof), then extract the active
+            # block (return_partial_hessian=True) or zero frozen rows/columns
+            # (False), matching the analytical path's _apply_active_trim_np.
             H = 0.5 * (H + H.T)
-            if self.return_partial_hessian:
-                idx = np.array(active_dof_idx, dtype=int)
-                H = H[np.ix_(idx, idx)]
+            H = self._apply_active_trim_np(H, n_atoms)
 
         return {"energy": e0, "forces": F0, "hessian": H}
 

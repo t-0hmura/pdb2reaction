@@ -517,6 +517,17 @@ class UMACalculator(MLIPCalculator):
                 H = active_square(H, idx)
             H = H.view(n_active_atoms, 3, n_active_atoms, 3)
         else:
+            # Mirror the analytical/base path: zero frozen rows/columns so the
+            # non-partial FD Hessian does not keep half-magnitude frozen-atom
+            # coupling (unreachable on shipped workflows, which force partial).
+            if frozen_set:
+                fidx = torch.tensor(
+                    [3 * i + j for i in sorted(frozen_set) for j in range(3)],
+                    device=dev,
+                    dtype=torch.long,
+                )
+                H.index_fill_(0, fidx, 0.0)
+                H.index_fill_(1, fidx, 0.0)
             H = H.view(n_atoms, 3, n_atoms, 3)
 
         return {"energy": energy0_eV, "forces": np.asarray(F0, dtype=np.float64).reshape(-1, 3), "hessian": H}
