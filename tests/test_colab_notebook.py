@@ -29,6 +29,11 @@ def test_colab_setup_is_pinned_to_matching_release_and_one_backend() -> None:
     setup = _notebook()["cells"][1]["source"]
 
     assert 'pdb2reaction_ref = "v0.4.12"' in setup
+    # The release notebook installs the pinned wheel from PyPI, the same way a
+    # normal user does, so the version guard compares what pip actually resolved
+    # against the requested tag.
+    assert "pip('pdb2reaction' + ('[dft]' if install_dft else '') + '==' + pdb2reaction_ref.lstrip('v'))" in setup
+    assert "git clone" not in setup
     assert "v0.4.4" not in setup
     assert "Restart the Colab runtime first" in setup
     assert "mace-torch>=0.3.8" in setup
@@ -113,6 +118,11 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert 'title="%s"' in app
     # Standalone opt/tsopt/path-opt users need a cluster model first.
     assert "b_extract = W.Button(description='Extract cluster model'" in app
+    # The wheel ships no examples, so Load example resolves them from the git
+    # tag matching the installed release (a source checkout is used when present).
+    assert "def _example_file(relpath):" in app
+    assert "raw.githubusercontent.com/t-0hmura/pdb2reaction" in app
+    assert "Run Setup first" not in app
     assert "cmd = [CLI, 'extract', '-i', *S['inputs'], '-o', out, '-c', ','.join(cen)]" in app
     assert "utility_bar = W.HBox([b_rebuild, b_copy, b_clear])" in app
     assert "ps.get('mlip')" in app
