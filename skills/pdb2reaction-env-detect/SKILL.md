@@ -141,7 +141,7 @@ command -v module >/dev/null && module list 2>&1
 | `<NCPU>` | Requested CPU budget, no larger than node/queue capacity; size from measured CPU-side work and xTB/DFT threading, not automatically the whole node |
 | `<NGPU>` | Requested GPU count supported by the chosen backend/workflow; usually 1 unless using a tested UMA worker configuration |
 | `<MEM>` | Measured peak RAM plus headroom, no larger than queue/node capacity (`pbsnodes -a` / `sinfo -o "%m"` reveal capacity, not the required request) |
-| `<CUDA_MODULE>` | A line from `module avail 2>&1 \| grep -i cuda` (e.g. `cuda/12.9`; naming varies: `cuda`, `cudatoolkit`, `nvhpc`, …) |
+| `<CUDA_MODULE>` | Leave empty for prebuilt wheels. For a source-built CUDA extension only, use the exact site module verified with `module avail` and its compatible compiler. |
 | `<YOUR_ENV>` | The conda env that imported `pdb2reaction` in step 7 |
 | `<HH:MM:SS>` | Your estimated walltime, capped by the queue's `resources_max.walltime` |
 
@@ -215,7 +215,7 @@ delete it after extracting the placeholder values.
 ## See also
 - `pdb2reaction-hpc/SKILL.md` — uses `<YOUR_QUEUE>`, `<NCPU>`, `<NGPU>`,
   `<MEM>`, `<HH:MM:SS>`, `<CUDA_MODULE>`, `<YOUR_ENV>` placeholders.
-- [`pdb2reaction-install-backends/env-cuda.md`](../pdb2reaction-install-backends/env-cuda.md) — uses driver version
-  and `<CUDA_MODULE>` to pick the right torch CUDA wheel.
+- [`pdb2reaction-install-backends/env-cuda.md`](../pdb2reaction-install-backends/env-cuda.md) — uses the driver,
+  GPU architecture, and official PyTorch matrix to choose a wheel; a toolkit module is only for source builds.
 - [`pdb2reaction-install-backends/dft.md`](../pdb2reaction-install-backends/dft.md) — uses `uname -m` to decide
   between `gpu4pyscf-cuda12x` (x86_64) and CPU PySCF (aarch64).

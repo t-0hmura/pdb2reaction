@@ -12,9 +12,9 @@ killed after publishing output but before its completion marker may run again.
 
 Fill `<N_NODES>`, `<NCPU>`, `<NGPU>`, `<MEM>`, `<HH:MM:SS>`, and
 `<YOUR_QUEUE>` from the environment detection skill. Set the shell defaults
-`TASK_LIST_FILE`, `CUDA_MODULE`, `CONDA_SH`, and `P2R_CONDA_ENV` below to the
-verified local values; their initial values are syntactically valid examples,
-not detected site settings.
+`TASK_LIST_FILE`, `CONDA_SH`, and `P2R_CONDA_ENV` below to the verified local
+values. Leave `CUDA_MODULE` empty for prebuilt wheels; set it only when a
+locally built extension requires the site's toolkit module.
 
 ## State model
 
@@ -45,7 +45,7 @@ cd "${PBS_O_WORKDIR}"
 
 ROOT_DIR="$PWD"
 TASK_LIST_FILE=${TASK_LIST_FILE:-tasks.txt}
-CUDA_MODULE=${CUDA_MODULE:-cuda/12.6}
+CUDA_MODULE=${CUDA_MODULE:-}
 CONDA_SH=${CONDA_SH:-${HOME}/apps/miniconda3/etc/profile.d/conda.sh}
 P2R_CONDA_ENV=${P2R_CONDA_ENV:-p2r}
 TASK_LIST="${ROOT_DIR}/${TASK_LIST_FILE}"

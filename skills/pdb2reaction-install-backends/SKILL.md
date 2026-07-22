@@ -102,7 +102,7 @@ dependencies:
   - pip
   - pip:
       - --extra-index-url https://download.pytorch.org/whl/<cu_index>
-      - torch
+      - torch==2.8.0
       - pdb2reaction[orb,aimnet,dft]   # extras: see core.md / per-backend md
 ```
 
@@ -119,7 +119,7 @@ dependencies:
   - pip
   - pip:
       - --extra-index-url https://download.pytorch.org/whl/<cu_index>
-      - torch
+      - torch==2.8.0
       - pdb2reaction
 # After conda env create, run inside the env:
 #   pip uninstall -y fairchem-core      # remove UMA's e3nn pin

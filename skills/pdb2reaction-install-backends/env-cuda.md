@@ -68,7 +68,7 @@ conda install -c nvidia cuda-toolkit=<MAJOR.MINOR>   # e.g. 12.6
 ## Step 3. Install torch matching `<cu_index>`
 
 ```bash
-pip install torch --index-url https://download.pytorch.org/whl/<cu_index>
+pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/<cu_index>
 ```
 
 Verify:
@@ -123,7 +123,7 @@ Symptoms that you have this problem:
 ## Step 5. CPU-only fallback
 
 ```bash
-pip install torch --index-url https://download.pytorch.org/whl/cpu
+pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
 ```
 
 `pdb2reaction` runs MLIP backends on CPU but is usually much slower; measure a

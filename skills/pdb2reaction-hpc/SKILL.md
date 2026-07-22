@@ -29,14 +29,12 @@ in one script.
 set -euo pipefail
 cd "${PBS_O_WORKDIR}"
 
-# CUDA + toolchain: HPC modulefiles (env-detect outputs <CUDA_MODULE>)
-# - gcc: load when the system default is too old for the CUDA toolkit or
-#   when pip will compile a C/CUDA extension from source.
+# Prebuilt PyTorch/backend wheels need a compatible NVIDIA driver, not a local
+# CUDA toolkit module. For a source build only, load the site-specific toolkit
+# and compiler here: module load <CUDA_MODULE> <COMPILER_MODULE>
 # - <OPENMPI_MODULE>: only for multi-node Ray (`workers > 1`); omit on
 #   single-node jobs.
-# Replace every placeholder. Remove modules the site/runtime does not require.
-command -v module >/dev/null && module load <CUDA_MODULE>
-# module load <COMPILER_MODULE>    # only for locally built extensions
+# Replace every placeholder used by the selected runtime.
 # module load <OPENMPI_MODULE>     # only for the site's external multi-node Ray setup
 
 # Conda env (env-detect outputs <YOUR_ENV>)
@@ -86,9 +84,8 @@ Use the same body as above, but replace the Torque resource line with:
 set -euo pipefail
 
 cd "${SLURM_SUBMIT_DIR}"
-# CUDA + toolchain (see PBS template above for when gcc / OpenMPI are needed)
-command -v module >/dev/null && module load <CUDA_MODULE>
-# module load <COMPILER_MODULE>    # only for locally built extensions
+# Prebuilt wheels need no CUDA/compiler module. For a source build only:
+# module load <CUDA_MODULE> <COMPILER_MODULE>
 # module load <OPENMPI_MODULE>     # only for the site's external multi-node Ray setup
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate <YOUR_ENV>

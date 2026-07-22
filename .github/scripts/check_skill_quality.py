@@ -267,7 +267,19 @@ def _validate_high_risk_semantics(errors: list[str]) -> None:
         (
             "prebuilt PyTorch wheel contains its CUDA runtime dependencies",
             "Do not use\n`PYTORCH_NO_CUDA_PRELOAD`",
+            "torch==2.8.0",
+            "`cu126`, `cu128`, `cu129`, and `cpu`",
         ),
+        errors,
+    )
+    _require(
+        SKILLS_DIR / "pdb2reaction-install-backends" / "SKILL.md",
+        ("torch==2.8.0",),
+        errors,
+    )
+    _require(
+        SKILLS_DIR / "pdb2reaction-install-backends" / "mace.md",
+        ("torch==2.8.0",),
         errors,
     )
     _require(

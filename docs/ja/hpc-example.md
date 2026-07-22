@@ -25,9 +25,10 @@ cd -- "${PBS_O_WORKDIR:?PBS_O_WORKDIR is unset}"
 # --- Environment setting ---
 source /etc/profile.d/modules.sh
 module purge
-CUDA_MODULE=${CUDA_MODULE:-cuda/12.6}        # site の module 名に変更
 P2R_CONDA_ENV=${P2R_CONDA_ENV:-p2r}         # install 済み env 名に変更
-module load gcc ompi "${CUDA_MODULE}"
+module load ompi                             # この MPI/Ray テンプレートで必要な site module
+# prebuilt PyTorch wheel に CUDA toolkit module は不要。source build extension の場合のみ:
+# module load <CUDA_MODULE> <COMPILER_MODULE>
 source ~/apps/miniconda3/etc/profile.d/conda.sh
 conda activate "${P2R_CONDA_ENV}"
 # -------------------

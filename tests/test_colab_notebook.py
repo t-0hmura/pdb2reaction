@@ -90,13 +90,16 @@ def _viewer_contract() -> dict:
     wanted = {
         "_pick_residue_indices",
         "_pick_residue_box",
+        "_pick_box_edges",
         "_pick_text",
+        "_resolve_click_meta",
         "_residue_id_selector",
         "_rich_residue_selector",
         "_center_cli_selectors",
         "_input_count_error",
         "_artifact_kind",
         "_csv_preview_html",
+        "_text_preview_html",
         "_atom_signatures",
         "_resolve_atom_query",
         "_trajectory_semantics",
@@ -110,9 +113,12 @@ def _viewer_contract() -> dict:
     )
     namespace = {
         "os": os, "S": {}, "_TRAJ": {}, "Path": Path, "csv": csv, "html": html,
+        "json": json, "_TEXT_PREVIEW_LIMIT": 512 * 1024,
         "SPEC": {}, "_ARTIFACT_KINDS": {
             ".png": "image", ".jpg": "image", ".jpeg": "image", ".svg": "SVG",
             ".html": "interactive HTML", ".csv": "CSV table", ".pdf": "PDF",
+            ".pdb": "structure", ".ent": "structure", ".cif": "structure",
+            ".mmcif": "structure",
         },
     }
     exec(compile(module, str(NOTEBOOK), "exec"), namespace)
@@ -135,6 +141,8 @@ def test_colab_setup_is_pinned_to_matching_release_and_one_backend() -> None:
     setup = _notebook()["cells"][1]["source"]
 
     assert 'pdb2reaction_ref = "v0.4.12"' in setup
+    assert "first run ~5 min" in setup
+    assert "first run ~5-10 min" not in setup
     # The release notebook installs the pinned wheel from PyPI, the same way a
     # normal user does, so the version guard compares what pip actually resolved
     # against the requested tag.
@@ -149,6 +157,9 @@ def test_colab_setup_is_pinned_to_matching_release_and_one_backend() -> None:
     assert "INSTALL_DFT = install_dft" in setup
     assert "[%%d/5] %%s".replace("%%", "%") in setup
     assert "time.monotonic()" in setup
+    assert ".pysisyphusrc" in setup
+    assert setup.index(".pysisyphusrc") < setup.index("pip('pdb2reaction'")
+    assert "nglview" not in setup
 
 
 def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
@@ -173,8 +184,9 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "uma-s-1p2" in app
     assert "MODELS = {'mace': ['MACE-OMOL-0']" in app
     assert "options=['auto', 'fp32', 'fp64']" in app
-    assert "unknown options; use Validate" in app
-    assert "py3Dmol.view(width='100%', height=int(S.get('viewer_height', 380)))" in app
+    assert "Appended to the command" not in app
+    assert "Every remaining option" not in app
+    assert "py3Dmol.view(width='100%', height=int(S.get('viewer_height', 320)))" in app
     assert "rxworkspace" in app
     assert "rxviewer" in app
     assert "rxinspector" in app
@@ -182,6 +194,11 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert ".rxapp .widget-button .fa, .rxapp .widget-upload .fa { display:none !important; }" in app
     assert "overflow-wrap:anywhere" in app
     assert "max_width='100%'" in app
+    assert "flex:0 0 auto; min-width:0" in app
+    assert "layout=W.Layout(width='300px', max_width='100%')" in app
+    assert "view_controls = W.HBox([dd_rep, dd_col, cb_water, dd_height]," in app
+    assert "W.HBox([btn_reset, btn_zoomsel, btn_zoompick, btn_clear_pick]," in app
+    assert "sel_lang" not in app
     assert "No structure loaded" in app
     # Colab renders ipywidgets' Tab as an empty block, so the tab strip is Buttons
     # + a swapping VBox. Pin the four pages, the navigation entry point, and guard
@@ -190,22 +207,28 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "('3 Select', select_box), ('4 Results', results_box)]" in app
     assert "def _tab_go(i):" in app
     assert "W.Tab(" not in app
-    # Accordion has the same Colab rendering defect, so every collapsible (NGLView,
-    # freezing/measurement, advanced flags) is the same Button + VBox pattern.
+    # Accordion has the same Colab rendering defect, so every collapsible uses
+    # the same Button + VBox pattern.
     assert "def _collapsible(title, child, on_open=None):" in app
     assert "W.Accordion(" not in app
     assert "adv_acc = _collapsible(" in app
+    assert "def _advanced_options(sub):" in app
+    assert "every CLI option accounted for" in app
     assert "freeze_acc = _collapsible(" in app
-    assert "ngl_acc = _collapsible(" in app
+    assert "ngl_acc" not in app
+    assert "nglview" not in app
     # "all workflow" mode and the depth switches only apply to `all`.
     assert "all_mode_box = W.VBox([W.HTML('<b>all workflow</b>" in app
     assert "('Scan (1 input)', 'scan')" in app
-    assert "depth_box = W.VBox([W.HTML('<b>Depth</b> (off = fast MEP only):')," in app
-    assert "W.HBox([w_ts, w_th, adv_dft])" in app
+    assert "depth_label = W.HTML('<b>Depth</b> (off = fast MEP only):')" in app
+    assert "depth_box = W.VBox([depth_label, W.HBox([" in app
+    assert "_flag_row(w_ts" in app and "_flag_row(w_th" in app
     assert "for _name in ('all_mode_box', 'depth_box'):" in app
     # -r/--radius is an extraction option: only all and extract accept it.
     assert "if sub in ('all', 'extract') and r and r > 0: cmd += ['-r', str(r)]" in app
     assert "adv_radius.disabled = sub not in FLAG_SUBS['adv_radius']" in app
+    assert "_set_flag_visible(adv_radius, sub in FLAG_SUBS['adv_radius'])" in app
+    assert "_set_flag_visible(adv_dftfb, _dftfb_applicable)" in app
     assert "req='1 file + scan-lists" in app
     assert "Run a workflow, then choose <b>Show results</b>." in app
     assert "frame_slider.disabled = False" in app
@@ -230,13 +253,19 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "cmd += ['--flatten']" in app
     assert "cmd += ['--refine-path']" in app
     assert "cmd += ['--max-cycles', str(int(mc))]" in app
-    # Hover help is the HTML `title` global attribute (renders in Colab, where
-    # widget-level tooltips on an HTML box do not), with a ⓘ affordance.
-    assert "def _hdr(html, tip):" in app
+    # Hover/focus help is rendered as a real CSS popover in Colab rather than a
+    # native widget tooltip, which Colab does not reliably expose.
+    assert "def _hdr(content, tip):" in app
+    assert "def _flag_row(widget, tip):" in app
     assert "&#9432;" in app
-    assert 'title="%s"' in app
+    assert 'role="tooltip"' in app
+    assert 'title="%s" aria-label="Help: %s"' in app
+    assert 'aria-label="Help: %s"' in app
+    assert ".rxflagrow:hover .rxhelp-body" in app
     # Standalone opt/tsopt/path-opt users need a cluster model first.
     assert "b_extract = W.Button(description='Extract cluster model'" in app
+    assert "prep_radius = W.FloatText(" in app
+    assert "keep_subcmd=True" in app
     # The wheel ships no examples, so Load example resolves them from the git
     # tag matching the installed release (a source checkout is used when present).
     assert "def _example_file(relpath):" in app
@@ -261,14 +290,19 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "'adv_mep':     {'all', 'path-opt', 'path-search'}," in app
     assert "'adv_dmf':     {'all', 'path-opt', 'path-search'}," in app
     assert "cmd += ['--dmf-backend', dmf_backend]" in app
-    assert "sub in TOOL_CAPABILITIES['threshold']" in app
+    assert "adv_thresh.disabled = sub not in TOOL_CAPABILITIES['threshold']" in app
     assert "elif sub == 'dft':" in app
     assert "cmd += ['--func-basis', fb]" in app
     assert "adv_mep.disabled = sub not in TOOL_CAPABILITIES['mep_mode']" in app
-    assert "adv_dmf.layout.display = ('' if sub in FLAG_SUBS['adv_dmf'] and adv_mep.value == 'dmf'" in app
+    assert "_set_flag_visible(adv_dmf, sub in FLAG_SUBS['adv_dmf'] and adv_mep.value == 'dmf')" in app
     assert "d['all_mode'] = _wv('all_mode', 'mep')" in app
     assert "all_mode.value = saved_all_mode" in app
     assert "bytes(c).decode('utf-8')" in app
+    assert "def _ingest_saved_files(" in app
+    assert "input_file_rows" in app
+    assert "description='×'" in app
+    assert "def _advanced_coverage(" in app
+    assert "adv_extra" not in app
 
 
 def test_colab_viewer_persists_exact_atom_and_residue_context() -> None:
@@ -276,26 +310,36 @@ def test_colab_viewer_persists_exact_atom_and_residue_context() -> None:
 
     for marker in (
         "'_last_pick': None", "def _pick_residue_indices", "def _pick_residue_box",
-        "def _draw_last_pick", "v.addBox(", "v.addSphere(", "wireframe=True",
-        "v.addSurface(py3Dmol.VDW, {'color': '#f59e0b', 'opacity': 0.30}",
+        "def _pick_box_edges", "def _draw_last_pick", "v.addBox(", "v.addSphere(",
+        "'wireframe': True", "viewer.__rxPickFrame=viewer.addShape({})",
+        "viewer.__rxPickFrame.addCylinder(",
         "'opacity': 0.12 if S.get('_last_pick') else 0.35",
         "viewer.getView()", "v.setView(list(S['_viewer_view']))",
         "zoom to click", "clear last click", "aria-live=\"polite\"",
-        "visible_atoms = {} if S['show_water'] else {'not': {'resn': list(_WATER)}}",
+        "water_sel = {'resn': sorted(_WATER)}",
+        "visible_atoms = {} if S['show_water'] else {'not': water_sel}",
         "exact atom", "set current pick", "view_input", "_view_mapping_ok",
-        "residue envelope", "artifact preview", "Download results / diagnostics (.zip)",
+        "residue frame", "artifact preview", "Download results / diagnostics (.zip)",
         "results_box.add_class('rxresults')", "overflow-x:auto",
         "colab_run.log",
         "energy unavailable", "Command was cancelled", "Command failed",
     ):
         assert marker in app
-    atom_marker = app.index("v.addSphere({'center': center")
-    assert app.index("v.addStyle({'index': indices}") < atom_marker
-    assert app.index("v.addSurface(py3Dmol.VDW, {'color': '#f59e0b'") < atom_marker
+    draw = app[app.index("def _draw_last_pick"):app.index("def render_viewer")]
+    atom_marker = draw.index("v.addSphere({'center': center")
+    assert draw.index("v.addStyle({'index': indices}") < draw.index("v.addBox(")
+    assert draw.index("v.addBox(") < draw.index("v.addCylinder(") < atom_marker
+    assert draw.index("'radius': 1.00") < draw.index("v.addLabel(")
+    assert "addSurface" not in draw
+    assert "v.addSurface(py3Dmol.VDW, {'color': '#f59e0b'" not in app
     assert "pick_action.value = 'scanB'" in app
     assert "pick_action.value = 'freezeB'" in app
     assert "if(atom.icode)sel.icode=atom.icode" in app
     assert "color:'#111827',opacity:0.95,wireframe:true" in app
+    assert "String(atom.serial),(atom.icode||'').trim()" in app
+    assert "def _resolve_click_meta(" in app
+    assert "'viewer_index': viewer_index" in app
+    assert "v.addModel(text, 'pdb', {'keepH': True, 'altLoc': '*'})" in app
     assert "v.setViewChangeCallback(_VIEW_CHANGE_JS)" in app
     assert "py3Dmol.view(width='100%', height=320)" in app
     assert "def _invalidate_last_run(" in app
@@ -316,6 +360,14 @@ def test_colab_viewer_persists_exact_atom_and_residue_context() -> None:
     assert contract["_pick_residue_indices"]() == [0, 1]
     box = contract["_pick_residue_box"]([0, 1])
     assert box["dimensions"]["h"] == 1.5
+    assert len(contract["_pick_box_edges"](box)) == 12
+    serial_metadata = [dict(row, serial=100 + i) for i, row in enumerate(metadata)]
+    contract["S"]["_atom_meta"] = serial_metadata
+    # A wrong WebGL index must not beat the stable PDB serial/signature.
+    assert contract["_resolve_click_meta"](
+        0, "101", "LIG", "10", "A", "C1", "",
+    )["index"] == 1
+    contract["S"]["_atom_meta"] = metadata
     assert contract["_resolve_atom_query"]("A:LIG:10:C1") == 1
     assert contract["_resolve_atom_query"]("2") == 1
     contract["S"].update(center=["LIG"], center_ids=["B:LIG:10"],
@@ -331,6 +383,10 @@ def test_colab_viewer_persists_exact_atom_and_residue_context() -> None:
     assert contract["_input_count_error"]("trj2fig", 2)
     assert contract["_artifact_kind"]("profile.html") == "interactive HTML"
     assert contract["_artifact_kind"]("plot.jpeg") == "image"
+    assert contract["_artifact_kind"]("final.pdb") == "structure"
+    assert contract["_artifact_kind"]("final.cif") == "structure"
+    assert contract["_artifact_kind"]("final.xyz") == "structure"
+    assert contract["_artifact_kind"]("optimization_trj.xyz") is None
     opt = contract["_trajectory_semantics"]("opt", "optimization_trj.xyz")
     path = contract["_trajectory_semantics"]("path-opt", "mep_trj.xyz")
     assert contract["_stationary"]([0.0, 2.0, 0.0], opt) == [
@@ -471,6 +527,292 @@ def test_colab_app_executes_atomic_view_and_result_transitions(
     assert app["S"]["_last_manifest"] == {} and app["S"]["_last_files"] == []
     assert app["artifact_choice"].disabled and app["dl_btn"].disabled
     assert "Input identity changed" in app["results_empty"].value
+
+
+def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    app, calls = _execute_app(monkeypatch, tmp_path)
+    primary = tmp_path / "primary.pdb"
+    secondary = tmp_path / "secondary.pdb"
+    primary.write_text(
+        "ATOM      1  N   ALA A   1       0.000   0.000   0.000  1.00  0.00           N\n"
+        "ATOM      2  H   ALA A   1       0.000   1.000   0.000  1.00  0.00           H\n"
+        "HETATM    3 MG    MG A   2       2.000   0.000   0.000  1.00  0.00          MG\n"
+        "HETATM    4  O   WAT A  10       3.000   0.000   0.000  1.00  0.00           O\n"
+        "HETATM    5  C1  LIG A   3       4.000   0.000   0.000  1.00  0.00           C\n"
+        "HETATM    6  O1  LIG A   3       5.200   0.000   0.000  1.00  0.00           O\n"
+        "END\n",
+        encoding="utf-8",
+    )
+    secondary.write_text(
+        "HETATM    1  C1  ALT B   4       8.000   0.000   0.000  1.00  0.00           C\nEND\n",
+        encoding="utf-8",
+    )
+    metadata = {
+        str(primary): [
+            {"serial": 1, "chain": "A", "resname": "ALA", "resseq": 1, "icode": "", "name": "N"},
+            {"serial": 2, "chain": "A", "resname": "ALA", "resseq": 1, "icode": "", "name": "H"},
+            {"serial": 3, "chain": "A", "resname": "MG", "resseq": 2, "icode": "", "name": "MG"},
+            {"serial": 4, "chain": "A", "resname": "WAT", "resseq": 10, "icode": "", "name": "O"},
+            {"serial": 5, "chain": "A", "resname": "LIG", "resseq": 3, "icode": "", "name": "C1"},
+            {"serial": 6, "chain": "A", "resname": "LIG", "resseq": 3, "icode": "", "name": "O1"},
+        ],
+        str(secondary): [
+            {"serial": 1, "chain": "B", "resname": "ALT", "resseq": 4, "icode": "", "name": "C1"},
+        ],
+    }
+
+    def load_view(path):
+        path = str(path)
+        return Path(path).read_text(encoding="utf-8"), [dict(row) for row in metadata[path]], path
+
+    app["_load_view_structure"] = load_view
+    assert app["_ingest_saved_files"]([str(primary)], "test drop")
+    assert app["_ingest_saved_files"]([str(secondary)], "test drop")
+    assert app["S"]["inputs"] == [str(primary), str(secondary)]
+    assert len(app["input_file_rows"].children) == 2
+
+    # The name picker contains only chemically useful hetero residues; waters
+    # and canonical amino acids remain available through exact 3D clicks.
+    assert set(app["_center_values"]()) == {"LIG", "MG"}
+    mg_row = app["charge_rows"]["MG"]
+    assert mg_row["auto"] and mg_row["use"].disabled and mg_row["val"].disabled
+    assert mg_row["val"].value == 2
+    assert "MG" not in app["S"]["lcharge"]
+
+    app["cb_water"].value = True
+    for representation in ("cartoon", "sticks", "line"):
+        calls.clear()
+        app["dd_rep"].value = representation
+        app["render_viewer"]()
+        assert any(
+            call[0] == "addModel" and call[1][2] == {"keepH": True, "altLoc": "*"}
+            for call in calls
+        )
+        assert any(
+            call[0] == "addStyle"
+            and call[1][0].get("elem") == "O"
+            and call[1][1].get("sphere", {}).get("radius") == 0.50
+            for call in calls
+        )
+
+    # Serial/signature mapping wins over a drifted WebGL index. The persistent
+    # render then frames both atoms in LIG and draws the clicked atom last.
+    calls.clear()
+    app["pick_action"].value = "center"
+    app["on_click"]("1", "LIG", "3", "A", "C1", "5", "")
+    assert app["S"]["_last_pick"]["index"] == 4
+    assert app["S"]["_last_pick"]["viewer_index"] == 1
+    assert app["_pick_residue_indices"]() == [4, 5]
+    residue_style = next(
+        i for i, call in enumerate(calls)
+        if call[0] == "addStyle" and call[1][0] == {"index": [4, 5]}
+    )
+    box = next(i for i, call in enumerate(calls) if i > residue_style and call[0] == "addBox")
+    cylinders = [
+        i for i, call in enumerate(calls)
+        if i > box and call[0] == "addCylinder" and call[1][0].get("radius") == 0.07
+    ]
+    atom_sphere = next(
+        i for i, call in enumerate(calls)
+        if i > box and call[0] == "addSphere" and call[1][0].get("radius") == 0.70
+    )
+    halo = next(
+        i for i, call in enumerate(calls)
+        if i > atom_sphere and call[0] == "addSphere" and call[1][0].get("radius") == 1.00
+    )
+    label = next(i for i, call in enumerate(calls) if i > halo and call[0] == "addLabel")
+    assert len(cylinders) == 12
+    assert residue_style < box < min(cylinders) < max(cylinders) < atom_sphere < halo < label
+    assert calls[atom_sphere][1][0]["center"] == {"x": 4.0, "y": 0.0, "z": 0.0}
+
+    # A row-local × removes only that file and keeps primary-bound selections.
+    close_secondary = app["input_file_rows"].children[1].children[1].children[-1]
+    close_secondary.click()
+    assert app["S"]["inputs"] == [str(primary)]
+    assert app["S"]["center_ids"] == ["A:LIG:3"]
+
+    # Every live Click option is classified, while editable rows and
+    # serializers are generated from this repository's own command objects.
+    all_statuses = {}
+    root = app["PRODUCT_CLI"]
+    for subcommand in root.list_commands(app["click"].Context(root)):
+        options = app["_advanced_options"](subcommand)
+        coverage = app["_advanced_coverage"](subcommand)
+        assert set(coverage) == {param.name for param in options}
+        assert set(coverage.values()) <= {"owned", "generated", "blocked", "rendered"}
+        all_statuses.update(coverage)
+    assert all_statuses["tr_projection"] == "blocked"
+    assert app["_advanced_coverage"]("dft")
+    assert app["_advanced_coverage"]("sp")["hessian_calc_mode"] == "rendered"
+
+    app["cb_advsub"].value = True
+    app["dd_subcmd"].value = "add-elem-info"
+    app["S"]["advanced_overrides"]["add-elem-info"] = {}
+    safe_add_elem = app["build_cmd"]()
+    assert "-o" in safe_add_elem and "--overwrite" not in safe_add_elem
+    app["S"]["advanced_overrides"]["add-elem-info"] = {"overwrite": True}
+    inplace_add_elem = app["build_cmd"]()
+    assert "-o" not in inplace_add_elem and "--overwrite" in inplace_add_elem
+
+    app["dd_subcmd"].value = "all"
+    app["all_mode"].value = "mep"
+    app["_render_advanced_rows"]()
+    editable = [
+        param for param in app["_advanced_options"]("all")
+        if app["_advanced_status"]("all", param) == "rendered"
+        and app["_advanced_semantic_applicable"]("all", param.name)
+    ]
+    assert len(app["adv_rows_box"].children) == len(editable)
+    app["S"]["advanced_overrides"]["all"] = {
+        "radius_het2het": "4.5", "include_h2o": False,
+    }
+    advanced_argv = app["_advanced_argv"]("all")
+    assert advanced_argv[advanced_argv.index("--radius-het2het") + 1] == "4.5"
+    assert advanced_argv[advanced_argv.index("--include-h2o") + 1] == "false"
+
+    sp_hessian = next(param for param in app["_advanced_options"]("sp")
+                      if param.name == "hessian_calc_mode")
+    hessian_value = (list(sp_hessian.type.choices)[0]
+                     if isinstance(sp_hessian.type, app["click"].Choice) else "analytical")
+    app["S"]["advanced_overrides"]["sp"] = {"hessian_calc_mode": hessian_value}
+    assert "--hessian-calc-mode" in app["_advanced_argv"]("sp")
+
+    for utility, flag in (("trj2fig", "--out-json"),
+                          ("energy-diagram", "--out-json"),
+                          ("bond-summary", "--json")):
+        out_json = next(param for param in app["_advanced_options"](utility)
+                        if param.name == "out_json")
+        assert app["_advanced_status"](utility, out_json) == "rendered"
+        app["S"]["advanced_overrides"][utility] = {"out_json": True}
+        assert flag in app["_advanced_argv"](utility)
+
+    app["dd_subcmd"].value = "sp"
+    assert [value for _label, value in app["pick_action"].options] == [
+        "center", "ligand", "measure",
+    ]
+    assert app["center_panel"].layout.display == ""
+    assert app["charge_panel"].layout.display == ""
+    assert app["extract_panel"].layout.display == ""
+    assert app["adv_radius"]._rx_flag_row.layout.display == "none"
+    assert app["adv_dftfb"]._rx_flag_row.layout.display == "none"
+    app["dd_subcmd"].value = "add-elem-info"
+    assert app["center_panel"].layout.display == "none"
+    assert app["charge_panel"].layout.display == "none"
+    assert app["extract_panel"].layout.display == "none"
+    app["dd_subcmd"].value = "all"
+    app["all_mode"].value = "scan"
+    assert {"scanA", "scanB"} <= {value for _label, value in app["pick_action"].options}
+    app["all_mode"].value = "mep"
+    assert not {"scanA", "scanB"} & {value for _label, value in app["pick_action"].options}
+
+    # TS-only is a semantic mode, not only a visibility change: stale path
+    # controls must neither remain visible nor leak into the built command.
+    app["adv_refine"].value = True
+    app["adv_mep"].value = "gsm"
+    app["adv_thresh"].value = "gau"
+    app["adv_maxcyc"].value = 9
+    app["S"]["advanced_overrides"]["all"] = {
+        "reject_uphill": False,
+        "opt_mode": "grad",
+        "preopt": False,
+        "irc_step_size": "0.05",
+        "opt_mode_post": "grad",
+        "thresh_post": "baker",
+        "hessian_calc_mode": "FiniteDifference",
+    }
+    app["w_ts"].value = False
+    app["w_th"].value = False
+    app["adv_dft"].value = False
+    off_argv = app["_advanced_argv"]("all")
+    for flag in (
+        "--irc-step-size", "--opt-mode-post", "--thresh-post",
+        "--hessian-calc-mode", "--no-reject-uphill",
+    ):
+        assert flag not in off_argv
+    app["all_mode"].value = "tsonly"
+    assert app["adv_refine"].layout.display == "none"
+    assert app["w_ts"].value and app["w_ts"].disabled
+    command = app["build_cmd"]()
+    for flag in ("--refine-path", "--mep-mode", "--thresh", "--max-cycles"):
+        assert flag not in command
+    assert "--no-reject-uphill" in command
+    assert command[command.index("--opt-mode") + 1] == "grad"
+    assert command[command.index("--irc-step-size") + 1] == "0.05"
+    assert command[command.index("--opt-mode-post") + 1] == "grad"
+    assert command[command.index("--thresh-post") + 1] == "baker"
+    assert command[command.index("--hessian-calc-mode") + 1] == "FiniteDifference"
+    assert "--preopt" not in command and "--no-preopt" not in command
+    assert "--tsopt" in command
+    app["all_mode"].value = "mep"
+    assert not app["w_ts"].value and not app["w_ts"].disabled
+    app["w_th"].value = True
+    thermo_argv = app["_advanced_argv"]("all")
+    assert "--hessian-calc-mode" in thermo_argv
+    for flag in (
+        "--irc-step-size", "--opt-mode-post", "--thresh-post",
+        "--no-reject-uphill",
+    ):
+        assert flag not in thermo_argv
+    app["w_th"].value = False
+    app["S"]["inputs"] = [str(primary), str(secondary)]
+    assert "--tsopt" not in app["build_cmd"]()
+
+    result_json = tmp_path / "result.json"
+    result_json.write_text('{"energy": -1.25}', encoding="utf-8")
+    assert app["_artifact_kind"](str(result_json)) == "JSON"
+    preview = app["_text_preview_html"](str(result_json), "JSON")
+    assert "&quot;energy&quot;" in preview and "-1.25" in preview
+    calls.clear()
+    app["_structure_preview"](str(primary))
+    assert any(call[0] == "addModel" and call[1][1] == "pdb" for call in calls)
+    assert any(call[0] == "show" for call in calls)
+
+    app["load_pdb"]([str(primary)], center=["LIG"], mode="mmcif")
+    original_inputs = list(app["S"]["inputs"])
+    app["dd_subcmd"].value = "sp"
+    app["prep_radius"].value = 4.2
+    assert app["adv_radius"].value == 4.2
+    extract_commands = []
+
+    def fake_extract(command, **_kwargs):
+        extract_commands.append(list(command))
+        out_start = command.index("-o") + 1
+        out_end = command.index("-c")
+        for output in command[out_start:out_end]:
+            Path(output).write_text(primary.read_text(encoding="utf-8"), encoding="utf-8")
+            metadata[str(output)] = [dict(row) for row in metadata[str(primary)]]
+        return types.SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(app["subprocess"], "run", fake_extract)
+    app["b_extract"].click()
+    assert extract_commands and extract_commands[-1][-2:] == ["-r", "4.2"]
+    assert app["dd_subcmd"].value == "sp" and app["S"]["subcmd"] == "sp"
+    assert app["S"]["_pre_extract"]["inputs"] == original_inputs
+    assert app["b_revert"].layout.display == ""
+    assert app["S"]["inputs"] != original_inputs
+    app["b_revert"].click()
+    assert app["dd_subcmd"].value == "sp" and app["S"]["subcmd"] == "sp"
+    assert app["S"]["inputs"] == original_inputs
+    assert app["S"]["mode"] == "mmcif"
+    assert app["S"]["_pre_extract"] is None
+    assert app["b_revert"].layout.display == "none"
+
+    app["S"].update(mode="small", inputs=[str(primary)])
+    app["_sync_capability_controls"]()
+    assert app["workspace"].layout.display == "none"
+    assert app["selection_help"].layout.display == "none"
+    assert app["selection_route"].layout.display == ""
+    assert "No residue selection is needed" in app["selection_route"].value
+    for panel in ("center_panel", "charge_panel", "scan_panel", "extract_panel", "freeze_acc"):
+        assert app[panel].layout.display == "none"
+
+    app["S"]["_pre_extract"] = {"inputs": [str(primary)]}
+    app["b_revert"].layout.display = ""
+    app["_clear_structure_bound_state"]()
+    assert app["S"]["_pre_extract"] is None
+    assert app["b_revert"].layout.display == "none"
 
 
 def test_colab_gui_guards_state_capabilities_and_current_run_results() -> None:

@@ -15,7 +15,7 @@ conda create -n <your_mace_env> python=3.11 -y
 conda activate <your_mace_env>
 
 # torch matching your CUDA driver (see env-cuda.md)
-pip install torch --index-url https://download.pytorch.org/whl/<cu_index>
+pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/<cu_index>
 
 # Install pdb2reaction (pulls in fairchem-core / UMA), then swap UMA
 # out for MACE. mace-torch will reinstall e3nn at the version it

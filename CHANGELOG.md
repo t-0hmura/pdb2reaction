@@ -41,6 +41,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   separate from current-run diagnostics. Private runtime files avoid upload collisions;
   Results previews diagrams, SVG, HTML, CSV, PDF, and trajectories while handling missing
   energies, failures, cancellations, and diagnostic bundles explicitly.
+  The compact Select workspace appends uploads as removable rows, keeps water
+  visible on request, frames the clicked residue behind a foreground atom marker,
+  and derives searchable per-option controls and help from the selected live CLI.
+  Results can preview bounded PDB, CIF/mmCIF, and single-structure XYZ artifacts.
 - Add opt-in IRC `--never-stop` / `all --irc-never-stop` traversal of transient
   energy rises while retaining convergence and cycle limits.
 - Add `tsopt --ref-mode PATH` to seed TS mode-following with a reference mode;
@@ -51,6 +55,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   re-optimization only.
 
 ### Changed
+- Pin backend setup recipes to the official PyTorch 2.8 wheel matrix and keep
+  optional CUDA toolkit/compiler modules out of prebuilt-wheel HPC jobs.
 - Derive the existing `path-opt --max-nodes 20` default from shared
   configuration; GSM/DMF count movable images, excluding the two endpoints.
 - Project only rigid modes that are an actual null space of the frozen system for
