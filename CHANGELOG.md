@@ -31,8 +31,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   output companions with original IDs.
 - Add a release-pinned, keyboard-accessible Colab GUI for ordered structure input,
   workflow-aware command construction, interrupt-safe execution, and current-run-scoped
-  result inspection/downloads. Exact 3D picks persist as a foreground atom marker and
-  dark halo above residue sticks, a translucent envelope, and a frame. The viewer keeps
+  result inspection/downloads. Its compact Input, Viewer, optional Options, and Results
+  workspace co-locates workflow selection with a 4:3 molecular view. Exact 3D picks
+  persist as thick element-colored residue sticks with a dark atom halo. The viewer keeps
   primary-input selections separate from view-only secondary structures, preserves the
   camera across redraws, and rolls back failed structure switches. Center selectors retain
   chain and insertion-code identity; incompatible secondary views suppress primary selection
@@ -41,9 +42,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   separate from current-run diagnostics. Private runtime files avoid upload collisions;
   Results previews diagrams, SVG, HTML, CSV, PDF, and trajectories while handling missing
   energies, failures, cancellations, and diagnostic bundles explicitly.
-  The compact Select workspace appends uploads as removable rows, keeps water
-  visible on request, frames the clicked residue behind a foreground atom marker,
-  and derives searchable per-option controls and help from the selected live CLI.
+  The input queue appends uploads as removable rows, keeps water visible on request,
+  and derives searchable per-option controls and click-to-open help from the selected
+  live CLI. Key, advanced, and command-line controls remain collapsed until needed.
   Results can preview bounded PDB, CIF/mmCIF, and single-structure XYZ artifacts.
 - Add opt-in IRC `--never-stop` / `all --irc-never-stop` traversal of transient
   energy rises while retaining convergence and cycle limits.
