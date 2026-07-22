@@ -219,8 +219,9 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "ngl_acc" not in app
     assert "nglview" not in app
     # "all workflow" mode and the depth switches only apply to `all`.
-    assert "all_mode_box = W.VBox([all_mode])" in app
-    assert "('Scan (1 input)', 'scan')" in app
+    assert "all_mode_box = all_mode" in app
+    assert "('Scan 1', 'scan')" in app
+    assert "style={'button_width': '74px', 'description_width': '0px'}" in app
     assert "depth_label = W.HTML('<b>Optional stages</b>')" in app
     assert "depth_box = W.VBox([depth_label, W.HBox([" in app
     assert "_flag_row(w_ts" in app and "_flag_row(w_th" in app
@@ -264,8 +265,18 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "W.Button(description='Show information'" in app
     assert "body.layout.display = '' if state['open'] else 'none'" in app
     assert "_OPEN_INFO = {'control': None}" in app
-    assert "command_editor = _collapsible('Command line', cmd_box)" in app
+    assert ".rxapp .rxinfo-popover { position:fixed !important" in app
+    assert "width:min(360px,calc(100vw - 24px))" in app
+    assert ".rxinfo-popover .widget-html-content small { color:#f8fafc !important; }" in app
+    assert "📥 needs" not in app
+    assert "run_log_fold = _collapsible('Run log', logbox)" in app
+    assert "command_editor = _collapsible('Command line', W.VBox([cmd_box" in app
     assert "W.HBox([view_input, pick_action, last_pick_info])" in app
+    assert "workflow_contract_row = W.HBox([subreq, outputs_html]" in app
+    assert "workflow_controls.add_class('rxworkflow-controls')" in app
+    assert "grid-template-columns:minmax(280px,320px) minmax(150px,1fr) 240px" in app
+    assert ".rxviewer { flex:2 1 520px !important; min-width:300px; position:sticky" in app
+    assert ".rxviewer { position:static; }" in app
     assert "role=\"tooltip\"" not in app
     # Standalone opt/tsopt/path-opt users need a cluster model first.
     assert "b_extract = W.Button(description='Extract cluster model'" in app
@@ -278,7 +289,7 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "Run Setup first" not in app
     assert "cmd = [CLI, 'extract', '-i', *S['inputs'], '-o', *outs, '-c', ','.join(cen)]" in app
     assert "cen = _center_cli_selectors()" in app
-    assert "utility_bar = W.HBox([b_rebuild, b_copy, b_clear])" in app
+    assert "utility_bar = W.HBox([b_clear])" in app
     assert "ps.get('mlip')" in app
     assert "ps.get('gibbs_mlip')" in app
     assert "ps.get('uma')" not in app
@@ -307,7 +318,8 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "bytes(c).decode('utf-8')" in app
     assert "def _ingest_saved_files(" in app
     assert "input_file_rows" in app
-    assert "description='×'" in app
+    assert "description='Remove file'" in app
+    assert "description='Move earlier'" in app
     assert "def _advanced_coverage(" in app
     assert "adv_extra" not in app
 
@@ -399,6 +411,9 @@ def test_colab_viewer_persists_exact_atom_and_residue_context() -> None:
     assert contract["_artifact_kind"]("optimization_trj.xyz") is None
     opt = contract["_trajectory_semantics"]("opt", "optimization_trj.xyz")
     path = contract["_trajectory_semantics"]("path-opt", "mep_trj.xyz")
+    vibration = contract["_trajectory_semantics"]("tsopt", "vib/imag_120i_trj.xyz")
+    assert vibration["title"] == "Vibrational-mode animation"
+    assert vibration["x"] == "phase frame" and not vibration["extrema"]
     assert contract["_stationary"]([0.0, 2.0, 0.0], opt) == [
         (0, "initial"), (2, "optimized"),
     ]
@@ -533,6 +548,9 @@ def test_colab_app_executes_atomic_view_and_result_transitions(
     app["_do_validate"](None)
     assert app["S"]["_last_log"] == "old log"
     assert app["_RUN_STATE"]["validation_log"] == "validation transcript"
+    app["_stream"] = lambda argv: (2, "invalid options")
+    app["_do_validate"](None)
+    assert app["run_log_fold"].children[1].layout.display == ""
     app["_invalidate_last_run"]("Input identity changed; run again.")
     assert app["S"]["_last_manifest"] == {} and app["S"]["_last_files"] == []
     assert app["artifact_choice"].disabled and app["dl_btn"].disabled
@@ -579,7 +597,10 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
 
     app["_load_view_structure"] = load_view
     assert app["_ingest_saved_files"]([str(primary)], "test drop")
+    assert app["all_mode"].value == "scan"
+    assert app["pick_action"].value == "scanA"
     assert app["_ingest_saved_files"]([str(secondary)], "test drop")
+    assert app["all_mode"].value == "mep"
     assert app["S"]["inputs"] == [str(primary), str(secondary)]
     assert len(app["input_file_rows"].children) == 2
     assert app["prep_radius"].value == pytest.approx(2.6)
@@ -598,6 +619,7 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     second_info = app["_info_control"]("second")
     second_info._rx_info_button.click()
     assert info._rx_info_body.layout.display == "none"
+    assert info._rx_info_button.description == "Show information"
     assert second_info._rx_info_body.layout.display == ""
     second_info._rx_info_button.click()
     info._rx_info_button.click()
@@ -606,6 +628,7 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     assert info._rx_info_body.layout.display == "none"
     assert app["key_opts_box"].children[1].layout.display == "none"
     assert app["command_editor"].children[1].layout.display == "none"
+    assert app["run_log_fold"].children[1].layout.display == "none"
 
     # The name picker contains only chemically useful hetero residues; waters
     # and canonical amino acids remain available through exact 3D clicks.
@@ -725,6 +748,7 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
         assert flag in app["_advanced_argv"](utility)
 
     app["dd_subcmd"].value = "sp"
+    assert app["key_opts_box"].layout.display == ""
     assert [value for _label, value in app["pick_action"].options] == [
         "center", "ligand", "measure",
     ]
@@ -733,6 +757,17 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     assert app["extract_panel"].layout.display == ""
     assert app["adv_radius"]._rx_flag_row.layout.display == "none"
     assert app["adv_dftfb"]._rx_flag_row.layout.display == "none"
+    app["dd_subcmd"].value = "freq"
+    assert app["key_opts_box"].layout.display == ""
+    app["cb_advsub"].value = True
+    app["dd_subcmd"].value = "extract"
+    assert app["key_opts_box"].layout.display == ""
+    assert app["adv_radius"]._rx_flag_row.layout.display == ""
+    app["center_widget"].value = ()
+    app["S"]["center_ids"] = []
+    with pytest.raises(ValueError, match="needs a center residue"):
+        app["build_cmd"]()
+    app["center_widget"].value = ("LIG",)
     app["dd_subcmd"].value = "add-elem-info"
     assert app["center_panel"].layout.display == "none"
     assert app["charge_panel"].layout.display == "none"
@@ -800,10 +835,39 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     assert app["_artifact_kind"](str(result_json)) == "JSON"
     preview = app["_text_preview_html"](str(result_json), "JSON")
     assert "&quot;energy&quot;" in preview and "-1.25" in preview
+    summary = tmp_path / "summary.json"
+    summary.write_text(json.dumps({
+        "status": "success", "scientific_status": "partial",
+        "scientific_status_reasons": ["IRC endpoint mismatch"],
+        "segments": [{"index": 1, "barrier_kcal": 8.0, "delta_kcal": -1.0}],
+        "post_segments": [{"index": 1, "mlip": {"barrier_kcal": 7.5, "delta_kcal": -1.2}}],
+        "rate_limiting_step": {"barrier_kcal": 7.5, "method": "mlip"},
+    }), encoding="utf-8")
+    summary_html = app["_summary_html"](str(summary))
+    assert "Provisional barrier" in summary_html
+    assert "IRC endpoint mismatch" in summary_html
+    assert "refined MLIP" in summary_html and "⚡" not in summary_html
     calls.clear()
     app["_structure_preview"](str(primary))
     assert any(call[0] == "addModel" and call[1][1] == "pdb" for call in calls)
     assert any(call[0] == "show" for call in calls)
+
+    # The advertised fast example uses the same removable queue transaction as uploads.
+    app["ex_choice"].value = "HCN -> HNC - small molecule (fast)"
+    app["ex_btn"].click()
+    assert len(app["S"]["inputs"]) == 2
+    assert len(app["input_file_rows"].children) == 2
+    assert app["all_mode"].value == "mep" and not app["b_clear_inputs"].disabled
+    app["b_clear_inputs"].click()
+    assert app["S"]["inputs"] == []
+
+    # A precomputed scan3d surface is a first-class plot-only input.
+    surface = tmp_path / "surface.csv"
+    surface.write_text("d1,d2,d3,energy\n1,1,1,0\n", encoding="utf-8")
+    assert app["_ingest_saved_files"]([str(surface)], "test csv")
+    csv_command = app["build_cmd"]()
+    assert csv_command[:2] == ["pdb2reaction", "scan3d"]
+    assert "--csv" in csv_command and "-i" not in csv_command
 
     app["load_pdb"]([str(primary)], center=["LIG"], mode="mmcif")
     original_inputs = list(app["S"]["inputs"])
@@ -935,7 +999,13 @@ def test_colab_adversarial_state_transactions_and_editor_ownership(
     )
 
     app["load_pdb"]([str(primary), str(incompatible)], center=["LIG"], lcharge={"LIG": 1})
+    app["S"]["scan_atoms"] = [
+        {"index": 0, "chain": "A", "resn": "LIG", "resi": "10", "atom": "C1", "xyz": (0.0, 0.0, 0.0)},
+        {"index": 1, "chain": "A", "resn": "LIG", "resi": "10", "atom": "O1", "xyz": (1.2, 0.0, 0.0)},
+    ]
+    primary_owned = json.dumps(app["S"]["scan_atoms"], sort_keys=True)
     app["view_input"].value = 1
+    assert json.dumps(app["S"]["scan_atoms"], sort_keys=True) == primary_owned
     before_selection = (
         list(app["S"]["center"]), dict(app["S"]["lcharge"]),
         list(app["S"]["scan_atoms"]), list(app["S"]["freeze_atoms"]),
@@ -979,6 +1049,19 @@ def test_colab_adversarial_state_transactions_and_editor_ownership(
     assert app["dd_backend"].value == "uma" and app["dd_model"].value == "uma-m-1p1"
     assert app["dd_rep"].value == "sticks" and app["dd_col"].value == "spectrum"
     assert app["_auto"]["on"] is True and app["cmd_box"].value != stale_command
+
+    app["all_mode"].value = "mep"
+    app["w_ts"].value = False
+    app["all_mode"].value = "tsonly"
+    ts_only_saved = app["_session_dict"]()
+    assert ts_only_saved["tsopt"] is False
+    assert app["_apply_session"](ts_only_saved) == []
+    app["all_mode"].value = "mep"
+    assert app["w_ts"].value is False
+
+    app["w_reuse"].value = True
+    app["_invalidate_last_run"]("new system")
+    assert app["w_reuse"].value is False
 
     missing = tmp_path / "missing-dir" / "missing.pdb"
     pending = app["_session_dict"]()
