@@ -39,9 +39,9 @@ Inputs are not limited to full enzyme PDBs: mmCIF is accepted directly, includin
 [`examples/pdb2reaction_colab.ipynb`](examples/pdb2reaction_colab.ipynb) provides
 a notebook-native PDB/mmCIF uploader, 3D chain-qualified residue/atom picking,
 backend/model options, an editable exact command, a separate `--dry-run`
-validation action, and result/trajectory views. It installs the release-matched
-tag and one backend into the user's own GPU runtime; MACE and UMA still require
-separate runtimes.
+validation action, and result/trajectory views. It installs the pinned PyPI
+release and fetches example inputs from the matching Git tag into the user's
+own GPU runtime; MACE and UMA still require separate runtimes.
 
 ## System requirements
 

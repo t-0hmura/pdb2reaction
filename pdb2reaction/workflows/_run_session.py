@@ -464,13 +464,8 @@ def current_key_output_files(
 ) -> dict[str, Any]:
     """Build key-output metadata from claimed current-run paths only."""
 
-    root = _lexical_absolute(root)
-    current_public = refresh_current_public_outputs(manifest, root)
-    current_relative = {
-        path.relative_to(root).as_posix()
-        for path in current_public
-        if path.is_relative_to(root)
-    }
+    current_relative = set(current_output_paths(manifest, root))
+
     descriptions = {
         "summary.log": "Human-readable results summary",
         "summary.json": "Machine-readable results summary",
@@ -499,6 +494,21 @@ def current_key_output_files(
             "files": files,
         }
     return key_files
+
+
+def current_output_paths(
+    manifest: InvocationManifest,
+    root: Path,
+) -> list[str]:
+    """Return sorted root-relative paths claimed by the current invocation."""
+
+    root = _lexical_absolute(root)
+    current_public = refresh_current_public_outputs(manifest, root)
+    return sorted({
+        path.relative_to(root).as_posix()
+        for path in current_public
+        if path.is_relative_to(root)
+    })
 
 
 def public_output_key(root: Path, path: Path) -> str:

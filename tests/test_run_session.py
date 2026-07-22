@@ -16,6 +16,7 @@ from pdb2reaction.workflows._run_session import (
     InvocationManifest,
     InvocationResources,
     RunSession,
+    current_output_paths,
     declare_public_output,
     refresh_current_public_outputs,
 )
@@ -123,6 +124,25 @@ def test_public_refresh_requires_producer_declaration(tmp_path: Path) -> None:
 
     assert current == [declared.absolute()]
     assert undeclared.absolute() not in current
+
+
+def test_current_output_paths_are_sorted_relative_and_current(tmp_path: Path) -> None:
+    root = tmp_path / "out"
+    current = root / "segments" / "seg_01" / "structures" / "ts.pdb"
+    stale = root / "summary.log"
+    for path in (current, stale):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("old", encoding="utf-8")
+    manifest = InvocationManifest()
+    declare_public_output(manifest, root, current)
+    declare_public_output(manifest, root, stale)
+    replacement = root / ".current"
+    replacement.write_text("current", encoding="utf-8")
+    replacement.replace(current)
+
+    assert current_output_paths(manifest, root) == [
+        "segments/seg_01/structures/ts.pdb"
+    ]
 
 
 def test_manifest_exposes_only_claimed_current_paths(tmp_path: Path) -> None:

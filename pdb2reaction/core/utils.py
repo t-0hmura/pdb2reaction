@@ -19,6 +19,7 @@ import logging
 import math
 import os
 import re
+import sys
 import tempfile
 import time
 from collections import Counter
@@ -822,22 +823,87 @@ def ensure_dir(path: Path) -> None:
 
 def collect_option_values(argv: Sequence[str], names: Sequence[str]) -> List[str]:
     """
-    Collect values following a flag that may appear once with multiple space-separated values,
-    e.g., "-i A B C".
+    Collect a variadic option's values in raw occurrence order.
+
+    Supports grouped/repeated spellings plus Click's ``--long=value`` and
+    attached-short ``-ivalue`` forms.  This is used only by the compatibility
+    commands whose public grammar historically allowed ``-i A B C``.
     """
     vals: List[str] = []
+    names_set = set(names)
+    long_names = tuple(name for name in names_set if name.startswith("--"))
+    short_names = tuple(
+        name for name in names_set if name.startswith("-") and not name.startswith("--")
+    )
     i = 0
     while i < len(argv):
         tok = argv[i]
-        if tok in names:
-            j = i + 1
-            while j < len(argv) and not argv[j].startswith("-"):
-                vals.append(argv[j])
-                j += 1
-            i = j
-        else:
+        matched = tok in names_set
+        inline: Optional[str] = None
+        if not matched:
+            for name in long_names:
+                if tok.startswith(name + "="):
+                    matched = True
+                    inline = tok.split("=", 1)[1]
+                    break
+        if not matched:
+            for name in short_names:
+                if tok.startswith(name) and tok != name:
+                    matched = True
+                    inline = tok[len(name):]
+                    break
+        if not matched:
+            i += 1
+            continue
+        if inline is not None:
+            vals.append(inline)
+        i += 1
+        while i < len(argv) and not argv[i].startswith("-"):
+            vals.append(argv[i])
             i += 1
     return vals
+
+
+def current_cli_args(ctx: Optional[click.Context] = None) -> List[str]:
+    """Return normalized arguments for the current top-level CLI invocation."""
+    if ctx is None:
+        ctx = click.get_current_context(silent=True)
+    if ctx is not None:
+        recorded = ctx.meta.get("pdb2reaction.cli.raw_args")
+        if recorded is not None:
+            return [str(value) for value in recorded]
+    return list(sys.argv[1:])
+
+
+def reject_option_like_extra_args(
+    extra_args: Sequence[str],
+    *,
+    allowed_options: Sequence[str] = (),
+    allowed_values: Sequence[str] = (),
+    consumed_values: Sequence[Any] = (),
+) -> None:
+    """Reject residual tokens not claimed by a legacy variadic option.
+
+    A few public commands accept the historical ``-i A B`` spelling by
+    enabling Click's ``allow_extra_args`` mode.  That mode must not turn an
+    option typo or unrelated bare token into a successful no-op, so only
+    values recovered from a declared variadic option are allowed through.
+    """
+    allowed = frozenset(str(value) for value in allowed_options)
+    remaining = Counter(str(value) for value in allowed_values)
+    for raw in consumed_values:
+        value = str(raw)
+        if remaining[value] > 0:
+            remaining[value] -= 1
+    for raw in extra_args:
+        value = str(raw)
+        if remaining[value] > 0:
+            remaining[value] -= 1
+            continue
+        if value.startswith("-") and value not in allowed:
+            raise click.UsageError(f"No such option: {value}")
+        if value not in allowed:
+            raise click.UsageError(f"Unexpected extra argument: {value}")
 
 
 def collect_single_option_values(

@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## Unreleased
 
+## [0.4.12] — 2026-07-22
+
 > Upgrade warning: unchanged inputs can produce different geometries, energies/barriers,
 > vibrational classifications, thermochemistry, and scientific/terminal status. Consumers of
 > `result.json`/`summary.json` must review the Breaking changes and Machine-readable output sections.
@@ -27,8 +29,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Add an mmCIF/large-PDB bridge (atom-identity–preserving; multi-model input keeps the first model,
   with a warning), exact chain/residue/atom selectors, safe duplicate atom-name handling, and CIF
   output companions with original IDs.
-- Add a release-pinned Colab GUI for structure preparation, 3D atom picking,
-  validated execution, backend controls, and result inspection.
+- Add a release-pinned, keyboard-accessible Colab GUI for structure preparation,
+  semantic 3D atom picking, workflow-aware command construction, interrupt-safe
+  execution, and current-run-scoped result inspection/downloads.
 - Add opt-in IRC `--never-stop` / `all --irc-never-stop` traversal of transient
   energy rises while retaining convergence and cycle limits.
 - Add `tsopt --ref-mode PATH` to seed TS mode-following with a reference mode;
@@ -89,7 +92,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   mutated nested defaults.
 
 ### Fixed
-- Keep Hessian-Dimer orientations and off-centre images on the frozen Cartesian
+- Reject unknown options and orphan arguments in commands that retain historical
+  grouped `-i`/`-s` syntax, including in-process Click invocations, instead of
+  silently treating residual tokens as compatibility values.
+- Preserve YAML values for workers, workers-per-node, and the DMF backend unless
+  the corresponding `all` option is explicit; forward explicit values, including
+  `1`, to scan and path child commands.
+- Keep Hessian-Dimer orientations and off-center images on the frozen Cartesian
   constraint manifold, refreshing constraint-compatible rigid null modes at
   each central image.
 - Resolve the `sp --hess` frozen active-block contract before calculator
@@ -132,15 +141,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Bump the MCP subcommand-result envelope `schema_version` from `1.0` to `1.1`
   (`MCP_SUBCMD_RESULT_SCHEMA_VERSION`). Clients that pin the contract on this
   constant must update their expected value.
-- `result.json`/`summary.json` gained additive field families — a `run_id` (from
+- `result.json`/`summary.json` gained additive, producer-dependent field families — a `run_id` (from
   `PDB2REACTION_RUN_ID`; a conflicting id is rejected); `execution_status` and
-  `scientific_status` with reasons and expected/observed item ids; per-stage and
-  per-point outcomes; per-segment `converged`, `irc`, and `endpoint_opt` records;
+  `scientific_status` with reasons and expected/observed item ids; per-stage or
+  per-point outcomes where the producing mode evaluates those leaves; per-segment
+  `converged`, `irc`, and `endpoint_opt` records;
   `endpoint_assignment` provenance; `current_output_paths`; and resolved
   calculator/precision provenance. These are additive for consumers that tolerate
   unknown fields; strict schemas, exhaustive decoders, and snapshot diffs may still
   need updating. `scientific_status` also participates in usability/promotion
-  decisions, not only provenance.
+  decisions, not only provenance. Aggregate success requires every applicable
+  producer convergence signal; direct-TS segments do not invent an MEP gate.
 - `key_output_files` now lists only the artifacts claimed by the current
   invocation's run manifest rather than files discovered under the output tree, so a
   reused `-o/--out-dir` no longer reports stale files from an earlier run.
@@ -154,6 +165,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 ### Documentation
 - Rebuild and validate docs, CLI references, and agent skills for TS/IRC recovery,
   cluster construction, backends, CIF/large structures, and provenance.
+- Make the shipped example runner executable, fail-fast, and independent of the
+  caller's working directory; enforce those properties in docs quality checks.
+- Keep generated usage synopses in static option validation while excluding
+  their `[OPTIONS]...` placeholders from executable documentation smoke tests.
 - Run trajectory smoke and strict Sphinx/CFF validation in CI without passing skips.
 
 ## [0.4.11] — 2026-07-13

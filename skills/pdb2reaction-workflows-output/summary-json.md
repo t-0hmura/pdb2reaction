@@ -17,6 +17,11 @@ corresponding command page and in [`pdb2reaction-cli`](../pdb2reaction-cli/SKILL
 | `command` | Full recorded invocation string for this `all` run (for example, `pdb2reaction all -i R.pdb -i P.pdb ...`) |
 | `pdb2reaction_version` | Toolkit version that produced this output |
 | `status` | `"success"`, `"partial"`, or `"failed"` |
+| `execution_status` | Whether required leaves executed (`completed` or `failed`) |
+| `scientific_status` | Whether the produced science is usable (`success`, `partial`, or `failed`); gate consumption on this field, not legacy `status` alone |
+| `scientific_status_reasons` | Reasons for missing or unusable leaves; omitted on clean success |
+| `expected_item_ids` / `observed_item_ids` | Expected vs observed leaf IDs; compare them before accepting an aggregate |
+| `stage_outcomes` / `point_outcomes` | Producer- and mode-dependent fail-closed records. When present, require explicit convergence and `usable` / `seed_eligible`; neither array is universal at the `all` root. |
 | `charge` / `spin` | Resolved cluster charge / multiplicity |
 | `environment` | `{device, gpu_name, gpu_vram_gb, cuda_version, cpu, n_cpus, ram_gb}` |
 | `config` | Full effective config after CLI + YAML + defaults merge |
@@ -30,6 +35,7 @@ corresponding command page and in [`pdb2reaction-cli`](../pdb2reaction-cli/SKILL
 | `segments` | Lightweight per-segment summary (see below) |
 | `post_segments` | Per-segment post-processing details (tsopt / IRC / freq / DFT outputs) |
 | `key_output_files` | Top-level entries map filename → description (str); `seg_NN` entries are `{description, files}` dicts |
+| `current_output_paths` | Sorted current-invocation artifact paths relative to `out_dir`; excludes stale files in a reused tree |
 | `pipeline_mode` | One of `"path-search"`, `"path-opt"`, `"tsopt-only"` |
 | `mlip_backend` | Which backend produced the energies |
 | `mlip_model` | Exact model/checkpoint identifier, kept separate from `mlip_backend` |
@@ -162,7 +168,8 @@ Reading rules (cutoff: 1.20× covalent radii, margin 0.05; algorithm in [`pdb2re
 
 ## Failed-run output
 
-When `summary.json["status"] != "success"`, look at:
+When `summary.json["scientific_status"] != "success"` (or, for legacy output
+without that field, `summary.json["status"] != "success"`), look at:
 
 1. `summary.log` — human-readable, prints the failure point first.
 2. `segments/seg_NN/<stage>/result.json` — per-stage status (which step

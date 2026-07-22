@@ -50,16 +50,12 @@ def collect_staged_scan_values(
 ) -> tuple[str, ...]:
     """Recover the legacy one-flag/many-values form without reading ``sys.argv``.
 
-    Click consumes the first value after the single ``--scan-lists`` option and
-    leaves subsequent positional stage literals in ``Context.args``.  Repeated
-    option flags remain rejected, matching the established public behavior.
+    Click consumes the first value after a ``--scan-lists`` option and leaves
+    subsequent positional stage literals in ``Context.args``. Both the legacy
+    grouped form and Click's natural repeated-option form describe stages.
     """
 
     values = tuple(str(value) for value in option_values)
-    if len(values) > 1:
-        raise click.BadParameter(
-            f"Use a single {option_name} followed by multiple values; repeated flags are not accepted."
-        )
     extras = tuple(str(value) for value in extra_args)
     unexpected = next((value for value in extras if value.startswith("-")), None)
     if unexpected is not None:

@@ -189,6 +189,25 @@ def _validate_option_names(commands: list[str]) -> None:
     _validate_authored_commands([contract._make(REPO_ROOT, 0, cmd) for cmd in commands])
 
 
+def _select_executable_all_commands(commands: list[str]) -> list[str]:
+    """Select concrete ``all`` examples, retaining synopsis for static checks only."""
+
+    all_cmds: set[str] = set()
+    for cmd in commands:
+        if not contract.is_executable(cmd):
+            continue
+        tokens = shlex.split(cmd)
+        if not tokens or tokens[0] != TOOL_NAME:
+            continue
+        if len(tokens) >= 2 and tokens[1] == "all":
+            all_cmds.add(cmd)
+            continue
+        if len(tokens) >= 2 and tokens[1].startswith("-"):
+            if any(tok in {"-i", "--input"} for tok in tokens[1:]):
+                all_cmds.add(cmd)
+    return sorted(all_cmds)
+
+
 def _run_all_dry_run_smoke(commands: list[str]) -> None:
     try:
         probe = subprocess.run(
@@ -209,18 +228,7 @@ def _run_all_dry_run_smoke(commands: list[str]) -> None:
             "[dry-run-smoke] required 'all' command is unavailable in this environment."
         )
 
-    all_cmds: set[str] = set()
-    for cmd in commands:
-        tokens = shlex.split(cmd)
-        if not tokens or tokens[0] != TOOL_NAME:
-            continue
-        if len(tokens) >= 2 and tokens[1] == "all":
-            all_cmds.add(cmd)
-            continue
-        if len(tokens) >= 2 and tokens[1].startswith("-"):
-            if any(tok in {"-i", "--input"} for tok in tokens[1:]):
-                all_cmds.add(cmd)
-    all_cmds = sorted(all_cmds)
+    all_cmds = _select_executable_all_commands(commands)
     if not all_cmds:
         raise RuntimeError("No 'all' command examples found in docs.")
 

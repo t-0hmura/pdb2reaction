@@ -34,7 +34,8 @@ pdb2reaction energy-diagram -i "[0, 12.5, 4.3]" --label-x "['R','TS','P']" --lab
 ## 出力
 ```
 OUTPUT.(png|jpg|jpeg|svg|pdf)
-result.json   # 任意のサイドカー（--out-json 指定時）。status / n_points / files。per-point の energies・labels は含まれない
+result.json   # --out-json 指定時の正規サイドカー。status / n_points / files（per-point energies・labels は含まない）
+summary.json  # writer 成功時に byte 単位で同一の互換ミラー
 ```
 - `-o/--output` を省略した場合、カレントディレクトリに `energy_diagram.png` を出力します。
 - 出力拡張子がない場合は `.png` が自動で補完されます。
@@ -47,7 +48,7 @@ result.json   # 任意のサイドカー（--out-json 指定時）。status / n_
 | `-o, --output PATH` | 出力画像パス（`.png/.jpg/.jpeg/.svg/.pdf`） | `energy_diagram.png` |
 | `--label-x TEXT...` | X 軸状態ラベル（入力値と同じ個数が必要） | `S1, S2,...` |
 | `--label-y TEXT` | Y 軸ラベル | `ΔE (kcal/mol)` |
-| `--out-json/--no-out-json` | 出力画像の隣に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
+| `--out-json/--no-out-json` | 出力画像の隣に正規 `result.json` と同一内容の `summary.json` ミラーを書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 
 すべてのフラグ一覧は生成された [コマンドリファレンス](../reference/commands/index.md) を参照してください。
 

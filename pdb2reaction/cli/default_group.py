@@ -306,6 +306,10 @@ class DefaultGroup(click.Group):
             bool_toggle_negative_aliases,
             bool_single_flag_options,
         )
+        # Preserve normalized raw tokens for the few historical variadic
+        # options.  Click's nested contexts share ``meta`` even when callers
+        # invoke the CLI in-process and ``sys.argv`` is unrelated.
+        ctx.meta["pdb2reaction.cli.raw_args"] = tuple(args)
         result = super().parse_args(ctx, args)
         # A help/version request must render in full. The subcommand's eager
         # --help-advanced callback runs later (during invoke) via the patched

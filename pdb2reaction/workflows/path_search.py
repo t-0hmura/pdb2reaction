@@ -2017,14 +2017,29 @@ def cli(
     calc_file: Optional[str],
     calc_factory: Optional[str],
 ) -> None:
+    from pdb2reaction.core.utils import current_cli_args, reject_option_like_extra_args
+
+    argv_all = current_cli_args(ctx)
+    _claimed_values = collect_option_values(
+        argv_all,
+        ("-i", "--input", "--ref-full-pdb", "--ref-pdb"),
+    )
+    reject_option_like_extra_args(
+        ctx.args,
+        allowed_values=_claimed_values,
+        consumed_values=[
+            *input_paths,
+            *(ref_pdb_paths or ()),
+            *(model_ref_pdb_paths or ()),
+        ],
+    )
     set_convert_file_enabled(convert_files)
     prepared_inputs: List[PreparedInputStructure] = []
     prepared_auxiliary: List[PreparedInputStructure] = []
     global _PRIMARY_GJF_TEMPLATE
     _PRIMARY_GJF_TEMPLATE = None
-    command_str = " ".join(sys.argv)
+    command_str = "pdb2reaction " + " ".join(argv_all)
 
-    argv_all = sys.argv[1:]
     # Robustly accept both styles for -i/--input, --ref-full-pdb, and --ref-pdb
     i_vals = collect_option_values(argv_all, ("-i", "--input"))
     if i_vals:

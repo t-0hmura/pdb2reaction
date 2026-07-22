@@ -234,6 +234,32 @@ def test_trj2fig_recompute_json_records_actual_provenance(
     assert seen["solvent"] == "water"
 
 
+def test_trj2fig_json_preserves_same_named_outputs(tmp_path: Path) -> None:
+    trj = _write_text(
+        tmp_path / "traj.xyz",
+        "1\n0.000000\nH 0.0 0.0 0.0\n",
+    )
+    first = tmp_path / "plots-a" / "same.csv"
+    second = tmp_path / "plots-b" / "same.csv"
+    first.parent.mkdir()
+    second.parent.mkdir()
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "trj2fig", "-i", str(trj), "-o", str(first), str(second),
+            "--out-json",
+        ],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0, result.output
+    assert first.exists() and second.exists()
+    payload = json.loads((first.parent / "result.json").read_text(encoding="utf-8"))
+    assert payload["output_files"] == [str(first), str(second)]
+    assert payload["files"] == {"same.csv": str(second)}
+
+
 def test_energy_diagram_smoke(tmp_path: Path, monkeypatch) -> None:
     out_png = tmp_path / "energy_diagram.png"
 
@@ -499,6 +525,24 @@ def test_scan_single_flag_multi_stage_form_does_not_depend_on_process_argv(
         [
             "scan", "-i", str(input_path), "-q", "-1",
             "--scan-lists", "[(1, 2, 1.0)]", "[(2, 3, 1.0)]",
+            "--dry-run", "--out-dir", str(tmp_path / "out"),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "2 stage(s)" in result.output
+
+
+def test_scan_repeated_flag_multi_stage_form_matches_colab_command(
+    tmp_path: Path,
+) -> None:
+    input_path = Path(__file__).parent / "smoke" / "r.pdb"
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "scan", "-i", str(input_path), "-q", "-1",
+            "--scan-lists", "[(1, 2, 1.0)]",
+            "--scan-lists", "[(2, 3, 1.0)]",
             "--dry-run", "--out-dir", str(tmp_path / "out"),
         ],
     )

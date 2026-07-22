@@ -4,32 +4,40 @@ pdb2reaction は、AI エージェント・スクリプト・下流ツールが�
 
 ## `--out-json` フラグ
 
-MLIP を使用するすべてのサブコマンドが `--out-json / --no-out-json`（デフォルト: off）に対応しています。
-有効にすると、出力ディレクトリに `result.json` が生成されます。
+MLIP を使用する主なサブコマンドとレポート系サブコマンド（`opt`、`sp`、
+`tsopt`、`freq`、`irc`、scan 系、`path-opt`、`dft`、`extract`、
+`trj2fig`、`energy-diagram`）は `--out-json / --no-out-json`（デフォルト:
+off）に対応しています。有効にすると、正規の `result.json` と、同一内容の
+互換ミラー `summary.json` が通常の出力と同じ場所に生成されます。
 
 ```bash
 pdb2reaction opt -i r.pdb -q -1 --out-json --out-dir result_opt
 cat result_opt/result.json | python -m json.tool
 ```
 
-`all` / `path-search` は summary writer まで到達すれば `--out-json` なしで
-`summary.json` を出力します。早期の CLI/input 検証で失敗した場合は、file が
+`all` / `path-search` は、集約結果を書き込む段階まで到達すれば `--out-json` なしで
+`summary.json` を出力します。早期の CLI 引数または入力の検証で失敗した場合は、ファイルが
 作られないことがあります。
 
 ### `summary.json` ミラー
 
-`write_result_json` は、ステージごとの `result.json` のペイロードをすべて同じディレクトリの `summary.json` にミラーリングします。これにより、エージェントスクリプトはどのサブコマンドでも単一のファイル名（`summary.json`）を読めばよく、隣に書き出される `result.json` も同一のペイロードを持ちます。
+`write_result_json` はステージごとのペイロードを一度だけシリアライズし、
+互換ミラー `summary.json` を先に、正規の `result.json` を最後にアトミックに公開
+します。正常終了時は両ファイルのバイト列が同一です。I/O エラーによって公開が
+中断された場合、書き込み処理はミラーの不一致を隠さず例外を送出します。
+MCP の利用側は、割り当てられている場合には現在の `run_id` も検証してください。
 
 ## 共通エンベロープ
 
-shared writerが供給するfieldを示します。「任意」と明記したrowはproducerが対応dataを渡した場合だけ存在します:
+共通の書き込み処理が供給するフィールドを示します。「任意」と明記した行は、
+生成側が対応するデータを渡した場合にだけ存在します。
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `schema_version` | string | エンベロープのスキーマバージョン。現在値は `pdb2reaction.core.utils.RESULT_JSON_SCHEMA_VERSION` にあります（このドキュメント中のリテラルではなく、この定数を参照してください）。値が上がった場合は構造変更を意味します。 |
 | `command` | string | leaf envelope はサブコマンド名（例: `"opt"`）、aggregate `all` / `path-search` summary は完全な invocation string |
 | `pdb2reaction_version` | string | パッケージバージョン |
-| `status` | string | commandごとに異なります（下記参照）。`converged` / `not_converged` / `stalled`（opt, tsopt）、`completed`（irc, freq）、`ok` / `partial` / `failed`（bond-summary）、`success` / `partial` / `failed`（aggregate workflow）、失敗時の `error` などです |
+| `status` | string | commandごとに異なります（下記参照）。`converged` / `not_converged` / `stalled`（opt, tsopt）、`completed`（irc, freq）、`ok` / `partial` / `failed`（bond-summary）、`success` / `partial` / `failed`（`all`）、`success` / `partial`（`path-search`）、失敗時の `error` などです |
 | `run_id` | string | 任意。現在の MCP 呼び出し UUID。プロダクト固有の実行環境が有効な場合のみ注入され、producer 側の値と衝突する場合は拒否されます。 |
 | `elapsed_seconds` | float | 任意の実行時間（秒）。shared writerへ時間を渡さないproducerでは省略 |
 | `environment` | object | ハードウェア情報（下表参照） |
@@ -39,6 +47,24 @@ shared writerが供給するfieldを示します。「任意」と明記したro
 
 各leaf schemaの`backend` / `model`も維持されますが、command横断の処理では
 `mlip_backend` / `mlip_model` / `mlip_precision`を使用してください。
+
+### 実行結果と科学的妥当性
+
+複数段階のワークフローと scan の出力処理は、構成要素を評価できる場合に以下のフィールドを追加します。出力されるフィールドはコマンドによって異なり、各コマンド固有の `status` も互換性のため維持されます。結果を利用できるか判断する際は、`scientific_status` と各 outcome を確認してください。収束を確認できない個別結果は安全側に倒して扱われ、`usable` にはなりません。
+
+| フィールド | 型 | 説明 |
+|-----------|------|------|
+| `execution_status` | string | 通常は `completed` または `failed`。必須の構成コマンドが実行されたかを示します。 |
+| `scientific_status` | string | `success`、`partial`、`failed`。得られた科学的結果が完全かつ利用可能かを示します。 |
+| `scientific_status_reasons` | string[] | 利用できない、または欠落した個別結果の理由。正常終了時は省略されます。集約ワークフローの従来の `status_reasons` とは別です。 |
+| `expected_item_ids` / `observed_item_ids` | string[] | 集約結果の欠落を検出するための、期待された項目と観測された項目の ID。 |
+| `stage_outcomes` | object[] | `stage`、`item_id`、`required`、`executed`、`converged`、`usable`、`reason`、`artifacts` を持つ段階別 outcome。 |
+| `point_outcomes` | object[] | `point_id`、`executed`、`converged`、`energy_valid`、`artifact_written`、`seed_eligible`、`reason` を持つ scan 点別 outcome。 |
+
+`run_id` が存在する場合は、現在の呼び出しを識別します。`all` の集約
+`summary.json` では、`current_output_paths` と `key_output_files` も、その
+呼び出しが記録した成果物だけを示します。再利用した出力ディレクトリに残る
+既存ファイルは現在の結果に含まれません。
 
 ### Rigid projection provenance
 
@@ -84,10 +110,10 @@ shared writerが供給するfieldを示します。「任意」と明記したro
 
 ## エラー処理
 
-捕捉されたruntime exceptionでは、`"status": "error"` と `"error_type"` を
-含む `result.json` をbest effortで書きます。usage/validation exitやout-dir確定前の
-失敗ではJSONが作られない場合があるため、nonzero exit codeまたは期待JSONの欠損も
-failure signalです。stderr/job logを確認してください。
+捕捉された実行時例外では、`"status": "error"` と `"error_type"` を含む
+`result.json` を可能な範囲で書き出します。使用法・入力検証による終了や出力先の
+確定前に失敗した場合は JSON が作られないことがあるため、0 以外の終了コードや
+期待した JSON の欠落も失敗のシグナルです。標準エラー出力またはジョブログを確認してください。
 
 収束しなかったが完了したジョブでは、`"status": "not_converged"` と最終 force/step 値を含む `result.json` が書き出されるため、AI エージェントはサイクル数を増やして再試行するかどうかをこの情報をもとに判断できます。
 
@@ -372,7 +398,7 @@ dimer モードも `status` に `"converged"` / `"not_converged"` / `"stalled"` 
 | `n_link_hydrogens` | int | 炭素原子側に残る切断結合へ追加されたキャップ水素数 |
 | `exclude_backbone` | bool | バックボーンを除外したか |
 | `include_h2o` | bool | 結晶水を含めたか |
-| `ligand_charge_input` | string | ユーザ指定 `--ligand-charge` マッピング |
+| `ligand_charge_input` | string | ユーザー指定 `--ligand-charge` マッピング |
 | `center` | string | 中心残基 |
 | `radius` | float | 抽出半径 (angstrom) |
 | `input_files` | string[] | 入力 PDB / mmCIF パス |
@@ -390,7 +416,8 @@ dimer モードも `status` に `"converged"` / `"not_converged"` / `"stalled"` 
 | `backend` | string または null | フレームを再計算した場合のみ MLIP backend。comment energy mode では null |
 | `charge` / `multiplicity` | int または null | 再計算時の解決済み電子状態。それ以外は null |
 | `solvent` / `solvent_model` | string または null | 再計算 calculator の溶媒設定。それ以外は null |
-| `files` | object | 出力プロットファイル |
+| `output_files` | string[] | すべての出力パスを順序どおりに保持する正規フィールド。別ディレクトリに同名ファイルがあっても保持される |
+| `files` | object | 後方互換用のベース名からパスへの対応表。同じベース名が重複すると一方だけが残る |
 
 ### `energy-diagram`
 
@@ -417,6 +444,9 @@ dimer モードも `status` に `"converged"` / `"not_converged"` / `"stalled"` 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `status` | string | `"success"` / `"partial"` / `"failed"` (`all`); `"success"` / `"partial"` (`path-search`) |
+| `execution_status` / `scientific_status` | string / string | 実行の完了度と科学的な利用可能性。従来の `status` とは分けて評価します。 |
+| `scientific_status_reasons` | string[] | 不完全または利用できない科学的結果の理由。正常終了時は省略されます。 |
+| `expected_item_ids` / `observed_item_ids` | string[] | 期待された集約項目と観測された集約項目。 |
 | `n_segments` | int | セグメント数 |
 | `segments` | object[] | セグメントごとの `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` |
 | `energy_diagrams` | object[] | エネルギーダイアグラム（ラベル + kcal/mol） |
@@ -435,7 +465,8 @@ dimer モードも `status` に `"converged"` / `"not_converged"` / `"stalled"` 
 | `overall_reaction_energy_kcal` | float | 全体反応エネルギー |
 | `overall_reaction_energy_method` | string | 全体反応energyのmethod (`MEP`, `MLIP`, `MLIP_Gibbs`, `DFT`, `DFT//MLIP_Gibbs`) |
 | `post_segments` | list | セグメントごとの TS/IRC/freq/DFT 結果 |
-| `key_output_files` | object | 主要出力ファイル一覧 |
+| `current_output_paths` | string[] | `--out-dir` からの相対パスを並べたリスト。現在の呼び出しが記録した成果物だけを含みます。 |
+| `key_output_files` | object | 現在の呼び出しの出力索引。ルートファイルはファイル名 → 説明、各 `seg_NN` は `{description, files}` で、`files` はそのセグメントディレクトリからの相対パスです。 |
 
 ## 使用例
 

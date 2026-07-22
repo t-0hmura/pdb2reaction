@@ -6,9 +6,9 @@ Each `pdb2reaction` subcommand writes to its output directory under the filename
 
 | Filename | Written by | Purpose |
 |---|---|---|
-| `summary.json` | always by `all` and `path-search` | Authoritative aggregate JSON envelope (see [JSON Output Reference](json-output.md)). Read this first. |
-| `summary.json` | successful per-stage runs when `--out-json` is passed (default `--no-out-json`); caught runtime errors may write a best-effort error envelope without the flag | Stage JSON envelope. Pure utility subcommands (e.g. `fix-altloc`, `add-elem-info`, `bond-summary`) do not use this stage envelope. |
-| `result.json` | same conditions as the per-stage `summary.json` (`opt`, `tsopt`, `freq`, `irc`, `sp`, `scan` / `scan2d` / `scan3d`, `path-opt`, `dft`, `extract`) | Alternate filename — identical payload to `summary.json`. Read `summary.json` for the single-filename convention; `result.json` carries the same content and can be deleted if you only consume `summary.json`. |
+| `summary.json` | `all` and `path-search` after their summary writer is reached | Authoritative aggregate JSON envelope (see [JSON Output Reference](json-output.md)). Early CLI/input validation may fail before it exists. |
+| `summary.json` | successful per-stage/report runs when `--out-json` is passed (default `--no-out-json`); caught runtime errors may write a best-effort error envelope without the flag | Compatibility mirror of the leaf `result.json`. A successful writer return guarantees identical bytes; pure utilities such as `fix-altloc`, `add-elem-info`, and `bond-summary` do not use it. |
+| `result.json` | same conditions as the per-stage `summary.json` (`opt`, `tsopt`, `freq`, `irc`, `sp`, scan variants, `path-opt`, `dft`, `extract`, `trj2fig`, `energy-diagram`) | Authoritative leaf/report envelope. It is published after the compatibility mirror; consume this file when distinguishing interrupted generations. |
 | `summary.log` | `path-search`, `all` | Human-readable run log (one row per segment / stage). |
 | `final_geometry.xyz` | `opt`, `tsopt` | Optimized geometry (XYZ, full precision). |
 | `mep.pdb` / `mep.cif` / `mep_trj.xyz` | `path-search` | Reaction path frames; `.cif` is added for mmCIF/oversized-PDB topology when conversion is enabled. |
@@ -64,11 +64,13 @@ In TSOPT-only mode there is no MEP stage, so `_work/path_opt/` is absent and the
 ## Agent recipe
 
 ```python
-# Read whichever subcommand's output, single filename across the board.
+# Select the authoritative name for the command that produced out_dir.
 import json
 from pathlib import Path
 
-summary = json.loads((Path(out_dir) / "summary.json").read_text())
+subcommand = "opt"  # replace with the command you ran
+primary = "summary.json" if subcommand in {"all", "path-search"} else "result.json"
+summary = json.loads((Path(out_dir) / primary).read_text())
 
 if summary["status"] == "error":
     chain = summary.get("error_class_chain", [])

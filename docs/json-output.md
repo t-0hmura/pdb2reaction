@@ -4,8 +4,11 @@ pdb2reaction emits machine-readable JSON for programmatic use by scripts and age
 
 ## `--out-json` flag
 
-Every MLIP-based subcommand supports `--out-json / --no-out-json` (default: off).
-When enabled, a `result.json` file is written to the output directory alongside the normal outputs.
+Most MLIP-based and reporting subcommands (`opt`, `sp`, `tsopt`, `freq`,
+`irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `dft`, `extract`,
+`trj2fig`, and `energy-diagram`) support `--out-json / --no-out-json`
+(default: off). When enabled, authoritative `result.json` and its identical
+`summary.json` compatibility mirror are written beside the normal outputs.
 
 ```bash
 pdb2reaction opt -i r.pdb -q -1 --out-json --out-dir result_opt
@@ -34,7 +37,7 @@ are present only when the producer supplies the corresponding data:
 | `schema_version` | string | Envelope schema version; current value lives at `pdb2reaction.core.utils.RESULT_JSON_SCHEMA_VERSION` — pin against that constant rather than the literal in this doc. A version bump signals a structural change. |
 | `command` | string | Leaf envelopes use the subcommand name (e.g. `"opt"`); aggregate `all` / `path-search` summaries record the full invocation string |
 | `pdb2reaction_version` | string | Package version |
-| `status` | string | Value depends on the subcommand (see each section below): e.g. `converged` / `not_converged` / `stalled` (opt, tsopt), `completed` (irc, freq), `ok` / `partial` / `failed` (bond-summary), `success` / `partial` / `failed` (aggregate workflows), and `error` on failure |
+| `status` | string | Value depends on the subcommand (see each section below): e.g. `converged` / `not_converged` / `stalled` (opt, tsopt), `completed` (irc, freq), `ok` / `partial` / `failed` (bond-summary), `success` / `partial` / `failed` (`all`), `success` / `partial` (`path-search`), and `error` on failure |
 | `run_id` | string | Optional current MCP invocation UUID. It is injected only when the product-specific run environment is active; a conflicting producer value is rejected. |
 | `elapsed_seconds` | float | Optional wall-clock time; omitted by producers that do not pass timing to the shared writer |
 | `environment` | object | Hardware info (see below) |
@@ -45,6 +48,24 @@ are present only when the producer supplies the corresponding data:
 Leaf schemas also retain their local `backend` / `model` fields; consumers
 should prefer `mlip_backend` / `mlip_model` / `mlip_precision` for a uniform
 cross-command provenance contract.
+
+### Execution and scientific truth
+
+Multi-stage and scan producers add the fields below when they can evaluate constituent work. These fields are additive and producer-dependent; the command-specific `status` remains for compatibility. Consumers should use `scientific_status` and the leaf outcomes when deciding whether a result is usable. Missing or ambiguous convergence is fail-closed and cannot promote a leaf to usable.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `execution_status` | string | Normally `completed` or `failed`; reports whether required constituent commands executed. |
+| `scientific_status` | string | `success`, `partial`, or `failed`; reports whether the produced scientific result is complete and usable. |
+| `scientific_status_reasons` | string[] | Reasons for unusable or missing leaves; omitted on clean success. This is distinct from an aggregate workflow's legacy `status_reasons`. |
+| `expected_item_ids` / `observed_item_ids` | string[] | Expected and observed leaf identifiers used to detect missing aggregate work. |
+| `stage_outcomes` | object[] | Stage leaves with `stage`, `item_id`, `required`, `executed`, `converged`, `usable`, `reason`, and `artifacts`. |
+| `point_outcomes` | object[] | Scan points with `point_id`, `executed`, `converged`, `energy_valid`, `artifact_written`, `seed_eligible`, and `reason`. |
+
+When present, `run_id` identifies the current invocation. The `all` aggregate
+summary also uses `current_output_paths` and `key_output_files` to report only
+artifacts claimed by that invocation; files left in a reused output directory
+are not current results.
 
 ### Rigid projection provenance
 
@@ -400,7 +421,8 @@ See also the extended [`summary.json` section](#summary-json-path-search-all) fo
 | `backend` | string or null | MLIP backend only when frame energies were recomputed; null in comment-energy mode |
 | `charge` / `multiplicity` | int or null | Resolved recomputation state, otherwise null |
 | `solvent` / `solvent_model` | string or null | Recomputed-calculator solvent settings, otherwise null |
-| `files` | object | Output plot files |
+| `output_files` | string[] | Canonical ordered paths for every output; preserves files with the same basename in different directories |
+| `files` | object | Legacy basename-to-path map; retained for compatibility and therefore lossy when basenames collide |
 
 ### `energy-diagram`
 
@@ -427,6 +449,9 @@ The `all` and `path-search` commands write `summary.json` with a richer structur
 | Field | Type | Description |
 |-------|------|-------------|
 | `status` | string | `"success"` / `"partial"` / `"failed"` (`all`); `"success"` / `"partial"` (`path-search`) |
+| `execution_status` / `scientific_status` | string / string | Execution completeness and scientific usability; evaluate these separately from legacy `status`. |
+| `scientific_status_reasons` | string[] | Reasons for incomplete or unusable science; omitted on clean success. |
+| `expected_item_ids` / `observed_item_ids` | string[] | Expected and observed aggregate leaves. |
 | `n_segments` | int | Segment count |
 | `segments` | object[] | Per-segment `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` (list of `{title: [entries]}` dicts produced by `_bond_changes_block`; bridge segments emit `""`). |
 | `energy_diagrams` | object[] | Energy profiles with labels and kcal/mol values |
@@ -445,7 +470,8 @@ The `all` command additionally includes:
 | `overall_reaction_energy_kcal` | float | Overall reaction energy |
 | `overall_reaction_energy_method` | string | Method of the overall reaction energy (`MEP`, `MLIP`, `MLIP_Gibbs`, `DFT`, or `DFT//MLIP_Gibbs`) |
 | `post_segments` | list | Per-segment TS/IRC/freq/DFT results |
-| `key_output_files` | object | Curated output file listing |
+| `current_output_paths` | string[] | Sorted paths relative to `--out-dir`, limited to artifacts claimed by the current invocation. |
+| `key_output_files` | object | Current-run output index: root filename → description; each `seg_NN` entry is `{description, files}` with paths relative to that segment directory. |
 
 ## Usage examples
 

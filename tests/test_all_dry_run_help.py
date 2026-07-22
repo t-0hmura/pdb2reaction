@@ -48,6 +48,24 @@ def test_all_scan_list_dry_run_reports_scan_and_path(tmp_path):
     assert "Planned stages: scan -> path_opt." in result.output
 
 
+def test_all_accepts_repeated_scan_stage_flags_from_colab(tmp_path):
+    xyz = tmp_path / "reactant.xyz"
+    xyz.write_text("2\nH2\nH 0 0 0\nH 0 0 0.74\n", encoding="utf-8")
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "all", "-i", str(xyz), "-q", "0",
+            "--scan-lists", "[(1,2,1.0)]",
+            "--scan-lists", "[(1,2,1.2)]",
+            "--dry-run",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Planned stages: scan -> path_opt." in result.output
+
+
 def test_all_dry_run_cleans_extract_tempdir_on_failure(tmp_path, monkeypatch):
     all_workflow = importlib.import_module("pdb2reaction.workflows.all")
     pdb = tmp_path / "input.pdb"

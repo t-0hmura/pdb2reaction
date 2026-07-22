@@ -397,6 +397,57 @@ def test_freq_zero_exit_returns_parsed_thermo(tmp_path: Path, monkeypatch) -> No
     assert out.get("sum_EE_and_thermal_free_energy_ha") == pytest.approx(-123.456)
 
 
+def test_freq_preserves_explicit_default_runtime_values_over_yaml(
+    tmp_path: Path, monkeypatch
+) -> None:
+    from pdb2reaction.workflows import all as all_workflow
+
+    pdb = tmp_path / "R.xyz"
+    pdb.write_text("1\n\nH 0 0 0\n", encoding="utf-8")
+    config = tmp_path / "runtime.yaml"
+    config.write_text(
+        "calc:\n  workers: 8\n  workers_per_node: 4\n"
+        "  backend: orb\n  solvent: water\n  solvent_model: cpcm\n",
+        encoding="utf-8",
+    )
+    captured: list[str] = []
+
+    def _capture(_name, _command, argv, **_kwargs):
+        captured.extend(argv)
+        return 1
+
+    monkeypatch.setattr(all_workflow, "_run_cli_main", _capture)
+    monkeypatch.setattr(all_workflow, "_echo", lambda *a, **k: None)
+
+    all_workflow._run_freq_for_state(
+        pdb,
+        0,
+        1,
+        tmp_path / "freq",
+        config,
+        False,
+        None,
+        False,
+        overrides={
+            "workers": 1,
+            "workers_per_node": 1,
+            "backend": "uma",
+            "solvent": "none",
+            "solvent_model": "alpb",
+        },
+    )
+
+    for flag, value in (
+        ("--workers", "1"),
+        ("--workers-per-node", "1"),
+        ("--backend", "uma"),
+        ("--solvent", "none"),
+        ("--solvent-model", "alpb"),
+    ):
+        assert captured[captured.index(flag) + 1] == value
+    assert captured[captured.index("--config") + 1] == str(config)
+
+
 # ---------------------------------------------------------------------------
 # 6. LEGACY-COMPAT — a genuinely converged leaf's public output is unchanged
 #    except for the additive new fields.
@@ -593,7 +644,9 @@ def test_read_irc_outcome_gates_on_scientific_status(tmp_path: Path) -> None:
 def test_all_pipeline_aggregate_excludes_nonconverged_irc() -> None:
     from pdb2reaction.workflows.all import _pipeline_aggregate_truth
 
-    summary = {"segments": [{"index": 1, "kind": "seg", "barrier_kcal": 10.0}]}
+    summary = {"segments": [{
+        "index": 1, "kind": "seg", "barrier_kcal": 10.0, "converged": True,
+    }]}
     config = {"tsopt": True, "thermo": False, "dft": False}
 
     # Legacy status="success" (a trajectory exists, so _derive_pipeline_status is
@@ -625,10 +678,30 @@ def test_all_pipeline_aggregate_excludes_nonconverged_irc() -> None:
     assert truth_ok.scientific_status == "success"
 
 
+def test_all_pipeline_tsopt_only_does_not_require_mep_convergence() -> None:
+    """A direct-TS segment has no MEP convergence field to gate on."""
+    from pdb2reaction.workflows.all import _pipeline_aggregate_truth
+
+    summary = {"segments": [{"index": 1, "kind": "tsopt", "barrier_kcal": 10.0}]}
+    post = [{
+        "index": 1,
+        "irc": {"usable": True, "reason": "ok"},
+        "endpoint_opt": {"reactant_converged": True, "product_converged": True},
+    }]
+    truth = _pipeline_aggregate_truth(
+        summary, post_segments=post, config={"tsopt": True},
+        legacy_status="success",
+    )
+    assert truth.scientific_status == "success"
+    assert "mep_convergence_unknown" not in truth.status_reasons
+
+
 def test_all_pipeline_aggregate_gates_on_endpoint_opt() -> None:
     from pdb2reaction.workflows.all import _pipeline_aggregate_truth
 
-    summary = {"segments": [{"index": 1, "kind": "seg", "barrier_kcal": 10.0}]}
+    summary = {"segments": [{
+        "index": 1, "kind": "seg", "barrier_kcal": 10.0, "converged": True,
+    }]}
     config = {"tsopt": True}
     # IRC usable but the product endpoint optimization did not converge.
     post = [{
@@ -647,7 +720,7 @@ def test_all_pipeline_aggregate_preserves_legacy_severity() -> None:
     # a legacy `partial` (e.g. DFT failed) with a fully-converged IRC stays partial.
     from pdb2reaction.workflows.all import _pipeline_aggregate_truth
 
-    summary = {"segments": [{"index": 1, "kind": "seg"}]}
+    summary = {"segments": [{"index": 1, "kind": "seg", "converged": True}]}
     post = [{
         "index": 1,
         "irc": {"usable": True, "reason": "ok"},
@@ -705,3 +778,49 @@ def test_all_pipeline_aggregate_no_tsopt_uses_segment_converged() -> None:
     assert _pipeline_aggregate_truth(
         ok, post_segments=None, config=cfg, legacy_status="success",
     ).scientific_status == "success"
+
+
+@pytest.mark.parametrize("mep_converged", [False, None])
+def test_all_pipeline_post_success_cannot_promote_bad_mep(
+    mep_converged: bool | None,
+) -> None:
+    """Successful IRC/endpoints cannot overwrite false/unknown MEP truth."""
+    from pdb2reaction.workflows.all import _pipeline_aggregate_truth
+
+    summary = {"segments": [{
+        "index": 1, "kind": "seg", "barrier_kcal": 10.0,
+        "converged": mep_converged,
+    }]}
+    post = [{
+        "index": 1,
+        "irc": {"usable": True, "reason": "ok"},
+        "endpoint_opt": {"reactant_converged": True, "product_converged": True},
+    }]
+    truth = _pipeline_aggregate_truth(
+        summary, post_segments=post, config={"tsopt": True},
+        legacy_status="success",
+    )
+    assert truth.scientific_status != "success"
+
+
+def test_read_path_opt_segment_converged_is_tristate(tmp_path: Path) -> None:
+    from pdb2reaction.workflows.all import _read_path_opt_segment_converged
+
+    assert _read_path_opt_segment_converged(tmp_path) is None
+    result = tmp_path / "result.json"
+    result.write_text(json.dumps({"stage_outcomes": [{"converged": True}]}))
+    assert _read_path_opt_segment_converged(tmp_path) is True
+    result.write_text(json.dumps({"stage_outcomes": [{"converged": False}]}))
+    assert _read_path_opt_segment_converged(tmp_path) is False
+    result.write_text("{ not json")
+    assert _read_path_opt_segment_converged(tmp_path) is None
+
+
+def test_all_path_opt_child_emits_machine_result() -> None:
+    """The no-refine path-opt producer must enable its result.json contract."""
+    from pdb2reaction.workflows import all as all_workflow
+
+    source = Path(all_workflow.__file__).read_text(encoding="utf-8")
+    branch = source[source.index("if not refine_path:"):source.index("final_trj = path_dir", source.index("if not refine_path:"))]
+    assert '"--out-json"' in branch
+    assert 'seg_dir / "result.json"' in branch

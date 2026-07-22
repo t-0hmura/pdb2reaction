@@ -26,6 +26,16 @@ def main() -> int:
         if not path.exists():
             errors.append(f"advertised example script missing: {rel}")
             continue
+        text = path.read_text(encoding="utf-8")
+        lines = text.splitlines()
+        if not lines or lines[0] != "#!/usr/bin/env bash":
+            errors.append(f"{rel}: first line must be '#!/usr/bin/env bash'")
+        if "set -euo pipefail" not in lines[:5]:
+            errors.append(f"{rel}: missing 'set -euo pipefail' near the top")
+        if not path.stat().st_mode & 0o111:
+            errors.append(f"{rel}: script is not executable")
+        if "BASH_SOURCE[0]" not in text:
+            errors.append(f"{rel}: fixture paths are not anchored to the script directory")
         proc = subprocess.run(
             ["bash", "-n", str(path)], text=True, capture_output=True
         )

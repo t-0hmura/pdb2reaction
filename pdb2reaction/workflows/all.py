@@ -51,7 +51,6 @@ from pdb2reaction.io.structure_formats import (
 from pdb2reaction.core.utils import (
     build_energy_diagram,
     collect_option_values,
-    collect_single_option_values,
     convert_xyz_like_outputs,
     convert_xyz_to_gjf,
     detect_freeze_links_logged,
@@ -93,6 +92,7 @@ from pdb2reaction.workflows._run_session import (
     claim_public_output as _claim_public_output,
     claim_path_deliverables as _claim_path_deliverables,
     current_key_output_files as _current_key_output_files,
+    current_output_paths as _current_output_paths,
     declare_public_output as _declare_public_output,
     declare_path_deliverables as _declare_path_deliverables,
     public_output_key as _public_output_key,
@@ -421,6 +421,36 @@ def _forward_calc_file_argv(child_args: List[str], calc_cfg: Dict[str, Any]) -> 
     return True
 
 
+def _append_explicit_child_runtime_argv(
+    child_args: List[str],
+    *,
+    workers: Optional[int] = None,
+    workers_per_node: Optional[int] = None,
+    dmf_backend: Optional[str] = None,
+    backend: Optional[str] = None,
+    solvent: Optional[str] = None,
+    solvent_model: Optional[str] = None,
+) -> None:
+    """Forward only parent-explicit runtime values to a child command.
+
+    Omitted values stay absent so the child can resolve its own YAML/default
+    precedence.  Explicit values, including ``1``, must be forwarded because
+    they may intentionally override a different value in the shared YAML.
+    """
+    if dmf_backend is not None:
+        child_args.extend(["--dmf-backend", str(dmf_backend).lower()])
+    if workers is not None:
+        child_args.extend(["--workers", str(int(workers))])
+    if workers_per_node is not None:
+        child_args.extend(["--workers-per-node", str(int(workers_per_node))])
+    if backend is not None:
+        child_args.extend(["--backend", str(backend).lower()])
+    if solvent is not None:
+        child_args.extend(["--solvent", str(solvent).lower()])
+    if solvent_model is not None:
+        child_args.extend(["--solvent-model", str(solvent_model).lower()])
+
+
 def _build_calc_cfg(
     charge: int,
     spin: int,
@@ -437,12 +467,6 @@ def _build_calc_cfg(
     Pass ``None`` for backend/solvent/solvent_model to skip CLI override.
     """
     cfg: Dict[str, Any] = dict(CALC_KW)
-    cfg["charge"] = int(charge)
-    cfg["spin"] = int(spin)
-    if workers is not None:
-        cfg["workers"] = int(workers)
-    if workers_per_node is not None:
-        cfg["workers_per_node"] = int(workers_per_node)
     # Apply YAML first (overrides defaults)
     if yaml_cfg:
         apply_yaml_overrides(
@@ -452,6 +476,12 @@ def _build_calc_cfg(
             ],
         )
     # CLI explicit values override YAML
+    cfg["charge"] = int(charge)
+    cfg["spin"] = int(spin)
+    if workers is not None:
+        cfg["workers"] = int(workers)
+    if workers_per_node is not None:
+        cfg["workers_per_node"] = int(workers_per_node)
     if backend is not None:
         cfg["backend"] = backend
     if solvent is not None:
@@ -1091,13 +1121,13 @@ def _pipeline_aggregate_truth(
 ):
     """Compose the truthful ``all``-pipeline aggregate from per-segment leaves.
 
-    One required :class:`LeafOutcome` is built per reactive MEP segment.  A
-    segment is usable only when every post-processing convergence signal is
-    explicitly ``True``: the IRC leaf (every requested direction converged, read
-    from the child's ``result.json``) and, when present, both endpoint
-    optimizations.  A dict-present / trajectory-present but nonconverged leaf
-    never counts toward completeness (C6 fail-closed) — a never_stop / max-cycle
-    IRC therefore cannot yield ``scientific_status == "success"``.
+    One required :class:`LeafOutcome` is built per reactive segment.  A path
+    segment is usable only when its MEP and every post-processing convergence
+    signal are explicitly ``True``.  A direct TSOPT segment has no MEP stage, so
+    it is gated by its IRC and, when present, both endpoint optimizations.  A
+    dict-present / trajectory-present but nonconverged leaf never counts toward
+    completeness (C6 fail-closed) — a never_stop / max-cycle IRC therefore
+    cannot yield ``scientific_status == "success"``.
 
     The convergence-gated aggregate is then composed with the legacy completeness
     axis (``legacy_status`` from :func:`_derive_pipeline_status`, which already
@@ -1149,9 +1179,23 @@ def _pipeline_aggregate_truth(
         # (fail-closed), never a silent True (C6).
         _seg_conv = s.get("converged")
         seg_converged: Optional[bool] = _seg_conv if isinstance(_seg_conv, bool) else None
+        # ``kind=tsopt`` is the direct-TS branch: no MEP child runs and therefore
+        # no MEP convergence field exists.  Only that explicit kind bypasses the
+        # MEP gate; unknown/future kinds remain fail-closed like path segments.
+        mep_converged: Optional[bool] = (
+            True if s.get("kind") == "tsopt" else seg_converged
+        )
         if post is not None:
-            # Post-processing ran: gate on the truthful IRC / endpoint records.
-            converged: Optional[bool] = True
+            # Post-processing ran: compose its truthful IRC / endpoint records
+            # with the MEP engine's own convergence.  Successful downstream
+            # work must never promote a nonconverged/unknown path segment.
+            converged: Optional[bool] = mep_converged
+            if converged is not True:
+                reason = (
+                    "mep_not_converged"
+                    if converged is False
+                    else "mep_convergence_unknown"
+                )
             irc = post.get("irc")
             if isinstance(irc, dict):
                 _u = irc.get("usable")
@@ -1188,7 +1232,7 @@ def _pipeline_aggregate_truth(
             # Path-only final summary (no tsopt): the segment's own reported
             # convergence is the whole truth. A missing/unknown field fails
             # closed (None) — never default to True.
-            converged = seg_converged
+            converged = mep_converged
             if converged is not True and not reason:
                 reason = "not_converged" if converged is False else "convergence_unknown"
         leaves.append(
@@ -1459,11 +1503,12 @@ def _enrich_summary(
         # Real pipeline root. Fallback to the legacy module_dir.parent for any
         # caller that does not pass out_dir explicitly.
         root = Path(out_dir) if out_dir is not None else Path(summary["out_dir"]).parent
-        key_files = (
-            _current_key_output_files(manifest, root)
-            if manifest is not None
-            else {}
-        )
+        current_paths = _current_output_paths(manifest, root) if manifest is not None else []
+        key_files = _current_key_output_files(manifest, root) if manifest is not None else {}
+        if current_paths:
+            summary["current_output_paths"] = current_paths
+        else:
+            summary.pop("current_output_paths", None)
         if key_files:
             summary["key_output_files"] = key_files
         else:
@@ -1882,25 +1927,18 @@ def _run_freq_for_state(
         args.extend(["--hessian-calc-mode", str(hess_mode)])
 
     # Pass backend so freq uses the same MLIP (or the custom calc-file).
-    if not _forward_calc_file_argv(args, overrides):
-        _freq_backend = overrides.get("backend", "uma")
-        if _freq_backend != "uma":
-            args.extend(["--backend", _freq_backend])
+    _freq_custom = _forward_calc_file_argv(args, overrides)
 
     # Forward MLIP runtime knobs when the parent CLI explicitly set them; values are
     # injected into overrides by the cli() body before this helper is called.
-    _freq_workers = overrides.get("workers")
-    if _freq_workers is not None and int(_freq_workers) != 1:
-        args.extend(["--workers", str(int(_freq_workers))])
-    _freq_workers_per_node = overrides.get("workers_per_node")
-    if _freq_workers_per_node is not None and int(_freq_workers_per_node) != 1:
-        args.extend(["--workers-per-node", str(int(_freq_workers_per_node))])
-    _freq_solvent = overrides.get("solvent")
-    if _freq_solvent is not None and str(_freq_solvent).lower() != "none":
-        args.extend(["--solvent", str(_freq_solvent)])
-    _freq_solvent_model = overrides.get("solvent_model")
-    if _freq_solvent_model is not None and str(_freq_solvent_model).lower() != "alpb":
-        args.extend(["--solvent-model", str(_freq_solvent_model)])
+    _append_explicit_child_runtime_argv(
+        args,
+        workers=overrides.get("workers"),
+        workers_per_node=overrides.get("workers_per_node"),
+        backend=None if _freq_custom else overrides.get("backend"),
+        solvent=overrides.get("solvent"),
+        solvent_model=overrides.get("solvent_model"),
+    )
 
     if args_yaml is not None:
         args.extend(["--config", str(args_yaml)])
@@ -2106,6 +2144,7 @@ def _run_tsopt_on_hei(
     ref_pdb: Optional[Path],
     convert_files: bool,
     overrides: Optional[Dict[str, Any]] = None,
+    runtime_overrides: Optional[Dict[str, Any]] = None,
     manifest: Optional[InvocationManifest] = None,
     artifact_prefix: str = "tsopt",
     public_root: Optional[Path] = None,
@@ -2168,27 +2207,37 @@ def _run_tsopt_on_hei(
             ts_args.extend(["--hessian-calc-mode", str(hess_mode)])
 
         # Pass backend from calc_cfg so tsopt uses the same MLIP (or custom calc-file).
-        if not _forward_calc_file_argv(ts_args, calc_cfg):
-            backend_name = calc_cfg.get("backend", "uma")
-            if backend_name != "uma":
-                ts_args.extend(["--backend", backend_name])
+        _ts_custom = _forward_calc_file_argv(ts_args, calc_cfg)
 
         # Forward MLIP runtime knobs when CLI-explicit (calc_cfg only contains keys
         # supplied via --workers / --workers-per-node / --solvent / --solvent-model;
         # YAML-only values stay in --config args_yaml below). Without these explicit
         # CLI argv entries the subprocess silently falls back to defaults.
-        _workers_cli = calc_cfg.get("workers")
-        if _workers_cli is not None and int(_workers_cli) != 1:
-            ts_args.extend(["--workers", str(int(_workers_cli))])
-        _workers_per_node_cli = calc_cfg.get("workers_per_node")
-        if _workers_per_node_cli is not None and int(_workers_per_node_cli) != 1:
-            ts_args.extend(["--workers-per-node", str(int(_workers_per_node_cli))])
-        _solvent_cli = calc_cfg.get("solvent")
-        if _solvent_cli is not None and str(_solvent_cli).lower() != "none":
-            ts_args.extend(["--solvent", str(_solvent_cli)])
-        _solvent_model_cli = calc_cfg.get("solvent_model")
-        if _solvent_model_cli is not None and str(_solvent_model_cli).lower() != "alpb":
-            ts_args.extend(["--solvent-model", str(_solvent_model_cli)])
+        _runtime = runtime_overrides
+        if _runtime is None:
+            # Backward-compatible internal-call fallback. The composite CLI
+            # always supplies a source-aware mapping, including an empty one.
+            _runtime = {
+                "workers": calc_cfg.get("workers") if calc_cfg.get("workers") != 1 else None,
+                "workers_per_node": (
+                    calc_cfg.get("workers_per_node")
+                    if calc_cfg.get("workers_per_node") != 1 else None
+                ),
+                "backend": calc_cfg.get("backend") if calc_cfg.get("backend") != "uma" else None,
+                "solvent": calc_cfg.get("solvent") if calc_cfg.get("solvent") != "none" else None,
+                "solvent_model": (
+                    calc_cfg.get("solvent_model")
+                    if calc_cfg.get("solvent_model") != "alpb" else None
+                ),
+            }
+        _append_explicit_child_runtime_argv(
+            ts_args,
+            workers=_runtime.get("workers"),
+            workers_per_node=_runtime.get("workers_per_node"),
+            backend=None if _ts_custom else _runtime.get("backend"),
+            solvent=_runtime.get("solvent"),
+            solvent_model=_runtime.get("solvent_model"),
+        )
 
         if args_yaml is not None:
             ts_args.extend(["--config", str(args_yaml)])
@@ -2427,6 +2476,7 @@ def _irc_and_match(
     manifest: Optional[InvocationManifest] = None,
     artifact_prefix: str = "irc",
     public_root: Optional[Path] = None,
+    runtime_overrides: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Run IRC via the irc CLI (EulerPC), then map the IRC endpoints to (left, right).
@@ -2477,26 +2527,34 @@ def _irc_and_match(
         irc_args.extend(["--ref-pdb", str(ref_pdb_template)])
 
     # Pass backend from calc_cfg so IRC uses the same MLIP (or custom calc-file).
-    if not _forward_calc_file_argv(irc_args, calc_cfg):
-        backend_name = calc_cfg.get("backend", "uma")
-        if backend_name != "uma":
-            irc_args.extend(["--backend", backend_name])
+    _irc_custom = _forward_calc_file_argv(irc_args, calc_cfg)
 
     # Forward MLIP runtime knobs from calc_cfg when CLI-explicit (only set in the
     # shared calc_cfg when user passed them; otherwise downstream irc CLI would
     # fall back to its own defaults regardless of parent --workers / --solvent etc.).
-    _workers_cli = calc_cfg.get("workers")
-    if _workers_cli is not None and int(_workers_cli) != 1:
-        irc_args.extend(["--workers", str(int(_workers_cli))])
-    _workers_per_node_cli = calc_cfg.get("workers_per_node")
-    if _workers_per_node_cli is not None and int(_workers_per_node_cli) != 1:
-        irc_args.extend(["--workers-per-node", str(int(_workers_per_node_cli))])
-    _solvent_cli = calc_cfg.get("solvent")
-    if _solvent_cli is not None and str(_solvent_cli).lower() != "none":
-        irc_args.extend(["--solvent", str(_solvent_cli)])
-    _solvent_model_cli = calc_cfg.get("solvent_model")
-    if _solvent_model_cli is not None and str(_solvent_model_cli).lower() != "alpb":
-        irc_args.extend(["--solvent-model", str(_solvent_model_cli)])
+    _runtime = runtime_overrides
+    if _runtime is None:
+        _runtime = {
+            "workers": calc_cfg.get("workers") if calc_cfg.get("workers") != 1 else None,
+            "workers_per_node": (
+                calc_cfg.get("workers_per_node")
+                if calc_cfg.get("workers_per_node") != 1 else None
+            ),
+            "backend": calc_cfg.get("backend") if calc_cfg.get("backend") != "uma" else None,
+            "solvent": calc_cfg.get("solvent") if calc_cfg.get("solvent") != "none" else None,
+            "solvent_model": (
+                calc_cfg.get("solvent_model")
+                if calc_cfg.get("solvent_model") != "alpb" else None
+            ),
+        }
+    _append_explicit_child_runtime_argv(
+        irc_args,
+        workers=_runtime.get("workers"),
+        workers_per_node=_runtime.get("workers_per_node"),
+        backend=None if _irc_custom else _runtime.get("backend"),
+        solvent=_runtime.get("solvent"),
+        solvent_model=_runtime.get("solvent_model"),
+    )
 
     if args_yaml is not None:
         irc_args.extend(["--config", str(args_yaml)])
@@ -3343,6 +3401,62 @@ def cli(
     are concatenated into the final MEP.  With ``--refine-path``, the recursive ``path_search`` workflow
     is used instead for automatic multistep discovery.
     """
+    from pdb2reaction.core.utils import reject_option_like_extra_args
+
+    # These negative spellings have long been documented for the legacy
+    # value-style booleans.  Apply them explicitly before rejecting every
+    # other option-like residual token.
+    _negative_bool_aliases = {
+        "--no-include-h2o",
+        "--no-exclude-backbone",
+        "--no-add-linkh",
+        "--no-freeze-links",
+        "--no-climb",
+        "--no-dump",
+        "--no-convert-files",
+        "--no-refine-path",
+        "--no-preopt",
+        "--no-tsopt",
+        "--no-thermo",
+        "--no-dft",
+    }
+    from pdb2reaction.core.utils import current_cli_args
+
+    _argv = current_cli_args(ctx)
+    reject_option_like_extra_args(
+        ctx.args,
+        allowed_options=_negative_bool_aliases,
+        allowed_values=collect_option_values(
+            _argv, ("-i", "--input", "-s", "--scan-lists")
+        ),
+        consumed_values=[*input_paths, *scan_lists_raw],
+    )
+    _negative_bool_args = frozenset(str(value) for value in ctx.args)
+    if "--no-include-h2o" in _negative_bool_args:
+        include_h2o = False
+    if "--no-exclude-backbone" in _negative_bool_args:
+        exclude_backbone = False
+    if "--no-add-linkh" in _negative_bool_args:
+        add_linkh = False
+    if "--no-freeze-links" in _negative_bool_args:
+        freeze_links_flag = False
+    if "--no-climb" in _negative_bool_args:
+        climb = False
+    if "--no-dump" in _negative_bool_args:
+        dump = False
+    if "--no-convert-files" in _negative_bool_args:
+        convert_files = False
+    if "--no-refine-path" in _negative_bool_args:
+        refine_path = False
+    if "--no-preopt" in _negative_bool_args:
+        preopt = False
+    if "--no-tsopt" in _negative_bool_args:
+        do_tsopt = False
+    if "--no-thermo" in _negative_bool_args:
+        do_thermo = False
+    if "--no-dft" in _negative_bool_args:
+        do_dft = False
+
     global _FREEZE_ATOMS_GLOBAL, _FREEZE_ATOMS_YAML
     from pdb2reaction.core.utils import (
         is_child_mode,
@@ -3387,7 +3501,7 @@ def cli(
 
     # Engage pipeline-scoped default-verbosity suppression for this invocation.
     set_pipeline_mode(True)
-    argv_all = sys.argv[1:]
+    argv_all = _argv
 
     def _sigint_handler(signum, frame):
         _echo("\nInterrupted by user.", err=True)
@@ -3398,7 +3512,7 @@ def cli(
     _FREEZE_ATOMS_GLOBAL = None
     _FREEZE_ATOMS_YAML = None
     set_convert_file_enabled(convert_files)
-    command_str = " ".join(sys.argv)
+    command_str = "pdb2reaction " + " ".join(argv_all)
     time_start = time.perf_counter()
     energy_diagrams: List[Dict[str, Any]] = []
 
@@ -3506,7 +3620,7 @@ def cli(
             i_parsed.append(p)
         input_paths = tuple(i_parsed)
 
-    scan_vals = collect_single_option_values(argv_all, ("-s", "--scan-lists"), "--scan-lists")
+    scan_vals = collect_option_values(argv_all, ("-s", "--scan-lists"))
     if scan_vals:
         scan_lists_raw = tuple(scan_vals)
 
@@ -4100,27 +4214,23 @@ def cli(
     _mlip_model_shared = _shared_provenance["mlip_model"]
     _mlip_precision_shared = _shared_provenance["mlip_precision"]
 
-    # Inject backend into freq_overrides so _run_freq_for_state passes it
-    _backend_shared = calc_cfg_shared.get("backend", "uma")
-    if _backend_shared != "uma":
-        freq_overrides["backend"] = _backend_shared
+    # Preserve the source of parent CLI overrides. Child commands reread the
+    # same YAML, so even values equal to child defaults must remain explicit.
+    child_runtime_overrides: Dict[str, Any] = {}
+    for _name, _value in (
+        ("workers", workers),
+        ("workers_per_node", workers_per_node),
+        ("backend", backend),
+        ("solvent", solvent),
+        ("solvent_model", solvent_model),
+    ):
+        if cli_param_overridden(ctx, _name):
+            child_runtime_overrides[_name] = _value
+    freq_overrides.update(child_runtime_overrides)
     if calc_cfg_shared.get("calc_file"):
         freq_overrides["calc_file"] = calc_cfg_shared["calc_file"]
         if calc_cfg_shared.get("calc_factory"):
             freq_overrides["calc_factory"] = calc_cfg_shared["calc_factory"]
-    # Inject MLIP runtime knobs (workers / workers_per_node / solvent / solvent_model)
-    # when CLI-explicit so _run_freq_for_state forwards them to the freq subprocess.
-    # Without this, freq silently runs with workers=1 / no solvent even when the parent
-    # CLI requested otherwise.
-    if cli_param_overridden(ctx, "workers"):
-        freq_overrides["workers"] = int(workers)
-    if cli_param_overridden(ctx, "workers_per_node"):
-        freq_overrides["workers_per_node"] = int(workers_per_node)
-    if cli_param_overridden(ctx, "solvent"):
-        freq_overrides["solvent"] = str(solvent)
-    if cli_param_overridden(ctx, "solvent_model"):
-        freq_overrides["solvent_model"] = str(solvent_model)
-
     if single_tsopt_mode:
         _echo_section("====== [all] TSOPT-only single-structure mode ======")
         tsroot = out_dir / SEGMENTS_DIRNAME / "seg_01"
@@ -4149,6 +4259,7 @@ def cli(
             _tsopt_ref,
             convert_files,
             overrides=tsopt_overrides,
+            runtime_overrides=child_runtime_overrides,
             manifest=manifest,
             artifact_prefix="post.01.tsopt",
             public_root=out_dir,
@@ -4174,6 +4285,7 @@ def cli(
             manifest=manifest,
             artifact_prefix="post.01.irc",
             public_root=out_dir,
+            runtime_overrides=child_runtime_overrides,
         )
         _persist_run_manifest(manifest, out_dir)
         gL = irc_res["left_min_geom"]
@@ -4719,6 +4831,9 @@ def cli(
                 summary["key_output_files"] = _current_key_output_files(
                     manifest, out_dir
                 )
+                summary["current_output_paths"] = _current_output_paths(
+                    manifest, out_dir
+                )
                 try:
                     _publish_manifest_summary(
                         tsroot / "summary.json",
@@ -4775,6 +4890,9 @@ def cli(
             )
 
         summary["key_output_files"] = _current_key_output_files(
+            manifest, out_dir
+        )
+        summary["current_output_paths"] = _current_output_paths(
             manifest, out_dir
         )
         _publish_manifest_summary(
@@ -4882,6 +5000,15 @@ def cli(
             scan_args.extend(["--config", str(args_yaml)])
         if not _forward_calc_file_argv(scan_args, calc_cfg_shared) and cli_param_overridden(ctx, "backend"):
             scan_args.extend(["--backend", str(backend)])
+        _append_explicit_child_runtime_argv(
+            scan_args,
+            workers=workers if cli_param_overridden(ctx, "workers") else None,
+            workers_per_node=(
+                workers_per_node
+                if cli_param_overridden(ctx, "workers_per_node")
+                else None
+            ),
+        )
         if cli_param_overridden(ctx, "solvent"):
             scan_args.extend(["--solvent", str(solvent)])
         if cli_param_overridden(ctx, "solvent_model"):
@@ -5065,14 +5192,15 @@ def cli(
                 str(int(spin)),
                 "--mep-mode",
                 mep_mode_kind,
-                "--dmf-backend",
-                str(dmf_backend).lower(),
                 "--max-nodes",
                 str(int(max_nodes)),
                 "--opt-mode",
                 str(opt_mode_norm),
                 "--out-dir",
                 str(seg_dir),
+                # Pipeline-owned machine contract: the aggregate reads this
+                # child's real MEP convergence from result.json.
+                "--out-json",
             ]
             if cli_param_overridden(ctx, "max_cycles"):
                 po_args.extend(["--max-cycles", str(int(max_cycles))])
@@ -5101,6 +5229,18 @@ def cli(
                 po_args.extend(["--config", str(args_yaml)])
             if not _forward_calc_file_argv(po_args, calc_cfg_shared) and cli_param_overridden(ctx, "backend"):
                 po_args.extend(["--backend", str(backend)])
+            _append_explicit_child_runtime_argv(
+                po_args,
+                dmf_backend=(
+                    dmf_backend if cli_param_overridden(ctx, "dmf_backend") else None
+                ),
+                workers=workers if cli_param_overridden(ctx, "workers") else None,
+                workers_per_node=(
+                    workers_per_node
+                    if cli_param_overridden(ctx, "workers_per_node")
+                    else None
+                ),
+            )
             if cli_param_overridden(ctx, "solvent"):
                 po_args.extend(["--solvent", str(solvent)])
             if cli_param_overridden(ctx, "solvent_model"):
@@ -5136,8 +5276,8 @@ def cli(
                 [child_hei_base.with_suffix(".gjf")],
             )
             manifest.declare(
-                f"path.segment.{idx:02d}.summary",
-                [seg_dir / "summary.json"],
+                f"path.segment.{idx:02d}.result",
+                [seg_dir / "result.json"],
             )
 
             _run_cli_main(
@@ -5156,7 +5296,7 @@ def cli(
             child_hei_gjf = manifest.claim_optional(
                 f"path.segment.{idx:02d}.hei_child_gjf"
             )
-            manifest.claim_optional(f"path.segment.{idx:02d}.summary")
+            manifest.claim_one(f"path.segment.{idx:02d}.result")
 
             try:
                 mirror_dir = path_dir / f"{seg_tag}_mep"
@@ -5524,6 +5664,18 @@ def cli(
             ps_args.extend(["--config", str(args_yaml)])
         if not _forward_calc_file_argv(ps_args, calc_cfg_shared) and cli_param_overridden(ctx, "backend"):
             ps_args.extend(["--backend", str(backend)])
+        _append_explicit_child_runtime_argv(
+            ps_args,
+            dmf_backend=(
+                dmf_backend if cli_param_overridden(ctx, "dmf_backend") else None
+            ),
+            workers=workers if cli_param_overridden(ctx, "workers") else None,
+            workers_per_node=(
+                workers_per_node
+                if cli_param_overridden(ctx, "workers_per_node")
+                else None
+            ),
+        )
         if cli_param_overridden(ctx, "solvent"):
             ps_args.extend(["--solvent", str(solvent)])
         if cli_param_overridden(ctx, "solvent_model"):
@@ -5809,6 +5961,9 @@ def cli(
         summary["key_output_files"] = _current_key_output_files(
             manifest, out_dir
         )
+        summary["current_output_paths"] = _current_output_paths(
+            manifest, out_dir
+        )
         _publish_manifest_summary(
             summary_path,
             summary,
@@ -5944,6 +6099,7 @@ def cli(
                 ref_pdb_for_seg,
                 convert_files,
                 overrides=_seg_tsopt_overrides,
+                runtime_overrides=child_runtime_overrides,
                 manifest=manifest,
                 artifact_prefix=f"post.{seg_idx:02d}.tsopt",
                 public_root=out_dir,
@@ -5977,6 +6133,7 @@ def cli(
                 manifest=manifest,
                 artifact_prefix=f"post.{seg_idx:02d}.irc",
                 public_root=out_dir,
+                runtime_overrides=child_runtime_overrides,
             )
             _persist_run_manifest(manifest, out_dir)
 

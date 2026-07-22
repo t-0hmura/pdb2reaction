@@ -40,9 +40,11 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 <output>.[png|jpg|jpeg|html|svg|pdf] # 指定された拡張子すべてを出力（デフォルト: energy.png）
 <output>.csv # CSV指定時のみ
 result.json # --out-json 指定時の機械可読サマリ
+summary.json # writer 成功時に byte 単位で同一の互換ミラー
 ```
 - `-o` や位置引数が無い場合は `energy.png` をカレントディレクトリに書き出します。
 - CSV には `frame`, `energy_hartree` と、参照がある場合は `delta_kcal`/`delta_hartree`、参照がない場合は `energy_kcal`/`energy_hartree` が含まれます。
+- JSON では、順序を保持する `output_files` を正規の出力一覧として使用してください。後方互換用の `files` はベース名をキーにするため、別ディレクトリにある同名出力を 2 件とも表現できません。
 - パース失敗や未対応拡張子がある場合、コンソールに診断メッセージが出力されます。
 
 ## CLI オプション

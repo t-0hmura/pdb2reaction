@@ -48,10 +48,14 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 <output>.[png|jpg|jpeg|html|svg|pdf] # Plotly export for every requested extension (defaults to energy.png)
 <output>.csv                         # Optional energy table when CSV is requested
 result.json                          # Machine-readable summary when --out-json is set
+summary.json                         # Byte-identical compatibility mirror on success
 ```
 - CSV exports include `frame`, `energy_hartree`, and either a ΔE column
   (`delta_kcal`/`delta_hartree`) or an absolute column (`energy_kcal`/`energy_hartree`)
   when no reference is applied.
+- In the JSON payload, consume the ordered `output_files` list. The legacy
+  basename-keyed `files` map is retained for compatibility and cannot represent
+  two outputs with the same basename in different directories.
 - Console diagnostics describing parsing failures or unsupported extensions.
 
 ## CLI options

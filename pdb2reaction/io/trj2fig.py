@@ -393,6 +393,9 @@ def cli(
             "multiplicity": info["multiplicity"],
             "solvent": info["solvent"],
             "solvent_model": info["solvent_model"],
+            # Preserve order and duplicate basenames across output
+            # directories. ``files`` remains the legacy compatibility map.
+            "output_files": [str(p) for p in written_paths],
             "files": {p.name: str(p) for p in written_paths},
         }
         write_result_json(out_dir, result_data, command="trj2fig")

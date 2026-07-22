@@ -35,7 +35,8 @@ pdb2reaction energy-diagram -i "[0, 12.5, 4.3]" \
 ## Outputs
 ```
 OUTPUT.(png|jpg|jpeg|svg|pdf)
-result.json   # Optional sidecar with status, n_points, files plus standard envelope fields (command/version/schema/environment); no per-point energies or labels (when --out-json is set)
+result.json   # Authoritative optional sidecar: status, n_points, files, and the standard envelope
+summary.json  # Byte-identical compatibility mirror on a successful --out-json run
 ```
 - If `-o/--output` is omitted, `energy_diagram.png` is written to the current directory.
 - When output has no extension, `.png` is appended automatically.
@@ -48,7 +49,7 @@ result.json   # Optional sidecar with status, n_points, files plus standard enve
 | `-o, --output PATH` | Output image path (`.png/.jpg/.jpeg/.svg/.pdf`). | `energy_diagram.png` |
 | `--label-x TEXT...` | X-axis state labels. Count must match input value count. | `S1, S2,...` |
 | `--label-y TEXT` | Y-axis label. | `ΔE (kcal/mol)` |
-| `--out-json/--no-out-json` | Write a machine-readable `result.json` next to the output image. See [JSON Output Schema](json-output.md) for the schema. | `False` |
+| `--out-json/--no-out-json` | Write authoritative `result.json` and its identical `summary.json` mirror next to the image. See [JSON Output Schema](json-output.md). | `False` |
 
 The full flag list is in the generated [command reference](reference/commands/index.md).
 

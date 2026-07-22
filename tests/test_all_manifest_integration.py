@@ -72,6 +72,14 @@ def test_all_manifest_ignores_stale_scan_stages_and_records_distinct_runs(
             _replace_bytes(child_out / "stage_01" / "result.xyz", _trajectory())
         elif name == "path-opt":
             _replace_bytes(child_out / "final_geometries_trj.xyz", _trajectory())
+            _replace_bytes(
+                child_out / "result.json",
+                json.dumps(
+                    apply_current_run_id({
+                        "stage_outcomes": [{"converged": True}],
+                    })
+                ).encode("utf-8"),
+            )
             if emit_hei["value"]:
                 _replace_bytes(
                     child_out / "hei.xyz",

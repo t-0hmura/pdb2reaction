@@ -6,9 +6,9 @@
 
 | ファイル名 | 書き出し元 | 用途 |
 |---|---|---|
-| `summary.json` | `all`、`path-search`（常時） | aggregate workflow の標準 JSON envelope（[JSON 出力リファレンス](json-output.md)）。最初にこれを読んでください。 |
-| `summary.json` | 成功したstage runでは `--out-json` 指定時（default `--no-out-json`）。捕捉runtime errorはflagなしでもbest-effort error envelopeを書く場合あり | stage JSON envelope。純粋utility（`fix-altloc`、`add-elem-info`、`bond-summary`など）はこのstage envelopeを使いません。 |
-| `result.json` | stage `summary.json` と同条件（`opt`、`tsopt`、`freq`、`irc`、`sp`、scan系、`path-opt`、`dft`、`extract`） | 別名file。`summary.json` と同一payloadです。 |
+| `summary.json` | 集約結果の書き込み処理まで到達した `all` / `path-search` | 集約ワークフローの正規 JSON エンベロープ（[JSON 出力リファレンス](json-output.md)）。早期の CLI 引数または入力の検証では作られない場合があります。 |
+| `summary.json` | 正常終了した段階別・レポート系コマンドでは `--out-json` 指定時（デフォルトは `--no-out-json`）。捕捉した実行時エラーでは、フラグなしでも可能な範囲でエラーエンベロープを書く場合があります | 個別結果の `result.json` と互換性のあるミラー。書き込み処理が正常終了した場合は同一のバイト列です。`fix-altloc`、`add-elem-info`、`bond-summary` などは出力しません。 |
+| `result.json` | 段階別 `summary.json` と同条件（`opt`、`tsopt`、`freq`、`irc`、`sp`、scan 系、`path-opt`、`dft`、`extract`、`trj2fig`、`energy-diagram`） | 個別結果・レポートの正規エンベロープ。互換ミラーより後に公開されるため、中断した世代を判定するときはこちらを読みます。 |
 | `summary.log` | `path-search`、`all` | 人間可読な実行ログ（セグメント／ステージごとに 1 行）。 |
 | `final_geometry.xyz` | `opt`、`tsopt` | 最適化された構造（XYZ、完全精度）。 |
 | `mep.pdb` / `mep.cif` / `mep_trj.xyz` | `path-search` | 反応経路のフレーム。変換が有効な mmCIF／oversized-PDB topology では `.cif` companion も追加。 |
@@ -63,11 +63,13 @@ TSOPT のみのモードでは MEP ステージがないため、`_work/path_opt
 ## エージェント向けレシピ
 
 ```python
-# Read whichever subcommand's output, single filename across the board.
+# 実行したコマンドに対応する正規のファイル名を選ぶ。
 import json
 from pathlib import Path
 
-summary = json.loads((Path(out_dir) / "summary.json").read_text())
+subcommand = "opt"  # 実行したコマンドに置き換える
+primary = "summary.json" if subcommand in {"all", "path-search"} else "result.json"
+summary = json.loads((Path(out_dir) / primary).read_text())
 
 if summary["status"] == "error":
     chain = summary.get("error_class_chain", [])
@@ -78,7 +80,8 @@ if summary["status"] == "error":
         raise RuntimeError(summary["error"])
 ```
 
-成功したstage runで `summary.json` / `result.json` を書くのは `--out-json`
-指定時だけです。捕捉runtime errorはflagなしでもbest-effort error envelopeを書く場合が
-ありますが、validation exitやoutput setup前の失敗では何も書かれない場合があります。
-書かれたenvelopeはschema version + status（error pathではclass chain）を保持します。
+正常終了した段階別コマンドが `summary.json` / `result.json` を書くのは、
+`--out-json` 指定時だけです。捕捉した実行時エラーでは、フラグなしでも可能な範囲で
+エラーエンベロープを書く場合がありますが、入力検証による終了や出力先の確定前に
+失敗した場合は何も書かれないことがあります。書き出されたエンベロープは、
+スキーマバージョンとステータス（エラー時はクラス階層を含む）を保持します。

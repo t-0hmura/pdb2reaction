@@ -41,3 +41,16 @@ def test_custom_xyz_examples_are_fenced_and_supply_charge_spin() -> None:
     for command in custom:
         assert "-q 0" in command
         assert "-m 1" in command
+
+
+def test_dynamic_smoke_excludes_usage_synopses() -> None:
+    smoke = _load_smoke_module()
+
+    selected = smoke._select_executable_all_commands(
+        [
+            "pdb2reaction all [OPTIONS]...",
+            "pdb2reaction all -i R.pdb P.pdb -c LIG --dry-run",
+        ]
+    )
+
+    assert selected == ["pdb2reaction all -i R.pdb P.pdb -c LIG --dry-run"]
