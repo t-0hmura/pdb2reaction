@@ -177,7 +177,8 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "return shlex.split(line)" in app
     assert "a = _force_dry_run(a)" in app
     assert "real_run = not _flag_enabled(effective, '--dry-run', '--no-dry-run')" in app
-    assert "RUN exact command" in app
+    assert "b_run = W.Button(description='Run'" in app
+    assert "RUN exact command" not in app
     assert "reuse non-empty out dir" in app
     assert "uma-s-1p2" in app
     assert "MODELS = {'mace': ['MACE-OMOL-0']" in app
@@ -202,7 +203,8 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     # + a swapping VBox. Pin the four pages, the navigation entry point, and guard
     # against a Tab regression.
     assert "_TAB_PAGES = [('1 Input', input_box), ('2 Viewer', viewer_box)," in app
-    assert "('3 Options (optional)', options_box), ('4 Results', results_box)]" in app
+    assert "('3 Options', options_box), ('4 Results', results_box)]" in app
+    assert "Options (optional)" not in app
     assert "def _tab_go(i):" in app
     assert "W.Tab(" not in app
     # Accordion has the same Colab rendering defect, so every collapsible uses
@@ -254,11 +256,12 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "cmd += ['--max-cycles', str(int(mc))]" in app
     # Help uses a real click-to-toggle button rather than Colab's unreliable
     # native/hover tooltip path.
-    assert "def _info_control(tip):" in app
+    assert "def _info_control(tip, target=None):" in app
     assert "def _set_info_text(control, tip):" in app
+    assert "def _close_info_target(target):" in app
     assert "def _hdr(content, tip):" in app
-    assert "def _flag_row(widget, tip):" in app
-    assert "W.Button(description='i', tooltip=''" in app
+    assert "def _flag_row(widget, tip, info_target=None):" in app
+    assert "W.Button(description='Show information'" in app
     assert "body.layout.display = '' if state['open'] else 'none'" in app
     assert "_OPEN_INFO = {'control': None}" in app
     assert "command_editor = _collapsible('Command line', cmd_box)" in app
@@ -298,7 +301,9 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "adv_mep.disabled = sub not in TOOL_CAPABILITIES['mep_mode']" in app
     assert "_set_flag_visible(adv_dmf, sub in FLAG_SUBS['adv_dmf'] and adv_mep.value == 'dmf')" in app
     assert "d['all_mode'] = _wv('all_mode', 'mep')" in app
-    assert "all_mode.value = saved_all_mode" in app
+    assert "all_mode.value = d['all_mode']" in app
+    assert "def _validate_and_normalize_session(payload):" in app
+    assert "_SESSION_APPLY = {'active': False}" in app
     assert "bytes(c).decode('utf-8')" in app
     assert "def _ingest_saved_files(" in app
     assert "input_file_rows" in app
@@ -846,6 +851,211 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     assert app["b_revert"].layout.display == "none"
 
 
+def test_colab_adversarial_state_transactions_and_editor_ownership(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    app, calls = _execute_app(monkeypatch, tmp_path)
+    primary = tmp_path / "primary.pdb"
+    compatible = tmp_path / "product.pdb"
+    incompatible = tmp_path / "incompatible.pdb"
+    primary.write_text(
+        "HETATM    1  C1  LIG A  10       0.000   0.000   0.000  1.00  0.00           C\n"
+        "HETATM    2  O1  LIG A  10       1.200   0.000   0.000  1.00  0.00           O\nEND\n",
+        encoding="utf-8",
+    )
+    compatible.write_text(
+        "HETATM    1  C1  LIG A  10      10.000   0.000   0.000  1.00  0.00           C\n"
+        "HETATM    2  O1  LIG A  10      12.400   0.000   0.000  1.00  0.00           O\nEND\n",
+        encoding="utf-8",
+    )
+    incompatible.write_text(
+        "HETATM    1  C1  ALT B  20       4.000   0.000   0.000  1.00  0.00           C\nEND\n",
+        encoding="utf-8",
+    )
+    metadata = {
+        str(primary): [
+            {"serial": 1, "chain": "A", "resname": "LIG", "resseq": 10, "icode": "", "name": "C1"},
+            {"serial": 2, "chain": "A", "resname": "LIG", "resseq": 10, "icode": "", "name": "O1"},
+        ],
+        str(compatible): [
+            {"serial": 1, "chain": "A", "resname": "LIG", "resseq": 10, "icode": "", "name": "C1"},
+            {"serial": 2, "chain": "A", "resname": "LIG", "resseq": 10, "icode": "", "name": "O1"},
+        ],
+        str(incompatible): [
+            {"serial": 1, "chain": "B", "resname": "ALT", "resseq": 20, "icode": "", "name": "C1"},
+        ],
+    }
+    real_loader = app["_load_view_structure"]
+
+    def load_view(path):
+        path = str(path)
+        return Path(path).read_text(encoding="utf-8"), [dict(row) for row in metadata[path]], path
+
+    app["_load_view_structure"] = load_view
+    assert app["b_run"].disabled and app["b_validate"].disabled
+    app["cmd_box"].value = "pdb2reaction --version"
+    assert not app["b_run"].disabled
+    assert app["b_validate"].disabled
+    app["cmd_box"].value = "# incomplete"
+    assert app["b_run"].disabled
+
+    advanced_row = next(row for row in app["adv_rows_box"].children if hasattr(row, "_rx_search"))
+    advanced_info = advanced_row.children[1]
+    advanced_info._rx_info_button.click()
+    assert app["advanced_help"].layout.display == ""
+    assert app["_OPEN_INFO"]["control"] is advanced_info
+    app["_render_advanced_rows"]()
+    assert app["advanced_help"].layout.display == "none"
+    assert app["_OPEN_INFO"]["control"] is None
+    assert advanced_info._rx_info_button.description == "Show information"
+
+    app["load_pdb"]([str(primary), str(compatible)], center=["LIG"])
+    assert "reaction order shown above" in app["input_order_note"].value
+    app["S"]["scan_atoms"] = [
+        {"index": 0, "chain": "A", "resn": "LIG", "resi": "10", "atom": "C1", "xyz": (0.0, 0.0, 0.0)},
+        {"index": 1, "chain": "A", "resn": "LIG", "resi": "10", "atom": "O1", "xyz": (1.2, 0.0, 0.0)},
+    ]
+    camera = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 25.0]
+    app["S"]["_viewer_view"] = list(camera)
+    app["view_input"].value = 1
+    assert app["S"]["scan_atoms"][0]["xyz"] == pytest.approx((10.0, 0.0, 0.0))
+    assert app["S"]["scan_atoms"][1]["xyz"] == pytest.approx((12.4, 0.0, 0.0))
+    assert app["S"]["_viewer_view"] == camera
+    calls.clear()
+    app["render_viewer"]()
+    assert any(
+        call[0] == "addSphere" and call[1][0].get("color") == "red"
+        and call[1][0].get("wireframe") is True
+        for call in calls
+    )
+    assert not any(
+        call[0] == "addStyle"
+        and call[1][1].get("sphere", {}).get("color") in {"red", "cyan", "blue"}
+        for call in calls
+    )
+
+    app["load_pdb"]([str(primary), str(incompatible)], center=["LIG"], lcharge={"LIG": 1})
+    app["view_input"].value = 1
+    before_selection = (
+        list(app["S"]["center"]), dict(app["S"]["lcharge"]),
+        list(app["S"]["scan_atoms"]), list(app["S"]["freeze_atoms"]),
+    )
+    assert app["b_clear"].disabled and app["center_widget"].disabled
+    app["_clear_sel"](None)
+    assert (
+        app["S"]["center"], app["S"]["lcharge"],
+        app["S"]["scan_atoms"], app["S"]["freeze_atoms"],
+    ) == before_selection
+    app["view_input"].value = 0
+    assert not app["b_clear"].disabled
+    app["_clear_sel"](None)
+    assert app["S"]["center"] == [] and app["S"]["lcharge"] == {}
+
+    app["S"]["center_ids"] = ["A:LIG:10"]
+    app["S"]["_last_manifest"] = {"status": "success"}
+    before = json.dumps(app["_session_dict"](), sort_keys=True)
+    with pytest.raises(ValueError, match="one object"):
+        app["_apply_session"]([])
+    assert json.dumps(app["_session_dict"](), sort_keys=True) == before
+    assert app["S"]["_last_manifest"] == {"status": "success"}
+    wrong_tool = app["_session_dict"]()
+    wrong_tool["tool"] = "mlmm-toolkit"
+    with pytest.raises(ValueError, match="belong"):
+        app["_apply_session"](wrong_tool)
+    assert app["S"]["center_ids"] == ["A:LIG:10"]
+
+    saved = app["_session_dict"]()
+    saved.update(
+        inputs=[str(primary), str(compatible)], mode="pdb", subcmd="all", all_mode="mep",
+        tsopt=False, backend="uma", model="uma-m-1p1", rep="sticks", color="spectrum",
+    )
+    app["all_mode"].value = "tsonly"
+    app["_ALL_MODE_STATE"]["tsopt_before_tsonly"] = True
+    stale_command = "pdb2reaction sp -i stale.pdb -q 99"
+    app["cmd_box"].value = stale_command
+    assert app["_auto"]["on"] is False
+    assert app["_apply_session"](saved) == []
+    assert app["all_mode"].value == "mep" and app["w_ts"].value is False
+    assert app["dd_backend"].value == "uma" and app["dd_model"].value == "uma-m-1p1"
+    assert app["dd_rep"].value == "sticks" and app["dd_col"].value == "spectrum"
+    assert app["_auto"]["on"] is True and app["cmd_box"].value != stale_command
+
+    missing = tmp_path / "missing-dir" / "missing.pdb"
+    pending = app["_session_dict"]()
+    pending.update(
+        backend="mace", model="MACE-OMOL-0", inputs=[str(missing)], mode="pdb",
+        subcmd="opt", all_mode="mep", center=[], center_ids=[], lcharge={},
+    )
+    assert app["_apply_session"](pending) == [str(missing)]
+    uploaded = tmp_path / "missing.pdb"
+    uploaded.write_text(primary.read_text(encoding="utf-8"), encoding="utf-8")
+    metadata[str(uploaded)] = [dict(row) for row in metadata[str(primary)]]
+    assert app["_ingest_saved_files"]([str(uploaded)], "test re-upload")
+    assert app["S"]["inputs"] == [str(uploaded)]
+    assert str(missing) not in app["S"]["inputs"]
+
+    bad = tmp_path / "empty.pdb"
+    bad.write_text("REMARK no atoms\nEND\n", encoding="utf-8")
+    old_inputs = list(app["S"]["inputs"])
+    app["_load_view_structure"] = real_loader
+    assert not app["_ingest_saved_files"]([str(bad)], "test invalid")
+    assert app["S"]["inputs"] == old_inputs
+    assert "not attached" in app["input_msg"].value
+    app["_load_view_structure"] = load_view
+
+    duplicate = {"index": 0, "chain": "A", "resn": "LIG", "resi": "10", "atom": "C1", "xyz": (0, 0, 0)}
+    app["S"]["scan_atoms"] = [dict(duplicate), dict(duplicate)]
+    with pytest.raises(ValueError, match="different atoms"):
+        app["build_cmd"]()
+
+    class DummyUpload:
+        def __init__(self, value):
+            self.value = value
+            self._counter = 2
+
+    old_upload = DummyUpload({"file": object()})
+    app["_reset_file_upload"](old_upload)
+    assert old_upload.value == {} and old_upload._counter == 0
+    new_upload = DummyUpload((object(),))
+    app["_reset_file_upload"](new_upload)
+    assert new_upload.value == ()
+
+    class BrokenStdout:
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            raise RuntimeError("reader failed")
+
+        def close(self):
+            pass
+
+    class FakeProcess:
+        pid = 4242
+
+        def __init__(self):
+            self.stdout = BrokenStdout()
+            self.returncode = None
+            self.waited = False
+
+        def poll(self):
+            return self.returncode
+
+        def wait(self, timeout=None):
+            self.waited = True
+            self.returncode = -15
+            return self.returncode
+
+    process = FakeProcess()
+    signals = []
+    monkeypatch.setattr(app["subprocess"], "Popen", lambda *args, **kwargs: process)
+    monkeypatch.setattr(app["os"], "getpgid", lambda pid: pid)
+    monkeypatch.setattr(app["os"], "killpg", lambda pid, sig: signals.append((pid, sig)))
+    rc, transcript = app["_stream"](["pdb2reaction", "--version"])
+    assert rc == 125 and process.waited and signals
+    assert "reader failed" in transcript
+
+
 def test_colab_gui_guards_state_capabilities_and_current_run_results() -> None:
     setup = _notebook()["cells"][1]["source"]
     app = _notebook()["cells"][2]["source"]
@@ -870,7 +1080,7 @@ def test_colab_gui_guards_state_capabilities_and_current_run_results() -> None:
     assert "except KeyboardInterrupt:" in app
     assert "start_new_session=(os.name == 'posix')" in app
     assert "os.killpg(" in app and "signal.SIGTERM" in app and "signal.SIGKILL" in app
-    assert "p.terminate()" in app and "p.kill()" in app and "p.wait(" in app
+    assert "process.terminate()" in app and "process.kill()" in app and "process.wait(" in app
     assert "cancelled" in app
     assert "_MANUAL" in app
     assert "current_output_paths" in app and "key_output_files" in app
@@ -890,7 +1100,7 @@ def test_colab_gui_guards_state_capabilities_and_current_run_results() -> None:
     assert "bond table or JSON on stdout (--json)" in app
     assert "colab_run.json" in app and "zipfile.ZipFile" in app
     assert "shutil.make_archive(" not in app
-    assert "W.Button(description='i', tooltip=''" in app
+    assert "W.Button(description='Show information'" in app
     assert "body.layout.display = '' if state['open'] else 'none'" in app
     assert "layout=W.Layout(width='560px')" not in app
     assert app.count("effective = _normalized_scope_argv(a)") == 2

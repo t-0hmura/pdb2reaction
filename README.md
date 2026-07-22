@@ -38,7 +38,7 @@ Inputs are not limited to full enzyme PDBs: mmCIF is accepted directly, includin
 
 [`examples/pdb2reaction_colab.ipynb`](examples/pdb2reaction_colab.ipynb) provides
 an ordered PDB/mmCIF/XYZ/GJF input queue and a compact
-**Input → Viewer → Options (optional) → Results** workspace. The Viewer places
+**Input → Viewer → Options → Results** workspace. The Viewer places
 the workflow and relevant selectors beside a 4:3 molecular view; an exact pick
 shows the residue as thick element-colored sticks and keeps the atom distinct
 with a dark halo. Key and advanced options stay collapsed until needed, each
