@@ -29,9 +29,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Add an mmCIF/large-PDB bridge (atom-identity–preserving; multi-model input keeps the first model,
   with a warning), exact chain/residue/atom selectors, safe duplicate atom-name handling, and CIF
   output companions with original IDs.
-- Add a release-pinned, keyboard-accessible Colab GUI for structure preparation,
-  semantic 3D atom picking, workflow-aware command construction, interrupt-safe
-  execution, and current-run-scoped result inspection/downloads.
+- Add a release-pinned, keyboard-accessible Colab GUI for ordered structure input,
+  workflow-aware command construction, interrupt-safe execution, and current-run-scoped
+  result inspection/downloads. Exact 3D picks persist as a foreground atom marker and
+  dark halo above residue sticks, a translucent envelope, and a frame. The viewer keeps
+  primary-input selections separate from view-only secondary structures, preserves the
+  camera across redraws, and rolls back failed structure switches. Center selectors retain
+  chain and insertion-code identity; incompatible secondary views suppress primary selection
+  and measurement overlays. Validation follows the exact command and content hashes for every
+  existing-file input declared by the selected Click command, while its transcript remains
+  separate from current-run diagnostics. Private runtime files avoid upload collisions;
+  Results previews diagrams, SVG, HTML, CSV, PDF, and trajectories while handling missing
+  energies, failures, cancellations, and diagnostic bundles explicitly.
 - Add opt-in IRC `--never-stop` / `all --irc-never-stop` traversal of transient
   energy rises while retaining convergence and cycle limits.
 - Add `tsopt --ref-mode PATH` to seed TS mode-following with a reference mode;

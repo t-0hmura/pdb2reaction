@@ -28,7 +28,7 @@ jobs:
           pip install click pyyaml numpy biopython scipy ase \
             autograd dask distributed h5py fabric jinja2 joblib \
             matplotlib natsort psutil rmsd sympy scikit-learn \
-            pandas tabulate plotly pytest pytest-cov
+            pandas tabulate plotly ipywidgets pytest pytest-cov
 
       - name: Run unit tests (CPU-only, no GPU)
         timeout-minutes: 10

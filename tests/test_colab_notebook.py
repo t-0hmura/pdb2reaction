@@ -3,14 +3,52 @@
 from __future__ import annotations
 
 import ast
+import csv
 import glob
+import html
 import json
 import os
 import shlex
+import sys
+import types
 from pathlib import Path
+
+import pytest
 
 
 NOTEBOOK = Path(__file__).parents[1] / "examples" / "pdb2reaction_colab.ipynb"
+
+
+class _RecordingViewer:
+    def __init__(self, calls: list, width=None, height=None):
+        self.calls = calls
+        calls.append(("view", width, height))
+
+    def _record(self, name, *args, **kwargs):
+        self.calls.append((name, args, kwargs))
+        return {"shape": name}
+
+    def __getattr__(self, name):
+        return lambda *args, **kwargs: self._record(name, *args, **kwargs)
+
+
+def _execute_app(monkeypatch, tmp_path: Path) -> tuple[dict, list]:
+    """Execute the complete app cell with real widgets and a recording viewer."""
+    calls: list = []
+    fake = types.ModuleType("py3Dmol")
+    fake.VDW = "VDW"
+    fake.view = lambda width=None, height=None: _RecordingViewer(calls, width, height)
+    monkeypatch.setitem(sys.modules, "py3Dmol", fake)
+    import IPython.display as ipd
+    monkeypatch.setattr(ipd, "display", lambda *args, **kwargs: None)
+    monkeypatch.setattr(ipd, "clear_output", lambda *args, **kwargs: None)
+    monkeypatch.setattr(ipd, "HTML", lambda value: value)
+    monkeypatch.setattr(ipd, "Image", lambda *args, **kwargs: (args, kwargs))
+    monkeypatch.chdir(tmp_path)
+    namespace = {"TOOL": "pdb2reaction", "BACKEND": "mace", "REPO_DIR": "unused"}
+    source = _notebook()["cells"][2]["source"]
+    exec(compile(source, str(NOTEBOOK), "exec"), namespace)
+    return namespace, calls
 
 
 def _notebook() -> dict:
@@ -46,6 +84,42 @@ def _output_contract() -> dict:
     return namespace
 
 
+def _viewer_contract() -> dict:
+    """Execute pure selection/highlight and trajectory-label helpers."""
+    source = _notebook()["cells"][2]["source"]
+    wanted = {
+        "_pick_residue_indices",
+        "_pick_residue_box",
+        "_pick_text",
+        "_residue_id_selector",
+        "_rich_residue_selector",
+        "_center_cli_selectors",
+        "_input_count_error",
+        "_artifact_kind",
+        "_csv_preview_html",
+        "_atom_signatures",
+        "_resolve_atom_query",
+        "_trajectory_semantics",
+        "_stationary",
+    }
+    tree = ast.parse(source)
+    module = ast.Module(
+        body=[node for node in tree.body
+              if isinstance(node, ast.FunctionDef) and node.name in wanted],
+        type_ignores=[],
+    )
+    namespace = {
+        "os": os, "S": {}, "_TRAJ": {}, "Path": Path, "csv": csv, "html": html,
+        "SPEC": {}, "_ARTIFACT_KINDS": {
+            ".png": "image", ".jpg": "image", ".jpeg": "image", ".svg": "SVG",
+            ".html": "interactive HTML", ".csv": "CSV table", ".pdf": "PDF",
+        },
+    }
+    exec(compile(module, str(NOTEBOOK), "exec"), namespace)
+    assert wanted <= namespace.keys()
+    return namespace
+
+
 def test_colab_notebook_has_valid_code_cells_and_gpu_metadata() -> None:
     notebook = _notebook()
 
@@ -73,6 +147,8 @@ def test_colab_setup_is_pinned_to_matching_release_and_one_backend() -> None:
     assert "installed_version != pdb2reaction_ref[1:]" in setup
     assert "install_dft = False" in setup
     assert "INSTALL_DFT = install_dft" in setup
+    assert "[%%d/5] %%s".replace("%%", "%") in setup
+    assert "time.monotonic()" in setup
 
 
 def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
@@ -87,6 +163,7 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     # One occurrence registers the Python callback and one invokes it from
     # py3Dmol JavaScript; keeping both names identical is the round-trip gate.
     assert app.count("pdb2reaction_gui.on_click") == 2
+    assert app.count("pdb2reaction_gui.on_view_change") == 2
     assert "demo.on_click" not in app
     assert "return shlex.split(line)" in app
     assert "a = _force_dry_run(a)" in app
@@ -97,19 +174,20 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "MODELS = {'mace': ['MACE-OMOL-0']" in app
     assert "options=['auto', 'fp32', 'fp64']" in app
     assert "unknown options; use Validate" in app
-    assert "py3Dmol.view(width='100%', height=380)" in app
+    assert "py3Dmol.view(width='100%', height=int(S.get('viewer_height', 380)))" in app
     assert "rxworkspace" in app
     assert "rxviewer" in app
     assert "rxinspector" in app
     assert ":focus-visible" in app
+    assert ".rxapp .widget-button .fa, .rxapp .widget-upload .fa { display:none !important; }" in app
     assert "overflow-wrap:anywhere" in app
     assert "max_width='100%'" in app
     assert "No structure loaded" in app
     # Colab renders ipywidgets' Tab as an empty block, so the tab strip is Buttons
     # + a swapping VBox. Pin the four pages, the navigation entry point, and guard
     # against a Tab regression.
-    assert "_TAB_PAGES = [('1 Input', input_box), ('2 Select', select_box)," in app
-    assert "('3 Options', options_box), ('4 Results', results_box)]" in app
+    assert "_TAB_PAGES = [('1 Input', input_box), ('2 Workflow', options_box)," in app
+    assert "('3 Select', select_box), ('4 Results', results_box)]" in app
     assert "def _tab_go(i):" in app
     assert "W.Tab(" not in app
     # Accordion has the same Colab rendering defect, so every collapsible (NGLView,
@@ -165,6 +243,7 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "raw.githubusercontent.com/t-0hmura/pdb2reaction" in app
     assert "Run Setup first" not in app
     assert "cmd = [CLI, 'extract', '-i', *S['inputs'], '-o', *outs, '-c', ','.join(cen)]" in app
+    assert "cen = _center_cli_selectors()" in app
     assert "utility_bar = W.HBox([b_rebuild, b_copy, b_clear])" in app
     assert "ps.get('mlip')" in app
     assert "ps.get('gibbs_mlip')" in app
@@ -190,6 +269,208 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "d['all_mode'] = _wv('all_mode', 'mep')" in app
     assert "all_mode.value = saved_all_mode" in app
     assert "bytes(c).decode('utf-8')" in app
+
+
+def test_colab_viewer_persists_exact_atom_and_residue_context() -> None:
+    app = _notebook()["cells"][2]["source"]
+
+    for marker in (
+        "'_last_pick': None", "def _pick_residue_indices", "def _pick_residue_box",
+        "def _draw_last_pick", "v.addBox(", "v.addSphere(", "wireframe=True",
+        "v.addSurface(py3Dmol.VDW, {'color': '#f59e0b', 'opacity': 0.30}",
+        "'opacity': 0.12 if S.get('_last_pick') else 0.35",
+        "viewer.getView()", "v.setView(list(S['_viewer_view']))",
+        "zoom to click", "clear last click", "aria-live=\"polite\"",
+        "visible_atoms = {} if S['show_water'] else {'not': {'resn': list(_WATER)}}",
+        "exact atom", "set current pick", "view_input", "_view_mapping_ok",
+        "residue envelope", "artifact preview", "Download results / diagnostics (.zip)",
+        "results_box.add_class('rxresults')", "overflow-x:auto",
+        "colab_run.log",
+        "energy unavailable", "Command was cancelled", "Command failed",
+    ):
+        assert marker in app
+    atom_marker = app.index("v.addSphere({'center': center")
+    assert app.index("v.addStyle({'index': indices}") < atom_marker
+    assert app.index("v.addSurface(py3Dmol.VDW, {'color': '#f59e0b'") < atom_marker
+    assert "pick_action.value = 'scanB'" in app
+    assert "pick_action.value = 'freezeB'" in app
+    assert "if(atom.icode)sel.icode=atom.icode" in app
+    assert "color:'#111827',opacity:0.95,wireframe:true" in app
+    assert "v.setViewChangeCallback(_VIEW_CHANGE_JS)" in app
+    assert "py3Dmol.view(width='100%', height=320)" in app
+    assert "def _invalidate_last_run(" in app
+    assert "def _artifact_kind(" in app
+
+    contract = _viewer_contract()
+    metadata = [
+        {"index": 0, "chain": "A", "resname": "LIG", "resseq": 10,
+         "icode": "", "name": "N", "xyz": (0, 0, 0)},
+        {"index": 1, "chain": "A", "resname": "LIG", "resseq": 10,
+         "icode": "", "name": "C1", "xyz": (1, 0, 0)},
+        {"index": 2, "chain": "B", "resname": "LIG", "resseq": 10,
+         "icode": "", "name": "N", "xyz": (5, 0, 0)},
+        {"index": 3, "chain": "A", "resname": "LIG", "resseq": 10,
+         "icode": "A", "name": "N", "xyz": (8, 0, 0)},
+    ]
+    contract["S"].update(_atom_meta=metadata, _last_pick={"index": 0})
+    assert contract["_pick_residue_indices"]() == [0, 1]
+    box = contract["_pick_residue_box"]([0, 1])
+    assert box["dimensions"]["h"] == 1.5
+    assert contract["_resolve_atom_query"]("A:LIG:10:C1") == 1
+    assert contract["_resolve_atom_query"]("2") == 1
+    contract["S"].update(center=["LIG"], center_ids=["B:LIG:10"],
+                         _primary_atom_meta=metadata)
+    assert contract["_center_cli_selectors"]() == ["A:LIG:10", "B:LIG:10", "A:LIG:10A"]
+    contract["S"].update(center=[], center_ids=["A:LIG:10"])
+    with pytest.raises(ValueError, match="insertion-code sibling"):
+        contract["_center_cli_selectors"]()
+    contract["SPEC"].update({"bond-summary": {"n_in": (2, None)},
+                              "trj2fig": {"n_in": (1, 1)}})
+    assert contract["_input_count_error"]("bond-summary", 1)
+    assert not contract["_input_count_error"]("bond-summary", 2)
+    assert contract["_input_count_error"]("trj2fig", 2)
+    assert contract["_artifact_kind"]("profile.html") == "interactive HTML"
+    assert contract["_artifact_kind"]("plot.jpeg") == "image"
+    opt = contract["_trajectory_semantics"]("opt", "optimization_trj.xyz")
+    path = contract["_trajectory_semantics"]("path-opt", "mep_trj.xyz")
+    assert contract["_stationary"]([0.0, 2.0, 0.0], opt) == [
+        (0, "initial"), (2, "optimized"),
+    ]
+    assert (1, "peak candidate") in contract["_stationary"]([0.0, 2.0, 0.0], path)
+
+
+def test_colab_app_executes_atomic_view_and_result_transitions(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    app, calls = _execute_app(monkeypatch, tmp_path)
+    primary = tmp_path / "primary.pdb"
+    secondary = tmp_path / "secondary.pdb"
+    primary_text = (
+        "HETATM    1  C1  LIG A  10       0.000   0.000   0.000  1.00  0.00           C\n"
+        "HETATM    2  O1  LIG A  10       1.200   0.000   0.000  1.00  0.00           O\n"
+        "HETATM    3  C1  COF B  20       4.000   0.000   0.000  1.00  0.00           C\nEND\n"
+    )
+    secondary_text = (
+        "HETATM    1  C1  ALT A  10       0.100   0.000   0.000  1.00  0.00           C\nEND\n"
+    )
+    primary.write_text(primary_text, encoding="utf-8")
+    secondary.write_text(secondary_text, encoding="utf-8")
+    calc_file = tmp_path / "calculator.py"
+    ref_mode = tmp_path / "reference-mode.npy"
+    calc_file.write_text("calculator = 1\n", encoding="utf-8")
+    ref_mode.write_bytes(b"reference mode")
+    validation_argv = [
+        "pdb2reaction", "tsopt", "-i", str(primary),
+        "--calc-file", str(calc_file), "--ref-mode", str(ref_mode),
+    ]
+    app["cmd_box"].value = shlex.join(validation_argv)
+    assert set(app["_command_input_files"](validation_argv)) == {
+        str(primary), str(calc_file), str(ref_mode),
+    }
+    first_fingerprint = app["_validation_fingerprint"](validation_argv)
+    calc_file.write_text("calculator = 2\n", encoding="utf-8")
+    assert app["_validation_fingerprint"](validation_argv) != first_fingerprint
+    extra_structure = tmp_path / "extra.pdb"
+    extra_structure.write_text(secondary_text, encoding="utf-8")
+    positional_argv = [
+        "pdb2reaction", "bond-summary", str(primary), str(extra_structure),
+    ]
+    assert set(app["_command_input_files"](positional_argv)) == {
+        str(primary), str(extra_structure),
+    }
+    scan_spec = tmp_path / "scan.yaml"
+    scan_spec.write_text("scan: first\n", encoding="utf-8")
+    scan_argv = [
+        "pdb2reaction", "scan", "-i", str(primary), "-s", str(scan_spec),
+    ]
+    app["cmd_box"].value = shlex.join(scan_argv)
+    assert set(app["_command_input_files"](scan_argv)) == {str(primary), str(scan_spec)}
+    scan_fingerprint = app["_validation_fingerprint"](scan_argv)
+    scan_spec.write_text("scan: second\n", encoding="utf-8")
+    assert app["_validation_fingerprint"](scan_argv) != scan_fingerprint
+    metadata = {
+        str(primary): [
+            {"chain": "A", "resname": "LIG", "resseq": 10, "icode": "", "name": "C1"},
+            {"chain": "A", "resname": "LIG", "resseq": 10, "icode": "", "name": "O1"},
+            {"chain": "B", "resname": "COF", "resseq": 20, "icode": "", "name": "C1"},
+        ],
+        str(secondary): [
+            {"chain": "A", "resname": "ALT", "resseq": 10, "icode": "", "name": "C1"},
+        ],
+    }
+
+    def load_view(path):
+        path = str(path)
+        return Path(path).read_text(encoding="utf-8"), [dict(row) for row in metadata[path]], path
+
+    app["_load_view_structure"] = load_view
+    app["load_pdb"]([str(primary), str(secondary)], center=["COF"], lcharge={"COF": 1})
+    primary_widget = app["center_widget"]
+    app["pick_action"].value = "center"
+    app["on_click"]("0", "LIG", "10", "A", "C1")
+    assert app["_center_cli_selectors"]() == ["A:LIG:10", "B:COF:20"]
+
+    from Bio.PDB import PDBParser
+    from pdb2reaction.workflows.extract import resolve_substrate_residues
+    structure = PDBParser(QUIET=True).get_structure("primary", primary)
+    resolved = resolve_substrate_residues(structure, "B:COF:20,A:LIG:10")
+    assert {(residue.get_parent().id, residue.id[1], residue.resname) for residue in resolved} == {
+        ("A", 10, "LIG"), ("B", 20, "COF"),
+    }
+
+    saved = (list(app["S"]["center"]), list(app["S"]["center_ids"]), dict(app["S"]["lcharge"]))
+    app["S"]["scan_atoms"] = [
+        {"index": 1, "chain": "A", "resn": "LIG", "resi": "10", "atom": "O1",
+         "xyz": (1.2, 0.0, 0.0)},
+        None,
+    ]
+    app["S"]["freeze_atoms"] = [2]
+    app["S"]["measure_atoms"] = [
+        {"index": 0, "chain": "A", "resn": "LIG", "resi": "10", "atom": "C1",
+         "xyz": (0.0, 0.0, 0.0)},
+    ]
+    calls.clear()
+    app["view_input"].value = 1
+    assert app["S"]["_view_mapping_ok"] is False
+    assert app["center_widget"] is primary_widget
+    assert primary_widget.disabled is True
+    assert (app["S"]["center"], app["S"]["center_ids"], app["S"]["lcharge"]) == saved
+    indexed_styles = [
+        call for call in calls
+        if call[0] == "addStyle" and call[1] and isinstance(call[1][0], dict)
+        and "index" in call[1][0]
+    ]
+    assert indexed_styles == []
+    app["view_input"].value = 0
+    assert app["center_widget"].disabled is False
+
+    old_text = app["S"]["_pdb_text"]
+    app["_load_view_structure"] = lambda path: (_ for _ in ()).throw(ValueError("view failed")) \
+        if str(path) == str(secondary) else load_view(path)
+    app["view_input"].value = 1
+    assert app["S"]["_view_input_index"] == 0
+    assert app["view_input"].value == 0
+    assert app["S"]["_pdb_text"] == old_text
+
+    app["S"].update(_last_out_dir="old", _last_subcmd="opt", _last_argv=["old"],
+                    _last_files=[str(primary)], _last_manifest={"status": "success"},
+                    _last_log="old log")
+    app["artifact_choice"].options = [("old", str(primary))]
+    app["dl_btn"].disabled = False
+    validate_out = tmp_path / "validate-only"
+    app["cmd_box"].value = shlex.join([
+        "pdb2reaction", "tsopt", "-i", str(primary), "--calc-file", str(calc_file),
+        "--ref-mode", str(ref_mode), "-o", str(validate_out),
+    ])
+    app["S"]["_last_log"] = "old log"
+    app["_stream"] = lambda argv: (0, "validation transcript")
+    app["_do_validate"](None)
+    assert app["S"]["_last_log"] == "old log"
+    assert app["_RUN_STATE"]["validation_log"] == "validation transcript"
+    app["_invalidate_last_run"]("Input identity changed; run again.")
+    assert app["S"]["_last_manifest"] == {} and app["S"]["_last_files"] == []
+    assert app["artifact_choice"].disabled and app["dl_btn"].disabled
+    assert "Input identity changed" in app["results_empty"].value
 
 
 def test_colab_gui_guards_state_capabilities_and_current_run_results() -> None:
@@ -226,6 +507,12 @@ def test_colab_gui_guards_state_capabilities_and_current_run_results() -> None:
     assert "if real_run:" in app and "'exit_code': rc" in app
     assert "'status': 'success' if rc == 0" in app
     assert "Invalid command line:" in app
+    assert "def _command_input_option_flags(argv):" in app
+    assert "def _click_parsed_input_files(argv):" in app
+    assert "isinstance(value_type, click.Path)" in app
+    assert "flags.intersection({'-s', '--scan-lists'})" in app
+    assert "_RUN_STATE['validation_log']" in app
+    assert "mapping_ok = bool(S.get('_view_mapping_ok', True))" in app
     assert "sub == 'all' and all_kind == 'scan'" in app
     assert "bond table or JSON on stdout (--json)" in app
     assert "colab_run.json" in app and "zipfile.ZipFile" in app

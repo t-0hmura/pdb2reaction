@@ -37,11 +37,24 @@ Inputs are not limited to full enzyme PDBs: mmCIF is accepted directly, includin
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb)
 
 [`examples/pdb2reaction_colab.ipynb`](examples/pdb2reaction_colab.ipynb) provides
-a notebook-native PDB/mmCIF uploader, 3D chain-qualified residue/atom picking,
-backend/model options, an editable exact command, a separate `--dry-run`
-validation action, and result/trajectory views. It installs the pinned PyPI
-release and fetches example inputs from the matching Git tag into the user's
-own GPU runtime; MACE and UMA still require separate runtimes.
+an ordered PDB/mmCIF/XYZ/GJF input queue and a guided
+**Input → Workflow → Select → Validate → Run** path. Workflow-specific panels
+show only the inputs and flags accepted by the selected CLI subcommand; the
+editable command remains the exact execution contract. In the 3D viewer, a
+click keeps the exact chain/residue/insertion-code context visible as thick
+amber sticks, a translucent envelope, and a frame. An opaque orange atom marker
+with a dark halo is drawn last, so it remains legible above the residue layers.
+The same exact pick is available from a keyboard query. Multi-input workflows
+can inspect each reactant/intermediate/product while keeping center and charge
+editing owned by the primary input; incompatible secondary structures are
+clearly view-only and do not inherit the primary input's overlays. Validation
+is tied to the displayed command and every existing-file input declared by its
+Click command. Validation transcripts remain separate from current-run
+diagnostics. Results distinguish failed, cancelled, and artifact-free runs;
+preview diagrams, SVG, HTML, CSV, PDF, and trajectories; preserve unavailable
+energies as unknown; and provide current-run downloads and diagnostics. Setup
+installs the pinned PyPI release and fetches matching-tag examples into the
+user's own GPU runtime; MACE, UMA, and ORB are installed one backend per runtime.
 
 ## System requirements
 

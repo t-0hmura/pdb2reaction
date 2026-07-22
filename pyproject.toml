@@ -102,10 +102,11 @@ ci = [
     "scikit-learn",
     "pandas",
     "plotly",
+    "ipywidgets",
     "pytest",
     "pytest-cov",
 ]
-dev = ["pytest", "pytest-cov", "pytest-timeout"]
+dev = ["pytest", "pytest-cov", "pytest-timeout", "ipywidgets"]
 docs = [
     "sphinx>=7.0",
     "myst-parser>=2.0",
