@@ -36,18 +36,8 @@ Inputs are not limited to full enzyme PDBs: mmCIF is accepted directly, includin
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb)
 
-[`examples/pdb2reaction_colab.ipynb`](examples/pdb2reaction_colab.ipynb) provides
-an ordered PDB/mmCIF/XYZ/GJF input queue and a compact
-**Input → Viewer → Options → Results** workspace. The Viewer places
-the workflow and relevant selectors beside a 4:3 molecular view; an exact pick
-shows the residue as thick element-colored sticks and keeps the atom distinct
-with a dark halo. Key and advanced options stay collapsed until needed, each
-control has click-to-open help, and inapplicable CLI options remain hidden.
-Validation covers the exact editable command and its current input files.
-Results are scoped to the current run and preview supported structures,
-diagrams, tables, documents, and trajectories. Setup installs the pinned PyPI
-release and matching-tag examples into the user's GPU runtime; MACE, UMA, and
-ORB are installed one backend per runtime.
+The interactive notebook is available at
+[`examples/pdb2reaction_colab.ipynb`](examples/pdb2reaction_colab.ipynb).
 
 ## System requirements
 

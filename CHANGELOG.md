@@ -31,17 +31,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   output companions with original IDs.
 - Add a release-pinned, keyboard-accessible Colab GUI for ordered structure input,
   workflow-aware command construction, interrupt-safe execution, and current-run-scoped
-  result inspection/downloads. Its compact Input, Viewer, optional Options, and Results
+  result inspection/downloads. Its compact Input, Viewer, Options, and Results
   workspace co-locates workflow selection with a 4:3 molecular view. Exact 3D picks
   persist as thick element-colored residue sticks with a dark atom halo. The viewer keeps
   primary-input selections separate from view-only secondary structures, preserves the
-  camera across redraws, and rolls back failed structure switches. Center selectors retain
-  chain and insertion-code identity; incompatible secondary views suppress primary selection
-  and measurement overlays. Validation follows the exact command and content hashes for every
+  camera across redraws, focuses newly selected centers with surrounding protein context,
+  and rolls back failed structure switches. Center selectors retain chain and insertion-code
+  identity; incompatible secondary views suppress primary selection and measurement overlays.
+  Validation follows the exact command and content hashes for every
   existing-file input declared by the selected Click command, while its transcript remains
   separate from current-run diagnostics. Private runtime files avoid upload collisions;
-  Results previews diagrams, SVG, HTML, CSV, PDF, and trajectories while handling missing
-  energies, failures, cancellations, and diagnostic bundles explicitly.
+  Results links one trajectory control to the 3D frame and energy-profile cursor, while
+  keeping static diagrams, SVG, HTML, CSV, PDF, and other generated files in a separate
+  preview; missing energies, failures, cancellations, and diagnostic bundles remain explicit.
   The input queue appends uploads as removable rows, keeps water visible on request,
   and derives searchable per-option controls and click-to-open help from the selected
   live CLI. Key, advanced, and command-line controls remain collapsed until needed.
