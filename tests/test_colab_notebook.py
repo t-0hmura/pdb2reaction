@@ -196,7 +196,7 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "overflow-wrap:anywhere" in app
     assert "max_width='100%'" in app
     assert "flex:0 0 auto; min-width:0" in app
-    assert "layout=W.Layout(width='300px', max_width='100%')" in app
+    assert "layout=W.Layout(width='260px', max_width='100%')" in app
     assert "Mol* owns representation, colour, camera, measurement, and screenshot controls." in app
     assert "view_controls = W.HBox([" in app
     assert "cb_water," in app
@@ -285,12 +285,26 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "command_editor = W.VBox([" in app
     assert "W.HTML('<b>Command line</b>')" in app
     assert "command_editor = _collapsible('Command line'" not in app
-    assert "W.HBox([view_input, pick_action, last_pick_info])" in app
+    assert "viewer_toolbar = W.HBox(" in app
+    assert "[view_input, pick_action, last_pick_info, view_controls, viewer_more]" in app
+    assert "viewer_box = W.VBox([workflow_box, viewer_toolbar, view_input_note, selection_box])" in app
+    assert "'<div class=\"rxmolstar-embed\">'" in app
     assert "workflow_contract_row = W.HBox([subreq, outputs_html]" in app
     assert "workflow_controls.add_class('rxworkflow-controls')" in app
     assert "grid-template-columns:minmax(280px,320px) minmax(150px,1fr) 240px" in app
-    assert ".rxviewer { flex:2 1 520px !important; min-width:300px; position:sticky" in app
-    assert ".rxviewer { position:static; }" in app
+    assert "height:clamp(700px,calc(100dvh - 24px),920px); overflow:hidden;" in app
+    assert ".rxapp-main { flex:1 1 auto !important; min-height:0; overflow:hidden; }" in app
+    assert ".rxpages { flex:1 1 auto !important; min-height:0; overflow:hidden; }" in app
+    assert "overscroll-behavior:contain; scrollbar-gutter:stable;" in app
+    assert "flex:0 1 clamp(420px,calc(133.333dvh - 600px),640px) !important;" in app
+    assert "max-width:clamp(600px,calc(250dvh - 1320px),1000px);" in app
+    assert ".rxpath-panel svg, .rxpath-panel img, .rxpath-panel canvas {" in app
+    assert "traj_out = W.Output(layout={'width': '100%', 'min_width': '0'})" in app
+    assert "plot_out = W.Output(layout={'width': '100%', 'min_width': '0'})" in app
+    assert "'flex': '1 1 440px'" not in app
+    assert ".rxcommand-dock {" in app
+    assert "rootbox = W.VBox([header, app, cmdline_box])" in app
+    assert "rootbox = W.VBox([header, app, W.HTML('<hr" not in app
     assert "role=\"tooltip\"" not in app
     # Standalone opt/tsopt/path-opt users need a cluster model first.
     assert "b_extract = W.Button(description='Extract cluster model'" in app
@@ -308,6 +322,12 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "cmd = [CLI, 'extract', '-i', *S['inputs'], '-o', *outs, '-c', ','.join(cen)]" in app
     assert "cen = _center_cli_selectors()" in app
     assert "utility_bar = W.HBox([b_clear])" in app
+    assert "command_footer = W.HBox(" in app
+    assert "cmdline_box.add_class('rxcommand-dock')" in app
+    assert "for _label, _page in _TAB_PAGES:" in app
+    assert "_page.add_class('rxpage')" in app
+    assert "_tab_body.add_class('rxpages')" in app
+    assert "app.add_class('rxapp-main')" in app
     assert "ps.get('mlip')" in app
     assert "ps.get('gibbs_mlip')" in app
     assert "ps.get('uma')" not in app
