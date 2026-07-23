@@ -133,6 +133,11 @@ def test_colab_notebook_has_valid_code_cells_and_gpu_metadata() -> None:
     assert len(notebook["cells"]) == 3
     assert "[GitHub](https://github.com/t-0hmura/pdb2reaction)" in introduction
     assert (
+        "protein PDB/mmCIF or small-molecule XYZ/GJF structures"
+        in introduction
+    )
+    assert "linked trajectories and energy profiles" in introduction
+    assert (
         "[ChemRxiv](https://chemrxiv.org/doi/full/"
         "10.26434/chemrxiv.15003538/v1)"
     ) in introduction
