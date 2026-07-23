@@ -34,10 +34,9 @@ Inputs are not limited to full enzyme PDBs: mmCIF is accepted directly, includin
 
 ## Colab GUI
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb)
+An interactive Colab notebook is available.
 
-The interactive notebook is available at
-[`examples/pdb2reaction_colab.ipynb`](examples/pdb2reaction_colab.ipynb).
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb)
 
 ## System requirements
 
