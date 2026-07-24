@@ -108,6 +108,22 @@ logger = logging.getLogger(__name__)
 _snapshot_geometry = make_snapshot_geometry(GEOM_KW_DEFAULT["coord_type"])
 
 
+def _rbf_support(points_x: np.ndarray, points_y: np.ndarray) -> Tuple[int, int]:
+    """Return the unique-point count and geometric rank for 2D interpolation."""
+
+    points = np.column_stack(
+        (
+            np.asarray(points_x, dtype=float),
+            np.asarray(points_y, dtype=float),
+        )
+    )
+    unique = np.unique(points, axis=0)
+    if len(unique) < 2:
+        return len(unique), 0
+    rank = int(np.linalg.matrix_rank(unique - unique[0]))
+    return len(unique), rank
+
+
 def _sort_values_by_reference(values: np.ndarray, ref: Optional[float]) -> np.ndarray:
     """Sort scan values so that those closest to ref come first."""
     if ref is None or not np.isfinite(ref):
@@ -911,6 +927,27 @@ def cli(
             )
             if not np.any(mask):
                 click.echo("[plot] No finite data for plotting.")
+                sys.exit(1)
+            n_unique, support_rank = _rbf_support(
+                d1_points[mask], d2_points[mask]
+            )
+            if n_unique < 3 or support_rank < 2:
+                message = (
+                    "A 2D energy surface requires at least three non-collinear "
+                    "converged finite grid points; found "
+                    f"{n_unique} unique point(s) with geometric rank "
+                    f"{support_rank}. surface.csv was written, but plots were "
+                    "not generated."
+                )
+                error = ValueError(message)
+                _write_error_json(
+                    final_dir,
+                    "scan2d",
+                    error,
+                    "InsufficientPlotData",
+                    time_start,
+                )
+                click.echo(f"[plot] ERROR: {message}", err=True)
                 sys.exit(1)
             x_min, x_max = float(np.min(d1_points[mask])), float(
                 np.max(d1_points[mask])
