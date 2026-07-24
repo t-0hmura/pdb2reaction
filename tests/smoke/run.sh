@@ -415,10 +415,10 @@ pdb2reaction path-opt -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --max-cy
 pdb2reaction path-opt -i r.pdb p.pdb -q -1 --coord-type dlc --max-nodes 5 --max-cycles 3 --no-preopt --no-climb --out-dir test64_pathopt_dlc > test64_pathopt_dlc.out 2>&1
 
 # test65: path-search --mep-mode dmf
-pdb2reaction path-search -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --max-cycles 3 --no-preopt --no-endopt --out-dir test65_ps_dmf > test65_ps_dmf.out 2>&1
+pdb2reaction path-search -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --max-cycles 3 --no-preopt --out-dir test65_ps_dmf > test65_ps_dmf.out 2>&1
 
 # test66: path-search --opt-mode hess (RFO single-structure preopt; keep preopt ON)
-pdb2reaction path-search -i r.pdb p.pdb -q -1 --opt-mode hess --workers 1 --max-nodes 5 --max-cycles 3 --no-endopt --out-dir test66_ps_hess > test66_ps_hess.out 2>&1
+pdb2reaction path-search -i r.pdb p.pdb -q -1 --opt-mode hess --workers 1 --max-nodes 5 --max-cycles 3 --out-dir test66_ps_hess > test66_ps_hess.out 2>&1
 
 # test67: required positive MEP -> TSopt -> IRC -> thermo handoff.
 # --tsopt-max-cycles must cover the opt-in --flatten repair (which draws from this
