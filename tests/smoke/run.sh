@@ -381,11 +381,32 @@ pdb2reaction scan -i r.pdb -q -1 --opt-mode hess --scan-lists "[(1,5,1.4)]" --ma
 # converged test8 point and use the smallest genuine 2D grid (2 × 2).
 pdb2reaction scan2d -i test8/grid/point_i140_j300.pdb --ligand-charge 'PRE:-2' --freeze-atoms "$P_COMPLEX_MODEL_FREEZE_ATOMS" --scan-lists "[('PRE 8 C3','PRE 8 O1\'',1.40,1.41),('PRE 8 C1','PRE 8 C8',3.00,3.01)]" --opt-mode hess --max-step-size 2.0 --relax-max-cycles 100 --thresh gau_loose --out-dir test60_scan2d_hess > test60_scan2d_hess.out 2>&1
 
-# test61: scan3d --opt-mode hess (RFO per-grid relaxation)
-pdb2reaction scan3d -i p_complex_model.pdb --ligand-charge 'PRE:-2' --freeze-atoms "$P_COMPLEX_MODEL_FREEZE_ATOMS" --scan-lists "[('PRE 8 C3','PRE 8 O1\'',1.4,1.8),('PRE 8 C1','PRE 8 C8',3.0,3.4),('PRE 8 C1','PRE 8 C7',1.4,1.6)]" --opt-mode hess --max-step-size 2.0 --relax-max-cycles 3 --thresh gau_loose --out-dir test61_scan3d_hess > test61_scan3d_hess.out 2>&1
+# test61: scan3d --opt-mode hess (RFO per-grid relaxation).  A deliberately
+# short budget may either converge or end with the controlled no-eligible-data
+# outcome; both prove the Hessian branch ran, while any other failure is fatal.
+rc=0
+pdb2reaction scan3d -i r.pdb -q -1 --scan-lists "[(1,5,2.20,2.21),(1,6,1.75,1.76),(2,3,1.65,1.66)]" --opt-mode hess --max-step-size 0.1 --relax-max-cycles 3 --no-preopt --thresh gau_loose --out-dir test61_scan3d_hess > test61_scan3d_hess.out 2>&1 || rc=$?
+test -s test61_scan3d_hess/surface.csv || { echo "[smoke] FAIL test61: surface.csv missing" >> test61_scan3d_hess.out; exit 1; }
+grep -Fq '[hessian] Completed FiniteDifference Hessian:' test61_scan3d_hess.out || { echo "[smoke] FAIL test61: Hessian branch did not run" >> test61_scan3d_hess.out; exit 1; }
+if grep -Fq 'Traceback (most recent call last)' test61_scan3d_hess.out; then
+  echo "[smoke] FAIL test61: unexpected traceback" >> test61_scan3d_hess.out
+  exit 1
+fi
+if [ "$rc" -eq 0 ]; then
+  test -s test61_scan3d_hess/scan3d_density.html || { echo "[smoke] FAIL test61: successful run omitted the 3D plot" >> test61_scan3d_hess.out; exit 1; }
+elif [ "$rc" -eq 1 ]; then
+  grep -Fq 'No converged finite grid point with a written geometry is available' test61_scan3d_hess.out \
+    && grep -Fq '[plot] No finite data for plotting.' test61_scan3d_hess.out \
+    || { echo "[smoke] FAIL test61: exit 1 was not the controlled nonconvergence outcome" >> test61_scan3d_hess.out; exit 1; }
+else
+  echo "[smoke] FAIL test61: unexpected exit status $rc" >> test61_scan3d_hess.out
+  exit 1
+fi
 
-# test62: scan3d --precision fp64 (fp64 backend dispatch)
-pdb2reaction scan3d -i p_complex_model.pdb --ligand-charge 'PRE:-2' --freeze-atoms "$P_COMPLEX_MODEL_FREEZE_ATOMS" --scan-lists "[('PRE 8 C3','PRE 8 O1\'',1.4,1.8),('PRE 8 C1','PRE 8 C8',3.0,3.4),('PRE 8 C1','PRE 8 C7',1.4,1.6)]" --precision fp64 --max-step-size 2.0 --relax-max-cycles 3 --thresh gau_loose --out-dir test62_scan3d_fp64 > test62_scan3d_fp64.out 2>&1
+# test62: scan3d --precision fp64 option plumbing.  Runtime fp64 dispatch is
+# exercised by test53m; this pins the scan3d-specific Click/config path.
+pdb2reaction scan3d -i r.pdb -q -1 --scan-lists "[(1,5,2.20,2.21),(1,6,1.75,1.76),(2,3,1.65,1.66)]" --precision fp64 --dry-run --out-dir test62_scan3d_fp64 > test62_scan3d_fp64.out 2>&1
+grep -Fq '[scan3d] --dry-run: input, charge/spin parity, and --scan-lists parse OK.' test62_scan3d_fp64.out || { echo "[smoke] FAIL test62: fp64 option did not reach scan3d dry-run" >> test62_scan3d_fp64.out; exit 1; }
 
 # test63: path-opt --mep-mode dmf (Direct Max Flux at the subcommand level)
 pdb2reaction path-opt -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --max-cycles 3 --no-preopt --no-climb --out-dir test63_pathopt_dmf > test63_pathopt_dmf.out 2>&1
