@@ -33,8 +33,9 @@ Options:
                                   Rigid-mode treatment for PHVA. 'constrained'
                                   removes only full-system rigid motions
                                   compatible with frozen anchors (default);
-                                  'legacy-active' is the isolated-active
-                                  comparison treatment.
+                                  'legacy-active' is deprecated comparison-only
+                                  behavior and must not be used for pass/HOSP
+                                  transition-state certification.
   --convert-files / --no-convert-files
                                   Convert XYZ/TRJ outputs into PDB companions
                                   when a PDB template is available.  [default:
@@ -56,6 +57,10 @@ Options:
                                   [default: 298.15]
   --pressure FLOAT                Pressure (atm) for thermochemistry summary.
                                   [default: 1.0]
+  --symmetry-number INTEGER RANGE
+                                  External rotational symmetry number used in
+                                  the thermochemistry partition function.
+                                  [default: 1; x>=1]
   --dump / --no-dump              When True, write 'thermoanalysis.yaml' under
                                   out-dir.  [default: no-dump]
   --show-config / --no-show-config
@@ -82,7 +87,8 @@ Options:
                                   GPP:-3,SAM:1) used to derive charge when -q is
                                   omitted (requires PDB/mmCIF input or --ref-
                                   pdb).
-  -m, --multiplicity INTEGER      Spin multiplicity (2S+1).
+  -m, --multiplicity INTEGER RANGE
+                                  Spin multiplicity (2S+1).  [x>=1]
   --precision [fp32|fp64]         MLIP backend precision: fp32 or fp64. Unset
                                   defaults per backend (uma: fp32; orb, mace:
                                   fp64). Routed to backend-specific kwargs (UMA

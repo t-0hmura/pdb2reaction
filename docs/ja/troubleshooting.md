@@ -194,8 +194,8 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 - MLIPのforce noise/flatnessはbackend、model、precision、system、hardware stackに依存し、選択したforce閾値への到達を妨げる場合があります。
 
 対処:
-- **平坦なエネルギー地形によるフォールバック収束**が自動でこの状況を処理します: `opt.energy_plateau: true` のとき、直近 `opt.energy_plateau_window`（デフォルト 50）ステップのエネルギーレンジが `opt.energy_plateau_thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`）を下回ると収束と判定されます。多くの場合、ユーザー側での対応は不要です。
-- 自動フォールバックを上書きしたい場合は、力の閾値を手動で緩めてください: `--thresh gau`（`opt` のデフォルト）または `--thresh gau_loose`。
+- **エネルギー平坦化ガード**は無限反復を防ぎます。`opt.energy_plateau: true` のとき、設定した力・ステップの収束条件を満たさないまま、直近 `opt.energy_plateau_window`（デフォルト 50）ステップのエネルギーレンジが `opt.energy_plateau_thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`）を下回ると、計算は `stalled`（**未収束**）として停止します。平坦化だけでは停留点を受理できません。最終構造、力、結果statusを確認してから再実行してください。
+- 再実行では、必要に応じて力の閾値を `--thresh gau`（`opt` のデフォルト）または `--thresh gau_loose` に変更してください。
 - `opt.energy_plateau_thresh` / `opt.energy_plateau_window` は YAML からチューニングでき、`opt.energy_plateau: false` で無効化できます。
 - 注意: この平坦地形フォールバックは **chain-of-states オプティマイザ**（`path-opt`、`path-search` の string/GSM（Growing String Method）/DMF（Direct Max Flux）段階）では**スキップ**されます（単一のスカラーエネルギー履歴ではなく、イメージごとのエネルギー配列を保持しているため）。
 

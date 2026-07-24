@@ -33,7 +33,7 @@ pdb2reaction tsopt -i ts_guess.{pdb,cif,mmcif,xyz,gjf} \
 | `--max-cycles` | int | 10000 | Optimization step cap |
 | `--hessian-calc-mode` | str | (live default) | `Analytical` or `FiniteDifference` (default: `FiniteDifference`); selects how the initial Hessian is computed |
 | `--workers`, `--workers-per-node` | int | `1`, `1` | UMA predictor workers. `workers > 1` with explicit `Analytical` raises `BackendError`; it does not fall back. Other built-in backends ignore these worker kwargs. |
-| `--tr-projection` | str | `constrained` | Rigid-mode treatment for Dimer orientation, flattening, and exact PHVA validation; `legacy-active` is isolated-active comparison only |
+| `--tr-projection` | str | `constrained` | Rigid-mode treatment for Dimer orientation, flattening, and exact PHVA validation. `legacy-active` is deprecated comparison-only behavior; never use it for pass/HOSP transition-state certification. |
 | `--ref-mode` | path | none | Advanced/internal Cartesian 3N reaction direction used for path-mode tracking and bounded saddle recovery. `all` generates and supplies it from the MEP; ordinary standalone `tsopt` runs should omit it. Visible only in `--help-advanced`. |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `--solvent` | str | none | xTB-ALPB solvent |

@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import torch
 from click.testing import CliRunner
 
 from pdb2reaction.backends.base import BackendError, MLIPCalculator
@@ -68,6 +69,26 @@ def test_supported_analytical_request_uses_analytical_branch() -> None:
     assert calc.analytical_calls == 1
     assert calc.fd_calls == 0
     assert result["hessian"].shape == (3, 3)
+
+
+def test_torch_hessian_trim_and_symmetrization_match_dense_reference() -> None:
+    calc = _AnalyticalQuadraticCalculator(
+        freeze_atoms=[1],
+        return_partial_hessian=True,
+        hessian_double=True,
+    )
+    source = torch.arange(36, dtype=torch.float32).reshape(6, 6)
+    expected = source[:3, :3].to(torch.float64)
+    expected = 0.5 * (expected + expected.T)
+    from pdb2reaction.backends.base import H_EVAA_2_AU
+
+    expected *= H_EVAA_2_AU
+
+    trimmed = calc._apply_active_trim_torch(source, n_atoms=2)
+    actual = calc._au_hessian_torch(trimmed)
+
+    torch.testing.assert_close(actual, expected)
+    assert actual.dtype == torch.float64
 
 
 @pytest.mark.parametrize("mode", ["", "FD", "analytic", "typo"])

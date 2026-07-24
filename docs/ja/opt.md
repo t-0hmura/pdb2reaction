@@ -94,7 +94,7 @@ out_dir/
 | `--bias-k FLOAT` | すべての `--dist-freeze` タプルに適用される調和バイアス強度（eV·Å⁻²） | `300` |
 | `--freeze-links/--no-freeze-links` | キャップ水素の親原子の凍結を切り替え（PDB/mmCIF 入力、または `--ref-pdb` 付き XYZ/GJF） | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
-| `--tr-projection [constrained\|legacy-active]` | `--flatten` PHVAだけで使う剛体モード処理。`constrained`は凍結anchorを尊重し、`legacy-active`はisolated-active比較用 | `constrained` |
+| `--tr-projection [constrained\|legacy-active]` | `--flatten` PHVAだけで使う剛体モード処理。`legacy-active`は非推奨の比較専用で、pass/HOSP 遷移状態認定には使用不可 | `constrained` |
 | `--max-cycles INT` | 最適化反復の上限 | `10000` |
 | `--opt-mode TEXT` | 最適化モード: `grad`（`lbfgs`）または `hess`（`rfo`）。`lbfgs`/`rfo` も指定可。サブコマンド別の対応表（`opt` は L-BFGS/RFO、`tsopt` は Dimer/RS-P-RFO）は {ref}`ja-opt-mode-semantics` を参照 | `grad` |
 | `--flatten/--no-flatten` | 最適化後の虚振動数モードフラット化ループを有効/無効化 | `False` |
@@ -142,7 +142,7 @@ opt:
 L-BFGS と RFO の両方で使用される共有オプティマイザ制御:
 - `thresh` プリセット（Gaussian 系または Baker 系）。プリセット名は `pdb2reaction/core/defaults.py`（`THRESH_CHOICES`）に定義され、各々が pysisyphus の収束プリセット（力/ステップ閾値）に対応します。
 - `max_cycles`、`print_every`（`100`）、`min_step_norm`（`1e-8`）、`assert_min_step`、収束切り替え（`rms_force` など）、RMSD ベースの `converge_to_geom_rms_thresh`、`overachieve_factor`、`check_eigval_structure`、`line_search`。
-- 平坦なエネルギー地形によるフォールバック収束（`energy_plateau`、`energy_plateau_thresh`、`energy_plateau_window`）— 直近ステップのエネルギーレンジが平坦化した場合に収束を宣言します（MLIP の力のノイズで力ベース収束に到達できない場合に有効。下の注記を参照）。
+- 平坦なエネルギー地形による停止（`energy_plateau`、`energy_plateau_thresh`、`energy_plateau_window`）— 直近ステップのエネルギーレンジが平坦化した場合、収束扱いにせず `stalled` として停止します（MLIP の力のノイズで力ベース収束に到達できない場合に有効。下の注記を参照）。
 - ダンプ/管理項目（`dump`、`dump_restart`、`prefix`、`out_dir`）。
 
 ### `lbfgs`
@@ -160,10 +160,10 @@ L-BFGS と RFO の両方で使用される共有オプティマイザ制御:
 ## 注記
 
 ```{note}
-**平坦なエネルギー地形によるフォールバック収束。** `energy_plateau: true`
+**平坦なエネルギー地形による停止。** `energy_plateau: true`
 のとき、直近 `energy_plateau_window` ステップのエネルギーレンジ（max − min）が
 `energy_plateau_thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`、50 ステップ）を
-下回ると、optimizerは収束したと判定します。これにより、backend/model/system依存の
+下回ると、optimizerは収束扱いにせず `stalled` として停止します。これにより、backend/model/system依存の
 force noise/flatnessが選択したforce閾値への到達を妨げる場合でも、無駄なcycleを
 消費せずに停止できます。なお chain-of-states optimizer
 （イメージごとのエネルギー配列を保持するもの）ではこのフォールバックはスキップされます。

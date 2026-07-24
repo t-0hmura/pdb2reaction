@@ -70,7 +70,7 @@ layer graph and may be imported by any layer.
 | Aggregate `summary.json` schema | `pdb2reaction/workflows/all.py`, `pdb2reaction/workflows/_all_helpers.py`, `pdb2reaction/workflows/path_search.py`; common leaf/error envelope writer in `pdb2reaction/core/utils.py:write_result_json` |
 | Human summary log / trajectory conversion / energy diagram | `pdb2reaction/io/` (the machine JSON schema is not owned solely by this layer) |
 | Chemistry rule (#4 gpu4pyscf `rks_lowmem`, #5 def2 auto-ECP, #7 Bofill advanced-indexing) | grep `# CHEMISTRY-RULE:` — the only three markers in the package: `workflows/dft.py` (#4, #5) and `workflows/tsopt.py` (#7); lab sign-off required to edit |
-| Cap-atom (link-H) geometry | `pdb2reaction/workflows/extract.py` (`compute_linkH_atoms`) — chemistry-sensitive, and reached by opening the file (it carries no `CHEMISTRY-RULE` marker) |
+| Cap-H geometry | `pdb2reaction/workflows/extract.py` (`compute_linkH_atoms`) — chemistry-sensitive, and reached by opening the file (it carries no `CHEMISTRY-RULE` marker) |
 | TS / IRC / optimizer internals | `pysisyphus/` — read `pysisyphus/README.md`, add a focused regression test, and run the relevant numerical benchmark for behavior changes |
 | MCP server / agent integration | `pdb2reaction/mcp/` — see [`pdb2reaction-mcp`](../pdb2reaction-mcp/SKILL.md) |
 

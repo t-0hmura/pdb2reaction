@@ -10,9 +10,10 @@ without changing observable behavior.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 
 
 @dataclass(frozen=True)
@@ -108,6 +109,7 @@ class AllContext:
     freq_sort: Optional[str]
     freq_temperature: Optional[float]
     freq_pressure: Optional[float]
+    freq_symmetry_number: Optional[int]
     dft_out_dir: Optional[Path]
     dft_func_basis: Optional[str]
     dft_max_cycle: Optional[int]
@@ -219,8 +221,119 @@ def build_pipeline_summary_payload(
     }
 
 
+def build_thermo_symmetry_provenance(
+    thermo_payloads: Mapping[str, Mapping[str, Any]],
+) -> Dict[str, Dict[str, Any]]:
+    """Copy complete, child-reported R/TS/P symmetry provenance."""
+
+    provenance: Dict[str, Dict[str, Any]] = {}
+    for label in ("R", "TS", "P"):
+        payload = thermo_payloads.get(label)
+        if not isinstance(payload, Mapping):
+            continue
+        value = payload.get("symmetry_number")
+        source = payload.get("symmetry_number_source")
+        if (
+            isinstance(value, int)
+            and not isinstance(value, bool)
+            and value > 0
+            and isinstance(source, str)
+            and source.strip()
+        ):
+            provenance[label] = {
+                "symmetry_number": value,
+                "symmetry_number_source": source,
+            }
+    return provenance
+
+
+def build_thermo_mode_validation(
+    thermo_payloads: Mapping[str, Mapping[str, Any]],
+) -> Dict[str, Any]:
+    """Validate that R/P are minima and TS is first-order before naming Gibbs."""
+
+    expected = {"R": 0, "TS": 1, "P": 0}
+    observed: Dict[str, Optional[int]] = {}
+    reasons = []
+    for label, wanted in expected.items():
+        payload = thermo_payloads.get(label)
+        raw = payload.get("num_imag_freq") if isinstance(payload, Mapping) else None
+        value: Optional[int] = None
+        if not isinstance(raw, bool):
+            try:
+                numeric = float(raw)
+                if math.isfinite(numeric) and numeric >= 0.0 and numeric.is_integer():
+                    value = int(numeric)
+            except (TypeError, ValueError):
+                pass
+        observed[label] = value
+        if value is None:
+            reasons.append(f"{label}: imaginary-mode count is unavailable")
+        elif value != wanted:
+            reasons.append(
+                f"{label}: found {value} imaginary mode(s), expected {wanted}"
+            )
+        projection = (
+            payload.get("rigid_projection")
+            if isinstance(payload, Mapping)
+            else None
+        )
+        if (
+            isinstance(projection, Mapping)
+            and str(projection.get("treatment", "")).strip().lower()
+            == "legacy-active"
+        ):
+            raw_frozen = payload.get(
+                "n_freeze_atoms", projection.get("frozen_atom_count")
+            )
+            try:
+                frozen_count = int(raw_frozen)
+            except (TypeError, ValueError):
+                frozen_count = None
+            if frozen_count is None:
+                reasons.append(
+                    f"{label}: legacy-active projection lacks frozen-atom provenance"
+                )
+            elif frozen_count > 0:
+                reasons.append(
+                    f"{label}: legacy-active projection cannot certify a "
+                    "frozen-system stationary point"
+                )
+    return {
+        "valid": not reasons,
+        "expected_num_imag": expected,
+        "observed_num_imag": observed,
+        "reasons": reasons,
+    }
+
+
+def validated_thermo_triplet(
+    thermo_payloads: Mapping[str, Mapping[str, Any]],
+    key: str,
+) -> Optional[Tuple[float, float, float]]:
+    """Return one finite R/TS/P field only for minimum/TS/minimum spectra."""
+
+    if not build_thermo_mode_validation(thermo_payloads)["valid"]:
+        return None
+    values = []
+    for label in ("R", "TS", "P"):
+        payload = thermo_payloads.get(label)
+        raw = payload.get(key) if isinstance(payload, Mapping) else None
+        try:
+            value = float(raw)
+        except (TypeError, ValueError):
+            return None
+        if not math.isfinite(value):
+            return None
+        values.append(value)
+    return values[0], values[1], values[2]
+
+
 __all__ = [
     "AllContext",
     "build_energy_level_dict",
     "build_pipeline_summary_payload",
+    "build_thermo_mode_validation",
+    "build_thermo_symmetry_provenance",
+    "validated_thermo_triplet",
 ]

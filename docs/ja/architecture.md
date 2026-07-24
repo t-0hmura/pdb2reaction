@@ -63,11 +63,14 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 │ ├── domain/ # === L3 Domain ===
 │ │ ├── bond_changes.py R↔P bond detection
 │ │ ├── bond_summary.py post-IRC diagnostic
-│ │ └── add_elem_info.py PDB element column normalizer
+│ │ ├── add_elem_info.py PDB element column normalizer
+│ │ └── residue_data.py 残基・イオン電荷table
 │ │
 │ ├── backends/ # === L4a Infra (MLIP) ===
 │ │ ├── __init__.py backend dispatch + registry
 │ │ ├── base.py MLIPCalculator protocol
+│ │ ├── custom.py custom ASE-calculator adapter
+│ │ ├── _determinism.py deterministic reduction shim
 │ │ ├── uma.py / orb.py / mace.py / aimnet2.py per-backend adapters
 │ │ ├── solvent.py xTB ALPB implicit-solvent helper
 │ │ └── xtb_alpb_correction.py xTB ALPB delta correction
@@ -77,12 +80,16 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 │ │ ├── energy_diagram.py Plotly diagram
 │ │ ├── trj2fig.py trajectory → PNG / SVG / PDF / HTML / CSV
 │ │ ├── pdb_fix.py altloc resolution
+│ │ ├── altloc.py altloc identity／選択helper
+│ │ ├── charge.py 残基を考慮した電荷解決
 │ │ ├── structure_formats.py PDB/mmCIF bridge + identifier復元
 │ │ └── hessian_cache.py in-memory Hessian cache
 │ │
 │ └── core/ # === L5 Foundation ===
 │   ├── defaults.py 共有defaultの主要source
-│   └── utils.py PDB / XYZ / plot helpers
+│   ├── utils.py PDB / XYZ / plot helpers
+│   ├── output.py / result_commit.py output／result ownership
+│   └── pes_composition.py energy成分合成
 │
 ├── tests/ smoke / unit
 ├── .github/ workflows/ + scripts/ (docs-quality lint helpers; CI-only)
@@ -196,6 +203,7 @@ CLI サブコマンドリゾルバ（`cli/app.py:_LAZY_SUBCOMMANDS`）は **絶�
 | R↔P 結合変化検出 | `pdb2reaction/domain/bond_changes.py` |
 | IRC 後の結合サマリ | `pdb2reaction/domain/bond_summary.py` |
 | PDB 元素列正規化 | `pdb2reaction/domain/add_elem_info.py` |
+| 残基・イオン電荷テーブル | `pdb2reaction/domain/residue_data.py` |
 
 ### 4.4 MLIP バックエンド（L4a `backends/`）
 
@@ -203,6 +211,8 @@ CLI サブコマンドリゾルバ（`cli/app.py:_LAZY_SUBCOMMANDS`）は **絶�
 |---|---|
 | バックエンドディスパッチ + レジストリ | `pdb2reaction/backends/__init__.py` |
 | `MLIPCalculator` プロトコル + base | `pdb2reaction/backends/base.py` |
+| custom ASE calculator アダプタ | `pdb2reaction/backends/custom.py` |
+| 決定論的 reduction shim | `pdb2reaction/backends/_determinism.py` |
 | バックエンドごとのアダプタ | `pdb2reaction/backends/{uma, orb, mace, aimnet2}.py` |
 | xTB ALPB 暗黙溶媒ヘルパー | `pdb2reaction/backends/solvent.py` |
 | xTB ALPB デルタ補正 | `pdb2reaction/backends/xtb_alpb_correction.py` |
@@ -217,6 +227,9 @@ add-a-backend レシピは [Backends](backends.md) を参照してください�
 | Plotly エネルギーダイアグラム | `pdb2reaction/io/energy_diagram.py` |
 | 軌跡 → PNG / SVG / PDF / HTML / CSV | `pdb2reaction/io/trj2fig.py` |
 | PDB altloc 解決 | `pdb2reaction/io/pdb_fix.py` |
+| altloc identity と一貫した選択 | `pdb2reaction/io/altloc.py` |
+| 残基を考慮した電荷解決 | `pdb2reaction/io/charge.py` |
+| PDB/mmCIF bridge + identifier 復元 | `pdb2reaction/io/structure_formats.py` |
 | インメモリ Hessian キャッシュ（実行ごとの TTL） | `pdb2reaction/io/hessian_cache.py` |
 | 調和拘束のセットアップ | `pdb2reaction/workflows/restraints.py`（L2 ステージヘルパー） |
 
@@ -227,12 +240,14 @@ add-a-backend レシピは [Backends](backends.md) を参照してください�
 | **共有／数値default（主要source。command-local例外も確認）** | `pdb2reaction/core/defaults.py` |
 | PDB / XYZ / plot ヘルパー | `pdb2reaction/core/utils.py` |
 | `-v` / `-vv` logging 配線 | `pdb2reaction/core/logging.py` |
+| output／result ownership helper | `pdb2reaction/core/output.py`、`pdb2reaction/core/result_commit.py` |
+| energy 成分合成 | `pdb2reaction/core/pes_composition.py` |
 
 ### 4.7 repo 内部の同梱 fork
 
 | dir | role | divergent files (do NOT replace with upstream) |
 |---|---|---|
-| `pysisyphus/` | optimizer / TS / IRC エンジン | `irc/IRC.py`（オプトインの `require_pos_def_hessian` PSD 収束ガード）、`optimizers/hessian_updates.py`（advanced index 上での Bofill scatter、GPU OOM 回避のための CPU 専用 `bofill_update` パス）、`tsoptimizers/{RSIRFOptimizer,RSPRFOptimizer,TRIM,TSHessianOptimizer}.py`、`calculators/{Calculator,Dimer}.py`、`_array.py`（torch/numpy バックエンド shim） |
+| `pysisyphus/` | optimizer / TS / IRC エンジン | `irc/IRC.py`（オプトインの `require_pos_def_hessian` PSD 収束ガード）、`optimizers/hessian_updates.py`（GPU 常駐の in-place rank-two Bofill 更新と、明示的な `PYSIS_BOFILL_CPU_OFFLOAD=1` フォールバック）、`tsoptimizers/{RSIRFOptimizer,RSPRFOptimizer,TRIM,TSHessianOptimizer}.py`、`calculators/{Calculator,Dimer}.py`、`_array.py`（torch/numpy バックエンド shim） |
 | `thermoanalysis/` | thermochemistry（ΔG, ZPE, 分配関数） | `QCData.py`（上流との branding 差分） |
 
 touch 制限の境界については各ディレクトリの `README.md` を参照してください。
@@ -267,14 +282,14 @@ grep -rn '# DOMAIN_PURE' pdb2reaction/
 
 ### 5.2 VRAM 管理の不変条件（`del` チェーンをリファクタしない）
 
-IRC / TSopt / Freq ステージは、CUDA メモリを解放するためにステージ間で GPU 常駐オブジェクト（`calc`, `geom`, `hess`）を明示的に `del` します。`all` ワークフローはさらにステージ境界で `gc.collect()` を実行します。**これらの `del` / `gc.collect()` 文をリファクタで取り除かないでください**。大きな活性部位モデルを伴う長時間の `all` ジョブは、これらがないと OOM します。
+IRC / TSopt / Freq ステージは、CUDA メモリを解放するためにステージ間で GPU 常駐オブジェクト（`calc`, `geom`, `hess`）を明示的に `del` します。ステージ境界では `gc.collect()` に加え、CUDA allocation がある場合は `torch.cuda.empty_cache()` も実行します。**これらの解放処理をリファクタで取り除かないでください**。大きな活性部位モデルを伴う長時間の `all` ジョブは、これらがないと OOM します。
 
 ### 5.3 同梱 fork: 上流を並べてインストールしない
 
 同梱された `pysisyphus/` と `thermoanalysis/` パッケージは **fork** です。`pip install pysisyphus` または `pip install thermoanalysis` を本パッケージとは別に PyPI 版を再インストールすると、次が気づかないうちに動かなくなります:
 
 - `pysisyphus/irc/IRC.py` — 初期変位のメモリ管理 + オプトインの `require_pos_def_hessian` kwarg
-- `pysisyphus/optimizers/hessian_updates.py` — advanced index 上での Bofill scatter、GPU OOM 回避のための CPU 専用 `bofill_update` パス
+- `pysisyphus/optimizers/hessian_updates.py` — GPU 常駐の in-place rank-two Bofill 更新、オプトインの `PYSIS_BOFILL_CPU_OFFLOAD=1` フォールバック
 - `pysisyphus/tsoptimizers/TSHessianOptimizer.py` — RSIRFO kwargs（fork 間でホストパッケージの import パスが分岐）
 - `pysisyphus/calculators/{Calculator,Dimer}.py` — GPU 対応バックエンドフック（30 以上の QM バックエンドは削除済み。抽象 base + Dimer TS calculator のみ残存）
 - `pysisyphus/_array.py` — `optimizers/hessian_updates.py`（および徐々に他のホットパスファイル）で使われる `get_xp` / `_outer` / `_dot` / `_eigh` shim

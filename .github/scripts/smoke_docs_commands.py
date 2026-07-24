@@ -43,7 +43,8 @@ def _extract_docs_commands() -> list[str]:
 
 def _prepare_fixture_files(tmp: Path) -> dict[str, Path]:
     pdb_text = (
-        "ATOM      1  C   LIG A   1       0.000   0.000   0.000  1.00  0.00           C\n"
+        "HETATM    1  C1  LIG A   1       0.000   0.000   0.000  1.00  0.00           C\n"
+        "HETATM    2  C2  LIG A   1       1.400   0.000   0.000  1.00  0.00           C\n"
         "END\n"
     )
     r_pdb = tmp / "R.pdb"
@@ -80,6 +81,10 @@ def _prepare_fixture_files(tmp: Path) -> dict[str, Path]:
 
 def _sanitize_all_args(args: list[str], fixture: dict[str, Path]) -> list[str]:
     out: list[str] = []
+    staged_scan = any(tok in {"-s", "--scan-lists"} for tok in args)
+    fixture_inputs = [str(fixture["r_pdb"])]
+    if not staged_scan:
+        fixture_inputs.append(str(fixture["p_pdb"]))
     saw_input = False
     saw_dry_run = False
     saw_center = False
@@ -104,9 +109,18 @@ def _sanitize_all_args(args: list[str], fixture: dict[str, Path]) -> list[str]:
             # Omitting them lets the extractor derive a consistent charge.
             i += 2
             continue
+        if tok in {"-s", "--scan-lists"}:
+            out.append(tok)
+            i += 1
+            n_values = 0
+            while i < len(args) and not args[i].startswith("-"):
+                out.append(f"[(1,2,{1.5 + 0.1 * n_values:.1f})]")
+                n_values += 1
+                i += 1
+            continue
         if tok in {"-i", "--input"}:
             saw_input = True
-            out.extend([tok, str(fixture["r_pdb"]), str(fixture["p_pdb"])])
+            out.extend([tok, *fixture_inputs])
             i += 1
             while i < len(args) and not args[i].startswith("-"):
                 i += 1
@@ -150,7 +164,7 @@ def _sanitize_all_args(args: list[str], fixture: dict[str, Path]) -> list[str]:
         i += 1
 
     if not saw_input:
-        out.extend(["-i", str(fixture["r_pdb"]), str(fixture["p_pdb"])])
+        out.extend(["-i", *fixture_inputs])
     if not saw_center:
         out.extend(["-c", "LIG"])
     if not saw_dry_run:

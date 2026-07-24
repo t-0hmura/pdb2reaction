@@ -62,7 +62,7 @@ A quick pass that freezes cap parents and disables climb: add `--freeze-links --
  - All endpoints after the first are Kabsch-aligned to the first structure. If either endpoint defines `freeze_atoms`, only those atoms participate in the RMSD fit and the resulting transform is applied to every atom.
  - When `--freeze-links` is active, cap-hydrogen parent atoms are automatically frozen (see {ref}`Cap hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
 2. **String growth and HEI export**
- - After the path is grown and refined, the tool searches for the highest-energy internal local maximum (preferred). If none exists, it falls back to the maximum among internal nodes; if no internal nodes are present, the global maximum is exported.
+ - After the path is grown and refined, the global maximum-energy image is exported as the HEI. An endpoint HEI is not an internal transition-state candidate and requires a separate TS optimization before TS-specific analysis.
  - The highest-energy image (HEI) is written both as `.xyz` and `.pdb` when a PDB reference exists, and as `.gjf` when a Gaussian template is available; these conversions honor `--convert-files`.
 
 ## Outputs

@@ -50,7 +50,7 @@ See [`examples/mcp_client_config.json`](../../examples/mcp_client_config.json) f
 
 | MCP tool | wraps | purpose |
 |---|---|---|
-| `scan_1d` / `scan_2d` / `scan_3d` | `pdb2reaction scan{,2d,3d}` | Restraint-driven distance scans |
+| `scan_1d` / `scan_2d` / `scan_3d` | `pdb2reaction scan` / `scan2d` / `scan3d` | Restraint-driven distance scans |
 | `optimize_path` | `pdb2reaction path-opt` | Two-endpoint MEP optimization |
 | `search_paths` | `pdb2reaction path-search` | Recursive reaction-pathway search |
 | `run_full_pipeline` | `pdb2reaction all` | Configurable end-to-end pipeline; TS/IRC, thermo/freq, and DFT stages run only when their tool arguments enable them |
@@ -74,7 +74,7 @@ Every tool returns the same structured dict so the calling agent can dispatch on
 ```python
 {
     "schema_version": "1.1",         # pin to MCP_SUBCMD_RESULT_SCHEMA_VERSION
-    "status": "ok" | "failed" | "summary_missing" | "summary_parse_error",
+    "status": "ok" | "failed" | "summary_missing" | "summary_parse_error" | "summary_run_mismatch",
     "exit_code": int,                # subprocess exit code
     "out_dir": str | None,           # working directory the CLI wrote to (None for the I/O helpers)
     "summary": dict,                 # parsed summary.json; {} for the I/O helpers
@@ -82,8 +82,14 @@ Every tool returns the same structured dict so the calling agent can dispatch on
     "stdout_tail": str,              # last ~60 lines of stdout
     "hint": str | None,              # parsed `; recover: <hint>` suffix
     "argv": list[str],               # full argv that was executed (reproducible)
+    "run_id": str,                   # invocation ownership token
 }
 ```
+
+`summary_run_mismatch` means the output directory contains a summary owned by
+a different invocation; clients must not treat that stale summary as the
+current result. `run_id` identifies the invocation used for this ownership
+check.
 
 `summary` and `out_dir` carry data for the 12 tools that run their subcommand against an output directory (the stage runners, the scans, `optimize_path`, `search_paths`, `run_full_pipeline`, `run_single_point_dft`). The 6 structure / I/O helper tools (`extract_active_site`, `add_element_info`, `fix_altloc`, `plot_trajectory`, `plot_energy_diagram`, `detect_bond_changes`) run with `out_dir=None` and write no summary.json: they always return `summary={}` and `out_dir=None`, with `status` taken straight from the exit code (`ok` / `failed`). Read their result from `stdout_tail`, and their failure reason from `stderr_tail` / `exit_code`.
 

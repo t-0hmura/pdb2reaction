@@ -494,12 +494,14 @@ def cli(
             preopt_tag_j = distance_tag(d2_ref)
             preopt_tag_k = distance_tag(d3_ref)
             preopt_xyz_path = grid_dir / f"preopt_i{preopt_tag_i}_j{preopt_tag_j}_k{preopt_tag_k}.xyz"
+            preopt_artifact_written = False
             try:
                 s_pre = geom_outer.as_xyz()
                 if not s_pre.endswith("\n"):
                     s_pre += "\n"
                 with open(preopt_xyz_path, "w") as f:
                     f.write(s_pre)
+                preopt_artifact_written = True
                 click.echo(f"[preopt] Wrote '{preopt_xyz_path}'.")
             except Exception as e:
                 click.echo(f"[preopt] WARNING: failed to write '{preopt_xyz_path.name}': {e}", err=True)
@@ -523,7 +525,8 @@ def cli(
                 "d3_A": float(d3_ref),
                 "energy_hartree": float(E_pre_h),
                 "bias_converged": _preopt_conv,
-                "artifact_written": True,
+                "artifact_written": preopt_artifact_written,
+                "is_preopt": True,
             }
 
             # Build and reorder the grids so that we scan from values closest to the reference distances
@@ -579,6 +582,7 @@ def cli(
 
                 biased.set_pairs([(i1, j1, float(d1_target))])
                 geom_outer_i.set_calculator(biased)
+                geom_outer_start = _snapshot_geometry(geom_outer_i)
 
                 opt1 = make_sopt_optimizer(
                     geom_outer_i,
@@ -590,16 +594,25 @@ def cli(
                     out_dir=tmp_opt_dir,
                     prefix=f"d1_{i_idx:03d}",
                 )
+                d1_converged = None
                 try:
                     opt1.run()
+                    d1_converged = optimizer_converged_bit(opt1)
                 except ZeroStepLength:
                     click.echo(f"[d1 {i_idx}] ZeroStepLength — continuing to d2/d3 scan.")
+                    d1_converged = optimizer_converged_bit(opt1)
                 except OptimizationError as e:
                     click.echo(f"[d1 {i_idx}] OptimizationError — {e}")
+                    d1_converged = False
 
                 # Snapshot after d1 relaxation for inner loops and cache
-                geom_after_d1 = _snapshot_geometry(geom_outer_i)
-                d1_geoms[i_idx] = geom_after_d1
+                if d1_converged is True and np.isfinite(
+                    np.asarray(geom_outer_i.coords3d, dtype=float)
+                ).all():
+                    geom_after_d1 = _snapshot_geometry(geom_outer_i)
+                    d1_geoms[i_idx] = geom_after_d1
+                else:
+                    geom_after_d1 = _snapshot_geometry(geom_outer_start)
 
                 if i_idx not in d2_geoms:
                     d2_geoms[i_idx] = {}
@@ -630,6 +643,7 @@ def cli(
                         ]
                     )
                     geom_mid.set_calculator(biased)
+                    geom_mid_start = _snapshot_geometry(geom_mid)
 
                     opt2 = make_sopt_optimizer(
                         geom_mid,
@@ -641,15 +655,24 @@ def cli(
                         out_dir=tmp_opt_dir,
                         prefix=f"d1_{i_idx:03d}_d2_{j_idx:03d}",
                     )
+                    d2_converged = None
                     try:
                         opt2.run()
+                        d2_converged = optimizer_converged_bit(opt2)
                     except ZeroStepLength:
                         click.echo(f"[d1 {i_idx}, d2 {j_idx}] ZeroStepLength — continuing to d3 scan.")
+                        d2_converged = optimizer_converged_bit(opt2)
                     except OptimizationError as e:
                         click.echo(f"[d1 {i_idx}, d2 {j_idx}] OptimizationError — {e}")
+                        d2_converged = False
 
-                    geom_after_d2 = _snapshot_geometry(geom_mid)
-                    d2_store[j_idx] = geom_after_d2
+                    if d2_converged is True and np.isfinite(
+                        np.asarray(geom_mid.coords3d, dtype=float)
+                    ).all():
+                        geom_after_d2 = _snapshot_geometry(geom_mid)
+                        d2_store[j_idx] = geom_after_d2
+                    else:
+                        geom_after_d2 = _snapshot_geometry(geom_mid_start)
 
                     key_ij = (i_idx, j_idx)
                     if key_ij not in d3_geoms:
@@ -756,6 +779,7 @@ def cli(
                                 "energy_hartree": E_h,
                                 "bias_converged": converged,
                                 "artifact_written": bool(_artifact_written),
+                                "is_preopt": False,
                             }
                         )
 
@@ -827,6 +851,14 @@ def cli(
             def _eligible_min3() -> float:
                 if not _elig_df3.empty:
                     return float(_elig_df3["energy_hartree"].min())
+                if csv_path is None:
+                    click.echo(
+                        "No converged finite grid point with a written "
+                        "geometry is available; relative energies and "
+                        "interpolation are disabled.",
+                        err=True,
+                    )
+                    return float("nan")
                 return float(df["energy_hartree"].min())
 
             if baseline == "first":
@@ -868,6 +900,10 @@ def cli(
             & np.isfinite(d3_points)
             & np.isfinite(z_points)
         )
+        if csv_path is None:
+            mask &= np.asarray(
+                seed_eligible_mask(df.to_dict("records")), dtype=bool,
+            )
         if not np.any(mask):
             click.echo("[plot] No finite data for plotting.")
             sys.exit(1)
@@ -1051,16 +1087,29 @@ def cli(
         # result.json (if --out-json)
         if out_json:
             from pdb2reaction.core.utils import atom_label_from_meta, write_result_json
+            grid_records = (
+                [
+                    rec
+                    for rec in records
+                    if not bool(rec.get("is_preopt", False))
+                ]
+                if csv_path is None
+                else []
+            )
             if not df.empty and "energy_hartree" in df.columns:
                 if csv_path is None:
                     # Fresh scan: minimum only from seed-eligible points (M48).
-                    _seed_ok_json = pd.Series(
-                        seed_eligible_mask(df.to_dict("records")), index=df.index
+                    _seed_ok_json = seed_eligible_mask(grid_records)
+                    _eligible_grid_energies = [
+                        float(rec["energy_hartree"])
+                        for rec, eligible in zip(grid_records, _seed_ok_json)
+                        if bool(eligible)
+                    ]
+                    min_energy = (
+                        min(_eligible_grid_energies)
+                        if _eligible_grid_energies
+                        else None
                     )
-                    if _seed_ok_json.any():
-                        min_energy = float(df.loc[_seed_ok_json, "energy_hartree"].min())
-                    else:
-                        min_energy = None
                 else:
                     # Plot-only from an existing CSV: preserve legacy raw minimum.
                     min_energy = float(df["energy_hartree"].min())
@@ -1076,7 +1125,9 @@ def cli(
                     spin=spin_val,
                     plot_only=csv_path is not None,
                 ),
-                "n_grid_points": len(df),
+                "n_grid_points": (
+                    len(grid_records) if csv_path is None else len(df)
+                ),
                 "min_energy_hartree": min_energy,
                 "files": {
                     "scan3d_density_html": "scan3d_density.html",
@@ -1109,7 +1160,7 @@ def cli(
                         energy=rec.get("energy_hartree"),
                         artifact_written=bool(rec.get("artifact_written", False)),
                     )
-                    for rec in records
+                    for rec in grid_records
                 ]
                 _sci3, _sci3_reasons = scan_scientific_status(_point_outcomes3)
                 result_data["execution_status"] = "completed"

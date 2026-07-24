@@ -32,11 +32,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Add a release-pinned, keyboard-accessible Colab GUI for ordered structure input,
   workflow-aware command construction, interrupt-safe execution, and current-run-scoped
   result inspection/downloads. Its compact Input, Viewer, Options, and Results
-  workspace co-locates workflow selection with a 4:3 molecular view. Exact 3D picks
-  persist as thick element-colored residue sticks with a dark atom halo. The viewer keeps
-  primary-input selections separate from view-only secondary structures, preserves the
-  camera across redraws, focuses newly selected centers with surrounding protein context,
-  and rolls back failed structure switches. Center selectors retain chain and insertion-code
+  workspace co-locates workflow selection with a 4:3 molecular view. Exact 3D
+  picks use Mol*'s native focus and selection behavior without rebuilding the
+  viewer. The GUI keeps primary-input selections separate from view-only secondary
+  structures and rolls back failed structure switches. Center selectors retain chain and insertion-code
   identity; incompatible secondary views suppress primary selection and measurement overlays.
   Validation follows the exact command and content hashes for every
   existing-file input declared by the selected Click command, while its transcript remains
@@ -46,7 +45,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   preview; missing energies, failures, cancellations, and diagnostic bundles remain explicit.
   The input queue appends uploads as removable rows, keeps water visible on request,
   and derives searchable per-option controls and click-to-open help from the selected
-  live CLI. Key, advanced, and command-line controls remain collapsed until needed.
+  live CLI. Key and advanced controls remain collapsed until needed, while the
+  generated command line stays visible.
   Results can preview bounded PDB, CIF/mmCIF, and single-structure XYZ artifacts.
 - Add opt-in IRC `--never-stop` / `all --irc-never-stop` traversal of transient
   energy rises while retaining convergence and cycle limits.
@@ -56,6 +56,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Add `opt`/`all --reject-uphill/--no-reject-uphill` (default on) to opt out of the
   RFO uphill-rejection safeguard; on `all` it applies to post-IRC endpoint
   re-optimization only.
+- Add `freq --symmetry-number` and `all --freq-symmetry-number` for an explicit
+  external rotational symmetry number. Point-group symmetry is not inferred;
+  the standalone/default child value is 1.
 
 ### Changed
 - Pin backend setup recipes to the official PyTorch 2.8 wheel matrix and keep
@@ -90,6 +93,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   JSON change.
 - Keep finite-difference Hessian assembly, low-rank Bofill updates, and mass
   scaling device-resident on GPU runs, avoiding per-step host round-trips.
+- Make periodic IRC HDF5 trajectory checkpointing opt-in
+  (`irc.dump_every: null` by default). Enabled checkpoints contain coordinates,
+  energies, and gradients, but never a dense Hessian.
 - Seed TS optimization from the MEP tangent: `all` writes the HEI tangent and
   passes it to the TSOPT child as `--ref-mode`, so the located saddle, `n_imag`,
   and barrier can differ from v0.4.11.
@@ -110,9 +116,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   mutated nested defaults.
 
 ### Fixed
+- Read the bundled pysisyphus optimizer's legacy comma-delimited Hartree XYZ comments in
+  `trj2fig` and other strict trajectory consumers without treating unrelated
+  numeric comments as energies.
 - Reject unknown options and orphan arguments in commands that retain historical
   grouped `-i`/`-s` syntax, including in-process Click invocations, instead of
-  silently treating residual tokens as compatibility values.
+  silently treating residual tokens as compatibility values. Reject
+  `all --scan-lists` with multiple inputs instead of silently selecting the
+  endpoint-path route and ignoring the staged scan.
 - Preserve YAML values for workers, workers-per-node, and the DMF backend unless
   the corresponding `all` option is explicit; forward explicit values, including
   `1`, to scan and path child commands.
@@ -123,6 +134,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   construction so `--show-config`/`--dry-run` and runtime configuration agree.
 - Make ORB analytical Hessians robust to double-backward saved-tensor mutation,
   and atomically roll back rejected RFO/L-BFGS trials and optimizer state.
+- Keep interpolated/GDIIS RFO displacements on the reference step's tensor
+  device, preventing a CUDA-to-NumPy conversion failure during Hessian scans.
 - Reject `n_imag=0` TS minima using exact Cartesian PHVA or internal-coordinate
   optimizer-space order; restore lost path curvature and flatten only extra modes.
 - Make TS/frequency/IRC/endpoint Hessian reuse coordinate- and direction-safe,
@@ -173,6 +186,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - `key_output_files` now lists only the artifacts claimed by the current
   invocation's run manifest rather than files discovered under the output tree, so a
   reused `-o/--out-dir` no longer reports stale files from an earlier run.
+- Frequency JSON/YAML records `symmetry_number` and
+  `symmetry_number_source`; `all` copies complete child provenance into each
+  post-segment's `thermo_symmetry` map for R/TS/P.
 - Write `result.json`/`summary.json` by staged atomic replace (fsync + `os.replace`,
   mirror first) and raise on a write failure that was previously swallowed;
   XYZ→PDB/CIF conversion builds the whole output in memory and validates every frame

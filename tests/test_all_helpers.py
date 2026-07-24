@@ -13,6 +13,9 @@ from pdb2reaction.workflows._all_helpers import (
     AllContext,
     build_energy_level_dict,
     build_pipeline_summary_payload,
+    build_thermo_mode_validation,
+    build_thermo_symmetry_provenance,
+    validated_thermo_triplet,
 )
 
 
@@ -90,8 +93,8 @@ def test_all_context_fields_match_cli_signature() -> None:
     assert not extra, f"AllContext has extra fields: {sorted(extra)}"
     # Absolute count guard catches symmetric add+remove pairs where the
     # name sets stay equal but the field count drifts.
-    assert len(ctx_field_names) == 73, (
-        f"AllContext field count drifted from 73 to {len(ctx_field_names)}; "
+    assert len(ctx_field_names) == 74, (
+        f"AllContext field count drifted from 74 to {len(ctx_field_names)}; "
         f"update this assertion alongside the cli() signature change."
     )
 
@@ -242,6 +245,93 @@ def test_build_pipeline_summary_payload_dft_disabled_drops_basis() -> None:
     assert payload["opt_mode"] is None
 
 
+def test_thermo_symmetry_provenance_copies_only_complete_valid_states() -> None:
+    payload = build_thermo_symmetry_provenance(
+        {
+            "R": {"symmetry_number": 2, "symmetry_number_source": "config"},
+            "TS": {"symmetry_number": 3, "symmetry_number_source": "cli"},
+            "P": {"symmetry_number": 1},
+            "other": {"symmetry_number": 9, "symmetry_number_source": "test"},
+        }
+    )
+
+    assert payload == {
+        "R": {"symmetry_number": 2, "symmetry_number_source": "config"},
+        "TS": {"symmetry_number": 3, "symmetry_number_source": "cli"},
+    }
+
+
+@pytest.mark.parametrize("invalid", [True, 0, -1, 2.0, "2", None])
+def test_thermo_symmetry_provenance_rejects_invalid_values(invalid) -> None:
+    assert build_thermo_symmetry_provenance(
+        {
+            "R": {
+                "symmetry_number": invalid,
+                "symmetry_number_source": "default",
+            }
+        }
+    ) == {}
+
+
+def test_thermo_mode_validation_requires_minimum_ts_minimum_order() -> None:
+    result = build_thermo_mode_validation(
+        {
+            "R": {"num_imag_freq": 0},
+            "TS": {"num_imag_freq": 1},
+            "P": {"num_imag_freq": 0},
+        }
+    )
+    assert result["valid"] is True
+    assert result["reasons"] == []
+
+
+def test_thermo_mode_validation_rejects_frozen_legacy_active_projection() -> None:
+    payloads = {
+        "R": {"num_imag_freq": 0},
+        "TS": {
+            "num_imag_freq": 1,
+            "n_freeze_atoms": 2,
+            "rigid_projection": {
+                "treatment": "legacy-active",
+                "frozen_atom_count": 2,
+            },
+        },
+        "P": {"num_imag_freq": 0},
+    }
+
+    result = build_thermo_mode_validation(payloads)
+
+    assert result["valid"] is False
+    assert any("cannot certify" in reason for reason in result["reasons"])
+
+
+@pytest.mark.parametrize(
+    "payloads",
+    [
+        {"R": {"num_imag_freq": 1}, "TS": {"num_imag_freq": 1}, "P": {"num_imag_freq": 0}},
+        {"R": {"num_imag_freq": 0}, "TS": {"num_imag_freq": 0}, "P": {"num_imag_freq": 0}},
+        {"R": {"num_imag_freq": 0}, "TS": {"num_imag_freq": 1}, "P": {}},
+    ],
+)
+def test_thermo_mode_validation_fails_closed(payloads) -> None:
+    result = build_thermo_mode_validation(payloads)
+    assert result["valid"] is False
+    assert result["reasons"]
+
+
+def test_validated_thermo_triplet_requires_modes_and_finite_values() -> None:
+    payloads = {
+        "R": {"num_imag_freq": 0, "g": -10.0},
+        "TS": {"num_imag_freq": 1, "g": -9.0},
+        "P": {"num_imag_freq": 0, "g": -11.0},
+    }
+    assert validated_thermo_triplet(payloads, "g") == (-10.0, -9.0, -11.0)
+    payloads["P"]["g"] = float("nan")
+    assert validated_thermo_triplet(payloads, "g") is None
+    payloads["P"] = {"num_imag_freq": 1, "g": -11.0}
+    assert validated_thermo_triplet(payloads, "g") is None
+
+
 def test_enrich_summary_uses_backend_neutral_refined_energy_keys(tmp_path: Path) -> None:
     from pdb2reaction.workflows.all import _enrich_summary
 
@@ -317,6 +407,54 @@ def test_enrich_summary_labels_overall_reaction_energy_method(tmp_path: Path) ->
 
     assert result["overall_reaction_energy_kcal"] == -2.5
     assert result["overall_reaction_energy_method"] == "DFT//MLIP_Gibbs"
+
+
+def test_tsonly_reenrichment_uses_local_diagram_and_post_method(
+    tmp_path: Path,
+) -> None:
+    from pdb2reaction.workflows.all import _enrich_summary
+
+    summary = {
+        "segments": [
+            {"index": 1, "kind": "tsopt", "barrier_kcal": 8.0},
+        ],
+        "energy_diagrams": [
+            {
+                "name": "energy_diagram_DFT",
+                "energies_kcal": [0.0, 7.5, -1.25],
+            }
+        ],
+    }
+    common = {
+        "version": "",
+        "pipeline_mode": "tsopt-only",
+        "mlip_backend": "mace",
+        "mlip_model": "MACE-OMOL-0",
+        "charge": 0,
+        "spin": 1,
+        "out_dir": tmp_path,
+    }
+    _enrich_summary(summary, **common)
+    assert summary["rate_limiting_step"]["method"] == "MLIP"
+
+    _enrich_summary(
+        summary,
+        post_segments=[
+            {
+                "index": 1,
+                "dft": {"barrier_kcal": 7.5, "delta_kcal": -1.25},
+            }
+        ],
+        **common,
+    )
+
+    assert summary["rate_limiting_step"] == {
+        "segment": 1,
+        "barrier_kcal": 7.5,
+        "method": "DFT",
+    }
+    assert summary["overall_reaction_energy_kcal"] == -1.25
+    assert summary["overall_reaction_energy_method"] == "DFT"
 
 
 def test_enrich_summary_rate_limiting_uses_highest_complete_method(tmp_path: Path) -> None:
@@ -475,3 +613,61 @@ def test_enrich_summary_success_requires_all_requested_post_results(tmp_path: Pa
 
     assert result["status"] == "success"
     assert "status_reasons" not in result
+def test_irc_endpoint_topology_tie_uses_rmsd_and_records_provenance(
+    monkeypatch,
+    tmp_path,
+):
+    from pdb2reaction.workflows import all as workflow
+
+    left = object()
+    right = object()
+    mep_left = object()
+    mep_right = object()
+    generated = iter((mep_left, mep_right))
+    monkeypatch.setattr(
+        workflow,
+        "read_xyz_first_last",
+        lambda _path: (["C"], [[0.0, 0.0, 0.0]], [[1.0, 0.0, 0.0]]),
+    )
+    monkeypatch.setattr(
+        workflow,
+        "_geom_from_angstrom",
+        lambda *_args, **_kwargs: next(generated),
+    )
+    monkeypatch.setattr(
+        workflow._path_search,
+        "has_bond_change",
+        lambda *_args, **_kwargs: (False, ""),
+    )
+    scores = {
+        (left, mep_left): 4.0,
+        (left, mep_right): 1.0,
+        (right, mep_left): 1.0,
+        (right, mep_right): 4.0,
+    }
+    monkeypatch.setattr(
+        workflow._path_search,
+        "_rmsd_between",
+        lambda first, second: scores[(first, second)],
+    )
+
+    (
+        oriented_left,
+        oriented_right,
+        _left_tag,
+        _right_tag,
+        reversed_irc,
+        assignment,
+    ) = workflow._orient_irc_endpoints(
+        left,
+        right,
+        endpoint_trajectory=tmp_path / "mep.xyz",
+        freeze_atoms=[],
+        seg_tag="seg_01",
+    )
+
+    assert (oriented_left, oriented_right) == (right, left)
+    assert reversed_irc is True
+    assert assignment["method"] == "rmsd_topology_tie"
+    assert assignment["rmsd_swapped"] < assignment["rmsd_direct"]
+    assert assignment["connectivity_validated"] is True

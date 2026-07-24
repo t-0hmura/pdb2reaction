@@ -56,9 +56,9 @@
 |------|-----------|-------------|
 | **QM** | Quantum Mechanics | First-principles electronic structure calculations (DFT, HF, post-HF, etc.). |
 | **DFT** | Density Functional Theory | A quantum-mechanical method that models electronic structure via electron density functionals. |
-| **DFT//MLIP** | — | Composite-method notation: DFT single-point energies evaluated at MLIP-optimized geometries. Combines MLIP geometry/dynamics with DFT energy refinement. The `//` separator follows the standard quantum-chemistry convention "energy-level // geometry-level". |
+| **DFT//MLIP** | — | Composite-method notation: DFT single-point energies evaluated at MLIP-optimized geometries. Combines MLIP geometry/dynamics with a higher-level DFT energy evaluation. The `//` separator follows the standard quantum-chemistry convention "energy-level // geometry-level". |
 | **Hessian** | — | The matrix of second derivatives of energy with respect to atomic coordinates. Eigenvalues yield vibrational frequencies; eigenvectors yield vibrational modes (displacement vectors). Used for vibrational analysis and TS optimization. |
-| **SP** | Single Point | A calculation at a fixed geometry (no optimization); often used for higher-level energy refinement. |
+| **SP** | Single Point | A calculation at a fixed geometry (no optimization); often used for a higher-level energy evaluation. |
 | **Spin Multiplicity** | — | 2S+1, where S is total spin. Singlet = 1, doublet = 2, triplet = 3, etc. Specified with `-m/--multiplicity` (default: 1). |
 | **ALPB** | Analytical Linearized Poisson-Boltzmann | An implicit-solvent model available via xTB (`--solvent-model alpb`, default). |
 | **CPCM-X** | Extended Conductor-like Polarizable Continuum Solvation Model | An implicit-solvent model available via xTB (`--solvent-model cpcmx`); "X" stands for "eXtended", obtained by coupling CPCM with COSMO-RS-style σ-profiles and an SMD-style non-electrostatic term to give realistic solvation free energies for arbitrary solvents (Stahn, Ehlert, Grimme, *J. Phys. Chem. A* 2023). |

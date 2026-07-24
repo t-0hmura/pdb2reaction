@@ -64,7 +64,7 @@ pdb2reaction tsopt -i ts.xyz -q 0 -m 1 --config tsopt.yaml
 `geom.tr_projection` / `--tr-projection` は、Cartesian PHVA 関連の固有値解析で剛体並進・回転をどう扱うかを指定します。
 
 - **`constrained`（デフォルト）:** 全系の剛体運動のうち、すべての凍結anchor（固定点）を動かさない組合せだけを除去します。一般的な非線形構造では、凍結anchorが0、1、2、3個以上（非共線）のとき、effective rankはそれぞれ6、3、1、0です。通常のクラスターモデル境界には非共線なanchorが複数あるため、effective rankは通常0で、active modeを除去しません。
-- **`legacy-active`:** 可動fragmentを孤立分子として扱い、その剛体モードを除去します。well-conditionedで縮退のない通常構造に対するisolated-active比較専用です。現行の共通射影kernelが縮退を処理するため、near-linear／縮退構造で旧結果をbitwiseに再現することは保証しません。
+- **`legacy-active`:** 非推奨の互換処理で、可動fragmentを孤立分子として扱います。比較専用であり、pass/HOSP 遷移状態認定には使用できません。現行の共通射影kernelが縮退を処理するため、near-linear／縮退構造で旧結果をbitwiseに再現することは保証しません。
 
 この設定は`freq`、`irc`、TSのexact PHVA checkとDimer方向、`opt` / `tsopt`のflattenで使用します。MEPからCartesian反応方向を渡す`tsopt --ref-mode`とは無関係です。全原子を凍結した系にはactiveな振動DOFがないため、明示的なエラーで停止します。
 

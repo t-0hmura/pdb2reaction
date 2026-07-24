@@ -49,7 +49,9 @@ pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 \
 - **Thermochemistry**: if `thermoanalysis` is installed, a QRRHO-like summary (EE, ZPE, E/H/G
   corrections, heat capacities, entropies) is printed using PHVA frequencies. CLI pressure in
   atm is converted internally to Pa. When `--dump`, a `thermoanalysis.yaml` snapshot is
-  also written.
+  also written. The rotational symmetry number defaults to 1; set the molecule's external
+  rotational symmetry explicitly with `--symmetry-number` (or
+  `thermo.symmetry_number` in YAML). The workflow does not infer a point group.
 - **Frequency-treatment policy**: `freq` applies the **standalone-freq policy** — QRRHO with a
   100 cm⁻¹ rotor cutoff, unit frequency/ZPE scaling, **no** imaginary-frequency inversion, and
   **no** positive-frequency floor. This is deliberately different from the internal
@@ -91,7 +93,7 @@ The tables below cover the options that need explanation; the full flag list is 
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links/--no-freeze-links` | PDB/mmCIF input (or XYZ/GJF with `--ref-pdb`). Freeze parents of cap hydrogens and merge with `geom.freeze_atoms`. See [extract](extract.md) for cap-hydrogen details. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
-| `--tr-projection [constrained\|legacy-active]` | Rigid-mode treatment for PHVA. `constrained` respects frozen anchors; `legacy-active` is an isolated-active comparison treatment. | `constrained` |
+| `--tr-projection [constrained\|legacy-active]` | Rigid-mode treatment for PHVA. `legacy-active` is deprecated comparison-only behavior and must not be used for pass/HOSP transition-state certification. | `constrained` |
 | `--max-write INT` | Number of modes to export. | `10` |
 | `--amplitude-ang FLOAT` | Mode animation amplitude (Å). | `0.8` |
 | `--n-frames INT` | Frames per mode animation. | `20` |
@@ -99,6 +101,7 @@ The tables below cover the options that need explanation; the full flag list is 
 | `-o, --out-dir TEXT` | Output directory. | `./result_freq/` |
 | `--temperature FLOAT` | Thermochemistry temperature (K). | `298.15` |
 | `--pressure FLOAT` | Thermochemistry pressure (atm). On the CLI this flag is `--pressure`; the matching YAML key under `thermo:` is `pressure_atm` (explicit unit suffix). Both are in atm and get converted to Pa internally. | `1.0` |
+| `--symmetry-number INT` | External rotational symmetry number used in the molecular partition function. | `1` |
 | `--dump/--no-dump` | Write `thermoanalysis.yaml`. Standalone `freq` defaults to off. `pdb2reaction all --thermo` always retains this internal file because the composite workflow consumes it; `all --no-dump` still controls optional scan/MEP/TS trajectories but does not suppress the thermochemistry channel. | `False` |
 | `--hessian-calc-mode CHOICE` | MLIP Hessian mode (`Analytical` or `FiniteDifference`). | `FiniteDifference` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/CIF companions when a PDB/mmCIF topology is available (GJF is not written). | `True` |
@@ -135,7 +138,7 @@ freq:
 
 - [tsopt](tsopt.md) — Optimize TS candidates (includes imaginary-frequency check; follow with IRC for endpoint validation)
 - [irc](irc.md) — IRC from TS (freq is often run on IRC endpoints for thermochemistry)
-- [dft](dft.md) — Single-point DFT for higher-level energy refinement
+- [dft](dft.md) — Single-point DFT for higher-level energy evaluation
 - [all](all.md) — End-to-end workflow with `--thermo`
 - [YAML Reference](yaml-reference.md) — Full `freq` and `thermo` configuration options
 - [Glossary](glossary.md) — Definitions of ZPE, Gibbs Energy, Enthalpy, Entropy

@@ -667,15 +667,20 @@ def cli(
                         click.echo(f"[stage {k}] WARNING: Failed to evaluate bond changes: {e}", err=True)
 
                     # Write current (possibly endopted) geometry as the stage result
+                    final_energy_h = unbiased_energy_hartree(geom, base_calc)
                     final_xyz = stage_dir / "result.xyz"
                     with open(final_xyz, "w") as f:
-                        f.write(xyz_string_with_energy(geom))
+                        f.write(
+                            xyz_string_with_energy(
+                                geom, energy=final_energy_h,
+                            )
+                        )
                     click.echo(f"[write] Wrote '{final_xyz}'.")
-                    # Capture final energy directly from geometry object
-                    try:
-                        srec["final_energy_hartree"] = float(geom.energy) if geom.energy is not None else None
-                    except Exception:
-                        srec["final_energy_hartree"] = None
+                    srec["final_energy_hartree"] = (
+                        float(final_energy_h)
+                        if np.isfinite(final_energy_h)
+                        else None
+                    )
                     if convert_xyz_like_outputs(
                         final_xyz,
                         prepared_input,
@@ -808,15 +813,18 @@ def cli(
                         if needs_pdb:
                             click.echo("[convert] Wrote 'scan.pdb'.")
 
+                final_energy_h = unbiased_energy_hartree(geom, base_calc)
                 final_xyz = stage_dir / "result.xyz"
                 with open(final_xyz, "w") as f:
-                    f.write(xyz_string_with_energy(geom))
+                    f.write(
+                        xyz_string_with_energy(geom, energy=final_energy_h)
+                    )
                 click.echo(f"[write] Wrote '{final_xyz}'.")
-                # Capture final energy directly from geometry object
-                try:
-                    srec["final_energy_hartree"] = float(geom.energy) if geom.energy is not None else None
-                except Exception:
-                    srec["final_energy_hartree"] = None
+                srec["final_energy_hartree"] = (
+                    float(final_energy_h)
+                    if np.isfinite(final_energy_h)
+                    else None
+                )
                 if convert_xyz_like_outputs(
                     final_xyz,
                     prepared_input,
@@ -900,13 +908,17 @@ def cli(
                             _steps + [_eo if isinstance(_eo, bool) else None]
                         )
                     _fe = srec.get("final_energy_hartree")
+                    _energy_valid = (
+                        isinstance(_fe, (int, float, np.integer, np.floating))
+                        and np.isfinite(float(_fe))
+                    )
                     _stage_leaves.append(
                         make_leaf(
                             "scan",
                             f"stage_{srec['index']}",
                             executed=True,
                             converged=_stage_conv,
-                            energy_valid=(_fe is not None),
+                            energy_valid=_energy_valid,
                         )
                     )
                 _truth = aggregate_workflow_truth(

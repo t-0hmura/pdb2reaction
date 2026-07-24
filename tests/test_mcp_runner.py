@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import json
 import os
+import signal
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from pdb2reaction.mcp import _runner
@@ -49,7 +51,7 @@ def test_timeout_hint_names_public_tool_argument(monkeypatch) -> None:
     def raise_timeout(*_args, **_kwargs):
         raise subprocess.TimeoutExpired(cmd=["pdb2reaction", "opt"], timeout=12.0)
 
-    monkeypatch.setattr(_runner.subprocess, "run", raise_timeout)
+    monkeypatch.setattr(_runner, "_run_with_timeout_group", raise_timeout)
     result = _runner.run_subcmd(
         ["pdb2reaction", "opt"],
         timeout=12.0,
@@ -58,6 +60,38 @@ def test_timeout_hint_names_public_tool_argument(monkeypatch) -> None:
     assert result.status == "failed"
     assert result.exit_code == 124
     assert "timeout_seconds" in (result.hint or "")
+
+
+def test_timeout_terminates_spawned_process_group(tmp_path: Path) -> None:
+    if os.name != "posix":
+        return
+
+    pid_file = tmp_path / "processes.json"
+    script = (
+        "import json, os, pathlib, subprocess, sys, time; "
+        "child = subprocess.Popen([sys.executable, '-c', "
+        "'import time; time.sleep(30)']); "
+        "pathlib.Path(sys.argv[1]).write_text("
+        "json.dumps({'parent': os.getpid(), 'child': child.pid})); "
+        "time.sleep(30)"
+    )
+    parent_pid = None
+    try:
+        result = _runner.run_subcmd(
+            [sys.executable, "-c", script, str(pid_file)],
+            timeout=0.5,
+        )
+        assert result.status == "failed"
+        assert result.exit_code == 124
+        payload = json.loads(pid_file.read_text(encoding="utf-8"))
+        parent_pid = int(payload["parent"])
+        deadline = time.monotonic() + 2.0
+        while _runner._process_group_exists(parent_pid) and time.monotonic() < deadline:
+            time.sleep(0.02)
+        assert not _runner._process_group_exists(parent_pid)
+    finally:
+        if parent_pid is not None and _runner._process_group_exists(parent_pid):
+            os.killpg(parent_pid, signal.SIGKILL)
 
 
 def test_stale_summary_is_never_returned(

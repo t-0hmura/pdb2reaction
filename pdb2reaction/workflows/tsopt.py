@@ -24,9 +24,11 @@ from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.exceptions import OptimizationError, ZeroStepLength
 from pysisyphus.intcoords.exceptions import RebuiltInternalsException
 from pysisyphus.constants import BOHR2ANG, AMU2AU, AU2EV
+from pysisyphus._array import active_square
 from pysisyphus.calculators.Dimer import Dimer  # Dimer calculator (orientation-projected forces)
 from pysisyphus.tr_projection import (
     active_tr_basis,
+    allows_saddle_certification,
     compact_project_hessian,
     full_cartesian_tr_basis,
     normalize_tr_projection_mode,
@@ -294,7 +296,9 @@ def _mw_projected_hessian_inplace(H: torch.Tensor,
             mask_dof = torch.ones(3 * N, dtype=torch.bool, device=device)
             for i in frozen:
                 mask_dof[3 * i:3 * i + 3] = False
-            H = H[mask_dof][:, mask_dof]
+            active_dof = torch.nonzero(mask_dof, as_tuple=False).flatten()
+            H = active_square(H, active_dof)
+            del active_dof
             Q, info = active_tr_basis(
                 coords_bohr_t.to(dtype=dtype, device=device),
                 masses_au_t.to(dtype=dtype, device=device),
@@ -470,13 +474,8 @@ def _extract_active_block(H_full: torch.Tensor, mask_dof: np.ndarray) -> torch.T
     """
     Return the active-DOF block as a torch.Tensor sharing device/dtype.
     """
-    device = H_full.device
-    m = torch.as_tensor(mask_dof, device=device, dtype=torch.bool)
-    # Fancy indexing already allocates a fresh contiguous tensor with
-    # independent storage (verified: in-place modify on the result does
-    # not propagate to H_full), so the `.clone()` would just add a
-    # transient `(3N_act)²` peak for zero correctness benefit.
-    return H_full[m][:, m]
+    idx = np.flatnonzero(np.asarray(mask_dof, dtype=bool))
+    return active_square(H_full, idx)
 
 
 def _representative_atoms_for_mode(mode_vec: torch.Tensor, flatten_k: int) -> np.ndarray:
@@ -931,7 +930,12 @@ def _write_all_imaginary_modes(
 
 #                   HessianDimer (Hessian Guided Dimer)
 
-def _tsopt_terminal_status(optimizer: Any, *, saddle_verified: bool) -> str:
+def _tsopt_terminal_status(
+    optimizer: Any,
+    *,
+    saddle_verified: bool,
+    projection_certifiable: bool = True,
+) -> str:
     """Compose a TS optimizer's public status (M14/P14).
 
     Precedence, per the C7 contract: a stall wins (energy-plateau outcome is
@@ -942,9 +946,40 @@ def _tsopt_terminal_status(optimizer: Any, *, saddle_verified: bool) -> str:
     """
     if getattr(optimizer, "is_stalled", False):
         return "stalled"
-    if getattr(optimizer, "is_converged", False) and saddle_verified:
+    if (
+        getattr(optimizer, "is_converged", False)
+        and saddle_verified
+        and projection_certifiable
+    ):
         return "converged"
     return "not_converged"
+
+
+def _finalize_dimer_saddle_status(
+    runner: Any,
+    freqs_cm: np.ndarray,
+    neg_freq_thresh_cm: float,
+) -> np.ndarray:
+    """Record the final exact-Hessian verdict on a dimer runner."""
+
+    neg_idx, imaginary = _imaginary_mode_indices_and_values(
+        freqs_cm, neg_freq_thresh_cm
+    )
+    certifiable = allows_saddle_certification(
+        getattr(runner, "tr_projection", "constrained"),
+        getattr(runner, "freeze_atoms", ()),
+    )
+    runner.n_imaginary_modes = len(neg_idx)
+    runner.imaginary_frequencies_cm = imaginary
+    runner.saddle_order_verified = bool(certifiable and len(neg_idx) == 1)
+    if not runner.saddle_order_verified:
+        runner.is_converged = False
+    if not certifiable:
+        runner.stop_reason = (
+            "legacy-active projection is comparison-only for frozen systems"
+        )
+        click.echo(f"[tsopt] WARNING: {runner.stop_reason}.", err=True)
+    return neg_idx
 
 
 class HessianDimer:
@@ -1048,6 +1083,9 @@ class HessianDimer:
         # is never reported as a converged TS.
         self.is_stalled = False
         self.stop_reason = ""
+        self.saddle_order_verified = False
+        self.n_imaginary_modes: Optional[int] = None
+        self.imaginary_frequencies_cm: List[float] = []
 
         # UMA settings
         self.uma_kwargs = dict(charge=0, spin=1, model=DEFAULT_UMA_MODEL,
@@ -1635,7 +1673,10 @@ class HessianDimer:
         )
 
         del H
-        neg_idx = _echo_imaginary_modes(freqs_cm, self.neg_freq_thresh_cm)
+        neg_idx = _finalize_dimer_saddle_status(
+            self, freqs_cm, self.neg_freq_thresh_cm
+        )
+        _echo_imaginary_modes(freqs_cm, self.neg_freq_thresh_cm)
         if len(neg_idx) == 0:
             click.echo("[INFO] No imaginary mode found at the end (ν_min = %.2f cm^-1)." % (freqs_cm.min(),))
             del modes
@@ -1709,6 +1750,19 @@ def _build_rsirfo_kwargs(
     return rsirfo_kwargs
 
 
+def _validate_reference_mode_optimizer(
+    mode: str,
+    reference_mode_path: Optional[Path],
+) -> None:
+    """Reject path-mode guidance for optimizers that do not consume it."""
+    if reference_mode_path is not None and mode == "dimer":
+        raise click.BadParameter(
+            "--ref-mode requires a Hessian TS optimizer; use "
+            "--opt-mode hess, rsirfo, rsprfo, or trim.",
+            param_hint="--ref-mode",
+        )
+
+
 
 @click.command(
     help="Transition state optimization (Dimer or RS-P-RFO).",
@@ -1771,7 +1825,8 @@ def _build_rsirfo_kwargs(
     help=(
         "Rigid translation/rotation treatment for Cartesian PHVA. "
         "'constrained' removes only full-system rigid motions compatible with "
-        "the frozen atoms; 'legacy-active' treats the active fragment as isolated."
+        "the frozen atoms; 'legacy-active' is deprecated comparison-only "
+        "behavior and must not be used for pass/HOSP transition-state certification."
     ),
 )
 @click.option(
@@ -2071,6 +2126,7 @@ def cli(
             alias_groups=TSOPT_MODE_ALIASES,
             allowed_hint="grad|hess|dimer|rsirfo|trim|rsprfo",
         )
+        _validate_reference_mode_optimizer(kind, reference_mode_path)
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
 
         # Default-verbosity entry summary (skipped in child mode; under -v
@@ -2216,36 +2272,14 @@ def cli(
                 # Collect result data for --out-json (dimer mode)
                 if out_json:
                     _dimer_energy = _calc_energy(runner.geom, dict(calc_cfg))
-                    _dimer_device = _torch_device(calc_cfg.get("device", "auto"))
-                    _dimer_H = _calc_full_hessian_torch(runner.geom, dict(calc_cfg), _dimer_device)
-                    _dimer_hessian_shape = list(_dimer_H.shape)
-                    _dimer_freqs, _ = _frequencies_cm_and_modes(
-                        _dimer_H,
-                        runner.geom.atomic_numbers,
-                        runner.geom.cart_coords.reshape(-1, 3),
-                        _dimer_device,
-                        freeze_idx=list(geom_cfg.get("freeze_atoms", [])) or None,
-                        tr_projection=geom_cfg["tr_projection"],
-                        projection_info=runner.rigid_projection_info,
-                    )
-                    runner.rigid_projection_info.update({
-                        "hessian_space": (
-                            "full" if _dimer_H.shape[0] == 3 * len(runner.geom.atomic_numbers)
-                            else "active"
-                        ),
-                        "raw_hessian_shape": _dimer_hessian_shape,
-                        "source": "tsopt_exact",
-                    })
-                    click.echo(pretty_block("rigid_projection", runner.rigid_projection_info))
-                    del _dimer_H
-                    _dimer_neg_thresh = float(simple_cfg.get("neg_freq_thresh_cm", 5.0))
-                    _dimer_imag = [float(f) for f in _dimer_freqs if f < -abs(_dimer_neg_thresh)]
+                    _dimer_imag = list(runner.imaginary_frequencies_cm)
                     _tsopt_result_data = {
                         "status": _tsopt_terminal_status(
-                            runner, saddle_verified=(len(_dimer_imag) == 1)
+                            runner,
+                            saddle_verified=runner.saddle_order_verified,
                         ),
                         "energy_hartree": _dimer_energy,
-                        "n_imaginary_modes": len(_dimer_imag),
+                        "n_imaginary_modes": runner.n_imaginary_modes,
                         "imaginary_frequencies_cm": _dimer_imag,
                         "opt_mode": "dimer",
                         "n_atoms": len(runner.geom.atomic_numbers),
@@ -2283,7 +2317,6 @@ def cli(
                         _tsopt_result_data["files"]["imaginary_mode_files"] = sorted([
                             f"vib/{f.name}" for f in _vib_dir.iterdir() if f.suffix in ('.xyz', '.pdb', '.cif')
                         ])
-                    del _dimer_freqs, _dimer_energy, _dimer_device
 
             else:
                 # hess-family optimizer (RS-P-RFO default / RS-I-RFO / TRIM)
@@ -2857,12 +2890,24 @@ def cli(
 
                 # --- RSIRFO: write all final imaginary modes ---
                 neg_idx = _echo_imaginary_modes(freqs_cm, neg_freq_thresh_cm)
-                if len(neg_idx) != 1:
+                _projection_certifiable = allows_saddle_certification(
+                    geom_cfg.get("tr_projection", "constrained"),
+                    geom_cfg.get("freeze_atoms", ()),
+                )
+                _hessian_saddle_verified = bool(
+                    _projection_certifiable and len(neg_idx) == 1
+                )
+                if not _hessian_saddle_verified:
                     last_optimizer.is_converged = False
                     if len(neg_idx) == 0:
                         warning = "No imaginary mode found"
-                    else:
+                    elif len(neg_idx) > 1:
                         warning = f"Found {len(neg_idx)} imaginary modes"
+                    else:
+                        warning = (
+                            "legacy-active projection is comparison-only for "
+                            "frozen systems"
+                        )
                     click.echo(
                         f"[WARNING] {warning} in the final exact Hessian; "
                         "this geometry is not a first-order saddle and is "
@@ -2900,7 +2945,9 @@ def cli(
                     )
                     _tsopt_result_data = {
                         "status": _tsopt_terminal_status(
-                            last_optimizer, saddle_verified=True
+                            last_optimizer,
+                            saddle_verified=_hessian_saddle_verified,
+                            projection_certifiable=_projection_certifiable,
                         ),
                         "energy_hartree": _rsirfo_energy,
                         "n_imaginary_modes": len(_rsirfo_imag),

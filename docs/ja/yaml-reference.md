@@ -119,7 +119,7 @@ geom:
 **注記:**
 - `freeze_atoms` は PDB/mmCIF トポロジー入力時の `--freeze-links` 検出原子とマージされます。
 - 凍結原子は力がゼロ化され、Hessianの該当列もゼロ化されます。
-- `tr_projection: constrained` は凍結anchorを動かさない全系剛体運動だけを除去します。`legacy-active`はisolated-active比較用です。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
+- `tr_projection: constrained` は凍結anchorを動かさない全系剛体運動だけを除去します。`legacy-active` は非推奨の比較専用で、pass/HOSP 遷移状態認定には使用できません。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
 - `irc` では `geom.coord_type` が YAML/CLI マージ後に `cart` へ強制されます。
 
 ---
@@ -187,7 +187,7 @@ opt:
  overachieve_factor: 0.0 # Factor to tighten thresholds
  check_eigval_structure: false # Validate Hessian eigenstructure
  line_search: true # Enable line search
- energy_plateau: true # エネルギー地形が平坦になった場合にフォールバック収束を宣言（下記注記を参照）
+ energy_plateau: true # エネルギー地形が平坦になった場合に stalled として停止（下記注記を参照）
  energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); 平坦判定のレンジ閾値
  energy_plateau_window: 50 # 平坦判定に用いる直近ステップ数
  dump: false # Dump trajectory/restart data
@@ -196,10 +196,10 @@ opt:
  out_dir: ./result_opt/ # Output directory
 ```
 
-**平坦なエネルギー地形によるフォールバック収束:**
+**平坦なエネルギー地形による停止:**
 `energy_plateau: true` の場合、直近 `energy_plateau_window` ステップのエネルギーレンジ
 （max − min）が `energy_plateau_thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`、50 ステップ）
-を下回ると、optimizerは収束したと判定します。これにより、backend/model/system依存の
+を下回ると、optimizerは収束扱いにせず `stalled` として停止します。これにより、backend/model/system依存の
 force noise/flatnessが選択したforce閾値への到達を妨げる場合でも、energy landscapeが
 明らかに平坦化していれば無駄なcycleを消費せずに
 停止できます。
@@ -464,6 +464,12 @@ rsirfo:
  max_line_search: true # Enforce maximum line-search step
  assert_neg_eigval: false # Require negative eigenvalue at convergence
  track_mode_by_overlap: false # 前回の Hessian との重なりで追跡対象 TS モードを選ぶ
+ reject_mode_loss: true # 確立済みの負曲率を失う trial を棄却
+ mode_loss_trust_floor: 1.0e-05 # mode-loss retry 用の正の緊急 trust-radius 下限
+ max_mode_loss_rejections: 5 # 下限到達後に許す棄却回数
+ verify_saddle: true # exact Hessian + 射影振動解析で一次鞍点を検証
+ saddle_imaginary_threshold_cm: 5.0 # 負モードと数える |虚振動数| 下限（cm^-1、正値）
+ saddle_recovery_step: 0.01 # optimizer 座標での正の上り方向回復変位上限
  saddle_recovery_check_interval: 50 # n_imag=0 回復中の exact PHVA 間隔
  saddle_recovery_max_cycles: 200 # n_imag=0 回復の有界上限
  # Also inherits rfo-like settings: trust_radius, trust_update, etc.
@@ -496,6 +502,8 @@ irc:
  hessian_init: calc # Hessian initialization source
  hessian_update: bofill # Hessian update scheme
  hessian_recalc: null # Hessian rebuild cadence
+ dump_every: null # デフォルト無効。正の間隔では座標・energy・gradientのみをcheckpoint保存（Hessianなし）
+ dump_fn: irc_data.h5 # dump_every指定時のcheckpointファイル名
  displ: energy # Displacement construction method
  displ_energy: 0.001 # Energy-based displacement scaling
  displ_length: 0.1 # Length-based displacement fallback
@@ -540,6 +548,7 @@ freq:
 thermo:
  temperature: 298.15 # Thermochemistry temperature (K)
  pressure_atm: 1.0 # Thermochemistry pressure (atm)
+ symmetry_number: 1 # 外部回転対称数（1 以上の整数）
  dump: false # Write thermoanalysis.yaml
 ```
 
@@ -656,6 +665,7 @@ freq:
 thermo:
  temperature: 298.15
  pressure_atm: 1.0
+ symmetry_number: 1
 
 dft:
  func: wb97m-v

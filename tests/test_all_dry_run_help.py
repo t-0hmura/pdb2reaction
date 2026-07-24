@@ -48,7 +48,7 @@ def test_all_scan_list_dry_run_reports_scan_and_path(tmp_path):
     assert "Planned stages: scan -> path_opt." in result.output
 
 
-def test_all_accepts_repeated_scan_stage_flags_from_colab(tmp_path):
+def test_all_rejects_repeated_scan_stage_flags(tmp_path):
     xyz = tmp_path / "reactant.xyz"
     xyz.write_text("2\nH2\nH 0 0 0\nH 0 0 0.74\n", encoding="utf-8")
 
@@ -62,8 +62,33 @@ def test_all_accepts_repeated_scan_stage_flags_from_colab(tmp_path):
         ],
     )
 
-    assert result.exit_code == 0, result.output
-    assert "Planned stages: scan -> path_opt." in result.output
+    assert result.exit_code != 0
+    assert "repeated flags are not accepted" in result.output
+
+
+def test_all_rejects_scan_lists_with_multiple_inputs(tmp_path):
+    reactant = tmp_path / "reactant.xyz"
+    product = tmp_path / "product.xyz"
+    reactant.write_text("2\nR\nH 0 0 0\nH 0 0 0.74\n", encoding="utf-8")
+    product.write_text("2\nP\nH 0 0 0\nH 0 0 0.80\n", encoding="utf-8")
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "all",
+            "-i",
+            str(reactant),
+            str(product),
+            "-q",
+            "0",
+            "--scan-lists",
+            "[(1,2,1.0)]",
+            "--dry-run",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "--scan-lists requires exactly one input structure" in result.output
 
 
 def test_all_dry_run_cleans_extract_tempdir_on_failure(tmp_path, monkeypatch):

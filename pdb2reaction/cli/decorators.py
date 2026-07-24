@@ -117,7 +117,7 @@ def render_cli_exception(
     exception masking. Always calls sys.exit (never returns).
     """
     if out_dir is not None and command:
-        _write_error_json(Path(out_dir).resolve(), command, e, "UnhandledError", time_start)
+        _write_error_json(Path(out_dir).resolve(), command, e, label, time_start)
     if isinstance(e, click.ClickException):
         e.show()
         click.echo(

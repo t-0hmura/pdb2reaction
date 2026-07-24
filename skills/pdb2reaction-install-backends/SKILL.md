@@ -50,7 +50,7 @@ Files in this skill directory:
 | Fast screen across many candidates | **Orb-v3** (`orb.md`) |
 | Small organics, no metals | **AIMNet2** (`aimnet2.md`) — limited element coverage, light |
 | Couple a non-MLIP engine (GFN-xTB / DFTB+ / ORCA / any ASE calc) | **`--calc-file my_calc.py`** — custom backend (see below) |
-| DFT//MLIP refinement | add **`dft.md`** regardless of MLIP choice |
+| DFT//MLIP single-point energies | add **`dft.md`** regardless of MLIP choice |
 
 ## Custom backend — any ASE Calculator (`--calc-file`)
 
@@ -69,7 +69,7 @@ pdb2reaction sp -i model.xyz --calc-file my_calc.py -q 0 -m 1
 ```
 
 - Works on every listed calculator-backed geometry subcommand (`sp` / `opt` /
-  `tsopt` / `freq` / `irc` / `scan{,2d,3d}` / `path-opt` / `path-search`) and
+  `tsopt` / `freq` / `irc` / `scan` / `scan2d` / `scan3d` / `path-opt` / `path-search`) and
   **the `all` pipeline**
   (forwarded to each child stage). Rename the factory with `--calc-factory NAME`.
 - Energy/forces follow the ASE eV / eV·Å⁻¹ contract; Hessians use the

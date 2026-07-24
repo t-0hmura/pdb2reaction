@@ -84,7 +84,7 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 | `hessian_source` / `source` | string | Hessian provenance。`freq`/`irc`は`hessian_source`、`opt`/`tsopt`は`source`を使用 |
 | `hessian_shape` / `raw_hessian_shape` | int[2] | 入力Hessian shape。`freq`/`irc`は`hessian_shape`、`opt`/`tsopt`は`raw_hessian_shape`を使用 |
 
-`constrained`は凍結anchorを動かさない全系剛体運動だけを除去します。`legacy-active`はisolated-active比較用であり、near-linear／縮退構造に対する旧結果のbitwise replayは保証しません。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
+`constrained`は凍結anchorを動かさない全系剛体運動だけを除去します。`legacy-active` は非推奨の比較専用で、pass/HOSP 遷移状態認定には使用できません。また、near-linear／縮退構造に対する旧結果のbitwise replayは保証しません。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
 
 **`environment`**:
 
@@ -216,6 +216,8 @@ dimer モードも `status` に `"converged"` / `"not_converged"` / `"stalled"` 
 
 | フィールド | 型 | 単位 |
 |-----------|------|------|
+| `symmetry_number` | int | 外部回転対称数 |
+| `symmetry_number_source` | string | `"default"` / `"config"` / `"override"` / `"cli"` |
 | `electronic_energy_ha` | float | Hartree |
 | `zpe_correction_ha` | float | Hartree |
 | `thermal_correction_energy_ha` | float | Hartree |
@@ -461,10 +463,11 @@ dimer モードも `status` に `"converged"` / `"not_converged"` / `"stalled"` 
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `rate_limiting_step` | object | 全reactive segmentを完全に覆う最高method（`DFT//MLIP_Gibbs` > `DFT` > `MLIP_Gibbs` > `MLIP` > `MEP`）での最大障壁。`method` と raw `mep_barrier_kcal` を明記 |
+| `rate_limiting_step` | object | 互換性のため維持するキー。全 reactive segment を完全に覆う最高 method（`DFT//MLIP_Gibbs` > `DFT` > `MLIP_Gibbs` > `MLIP` > `MEP`）で、各段階の始状態を基準にした局所障壁の最大値。`method` と raw `mep_barrier_kcal` を明記する。microkinetics に基づく律速段階の判定ではない。 |
 | `overall_reaction_energy_kcal` | float | 全体反応エネルギー |
 | `overall_reaction_energy_method` | string | 全体反応energyのmethod (`MEP`, `MLIP`, `MLIP_Gibbs`, `DFT`, `DFT//MLIP_Gibbs`) |
 | `post_segments` | list | セグメントごとの TS/IRC/freq/DFT 結果 |
+| `post_segments[].thermo_symmetry` | object | 子 freq が報告した状態別の回転対称 provenance。有効な `symmetry_number` と `symmetry_number_source` の両方を持つ R/TS/P 状態だけを含み、欠けた状態は省略する。どの状態にも有効な provenance が無い場合だけフィールド全体を省略する。 |
 | `current_output_paths` | string[] | `--out-dir` からの相対パスを並べたリスト。現在の呼び出しが記録した成果物だけを含みます。 |
 | `key_output_files` | object | 現在の呼び出しの出力索引。ルートファイルはファイル名 → 説明、各 `seg_NN` は `{description, files}` で、`files` はそのセグメントディレクトリからの相対パスです。 |
 

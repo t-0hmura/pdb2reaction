@@ -25,7 +25,7 @@ Barriers come from `post_segments` (TSOPT+IRC-refined): ΔE‡ =
 ΔG‡ = `summary.json["post_segments"][0]["gibbs_mlip"]["barrier_kcal"]`.
 Read top-level `mlip_backend`, `mlip_model`, and `mlip_precision` for the exact
 provenance.
-`summary.json["rate_limiting_step"]` gives the highest barrier with an explicit
+`summary.json["rate_limiting_step"]` is a legacy key giving the highest independently referenced local barrier with an explicit
 `method` label; `summary.json["segments"][*]["barrier_kcal"]` is the raw MEP band
 (also mirrored as `mep_barrier_kcal`) and is reported only under an MEP label.
 
@@ -99,9 +99,9 @@ summary). A single `-i` needs either `--tsopt` or `--scan-lists`; on its
 own it is rejected with a `BadParameter` error. See
 [`pdb2reaction-cli/all-ts-only.md`](../pdb2reaction-cli/all-ts-only.md).
 
-### 6. DFT//MLIP refinement
+### 6. DFT//MLIP single-point energies
 
-After any of the above, refine R / TS / P energies at DFT level. The
+After any of the above, evaluate R / TS / P with DFT single points. The
 structures to feed `dft` are the deliverables of the preceding run, which live
 at `<out_dir>/segments/seg_NN/{reactant,ts,product}.pdb` (and `.cif` for a
 bridged input; below, `<out_dir>` is
@@ -149,7 +149,7 @@ start from already-prepared R/P cluster PDBs.
 **Stage 1 — default MEP (`path-opt`)**
 
 ```bash
-pdb2reaction path-opt -i 1.R.pdb -i 3.P.pdb \
+pdb2reaction path-opt -i 1.R.pdb 3.P.pdb \
     -l 'SAM:1,GPP:-3' -b uma --out-json -o mep/
 ```
 

@@ -343,6 +343,10 @@ IRC_KW: Dict[str, Any] = {
     "prefix": "",
     "hessian_update": "bofill",
     "hessian_recalc": None,
+    # Low-level periodic checkpointing is disabled by default. The checkpoint
+    # contains coordinates/energies/gradients only, never a dense Hessian.
+    "dump_fn": "irc_data.h5",
+    "dump_every": None,
     "max_pred_steps": 500,
     "loose_cycles": 3,
     "corr_func": "mbs",
@@ -364,6 +368,7 @@ FREQ_KW: Dict[str, Any] = {
 THERMO_KW: Dict[str, Any] = {
     "temperature": 298.15,
     "pressure_atm": 1.0,
+    "symmetry_number": 1,
     "dump": False,
 }
 

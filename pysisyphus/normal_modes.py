@@ -23,6 +23,7 @@ from ase.data import atomic_masses
 import ase.units as units
 
 from pysisyphus.constants import BOHR2ANG, AMU2AU, AU2EV
+from pysisyphus._array import active_square
 from pysisyphus.tr_projection import active_tr_basis, project_hessian_inplace
 
 
@@ -251,7 +252,9 @@ def _frequencies_cm_and_modes(H: torch.Tensor,
                 for i in frozen_set:
                     mask_dof[3 * i:3 * i + 3] = False
 
-                H = H[mask_dof][:, mask_dof]
+                active_dof = torch.nonzero(mask_dof, as_tuple=False).flatten()
+                H = active_square(H, active_dof)
+                del active_dof
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
 

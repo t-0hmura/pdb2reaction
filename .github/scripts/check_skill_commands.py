@@ -52,7 +52,7 @@ def _collect_subcommand_flags() -> dict[str, set[str]]:
     return flags_per_cmd
 
 
-_FENCE_RE = re.compile(r"^```(?:bash|console|sh)?\s*$")
+_FENCE_RE = re.compile(r"^```(?P<language>[^`\s]*)\s*$")
 _FENCE_END_RE = re.compile(r"^```\s*$")
 _INLINE_RE = re.compile(r"`(pdb2reaction\s+[^`]+)`")
 _FLAG_RE = re.compile(r"^-{1,2}[A-Za-z][\w-]*$")
@@ -60,19 +60,29 @@ _FLAG_RE = re.compile(r"^-{1,2}[A-Za-z][\w-]*$")
 
 def _iter_command_lines(text: str):
     in_fence = False
+    check_fence = False
     pending: list[str] = []
     pending_lineno = 0
     for lineno, line in enumerate(text.splitlines(), start=1):
-        if not in_fence and _FENCE_RE.match(line):
+        opener = _FENCE_RE.match(line)
+        if not in_fence and opener:
             in_fence = True
+            check_fence = opener.group("language").lower() in {
+                "",
+                "bash",
+                "console",
+                "sh",
+                "shell",
+            }
             continue
         if in_fence and _FENCE_END_RE.match(line):
             in_fence = False
-            if pending and "pdb2reaction" in " ".join(pending):
+            if check_fence and pending and "pdb2reaction" in " ".join(pending):
                 yield pending_lineno, " ".join(pending)
             pending = []
+            check_fence = False
             continue
-        if in_fence:
+        if in_fence and check_fence:
             stripped = line.rstrip()
             if stripped.endswith("\\"):
                 if not pending:
@@ -89,6 +99,8 @@ def _iter_command_lines(text: str):
                 # standalone single-line command
                 if "pdb2reaction" in stripped:
                     yield lineno, stripped.strip()
+            continue
+        if in_fence:
             continue
         for m in _INLINE_RE.finditer(line):
             yield lineno, m.group(1)

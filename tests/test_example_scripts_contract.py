@@ -22,6 +22,17 @@ checker = _load("check_example_scripts")
 contract = checker.contract  # same module object the checker uses
 
 
+def _write_valid_script(path: Path, command: str) -> None:
+    path.write_text(
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        'SCRIPT_DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"\n'
+        f"{command}\n",
+        encoding="utf-8",
+    )
+    path.chmod(0o755)
+
+
 def test_public_shell_examples_exist_with_two_invocations() -> None:
     scripts = contract.PUBLIC_SHELL_EXAMPLES
     assert scripts, "no advertised example scripts declared"
@@ -38,7 +49,9 @@ def test_checker_passes_on_real_repo() -> None:
 
 def test_checker_fails_on_shell_syntax_error(tmp_path, monkeypatch) -> None:
     bad = tmp_path / "run.sh"
-    bad.write_text("pdb2reaction all -i R.pdb 'unterminated\n", encoding="utf-8")
+    _write_valid_script(
+        bad, "pdb2reaction all -i \"$SCRIPT_DIR/R.pdb\" 'unterminated",
+    )
     # sanity: bash itself rejects it
     proc = subprocess.run(["bash", "-n", str(bad)], text=True, capture_output=True)
     assert proc.returncode != 0
@@ -48,6 +61,9 @@ def test_checker_fails_on_shell_syntax_error(tmp_path, monkeypatch) -> None:
 
 def test_checker_fails_on_invented_option(tmp_path, monkeypatch) -> None:
     script = tmp_path / "run.sh"
-    script.write_text("pdb2reaction all -i R.pdb --invented-option\n", encoding="utf-8")
+    _write_valid_script(
+        script,
+        'pdb2reaction all -i "$SCRIPT_DIR/R.pdb" --invented-option',
+    )
     monkeypatch.setattr(contract, "PUBLIC_SHELL_EXAMPLES", (script,))
     assert checker.main() == 1

@@ -212,7 +212,7 @@ A few CLI flags use slightly different names than their YAML counterparts, and a
 
 ```bash
 pdb2reaction dft -i ts.xyz -q 0 --engine gpu                                  # standalone
-pdb2reaction all -i r.pdb p.pdb -c SAM --dft --dft-engine gpu                 # same thing inside `all`
+pdb2reaction all -i r.pdb p.pdb -c SAM --tsopt --dft --dft-engine gpu         # after TS optimization in `all`
 ```
 
 ## YAML configuration

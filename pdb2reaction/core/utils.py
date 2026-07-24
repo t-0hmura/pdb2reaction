@@ -1682,69 +1682,12 @@ def set_freeze_atoms_or_warn(
         click.echo(f"[{context}] WARNING: Failed to attach freeze_atoms to geometry.", err=True)
 
 
-_NUMBER_RE = re.compile(
-    r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?"
-)
-# ASE / pysisyphus / common QM-trajectory comments put a frame counter
-# BEFORE the energy (e.g. "frame 0 E=-100.0", "step 12  E = -75.3").
-# An earlier read_xyz_energies grabbed the first number on the comment
-# line, which silently mistook the frame index for the energy and
-# produced chemically nonsensical ΔE profiles.
-# Preferred path: explicit key — match 'E', 'e', 'Energy', 'energy'
-# (word boundary) followed by '=' or ':', then the number.
-_KEYED_ENERGY_RE = re.compile(
-    r"\b[Ee](?:nergy)?\s*[:=]\s*([-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?)"
-)
-
-
 def read_xyz_energies(path: Path | str) -> List[float]:
-    """
-    Extract energies from the second-line comment of each XYZ frame.
+    """Extract Hartree energies with the strict shared XYZ parser."""
+    from pdb2reaction.io.xyz_trajectory import read_xyz_trajectory
 
-    Resolution order (replaces the legacy first-number-wins regex,
-    which silently confused the leading frame counter with the energy):
-
-      1. If the comment carries an explicit ``E=…`` / ``Energy: …``
-         token (ASE / pysisyphus convention), use that number.
-      2. Otherwise, fall back to the lone numeric token on the line
-         and accept it as the energy. If the comment has multiple
-         bare numbers and no key, prefer the LAST one (consistent with
-         the common ``<counter> <energy>`` layout) and emit a one-shot
-         warning so silent first-number-wins parsing never returns
-         again.
-      3. If no number is present, raise.
-    """
-    energies: List[float] = []
-    warned_multi = False
-    with open(path, encoding="utf-8") as fh:
-        while (hdr := fh.readline()):
-            try:
-                nat = int(hdr.strip())
-            except ValueError:
-                break
-            comment = fh.readline().strip()
-            m = _KEYED_ENERGY_RE.search(comment)
-            if m is not None:
-                energies.append(float(m.group(1)))
-            else:
-                nums = _NUMBER_RE.findall(comment)
-                if not nums:
-                    raise RuntimeError(f"Energy not found in comment: {comment}")
-                if len(nums) > 1 and not warned_multi:
-                    click.echo(
-                        f"[trj2fig] WARNING: XYZ comment '{comment}' carries "
-                        f"{len(nums)} numeric tokens without an 'E='/'energy='"
-                        f" key. Using the LAST one as the energy. Add an "
-                        f"explicit 'E=<value>' to disambiguate.",
-                        err=True,
-                    )
-                    warned_multi = True
-                energies.append(float(nums[-1]))
-            for _ in range(nat):
-                fh.readline()
-    if not energies:
-        raise RuntimeError(f"No energy data in {path}")
-    return energies
+    parsed = read_xyz_trajectory(path, require_energies=True)
+    return [float(value) for value in parsed["energies_ha"]]
 
 
 def parse_xyz_block(
@@ -2067,6 +2010,42 @@ def fill_charge_spin_from_gjf(
     return charge, spin
 
 
+def fill_charge_spin_from_gjf_inputs(
+    charge: Optional[int],
+    spin: Optional[int],
+    templates: Sequence[Optional[GjfTemplate]],
+) -> Tuple[Optional[int], Optional[int]]:
+    """Fill unresolved fields only when all GJF headers agree.
+
+    Explicitly supplied fields remain authoritative.  Conflicts in an
+    unresolved field are rejected with the contributing files and values
+    rather than silently inheriting the first image's electronic surface.
+    """
+    present = [template for template in templates if template is not None]
+
+    def _resolve_field(current: Optional[int], field: str) -> Optional[int]:
+        if current is not None or not present:
+            return current
+        by_value: Dict[int, List[str]] = {}
+        for template in present:
+            value = int(getattr(template, field))
+            by_value.setdefault(value, []).append(str(template.path))
+        if len(by_value) > 1:
+            details = "; ".join(
+                f"{value}: {', '.join(paths)}"
+                for value, paths in sorted(by_value.items())
+            )
+            label = "charge" if field == "charge" else "multiplicity"
+            raise click.ClickException(
+                f"Conflicting GJF {label} headers across reaction structures "
+                f"({details}). Supply an explicit {'-q/--charge' if field == 'charge' else '-m/--multiplicity'} "
+                "only if one value is intended for every image."
+            )
+        return next(iter(by_value))
+
+    return _resolve_field(charge, "charge"), _resolve_field(spin, "spin")
+
+
 def resolve_configured_charge_spin(
     yaml_cfg: Mapping[str, Any],
     *,
@@ -2141,7 +2120,20 @@ def _derive_charge_from_ligand_charge(
         parser = PDB.PDBParser(QUIET=True)
         complex_struct = parser.get_structure("complex", str(prepared.source_path))
         selected_ids = {res.get_full_id() for res in complex_struct.get_residues()}
-        summary = compute_charge_summary(complex_struct, selected_ids, set(), ligand_charge)
+        from pdb2reaction.io.charge import infer_present_terminal_cap_ids
+
+        keep_ncap_ids, keep_ccap_ids = infer_present_terminal_cap_ids(
+            complex_struct,
+            selected_ids,
+        )
+        summary = compute_charge_summary(
+            complex_struct,
+            selected_ids,
+            set(),
+            ligand_charge,
+            keep_ncap_ids=keep_ncap_ids,
+            keep_ccap_ids=keep_ccap_ids,
+        )
         log_charge_summary(prefix, summary)
         q_total = float(summary.get("total_charge", 0.0))
         click.echo(
@@ -2199,10 +2191,11 @@ def resolve_charge_spin(
             inputs[0], ligand_charge, prefix=prefix
         )
 
-    for prepared in inputs:
-        resolved_charge, resolved_spin = fill_charge_spin_from_gjf(
-            resolved_charge, resolved_spin, prepared.gjf_template
-        )
+    resolved_charge, resolved_spin = fill_charge_spin_from_gjf_inputs(
+        resolved_charge,
+        resolved_spin,
+        [prepared.gjf_template for prepared in inputs],
+    )
 
     if resolved_charge is None:
         if any(not p.is_gjf for p in inputs):
@@ -2723,8 +2716,11 @@ def parse_scan_list_triples(
         raise click.BadParameter(
             f"{option_name} must be a list/tuple of (i,j,target) or (i,j,start,end)."
         )
+    if len(obj) == 0:
+        raise click.BadParameter(f"{option_name} must contain at least one atom pair.")
 
     parsed: list = []
+    seen_pairs: set[tuple[int, int]] = set()
     for entry_idx, t in enumerate(obj, start=1):
         is_3 = (
             isinstance(t, (list, tuple))
@@ -2754,6 +2750,17 @@ def parse_scan_list_triples(
             atom_meta=atom_meta,
             context=f"{option_name} entry {entry_idx} (j)",
         )
+        if i == j:
+            raise click.BadParameter(
+                f"{option_name} entry {entry_idx} selects the same atom twice."
+            )
+        pair_key = tuple(sorted((i, j)))
+        if pair_key in seen_pairs:
+            raise click.BadParameter(
+                f"{option_name} entry {entry_idx} repeats atom pair "
+                f"{pair_key}; each simultaneous scan axis must be unique."
+            )
+        seen_pairs.add(pair_key)
         if return_one_based:
             i += 1
             j += 1
@@ -2791,6 +2798,7 @@ def parse_dist_freeze_list(
         obj = [obj]
 
     parsed: List[Tuple[int, int, Optional[float]]] = []
+    seen_pairs: set[tuple[int, int]] = set()
     for entry_idx, t in enumerate(obj, start=1):
         if not (isinstance(t, (list, tuple)) and len(t) in (2, 3)):
             raise click.BadParameter(
@@ -2804,6 +2812,16 @@ def parse_dist_freeze_list(
             t[1], one_based=one_based, atom_meta=atom_meta,
             context=f"{option_name} entry {entry_idx} (j)",
         )
+        if i == j:
+            raise click.BadParameter(
+                f"{option_name} entry {entry_idx} selects the same atom twice."
+            )
+        pair_key = tuple(sorted((i, j)))
+        if pair_key in seen_pairs:
+            raise click.BadParameter(
+                f"{option_name} entry {entry_idx} repeats atom pair {pair_key}."
+            )
+        seen_pairs.add(pair_key)
         target: Optional[float] = None
         if len(t) == 3:
             if not isinstance(t[2], Real):
@@ -3000,6 +3018,7 @@ def parse_scan_list_quads(
         )
 
     parsed: List[Tuple[int, int, float, float]] = []
+    seen_pairs: set[tuple[int, int]] = set()
     for entry_idx, q in enumerate(obj, start=1):
         if not (
             isinstance(q, (list, tuple))
@@ -3038,6 +3057,17 @@ def parse_scan_list_quads(
             atom_meta=atom_meta,
             context=f"{option_name} entry {entry_idx} (j)",
         )
+        if i == j:
+            raise click.BadParameter(
+                f"{option_name} entry {entry_idx} selects the same atom twice."
+            )
+        pair_key = tuple(sorted((i, j)))
+        if pair_key in seen_pairs:
+            raise click.BadParameter(
+                f"{option_name} entry {entry_idx} repeats atom pair "
+                f"{pair_key}; each scan axis must be unique."
+            )
+        seen_pairs.add(pair_key)
         parsed.append((i, j, float(q[2]), float(q[3])))
 
     return parsed, list(obj)
@@ -3110,8 +3140,14 @@ def parse_scan_spec_stages(
     one_based_default: bool,
     atom_meta: Optional[_Sequence[Dict[str, Any]]],
     option_name: str = "--scan-lists",
-) -> Tuple[List[List[Tuple[int, int, float]]], bool]:
-    """Parse staged 1D scan spec into 0-based stage triples."""
+    return_bidirectional_markers: bool = False,
+) -> Any:
+    """Parse staged 1D scan spec into 0-based executable stages.
+
+    A stage containing only ``(i, j, target)`` entries stays simultaneous.
+    The legacy ``(i, j, start, end)`` form expands exactly like the inline
+    CLI form: snapshot before the first leg, restore before the second.
+    """
     spec_cfg = _load_scan_spec_root(spec_path, option_name=option_name)
     stages_key, stages_raw = _first_spec_field(spec_cfg, ("stages",))
     if stages_key is None:
@@ -3123,6 +3159,8 @@ def parse_scan_spec_stages(
         spec_cfg.get("one_based"), default=one_based_default, option_name=option_name
     )
     stages: List[List[Tuple[int, int, float]]] = []
+    reset_before: set[int] = set()
+    snapshot_before: set[int] = set()
     for stage_idx, stage_raw in enumerate(stages_raw, start=1):
         if not isinstance(stage_raw, (list, tuple)):
             raise click.BadParameter(
@@ -3138,12 +3176,32 @@ def parse_scan_spec_stages(
             raise click.BadParameter(
                 f"{option_name} {stages_key}[{stage_idx}] must contain at least one (i,j,target) triple."
             )
-        for i, j, target in parsed:
-            if target <= 0.0:
+        for entry in parsed:
+            if any(float(distance) <= 0.0 for distance in entry[2:]):
                 raise click.BadParameter(
-                    f"Non-positive target distance in {option_name} {stages_key}[{stage_idx}]: {(i, j, target)}."
+                    f"Non-positive target distance in {option_name} "
+                    f"{stages_key}[{stage_idx}]: {entry}."
                 )
-        stages.append(parsed)
+        if any(len(entry) == 4 for entry in parsed):
+            for entry in parsed:
+                if len(entry) == 4:
+                    i, j, start, end = entry
+                    first_leg = len(stages)
+                    stages.append([(i, j, start)])
+                    snapshot_before.add(first_leg)
+                    reset_before.add(first_leg + 1)
+                    stages.append([(i, j, end)])
+                else:
+                    stages.append([entry])
+        else:
+            stages.append(parsed)
+    if return_bidirectional_markers:
+        return (
+            stages,
+            one_based,
+            frozenset(snapshot_before),
+            frozenset(reset_before),
+        )
     return stages, one_based
 
 
@@ -3427,20 +3485,22 @@ def write_result_json(
             return {k: _to_json(v) for k, v in obj.items()}
         if isinstance(obj, (list, tuple)):
             return [_to_json(i) for i in obj]
+        if isinstance(obj, float) and not math.isfinite(obj):
+            return None
         # numpy scalar / array
         try:
             import numpy as _np
             if isinstance(obj, _np.generic):
-                return obj.item()
+                return _to_json(obj.item())
             if isinstance(obj, _np.ndarray):
-                return obj.tolist()
+                return _to_json(obj.tolist())
         except ImportError:
             pass
         # torch tensor
         try:
             import torch as _th
             if isinstance(obj, _th.Tensor):
-                return obj.detach().cpu().tolist()
+                return _to_json(obj.detach().cpu().tolist())
         except ImportError:
             pass
         return obj
@@ -3469,9 +3529,14 @@ def validate_charge_spin(elements, charge, multiplicity):
     unless ``--allow-charge-mult-mismatch`` was set (then log a warning and skip)."""
     from pysisyphus.elem_data import ATOMIC_NUMBERS
 
+    multiplicity = int(multiplicity)
+    if multiplicity < 1:
+        raise ValueError(
+            f"Spin multiplicity must be an integer >= 1, got {multiplicity}."
+        )
     sum_z = sum(ATOMIC_NUMBERS[str(e).lower()] for e in elements)
     total = sum_z - int(charge)
-    unpaired = int(multiplicity) - 1
+    unpaired = multiplicity - 1
     if total < unpaired or (total - unpaired) % 2:
         if _ALLOW_CHARGE_MULT_MISMATCH:
             import logging

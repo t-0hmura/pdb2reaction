@@ -121,8 +121,8 @@ out_dir/ (デフォルト:./result_all/)
 ├─ summary.json                 # JSON 結果
 ├─ mep.pdb                      # マージ済み MEP 経路（エンジンから配置）
 ├─ mep.cif                      # mmCIF/oversized-PDB入力時。元IDを復元
-├─ mep_w_ref.pdb               # 全系テンプレートへマージした MEP（複数入力時）
-├─ mep_w_ref.cif               # bridge全系テンプレート使用時
+├─ mep_w_ref.pdb               # --refine-path + 参照テンプレート使用時のみ
+├─ mep_w_ref.cif               # --refine-path + bridge参照テンプレート使用時のみ
 ├─ mep_trj.xyz                 # MEP 全体軌道
 ├─ energy_diagram_MEP.png      # 全セグメントの MEP 障壁
 ├─ energy_diagram_*.png        # 集約後処理ダイアグラム（MLIP / Gibbs / DFT、--tsopt 等で生成）
@@ -264,7 +264,7 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 | `--thresh-post TEXT` | IRC 後エンドポイント最適化の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
 | `--flatten/--no-flatten` | 余分な虚振動モードのフラット化 | `False` |
 | `--reject-uphill/--no-reject-uphill` | IRC 後の**エンドポイント再最適化のみ**で RFO の上り坂ステップを拒否（低エネルギー形状へロールバックし trust radius を縮小）。TS 最適化や経路探索には影響しない | `True` |
-| `--tr-projection [constrained\|legacy-active]` | TSopt、IRC、freq、flatten PHVAへ転送する剛体モード処理。`constrained`は凍結anchorを動かさない全系剛体運動だけを除去 | `constrained` |
+| `--tr-projection [constrained\|legacy-active]` | TSopt、IRC、freq、flatten PHVAへ転送する剛体モード処理。`legacy-active`は非推奨の比較専用で、pass/HOSP 遷移状態認定には使用不可 | `constrained` |
 | `--irc-step-size FLOAT` | IRCのEulerPC最大step（Bohr）を上書き。数frameですぐ止まる場合は`0.05`など小さい値で再試行 | IRC既定`0.10` |
 | `--irc-never-stop/--no-irc-never-stop` | 一時的なIRC energy上昇／平坦化による停止を無視。gradient/integrator収束と最大cycle上限は維持 | `False` |
 
@@ -296,6 +296,7 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 | `--freq-sort [value\|abs]` | モードソート方法 | `value` |
 | `--freq-temperature FLOAT` | 熱化学温度（K） | `298.15` |
 | `--freq-pressure FLOAT` | 熱化学圧力（atm） | `1.0` |
+| `--freq-symmetry-number INT` | R/TS/P の全 freq 計算に共通の回転対称数。省略時は各子計算の YAML/デフォルトに従う | _None_ |
 
 ### DFT 上書き
 

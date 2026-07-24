@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import re
 
+import click
 from click.testing import CliRunner
 import pytest
 
@@ -192,9 +193,55 @@ def test_trj2fig_csv_smoke(tmp_path: Path) -> None:
     assert len(lines) == 3
     payload = json.loads((tmp_path / "result.json").read_text(encoding="utf-8"))
     assert payload["energy_source"] == "trajectory_comment"
+    assert payload["energy_provenance"] == ["bare-assumed-Ha"] * 2
+    assert payload["energy_unit"] == "hartree"
     assert payload["backend"] is None
     assert payload["charge"] is None
     assert payload["solvent"] is None
+
+
+def test_trj2fig_rejects_missing_frame_zero_energy_without_outputs(
+    tmp_path: Path,
+) -> None:
+    trj = _write_text(
+        tmp_path / "missing-frame-zero.xyz",
+        (
+            "1\nframe 0\nH 0.0 0.0 0.0\n"
+            "1\nE=-0.500000 Ha\nH 0.0 0.0 0.1\n"
+        ),
+    )
+    out_csv = tmp_path / "must-not-exist.csv"
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "trj2fig", "-i", str(trj), "-o", str(out_csv),
+            "--out-json",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "frame 1" in (result.output + str(result.exception))
+    assert not out_csv.exists()
+    assert not (tmp_path / "result.json").exists()
+
+
+def test_trj2fig_reports_out_of_range_reference_without_traceback(
+    tmp_path: Path,
+) -> None:
+    trj = _write_text(
+        tmp_path / "traj.xyz",
+        "1\n-0.5\nH 0 0 0\n1\n-0.4\nH 0 0 0.1\n",
+    )
+    out_csv = tmp_path / "energy.csv"
+
+    result = CliRunner().invoke(
+        root_cli,
+        ["trj2fig", "-i", str(trj), "-o", str(out_csv), "-r", "9"],
+    )
+
+    assert result.exit_code != 0
+    assert "Reference index 9 out of range" in result.output
+    assert "Traceback" not in result.output
+    assert not out_csv.exists()
 
 
 def test_trj2fig_recompute_json_records_actual_provenance(
@@ -226,6 +273,8 @@ def test_trj2fig_recompute_json_records_actual_provenance(
     assert result.exit_code == 0, result.output
     payload = json.loads((tmp_path / "result.json").read_text(encoding="utf-8"))
     assert payload["energy_source"] == "mlip_recomputed"
+    assert payload["energy_provenance"] == ["mlip-recomputed"]
+    assert payload["energy_unit"] == "hartree"
     assert payload["backend"] == "orb"
     assert payload["charge"] == -1
     assert payload["multiplicity"] == 2
@@ -362,6 +411,46 @@ def test_tsopt_ref_mode_is_documented_as_advanced_all_handoff() -> None:
     # is that the unpublished long name is rejected, not the exact wording.
     assert "No such option" in old_name.output
     assert "--reference-mode" in old_name.output
+
+
+@pytest.mark.parametrize("mode", ["dimer", "grad", "light"])
+def test_tsopt_ref_mode_rejects_dimer_aliases(
+    mode: str, tmp_path: Path
+) -> None:
+    from pdb2reaction.core.defaults import TSOPT_MODE_ALIASES
+    from pdb2reaction.core.utils import normalize_choice
+    from pdb2reaction.workflows.tsopt import _validate_reference_mode_optimizer
+
+    path = tmp_path / "mode.txt"
+    path.write_text("1 0 0\n", encoding="utf-8")
+    normalized = normalize_choice(
+        mode,
+        param="--opt-mode",
+        alias_groups=TSOPT_MODE_ALIASES,
+        allowed_hint="grad|hess|dimer|rsirfo|trim|rsprfo",
+    )
+
+    with pytest.raises(click.BadParameter, match="requires a Hessian TS optimizer"):
+        _validate_reference_mode_optimizer(normalized, path)
+
+
+@pytest.mark.parametrize("mode", ["hess", "rsirfo", "rsprfo", "trim"])
+def test_tsopt_ref_mode_accepts_hessian_optimizers(
+    mode: str, tmp_path: Path
+) -> None:
+    from pdb2reaction.core.defaults import TSOPT_MODE_ALIASES
+    from pdb2reaction.core.utils import normalize_choice
+    from pdb2reaction.workflows.tsopt import _validate_reference_mode_optimizer
+
+    path = tmp_path / "mode.txt"
+    normalized = normalize_choice(
+        mode,
+        param="--opt-mode",
+        alias_groups=TSOPT_MODE_ALIASES,
+        allowed_hint="grad|hess|dimer|rsirfo|trim|rsprfo",
+    )
+
+    _validate_reference_mode_optimizer(normalized, path)
 
 
 @pytest.mark.parametrize(

@@ -70,11 +70,11 @@ def test_refreshed_active_map_rejects_pre_mutation_cache_entry() -> None:
         "spin": 1,
     }
     ident_before = hessian_cache.identity_from_context(
-        geom, {**calc_cfg, "freeze_atoms": []}, role="ts"
+        geom, calc_cfg, role="ts"
     )
     geom.freeze_atoms = [0]
     ident_after = hessian_cache.identity_from_context(
-        geom, {**calc_cfg, "freeze_atoms": [0]}, role="ts"
+        geom, calc_cfg, role="ts"
     )
 
     assert (

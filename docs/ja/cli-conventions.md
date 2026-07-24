@@ -327,7 +327,7 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 pdb2reaction dft -i ts.xyz -q 0 --engine gpu
 
 # all ラッパー内で同じ処理
-pdb2reaction all -i r.pdb p.pdb -c SAM --dft --dft-engine gpu
+pdb2reaction all -i r.pdb p.pdb -c SAM --tsopt --dft --dft-engine gpu
 ```
 
 ## YAML 設定

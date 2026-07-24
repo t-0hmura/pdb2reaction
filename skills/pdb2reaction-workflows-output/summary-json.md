@@ -29,7 +29,7 @@ corresponding command page and in [`pdb2reaction-cli`](../pdb2reaction-cli/SKILL
 | `n_images` | MEP image count in path-search / path-opt; IRC trajectory frame count in tsopt-only mode |
 | `n_segments` | Total MEP segment count (reactive + bridge) |
 | `n_segments_reactive` | Non-bridge segment count used by the schema; validation is still required before calling each one an elementary reaction |
-| `rate_limiting_step` | When available, `{segment, barrier_kcal, method, ...}` for the highest barrier at the highest method covering every reactive segment: DFT//MLIP Gibbs > DFT > MLIP Gibbs > MLIP > MEP |
+| `rate_limiting_step` | Legacy key for `{segment, barrier_kcal, method, ...}` at the highest independently referenced local barrier, using the highest method covering every reactive segment: DFT//MLIP Gibbs > DFT > MLIP Gibbs > MLIP > MEP. This is not a microkinetic RLS assignment. |
 | `overall_reaction_energy_kcal` | R → P total energy difference from the best available all-segment diagram |
 | `overall_reaction_energy_method` | Method for `overall_reaction_energy_kcal` (`MEP`, `MLIP`, `MLIP_Gibbs`, `DFT`, or `DFT//MLIP_Gibbs`) |
 | `segments` | Lightweight per-segment summary (see below) |
@@ -70,6 +70,7 @@ Present when `--tsopt`, `--thermo`, or `--dft` was passed:
 | `ts_imag` | Dict `{n_imag, nu_imag_max_cm, min_abs_imag_cm, min_freq_cm}` describing the TS spectrum |
 | `ts_imag_freq_cm` | Peak imaginary frequency (cm⁻¹); same as `ts_imag.nu_imag_max_cm` |
 | `gibbs_mlip` | MLIP electronic energy + QRRHO thermal correction (when `--thermo`) |
+| `thermo_symmetry` | Per-state `R` / `TS` / `P` map of `{symmetry_number, symmetry_number_source}` copied from successful frequency children. Missing states are omitted. |
 | `dft` | DFT//MLIP single-point energies (when `--dft`). Same shape as `mlip`: `{labels, energies_au, energies_kcal, barrier_kcal, delta_kcal, diagram, structures}`. If DFT failed for any of R/TS/P, the block is `{"status": "failed", "failed_states": [...]}` instead, and no DFT diagram is written. |
 | `gibbs_dft_mlip` | DFT electronic energy + MLIP QRRHO thermal correction (when `--dft` **and** `--thermo`, and all three DFT single-points succeeded). Same shape as `mlip`; read `barrier_kcal` here for the DFT//MLIP ΔG‡. |
 
@@ -119,10 +120,10 @@ for ps in d.get("post_segments", []):
 for seg in d["segments"]:
     print(f"seg_{seg['index']:02d}: MEP band = {seg['barrier_kcal']:.1f} kcal/mol (un-refined)")
 
-# Rate-limiting barrier — highest method complete across all reactive segments;
+# Highest local barrier — highest method complete across all reactive segments;
 # may fall back to MLIP or the MEP band when a higher layer is incomplete
 rls = d["rate_limiting_step"]   # {"segment", "barrier_kcal", "method", "mep_barrier_kcal"}
-print(f"rate-limiting: seg_{rls['segment']:02d}, barrier = "
+print(f"highest local barrier: seg_{rls['segment']:02d}, barrier = "
       f"{rls['barrier_kcal']:.1f} kcal/mol ({rls['method']})")
 # Always branch/report by rls["method"]; "MEP" is explicitly un-refined.
 

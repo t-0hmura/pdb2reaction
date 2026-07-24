@@ -56,9 +56,9 @@ Options:
                                   templates inherit the charge automatically).
   -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
                                   GPP:-3,SAM:1) used to derive charge when -q is
-                                  omitted (requires PDB/mmCIF input or --ref-
-                                  pdb).
-  -m, --multiplicity INTEGER      Spin multiplicity (2S+1).
+                                  omitted (requires PDB/mmCIF input).
+  -m, --multiplicity INTEGER RANGE
+                                  Spin multiplicity (2S+1).  [x>=1]
   --precision [fp32|fp64]         MLIP backend precision: fp32 or fp64. Unset
                                   defaults per backend (uma: fp32; orb, mace:
                                   fp64). Routed to backend-specific kwargs (UMA

@@ -79,6 +79,56 @@ def test_harmonic_pair_force_is_negative_energy_gradient() -> None:
     assert np.allclose(force, -gradient, atol=2.0e-10, rtol=2.0e-9)
 
 
+@pytest.mark.parametrize(
+    ("coords", "k", "pairs", "message"),
+    [
+        (
+            np.zeros((2, 3)),
+            1.0,
+            [(0, 0, 1.0)],
+            "two distinct atoms",
+        ),
+        (
+            np.zeros((2, 3)),
+            1.0,
+            [(0, 2, 1.0)],
+            "outside the valid range",
+        ),
+        (
+            np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]]),
+            1.0,
+            [(0, 1, 0.0)],
+            "greater than zero",
+        ),
+        (
+            np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]]),
+            -1.0,
+            [(0, 1, 1.0)],
+            "non-negative",
+        ),
+        (
+            np.zeros((2, 3)),
+            1.0,
+            [(0, 1, 1.0)],
+            "coincident atoms",
+        ),
+    ],
+)
+def test_invalid_harmonic_pair_restraints_fail_closed(
+    coords: np.ndarray,
+    k: float,
+    pairs,
+    message: str,
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        harmonic_pair_energy_forces_hessian(
+            coords,
+            k,
+            pairs,
+            need_hessian=True,
+        )
+
+
 class _StaticBase:
     def __init__(self, result, *, freeze_atoms=()):
         self.result = result
@@ -213,6 +263,29 @@ def test_explicit_evaluator_bypasses_coordinate_only_hessian_cache() -> None:
     assert evaluator.hessian_calls == 1
     assert torch.equal(result, expected)
     assert geometry.results["hessian"] is expected
+
+
+def test_one_shot_hessian_evaluation_does_not_duplicate_geometry_cache() -> None:
+    geometry = _CachedGeometry()
+    expected = torch.eye(6, dtype=torch.float64) * 3.0
+    evaluator = _StaticBase(
+        {
+            "energy": 0.0,
+            "forces": np.zeros(6),
+            "hessian": expected,
+        }
+    )
+
+    result = _calc_full_hessian_torch(
+        geometry,
+        {},
+        torch.device("cpu"),
+        calculator=evaluator,
+        cache_geometry=False,
+    )
+
+    assert geometry.results is None
+    assert result.data_ptr() == expected.data_ptr()
 
 
 def test_restrained_rfo_seed_uses_exact_wrapper_and_never_reads_irc_cache(

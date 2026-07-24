@@ -134,7 +134,7 @@ logger = logging.getLogger(__name__)
     default="alpb", type=click.Choice(["alpb", "cpcmx"]),
     show_default=True, help="xTB solvent model.",
 )
-@add_ml_charge_spin_options()
+@add_ml_charge_spin_options(allow_ref_pdb=False)
 @add_precision_option()
 @add_backend_model_option()
 @add_calc_file_option()
@@ -273,6 +273,11 @@ def cli(
             return
 
         out_dir_path.mkdir(parents=True, exist_ok=True)
+        # hessian.npy is owned by this invocation.  Remove the previous
+        # generation before either the energy/force or Hessian evaluation can
+        # fail; otherwise a failed ``--hess`` rerun can leave an old matrix
+        # beside the new error envelope.
+        (out_dir_path / "hessian.npy").unlink(missing_ok=True)
 
         coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
         coord_kwargs = dict(geom_cfg)
@@ -293,9 +298,16 @@ def cli(
         })
         hessian_mode: Optional[str] = None
         if sp_cfg["hess"]:
-            hessian_mode = sp_cfg.get("hessian_calc_mode") or (
-                "Analytical" if calc_cfg["backend"] == "uma" else "FiniteDifference"
-            )
+            hessian_mode = sp_cfg.get("hessian_calc_mode")
+            if hessian_mode is None:
+                hessian_mode = (
+                    "Analytical"
+                    if (
+                        calc_cfg["backend"] == "uma"
+                        and int(calc_cfg.get("workers", 1)) <= 1
+                    )
+                    else "FiniteDifference"
+                )
             # Every built-in pysis calculator implements the same get_hessian
             # contract. Propagate the resolved request before constructing the
             # calculator; otherwise ORB/MACE/AIMNet2 silently retain their FD

@@ -93,6 +93,92 @@ def test_sp_propagates_resolved_hessian_mode_to_backend(
     assert payload["status"] == "ok"
 
 
+def test_sp_auto_hessian_uses_fd_with_parallel_uma_workers(
+    monkeypatch, tmp_path: Path,
+) -> None:
+    from pdb2reaction.cli import cli as root_cli
+    from pdb2reaction.workflows import sp
+
+    inp = tmp_path / "geom.xyz"
+    inp.write_text("1\nframe\nC 0.0 0.0 0.0\n")
+    created: list[dict] = []
+    monkeypatch.setattr(sp, "geom_loader", lambda *_a, **_k: _FakeGeometry())
+    monkeypatch.setattr(
+        sp,
+        "create_calculator",
+        lambda **kwargs: created.append(dict(kwargs)) or _FakeCalculator(),
+    )
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "sp", "-i", str(inp), "-q", "0", "-m", "1", "-b", "uma",
+            "--workers", "2", "--hess", "-o", str(tmp_path / "out"),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert created[0]["hessian_calc_mode"] == "FiniteDifference"
+
+
+def test_sp_no_hess_removes_command_owned_stale_hessian(
+    monkeypatch, tmp_path: Path,
+) -> None:
+    from pdb2reaction.cli import cli as root_cli
+    from pdb2reaction.workflows import sp
+
+    inp = tmp_path / "geom.xyz"
+    inp.write_text("1\nframe\nC 0.0 0.0 0.0\n")
+    out = tmp_path / "out"
+    out.mkdir()
+    stale = out / "hessian.npy"
+    np.save(stale, np.eye(3))
+    monkeypatch.setattr(sp, "geom_loader", lambda *_a, **_k: _FakeGeometry())
+    monkeypatch.setattr(sp, "create_calculator", lambda **_k: _FakeCalculator())
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "sp", "-i", str(inp), "-q", "0", "-m", "1",
+            "--no-hess", "-o", str(out),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert not stale.exists()
+
+
+def test_sp_failed_hessian_rerun_does_not_retain_previous_matrix(
+    monkeypatch, tmp_path: Path,
+) -> None:
+    from pdb2reaction.cli import cli as root_cli
+    from pdb2reaction.workflows import sp
+
+    class _FailingCalculator(_FakeCalculator):
+        def get_hessian(self, atoms, coords):
+            raise RuntimeError("hessian probe failed")
+
+    inp = tmp_path / "geom.xyz"
+    inp.write_text("1\nframe\nC 0.0 0.0 0.0\n")
+    out = tmp_path / "out"
+    out.mkdir()
+    stale = out / "hessian.npy"
+    np.save(stale, np.eye(3))
+    monkeypatch.setattr(sp, "geom_loader", lambda *_a, **_k: _FakeGeometry())
+    monkeypatch.setattr(sp, "create_calculator", lambda **_k: _FailingCalculator())
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "sp", "-i", str(inp), "-q", "0", "-m", "1",
+            "--hess", "-o", str(out),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert not stale.exists()
+
+
 def test_sp_converts_yaml_freeze_atoms_to_internal_indices(
     monkeypatch, tmp_path: Path,
 ) -> None:

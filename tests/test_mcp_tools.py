@@ -127,6 +127,38 @@ def test_scan_1d_uses_one_scan_flag_for_all_stages(
     assert argv[scan_at + 1 : scan_at + 3] == [first, second]
 
 
+@pytest.mark.parametrize("tool_name", ["scan_2d", "scan_3d"])
+def test_multidimensional_scans_forward_shared_calculator_controls(
+    registered_tools, tmp_path: Path, tool_name: str
+) -> None:
+    tools, calls = registered_tools
+
+    tools[tool_name](
+        "R.pdb",
+        "[(1,2,1.2,1.8),(3,4,1.3,2.0)]",
+        charge=0,
+        backend="orb",
+        solvent="water",
+        solvent_model="alpb",
+        precision="fp64",
+        workers=4,
+        workers_per_node=2,
+        out_dir=str(tmp_path / tool_name),
+    )
+
+    argv = calls[-1]["argv"]
+    expected = {
+        "-b": "orb",
+        "--solvent": "water",
+        "--solvent-model": "alpb",
+        "--precision": "fp64",
+        "--workers": "4",
+        "--workers-per-node": "2",
+    }
+    for flag, value in expected.items():
+        assert argv[argv.index(flag) + 1] == value
+
+
 def test_full_pipeline_uses_explicit_all_and_one_scan_flag(
     registered_tools, tmp_path: Path
 ) -> None:

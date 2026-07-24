@@ -120,7 +120,7 @@ geom:
 **Notes:**
 - `freeze_atoms` from YAML is merged with atoms detected via `--freeze-links` for PDB/mmCIF topology inputs
 - Frozen atoms have zeroed forces; their Hessian columns are also zeroed
-- `tr_projection: constrained` removes only full-system rigid motions that leave frozen anchors fixed. `legacy-active` is an isolated-active comparison treatment; see [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries)
+- `tr_projection: constrained` removes only full-system rigid motions that leave frozen anchors fixed. `legacy-active` is deprecated, comparison-only, and must not be used for pass/HOSP transition-state certification; see [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries)
 - For `irc`, `geom.coord_type` is forced to `cart` after YAML/CLI merging
 
 ---
@@ -188,8 +188,8 @@ opt:
  overachieve_factor: 0.0 # Factor to tighten thresholds
  check_eigval_structure: false # Validate Hessian eigenstructure
  line_search: true # Enable line search
- energy_plateau: true # Declare convergence when the energy range flattens (see note below)
- energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); fallback convergence threshold for the plateau check
+ energy_plateau: true # Stop as stalled when the energy range flattens (see note below)
+ energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); stalled-state threshold for the plateau check
  energy_plateau_window: 50 # Number of most recent steps inspected for the plateau check
  dump: false # Dump trajectory/restart data
  dump_restart: false # Dump restart checkpoints
@@ -197,8 +197,8 @@ opt:
  out_dir: ./result_opt/ # Output directory
 ```
 
-**Energy plateau fallback:**
-When `energy_plateau: true`, the optimizer declares convergence if the energy range
+**Energy plateau stop:**
+When `energy_plateau: true`, the optimizer terminates as `stalled`, not converged, if the energy range
 (max − min) over the last `energy_plateau_window` steps falls below
 `energy_plateau_thresh` (default `1e-4` au ≈ 0.06 kcal/mol over 50 steps). This prevents
 wasted cycles when MLIP force noise can exceed the `baker` threshold
@@ -465,6 +465,12 @@ rsirfo:
  max_line_search: true # Enforce maximum line-search step
  assert_neg_eigval: false # Require negative eigenvalue at convergence
  track_mode_by_overlap: false # Track the selected TS mode by overlap with the previous Hessian
+ reject_mode_loss: true # Reject a trial that loses established negative curvature
+ mode_loss_trust_floor: 1.0e-05 # Positive emergency trust-radius floor for those retries
+ max_mode_loss_rejections: 5 # Rejections allowed at that floor before stopping
+ verify_saddle: true # Require exact-Hessian projected first-order-saddle validation
+ saddle_imaginary_threshold_cm: 5.0 # Minimum |imaginary frequency| counted as negative (cm^-1; positive)
+ saddle_recovery_step: 0.01 # Positive uphill recovery displacement cap in optimizer coordinates
  saddle_recovery_check_interval: 50 # Exact PHVA cadence during n_imag=0 recovery
  saddle_recovery_max_cycles: 200 # Bounded n_imag=0 recovery cap
  # Also inherits rfo-like settings: trust_radius, trust_update, etc.
@@ -497,6 +503,8 @@ irc:
  hessian_init: calc # Hessian initialization source
  hessian_update: bofill # Hessian update scheme
  hessian_recalc: null # Hessian rebuild cadence
+ dump_every: null # Disabled; positive cadence writes a coordinate/energy/gradient checkpoint without a Hessian
+ dump_fn: irc_data.h5 # Checkpoint filename used only when dump_every is set
  displ: energy # Displacement construction method
  displ_energy: 0.001 # Energy-based displacement scaling
  displ_length: 0.1 # Length-based displacement fallback
@@ -541,6 +549,7 @@ Thermochemistry settings.
 thermo:
  temperature: 298.15 # Thermochemistry temperature (K)
  pressure_atm: 1.0 # Thermochemistry pressure (atm)
+ symmetry_number: 1 # External rotational symmetry number (integer >= 1)
  dump: false # Write thermoanalysis.yaml
 ```
 
@@ -659,6 +668,7 @@ freq:
 thermo:
  temperature: 298.15
  pressure_atm: 1.0
+ symmetry_number: 1
 
 dft:
  func: wb97m-v

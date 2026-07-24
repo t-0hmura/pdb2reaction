@@ -52,7 +52,7 @@ pip install "pdb2reaction[mcp]"
 
 | MCP ツール | CLI サブコマンド | 目的 |
 |---|---|---|
-| `scan_1d` / `scan_2d` / `scan_3d` | `pdb2reaction scan{,2d,3d}` | 拘束駆動の距離スキャン |
+| `scan_1d` / `scan_2d` / `scan_3d` | `pdb2reaction scan` / `pdb2reaction scan2d` / `pdb2reaction scan3d` | 拘束駆動の距離スキャン |
 | `optimize_path` | `pdb2reaction path-opt` | 2 端点間の MEP 最適化 |
 | `search_paths` | `pdb2reaction path-search` | 再帰的な反応経路探索 |
 | `run_full_pipeline` | `pdb2reaction`（`all` サブコマンド） | エンドツーエンド: extract → MEP → TS → IRC → freq → DFT |

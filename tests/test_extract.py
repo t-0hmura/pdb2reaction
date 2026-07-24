@@ -239,6 +239,7 @@ def test_compute_charge_summary_terminus_cap_charges():
     (H1/H2/H3) -> +1. No correction unless the cap is kept (keep_ncap/ccap)."""
     import io as _io
     from Bio import PDB
+    from pdb2reaction.io.charge import infer_present_terminal_cap_ids
     from pdb2reaction.workflows.extract import compute_charge_summary
 
     def _atom(serial, atom, resname, chain, resseq, x, y, z, element):
@@ -270,8 +271,11 @@ def test_compute_charge_summary_terminus_cap_charges():
     cterm = next(r.get_full_id() for r in res if r.get_parent().id == "A")
     nterm = next(r.get_full_id() for r in res if r.get_parent().id == "B")
     sel = {r.get_full_id() for r in res}
+    inferred_ncap, inferred_ccap = infer_present_terminal_cap_ids(structure, sel)
 
     assert compute_charge_summary(structure, sel, set())["protein_charge"] == 0.0
+    assert inferred_ncap == {nterm}
+    assert inferred_ccap == {cterm}
     assert compute_charge_summary(structure, sel, set(), keep_ccap_ids={cterm})["protein_charge"] == -1.0
     assert compute_charge_summary(structure, sel, set(), keep_ncap_ids={nterm})["protein_charge"] == 1.0
     assert compute_charge_summary(
@@ -351,3 +355,28 @@ def test_compute_charge_summary_warns_for_unmatched_mapping_entries(monkeypatch)
     assert "ABS, MG" in warnings[0]
     assert "matched no unknown" in warnings[0]
     assert "Use -q to override" in warnings[0]
+
+
+def test_compute_charge_summary_accepts_exact_known_ion_mapping(monkeypatch):
+    from pdb2reaction.workflows import extract as extract_module
+    from pdb2reaction.io import charge as charge_module
+
+    structure, ligand, magnesium = _charge_test_structure()
+    warnings = []
+    monkeypatch.setattr(
+        charge_module,
+        "_echo_warning",
+        lambda msg, *args: warnings.append(
+            charge_module._format_echo_message(msg, *args)
+        ),
+    )
+
+    result = extract_module.compute_charge_summary(
+        structure,
+        {ligand.get_full_id(), magnesium.get_full_id()},
+        {ligand.get_full_id()},
+        "LIG:-2,MG:2",
+    )
+
+    assert result["total_charge"] == 0.0
+    assert warnings == []

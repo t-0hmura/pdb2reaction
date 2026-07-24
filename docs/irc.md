@@ -83,6 +83,12 @@ When `irc.prefix` is non-empty, EulerPC inserts one underscore before the
 filename; for example, `prefix: trial` produces
 `trial_finished_irc_trj.xyz`. `result.json.files` records the normalized names.
 
+Low-level periodic HDF5 checkpointing is available only through YAML:
+`irc.dump_every` defaults to `null` and a positive value writes
+`<prefix>irc_data.h5`. The file is overwritten with the current direction's
+coordinates, energies, and gradients; it is not a final combined IRC artifact,
+contains no Hessian, and is omitted from `result.json.files`.
+
 - Console summaries of resolved `geom`, `calc`, and `irc` configurations plus wall-clock timing.
 
 ## CLI options
@@ -103,9 +109,10 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--root INT` | **0-based** index into the projected Hessian's eigenvalues sorted in **ascending order** (most-negative first), used to pick the mode for the initial IRC displacement. For a validated TS with exactly one imaginary mode, leave `--root 0` (the sole negative eigenvalue). Use `--root 1`, `--root 2`, … only if you know the active imaginary mode is ranked above more-negative spurious modes. An explicit value overrides YAML `irc.root`. | `0` |
 | `--forward/--no-forward` | Run forward branch (`irc.forward`); an explicit toggle overrides YAML. | `True` |
 | `--backward/--no-backward` | Run backward branch (`irc.backward`); an explicit toggle overrides YAML. | `True` |
+| `--irc-pos-def/--no-irc-pos-def` | Opt in to requiring a positive-definite projected Hessian before accepting IRC convergence. Enable this guard when a shoulder could otherwise look converged. | `False` |
 | `--freeze-links/--no-freeze-links` | For PDB/mmCIF topology inputs, freeze cap-H parents (merged with `geom.freeze_atoms`). See [extract](extract.md) for cap-hydrogen details. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
-| `--tr-projection [constrained\|legacy-active]` | Rigid-mode treatment for the initial frozen/partial Hessian. `constrained` respects frozen anchors; `legacy-active` is for isolated-active comparison only. | `constrained` |
+| `--tr-projection [constrained\|legacy-active]` | Rigid-mode treatment for the initial frozen/partial Hessian. `legacy-active` is deprecated comparison-only behavior and must not be used for pass/HOSP transition-state certification. | `constrained` |
 | `-o, --out-dir TEXT` | Output directory (`irc.out_dir`); an explicit value overrides YAML. | `./result_irc/` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/CIF companions when a reference PDB/mmCIF topology is available. | `True` |
 | `--ref-pdb FILE` | Reference PDB or mmCIF topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |

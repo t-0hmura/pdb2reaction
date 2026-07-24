@@ -11,7 +11,7 @@ The upstream `pysisyphus` does not natively handle:
 - **MLIP backends with autograd Hessians** evaluated on a GPU, with the optimizer iterating on CPU coordinates
 - **VRAM-aware stage handoff** — explicit `del` between IRC / tsopt / freq stages to free CUDA memory before the next stage loads its model
 - **Initial-displacement memory hygiene** in IRC for large systems (16 GB+ Hessians)
-- **bofill_update advanced-indexing scatter** when only a subset of internal coordinates is updated (GPU OOM on the naive path)
+- **GPU-resident rank-two Bofill updates**, applied in place where ownership permits, with explicit `PYSIS_BOFILL_CPU_OFFLOAD=1` fallback
 - **Atomic trial rollback and first-order-saddle validation** for MLIP optimizations, including coordinate-bound exact PHVA checks and path-mode tracking
 - **Frozen-boundary PHVA** that removes only full-system rigid motions compatible with fixed anchors
 
@@ -25,9 +25,11 @@ The bundled fork keeps these divergences explicit and limits changes outside the
 | `pysisyphus/irc/IRC.py` | initial-displacement memory hygiene for large-system IRC; constrained rigid-null treatment; opt-in `require_pos_def_hessian` PSD convergence guard | chemistry-rule adjacent, freq-stage VRAM invariant |
 | `pysisyphus/optimizers/Optimizer.py`, `LBFGS.py`, `RFOptimizer.py` | atomic coordinate/history rollback and uphill-trial rejection for minimizers | optimizer state integrity |
 | `pysisyphus/optimizers/HessianOptimizer.py` | opt-in `trust_band` rho-band trust update, `hessian_update_window` multistep TS-BFGS, `weighted_trust` per-coord-type L_inf trust; coordinate/history rollback for rejected minimizer trials; `get_xp`-based torch/numpy dispatch where shared API allows | optimizer step control / trust radius |
-| `pysisyphus/optimizers/hessian_updates.py` | `bofill_update` advanced-indexing scatter (CHEMISTRY-RULE:7); `multistep_ts_bfgs_update` helper; re-exports `_outer / _dot` from `_array` shim | scatter on subset of internals |
+| `pysisyphus/optimizers/hessian_updates.py` | device-resident rank-two `bofill_update`, in-place application where ownership permits, and opt-in CPU offload; `multistep_ts_bfgs_update` helper; re-exports `_outer / _dot` from `_array` shim | bounded device memory with explicit fallback |
 | `pysisyphus/optimizers/restrict_step.py` | `per_coord_type_weights` + `weighted_max_internal_step` helpers | weighted L∞ trust check |
 | `pysisyphus/optimizers/gdiis.py` | `get_xp`-based torch/numpy dispatch (xp.linalg.norm / xp.sum) | torch/numpy backend share |
+| `pysisyphus/calculators/Dimer.py` | frozen/rigid-basis projection and per-instance deterministic random state | constrained Dimer invariants |
+| `pysisyphus/cos/ChainOfStates.py` | safe tangent normalization and geometric fallback for equal-energy neighbours | finite COS tangent invariant |
 | `pysisyphus/tsoptimizers/{TSHessianOptimizer,RSIRFOptimizer,RSPRFOptimizer,TRIM}.py` | mode-loss rollback, exact PHVA saddle-order validation, path-mode identity, and bounded recovery for MLIP-driven TS search | tsopt convergence |
 | `pysisyphus/_array.py` | torch/numpy backend dispatch shim (`get_xp`, `_outer`, `_dot`, `_eigh`, `as_numpy`, `to_xp`) | used by `hessian_updates.py` + `HessianOptimizer.py` + `gdiis.py` |
 

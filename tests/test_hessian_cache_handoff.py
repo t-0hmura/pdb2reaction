@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 import torch
 
 from pdb2reaction.io import hessian_cache
@@ -240,3 +241,48 @@ def test_identity_from_context_round_trips_through_cache(monkeypatch) -> None:
     assert hessian_cache.load_matching(
         "ts", hessian_cache.identity_from_context(_Geom(), other, role="ts")
     ) is None
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"hessian_calc_mode": "Analytical"},
+        {"hessian_double": True},
+        {"return_partial_hessian": False},
+    ],
+)
+def test_identity_rejects_a_different_hessian_construction_mode(
+    change,
+    monkeypatch,
+) -> None:
+    from pdb2reaction.core.result_commit import RUN_ID_ENV
+
+    monkeypatch.setenv(RUN_ID_ENV, "run-hessian-policy")
+
+    class _Geom:
+        atoms = ["H", "H"]
+        atomic_numbers = [1, 1]
+        cart_coords = np.zeros(6)
+        freeze_atoms = []
+
+    base = {
+        "backend": "uma",
+        "model": "uma-s-1p2",
+        "precision": "fp32",
+        "charge": 0,
+        "spin": 1,
+        "hessian_calc_mode": "FiniteDifference",
+        "hessian_double": False,
+        "return_partial_hessian": True,
+    }
+
+    base_identity = hessian_cache.identity_from_context(_Geom(), base, role="ts")
+    other_identity = hessian_cache.identity_from_context(
+        _Geom(), {**base, **change}, role="ts"
+    )
+    assert (
+        base_identity["evaluator"]["potential"]
+        != other_identity["evaluator"]["potential"]
+    )
+    hessian_cache.store("ts", np.eye(6), identity=base_identity)
+    assert hessian_cache.load_matching("ts", other_identity) is None

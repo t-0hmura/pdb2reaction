@@ -65,7 +65,12 @@ def apply_current_run_id(
 def serialize_json_bytes(payload: Mapping[str, Any]) -> bytes:
     """Serialize one immutable JSON payload using the legacy public format."""
 
-    return json.dumps(payload, indent=2, ensure_ascii=False).encode("utf-8")
+    return json.dumps(
+        payload,
+        indent=2,
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")
 
 
 def stage_exact(path: Path, payload: bytes) -> Path:

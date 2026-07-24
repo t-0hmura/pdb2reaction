@@ -56,9 +56,9 @@
 |------|----------|------|
 | **QM** | Quantum Mechanics | DFT、HF、post-HF などの第一原理電子状態計算 |
 | **DFT** | Density Functional Theory | 電子密度汎関数に基づく電子状態計算法 |
-| **DFT//MLIP** | — | 複合計算法の表記: MLIP で最適化した構造の上で DFT による単点エネルギーを評価する手法。MLIP の構造最適化・分子動力学と DFT のエネルギー精密化を組み合わせます。`//` 区切りは量子化学の標準慣習「エネルギー計算レベル // 構造最適化レベル」に従います |
+| **DFT//MLIP** | — | 複合計算法の表記: MLIP で最適化した構造の上で DFT による一点エネルギーを評価する手法。MLIP の構造最適化・分子動力学と、より高い理論レベルでの DFT エネルギー評価を組み合わせます。`//` 区切りは量子化学の標準慣習「エネルギー計算レベル // 構造最適化レベル」に従います |
 | **Hessian（Hessian行列）** | — | エネルギーの二階微分行列。固有値から振動数を、固有ベクトルから振動モード（変位ベクトル）を得ます。振動解析や TS 最適化に使用します |
-| **SP** | Single Point | 固定構造での計算（最適化なし）。高精度エネルギー補正によく使用 |
+| **SP** | Single Point | 固定構造での計算（最適化なし）。より高い理論レベルでのエネルギー評価によく使用 |
 | **スピン多重度** | Spin Multiplicity | 2S+1（S は全スピン量子数）。一重項（singlet）= 1、二重項（doublet）= 2、三重項（triplet）= 3 など。`-m/--multiplicity` で指定（デフォルト: 1） |
 | **ALPB** | Analytical Linearized Poisson-Boltzmann | xTB で利用可能な暗黙溶媒モデル（`--solvent-model alpb`、デフォルト） |
 | **CPCM-X** | 拡張型 Conductor-like Polarizable Continuum Solvation Model | xTB で利用可能な暗黙溶媒モデル（`--solvent-model cpcmx`）。"X" は "eXtended" を意味し、CPCM に COSMO-RS 由来の σ-profile と SMD 流の非静電項を結合することで任意溶媒に対応する溶媒和自由エネルギーを与える（Stahn, Ehlert, Grimme, *J. Phys. Chem. A* 2023）。 |

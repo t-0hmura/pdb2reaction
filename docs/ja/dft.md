@@ -1,6 +1,6 @@
 # `dft`
 
-GPU4PySCF または CPU PySCF を使用して DFT 一点計算を実行し、エネルギーと布居解析（population analysis: Mulliken、meta-Löwdin、IAO 電荷）を出力します。デフォルトの汎関数/基底関数は ωB97M-V/def2-tzvpd です。小規模な活性部位モデルの DFT 一点エネルギー（および布居解析）を得たい場面で使用します。多くは、MLIP で最適化した R/TS/P 構造の精密化に用います。バックエンドは `--engine`（デフォルト `gpu`）で選択します。GPU が利用できない場合や移植性・デバッグ目的の実行には `cpu` を使用します。
+GPU4PySCF または CPU PySCF を使用して DFT 一点計算を実行し、エネルギーと布居解析（population analysis: Mulliken、meta-Löwdin、IAO 電荷）を出力します。デフォルトの汎関数/基底関数は ωB97M-V/def2-tzvpd です。小規模な活性部位モデルの DFT 一点エネルギー（および布居解析）を得たい場面で使用します。多くは、MLIP で最適化した R/TS/P 構造上の DFT 一点エネルギー評価に用います。バックエンドは `--engine`（デフォルト `gpu`）で選択します。GPU が利用できない場合や移植性・デバッグ目的の実行には `cpu` を使用します。
 
 > `--engine`（単体の `dft`）と `--dft-engine`（`pdb2reaction all` から転送する場合）の命名規則は {ref}`ja-engine-vs-dft-engine` を参照してください。
 
@@ -138,7 +138,7 @@ dft:
 
 - [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け
 - [トラブルシューティング](troubleshooting.md) — 一般的な失敗モードの詳細な対処
-- [freq](freq.md) — MLIP ベースの振動解析（DFT 精密化の前に行うことが多い）
+- [freq](freq.md) — MLIP ベースの振動解析（DFT 一点エネルギー評価の前に行うことが多い）
 - [all](all.md) — `--dft` を使用した一気通貫ワークフロー
 - [YAML リファレンス](yaml-reference.md) — `dft` の完全な設定オプション
 - [用語集](glossary.md) — DFT、SP（一点計算）の定義

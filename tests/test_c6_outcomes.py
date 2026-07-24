@@ -160,9 +160,18 @@ def test_scan_normal_return_is_not_convergence() -> None:
     # M50: an optimizer that returns normally but reports is_converged=False (a
     # cycle-limit stop) must not be recorded as converged. seed_eligible_mask
     # reads the recorded bit; only an explicit True survives.
-    normal_return_but_not_converged = {"energy_hartree": -1.0, "bias_converged": False}
-    unknown_convergence = {"energy_hartree": -1.0, "bias_converged": None}
-    converged = {"energy_hartree": -1.0, "bias_converged": True}
+    normal_return_but_not_converged = {
+        "energy_hartree": -1.0, "bias_converged": False,
+        "artifact_written": True,
+    }
+    unknown_convergence = {
+        "energy_hartree": -1.0, "bias_converged": None,
+        "artifact_written": True,
+    }
+    converged = {
+        "energy_hartree": -1.0, "bias_converged": True,
+        "artifact_written": True,
+    }
     assert seed_eligible_mask(
         [normal_return_but_not_converged, unknown_convergence, converged]
     ) == [False, False, True]
@@ -397,6 +406,32 @@ def test_freq_zero_exit_returns_parsed_thermo(tmp_path: Path, monkeypatch) -> No
     assert out.get("sum_EE_and_thermal_free_energy_ha") == pytest.approx(-123.456)
 
 
+def test_freq_no_dump_does_not_consume_stale_thermo(tmp_path: Path, monkeypatch) -> None:
+    from pdb2reaction.workflows import all as all_workflow
+
+    fdir = tmp_path / "R"
+    fdir.mkdir(parents=True)
+    (fdir / "thermoanalysis.yaml").write_text(
+        "sum_EE_and_thermal_free_energy_ha: -123.456\n",
+        encoding="utf-8",
+    )
+    structure = tmp_path / "R.xyz"
+    structure.write_text("1\n\nH 0 0 0\n", encoding="utf-8")
+    monkeypatch.setattr(all_workflow, "_run_cli_main", lambda *a, **k: 0)
+
+    assert all_workflow._run_freq_for_state(
+        structure,
+        0,
+        1,
+        fdir,
+        None,
+        False,
+        None,
+        False,
+        overrides={"dump": False},
+    ) == {}
+
+
 def test_freq_preserves_explicit_default_runtime_values_over_yaml(
     tmp_path: Path, monkeypatch
 ) -> None:
@@ -446,6 +481,43 @@ def test_freq_preserves_explicit_default_runtime_values_over_yaml(
     ):
         assert captured[captured.index(flag) + 1] == value
     assert captured[captured.index("--config") + 1] == str(config)
+
+
+@pytest.mark.parametrize("overrides, expected_count", [({}, 0), ({"symmetry_number": 3}, 1)])
+def test_all_freq_forwards_symmetry_number_only_when_overridden(
+    tmp_path: Path,
+    monkeypatch,
+    overrides: dict,
+    expected_count: int,
+) -> None:
+    from pdb2reaction.workflows import all as all_workflow
+
+    structure = tmp_path / "R.xyz"
+    structure.write_text("1\n\nH 0 0 0\n", encoding="utf-8")
+    captured: list[str] = []
+
+    def _capture(_name, _command, argv, **_kwargs):
+        captured.extend(argv)
+        return 1
+
+    monkeypatch.setattr(all_workflow, "_run_cli_main", _capture)
+    monkeypatch.setattr(all_workflow, "_echo", lambda *a, **k: None)
+
+    all_workflow._run_freq_for_state(
+        structure,
+        0,
+        1,
+        tmp_path / "freq",
+        None,
+        False,
+        None,
+        False,
+        overrides=overrides,
+    )
+
+    assert captured.count("--symmetry-number") == expected_count
+    if expected_count:
+        assert captured[captured.index("--symmetry-number") + 1] == "3"
 
 
 # ---------------------------------------------------------------------------
@@ -670,6 +742,7 @@ def test_all_pipeline_aggregate_excludes_nonconverged_irc() -> None:
         "index": 1,
         "irc_traj": "finished_irc_trj.xyz",
         "irc": {"usable": True, "reason": "ok", "traj": "finished_irc_trj.xyz"},
+        "endpoint_assignment": {"connectivity_validated": True},
         "endpoint_opt": {"reactant_converged": True, "product_converged": True},
     }]
     truth_ok = _pipeline_aggregate_truth(
@@ -686,6 +759,7 @@ def test_all_pipeline_tsopt_only_does_not_require_mep_convergence() -> None:
     post = [{
         "index": 1,
         "irc": {"usable": True, "reason": "ok"},
+        "endpoint_assignment": {"connectivity_validated": True},
         "endpoint_opt": {"reactant_converged": True, "product_converged": True},
     }]
     truth = _pipeline_aggregate_truth(
@@ -724,6 +798,7 @@ def test_all_pipeline_aggregate_preserves_legacy_severity() -> None:
     post = [{
         "index": 1,
         "irc": {"usable": True, "reason": "ok"},
+        "endpoint_assignment": {"connectivity_validated": True},
         "endpoint_opt": {"reactant_converged": True, "product_converged": True},
     }]
     truth = _pipeline_aggregate_truth(
@@ -732,6 +807,45 @@ def test_all_pipeline_aggregate_preserves_legacy_severity() -> None:
     )
     assert truth.scientific_status == "partial"
     assert "segment 1: DFT failed (TS)" in truth.status_reasons
+
+
+def test_all_pipeline_requires_validated_mep_irc_connectivity() -> None:
+    from pdb2reaction.workflows.all import _pipeline_aggregate_truth
+
+    summary = {
+        "segments": [
+            {"index": 1, "kind": "seg", "converged": True}
+        ]
+    }
+    base = {
+        "index": 1,
+        "irc": {"usable": True, "reason": "ok"},
+        "endpoint_opt": {
+            "reactant_converged": True,
+            "product_converged": True,
+        },
+    }
+    unvalidated = {
+        **base,
+        "endpoint_assignment": {"connectivity_validated": False},
+    }
+    validated = {
+        **base,
+        "endpoint_assignment": {"connectivity_validated": True},
+    }
+
+    assert _pipeline_aggregate_truth(
+        summary,
+        post_segments=[unvalidated],
+        config={"tsopt": True},
+        legacy_status="success",
+    ).scientific_status != "success"
+    assert _pipeline_aggregate_truth(
+        summary,
+        post_segments=[validated],
+        config={"tsopt": True},
+        legacy_status="success",
+    ).scientific_status == "success"
 
 
 def test_all_pipeline_aggregate_post_missing_fails_closed_when_tsopt_requested() -> None:

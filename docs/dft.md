@@ -1,6 +1,6 @@
 # `dft`
 
-Runs single-point DFT with GPU4PySCF or CPU PySCF, reporting energy and population analysis (Mulliken, meta-Löwdin, IAO charges). The default functional/basis is ωB97M-V/def2-tzvpd. Use it for single-point DFT energy (and population analysis) on a small active-site model, typically to refine MLIP-optimized R/TS/P structures. Select the backend via `--engine` (default `gpu`); use `cpu` when no GPU is available, or for portable/debug runs.
+Runs single-point DFT with GPU4PySCF or CPU PySCF, reporting energy and population analysis (Mulliken, meta-Löwdin, IAO charges). The default functional/basis is ωB97M-V/def2-tzvpd. Use it to evaluate DFT energies (and population analysis) on small active-site models, typically at MLIP-optimized R/TS/P geometries. Select the backend via `--engine` (default `gpu`); use `cpu` when no GPU is available, or for portable/debug runs.
 
 > See {ref}`engine-vs-dft-engine` for the `--engine` (standalone `dft`) vs `--dft-engine` (forwarded through `pdb2reaction all`) naming convention.
 
@@ -139,7 +139,7 @@ See {ref}`exit-codes` in CLI Conventions.
 
 - [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing
 - [Troubleshooting](troubleshooting.md) — Detailed fixes for common failure modes
-- [freq](freq.md) — MLIP-based vibrational analysis (often precedes DFT refinement)
+- [freq](freq.md) — MLIP-based vibrational analysis (often precedes DFT single-point evaluation)
 - [all](all.md) — End-to-end workflow with `--dft`
 - [YAML Reference](yaml-reference.md) — Full `dft` configuration options
 - [Glossary](glossary.md) — Definitions of DFT, SP (Single Point)

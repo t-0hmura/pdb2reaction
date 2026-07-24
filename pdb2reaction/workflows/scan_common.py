@@ -86,12 +86,20 @@ def parse_staged_scan_request(
     stages: list[list[tuple[int, int, float]]]
     if len(values) == 1 and is_scan_spec_file(values[0]):
         spec_path = Path(values[0])
-        stages, scan_one_based = parse_scan_spec_stages(
+        (
+            stages,
+            scan_one_based,
+            snapshot_before_spec,
+            reset_before_spec,
+        ) = parse_scan_spec_stages(
             spec_path,
             one_based_default=one_based,
             atom_meta=atom_meta,
             option_name=option_name,
+            return_bidirectional_markers=True,
         )
+        snapshot_before.update(snapshot_before_spec)
+        reset_before.update(reset_before_spec)
         source = f"{option_name} ({spec_path})"
     else:
         stages = []

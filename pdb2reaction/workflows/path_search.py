@@ -58,7 +58,7 @@ from pdb2reaction.core.utils import (
     format_elapsed,
     build_energy_diagram,
     prepare_input_structure,
-    fill_charge_spin_from_gjf,
+    fill_charge_spin_from_gjf_inputs,
     _derive_charge_from_ligand_charge,
     set_convert_file_enabled,
     convert_xyz_like_outputs,
@@ -90,7 +90,14 @@ from pdb2reaction.io.structure_formats import (
 )
 from pdb2reaction.domain.bond_changes import has_bond_change
 from pdb2reaction.workflows.align_freeze import align_and_refine_sequence_inplace, kabsch_R_t
-from pdb2reaction.cli.common_options import add_coord_type_option, add_precision_option, add_backend_model_option, add_calc_file_option, add_deterministic_option
+from pdb2reaction.cli.common_options import (
+    add_allow_charge_mult_mismatch_option,
+    add_backend_model_option,
+    add_calc_file_option,
+    add_coord_type_option,
+    add_deterministic_option,
+    add_precision_option,
+)
 from pdb2reaction.cli.decorators import run_cli, resolve_yaml_sources, load_merged_yaml_cfg
 
 logger = logging.getLogger(__name__)
@@ -312,12 +319,56 @@ def _tag_images(images: Sequence[Any], **attrs: Any) -> None:
                     warned = True
 
 
+def _frame_ranges_by_segment(images: Sequence[Any]) -> Dict[int, Dict[str, Any]]:
+    """Return additive half-open frame ranges for each tagged MEP segment."""
+
+    result: Dict[int, Dict[str, Any]] = {}
+    run_index: Optional[int] = None
+    run_kind = ""
+    run_start = 0
+
+    def close_run(stop: int) -> None:
+        if run_index is None or run_index <= 0:
+            return
+        entry = result.setdefault(
+            run_index,
+            {"kind": run_kind or "seg", "frame_ranges": []},
+        )
+        entry["frame_ranges"].append([run_start, stop])
+
+    for frame_index, image in enumerate(images):
+        segment_index = int(getattr(image, "mep_seg_index", 0) or 0)
+        segment_kind = str(getattr(image, "mep_seg_kind", "") or "seg")
+        if (segment_index, segment_kind) != (run_index, run_kind):
+            close_run(frame_index)
+            run_index = segment_index
+            run_kind = segment_kind
+            run_start = frame_index
+    close_run(len(images))
+
+    for entry in result.values():
+        ranges = entry["frame_ranges"]
+        if len(ranges) == 1:
+            entry["frame_start"], entry["frame_stop"] = ranges[0]
+    return result
+
+
 def _segment_base_id(tag: str) -> str:
     """
     Extract base id 'seg_XXX' from a tag like 'seg_000_refine'; fallback to `tag` or 'seg'.
     """
     m = re.search(r"(seg_\d{3})", tag or "")
     return m.group(1) if m else (tag or "seg")
+
+
+def _select_hei_index(energies: Sequence[float]) -> int:
+    """Return the global highest-energy-image index."""
+    E = np.asarray(energies, dtype=float)
+    if E.size == 0:
+        raise ValueError("Cannot select an HEI from an empty energy profile.")
+    if not np.all(np.isfinite(E)):
+        raise ValueError("Cannot select an HEI from non-finite energies.")
+    return int(np.argmax(E))
 
 
 def _is_local_minimum(idx: int, energies: Sequence[float]) -> bool:
@@ -429,14 +480,10 @@ def _run_mep_between(
     energies = list(map(float, np.array(gs.energy, dtype=float)))
     images = list(gs.images)
 
-    # Choose HEI: prefer internal local maxima; fallback to highest internal node
-    E = np.array(energies, dtype=float)
-    nE = len(E)
-    local_max_candidates = [i for i in range(1, nE - 1) if (E[i] > E[i - 1] and E[i] > E[i + 1])]
-    if local_max_candidates:
-        hei_idx = int(max(local_max_candidates, key=lambda i: E[i]))
-    else:
-        hei_idx = int(np.argmax(E[1:-1])) + 1 if nE >= 3 else int(np.argmax(E))
+    try:
+        hei_idx = _select_hei_index(energies)
+    except ValueError as exc:
+        raise click.ClickException(f"{tag}: {exc}") from exc
 
     # Write trajectory
     final_trj = seg_dir / "final_geometries_trj.xyz"
@@ -499,7 +546,7 @@ def _run_mep_between(
     # Write HEI structure
     try:
         hei_geom = images[hei_idx]
-        hei_E = float(E[hei_idx])
+        hei_E = float(energies[hei_idx])
         hei_xyz = seg_dir / "hei.xyz"
         s = hei_geom.as_xyz()
         lines = s.splitlines()
@@ -1978,6 +2025,7 @@ def _merge_final_and_write(final_images: List[Any],
 @add_backend_model_option()
 @add_calc_file_option()
 @add_deterministic_option()
+@add_allow_charge_mult_mismatch_option()
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -2183,10 +2231,11 @@ def cli(
 
         resolved_charge = charge
         resolved_spin = spin
-        for prepared in prepared_inputs:
-            resolved_charge, resolved_spin = fill_charge_spin_from_gjf(
-                resolved_charge, resolved_spin, prepared.gjf_template
-            )
+        resolved_charge, resolved_spin = fill_charge_spin_from_gjf_inputs(
+            resolved_charge,
+            resolved_spin,
+            [prepared.gjf_template for prepared in prepared_inputs],
+        )
         if resolved_charge is None and ligand_charge is not None:
             resolved_charge = _derive_charge_from_ligand_charge(
                 prepared_inputs[0], ligand_charge, prefix="[path-search]"
@@ -2442,7 +2491,7 @@ def cli(
                 )
                 click.echo("[align] Completed input alignment.")
             except Exception as e:
-                click.echo(f"[align] WARNING: Alignment failed; continuing without alignment: {e}", err=True)
+                raise click.ClickException(f"Input alignment failed: {e}") from e
         else:
             click.echo("[align] Skipping input alignment as requested by --no-align.")
 
@@ -2893,6 +2942,7 @@ def cli(
         except Exception as e:
             click.echo(f"[diagram] WARNING: Failed to build energy diagram: {e}", err=True)
 
+        frame_ranges = _frame_ranges_by_segment(combined_all.images)
         summary = {
             "out_dir": str(out_dir_path),
             "n_images": len(combined_all.images),
@@ -2912,6 +2962,7 @@ def cli(
                     "bond_changes": (
                         _bond_changes_block(s.summary) if (s.kind != "bridge") else ""
                     ),
+                    **frame_ranges.get(int(s.seg_index), {}),
                 } for s in combined_all.segments
             ],
         }

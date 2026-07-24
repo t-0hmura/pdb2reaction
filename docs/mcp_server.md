@@ -60,7 +60,7 @@ When a subcommand fails, the parsed `summary` (or sibling `result.json`) carries
 
 | MCP tool | CLI subcmd | Purpose |
 |---|---|---|
-| `scan_1d` / `scan_2d` / `scan_3d` | `pdb2reaction scan{,2d,3d}` | Restraint-driven distance scans |
+| `scan_1d` / `scan_2d` / `scan_3d` | `pdb2reaction scan` / `pdb2reaction scan2d` / `pdb2reaction scan3d` | Restraint-driven distance scans |
 | `optimize_path` | `pdb2reaction path-opt` | Two-endpoint MEP optimization |
 | `search_paths` | `pdb2reaction path-search` | Recursive reaction-pathway search |
 | `run_full_pipeline` | `pdb2reaction` (the `all` subcmd) | End-to-end: extract → MEP → TS → IRC → freq → DFT |

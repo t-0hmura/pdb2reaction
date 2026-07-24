@@ -95,5 +95,5 @@ SCF mode, so do not plan capacity by summing VRAM across requested GPUs.
 
 - `env-cuda.md` — `LD_LIBRARY_PATH` and torch CUDA pairing.
 - [`pdb2reaction-cli/dft.md`](../pdb2reaction-cli/dft.md) — full subcommand flag reference.
-- `pdb2reaction-workflows-output/SKILL.md` — DFT//MLIP refinement
+- `pdb2reaction-workflows-output/SKILL.md` — DFT//MLIP single-point
   workflow (run `pdb2reaction dft` after `pdb2reaction all`).

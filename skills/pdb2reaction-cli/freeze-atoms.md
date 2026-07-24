@@ -90,7 +90,7 @@ Use `geom.tr_projection` or `--tr-projection` in `freq`, `irc`, `opt`, `tsopt`, 
 | Value | Behavior |
 |---|---|
 | `constrained` (default) | Remove only full-system rigid motions that leave every frozen anchor fixed. Generic effective ranks are 6 / 3 / 1 / 0 for 0 / 1 / 2 / at least 3 non-collinear anchors. A normal multi-anchor cluster boundary therefore usually has rank 0. |
-| `legacy-active` | Treat the active fragment as isolated. Use only for well-conditioned, nondegenerate comparison runs. The current common kernel handles degeneracies; near-linear or degenerate cases do not guarantee bitwise replay of older results. |
+| `legacy-active` | Deprecated: treat the active fragment as isolated for comparison only. Never use it for pass/HOSP transition-state certification. The current common kernel handles degeneracies; near-linear or degenerate cases do not guarantee bitwise replay of older results. |
 
 This flag controls Cartesian PHVA-related eigensolvers: `freq`, the initial IRC mode, Dimer orientation, exact TS validation, and opt/TS flattening. It is unrelated to `tsopt --ref-mode`, which supplies an MEP reaction direction. An all-frozen structure is invalid because it has no active vibrational DOF.
 

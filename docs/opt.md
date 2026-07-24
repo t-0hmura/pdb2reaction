@@ -87,7 +87,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--bias-k FLOAT` | Harmonic bias strength applied to every `--dist-freeze` tuple (eV·Å⁻²). | `300` |
 | `--freeze-links/--no-freeze-links` | Toggle cap-hydrogen parent freezing (PDB/mmCIF input or XYZ/GJF with `--ref-pdb`). See [extract](extract.md) for cap-hydrogen details. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
-| `--tr-projection [constrained\|legacy-active]` | Rigid-mode treatment used only by `--flatten` PHVA. `constrained` respects frozen anchors; `legacy-active` is an isolated-active comparison treatment. | `constrained` |
+| `--tr-projection [constrained\|legacy-active]` | Rigid-mode treatment used only by `--flatten` PHVA. `legacy-active` is deprecated comparison-only behavior and must not be used for pass/HOSP transition-state certification. | `constrained` |
 | `--max-cycles INT` | Hard limit on optimization iterations (`opt.max_cycles`). | `10000` |
 | `--opt-mode TEXT` | Optimizer preset: `grad` (`lbfgs`) or `hess` (`rfo`). Aliases `lbfgs`/`rfo` are accepted. On `opt`, `grad` = L-BFGS minimization; on `tsopt`, `grad` = Hessian-Guided Dimer TS search. For the full subcommand-dependent table, see {ref}`opt-mode-semantics`. | `grad` |
 | `--flatten/--no-flatten` | Enable/disable the post-optimization imaginary-mode flattening loop. | `False` |
@@ -129,8 +129,8 @@ Full schema (every key and default): [YAML Reference](yaml-reference.md).
 ## Notes
 
 ```{note}
-**Energy plateau fallback.** When `energy_plateau: true`, the optimizer
-is declared converged if the energy range (max − min) over the last
+**Energy plateau stop.** When `energy_plateau: true`, the optimizer
+terminates with status `stalled` (not converged) if the energy range (max − min) over the last
 `energy_plateau_window` steps falls below `energy_plateau_thresh`
 (default `1×10⁻⁴ au ≈ 0.06 kcal/mol` over 50 steps). This prevents wasted cycles when
 the measured force noise/flatness prevents the selected force threshold from being

@@ -66,6 +66,7 @@ from pdb2reaction.core.utils import (
     emit_optimizer_terminal_status,
     optimizer_cycle_count,
     optimizer_terminal_status,
+    unbiased_energy_hartree,
 )
 from pdb2reaction.cli.common_options import (
     add_ml_charge_spin_options,
@@ -415,7 +416,8 @@ def _seed_rfo_initial_hessian(
     help=(
         "Rigid translation/rotation treatment used by --flatten PHVA. "
         "'constrained' respects frozen anchors; 'legacy-active' treats the "
-        "active fragment as isolated."
+        "active fragment as isolated, is deprecated, and must not be used for "
+        "pass/HOSP transition-state certification."
     ),
 )
 @click.option(
@@ -979,9 +981,10 @@ def cli(
 
             if out_json:
                 from pdb2reaction.core.utils import write_result_json
+                final_energy_hartree = unbiased_energy_hartree(geometry, base_calc)
                 result_data = {
                     "status": optimizer_terminal_status(last_optimizer),
-                    "energy_hartree": float(geometry.energy) if geometry.energy is not None else None,
+                    "energy_hartree": final_energy_hartree,
                     "n_opt_cycles": last_optimizer.cur_cycle if hasattr(last_optimizer, "cur_cycle") else None,
                     "opt_mode": opt_cfg.get("opt_mode", opt_mode),
                     "charge": calc_cfg["charge"],

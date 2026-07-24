@@ -170,6 +170,9 @@ class MLIPCalculator(Calculator):
         print_timing: bool = True,
         **kwargs,
     ):
+        spin = int(spin)
+        if spin < 1:
+            raise ValueError(f"Spin multiplicity must be >= 1, got {spin}.")
         super().__init__(charge=charge, mult=spin, **kwargs)
 
         self.device_str = device
@@ -373,7 +376,9 @@ class MLIPCalculator(Calculator):
         H = H.reshape(n_atoms * 3, n_atoms * 3)
         if self.return_partial_hessian:
             idx = torch.tensor(active_dof_idx, device=H.device, dtype=torch.long)
-            return H.index_select(0, idx).index_select(1, idx)
+            from pysisyphus._array import active_square
+
+            return active_square(H, idx)
         if frozen_dof_idx:
             cols = torch.tensor(frozen_dof_idx, device=H.device, dtype=torch.long)
             H = H.clone()
@@ -384,8 +389,8 @@ class MLIPCalculator(Calculator):
     def _au_hessian_torch(self, H):
         """Convert a (3N,3N) torch Hessian from eV/Å² to Hartree/Bohr² and
         symmetrise.  All operations are in-place on the working buffer to
-        minimize peak VRAM: a single materialised ``Hᵀ`` temporary is the
-        only extra (3N,3N) allocation required.
+        minimize peak VRAM.  Symmetrisation uses bounded row-chunk workspace
+        instead of materialising a second full Hessian.
 
         Returns a detached torch.Tensor on the same device as the input.
         """
@@ -399,11 +404,10 @@ class MLIPCalculator(Calculator):
             # Peak here is 1× original + 1× float64 copy until the original
             # goes out of scope at function return.
             H = H.to(dtype=torch.float64)
-        # Materialise the transpose once so the in-place add is alias-free.
-        H_t = H.transpose(0, 1).contiguous()
-        H.add_(H_t)
-        del H_t
-        H.mul_(0.5 * H_EVAA_2_AU)
+        from pysisyphus.normal_modes import symmetrize_inplace
+
+        symmetrize_inplace(H)
+        H.mul_(H_EVAA_2_AU)
         return H.detach()
 
 
@@ -451,10 +455,12 @@ class MLIPCalculator(Calculator):
             if self._is_torch_tensor(H_ev):
                 H_ev = self._apply_active_trim_torch(H_ev, n_atoms)
                 H_au = self._au_hessian_torch(H_ev)
+                # Transfer ownership across a possible fp32 -> fp64 cast.
+                # When no cast occurred this merely drops a redundant alias.
+                del H_ev
                 if not self.out_hess_torch:
-                    # C-NEED: numpy boundary; release the eV-unit torch H now.
                     H_au_np = H_au.cpu().numpy()
-                    del H_au, H_ev
+                    del H_au
                     if torch.cuda.is_available():
                         torch.cuda.empty_cache()
                     H_au = H_au_np

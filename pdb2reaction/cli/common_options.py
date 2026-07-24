@@ -299,12 +299,14 @@ def add_allow_charge_mult_mismatch_option() -> Callable[[Callable], Callable]:
     return decorator
 
 
-def add_ml_charge_spin_options() -> Callable[[Callable], Callable]:
+def add_ml_charge_spin_options(
+    *, allow_ref_pdb: bool = True
+) -> Callable[[Callable], Callable]:
     """Attach the standard ML region charge/spin triple to a Click command.
 
     Options: -q/--charge, -l/--ligand-charge, -m/--multiplicity (spin).
-    All 4 wired subcommands (freq, irc, opt, tsopt) share identical
-    signature (default, type, help text) so the factory takes no parameters.
+    The ligand-charge help mentions ``--ref-pdb`` only on commands that
+    actually expose that option.
     """
     options = [
         click.option(
@@ -323,13 +325,18 @@ def add_ml_charge_spin_options() -> Callable[[Callable], Callable]:
             show_default=False,
             help=(
                 "Total charge or per-resname mapping (e.g., GPP:-3,SAM:1) used to derive "
-                "charge when -q is omitted (requires PDB/mmCIF input or --ref-pdb)."
+                "charge when -q is omitted "
+                + (
+                    "(requires PDB/mmCIF input or --ref-pdb)."
+                    if allow_ref_pdb
+                    else "(requires PDB/mmCIF input)."
+                )
             ),
         ),
         click.option(
             "-m", "--multiplicity",
             "spin",
-            type=int,
+            type=click.IntRange(min=1),
             default=None,
             show_default=False,
             help="Spin multiplicity (2S+1).",

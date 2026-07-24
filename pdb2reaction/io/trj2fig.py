@@ -22,6 +22,7 @@ from pysisyphus.constants import AU2KCALPERMOL, ANG2BOHR
 
 from pdb2reaction.core.output import emit
 from pdb2reaction.core.utils import read_xyz_energies
+from pdb2reaction.io.xyz_trajectory import read_xyz_trajectory
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +108,7 @@ def _resolve_reference_index(
         return idx, True
     idx = int(ref_spec)
     if idx < 0 or idx >= n_frames:
-        raise IndexError(f"Reference index {idx} out of range (0..{n_frames-1}).")
+        raise ValueError(f"Reference index {idx} out of range (0..{n_frames-1}).")
     return idx, True
 
 
@@ -254,12 +255,15 @@ def run_trj2fig(
 
     recomputed = charge is not None or multiplicity is not None
     if not recomputed:
-        energies = read_energies_xyz(traj)
+        parsed = read_xyz_trajectory(traj, require_energies=True)
+        energies = [float(value) for value in parsed["energies_ha"]]
+        energy_provenance = list(parsed["energy_provenance"])
     else:
         energies = recompute_energies(
             traj, charge, multiplicity,
             backend=backend, solvent=solvent, solvent_model=solvent_model,
         )
+        energy_provenance = ["mlip-recomputed"] * len(energies)
     values, ylabel, is_delta = transform_series(energies, reference, unit, reverse_x)
 
     need_plot = any(Path(o).suffix.lower() != ".csv" for o in outs)
@@ -272,6 +276,8 @@ def run_trj2fig(
         "energies_hartree": energies,
         "out_paths": out_paths,
         "energy_source": "mlip_recomputed" if recomputed else "trajectory_comment",
+        "energy_provenance": energy_provenance,
+        "energy_unit": "hartree",
         # A CLI backend default is not provenance when no calculator ran.
         "backend": backend if recomputed else None,
         "charge": int(charge if charge is not None else 0) if recomputed else None,
@@ -372,8 +378,21 @@ def cli(
     all_outs: List[Path] = list(outs) + list(extra_outs)
     if not all_outs:
         all_outs = [Path("energy.png")]
-    info = run_trj2fig(input_path, all_outs, unit, reference, reverse_x, charge, multiplicity,
-                       backend=backend, solvent=solvent, solvent_model=solvent_model)
+    try:
+        info = run_trj2fig(
+            input_path,
+            all_outs,
+            unit,
+            reference,
+            reverse_x,
+            charge,
+            multiplicity,
+            backend=backend,
+            solvent=solvent,
+            solvent_model=solvent_model,
+        )
+    except (ValueError, RuntimeError) as exc:
+        raise click.ClickException(str(exc)) from exc
 
     if out_json:
         from pdb2reaction.core.utils import write_result_json
@@ -388,6 +407,8 @@ def cli(
             "min_energy_hartree": float(min(energies)) if energies else None,
             "max_energy_hartree": float(max(energies)) if energies else None,
             "energy_source": info["energy_source"],
+            "energy_provenance": info["energy_provenance"],
+            "energy_unit": info["energy_unit"],
             "backend": info["backend"],
             "charge": info["charge"],
             "multiplicity": info["multiplicity"],

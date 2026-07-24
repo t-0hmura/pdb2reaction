@@ -96,8 +96,8 @@ out_dir/   (default: ./result_all/)
 ├─ summary.json                # JSON results
 ├─ mep.pdb                     # Merged MEP path (promoted from the engine)
 ├─ mep.cif                     # Bridge inputs only; original identifiers restored
-├─ mep_w_ref.pdb               # MEP merged into the full-system template (multi-input runs)
-├─ mep_w_ref.cif               # Bridge full-system templates only
+├─ mep_w_ref.pdb               # --refine-path + reference template only
+├─ mep_w_ref.cif               # --refine-path + bridge reference template only
 ├─ mep_trj.xyz                 # Full MEP trajectory
 ├─ energy_diagram_MEP.png      # All-segment MEP barriers
 ├─ energy_diagram_*.png        # Aggregated post-processing diagrams (MLIP / Gibbs / DFT, with --tsopt etc.)
@@ -235,7 +235,7 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | `--thresh-post TEXT` | Convergence preset for post-IRC endpoint optimizations. | `baker` |
 | `--flatten / --no-flatten` | Enable surplus-imaginary-mode flattening in `tsopt`. | `False` |
 | `--reject-uphill / --no-reject-uphill` | Reject energy-raising RFO steps during post-IRC **endpoint re-optimization only** (roll back to the lower-energy geometry and shrink the trust radius); does not affect TS optimization or path search. | `True` |
-| `--tr-projection [constrained\|legacy-active]` | Rigid-mode treatment forwarded to TSopt, IRC, freq, and flatten PHVA. `constrained` removes only full-system rigid motions compatible with frozen anchors. | `constrained` |
+| `--tr-projection [constrained\|legacy-active]` | Rigid-mode treatment forwarded to TSopt, IRC, freq, and flatten PHVA. `legacy-active` is deprecated comparison-only behavior and must not be used for pass/HOSP transition-state certification. | `constrained` |
 | `--irc-step-size FLOAT` | Override the IRC maximum EulerPC step (Bohr). If IRC stops after only a few frames, retry with a smaller value such as `0.05`. | IRC default `0.10` |
 | `--irc-never-stop / --no-irc-never-stop` | Ignore transient IRC energy-rise/plateau stops. Gradient/integrator convergence and the max-cycle cap remain active. | `False` |
 
@@ -260,6 +260,7 @@ TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (on
 | `--freq-sort [value\|abs]` | Mode sorting behavior. | `value` |
 | `--freq-temperature FLOAT` | Thermochemistry temperature (K). | `298.15` |
 | `--freq-pressure FLOAT` | Thermochemistry pressure (atm). | `1.0` |
+| `--freq-symmetry-number INT` | One rotational symmetry number for every R/TS/P frequency job; omission preserves each child YAML/default. | _None_ |
 | `--dft-engine [gpu\|cpu]` | DFT backend (GPU4PySCF or PySCF). In `all` the option is named `--dft-engine`; the standalone `dft` subcommand uses `--engine`. | `gpu` |
 | `--dft-out-dir PATH` | DFT outputs base directory override. | _None_ |
 | `--dft-func-basis TEXT` | Functional / basis pair. | `wb97m-v/def2-tzvpd` |

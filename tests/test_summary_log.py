@@ -170,3 +170,38 @@ def test_summary_log_tree_lists_only_current_run_paths(tmp_path):
     assert "ts.pdb" in text
     assert "seg_02" not in text
     assert "irc_plot_all.png" not in text
+
+
+def test_summary_log_ts_only_uses_refined_provenance_and_top_level_counts(tmp_path):
+    dest = tmp_path / "summary.log"
+    write_summary_log(
+        dest,
+        {
+            "root_out_dir": str(tmp_path),
+            "pipeline_mode": "tsopt-only",
+            "n_images": 5,
+            "n_segments": 1,
+            "mep": {"n_images": 0, "n_segments": 0},
+            "segments": [{
+                "index": 1,
+                "tag": "seg_01",
+                "kind": "tsopt",
+                "barrier_kcal": 8.0,
+                "delta_kcal": -1.0,
+            }],
+            "post_segments": [{
+                "index": 1,
+                "tag": "seg_01",
+                "kind": "tsopt",
+                "dft": {"barrier_kcal": 7.8, "delta_kcal": -1.2},
+            }],
+        },
+    )
+
+    text = dest.read_text(encoding="utf-8")
+    assert "Number of IRC frames : 5" in text
+    assert "Number of segments   : 1" in text
+    assert "refined TS − assigned endpoint" in text
+    assert "MEP ΔE" not in text
+    assert "DFT ΔE‡" in text
+    assert "DFT//MLIP ΔE" not in text

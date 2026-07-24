@@ -64,6 +64,23 @@ def test_missing_status_defaults_to_unknown() -> None:
         assert payload["status"] == "unknown"
 
 
+def test_nonfinite_numbers_are_serialized_as_unknown() -> None:
+    with tempfile.TemporaryDirectory() as d:
+        path = write_result_json(
+            Path(d),
+            {
+                "status": "partial",
+                "energies": [float("nan"), float("inf"), float("-inf"), -1.0],
+            },
+            command="scan",
+        )
+        raw = path.read_text(encoding="utf-8")
+        payload = json.loads(raw, parse_constant=lambda token: (_ for _ in ()).throw(
+            AssertionError(f"non-standard JSON constant: {token}")
+        ))
+    assert payload["energies"] == [None, None, None, -1.0]
+
+
 def test_status_enum_documented() -> None:
     assert RESULT_JSON_STATUS_VALUES == (
         "completed",

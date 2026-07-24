@@ -21,8 +21,8 @@ def _replace_bytes(path: Path, payload: bytes) -> None:
 
 def _trajectory() -> bytes:
     return (
-        b"2\n0.0 left\nH 0 0 0\nH 0 0 0.74\n"
-        b"2\n0.1 right\nH 0 0 0\nH 0 0 0.80\n"
+        b"2\nE=0.0 unit=hartree left\nH 0 0 0\nH 0 0 0.74\n"
+        b"2\nE=0.1 unit=hartree right\nH 0 0 0\nH 0 0 0.80\n"
     )
 
 
@@ -83,7 +83,7 @@ def test_all_manifest_ignores_stale_scan_stages_and_records_distinct_runs(
             if emit_hei["value"]:
                 _replace_bytes(
                     child_out / "hei.xyz",
-                    b"2\n0.1 hei\nH 0 0 0\nH 0 0 0.77\n",
+                    b"2\nE=0.1 unit=hartree hei\nH 0 0 0\nH 0 0 0.77\n",
                 )
         else:  # pragma: no cover - this test requests no post-processing
             raise AssertionError(name)

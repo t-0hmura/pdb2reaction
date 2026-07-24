@@ -80,20 +80,13 @@ logger = logging.getLogger(__name__)
 
 
 def _select_hei_index(energies: Sequence[float]) -> int:
-    """Pick an HEI index preferring internal local maxima."""
-
+    """Return the global highest-energy-image index."""
     E = np.array(energies, dtype=float)
-    nE = int(len(E))
-    hei_idx = None
-    if nE >= 3:
-        candidates = [i for i in range(1, nE - 1) if (E[i] > E[i - 1] and E[i] > E[i + 1])]
-        if candidates:
-            hei_idx = int(max(candidates, key=lambda i: E[i]))
-        else:
-            hei_idx = 1 + int(np.argmax(E[1:-1]))
-    if hei_idx is None:
-        hei_idx = int(np.argmax(E))
-    return hei_idx
+    if E.size == 0:
+        raise ValueError("Cannot select an HEI from an empty energy profile.")
+    if not np.all(np.isfinite(E)):
+        raise ValueError("Cannot select an HEI from non-finite energies.")
+    return int(np.argmax(E))
 
 
 @dataclass
@@ -1081,7 +1074,7 @@ def cli(
             )
             click.echo("[align] Completed input alignment.")
         except Exception as e:
-            click.echo(f"[align] WARNING: alignment skipped: {e}", err=True)
+            raise click.ClickException(f"Input alignment failed: {e}") from e
 
         fix_atoms: List[int] = []
         try:
@@ -1098,7 +1091,7 @@ def cli(
                     calc_cfg,
                     out_dir_path,
                     prepared_inputs,
-                    max_nodes,
+                    int(gs_cfg["max_nodes"]),
                     fix_atoms,
                     dmf_cfg=dmf_cfg,
                 )

@@ -42,7 +42,9 @@ Options:
                                   Rigid translation/rotation treatment used by
                                   --flatten PHVA. 'constrained' respects frozen
                                   anchors; 'legacy-active' treats the active
-                                  fragment as isolated.  [default: constrained]
+                                  fragment as isolated, is deprecated, and must
+                                  not be used for pass/HOSP transition-state
+                                  certification.  [default: constrained]
   --convert-files / --no-convert-files
                                   Convert XYZ/TRJ outputs into PDB/CIF/GJF
                                   companions based on the input format.
@@ -97,7 +99,8 @@ Options:
                                   GPP:-3,SAM:1) used to derive charge when -q is
                                   omitted (requires PDB/mmCIF input or --ref-
                                   pdb).
-  -m, --multiplicity INTEGER      Spin multiplicity (2S+1).
+  -m, --multiplicity INTEGER RANGE
+                                  Spin multiplicity (2S+1).  [x>=1]
   --print-every INTEGER RANGE     Print optimizer status every N cycles (debug
                                   knob).  [x>=1]
   --precision [fp32|fp64]         MLIP backend precision: fp32 or fp64. Unset

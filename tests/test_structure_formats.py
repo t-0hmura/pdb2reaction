@@ -318,6 +318,33 @@ def test_pdb_with_more_than_ten_thousand_residues_uses_safe_bridge(tmp_path: Pat
         prepared.cleanup()
 
 
+def test_bundled_pdb_parser_distinguishes_two_letter_atoms_from_hydrogens(
+    tmp_path: Path,
+) -> None:
+    from pysisyphus.io.pdb import parse_pdb
+
+    records = [
+        ("HG  ", "HG"),
+        ("HE  ", "HE"),
+        (" HG ", "H"),
+        (" HE ", "H"),
+        (" NH1", "NH"),
+        ("ZN  ", "N"),
+    ]
+    lines = []
+    for serial, (name, element) in enumerate(records, start=1):
+        lines.append(
+            f"HETATM{serial:5d} {name:4s} RES A{serial:4d}    "
+            f"{float(serial):8.3f}{0.0:8.3f}{0.0:8.3f}"
+            f"{1.0:6.2f}{0.0:6.2f}          {element:>2s}\n"
+        )
+    path = tmp_path / "elements.pdb"
+    path.write_text("".join(lines) + "END\n", encoding="utf-8")
+
+    atoms, *_ = parse_pdb(str(path))
+    assert atoms == ["Hg", "He", "H", "H", "N", "Zn"]
+
+
 def test_chain_qualified_atom_selector_disambiguates_repeated_ids() -> None:
     from pdb2reaction.core.utils import resolve_atom_spec_index
 
@@ -1109,3 +1136,17 @@ def test_path_merge_template_falls_back_to_any_bridged_reference(tmp_path: Path)
         assert _coordinate_template_for_refs([ordinary, bridged]) is template
     finally:
         unregister_coordinate_template(bridged)
+
+
+def test_template_free_generation_removes_prior_cif_companion(tmp_path: Path) -> None:
+    from pdb2reaction.io.structure_formats import (
+        register_output_template_and_write_cif,
+    )
+
+    out_pdb = tmp_path / "current.pdb"
+    out_pdb.write_text("END\n", encoding="utf-8")
+    old_companion = out_pdb.with_suffix(".cif")
+    old_companion.write_text("data_stale\n", encoding="utf-8")
+
+    assert register_output_template_and_write_cif(out_pdb, None) is None
+    assert not old_companion.exists()

@@ -92,7 +92,7 @@ combined with this correction.
 
 - `core.md` — `pdb2reaction` install (xTB layer is plumbed via the
   bundled `backends/xtb_alpb_correction.py` and `backends/solvent.py`).
-- `dft.md` — the standalone DFT command is a separate refinement and does not
+- `dft.md` — the standalone DFT command is a separate single-point calculation and does not
   accept this xTB correction.
 - `pdb2reaction-cli/SKILL.md` — `--solvent` is accepted by `all`,
   `tsopt`, `freq`, `irc`, `opt`, `sp`, `path-search`, `path-opt`, `scan`,

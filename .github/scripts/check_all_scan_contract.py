@@ -12,6 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 ALL_PY = REPO_ROOT / "pdb2reaction" / "workflows" / "all.py"
 SCAN_PY = REPO_ROOT / "pdb2reaction" / "workflows" / "scan.py"
 SCAN_COMMON_PY = REPO_ROOT / "pdb2reaction" / "workflows" / "scan_common.py"
+COMMON_OPTIONS_PY = REPO_ROOT / "pdb2reaction" / "cli" / "common_options.py"
 
 
 def _is_click_option_call(node: ast.Call) -> bool:
@@ -30,6 +31,16 @@ def _const_flag(node: ast.AST) -> str | None:
         if value.startswith("--"):
             return value
     return None
+
+
+def _const_flags(node: ast.AST) -> Set[str]:
+    """Return every literal long option contained in an expression."""
+    flags: Set[str] = set()
+    for child in ast.walk(node):
+        flag = _const_flag(child)
+        if flag is not None:
+            flags.add(flag)
+    return flags
 
 
 def _expand_flag_spec(spec: str) -> Set[str]:
@@ -54,48 +65,78 @@ def _collect_scan_declared_flags(scan_tree: ast.AST) -> Set[str]:
 
 class _ForwardedScanFlags(ast.NodeVisitor):
     def __init__(self) -> None:
-        self.in_cli = False
+        self.targets: Set[str] = set()
         self.flags: Set[str] = set()
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
-        was_in_cli = self.in_cli
-        if node.name == "cli":
-            self.in_cli = True
+        previous = self.targets
+        self.targets = {
+            "cli": {"scan_args"},
+            "_forward_calc_file_argv": {"child_args"},
+        }.get(node.name, set())
         self.generic_visit(node)
-        self.in_cli = was_in_cli
+        self.targets = previous
 
     def visit_Assign(self, node: ast.Assign) -> None:
-        if self.in_cli:
+        if self.targets:
             for target in node.targets:
-                if isinstance(target, ast.Name) and target.id == "scan_args":
-                    if isinstance(node.value, ast.List):
-                        for elt in node.value.elts:
-                            flag = _const_flag(elt)
-                            if flag is not None:
-                                self.flags.add(flag)
+                if isinstance(target, ast.Name) and target.id in self.targets:
+                    self.flags.update(_const_flags(node.value))
+        self.generic_visit(node)
+
+    def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
+        if (
+            self.targets
+            and isinstance(node.target, ast.Name)
+            and node.target.id in self.targets
+            and node.value is not None
+        ):
+            self.flags.update(_const_flags(node.value))
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call) -> None:
-        if self.in_cli:
-            if isinstance(node.func, ast.Name) and node.func.id == "_append_cli_arg":
-                if len(node.args) >= 2 and isinstance(node.args[0], ast.Name) and node.args[0].id == "scan_args":
-                    flag = _const_flag(node.args[1])
-                    if flag is not None:
-                        self.flags.add(flag)
+        if self.targets:
+            if (
+                isinstance(node.func, ast.Name)
+                and node.func.id == "_append_explicit_child_runtime_argv"
+                and node.args
+                and isinstance(node.args[0], ast.Name)
+                and node.args[0].id in self.targets
+            ):
+                runtime_flags = {
+                    "workers": "--workers",
+                    "workers_per_node": "--workers-per-node",
+                    "dmf_backend": "--dmf-backend",
+                    "backend": "--backend",
+                    "solvent": "--solvent",
+                    "solvent_model": "--solvent-model",
+                }
+                for keyword in node.keywords:
+                    if keyword.arg not in runtime_flags:
+                        continue
+                    if (
+                        isinstance(keyword.value, ast.Constant)
+                        and keyword.value.value is None
+                    ):
+                        continue
+                    self.flags.add(runtime_flags[keyword.arg])
 
-            if isinstance(node.func, ast.Attribute) and node.func.attr == "append":
-                if isinstance(node.func.value, ast.Name) and node.func.value.id == "scan_args" and node.args:
-                    value = node.args[0]
-                    flag = _const_flag(value)
-                    if flag is not None:
-                        self.flags.add(flag)
-                    elif isinstance(value, ast.IfExp):
-                        body_flag = _const_flag(value.body)
-                        else_flag = _const_flag(value.orelse)
-                        if body_flag is not None:
-                            self.flags.add(body_flag)
-                        if else_flag is not None:
-                            self.flags.add(else_flag)
+            if isinstance(node.func, ast.Name) and node.func.id == "_append_cli_arg":
+                if (
+                    len(node.args) >= 2
+                    and isinstance(node.args[0], ast.Name)
+                    and node.args[0].id in self.targets
+                ):
+                    self.flags.update(_const_flags(node.args[1]))
+
+            if (
+                isinstance(node.func, ast.Attribute)
+                and node.func.attr in {"append", "extend"}
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id in self.targets
+            ):
+                for arg in node.args:
+                    self.flags.update(_const_flags(arg))
         self.generic_visit(node)
 
 
@@ -106,10 +147,16 @@ def main() -> int:
         SCAN_COMMON_PY.read_text(encoding="utf-8"),
         filename=str(SCAN_COMMON_PY),
     )
+    common_options_tree = ast.parse(
+        COMMON_OPTIONS_PY.read_text(encoding="utf-8"),
+        filename=str(COMMON_OPTIONS_PY),
+    )
 
     declared = _collect_scan_declared_flags(scan_tree)
     # `scan` receives many flags through @add_scan_common_options(...).
     declared.update(_collect_scan_declared_flags(scan_common_tree))
+    # Calculator-file options are attached by @add_calc_file_option.
+    declared.update(_collect_scan_declared_flags(common_options_tree))
     collector = _ForwardedScanFlags()
     collector.visit(all_tree)
     forwarded = collector.flags

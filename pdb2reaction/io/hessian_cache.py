@@ -147,10 +147,18 @@ def _potential_identity(calc_cfg: Mapping) -> Dict[str, Any]:
     """Composition of the evaluated potential beyond the bare MLIP backend."""
 
     potential: Dict[str, Any] = {}
-    for key in ("solvent", "solvent_model", "xtb_cmd", "calc_factory"):
+    for key in (
+        "solvent",
+        "solvent_model",
+        "xtb_cmd",
+        "calc_factory",
+        "hessian_calc_mode",
+        "hessian_double",
+        "return_partial_hessian",
+    ):
         val = calc_cfg.get(key)
         if val not in (None, "", "none", "None"):
-            potential[key] = str(val)
+            potential[key] = _canon(val)
     calc_file = calc_cfg.get("calc_file")
     if calc_file:
         potential["calc_file"] = str(calc_file)

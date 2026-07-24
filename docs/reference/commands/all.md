@@ -95,8 +95,10 @@ Options:
   --tr-projection [constrained|legacy-active]
                                   Rigid translation/rotation treatment forwarded
                                   to TSopt, IRC, freq, and flatten PHVA. The
-                                  default respects frozen anchors.  [default:
-                                  constrained]
+                                  default respects frozen anchors; 'legacy-
+                                  active' is deprecated and must not be used for
+                                  pass/HOSP transition-state certification.
+                                  [default: constrained]
   --mep-mode [gsm|dmf]            MEP optimizer: Growing String Method (gsm) or
                                   Direct Max Flux (dmf).  [default: gsm]
   --dmf-backend [cpu|gpu]         DMF compute backend (--mep-mode dmf only): gpu
@@ -210,6 +212,10 @@ Options:
                                   Defaults to 298.15 K.
   --freq-pressure FLOAT           Override freq thermochemistry pressure (atm).
                                   Defaults to 1.0 atm.
+  --freq-symmetry-number INTEGER RANGE
+                                  Use one rotational symmetry number for every
+                                  R/TS/P frequency job. When omitted, each child
+                                  follows its YAML/default setting.  [x>=1]
   --dft-out-dir DIRECTORY         Override dft output base directory (relative
                                   paths resolved against the default).
   --dft-func-basis TEXT           Override dft --func-basis value. Defaults to

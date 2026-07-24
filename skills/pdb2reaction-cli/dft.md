@@ -104,6 +104,6 @@ IAO charges, spin densities.
 ## See also
 
 - [`pdb2reaction-install-backends/dft.md`](../pdb2reaction-install-backends/dft.md) — install + aarch64 handling.
-- `tsopt.md`, `irc.md` — produce the geometries you DFT-refine.
+- `tsopt.md`, `irc.md` — produce the geometries used for DFT single points.
 - `pdb2reaction-workflows-output/SKILL.md` — DFT//MLIP recipe.
 - Defaults: `import pdb2reaction.core.defaults as d; print(d.GEOM_KW_DEFAULT)`

@@ -37,10 +37,11 @@ pdb2reaction all -i <input(s)> [-c <substrate>] [-l 'RES:Q,...'] \
 | `--refine-path / --no-refine-path` | toggle | off | Recursive `path-search` when enabled; single-pass `path-opt` when disabled. Refinement can improve a poor TS seed but may split a bad path into unnecessary segments and greatly increase cost |
 | `--tsopt / --no-tsopt` | toggle | off | Run TS optimization + IRC per reactive segment (also required to enter TS-only mode with a single `-i`) |
 | `--flatten/--no-flatten` | flag | off | Enable surplus-imaginary-mode cleanup when TSOPT does not reach a first-order saddle |
-| `--tr-projection` | str | `constrained` | Forward rigid-mode treatment to TSOPT, IRC, freq, and flatten PHVA; `legacy-active` is isolated-active comparison only and is unrelated to the internal MEP `--ref-mode` |
+| `--tr-projection` | str | `constrained` | Forward rigid-mode treatment to TSOPT, IRC, freq, and flatten PHVA. `legacy-active` is deprecated comparison-only behavior, unrelated to `--ref-mode`, and must not be used for pass/HOSP transition-state certification. |
 | `--irc-step-size` | float | IRC default `0.10` | Forward a smaller EulerPC maximum step; try `0.05` when an IRC branch stops after only a few frames |
 | `--irc-never-stop/--no-irc-never-stop` | flag | off | Ignore IRC energy-rise/plateau stops only; gradient/integrator convergence and max cycles remain active |
 | `--thermo / --no-thermo` | toggle | off | Run freq + thermochemistry on R / TS / P |
+| `--freq-symmetry-number` | int ≥ 1 | child YAML/default (normally 1) | Use one external rotational symmetry number for every R/TS/P frequency job. Point-group symmetry is not inferred. |
 | `--dft / --no-dft` | toggle | off | Run DFT single point on R / TS / P |
 | `--dft-func-basis` | str | `wb97m-v/def2-tzvpd` | DFT functional/basis (when `--dft`) |
 | `-b, --backend` | str | `uma` | MLIP backend |
@@ -98,7 +99,7 @@ d = json.load(open("result_all/summary.json"))
 print(d["status"])                    # "success" / "partial" / "failed"
 print(d["pdb2reaction_version"])
 print(d["charge"], d["spin"])
-print(d["rate_limiting_step"])        # which segment is rate-limiting
+print(d["rate_limiting_step"])        # legacy key: highest local segment barrier
 print(len(d["segments"]))             # number of path-segment records/candidates
 for seg in d["segments"]:
     print(seg["index"], seg["barrier_kcal"], seg["delta_kcal"])

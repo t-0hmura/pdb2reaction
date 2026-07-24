@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 
 def test_pretty_block_with_numpy_scalars() -> None:
@@ -126,6 +127,59 @@ def test_resolve_charge_spin_skips_ligand_validation_when_charge_is_explicit(
     assert spin == 2
 
 
+@pytest.mark.parametrize(
+    ("headers", "message"),
+    [
+        (((0, 1), (2, 1)), "Conflicting GJF charge headers"),
+        (((0, 1), (0, 3)), "Conflicting GJF multiplicity headers"),
+    ],
+)
+def test_resolve_charge_spin_rejects_conflicting_gjf_headers(
+    tmp_path: Path,
+    headers: tuple[tuple[int, int], tuple[int, int]],
+    message: str,
+) -> None:
+    from click import ClickException
+    from pdb2reaction.core.utils import resolve_charge_spin
+
+    prepared = []
+    for index, (charge, spin) in enumerate(headers):
+        directory = tmp_path / str(index)
+        directory.mkdir()
+        item = _prepared_with_template(
+            directory,
+            source_name=f"image-{index}.gjf",
+            template_charge=charge,
+            template_spin=spin,
+        )
+        item.gjf_template.path = directory / f"image-{index}.gjf"
+        prepared.append(item)
+
+    with pytest.raises(ClickException, match=message):
+        resolve_charge_spin(prepared, charge=None, spin=None)
+
+
+def test_explicit_gjf_fields_override_only_their_matching_conflicts(
+    tmp_path: Path,
+) -> None:
+    from pdb2reaction.core.utils import resolve_charge_spin
+
+    prepared = []
+    for index, charge in enumerate((0, 2)):
+        directory = tmp_path / str(index)
+        directory.mkdir()
+        prepared.append(
+            _prepared_with_template(
+                directory,
+                source_name=f"image-{index}.gjf",
+                template_charge=charge,
+                template_spin=1,
+            )
+        )
+
+    assert resolve_charge_spin(prepared, charge=-1, spin=None) == (-1, 1)
+
+
 def test_resolve_configured_charge_spin_precedence() -> None:
     from pdb2reaction.core.utils import resolve_configured_charge_spin
 
@@ -196,6 +250,20 @@ def test_validate_charge_spin_water_neutral_doublet_raises() -> None:
         validate_charge_spin(["O", "H", "H"], charge=0, multiplicity=2)
 
 
+@pytest.mark.parametrize("multiplicity", [0, -2])
+def test_validate_charge_spin_rejects_nonpositive_multiplicity(
+    multiplicity: int,
+) -> None:
+    from pdb2reaction.core.utils import (
+        set_allow_charge_mult_mismatch,
+        validate_charge_spin,
+    )
+
+    set_allow_charge_mult_mismatch(True)
+    with pytest.raises(ValueError, match="multiplicity must be an integer >= 1"):
+        validate_charge_spin(["H"], charge=0, multiplicity=multiplicity)
+
+
 def test_multiframe_gjf_conversion_warns_that_output_is_coordinate_archive(
     caplog,
     tmp_path: Path,
@@ -225,3 +293,30 @@ def test_multiframe_gjf_conversion_warns_that_output_is_coordinate_archive(
 
     assert "not directly executable as a Gaussian QST/Link1 job" in caplog.text
     assert out.exists()
+
+
+def test_read_xyz_energies_rejects_bare_integer_frame_comment(
+    tmp_path: Path,
+) -> None:
+    from pdb2reaction.core.utils import read_xyz_energies
+
+    trajectory = tmp_path / "frames.xyz"
+    trajectory.write_text("1\n0\nH 0.0 0.0 0.0\n", encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="Ambiguous integer-only"):
+        read_xyz_energies(trajectory)
+
+
+def test_read_xyz_energies_accepts_keyed_integer_and_decimal_values(
+    tmp_path: Path,
+) -> None:
+    from pdb2reaction.core.utils import read_xyz_energies
+
+    trajectory = tmp_path / "energies.xyz"
+    trajectory.write_text(
+        "1\nE=-100\nH 0.0 0.0 0.0\n"
+        "1\nEnergy=-99.500 unit=hartree frame 1\nH 0.1 0.0 0.0\n",
+        encoding="utf-8",
+    )
+
+    assert read_xyz_energies(trajectory) == [-100.0, -99.5]

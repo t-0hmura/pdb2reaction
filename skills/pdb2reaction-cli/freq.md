@@ -13,7 +13,7 @@ Partial-Hessian variant (PHVA) activates automatically when
 ```bash
 pdb2reaction freq -i geom.{pdb,cif,xyz,gjf} \
     [-q 0 -m 1] [-l 'RES:Q,...'] \
-    [--temperature 298.15] [--pressure 1.0] \
+    [--temperature 298.15] [--pressure 1.0] [--symmetry-number 1] \
     [-b uma|orb|mace|aimnet2] [-o ./result_freq/]
 ```
 
@@ -25,8 +25,9 @@ pdb2reaction freq -i geom.{pdb,cif,xyz,gjf} \
 | `-q` / `-l` / `-m` | — | — | Charge / spin (common conventions) |
 | `--temperature` | float | 298.15 | K, for thermochemistry |
 | `--pressure` | float | 1.0 | atm, for thermochemistry |
+| `--symmetry-number` | int ≥ 1 | 1 | External rotational symmetry number. Point-group symmetry is not inferred. |
 | `--hessian-calc-mode` | str | `FiniteDifference` | `Analytical` / `FiniteDifference`; check `UMA_CALC_KW` |
-| `--tr-projection` | str | `constrained` | PHVA rigid-mode treatment; `legacy-active` is for isolated-active comparison only |
+| `--tr-projection` | str | `constrained` | PHVA rigid-mode treatment. `legacy-active` is deprecated comparison-only behavior; never use it for pass/HOSP transition-state certification. |
 | `--workers`, `--workers-per-node` | int | `1`, `1` | UMA predictor workers. An explicit `Analytical` request with `workers > 1` raises `BackendError`; use one worker or finite differences. Other built-in backends ignore these worker kwargs. |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `-o, --out-dir` | path | `./result_freq/` | Output directory |
@@ -75,6 +76,7 @@ print(t["zpe_correction_ha"])                 # ZPE correction (Hartree)
 print(t["thermal_correction_free_energy_ha"]) # dG_therm (Hartree)
 print(t["sum_EE_and_thermal_free_energy_ha"]) # EE + dG_therm (Hartree)
 print(t["S_cal_per_mol_K"])                   # entropy (cal/mol·K)
+print(t["symmetry_number"], t["symmetry_number_source"])
 ```
 
 `thermoanalysis.yaml` contains the same `rigid_projection` provenance when it is written.
@@ -89,7 +91,11 @@ Default thermochemistry uses the QRRHO (Grimme) treatment with a
 - high-frequency vibrations use the standard harmonic-oscillator
   partition function.
 
-`THERMO_KW` (`pdb2reaction.core.defaults`) exposes `temperature` / `pressure_atm` / `dump`; the QRRHO rotor cutoff is internal to `thermoanalysis` and is not a `THERMO_KW` knob.
+`THERMO_KW` (`pdb2reaction.core.defaults`) exposes `temperature`,
+`pressure_atm`, `symmetry_number`, and `dump`. Supply the external rotational
+symmetry number explicitly when it is not 1; the workflow does not infer a
+point group. The QRRHO rotor cutoff is internal to `thermoanalysis` and is not
+a `THERMO_KW` knob.
 
 ## Partial-Hessian Vibrational Analysis (PHVA)
 
@@ -103,7 +109,8 @@ The default `--tr-projection constrained` removes only full-system rigid
 motions that leave every frozen anchor fixed. A normal multi-anchor cluster
 boundary therefore usually has effective rank 0. `legacy-active` is an
 isolated-active comparison treatment, not a bitwise replay guarantee for
-near-linear or degenerate structures. See `freeze-atoms.md`.
+near-linear or degenerate structures. It is deprecated and must not be used
+for pass/HOSP transition-state certification. See `freeze-atoms.md`.
 
 `pdb2reaction` does **not** read PDB B-factors as a freeze list. The
 freeze set is assembled as a union of CLI `--freeze-atoms`

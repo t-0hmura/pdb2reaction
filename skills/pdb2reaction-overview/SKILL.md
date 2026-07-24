@@ -40,7 +40,7 @@ Three things make it different from gluing together generic tools:
 |---|---|
 | Cluster-model enzyme reaction mechanism (single or multi-step) | Primary use case |
 | Validate a TS candidate with IRC + thermochemistry on MLIP | `pdb2reaction tsopt → irc → freq` |
-| DFT//MLIP barrier refinement | Run `pdb2reaction dft` consistently on the IRC-refined R, TS, and P geometries; one TS single point alone is not a barrier |
+| DFT//MLIP barrier evaluation | Run `pdb2reaction dft` consistently on the IRC-refined R, TS, and P geometries; one TS single point alone is not a barrier |
 | Single-point energies on an arbitrary geometry (MLIP or DFT) | `pdb2reaction sp` (MLIP energy + forces, optional Hessian via `--hess`) / `pdb2reaction dft` |
 
 ## When *not* to use it

@@ -149,6 +149,32 @@ def _sorted_fids_by_file_order(structure, fids) -> List[Tuple]:
     return sorted(set(fids), key=lambda fid: order.get(fid, 10**12))
 
 
+def infer_present_terminal_cap_ids(
+    structure,
+    selected_ids: Set[Tuple],
+) -> Tuple[Set[Tuple], Set[Tuple]]:
+    """Return selected residues whose explicit atoms encode ionized termini.
+
+    This helper is for full/model structures that were not produced by the
+    extraction truncation logic.  It deliberately infers only from explicit
+    OXT or H1/H2/H3 atoms; it does not guess terminal protonation from chain
+    position alone.
+    """
+
+    keep_ncap_ids: Set[Tuple] = set()
+    keep_ccap_ids: Set[Tuple] = set()
+    for fid in selected_ids:
+        res = structure[fid[1]][fid[2]].child_dict[fid[3]]
+        if res.get_resname().upper() not in AMINO_ACIDS:
+            continue
+        atom_names = {atom.get_name().strip().upper() for atom in res}
+        if "OXT" in atom_names:
+            keep_ccap_ids.add(fid)
+        if {"H1", "H2", "H3"} <= atom_names:
+            keep_ncap_ids.add(fid)
+    return keep_ncap_ids, keep_ccap_ids
+
+
 def compute_charge_summary(structure,
                            selected_ids: Set[Tuple],
                            substrate_ids: Set[Tuple],
@@ -195,6 +221,7 @@ def compute_charge_summary(structure,
     unknown_fids: List[Tuple] = []
     unknown_substrate_fids: List[Tuple] = []
     ion_entries: List[Tuple[str, float]] = []
+    selected_ion_charges: Dict[str, float] = {}
 
     for fid in fids_in_order:
         res = structure[fid[1]][fid[2]].child_dict[fid[3]]
@@ -226,6 +253,7 @@ def compute_charge_summary(structure,
         elif rn in ION:
             q = float(ION[rn])
             ion_entries.append((_fmt_fid(structure, fid), q))
+            selected_ion_charges[rn] = q
         else:
             q = 0.0
             unknown_fids.append(fid)
@@ -263,6 +291,16 @@ def compute_charge_summary(structure,
                 key = _residue_key_from_fid(structure, fid)
                 per_map[key] = float(mapping_spec[rn])
                 matched_resnames.add(rn)
+        # The Colab charge editor shows locked, authoritative ion charges in
+        # the generated -l mapping so the complete charge choice is visible.
+        # An exact table value is therefore an acknowledged no-op, not an
+        # unmatched ligand warning.  Conflicting ion values remain unmatched
+        # and are reported below; the internal ion table still wins.
+        matched_resnames.update(
+            rn
+            for rn, q in selected_ion_charges.items()
+            if rn in mapping_spec and abs(float(mapping_spec[rn]) - q) <= 1e-9
+        )
         unmatched_resnames = sorted(set(mapping_spec) - matched_resnames)
         if unmatched_resnames:
             _echo_warning(

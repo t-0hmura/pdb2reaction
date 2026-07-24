@@ -85,7 +85,7 @@ are not current results.
 | `hessian_source` / `source` | string | Hessian provenance. `freq`/`irc` use `hessian_source`; `opt`/`tsopt` use `source`. |
 | `hessian_shape` / `raw_hessian_shape` | int[2] | Input Hessian shape. `freq`/`irc` use `hessian_shape`; `opt`/`tsopt` use `raw_hessian_shape`. |
 
-`constrained` removes only full-system rigid motions that leave frozen anchors fixed. `legacy-active` is an isolated-active comparison treatment and is not a bitwise replay guarantee for near-linear or degenerate structures. See [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries).
+`constrained` removes only full-system rigid motions that leave frozen anchors fixed. `legacy-active` is deprecated, comparison-only, and must not be used for pass/HOSP transition-state certification; it is not a bitwise replay guarantee for near-linear or degenerate structures. See [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries).
 
 ### Error envelope (when `status == "error"`)
 
@@ -218,6 +218,8 @@ the per-cycle force/step convergence keys and Hessian-mode `safeguards` object.
 
 | Field | Type | Unit |
 |-------|------|------|
+| `symmetry_number` | int | External rotational symmetry number |
+| `symmetry_number_source` | string | `"default"`, `"config"`, `"override"`, or `"cli"` |
 | `electronic_energy_ha` | float | Hartree |
 | `zpe_correction_ha` | float | Hartree |
 | `thermal_correction_energy_ha` | float | Hartree |
@@ -466,10 +468,11 @@ The `all` command additionally includes:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `rate_limiting_step` | object | Highest barrier at the highest method complete across every reactive segment (`DFT//MLIP_Gibbs` > `DFT` > `MLIP_Gibbs` > `MLIP` > `MEP`), with explicit `method` and raw `mep_barrier_kcal` |
+| `rate_limiting_step` | object | Legacy key for the highest independently referenced local barrier at the highest method complete across every reactive segment (`DFT//MLIP_Gibbs` > `DFT` > `MLIP_Gibbs` > `MLIP` > `MEP`), with explicit `method` and raw `mep_barrier_kcal`. It is not a microkinetic rate-limiting-step assignment. |
 | `overall_reaction_energy_kcal` | float | Overall reaction energy |
 | `overall_reaction_energy_method` | string | Method of the overall reaction energy (`MEP`, `MLIP`, `MLIP_Gibbs`, `DFT`, or `DFT//MLIP_Gibbs`) |
 | `post_segments` | list | Per-segment TS/IRC/freq/DFT results |
+| `post_segments[].thermo_symmetry` | object | Child-reported rotational symmetry provenance by state. Only R/TS/P states with both a valid `symmetry_number` and `symmetry_number_source` are included; missing states are omitted, and the field is absent only when no state has valid provenance. |
 | `current_output_paths` | string[] | Sorted paths relative to `--out-dir`, limited to artifacts claimed by the current invocation. |
 | `key_output_files` | object | Current-run output index: root filename → description; each `seg_NN` entry is `{description, files}` with paths relative to that segment directory. |
 

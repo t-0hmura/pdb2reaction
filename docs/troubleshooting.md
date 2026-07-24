@@ -58,13 +58,15 @@ pdb2reaction         -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'    # extracti
 
 Measured MLIP force noise/flatness can prevent a selected force threshold from
 being reached; the level depends on backend, model, precision, system, and
-hardware stack. The **energy-plateau fallback** handles this case:
-`opt.energy_plateau: true` declares minimum optimization convergence when the
-energy range over the last `opt.energy_plateau_window` (default 50) steps falls
-below `opt.energy_plateau_thresh` (default `1×10⁻⁴ au`). Hessian-family TS
-optimizers additionally require exact first-order-saddle validation.
+hardware stack. The **energy-plateau guard** prevents endless cycling:
+`opt.energy_plateau: true` stops the run as `stalled` (**not converged**) when
+the configured force/step criteria remain unmet and the energy range over the
+last `opt.energy_plateau_window` (default 50) steps falls below
+`opt.energy_plateau_thresh` (default `1×10⁻⁴ au`). A plateau is diagnostic
+evidence, not acceptance of a stationary point; inspect the final structure,
+forces, and reported status before retrying.
 
-To override, do one of:
+For a retry, use one or more of:
 
 - Loosen the force threshold (`--thresh gau` default / `--thresh gau_loose`).
 - Tune `opt.energy_plateau_thresh` / `opt.energy_plateau_window` in YAML.

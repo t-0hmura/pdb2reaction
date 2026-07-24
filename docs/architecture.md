@@ -65,11 +65,14 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 │ ├── domain/ # === L3 Domain ===
 │ │ ├── bond_changes.py R↔P bond detection
 │ │ ├── bond_summary.py post-IRC diagnostic
-│ │ └── add_elem_info.py PDB element column normalizer
+│ │ ├── add_elem_info.py PDB element column normalizer
+│ │ └── residue_data.py residue/ion charge tables
 │ │
 │ ├── backends/ # === L4a Infra (MLIP) ===
 │ │ ├── __init__.py backend dispatch + registry
 │ │ ├── base.py MLIPCalculator protocol
+│ │ ├── custom.py custom ASE-calculator adapter
+│ │ ├── _determinism.py deterministic reduction shim
 │ │ ├── uma.py / orb.py / mace.py / aimnet2.py per-backend adapters
 │ │ ├── solvent.py xTB ALPB implicit-solvent helper
 │ │ └── xtb_alpb_correction.py xTB ALPB delta correction
@@ -79,12 +82,16 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 │ │ ├── energy_diagram.py Plotly diagram
 │ │ ├── trj2fig.py trajectory → PNG / SVG / PDF / HTML / CSV
 │ │ ├── pdb_fix.py altloc resolution
+│ │ ├── altloc.py altloc identity/selection helpers
+│ │ ├── charge.py residue-aware charge resolution
 │ │ ├── structure_formats.py PDB/mmCIF bridge + identifier restoration
 │ │ └── hessian_cache.py in-memory Hessian cache
 │ │
 │ └── core/ # === L5 Foundation ===
 │   ├── defaults.py primary source for shared defaults
-│   └── utils.py PDB / XYZ / plot helpers
+│   ├── utils.py PDB / XYZ / plot helpers
+│   ├── output.py / result_commit.py output/result ownership
+│   └── pes_composition.py energy-component composition
 │
 ├── tests/ smoke / unit
 ├── .github/ workflows/ + scripts/ (docs-quality lint helpers; CI-only)
@@ -198,6 +205,7 @@ After step 5 you can read any other file by following the file index in §4. The
 | R↔P bond change detection | `pdb2reaction/domain/bond_changes.py` |
 | Post-IRC bond summary | `pdb2reaction/domain/bond_summary.py` |
 | PDB element column normalizer | `pdb2reaction/domain/add_elem_info.py` |
+| Residue and ion charge tables | `pdb2reaction/domain/residue_data.py` |
 
 ### 4.4 MLIP backends (L4a `backends/`)
 
@@ -205,6 +213,8 @@ After step 5 you can read any other file by following the file index in §4. The
 |---|---|
 | Backend dispatch + registry | `pdb2reaction/backends/__init__.py` |
 | `MLIPCalculator` protocol + base | `pdb2reaction/backends/base.py` |
+| Custom ASE-calculator adapter | `pdb2reaction/backends/custom.py` |
+| Deterministic reduction shim | `pdb2reaction/backends/_determinism.py` |
 | Per-backend adapters | `pdb2reaction/backends/{uma, orb, mace, aimnet2}.py` |
 | xTB ALPB implicit-solvent helper | `pdb2reaction/backends/solvent.py` |
 | xTB ALPB delta correction | `pdb2reaction/backends/xtb_alpb_correction.py` |
@@ -219,6 +229,9 @@ See [Backends](backends.md) for the add-a-backend recipe.
 | Plotly energy diagram | `pdb2reaction/io/energy_diagram.py` |
 | Trajectory → PNG / SVG / PDF / HTML / CSV | `pdb2reaction/io/trj2fig.py` |
 | PDB altloc resolution | `pdb2reaction/io/pdb_fix.py` |
+| Altloc identity and coherent selection | `pdb2reaction/io/altloc.py` |
+| Residue-aware charge resolution | `pdb2reaction/io/charge.py` |
+| PDB/mmCIF bridge + identifier restoration | `pdb2reaction/io/structure_formats.py` |
 | In-memory Hessian cache (per-run TTL) | `pdb2reaction/io/hessian_cache.py` |
 | Harmonic restraint setup | `pdb2reaction/workflows/restraints.py` (L2 stage helper) |
 
@@ -229,12 +242,14 @@ See [Backends](backends.md) for the add-a-backend recipe.
 | **Shared/default numerical settings (primary source; verify command-local exceptions)** | `pdb2reaction/core/defaults.py` |
 | PDB / XYZ / plot helpers | `pdb2reaction/core/utils.py` |
 | `-v` / `-vv` logging wiring | `pdb2reaction/core/logging.py` |
+| Output/result ownership helpers | `pdb2reaction/core/output.py`, `pdb2reaction/core/result_commit.py` |
+| Energy-component composition | `pdb2reaction/core/pes_composition.py` |
 
 ### 4.7 Repo-internal bundled forks
 
 | dir | role | divergent files (do NOT replace with upstream) |
 |---|---|---|
-| `pysisyphus/` | optimizer / TS / IRC engine | `irc/IRC.py` (opt-in `require_pos_def_hessian` PSD convergence guard), `optimizers/hessian_updates.py` (Bofill scatter on advanced indices, CPU-only `bofill_update` path for GPU OOM avoidance), `tsoptimizers/{RSIRFOptimizer,RSPRFOptimizer,TRIM,TSHessianOptimizer}.py`, `calculators/{Calculator,Dimer}.py`, `_array.py` (torch/numpy backend shim) |
+| `pysisyphus/` | optimizer / TS / IRC engine | `irc/IRC.py` (opt-in `require_pos_def_hessian` PSD convergence guard), `optimizers/hessian_updates.py` (GPU-resident in-place rank-two Bofill update with explicit `PYSIS_BOFILL_CPU_OFFLOAD=1` fallback), `tsoptimizers/{RSIRFOptimizer,RSPRFOptimizer,TRIM,TSHessianOptimizer}.py`, `calculators/{Calculator,Dimer}.py`, `_array.py` (torch/numpy backend shim) |
 | `thermoanalysis/` | thermochemistry (ΔG, ZPE, partition functions) | `QCData.py` (branding diff vs upstream) |
 
 See each dir's `README.md` for the touch-restriction boundary.
@@ -269,14 +284,14 @@ Editing any of these requires a `[CHEMISTRY-RULE:N]` commit prefix and a HEAVY-t
 
 ### 5.2 VRAM-management invariant (do not refactor `del` chains)
 
-The IRC / TSopt / Freq stages explicitly `del` GPU-resident objects (`calc`, `geom`, `hess`) between stages to free CUDA memory; the `all` workflow additionally runs `gc.collect()` at stage boundaries. **Do not refactor these `del` / `gc.collect()` statements out** — long-running `all` jobs with large active-site models OOM without them.
+The IRC / TSopt / Freq stages explicitly `del` GPU-resident objects (`calc`, `geom`, `hess`) between stages to free CUDA memory; stage boundaries also use `gc.collect()` and, where CUDA allocations are present, `torch.cuda.empty_cache()`. **Do not refactor these release operations out** — long-running `all` jobs with large active-site models OOM without them.
 
 ### 5.3 Bundled forks: do NOT install upstream alongside
 
 The bundled `pysisyphus/` and `thermoanalysis/` packages are **forks**. Reinstalling `pip install pysisyphus` or `pip install thermoanalysis` next to this package silently breaks:
 
 - `pysisyphus/irc/IRC.py` — initial-displacement memory hygiene + opt-in `require_pos_def_hessian` kwarg
-- `pysisyphus/optimizers/hessian_updates.py` — Bofill scatter on advanced indices, CPU-only `bofill_update` path for GPU OOM avoidance
+- `pysisyphus/optimizers/hessian_updates.py` — GPU-resident in-place rank-two Bofill update; opt-in `PYSIS_BOFILL_CPU_OFFLOAD=1` fallback
 - `pysisyphus/tsoptimizers/TSHessianOptimizer.py` — RSIRFO kwargs (host package import path divergent between forks)
 - `pysisyphus/calculators/{Calculator,Dimer}.py` — GPU-aware backend hooks (the 30+ QM backends have been removed; only the abstract base + Dimer TS calculator remain)
 - `pysisyphus/_array.py` — `get_xp` / `_outer` / `_dot` / `_eigh` shim used by `optimizers/hessian_updates.py` (and progressively by other hot-path files)

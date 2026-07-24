@@ -29,3 +29,26 @@ def test_root_all_alias_is_validated() -> None:
     assert module._check_command(
         "pdb2reaction -i R.pdb P.pdb --refine-path", flags
     ) == []
+
+
+def test_unknown_flag_is_rejected() -> None:
+    module = _load_module()
+    flags = module._collect_subcommand_flags()
+    assert module._check_command(
+        "pdb2reaction opt -i input.xyz --no-such-flag", flags,
+    ) == ["--no-such-flag"]
+
+
+def test_non_shell_fence_does_not_hide_following_shell_command() -> None:
+    module = _load_module()
+    text = """\
+```python
+pdb2reaction opt -i ignored.xyz --python-only
+```
+```bash
+pdb2reaction opt -i checked.xyz --no-such-flag
+```
+    """
+    assert list(module._iter_command_lines(text)) == [
+        (5, "pdb2reaction opt -i checked.xyz --no-such-flag"),
+    ]

@@ -71,9 +71,85 @@ def _directional_endpoint_energy_fields(all_energies: Any, ts_energy: Any) -> Di
     }
 
 
+def _consume_mw_hessian_to_cartesian_active(
+    mw_hessian: Any,
+    mass_sqrt_active: Any,
+) -> np.ndarray:
+    """Mass-unweight a terminal active Hessian in place and return it on CPU.
+
+    The input is consumed: callers must first detach it from the EulerPC owner
+    and must not reuse it. This avoids a second dense device allocation at the
+    IRC-to-cache stage boundary.
+    """
+    if isinstance(mw_hessian, torch.Tensor):
+        ms_t = torch.as_tensor(
+            mass_sqrt_active,
+            dtype=mw_hessian.dtype,
+            device=mw_hessian.device,
+        )
+        with torch.no_grad():
+            mw_hessian.mul_(ms_t.unsqueeze(1))
+            mw_hessian.mul_(ms_t.unsqueeze(0))
+        return mw_hessian.detach().cpu().numpy()
+
+    result = np.asarray(mw_hessian)
+    masses = np.asarray(mass_sqrt_active, dtype=result.dtype)
+    result *= masses[:, None]
+    result *= masses[None, :]
+    return result
+
+
 def _irc_output_path(eulerpc: EulerPC, filename: str) -> Path:
     """Resolve an engine-authored IRC filename, including normalized prefix."""
     return Path(eulerpc.get_path_for_fn(filename))
+
+
+_IRC_GENERATION_FILENAMES = tuple(
+    f"{stem}{suffix}"
+    for stem in (
+        "finished_irc",
+        "forward_irc",
+        "backward_irc",
+        "finished_first",
+        "finished_last",
+        "forward_first",
+        "forward_last",
+        "backward_first",
+        "backward_last",
+    )
+    for suffix in (
+        ("_trj.xyz", ".pdb", ".cif")
+        if stem.endswith("_irc")
+        else (".xyz", ".pdb", ".cif")
+    )
+)
+
+
+def _prepare_irc_output_dir(
+    path: Path,
+    *,
+    prefix: str = "",
+    protected_inputs: tuple[Optional[Path], ...] = (),
+) -> Path:
+    """Invalidate command-owned IRC artifacts before a real generation."""
+    resolved = Path(path).resolve()
+    resolved.mkdir(parents=True, exist_ok=True)
+    normalized_prefix = f"{prefix}_" if prefix else ""
+    owned = [
+        *(resolved / f"{normalized_prefix}{name}" for name in _IRC_GENERATION_FILENAMES),
+        resolved / "result.json",
+        resolved / "summary.json",
+    ]
+    reserved = {candidate.resolve() for candidate in owned}
+    for protected in protected_inputs:
+        if protected is not None and Path(protected).resolve() in reserved:
+            raise click.UsageError(
+                f"Input {protected} collides with a reserved IRC output path "
+                f"under {resolved}."
+            )
+    for candidate in owned:
+        candidate.unlink(missing_ok=True)
+    return resolved
 
 
 def _echo_convert_trj_if_exists(
@@ -203,7 +279,8 @@ def _echo_convert_trj_if_exists(
     help=(
         "Rigid-mode treatment for a frozen/partial Hessian. 'constrained' "
         "removes only full-system rigid motions compatible with the anchors "
-        "(default); 'legacy-active' is the isolated-active comparison treatment."
+        "(default); 'legacy-active' is deprecated comparison-only behavior and "
+        "must not be used for pass/HOSP transition-state certification."
     ),
 )
 @click.option(
@@ -335,9 +412,9 @@ def cli(
         geom_input_path = prepared_input.geom_path
         source_path = prepared_input.source_path
         calc = eulerpc = geometry = None
+        time_start = time.perf_counter()
+        out_dir_path = Path(out_dir).resolve()
         try:
-            time_start = time.perf_counter()
-
             geom_cfg: Dict[str, Any] = dict(GEOM_KW_DEFAULT)
             calc_cfg: Dict[str, Any] = dict(UMA_CALC_KW)
             irc_cfg: Dict[str, Any] = dict(IRC_KW)
@@ -464,7 +541,16 @@ def cli(
                 click.echo("[dry-run] Validation complete. IRC execution was skipped.")
                 return
 
-            out_dir_path.mkdir(parents=True, exist_ok=True)
+            out_dir_path = _prepare_irc_output_dir(
+                out_dir_path,
+                prefix=str(irc_cfg.get("prefix") or ""),
+                protected_inputs=(
+                    prepared_input.source_path,
+                    geom_input_path,
+                    config_yaml,
+                    override_yaml,
+                ),
+            )
 
             # Default-verbosity entry summary (skipped in child mode).
             from pdb2reaction.core.utils import echo_run_summary
@@ -579,16 +665,9 @@ def cli(
                 act = eulerpc._act_dofs
                 m_sqrt = geometry.masses_rep ** 0.5
                 ms_act = m_sqrt[act]
-                if isinstance(mw_H, torch.Tensor):
-                    ms_t = torch.as_tensor(ms_act, dtype=mw_H.dtype, device=mw_H.device)
-                    H_cart_act = ms_t.unsqueeze(1) * mw_H * ms_t.unsqueeze(0)
-                    H_cart_act_np = H_cart_act.detach().cpu().numpy()
-                    # C-NEED: disk cache contract; free GPU copy after npy dump.
-                    del H_cart_act
-                    if torch.cuda.is_available():
-                        torch.cuda.empty_cache()
-                else:
-                    H_cart_act_np = np.diag(ms_act) @ mw_H @ np.diag(ms_act)
+                H_cart_act_np = _consume_mw_hessian_to_cartesian_active(
+                    mw_H, ms_act
+                )
                 _hess_store(
                     key,
                     H_cart_act_np,
@@ -622,37 +701,57 @@ def cli(
                 and _fwd_conv
                 and getattr(eulerpc, "forward_mw_hessian", None) is not None
             ):
+                _forward_mw_hessian = eulerpc.forward_mw_hessian
+                eulerpc.forward_mw_hessian = None
                 _forward_endpoint = (
                     np.asarray(eulerpc.forward_mw_coords[0], dtype=float)
                     / np.asarray(eulerpc.m_sqrt, dtype=float)
                 )
-                _unmw_and_store(
-                    eulerpc.forward_mw_hessian,
-                    "irc_left",
-                    _forward_endpoint,
-                    "forward",
-                )
+                try:
+                    _unmw_and_store(
+                        _forward_mw_hessian,
+                        "irc_left",
+                        _forward_endpoint,
+                        "forward",
+                    )
+                finally:
+                    del _forward_mw_hessian
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
                 click.echo("[irc] Cached forward endpoint Hessian as 'irc_left'.")
             else:
+                eulerpc.forward_mw_hessian = None
                 _hess_discard("irc_left")
             if (
                 eulerpc.backward
                 and _bwd_conv
                 and getattr(eulerpc, "mw_hessian", None) is not None
             ):
+                _backward_mw_hessian = eulerpc.mw_hessian
+                eulerpc.mw_hessian = None
                 _backward_endpoint = (
                     np.asarray(eulerpc.backward_mw_coords[-1], dtype=float)
                     / np.asarray(eulerpc.m_sqrt, dtype=float)
                 )
-                _unmw_and_store(
-                    eulerpc.mw_hessian,
-                    "irc_right",
-                    _backward_endpoint,
-                    "backward",
-                )
+                try:
+                    _unmw_and_store(
+                        _backward_mw_hessian,
+                        "irc_right",
+                        _backward_endpoint,
+                        "backward",
+                    )
+                finally:
+                    del _backward_mw_hessian
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
                 click.echo("[irc] Cached backward endpoint Hessian as 'irc_right'.")
             else:
+                eulerpc.mw_hessian = None
                 _hess_discard("irc_right")
+            eulerpc.mw_hessian = None
+            eulerpc.forward_mw_hessian = None
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
             for _stem in ("finished", "forward", "backward"):
                 _echo_convert_trj_if_exists(
@@ -711,7 +810,7 @@ def cli(
                         "hessian_space": (
                             "active" if len(eulerpc._act_atoms) < len(geometry.atoms) else "full"
                         ),
-                        "hessian_shape": list(eulerpc.init_hessian.shape),
+                        "hessian_shape": list(eulerpc.init_hessian_shape),
                         "hessian_source": "cache" if cached is not None else "fresh",
                         "hessian_representation": "cartesian-unweighted-unprojected",
                     },

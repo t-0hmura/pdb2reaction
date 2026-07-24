@@ -26,7 +26,7 @@ pdb2reaction irc -i ts.{pdb,cif,xyz,gjf} \
 | `--max-cycles` | int | 125 | Max IRC steps per branch (forward + backward) |
 | `--step-size` | float | `0.10` | Step in Bohr (unweighted Cartesian); maps to `IRC_KW["step_length"]` |
 | `--never-stop / --no-never-stop` | bool | `False` | Ignore energy-rise/plateau stops so a small shoulder can be crossed; gradient/integrator convergence and `max_cycles` still apply |
-| `--tr-projection` | str | `constrained` | Rigid-mode treatment for the initial Hessian; `legacy-active` is for isolated-active comparison only |
+| `--tr-projection` | str | `constrained` | Rigid-mode treatment for the initial Hessian. `legacy-active` is deprecated comparison-only behavior; never use it for pass/HOSP transition-state certification. |
 | `--workers`, `--workers-per-node` | int | `1`, `1` | UMA predictor workers. `workers > 1` plus an explicit `Analytical` Hessian raises `BackendError`; use one worker or finite differences. |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `-o, --out-dir` | path | `./result_irc/` | Output directory |

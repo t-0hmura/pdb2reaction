@@ -83,6 +83,12 @@ out_dir/ (デフォルト:./result_irc/)
 `prefix: trial`は`trial_finished_irc_trj.xyz`を生成し、`result.json.files`にも
 正規化後の名前を記録します。
 
+低レベルの周期 HDF5 checkpoint は YAML でのみ有効化できます。
+`irc.dump_every` のデフォルトは `null` で、正の値を指定した場合だけ
+`<prefix>irc_data.h5` を作成します。このファイルは現在方向の座標・
+エネルギー・勾配で上書きされるもので、最終的な双方向 IRC 成果物ではなく、
+Hessian を含まず、`result.json.files` にも登録しません。
+
 コンソールには確定済みの `geom`/`calc`/`irc` 設定と実行時間の要約が表示されます。
 
 ## CLI オプション
@@ -103,9 +109,10 @@ out_dir/ (デフォルト:./result_irc/)
 | `--root INT` | 射影Hessianの固有値を**昇順**（最も負の値を先頭）に並べたときの**0 始まり**のインデックス。初期 IRC 変位に使用するモードを指定します。虚振動が 1 個だけの妥当な TS では `--root 0`（唯一の負の固有値）のままにしてください。`--root 1`、`--root 2` などは、活性な虚モードがより負のスプリアス（疑似）モードよりも上位にランクされていることが分かっている場合にのみ使用します。明示値は YAML `irc.root` より優先 | `0` |
 | `--forward/--no-forward` | 順方向分岐を実行。明示 toggle は YAML `irc.forward` より優先 | `True` |
 | `--backward/--no-backward` | 逆方向分岐を実行。明示 toggle は YAML `irc.backward` より優先 | `True` |
+| `--irc-pos-def/--no-irc-pos-def` | 射影 Hessian の正定値性を IRC 収束条件に加える opt-in guard。肩を収束と誤認する可能性がある場合に有効化 | `False` |
 | `--freeze-links/--no-freeze-links` | PDB/mmCIF トポロジー用、キャップ H 親を凍結（`geom.freeze_atoms` にマージ）。詳細は [extract](extract.md) を参照 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
-| `--tr-projection [constrained\|legacy-active]` | 初期frozen／partial Hessianの剛体モード処理。`constrained`は凍結anchorを尊重し、`legacy-active`はisolated-active比較専用 | `constrained` |
+| `--tr-projection [constrained\|legacy-active]` | 初期frozen／partial Hessianの剛体モード処理。`legacy-active`は非推奨の比較専用で、pass/HOSP 遷移状態認定には使用不可 | `constrained` |
 | `-o, --out-dir TEXT` | 出力ディレクトリ。明示値は YAML `irc.out_dir` より優先 | `./result_irc/` |
 | `--convert-files/--no-convert-files` | 参照PDB/mmCIF topologyがある場合の XYZ/TRJ → PDB/CIF を切り替え | `True` |
 | `--ref-pdb FILE` | XYZ/GJF入力に使用する参照PDBまたはmmCIF topology | _None_ |

@@ -615,6 +615,7 @@ def delta_alpb_minus_vac(
     model_name = normalize_solvent_model(solvent_model)
 
     ncores = resolve_xtb_ncores(ncores)
+    child_ncores = max(1, ncores // 2)
     common_kwargs = dict(
         symbols=symbols,
         coords_ang=coords_ang,
@@ -625,32 +626,31 @@ def delta_alpb_minus_vac(
         xtb_acc=xtb_acc,
         xtb_workdir=xtb_workdir,
         xtb_keep_files=xtb_keep_files,
-        ncores=ncores,
+        ncores=child_ncores,
     )
 
+    def _run_state_pair(func):
+        if ncores < 2:
+            return (
+                func(solvent="none", **common_kwargs),
+                func(solvent=solvent_name, **common_kwargs),
+            )
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+            fut_vac = pool.submit(func, solvent="none", **common_kwargs)
+            fut_sol = pool.submit(func, solvent=solvent_name, **common_kwargs)
+            return fut_vac.result(), fut_sol.result()
+
     if need_forces or need_hessian:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-            fut_vac = pool.submit(xtb_engrad, solvent="none", **common_kwargs)
-            fut_sol = pool.submit(xtb_engrad, solvent=solvent_name, **common_kwargs)
-            vac_e, vac_f = fut_vac.result()
-            sol_e, sol_f = fut_sol.result()
+        (vac_e, vac_f), (sol_e, sol_f) = _run_state_pair(xtb_engrad)
     else:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-            fut_vac = pool.submit(xtb_energy, solvent="none", **common_kwargs)
-            fut_sol = pool.submit(xtb_energy, solvent=solvent_name, **common_kwargs)
-            vac_e = fut_vac.result()
-            sol_e = fut_sol.result()
+        vac_e, sol_e = _run_state_pair(xtb_energy)
         vac_f = None
         sol_f = None
 
     vac_h = None
     sol_h = None
     if need_hessian:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-            fut_vac = pool.submit(xtb_hessian, solvent="none", **common_kwargs)
-            fut_sol = pool.submit(xtb_hessian, solvent=solvent_name, **common_kwargs)
-            vac_h = fut_vac.result()
-            sol_h = fut_sol.result()
+        vac_h, sol_h = _run_state_pair(xtb_hessian)
 
     de_ev = float(sol_e - vac_e)
 

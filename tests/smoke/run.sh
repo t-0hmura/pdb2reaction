@@ -377,8 +377,9 @@ pdb2reaction irc -i ts.pdb -q 0 --hessian-calc-mode analytical --max-cycles 2 --
 # test59: scan --opt-mode hess (RFO relaxation vs default LBFGS)
 pdb2reaction scan -i r.pdb -q -1 --opt-mode hess --scan-lists "[(1,5,1.4)]" --max-step-size 2.0 --relax-max-cycles 2 --no-preopt --no-endopt --out-dir test59_scan_hess > test59_scan_hess.out 2>&1
 
-# test60: scan2d --opt-mode hess (RFO per-grid relaxation)
-pdb2reaction scan2d -i p_complex_model.pdb --ligand-charge 'PRE:-2' --freeze-atoms "$P_COMPLEX_MODEL_FREEZE_ATOMS" --scan-lists "[('PRE 8 C3','PRE 8 O1\'',1.4,1.8),('PRE 8 C1','PRE 8 C8',3.0,3.4)]" --opt-mode hess --max-step-size 2.0 --relax-max-cycles 3 --thresh gau_loose --out-dir test60_scan2d_hess > test60_scan2d_hess.out 2>&1
+# test60: scan2d --opt-mode hess (RFO per-grid relaxation).  Start from a
+# converged test8 point and use the smallest genuine 2D grid (2 × 2).
+pdb2reaction scan2d -i test8/grid/point_i140_j300.pdb --ligand-charge 'PRE:-2' --freeze-atoms "$P_COMPLEX_MODEL_FREEZE_ATOMS" --scan-lists "[('PRE 8 C3','PRE 8 O1\'',1.40,1.41),('PRE 8 C1','PRE 8 C8',3.00,3.01)]" --opt-mode hess --max-step-size 2.0 --relax-max-cycles 50 --thresh gau_loose --out-dir test60_scan2d_hess > test60_scan2d_hess.out 2>&1
 
 # test61: scan3d --opt-mode hess (RFO per-grid relaxation)
 pdb2reaction scan3d -i p_complex_model.pdb --ligand-charge 'PRE:-2' --freeze-atoms "$P_COMPLEX_MODEL_FREEZE_ATOMS" --scan-lists "[('PRE 8 C3','PRE 8 O1\'',1.4,1.8),('PRE 8 C1','PRE 8 C8',3.0,3.4),('PRE 8 C1','PRE 8 C7',1.4,1.6)]" --opt-mode hess --max-step-size 2.0 --relax-max-cycles 3 --thresh gau_loose --out-dir test61_scan3d_hess > test61_scan3d_hess.out 2>&1

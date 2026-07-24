@@ -104,7 +104,7 @@ pdb2reaction freq  -i result_tsopt/final_geometry.xyz -q -1 -m 1 -b uma -o resul
 pdb2reaction irc   -i result_tsopt/final_geometry.xyz -q -1 -m 1 -b uma -o result_irc
 ```
 
-### DFT//MLIP single point on the rate-limiting TS
+### DFT//MLIP single point on the highest-local-barrier TS candidate
 
 ```bash
 SUMMARY=result_mep/summary.json

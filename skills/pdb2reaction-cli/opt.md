@@ -23,7 +23,7 @@ pdb2reaction opt -i input.pdb [-q 0 -m 1] \
 | `-q` / `-l` / `-m` | — | — | Charge / spin |
 | `--opt-mode` | str | `grad` | `grad` (L-BFGS) or `hess` (RFO); aliases `lbfgs` / `rfo` |
 | `--max-cycles` | int | `10000` | Stop after N cycles; see `OPT_BASE_KW["max_cycles"]` |
-| `--tr-projection` | str | `constrained` | Rigid-mode treatment used only by `--flatten` PHVA; `legacy-active` is isolated-active comparison only |
+| `--tr-projection` | str | `constrained` | Rigid-mode treatment used only by `--flatten` PHVA. `legacy-active` is deprecated comparison-only behavior; never use it for pass/HOSP transition-state certification. |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `--solvent` | str | none | xTB-ALPB solvent |
 | `-o, --out-dir` | path | `./result_opt/` | Output directory |

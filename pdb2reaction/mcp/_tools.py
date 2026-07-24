@@ -464,7 +464,11 @@ def register_all(mcp) -> None:
         relax_max_cycles: Optional[int] = None,
         thresh: Optional[str] = None,
         backend: Optional[str] = None,
+        solvent: Optional[str] = None,
+        solvent_model: Optional[str] = None,
         precision: Optional[str] = None,
+        workers: Optional[int] = None,
+        workers_per_node: Optional[int] = None,
         out_dir: Optional[str] = None,
         extra_args: Optional[list[str]] = None,
         timeout_seconds: Optional[float] = None,
@@ -488,10 +492,10 @@ def register_all(mcp) -> None:
             argv.extend(["--relax-max-cycles", str(relax_max_cycles)])
         if thresh:
             argv.extend(["--thresh", thresh])
-        if backend:
-            argv.extend(["-b", backend])
-        if precision:
-            argv.extend(["--precision", precision])
+        argv.extend(_shared_calc_flags(
+            backend=backend, solvent=solvent, solvent_model=solvent_model,
+            precision=precision, workers=workers, workers_per_node=workers_per_node,
+        ))
         argv.append("--out-json")
         argv.extend(["--out-dir", str(od)])
         _append_extra_args(argv, extra_args)
@@ -509,7 +513,11 @@ def register_all(mcp) -> None:
         relax_max_cycles: Optional[int] = None,
         thresh: Optional[str] = None,
         backend: Optional[str] = None,
+        solvent: Optional[str] = None,
+        solvent_model: Optional[str] = None,
         precision: Optional[str] = None,
+        workers: Optional[int] = None,
+        workers_per_node: Optional[int] = None,
         out_dir: Optional[str] = None,
         extra_args: Optional[list[str]] = None,
         timeout_seconds: Optional[float] = None,
@@ -533,10 +541,10 @@ def register_all(mcp) -> None:
             argv.extend(["--relax-max-cycles", str(relax_max_cycles)])
         if thresh:
             argv.extend(["--thresh", thresh])
-        if backend:
-            argv.extend(["-b", backend])
-        if precision:
-            argv.extend(["--precision", precision])
+        argv.extend(_shared_calc_flags(
+            backend=backend, solvent=solvent, solvent_model=solvent_model,
+            precision=precision, workers=workers, workers_per_node=workers_per_node,
+        ))
         argv.append("--out-json")
         argv.extend(["--out-dir", str(od)])
         _append_extra_args(argv, extra_args)

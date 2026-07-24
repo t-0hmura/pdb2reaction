@@ -178,7 +178,7 @@ The tables below cover the options that need explanation. The full flag list is 
 | **Active-region freezing** | | |
 | `--freeze-links / --no-freeze-links` | PDB input (or XYZ/GJF with `--ref-pdb`). Freeze parents of cap hydrogens (merged into `geom.freeze_atoms`). | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g. `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
-| `--tr-projection [constrained\|legacy-active]` | Rigid-mode treatment for Dimer orientation, flattening, and exact PHVA validation. `constrained` respects frozen anchors; `legacy-active` is an isolated-active comparison treatment. This is unrelated to `--ref-mode`. | `constrained` |
+| `--tr-projection [constrained\|legacy-active]` | Rigid-mode treatment for Dimer orientation, flattening, and exact PHVA validation. `legacy-active` is deprecated comparison-only behavior and must not be used for pass/HOSP transition-state certification. This is unrelated to `--ref-mode`. | `constrained` |
 | **TS optimizer & mode** | | |
 | `--opt-mode TEXT` | TS optimizer preset (Choice: `grad` / `hess` / `dimer` / `rsirfo` / `trim` / `rsprfo`). `grad` and `dimer` → Hessian-Guided Dimer; `hess` and `rsprfo` → RS-P-RFO (Banerjee, default, non-microiter); `rsirfo` → RS-I-RFO; `trim` → TRIM (Helgaker, non-microiter). On `opt`, the same `grad` token picks L-BFGS minimization instead — see {ref}`opt-mode-semantics`. | `hess` |
 | `--ref-mode PATH` | Advanced/internal MEP handoff containing a Cartesian 3N direction as whitespace text or `.npy`. `all` supplies it automatically; ordinary standalone runs omit it. Expert use covers external-path root selection, overlap tracking, and `n_imag=0` recovery. | _None_ |

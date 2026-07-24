@@ -592,6 +592,7 @@ def cli(
                             "energy_hartree": E_pre_h,
                             "bias_converged": _preopt_conv,
                             "artifact_written": True,
+                            "is_preopt": True,
                         }
                     )
                     # Store preoptimized geometry as a candidate for nearest-start
@@ -648,6 +649,7 @@ def cli(
                     f"[stage] d1 step {i_idx+1}/{N1}: target = {d1_target:.3f} Å"
                 )
                 biased.set_pairs([(i1, j1, float(d1_target))])
+                geom_outer_start = _snapshot_geometry(geom_outer)
                 geom_outer.set_calculator(biased)
 
                 opt1 = make_sopt_optimizer(
@@ -660,14 +662,21 @@ def cli(
                     out_dir=tmp_opt_dir,
                     prefix=f"d1_{i_idx:03d}",
                 )
+                outer_converged = None
                 try:
                     opt1.run()
+                    outer_converged = optimizer_converged_bit(opt1)
                 except ZeroStepLength:
                     click.echo(
                         f"[d1 {i_idx}] ZeroStepLength — continuing to d2 scan."
                     )
+                    outer_converged = optimizer_converged_bit(opt1)
                 except OptimizationError as e:
                     click.echo(f"[d1 {i_idx}] OptimizationError — {e}")
+                    outer_converged = False
+
+                if outer_converged is not True:
+                    geom_outer = _snapshot_geometry(geom_outer_start)
 
                 geom_inner = _snapshot_geometry(geom_outer)
                 geom_inner.set_calculator(biased)
@@ -677,9 +686,19 @@ def cli(
                     coords_inner = np.asarray(getattr(geom_inner, "coords3d"), dtype=float)
                     d1_cur = distance_A_from_coords(coords_inner, i1, j1)
                     d2_cur = distance_A_from_coords(coords_inner, i2, j2)
-                    visited_geoms.append(
-                        (float(d1_cur), float(d2_cur), _snapshot_geometry(geom_inner))
-                    )
+                    if (
+                        outer_converged is True
+                        and np.isfinite(coords_inner).all()
+                        and np.isfinite(d1_cur)
+                        and np.isfinite(d2_cur)
+                    ):
+                        visited_geoms.append(
+                            (
+                                float(d1_cur),
+                                float(d2_cur),
+                                _snapshot_geometry(geom_inner),
+                            )
+                        )
                 except Exception as e:
                     click.echo(
                         f"[nearest-start] WARNING: failed to store d1-relaxed structure for d1={d1_target:.3f} Å: {e}",
@@ -811,6 +830,7 @@ def cli(
                             "energy_hartree": E_h,
                             "bias_converged": converged,
                             "artifact_written": bool(_artifact_written),
+                            "is_preopt": False,
                         }
                     )
 
@@ -851,9 +871,13 @@ def cli(
             def _eligible_min() -> float:
                 if not _elig_df.empty:
                     return float(_elig_df["energy_hartree"].min())
-                # No eligible point: fall back to the raw min so the surface still
-                # renders, but the scientific_status below reports the failure.
-                return float(df["energy_hartree"].min())
+                click.echo(
+                    "No converged finite grid point with a written geometry "
+                    "is available; relative energies and interpolation are "
+                    "disabled.",
+                    err=True,
+                )
+                return float("nan")
 
             if baseline == "first":
                 mask = (df["i"] == 0) & (df["j"] == 0) & df["seed_eligible"]
@@ -883,11 +907,11 @@ def cli(
                 np.isfinite(d1_points)
                 & np.isfinite(d2_points)
                 & np.isfinite(z_points)
+                & df["seed_eligible"].to_numpy(dtype=bool)
             )
             if not np.any(mask):
                 click.echo("[plot] No finite data for plotting.")
                 sys.exit(1)
-
             x_min, x_max = float(np.min(d1_points[mask])), float(
                 np.max(d1_points[mask])
             )
@@ -1136,15 +1160,20 @@ def cli(
                     calculator_provenance,
                     write_result_json,
                 )
-                # Reported minimum energy is drawn only from seed-eligible points
-                # (converged + finite + artifact written); a failed point with a
-                # numerically lower energy must never become min_energy_hartree.
-                if "seed_eligible" in df.columns and df["seed_eligible"].any():
-                    min_energy = float(df.loc[df["seed_eligible"], "energy_hartree"].min())
-                elif not df.empty:
-                    min_energy = None
-                else:
-                    min_energy = None
+                grid_records = [
+                    rec for rec in records if not bool(rec.get("is_preopt", False))
+                ]
+                grid_seed_eligible = seed_eligible_mask(grid_records)
+                # The optional preoptimization row stays in surface.csv as a
+                # plotting reference, but it is not a grid point.
+                eligible_grid_energies = [
+                    float(rec["energy_hartree"])
+                    for rec, eligible in zip(grid_records, grid_seed_eligible)
+                    if bool(eligible)
+                ]
+                min_energy = (
+                    min(eligible_grid_energies) if eligible_grid_energies else None
+                )
                 _pair1: Dict[str, Any] = {"i": int(i1 + 1), "j": int(j1 + 1), "low": float(low1), "high": float(high1)}
                 _pair2: Dict[str, Any] = {"i": int(i2 + 1), "j": int(j2 + 1), "low": float(low2), "high": float(high2)}
                 if pdb_atom_meta:
@@ -1161,7 +1190,7 @@ def cli(
                     **calculator_provenance(calc_cfg),
                     "solvent": calc_cfg.get("solvent", "none"),
                     "max_step_size_angstrom": float(max_step_size),
-                    "n_grid_points": len(df),
+                    "n_grid_points": len(grid_records),
                     "grid_shape": [len(d1_values), len(d2_values)],
                     "pair1": _pair1,
                     "pair2": _pair2,
@@ -1183,7 +1212,7 @@ def cli(
                         energy=rec.get("energy_hartree"),
                         artifact_written=bool(rec.get("artifact_written", False)),
                     )
-                    for rec in records
+                    for rec in grid_records
                 ]
                 _sci, _sci_reasons = scan_scientific_status(_point_outcomes)
                 result_data["execution_status"] = "completed"

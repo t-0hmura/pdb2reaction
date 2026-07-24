@@ -83,6 +83,7 @@ def _calc_full_hessian_torch(
     *,
     refresh_geom_meta: bool = False,
     calculator=None,
+    cache_geometry: bool = True,
 ) -> torch.Tensor:
     """
     Return Hessian as torch.Tensor in Hartree/Bohr^2 (3N or 3N_act square).
@@ -94,14 +95,17 @@ def _calc_full_hessian_torch(
     ----------
     refresh_geom_meta : bool, default False
         Accepted for signature parity with sibling toolchains; currently a no-op
-        here. ``geom.set_results(results)`` is invoked unconditionally below and
-        that call already refreshes ``geom.within_partial_hessian`` via
-        ``Geometry.set_results`` (pysisyphus/Geometry.py:1422-1425), which is
-        the only partial-Hessian metadata channel this package consumes.
+        here. When ``cache_geometry`` is true, ``geom.set_results(results)``
+        refreshes ``geom.within_partial_hessian`` via ``Geometry.set_results``;
+        standalone frequency analysis deliberately leaves that dense cache off.
     calculator : optional
         An already-resolved evaluator for the active PES. When supplied, the
         Geometry cache is intentionally bypassed because a coordinate-only
         cache cannot prove that it represents this evaluator's restraints.
+    cache_geometry : bool, default True
+        Store the result on ``geom`` and return a protective clone. Standalone
+        frequency analysis sets this to false because it consumes the Hessian
+        once and must not keep a second dense GPU copy alive.
     """
     def _to_torch(H_obj: Any, clone: bool = True) -> torch.Tensor:
         if isinstance(H_obj, torch.Tensor):
@@ -123,17 +127,18 @@ def _calc_full_hessian_torch(
 
     # Keep Geometry cache in sync so optimizers/freq analysis can share one Hessian
     # evaluation on unchanged coordinates.
-    try:
-        geom.set_results(results)
-    except Exception:
-        import logging
-        logging.getLogger(__name__).warning(
-            "Failed to set Hessian results on Geometry cache", exc_info=True
-        )
+    if cache_geometry:
+        try:
+            geom.set_results(results)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).warning(
+                "Failed to set Hessian results on Geometry cache", exc_info=True
+            )
 
     # Clone so downstream in-place mass-weighting / TR projection does not
     # poison the Hessian cached on the Geometry object.
-    return _to_torch(results["hessian"], clone=True)
+    return _to_torch(results["hessian"], clone=cache_geometry)
 
 
 def _calc_energy(geom, calc_kwargs: dict, calc=None) -> float:
@@ -226,6 +231,84 @@ GEOM_KW = dict(GEOM_KW_DEFAULT)
 CALC_KW = FREQ_CALC_KW
 
 
+def _validated_symmetry_number(value: object) -> int:
+    """Return an external rotational symmetry number accepted by thermoanalysis."""
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise click.UsageError(
+            "thermo.symmetry_number must be an integer greater than or equal to 1."
+        )
+    return int(value)
+
+
+def _validated_thermo_condition(value: object, *, name: str) -> float:
+    """Return a finite, strictly positive thermochemistry state variable."""
+    if isinstance(value, bool):
+        raise click.UsageError(
+            f"thermo.{name} must be a finite number greater than zero."
+        )
+    try:
+        resolved = float(value)
+    except (TypeError, ValueError) as exc:
+        raise click.UsageError(
+            f"thermo.{name} must be a finite number greater than zero."
+        ) from exc
+    if not np.isfinite(resolved) or resolved <= 0.0:
+        raise click.UsageError(
+            f"thermo.{name} must be a finite number greater than zero."
+        )
+    return resolved
+
+
+def _prepare_thermo_output_paths(
+    out_dir: Path,
+    *,
+    protected_inputs: tuple[Optional[Path], ...] = (),
+) -> tuple[Path, Path]:
+    """Invalidate a prior thermochemistry generation before real work starts."""
+    thermo_yaml = Path(out_dir) / "thermoanalysis.yaml"
+    thermo_yaml_tmp = Path(out_dir) / "thermoanalysis.yaml.tmp"
+    reserved = {thermo_yaml.resolve(), thermo_yaml_tmp.resolve()}
+    for protected in protected_inputs:
+        if protected is not None and Path(protected).resolve() in reserved:
+            raise click.UsageError(
+                f"Configuration input {protected} collides with a reserved "
+                f"frequency output path under {out_dir}."
+            )
+    thermo_yaml.unlink(missing_ok=True)
+    thermo_yaml_tmp.unlink(missing_ok=True)
+    return thermo_yaml, thermo_yaml_tmp
+
+
+def _prepare_frequency_output_paths(
+    out_dir: Path,
+    *,
+    protected_inputs: tuple[Optional[Path], ...] = (),
+) -> tuple[Path, Path]:
+    """Invalidate every public artifact owned by one real frequency run."""
+    out_dir = Path(out_dir)
+    owned = [
+        out_dir / "frequencies_cm-1.txt",
+        out_dir / "result.json",
+        out_dir / "summary.json",
+        *out_dir.glob("mode_*cm-1_trj.xyz"),
+        *out_dir.glob("mode_*cm-1.pdb"),
+    ]
+    reserved = {path.resolve() for path in owned}
+    for protected in protected_inputs:
+        if protected is not None and Path(protected).resolve() in reserved:
+            raise click.UsageError(
+                f"Input {protected} collides with a reserved frequency output "
+                f"path under {out_dir}."
+            )
+    thermo_paths = _prepare_thermo_output_paths(
+        out_dir,
+        protected_inputs=protected_inputs,
+    )
+    for path in owned:
+        path.unlink(missing_ok=True)
+    return thermo_paths
+
+
 
 @click.command(
     help="Vibrational frequency analysis and mode writer (+ default thermochemistry summary).",
@@ -278,7 +361,8 @@ CALC_KW = FREQ_CALC_KW
     help=(
         "Rigid-mode treatment for PHVA. 'constrained' removes only full-system "
         "rigid motions compatible with frozen anchors (default); 'legacy-active' "
-        "is the isolated-active comparison treatment."
+        "is deprecated comparison-only behavior and must not be used for "
+        "pass/HOSP transition-state certification."
     ),
 )
 @click.option(
@@ -316,6 +400,13 @@ CALC_KW = FREQ_CALC_KW
 @click.option("--pressure", "pressure_atm",
               type=float, default=THERMO_KW["pressure_atm"], show_default=True,
               help="Pressure (atm) for thermochemistry summary.")
+@click.option(
+    "--symmetry-number",
+    type=click.IntRange(min=1),
+    default=THERMO_KW["symmetry_number"],
+    show_default=True,
+    help="External rotational symmetry number used in the thermochemistry partition function.",
+)
 @click.option(
     "--dump/--no-dump",
     "dump",
@@ -385,6 +476,7 @@ def cli(
     # thermo
     temperature: float,
     pressure_atm: float,
+    symmetry_number: int,
     dump: bool,
     show_config: bool,
     dry_run: bool,
@@ -448,6 +540,13 @@ def cli(
             (thermo_cfg, (("thermo",),)),
         ],
     )
+    _config_thermo = config_layer_cfg.get("thermo")
+    symmetry_number_source = (
+        "config"
+        if isinstance(_config_thermo, dict)
+        and "symmetry_number" in _config_thermo
+        else "default"
+    )
 
     if cli_param_overridden(ctx, "workers"):
         calc_cfg["workers"] = int(workers)
@@ -492,6 +591,9 @@ def cli(
         thermo_cfg["temperature"] = float(temperature)
     if cli_param_overridden(ctx, "pressure_atm"):
         thermo_cfg["pressure_atm"] = float(pressure_atm)
+    if cli_param_overridden(ctx, "symmetry_number"):
+        thermo_cfg["symmetry_number"] = int(symmetry_number)
+        symmetry_number_source = "cli"
     if cli_param_overridden(ctx, "dump"):
         thermo_cfg["dump"] = bool(dump)
 
@@ -511,6 +613,21 @@ def cli(
             (freq_cfg, (("freq",),)),
             (thermo_cfg, (("thermo",),)),
         ],
+    )
+    _override_thermo = override_layer_cfg.get("thermo")
+    if (
+        isinstance(_override_thermo, dict)
+        and "symmetry_number" in _override_thermo
+    ):
+        symmetry_number_source = "override"
+    thermo_cfg["symmetry_number"] = _validated_symmetry_number(
+        thermo_cfg.get("symmetry_number")
+    )
+    thermo_cfg["temperature"] = _validated_thermo_condition(
+        thermo_cfg.get("temperature"), name="temperature"
+    )
+    thermo_cfg["pressure_atm"] = _validated_thermo_condition(
+        thermo_cfg.get("pressure_atm"), name="pressure_atm"
     )
     from pysisyphus.tr_projection import normalize_tr_projection_mode
     geom_cfg["tr_projection"] = normalize_tr_projection_mode(
@@ -569,6 +686,13 @@ def cli(
         return
 
     out_dir_path.mkdir(parents=True, exist_ok=True)
+    # A real invocation owns this exact output generation.  Invalidate both
+    # published and staged thermochemistry before any calculator or Hessian
+    # operation can fail, including under --no-dump.
+    _thermo_yaml, _thermo_yaml_tmp = _prepare_frequency_output_paths(
+        out_dir_path,
+        protected_inputs=(config_yaml, override_yaml),
+    )
 
     # Default-verbosity entry summary (skipped in child mode).
     from pdb2reaction.core.utils import echo_run_summary
@@ -589,6 +713,7 @@ def cli(
     thermo_block = {
         "temperature": thermo_cfg["temperature"],
         "pressure_atm": thermo_cfg["pressure_atm"],
+        "symmetry_number": thermo_cfg["symmetry_number"],
         "dump": thermo_cfg["dump"],
     }
     click.echo(pretty_block("thermo", thermo_block))
@@ -629,7 +754,12 @@ def cli(
             else:
                 H = torch.as_tensor(H, device=device)
         else:
-            H = _calc_full_hessian_torch(geometry, calc_cfg, device)
+            H = _calc_full_hessian_torch(
+                geometry,
+                calc_cfg,
+                device,
+                cache_geometry=False,
+            )
         coords_bohr = geometry.cart_coords.reshape(-1, 3)
 
         # PHVA: use the freeze list to carve out the active subspace and apply TR projection there.
@@ -669,6 +799,10 @@ def cli(
             f"full_rigid_rank={_rigid_projection['full_rigid_rank']}."
         )
 
+        # Normal-mode data no longer needs the Cartesian Hessian. Geometry
+        # also owns the evaluator result, so clear that cache before the
+        # thermochemistry energy evaluation creates another model.
+        geometry.clear()
         del H
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -698,11 +832,18 @@ def cli(
         ref_pdb = source_path if source_path.suffix.lower() == ".pdb" else None
         write_pdb = ref_pdb is not None
 
-        # write modes
+        # Write modes and retain their authoritative relative paths for
+        # result.json/Results consumers.
+        _mode_output_files: list[str] = []
         for k, idx in enumerate(order[:n_write], start=1):
             freq = float(freqs_cm[idx])
             mode_cart_3N = _mw_mode_to_cart(modes_mw[idx], masses_au_t)
             out_trj = out_dir_path / f"mode_{k:04d}_{freq:+.2f}cm-1_trj.xyz"
+            out_pdb = (
+                out_dir_path / f"mode_{k:04d}_{freq:+.2f}cm-1.pdb"
+                if write_pdb
+                else None
+            )
             _write_mode_trj_and_pdb(
                 geometry,
                 mode_cart_3N,
@@ -713,8 +854,11 @@ def cli(
                 ref_pdb=ref_pdb,
                 write_pdb=write_pdb,
                 prepared_input=prepared_input,
-                out_pdb=out_dir_path / f"mode_{k:04d}_{freq:+.2f}cm-1.pdb" if write_pdb else None,
+                out_pdb=out_pdb,
             )
+            _mode_output_files.append(out_trj.name)
+            if out_pdb is not None and out_pdb.is_file():
+                _mode_output_files.append(out_pdb.name)
         (out_dir_path / "frequencies_cm-1.txt").write_text(
             "\n".join(f"{i+1:4d}  {float(freqs_cm[j]):+12.4f}" for i, j in enumerate(order)),
             encoding="utf-8"
@@ -739,9 +883,11 @@ def cli(
                 "mult": int(calc_cfg["spin"]),
             }
             qc = QCData(qc_data, point_group="c1", mult=int(calc_cfg["spin"]))
+            qc.symmetry_number = int(thermo_cfg["symmetry_number"])
 
             T = float(thermo_cfg["temperature"])
             p_atm = float(thermo_cfg["pressure_atm"])
+            symmetry_number = int(thermo_cfg["symmetry_number"])
             p_pa = p_atm * 101325.0  # Pa
 
             # P05: the standalone-freq policy is library-default QRRHO with NO
@@ -777,6 +923,10 @@ def cli(
             emit("\n====== Thermochemistry summary ======\n", narrative=True)
             click.echo(f"Temperature (K)         = {T:.2f}")
             click.echo(f"Pressure    (atm)       = {p_atm:.4f}")
+            click.echo(
+                f"Rotational symmetry no. = {symmetry_number:d} "
+                f"({symmetry_number_source})"
+            )
             if freeze_list:
                 emit("[NOTE] Thermochemistry uses active DOF (PHVA) due to frozen atoms.", narrative=True)
             click.echo(f"Number of Imaginary Freq = {n_imag:d}")
@@ -797,11 +947,13 @@ def cli(
             click.echo(f"Entropy (S)                            = {_fmt_calK(S_cal_per_Kmol)}")
 
             if bool(thermo_cfg["dump"]):
-                out_yaml = out_dir_path / "thermoanalysis.yaml"
                 payload = {
                     "temperature_K": T,
                     "pressure_atm": p_atm,
+                    "symmetry_number": symmetry_number,
+                    "symmetry_number_source": symmetry_number_source,
                     "num_imag_freq": n_imag,
+                    "n_freeze_atoms": len(freeze_list),
                     "thermo_policy": _thermo_policy.as_dict(),
                     "rigid_projection": _rigid_projection,
                     "electronic_energy_ha": EE,
@@ -817,12 +969,23 @@ def cli(
                     "Cv_cal_per_mol_K": Cv_cal_per_Kmol,
                     "S_cal_per_mol_K": S_cal_per_Kmol,
                 }
-                with out_yaml.open("w", encoding="utf-8") as f:
-                    yaml.safe_dump(payload, f, sort_keys=False, allow_unicode=True)
-                emit(f"[dump] Wrote thermoanalysis summary → {out_yaml}", detail=True)
+                try:
+                    with _thermo_yaml_tmp.open("w", encoding="utf-8") as f:
+                        yaml.safe_dump(
+                            payload, f, sort_keys=False, allow_unicode=True
+                        )
+                    _thermo_yaml_tmp.replace(_thermo_yaml)
+                finally:
+                    _thermo_yaml_tmp.unlink(missing_ok=True)
+                emit(
+                    f"[dump] Wrote thermoanalysis summary → {_thermo_yaml}",
+                    detail=True,
+                )
 
             _thermo_data = {
                 "thermo_policy": _thermo_policy.as_dict(),
+                "symmetry_number": symmetry_number,
+                "symmetry_number_source": symmetry_number_source,
                 "electronic_energy_ha": EE,
                 "zpe_correction_ha": ZPE,
                 "thermal_correction_energy_ha": dE_therm,
@@ -837,12 +1000,12 @@ def cli(
                 "S_cal_per_mol_K": S_cal_per_Kmol,
             }
 
-        except ImportError:
-            click.echo("[thermo] WARNING: 'thermoanalysis' package not found; skipped thermochemistry summary.", err=True)
+        except ImportError as e:
+            raise click.ClickException(
+                "Thermochemistry failed because 'thermoanalysis' is unavailable."
+            ) from e
         except Exception as e:
-            import traceback
-            tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
-            click.echo("Unhandled error during thermochemistry summary:\n" + textwrap.indent(tb, "  "), err=True)
+            raise click.ClickException(f"Thermochemistry failed: {e}") from e
 
         # summary.md and key_* outputs are disabled.
         emit(f"[DONE] Wrote modes and list → {out_dir_path}", detail=True)
@@ -875,6 +1038,7 @@ def cli(
                 "input_file": str(input_path),
                 "files": {
                     "frequencies_txt": "frequencies_cm-1.txt",
+                    "mode_files": _mode_output_files,
                 },
             }
             if _thermo_data is not None and bool(thermo_cfg.get("dump", False)):
@@ -894,8 +1058,8 @@ def cli(
         # Release GPU memory so subsequent pipeline stages don't OOM:
         # rebind to None first (decrements heavy torch.nn.Module refs),
         # then del to drop the local names; gc.collect breaks cycles.
-        calc = geometry = H = modes = None
-        del calc, geometry, H, modes
+        calc = geometry = H = H_analysis = modes = modes_mw = None
+        del calc, geometry, H, H_analysis, modes, modes_mw
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()

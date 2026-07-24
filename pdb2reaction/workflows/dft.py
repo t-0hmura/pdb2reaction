@@ -328,6 +328,38 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     return {"mulliken": mull, "lowdin": low, "iao": iao_ms}
 
 
+def _prepare_dft_output_dir(path: Path) -> Path:
+    """Create the output directory and invalidate prior public DFT results."""
+
+    resolved = Path(path).resolve()
+    resolved.mkdir(parents=True, exist_ok=True)
+    for name in ("result.yaml", "result.json", "summary.json"):
+        (resolved / name).unlink(missing_ok=True)
+    return resolved
+
+
+def _finalize_dft_result(
+    *,
+    out_json: bool,
+    out_dir: Path,
+    payload: Dict[str, Any],
+    elapsed_seconds: float,
+) -> None:
+    """Commit a truthful payload before signalling SCF nonconvergence."""
+
+    if out_json:
+        from pdb2reaction.core.utils import write_result_json
+
+        write_result_json(
+            out_dir,
+            payload,
+            command="dft",
+            elapsed_seconds=elapsed_seconds,
+        )
+    if not bool(payload["converged"]):
+        raise SystemExit(3)
+
+
 
 @click.command(
     help="Single-point DFT using GPU4PySCF (CPU PySCF backend).",
@@ -501,6 +533,10 @@ def cli(
                 dft_cfg["out_dir"] = out_dir
             if cli_param_overridden(ctx, "lowmem"):
                 dft_cfg["lowmem"] = bool(lowmem)
+            # Resolve the YAML-effective directory before any later validation
+            # can fail, so an unexpected error is never reported into the CLI
+            # default directory instead of the configured one.
+            out_dir_path = Path(dft_cfg["out_dir"]).resolve()
 
             # Combined "FUNC/BASIS" only overrides the split-form dft.func /
             # dft.basis when it was actually supplied (CLI --func-basis or
@@ -523,12 +559,24 @@ def cli(
             if multiplicity < 1:
                 raise click.BadParameter("Multiplicity (spin) must be >= 1.")
             spin2s = multiplicity - 1  # PySCF expects 2S
+            from pdb2reaction.core.utils import validate_charge_spin_at_path
+
+            validate_charge_spin_at_path(
+                geom_input_path,
+                int(resolved_charge),
+                multiplicity,
+            )
 
             # Echo resolved config
             engine_name = str(dft_cfg.get("engine", engine if engine else "gpu")).strip().lower()
             if cli_param_overridden(ctx, "engine"):
                 engine_name = (engine or "gpu").strip().lower()
-            out_dir_path = Path(dft_cfg["out_dir"]).resolve()
+            if engine_name not in {"cpu", "gpu"}:
+                raise click.BadParameter(
+                    "dft.engine must be either 'cpu' or 'gpu', "
+                    f"got {engine_name!r}."
+                )
+            dft_cfg["engine"] = engine_name
             lowmem_requested = bool(dft_cfg.get("lowmem", True))
             echo_cfg = {
                 "charge": int(resolved_charge),
@@ -546,7 +594,7 @@ def cli(
             click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
             click.echo(pretty_block("dft", echo_cfg))
             if show_config:
-                click.echo(
+                emit(
                     pretty_block(
                         "yaml_layers",
                         {
@@ -554,10 +602,11 @@ def cli(
                             "override_yaml": None if override_yaml is None else str(override_yaml),
                             "merged_keys": sorted(merged_yaml_cfg.keys()),
                         },
-                    )
+                    ),
+                    force=True,
                 )
             if dry_run:
-                click.echo(
+                emit(
                     pretty_block(
                         "dry_run_plan",
                         {
@@ -569,7 +618,8 @@ def cli(
                             "will_write_result_yaml": True,
                             "will_run_population_analysis": True,
                         },
-                    )
+                    ),
+                    force=True,
                 )
                 click.echo("[dry-run] Validation complete. DFT execution was skipped.")
                 return
@@ -580,7 +630,7 @@ def cli(
             geometry = geom_loader(geom_input_path, coord_type=coord_type, **coord_kwargs)
             xyz_s, atoms_list = _geometry_to_pyscf_atoms_string(geometry)
 
-            out_dir_path.mkdir(parents=True, exist_ok=True)
+            out_dir_path = _prepare_dft_output_dir(out_dir_path)
             # Write a provenance snapshot of the input geometry
             input_xyz = out_dir_path / "input_geometry.xyz"
             input_xyz.write_text(xyz_s if xyz_s.endswith("\n") else (xyz_s + "\n"))
@@ -794,45 +844,43 @@ def cli(
             click.echo(f"E_total (Hartree): {e_h:.12f}")
             click.echo(f"E_total (kcal/mol): {e_kcal:.6f}")
 
-            # Exit codes: 0 if converged, 3 otherwise
-            if not converged:
-                click.echo("WARNING: SCF did not converge to the requested tolerance.", err=True)
-                sys.exit(3)
-
             emit(format_elapsed("[time] Elapsed Time for DFT", time_start), narrative=True)
 
-            # result.json (if --out-json)
-            if out_json:
-                from pdb2reaction.core.utils import write_result_json
-                result_data: Dict[str, Any] = {
-                    "status": "converged",
-                    "converged": converged,
-                    "charge": resolved_charge,
-                    "spin": multiplicity,
-                    "n_atoms": mol.natm,
-                    "grid_level": dft_cfg.get("grid_level"),
-                    "conv_tol": dft_cfg.get("conv_tol"),
-                    "max_cycle": dft_cfg.get("max_cycle"),
-                    "input_file": str(input_path),
-                    "energy_hartree": e_h,
-                    "energy_kcal_per_mol": e_kcal,
-                    "xc_functional": xc,
-                    "basis_set": basis,
-                    "engine": engine_label,
-                    "used_gpu": bool(using_gpu),
-                    "used_lowmem": bool(using_lowmem),
-                    "charges": {k: v for k, v in charges.items()},
-                    "spin_densities": {k: v for k, v in spins.items()},
-                    "files": {
-                        "result_yaml": "result.yaml",
-                        "input_geometry_xyz": "input_geometry.xyz",
-                    },
-                }
-                write_result_json(
-                    out_dir_path, result_data,
-                    command="dft",
-                    elapsed_seconds=time.perf_counter() - time_start,
+            result_data: Dict[str, Any] = {
+                "status": "converged" if converged else "not_converged",
+                "converged": converged,
+                "charge": resolved_charge,
+                "spin": multiplicity,
+                "n_atoms": mol.natm,
+                "grid_level": dft_cfg.get("grid_level"),
+                "conv_tol": dft_cfg.get("conv_tol"),
+                "max_cycle": dft_cfg.get("max_cycle"),
+                "input_file": str(input_path),
+                "energy_hartree": e_h,
+                "energy_kcal_per_mol": e_kcal,
+                "xc_functional": xc,
+                "basis_set": basis,
+                "engine": engine_label,
+                "used_gpu": bool(using_gpu),
+                "used_lowmem": bool(using_lowmem),
+                "charges": {k: v for k, v in charges.items()},
+                "spin_densities": {k: v for k, v in spins.items()},
+                "files": {
+                    "result_yaml": "result.yaml",
+                    "input_geometry_xyz": "input_geometry.xyz",
+                },
+            }
+            if not converged:
+                click.echo(
+                    "WARNING: SCF did not converge to the requested tolerance.",
+                    err=True,
                 )
+            _finalize_dft_result(
+                out_json=out_json,
+                out_dir=out_dir_path,
+                payload=result_data,
+                elapsed_seconds=time.perf_counter() - time_start,
+            )
 
         except KeyboardInterrupt:
             click.echo("Interrupted by user.", err=True)

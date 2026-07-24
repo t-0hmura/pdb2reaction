@@ -21,7 +21,7 @@
 | TS は収束したが小さい虚振動が複数残る | `--flatten` を追加（`tsopt`、`opt`、`pdb2reaction all` 共通） | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | TSOPT が収束しない | L-BFGS/Dimer: `max_step` を**縮小**。RFO/RS-P-RFO（`tsopt` デフォルト）/RS-I-RFO: `trust_radius`/`trust_min`/`trust_max` を**縮小**。サイクル上限を増やし、TS 品質を確認 | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | IRC が正常に終了しない | `--step-size` を縮小、`--max-cycles` を増加、虚振動数が 1 本のみか確認 | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
-| opt/TSOPT が `max_cycles` で停止し、`max(force)` が閾値をわずかに超える | 通常は `opt.energy_plateau` フォールバックが自動で処理します。手動回避は `--thresh gau` または `--thresh gau_loose` | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
+| エネルギー平坦化後に opt/TSOPT が `stalled` で停止する | 未収束として扱い、最終構造と力・ステップ条件を確認してから、適切な閾値またはoptimizer設定で再実行 | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | MEP 探索（GSM/DMF）が失敗 | `--max-nodes` をデフォルト 20 から増やす、`--preopt` 有効化（デフォルト: `all`/`path-search`/`path-opt` で `True`、`scan*` で `False`）、別の `--mep-mode` を試す | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | **インストール / 環境** | | |
 | DMF モードの import エラー（`cyipopt`）、または `No module named 'dmf'` | `conda install -c conda-forge cyipopt`（`pydmf` は `pdb2reaction` の依存として自動インストールされる） | {ref}`インストール / 環境の問題 <ts-install-env>` |
@@ -70,7 +70,7 @@
  - TS 候補が虚振動数 1 本のみを持ち、対応する虚振動モードが反応座標方向の変位を示すか。検出カットオフは `hessian_dimer.neg_freq_thresh_cm`（デフォルト 5 cm⁻¹）。
  - 虚振動数の本数が誤っている場合（偽の 2 本目の小さいモード、または支配的な反応モードが無い）は、`--precision fp64` で精度を上げる、および／または `--coord-type dlc` に切り替え、残った小さいモードは `--flatten` を追加します。これらの手法は補完的です。{ref}`tsopt: 最適化後に虚振動数の本数が誤っている場合 <ja-wrong-imaginary-mode-count>` を参照。
  - ステップサイズ / 信頼半径（YAML キー `max_step`, `trust_radius`/`trust_min`/`trust_max`）と、最適化モード / フラット化（CLI フラグ `--opt-mode`, `--flatten`）は併用してください。YAML セクション構成は [YAML リファレンス](yaml-reference.md)、正規の修正手順は {ref}`計算 / 収束の問題 <ts-calc-conv>` を参照。
- - `max_cycles` 到達時に力のノルムが閾値をわずかに超えているだけで、エネルギー地形がほぼ平坦になっている場合は {ref}`計算 / 収束の問題 <ts-calc-conv>` を参照してください — `opt.energy_plateau` フォールバックが自動処理します。
+ - エネルギー平坦化により `stalled` で停止した場合も未収束です。{ref}`計算 / 収束の問題 <ts-calc-conv>` に従って確認してから再実行してください。
 - 典型的な修正手順:
  - 小規模ケースで条件を詰め、安定化後に本番条件へ戻す。
 
