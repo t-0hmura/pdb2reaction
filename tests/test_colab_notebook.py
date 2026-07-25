@@ -202,7 +202,8 @@ def test_colab_setup_is_pinned_to_matching_release_and_one_backend() -> None:
     # against the requested tag.
     assert "pip('pdb2reaction==' + pdb2reaction_ref.lstrip('v'))" in setup
     # The DFT extra installs with a visible log; a quiet pip looked stalled.
-    assert "pip_logged('pdb2reaction[dft]==' + pdb2reaction_ref.lstrip('v'))" in setup
+    assert "pip('pdb2reaction[dft]==' + pdb2reaction_ref.lstrip('v'))" in setup
+    assert "pip_logged" not in setup
     assert "install_dft is ticked" in setup
     # Gated UMA sign-in is the last step, so no install phase waits on a prompt.
     assert "Hugging Face sign-in runs at the end of Setup" in setup
@@ -280,13 +281,12 @@ def test_colab_setup_dft_branch_installs_extra_and_checks_gpu(monkeypatch, capsy
 
     installs = [argv for argv in calls if "install" in argv]
     assert any("pdb2reaction==0.4.12" in argv for argv in installs)
-    assert any("pdb2reaction[dft]==0.4.12" in argv for argv in popen_calls)
-    assert any("--progress-bar" in argv and "off" in argv for argv in popen_calls)
+    assert any("pdb2reaction[dft]==0.4.12" in argv for argv in installs)
+    assert popen_calls == []          # no streamed pip log, only the announcement
     logged = capsys.readouterr().out
     assert "install_dft is ticked" in logged
-    assert "Downloading pyscf-2.13.0-cp311.whl (30.2 MB)" in logged
-    assert "Successfully installed pyscf-2.13.0" in logged
-    assert "a quiet line that must stay unechoed" not in logged
+    assert "DFT support installed: PySCF 2.11.0" in logged
+    assert "Collecting" not in logged and "Downloading" not in logged
     assert namespace["DFT_SETUP_READY"] is True
     assert namespace["INSTALL_DFT"] is True
     assert namespace["BACKEND"] == "mace"
