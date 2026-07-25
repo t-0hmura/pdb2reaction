@@ -6,6 +6,7 @@ import ast
 import csv
 import datetime
 import glob
+import hashlib
 import html
 import json
 import os
@@ -2993,3 +2994,19 @@ def test_colab_uma_login_accepts_a_colab_secret(monkeypatch) -> None:
 
     assert [entry[0] for entry in logins] == ["token"]
     assert logins[0][1]["token"] == "secret-token"
+
+
+def test_colab_setup_cell_is_frozen() -> None:
+    """The Setup cell is frozen for this release (user decision, 2026-07-25).
+
+    Behaviour contracts live in the tests above; this digest additionally freezes
+    everything else in the cell, including its printed output. Update the digest
+    only together with a deliberate decision to change Setup.
+    """
+    setup = _notebook()["cells"][1]["source"]
+    digest = hashlib.sha256(setup.encode("utf-8")).hexdigest()
+
+    assert digest == "c6f10ea31a7d3a602f33121fa986d1c4af70977786ddb3e7ec1fe8e08aaae769", (
+        "the Colab Setup cell changed; it is frozen for this release. Re-read the "
+        "Setup contracts above, then update this digest deliberately. Got: " + digest
+    )
