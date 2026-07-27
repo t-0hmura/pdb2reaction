@@ -1,7 +1,7 @@
 # MLIP 計算機
 
 ## 概要
-`pdb2reaction` は複数の機械学習原子間ポテンシャル（MLIP）を pysisyphus 向けの計算機バックエンドとしてサポートします。デフォルトバックエンドは **UMA**（Meta の Universal Models for Atoms）ですが、**ORB**、**MACE**、**AIMNet2** も利用可能です。各バックエンドはエネルギー / 力 / Hessianを Hartree 単位で返し、GPU/CPU ディスパッチと bohr↔Å 変換を内部処理します。クラスターサイズ（数百原子）の系では、augmented-Hessian 固有値解（RFO / RS-I-RFO）と IRC 伝播が扱う 3N × 3N の Hessian テンソルを on-device に保持しないと、ホスト–デバイス同期の繰り返しが実行時間（wall-clock）の大半を占めがちです。そのため Hessian は pysisyphus 経由で on-device に保持します（エネルギー / 力 はスカラー / numpy 配列で host へ戻すため、そのコストは無視できます）。これらの計算機は `pdb2reaction` の最適化・経路探索・熱化学・軌跡後処理など幅広く用いられます。
+`pdb2reaction` は複数の機械学習原子間ポテンシャル（MLIP）を pysisyphus 向けの計算機バックエンドとしてサポートします。デフォルトバックエンドは **UMA**（Meta の Universal Models for Atoms）ですが、**ORB**、**MACE**、**AIMNet2** も利用可能です。各バックエンドはエネルギー / 力 / Hessian を Hartree 単位で返し、GPU/CPU ディスパッチと bohr↔Å 変換を内部処理します。クラスターサイズ（数百原子）の系では、augmented-Hessian 固有値解（RFO / RS-I-RFO）と IRC 伝播が扱う 3N × 3N の Hessian テンソルを on-device に保持しないと、ホスト–デバイス同期の繰り返しが実行時間（wall-clock）の大半を占めがちです。そのため Hessian は pysisyphus 経由で on-device に保持します（エネルギー / 力 はスカラー / numpy 配列で host へ戻すため、そのコストは無視できます）。これらの計算機は `pdb2reaction` の最適化・経路探索・熱化学・軌跡後処理など幅広く用いられます。
 
 `pdb2reaction` は GPU 加速版の `pysisyphus` fork を同梱しています。RFO / RS-I-RFO 単一構造 optimizer、EulerPC IRC integrator、振動モード（Hessian）対角化が `device="cuda"`（または GPU ホストでの `"auto"`）の場合に CUDA で実行されます。CPU ホストでは upstream の NumPy/SciPy パスへ自動的にフォールバックします。
 
@@ -87,7 +87,7 @@ pdb2reaction opt -i input.pdb -q 0 -b mace
 pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 ```
 
-| バックエンド | インストール | 解析Hessian | マルチワーカー | 備考 |
+| バックエンド | インストール | 解析 Hessian | マルチワーカー | 備考 |
 |---------|---------|-------------------|-------------|-------|
 | **UMA** | 同梱 | あり（autograd） | あり | `fairchem-core` による完全機能 |
 | **ORB** | `pip install "pdb2reaction[orb]"` | あり（autograd） | なし | orb-models（conservative モデルのみ） |
@@ -103,14 +103,14 @@ pdb2reaction opt -i input.pdb -q 0 --solvent water
 pdb2reaction opt -i input.pdb -q 0 -b orb --solvent water --solvent-model cpcmx
 ```
 
-デルタアプローチによる補正: ΔE = E_xTB(溶媒) - E_xTB(真空) を MLIP エネルギー/力/Hessianに加算します。`xtb` が `PATH` 上にインストールされている必要があります。
+デルタアプローチによる補正: ΔE = E_xTB(溶媒) - E_xTB(真空) を MLIP エネルギー/力/Hessian に加算します。`xtb` が `PATH` 上にインストールされている必要があります。
 
 ## 主な特徴
 
 - **MLIP バックエンド** – デフォルトの UMA バックエンドは `fairchem-core` の `pretrained_mlip` ヘルパーで UMA チェックポイントを読み込み、AtomicData バッチに電荷/スピン情報を付与。代替バックエンド（ORB、MACE、AIMNet2）は `-b/--backend` で利用可能。
 - **デバイス処理** – `device="auto"` は CUDA があれば GPU、なければ CPU を選択。グラフ構築は選択デバイス上で行い、`workers>1` では並列予測器が転送を管理。
-- **凍結原子** – `freeze_atoms` に 1 始まりの原子インデックスを渡すと、凍結原子の力がゼロ化。`return_partial_hessian=True` で凍結自由度を除いたHessianを返すか、フル行列で該当行/列をゼロ化できます。
-- **精度制御** – エネルギー/力は常に float64。`hessian_double=False` でHessianをモデルのネイティブ dtype（通常 float32）で返します。
+- **凍結原子** – `freeze_atoms` に 1 始まりの原子インデックスを渡すと、凍結原子の力がゼロ化。`return_partial_hessian=True` で凍結自由度を除いた Hessian を返すか、フル行列で該当行/列をゼロ化できます。
+- **精度制御** – エネルギー/力は常に float64。`hessian_double=False` で Hessian をモデルのネイティブ dtype（通常 float32）で返します。
 - **マルチワーカー推論** – `workers>1` で `fairchem-core` の `ParallelMLIPPredictUnit` を起動し、`workers_per_node` をノードごとに指定可能。バッチ処理速度の向上に有効です。
 
 (ja-workers-analytical-error)=
@@ -121,7 +121,7 @@ UMA バックエンドを `workers > 1` で使用する場合、並列 predictor
 ```
 
 (ja-hessian-evaluation)=
-### Hessian評価モード
+### Hessian 評価モード
 
 `hessian_calc_mode="Analytical"` は選択されたデバイス上で 2 階自動微分を行い、`"FiniteDifference"`（デフォルト）は力の中心差分を計算します。UMA で複数の推論ワーカーと `Analytical` を併用すると `BackendError` になります（上記の注記を参照）。解析 Hessian には `workers = 1`、並列実行には有限差分を指定してください。
 
@@ -142,15 +142,15 @@ UMA バックエンドを `workers > 1` で使用する場合、並列 predictor
 | `precision` | MLIP 数値精度 (`"fp32"` または `"fp64"`) | `"fp32"` |
 | `task_name` | UMA バッチに記録されるタスクタグ | `"omol"` |
 | `device` | `"cuda"` / `"cpu"` / `"auto"` | `"auto"` |
-| `workers` / `workers_per_node` | 並列 UMA 予測器（UMA バックエンド限定。ORB / MACE / AIMNet2 では無視されます）。`workers>1` の場合、解析Hessianは利用できず、`Analytical` を明示指定すると `BackendError`（`RuntimeError` のサブクラス）が送出されます。`hessian_calc_mode` のデフォルトはそもそも FD のため、`Analytical` を明示的に選んだ場合のみ影響があります | `1` / `1` |
+| `workers` / `workers_per_node` | 並列 UMA 予測器（UMA バックエンド限定。ORB / MACE / AIMNet2 では無視されます）。`workers>1` の場合、解析 Hessian は利用できず、`Analytical` を明示指定すると `BackendError`（`RuntimeError` のサブクラス）が送出されます。`hessian_calc_mode` のデフォルトはそもそも FD のため、`Analytical` を明示的に選んだ場合のみ影響があります | `1` / `1` |
 | `max_neigh`, `radius`, `r_edges` | 近傍構築のオプション上書き | `None`, `None`, `False` |
 | `freeze_atoms` | 1 始まりの凍結原子インデックス | _None_ |
 | `hessian_calc_mode` | `"Analytical"` または `"FiniteDifference"` | `"FiniteDifference"` |
 | `return_partial_hessian` | アクティブ自由度のみ返す | `True` |
-| `hessian_double` | Hessianを float64 で返す | `True` |
-| `out_hess_torch` | Hessianを `torch.Tensor` で返す | `True` |
-| `print_timing` | Hessian計算のタイミング内訳を表示 | `True` |
-| `print_vram` | Hessian計算中の CUDA VRAM 使用量を表示（UMA バックエンド限定） | `True` |
+| `hessian_double` | Hessian を float64 で返す | `True` |
+| `out_hess_torch` | Hessian を `torch.Tensor` で返す | `True` |
+| `print_timing` | Hessian 計算のタイミング内訳を表示 | `True` |
+| `print_vram` | Hessian 計算中の CUDA VRAM 使用量を表示（UMA バックエンド限定） | `True` |
 | `solvent` | 暗黙溶媒名（例: `"water"`）または `"none"` | `"none"` |
 | `solvent_model` | xTB 溶媒モデル: `"alpb"` または `"cpcmx"` | `"alpb"` |
 | `xtb_cmd` | 溶媒補正で使用する xTB 実行コマンド | `"xtb"` |

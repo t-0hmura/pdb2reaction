@@ -74,15 +74,15 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 |-----------|------|------|
 | `treatment` | string | 選択した`--tr-projection` mode: `"constrained"` / `"legacy-active"` |
 | `algorithm` | string | 射影kernelの識別子 |
-| `effective_rank` | int | active Hessianから除去した剛体方向の数 |
+| `effective_rank` | int | active Hessian から除去した剛体方向の数 |
 | `full_rigid_rank` | int | 凍結anchor拘束前の全系剛体basisのrank |
 | `frozen_constraint_rank` | int | 凍結anchor拘束によって除かれたrank |
 | `svd_rtol` | float | rank 判定に用いる相対 SVD 許容値 |
 | `active_atom_count` / `frozen_atom_count` | int | active／frozen原子数 |
 | `active_atoms` / `frozen_atoms` | int[] | 射影kernelが使用した0始まり原子index |
-| `hessian_space` | string | 入力Hessian空間: `"full"` / `"active"` |
+| `hessian_space` | string | 入力 Hessian 空間: `"full"` / `"active"` |
 | `hessian_source` / `source` | string | Hessian provenance。`freq`/`irc`は`hessian_source`、`opt`/`tsopt`は`source`を使用 |
-| `hessian_shape` / `raw_hessian_shape` | int[2] | 入力Hessian shape。`freq`/`irc`は`hessian_shape`、`opt`/`tsopt`は`raw_hessian_shape`を使用 |
+| `hessian_shape` / `raw_hessian_shape` | int[2] | 入力 Hessian shape。`freq`/`irc`は`hessian_shape`、`opt`/`tsopt`は`raw_hessian_shape`を使用 |
 
 `constrained`は凍結anchorを動かさない全系剛体運動だけを除去します。`legacy-active` は非推奨の比較専用で、pass/HOSP 遷移状態認定には使用できません。また、near-linear／縮退構造に対する旧結果のbitwise replayは保証しません。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
 
@@ -174,8 +174,8 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 | `imaginary_frequencies_cm` | float[] | 虚振動数 (cm⁻¹, 負の値) |
 | `opt_mode` | string | `"rsprfo"` (default) / `"rsirfo"` / `"trim"` / `"dimer"` |
 | `reference_mode_file` | string\|null | `--ref-mode` で渡した advanced path-mode ファイル。通常は `all` が生成して内部指定します |
-| `safeguards` | object | mode-loss rejection、exact saddle check、最終目的モードの index/overlap、高次鞍点でのMEP再anchor flag、停止理由、有界 path-mode restart の診断情報 |
-| `rigid_projection` | object | 剛体モードとexact Hessianのprovenance。[projection provenance](#rigid-projection-provenance)を参照 |
+| `safeguards` | object | mode-loss rejection、exact saddle check、最終目的モードの index/overlap、高次鞍点での MEP 再anchor flag、停止理由、有界 path-mode restart の診断情報 |
+| `rigid_projection` | object | 剛体モードとexact Hessian のprovenance。[projection provenance](#rigid-projection-provenance)を参照 |
 
 `files` には `imaginary_mode_files`（vib ファイルリスト）を含む場合があります。
 Cartesian Hessian mode の `status: "converged"` には、最終 exact PHVA で
@@ -210,7 +210,7 @@ dimer モードも `status` に `"converged"` / `"not_converged"` / `"stalled"` 
 | `pressure_atm` | float | 圧力 (atm) |
 | `input_file` | string | 入力ファイル名 |
 | `files` | object | `{"frequencies_txt": "frequencies_cm-1.txt"}` |
-| `rigid_projection` | object | 剛体モードとHessian provenance。`--dump`時は`thermoanalysis.yaml`にも記録 |
+| `rigid_projection` | object | 剛体モードと Hessian provenance。`--dump`時は`thermoanalysis.yaml`にも記録 |
 
 **`thermochemistry`** (thermoanalysis 利用不可時は null):
 
@@ -262,7 +262,7 @@ dimer モードも `status` に `"converged"` / `"not_converged"` / `"stalled"` 
 | `max_cycles` | int | 最大 IRC ステップ数 |
 | `input_file` | string | 入力ファイル名 |
 | `files` | object | 軌跡ファイル（XYZと、利用可能なPDB/CIF companion） |
-| `rigid_projection` | object | 剛体モードと初期Hessianのprovenance。[projection provenance](#rigid-projection-provenance)を参照 |
+| `rigid_projection` | object | 剛体モードと初期 Hessian のprovenance。[projection provenance](#rigid-projection-provenance)を参照 |
 
 ### `scan`
 
@@ -357,7 +357,7 @@ dimer モードも `status` に `"converged"` / `"not_converged"` / `"stalled"` 
 
 ### `dft`
 
-> **注:** `dft` はSCF収束時 (exit 0) のみ `status: "converged"` を含む
+> **注:** `dft` は SCF 収束時 (exit 0) のみ `status: "converged"` を含む
 > `result.json` を書きます。非収束時はexit code 3でJSONを作らないため、exit codeが
 > signalです。汎用 `not_converged` statusは `dft` に適用しません。捕捉された想定外の
 > exceptionでは標準error envelopeをbest effortで書きます。
@@ -458,6 +458,7 @@ dimer モードも `status` に `"converged"` / `"not_converged"` / `"stalled"` 
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
 | `environment` | object | ハードウェア情報 |
+| `references` | object[] | 解決済みworkflowで実際に使った手法の `{method, citation, doi}` record。同じreference setを `summary.log` と最終標準出力の末尾（elapsed time直前）にまとめて出力します。 |
 
 `all` はさらに以下を含みます:
 

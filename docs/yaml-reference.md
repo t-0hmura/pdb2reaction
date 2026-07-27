@@ -218,6 +218,11 @@ trace.
 | `gau_vtight` | 2.0e-6 | 1.0e-6 | 6.0e-6 | 4.0e-6 |
 | `baker` | 3.0e-4 | 2.0e-4 | 3.0e-4 | 2.0e-4 |
 
+`baker` is the exception to the four-column rule: it converges when
+`max(|force|) <= 3e-4` **and** (`|delta E| < 1e-6` **or**
+`max(|step|) <= 3e-4`). Its RMS force and RMS step columns are diagnostics,
+not additional terminal gates.
+
 ---
 
 ### `lbfgs`

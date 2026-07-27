@@ -26,7 +26,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
  --tsopt --thermo --dft --out-dir ./result_all
 ```
 
-> **VRAM 注意:** `--dft` は抽出clusterに対してGPU4PySCFの一点計算を
+> **VRAM 注意:** `--dft` は抽出clusterに対してGPU4PySCF の一点計算を
 > 実行します。必要memoryは構造・基底・汎関数・精度・software stackに依存するため、
 > 対象nodeで代表構造をpilot実行してpeak memoryを測定してください。OOM時は、より
 > 小さい基底／縮小clusterで `pdb2reaction dft` を単独実行するか、より大きいnodeを

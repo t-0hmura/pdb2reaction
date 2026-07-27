@@ -4,9 +4,7 @@ All notable changes to **pdb2reaction** will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/).
 
-## Unreleased
-
-## [0.4.12] — 2026-07-22
+## [0.4.12] — 2026-07-27
 
 > Upgrade warning: unchanged inputs can produce different geometries, energies/barriers,
 > vibrational classifications, thermochemistry, and scientific/terminal status. Consumers of
@@ -26,6 +24,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   the derived value.
 
 ### Added
+- Report citations for the methods actually used at the end of `summary.log`
+  and final stdout, and expose the same `{method, citation, doi}` records as
+  `summary.json.references`.
+- Cancel a running Colab job from the interface, and send an occupied output
+  directory to `result(1)`, `result(2)`, … instead of writing into it.
 - Add an mmCIF/large-PDB bridge (atom-identity–preserving; multi-model input keeps the first model,
   with a warning), exact chain/residue/atom selectors, safe duplicate atom-name handling, and CIF
   output companions with original IDs.
@@ -61,6 +64,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   the standalone/default child value is 1.
 
 ### Changed
+- Derive the system charge in the Colab notebook from `--ligand-charge` when it
+  is available, omitting `-q`; a ticked charge box is now an explicit override.
+- Offer the scientific workflows in the Colab workflow selector. The utility
+  subcommands remain available from the command editor.
+- Install the DFT extra by default in the Colab notebook and verify PNG export
+  by rendering one. A first run now takes about 8 minutes.
+- Label thermochemistry as `E + G_corr = G`, force uphill rejection off for
+  transition-state optimization, and keep its toggle limited to minimum and
+  post-IRC endpoint optimization.
+- Apply Baker convergence as maximum force plus energy-change-or-maximum-step,
+  with RMS values diagnostic only, including the final check of a retained
+  lower-energy geometry at the uphill-rejection trust floor.
+- Remove the unused 74-field `AllContext` scaffold and its mirror-count test.
 - Pin backend setup recipes to the official PyTorch 2.8 wheel matrix and keep
   optional CUDA toolkit/compiler modules out of prebuilt-wheel HPC jobs.
 - Derive the existing `path-opt --max-nodes 20` default from shared
@@ -116,6 +132,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   mutated nested defaults.
 
 ### Fixed
+- Keep the IRC running when the EulerPC corrector oscillates. The corrector
+  descends the two-point interpolated surface rather than the real potential,
+  so a reversal there is an interpolation artifact; it now warns and keeps the
+  last non-oscillating point instead of aborting the whole run.
 - Stop `scan2d` after writing `surface.csv` with a clear diagnostic when fewer
   than three non-collinear converged grid points remain, instead of passing an
   underdetermined data set to SciPy's RBF interpolator.

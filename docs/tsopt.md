@@ -4,6 +4,12 @@
 
 Pick the optimizer with `--opt-mode`. For most systems, `--opt-mode hess` is recommended — the default **RS-P-RFO** (Restricted-Step Partitioned Rational Function Optimization, Banerjee); it uses a full Hessian and is more reliable. Switch to `--opt-mode grad` — the **Hessian-Guided Dimer** — when RS-P-RFO fails to converge or full-Hessian recomputation is prohibitive. Enable `--flatten` (disabled by default) when the candidate has multiple imaginary frequencies and you need surplus-mode cleanup.
 
+`tsopt` always sets `reject_uphill: false` for its RFO-family and Dimer
+optimizers, including after YAML overrides. A saddle search must be able to
+raise the physical energy along the reaction mode. The
+`--reject-uphill/--no-reject-uphill` toggle belongs only to minimum
+optimization (`opt` and post-IRC endpoint re-optimization in `all`).
+
 After convergence, `tsopt` performs a final Hessian calculation and imaginary-frequency check automatically — a validated TS should show **exactly one** imaginary frequency. A separate [`freq`](freq.md) run is only needed for full vibrational analysis or thermochemistry. Always confirm endpoint connectivity with [`irc`](irc.md).
 
 If you need a TS guess first, run [`path-opt`](path-opt.md) (two structures) or [`path-search`](path-search.md) (two or more structures), then optimize the HEI with `tsopt` → `irc`. For XYZ / GJF inputs, `--ref-pdb` supplies a reference PDB/mmCIF topology while keeping the XYZ coordinates, enabling format-aware PDB / CIF / GJF companion output.

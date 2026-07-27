@@ -31,17 +31,17 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --deterministic
 
 `--precision` の変更は数値誤差や optimizer trajectory を変え得ますが、fp64 だけで GPU 実行がビット単位で同一になるわけではありません。リダクション順序に起因する非決定性は精度とは独立しています。strict mode が対象とするのは同一 stack の再実行性であり、version や hardware を跨ぐ identity ではありません。
 
-モデル精度と Hessian dtype は独立した設定項目です。Hessian は fp64 が既定ですが、`calc.hessian_double: false` でモデルの native dtype を明示的に選べます。`--precision fp64` を渡すと Hessian も fp64 に強制されるため、optimizer の線形代数がモデルより低い精度で警告なく実行されることはありません。
+モデル精度と Hessian dtype は独立した設定項目です。Hessian は fp64 がデフォルトですが、`calc.hessian_double: false` でモデルの native dtype を明示的に選べます。`--precision fp64` を渡すと Hessian も fp64 に強制されるため、optimizer の線形代数がモデルより低い精度で警告なく実行されることはありません。
 
 (ja-precision-by-gpu-class)=
 ### backend と用途による精度の選択
 
-`--precision` は MLIP 推論の浮動小数点精度（`fp32` | `fp64`、大文字小文字を区別しない）を選択します。バックエンド非依存であり、CLI は値を各バックエンド固有のキー（UMA `precision`、ORB `precision`、MACE `default_dtype`）に振り分けます。`aimnet2` では `fp32` は no-op で、`fp64` はモデル入力が上流で float32 にキャストされるため拒否されます。指定しない場合、UMA は fp32、ORB と MACE は fp64 が既定です（{doc}`バックエンド <backends>` の「精度」節を参照）。GPU class は cost に影響しますが、TS の妥当性基準は変えません。
+`--precision` は MLIP 推論の浮動小数点精度（`fp32` | `fp64`、大文字小文字を区別しない）を選択します。バックエンド非依存であり、CLI は値を各バックエンド固有のキー（UMA `precision`、ORB `precision`、MACE `default_dtype`）に振り分けます。`aimnet2` では `fp32` は no-op で、`fp64` はモデル入力が上流で float32 にキャストされるため拒否されます。指定しない場合、UMA は fp32、ORB と MACE は fp64 がデフォルトです（{doc}`バックエンド <backends>` の「精度」節を参照）。GPU class は cost に影響しますが、TS の妥当性基準は変えません。
 
 | 用途 | 推奨 | 理由 |
 | --- | --- | --- |
 | 通常実行 | 未指定 (`auto`) | UMA/AIMNet2 fp32、ORB/MACE fp64 という tested default を保つ。 |
-| 速度優先screening | 必要な場合だけ明示的 `--precision fp32` | ORB/MACE の既定を下げるため、その finite-difference Hessian を最終結果として信頼しない。 |
+| 速度優先screening | 必要な場合だけ明示的 `--precision fp32` | ORB/MACE のデフォルトを下げるため、その finite-difference Hessian を最終結果として信頼しない。 |
 | 最終 TS/Hessian | ORB/MACE は fp64 を維持し、noise が問題なら UMA fp64 を検討 | precision にかかわらず独立 freq と IRC が必要。 |
 
 OMol で学習された UMA バックエンドでは fp64 が TS 最適化と Hessian に影響し得ます。hardware cost を測定し、本番設定を記録してください。`--deterministic` は別の同一-stack再実行性 control であり、低精度 PES の精度を改善するものではありません。

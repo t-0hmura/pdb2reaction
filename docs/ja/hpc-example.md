@@ -201,9 +201,9 @@ UMA `workers` は大規模/batched workload の inference throughput を改善�
 
 ## scheduler job での精度
 
-精度は backend と用途で選び、割り当て GPU 上の cost を実測します。未指定なら tested default（UMA/AIMNet2 fp32、ORB/MACE fp64）を保ちます。明示的 fp32 は screening には使えますが ORB/MACE の既定を下げ、その finite-difference Hessian を最終検証には使えません。precision は determinism も first-order saddle も保証しません。{ref}`backend と用途による精度の選択 <ja-precision-by-gpu-class>` を参照してください。
+精度は backend と用途で選び、割り当て GPU 上の cost を実測します。未指定なら tested default（UMA/AIMNet2 fp32、ORB/MACE fp64）を保ちます。明示的 fp32 は screening には使えますが ORB/MACE のデフォルトを下げ、その finite-difference Hessian を最終検証には使えません。precision は determinism も first-order saddle も保証しません。{ref}`backend と用途による精度の選択 <ja-precision-by-gpu-class>` を参照してください。
 
 ## 関連項目
 
-- [MLIP 計算機](uma-pysis.md) — 設定リファレンスとHessian評価モード
+- [MLIP 計算機](uma-pysis.md) — 設定リファレンスと Hessian 評価モード
 - [opt](opt.md) / [all](all.md) — `workers` / `workers_per_node` を取るサブコマンド

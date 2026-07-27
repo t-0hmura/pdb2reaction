@@ -25,7 +25,7 @@ pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <nu
 pdb2reaction irc -i ts.pdb -q 0 -m 1 --max-cycles 50 --out-dir ./result_irc
 ```
 
-順方向のみ、有限差分Hessian、大きいステップサイズ:
+順方向のみ、有限差分 Hessian、大きいステップサイズ:
 
 ```bash
 # 順方向のみ、有限差分Hessian、大きいステップサイズ
@@ -33,7 +33,7 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --no-backward \
  --step-size 0.2 --hessian-calc-mode FiniteDifference --out-dir ./irc_fd/
 ```
 
-解析Hessianを明示的に使用:
+解析 Hessian を明示的に使用:
 
 ```bash
 # UMAで解析Hessianを明示する場合はworkersを1にする
@@ -61,8 +61,8 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --step-size 0.05 --never-stop \
 ## 処理の流れ
 
 1. **入力準備** – 共通bridgeがPDB/mmCIFと`geom_loader`対応形式を受け入れます。参照topologyがある場合は軌跡をPDBへ変換し、bridge入力では元IDを復元したCIFも生成します。`--freeze-links`はcap水素の親原子を凍結します。
-2. **EulerPC 積分** – EulerPC 予測子-修正子積分器が遷移状態から IRC 経路をたどります。`--forward`/`--backward` フラグに従って順方向および/または逆方向の分岐を実行します。初期モード選択前に、デフォルトの`constrained`が凍結anchorを動かさない全系並進・回転だけを除去します。各ステップでは、質量加重の最急降下方向に沿う Euler 予測子（勾配は現在のHessianを用いた 2 次の Taylor 展開で近似）を適用し、続いて距離加重補間（DWI）面上で修正 Bulirsch–Stoer 修正子を適用します。
-3. **軌跡出力** – 完了済み、順方向、逆方向のIRC軌跡をXYZへ書きます。参照topologyと`--convert-files`があればPDB、bridge入力ならCIF companionも生成します。
+2. **EulerPC 積分** – EulerPC 予測子-修正子積分器が遷移状態から IRC 経路をたどります。`--forward`/`--backward` フラグに従って順方向および/または逆方向の分岐を実行します。初期モード選択前に、デフォルトの`constrained`が凍結anchorを動かさない全系並進・回転だけを除去します。各ステップでは、質量加重の最急降下方向に沿う Euler 予測子（勾配は現在の Hessian を用いた 2 次の Taylor 展開で近似）を適用し、続いて距離加重補間（DWI）面上で修正 Bulirsch–Stoer 修正子を適用します。
+3. **軌跡出力** – 完了済み、順方向、逆方向の IRC 軌跡をXYZへ書きます。参照topologyと`--convert-files`があればPDB、bridge入力ならCIF companionも生成します。
 
 ## 出力
 
@@ -106,17 +106,17 @@ Hessian を含まず、`result.json.files` にも登録しません。
 | `--max-cycles INT` | 最大 IRC ステップ。明示値は YAML `irc.max_cycles` より優先 | `125` |
 | `--step-size FLOAT` | ステップ長（Bohr、非質量加重デカルト座標）。明示値は YAML `irc.step_length` より優先 | `0.10` |
 | `--never-stop/--no-never-stop` | 一時的なenergy上昇／平坦化による停止を無視し、小さな肩を越えて追跡します。gradient/integratorの収束と`max_cycles`上限は無効化しません | `False` |
-| `--root INT` | 射影Hessianの固有値を**昇順**（最も負の値を先頭）に並べたときの**0 始まり**のインデックス。初期 IRC 変位に使用するモードを指定します。虚振動が 1 個だけの妥当な TS では `--root 0`（唯一の負の固有値）のままにしてください。`--root 1`、`--root 2` などは、活性な虚モードがより負のスプリアス（疑似）モードよりも上位にランクされていることが分かっている場合にのみ使用します。明示値は YAML `irc.root` より優先 | `0` |
+| `--root INT` | 射影 Hessian の固有値を**昇順**（最も負の値を先頭）に並べたときの**0 始まり**のインデックス。初期 IRC 変位に使用するモードを指定します。虚振動が 1 個だけの妥当な TS では `--root 0`（唯一の負の固有値）のままにしてください。`--root 1`、`--root 2` などは、活性な虚モードがより負のスプリアス（疑似）モードよりも上位にランクされていることが分かっている場合にのみ使用します。明示値は YAML `irc.root` より優先 | `0` |
 | `--forward/--no-forward` | 順方向分岐を実行。明示 toggle は YAML `irc.forward` より優先 | `True` |
 | `--backward/--no-backward` | 逆方向分岐を実行。明示 toggle は YAML `irc.backward` より優先 | `True` |
 | `--irc-pos-def/--no-irc-pos-def` | 射影 Hessian の正定値性を IRC 収束条件に加える opt-in guard。肩を収束と誤認する可能性がある場合に有効化 | `False` |
 | `--freeze-links/--no-freeze-links` | PDB/mmCIF トポロジー用、キャップ H 親を凍結（`geom.freeze_atoms` にマージ）。詳細は [extract](extract.md) を参照 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
-| `--tr-projection [constrained\|legacy-active]` | 初期frozen／partial Hessianの剛体モード処理。`legacy-active`は非推奨の比較専用で、pass/HOSP 遷移状態認定には使用不可 | `constrained` |
+| `--tr-projection [constrained\|legacy-active]` | 初期frozen／partial Hessian の剛体モード処理。`legacy-active`は非推奨の比較専用で、pass/HOSP 遷移状態認定には使用不可 | `constrained` |
 | `-o, --out-dir TEXT` | 出力ディレクトリ。明示値は YAML `irc.out_dir` より優先 | `./result_irc/` |
 | `--convert-files/--no-convert-files` | 参照PDB/mmCIF topologyがある場合の XYZ/TRJ → PDB/CIF を切り替え | `True` |
 | `--ref-pdb FILE` | XYZ/GJF入力に使用する参照PDBまたはmmCIF topology | _None_ |
-| `--hessian-calc-mode CHOICE` | MLIP Hessianモード。明示値は YAML `calc.hessian_calc_mode` より優先 | `FiniteDifference` |
+| `--hessian-calc-mode CHOICE` | MLIP Hessian モード。明示値は YAML `calc.hessian_calc_mode` より優先 | `FiniteDifference` |
 | `--config FILE` | 明示 CLI 適用前に読み込むベース YAML | _None_ |
 | `--show-config/--no-show-config` | 解決済み YAML レイヤー/設定を表示して続行 | `False` |
 | `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
@@ -149,7 +149,7 @@ calc:
 - MLIP バックエンド（デフォルト: UMA）は IRC 全体で再利用されます。`step_length` を大きくし過ぎると EulerPC が不安定になることがあります。ほぼ直ちに停止する分岐は、まず小さい `--step-size`（例: `0.05`）で再試行してください。
 - `--never-stop` は意図せぬ追跡と計算時間増大を避けるためデフォルトOFFです。小さな山／肩には有効ですが、最寄りの化学的basinを通過する可能性もあるため軌跡と端点接続を確認してください。
 - `--freeze-links` が有効な場合、キャップ水素の親原子が自動的に凍結されます（{ref}`キャップ水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
-- `result.json["rigid_projection"]`にtreatment、effective rank、初期Hessianのsourceとshapeを記録します。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
+- `result.json["rigid_projection"]`にtreatment、effective rank、初期 Hessian のsourceとshapeを記録します。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
 
 ## 関連項目
 

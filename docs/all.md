@@ -76,7 +76,7 @@ Full system(s) (PDB / mmCIF / XYZ / GJF)
 
 0. **Structure bridge and preflight** (automatic) — mmCIF, oversized/nonstandard PDB, and PDB altloc input are converted once to a safely reindexed internal PDB; altloc is selected coherently per residue. For an ordinary PDB with blank element columns, `all` runs `add-elem-info`. Standalone `fix-altloc` is only needed when you want a cleaned PDB deliverable; standalone commands use the same bridge. Missing element data must still be repaired for an ordinary PDB or supplied as mmCIF `_atom_site.type_symbol`.
 1. **Active-site model extraction** (when `-c/--center` is set) — accepts PDB/mmCIF paths, IDs/names, `CHAIN:RESNAME`, and `CHAIN:RESNAME:RESSEQ`. Per-input internal PDBs are saved under `<out-dir>/_work/models/`; bridge inputs also produce CIF companions.
-2. **Optional staged scan** (single-input only) — each `--scan-lists/-s` literal is a list of `(i, j, target_Å)` tuples. Atom indices use the original input ordering (1-based) and are remapped to the active-site model ordering. Three-field selectors like `'TYR,285,CA'` are order-flexible; use positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` for repeated names or numbering. Stages run sequentially (stage 2 starts from stage 1's result), and the stage endpoints become the ordered intermediates that feed the MEP step.
+2. **Optional staged scan** (single-input only) — each `--scan-lists/-s` literal is a list of `(i, j, target_Å)` tuples. Atom indices use the original input ordering, 1-based by default (pass `--no-scan-one-based` to write them 0-based), and are remapped to the active-site model ordering. Three-field selectors like `'TYR,285,CA'` are order-flexible; use positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` for repeated names or numbering. Stages run sequentially (stage 2 starts from stage 1's result), and the stage endpoints become the ordered intermediates that feed the MEP step.
 3. **MEP search** — by default runs single-pass `path-opt`; `--refine-path` switches to recursive `path-search`. Recursive refinement can improve a poor HEI but can also split a noisy/bad path into unnecessary segments and increase cost, so it is off by default. Segmentation is only a candidate mechanism until TS/frequency/IRC validation. Raw engine output stays under `_work`; `mep.pdb`, bridge-input `mep.cif`, `mep_trj.xyz`, and the diagram are promoted to the top level.
 4. **Merge to full systems** (with `--refine-path`) — writes `mep_w_ref.pdb` and, for mmCIF/oversized-PDB templates, `mep_w_ref.cif`; per-segment equivalents remain under `_work/path_search/`.
 5. **Per-segment post-processing** (reactive segments only — bridge segments without bond changes are skipped):
@@ -234,7 +234,7 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | `--opt-mode-post [grad\|hess]` | Optimizer preset for TSOPT + post-IRC (`grad` → Dimer / L-BFGS, `hess` → RS-P-RFO / RFO). | `hess` |
 | `--thresh-post TEXT` | Convergence preset for post-IRC endpoint optimizations. | `baker` |
 | `--flatten / --no-flatten` | Enable surplus-imaginary-mode flattening in `tsopt`. | `False` |
-| `--reject-uphill / --no-reject-uphill` | Reject energy-raising RFO steps during post-IRC **endpoint re-optimization only** (roll back to the lower-energy geometry and shrink the trust radius); does not affect TS optimization or path search. | `True` |
+| `--reject-uphill / --no-reject-uphill` | Reject energy-raising RFO steps during post-IRC **endpoint re-optimization only** (roll back to the lower-energy geometry and shrink the trust radius); TS optimization forces rejection off, and path search is unaffected. At the emergency floor, the retained endpoint receives a final normal convergence check. | `True` |
 | `--tr-projection [constrained\|legacy-active]` | Rigid-mode treatment forwarded to TSopt, IRC, freq, and flatten PHVA. `legacy-active` is deprecated comparison-only behavior and must not be used for pass/HOSP transition-state certification. | `constrained` |
 | `--irc-step-size FLOAT` | Override the IRC maximum EulerPC step (Bohr). If IRC stops after only a few frames, retry with a smaller value such as `0.05`. | IRC default `0.10` |
 | `--irc-never-stop / --no-irc-never-stop` | Ignore transient IRC energy-rise/plateau stops. Gradient/integrator convergence and the max-cycle cap remain active. | `False` |
@@ -269,7 +269,7 @@ TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (on
 | `--dft-grid-level INT` | PySCF grid level. | `3` |
 | `-s, --scan-lists TEXT...` | Staged scans: `(i, j, target_Å)` tuples (single-input runs). | _None_ |
 | `--scan-out-dir PATH` | Override the scan output directory. | _None_ |
-| `--scan-one-based / --no-scan-one-based` | Force scan indexing. | _None_ |
+| `--scan-one-based / --no-scan-one-based` | How to read the `--scan-lists` atom indices: `True` = 1-based, `False` = 0-based. | _None_ (1-based) |
 | `--scan-max-step-size FLOAT` | Maximum step size (Å). | `0.20` |
 | `--scan-bias-k FLOAT` | Harmonic bias strength (eV · Å⁻²). | `300` |
 | `--scan-relax-max-cycles INT` | Relaxation max cycles per step. | `10000` |

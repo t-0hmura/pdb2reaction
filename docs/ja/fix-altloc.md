@@ -41,7 +41,7 @@ pdb2reaction fix-altloc -i ./structures --inplace --recursive
    出現順で解決する。
 5. 出力を書き込み:
  - 空白（共通）原子と選択 conformer のみを保持
- - altLoc カラム（17）を空白（スペース 1 文字）に置換
+ - altLoc 列（17）を空白（スペース 1 文字）に置換
  - ANISOU レコードは保持された原子に一致するもののみフィルタリング
 
 ### 処理対象レコード

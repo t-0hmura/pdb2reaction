@@ -95,7 +95,7 @@ pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
   最適化ではcap親を`--freeze-links`（default）で凍結します。
 - R/IM/Pは同一原子・同一順序にします。各状態を独立に再抽出せず、1構造で決めた
   選択／cap patternを全状態へ適用してください。
-- truncation後の総電荷とmultiplicityを再計算し、MEP/Hessian前に境界を目視確認します。
+- truncation後の総電荷とmultiplicityを再計算し、MEP/Hessian 前に境界を目視確認します。
 
 自動extractorは一般的なproteinを扱いますが、共有結合cofactor、修飾残基、metal site、
 または上記規則に反する境界は手作業で修正してください。
@@ -282,7 +282,7 @@ pdb2reaction が活性部位モデルを抽出する際、切断された結合�
 
 - **力**: 凍結原子の力はゼロ化されます。
 - **Hessian**: 凍結自由度は除去（`return_partial_hessian: true`）またはフル行列でゼロ化されます。
-- **振動解析**: 凍結原子がある場合、`freq` は自動的に部分Hessian振動解析（PHVA: Partial Hessian Vibrational Analysis）を行い、活性ブロックのみを対角化します。
+- **振動解析**: 凍結原子がある場合、`freq` は自動的に部分 Hessian 振動解析（PHVA: Partial Hessian Vibrational Analysis）を行い、活性ブロックのみを対角化します。
 
 凍結原子は `geom.freeze_atoms` YAML キー（1 始まりインデックス）で手動設定も可能です。CLI で検出されたキャップ原子は YAML 指定の原子とマージされます。
 
@@ -293,6 +293,6 @@ pdb2reaction が活性部位モデルを抽出する際、切断された結合�
 - [all](all.md) — `-c/--center` で内部的に extract を呼び出す一気通貫ワークフロー
 - [path-search](path-search.md) — 抽出された活性部位モデルでの MEP 探索
 - [scan](scan.md) — 抽出された活性部位モデルでの段階的スキャン
-- [add-elem-info](add-elem-info.md) — 抽出前に欠落した PDB 元素カラムを修正
+- [add-elem-info](add-elem-info.md) — 抽出前に欠落した PDB 元素列を修正
 - [トラブルシューティング](troubleshooting.md) — よくある抽出エラー
 - [用語集](glossary.md) — 活性部位モデル、クラスターモデル、キャップ水素の定義

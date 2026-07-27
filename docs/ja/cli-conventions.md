@@ -266,8 +266,8 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 |--------|------|-----------|
 | `0` | 成功 | すべてのサブコマンド |
 | `1` | 予期しないエラー（未処理例外） | すべてのサブコマンド |
-| `2` | ゼロステップ長（ステップノルム下限未満）**または** 依存インポート失敗 | `opt`, `tsopt`; `dft`（PySCF 未インストール。`--engine gpu` での GPU4PySCF 欠落は ClickException = code 1） |
-| `3` | 最適化失敗 **または** SCF 非収束 | `opt`, `tsopt`, `path-opt`; `dft` |
+| `2` | ゼロステップ長（ステップノルム下限未満）**または** 依存インポート失敗 | `opt`, `tsopt`, `path-search`; `dft`（PySCF 未インストール。`--engine gpu` での GPU4PySCF 欠落は ClickException = code 1） |
+| `3` | 最適化失敗 **または** SCF 非収束 | `opt`, `tsopt`, `path-opt`, `path-search`; `dft` |
 | `4` | 軌跡書き出しエラー | `path-opt` |
 | `5` | HEI エクスポートエラー | `path-opt` |
 | `130` | キーボード割り込み (SIGINT) | すべてのサブコマンド |

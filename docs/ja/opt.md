@@ -1,6 +1,6 @@
 # `opt`
 
-このコマンドは pysisyphus の L-BFGS（`lbfgs`）または RFOptimizer（`rfo`）を用い、MLIP（デフォルト: UMA、`-b/--backend` で ORB ・ MACE ・ AIMNet2 も選択可能）のエネルギー・勾配・Hessianで単一構造を局所極小点へ最適化します。距離拘束や虚振動数モードのフラット化も任意で併用できます。入力構造は `.pdb`、`.cif`、`.mmcif`、`.xyz`、`_trj.xyz`、その他 `geom_loader` がサポートする形式に対応しています。L-BFGS 最小化には `--opt-mode grad`（alias `lbfgs`、デフォルト）、RFOptimizer には `--opt-mode hess`（alias `rfo`）を選択します。
+このコマンドは pysisyphus の L-BFGS（`lbfgs`）または RFOptimizer（`rfo`）を用い、MLIP（デフォルト: UMA、`-b/--backend` で ORB ・ MACE ・ AIMNet2 も選択可能）のエネルギー・勾配・Hessian で単一構造を局所極小点へ最適化します。距離拘束や虚振動数モードのフラット化も任意で併用できます。入力構造は `.pdb`、`.cif`、`.mmcif`、`.xyz`、`_trj.xyz`、その他 `geom_loader` がサポートする形式に対応しています。L-BFGS 最小化には `--opt-mode grad`（alias `lbfgs`、デフォルト）、RFOptimizer には `--opt-mode hess`（alias `rfo`）を選択します。
 
 ## 実行例
 
@@ -98,7 +98,7 @@ out_dir/
 | `--max-cycles INT` | 最適化反復の上限 | `10000` |
 | `--opt-mode TEXT` | 最適化モード: `grad`（`lbfgs`）または `hess`（`rfo`）。`lbfgs`/`rfo` も指定可。サブコマンド別の対応表（`opt` は L-BFGS/RFO、`tsopt` は Dimer/RS-P-RFO）は {ref}`ja-opt-mode-semantics` を参照 | `grad` |
 | `--flatten/--no-flatten` | 最適化後の虚振動数モードフラット化ループを有効/無効化 | `False` |
-| `--reject-uphill/--no-reject-uphill` | `hess` モードで RFO の上り坂試行ステップを拒否（低エネルギー形状へロールバックし trust radius を縮小）。`grad`/`lbfgs` モードでは無効 | `True` |
+| `--reject-uphill/--no-reject-uphill` | `hess` モードで RFO の上り坂試行ステップを拒否（低エネルギー形状へロールバックし trust radius を縮小）。`grad`/`lbfgs` モードでは無効。emergency trust floor 到達時は、非収束停止を報告する前に保持構造を通常の収束条件で最終確認 | `True` |
 | `--dump/--no-dump` | 軌跡ダンプ（`optimization_trj.xyz`）を出力 | `False` |
 | `--convert-files/--no-convert-files` | PDB/mmCIF topology入力用の XYZ/TRJ → PDB/CIF、および Gaussian template用の XYZ → GJF を切り替え | `True` |
 | `--ref-pdb FILE` | XYZ/GJF入力に使用する参照PDBまたはmmCIF topology | _None_ |
@@ -135,12 +135,15 @@ opt:
 - `tr_projection`（`"constrained"`）: `--flatten` PHVAの剛体モード処理。通常のL-BFGS／RFO stepには影響しません
 
 ### `calc`
-- MLIP バックエンド設定（`model`、`task_name`、デバイス選択、近傍半径、Hessian形式など）
+- MLIP バックエンド設定（`model`、`task_name`、デバイス選択、近傍半径、Hessian 形式など）
 - `charge`/`spin` は CLI オプションに対応（`.gjf` がある場合はテンプレート値がデフォルト）
 
 ### `opt`
 L-BFGS と RFO の両方で使用される共有オプティマイザ制御:
-- `thresh` プリセット（Gaussian 系または Baker 系）。プリセット名は `pdb2reaction/core/defaults.py`（`THRESH_CHOICES`）に定義され、各々が pysisyphus の収束プリセット（力/ステップ閾値）に対応します。
+- `thresh` プリセット（Gaussian 系または Baker 系）。`baker` は
+  `max(|force|) <= 3e-4` かつ（`|delta E| < 1e-6` または
+  `max(|step|) <= 3e-4`）で収束し、RMS 値は診断用です。プリセット名は
+  `pdb2reaction/core/defaults.py`（`THRESH_CHOICES`）に定義されます。
 - `max_cycles`、`print_every`（`100`）、`min_step_norm`（`1e-8`）、`assert_min_step`、収束切り替え（`rms_force` など）、RMSD ベースの `converge_to_geom_rms_thresh`、`overachieve_factor`、`check_eigval_structure`、`line_search`。
 - 平坦なエネルギー地形による停止（`energy_plateau`、`energy_plateau_thresh`、`energy_plateau_window`）— 直近ステップのエネルギーレンジが平坦化した場合、収束扱いにせず `stalled` として停止します（MLIP の力のノイズで力ベース収束に到達できない場合に有効。下の注記を参照）。
 - ダンプ/管理項目（`dump`、`dump_restart`、`prefix`、`out_dir`）。
@@ -149,7 +152,7 @@ L-BFGS と RFO の両方で使用される共有オプティマイザ制御:
 `opt` を L-BFGS 固有の設定で拡張: `keep_last`、`beta`、`gamma_mult`、`max_step`、`control_step`、`double_damp`、およびオプションの正則化パラメータ `mu_reg`/`max_mu_reg_adaptions`
 
 ### `rfo`
-`opt` を RFOptimizer 固有の設定で拡張: 信頼領域サイジング（`trust_radius`、`trust_min`、`trust_max`、`trust_update`）、`max_energy_incr`、Hessian管理（`hessian_update`、`hessian_init`、`hessian_recalc`、`hessian_recalc_adapt`、`small_eigval_thresh`）、マイクロイテレーション制御（`alpha0`、`max_micro_cycles`、`rfo_overlaps`）、DIIS ヘルパー（`gdiis`、`gediis`、閾値、`gdiis_test_direction`）、および `adapt_step_func`
+`opt` を RFOptimizer 固有の設定で拡張: 信頼領域サイジング（`trust_radius`、`trust_min`、`trust_max`、`trust_update`）、`max_energy_incr`、Hessian 管理（`hessian_update`、`hessian_init`、`hessian_recalc`、`hessian_recalc_adapt`、`small_eigval_thresh`）、マイクロイテレーション制御（`alpha0`、`max_micro_cycles`、`rfo_overlaps`）、DIIS ヘルパー（`gdiis`、`gediis`、閾値、`gdiis_test_direction`）、および `adapt_step_func`
 
 ### opt 固有のデフォルト
 

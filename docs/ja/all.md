@@ -89,7 +89,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  - **最初の活性部位モデルの総電荷**がスキャン/MEP/TSOPT に伝播
 
 2. **オプションの段階的スキャン（単一入力のみ）**
- - 各 `--scan-lists` 引数は MLIP スキャンステージを記述する `(i,j,target_Å)` タプルの Python ライクなリスト。原子インデックスは元の入力順序（1 始まり）を参照し、活性部位モデル順序に自動変換されます。3-field selector（例: `'TYR,285,CA'`）はtoken順を問いません。残基名や番号が重複するときは、位置固定の`CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`（例: `A:SAM:320:C1`）でchainを明示します。
+ - 各 `--scan-lists` 引数は MLIP スキャンステージを記述する `(i,j,target_Å)` タプルの Python ライクなリスト。原子インデックスは元の入力順序を参照し、デフォルトでは 1 始まりです（`--no-scan-one-based` を指定すると 0 始まりとして読みます）。いずれの場合も活性部位モデル順序に自動変換されます。3-field selector（例: `'TYR,285,CA'`）はtoken順を問いません。残基名や番号が重複するときは、位置固定の`CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`（例: `A:SAM:320:C1`）でchainを明示します。
  - 単一リテラルは 1 ステージスキャンを実行し、複数リテラルは**順次**実行されるため、ステージ 2 はステージ 1 の結果から開始されます。複数リテラルは 1 つの `-s/--scan-lists` に並べて指定します（例: `-s '[(…)]' '[(…)]'`）。
  - ステージエンドポイント（`stage_XX/result.pdb`）が、後続 MEP ステップへ渡される順序付き中間体となる
 
@@ -105,8 +105,8 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  - `--tsopt`: 各 HEI 活性部位モデルで TS 最適化を実行します。機械可読な exact-Hessian 結果が `status=converged` かつ `n_imag=1` を報告しない場合は IRC 前に停止します。検証済み TS は EulerPC IRC で追跡し、IRC エンドポイントを `--thresh-post`（デフォルト `baker`）で再最適化します。Hessian TS 最適化には MEP energy-upwinding Cartesian接線を反応参照モードとして自動的に渡します（energyを読めない旧trajectoryだけは正規化secantの二等分線へfallback）。エンドポイント最適化の作業ディレクトリは完了後に自動削除されます。エンドポイント RFO の上り坂拒否セーフガードはデフォルトで有効で、`--no-reject-uphill` でエンドポイント再最適化についてのみ無効化できます。
  - `--thermo`: (R, TS, P) で `freq` を呼び出し、振動/熱化学データと MLIP Gibbs ダイアグラムを取得
  - `--dft`: (R, TS, P) で DFT 一点計算を実行し、DFT ダイアグラムを構築。`--thermo` と組み合わせると DFT//MLIP Gibbs ダイアグラムも生成
-  - 共有の上書きオプション: `--opt-mode`、`--opt-mode-post`（TSOPT/IRC 後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--tr-projection`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU 優先）など。`--tr-projection`はTSopt、IRC、freq、flatten PHVAへ転送し、MEP由来の`--ref-mode`とは無関係です。
- - Hessian評価モードの詳細は {ref}`ja-hessian-evaluation` を参照してください。
+  - 共有の上書きオプション: `--opt-mode`、`--opt-mode-post`（TSOPT/IRC 後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--tr-projection`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU 優先）など。`--tr-projection`はTSopt、IRC、freq、flatten PHVAへ転送し、MEP 由来の`--ref-mode`とは無関係です。
+ - Hessian 評価モードの詳細は {ref}`ja-hessian-evaluation` を参照してください。
 
 6. **TSOPT のみモード**（単一入力、`--tsopt`、`--scan-lists` なし）
  - MEP/マージステージをスキップし、活性部位モデル（または抽出がスキップされた場合は全入力構造）で `tsopt` → EulerPC IRC を実行し、高エネルギー側の IRC 終端を反応物 (R) として識別したうえで、エネルギーダイアグラム一式とオプションの freq/DFT 出力を生成します。
@@ -248,7 +248,7 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `--workers`, `--workers-per-node` | UMA 予測器の並列度。`workers > 1` と明示的な解析 Hessian は併用できないため、`workers = 1` または有限差分を使用。診断上の注意は {ref}`ja-workers-analytical-error` を参照 | `1`, `1` |
-| `--hessian-calc-mode [Analytical\|FiniteDifference]` | 共有 MLIP Hessianエンジン | `FiniteDifference` |
+| `--hessian-calc-mode [Analytical\|FiniteDifference]` | 共有 MLIP Hessian エンジン | `FiniteDifference` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--solvent TEXT` | xTB 補正用の暗黙溶媒名（例: `water`）。`none` で無効化 | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
@@ -263,10 +263,10 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 | `--opt-mode-post [grad\|hess]` | TSOPT/IRC 後最適化のプリセット上書き（`grad` → Dimer/L-BFGS、`hess` → RSPRFO/RFO） | `hess` |
 | `--thresh-post TEXT` | IRC 後エンドポイント最適化の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
 | `--flatten/--no-flatten` | 余分な虚振動モードのフラット化 | `False` |
-| `--reject-uphill/--no-reject-uphill` | IRC 後の**エンドポイント再最適化のみ**で RFO の上り坂ステップを拒否（低エネルギー形状へロールバックし trust radius を縮小）。TS 最適化や経路探索には影響しない | `True` |
+| `--reject-uphill/--no-reject-uphill` | IRC 後の**エンドポイント再最適化のみ**で RFO の上り坂ステップを拒否（低エネルギー形状へロールバックし trust radius を縮小）。TS 最適化では拒否を常に無効化し、経路探索には影響しない。emergency floor 到達時は、保持したエンドポイントを通常の収束条件で最終確認 | `True` |
 | `--tr-projection [constrained\|legacy-active]` | TSopt、IRC、freq、flatten PHVAへ転送する剛体モード処理。`legacy-active`は非推奨の比較専用で、pass/HOSP 遷移状態認定には使用不可 | `constrained` |
-| `--irc-step-size FLOAT` | IRCのEulerPC最大step（Bohr）を上書き。数frameですぐ止まる場合は`0.05`など小さい値で再試行 | IRC既定`0.10` |
-| `--irc-never-stop/--no-irc-never-stop` | 一時的なIRC energy上昇／平坦化による停止を無視。gradient/integrator収束と最大cycle上限は維持 | `False` |
+| `--irc-step-size FLOAT` | IRC のEulerPC最大step（Bohr）を上書き。数frameですぐ止まる場合は`0.05`など小さい値で再試行 | IRC デフォルト`0.10` |
+| `--irc-never-stop/--no-irc-never-stop` | 一時的な IRC energy上昇／平坦化による停止を無視。gradient/integrator収束と最大cycle上限は維持 | `False` |
 
 ```{warning}
 `--dft` のcost/memoryはbasis-function数、元素、functional、grid、engine、
@@ -316,7 +316,7 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 | --- | --- | --- |
 | `-s, --scan-lists TEXT...` | 段階的スキャン: `(i,j,target_Å)` タプル | _None_ |
 | `--scan-out-dir PATH` | scan 出力ディレクトリ上書き | _None_ |
-| `--scan-one-based/--no-scan-one-based` | 1 始まり/0 始まりインデックス | _None_ |
+| `--scan-one-based/--no-scan-one-based` | `--scan-lists` の原子インデックスの読み方: `True` = 1 始まり、`False` = 0 始まり | _None_（1 始まり） |
 | `--scan-max-step-size FLOAT` | 最大ステップサイズ（Å） | `0.20` |
 | `--scan-bias-k FLOAT` | 調和バイアス強度（eV·Å⁻²） | `300` |
 | `--scan-relax-max-cycles INT` | 緩和サイクル上限 | `10000` |

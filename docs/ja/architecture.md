@@ -4,7 +4,7 @@
 
 `pdb2reaction` は、活性部位cluster modelに対して酵素反応経路解析を実行する
 Python CLIです。geometry/path stageには組み込みMLIPまたはcustom ASE calculatorを
-使用し、任意でPySCF/GPU4PySCF DFT一点計算を追加できます
+使用し、任意でPySCF/GPU4PySCF DFT 一点計算を追加できます
 （extract → MEP → tsopt → IRC → freq → dft）。
 
 
@@ -26,7 +26,7 @@ Python CLIです。geometry/path stageには組み込みMLIPまたはcustom ASE 
 | **L5 Foundation** | `pdb2reaction/core/` | defaults（共有defaultの主要source）、utils（structure / coordinate / plot helper）、logging、将来の `errors.py` / `types.py` | (none、設計意図) |
 | (bundle, not a layer) | `<repo>/pysisyphus/`, `<repo>/thermoanalysis/` | repo 内部 fork（optimizer / thermochemistry） | (sibling, layer-external) |
 
-**依存方向（設計意図）**: `L1 → L2 → {L3, L4} → L5`。product module graphは現在**非循環**（`pdb2reaction/*` モジュール間に強連結成分が無い）で、`core`/`domain` のどのモジュールも `workflows/*` を import しません。CIは2つのゲートで別々の不変条件を検査します。`.github/scripts/check_engineering_markers.py` は `# CHEMISTRY-RULE:{4,5,7}` マーカーと `# DOMAIN_PURE` マーカー、MLIP SDK（`fairchem`/`orb_models`/`mace`/`aimnet`）が `backends/` 下のみで import されることを検査し、`.github/scripts/check_import_graph.py`（静的AST import graph）は product cycleが無いこと・`pysisyphus/**` が `pdb2reaction` を import しないこと・`core → workflows` / `domain → workflows` back-edgeが無いことを検査します。残る許容される下向きedge / 一方向facadeは `workflows/* → cli.common_options`/`cli.decorators`/`cli.help_pages`、`core/utils.py → domain.add_elem_info`/`io.structure_formats`/`io.charge`、`io/charge.py → domain.residue_data`/`io.structure_formats`、`io/structure_formats.py → domain.add_elem_info`、`io/trj2fig.py → backends` です。正準residue table（`domain/residue_data.py`）、charge engine（`io/charge.py`）、console-gated charge-summary logger（`core/utils.py`）は既存importパス維持のため `workflows/extract.py` から再exportされます。同梱forkはlayer graph外にあり、絶対package path（`from pysisyphus.X import Y`）で各layerからimportできます。
+**依存方向（設計目標）**: `L1 → L2 → {L3, L4} → L5`。全面的な top-to-bottom 方向は機械的には強制していません。強制対象の subset では product module graph を**非循環**（`pdb2reaction/*` モジュール間に強連結成分が無い）に保ち、`core`/`domain` から `workflows/*` への import を禁止します。CIは2つのゲートで別々の不変条件を検査します。`.github/scripts/check_engineering_markers.py` は `# CHEMISTRY-RULE:{4,5,7}` マーカーと `# DOMAIN_PURE` マーカー、MLIP SDK（`fairchem`/`orb_models`/`mace`/`aimnet`）が `backends/` 下のみで import されることを検査し、`.github/scripts/check_import_graph.py`（静的AST import graph）は product cycleが無いこと・`pysisyphus/**` が `pdb2reaction` を import しないこと・`core → workflows` / `domain → workflows` back-edgeが無いことを検査します。残る許容される下向きedge / 一方向facadeは `workflows/* → cli.common_options`/`cli.decorators`/`cli.help_pages`、`core/utils.py → domain.add_elem_info`/`io.structure_formats`/`io.charge`、`io/charge.py → domain.residue_data`/`io.structure_formats`、`io/structure_formats.py → domain.add_elem_info`、`io/trj2fig.py → backends` です。正準residue table（`domain/residue_data.py`）、charge engine（`io/charge.py`）、console-gated charge-summary logger（`core/utils.py`）は既存importパス維持のため `workflows/extract.py` から再exportされます。同梱forkはlayer graph外にあり、絶対package path（`from pysisyphus.X import Y`）で各layerからimportできます。
 
 ### 2.2 パッケージツリーの ASCII マップ
 

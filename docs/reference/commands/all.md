@@ -183,13 +183,11 @@ Options:
                                   RS-P-RFO); --no-flatten forces
                                   flatten_max_iter=0.  [default: no-flatten]
   --reject-uphill / --no-reject-uphill
-                                  Reject energy-raising RFO trial steps during
-                                  post-IRC endpoint re-optimization ONLY (roll
-                                  back to the lower-energy geometry and shrink
-                                  the trust radius). Does not affect TS
-                                  optimization or path search. --no-reject-
-                                  uphill disables it for the endpoint re-
-                                  optimization.  [default: reject-uphill]
+                                  Reject uphill RFO trials during post-IRC
+                                  endpoint re-optimization only and final-check
+                                  the retained endpoint at the emergency floor.
+                                  Does not affect TS optimization or path
+                                  search.  [default: reject-uphill]
   --irc-step-size FLOAT           Override IRC --step-size (Bohr). If an IRC
                                   stops after only a few frames, retry with a
                                   smaller value such as 0.05.

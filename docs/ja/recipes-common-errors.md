@@ -10,7 +10,7 @@
 | 症状 | 最初にやること | 詳細（セクション） |
 | --- | --- | --- |
 | **入力 / 抽出** | | |
-| 元素カラム欠落で抽出が止まる | 元の PDB に `add-elem-info` を適用してください | {ref}`入力 / 抽出の問題 <ts-input-extraction>` |
+| 元素列欠落で抽出が止まる | 元の PDB に `add-elem-info` を適用してください | {ref}`入力 / 抽出の問題 <ts-input-extraction>` |
 | `[multi] Atom count mismatch` / `[multi] Atom order mismatch` | 同じ前処理ツール・設定で全 PDB を再生成。最初に原子順序を固定したら並べ替えない | {ref}`入力 / 抽出の問題 <ts-input-extraction>` |
 | **電荷 / スピン** | | |
 | `-q/--charge is required` 系エラー | `-q/--charge` または `-l/--ligand-charge` を明示指定してください | {ref}`電荷 / スピンの問題 <ts-charge-spin>` |
@@ -37,7 +37,7 @@
  - 元素情報不足、原子数不一致、活性部位モデル（バインディングポケット）の抽出結果が空に近い。
 - 最初の確認:
  - 入力構造が同じ前処理フローで作られ、原子順が揃っているか。
- - `extract` / `all` 前に元素カラムが埋まっているか。
+ - `extract` / `all` 前に元素列が埋まっているか。
 - 典型的な修正手順:
  - `pdb2reaction add-elem-info -i input.pdb -o input_fixed.pdb` で元素列を修復 — 抽出再実行 — 活性部位モデルサイズ（`--radius`）/残基選択（`--selected-resn`）を再確認。残基名・ID・chain付きselectorの指定形式は CLI 規約の {ref}`ja-selected-resn-takes-ids` を参照。
 

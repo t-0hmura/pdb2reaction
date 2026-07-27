@@ -46,10 +46,12 @@ pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 \
   animations are produced for every input; topology inputs also receive `.pdb` animations
   when `--convert-files` remains enabled, and mmCIF/oversized-PDB bridge inputs additionally
   receive `.cif` animations with the original identifiers.
-- **Thermochemistry**: if `thermoanalysis` is installed, a QRRHO-like summary (EE, ZPE, E/H/G
+- **Thermochemistry**: if `thermoanalysis` is installed, a QRRHO-like summary (E, ZPE, E/H/G
   corrections, heat capacities, entropies) is printed using PHVA frequencies. CLI pressure in
   atm is converted internally to Pa. When `--dump`, a `thermoanalysis.yaml` snapshot is
-  also written. The rotational symmetry number defaults to 1; set the molecule's external
+  also written. The console reports the structure energy in Hartree as
+  `E + G_corr = G` (electronic energy + Gibbs free-energy correction = Gibbs
+  free energy). The rotational symmetry number defaults to 1; set the molecule's external
   rotational symmetry explicitly with `--symmetry-number` (or
   `thermo.symmetry_number` in YAML). The workflow does not infer a point group.
 - **Frequency-treatment policy**: `freq` applies the **standalone-freq policy** — QRRHO with a

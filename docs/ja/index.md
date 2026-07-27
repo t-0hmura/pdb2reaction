@@ -26,7 +26,7 @@
 | [`all`](all.md) | 任意の抽出、endpoint-MEP / scan-list / TS-only の入力mode、任意の TS/IRC・熱化学・DFT stageを統括 |
 | [`extract`](extract.md) | タンパク質–リガンド複合体から活性部位モデル（バインディングポケット）を抽出 |
 | [`fix-altloc`](fix-altloc.md) | PDB の代替位置指示子を解決 |
-| [`add-elem-info`](add-elem-info.md) | PDB の元素カラム（77–78）を修復 |
+| [`add-elem-info`](add-elem-info.md) | PDB の元素列（77–78）を修復 |
 | [`opt`](opt.md) | 単一構造の構造最適化（L-BFGS または RFO。[+ 任意 flatten]） |
 | [`tsopt`](tsopt.md) | 遷移状態最適化（Dimer または RS-P-RFO。[+ 任意 flatten]） |
 | [`path-opt`](path-opt.md) | GSM または DMF による 1 段階の MEP 最適化（2 構造から） |

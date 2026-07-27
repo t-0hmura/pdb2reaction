@@ -463,6 +463,7 @@ The `all` and `path-search` commands write `summary.json` with a richer structur
 | `charge` | int | System charge |
 | `spin` | int | Spin multiplicity |
 | `environment` | object | Hardware info |
+| `references` | object[] | Methods actually used by the resolved workflow, as `{method, citation, doi}` records. The same reference set is grouped at the end of `summary.log` and final stdout immediately before elapsed time. |
 
 The `all` command additionally includes:
 

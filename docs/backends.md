@@ -48,7 +48,7 @@ first one whose import succeeds.
 |---------|---------|------------------|------------------|
 | `uma` | `pip install fairchem-core` + HF auth | `uma-s-1p2` / `uma-s-1p1` | `precision="fp32" \| "fp64"` |
 | `orb` | `pip install orb-models` | `orb_v3_conservative_omol` | `precision="float32-high" \| "float32-highest" \| "float64"` (`fp32` / `float32` are normalized aliases) |
-| `mace` | `pip install 'mace-torch>=0.3.8'` in a dedicated conda env — `mace-torch` pins `e3nn==0.4.4` while `fairchem-core` requires `e3nn>=0.5`, so run `pip uninstall -y fairchem-core && pip install mace-torch` in that env | `MACE-OMOL-0` | `default_dtype="float64"` |
+| `mace` | dedicated conda env: install pdb2reaction, then `pip uninstall -y fairchem-core && pip install 'mace-torch>=0.3.8'` (`mace-torch` pins `e3nn==0.4.4`, `fairchem-core` requires `e3nn>=0.5`) | `MACE-OMOL-0` | `default_dtype="float64"` |
 | `aimnet2` | `pip install aimnet` | `aimnet2` | n/a |
 
 ### Precision

@@ -118,7 +118,7 @@ geom:
 
 **注記:**
 - `freeze_atoms` は PDB/mmCIF トポロジー入力時の `--freeze-links` 検出原子とマージされます。
-- 凍結原子は力がゼロ化され、Hessianの該当列もゼロ化されます。
+- 凍結原子は力がゼロ化され、Hessian の該当列もゼロ化されます。
 - `tr_projection: constrained` は凍結anchorを動かさない全系剛体運動だけを除去します。`legacy-active` は非推奨の比較専用で、pass/HOSP 遷移状態認定には使用できません。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
 - `irc` では `geom.coord_type` が YAML/CLI マージ後に `cart` へ強制されます。
 
@@ -131,7 +131,7 @@ MLIP バックエンドの設定。複数バックエンド（UMA, ORB, MACE, AI
 ```yaml
 calc:
  backend: uma           # MLIP backend: "uma", "orb", "mace", or "aimnet2"
- precision: auto # auto (バックエンド既定: uma fp32、orb/mace fp64) | fp32 | fp64; バックエンド固有キー (ORB precision, MACE default_dtype) へ振り分け
+ precision: auto # auto (バックエンドデフォルト: uma fp32、orb/mace fp64) | fp32 | fp64; バックエンド固有キー (ORB precision, MACE default_dtype) へ振り分け
  charge: 0 # Total system charge (overridden by CLI -q)
  spin: 1 # Spin multiplicity 2S+1 (overridden by CLI -m)
  model: uma-s-1p2 # uma-s-1p2 | uma-m-1p1
@@ -157,7 +157,7 @@ calc:
 ```
 
 **注記:**
-- `backend` で MLIP エンジンを選択。すべてのバックエンド（UMA, ORB, MACE, AIMNet2）が解析Hessian（`hessian_calc_mode: Analytical`）と有限差分Hessianの両方に対応。マルチワーカー推論は UMA バックエンド限定。
+- `backend` で MLIP エンジンを選択。すべてのバックエンド（UMA, ORB, MACE, AIMNet2）が解析 Hessian（`hessian_calc_mode: Analytical`）と有限差分 Hessian の両方に対応。マルチワーカー推論は UMA バックエンド限定。
 - `workers` / `workers_per_node` は UMA バックエンドでのみ有効。
 - `solvent` で xTB ベースの暗黙溶媒補正を有効化（デルタ補正方式）。`xtb` のインストールが必要。
 - 移植性のあるデフォルトは `FiniteDifference` です。`Analytical` は有限変位誤差を避けられますが、速度・メモリ量は backend/model/系に依存するため、対象環境で検証してから選択してください。
@@ -216,6 +216,11 @@ force noise/flatnessが選択したforce閾値への到達を妨げる場合で�
 | `gau_tight` | 1.5e-5 | 1.0e-5 | 6.0e-5 | 4.0e-5 |
 | `gau_vtight` | 2.0e-6 | 1.0e-6 | 6.0e-6 | 4.0e-6 |
 | `baker` | 3.0e-4 | 2.0e-4 | 3.0e-4 | 2.0e-4 |
+
+`baker` は4列すべてを同時に要求するプリセットではありません。
+`max(|force|) <= 3e-4` **かつ**（`|delta E| < 1e-6` **または**
+`max(|step|) <= 3e-4`）で収束します。RMS force と RMS step の列は診断値であり、
+追加の終了条件ではありません。
 
 ---
 
@@ -629,7 +634,7 @@ calc:
  spin: 1
  model: uma-s-1p2 # uma-s-1p2 | uma-m-1p1
  device: auto
- hessian_calc_mode: FiniteDifference # 移植性のある既定値。Analytical は事前検証して選択
+ hessian_calc_mode: FiniteDifference # 移植性のあるデフォルト値。Analytical は事前検証して選択
  solvent: none                 # Set to e.g. "water" for implicit solvent
 
 gs:

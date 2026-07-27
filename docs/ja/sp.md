@@ -36,7 +36,7 @@ pdb2reaction sp -i structure.pdb -q 0 -m 1 --hess
 |---|---|---|
 | _stdout_ | エネルギー（スカラー値）(a.u.) と `|force|_max`。`[sp] energy = …` の形式で出力 | 計算成功時 |
 | `forces.npy` | 原子単位 (Hartree / Bohr) の `(N, 3)` 力配列 | 計算成功時 |
-| `hessian.npy` | 質量重みなしHessian (Hartree / Bohr²)。凍結原子が無ければ `(3N, 3N)`、YAML `geom.freeze_atoms` があればactive block | `--hess` 指定時のみ |
+| `hessian.npy` | 質量重みなし Hessian (Hartree / Bohr²)。凍結原子が無ければ `(3N, 3N)`、YAML `geom.freeze_atoms` があればactive block | `--hess` 指定時のみ |
 | `result.json` / `summary.json` | 機械可読なエネルギー (a.u.)、バックエンド、電荷/スピン、npy 出力へのパス、経過時間 | `--out-json` 指定時のみ |
 
 `sp` は人間可読な `summary.log` を書き出しません。
@@ -75,7 +75,7 @@ UMA、ORB、MACE、AIMNet2 はすべて解析 Hessian を実装しています�
 
 - `sp` はfreeze用CLI flagを持ちませんが、1-basedのYAML
   `geom.freeze_atoms` を反映します。凍結原子のforceはgeometry/backend契約により
-  zero化され、`--hess` は既定でactive partial-Hessian blockを書き出します。
+  zero化され、`--hess` はデフォルトでactive partial-Hessian blockを書き出します。
 - 一点 DFT（gpu4pyscf / PySCF）のベンチマークには、代わりに [`dft`](dft.md) を使用してください。
 
 ## 関連項目

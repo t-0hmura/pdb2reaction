@@ -55,16 +55,16 @@ ase_calc = create_ase_calculator(backend="uma", model="uma-s-1p2", device="cuda"
 ORB の `precision` / MACE の `default_dtype` へ自動的にルーティングされます。AIMNet2 では
 fp32 は何もしない指定（no-op）として扱われ、fp64 は拒否されます（モデル入力が前段で float32 にキャストされるため）。
 
-`--precision` を指定しない場合、既定値はバックエンドごとに決まります。
+`--precision` を指定しない場合、デフォルト値はバックエンドごとに決まります。
 
-| backend | 既定 | 理由 |
+| backend | デフォルト | 理由 |
 |---------|------|------|
 | `uma` | fp32 | 上流 fairchem のベースライン。 |
 | `orb` | fp64 | ORB の fp32 は縮約された `float32-high`（TF32）matmul であり、その力のノイズが有限差分 Hessian に偽の虚振動を生じさせる。 |
-| `mace` | fp64 | MACE は上流で `default_dtype="float64"` を既定とする。 |
+| `mace` | fp64 | MACE は上流で `default_dtype="float64"` をデフォルトとする。 |
 | `aimnet2` | fp32 | 精度の切り替えを持たない。 |
 
-OMol で学習された UMA を既定の fp32 から fp64 に切り替えると、TSopt + Hessian に
+OMol で学習された UMA をデフォルトの fp32 から fp64 に切り替えると、TSopt + Hessian に
 無視できない影響が生じることがあります。以下で有効化します。
 
 ```bash
