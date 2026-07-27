@@ -7,6 +7,7 @@ Requires: ``pip install "pdb2reaction[orb]"`` (orb-models).
 """
 
 from __future__ import annotations
+import click
 
 from contextlib import nullcontext
 from typing import Optional, Sequence
@@ -185,15 +186,24 @@ class OrbCalculator(MLIPCalculator):
             {"device": self.device_str, "precision": self.precision},
         ]
         last_exc = None
-        for kwargs in bases:
+        for attempt, kwargs in enumerate(bases):
             try:
                 out = self._loader(**kwargs)
-                if isinstance(out, tuple) and len(out) >= 2:
-                    return out[0], out[1]
-                return out, None
             except Exception as exc:
                 last_exc = exc
                 continue
+            # The second base drops `compile`. Loading through it means
+            # `compile_model: true` was requested and silently not honoured.
+            if attempt and self.compile_model:
+                click.echo(
+                    "[orb] WARNING: this orb-models build does not accept "
+                    "`compile`; the model runs uncompiled despite "
+                    f"calc.compile_model=true ({last_exc}).",
+                    err=True,
+                )
+            if isinstance(out, tuple) and len(out) >= 2:
+                return out[0], out[1]
+            return out, None
         raise BackendError(f"Failed to load Orb model '{self.model_name}': {last_exc}")
 
     def _build_ase_calculator(self):

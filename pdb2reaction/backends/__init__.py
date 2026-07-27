@@ -4,6 +4,7 @@ MLIP backend factory and registry.
 Usage::
 
     from pdb2reaction.backends import create_calculator, create_ase_calculator
+import click
 
     calc = create_calculator(backend="uma", charge=0, spin=1, ...)
     ase_calc = create_ase_calculator(backend="uma", model="uma-s-1p2", ...)
@@ -16,6 +17,7 @@ import warnings
 from typing import Any, Dict, Optional
 
 from .base import BackendError, MLIPCalculator, normalize_hessian_calc_mode
+import click
 
 # Lazy-import registry.  Modules are imported only when the backend is used.
 BACKEND_REGISTRY: Dict[str, Dict[str, str]] = {
@@ -278,9 +280,16 @@ def resolve_backend(backend: str) -> str:
     for key in ("uma", "orb", "mace", "aimnet2"):
         try:
             _import_cls(key, "pysis_cls")
-            return key
         except Exception:
             continue
+        # Say which one won. Provenance records the resolved name, so without
+        # this the user cannot tell an explicit choice from an automatic one.
+        click.echo(
+            f"[backend] NOTE: backend='auto' resolved to {key!r} "
+            "(first importable of uma, orb, mace, aimnet2).",
+            err=True,
+        )
+        return key
     raise BackendError(
         "No MLIP backend available. Install one of: "
         "fairchem-core (UMA), orb-models (ORB), mace-torch (MACE), aimnet (AIMNet2)."
@@ -334,6 +343,15 @@ def create_calculator(backend: str = "uma", **kwargs) -> MLIPCalculator:
         )
     accepted = _BACKEND_ACCEPTED_KEYS.get(backend, set())
     filtered = _filter_kwargs(kwargs, accepted)
+    # A `calc:` key this backend does not accept is dropped here. Silence reads
+    # as "applied", which is how a documented-but-ignored setting survives.
+    _dropped = sorted(k for k in kwargs if k not in filtered)
+    if _dropped:
+        click.echo(
+            f"[backend] WARNING: {backend} ignored calc setting(s) "
+            f"{', '.join(_dropped)}; they are not accepted by this backend.",
+            err=True,
+        )
     cls = _import_cls(backend, "pysis_cls")
     calc = cls(**filtered)
 

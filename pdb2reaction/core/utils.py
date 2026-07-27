@@ -3318,6 +3318,15 @@ def detect_freeze_links(pdb_path):
     others, lkhs = parse_pdb_coords(pdb_path)
 
     if not lkhs or not others:
+        # --freeze-links defaults on. Returning [] freezes nothing, and the run
+        # then reads as "cap parents frozen" when no cap hydrogen was found at
+        # all -- usually a structure that was never passed through `extract`.
+        if not lkhs:
+            click.echo(
+                f"[freeze-links] WARNING: no LKH/HL cap hydrogen found in "
+                f"'{pdb_path}'; no cap parent is frozen despite --freeze-links.",
+                err=True,
+            )
         return []
 
     indices = []
