@@ -663,7 +663,7 @@ def cli(
                     "override_yaml": None if override_yaml is None else str(override_yaml),
                     "merged_keys": sorted(merged_yaml_cfg.keys()),
                 },
-            )
+            force=True)
         )
 
     if dry_run:
@@ -921,6 +921,7 @@ def cli(
             S_cal_per_Kmol  = to_cal_per_mol(tr.S_tot)
 
             emit("\n====== Thermochemistry summary ======\n", narrative=True)
+            click.echo(f"Structure               = {input_path}")
             click.echo(f"Temperature (K)         = {T:.2f}")
             click.echo(f"Pressure    (atm)       = {p_atm:.4f}")
             click.echo(
@@ -932,15 +933,15 @@ def cli(
             click.echo(f"Number of Imaginary Freq = {n_imag:d}")
             click.echo("")
 
-            click.echo(f"Electronic Energy (EE)                 = {_fmt_ha(EE)}")
+            click.echo(f"Electronic Energy (E)                  = {_fmt_ha(EE)}")
             click.echo(f"Zero-point Energy Correction           = {_fmt_ha(ZPE)}")
             click.echo(f"Thermal Correction to Energy           = {_fmt_ha(dE_therm)}")
             click.echo(f"Thermal Correction to Enthalpy         = {_fmt_ha(dH_therm)}")
-            click.echo(f"Thermal Correction to Free Energy      = {_fmt_ha(dG_therm)}")
+            click.echo(f"Gibbs Free Energy Correction (G_corr)  = {_fmt_ha(dG_therm)}")
             click.echo(f"EE + Zero-point Energy                 = {_fmt_ha(sum_EE_ZPE)}")
             click.echo(f"EE + Thermal Energy Correction         = {_fmt_ha(sum_EE_thermal_E)}")
             click.echo(f"EE + Thermal Enthalpy Correction       = {_fmt_ha(sum_EE_thermal_H)}")
-            click.echo(f"EE + Thermal Free Energy Correction    = {_fmt_ha(sum_EE_thermal_G)}")
+            click.echo(f"Gibbs Free Energy (G = E + G_corr)      = {_fmt_ha(sum_EE_thermal_G)}")
             click.echo("")
             click.echo(f"E (Thermal)                            = {_fmt_cal(E_thermal_cal)}")
             click.echo(f"Heat Capacity (Cv)                     = {_fmt_calK(Cv_cal_per_Kmol)}")
@@ -948,6 +949,7 @@ def cli(
 
             if bool(thermo_cfg["dump"]):
                 payload = {
+                    "structure": str(input_path),
                     "temperature_K": T,
                     "pressure_atm": p_atm,
                     "symmetry_number": symmetry_number,

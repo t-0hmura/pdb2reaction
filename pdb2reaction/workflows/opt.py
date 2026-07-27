@@ -453,9 +453,8 @@ def _seed_rfo_initial_hessian(
     default=True,
     show_default=True,
     help=(
-        "Reject energy-raising RFO trial steps in hess mode (roll back to the "
-        "lower-energy geometry and shrink the trust radius). Applies to "
-        "--opt-mode hess; ignored in grad/lbfgs mode."
+        "Reject uphill RFO trials in hess mode and final-check the retained "
+        "geometry at the emergency floor. Ignored in grad/lbfgs mode."
     ),
 )
 @click.option(
@@ -737,7 +736,7 @@ def cli(
                             "override_yaml": None if override_yaml is None else str(override_yaml),
                             "merged_keys": sorted(merged_yaml_cfg.keys()),
                         },
-                    )
+                    force=True)
                 )
             if dist_freeze:
                 display_pairs = []

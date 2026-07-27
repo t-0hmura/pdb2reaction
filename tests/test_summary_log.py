@@ -1,6 +1,7 @@
 # tests/test_summary_log.py
 """Tests for pdb2reaction.summary_log formatting helpers."""
 
+import time
 from pathlib import Path
 
 from pdb2reaction.io.summary import (
@@ -8,6 +9,9 @@ from pdb2reaction.io.summary import (
     _shorten_path,
     _format_energy_rows,
     _format_bond_changes,
+    emit_method_citations,
+    format_method_citations,
+    method_references,
     write_summary_log,
 )
 
@@ -205,3 +209,115 @@ def test_summary_log_ts_only_uses_refined_provenance_and_top_level_counts(tmp_pa
     assert "MEP ΔE" not in text
     assert "DFT ΔE‡" in text
     assert "DFT//MLIP ΔE" not in text
+
+
+def test_method_citations_follow_resolved_methods_and_match_stdout(
+    tmp_path, capsys
+):
+    payload = {
+        "root_out_dir": str(tmp_path),
+        "pipeline_mode": "path-search",
+        "mep_mode": "dmf",
+        "dmf_correlated": True,
+        "path_opt_mode": "hess",
+        "post_opt_mode": "hess",
+        "ts_opt_mode": "hess",
+        "endpoint_opt_mode": "hess",
+        "post_segments": [
+            {
+                "endpoint_opt": {"reactant_converged": True},
+                "thermo_mode_validation": {"status": "ok"},
+            }
+        ],
+    }
+    dest = tmp_path / "summary.log"
+
+    write_summary_log(dest, payload)
+    lines = format_method_citations(payload)
+    references = method_references(payload)
+    emit_method_citations(payload)
+
+    text = dest.read_text(encoding="utf-8")
+    stdout = capsys.readouterr().out
+    block = "\n".join(lines)
+    assert block in text
+    assert text.rstrip().endswith(block)
+    assert stdout == block + "\n"
+    assert "pdb2reaction:" in block
+    assert "Direct Max Flux (DMF)" in block
+    assert "FB-ENM initialization for DMF" in block
+    assert "Correlated FB-ENM (CFB-ENM)" in block
+    assert "RFO / P-RFO" in block
+    assert "RS-P-RFO" in block
+    assert "Euler predictor-corrector IRC" in block
+    assert "quasi-RRHO thermochemistry" in block
+    assert "Growing String Method" not in block
+    assert all(set(ref) == {"method", "citation", "doi"} for ref in references)
+    assert len({ref["doi"] for ref in references}) == len(references)
+
+
+def test_method_citations_use_actual_path_and_post_stages() -> None:
+    path_only = {
+        "pipeline_mode": "path-search",
+        "mep_mode": "gsm",
+        "path_opt_mode": "grad",
+        "post_opt_mode": "hess",
+        "post_segments": [],
+    }
+    mixed = {
+        **path_only,
+        "post_segments": [{"endpoint_opt": {}}],
+    }
+
+    path_text = "\n".join(format_method_citations(path_only))
+    mixed_text = "\n".join(format_method_citations(mixed))
+
+    assert "Limited-memory BFGS (L-BFGS)" in path_text
+    assert "RFO / P-RFO" not in path_text
+    assert "quasi-RRHO thermochemistry" not in path_text
+    assert "Limited-memory BFGS (L-BFGS)" in mixed_text
+    assert "RFO / P-RFO" in mixed_text
+    assert "Keil, F. J." not in mixed_text
+    assert "Chakraborty, A." in mixed_text
+
+
+def test_dmf_and_post_references_follow_effective_stage_settings() -> None:
+    base = {
+        "pipeline_mode": "path-search",
+        "mep_mode": "dmf",
+        "path_opt_mode": "grad",
+        "post_segments": [{"endpoint_opt": {}}],
+        "ts_opt_mode": "hess",
+        "endpoint_opt_mode": "grad",
+    }
+
+    uncorrelated = "\n".join(
+        format_method_citations({**base, "dmf_correlated": False})
+    )
+    correlated = "\n".join(
+        format_method_citations({**base, "dmf_correlated": True})
+    )
+
+    assert "Correlated FB-ENM (CFB-ENM)" not in uncorrelated
+    assert "Correlated FB-ENM (CFB-ENM)" in correlated
+    assert "RS-P-RFO" in correlated
+    assert "Limited-memory BFGS (L-BFGS)" in correlated
+
+
+def test_final_stdout_places_citations_immediately_before_elapsed(capsys) -> None:
+    from pdb2reaction.workflows.all import _emit_final_summary
+
+    _emit_final_summary(
+        None,
+        time.time(),
+        citation_payload={
+            "pipeline_mode": "path-search",
+            "mep_mode": "gsm",
+            "path_opt_mode": "grad",
+            "post_segments": [],
+        },
+    )
+
+    lines = [line for line in capsys.readouterr().out.splitlines() if line]
+    assert lines[-1].startswith("[all] Elapsed for Whole Pipeline")
+    assert "[6] Methods and citations" in lines[:-1]

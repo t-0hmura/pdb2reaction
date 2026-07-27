@@ -40,6 +40,11 @@ pdb2reaction tsopt -i ts_guess.{pdb,cif,mmcif,xyz,gjf} \
 | `-o, --out-dir` | path | `./result_tsopt/` | Output directory |
 | `--config` / `--show-config` / `--dry-run` / `--help-advanced` | — | — | Standard |
 
+`tsopt` always forces `reject_uphill=False`, regardless of optimizer mode or
+YAML. Uphill trial steps can be part of saddle-point mode following. The
+`--reject-uphill/--no-reject-uphill` toggle belongs only to minimum
+optimization (`opt`) and post-IRC endpoint refinement (`all`).
+
 ## Examples
 
 ### Default RS-P-RFO

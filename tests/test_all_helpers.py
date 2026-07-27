@@ -10,7 +10,6 @@ import pytest
 import yaml
 
 from pdb2reaction.workflows._all_helpers import (
-    AllContext,
     build_energy_level_dict,
     build_pipeline_summary_payload,
     build_thermo_mode_validation,
@@ -75,28 +74,6 @@ def test_all_stops_before_irc_when_tsopt_result_is_invalid(
         )
 
     assert "--out-json" in captured_args
-
-
-def test_all_context_fields_match_cli_signature() -> None:
-    """Regression guard: AllContext field names must mirror cli() params."""
-    import dataclasses
-    import inspect
-    from pdb2reaction.workflows.all import cli
-    callback = cli.callback
-    assert callback is not None
-    sig = inspect.signature(callback)
-    cli_param_names = {n for n in sig.parameters if n != "ctx"}
-    ctx_field_names = {f.name for f in dataclasses.fields(AllContext)}
-    missing = cli_param_names - ctx_field_names
-    extra = ctx_field_names - cli_param_names
-    assert not missing, f"AllContext missing fields: {sorted(missing)}"
-    assert not extra, f"AllContext has extra fields: {sorted(extra)}"
-    # Absolute count guard catches symmetric add+remove pairs where the
-    # name sets stay equal but the field count drifts.
-    assert len(ctx_field_names) == 74, (
-        f"AllContext field count drifted from 74 to {len(ctx_field_names)}; "
-        f"update this assertion alongside the cli() signature change."
-    )
 
 
 def test_all_tr_projection_is_injected_into_child_config() -> None:
@@ -195,7 +172,13 @@ def test_build_pipeline_summary_payload_shape() -> None:
             do_dft=True,
             dft_func_basis_use="wb97m-v/def2-tzvpd",
             opt_mode="GRAD",
+            opt_mode_post="HESS",
+            path_opt_mode="GRAD",
+            post_opt_mode="HESS",
+            ts_opt_mode="HESS",
+            endpoint_opt_mode="GRAD",
             mep_mode_kind="dmf",
+            dmf_correlated=True,
             mlip_backend="mace",
             mlip_model="mace-off23-small",
             mlip_precision="fp64",
@@ -208,7 +191,13 @@ def test_build_pipeline_summary_payload_shape() -> None:
     assert payload["pipeline_mode"] == "path-search"
     assert payload["dft_func_basis"] == "wb97m-v/def2-tzvpd"
     assert payload["opt_mode"] == "grad"
+    assert payload["opt_mode_post"] == "hess"
+    assert payload["path_opt_mode"] == "grad"
+    assert payload["post_opt_mode"] == "hess"
+    assert payload["ts_opt_mode"] == "hess"
+    assert payload["endpoint_opt_mode"] == "grad"
     assert payload["mep_mode"] == "dmf"
+    assert payload["dmf_correlated"] is True
     assert payload["mlip_backend"] == "mace"
     assert payload["mlip_model"] == "mace-off23-small"
     assert payload["mlip_precision"] == "fp64"
@@ -230,7 +219,13 @@ def test_build_pipeline_summary_payload_dft_disabled_drops_basis() -> None:
         do_dft=False,
         dft_func_basis_use="wb97m-v/def2-tzvpd",
         opt_mode=None,
+        opt_mode_post=None,
+        path_opt_mode=None,
+        post_opt_mode=None,
+        ts_opt_mode=None,
+        endpoint_opt_mode=None,
         mep_mode_kind=None,
+        dmf_correlated=False,
         mlip_backend="orb",
         mlip_model=None,
         mlip_precision="fp64",
@@ -351,14 +346,42 @@ def test_enrich_summary_uses_backend_neutral_refined_energy_keys(tmp_path: Path)
             {
                 "index": 1,
                 "gibbs_mlip": {"barrier_kcal": 12.5, "delta_kcal": -1.0},
+                "endpoint_opt": {"reactant_converged": True},
             }
         ],
+        config={
+            "tsopt": True,
+            "thermo": True,
+            "path_opt_mode": "grad",
+            "post_opt_mode": "hess",
+            "ts_opt_mode": "hess",
+            "endpoint_opt_mode": "grad",
+            "mep_mode": "dmf",
+            "dmf_correlated": True,
+        },
         out_dir=tmp_path,
     )
 
     assert result["rate_limiting_step"]["barrier_kcal"] == 12.5
     assert result["rate_limiting_step"]["method"] == "MLIP_Gibbs"
     assert result["schema_version"]
+    assert any(ref["method"] == "pdb2reaction" for ref in result["references"])
+    assert any(
+        ref["method"] == "Direct Max Flux (DMF)"
+        for ref in result["references"]
+    )
+    assert any(
+        ref["method"] == "quasi-RRHO thermochemistry"
+        for ref in result["references"]
+    )
+    assert any(
+        ref["method"] == "Correlated FB-ENM (CFB-ENM) initialization for DMF"
+        for ref in result["references"]
+    )
+    assert any(
+        ref["method"] == "Limited-memory BFGS (L-BFGS)"
+        for ref in result["references"]
+    )
 
 
 def test_aggregate_summary_writer_injects_current_run_id_atomically(

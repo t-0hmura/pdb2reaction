@@ -953,7 +953,7 @@ def cli(
                         "override_yaml": None if override_yaml is None else str(override_yaml),
                         "merged_keys": sorted(merged_yaml_cfg.keys()),
                     },
-                )
+                force=True)
             )
         if dry_run:
             click.echo(

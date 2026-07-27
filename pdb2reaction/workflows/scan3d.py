@@ -392,7 +392,7 @@ def cli(
                             "one_based": bool(scan_one_based),
                             "pairs": parsed,
                         },
-                    )
+                    force=True)
                 )
             click.echo(
                 pretty_block(

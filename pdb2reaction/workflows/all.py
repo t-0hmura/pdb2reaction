@@ -38,10 +38,22 @@ from pdb2reaction.workflows import tsopt as _tsopt
 from pdb2reaction.workflows import freq as _freq_cli
 from pdb2reaction.workflows.align_freeze import align_and_refine_sequence_inplace
 from pdb2reaction.backends import create_calculator
-from pdb2reaction.core.defaults import GEOM_KW_DEFAULT, OUT_DIR_ALL, SEGMENTS_DIRNAME, THRESH_CHOICES, WORK_DIRNAME, UMA_CALC_KW as _UMA_CALC_KW
+from pdb2reaction.core.defaults import (
+    GEOM_KW_DEFAULT,
+    OUT_DIR_ALL,
+    SEGMENTS_DIRNAME,
+    THRESH_CHOICES,
+    WORK_DIRNAME,
+    UMA_CALC_KW as _UMA_CALC_KW,
+    fresh_dmf_config,
+)
 DEFAULT_COORD_TYPE = GEOM_KW_DEFAULT["coord_type"]
 from pdb2reaction.io.trj2fig import run_trj2fig
-from pdb2reaction.io.summary import write_summary_log
+from pdb2reaction.io.summary import (
+    emit_method_citations,
+    method_references,
+    write_summary_log,
+)
 from pdb2reaction.io.structure_formats import (
     coordinate_template_for,
     register_coordinate_template,
@@ -176,6 +188,7 @@ def _emit_final_summary(
     out_dir: Path | None,
     time_start: float,
     manifest: Optional[InvocationManifest] = None,
+    citation_payload: Optional[Dict[str, Any]] = None,
 ) -> None:
     """Print a visual `====== Pipeline summary ======` block + Elapsed line.
 
@@ -223,6 +236,8 @@ def _emit_final_summary(
         if out_dir_show:
             _echo(f"Output dir: {out_dir_show}", narrative=True)
         _echo(narrative=True)
+    if citation_payload:
+        emit_method_citations(citation_payload)
     _echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start), narrative=True)
 
 
@@ -613,13 +628,19 @@ def _format_atom_key_for_msg(key: AtomKey) -> str:
 def _parse_scan_lists_literals(
     scan_lists_raw: Sequence[str],
     atom_meta: Optional[Sequence[Dict[str, Any]]] = None,
+    *,
+    one_based: bool = True,
 ) -> List[List[Tuple[int, int, float]]]:
-    """Parse ``--scan-lists`` literals without re-basing atom indices."""
+    """Parse ``--scan-lists`` literals, interpreting them per ``one_based``.
+
+    ``one_based`` is how to READ the user's literal (it follows ``--scan-one-based``); the
+    returned stages are always 1-based so the downstream index mapping stays base-agnostic.
+    """
     stages: List[List[Tuple[int, int, float]]] = []
     for idx_stage, literal in enumerate(scan_lists_raw, start=1):
         tuples, _ = parse_scan_list_triples(
             literal,
-            one_based=True,
+            one_based=one_based,
             atom_meta=atom_meta,
             option_name=f"--scan-lists #{idx_stage}",
             return_one_based=True,
@@ -641,6 +662,8 @@ def _convert_scan_lists_to_model_indices(
     scan_lists_raw: Sequence[str],
     full_input_pdb: Path,
     model_pdb: Path,
+    *,
+    one_based: bool = True,
 ) -> List[List[Tuple[int, int, float]]]:
     """
     Convert user-provided atom indices (based on the full input PDB) to model indices.
@@ -653,7 +676,9 @@ def _convert_scan_lists_to_model_indices(
         return []
 
     full_atom_meta = load_pdb_atom_metadata(full_input_pdb)
-    stages = _parse_scan_lists_literals(scan_lists_raw, atom_meta=full_atom_meta)
+    stages = _parse_scan_lists_literals(
+        scan_lists_raw, atom_meta=full_atom_meta, one_based=one_based
+    )
 
     orig_keys_in_order = _read_full_atom_keys_in_file_order(full_input_pdb)
     key_to_model_idx = _model_key_to_index(model_pdb)
@@ -1555,6 +1580,21 @@ def _enrich_summary(
     # Pipeline config (mirrors summary.log header)
     if config:
         summary["config"] = config
+    citation_config = config or {}
+    summary["references"] = method_references(
+        {
+            "pipeline_mode": pipeline_mode,
+            "opt_mode": citation_config.get("opt_mode"),
+            "opt_mode_post": citation_config.get("opt_mode_post"),
+            "path_opt_mode": citation_config.get("path_opt_mode"),
+            "post_opt_mode": citation_config.get("post_opt_mode"),
+            "ts_opt_mode": citation_config.get("ts_opt_mode"),
+            "endpoint_opt_mode": citation_config.get("endpoint_opt_mode"),
+            "mep_mode": citation_config.get("mep_mode"),
+            "dmf_correlated": citation_config.get("dmf_correlated"),
+            "post_segments": post_segments or [],
+        }
+    )
     if freeze_atoms:
         summary["freeze_atoms"] = freeze_atoms
 
@@ -2100,13 +2140,19 @@ def _dft_succeeded(result: Dict[str, Any]) -> bool:
 
 
 def _dft_energy_ha(result: Dict[str, Any]) -> Optional[float]:
-    """Extract DFT energy in hartree, or None if DFT failed."""
+    """Extract DFT energy in hartree, or None if DFT failed or the value is not finite.
+
+    Non-finite is reported as None at this single chokepoint so that every consumer's
+    ``is not None`` check is sufficient; a NaN/inf must never reach a diagram, summary.json
+    or a logged energy triplet.
+    """
     if not _dft_succeeded(result):
         return None
     try:
-        return float((result.get("energy") or {}).get("hartree"))
+        value = float((result.get("energy") or {}).get("hartree"))
     except (TypeError, ValueError):
         return None
+    return value if np.isfinite(value) else None
 
 
 def _run_dft_for_state(
@@ -3287,10 +3333,9 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     default=True,
     show_default=True,
     help=(
-        "Reject energy-raising RFO trial steps during post-IRC endpoint "
-        "re-optimization ONLY (roll back to the lower-energy geometry and shrink "
-        "the trust radius). Does not affect TS optimization or path search. "
-        "--no-reject-uphill disables it for the endpoint re-optimization."
+        "Reject uphill RFO trials during post-IRC endpoint re-optimization only "
+        "and final-check the retained endpoint at the emergency floor. Does not "
+        "affect TS optimization or path search."
     ),
 )
 @click.option(
@@ -3703,6 +3748,14 @@ def cli(
 
     args_yaml = config_yaml
     merged_yaml_cfg = load_yaml_dict(config_yaml) if config_yaml is not None else {}
+    _dmf_yaml_cfg = (
+        merged_yaml_cfg.get("dmf", {})
+        if isinstance(merged_yaml_cfg, dict)
+        else {}
+    )
+    dmf_correlated_effective = bool(
+        fresh_dmf_config(_dmf_yaml_cfg).get("correlated", False)
+    )
 
     # `calc.charge` / `calc.spin` are workflow inputs below explicit CLI
     # values and --ligand-charge, but above GJF metadata and defaults.
@@ -3864,6 +3917,21 @@ def cli(
         tsopt_opt_mode_default = opt_mode_norm
     else:
         tsopt_opt_mode_default = "hess"
+
+    citation_post_segments: List[Dict[str, Any]] = []
+
+    def _all_method_citation_payload() -> Dict[str, Any]:
+        return {
+            "pipeline_mode": all_mode,
+            "path_opt_mode": opt_mode_norm,
+            "post_opt_mode": tsopt_opt_mode_default,
+            "ts_opt_mode": tsopt_opt_mode_default,
+            "endpoint_opt_mode": tsopt_opt_mode_default,
+            "mep_mode": mep_mode,
+            "dmf_correlated": dmf_correlated_effective,
+            "post_segments": citation_post_segments,
+        }
+
     tsopt_overrides: Dict[str, Any] = {}
     if tsopt_max_cycles is not None:
         tsopt_overrides["max_cycles"] = int(tsopt_max_cycles)
@@ -4274,6 +4342,10 @@ def cli(
                         resolved_charge = _derive_charge_from_ligand_charge(
                             prepared, ligand_charge, prefix="[all]"
                         )
+                except click.BadParameter:
+                    # A rejected input (e.g. multi-MODEL) must abort, not fall through to the
+                    # numeric-total fallback below.
+                    raise
                 except Exception as e:
                     _echo(
                         f"[all] NOTE: failed to derive total charge from full complex: {e}; "
@@ -4883,7 +4955,12 @@ def cli(
                 "dft_status": "failed" if (do_dft and not _dft_all_ok) else ("converged" if (do_dft and _dft_all_ok) else None),
                 "dft_func_basis": dft_func_basis_use if do_dft else None,
                 "opt_mode": tsopt_opt_mode_default,
+                "path_opt_mode": opt_mode_norm,
+                "post_opt_mode": tsopt_opt_mode_default,
+                "ts_opt_mode": tsopt_opt_mode_default,
+                "endpoint_opt_mode": tsopt_opt_mode_default,
                 "mep_mode": mep_mode_kind,
+                "dmf_correlated": dmf_correlated_effective,
             },
             freeze_atoms=_freeze_atoms_for_log(),
             manifest=manifest,
@@ -5001,7 +5078,14 @@ def cli(
                     "thermo": do_thermo,
                     "dft": do_dft,
                     "opt_mode": tsopt_opt_mode_default,
+                    "opt_mode_post": (
+                        opt_mode_post.lower() if opt_mode_post else None
+                    ),
+                    "post_opt_mode": tsopt_opt_mode_default,
+                    "ts_opt_mode": tsopt_opt_mode_default,
+                    "endpoint_opt_mode": tsopt_opt_mode_default,
                     "mep_mode": mep_mode_kind,
+                    "dmf_correlated": dmf_correlated_effective,
                     "mlip_backend": _mlip_backend_shared,
                     "mlip_model": _mlip_model_shared,
                     "mlip_precision": _mlip_precision_shared,
@@ -5073,7 +5157,12 @@ def cli(
                             dft_func_basis_use if do_dft else None
                         ),
                         "opt_mode": tsopt_opt_mode_default,
+                        "path_opt_mode": opt_mode_norm,
+                        "post_opt_mode": tsopt_opt_mode_default,
+                        "ts_opt_mode": tsopt_opt_mode_default,
+                        "endpoint_opt_mode": tsopt_opt_mode_default,
                         "mep_mode": mep_mode_kind,
+                        "dmf_correlated": dmf_correlated_effective,
                     },
                     freeze_atoms=_freeze_atoms_for_log(),
                     manifest=manifest,
@@ -5158,7 +5247,13 @@ def cli(
         _echo_section(
             "====== [all] TSOPT-only pipeline successfully finished ======"
         )
-        _emit_final_summary(out_dir, time_start, manifest)
+        citation_post_segments = [segment_log]
+        _emit_final_summary(
+            out_dir,
+            time_start,
+            manifest,
+            citation_payload=_all_method_citation_payload(),
+        )
         return
 
     # Stage 1b: optional staged scan (single-structure)
@@ -5168,33 +5263,38 @@ def cli(
         _echo_section("====== [all] Stage 1b — Staged scan on input ======")
         ensure_dir(scan_dir)
 
+        # --scan-one-based decides how the user's literal is READ, so it has to be known
+        # before parsing. Default to 1-based when unspecified.
+        scan_one_based_effective = True if scan_one_based is None else bool(
+            scan_one_based
+        )
+
         if skip_extract:
             scan_input_pdb = Path(input_paths[0]).resolve()
             scan_atom_meta = None
             if scan_input_pdb.suffix.lower() == ".pdb":
                 scan_atom_meta = load_pdb_atom_metadata(scan_input_pdb)
             converted_scan_stages = _parse_scan_lists_literals(
-                scan_lists_raw, atom_meta=scan_atom_meta
+                scan_lists_raw,
+                atom_meta=scan_atom_meta,
+                one_based=scan_one_based_effective,
             )
         else:
             scan_input_pdb = Path(model_outputs[0]).resolve()
             full_input_pdb = Path(input_paths[0]).resolve()
             converted_scan_stages = _convert_scan_lists_to_model_indices(
-                scan_lists_raw, full_input_pdb, scan_input_pdb
+                scan_lists_raw,
+                full_input_pdb,
+                scan_input_pdb,
+                one_based=scan_one_based_effective,
             )
             _echo_detail(
                 "[all] Remapped --scan-lists indices from the full PDB to the active site model ordering."
             )
 
-        # Respect the user's explicit --scan-one-based choice symmetrically across
-        # both branches. Default to 1-based when unspecified. For extracted models the
-        # indices are already 1-based and we decrement to 0-based on explicit False;
-        # for skip_extract literals (user-supplied verbatim), an explicit False also
-        # decrements so the downstream scan.py sees indices consistent with the
-        # --zero-based interpretation we forward below.
-        scan_one_based_effective = True if scan_one_based is None else bool(
-            scan_one_based
-        )
+        # Both parse paths return 1-based indices regardless of how the literal was read, so
+        # on an explicit 0-based request we decrement once here and forward --zero-based to
+        # scan.py below. The two conversions are inverse, not additive.
         scan_stage_literals: List[str] = []
         for stage in converted_scan_stages:
             if scan_one_based_effective:
@@ -5765,7 +5865,12 @@ def cli(
                 "thermo": do_thermo,
                 "dft": do_dft,
                 "opt_mode": tsopt_opt_mode_default,
+                "path_opt_mode": opt_mode_norm,
+                "post_opt_mode": tsopt_opt_mode_default,
+                "ts_opt_mode": tsopt_opt_mode_default,
+                "endpoint_opt_mode": tsopt_opt_mode_default,
                 "mep_mode": mep_mode_kind,
+                "dmf_correlated": dmf_correlated_effective,
             },
             freeze_atoms=_freeze_atoms_for_log(),
             manifest=manifest,
@@ -5841,7 +5946,15 @@ def cli(
                 "thermo": do_thermo,
                 "dft": do_dft,
                 "opt_mode": opt_mode.lower() if opt_mode else None,
+                "opt_mode_post": (
+                    opt_mode_post.lower() if opt_mode_post else None
+                ),
+                "path_opt_mode": opt_mode_norm,
+                "post_opt_mode": tsopt_opt_mode_default,
+                "ts_opt_mode": tsopt_opt_mode_default,
+                "endpoint_opt_mode": tsopt_opt_mode_default,
                 "mep_mode": mep_mode_kind,
+                "dmf_correlated": dmf_correlated_effective,
                 "mlip_backend": _mlip_backend_shared,
                 "mlip_model": _mlip_model_shared,
                 "mlip_precision": _mlip_precision_shared,
@@ -6145,6 +6258,8 @@ def cli(
         # the I/O wrapper here keeps the original closure capture + error
         # routing semantics so callers do not change.
         from pdb2reaction.workflows._all_helpers import build_pipeline_summary_payload
+        nonlocal citation_post_segments
+        citation_post_segments = list(post_segment_logs)
         try:
             summary_payload = build_pipeline_summary_payload(
                 out_dir=out_dir,
@@ -6156,7 +6271,13 @@ def cli(
                 do_dft=do_dft,
                 dft_func_basis_use=dft_func_basis_use,
                 opt_mode=opt_mode,
+                opt_mode_post=opt_mode_post,
+                path_opt_mode=opt_mode_norm,
+                post_opt_mode=tsopt_opt_mode_default,
+                ts_opt_mode=tsopt_opt_mode_default,
+                endpoint_opt_mode=tsopt_opt_mode_default,
                 mep_mode_kind=mep_mode_kind,
+                dmf_correlated=dmf_correlated_effective,
                 mlip_backend=_mlip_backend_shared,
                 mlip_model=_mlip_model_shared,
                 mlip_precision=_mlip_precision_shared,
@@ -6222,7 +6343,12 @@ def cli(
             summary["energy_diagrams"] = list(energy_diagrams)
         _write_pipeline_summary_log([])
         _finalize_current_summary()
-        _emit_final_summary(out_dir, time_start, manifest)
+        _emit_final_summary(
+            out_dir,
+            time_start,
+            manifest,
+            citation_payload=_all_method_citation_payload(),
+        )
         return
 
     # Stage 4: post-processing per reactive segment
@@ -6234,7 +6360,12 @@ def cli(
         _echo("[post] No segments found in summary; nothing to do.", narrative=True)
         _write_pipeline_summary_log([])
         _finalize_current_summary()
-        _emit_final_summary(out_dir, time_start, manifest)
+        _emit_final_summary(
+            out_dir,
+            time_start,
+            manifest,
+            citation_payload=_all_method_citation_payload(),
+        )
         return
 
     reactive = [s for s in segments if _is_reactive_segment(s)]
@@ -6242,7 +6373,12 @@ def cli(
         _echo("[post] No bond-change segments. Skipping TS/thermo/DFT.", narrative=True)
         _write_pipeline_summary_log([])
         _finalize_current_summary()
-        _emit_final_summary(out_dir, time_start, manifest)
+        _emit_final_summary(
+            out_dir,
+            time_start,
+            manifest,
+            citation_payload=_all_method_citation_payload(),
+        )
         return
 
     # Per-category per-segment energies
@@ -6975,7 +7111,12 @@ def cli(
                 "thermo": do_thermo,
                 "dft": do_dft,
                 "opt_mode": tsopt_opt_mode_default,
+                "path_opt_mode": opt_mode_norm,
+                "post_opt_mode": tsopt_opt_mode_default,
+                "ts_opt_mode": tsopt_opt_mode_default,
+                "endpoint_opt_mode": tsopt_opt_mode_default,
                 "mep_mode": mep_mode_kind,
+                "dmf_correlated": dmf_correlated_effective,
             },
             freeze_atoms=_freeze_atoms_for_log(),
             manifest=manifest,
@@ -7013,7 +7154,12 @@ def cli(
             err=True,
         )
 
-    _emit_final_summary(out_dir, time_start, manifest)
+    _emit_final_summary(
+        out_dir,
+        time_start,
+        manifest,
+        citation_payload=_all_method_citation_payload(),
+    )
 
 
 _hide_advanced_options(cli, _ALL_PRIMARY_HELP_OPTIONS)

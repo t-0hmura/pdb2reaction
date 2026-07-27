@@ -467,7 +467,7 @@ def cli(
                             "one_based": bool(scan_one_based),
                             "stages_0based": stages,
                         },
-                    )
+                    force=True)
                 )
 
             if pdb_atom_meta:

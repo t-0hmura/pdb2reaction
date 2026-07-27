@@ -79,7 +79,11 @@ from pdb2reaction.core.utils import (
     merge_freeze_atom_indices,
 )
 from pdb2reaction.core.result_commit import apply_current_run_id, commit_json
-from pdb2reaction.io.summary import write_summary_log
+from pdb2reaction.io.summary import (
+    emit_method_citations,
+    method_references,
+    write_summary_log,
+)
 from pdb2reaction.io.trj2fig import run_trj2fig
 from pdb2reaction.io.structure_formats import (
     attach_template_metadata,
@@ -809,7 +813,14 @@ def _stitch_paths(
             try:
                 adj_changed, adj_summary = has_bond_change(tail, head, bond_cfg)
             except Exception as exc:
-                logger.debug("Bond-change detection at segment interface failed: %s", exc)
+                # debug-only was invisible at the default verbosity, and "unchanged" here means
+                # no bridging segment is inserted — a reaction step can go missing in silence.
+                click.echo(
+                    f"[path-search] WARNING: bond-change detection at the segment interface "
+                    f"failed ({exc}); treating the interface as unchanged, so no bridging "
+                    "segment is inserted and a reaction step may be missing.",
+                    err=True,
+                )
                 adj_changed, adj_summary = False, ""
 
         if adj_changed and segment_builder is not None:
@@ -2380,7 +2391,7 @@ def cli(
                         "override": None if override_yaml is None else str(override_yaml),
                         "merged_keys": sorted(merged_yaml_cfg.keys()),
                     },
-                )
+                force=True)
             )
 
         if dry_run:
@@ -3010,6 +3021,14 @@ def cli(
         summary["charge"] = calc_cfg.get("charge")
         summary["spin"] = calc_cfg.get("spin")
         summary["command"] = command_str
+        summary["references"] = method_references(
+            {
+                "pipeline_mode": "path-search",
+                "mep_mode": mep_mode,
+                "path_opt_mode": opt_mode,
+                "dmf_correlated": bool(dmf_cfg.get("correlated", False)),
+            }
+        )
         try:
             from pdb2reaction.core.utils import _collect_environment_info
             summary["environment"] = _collect_environment_info()
@@ -3020,6 +3039,7 @@ def cli(
         commit_json(out_dir_path / "summary.json", summary)
         emit(f"[write] Wrote '{out_dir_path / 'summary.json'}'.", detail=True)
 
+        summary_payload_for_citations: Dict[str, Any] = {}
         try:
             # `freeze_atoms_for_log` is also assigned later in this function
             # (so Python treats it as local to _run); if the inner sorted()
@@ -3056,13 +3076,14 @@ def cli(
                 "root_out_dir": str(out_dir_path),
                 "path_dir": str(out_dir_path),
                 "path_module_dir": "path_search",
-                "pipeline_mode": mep_mode,
+                "pipeline_mode": "path-search",
                 "refine_path": True,
                 "tsopt": False,
                 "thermo": False,
                 "dft": False,
                 "opt_mode": opt_mode,
                 "mep_mode": mep_mode,
+                "dmf_correlated": bool(dmf_cfg.get("correlated", False)),
                 "mlip_backend": mlip_backend,
                 "mlip_model": mlip_model,
                 "mlip_precision": _provenance["mlip_precision"],
@@ -3075,12 +3096,17 @@ def cli(
                 "energy_diagrams": summary.get("energy_diagrams", []),
                 "key_files": {},
             }
+            summary_payload_for_citations = summary_payload
             write_summary_log(out_dir_path / "summary.log", summary_payload)
             emit(f"[write] Wrote '{out_dir_path / 'summary.log'}'.", detail=True)
         except Exception as e:
             click.echo(f"[write] WARNING: Failed to write summary.log: {e}", err=True)
 
         # summary.md and key_* outputs are disabled.
+        from pdb2reaction.core.utils import is_child_mode
+
+        if summary_payload_for_citations and not is_child_mode():
+            emit_method_citations(summary_payload_for_citations)
         emit(format_elapsed("[time] Elapsed for Path Search", time_start), narrative=True)
 
     out_dir_path = Path(out_dir).resolve()

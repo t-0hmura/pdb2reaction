@@ -212,6 +212,7 @@ def _validate_high_risk_semantics(errors: list[str]) -> None:
     all_page = SKILLS_DIR / "pdb2reaction-cli" / "all.md"
     scan_page = SKILLS_DIR / "pdb2reaction-cli" / "all-scan-list.md"
     tsopt_page = SKILLS_DIR / "pdb2reaction-cli" / "tsopt.md"
+    opt_page = SKILLS_DIR / "pdb2reaction-cli" / "opt.md"
     irc_page = SKILLS_DIR / "pdb2reaction-cli" / "irc.md"
     path_opt_page = SKILLS_DIR / "pdb2reaction-cli" / "path-opt.md"
     freq_page = SKILLS_DIR / "pdb2reaction-cli" / "freq.md"
@@ -238,7 +239,24 @@ def _validate_high_risk_semantics(errors: list[str]) -> None:
         ),
         errors,
     )
-    _require(tsopt_page, ("`--ref-mode`", "ordinary standalone `tsopt` runs should omit it"), errors)
+    _require(
+        tsopt_page,
+        (
+            "`--ref-mode`",
+            "ordinary standalone `tsopt` runs should omit it",
+            "`tsopt` always forces `reject_uphill=False`",
+        ),
+        errors,
+    )
+    _require(
+        opt_page,
+        (
+            "final convergence check on the retained geometry",
+            "convergence is `max(|force|) <= 3e-4`",
+            "RMS values are diagnostic",
+        ),
+        errors,
+    )
     _require(irc_page, ("reduce `--step-size` first", "`--never-stop`"), errors)
     _require(
         irc_page,
@@ -252,7 +270,20 @@ def _validate_high_risk_semantics(errors: list[str]) -> None:
     )
     _require(
         freq_page,
-        ("every strictly negative frequency", "`tsopt` deliberately applies"),
+        (
+            "every strictly negative frequency",
+            "`tsopt` deliberately applies",
+            "E + G_corr = G",
+        ),
+        errors,
+    )
+    _require(
+        summary_page,
+        (
+            "`references`",
+            "{method, citation, doi}",
+            "immediately before elapsed time",
+        ),
         errors,
     )
     _require(path_opt_page, ("| `--max-nodes` | int | 20 |",), errors)

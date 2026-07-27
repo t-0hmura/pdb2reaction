@@ -24,6 +24,7 @@ corresponding command page and in [`pdb2reaction-cli`](../pdb2reaction-cli/SKILL
 | `stage_outcomes` / `point_outcomes` | Producer- and mode-dependent fail-closed records. When present, require explicit convergence and `usable` / `seed_eligible`; neither array is universal at the `all` root. |
 | `charge` / `spin` | Resolved cluster charge / multiplicity |
 | `environment` | `{device, gpu_name, gpu_vram_gb, cuda_version, cpu, n_cpus, ram_gb}` |
+| `references` | Methods actually used by the resolved workflow, as `{method, citation, doi}` records. The same set appears at the tail of `summary.log` and final stdout immediately before elapsed time. |
 | `config` | Full effective config after CLI + YAML + defaults merge |
 | `freeze_atoms` | Resolved union of YAML `geom.freeze_atoms` and auto-detected cap-H parents. These are 0-based internal indices; `summary.log` echoes them as 1-based. |
 | `n_images` | MEP image count in path-search / path-opt; IRC trajectory frame count in tsopt-only mode |

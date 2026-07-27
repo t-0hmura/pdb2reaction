@@ -371,14 +371,18 @@ register_yaml_representers()
 
 
 
-def pretty_block(title: str, content: Dict[str, Any]) -> str:
+def pretty_block(title: str, content: Dict[str, Any], *, force: bool = False) -> str:
     """Return a YAML block with an underlined title.
 
     Returns an empty string below verbosity level 3 so that the default
     CLI output stays focused on milestones and user-set parameters; the
     full config dump is restored under `-v 3` for debugging.
+
+    ``force=True`` bypasses that gate. Use it for output the user asked for
+    explicitly (``--show-config``, ``--print-parsed``): a flag whose whole purpose is
+    to print something must not render nothing at the default verbosity.
     """
-    if verbose_level() < 3:
+    if not force and verbose_level() < 3:
         return ""
     if not content:
         return ""  # suppress empty blocks entirely
@@ -991,10 +995,22 @@ def normalize_freeze_atoms(raw: Any) -> List[int]:
         tokens = re.findall(r"-?\d+", raw)
         return [int(tok) for tok in tokens]
     try:
-        return [int(i) for i in raw]
-    except Exception as exc:
-        logger.debug("normalize_freeze_atoms: failed to convert %r to int list: %s", raw, exc)
+        items = list(raw)
+    except TypeError as exc:
+        logger.debug("normalize_freeze_atoms: %r is not a sequence of indices: %s", raw, exc)
         return []
+    out: List[int] = []
+    for item in items:
+        try:
+            out.append(int(item))
+        except (TypeError, ValueError) as exc:
+            # An unparsable entry must not degrade to an empty list: that let
+            # `geom.freeze_atoms: [1, 2, three]` run with NOTHING frozen, silently turning a
+            # hard-freeze / PHVA result into an unconstrained one.
+            raise ValueError(
+                f"freeze_atoms: cannot interpret {item!r} as an atom index"
+            ) from exc
+    return out
 
 
 def merge_freeze_atom_indices(
@@ -2119,6 +2135,19 @@ def _derive_charge_from_ligand_charge(
 
         parser = PDB.PDBParser(QUIET=True)
         complex_struct = parser.get_structure("complex", str(prepared.source_path))
+        models = list(complex_struct.get_models())
+        if len(models) > 1:
+            # Refuse rather than derive from the first model: the geometry loader used for the
+            # actual calculation does not honour MODEL/ENDMDL at all — it concatenates every
+            # ATOM/HETATM record into one system — so a "first model" charge would describe a
+            # structure the run never computes. `extract` may warn and continue only because it
+            # detaches the other models first.
+            raise click.BadParameter(
+                f"Input '{prepared.source_path}' contains {len(models)} MODELs; "
+                "--ligand-charge total-charge derivation requires a single-model PDB. "
+                "Split the intended model into its own PDB before running the calculation.",
+                param_hint="-i / --input",
+            )
         selected_ids = {res.get_full_id() for res in complex_struct.get_residues()}
         from pdb2reaction.io.charge import infer_present_terminal_cap_ids
 
@@ -2146,6 +2175,10 @@ def _derive_charge_from_ligand_charge(
             f"Total: {q_total:+g}"
         )
         return _round_charge_with_note(q_total, prefix)
+    except click.BadParameter:
+        # A rejected input is a decision, not a derivation failure: it must not degrade to the
+        # "could not derive, carry on" path below.
+        raise
     except Exception as e:
         click.echo(
             f"{prefix} NOTE: failed to derive total charge from --ligand-charge: {e}",
@@ -3092,6 +3125,14 @@ def _load_scan_spec_root(
     if not isinstance(data, Mapping):
         raise click.BadParameter(
             f"{option_name} file '{spec_path}' must have a mapping at the YAML/JSON root."
+        )
+    # A misspelled root key used to be dropped in silence, so the whole spec file became a
+    # no-op and the run continued with no scan/freeze constraints at all.
+    unknown = sorted(set(data) - {"stages", "pairs", "constraints", "one_based"})
+    if unknown:
+        raise click.BadParameter(
+            f"{option_name} file '{spec_path}' has unrecognized root key(s): "
+            f"{', '.join(unknown)}. Expected any of: stages, pairs, constraints, one_based."
         )
     return data
 

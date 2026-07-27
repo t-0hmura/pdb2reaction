@@ -24,6 +24,7 @@ def _load(name: str):
 
 
 contract = _load("docs_command_contract")
+bool_style = _load("check_bool_style")
 
 
 def _cmd(text: str, *, rel: str = "docs/example.md", line: int = 1):
@@ -77,3 +78,41 @@ def test_real_docs_commands_validate() -> None:
     commands = contract.extract_markdown_commands(contract.docs_markdown_paths())
     assert commands, "no docs commands extracted"
     assert contract.validate_option_names(commands) == []
+
+
+def test_value_style_bool_checker_rejects_known_bool(
+    tmp_path: Path, monkeypatch, capsys,
+) -> None:
+    guide = tmp_path / "guide.md"
+    guide.write_text(
+        "pdb2reaction all -i R.pdb --deterministic True\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(bool_style, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(
+        bool_style.contract,
+        "authored_bool_style_paths",
+        lambda: [guide],
+    )
+
+    assert bool_style.main() == 1
+    assert "--deterministic True" in capsys.readouterr().out
+
+
+def test_value_style_bool_checker_ignores_non_bool_near_miss(
+    tmp_path: Path, monkeypatch, capsys,
+) -> None:
+    guide = tmp_path / "guide.md"
+    guide.write_text(
+        "pdb2reaction all -i R.pdb --label True\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(bool_style, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(
+        bool_style.contract,
+        "authored_bool_style_paths",
+        lambda: [guide],
+    )
+
+    assert bool_style.main() == 0
+    assert "Canonical boolean style OK" in capsys.readouterr().out

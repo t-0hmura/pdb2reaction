@@ -521,7 +521,7 @@ def cli(
                             "override_yaml": None if override_yaml is None else str(override_yaml),
                             "merged_keys": sorted(merged_yaml_cfg.keys()),
                         },
-                    )
+                    force=True)
                 )
             if dry_run:
                 click.echo(
@@ -868,8 +868,12 @@ def cli(
                             "broken": [f"{_elems[i]}{i+1}-{_elems[j]}{j+1}" for i, j in sorted(_bc.broken_covalent)],
                         }
                         result_data["bond_changes_direction"] = "finished_first_to_finished_last"
-                except Exception:
-                    pass
+                except Exception as _bc_exc:
+                    click.echo(
+                        f"[irc] WARNING: endpoint bond-change comparison failed ({_bc_exc}); "
+                        "result.json will have no 'bond_changes' field.",
+                        err=True,
+                    )
 
                 write_result_json(
                     out_dir_path, result_data,

@@ -230,6 +230,12 @@ def cli(
         # --calc-file overrides --backend with a user ASE Calculator (custom backend).
         apply_calc_file_to_calc_cfg(calc_cfg, calc_file, calc_factory)
         if cli_param_overridden(ctx, "print_every") and print_every is not None:
+            # `sp` runs no optimizer, and the backend factory drops keys it does not know, so
+            # this value has no effect. Say so instead of ignoring an explicit request silently.
+            click.echo(
+                "[sp] NOTE: --print-every has no effect on sp (no optimizer runs); ignoring it.",
+                err=True,
+            )
             calc_cfg["print_every"] = int(print_every)
 
         apply_backend_defaults(calc_cfg)

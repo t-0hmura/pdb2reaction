@@ -330,7 +330,14 @@ def has_altloc(pdb_path: Path) -> bool:
                         if altloc_char != " " and altloc_char != "":
                             return True
         return False
-    except Exception:
+    except Exception as exc:
+        # "cannot read the file" must not look like "the file has no altLoc": the caller then
+        # skips altLoc handling entirely for a structure that may well need it.
+        click.echo(
+            f"[fix-altloc] WARNING: could not read '{pdb_path}' ({exc}); "
+            "treating it as having no altLoc.",
+            err=True,
+        )
         return False
 
 

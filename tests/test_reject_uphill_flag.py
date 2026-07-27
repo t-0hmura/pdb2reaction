@@ -1,4 +1,4 @@
-"""Contract for the --reject-uphill/--no-reject-uphill endpoint re-opt toggle.
+"""Contracts for uphill rejection in minimum and transition-state searches.
 
 The flag lets a user opt out of the post-IRC endpoint RFO uphill-rejection
 safeguard (default on, resting on an unconfirmed divergence hypothesis) so the
@@ -8,7 +8,9 @@ on/off effect can be measured. These tests pin three falsifiable facts:
 2. the default path (flag not passed -> ``reject_uphill=None``) leaves the
    endpoint RFO config byte-identical to ``RFO_KW`` (no behavior change);
 3. an explicit toggle threads ``True``/``False`` into the *endpoint* RFO config
-   through the real ``_optimize_endpoint_geom`` code path (rfo branch only).
+   through the real ``_optimize_endpoint_geom`` code path (rfo branch only);
+4. TS optimizers force uphill rejection off even when YAML-like input tries to
+   re-enable it.
 """
 
 from __future__ import annotations
@@ -22,11 +24,31 @@ from click.testing import CliRunner
 import pdb2reaction.workflows.all as allmod
 from pdb2reaction.cli import cli as root_cli
 from pdb2reaction.core.defaults import RFO_KW
+from pdb2reaction.workflows.tsopt import (
+    _build_rsirfo_kwargs,
+    _force_ts_reject_uphill_off,
+)
 
 
 def test_shipped_default_is_reject_uphill_on() -> None:
     # The None-path preserves whatever RFO_KW declares; this pins that default.
     assert RFO_KW["reject_uphill"] is True
+
+
+def test_ts_rfo_forces_reject_uphill_off(tmp_path: Path) -> None:
+    kwargs = _build_rsirfo_kwargs(
+        {"reject_uphill": True},
+        {"reject_uphill": True},
+        tmp_path,
+    )
+    assert kwargs["reject_uphill"] is False
+
+
+def test_ts_dimer_forces_reject_uphill_off() -> None:
+    hostile_yaml_cfg = {"reject_uphill": True}
+    effective = _force_ts_reject_uphill_off(hostile_yaml_cfg)
+    assert effective["reject_uphill"] is False
+    assert hostile_yaml_cfg["reject_uphill"] is True
 
 
 @pytest.mark.parametrize("command", ["opt", "all"])

@@ -23,11 +23,15 @@ pdb2reaction opt -i input.pdb [-q 0 -m 1] \
 | `-q` / `-l` / `-m` | — | — | Charge / spin |
 | `--opt-mode` | str | `grad` | `grad` (L-BFGS) or `hess` (RFO); aliases `lbfgs` / `rfo` |
 | `--max-cycles` | int | `10000` | Stop after N cycles; see `OPT_BASE_KW["max_cycles"]` |
+| `--reject-uphill / --no-reject-uphill` | toggle | on | In Hessian/RFO mode, reject an energy-raising trial, restore the lower-energy geometry, and shrink the trust radius. At the emergency floor, run one final convergence check on the retained geometry. Ignored in L-BFGS mode. |
 | `--tr-projection` | str | `constrained` | Rigid-mode treatment used only by `--flatten` PHVA. `legacy-active` is deprecated comparison-only behavior; never use it for pass/HOSP transition-state certification. |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `--solvent` | str | none | xTB-ALPB solvent |
 | `-o, --out-dir` | path | `./result_opt/` | Output directory |
 | `--config` / `--show-config` / `--dry-run` / `--help-advanced` | — | — | Standard |
+
+With `--thresh baker`, convergence is `max(|force|) <= 3e-4` and
+(`|delta E| < 1e-6` or `max(|step|) <= 3e-4`); RMS values are diagnostic.
 
 ## Examples
 

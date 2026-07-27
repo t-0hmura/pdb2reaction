@@ -71,10 +71,10 @@ print(d["n_imaginary"])                       # count of every frequency < 0 cm-
 print(d["rigid_projection"]["treatment"], d["rigid_projection"]["effective_rank"])
 print(d["frequencies_cm"][:5])                # first five frequencies (cm-1)
 t = d["thermochemistry"]
-print(t["electronic_energy_ha"])              # EE (Hartree)
+print(t["electronic_energy_ha"])              # E (Hartree)
 print(t["zpe_correction_ha"])                 # ZPE correction (Hartree)
-print(t["thermal_correction_free_energy_ha"]) # dG_therm (Hartree)
-print(t["sum_EE_and_thermal_free_energy_ha"]) # EE + dG_therm (Hartree)
+print(t["thermal_correction_free_energy_ha"]) # G_corr (Hartree)
+print(t["sum_EE_and_thermal_free_energy_ha"]) # E + G_corr = G (Hartree)
 print(t["S_cal_per_mol_K"])                   # entropy (cal/mol·K)
 print(t["symmetry_number"], t["symmetry_number_source"])
 ```

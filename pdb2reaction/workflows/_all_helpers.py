@@ -11,116 +11,8 @@ without changing observable behavior.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
-
-
-@dataclass(frozen=True)
-class AllContext:
-    """Frozen bundle of the `pdb2reaction all` CLI parameters.
-
-    Mirrors the ``cli()`` signature in `pdb2reaction/workflows/all.py`
-    so helper functions can accept a single argument instead of
-    re-listing 66 keyword parameters.
-
-    Status: transitional foundation. The dataclass holds the canonical
-    parameter set, and ``tests/test_all_helpers.py``'s drift guard
-    enforces that the field names stay in lockstep with the
-    ``cli.callback`` signature. cli() itself still binds parameters
-    individually for back-compat with its existing nested closures,
-    so AllContext is not yet exercised at runtime. Incremental
-    decomposition extracts can migrate one helper at a time to take
-    ``ctx: AllContext`` instead of an exploding kwargs list, knowing
-    the drift guard prevents the dataclass from silently going out of
-    sync while that migration proceeds.
-
-    Field order matches the CLI option declaration order in
-    `workflows/all.py` so the two read side-by-side cleanly.
-    """
-
-    # Inputs / output
-    input_paths: Sequence[Path]
-    center_spec: Optional[str]
-    out_dir: Path
-    # Extract knobs
-    radius: float
-    radius_het2het: float
-    include_h2o: bool
-    exclude_backbone: bool
-    add_linkh: bool
-    selected_resn: str
-    modified_residue: str
-    ligand_charge: Optional[str]
-    charge_override: Optional[int]
-    # Workers / backend
-    workers: int
-    workers_per_node: int
-    backend: Optional[str]
-    solvent: Optional[str]
-    solvent_model: Optional[str]
-    # Charges
-    spin: int
-    # Freeze / MEP
-    freeze_links_flag: Optional[bool]
-    tr_projection: str
-    mep_mode: str
-    dmf_backend: str
-    max_nodes: int
-    max_cycles: int
-    climb: bool
-    opt_mode: str
-    opt_mode_post: Optional[str]
-    dump: bool
-    convert_files: bool
-    refine_path: bool
-    thresh: Optional[str]
-    thresh_post: str
-    config_yaml: Optional[Path]
-    show_config: bool
-    dry_run: bool
-    preopt: bool
-    hessian_calc_mode: Optional[str]
-    # Stage toggles
-    do_tsopt: bool
-    do_thermo: bool
-    do_dft: bool
-    # Scan
-    scan_lists_raw: Sequence[str]
-    scan_out_dir: Optional[Path]
-    scan_one_based: Optional[bool]
-    scan_max_step_size: Optional[float]
-    scan_bias_k: Optional[float]
-    scan_relax_max_cycles: Optional[int]
-    scan_preopt_override: Optional[bool]
-    scan_endopt_override: Optional[bool]
-    ref_pdb_cli: Optional[Path]
-    # TSOPT / FREQ / DFT
-    tsopt_max_cycles: Optional[int]
-    tsopt_out_dir: Optional[Path]
-    flatten: bool
-    reject_uphill: bool
-    irc_step_size: Optional[float]
-    irc_never_stop: Optional[bool]
-    freq_out_dir: Optional[Path]
-    freq_max_write: Optional[int]
-    freq_amplitude_ang: Optional[float]
-    freq_n_frames: Optional[int]
-    freq_sort: Optional[str]
-    freq_temperature: Optional[float]
-    freq_pressure: Optional[float]
-    freq_symmetry_number: Optional[int]
-    dft_out_dir: Optional[Path]
-    dft_func_basis: Optional[str]
-    dft_max_cycle: Optional[int]
-    dft_conv_tol: Optional[float]
-    dft_grid_level: Optional[int]
-    dft_engine: Optional[str]
-    cli_coord_type: Optional[str]
-    precision: Optional[str]
-    backend_model: Optional[str]
-    calc_file: Optional[str] = None
-    calc_factory: Optional[str] = None
 
 
 def build_energy_level_dict(
@@ -162,7 +54,13 @@ def build_pipeline_summary_payload(
     do_dft: bool,
     dft_func_basis_use: Optional[str],
     opt_mode: Optional[str],
+    opt_mode_post: Optional[str],
+    path_opt_mode: Optional[str],
+    post_opt_mode: Optional[str],
+    ts_opt_mode: Optional[str],
+    endpoint_opt_mode: Optional[str],
     mep_mode_kind: Optional[str],
+    dmf_correlated: bool,
     mlip_backend: str,
     mlip_model: Optional[str],
     mlip_precision: Optional[str],
@@ -205,7 +103,19 @@ def build_pipeline_summary_payload(
         "dft": do_dft,
         "dft_func_basis": dft_func_basis_use if do_dft else None,
         "opt_mode": opt_mode.lower() if opt_mode else None,
+        "opt_mode_post": opt_mode_post.lower() if opt_mode_post else None,
+        "path_opt_mode": (
+            path_opt_mode.lower() if path_opt_mode else None
+        ),
+        "post_opt_mode": (
+            post_opt_mode.lower() if post_opt_mode else None
+        ),
+        "ts_opt_mode": ts_opt_mode.lower() if ts_opt_mode else None,
+        "endpoint_opt_mode": (
+            endpoint_opt_mode.lower() if endpoint_opt_mode else None
+        ),
         "mep_mode": mep_mode_kind,
+        "dmf_correlated": bool(dmf_correlated),
         "mlip_backend": mlip_backend,
         "mlip_model": mlip_model,
         "mlip_precision": mlip_precision,
@@ -330,7 +240,6 @@ def validated_thermo_triplet(
 
 
 __all__ = [
-    "AllContext",
     "build_energy_level_dict",
     "build_pipeline_summary_payload",
     "build_thermo_mode_validation",
