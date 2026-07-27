@@ -50,6 +50,7 @@ from pdb2reaction.core.defaults import (
     UMA_CALC_KW,
     OPT_BASE_KW,
     TSOPT_MODE_ALIASES,
+    TS_IMAG_SOFT_WARN_CM,
     OUT_DIR_TSOPT,
     HESSIAN_DIMER_CLI_KW,
     RSIRFO_KW,
@@ -847,6 +848,30 @@ def _imaginary_mode_indices_and_values(
     return neg_idx, ims
 
 
+def _warn_if_leading_imaginary_mode_is_soft(ims: List[float]) -> None:
+    """
+    Warn when the imaginary mode that certifies the saddle is very soft.
+
+    Certification counts imaginary modes; it does not weigh them, so a
+    few-cm^-1 soft mode certifies exactly like a real reaction coordinate.
+    Bond forming/breaking is normally several hundred cm^-1. Warning only —
+    the terminal status and the counting rule are unchanged.
+    """
+    if not ims:
+        return
+    leading = min(float(x) for x in ims)
+    if abs(leading) >= TS_IMAG_SOFT_WARN_CM:
+        return
+    emit(
+        f"[tsopt] WARNING: the leading imaginary mode is {leading:.2f} cm^-1, "
+        f"below {TS_IMAG_SOFT_WARN_CM:.0f} cm^-1. A bond forming/breaking "
+        f"reaction coordinate is normally several hundred cm^-1; visualize the "
+        f"mode and confirm IRC connectivity before treating this as a "
+        f"transition state.",
+        narrative=True,
+    )
+
+
 def _echo_imaginary_modes(
     freqs_cm: np.ndarray,
     neg_freq_thresh_cm: float,
@@ -856,6 +881,7 @@ def _echo_imaginary_modes(
     """
     neg_idx, ims = _imaginary_mode_indices_and_values(freqs_cm, neg_freq_thresh_cm)
     emit(f"[Imaginary modes] n={len(neg_idx)}  ({ims})", narrative=True)
+    _warn_if_leading_imaginary_mode_is_soft(ims)
     return neg_idx
 
 
@@ -1240,7 +1266,7 @@ class HessianDimer:
         echo_resolved_device()
 
         # LBFGS kwargs: enforce thresh/max_cycles/out_dir/dump; allow others
-        lbfgs_kwargs = dict(self.lbfgs_kwargs)
+        lbfgs_kwargs = _force_ts_reject_uphill_off(self.lbfgs_kwargs)
         lbfgs_kwargs.update({
             "max_cycles": n_steps,
             "thresh": threshold,
@@ -1586,6 +1612,7 @@ class HessianDimer:
                 n_imag = int(np.sum(freqs_cm < -abs(self.neg_freq_thresh_cm)))
                 ims = [float(x) for x in freqs_cm if x < -abs(self.neg_freq_thresh_cm)]
                 emit(f"[Imaginary modes] n={n_imag}  ({ims})", narrative=True)
+                _warn_if_leading_imaginary_mode_is_soft(ims)
                 if n_imag <= 1:
                     break
 
@@ -1715,6 +1742,14 @@ OPT_BASE_KW_LOCAL = {
     "check_eigval_structure": True,
 }
 
+
+def _force_ts_reject_uphill_off(kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    """Return TS optimizer kwargs with physical-energy rejection disabled."""
+    effective = dict(kwargs)
+    effective["reject_uphill"] = False
+    return effective
+
+
 def _build_rsirfo_kwargs(
     opt_cfg: Dict[str, Any],
     rsirfo_cfg: Dict[str, Any],
@@ -1747,7 +1782,7 @@ def _build_rsirfo_kwargs(
     for diis_kw in ("gediis", "gdiis", "gdiis_thresh", "gediis_thresh", "gdiis_test_direction", "adapt_step_func"):
         rsirfo_kwargs.pop(diis_kw, None)
 
-    return rsirfo_kwargs
+    return _force_ts_reject_uphill_off(rsirfo_kwargs)
 
 
 def _validate_reference_mode_optimizer(
@@ -2077,6 +2112,14 @@ def cli(
             ],
         )
 
+        # A TS search follows a saddle-search direction, so physical energy is
+        # not required to decrease. Keep this invariant after every YAML merge.
+        opt_cfg["reject_uphill"] = False
+        rsirfo_cfg["reject_uphill"] = False
+        simple_cfg["lbfgs"] = _force_ts_reject_uphill_off(
+            simple_cfg.get("lbfgs", {})
+        )
+
         try:
             geom_cfg["tr_projection"] = normalize_tr_projection_mode(
                 geom_cfg.get("tr_projection")
@@ -2175,7 +2218,7 @@ def cli(
                         "override_yaml": None if override_yaml is None else str(override_yaml),
                         "merged_keys": sorted(merged_yaml_cfg.keys()),
                     },
-                )
+                force=True)
             )
         if dry_run:
             click.echo(
@@ -2439,6 +2482,7 @@ def cli(
                 n_imag = int(np.sum(neg_mask))
                 ims = [float(x) for x in freqs_cm if x < -abs(neg_freq_thresh_cm)]
                 emit(f"[Imaginary modes] n={n_imag}  ({ims})", narrative=True)
+                _warn_if_leading_imaginary_mode_is_soft(ims)
 
                 # A local minimum plus its Hessian does not identify the
                 # intended neighboring saddle.  When the path supplied that
