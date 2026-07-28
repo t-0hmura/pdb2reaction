@@ -17,7 +17,8 @@ _COMMAND_RE = re.compile(
 
 
 def _unknown_long_options(script: str) -> list[str]:
-    """Return literal long options absent from their named subcommand."""
+    """Return one diagnostic message per literal long option absent from its
+    named subcommand."""
 
     root_context = click.Context(cli)
     commands = {

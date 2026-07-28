@@ -84,8 +84,8 @@ def test_config_borne_precision_dispatched_when_no_cli_flag() -> None:
     """freq.py cli(): when the --precision *flag* is absent, the config's unified
     ``calc.precision`` (written by ``all`` via _write_args_yaml_with_freeze_atoms)
     must still be dispatched, so ``all --precision fp64`` reaches the ORB freq
-    Hessian instead of leaving ORB at its default TF32. Mirrors the cli()
-    resolution: flag wins, else the config value if it is a unified token."""
+    Hessian instead of being dropped on the way to the child stage. Mirrors the
+    cli() resolution: flag wins, else the config value if it is a unified token."""
     calc_cfg = {"backend": "orb", "precision": "fp64"}
     apply_effective_precision(calc_cfg, None)  # no --precision flag → honor config
     assert calc_cfg["precision"] == "float64"

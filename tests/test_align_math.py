@@ -1,5 +1,4 @@
-# tests/test_align_math.py
-"""Tests for pure math utilities in pdb2reaction.align_freeze_atoms."""
+"""Tests for pure math utilities in pdb2reaction.workflows.align_freeze."""
 
 import numpy as np
 import pytest
@@ -75,7 +74,6 @@ class TestKabsch:
                         [0, 0, 1]])
         Q = P @ Rz.T  # Row-vector rotation
         R, t = kabsch_R_t(P, Q)
-        # Q @ R + t ≈ P
         reconstructed = Q @ R + t
         np.testing.assert_allclose(reconstructed, P, atol=1e-10)
 

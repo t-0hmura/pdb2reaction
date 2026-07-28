@@ -1,5 +1,4 @@
-# tests/test_defaults.py
-"""Tests for pdb2reaction.defaults configuration constants."""
+"""Tests for pdb2reaction.core.defaults configuration constants."""
 
 from copy import deepcopy
 

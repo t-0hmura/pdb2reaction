@@ -1,5 +1,4 @@
-# tests/test_summary_log.py
-"""Tests for pdb2reaction.summary_log formatting helpers."""
+"""Tests for pdb2reaction.io.summary formatting helpers."""
 
 import time
 from pathlib import Path

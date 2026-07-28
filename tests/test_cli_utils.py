@@ -1,4 +1,4 @@
-"""Tests for pdb2reaction.cli_utils."""
+"""Tests for pdb2reaction.cli.decorators."""
 
 from pathlib import Path
 

@@ -90,7 +90,6 @@ def test_bofill_rank2_matches_dense_reference(dev, dt):
     assert dH.device.type == H.device.type
     assert dH.dtype == H.dtype
     np.testing.assert_allclose(dH.detach().cpu().numpy(), ref, **_tol(dt))
-    # symmetry
     assert torch.allclose(dH, dH.t(), **_tol(dt))
 
 
@@ -178,7 +177,9 @@ def test_bofill_numpy_degenerate_secants_are_finite(dt):
 
 def test_bofill_kernel_has_no_advanced_index_addto():
     # H01 negative source test: the low-rank kernel must not use triu_indices or
-    # advanced-index .add_() (the no-op MLMM pattern) or a CPU round-trip default.
+    # advanced-index .add_() (the silently-discarded write guarded by the
+    # DO-NOT-INLINE note in pdb2reaction/workflows/tsopt.py) or a CPU
+    # round-trip default.
     src = inspect.getsource(bofill_rank2_factors) + inspect.getsource(bofill_update)
     assert "triu_indices" not in src
     assert ".add_(" not in src
@@ -216,7 +217,7 @@ def test_cow_update_does_not_mutate_accepted_hessian(dev, dt):
 def test_cow_rollback_restores_prior_state():
     # Emulate accept-then-reject: replacement semantics let the old reference win.
     H, dx, dg = _rand_system(30, torch.float64, "cpu", seed=22)
-    snapshot = H  # what _restore_hessian_trial_state stashes
+    snapshot = H  # the H reference the trial snapshot holds and _restore_hessian_trial_state puts back
     before = snapshot.detach().clone()
     U, C = bofill_rank2_factors(H, dx, dg)
     trial = H.clone()
@@ -269,7 +270,6 @@ def test_irc_mw_hessian_active_vector_path():
     out = irc._mw_hessian_active(H)
     ref = torch.diag(d) @ H @ torch.diag(d)
     assert torch.allclose(out, ref, rtol=1e-12, atol=1e-12)
-    # numpy path
     irc.mm_inv2 = np.diag(d.numpy())
     out_np = irc._mw_hessian_active(H.numpy())
     np.testing.assert_allclose(out_np, ref.numpy(), rtol=1e-12, atol=1e-12)
@@ -290,7 +290,6 @@ def test_active_square_matches_chained(dev, dt, n, m):
         assert out.shape == (0, 0)
         return
     idx = torch.randperm(n, generator=g)[:m].to(dev)
-    # ordered
     idx_sorted = idx.sort().values
     ref = H.index_select(0, idx_sorted).index_select(1, idx_sorted)
     got = active_square(H, idx_sorted)

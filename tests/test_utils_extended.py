@@ -1,4 +1,4 @@
-"""Extended unit tests for pdb2reaction.utils pure functions."""
+"""Extended unit tests for pdb2reaction.core.utils pure functions."""
 
 from __future__ import annotations
 

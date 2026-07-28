@@ -1,4 +1,5 @@
-"""Smoke regressions for previously low-coverage utility subcommands."""
+"""CLI smoke regressions: previously low-coverage utility subcommands plus
+CLI-surface contracts (verbosity, YAML/flag precedence, scan-spec validation)."""
 
 from __future__ import annotations
 
@@ -375,7 +376,6 @@ def test_verbose_is_a_per_subcommand_option() -> None:
         assert res.exit_code == 0, res.output
         assert "-v, --verbose" in res.output, f"{name} --help is missing -v"
 
-    # Root-placed `-v` no longer exists (it moved onto the subcommands).
     root = runner.invoke(root_cli, ["-v", "2", "opt", "--help"])
     assert root.exit_code != 0
     assert "No such option" in root.output

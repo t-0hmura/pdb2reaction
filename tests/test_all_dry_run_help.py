@@ -1,4 +1,5 @@
-"""CLI documentation regression tests for ``all --dry-run``."""
+"""Regression tests for ``all --dry-run``: help text, stage planning and
+temp-dir cleanup."""
 
 import importlib
 

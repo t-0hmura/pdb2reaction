@@ -125,7 +125,8 @@ def test_dataclasses_are_json_safe() -> None:
 
 
 def test_scan_failed_low_energy_point_excluded_from_minimum() -> None:
-    # These are exactly the records scan2d/scan3d build (tri-state bias_converged).
+    # These carry the seed-eligibility fields of the records scan2d/scan3d build
+# (tri-state bias_converged).
     records = [
         {"i": 0, "j": 0, "energy_hartree": -1.00, "bias_converged": True, "artifact_written": True},
         {"i": 0, "j": 1, "energy_hartree": -1.20, "bias_converged": True, "artifact_written": True},
@@ -529,7 +530,8 @@ def test_all_freq_forwards_symmetry_number_only_when_overridden(
 def test_legacy_converged_output_is_byte_compatible(tmp_path: Path) -> None:
     from pdb2reaction.core.utils import write_result_json
 
-    # The exact legacy scan2d result payload for a fully converged run.
+    # A representative subset of the legacy scan2d result payload for a fully
+# converged run.
     legacy = {
         "status": "completed",
         "charge": 0,
@@ -653,7 +655,8 @@ def test_m50_producer_records_nonconvergence_from_optimizer() -> None:
         def __init__(self, conv):
             self.is_converged = conv
 
-    # scan2d/scan3d/scan record `bias_converged = optimizer_converged_bit(opt)`.
+    # scan2d/scan3d record `bias_converged = optimizer_converged_bit(opt)`; scan
+    # records the same bit per step.
     assert optimizer_converged_bit(_FakeOpt(False)) is False
     assert optimizer_converged_bit(_FakeOpt(True)) is True
     # A non-boolean 1 (truthy but not convergence) collapses to unknown.

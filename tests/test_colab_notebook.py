@@ -1,4 +1,5 @@
-"""Static contracts for the release-matched Colab GUI notebook."""
+"""Contracts for the release-matched Colab GUI notebook: source-level
+assertions plus cells compiled and executed against real ipywidgets."""
 
 from __future__ import annotations
 
@@ -202,7 +203,8 @@ def test_colab_setup_is_pinned_to_matching_release_and_one_backend() -> None:
     # normal user does, so the version guard compares what pip actually resolved
     # against the requested tag.
     assert "pip('pdb2reaction==' + pdb2reaction_version.lstrip('v'))" in setup
-    # The DFT extra installs with a visible log; a quiet pip looked stalled.
+    # The [dft] extra goes through the same quiet `pip` helper as every other
+    # install; the streaming `pip_logged` variant was removed.
     assert "pip('pdb2reaction[dft]==' + pdb2reaction_version.lstrip('v'))" in setup
     assert "pip_logged" not in setup
     assert "install_dft is ticked" in setup
@@ -236,7 +238,7 @@ def test_colab_setup_dft_branch_installs_extra_and_checks_gpu(monkeypatch, capsy
     popen_calls: list[list[str]] = []
 
     class _FakePopen:
-        """The [dft] extra installs through pip_logged, which streams pip output."""
+        """Records the argv of every subprocess the Setup cell launches."""
 
         def __init__(self, argv, **_kwargs):
             popen_calls.append([str(value) for value in argv])

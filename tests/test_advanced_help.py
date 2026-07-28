@@ -52,7 +52,7 @@ def test_basic_help_hides_advanced_options_that_advanced_help_shows():
     # A representative primary option stays visible in the basic help.
     assert "--tsopt" in basic.output
 
-    # Compare on each option's rendered help-record column (e.g. "-r, --rotate
+    # Compare on each option's rendered help-record column (e.g. "-r, --radius
     # FLOAT"); it carries the metavar so it cannot collide with prose that merely
     # mentions a flag. Every hidden option's column is present exactly once in
     # advanced help and absent from basic help.
@@ -73,7 +73,6 @@ def test_basic_help_hides_advanced_options_that_advanced_help_shows():
 
 def test_repeated_help_calls_preserve_hidden_state_and_output():
     runner = CliRunner()
-    # All advanced options start hidden.
     assert all(opt.hidden for opt in all_cli._advanced_hidden_options)
 
     basic1 = runner.invoke(all_cli, ["--help"])

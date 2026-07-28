@@ -1,4 +1,5 @@
-"""Unit tests for pdb2reaction.workflows._all_helpers."""
+"""Unit tests for pdb2reaction.workflows._all_helpers and the ``workflows.all``
+orchestration helpers."""
 
 from __future__ import annotations
 

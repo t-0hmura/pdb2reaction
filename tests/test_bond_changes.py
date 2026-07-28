@@ -1,4 +1,4 @@
-"""Unit tests for pdb2reaction.bond_changes pure helper functions."""
+"""Unit tests for pdb2reaction.domain.bond_changes helpers."""
 
 from __future__ import annotations
 

@@ -2,7 +2,7 @@
 
 The flag lets a user opt out of the post-IRC endpoint RFO uphill-rejection
 safeguard (default on, resting on an unconfirmed divergence hypothesis) so the
-on/off effect can be measured. These tests pin three falsifiable facts:
+on/off effect can be measured. These tests pin four falsifiable facts:
 
 1. the shipped default is unchanged (``RFO_KW["reject_uphill"] is True``);
 2. the default path (flag not passed -> ``reject_uphill=None``) leaves the

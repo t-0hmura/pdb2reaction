@@ -1,4 +1,4 @@
-"""Unit tests for pdb2reaction.extract pure helper functions."""
+"""Unit tests for pdb2reaction.workflows.extract helpers and the charge/residue-data modules it re-exports."""
 
 from __future__ import annotations
 

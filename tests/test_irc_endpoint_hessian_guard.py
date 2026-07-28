@@ -80,7 +80,8 @@ def test_inconsistent_exact_shape_fails_closed() -> None:
 
 
 def test_legacy_predicate_never_evaluates_the_exact_hessian() -> None:
-    # With require_pos_def_hessian disabled the run loop only ever consults the
+    # `_mw_hessian_is_pos_def` is the retained legacy predicate (no production caller
+    # since the M55 guard landed); the run loop only ever consults the
     # quasi-Newton matrix; the exact getter must stay untouched.
     irc = _guard(np.zeros(6), -np.eye(6), np.eye(6))
     irc._mw_hessian_is_pos_def()
