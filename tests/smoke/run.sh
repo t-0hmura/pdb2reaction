@@ -219,7 +219,7 @@ pdb2reaction scan2d -i p_complex_model.pdb --ligand-charge 'PRE:-2' --freeze-ato
 
 # --- Solvent correction (requires xTB) ---
 
-# test39: opt (solvent water; xTB is a lane preflight requirement)
+# test39: opt (solvent water)
 pdb2reaction opt -i r.pdb -q -1 --opt-mode grad --max-cycles 3 --thresh gau_loose --solvent water --out-dir test39 > test39.out 2>&1
 
 # --- dist-freeze ---
@@ -250,7 +250,8 @@ pdb2reaction opt -i r.pdb -q -1 --opt-mode hess --max-cycles 5 --thresh gau_loos
 
 # test47: `all` pipeline determinism GATE (`--deterministic`).
 # Runs the full pipeline twice with identical inputs / args + `--deterministic`
-# and REQUIRES the two runs to be bit-identical. Default (non-deterministic) GPU
+# and REQUIRES their geometry artifacts (*.pdb / *.xyz) to be bit-identical --
+# that manifest is what the gate compares. Default (non-deterministic) GPU
 # runs carry ~ULP scatter/atomic non-determinism and are not asserted here;
 # `--deterministic` enables torch deterministic algorithms and MUST be
 # bit-reproducible, so any drift is a real regression and fails the smoke.
@@ -285,7 +286,7 @@ if [ "$drifted" -ne 0 ]; then
   exit 1
 fi
 
-# --- --coord-type CLI plumbing (throttled, fast) ---
+# --- --coord-type CLI plumbing, plus the single-point lanes (throttled, fast) ---
 
 # test48: `all --coord-type cart` — explicit cart (== default), verifies CLI plumbing.
 pdb2reaction all -i r.pdb p.pdb -q -1 --coord-type cart --no-refine-path --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test48 > test48.out 2>&1
@@ -296,14 +297,15 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --coord-type dlc --no-refine-path --max-cy
 # test50: `sp` (single-point) — energy + forces.
 pdb2reaction sp -i r.pdb -q -1 --out-dir test50 > test50.out 2>&1
 
-# test51: `sp --hess` — energy + forces + Hessian (UMA analytical).
+# test51: `sp --hess` — energy + forces + Hessian (default FiniteDifference).
 pdb2reaction sp -i r.pdb -q -1 --hess --out-dir test51 > test51.out 2>&1
 
-# --- Full-pipeline, NO max-cycles throttle (release-gate runs) ---
-# These exercise the canonical `all` flow with default convergence thresholds
-# and the production-realistic optimizer cycle budgets. Each run takes
-# substantially longer (~30-60 min) than the throttled tests above; they are
-# the "does the pipeline actually finish on a real input" gate.
+# --- Full-pipeline release-gate runs ---
+# test52 is the untrottled one: the canonical `all` flow with default
+# convergence thresholds and production-realistic optimizer cycle budgets, so
+# it takes substantially longer (~30-60 min) than the throttled tests above and
+# is the "does the pipeline actually finish on a real input" gate. test53 stays
+# throttled — it only has to light up the DLC code path end to end.
 
 # test52: full `all` cart — default thresh, no max-cycles cap.
 pdb2reaction all -i r.pdb p.pdb -q -1 --out-dir test52 > test52.out 2>&1
@@ -317,7 +319,7 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --out-dir test52 > test52.out 2>&1
 pdb2reaction all -i r.pdb p.pdb -q -1 --coord-type dlc --no-refine-path --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --no-tsopt --no-thermo --no-dft --out-dir test53 > test53.out 2>&1
 
 # --- Per-stage internal-coordinate code paths ---
-# Each test scoped at max-cycles 3 + thresh gau_loose to exercise the
+# Each test scoped at a 2-3 cycle cap + thresh gau_loose to exercise the
 # --coord-type code path without long convergence. Frequency analysis remains
 # Cartesian because the only thing an internal-coordinate flag would add is
 # an unrelated B-matrix construction:
@@ -337,7 +339,8 @@ pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode hess --coord-type redund --max-cycl
 pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode hess --coord-type dlc --freeze-atoms 1,3,5 --max-cycles 2 --thresh gau_loose --out-dir test53d_ts_dlc_freeze > test53d_ts_dlc_freeze.out 2>&1
 pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode hess --coord-type tric --max-cycles 2 --thresh gau_loose --out-dir test53e_ts_tric > test53e_ts_tric.out 2>&1
 
-# test53d: scan --coord-type dlc (1D)
+# test53d_scan_dlc: scan --coord-type dlc (1D).  The bare `test53d` label belongs
+# to the tsopt lane above; this one is named after its own out-dir.
 pdb2reaction scan -i r.pdb -q -1 --coord-type dlc --scan-lists "[(1,5,1.4)]" --max-step-size 2.0 --relax-max-cycles 3 --no-preopt --no-endopt --out-dir test53d_scan_dlc > test53d_scan_dlc.out 2>&1
 
 # test53g: opt --coord-type redund
@@ -378,8 +381,28 @@ pdb2reaction irc -i ts.pdb -q 0 --hessian-calc-mode analytical --max-cycles 2 --
 pdb2reaction scan -i r.pdb -q -1 --opt-mode hess --scan-lists "[(1,5,1.4)]" --max-step-size 2.0 --relax-max-cycles 2 --no-preopt --no-endopt --out-dir test59_scan_hess > test59_scan_hess.out 2>&1
 
 # test60: scan2d --opt-mode hess (RFO per-grid relaxation).  Start from a
-# converged test8 point and use the smallest genuine 2D grid (2 × 2).
-pdb2reaction scan2d -i test8/grid/point_i140_j300.pdb --ligand-charge 'PRE:-2' --freeze-atoms "$P_COMPLEX_MODEL_FREEZE_ATOMS" --scan-lists "[('PRE 8 C3','PRE 8 O1\'',1.40,1.41),('PRE 8 C1','PRE 8 C8',3.00,3.01)]" --opt-mode hess --max-step-size 2.0 --relax-max-cycles 100 --thresh gau_loose --out-dir test60_scan2d_hess > test60_scan2d_hess.out 2>&1
+# converged test8 point and use the smallest genuine 2D grid (2 × 2).  The
+# starting geometry is whatever test8 relaxed to, so a corner of this tiny grid
+# may stay off its target distance and leave the surface without enough support
+# to interpolate; a full 2 × 2 and that controlled outcome both prove the RFO
+# per-grid branch ran, while any other failure is fatal.
+rc=0
+pdb2reaction scan2d -i test8/grid/point_i140_j300.pdb --ligand-charge 'PRE:-2' --freeze-atoms "$P_COMPLEX_MODEL_FREEZE_ATOMS" --scan-lists "[('PRE 8 C3','PRE 8 O1\'',1.40,1.41),('PRE 8 C1','PRE 8 C8',3.00,3.01)]" --opt-mode hess --max-step-size 2.0 --relax-max-cycles 100 --thresh gau_loose --out-dir test60_scan2d_hess > test60_scan2d_hess.out 2>&1 || rc=$?
+test -s test60_scan2d_hess/surface.csv || { echo "[smoke] FAIL test60: surface.csv missing" >> test60_scan2d_hess.out; exit 1; }
+grep -Fq '[hessian] Completed FiniteDifference Hessian:' test60_scan2d_hess.out || { echo "[smoke] FAIL test60: Hessian branch did not run" >> test60_scan2d_hess.out; exit 1; }
+if grep -Fq 'Traceback (most recent call last)' test60_scan2d_hess.out; then
+  echo "[smoke] FAIL test60: unexpected traceback" >> test60_scan2d_hess.out
+  exit 1
+fi
+if [ "$rc" -eq 0 ]; then
+  test -s test60_scan2d_hess/scan2d_map.png || { echo "[smoke] FAIL test60: successful run omitted the 2D plot" >> test60_scan2d_hess.out; exit 1; }
+elif [ "$rc" -eq 1 ]; then
+  grep -Fq '[plot] ERROR: A 2D energy surface requires at least three non-collinear' test60_scan2d_hess.out \
+    || { echo "[smoke] FAIL test60: exit 1 was not the controlled insufficient-support outcome" >> test60_scan2d_hess.out; exit 1; }
+else
+  echo "[smoke] FAIL test60: unexpected exit status $rc" >> test60_scan2d_hess.out
+  exit 1
+fi
 
 # test61: scan3d --opt-mode hess (RFO per-grid relaxation).  A deliberately
 # short budget may either converge or end with the controlled no-eligible-data
