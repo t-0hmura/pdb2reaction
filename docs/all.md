@@ -184,7 +184,7 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | Option | Description | Default |
 | --- | --- | --- |
 | `-l, --ligand-charge TEXT` | Net charge or per-resname mapping used when `-q` is omitted (PDB/mmCIF metadata or `--ref-pdb`). | _None_ |
-| `-q, --charge INT` | Force the net system charge (overrides `--ligand-charge/-l`). | _None_ |
+| `-q, --charge INT` | Without `-c`, set the net system charge and override `--ligand-charge/-l`. With `-c`, assert the extraction-derived total and abort on mismatch. | _None_ |
 | `-m, --multiplicity INT` | Spin multiplicity forwarded to all downstream steps. | `1` |
 
 ### Extraction

@@ -18,6 +18,14 @@ def test_all_dry_run_help_describes_temporary_extract_precheck():
     assert "no computational stage or persistent output" in help_text
 
 
+def test_all_help_describes_charge_precedence_with_and_without_extraction():
+    result = CliRunner().invoke(cli, ["--help"])
+    assert result.exit_code == 0
+    help_text = " ".join(result.output.split())
+    assert "Without extraction, -q/--charge explicitly sets the total" in help_text
+    assert "with extraction, it asserts the derived total" in help_text
+
+
 def test_all_dry_run_plan_omits_unrequested_extraction(tmp_path):
     xyz = tmp_path / "ts.xyz"
     xyz.write_text("2\nH2\nH 0 0 0\nH 0 0 0.74\n", encoding="utf-8")

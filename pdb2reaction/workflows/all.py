@@ -3087,8 +3087,8 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
         "-c/--center it feeds the extractor charge summary; with -c omitted "
         "(extraction skipped) the same mapping is applied to the full input PDB/mmCIF to "
         "derive the total system charge. A bare number sets the total directly. "
-        "PDB/mmCIF inputs only. To force a total charge regardless of residues, use "
-        "-q/--charge (emits a warning)."
+        "PDB/mmCIF inputs only. Without extraction, -q/--charge explicitly sets "
+        "the total; with extraction, it asserts the derived total."
     ),
 )
 @click.option(

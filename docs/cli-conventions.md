@@ -80,18 +80,26 @@ For PDB/mmCIF inputs, `--ligand-charge/-l` lets you specify charges only for non
 -l 'SAM:1,GPP:-3'        # per-residue mapping (recommended; `=` separator also accepted)
 -l 'LIG:-2'              # single mapping
 -l -3                    # single integer = total ligand charge
--q 0                     # explicit total system charge override
+-q 0                     # explicit total system charge
 ```
 
-**Resolution order** (highest priority first):
+**Resolution order when extraction is skipped** (highest priority first):
 
-1. `-q/--charge` or `--ligand-charge/-l` supplied explicitly on the CLI.
-2. `calc.charge` from `--config` (when neither CLI charge form is supplied).
-3. Active-site model extraction summary (amino acids + ions + `--ligand-charge`; only when `-c/--center` is set and extraction runs — e.g. `all`, `extract`). In `all`, `-q` or `calc.charge` is checked as an assertion against this value.
+1. Explicit `-q/--charge`.
+2. Total derived from explicit `--ligand-charge/-l` and PDB/mmCIF residue metadata.
+3. `calc.charge` from `--config` (when neither CLI charge form is supplied).
 4. `.gjf` template metadata.
 5. Abort if unresolved.
 
-For per-stage subcommands (`opt` / `tsopt` / `freq` …) or when `-c` is omitted, extraction is skipped. Ligand-derived or configured charge is resolved before `.gjf` metadata.
+This branch applies to per-stage subcommands (`opt` / `tsopt` / `freq` …)
+and to `all` when `-c/--center` is omitted.
+
+**`all -c/--center` exception:** extraction derives the authoritative total
+from standard residues, ions, and `--ligand-charge/-l`. Explicit `-q` is an
+assertion against that total and aborts on mismatch; it does not replace the
+derived value. When neither CLI charge form is supplied, `calc.charge` is
+checked in the same way. If `-l` is supplied, it is an extraction input and
+takes precedence over configured `calc.charge`.
 
 ```{tip}
 Always provide `--ligand-charge/-l` for non-standard residues (substrates, cofactors, unusual ligands) to ensure correct charge propagation.

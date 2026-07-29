@@ -68,9 +68,9 @@ Options:
                                   the same mapping is applied to the full input
                                   PDB/mmCIF to derive the total system charge. A
                                   bare number sets the total directly. PDB/mmCIF
-                                  inputs only. To force a total charge
-                                  regardless of residues, use -q/--charge (emits
-                                  a warning).
+                                  inputs only. Without extraction, -q/--charge
+                                  explicitly sets the total; with extraction, it
+                                  asserts the derived total.
   -q, --charge INTEGER            Total system charge. With -c/--center, this is
                                   an assertion and must match the extractor-
                                   derived charge; omit it to auto-derive.
