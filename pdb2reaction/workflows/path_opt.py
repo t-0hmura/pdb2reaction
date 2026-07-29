@@ -125,6 +125,33 @@ def _create_dmf_ase_calculator(calc_cfg: Dict[str, Any]):
     return create_ase_calculator(**dict(calc_cfg))
 
 
+def _main_dmf_ipopt_options(
+    ipopt_options: Dict[str, Any],
+    out_dir_path: Path,
+    max_cycles: Any,
+) -> Dict[str, Any]:
+    """Resolve IPOPT options for the main DMF solve."""
+    resolved = dict(ipopt_options)
+    resolved["output_file"] = str(out_dir_path / "dmf_ipopt.out")
+    if max_cycles is not None:
+        try:
+            max_iter = int(max_cycles)
+        except (TypeError, ValueError):
+            max_iter = 0
+        if max_iter > 0:
+            resolved["max_iter"] = max_iter
+    return resolved
+
+
+def _combine_path_opt_outcomes(preopt_outcomes, mep_outcome):
+    """Combine requested endpoint preoptimizations with the MEP outcome."""
+    from pdb2reaction.workflows._outcomes import aggregate_workflow_truth
+
+    outcomes = [*preopt_outcomes, mep_outcome]
+    expected = [outcome.item_id for outcome in outcomes]
+    return aggregate_workflow_truth(outcomes, expected), outcomes
+
+
 def _run_dmf_mep(
     geoms: Sequence[Any],
     calc_cfg: Dict[str, Any],
@@ -162,6 +189,11 @@ def _run_dmf_mep(
         )
 
     dmf_backend = str((dmf_cfg or {}).get("backend", "gpu")).strip().lower()
+    if dmf_backend not in {"cpu", "gpu"}:
+        raise click.ClickException(
+            "dmf.backend must be either 'cpu' or 'gpu'; "
+            f"received {dmf_backend!r}."
+        )
     try:
         from ase.io import read as ase_read
         from ase.io import write as ase_write
@@ -284,19 +316,13 @@ def _run_dmf_mep(
         else:
             image.calc = ase_calc
 
-    mxflx.add_ipopt_options({"output_file": str(out_dir_path / "dmf_ipopt.out")})
-    # Same default-mode IPOPT quiet as the FB-ENM interpolation above:
-    # the banner + MUMPS license header would otherwise reprint per solve.
-    if not is_verbose() and "print_level" not in ipopt_opts:
-        mxflx.add_ipopt_options({"print_level": 0})
     max_cycles = dmf_cfg.get("max_cycles") if isinstance(dmf_cfg, dict) else None
-    if max_cycles is not None:
-        try:
-            max_iter = int(max_cycles)
-            if max_iter > 0:
-                mxflx.add_ipopt_options({"max_iter": max_iter})
-        except Exception:
-            pass
+    main_ipopt_opts = _main_dmf_ipopt_options(
+        ipopt_opts,
+        out_dir_path,
+        max_cycles,
+    )
+    mxflx.add_ipopt_options(main_ipopt_opts)
     # IPOPT returns (x_opt, info); info["status"] == 0 is Solve_Succeeded and
     # 1 is Solved_To_Acceptable_Level. Anything else (max-iter, infeasible) is
     # NOT convergence. A missing/unreadable status fails closed to unknown.
@@ -1013,7 +1039,10 @@ def cli(
         echo_resolved_device()
 
         # Optional endpoint pre-optimization (LBFGS/RFO) before alignment/GSM
+        preopt_outcomes = []
         if preopt:
+            from pdb2reaction.workflows._outcomes import make_leaf as _mk_leaf
+
             emit("\n====== Preoptimizing endpoints via single-structure optimizer ======\n", narrative=True)
             ref_pdb_for_preopt: Optional[Path] = None
             for p in source_paths:
@@ -1038,7 +1067,7 @@ def cli(
             for i, g in enumerate(geoms):
                 tag = f"{_seg_prefix}init{i:02d}"
                 try:
-                    g_opt, _ = _optimize_single(
+                    g_opt, preopt_converged = _optimize_single(
                         g,
                         shared_calc,
                         single_opt_kind,
@@ -1049,12 +1078,29 @@ def cli(
                         ref_pdb=ref_pdb_for_preopt,
                     )
                     new_geoms.append(g_opt)
+                    preopt_outcomes.append(
+                        _mk_leaf(
+                            "path-opt",
+                            f"preopt_endpoint_{i}",
+                            executed=True,
+                            converged=preopt_converged,
+                        )
+                    )
                 except Exception as e:
                     click.echo(
                         f"[preopt] WARNING: Failed to preoptimize endpoint {i}: {e}",
                         err=True,
                     )
                     new_geoms.append(g)
+                    preopt_outcomes.append(
+                        _mk_leaf(
+                            "path-opt",
+                            f"preopt_endpoint_{i}",
+                            executed=True,
+                            converged=False,
+                            reason="optimization_error",
+                        )
+                    )
             geoms = new_geoms
         else:
             click.echo(
@@ -1210,7 +1256,6 @@ def cli(
                 # nonconverged solve keeps its trajectory artifact but is not
                 # promoted to a usable path.
                 from pdb2reaction.workflows._outcomes import (
-                    aggregate_workflow_truth as _agg_truth,
                     attach_outcomes as _attach,
                     make_leaf as _mk_leaf,
                 )
@@ -1222,8 +1267,15 @@ def cli(
                     artifacts=["final_geometries_trj.xyz"],
                     reason=_dmf_reason,
                 )
-                _dmf_truth = _agg_truth([_dmf_leaf], ["dmf_mep"])
-                _attach(result_data, truth=_dmf_truth, stage_outcomes=[_dmf_leaf])
+                _dmf_truth, _dmf_outcomes = _combine_path_opt_outcomes(
+                    preopt_outcomes,
+                    _dmf_leaf,
+                )
+                _attach(
+                    result_data,
+                    truth=_dmf_truth,
+                    stage_outcomes=_dmf_outcomes,
+                )
                 write_result_json(
                     out_dir_path, result_data,
                     command="path-opt",
@@ -1394,7 +1446,6 @@ def cli(
             # Additive outcome fields: the GSM path is usable only when the
             # optimizer explicitly converged.
             from pdb2reaction.workflows._outcomes import (
-                aggregate_workflow_truth as _agg_truth,
                 attach_outcomes as _attach,
                 make_leaf as _mk_leaf,
             )
@@ -1405,8 +1456,15 @@ def cli(
                 converged=_converged,
                 artifacts=["final_geometries_trj.xyz"],
             )
-            _gsm_truth = _agg_truth([_gsm_leaf], ["gsm_mep"])
-            _attach(result_data_gsm, truth=_gsm_truth, stage_outcomes=[_gsm_leaf])
+            _gsm_truth, _gsm_outcomes = _combine_path_opt_outcomes(
+                preopt_outcomes,
+                _gsm_leaf,
+            )
+            _attach(
+                result_data_gsm,
+                truth=_gsm_truth,
+                stage_outcomes=_gsm_outcomes,
+            )
             write_result_json(
                 out_dir_path, result_data_gsm,
                 command="path-opt",

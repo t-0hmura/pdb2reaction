@@ -9,6 +9,7 @@ import click
 import pytest
 
 import pdb2reaction.backends as backends
+from pdb2reaction.workflows._outcomes import make_leaf
 from pdb2reaction.workflows import path_opt
 
 
@@ -175,3 +176,67 @@ def test_dmf_solvent_rejection_precedes_calculator_construction(
         )
 
     assert constructed is False
+
+
+@pytest.mark.parametrize("backend", ["gup", "", None])
+def test_dmf_unknown_backend_is_rejected_before_import(
+    monkeypatch, tmp_path: Path, backend,
+) -> None:
+    constructed = False
+
+    def forbidden(_config):
+        nonlocal constructed
+        constructed = True
+        raise AssertionError("calculator construction must not run")
+
+    monkeypatch.setattr(path_opt, "_create_dmf_ase_calculator", forbidden)
+
+    with pytest.raises(click.ClickException, match="either 'cpu' or 'gpu'"):
+        path_opt._run_dmf_mep(
+            [],
+            {"backend": "orb", "solvent": "none"},
+            tmp_path,
+            [],
+            4,
+            [],
+            dmf_cfg={"backend": backend},
+        )
+
+    assert constructed is False
+
+
+def test_main_dmf_ipopt_options_reach_primary_solve(tmp_path: Path) -> None:
+    options = {"tol": 1.0e-8, "print_level": 3}
+
+    resolved = path_opt._main_dmf_ipopt_options(options, tmp_path, 321)
+
+    assert resolved == {
+        "tol": 1.0e-8,
+        "print_level": 3,
+        "output_file": str(tmp_path / "dmf_ipopt.out"),
+        "max_iter": 321,
+    }
+    assert options == {"tol": 1.0e-8, "print_level": 3}
+
+
+def test_requested_preopt_failure_prevents_path_opt_success() -> None:
+    preopt = make_leaf(
+        "path-opt",
+        "preopt_endpoint_0",
+        executed=True,
+        converged=False,
+    )
+    mep = make_leaf(
+        "path-opt",
+        "gsm_mep",
+        executed=True,
+        converged=True,
+    )
+
+    truth, outcomes = path_opt._combine_path_opt_outcomes([preopt], mep)
+
+    assert [outcome.item_id for outcome in outcomes] == [
+        "preopt_endpoint_0",
+        "gsm_mep",
+    ]
+    assert truth.scientific_status == "partial"
