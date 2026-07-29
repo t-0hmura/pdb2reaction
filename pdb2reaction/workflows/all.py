@@ -182,6 +182,21 @@ def _echo_detail(*args, **kwargs) -> None:
     _echo_state.echo(*args, **kwargs)
 
 
+def _charge_override_message(
+    label: str,
+    charge: int,
+    workflow_charge: Optional[int],
+) -> str:
+    """Describe an explicit total-charge choice without misstating its relation."""
+    message = (
+        f"[all] WARNING: {label} supplied; using TOTAL system charge {charge:+d}"
+    )
+    if workflow_charge is not None:
+        relation = "matches" if charge == workflow_charge else "overrides"
+        message += f" ({relation} workflow-derived {workflow_charge:+d})"
+    return message
+
+
 def _echo_section(message: str, **kwargs) -> None:
     """Echo a section header (narrative) with a leading blank line unless first."""
     _echo_state.section(message, **kwargs)
@@ -4435,12 +4450,12 @@ def cli(
                 f"pass --ligand-charge for non-standard residues, or set -q to "
                 f"{int(resolved_charge):+d}."
             )
-        override_msg = (
-            f"[all] {charge_override_label} supplied; using TOTAL system charge {q_int:+d}"
+        override_msg = _charge_override_message(
+            charge_override_label,
+            q_int,
+            None if resolved_charge is None else int(resolved_charge),
         )
-        if resolved_charge is not None:
-            override_msg += f" (matches workflow-derived {int(resolved_charge):+d})"
-        _echo(override_msg, err=True)
+        _echo(override_msg, err=True, narrative=True)
     else:
         q_int = int(resolved_charge) if resolved_charge is not None else 0
 

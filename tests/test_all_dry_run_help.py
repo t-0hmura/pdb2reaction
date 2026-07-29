@@ -6,7 +6,7 @@ import importlib
 from click.testing import CliRunner
 
 from pdb2reaction.cli.app import cli as root_cli
-from pdb2reaction.workflows.all import cli
+from pdb2reaction.workflows.all import _charge_override_message, cli
 
 
 def test_all_dry_run_help_describes_temporary_extract_precheck():
@@ -24,6 +24,16 @@ def test_all_help_describes_charge_precedence_with_and_without_extraction():
     help_text = " ".join(result.output.split())
     assert "Without extraction, -q/--charge explicitly sets the total" in help_text
     assert "with extraction, it asserts the derived total" in help_text
+
+
+def test_all_no_extract_charge_override_reports_the_actual_relation():
+    differs = _charge_override_message("-q/--charge", 0, 1)
+    matches = _charge_override_message("-q/--charge", 1, 1)
+
+    assert "WARNING: -q/--charge supplied" in differs
+    assert "(overrides workflow-derived +1)" in differs
+    assert "(matches workflow-derived +1)" not in differs
+    assert "(matches workflow-derived +1)" in matches
 
 
 def test_all_dry_run_plan_omits_unrequested_extraction(tmp_path):
