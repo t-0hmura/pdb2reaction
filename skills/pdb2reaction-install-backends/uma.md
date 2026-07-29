@@ -144,7 +144,7 @@ This spawns a Ray worker pool. Limitations:
 | Symptom | Cause / fix |
 |---|---|
 | `e3nn` install conflict | UMA's `fairchem-core` pin clashes with `mace-torch`. Use a separate env for MACE (see `mace.md`). |
-| `uma-m-1p1` runs out of VRAM during freq | `'FiniteDifference'` is already the default; if you've overridden it with `--hessian-calc-mode Analytical`, drop the flag or use the current small default `uma-s-1p2` (`uma-s-1p1` selects the older small checkpoint). |
+| Frequency calculation runs out of VRAM | Compare Hessian modes and compatible model sizes on a representative pilot, reduce the Hessian target, or move Hessian assembly to CPU. |
 | First call is slower than later calls | Check whether checkpoint download/cache population or model initialization dominates. The Hugging Face cache normally lives at `~/.cache/huggingface/hub/`. |
 | Multi-worker run crashes with `Ray actor died` | The message is non-specific. Capture the actor traceback and scheduler/Ray logs, verify identical environments and visible devices on every worker, then reproduce with one worker before changing CUDA packages. |
 

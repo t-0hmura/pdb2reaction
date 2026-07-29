@@ -933,7 +933,7 @@ class TSHessianOptimizer(HessianOptimizer):
                     self._last_exact_target_mode_is_negative = target_is_negative
 
         if target_is_negative is None:
-            has_saddle_modes = self._selected_ts_modes_are_negative(eigvals)
+            has_saddle_modes = n_imaginary >= len(self.roots)
         else:
             has_saddle_modes = target_is_negative
         projection_certifiable = self._projection_allows_saddle_certification()

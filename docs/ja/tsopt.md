@@ -149,7 +149,7 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
 | `--ref-mode PATH` | advanced/internal MEP handoff用のCartesian 3N方向（空白区切りtextまたは`.npy`）。`all`が自動指定し、通常の単独runでは省略します。外部経路を使うexpert runではroot選択、overlap追跡、`n_imag=0`回復に使用します | _None_ |
 | `--flatten/--no-flatten` | 一般の余剰虚振動モード flatten を有効化します。TS 最適化後、虚振動数が 1 つになるか上限に達するまで繰り返します。dimer および RS-P-RFO / RS-I-RFO に適用します。`--ref-mode` は保持すべき負モードを特定しますが、それ自体では flatten を有効化しません | `False` |
 | `--coord-type TEXT` | 最適化座標系（`cart` / `redund` / `dlc` / `tric`）。`cart` がデフォルトです。`dlc` は条件付けを変えますが、どちらも一律に高速・堅牢ではないため問題のseedで比較してください。Hessian 系`tsopt`は4種類すべて、`path-opt` / `path-search`は`cart` / `dlc`のみ受け付けます | `cart` |
-| `--precision [fp32\|fp64]` | MLIP バックエンド精度。バックエンド固有のキー（UMA `precision` / ORB `precision` / MACE `default_dtype`。`aimnet2`: `fp32` は no-op、`fp64` は拒否）へ振り分け。データセンター GPU では数値ノイズの少ない Hessian のために `fp64` を使用。{ref}`再現性: GPU クラスによる精度の選択 <ja-precision-by-gpu-class>` を参照 | バックエンドデフォルト (uma `fp32`、orb・mace `fp64`) |
+| `--precision [fp32\|fp64]` | MLIP バックエンド精度。バックエンド固有のキー（UMA `precision` / ORB `precision` / MACE `default_dtype`。`aimnet2`: `fp32` は no-op、`fp64` は拒否）へ振り分け。対象系で対応精度を比較してください。{ref}`再現性: GPU クラスによる精度の選択 <ja-precision-by-gpu-class>` を参照 | バックエンドデフォルト (uma `fp32`、orb・mace `fp64`) |
 | **閾値とサイクル** | | |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`、`gau`、`gau_tight`、`gau_vtight`、`baker`、`never`） | `baker` |
 | `--max-cycles INT` | `opt.max_cycles` に渡されるマクロサイクル上限 | `10000` |
@@ -192,11 +192,11 @@ MEPを確認し、粗いHEIが原因と判断できる場合に有効化して�
 
 | レバー | フラグ | 効果 |
 | --- | --- | --- |
-| 精度を上げる | `--precision fp64` | UMA / ORB / MACE で数値ノイズ由来のmodeを減らせる場合があります。AIMNet2はfp64を受け付けず、真の負曲率は除去できません |
+| 精度を比較する | `--precision fp32|fp64` | 数値挙動はバックエンド・モデル・対象系に依存します。AIMNet2はfp64を受け付けず、どちらの設定も真の負曲率は除去しません |
 | 内部座標 | `--coord-type dlc` | 最適化の条件付けを変えます。`cart` / `dlc`のどちらも一律に高速・堅牢ではないため、問題のseedで比較してください |
 | 小さいモードのフラット化 | `--flatten` | 余分な虚振動数モードのフラット化ループを実行（`grad`: dimer ループ、`hess`: RS-P-RFO 後の処理）。`--no-flatten` は `flatten_max_iter = 0` を強制 |
 
-まず `--precision fp64` および／または `--coord-type dlc` を試し、残った小さいモードは `--flatten` で除去します。
+モード変位と optimizer の停止理由を確認し、対応する精度・座標設定を選んで再実行します。`--flatten` は余分なモードにだけ使用します。例:
 
 ```bash
 pdb2reaction tsopt -i ts_candidate.xyz -q -1 -m 1 \

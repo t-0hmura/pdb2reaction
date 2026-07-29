@@ -278,7 +278,7 @@ class InvocationManifest:
         }
 
     def write_internal(self, path: Path) -> Path:
-        """Atomically persist the private manifest using the C2 primitive."""
+        """Atomically persist the private manifest with ``commit_json``."""
 
         return commit_json(Path(path), self.as_dict())
 

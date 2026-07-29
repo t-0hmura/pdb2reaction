@@ -1,6 +1,7 @@
 """Tests for pdb2reaction.core.defaults configuration constants."""
 
 from copy import deepcopy
+from inspect import signature
 
 from pdb2reaction.core.defaults import (
     GEOM_KW_DEFAULT,
@@ -64,8 +65,11 @@ class TestDefaultsStructure:
         assert RSIRFO_KW["saddle_recovery_max_cycles"] == 200
 
     def test_path_workflow_max_nodes_release_defaults(self):
+        from pdb2reaction.workflows.path_search import _stitch_paths
+
         assert GS_KW["max_nodes"] == 20
         assert SEARCH_KW["max_nodes_segment"] == 20
+        assert signature(_stitch_paths).parameters["max_nodes"].default == 20
 
     def test_irc_kw_has_step_length(self):
         assert "step_length" in IRC_KW

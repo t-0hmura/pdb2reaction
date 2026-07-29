@@ -176,7 +176,6 @@ class ChainOfStates:
     def coords(self):
         """Return a flat 1d array containing the coordinates of all images."""
         all_coords = [image.coords for image in self.images]
-        # Note: why does this getter set self._coords? ... I wrote this line 6 years ago.
         self._coords = np.concatenate(all_coords)
         return self._coords
 
@@ -604,9 +603,14 @@ class ChainOfStates:
         # This can be determined from a supplied threshold for the
         # RMS force (rms_force) or from a multiple of the
         # RMS force convergence threshold (rms_multiple, default).
-        force_blocks = np.asarray(self.forces_list[-1]).reshape(
-            len(self.images), self.coords_length
-        )
+        flat_forces = np.asarray(self.forces_list[-1]).reshape(-1)
+        expected_size = len(self.images) * self.coords_length
+        if flat_forces.size != expected_size:
+            # A growing string may have inserted images after these forces
+            # were evaluated. Defer climbing until every current image has a
+            # force block from the same cycle.
+            return False
+        force_blocks = flat_forces.reshape(len(self.images), self.coords_length)
         active_forces = []
         for image_index in self.moving_indices:
             image = self.images[image_index]

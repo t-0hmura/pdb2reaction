@@ -38,7 +38,7 @@ pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <n
     各結合について変位 `Δ = target − current` を計算し、`h = --max-step-size` として `N = ceil(max(|Δ|) / h)` ステップに分割します。各結合は `δ = Δ / N` ずつ更新されます。
 4. すべてのステップを順に進め、一時ターゲットを更新しながら調和ポテンシャル `E = Σ ½ k (|ri − rj| − target)²` を適用し、MLIP バックエンドで最適化します。最適化サイクルの上限は YAML `opt.max_cycles` から読み、明示した `--relax-max-cycles` がそれを上書きします。
 5. 各ステージの最終ステップ後、必要に応じて無バイアス緩和（`--endopt`）を実行し、共有結合の変化を報告して `result.*` を出力します。
-6. すべてのステージについて繰り返します。全ステージ連結のスキャン軌跡（`scan_trj.xyz` および `scan.pdb`）は常に書き出されます。`--dump`（CLI フラグ）を指定すると、ステップごとの最適化軌跡ファイルも書き出されます（YAML の `opt.dump` は実行時スコープで上書きされるため無効です）。
+6. すべてのステージについて繰り返します。全ステージ連結の `scan_trj.xyz` は常に書き出されます。PDB/CIF/GJF companion には `--convert-files` と参照テンプレートが必要です。`--dump`（CLI フラグ）を指定すると、ステップごとの最適化軌跡ファイルも書き出されます（YAML の `opt.dump` は実行時スコープで上書きされるため無効です）。
 
 ## 出力
 
@@ -88,7 +88,7 @@ out_dir/ (デフォルト:./result_scan/)
 | `--opt-mode TEXT` | `grad` → L-BFGS、`hess` → RFOptimizer。同じトークンが `tsopt` では Dimer / RS-P-RFO に対応する点については {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
 | `--freeze-links/--no-freeze-links` | PDB/mmCIF トポロジー入力時にキャップ水素の親原子を凍結 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
-| `--dump/--no-dump` | ステップごとの最適化器軌跡ファイルを書き出します（`opt_cfg["dump"]` に転送）。`scan_trj.xyz`/`scan.pdb` はこのフラグに関係なく常に書き出されます | `False` |
+| `--dump/--no-dump` | ステップごとの最適化器軌跡ファイルを書き出します（`opt_cfg["dump"]` に転送）。`scan_trj.xyz` はこのフラグに関係なく常に書き出されます | `False` |
 | `--convert-files/--no-convert-files` | XYZ/TRJ → PDB/CIF/GJF companionを切り替え | `True` |
 | `--ref-pdb FILE` | XYZ/GJF入力の参照PDBまたはmmCIF topology | _None_ |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_scan/` |
@@ -250,7 +250,7 @@ YAML/JSON ファイル書式、インライン Python リテラル構文、原�
 | 協奏的 | 1 つの `-s` に複数の座標タプル | 座標が 1 ステップで一緒に動く。機構をステージに分解する必要がない |
 | 段階的 | `-s` を順次ステージごとに 1 リテラルずつ | 機構が事前に分かっており、ステップごとの制御とステージ別出力がほしい |
 
-機構が**分かっている**場合は段階的形式が一般に推奨されます。ステップごとのバリアとステージ別ジオメトリが得られます。機構が未知あるいは多段階の場合は、ステージを自分で推測せず [`path-search`](path-search.md) に経路を自動分割させます。（4-tuple `(i, j, low, high)` は双方向の 2 ステージスキャンに展開されます。[双方向スキャン](#双方向スキャン4-tuple)を参照。）
+段階的形式では機構を事前に定義し、指定した各座標変化を別々のステージとして扱います。機構が未知あるいは多段階の場合は、ステージを自分で推測せず [`path-search`](path-search.md) に経路を自動分割させます。（4-tuple `(i, j, low, high)` は双方向の 2 ステージスキャンに展開されます。[双方向スキャン](#双方向スキャン4-tuple)を参照。）
 
 ```bash
 # 協奏的: 2 つの座標を 1 ステージで一緒に駆動
@@ -309,7 +309,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 - `-s/--scan-lists` には単一フラグの後に複数リテラルを並べます。ターゲット距離は正の値である必要があります。原子インデックスは内部で 0 始まりに正規化されます。PDB/mmCIF トポロジーではセレクタ文字列を使用できます。3フィールドの従来形は順不同ですが、chainまで指定する4フィールド形は `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` の位置固定です。繰り返し残基では4フィールド形を使用してください。
 - `--freeze-links` が有効な場合、キャップ水素の親原子は自動的に凍結されます（{ref}`キャップ水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
-- ステージ結果（`result.xyz` と、変換有効時の対応する PDB/CIF/GJF companion）は常に書き出されます。全ステージ連結のスキャン軌跡（`scan_trj.xyz` と、参照トポロジーがある場合の `scan.pdb`／bridge入力の `scan.cif`）も常に書き出されます。`--dump`（CLI）を指定すると、最適化器によるステップごとのダンプが有効になります（YAML の `opt.dump` は実行時スコープで上書きされるため無効です）。
+- ステージ結果の `result.xyz` と全ステージ連結の `scan_trj.xyz` は常に書き出されます。対応する PDB/CIF/GJF companion は `--convert-files` が有効で参照トポロジーを利用できる場合に生成されます。`--dump`（CLI）を指定すると、最適化器によるステップごとのダンプが有効になります（YAML の `opt.dump` は実行時スコープで上書きされるため無効です）。
 
 ## 関連項目
 

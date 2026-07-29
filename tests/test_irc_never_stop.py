@@ -73,7 +73,7 @@ def test_engine_writes_first_last_and_stitched_endpoints(tmp_path) -> None:
     irc.out_dir = tmp_path
     irc.prefix = ""
     irc.atoms = ("H",)
-    irc.m_sqrt = np.ones(3)
+    irc._m_sqrt = np.ones(3)
     irc.all_energies = np.array([-1.0, -0.9])
     coords = np.array(
         [

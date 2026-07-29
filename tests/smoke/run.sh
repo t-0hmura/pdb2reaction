@@ -301,11 +301,10 @@ pdb2reaction sp -i r.pdb -q -1 --out-dir test50 > test50.out 2>&1
 pdb2reaction sp -i r.pdb -q -1 --hess --out-dir test51 > test51.out 2>&1
 
 # --- Full-pipeline release-gate runs ---
-# test52 is the untrottled one: the canonical `all` flow with default
-# convergence thresholds and production-realistic optimizer cycle budgets, so
-# it takes substantially longer (~30-60 min) than the throttled tests above and
-# is the "does the pipeline actually finish on a real input" gate. test53 stays
-# throttled — it only has to light up the DLC code path end to end.
+# test52 is unthrottled: the canonical `all` flow with default convergence
+# thresholds and no optimizer-cycle cap. It is the full-pipeline completion
+# gate. test53 remains throttled because it only exercises the DLC path end to
+# end.
 
 # test52: full `all` cart — default thresh, no max-cycles cap.
 pdb2reaction all -i r.pdb p.pdb -q -1 --out-dir test52 > test52.out 2>&1

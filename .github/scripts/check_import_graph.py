@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Static AST import-graph gate for pdb2reaction.
 
-Enforces the product's real (post-C12) module-dependency invariants:
+Enforces the product's module-dependency invariants:
 
 1. No file under ``pysisyphus/**`` (the bundled engine fork) imports the product
    package ``pdb2reaction``.

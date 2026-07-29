@@ -4116,7 +4116,28 @@ def cli(
         # (validate_charge_spin_at_path) on the extracted geometry. No
         # tsopt/path_search/freq is started.
         _skip_extract_dry = center_spec is None or str(center_spec).strip() == ""
-        if not _skip_extract_dry:
+        if _skip_extract_dry:
+            for prepared_input in prepared_all_inputs:
+                apply_ref_pdb_override(prepared_input, ref_pdb_cli)
+            _q_check, _spin_check = resolve_charge_spin(
+                prepared_all_inputs,
+                charge_override,
+                spin if (spin_cli_explicit or spin_configured) else None,
+                ligand_charge=ligand_charge,
+                prefix="[all]",
+            )
+            for prepared_input in prepared_all_inputs:
+                validate_charge_spin_at_path(
+                    prepared_input.geom_path,
+                    _q_check,
+                    _spin_check,
+                )
+            _echo(
+                "[all] --dry-run parity check OK: "
+                f"charge={_q_check:+d}, spin(multiplicity)={_spin_check}",
+                narrative=True,
+            )
+        else:
             _dry_tmp = Path(tempfile.mkdtemp(prefix="pdb2reaction_dry_extract_"))
             session.resources.own_path(_dry_tmp)
             _first_in = input_paths[0].resolve() if input_paths else None

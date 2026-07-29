@@ -37,20 +37,18 @@ Files in this skill directory:
    driver / scheduler / CUDA / conda before doing anything.
 2. **CUDA + torch** — `env-cuda.md` decides which torch wheel to pull.
 3. **`pdb2reaction` core** — `core.md`.
-4. **At least one MLIP backend** — start with UMA (`uma.md`); add others
-   only as you need them.
+4. **At least one MLIP backend** — choose from the supported backends below
+   after checking the model domain and target-system pilot.
 5. **DFT (optional)** — `dft.md`. Skip if you only need MLIP energies.
 6. **xtb (optional)** — `xtb.md`. Skip unless you need implicit solvent.
 
-## Decision tree: which backend?
+## Choose a backend
 
-| Goal | Recommendation |
-|---|---|
-| TS + IRC on known organic + 1st-row metal cluster | start with **UMA-s-1.2** (`uma.md`); if accuracy is borderline, add **MACE-OMOL-0** in a separate env (`mace.md`) |
-| Fast screen across many candidates | **Orb-v3** (`orb.md`) |
-| Small organics, no metals | **AIMNet2** (`aimnet2.md`) — limited element coverage, light |
-| Couple a non-MLIP engine (GFN-xTB / DFTB+ / ORCA / any ASE calc) | **`--calc-file my_calc.py`** — custom backend (see below) |
-| DFT//MLIP single-point energies | add **`dft.md`** regardless of MLIP choice |
+Check each candidate model's model card for supported elements, charge,
+multiplicity, and training domain. Then compare energies, forces, frequencies,
+runtime, and memory on a representative system. Add the DFT dependencies from
+`dft.md` when DFT//MLIP single-point energies are needed. For a non-MLIP
+engine, use the custom ASE calculator interface below.
 
 ## Custom backend — any ASE Calculator (`--calc-file`)
 

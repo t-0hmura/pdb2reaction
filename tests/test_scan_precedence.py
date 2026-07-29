@@ -1,12 +1,4 @@
-"""Regression tests for scan config precedence.
-
-Guards the C1a fix: ``build_scan_configs`` must apply YAML (--config) over
-built-in defaults and then let explicit CLI-derived values override YAML, i.e.
-the uniform ``defaults < --config < CLI`` ordering used by the other
-subcommands.  Before the fix, ``apply_yaml_overrides`` ran *after* the
-CLI-derived assignments, so YAML silently overrode explicit CLI options for
-scan / scan2d.
-"""
+"""Regression tests for ``defaults < --config < CLI`` scan precedence."""
 
 from click.testing import CliRunner
 

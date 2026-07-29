@@ -65,18 +65,19 @@ Orb accepts (canonical list in
 | Property | Interpretation |
 |---|---|
 | No gated model login in the standard install path | Weight availability can still depend on the installed orb-models release/network cache |
-| Explicit fp32 maps to `float32-high` (reduced CUDA matmul, commonly TF32) | Use for screening only when its numerical effect is acceptable; pdb2reaction defaults ORB to fp64 |
+| Explicit fp32 maps to `float32-high` (reduced CUDA matmul, commonly TF32) | Compare its numerical effect with fp64 on the target system; pdb2reaction defaults ORB to fp64 |
 | Conservative OMol checkpoint selected by default | This identifies model construction/training family, not guaranteed accuracy for a particular reaction |
 
-For final results, keep fp64 and require exactly one independently
-recomputed imaginary mode plus the expected IRC connectivity. Cross-check
-with another backend when the chemistry or mode assignment remains ambiguous.
+For final results, compare supported precision settings as needed and require
+exactly one independently recomputed imaginary mode plus the expected IRC
+connectivity. Cross-check with another backend when the chemistry or mode
+assignment remains ambiguous.
 
 ## Known gotchas
 
 | Symptom | Cause / fix |
 |---|---|
-| Extra low-magnitude imaginary modes after a finite-difference Hessian | Check the effective precision and keep the backend-default `'float64'`; explicit `--precision fp32` selects `float32-high`/TF32 and can amplify force noise. Recompute independently before classifying the stationary point. |
+| Extra imaginary modes after a finite-difference Hessian | Check the effective precision, inspect the modes, and compare supported settings on the target system. Recompute independently before classifying the stationary point. |
 | `compile_model=True` changes startup/runtime behavior | Benchmark compiled and uncompiled modes with the installed torch/orb versions; disable it if compilation fails or does not amortize. |
 | TS result has more than one imaginary mode | Treat it as not converged: inspect modes, retry from a better MEP seed and/or `--flatten`, then cross-check with UMA/MACE if ambiguity remains. |
 

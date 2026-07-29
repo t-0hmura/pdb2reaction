@@ -58,10 +58,8 @@ def test_license_mismatch_is_rejected(monkeypatch) -> None:
 
 
 def test_cffconvert_validates_citation_when_available() -> None:
-    # cffconvert is not installed in every environment. When present, the CFF
-    # must validate cleanly against the SPDX schema; when absent this passes
-    # without a skip and the schema check is confirmed at the release freeze
-    # (the exact-SPDX identity above is still enforced unconditionally).
+    # cffconvert is optional. When available, validate the CFF against its
+    # schema; exact SPDX identity above is enforced independently.
     try:
         from cffconvert.cli.create_citation import create_citation
     except ImportError:

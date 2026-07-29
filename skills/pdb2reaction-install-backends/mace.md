@@ -95,11 +95,11 @@ intended imaginary displacement, and IRC connectivity.
 |---|---|
 | `e3nn` import error | UMA + MACE in the same env. Use a fresh env. |
 | `RuntimeError: Expected all tensors to be on the same device` | Capture the full traceback and verify that the requested device and every custom tensor agree; the message alone does not identify a pdb2reaction cause. Reproduce in a fresh process before changing the environment. |
-| Hessian is slow with the default `default_dtype='float64'` | Benchmark fp32 and fp64 on the actual GPU. Explicit fp32 is a screening option, not a trusted replacement for the final frequency/IRC validation. |
+| Hessian runtime is high with the default `default_dtype='float64'` | Benchmark supported precisions on the target system and retain independent frequency/IRC validation. |
 
 ## See also
 
 - `env-cuda.md` — torch + CUDA prereq.
 - `core.md` — `pdb2reaction` install (do this **inside** `<your_mace_env>`).
-- `uma.md` — primary backend; keep it in a separate env.
+- `uma.md` — alternate backend; keep it in a separate env.
 - [`pdb2reaction-cli/tsopt.md`](../pdb2reaction-cli/tsopt.md) — TS solver choice (RS-P-RFO default; Dimer alternative) interacts with backend.

@@ -16,15 +16,10 @@ All flags below verified against `pdb2reaction/cli/common_options.py`, `core/def
 `backends._BACKEND_DEFAULT_PRECISION`: `uma` → fp32, `orb` → fp64, `mace` → fp64, `aimnet2` → fp32.
 So ORB and MACE run fp64 Hessians by default; UMA and AIMNet2 default to fp32.
 
-Choose by backend and purpose first; GPU class changes cost, not the validity
-criterion:
-
-| Purpose | Recommendation | Required interpretation |
-|---|---|---|
-| Routine run | Leave precision unset (`auto`) | Preserves the tested backend defaults: UMA/AIMNet2 fp32, ORB/MACE fp64 |
-| Fast screening | Explicit `--precision fp32` only if needed | For ORB/MACE this lowers their default and the resulting finite-difference Hessian is screening-only |
-| Final TS/Hessian | Keep ORB/MACE at fp64; consider UMA fp64 when numerical noise matters | Still require independent frequency and IRC validation; precision is not proof of a saddle |
-| AIMNet2 | fp32 only | `--precision fp64` is rejected upstream of the calculation |
+Leave precision unset (`auto`) to preserve the backend default. When precision
+matters, compare supported settings on the target model, system, and hardware.
+AIMNet2 accepts fp32 only. Every setting still requires independent frequency
+and IRC validation; precision is not proof of a saddle.
 
 | Backend | fp32 routes to | fp64 routes to |
 |---|---|---|
@@ -52,18 +47,18 @@ criterion:
 
 ## 3. Wrong imaginary-mode count after TS-opt
 
-Symptom: a spurious 2nd small imaginary mode, or no dominant reaction mode (true first-order
-saddle = exactly **one** imaginary frequency whose mode displaces along the reaction coordinate).
-Detection cutoff `hessian_dimer.neg_freq_thresh_cm` (default 5 cm⁻¹).
+Symptom: a second imaginary mode, or no dominant reaction mode (a certified
+first-order saddle has exactly **one** imaginary frequency whose mode displaces
+along the reaction coordinate).
 
 | Lever | Flag | Effect |
 |---|---|---|
-| Raise precision where supported | `--precision fp64` | Can reduce numerical-noise modes for UMA/ORB/MACE; does not remove a genuine second negative-curvature direction |
+| Compare precision where supported | `--precision fp32|fp64` | Numerical behavior is backend/model/system dependent; neither setting removes a genuine second negative-curvature direction |
 | Coordinate representation | `--coord-type dlc` | Delocalized internal coordinates can change conditioning relative to Cartesian coordinates; benchmark both on the problematic seed because neither is uniformly faster or more reliable |
 | Flatten spurious modes | `--flatten` | Extra-imaginary-mode flattening loop (`grad`: dimer loop; `hess`: post-RS-P-RFO); `--no-flatten` forces `flatten_max_iter=0`. On `tsopt`, `opt`, `all` |
 
 - `--coord-type` choices: `cart` (default) | `redund` | `dlc` | `tric`. On `path-opt` / `path-search` only `cart` / `dlc` are accepted.
-- For UMA/ORB/MACE, try fp64 and/or `--coord-type dlc`; add `--flatten` for residual small modes. AIMNet2 rejects fp64. In every case, independently recompute frequencies and verify IRC connectivity.
+- Inspect all mode displacements, the MEP seed, and optimizer stop reason before retrying an appropriate precision/coordinate/flattening setting. AIMNet2 rejects fp64. In every case, independently recompute frequencies and verify IRC connectivity.
 - If a path-derived HEI is simply poor, rerun the parent `all` command with
   `--refine-path` so recursive `path-search` resolves the MEP before
   TSOPT. This is deliberately off by default: a bad/noisy path can be split

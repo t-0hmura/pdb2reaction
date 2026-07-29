@@ -197,7 +197,7 @@ The tables below cover the options that need explanation. The full flag list is 
 | `--ref-mode PATH` | Advanced/internal MEP handoff containing a Cartesian 3N direction as whitespace text or `.npy`. `all` supplies it automatically; ordinary standalone runs omit it. Expert use covers external-path root selection, overlap tracking, and `n_imag=0` recovery. | _None_ |
 | `--flatten / --no-flatten` | Enable general surplus-imaginary-mode flattening. After TS optimization, iteratively flattens surplus negative-eigenvalue modes until only one imaginary frequency remains (or the iteration cap is reached). Applies to both Dimer (dimer loop) and RS-P-RFO / RS-I-RFO (post-convergence). `--ref-mode` identifies which negative mode must be retained but does not enable flattening by itself. | `False` |
 | `--coord-type TEXT` | Optimization coordinate system (`cart` / `redund` / `dlc` / `tric`). `cart` is the default. `dlc` changes the conditioning, but neither representation is uniformly faster or more reliable; compare them on the problematic seed. Hessian-based `tsopt` modes support all four, while `path-opt` / `path-search` accept only `cart` / `dlc`. | `cart` |
-| `--precision [fp32\|fp64]` | MLIP backend precision, routed to the backend-native kwarg (UMA `precision` / ORB `precision` / MACE `default_dtype`; `aimnet2`: `fp32` no-op, `fp64` rejected). Use `fp64` for low numerical-noise Hessians where the backend supports it; see [Reproducibility](reproducibility.md#choosing-precision-by-backend-and-purpose). | per backend (uma `fp32`; orb, mace `fp64`) |
+| `--precision [fp32\|fp64]` | MLIP backend precision, routed to the backend-native kwarg (UMA `precision` / ORB `precision` / MACE `default_dtype`; `aimnet2`: `fp32` no-op, `fp64` rejected). Compare supported settings on the target system; see [Reproducibility](reproducibility.md#choosing-precision-by-backend-and-purpose). | per backend (uma `fp32`; orb, mace `fp64`) |
 | **Thresholds & cycles** | | |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
 | `--max-cycles INT` | Macro-cycle cap forwarded to `opt.max_cycles`. | `10000` |
@@ -240,11 +240,11 @@ A true first-order saddle has **exactly one** imaginary frequency, and its mode 
 
 | Lever | Flag | Effect |
 | --- | --- | --- |
-| Raise precision | `--precision fp64` | Can reduce numerical-noise modes for UMA, ORB, and MACE; AIMNet2 rejects fp64. It does not remove genuine negative curvature. |
+| Compare precision | `--precision fp32|fp64` | Numerical behavior is backend/model/system dependent; AIMNet2 rejects fp64, and neither setting removes genuine negative curvature. |
 | Internal coordinates | `--coord-type dlc` | Changes the optimization conditioning. Benchmark `cart` and `dlc` on the problematic seed because neither is uniformly faster or more reliable. |
 | Flatten small modes | `--flatten` | Runs an extra-imaginary-mode flattening loop (`grad`: dimer loop; `hess`: post-RS-P-RFO step); `--no-flatten` forces `flatten_max_iter = 0`. |
 
-Try `--precision fp64` and/or `--coord-type dlc` first, then add `--flatten` to clean up any residual small modes:
+Inspect the mode displacements and optimizer stop reason, then retry an appropriate supported precision/coordinate setting and use `--flatten` only for surplus modes. For example:
 
 ```bash
 pdb2reaction tsopt -i ts_candidate.xyz -q -1 -m 1 \

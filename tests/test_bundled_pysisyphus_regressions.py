@@ -483,6 +483,15 @@ def test_automatic_climbing_never_selects_fixed_endpoint() -> None:
     assert ChainOfStates.get_climbing_indices(cos) == ()
 
 
+def test_growing_string_defers_climbing_after_node_insertion() -> None:
+    cos = ChainOfStates.__new__(ChainOfStates)
+    cos.images = [SimpleNamespace(), SimpleNamespace(), SimpleNamespace()]
+    cos.coords_length = 2
+    cos.forces_list = [np.zeros(4)]
+
+    assert cos.check_for_climbing_start(1.0) is False
+
+
 def test_growing_string_reparametrization_guards_zero_density() -> None:
     assert GrowingString._reparam_step_fraction(0.0, 0.0, 1.0e-3) is None
     with pytest.raises(ValueError, match="coincident parameter densities"):

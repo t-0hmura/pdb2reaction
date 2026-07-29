@@ -51,9 +51,10 @@ pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <n
 5. After the last step of each stage, optionally run an unbiased relaxation
     (`--endopt`) before reporting covalent bond changes and writing the
     `result.*` files.
-6. Repeat for every stage. Concatenated scan trajectories (`scan_trj.xyz` and
-    `scan.pdb`) are always written. Pass `--dump` to additionally emit per-step
-    optimizer trajectory files (`opt.dump` from YAML is run-scoped and ignored).
+6. Repeat for every stage. The concatenated `scan_trj.xyz` is always written;
+    PDB/CIF/GJF companions require `--convert-files` and a reference template.
+    Pass `--dump` to additionally emit per-step optimizer trajectory files
+    (`opt.dump` from YAML is run-scoped and ignored).
 
 ## Outputs
 
@@ -99,7 +100,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--opt-mode TEXT` | `grad` → L-BFGS, `hess` → RFOptimizer. See {ref}`opt-mode-semantics` for how the same token maps to different optimizers under `tsopt`. | `grad` |
 | `--freeze-links/--no-freeze-links` | When the input is PDB, freeze the parents of cap hydrogens. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
-| `--dump/--no-dump` | Forward to the per-step optimizer (`opt_cfg["dump"]`), emitting per-step optimizer trajectory files. `scan_trj.xyz`/`scan.pdb` are always written regardless. | `False` |
+| `--dump/--no-dump` | Forward to the per-step optimizer (`opt_cfg["dump"]`), emitting per-step optimizer trajectory files. `scan_trj.xyz` is always written regardless. | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/CIF/GJF companions; bridge trajectories include CIF. | `True` |
 | `--ref-pdb FILE` | Reference PDB or mmCIF topology for XYZ/GJF input (keeps XYZ coordinates). | _None_ |
 | `-o, --out-dir TEXT` | Output directory root. | `./result_scan/` |
@@ -116,8 +117,8 @@ The full flag list is in the generated [command reference](reference/commands/in
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical keys to those documented in
   [YAML Reference](yaml-reference.md). Per-step optimizer trajectories are controlled
   by `--dump` (CLI) only — `opt.dump` and `opt.out_dir` from YAML are run-scoped and
-  overwritten (not YAML-tunable); the scan-stage trajectories `scan_trj.xyz`/`scan.pdb`
-  are always written regardless.
+  overwritten (not YAML-tunable); `scan_trj.xyz` is always written, while
+  PDB/CIF/GJF companions require conversion and a reference template.
 - An explicitly provided `--relax-max-cycles` overrides YAML `opt.max_cycles`; when omitted, YAML wins, then the default `10000` applies.
 
 ### Section `bias`
@@ -169,7 +170,7 @@ The number of `(i, j, target)` tuples inside one literal and the number of liter
 | Concerted | one `-s`, one literal holding several coordinate tuples | The coordinates move together in a single step; you do not need to break the mechanism into stages |
 | Staged | one `-s`, several space-separated literals (one literal per sequential stage) | The mechanism is known up front and you want clean per-step control and per-stage output |
 
-When the mechanism **is** known, the staged form is generally preferred — it gives per-step barriers and per-stage geometries. When the mechanism is unknown or multi-step, let [`path-search`](path-search.md) auto-segment the path instead of guessing the stages yourself. (A 4-tuple `(i, j, low, high)` expands into a bidirectional 2-stage scan; see [Bidirectional scan](#bidirectional-scan-4-tuple).)
+The staged form requires the mechanism up front and exposes per-stage geometries. When the mechanism is unknown or multi-step, let [`path-search`](path-search.md) auto-segment the path instead of guessing the stages yourself. (A 4-tuple `(i, j, low, high)` expands into a bidirectional 2-stage scan; see [Bidirectional scan](#bidirectional-scan-4-tuple).)
 
 ```bash
 # Concerted: two coordinates move together in one stage

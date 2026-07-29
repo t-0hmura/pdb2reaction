@@ -1228,10 +1228,9 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     with pytest.raises(ValueError, match="Confirm each ligand charge"):
         app["build_cmd"]()
     app["charge_rows"]["LIG"]["use"].value = True
-    # New charge routing (author decision, 2026-07-27): a ligand-charge source
-    # means the CLI derives the total charge, so the notebook emits no -q at
-    # all. The checkbox became an explicit override, live only because -l is
-    # present, and it keeps -q read-only until it is ticked.
+    # Selecting a ligand-charge source lets the CLI derive total charge, so the
+    # notebook omits -q. It enables the explicit override checkbox but keeps -q
+    # read-only until selected.
     derived_command = app["build_cmd"]()
     assert "-q" not in derived_command
     assert app["w_charge_ok"].description == "overwrite system charge"
@@ -1914,12 +1913,14 @@ def test_colab_operates_every_workflow_through_validate_run_and_results(
             app["w_charge_ok"].value = True
         command = app["build_cmd"]()
         assert command[:2] == ["pdb2reaction", subcommand]
+        scan_extras = []
         if subcommand == "scan" or (subcommand == "all" and all_kind == "scan"):
             scan_flag = command.index("-s")
             assert command.count("-s") == 1
             literals = command[scan_flag + 1 : scan_flag + 3]
             assert len(literals) == 2
             assert all(not literal.startswith("-") for literal in literals)
+            scan_extras = literals[1:]
         click_command = app["PRODUCT_CLI"].get_command(
             app["click"].Context(app["PRODUCT_CLI"]), subcommand,
         )
@@ -1933,6 +1934,7 @@ def test_colab_operates_every_workflow_through_validate_run_and_results(
                 app["S"]["inputs"][1:]
                 if subcommand in {"all", "path-search"} else []
             )
+            expected_extra = [*expected_extra, *scan_extras]
             assert list(context.args) == expected_extra, (
                 subcommand, command, context.args,
             )

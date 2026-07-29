@@ -775,7 +775,7 @@ def _stitch_paths(
     bridge_pair_index: Optional[int] = None,
     mep_mode_kind: str = "dmf",
     calc_cfg: Optional[Dict[str, Any]] = None,
-    max_nodes: int = 10,
+    max_nodes: int = 20,
     prepared_inputs: Optional[Sequence[PreparedInputStructure]] = None,
     dmf_cfg: Optional[Dict[str, Any]] = None,
 ) -> Tuple[List[Any], List[float]]:
