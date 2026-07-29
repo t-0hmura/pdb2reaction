@@ -1065,13 +1065,23 @@ def cli(
                 "\n====== Aligning all inputs to the first structure "
                 "(freeze-guided scan + relaxation) ======\n"
             )
-            _ = align_and_refine_sequence_inplace(
+            alignment_results = align_and_refine_sequence_inplace(
                 geoms,
                 thresh=align_thresh,
                 shared_calc=shared_calc,
                 out_dir=out_dir_path / "align_refine",
                 verbose=True,
             )
+            failed_pairs = [
+                index
+                for index, result in enumerate(alignment_results)
+                if result.get("converged") is not True
+            ]
+            if failed_pairs:
+                raise click.ClickException(
+                    "Input alignment did not converge for pair(s): "
+                    + ", ".join(str(index) for index in failed_pairs)
+                )
             click.echo("[align] Completed input alignment.")
         except Exception as e:
             raise click.ClickException(f"Input alignment failed: {e}") from e

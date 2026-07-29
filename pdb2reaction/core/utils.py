@@ -42,6 +42,7 @@ from pdb2reaction.domain.add_elem_info import guess_element
 from pdb2reaction.core.defaults import RFO_KW
 from pdb2reaction.core.output import _TAG_AWARE_MARKER, emit
 from pdb2reaction.io.structure_formats import (
+    attach_template_metadata,
     CIF_SUFFIXES,
     CoordinateTemplate,
     cleanup_normalized_structure,
@@ -2135,6 +2136,8 @@ def _derive_charge_from_ligand_charge(
 
         parser = PDB.PDBParser(QUIET=True)
         complex_struct = parser.get_structure("complex", str(prepared.source_path))
+        if prepared.structure_template is not None:
+            attach_template_metadata(complex_struct, prepared.structure_template)
         models = list(complex_struct.get_models())
         if len(models) > 1:
             # Refuse rather than derive from the first model: the geometry loader used for the

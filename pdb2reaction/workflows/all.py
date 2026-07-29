@@ -5481,10 +5481,20 @@ def cli(
                 for _g in _geoms:
                     _g.freeze_atoms = np.array(_fa, dtype=int)
                 _align_calc = create_calculator(**calc_cfg_shared)
-                align_and_refine_sequence_inplace(
+                alignment_results = align_and_refine_sequence_inplace(
                     _geoms, shared_calc=_align_calc,
                     out_dir=_align_dir / "refine", verbose=True,
                 )
+                failed_pairs = [
+                    index
+                    for index, result in enumerate(alignment_results)
+                    if result.get("converged") is not True
+                ]
+                if failed_pairs:
+                    raise click.ClickException(
+                        "Input alignment did not converge for pair(s): "
+                        + ", ".join(str(index) for index in failed_pairs)
+                    )
                 del _align_calc
                 _new_models: List[Path] = []
                 for _i, (_g, _orig) in enumerate(zip(_geoms, models_for_path)):

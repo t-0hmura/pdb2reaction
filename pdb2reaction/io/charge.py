@@ -77,6 +77,10 @@ def _residue_key_from_fid(structure, fid: Tuple) -> ResidueKey:
     return _residue_key_from_res(res)
 
 
+def _residue_name(res) -> str:
+    return residue_auth_identity(res)[3].upper()
+
+
 # ---- helper for parsing --ligand-charge (number or 'RES:Q' mapping) ----
 def _parse_ligand_charge_option(ligand_charge: float | str | Dict[str, float] | None
                                 ) -> Tuple[Optional[float], Optional[Dict[str, float]]]:
@@ -165,7 +169,7 @@ def infer_present_terminal_cap_ids(
     keep_ccap_ids: Set[Tuple] = set()
     for fid in selected_ids:
         res = structure[fid[1]][fid[2]].child_dict[fid[3]]
-        if res.get_resname().upper() not in AMINO_ACIDS:
+        if _residue_name(res) not in AMINO_ACIDS:
             continue
         atom_names = {atom.get_name().strip().upper() for atom in res}
         if "OXT" in atom_names:
@@ -225,7 +229,7 @@ def compute_charge_summary(structure,
 
     for fid in fids_in_order:
         res = structure[fid[1]][fid[2]].child_dict[fid[3]]
-        rn = res.get_resname().upper()
+        rn = _residue_name(res)
         key = _residue_key_from_res(res)
         if rn in WATER_RES:
             q = 0.0
@@ -244,11 +248,15 @@ def compute_charge_summary(structure,
                 if fid in keep_ccap_ids and "OXT" in atom_names \
                         and rn not in C_TERMINAL_RESNAMES:
                     q -= 1.0
-                    terminal_corrections.append((res.get_resname(), res.id[1], -1))
+                    terminal_corrections.append(
+                        (residue_auth_identity(res)[3], res.id[1], -1)
+                    )
                 if fid in keep_ncap_ids and {"H1", "H2", "H3"} <= atom_names \
                         and rn not in N_TERMINAL_RESNAMES:
                     q += 1.0
-                    terminal_corrections.append((res.get_resname(), res.id[1], 1))
+                    terminal_corrections.append(
+                        (residue_auth_identity(res)[3], res.id[1], 1)
+                    )
             aa_charge += q
         elif rn in ION:
             q = float(ION[rn])
@@ -286,7 +294,7 @@ def compute_charge_summary(structure,
         matched_resnames: Set[str] = set()
         for fid in unknown_fids:
             res = structure[fid[1]][fid[2]].child_dict[fid[3]]
-            rn = res.get_resname().upper()
+            rn = _residue_name(res)
             if rn in mapping_spec:
                 key = _residue_key_from_fid(structure, fid)
                 per_map[key] = float(mapping_spec[rn])
@@ -327,7 +335,7 @@ def compute_charge_summary(structure,
     unknown_residue_charges: Dict[str, float] = {}
     for fid in unknown_fids:
         res = structure[fid[1]][fid[2]].child_dict[fid[3]]
-        rn = res.get_resname().upper()
+        rn = _residue_name(res)
         key = _residue_key_from_fid(structure, fid)
         unknown_residue_charges[rn] = float(per_map[key])
 

@@ -1264,3 +1264,26 @@ def test_pdb_reader_rejects_nonfinite_coordinates(
 
     with pytest.raises(ValueError, match="Non-finite coordinates"):
         read_pdb_atom_sites(source)
+
+
+def test_long_mmcif_resname_matches_ligand_charge_mapping(tmp_path: Path) -> None:
+    from pdb2reaction.core.utils import prepare_input_structure, resolve_charge_spin
+
+    source = tmp_path / "long-resname.cif"
+    _write_minimal_cif(source)
+    source.write_text(
+        source.read_text(encoding="utf-8").replace(" SAM ", " ABCD "),
+        encoding="utf-8",
+    )
+
+    prepared = prepare_input_structure(source)
+    try:
+        charge, spin = resolve_charge_spin(
+            prepared,
+            charge=None,
+            spin=1,
+            ligand_charge="ABCD:-1",
+        )
+        assert (charge, spin) == (-1, 1)
+    finally:
+        prepared.cleanup()
