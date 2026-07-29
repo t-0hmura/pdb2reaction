@@ -2144,12 +2144,24 @@ def _dft_energy_ha(result: Dict[str, Any]) -> Optional[float]:
 
     Non-finite is reported as None at this single chokepoint so that every consumer's
     ``is not None`` check is sufficient; a NaN/inf must never reach a diagram, summary.json
-    or a logged energy triplet.
+    or logged state energies.
     """
     if not _dft_succeeded(result):
         return None
     try:
         value = float((result.get("energy") or {}).get("hartree"))
+    except (TypeError, ValueError):
+        return None
+    return value if np.isfinite(value) else None
+
+
+def _thermo_value_ha(payload: Any, key: str) -> Optional[float]:
+    """Return one finite thermochemistry value in hartree."""
+
+    if not isinstance(payload, dict):
+        return None
+    try:
+        value = float(payload.get(key))
     except (TypeError, ValueError):
         return None
     return value if np.isfinite(value) else None
@@ -4697,15 +4709,9 @@ def cli(
             torch.cuda.empty_cache()
 
         thermo_payloads: Dict[str, Dict[str, Any]] = {}
-        _thermo_mode_validation: Dict[str, Any] = {
-            "valid": False,
-            "reasons": ["thermochemistry was not run"],
-        }
-        _gibbs_triplet: Optional[Tuple[float, float, float]] = None
-        _thermal_correction_triplet: Optional[
-            Tuple[float, float, float]
-        ] = None
-        _dft_gibbs_triplet: Optional[Tuple[float, float, float]] = None
+        GR = GT = GP = None
+        dG_R = dG_T = dG_P = None
+        GR_dft_mlip = GT_dft_mlip = GP_dft_mlip = None
 
         ref_pdb_for_tsopt_only = ref_pdb_for_topology or (
             ts_initial_pdb if ts_initial_pdb.suffix.lower() == ".pdb" else None
@@ -4750,36 +4756,20 @@ def cli(
                 overrides=freq_overrides,
             )
             thermo_payloads = {"R": tR, "TS": tT, "P": tP}
-            from pdb2reaction.workflows._all_helpers import (
-                build_thermo_mode_validation,
-                validated_thermo_triplet,
-            )
-            _thermo_mode_validation = build_thermo_mode_validation(
-                thermo_payloads
-            )
-            _gibbs_triplet = validated_thermo_triplet(
-                thermo_payloads, "sum_EE_and_thermal_free_energy_ha"
-            )
-            _thermal_correction_triplet = validated_thermo_triplet(
-                thermo_payloads, "thermal_correction_free_energy_ha"
-            )
-            if not _thermo_mode_validation["valid"]:
-                _echo(
-                    "[thermo] WARNING: Gibbs output skipped because the state "
-                    "orders are not minimum / first-order TS / minimum: "
-                    + "; ".join(_thermo_mode_validation["reasons"]),
-                    err=True,
-                )
+            GR = _thermo_value_ha(tR, "sum_EE_and_thermal_free_energy_ha")
+            GT = _thermo_value_ha(tT, "sum_EE_and_thermal_free_energy_ha")
+            GP = _thermo_value_ha(tP, "sum_EE_and_thermal_free_energy_ha")
+            dG_R = _thermo_value_ha(tR, "thermal_correction_free_energy_ha")
+            dG_T = _thermo_value_ha(tT, "thermal_correction_free_energy_ha")
+            dG_P = _thermo_value_ha(tP, "thermal_correction_free_energy_ha")
             try:
-                if _gibbs_triplet is None:
+                if any(value is None for value in (GR, GT, GP)):
                     _echo(
-                        "[thermo] NOTE: a finite, minimum / first-order TS / "
-                        "minimum thermochemistry triplet is unavailable; Gibbs "
-                        "diagram skipped.",
+                        "[thermo] NOTE: one or more R/TS/P free energies are "
+                        "unavailable; Gibbs diagram skipped.",
                         err=True,
                     )
                 else:
-                    GR, GT, GP = _gibbs_triplet
                     diag_payload = _write_public_energy_diagram(
                         tsroot / "energy_diagram_G_MLIP",
                         labels=["R", "TS", "P"],
@@ -4849,10 +4839,9 @@ def cli(
             if (
                 do_thermo
                 and _dft_all_ok
-                and _thermal_correction_triplet is not None
+                and all(value is not None for value in (dG_R, dG_T, dG_P))
             ):
                 try:
-                    dG_R, dG_T, dG_P = _thermal_correction_triplet
                     GR_dft_mlip = eR_dft + dG_R
                     GT_dft_mlip = eT_dft + dG_T
                     GP_dft_mlip = eP_dft + dG_P
@@ -4863,11 +4852,6 @@ def cli(
                             err=True,
                         )
                     else:
-                        _dft_gibbs_triplet = (
-                            GR_dft_mlip,
-                            GT_dft_mlip,
-                            GP_dft_mlip,
-                        )
                         diag_payload = _write_public_energy_diagram(
                             tsroot / "energy_diagram_G_DFT_plus_MLIP",
                             labels=["R", "TS", "P"],
@@ -5011,10 +4995,6 @@ def cli(
                 )
                 if _thermo_symmetry:
                     segment_log["thermo_symmetry"] = _thermo_symmetry
-                if do_thermo:
-                    segment_log["thermo_mode_validation"] = (
-                        _thermo_mode_validation
-                    )
                 _structs_seg = {"R": pR, "TS": pT, "P": pP}
                 segment_log["mlip"] = build_energy_level_dict(
                     labels=["R", "TS", "P"],
@@ -5024,8 +5004,9 @@ def cli(
                     diagram_path=str(tsroot / "energy_diagram_MLIP.png"),
                     structures=_structs_seg,
                 )
-                if do_thermo and _gibbs_triplet is not None:
-                    GR, GT, GP = _gibbs_triplet
+                if do_thermo and all(
+                    value is not None for value in (GR, GT, GP)
+                ):
                     segment_log["gibbs_mlip"] = build_energy_level_dict(
                         labels=["R", "TS", "P"],
                         energies_au=[GR, GT, GP],
@@ -5052,11 +5033,15 @@ def cli(
                     if (
                         do_thermo
                         and _dft_all_ok
-                        and _dft_gibbs_triplet is not None
-                    ):
-                        GR_dft_mlip, GT_dft_mlip, GP_dft_mlip = (
-                            _dft_gibbs_triplet
+                        and all(
+                            value is not None
+                            for value in (
+                                GR_dft_mlip,
+                                GT_dft_mlip,
+                                GP_dft_mlip,
+                            )
                         )
+                    ):
                         segment_log["gibbs_dft_mlip"] = build_energy_level_dict(
                             labels=["R", "TS", "P"],
                             energies_au=[GR_dft_mlip, GT_dft_mlip, GP_dft_mlip],
@@ -6749,14 +6734,8 @@ def cli(
             torch.cuda.empty_cache()
 
         thermo_payloads: Dict[str, Dict[str, Any]] = {}
-        _thermo_mode_validation: Dict[str, Any] = {
-            "valid": False,
-            "reasons": ["thermochemistry was not run"],
-        }
-        _gibbs_triplet: Optional[Tuple[float, float, float]] = None
-        _thermal_correction_triplet: Optional[
-            Tuple[float, float, float]
-        ] = None
+        GR = GT = GP = None
+        dG_R = dG_T = dG_P = None
         freq_seg_root = _resolve_override_dir(seg_dir / "freq", freq_out_dir)
         dft_seg_root = _resolve_override_dir(seg_dir / "dft", dft_out_dir)
 
@@ -6819,31 +6798,14 @@ def cli(
                 )
                 thermo_payloads = {"R": tR, "TS": tT, "P": tP}
                 from pdb2reaction.workflows._all_helpers import (
-                    build_thermo_mode_validation,
                     build_thermo_symmetry_provenance,
-                    validated_thermo_triplet,
                 )
-                _thermo_mode_validation = build_thermo_mode_validation(
-                    thermo_payloads
-                )
-                _gibbs_triplet = validated_thermo_triplet(
-                    thermo_payloads,
-                    "sum_EE_and_thermal_free_energy_ha",
-                )
-                _thermal_correction_triplet = validated_thermo_triplet(
-                    thermo_payloads,
-                    "thermal_correction_free_energy_ha",
-                )
-                segment_log["thermo_mode_validation"] = (
-                    _thermo_mode_validation
-                )
-                if not _thermo_mode_validation["valid"]:
-                    _echo(
-                        "[thermo] WARNING: Gibbs output skipped because the state "
-                        "orders are not minimum / first-order TS / minimum: "
-                        + "; ".join(_thermo_mode_validation["reasons"]),
-                        err=True,
-                    )
+                GR = _thermo_value_ha(tR, "sum_EE_and_thermal_free_energy_ha")
+                GT = _thermo_value_ha(tT, "sum_EE_and_thermal_free_energy_ha")
+                GP = _thermo_value_ha(tP, "sum_EE_and_thermal_free_energy_ha")
+                dG_R = _thermo_value_ha(tR, "thermal_correction_free_energy_ha")
+                dG_T = _thermo_value_ha(tT, "thermal_correction_free_energy_ha")
+                dG_P = _thermo_value_ha(tP, "thermal_correction_free_energy_ha")
                 _thermo_symmetry = build_thermo_symmetry_provenance(
                     thermo_payloads
                 )
@@ -6855,8 +6817,7 @@ def cli(
                     if ts_freq_info.get("nu_imag_max_cm") is not None:
                         segment_log["ts_imag_freq_cm"] = ts_freq_info["nu_imag_max_cm"]
                 try:
-                    if _gibbs_triplet is not None:
-                        GR, GT, GP = _gibbs_triplet
+                    if all(value is not None for value in (GR, GT, GP)):
                         gibbs_vals = [GR, GT, GP]
                         diag_payload = _write_public_energy_diagram(
                             seg_dir / "energy_diagram_G_MLIP",
@@ -6883,9 +6844,8 @@ def cli(
                         }
                     else:
                         _echo(
-                            "[thermo] NOTE: a finite, minimum / first-order TS / "
-                            "minimum thermochemistry triplet is unavailable; "
-                            "Gibbs diagram skipped."
+                            "[thermo] NOTE: one or more R/TS/P free energies "
+                            "are unavailable; Gibbs diagram skipped."
                         )
                 except Exception as e:
                     _echo(
@@ -6982,10 +6942,9 @@ def cli(
                 if (
                     do_thermo
                     and _dft_all_ok
-                    and _thermal_correction_triplet is not None
+                    and all(value is not None for value in (dG_R, dG_T, dG_P))
                 ):
                     try:
-                        dG_R, dG_T, dG_P = _thermal_correction_triplet
                         GR_dft_mlip = eR_dft + dG_R
                         GT_dft_mlip = eT_dft + dG_T
                         GP_dft_mlip = eP_dft + dG_P

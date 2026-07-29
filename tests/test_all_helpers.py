@@ -13,9 +13,7 @@ import yaml
 from pdb2reaction.workflows._all_helpers import (
     build_energy_level_dict,
     build_pipeline_summary_payload,
-    build_thermo_mode_validation,
     build_thermo_symmetry_provenance,
-    validated_thermo_triplet,
 )
 
 
@@ -269,63 +267,12 @@ def test_thermo_symmetry_provenance_rejects_invalid_values(invalid) -> None:
     ) == {}
 
 
-def test_thermo_mode_validation_requires_minimum_ts_minimum_order() -> None:
-    result = build_thermo_mode_validation(
-        {
-            "R": {"num_imag_freq": 0},
-            "TS": {"num_imag_freq": 1},
-            "P": {"num_imag_freq": 0},
-        }
-    )
-    assert result["valid"] is True
-    assert result["reasons"] == []
+def test_thermo_value_uses_finite_result_independent_of_mode_count() -> None:
+    from pdb2reaction.workflows.all import _thermo_value_ha
 
-
-def test_thermo_mode_validation_rejects_frozen_legacy_active_projection() -> None:
-    payloads = {
-        "R": {"num_imag_freq": 0},
-        "TS": {
-            "num_imag_freq": 1,
-            "n_freeze_atoms": 2,
-            "rigid_projection": {
-                "treatment": "legacy-active",
-                "frozen_atom_count": 2,
-            },
-        },
-        "P": {"num_imag_freq": 0},
-    }
-
-    result = build_thermo_mode_validation(payloads)
-
-    assert result["valid"] is False
-    assert any("cannot certify" in reason for reason in result["reasons"])
-
-
-@pytest.mark.parametrize(
-    "payloads",
-    [
-        {"R": {"num_imag_freq": 1}, "TS": {"num_imag_freq": 1}, "P": {"num_imag_freq": 0}},
-        {"R": {"num_imag_freq": 0}, "TS": {"num_imag_freq": 0}, "P": {"num_imag_freq": 0}},
-        {"R": {"num_imag_freq": 0}, "TS": {"num_imag_freq": 1}, "P": {}},
-    ],
-)
-def test_thermo_mode_validation_fails_closed(payloads) -> None:
-    result = build_thermo_mode_validation(payloads)
-    assert result["valid"] is False
-    assert result["reasons"]
-
-
-def test_validated_thermo_triplet_requires_modes_and_finite_values() -> None:
-    payloads = {
-        "R": {"num_imag_freq": 0, "g": -10.0},
-        "TS": {"num_imag_freq": 1, "g": -9.0},
-        "P": {"num_imag_freq": 0, "g": -11.0},
-    }
-    assert validated_thermo_triplet(payloads, "g") == (-10.0, -9.0, -11.0)
-    payloads["P"]["g"] = float("nan")
-    assert validated_thermo_triplet(payloads, "g") is None
-    payloads["P"] = {"num_imag_freq": 1, "g": -11.0}
-    assert validated_thermo_triplet(payloads, "g") is None
+    assert _thermo_value_ha({"num_imag_freq": 3, "g": -11.0}, "g") == -11.0
+    assert _thermo_value_ha({"num_imag_freq": 0, "g": float("nan")}, "g") is None
+    assert _thermo_value_ha({}, "g") is None
 
 
 def test_enrich_summary_uses_backend_neutral_refined_energy_keys(tmp_path: Path) -> None:
