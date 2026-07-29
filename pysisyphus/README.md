@@ -52,25 +52,12 @@ caller that imported `from pysisyphus import run` to register a calculator
 into `CALC_DICT` must use pdb2reaction's own subcommand layer
 (`pdb2reaction/cli/app.py`).
 
-## release scope
-
-During routine polish, **only annotation edits are allowed** on this directory:
-
-- docstring additions / improvements
-- type hints
-- section banners (`# ===... ===`)
-- per-file module docstring
-
-**Forbidden** during polish:
-
-- any change to numerical behaviour, control flow, or function signatures of the divergent files listed above
-- any new external dependency
-- any rename of public symbols (would break `pdb2reaction/tsopt.py`, `irc.py`, `path_opt.py` callers)
+## Change policy
 
 Logic edits require a demonstrated defect or approved numerical feature, a
 focused regression test, and the relevant HEAVY/GPU benchmark before merge.
-The v0.4.12 optimizer-safeguard changes follow that policy; their regression
-and GPU benchmark evidence is recorded in the release validation and changelog.
+Preserve the public symbols and signatures used by the workflow modules listed
+in the divergent-file table.
 
 ## Upstream compatibility
 

@@ -434,7 +434,7 @@ class UMACalculator(MLIPCalculator):
         if self.out_hess_torch:
             return H.detach()
         else:
-            # C-NEED: numpy return at boundary; GPU H freed implicitly when caller drops the return value.
+            # Convert at the public NumPy boundary; the caller releases the GPU tensor.
             return H.detach().cpu().numpy()
 
     def _apply_analytical_active_trim(self, H: torch.Tensor) -> torch.Tensor:

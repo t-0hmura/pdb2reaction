@@ -148,7 +148,7 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
 | `--opt-mode TEXT` | TS optimizer プリセット（Choice: `grad` / `hess` / `dimer` / `rsirfo` / `trim` / `rsprfo`）。`grad`/`dimer` → Hessian-Guided Dimer; `hess`/`rsprfo` → RS-P-RFO（Banerjee、デフォルト、non-microiter）; `rsirfo` → RS-I-RFO; `trim` → TRIM（Helgaker、non-microiter）。サブコマンド別の対応表（`opt` は L-BFGS/RFO、`tsopt` は Dimer/RS-P-RFO）は {ref}`ja-opt-mode-semantics` を参照 | `hess` |
 | `--ref-mode PATH` | advanced/internal MEP handoff用のCartesian 3N方向（空白区切りtextまたは`.npy`）。`all`が自動指定し、通常の単独runでは省略します。外部経路を使うexpert runではroot選択、overlap追跡、`n_imag=0`回復に使用します | _None_ |
 | `--flatten/--no-flatten` | 一般の余剰虚振動モード flatten を有効化します。TS 最適化後、虚振動数が 1 つになるか上限に達するまで繰り返します。dimer および RS-P-RFO / RS-I-RFO に適用します。`--ref-mode` は保持すべき負モードを特定しますが、それ自体では flatten を有効化しません | `False` |
-| `--coord-type TEXT` | 最適化座標系（`cart` / `redund` / `dlc` / `tric`）。`cart` は公表値の基準です。`dlc` は条件付けを変えますが、どちらも一律に高速・堅牢ではないため問題のseedで比較してください。Hessian 系`tsopt`は4種類すべて、`path-opt` / `path-search`は`cart` / `dlc`のみ受け付けます | `cart` |
+| `--coord-type TEXT` | 最適化座標系（`cart` / `redund` / `dlc` / `tric`）。`cart` がデフォルトです。`dlc` は条件付けを変えますが、どちらも一律に高速・堅牢ではないため問題のseedで比較してください。Hessian 系`tsopt`は4種類すべて、`path-opt` / `path-search`は`cart` / `dlc`のみ受け付けます | `cart` |
 | `--precision [fp32\|fp64]` | MLIP バックエンド精度。バックエンド固有のキー（UMA `precision` / ORB `precision` / MACE `default_dtype`。`aimnet2`: `fp32` は no-op、`fp64` は拒否）へ振り分け。データセンター GPU では数値ノイズの少ない Hessian のために `fp64` を使用。{ref}`再現性: GPU クラスによる精度の選択 <ja-precision-by-gpu-class>` を参照 | バックエンドデフォルト (uma `fp32`、orb・mace `fp64`) |
 | **閾値とサイクル** | | |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`、`gau`、`gau_tight`、`gau_vtight`、`baker`、`never`） | `baker` |

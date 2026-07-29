@@ -18,25 +18,14 @@ The rest of the package (`thermo.py`, `config.py`, `constants.py`) is close to u
 |------|------------|------|
 | `QCData.py` | branding + IO signature differences | freq stage consumer contract |
 
-## release scope
-
-During this release, **only annotation edits are allowed** on this directory:
-
-- docstring additions / improvements
-- type hints
-- section banners (`# ===... ===`)
-- per-file module docstring
-
-**Forbidden** during polish:
-
-- any change to numerical behaviour, control flow, or function signatures of `QCData.py`
-- any new external dependency
-- any rename of public symbols (would break `pdb2reaction/workflows/freq.py` callers)
+## Change policy
 
 Logic edits to `QCData.py` require a demonstrated I/O or numerical need and
 verification against the thermochemistry golden tests. Use a
 `[CHEMISTRY-RULE:N]` prefix only if a marked chemistry rule is actually
 changed; the bundled-fork location alone does not imply that prefix.
+Preserve the public symbols and I/O signatures consumed by
+`pdb2reaction/workflows/freq.py`.
 
 ## Upstream compatibility
 
