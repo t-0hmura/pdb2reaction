@@ -524,6 +524,10 @@ def cli(
             calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
             calc_cfg["return_partial_hessian"] = True
 
+            if bool(irc_cfg.get("downhill", False)):
+                raise click.UsageError(
+                    "irc.downhill is not supported; select forward and/or backward."
+                )
             if not bool(irc_cfg.get("forward")) and not bool(irc_cfg.get("backward")):
                 raise click.UsageError(
                     "IRC requires at least one enabled direction: "
