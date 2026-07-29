@@ -2945,6 +2945,10 @@ def calculator_provenance(calc_cfg: Mapping[str, Any]) -> Dict[str, Any]:
     from pdb2reaction.core.defaults import CALC_KW_DEFAULT
 
     backend = str(calc_cfg.get("backend") or CALC_KW_DEFAULT["backend"]).lower()
+    if backend == "auto":
+        from pdb2reaction.backends import resolve_backend
+
+        backend = resolve_backend(backend)
     if backend == "custom":
         calc_file = calc_cfg.get("calc_file")
         factory = calc_cfg.get("calc_factory") or "get_calculator"

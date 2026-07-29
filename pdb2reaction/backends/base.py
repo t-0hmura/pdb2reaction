@@ -72,9 +72,16 @@ def _prepare_model_for_autograd_hessian(model_obj, torch_mod):
     """
     state = {
         "was_training": bool(getattr(model_obj, "training", False)),
+        "module_training": [],
         "param_flags": [],
         "dropout_states": [],
     }
+
+    if hasattr(model_obj, "modules"):
+        state["module_training"] = [
+            (module, bool(getattr(module, "training", False)))
+            for module in model_obj.modules()
+        ]
 
     if hasattr(model_obj, "parameters"):
         for param in model_obj.parameters():
@@ -132,7 +139,11 @@ def _restore_model_after_autograd_hessian(model_obj, state):
                 pass
         module.train(was_training)
 
-    if hasattr(model_obj, "train"):
+    module_training = state.get("module_training", [])
+    if module_training:
+        for module, was_training in module_training:
+            module.training = was_training
+    elif hasattr(model_obj, "train"):
         model_obj.train(state.get("was_training", False))
 
     for param, req_grad in state.get("param_flags", []):
@@ -194,9 +205,14 @@ class MLIPCalculator(Calculator):
                 freeze_iter = [int(i) for i in list(freeze_atoms)]
             except (TypeError, ValueError) as exc:
                 raise ValueError(
-                    f"freeze_atoms must be an iterable of ints (1-based indices); "
+                    f"freeze_atoms must be an iterable of ints (0-based indices); "
                     f"got {freeze_atoms!r}. Original error: {exc}"
                 ) from exc
+        if any(index < 0 for index in freeze_iter):
+            raise ValueError(
+                "freeze_atoms must contain non-negative 0-based atom indices; "
+                f"got {freeze_atoms!r}."
+            )
         self.freeze_atoms = sorted(set(freeze_iter))
 
     # Subclass hooks (override in backend implementations)
@@ -226,6 +242,7 @@ class MLIPCalculator(Calculator):
 
 
     def _active_and_frozen_dof_idx(self, n_atoms: int):
+        self._validate_freeze_atoms(n_atoms)
         frozen_set = set(self.freeze_atoms)
         active_atoms = [i for i in range(n_atoms) if i not in frozen_set]
         active_dof_idx = [3 * i + j for i in active_atoms for j in range(3)]
@@ -250,9 +267,17 @@ class MLIPCalculator(Calculator):
         """Zero forces (eV/Å) on frozen atoms."""
         if (F is None) or (len(self.freeze_atoms) == 0):
             return F
+        self._validate_freeze_atoms(len(F))
         Fz = F.copy()
         Fz[np.asarray(self.freeze_atoms, dtype=int)] = 0.0
         return Fz
+
+    def _validate_freeze_atoms(self, n_atoms: int) -> None:
+        invalid = [index for index in self.freeze_atoms if index >= n_atoms]
+        if invalid:
+            raise ValueError(
+                f"freeze_atoms contains indices outside a {n_atoms}-atom geometry: {invalid}."
+            )
 
     # FD Hessian (CPU, used by non-UMA backends)
 

@@ -74,6 +74,7 @@ def _emit_start_header(ctx: click.Context) -> None:
 
     subcommand = (
         getattr(ctx, "invoked_subcommand", None)
+        or getattr(ctx, "info_name", None)
         or (ctx.command.name if ctx.command is not None else None)
         or "all"
     )

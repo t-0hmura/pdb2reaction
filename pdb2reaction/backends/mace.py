@@ -10,6 +10,7 @@ versions, so the MACE and UMA runtimes must not share an environment.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import tempfile
 import urllib.request
@@ -108,12 +109,25 @@ class MACECalculator(MLIPCalculator):
 
     @staticmethod
     def _download_to_tmp(url: str) -> str:
+        url_text = str(url)
+        basename = os.path.basename(url_text).split("?")[0] or "mace.model"
+        digest = hashlib.sha256(url_text.encode("utf-8")).hexdigest()[:16]
         target = os.path.join(
             tempfile.gettempdir(),
-            os.path.basename(str(url)).split("?")[0] or "mace.model",
+            f"pdb2reaction-mace-{digest}-{basename}",
         )
         if not os.path.exists(target):
-            urllib.request.urlretrieve(str(url), target)
+            fd, staged = tempfile.mkstemp(
+                prefix=f".{os.path.basename(target)}.",
+                dir=tempfile.gettempdir(),
+            )
+            os.close(fd)
+            try:
+                urllib.request.urlretrieve(url_text, staged)
+                os.replace(staged, target)
+            finally:
+                if os.path.exists(staged):
+                    os.unlink(staged)
         return target
 
     def _build_calc(self, model_spec: str):
@@ -183,7 +197,10 @@ class MACECalculator(MLIPCalculator):
             path = None
             if ":" in spec:
                 path = spec.split(":", 1)[1].strip() or None
-            kwargs = {"device": self.device_str}
+            kwargs = {
+                "device": self.device_str,
+                "default_dtype": self.default_dtype,
+            }
             if path:
                 kwargs["model_path"] = path
             return _safe_anicc(kwargs)
@@ -200,7 +217,12 @@ class MACECalculator(MLIPCalculator):
             return mace_omol(model="extra_large", device=self.device_str, default_dtype=self.default_dtype)
 
         if spec_l in ("anicc", "ani", "ani500k"):
-            return _safe_anicc({"device": self.device_str})
+            return _safe_anicc(
+                {
+                    "device": self.device_str,
+                    "default_dtype": self.default_dtype,
+                }
+            )
 
         # Local file / URL
         if os.path.exists(spec) or spec.startswith("http://") or spec.startswith("https://"):

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 import logging
+import math
 from pathlib import Path
 import re
 import shutil
@@ -522,9 +523,20 @@ def read_pdb_atom_sites(
     return records, nonstandard
 
 
+def _pdb_model_count(path: Path | str) -> int:
+    count = 0
+    with Path(path).open("r", encoding="utf-8", errors="replace") as handle:
+        for line in handle:
+            if line[:6].strip() == "MODEL":
+                count += 1
+    return count
+
+
 def pdb_requires_normalization(path: Path | str) -> bool:
     """Return whether a PDB needs safe internal reindexing."""
 
+    if _pdb_model_count(path) > 1:
+        return True
     try:
         records, nonstandard = read_pdb_atom_sites(path, warn_altloc=False)
     except ValueError as exc:
@@ -666,7 +678,16 @@ def normalize_structure_to_pdb(
     elif source.suffix.lower() == ".pdb":
         records, _ = read_pdb_atom_sites(source)
         source_format = "pdb"
-        reason = "PDB fixed-column size limit"
+        model_count = _pdb_model_count(source)
+        if model_count > 1:
+            logger.warning(
+                "PDB input %s contains %d coordinate models; using the first model only.",
+                source,
+                model_count,
+            )
+            reason = "multi-model PDB input"
+        else:
+            reason = "PDB fixed-column size limit"
     else:
         raise ValueError(f"Cannot normalize unsupported structure format: {source}")
 
@@ -977,6 +998,10 @@ def render_mmcif_frames(
                 raise ValueError(
                     f"Occupancy frame has shape {occupancies.shape}; expected ({template.natoms},)."
                 )
+            if not np.all(np.isfinite(occupancies)):
+                raise ValueError(
+                    f"Occupancy frame {model_number} contains non-finite values."
+                )
         bfactors = None
         if bfactor_frames is not None:
             bfactors = np.asarray(bfactor_frames[model_number - 1], dtype=float)
@@ -984,9 +1009,21 @@ def render_mmcif_frames(
                 raise ValueError(
                     f"B-factor frame has shape {bfactors.shape}; expected ({template.natoms},)."
                 )
+            if not np.all(np.isfinite(bfactors)):
+                raise ValueError(
+                    f"B-factor frame {model_number} contains non-finite values."
+                )
         for atom_index, (record, xyz) in enumerate(zip(template.records, array)):
             occupancy = record.occupancy if occupancies is None else float(occupancies[atom_index])
             bfactor = record.bfactor if bfactors is None else float(bfactors[atom_index])
+            if not math.isfinite(occupancy):
+                raise ValueError(
+                    f"Atom {atom_index + 1} in frame {model_number} has non-finite occupancy."
+                )
+            if not math.isfinite(bfactor):
+                raise ValueError(
+                    f"Atom {atom_index + 1} in frame {model_number} has a non-finite B-factor."
+                )
             values = (
                 record.group_pdb,
                 atom_id,

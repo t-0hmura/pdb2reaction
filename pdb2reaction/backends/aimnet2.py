@@ -11,18 +11,9 @@ from __future__ import annotations
 from typing import Optional, Sequence
 
 import numpy as np
+from ase.calculators.calculator import Calculator, all_changes
 
 from .base import MLIPCalculator, BackendError
-
-
-def _unique_ordered(items):
-    seen = set()
-    out = []
-    for item in items:
-        if item not in seen:
-            seen.add(item)
-            out.append(item)
-    return out
 
 
 class AIMNet2Calculator(MLIPCalculator):
@@ -66,7 +57,8 @@ class AIMNet2Calculator(MLIPCalculator):
         )
 
         self._torch = torch
-        if str(device).lower() == "auto":
+        self._device_was_auto = str(device).lower() == "auto"
+        if self._device_was_auto:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device_str = str(device)
         self.model_name = str(model)
@@ -82,20 +74,17 @@ class AIMNet2Calculator(MLIPCalculator):
                 "Install with: pip install \"pdb2reaction[aimnet]\""
             ) from exc
 
-        kwargs_variants = _unique_ordered(
-            tuple(sorted(kw.items())) for kw in [
-                {"device": self.device_str},
-                {},
-            ]
-        )
-
-        attempts = []
-        for kw_tuple in kwargs_variants:
-            kw = dict(kw_tuple)
-            attempts.append(((model_name,), kw))
-            attempts.append(((), {"model": str(model_name), **kw}))
-            if kw:
-                attempts.append(((str(model_name),), {}))
+        attempts = [
+            ((model_name,), {"device": self.device_str}),
+            ((), {"model": str(model_name), "device": self.device_str}),
+        ]
+        if self._device_was_auto:
+            attempts.extend(
+                [
+                    ((str(model_name),), {}),
+                    ((), {"model": str(model_name)}),
+                ]
+            )
 
         last_exc = None
         for args, kwargs in attempts:
@@ -264,34 +253,38 @@ class AIMNet2Calculator(MLIPCalculator):
         return hess
 
 
-class AIMNet2ASECalculator:
-    """Factory that returns an AIMNet2-backed ASE calculator for DMF.
+class AIMNet2ASECalculator(Calculator):
+    """ASE adapter around the dict-based AIMNet2 backend."""
 
-    Since aimnet provides its own ASE interface, this creates a
-    lightweight ASE calculator that delegates to the aimnet calculator.
-    """
+    implemented_properties = ["energy", "forces"]
 
-    def __new__(cls, *, model: str = "aimnet2", device: str = "auto"):
-        try:
-            import torch
-            from aimnet.calculators import AIMNet2Calculator as _AIMNet2Calc
-        except Exception as exc:
-            raise BackendError(
-                "AIMNet2 backend requires aimnet. "
-                "Install with: pip install \"pdb2reaction[aimnet]\""
-            ) from exc
+    def __init__(
+        self,
+        *,
+        model: str = "aimnet2",
+        device: str = "auto",
+        charge: int = 0,
+        spin: int = 1,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.backend = AIMNet2Calculator(
+            model=model,
+            device=device,
+            charge=charge,
+            spin=spin,
+        )
 
-        if str(device).lower() == "auto":
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-
-        for args, kwargs in [
-            ((model,), {"device": device}),
-            ((), {"model": model, "device": device}),
-            ((model,), {}),
-        ]:
-            try:
-                return _AIMNet2Calc(*args, **kwargs)
-            except Exception:
-                continue
-
-        raise BackendError(f"Failed to initialize AIMNet2 ASE calculator for model '{model}'.")
+    def calculate(
+        self,
+        atoms=None,
+        properties=("energy", "forces"),
+        system_changes=all_changes,
+    ):
+        super().calculate(atoms, properties, system_changes)
+        energy, forces = self.backend._compute_energy_forces_ev(
+            atoms.get_chemical_symbols(),
+            atoms.get_positions(),
+        )
+        self.results["energy"] = float(energy)
+        self.results["forces"] = np.asarray(forces, dtype=np.float64)

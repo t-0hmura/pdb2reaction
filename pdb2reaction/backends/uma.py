@@ -60,6 +60,26 @@ F_EVAA_2_AU = EV2AU / ANG2BOHR
 H_EVAA_2_AU = EV2AU / ANG2BOHR / ANG2BOHR
 
 
+def _positive_worker_count(value: Any, name: str) -> int:
+    """Return a positive integer worker count."""
+    if value is None:
+        return 1
+    if isinstance(value, bool):
+        raise BackendError(f"{name} must be a positive integer, got {value!r}.")
+    try:
+        count = int(value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise BackendError(f"{name} must be a positive integer, got {value!r}.") from exc
+    try:
+        if float(value) != count:
+            raise BackendError(f"{name} must be a positive integer, got {value!r}.")
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise BackendError(f"{name} must be a positive integer, got {value!r}.") from exc
+    if count < 1:
+        raise BackendError(f"{name} must be a positive integer, got {value!r}.")
+    return count
+
+
 class UMAcore:
     """Thin wrapper around fairchem-UMA predict_unit.
 
@@ -89,8 +109,10 @@ class UMAcore:
         self.device_str = device
         self.device = torch.device(device)
 
-        self.workers = max(int(workers or 1), 1)
-        self.workers_per_node = max(int(workers_per_node or 1), 1)
+        self.workers = _positive_worker_count(workers, "workers")
+        self.workers_per_node = _positive_worker_count(
+            workers_per_node, "workers_per_node"
+        )
         self.parallel_predict = self.workers > 1
 
         # fp32 is the established baseline; fp64 enables full-precision
@@ -301,7 +323,11 @@ class UMACalculator(MLIPCalculator):
         **kwargs,
     ):
         mode = normalize_hessian_calc_mode(hessian_calc_mode)
-        if max(int(workers or 1), 1) > 1 and mode == "Analytical":
+        worker_count = _positive_worker_count(workers, "workers")
+        worker_count_per_node = _positive_worker_count(
+            workers_per_node, "workers_per_node"
+        )
+        if worker_count > 1 and mode == "Analytical":
             raise BackendError(
                 "Analytical Hessian cannot be combined with UMA workers>1: "
                 "the parallel predictor exposes no autograd model. Use workers=1 "
@@ -325,8 +351,8 @@ class UMACalculator(MLIPCalculator):
             model=model,
             task_name=task_name,
             device=device,
-            workers=workers,
-            workers_per_node=workers_per_node,
+            workers=worker_count,
+            workers_per_node=worker_count_per_node,
             max_neigh=max_neigh,
             radius=radius,
             r_edges=r_edges,
@@ -336,7 +362,8 @@ class UMACalculator(MLIPCalculator):
         self.print_vram = bool(print_vram)
 
     def _ensure_core(self, elem: Sequence[str]):
-        if self._core is None:
+        normalized = [symbol.capitalize() for symbol in elem]
+        if self._core is None or self._core.elem != normalized:
             self._core = UMAcore(elem, **self._core_kw)
 
     def _supports_analytical_hessian(self) -> bool:
@@ -509,7 +536,7 @@ class UMACalculator(MLIPCalculator):
             if _partial_alloc:
                 # H is already (n_active, dof) — single index_select(1) extracts to (n_active, n_active).
                 H = H.index_select(1, idx)
-            else:
+            elif frozen_set:
                 # Bounded row-chunk active-square extraction avoids
                 # the full (n_active, dof) row temporary of the chained form.
                 from pysisyphus._array import active_square
@@ -650,8 +677,10 @@ class UMAASECalculator(FAIRChemCalculator):
     ):
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
-        num_workers = max(int(workers or 1), 1)
-        num_workers_per_node = max(int(workers_per_node or 1), 1)
+        num_workers = _positive_worker_count(workers, "workers")
+        num_workers_per_node = _positive_worker_count(
+            workers_per_node, "workers_per_node"
+        )
 
         precision = str(precision or "fp32").lower()
         if precision not in ("fp32", "fp64"):

@@ -1150,3 +1150,100 @@ def test_template_free_generation_removes_prior_cif_companion(tmp_path: Path) ->
 
     assert register_output_template_and_write_cif(out_pdb, None) is None
     assert not old_companion.exists()
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("occupancy", float("nan"), "non-finite occupancy"),
+        ("bfactor", float("inf"), "non-finite B-factor"),
+    ],
+)
+def test_mmcif_render_rejects_nonfinite_atom_metadata(
+    tmp_path: Path, field: str, value: float, message: str
+) -> None:
+    from dataclasses import replace
+    from pdb2reaction.io.structure_formats import (
+        AtomSiteRecord,
+        CoordinateTemplate,
+        render_mmcif_frames,
+    )
+
+    record = AtomSiteRecord(
+        group_pdb="ATOM",
+        element="C",
+        atom_name="CA",
+        altloc="",
+        resname="GLY",
+        chain_id="A",
+        resseq="1",
+        icode="",
+        occupancy=1.0,
+        bfactor=0.0,
+    )
+    record = replace(record, **{field: value})
+    template = CoordinateTemplate((record,), tmp_path / "input.pdb", "pdb", "test")
+
+    with pytest.raises(ValueError, match=message):
+        render_mmcif_frames([np.zeros((1, 3))], template)
+
+
+@pytest.mark.parametrize(
+    ("keyword", "values", "message"),
+    [
+        ("occupancy_frames", [np.array([np.nan])], "Occupancy frame"),
+        ("bfactor_frames", [np.array([np.inf])], "B-factor frame"),
+    ],
+)
+def test_mmcif_render_rejects_nonfinite_metadata_frames(
+    tmp_path: Path, keyword: str, values, message: str
+) -> None:
+    from pdb2reaction.io.structure_formats import (
+        AtomSiteRecord,
+        CoordinateTemplate,
+        render_mmcif_frames,
+    )
+
+    record = AtomSiteRecord(
+        group_pdb="ATOM",
+        element="C",
+        atom_name="CA",
+        altloc="",
+        resname="GLY",
+        chain_id="A",
+        resseq="1",
+        icode="",
+        occupancy=1.0,
+        bfactor=0.0,
+    )
+    template = CoordinateTemplate((record,), tmp_path / "input.pdb", "pdb", "test")
+
+    with pytest.raises(ValueError, match=message):
+        render_mmcif_frames(
+            [np.zeros((1, 3))],
+            template,
+            **{keyword: values},
+        )
+
+
+def test_multimodel_pdb_is_reduced_to_one_geometry(tmp_path: Path) -> None:
+    from pdb2reaction.core.utils import prepare_input_structure
+
+    source = tmp_path / "ensemble.pdb"
+    source.write_text(
+        "MODEL        1\n"
+        "ATOM      1  C   MOL A   1       0.000   0.000   0.000  1.00  0.00           C\n"
+        "ENDMDL\n"
+        "MODEL        2\n"
+        "ATOM      1  C   MOL A   1       9.000   0.000   0.000  1.00  0.00           C\n"
+        "ENDMDL\nEND\n",
+        encoding="utf-8",
+    )
+
+    prepared = prepare_input_structure(source)
+    try:
+        geometry = prepared.geom_path.read_text(encoding="utf-8")
+        assert geometry.count("ATOM  ") == 1
+        assert "   9.000" not in geometry
+    finally:
+        prepared.cleanup()

@@ -94,11 +94,18 @@ _ASE_ACCEPTED_KEYS: Dict[str, set] = {
     "uma": {"model", "device", "task_name", "workers", "workers_per_node", "precision"},
     "orb": {"model", "device", "precision", "compile_model"},
     "mace": {"model", "device", "default_dtype"},
-    "aimnet2": {"model", "device"},
+    "aimnet2": {"model", "device", "charge", "spin"},
     "custom": {"calc_file", "calc_factory", "charge", "spin", "device"},
 }
 
 VALID_BACKENDS = tuple(BACKEND_REGISTRY.keys())
+
+_BACKEND_AVAILABILITY_MODULES = {
+    "uma": "fairchem.core",
+    "orb": "orb_models.forcefield.pretrained",
+    "mace": "mace.calculators",
+    "aimnet2": "aimnet.calculators",
+}
 
 
 # Backend-specific value domain for the unified ``--precision`` CLI flag.
@@ -277,6 +284,7 @@ def resolve_backend(backend: str) -> str:
         return backend
     for key in ("uma", "orb", "mace", "aimnet2"):
         try:
+            importlib.import_module(_BACKEND_AVAILABILITY_MODULES[key])
             _import_cls(key, "pysis_cls")
         except Exception:
             continue
