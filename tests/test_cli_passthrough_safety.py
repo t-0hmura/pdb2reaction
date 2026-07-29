@@ -27,11 +27,12 @@ def test_root_invocation_resets_charge_multiplicity_override() -> None:
         validate_charge_spin(["H"], 0, 1)
 
 
-def test_sp_rejects_optimizer_progress_option() -> None:
+def test_sp_accepts_print_every_compatibility_option() -> None:
     result = CliRunner().invoke(root_cli, ["sp", "--print-every", "3"])
 
     assert result.exit_code == 2
-    assert "No such option: --print-every" in result.output
+    assert "No such option: --print-every" not in result.output
+    assert "Missing option '-i' / '--input'" in result.output
 
 
 def _xyz(path: Path) -> Path:

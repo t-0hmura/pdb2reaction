@@ -11,6 +11,7 @@ from pdb2reaction.core.defaults import (
     RFO_KW,
     RSIRFO_KW,
     GS_KW,
+    SEARCH_KW,
     IRC_KW,
     BOND_KW,
     BIAS_KW,
@@ -62,8 +63,9 @@ class TestDefaultsStructure:
         assert RSIRFO_KW["saddle_recovery_check_interval"] == 50
         assert RSIRFO_KW["saddle_recovery_max_cycles"] == 200
 
-    def test_path_opt_max_nodes_release_default(self):
+    def test_path_workflow_max_nodes_release_defaults(self):
         assert GS_KW["max_nodes"] == 20
+        assert SEARCH_KW["max_nodes_segment"] == 20
 
     def test_irc_kw_has_step_length(self):
         assert "step_length" in IRC_KW

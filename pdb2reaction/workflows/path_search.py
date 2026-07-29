@@ -1060,7 +1060,12 @@ def _build_multistep_path(
     """
     Recursively construct a multistep MEP from A–B and return it (A→B order).
     """
-    seg_max_nodes = int(search_cfg.get("max_nodes_segment", gs_cfg.get("max_nodes", 10)))
+    seg_max_nodes = int(
+        search_cfg.get(
+            "max_nodes_segment",
+            gs_cfg.get("max_nodes", GS_KW["max_nodes"]),
+        )
+    )
     gs_seg_cfg = _gs_cfg_with_overrides(gs_cfg, max_nodes=seg_max_nodes)
     max_seq_kink = int(search_cfg.get("max_seq_kink", 2))
 
