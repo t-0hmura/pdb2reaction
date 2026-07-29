@@ -96,9 +96,6 @@ def check_all(root: Path, require_thermo: bool, require_dft: bool) -> None:
             if not trajectory.is_file() or count_xyz_frames(trajectory) < 2:
                 raise SystemExit(f"missing/nontrivial IRC branch: {trajectory}")
         if require_thermo:
-            # Thermochemistry needs R and P to be clean minima, which a throttled
-            # run cannot promise.  So: present, or explicitly accounted for in
-            # the reasons. Absent and unexplained is an outcome-record failure.
             missing = [
                 state
                 for state in ("R", "TS", "P")
@@ -106,12 +103,9 @@ def check_all(root: Path, require_thermo: bool, require_dft: bool) -> None:
                 or (segment_root / "freq" / state / "thermoanalysis.yaml").stat().st_size == 0
             ]
             if missing:
-                explained = any("thermochemistry" in str(r).lower() for r in reasons)
-                if not explained:
-                    raise SystemExit(
-                        f"thermochemistry missing for {missing} and no reason says so; "
-                        f"reasons={reasons}"
-                    )
+                raise SystemExit(f"thermochemistry missing for {missing}")
+            if not isinstance(segment.get("gibbs_mlip"), dict):
+                raise SystemExit(f"MLIP thermochemistry is missing for {tag}")
         if require_dft:
             dft_files = [path for path in segment_root.rglob("*") if path.is_file() and "dft" in path.as_posix().lower()]
             if not dft_files:
