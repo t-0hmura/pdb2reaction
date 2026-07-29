@@ -133,6 +133,15 @@ def _echo_scan_summary(stages: List[Dict[str, Any]]) -> None:
             click.echo("")  # blank line between stages
 
 
+def _assemble_bidirectional_trajectory(
+    first_pass: Sequence[str],
+    center_frame: str,
+    second_pass: Sequence[str],
+) -> list[str]:
+    """Return start-to-center-to-end frames with one explicit center."""
+    return [*reversed(first_pass), center_frame, *second_pass]
+
+
 def _pair_distances(coords_ang: np.ndarray, pairs: Iterable[Tuple[int, int]]) -> List[float]:
     """
     coords_ang: (N,3) in Å; returns a list of distances (Å) for the given pairs.
@@ -511,9 +520,11 @@ def cli(
             base_calc = create_calculator(**calc_cfg)
             echo_resolved_device()
 
+            _preopt_converged: Optional[bool] = None
             if preopt:
                 pre_dir = out_dir_path / "preopt"
                 pre_dir.mkdir(parents=True, exist_ok=True)
+                preopt_start = _snapshot_geometry(geom)
                 geom.set_calculator(base_calc)
                 click.echo(f"[preopt] Unbiased relaxation ({kind}) ...")
                 optimizer0 = make_sopt_optimizer(
@@ -528,10 +539,21 @@ def cli(
                 )
                 try:
                     optimizer0.run()
+                    _preopt_converged = optimizer_converged_bit(optimizer0)
                 except ZeroStepLength:
                     click.echo("[preopt] ZeroStepLength — continuing.")
+                    _preopt_converged = optimizer_converged_bit(optimizer0)
                 except OptimizationError as e:
                     click.echo(f"[preopt] OptimizationError — {e}")
+                    _preopt_converged = False
+
+                if _preopt_converged is not True:
+                    geom = _snapshot_geometry(preopt_start)
+                    click.echo(
+                        "[preopt] Initial geometry restored because preoptimization "
+                        "did not converge.",
+                        err=True,
+                    )
 
                 # Write preopt result
                 pre_xyz = pre_dir / "result.xyz"
@@ -562,6 +584,7 @@ def cli(
             all_trj_blocks: List[str] = []
             _bidir_saved_geom = None
             _bidir_pass1_trj: List[str] = []
+            _bidir_center_trj = ""
 
             # Iterate stages
             for k, tuples in enumerate(stages, start=1):
@@ -570,6 +593,10 @@ def cli(
                 if stage_idx_0 in _bidir_snapshot_before:
                     _bidir_saved_geom = _snapshot_geometry(geom)
                     _bidir_pass1_trj = []
+                    _bidir_center_trj = xyz_string_with_energy(
+                        geom,
+                        energy=unbiased_energy_hartree(geom, base_calc),
+                    )
                 # Bidirectional support: restore geometry before pass 2
                 if stage_idx_0 in _bidir_reset_before and _bidir_saved_geom is not None:
                     emit("[bidir] Restoring initial geometry for reverse-direction pass.", narrative=True)
@@ -696,6 +723,15 @@ def cli(
                             if needs_gjf:
                                 written.append("'result.gjf'")
                             click.echo(f"[convert] Wrote {', '.join(written)}.")
+                    if stage_idx_0 in _bidir_reset_before:
+                        all_trj_blocks.extend(
+                            _assemble_bidirectional_trajectory(
+                                _bidir_pass1_trj,
+                                _bidir_center_trj,
+                                (),
+                            )
+                        )
+                        _bidir_pass1_trj = []
                     continue
 
                 # Run N step(s) with bias
@@ -798,8 +834,13 @@ def cli(
                     if stage_idx_0 in _bidir_snapshot_before:
                         _bidir_pass1_trj = list(trj_blocks)
                     elif stage_idx_0 in _bidir_reset_before:
-                        all_trj_blocks.extend(reversed(_bidir_pass1_trj))
-                        all_trj_blocks.extend(trj_blocks)
+                        all_trj_blocks.extend(
+                            _assemble_bidirectional_trajectory(
+                                _bidir_pass1_trj,
+                                _bidir_center_trj,
+                                trj_blocks,
+                            )
+                        )
                         _bidir_pass1_trj = []
                     else:
                         all_trj_blocks.extend(trj_blocks)
@@ -934,6 +975,7 @@ def cli(
                     **calculator_provenance(calc_cfg),
                     "solvent": calc_cfg.get("solvent", "none"),
                     "preopt": bool(preopt),
+                    "preopt_converged": _preopt_converged,
                     "max_step_size_angstrom": float(max_step_size),
                     "n_stages": len(stages_summary),
                     "stages": json_stages,

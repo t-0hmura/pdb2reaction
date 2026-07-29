@@ -70,6 +70,17 @@ def test_all_manifest_ignores_stale_scan_stages_and_records_distinct_runs(
         child_out = Path(args[args.index("--out-dir") + 1])
         if name == "scan":
             _replace_bytes(child_out / "stage_01" / "result.xyz", _trajectory())
+            _replace_bytes(
+                child_out / "result.json",
+                json.dumps(
+                    apply_current_run_id(
+                        {
+                            "scientific_status": "success",
+                            "preopt_converged": None,
+                        }
+                    )
+                ).encode("utf-8"),
+            )
         elif name == "path-opt":
             _replace_bytes(child_out / "final_geometries_trj.xyz", _trajectory())
             _replace_bytes(
@@ -175,6 +186,17 @@ def test_path_search_cannot_consume_an_unchanged_prior_summary(
         child_out = Path(args[args.index("--out-dir") + 1])
         if name == "scan":
             _replace_bytes(child_out / "stage_01" / "result.xyz", _trajectory())
+            _replace_bytes(
+                child_out / "result.json",
+                json.dumps(
+                    apply_current_run_id(
+                        {
+                            "scientific_status": "success",
+                            "preopt_converged": None,
+                        }
+                    )
+                ).encode("utf-8"),
+            )
         elif name == "path_search":
             return
         else:  # pragma: no cover
@@ -202,3 +224,52 @@ def test_path_search_cannot_consume_an_unchanged_prior_summary(
     assert result.exit_code != 0
     assert "did not produce 'path.summary'" in result.output
     assert not (out_dir / "summary.json").exists()
+
+
+def test_all_stops_before_path_search_when_scan_outcome_failed(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    source = tmp_path / "input.xyz"
+    source.write_text("2\nH2\nH 0 0 0\nH 0 0 0.74\n", encoding="utf-8")
+    out_dir = tmp_path / "out"
+    dispatched = []
+
+    def fake_child(name, _cli, args, **_kwargs) -> None:
+        dispatched.append(name)
+        child_out = Path(args[args.index("--out-dir") + 1])
+        if name != "scan":  # pragma: no cover
+            raise AssertionError(name)
+        _replace_bytes(child_out / "stage_01" / "result.xyz", _trajectory())
+        _replace_bytes(
+            child_out / "result.json",
+            json.dumps(
+                apply_current_run_id(
+                    {
+                        "scientific_status": "failed",
+                        "scientific_status_reasons": ["stage_1: not converged"],
+                        "preopt_converged": None,
+                    }
+                )
+            ).encode("utf-8"),
+        )
+
+    monkeypatch.setattr(all_workflow, "_run_cli_main", fake_child)
+
+    result = CliRunner().invoke(
+        all_workflow.cli,
+        [
+            "-i",
+            str(source),
+            "-q",
+            "0",
+            "--scan-lists",
+            "[(1,2,0.80)]",
+            "--no-preopt",
+            "--out-dir",
+            str(out_dir),
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "did not produce a scientifically usable path" in result.output
+    assert dispatched == ["scan"]

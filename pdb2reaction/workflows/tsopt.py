@@ -2166,6 +2166,27 @@ def cli(
             alias_groups=TSOPT_MODE_ALIASES,
             allowed_hint="grad|hess|dimer|rsirfo|trim|rsprfo",
         )
+        if kind == "dimer":
+            update_interval = simple_cfg.get("update_interval_hessian", 500)
+            if isinstance(update_interval, bool):
+                raise click.BadParameter(
+                    "hessian_dimer.update_interval_hessian must be a positive integer."
+                )
+            try:
+                validated_interval = int(update_interval)
+                if float(update_interval) != validated_interval:
+                    raise ValueError
+            except (TypeError, ValueError, OverflowError) as exc:
+                raise click.BadParameter(
+                    "hessian_dimer.update_interval_hessian must be a positive integer; "
+                    f"got {update_interval!r}."
+                ) from exc
+            if validated_interval < 1:
+                raise click.BadParameter(
+                    "hessian_dimer.update_interval_hessian must be a positive integer; "
+                    f"got {update_interval!r}."
+                )
+            simple_cfg["update_interval_hessian"] = validated_interval
         _validate_reference_mode_optimizer(kind, reference_mode_path)
         out_dir_path = Path(opt_cfg["out_dir"]).resolve()
 
@@ -2995,7 +3016,7 @@ def cli(
                         "imaginary_frequencies_cm": _rsirfo_imag,
                         "opt_mode": kind,
                         "n_atoms": len(geometry.atoms),
-                        "n_opt_cycles": last_optimizer.cur_cycle if hasattr(last_optimizer, "cur_cycle") else None,
+                        "n_opt_cycles": optimizer_cycle_count(last_optimizer),
                         "backend": calc_cfg.get("backend", backend),
                         "charge": calc_cfg["charge"],
                         "spin": calc_cfg["spin"],

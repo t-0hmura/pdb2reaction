@@ -550,6 +550,7 @@ def cli(
 
             if preopt:
                 click.echo("[preopt] Unbiased relaxation of the initial structure ...")
+                preopt_start = _snapshot_geometry(geom_outer)
                 geom_outer.set_calculator(base_calc)
                 max_step_bohr_local = float(max_step_size) * ANG2BOHR
                 optimizer0 = make_sopt_optimizer(
@@ -572,6 +573,9 @@ def cli(
                 except OptimizationError as e:
                     click.echo(f"[preopt] OptimizationError — {e}")
                     _preopt_conv = False
+
+                if _preopt_conv is not True:
+                    geom_outer = _snapshot_geometry(preopt_start)
 
                 # Measure optimized distances and record preopt structure
                 try:

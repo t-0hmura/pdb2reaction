@@ -243,6 +243,7 @@ def test_real_freq_generation_invalidates_prior_modes_and_envelopes(tmp_path):
         tmp_path / "frequencies_cm-1.txt",
         tmp_path / "mode_0001_-100.00cm-1_trj.xyz",
         tmp_path / "mode_0001_-100.00cm-1.pdb",
+        tmp_path / "mode_0001_-100.00cm-1.cif",
         tmp_path / "result.json",
         tmp_path / "summary.json",
     ]
@@ -266,3 +267,52 @@ def test_freq_config_cannot_be_deleted_as_reserved_output(tmp_path):
     with pytest.raises(click.UsageError, match="collides with a reserved"):
         _prepare_thermo_output_paths(tmp_path, protected_inputs=(config,))
     assert config.exists()
+
+
+def test_frequency_input_cannot_be_deleted_as_prior_mode(tmp_path):
+    from pdb2reaction.workflows.freq import _prepare_frequency_output_paths
+
+    input_path = tmp_path / "mode_0001_-100.00cm-1.pdb"
+    input_path.write_text("ATOM\n", encoding="utf-8")
+
+    with pytest.raises(click.UsageError, match="collides with a reserved"):
+        _prepare_frequency_output_paths(
+            tmp_path,
+            protected_inputs=(input_path,),
+        )
+    assert input_path.read_text(encoding="utf-8") == "ATOM\n"
+
+
+@pytest.mark.parametrize(
+    ("option", "value", "message"),
+    [
+        ("--max-write", "-1", "non-negative integer"),
+        ("--n-frames", "0", "positive integer"),
+        ("--amplitude-ang", "nan", "must be finite"),
+    ],
+)
+def test_frequency_export_controls_are_validated_before_execution(
+    tmp_path, option, value, message
+):
+    from click.testing import CliRunner
+    from pdb2reaction.cli import cli as root_cli
+
+    source = tmp_path / "atom.xyz"
+    source.write_text("1\natom\nHe 0 0 0\n", encoding="utf-8")
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "freq",
+            "-i",
+            str(source),
+            "-q",
+            "0",
+            "--dry-run",
+            option,
+            value,
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert message in result.output

@@ -296,6 +296,7 @@ def _prepare_frequency_output_paths(
         out_dir / "summary.json",
         *out_dir.glob("mode_*cm-1_trj.xyz"),
         *out_dir.glob("mode_*cm-1.pdb"),
+        *out_dir.glob("mode_*cm-1.cif"),
     ]
     reserved = {path.resolve() for path in owned}
     for protected in protected_inputs:
@@ -633,6 +634,38 @@ def cli(
     thermo_cfg["pressure_atm"] = _validated_thermo_condition(
         thermo_cfg.get("pressure_atm"), name="pressure_atm"
     )
+    max_write_value = freq_cfg.get("max_write")
+    n_frames_value = freq_cfg.get("n_frames")
+    amplitude_value = freq_cfg.get("amplitude_ang")
+    if (
+        isinstance(max_write_value, bool)
+        or not isinstance(max_write_value, (int, np.integer))
+        or int(max_write_value) < 0
+    ):
+        raise click.BadParameter(
+            f"freq.max_write must be a non-negative integer, got {max_write_value!r}."
+        )
+    if (
+        isinstance(n_frames_value, bool)
+        or not isinstance(n_frames_value, (int, np.integer))
+        or int(n_frames_value) < 1
+    ):
+        raise click.BadParameter(
+            f"freq.n_frames must be a positive integer, got {n_frames_value!r}."
+        )
+    try:
+        amplitude_value = float(amplitude_value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise click.BadParameter(
+            f"freq.amplitude_ang must be finite, got {amplitude_value!r}."
+        ) from exc
+    if not np.isfinite(amplitude_value):
+        raise click.BadParameter(
+            f"freq.amplitude_ang must be finite, got {amplitude_value!r}."
+        )
+    freq_cfg["max_write"] = int(max_write_value)
+    freq_cfg["n_frames"] = int(n_frames_value)
+    freq_cfg["amplitude_ang"] = amplitude_value
     from pysisyphus.tr_projection import normalize_tr_projection_mode
     geom_cfg["tr_projection"] = normalize_tr_projection_mode(
         geom_cfg.get("tr_projection")
@@ -695,7 +728,14 @@ def cli(
     # operation can fail, including under --no-dump.
     _thermo_yaml, _thermo_yaml_tmp = _prepare_frequency_output_paths(
         out_dir_path,
-        protected_inputs=(config_yaml, override_yaml),
+        protected_inputs=(
+            input_path,
+            geom_input_path,
+            source_path,
+            ref_pdb,
+            config_yaml,
+            override_yaml,
+        ),
     )
 
     # Default-verbosity entry summary (skipped in child mode).
@@ -863,6 +903,9 @@ def cli(
             _mode_output_files.append(out_trj.name)
             if out_pdb is not None and out_pdb.is_file():
                 _mode_output_files.append(out_pdb.name)
+                out_cif = out_pdb.with_suffix(".cif")
+                if out_cif.is_file():
+                    _mode_output_files.append(out_cif.name)
         (out_dir_path / "frequencies_cm-1.txt").write_text(
             "\n".join(f"{i+1:4d}  {float(freqs_cm[j]):+12.4f}" for i, j in enumerate(order)),
             encoding="utf-8"

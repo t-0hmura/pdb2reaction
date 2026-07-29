@@ -91,6 +91,34 @@ def test_real_irc_generation_invalidates_prefixed_directional_outputs(
     assert unrelated.read_text(encoding="utf-8") == "keep\n"
 
 
+def test_irc_output_prefix_cannot_escape_output_directory(tmp_path) -> None:
+    import click
+    from pdb2reaction.workflows.irc import _prepare_irc_output_dir
+
+    sibling = tmp_path / "escape_finished_irc.pdb"
+    sibling.write_text("keep\n", encoding="utf-8")
+    out_dir = tmp_path / "out"
+
+    with pytest.raises(click.BadParameter, match="without path components"):
+        _prepare_irc_output_dir(out_dir, prefix="../escape")
+    assert sibling.read_text(encoding="utf-8") == "keep\n"
+
+
+def test_irc_original_input_is_protected_from_invalidation(tmp_path) -> None:
+    import click
+    from pdb2reaction.workflows.irc import _prepare_irc_output_dir
+
+    source = tmp_path / "finished_irc.cif"
+    source.write_text("data_input\n", encoding="utf-8")
+
+    with pytest.raises(click.UsageError, match="collides with a reserved"):
+        _prepare_irc_output_dir(
+            tmp_path,
+            protected_inputs=(source,),
+        )
+    assert source.read_text(encoding="utf-8") == "data_input\n"
+
+
 @pytest.mark.parametrize(
     "device",
     ["cpu"] + (["cuda"] if torch.cuda.is_available() else []),

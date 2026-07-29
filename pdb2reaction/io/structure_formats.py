@@ -461,6 +461,10 @@ def read_pdb_atom_sites(
                 raise ValueError(
                     f"Cannot parse coordinates at {path}:{line_number}."
                 ) from exc
+            if not np.all(np.isfinite((x, y, z))):
+                raise ValueError(
+                    f"Non-finite coordinates at {path}:{line_number}."
+                )
             occupancy_text = line[54 + coord_offset : 60 + coord_offset].strip()
             parsed_occ = parsed_occupancy(occupancy_text)
             occupancy = 1.0 if parsed_occ is None else parsed_occ

@@ -649,6 +649,11 @@ def _parse_scan_lists_literals(
             raise click.BadParameter(
                 f"--scan-lists #{idx_stage} must contain at least one (i,j,target) triple."
             )
+        if any(len(entry) != 3 for entry in tuples):
+            raise click.BadParameter(
+                "pdb2reaction all accepts only (i,j,target) scan triples; "
+                "use standalone scan for bidirectional (i,j,start,end) stages."
+            )
         stages.append(tuples)
     return stages
 
@@ -5229,6 +5234,18 @@ def cli(
             label="summary.json",
             echo=False,
         )
+        summary_payload["current_output_paths"] = [
+            path.relative_to(out_dir).as_posix()
+            for path in _refresh_current_public_outputs(manifest, out_dir)
+            if path.is_relative_to(out_dir)
+        ]
+        write_summary_log(tsroot / "summary.log", summary_payload)
+        _copy_public_logged(
+            tsroot / "summary.log",
+            out_dir / "summary.log",
+            label="summary.log",
+            echo=False,
+        )
         _refresh_current_public_outputs(manifest, out_dir)
         _persist_run_manifest(manifest, out_dir)
 
@@ -5314,6 +5331,7 @@ def cli(
             "--endopt" if scan_endopt_use else "--no-endopt",
             "--opt-mode",
             str(scan_opt_mode_use),
+            "--out-json",
         ]
         _scan_ref = ref_pdb_for_topology or (scan_input_pdb if scan_input_pdb.suffix.lower() == ".pdb" else None)
         if _scan_ref is not None:
@@ -5374,8 +5392,26 @@ def cli(
                 [preopt_root.with_suffix(suffix) for suffix in (".xyz", ".pdb", ".gjf")],
             )
             manifest.declare("scan.preopt_ref", [preopt_root.with_suffix(".pdb")])
+        manifest.declare("scan.result", [scan_dir / "result.json"])
 
         _run_cli_main("scan", _scan_cli.cli, scan_args, on_nonzero="raise", prefix="all")
+
+        scan_result_path = manifest.claim_one("scan.result")
+        try:
+            scan_result = json.loads(
+                scan_result_path.read_text(encoding="utf-8")
+            )
+        except (OSError, ValueError, TypeError) as exc:
+            raise click.ClickException(
+                f"[all] Could not read scan outcome from {scan_result_path}: {exc}"
+            ) from exc
+        if scan_result.get("scientific_status") != "success":
+            reasons = scan_result.get("scientific_status_reasons") or []
+            detail = "; ".join(str(reason) for reason in reasons) or "unknown reason"
+            raise click.ClickException(
+                f"[all] Staged scan did not produce a scientifically usable path: {detail}"
+            )
+        scan_preopt_usable = scan_result.get("preopt_converged") is True
 
         stage_results = [
             manifest.claim_one(f"scan.stage.{stage_idx:02d}")
@@ -5396,7 +5432,7 @@ def cli(
 
         initial_path_for_path = scan_input_pdb
         initial_ref_pdb_for_path = ref_pdb_for_topology or (scan_input_pdb if scan_input_pdb.suffix.lower() == ".pdb" else None)
-        if preopt_result is not None:
+        if preopt_result is not None and scan_preopt_usable:
             initial_path_for_path = preopt_result
             if preopt_ref_result is not None:
                 initial_ref_pdb_for_path = preopt_ref_result

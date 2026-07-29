@@ -1247,3 +1247,20 @@ def test_multimodel_pdb_is_reduced_to_one_geometry(tmp_path: Path) -> None:
         assert "   9.000" not in geometry
     finally:
         prepared.cleanup()
+
+
+@pytest.mark.parametrize("coordinate", ["nan", "inf", "-inf"])
+def test_pdb_reader_rejects_nonfinite_coordinates(
+    tmp_path: Path, coordinate: str
+) -> None:
+    from pdb2reaction.io.structure_formats import read_pdb_atom_sites
+
+    source = tmp_path / "nonfinite.pdb"
+    source.write_text(
+        "ATOM      1  C   MOL A   1    "
+        f"{coordinate:>8}   0.000   0.000  1.00  0.00           C\nEND\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="Non-finite coordinates"):
+        read_pdb_atom_sites(source)

@@ -582,6 +582,18 @@ def cli(
     charge, spin = resolve_configured_charge_spin(
         merged_yaml_cfg, charge=charge, spin=spin, ligand_charge=ligand_charge,
     )
+    error_opt_cfg = dict(OPT_BASE_KW)
+    apply_yaml_overrides(
+        config_layer_cfg,
+        [(error_opt_cfg, (("opt",),))],
+    )
+    if cli_param_overridden(ctx, "out_dir"):
+        error_opt_cfg["out_dir"] = out_dir
+    apply_yaml_overrides(
+        override_layer_cfg,
+        [(error_opt_cfg, (("opt",),))],
+    )
+    error_out_dir = Path(error_opt_cfg["out_dir"]).resolve()
 
     set_convert_file_enabled(convert_files)
 
@@ -984,7 +996,7 @@ def cli(
                 result_data = {
                     "status": optimizer_terminal_status(last_optimizer),
                     "energy_hartree": final_energy_hartree,
-                    "n_opt_cycles": last_optimizer.cur_cycle if hasattr(last_optimizer, "cur_cycle") else None,
+                    "n_opt_cycles": optimizer_cycle_count(last_optimizer),
                     "opt_mode": opt_cfg.get("opt_mode", opt_mode),
                     "charge": calc_cfg["charge"],
                     "spin": calc_cfg["spin"],
@@ -1034,7 +1046,6 @@ def cli(
                     elapsed_seconds=time.perf_counter() - time_start,
                 )
 
-    out_dir_path = Path(out_dir).resolve()
     run_cli(
         _run,
         label="optimization",
@@ -1042,7 +1053,7 @@ def cli(
         zero_step_msg="ERROR: Step length fell below the minimum allowed (ZeroStepLength).",
         opt_exc=OptimizationError,
         opt_msg="ERROR: Optimization failed - {exc}",
-        out_dir=out_dir_path,
+        out_dir=error_out_dir,
         command="opt",
         time_start=time_start,
     )

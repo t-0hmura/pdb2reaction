@@ -60,6 +60,11 @@ def collect_staged_scan_values(
     unexpected = next((value for value in extras if value.startswith("-")), None)
     if unexpected is not None:
         raise click.BadParameter(f"Unexpected option or argument: {unexpected}")
+    if extras and len(values) > 1:
+        raise click.BadParameter(
+            f"Do not mix repeated {option_name} options with the grouped "
+            "one-option/many-values form."
+        )
     combined = values + extras
     if not combined:
         raise click.BadParameter(f"{option_name} is required.")

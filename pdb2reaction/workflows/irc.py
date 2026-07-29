@@ -125,6 +125,18 @@ _IRC_GENERATION_FILENAMES = tuple(
 )
 
 
+def _validated_irc_prefix(prefix: str) -> str:
+    value = str(prefix or "")
+    if value:
+        path = Path(value)
+        if path.is_absolute() or path.name != value or value in {".", ".."}:
+            raise click.BadParameter(
+                "irc.prefix must be a filename prefix without path components; "
+                f"got {prefix!r}."
+            )
+    return value
+
+
 def _prepare_irc_output_dir(
     path: Path,
     *,
@@ -134,6 +146,7 @@ def _prepare_irc_output_dir(
     """Invalidate command-owned IRC artifacts before a real generation."""
     resolved = Path(path).resolve()
     resolved.mkdir(parents=True, exist_ok=True)
+    prefix = _validated_irc_prefix(prefix)
     normalized_prefix = f"{prefix}_" if prefix else ""
     owned = [
         *(resolved / f"{normalized_prefix}{name}" for name in _IRC_GENERATION_FILENAMES),
@@ -511,6 +524,14 @@ def cli(
             calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
             calc_cfg["return_partial_hessian"] = True
 
+            if not bool(irc_cfg.get("forward")) and not bool(irc_cfg.get("backward")):
+                raise click.UsageError(
+                    "IRC requires at least one enabled direction: "
+                    "--forward or --backward."
+                )
+            irc_cfg["prefix"] = _validated_irc_prefix(
+                str(irc_cfg.get("prefix") or "")
+            )
             out_dir_path = Path(irc_cfg["out_dir"]).resolve()
             if show_config:
                 click.echo(
@@ -545,8 +566,11 @@ def cli(
                 out_dir_path,
                 prefix=str(irc_cfg.get("prefix") or ""),
                 protected_inputs=(
+                    input_path,
+                    prepared_input.original_path,
                     prepared_input.source_path,
                     geom_input_path,
+                    ref_pdb,
                     config_yaml,
                     override_yaml,
                 ),
