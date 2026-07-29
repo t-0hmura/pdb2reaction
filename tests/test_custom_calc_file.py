@@ -75,6 +75,19 @@ def test_load_ase_calculator_and_compute(tmp_path: Path) -> None:
     assert np.asarray(hessian_result["hessian"]).shape == (9, 9)
 
 
+def test_calculator_class_export_is_instantiated(tmp_path: Path) -> None:
+    from ase.calculators.calculator import Calculator
+
+    from pdb2reaction.backends.custom import load_ase_calculator
+
+    calc_file = _write(
+        tmp_path / "class_calc.py",
+        "from ase.calculators.emt import EMT\nget_calculator = EMT\n",
+    )
+
+    assert isinstance(load_ase_calculator(str(calc_file)), Calculator)
+
+
 def test_load_ase_calculator_errors(tmp_path: Path) -> None:
     from pdb2reaction.backends.base import BackendError
     from pdb2reaction.backends.custom import load_ase_calculator
