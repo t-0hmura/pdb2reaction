@@ -13,7 +13,6 @@ cached Hessian, or a Gibbs diagram.
 from __future__ import annotations
 
 import json
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -277,6 +276,105 @@ def test_path_bridge_only_is_not_success() -> None:
     truth = aggregate_workflow_truth(leaves, expected)
     # A path made only of a non-reactive bridge has no usable reactive segment.
     assert truth.scientific_status != "success"
+
+
+def test_nonconverged_bridge_prevents_mixed_path_success() -> None:
+    from pdb2reaction.workflows.path_search import SegmentReport, _path_leaves_and_expected
+
+    segments = [
+        SegmentReport(
+            tag="seg_01",
+            barrier_kcal=10.0,
+            delta_kcal=0.0,
+            summary="",
+            kind="seg",
+            seg_index=1,
+            converged=True,
+        ),
+        SegmentReport(
+            tag="bridge_01",
+            barrier_kcal=0.0,
+            delta_kcal=0.0,
+            summary="",
+            kind="bridge",
+            seg_index=2,
+            converged=False,
+        ),
+        SegmentReport(
+            tag="seg_02",
+            barrier_kcal=8.0,
+            delta_kcal=-1.0,
+            summary="",
+            kind="seg",
+            seg_index=3,
+            converged=True,
+        ),
+    ]
+
+    leaves, expected = _path_leaves_and_expected(segments)
+
+    assert aggregate_workflow_truth(leaves, expected).scientific_status == "partial"
+    assert "segment_2" in expected
+
+
+def test_endpoint_hei_pair_is_not_hidden_by_later_segment() -> None:
+    from pdb2reaction.workflows.path_search import (
+        SegmentReport,
+        _path_leaves_and_expected,
+        _raw_path_outcome,
+    )
+
+    endpoint_pair = _raw_path_outcome(
+        "raw_seg_000",
+        engine_converged=False,
+        artifacts=["mep.pdb"],
+    )
+    later_segment = SegmentReport(
+        tag="seg_01",
+        barrier_kcal=10.0,
+        delta_kcal=0.0,
+        summary="",
+        kind="seg",
+        seg_index=1,
+        converged=True,
+    )
+
+    leaves, expected = _path_leaves_and_expected(
+        [later_segment],
+        required_outcomes=[endpoint_pair],
+    )
+
+    truth = aggregate_workflow_truth(leaves, expected)
+    assert truth.scientific_status == "partial"
+    assert endpoint_pair.item_id in expected
+    assert endpoint_pair.reason == "endpoint_hei;engine_nonconverged"
+
+
+def test_path_preopt_failure_is_required() -> None:
+    from pdb2reaction.workflows.path_search import SegmentReport, _path_leaves_and_expected
+
+    preopt = make_leaf(
+        "path",
+        "preopt_endpoint_0",
+        executed=True,
+        converged=False,
+    )
+    segment = SegmentReport(
+        tag="seg_01",
+        barrier_kcal=10.0,
+        delta_kcal=0.0,
+        summary="",
+        kind="seg",
+        seg_index=1,
+        converged=True,
+    )
+
+    leaves, expected = _path_leaves_and_expected(
+        [segment],
+        required_outcomes=[preopt],
+    )
+
+    assert aggregate_workflow_truth(leaves, expected).scientific_status == "partial"
 
 
 # ---------------------------------------------------------------------------

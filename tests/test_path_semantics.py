@@ -4,8 +4,10 @@ from types import SimpleNamespace
 
 from pdb2reaction.workflows.path_opt import _select_hei_index as select_path_opt_hei
 from pdb2reaction.workflows.path_search import (
+    CombinedPath,
     _frame_ranges_by_segment,
     _select_hei_index as select_path_search_hei,
+    _stitch_paths,
 )
 
 
@@ -51,3 +53,44 @@ def test_frame_ranges_preserve_bridge_and_disjoint_segment_provenance():
         "frame_stop": 5,
     }
     assert ranges[3]["frame_ranges"] == [[5, 8]]
+
+
+def test_cross_pair_recursive_segment_receives_interface_pair_index(
+    monkeypatch, tmp_path,
+):
+    from pdb2reaction.workflows import path_search
+
+    left = SimpleNamespace(coords3d=np.zeros((1, 3)))
+    right = SimpleNamespace(coords3d=np.ones((1, 3)))
+    captured = []
+
+    monkeypatch.setattr(
+        path_search,
+        "has_bond_change",
+        lambda *_args, **_kwargs: (True, "changed"),
+    )
+
+    def builder(tail, head, tag, pair_index):
+        captured.append((tag, pair_index))
+        return CombinedPath(
+            images=[tail, head],
+            energies=[0.0, 1.0],
+            segments=[],
+        )
+
+    _stitch_paths(
+        [([left], [0.0]), ([right], [1.0])],
+        stitch_rmsd_thresh=1.0e-6,
+        bridge_rmsd_thresh=1.0e-6,
+        shared_calc=None,
+        gs_cfg={},
+        stopt_cfg={},
+        out_dir=tmp_path,
+        tag="pair_01",
+        ref_pdb_path=None,
+        bond_cfg={},
+        segment_builder=builder,
+        bridge_pair_index=1,
+    )
+
+    assert captured == [("pair_01_mid", 1)]

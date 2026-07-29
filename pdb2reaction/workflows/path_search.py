@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Callable
 
@@ -17,7 +17,6 @@ import re
 import click
 from pdb2reaction.core.output import emit
 import numpy as np
-import json
 
 from pysisyphus.helpers import geom_loader
 from pysisyphus.cos.GrowingString import GrowingString
@@ -769,7 +768,9 @@ def _stitch_paths(
     tag: str,
     ref_pdb_path: Optional[Path],
     bond_cfg: Optional[Dict[str, Any]] = None,
-    segment_builder: Optional[Callable[[Any, Any, str], "CombinedPath"]] = None,
+    segment_builder: Optional[
+        Callable[[Any, Any, str, Optional[int]], "CombinedPath"]
+    ] = None,
     segments_out: Optional[List["SegmentReport"]] = None,
     bridge_pair_index: Optional[int] = None,
     mep_mode_kind: str = "dmf",
@@ -831,7 +832,12 @@ def _stitch_paths(
             emit(f"[{tag}] Covalent changes detected at interface — inserting a new recursive segment.", narrative=True)
             if adj_summary:
                 click.echo(textwrap.indent(adj_summary, prefix="  "))
-            sub = segment_builder(tail, head, f"{tag}_mid")
+            sub = segment_builder(
+                tail,
+                head,
+                f"{tag}_mid",
+                bridge_pair_index,
+            )
             seg_imgs, seg_E = sub.images, sub.energies
             if segments_out is not None and getattr(sub, "segments", None):
                 segments_out.extend(sub.segments)
@@ -929,6 +935,34 @@ class CombinedPath:
     images: List[Any]
     energies: List[float]
     segments: List[SegmentReport]
+    required_outcomes: List[Any] = field(default_factory=list)
+
+
+def _raw_path_outcome(
+    item_id: str,
+    *,
+    engine_converged: Optional[bool],
+    artifacts: Sequence[str] = (),
+):
+    """Return an unusable diagnostic path outcome with engine provenance."""
+    from pdb2reaction.workflows._outcomes import LeafOutcome
+
+    converged = (
+        engine_converged if isinstance(engine_converged, bool) else None
+    )
+    reason = "endpoint_hei"
+    if converged is False:
+        reason = "endpoint_hei;engine_nonconverged"
+    return LeafOutcome(
+        stage="path",
+        item_id=item_id,
+        required=True,
+        executed=True,
+        converged=converged,
+        usable=False,
+        reason=reason,
+        artifacts=tuple(str(artifact) for artifact in artifacts),
+    )
 
 
 def _path_leaves_and_expected(
@@ -936,23 +970,23 @@ def _path_leaves_and_expected(
     *,
     raw_artifacts: Sequence[str] = (),
     engine_converged: Optional[bool] = True,
+    required_outcomes: Sequence[Any] = (),
 ):
-    """Build path :class:`LeafOutcome` list + expected reactive-segment IDs.
+    """Build path :class:`LeafOutcome` list + expected required IDs.
 
-    Reactive segments (``kind != "bridge"``) are required leaves; bridges are
-    optional connectors.  When there is no reactive segment at all — the
+    Every segment used in the final path is required, including connector
+    bridges.  When there is no reactive segment at all — the
     endpoint-HEI branch returns ``segments=[]`` even though an R/P energy diagram
     can still be drawn — an unusable ``raw_path`` leaf is emitted so the aggregate
     mapper cannot promote the diagnostic diagram to success. The raw
     trajectory/diagram remain reportable as artifacts.
     """
 
-    from pdb2reaction.workflows._outcomes import LeafOutcome, make_leaf
+    from pdb2reaction.workflows._outcomes import make_leaf
 
-    leaves: List[Any] = []
+    leaves: List[Any] = list(required_outcomes)
     reactive = [s for s in segments if getattr(s, "kind", "seg") != "bridge"]
     for s in segments:
-        is_reactive = getattr(s, "kind", "seg") != "bridge"
         # a reactive segment is usable only when its optimizer explicitly
         # converged. A nonconverged (max-cycle) StringOptimizer segment retains
         # its trajectory artifact but must not count toward completeness.
@@ -961,29 +995,28 @@ def _path_leaves_and_expected(
             make_leaf(
                 "path",
                 f"segment_{int(s.seg_index)}",
-                required=is_reactive,
+                required=True,
                 executed=True,
                 converged=_seg_conv,
             )
         )
-    expected = [f"segment_{int(s.seg_index)}" for s in reactive]
+    expected = [
+        outcome.item_id
+        for outcome in required_outcomes
+        if getattr(outcome, "required", True)
+    ]
+    expected.extend(f"segment_{int(s.seg_index)}" for s in segments)
     if not reactive:
-        reason = "endpoint_hei"
-        if engine_converged is False:
-            reason = "endpoint_hei;engine_nonconverged"
-        leaves.append(
-            LeafOutcome(
-                stage="path",
-                item_id="raw_path",
-                required=True,
-                executed=True,
-                converged=engine_converged if isinstance(engine_converged, bool) else None,
-                usable=False,
-                reason=reason,
-                artifacts=tuple(str(a) for a in raw_artifacts),
+        if not required_outcomes:
+            leaves.append(
+                _raw_path_outcome(
+                    "raw_path",
+                    engine_converged=engine_converged,
+                    artifacts=raw_artifacts,
+                )
             )
-        )
-        expected = ["reactive_segment_1"]
+            expected.append("raw_path")
+        expected.append("reactive_segment_1")
     return leaves, expected
 
 
@@ -1136,7 +1169,17 @@ def _build_multistep_path(
     if not (1 <= hei <= len(gsm0.images) - 2):
         click.echo(f"[{tag0}] WARNING: HEI is at an endpoint (idx={hei}). Returning the raw GSM path.", err=True)
         _tag_images(gsm0.images, pair_index=pair_index)
-        return CombinedPath(images=gsm0.images, energies=gsm0.energies, segments=[])
+        return CombinedPath(
+            images=gsm0.images,
+            energies=gsm0.energies,
+            segments=[],
+            required_outcomes=[
+                _raw_path_outcome(
+                    f"raw_{tag0}",
+                    engine_converged=getattr(gsm0, "is_converged", None),
+                )
+            ],
+        )
 
     if refine_mode_kind == "minima":
         left_idx = _find_nearest_local_minimum(hei_idx=hei, direction=-1, energies=gsm0.energies)
@@ -1184,6 +1227,7 @@ def _build_multistep_path(
         click.echo(f"[{tag0}] WARNING: Failed to evaluate bond changes for kink detection: {e}", err=True)
         lr_changed, _ = True, ""
     use_kink = (not lr_changed)
+    from pdb2reaction.workflows._outcomes import combine_step_convergence
 
     if use_kink:
         n_inter = int(search_cfg.get("kink_max_nodes", 3))
@@ -1215,7 +1259,6 @@ def _build_multistep_path(
         # optimization explicitly converged; fold their convergence rather than
         # hardcode True, so a nonconverged (max-cycle) single-structure opt cannot
         # silently become a usable reactive leaf (fail-closed).
-        from pdb2reaction.workflows._outcomes import combine_step_convergence
         _kink_converged = combine_step_convergence(
             [left_conv] + inter_convs + [right_conv]
         )
@@ -1264,17 +1307,26 @@ def _build_multistep_path(
         barrier_kcal = float("nan")
         delta_kcal = float("nan")
 
+    segment_converged = combine_step_convergence(
+        [
+            getattr(gsm0, "is_converged", None),
+            left_conv,
+            right_conv,
+            getattr(ref1, "is_converged", None),
+        ]
+    )
     seg_report = SegmentReport(
         tag=step_tag_for_report,
         barrier_kcal=float(barrier_kcal),
         delta_kcal=float(delta_kcal),
         summary=step_summary if _changed else "(no covalent changes detected)",
         kind="seg",
-        converged=getattr(ref1, "is_converged", None),
+        converged=segment_converged,
     )
 
     parts: List[Tuple[List[Any], List[float]]] = []
     seg_reports: List[SegmentReport] = []
+    required_outcomes: List[Any] = []
 
     trailing_kink_run = kink_seq_count
     if left_changed:
@@ -1288,6 +1340,7 @@ def _build_multistep_path(
         _tag_images(subL.images, pair_index=pair_index)
         parts.append((subL.images, subL.energies))
         seg_reports.extend(subL.segments)
+        required_outcomes.extend(subL.required_outcomes)
         trailing_kink_run = _trailing_kink_count(seg_reports)
 
     current_kink_run = trailing_kink_run + 1 if use_kink else 0
@@ -1313,11 +1366,17 @@ def _build_multistep_path(
         _tag_images(subR.images, pair_index=pair_index)
         parts.append((subR.images, subR.energies))
         seg_reports.extend(subR.segments)
+        required_outcomes.extend(subR.required_outcomes)
 
     bridge_max_nodes = int(search_cfg.get("max_nodes_bridge", 5))
     gs_bridge_cfg = _gs_cfg_with_overrides(gs_cfg, max_nodes=bridge_max_nodes, climb=False, climb_lanczos=False)
 
-    def _segment_builder(tail_g, head_g, _tag: str) -> CombinedPath:
+    def _segment_builder(
+        tail_g,
+        head_g,
+        _tag: str,
+        interface_pair_index: Optional[int],
+    ) -> CombinedPath:
         sub = _build_multistep_path(
             tail_g, head_g,
             shared_calc,
@@ -1330,10 +1389,11 @@ def _build_multistep_path(
             depth=depth + 1,
             seg_counter=seg_counter,
             branch_tag=f"{branch_tag}B",
-            pair_index=pair_index,
+            pair_index=interface_pair_index,
             kink_seq_count=_trailing_kink_count(seg_reports),
         )
-        _tag_images(sub.images, pair_index=pair_index)
+        _tag_images(sub.images, pair_index=interface_pair_index)
+        required_outcomes.extend(sub.required_outcomes)
         return sub
 
     stitched_imgs, stitched_E = _stitch_paths(
@@ -1359,7 +1419,12 @@ def _build_multistep_path(
 
     _tag_images(stitched_imgs, pair_index=pair_index)
 
-    return CombinedPath(images=stitched_imgs, energies=stitched_E, segments=seg_reports)
+    return CombinedPath(
+        images=stitched_imgs,
+        energies=stitched_E,
+        segments=seg_reports,
+        required_outcomes=required_outcomes,
+    )
 
 
 # Full‑system merge helpers (Biopython)
@@ -2473,11 +2538,14 @@ def cli(
                     ref_pdb_for_segments = Path(p).resolve()
                     break
 
+        preopt_outcomes: List[Any] = []
         if preopt:
+            from pdb2reaction.workflows._outcomes import make_leaf as _mk_leaf
+
             new_geoms: List[Any] = []
             for i, g in enumerate(geoms):
                 tag = f"init{i:02d}"
-                g_opt, _ = _optimize_single(
+                g_opt, preopt_converged = _optimize_single(
                     g,
                     shared_calc,
                     single_opt_kind,
@@ -2488,6 +2556,14 @@ def cli(
                     ref_pdb=ref_pdb_for_segments,
                 )
                 new_geoms.append(g_opt)
+                preopt_outcomes.append(
+                    _mk_leaf(
+                        "path",
+                        f"preopt_endpoint_{i}",
+                        executed=True,
+                        converged=preopt_converged,
+                    )
+                )
             geoms = new_geoms
         else:
             click.echo("[init] Skipping endpoint preoptimization as requested by --no-preopt.")
@@ -2526,24 +2602,7 @@ def cli(
         combined_imgs: List[Any] = []
         combined_Es: List[float] = []
         seg_reports_all: List[SegmentReport] = []
-
-        def _segment_builder_for_pairs(tail_g, head_g, _tag: str) -> CombinedPath:
-            sub = _build_multistep_path(
-                tail_g, head_g,
-                shared_calc,
-                geom_cfg, gs_cfg, stopt_cfg,
-                single_opt_kind, single_opt_cfg,
-                bond_cfg, search_cfg, refine_mode_kind, mep_mode_kind, calc_cfg, dmf_cfg, prepared_inputs,
-                out_dir=out_dir_path,
-                ref_pdb_path=ref_pdb_for_segments,
-                prepared_input=main_prepared,
-                depth=0,
-                seg_counter=seg_counter,
-                branch_tag="B",
-                pair_index=None,
-                kink_seq_count=_trailing_kink_count(seg_reports_all),
-            )
-            return sub
+        required_outcomes_all: List[Any] = list(preopt_outcomes)
 
         for i in range(len(geoms) - 1):
             gA, gB = geoms[i], geoms[i + 1]
@@ -2569,7 +2628,32 @@ def cli(
                 combined_imgs = list(pair_path.images)
                 combined_Es = list(pair_path.energies)
                 seg_reports_all.extend(pair_path.segments)
+                required_outcomes_all.extend(pair_path.required_outcomes)
             else:
+                def _segment_builder_for_pairs(
+                    tail_g,
+                    head_g,
+                    _tag: str,
+                    interface_pair_index: Optional[int],
+                ) -> CombinedPath:
+                    sub = _build_multistep_path(
+                        tail_g, head_g,
+                        shared_calc,
+                        geom_cfg, gs_cfg, stopt_cfg,
+                        single_opt_kind, single_opt_cfg,
+                        bond_cfg, search_cfg, refine_mode_kind, mep_mode_kind, calc_cfg, dmf_cfg, prepared_inputs,
+                        out_dir=out_dir_path,
+                        ref_pdb_path=ref_pdb_for_segments,
+                        prepared_input=main_prepared,
+                        depth=0,
+                        seg_counter=seg_counter,
+                        branch_tag="B",
+                        pair_index=interface_pair_index,
+                        kink_seq_count=_trailing_kink_count(seg_reports_all),
+                    )
+                    required_outcomes_all.extend(sub.required_outcomes)
+                    return sub
+
                 parts = [(combined_imgs, combined_Es), (pair_path.images, pair_path.energies)]
                 combined_imgs, combined_Es = _stitch_paths(
                     parts=parts,
@@ -2592,6 +2676,7 @@ def cli(
                     prepared_inputs=prepared_inputs,
                 )
                 seg_reports_all.extend(pair_path.segments)
+                required_outcomes_all.extend(pair_path.required_outcomes)
             emit(
                 f"[stage] Pair {i:02d} done: images={len(pair_path.images)}, "
                 f"segments={len(pair_path.segments)}",
@@ -2605,7 +2690,12 @@ def cli(
             narrative=True,
         )
 
-        combined_all = CombinedPath(images=combined_imgs, energies=combined_Es, segments=seg_reports_all)
+        combined_all = CombinedPath(
+            images=combined_imgs,
+            energies=combined_Es,
+            segments=seg_reports_all,
+            required_outcomes=required_outcomes_all,
+        )
 
         for idx, srep in enumerate(combined_all.segments, 1):
             srep.seg_index = idx
@@ -3008,7 +3098,9 @@ def cli(
             if (out_dir_path / _f).exists()
         ]
         _path_leaves, _path_expected = _path_leaves_and_expected(
-            combined_all.segments, raw_artifacts=_raw_arts
+            combined_all.segments,
+            raw_artifacts=_raw_arts,
+            required_outcomes=combined_all.required_outcomes,
         )
         _path_truth = _agg_truth(_path_leaves, _path_expected)
         # Legacy byte-compat: `status` stays the diagram-based value it always
