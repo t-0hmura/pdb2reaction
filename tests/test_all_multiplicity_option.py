@@ -15,6 +15,18 @@ def test_all_accepts_multiplicity_option() -> None:
         Path("single.pdb").write_text("END\n", encoding="utf-8")
         result = runner.invoke(
             root_cli,
-            ["all", "-i", "single.pdb", "--tsopt", "True", "--dry-run", "True", "--multiplicity", "1"],
+            [
+                "all",
+                "-i",
+                "single.pdb",
+                "-q",
+                "0",
+                "--tsopt",
+                "True",
+                "--dry-run",
+                "True",
+                "--multiplicity",
+                "1",
+            ],
         )
     assert result.exit_code == 0, result.output

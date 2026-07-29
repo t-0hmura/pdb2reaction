@@ -57,7 +57,9 @@ def test_all_restores_exact_process_state_and_prepared_resources(
     class Prepared:
         def __init__(self, path: Path) -> None:
             self.source_path = path
+            self.geom_path = path
             self.structure_template = None
+            self.gjf_template = None
 
         def cleanup(self) -> None:
             cleanup_order.append(self.source_path.name)

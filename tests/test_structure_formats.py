@@ -985,7 +985,17 @@ def test_all_dry_run_accepts_cif_input(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(utils, "normalize_structure_to_pdb", record_bridge)
     result = CliRunner().invoke(
         root_cli,
-        ["all", "-i", str(source), "--tsopt", "True", "--dry-run", "True"],
+        [
+            "all",
+            "-i",
+            str(source),
+            "-q",
+            "0",
+            "--tsopt",
+            "True",
+            "--dry-run",
+            "True",
+        ],
     )
 
     assert result.exit_code == 0, result.output

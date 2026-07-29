@@ -148,7 +148,7 @@ def test_all_accepts_grouped_and_repeated_inputs(
 
     result = CliRunner().invoke(
         root_cli,
-        ["all", *inputs, "-q", "0", "--dry-run"],
+        ["all", *inputs, "-q", "0", "-m", "2", "--dry-run"],
     )
 
     assert result.exit_code == 0, result.output

@@ -130,7 +130,7 @@ def test_all_cli_accepts_the_toggle() -> None:
         Path("s.pdb").write_text("END\n", encoding="utf-8")
         result = runner.invoke(
             root_cli,
-            ["all", "-i", "s.pdb", "--tsopt", "True", "--dry-run", "True",
+            ["all", "-i", "s.pdb", "-q", "0", "--tsopt", "True", "--dry-run", "True",
              "--no-reject-uphill"],
         )
     assert result.exit_code == 0, result.output
