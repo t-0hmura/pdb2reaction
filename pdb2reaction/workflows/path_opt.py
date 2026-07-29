@@ -94,7 +94,7 @@ class DMFMepResult:
     images: List[Any]
     energies: List[float]
     hei_idx: int
-    # M09: truthful convergence of the DMF (IPOPT) solve. ``None`` means the
+    # Explicit convergence of the DMF (IPOPT) solve. ``None`` means the
     # engine exposed no readable convergence signal (fail-closed: not "converged"
     # and never promoted to success by artifact existence).
     is_converged: Optional[bool] = None
@@ -384,7 +384,7 @@ def _optimize_single(
 
     Returns ``(geometry, converged)`` where ``converged`` is the optimizer's
     fail-closed tri-state convergence bit (``optimizer_converged_bit``): a
-    non-raising ``run()`` is not convergence (M50), so the caller must gate on
+    non-raising ``run()`` is not convergence, so the caller must gate on
     this bit rather than assume a completed optimization converged.
     """
     g.set_calculator(shared_calc)
@@ -401,7 +401,7 @@ def _optimize_single(
 
     emit(f"\n====== [{tag}] Single-structure {opt_kind.upper()} ======\n", narrative=True)
     opt.run()
-    # M50/C6: capture the optimizer's explicit convergence bit before any
+    # Capture the optimizer's explicit convergence bit before any
     # geometry post-processing. A normal (non-raising) run() is NOT convergence;
     # thread this to the caller so a nonconverged single-structure optimization
     # cannot silently become a usable (e.g. kink-segment) reactive leaf.
@@ -1157,14 +1157,14 @@ def cli(
                 _dmf_converged = getattr(dmf_res, 'is_converged', None)
                 _dmf_reason = getattr(dmf_res, 'reason', "") or ""
                 result_data: Dict[str, Any] = {
-                    # Legacy byte-compat: the pre-C6 DMFMepResult exposed no
+                    # Legacy byte compatibility: DMFMepResult exposed no
                     # readable is_converged, so both the legacy `status` and the
                     # legacy `converged` fields always read "completed" / null.
                     # The new IPOPT convergence truth is carried ONLY by the
                     # additive scientific_status / stage_outcomes (attached below);
                     # both legacy values are pinned to their base so no downstream
                     # consumer of `status`/`converged` observes a non-additive flip
-                    # on a genuinely-converged run (M09 / C6).
+                    # on a genuinely converged run.
                     "status": "completed",
                     "converged": None,
                     "mep_mode": "dmf",
@@ -1196,10 +1196,10 @@ def cli(
                     f = out_dir_path / f"final_geometries{ext}"
                     if f.exists():
                         result_data["files"][f"final_geometries_{ext[1:]}"] = f.name
-                # Additive truthful outcomes: the DMF path is a required leaf that
+                # Additive outcome fields: the DMF path is a required leaf that
                 # is usable only when the IPOPT solve explicitly converged. A
                 # nonconverged solve keeps its trajectory artifact but is not
-                # promoted to a usable path (M09).
+                # promoted to a usable path.
                 from pdb2reaction.workflows._outcomes import (
                     aggregate_workflow_truth as _agg_truth,
                     attach_outcomes as _attach,
@@ -1382,8 +1382,8 @@ def cli(
                 f = out_dir_path / f"final_geometries{ext}"
                 if f.exists():
                     result_data_gsm["files"][f"final_geometries_{ext[1:]}"] = f.name
-            # Additive truthful outcomes: the GSM path is usable only when the
-            # optimizer explicitly converged (M09).
+            # Additive outcome fields: the GSM path is usable only when the
+            # optimizer explicitly converged.
             from pdb2reaction.workflows._outcomes import (
                 aggregate_workflow_truth as _agg_truth,
                 attach_outcomes as _attach,

@@ -817,7 +817,8 @@ def _bofill_update_active(H: torch.Tensor,
         diag_inc = (alpha * xi[idx] * xi[idx]
                     + beta * d[idx] * d[idx]
                     + 2.0 * gamma * d[idx] * xi[idx])
-        # DO NOT INLINE: in-place `+=` with tensor idx performs scatter semantics that PyTorch does NOT handle as in-place add on duplicate indices; explicit read-modified-write triple is correct.
+        # Explicit read-modify-write preserves duplicate-index accumulation;
+        # indexed ``+=`` does not provide those semantics in PyTorch.
         # CHEMISTRY-RULE:7 Bofill advanced-indexing (assignment, NOT in-place +=).
         # NOTE: use assignment so that advanced indexing actually updates H
         H[idx, idx] = H[idx, idx] + diag_inc
@@ -852,10 +853,8 @@ def _warn_if_leading_imaginary_mode_is_soft(ims: List[float]) -> None:
     """
     Warn when the imaginary mode that certifies the saddle is very soft.
 
-    Certification counts imaginary modes; it does not weigh them, so a
-    few-cm^-1 soft mode certifies exactly like a real reaction coordinate.
-    Bond forming/breaking is normally several hundred cm^-1. Warning only —
-    the terminal status and the counting rule are unchanged.
+    Certification counts imaginary modes; it does not assess their character.
+    The warning does not change the terminal status or counting rule.
     """
     if not ims:
         return
@@ -864,10 +863,8 @@ def _warn_if_leading_imaginary_mode_is_soft(ims: List[float]) -> None:
         return
     emit(
         f"[tsopt] WARNING: the leading imaginary mode is {leading:.2f} cm^-1, "
-        f"below {TS_IMAG_SOFT_WARN_CM:.0f} cm^-1. A bond forming/breaking "
-        f"reaction coordinate is normally several hundred cm^-1; visualize the "
-        f"mode and confirm IRC connectivity before treating this as a "
-        f"transition state.",
+        f"below {TS_IMAG_SOFT_WARN_CM:.0f} cm^-1. Visualize the mode and "
+        f"confirm IRC connectivity before treating this as a transition state.",
         narrative=True,
     )
 
@@ -962,9 +959,9 @@ def _tsopt_terminal_status(
     saddle_verified: bool,
     projection_certifiable: bool = True,
 ) -> str:
-    """Compose a TS optimizer's public status (M14/P14).
+    """Compose a TS optimizer's public status.
 
-    Precedence, per the C7 contract: a stall wins (energy-plateau outcome is
+    Precedence: a stall wins (energy-plateau outcome is
     never a converged saddle); otherwise a genuine first-order saddle
     (``is_converged`` and ``saddle_verified``) is ``converged``; anything else
     is ``not_converged``.  n_imag / stop_reason are recorded separately so a
@@ -1103,7 +1100,7 @@ class HessianDimer:
         # result.json status reflects whether the TS-opt actually converged.
         self.is_converged = False
 
-        # Additive M14/P14 stall state propagated from a child LBFGS whose
+        # Propagate the stall state from a child LBFGS whose
         # energy plateaued (energy stopped decreasing while its force/step
         # criteria stayed unmet).  A stall stops all later segments/loops and
         # is never reported as a converged TS.
@@ -1277,7 +1274,7 @@ class HessianDimer:
         opt.run()
         steps = opt.cur_cycle + 1
         converged = opt.is_converged
-        # Propagate an energy-plateau stall from the child LBFGS (M14/P14). A
+        # Propagate an energy-plateau stall from the child LBFGS. A
         # stalled child is not converged; the caller stops all later segments.
         if getattr(opt, "is_stalled", False):
             self.is_stalled = True
@@ -1320,7 +1317,7 @@ class HessianDimer:
             steps, ok = self._dimer_segment(threshold, steps_this)
             self._cycles_spent += steps
             steps_in_this_call += steps
-            # A stalled child stops all further segments in this loop (M14/P14).
+            # A stalled child stops all further segments in this loop.
             if self.is_stalled:
                 break
             if ok:
@@ -1546,7 +1543,7 @@ class HessianDimer:
         self.is_converged = conv_loose
 
         # (3) Update mode & normal loop. A stalled loose loop stops all further
-        # optimization work (M14/P14): skip the Hessian/mode update and the
+        # optimization work: skip the Hessian/mode update and the
         # normal + flatten loops so a stalled TS search is never retried.
         zero_step_normal = zero_step_loose
         if not self.is_stalled:
@@ -1579,7 +1576,7 @@ class HessianDimer:
             self.is_converged = conv_normal
 
         # (4) Flatten loop — exact Hessian each iteration & optional Bofill update.
-        # A stalled optimization never enters the flatten/retry loop (M14/P14).
+        # A stalled optimization never enters the flatten/retry loop.
         if self.flatten_max_iter > 0 and not self.is_stalled:
             if self.flatten_loop_bofill:
                 click.echo("Flatten loop with Bofill-updated active Hessian (flatten displacements only)...")
@@ -1652,7 +1649,7 @@ class HessianDimer:
                 self.is_converged = conv_flat
 
                 # A stall inside the flatten loop stops the remaining iterations
-                # (M14/P14): do not keep retrying a stalled optimization.
+                # Do not keep retrying a stalled optimization.
                 if self.is_stalled:
                     break
 
@@ -1667,7 +1664,7 @@ class HessianDimer:
         # global cycle budget without the optimizer reporting convergence, the
         # final geometry is NOT a converged TS. Emit a visible WARNING (the
         # result.json status is set from self.termination_status at the call
-        # site). A stall is a distinct energy-plateau outcome (M14/P14).
+        # site). A stall is a distinct energy-plateau outcome.
         if self.is_stalled:
             click.echo(
                 f"[tsopt] WARNING: TS optimization stalled (energy plateau): "

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Engineering-marker coverage check.
 
-Three static gates ported from the retired ``tests/test_fingerprint.py``:
+This checker enforces three static contracts:
 
 * ``# CHEMISTRY-RULE:N`` coverage — every rule this repo is responsible for
   must be annotated somewhere in the package source.
@@ -30,6 +30,7 @@ REQUIRED_CHEMISTRY_RULES: set[int] = {4, 5, 7}
 REQUIRED_DOMAIN_PURE: tuple[str, ...] = (
     "pdb2reaction/workflows/dft.py",
     "pdb2reaction/workflows/tsopt.py",
+    "pdb2reaction/workflows/sp.py",
 )
 
 EXTERNAL_LIBS_DENY: set[str] = {"fairchem", "orb_models", "mace", "aimnet"}

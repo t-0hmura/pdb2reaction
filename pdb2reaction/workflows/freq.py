@@ -29,10 +29,10 @@ import time
 from pysisyphus.helpers import geom_loader
 from pysisyphus.constants import BOHR2ANG, AMU2AU
 
-# Compatibility re-exports (M40): the pure normal-mode kernel now lives in the
+# Compatibility re-exports: the pure normal-mode kernel lives in the
 # lower bundled-engine module ``pysisyphus.normal_modes`` (a sibling of
-# ``pysisyphus.tr_projection``), which imports neither ``pdb2reaction`` nor
-# ``mlmm``. It is re-exported here so existing callers of
+# ``pysisyphus.tr_projection``), which does not import ``pdb2reaction``.
+# It is re-exported here so existing callers of
 # ``pdb2reaction.workflows.freq`` (opt/tsopt/tests) keep working unchanged and
 # resolve to the SAME function objects as the lower implementation.
 from pysisyphus.normal_modes import (  # noqa: F401
@@ -94,8 +94,8 @@ def _calc_full_hessian_torch(
     Parameters
     ----------
     refresh_geom_meta : bool, default False
-        Accepted for signature parity with sibling toolchains; currently a no-op
-        here. When ``cache_geometry`` is true, ``geom.set_results(results)``
+        Accepted for compatibility; currently a no-op here. When
+        ``cache_geometry`` is true, ``geom.set_results(results)``
         refreshes ``geom.within_partial_hessian`` via ``Geometry.set_results``;
         standalone frequency analysis deliberately leaves that dense cache off.
     calculator : optional
@@ -894,7 +894,7 @@ def cli(
             symmetry_number = int(thermo_cfg["symmetry_number"])
             p_pa = p_atm * 101325.0  # Pa
 
-            # P05: the standalone-freq policy is library-default QRRHO with NO
+            # The standalone-freq policy is library-default QRRHO with no
             # imaginary inversion and NO positive-frequency floor. Pass every value
             # explicitly and serialize the effective policy below; this reproduces
             # the historical bare thermochemistry(qc, T, pressure=p) numbers.

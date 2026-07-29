@@ -1,4 +1,4 @@
-"""Contract tests for the live-CLI docs command/option validator (M64, P04).
+"""Contract tests for the live-CLI docs command/option validator.
 
 Loads the local `.github/scripts/docs_command_contract.py` module and checks
 that bracket-bearing commands are retained for static validation, execution

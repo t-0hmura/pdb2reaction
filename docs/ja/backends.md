@@ -1,6 +1,10 @@
 # MLIP バックエンド
 
-pdb2reaction は、すべてのワークフローステージ（`opt`、`scan`、`tsopt`、`freq`、`irc`、`path-search`,...）を単一の `MLIPCalculator` アダプタ経由でディスパッチします。本ページでは、バックエンドの選択方法・バックエンドごとの kwargs・新しいバックエンドの追加方法を説明します。
+pdb2reaction は pysisyphus ベースの geometry/path ステージに
+`MLIPCalculator` を使い、DMF などの ASE ベースのステージには別の ASE
+calculator factory を使います。DFT ステージは PySCF/GPU4PySCF を直接使います。
+本ページでは、バックエンドの選択方法・バックエンドごとの kwargs・新しい
+バックエンドの追加方法を説明します。
 
 ## バックエンドディスパッチャのパターン
 
@@ -13,16 +17,16 @@ calc = create_calculator(
     device="cuda", workers=1,
     model="uma-s-1p2",
 )
-# calc is a pysisyphus-compatible MLIPCalculator; pass it to any stage runner.
+# calc is a pysisyphus-compatible MLIPCalculator.
 
 # ASE-based stages (e.g. DMF path optimization) use the ASE factory:
 ase_calc = create_ase_calculator(backend="uma", model="uma-s-1p2", device="cuda")
 ```
 
 `create_calculator(...)` は `**kwargs` を各バックエンドの
-`_BACKEND_ACCEPTED_KEYS` セットと照合してフィルタするため、ワークフロー側のコードは
-スーパーセットを渡しても問題なく、未知のキーは警告なく破棄されます。同じパターンが
-`create_ase_calculator()` にも適用されます。
+`_BACKEND_ACCEPTED_KEYS` セットと照合してフィルタし、未知のキーを警告付きで
+破棄します。`create_ase_calculator()` は独立した `_ASE_ACCEPTED_KEYS` を使い、
+未知のキーを警告なしでフィルタします。
 
 `backend="auto"` は UMA → Orb → MACE → AIMNet2 の順で解決し、最初にインポートに
 成功したものを選択します。

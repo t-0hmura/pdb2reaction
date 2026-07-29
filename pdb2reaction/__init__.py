@@ -9,7 +9,8 @@
 
 from __future__ import annotations
 
-# DO NOT INLINE: setuptools_scm generates _version.py at install/build time; editable installs without that file fall back to dev0 gracefully (standard setuptools_scm pattern).
+# setuptools_scm generates ``_version.py`` at build time; editable source trees
+# without it use the development fallback.
 try:
     from pdb2reaction._version import __version__, __version_tuple__
 except ImportError:

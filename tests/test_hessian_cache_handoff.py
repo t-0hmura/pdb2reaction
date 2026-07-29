@@ -81,7 +81,7 @@ def test_discard_prevents_missing_endpoint_from_reusing_previous_seed() -> None:
 
 
 # ---------------------------------------------------------------------------
-# M15 — defensive in-process ownership
+# Defensive in-process ownership
 # ---------------------------------------------------------------------------
 def test_load_returns_independent_tensor_snapshots() -> None:
     hessian_cache.store(
@@ -121,7 +121,7 @@ def test_load_snapshot_isolates_numpy_meta_and_active_dofs() -> None:
 
 
 # ---------------------------------------------------------------------------
-# M70 — complete reuse identity
+# Complete reuse identity
 # ---------------------------------------------------------------------------
 def _identity(
     *,

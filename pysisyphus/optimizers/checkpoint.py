@@ -1,13 +1,6 @@
-"""Safe, atomic, explicitly-bounded optimizer restart checkpoints (M52).
+"""Safe, atomic, explicitly bounded optimizer restart checkpoints.
 
-The legacy ``dump_restart_info`` serialized live NumPy state with
-``yaml.dump``, emitting ``!!python/object/apply:numpy...`` tags that the
-constructor's ``yaml.SafeLoader`` then refuses to load — a checkpoint that
-cannot be reloaded by its own loader.  It also captured the geometry *before*
-the proposed step was committed, so the restored state described a different
-transition phase than its own histories.
-
-This module supplies a lower-engine checkpoint envelope that is:
+This module supplies a checkpoint envelope that is:
 
 * **safe** — only YAML-primitive scalars/mappings/lists reach disk;
 * **atomic** — staged to a sibling, flushed, ``fsync``-ed, then ``os.replace``-d,
@@ -22,8 +15,7 @@ This module supplies a lower-engine checkpoint envelope that is:
   optimizer id, geometry identity, required keys, finiteness, and aligned
   history lengths *completely* before any optimizer or geometry state changes.
 
-It duplicates no product-core writer upward into the numerical engine; it is a
-private v0.4.12 implementation detail, not PEScape A05.
+It introduces no product-core dependency into the numerical engine.
 """
 
 from __future__ import annotations

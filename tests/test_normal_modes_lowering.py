@@ -1,4 +1,4 @@
-"""Falsifiers for M40: the pure normal-mode kernel is lowered below the product.
+"""Tests for the pure normal-mode kernel below the product layer.
 
 The mass-weighting / rigid-projection / diagonalization / mode-conversion kernel
 now lives in ``pysisyphus.normal_modes`` (a sibling of
@@ -22,9 +22,9 @@ from pdb2reaction.workflows import freq as product_freq
 from pdb2reaction.core import utils as product_utils
 
 
-PRODUCT_NAMESPACES = ("pdb2reaction", "mlmm")
+PRODUCT_NAMESPACES = ("pdb2reaction",)
 
-# The five pure functions lowered in M40 plus the bounded symmetrizer.
+# The five lowered pure functions plus the bounded symmetrizer.
 LOWERED_KERNEL_NAMES = (
     "_safe_masses_amu",
     "_mw_projected_hessian",
@@ -61,11 +61,11 @@ def _imports_a_product_namespace(tree: ast.AST) -> list[str]:
 
 
 def test_no_product_imports_anywhere_in_pysisyphus():
-    """AST falsifier: no file under pysisyphus/** imports a product namespace.
+    """Ensure no file under pysisyphus/** imports a product namespace.
 
-    This is the headline invariant of M40 (and the base case C12 must preserve):
+    This is the headline invariant:
     the bundled engine, including ``TSHessianOptimizer``, is free of any upward
-    ``pdb2reaction``/``mlmm`` import.
+    ``pdb2reaction`` import.
     """
     violations: dict[str, list[str]] = {}
     scanned = 0

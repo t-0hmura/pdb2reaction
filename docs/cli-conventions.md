@@ -168,8 +168,8 @@ For `scan`, one literal = one **stage**; multiple stages → multiple literals a
 | Code | Meaning | Typical emitter |
 |---|---|---|
 | `0` | Success | every subcommand |
-| `1` | Unexpected error (any unhandled exception) | every subcommand |
-| `2` | Zero step length **or** missing import dependency | `opt`, `tsopt`, `path-search`; `dft` (PySCF not installed) |
+| `1` | Unexpected internal error (unhandled exception) | every subcommand |
+| `2` | CLI usage, configuration, or input error; zero step length; missing dependency; command-specific processing failure | Click/parser layer; `opt`, `tsopt`, `path-search`; `dft`; utility commands |
 | `3` | Optimizer failure **or** SCF not converged | `opt`, `tsopt`, `path-opt`, `path-search`; `dft` |
 | `4` | Trajectory write error | `path-opt` |
 | `5` | HEI export error | `path-opt` |

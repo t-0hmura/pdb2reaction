@@ -358,9 +358,9 @@ def _run_cli_main(
     """Run a Click command with a temporary argv and consistent error handling.
 
     Returns the child exit code (0 on success, nonzero on a warned failure, 1 on
-    a swallowed exception, ``None`` when unknown). Callers that need truthful
+    a swallowed exception, ``None`` when unknown). Callers that need explicit
     stage results — e.g. FREQ/DFT thermochemistry — must gate on this code rather
-    than infer success from an output file's existence (M28).
+    than infer success from an output file's existence.
     """
     saved = list(sys.argv)
     label = prefix or cmd_name
@@ -390,7 +390,7 @@ def _run_cli_main(
     finally:
         sys.argv = saved
         set_child_mode(prior_child_mode)
-        # DO NOT INLINE: required between every staged subcommand call (cyclic-ref break before allocator-cache reclaim).
+        # Break calculator cycles before reclaiming the allocator cache between stages.
         # Release GPU memory between pipeline stages to prevent OOM.
         # gc.collect() breaks cyclic refs inside torch.nn.Module.
         gc.collect()
@@ -900,11 +900,11 @@ def _read_summary(summary_path: Path) -> List[Dict[str, Any]]:
 
 
 def _read_path_opt_segment_converged(seg_dir: Path) -> Optional[bool]:
-    """Read a path-opt segment child's truthful MEP convergence (tri-state).
+    """Read a path-opt segment child's reported MEP convergence (tri-state).
 
     Reads the additive ``stage_outcomes`` leaf ``converged`` bit from the child's
-    ``result.json`` — truthful for both GSM (real optimizer bit) and DMF (real
-    IPOPT bit), independent of the byte-compat legacy ``converged`` field.
+    ``result.json`` — sourced from the optimizer for both GSM and DMF (IPOPT
+    bit), independent of the byte-compatible legacy ``converged`` field.
     Returns ``None`` when no readable signal exists (fail-closed: a missing or
     unreadable child result never promotes the segment to converged).
     """
@@ -1179,20 +1179,21 @@ def _pipeline_aggregate_truth(
     legacy_status: str,
     legacy_reasons: Optional[Sequence[str]] = None,
 ):
-    """Compose the truthful ``all``-pipeline aggregate from per-segment leaves.
+    """Compose the ``all``-pipeline aggregate from per-segment leaves.
 
     One required :class:`LeafOutcome` is built per reactive segment.  A path
     segment is usable only when its MEP and every post-processing convergence
     signal are explicitly ``True``.  A direct TSOPT segment has no MEP stage, so
     it is gated by its IRC and, when present, both endpoint optimizations.  A
     dict-present / trajectory-present but nonconverged leaf never counts toward
-    completeness (C6 fail-closed) — a never_stop / max-cycle IRC therefore
+    fail-closed completeness — a never_stop / max-cycle IRC therefore
     cannot yield ``scientific_status == "success"``.
 
     The convergence-gated aggregate is then composed with the legacy completeness
     axis (``legacy_status`` from :func:`_derive_pipeline_status`, which already
     covers DFT / thermo / n_imag): ``scientific_status`` is the MORE severe of
-    the two so the new field is never less truthful than the legacy ``status``.
+    the two so the new field carries at least as much information as the legacy
+    ``status``.
     The legacy ``status`` string itself is untouched (byte-compatible).
     """
 
@@ -1234,7 +1235,7 @@ def _pipeline_aggregate_truth(
         artifacts: List[str] = []
         # The segment's own reported convergence, threaded from path_search's
         # SegmentReport / the path-opt child leaf.  A missing field is None
-        # (fail-closed), never a silent True (C6).
+        # (fail-closed), never a silent True.
         _seg_conv = s.get("converged")
         seg_converged: Optional[bool] = _seg_conv if isinstance(_seg_conv, bool) else None
         # ``kind=tsopt`` is the direct-TS branch: no MEP child runs and therefore
@@ -1244,7 +1245,7 @@ def _pipeline_aggregate_truth(
             True if s.get("kind") == "tsopt" else seg_converged
         )
         if post is not None:
-            # Post-processing ran: compose its truthful IRC / endpoint records
+            # Post-processing ran: compose its explicit IRC / endpoint records
             # with the MEP engine's own convergence.  Successful downstream
             # work must never promote a nonconverged/unknown path segment.
             converged: Optional[bool] = mep_converged
@@ -1265,7 +1266,7 @@ def _pipeline_aggregate_truth(
                 if _traj:
                     artifacts.append(str(_traj))
             elif tsopt_requested:
-                # IRC requested but no truthful directional record: fail closed
+                # IRC requested but no directional record: fail closed
                 # rather than trust the trajectory file's existence.
                 converged = _and3(converged, None)
                 if not reason:
@@ -1296,7 +1297,7 @@ def _pipeline_aggregate_truth(
             # has not run yet (the intermediate MEP summary is written before
             # post-processing). Fail closed rather than promote a reactive leaf on
             # the MEP trajectory's existence alone: a required post stage is
-            # missing, so the segment is not yet usable (C6).
+            # missing, so the segment is not yet usable.
             converged = None
             reason = "post_missing"
         else:
@@ -1358,7 +1359,7 @@ def _apply_pipeline_truth(
     legacy_status: str,
     legacy_reasons: Optional[Sequence[str]] = None,
 ) -> None:
-    """Write the additive C6 truth axes onto ``summary`` in place.
+    """Write the outcome axes onto ``summary`` in place.
 
     Never touches the legacy overloaded ``status`` field; only adds
     ``execution_status`` / ``scientific_status`` / expected+observed IDs and the
@@ -1401,9 +1402,9 @@ def _enrich_summary(
 ) -> dict:
     """Add machine-readable metadata to summary dict for AI agent consumption.
 
-    The resulting dict is written as summary.json and is intended to be the
-    single machine-readable output consumed by MCP tools and AI agents.
-    It should contain ALL information present in summary.log.
+    The resulting dict is written as summary.json and is the machine-readable
+    pipeline output consumed by MCP tools and other clients. Formatted tables
+    and the filesystem tree remain specific to summary.log.
     """
     # Import through the package fallback: _version.py is generated only by a
     # build/install and is intentionally absent from a fresh source checkout.
@@ -1542,10 +1543,10 @@ def _enrich_summary(
         summary["status_reasons"] = status_reasons
     else:
         summary.pop("status_reasons", None)
-    # Additive C6 truth axes: keep the legacy overloaded ``status`` intact and
+    # Keep the legacy overloaded ``status`` intact and
     # expose the execution/scientific split plus expected/observed segment IDs so
     # a forward-compatible consumer can tell "the pipeline ran" from "the science
-    # is complete and usable". ``scientific_status`` is computed from truthful
+    # is complete and usable". ``scientific_status`` is computed from explicit
     # per-segment LeafOutcomes (IRC directional + endpoint-opt convergence)
     # composed with the legacy completeness axis, so a nonconverged IRC/endpoint
     # leaf whose trajectory still exists cannot make the pipeline a success.
@@ -1889,7 +1890,7 @@ def _optimize_endpoint_geom(
 
     Returns:
         ``(optimized_geometry, final_xyz_path, is_converged)``.  ``is_converged``
-        is the fail-closed tri-state convergence bit of the final optimizer (M42):
+        is the fail-closed tri-state convergence bit of the final optimizer:
         an endpoint whose optimization did not explicitly converge is retained as
         a geometry/artifact but must not promote its segment to a usable success.
     """
@@ -2077,7 +2078,7 @@ def _run_freq_for_state(
         args.extend(["--config", str(args_yaml)])
     _freq_rc = _run_cli_main("freq", _freq_cli.cli, args, on_nonzero="warn", prefix="freq")
     y = fdir / "thermoanalysis.yaml"
-    # M28: a nonzero freq exit means the thermochemistry is NOT usable, even if a
+    # a nonzero freq exit means the thermochemistry is NOT usable, even if a
     # thermoanalysis.yaml (from a prior run or a partial write) exists with finite
     # fields. Never infer FREQ success from the filename or a finite number.
     if _freq_rc not in (None, 0):
@@ -2212,7 +2213,8 @@ def _run_dft_for_state(
 
     if args_yaml is not None:
         args.extend(["--config", str(args_yaml)])
-    # DO NOT INLINE: torch (UMA/ORB) and gpu4pyscf both link libcusolver at different pinned versions; in-process DFT triggers dynamic-loader clash. Fresh interpreter isolation is mandatory.
+    # A fresh interpreter isolates the incompatible libcusolver versions linked
+    # by torch (UMA/ORB) and gpu4pyscf.
     # Run DFT as a real subprocess to avoid libcusolver conflict with torch.
     # Free GPU memory before spawning subprocess.
     gc.collect()
@@ -2613,7 +2615,7 @@ def _read_irc_outcome(irc_dir: Path) -> Dict[str, Any]:
     """Read the IRC child's ``result.json`` into a fail-closed usability record.
 
     The IRC leaf is *usable* only when the child reports ``scientific_status ==
-    "success"`` — i.e. every requested direction explicitly converged (M42).  A
+    "success"`` — i.e. every requested direction explicitly converged. A
     missing / unreadable result, or any nonconverged requested direction, yields
     ``usable=False`` while the endpoint trajectory remains a reportable artifact.
     """
@@ -2661,7 +2663,7 @@ def _read_irc_outcome(irc_dir: Path) -> Dict[str, Any]:
             else f"irc_{sci}"
         )
     else:
-        # No truthful status field: fail closed rather than trust file existence.
+        # No explicit status field: fail closed rather than trust file existence.
         outcome["usable"] = False
         outcome["reason"] = "irc_status_unknown"
     return outcome
@@ -2774,8 +2776,8 @@ def _irc_and_match(
         irc_args.extend(["--step-size", str(float(irc_step_size))])
     if irc_never_stop is not None:
         _append_toggle_arg(irc_args, "--never-stop", bool(irc_never_stop))
-    # M42: request the child's machine-readable result.json so the aggregate can
-    # gate on truthful per-direction IRC convergence instead of trajectory-file
+    # request the child's machine-readable result.json so the aggregate can
+    # gate on reported per-direction IRC convergence instead of trajectory-file
     # existence. A never_stop / max-cycle direction still writes its trajectory,
     # but the child reports it as nonconverged and we must not promote it.
     _append_toggle_arg(irc_args, "--out-json", True)
@@ -2804,7 +2806,7 @@ def _irc_and_match(
                 )
     _run_cli_main("irc", _irc_cli.cli, irc_args, on_nonzero="raise", prefix="irc")
 
-    # M42: read the child's truthful per-direction convergence. The IRC leaf is
+    # read the child's per-direction convergence. The IRC leaf is
     # usable only when EVERY requested direction explicitly converged; a
     # trajectory can exist for a nonconverged (never_stop / max-cycle) direction,
     # so promotion must gate on this outcome, not on file existence.
@@ -4589,7 +4591,7 @@ def cli(
             g_react_irc, e_react_irc = gR, eR_raw
             g_prod_irc, e_prod_irc = gL, eL
 
-        # P12: record the endpoint-assignment provenance. In TS-only mode the
+        # Record the endpoint-assignment provenance. In TS-only mode the
         # higher-energy IRC endpoint is presented as the reactant (with a
         # deterministic left-side tie rule). This is an energy-order presentation
         # convention, NOT a chemically established reaction direction; the R/P
@@ -4698,7 +4700,8 @@ def cli(
         if diag_payload:
             energy_diagrams.append(diag_payload)
 
-        # DO NOT INLINE: (segment path, freq-pre): same closure-capture mechanism: null calculator on retained Geometry before freq subprocess so VRAM reports do not double-count.
+        # Clear the calculator retained by Geometry before the frequency
+        # subprocess so VRAM accounting does not include both stages.
         # ── Release GPU memory before freq/thermo/DFT ──
         calculator_lease.release()
         for _g in [locals().get(n) for n in ("gL", "gR", "gT", "g_react_irc", "g_prod_irc", "g_react_opt", "g_prod_opt")]:
@@ -4904,7 +4907,7 @@ def cli(
             "out_dir": str(tsroot),
             "n_images": n_images,
             "n_segments": 1,
-            # P12: presentation-convention provenance for the R/P assignment.
+            # Presentation-convention provenance for the R/P assignment.
             "endpoint_assignment": endpoint_assignment,
             "segments": [
                 {
@@ -4971,7 +4974,7 @@ def cli(
                     "post_dir": str(tsroot),
                     "irc_plot": str(irc_plot_path) if isinstance(irc_plot_path, Path) else None,
                     "irc_traj": str(irc_trj_path) if isinstance(irc_trj_path, Path) else None,
-                    # M42: truthful IRC directional convergence + endpoint-opt
+                    # IRC directional convergence and endpoint-opt
                     # convergence so the aggregate gates on convergence, not on
                     # trajectory-file existence.
                     "irc": irc_res.get("irc_outcome"),
@@ -4979,7 +4982,7 @@ def cli(
                         "reactant_converged": _react_opt_conv,
                         "product_converged": _prod_opt_conv,
                     },
-                    # P12: presentation-convention provenance (energy-order R/P).
+                    # Presentation-convention provenance (energy-order R/P).
                     "endpoint_assignment": endpoint_assignment,
                 }
                 if ts_freq_info is not None:
@@ -5719,9 +5722,9 @@ def cli(
                     "traj": seg_trj,
                     "inputs": (pL, pR),
                     "first_last": first_last,
-                    # Truthful per-segment convergence from the path-opt child, so
+                    # Per-segment convergence from the path-opt child, so
                     # the no-tsopt aggregate fails closed on a nonconverged MEP
-                    # segment instead of assuming it converged (C6).
+                    # segment instead of assuming it converged.
                     "converged": _read_path_opt_segment_converged(seg_dir),
                 }
             )
@@ -5815,7 +5818,7 @@ def cli(
                     "index": seg_idx,
                     "tag": info.get("tag", f"seg_{seg_idx:02d}"),
                     "kind": "seg",
-                    # Additive C6: the path-opt child's truthful convergence, so
+                    # Use the path-opt child's explicit convergence so
                     # the no-tsopt path-opt aggregate gates on real per-segment
                     # convergence rather than assuming the segment converged.
                     "converged": info.get("converged"),
@@ -6499,7 +6502,7 @@ def cli(
             if isinstance(irc_trj_path, Path) and irc_trj_path.exists():
                 segment_log["irc_traj"] = str(irc_trj_path)
 
-            # M42: truthful IRC directional convergence for the aggregate gate.
+            # IRC directional convergence for the aggregate gate.
             segment_log["irc"] = irc_res.get("irc_outcome")
             segment_log["endpoint_assignment"] = irc_res.get(
                 "endpoint_assignment"
@@ -6581,7 +6584,7 @@ def cli(
                 g_prod_opt = gR
                 _prod_opt_conv = None
 
-            # M42: record endpoint-opt convergence so a nonconverged endpoint
+            # record endpoint-opt convergence so a nonconverged endpoint
             # (whose geometry is still used for the diagram) does not silently
             # promote its segment to a usable success.
             segment_log["endpoint_opt"] = {
@@ -6854,7 +6857,8 @@ def cli(
                     )
 
         if do_dft:
-            # DO NOT INLINE: (segment path, DFT-pre): same Geometry-retains-calculator mechanism as single-TS path; covers the segment-pipeline branch. Null calculator + del prevents subprocess fork inheriting GPU-pinned model.
+            # Clear the calculator retained by Geometry before forking the DFT
+            # subprocess so it does not inherit the GPU-pinned model.
             # ── Aggressively release GPU memory before DFT subprocess ──
             for _obj in (
                 locals().get("gL"), locals().get("gR"), locals().get("gT"),

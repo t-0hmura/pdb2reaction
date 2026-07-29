@@ -1,17 +1,15 @@
 """Shared Click option decorators across pdb2reaction subcommands.
 
-Factories that collapse the identical
-`--charge/-q + --ligand-charge/-l + --multiplicity/-m` triple shared by
-`freq / irc / opt / tsopt` into a single call site. Flag names, defaults, and
-help text are byte-for-byte the same as the per-subcommand inline definitions
-they replaced; only the order in `--help` shifts to the factory's call site.
+Factories define the common
+`--charge/-q + --ligand-charge/-l + --multiplicity/-m` option set used by
+`freq / irc / opt / tsopt`.
 
 Subcommands not covered by this factory:
   * `dft` — `--multiplicity` help text references .gjf inheritance, so the
     text differs per call site.
   * `all / extract / path_opt / path_search / scan / scan2d / scan3d` — the
-    help text or `required=` value of one of the three options differs enough
-    that the factory parameter surface would explode; left inline.
+    help text or `required=` value of one of the three options differs, so those
+    commands define the options locally.
 """
 
 from __future__ import annotations
@@ -66,11 +64,8 @@ def add_coord_type_option(
     """Attach `--coord-type` to a Click command.
 
     Selects the optimization coordinate system passed through to pysisyphus'
-    Geometry constructor. ``cart`` (default) preserves the historical
-    Cartesian behavior used for the published paper data; ``dlc``
-    (delocalised internal coordinates) often converges faster on torsion-
-    rich systems but can be brittle for bond-making / linear fragments.
-    ``redund`` and ``tric`` are accepted for single-structure optimizers
+    Geometry constructor. ``cart`` is the default. ``redund`` and ``tric`` are
+    accepted for single-structure optimizers
     (opt / tsopt / scan / freq) but NOT for Chain-of-States engines —
     ``path-opt`` and ``path-search`` pass ``choices=("cart", "dlc")`` here
     because pysisyphus' ChainOfStates only honours those two coordinate
@@ -98,9 +93,7 @@ def add_coord_type_option(
             default=None,
             show_default=False,
             help=(
-                f"Optimization coordinate system ({options_str}). cart is the "
-                f"reliable default used for the published results; dlc speeds up "
-                f"torsion-rich optimizations."
+                f"Optimization coordinate system ({options_str})."
             ),
         )(func)
     return decorator
@@ -120,14 +113,9 @@ def add_precision_option() -> Callable[[Callable], Callable]:
       are cast to float32 upstream, so fp64 cannot be honoured)
 
     Unset resolves per backend (``backends._BACKEND_DEFAULT_PRECISION``):
-    UMA fp32 (its upstream fairchem baseline), ORB and MACE fp64. ORB's
-    fp32 is the reduced TF32 matmul mode and MACE ships fp64 upstream, so
-    a fp32 finite-difference Hessian from either carries enough force noise
-    to invent imaginary modes.
-
-    fp64 base precision can have non-trivial TSopt/Hessian impact for
-    OMol-trained UMA; for ORB/MACE the higher precision similarly costs
-    throughput and can stabilise gradients/Hessians.
+    UMA fp32 (its upstream fairchem baseline), ORB and MACE fp64. Precision
+    affects model evaluation and finite-difference derivatives, so frequency
+    and IRC results should be validated for the selected backend and precision.
 
     Wire targets: every subcommand that constructs a backend calculator
     (opt, tsopt, freq, irc, sp, scan / scan2d / scan3d, path-opt,

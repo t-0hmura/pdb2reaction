@@ -288,7 +288,7 @@ def _echo_convert_trj_if_exists(
     "convert_files",
     default=True,
     show_default=True,
-    help="Convert XYZ/TRJ outputs into PDB/CIF/GJF companions based on the input format.",
+    help="Convert XYZ/TRJ outputs into PDB/CIF companions based on the input format.",
 )
 @click.option(
     "--ref-pdb",
@@ -684,7 +684,7 @@ def cli(
                     ),
                 )
 
-            # M42: cache an endpoint Hessian ONLY for a requested direction that
+            # Cache an endpoint Hessian only for a requested direction that
             # explicitly CONVERGED. A nonconverged (e.g. max-cycle) direction may
             # still carry a Bofill-updated Hessian, but promoting it would let a
             # nonconverged endpoint seed downstream RFO as if it were a real
@@ -823,7 +823,7 @@ def cli(
                 }
                 result_data.update(_directional_endpoint_energy_fields(_all_e, _ts_e))
 
-                # M42: one truthful LeafOutcome per requested IRC direction. A
+                # Record one LeafOutcome per requested IRC direction. A
                 # requested direction is usable only when it explicitly
                 # converged; a disabled direction is optional (not a failure).
                 # Legacy ``status`` stays "completed" (the IRC process ran).
@@ -887,11 +887,8 @@ def cli(
         except Exception as e:
             render_cli_exception(e, label="IRC", out_dir=out_dir_path, command="irc", time_start=time_start)
         finally:
-            # DO NOT INLINE: IRC eulerpc retains a Hessian-sized tensor; explicit
-            # `= None` followed by `del` breaks local-frame variable bindings so
-            # torch.nn.Module cyclic refs are released before gc.collect() reaps
-            # them. Assigning None alone leaves stale frame entries that retain
-            # torch hooks, which keeps the Hessian resident across stages.
+            # Drop local references before collecting cycles held by calculator
+            # and torch module objects.
             calc = eulerpc = geometry = None
             del calc, eulerpc, geometry
             gc.collect()  # break cyclic refs inside torch.nn.Module

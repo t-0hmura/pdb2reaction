@@ -211,7 +211,7 @@ if (( worker_status != 0 || recovery_status != 0 )); then
     echo "Dispatcher incomplete. Preserve ${STATE_DIR} and resubmit its retry_tasks.txt." >&2
     exit 1
 fi
-echo "Dispatcher complete: ${TOTAL_TASKS}/${TOTAL_TASKS}; audit state kept at ${STATE_DIR}."
+echo "Dispatcher complete: ${TOTAL_TASKS}/${TOTAL_TASKS}; state kept at ${STATE_DIR}."
 ```
 
 ## Task-list format and recovery
@@ -236,7 +236,7 @@ cat "${STATE_DIR}/retry_tasks.txt"
 ```
 
 Verify the exact job ID before selecting a state directory. Resubmit the retry
-file as a new task list. Keep the old directory as an audit trail; a new PBS
+file as a new task list. Keep the old directory as a run record; a new PBS
 job receives a different run directory.
 
 ## SLURM analog

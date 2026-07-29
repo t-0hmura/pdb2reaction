@@ -50,7 +50,7 @@ def _is_external_missing_dependency(exc: ModuleNotFoundError) -> bool:
     )
 
 
-# DO NOT INLINE: lazy subcommand loading + this placeholder let `--help` render
+# Lazy subcommand loading and this placeholder let ``--help`` render
 # the full command tree when a genuinely optional external dependency is absent.
 def build_unavailable_command(command_name: str, exc: ImportError) -> click.Command:
     """Return a placeholder command that reports import failure details at runtime."""
@@ -169,7 +169,8 @@ class DefaultGroup(click.Group):
         self._resolved_parser_wrapper_bool_options[command_name] = resolved
         return resolved
 
-    # DO NOT INLINE: this call must run AFTER lazy subcommand import (pysisyphus installs handlers on module import). Moving to module top would silence nothing.
+    # Run after lazy subcommand import because pysisyphus installs handlers
+    # during module import.
     @staticmethod
     def _long_option_names(option_names: list[str]) -> tuple[str, ...]:
         return tuple(name for name in option_names if name.startswith("--"))
@@ -260,12 +261,8 @@ class DefaultGroup(click.Group):
         show_help_or_version = any(a in ("-h", "--help", "--version") for a in args)
 
         if self._default_cmd is not None and not show_help_or_version:
-            # Without this guard, `pdb2reaction -v tsopt ...` would prepend
-            # the default command and swallow `tsopt` as an argument to it.
-            # Collect every spelling of every top-level option declared on
-            # this group so that a leading group-level flag (e.g. `-v` /
-            # `--verbose` / clustered `-vv`) does NOT trigger the default-
-            # command fallback.
+            # A declared group option must not trigger the default-command
+            # fallback. Collect every spelling before examining argv[0].
             top_level_opts = set()
             for p in self.params:
                 top_level_opts.update(getattr(p, "opts", ()) or ())
@@ -276,9 +273,8 @@ class DefaultGroup(click.Group):
                 first_opt = first.split("=", 1)[0]
                 is_top_level = first_opt in top_level_opts
             elif first.startswith("-") and len(first) >= 2:
-                # Short option (possibly clustered like `-vv`); the first two
-                # chars are the option key Click parses one repetition at a
-                # time. `-vv` is a count=True flag and still top-level.
+                # For a short-option cluster, the first two characters identify
+                # the option Click examines first.
                 is_top_level = first[:2] in top_level_opts
             else:
                 is_top_level = False

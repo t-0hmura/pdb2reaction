@@ -268,7 +268,7 @@ def test_multiframe_gjf_conversion_warns_that_output_is_coordinate_archive(
     caplog,
     tmp_path: Path,
 ) -> None:
-    """Do not let agents/users mistake the historical multi-frame layout for QST."""
+    """Do not mistake the multi-frame layout for QST."""
     import logging
 
     from pdb2reaction.core.utils import convert_xyz_to_gjf, parse_gjf_template

@@ -212,7 +212,8 @@ def run_cli(
         )
         sys.exit(1)
     finally:
-        # DO NOT INLINE: per-subcommand wrapper; runs when subcommand invoked standalone (e.g. `pdb2reaction tsopt ...`). Both this and the all.py finally block are required: different invocation paths.
+        # This wrapper covers standalone subcommands; ``all.py`` has a separate
+        # finalizer for the pipeline invocation path.
         # Release GPU memory (model + Hessian) after CLI command finishes
         # so that subsequent pipeline stages (e.g. tsopt → irc) don't OOM.
         # gc.collect() breaks cyclic refs inside torch.nn.Module.

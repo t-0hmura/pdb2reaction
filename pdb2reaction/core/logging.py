@@ -1,26 +1,8 @@
-"""Shared logging configurator for pdb2reaction subcommands.
+"""Shared stdlib logging configurator for pdb2reaction subcommands.
 
-The root CLI group counts -v / -vv occurrences and calls `setup_logging` to
-configure stdlib `logging` once per invocation. Subcommands then emit through
-`logging.getLogger(__name__)` and gain `-v` visibility automatically:
-
-    # root group callback (cli.py):
-    from pdb2reaction.core.logging import setup_logging
-    @click.option("-v", "--verbose", count=True, ...)
-    def cli(verbose):
-        setup_logging(verbose)
-
-    # subcommand module:
-    import logging
-    logger = logging.getLogger(__name__)
-    logger.info("...")  # visible at -v; suppressed by default
-
-Level mapping:
-    no -v   -> WARNING  (default; stdout volume unchanged from click.echo)
-    -v      -> INFO
-    -vv     -> DEBUG
-
-Existing click.echo() calls are unaffected; the logger is opt-in per call site.
+The per-subcommand ``-v/--verbose LEVEL`` callback enables DEBUG logging at
+level 3. Direct callers may pass 0, 1, or 2+ to select WARNING, INFO, or DEBUG.
+Existing ``click.echo()`` calls are unaffected.
 """
 from __future__ import annotations
 
@@ -36,7 +18,7 @@ _VERBOSE_TO_LEVEL = {
 
 
 def setup_logging(verbose: int = 0) -> None:
-    """Configure stdlib logging according to -v count. Idempotent."""
+    """Configure stdlib logging from a numeric verbosity level. Idempotent."""
     level = _VERBOSE_TO_LEVEL.get(min(verbose, 2), logging.DEBUG)
     root = logging.getLogger()
     for h in list(root.handlers):

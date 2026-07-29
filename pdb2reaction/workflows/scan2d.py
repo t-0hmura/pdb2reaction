@@ -816,7 +816,7 @@ def cli(
 
                     # Store this grid point for nearest-start initialization ONLY
                     # when it explicitly converged; a nonconverged/failed point
-                    # must never become the seed for a later target (M48).
+                    # must never become the seed for a later target.
                     if converged is True:
                         try:
                             coords_inner = np.asarray(getattr(geom_inner, "coords3d"), dtype=float)
@@ -877,7 +877,7 @@ def cli(
                 click.echo("No grid records produced; aborting.")
                 sys.exit(1)
 
-            # Seed / reference-minimum eligibility (M48): only points whose
+            # Seed/reference-minimum eligibility: only points whose
             # optimizer explicitly converged with a finite unbiased energy may
             # define the baseline or the reported minimum. Failed/nonconverged
             # rows are retained in surface.csv for diagnostics but excluded here.
@@ -910,7 +910,7 @@ def cli(
 
             surface_csv = final_dir / "surface.csv"
             # Keep internal-only eligibility columns out of the public CSV so a
-            # genuinely converged run's surface.csv schema is unchanged (M48/P07).
+            # genuinely converged run's surface.csv schema is unchanged.
             _csv_drop = [c for c in ("seed_eligible", "artifact_written") if c in df.columns]
             df.drop(columns=_csv_drop).to_csv(surface_csv, index=False)
             click.echo(f"[write] Wrote '{surface_csv}'.")
@@ -1238,7 +1238,7 @@ def cli(
                         "scan2d_landscape_html": "scan2d_landscape.html",
                     },
                 }
-                # Additive truthful outcomes: every attempted point, with its
+                # Additive outcome fields: every attempted point, with its
                 # seed-eligibility, plus an aggregate scientific_status. Legacy
                 # ``status`` stays "completed" (the process completed).
                 _point_outcomes = [

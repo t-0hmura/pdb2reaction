@@ -84,8 +84,9 @@ pip install "pdb2reaction[mcp]"
 
 ## クライアント設定
 
-すべての MCP クライアントは同じ `mcpServers` スキーマを取ります。次のスニペットを
-クライアントの MCP 設定ファイルに記述してください。
+クライアントごとに設定スキーマは異なります。次のスニペットはトップレベルの
+`mcpServers` オブジェクトを受け付けるクライアント用です。設定ファイルと
+スキーマは各クライアントの MCP ドキュメントで確認してください。
 
 - Claude Desktop — `~/Library/Application Support/Claude/claude_desktop_config.json`（macOS） / `%APPDATA%\Claude\claude_desktop_config.json`（Windows）
 - Cursor — `~/.cursor/mcp.json`
@@ -105,6 +106,20 @@ pip install "pdb2reaction[mcp]"
 明示的な環境変数の上書き（PATH / CUDA_VISIBLE_DEVICES）を含む完全な例は
 [`examples/mcp_client_config.json`](../../examples/mcp_client_config.json)
 を参照してください。
+
+VS Code は `.vscode/mcp.json` でトップレベルの `servers` オブジェクトを使います
+（[VS Code MCP 設定リファレンス](https://code.visualstudio.com/docs/agents/reference/mcp-configuration)）。
+
+```json
+{
+  "servers": {
+    "pdb2reaction": {
+      "command": "pdb2reaction-mcp",
+      "args": []
+    }
+  }
+}
+```
 
 ### カスタム Python MCP クライアント
 

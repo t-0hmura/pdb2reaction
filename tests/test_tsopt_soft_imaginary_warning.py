@@ -1,11 +1,7 @@
 """A soft leading imaginary mode must warn without changing the saddle status.
 
-Saddle certification counts imaginary modes and does not weigh them, so a
-few-cm^-1 soft mode certifies exactly like a real reaction coordinate. Two
-runs of the same input from bit-identical starting geometries were observed to
-diverge and land on a real saddle (~-450 cm^-1) and on a soft-mode structure
-(~-15 cm^-1) respectively, with the soft one still reported as n_imag=1. The
-warning is diagnostic only: the terminal status must stay exactly as it was.
+Saddle certification counts imaginary modes without a magnitude cutoff. The
+soft-mode warning is diagnostic only and does not alter terminal status.
 """
 
 import pytest
@@ -21,14 +17,13 @@ def test_soft_leading_mode_warns(capsys) -> None:
     assert str(int(TS_IMAG_SOFT_WARN_CM)) in out
 
 
-def test_real_reaction_coordinate_is_silent(capsys) -> None:
+def test_large_magnitude_mode_is_silent(capsys) -> None:
     _warn_if_leading_imaginary_mode_is_soft([-447.78])
     assert capsys.readouterr().out == ""
 
 
 def test_leading_mode_is_the_most_negative_one(capsys) -> None:
-    # n_imag=2 with a real coordinate plus a soft companion: the certifying
-    # mode is the stiff one, so this must stay silent.
+    # The warning evaluates the most negative mode, not a soft companion.
     _warn_if_leading_imaginary_mode_is_soft([-447.78, -5.72])
     assert capsys.readouterr().out == ""
 

@@ -232,15 +232,15 @@ pdb2reaction opt -i r.pdb -q -1 --dist-freeze "[(1,2,1.5),(3,4)]" --dry-run --ou
 # test41: all (pdb+pdb, --refine-path = recursive path_search opt-in; the default is now single-pass path-opt)
 pdb2reaction -i r.pdb p.pdb -q -1 --refine-path --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test41 > test41.out 2>&1
 
-# --- Polish-train new CLI flags (A1 + W3 + B4 wires; all opt-in, defaults preserve Table 1 numerics) ---
+# --- Opt-in TS and IRC methods ---
 
-# test42: tsopt --opt-mode trim (A1 Helgaker trust-region image-min TS opt)
+# test42: tsopt --opt-mode trim (Helgaker trust-region image-min TS opt)
 pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode trim --max-cycles 5 --thresh gau_loose --out-dir test42 > test42.out 2>&1
 
-# test43: tsopt --opt-mode rsprfo (A1 Banerjee restricted-step P-RFO TS opt)
+# test43: tsopt --opt-mode rsprfo (Banerjee restricted-step P-RFO TS opt)
 pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode rsprfo --max-cycles 5 --thresh gau_loose --out-dir test43 > test43.out 2>&1
 
-# test45: irc --irc-pos-def (Sella backport 1: PSD-Hessian convergence guard)
+# test45: irc --irc-pos-def (PSD-Hessian convergence guard)
 pdb2reaction irc -i ts.pdb -q 0 --max-cycles 3 --irc-pos-def --out-dir test45 > test45.out 2>&1
 
 # test46: opt --print-every 3 (W3a debug throttle, no behavior change)
@@ -364,7 +364,7 @@ pdb2reaction opt -i r.pdb -q -1 --precision fp32 --max-cycles 3 --thresh gau_loo
 pdb2reaction all -i r.pdb p.pdb -q -1 --backend orb --out-dir test54 > test54.out 2>&1
 python assert_release_result.py provenance test54 --expected-backend orb --expected-model orb_v3_conservative_omol --expected-precision fp64 >> test54.out 2>&1
 
-# ---- Coverage-gap regression (subcommand-specific code paths; coverage audit 2026-06-05) ----
+# ---- Subcommand-specific regression coverage ----
 # test55: opt --dist-freeze + --bias-k (harmonic restraint actually applied at runtime, not dry-run)
 pdb2reaction opt -i r.pdb -q -1 --dist-freeze "[(1,2,1.5)]" --bias-k 150 --max-cycles 3 --thresh gau_loose --out-dir test55_opt_biask > test55_opt_biask.out 2>&1
 

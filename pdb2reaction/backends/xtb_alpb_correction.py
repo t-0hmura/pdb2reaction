@@ -226,7 +226,8 @@ def _run_xtb(
         xtb_acc=xtb_acc,
         mode=mode,
     )
-    # DO NOT INLINE: xTB ignores --threads flag for some operations; OMP_NUM_THREADS via env is the only reliable thread-control mechanism. Install-hint XTBError message is also user-facing rescue (keep verbatim).
+    # xTB ignores ``--threads`` for some operations; OMP_NUM_THREADS is the
+    # reliable process-wide thread control used here.
     env = os.environ.copy()
     env["OMP_NUM_THREADS"] = str(resolve_xtb_ncores(ncores))
 

@@ -44,7 +44,7 @@ pdb2reaction         -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'    # extracti
 |---|---|
 | UMA download fails / HF auth missing (`huggingface_hub.errors.GatedRepoError`, `401`, `403`) | `hf auth login` once per env / machine; accept the UMA model license on the HF page. On HPC, ensure HF cache dir is writable from compute nodes. |
 | `ImportError: orb-models is required` (or similar for AIMNet2 / MACE) | For ORB: `pip install "pdb2reaction[orb]"`. For AIMNet2: `pip install "pdb2reaction[aimnet]"`. MACE installs into a separate env. |
-| ORB backend import fails | Install the current extra with `pip install "pdb2reaction[orb]"`, then run `python -m pip check`. Do not add PyG/`torch_scatter` instructions unless the actual error names that independently installed package; current `orb-models` does not require it. |
+| ORB backend import fails | Install the current extra with `pip install "pdb2reaction[orb]"`, then run `python -m pip check`. Install PyG/`torch_scatter` only when the actual error identifies it as an independently required package; current `orb-models` does not require it. |
 | `torch.cuda.is_available()` returns `False` | Verify the assigned GPU, installed wheel, driver and environment with `nvidia-smi`, `python -m torch.utils.collect_env`, and `python -m pip check`; do not infer the cause from the boolean alone. |
 | DMF fails (`--mep-mode dmf`: `cyipopt` missing or `No module named 'dmf'`) | `conda install -c conda-forge cyipopt` before installing `pdb2reaction`. `pydmf` ships as a dep; if missing, `pip install --force-reinstall pdb2reaction`. |
 | Plot export fails (Plotly / Chrome) | `plotly_get_chrome -y`. |

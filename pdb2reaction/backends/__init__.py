@@ -122,10 +122,8 @@ _PRECISION_DISPATCH: Dict[str, Dict[str, tuple]] = {
 
 # Precision used when the user names none (`--precision` absent and no
 # ``calc.precision`` in the config, i.e. the ``"auto"`` token of
-# ``CALC_KW_DEFAULT``). Not a single global default: ORB's fp32 is the reduced
-# TF32 matmul mode and MACE ships fp64 upstream, so a fp32 finite-difference
-# Hessian from either carries enough force noise to invent imaginary modes.
-# UMA is fp32 upstream (fairchem) and stays there.
+# ``CALC_KW_DEFAULT``). Defaults follow each backend's established numerical
+# mode: UMA uses its upstream fp32 baseline, while ORB and MACE use fp64.
 _BACKEND_DEFAULT_PRECISION: Dict[str, str] = {
     "uma": "fp32",
     "orb": "fp64",

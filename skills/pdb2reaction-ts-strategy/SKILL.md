@@ -128,7 +128,7 @@ and cluster-boundary policy except for the intended mutation, preserve the same
 protonation/charge convention and cap placement rules, and use the same
 backend/model/precision/thermochemistry settings. Independent automatic
 extractions can choose different boundary residues near a radius cutoff, so
-audit and harmonize the selected residue positions rather than demanding an
+compare and harmonize the selected residue positions rather than demanding an
 impossible identical atom count after every mutation. For mechanism comparisons
 on the **same chemical composition**, keep one common atom set and order.
 
@@ -136,4 +136,4 @@ on the **same chemical composition**, keep one common atom set and order.
 
 - `pdb2reaction-cli/SKILL.md` — per-subcommand flags (`scan` / `tsopt` / `path-search` / `freq` / `irc`).
 - `pdb2reaction-workflows-output/SKILL.md` — six canonical workflows, R/TS/P paths, `--deterministic`.
-- docs `tsopt.md` (TS routes / imaginary-mode fix / controlled comparison), `scan.md` (staged vs concerted, barrier direction), `reproducibility.md` (precision by GPU class) — the user-facing form of this know-how, consolidated from the former standalone page.
+- docs `tsopt.md` (TS routes / imaginary-mode fix / controlled comparison), `scan.md` (staged vs concerted, barrier direction), `reproducibility.md` (precision by GPU class).

@@ -8,7 +8,7 @@ Enforces the product's real (post-C12) module-dependency invariants:
 2. The product package has no strongly connected component among its own modules
    (no product import cycle).
 3. Product layer back-edges ``core -> workflows`` and ``domain -> workflows`` are
-   absent (the shared services were lowered in M39).
+   absent.
 
 The graph is built from static imports without importing any optional MLIP
 stack. It resolves absolute imports, relative imports, package ``__init__.py``,

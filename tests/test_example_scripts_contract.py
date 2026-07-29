@@ -1,4 +1,4 @@
-"""Contract tests for the advertised example-script checker (M65)."""
+"""Contract tests for the advertised example-script checker."""
 
 from __future__ import annotations
 

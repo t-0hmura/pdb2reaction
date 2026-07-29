@@ -11,7 +11,7 @@ PDB; coordinate outputs also include CIF with the original identifiers.
 - **TSOPT-only** — give a single input and set `--tsopt` (no `--scan-lists`). `all` skips the MEP / merge stages, runs `tsopt` + EulerPC IRC on the active-site model (or the full input if extraction is skipped), and identifies the higher-energy endpoint as the reactant.
 
 ```{note}
-The TSOPT-only reactant/product labels follow an **energy-order presentation convention**, not a chemically established reaction direction: the higher-energy IRC endpoint is presented as the reactant (on an exact energy tie the left endpoint is the reactant). The R/P labels, `reactant_irc`/`product_irc` filenames, barrier and delta are computed under this convention. The machine-readable summary records it explicitly under `endpoint_assignment` (`policy = "higher_energy_endpoint_as_reactant"`, `chemical_direction_known = false`); read that field and do not infer chemical direction from the labels alone. Neutral endpoint names are deferred to a future major schema.
+The TSOPT-only reactant/product labels follow an **energy-order presentation convention**, not a chemically established reaction direction: the higher-energy IRC endpoint is presented as the reactant (on an exact energy tie the left endpoint is the reactant). The R/P labels, `reactant_irc`/`product_irc` filenames, barrier and delta are computed under this convention. The machine-readable summary records it explicitly under `endpoint_assignment` (`policy = "higher_energy_endpoint_as_reactant"`, `chemical_direction_known = false`); read that field and do not infer chemical direction from the labels alone.
 ```
 
 ```{important}
@@ -306,9 +306,9 @@ Full schema: [YAML Reference](yaml-reference.md).
 
 ## Notes
 
-```{tip}
-For large active-site models, the single-structure scan workflow tends to produce more reliable reaction barriers than the multi-structure MEP workflow. When multiple full PDB structures are provided, structural differences in regions unrelated to the reaction coordinate can accumulate and inflate the barrier. The scan workflow avoids this by driving only the relevant coordinates from a single starting structure. The effect becomes more pronounced as the model size grows.
-```
+Structural differences outside the reaction coordinate can affect barriers
+obtained from independently prepared full-system structures. Inspect the
+structures and validate the selected path workflow for the modeled system.
 
 - Reference PDB templates for merging are derived automatically from the original inputs; the explicit `--ref-full-pdb` option of `path-search` is hidden in this wrapper.
 - Extraction radii: passing `0` to `--radius` or `--radius-het2het` is internally clamped to `0.001 Å` by the extractor.

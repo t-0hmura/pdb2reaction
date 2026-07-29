@@ -59,12 +59,12 @@ def check_all(root: Path, require_thermo: bool, require_dft: bool) -> None:
     # required is that the reported outcome be TRUE: either a real success, or a
     # `partial` that says what is missing.  A silent degradation, or a `failed`,
     # still fails the lane -- and so does a `partial` with no stated reason,
-    # which is how a truthful-outcome regression would look.
+    # which is how a missing outcome record would look.
     status = summary.get("status")
     scientific = summary.get("scientific_status")
     if status not in ("success", "partial") or scientific not in ("success", "partial"):
         raise SystemExit(
-            f"all summary is neither success nor a truthful partial: "
+            f"all summary is neither success nor an explained partial: "
             f"status={status!r} scientific_status={scientific!r}"
         )
     reasons = summary.get("scientific_status_reasons") or []
@@ -98,7 +98,7 @@ def check_all(root: Path, require_thermo: bool, require_dft: bool) -> None:
         if require_thermo:
             # Thermochemistry needs R and P to be clean minima, which a throttled
             # run cannot promise.  So: present, or explicitly accounted for in
-            # the reasons.  Absent AND unexplained is a truthful-outcome failure.
+            # the reasons. Absent and unexplained is an outcome-record failure.
             missing = [
                 state
                 for state in ("R", "TS", "P")

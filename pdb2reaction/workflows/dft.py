@@ -345,7 +345,7 @@ def _finalize_dft_result(
     payload: Dict[str, Any],
     elapsed_seconds: float,
 ) -> None:
-    """Commit a truthful payload before signalling SCF nonconvergence."""
+    """Commit the result payload before signalling SCF nonconvergence."""
 
     if out_json:
         from pdb2reaction.core.utils import write_result_json
@@ -652,9 +652,9 @@ def cli(
             mol.verbose = int(dft_cfg.pop("verbose", 0))
             if is_verbose():
                 mol.verbose = max(mol.verbose, 4)
-            # DO NOT INLINE: omitting this auto-attach gives silent wrong DFT energies for Z>=21; PySCF basis= alone does NOT imply ecp= even for def2 family.
-            # def2 family includes Stuttgart ECPs for heavy elements (Z>=21);
-            # must set mol.ecp explicitly or PySCF uses all-electron treatment.
+            # PySCF does not infer ``ecp=`` from a def2 basis. Request the
+            # matching def2 ECP explicitly; PySCF applies entries only to
+            # elements covered by that ECP family (commonly Rb through Rn).
             _ecp = dft_cfg.get("ecp", None)
             if _ecp is None and basis.lower().startswith("def2"):
                 _ecp = basis
@@ -710,7 +710,8 @@ def cli(
                 try:
                     from gpu4pyscf import dft as gdf
 
-                    # DO NOT INLINE: triple-guard (feature flag + closed-shell + ImportError) keeps the CLI working across the wide gpu4pyscf install matrix; rks_lowmem only exists in recent gpu4pyscf and is RKS-only.
+                    # ``rks_lowmem`` is available only in recent gpu4pyscf and
+                    # applies only to closed-shell RKS calculations.
                     rks_lowmem_mod = None
                     if lowmem_requested and spin2s == 0:
                         try:

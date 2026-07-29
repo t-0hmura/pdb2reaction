@@ -412,7 +412,7 @@ class GSMResult:
     images: List[Any]
     energies: List[float]
     hei_idx: int
-    # M09: truthful convergence of the string/DMF optimizer that produced this
+    # reported convergence of the string/DMF optimizer that produced this
     # MEP. ``None`` means no readable convergence signal (fail-closed: never
     # promoted to a usable segment by artifact existence alone).
     is_converged: Optional[bool] = None
@@ -427,7 +427,7 @@ class SegmentReport:
     summary: str  # summarize_changes string (empty for bridges)
     kind: str = "seg"          # "seg" or "bridge"
     seg_index: int = 0         # 1‑based index along final MEP (assigned later)
-    # M09: the segment's optimizer convergence, threaded from GSMResult. A
+    # the segment's optimizer convergence, threaded from GSMResult. A
     # reactive segment whose optimizer did not explicitly converge is unusable
     # and cannot make the path aggregate a scientific success.
     converged: Optional[bool] = None
@@ -939,7 +939,7 @@ def _path_leaves_and_expected(
     optional connectors.  When there is no reactive segment at all — the
     endpoint-HEI branch returns ``segments=[]`` even though an R/P energy diagram
     can still be drawn — an unusable ``raw_path`` leaf is emitted so the aggregate
-    mapper cannot promote the diagnostic diagram to success (M59).  The raw
+    mapper cannot promote the diagnostic diagram to success. The raw
     trajectory/diagram remain reportable as artifacts.
     """
 
@@ -949,7 +949,7 @@ def _path_leaves_and_expected(
     reactive = [s for s in segments if getattr(s, "kind", "seg") != "bridge"]
     for s in segments:
         is_reactive = getattr(s, "kind", "seg") != "bridge"
-        # M09: a reactive segment is usable only when its optimizer explicitly
+        # a reactive segment is usable only when its optimizer explicitly
         # converged. A nonconverged (max-cycle) StringOptimizer segment retains
         # its trajectory artifact but must not count toward completeness.
         _seg_conv = getattr(s, "converged", None)
@@ -1210,7 +1210,7 @@ def _build_multistep_path(
         # StringOptimizer). It is usable only when EVERY endpoint/intermediate
         # optimization explicitly converged; fold their convergence rather than
         # hardcode True, so a nonconverged (max-cycle) single-structure opt cannot
-        # silently become a usable reactive leaf (M09/C6, fail-closed).
+        # silently become a usable reactive leaf (fail-closed).
         from pdb2reaction.workflows._outcomes import combine_step_convergence
         _kink_converged = combine_step_convergence(
             [left_conv] + inter_convs + [right_conv]
@@ -2963,7 +2963,7 @@ def cli(
                     "index": int(s.seg_index),
                     "tag": s.tag,
                     "kind": s.kind,
-                    # Additive C6: the segment's own StringOptimizer convergence
+                    # Record the segment's own StringOptimizer convergence
                     # (tri-state) so a downstream consumer / the `all`-pipeline
                     # no-tsopt aggregate can gate on real per-segment convergence
                     # instead of assuming a segment converged.
@@ -3003,7 +3003,7 @@ def cli(
         _path_truth = _agg_truth(_path_leaves, _path_expected)
         # Legacy byte-compat: `status` stays the diagram-based value it always
         # had — "success" when an energy diagram was produced, else "partial".
-        # The ONE intended change (M59) is the endpoint-HEI demotion: when there
+        # The endpoint-HEI demotion applies when there
         # is no reactive segment (segments=[]), a raw R/P diagram is a diagnostic
         # artifact only and must not read "success". All other convergence truth
         # is carried by the additive scientific_status, not this legacy field.
@@ -3012,7 +3012,7 @@ def cli(
         ]
         _legacy_status = "success" if summary.get("energy_diagrams") else "partial"
         if _legacy_status == "success" and not _reactive_segs:
-            _legacy_status = "partial"  # M59 endpoint-HEI demotion
+            _legacy_status = "partial"  # endpoint-HEI demotion
         summary["status"] = _legacy_status
         _attach_outcomes(summary, truth=_path_truth, stage_outcomes=_path_leaves)
         from pdb2reaction.core.utils import calculator_provenance

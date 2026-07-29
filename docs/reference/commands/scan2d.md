@@ -104,9 +104,7 @@ Options:
                                   run]
   --coord-type [cart|redund|dlc|tric]
                                   Optimization coordinate system
-                                  (cart|redund|dlc|tric). cart is the reliable
-                                  default used for the published results; dlc
-                                  speeds up torsion-rich optimizations.
+                                  (cart|redund|dlc|tric).
   --print-every INTEGER RANGE     Print optimizer status every N cycles (debug
                                   knob).  [x>=1]
   --precision [fp32|fp64]         MLIP backend precision: fp32 or fp64. Unset

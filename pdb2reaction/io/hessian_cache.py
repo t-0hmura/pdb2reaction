@@ -10,22 +10,21 @@ before assigning partial Hessians to ``geometry.cart_hessian``.
 
 Ownership and reuse semantics
 -----------------------------
-* **M15 — defensive ownership.**  ``store()`` copies every mutable payload in,
+* **Defensive ownership.** ``store()`` copies supported array and container
+  payloads in,
   and every read (``load`` / ``load_matching``) returns a *fresh* defensive
   snapshot.  A consumer may mass-weight, project, or otherwise mutate what it
   receives without corrupting the raw Cartesian artifact retained in the cache.
-* **M70 — complete reuse identity.**  A cached Hessian is only a valid
-  substitute for a fresh evaluation when the *entire* evaluation context — run,
-  system, evaluator, potential composition, active space, constraints, and
-  artifact representation — is identical (coordinates within the established
-  bohr round-trip tolerance).  ``build_identity()`` captures that context as a
+* **Reuse identity.** A cached Hessian is only reused when the captured run,
+  system, evaluator, potential, active-space, constraint, and artifact fields
+  match (coordinates use the established bohr round-trip tolerance).
+  ``build_identity()`` records those fields as a
   private ``hessian-cache-identity/v1`` token and ``load_matching()`` is the
   single reuse chokepoint that requires an exact match.  A legacy
   coordinate-only entry (no identity) is never reused through
   ``load_matching``.
 
-This is an implementation detail of pdb2reaction v0.4.12; it is not
-``pescape.api.v1`` and it does not import mlmm_toolkit.
+This cache is an internal workflow implementation detail.
 """
 
 import hashlib
@@ -40,7 +39,7 @@ from pdb2reaction.core.result_commit import RUN_ID_ENV
 
 _cache: Dict[str, Any] = {}
 
-# Private token schema.  Future-friendly field names, but a frozen-minor detail.
+# Internal cache-token schema.
 IDENTITY_SCHEMA = "hessian-cache-identity/v1"
 
 # Role -> artifact method/source contract.  Producers stamp this; consumers
@@ -169,7 +168,7 @@ def _potential_identity(calc_cfg: Mapping) -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Identity construction and comparison (M70)
+# Identity construction and comparison
 # ---------------------------------------------------------------------------
 def build_identity(
     *,
@@ -389,7 +388,7 @@ def store(
 
 
 def _snapshot(entry: Mapping) -> Dict[str, Any]:
-    """Return a defensive copy of a cache entry (M15)."""
+    """Return a defensive copy of a cache entry."""
 
     snap: Dict[str, Any] = {
         "hessian": _clone_value(entry.get("hessian")),

@@ -39,7 +39,7 @@ pdb2reaction all -i R.pdb P.pdb -q 0 -b uma -v 3 --out-dir ./result_all
 pdb2reaction freq -i opt.pdb -q 0 --dump
 ```
 
-Use `--dump` when reproducing a HEAVY-tier regression or attaching artefacts to a bug report. Use `-v 3` when diagnosing an import-time or stage-bridge issue; the additional log volume is acceptable for short runs.
+Use `--dump` when reproducing a resource-intensive regression or attaching artefacts to a bug report. Use `-v 3` when diagnosing an import-time or stage-bridge issue; the additional log volume is acceptable for short runs.
 
 ### 1.4 Downstream output compatibility
 
@@ -48,7 +48,7 @@ human-readable output. Do not rename/remove machine-readable keys or paths
 accidentally: document an intentional schema change, update both English and
 Japanese references, add a compatibility/migration test when needed, and bump
 the schema version for a structural break. Human-readable labels may be fixed,
-but tests must ensure that backend/model provenance remains truthful.
+but tests must verify that backend/model provenance remains accurate.
 
 ---
 
@@ -61,7 +61,7 @@ See [`docs/architecture.md`](docs/architecture.md) for the full 6-layer dir tree
 - `pdb2reaction/domain/` — L3 Domain (chemistry-aware helpers: bond changes, bond summary, element info).
 - `pdb2reaction/backends/` — L4a Infra (MLIP dispatcher + per-backend adapter).
 - `pdb2reaction/io/` — L4b Infra (summary, trajectory, diagram, PDB fix, Hessian cache).
-- `pdb2reaction/core/` — L5 Foundation (defaults, utils, future errors / types / logging).
+- `pdb2reaction/core/` — L5 Foundation (defaults, utilities, logging, output, and result publication).
 - `pysisyphus/`, `thermoanalysis/` — bundled forks at the repo top; **not** upstream PyPI.
 - `tests/` — golden gates that the per-step cycle checks.
 - `tests/smoke/` — short representative job covering the canonical CLI surface.
@@ -70,7 +70,8 @@ See [`docs/architecture.md`](docs/architecture.md) for the full 6-layer dir tree
 
 ## 3. Recipes
 
-Five "add-a-X" recipes cover ~90 % of contributor changes. Each names the exact files you touch (with the correct layer dir) and the gate that catches mistakes.
+The following "add-a-X" recipes name the files to touch and the checks that
+cover common contributor changes.
 
 ### 3.1 Add a subcommand
 
@@ -114,11 +115,13 @@ the recipe's smoke entry (step 5) is added.
 |---|---|---|
 | 1 | Add a writer function in `pdb2reaction/io/summary.py` that consumes the same in-memory summary dict | `pdb2reaction/io/summary.py` (L4b) |
 | 2 | Default emit path / on-or-off flag lives in `pdb2reaction/core/defaults.py` | `pdb2reaction/core/defaults.py` (L5) |
-| 3 | Wire into `@add_common_dump_options` factory if the user can opt out (the factory is **future**, expected to land in a later release; until then, attach a per-subcommand `@click.option("--dump-<artefact>",...)` directly to the L2 stage runner) | `pdb2reaction/cli/decorators.py` (future) |
+| 3 | Attach a per-subcommand `@click.option("--dump-<artefact>",...)` to the L2 stage runner when users can opt out | the stage runner |
 | 4 | Update the aggregate `files` / `key_output_files` enrichment to advertise the new artefact (per `docs/json-output.md`); update the human-readable tree separately if needed | `pdb2reaction/workflows/all.py` (`_enrich_summary`), and `pdb2reaction/io/summary.py` for `summary.log` parity |
 | 5 | Add docs in `docs/json-output.md` + a unit test for round-trip serialisation | `docs/json-output.md`, new test |
 
-**Gate that catches mistakes**: the smoke run (step 5) will exercise the new artefact end-to-end; any change to a downstream-parser-visible log line is governed by §1.4.
+**Gates that catch mistakes**: the unit test in step 5 checks the writer; add
+gate-stage-4 smoke coverage when the artefact belongs to the canonical smoke
+surface. Any downstream-parser-visible change is governed by §1.4.
 
 ### 3.4 Add a workflow stage
 
@@ -128,7 +131,7 @@ the recipe's smoke entry (step 5) is added.
 |---|---|---|
 | 1 | Implement the stage as a standalone subcommand first (Recipe 3.1) | `pdb2reaction/workflows/validate.py` |
 | 2 | Add an internal entry to the `all` pipeline orchestrator, preserving the VRAM `del` pattern between stages | `pdb2reaction/workflows/all.py` |
-| 3 | Add a `_StageContext` field if the stage needs persistent context (future, `core/types.py`) | `pdb2reaction/core/types.py` (future) |
+| 3 | Pass the stage result explicitly to the aggregate producer and any later consumer | `pdb2reaction/workflows/all.py` |
 | 4 | Record the new stage in the aggregate producer; update the human-readable writer separately if the stage belongs in `summary.log` | `pdb2reaction/workflows/all.py` (`_enrich_summary`), `pdb2reaction/workflows/path_search.py` when relevant, and `pdb2reaction/io/summary.py` for log parity |
 | 5 | Update `tests/smoke/run.sh` to include the new stage in the representative run | `tests/smoke/run.sh` |
 
@@ -140,13 +143,13 @@ the recipe's smoke entry (step 5) is added.
 
 | step | action | file |
 |---|---|---|
-| 1 | Pick the right tier: pure-Python logic → `tests/test_<feature>.py`; multi-stage smoke → `tests/smoke/`; chemistry-rule regression → `tests/domain_golden/` (future) | as appropriate |
+| 1 | Pick the right tier: pure-Python or chemistry-rule logic → `tests/test_<feature>.py`; multi-stage smoke → `tests/smoke/` | as appropriate |
 | 2 | Use `pytest` style: one assertion per logical thing; name the test for the symptom (`test_irc_initial_displacement_does_not_oom`) | new test |
 | 3 | If the test consumes a fixture, prefer the existing `tests/data/` directory; do **not** add large binary fixtures (> 100 KB) — use generators | `tests/data/`, `tests/conftest.py` |
 | 4 | Run `pytest tests/test_<feature>.py -q -x` until green, then `pytest tests/ -q` to confirm no cross-test breakage | local |
 | 5 | If the test depends on a new public Click command or symbol, land Recipe 3.1 / 3.3 first so the golden gate stays green | sequencing |
 
-**Gate that catches mistakes**: `pytest` itself (step 3 of the gate cycle); CI will block merge.
+**Gate that catches mistakes**: `pytest` is gate stage 1; CI blocks a failing merge.
 
 ---
 
@@ -200,7 +203,7 @@ Entries in `pdb2reaction/cli/app.py:_LAZY_SUBCOMMANDS` MUST use absolute module 
 
 ### 4.6 Chemistry default choices
 
-Default basis set (def2-TZVPD), default functional (ωB97M-V), default convergence thresholds, default ECP handling, default solvent models — **none** of these are open for change without a `[CHEMISTRY-RULE]` commit and explicit lab decision. Grep `pdb2reaction/workflows/dft.py` (`DFT_DEFAULT_FUNC` / `DFT_DEFAULT_BASIS`) for the DFT functional/basis and `pdb2reaction/core/defaults.py` for the other defaults; if you think a change is justified, open an issue first.
+Default basis set (def2-TZVPD), default functional (ωB97M-V), default convergence thresholds, default ECP handling, default solvent models — **none** of these are open for change without a `[CHEMISTRY-RULE]` commit, a documented numerical comparison, and maintainer approval. Grep `pdb2reaction/workflows/dft.py` (`DFT_DEFAULT_FUNC` / `DFT_DEFAULT_BASIS`) for the DFT functional/basis and `pdb2reaction/core/defaults.py` for the other defaults; if you think a change is justified, open an issue first.
 
 ### 4.7 Downstream-parser-visible output
 
@@ -211,12 +214,12 @@ machine-readable compatibility break as a side effect of wording cleanup.
 
 ## 5. Commit prefix conventions
 
-The prefix tells the reviewer what to expect and which gate cycle stage will be exercised.
+The prefix identifies the expected scope and the gate cycle stage to exercise.
 
 | prefix | meaning | typical pattern |
 |---|---|---|
-| `[CHEMISTRY FREEZE]` | Explicit "no chemistry change" marker on a polish-only edit; reviewer must verify | `[CHEMISTRY FREEZE] docstring polish on IRC.py — no logic change` |
-| `[CHEMISTRY-RULE]` | Modifies an actual chemistry-correctness rule — requires lab sign-off + HEAVY benchmark | `[CHEMISTRY-RULE:4] dft.py adjust rks_lowmem cutoff after gpu4pyscf update` |
+| `[CHEMISTRY FREEZE]` | Explicit "no chemistry change" marker on a polish-only edit; maintainers verify the scope | `[CHEMISTRY FREEZE] docstring polish on IRC.py — no logic change` |
+| `[CHEMISTRY-RULE]` | Modifies a chemistry-correctness rule; requires maintainer approval and a documented scheduled numerical benchmark | `[CHEMISTRY-RULE:4] dft.py adjust rks_lowmem cutoff after gpu4pyscf update` |
 | `[DOMAIN_PURE]` | Adjusts the `# DOMAIN_PURE` marker or the import-deny gate | `[DOMAIN_PURE] add tsopt.py to deny-gate scope` |
 
 ---

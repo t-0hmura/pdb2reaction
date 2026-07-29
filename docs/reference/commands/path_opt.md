@@ -97,9 +97,6 @@ Options:
                                   'water'). 'none' to disable.  [default: none]
   --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
   --coord-type [cart|dlc]         Optimization coordinate system (cart|dlc).
-                                  cart is the reliable default used for the
-                                  published results; dlc speeds up torsion-rich
-                                  optimizations.
   --precision [fp32|fp64]         MLIP backend precision: fp32 or fp64. Unset
                                   defaults per backend (uma: fp32; orb, mace:
                                   fp64). Routed to backend-specific kwargs (UMA

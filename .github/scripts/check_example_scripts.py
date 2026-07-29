@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Contract-check the advertised example shell scripts (M65).
+"""Contract-check the advertised example shell scripts.
 
 Asserts the exact ``PUBLIC_SHELL_EXAMPLES`` paths exist, runs ``bash -n`` on
 each, and validates their ``pdb2reaction`` invocations against the live CLI via

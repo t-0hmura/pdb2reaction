@@ -101,8 +101,7 @@ mechanisms sometimes invoke an unusual protonation state.
 
 ## Source policy for an unknown value
 
-When the agent does not know a charge / multiplicity, follow the active
-agent/tool browsing policy and use authoritative sources in this order:
+For an unknown charge or multiplicity, use authoritative sources in this order:
 the mechanism's primary paper or deposited structure documentation, then
 PubChem/ChEBI/RCSB CCD. Cite the source and state the modeled protonation and
 oxidation state. If the sources do not determine one unambiguous state, stop
@@ -126,7 +125,7 @@ protonation state against the relevant mechanism before using a value.
 | NAD⁺ | `NAD` | −1 |
 | FAD | `FAD` | −2 |
 | Pyridoxal phosphate (PLP) | `PLP` | −2 |
-| Heme (Fe(III) protoporphyrin) | `HEM` | +1 (with Fe³⁺ + porphyrin²⁻) |
+| Heme | `HEM` | Derive from the modeled oxidation state, axial ligands, and propionate protonation |
 | Phosphate ion (free) | `PO4` | −2 to −3 |
 
 ### Monatomic ions are summed from the internal `ION` table

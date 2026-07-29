@@ -856,7 +856,7 @@ def cli(
 
             # A stalled optimization is precisely when the flatten loop is
             # wanted: it rebuilds the Hessian and displaces along the remaining
-            # imaginary modes to leave the plateau.  M14/P14's no-retry rule
+            # imaginary modes to leave the plateau. The no-retry rule
             # belongs inside the loop (a flatten *retry* that stalls again is
             # not making progress and stops there), not in front of it.
             if flatten:
@@ -938,7 +938,7 @@ def cli(
                     )
                     last_optimizer = optimizer
 
-                    # Stop retrying a stalled optimization (M14/P14).
+                    # Stop retrying a stalled optimization.
                     if getattr(optimizer, "is_stalled", False):
                         click.echo(
                             "[flatten] Optimization stalled (energy plateau); "
@@ -1001,7 +1001,7 @@ def cli(
                 }
                 # Additive stop_reason, present only for a non-converged stop
                 # (stalled/stopped) so a genuinely converged run's JSON stays
-                # byte-compatible (M14/P14).
+                # byte-compatible.
                 _opt_stop_reason = getattr(last_optimizer, "stop_reason", "") or ""
                 if _opt_stop_reason:
                     result_data["stop_reason"] = _opt_stop_reason

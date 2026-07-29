@@ -732,7 +732,7 @@ def cli(
 
                         # Cache final geometry for nearest-neighbor reuse ONLY when
                         # the point explicitly converged; a failed point must not
-                        # seed the next d3 target (M48).
+                        # seed the next d3 target.
                         if converged is True:
                             d3_store[k_idx] = _snapshot_geometry(geom_inner)
 
@@ -839,7 +839,7 @@ def cli(
                 )
                 sys.exit(1)
 
-            # Reference minimum only from seed-eligible points (M48): a failed /
+            # Reference minimum only from seed-eligible points: a failed or
             # nonconverged point never defines the baseline. Legacy CSV rows
             # without a convergence column are ineligible-by-policy, so the raw
             # fallback below preserves their re-plot behavior.
@@ -1098,7 +1098,7 @@ def cli(
             )
             if not df.empty and "energy_hartree" in df.columns:
                 if csv_path is None:
-                    # Fresh scan: minimum only from seed-eligible points (M48).
+                    # Fresh scan: minimum only from seed-eligible points.
                     _seed_ok_json = seed_eligible_mask(grid_records)
                     _eligible_grid_energies = [
                         float(rec["energy_hartree"])
@@ -1149,7 +1149,7 @@ def cli(
                 result_data["pair3"] = _pair3
                 result_data["grid_shape"] = [len(d1_values), len(d2_values), len(d3_values)]
                 result_data["files"]["surface_csv"] = "surface.csv"
-                # Additive truthful outcomes (fresh scan only; plot-only has no
+                # Additive outcome fields (fresh scan only; plot-only has no
                 # per-point convergence provenance). Legacy ``status`` stays
                 # "completed".
                 _point_outcomes3 = [

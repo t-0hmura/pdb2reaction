@@ -380,10 +380,9 @@ TSOPT_MODE_ALIASES = (
     (("trim",), "trim"),
 )
 
-# Saddle certification counts imaginary modes; it does not weigh them, so a
-# soft mode certifies exactly like a reaction coordinate. A bond-forming or
-# bond-breaking coordinate is normally several hundred cm^-1, so warn (only —
-# the status is unchanged) when the leading imaginary mode is softer than this.
+# Saddle certification counts imaginary modes; it does not assess their
+# character. Warn, without changing status, when the leading imaginary mode is
+# very soft so the mode shape and IRC connectivity receive explicit review.
 TS_IMAG_SOFT_WARN_CM = 50.0
 
 

@@ -1,4 +1,4 @@
-"""M56: enforceable AST import-graph gate + negative controls.
+"""Enforceable AST import-graph gate with negative controls.
 
 The gate asserts three real invariants of the product graph:
  - no bundled ``pysisyphus/**`` file imports ``pdb2reaction``;

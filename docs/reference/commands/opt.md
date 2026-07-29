@@ -88,9 +88,7 @@ Options:
   --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
   --coord-type [cart|redund|dlc|tric]
                                   Optimization coordinate system
-                                  (cart|redund|dlc|tric). cart is the reliable
-                                  default used for the published results; dlc
-                                  speeds up torsion-rich optimizations.
+                                  (cart|redund|dlc|tric).
   -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
                                   unless --ligand-charge is provided (.gjf
                                   templates inherit the charge automatically).

@@ -51,7 +51,6 @@ from pdb2reaction.cli.common_options import (
     add_backend_model_option,
     add_calc_file_option,
     add_deterministic_option, add_allow_charge_mult_mismatch_option,
-    add_print_every_option,
 )
 from pdb2reaction.cli.decorators import (
     _write_error_json,
@@ -100,7 +99,7 @@ logger = logging.getLogger(__name__)
 @click.option(
     "--convert-files/--no-convert-files", "convert_files",
     default=True, show_default=True,
-    help="Auto-convert XYZ-like outputs to PDB companions; mmCIF/oversized-PDB inputs also receive CIF companions with original IDs.",
+    help="Compatibility toggle; sp writes no structure companions.",
 )
 @click.option(
     "--config", "config_yaml",
@@ -140,7 +139,13 @@ logger = logging.getLogger(__name__)
 @add_calc_file_option()
 @add_deterministic_option()
 @add_allow_charge_mult_mismatch_option()
-@add_print_every_option()
+@click.option(
+    "--print-every",
+    "print_every",
+    type=click.IntRange(min=1),
+    default=None,
+    hidden=True,
+)
 @click.pass_context
 def cli(
     ctx: click.Context,

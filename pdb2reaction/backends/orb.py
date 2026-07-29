@@ -299,7 +299,8 @@ class OrbCalculator(MLIPCalculator):
                 "Orb analytical Hessian requires a model object exposing predict()."
             )
 
-        # DO NOT INLINE: atomic_system only exists in newer orb_models releases; adapter path covers older versions, in-function import fallback gives a clear BackendError rather than NameError on stale installs.
+        # ``atomic_system`` exists only in newer orb_models releases. The local
+        # import keeps older adapters usable and converts absence to BackendError.
         if self._adapter is not None and hasattr(self._adapter, "from_ase_atoms"):
             base_graph = self._adapter.from_ase_atoms(
                 atoms=atoms, device=self.device_str

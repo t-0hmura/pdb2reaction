@@ -1,7 +1,7 @@
 """MCP (Model Context Protocol) server for pdb2reaction.
 
-Exposes every `pdb2reaction <subcmd>` CLI as an MCP tool, callable by LLM
-agents (Claude Desktop, Cursor, Codeium, custom MCP clients) via JSON-RPC
+Exposes every `pdb2reaction <subcmd>` CLI as an MCP tool, callable by MCP
+clients (Claude Desktop, Cursor, Codeium, custom clients) via JSON-RPC
 over stdio.
 
 Each tool wraps the corresponding CLI invocation via `subprocess.run`,

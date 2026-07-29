@@ -1,8 +1,7 @@
 # Orb backend (orb.md)
 
 Orb-v3 (Orbital Materials) is available as an alternative MLIP integration.
-pdb2reaction uses fp64 by default because its own ORB benchmark found noisy
-finite-difference Hessians in the explicit reduced-fp32 mode. Runtime and
+pdb2reaction uses fp64 by default. Runtime and
 domain suitability must be measured for the actual system, and TS results
 need the same frequency/IRC validation as every backend.
 
@@ -57,7 +56,7 @@ Orb accepts (canonical list in
 | `charge`, `spin` | Total charge and spin multiplicity |
 | `device` | `'cuda'`, `'cpu'`, `'auto'` |
 | `model` | Override the default Orb checkpoint |
-| `precision` | `'float64'` is the default: an unset `--precision` resolves per backend (`ORB_BACKEND_DEFAULTS["precision"]`, `_BACKEND_DEFAULT_PRECISION["orb"] = "fp64"`). `'float32-high'` selects ORB's TF32 matmul mode — fast, but its force noise inflates finite-difference Hessians into spurious imaginary modes, so keep it for screening only. pdb2reaction normalizes `'float32'`/`'fp32'` → `'float32-high'` and `'fp64'` → `'float64'` before the loader (raw orb_models rejects `'float32'` and demotes to a slow path). |
+| `precision` | `'float64'` is the default: an unset `--precision` resolves per backend (`ORB_BACKEND_DEFAULTS["precision"]`, `_BACKEND_DEFAULT_PRECISION["orb"] = "fp64"`). `'float32-high'` selects ORB's reduced mode explicitly. pdb2reaction normalizes `'float32'`/`'fp32'` → `'float32-high'` and `'fp64'` → `'float64'` before the loader. |
 | `compile_model` | Request torch compilation; startup/runtime benefit is version, model, and workload dependent, so benchmark it |
 | `freeze_atoms`, `hessian_calc_mode`, `return_partial_hessian`, `hessian_double` | Same as UMA |
 

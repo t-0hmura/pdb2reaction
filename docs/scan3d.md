@@ -136,7 +136,7 @@ Grid-point geometries use `Å×100` tags, so `point_i130_j310_k200.xyz` correspo
 | `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
 | `--config FILE` | Base YAML configuration file (applied first). | _None_ |
 
-The full flag list is in the generated [command reference](reference/commands/index.md); do not hand-duplicate it here.
+The full flag list is in the generated [command reference](reference/commands/index.md).
 
 ## YAML configuration
 

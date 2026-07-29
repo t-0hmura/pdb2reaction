@@ -1,9 +1,9 @@
 # MLIP Backends
 
-pdb2reaction dispatches every workflow stage (`opt`, `scan`, `tsopt`, `freq`,
-`irc`, `path-search`,...) through a single `MLIPCalculator` adapter. This page
-documents how to select a backend, the per-backend kwargs, and how to add a new
-backend.
+pdb2reaction uses `MLIPCalculator` for pysisyphus-based geometry and path
+stages, and a separate ASE calculator factory for ASE-based stages such as DMF.
+The DFT stage uses PySCF/GPU4PySCF directly. This page documents how to select a
+backend, the per-backend kwargs, and how to add a new backend.
 
 ## Backend dispatcher pattern
 
@@ -16,15 +16,16 @@ calc = create_calculator(
  device="cuda", workers=1,
  model="uma-s-1p2",
 )
-# calc is a pysisyphus-compatible MLIPCalculator; pass it to any stage runner.
+# calc is a pysisyphus-compatible MLIPCalculator.
 
 # ASE-based stages (e.g. DMF path optimization) use the ASE factory:
 ase_calc = create_ase_calculator(backend="uma", model="uma-s-1p2", device="cuda")
 ```
 
 `create_calculator(...)` filters `**kwargs` against each backend's
-`_BACKEND_ACCEPTED_KEYS` set, so workflow code can pass a superset and unknown
-keys are silently dropped. The same pattern applies to `create_ase_calculator()`.
+`_BACKEND_ACCEPTED_KEYS` set. Unknown keys are dropped with a warning.
+`create_ase_calculator()` uses its own `_ASE_ACCEPTED_KEYS` set and silently
+filters unknown keys.
 
 `backend="auto"` resolves UMA → Orb → MACE → AIMNet2 in that order and picks the
 first one whose import succeeds.
@@ -61,7 +62,7 @@ When `--precision` is not given, each backend takes its own default:
 | backend | default | why |
 |---------|---------|-----|
 | `uma` | fp32 | The upstream fairchem baseline. |
-| `orb` | fp64 | ORB's fp32 is the reduced `float32-high` (TF32) matmul mode, whose force noise inflates finite-difference Hessians into spurious imaginary modes. |
+| `orb` | fp64 | Use `--precision fp32` to select ORB's reduced `float32-high` mode explicitly. |
 | `mace` | fp64 | MACE ships `default_dtype="float64"` upstream. |
 | `aimnet2` | fp32 | No precision knob. |
 

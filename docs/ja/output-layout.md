@@ -72,12 +72,8 @@ primary = "summary.json" if subcommand in {"all", "path-search"} else "result.js
 summary = json.loads((Path(out_dir) / primary).read_text())
 
 if summary["status"] == "error":
-    chain = summary.get("error_class_chain", [])
-    if "OptimizationError" in chain:
-        # retry with looser convergence threshold
-        ...
-    else:
-        raise RuntimeError(summary["error"])
+    error_type = summary.get("error_type", "RuntimeError")
+    raise RuntimeError(f"{error_type}: {summary['error']}")
 ```
 
 正常終了した段階別コマンドが `summary.json` / `result.json` を書くのは、

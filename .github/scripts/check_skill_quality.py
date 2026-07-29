@@ -2,8 +2,7 @@
 """Validate agent-skill structure and high-risk pdb2reaction semantics.
 
 This complements the live-CLI flag checker. It validates skill frontmatter,
-reference coverage, and a small set of behavioral statements
-whose ambiguity has caused real operator/agent mistakes.
+reference coverage, and a small set of high-risk behavioral statements.
 """
 
 from __future__ import annotations

@@ -109,7 +109,7 @@ out_dir/ (default:./result_path_search/)
 
 ## CLI options
 
-The full flag list is in the generated [command reference](reference/commands/index.md); the table below covers the options that need explanation — do not hand-duplicate it here.
+The full flag list is in the generated [command reference](reference/commands/index.md); the table below covers the options that need explanation.
 
 The table is grouped by purpose; within each group the most-used options come first.
 

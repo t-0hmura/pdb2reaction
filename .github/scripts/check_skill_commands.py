@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit fenced ``bash`` blocks in skills/**/*.md.
+"""Validate fenced ``bash`` blocks in skills/**/*.md.
 
 For every line that starts with ``pdb2reaction <subcommand>``, parse out
 flag tokens (``--foo`` and ``-f``) and verify each one is registered on

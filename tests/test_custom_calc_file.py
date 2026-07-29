@@ -1,7 +1,7 @@
 """Smoke + unit tests for the ``--calc-file`` custom ASE Calculator backend.
 
 Exercises loading an arbitrary ASE Calculator from a user Python file and using
-it as the energy/gradient source (the R1 reviewer point: couple GFN-xTB / DFTB+
+it as the energy/gradient source (for example, coupling GFN-xTB / DFTB+
 / any ASE engine). Uses a dependency-free, element-agnostic toy harmonic
 calculator so the test needs no MLIP weights or GPU.
 """

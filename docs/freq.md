@@ -83,7 +83,7 @@ See {ref}`exit-codes` in CLI Conventions.
 
 ## CLI options
 
-The tables below cover the options that need explanation; the full flag list is in the generated [command reference](reference/commands/index.md) — do not hand-duplicate it here.
+The tables below cover the options that need explanation; the full flag list is in the generated [command reference](reference/commands/index.md).
 
 | Option | Description | Default |
 | --- | --- | --- |
@@ -118,7 +118,7 @@ The tables below cover the options that need explanation; the full flag list is 
 
 ## YAML configuration
 
-The `geom`, `calc`, `freq`, and `thermo` sections are unchanged from the canonical definitions in [YAML Reference](yaml-reference.md): see [`geom`](yaml-reference.md#geom), [`calc`](yaml-reference.md#calc), [`freq`](yaml-reference.md#freq-section), and [`thermo`](yaml-reference.md#thermo). `freq` automatically sets `calc.return_partial_hessian = true` (PHVA) by default; YAML can override.
+The `geom`, `calc`, `freq`, and `thermo` sections follow the canonical definitions in [YAML Reference](yaml-reference.md): see [`geom`](yaml-reference.md#geom), [`calc`](yaml-reference.md#calc), [`freq`](yaml-reference.md#freq-section), and [`thermo`](yaml-reference.md#thermo). `freq` forces `calc.return_partial_hessian = true` (PHVA) regardless of YAML.
 
 The only `freq`-specific default that differs from the canonical block is the output directory:
 

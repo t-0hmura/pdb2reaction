@@ -33,10 +33,8 @@ Options:
                                   automatic mode uses Analytical for UMA and
                                   FiniteDifference for other backends.
   --convert-files / --no-convert-files
-                                  Auto-convert XYZ-like outputs to PDB
-                                  companions; mmCIF/oversized-PDB inputs also
-                                  receive CIF companions with original IDs.
-                                  [default: convert-files]
+                                  Compatibility toggle; sp writes no structure
+                                  companions.  [default: convert-files]
   --config FILE                   YAML config file with sections (calc:, geom:,
                                   …).
   --show-config / --no-show-config
@@ -87,7 +85,5 @@ Options:
                                   parity check (logs that it was skipped). For
                                   an intentional open-shell or modified-residue
                                   cluster.
-  --print-every INTEGER RANGE     Print optimizer status every N cycles (debug
-                                  knob).  [x>=1]
   -h, --help                      Show this message and exit.
 ```

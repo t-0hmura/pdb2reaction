@@ -197,8 +197,7 @@ def test_colab_setup_is_pinned_to_matching_release_and_one_backend() -> None:
     setup = _notebook()["cells"][1]["source"]
 
     assert 'pdb2reaction_version = "v0.4.12"' in setup
-    assert "first run ~8 min" in setup
-    assert "first run ~5-10 min" not in setup
+    assert "first run takes several minutes" in setup
     # The release notebook installs the pinned wheel from PyPI, the same way a
     # normal user does, so the version guard compares what pip actually resolved
     # against the requested tag.
@@ -745,7 +744,7 @@ def test_colab_viewer_persists_exact_atom_and_residue_context() -> None:
     assert contract["_stationary"]([0.0, 2.0, 0.0], opt) == [
         (0, "initial"), (2, "optimized"),
     ]
-    # A trajectory plot labels R and P only (user decision, 2026-07-27). An
+    # A trajectory plot labels R and P only. An
     # energy-only extremum is neither a certified transition state nor a
     # certified intermediate; the energy diagram is where the profile is read.
     assert contract["_stationary"]([0.0, 2.0, 0.0], path_semantics) == [
@@ -3030,7 +3029,7 @@ def test_colab_uma_login_accepts_a_colab_secret(monkeypatch) -> None:
 
 
 def test_colab_setup_cell_is_frozen() -> None:
-    """The Setup cell is frozen for this release (user decision, 2026-07-25).
+    """The Setup cell is frozen for this release.
 
     Behaviour contracts live in the tests above; this digest additionally freezes
     everything else in the cell, including its printed output. Update the digest
@@ -3039,7 +3038,7 @@ def test_colab_setup_cell_is_frozen() -> None:
     setup = _notebook()["cells"][1]["source"]
     digest = hashlib.sha256(setup.encode("utf-8")).hexdigest()
 
-    assert digest == "449a6fe5554cc0f5f3bf590816cfe66da6104aba3c9fe185f1b922256abf8e1a", (
+    assert digest == "1c1a3cfc2d23d891aecc5693c770902dbed68dad41f1ad9e1973f298f8667423", (
         "the Colab Setup cell changed; it is frozen for this release. Re-read the "
         "Setup contracts above, then update this digest deliberately. Got: " + digest
     )

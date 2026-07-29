@@ -1,4 +1,4 @@
-"""M12 falsifier: the ordinary-opt flatten displacement is mass-unweighted
+"""The ordinary-opt flatten displacement is mass-unweighted
 exactly once.
 
 ``pdb2reaction.workflows.opt._flatten_all_imag_modes_for_geom`` turns a

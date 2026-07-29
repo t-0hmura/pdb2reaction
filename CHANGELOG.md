@@ -69,7 +69,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Offer the scientific workflows in the Colab workflow selector. The utility
   subcommands remain available from the command editor.
 - Install the DFT extra by default in the Colab notebook and verify PNG export
-  by rendering one. A first run now takes about 8 minutes.
+  by rendering one. A first run takes several minutes.
 - Label thermochemistry as `E + G_corr = G`, force uphill rejection off for
   transition-state optimization, and keep its toggle limited to minimum and
   post-IRC endpoint optimization.
@@ -86,7 +86,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   active-fragment projection could hide a real imaginary mode, so `n_imag`, ZPE
   and ΔG‡ move on frozen-boundary systems. The superseded `--tr-projection
   legacy-active` treatment is deprecated: it now warns and must not be used for
-  pass/HOSP transition-state certification; install the pinned pre-fix release to
+  pass/HOSP transition-state certification; install the preceding pinned release to
   reproduce old results bitwise.
 - Reject energy-increasing trial steps by default in the RFO/L-BFGS minimizers
   (`reject_uphill`), reject TS trial steps that lose the saddle mode
@@ -95,11 +95,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   `verify_saddle`), and add saddle recovery. These are default-on optimizer
   behavior changes: an optimization can now stop at a different geometry, or
   report a different terminal status, than it did in v0.4.11. The
-  `reject_uphill` safeguard is on by default. Its net effect has now been
-  measured: it rescues real post-IRC endpoint divergences (an endpoint
-  re-optimization that would otherwise settle at a spurious uphill minimum) with
-  no regression on already-converged endpoints, so it is kept on as a confirmed
-  net-positive safeguard. Toggle it with `opt`/`all
+  `reject_uphill` safeguard is on by default. Toggle it with `opt`/`all`
   --reject-uphill/--no-reject-uphill` (post-IRC endpoint re-optimization only on
   `all`).
 - Record backend, model, and canonical effective precision in calculator-backed
@@ -257,13 +253,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - **`--precision` now defaults per backend instead of globally to fp32: ORB and MACE
   run fp64 when no precision is given, UMA keeps fp32.** ORB's fp32 is the reduced
   `float32-high` (TF32) matmul mode and MACE ships `default_dtype="float64"`
-  upstream, so a fp32 finite-difference Hessian from either carried enough force
-  noise to invent imaginary modes. Pass `--precision fp32` explicitly to restore
-  the previous behaviour for screening runs.
-- **Default TS optimizer: RS-I-RFO → RS-P-RFO** (the `hess`/`heavy` alias). On the
-  confounding-free optimizer comparison (uniform finite-difference `n_imag` across all arms,
-  same path-opt HEI), RS-P-RFO produces clean first-order saddles at least as often as RS-I-RFO
-  on the reliable backends and markedly more often on ORB, at comparable optimizer wall time.
+  upstream. Pass `--precision fp32` explicitly to select the reduced-precision
+  screening configuration.
+- **Default TS optimizer: RS-I-RFO → RS-P-RFO** (the `hess`/`heavy` alias).
   RS-I-RFO remains available via `--opt-mode rsirfo`.
 
 ### Fixed
@@ -377,13 +369,12 @@ Release of the 0.4.4–0.4.6 changes listed below.
 
 ### Changed
 - **Default TS optimizer is once again RS-I-RFO** (Restricted-Step Image RFO), reverting the
-  RS-P-RFO default introduced in 0.4.2 (which predated the 0.4.1 charge/spin fix). On the corrected
-  (charge-honoring) benchmark, RS-I-RFO produces clean first-order saddles at least as reliably as
-  RS-P-RFO across the reliable backends. `hess`/`heavy` resolve to `rsirfo` again; RS-P-RFO stays available via
+  RS-P-RFO default introduced in 0.4.2. `hess`/`heavy` resolve to `rsirfo`
+  again; RS-P-RFO stays available via
   `--opt-mode rsprfo`, TRIM via `--opt-mode trim`.
-- **Default UMA model is now `uma-s-1p2`** (was `uma-s-1p1`). At the same small-model cost it is
-  more robust on the benchmark (fewer optimization/frequency errors, a few more clean saddles).
-  Other models (`uma-s-1p1`, `uma-m-1p1`, MACE-OMOL, Orb-v3-omol) remain selectable via `-b` /
+- **Default UMA model is now `uma-s-1p2`** (was `uma-s-1p1`). Other models
+  (`uma-s-1p1`, `uma-m-1p1`, MACE-OMOL,
+  Orb-v3-omol) remain selectable via `-b` /
   `--backend-model` / config. Centralized in a single constant `DEFAULT_UMA_MODEL`
   (`pdb2reaction/core/defaults.py`).
 
@@ -406,9 +397,8 @@ Release of the 0.4.4–0.4.6 changes listed below.
 ### Changed
 - **Behavior change (default):** the default TS optimizer is now **RS-P-RFO** (Restricted-Step
   Partitioned RFO, Banerjee), changed from RS-I-RFO. This affects `tsopt --opt-mode hess` (the
-  default) and the `all` TSOPT / post-IRC stage. At equal wall-time RS-P-RFO converges to a clean
-  first-order saddle (single imaginary mode) more robustly on backends where RS-I-RFO tends to land
-  on high-order saddles. RS-I-RFO remains available via `--opt-mode rsirfo`. The `hess`/`heavy`
+  default) and the `all` TSOPT / post-IRC stage. RS-I-RFO remains available via
+  `--opt-mode rsirfo`. The `hess`/`heavy`
   aliases now resolve to `rsprfo`; `rsirfo` is a distinct explicit alias. All three RFO-family
   optimizers still share the `rsirfo` YAML block. Docs updated throughout.
 
@@ -561,8 +551,7 @@ Release of the 0.4.4–0.4.6 changes listed below.
   payload shape, DFT-disabled path drops dft_func_basis, AllContext
   signature drift guard).
 - `AllContext` frozen dataclass added to `_all_helpers`: bundles the
-  65 `pdb2reaction all` CLI parameters in declaration order; foundation
-  for future cli() decomposition steps.
+  65 `pdb2reaction all` CLI parameters in declaration order.
 - `pdb2reaction.workflows._path_yaml_helpers` (new module):
   `apply_single_opt_yaml_layer` extracted from the 44-LOC nested
   closure that previously lived (verbatim) in both `path_opt.cli()`
@@ -617,11 +606,7 @@ Release of the 0.4.4–0.4.6 changes listed below.
 
   The `pdb2reaction` console-script CLI is unaffected — only Python imports change.
 - `--trust-band` / `--hessian-window` / `--weighted-trust` CLI flags
-  (and their `add_*_option` factories). The trust-radius / multistep
-  Hessian-update knobs they exposed showed no benefit on small TS
-  benchmarks and actively slowed convergence (rho-band trust update
-  −33 %, hessian_window > 1 −47 % cycles on a 20-atom TS), with no
-  evidence of speed-up on production-scale systems. The vendored
+  (and their `add_*_option` factories). The vendored
   pysisyphus `HessianOptimizer` kwargs are left dormant; no
   behaviour change since defaults were always legacy.
 
@@ -631,11 +616,6 @@ Release of the 0.4.4–0.4.6 changes listed below.
   prebuilt-wheel index, e.g.
   `pip install "pdb2reaction[orb]" -f https://data.pyg.org/whl/torch-2.8.0+cu129.html`.
 - Switched the README overview image to an absolute URL so it renders on PyPI.
-- Cleanup pass on in-source comments and docs: removed personal-name
-  attribution, internal-channel references, private memo filenames, and
-  internal review-process markers (phase IDs, dated user-correspondence
-  tags) that had leaked into shipped sources. Technical rationale is
-  preserved verbatim — no runtime behaviour change.
 
 ## [0.3.10] — 2026-05-17
 
@@ -694,7 +674,13 @@ Default-value alignment plus removal of the `--resume` flag.
 
 ### Changed
 - Docs restructured for newcomer onboarding (EN+JA): goal-based 4-card "Start here" map on `docs/index.md`; unified 5-bullet "At a glance" block on all 11 calculation command pages; unified Quickstart template; `getting-started.md` workflow-modes table + flag matrix trimmed; `installation.md` split into Required vs Optional with the MACE+UMA conflict promoted to a `{warning}`; `dft.md` size/OOM caveats consolidated into a single "Practical limits" subsection.
-- Reference duplication eliminated — each canonical fact has exactly one home and is cross-linked from every other page: `--selected-resn` ID-vs-name (`cli-conventions.md` `(selected-resn-takes-ids)`), `--opt-mode` polysemy (`(opt-mode-semantics)`), `--engine` / `--dft-engine` alias (`(engine-vs-dft-engine)`), exit-codes table (`(exit-codes)`), 5 cm⁻¹ vs 100 cm⁻¹ TS thresholds (`glossary.md` `(imaginary-mode-thresholds)`), scan-list spec (`(scan-list-spec)`).
+- Reduced reference duplication and cross-linked the current owners for these
+  contracts: `--selected-resn` ID-vs-name (`cli-conventions.md`
+  `(selected-resn-takes-ids)`), `--opt-mode` polysemy
+  (`(opt-mode-semantics)`), `--engine` / `--dft-engine` alias
+  (`(engine-vs-dft-engine)`), exit codes (`(exit-codes)`), TS thresholds
+  (`glossary.md` `(imaginary-mode-thresholds)`), and scan-list syntax
+  (`(scan-list-spec)`).
 - Command pages (`tsopt`, `path-search`, `path-opt`, `opt`, `freq`, `irc`) no longer reproduce the YAML schema; canonical schema lives in `yaml-reference.md`. ~1500 lines of duplication removed; only command-specific overrides remain inline.
 - `recipes-common-errors.md` is now a symptom→page router; detailed fixes live in `troubleshooting.md`.
 

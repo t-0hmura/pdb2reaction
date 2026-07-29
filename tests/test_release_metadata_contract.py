@@ -1,4 +1,4 @@
-"""Contract tests for release-metadata: landing substitution + license (M67, P03)."""
+"""Contract tests for release metadata, landing substitution, and licensing."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ def _load(name: str):
 rel = _load("check_release_versions")
 
 
-# --- M67: landing-page release substitution ------------------------------- #
+# --- landing-page release substitution ------------------------------- #
 def test_real_landing_pages_use_release_substitution() -> None:
     assert rel.check_landing_pages() == []
     for page in rel.LANDING_PAGES:
@@ -44,7 +44,7 @@ def test_misspelled_substitution_is_rejected(tmp_path, monkeypatch) -> None:
     assert errors and any("must use" in e for e in errors)
 
 
-# --- P03: CFF <-> pyproject license identity ------------------------------ #
+# --- CFF <-> pyproject license identity ---------------------------------- #
 def test_real_license_metadata_matches_exact_spdx() -> None:
     assert rel.check_license_metadata() == []
     assert rel._cff_license() == "GPL-3.0-only"

@@ -1,4 +1,4 @@
-"""Contract tests for the public-markdown link checker (M66, M68)."""
+"""Contract tests for the public-markdown link checker."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ def test_real_repo_links_resolve() -> None:
 
 
 def test_readme_example_target_resolves() -> None:
-    # M68: the README advertises examples/run.sh, which must resolve.
+    # the README advertises examples/run.sh, which must resolve.
     readme = links.REPO_ROOT / "README.md"
     errors: list[str] = []
     links._check_path(readme, errors)

@@ -1,4 +1,4 @@
-"""M14/P14 falsifiers: an energy-only plateau is an additive 'stalled' outcome,
+"""An energy-only plateau is an additive 'stalled' outcome,
 never convergence, and it stops further retry work.
 
 These bind to the production optimizer/renderer code paths (no reimplemented
@@ -129,7 +129,7 @@ def test_energy_plateau_truth_table(tmp_path, force, step, expect_converged):
         assert opt.stop_requested is True
         assert opt.termination_status == "stalled"
         assert "energy plateau" in opt.stop_reason
-        # ConvInfo force/step fields stay truthful (a plateau never flips them).
+        # A plateau does not alter the ConvInfo force/step fields.
         assert bool(conv_info.max_force_converged) == bool(np.max(np.abs(force)) < 1e-3)
 
 
@@ -288,7 +288,7 @@ def test_emit_terminal_status_stalled_and_converged_are_distinct(capsys):
 
 def test_hessian_dimer_stops_after_child_stall(tmp_path):
     """A stalled child LBFGS makes the runner stalled and stops the segment
-    loop before any further segment or Hessian update (M14/P14)."""
+    loop before any further segment or Hessian update."""
     runner = HessianDimer.__new__(HessianDimer)
     runner.max_total_cycles = 100
     runner._cycles_spent = 0

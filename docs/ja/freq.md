@@ -96,7 +96,7 @@ out_dir/ (デフォルト:./result_freq/)
 
 ## YAML 設定
 
-`geom`、`calc`、`freq`、`thermo` の各セクションは [YAML リファレンス](yaml-reference.md) の正規定義から変更ありません: [`geom`](yaml-reference.md#geom)、[`calc`](yaml-reference.md#calc)、[`freq`](yaml-reference.md#freq-section)、[`thermo`](yaml-reference.md#thermo) を参照してください。`freq` ではデフォルトで `calc.return_partial_hessian = true`（PHVA）が自動設定されます（YAML で上書き可）。
+`geom`、`calc`、`freq`、`thermo` の各セクションは [YAML リファレンス](yaml-reference.md) の正規定義に従います: [`geom`](yaml-reference.md#geom)、[`calc`](yaml-reference.md#calc)、[`freq`](yaml-reference.md#freq-section)、[`thermo`](yaml-reference.md#thermo) を参照してください。`freq` は YAML の指定によらず `calc.return_partial_hessian = true`（PHVA）を強制します。
 
 `freq` 固有のデフォルトとして異なるのは出力ディレクトリのみです:
 

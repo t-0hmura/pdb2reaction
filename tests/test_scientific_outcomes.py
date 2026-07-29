@@ -1,14 +1,13 @@
-"""C6 — truthful scientific outcomes.
+"""Scientific outcome contracts.
 
-Every test in this file asserts the load-bearing C6 invariant: no artifact
+Every test in this file asserts the load-bearing invariant: no artifact
 existence and no finite fallback may promote a required nonconverged / missing
 scientific leaf to success, while a genuinely converged leaf's public output is
 unchanged aside from the additive outcome fields.
 
-The falsifiers are grouped by the false-promotion path each one closes; every one
-of them would have reported SUCCESS (or a wrong minimum / a cached Hessian / a
-Gibbs diagram) under the pre-C6 fallback and now correctly reports
-nonconverged / missing / excluded.
+The tests are grouped by false-promotion path. Each case must report
+nonconverged, missing, or excluded instead of success, a wrong minimum, a
+cached Hessian, or a Gibbs diagram.
 """
 
 from __future__ import annotations
@@ -34,7 +33,7 @@ from pdb2reaction.workflows._outcomes import (
 
 
 # ---------------------------------------------------------------------------
-# 1. Pure outcome types + serializer compatibility (P07)
+# 1. Pure outcome types and serializer compatibility
 # ---------------------------------------------------------------------------
 
 
@@ -100,7 +99,7 @@ def test_serializer_roundtrip_and_additive_only(tmp_path: Path) -> None:
     assert r["status"] == "completed"
     assert r["schema_version"] == RESULT_JSON_SCHEMA_VERSION
     assert r["min_energy_hartree"] == -1.5
-    # Additive outcome fields present and truthful.
+    # Additive outcome fields contain the observed values.
     assert r["scientific_status"] == "success"
     assert r["execution_status"] == "completed"
     assert r["expected_item_ids"] == ["stage_1"]
@@ -118,7 +117,7 @@ def test_dataclasses_are_json_safe() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 2. FALSIFIER — scan non-convergence (M50 + M48)
+# 2. Scan non-convergence
 #    A failed point with the numerically lowest energy would have become the
 #    reported minimum / baseline under the old raw-min; it must be excluded.
 # ---------------------------------------------------------------------------
@@ -158,7 +157,7 @@ def test_scan_failed_low_energy_point_excluded_from_minimum() -> None:
 
 
 def test_scan_normal_return_is_not_convergence() -> None:
-    # M50: an optimizer that returns normally but reports is_converged=False (a
+    # an optimizer that returns normally but reports is_converged=False (a
     # cycle-limit stop) must not be recorded as converged. seed_eligible_mask
     # reads the recorded bit; only an explicit True survives.
     normal_return_but_not_converged = {
@@ -206,7 +205,7 @@ def test_scan_stage_leaf_partial_when_middle_step_fails() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 3. FALSIFIER — path expected-segment miss / endpoint HEI (M09 + M59)
+# 3. Path expected-segment miss / endpoint HEI
 #    An endpoint-HEI raw diagram (segments=[]) would have been promoted to
 #    success because a diagram exists; it must be partial.
 # ---------------------------------------------------------------------------
@@ -248,9 +247,9 @@ def test_path_single_reactive_segment_is_success() -> None:
 
 
 def test_path_nonconverged_reactive_segment_is_not_success() -> None:
-    # M09: a reactive segment whose StringOptimizer hit its cycle limit
+    # a reactive segment whose StringOptimizer hit its cycle limit
     # (is_converged=False) writes its trajectory but must NOT count toward
-    # completeness. The pre-C6 _path_leaves_and_expected hardcoded converged=True
+    # completeness. The earlier _path_leaves_and_expected hardcoded converged=True
     # and would have reported success; the real threading now reads the field.
     from pdb2reaction.workflows.path_search import SegmentReport, _path_leaves_and_expected
 
@@ -281,7 +280,7 @@ def test_path_bridge_only_is_not_success() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 4. FALSIFIER — IRC directional non-convergence (M42)
+# 4. IRC directional non-convergence
 #    A nonconverged direction (whose trajectory + Hessian still exist) must not
 #    be promoted; only the converged direction is usable.
 # ---------------------------------------------------------------------------
@@ -355,7 +354,7 @@ def test_irc_hessian_cache_gate_condition() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 5. FALSIFIER — FREQ/DFT name/number fallback (M28)
+# 5. FREQ/DFT name/number fallback
 #    A nonzero freq exit must not be treated as success just because a
 #    thermoanalysis.yaml with finite fields exists on disk.
 # ---------------------------------------------------------------------------
@@ -541,7 +540,7 @@ def test_legacy_converged_output_is_byte_compatible(tmp_path: Path) -> None:
         "files": {"surface_csv": "surface.csv"},
     }
 
-    # Post-C6, the additive outcome fields are appended; every legacy key must be
+    # Outcome fields are appended; every legacy key must be
     # bit-identical.
     points = [
         make_scan_point(f"p{i}", executed=True, converged=True, energy=-1.0, artifact_written=True)
@@ -559,7 +558,7 @@ def test_legacy_converged_output_is_byte_compatible(tmp_path: Path) -> None:
 
     for key, value in legacy.items():
         assert r[key] == value, f"legacy key {key} changed"
-    # Only additive keys are new; scientific_status reports the truthful success.
+    # Only additive keys are new; scientific_status reports success.
     assert r["scientific_status"] == "success"
     assert "scientific_status_reasons" not in r  # no reasons on a clean success
     new_keys = set(r) - set(legacy)
@@ -576,7 +575,7 @@ def test_eligible_points_helper() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 7. FALSIFIER — DMF (path-opt) non-convergence via IPOPT status (M09)
+# 7. DMF (path-opt) non-convergence via IPOPT status
 #    Binds path_opt._run_dmf_mep's status parsing + the DMF LeafOutcome. A
 #    nonconverged solve (status 2) retains its trajectory but is unusable; a
 #    converged solve (status 0/1) is a usable success.
@@ -620,9 +619,9 @@ def test_dmf_converged_leaf_is_success() -> None:
 
 
 def test_dmf_result_status_is_legacy_byte_compatible() -> None:
-    # The pre-C6 DMFMepResult exposed no readable is_converged, so the legacy DMF
+    # DMFMepResult exposed no readable is_converged, so the legacy DMF
     # result.json `status` field always read "completed" and its `converged`
-    # field always read null. The C6 convergence truth is carried by
+    # field always read null. Explicit convergence is carried by
     # scientific_status / stage_outcomes; NEITHER legacy field may flip on a
     # genuinely-converged run (a non-additive value change would break byte-compat).
     from pdb2reaction.workflows import path_opt
@@ -641,14 +640,14 @@ def test_dmf_result_status_is_legacy_byte_compatible() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 8. FALSIFIER — M50 scan producer records truthful convergence
+# 8. Scan producer records convergence
 #    A fake optimizer that returns normally but reports is_converged=False must
 #    record bias_converged=False, so a normal (non-raising) run is not mistaken
 #    for convergence and the point is excluded from seeds.
 # ---------------------------------------------------------------------------
 
 
-def test_m50_producer_records_nonconvergence_from_optimizer() -> None:
+def test_producer_records_nonconvergence_from_optimizer() -> None:
     from pdb2reaction.workflows._outcomes import optimizer_converged_bit
 
     class _FakeOpt:
@@ -675,7 +674,7 @@ def test_m50_producer_records_nonconvergence_from_optimizer() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 9. FALSIFIER — the ALL-pipeline aggregate consumes truthful leaves (M42 + item 1)
+# 9. The ALL-pipeline aggregate consumes leaf outcomes
 #    A never_stop / max-cycle IRC (trajectory present, direction nonconverged)
 #    must not yield scientific_status=success in the all-pipeline aggregate,
 #    while the legacy `status` string is unchanged.
@@ -852,7 +851,7 @@ def test_all_pipeline_requires_validated_mep_irc_connectivity() -> None:
 
 
 def test_all_pipeline_aggregate_post_missing_fails_closed_when_tsopt_requested() -> None:
-    # item 1 FALSIFIER (shipped-artifact fail-open): an intermediate MEP summary
+    # An intermediate MEP summary
     # (post_segments not yet assembled) with tsopt requested must NOT be promoted
     # to success on the MEP trajectory's existence alone. The reactive leaf fails
     # closed (post_missing) until IRC/endpoint post-processing actually runs.
@@ -874,7 +873,7 @@ def test_all_pipeline_aggregate_post_missing_fails_closed_when_tsopt_requested()
 
 
 def test_all_pipeline_aggregate_no_tsopt_uses_segment_converged() -> None:
-    # item 1 FALSIFIER (no convergence gate on the no-tsopt final summary): a
+    # With no TS optimization, a
     # path-only final summary must gate on the segment's OWN reported convergence,
     # never a silent default-True.
     from pdb2reaction.workflows.all import _pipeline_aggregate_truth

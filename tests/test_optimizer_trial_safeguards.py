@@ -472,7 +472,7 @@ def test_verified_phva_mode_rechecks_when_force_and_energy_are_terminal(tmp_path
     opt.steps = [np.array([0.01, 0.0, 0.0])]
 
     # The outgoing step used by check_convergence() does not exist yet in
-    # housekeeping().  A nonterminal incoming step must not suppress the exact
+    # housekeeping(). A nonterminal incoming step must not suppress the exact
     # check once the current force and energy are terminal.
     assert opt._near_terminal_without_eigval_check() is True
 
@@ -520,7 +520,7 @@ def test_energy_plateau_with_exact_saddle_but_failed_force_stalls(
 ) -> None:
     # Required curvature is present (a verified first-order saddle at these
     # exact coordinates) and the energy is flat over the window, but the
-    # configured current force/step criteria fail: this is an M14/P14 stall,
+    # configured current force/step criteria fail: this is a stalled outcome,
     # never a converged saddle.
     geom, opt = _ts_optimizer(
         tmp_path, 0.0, energy_plateau=True, energy_plateau_window=3

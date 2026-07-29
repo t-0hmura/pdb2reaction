@@ -600,13 +600,13 @@ def cli(
                     "per_pair_step_A": [float(f"{x:.3f}") for x in step_widths],
                     "num_steps": int(Nsteps),
                     "converged": None,  # updated after relaxation / endopt
-                    # M14/P14: additive terminal status of the last optimizer
+                    # additive terminal status of the last optimizer
                     # (stalled/converged/not_converged) plus its stop_reason.
-                    # A stalled leaf keeps ``converged`` False, so C6 aggregation
+                    # A stalled leaf keeps ``converged`` False, so aggregation
                     # already treats it as a non-successful required leaf.
                     "optimizer_status": None,
                     "stop_reason": None,
-                    # M09: per-step convergence (not just the last optimizer) so a
+                    # per-step convergence (not just the last optimizer) so a
                     # middle step that fails is not hidden by a converged final step.
                     "step_converged": [],
                     "endopt_converged": None,
@@ -888,7 +888,7 @@ def cli(
                     stage_entry["final_energy_hartree"] = srec.get("final_energy_hartree")
                     # Per-step energy trajectory
                     stage_entry["energies_hartree"] = srec.get("energies_hartree", [])
-                    # C7 (M14/P14): surface the optimizer terminal status + stall
+                    # Surface the optimizer terminal status and stall
                     # reason so a stalled scan stage is not silently dropped from
                     # result.json (additive; absent for stages that never set it).
                     if srec.get("optimizer_status"):
@@ -897,7 +897,7 @@ def cli(
                         stage_entry["stop_reason"] = srec["stop_reason"]
                     json_stages.append(stage_entry)
 
-                    # M09: the stage leaf is usable only when EVERY step converged
+                    # the stage leaf is usable only when EVERY step converged
                     # and (when requested) the endopt converged. A converged final
                     # step must not hide an earlier failed step.
                     _steps = list(srec.get("step_converged") or [])
@@ -945,7 +945,7 @@ def cli(
                     f = out_dir_path / f"scan{ext}"
                     if f.exists():
                         result_data["files"][f"scan_{ext[1:]}"] = f.name
-                # Additive truthful outcomes; legacy ``status`` stays "completed".
+                # Additive outcome fields; legacy ``status`` stays "completed".
                 attach_outcomes(result_data, truth=_truth, stage_outcomes=_stage_leaves)
                 write_result_json(
                     out_dir_path, result_data,

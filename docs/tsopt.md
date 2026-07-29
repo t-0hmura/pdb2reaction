@@ -2,7 +2,14 @@
 
 `pdb2reaction tsopt` refines a transition-state (TS) *candidate* into an optimized first-order saddle point, with a built-in imaginary-frequency check. The candidate can be the highest-energy image (HEI) from `path-opt` / `path-search`, or a user-supplied structure.
 
-Pick the optimizer with `--opt-mode`. For most systems, `--opt-mode hess` is recommended — the default **RS-P-RFO** (Restricted-Step Partitioned Rational Function Optimization, Banerjee); it uses a full Hessian and is more reliable. Switch to `--opt-mode grad` — the **Hessian-Guided Dimer** — when RS-P-RFO fails to converge or full-Hessian recomputation is prohibitive. Enable `--flatten` (disabled by default) when the candidate has multiple imaginary frequencies and you need surplus-mode cleanup.
+Pick the optimizer with `--opt-mode`. The default `hess` mode is **RS-P-RFO**
+(Restricted-Step Partitioned Rational Function Optimization, Banerjee) and uses
+a full Hessian. The `grad` mode is the **Hessian-Guided Dimer** alternative
+when full-Hessian recomputation is prohibitive or a separate optimization route
+is needed. Compare the methods on the actual TS seed and validate the result
+with one imaginary mode and IRC connectivity. Enable `--flatten` (disabled by
+default) when the candidate has multiple imaginary frequencies and surplus-mode
+cleanup is needed.
 
 `tsopt` always sets `reject_uphill: false` for its RFO-family and Dimer
 optimizers, including after YAML overrides. A saddle search must be able to
@@ -165,7 +172,7 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l 'RES:Q,...'] [-m 2
 
 `pdb2reaction tsopt --help` shows core options; `pdb2reaction tsopt --help-advanced` shows the full option list. For full input-file requirements (hydrogens, element columns, atom-order parity, charge specification), see [CLI Conventions](cli-conventions.md).
 
-The tables below cover the options that need explanation. The full flag list is in the generated [command reference](reference/commands/index.md); do not hand-duplicate it here.
+The tables below cover the options that need explanation. The full flag list is in the generated [command reference](reference/commands/index.md).
 
 | Option | Description | Default |
 | --- | --- | --- |
@@ -268,7 +275,7 @@ the activation energy or free energy computed within each system instead:
 
 - Match the selected residue **positions** and cluster-boundary/cap policy as
   closely as chemically meaningful, with the intended mutation as the only
-  designed composition change. Audit independent radius-based extractions,
+  designed composition change. Compare independent radius-based extractions,
   because a boundary residue can enter one cluster but not the other.
 - Keep protonation, charge-assignment convention, backend/model, precision,
   constraints, and thermochemistry settings controlled. The verified total

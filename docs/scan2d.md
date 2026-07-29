@@ -115,7 +115,7 @@ out_dir/ (default:./result_scan2d/)
 
 ## CLI options
 
-The tables below cover the options that need explanation; the full flag list is in the generated [command reference](reference/commands/index.md) — do not hand-duplicate it here.
+The tables below cover the options that need explanation; the full flag list is in the generated [command reference](reference/commands/index.md).
 
 | Option | Description | Default |
 | --- | --- | --- |

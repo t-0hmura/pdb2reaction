@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
 """Live-CLI / authored-command contract for docs-quality checks.
 
-This is pdb2reaction's own local module. Matching helpers exist in the sibling
-product as field-isomorphic *copies*; the two products never import one another
-and no shared library is introduced.
-
 It defines the small ``AuthoredCommand(path, line, text, executable)`` shape and
 pure functions shared by the docs command smoke, the example-script contract,
 and the canonical-boolean style checker:
@@ -41,7 +37,7 @@ from pdb2reaction.cli import cli as root_cli  # noqa: E402
 # Markdown fence languages that carry runnable shell commands.
 CODE_FENCE_LANGS = frozenset({"", "bash", "sh", "shell", "console"})
 
-# The exact list of advertised, runnable example scripts (M65). Making this a
+# The exact list of advertised, runnable example scripts. Making this a
 # checked contract means a renamed/removed script fails CI instead of silently
 # dropping out of docs-quality automation.
 PUBLIC_SHELL_EXAMPLES: tuple[Path, ...] = (REPO_ROOT / "examples" / "run.sh",)
@@ -51,7 +47,7 @@ PUBLIC_SHELL_EXAMPLES: tuple[Path, ...] = (REPO_ROOT / "examples" / "run.sh",)
 _ANGLE_PLACEHOLDER_RE = re.compile(r"<[^>]*>")
 _SHELL_BREAKS = frozenset({"|", "||", "&&", ";"})
 
-# Value-style boolean literals rejected in authored guidance (P04).
+# Value-style boolean literals rejected in authored guidance.
 BOOL_VALUE_LITERALS = ("true", "false", "yes", "no", "on", "off")
 
 
@@ -122,7 +118,7 @@ def docs_markdown_paths() -> list[Path]:
 
 
 def authored_bool_style_paths() -> list[Path]:
-    """Hand-authored surfaces scanned for canonical-boolean style (P04).
+    """Hand-authored surfaces scanned for canonical-boolean style.
 
     Generated command-reference pages and Sphinx build output are excluded:
     they are regenerated from the live CLI, not hand-authored.
@@ -306,7 +302,7 @@ def validate_option_names(commands: Iterable[AuthoredCommand]) -> list[str]:
 
 
 def live_bool_options() -> set[str]:
-    """Union of canonical boolean option names across every live command (P04).
+    """Union of canonical boolean option names across every live command.
 
     Derived from ``DefaultGroup._resolve_bool_options`` (value + toggle +
     single-flag + negative aliases), so a newly added toggle is covered without

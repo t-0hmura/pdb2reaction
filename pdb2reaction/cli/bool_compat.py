@@ -15,7 +15,8 @@ _BOOL_TRUE_LITERALS = {"1", "true", "t", "yes", "y", "on"}
 _BOOL_FALSE_LITERALS = {"0", "false", "f", "no", "n", "off"}
 
 
-# DO NOT INLINE: backward compat shim for older docs/examples using mixed-case flags (--Add-LinkH); canonical form is lowercase but inputs are accepted case-insensitive. Keep isolated in bool_compat.py.
+# This compatibility shim accepts mixed-case flags from older docs and examples
+# while keeping the canonical form lowercase.
 def normalize_argv_option_names(args: list[str]) -> list[str]:
     """Lowercase long option names, leaving values unchanged.
 

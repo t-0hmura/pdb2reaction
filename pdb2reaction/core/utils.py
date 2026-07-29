@@ -287,7 +287,7 @@ def optimizer_terminal_status(optimizer: Any) -> str:
     """Map a pysisyphus optimizer (or a product-local runner) terminal state to
     the public status vocabulary.
 
-    Returns ``"stalled"`` for the additive M14/P14 energy-plateau outcome,
+    Returns ``"stalled"`` for an energy-plateau outcome,
     ``"converged"`` for a genuine stationary point, and ``"not_converged"``
     otherwise.  ``stalled`` takes precedence so a plateau is never reported as
     converged; legacy callers that only read ``is_converged`` still see
@@ -312,7 +312,7 @@ def emit_optimizer_terminal_status(
 ) -> None:
     """Emit a consistent optimizer terminal status at detail verbosity.
 
-    ``stalled`` renders the additive M14/P14 energy-plateau outcome and takes
+    ``stalled`` renders the energy-plateau outcome and takes
     precedence over the convergence/max-cycle branches so a stalled run is
     never printed as ``Converged!``.
     """
@@ -2424,8 +2424,7 @@ def parse_pdb_coords(pdb_path):
     -----
         - Coordinates are read from standard PDB columns:
           X: columns 31–38, Y: 39–46, Z: 47–54 (1-based indexing).
-        - If multiple MODEL blocks are present, only the first model is considered,
-          matching typical geom_loader behavior.
+        - If multiple MODEL blocks are present, only the first model is considered.
     """
     with open(pdb_path, "r") as f:
         lines = f.readlines()
@@ -2560,9 +2559,7 @@ def load_pdb_atom_metadata(pdb_path: Path) -> List[Dict[str, Any]]:
 
 
 def _split_atom_spec_tokens(spec: str) -> List[str]:
-    # Split an atom selector string into tokens using whitespace, comma, slash, backtick, or backslash.
-    # Split the atom specification without parsing spaces by replacing spaces with commas before splitting.
-    # Without replacing, it didn't work well for specs like "ALA 25 CA", somehow.
+    # Accept whitespace, comma, slash, backtick, or backslash separators.
     tokens = [t for t in re.split(r"[\s/:`,\\]+", spec.strip().replace(' ',',')) if t]
     return tokens
 
@@ -3496,7 +3493,7 @@ def write_result_json(
     serialized as indented JSON.
 
     When ``also_write_summary_json`` is True (default) the same payload
-    is mirrored to ``summary.json`` so downstream agents can converge
+    is mirrored to ``summary.json`` so downstream consumers can converge
     on a single filename across every subcommand (``all`` and
     ``path-search`` already use ``summary.json``).
 
@@ -3645,8 +3642,8 @@ def validate_charge_spin_for_prepared(prepared_or_list, charge, multiplicity):
         validate_charge_spin_at_path(prepared.geom_path, charge, multiplicity)
 
 
-# Compatibility re-export (M40): the bounded-peak Hessian symmetrizer was lowered
-# into the bundled-engine layer (``pysisyphus.normal_modes``) so the pure
+# Compatibility re-export: the bounded-peak Hessian symmetrizer lives in the
+# bundled-engine layer (``pysisyphus.normal_modes``) so the pure
 # normal-mode kernel there stays free of any upward ``pdb2reaction`` import. It is
 # re-exported here so existing callers of
 # ``pdb2reaction.core.utils.symmetrize_inplace`` (backends/uma, workflows/tsopt,

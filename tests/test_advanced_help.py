@@ -1,7 +1,7 @@
-"""M38: one product-local advanced-help implementation, shared by `all` and
+"""One product-local advanced-help implementation, shared by `all` and
 lazily-loaded subcommands.
 
-Falsifiers:
+Coverage:
 1. Default ``all --help`` shows the primary set only; ``--help-advanced`` shows
    every live (advanced) option.
 2. Repeating basic/advanced/basic in one process leaves basic output and the

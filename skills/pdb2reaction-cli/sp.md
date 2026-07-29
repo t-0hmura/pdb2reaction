@@ -40,7 +40,7 @@ worker. No Hessian restriction applies when `--hess` is absent.
 # Energy and forces only
 pdb2reaction sp -i geom.pdb -l 'SAM:1,GPP:-3' -b orb -o result_sp
 
-# Trusted ORB Hessian: the unset precision resolves to fp64
+# ORB Hessian at the backend-default fp64 precision
 pdb2reaction sp -i geom.xyz -q -2 -m 1 -b orb \
     --hess --hessian-calc-mode Analytical --out-json -o result_sp_hess
 

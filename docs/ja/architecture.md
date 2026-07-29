@@ -12,7 +12,7 @@ Python CLIです。geometry/path stageには組み込みMLIPまたはcustom ASE 
 
 ---
 
-## 2. 階層構造（6 つの物理ディレクトリ）
+## 2. 階層構造（6 つの計算層 + MCP 統合）
 
 ### 2.1 階層テーブル
 
@@ -36,7 +36,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 ├── README.md / CONTRIBUTING.md / CHANGELOG.md
 ├── docs/
 │ ├── architecture.md ← this file
-│ └──... (Sphinx site, unchanged)
+│ └──... (Sphinx ドキュメントサイト)
 ├── pdb2reaction/ ← package body, 6-layer physical dir
 │ ├── __init__.py PEP 562 lazy: _LAZY_SYMBOLS / _LAZY_MODULES + __getattr__
 │ ├── __main__.py `from .cli import cli`
@@ -92,7 +92,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 │   └── pes_composition.py energy成分合成
 │
 ├── tests/ smoke / unit
-├── .github/ workflows/ + scripts/ (docs-quality lint helpers; CI-only)
+├── .github/ workflows/ + scripts/ (CI、release、engineering、documentation checks)
 └── (repo-top sibling, layer-external bundled forks)
  pysisyphus/ ~90 file, repo-internal fork (slimmed; CLI driver + QM backends + wavefunction + dead optimizers / IRC / NEB variants removed)
  thermoanalysis/ 5 file, repo-internal fork
@@ -239,13 +239,13 @@ add-a-backend レシピは [Backends](backends.md) を参照してください�
 |---|---|
 | **共有／数値default（主要source。command-local例外も確認）** | `pdb2reaction/core/defaults.py` |
 | PDB / XYZ / plot ヘルパー | `pdb2reaction/core/utils.py` |
-| `-v` / `-vv` logging 配線 | `pdb2reaction/core/logging.py` |
+| `-v` / `--verbose LEVEL` logging 配線 | `pdb2reaction/core/logging.py` |
 | output／result ownership helper | `pdb2reaction/core/output.py`、`pdb2reaction/core/result_commit.py` |
 | energy 成分合成 | `pdb2reaction/core/pes_composition.py` |
 
 ### 4.7 repo 内部の同梱 fork
 
-| dir | role | divergent files (do NOT replace with upstream) |
+| dir | role | 主な divergent files（完全な一覧は各ディレクトリの README を参照） |
 |---|---|---|
 | `pysisyphus/` | optimizer / TS / IRC エンジン | `irc/IRC.py`（オプトインの `require_pos_def_hessian` PSD 収束ガード）、`optimizers/hessian_updates.py`（GPU 常駐の in-place rank-two Bofill 更新と、明示的な `PYSIS_BOFILL_CPU_OFFLOAD=1` フォールバック）、`tsoptimizers/{RSIRFOptimizer,RSPRFOptimizer,TRIM,TSHessianOptimizer}.py`、`calculators/{Calculator,Dimer}.py`、`_array.py`（torch/numpy バックエンド shim） |
 | `thermoanalysis/` | thermochemistry（ΔG, ZPE, 分配関数） | `QCData.py`（上流との branding 差分） |
@@ -258,7 +258,7 @@ touch 制限の境界については各ディレクトリの `README.md` を参�
 
 ### 5.1 化学ルール（grep レシピ）
 
-正確性に直結する 3 つのルールが `backends/`、`workflows/`、`core/defaults.py` に散在しています。これらは smoke テストでは検出 **されません**。ここでの静かな乖離は反応経路の精度を壊します。インラインの `# CHEMISTRY-RULE:N` マーカーと `# DOMAIN_PURE` モジュール docstring マーカーがルールを識別し、`.github/scripts/check_engineering_markers.py` が CI でマーカーの完全性を強制します。
+正確性に直結する 3 つのルールは `workflows/dft.py` と `workflows/tsopt.py` に実装されています。これらは smoke テストでは検出 **されません**。ここでの静かな乖離は反応経路の精度を壊します。インラインの `# CHEMISTRY-RULE:N` マーカーと `# DOMAIN_PURE` モジュール docstring マーカーがルールを識別し、`.github/scripts/check_engineering_markers.py` が CI でマーカーの完全性を強制します。
 
 編集前にすべての化学ルールを見つけるには:
 
@@ -278,7 +278,9 @@ grep -rn '# DOMAIN_PURE' pdb2reaction/
 | 5 | def2 family auto-ECP injection | `pdb2reaction/workflows/dft.py` |
 | 7 | `bofill_update` advanced-indexing scatter | `pdb2reaction/workflows/tsopt.py` |
 
-これらのいずれかを編集するには、`[CHEMISTRY-RULE:N]` コミットプレフィックスと HEAVY 層の numerical-golden ゲート通過が必要です（`CONTRIBUTING.md` §1.1 を参照）。先に DFT ペア（#4, #5）を学び、その後で TS scatter ルール（#7）を学んでください。
+これらのいずれかを編集するには、`[CHEMISTRY-RULE:N]` コミットプレフィックス、
+maintainer approval、該当する focused regression test、scheduled numerical benchmark が必要です。
+`CONTRIBUTING.md` §4.1 と §5 を参照してください。
 
 ### 5.2 VRAM 管理の不変条件（`del` チェーンをリファクタしない）
 
@@ -301,7 +303,7 @@ IRC / TSopt / Freq ステージは、CUDA メモリを解放するためにス�
 
 ### 5.5 `_LAZY_SUBCOMMANDS` レジストリは絶対パスを使う必要がある
 
-`pdb2reaction/cli/app.py:_LAZY_SUBCOMMANDS` はすべてのサブコマンドを **絶対** モジュールパスで解決します。いずれかのエントリを相対 dotted import（`".all"` など）に戻すと、`default_group.py` が移動した際にサブコマンド探索が気づかないうちに動かなくなります。リゾルバの `__package__` がパッケージルートから乖離するためです。内部設計ノートを参照してください。
+`pdb2reaction/cli/app.py:_LAZY_SUBCOMMANDS` はすべてのサブコマンドを **絶対** モジュールパスで解決します。いずれかのエントリを相対 dotted import（`".all"` など）に戻すと、`default_group.py` が移動した際にサブコマンド探索が気づかないうちに動かなくなります。リゾルバの `__package__` がパッケージルートから乖離するためです。
 
 ---
 
@@ -311,8 +313,8 @@ IRC / TSopt / Freq ステージは、CUDA メモリを解放するためにス�
 
 | dir | upstream PyPI? | purpose | scope of edits allowed |
 |---|---|---|---|
-| `pysisyphus/` | NO — fork、`pip install pysisyphus` を並べないこと | optimizer, TS, IRC, COS, calculators | 本リリースラインでは annotation のみ（docstring + 型ヒント）; ロジック編集は禁止 |
-| `thermoanalysis/` | NO — fork（branding 差分） | ΔG, ZPE, 分配関数, `QCData` | `pysisyphus/` と同じ |
+| `pysisyphus/` | NO — fork、`pip install pysisyphus` を並べないこと | optimizer, TS, IRC, COS, calculators | logic edit には再現された不具合または承認済み機能、focused regression test、該当する numerical/GPU benchmark が必要 |
+| `thermoanalysis/` | NO — fork（branding 差分） | ΔG, ZPE, 分配関数, `QCData` | logic edit には I/O または数値上の必要性と thermochemistry golden test が必要 |
 
 各ディレクトリは分岐ファイルと touch 制限の境界を列挙した独自の `README.md` を持ちます。階層モデルから見ると、これらの fork は L1..L5 グラフの **外側** に位置します。どの階層も絶対パッケージパス（`from pysisyphus.X import Y`）でこれらを import でき、`L1 → L2 → {L3, L4} → L5` の方向を壊しません。
 

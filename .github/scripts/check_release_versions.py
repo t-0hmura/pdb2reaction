@@ -13,14 +13,9 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 NOTEBOOK = REPO_ROOT / "examples" / "pdb2reaction_colab.ipynb"
 NOTEBOOK_REF = "pdb2reaction_version"
-# The notebook's debug-install branch pins the same release a second time, via
-# setuptools-scm. Gate it too, or it goes stale silently at the next release.
-_NOTEBOOK_PRETEND_RE = re.compile(
-    r"SETUPTOOLS_SCM_PRETEND_VERSION[\"']\]\s*=\s*[\"']v?([^\"']+)[\"']"
-)
 
 # EN/JA landing pages must render their version header via the MyST `release`
-# substitution rather than a hardcoded literal (M67).
+# substitution rather than a hardcoded literal.
 LANDING_PAGES = (REPO_ROOT / "docs" / "index.md", REPO_ROOT / "docs" / "ja" / "index.md")
 LANDING_SUBSTITUTION = "v{{ release }}"
 # A version header line (EN `*Version: ...*` / JA `*バージョン: ...*`) carrying a
@@ -81,7 +76,7 @@ def check_landing_pages() -> list[str]:
 
 
 def check_license_metadata() -> list[str]:
-    """Require the CFF license to equal pyproject's exact SPDX expression (P03)."""
+    """Require the CFF license to equal pyproject's exact SPDX expression."""
     cff = _cff_license()
     pyproject = _pyproject_license()
     if cff != pyproject:
@@ -116,19 +111,6 @@ def _notebook_version() -> str:
     raise ValueError(f"{NOTEBOOK.name} has no {NOTEBOOK_REF} assignment")
 
 
-def _notebook_pretend_version() -> str:
-    notebook = json.loads(NOTEBOOK.read_text(encoding="utf-8"))
-    for cell in notebook.get("cells", []):
-        if cell.get("cell_type") != "code":
-            continue
-        match = _NOTEBOOK_PRETEND_RE.search(str(cell.get("source", "")))
-        if match is not None:
-            return match.group(1)
-    raise ValueError(
-        f"{NOTEBOOK.name} has no SETUPTOOLS_SCM_PRETEND_VERSION assignment"
-    )
-
-
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--expected-version")
@@ -138,7 +120,6 @@ def main() -> int:
         "CITATION.cff": _cff_version(),
         "docs/conf.py": _docs_release(),
         NOTEBOOK.name: _notebook_version(),
-        f"{NOTEBOOK.name} (setuptools-scm)": _notebook_pretend_version(),
     }
     expected = str(args.expected_version or values["CITATION.cff"]).removeprefix("v")
     errors: list[str] = []

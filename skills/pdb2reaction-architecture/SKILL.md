@@ -69,7 +69,7 @@ layer graph and may be imported by any layer.
 | `--help` / option decorator | `pdb2reaction/cli/common_options.py` (shared) or the subcommand file (inline) |
 | Aggregate `summary.json` schema | `pdb2reaction/workflows/all.py`, `pdb2reaction/workflows/_all_helpers.py`, `pdb2reaction/workflows/path_search.py`; common leaf/error envelope writer in `pdb2reaction/core/utils.py:write_result_json` |
 | Human summary log / trajectory conversion / energy diagram | `pdb2reaction/io/` (the machine JSON schema is not owned solely by this layer) |
-| Chemistry rule (#4 gpu4pyscf `rks_lowmem`, #5 def2 auto-ECP, #7 Bofill advanced-indexing) | grep `# CHEMISTRY-RULE:` — the only three markers in the package: `workflows/dft.py` (#4, #5) and `workflows/tsopt.py` (#7); lab sign-off required to edit |
+| Chemistry rule (#4 gpu4pyscf `rks_lowmem`, #5 def2 auto-ECP, #7 Bofill advanced-indexing) | grep `# CHEMISTRY-RULE:` — the only three markers in the package: `workflows/dft.py` (#4, #5) and `workflows/tsopt.py` (#7); maintainer approval and a scheduled numerical benchmark are required |
 | Cap-H geometry | `pdb2reaction/workflows/extract.py` (`compute_linkH_atoms`) — chemistry-sensitive, and reached by opening the file (it carries no `CHEMISTRY-RULE` marker) |
 | TS / IRC / optimizer internals | `pysisyphus/` — read `pysisyphus/README.md`, add a focused regression test, and run the relevant numerical benchmark for behavior changes |
 | MCP server / agent integration | `pdb2reaction/mcp/` — see [`pdb2reaction-mcp`](../pdb2reaction-mcp/SKILL.md) |
@@ -77,7 +77,7 @@ layer graph and may be imported by any layer.
 ## Hidden constraints to remember
 
 1. **`pdb2reaction/cli/app.py:_LAZY_SUBCOMMANDS`** entries MUST use absolute module paths (`"pdb2reaction.workflows.all"`, never `".all"`). Relative dotted paths silently break the resolver if `default_group.py` moves.
-2. **VRAM hygiene**: `# DO NOT INLINE` markers around `del calc; gc.collect(); torch.cuda.empty_cache()` between stages are load-bearing — removing them OOMs the next stage on full-protein systems.
+2. **VRAM hygiene**: the explicit `del calc; gc.collect(); torch.cuda.empty_cache()` sequence between stages releases retained calculators before the next full-protein stage.
 3. **Packaging changes are release-sensitive**: edits to `pyproject.toml` package discovery or runtime dependencies require build, wheel-content, isolated-install, and CLI smoke tests. Do not add a dependency merely to simplify an internal helper.
 4. **Bundled-fork edits are supported but high-risk**: preserve upstream attribution, add a regression test for the exact failure mode, and run the matching optimizer/IRC/thermochemistry benchmark. A `[CHEMISTRY-RULE:N]` prefix is required only when an actual marked chemistry rule changes.
 

@@ -119,8 +119,6 @@ Options:
                                   cluster.
   --coord-type [cart|redund|dlc|tric]
                                   Optimization coordinate system
-                                  (cart|redund|dlc|tric). cart is the reliable
-                                  default used for the published results; dlc
-                                  speeds up torsion-rich optimizations.
+                                  (cart|redund|dlc|tric).
   -h, --help                      Show this message and exit.
 ```

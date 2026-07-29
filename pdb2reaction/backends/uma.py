@@ -252,7 +252,7 @@ class UMAcore:
         return {"energy": energy, "forces": forces_np, "hessian": H}
 
     def forces_tensor(self, coord_ang: np.ndarray) -> torch.Tensor:
-        """Device-native forces (eV/Ang) for the FD Hessian assembler (C14 H05).
+        """Return device-native forces (eV/Ang) for the FD Hessian assembler.
 
         Returns the force tensor on the model's execution device, skipping the
         ``.cpu().numpy()`` round-trip and the scalar energy ``.item()`` sync that
@@ -473,7 +473,7 @@ class UMACalculator(MLIPCalculator):
         coord_plus = coord_ang.copy()
         coord_minus = coord_ang.copy()
 
-        # C14 (H05): on the native torch-model path, read forces directly as a
+        # On the native torch-model path, read forces directly as a
         # device tensor and assemble each column without a GPU->CPU->GPU
         # round-trip (and without the per-displacement scalar energy sync). The
         # NumPy round-trip is retained for non-native providers.
@@ -510,7 +510,7 @@ class UMACalculator(MLIPCalculator):
                 # H is already (n_active, dof) — single index_select(1) extracts to (n_active, n_active).
                 H = H.index_select(1, idx)
             else:
-                # C14 (H10): bounded row-chunk active square extraction avoids
+                # Bounded row-chunk active-square extraction avoids
                 # the full (n_active, dof) row temporary of the chained form.
                 from pysisyphus._array import active_square
 

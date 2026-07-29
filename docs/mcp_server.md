@@ -115,8 +115,9 @@ alternative TS optimizers via `--opt-mode`:
 
 ## Client configuration
 
-Every MCP client takes the same `mcpServers` schema. Drop the snippet below
-into your client's MCP config file:
+Client configuration schemas differ. The snippet below applies to clients that
+accept a top-level `mcpServers` object; check the client's own MCP
+documentation before choosing the config file and schema.
 
 - Claude Desktop — `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) / `%APPDATA%\Claude\claude_desktop_config.json` (Windows)
 - Cursor — `~/.cursor/mcp.json`
@@ -135,6 +136,20 @@ into your client's MCP config file:
 
 See [`examples/mcp_client_config.json`](../examples/mcp_client_config.json)
 for a full example with explicit env-var overrides (PATH / CUDA_VISIBLE_DEVICES).
+
+VS Code instead uses a top-level `servers` object in `.vscode/mcp.json`
+([VS Code MCP configuration reference](https://code.visualstudio.com/docs/agents/reference/mcp-configuration)):
+
+```json
+{
+  "servers": {
+    "pdb2reaction": {
+      "command": "pdb2reaction-mcp",
+      "args": []
+    }
+  }
+}
+```
 
 ### Custom Python MCP client
 

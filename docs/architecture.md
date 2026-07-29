@@ -25,7 +25,7 @@ Two bundled forks (`pysisyphus/`, `thermoanalysis/`) live at the repo top as rep
 | **L3 Domain** | `pdb2reaction/domain/` | chemistry-aware helper logic (bond change detection, bond summary, element-info propagation) | `core/` |
 | **L4a Infra (MLIP)** | `pdb2reaction/backends/` | MLIP backend dispatcher + per-backend adapter (UMA / Orb / MACE / AIMNet2) + xTB ALPB delta correction | `core/` |
 | **L4b Infra (I/O)** | `pdb2reaction/io/` | output layout, summary, trajectory, PDB fix, energy diagram, Hessian cache | `core/` |
-| **L5 Foundation** | `pdb2reaction/core/` | defaults (primary source for shared defaults), utils (structure / coordinate / plot helpers), logging, future `errors.py` / `types.py` | (none, by design intent) |
+| **L5 Foundation** | `pdb2reaction/core/` | defaults (primary source for shared defaults), utilities, logging, output, and result publication | (none, by design intent) |
 | (bundle, not a layer) | `<repo>/pysisyphus/`, `<repo>/thermoanalysis/` | repo-internal forks (optimizer / thermochemistry) | (sibling, layer-external) |
 
 **Dependency direction (design goal)**: `L1 → L2 → {L3, L4} → L5`. The full top-to-bottom direction is not mechanically enforced. The enforced subset keeps the product module graph **acyclic** (no strongly connected component among `pdb2reaction/*` modules) and prevents any `core`/`domain` module from importing a `workflows/*` module. Two CI gates cover different invariants: `.github/scripts/check_engineering_markers.py` verifies `# CHEMISTRY-RULE:{4,5,7}` marker coverage, the `# DOMAIN_PURE` markers on `workflows/dft.py`, `workflows/tsopt.py`, and `workflows/sp.py`, and that the MLIP SDKs (`fairchem` / `orb_models` / `mace` / `aimnet`) are imported only under `backends/`; `.github/scripts/check_import_graph.py` (a static AST import graph) asserts there is no product cycle, no `pysisyphus/**` import of `pdb2reaction`, and no `core → workflows` / `domain → workflows` back-edge. Remaining allowed downward edges / one-way facades are: `workflows/* → cli.common_options` / `cli.decorators` / `cli.help_pages`; `core/utils.py → domain.add_elem_info`, `io.structure_formats`, and `io.charge`; `io/charge.py → domain.residue_data` and `io.structure_formats`; `io/structure_formats.py → domain.add_elem_info`; and `io/trj2fig.py → backends`. The canonical residue tables (`domain/residue_data.py`), the charge engine (`io/charge.py`), and the console-gated charge-summary logger (`core/utils.py`) are re-exported from `workflows/extract.py` so existing import paths keep working. Bundled forks sit outside the layer graph and may be imported from any layer via their absolute package path (`from pysisyphus.X import Y`).
@@ -38,7 +38,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 ├── README.md / CONTRIBUTING.md / CHANGELOG.md
 ├── docs/
 │ ├── architecture.md ← this file
-│ └──... (Sphinx site, unchanged)
+│ └──... (Sphinx documentation site)
 ├── pdb2reaction/ ← package body, 6-layer physical dir
 │ ├── __init__.py PEP 562 lazy: _LAZY_SYMBOLS / _LAZY_MODULES + __getattr__
 │ ├── __main__.py `from .cli import cli`
@@ -94,7 +94,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 │   └── pes_composition.py energy-component composition
 │
 ├── tests/ smoke / unit
-├── .github/ workflows/ + scripts/ (docs-quality lint helpers; CI-only)
+├── .github/ workflows/ + scripts/ (CI, release, engineering, and documentation checks)
 └── (repo-top sibling, layer-external bundled forks)
  pysisyphus/ repo-internal fork (slimmed to the numerical features used here)
  thermoanalysis/ repo-internal fork
@@ -145,7 +145,7 @@ pdb2reaction myaction                 ──► pdb2reaction/cli/app.py
 Two layers of lazy-import compatibility plus CLI dispatch:
 
 1. **Root symbol attribute** (`from pdb2reaction import <Symbol>`) — handled by `pdb2reaction/__init__.py:_LAZY_SYMBOLS` + PEP 562 `__getattr__`. Symbols are loaded on first access from the layer-dir path; import cost stays zero at `pdb2reaction` import time.
-2. **Root module attribute** (`from pdb2reaction import <module>`) — handled by `_LAZY_MODULES`. `__getattr__` returns the module object itself via `importlib.import_module`. `pdb2reaction` currently has 0 consumed module-attr paths (the registry is empty — root attribute access is reserved for future expansion).
+2. **Root module attribute** (`from pdb2reaction import <module>`) — handled by `_LAZY_MODULES`. `__getattr__` returns the module object itself via `importlib.import_module`. The registry is currently empty, so no root module-attribute paths are exported.
 
 The CLI subcommand resolver (`cli/app.py:_LAZY_SUBCOMMANDS`) uses **absolute** module paths (e.g. `"pdb2reaction.workflows.all"`) so that moving `default_group.py` into `cli/` does not silently break subcommand discovery (the registry no longer depends on `__package__`).
 
@@ -191,7 +191,7 @@ After step 5 you can read any other file by following the file index in §4. The
 | MEP search (GSM) | `pdb2reaction/workflows/path_search.py` |
 | MEP optimizer core (pysisyphus COS) | `pdb2reaction/workflows/path_opt.py` |
 | TS optimization (RS-P-RFO + Bofill + macro/micro) | `pdb2reaction/workflows/tsopt.py` |
-| Vibrational analysis (PHVA + UMA active block) | `pdb2reaction/workflows/freq.py` |
+| Vibrational analysis (PHVA + backend-agnostic active-DOF Hessian handling) | `pdb2reaction/workflows/freq.py` |
 | IRC integration (macro / micro) | `pdb2reaction/workflows/irc.py` |
 | Single-point DFT (gpu4pyscf subprocess) | `pdb2reaction/workflows/dft.py` |
 | Active-site extraction (cluster cap) | `pdb2reaction/workflows/extract.py` |
@@ -241,13 +241,13 @@ See [Backends](backends.md) for the add-a-backend recipe.
 |---|---|
 | **Shared/default numerical settings (primary source; verify command-local exceptions)** | `pdb2reaction/core/defaults.py` |
 | PDB / XYZ / plot helpers | `pdb2reaction/core/utils.py` |
-| `-v` / `-vv` logging wiring | `pdb2reaction/core/logging.py` |
+| `-v` / `--verbose LEVEL` logging wiring | `pdb2reaction/core/logging.py` |
 | Output/result ownership helpers | `pdb2reaction/core/output.py`, `pdb2reaction/core/result_commit.py` |
 | Energy-component composition | `pdb2reaction/core/pes_composition.py` |
 
 ### 4.7 Repo-internal bundled forks
 
-| dir | role | divergent files (do NOT replace with upstream) |
+| dir | role | selected divergent files (see the directory README for the complete list) |
 |---|---|---|
 | `pysisyphus/` | optimizer / TS / IRC engine | `irc/IRC.py` (opt-in `require_pos_def_hessian` PSD convergence guard), `optimizers/hessian_updates.py` (GPU-resident in-place rank-two Bofill update with explicit `PYSIS_BOFILL_CPU_OFFLOAD=1` fallback), `tsoptimizers/{RSIRFOptimizer,RSPRFOptimizer,TRIM,TSHessianOptimizer}.py`, `calculators/{Calculator,Dimer}.py`, `_array.py` (torch/numpy backend shim) |
 | `thermoanalysis/` | thermochemistry (ΔG, ZPE, partition functions) | `QCData.py` (branding diff vs upstream) |
@@ -260,7 +260,7 @@ See each dir's `README.md` for the touch-restriction boundary.
 
 ### 5.1 Chemistry rules (grep recipe)
 
-Three correctness-critical rules are spread across `backends/`, `workflows/`, and `core/defaults.py`. They are **not** detected by smoke tests — silent drift here breaks reaction-path accuracy. Inline `# CHEMISTRY-RULE:N` markers and `# DOMAIN_PURE` module-docstring markers identify the rules; `.github/scripts/check_engineering_markers.py` enforces marker completeness in CI.
+Three correctness-critical rules are implemented in `workflows/dft.py` and `workflows/tsopt.py`. They are **not** detected by smoke tests — silent drift here breaks reaction-path accuracy. Inline `# CHEMISTRY-RULE:N` markers and `# DOMAIN_PURE` module-docstring markers identify the rules; `.github/scripts/check_engineering_markers.py` enforces marker completeness in CI.
 
 To find every chemistry rule before editing:
 
@@ -280,7 +280,9 @@ The three rules (marker IDs are non-contiguous) are:
 | 5 | def2 family auto-ECP injection | `pdb2reaction/workflows/dft.py` |
 | 7 | `bofill_update` advanced-indexing scatter | `pdb2reaction/workflows/tsopt.py` |
 
-Editing any of these requires a `[CHEMISTRY-RULE:N]` commit prefix and a HEAVY-tier numerical-golden gate pass (see `CONTRIBUTING.md` §1.1). Learn the DFT pair (#4, #5) first, then the TS scatter rule (#7).
+Editing any of these requires the `[CHEMISTRY-RULE:N]` commit prefix, lab
+sign-off, the relevant focused regression tests, and a HEAVY benchmark; see
+`CONTRIBUTING.md` §4.1 and §5.
 
 ### 5.2 VRAM-management invariant (do not refactor `del` chains)
 
@@ -308,7 +310,7 @@ change, not as an incidental refactor.
 
 ### 5.5 `_LAZY_SUBCOMMANDS` registry must use absolute paths
 
-`pdb2reaction/cli/app.py:_LAZY_SUBCOMMANDS` resolves every subcommand through an **absolute** module path. Switching any entry back to a relative dotted import (`".all"` etc.) silently breaks subcommand discovery whenever `default_group.py` moves, because the resolver's `__package__` then drifts away from the package root. See internal design notes.
+`pdb2reaction/cli/app.py:_LAZY_SUBCOMMANDS` resolves every subcommand through an **absolute** module path. Switching any entry back to a relative dotted import (`".all"` etc.) silently breaks subcommand discovery whenever `default_group.py` moves, because the resolver's `__package__` then drifts away from the package root.
 
 ---
 

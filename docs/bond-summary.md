@@ -1,6 +1,6 @@
 # `bond-summary`
 
-Detect and report covalent bond changes between consecutive molecular structures (R → TS → P or multi-intermediate chains) via element-specific covalent-radius perception. For *N* input files it produces *N − 1* comparison blocks (A→B, B→C, …) and prints them to stdout; no file is written. Use it to audit which covalent bonds form or break between sequential structures along a reaction path — e.g. validating an IRC endpoint pair, screening multistep mechanisms, or sanity-checking `all` post-processing manually. Supported input formats are **XYZ**, **PDB**, **mmCIF**, and **GJF** (auto-detected by extension); distances are reported in Ångström.
+Detect and report covalent bond changes between consecutive molecular structures (R → TS → P or multi-intermediate chains) via element-specific covalent-radius perception. For *N* input files it produces *N − 1* comparison blocks (A→B, B→C, …) and prints them to stdout; no file is written. Use it to check which covalent bonds form or break between sequential structures along a reaction path — e.g. validating an IRC endpoint pair, screening multistep mechanisms, or sanity-checking `all` post-processing manually. Supported input formats are **XYZ**, **PDB**, **mmCIF**, and **GJF** (auto-detected by extension); distances are reported in Ångström.
 
 ## Examples
 

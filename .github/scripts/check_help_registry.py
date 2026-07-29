@@ -5,13 +5,11 @@ Validates ``pdb2reaction.cli.app._SUBCOMMAND_PRIMARY_HELP_OPTIONS`` against the
 actual Click commands that back each subcommand:
 
 * Every entry must include ``"--help-advanced"`` so the discoverability flag
-  itself is not hidden when the registry filters non-primary options (the
-  ``bond-summary`` regression caught on 2026-05-26).
+  itself is not hidden when the registry filters non-primary options.
 * Every other token in each frozenset must correspond to an actual
   ``@click.option`` opt string on the resolved Click command — long opts via
   ``Option.opts`` and short opts via ``Option.opts`` / ``Option.secondary_opts``.
-  Orphan entries (the ``dft -b/--backend`` dead entry caught on 2026-05-26)
-  fail this check.
+  Orphan entries fail this check.
 
 Run from the repository root::
 

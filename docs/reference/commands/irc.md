@@ -56,7 +56,7 @@ Options:
                                   not be used for pass/HOSP transition-state
                                   certification.
   --convert-files / --no-convert-files
-                                  Convert XYZ/TRJ outputs into PDB/CIF/GJF
+                                  Convert XYZ/TRJ outputs into PDB/CIF
                                   companions based on the input format.
                                   [default: convert-files]
   --ref-pdb FILE                  Reference PDB/mmCIF topology to use when the
