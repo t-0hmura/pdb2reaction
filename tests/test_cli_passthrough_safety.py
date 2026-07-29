@@ -27,6 +27,13 @@ def test_root_invocation_resets_charge_multiplicity_override() -> None:
         validate_charge_spin(["H"], 0, 1)
 
 
+def test_sp_rejects_optimizer_progress_option() -> None:
+    result = CliRunner().invoke(root_cli, ["sp", "--print-every", "3"])
+
+    assert result.exit_code == 2
+    assert "No such option: --print-every" in result.output
+
+
 def _xyz(path: Path) -> Path:
     path.write_text("1\nH\nH 0.0 0.0 0.0\n", encoding="utf-8")
     return path

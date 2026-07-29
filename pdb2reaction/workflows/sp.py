@@ -139,13 +139,6 @@ logger = logging.getLogger(__name__)
 @add_calc_file_option()
 @add_deterministic_option()
 @add_allow_charge_mult_mismatch_option()
-@click.option(
-    "--print-every",
-    "print_every",
-    type=click.IntRange(min=1),
-    default=None,
-    hidden=True,
-)
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -170,7 +163,6 @@ def cli(
     backend_model: Optional[str],
     calc_file: Optional[str],
     calc_factory: Optional[str],
-    print_every: Optional[int],
 ) -> None:
     """Compute a single-point MLIP energy + forces (and optionally Hessian)."""
     set_convert_file_enabled(convert_files)
@@ -234,14 +226,6 @@ def cli(
         apply_backend_model_to_calc_cfg(calc_cfg, backend_model)
         # --calc-file overrides --backend with a user ASE Calculator (custom backend).
         apply_calc_file_to_calc_cfg(calc_cfg, calc_file, calc_factory)
-        if cli_param_overridden(ctx, "print_every") and print_every is not None:
-            # `sp` runs no optimizer, and the backend factory drops keys it does not know, so
-            # this value has no effect. Say so instead of ignoring an explicit request silently.
-            click.echo(
-                "[sp] NOTE: --print-every has no effect on sp (no optimizer runs); ignoring it.",
-                err=True,
-            )
-            calc_cfg["print_every"] = int(print_every)
 
         apply_backend_defaults(calc_cfg)
 
