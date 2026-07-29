@@ -245,7 +245,12 @@ class DefaultGroup(click.Group):
         # re-sets pipeline mode. This keeps both scoped to a single invocation
         # instead of leaking across calls (e.g. successive CliRunner.invoke in
         # the test suite, or repeated in-process runs).
-        from pdb2reaction.core.utils import set_console_gating, set_pipeline_mode
+        from pdb2reaction.core.utils import (
+            set_allow_charge_mult_mismatch,
+            set_console_gating,
+            set_pipeline_mode,
+        )
+        set_allow_charge_mult_mismatch(False)
         set_console_gating(False)
         set_pipeline_mode(False)
         # Normalize long option names to lowercase before any other processing
