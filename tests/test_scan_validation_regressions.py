@@ -5,11 +5,13 @@ import numpy as np
 import pytest
 
 from pdb2reaction.core.utils import (
+    claim_unique_scan_stem,
     parse_scan_list_quads,
     parse_scan_list_triples,
     parse_scan_spec_stages,
 )
 from pdb2reaction.workflows.scan2d import _rbf_support
+from pdb2reaction.workflows.scan3d import _rbf_support_3d
 from pdb2reaction.workflows.scan_common import collect_staged_scan_values
 
 
@@ -133,3 +135,36 @@ def test_scan2d_rbf_support_requires_non_collinear_points(
     x, y, expected,
 ) -> None:
     assert _rbf_support(np.asarray(x), np.asarray(y)) == expected
+
+
+@pytest.mark.parametrize(
+    ("x", "y", "z", "expected"),
+    [
+        ([1.0], [2.0], [3.0], (1, 0)),
+        ([0.0, 1.0, 0.0, 1.0], [0.0, 0.0, 1.0, 1.0], [2.0] * 4, (4, 2)),
+        (
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+            (4, 3),
+        ),
+    ],
+)
+def test_scan3d_rbf_support_requires_non_coplanar_points(
+    x, y, z, expected,
+) -> None:
+    assert _rbf_support_3d(
+        np.asarray(x),
+        np.asarray(y),
+        np.asarray(z),
+    ) == expected
+
+
+def test_scan_artifact_stem_disambiguates_rounded_distance_collision() -> None:
+    used: set[str] = set()
+
+    first = claim_unique_scan_stem("point_i100_j200", (0, 0), used)
+    second = claim_unique_scan_stem("point_i100_j200", (1, 0), used)
+
+    assert first == "point_i100_j200"
+    assert second == "point_i100_j200_grid_001_000"

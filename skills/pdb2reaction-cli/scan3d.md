@@ -54,6 +54,8 @@ pdb2reaction scan3d -i 1.R.pdb -l 'SAM:1' \
 per-grid-point energies and `bias_converged` values. In `--csv` post-mortem
 mode, the input CSV is read but not copied to `<out_dir>`, and the result JSON
 does not advertise a new `surface_csv` file.
+When rounded distance tags collide, later point filenames append
+`_grid_III_JJJ_KKK` with zero-based grid indices.
 
 ## Caveats
 

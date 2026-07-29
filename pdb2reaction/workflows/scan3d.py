@@ -72,6 +72,7 @@ from pdb2reaction.core.utils import (
     cli_param_overridden,
     distance_A_from_coords,
     distance_tag,
+    claim_unique_scan_stem,
     set_freeze_atoms_or_warn,
     _parse_freeze_atoms,
     merge_freeze_atom_indices,
@@ -102,6 +103,27 @@ _VOLUME_GRID_N = 50  # 50×50×50 RBF interpolation grid
 
 
 _snapshot_geometry = make_snapshot_geometry(GEOM_KW_DEFAULT["coord_type"])
+
+
+def _rbf_support_3d(
+    points_x: np.ndarray,
+    points_y: np.ndarray,
+    points_z: np.ndarray,
+) -> Tuple[int, int]:
+    """Return the unique-point count and geometric rank for 3D interpolation."""
+    points = np.column_stack(
+        (
+            np.asarray(points_x, dtype=float),
+            np.asarray(points_y, dtype=float),
+            np.asarray(points_z, dtype=float),
+        )
+    )
+    if len(points) == 0:
+        return 0, 0
+    unique = np.unique(points, axis=0)
+    if len(unique) <= 1:
+        return len(unique), 0
+    return len(unique), int(np.linalg.matrix_rank(unique - unique[0]))
 
 
 def _extract_axis_label(df: pd.DataFrame, column: str, fallback: Optional[str]) -> Optional[str]:
@@ -563,6 +585,7 @@ def cli(
 
             # Store starting geometry snapshot for reuse
             geom_outer_initial = _snapshot_geometry(geom_outer)
+            used_grid_stems: set[str] = set()
 
             # Caches for nearest-neighbor starting geometries
             d1_geoms: Dict[int, Any] = {}
@@ -745,7 +768,12 @@ def cli(
                         tag_i = distance_tag(d1_target)
                         tag_j = distance_tag(d2_target)
                         tag_k = distance_tag(d3_target)
-                        xyz_path = grid_dir / f"point_i{tag_i}_j{tag_j}_k{tag_k}.xyz"
+                        point_stem = claim_unique_scan_stem(
+                            f"point_i{tag_i}_j{tag_j}_k{tag_k}",
+                            (i_idx, j_idx, k_idx),
+                            used_grid_stems,
+                        )
+                        xyz_path = grid_dir / f"{point_stem}.xyz"
                         _artifact_written = False
                         try:
                             s = geom_inner.as_xyz()
@@ -761,8 +789,8 @@ def cli(
                                 xyz_path,
                                 prepared_input,
                                 ref_pdb_path=ref_pdb_path,
-                                out_pdb_path=grid_dir / f"point_i{tag_i}_j{tag_j}_k{tag_k}.pdb",
-                                out_gjf_path=grid_dir / f"point_i{tag_i}_j{tag_j}_k{tag_k}.gjf",
+                                out_pdb_path=grid_dir / f"{point_stem}.pdb",
+                                out_gjf_path=grid_dir / f"{point_stem}.gjf",
                                 context=f"'{xyz_path.name}' to PDB/CIF/GJF",
                             )
 
@@ -910,6 +938,29 @@ def cli(
             )
         if not np.any(mask):
             click.echo("[plot] No finite data for plotting.")
+            sys.exit(1)
+        n_unique, support_rank = _rbf_support_3d(
+            d1_points[mask],
+            d2_points[mask],
+            d3_points[mask],
+        )
+        if n_unique < 4 or support_rank < 3:
+            message = (
+                "A 3D energy volume requires at least four non-coplanar "
+                "converged finite grid points; found "
+                f"{n_unique} unique point(s) with geometric rank "
+                f"{support_rank}. surface.csv was written, but the volume "
+                "plot was not generated."
+            )
+            error = ValueError(message)
+            _write_error_json(
+                final_dir,
+                "scan3d",
+                error,
+                "InsufficientPlotData",
+                time_start,
+            )
+            click.echo(f"[plot] ERROR: {message}", err=True)
             sys.exit(1)
 
         x_min, x_max = float(np.min(d1_points[mask])), float(np.max(d1_points[mask]))

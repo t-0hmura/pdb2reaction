@@ -80,6 +80,7 @@ from pdb2reaction.core.utils import (
     resolve_freeze_atoms,
     distance_A_from_coords,
     distance_tag,
+    claim_unique_scan_stem,
     set_freeze_atoms_or_warn,
     yaml_freeze_to_internal,
     _parse_freeze_atoms,
@@ -637,6 +638,7 @@ def cli(
             # Construct scan grids and reorder so that points near the preopt geometry are visited first
             d1_values = values_from_bounds(low1, high1, float(max_step_size))
             d2_values = values_from_bounds(low2, high2, float(max_step_size))
+            used_grid_stems: set[str] = set()
 
             d1_values = _sort_values_by_reference(d1_values, d1_ref)
             d2_values = _sort_values_by_reference(d2_values, d2_ref)
@@ -795,7 +797,12 @@ def cli(
                     # Write per-grid XYZ snapshots under result_scan2d/grid/
                     d1_tag = distance_tag(d1_target)
                     d2_tag = distance_tag(d2_target)
-                    xyz_path = grid_dir / f"point_i{d1_tag}_j{d2_tag}.xyz"
+                    point_stem = claim_unique_scan_stem(
+                        f"point_i{d1_tag}_j{d2_tag}",
+                        (i_idx, j_idx),
+                        used_grid_stems,
+                    )
+                    xyz_path = grid_dir / f"{point_stem}.xyz"
                     _artifact_written = False
                     try:
                         s = geom_inner.as_xyz()
@@ -808,8 +815,8 @@ def cli(
                             xyz_path,
                             prepared_input,
                             ref_pdb_path=ref_pdb_path,
-                            out_pdb_path=grid_dir / f"point_i{d1_tag}_j{d2_tag}.pdb",
-                            out_gjf_path=grid_dir / f"point_i{d1_tag}_j{d2_tag}.gjf",
+                            out_pdb_path=grid_dir / f"{point_stem}.pdb",
+                            out_gjf_path=grid_dir / f"{point_stem}.gjf",
                             context=f"'{xyz_path.name}' to PDB/CIF/GJF",
                         )
                     except Exception as e:

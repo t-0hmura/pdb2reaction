@@ -94,7 +94,7 @@ out_dir/ (default:./result_scan3d/)
 └─ grid/inner_path_d1_###_d2_###_trj.xyz # Present only when --dump is True (format companions require topology + conversion)
 ```
 
-Grid-point geometries use `Å×100` tags, so `point_i130_j310_k200.xyz` corresponds to d₁=1.30, d₂=3.10, d₃=2.00 Å.
+Grid-point geometries use `Å×100` tags, so `point_i130_j310_k200.xyz` corresponds to d₁=1.30, d₂=3.10, d₃=2.00 Å. If two points have the same rounded tags, later filenames append `_grid_III_JJJ_KKK` with the zero-based grid indices.
 
 ## CLI options
 

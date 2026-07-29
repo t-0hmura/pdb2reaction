@@ -58,6 +58,8 @@ pdb2reaction scan2d -i 1.R.pdb -l 'SAM:1,GPP:-3' \
 convergence flags are in `surface.csv`. `result.json["status"] == "completed"`
 means the grid and plots were written, not that every `bias_converged` value is
 true.
+When rounded distance tags collide, later point filenames append
+`_grid_III_JJJ` with zero-based grid indices.
 
 ## Caveats
 

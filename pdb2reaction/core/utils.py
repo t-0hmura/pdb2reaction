@@ -810,6 +810,23 @@ def distance_tag(value_A: float, *, digits: int = 2, pad: int = 3) -> str:
     return f"{int(round(value_A * scale)):0{pad}d}"
 
 
+def claim_unique_scan_stem(
+    base_stem: str,
+    indices: Sequence[int],
+    used_stems: set[str],
+) -> str:
+    """Claim a scan artifact stem, adding grid indices only on a collision."""
+    if base_stem not in used_stems:
+        used_stems.add(base_stem)
+        return base_stem
+    suffix = "_grid_" + "_".join(f"{int(index):03d}" for index in indices)
+    candidate = base_stem + suffix
+    if candidate in used_stems:
+        raise ValueError(f"Duplicate scan grid indices for artifact stem {candidate!r}.")
+    used_stems.add(candidate)
+    return candidate
+
+
 def as_list(raw: Any) -> List[Any]:
     """Return ``raw`` as a list, or [] when not iterable/None."""
     if raw is None:

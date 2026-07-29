@@ -82,7 +82,9 @@ see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
 4. At each `(i, j)` pair, store the biased-optimization result under
     `<out-dir>/grid/point_iDDD_jDDD.xyz` where `DDD = round(d × 100)` in Å
     (e.g. `d1=1.30 Å, d2=3.10 Å` → `point_i130_j310.xyz`), record whether the
-    bias converged, and evaluate the MLIP energy without bias. Optional
+    bias converged, and evaluate the MLIP energy without bias. If two points
+    have the same rounded tags, later filenames append `_grid_III_JJJ` with
+    the zero-based grid indices. Optional
     per-outer-step inner trajectories are saved as `inner_path_d1_###_trj.xyz`
     when `--dump` (`###` is the outer step index).
 5. After all points are visited, write `<out-dir>/surface.csv` with columns
