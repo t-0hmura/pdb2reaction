@@ -326,9 +326,12 @@ def cli(
 
         # Energy + forces
         t0 = time.perf_counter()
-        energy_au = float(geom.energy)
-        gradient_au = np.asarray(geom.gradient, dtype=float)  # Hartree / Bohr
-        forces_au = -gradient_au.reshape(-1, 3)
+        ef_results = geom.get_energy_and_cart_forces_at(geom.cart_coords)
+        geom.set_results(ef_results)
+        energy_au = float(ef_results["energy"])
+        forces_au = np.asarray(ef_results["forces"], dtype=float).reshape(-1, 3)
+        if not np.isfinite(energy_au) or not np.all(np.isfinite(forces_au)):
+            raise ValueError("Single-point energy and forces must be finite.")
         elapsed_ef = time.perf_counter() - t0
         click.echo(f"[sp] energy = {energy_au:.10f} a.u.  |force|_max = {np.max(np.abs(forces_au)):.4e} a.u./bohr  ({elapsed_ef:.2f} s)")
 

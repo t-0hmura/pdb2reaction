@@ -765,6 +765,8 @@ def cli(
                 e_tot = float(getattr(mf, "e_tot", np.nan))
 
             e_h = float(e_tot)
+            if not np.isfinite(e_h):
+                raise ValueError("DFT total energy must be finite.")
             e_kcal = _AU2KCALPERMOL(e_h)
 
             if using_lowmem:

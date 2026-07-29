@@ -21,13 +21,12 @@ class _FakeGeometry:
     def set_calculator(self, calc) -> None:
         self._calc = calc
 
-    @property
-    def energy(self) -> float:
-        return 1.25
-
-    @property
-    def gradient(self) -> np.ndarray:
-        return np.zeros(3, dtype=float)
+    def get_energy_and_cart_forces_at(self, coords) -> dict:
+        assert np.array_equal(coords, self.cart_coords)
+        return {
+            "energy": 1.25,
+            "forces": np.zeros(3, dtype=float),
+        }
 
     def set_results(self, results) -> None:
         self.cached_results = results
@@ -146,6 +145,46 @@ def test_sp_no_hess_removes_command_owned_stale_hessian(
 
     assert result.exit_code == 0, result.output
     assert not stale.exists()
+
+
+@pytest.mark.parametrize(
+    ("energy", "forces"),
+    [
+        (np.nan, np.zeros(3, dtype=float)),
+        (1.25, np.array([0.0, np.inf, 0.0])),
+    ],
+)
+def test_sp_rejects_nonfinite_energy_or_forces(
+    monkeypatch,
+    tmp_path: Path,
+    energy: float,
+    forces: np.ndarray,
+) -> None:
+    from pdb2reaction.cli import cli as root_cli
+    from pdb2reaction.workflows import sp
+
+    class _NonfiniteGeometry(_FakeGeometry):
+        def get_energy_and_cart_forces_at(self, coords) -> dict:
+            assert np.array_equal(coords, self.cart_coords)
+            return {"energy": energy, "forces": forces}
+
+    inp = tmp_path / "geom.xyz"
+    inp.write_text("1\nframe\nC 0.0 0.0 0.0\n")
+    out = tmp_path / "out"
+    monkeypatch.setattr(sp, "geom_loader", lambda *_a, **_k: _NonfiniteGeometry())
+    monkeypatch.setattr(sp, "create_calculator", lambda **_k: _FakeCalculator())
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "sp", "-i", str(inp), "-q", "0", "-m", "1",
+            "--no-hess", "-o", str(out),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "Single-point energy and forces must be finite." in result.output
+    assert not (out / "forces.npy").exists()
 
 
 def test_sp_failed_hessian_rerun_does_not_retain_previous_matrix(
