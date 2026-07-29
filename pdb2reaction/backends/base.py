@@ -15,7 +15,7 @@ import time
 from typing import Any, Dict, List, Optional, Sequence
 
 import click
-from pdb2reaction.core.output import emit
+from pdb2reaction.core.output import emit, verbose_level
 import numpy as np
 import torch
 
@@ -519,7 +519,6 @@ class MLIPCalculator(Calculator):
 
         if self.print_timing:
             emit(f"[hessian] Completed {mode_label} Hessian: {mode_elapsed:.2f} s", detail=True)
-            from pdb2reaction.core.utils import verbose_level
             if verbose_level() >= 3:
                 click.echo(f"[HessianTiming] mode: {mode_label} | elapsed: {mode_elapsed:.2f} s")
 

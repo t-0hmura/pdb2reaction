@@ -40,7 +40,13 @@ import plotly.graph_objs as go
 
 from pdb2reaction.domain.add_elem_info import guess_element
 from pdb2reaction.core.defaults import RFO_KW
-from pdb2reaction.core.output import _TAG_AWARE_MARKER, emit
+from pdb2reaction.core.output import (
+    _TAG_AWARE_MARKER,
+    emit,
+    is_verbose,
+    set_verbose_level,
+    verbose_level,
+)
 from pdb2reaction.io.structure_formats import (
     attach_template_metadata,
     CIF_SUFFIXES,
@@ -78,8 +84,6 @@ logger = logging.getLogger(__name__)
 # A message is marked NARRATIVE by passing `narrative=True` to `click.echo`
 # (the patched echo pops the flag before delegating); the `emit` helper below
 # is the thin wrapper that does this for narrative-tagged lines.
-_VERBOSE_LEVEL: int = 0
-
 # Console gating is OFF until the real CLI entry point turns it on (the
 # `-v` group callback calls `set_console_gating(True)`). While OFF the
 # patched echo only shortens paths and dedupes blank lines — every message
@@ -101,23 +105,6 @@ _PIPELINE_MODE: bool = False
 # banner / `[calc] Resolved device:` echo can be skipped to avoid repeating
 # the same line 4-8x per pipeline run.
 _CHILD_MODE: bool = False
-
-
-def set_verbose_level(level: int) -> None:
-    """Record the CLI --verbose level (0=silent .. 3=full) for gating."""
-    global _VERBOSE_LEVEL
-    _VERBOSE_LEVEL = max(0, min(3, int(level)))
-
-
-def verbose_level() -> int:
-    """Current console verbosity: 0=silent, 1=milestones, 2=default(+detail), 3=full."""
-    return _VERBOSE_LEVEL
-
-
-def is_verbose() -> bool:
-    """True iff verbosity reaches the detail tier (level >= 2). Back-compat shim
-    for call sites that gate optimizer/SCF detail (cycle tables, PySCF logger)."""
-    return _VERBOSE_LEVEL >= 2
 
 
 def set_console_gating(value: bool) -> None:
@@ -433,11 +420,11 @@ _PYSIS_V2_DENY = re.compile(
 
 def _pysis_stdout_visible(stripped: str) -> bool:
     """Whether a raw-stdout optimizer line is visible at the current level."""
-    if _VERBOSE_LEVEL <= 0:
+    if verbose_level() <= 0:
         return False                       # -v 0: silent
-    if _VERBOSE_LEVEL >= 3:
+    if verbose_level() >= 3:
         return True                        # -v 3: full raw optimizer output
-    if _VERBOSE_LEVEL >= 2:
+    if verbose_level() >= 2:
         return not _PYSIS_V2_DENY.match(stripped)
     if _PYSIS_L1_ALLOW.match(stripped):    # -v 1: keep the convergence verdict
         return True
@@ -520,7 +507,7 @@ def _patch_click_echo() -> None:
         #     Blank lines pass through (spacing). A standalone leaf/report
         #     command keeps full output (its stdout is the deliverable).
         if _GATE_ACTIVE:
-            if _VERBOSE_LEVEL <= 0:
+            if verbose_level() <= 0:
                 return  # -v 0: completely silent
             if (
                 not is_err
@@ -529,7 +516,7 @@ def _patch_click_echo() -> None:
                 and is_pipeline_mode()
             ):
                 required = 1 if narrative else (2 if detail else 3)
-                if _VERBOSE_LEVEL < required:
+                if verbose_level() < required:
                     return
         if not raw_path and message is not None and _base_dir is not None and isinstance(message, str):
             bd = str(_base_dir)
@@ -601,7 +588,7 @@ def _patch_click_echo() -> None:
                 if not stripped:
                     # blank/whitespace: swallow entirely at -v 0, or when it
                     # trails a line we just suppressed (avoid a blank gap).
-                    if _VERBOSE_LEVEL <= 0 or self._suppress_next_nl:
+                    if verbose_level() <= 0 or self._suppress_next_nl:
                         self._suppress_next_nl = False
                         return len(s)
                 elif not _pysis_stdout_visible(stripped):

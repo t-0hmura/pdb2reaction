@@ -1,10 +1,4 @@
-"""Dependency-light product output adapter.
-
-Presentation policy stays in :mod:`pdb2reaction.core.utils`; this module only
-decides whether private product tags may be forwarded to the installed Click
-echo shim.  Before CLI bootstrap it consumes those tags so library callers
-always reach native Click with supported keyword arguments.
-"""
+"""Dependency-light product output adapter and verbosity state."""
 
 from __future__ import annotations
 
@@ -14,6 +8,23 @@ import click
 
 
 _TAG_AWARE_MARKER = "__pdb2reaction_private_echo_tags__"
+_VERBOSE_LEVEL = 0
+
+
+def set_verbose_level(level: int) -> None:
+    """Record the process-wide CLI verbosity level."""
+    global _VERBOSE_LEVEL
+    _VERBOSE_LEVEL = max(0, min(3, int(level)))
+
+
+def verbose_level() -> int:
+    """Return the process-wide CLI verbosity level."""
+    return _VERBOSE_LEVEL
+
+
+def is_verbose() -> bool:
+    """Return whether detail output is enabled."""
+    return _VERBOSE_LEVEL >= 2
 
 
 def emit(
