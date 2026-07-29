@@ -8,6 +8,7 @@ import pytest
 
 from pdb2reaction.core.defaults import THERMO_KW
 from pdb2reaction.workflows.freq import (
+    _calc_energy,
     cli,
     _validated_symmetry_number,
     _validated_thermo_condition,
@@ -63,6 +64,24 @@ def test_thermochemistry_conditions_accept_positive_finite_values(
     value, expected
 ) -> None:
     assert _validated_thermo_condition(value, name="pressure_atm") == expected
+
+
+@pytest.mark.parametrize("energy", [math.nan, math.inf, -math.inf])
+def test_thermochemistry_rejects_nonfinite_electronic_energy(energy) -> None:
+    class Geometry:
+        calculator = None
+
+        def set_calculator(self, calculator) -> None:
+            self.calculator = calculator
+
+        @property
+        def energy(self) -> float:
+            return energy
+
+    geom = Geometry()
+    with pytest.raises(ValueError, match="Electronic energy must be finite"):
+        _calc_energy(geom, {}, calc=object())
+    assert geom.calculator is None
 
 
 def test_rotational_symmetry_number_changes_entropy_and_gibbs_exactly_once() -> None:

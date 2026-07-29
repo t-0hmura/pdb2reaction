@@ -148,8 +148,12 @@ def _calc_energy(geom, calc_kwargs: dict, calc=None) -> float:
     if calc is None:
         calc = create_calculator(**calc_kwargs)
     geom.set_calculator(calc)
-    E = float(geom.energy)
-    geom.set_calculator(None)
+    try:
+        E = float(geom.energy)
+    finally:
+        geom.set_calculator(None)
+    if not np.isfinite(E):
+        raise ValueError("Electronic energy must be finite for thermochemistry.")
     return E
 
 
