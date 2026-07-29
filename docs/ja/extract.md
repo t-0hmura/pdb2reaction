@@ -215,7 +215,7 @@ pdb2reaction extract -i complex.pdb -c 'SUB' -o model.pdb \
 - 負電荷 (−1): `ASP`, `GLU`
 
 **追加の標準残基：**
-- `SEC`（セレノシステイン、0）、`PYL`（ピロリシン、+1）
+- `SEC`（セレノシステイン、0）、`PYL`（ピロリシン、0）
 
 **プロトン化/互変異性体**（Amber/CHARMM 形式）：
 - `HIP`（+1、完全プロトン化 His）、`HID`（0、Nδプロトン化 His）、`HIE`（0、Nεプロトン化 His）
@@ -232,7 +232,7 @@ pdb2reaction extract -i complex.pdb -c 'SUB' -o model.pdb \
 - `OCS`（−1、システイン酸）、`CYM`（−1、脱プロトン化 Cys）
 
 **リシン変異体/カルボキシル化：**
-- `MLY`（+1）、`LLP`（+1）、`KCX`（−1、Nz-カルボン酸）
+- `MLY`（+1）、`LLP`（0）、`KCX`（−1、Nz-カルボン酸）
 
 **D-アミノ酸**（19 残基）：
 - `DAL`, `DAR`, `DSG`, `DAS`, `DCY`, `DGN`, `DGL`, `DHI`, `DIL`, `DLE`, `DLY`, `MED`, `DPN`, `DPR`, `DSN`, `DTH`, `DTR`, `DTY`, `DVA`

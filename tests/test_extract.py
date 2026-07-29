@@ -233,6 +233,13 @@ class TestIonDictCaseFolding:
         raise AssertionError("ION dict literal not found in residue_data.py via AST")
 
 
+def test_modified_residue_nominal_charges_match_ccd_components():
+    from pdb2reaction.domain.residue_data import AMINO_ACIDS
+
+    assert AMINO_ACIDS["PYL"] == 0
+    assert AMINO_ACIDS["LLP"] == 0
+
+
 def test_compute_charge_summary_terminus_cap_charges():
     """A kept terminal cap carries the ionized-terminus formal charge the internal
     residue charge omits: C-terminus carboxylate (OXT) -> -1, N-terminus ammonium
