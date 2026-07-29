@@ -131,12 +131,11 @@ def atom_identity_key(line: str) -> Tuple[str, str, str, str, str, str, str]:
     return (record, atom_name, res_name, chain_id, res_seq, i_code, seg_id)
 
 
-def residue_identity_key(line: str) -> Tuple[str, str, str, str, str]:
+def residue_identity_key(line: str) -> Tuple[str, str, str, str]:
     """Return the residue identity used for coherent altLoc selection."""
     core, _ = split_newline(line)
     core = ensure_len(core, 76)
     return (
-        core[17:20],  # residue name
         core[21:22],  # chain ID
         core[22:26],  # residue sequence number
         core[26:27],  # insertion code
@@ -168,7 +167,7 @@ def process_block(lines: List[str]) -> List[str]:
     structure that corresponds to no deposited conformer.
     """
     label_observations: Dict[
-        Tuple[str, str, str, str, str],
+        Tuple[str, str, str, str],
         List[Tuple[str, Optional[float], int]],
     ] = {}
 
@@ -183,7 +182,7 @@ def process_block(lines: List[str]) -> List[str]:
             (label, parse_occupancy(line), idx)
         )
 
-    selected_labels: Dict[Tuple[str, str, str, str, str], str] = {}
+    selected_labels: Dict[Tuple[str, str, str, str], str] = {}
     for residue, observations in label_observations.items():
         selected_labels[residue] = choose_altloc_label(observations)
 
@@ -211,11 +210,10 @@ def process_block(lines: List[str]) -> List[str]:
             key = atom_identity_key(line)
             if not label and key in selected_label_keys:
                 continue
-            # A residue with no altloc label has no conformers to resolve;
-            # preserve every blank record (small-molecule PDBs commonly reuse
-            # generic atom names such as C/H within one residue). Make the key
-            # unique per line so duplicates are not collapsed by atom identity.
-            if selected is None:
+            # Preserve every blank/shared record unless the selected conformer
+            # supplies that atom identity. Small-molecule PDBs commonly reuse
+            # generic atom names such as C/H within one residue.
+            if not label:
                 key = (*key, str(idx))
             occ = parse_occupancy(line)
             serial = atom_serial_5(line)
@@ -240,8 +238,8 @@ def process_block(lines: List[str]) -> List[str]:
     for idx, line in enumerate(lines):
         if line.startswith(COORD_RECORDS):
             key = atom_identity_key(line)
-            # No-altloc residues were keyed uniquely above; mirror that here.
-            if selected_labels.get(residue_identity_key(line)) is None:
+            label = altloc_label(line)
+            if not label and key not in selected_label_keys:
                 key = (*key, str(idx))
             # Keep only the selected "best" line for this key
             if key in best and best[key][1] == idx:
@@ -298,6 +296,11 @@ def process_stream(lines: Iterable[str]) -> Iterator[str]:
 
 def clean_pdb_file(in_path: Path, out_path: Path) -> None:
     """Process a PDB file and write the cleaned output."""
+    if (
+        in_path.resolve() == out_path.resolve()
+        or (out_path.exists() and in_path.samefile(out_path))
+    ):
+        raise ValueError("Input and output must be different files; use --inplace.")
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with in_path.open("r", newline="") as fin, out_path.open("w", newline="") as fout:
         for out_line in process_stream(fin):
@@ -320,25 +323,15 @@ def has_altloc(pdb_path: Path) -> bool:
     Returns True if at least one ATOM/HETATM record has a non-space character
     in the altLoc column. Returns False if no altLoc is found.
     """
-    try:
-        with open(pdb_path, "r", encoding="utf-8", errors="ignore") as fh:
-            for line in fh:
-                if line.startswith(COORD_RECORDS):
-                    # altLoc is at column 17 (1-based), which is index 16 (0-based)
-                    if len(line) > ALTLOC_IDX:
-                        altloc_char = line[ALTLOC_IDX]
-                        if altloc_char != " " and altloc_char != "":
-                            return True
-        return False
-    except Exception as exc:
-        # "cannot read the file" must not look like "the file has no altLoc": the caller then
-        # skips altLoc handling entirely for a structure that may well need it.
-        click.echo(
-            f"[fix-altloc] WARNING: could not read '{pdb_path}' ({exc}); "
-            "treating it as having no altLoc.",
-            err=True,
-        )
-        return False
+    with open(pdb_path, "r", encoding="utf-8", errors="ignore") as fh:
+        for line in fh:
+            if line.startswith(COORD_RECORDS):
+                # altLoc is at column 17 (1-based), which is index 16 (0-based)
+                if len(line) > ALTLOC_IDX:
+                    altloc_char = line[ALTLOC_IDX]
+                    if altloc_char != " " and altloc_char != "":
+                        return True
+    return False
 
 
 def fix_altloc_file(
