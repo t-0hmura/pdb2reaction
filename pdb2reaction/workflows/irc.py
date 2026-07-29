@@ -137,19 +137,38 @@ def _validated_irc_prefix(prefix: str) -> str:
     return value
 
 
+def _validated_irc_filename(value: str, *, setting: str) -> str:
+    filename = str(value or "")
+    path = Path(filename)
+    if (
+        not filename
+        or path.is_absolute()
+        or path.name != filename
+        or filename in {".", ".."}
+    ):
+        raise click.BadParameter(
+            f"{setting} must be a filename without path components; got {value!r}."
+        )
+    return filename
+
+
 def _prepare_irc_output_dir(
     path: Path,
     *,
     prefix: str = "",
+    dump_fn: str = "irc_data.h5",
     protected_inputs: tuple[Optional[Path], ...] = (),
 ) -> Path:
     """Invalidate command-owned IRC artifacts before a real generation."""
     resolved = Path(path).resolve()
     resolved.mkdir(parents=True, exist_ok=True)
     prefix = _validated_irc_prefix(prefix)
+    dump_fn = _validated_irc_filename(dump_fn, setting="irc.dump_fn")
     normalized_prefix = f"{prefix}_" if prefix else ""
     owned = [
         *(resolved / f"{normalized_prefix}{name}" for name in _IRC_GENERATION_FILENAMES),
+        resolved / f"{normalized_prefix}{dump_fn}",
+        resolved / f"{normalized_prefix}irc_data.h5",
         resolved / "result.json",
         resolved / "summary.json",
     ]
@@ -536,6 +555,10 @@ def cli(
             irc_cfg["prefix"] = _validated_irc_prefix(
                 str(irc_cfg.get("prefix") or "")
             )
+            irc_cfg["dump_fn"] = _validated_irc_filename(
+                str(irc_cfg.get("dump_fn") or ""),
+                setting="irc.dump_fn",
+            )
             out_dir_path = Path(irc_cfg["out_dir"]).resolve()
             if show_config:
                 click.echo(
@@ -569,6 +592,7 @@ def cli(
             out_dir_path = _prepare_irc_output_dir(
                 out_dir_path,
                 prefix=str(irc_cfg.get("prefix") or ""),
+                dump_fn=str(irc_cfg.get("dump_fn") or "irc_data.h5"),
                 protected_inputs=(
                     input_path,
                     prepared_input.original_path,

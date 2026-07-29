@@ -24,9 +24,11 @@ Design notes:
 from __future__ import annotations
 
 import os
+import threading
 
 _DONE = False
 _ORIG_INDEX_REDUCE = None
+_SETUP_LOCK = threading.RLock()
 
 
 def is_deterministic_requested() -> bool:
@@ -67,21 +69,19 @@ def setup_deterministic() -> None:
     rejected) rather than degrading silently.
     """
     global _DONE, _ORIG_INDEX_REDUCE
-    if _DONE:
-        return
-    import torch
+    with _SETUP_LOCK:
+        if _DONE:
+            return
+        import torch
 
-    # Patch first (native index_reduce_ mean has no deterministic CUDA kernel).
-    orig = getattr(torch.Tensor, "index_reduce_", None)
-    if orig is None:
-        raise RuntimeError(
-            "--deterministic: torch.Tensor.index_reduce_ is missing on this "
-            f"torch ({torch.__version__}); the determinism shim needs updating."
-        )
-    if _ORIG_INDEX_REDUCE is None:
-        # One-time equivalence self-check (catch a silent scatter_reduce vs
-        # index_reduce_ mean-semantics drift across torch versions). CPU-only;
-        # the native op works on CPU even when its CUDA kernel is missing.
+        orig = getattr(torch.Tensor, "index_reduce_", None)
+        if orig is None:
+            raise RuntimeError(
+                "--deterministic: torch.Tensor.index_reduce_ is missing on this "
+                f"torch ({torch.__version__}); the determinism shim needs updating."
+            )
+
+        # Verify the replacement before changing any process-global state.
         checks = (
             (torch.zeros(3), 0, torch.tensor([0, 0, 1]), torch.tensor([1.0, 3.0, 5.0])),
             (torch.zeros(3, 2), 0, torch.tensor([0, 0, 1]), torch.arange(6.0).reshape(3, 2)),
@@ -89,8 +89,13 @@ def setup_deterministic() -> None:
         )
         for target, dim, idx, src in checks:
             for include_self in (False, True):
-                ref = target.clone().index_reduce_(
-                    dim, idx, src, reduce="mean", include_self=include_self
+                ref = orig(
+                    target.clone(),
+                    dim,
+                    idx,
+                    src,
+                    reduce="mean",
+                    include_self=include_self,
                 )
                 got = _index_reduce_mean_deterministic(
                     target.clone(), dim, idx, src, "mean", include_self
@@ -100,22 +105,52 @@ def setup_deterministic() -> None:
                         "--deterministic: scatter_reduce detour diverges from native "
                         "index_reduce_(mean); the shim is unsafe on this torch build."
                     )
-        _ORIG_INDEX_REDUCE = orig
-        torch.Tensor.index_reduce_ = _index_reduce_mean_deterministic
 
-    os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
-    try:
-        torch.use_deterministic_algorithms(True, warn_only=False)
-    except Exception as e:
-        raise RuntimeError(
-            f"--deterministic: torch could not enable strict deterministic "
-            f"algorithms on this build ({e}). An op lacks a deterministic "
-            f"kernel; run in the default (non-deterministic) mode or use a "
-            f"torch build that provides it."
+        prior_orig = _ORIG_INDEX_REDUCE
+        prior_tensor_method = torch.Tensor.index_reduce_
+        env_present = "CUBLAS_WORKSPACE_CONFIG" in os.environ
+        prior_env = os.environ.get("CUBLAS_WORKSPACE_CONFIG")
+        prior_deterministic = torch.are_deterministic_algorithms_enabled()
+        prior_warn_only = (
+            torch.is_deterministic_algorithms_warn_only_enabled()
+            if hasattr(torch, "is_deterministic_algorithms_warn_only_enabled")
+            else False
         )
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-    torch.manual_seed(0)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(0)
-    _DONE = True
+        prior_cudnn_deterministic = torch.backends.cudnn.deterministic
+        prior_cudnn_benchmark = torch.backends.cudnn.benchmark
+        prior_cpu_rng = torch.get_rng_state()
+        cuda_available = torch.cuda.is_available()
+        prior_cuda_rng = torch.cuda.get_rng_state_all() if cuda_available else None
+
+        try:
+            os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+            torch.use_deterministic_algorithms(True, warn_only=False)
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
+            torch.manual_seed(0)
+            if cuda_available:
+                torch.cuda.manual_seed_all(0)
+            _ORIG_INDEX_REDUCE = orig
+            torch.Tensor.index_reduce_ = _index_reduce_mean_deterministic
+            _DONE = True
+        except Exception as exc:
+            torch.Tensor.index_reduce_ = prior_tensor_method
+            _ORIG_INDEX_REDUCE = prior_orig
+            _DONE = False
+            if env_present:
+                assert prior_env is not None
+                os.environ["CUBLAS_WORKSPACE_CONFIG"] = prior_env
+            else:
+                os.environ.pop("CUBLAS_WORKSPACE_CONFIG", None)
+            torch.use_deterministic_algorithms(
+                prior_deterministic, warn_only=prior_warn_only
+            )
+            torch.backends.cudnn.deterministic = prior_cudnn_deterministic
+            torch.backends.cudnn.benchmark = prior_cudnn_benchmark
+            torch.set_rng_state(prior_cpu_rng)
+            if prior_cuda_rng is not None:
+                torch.cuda.set_rng_state_all(prior_cuda_rng)
+            raise RuntimeError(
+                "--deterministic: strict deterministic setup failed; "
+                "process state was restored."
+            ) from exc

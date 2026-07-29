@@ -1,6 +1,6 @@
 # `add-elem-info`
 
-Repair the element-symbol columns (77–78) of ATOM/HETATM records in a PDB file. The file is re-parsed with `Bio.PDB.PDBParser`, each element is inferred from the atom name and residue context, and the structure is re-written via `Bio.PDB.PDBIO` with the element columns repaired. Use it when a PDB file has missing or wrong element columns and downstream subcommands (`extract`, `opt`, `tsopt`, ...) reject it. The `all` command auto-invokes `add-elem-info` as a preflight, so manual use is only needed before standalone subcommands.
+Repair the element-symbol columns (77–78) of ATOM/HETATM records in a PDB file. Each element is inferred from the fixed-column atom name and residue context; all input lines are preserved, with only the element field replaced where needed. Use it when a PDB file has missing or wrong element columns and downstream subcommands (`extract`, `opt`, `tsopt`, ...) reject it. The `all` command auto-invokes `add-elem-info` as a preflight, so manual use is only needed before standalone subcommands.
 
 ## Examples
 
@@ -16,8 +16,8 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite
 ```
 
 ## Workflow
-1. Parse the input file with `Bio.PDB.PDBParser`, mirroring the residue
-    definitions used in `extract.py` (`AMINO_ACIDS`, `WATER_RES`, `ION`).
+1. Read the raw PDB records and classify atoms with the residue definitions
+    used in `extract.py` (`AMINO_ACIDS`, `WATER_RES`, `ION`).
 2. For each atom, guess the element by combining the atom name, residue name,
     and whether the record is HETATM:
  - Monatomic ion residues in the `ION` dict: use the corresponding element.
@@ -25,7 +25,8 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite
   first-letter mapping for C/N/O/P/S; carbon side-chain labels default to C.
  - Other ligands: use atom-name prefixes and fall back to element-symbol
   normalization (recognizing halogens, deuterium → hydrogen, etc.).
-3. Write the structure through `PDBIO` to the chosen output path (see [Outputs](#outputs) for the default / `-o` / `--overwrite` precedence).
+3. Replace only columns 77–78 on ATOM/HETATM records and write all other
+   columns and records unchanged (see [Outputs](#outputs) for path precedence).
 4. Print a summary reporting how many atoms were assigned/reassigned, plus
     per-element totals and a truncated list of unresolved atoms.
 
@@ -47,9 +48,9 @@ pdb2reaction add-elem-info -i 1abc.pdb --overwrite
 The full flag list is in the generated [command reference](reference/commands/index.md).
 
 ## Notes
-- The structure is re-serialized via `Bio.PDB.PDBIO` (not an in-place column edit): ATOM/HETATM
-  coordinates, occupancies, B-factors, altlocs, and insertion codes round-trip, but PDBIO does
-  not preserve non-ATOM records (HEADER/REMARK/CONECT/ANISOU) or the legacy charge column (79–80).
+- Every input line is preserved byte-for-byte except columns 77–78 of
+  ATOM/HETATM records selected for repair. HEADER, REMARK, CONECT, ANISOU,
+  and the legacy charge column (79–80) are retained.
 - ATOM and HETATM records across all models/chains/residues are supported.
 - Deuterium labels map to hydrogen; selenium (`SE*`) and halogens are recognized automatically.
 - Re-running on a PDB that already carries valid element symbols is a no-op (atoms pass through unchanged). See [all](all.md) for how the `all` preflight invokes `add-elem-info` automatically only when element columns are missing.

@@ -50,6 +50,44 @@ def test_all_dry_run_plan_omits_unrequested_extraction(tmp_path):
     assert "Planned stages: extract" not in result.output
 
 
+def test_all_xyz_ref_pdb_derives_residue_charge_before_dry_run(tmp_path):
+    xyz = tmp_path / "ts.xyz"
+    ref = tmp_path / "ts_ref.pdb"
+    xyz.write_text(
+        "2\nTS\nC 0.000 0.000 0.000\nO 1.200 0.000 0.000\n",
+        encoding="utf-8",
+    )
+    ref.write_text(
+        "HETATM    1  C1  LIG A   1       0.000   0.000   0.000  1.00  0.00           C  \n"
+        "HETATM    2  O1  LIG A   1       1.200   0.000   0.000  1.00  0.00           O  \n"
+        "END\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "all", "-i", str(xyz), "--ref-pdb", str(ref),
+            "-l", "LIG:0", "--tsopt", "--dry-run",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "charge=+0, spin(multiplicity)=1" in result.output
+
+    bad_xyz = tmp_path / "bad.xyz"
+    bad_xyz.write_text("1\nbad\nC 0 0 0\n", encoding="utf-8")
+    mismatch = CliRunner().invoke(
+        root_cli,
+        [
+            "all", "-i", str(bad_xyz), "--ref-pdb", str(ref),
+            "-l", "LIG:0", "--tsopt", "--dry-run",
+        ],
+    )
+    assert mismatch.exit_code != 0
+    assert "atom count" in mismatch.output.lower()
+
+
 def test_all_scan_list_dry_run_reports_scan_and_path(tmp_path):
     xyz = tmp_path / "reactant.xyz"
     xyz.write_text("2\nH2\nH 0 0 0\nH 0 0 0.74\n", encoding="utf-8")

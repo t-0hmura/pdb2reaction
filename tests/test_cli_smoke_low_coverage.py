@@ -47,6 +47,48 @@ def test_add_elem_info_smoke(tmp_path: Path) -> None:
     assert atom_line[76:78].strip() == "C"
 
 
+def test_add_elem_info_changes_only_the_element_field(tmp_path: Path) -> None:
+    atom = (
+        f"{'HETATM':<6}{7:>5} {'PT  ':4} {'LIG':>3} {'A':1}{1:>4}    "
+        f"{0.0:8.3f}{1.0:8.3f}{2.0:8.3f}{1.0:6.2f}{10.0:6.2f}"
+        f"{'':10}{'':>2}{'2+':>2}\r\n"
+    )
+    records = [
+        "HEADER    ELEMENT FIELD TEST\r\n",
+        "REMARK   1 KEEP THIS TEXT\r\n",
+        "CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P 1\r\n",
+        atom,
+        "LINK         PT  LIG A   1                 O   HOH A   2\r\n",
+        "CONECT    7    8\r\n",
+        "END\r\n",
+    ]
+    source = tmp_path / "records.pdb"
+    target = tmp_path / "fixed.pdb"
+    source.write_bytes("".join(records).encode("ascii"))
+
+    result = CliRunner().invoke(
+        root_cli,
+        ["add-elem-info", "-i", str(source), "-o", str(target)],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0, result.output
+    actual = target.read_bytes().decode("ascii").splitlines(keepends=True)
+    assert actual[:3] == records[:3]
+    assert actual[4:] == records[4:]
+    assert actual[3][:76] == atom[:76]
+    assert actual[3][76:78] == "Pt"
+    assert actual[3][78:] == atom[78:]
+
+
+def test_add_elem_info_uses_raw_atom_name_alignment() -> None:
+    from pdb2reaction.domain.add_elem_info import guess_element
+
+    assert guess_element(" NA ", "LIG", True) == "N"
+    assert guess_element("PT  ", "LIG", True) == "Pt"
+    assert guess_element(" PT ", "LIG", True) == "P"
+
+
 def test_fix_altloc_smoke(tmp_path: Path) -> None:
     in_pdb = _write_text(
         tmp_path / "altloc_input.pdb",
@@ -540,6 +582,43 @@ def test_all_only_forwards_explicit_flatten(
         assert "flatten:" not in tsopt_block
     else:
         assert f"flatten: {str(expected).lower()}" in tsopt_block
+
+
+def test_all_show_config_marks_omitted_child_overrides_as_null(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "all.yaml"
+    config.write_text(
+        "calc:\n  charge: -1\n  spin: 1\n"
+        "gs:\n  max_nodes: 13\n"
+        "stopt:\n  max_cycles: 17\n  dump: true\n",
+        encoding="utf-8",
+    )
+    input_path = Path(__file__).parent / "smoke" / "r.pdb"
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "all",
+            "-i",
+            str(input_path),
+            "-i",
+            str(input_path),
+            "--config",
+            str(config),
+            "--show-config",
+            "--dry-run",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    all_block = result.output.split("\nall:\n", 1)[1].split(
+        "\noverrides:\n", 1
+    )[0]
+    for key in ("max_nodes", "max_cycles", "climb", "dump", "preopt"):
+        assert f"  {key}: null" in all_block
+    assert "max_nodes: 13" in result.output
+    assert "max_cycles: 17" in result.output
+    assert "dump: true" in result.output
 
 
 @pytest.mark.parametrize(

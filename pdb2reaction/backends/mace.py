@@ -157,9 +157,21 @@ class MACECalculator(MLIPCalculator):
                 model_path = self._download_to_tmp(model_path)
             return _MC(model_paths=model_path, device=self.device_str, default_dtype=self.default_dtype)
 
-        def _safe_anicc(kwargs):
+        def _safe_anicc(model_path=None):
             try:
-                return mace_anicc(**kwargs)
+                kwargs = {"device": self.device_str}
+                if model_path:
+                    kwargs["model_path"] = model_path
+                if self.default_dtype == "float64":
+                    return mace_anicc(**kwargs)
+                raw_model = mace_anicc(**kwargs, return_raw_model=True)
+                from mace.calculators.mace import MACECalculator as _MC
+
+                return _MC(
+                    models=raw_model,
+                    device=self.device_str,
+                    default_dtype=self.default_dtype,
+                )
             except Exception as exc:
                 msg = str(exc).lower()
                 if ("no nvidia driver" in msg) or ("cuda" in msg and "backend" in msg):
@@ -197,13 +209,7 @@ class MACECalculator(MLIPCalculator):
             path = None
             if ":" in spec:
                 path = spec.split(":", 1)[1].strip() or None
-            kwargs = {
-                "device": self.device_str,
-                "default_dtype": self.default_dtype,
-            }
-            if path:
-                kwargs["model_path"] = path
-            return _safe_anicc(kwargs)
+            return _safe_anicc(path)
 
         # Alias forms
         if spec_l in mp_alias_lookup:
@@ -217,12 +223,7 @@ class MACECalculator(MLIPCalculator):
             return mace_omol(model="extra_large", device=self.device_str, default_dtype=self.default_dtype)
 
         if spec_l in ("anicc", "ani", "ani500k"):
-            return _safe_anicc(
-                {
-                    "device": self.device_str,
-                    "default_dtype": self.default_dtype,
-                }
-            )
+            return _safe_anicc()
 
         # Local file / URL
         if os.path.exists(spec) or spec.startswith("http://") or spec.startswith("https://"):

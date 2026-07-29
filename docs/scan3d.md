@@ -73,10 +73,16 @@ pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 -o ./
     unbiased energy (bias removed for evaluation), and write the constrained
     geometry and convergence flag.
 6. After the scan completes, assemble `surface.csv` (columns:
-    `i,j,k,d1_A,d2_A,d3_A,energy_hartree,bias_converged,energy_kcal,d1_label,d2_label,d3_label`),
+    `i,j,k,d1_A,d2_A,d3_A,energy_hartree,bias_converged,is_preopt,energy_kcal,d1_label,d2_label,d3_label`),
     apply the kcal/mol baseline shift (`--baseline {min|first}`), and generate a
     3D RBF-interpolated isosurface plot (`scan3d_density.html`) honoring
     `--zmin/--zmax`. When `--csv` is provided, only this plotting step runs.
+
+Plot-only input requires `d1_A`, `d2_A`, `d3_A`, and either
+`energy_hartree` or `energy_kcal`. Rows marked `is_preopt=true`, explicitly
+unconverged rows, and non-finite rows are excluded; older CSVs without
+provenance are accepted. Interpolation requires at least four
+unique non-coplanar usable points spanning all three axes.
 
 ## Outputs
 
@@ -142,8 +148,8 @@ The full flag list is in the generated [command reference](reference/commands/in
 
 ### Shared YAML sections
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical knobs to those documented for
-  [YAML Reference](yaml-reference.md). `opt.dump` can be set in YAML for optimizer dumps;
-  scan trajectory output is controlled by `--dump`.
+  [YAML Reference](yaml-reference.md), except run-scoped `opt.dump` is ignored.
+  Use `--dump` for scan trajectory output.
 
 ```yaml
 geom:

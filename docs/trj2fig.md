@@ -27,7 +27,7 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 ## Workflow
 
 1. Parse the XYZ trajectory. By default, read the energy from every frame
-    comment: an explicit `E=`/`Energy:` token takes precedence, otherwise the lone numeric token is used (scientific notation such as `1.5e-3` is supported; with multiple bare numbers the LAST is taken and a warning is emitted). If
+    comment: an explicit `E=`/`Energy:` token takes precedence, otherwise a comment containing only one numeric token is accepted (scientific notation such as `1.5e-3` is supported). Multiple bare numbers are ambiguous and rejected. If
     `-q/-m` is present, recompute energies (in hartree) for each frame with
     the MLIP backend using those charge/spin values instead of the comment.
     If no energies are found or produced, the run aborts.

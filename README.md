@@ -107,7 +107,7 @@ boundaries on aliphatic C–C single bonds whenever possible, avoid cutting
 peptide/polar/conjugated/metal bonds, and use the identical atom order and cap
 topology for every state. See [the cluster-boundary checklist](docs/extract.md#building-or-auditing-a-cluster-model-manually).
 
-Per-stage walkthrough (`extract` → `opt` → `path-opt` → `tsopt` → `freq` → `irc` → `dft`): [docs/getting-started.md](docs/getting-started.md) and [docs/quickstart-all.md](docs/quickstart-all.md).
+Per-stage walkthrough (`extract` → `opt` → `path-opt` → `tsopt` → `irc` → `freq` → `dft`): [docs/getting-started.md](docs/getting-started.md) and [docs/quickstart-all.md](docs/quickstart-all.md).
 
 ## Output
 

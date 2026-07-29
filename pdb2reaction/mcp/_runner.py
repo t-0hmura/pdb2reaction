@@ -208,14 +208,23 @@ def _expects_result_primary(argv: Sequence[str]) -> bool:
     return requested[1] not in _SUMMARY_ONLY_COMMANDS
 
 
-def _tail(text: str, max_lines: int = 60) -> str:
+def _coerce_text(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return str(value)
+
+
+def _tail(text: str, max_lines: int = 60, max_chars: int = 12000) -> str:
     """Return at most the last `max_lines` lines of `text`."""
     if not text:
         return ""
     lines = text.rstrip().splitlines()
-    if len(lines) <= max_lines:
-        return text.rstrip()
-    return "...\n" + "\n".join(lines[-max_lines:])
+    selected = text.rstrip() if len(lines) <= max_lines else "...\n" + "\n".join(lines[-max_lines:])
+    if len(selected) > max_chars:
+        selected = "...[truncated]\n" + selected[-max_chars:]
+    return selected
 
 
 def _extract_hint(stderr: str) -> Optional[str]:
@@ -361,10 +370,20 @@ def run_subcmd(
             run_id=run_id,
         )
     except subprocess.TimeoutExpired as exc:
+        stdout_tail = _tail(_coerce_text(exc.output))
+        captured_stderr = _tail(_coerce_text(exc.stderr))
+        timeout_marker = f"TIMEOUT after {timeout}s"
+        stderr_tail = (
+            f"{captured_stderr}\n{timeout_marker}"
+            if captured_stderr
+            else timeout_marker
+        )
         return SubcmdResult(
             status="failed",
             exit_code=124,
-            stderr_tail=f"TIMEOUT after {timeout}s: {exc}",
+            out_dir=None if out_dir is None else str(out_dir),
+            stderr_tail=stderr_tail,
+            stdout_tail=stdout_tail,
             hint=(
                 "Increase the `timeout_seconds` tool argument or rerun with a smaller "
                 "system / fewer cycles."

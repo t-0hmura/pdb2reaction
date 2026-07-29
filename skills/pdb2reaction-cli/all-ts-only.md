@@ -100,9 +100,9 @@ attempt for diagnosis and stops before endpoint post-processing.
 
 ## Caveats
 
-- For an XYZ TS candidate, you must supply `-q` and `-m` explicitly
-  (XYZ has no header). Use `--ref-pdb cluster.pdb` if you want
-  `-l 'RES:Q'` to work.
+- For an XYZ TS candidate, charge must resolve through `-q` or through
+  `--ref-pdb cluster.pdb` plus `-l 'RES:Q'`. Multiplicity defaults to 1;
+  specify `-m` for open-shell systems.
 - The IRC step here is the **canonical validation** that the TS connects the
   expected R and P. Always inspect `seg_01/{reactant,product}.xyz`; `.pdb` or
   `.cif` companions are available only when conversion topology exists.

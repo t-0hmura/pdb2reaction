@@ -55,6 +55,9 @@ following priority (`add_elem_info.guess_element`):
   names (existing values are replaced). The input file is not modified
   unless `--overwrite` is passed with no `-o/--out`. Use a diff to confirm
   the changes are sensible.
+- The command reads fixed-column atom names and changes only columns 77–78
+  of repaired ATOM/HETATM records. Other columns and non-atom records are
+  preserved.
 - Atom names that don't follow the standard convention (e.g.
   exotic ligand names) may be misclassified; verify by spot-check.
 

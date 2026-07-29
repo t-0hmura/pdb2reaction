@@ -20,6 +20,7 @@ from pdb2reaction.core.defaults import (
     TS_IMAG_SOFT_WARN_CM,
     WORK_DIRNAME,
 )
+from pdb2reaction.core.result_commit import commit_exact
 
 logger = logging.getLogger(__name__)
 
@@ -1060,5 +1061,4 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
     lines.append("")
     lines.extend(format_method_citations(payload))
 
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    commit_exact(dest, ("\n".join(lines) + "\n").encode("utf-8"))

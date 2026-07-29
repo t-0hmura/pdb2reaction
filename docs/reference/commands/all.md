@@ -122,13 +122,14 @@ Options:
                                   mode when explicitly provided; otherwise falls
                                   back to the default ('hess' = RS-P-RFO).
                                   [default: hess]
-  --dump BOOLEAN                  Dump GSM/MEP trajectories. Always forwarded to
-                                  path_search/path-opt; scan/tsopt receive it
-                                  only when explicitly set here. When --thermo
-                                  is enabled, freq always retains
-                                  thermoanalysis.yaml because the composite
-                                  workflow consumes that file; --no-dump does
-                                  not suppress it.  [default: False]
+  --dump BOOLEAN                  Dump GSM/MEP trajectories. An explicit parent
+                                  toggle is forwarded to path-search/path-opt
+                                  and scan/tsopt; when omitted, child
+                                  YAML/defaults apply. When --thermo is enabled,
+                                  freq always retains thermoanalysis.yaml
+                                  because the composite workflow consumes that
+                                  file; --no-dump does not suppress it.
+                                  [default: False]
   --convert-files BOOLEAN         Convert XYZ/TRJ outputs into PDB/CIF/GJF
                                   companions based on the input format.
                                   [default: True]

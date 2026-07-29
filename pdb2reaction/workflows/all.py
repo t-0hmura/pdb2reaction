@@ -84,6 +84,7 @@ from pdb2reaction.core.utils import (
     load_pdb_atom_metadata,
     _round_charge_with_note,
     apply_ref_pdb_override,
+    _validate_ref_pdb_atom_count,
     ensure_dir,
     parse_scan_list_triples,
     close_matplotlib_figures,
@@ -270,7 +271,10 @@ from pdb2reaction.workflows import irc as _irc_cli
 def _copy_logged(src: Path, dst: Path, *, label: Optional[str] = None, echo: bool = True) -> bool:
     """Copy files with consistent warning messages; return success."""
     try:
-        if Path(src).name == "summary.json" and Path(dst).name == "summary.json":
+        if (
+            Path(src).name in {"summary.json", "summary.log"}
+            and Path(dst).name == Path(src).name
+        ):
             commit_exact(Path(dst), Path(src).read_bytes())
         else:
             shutil.copy2(src, dst)
@@ -397,6 +401,8 @@ def _run_cli_main(
         code = getattr(e, "code", 1)
         if code not in (None, 0):
             exit_code = code if isinstance(code, int) else 1
+            if exit_code == 130:
+                raise
             if on_nonzero == "raise":
                 raise click.ClickException(f"[{label}] {cmd_name} exit code {code}.")
             _echo(f"[{label}] WARNING: {cmd_name} exited with code {code}", err=True)
@@ -2004,6 +2010,16 @@ def _optimize_endpoint_geom(
                 err=True,
             )
             _endpoint_conv = False
+            current_final = (
+                Path(opt.final_fn)
+                if isinstance(opt.final_fn, (str, Path))
+                else opt.final_fn
+            )
+            if current_final is None:
+                raise click.ClickException(
+                    f"[endpoint-opt] No final geometry path is available for '{tag}'."
+                )
+            commit_exact(current_final, geom.as_xyz().encode("utf-8"))
 
         final_xyz = Path(opt.final_fn) if isinstance(opt.final_fn, (str, Path)) else opt.final_fn
 
@@ -3231,8 +3247,8 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     default=False,
     show_default=True,
     help=(
-        "Dump GSM/MEP trajectories. Always forwarded to path_search/path-opt; "
-        "scan/tsopt receive it only when explicitly set here. "
+        "Dump GSM/MEP trajectories. An explicit parent toggle is forwarded to "
+        "path-search/path-opt and scan/tsopt; when omitted, child YAML/defaults apply. "
         "When --thermo is enabled, freq always retains thermoanalysis.yaml because "
         "the composite workflow consumes that file; --no-dump does not suppress it."
     ),
@@ -3776,16 +3792,19 @@ def cli(
     time_start = time.perf_counter()
     energy_diagrams: List[Dict[str, Any]] = []
 
-    dump_override_requested = False
+    dump_override_requested = "--no-dump" in _negative_bool_args
     flatten_override_requested = False
     try:
         dump_source = ctx.get_parameter_source("dump")
-        dump_override_requested = dump_source not in (None, ParameterSource.DEFAULT)
+        dump_override_requested = (
+            dump_override_requested
+            or dump_source not in (None, ParameterSource.DEFAULT)
+        )
         flatten_source = ctx.get_parameter_source("flatten")
         flatten_override_requested = flatten_source not in (None, ParameterSource.DEFAULT)
     except Exception as exc:
         logger.debug("Failed to check dump/flatten parameter source: %s", exc)
-        dump_override_requested = False
+        dump_override_requested = "--no-dump" in _negative_bool_args
         flatten_override_requested = False
 
     args_yaml = config_yaml
@@ -4041,16 +4060,32 @@ def cli(
                 "charge_override": charge_override,
                 "spin": int(spin),
                 "mep_mode": str(mep_mode),
-                "max_nodes": int(max_nodes),
-                "max_cycles": int(max_cycles),
-                "climb": bool(climb),
+                "max_nodes": (
+                    int(max_nodes)
+                    if cli_param_overridden(ctx, "max_nodes")
+                    else None
+                ),
+                "max_cycles": (
+                    int(max_cycles)
+                    if cli_param_overridden(ctx, "max_cycles")
+                    else None
+                ),
+                "climb": (
+                    bool(climb)
+                    if cli_param_overridden(ctx, "climb")
+                    else None
+                ),
                 "opt_mode": str(opt_mode),
                 "opt_mode_post": (None if opt_mode_post is None else str(opt_mode_post)),
-                "dump": bool(dump),
+                "dump": bool(dump) if dump_override_requested else None,
                 "convert_files": bool(convert_files),
                 "tr_projection": str(tr_projection),
                 "refine_path": bool(refine_path),
-                "preopt": bool(preopt),
+                "preopt": (
+                    bool(preopt)
+                    if cli_param_overridden(ctx, "preopt")
+                    else None
+                ),
                 "tsopt": bool(do_tsopt),
                 "thermo": bool(do_thermo),
                 "dft": bool(do_dft),
@@ -4310,6 +4345,21 @@ def cli(
         for p in extract_inputs:
             model_outputs.append((models_dir / f"model_{p.stem}.pdb").resolve())
 
+    # Prepare the shared topology reference before resolving residue-based
+    # charges. Coordinate-only inputs keep their own geometry, while the
+    # reference supplies the atom and residue metadata.
+    ref_pdb_for_topology: Optional[Path] = None
+    if ref_pdb_cli is not None:
+        prepared_ref = prepare_input_structure(ref_pdb_cli.resolve())
+        prepared_all_inputs.append(prepared_ref)
+        session.resources.own_cleanup(prepared_ref)
+        for prepared_input in prepared_all_inputs[:-1]:
+            _validate_ref_pdb_atom_count(
+                prepared_input.geom_path, prepared_ref.geom_path
+            )
+        ref_pdb_for_topology = prepared_ref.source_path
+        _echo(f"[all] --ref-pdb provided: {ref_pdb_cli.resolve()}")
+
     resolved_charge: Optional[int] = None
 
     if not skip_extract:
@@ -4378,9 +4428,14 @@ def cli(
                 logger.debug("Failed to parse ligand_charge as float: %s", exc)
                 ligand_charge_numeric = None
 
-            if first_input.suffix.lower() == ".pdb":
+            charge_metadata_path = (
+                ref_pdb_for_topology
+                if ref_pdb_for_topology is not None
+                else first_input
+            )
+            if charge_metadata_path.suffix.lower() == ".pdb":
                 try:
-                    with prepare_input_structure(first_input) as prepared:
+                    with prepare_input_structure(charge_metadata_path) as prepared:
                         resolved_charge = _derive_charge_from_ligand_charge(
                             prepared, ligand_charge, prefix="[all]"
                         )
@@ -4461,15 +4516,6 @@ def cli(
 
     _validate_path = model_outputs[0] if model_outputs else input_paths[0]
     validate_charge_spin_at_path(_validate_path, q_int, spin)
-
-    # Resolve --ref-pdb for topology
-    ref_pdb_for_topology: Optional[Path] = None
-    if ref_pdb_cli is not None:
-        prepared_ref = prepare_input_structure(ref_pdb_cli.resolve())
-        prepared_all_inputs.append(prepared_ref)
-        session.resources.own_cleanup(prepared_ref)
-        ref_pdb_for_topology = prepared_ref.source_path
-        _echo(f"[all] --ref-pdb provided: {ref_pdb_cli.resolve()}")
 
     freeze_ref: Optional[Path] = None
     if freeze_links_flag:
@@ -5251,24 +5297,32 @@ def cli(
             key="ts.summary.01",
             out_dir=out_dir,
         )
-        _copy_public_logged(
+        copied = _copy_public_logged(
             tsroot / "summary.json",
             out_dir / "summary.json",
             label="summary.json",
             echo=False,
         )
+        if not copied:
+            raise click.ClickException(
+                f"Failed to publish summary.json to {out_dir / 'summary.json'}."
+            )
         summary_payload["current_output_paths"] = [
             path.relative_to(out_dir).as_posix()
             for path in _refresh_current_public_outputs(manifest, out_dir)
             if path.is_relative_to(out_dir)
         ]
         write_summary_log(tsroot / "summary.log", summary_payload)
-        _copy_public_logged(
+        copied = _copy_public_logged(
             tsroot / "summary.log",
             out_dir / "summary.log",
             label="summary.log",
             echo=False,
         )
+        if not copied:
+            raise click.ClickException(
+                f"Failed to publish summary.log to {out_dir / 'summary.log'}."
+            )
         _refresh_current_public_outputs(manifest, out_dir)
         _persist_run_manifest(manifest, out_dir)
 
@@ -5600,7 +5654,8 @@ def cli(
             _append_toggle_arg(po_args, "--freeze-links", bool(freeze_links_flag and freeze_ref is not None))
             if cli_param_overridden(ctx, "climb"):
                 _append_toggle_arg(po_args, "--climb", bool(climb))
-            _append_toggle_arg(po_args, "--dump", bool(dump))
+            if dump_override_requested:
+                _append_toggle_arg(po_args, "--dump", bool(dump))
             _append_toggle_arg(po_args, "--convert-files", bool(convert_files))
             ref_pdb_for_seg: Optional[Path] = None
             if model_ref_pdbs and len(model_ref_pdbs) >= idx:
@@ -6057,7 +6112,8 @@ def cli(
         if cli_param_overridden(ctx, "climb"):
             _append_toggle_arg(ps_args, "--climb", bool(climb))
         ps_args.extend(["--opt-mode", str(opt_mode_norm)])
-        _append_toggle_arg(ps_args, "--dump", bool(dump))
+        if dump_override_requested:
+            _append_toggle_arg(ps_args, "--dump", bool(dump))
         if thresh is not None:
             ps_args.extend(["--thresh", str(thresh)])
         ps_args.extend(["--out-dir", str(path_dir)])
@@ -6385,12 +6441,16 @@ def cli(
             key="path.summary",
             out_dir=out_dir,
         )
-        _copy_public_logged(
+        copied = _copy_public_logged(
             summary_path,
             out_dir / "summary.json",
             label="summary.json",
             echo=False,
         )
+        if not copied:
+            raise click.ClickException(
+                f"Failed to publish summary.json to {out_dir / 'summary.json'}."
+            )
         _refresh_current_public_outputs(manifest, out_dir)
         _persist_run_manifest(manifest, out_dir)
 

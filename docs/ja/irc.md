@@ -69,6 +69,8 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --step-size 0.05 --never-stop \
 ```
 out_dir/ (デフォルト:./result_irc/)
 ├─ <prefix>finished_irc_trj.xyz   # 完全な IRC 軌跡
+├─ <prefix>finished_first.xyz     # endpoint comparison に使う最初の生 endpoint
+├─ <prefix>finished_last.xyz      # endpoint comparison に使う最後の生 endpoint
 ├─ <prefix>finished_irc.pdb       # 参照 PDB が利用可能な場合の軌跡に対応する PDB（変換有効時）
 ├─ <prefix>finished_irc.cif       # bridge入力。元IDを復元
 ├─ <prefix>forward_irc_trj.xyz    # 順方向分岐が実行された場合
@@ -78,6 +80,9 @@ out_dir/ (デフォルト:./result_irc/)
 ├─ <prefix>backward_irc.pdb       # 逆方向分岐に対応する PDB（同条件）
 └─ <prefix>backward_irc.cif       # bridge入力
 ```
+
+`finished_first.xyz` と `finished_last.xyz` は方向付き endpoint artifact
+です。first/last の順序だけでは化学的な R/P identity は決まりません。
 
 `irc.prefix`が空でない場合、EulerPCはファイル名との間に`_`を1つ補います。たとえば
 `prefix: trial`は`trial_finished_irc_trj.xyz`を生成し、`result.json.files`にも

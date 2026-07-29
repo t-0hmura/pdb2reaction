@@ -20,13 +20,15 @@ pip install "pdb2reaction[mcp]"
 18 個のツールがあり、それぞれが CLI サブコマンドに 1 対 1 で対応します。各ツールは次のフィールドを持つ構造化された dict を返します。
 
 - `schema_version`: エンベロープのバージョン。実際の値は `pdb2reaction.mcp._runner.MCP_SUBCMD_RESULT_SCHEMA_VERSION`。値が上がるとフィールドセットや値の型の変更を意味するため、本ドキュメントに書かれたリテラル値ではなく、この定数を参照するようにしてください。
-- `status`: `ok` | `failed` | `summary_missing` | `summary_parse_error`
+- `status`: `ok` | `failed` | `summary_missing` | `summary_parse_error` | `summary_run_mismatch`
 - `exit_code`: サブプロセスの終了コード
-- `out_dir`: CLI が書き込んだ作業ディレクトリ
-- `summary`: パース済みの `summary.json`（CLI 出力スキーマ。ステージごとの形式は [JSON 出力リファレンス](json-output.md) を参照）
+- `out_dir`: stage tool の管理ディレクトリ。成功した helper tool では null
+- `summary`: パース済みの `summary.json`。管理 summary を持たない成功 helper では空 object
 - `stderr_tail` / `stdout_tail`: プロセス出力の末尾約 60 行
 - `hint`: CLI エラーメッセージから抽出した `; recover: <hint>` サフィックス（存在する場合）
 - `argv`: 実行された完全な argv（再現性のため）
+- `run_id`: 各 subprocess 呼び出しの UUID。summary の ID が一致しない場合は
+  `summary_run_mismatch` と空の `summary` を返します
 
 ### 構造化されたエラーエンベロープ
 
@@ -150,9 +152,9 @@ async with stdio_client(server_params) as (read, write):
   長時間実行されるツール（opt / tsopt / irc）は `pdb2reaction` CLI をサブプロセスで
   起動するため、エージェントは各ツール呼び出しで `timeout_seconds` を設定し、
   暴走する計算を制限してください。
-- 出力ファイルは `out_dir` キーワード引数の配下に置かれます（デフォルトは一意の
+- stage tool の出力ファイルは `out_dir` キーワード引数の配下に置かれます（デフォルトは一意の
   `tempfile.mkdtemp(prefix="p2r_mcp_<subcmd>_…")` で、同時並行のエージェント呼び出しが
   衝突しないようになっています）。
-- サーバーは `~/.bashrc` / ログイン環境を変更したり、ソフトウェアをインストールしたり、
-  `out_dir` の外に書き込んだりはしません。すべての MLIP の重みや PDB 入力は
+- helper tool は `out_dir` を持たず、指定された出力パスへ書き込みます。`extra_args` は追加の CLI 動作を要求できます。
+- サーバーは `~/.bashrc` / ログイン環境を変更したり、ソフトウェアをインストールしたりしません。すべての MLIP の重みや PDB 入力は
   あらかじめディスク上に存在している必要があります。

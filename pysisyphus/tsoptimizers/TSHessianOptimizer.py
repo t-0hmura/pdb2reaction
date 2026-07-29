@@ -400,7 +400,12 @@ class TSHessianOptimizer(HessianOptimizer):
             self.log_negative_eigenvalues(eigvals_ref, "Reference ")
             assert eigvals_ref[0] < -self.small_eigval_thresh
             ref_mode = eigvecs_ref[:, 0]
-            overlaps = np.einsum("ij,j->i", eigvecs.T, ref_mode)
+            eigvecs_np = (
+                eigvecs.detach().cpu().numpy()
+                if isinstance(eigvecs, torch.Tensor)
+                else np.asarray(eigvecs)
+            )
+            overlaps = np.einsum("ij,j->i", eigvecs_np.T, ref_mode)
             ovlp_str = array2string(overlaps, precision=4)
             self.log(
                 "Overlaps between eigenvectors of current Hessian "
@@ -442,7 +447,12 @@ class TSHessianOptimizer(HessianOptimizer):
             # in the redundant subspace.
             small_inds = np.abs(eigvals) < self.small_eigval_thresh
             # Take absolute value, because sign of eigenvectors is ambiguous.
-            ovlps = np.abs(np.einsum("ij,ki->kj", eigvecs, modes))
+            eigvecs_np = (
+                eigvecs.detach().cpu().numpy()
+                if isinstance(eigvecs, torch.Tensor)
+                else np.asarray(eigvecs)
+            )
+            ovlps = np.abs(np.einsum("ij,ki->kj", eigvecs_np, modes))
             ovlps[:, small_inds] = 0.0
             self.roots = ovlps.argmax(axis=1)
             used_str = "overlap with user-generated mode"
@@ -809,7 +819,7 @@ class TSHessianOptimizer(HessianOptimizer):
                 self._last_exact_target_mode_reanchored = reanchor
 
             has_saddle_modes = (
-                self._has_required_negative_modes(eigvals)
+                self._selected_ts_modes_are_negative(eigvals)
                 if target_is_negative is None
                 else target_is_negative
             )
@@ -923,7 +933,7 @@ class TSHessianOptimizer(HessianOptimizer):
                     self._last_exact_target_mode_is_negative = target_is_negative
 
         if target_is_negative is None:
-            has_saddle_modes = n_imaginary >= len(self.roots)
+            has_saddle_modes = self._selected_ts_modes_are_negative(eigvals)
         else:
             has_saddle_modes = target_is_negative
         projection_certifiable = self._projection_allows_saddle_certification()

@@ -1120,18 +1120,19 @@ def _substrate_residues_for_structs(structs: List[PDB.Structure.Structure],
     """
     if Path(center_spec).suffix.lower() in ({".pdb"} | set(CIF_SUFFIXES)):
         sub_first = resolve_substrate_residues(structs[0], center_spec)
-        tokens = []
-        for res in sub_first:
-            chain, num, icode_txt, _ = residue_auth_identity(res)
-            chain_txt = (chain or "").strip()
-            if chain_txt:
-                tokens.append(f"{chain}:{num}{icode_txt}")
-            else:
-                tokens.append(f"{num}{icode_txt}")
-        idspec = ",".join(tokens)
+        selected_keys = [_residue_key_from_res(res) for res in sub_first]
         out: List[List[PDB.Residue.Residue]] = []
-        for _si, st in enumerate(structs):
-            out.append(find_substrate_by_idspec(st, idspec))
+        for st in structs:
+            residues_by_key = {
+                _residue_key_from_res(res): res for res in st.get_residues()
+            }
+            missing = [key for key in selected_keys if key not in residues_by_key]
+            if missing:
+                raise ValueError(
+                    "Center-file residue identity is missing from a reaction "
+                    f"structure: {missing[:5]}"
+                )
+            out.append([residues_by_key[key] for key in selected_keys])
         return out
     else:
         # Distinguish ID-spec vs resname list by attempting to parse as IDs first.
@@ -1190,7 +1191,8 @@ def _assert_atom_ordering_identical(structs: List[PDB.Structure.Structure]):
                     auth_chain, auth_resseq, auth_icode, auth_resname = residue_auth_identity(res)
                     base = f"{auth_chain}|{het}|{auth_resseq}{auth_icode}|{auth_resname}"
                     for atom in res:
-                        sig.append(base + f"|{atom.get_name()}")
+                        element = str(getattr(atom, "element", "") or "").strip().upper()
+                        sig.append(base + f"|{atom.get_name()}|{element}")
         return sig
     sig0 = signature(structs[0])
     for i in range(1, len(structs)):
@@ -1284,6 +1286,16 @@ def extract_multi(args: argparse.Namespace, api=False) -> Dict[str, Any]:
         }
     """
     paths: List[str] = args.complex_pdb
+    if len(args.output_pdb) == len(paths):
+        resolved_outputs = [
+            Path(path).expanduser().resolve(strict=False)
+            for path in args.output_pdb
+        ]
+        if len(set(resolved_outputs)) != len(resolved_outputs):
+            raise ValueError(
+                "[extract:multi] Per-structure output paths must be distinct. "
+                "Provide one unique -o/--output path for each input."
+            )
     names = [f"complex{i+1}" for i in range(len(paths))]
     structs: List[PDB.Structure.Structure] = [load_structure(p, n) for p, n in zip(paths, names)]
 

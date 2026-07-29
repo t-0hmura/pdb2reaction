@@ -28,7 +28,10 @@ Before a long run, verify:
 (charge-spin-problems)=
 ## Charge / spin
 
-Most stages need a net charge when the input is not `.gjf`. If you omit `-q/--charge`, the workflow tries `--ligand-charge/-l` (PDB only) or a `.gjf` template; if neither resolves, it errors out.
+Most stages need a net charge when the input is not `.gjf`. If you omit
+`-q/--charge`, the workflow tries `--ligand-charge/-l` against PDB/mmCIF
+metadata (or XYZ/GJF coordinates with `--ref-pdb`) or a `.gjf` template; if
+neither resolves, it errors out.
 
 ```bash
 pdb2reaction path-search -i R.pdb P.pdb -q 0 -m 1

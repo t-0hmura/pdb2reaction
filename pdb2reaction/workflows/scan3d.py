@@ -861,24 +861,32 @@ def cli(
         d2_label_html = axis_label_html(d2_label_csv) if d2_label_csv else "d2 (Å)"
         d3_label_html = axis_label_html(d3_label_csv) if d3_label_csv else "d3 (Å)"
 
-        # If energy_kcal is already present (e.g. loaded from existing CSV), reuse it.
-        # Otherwise compute it from energy_hartree and baseline.
-        if "energy_kcal" not in df.columns:
-            if "energy_hartree" not in df.columns:
-                click.echo(
-                    "[baseline] energy_kcal is missing and energy_hartree is not available in CSV; aborting.",
-                    err=True,
-                )
-                sys.exit(1)
-
-            # Reference minimum only from seed-eligible points: a failed or
-            # nonconverged point never defines the baseline. Legacy CSV rows
-            # without a convergence column are ineligible-by-policy, so the raw
-            # fallback below preserves their re-plot behavior.
-            _seed_ok = pd.Series(
-                seed_eligible_mask(df.to_dict("records")), index=df.index
+        modern_surface = "bias_converged" in df.columns
+        if modern_surface:
+            _eligible_rows3 = df["bias_converged"].map(
+                lambda value: value is True
+                or str(value).strip().lower() == "true"
             )
-            _elig_df3 = df[_seed_ok]
+            if "is_preopt" in df.columns:
+                _eligible_rows3 &= ~df["is_preopt"].map(
+                    lambda value: value is True
+                    or str(value).strip().lower() == "true"
+                )
+            if csv_path is None and "artifact_written" in df.columns:
+                _eligible_rows3 &= df["artifact_written"].map(
+                    lambda value: value is True
+                    or str(value).strip().lower() == "true"
+                )
+        else:
+            # Legacy CSVs have no convergence provenance; retain their
+            # established finite-row plotting behavior.
+            _eligible_rows3 = pd.Series(True, index=df.index)
+
+        if "energy_hartree" in df.columns:
+            _eligible_rows3 &= np.isfinite(
+                df["energy_hartree"].to_numpy(dtype=float)
+            )
+            _elig_df3 = df[_eligible_rows3]
 
             def _eligible_min3() -> float:
                 if not _elig_df3.empty:
@@ -894,7 +902,12 @@ def cli(
                 return float(df["energy_hartree"].min())
 
             if baseline == "first":
-                ref_mask = (df["i"] == 0) & (df["j"] == 0) & (df["k"] == 0) & _seed_ok
+                ref_mask = (
+                    (df["i"] == 0)
+                    & (df["j"] == 0)
+                    & (df["k"] == 0)
+                    & _eligible_rows3
+                )
                 if not ref_mask.any():
                     click.echo(
                         "[baseline] 'first' requested but no eligible (i=0,j=0,k=0); using eligible minimum instead.",
@@ -907,6 +920,12 @@ def cli(
                 ref = _eligible_min3()
 
             df["energy_kcal"] = (df["energy_hartree"] - ref) * AU2KCALPERMOL
+        elif "energy_kcal" not in df.columns:
+            click.echo(
+                "[baseline] energy_kcal is missing and energy_hartree is not available in CSV; aborting.",
+                err=True,
+            )
+            sys.exit(1)
 
         # Only write surface.csv when we actually performed the scan in this run
         if csv_path is None:
@@ -932,10 +951,7 @@ def cli(
             & np.isfinite(d3_points)
             & np.isfinite(z_points)
         )
-        if csv_path is None:
-            mask &= np.asarray(
-                seed_eligible_mask(df.to_dict("records")), dtype=bool,
-            )
+        mask &= _eligible_rows3.to_numpy(dtype=bool)
         if not np.any(mask):
             click.echo("[plot] No finite data for plotting.")
             sys.exit(1)
@@ -1152,24 +1168,28 @@ def cli(
                 else []
             )
             if not df.empty and "energy_hartree" in df.columns:
-                if csv_path is None:
-                    # Fresh scan: minimum only from seed-eligible points.
-                    _seed_ok_json = seed_eligible_mask(grid_records)
-                    _eligible_grid_energies = [
-                        float(rec["energy_hartree"])
-                        for rec, eligible in zip(grid_records, _seed_ok_json)
-                        if bool(eligible)
-                    ]
-                    min_energy = (
-                        min(_eligible_grid_energies)
-                        if _eligible_grid_energies
-                        else None
-                    )
-                else:
-                    # Plot-only from an existing CSV: preserve legacy raw minimum.
-                    min_energy = float(df["energy_hartree"].min())
+                _eligible_energies = df.loc[
+                    _eligible_rows3, "energy_hartree"
+                ].to_numpy(dtype=float)
+                min_energy = (
+                    float(np.min(_eligible_energies))
+                    if len(_eligible_energies)
+                    else None
+                )
             else:
                 min_energy = None
+
+            if "is_preopt" in df.columns:
+                _grid_row_count3 = int(
+                    np.count_nonzero(
+                        ~df["is_preopt"].map(
+                            lambda value: str(value).strip().lower()
+                            in {"1", "true", "yes"}
+                        ).to_numpy(dtype=bool)
+                    )
+                )
+            else:
+                _grid_row_count3 = int(len(df))
 
             result_data: Dict[str, Any] = {
                 "status": "completed",
@@ -1180,9 +1200,7 @@ def cli(
                     spin=spin_val,
                     plot_only=csv_path is not None,
                 ),
-                "n_grid_points": (
-                    len(grid_records) if csv_path is None else len(df)
-                ),
+                "n_grid_points": _grid_row_count3,
                 "min_energy_hartree": min_energy,
                 "files": {
                     "scan3d_density_html": "scan3d_density.html",

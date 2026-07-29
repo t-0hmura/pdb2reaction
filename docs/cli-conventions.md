@@ -176,7 +176,7 @@ For `scan`, one literal = one **stage**; multiple stages → multiple literals a
 | Code | Meaning | Typical emitter |
 |---|---|---|
 | `0` | Success | every subcommand |
-| `1` | Unexpected internal error (unhandled exception) | every subcommand |
+| `1` | Unexpected internal error, or intentional partial utility completion | every subcommand; `bond-summary` |
 | `2` | CLI usage, configuration, or input error; zero step length; missing dependency; command-specific processing failure | Click/parser layer; `opt`, `tsopt`, `path-search`; `dft`; utility commands |
 | `3` | Optimizer failure **or** SCF not converged | `opt`, `tsopt`, `path-opt`, `path-search`; `dft` |
 | `4` | Trajectory write error | `path-opt` |
@@ -244,7 +244,7 @@ Built-in defaults are in `pdb2reaction/core/defaults.py`. Only *explicitly suppl
 
 ## Output directory
 
-`-o/--out-dir ./my_results/` overrides. Defaults: `all → ./result_all/`, per-stage subcommand → `./result_<subcmd>/` with hyphens in subcommand names mapped to underscores (e.g. `result_opt/`, `result_tsopt/`, `result_path_opt/`, `result_path_search/`). `extract` defaults to the current directory or the explicit `-o`.
+`-o/--out-dir ./my_results/` overrides stage-command output directories. Defaults: `all → ./result_all/`, per-stage subcommand → `./result_<subcmd>/`. `extract` instead uses repeatable file-valued `-o/--output` and defaults to the current directory.
 
 ## See Also
 

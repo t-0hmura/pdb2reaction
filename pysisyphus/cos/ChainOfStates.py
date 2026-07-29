@@ -604,7 +604,23 @@ class ChainOfStates:
         # This can be determined from a supplied threshold for the
         # RMS force (rms_force) or from a multiple of the
         # RMS force convergence threshold (rms_multiple, default).
-        rms_forces = self.rms(self.forces_list[-1])
+        force_blocks = np.asarray(self.forces_list[-1]).reshape(
+            len(self.images), self.coords_length
+        )
+        active_forces = []
+        for image_index in self.moving_indices:
+            image = self.images[image_index]
+            if image.coord_type in ("cart", "cartesian", "mwcartesian"):
+                active_forces.extend(
+                    force_blocks[image_index][image.active_dof_indices]
+                )
+            else:
+                active_forces.extend(force_blocks[image_index])
+        rms_forces = (
+            self.rms(np.asarray(active_forces))
+            if active_forces
+            else float("inf")
+        )
         # Only start climbing when the COS is fully grown. This
         # attribute may not be defined in all subclasses, so it
         # defaults to True here.

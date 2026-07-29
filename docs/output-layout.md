@@ -33,7 +33,7 @@ Each `pdb2reaction` subcommand writes to its output directory under the filename
 | `sp` | `./result_sp/` |
 | `extract` | `./` (writes `model.pdb`, or `model_<input>.pdb` for multiple inputs) |
 
-Override with `--out-dir <path>` (or `-o`).
+Override stage directories with `--out-dir <path>` (or `-o`). `extract` uses repeatable `-o/--output <file>` instead.
 
 ## Standalone vs `all`
 

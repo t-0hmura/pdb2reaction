@@ -147,7 +147,7 @@ bias:
 ```
 
 ### 共有 YAML セクション
-- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml-reference.md) と同じキーを使用します。`opt.dump` は YAML で設定可能ですが、スキャン軌跡の出力は `--dump` で制御します。
+- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml-reference.md) と同じキーを使用しますが、run-scoped の `opt.dump` は無視されます。スキャン軌跡は `--dump` で制御します。
 
 `opt` の詳細は [YAML リファレンス](yaml-reference.md) を参照してください。
 

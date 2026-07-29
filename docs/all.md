@@ -174,9 +174,9 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | `--ref-pdb FILE` | Reference PDB/mmCIF topology when `-i` provides XYZ/GJF coordinates. | _None_ |
 | `-o, --out-dir PATH` | Top-level output directory. | `./result_all/` |
 | `--convert-files / --no-convert-files` | Global toggle for XYZ / TRJ → PDB / CIF / GJF companions when templates are available. CIF requires a bridged mmCIF/oversized-PDB topology. | `True` |
-| `--dump / --no-dump` | Dump MEP (GSM / DMF) trajectories. Always forwarded to `path-search` / `path-opt`; forwarded to `scan` / `tsopt` only when explicitly set. With `--thermo`, freq always retains the internal `thermoanalysis.yaml` channel even when `--no-dump` is supplied. | `False` |
+| `--dump / --no-dump` | Dump MEP (GSM / DMF) trajectories. An explicit parent toggle is forwarded to `path-search` / `path-opt` and `scan` / `tsopt`; when omitted, each child resolves its YAML/default. With `--thermo`, freq always retains the internal `thermoanalysis.yaml` channel even when `--no-dump` is supplied. | `False` |
 | `--config FILE` | Base YAML applied first. | _None_ |
-| `--show-config / --no-show-config` | Print resolved configuration before execution. | `False` |
+| `--show-config / --no-show-config` | Print the effective YAML plus parent settings before execution. Child-governing parent options are `null` when omitted, because each child then resolves its own YAML/default. | `False` |
 | `--dry-run / --no-dry-run` | Validate options and print the plan. With `--center`, run extraction in a temporary directory to validate derived charge and electron parity. No scan/MEP/TSOPT/freq/DFT stage runs, and no persistent output is produced. | `False` |
 
 ### Charge / spin

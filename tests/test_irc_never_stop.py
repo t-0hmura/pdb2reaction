@@ -68,6 +68,30 @@ def test_workflow_uses_engine_normalized_prefix(tmp_path) -> None:
     )
 
 
+def test_engine_writes_first_last_and_stitched_endpoints(tmp_path) -> None:
+    irc = object.__new__(IRC)
+    irc.out_dir = tmp_path
+    irc.prefix = ""
+    irc.atoms = ("H",)
+    irc.m_sqrt = np.ones(3)
+    irc.all_energies = np.array([-1.0, -0.9])
+    coords = np.array(
+        [
+            [[0.0, 0.0, 0.0]],
+            [[0.0, 0.0, 1.0]],
+        ]
+    )
+
+    irc.dump_ends(tmp_path, "finished", coords=coords, trj=True)
+
+    first = (tmp_path / "finished_first.xyz").read_text(encoding="utf-8")
+    last = (tmp_path / "finished_last.xyz").read_text(encoding="utf-8")
+    trajectory = (tmp_path / "finished_irc_trj.xyz").read_text(encoding="utf-8")
+    assert "0.00000000" in first
+    assert "0.52917721" in last
+    assert trajectory.count("\n1\n") + trajectory.startswith("1\n") >= 2
+
+
 def test_real_irc_generation_invalidates_prefixed_directional_outputs(
     tmp_path,
 ) -> None:

@@ -68,8 +68,10 @@ out_dir/ (default:./result_dft/)
 - `result.yaml` expands to:
  - `energy`: energy in hartree and kcal/mol, convergence flag, engine metadata
   (`engine`: `gpu4pyscf(rks_lowmem)` / `gpu4pyscf` / `pyscf(cpu)`; `used_gpu`; `used_lowmem`).
- - `charges`: Mulliken, meta-Löwdin, and IAO atomic charges (`null` when a method fails).
- - `spin_densities`: Mulliken, meta-Löwdin, and IAO spin densities (UKS only for spins).
+ - `charges [index, element, mulliken, lowdin, iao]`: table-style atomic charges (`null` when a method fails).
+ - `spin_densities [index, element, mulliken, lowdin, iao]`: table-style spin densities for UKS.
+- `result.json` stores the same analyses as nested, method-keyed `charges` and
+  `spin_densities` objects.
 - It also summarizes charge, multiplicity, spin (2S), functional, basis,
   convergence knobs, and resolved output directory.
 

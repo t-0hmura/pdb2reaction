@@ -141,7 +141,8 @@ def test_aimnet_ase_adapter_forwards_charge_spin_and_results(monkeypatch) -> Non
     assert captured["spin"] == 2
 
 
-def test_mace_anicc_receives_requested_dtype(monkeypatch) -> None:
+@pytest.mark.parametrize("dtype", ["float32", "float64"])
+def test_mace_anicc_uses_supported_factory_signature(monkeypatch, dtype) -> None:
     from pdb2reaction.backends.mace import MACECalculator
 
     package = ModuleType("mace")
@@ -150,26 +151,44 @@ def test_mace_anicc_receives_requested_dtype(monkeypatch) -> None:
     captured = {}
 
     def mace_anicc(**kwargs):
-        captured.update(kwargs)
-        return object()
+        captured["factory"] = kwargs
+        return "raw-model" if kwargs.get("return_raw_model") else "calculator"
+
+    class FakeMACECalculator:
+        def __init__(self, **kwargs):
+            captured["calculator"] = kwargs
 
     calculators.mace_anicc = mace_anicc
     calculators.mace_mp = lambda **kwargs: object()
     calculators.mace_off = lambda **kwargs: object()
     calculators.mace_omol = lambda **kwargs: object()
+    calculators.MACECalculator = FakeMACECalculator
+    mace_module = ModuleType("mace.calculators.mace")
+    mace_module.MACECalculator = FakeMACECalculator
     foundations = ModuleType("mace.calculators.foundations_models")
     foundations.mace_mp_urls = {}
     monkeypatch.setitem(sys.modules, "mace", package)
     monkeypatch.setitem(sys.modules, "mace.calculators", calculators)
+    monkeypatch.setitem(sys.modules, "mace.calculators.mace", mace_module)
     monkeypatch.setitem(sys.modules, "mace.calculators.foundations_models", foundations)
 
     calculator = MACECalculator.__new__(MACECalculator)
     calculator.device_str = "cpu"
-    calculator.default_dtype = "float32"
+    calculator.default_dtype = dtype
 
     calculator._build_calc("anicc")
 
-    assert captured == {"device": "cpu", "default_dtype": "float32"}
+    if dtype == "float64":
+        assert captured == {"factory": {"device": "cpu"}}
+    else:
+        assert captured == {
+            "factory": {"device": "cpu", "return_raw_model": True},
+            "calculator": {
+                "models": "raw-model",
+                "device": "cpu",
+                "default_dtype": "float32",
+            },
+        }
 
 
 def test_mace_download_cache_is_url_specific_and_atomic(

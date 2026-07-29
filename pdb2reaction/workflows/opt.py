@@ -765,6 +765,24 @@ def cli(
                     )
                 )
 
+            coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
+            coord_kwargs = dict(geom_cfg)
+            coord_kwargs.pop("coord_type", None)
+            geometry = geom_loader(
+                geom_input_path,
+                coord_type=coord_type,
+                **coord_kwargs,
+            )
+            resolved_dist_freeze: List[Tuple[int, int, float]] = []
+            if dist_freeze:
+                try:
+                    resolved_dist_freeze = _resolve_dist_freeze_targets(
+                        geometry, dist_freeze
+                    )
+                except click.BadParameter as e:
+                    click.echo(f"ERROR: {e}", err=True)
+                    sys.exit(1)
+
             if dry_run:
                 click.echo(
                     pretty_block(
@@ -788,28 +806,12 @@ def cli(
 
             out_dir_path.mkdir(parents=True, exist_ok=True)
 
-            coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
-            # Pass all geometry kwargs except coord_type as coord_kwargs
-            coord_kwargs = dict(geom_cfg)
-            coord_kwargs.pop("coord_type", None)
-            geometry = geom_loader(
-                geom_input_path,
-                coord_type=coord_type,
-                **coord_kwargs,
-            )
-
             # Attach the configured MLIP calculator.
             base_calc = create_calculator(**calc_cfg)
             geometry.set_calculator(base_calc)
             echo_resolved_device()
 
-            resolved_dist_freeze: List[Tuple[int, int, float]] = []
-            if dist_freeze:
-                try:
-                    resolved_dist_freeze = _resolve_dist_freeze_targets(geometry, dist_freeze)
-                except click.BadParameter as e:
-                    click.echo(f"ERROR: {e}", err=True)
-                    sys.exit(1)
+            if resolved_dist_freeze:
                 click.echo(
                     pretty_block(
                         "dist_freeze (active)",

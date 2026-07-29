@@ -202,7 +202,7 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 | `--ref-pdb FILE` | XYZ/GJF入力用の参照 PDB/mmCIF topology | _None_ |
 | `-o, --out-dir PATH` | トップレベル出力ディレクトリ | `./result_all/` |
 | `--convert-files/--no-convert-files` | XYZ/TRJ → 対応する PDB/CIF/GJF companion の全体切替 | `True` |
-| `--dump/--no-dump` | MEP（GSM/DMF）軌跡を出力。`path-search`/`path-opt` には常時転送され、`scan`/`tsopt` には明示指定時のみ転送。`--thermo` 使用時は内部入力の `thermoanalysis.yaml` を常に保持し、`--no-dump` でもこの channel は抑止しません | `False` |
+| `--dump/--no-dump` | MEP（GSM/DMF）軌跡を出力。親で明示したトグルは `path-search`/`path-opt` と `scan`/`tsopt` に転送され、省略時は各子コマンドの YAML/デフォルトを使用。`--thermo` 使用時は内部入力の `thermoanalysis.yaml` を常に保持し、`--no-dump` でもこの channel は抑止しません | `False` |
 | `--config FILE` | 先に適用するベース YAML | _None_ |
 | `--show-config/--no-show-config` | 実行前に解決済み設定を表示 | `False` |
 | `--dry-run/--no-dry-run` | 設定を検証して計画を表示。`--center` 指定時は一時ディレクトリで extract を実行し、導出電荷と電子数 parity を検証する。scan/MEP/TSOPT/freq/DFT は実行せず、永続出力も作らない | `False` |

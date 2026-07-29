@@ -1884,11 +1884,11 @@ def test_colab_operates_every_workflow_through_validate_run_and_results(
         if subcommand == "all" and all_kind == "scan":
             bond = {"a": atoms[0], "b": atoms[1], "t": 1.5}
             app["S"]["scan_atoms"] = [atoms[0], atoms[1]]
-            app["S"]["scan_stages"] = [[bond]]
+            app["S"]["scan_stages"] = [[bond], [{**bond, "t": 1.7}]]
         if subcommand == "scan":
             bond = {"a": atoms[0], "b": atoms[1], "t": 1.5}
             app["S"]["scan_atoms"] = [atoms[0], atoms[1]]
-            app["S"]["scan_stages"] = [[bond]]
+            app["S"]["scan_stages"] = [[bond], [{**bond, "t": 1.7}]]
         if subcommand in {"scan2d", "scan3d"}:
             axes = [
                 {"a": atoms[0], "b": atoms[1], "lo": 1.0, "hi": 2.0},
@@ -1914,6 +1914,12 @@ def test_colab_operates_every_workflow_through_validate_run_and_results(
             app["w_charge_ok"].value = True
         command = app["build_cmd"]()
         assert command[:2] == ["pdb2reaction", subcommand]
+        if subcommand == "scan" or (subcommand == "all" and all_kind == "scan"):
+            scan_flag = command.index("-s")
+            assert command.count("-s") == 1
+            literals = command[scan_flag + 1 : scan_flag + 3]
+            assert len(literals) == 2
+            assert all(not literal.startswith("-") for literal in literals)
         click_command = app["PRODUCT_CLI"].get_command(
             app["click"].Context(app["PRODUCT_CLI"]), subcommand,
         )

@@ -69,6 +69,8 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --step-size 0.05 --never-stop \
 ```text
 out_dir/ (default:./result_irc/)
 ├─ <prefix>finished_irc_trj.xyz   # Complete IRC trajectory
+├─ <prefix>finished_first.xyz     # Raw first endpoint used for endpoint comparison
+├─ <prefix>finished_last.xyz      # Raw last endpoint used for endpoint comparison
 ├─ <prefix>finished_irc.pdb       # PDB companion (when ref PDB available + conversion enabled)
 ├─ <prefix>finished_irc.cif       # Bridge-input companion with original IDs
 ├─ <prefix>forward_irc_trj.xyz    # Present when the forward branch runs
@@ -78,6 +80,10 @@ out_dir/ (default:./result_irc/)
 ├─ <prefix>backward_irc.pdb       # Backward-branch PDB companion (same gating)
 └─ <prefix>backward_irc.cif       # Bridge-input companion
 ```
+
+`finished_first.xyz` and `finished_last.xyz` are directional endpoint
+artifacts; their order alone does not establish chemical reactant/product
+identity.
 
 When `irc.prefix` is non-empty, EulerPC inserts one underscore before the
 filename; for example, `prefix: trial` produces

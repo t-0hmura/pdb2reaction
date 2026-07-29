@@ -112,7 +112,13 @@ def apply_backend_defaults(cfg: Dict[str, Any]) -> None:
     Only overwrite keys whose current value equals the UMA default
     (i.e., the caller has not explicitly set them via CLI or YAML).
     """
-    defaults = _BACKEND_DEFAULTS_MAP.get(cfg.get("backend", "uma"))
+    backend = str(cfg.get("backend", "uma"))
+    if backend == "auto":
+        from pdb2reaction.backends import resolve_backend
+
+        backend = resolve_backend(backend)
+        cfg["backend"] = backend
+    defaults = _BACKEND_DEFAULTS_MAP.get(backend)
     if defaults is None:
         return
     for key, val in defaults.items():
@@ -476,8 +482,6 @@ RSIRFO_KW: Dict[str, Any] = {
     "hessian_recalc_reset": True,
     "max_micro_cycles": 50,
     "augment_bonds": False,
-    "min_line_search": True,
-    "max_line_search": True,
     "assert_neg_eigval": False,
     "track_mode_by_overlap": False,
     "reject_mode_loss": True,

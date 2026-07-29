@@ -41,12 +41,18 @@ def _validate_extra_args(
 
     for raw in extra_args or ():
         token = str(raw)
+        option_name, separator, option_value = token.partition("=")
+        normalized = (
+            option_name.lower() + separator + option_value
+            if option_name.startswith("--")
+            else token
+        )
         for option in reserved:
-            if token == option:
+            if normalized == option:
                 raise ValueError(
                     f"extra_args cannot override managed output option {option!r}"
                 )
-            if option.startswith("--") and token.startswith(f"{option}="):
+            if option.startswith("--") and normalized.startswith(f"{option}="):
                 raise ValueError(
                     f"extra_args cannot override managed output option {option!r}"
                 )

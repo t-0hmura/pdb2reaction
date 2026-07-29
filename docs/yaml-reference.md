@@ -466,8 +466,6 @@ rsirfo:
  hessian_recalc_reset: true # Reset recalc counter after exact Hessian
  max_micro_cycles: 50 # Micro-iterations per macro cycle
  augment_bonds: false # Augment reaction path based on bond analysis
- min_line_search: true # Enforce minimum line-search step
- max_line_search: true # Enforce maximum line-search step
  assert_neg_eigval: false # Require negative eigenvalue at convergence
  track_mode_by_overlap: false # Track the selected TS mode by overlap with the previous Hessian
  reject_mode_loss: true # Reject a trial that loses established negative curvature

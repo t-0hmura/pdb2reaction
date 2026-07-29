@@ -66,7 +66,7 @@ Each space-separated literal after a single `-s` is one stage; do **not** repeat
 | `<out_dir>/preopt/result.{xyz,pdb,gjf}` | `--preopt` | pre-optimized starting geometry |
 | `<out_dir>/stage_NN/result.xyz` | stage reaches its output-writing step | final attempted geometry; check the stage `converged` value |
 | `<out_dir>/stage_NN/scan_trj.xyz` | stage is attempted | per-stage scan trajectory; it may be empty when the target already equals the starting distance |
-| `<out_dir>/stage_NN/scan_*.xyz` | `--dump` or YAML `opt.dump: true` | intermediate optimizer steps |
+| `<out_dir>/stage_NN/scan_*.xyz` | `--dump` | intermediate optimizer steps; run-scoped YAML `opt.dump` is ignored |
 | `<out_dir>/scan_trj.xyz` | at least one scan step produces a frame | stitched scan trajectory across all stages |
 | `<out_dir>/scan.pdb` | stitched XYZ exists, `--convert-files`, and PDB/mmCIF topology/reference available | normalized PDB companion used between pipeline stages |
 | `<out_dir>/scan.cif` | stitched XYZ exists, `--convert-files`, and input/reference required the mmCIF or oversized-PDB bridge | public trajectory with original IDs |

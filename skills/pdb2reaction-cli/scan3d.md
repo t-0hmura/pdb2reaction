@@ -48,7 +48,7 @@ pdb2reaction scan3d -i 1.R.pdb -l 'SAM:1' \
 | `<out_dir>/grid/preopt_iDDD_jDDD_kDDD.{xyz,pdb,cif,gjf}` (DDD = round(d×100), Å) | a new scan is run | starting-structure snapshot (actually preoptimized only with `--preopt`); format companions depend on the input topology and `--convert-files` |
 | `<out_dir>/grid/inner_path_d1_NNN_d2_MMM_trj.xyz` | `--dump` | inner-loop trajectory |
 | `<out_dir>/scan3d_density.html` | scan/CSV data pass validation and interpolation | interactive 3D iso-surface |
-| `<out_dir>/surface.csv` | unless `--csv` (post-mortem reuses the input csv) | 3D energy surface (i, j, k, d1_A, d2_A, d3_A, energy_hartree, bias_converged, energy_kcal, plus axis labels) |
+| `<out_dir>/surface.csv` | unless `--csv` (post-mortem reuses the input csv) | 3D energy surface (i, j, k, d1_A, d2_A, d3_A, energy_hartree, bias_converged, is_preopt, energy_kcal, plus axis labels) |
 
 `result.json` stores grid metadata and file paths; `surface.csv` holds the
 per-grid-point energies and `bias_converged` values. In `--csv` post-mortem
@@ -65,6 +65,10 @@ When rounded distance tags collide, later point filenames append
   their number of attempted grid optimizations scales in fewer dimensions.
 - `--csv` is the post-mortem entry point for regenerating the 3D density
   visualization without redoing the scan.
+- Plot-only input requires `d1_A`, `d2_A`, `d3_A`, and `energy_hartree` or
+  `energy_kcal`. Preoptimization, explicitly unconverged, and non-finite rows
+  are excluded. At least four unique non-coplanar usable points spanning all
+  three axes are required.
 
 ## See also
 

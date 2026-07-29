@@ -528,6 +528,15 @@ def public_output_key(root: Path, path: Path) -> str:
             "public outputs must be root files or descendants of "
             f"{SEGMENTS_DIRNAME!r}: {destination}"
         )
+    effective_root = public_root.resolve(strict=False)
+    effective_destination = destination.resolve(strict=False)
+    try:
+        effective_destination.relative_to(effective_root)
+    except ValueError as exc:
+        raise ValueError(
+            f"public output {destination} resolves outside pipeline root "
+            f"{public_root}"
+        ) from exc
     return f"output.public.{relative.as_posix()}"
 
 

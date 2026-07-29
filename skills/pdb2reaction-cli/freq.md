@@ -120,8 +120,9 @@ freeze of `LKH/HL` cap-H parents written by `extract`), and YAML
 
 ## Caveats
 
-- A minimum should have **0 imaginary frequencies**, a TS should have
-  **exactly 1**.
+- A TS used by the composite workflow must have **exactly 1** imaginary
+  frequency. Zero is ideal when independently certifying a minimum, but R/P
+  imaginary counts do not block their thermochemistry.
 - An all-frozen structure has no active vibrational DOF and raises an error.
 - `freq` reports every strictly negative frequency in `n_imaginary`.
   `tsopt` deliberately applies its configured small-negative threshold

@@ -57,7 +57,8 @@ HEAD_IP="$(getent ahostsv4 "${HEAD_NODE}" | awk 'NR==1{print $1}')"
 # --- Ports (avoid collisions: derive from PBS_JOBID) ---
 JOBTAG="${PBS_JOBID%%.*}"
 JOBNUM="${JOBTAG//[^0-9]/}"; JOBNUM="${JOBNUM:-0}"
-BASE_PORT=$((20000 + (JOBNUM % 20000)))
+PORT_SLOT=$((JOBNUM % 20))
+BASE_PORT=$((20000 + PORT_SLOT * 1000))
 
 RAY_PORT="${BASE_PORT}"
 RAY_OBJECT_MANAGER_PORT=$((BASE_PORT + 1))

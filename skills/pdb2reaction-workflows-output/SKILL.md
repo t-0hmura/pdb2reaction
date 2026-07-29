@@ -215,12 +215,12 @@ pdb2reaction opt -i seg_01/irc/finished_last.xyz --ref-pdb 1.R.pdb \
     -l 'SAM:1,GPP:-3' -b uma --out-json -o seg_01/end_last
 ```
 
-**GATE**: both opt results must be `converged`, and frequency analysis must
-show `n_imaginary == 0`. Compare bond patterns and coordinates with the MEP
-left/right endpoints to assign which optimized end is R and which is P. Do not
-infer chemical identity from `first` / `last` or from energy alone. If you need
-the canonical `segments/seg_NN/{reactant,ts,product}` layout and automatic
-orientation, use `all` instead of manually inventing those paths.
+**GATE**: both opt results must be `converged`. Compare bond patterns and
+coordinates with the MEP left/right endpoints to assign which optimized end is
+R and which is P. Do not infer chemical identity from `first` / `last` or from
+energy alone. If you need the canonical
+`segments/seg_NN/{reactant,ts,product}` layout and automatic orientation, use
+`all` instead of manually inventing those paths.
 
 **Stage 4 — thermochemistry** (optional, = `all --thermo`): run freq on the
 actual TS and the two optimized endpoints:
@@ -231,6 +231,10 @@ pdb2reaction freq -i seg_01/end_last/final_geometry.pdb  -l 'SAM:1,GPP:-3' -b um
 ```
 
 Use the identity assignment from Stage 3 when labeling R/P.
+
+**GATE**: the requested thermochemistry fields for both endpoints must be
+finite. R/P imaginary counts are optional minimum-certification diagnostics,
+not a thermochemistry gate.
 
 **Stage 5 — DFT//MLIP** (optional, = `all --dft`):
 

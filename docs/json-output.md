@@ -307,11 +307,19 @@ the per-cycle force/step convergence keys and Hessian-mode `safeguards` object.
 | `model` | string \| null | Model identifier; null for plot-only `scan3d --csv` |
 | `solvent` | string \| null | Implicit solvent or `"none"`; null for plot-only `scan3d --csv` because imported energies have no calculator provenance |
 | `max_step_size_angstrom` | float | Max bond-length step per increment (Å, `scan2d` only) |
-| `n_grid_points` | int | Total grid points |
+| `n_grid_points` | int | Grid rows excluding `is_preopt=true` |
+| `execution_status` | string | Execution-level completion state |
+| `n_points_attempted` | int | Fresh-run grid points attempted, excluding preoptimization |
+| `n_points_usable` | int | Fresh-run points eligible for scientific reuse |
+| `point_outcomes` | object[] | Per-point convergence, energy, artifact, and eligibility data |
 | `grid_shape` | int[] | Grid dimensions (only when running fresh; absent under `scan3d --csv`) |
 | `pair1`, `pair2` (,`pair3`) | object | `{i, j, low, high}` with optional `label_i`, `label_j`. `scan3d`: present only when running fresh; absent under `--csv` re-plot |
 | `min_energy_hartree` | float | Surface minimum energy |
 | `files` | object | CSV + plot files |
+
+The outcome-count fields are emitted by fresh scans. Plot-only `scan3d --csv`
+does not report an attempted count and may omit usable count when the imported
+CSV lacks complete provenance.
 
 ### `path-opt`
 
@@ -359,17 +367,14 @@ See also the extended [`summary.json` section](#summary-json-path-search-all) fo
 
 ### `dft`
 
-> **Note:** `dft` writes `result.json` only on a successful SCF (exit 0), with
-> `status: "converged"`. A
-> non-converged SCF returns exit code 3 and skips `result.json`; SCF status
-> is encoded by the exit code when no result exists. The generic
-> `not_converged` status does not apply to `dft`;
-> an unhandled exception, however, still writes the standard `error` envelope
-> (`result.json` + `summary.json`).
+> **Note:** `dft` writes `result.json` and `summary.json` for both converged and
+> non-converged SCF attempts. Non-convergence records
+> `status: "not_converged"` and `converged: false`, then exits with code 3.
+> An unhandled exception writes the standard `error` envelope.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `status` | string | `"converged"` |
+| `status` | string | `"converged"` or `"not_converged"` |
 | `converged` | bool | SCF converged? |
 | `charge` | int | System charge |
 | `spin` | int | Spin multiplicity |
@@ -405,7 +410,7 @@ See also the extended [`summary.json` section](#summary-json-path-search-all) fo
 | `n_link_hydrogens` | int | Cap hydrogens added at carbon-parent truncation bonds |
 | `exclude_backbone` | bool | Whether backbone atoms were excluded |
 | `include_h2o` | bool | Whether crystallographic waters were included |
-| `ligand_charge_input` | string | User-supplied `--ligand-charge` mapping |
+| `ligand_charge_input` | string \| null | User-supplied mapping, or null when omitted |
 | `center` | string | Center residue |
 | `radius` | float | Extraction radius (angstrom) |
 | `input_files` | string[] | Original input PDB/mmCIF paths |
@@ -420,6 +425,8 @@ See also the extended [`summary.json` section](#summary-json-path-search-all) fo
 | `min_energy_hartree` | float | Minimum energy across frames |
 | `max_energy_hartree` | float | Maximum energy across frames |
 | `energy_source` | string | `"trajectory_comment"` or `"mlip_recomputed"` |
+| `energy_provenance` | string[] | Per-frame energy source provenance |
+| `energy_unit` | string | Stored energy unit (`hartree`) |
 | `backend` | string or null | MLIP backend only when frame energies were recomputed; null in comment-energy mode |
 | `charge` / `multiplicity` | int or null | Resolved recomputation state, otherwise null |
 | `solvent` / `solvent_model` | string or null | Recomputed-calculator solvent settings, otherwise null |

@@ -305,11 +305,19 @@ dimer モードも `status` に `"converged"` / `"not_converged"` / `"stalled"` 
 | `model` | string \| null | MLIPモデル名。plot-onlyの`scan3d --csv`ではnull |
 | `solvent` | string \| null | 暗黙溶媒または`"none"`。importしたenergyにはcalculator provenanceがないため、plot-onlyの`scan3d --csv`ではnull |
 | `max_step_size_angstrom` | float | 1 ステップ当たりの最大結合長変位 (Å, `scan2d` のみ) |
-| `n_grid_points` | int | グリッド点数 |
+| `n_grid_points` | int | `is_preopt=true` を除くグリッド行数 |
+| `execution_status` | string | 実行レベルの完了状態 |
+| `n_points_attempted` | int | fresh run の試行グリッド点数（事前最適化を除く） |
+| `n_points_usable` | int | 科学計算上再利用可能な fresh-run 点数 |
+| `point_outcomes` | object[] | 各点の収束・energy・artifact・eligibility |
 | `grid_shape` | int[] | グリッド次元 (`scan3d --csv` 再プロット時には省略) |
 | `pair1`, `pair2` (,`pair3`) | object | `{i, j, low, high}` (オプション: `label_i`, `label_j`)。`scan3d` で `--csv` 再プロット時は省略 |
 | `min_energy_hartree` | float | 表面最小エネルギー |
 | `files` | object | CSV + プロットファイル |
+
+outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
+試行数を出力せず、入力 CSV の provenance が不完全なら usable count も
+省略する場合があります。
 
 ### `path-opt`
 
