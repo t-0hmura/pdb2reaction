@@ -6,12 +6,24 @@ import pytest
 from pysisyphus.Geometry import Geometry
 import pdb2reaction.workflows.align_freeze as align_freeze
 from pdb2reaction.workflows.align_freeze import (
+    alignment_failed_pair_indices,
     align_second_to_first_kabsch_inplace,
     kabsch_R_t,
     _rodrigues,
     _rotation_align_vectors,
     _orth_proj_perp,
 )
+
+
+def test_alignment_failure_indices_read_nested_scan_outcome():
+    results = [
+        {"align": {}, "scan": {"converged": True}},
+        {"align": {}, "scan": {"converged": False}},
+        {"align": {}, "scan": {}},
+        {},
+    ]
+
+    assert alignment_failed_pair_indices(results) == [1, 2, 3]
 
 
 @pytest.mark.parametrize(

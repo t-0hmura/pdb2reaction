@@ -36,7 +36,10 @@ from pdb2reaction.workflows import path_search as _path_search
 from pdb2reaction.workflows import path_opt as _path_opt
 from pdb2reaction.workflows import tsopt as _tsopt
 from pdb2reaction.workflows import freq as _freq_cli
-from pdb2reaction.workflows.align_freeze import align_and_refine_sequence_inplace
+from pdb2reaction.workflows.align_freeze import (
+    align_and_refine_sequence_inplace,
+    alignment_failed_pair_indices,
+)
 from pdb2reaction.backends import create_calculator
 from pdb2reaction.core.defaults import (
     GEOM_KW_DEFAULT,
@@ -5485,11 +5488,7 @@ def cli(
                     _geoms, shared_calc=_align_calc,
                     out_dir=_align_dir / "refine", verbose=True,
                 )
-                failed_pairs = [
-                    index
-                    for index, result in enumerate(alignment_results)
-                    if result.get("converged") is not True
-                ]
+                failed_pairs = alignment_failed_pair_indices(alignment_results)
                 if failed_pairs:
                     raise click.ClickException(
                         "Input alignment did not converge for pair(s): "

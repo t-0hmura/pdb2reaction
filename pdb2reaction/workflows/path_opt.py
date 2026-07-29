@@ -71,7 +71,10 @@ from pdb2reaction.core.utils import (
     merge_freeze_atom_indices,
     echo_resolved_device,
 )
-from pdb2reaction.workflows.align_freeze import align_and_refine_sequence_inplace
+from pdb2reaction.workflows.align_freeze import (
+    align_and_refine_sequence_inplace,
+    alignment_failed_pair_indices,
+)
 from pdb2reaction.workflows._path_yaml_helpers import apply_single_opt_yaml_layer
 from pdb2reaction.cli.common_options import add_coord_type_option, add_precision_option, add_backend_model_option, add_calc_file_option, add_deterministic_option, add_allow_charge_mult_mismatch_option
 from pdb2reaction.cli.decorators import resolve_yaml_sources, load_merged_yaml_cfg, _write_error_json, render_cli_exception
@@ -1072,11 +1075,7 @@ def cli(
                 out_dir=out_dir_path / "align_refine",
                 verbose=True,
             )
-            failed_pairs = [
-                index
-                for index, result in enumerate(alignment_results)
-                if result.get("converged") is not True
-            ]
+            failed_pairs = alignment_failed_pair_indices(alignment_results)
             if failed_pairs:
                 raise click.ClickException(
                     "Input alignment did not converge for pair(s): "

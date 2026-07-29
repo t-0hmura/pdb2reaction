@@ -93,7 +93,11 @@ from pdb2reaction.io.structure_formats import (
     residue_auth_identity,
 )
 from pdb2reaction.domain.bond_changes import has_bond_change
-from pdb2reaction.workflows.align_freeze import align_and_refine_sequence_inplace, kabsch_R_t
+from pdb2reaction.workflows.align_freeze import (
+    align_and_refine_sequence_inplace,
+    alignment_failed_pair_indices,
+    kabsch_R_t,
+)
 from pdb2reaction.cli.common_options import (
     add_allow_charge_mult_mismatch_option,
     add_backend_model_option,
@@ -2500,11 +2504,7 @@ def cli(
                     out_dir=out_dir_path / "align_refine",
                     verbose=True,
                 )
-                failed_pairs = [
-                    index
-                    for index, result in enumerate(alignment_results)
-                    if result.get("converged") is not True
-                ]
+                failed_pairs = alignment_failed_pair_indices(alignment_results)
                 if failed_pairs:
                     raise click.ClickException(
                         "Input alignment did not converge for pair(s): "

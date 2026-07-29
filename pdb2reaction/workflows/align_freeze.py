@@ -522,10 +522,21 @@ def align_and_refine_sequence_inplace(
     return results
 
 
+def alignment_failed_pair_indices(results: Sequence[Dict[str, Any]]) -> List[int]:
+    """Return pair indices whose freeze-guided refinement did not converge."""
+    failed: List[int] = []
+    for index, result in enumerate(results):
+        scan = result.get("scan") if isinstance(result, dict) else None
+        if not isinstance(scan, dict) or scan.get("converged") is not True:
+            failed.append(index)
+    return failed
+
+
 __all__ = [
     "align_second_to_first_kabsch_inplace",
     "scan_freeze_atoms_toward_target_inplace",
     "align_and_refine_pair_inplace",
     "align_and_refine_sequence_inplace",
+    "alignment_failed_pair_indices",
     "kabsch_R_t",
 ]
