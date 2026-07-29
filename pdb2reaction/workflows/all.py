@@ -460,6 +460,8 @@ def _append_explicit_child_runtime_argv(
     backend: Optional[str] = None,
     solvent: Optional[str] = None,
     solvent_model: Optional[str] = None,
+    max_nodes: Optional[int] = None,
+    preopt: Optional[bool] = None,
 ) -> None:
     """Forward only parent-explicit runtime values to a child command.
 
@@ -479,6 +481,9 @@ def _append_explicit_child_runtime_argv(
         child_args.extend(["--solvent", str(solvent).lower()])
     if solvent_model is not None:
         child_args.extend(["--solvent-model", str(solvent_model).lower()])
+    if max_nodes is not None:
+        child_args.extend(["--max-nodes", str(int(max_nodes))])
+    _append_toggle_arg(child_args, "--preopt", preopt)
 
 
 def _build_calc_cfg(
@@ -5567,8 +5572,6 @@ def cli(
                 str(int(spin)),
                 "--mep-mode",
                 mep_mode_kind,
-                "--max-nodes",
-                str(int(max_nodes)),
                 "--opt-mode",
                 str(opt_mode_norm),
                 "--out-dir",
@@ -5584,7 +5587,6 @@ def cli(
                 _append_toggle_arg(po_args, "--climb", bool(climb))
             _append_toggle_arg(po_args, "--dump", bool(dump))
             _append_toggle_arg(po_args, "--convert-files", bool(convert_files))
-            _append_toggle_arg(po_args, "--preopt", bool(preopt))
             ref_pdb_for_seg: Optional[Path] = None
             if model_ref_pdbs and len(model_ref_pdbs) >= idx:
                 ref_pdb_for_seg = model_ref_pdbs[idx - 1]
@@ -5615,6 +5617,10 @@ def cli(
                     if cli_param_overridden(ctx, "workers_per_node")
                     else None
                 ),
+                max_nodes=(
+                    max_nodes if cli_param_overridden(ctx, "max_nodes") else None
+                ),
+                preopt=preopt if cli_param_overridden(ctx, "preopt") else None,
             )
             if cli_param_overridden(ctx, "solvent"):
                 po_args.extend(["--solvent", str(solvent)])
@@ -6031,7 +6037,6 @@ def cli(
         # freeze_ref is None and freeze-links should not be activated.
         _append_toggle_arg(ps_args, "--freeze-links", bool(freeze_links_flag and freeze_ref is not None))
         ps_args.extend(["--mep-mode", mep_mode_kind])
-        ps_args.extend(["--max-nodes", str(int(max_nodes))])
         if cli_param_overridden(ctx, "max_cycles"):
             ps_args.extend(["--max-cycles", str(int(max_cycles))])
         if cli_param_overridden(ctx, "climb"):
@@ -6041,7 +6046,6 @@ def cli(
         if thresh is not None:
             ps_args.extend(["--thresh", str(thresh)])
         ps_args.extend(["--out-dir", str(path_dir)])
-        _append_toggle_arg(ps_args, "--preopt", bool(preopt))
         _append_toggle_arg(ps_args, "--convert-files", bool(convert_files))
         if args_yaml is not None:
             ps_args.extend(["--config", str(args_yaml)])
@@ -6058,6 +6062,10 @@ def cli(
                 if cli_param_overridden(ctx, "workers_per_node")
                 else None
             ),
+            max_nodes=(
+                max_nodes if cli_param_overridden(ctx, "max_nodes") else None
+            ),
+            preopt=preopt if cli_param_overridden(ctx, "preopt") else None,
         )
         if cli_param_overridden(ctx, "solvent"):
             ps_args.extend(["--solvent", str(solvent)])
@@ -6293,60 +6301,60 @@ def cli(
         from pdb2reaction.workflows._all_helpers import build_pipeline_summary_payload
         nonlocal citation_post_segments
         citation_post_segments = list(post_segment_logs)
-        try:
-            summary_payload = build_pipeline_summary_payload(
-                out_dir=out_dir,
-                path_dir=path_dir,
-                summary=summary,
-                refine_path=refine_path,
-                do_tsopt=do_tsopt,
-                do_thermo=do_thermo,
-                do_dft=do_dft,
-                dft_func_basis_use=dft_func_basis_use,
-                opt_mode=opt_mode,
-                opt_mode_post=opt_mode_post,
-                path_opt_mode=opt_mode_norm,
-                post_opt_mode=tsopt_opt_mode_default,
-                ts_opt_mode=tsopt_opt_mode_default,
-                endpoint_opt_mode=tsopt_opt_mode_default,
-                mep_mode_kind=mep_mode_kind,
-                dmf_correlated=dmf_correlated_effective,
-                mlip_backend=_mlip_backend_shared,
-                mlip_model=_mlip_model_shared,
-                mlip_precision=_mlip_precision_shared,
-                command_str=command_str,
-                q_int=q_int,
-                spin=spin,
-                freeze_atoms=_freeze_atoms_for_log(),
-                post_segment_logs=post_segment_logs,
+        summary_payload = build_pipeline_summary_payload(
+            out_dir=out_dir,
+            path_dir=path_dir,
+            summary=summary,
+            refine_path=refine_path,
+            do_tsopt=do_tsopt,
+            do_thermo=do_thermo,
+            do_dft=do_dft,
+            dft_func_basis_use=dft_func_basis_use,
+            opt_mode=opt_mode,
+            opt_mode_post=opt_mode_post,
+            path_opt_mode=opt_mode_norm,
+            post_opt_mode=tsopt_opt_mode_default,
+            ts_opt_mode=tsopt_opt_mode_default,
+            endpoint_opt_mode=tsopt_opt_mode_default,
+            mep_mode_kind=mep_mode_kind,
+            dmf_correlated=dmf_correlated_effective,
+            mlip_backend=_mlip_backend_shared,
+            mlip_model=_mlip_model_shared,
+            mlip_precision=_mlip_precision_shared,
+            command_str=command_str,
+            q_int=q_int,
+            spin=spin,
+            freeze_atoms=_freeze_atoms_for_log(),
+            post_segment_logs=post_segment_logs,
+        )
+        current_public = _refresh_current_public_outputs(manifest, out_dir)
+        current_public_set = set(current_public)
+        summary_payload["current_output_paths"] = [
+            path.relative_to(out_dir).as_posix()
+            for path in current_public
+            if path.is_relative_to(out_dir)
+        ]
+        mep_payload = summary_payload.get("mep") or {}
+        for field, name in (
+            ("traj_pdb", "mep.pdb"),
+            ("mep_plot", "energy_diagram_MEP.png"),
+        ):
+            candidate = (out_dir / name).resolve(strict=False)
+            mep_payload[field] = (
+                str(out_dir / name) if candidate in current_public_set else None
             )
-            current_public = _refresh_current_public_outputs(
-                manifest, out_dir
+        write_summary_log(path_dir / "summary.log", summary_payload)
+        copied = _copy_public_logged(
+            path_dir / "summary.log",
+            out_dir / "summary.log",
+            label="summary.log",
+            echo=False,
+        )
+        if not copied:
+            raise click.ClickException(
+                f"Failed to publish summary.log to {out_dir / 'summary.log'}."
             )
-            current_public_set = set(current_public)
-            summary_payload["current_output_paths"] = [
-                path.relative_to(out_dir).as_posix()
-                for path in current_public
-                if path.is_relative_to(out_dir)
-            ]
-            mep_payload = summary_payload.get("mep") or {}
-            for field, name in (
-                ("traj_pdb", "mep.pdb"),
-                ("mep_plot", "energy_diagram_MEP.png"),
-            ):
-                candidate = (out_dir / name).resolve(strict=False)
-                mep_payload[field] = str(out_dir / name) if candidate in current_public_set else None
-            write_summary_log(path_dir / "summary.log", summary_payload)
-            copied = _copy_public_logged(
-                path_dir / "summary.log",
-                out_dir / "summary.log",
-                label="summary.log",
-                echo=False,
-            )
-            if copied:
-                _echo_detail(f"[all] Copied summary.log → {out_dir / 'summary.log'}")
-        except (OSError, KeyError, ValueError, TypeError) as e:
-            _echo(f"[write] WARNING: Failed to write summary.log: {e}", err=True)
+        _echo_detail(f"[all] Copied summary.log → {out_dir / 'summary.log'}")
 
     def _finalize_current_summary() -> None:
         summary["key_output_files"] = _current_key_output_files(
@@ -7099,68 +7107,59 @@ def cli(
         _claim_public(out_dir / "irc_plot_all.png")
 
     # Refresh summary.json with final energy diagram metadata (including aggregated diagrams)
-    try:
-        summary["energy_diagrams"] = list(energy_diagrams)
-        _enrich_summary(
-            summary,
-            version="",
-            pipeline_mode="path-search" if refine_path else "path-opt",
-            out_dir=out_dir,
-            mlip_backend=_mlip_backend_shared,
-            mlip_model=_mlip_model_shared,
-            mlip_precision=_mlip_precision_shared,
-            charge=q_int,
-            spin=spin,
-            command=command_str,
-            post_segments=post_segment_logs,
-            config={
-                "refine_path": refine_path,
-                "tsopt": do_tsopt,
-                "thermo": do_thermo,
-                "dft": do_dft,
-                "opt_mode": tsopt_opt_mode_default,
-                "path_opt_mode": opt_mode_norm,
-                "post_opt_mode": tsopt_opt_mode_default,
-                "ts_opt_mode": tsopt_opt_mode_default,
-                "endpoint_opt_mode": tsopt_opt_mode_default,
-                "mep_mode": mep_mode_kind,
-                "dmf_correlated": dmf_correlated_effective,
-            },
-            freeze_atoms=_freeze_atoms_for_log(),
-            manifest=manifest,
+    summary["energy_diagrams"] = list(energy_diagrams)
+    _enrich_summary(
+        summary,
+        version="",
+        pipeline_mode="path-search" if refine_path else "path-opt",
+        out_dir=out_dir,
+        mlip_backend=_mlip_backend_shared,
+        mlip_model=_mlip_model_shared,
+        mlip_precision=_mlip_precision_shared,
+        charge=q_int,
+        spin=spin,
+        command=command_str,
+        post_segments=post_segment_logs,
+        config={
+            "refine_path": refine_path,
+            "tsopt": do_tsopt,
+            "thermo": do_thermo,
+            "dft": do_dft,
+            "opt_mode": tsopt_opt_mode_default,
+            "path_opt_mode": opt_mode_norm,
+            "post_opt_mode": tsopt_opt_mode_default,
+            "ts_opt_mode": tsopt_opt_mode_default,
+            "endpoint_opt_mode": tsopt_opt_mode_default,
+            "mep_mode": mep_mode_kind,
+            "dmf_correlated": dmf_correlated_effective,
+        },
+        freeze_atoms=_freeze_atoms_for_log(),
+        manifest=manifest,
+    )
+    _publish_manifest_summary(
+        path_dir / "summary.json",
+        summary,
+        manifest=manifest,
+        key="path.summary",
+        out_dir=out_dir,
+    )
+    _echo_detail(f"[write] Updated '{path_dir / 'summary.json'}' with energy diagrams.")
+    dst_summary = out_dir / "summary.json"
+    if not _copy_public_logged(
+        path_dir / "summary.json",
+        dst_summary,
+        label="summary.json",
+        echo=False,
+    ):
+        raise click.ClickException(
+            f"Failed to publish summary.json to {dst_summary}."
         )
-        _publish_manifest_summary(
-            path_dir / "summary.json",
-            summary,
-            manifest=manifest,
-            key="path.summary",
-            out_dir=out_dir,
-        )
-        _echo_detail(f"[write] Updated '{path_dir / 'summary.json'}' with energy diagrams.")
-        try:
-            dst_summary = out_dir / "summary.json"
-            _copy_public_logged(
-                path_dir / "summary.json",
-                dst_summary,
-                label="summary.json",
-                echo=False,
-            )
-            _echo_detail(f"[all] Copied summary.json → {dst_summary}")
-        except Exception as e:
-            _echo(
-                f"[all] WARNING: Failed to mirror summary.json to {out_dir}: {e}",
-                err=True,
-            )
-        _write_pipeline_summary_log(post_segment_logs)
-        # summary.log becomes current-run owned only after the writer returns;
-        # republish JSON once more so key_output_files includes that final root
-        # artifact as well as every earlier producer-owned output.
-        _finalize_current_summary()
-    except Exception as e:
-        _echo(
-            f"[write] WARNING: Failed to refresh summary.json with energy diagram metadata: {e}",
-            err=True,
-        )
+    _echo_detail(f"[all] Copied summary.json → {dst_summary}")
+    _write_pipeline_summary_log(post_segment_logs)
+    # summary.log becomes current-run owned only after the writer returns;
+    # republish JSON once more so key_output_files includes that final root
+    # artifact as well as every earlier producer-owned output.
+    _finalize_current_summary()
 
     _emit_final_summary(
         out_dir,

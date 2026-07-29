@@ -67,6 +67,8 @@ def test_child_runtime_forwarding_is_explicit_only() -> None:
         backend="UMA",
         solvent="NONE",
         solvent_model="ALPB",
+        max_nodes=12,
+        preopt=False,
     )
     assert argv == [
         "--dmf-backend",
@@ -81,6 +83,9 @@ def test_child_runtime_forwarding_is_explicit_only() -> None:
         "none",
         "--solvent-model",
         "alpb",
+        "--max-nodes",
+        "12",
+        "--no-preopt",
     ]
 
 
