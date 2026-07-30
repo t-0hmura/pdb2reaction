@@ -1256,6 +1256,7 @@ class HessianDimer:
             "write_orientations": False,
             "seed": 0,
             "mem": self.mem,
+            "out_dir": str(self.out_dir),
         })
         dimer = Dimer(**dimer_kwargs)
 
