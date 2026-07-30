@@ -191,6 +191,41 @@ def test_mace_anicc_uses_supported_factory_signature(monkeypatch, dtype) -> None
         }
 
 
+@pytest.mark.parametrize("size", ["small", "medium", "large"])
+def test_mace_off23_display_alias_maps_to_upstream_size(
+    monkeypatch, size
+) -> None:
+    from pdb2reaction.backends.mace import MACECalculator
+
+    package = ModuleType("mace")
+    package.__path__ = []
+    calculators = ModuleType("mace.calculators")
+    captured = {}
+    calculators.mace_anicc = lambda **kwargs: object()
+    calculators.mace_mp = lambda **kwargs: object()
+    calculators.mace_omol = lambda **kwargs: object()
+    calculators.mace_off = lambda **kwargs: captured.update(kwargs) or object()
+    mace_module = ModuleType("mace.calculators.mace")
+    mace_module.MACECalculator = object
+    foundations = ModuleType("mace.calculators.foundations_models")
+    foundations.mace_mp_urls = {}
+    monkeypatch.setitem(sys.modules, "mace", package)
+    monkeypatch.setitem(sys.modules, "mace.calculators", calculators)
+    monkeypatch.setitem(sys.modules, "mace.calculators.mace", mace_module)
+    monkeypatch.setitem(sys.modules, "mace.calculators.foundations_models", foundations)
+
+    calculator = MACECalculator.__new__(MACECalculator)
+    calculator.device_str = "cpu"
+    calculator.default_dtype = "float64"
+    calculator._build_calc(f"MACE-OFF23_{size}")
+
+    assert captured == {
+        "model": size,
+        "device": "cpu",
+        "default_dtype": "float64",
+    }
+
+
 def test_mace_download_cache_is_url_specific_and_atomic(
     tmp_path: Path, monkeypatch
 ) -> None:

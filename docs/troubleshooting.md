@@ -90,7 +90,7 @@ Try the following, in order:
 
 ### IRC does not terminate properly
 
-Reduce `--step-size 0.05` (default 0.10 bohr), especially when a branch stops after only a few frames; raise `--max-cycles 200`; confirm the TS candidate has exactly one imaginary frequency before IRC (detection cutoff `hessian_dimer.neg_freq_thresh_cm`, default 5 cm⁻¹). If a small uphill/flat shoulder is intentional, add opt-in `--never-stop`; it ignores only energy-based stops, so inspect the resulting trajectory and endpoints.
+Reduce `--step-size 0.05` (default 0.10 bohr), especially when a branch stops after only a few frames; raise `--max-cycles 200`; confirm the TS candidate has exactly one imaginary frequency before IRC (detection cutoff `hessian_dimer.neg_freq_thresh_cm`, default 5 cm⁻¹). To bypass every physical endpoint criterion and trace to the cycle limit, add opt-in `--never-stop`; inspect the resulting trajectory and endpoints.
 
 ### MEP search (GSM / DMF) fails or misses bonds
 

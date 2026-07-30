@@ -139,8 +139,8 @@ flag is rejected.
 IRC recovery knobs are exposed directly: `run_irc(step_size=0.05,
 never_stop=True)` and `run_full_pipeline(irc_step_size=0.05,
 irc_never_stop=True)`. Reduce the step first for an immediately stopping IRC;
-`never_stop` ignores energy-rise/plateau stops but retains convergence and the
-cycle cap. The full pipeline also exposes `flatten` and `refine_path`; recursive
+`never_stop` ignores gradient and energy endpoint criteria and traces to the
+cycle cap unless propagation fails. The full pipeline also exposes `flatten` and `refine_path`; recursive
 refinement can split a poor path into extra segments and increase cost.
 
 - The MCP server inherits the calling environment's PATH, conda env, and CUDA setup. Long-running tools (opt / tsopt / irc) launch the `pdb2reaction` CLI in a subprocess — set `timeout_seconds` on each call to bound runaway computations.

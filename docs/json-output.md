@@ -248,14 +248,14 @@ the per-cycle force/step convergence keys and Hessian-mode `safeguards` object.
 | `energy_reactant_hartree` / `energy_product_hartree` | float | Legacy aliases for first / last, respectively; do not infer chemical R/P identity from these names |
 | `forward_converged` | bool \| null | Forward IRC converged? `null` when the integrator did not expose the flag |
 | `backward_converged` | bool \| null | Backward IRC converged? `null` when the integrator did not expose the flag |
-| `forward_energy_increased` | bool \| null | Final forward step raised the energy |
-| `backward_energy_increased` | bool \| null | Final backward step raised the energy |
+| `forward_energy_increased` | bool \| null | Final forward step exceeded `irc.energy_increase_thresh` (default `1e-3` Hartree) |
+| `backward_energy_increased` | bool \| null | Final backward step exceeded `irc.energy_increase_thresh` (default `1e-3` Hartree) |
 | `backend` | string | MLIP backend |
 | `charge` | int | System charge |
 | `spin` | int | Spin multiplicity |
 | `model` | string | Model identifier |
-| `never_stop` | bool | Whether opt-in energy-rise/plateau bypass mode was enabled |
-| `never_stop_energy_bypasses` | int | Number of energy-rise/plateau stop events actually bypassed |
+| `never_stop` | bool | Whether opt-in physical endpoint-stop bypass mode was enabled |
+| `never_stop_energy_bypasses` | int | Number of energy-rise or one-step energy-change stop events actually bypassed |
 | `n_freeze_atoms` | int | Frozen atoms |
 | `solvent` | string | Implicit solvent or `"none"` |
 | `bond_changes` | object | Directed first→last `{formed: [...], broken: [...]}` of element-prefixed 1-based atom-pair strings (e.g. `"C7-O12"`); key is omitted when the comparison fails or `finished_first.xyz`/`finished_last.xyz` are absent. |

@@ -196,6 +196,17 @@ def check_irc_never_stop(root: Path) -> None:
         raise SystemExit("IRC never-stop run did not complete with the requested mode")
     if int(payload.get("never_stop_energy_bypasses", 0)) < 1:
         raise SystemExit("IRC never-stop did not bypass an actual energy stop")
+    if (
+        payload.get("forward_converged") is not False
+        or payload.get("backward_converged") is not False
+    ):
+        raise SystemExit(
+            "IRC never-stop incorrectly reported directional convergence"
+        )
+    if payload.get("scientific_status") == "success":
+        raise SystemExit(
+            "IRC never-stop incorrectly reported a converged scientific result"
+        )
     if int(payload.get("n_frames_forward", 0)) < 2 or int(payload.get("n_frames_backward", 0)) < 2:
         raise SystemExit("IRC never-stop did not produce both nontrivial branches")
 

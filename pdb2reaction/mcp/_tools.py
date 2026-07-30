@@ -281,8 +281,9 @@ def register_all(mcp) -> None:
         Opt-in:
         - irc_pos_def=True: convergence additionally requires positive-definite
           mass-weighted Hessian, blocking the IRC 'shoulder' false-convergence.
-        - never_stop=True: ignore energy-rise/plateau stops while retaining
-          physical/integrator convergence and the max-cycle cap.
+        - never_stop=True: ignore gradient and energy stop conditions and
+          trace until the max-cycle cap; numerical/integration failures still
+          stop the run.
 
         Returns: SubcmdResult dict with summary.json (forward/backward frame
         counts and convergence/energy-stop flags, endpoint/TS energies,

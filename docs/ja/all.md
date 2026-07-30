@@ -102,7 +102,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  - `--refine-path` と参照テンプレートがある場合、`mep_w_ref.pdb` を生成し、bridge入力では `mep_w_ref.cif` も生成します。デフォルトの `path-opt` では全系マージを行いません。
 
 5. **オプションのセグメントごとの後処理**（反応セグメントのみ — 結合変化のあるセグメント。ブリッジセグメントはスキップ）
- - `--tsopt`: 各 HEI 活性部位モデルで TS 最適化を実行します。機械可読な exact-Hessian 結果が `status=converged` かつ `n_imag=1` を報告しない場合は IRC 前に停止します。検証済み TS は EulerPC IRC で追跡し、IRC エンドポイントを `--thresh-post`（デフォルト `baker`）で再最適化します。Hessian TS 最適化には MEP energy-upwinding Cartesian接線を反応参照モードとして自動的に渡します（energyを読めない旧trajectoryだけは正規化secantの二等分線へfallback）。エンドポイント最適化の作業ディレクトリは完了後に自動削除されます。エンドポイント RFO の上り坂拒否セーフガードはデフォルトで有効で、`--no-reject-uphill` でエンドポイント再最適化についてのみ無効化できます。
+ - `--tsopt`: 各 HEI 活性部位モデルで TS 最適化を実行します。機械可読な exact-Hessian 結果が `status=converged` かつ `n_imag=1` を報告しない場合は IRC 前に停止します。検証済み TS は EulerPC IRC で追跡し、IRC エンドポイントを `--thresh-post`（デフォルト `baker`）で再最適化します。Hessian TS 最適化には MEP energy-upwinding Cartesian接線を反応参照モードとして自動的に渡します（energyを読めない旧trajectoryだけは正規化secantの二等分線へfallback）。エンドポイント最適化の作業ディレクトリは完了後に自動削除されます。エンドポイント RFO の上り坂拒否はデフォルトで無効で、`--reject-uphill` によりエンドポイント再最適化についてのみ有効化できます。
  - `--thermo`: (R, TS, P) で `freq` を呼び出し、振動/熱化学データと MLIP Gibbs ダイアグラムを取得
  - `--dft`: (R, TS, P) で DFT 一点計算を実行し、DFT ダイアグラムを構築。`--thermo` と組み合わせると DFT//MLIP Gibbs ダイアグラムも生成
   - 共有の上書きオプション: `--opt-mode`、`--opt-mode-post`（TSOPT/IRC 後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--tr-projection`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU 優先）など。`--tr-projection`はTSopt、IRC、freq、flatten PHVAへ転送し、MEP 由来の`--ref-mode`とは無関係です。
@@ -269,10 +269,10 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 | `--opt-mode-post [grad\|hess]` | TSOPT/IRC 後最適化のプリセット上書き（`grad` → Dimer/L-BFGS、`hess` → RSPRFO/RFO） | `hess` |
 | `--thresh-post TEXT` | IRC 後エンドポイント最適化の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
 | `--flatten/--no-flatten` | 余分な虚振動モードのフラット化 | `False` |
-| `--reject-uphill/--no-reject-uphill` | IRC 後の**エンドポイント再最適化のみ**で RFO の上り坂ステップを拒否（低エネルギー形状へロールバックし trust radius を縮小）。TS 最適化では拒否を常に無効化し、経路探索には影響しない。emergency floor 到達時は、保持したエンドポイントを通常の収束条件で最終確認 | `True` |
+| `--reject-uphill/--no-reject-uphill` | IRC 後の**エンドポイント再最適化のみ**で RFO の上り坂ステップ拒否を明示的に有効化（許容値 `1e-3` Hartree、低エネルギー形状へロールバックして trust radius を縮小）。TS 最適化では拒否を常に無効化し、経路探索には影響しない。emergency floor 到達時は、保持したエンドポイントを通常の収束条件で最終確認 | `False` |
 | `--tr-projection [constrained\|legacy-active]` | TSopt、IRC、freq、flatten PHVAへ転送する剛体モード処理。`legacy-active`は非推奨の比較専用で、pass/HOSP 遷移状態認定には使用不可 | `constrained` |
 | `--irc-step-size FLOAT` | IRC のEulerPC最大step（Bohr）を上書き。数frameですぐ止まる場合は`0.05`など小さい値で再試行 | IRC デフォルト`0.10` |
-| `--irc-never-stop/--no-irc-never-stop` | 一時的な IRC energy上昇／平坦化による停止を無視。gradient/integrator収束と最大cycle上限は維持 | `False` |
+| `--irc-never-stop/--no-irc-never-stop` | IRCのgradient・energy停止条件を無視し、各branchを最大cycleまで追跡。数値／integration失敗や外部中断では停止 | `False` |
 
 ```{warning}
 `--dft` のcost/memoryはbasis-function数、元素、functional、grid、engine、

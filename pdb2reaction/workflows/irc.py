@@ -257,9 +257,10 @@ def _echo_convert_trj_if_exists(
     "never_stop",
     default=None,
     help=(
-        "Ignore transient energy increases/plateaus and keep tracing through "
-        "small shoulders. Gradient/integrator convergence and --max-cycles "
-        "still stop the run. An explicit toggle overrides YAML irc.never_stop; default off."
+        "Ignore RMS-gradient, hard-gradient, energy-rise, and energy-change "
+        "stops and trace until --max-cycles. Numerical/integration failures "
+        "and external interruption still stop the run. An explicit toggle "
+        "overrides YAML irc.never_stop; default off."
     ),
 )
 @click.option(

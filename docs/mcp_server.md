@@ -102,8 +102,8 @@ criterion calls success before reaching the local minimum. Defaults to
 
 `run_irc` also accepts `step_size` and `never_stop`. When a branch stops after
 only a few frames, reduce `step_size` (typically to `0.05`) first. Set
-`never_stop=True` only to cross a small energy-rise/plateau shoulder; gradient/
-integrator convergence and max cycles remain active. `run_full_pipeline`
+`never_stop=True` to ignore gradient and energy endpoint criteria and trace to
+the max-cycle cap; numerical/integration failures still stop. `run_full_pipeline`
 forwards the same controls as `irc_step_size` / `irc_never_stop` and exposes
 `flatten` plus `refine_path` for TS recovery.
 

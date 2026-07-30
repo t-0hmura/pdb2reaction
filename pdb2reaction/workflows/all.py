@@ -1959,7 +1959,7 @@ def _optimize_endpoint_geom(
         if thresh is not None:
             cfg["thresh"] = str(thresh)
         # RFO-only endpoint re-optimization uphill-rejection toggle (min-scoped).
-        # ``None`` leaves RFO_KW's own default in place (byte-identical behavior);
+        # ``None`` inherits RFO_KW's default-off setting;
         # an explicit bool is threaded from the ``all`` command's
         # --reject-uphill/--no-reject-uphill flag.
         if sopt_kind == "rfo" and reject_uphill is not None:
@@ -3388,12 +3388,13 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 @click.option(
     "--reject-uphill/--no-reject-uphill",
     "reject_uphill",
-    default=True,
+    default=False,
     show_default=True,
     help=(
-        "Reject uphill RFO trials during post-IRC endpoint re-optimization only "
-        "and final-check the retained endpoint at the emergency floor. Does not "
-        "affect TS optimization or path search."
+        "Opt in to rejecting uphill RFO trials during post-IRC endpoint "
+        "re-optimization only (tolerance: 1e-3 Hartree) and final-check the "
+        "retained endpoint at the emergency floor. Does not affect TS "
+        "optimization or path search."
     ),
 )
 @click.option(
@@ -3409,9 +3410,10 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "--irc-never-stop/--no-irc-never-stop",
     default=None,
     help=(
-        "Override IRC energy-stop handling. When enabled, transient energy "
-        "rises/plateaus do not stop tracing; physical convergence and the "
-        "IRC max-cycle limit still apply. Default off."
+        "Ignore IRC RMS-gradient, hard-gradient, energy-rise, and "
+        "energy-change stops and trace until the IRC max-cycle limit. "
+        "Numerical/integration failures and external interruption still "
+        "stop the run. Default off."
     ),
 )
 @click.option(
@@ -3843,8 +3845,8 @@ def cli(
 
     spin_cli_explicit = cli_param_overridden(ctx, "spin")
     # Post-IRC endpoint re-optimization uphill-rejection toggle. ``None`` unless
-    # the flag was explicitly passed, so the default path keeps RFO_KW's own
-    # reject_uphill (unchanged behavior); an explicit --reject-uphill/--no-...
+    # the flag was explicitly passed, so the default path inherits RFO_KW's
+    # default-off setting; an explicit --reject-uphill/--no-...
     # is threaded into _optimize_endpoint_geom (endpoint re-opt) only.
     _reject_uphill_eff = (
         bool(reject_uphill) if cli_param_overridden(ctx, "reject_uphill") else None

@@ -4,6 +4,23 @@ All notable changes to **pdb2reaction** will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Changed
+- Make uphill trial rejection opt-in for L-BFGS and RFO minimization, and raise
+  its default energy tolerance from `1e-8` to `1e-3` Hartree so explicitly
+  enabled rejection does not classify normal full-system fp32 energy noise as
+  an uphill step.
+- Make IRC `never_stop` bypass gradient and energy endpoint conditions and
+  trace to the cycle cap; ordinary IRC now tolerates one-step energy rises up
+  to `1e-3` Hartree.
+
+### Fixed
+- Accept the Baker force-plus-energy-or-step criterion on every evaluable
+  cycle, including the first retained geometry.
+- Resolve the legacy `MACE-OFF23_small`, `_medium`, and `_large` aliases
+  to the corresponding upstream MACE-OFF model sizes.
+
 ## [0.4.12] — 2026-07-27
 
 > Upgrade warning: unchanged inputs can produce different geometries, energies/barriers,

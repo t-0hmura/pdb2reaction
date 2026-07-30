@@ -49,9 +49,10 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --step-size 0.05 \
  --out-dir ./result_irc_small_step
 ```
 
-小さな数値的な山や平坦な肩を越えて追跡する必要がある場合は
-`--never-stop`を追加します。このopt-inモードはenergy上昇／変化量による
-停止だけを無視し、gradient/integratorの収束と`--max-cycles`は維持します。
+すべての物理的な端点判定を無視して追跡する場合は
+`--never-stop`を追加します。このopt-inモードはRMS-gradient、
+hard-gradient、energy上昇、energy変化量による停止を無視します。
+数値／integration失敗や外部中断がなければ`--max-cycles`まで進みます。
 
 ```bash
 pdb2reaction irc -i ts.pdb -q 0 -m 1 --step-size 0.05 --never-stop \
@@ -110,7 +111,7 @@ Hessian を含まず、`result.json.files` にも登録しません。
 | `-m, --multiplicity INT` | スピン多重度（2S+1）。明示的な `-m` は YAML `calc.spin` より優先し、省略時は YAML、`.gjf`、`1` の順に解決 | YAML/`.gjf`/`1` |
 | `--max-cycles INT` | 最大 IRC ステップ。明示値は YAML `irc.max_cycles` より優先 | `125` |
 | `--step-size FLOAT` | ステップ長（Bohr、非質量加重デカルト座標）。明示値は YAML `irc.step_length` より優先 | `0.10` |
-| `--never-stop/--no-never-stop` | 一時的なenergy上昇／平坦化による停止を無視し、小さな肩を越えて追跡します。gradient/integratorの収束と`max_cycles`上限は無効化しません | `False` |
+| `--never-stop/--no-never-stop` | RMS-gradient、hard-gradient、energy上昇、1 stepのenergy変化量による停止（`abs(E_n-E_{n-1}) <= energy_thresh`、デフォルト`1e-6` Hartree）を無視し、`max_cycles`まで追跡します。数値／integration失敗や外部中断では停止します | `False` |
 | `--root INT` | 射影 Hessian の固有値を**昇順**（最も負の値を先頭）に並べたときの**0 始まり**のインデックス。初期 IRC 変位に使用するモードを指定します。虚振動が 1 個だけの妥当な TS では `--root 0`（唯一の負の固有値）のままにしてください。`--root 1`、`--root 2` などは、活性な虚モードがより負のスプリアス（疑似）モードよりも上位にランクされていることが分かっている場合にのみ使用します。明示値は YAML `irc.root` より優先 | `0` |
 | `--forward/--no-forward` | 順方向分岐を実行。明示 toggle は YAML `irc.forward` より優先 | `True` |
 | `--backward/--no-backward` | 逆方向分岐を実行。明示 toggle は YAML `irc.backward` より優先 | `True` |
@@ -152,7 +153,7 @@ calc:
 ## 注意事項
 
 - MLIP バックエンド（デフォルト: UMA）は IRC 全体で再利用されます。`step_length` を大きくし過ぎると EulerPC が不安定になることがあります。ほぼ直ちに停止する分岐は、まず小さい `--step-size`（例: `0.05`）で再試行してください。
-- `--never-stop` は意図せぬ追跡と計算時間増大を避けるためデフォルトOFFです。小さな山／肩には有効ですが、最寄りの化学的basinを通過する可能性もあるため軌跡と端点接続を確認してください。
+- `--never-stop` はデフォルトOFFです。有効時は物理的端点で収束宣言せずcycle上限まで進むため、軌跡と端点接続を確認してください。
 - `--freeze-links` が有効な場合、キャップ水素の親原子が自動的に凍結されます（{ref}`キャップ水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
 - `result.json["rigid_projection"]`にtreatment、effective rank、初期 Hessian のsourceとshapeを記録します。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
 

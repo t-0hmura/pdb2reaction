@@ -184,19 +184,21 @@ Options:
                                   RS-P-RFO); --no-flatten forces
                                   flatten_max_iter=0.  [default: no-flatten]
   --reject-uphill / --no-reject-uphill
-                                  Reject uphill RFO trials during post-IRC
-                                  endpoint re-optimization only and final-check
-                                  the retained endpoint at the emergency floor.
-                                  Does not affect TS optimization or path
-                                  search.  [default: reject-uphill]
+                                  Opt in to rejecting uphill RFO trials during
+                                  post-IRC endpoint re-optimization only
+                                  (tolerance: 1e-3 Hartree) and final-check the
+                                  retained endpoint at the emergency floor. Does
+                                  not affect TS optimization or path search.
+                                  [default: no-reject-uphill]
   --irc-step-size FLOAT           Override IRC --step-size (Bohr). If an IRC
                                   stops after only a few frames, retry with a
                                   smaller value such as 0.05.
   --irc-never-stop / --no-irc-never-stop
-                                  Override IRC energy-stop handling. When
-                                  enabled, transient energy rises/plateaus do
-                                  not stop tracing; physical convergence and the
-                                  IRC max-cycle limit still apply. Default off.
+                                  Ignore IRC RMS-gradient, hard-gradient,
+                                  energy-rise, and energy-change stops and trace
+                                  until the IRC max-cycle limit.
+                                  Numerical/integration failures and external
+                                  interruption still stop the run. Default off.
   --freq-out-dir DIRECTORY        Override freq output base directory (relative
                                   paths resolved against the default).
   --freq-max-write INTEGER        Override freq --max-write value. Defaults to
@@ -267,8 +269,8 @@ Options:
   --backend-model TEXT            Model variant for the selected --backend (e.g.
                                   uma-s-1p2 / uma-m-1p1 for uma,
                                   orb_v3_conservative_omol for orb, MACE-OMOL-0
-                                  / MACE-OFF23_small for mace). Default: the
-                                  backend's built-in model.
+                                  / off:small for mace). Default: the backend's
+                                  built-in model.
   --calc-file FILE                Python file exposing get_calculator(...) -> an
                                   ASE Calculator, used as the energy/gradient
                                   backend (overrides --backend). Couples GFN-xTB

@@ -52,9 +52,19 @@ class TestDefaultsStructure:
         assert RFO_KW["max_cycles"] > 0
 
     def test_minimizer_trial_rejection_defaults(self):
-        assert LBFGS_KW["reject_uphill"] is True
-        assert RFO_KW["reject_uphill"] is True
+        assert LBFGS_KW["reject_uphill"] is False
+        assert RFO_KW["reject_uphill"] is False
+        assert LBFGS_KW["uphill_tolerance"] == 1e-3
+        assert RFO_KW["uphill_tolerance"] == 1e-3
         assert LBFGS_TS_KW["reject_uphill"] is False
+
+        from pysisyphus.optimizers.LBFGS import LBFGS
+        from pysisyphus.optimizers.RFOptimizer import RFOptimizer
+
+        assert signature(LBFGS).parameters["reject_uphill"].default is False
+        assert signature(RFOptimizer).parameters["reject_uphill"].default is False
+        assert signature(LBFGS).parameters["uphill_tolerance"].default == 1e-3
+        assert signature(RFOptimizer).parameters["uphill_tolerance"].default == 1e-3
 
     def test_ts_saddle_safeguards_are_enabled(self):
         assert RSIRFO_KW["check_eigval_structure"] is True

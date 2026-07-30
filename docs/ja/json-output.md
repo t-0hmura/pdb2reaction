@@ -246,14 +246,14 @@ dimer モードも `status` に `"converged"` / `"not_converged"` / `"stalled"` 
 | `energy_reactant_hartree` / `energy_product_hartree` | float | first / last の旧alias。key名から化学的R/P identityを推定しないこと |
 | `forward_converged` | bool \| null | 前方 IRC 収束? インテグレータがフラグを公開しない場合は `null` |
 | `backward_converged` | bool \| null | 後方 IRC 収束? インテグレータがフラグを公開しない場合は `null` |
-| `forward_energy_increased` | bool \| null | 前方の最終stepでenergyが上昇したか |
-| `backward_energy_increased` | bool \| null | 後方の最終stepでenergyが上昇したか |
+| `forward_energy_increased` | bool \| null | 前方の最終stepで`irc.energy_increase_thresh`（デフォルト`1e-3` Hartree）を超えてenergyが上昇したか |
+| `backward_energy_increased` | bool \| null | 後方の最終stepで`irc.energy_increase_thresh`（デフォルト`1e-3` Hartree）を超えてenergyが上昇したか |
 | `backend` | string | MLIP バックエンド |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
 | `model` | string | MLIP モデル名 |
-| `never_stop` | bool | opt-inのenergy上昇／平坦化bypass modeを有効にしたか |
-| `never_stop_energy_bypasses` | int | 実際にbypassしたenergy上昇／平坦化停止event数 |
+| `never_stop` | bool | opt-inの物理的端点停止bypass modeを有効にしたか |
+| `never_stop_energy_bypasses` | int | 実際にbypassしたenergy上昇／1 step energy変化量停止event数 |
 | `n_freeze_atoms` | int | 凍結原子数 |
 | `solvent` | string | 暗黙溶媒 or `"none"` |
 | `bond_changes` | object | first→last 方向の `{formed: [...], broken: [...]}`。各リストは元素記号付き1始まりの原子ペア文字列（例 `"C7-O12"`）。比較が失敗または `finished_first.xyz`/`finished_last.xyz` が存在しない場合はキー自体が省略されます。 |

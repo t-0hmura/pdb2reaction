@@ -240,6 +240,10 @@ lbfgs:
  double_damp: true # Double damping safeguard
  mu_reg: null # Regularization strength
  max_mu_reg_adaptions: 10 # Cap on mu adaptations
+ reject_uphill: false # Opt in to rejecting energy rises above the tolerance
+ uphill_tolerance: 0.001 # Energy-rise tolerance (Hartree)
+ rejection_step_floor: 1.0e-07 # Smallest retry step
+ max_rejections_at_floor: 3 # Stop after repeated rejection at the floor
 ```
 
 ---
@@ -256,6 +260,10 @@ rfo:
  trust_min: 0.0001 # Minimum trust radius
  trust_max: 0.10 # Maximum trust radius (bohr)
  max_energy_incr: null # Allowed energy increase per step
+ reject_uphill: false # Opt in to rejecting energy rises above the tolerance
+ uphill_tolerance: 0.001 # Energy-rise tolerance (Hartree)
+ rejection_trust_floor: 1.0e-07 # Smallest retry trust radius
+ max_rejections_at_floor: 3 # Stop after repeated rejection at the floor
  hessian_update: bfgs # Hessian update scheme: bfgs, bofill, etc.
  hessian_init: calc # Hessian initialization: calc, unit, etc.
  hessian_recalc: 500 # Rebuild Hessian every N steps
@@ -497,7 +505,7 @@ IRC integration settings.
 ```yaml
 irc:
  step_length: 0.1 # Integration step length
- never_stop: false # Ignore transient energy rise/plateau stops; convergence/max_cycles still apply
+ never_stop: false # Ignore physical endpoint criteria and trace to max_cycles
  max_cycles: 125 # Maximum steps along IRC
  forward: true # Propagate in forward direction
  backward: true # Propagate in backward direction
@@ -505,6 +513,7 @@ irc:
  hessian_init: calc # Hessian initialization source
  hessian_update: bofill # Hessian update scheme
  hessian_recalc: null # Hessian rebuild cadence
+ energy_increase_thresh: 0.001 # Stop on larger one-step rises in ordinary mode
  dump_every: null # Disabled; positive cadence writes a coordinate/energy/gradient checkpoint without a Hessian
  dump_fn: irc_data.h5 # Checkpoint filename used only when dump_every is set
  displ: energy # Displacement construction method

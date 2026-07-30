@@ -29,11 +29,12 @@ Options:
   --step-size FLOAT               Step length in Bohr (unweighted Cartesian
                                   coordinates); an explicit value overrides YAML
                                   irc.step_length. Default: 0.10 Bohr.
-  --never-stop / --no-never-stop  Ignore transient energy increases/plateaus and
-                                  keep tracing through small shoulders.
-                                  Gradient/integrator convergence and --max-
-                                  cycles still stop the run. An explicit toggle
-                                  overrides YAML irc.never_stop; default off.
+  --never-stop / --no-never-stop  Ignore RMS-gradient, hard-gradient, energy-
+                                  rise, and energy-change stops and trace until
+                                  --max-cycles. Numerical/integration failures
+                                  and external interruption still stop the run.
+                                  An explicit toggle overrides YAML
+                                  irc.never_stop; default off.
   --root INTEGER                  Imaginary mode index used for the initial
                                   displacement; an explicit value overrides YAML
                                   irc.root. Defaults to 0.
@@ -99,8 +100,8 @@ Options:
   --backend-model TEXT            Model variant for the selected --backend (e.g.
                                   uma-s-1p2 / uma-m-1p1 for uma,
                                   orb_v3_conservative_omol for orb, MACE-OMOL-0
-                                  / MACE-OFF23_small for mace). Default: the
-                                  backend's built-in model.
+                                  / off:small for mace). Default: the backend's
+                                  built-in model.
   --calc-file FILE                Python file exposing get_calculator(...) -> an
                                   ASE Calculator, used as the energy/gradient
                                   backend (overrides --backend). Couples GFN-xTB

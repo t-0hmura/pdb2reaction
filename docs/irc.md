@@ -49,9 +49,11 @@ pdb2reaction irc -i ts.pdb -q 0 -m 1 --step-size 0.05 \
  --out-dir ./result_irc_small_step
 ```
 
-For a path that contains a small numerical uphill or flat shoulder, add
-`--never-stop`. This opt-in mode ignores energy-increase and energy-change
-stops, but still obeys gradient/integrator convergence and `--max-cycles`:
+To trace unconditionally through all physical endpoint criteria, add
+`--never-stop`. This opt-in mode ignores RMS-gradient, hard-gradient,
+energy-increase, and energy-change stops. It continues until `--max-cycles`
+unless a numerical/integration failure or external interruption prevents
+further propagation:
 
 ```bash
 pdb2reaction irc -i ts.pdb -q 0 -m 1 --step-size 0.05 --never-stop \
@@ -111,7 +113,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). Explicit `-m` overrides YAML `calc.spin`; otherwise YAML, `.gjf`, or `1` is used. | YAML/`.gjf`/`1` |
 | `--max-cycles INT` | Maximum IRC steps. An explicit value overrides YAML `irc.max_cycles`. | `125` |
 | `--step-size FLOAT` | Step length in unweighted Cartesian coordinates (Bohr). An explicit value overrides YAML `irc.step_length`. | `0.10` |
-| `--never-stop/--no-never-stop` | Ignore transient energy increases/plateaus so EulerPC can cross a small shoulder. It does not disable gradient/integrator convergence or the `max_cycles` hard cap. | `False` |
+| `--never-stop/--no-never-stop` | Ignore RMS-gradient, hard-gradient, energy-rise, and one-step energy-change stops (`abs(E_n-E_{n-1}) <= energy_thresh`, default `1e-6` Hartree) and trace until `max_cycles`. Numerical/integration failures and external interruption still stop propagation. | `False` |
 | `--root INT` | **0-based** index into the projected Hessian's eigenvalues sorted in **ascending order** (most-negative first), used to pick the mode for the initial IRC displacement. For a validated TS with exactly one imaginary mode, leave `--root 0` (the sole negative eigenvalue). Use `--root 1`, `--root 2`, … only if you know the active imaginary mode is ranked above more-negative spurious modes. An explicit value overrides YAML `irc.root`. | `0` |
 | `--forward/--no-forward` | Run forward branch (`irc.forward`); an explicit toggle overrides YAML. | `True` |
 | `--backward/--no-backward` | Run backward branch (`irc.backward`); an explicit toggle overrides YAML. | `True` |
@@ -153,7 +155,7 @@ See {ref}`exit-codes` in CLI Conventions.
 ## Notes
 
 - The MLIP backend (UMA by default) is reused throughout the IRC; aggressive `step_length` values can destabilize EulerPC. A branch that stops almost immediately should be retried with a smaller `--step-size` (for example `0.05`) before changing other controls.
-- `--never-stop` is intentionally off by default. It is useful for a small numerical hill/shoulder, but it can also trace farther than the chemically intended basin; inspect the trajectory and endpoint connectivity.
+- `--never-stop` is intentionally off by default. It deliberately traces to the cycle limit rather than declaring convergence at a physical endpoint. Inspect the trajectory and endpoint connectivity; increase `--max-cycles` only when the extra path is scientifically useful.
 - When `--freeze-links` is active, cap-hydrogen parent atoms are automatically frozen (see {ref}`Cap hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
 - `result.json["rigid_projection"]` records the treatment, effective rank, and initial Hessian source and shape. See [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries).
 

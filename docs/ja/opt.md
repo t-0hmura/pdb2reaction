@@ -98,7 +98,7 @@ out_dir/
 | `--max-cycles INT` | 最適化反復の上限 | `10000` |
 | `--opt-mode TEXT` | 最適化モード: `grad`（`lbfgs`）または `hess`（`rfo`）。`lbfgs`/`rfo` も指定可。サブコマンド別の対応表（`opt` は L-BFGS/RFO、`tsopt` は Dimer/RS-P-RFO）は {ref}`ja-opt-mode-semantics` を参照 | `grad` |
 | `--flatten/--no-flatten` | 最適化後の虚振動数モードフラット化ループを有効/無効化 | `False` |
-| `--reject-uphill/--no-reject-uphill` | `hess` モードで RFO の上り坂試行ステップを拒否（低エネルギー形状へロールバックし trust radius を縮小）。`grad`/`lbfgs` モードでは無効。emergency trust floor 到達時は、非収束停止を報告する前に保持構造を通常の収束条件で最終確認 | `True` |
+| `--reject-uphill/--no-reject-uphill` | `hess` モードで RFO の上り坂試行ステップ拒否を明示的に有効化（許容値 `1e-3` Hartree、低エネルギー形状へロールバックして trust radius を縮小）。`grad`/`lbfgs` モードでは無効。emergency trust floor 到達時は、非収束停止を報告する前に保持構造を通常の収束条件で最終確認 | `False` |
 | `--dump/--no-dump` | 軌跡ダンプ（`optimization_trj.xyz`）を出力 | `False` |
 | `--convert-files/--no-convert-files` | PDB/mmCIF topology入力用の XYZ/TRJ → PDB/CIF、および Gaussian template用の XYZ → GJF を切り替え | `True` |
 | `--ref-pdb FILE` | XYZ/GJF入力に使用する参照PDBまたはmmCIF topology | _None_ |

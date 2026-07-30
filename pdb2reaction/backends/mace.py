@@ -148,6 +148,11 @@ class MACECalculator(MLIPCalculator):
 
         spec = str(model_spec).strip()
         spec_l = spec.lower()
+        off23_aliases = {
+            "mace-off23_small": "small",
+            "mace-off23_medium": "medium",
+            "mace-off23_large": "large",
+        }
         mp_alias_lookup = {str(x).lower(): x for x in mp_aliases}
 
         def _mk_from_path(path_or_url):
@@ -218,6 +223,13 @@ class MACECalculator(MLIPCalculator):
         if spec_l in ("off-small", "off-medium", "off-large"):
             alias = spec_l.split("-", 1)[1]
             return mace_off(model=alias, device=self.device_str, default_dtype=self.default_dtype)
+
+        if spec_l in off23_aliases:
+            return mace_off(
+                model=off23_aliases[spec_l],
+                device=self.device_str,
+                default_dtype=self.default_dtype,
+            )
 
         if spec_l in ("omol-extra_large", "extra_large", "mace-omol-0", "mace_omol_0", "maceomol0"):
             return mace_omol(model="extra_large", device=self.device_str, default_dtype=self.default_dtype)

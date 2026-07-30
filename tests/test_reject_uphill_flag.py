@@ -1,10 +1,9 @@
 """Contracts for uphill rejection in minimum and transition-state searches.
 
-The flag lets a user opt out of the post-IRC endpoint RFO uphill-rejection
-safeguard (default on, resting on an unconfirmed divergence hypothesis) so the
-on/off effect can be measured. These tests pin four falsifiable facts:
+The flag lets a user opt in to the post-IRC endpoint RFO uphill-rejection
+safeguard. These tests pin four falsifiable facts:
 
-1. the shipped default is unchanged (``RFO_KW["reject_uphill"] is True``);
+1. the shipped default is off (``RFO_KW["reject_uphill"] is False``);
 2. the default path (flag not passed -> ``reject_uphill=None``) leaves the
    endpoint RFO config byte-identical to ``RFO_KW`` (no behavior change);
 3. an explicit toggle threads ``True``/``False`` into the *endpoint* RFO config
@@ -30,9 +29,10 @@ from pdb2reaction.workflows.tsopt import (
 )
 
 
-def test_shipped_default_is_reject_uphill_on() -> None:
+def test_shipped_default_is_reject_uphill_off() -> None:
     # The None-path preserves whatever RFO_KW declares; this pins that default.
-    assert RFO_KW["reject_uphill"] is True
+    assert RFO_KW["reject_uphill"] is False
+    assert RFO_KW["uphill_tolerance"] == 1e-3
 
 
 def test_ts_rfo_forces_reject_uphill_off(tmp_path: Path) -> None:
@@ -52,7 +52,7 @@ def test_ts_dimer_forces_reject_uphill_off() -> None:
 
 
 @pytest.mark.parametrize("command", ["opt", "all"])
-def test_toggle_is_exposed_with_default_on(command: str) -> None:
+def test_toggle_is_exposed_with_default_off(command: str) -> None:
     ctx = click.Context(root_cli)
     cmd = root_cli.get_command(ctx, command)
     param = next(
@@ -63,7 +63,7 @@ def test_toggle_is_exposed_with_default_on(command: str) -> None:
     assert param.opts == ["--reject-uphill"]
     assert param.secondary_opts == ["--no-reject-uphill"]
     assert param.is_bool_flag is True
-    assert param.default is True
+    assert param.default is False
 
 
 class _StopBeforeRun(Exception):
@@ -80,7 +80,7 @@ class _GeomStub:
 
 @pytest.mark.parametrize(
     "reject_uphill, expected",
-    [(None, True), (True, True), (False, False)],
+    [(None, False), (True, True), (False, False)],
     ids=["default-none", "explicit-on", "explicit-off"],
 )
 def test_endpoint_rfo_receives_reject_uphill(
@@ -146,8 +146,8 @@ def test_all_gate_resolves_endpoint_reject_uphill(tmp_path: Path, extra, expecte
 
     Parse `all` the way the CLI does and reproduce the exact resolution line
     ``_reject_uphill_eff = bool(reject_uphill) if cli_param_overridden(...) else None``.
-    If the explicit-gate silently missed ``--no-reject-uphill``, the off-arm
-    would run with reject_uphill still ON and the A/B would be on-vs-on.
+    The default arm forwards no override and therefore inherits the shared
+    default-off RFO configuration.
     """
     from pdb2reaction.workflows.all import cli as all_cli
     from pdb2reaction.core.utils import cli_param_overridden

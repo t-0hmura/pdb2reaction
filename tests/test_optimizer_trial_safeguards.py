@@ -297,6 +297,7 @@ def test_lbfgs_rejects_uphill_trial_through_shared_rollback(tmp_path) -> None:
         geom,
         max_step=0.1,
         line_search=False,
+        reject_uphill=True,
         out_dir=tmp_path,
     )
     assert opt.reject_uphill is True
@@ -348,8 +349,7 @@ def test_baker_uses_energy_or_max_step_after_max_force(
         overachieve_factor=0.0,
         out_dir=tmp_path,
     )
-    opt.cur_cycle = 2
-    opt.last_cycle = 0
+    opt.cur_cycle = opt.last_cycle
     opt.forces = [np.array([1.0e-5, 0.0, 0.0])]
     opt.energies = [0.0, energy_change]
     opt.steps = [np.array([max_step, 0.0, 0.0])]
@@ -374,7 +374,7 @@ def test_emergency_stop_accepts_converged_retained_rfo_geometry(
                 )
             return step
 
-    geom = Geometry(["H"], np.array([1.0e-4, 0.0, 0.0]), coord_type="cart")
+    geom = Geometry(["H"], np.array([4.0e-4, 0.0, 0.0]), coord_type="cart")
     geom.set_calculator(_QuadraticCalculator(tmp_path))
     opt = _EmergencyStopRF(
         geom,

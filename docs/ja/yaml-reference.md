@@ -239,6 +239,10 @@ lbfgs:
  double_damp: true # Double damping safeguard
  mu_reg: null # Regularization strength
  max_mu_reg_adaptions: 10 # Cap on mu adaptations
+ reject_uphill: false # 許容値を超えるenergy上昇の拒否を明示的に有効化
+ uphill_tolerance: 0.001 # energy上昇許容値（Hartree）
+ rejection_step_floor: 1.0e-07 # retry stepの下限
+ max_rejections_at_floor: 3 # 下限での連続拒否後に停止
 ```
 
 ---
@@ -255,6 +259,10 @@ rfo:
  trust_min: 0.0001 # Minimum trust radius
  trust_max: 0.10 # Maximum trust radius (bohr)
  max_energy_incr: null # Allowed energy increase per step
+ reject_uphill: false # 許容値を超えるenergy上昇の拒否を明示的に有効化
+ uphill_tolerance: 0.001 # energy上昇許容値（Hartree）
+ rejection_trust_floor: 1.0e-07 # retry trust radiusの下限
+ max_rejections_at_floor: 3 # 下限での連続拒否後に停止
  hessian_update: bfgs # Hessian update scheme: bfgs, bofill, etc.
  hessian_init: calc # Hessian initialization: calc, unit, etc.
  hessian_recalc: 500 # Rebuild Hessian every N steps
@@ -496,7 +504,7 @@ IRC 積分設定。
 ```yaml
 irc:
  step_length: 0.1 # Integration step length
- never_stop: false # 一時的なenergy上昇/平坦化では停止しない（収束判定とmax_cyclesは維持）
+ never_stop: false # 物理的な端点判定を無視してmax_cyclesまで追跡
  max_cycles: 125 # Maximum steps along IRC
  forward: true # Propagate in forward direction
  backward: true # Propagate in backward direction
@@ -504,6 +512,7 @@ irc:
  hessian_init: calc # Hessian initialization source
  hessian_update: bofill # Hessian update scheme
  hessian_recalc: null # Hessian rebuild cadence
+ energy_increase_thresh: 0.001 # 通常modeで停止する1 stepのenergy上昇量
  dump_every: null # デフォルト無効。正の間隔では座標・energy・gradientのみをcheckpoint保存（Hessianなし）
  dump_fn: irc_data.h5 # dump_every指定時のcheckpointファイル名
  displ: energy # Displacement construction method

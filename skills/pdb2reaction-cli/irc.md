@@ -25,7 +25,7 @@ pdb2reaction irc -i ts.{pdb,cif,xyz,gjf} \
 | `-q` / `-l` / `-m` | — | — | Charge / spin |
 | `--max-cycles` | int | 125 | Max IRC steps per branch (forward + backward) |
 | `--step-size` | float | `0.10` | Step in Bohr (unweighted Cartesian); maps to `IRC_KW["step_length"]` |
-| `--never-stop / --no-never-stop` | bool | `False` | Ignore energy-rise/plateau stops so a small shoulder can be crossed; gradient/integrator convergence and `max_cycles` still apply |
+| `--never-stop / --no-never-stop` | bool | `False` | Ignore gradient and energy endpoint criteria and trace to `max_cycles`; propagation failures still stop |
 | `--tr-projection` | str | `constrained` | Rigid-mode treatment for the initial Hessian. `legacy-active` is deprecated comparison-only behavior; never use it for pass/HOSP transition-state certification. |
 | `--workers`, `--workers-per-node` | int | `1`, `1` | UMA predictor workers. `workers > 1` plus an explicit `Analytical` Hessian raises `BackendError`; use one worker or finite differences. |
 | `-b, --backend` | str | `uma` | MLIP backend |
@@ -51,8 +51,8 @@ pdb2reaction irc -i ts.xyz -q -1 -m 1 \
 ```
 
 If IRC stops after only a few frames, **reduce `--step-size` first**
-(usually from `0.10` to `0.05`). If the trajectory visibly contains a small
-uphill/flat shoulder, retry with `--never-stop`; this is opt-in and the
+(usually from `0.10` to `0.05`). Use `--never-stop` when the intended operation
+is unconditional tracing to the cycle cap. This is opt-in, and the
 trajectory/endpoints must be inspected because it may pass the nearest basin.
 
 ## Output
@@ -91,7 +91,7 @@ print(d["rigid_projection"]["treatment"], d["rigid_projection"]["effective_rank"
 `*_converged`, `*_energy_increased`, frame count, endpoints, and bond changes.
 An energy-stop can produce `completed` with `*_converged == false`.
 `never_stop` records whether the opt-in mode was enabled;
-`never_stop_energy_bypasses` records how many energy-rise/plateau stops it
+`never_stop_energy_bypasses` records how many energy-rise/change stops it
 actually bypassed.
 The older `energy_reactant_hartree` / `energy_product_hartree` keys are retained
 as directional first/last aliases only. Standalone IRC has no endpoint

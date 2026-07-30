@@ -23,7 +23,7 @@ pdb2reaction opt -i input.pdb [-q 0 -m 1] \
 | `-q` / `-l` / `-m` | — | — | Charge / spin |
 | `--opt-mode` | str | `grad` | `grad` (L-BFGS) or `hess` (RFO); aliases `lbfgs` / `rfo` |
 | `--max-cycles` | int | `10000` | Stop after N cycles; see `OPT_BASE_KW["max_cycles"]` |
-| `--reject-uphill / --no-reject-uphill` | toggle | on | In Hessian/RFO mode, reject an energy-raising trial, restore the lower-energy geometry, and shrink the trust radius. At the emergency floor, run one final convergence check on the retained geometry. Ignored in L-BFGS mode. |
+| `--reject-uphill / --no-reject-uphill` | toggle | off | Opt in to rejecting an energy-raising Hessian/RFO trial above `1e-3` Hartree, restoring the lower-energy geometry and shrinking the trust radius. At the emergency floor, run one final convergence check on the retained geometry. Ignored in L-BFGS mode. |
 | `--tr-projection` | str | `constrained` | Rigid-mode treatment used only by `--flatten` PHVA. `legacy-active` is deprecated comparison-only behavior; never use it for pass/HOSP transition-state certification. |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `--solvent` | str | none | xTB-ALPB solvent |

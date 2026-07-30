@@ -162,8 +162,8 @@ LBFGS_KW: Dict[str, Any] = {
     "double_damp": True,
     "mu_reg": None,
     "max_mu_reg_adaptions": 10,
-    "reject_uphill": True,
-    "uphill_tolerance": 1e-8,
+    "reject_uphill": False,
+    "uphill_tolerance": 1e-3,
     "rejection_step_floor": 1e-7,
     "max_rejections_at_floor": 3,
 }
@@ -176,8 +176,8 @@ RFO_KW: Dict[str, Any] = {
     "trust_min": 1e-4,
     "trust_max": 0.10,
     "max_energy_incr": None,
-    "reject_uphill": True,
-    "uphill_tolerance": 1e-8,
+    "reject_uphill": False,
+    "uphill_tolerance": 1e-3,
     "rejection_trust_floor": 1e-7,
     "max_rejections_at_floor": 3,
     "hessian_update": "bfgs",
@@ -342,6 +342,7 @@ IRC_KW: Dict[str, Any] = {
     "rms_grad_thresh": 1.0e-3,
     "hard_rms_grad_thresh": None,
     "energy_thresh": 1.0e-6,
+    "energy_increase_thresh": 1.0e-3,
     "imag_below": 0.0,
     "force_inflection": True,
     "check_bonds": False,
@@ -356,8 +357,8 @@ IRC_KW: Dict[str, Any] = {
     "max_pred_steps": 500,
     "loose_cycles": 3,
     "corr_func": "mbs",
-    # Opt-in: ignore transient energy rises/plateaus so EulerPC can cross a
-    # small shoulder. Physical/integrator convergence and max_cycles remain.
+    # Opt-in: bypass gradient and energy endpoint criteria and trace to
+    # max_cycles. Numerical/integration failure and interruption still stop.
     "never_stop": False,
 }
 
