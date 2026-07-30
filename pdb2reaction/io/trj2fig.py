@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import csv
 import logging
+import time
 from pathlib import Path
 from typing import List, Optional, Sequence, Tuple
 
@@ -374,6 +375,7 @@ def cli(
     solvent_model: str,
     out_json: bool,
 ) -> None:
+    time_start = time.perf_counter()
     # Combine outputs from -o with positional filenames that follow the options
     all_outs: List[Path] = list(outs) + list(extra_outs)
     if not all_outs:
@@ -420,3 +422,9 @@ def cli(
             "files": {p.name: str(p) for p in written_paths},
         }
         write_result_json(out_dir, result_data, command="trj2fig")
+    from pdb2reaction.core.utils import format_elapsed
+
+    emit(
+        format_elapsed("[time] Elapsed Time for Trajectory Figure", time_start),
+        narrative=True,
+    )

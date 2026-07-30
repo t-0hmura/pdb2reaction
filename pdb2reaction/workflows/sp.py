@@ -271,6 +271,18 @@ def cli(
 
         out_dir_path = Path(sp_cfg["out_dir"]).resolve()
 
+        if (
+            sp_cfg["hess"]
+            and str(sp_cfg.get("hessian_calc_mode", "")).lower() == "analytical"
+            and calc_cfg.get("backend") == "uma"
+            and int(calc_cfg.get("workers", 1)) > 1
+        ):
+            raise click.ClickException(
+                "Analytical Hessian cannot be combined with UMA workers>1: "
+                "the parallel predictor exposes no autograd model. Use "
+                "workers=1 or select hessian_calc_mode='FiniteDifference'."
+            )
+
         if show_config:
             click.echo(yaml.safe_dump(
                 {"calc": calc_cfg, "geom": geom_cfg, "sp": sp_cfg},
@@ -281,6 +293,7 @@ def cli(
 
         if dry_run:
             click.echo(f"[sp] dry-run: would compute SP on {input_path} → {out_dir_path}")
+            click.echo(format_elapsed("[time] Elapsed Time for SP", time_start))
             return
 
         out_dir_path.mkdir(parents=True, exist_ok=True)
@@ -368,7 +381,7 @@ def cli(
             click.echo(f"[sp] Hessian {H_np.shape} written to {hessian_path}  ({elapsed_h:.2f} s)")
 
         # Summary
-        elapsed_total = format_elapsed("[sp] Elapsed Time", time_start)
+        elapsed_total = format_elapsed("[time] Elapsed Time for SP", time_start)
         _custom_calculator = (
             f"{Path(str(calc_cfg['calc_file'])).name}:"
             f"{calc_cfg.get('calc_factory', 'get_calculator')}"
@@ -401,7 +414,7 @@ def cli(
                 elapsed_seconds=time.perf_counter() - time_start,
             )
 
-        click.echo(f"[sp] {elapsed_total}.")
+        click.echo(format_elapsed("[time] Elapsed Time for SP", time_start))
 
     except click.ClickException:
         # Click usage errors (missing flag, bad value) carry their own clean

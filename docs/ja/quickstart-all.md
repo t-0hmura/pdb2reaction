@@ -63,7 +63,7 @@ result_all/
 **成功時のターミナル出力例:**
 
 ```
-[all] Elapsed for Whole Pipeline: HH:MM:SS.sss
+[time] Elapsed Time for Whole Pipeline: HH:MM:SS.sss
 ```
 
 （実行時間は系サイズ、GPU、有効化したステージで変動します。）

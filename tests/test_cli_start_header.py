@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import click
+import pytest
 
 
 def test_lazy_subcommand_header_uses_context_info_name(monkeypatch) -> None:
@@ -29,3 +30,23 @@ def test_lazy_subcommand_header_uses_context_info_name(monkeypatch) -> None:
 
     assert "[mode] sp" in messages
     assert "[mode] cli" not in messages
+
+
+@pytest.mark.parametrize(
+    ("argv", "expected"),
+    [
+        (["pdb2reaction", "bond-summary", "--json"], True),
+        (["pdb2reaction", "bond-summary", "--json=true"], True),
+        (["pdb2reaction", "bond-summary", "--json", "yes"], True),
+        (["pdb2reaction", "bond-summary", "--json=false"], False),
+        (["pdb2reaction", "bond-summary", "--json", "--no-json"], False),
+        (["pdb2reaction", "sp", "--json=true"], False),
+    ],
+)
+def test_json_stdout_detection_covers_legacy_boolean_forms(
+    argv: list[str],
+    expected: bool,
+) -> None:
+    from pdb2reaction.cli.app import _requests_stdout_json
+
+    assert _requests_stdout_json(argv) is expected

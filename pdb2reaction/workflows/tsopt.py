@@ -2257,6 +2257,10 @@ def cli(
                 )
             )
             click.echo("[dry-run] Validation complete. TS optimization execution was skipped.")
+            emit(
+                format_elapsed("[time] Elapsed Time for TS Opt", time_start),
+                narrative=True,
+            )
             return
 
         out_dir_path.mkdir(parents=True, exist_ok=True)
@@ -2502,6 +2506,7 @@ def cli(
                 ims = [float(x) for x in freqs_cm if x < -abs(neg_freq_thresh_cm)]
                 emit(f"[Imaginary modes] n={n_imag}  ({ims})", narrative=True)
                 _warn_if_leading_imaginary_mode_is_soft(ims)
+                initially_reported_ims = tuple(ims)
 
                 # A local minimum plus its Hessian does not identify the
                 # intended neighboring saddle.  When the path supplied that
@@ -2952,7 +2957,13 @@ def cli(
                         click.echo("[convert] WARNING: 'optimization_trj.xyz' not found; skipping conversion.", err=True)
 
                 # --- RSIRFO: write all final imaginary modes ---
-                neg_idx = _echo_imaginary_modes(freqs_cm, neg_freq_thresh_cm)
+                neg_idx, final_ims = _imaginary_mode_indices_and_values(
+                    freqs_cm, neg_freq_thresh_cm
+                )
+                if tuple(final_ims) != initially_reported_ims:
+                    neg_idx = _echo_imaginary_modes(
+                        freqs_cm, neg_freq_thresh_cm
+                    )
                 _projection_certifiable = allows_saddle_certification(
                     geom_cfg.get("tr_projection", "constrained"),
                     geom_cfg.get("freeze_atoms", ()),
@@ -3160,9 +3171,6 @@ def cli(
                     err=True,
                 )
 
-            # summary.md and key_* outputs are disabled.
-            emit(format_elapsed("[time] Elapsed Time for TS Opt", time_start), narrative=True)
-
             # result.json (if --out-json)
             if out_json:
                 from pdb2reaction.core.utils import calculator_provenance, write_result_json
@@ -3172,6 +3180,12 @@ def cli(
                     command="tsopt",
                     elapsed_seconds=time.perf_counter() - time_start,
                 )
+
+            # summary.md and key_* outputs are disabled.
+            emit(
+                format_elapsed("[time] Elapsed Time for TS Opt", time_start),
+                narrative=True,
+            )
 
         except ZeroStepLength as e:
             _write_error_json(out_dir_path, "tsopt", e, "ZeroStepLength", time_start)

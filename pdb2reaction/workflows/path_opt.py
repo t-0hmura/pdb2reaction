@@ -1003,6 +1003,10 @@ def cli(
                 )
             )
             click.echo("[dry-run] Validation complete. Path optimization execution was skipped.")
+            emit(
+                format_elapsed("[time] Elapsed Time for Path Opt", time_start),
+                narrative=True,
+            )
             return
 
         out_dir_path.mkdir(parents=True, exist_ok=True)
@@ -1196,8 +1200,6 @@ def cli(
                 click.echo(f"[HEI] ERROR: Failed to dump HEI: {e}", err=True)
                 sys.exit(5)
 
-            emit(format_elapsed("[time] Elapsed Time for Path Opt", time_start), narrative=True)
-
             # result.json (if --out-json) — DMF path
             if out_json:
                 from pdb2reaction.core.utils import calculator_provenance, write_result_json
@@ -1281,6 +1283,10 @@ def cli(
                     command="path-opt",
                     elapsed_seconds=time.perf_counter() - time_start,
                 )
+            emit(
+                format_elapsed("[time] Elapsed Time for Path Opt", time_start),
+                narrative=True,
+            )
             return
 
         for g in geoms:
@@ -1397,8 +1403,6 @@ def cli(
             click.echo(f"[HEI] ERROR: Failed to dump HEI: {e}", err=True)
             sys.exit(5)
 
-        emit(format_elapsed("[time] Elapsed Time for Path Opt", time_start), narrative=True)
-
         # result.json (if --out-json) — GSM path
         if out_json:
             from pdb2reaction.core.utils import calculator_provenance, write_result_json
@@ -1470,6 +1474,11 @@ def cli(
                 command="path-opt",
                 elapsed_seconds=time.perf_counter() - time_start,
             )
+
+        emit(
+            format_elapsed("[time] Elapsed Time for Path Opt", time_start),
+            narrative=True,
+        )
 
     except OptimizationError as e:
         _write_error_json(out_dir_path, "path-opt", e, "OptimizationError", time_start)

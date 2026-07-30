@@ -653,6 +653,24 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
     mlip_model = payload.get("mlip_model")
     lines.append(f"MLIP backend       : {mlip_backend}")
     lines.append(f"MLIP model         : {mlip_model or '-'}")
+    execution_status = payload.get("execution_status")
+    scientific_status = payload.get("scientific_status") or payload.get("status")
+    if execution_status is not None:
+        lines.append(f"Execution status    : {execution_status}")
+    if scientific_status is not None:
+        lines.append(f"Scientific status   : {scientific_status}")
+    status_reasons = (
+        payload.get("scientific_status_reasons")
+        or payload.get("status_reasons")
+        or []
+    )
+    if scientific_status not in (None, "success"):
+        lines.append(
+            "RESULT WARNING      : Energies and barriers below are diagnostic; "
+            "this run is not a complete validated result."
+        )
+    for reason in status_reasons:
+        lines.append(f"Status reason       : {reason}")
     lines.append(f"Total charge (ML)  : {charge if charge is not None else '-'}")
     lines.append(f"Multiplicity (2S+1): {spin if spin is not None else '-'}")
 

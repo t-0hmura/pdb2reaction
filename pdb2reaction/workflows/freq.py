@@ -720,6 +720,10 @@ def cli(
             )
         )
         click.echo("[dry-run] Validation complete. Frequency execution was skipped.")
+        emit(
+            format_elapsed("[time] Elapsed Time for Freq", time_start),
+            narrative=True,
+        )
         return
 
     out_dir_path.mkdir(parents=True, exist_ok=True)
@@ -1059,8 +1063,6 @@ def cli(
         # summary.md and key_* outputs are disabled.
         emit(f"[DONE] Wrote modes and list → {out_dir_path}", detail=True)
 
-        emit(format_elapsed("[time] Elapsed Time for Freq", time_start), narrative=True)
-
         # result.json (if --out-json)
         if out_json:
             from pdb2reaction.core.utils import calculator_provenance, write_result_json
@@ -1097,6 +1099,11 @@ def cli(
                 command="freq",
                 elapsed_seconds=time.perf_counter() - time_start,
             )
+
+        emit(
+            format_elapsed("[time] Elapsed Time for Freq", time_start),
+            narrative=True,
+        )
 
     except KeyboardInterrupt:
         click.echo("Interrupted by user.", err=True)

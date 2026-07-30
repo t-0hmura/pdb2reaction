@@ -160,6 +160,11 @@ def test_build_pipeline_summary_payload_shape() -> None:
             "n_segments": 1,
             "segments": [{"kind": "seg", "bond_changes": "A->B"}],
             "energy_diagrams": [{"name": "MEP", "x": [0, 1]}],
+            "status": "partial",
+            "status_reasons": ["legacy incomplete"],
+            "execution_status": "completed",
+            "scientific_status": "failed",
+            "scientific_status_reasons": ["endpoint optimization failed"],
         }
         payload = build_pipeline_summary_payload(
             out_dir=out_dir,
@@ -198,6 +203,13 @@ def test_build_pipeline_summary_payload_shape() -> None:
     assert payload["mep_mode"] == "dmf"
     assert payload["dmf_correlated"] is True
     assert payload["mlip_backend"] == "mace"
+    assert payload["status"] == "partial"
+    assert payload["status_reasons"] == ["legacy incomplete"]
+    assert payload["execution_status"] == "completed"
+    assert payload["scientific_status"] == "failed"
+    assert payload["scientific_status_reasons"] == [
+        "endpoint optimization failed"
+    ]
     assert payload["mlip_model"] == "mace-off23-small"
     assert payload["mlip_precision"] == "fp64"
     assert "uma_model" not in payload

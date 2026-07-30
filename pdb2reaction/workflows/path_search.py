@@ -2492,6 +2492,10 @@ def cli(
                 )
             )
             click.echo("[dry-run] Validation complete. Path search execution was skipped.")
+            emit(
+                format_elapsed("[time] Elapsed Time for Path Search", time_start),
+                narrative=True,
+            )
             return
 
         out_dir_path.mkdir(parents=True, exist_ok=True)
@@ -3194,6 +3198,13 @@ def cli(
                 "mlip_backend": mlip_backend,
                 "mlip_model": mlip_model,
                 "mlip_precision": _provenance["mlip_precision"],
+                "status": summary.get("status"),
+                "status_reasons": summary.get("status_reasons", []),
+                "execution_status": summary.get("execution_status"),
+                "scientific_status": summary.get("scientific_status"),
+                "scientific_status_reasons": summary.get(
+                    "scientific_status_reasons", []
+                ),
                 "command": command_str,
                 "charge": calc_cfg.get("charge"),
                 "spin": calc_cfg.get("spin"),
@@ -3214,7 +3225,10 @@ def cli(
 
         if summary_payload_for_citations and not is_child_mode():
             emit_method_citations(summary_payload_for_citations)
-        emit(format_elapsed("[time] Elapsed for Path Search", time_start), narrative=True)
+        emit(
+            format_elapsed("[time] Elapsed Time for Path Search", time_start),
+            narrative=True,
+        )
 
     out_dir_path = Path(out_dir).resolve()
     try:

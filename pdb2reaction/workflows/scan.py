@@ -354,6 +354,10 @@ def cli(
             )
             click.echo(f"[scan] preopt={bool(preopt)}  endopt={bool(endopt)}  freeze_links={bool(freeze_links)}")
             click.echo("[scan] No scan / preopt was executed.")
+            emit(
+                format_elapsed("[time] Elapsed Time for Scan", time_start),
+                narrative=True,
+            )
             return
 
         def _run() -> None:
@@ -901,7 +905,6 @@ def cli(
             _echo_scan_summary(stages_summary)
 
             emit("\n====== Scan finished ======\n", narrative=True)
-            emit(format_elapsed("[time] Elapsed Time for Scan", time_start), narrative=True)
 
             # result.json (if --out-json)
             if out_json:
@@ -994,5 +997,10 @@ def cli(
                     command="scan",
                     elapsed_seconds=time.perf_counter() - time_start,
                 )
+
+            emit(
+                format_elapsed("[time] Elapsed Time for Scan", time_start),
+                narrative=True,
+            )
 
         run_cli(_run, label="scan", out_dir=out_dir_path, command="scan", time_start=time_start)

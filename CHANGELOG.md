@@ -580,12 +580,12 @@ Release of the 0.4.4–0.4.6 changes listed below.
   `schema_version` so MCP clients can pin the contract.
 - Smoke `tests/smoke/run.sh` expanded with per-stage `--coord-type
   {dlc,redund,tric}` + `--precision fp64` test coverage
-  (test53a/d/g/j/k/m); test53 itself capped at `--max-cycles 5 --no-
+  (test52a/d/g/j/k/m); test52 itself capped at `--max-cycles 5 --no-
   tsopt/thermo/dft` so the DLC code path is exercised without the
   multi-hour convergence the uncapped run requires.
 - Smoke model-based complex scans now pass explicit boundary
   `--freeze-atoms` for the generated `p_complex_model.pdb`, and add
-  complex-model DLC regressions (test69/70) so frozen-DOF internal-coordinate
+  complex-model DLC regressions (test68/69) so frozen-DOF internal-coordinate
   paths are not covered only by small-molecule inputs.
 - `--precision fp32|fp64` accepted on every calculator-constructing
   subcommand. The flag was previously available only on `tsopt / freq /

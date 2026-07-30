@@ -63,7 +63,7 @@ The minimal command stops after the MEP stage and therefore does **not** create
 **Sample terminal output (successful run):**
 
 ```
-[all] Elapsed for Whole Pipeline: HH:MM:SS.sss
+[time] Elapsed Time for Whole Pipeline: HH:MM:SS.sss
 ```
 
 (Wall-clock varies with system size, GPU, and selected stages.)

@@ -286,6 +286,7 @@ def cli(
     calc_file: Optional[str],
     calc_factory: Optional[str],
 ) -> None:
+    time_start = time.perf_counter()
     set_convert_file_enabled(convert_files)
     config_yaml, override_yaml, _ = resolve_yaml_sources(
         config_yaml=config_yaml,
@@ -314,8 +315,6 @@ def cli(
         geom_input: Optional[Path],
         source: Optional[Path],
     ) -> None:
-        time_start = time.perf_counter()
-
         yaml_cfg = merged_yaml_cfg
         (
             geom_cfg,
@@ -1153,7 +1152,6 @@ def cli(
         click.echo(f"[plot] Wrote '{html3d}'.")
 
         emit("\n====== 3D Scan finished ======\n", narrative=True)
-        emit(format_elapsed("[time] Elapsed Time for 3D Scan", time_start), narrative=True)
 
         # result.json (if --out-json)
         if out_json:
@@ -1252,6 +1250,10 @@ def cli(
                 command="scan3d",
                 elapsed_seconds=time.perf_counter() - time_start,
             )
+        emit(
+            format_elapsed("[time] Elapsed Time for 3D Scan", time_start),
+            narrative=True,
+        )
 
     try:
         if csv_path is None:
@@ -1291,6 +1293,10 @@ def cli(
                     )
                     click.echo(f"[scan3d] preopt={bool(preopt)}  freeze_links={bool(freeze_links)}")
                     click.echo("[scan3d] No 3D scan was executed.")
+                    emit(
+                        format_elapsed("[time] Elapsed Time for 3D Scan", time_start),
+                        narrative=True,
+                    )
                     return
                 _run_scan3d(
                     prepared_input,
@@ -1305,6 +1311,10 @@ def cli(
                 click.echo(f"[scan3d] csv input  : {csv_path}")
                 click.echo(f"[scan3d] out_dir    : {Path(out_dir).resolve()}")
                 click.echo("[scan3d] No 3D scan was executed.")
+                emit(
+                    format_elapsed("[time] Elapsed Time for 3D Scan", time_start),
+                    narrative=True,
+                )
                 return
             _run_scan3d(None, charge, spin, None, None)
     except KeyboardInterrupt:

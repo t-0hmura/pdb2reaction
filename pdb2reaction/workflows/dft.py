@@ -622,6 +622,10 @@ def cli(
                     force=True,
                 )
                 click.echo("[dry-run] Validation complete. DFT execution was skipped.")
+                emit(
+                    format_elapsed("[time] Elapsed Time for DFT", time_start),
+                    narrative=True,
+                )
                 return
 
             coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
@@ -847,8 +851,6 @@ def cli(
             click.echo(f"E_total (Hartree): {e_h:.12f}")
             click.echo(f"E_total (kcal/mol): {e_kcal:.6f}")
 
-            emit(format_elapsed("[time] Elapsed Time for DFT", time_start), narrative=True)
-
             result_data: Dict[str, Any] = {
                 "status": "converged" if converged else "not_converged",
                 "converged": converged,
@@ -883,6 +885,10 @@ def cli(
                 out_dir=out_dir_path,
                 payload=result_data,
                 elapsed_seconds=time.perf_counter() - time_start,
+            )
+            emit(
+                format_elapsed("[time] Elapsed Time for DFT", time_start),
+                narrative=True,
             )
 
         except KeyboardInterrupt:

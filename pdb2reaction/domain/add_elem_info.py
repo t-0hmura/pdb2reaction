@@ -14,6 +14,7 @@ from __future__ import annotations
 import collections
 import re
 import sys
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -297,6 +298,7 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
 )
 def cli(in_pdb: Path, out_pdb: Optional[Path], overwrite: bool) -> None:
     """Click wrapper to run via the `pdb2reaction add-elem-info` subcommand."""
+    time_start = time.perf_counter()
     try:
         assign_elements(str(in_pdb), (str(out_pdb) if out_pdb else None), overwrite=overwrite)
     except SystemExit as e:
@@ -304,3 +306,10 @@ def cli(in_pdb: Path, out_pdb: Optional[Path], overwrite: bool) -> None:
     except Exception as e:
         click.echo(f"[ERR] Failed: {e}", err=True)
         sys.exit(2)
+    from pdb2reaction.core.output import emit
+    from pdb2reaction.core.utils import format_elapsed
+
+    emit(
+        format_elapsed("[time] Elapsed Time for Add Element Info", time_start),
+        narrative=True,
+    )

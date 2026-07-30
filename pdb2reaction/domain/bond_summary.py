@@ -12,6 +12,7 @@ For detailed documentation, see: docs/bond-summary.md
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from typing import List
 
@@ -76,6 +77,7 @@ def cli(inputs: tuple, extra_inputs: tuple, device: str, bond_factor: float, one
       pdb2reaction bond-summary A.xyz B.xyz C.xyz
       pdb2reaction bond-summary -i A.xyz B.xyz C.xyz
     """
+    time_start = time.perf_counter()
     files: List[str] = list(inputs) + list(extra_inputs)
     if len(files) < 2:
         raise click.BadParameter("At least two input files are required.", param_hint="'-i'")
@@ -153,3 +155,10 @@ def cli(inputs: tuple, extra_inputs: tuple, device: str, bond_factor: float, one
     # MCP) cannot mistake a partial/failed run for success.
     if n_failed > 0:
         raise SystemExit(1)
+    if not out_json:
+        from pdb2reaction.core.utils import format_elapsed
+
+        emit(
+            format_elapsed("[time] Elapsed Time for Bond Summary", time_start),
+            narrative=True,
+        )

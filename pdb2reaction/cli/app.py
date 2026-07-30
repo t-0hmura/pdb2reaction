@@ -11,7 +11,7 @@ from pdb2reaction.cli.help_pages import (
     _configure_subcommand_help_visibility,
     _ensure_help_advanced_option,
 )
-from pdb2reaction.cli.bool_compat import normalize_bool_argv
+from pdb2reaction.cli.bool_compat import _parse_bool_literal, normalize_bool_argv
 from pdb2reaction.cli.default_group import DefaultGroup
 from pdb2reaction import __version__
 
@@ -61,10 +61,38 @@ def _has_help_or_version_request(argv: list[str]) -> bool:
     return any(arg in {"-h", "--help", "--version", "--help-advanced"} for arg in argv[1:])
 
 
+def _requests_stdout_json(argv: list[str]) -> bool:
+    """Return whether bond-summary promises JSON-only stdout."""
+    args = argv[1:]
+    if "bond-summary" not in args:
+        return False
+
+    enabled = False
+    i = 0
+    while i < len(args):
+        name, separator, value = args[i].partition("=")
+        name = name.lower()
+        if name == "--no-json":
+            enabled = False
+        elif name == "--json":
+            parsed = _parse_bool_literal(value) if separator else None
+            if parsed is None and not separator and i + 1 < len(args):
+                parsed = _parse_bool_literal(args[i + 1])
+                if parsed is not None:
+                    i += 1
+            enabled = True if parsed is None else parsed
+        i += 1
+    return enabled
+
+
 def _emit_start_header(ctx: click.Context) -> None:
     from pdb2reaction.core.utils import emit, is_child_mode, verbose_level
 
-    if is_child_mode() or _has_help_or_version_request(sys.argv):
+    if (
+        is_child_mode()
+        or _has_help_or_version_request(sys.argv)
+        or _requests_stdout_json(sys.argv)
+    ):
         return
 
     if verbose_level() >= 2:

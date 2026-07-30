@@ -588,6 +588,10 @@ def cli(
                     )
                 )
                 click.echo("[dry-run] Validation complete. IRC execution was skipped.")
+                emit(
+                    format_elapsed("[time] Elapsed Time for IRC", time_start),
+                    narrative=True,
+                )
                 return
 
             out_dir_path = _prepare_irc_output_dir(
@@ -817,9 +821,6 @@ def cli(
                     ),
                 )
 
-            # summary.md and key_* outputs are disabled.
-            emit(format_elapsed("[time] Elapsed Time for IRC", time_start), narrative=True)
-
             # result.json (if --out-json)
             if out_json:
                 from pdb2reaction.core.utils import calculator_provenance, write_result_json
@@ -933,6 +934,12 @@ def cli(
                     command="irc",
                     elapsed_seconds=time.perf_counter() - time_start,
                 )
+
+            # summary.md and key_* outputs are disabled.
+            emit(
+                format_elapsed("[time] Elapsed Time for IRC", time_start),
+                narrative=True,
+            )
 
         except KeyboardInterrupt:
             click.echo("Interrupted by user.", err=True)

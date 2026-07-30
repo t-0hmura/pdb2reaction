@@ -10,6 +10,7 @@ Examples:
 from __future__ import annotations
 
 import ast
+import time
 from pathlib import Path
 from typing import List, Sequence
 
@@ -171,6 +172,7 @@ def cli(
     label_y: str,
     out_json: bool,
 ) -> None:
+    time_start = time.perf_counter()
     energies = _parse_numeric_inputs(input_values)
 
     labels = _parse_label_x(label_x)
@@ -205,3 +207,10 @@ def cli(
             "files": {out_img.name: str(out_img)},
         }
         write_result_json(out_img.parent, result_data, command="energy-diagram")
+    from pdb2reaction.core.output import emit
+    from pdb2reaction.core.utils import format_elapsed
+
+    emit(
+        format_elapsed("[time] Elapsed Time for Energy Diagram", time_start),
+        narrative=True,
+    )

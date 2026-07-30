@@ -353,7 +353,7 @@ def cli(
     calc_file: Optional[str],
     calc_factory: Optional[str],
 ) -> None:
-
+    time_start = time.perf_counter()
     set_convert_file_enabled(convert_files)
     config_yaml, override_yaml, _ = resolve_yaml_sources(
         config_yaml=config_yaml,
@@ -407,10 +407,12 @@ def cli(
             )
             click.echo(f"[scan2d] preopt={bool(preopt)}  freeze_links={bool(freeze_links)}")
             click.echo("[scan2d] No 2D scan was executed.")
+            emit(
+                format_elapsed("[time] Elapsed Time for 2D Scan", time_start),
+                narrative=True,
+            )
             return
         try:
-            time_start = time.perf_counter()
-
             yaml_cfg = merged_yaml_cfg
             (
                 geom_cfg,
@@ -1199,7 +1201,6 @@ def cli(
             click.echo(f"[plot] Wrote '{html3d}'.")
 
             emit("\n====== 2D Scan finished ======\n", narrative=True)
-            emit(format_elapsed("[time] Elapsed Time for 2D Scan", time_start), narrative=True)
 
             # result.json (if --out-json)
             if out_json:
@@ -1279,6 +1280,11 @@ def cli(
                     command="scan2d",
                     elapsed_seconds=time.perf_counter() - time_start,
                 )
+
+            emit(
+                format_elapsed("[time] Elapsed Time for 2D Scan", time_start),
+                narrative=True,
+            )
 
         except KeyboardInterrupt:
             click.echo("Interrupted by user.", err=True)

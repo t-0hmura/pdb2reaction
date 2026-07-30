@@ -233,9 +233,24 @@ def _emit_final_summary(
                 summary = {}
     if summary:
         _echo_section("====== Pipeline summary ======")
-        status = summary.get("status")
-        if status:
-            _echo(f"Status: {status}", narrative=True)
+        execution_status = summary.get("execution_status")
+        scientific_status = summary.get("scientific_status")
+        if execution_status is not None:
+            _echo(f"Execution status: {execution_status}", narrative=True)
+        if scientific_status is not None:
+            _echo(f"Scientific status: {scientific_status}", narrative=True)
+        status_reasons = (
+            summary.get("scientific_status_reasons")
+            or summary.get("status_reasons")
+            or []
+        )
+        if scientific_status not in (None, "success"):
+            _echo(
+                "RESULT WARNING: this run is not a complete validated result.",
+                narrative=True,
+            )
+        for reason in status_reasons:
+            _echo(f"Status reason: {reason}", narrative=True)
         rls = summary.get("rate_limiting_step")
         if isinstance(rls, dict):
             barrier = rls.get("barrier_kcal")
@@ -257,7 +272,10 @@ def _emit_final_summary(
         _echo(narrative=True)
     if citation_payload:
         emit_method_citations(citation_payload)
-    _echo(format_elapsed("[all] Elapsed for Whole Pipeline", time_start), narrative=True)
+    _echo(
+        format_elapsed("[time] Elapsed Time for Whole Pipeline", time_start),
+        narrative=True,
+    )
 
 
 from pdb2reaction.workflows import scan as _scan_cli
@@ -5252,6 +5270,17 @@ def cli(
                     freeze_atoms=_freeze_atoms_for_log(),
                     manifest=manifest,
                 )
+                for key in (
+                    "status",
+                    "status_reasons",
+                    "execution_status",
+                    "scientific_status",
+                    "scientific_status_reasons",
+                ):
+                    summary_payload[key] = summary.get(
+                        key,
+                        [] if key.endswith("_reasons") else None,
+                    )
                 try:
                     _publish_manifest_summary(
                         tsroot / "summary.json",

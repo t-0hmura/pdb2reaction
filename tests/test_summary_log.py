@@ -1,5 +1,6 @@
 """Tests for pdb2reaction.io.summary formatting helpers."""
 
+import json
 import time
 from pathlib import Path
 
@@ -147,6 +148,30 @@ def test_summary_log_does_not_invent_default_backend(tmp_path):
     text = dest.read_text(encoding="utf-8")
     assert "MLIP backend       : -" in text
     assert "MLIP backend       : uma" not in text
+
+
+def test_write_summary_log_marks_non_successful_results(tmp_path):
+    dest = tmp_path / "summary.log"
+
+    write_summary_log(
+        dest,
+        {
+            "root_out_dir": str(tmp_path),
+            "path_module_dir": "path_search",
+            "pipeline_mode": "path-search",
+            "segments": [{"index": 1, "barrier_kcal": 12.3}],
+            "energy_diagrams": [],
+            "execution_status": "completed",
+            "scientific_status": "partial",
+            "scientific_status_reasons": ["segment 1 did not converge"],
+        },
+    )
+
+    text = dest.read_text(encoding="utf-8")
+    assert "Execution status    : completed" in text
+    assert "Scientific status   : partial" in text
+    assert "RESULT WARNING" in text
+    assert "Status reason       : segment 1 did not converge" in text
 
 
 def test_summary_log_tree_lists_only_current_run_paths(tmp_path):
@@ -318,5 +343,32 @@ def test_final_stdout_places_citations_immediately_before_elapsed(capsys) -> Non
     )
 
     lines = [line for line in capsys.readouterr().out.splitlines() if line]
-    assert lines[-1].startswith("[all] Elapsed for Whole Pipeline")
+    assert lines[-1].startswith("[time] Elapsed Time for Whole Pipeline")
     assert "[6] Methods and citations" in lines[:-1]
+
+
+def test_final_stdout_explains_non_success_scientific_status(
+    tmp_path, capsys
+) -> None:
+    from pdb2reaction.workflows.all import _emit_final_summary
+
+    (tmp_path / "summary.json").write_text(
+        json.dumps(
+            {
+                "execution_status": "completed",
+                "scientific_status": "partial",
+                "scientific_status_reasons": ["IRC endpoint was not validated"],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    _emit_final_summary(tmp_path, time.time())
+
+    output = capsys.readouterr().out
+    assert "Scientific status: partial" in output
+    assert "RESULT WARNING:" in output
+    assert "Status reason: IRC endpoint was not validated" in output
+    assert output.rstrip().splitlines()[-1].startswith(
+        "[time] Elapsed Time for Whole Pipeline"
+    )

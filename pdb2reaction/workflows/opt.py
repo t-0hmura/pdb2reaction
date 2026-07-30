@@ -803,6 +803,10 @@ def cli(
                     )
                 )
                 click.echo("[dry-run] Validation complete. Optimization execution was skipped.")
+                emit(
+                    format_elapsed("[time] Elapsed Time for Opt", time_start),
+                    narrative=True,
+                )
                 return
 
             out_dir_path.mkdir(parents=True, exist_ok=True)
@@ -991,8 +995,6 @@ def cli(
                 final_xyz_path=final_xyz_path,
             )
 
-            emit(format_elapsed("[time] Elapsed Time for Opt", time_start), narrative=True)
-
             if out_json:
                 from pdb2reaction.core.utils import write_result_json
                 final_energy_hartree = unbiased_energy_hartree(geometry, base_calc)
@@ -1048,6 +1050,11 @@ def cli(
                     command="opt",
                     elapsed_seconds=time.perf_counter() - time_start,
                 )
+
+            emit(
+                format_elapsed("[time] Elapsed Time for Opt", time_start),
+                narrative=True,
+            )
 
     run_cli(
         _run,
