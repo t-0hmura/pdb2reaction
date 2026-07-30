@@ -1714,19 +1714,16 @@ def test_colab_exercises_every_workflow_and_advanced_flag_widget(
 ) -> None:
     """Operate every workflow selector and every editable live Click option."""
     app, _ = _execute_app(monkeypatch, tmp_path)
-    # The dropdown deliberately offers only the scientific workflows (author
-    # decision, 2026-07-27). The utility subcommands stay in SUBS so the
-    # command editor can still validate them, but they are not selectable, and
-    # restoring a session that names one silently falls back to 'all'.
+    # Every retained CLI workflow remains selectable and restorable.
     option_values = {
         item[1] if isinstance(item, tuple) else item
         for item in app["dd_subcmd"].options
     }
-    assert option_values == set(app["BASIC_SUBS"])
+    assert option_values == set(app["SUBS"])
     utility_subs = set(app["SUBS"]) - set(app["BASIC_SUBS"])
-    assert utility_subs and not utility_subs & option_values
+    assert utility_subs and utility_subs <= option_values
     assert (
-        "dd_subcmd.value = d['subcmd'] if d['subcmd'] in BASIC_SUBS else 'all'"
+        "dd_subcmd.value = d['subcmd'] if d['subcmd'] in SUBS else 'all'"
         in _notebook()["cells"][2]["source"]
     )
 
@@ -3046,7 +3043,7 @@ def test_colab_setup_cell_is_frozen() -> None:
     setup = _notebook()["cells"][1]["source"]
     digest = hashlib.sha256(setup.encode("utf-8")).hexdigest()
 
-    assert digest == "1c1a3cfc2d23d891aecc5693c770902dbed68dad41f1ad9e1973f298f8667423", (
+    assert digest == "90fdcf1163c22aedd8b13d6b95c6eb5b7c1ee9e499d6576d001f6043dc1894e5", (
         "the Colab Setup cell changed; it is frozen for this release. Re-read the "
         "Setup contracts above, then update this digest deliberately. Got: " + digest
     )
