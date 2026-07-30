@@ -232,6 +232,12 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 (ja-mep-search-options)=
 ### MEP 探索オプション
 
+```{note}
+`pdb2reaction all` では `--max-cycles` を指定せず、各ステージ固有の
+デフォルトを使用してください。`--max-cycles` は `opt`、`tsopt`、
+`path-opt` などの単発サブコマンドを直接実行するときだけ指定します。
+```
+
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `--mep-mode [gsm\|dmf]` | MEP 探索アルゴリズム: GSM（Growing String Method）または DMF（Direct Max Flux） | `gsm` |

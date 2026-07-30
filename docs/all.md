@@ -203,6 +203,12 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 
 ### MEP search
 
+```{note}
+Do not set `--max-cycles` on `pdb2reaction all`; let each stage use its own
+default. Set `--max-cycles` only when running a single-stage subcommand
+directly, such as `opt`, `tsopt`, or `path-opt`.
+```
+
 | Option | Description | Default |
 | --- | --- | --- |
 | `--mep-mode [gsm\|dmf]` | MEP algorithm: GSM (Growing String Method) or DMF (Direct Max Flux). | `gsm` |
