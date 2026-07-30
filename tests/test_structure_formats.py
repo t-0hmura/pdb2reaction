@@ -328,6 +328,14 @@ def test_bundled_pdb_parser_distinguishes_two_letter_atoms_from_hydrogens(
         ("HE  ", "HE"),
         (" HG ", "H"),
         (" HE ", "H"),
+        (" CA ", "C"),
+        (" CD ", "C"),
+        (" CE ", "C"),
+        (" NE ", "N"),
+        (" PA ", "P"),
+        (" PB ", "P"),
+        (" SG ", "S"),
+        (" OG ", "O"),
         (" NH1", "NH"),
         ("ZN  ", "N"),
     ]
@@ -342,7 +350,22 @@ def test_bundled_pdb_parser_distinguishes_two_letter_atoms_from_hydrogens(
     path.write_text("".join(lines) + "END\n", encoding="utf-8")
 
     atoms, *_ = parse_pdb(str(path))
-    assert atoms == ["Hg", "He", "H", "H", "N", "Zn"]
+    assert atoms == [
+        "Hg",
+        "He",
+        "H",
+        "H",
+        "C",
+        "C",
+        "C",
+        "N",
+        "P",
+        "P",
+        "S",
+        "O",
+        "N",
+        "Zn",
+    ]
 
 
 def test_chain_qualified_atom_selector_disambiguates_repeated_ids() -> None:
