@@ -675,7 +675,11 @@ def cli(
                             emit(f"[stage {k}] endopt ZeroStepLength — continuing.", narrative=True)
                         except OptimizationError as e:
                             emit(f"[stage {k}] endopt OptimizationError — {e}", narrative=True)
-                        srec["converged"] = getattr(end_optimizer, 'is_converged', None) if end_optimizer is not None else None
+                        srec["converged"] = (
+                            optimizer_converged_bit(end_optimizer)
+                            if end_optimizer is not None
+                            else None
+                        )
                         srec["endopt_converged"] = srec["converged"]
                         if end_optimizer is not None:
                             srec["optimizer_status"] = optimizer_terminal_status(end_optimizer)
@@ -805,12 +809,12 @@ def cli(
 
                 # Record convergence of the last optimizer (endopt if used, else last scan step)
                 _last_opt = end_optimizer if (endopt and end_optimizer is not None) else optimizer
-                srec["converged"] = getattr(_last_opt, 'is_converged', None)
+                srec["converged"] = optimizer_converged_bit(_last_opt)
                 if _last_opt is not None:
                     srec["optimizer_status"] = optimizer_terminal_status(_last_opt)
                     srec["stop_reason"] = getattr(_last_opt, "stop_reason", "") or None
                 if endopt and end_optimizer is not None:
-                    srec["endopt_converged"] = getattr(end_optimizer, 'is_converged', None)
+                    srec["endopt_converged"] = optimizer_converged_bit(end_optimizer)
 
                 # Store per-step energies in stage record
                 srec["energies_hartree"] = stage_energies
