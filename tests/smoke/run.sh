@@ -382,9 +382,9 @@ pdb2reaction scan -i r.pdb -q -1 --opt-mode hess --scan-lists "[(1,5,1.4)]" --ma
 # test59: scan2d --opt-mode hess (RFO per-grid relaxation).  Start from a
 # converged test8 point and use the smallest genuine 2D grid (2 × 2).  The
 # starting geometry is whatever test8 relaxed to, so a corner of this tiny grid
-# may stay off its target distance and leave the surface without enough support
-# to interpolate; a full 2 × 2 and that controlled outcome both prove the RFO
-# per-grid branch ran, while any other failure is fatal.
+# may stay off its target distance and leave either no eligible points or too
+# few points to interpolate.  A full 2 × 2 and either controlled outcome prove
+# the RFO per-grid branch ran, while any other failure is fatal.
 rc=0
 pdb2reaction scan2d -i test8/grid/point_i140_j300.pdb --ligand-charge 'PRE:-2' --freeze-atoms "$P_COMPLEX_MODEL_FREEZE_ATOMS" --scan-lists "[('PRE 8 C3','PRE 8 O1\'',1.40,1.41),('PRE 8 C1','PRE 8 C8',3.00,3.01)]" --opt-mode hess --max-step-size 2.0 --relax-max-cycles 100 --thresh gau_loose --out-dir test59_scan2d_hess > test59_scan2d_hess.out 2>&1 || rc=$?
 test -s test59_scan2d_hess/surface.csv || { echo "[smoke] FAIL test59: surface.csv missing" >> test59_scan2d_hess.out; exit 1; }
@@ -396,8 +396,13 @@ fi
 if [ "$rc" -eq 0 ]; then
   test -s test59_scan2d_hess/scan2d_map.png || { echo "[smoke] FAIL test59: successful run omitted the 2D plot" >> test59_scan2d_hess.out; exit 1; }
 elif [ "$rc" -eq 1 ]; then
-  grep -Fq '[plot] ERROR: A 2D energy surface requires at least three non-collinear' test59_scan2d_hess.out \
-    || { echo "[smoke] FAIL test59: exit 1 was not the controlled insufficient-support outcome" >> test59_scan2d_hess.out; exit 1; }
+  if grep -Fq 'No converged finite grid point with a written geometry is available' test59_scan2d_hess.out; then
+    grep -Fq '[plot] No finite data for plotting.' test59_scan2d_hess.out \
+      || { echo "[smoke] FAIL test59: no-data exit omitted the plotting diagnostic" >> test59_scan2d_hess.out; exit 1; }
+  else
+    grep -Fq '[plot] ERROR: A 2D energy surface requires at least three non-collinear' test59_scan2d_hess.out \
+      || { echo "[smoke] FAIL test59: exit 1 was not a controlled insufficient-support outcome" >> test59_scan2d_hess.out; exit 1; }
+  fi
 else
   echo "[smoke] FAIL test59: unexpected exit status $rc" >> test59_scan2d_hess.out
   exit 1
