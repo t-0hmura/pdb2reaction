@@ -39,9 +39,11 @@ pdb2reaction all -i <input(s)> [-c <substrate>] [-l 'RES:Q,...'] \
 | `-r, --radius` | float | 2.6 | Pocket radius (Å) when `-c` triggers extraction |
 | `-s, --scan-lists` | one flag followed by one or more values | none | Staged distance scans (mode 2 — `all-scan-list.md`). Use one `-s` occurrence; each following Python literal is one sequential stage. Repeating the flag is rejected. |
 | `--refine-path / --no-refine-path` | toggle | off | Recursive `path-search` when enabled; single-pass `path-opt` when disabled. Refinement can improve a poor TS seed but may split a bad path into unnecessary segments and greatly increase cost |
+| `--thresh` | str | `gau` | Convergence preset for single-structure optimization and scan relaxation |
+| `--thresh-gsm` | str | `gau_loose` | Convergence preset for the GSM string optimizer |
+| `--thresh-dmf` | str/float | `tight` | DMF IPOPT dual-infeasibility tolerance: `tight`, `middle`, `loose`, or a positive float |
 | `--tsopt / --no-tsopt` | toggle | off | Run TS optimization + IRC per reactive segment (also required to enter TS-only mode with a single `-i`) |
 | `--flatten/--no-flatten` | flag | off | Enable surplus-imaginary-mode cleanup when TSOPT does not reach a first-order saddle |
-| `--tr-projection` | str | `constrained` | Forward rigid-mode treatment to TSOPT, IRC, freq, and flatten PHVA. `legacy-active` is deprecated comparison-only behavior, unrelated to `--ref-mode`, and must not be used for pass/HOSP transition-state certification. |
 | `--irc-step-size` | float | IRC default `0.10` | Forward a smaller EulerPC maximum step; try `0.05` when an IRC branch stops after only a few frames |
 | `--irc-never-stop/--no-irc-never-stop` | flag | off | Ignore IRC gradient and energy stops and trace to the cycle cap; propagation failures still stop |
 | `--reject-uphill / --no-reject-uphill` | toggle | off | Opt in to rejection above `1e-3` Hartree during Hessian/RFO post-IRC endpoint re-optimization only. At the emergency floor, the retained endpoint receives a final convergence check. It never affects TS optimization or path search. |

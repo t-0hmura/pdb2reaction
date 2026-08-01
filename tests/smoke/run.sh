@@ -112,7 +112,7 @@ pdb2reaction scan2d -i p_complex_model.pdb --ligand-charge 'PRE:-2' --freeze-ato
 pdb2reaction scan3d -i p_complex_model.pdb --ligand-charge 'PRE:-2' --freeze-atoms "$P_COMPLEX_MODEL_FREEZE_ATOMS" --scan-lists "[('PRE 8 C3','PRE 8 O1\'',1.4,1.8),('PRE 8 C1','PRE 8 C8',3.0,3.4),('PRE 8 C1','PRE 8 C7',1.4,1.6)]" --max-step-size 2.0 --relax-max-cycles 100 --thresh gau_loose --out-dir test9 > test9.out 2>&1
 
 # test10: path-opt (gsm)
-pdb2reaction path-opt -i r.pdb p.pdb -q -1 --max-nodes 5 --max-cycles 5 --no-preopt --no-climb --out-dir test10 > test10.out 2>&1
+pdb2reaction path-opt -i r.pdb p.pdb -q -1 --max-nodes 5 --max-cycles 5 --thresh-gsm gau_loose --no-preopt --no-climb --out-dir test10 > test10.out 2>&1
 
 # test11: path-search
 pdb2reaction path-search -i r.pdb p.pdb -q -1 --max-nodes 5 --max-cycles 5 --out-dir test11 > test11.out 2>&1
@@ -431,7 +431,7 @@ pdb2reaction scan3d -i r.pdb -q -1 --scan-lists "[(1,5,2.20,2.21),(1,6,1.75,1.76
 grep -Fq '[scan3d] --dry-run: input, charge/spin parity, and --scan-lists parse OK.' test61_scan3d_fp64.out || { echo "[smoke] FAIL test61: fp64 option did not reach scan3d dry-run" >> test61_scan3d_fp64.out; exit 1; }
 
 # test62: path-opt --mep-mode dmf (Direct Max Flux at the subcommand level)
-pdb2reaction path-opt -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --max-cycles 3 --no-preopt --no-climb --out-dir test62_pathopt_dmf > test62_pathopt_dmf.out 2>&1
+pdb2reaction path-opt -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --max-cycles 3 --thresh-dmf middle --no-preopt --no-climb --out-dir test62_pathopt_dmf > test62_pathopt_dmf.out 2>&1
 
 # test63: path-opt --coord-type dlc (p2r keeps DLC for pure-MLIP)
 pdb2reaction path-opt -i r.pdb p.pdb -q -1 --coord-type dlc --max-nodes 5 --max-cycles 3 --no-preopt --no-climb --out-dir test63_pathopt_dlc > test63_pathopt_dlc.out 2>&1

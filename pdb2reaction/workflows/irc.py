@@ -306,17 +306,6 @@ def _echo_convert_trj_if_exists(
     help="Comma-separated 1-based atom indices to freeze (e.g., '1,3,5').",
 )
 @click.option(
-    "--tr-projection",
-    type=click.Choice(["constrained", "legacy-active"], case_sensitive=False),
-    default=None,
-    help=(
-        "Rigid-mode treatment for a frozen/partial Hessian. 'constrained' "
-        "removes only full-system rigid motions compatible with the anchors "
-        "(default); 'legacy-active' is deprecated comparison-only behavior and "
-        "must not be used for pass/HOSP transition-state certification."
-    ),
-)
-@click.option(
     "--convert-files/--no-convert-files",
     "convert_files",
     default=True,
@@ -400,7 +389,6 @@ def cli(
     backward: Optional[bool],
     freeze_links_flag: bool,
     freeze_atoms_text: Optional[str],
-    tr_projection: Optional[str],
     convert_files: bool,
     ref_pdb: Optional[Path],
     out_dir: str,
@@ -496,8 +484,6 @@ def cli(
                 irc_cfg["backward"] = bool(backward)
             if cli_param_overridden(ctx, "out_dir"):
                 irc_cfg["out_dir"] = str(out_dir)
-            if cli_param_overridden(ctx, "tr_projection") and tr_projection is not None:
-                geom_cfg["tr_projection"] = str(tr_projection).lower()
             # CLI knobs → irc_cfg. require_pos_def_hessian gates PSD-Hessian convergence.
             if cli_param_overridden(ctx, "irc_pos_def") and irc_pos_def is not None:
                 irc_cfg["require_pos_def_hessian"] = bool(irc_pos_def)

@@ -73,7 +73,7 @@ are not current results.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `treatment` | string | Selected `--tr-projection` mode: `"constrained"` or `"legacy-active"` |
+| `treatment` | string | Fixed rigid-mode treatment: `"constrained"` |
 | `algorithm` | string | Projection-kernel identifier |
 | `effective_rank` | int | Number of rigid directions removed from the active Hessian |
 | `full_rigid_rank` | int | Rank of the full-system rigid basis before frozen-anchor constraints |
@@ -85,7 +85,7 @@ are not current results.
 | `hessian_source` / `source` | string | Hessian provenance. `freq`/`irc` use `hessian_source`; `opt`/`tsopt` use `source`. |
 | `hessian_shape` / `raw_hessian_shape` | int[2] | Input Hessian shape. `freq`/`irc` use `hessian_shape`; `opt`/`tsopt` use `raw_hessian_shape`. |
 
-`constrained` removes only full-system rigid motions that leave frozen anchors fixed. `legacy-active` is deprecated, comparison-only, and must not be used for pass/HOSP transition-state certification; it is not a bitwise replay guarantee for near-linear or degenerate structures. See [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries).
+`constrained` removes only full-system rigid motions that leave frozen anchors fixed. The treatment is fixed; stale non-constrained values fail explicitly. See [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries).
 
 ### Error envelope (when `status == "error"`)
 

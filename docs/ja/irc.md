@@ -118,7 +118,6 @@ Hessian を含まず、`result.json.files` にも登録しません。
 | `--irc-pos-def/--no-irc-pos-def` | 射影 Hessian の正定値性を IRC 収束条件に加える opt-in guard。肩を収束と誤認する可能性がある場合に有効化 | `False` |
 | `--freeze-links/--no-freeze-links` | PDB/mmCIF トポロジー用、キャップ H 親を凍結（`geom.freeze_atoms` にマージ）。詳細は [extract](extract.md) を参照 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
-| `--tr-projection [constrained\|legacy-active]` | 初期frozen／partial Hessian の剛体モード処理。`legacy-active`は非推奨の比較専用で、pass/HOSP 遷移状態認定には使用不可 | `constrained` |
 | `-o, --out-dir TEXT` | 出力ディレクトリ。明示値は YAML `irc.out_dir` より優先 | `./result_irc/` |
 | `--convert-files/--no-convert-files` | 参照PDB/mmCIF topologyがある場合の XYZ/TRJ → PDB/CIF を切り替え | `True` |
 | `--ref-pdb FILE` | XYZ/GJF入力に使用する参照PDBまたはmmCIF topology | _None_ |

@@ -38,13 +38,6 @@ Options:
                                   [default: freeze-links]
   --freeze-atoms TEXT             Comma-separated 1-based atom indices to freeze
                                   (e.g., '1,3,5').
-  --tr-projection [constrained|legacy-active]
-                                  Rigid translation/rotation treatment used by
-                                  --flatten PHVA. 'constrained' respects frozen
-                                  anchors; 'legacy-active' treats the active
-                                  fragment as isolated, is deprecated, and must
-                                  not be used for pass/HOSP transition-state
-                                  certification.  [default: constrained]
   --convert-files / --no-convert-files
                                   Convert XYZ/TRJ outputs into PDB/CIF/GJF
                                   companions based on the input format.

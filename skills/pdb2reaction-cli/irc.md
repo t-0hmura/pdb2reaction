@@ -26,7 +26,6 @@ pdb2reaction irc -i ts.{pdb,cif,xyz,gjf} \
 | `--max-cycles` | int | 125 | Max IRC steps per branch (forward + backward) |
 | `--step-size` | float | `0.10` | Step in Bohr (unweighted Cartesian); maps to `IRC_KW["step_length"]` |
 | `--never-stop / --no-never-stop` | bool | `False` | Ignore gradient and energy endpoint criteria and trace to `max_cycles`; propagation failures still stop |
-| `--tr-projection` | str | `constrained` | Rigid-mode treatment for the initial Hessian. `legacy-active` is deprecated comparison-only behavior; never use it for pass/HOSP transition-state certification. |
 | `--workers`, `--workers-per-node` | int | `1`, `1` | UMA predictor workers. `workers > 1` plus an explicit `Analytical` Hessian raises `BackendError`; use one worker or finite differences. |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `-o, --out-dir` | path | `./result_irc/` | Output directory |
@@ -140,7 +139,7 @@ for b in bc["broken"]: print("BROKEN ", b)
   (1.1e-3 bohr absolute tolerance to allow three-decimal PDB round-tripping).
   A missing or mismatched fingerprint is rejected and a fresh Hessian is
   calculated; endpoint Hessians are stored separately for endpoint RFO.
-- `--tr-projection constrained` removes only full-system rigid motions that
+- The fixed constrained treatment removes only full-system rigid motions that
   leave frozen anchors fixed. It does not select a reaction path; see
   `freeze-atoms.md`. An all-frozen structure raises an explicit error.
 

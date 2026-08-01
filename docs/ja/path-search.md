@@ -14,7 +14,7 @@ R → … → P の **2 構造以上**から、連続的な最小エネルギー
 pdb2reaction path-search -i R.pdb [-i I.pdb ...] -i P.pdb [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1] \
  [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
  [--workers N] [--workers-per-node N] \
- [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET] [--thresh-stopt PRESET] \
+ [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET] [--thresh-gsm PRESET] [--thresh-dmf TOL] \
  [--refine-mode {peak|minima}] \
  [--max-nodes N] [--max-cycles N] [--climb/--no-climb] \
  [--opt-mode grad|hess] [--dump/--no-dump] \
@@ -139,7 +139,8 @@ out_dir/ (デフォルト:./result_path_search/)
 | `--opt-mode TEXT` | HEI±1/ねじれノード用の単一構造オプティマイザ（`grad`=L-BFGS、`hess`=RFO）。同じトークンが `tsopt` では Dimer / RS-P-RFO へ対応する点については {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
 | **収束閾値** | | |
 | `--thresh TEXT` | 単一構造最適化のみの収束プリセットを上書き（`opt.lbfgs/rfo.thresh`） | `gau` |
-| `--thresh-stopt TEXT` | ストリングオプティマイザの収束プリセットを上書き（`stopt.thresh`） | `gau_loose` |
+| `--thresh-gsm TEXT` | GSM ストリング最適化の収束プリセットを上書き（`stopt.thresh`） | `gau_loose` |
+| `--thresh-dmf TEXT` | DMF 最適化の IPOPT dual-infeasibility 許容値を上書き（`dmf.tol`）。`tight`(0.04)、`middle`(0.10)、`loose`(0.20) または正の float。Gaussian プリセットは受け付けない | `tight` |
 | **マージとアライメント** | | |
 | `--align/--no-align` | 探索前にすべての入力を最初の構造にアライメント | `True` |
 | `--ref-full-pdb PATH...` | フルサイズテンプレート PDB（入力と同数。`--align` があれば先頭のみ再利用可） | _None_ |

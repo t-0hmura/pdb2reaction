@@ -46,7 +46,7 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hess \
 ## Workflow
 
 - **Optimizer naming**: the CLI accepts `grad|lbfgs` and `hess|rfo`; in the YAML `opt_mode` key, use `lbfgs` or `rfo` directly. See {ref}`opt-mode-semantics` for the per-subcommand token→algorithm mapping.
-- **Flatten loop**: `--flatten` enables post-optimization flattening of imaginary vibrational modes. In `opt`, all detected imaginary modes are flattened each iteration until none remain or the internal loop cap is reached. Its PHVA eigensolver uses `--tr-projection`; the default `constrained` mode respects frozen anchors.
+- **Flatten loop**: `--flatten` enables post-optimization flattening of imaginary vibrational modes. In `opt`, all detected imaginary modes are flattened each iteration until none remain or the internal loop cap is reached. Its PHVA eigensolver always uses the constrained rigid-mode treatment.
 - **Restraints**: `--dist-freeze` consumes Python-literal tuples `(i, j, target_Å)` where `target_Å` is the target distance in Å; omitting the third element restrains the starting distance. `--bias-k` sets a global harmonic strength (eV·Å⁻²). Indices default to 1-based but can be flipped to 0-based with `--zero-based`.
 - **Charge/spin resolution**: Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: Charge specification <charge-specification>` for details).
 - **Freeze atoms**: When `--freeze-links` is active, cap-hydrogen parent atoms are automatically frozen (see {ref}`Cap hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
@@ -87,7 +87,6 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--bias-k FLOAT` | Harmonic bias strength applied to every `--dist-freeze` tuple (eV·Å⁻²). | `300` |
 | `--freeze-links/--no-freeze-links` | Toggle cap-hydrogen parent freezing (PDB/mmCIF input or XYZ/GJF with `--ref-pdb`). See [extract](extract.md) for cap-hydrogen details. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
-| `--tr-projection [constrained\|legacy-active]` | Rigid-mode treatment used only by `--flatten` PHVA. `legacy-active` is deprecated comparison-only behavior and must not be used for pass/HOSP transition-state certification. | `constrained` |
 | `--max-cycles INT` | Hard limit on optimization iterations (`opt.max_cycles`). | `10000` |
 | `--opt-mode TEXT` | Optimizer preset: `grad` (`lbfgs`) or `hess` (`rfo`). Aliases `lbfgs`/`rfo` are accepted. On `opt`, `grad` = L-BFGS minimization; on `tsopt`, `grad` = Hessian-Guided Dimer TS search. For the full subcommand-dependent table, see {ref}`opt-mode-semantics`. | `grad` |
 | `--flatten/--no-flatten` | Enable/disable the post-optimization imaginary-mode flattening loop. | `False` |
@@ -138,7 +137,7 @@ reached. The noise level is backend/model/system dependent. The fallback is skip
 optimizers, which store per-image energy arrays.
 ```
 
-`--tr-projection` has no effect unless `--flatten` runs; it does not change L-BFGS or RFO optimization steps. See [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries).
+The fixed constrained rigid-mode treatment applies only when `--flatten` runs; it does not change L-BFGS or RFO optimization steps. See [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries).
 
 ## See Also
 

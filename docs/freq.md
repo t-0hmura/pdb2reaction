@@ -95,7 +95,6 @@ The tables below cover the options that need explanation; the full flag list is 
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--freeze-links/--no-freeze-links` | PDB/mmCIF input (or XYZ/GJF with `--ref-pdb`). Freeze parents of cap hydrogens and merge with `geom.freeze_atoms`. See [extract](extract.md) for cap-hydrogen details. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
-| `--tr-projection [constrained\|legacy-active]` | Rigid-mode treatment for PHVA. `legacy-active` is deprecated comparison-only behavior and must not be used for pass/HOSP transition-state certification. | `constrained` |
 | `--max-write INT` | Number of modes to export. | `10` |
 | `--amplitude-ang FLOAT` | Mode animation amplitude (Å). | `0.8` |
 | `--n-frames INT` | Frames per mode animation. | `20` |

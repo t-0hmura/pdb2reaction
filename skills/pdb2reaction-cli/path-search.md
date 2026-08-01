@@ -31,6 +31,9 @@ pdb2reaction path-search -i 1.R.pdb 3.P.pdb \
 | `--mep-mode` | str | `gsm` | `gsm` (Growing String) or `dmf` (Direct Max Flux) |
 | `--refine-mode` | str | engine-dependent | `peak` (HEI±1; GSM default) or `minima` (nearest local minima; DMF default) |
 | `--max-nodes` | int | 20 | Max internal nodes per segment string |
+| `--thresh` | str | `gau` | Single-structure optimization convergence preset |
+| `--thresh-gsm` | str | `gau_loose` | GSM string-optimizer convergence preset |
+| `--thresh-dmf` | str/float | `tight` | DMF IPOPT dual-infeasibility tolerance: `tight`, `middle`, `loose`, or a positive float |
 | `-q, --charge` / `-l` / `-m` | — | — | Charge / multiplicity (see common conventions) |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `--solvent` | str | none | xTB-ALPB solvent name |

@@ -47,7 +47,7 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hess \
 
 - **オプティマイザ**: `--opt-mode grad`（alias: `lbfgs`、デフォルト）→ L-BFGS、`--opt-mode hess`（alias: `rfo`）→ RFOptimizer。サブコマンド別のトークン→アルゴリズム対応は {ref}`ja-opt-mode-semantics` を参照。
   > **命名規則の注意:** CLI は `grad|lbfgs` および `hess|rfo` を受け付けます。YAML では `lbfgs` または `rfo` を直接指定してください。
-- **Flatten loop**: `--flatten` を有効にすると、最適化後に虚振動数モードのフラット化ループを実行します。`opt` では各反復で検出された虚振動数モードをすべてフラット化し、虚振動数が残らなくなるか内部ループ上限に達するまで繰り返します。PHVAの固有値解析には`--tr-projection`を使用し、デフォルトの`constrained`は凍結anchorを尊重します。
+- **Flatten loop**: `--flatten` を有効にすると、最適化後に虚振動数モードのフラット化ループを実行します。`opt` では各反復で検出された虚振動数モードをすべてフラット化し、虚振動数が残らなくなるか内部ループ上限に達するまで繰り返します。PHVAの固有値解析は、凍結anchorを尊重する constrained 処理に固定されています。
 - **拘束**: `--dist-freeze` は Python リテラルタプル `(i, j, target_Å)` を解釈します（`target_Å` は目標距離、単位は Å）。3 番目の要素を省略すると開始距離を拘束します。`--bias-k` はグローバル調和強度（eV·Å⁻²）を設定します。インデックスはデフォルトで 1 始まりですが、`--zero-based` で 0 始まりに切り替えられます。
 - **電荷/スピン解決**: 電荷の解決順序の詳細は {ref}`CLI 規約: 電荷の指定 <ja-charge-specification>` を参照してください。
 - **凍結原子**: `--freeze-links` が有効な場合、キャップ水素の親原子は自動的に凍結されます（{ref}`キャップ水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
@@ -94,7 +94,6 @@ out_dir/
 | `--bias-k FLOAT` | すべての `--dist-freeze` タプルに適用される調和バイアス強度（eV·Å⁻²） | `300` |
 | `--freeze-links/--no-freeze-links` | キャップ水素の親原子の凍結を切り替え（PDB/mmCIF 入力、または `--ref-pdb` 付き XYZ/GJF） | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
-| `--tr-projection [constrained\|legacy-active]` | `--flatten` PHVAだけで使う剛体モード処理。`legacy-active`は非推奨の比較専用で、pass/HOSP 遷移状態認定には使用不可 | `constrained` |
 | `--max-cycles INT` | 最適化反復の上限 | `10000` |
 | `--opt-mode TEXT` | 最適化モード: `grad`（`lbfgs`）または `hess`（`rfo`）。`lbfgs`/`rfo` も指定可。サブコマンド別の対応表（`opt` は L-BFGS/RFO、`tsopt` は Dimer/RS-P-RFO）は {ref}`ja-opt-mode-semantics` を参照 | `grad` |
 | `--flatten/--no-flatten` | 最適化後の虚振動数モードフラット化ループを有効/無効化 | `False` |
@@ -132,7 +131,6 @@ opt:
 ### `geom`
 - `coord_type`（`"cart"`）: デカルト座標 vs `"dlc"` 非局在化内部座標
 - `freeze_atoms`（`[]`）: 1 始まりの凍結原子インデックス。CLI のキャップ検出結果と自動的にマージされます
-- `tr_projection`（`"constrained"`）: `--flatten` PHVAの剛体モード処理。通常のL-BFGS／RFO stepには影響しません
 
 ### `calc`
 - MLIP バックエンド設定（`model`、`task_name`、デバイス選択、近傍半径、Hessian 形式など）

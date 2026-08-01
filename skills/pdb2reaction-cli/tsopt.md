@@ -33,7 +33,6 @@ pdb2reaction tsopt -i ts_guess.{pdb,cif,mmcif,xyz,gjf} \
 | `--max-cycles` | int | 10000 | Optimization step cap |
 | `--hessian-calc-mode` | str | (live default) | `Analytical` or `FiniteDifference` (default: `FiniteDifference`); selects how the initial Hessian is computed |
 | `--workers`, `--workers-per-node` | int | `1`, `1` | UMA predictor workers. `workers > 1` with explicit `Analytical` raises `BackendError`; it does not fall back. Other built-in backends ignore these worker kwargs. |
-| `--tr-projection` | str | `constrained` | Rigid-mode treatment for Dimer orientation, flattening, and exact PHVA validation. `legacy-active` is deprecated comparison-only behavior; never use it for pass/HOSP transition-state certification. |
 | `--ref-mode` | path | none | Advanced/internal Cartesian 3N reaction direction used for path-mode tracking and bounded saddle recovery. `all` generates and supplies it from the MEP; ordinary standalone `tsopt` runs should omit it. Visible only in `--help-advanced`. |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `--solvent` | str | none | xTB-ALPB solvent |
@@ -135,8 +134,8 @@ a first-order saddle.
   is an MEP handoff, not a general convergence switch. Supply it manually
   only when an external path provides a deliberate non-zero Cartesian 3N
   reaction direction.
-- Do not confuse `--tr-projection` with `--ref-mode`. The former controls
-  rigid-mode removal in Cartesian PHVA; the latter identifies the intended
+- The fixed constrained treatment controls rigid-mode removal in Cartesian
+  PHVA. It is distinct from `--ref-mode`, which identifies the intended
   reaction direction. See `freeze-atoms.md` for constrained-rank behavior.
 - `--max-cycles` defaults to 10000 as a safety upper bound; if a run
   burns through many cycles without converging, inspect the trajectory and

@@ -24,7 +24,6 @@ pdb2reaction opt -i input.pdb [-q 0 -m 1] \
 | `--opt-mode` | str | `grad` | `grad` (L-BFGS) or `hess` (RFO); aliases `lbfgs` / `rfo` |
 | `--max-cycles` | int | `10000` | Stop after N cycles; see `OPT_BASE_KW["max_cycles"]` |
 | `--reject-uphill / --no-reject-uphill` | toggle | off | Opt in to rejecting an energy-raising Hessian/RFO trial above `1e-3` Hartree, restoring the lower-energy geometry and shrinking the trust radius. At the emergency floor, run one final convergence check on the retained geometry. Ignored in L-BFGS mode. |
-| `--tr-projection` | str | `constrained` | Rigid-mode treatment used only by `--flatten` PHVA. `legacy-active` is deprecated comparison-only behavior; never use it for pass/HOSP transition-state certification. |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `--solvent` | str | none | xTB-ALPB solvent |
 | `-o, --out-dir` | path | `./result_opt/` | Output directory |
@@ -90,8 +89,8 @@ and raw Hessian source and shape.
 - `--config` YAML is the way to override less-common settings (step
   limits, trust radius, etc.); inspect `OPT_BASE_KW` and `LBFGS_KW`
   in `pdb2reaction.core.defaults`.
-- `--tr-projection` does not change L-BFGS or RFO steps. It applies only when
-  `--flatten` runs; see `freeze-atoms.md`.
+- The fixed constrained rigid-mode treatment applies only when `--flatten`
+  runs; it does not change L-BFGS or RFO steps. See `freeze-atoms.md`.
 
 ## See also
 

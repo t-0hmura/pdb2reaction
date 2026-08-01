@@ -75,7 +75,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
 - **構造ロードと freeze-links**: 構造は `pysisyphus.helpers.geom_loader` で読み込まれます。`--freeze-links` が有効な場合、キャップ水素の親原子は自動的に凍結されます（{ref}`キャップ水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
 - **MLIP Hessian（デフォルト: UMA）**: `--hessian-calc-mode` で解析的 Hessian と有限差分 Hessian を切り替えます。いずれも活性（PHVA）部分空間を考慮します。凍結原子が存在する場合、MLIP バックエンドは活性ブロックのみを返すことがあります。Hessian 評価モードの詳細は {ref}`ja-hessian-evaluation` を参照してください。
 - **Dimer モード詳細**:
- - Hessian Guided Dimer 段階は、active部分空間のexact Hessian を周期的に評価してダイマー方向を更新します。`--tr-projection`のデフォルト`constrained`は、凍結anchorを動かさない全系剛体運動だけを除去します。保存・回転・試行する全方向で凍結Cartesian成分をゼロに保ち、中心外のforce評価でも凍結座標を中心imageと厳密に一致させます。`root == 0` のときは最小固有対に `torch.lobpcg` を優先し、失敗時は `torch.linalg.eigh` にフォールバックします。
+ - Hessian Guided Dimer 段階は、active部分空間のexact Hessian を周期的に評価してダイマー方向を更新します。剛体モード処理は constrained に固定され、凍結anchorを動かさない全系剛体運動だけを除去します。保存・回転・試行する全方向で凍結Cartesian成分をゼロに保ち、中心外のforce評価でも凍結座標を中心imageと厳密に一致させます。`root == 0` のときは最小固有対に `torch.lobpcg` を優先し、失敗時は `torch.linalg.eigh` にフォールバックします。
  - `--flatten` が有効な場合、フラット化ループはΔx とΔg を用い、Bofill（SR1/MS ↔ PSB ブレンド; `hessian_dimer.flatten_loop_bofill` で切替）で活性 Hessian を更新します。各ループは虚振動数モード推定 → 1 回フラット化 → ダイマー方向再更新 → dimer+L-BFGS マイクロ区間 → （任意で）Bofill 更新を実行します。虚振動数モードが 1 つになったら最終的な正確な Hessian で振動解析を行います。
  - `root != 0` の場合は初期ダイマー方向のみその root を使用し、以降の更新は最も負のモード（`root = 0`）に従います。
 - **RS-I-RFO モード**: RS-I-RFO を実行し、任意の Hessian 参照や R+S 分割セーフガード、マイクロサイクル制御は `rsirfo` セクションで設定します。`--flatten` が有効で収束後も虚振動数モードが複数残る場合、追加モードをフラット化して RS-I-RFO を再実行し、虚振動数モードが 1 つになるか上限に達するまで繰り返します。
@@ -143,7 +143,6 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
 | **活性領域の凍結** | | |
 | `--freeze-links/--no-freeze-links` | PDB/mmCIF 入力（または `--ref-pdb` 付き XYZ/GJF）。キャップ水素の親を凍結（`geom.freeze_atoms` にマージ）。キャップ水素の詳細は [extract](extract.md) を参照 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
-| `--tr-projection [constrained\|legacy-active]` | Dimer方向、flatten、exact PHVA検証の剛体モード処理。`legacy-active`は非推奨の比較専用で、pass/HOSP 遷移状態認定には使用不可。`--ref-mode`とは無関係 | `constrained` |
 | **TS optimizer とモード** | | |
 | `--opt-mode TEXT` | TS optimizer プリセット（Choice: `grad` / `hess` / `dimer` / `rsirfo` / `trim` / `rsprfo`）。`grad`/`dimer` → Hessian-Guided Dimer; `hess`/`rsprfo` → RS-P-RFO（Banerjee、デフォルト、non-microiter）; `rsirfo` → RS-I-RFO; `trim` → TRIM（Helgaker、non-microiter）。サブコマンド別の対応表（`opt` は L-BFGS/RFO、`tsopt` は Dimer/RS-P-RFO）は {ref}`ja-opt-mode-semantics` を参照 | `hess` |
 | `--ref-mode PATH` | advanced/internal MEP handoff用のCartesian 3N方向（空白区切りtextまたは`.npy`）。`all`が自動指定し、通常の単独runでは省略します。外部経路を使うexpert runではroot選択、overlap追跡、`n_imag=0`回復に使用します | _None_ |
@@ -304,7 +303,7 @@ TS 収束が遅い場合や最適化中に TS モードが失われる場合は�
 
 - 虚振動数モード**検出**の閾値はデフォルトで 5.0 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm` で変更可能）。この閾値未満の振動数は虚振動数としてカウントされません。選択した `root` は最適化中にどの振動モードを追跡するかを制御します。`root` は YAML（`rsirfo.root` または `hessian_dimer.root`、デフォルト `0`）で設定します。`tsopt` に `--root` CLI フラグはありません（[`irc`](irc.md) とは異なります）。
 - `--opt-mode` はワークフロー選択用です（デフォルト: `rsprfo`）。YAML のモードマッピングを手動で変更するのではなく、目的のアルゴリズムに合ったモードを選択してください。
-- Dimer方向、回転force、flatten、最終exact PHVA検証は`freq`と同じ`--tr-projection`実装を使用します。Dimerは中心imageが変わるたびにこの基底を再構築します。`constrained`は、全凍結anchorと両立する真の剛体null方向でない限り、active fragmentの並進を差し引きません。Hessian RFO最適化自体は、この射影を行わずactive-DOF Cartesian Hessian を扱います。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
+- Dimer方向、回転force、flatten、最終exact PHVA検証は`freq`と同じ固定の constrained 処理を使用します。Dimerは中心imageが変わるたびにこの基底を再構築します。全凍結anchorと両立する真の剛体null方向でない限り、active fragmentの並進を差し引きません。Hessian RFO最適化自体は、この射影を行わずactive-DOF Cartesian Hessian を扱います。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
 - 設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
 
 ## 関連項目

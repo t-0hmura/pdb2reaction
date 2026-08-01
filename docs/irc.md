@@ -120,7 +120,6 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--irc-pos-def/--no-irc-pos-def` | Opt in to requiring a positive-definite projected Hessian before accepting IRC convergence. Enable this guard when a shoulder could otherwise look converged. | `False` |
 | `--freeze-links/--no-freeze-links` | For PDB/mmCIF topology inputs, freeze cap-H parents (merged with `geom.freeze_atoms`). See [extract](extract.md) for cap-hydrogen details. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
-| `--tr-projection [constrained\|legacy-active]` | Rigid-mode treatment for the initial frozen/partial Hessian. `legacy-active` is deprecated comparison-only behavior and must not be used for pass/HOSP transition-state certification. | `constrained` |
 | `-o, --out-dir TEXT` | Output directory (`irc.out_dir`); an explicit value overrides YAML. | `./result_irc/` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/CIF companions when a reference PDB/mmCIF topology is available. | `True` |
 | `--ref-pdb FILE` | Reference PDB or mmCIF topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |

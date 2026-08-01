@@ -57,7 +57,6 @@ pdb2reaction tsopt -i ts_candidate.xyz -q 0 -m 1 \
 # tsopt.yaml
 geom:
   freeze_atoms: [12, 15, 28, 29, 42, 88, 91, 92]
-  tr_projection: constrained
 ```
 
 ```bash
@@ -85,14 +84,9 @@ on the CLI.
 
 ## Rigid-mode treatment for PHVA
 
-Use `geom.tr_projection` or `--tr-projection` in `freq`, `irc`, `opt`, `tsopt`, and `all`:
+Cartesian PHVA-related eigensolvers use the fixed constrained treatment: remove only full-system rigid motions that leave every frozen anchor fixed. Generic effective ranks are 6 / 3 / 1 / 0 for 0 / 1 / 2 / at least 3 non-collinear anchors. A normal multi-anchor cluster boundary therefore usually has rank 0.
 
-| Value | Behavior |
-|---|---|
-| `constrained` (default) | Remove only full-system rigid motions that leave every frozen anchor fixed. Generic effective ranks are 6 / 3 / 1 / 0 for 0 / 1 / 2 / at least 3 non-collinear anchors. A normal multi-anchor cluster boundary therefore usually has rank 0. |
-| `legacy-active` | Deprecated: treat the active fragment as isolated for comparison only. Never use it for pass/HOSP transition-state certification. The current common kernel handles degeneracies; near-linear or degenerate cases do not guarantee bitwise replay of older results. |
-
-This flag controls Cartesian PHVA-related eigensolvers: `freq`, the initial IRC mode, Dimer orientation, exact TS validation, and opt/TS flattening. It is unrelated to `tsopt --ref-mode`, which supplies an MEP reaction direction. An all-frozen structure is invalid because it has no active vibrational DOF.
+This treatment applies to `freq`, the initial IRC mode, Dimer orientation, exact TS validation, and opt/TS flattening. It is unrelated to `tsopt --ref-mode`, which supplies an MEP reaction direction. An all-frozen structure is invalid because it has no active vibrational DOF.
 
 With JSON output, inspect `result.json["rigid_projection"]` for `treatment`, `effective_rank`, and Hessian source/shape. `freq --dump` writes the same provenance to `thermoanalysis.yaml`.
 

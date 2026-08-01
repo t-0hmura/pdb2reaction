@@ -75,17 +75,17 @@ def test_all_stops_before_irc_when_tsopt_result_is_invalid(
     assert "--out-json" in captured_args
 
 
-def test_all_tr_projection_is_injected_into_child_config() -> None:
+def test_all_coord_type_is_injected_into_child_config() -> None:
     from pdb2reaction.workflows.all import _write_args_yaml_with_freeze_atoms
     from pdb2reaction.workflows._run_session import RunSession
 
     session = RunSession()
     path = _write_args_yaml_with_freeze_atoms(
-        None, [], tr_projection="legacy-active", session=session
+        None, [], coord_type="dlc", session=session
     )
     assert path is not None
     payload = yaml.safe_load(path.read_text(encoding="utf-8"))
-    assert payload["geom"]["tr_projection"] == "legacy-active"
+    assert payload["geom"]["coord_type"] == "dlc"
     session.close()
     assert not path.exists()
 

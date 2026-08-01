@@ -409,18 +409,6 @@ def _seed_rfo_initial_hessian(
     help="Comma-separated 1-based atom indices to freeze (e.g., '1,3,5').",
 )
 @click.option(
-    "--tr-projection",
-    type=click.Choice(["constrained", "legacy-active"], case_sensitive=False),
-    default=GEOM_KW_DEFAULT["tr_projection"],
-    show_default=True,
-    help=(
-        "Rigid translation/rotation treatment used by --flatten PHVA. "
-        "'constrained' respects frozen anchors; 'legacy-active' treats the "
-        "active fragment as isolated, is deprecated, and must not be used for "
-        "pass/HOSP transition-state certification."
-    ),
-)
-@click.option(
     "--convert-files/--no-convert-files",
     "convert_files",
     default=True,
@@ -544,7 +532,6 @@ def cli(
     bias_k: float,
     freeze_links: bool,
     freeze_atoms_text: Optional[str],
-    tr_projection: str,
     convert_files: bool,
     ref_pdb: Optional[Path],
     max_cycles: int,
@@ -668,8 +655,6 @@ def cli(
                 opt_cfg["thresh"] = str(thresh)
             if cli_param_overridden(ctx, "cli_coord_type") and cli_coord_type is not None:
                 geom_cfg["coord_type"] = str(cli_coord_type).lower()
-            if cli_param_overridden(ctx, "tr_projection"):
-                geom_cfg["tr_projection"] = str(tr_projection).lower()
             if cli_param_overridden(ctx, "print_every") and print_every is not None:
                 opt_cfg["print_every"] = int(print_every)
             if cli_param_overridden(ctx, "reject_uphill"):

@@ -27,7 +27,6 @@ pdb2reaction freq -i geom.{pdb,cif,xyz,gjf} \
 | `--pressure` | float | 1.0 | atm, for thermochemistry |
 | `--symmetry-number` | int ≥ 1 | 1 | External rotational symmetry number. Point-group symmetry is not inferred. |
 | `--hessian-calc-mode` | str | `FiniteDifference` | `Analytical` / `FiniteDifference`; check `UMA_CALC_KW` |
-| `--tr-projection` | str | `constrained` | PHVA rigid-mode treatment. `legacy-active` is deprecated comparison-only behavior; never use it for pass/HOSP transition-state certification. |
 | `--workers`, `--workers-per-node` | int | `1`, `1` | UMA predictor workers. An explicit `Analytical` request with `workers > 1` raises `BackendError`; use one worker or finite differences. Other built-in backends ignore these worker kwargs. |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `-o, --out-dir` | path | `./result_freq/` | Output directory |
@@ -105,11 +104,9 @@ diagonalized; frozen atoms are projected out. This reduces the active dense
 block, with the actual time/memory benefit set by the number of mobile degrees
 of freedom and backend implementation.
 
-The default `--tr-projection constrained` removes only full-system rigid
+The fixed constrained treatment removes only full-system rigid
 motions that leave every frozen anchor fixed. A normal multi-anchor cluster
-boundary therefore usually has effective rank 0. `legacy-active` is an
-isolated-active comparison treatment, not a bitwise replay guarantee for
-near-linear or degenerate structures. It is deprecated and must not be used
+boundary therefore usually has effective rank 0. This is the treatment used
 for pass/HOSP transition-state certification. See `freeze-atoms.md`.
 
 `pdb2reaction` does **not** read PDB B-factors as a freeze list. The

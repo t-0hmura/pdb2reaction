@@ -41,7 +41,6 @@ This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan
 | `--dump` | `dump` | `opt` |
 | `--opt-mode` | _(CLI only)_ | — |
 | `--freeze-atoms` | `freeze_atoms` | `geom` |
-| `--tr-projection` | `tr_projection` | `geom` |
 | `--coord-type` | `coord_type` | `geom` |
 | `--temperature` (freq, `all --freq-temperature`) | `temperature` | `thermo` |
 | `--pressure` (freq, `all --freq-pressure`) | `pressure_atm` | `thermo` |
@@ -114,13 +113,12 @@ Geometry loading and coordinate handling.
 geom:
  coord_type: cart # Coordinate type: "cart" (Cartesian) or "dlc" (delocalized internals)
  freeze_atoms: [] # 1-based atom indices to freeze; if `--freeze-links` is on (PDB/mmCIF input, or XYZ/GJF with `--ref-pdb`), the auto-detected cap-H parent indices are merged in
- tr_projection: constrained # constrained | legacy-active; rigid-mode treatment for Cartesian PHVA
 ```
 
 **Notes:**
 - `freeze_atoms` from YAML is merged with atoms detected via `--freeze-links` for PDB/mmCIF topology inputs
 - Frozen atoms have zeroed forces; their Hessian columns are also zeroed
-- `tr_projection: constrained` removes only full-system rigid motions that leave frozen anchors fixed. `legacy-active` is deprecated, comparison-only, and must not be used for pass/HOSP transition-state certification; see [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries)
+- Cartesian PHVA always uses the constrained treatment, removing only full-system rigid motions that leave frozen anchors fixed; see [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries)
 - For `irc`, `geom.coord_type` is forced to `cart` after YAML/CLI merging
 
 ---
@@ -323,6 +321,7 @@ For DMF, `--max-nodes` is forwarded as `DirectMaxFlux(nmove=...)`; the installed
 ```yaml
 dmf:
  max_cycles: 300 # Maximum DMF/IPOPT iterations (overridden by --max-cycles)
+ tol: tight # IPOPT dual_inf_tol: tight (0.04) | middle (0.10) | loose (0.20) or a positive float (overridden by --thresh-dmf)
  correlated: true # Correlated DMF propagation
  sequential: true # Sequential DMF execution
  fbenm_only_endpoints: false # Run FB-ENM beyond endpoints
@@ -349,6 +348,8 @@ dmf:
    update_teval: false # Update transition evaluation
  k_fix: 300.0 # Harmonic constant for restraints (top-level dmf key, NOT under dmf_options)
 ```
+
+`dmf.tol` is the tolerance the DMF solve applies last, so it takes precedence over an `ipopt_options.dual_inf_tol` set in the same file. Set only `ipopt_options.dual_inf_tol` (and leave `dmf.tol` unset) to pin the raw IPOPT option instead. Gaussian presets such as `gau_tight` are rejected here; they belong to `--thresh` and `--thresh-gsm`.
 
 ---
 
@@ -635,7 +636,6 @@ Below is a complete example combining multiple sections:
 geom:
  coord_type: cart
  freeze_atoms: []
- tr_projection: constrained
 
 calc:
  backend: uma

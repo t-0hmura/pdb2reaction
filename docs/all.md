@@ -83,7 +83,7 @@ Full system(s) (PDB / mmCIF / XYZ / GJF)
    - `--tsopt` — TS optimization on each HEI active-site model. A machine-readable exact-Hessian result must report `status=converged` and `n_imag=1`; otherwise the workflow stops before IRC. A validated TS is followed by EulerPC IRC and IRC-endpoint re-optimization with `--thresh-post` (default `baker`). For Hessian TS optimization, the MEP's energy-upwinding Cartesian tangent is passed automatically as the reaction reference mode (a normalized secant bisector is used only for legacy trajectories without readable energies). The endpoint optimization working directory is deleted automatically after completion. Endpoint RFO uphill rejection is disabled by default; pass `--reject-uphill` to enable it for endpoint re-optimization only.
    - `--thermo` — `freq` on (R, TS, P) for vibrational + thermochemistry data and an MLIP Gibbs diagram.
    - `--dft` — single-point DFT on (R, TS, P) and a DFT diagram. With `--thermo`, a DFT//MLIP Gibbs diagram (DFT energies + MLIP thermal correction) is also produced.
-   - Shared overrides: `--opt-mode`, `--opt-mode-post`, `--flatten`, `--tr-projection`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, `--dft-engine` (GPU-first by default). `--tr-projection` is forwarded to TSopt, IRC, freq, and flatten PHVA; it is unrelated to the MEP-derived `--ref-mode`. For Hessian evaluation modes see {ref}`hessian-evaluation`.
+   - Shared overrides: `--opt-mode`, `--opt-mode-post`, `--flatten`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, `--dft-engine` (GPU-first by default). Frozen-boundary PHVA always uses the constrained rigid-mode treatment; it is unrelated to the MEP-derived `--ref-mode`. For Hessian evaluation modes see {ref}`hessian-evaluation`.
 6. **TSOPT-only mode** (single input + `--tsopt`, no `--scan-lists`) — skips MEP / merge; runs `tsopt` + EulerPC IRC and generates the same energy diagrams plus optional freq / DFT outputs.
 
 ## Outputs
@@ -216,7 +216,9 @@ directly, such as `opt`, `tsopt`, or `path-opt`.
 | `--max-cycles INT` | MEP maximum optimization cycles. | `300` |
 | `--climb / --no-climb` | Enable climbing image for standard GSM segments (bridge segments always disable climbing). | `True` |
 | `--opt-mode [grad\|hess]` | Workflow preset (`grad` → L-BFGS / Dimer, `hess` → RFO / RS-P-RFO). Token-to-algorithm mapping depends on scope — see {ref}`opt-mode-semantics` for the per-subcommand table; note that `all`'s pre-opt default (`grad`) differs from `tsopt`'s default (`hess`). | `grad` |
-| `--thresh TEXT` | Convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
+| `--thresh TEXT` | Convergence preset for single-structure optimizations and scan relaxations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
+| `--thresh-gsm TEXT` | Convergence preset for the GSM string optimizer of the MEP stage (same presets as `--thresh`). | `gau_loose` |
+| `--thresh-dmf TEXT` | IPOPT dual-infeasibility tolerance of the DMF MEP stage: `tight` (0.04), `middle` (0.10), `loose` (0.20), or a positive float. Not a Gaussian preset. | `tight` |
 | `--preopt / --no-preopt` | Pre-optimize active-site model endpoints before MEP search. Standalone `scan` / `scan2d` / `scan3d` default `--preopt` to `False`. | `True` |
 | `--refine-path / --no-refine-path` | Enable recursive `path-search` with automatic bond-change segmentation / use the default single-pass `path-opt` per adjacent pair. | disabled |
 
@@ -241,7 +243,6 @@ directly, such as `opt`, `tsopt`, or `path-opt`.
 | `--thresh-post TEXT` | Convergence preset for post-IRC endpoint optimizations. | `baker` |
 | `--flatten / --no-flatten` | Enable surplus-imaginary-mode flattening in `tsopt`. | `False` |
 | `--reject-uphill / --no-reject-uphill` | Opt in to rejecting energy-raising RFO steps during post-IRC **endpoint re-optimization only**, using a `1e-3` Hartree tolerance (roll back to the lower-energy geometry and shrink the trust radius); TS optimization forces rejection off, and path search is unaffected. At the emergency floor, the retained endpoint receives a final normal convergence check. | `False` |
-| `--tr-projection [constrained\|legacy-active]` | Rigid-mode treatment forwarded to TSopt, IRC, freq, and flatten PHVA. `legacy-active` is deprecated comparison-only behavior and must not be used for pass/HOSP transition-state certification. | `constrained` |
 | `--irc-step-size FLOAT` | Override the IRC maximum EulerPC step (Bohr). If IRC stops after only a few frames, retry with a smaller value such as `0.05`. | IRC default `0.10` |
 | `--irc-never-stop / --no-irc-never-stop` | Ignore IRC gradient and energy stop conditions and trace each branch until its max-cycle cap. Numerical/integration failures and external interruption still stop propagation. | `False` |
 

@@ -63,12 +63,15 @@ There is no mode that substitutes one for another; every entry that appears in a
 
 ## Rigid modes with frozen boundaries
 
-`geom.tr_projection` and `--tr-projection` select how Cartesian PHVA-related eigensolvers treat rigid translation and rotation:
+Cartesian PHVA-related eigensolvers use the constrained rigid-mode treatment:
+construct the full-system rigid motions and remove only combinations that leave
+every frozen anchor fixed. For a generic nonlinear geometry, the effective rank
+is 6, 3, 1, or 0 with 0, 1, 2, or at least 3 non-collinear frozen anchors,
+respectively. Production cluster boundaries usually contain several
+non-collinear anchors, so their effective rank is normally 0 and no active mode
+is removed.
 
-- **`constrained` (default):** construct the full-system rigid motions and remove only combinations that leave every frozen anchor fixed. For a generic nonlinear geometry, the effective rank is 6, 3, 1, or 0 with 0, 1, 2, or at least 3 non-collinear frozen anchors, respectively. Production cluster boundaries usually contain several non-collinear anchors, so their effective rank is normally 0 and no active mode is removed.
-- **`legacy-active`:** deprecated compatibility treatment that treats the mobile fragment as an isolated molecule. It is comparison-only and must not be used for pass/HOSP transition-state certification. The current common projection kernel handles degeneracies; near-linear or degenerate cases are not guaranteed to replay older results bitwise.
-
-This setting is used by `freq`, `irc`, TS exact-PHVA checks and Dimer orientation, and `opt`/`tsopt` flattening. It is unrelated to `tsopt --ref-mode`, which supplies a Cartesian reaction direction from an MEP. An all-frozen system has no active vibrational DOF and raises an explicit error.
+The same treatment is used by `freq`, `irc`, TS exact-PHVA checks and Dimer orientation, and `opt`/`tsopt` flattening. It is unrelated to `tsopt --ref-mode`, which supplies a Cartesian reaction direction from an MEP. An all-frozen system has no active vibrational DOF and raises an explicit error.
 
 When JSON output is enabled, `result.json["rigid_projection"]` records the treatment, effective rank, and Hessian source and shape. `freq --dump` records the same provenance in `thermoanalysis.yaml`; see [JSON Output Schema](json-output.md#rigid-projection-provenance).
 

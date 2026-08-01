@@ -858,14 +858,13 @@ def _write_args_yaml_with_freeze_atoms(
     args_yaml: Optional[Path],
     freeze_atoms: Sequence[int],
     coord_type: Optional[str] = None,
-    tr_projection: Optional[str] = None,
     precision: Optional[str] = None,
     backend_model: Optional[str] = None,
     session: Optional[RunSession] = None,
 ) -> Optional[Path]:
     """
     Write ``freeze_atoms`` and (optionally) ``coord_type`` /
-    ``tr_projection`` / ``precision`` into a
+    ``precision`` into a
     YAML config under ``geom`` / ``calc`` and produce a temporary YAML file.
     Returns the new YAML path, or the original ``args_yaml`` when nothing was
     provided.
@@ -883,7 +882,6 @@ def _write_args_yaml_with_freeze_atoms(
     if (
         not freeze_atoms
         and coord_type is None
-        and tr_projection is None
         and precision is None
         and backend_model is None
     ):
@@ -907,8 +905,6 @@ def _write_args_yaml_with_freeze_atoms(
         geom_cfg["freeze_atoms"] = sorted(int(i) + 1 for i in freeze_atoms)
     if coord_type is not None:
         geom_cfg["coord_type"] = coord_type
-    if tr_projection is not None:
-        geom_cfg["tr_projection"] = tr_projection
     cfg["geom"] = geom_cfg
 
     if precision is not None or backend_model is not None:
@@ -3192,17 +3188,6 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     help="Freeze parent atoms of cap hydrogens (PDB/mmCIF input or XYZ/GJF with --ref-pdb).",
 )
 @click.option(
-    "--tr-projection",
-    type=click.Choice(["constrained", "legacy-active"], case_sensitive=False),
-    default=GEOM_KW_DEFAULT["tr_projection"],
-    show_default=True,
-    help=(
-        "Rigid translation/rotation treatment forwarded to TSopt, IRC, freq, "
-        "and flatten PHVA. The default respects frozen anchors; 'legacy-active' "
-        "is deprecated and must not be used for pass/HOSP transition-state certification."
-    ),
-)
-@click.option(
     "--mep-mode",
     type=click.Choice(["gsm", "dmf"], case_sensitive=False),
     default="gsm",
@@ -3297,8 +3282,10 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     default=None,
     show_default=False,
     help=(
-        "Convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never). "
-        "Defaults to 'gau' when not provided."
+        "Convergence preset for single-structure optimizations and scan "
+        "relaxations (gau_loose|gau|gau_tight|gau_vtight|baker|never). "
+        "Defaults to 'gau' when not provided. The MEP stage keeps its own "
+        "--thresh-gsm / --thresh-dmf."
     ),
 )
 @click.option(
@@ -3309,6 +3296,28 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     help=(
         "Convergence preset for post-IRC endpoint optimizations "
         "(gau_loose|gau|gau_tight|gau_vtight|baker|never)."
+    ),
+)
+@click.option(
+    "--thresh-gsm",
+    type=click.Choice(THRESH_CHOICES, case_sensitive=False),
+    default=None,
+    show_default=False,
+    help=(
+        "Convergence preset for the GSM string optimizer of the MEP stage "
+        "(gau_loose|gau|gau_tight|gau_vtight|baker|never). "
+        "Defaults to 'gau_loose' when not provided."
+    ),
+)
+@click.option(
+    "--thresh-dmf",
+    type=str,
+    default=None,
+    show_default=False,
+    help=(
+        "IPOPT dual-infeasibility tolerance for the DMF MEP stage: "
+        "tight (0.04) | middle (0.10) | loose (0.20) or a positive float. "
+        "This is not a Gaussian preset. Defaults to 'tight' when not provided."
     ),
 )
 @click.option(
@@ -3629,7 +3638,6 @@ def cli(
     solvent_model: str,
     spin: int,
     freeze_links_flag: bool,
-    tr_projection: str,
     mep_mode: str,
     dmf_backend: str,
     max_nodes: int,
@@ -3642,6 +3650,8 @@ def cli(
     refine_path: bool,
     thresh: Optional[str],
     thresh_post: str,
+    thresh_gsm: Optional[str],
+    thresh_dmf: Optional[str],
     config_yaml: Optional[Path],
     show_config: bool,
     dry_run: bool,
@@ -3991,6 +4001,13 @@ def cli(
         do_dft=do_dft,
     )
 
+    mep_mode_kind = str(mep_mode).strip().lower()
+    effective_dmf_cfg = fresh_dmf_config(_dmf_yaml_cfg)
+    if cli_param_overridden(ctx, "thresh_dmf") and thresh_dmf is not None:
+        effective_dmf_cfg["tol"] = str(thresh_dmf)
+    if mep_mode_kind == "dmf" or cli_param_overridden(ctx, "thresh_dmf"):
+        _path_opt.resolve_dmf_solve_tol(effective_dmf_cfg, prefix="[all]")
+
     tsopt_opt_mode_default: Optional[str] = None
     if opt_mode_post_set and opt_mode_post_norm is not None:
         tsopt_opt_mode_default = opt_mode_post_norm
@@ -4097,9 +4114,11 @@ def cli(
                 ),
                 "opt_mode": str(opt_mode),
                 "opt_mode_post": (None if opt_mode_post is None else str(opt_mode_post)),
+                "thresh": thresh,
+                "thresh_gsm": thresh_gsm,
+                "thresh_dmf": thresh_dmf,
                 "dump": bool(dump) if dump_override_requested else None,
                 "convert_files": bool(convert_files),
-                "tr_projection": str(tr_projection),
                 "refine_path": bool(refine_path),
                 "preopt": (
                     bool(preopt)
@@ -4578,11 +4597,6 @@ def cli(
         coord_type=(
             str(cli_coord_type).lower()
             if cli_param_overridden(ctx, "cli_coord_type") and cli_coord_type is not None
-            else None
-        ),
-        tr_projection=(
-            str(tr_projection).lower()
-            if cli_param_overridden(ctx, "tr_projection")
             else None
         ),
         precision=precision,
@@ -5475,6 +5489,9 @@ def cli(
         _append_cli_arg(scan_args, "--max-step-size", scan_max_step_size)
         _append_cli_arg(scan_args, "--bias-k", scan_bias_k)
         _append_cli_arg(scan_args, "--relax-max-cycles", scan_relax_max_cycles)
+        # `--thresh` is None unless the user passed it, so the default scan
+        # relaxation preset and the `--config` YAML tier stay effective.
+        _append_cli_arg(scan_args, "--thresh", thresh)
         if args_yaml is not None:
             scan_args.extend(["--config", str(args_yaml)])
         if not _forward_calc_file_argv(scan_args, calc_cfg_shared) and cli_param_overridden(ctx, "backend"):
@@ -5644,8 +5661,6 @@ def cli(
 
     gave_ref_pdb = False
 
-    mep_mode_kind = mep_mode.strip().lower()
-
     if skip_extract:
         _echo(
             "[all] NOTE: skipping --ref-full-pdb (no --center; inputs already represent full structures)."
@@ -5724,6 +5739,8 @@ def cli(
                 po_args.extend(["--ref-pdb", str(ref_pdb_for_seg)])
             if thresh is not None:
                 po_args.extend(["--thresh", str(thresh)])
+            _append_cli_arg(po_args, "--thresh-gsm", thresh_gsm)
+            _append_cli_arg(po_args, "--thresh-dmf", thresh_dmf)
             if args_yaml is not None:
                 po_args.extend(["--config", str(args_yaml)])
             if not _forward_calc_file_argv(po_args, calc_cfg_shared) and cli_param_overridden(ctx, "backend"):
@@ -6168,6 +6185,8 @@ def cli(
             _append_toggle_arg(ps_args, "--dump", bool(dump))
         if thresh is not None:
             ps_args.extend(["--thresh", str(thresh)])
+        _append_cli_arg(ps_args, "--thresh-gsm", thresh_gsm)
+        _append_cli_arg(ps_args, "--thresh-dmf", thresh_dmf)
         ps_args.extend(["--out-dir", str(path_dir)])
         _append_toggle_arg(ps_args, "--convert-files", bool(convert_files))
         if args_yaml is not None:

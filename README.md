@@ -38,6 +38,23 @@ An interactive Colab notebook is available.
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb)
 
+Before a release, exercise the notebook in a real hosted Colab runtime; the
+headless contract suite does not replace this GUI check:
+
+1. Choose a GPU runtime, run **Installation**, then **Launch GUI**. Test both
+   the pinned release path and, before publication, the documented `debug`
+   source-ZIP path.
+2. Upload `examples/1.R.pdb` and `examples/3.P.pdb`. Confirm their order,
+   switch the Mol* view between R/P, make and clear an atom selection, and
+   verify that rebuilding the command preserves the two-file endpoint route.
+3. Select `all`, `path-opt`, and `path-search`; confirm `max-nodes=20`, edit one
+   advanced option, validate, and verify that validation creates no Hessian or
+   scientific result directory.
+4. Run a deliberately capped command in a fresh output directory. Confirm the
+   live log/Cancel state, current-run Results and ZIP download, trajectory and
+   energy-frame linkage when present, and session save/load. Reusing an output
+   directory must require the notebook's explicit confirmation path.
+
 ## System requirements
 
 | Component | Requirement |

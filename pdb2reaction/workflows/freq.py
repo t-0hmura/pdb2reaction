@@ -360,17 +360,6 @@ def _prepare_frequency_output_paths(
     help="Comma-separated 1-based atom indices to freeze (e.g., '1,3,5').",
 )
 @click.option(
-    "--tr-projection",
-    type=click.Choice(["constrained", "legacy-active"], case_sensitive=False),
-    default=None,
-    help=(
-        "Rigid-mode treatment for PHVA. 'constrained' removes only full-system "
-        "rigid motions compatible with frozen anchors (default); 'legacy-active' "
-        "is deprecated comparison-only behavior and must not be used for "
-        "pass/HOSP transition-state certification."
-    ),
-)
-@click.option(
     "--convert-files/--no-convert-files",
     "convert_files",
     default=True,
@@ -469,7 +458,6 @@ def cli(
     spin: Optional[int],
     freeze_links: bool,
     freeze_atoms_text: Optional[str],
-    tr_projection: Optional[str],
     convert_files: bool,
     ref_pdb: Optional[Path],
     max_write: int,
@@ -586,8 +574,6 @@ def cli(
         freq_cfg["n_frames"] = int(n_frames)
     if cli_param_overridden(ctx, "sort"):
         freq_cfg["sort"] = str(sort)
-    if cli_param_overridden(ctx, "tr_projection") and tr_projection is not None:
-        geom_cfg["tr_projection"] = str(tr_projection).lower()
     if cli_param_overridden(ctx, "out_dir"):
         freq_cfg["out_dir"] = str(out_dir)
     if cli_param_overridden(ctx, "cli_coord_type") and cli_coord_type is not None:

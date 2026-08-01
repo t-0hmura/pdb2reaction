@@ -20,7 +20,7 @@ Command form:
 pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1]
  [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx]
  [--workers N] [--workers-per-node N]
- [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET] [--thresh-stopt PRESET]
+ [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET] [--thresh-gsm PRESET] [--thresh-dmf TOL]
  [--refine-mode {peak|minima}]
  [--max-nodes N] [--max-cycles N] [--climb/--no-climb]
  [--opt-mode grad|hess] [--dump/--no-dump]
@@ -140,7 +140,8 @@ The table is grouped by purpose; within each group the most-used options come fi
 | `--opt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes. `grad` maps to L-BFGS; `hess` maps to RFO. See {ref}`opt-mode-semantics` for how the same token maps across subcommands (tsopt uses Dimer/RS-P-RFO, not L-BFGS/RFO). | `grad` |
 | **Convergence thresholds** | | |
 | `--thresh TEXT` | Override convergence preset for single-structure optimizations only (`opt.lbfgs/rfo.thresh`). | `gau` |
-| `--thresh-stopt TEXT` | Override convergence preset for the string optimizer (`stopt.thresh`). | `gau_loose` |
+| `--thresh-gsm TEXT` | Override convergence preset for the GSM string optimizer (`stopt.thresh`). | `gau_loose` |
+| `--thresh-dmf TEXT` | Override the IPOPT dual-infeasibility tolerance of the DMF optimizer (`dmf.tol`): `tight` (0.04), `middle` (0.10), `loose` (0.20), or a positive float. Gaussian presets are rejected. | `tight` |
 | **Merge & alignment** | | |
 | `--align/--no-align` | Align all inputs to the first structure before searching. | `True` |
 | `--ref-full-pdb PATH...` | Full-size PDB/mmCIF templates (one per input, unless `--align` lets you reuse the first). | _None_ |

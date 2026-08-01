@@ -28,7 +28,6 @@ from pysisyphus._array import active_square
 from pysisyphus.calculators.Dimer import Dimer  # Dimer calculator (orientation-projected forces)
 from pysisyphus.tr_projection import (
     active_tr_basis,
-    allows_saddle_certification,
     compact_project_hessian,
     full_cartesian_tr_basis,
     normalize_tr_projection_mode,
@@ -957,7 +956,6 @@ def _tsopt_terminal_status(
     optimizer: Any,
     *,
     saddle_verified: bool,
-    projection_certifiable: bool = True,
 ) -> str:
     """Compose a TS optimizer's public status.
 
@@ -972,7 +970,6 @@ def _tsopt_terminal_status(
     if (
         getattr(optimizer, "is_converged", False)
         and saddle_verified
-        and projection_certifiable
     ):
         return "converged"
     return "not_converged"
@@ -988,20 +985,11 @@ def _finalize_dimer_saddle_status(
     neg_idx, imaginary = _imaginary_mode_indices_and_values(
         freqs_cm, neg_freq_thresh_cm
     )
-    certifiable = allows_saddle_certification(
-        getattr(runner, "tr_projection", "constrained"),
-        getattr(runner, "freeze_atoms", ()),
-    )
     runner.n_imaginary_modes = len(neg_idx)
     runner.imaginary_frequencies_cm = imaginary
-    runner.saddle_order_verified = bool(certifiable and len(neg_idx) == 1)
+    runner.saddle_order_verified = len(neg_idx) == 1
     if not runner.saddle_order_verified:
         runner.is_converged = False
-    if not certifiable:
-        runner.stop_reason = (
-            "legacy-active projection is comparison-only for frozen systems"
-        )
-        click.echo(f"[tsopt] WARNING: {runner.stop_reason}.", err=True)
     return neg_idx
 
 
@@ -1851,18 +1839,6 @@ def _validate_reference_mode_optimizer(
     help="Comma-separated 1-based atom indices to freeze (e.g., '1,3,5').",
 )
 @click.option(
-    "--tr-projection",
-    type=click.Choice(["constrained", "legacy-active"], case_sensitive=False),
-    default=GEOM_KW["tr_projection"],
-    show_default=True,
-    help=(
-        "Rigid translation/rotation treatment for Cartesian PHVA. "
-        "'constrained' removes only full-system rigid motions compatible with "
-        "the frozen atoms; 'legacy-active' is deprecated comparison-only "
-        "behavior and must not be used for pass/HOSP transition-state certification."
-    ),
-)
-@click.option(
     "--convert-files/--no-convert-files",
     "convert_files",
     default=True,
@@ -1971,7 +1947,6 @@ def cli(
     spin: Optional[int],
     freeze_links: bool,
     freeze_atoms_text: Optional[str],
-    tr_projection: str,
     convert_files: bool,
     ref_pdb: Optional[Path],
     max_cycles: int,
@@ -2082,8 +2057,6 @@ def cli(
             rsirfo_cfg["thresh"] = str(thresh)
         if cli_param_overridden(ctx, "cli_coord_type") and cli_coord_type is not None:
             geom_cfg["coord_type"] = str(cli_coord_type).lower()
-        if cli_param_overridden(ctx, "tr_projection"):
-            geom_cfg["tr_projection"] = str(tr_projection).lower()
         if cli_param_overridden(ctx, "hessian_calc_mode") and hessian_calc_mode is not None:
             calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
         # CLI knobs → cfg. Downstream plumbing into rsirfo_cfg / simple_cfg
@@ -2964,24 +2937,13 @@ def cli(
                     neg_idx = _echo_imaginary_modes(
                         freqs_cm, neg_freq_thresh_cm
                     )
-                _projection_certifiable = allows_saddle_certification(
-                    geom_cfg.get("tr_projection", "constrained"),
-                    geom_cfg.get("freeze_atoms", ()),
-                )
-                _hessian_saddle_verified = bool(
-                    _projection_certifiable and len(neg_idx) == 1
-                )
+                _hessian_saddle_verified = len(neg_idx) == 1
                 if not _hessian_saddle_verified:
                     last_optimizer.is_converged = False
                     if len(neg_idx) == 0:
                         warning = "No imaginary mode found"
-                    elif len(neg_idx) > 1:
-                        warning = f"Found {len(neg_idx)} imaginary modes"
                     else:
-                        warning = (
-                            "legacy-active projection is comparison-only for "
-                            "frozen systems"
-                        )
+                        warning = f"Found {len(neg_idx)} imaginary modes"
                     click.echo(
                         f"[WARNING] {warning} in the final exact Hessian; "
                         "this geometry is not a first-order saddle and is "
@@ -3021,7 +2983,6 @@ def cli(
                         "status": _tsopt_terminal_status(
                             last_optimizer,
                             saddle_verified=_hessian_saddle_verified,
-                            projection_certifiable=_projection_certifiable,
                         ),
                         "energy_hartree": _rsirfo_energy,
                         "n_imaginary_modes": len(_rsirfo_imag),

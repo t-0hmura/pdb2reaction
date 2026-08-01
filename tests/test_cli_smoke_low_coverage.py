@@ -527,16 +527,17 @@ def test_opt_accepts_yaml_only_charge_and_spin(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    ("extra", "expected"),
-    [([], "legacy-active"), (["--tr-projection", "constrained"], "constrained")],
+    ("configured", "should_run"),
+    [("constrained", True), ("legacy-active", False)],
 )
-def test_opt_tr_projection_cli_overrides_yaml(
-    tmp_path: Path, extra: list[str], expected: str,
+def test_opt_rejects_the_removed_projection_mode_from_yaml(
+    tmp_path: Path, configured: str, should_run: bool,
 ) -> None:
+    """The removed `legacy-active` treatment fails loudly instead of running."""
     config = tmp_path / "projection.yaml"
     config.write_text(
         "calc:\n  charge: -1\n  spin: 1\n"
-        "geom:\n  tr_projection: legacy-active\n",
+        f"geom:\n  tr_projection: {configured}\n",
         encoding="utf-8",
     )
     input_path = Path(__file__).parent / "smoke" / "r.pdb"
@@ -544,12 +545,17 @@ def test_opt_tr_projection_cli_overrides_yaml(
         root_cli,
         [
             "opt", "-i", str(input_path), "--config", str(config),
-            "--dry-run", "-v", "3", *extra,
+            "--dry-run", "-v", "3",
         ],
     )
 
-    assert result.exit_code == 0, result.output
-    assert f"tr_projection: {expected}" in result.output
+    if should_run:
+        assert result.exit_code == 0, result.output
+        assert "tr_projection: constrained" in result.output
+    else:
+        assert result.exit_code != 0
+        message = result.output + str(result.exception or "")
+        assert "Unknown TR projection mode" in message
 
 
 @pytest.mark.parametrize(

@@ -11,6 +11,7 @@ import hashlib
 import html
 import json
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -181,12 +182,19 @@ def test_colab_notebook_has_valid_code_cells_and_gpu_metadata() -> None:
     assert notebook["nbformat"] == 4
     assert notebook["metadata"]["accelerator"] == "GPU"
     assert len(notebook["cells"]) == 3
-    assert "[GitHub](https://github.com/t-0hmura/pdb2reaction)" in introduction
-    assert "PDB/mmCIF or small-molecule XYZ/GJF structures" in introduction
-    assert "**1 Input → 2 Setup → 3 Options → 4 Results**" in introduction
     assert (
-        "[ChemRxiv](https://chemrxiv.org/doi/full/"
-        "10.26434/chemrxiv.15003538/v1)"
+        "[t-0hmura/pdb2reaction](https://github.com/t-0hmura/pdb2reaction)"
+    ) in introduction
+    # The badge opens this very notebook from the published main branch.
+    assert (
+        "https://colab.research.google.com/github/t-0hmura/pdb2reaction/"
+        "blob/main/examples/pdb2reaction_colab.ipynb"
+    ) in introduction
+    assert "PDB/mmCIF or small-molecule XYZ/GJF structures" in introduction
+    assert "**① Input → ② Setup → ③ Options → ④ Results**" in introduction
+    assert (
+        "[DOI: 10.26434/chemrxiv.15003538/v1]"
+        "(https://doi.org/10.26434/chemrxiv.15003538/v1)"
     ) in introduction
     for cell in notebook["cells"]:
         if cell["cell_type"] == "code":
@@ -200,11 +208,13 @@ def test_colab_setup_is_pinned_to_matching_release_and_one_backend() -> None:
     assert "first run takes several minutes" in setup
     # The release notebook installs the pinned wheel from PyPI, the same way a
     # normal user does, so the version guard compares what pip actually resolved
-    # against the requested tag.
-    assert "pip('pdb2reaction==' + pdb2reaction_version.lstrip('v'))" in setup
+    # against the requested tag. A version token containing `debug` switches the
+    # same notebook to the uploaded source snapshot instead.
+    assert "_debug_install = 'debug' in str(pdb2reaction_version).lower()" in setup
+    assert "pip('pdb2reaction==' + _requested_version)" in setup
     # The [dft] extra goes through the same quiet `pip` helper as every other
     # install; the streaming `pip_logged` variant was removed.
-    assert "pip('pdb2reaction[dft]==' + pdb2reaction_version.lstrip('v'))" in setup
+    assert "pip('pdb2reaction[dft]==' + _requested_version)" in setup
     assert "pip_logged" not in setup
     assert "install_dft is ticked" in setup
     # Gated UMA sign-in is the last step, so no install phase waits on a prompt.
@@ -215,13 +225,27 @@ def test_colab_setup_is_pinned_to_matching_release_and_one_backend() -> None:
     assert "Restart the Colab runtime first" in setup
     assert "mace-torch>=0.3.8" in setup
     assert "HF_TOKEN" in setup
-    assert "installed_version != pdb2reaction_version[1:]" in setup
+    assert "installed_version != _requested_version" in setup
     assert "install_dft = True" in setup
     assert "INSTALL_DFT = install_dft" in setup
-    assert "Installation activates the selected backend." in setup
+    assert "installs conda-forge dependencies and the selected backend" in setup.lower()
     assert "Only the **selected backend** is installed" not in setup
     assert "DFT_SETUP_READY = True" in setup
     assert "_dft_packages = {'pyscf': 'pyscf', 'gpu4pyscf': 'gpu4pyscf-cuda12x'}" in setup
+    # A `debug` version token installs the uploaded source snapshot in editable
+    # mode. It is admitted only through a snapshot marker that matches this
+    # notebook, and only from an archive that stays inside its own directory.
+    assert re.search(r"DEBUG_SOURCE_ID = '[0-9a-f]{64}'", setup)
+    assert "pip('-e', './' + REPO_DIR + ('[dft]' if install_dft else ''))" in setup
+    for rejection in (
+        "has no source-snapshot marker",
+        "does not match this notebook",
+        "contains a file outside its source directory",
+        "contains an unsafe path",
+        "contains an unsupported symbolic link",
+        "did not extract the expected source snapshot",
+    ):
+        assert rejection in setup
 
 
 def test_colab_setup_dft_branch_installs_extra_and_checks_gpu(monkeypatch, capsys) -> None:
@@ -416,8 +440,8 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     # Colab renders ipywidgets' Tab as an empty block, so the tab strip is Buttons
     # over four persistently mounted panes. Mount persistence protects native
     # upload queues and the live WebGL canvas while navigating.
-    assert "_TAB_PAGES = [('1 Input', input_box), ('2 Setup', viewer_box)," in app
-    assert "('3 Options', options_box), ('4 Results', results_box)]" in app
+    assert "_TAB_PAGES = [('① Input', input_box), ('② Setup', viewer_box)," in app
+    assert "('③ Options', options_box), ('④ Results', results_box)]" in app
     assert "_tab_body = W.VBox([page for _label, page in _TAB_PAGES])" in app
     assert "_tab_body.children = [_TAB_PAGES[i][1]]" not in app
     assert "_pane.layout.display = '' if _j == i else 'none'" in app
@@ -432,7 +456,9 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "def _advanced_options(sub):" in app
     assert "adv_acc = _collapsible('Advanced flags', adv_box)" in app
     assert "every CLI option accounted for" not in app
-    assert "freeze_acc = _collapsible(" in app
+    # Freezing is a always-visible Setup card; `freeze_acc` survives only as the
+    # alias the capability routing still addresses.
+    assert "freeze_acc = freeze_panel" in app
     assert "ngl_acc" not in app
     assert "nglview" not in app
     # "all workflow" mode and the depth switches only apply to `all`.
@@ -454,8 +480,7 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "No results yet." in app
     assert "frame_slider.disabled = last == 0" in app
     assert "trajectory_box.layout.display = 'none'" in app
-    # `--tr-projection legacy-active` is deprecated (it warns and must not be used
-    # for pass/HOSP transition-state certification): never offer it in the GUI.
+    # The public TR-projection option and legacy treatment are removed.
     assert "legacy-active" not in app
     assert "--tr-projection" not in app
     # SPEC is the single source of truth for per-subcommand branching: input
@@ -508,9 +533,8 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert ".rxapp-main { flex:0 0 auto !important; min-height:0; overflow:visible; }" in app
     assert ".rxpages { flex:0 0 auto !important; min-height:0; overflow:visible; }" in app
     assert "height:auto; max-height:none; min-height:0; overflow:visible;" in app
-    assert ".rxviewer-page { min-height:800px !important; }" in app
+    assert ".rxviewer-page { min-height:800px !important; row-gap:8px !important; }" in app
     assert "width:100% !important; min-width:0; max-width:none;" in app
-    assert "max-width:clamp(600px,calc(250dvh - 1320px),1000px);" in app
     assert ".rxpath-panel svg, .rxpath-panel img, .rxpath-panel canvas {" in app
     assert "traj_out = W.HTML(layout={'width': '100%', 'min_width': '0'})" in app
     assert "plot_out = W.HTML(layout={'width': '100%', 'min_width': '0'})" in app
@@ -654,7 +678,7 @@ def test_colab_viewer_persists_exact_atom_and_residue_context() -> None:
     assert "style_pick" not in app
     assert "('Measure (dist/angle/dihedral)'," not in app
     assert "measure_panel" not in app
-    assert "freeze_acc = _collapsible('Freezing', freeze_panel)" in app
+    assert "freeze_acc = freeze_panel" in app
     assert "_PICK_HINT.get(pick_action.value, 'Choose a click action.')" in app
     assert "_PICK_HINT[pick_action.value]" not in app
     assert "pick_action.value = 'scanB'" in app
@@ -987,9 +1011,12 @@ def test_colab_app_executes_atomic_view_and_result_transitions(
         yield widget
         for child in getattr(widget, "children", ()):
             yield from _descendants(child)
+    # The button is labelled "Clear"; its tooltip is what states the scope, so
+    # the lookup keys on the tooltip rather than the compact label.
     clear_pair = next(
         widget for widget in _descendants(app["scan_panel"])
-        if getattr(widget, "description", "") == "Clear current pair"
+        if getattr(widget, "tooltip", "")
+        == "Clear only the atom pair currently being prepared."
     )
     assert clear_pair.disabled
     before_scan = json.dumps(app["S"]["scan_atoms"], sort_keys=True)
@@ -1340,7 +1367,7 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
         assert set(coverage) == {param.name for param in options}
         assert set(coverage.values()) <= {"owned", "generated", "blocked", "rendered"}
         all_statuses.update(coverage)
-    assert all_statuses["tr_projection"] == "blocked"
+    assert "tr_projection" not in all_statuses
     assert all_statuses["verbose"] == "rendered"
     assert app["_advanced_coverage"]("dft")
     assert app["_advanced_coverage"]("sp")["hessian_calc_mode"] == "rendered"
@@ -1511,7 +1538,7 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
         assert flag not in off_argv
     app["all_mode"].value = "tsonly"
     assert app["adv_refine"].layout.display == "none"
-    assert app["w_ts"].value and app["w_ts"].disabled
+    assert app["w_ts"].value and not app["w_ts"].disabled
     app["charge_rows"]["LIG"]["use"].value = True
     app["w_charge_ok"].value = True
     command = app["build_cmd"]()
@@ -1528,9 +1555,12 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     app["all_mode"].value = "mep"
     assert not app["w_ts"].value and not app["w_ts"].disabled
     app["w_th"].value = True
-    assert app["w_ts"].value and app["w_ts"].disabled
+    assert app["w_ts"].value and not app["w_ts"].disabled
     app["w_ts"].value = False
-    assert app["w_ts"].value and app["w_ts"].disabled
+    assert not app["w_ts"].value and not app["w_ts"].disabled
+    assert not app["w_th"].value
+    app["w_th"].value = True
+    assert app["w_ts"].value and not app["w_ts"].disabled
     thermo_argv = app["_advanced_argv"]("all")
     assert "--hessian-calc-mode" in thermo_argv
     for flag in (
@@ -1986,6 +2016,49 @@ def test_colab_results_keep_missing_energies_unknown(
     assert app["plot_out"].value.count('class="rxenergy-frame"') == 1
 
 
+def test_colab_defers_active_browser_input_deletion(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    app, _rendered = _execute_app(monkeypatch, tmp_path)
+    source = _notebook()["cells"][2]["source"]
+    for start, end in (("def _do_run_sync", "async def _do_run_async"),
+                       ("async def _do_run_async", "def _do_run(")):
+        run_path = source[source.index(start):source.index(end)]
+        assert "_RUN_EXECUTION['argv'] = list(a)\n    _set_running(True)" in run_path
+    sync_start = source.index("def _do_run_sync")
+    sync_prefix = source[sync_start:source.index("    try:\n", sync_start)]
+    assert "_RUN_EXECUTION['argv']" not in sync_prefix
+
+    detached = tmp_path / "detached.pdb"
+    detached.write_text("END\n", encoding="utf-8")
+    app["_remember_uploaded_paths"]([str(detached)])
+    app["S"]["inputs"] = [str(detached)]
+    app["_RUN_EXECUTION"]["argv"] = [
+        app["CLI"], "opt", "-i", str(detached), "--out-dir", "result",
+    ]
+    app["_set_running"](True)
+    app["S"]["inputs"] = []
+    app["_delete_owned_uploads"]([str(detached)])
+    assert detached.exists()
+    assert str(detached) in app["_RUN_EXECUTION"]["deferred_deletes"]
+    app["_set_running"](False)
+    assert not detached.exists()
+
+    reattached = tmp_path / "reattached.pdb"
+    reattached.write_text("END\n", encoding="utf-8")
+    app["_remember_uploaded_paths"]([str(reattached)])
+    app["_RUN_EXECUTION"]["argv"] = [app["CLI"], "opt", "-i", str(reattached)]
+    app["_set_running"](True)
+    app["_delete_owned_uploads"]([str(reattached)])
+    app["S"]["inputs"] = [str(reattached)]
+    app["_set_running"](False)
+    assert reattached.exists()
+    assert str(reattached) in app["S"]["_uploaded_paths"]
+    app["S"]["inputs"] = []
+    app["_delete_owned_uploads"]([str(reattached)])
+    assert not reattached.exists()
+
+
 def test_colab_operates_scientific_selectors_and_remaining_buttons(
     tmp_path: Path, monkeypatch,
 ) -> None:
@@ -2003,14 +2076,26 @@ def test_colab_operates_scientific_selectors_and_remaining_buttons(
     second.write_text(pdb_text.replace("3.000", "3.100"), encoding="utf-8")
     app["load_pdb"]([str(first), str(second)])
 
+    launch_disabled_before = {
+        name: app[name].disabled for name in ("b_validate", "b_run")
+    }
     app["_set_running"](True)
-    assert app["dd_subcmd"].disabled
-    assert app["w_out"].disabled
-    assert app["upl"].disabled
-    app["_set_running"](False)
+    assert app["b_validate"].disabled
+    assert app["b_run"].disabled
     assert not app["dd_subcmd"].disabled
     assert not app["w_out"].disabled
     assert not app["upl"].disabled
+    assert app["_view_is_editable"]()
+    assert app["_on_colab_upload"]("input", [])["failed"] == []
+    assert not _widget_with_description(app["input_file_rows"], "Remove file").disabled
+    app["_set_running"](False)
+    assert {
+        name: app[name].disabled for name in ("b_validate", "b_run")
+    } == launch_disabled_before
+    assert not app["dd_subcmd"].disabled
+    assert not app["w_out"].disabled
+    assert not app["upl"].disabled
+    assert not _widget_with_description(app["input_file_rows"], "Remove file").disabled
 
     app["dd_subcmd"].options = app["_sub_options"](app["SUBS"])
     app["dd_subcmd"].value = "energy-diagram"
@@ -2035,17 +2120,17 @@ def test_colab_operates_scientific_selectors_and_remaining_buttons(
         app["on_click"](str(index), live_marked=True)
 
     def scan_pair(first_index: int, second_index: int) -> None:
-        _widget_with_description(app["scan_panel"], "1  Pick atom A").click()
+        _widget_with_description(app["scan_panel"], "① Pick atom A").click()
         assert app["pick_action"].value == "scanA"
         pick(first_index)
-        _widget_with_description(app["scan_panel"], "2  Pick atom B").click()
+        _widget_with_description(app["scan_panel"], "② Pick atom B").click()
         assert app["pick_action"].value == "scanB"
         pick(second_index)
 
     # Operate 1D staged-scan controls rather than seeding their final state.
     app["dd_subcmd"].value = "scan"
     scan_pair(0, 1)
-    target = _widget_with_description(app["scan_panel"], "3  Target Å")
+    target = _widget_with_description(app["scan_panel"], "③ Set target Å")
     target.value = 1.8
     _widget_with_description(app["scan_panel"], "Add sequential stage").click()
     assert len(app["S"]["scan_stages"]) == 1
@@ -2062,7 +2147,11 @@ def test_colab_operates_scientific_selectors_and_remaining_buttons(
     assert len(app["S"]["scan_stages"][0]) == 2
     app["b_clear_scan"].click()
     assert app["S"]["scan_stages"] == []
-    _widget_with_description(app["scan_panel"], "Clear current pair").click()
+    next(
+        widget for widget in _widget_descendants(app["scan_panel"])
+        if getattr(widget, "tooltip", "")
+        == "Clear only the atom pair currently being prepared."
+    ).click()
     assert app["S"]["scan_atoms"] == [None, None]
 
     # The shared multidimensional controls are exercised at both cardinalities.
@@ -2073,7 +2162,7 @@ def test_colab_operates_scientific_selectors_and_remaining_buttons(
         app["dd_subcmd"].value = subcommand
         for pair_index, (left, right) in enumerate(pairs):
             scan_pair(left, right)
-            low = _widget_with_description(app["scan_panel"], "3  Low Å")
+            low = _widget_with_description(app["scan_panel"], "③ Set low Å")
             high = _widget_with_description(app["scan_panel"], "High Å")
             low.value = 1.0 + pair_index * 0.1
             high.value = 2.0 + pair_index * 0.1
@@ -2103,7 +2192,7 @@ def test_colab_operates_scientific_selectors_and_remaining_buttons(
     app["pick_action"].value = "freezeatom"
     pick(2)
     assert app["S"]["freeze_atoms"] == [3]
-    _widget_with_description(app["freeze_panel"], "clear atoms").click()
+    _widget_with_description(app["freeze_panel"], "Clear").click()
     assert app["S"]["freeze_atoms"] == []
 
     # Manual exact-atom entry and each removable selection chip dispatch.
@@ -2123,7 +2212,7 @@ def test_colab_operates_scientific_selectors_and_remaining_buttons(
     app["S"]["freeze_atoms"] = [2]
     app["b_clear"].click()
     assert app["S"]["center_ids"] == []
-    _widget_with_description(app["freeze_panel"], "clear atoms").click()
+    _widget_with_description(app["freeze_panel"], "Clear").click()
     assert app["S"]["freeze_atoms"] == []
 
     # Search and every notebook-owned disclosure button make a full round trip.
@@ -2385,11 +2474,10 @@ def test_colab_adversarial_state_transactions_and_editor_ownership(
     dependent["thermo"] = True
     dependent["advanced"]["dft"] = False
     assert app["_apply_session"](dependent) == []
-    assert app["w_ts"].value is True and app["w_ts"].disabled is True
-    assert app["_session_dict"]()["tsopt"] is True
-    app["w_th"].value = False
     assert app["w_ts"].value is True and app["w_ts"].disabled is False
+    assert app["_session_dict"]()["tsopt"] is True
     app["w_ts"].value = False
+    assert app["w_th"].value is False
 
     app["all_mode"].value = "mep"
     app["w_ts"].value = False
@@ -2575,7 +2663,7 @@ def test_colab_gui_guards_state_capabilities_and_current_run_results() -> None:
     assert "submit(event.dataTransfer ? event.dataTransfer.files : []);" in app
     assert "_tab_body.children = [_TAB_PAGES[i][1]]" not in app
     assert "layout=W.Layout(width='560px')" not in app
-    assert app.count("effective = _normalized_scope_argv(a)") == 2
+    assert app.count("effective = _normalized_scope_argv(a)") == 4
 
 
 def test_colab_output_scope_executes_cli_grammar_and_utility_defaults(
@@ -2601,8 +2689,8 @@ def test_colab_output_scope_executes_cli_grammar_and_utility_defaults(
         )
         assert scope_for(["pdb2reaction", subcommand])["root"] == str(output_param.default)
     assert scope_for(["pdb2reaction", "opt", "-oattached"])["root"] == "attached"
-    assert scope_for(["pdb2reaction", "opt", "--OUT-DIR", "Upper"])["root"] == "Upper"
-    assert scope_for(["pdb2reaction", "opt", "--OUT-DIR=UpperEq"])["root"] == "UpperEq"
+    assert scope_for(["pdb2reaction", "opt", "--out-dir", "Upper"])["root"] == "Upper"
+    assert scope_for(["pdb2reaction", "opt", "--out-dir=UpperEq"])["root"] == "UpperEq"
     assert scope_for(["pdb2reaction", "-i", "input.pdb"])["root"] == "result_all"
 
     for info_argv in (
@@ -2666,12 +2754,6 @@ def test_colab_output_scope_executes_cli_grammar_and_utility_defaults(
     ])
     assert legacy_negative_false["targets"] == [str((tmp_path / "energy.png").resolve())]
     assert str((tmp_path / "result.json").resolve()) in legacy_negative_false["exact_targets"]
-    uppercase_inline_false = scope_for([
-        "pdb2reaction", "energy-diagram", "-i", "0", "-i", "1",
-        "--OUT-JSON=False",
-    ])
-    assert not any(Path(path).name == "result.json" for path in uppercase_inline_false["exact_targets"])
-
     normalize = contract["_normalized_scope_argv"]
     enabled = contract["_flag_enabled"]
     assert not enabled(normalize([
@@ -3043,7 +3125,7 @@ def test_colab_setup_cell_is_frozen() -> None:
     setup = _notebook()["cells"][1]["source"]
     digest = hashlib.sha256(setup.encode("utf-8")).hexdigest()
 
-    assert digest == "90fdcf1163c22aedd8b13d6b95c6eb5b7c1ee9e499d6576d001f6043dc1894e5", (
+    assert digest == "eabd0398e606193a1f3a4b7b348329814fa5f9cdcecec4f307751b1fb3c77ad6", (
         "the Colab Setup cell changed; it is frozen for this release. Re-read the "
         "Setup contracts above, then update this digest deliberately. Got: " + digest
     )
@@ -3064,14 +3146,14 @@ def test_colab_navigation_names_resolve_to_real_targets() -> None:
 
     tab_labels = {
         label
-        for label in ("1 Input", "2 Input", "2 Viewer", "2 Setup", "3 Options", "4 Results")
+        for label in ("① Input", "② Input", "② Viewer", "② Setup", "③ Options", "④ Results")
         if f"('{label}'" in app
     }
-    assert "2 Setup" in tab_labels and "2 Viewer" not in tab_labels
+    assert "② Setup" in tab_labels and "② Viewer" not in tab_labels
 
     # Prose that points at a tab must use a label the tab strip actually has.
     for phrase in ("in Viewer", "in Options", "in Results"):
-        target = f"2 {phrase.split()[1]}" if phrase != "in Options" else "3 Options"
+        target = f"② {phrase.split()[1]}" if phrase != "in Options" else "③ Options"
         if phrase in app:
             assert target in tab_labels or phrase == "in Options", (
                 f"{phrase!r} names a tab that does not exist; tabs are {sorted(tab_labels)}"

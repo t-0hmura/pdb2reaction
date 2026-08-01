@@ -105,7 +105,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  - `--tsopt`: 各 HEI 活性部位モデルで TS 最適化を実行します。機械可読な exact-Hessian 結果が `status=converged` かつ `n_imag=1` を報告しない場合は IRC 前に停止します。検証済み TS は EulerPC IRC で追跡し、IRC エンドポイントを `--thresh-post`（デフォルト `baker`）で再最適化します。Hessian TS 最適化には MEP energy-upwinding Cartesian接線を反応参照モードとして自動的に渡します（energyを読めない旧trajectoryだけは正規化secantの二等分線へfallback）。エンドポイント最適化の作業ディレクトリは完了後に自動削除されます。エンドポイント RFO の上り坂拒否はデフォルトで無効で、`--reject-uphill` によりエンドポイント再最適化についてのみ有効化できます。
  - `--thermo`: (R, TS, P) で `freq` を呼び出し、振動/熱化学データと MLIP Gibbs ダイアグラムを取得
  - `--dft`: (R, TS, P) で DFT 一点計算を実行し、DFT ダイアグラムを構築。`--thermo` と組み合わせると DFT//MLIP Gibbs ダイアグラムも生成
-  - 共有の上書きオプション: `--opt-mode`、`--opt-mode-post`（TSOPT/IRC 後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--tr-projection`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU 優先）など。`--tr-projection`はTSopt、IRC、freq、flatten PHVAへ転送し、MEP 由来の`--ref-mode`とは無関係です。
+  - 共有の上書きオプション: `--opt-mode`、`--opt-mode-post`（TSOPT/IRC 後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU 優先）など。Cartesian PHVA の剛体モードは、凍結anchorを尊重する constrained 処理に固定されています。
  - Hessian 評価モードの詳細は {ref}`ja-hessian-evaluation` を参照してください。
 
 6. **TSOPT のみモード**（単一入力、`--tsopt`、`--scan-lists` なし）
@@ -245,7 +245,9 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 | `--max-cycles INT` | MEP 最大最適化サイクル | `300` |
 | `--climb/--no-climb` | 標準 GSM セグメントでクライミングイメージを有効化（ブリッジセグメントは常に無効） | `True` |
 | `--opt-mode [grad\|hess]` | ワークフロープリセット（`grad` → L-BFGS/Dimer、`hess` → RFO/RSPRFO）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨。トークンのマッピングはスコープ依存で、`all` の pre-opt デフォルト（`grad`）と `tsopt` のデフォルト（`hess`）は一致しません。詳細は {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
-| `--thresh TEXT` | 収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
+| `--thresh TEXT` | 単一構造最適化と scan 緩和の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
+| `--thresh-gsm TEXT` | MEP 段の GSM ストリング最適化の収束プリセット（`--thresh` と同じプリセット群） | `gau_loose` |
+| `--thresh-dmf TEXT` | DMF MEP 段の IPOPT dual-infeasibility 許容値。`tight`(0.04)、`middle`(0.10)、`loose`(0.20) または正の float。Gaussian プリセットではない | `tight` |
 | `--preopt/--no-preopt` | MEP 前に活性部位モデル端点を事前最適化。単体の `scan`、`scan2d`、`scan3d` では `--preopt` のデフォルトは `False`（`--preopt` を渡すと有効化） | `True` |
 | `--refine-path / --no-refine-path` | 再帰的 `path-search` を有効化 / デフォルトの単一パス `path-opt` を使用 | 無効 |
 
@@ -270,7 +272,6 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 | `--thresh-post TEXT` | IRC 後エンドポイント最適化の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
 | `--flatten/--no-flatten` | 余分な虚振動モードのフラット化 | `False` |
 | `--reject-uphill/--no-reject-uphill` | IRC 後の**エンドポイント再最適化のみ**で RFO の上り坂ステップ拒否を明示的に有効化（許容値 `1e-3` Hartree、低エネルギー形状へロールバックして trust radius を縮小）。TS 最適化では拒否を常に無効化し、経路探索には影響しない。emergency floor 到達時は、保持したエンドポイントを通常の収束条件で最終確認 | `False` |
-| `--tr-projection [constrained\|legacy-active]` | TSopt、IRC、freq、flatten PHVAへ転送する剛体モード処理。`legacy-active`は非推奨の比較専用で、pass/HOSP 遷移状態認定には使用不可 | `constrained` |
 | `--irc-step-size FLOAT` | IRC のEulerPC最大step（Bohr）を上書き。数frameですぐ止まる場合は`0.05`など小さい値で再試行 | IRC デフォルト`0.10` |
 | `--irc-never-stop/--no-irc-never-stop` | IRCのgradient・energy停止条件を無視し、各branchを最大cycleまで追跡。数値／integration失敗や外部中断では停止 | `False` |
 
@@ -374,7 +375,7 @@ dft:
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 - 形式電荷を推定できない場合は `--ligand-charge`（数値または残基別マッピング）を必ず指定し、scan/MEP/TSOPT/DFT へ正しい総電荷を伝播させてください。
 - マージ用の参照 PDB テンプレートは元の入力から自動的に導出されます。`path-search` の `--ref-full-pdb` はこのラッパーでは意図的に非公開です。
-- 収束プリセット: `--thresh` のデフォルトは `gau`、`--thresh-post` のデフォルトは `baker`。
+- 収束プリセット: `--thresh` のデフォルトは `gau`、`--thresh-post` のデフォルトは `baker`、MEP 段は `--thresh-gsm`（デフォルト `gau_loose`）と `--thresh-dmf`（デフォルト `tight`）が担当。
 - 抽出半径: `--radius` または `--radius-het2het` に `0` を渡すと、内部で `0.001 Å` にクランプされます。
 - エネルギーダイアグラムは反応物（最初の状態）基準の kcal/mol で表示されます。
 - `-c/--center` を省略すると抽出をスキップし、全構造をそのまま MEP/tsopt/freq/DFT に渡します。ただし単一構造実行では `--scan-lists` か `--tsopt` が必要です。

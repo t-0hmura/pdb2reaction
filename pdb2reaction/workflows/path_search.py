@@ -45,7 +45,11 @@ from pdb2reaction.core.defaults import (
     OUT_DIR_PATH_SEARCH,
     apply_backend_defaults,
 )
-from pdb2reaction.workflows.path_opt import _optimize_single, _run_dmf_mep
+from pdb2reaction.workflows.path_opt import (
+    _optimize_single,
+    _run_dmf_mep,
+    resolve_dmf_solve_tol,
+)
 from pdb2reaction.workflows._path_yaml_helpers import apply_single_opt_yaml_layer
 from pdb2reaction.core.utils import (
     as_list,
@@ -2032,14 +2036,25 @@ def _merge_final_and_write(final_images: List[Any],
     ),
 )
 @click.option(
-    "--thresh-stopt",
+    "--thresh-gsm",
     type=click.Choice(THRESH_CHOICES, case_sensitive=False),
     default=None,
     show_default=False,
     help=(
-        "Convergence preset for the string optimizer (stopt) "
+        "Convergence preset for the GSM string optimizer "
         "(gau_loose|gau|gau_tight|gau_vtight|baker|never). "
         "Defaults to 'gau_loose' when not provided."
+    ),
+)
+@click.option(
+    "--thresh-dmf",
+    type=str,
+    default=None,
+    show_default=False,
+    help=(
+        "IPOPT dual-infeasibility tolerance for the DMF path optimizer: "
+        "tight (0.04) | middle (0.10) | loose (0.20) or a positive float. "
+        "This is not a Gaussian preset. Defaults to 'tight' when not provided."
     ),
 )
 @click.option(
@@ -2133,7 +2148,8 @@ def cli(
     convert_files: bool,
     out_dir: str,
     thresh: Optional[str],
-    thresh_stopt: str,
+    thresh_gsm: Optional[str],
+    thresh_dmf: Optional[str],
     config_yaml: Optional[Path],
     show_config: bool,
     dry_run: bool,
@@ -2375,8 +2391,10 @@ def cli(
         if cli_param_overridden(ctx, "thresh") and thresh is not None:
             lbfgs_cfg["thresh"] = str(thresh)
             rfo_cfg["thresh"] = str(thresh)
-        if cli_param_overridden(ctx, "thresh_stopt") and thresh_stopt is not None:
-            stopt_cfg["thresh"] = str(thresh_stopt)
+        if cli_param_overridden(ctx, "thresh_gsm") and thresh_gsm is not None:
+            stopt_cfg["thresh"] = str(thresh_gsm)
+        if cli_param_overridden(ctx, "thresh_dmf") and thresh_dmf is not None:
+            dmf_cfg["tol"] = str(thresh_dmf)
 
         # Final YAML overrides (highest precedence)
         apply_yaml_overrides(
@@ -2392,6 +2410,11 @@ def cli(
             ],
         )
         _apply_single_opt_yaml_layer(override_layer_cfg)
+
+        # A dormant YAML DMF section does not affect GSM. An explicit CLI
+        # tolerance is still validated as user input, regardless of MEP mode.
+        if mep_mode_kind == "dmf" or cli_param_overridden(ctx, "thresh_dmf"):
+            resolve_dmf_solve_tol(dmf_cfg, prefix="[path-search]")
 
         # Convert 1-based YAML freeze_atoms to 0-based internal
         if geom_cfg.get("freeze_atoms"):

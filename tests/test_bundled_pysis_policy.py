@@ -10,9 +10,13 @@ import sys
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 
 from pysisyphus.irc.IRC import IRC
-from pysisyphus.tr_projection import allows_saddle_certification
+from pysisyphus.tr_projection import (
+    TR_PROJECTION_MODES,
+    normalize_tr_projection_mode,
+)
 from pdb2reaction.core.defaults import IRC_KW
 from pdb2reaction.workflows.tsopt import (
     _finalize_dimer_saddle_status,
@@ -86,13 +90,17 @@ def test_irc_hdf5_is_opt_in_and_never_contains_a_hessian() -> None:
     )
 
 
-def test_legacy_projection_cannot_certify_a_frozen_saddle() -> None:
-    assert allows_saddle_certification("constrained", [0])
-    assert allows_saddle_certification("legacy-active", [])
-    assert not allows_saddle_certification("legacy-active", [0])
+def test_the_removed_legacy_projection_is_rejected_not_silently_accepted() -> None:
+    """`legacy-active` is gone; a stale config naming it must fail loudly."""
+    assert TR_PROJECTION_MODES == ("constrained",)
+    assert normalize_tr_projection_mode(None) == "constrained"
+    with pytest.raises(ValueError, match="Unknown TR projection mode"):
+        normalize_tr_projection_mode("legacy-active")
 
+    # The constrained projection certifies a frozen first-order saddle on the
+    # imaginary-mode count alone; no projection-dependent veto remains.
     runner = SimpleNamespace(
-        tr_projection="legacy-active",
+        tr_projection="constrained",
         freeze_atoms=[0],
         is_converged=True,
         stop_reason="",
@@ -104,13 +112,13 @@ def test_legacy_projection_cannot_certify_a_frozen_saddle() -> None:
     assert indices.tolist() == [0]
     assert runner.n_imaginary_modes == 1
     assert runner.imaginary_frequencies_cm == [-100.0]
-    assert runner.saddle_order_verified is False
-    assert runner.is_converged is False
-    assert "comparison-only" in runner.stop_reason
+    assert runner.saddle_order_verified is True
+    assert runner.is_converged is True
 
     hessian_optimizer = SimpleNamespace(is_converged=True, is_stalled=False)
     assert _tsopt_terminal_status(
-        hessian_optimizer,
-        saddle_verified=True,
-        projection_certifiable=False,
+        hessian_optimizer, saddle_verified=True
+    ) == "converged"
+    assert _tsopt_terminal_status(
+        hessian_optimizer, saddle_verified=False
     ) == "not_converged"

@@ -92,13 +92,6 @@ Options:
   --freeze-links BOOLEAN          Freeze parent atoms of cap hydrogens
                                   (PDB/mmCIF input or XYZ/GJF with --ref-pdb).
                                   [default: True]
-  --tr-projection [constrained|legacy-active]
-                                  Rigid translation/rotation treatment forwarded
-                                  to TSopt, IRC, freq, and flatten PHVA. The
-                                  default respects frozen anchors; 'legacy-
-                                  active' is deprecated and must not be used for
-                                  pass/HOSP transition-state certification.
-                                  [default: constrained]
   --mep-mode [gsm|dmf]            MEP optimizer: Growing String Method (gsm) or
                                   Direct Max Flux (dmf).  [default: gsm]
   --dmf-backend [cpu|gpu]         DMF compute backend (--mep-mode dmf only): gpu
@@ -140,13 +133,26 @@ Options:
                                   ordered series for automatic multistep
                                   discovery.  [default: False]
   --thresh [gau_loose|gau|gau_tight|gau_vtight|baker|never]
-                                  Convergence preset (gau_loose|gau|gau_tight|ga
-                                  u_vtight|baker|never). Defaults to 'gau' when
-                                  not provided.
+                                  Convergence preset for single-structure
+                                  optimizations and scan relaxations (gau_loose|
+                                  gau|gau_tight|gau_vtight|baker|never).
+                                  Defaults to 'gau' when not provided. The MEP
+                                  stage keeps its own --thresh-gsm / --thresh-
+                                  dmf.
   --thresh-post [gau_loose|gau|gau_tight|gau_vtight|baker|never]
                                   Convergence preset for post-IRC endpoint
                                   optimizations (gau_loose|gau|gau_tight|gau_vti
                                   ght|baker|never).  [default: baker]
+  --thresh-gsm [gau_loose|gau|gau_tight|gau_vtight|baker|never]
+                                  Convergence preset for the GSM string
+                                  optimizer of the MEP stage (gau_loose|gau|gau_
+                                  tight|gau_vtight|baker|never). Defaults to
+                                  'gau_loose' when not provided.
+  --thresh-dmf TEXT               IPOPT dual-infeasibility tolerance for the DMF
+                                  MEP stage: tight (0.04) | middle (0.10) |
+                                  loose (0.20) or a positive float. This is not
+                                  a Gaussian preset. Defaults to 'tight' when
+                                  not provided.
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config

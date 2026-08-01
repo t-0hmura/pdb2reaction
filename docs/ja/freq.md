@@ -73,7 +73,6 @@ out_dir/ (デフォルト:./result_freq/)
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | `--freeze-links/--no-freeze-links` | PDB/mmCIF 入力（または `--ref-pdb` 付き XYZ/GJF）。キャップ水素の親を凍結し `geom.freeze_atoms` にマージ。キャップ水素の詳細は [extract](extract.md) を参照 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
-| `--tr-projection [constrained\|legacy-active]` | PHVAの剛体モード処理。`legacy-active`は非推奨の比較専用で、pass/HOSP 遷移状態認定には使用不可 | `constrained` |
 | `--max-write INT` | エクスポートするモード数 | `10` |
 | `--amplitude-ang FLOAT` | モードアニメーション振幅（Å） | `0.8` |
 | `--n-frames INT` | モードアニメーションのフレーム数 | `20` |

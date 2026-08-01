@@ -40,7 +40,6 @@
 | `--dump` | `dump` | `opt` |
 | `--opt-mode` | _(CLI のみ)_ | — |
 | `--freeze-atoms` | `freeze_atoms` | `geom` |
-| `--tr-projection` | `tr_projection` | `geom` |
 | `--coord-type` | `coord_type` | `geom` |
 | `--temperature`（freq、`all --freq-temperature`） | `temperature` | `thermo` |
 | `--pressure`（freq、`all --freq-pressure`） | `pressure_atm` | `thermo` |
@@ -113,13 +112,12 @@ TS 最適化はより厳しい "baker" プリセットを、通常の極小化�
 geom:
  coord_type: cart # Coordinate type: "cart" (Cartesian) or "dlc" (delocalized internals)
  freeze_atoms: [] # 1-based indices of atoms to freeze; merged with CLI --freeze-links detection
- tr_projection: constrained # constrained | legacy-active; Cartesian PHVAの剛体モード処理
 ```
 
 **注記:**
 - `freeze_atoms` は PDB/mmCIF トポロジー入力時の `--freeze-links` 検出原子とマージされます。
 - 凍結原子は力がゼロ化され、Hessian の該当列もゼロ化されます。
-- `tr_projection: constrained` は凍結anchorを動かさない全系剛体運動だけを除去します。`legacy-active` は非推奨の比較専用で、pass/HOSP 遷移状態認定には使用できません。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
+- Cartesian PHVA の剛体モード処理は constrained に固定され、凍結anchorを動かさない全系剛体運動だけを除去します。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
 - `irc` では `geom.coord_type` が YAML/CLI マージ後に `cart` へ強制されます。
 
 ---
@@ -322,6 +320,7 @@ DMF では `--max-nodes` を `DirectMaxFlux(nmove=...)` に渡します。DMF AP
 ```yaml
 dmf:
  max_cycles: 300 # DMF/IPOPT の最大反復数（--max-cycles で上書き）
+ tol: tight # IPOPT dual_inf_tol: tight(0.04) | middle(0.10) | loose(0.20) または正の float（--thresh-dmf で上書き）
  correlated: true # Correlated DMF propagation
  sequential: true # Sequential DMF execution
  fbenm_only_endpoints: false # Run FB-ENM beyond endpoints
@@ -348,6 +347,8 @@ dmf:
    update_teval: false # Update transition evaluation
  k_fix: 300.0 # Harmonic constant for restraints (dmf 直下、dmf_options 配下ではない)
 ```
+
+`dmf.tol` は DMF ソルブが最後に適用する許容値なので、同じファイル内の `ipopt_options.dual_inf_tol` より優先されます。生の IPOPT オプションを固定したい場合は `dmf.tol` を書かず `ipopt_options.dual_inf_tol` のみを指定してください。`gau_tight` などの Gaussian プリセットはここでは拒否され、`--thresh` / `--thresh-gsm` の担当です。
 
 ---
 
@@ -632,7 +633,6 @@ bond:
 geom:
  coord_type: cart
  freeze_atoms: []
- tr_projection: constrained
 
 calc:
  backend: uma

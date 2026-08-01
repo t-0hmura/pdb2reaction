@@ -19,7 +19,7 @@ pdb2reaction path-opt -i REACTANT.{pdb|cif|mmcif|xyz|gjf} PRODUCT.{pdb|cif|mmcif
  [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
  [--workers N] [--workers-per-node N] \
  [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--max-nodes N] [--max-cycles N] \
- [--climb/--no-climb] [--dump/--no-dump] [--thresh PRESET] [--thresh-stopt PRESET] \
+ [--climb/--no-climb] [--dump/--no-dump] [--thresh PRESET] [--thresh-gsm PRESET] [--thresh-dmf TOL] \
  [--preopt/--no-preopt] [--preopt-max-cycles N] [--opt-mode grad|hess] [--fix-ends/--no-fix-ends] \
  [--show-config/--no-show-config] [--dry-run/--no-dry-run] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
@@ -114,7 +114,8 @@ out_dir/
 | `--ref-pdb FILE` | XYZ/GJF 入力用の参照 PDB/mmCIF トポロジー（XYZ 座標を保持して変換を有効化） | _None_ |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_path_opt/` |
 | `--thresh TEXT` | エンドポイント事前最適化のみの収束プリセットを上書き（`opt.lbfgs/rfo.thresh`） | `gau` |
-| `--thresh-stopt TEXT` | ストリングオプティマイザ（GSM 成長およびクライミング精密化）の収束プリセットを上書き（`stopt.thresh`; `gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau_loose` |
+| `--thresh-gsm TEXT` | GSM ストリング最適化（成長およびクライミング精密化）の収束プリセットを上書き（`stopt.thresh`; `gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau_loose` |
+| `--thresh-dmf TEXT` | DMF 最適化の IPOPT dual-infeasibility 許容値を上書き（`dmf.tol`）。`tight`(0.04)、`middle`(0.10)、`loose`(0.20) または正の float。Gaussian プリセットは受け付けない | `tight` |
 | `--config FILE` | 明示 CLI 指定より前に適用されるベース YAML | _None_ |
 | `--show-config/--no-show-config` | 解決済み設定（YAML レイヤ情報を含む）を表示して実行継続 | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |

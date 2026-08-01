@@ -48,14 +48,6 @@ Options:
                                   [default: freeze-links]
   --freeze-atoms TEXT             Comma-separated 1-based atom indices to freeze
                                   (e.g., '1,3,5').
-  --tr-projection [constrained|legacy-active]
-                                  Rigid-mode treatment for a frozen/partial
-                                  Hessian. 'constrained' removes only full-
-                                  system rigid motions compatible with the
-                                  anchors (default); 'legacy-active' is
-                                  deprecated comparison-only behavior and must
-                                  not be used for pass/HOSP transition-state
-                                  certification.
   --convert-files / --no-convert-files
                                   Convert XYZ/TRJ outputs into PDB/CIF
                                   companions based on the input format.
