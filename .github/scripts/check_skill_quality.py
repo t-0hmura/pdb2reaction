@@ -242,7 +242,7 @@ def _validate_high_risk_semantics(errors: list[str]) -> None:
         tsopt_page,
         (
             "`--ref-mode`",
-            "ordinary standalone `tsopt` runs should omit it",
+            "Ordinary standalone `tsopt` runs should omit it",
             "`tsopt` always forces `reject_uphill=False`",
         ),
         errors,
