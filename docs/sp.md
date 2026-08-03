@@ -17,10 +17,10 @@ Energy + forces (UMA backend, neutral closed-shell):
 pdb2reaction sp -i structure.pdb -q 0 -m 1
 ```
 
-Also compute the full Hessian (automatic mode uses analytical for UMA and finite differences for other backends):
+Also compute the full Hessian (finite differences are used by default for every backend):
 
 ```bash
-# also compute the full Hessian (automatic backend selection)
+# also compute the full Hessian (FiniteDifference by default)
 pdb2reaction sp -i structure.pdb -q 0 -m 1 --hess
 ```
 
@@ -41,10 +41,10 @@ calculation, the scalar energy and `|force|_max` are printed to stdout and
 
 ### Hessian backend
 
-When `--hess` is set, the backend choice picks the Hessian computation strategy:
+When `--hess` is set, `--hessian-calc-mode` selects the Hessian computation strategy:
 
-- `--backend uma` (default) → `Analytical` Hessian via the UMA torch autograd path
-- `--backend orb` / `mace` / `aimnet2` → `FiniteDifference` in automatic mode
+- Every backend uses `FiniteDifference` by default.
+- Pass `--hessian-calc-mode Analytical` to use a supported backend's autograd path explicitly.
 
 UMA, ORB, MACE, and AIMNet2 all implement analytical Hessians. Use `--hessian-calc-mode Analytical` to request one explicitly, or force `FiniteDifference` for a numerical cross-check. With UMA, `workers > 1` cannot be combined with an explicit analytical Hessian request and raises an error; use `workers = 1` or finite differences.
 
@@ -60,7 +60,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `-m, --multiplicity INT` | `1` | spin multiplicity, 2S+1 (optional; defaults to 1. GJF inherits the template) |
 | `-b, --backend [uma\|orb\|mace\|aimnet2]` | `uma` | MLIP backend selection |
 | `--hess / --no-hess` | `--no-hess` | also compute and write `hessian.npy` |
-| `--hessian-calc-mode [Analytical\|FiniteDifference]` | auto | force a specific Hessian mode (only applies with `--hess`) |
+| `--hessian-calc-mode [Analytical\|FiniteDifference]` | `FiniteDifference` | select the Hessian mode (only applies with `--hess`) |
 | `-o, --out-dir PATH` | `./result_sp/` | output directory |
 | `--precision [fp32\|fp64]` | backend-dependent | numeric precision passed to the backend |
 | `--config PATH` | — | YAML config providing `calc.*`, `geom.*` defaults |

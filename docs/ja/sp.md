@@ -21,10 +21,10 @@ pdb2reaction sp -i FILE [-q INT | -l 'RES:Q,...'] [-m INT] [-b uma|orb|mace|aimn
 pdb2reaction sp -i structure.pdb -q 0 -m 1
 ```
 
-完全な Hessian も計算（自動モードでは UMA は解析的、その他は有限差分）:
+完全な Hessian も計算（すべての backend で既定は有限差分）:
 
 ```bash
-# also compute the full Hessian (automatic backend selection)
+# also compute the full Hessian (FiniteDifference by default)
 pdb2reaction sp -i structure.pdb -q 0 -m 1 --hess
 ```
 
@@ -43,10 +43,10 @@ pdb2reaction sp -i structure.pdb -q 0 -m 1 --hess
 
 ### Hessian バックエンド
 
-`--hess` を設定すると、バックエンドの選択が Hessian の計算戦略を決めます。
+`--hess` を設定すると、`--hessian-calc-mode` が Hessian の計算方法を選択します。
 
-- `--backend uma`（デフォルト）→ UMA の torch autograd 経路による `Analytical` Hessian
-- `--backend orb` / `mace` / `aimnet2` → 自動モードでは `FiniteDifference`
+- すべての backend で既定は `FiniteDifference` です。
+- 対応 backend の autograd 経路を使う場合は `--hessian-calc-mode Analytical` を明示します。
 
 UMA、ORB、MACE、AIMNet2 はすべて解析 Hessian を実装しています。明示的に使う場合は `--hessian-calc-mode Analytical`、数値的なクロスチェックには `FiniteDifference` を指定します。UMA では `workers > 1` と明示的な解析 Hessian を併用できずエラーになるため、`workers = 1` または有限差分を使用してください。
 
@@ -62,7 +62,7 @@ UMA、ORB、MACE、AIMNet2 はすべて解析 Hessian を実装しています�
 | `-m, --multiplicity INT` | `1` | スピン多重度、2S+1（任意；省略時は 1。GJF はテンプレートから継承） |
 | `-b, --backend [uma\|orb\|mace\|aimnet2]` | `uma` | MLIP バックエンドの選択 |
 | `--hess / --no-hess` | `--no-hess` | `hessian.npy` も計算して書き出す |
-| `--hessian-calc-mode [Analytical\|FiniteDifference]` | auto | 特定の Hessian モードを強制（`--hess` 指定時のみ有効） |
+| `--hessian-calc-mode [Analytical\|FiniteDifference]` | `FiniteDifference` | Hessian モードを選択（`--hess` 指定時のみ有効） |
 | `-o, --out-dir PATH` | `./result_sp/` | 出力ディレクトリ |
 | `--precision [fp32\|fp64]` | backend依存 | backendに渡す数値精度 |
 | `--config PATH` | — | `calc.*`, `geom.*` のデフォルトを与える YAML 設定 |

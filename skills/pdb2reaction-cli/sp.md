@@ -22,7 +22,7 @@ pdb2reaction sp -i geom.{pdb,cif,mmcif,xyz,gjf} \
 | `-i, --input` | required | Input PDB, mmCIF, XYZ, or GJF |
 | `-q` / `-l` / `-m` | resolved by common rules | Total charge / per-residue charge mapping / multiplicity |
 | `--hess / --no-hess` | off | Also write a Hessian; without frozen atoms it is `(3N, 3N)`, while YAML `geom.freeze_atoms` selects the active partial block |
-| `--hessian-calc-mode` | automatic for `sp --hess` | Automatic mode uses Analytical for UMA and FiniteDifference for ORB/MACE/AIMNet2; an explicit `Analytical` request is supported by all four backends |
+| `--hessian-calc-mode` | `FiniteDifference` | Finite differences are the default for every backend; an explicit `Analytical` request is supported by all four backends |
 | `--precision` | backend-dependent | Unset means UMA/AIMNet2 fp32 and ORB/MACE fp64; AIMNet2 rejects fp64 |
 | `--workers` / `--workers-per-node` | `1` / `1` | UMA predictor parallelism; other built-in backends filter these keys |
 | `-b, --backend` | `uma` | MLIP backend |

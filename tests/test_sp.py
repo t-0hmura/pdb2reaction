@@ -50,7 +50,7 @@ class _FakeCalculator:
         ("mace", ["--hessian-calc-mode", "Analytical"], "Analytical"),
         ("aimnet2", ["--hessian-calc-mode", "Analytical"], "Analytical"),
         ("orb", [], "FiniteDifference"),
-        ("uma", [], "Analytical"),
+        ("uma", [], "FiniteDifference"),
     ],
 )
 def test_sp_propagates_resolved_hessian_mode_to_backend(
@@ -92,7 +92,7 @@ def test_sp_propagates_resolved_hessian_mode_to_backend(
     assert payload["status"] == "ok"
 
 
-def test_sp_auto_hessian_uses_fd_with_parallel_uma_workers(
+def test_sp_default_hessian_uses_fd_with_parallel_uma_workers(
     monkeypatch, tmp_path: Path,
 ) -> None:
     from pdb2reaction.cli import cli as root_cli
@@ -118,6 +118,101 @@ def test_sp_auto_hessian_uses_fd_with_parallel_uma_workers(
 
     assert result.exit_code == 0, result.output
     assert created[0]["hessian_calc_mode"] == "FiniteDifference"
+
+
+def test_sp_hessian_mode_from_config_overrides_the_default(
+    monkeypatch, tmp_path: Path,
+) -> None:
+    from pdb2reaction.cli import cli as root_cli
+    from pdb2reaction.workflows import sp
+
+    inp = tmp_path / "geom.xyz"
+    inp.write_text("1\nframe\nC 0.0 0.0 0.0\n")
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text("calc:\n  hessian_calc_mode: Analytical\n")
+    created: list[dict] = []
+    monkeypatch.setattr(sp, "geom_loader", lambda *_a, **_k: _FakeGeometry())
+    monkeypatch.setattr(
+        sp,
+        "create_calculator",
+        lambda **kwargs: created.append(dict(kwargs)) or _FakeCalculator(),
+    )
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "sp", "-i", str(inp), "-q", "0", "-m", "1", "--hess",
+            "--config", str(cfg), "-o", str(tmp_path / "out"),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert created[0]["hessian_calc_mode"] == "Analytical"
+
+
+def test_sp_show_config_reports_the_runtime_hessian_default(tmp_path: Path) -> None:
+    from pdb2reaction.cli import cli as root_cli
+
+    inp = tmp_path / "geom.xyz"
+    inp.write_text("1\nframe\nC 0.0 0.0 0.0\n")
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "sp", "-i", str(inp), "-q", "0", "-m", "1", "--hess",
+            "--show-config", "--dry-run", "-o", str(tmp_path / "out"),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "hessian_calc_mode: FiniteDifference" in result.output
+
+
+def test_sp_cli_hessian_mode_overrides_config(monkeypatch, tmp_path: Path) -> None:
+    from pdb2reaction.cli import cli as root_cli
+    from pdb2reaction.workflows import sp
+
+    inp = tmp_path / "geom.xyz"
+    inp.write_text("1\nframe\nC 0.0 0.0 0.0\n")
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text("calc:\n  hessian_calc_mode: Analytical\n")
+    created: list[dict] = []
+    monkeypatch.setattr(sp, "geom_loader", lambda *_a, **_k: _FakeGeometry())
+    monkeypatch.setattr(
+        sp,
+        "create_calculator",
+        lambda **kwargs: created.append(dict(kwargs)) or _FakeCalculator(),
+    )
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "sp", "-i", str(inp), "-q", "0", "-m", "1", "--hess",
+            "--config", str(cfg), "--hessian-calc-mode", "FiniteDifference",
+            "-o", str(tmp_path / "out"),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert created[0]["hessian_calc_mode"] == "FiniteDifference"
+
+
+def test_sp_dry_run_rejects_invalid_configured_hessian_mode(tmp_path: Path) -> None:
+    from pdb2reaction.cli import cli as root_cli
+
+    inp = tmp_path / "geom.xyz"
+    inp.write_text("1\nframe\nC 0.0 0.0 0.0\n")
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text("calc:\n  hessian_calc_mode: typo\n")
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "sp", "-i", str(inp), "-q", "0", "-m", "1", "--hess",
+            "--config", str(cfg), "--dry-run", "-o", str(tmp_path / "out"),
+        ],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "Unsupported hessian_calc_mode 'typo'" in result.output
 
 
 def test_sp_no_hess_removes_command_owned_stale_hessian(

@@ -28,10 +28,10 @@ Options:
                                   geom.freeze_atoms is non-empty).  [default:
                                   no-hess]
   --hessian-calc-mode [analytical|finitedifference]
-                                  Hessian backend when --hess is set. UMA, ORB,
-                                  MACE, and AIMNet2 support Analytical;
-                                  automatic mode uses Analytical for UMA and
-                                  FiniteDifference for other backends.
+                                  Hessian backend when --hess is set.
+                                  FiniteDifference is the default for every
+                                  backend; UMA, ORB, MACE, and AIMNet2 also
+                                  support an explicit Analytical request.
   --convert-files / --no-convert-files
                                   Compatibility toggle; sp writes no structure
                                   companions.  [default: convert-files]

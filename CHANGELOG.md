@@ -68,6 +68,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   automatically. `thermo.symmetry_number` remains an advanced YAML override.
 
 ### Changed
+- Make `sp --hess` use the shared `FiniteDifference` default for every MLIP
+  backend; select `Analytical` explicitly when desired.
 - Give an explicit `all -q/--charge` highest priority over extracted or
   workflow-derived charge. A mismatch is reported as a warning; omitting `-q`
   retains automatic derivation.

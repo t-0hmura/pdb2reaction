@@ -27,7 +27,12 @@ import yaml
 
 from pysisyphus.helpers import geom_loader
 
-from pdb2reaction.backends import create_calculator, apply_calc_file_to_calc_cfg
+from pdb2reaction.backends import (
+    BackendError,
+    apply_calc_file_to_calc_cfg,
+    create_calculator,
+    normalize_hessian_calc_mode,
+)
 from pdb2reaction.core.defaults import (
     GEOM_KW_DEFAULT,
     OUT_DIR_SP,
@@ -91,9 +96,9 @@ logger = logging.getLogger(__name__)
     type=click.Choice(["Analytical", "FiniteDifference"], case_sensitive=False),
     default=None, show_default=False,
     help=(
-        "Hessian backend when --hess is set. UMA, ORB, MACE, and AIMNet2 "
-        "support Analytical; automatic mode uses Analytical for UMA and "
-        "FiniteDifference for other backends."
+        "Hessian backend when --hess is set. FiniteDifference is the default "
+        "for every backend; UMA, ORB, MACE, and AIMNet2 also support an "
+        "explicit Analytical request."
     ),
 )
 @click.option(
@@ -211,6 +216,14 @@ def cli(
             sp_cfg["hess"] = bool(do_hess)
         if cli_param_overridden(ctx, "hessian_calc_mode") and hessian_calc_mode is not None:
             sp_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
+        if sp_cfg["hess"]:
+            try:
+                calc_cfg["hessian_calc_mode"] = normalize_hessian_calc_mode(
+                    sp_cfg.get("hessian_calc_mode")
+                    or calc_cfg.get("hessian_calc_mode", "FiniteDifference")
+                )
+            except BackendError as exc:
+                raise click.ClickException(str(exc)) from exc
         if cli_param_overridden(ctx, "workers"):
             calc_cfg["workers"] = int(workers)
         if cli_param_overridden(ctx, "workers_per_node"):
@@ -273,7 +286,7 @@ def cli(
 
         if (
             sp_cfg["hess"]
-            and str(sp_cfg.get("hessian_calc_mode", "")).lower() == "analytical"
+            and str(calc_cfg.get("hessian_calc_mode", "")).lower() == "analytical"
             and calc_cfg.get("backend") == "uma"
             and int(calc_cfg.get("workers", 1)) > 1
         ):
@@ -322,21 +335,11 @@ def cli(
         })
         hessian_mode: Optional[str] = None
         if sp_cfg["hess"]:
-            hessian_mode = sp_cfg.get("hessian_calc_mode")
-            if hessian_mode is None:
-                hessian_mode = (
-                    "Analytical"
-                    if (
-                        calc_cfg["backend"] == "uma"
-                        and int(calc_cfg.get("workers", 1)) <= 1
-                    )
-                    else "FiniteDifference"
-                )
+            hessian_mode = str(calc_cfg["hessian_calc_mode"])
             # Every built-in pysis calculator implements the same get_hessian
             # contract. Propagate the resolved request before constructing the
             # calculator; otherwise ORB/MACE/AIMNet2 silently retain their FD
             # default even when the CLI explicitly requested Analytical.
-            calc_cfg["hessian_calc_mode"] = hessian_mode
             calc_cfg["out_hess_torch"] = True
 
         calc = create_calculator(**calc_cfg)
