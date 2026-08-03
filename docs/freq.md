@@ -51,9 +51,10 @@ pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 \
   atm is converted internally to Pa. When `--dump`, a `thermoanalysis.yaml` snapshot is
   also written. The console reports the structure energy in Hartree as
   `E + G_corr = G` (electronic energy + Gibbs free-energy correction = Gibbs
-  free energy). The rotational symmetry number defaults to 1; set the molecule's external
-  rotational symmetry explicitly with `--symmetry-number` (or
-  `thermo.symmetry_number` in YAML). The workflow does not infer a point group.
+  free energy). The molecular point group and external rotational symmetry number are
+  detected from each analyzed structure and the resulting `1/sigma` correction is always
+  included. An expert can override the detected number with
+  `thermo.symmetry_number` in YAML.
 - **Frequency-treatment policy**: `freq` applies the **standalone-freq policy** — QRRHO with a
   100 cm⁻¹ rotor cutoff, unit frequency/ZPE scaling, **no** imaginary-frequency inversion, and
   **no** positive-frequency floor. This is deliberately different from the internal
@@ -102,7 +103,6 @@ The tables below cover the options that need explanation; the full flag list is 
 | `-o, --out-dir TEXT` | Output directory. | `./result_freq/` |
 | `--temperature FLOAT` | Thermochemistry temperature (K). | `298.15` |
 | `--pressure FLOAT` | Thermochemistry pressure (atm). On the CLI this flag is `--pressure`; the matching YAML key under `thermo:` is `pressure_atm` (explicit unit suffix). Both are in atm and get converted to Pa internally. | `1.0` |
-| `--symmetry-number INT` | External rotational symmetry number used in the molecular partition function. | `1` |
 | `--dump/--no-dump` | Write `thermoanalysis.yaml`. Standalone `freq` defaults to off. `pdb2reaction all --thermo` always retains this internal file because the composite workflow consumes it; `all --no-dump` still controls optional scan/MEP/TS trajectories but does not suppress the thermochemistry channel. | `False` |
 | `--hessian-calc-mode CHOICE` | MLIP Hessian mode (`Analytical` or `FiniteDifference`). | `FiniteDifference` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/CIF companions when a PDB/mmCIF topology is available (GJF is not written). | `True` |

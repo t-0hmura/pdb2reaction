@@ -560,7 +560,7 @@ freq:
 thermo:
  temperature: 298.15 # Thermochemistry temperature (K)
  pressure_atm: 1.0 # Thermochemistry pressure (atm)
- symmetry_number: 1 # 外部回転対称数（1 以上の整数）
+ symmetry_number: null # 自動判定。正整数は高度な上書き指定
  dump: false # Write thermoanalysis.yaml
 ```
 
@@ -676,7 +676,7 @@ freq:
 thermo:
  temperature: 298.15
  pressure_atm: 1.0
- symmetry_number: 1
+ symmetry_number: null
 
 dft:
  func: wb97m-v

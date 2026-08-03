@@ -27,7 +27,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 ### Added
 - Add `--thresh-gsm` and `--thresh-dmf` to `all`, `path-opt`, and
   `path-search`, separating endpoint, GSM, and DMF convergence controls.
-- Add `all --use-mep-tangent/--no-use-mep-tangent` for benchmarkable control
+- Add `all --tsopt-from-mep-tan/--no-tsopt-from-mep-tan` for benchmarkable control
   of the default-on HEI tangent handoff to Hessian TS optimization.
 - Report citations for the methods actually used at the end of `summary.log`
   and final stdout, and expose the same `{method, citation, doi}` records as
@@ -63,9 +63,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Add `all --irc-step-size`, forwarded to the IRC child as `--step-size`.
 - Add `opt`/`all --reject-uphill/--no-reject-uphill` (default off); on `all`
   it applies to post-IRC endpoint re-optimization only.
-- Add `freq --symmetry-number` and `all --freq-symmetry-number` for an explicit
-  external rotational symmetry number. Point-group symmetry is not inferred;
-  the standalone/default child value is 1.
+- Detect the molecular point group and external rotational symmetry number for
+  every `freq` structure and include the rotational `1/sigma` correction
+  automatically. `thermo.symmetry_number` remains an advanced YAML override.
 
 ### Changed
 - Give an explicit `all -q/--charge` highest priority over extracted or
@@ -114,8 +114,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   (`irc.dump_every: null` by default). Enabled checkpoints contain coordinates,
   energies, and gradients, but never a dense Hessian.
 - Seed TS optimization from the MEP tangent: `all` writes the HEI tangent and
-  passes it to the TSOPT child as `--ref-mode` by default. Pass
-  `--no-use-mep-tangent` for a benchmark without this handoff.
+  passes it to the TSOPT child as `--ref-mode` by default. With
+  `--no-tsopt-from-mep-tan`, TSOPT selects from the initial-structure Hessian modes.
 - Skip the BFGS Hessian update when the curvature `s·y ≤ 0` (previously logged and
   applied); this changes the Hessian, step, and geometry for BFGS runs that hit
   non-positive curvature.

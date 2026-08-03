@@ -24,9 +24,10 @@ If you need a TS guess first, run [`path-opt`](path-opt.md) (two structures) or 
 `--ref-mode` is an advanced/internal handoff, not a normal requirement for
 standalone `tsopt`. The `all` workflow supplies it automatically from the MEP
 as the standard energy-upwinding Cartesian tangent at each HEI; legacy paths
-without readable energies use a normalized secant bisector. Pass
-`all --no-use-mep-tangent` to disable this default handoff for a controlled
-benchmark. An expert standalone run may pass `--ref-mode PATH` only for a
+without readable energies use a normalized secant bisector. With
+`all --no-tsopt-from-mep-tan`, TSOPT computes the initial-structure Hessian and
+selects the initial root from its vibrational modes. An expert standalone run
+may pass `--ref-mode PATH` only for a
 non-zero Cartesian 3N direction from an external path calculation in exactly
 the same atom order.
 

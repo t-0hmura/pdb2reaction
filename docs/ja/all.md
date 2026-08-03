@@ -102,7 +102,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  - `--refine-path` と参照テンプレートがある場合、`mep_w_ref.pdb` を生成し、bridge入力では `mep_w_ref.cif` も生成します。デフォルトの `path-opt` では全系マージを行いません。
 
 5. **オプションのセグメントごとの後処理**（反応セグメントのみ — 結合変化のあるセグメント。ブリッジセグメントはスキップ）
- - `--tsopt`: 各 HEI 活性部位モデルで TS 最適化を実行します。機械可読な exact-Hessian 結果が `status=converged` かつ `n_imag=1` を報告しない場合は IRC 前に停止します。検証済み TS は EulerPC IRC で追跡し、IRC エンドポイントを `--thresh-post`（デフォルト `baker`）で再最適化します。Hessian TS 最適化には MEP energy-upwinding Cartesian接線を反応参照モードとしてデフォルトで渡し（energyを読めない旧trajectoryだけは正規化secantの二等分線へfallback）、比較時は`--no-use-mep-tangent`で無効化できます。エンドポイント最適化の作業ディレクトリは完了後に自動削除されます。エンドポイント RFO の上り坂拒否はデフォルトで無効で、`--reject-uphill` によりエンドポイント再最適化についてのみ有効化できます。
+ - `--tsopt`: 各 HEI 活性部位モデルで TS 最適化を実行します。機械可読な exact-Hessian 結果が `status=converged` かつ `n_imag=1` を報告しない場合は IRC 前に停止します。検証済み TS は EulerPC IRC で追跡し、IRC エンドポイントを `--thresh-post`（デフォルト `baker`）で再最適化します。Hessian TS 最適化には MEP energy-upwinding Cartesian接線を反応参照モードとしてデフォルトで渡します（energyを読めない旧trajectoryだけは正規化secantの二等分線へfallback）。`--no-tsopt-from-mep-tan` では、TSOPT が初期構造の Hessian を計算し、その振動モードから初期モードを選びます。エンドポイント最適化の作業ディレクトリは完了後に自動削除されます。エンドポイント RFO の上り坂拒否はデフォルトで無効で、`--reject-uphill` によりエンドポイント再最適化についてのみ有効化できます。
  - `--thermo`: (R, TS, P) で `freq` を呼び出し、振動/熱化学データと MLIP Gibbs ダイアグラムを取得
  - `--dft`: (R, TS, P) で DFT 一点計算を実行し、DFT ダイアグラムを構築。`--thermo` と組み合わせると DFT//MLIP Gibbs ダイアグラムも生成
   - 共有の上書きオプション: `--opt-mode`、`--opt-mode-post`（TSOPT/IRC 後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU 優先）など。Cartesian PHVA の剛体モードは、凍結anchorを尊重する constrained 処理に固定されています。
@@ -266,7 +266,7 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `--tsopt/--no-tsopt` | セグメントごとの TS 最適化+ IRC を実行 | `False` |
-| `--use-mep-tangent/--no-use-mep-tangent` | HEIのMEP接線をHessian TSのroot選択とoverlap追跡へ渡す。比較ベンチマークでは無効化 | `True` |
+| `--tsopt-from-mep-tan/--no-tsopt-from-mep-tan` | HEI の MEP 接線から初期 TS root を選ぶ。OFF では初期構造の Hessian 振動モードから選ぶ | `True` |
 | `--thermo/--no-thermo` | R/TS/P で振動解析を実行 | `False` |
 | `--dft/--no-dft` | R/TS/P で DFT 一点計算を実行 | `False` |
 | `--opt-mode-post [grad\|hess]` | TSOPT/IRC 後最適化のプリセット上書き（`grad` → Dimer/L-BFGS、`hess` → RSPRFO/RFO） | `hess` |
@@ -304,7 +304,6 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 | `--freq-sort [value\|abs]` | モードソート方法 | `value` |
 | `--freq-temperature FLOAT` | 熱化学温度（K） | `298.15` |
 | `--freq-pressure FLOAT` | 熱化学圧力（atm） | `1.0` |
-| `--freq-symmetry-number INT` | R/TS/P の全 freq 計算に共通の回転対称数。省略時は各子計算の YAML/デフォルトに従う | _None_ |
 
 ### DFT 上書き
 

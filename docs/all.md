@@ -80,7 +80,7 @@ Full system(s) (PDB / mmCIF / XYZ / GJF)
 3. **MEP search** — by default runs single-pass `path-opt`; `--refine-path` switches to recursive `path-search`. Recursive refinement can improve a poor HEI but can also split a noisy/bad path into unnecessary segments and increase cost, so it is off by default. Segmentation is only a candidate mechanism until TS/frequency/IRC validation. Raw engine output stays under `_work`; `mep.pdb`, bridge-input `mep.cif`, `mep_trj.xyz`, and the diagram are promoted to the top level.
 4. **Merge to full systems** (with `--refine-path`) — writes `mep_w_ref.pdb` and, for mmCIF/oversized-PDB templates, `mep_w_ref.cif`; per-segment equivalents remain under `_work/path_search/`.
 5. **Per-segment post-processing** (reactive segments only — bridge segments without bond changes are skipped):
-   - `--tsopt` — TS optimization on each HEI active-site model. A machine-readable exact-Hessian result must report `status=converged` and `n_imag=1`; otherwise the workflow stops before IRC. A validated TS is followed by EulerPC IRC and IRC-endpoint re-optimization with `--thresh-post` (default `baker`). For Hessian TS optimization, the MEP's energy-upwinding Cartesian tangent is passed by default as the reaction reference mode (a normalized secant bisector is used only for legacy trajectories without readable energies); `--no-use-mep-tangent` disables the handoff for benchmarks. The endpoint optimization working directory is deleted automatically after completion. Endpoint RFO uphill rejection is disabled by default; pass `--reject-uphill` to enable it for endpoint re-optimization only.
+   - `--tsopt` — TS optimization on each HEI active-site model. A machine-readable exact-Hessian result must report `status=converged` and `n_imag=1`; otherwise the workflow stops before IRC. A validated TS is followed by EulerPC IRC and IRC-endpoint re-optimization with `--thresh-post` (default `baker`). For Hessian TS optimization, the MEP's energy-upwinding Cartesian tangent is passed by default as the reaction reference mode (a normalized secant bisector is used only for legacy trajectories without readable energies). With `--no-tsopt-from-mep-tan`, TSOPT instead computes the initial-structure Hessian and selects the initial mode from its vibrational modes. The endpoint optimization working directory is deleted automatically after completion. Endpoint RFO uphill rejection is disabled by default; pass `--reject-uphill` to enable it for endpoint re-optimization only.
    - `--thermo` — `freq` on (R, TS, P) for vibrational + thermochemistry data and an MLIP Gibbs diagram.
    - `--dft` — single-point DFT on (R, TS, P) and a DFT diagram. With `--thermo`, a DFT//MLIP Gibbs diagram (DFT energies + MLIP thermal correction) is also produced.
    - Shared overrides: `--opt-mode`, `--opt-mode-post`, `--flatten`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, `--dft-engine` (GPU-first by default). Frozen-boundary PHVA always uses the constrained rigid-mode treatment; it is unrelated to the MEP-derived `--ref-mode`. For Hessian evaluation modes see {ref}`hessian-evaluation`.
@@ -237,7 +237,7 @@ directly, such as `opt`, `tsopt`, or `path-opt`.
 | Option | Description | Default |
 | --- | --- | --- |
 | `--tsopt / --no-tsopt` | Run TS optimization + IRC per reactive segment. | `False` |
-| `--use-mep-tangent / --no-use-mep-tangent` | Pass the HEI MEP tangent to Hessian TS root selection and overlap tracking; disable for benchmark comparisons. | `True` |
+| `--tsopt-from-mep-tan / --no-tsopt-from-mep-tan` | Select the initial TS root from the HEI MEP tangent; when off, select it from the initial-structure Hessian modes. | `True` |
 | `--thermo / --no-thermo` | Run vibrational analysis (`freq`) on R / TS / P. | `False` |
 | `--dft / --no-dft` | Run single-point DFT on R / TS / P. | `False` |
 | `--opt-mode-post [grad\|hess]` | Optimizer preset for TSOPT + post-IRC (`grad` → Dimer / L-BFGS, `hess` → RS-P-RFO / RFO). | `hess` |
@@ -268,7 +268,6 @@ TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (on
 | `--freq-sort [value\|abs]` | Mode sorting behavior. | `value` |
 | `--freq-temperature FLOAT` | Thermochemistry temperature (K). | `298.15` |
 | `--freq-pressure FLOAT` | Thermochemistry pressure (atm). | `1.0` |
-| `--freq-symmetry-number INT` | One rotational symmetry number for every R/TS/P frequency job; omission preserves each child YAML/default. | _None_ |
 | `--dft-engine [gpu\|cpu]` | DFT backend (GPU4PySCF or PySCF). In `all` the option is named `--dft-engine`; the standalone `dft` subcommand uses `--engine`. | `gpu` |
 | `--dft-out-dir PATH` | DFT outputs base directory override. | _None_ |
 | `--dft-func-basis TEXT` | Functional / basis pair. | `wb97m-v/def2-tzvpd` |

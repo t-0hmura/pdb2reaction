@@ -13,7 +13,7 @@ Partial-Hessian variant (PHVA) activates automatically when
 ```bash
 pdb2reaction freq -i geom.{pdb,cif,xyz,gjf} \
     [-q 0 -m 1] [-l 'RES:Q,...'] \
-    [--temperature 298.15] [--pressure 1.0] [--symmetry-number 1] \
+    [--temperature 298.15] [--pressure 1.0] \
     [-b uma|orb|mace|aimnet2] [-o ./result_freq/]
 ```
 
@@ -25,7 +25,6 @@ pdb2reaction freq -i geom.{pdb,cif,xyz,gjf} \
 | `-q` / `-l` / `-m` | — | — | Charge / spin (common conventions) |
 | `--temperature` | float | 298.15 | K, for thermochemistry |
 | `--pressure` | float | 1.0 | atm, for thermochemistry |
-| `--symmetry-number` | int ≥ 1 | 1 | External rotational symmetry number. Point-group symmetry is not inferred. |
 | `--hessian-calc-mode` | str | `FiniteDifference` | `Analytical` / `FiniteDifference`; check `UMA_CALC_KW` |
 | `--workers`, `--workers-per-node` | int | `1`, `1` | UMA predictor workers. An explicit `Analytical` request with `workers > 1` raises `BackendError`; use one worker or finite differences. Other built-in backends ignore these worker kwargs. |
 | `-b, --backend` | str | `uma` | MLIP backend |
@@ -91,10 +90,10 @@ Default thermochemistry uses the QRRHO (Grimme) treatment with a
   partition function.
 
 `THERMO_KW` (`pdb2reaction.core.defaults`) exposes `temperature`,
-`pressure_atm`, `symmetry_number`, and `dump`. Supply the external rotational
-symmetry number explicitly when it is not 1; the workflow does not infer a
-point group. The QRRHO rotor cutoff is internal to `thermoanalysis` and is not
-a `THERMO_KW` knob.
+`pressure_atm`, the optional advanced `symmetry_number` override, and `dump`.
+The normal workflow detects point group and external rotational symmetry from
+each structure and always includes the `1/sigma` correction. The QRRHO rotor
+cutoff is internal to `thermoanalysis` and is not a `THERMO_KW` knob.
 
 ## Partial-Hessian Vibrational Analysis (PHVA)
 

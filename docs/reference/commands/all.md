@@ -173,11 +173,12 @@ Options:
   --tsopt BOOLEAN                 TS optimization + IRC per reactive segment (or
                                   TSOPT-only mode for single-structure), and
                                   build energy diagrams.  [default: False]
-  --use-mep-tangent / --no-use-mep-tangent
-                                  Use the MEP tangent at the highest-energy
-                                  image to select and track the Hessian TS mode.
-                                  Disable for benchmark comparisons.  [default:
-                                  use-mep-tangent]
+  --tsopt-from-mep-tan / --no-tsopt-from-mep-tan
+                                  Initialize TS root selection from the MEP
+                                  tangent at the highest-energy image. When
+                                  disabled, TSOPT selects its initial mode from
+                                  the initial-structure Hessian.  [default:
+                                  tsopt-from-mep-tan]
   --thermo BOOLEAN                Run freq on (R, TS, P) per reactive segment
                                   (or TSOPT-only mode) and build Gibbs free-
                                   energy diagram (MLIP).  [default: False]
@@ -223,10 +224,6 @@ Options:
                                   Defaults to 298.15 K.
   --freq-pressure FLOAT           Override freq thermochemistry pressure (atm).
                                   Defaults to 1.0 atm.
-  --freq-symmetry-number INTEGER RANGE
-                                  Use one rotational symmetry number for every
-                                  R/TS/P frequency job. When omitted, each child
-                                  follows its YAML/default setting.  [x>=1]
   --dft-out-dir DIRECTORY         Override dft output base directory (relative
                                   paths resolved against the default).
   --dft-func-basis TEXT           Override dft --func-basis value. Defaults to

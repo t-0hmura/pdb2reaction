@@ -14,7 +14,7 @@ IRC 後エンドポイント再最適化）だけに適用されます。
 
 TS 初期構造がまず必要な場合は、2 端点なら [path-opt](path-opt.md)、2 構造以上なら [path-search](path-search.md) を実行し、得られた HEI を `tsopt` → `irc` の順で最適化・検証してください。mmCIF入力は内部PDBへ変換され、成果物には元IDを復元したCIFも生成されます。XYZ/GJF入力では`--ref-pdb`にPDBまたはmmCIF topologyを指定できます。
 
-`--ref-mode` は通常の単独 `tsopt` に必要なoptionではなく、主に `all` 内部の MEP→TS handoffです。`all` は MEP energyを使った標準のupwinding Cartesian 3N接線を生成してデフォルトで渡し、energyを読めない旧trajectoryだけは正規化secantの二等分線へfallbackします。比較ベンチマークでは`all --no-use-mep-tangent`で無効化できます。外部経路から同じ原子順の非ゼロCartesian 3N方向を用意したexpert standalone runだけが`--ref-mode PATH`を直接指定します。
+`--ref-mode` は通常の単独 `tsopt` に必要なoptionではなく、主に `all` 内部の MEP→TS handoffです。`all` は MEP energyを使った標準のupwinding Cartesian 3N接線を生成してデフォルトで渡し、energyを読めない旧trajectoryだけは正規化secantの二等分線へfallbackします。`all --no-tsopt-from-mep-tan` では TSOPT が初期構造の Hessian を計算し、その振動モードから初期 root を選びます。外部経路から同じ原子順の非ゼロCartesian 3N方向を用意したexpert standalone runだけが`--ref-mode PATH`を直接指定します。
 
 接線は初期Hessian rootを選び、modeが回転した後もoverlapで追跡するために使います。失敗した探索を別の探索へ自動変換する機能ではありません。デフォルトでは一時的なmode-lossによるtrial棄却、quasi-Newton固有値構造gate、自動saddle recovery、自動変位multistartを実行しません。終端のexact PHVAが合否を決め、`n_imag = 0`または`n_imag > 1`は`not_converged`です。
 

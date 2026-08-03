@@ -157,10 +157,23 @@ def build_thermo_symmetry_provenance(
             and isinstance(source, str)
             and source.strip()
         ):
-            provenance[label] = {
+            state_provenance = {
                 "symmetry_number": value,
                 "symmetry_number_source": source,
             }
+            point_group = payload.get("point_group")
+            point_group_source = payload.get("point_group_source")
+            if (
+                isinstance(point_group, str)
+                and point_group.strip()
+                and isinstance(point_group_source, str)
+                and point_group_source.strip()
+            ):
+                state_provenance.update(
+                    point_group=point_group,
+                    point_group_source=point_group_source,
+                )
+            provenance[label] = state_provenance
     return provenance
 
 

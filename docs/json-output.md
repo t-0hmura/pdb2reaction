@@ -218,8 +218,10 @@ the per-cycle force/step convergence keys and Hessian-mode `safeguards` object.
 
 | Field | Type | Unit |
 |-------|------|------|
+| `point_group` | string | Automatically detected molecular point group |
+| `point_group_source` | string | `"auto"` or conservative `"auto-fallback"` |
 | `symmetry_number` | int | External rotational symmetry number |
-| `symmetry_number_source` | string | `"default"`, `"config"`, `"override"`, or `"cli"` |
+| `symmetry_number_source` | string | `"auto"`, `"auto-fallback"`, `"config"`, or `"override"` |
 | `electronic_energy_ha` | float | Hartree |
 | `zpe_correction_ha` | float | Hartree |
 | `thermal_correction_energy_ha` | float | Hartree |
@@ -480,7 +482,7 @@ The `all` command additionally includes:
 | `overall_reaction_energy_kcal` | float | Overall reaction energy |
 | `overall_reaction_energy_method` | string | Method of the overall reaction energy (`MEP`, `MLIP`, `MLIP_Gibbs`, `DFT`, or `DFT//MLIP_Gibbs`) |
 | `post_segments` | list | Per-segment TS/IRC/freq/DFT results |
-| `post_segments[].thermo_symmetry` | object | Child-reported rotational symmetry provenance by state. Only R/TS/P states with both a valid `symmetry_number` and `symmetry_number_source` are included; missing states are omitted, and the field is absent only when no state has valid provenance. |
+| `post_segments[].thermo_symmetry` | object | Child-reported point-group and rotational-symmetry provenance by state. Only R/TS/P states with valid symmetry-number provenance are included; missing states are omitted, and the field is absent only when no state has valid provenance. |
 | `current_output_paths` | string[] | Sorted paths relative to `--out-dir`, limited to artifacts claimed by the current invocation. |
 | `key_output_files` | object | Current-run output index: root filename → description; each `seg_NN` entry is `{description, files}` with paths relative to that segment directory. |
 

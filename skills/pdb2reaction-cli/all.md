@@ -43,13 +43,12 @@ pdb2reaction all -i <input(s)> [-c <substrate>] [-l 'RES:Q,...'] \
 | `--thresh-gsm` | str | `gau_loose` | Convergence preset for the GSM string optimizer |
 | `--thresh-dmf` | str/float | `tight` | DMF IPOPT dual-infeasibility tolerance: `tight`, `middle`, `loose`, or a positive float |
 | `--tsopt / --no-tsopt` | toggle | off | Run TS optimization + IRC per reactive segment (also required to enter TS-only mode with a single `-i`) |
-| `--use-mep-tangent / --no-use-mep-tangent` | toggle | on | Pass the HEI MEP tangent to Hessian TS root selection and overlap tracking; disable for benchmark comparisons |
+| `--tsopt-from-mep-tan / --no-tsopt-from-mep-tan` | toggle | on | Select the initial TS root from the HEI MEP tangent; off selects from the initial-structure Hessian modes |
 | `--flatten/--no-flatten` | flag | off | Enable surplus-imaginary-mode cleanup when TSOPT does not reach a first-order saddle |
 | `--irc-step-size` | float | IRC default `0.10` | Forward a smaller EulerPC maximum step; try `0.05` when an IRC branch stops after only a few frames |
 | `--irc-never-stop/--no-irc-never-stop` | flag | off | Ignore IRC gradient and energy stops and trace to the cycle cap; propagation failures still stop |
 | `--reject-uphill / --no-reject-uphill` | toggle | off | Opt in to rejection above `1e-4` Hartree during Hessian/RFO post-IRC endpoint re-optimization only. At the emergency floor, the retained endpoint receives a final convergence check. It never affects TS optimization or path search. |
 | `--thermo / --no-thermo` | toggle | off | Run freq + thermochemistry on R / TS / P |
-| `--freq-symmetry-number` | int ≥ 1 | child YAML/default (normally 1) | Use one external rotational symmetry number for every R/TS/P frequency job. Point-group symmetry is not inferred. |
 | `--dft / --no-dft` | toggle | off | Run DFT single point on R / TS / P |
 | `--dft-func-basis` | str | `wb97m-v/def2-tzvpd` | DFT functional/basis (when `--dft`) |
 | `-b, --backend` | str | `uma` | MLIP backend |

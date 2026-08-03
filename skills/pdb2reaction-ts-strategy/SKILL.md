@@ -65,8 +65,9 @@ along the reaction coordinate).
   into unnecessary segments and multiply MEP, TSOPT, IRC, and frequency cost.
 - `--ref-mode` is not a normal standalone TSOPT remedy. It is the
   advanced/internal Cartesian path direction that `all` derives from its MEP
-  and passes by default for initial-root selection and overlap tracking. Use
-  `all --no-use-mep-tangent` for a benchmark without the handoff. The default
+  and passes by default for initial-root selection and overlap tracking.
+  With `all --no-tsopt-from-mep-tan`, TSOPT computes the initial-structure Hessian
+  and selects its initial root from the resulting vibrational modes. The default
   search does not launch automatic saddle recovery or displaced multistarts.
   Only external-path expert workflows should provide it manually.
 

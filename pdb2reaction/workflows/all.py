@@ -1784,6 +1784,18 @@ def _ensure_hei_path_tangent(
         return None
 
 
+def _select_hei_reference_mode(
+    enabled: bool,
+    mep_trj: Optional[Path],
+    hei_path: Path,
+    mode_path: Path,
+) -> Optional[Path]:
+    """Return an HEI tangent only when MEP-tangent initialization is enabled."""
+    if not enabled or mep_trj is None:
+        return None
+    return _ensure_hei_path_tangent(mep_trj, hei_path, mode_path)
+
+
 def _write_segment_energy_diagram(
     prefix: Path,
     labels: List[str],
@@ -2111,7 +2123,6 @@ def _run_freq_for_state(
         args.extend(["--sort", str(overrides.get("sort"))])
     _append_cli_arg(args, "--temperature", overrides.get("temperature"))
     _append_cli_arg(args, "--pressure", overrides.get("pressure"))
-    _append_cli_arg(args, "--symmetry-number", overrides.get("symmetry_number"))
     _append_toggle_arg(args, "--dump", bool(dump_use))
 
     hess_mode = overrides.get("hessian_calc_mode")
@@ -3372,12 +3383,13 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     ),
 )
 @click.option(
-    "--use-mep-tangent/--no-use-mep-tangent",
+    "--tsopt-from-mep-tan/--no-tsopt-from-mep-tan",
     default=True,
     show_default=True,
     help=(
-        "Use the MEP tangent at the highest-energy image to select and track "
-        "the Hessian TS mode. Disable for benchmark comparisons."
+        "Initialize TS root selection from the MEP tangent at the "
+        "highest-energy image. When disabled, TSOPT selects its initial mode "
+        "from the initial-structure Hessian."
     ),
 )
 @click.option(
@@ -3495,15 +3507,6 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     type=float,
     default=None,
     help="Override freq thermochemistry pressure (atm). Defaults to 1.0 atm.",
-)
-@click.option(
-    "--freq-symmetry-number",
-    type=click.IntRange(min=1),
-    default=None,
-    help=(
-        "Use one rotational symmetry number for every R/TS/P frequency job. "
-        "When omitted, each child follows its YAML/default setting."
-    ),
 )
 @click.option(
     "--dft-out-dir",
@@ -3667,7 +3670,7 @@ def cli(
     preopt: bool,
     hessian_calc_mode: Optional[str],
     do_tsopt: bool,
-    use_mep_tangent: bool,
+    tsopt_from_mep_tan: bool,
     do_thermo: bool,
     do_dft: bool,
     scan_lists_raw: Sequence[str],
@@ -3692,7 +3695,6 @@ def cli(
     freq_sort: Optional[str],
     freq_temperature: Optional[float],
     freq_pressure: Optional[float],
-    freq_symmetry_number: Optional[int],
     dft_out_dir: Optional[Path],
     dft_func_basis: Optional[str],
     dft_max_cycle: Optional[int],
@@ -4068,8 +4070,6 @@ def cli(
         freq_overrides["pressure"] = _validated_thermo_condition(
             freq_pressure, name="pressure_atm"
         )
-    if freq_symmetry_number is not None:
-        freq_overrides["symmetry_number"] = int(freq_symmetry_number)
     # all.py reads thermochemistry EXCLUSIVELY from freq's thermoanalysis.yaml
     # (its in-memory return is discarded via _run_cli_main). Always let freq
     # write that yaml so `--no-dump` cannot silently zero out tR/tT/tP and
@@ -4130,7 +4130,7 @@ def cli(
                     else None
                 ),
                 "tsopt": bool(do_tsopt),
-                "use_mep_tangent": bool(use_mep_tangent),
+                "tsopt_from_mep_tan": bool(tsopt_from_mep_tan),
                 "thermo": bool(do_thermo),
                 "dft": bool(do_dft),
                 "dft_engine": str(dft_engine),
@@ -6629,14 +6629,11 @@ def cli(
             current_mep = (
                 manifest.produced[mep_key][0] if mep_key in manifest.produced else None
             )
-            _hei_mode_path = (
-                _ensure_hei_path_tangent(
-                    current_mep,
-                    hei_model_path,
-                    _hei_mode_path,
-                )
-                if use_mep_tangent and current_mep is not None
-                else None
+            _hei_mode_path = _select_hei_reference_mode(
+                tsopt_from_mep_tan,
+                current_mep,
+                hei_model_path,
+                _hei_mode_path,
             )
             if _hei_mode_path is not None:
                 _seg_tsopt_overrides["reference_mode"] = _hei_mode_path

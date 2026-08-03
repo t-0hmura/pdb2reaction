@@ -52,6 +52,7 @@ from pdb2reaction.core.utils import (
     pretty_block,
     format_geom_for_echo,
     format_elapsed,
+    PreparedInputStructure,
     prepare_input_structure,
     apply_ref_pdb_override,
     resolve_charge_spin,
@@ -235,13 +236,28 @@ GEOM_KW = dict(GEOM_KW_DEFAULT)
 CALC_KW = FREQ_CALC_KW
 
 
-def _validated_symmetry_number(value: object) -> int:
+def _validated_symmetry_number(value: object) -> Optional[int]:
     """Return an external rotational symmetry number accepted by thermoanalysis."""
+    if value is None:
+        return None
     if isinstance(value, bool) or not isinstance(value, int) or value < 1:
         raise click.UsageError(
             "thermo.symmetry_number must be an integer greater than or equal to 1."
         )
     return int(value)
+
+
+def _symmetry_number_source(
+    *, config_has_value: bool, override_has_value: bool, resolved_value: object
+) -> str:
+    """Describe which configuration layer supplied the resolved symmetry number."""
+    if resolved_value is None:
+        return "auto"
+    if override_has_value:
+        return "override"
+    if config_has_value:
+        return "config"
+    return "auto"
 
 
 def _validated_thermo_condition(value: object, *, name: str) -> float:
@@ -395,13 +411,6 @@ def _prepare_frequency_output_paths(
               type=float, default=THERMO_KW["pressure_atm"], show_default=True,
               help="Pressure (atm) for thermochemistry summary.")
 @click.option(
-    "--symmetry-number",
-    type=click.IntRange(min=1),
-    default=THERMO_KW["symmetry_number"],
-    show_default=True,
-    help="External rotational symmetry number used in the thermochemistry partition function.",
-)
-@click.option(
     "--dump/--no-dump",
     "dump",
     default=THERMO_KW["dump"],
@@ -469,7 +478,6 @@ def cli(
     # thermo
     temperature: float,
     pressure_atm: float,
-    symmetry_number: int,
     dump: bool,
     show_config: bool,
     dry_run: bool,
@@ -534,11 +542,9 @@ def cli(
         ],
     )
     _config_thermo = config_layer_cfg.get("thermo")
-    symmetry_number_source = (
-        "config"
-        if isinstance(_config_thermo, dict)
-        and "symmetry_number" in _config_thermo
-        else "default"
+    _config_has_symmetry_number = (
+        isinstance(_config_thermo, dict)
+        and _config_thermo.get("symmetry_number") is not None
     )
 
     if cli_param_overridden(ctx, "workers"):
@@ -582,9 +588,6 @@ def cli(
         thermo_cfg["temperature"] = float(temperature)
     if cli_param_overridden(ctx, "pressure_atm"):
         thermo_cfg["pressure_atm"] = float(pressure_atm)
-    if cli_param_overridden(ctx, "symmetry_number"):
-        thermo_cfg["symmetry_number"] = int(symmetry_number)
-        symmetry_number_source = "cli"
     if cli_param_overridden(ctx, "dump"):
         thermo_cfg["dump"] = bool(dump)
 
@@ -606,13 +609,17 @@ def cli(
         ],
     )
     _override_thermo = override_layer_cfg.get("thermo")
-    if (
+    _override_has_symmetry_number = (
         isinstance(_override_thermo, dict)
-        and "symmetry_number" in _override_thermo
-    ):
-        symmetry_number_source = "override"
+        and _override_thermo.get("symmetry_number") is not None
+    )
     thermo_cfg["symmetry_number"] = _validated_symmetry_number(
         thermo_cfg.get("symmetry_number")
+    )
+    symmetry_number_source = _symmetry_number_source(
+        config_has_value=_config_has_symmetry_number,
+        override_has_value=_override_has_symmetry_number,
+        resolved_value=thermo_cfg["symmetry_number"],
     )
     thermo_cfg["temperature"] = _validated_thermo_condition(
         thermo_cfg.get("temperature"), name="temperature"
@@ -907,7 +914,10 @@ def cli(
 
         _thermo_data = None  # populated below if thermoanalysis succeeds
         try:
-            from thermoanalysis.QCData import QCData
+            from thermoanalysis.QCData import (
+                QCData,
+                detect_point_group_and_symmetry_number,
+            )
             from thermoanalysis.thermo import thermochemistry
             from thermoanalysis.constants import J2AU, NA, J2CAL
             from thermoanalysis.config import WORKFLOW_THERMO_POLICY
@@ -919,12 +929,29 @@ def cli(
                 "masses": masses_amu,
                 "mult": int(calc_cfg["spin"]),
             }
-            qc = QCData(qc_data, point_group="c1", mult=int(calc_cfg["spin"]))
-            qc.symmetry_number = int(thermo_cfg["symmetry_number"])
+            point_group, detected_symmetry_number, point_group_source = (
+                detect_point_group_and_symmetry_number(
+                    geometry.atomic_numbers,
+                    qc_data["coords3d"],
+                )
+            )
+            configured_symmetry_number = thermo_cfg["symmetry_number"]
+            symmetry_number = (
+                detected_symmetry_number
+                if configured_symmetry_number is None
+                else int(configured_symmetry_number)
+            )
+            if configured_symmetry_number is None:
+                symmetry_number_source = point_group_source
+            qc = QCData(
+                qc_data,
+                point_group=point_group,
+                mult=int(calc_cfg["spin"]),
+            )
+            qc.symmetry_number = symmetry_number
 
             T = float(thermo_cfg["temperature"])
             p_atm = float(thermo_cfg["pressure_atm"])
-            symmetry_number = int(thermo_cfg["symmetry_number"])
             p_pa = p_atm * 101325.0  # Pa
 
             # The standalone-freq policy is library-default QRRHO with no
@@ -962,6 +989,10 @@ def cli(
             click.echo(f"Temperature (K)         = {T:.2f}")
             click.echo(f"Pressure    (atm)       = {p_atm:.4f}")
             click.echo(
+                f"Molecular point group   = {point_group} "
+                f"({point_group_source})"
+            )
+            click.echo(
                 f"Rotational symmetry no. = {symmetry_number:d} "
                 f"({symmetry_number_source})"
             )
@@ -989,6 +1020,8 @@ def cli(
                     "structure": str(input_path),
                     "temperature_K": T,
                     "pressure_atm": p_atm,
+                    "point_group": point_group,
+                    "point_group_source": point_group_source,
                     "symmetry_number": symmetry_number,
                     "symmetry_number_source": symmetry_number_source,
                     "num_imag_freq": n_imag,
@@ -1023,6 +1056,8 @@ def cli(
 
             _thermo_data = {
                 "thermo_policy": _thermo_policy.as_dict(),
+                "point_group": point_group,
+                "point_group_source": point_group_source,
                 "symmetry_number": symmetry_number,
                 "symmetry_number_source": symmetry_number_source,
                 "electronic_energy_ha": EE,

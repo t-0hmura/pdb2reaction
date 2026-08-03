@@ -71,7 +71,7 @@ Present when `--tsopt`, `--thermo`, or `--dft` was passed:
 | `ts_imag` | Dict `{n_imag, nu_imag_max_cm, min_abs_imag_cm, min_freq_cm}` describing the TS spectrum |
 | `ts_imag_freq_cm` | Peak imaginary frequency (cm⁻¹); same as `ts_imag.nu_imag_max_cm` |
 | `gibbs_mlip` | MLIP electronic energy + QRRHO thermal correction (when `--thermo`) |
-| `thermo_symmetry` | Per-state `R` / `TS` / `P` map of `{symmetry_number, symmetry_number_source}` copied from successful frequency children. Missing states are omitted. |
+| `thermo_symmetry` | Per-state `R` / `TS` / `P` map of detected point-group and rotational-symmetry provenance copied from successful frequency children. Missing states are omitted. |
 | `dft` | DFT//MLIP single-point energies (when `--dft`). Same shape as `mlip`: `{labels, energies_au, energies_kcal, barrier_kcal, delta_kcal, diagram, structures}`. If DFT failed for any of R/TS/P, the block is `{"status": "failed", "failed_states": [...]}` instead, and no DFT diagram is written. |
 | `gibbs_dft_mlip` | DFT electronic energy + MLIP QRRHO thermal correction (when `--dft` **and** `--thermo`, and all three DFT single-points succeeded). Same shape as `mlip`; read `barrier_kcal` here for the DFT//MLIP ΔG‡. |
 

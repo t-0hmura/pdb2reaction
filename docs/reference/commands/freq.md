@@ -50,10 +50,6 @@ Options:
                                   [default: 298.15]
   --pressure FLOAT                Pressure (atm) for thermochemistry summary.
                                   [default: 1.0]
-  --symmetry-number INTEGER RANGE
-                                  External rotational symmetry number used in
-                                  the thermochemistry partition function.
-                                  [default: 1; x>=1]
   --dump / --no-dump              When True, write 'thermoanalysis.yaml' under
                                   out-dir.  [default: no-dump]
   --show-config / --no-show-config

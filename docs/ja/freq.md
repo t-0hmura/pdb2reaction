@@ -32,7 +32,7 @@ pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 \
 - **MLIP バックエンド**: `--hessian-calc-mode` で解析的または有限差分 Hessian を選択します。MLIP バックエンドは原子が凍結されている場合、部分（活性）Hessian ブロックを返すことがあります。Hessian 評価モードの詳細は {ref}`ja-hessian-evaluation` を参照してください。
 - **PHVAと剛体モード**: 凍結原子がある場合、固有値解析はactive部分空間内で行います。デフォルトの`constrained`は、すべての凍結anchorを動かさない全系剛体運動だけを除去するため、通常の複数anchorクラスターモデルではeffective rankは通常0です。3N×3N Hessian とactive block Hessian の両方に対応します。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
 - **モードのエクスポート**: `--max-write` でアニメーション化するモード数を制限できます。モードは値順 (`value`) でソートされ、`--sort abs` を指定すると絶対値順になります。すべての入力に `_trj.xyz` を出力し、`--convert-files` 有効時はtopology入力に`.pdb`、mmCIF／oversized-PDB入力に元IDを復元した`.cif`も出力します。
-- **熱化学**: `thermoanalysis` がインストールされている場合、QRRHO に準じたサマリー（E、ZPE、E/H/G 補正、熱容量、エントロピー）が PHVA 振動数に基づいて出力されます。CLI の圧力（atm）は内部で Pa に変換されます。構造の Gibbs free energy は Hartree 単位で `E + G_corr = G`（電子エネルギー + Gibbs free-energy 補正 = Gibbs free energy）と明示します。`--dump` を指定すると `thermoanalysis.yaml` も書き込まれます。回転対称数のデフォルトは 1 です。分子の外部回転対称数は `--symmetry-number`（または YAML の `thermo.symmetry_number`）で明示してください。point group の自動推定は行いません。
+- **熱化学**: `thermoanalysis` がインストールされている場合、QRRHO に準じたサマリー（E、ZPE、E/H/G 補正、熱容量、エントロピー）が PHVA 振動数に基づいて出力されます。CLI の圧力（atm）は内部で Pa に変換されます。構造の Gibbs free energy は Hartree 単位で `E + G_corr = G`（電子エネルギー + Gibbs free-energy 補正 = Gibbs free energy）と明示します。`--dump` を指定すると `thermoanalysis.yaml` も書き込まれます。解析対象構造ごとに分子点群と外部回転対称数を自動判定し、`1/σ` 補正を常に適用します。必要な場合に限り、YAML の `thermo.symmetry_number` で判定値を上書きできます。
 - **振動数処理ポリシー**: `freq` は **standalone-freq ポリシー**（QRRHO、rotor cutoff 100 cm⁻¹、周波数・ZPE スケール 1、虚振動数の反転**なし**、正振動数のフロア**なし**）を適用します。これは一部の bundled-engine 経路が使う内部の `Geometry.get_thermoanalysis` ポリシー（小さな虚振動数を −15 cm⁻¹ から反転し、25 cm⁻¹ 未満の正振動数をフロアする）とは意図的に異なります。いずれも普遍的な科学的デフォルトではなく、各エントリポイントに固有です。有効なポリシー（`kind`、`rotor_cutoff_cm`、`frequency_scale`、`zpe_scale`、`invert_imag_from_cm`、`positive_frequency_floor_cm`）は `thermoanalysis.yaml` と `result.json` の `thermo_policy` にシリアライズされます。
 - **性能**: GPU メモリ使用量を抑えるため、Hessian は 1 つだけ保持します。
 
@@ -80,7 +80,6 @@ out_dir/ (デフォルト:./result_freq/)
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_freq/` |
 | `--temperature FLOAT` | 熱化学計算の温度（K） | `298.15` |
 | `--pressure FLOAT` | 熱化学計算の圧力（atm）。CLI では `--pressure` ですが、対応する YAML キー（`thermo:` 配下）は `pressure_atm`（単位接尾辞付き）です。いずれも atm で指定し、内部で Pa に変換されます | `1.0` |
-| `--symmetry-number INT` | 分子分配関数に使用する外部回転対称数 | `1` |
 | `--dump/--no-dump` | `thermoanalysis.yaml` を書き込みます。単体 `freq` のデフォルトは OFF です。`pdb2reaction all --thermo` はこのファイルを内部入力として使用するため常に保持し、`all --no-dump` でも抑止しません（任意の scan/MEP/TS 軌跡には `--no-dump` が適用されます） | `False` |
 | `--hessian-calc-mode CHOICE` | MLIP Hessian モード（`Analytical` または `FiniteDifference`） | `FiniteDifference` |
 | `--convert-files/--no-convert-files` | topology入力に PDB companion、mmCIF／oversized-PDB bridge入力に元IDを復元したCIF companionを生成（GJFは出力しない） | `True` |

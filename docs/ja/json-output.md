@@ -216,8 +216,10 @@ dimer モードも `status` に `"converged"` / `"not_converged"` / `"stalled"` 
 
 | フィールド | 型 | 単位 |
 |-----------|------|------|
+| `point_group` | string | 自動判定した分子点群 |
+| `point_group_source` | string | `"auto"` または保守的なフォールバックを示す `"auto-fallback"` |
 | `symmetry_number` | int | 外部回転対称数 |
-| `symmetry_number_source` | string | `"default"` / `"config"` / `"override"` / `"cli"` |
+| `symmetry_number_source` | string | `"auto"` / `"auto-fallback"` / `"config"` / `"override"` |
 | `electronic_energy_ha` | float | Hartree |
 | `zpe_correction_ha` | float | Hartree |
 | `thermal_correction_energy_ha` | float | Hartree |
@@ -476,7 +478,7 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 | `overall_reaction_energy_kcal` | float | 全体反応エネルギー |
 | `overall_reaction_energy_method` | string | 全体反応energyのmethod (`MEP`, `MLIP`, `MLIP_Gibbs`, `DFT`, `DFT//MLIP_Gibbs`) |
 | `post_segments` | list | セグメントごとの TS/IRC/freq/DFT 結果 |
-| `post_segments[].thermo_symmetry` | object | 子 freq が報告した状態別の回転対称 provenance。有効な `symmetry_number` と `symmetry_number_source` の両方を持つ R/TS/P 状態だけを含み、欠けた状態は省略する。どの状態にも有効な provenance が無い場合だけフィールド全体を省略する。 |
+| `post_segments[].thermo_symmetry` | object | 子 freq が報告した状態別の点群・回転対称 provenance。有効な対称数 provenance を持つ R/TS/P 状態だけを含み、欠けた状態は省略する。どの状態にも有効な provenance が無い場合だけフィールド全体を省略する。 |
 | `current_output_paths` | string[] | `--out-dir` からの相対パスを並べたリスト。現在の呼び出しが記録した成果物だけを含みます。 |
 | `key_output_files` | object | 現在の呼び出しの出力索引。ルートファイルはファイル名 → 説明、各 `seg_NN` は `{description, files}` で、`files` はそのセグメントディレクトリからの相対パスです。 |
 

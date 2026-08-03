@@ -254,16 +254,29 @@ def test_build_pipeline_summary_payload_dft_disabled_drops_basis() -> None:
 def test_thermo_symmetry_provenance_copies_only_complete_valid_states() -> None:
     payload = build_thermo_symmetry_provenance(
         {
-            "R": {"symmetry_number": 2, "symmetry_number_source": "config"},
-            "TS": {"symmetry_number": 3, "symmetry_number_source": "cli"},
+            "R": {
+                "point_group": "C2",
+                "point_group_source": "auto",
+                "symmetry_number": 2,
+                "symmetry_number_source": "auto",
+            },
+            "TS": {"symmetry_number": 3, "symmetry_number_source": "config"},
             "P": {"symmetry_number": 1},
             "other": {"symmetry_number": 9, "symmetry_number_source": "test"},
         }
     )
 
     assert payload == {
-        "R": {"symmetry_number": 2, "symmetry_number_source": "config"},
-        "TS": {"symmetry_number": 3, "symmetry_number_source": "cli"},
+        "R": {
+            "point_group": "C2",
+            "point_group_source": "auto",
+            "symmetry_number": 2,
+            "symmetry_number_source": "auto",
+        },
+        "TS": {
+            "symmetry_number": 3,
+            "symmetry_number_source": "config",
+        },
     }
 
 
@@ -273,7 +286,7 @@ def test_thermo_symmetry_provenance_rejects_invalid_values(invalid) -> None:
         {
             "R": {
                 "symmetry_number": invalid,
-                "symmetry_number_source": "default",
+                "symmetry_number_source": "auto",
             }
         }
     ) == {}
