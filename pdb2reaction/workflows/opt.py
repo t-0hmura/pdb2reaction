@@ -442,7 +442,7 @@ def _seed_rfo_initial_hessian(
     show_default=True,
     help=(
         "Opt in to rejecting uphill RFO trials in hess mode (tolerance: "
-        "1e-3 Hartree) and final-check the retained geometry at the emergency "
+        "1e-4 Hartree) and final-check the retained geometry at the emergency "
         "floor. Ignored in grad/lbfgs mode."
     ),
 )

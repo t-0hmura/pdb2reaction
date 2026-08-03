@@ -54,8 +54,8 @@ class TestDefaultsStructure:
     def test_minimizer_trial_rejection_defaults(self):
         assert LBFGS_KW["reject_uphill"] is False
         assert RFO_KW["reject_uphill"] is False
-        assert LBFGS_KW["uphill_tolerance"] == 1e-3
-        assert RFO_KW["uphill_tolerance"] == 1e-3
+        assert LBFGS_KW["uphill_tolerance"] == 1e-4
+        assert RFO_KW["uphill_tolerance"] == 1e-4
         assert LBFGS_TS_KW["reject_uphill"] is False
 
         from pysisyphus.optimizers.LBFGS import LBFGS
@@ -63,16 +63,16 @@ class TestDefaultsStructure:
 
         assert signature(LBFGS).parameters["reject_uphill"].default is False
         assert signature(RFOptimizer).parameters["reject_uphill"].default is False
-        assert signature(LBFGS).parameters["uphill_tolerance"].default == 1e-3
-        assert signature(RFOptimizer).parameters["uphill_tolerance"].default == 1e-3
+        assert signature(LBFGS).parameters["uphill_tolerance"].default == 1e-4
+        assert signature(RFOptimizer).parameters["uphill_tolerance"].default == 1e-4
 
-    def test_ts_saddle_safeguards_are_enabled(self):
-        assert RSIRFO_KW["check_eigval_structure"] is True
-        assert RSIRFO_KW["reject_mode_loss"] is True
+    def test_ts_search_uses_terminal_exact_validation_without_automatic_recovery(self):
+        assert RSIRFO_KW["check_eigval_structure"] is False
+        assert RSIRFO_KW["reject_mode_loss"] is False
         assert RSIRFO_KW["verify_saddle"] is True
         assert RSIRFO_KW["saddle_imaginary_threshold_cm"] == 5.0
         assert RSIRFO_KW["saddle_recovery_check_interval"] == 50
-        assert RSIRFO_KW["saddle_recovery_max_cycles"] == 200
+        assert RSIRFO_KW["saddle_recovery_max_cycles"] == 0
 
     def test_path_workflow_max_nodes_release_defaults(self):
         from pdb2reaction.workflows.path_search import _stitch_paths

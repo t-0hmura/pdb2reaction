@@ -111,10 +111,9 @@ the CLI:
 - XYZ without residue context: provide the explicit total `charge`. A valid
   GJF header already supplies charge/multiplicity unless deliberately
   overridden.
-- Outside extraction, an explicit `charge` overrides inferred charge. For
-  `run_full_pipeline` when extraction is active, it is instead an assertion
-  against the extract-derived total; a mismatch aborts rather than silently
-  overriding the extracted chemistry.
+- An explicit `charge` has highest priority both with and without extraction.
+  A mismatch with the derived total is warned and the explicit value is used;
+  omit it to retain automatic derivation.
 
 `search_paths` requires both `input_pdb` (reactant) and `product_pdb`; optional
 `intermediate_pdbs=[...]` are inserted between them in the given reaction

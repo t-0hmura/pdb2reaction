@@ -32,7 +32,7 @@ from pdb2reaction.workflows.tsopt import (
 def test_shipped_default_is_reject_uphill_off() -> None:
     # The None-path preserves whatever RFO_KW declares; this pins that default.
     assert RFO_KW["reject_uphill"] is False
-    assert RFO_KW["uphill_tolerance"] == 1e-3
+    assert RFO_KW["uphill_tolerance"] == 1e-4
 
 
 def test_ts_rfo_forces_reject_uphill_off(tmp_path: Path) -> None:

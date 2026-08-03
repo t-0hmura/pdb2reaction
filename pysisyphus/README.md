@@ -30,7 +30,7 @@ The bundled fork keeps these divergences explicit and limits changes outside the
 | `pysisyphus/optimizers/gdiis.py` | `get_xp`-based torch/numpy dispatch (xp.linalg.norm / xp.sum) | torch/numpy backend share |
 | `pysisyphus/calculators/Dimer.py` | frozen/rigid-basis projection and per-instance deterministic random state | constrained Dimer invariants |
 | `pysisyphus/cos/ChainOfStates.py` | safe tangent normalization and geometric fallback for equal-energy neighbours | finite COS tangent invariant |
-| `pysisyphus/tsoptimizers/{TSHessianOptimizer,RSIRFOptimizer,RSPRFOptimizer,TRIM}.py` | mode-loss rollback, exact PHVA saddle-order validation, path-mode identity, and bounded recovery for MLIP-driven TS search | tsopt convergence |
+| `pysisyphus/tsoptimizers/{TSHessianOptimizer,RSIRFOptimizer,RSPRFOptimizer,TRIM}.py` | restricted-step root following, exact PHVA saddle-order validation, and optional path-mode guidance | tsopt convergence |
 | `pysisyphus/_array.py` | torch/numpy backend dispatch shim (`get_xp`, `_outer`, `_dot`, `_eigh`, `as_numpy`, `to_xp`) | used by `hessian_updates.py` + `HessianOptimizer.py` + `gdiis.py` |
 
 

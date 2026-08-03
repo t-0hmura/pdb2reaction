@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 import gc
+import inspect
 import logging
 import math
 import sys
@@ -199,6 +200,37 @@ def _combine_path_opt_outcomes(preopt_outcomes, mep_outcome):
     return aggregate_workflow_truth(outcomes, expected), outcomes
 
 
+def _release_dmf_interpolation_cache(mxflx_fbenm: Any) -> None:
+    """Release an optional PyDMF device cache at the interpolation boundary."""
+    release_cache = getattr(mxflx_fbenm, "release_device_cache", None)
+    if callable(release_cache):
+        release_cache(empty_cache=False)
+
+
+def _torch_dmf_runtime_kwargs(
+    dmf_backend: str,
+    dmf_options: Mapping[str, Any],
+    fbenm_options: Mapping[str, Any],
+    cfbenm_options: Mapping[str, Any],
+    *,
+    supports_keep_history: bool = True,
+) -> Dict[str, Any]:
+    """Resolve Torch-only path settings shared by both DMF stages."""
+    if dmf_backend != "gpu":
+        return {}
+
+    resolved: Dict[str, Any] = {}
+    if supports_keep_history:
+        resolved["keep_history"] = bool(dmf_options.get("keep_history", False))
+    for name in ("device", "dtype"):
+        value = dmf_options.get(name)
+        value = fbenm_options.get(name, value)
+        value = cfbenm_options.get(name, value)
+        if value is not None:
+            resolved[name] = value
+    return resolved
+
+
 def _run_dmf_mep(
     geoms: Sequence[Any],
     calc_cfg: Dict[str, Any],
@@ -289,6 +321,18 @@ def _run_dmf_mep(
     cfbenm_opts: Dict[str, Any] = dict(dmf_cfg.get("cfbenm_options", {}))
     dmf_opts: Dict[str, Any] = dict(dmf_cfg.get("dmf_options", {}))
     update_teval = bool(dmf_opts.pop("update_teval", False))
+    supports_keep_history = (
+        dmf_backend == "gpu"
+        and "keep_history" in inspect.signature(DirectMaxFlux.__init__).parameters
+    )
+    torch_dmf_kwargs = _torch_dmf_runtime_kwargs(
+        dmf_backend, dmf_opts, fbenm_opts, cfbenm_opts,
+        supports_keep_history=supports_keep_history,
+    )
+    if supports_keep_history:
+        # Product workflows consume only the final path.  Keeping every
+        # iteration would retain force arrays and Atoms copies unnecessarily.
+        dmf_opts.setdefault("keep_history", False)
     k_fix = float(dmf_cfg.get("k_fix", DMF_KW["k_fix"]))
 
     # Default-mode IPOPT options: print_level=0 silences the per-iteration
@@ -326,6 +370,16 @@ def _run_dmf_mep(
         )
     coefs = mxflx_fbenm.coefs.copy()
 
+    # The interpolation stage owns a separate, large FB-ENM/CFB-ENM cache.
+    # Release it only at this phase boundary: keeping it through the accurate
+    # PES stage multiplies peak VRAM, while releasing it inside force sweeps
+    # would repeat the CPU-to-GPU constant uploads.
+    _release_dmf_interpolation_cache(mxflx_fbenm)
+    del mxflx_fbenm
+    gc.collect()
+    if dmf_backend == "gpu" and torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
     # Create DirectMaxFlux object (pydmf CPU version)
     mxflx = DirectMaxFlux(
         ref_images,
@@ -340,6 +394,7 @@ def _run_dmf_mep(
         eps_vel=float(dmf_opts.get("eps_vel", 0.01)),
         eps_rot=float(dmf_opts.get("eps_rot", 0.01)),
         beta=float(dmf_opts.get("beta", 10.0)),
+        **torch_dmf_kwargs,
     )
 
     # Assign calculators to images
@@ -391,7 +446,7 @@ def _run_dmf_mep(
     # Free DMF calculator before creating eval calculator to avoid GPU OOM
     for image in mxflx.images:
         image.calc = None
-    ase_calc = None
+    del ase_calc
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
@@ -438,7 +493,7 @@ def _run_dmf_mep(
         reason=_dmf_reason,
         ipopt_status=_dmf_status,
     )
-    calc_eval = mxflx = None
+    del calc_eval, mxflx
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()

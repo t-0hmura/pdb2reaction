@@ -477,14 +477,14 @@ rsirfo:
  augment_bonds: false # Augment reaction path based on bond analysis
  assert_neg_eigval: false # Require negative eigenvalue at convergence
  track_mode_by_overlap: false # Track the selected TS mode by overlap with the previous Hessian
- reject_mode_loss: true # Reject a trial that loses established negative curvature
+ reject_mode_loss: false # Optional trial rejection after established mode loss
  mode_loss_trust_floor: 1.0e-05 # Positive emergency trust-radius floor for those retries
  max_mode_loss_rejections: 5 # Rejections allowed at that floor before stopping
  verify_saddle: true # Require exact-Hessian projected first-order-saddle validation
  saddle_imaginary_threshold_cm: 5.0 # Minimum |imaginary frequency| counted as negative (cm^-1; positive)
  saddle_recovery_step: 0.01 # Positive uphill recovery displacement cap in optimizer coordinates
  saddle_recovery_check_interval: 50 # Exact PHVA cadence during n_imag=0 recovery
- saddle_recovery_max_cycles: 200 # Bounded n_imag=0 recovery cap
+ saddle_recovery_max_cycles: 0 # Automatic n_imag=0 recovery disabled
  # Also inherits rfo-like settings: trust_radius, trust_update, etc.
 ```
 
@@ -514,7 +514,7 @@ irc:
  hessian_init: calc # Hessian initialization source
  hessian_update: bofill # Hessian update scheme
  hessian_recalc: null # Hessian rebuild cadence
- energy_increase_thresh: 0.001 # Stop on larger one-step rises in ordinary mode
+ energy_increase_thresh: 0.0   # Stop on any one-step rise in ordinary mode
  dump_every: null # Disabled; positive cadence writes a coordinate/energy/gradient checkpoint without a Hessian
  dump_fn: irc_data.h5 # Checkpoint filename used only when dump_every is set
  displ: energy # Displacement construction method

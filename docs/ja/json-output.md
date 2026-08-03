@@ -174,7 +174,7 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 | `imaginary_frequencies_cm` | float[] | 虚振動数 (cm⁻¹, 負の値) |
 | `opt_mode` | string | `"rsprfo"` (default) / `"rsirfo"` / `"trim"` / `"dimer"` |
 | `reference_mode_file` | string\|null | `--ref-mode` で渡した advanced path-mode ファイル。通常は `all` が生成して内部指定します |
-| `safeguards` | object | mode-loss rejection、exact saddle check、最終目的モードの index/overlap、高次鞍点での MEP 再anchor flag、停止理由、有界 path-mode restart の診断情報 |
+| `safeguards` | object | exact saddle check、最終目的modeのindex/overlap、停止理由、および明示的に有効化した場合のmode-loss/recovery診断。これらの回復経路はデフォルト無効 |
 | `rigid_projection` | object | 剛体モードとexact Hessian のprovenance。[projection provenance](#rigid-projection-provenance)を参照 |
 
 `files` には `imaginary_mode_files`（vib ファイルリスト）を含む場合があります。
@@ -246,8 +246,8 @@ dimer モードも `status` に `"converged"` / `"not_converged"` / `"stalled"` 
 | `energy_reactant_hartree` / `energy_product_hartree` | float | first / last の旧alias。key名から化学的R/P identityを推定しないこと |
 | `forward_converged` | bool \| null | 前方 IRC 収束? インテグレータがフラグを公開しない場合は `null` |
 | `backward_converged` | bool \| null | 後方 IRC 収束? インテグレータがフラグを公開しない場合は `null` |
-| `forward_energy_increased` | bool \| null | 前方の最終stepで`irc.energy_increase_thresh`（デフォルト`1e-3` Hartree）を超えてenergyが上昇したか |
-| `backward_energy_increased` | bool \| null | 後方の最終stepで`irc.energy_increase_thresh`（デフォルト`1e-3` Hartree）を超えてenergyが上昇したか |
+| `forward_energy_increased` | bool \| null | 前方の最終stepで`irc.energy_increase_thresh`（デフォルト`0` Hartree、上昇はすべて対象）を超えてenergyが上昇したか |
+| `backward_energy_increased` | bool \| null | 後方の最終stepで`irc.energy_increase_thresh`（デフォルト`0` Hartree、上昇はすべて対象）を超えてenergyが上昇したか |
 | `backend` | string | MLIP バックエンド |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |

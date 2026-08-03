@@ -116,7 +116,7 @@ In PyMOL: `align` the three states, label the reactive atoms (`label name C12+O1
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `post_segments[0].ts_imag.n_imag == 0` | TS guess collapsed to a minimum | Re-do the TS guess with `path-search`; `all` passes its MEP tangent internally for bounded recovery. An ordinary TS-only run without path information cannot identify the intended neighboring saddle |
+| `post_segments[0].ts_imag.n_imag == 0` | TS guess collapsed to a minimum | Re-do the TS guess with `path-search`; by default `all` uses the MEP tangent to select and track the uphill root. An ordinary TS-only run without path information cannot identify the intended neighboring saddle |
 | `n_imag >= 2` | The geometry is not a certified first-order saddle | Re-run freq/tsopt with a tighter `--thresh-post` (`gau_tight` or tighter) and inspect every imaginary-mode displacement. Certification requires the recomputed result itself to have exactly one imaginary mode, regardless of the magnitude of the additional mode. Use `--flatten` to target extra modes (see [tsopt](tsopt.md), `hessian_dimer.flatten_max_iter`). |
 | `segments[0].bond_changes` is empty (`""` or `"(no covalent changes detected)"`) or IRC reaches the wrong endpoint | Imaginary mode not along the intended coordinate, or TS connects two essentially identical wells | Visualize `segments/seg_01/ts/vib/imag_*_trj.xyz` in PyMOL; if the mode is wrong, re-pick the TS guess |
 | `freq/{R,P}/frequencies_cm-1.txt` shows residual imaginary modes | The endpoint may not be a fully converged minimum | Thermochemistry remains available. If minimum certification matters, optionally tighten convergence (`--thresh-post gau_tight`) or extend IRC max cycles in YAML; see [freq](freq.md) |

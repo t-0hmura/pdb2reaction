@@ -4,42 +4,6 @@ All notable changes to **pdb2reaction** will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
-
-### Breaking changes
-- Remove the public `--tr-projection` option and the `legacy-active` treatment.
-  Frozen-boundary PHVA now always uses the constrained treatment; stale YAML
-  values fail explicitly.
-- Rename the `path-opt` / `path-search` string-optimizer preset flag
-  `--thresh-stopt` to `--thresh-gsm`. The former spelling is no longer accepted.
-
-### Added
-- `--thresh-gsm` and `--thresh-dmf` on `all`, `path-opt`, and `path-search`, so
-  the MEP stage keeps its own convergence controls: `--thresh-gsm` sets the GSM
-  string-optimizer preset (`stopt.thresh`) and `--thresh-dmf` sets the DMF
-  IPOPT dual-infeasibility tolerance (`dmf.tol`; `tight` | `middle` | `loose`
-  or a positive float). `all` forwards both to its MEP children, and a Gaussian
-  preset passed to `--thresh-dmf` is rejected with a pointer to `--thresh-gsm`.
-
-### Changed
-- Make uphill trial rejection opt-in for L-BFGS and RFO minimization, and raise
-  its default energy tolerance from `1e-8` to `1e-3` Hartree so explicitly
-  enabled rejection does not classify normal full-system fp32 energy noise as
-  an uphill step.
-- Make IRC `never_stop` bypass gradient and energy endpoint conditions and
-  trace to the cycle cap; ordinary IRC now tolerates one-step energy rises up
-  to `1e-3` Hartree.
-
-### Fixed
-- Forward `all --thresh` to the staged scan stage, which previously accepted a
-  convergence preset only through the `--config` YAML tier.
-- Honour a `dmf.ipopt_options.dual_inf_tol` pinned in YAML; the DMF solve
-  previously replaced it with a hardcoded `tight` preset.
-- Accept the Baker force-plus-energy-or-step criterion on every evaluable
-  cycle, including the first retained geometry.
-- Resolve the legacy `MACE-OFF23_small`, `_medium`, and `_large` aliases
-  to the corresponding upstream MACE-OFF model sizes.
-
 ## [0.4.12] — 2026-07-27
 
 > Upgrade warning: unchanged inputs can produce different geometries, energies/barriers,
@@ -54,12 +18,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   `search_paths(input_pdb, charge=None, *, …)` and sent only the input endpoint; it now requires
   `product_pdb: str` and sends both endpoints. Existing calls that omit the product fail with
   `TypeError`. Migration: pass `product_pdb=<product structure>`.
-- **`all -q/--charge` under `-c/--center` now asserts instead of overriding.** A supplied charge
-  that disagrees with the extractor-derived charge previously overrode it with a warning; a mismatch
-  now aborts. Migration: omit `-q` to use the derived charge, pass `--ligand-charge`, or set `-q` to
-  the derived value.
+- Remove the public `--tr-projection` option and the `legacy-active` treatment.
+  Frozen-boundary PHVA now always uses the constrained treatment; stale YAML
+  values fail explicitly.
+- Rename the `path-opt` / `path-search` string-optimizer preset flag
+  `--thresh-stopt` to `--thresh-gsm`. The former spelling is no longer accepted.
 
 ### Added
+- Add `--thresh-gsm` and `--thresh-dmf` to `all`, `path-opt`, and
+  `path-search`, separating endpoint, GSM, and DMF convergence controls.
+- Add `all --use-mep-tangent/--no-use-mep-tangent` for benchmarkable control
+  of the default-on HEI tangent handoff to Hessian TS optimization.
 - Report citations for the methods actually used at the end of `summary.log`
   and final stdout, and expose the same `{method, citation, doi}` records as
   `summary.json.references`.
@@ -87,19 +56,26 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   live CLI. Key and advanced controls remain collapsed until needed, while the
   generated command line stays visible.
   Results can preview bounded PDB, CIF/mmCIF, and single-structure XYZ artifacts.
-- Add opt-in IRC `--never-stop` / `all --irc-never-stop` traversal of transient
-  energy rises while retaining convergence and cycle limits.
+- Add opt-in IRC `--never-stop` / `all --irc-never-stop`; it bypasses physical
+  gradient and energy stops and traces to the cycle cap.
 - Add `tsopt --ref-mode PATH` to seed TS mode-following with a reference mode;
   `all` auto-supplies the MEP tangent at the HEI image.
 - Add `all --irc-step-size`, forwarded to the IRC child as `--step-size`.
-- Add `opt`/`all --reject-uphill/--no-reject-uphill` (default on) to opt out of the
-  RFO uphill-rejection safeguard; on `all` it applies to post-IRC endpoint
-  re-optimization only.
+- Add `opt`/`all --reject-uphill/--no-reject-uphill` (default off); on `all`
+  it applies to post-IRC endpoint re-optimization only.
 - Add `freq --symmetry-number` and `all --freq-symmetry-number` for an explicit
   external rotational symmetry number. Point-group symmetry is not inferred;
   the standalone/default child value is 1.
 
 ### Changed
+- Give an explicit `all -q/--charge` highest priority over extracted or
+  workflow-derived charge. A mismatch is reported as a warning; omitting `-q`
+  retains automatic derivation.
+- Make uphill-trial rejection opt-in for minimum optimization. When enabled,
+  its tolerance is `1e-4` Hartree; TS optimization always leaves it disabled.
+- Restore ordinary IRC's pre-v0.4.12 energy-rise stop: any positive one-step
+  rise stops that direction. `--irc-never-stop` bypasses this and the other
+  physical endpoint criteria until the cycle cap.
 - Derive the system charge in the Colab notebook from `--ligand-charge` when it
   is available, omitting `-q`; a ticked charge box is now an explicit override.
 - Offer the scientific workflows in the Colab workflow selector. The utility
@@ -120,20 +96,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Project only rigid modes that are an actual null space of the frozen system for
   PHVA, IRC, Dimer, and TS validation, and record the effective mode. The former
   active-fragment projection could hide a real imaginary mode, so `n_imag`, ZPE
-  and ΔG‡ move on frozen-boundary systems. The superseded `--tr-projection
-  legacy-active` treatment is deprecated: it now warns and must not be used for
-  pass/HOSP transition-state certification; install the preceding pinned release to
-  reproduce old results bitwise.
-- Reject energy-increasing trial steps by default in the RFO/L-BFGS minimizers
-  (`reject_uphill`), reject TS trial steps that lose the saddle mode
-  (`reject_mode_loss`), require an eigenvalue-structure check and an explicit
-  saddle verification before a TS optimization may stop (`check_eigval_structure`,
-  `verify_saddle`), and add saddle recovery. These are default-on optimizer
-  behavior changes: an optimization can now stop at a different geometry, or
-  report a different terminal status, than it did in v0.4.11. The
-  `reject_uphill` safeguard is on by default. Toggle it with `opt`/`all`
-  --reject-uphill/--no-reject-uphill` (post-IRC endpoint re-optimization only on
-  `all`).
+  and ΔG‡ move on frozen-boundary systems. The superseded
+  `--tr-projection legacy-active` treatment and its public option are removed.
+- Keep the default Hessian TS search on standard restricted-step root
+  following. Trial mode-loss rejection, intermediate eigenvalue-structure
+  gating, automatic saddle recovery, and automatic displaced multistarts are
+  disabled by default. Exact PHVA remains the terminal authority and requires
+  `n_imag = 1`; explicit `--flatten` remains available for extra modes.
 - Record backend, model, and canonical effective precision in calculator-backed
   leaf and aggregate JSON outputs.
 - Break the product import cycle by relocating shared charge/residue services and
@@ -145,8 +114,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   (`irc.dump_every: null` by default). Enabled checkpoints contain coordinates,
   energies, and gradients, but never a dense Hessian.
 - Seed TS optimization from the MEP tangent: `all` writes the HEI tangent and
-  passes it to the TSOPT child as `--ref-mode`, so the located saddle, `n_imag`,
-  and barrier can differ from v0.4.11.
+  passes it to the TSOPT child as `--ref-mode` by default. Pass
+  `--no-use-mep-tangent` for a benchmark without this handoff.
 - Skip the BFGS Hessian update when the curvature `s·y ≤ 0` (previously logged and
   applied); this changes the Hessian, step, and geometry for BFGS runs that hit
   non-positive curvature.
@@ -164,6 +133,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   mutated nested defaults.
 
 ### Fixed
+- Forward `all --thresh` to the staged scan stage.
+- Honor a YAML-pinned `dmf.ipopt_options.dual_inf_tol`.
+- Apply the Baker maximum-force AND (energy-change OR maximum-step) criterion
+  on every evaluable cycle, including the first retained geometry.
+- Resolve legacy MACE-OFF23 size aliases to their upstream model sizes.
 - Keep the IRC running when the EulerPC corrector oscillates. The corrector
   descends the two-point interpolated surface rather than the real potential,
   so a reversal there is an interpolation artifact; it now warns and keeps the

@@ -22,8 +22,8 @@ def test_all_help_describes_charge_precedence_with_and_without_extraction():
     result = CliRunner().invoke(cli, ["--help"])
     assert result.exit_code == 0
     help_text = " ".join(result.output.split())
-    assert "Without extraction, -q/--charge explicitly sets the total" in help_text
-    assert "with extraction, it asserts the derived total" in help_text
+    assert "explicit -q/--charge has highest priority" in help_text
+    assert "mismatch emits a warning" in help_text
 
 
 def test_all_no_extract_charge_override_reports_the_actual_relation():
@@ -177,7 +177,7 @@ def test_all_dry_run_cleans_extract_tempdir_on_failure(tmp_path, monkeypatch):
     assert not dry_dir.exists()
 
 
-def test_all_dry_run_cleans_session_owned_extract_tempdir_on_success(
+def test_all_dry_run_uses_explicit_charge_over_derived_value_and_cleans_tempdir(
     tmp_path, monkeypatch,
 ):
     all_workflow = importlib.import_module("pdb2reaction.workflows.all")
@@ -204,10 +204,15 @@ def test_all_dry_run_cleans_session_owned_extract_tempdir_on_success(
 
     result = CliRunner().invoke(
         root_cli,
-        ["all", "-i", str(pdb), "-c", "SAM", "-q", "0", "--tsopt", "--dry-run"],
+        [
+            "all", "-i", str(pdb), "-c", "SAM", "-q", "1", "-m", "2",
+            "--tsopt", "--dry-run",
+        ],
     )
 
     assert result.exit_code == 0, result.output
+    assert "using TOTAL system charge +1" in result.output
+    assert "overrides workflow-derived +0" in result.output
     assert not dry_dir.exists()
 
 

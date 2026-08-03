@@ -80,7 +80,7 @@ Full system(s) (PDB / mmCIF / XYZ / GJF)
 3. **MEP search** — by default runs single-pass `path-opt`; `--refine-path` switches to recursive `path-search`. Recursive refinement can improve a poor HEI but can also split a noisy/bad path into unnecessary segments and increase cost, so it is off by default. Segmentation is only a candidate mechanism until TS/frequency/IRC validation. Raw engine output stays under `_work`; `mep.pdb`, bridge-input `mep.cif`, `mep_trj.xyz`, and the diagram are promoted to the top level.
 4. **Merge to full systems** (with `--refine-path`) — writes `mep_w_ref.pdb` and, for mmCIF/oversized-PDB templates, `mep_w_ref.cif`; per-segment equivalents remain under `_work/path_search/`.
 5. **Per-segment post-processing** (reactive segments only — bridge segments without bond changes are skipped):
-   - `--tsopt` — TS optimization on each HEI active-site model. A machine-readable exact-Hessian result must report `status=converged` and `n_imag=1`; otherwise the workflow stops before IRC. A validated TS is followed by EulerPC IRC and IRC-endpoint re-optimization with `--thresh-post` (default `baker`). For Hessian TS optimization, the MEP's energy-upwinding Cartesian tangent is passed automatically as the reaction reference mode (a normalized secant bisector is used only for legacy trajectories without readable energies). The endpoint optimization working directory is deleted automatically after completion. Endpoint RFO uphill rejection is disabled by default; pass `--reject-uphill` to enable it for endpoint re-optimization only.
+   - `--tsopt` — TS optimization on each HEI active-site model. A machine-readable exact-Hessian result must report `status=converged` and `n_imag=1`; otherwise the workflow stops before IRC. A validated TS is followed by EulerPC IRC and IRC-endpoint re-optimization with `--thresh-post` (default `baker`). For Hessian TS optimization, the MEP's energy-upwinding Cartesian tangent is passed by default as the reaction reference mode (a normalized secant bisector is used only for legacy trajectories without readable energies); `--no-use-mep-tangent` disables the handoff for benchmarks. The endpoint optimization working directory is deleted automatically after completion. Endpoint RFO uphill rejection is disabled by default; pass `--reject-uphill` to enable it for endpoint re-optimization only.
    - `--thermo` — `freq` on (R, TS, P) for vibrational + thermochemistry data and an MLIP Gibbs diagram.
    - `--dft` — single-point DFT on (R, TS, P) and a DFT diagram. With `--thermo`, a DFT//MLIP Gibbs diagram (DFT energies + MLIP thermal correction) is also produced.
    - Shared overrides: `--opt-mode`, `--opt-mode-post`, `--flatten`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, `--dft-engine` (GPU-first by default). Frozen-boundary PHVA always uses the constrained rigid-mode treatment; it is unrelated to the MEP-derived `--ref-mode`. For Hessian evaluation modes see {ref}`hessian-evaluation`.
@@ -184,7 +184,7 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | Option | Description | Default |
 | --- | --- | --- |
 | `-l, --ligand-charge TEXT` | Net charge or per-resname mapping used when `-q` is omitted (PDB/mmCIF metadata or `--ref-pdb`). | _None_ |
-| `-q, --charge INT` | Without `-c`, set the net system charge and override `--ligand-charge/-l`. With `-c`, assert the extraction-derived total and abort on mismatch. | _None_ |
+| `-q, --charge INT` | Explicit net system charge with highest priority. If it differs from the extracted/workflow-derived value, warn and use `-q`; omit it for automatic derivation. | _None_ |
 | `-m, --multiplicity INT` | Spin multiplicity forwarded to all downstream steps. | `1` |
 
 ### Extraction
@@ -237,12 +237,13 @@ directly, such as `opt`, `tsopt`, or `path-opt`.
 | Option | Description | Default |
 | --- | --- | --- |
 | `--tsopt / --no-tsopt` | Run TS optimization + IRC per reactive segment. | `False` |
+| `--use-mep-tangent / --no-use-mep-tangent` | Pass the HEI MEP tangent to Hessian TS root selection and overlap tracking; disable for benchmark comparisons. | `True` |
 | `--thermo / --no-thermo` | Run vibrational analysis (`freq`) on R / TS / P. | `False` |
 | `--dft / --no-dft` | Run single-point DFT on R / TS / P. | `False` |
 | `--opt-mode-post [grad\|hess]` | Optimizer preset for TSOPT + post-IRC (`grad` → Dimer / L-BFGS, `hess` → RS-P-RFO / RFO). | `hess` |
 | `--thresh-post TEXT` | Convergence preset for post-IRC endpoint optimizations. | `baker` |
 | `--flatten / --no-flatten` | Enable surplus-imaginary-mode flattening in `tsopt`. | `False` |
-| `--reject-uphill / --no-reject-uphill` | Opt in to rejecting energy-raising RFO steps during post-IRC **endpoint re-optimization only**, using a `1e-3` Hartree tolerance (roll back to the lower-energy geometry and shrink the trust radius); TS optimization forces rejection off, and path search is unaffected. At the emergency floor, the retained endpoint receives a final normal convergence check. | `False` |
+| `--reject-uphill / --no-reject-uphill` | Opt in to rejecting energy-raising RFO steps during post-IRC **endpoint re-optimization only**, using a `1e-4` Hartree tolerance (roll back to the lower-energy geometry and shrink the trust radius); TS optimization forces rejection off, and path search is unaffected. At the emergency floor, the retained endpoint receives a final normal convergence check. | `False` |
 | `--irc-step-size FLOAT` | Override the IRC maximum EulerPC step (Bohr). If IRC stops after only a few frames, retry with a smaller value such as `0.05`. | IRC default `0.10` |
 | `--irc-never-stop / --no-irc-never-stop` | Ignore IRC gradient and energy stop conditions and trace each branch until its max-cycle cap. Numerical/integration failures and external interruption still stop propagation. | `False` |
 

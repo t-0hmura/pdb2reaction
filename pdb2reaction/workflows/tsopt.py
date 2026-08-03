@@ -1725,7 +1725,7 @@ OPT_BASE_KW_LOCAL = {
     **OPT_BASE_KW,
     "out_dir": OUT_DIR_TSOPT,
     "thresh": "baker",
-    "check_eigval_structure": True,
+    "check_eigval_structure": False,
 }
 
 
@@ -1802,9 +1802,9 @@ def _validate_reference_mode_optimizer(
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
     help=(
-        "Advanced/internal path-mode hint for Hessian TS recovery "
+        "Advanced/internal path-mode hint for Hessian TS root selection "
         "(.npy or whitespace Cartesian 3N text). The all workflow supplies "
-        "this automatically from its MEP; ordinary standalone tsopt runs "
+        "this by default from its MEP; ordinary standalone tsopt runs "
         "normally omit it."
     ),
 )
@@ -2494,7 +2494,8 @@ def cli(
                     None,
                 )
                 if (
-                    not last_optimizer.is_converged
+                    int(rsirfo_kwargs.get("saddle_recovery_max_cycles", 0)) > 0
+                    and not last_optimizer.is_converged
                     and not getattr(last_optimizer, "is_stalled", False)
                     and reference_mode is not None
                     and (n_imag <= 1 or target_mode_is_negative is False)

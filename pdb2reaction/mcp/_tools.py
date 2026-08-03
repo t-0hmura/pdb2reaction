@@ -697,9 +697,8 @@ def register_all(mcp) -> None:
         occurrence followed by all values.
 
         For PDB/mmCIF input, prefer ligand_charge with charge omitted so the total is
-        derived after extraction. When extraction is active, an explicit charge is
-        an assertion against that derived total and a mismatch aborts; without
-        extraction it is the total override.
+        derived after extraction. An explicit charge always sets the total system
+        charge; a mismatch with the extracted value is reported as a warning.
 
         Returns: SubcmdResult dict with the full pipeline summary.json including
         per-stage results, activation energies, reaction energies.

@@ -3132,8 +3132,8 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
         "-c/--center it feeds the extractor charge summary; with -c omitted "
         "(extraction skipped) the same mapping is applied to the full input PDB/mmCIF to "
         "derive the total system charge. A bare number sets the total directly. "
-        "PDB/mmCIF inputs only. Without extraction, -q/--charge explicitly sets "
-        "the total; with extraction, it asserts the derived total."
+        "PDB/mmCIF inputs only. An explicit -q/--charge has highest priority "
+        "over either derived value and emits a warning."
     ),
 )
 @click.option(
@@ -3143,9 +3143,9 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     type=int,
     default=None,
     help=(
-        "Total system charge. With -c/--center, this is an assertion and must "
-        "match the extractor-derived charge; omit it to auto-derive. Without "
-        "extraction it explicitly sets/overrides the total and emits a warning."
+        "Total system charge. This explicit value has highest priority over "
+        "extractor/workflow-derived charge; a mismatch emits a warning. Omit "
+        "it to use automatic charge derivation."
     ),
 )
 @click.option(
@@ -3372,6 +3372,15 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     ),
 )
 @click.option(
+    "--use-mep-tangent/--no-use-mep-tangent",
+    default=True,
+    show_default=True,
+    help=(
+        "Use the MEP tangent at the highest-energy image to select and track "
+        "the Hessian TS mode. Disable for benchmark comparisons."
+    ),
+)
+@click.option(
     "--thermo",
     "do_thermo",
     type=click.BOOL,
@@ -3419,7 +3428,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     show_default=True,
     help=(
         "Opt in to rejecting uphill RFO trials during post-IRC endpoint "
-        "re-optimization only (tolerance: 1e-3 Hartree) and final-check the "
+        "re-optimization only (tolerance: 1e-4 Hartree) and final-check the "
         "retained endpoint at the emergency floor. Does not affect TS "
         "optimization or path search."
     ),
@@ -3658,6 +3667,7 @@ def cli(
     preopt: bool,
     hessian_calc_mode: Optional[str],
     do_tsopt: bool,
+    use_mep_tangent: bool,
     do_thermo: bool,
     do_dft: bool,
     scan_lists_raw: Sequence[str],
@@ -3865,12 +3875,6 @@ def cli(
                 f"calc.charge must be an integer, got {calc_yaml_cfg['charge']!r}."
             ) from exc
         charge_override_label = "YAML calc.charge"
-    charge_override_remove_hint = (
-        "remove calc.charge from the YAML"
-        if charge_override_label == "YAML calc.charge"
-        else "omit -q/--charge"
-    )
-
     spin_cli_explicit = cli_param_overridden(ctx, "spin")
     # Post-IRC endpoint re-optimization uphill-rejection toggle. ``None`` unless
     # the flag was explicitly passed, so the default path inherits RFO_KW's
@@ -4126,6 +4130,7 @@ def cli(
                     else None
                 ),
                 "tsopt": bool(do_tsopt),
+                "use_mep_tangent": bool(use_mep_tangent),
                 "thermo": bool(do_thermo),
                 "dft": bool(do_dft),
                 "dft_engine": str(dft_engine),
@@ -4209,11 +4214,15 @@ def cli(
             else:
                 _q_extracted = _round_charge_with_note(float(_q_total_raw), prefix="[all] dry-run")
                 _echo(f"[all] --dry-run extract: model total_charge = {_q_extracted:+d}", narrative=True)
-                if charge_override is not None and int(charge_override) != int(_q_extracted):
-                    raise click.BadParameter(
-                        f"[all] {charge_override_label} {int(charge_override):+d} does not match extract-derived "
-                        f"charge {int(_q_extracted):+d}. Either {charge_override_remove_hint} to auto-derive, "
-                        f"pass --ligand-charge for non-standard residues, or set -q to {int(_q_extracted):+d}."
+                if charge_override is not None:
+                    _echo(
+                        _charge_override_message(
+                            charge_override_label,
+                            int(charge_override),
+                            int(_q_extracted),
+                        ),
+                        err=True,
+                        narrative=True,
                     )
                 _q_check = int(charge_override) if charge_override is not None else int(_q_extracted)
                 # Use the module-level import (line 68). A nested
@@ -4558,13 +4567,6 @@ def cli(
 
     if charge_override is not None:
         q_int = int(charge_override)
-        if (not skip_extract) and resolved_charge is not None and int(resolved_charge) != q_int:
-            raise click.BadParameter(
-                f"[all] {charge_override_label} {q_int:+d} does not match extract-derived charge "
-                f"{int(resolved_charge):+d}. Either {charge_override_remove_hint} to auto-derive, "
-                f"pass --ligand-charge for non-standard residues, or set -q to "
-                f"{int(resolved_charge):+d}."
-            )
         override_msg = _charge_override_message(
             charge_override_label,
             q_int,
@@ -6633,7 +6635,7 @@ def cli(
                     hei_model_path,
                     _hei_mode_path,
                 )
-                if current_mep is not None
+                if use_mep_tangent and current_mep is not None
                 else None
             )
             if _hei_mode_path is not None:

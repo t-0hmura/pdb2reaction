@@ -68,14 +68,13 @@ Options:
                                   the same mapping is applied to the full input
                                   PDB/mmCIF to derive the total system charge. A
                                   bare number sets the total directly. PDB/mmCIF
-                                  inputs only. Without extraction, -q/--charge
-                                  explicitly sets the total; with extraction, it
-                                  asserts the derived total.
-  -q, --charge INTEGER            Total system charge. With -c/--center, this is
-                                  an assertion and must match the extractor-
-                                  derived charge; omit it to auto-derive.
-                                  Without extraction it explicitly
-                                  sets/overrides the total and emits a warning.
+                                  inputs only. An explicit -q/--charge has
+                                  highest priority over either derived value and
+                                  emits a warning.
+  -q, --charge INTEGER            Total system charge. This explicit value has
+                                  highest priority over extractor/workflow-
+                                  derived charge; a mismatch emits a warning.
+                                  Omit it to use automatic charge derivation.
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
                                   predictor. NOTE: with UMA, workers>1 plus an
                                   explicit Analytical Hessian request is an
@@ -174,6 +173,11 @@ Options:
   --tsopt BOOLEAN                 TS optimization + IRC per reactive segment (or
                                   TSOPT-only mode for single-structure), and
                                   build energy diagrams.  [default: False]
+  --use-mep-tangent / --no-use-mep-tangent
+                                  Use the MEP tangent at the highest-energy
+                                  image to select and track the Hessian TS mode.
+                                  Disable for benchmark comparisons.  [default:
+                                  use-mep-tangent]
   --thermo BOOLEAN                Run freq on (R, TS, P) per reactive segment
                                   (or TSOPT-only mode) and build Gibbs free-
                                   energy diagram (MLIP).  [default: False]
@@ -192,7 +196,7 @@ Options:
   --reject-uphill / --no-reject-uphill
                                   Opt in to rejecting uphill RFO trials during
                                   post-IRC endpoint re-optimization only
-                                  (tolerance: 1e-3 Hartree) and final-check the
+                                  (tolerance: 1e-4 Hartree) and final-check the
                                   retained endpoint at the emergency floor. Does
                                   not affect TS optimization or path search.
                                   [default: no-reject-uphill]

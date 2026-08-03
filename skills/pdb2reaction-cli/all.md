@@ -34,7 +34,7 @@ pdb2reaction all -i <input(s)> [-c <substrate>] [-l 'RES:Q,...'] \
 | `-i, --input` | path(s) | required | One or more reaction-ordered structures, or a TS-candidate alone |
 | `-c, --center` | str | (uses input as-is) | Residue names, IDs, PDB/mmCIF path, chain-qualified name (`'B:SAM'`), or exact named ID (`'B:SAM:321'`) |
 | `-l, --ligand-charge` | str | none | Per-resname charges, e.g. `'SAM:1,GPP:-3'` (or a bare number = total). With `-c` it feeds extraction; without `-c` it derives the total from the full PDB/mmCIF model. |
-| `-q, --charge` | int | derived from `-l` | Total system charge. With `-c` (extraction runs) `-q` acts as an **assertion**: it must **match** the extract-derived charge, otherwise the run aborts with `BadParameter` (this is also checked by `--dry-run`). With `-c` omitted (pre-carved input passed as-is) `-q` sets the total directly and **emits a warning**. Normally unnecessary — let `-l` derive the total. |
+| `-q, --charge` | int | derived from `-l` | Explicit total system charge with highest priority. If it differs from the extract/workflow-derived value, `all` warns and uses `-q`; omit it to use automatic derivation. |
 | `-m, --multiplicity` | int | 1 | Spin multiplicity (2S+1) |
 | `-r, --radius` | float | 2.6 | Pocket radius (Å) when `-c` triggers extraction |
 | `-s, --scan-lists` | one flag followed by one or more values | none | Staged distance scans (mode 2 — `all-scan-list.md`). Use one `-s` occurrence; each following Python literal is one sequential stage. Repeating the flag is rejected. |
@@ -43,10 +43,11 @@ pdb2reaction all -i <input(s)> [-c <substrate>] [-l 'RES:Q,...'] \
 | `--thresh-gsm` | str | `gau_loose` | Convergence preset for the GSM string optimizer |
 | `--thresh-dmf` | str/float | `tight` | DMF IPOPT dual-infeasibility tolerance: `tight`, `middle`, `loose`, or a positive float |
 | `--tsopt / --no-tsopt` | toggle | off | Run TS optimization + IRC per reactive segment (also required to enter TS-only mode with a single `-i`) |
+| `--use-mep-tangent / --no-use-mep-tangent` | toggle | on | Pass the HEI MEP tangent to Hessian TS root selection and overlap tracking; disable for benchmark comparisons |
 | `--flatten/--no-flatten` | flag | off | Enable surplus-imaginary-mode cleanup when TSOPT does not reach a first-order saddle |
 | `--irc-step-size` | float | IRC default `0.10` | Forward a smaller EulerPC maximum step; try `0.05` when an IRC branch stops after only a few frames |
 | `--irc-never-stop/--no-irc-never-stop` | flag | off | Ignore IRC gradient and energy stops and trace to the cycle cap; propagation failures still stop |
-| `--reject-uphill / --no-reject-uphill` | toggle | off | Opt in to rejection above `1e-3` Hartree during Hessian/RFO post-IRC endpoint re-optimization only. At the emergency floor, the retained endpoint receives a final convergence check. It never affects TS optimization or path search. |
+| `--reject-uphill / --no-reject-uphill` | toggle | off | Opt in to rejection above `1e-4` Hartree during Hessian/RFO post-IRC endpoint re-optimization only. At the emergency floor, the retained endpoint receives a final convergence check. It never affects TS optimization or path search. |
 | `--thermo / --no-thermo` | toggle | off | Run freq + thermochemistry on R / TS / P |
 | `--freq-symmetry-number` | int ≥ 1 | child YAML/default (normally 1) | Use one external rotational symmetry number for every R/TS/P frequency job. Point-group symmetry is not inferred. |
 | `--dft / --no-dft` | toggle | off | Run DFT single point on R / TS / P |

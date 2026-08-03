@@ -12,6 +12,7 @@ from pdb2reaction.core.utils import write_xyz_trj_with_energy
 from pdb2reaction.workflows.all import (
     _ensure_hei_path_tangent,
     _required_xyz_block_energies,
+    cli,
 )
 
 
@@ -23,6 +24,12 @@ def _replace_xyz_comments(path, comments) -> None:
         lines[cursor + 1] = comment
         cursor += atom_count + 2
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def test_mep_tangent_handoff_is_default_on_and_can_be_disabled() -> None:
+    option = next(param for param in cli.params if param.name == "use_mep_tangent")
+    assert option.default is True
+    assert "--no-use-mep-tangent" in option.opts + option.secondary_opts
 
 
 def test_hei_path_tangent_uses_neighbors_of_matching_image(tmp_path) -> None:

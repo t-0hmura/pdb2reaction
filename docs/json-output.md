@@ -176,7 +176,7 @@ All fields from `opt`, plus:
 | `imaginary_frequencies_cm` | float[] | Imaginary frequencies (cm⁻¹, negative) |
 | `opt_mode` | string | `"rsprfo"` (default), `"rsirfo"`, `"trim"`, or `"dimer"` |
 | `reference_mode_file` | string\|null | Advanced path-mode file supplied through `--ref-mode`; normally generated and passed by `all` |
-| `safeguards` | object | Hessian-TS rejection/recovery diagnostics, including rejected mode-loss trials, exact saddle checks, final target-mode identity/overlap and higher-order MEP re-anchoring flag, stop reason, and bounded path-mode restart attempts |
+| `safeguards` | object | Hessian-TS diagnostics, including exact saddle checks, final target-mode identity/overlap, stop reason, and any explicitly enabled mode-loss/recovery activity. These recovery paths are inactive by default. |
 | `rigid_projection` | object | Rigid-mode and exact-Hessian provenance; see [projection provenance](#rigid-projection-provenance) |
 
 The `files` object may include `imaginary_mode_files` (list of vib file paths).
@@ -248,8 +248,8 @@ the per-cycle force/step convergence keys and Hessian-mode `safeguards` object.
 | `energy_reactant_hartree` / `energy_product_hartree` | float | Legacy aliases for first / last, respectively; do not infer chemical R/P identity from these names |
 | `forward_converged` | bool \| null | Forward IRC converged? `null` when the integrator did not expose the flag |
 | `backward_converged` | bool \| null | Backward IRC converged? `null` when the integrator did not expose the flag |
-| `forward_energy_increased` | bool \| null | Final forward step exceeded `irc.energy_increase_thresh` (default `1e-3` Hartree) |
-| `backward_energy_increased` | bool \| null | Final backward step exceeded `irc.energy_increase_thresh` (default `1e-3` Hartree) |
+| `forward_energy_increased` | bool \| null | Final forward step exceeded `irc.energy_increase_thresh` (default `0` Hartree: any rise) |
+| `backward_energy_increased` | bool \| null | Final backward step exceeded `irc.energy_increase_thresh` (default `0` Hartree: any rise) |
 | `backend` | string | MLIP backend |
 | `charge` | int | System charge |
 | `spin` | int | Spin multiplicity |

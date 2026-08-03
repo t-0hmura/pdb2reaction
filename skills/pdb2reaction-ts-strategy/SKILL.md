@@ -65,7 +65,9 @@ along the reaction coordinate).
   into unnecessary segments and multiply MEP, TSOPT, IRC, and frequency cost.
 - `--ref-mode` is not a normal standalone TSOPT remedy. It is the
   advanced/internal Cartesian path direction that `all` derives from its MEP
-  and passes automatically for mode tracking and bounded saddle recovery.
+  and passes by default for initial-root selection and overlap tracking. Use
+  `all --no-use-mep-tangent` for a benchmark without the handoff. The default
+  search does not launch automatic saddle recovery or displaced multistarts.
   Only external-path expert workflows should provide it manually.
 
 ## 4. P-start scan → barrier is the REVERSE direction

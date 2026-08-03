@@ -24,53 +24,21 @@ If you need a TS guess first, run [`path-opt`](path-opt.md) (two structures) or 
 `--ref-mode` is an advanced/internal handoff, not a normal requirement for
 standalone `tsopt`. The `all` workflow supplies it automatically from the MEP
 as the standard energy-upwinding Cartesian tangent at each HEI; legacy paths
-without readable energies use a normalized secant bisector. An expert
-standalone run may pass
-`--ref-mode PATH` only when it deliberately has a non-zero Cartesian 3N reaction direction
-from an external path calculation. The mode selects the initial Hessian root,
-using the softest curvature among roots whose overlap is within 90% of the
-maximum when a discrete tangent spans several near-tied modes. It is then
-transported by overlap across the complete positive/negative Hessian spectrum
-as it rotates. Before that target has ever acquired negative curvature,
-`n_imag=0` recovery retains the complete path vector instead of collapsing it
-to one positive-curvature normal mode; subsequent recovery uses the transported
-mode. Neither an initial raw negative root nor a transient negative
-quasi-Newton root arms mode-loss rollback until exact PHVA or an explicit
-recovery crossing confirms the physical target. The reference therefore
-supplies both the recovery and exact-identity direction until PHVA first
-confirms the requested negative curvature; only after that crossing does
-continuous eigenmode transport become authoritative. If exact validation
-finds `n_imag=0`, a structure with no path information cannot uniquely identify
-which nearby saddle is intended. Bounded recovery checks an exact physical
-Hessian every 50 steps for up to 200 steps, so it can resume as soon as the
-physical mode crosses negative even when the quasi-Newton model lags behind.
-Exact validation matches that authoritative mode
-against all physical normal modes; a different imaginary mode cannot substitute
-for the tracked mode if it has become positive. Persistent higher-order candidates stop after three exact
-terminal checks. When `--flatten` is explicitly enabled, the subsequent cleanup
-removes non-path negative modes within the configured iteration budget. Because
-individual eigenvectors can exchange identity inside a multi-negative subspace,
-each higher-order exact check re-anchors the mode to retain against the immutable
-MEP tangent before flattening; after the first
-physical crossing, order-zero and first-order checks use overlap transport so
-genuine mode rotation is preserved. A retry keeps the standard three-check exact window so the retained
-saddle direction can be re-established after the orthogonal displacement.
-For every cleanup retry, if the energy-selected sign does not already give
-the requested first-order saddle, the opposite sign is also optimized and the
-branch that best retains the requested mode while approaching first order is
-kept; displacement energy alone does not select the branch.
-Each retry inherits that latest PHVA-identified path mode rather than
-selecting an arbitrary negative root after the flatten displacement. A separate
-snapshot keeps the exact PHVA Cartesian mode distinct
-while the raw Hessian eigenvector continues to update for per-cycle root
-tracking. If the first path-guided
-Hessian run instead stops at order
-zero/one without a verified saddle, `tsopt` makes bounded same-optimizer
-restarts from ±0.10 Å and then ±0.20 Å along that mode. If a kinked discrete
-tangent finds only unrelated modes, the same bounded shells are tried along the
-soft, path-correlated Hessian root selected at the original HEI. The source and
-outcome of at most eight attempts are recorded in `result.json`; if all fail,
-the original result is retained.
+without readable energies use a normalized secant bisector. Pass
+`all --no-use-mep-tangent` to disable this default handoff for a controlled
+benchmark. An expert standalone run may pass `--ref-mode PATH` only for a
+non-zero Cartesian 3N direction from an external path calculation in exactly
+the same atom order.
+
+The tangent selects the initial Hessian root and keeps that root identified by
+overlap as the mode rotates. It does not make a failed TS search successful:
+the default search does not reject intermediate trials for temporary mode loss,
+does not require a quasi-Newton eigenvalue-pattern gate, and does not launch
+automatic saddle-recovery displacements or multistarts. The terminal exact
+PHVA is authoritative; `n_imag = 0` and `n_imag > 1` remain non-converged.
+
+`--flatten` is a separate, explicit cleanup for surplus imaginary modes. It can
+remove extra negative directions but cannot create a missing reaction mode.
 
 > **Naming note:** the CLI accepts `grad` / `dimer` (Dimer), `hess` / `rsprfo` (RS-P-RFO, default), and `rsirfo` (RS-I-RFO) / `trim` (TRIM). In YAML, use the top-level `hessian_dimer:` (Dimer) block, or the `rsirfo:` block (shared by RS-P-RFO, RS-I-RFO, and TRIM), directly.
 
@@ -193,7 +161,7 @@ The tables below cover the options that need explanation. The full flag list is 
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g. `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
 | **TS optimizer & mode** | | |
 | `--opt-mode TEXT` | TS optimizer preset (Choice: `grad` / `hess` / `dimer` / `rsirfo` / `trim` / `rsprfo`). `grad` and `dimer` → Hessian-Guided Dimer; `hess` and `rsprfo` → RS-P-RFO (Banerjee, default, non-microiter); `rsirfo` → RS-I-RFO; `trim` → TRIM (Helgaker, non-microiter). On `opt`, the same `grad` token picks L-BFGS minimization instead — see {ref}`opt-mode-semantics`. | `hess` |
-| `--ref-mode PATH` | Advanced/internal MEP handoff containing a Cartesian 3N direction as whitespace text or `.npy`. `all` supplies it automatically; ordinary standalone runs omit it. Expert use covers external-path root selection, overlap tracking, and `n_imag=0` recovery. | _None_ |
+| `--ref-mode PATH` | Advanced/internal MEP handoff containing a Cartesian 3N direction as whitespace text or `.npy`. `all` supplies it automatically; ordinary standalone runs omit it. Expert use covers external-path root selection and overlap tracking. | _None_ |
 | `--flatten / --no-flatten` | Enable general surplus-imaginary-mode flattening. After TS optimization, iteratively flattens surplus negative-eigenvalue modes until only one imaginary frequency remains (or the iteration cap is reached). Applies to both Dimer (dimer loop) and RS-P-RFO / RS-I-RFO (post-convergence). `--ref-mode` identifies which negative mode must be retained but does not enable flattening by itself. | `False` |
 | `--coord-type TEXT` | Optimization coordinate system (`cart` / `redund` / `dlc` / `tric`). `cart` is the default. `dlc` changes the conditioning, but neither representation is uniformly faster or more reliable; compare them on the problematic seed. Hessian-based `tsopt` modes support all four, while `path-opt` / `path-search` accept only `cart` / `dlc`. | `cart` |
 | `--precision [fp32\|fp64]` | MLIP backend precision, routed to the backend-native kwarg (UMA `precision` / ORB `precision` / MACE `default_dtype`; `aimnet2`: `fp32` no-op, `fp64` rejected). Compare supported settings on the target system; see [Reproducibility](reproducibility.md#choosing-precision-by-backend-and-purpose). | per backend (uma `fp32`; orb, mace `fp64`) |
@@ -330,12 +298,11 @@ rsirfo:
   trust_max: 0.10              # maximum trust radius (bohr)
   out_dir: ./result_tsopt/     # tsopt override (defaults.py value is ./result_opt/)
   hessian_recalc: 500          # rebuild exact Hessian every N macro steps
-  saddle_recovery_check_interval: 50 # exact PHVA cadence during n_imag=0 recovery
-  saddle_recovery_max_cycles: 200    # bounded n_imag=0 recovery cap
+  saddle_recovery_max_cycles: 0      # automatic n_imag=0 recovery is disabled
 ```
 
 ```{tip}
-Set `rsirfo.track_mode_by_overlap: true` if the TS mode switches root during optimization (e.g. when multiple imaginary frequencies are present). If TS convergence is slow or the TS mode is lost, lowering `hessian_recalc` (e.g. to 50–200) helps — more frequent exact Hessian recalculations improve TS-mode tracking and convergence at the cost of additional Hessian evaluations.
+Set `rsirfo.track_mode_by_overlap: true` if the TS mode switches root during optimization (e.g. when multiple imaginary frequencies are present). If TS convergence is slow, lowering `hessian_recalc` (e.g. to 50–200) gives more frequent exact Hessian updates at the cost of additional evaluations. Automatic curvature recovery can be enabled through YAML by setting `saddle_recovery_max_cycles` above zero, but it is not part of the default search.
 ```
 
 ## Notes

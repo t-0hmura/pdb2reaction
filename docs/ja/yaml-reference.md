@@ -476,14 +476,14 @@ rsirfo:
  augment_bonds: false # Augment reaction path based on bond analysis
  assert_neg_eigval: false # Require negative eigenvalue at convergence
  track_mode_by_overlap: false # 前回の Hessian との重なりで追跡対象 TS モードを選ぶ
- reject_mode_loss: true # 確立済みの負曲率を失う trial を棄却
+ reject_mode_loss: false # 確立済みの負曲率を失うtrial棄却はデフォルト無効
  mode_loss_trust_floor: 1.0e-05 # mode-loss retry 用の正の緊急 trust-radius 下限
  max_mode_loss_rejections: 5 # 下限到達後に許す棄却回数
  verify_saddle: true # exact Hessian + 射影振動解析で一次鞍点を検証
  saddle_imaginary_threshold_cm: 5.0 # 負モードと数える |虚振動数| 下限（cm^-1、正値）
  saddle_recovery_step: 0.01 # optimizer 座標での正の上り方向回復変位上限
  saddle_recovery_check_interval: 50 # n_imag=0 回復中の exact PHVA 間隔
- saddle_recovery_max_cycles: 200 # n_imag=0 回復の有界上限
+ saddle_recovery_max_cycles: 0 # n_imag=0 自動回復はデフォルト無効
  # Also inherits rfo-like settings: trust_radius, trust_update, etc.
 ```
 
@@ -513,7 +513,7 @@ irc:
  hessian_init: calc # Hessian initialization source
  hessian_update: bofill # Hessian update scheme
  hessian_recalc: null # Hessian rebuild cadence
- energy_increase_thresh: 0.001 # 通常modeで停止する1 stepのenergy上昇量
+ energy_increase_thresh: 0.0   # 通常modeでは1 stepでもenergyが上昇すれば停止
  dump_every: null # デフォルト無効。正の間隔では座標・energy・gradientのみをcheckpoint保存（Hessianなし）
  dump_fn: irc_data.h5 # dump_every指定時のcheckpointファイル名
  displ: energy # Displacement construction method
