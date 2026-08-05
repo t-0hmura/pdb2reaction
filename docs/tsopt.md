@@ -146,11 +146,11 @@ The tables below cover the options that need explanation. The full flag list is 
 | Option | Description | Default |
 | --- | --- | --- |
 | **Input & charge** | | |
-| `-i, --input PATH` | Structure file accepted by the input bridge (`.pdb` / `.cif` / `.mmcif` / `.xyz` / `.gjf` / `.trj`). | Required |
+| `-i, --input PATH` | One geometry (`.pdb` / `.cif` / `.mmcif` / `.xyz` / `.gjf`). Extract a desired trajectory frame to `.xyz` first. | Required |
 | `-q, --charge INT` | Net charge. Required unless a `.gjf` template or `--ligand-charge/-l` (PDB/mmCIF inputs or XYZ / GJF with `--ref-pdb`) supplies it. Overrides `--ligand-charge/-l` when both are set. | Required unless template / derivation applies |
 | `-l, --ligand-charge TEXT` | Either a scalar integer (e.g. `-1`) for the total ligand charge, or a per-residue mapping (e.g. `GPP:-3,SAM:1`) that derives the total from PDB/mmCIF residue metadata. Used when `-q` is omitted. | _None_ |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
-| `--ref-pdb FILE` | Reference PDB topology when the input is XYZ / GJF (keeps XYZ coordinates). | _None_ |
+| `--ref-pdb FILE` | Reference PDB/mmCIF topology when the input is XYZ / GJF (keeps XYZ coordinates). | _None_ |
 | **Backend & compute** | | |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
 | `--workers INT`, `--workers-per-node INT` | UMA predictor parallelism. `workers > 1` cannot be combined with an explicit analytical Hessian request; use `workers = 1` or finite differences. See {ref}`workers-analytical-error`. | `1`, `1` |
@@ -158,12 +158,12 @@ The tables below cover the options that need explanation. The full flag list is 
 | `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
 | `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 | **Active-region freezing** | | |
-| `--freeze-links / --no-freeze-links` | PDB input (or XYZ/GJF with `--ref-pdb`). Freeze parents of cap hydrogens (merged into `geom.freeze_atoms`). | `True` |
+| `--freeze-links / --no-freeze-links` | PDB/mmCIF input (or XYZ/GJF with `--ref-pdb`). Freeze parents of cap hydrogens (merged into `geom.freeze_atoms`). | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g. `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
 | **TS optimizer & mode** | | |
 | `--opt-mode TEXT` | TS optimizer preset (Choice: `grad` / `hess` / `dimer` / `rsirfo` / `trim` / `rsprfo`). `grad` and `dimer` → Hessian-Guided Dimer; `hess` and `rsprfo` → RS-P-RFO (Banerjee, default, non-microiter); `rsirfo` → RS-I-RFO; `trim` → TRIM (Helgaker, non-microiter). On `opt`, the same `grad` token picks L-BFGS minimization instead — see {ref}`opt-mode-semantics`. | `hess` |
 | `--ref-mode PATH` | Advanced/internal MEP handoff containing a Cartesian 3N direction as whitespace text or `.npy`. `all` supplies it automatically; ordinary standalone runs omit it. Expert use covers external-path root selection and overlap tracking. | _None_ |
-| `--flatten / --no-flatten` | Enable general surplus-imaginary-mode flattening. After TS optimization, iteratively flattens surplus negative-eigenvalue modes until only one imaginary frequency remains (or the iteration cap is reached). Applies to both Dimer (dimer loop) and RS-P-RFO / RS-I-RFO (post-convergence). `--ref-mode` identifies which negative mode must be retained but does not enable flattening by itself. | `False` |
+| `--flatten / --no-flatten` | Enable surplus-imaginary-mode flattening for Dimer and the RS-P-RFO / RS-I-RFO / TRIM Hessian family. `--ref-mode` identifies which negative mode must be retained but does not enable flattening by itself. | `False` |
 | `--coord-type TEXT` | Optimization coordinate system (`cart` / `redund` / `dlc` / `tric`). `cart` is the default. `dlc` changes the conditioning, but neither representation is uniformly faster or more reliable; compare them on the problematic seed. Hessian-based `tsopt` modes support all four, while `path-opt` / `path-search` accept only `cart` / `dlc`. | `cart` |
 | `--precision [fp32\|fp64]` | MLIP backend precision, routed to the backend-native kwarg (UMA `precision` / ORB `precision` / MACE `default_dtype`; `aimnet2`: `fp32` no-op, `fp64` rejected). Compare supported settings on the target system; see [Reproducibility](reproducibility.md#choosing-precision-by-backend-and-purpose). | per backend (uma `fp32`; orb, mace `fp64`) |
 | **Thresholds & cycles** | | |
@@ -309,7 +309,7 @@ Set `rsirfo.track_mode_by_overlap: true` if the TS mode switches root during opt
 ## Notes
 
 - Imaginary-frequency **detection** threshold defaults to 5.0 cm⁻¹ (configurable via `hessian_dimer.neg_freq_thresh_cm`). Frequencies with magnitudes below this threshold are not counted as imaginary.
-- The selected `root` controls which vibrational mode is followed during optimization. It is set via YAML (`rsirfo.root` or `hessian_dimer.root`; default `0`); `tsopt` has no `--root` CLI flag, unlike [`irc`](irc.md).
+- Hessian-family optimizer roots are set as a YAML list (for example, `rsirfo.roots: [0]`). Dimer uses the separate singular `hessian_dimer.root` key (default `0`). `tsopt` has no `--root` CLI flag, unlike [`irc`](irc.md).
 - Use `--opt-mode` to choose the algorithm directly (`rsprfo` by default) rather than editing YAML mode mappings.
 - Dimer orientation, rotation forces, flattening, and final exact PHVA validation use the same constrained projector as `freq`. The Dimer rebuilds this basis whenever its central image changes. It never subtracts translations of the active fragment unless they are actual rigid null directions compatible with every frozen anchor. Hessian RFO optimization itself operates on the active-DOF Cartesian Hessian without this projection. See [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries).
 - See {ref}`CLI Conventions: Configuration precedence <configuration-precedence>` for the full resolution order.

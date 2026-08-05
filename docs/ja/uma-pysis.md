@@ -40,8 +40,8 @@ from pdb2reaction.backends import create_calculator, create_ase_calculator
 
 | 関数 | 説明 |
 |----------|-------------|
-| `create_calculator(backend="uma", **kwargs)` | pysisyphus 互換の MLIP 計算機を生成します。`charge`、`spin`、`model`、`device`、`solvent`、`solvent_model`、`hessian_calc_mode`、`freeze_atoms` などバックエンド固有の kwargs も受け付けます。未知のキーはバックエンドごとに警告なく除外されます |
-| `create_ase_calculator(backend="uma", **kwargs)` | ASE 互換の MLIP 計算機を生成します（DMF ワークフローや ASE ベースのツールで使用）。受け付けるのは `model`・`device`・`precision`・`task_name`・`workers`/`workers_per_node` のみで、`charge`/`spin`（および `solvent`/`hessian_calc_mode`）は除外され、各フレームの `atoms.info` から読み取られます。 |
+| `create_calculator(backend="uma", **kwargs)` | pysisyphus-compatible MLIP calculator を生成。accepted kwargs は backend-specific で、無視した key は warning を出す。direct Python の `freeze_atoms` は0始まり（CLI/YAML の1始まり値は boundary で変換） |
+| `create_ase_calculator(backend="uma", **kwargs)` | ASE-compatible calculator を生成。accepted kwargs は backend-specific で、unsupported key は pysis factory の warning なしに filter される。UMA/ORB/MACE adapter は frame state を `atoms.info` から取得し、AIMNet2 は constructor-owned の `charge`/`spin` を受け取る |
 
 ### 例
 
@@ -109,7 +109,7 @@ pdb2reaction opt -i input.pdb -q 0 -b orb --solvent water --solvent-model cpcmx
 
 - **MLIP バックエンド** – デフォルトの UMA バックエンドは `fairchem-core` の `pretrained_mlip` ヘルパーで UMA チェックポイントを読み込み、AtomicData バッチに電荷/スピン情報を付与。代替バックエンド（ORB、MACE、AIMNet2）は `-b/--backend` で利用可能。
 - **デバイス処理** – `device="auto"` は CUDA があれば GPU、なければ CPU を選択。グラフ構築は選択デバイス上で行い、`workers>1` では並列予測器が転送を管理。
-- **凍結原子** – `freeze_atoms` に 1 始まりの原子インデックスを渡すと、凍結原子の力がゼロ化。`return_partial_hessian=True` で凍結自由度を除いた Hessian を返すか、フル行列で該当行/列をゼロ化できます。
+- **凍結原子** – direct Python calculator API の `freeze_atoms` は0始まりです。CLI/YAML は1始まりで受け、構築前に変換します。`return_partial_hessian=True` なら active block、false なら該当行/列をゼロ化した full Hessian を返します。
 - **精度制御** – エネルギー/力は常に float64。`hessian_double=False` で Hessian をモデルのネイティブ dtype（通常 float32）で返します。
 - **マルチワーカー推論** – `workers>1` で `fairchem-core` の `ParallelMLIPPredictUnit` を起動し、`workers_per_node` をノードごとに指定可能。バッチ処理速度の向上に有効です。
 
@@ -144,7 +144,7 @@ UMA バックエンドを `workers > 1` で使用する場合、並列 predictor
 | `device` | `"cuda"` / `"cpu"` / `"auto"` | `"auto"` |
 | `workers` / `workers_per_node` | 並列 UMA 予測器（UMA バックエンド限定。ORB / MACE / AIMNet2 では無視されます）。`workers>1` の場合、解析 Hessian は利用できず、`Analytical` を明示指定すると `BackendError`（`RuntimeError` のサブクラス）が送出されます。`hessian_calc_mode` のデフォルトはそもそも FD のため、`Analytical` を明示的に選んだ場合のみ影響があります | `1` / `1` |
 | `max_neigh`, `radius`, `r_edges` | 近傍構築のオプション上書き | `None`, `None`, `False` |
-| `freeze_atoms` | 1 始まりの凍結原子インデックス | _None_ |
+| `freeze_atoms` | direct Python API では0始まり（CLI/YAML は1始まり） | _None_ |
 | `hessian_calc_mode` | `"Analytical"` または `"FiniteDifference"` | `"FiniteDifference"` |
 | `return_partial_hessian` | アクティブ自由度のみ返す | `True` |
 | `hessian_double` | Hessian を float64 で返す | `True` |

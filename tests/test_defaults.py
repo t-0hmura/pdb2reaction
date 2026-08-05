@@ -141,3 +141,26 @@ class TestDefaultsConsistency:
         assert second["fbenm_options"] is not DMF_KW["fbenm_options"]
         assert second["cfbenm_options"] is not DMF_KW["cfbenm_options"]
         assert second["dmf_options"] is not DMF_KW["dmf_options"]
+
+
+def test_fresh_dmf_config_rejects_unknown_top_level_keys() -> None:
+    """A retained but unconsumed top-level dmf key would keep the default."""
+    import click
+    import pytest
+
+    from pdb2reaction.core.defaults import DMF_TOP_LEVEL_KEYS, fresh_dmf_config
+
+    # Every consumed top-level key is accepted.
+    assert fresh_dmf_config({"max_cycles": 5})["max_cycles"] == 5
+    assert fresh_dmf_config({"tol": "baker"})["tol"] == "baker"
+    assert fresh_dmf_config({"ipopt_options": {"tol": 1e-6}})["ipopt_options"] == {
+        "tol": 1e-6
+    }
+    # Nested solver maps keep their pass-through contract.
+    nested = fresh_dmf_config({"dmf_options": {"beta": 3.0, "future_knob": 1}})
+    assert nested["dmf_options"]["beta"] == 3.0
+    assert nested["dmf_options"]["future_knob"] == 1
+
+    with pytest.raises(click.BadParameter, match="dmf.max_cycle"):
+        fresh_dmf_config({"max_cycle": 5})
+    assert "max_cycle" not in DMF_TOP_LEVEL_KEYS

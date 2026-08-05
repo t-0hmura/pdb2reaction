@@ -436,11 +436,7 @@ def _run_fix_altloc(
         if out is None:
             out_path = in_path.with_name(in_path.stem + "_clean.pdb")
         else:
-            if out.suffix.lower() == ".pdb":
-                out_path = out
-            else:
-                out.mkdir(parents=True, exist_ok=True)
-                out_path = out / in_path.name
+            out_path = out
 
         if out_path.exists() and not overwrite:
             raise click.ClickException(

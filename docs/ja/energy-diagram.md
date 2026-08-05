@@ -6,7 +6,7 @@
 
 ```bash
 # コマンド形式
-pdb2reaction energy-diagram -i VALUES... [-o OUTPUT] [--label-x...] [--label-y...]
+pdb2reaction energy-diagram {-i VALUE ... | -i "[VALUE, ...]"} [-o OUTPUT] [--label-x...] [--label-y...]
 ```
 
 ```bash
@@ -44,7 +44,7 @@ summary.json  # writer 成功時に byte 単位で同一の互換ミラー
 ## CLI オプション
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `-i, --input TEXT...` | 数値入力（複数引数またはリスト形式文字列） | 必須 |
+| `-i, --input TEXT` | 数値ごとに `-i` を繰り返すか、1つの quoted list-like string を指定。1つの `-i` 後の複数 bare value は拒否 | 必須 |
 | `-o, --output PATH` | 出力画像パス（`.png/.jpg/.jpeg/.svg/.pdf`） | `energy_diagram.png` |
 | `--label-x TEXT...` | X 軸状態ラベル（入力値と同じ個数が必要） | `S1, S2,...` |
 | `--label-y TEXT` | Y 軸ラベル | `ΔE (kcal/mol)` |

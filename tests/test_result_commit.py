@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -46,6 +47,31 @@ def test_successful_pair_is_byte_identical_and_does_not_mutate_input(
         "nested": {"value": 1},
     }
     _assert_no_staged_siblings(tmp_path)
+
+
+def test_stage_exact_preserves_existing_destination_mode(tmp_path: Path) -> None:
+    destination = tmp_path / "result.json"
+    destination.write_text("old")
+    destination.chmod(0o640)
+
+    staged = result_commit.stage_exact(destination, b"new")
+    try:
+        assert os.stat(staged).st_mode & 0o777 == 0o640
+    finally:
+        staged.unlink()
+
+
+def test_stage_exact_uses_ordinary_umask_mode_for_new_destination(tmp_path: Path) -> None:
+    destination = tmp_path / "new-result.json"
+    previous_umask = os.umask(0o027)
+    try:
+        staged = result_commit.stage_exact(destination, b"new")
+    finally:
+        os.umask(previous_umask)
+    try:
+        assert os.stat(staged).st_mode & 0o777 == 0o640
+    finally:
+        staged.unlink()
 
 
 def test_serialization_failure_preserves_old_pair(

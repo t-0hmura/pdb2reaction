@@ -29,7 +29,7 @@ pdb2reaction path-opt -i reactant.pdb product.pdb \
 | `--thresh-gsm` | str | `gau_loose` | GSM string-optimizer convergence preset |
 | `--thresh-dmf` | str/float | `tight` | DMF IPOPT dual-infeasibility tolerance: `tight`, `middle`, `loose`, or a positive float |
 | `--preopt / --no-preopt` | flag | `--preopt` | Optimize each endpoint before constructing the string |
-| `--fix-ends / --no-fix-ends` | flag | `--fix-ends` | Keep endpoint images fixed during path optimization |
+| `--fix-ends / --no-fix-ends` | flag | `--fix-ends` | Keep GSM endpoint images fixed; accepted but unused with DMF |
 | `-q, --charge` / `-l` / `-m` | — | — | Charge / spin (common conventions) |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `--solvent` | str | none | xTB-ALPB solvent name |

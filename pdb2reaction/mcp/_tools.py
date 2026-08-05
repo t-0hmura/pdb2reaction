@@ -123,7 +123,7 @@ def register_all(mcp) -> None:
         ligand_charge: Optional[str] = None,
         multiplicity: Optional[int] = None,
         opt_mode: str = "grad",
-        max_cycles: int = 10000,
+        max_cycles: Optional[int] = None,
         thresh: Optional[str] = None,
         coord_type: Optional[str] = None,
         backend: Optional[str] = None,
@@ -133,7 +133,7 @@ def register_all(mcp) -> None:
         workers: Optional[int] = None,
         workers_per_node: Optional[int] = None,
         print_every: Optional[int] = None,
-        dump_trajectory: bool = False,
+        dump_trajectory: Optional[bool] = None,
         ref_pdb: Optional[str] = None,
         out_dir: Optional[str] = None,
         extra_args: Optional[list[str]] = None,
@@ -159,15 +159,17 @@ def register_all(mcp) -> None:
             argv.extend(["-l", ligand_charge])
         if multiplicity is not None:
             argv.extend(["-m", str(multiplicity)])
-        argv.extend(["--opt-mode", opt_mode, "--max-cycles", str(max_cycles)])
+        argv.extend(["--opt-mode", opt_mode])
+        if max_cycles is not None:
+            argv.extend(["--max-cycles", str(max_cycles)])
         if thresh:
             argv.extend(["--thresh", thresh])
         if coord_type:
             argv.extend(["--coord-type", coord_type])
         if print_every is not None:
             argv.extend(["--print-every", str(print_every)])
-        if dump_trajectory:
-            argv.append("--dump")
+        if dump_trajectory is not None:
+            argv.append("--dump" if dump_trajectory else "--no-dump")
         if ref_pdb:
             argv.extend(["--ref-pdb", ref_pdb])
         argv.extend(_shared_calc_flags(
@@ -187,7 +189,7 @@ def register_all(mcp) -> None:
         ligand_charge: Optional[str] = None,
         multiplicity: Optional[int] = None,
         opt_mode: str = "hess",
-        max_cycles: int = 10000,
+        max_cycles: Optional[int] = None,
         thresh: Optional[str] = None,
         coord_type: Optional[str] = None,
         backend: Optional[str] = None,
@@ -196,7 +198,7 @@ def register_all(mcp) -> None:
         precision: Optional[str] = None,
         workers: Optional[int] = None,
         workers_per_node: Optional[int] = None,
-        flatten: bool = False,
+        flatten: Optional[bool] = None,
         hessian_calc_mode: Optional[str] = None,
         print_every: Optional[int] = None,
         ref_pdb: Optional[str] = None,
@@ -225,13 +227,15 @@ def register_all(mcp) -> None:
             argv.extend(["-l", ligand_charge])
         if multiplicity is not None:
             argv.extend(["-m", str(multiplicity)])
-        argv.extend(["--opt-mode", opt_mode, "--max-cycles", str(max_cycles)])
+        argv.extend(["--opt-mode", opt_mode])
+        if max_cycles is not None:
+            argv.extend(["--max-cycles", str(max_cycles)])
         if thresh:
             argv.extend(["--thresh", thresh])
         if coord_type:
             argv.extend(["--coord-type", coord_type])
-        if flatten:
-            argv.append("--flatten")
+        if flatten is not None:
+            argv.append("--flatten" if flatten else "--no-flatten")
         if hessian_calc_mode:
             argv.extend(["--hessian-calc-mode", hessian_calc_mode])
         if print_every is not None:
@@ -733,7 +737,7 @@ def register_all(mcp) -> None:
         if precision:
             argv.extend(["--precision", precision])
         if refine_path is not None:
-            argv.extend(["--refine-path", "true" if refine_path else "false"])
+            argv.append("--refine-path" if refine_path else "--no-refine-path")
         if flatten is not None:
             argv.append("--flatten" if flatten else "--no-flatten")
         if irc_step_size is not None:
@@ -743,11 +747,11 @@ def register_all(mcp) -> None:
                 "--irc-never-stop" if irc_never_stop else "--no-irc-never-stop"
             )
         if do_tsopt is not None:
-            argv.extend(["--tsopt", "true" if do_tsopt else "false"])
+            argv.append("--tsopt" if do_tsopt else "--no-tsopt")
         if do_dft is not None:
-            argv.extend(["--dft", "true" if do_dft else "false"])
+            argv.append("--dft" if do_dft else "--no-dft")
         if do_thermo is not None:
-            argv.extend(["--thermo", "true" if do_thermo else "false"])
+            argv.append("--thermo" if do_thermo else "--no-thermo")
         argv.extend(["--out-dir", str(od)])
         _append_extra_args(argv, extra_args)
         return run_subcmd(argv, out_dir=od, timeout=timeout_seconds).to_dict()

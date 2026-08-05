@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import tempfile
 from pathlib import Path
+from types import SimpleNamespace
 
 import click
 import pytest
@@ -32,6 +33,37 @@ def test_tsopt_result_validation_requires_verified_first_order_saddle() -> None:
     ):
         with pytest.raises(click.ClickException, match="IRC was not started"):
             _validate_tsopt_result_payload(payload)
+
+
+def test_all_dft_child_omits_wrapper_defaults_for_yaml_resolution(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    from pdb2reaction.workflows import all as all_workflow
+    import subprocess
+
+    captured = {}
+
+    def fake_run(cmd, **_kwargs):
+        captured["cmd"] = list(cmd)
+        return SimpleNamespace(stdout="", stderr="", returncode=0)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    config = tmp_path / "config.yaml"
+    config.write_text("dft:\n  engine: cpu\n  func_basis: pbe/def2-svp\n")
+
+    all_workflow._run_dft_for_state(
+        tmp_path / "input.pdb",
+        0,
+        1,
+        tmp_path / "dft",
+        config,
+        func_basis=None,
+        engine=None,
+    )
+
+    assert "--func-basis" not in captured["cmd"]
+    assert "--engine" not in captured["cmd"]
+    assert captured["cmd"][-2:] == ["--config", str(config)]
 
 
 def test_all_stops_before_irc_when_tsopt_result_is_invalid(

@@ -20,6 +20,11 @@ def lanczos(coords, grad_getter, dx=5e-3, dl=1e-2, guess=None, max_cycles=25,
     if r_prev is None:
         r_prev = np.random.rand(coords.size)
     beta_prev = np.linalg.norm(r_prev)
+    if not np.isfinite(beta_prev) or beta_prev == 0.0:
+        raise ValueError(
+            "Lanczos requires an initial guess with a finite, nonzero norm, "
+            f"got {beta_prev}."
+        )
     q_prev = np.zeros_like(r_prev)
 
     alphas = list()
@@ -69,6 +74,15 @@ def lanczos(coords, grad_getter, dx=5e-3, dl=1e-2, guess=None, max_cycles=25,
         w, v = np.linalg.eigh(T)
         w_min = w[0]
         log(f"Cycle {i: >3d}: w_min={w_min: .6f}")
+
+        # Exact residual breakdown: the Krylov space is already invariant, so
+        # the current Ritz pair is the result.  Continuing would normalize the
+        # next Lanczos vector by beta == 0 and yield a NaN mode.  The threshold
+        # is scale-aware, because beta shares the units of T's entries.
+        t_scale = max(float(np.abs(T).max()), 1.0)
+        if np.isfinite(beta) and beta <= 1e-12 * t_scale:
+            log("Residual broke down; returning the current Ritz pair.")
+            break
 
         # Check eigenvalue convergence
         if (i > 0) and (abs((w_min - w_mins[-1])/w_mins[-1]) < dl):

@@ -89,7 +89,9 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(1, 5, 1.35)]' --print-parsed
   | `pdb2reaction all` | `--scan-max-step-size 0.20 Å` | `--scan-bias-k 300 eV/Å²` |
   | standalone `pdb2reaction scan` | `--max-step-size 0.20 Å` | `--bias-k 300 eV/Å²` |
 
-  Override via either flag form or via the YAML `bias` block. See [scan](scan.md) and [yaml-reference](yaml-reference.md#bias) for the per-stage controls.
+  Override the step width with the corresponding CLI flag. Override the bias
+  strength with that CLI flag or YAML `bias.k`. See [scan](scan.md) and
+  [yaml-reference](yaml-reference.md#bias) for the per-stage controls.
 - Each scan stage ends with a bond-change check (`has_bond_change`) on the final relaxed geometry. The per-stage result is recorded in the scan log, and — when `--out-json` is set — also in the aggregate `result.json` (under its `stages` array) written to the scan out-dir.
 - The recursive MEP refinement (`path-search`) consumes the scan endpoints unconditionally. Whether it runs is gated by `--refine-path`, **not** by the scan-stage bond-change flag (`has_bond_change`).
 - Use `pdb2reaction all --help-advanced` to inspect all options including scan controls.

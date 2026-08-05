@@ -194,11 +194,14 @@ Stages run sequentially; each starts from the previous stage's relaxed result.
 (scan-direction-and-barrier-sign)=
 ### Scan direction and barrier sign
 
-If a `scan` (or path) **starts from the product** side, the raw barrier it reports is the **reverse** barrier, `E(TS) − E(product)`. To quote the forward barrier, compute it from the reactant:
+The `scan` result stores sampled and final energies; it does not certify or
+emit a barrier field. If a user derives a barrier from a scan (or path) that
+**starts from the product** side, that difference is the **reverse** barrier,
+`E(TS) − E(product)`. To quote the forward barrier, compute it from the reactant:
 
 | You ran | Forward barrier |
 | --- | --- |
-| A product-start scan | `E(TS) − E(reactant)` — **not** the raw product-start number |
+| A product-start scan | `E(TS) − E(reactant)` — **not** the product-referenced difference |
 
 This is something to interpret when reading results, not a CLI flag. Always confirm which endpoint the scan started from before quoting a barrier, especially when the workflow was seeded from a crystallographic product complex.
 

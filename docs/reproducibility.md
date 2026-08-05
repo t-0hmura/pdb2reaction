@@ -14,9 +14,10 @@ inputs, and command fixed.
 
 ## `--deterministic`
 
-`--deterministic` is accepted by every compute subcommand
+`--deterministic` is accepted by the MLIP-backed compute subcommands
 (`opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`,
-`path-search`, `all`, `sp`). It turns on `torch.use_deterministic_algorithms`
+`path-search`, `all`, `sp`). It does not control standalone or out-of-process
+DFT. For in-process MLIP stages it turns on `torch.use_deterministic_algorithms`
 plus an `index_reduce_` shim. This requests strict determinism from PyTorch; it
 cannot control an arbitrary custom ASE calculator or every third-party custom
 kernel.

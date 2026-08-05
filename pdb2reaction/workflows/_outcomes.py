@@ -287,7 +287,7 @@ def irc_hessian_cache_eligible(obj: Any, converged_attr: str) -> bool:
 
 
 def irc_direction_leaves(
-    directions: Iterable[Tuple[str, bool, Any, Any, Sequence[str]]],
+    directions: Iterable[Tuple],
 ) -> Tuple[List[LeafOutcome], List[str]]:
     """Build one :class:`LeafOutcome` per IRC direction plus the expected IDs.
 
@@ -301,7 +301,8 @@ def irc_direction_leaves(
 
     leaves: List[LeafOutcome] = []
     expected: List[str] = []
-    for name, requested, converged, n_frames, artifacts in directions:
+    for direction in directions:
+        name, requested, converged, n_frames, artifacts, *samples = direction
         if not requested:
             leaves.append(
                 make_leaf(
@@ -319,6 +320,15 @@ def irc_direction_leaves(
             _n = int(n_frames)
         except (TypeError, ValueError):
             _n = 0
+        energy_valid = _n > 0
+        if samples:
+            try:
+                energy_values = list(samples[0])
+            except TypeError:
+                energy_values = []
+            energy_valid = bool(energy_values) and all(
+                _finite(value) for value in energy_values
+            )
         leaves.append(
             make_leaf(
                 "irc",
@@ -326,7 +336,7 @@ def irc_direction_leaves(
                 required=True,
                 executed=True,
                 converged=_normalize_bool(converged),
-                energy_valid=_n > 0,
+                energy_valid=energy_valid,
                 artifacts=list(artifacts),
             )
         )

@@ -16,6 +16,7 @@ from pysisyphus.config import BEND_MIN_DEG, DIHED_MAX_DEG
 from pysisyphus.helpers_pure import log, sort_by_central, merge_sets
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 from pysisyphus.intcoords import Stretch, Bend, LinearBend, Torsion
+from pysisyphus.intcoords.exceptions import PrimitiveNotDefinedException
 from pysisyphus.intcoords.setup_fast import find_bonds as find_bonds_fast
 from pysisyphus.intcoords.PrimTypes import PrimTypes, PrimMap, Rotations
 from pysisyphus.intcoords.valid import bend_valid, dihedral_valid
@@ -836,6 +837,21 @@ def setup_redundant(
         PrimTypes.PROPER_DIHEDRAL: "proper_dihedrals",
         PrimTypes.IMPROPER_DIHEDRAL: "improper_dihedrals",
     }
+    # Explicit definitions use original atom indices, while the detected lists
+    # use compact sub-indices.  Convert once here, so make_tp() maps every entry
+    # back to original indices exactly once.
+    compact_map = {org_ind: sub_ind for sub_ind, org_ind in freeze_map.items()}
+
+    def to_compact(prim_type, indices):
+        try:
+            return [compact_map[int(ind)] for ind in indices]
+        except KeyError:
+            raise PrimitiveNotDefinedException(
+                (prim_type, *indices),
+                f"Primitive {(prim_type, *indices)} in 'define_prims' contains atoms "
+                "that were excluded from the internal coordinate setup!",
+            )
+
     unmapped_typed_prims = list()
     for type_, *indices in define_prims:
         try:
@@ -857,7 +873,7 @@ def setup_redundant(
                 """
                 unmapped_typed_prims.append((type_, *indices))
                 continue
-        locals()[key].append(tuple(indices))
+        locals()[key].append(tuple(to_compact(type_, indices)))
 
     def make_tp(prim_type, *indices):
         """Map possibly modified indices to their original indices.
@@ -905,7 +921,6 @@ def setup_redundant(
         ]
         + [make_tp(pt.CARTESIAN_X, cind) for cind in cartesian_inds]
         + [make_tp(pt.CARTESIAN_Y, cind) for cind in cartesian_inds]
-        + [make_tp(pt.CARTESIAN_Z, cind) for cind in cartesian_inds]
         + [make_tp(pt.CARTESIAN_Z, cind) for cind in cartesian_inds]
     )
 

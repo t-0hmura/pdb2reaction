@@ -54,7 +54,7 @@ from pdb2reaction.io.charge import (
     _sorted_fids_by_file_order,
     compute_charge_summary,
 )
-from pdb2reaction.core.utils import _echo_info, log_charge_summary
+from pdb2reaction.core.utils import _echo_info, log_charge_summary, lossless_int
 
 # Public API
 __all__ = ["extract", "extract_api"]
@@ -757,6 +757,42 @@ def augment_backbone_contact_neighbors(structure,
     added = 0
     termini_kept_n = 0
     termini_kept_c = 0
+
+    # Substrate amino acids are never augmented or truncated, but true
+    # terminal forms still contribute their terminal charges.
+    for fid in substrate_ids:
+        model_id, chain_id = fid[1], fid[2]
+        chain = structure[model_id][chain_id]
+        residues: List[PDB.Residue.Residue] = list(chain.get_residues())
+        try:
+            idx = next(i for i, residue in enumerate(residues) if residue.get_full_id() == fid)
+        except StopIteration:
+            continue
+        cur_res = residues[idx]
+        if cur_res.get_resname() not in AMINO_ACIDS:
+            continue
+        prev_res = next(
+            (
+                residues[j]
+                for j in range(idx - 1, -1, -1)
+                if residues[j].get_resname() in AMINO_ACIDS
+            ),
+            None,
+        )
+        next_res = next(
+            (
+                residues[j]
+                for j in range(idx + 1, len(residues))
+                if residues[j].get_resname() in AMINO_ACIDS
+            ),
+            None,
+        )
+        if prev_res is None or not are_peptide_adjacent(prev_res, cur_res):
+            keep_ncap_ids.add(fid)
+            termini_kept_n += 1
+        if next_res is None or not are_peptide_adjacent(cur_res, next_res):
+            keep_ccap_ids.add(fid)
+            termini_kept_c += 1
 
     for fid in list(backbone_contact_ids):
         if fid in substrate_ids:
@@ -1588,7 +1624,9 @@ def _extract_body(args, api):
                 continue
             if ':' in token:
                 name, charge_str = token.split(':', 1)
-                AMINO_ACIDS[name.strip().upper()] = int(float(charge_str.strip()))
+                AMINO_ACIDS[name.strip().upper()] = lossless_int(
+                    charge_str.strip(), f"--modified-residue charge for {name.strip()!r}"
+                )
             else:
                 AMINO_ACIDS[token.upper()] = 0
         _echo_info("[extract] Modified residues added to amino acid list: %s", _mod_res)

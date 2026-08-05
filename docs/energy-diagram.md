@@ -6,7 +6,7 @@ Draw a state energy diagram directly from numeric values you provide — it does
 
 ```bash
 # Command form
-pdb2reaction energy-diagram -i VALUES... [-o OUTPUT] [--label-x...] [--label-y...]
+pdb2reaction energy-diagram {-i VALUE ... | -i "[VALUE, ...]"} [-o OUTPUT] [--label-x...] [--label-y...]
 ```
 
 ```bash
@@ -45,7 +45,7 @@ summary.json  # Byte-identical compatibility mirror on a successful --out-json r
 ## CLI options
 | Option | Description | Default |
 | --- | --- | --- |
-| `-i, --input TEXT...` | Numeric values (multiple args or list-like string). | Required |
+| `-i, --input TEXT` | Repeat once per numeric value, or pass one quoted list-like string. Multiple bare values after a single `-i` are rejected. | Required |
 | `-o, --output PATH` | Output image path (`.png/.jpg/.jpeg/.svg/.pdf`). | `energy_diagram.png` |
 | `--label-x TEXT...` | X-axis state labels. Count must match input value count. | `S1, S2,...` |
 | `--label-y TEXT` | Y-axis label. | `ΔE (kcal/mol)` |

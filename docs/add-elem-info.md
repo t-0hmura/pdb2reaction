@@ -1,6 +1,6 @@
 # `add-elem-info`
 
-Repair the element-symbol columns (77–78) of ATOM/HETATM records in a PDB file. Each element is inferred from the fixed-column atom name and residue context; all input lines are preserved, with only the element field replaced where needed. Use it when a PDB file has missing or wrong element columns and downstream subcommands (`extract`, `opt`, `tsopt`, ...) reject it. The `all` command auto-invokes `add-elem-info` as a preflight, so manual use is only needed before standalone subcommands.
+Repair the element-symbol columns (77–78) of ATOM/HETATM records in a PDB file. Each element is inferred from the fixed-column atom name and residue context. The `all` preflight repairs blank element fields only; it preserves nonblank values without chemically validating them. Run this utility explicitly for wrong nonblank symbols or before a standalone command that receives missing fields.
 
 ## Examples
 
@@ -53,7 +53,7 @@ The full flag list is in the generated [command reference](reference/commands/in
   and the legacy charge column (79–80) are retained.
 - ATOM and HETATM records across all models/chains/residues are supported.
 - Deuterium labels map to hydrogen; selenium (`SE*`) and halogens are recognized automatically.
-- Re-running on a PDB that already carries valid element symbols is a no-op (atoms pass through unchanged). See [all](all.md) for how the `all` preflight invokes `add-elem-info` automatically only when element columns are missing.
+- Existing nonblank element symbols are preserved by inference; the writer may still normalize record formatting. See [all](all.md) for the blank-field-only preflight boundary.
 
 ## See Also
 

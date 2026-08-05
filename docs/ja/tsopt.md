@@ -126,7 +126,7 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | **入力と電荷** | | |
-| `-i, --input PATH` | 入力bridgeが受け入れる構造（`.pdb` / `.cif` / `.mmcif` / `.xyz` / `.gjf` / `.trj`） | 必須 |
+| `-i, --input PATH` | 単一geometry（`.pdb` / `.cif` / `.mmcif` / `.xyz` / `.gjf`）。trajectory は使用する1 frameを `.xyz` へ抽出してから指定 | 必須 |
 | `-q, --charge INT` | 総電荷。`.gjf` テンプレートまたは `--ligand-charge`（PDB/mmCIF 入力または `--ref-pdb` 付き XYZ/GJF）が提供しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
 | `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB/mmCIF 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB/mmCIF 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
@@ -144,7 +144,7 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
 | **TS optimizer とモード** | | |
 | `--opt-mode TEXT` | TS optimizer プリセット（Choice: `grad` / `hess` / `dimer` / `rsirfo` / `trim` / `rsprfo`）。`grad`/`dimer` → Hessian-Guided Dimer; `hess`/`rsprfo` → RS-P-RFO（Banerjee、デフォルト、non-microiter）; `rsirfo` → RS-I-RFO; `trim` → TRIM（Helgaker、non-microiter）。サブコマンド別の対応表（`opt` は L-BFGS/RFO、`tsopt` は Dimer/RS-P-RFO）は {ref}`ja-opt-mode-semantics` を参照 | `hess` |
 | `--ref-mode PATH` | advanced/internal MEP handoff用のCartesian 3N方向（空白区切りtextまたは`.npy`）。`all`がデフォルトで指定し、通常の単独runでは省略します。外部経路を使うexpert runではroot選択とoverlap追跡に使用します | _None_ |
-| `--flatten/--no-flatten` | 一般の余剰虚振動モード flatten を有効化します。TS 最適化後、虚振動数が 1 つになるか上限に達するまで繰り返します。dimer および RS-P-RFO / RS-I-RFO に適用します。`--ref-mode` は保持すべき負モードを特定しますが、それ自体では flatten を有効化しません | `False` |
+| `--flatten/--no-flatten` | Dimer と RS-P-RFO / RS-I-RFO / TRIM Hessian family の余剰虚振動モード flatten を有効化。`--ref-mode` は保持する負モードを特定するが、それ自体では flatten を有効化しない | `False` |
 | `--coord-type TEXT` | 最適化座標系（`cart` / `redund` / `dlc` / `tric`）。`cart` がデフォルトです。`dlc` は条件付けを変えますが、どちらも一律に高速・堅牢ではないため問題のseedで比較してください。Hessian 系`tsopt`は4種類すべて、`path-opt` / `path-search`は`cart` / `dlc`のみ受け付けます | `cart` |
 | `--precision [fp32\|fp64]` | MLIP バックエンド精度。バックエンド固有のキー（UMA `precision` / ORB `precision` / MACE `default_dtype`。`aimnet2`: `fp32` は no-op、`fp64` は拒否）へ振り分け。対象系で対応精度を比較してください。{ref}`再現性: GPU クラスによる精度の選択 <ja-precision-by-gpu-class>` を参照 | バックエンドデフォルト (uma `fp32`、orb・mace `fp64`) |
 | **閾値とサイクル** | | |
@@ -299,7 +299,7 @@ TS 収束が遅い場合や最適化中に TS モードが失われる場合は�
 
 ## 注記
 
-- 虚振動数モード**検出**の閾値はデフォルトで 5.0 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm` で変更可能）。この閾値未満の振動数は虚振動数としてカウントされません。選択した `root` は最適化中にどの振動モードを追跡するかを制御します。`root` は YAML（`rsirfo.root` または `hessian_dimer.root`、デフォルト `0`）で設定します。`tsopt` に `--root` CLI フラグはありません（[`irc`](irc.md) とは異なります）。
+- 虚振動数モード**検出**の閾値はデフォルトで 5.0 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm` で変更可能）。絶対値がこの閾値未満の負の振動数は虚振動数としてカウントされません。Hessian-family optimizer の root は YAML list（例: `rsirfo.roots: [0]`）で設定します。Dimer は別の単数 key `hessian_dimer.root`（default `0`）を使います。`tsopt` に `--root` CLI flag はありません（[`irc`](irc.md) とは異なります）。
 - `--opt-mode` はワークフロー選択用です（デフォルト: `rsprfo`）。YAML のモードマッピングを手動で変更するのではなく、目的のアルゴリズムに合ったモードを選択してください。
 - Dimer方向、回転force、flatten、最終exact PHVA検証は`freq`と同じ固定の constrained 処理を使用します。Dimerは中心imageが変わるたびにこの基底を再構築します。全凍結anchorと両立する真の剛体null方向でない限り、active fragmentの並進を差し引きません。Hessian RFO最適化自体は、この射影を行わずactive-DOF Cartesian Hessian を扱います。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
 - 設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。

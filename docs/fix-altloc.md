@@ -32,8 +32,8 @@ pdb2reaction fix-altloc -i ./structures --inplace --recursive
 
 1. Check if the input file contains any non-blank altLoc characters (column 17).
  - If no altLoc is found and `--force` is not set, skip the file.
-2. Group labeled ATOM/HETATM records by residue (residue name, chain ID,
-   residue sequence, insertion code, and segID).
+2. Group labeled ATOM/HETATM records by residue identity (chain ID, residue
+   sequence, insertion code, and segID; residue name is not part of the key).
 3. Select one non-blank label per residue using:
  - Highest mean parsed occupancy across that label's atoms (columns 55–60)
  - A label with no parsed occupancies ranks below every label with a parsed mean
@@ -86,6 +86,8 @@ Output:
 
 For programmatic use, the module exports:
 ```python
+from pathlib import Path
+
 from pdb2reaction.io.pdb_fix import has_altloc, fix_altloc_file
 
 # Check if a file has altLoc

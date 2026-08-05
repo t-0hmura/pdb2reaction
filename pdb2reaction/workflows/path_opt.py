@@ -72,6 +72,7 @@ from pdb2reaction.core.utils import (
     _parse_freeze_atoms,
     merge_freeze_atom_indices,
     echo_resolved_device,
+    lossless_int,
 )
 from pdb2reaction.workflows.align_freeze import (
     align_and_refine_sequence_inplace,
@@ -136,12 +137,10 @@ def _main_dmf_ipopt_options(
     resolved = dict(ipopt_options)
     resolved["output_file"] = str(out_dir_path / "dmf_ipopt.out")
     if max_cycles is not None:
-        try:
-            max_iter = int(max_cycles)
-        except (TypeError, ValueError):
-            max_iter = 0
-        if max_iter > 0:
-            resolved["max_iter"] = max_iter
+        max_iter = lossless_int(max_cycles, "dmf.max_cycles")
+        if max_iter < 1:
+            raise click.BadParameter("dmf.max_cycles must be a positive integer.")
+        resolved["max_iter"] = max_iter
     return resolved
 
 
@@ -228,7 +227,32 @@ def _torch_dmf_runtime_kwargs(
         value = cfbenm_options.get(name, value)
         if value is not None:
             resolved[name] = value
+    if "device" not in resolved:
+        # The public gpu backend must run on CUDA.  Without an explicit expert
+        # device, dmf.torch would pick its own default and silently compute on
+        # the CPU when CUDA is unavailable.
+        if not torch.cuda.is_available():
+            raise click.ClickException(
+                "dmf.backend 'gpu' requires CUDA, which is unavailable. Select "
+                "dmf.backend 'cpu' (or --dmf-backend cpu), or set an explicit "
+                "dmf.dmf_options.device."
+            )
+        resolved["device"] = "cuda"
     return resolved
+
+
+def _validate_dmf_solvent_compatibility(calc_cfg: Mapping[str, Any]) -> None:
+    """Reject the unsupported DMF/implicit-solvent PES mismatch."""
+
+    solvent = str(calc_cfg.get("solvent", "none") or "none").strip().lower()
+    if solvent not in ("", "none"):
+        raise click.ClickException(
+            f"--mep-mode dmf is not compatible with --solvent '{solvent}': the DMF path "
+            "optimizer runs on the gas-phase ASE PES (no implicit-solvent wrapper), so the "
+            "path would be optimized without solvent while the rest of the pipeline uses the "
+            "solvent PES. Use --mep-mode gsm (its eval uses the solvent-corrected pysisyphus "
+            "calculator), or drop --solvent."
+        )
 
 
 def _run_dmf_mep(
@@ -257,15 +281,7 @@ def _run_dmf_mep(
     # path would be optimized gas-phase while the rest of the pipeline uses the
     # solvent PES — an opt-PES ≠ score-PES mismatch. Refuse and direct the user to
     # GSM, whose per-image eval goes through the solvent-aware pysisyphus calculator.
-    _solvent = str(calc_cfg.get("solvent", "none") or "none").strip().lower()
-    if _solvent not in ("", "none"):
-        raise click.ClickException(
-            f"--mep-mode dmf is not compatible with --solvent '{_solvent}': the DMF path "
-            "optimizer runs on the gas-phase ASE PES (no implicit-solvent wrapper), so the "
-            "path would be optimized without solvent while the rest of the pipeline uses the "
-            "solvent PES. Use --mep-mode gsm (its eval uses the solvent-corrected pysisyphus "
-            "calculator), or drop --solvent."
-        )
+    _validate_dmf_solvent_compatibility(calc_cfg)
 
     dmf_backend = str((dmf_cfg or {}).get("backend", "gpu")).strip().lower()
     if dmf_backend not in {"cpu", "gpu"}:
@@ -705,7 +721,7 @@ def _optimize_single(
     "--climb/--no-climb",
     default=True,
     show_default=True,
-    help="Search for a transition state (climbing image) after path growth.",
+    help="Enable the GSM climbing-image search after path growth (accepted but unused by DMF).",
 )
 @click.option(
     "--opt-mode",
@@ -718,7 +734,7 @@ def _optimize_single(
     "--dump/--no-dump",
     default=False,
     show_default=True,
-    help="Write optimizer trajectory and restarts during the run.",
+    help="Write GSM/single-optimizer trajectory and restart data (accepted but unused by DMF).",
 )
 @click.option(
     "--convert-files/--no-convert-files",
@@ -819,7 +835,7 @@ def _optimize_single(
     "--fix-ends/--no-fix-ends",
     default=True,
     show_default=True,
-    help="Fix structures of input endpoints during path optimization (GSM/DMF).",
+    help="Fix input endpoints during GSM path optimization (accepted but unused by DMF).",
 )
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
               show_default=True, help="MLIP backend.")
@@ -973,6 +989,11 @@ def cli(
             gs_cfg["climb"] = bool(climb)
             gs_cfg["climb_lanczos"] = bool(climb)
         if cli_param_overridden(ctx, "fix_ends"):
+            if str(mep_mode).lower() == "dmf" and not fix_ends:
+                raise click.BadParameter(
+                    "--no-fix-ends is supported only for GSM paths.",
+                    param_hint="--no-fix-ends",
+                )
             gs_cfg["fix_first"] = bool(fix_ends)
             gs_cfg["fix_last"] = bool(fix_ends)
         if cli_param_overridden(ctx, "dump"):
@@ -1019,17 +1040,13 @@ def cli(
         # Merge CLI --freeze-atoms (already 0-based)
         try:
             freeze_atoms_cli = _parse_freeze_atoms(freeze_atoms_text)
-        except click.BadParameter as e:
-            click.echo(f"ERROR: {e}", err=True)
-            sys.exit(1)
+        except click.BadParameter:
+            raise
         if freeze_atoms_cli:
             merge_freeze_atom_indices(geom_cfg, freeze_atoms_cli)
 
         # Use external Kabsch alignment; keep internal align disabled.
         stopt_cfg["align"] = False
-        stopt_cfg["stop_in_when_full"] = int(
-            stopt_cfg.get("max_cycles", STOPT_KW["max_cycles"])
-        )
 
         opt_kind = normalize_choice(
             opt_mode,
@@ -1045,9 +1062,42 @@ def cli(
             single_opt_cfg = rfo_cfg
 
         single_opt_cfg = dict(single_opt_cfg)
-        preopt_max_cycles_effective = int(
-            single_opt_cfg.get("max_cycles", preopt_max_cycles)
+        preopt_max_cycles_effective = single_opt_cfg.get(
+            "max_cycles", preopt_max_cycles
         )
+        if mep_mode_kind == "dmf":
+            dmf_cycles = lossless_int(dmf_cfg.get("max_cycles"), "dmf.max_cycles")
+            if dmf_cycles < 1:
+                raise click.BadParameter("dmf.max_cycles must be a positive integer.")
+            dmf_cfg["max_cycles"] = dmf_cycles
+            try:
+                k_fix = float(dmf_cfg.get("k_fix", DMF_KW["k_fix"]))
+            except (TypeError, ValueError, OverflowError) as exc:
+                raise click.BadParameter(
+                    "dmf.k_fix must be finite and non-negative."
+                ) from exc
+            if not np.isfinite(k_fix) or k_fix < 0.0:
+                raise click.BadParameter(
+                    "dmf.k_fix must be finite and non-negative."
+                )
+            dmf_cfg["k_fix"] = k_fix
+        else:
+            string_cycles = lossless_int(
+                stopt_cfg.get("max_cycles"), "stopt.max_cycles"
+            )
+            if string_cycles < 1:
+                raise click.BadParameter(
+                    "stopt.max_cycles must be a positive integer."
+                )
+            stopt_cfg["max_cycles"] = string_cycles
+        if preopt:
+            preopt_max_cycles_effective = lossless_int(
+                single_opt_cfg.get("max_cycles"), "preopt max_cycles"
+            )
+            if preopt_max_cycles_effective < 1:
+                raise click.BadParameter(
+                    "preopt max_cycles must be a positive integer."
+                )
 
         # Apply backend/solvent CLI overrides early (before display)
         if cli_param_overridden(ctx, "backend"):
@@ -1056,14 +1106,14 @@ def cli(
             calc_cfg["solvent"] = solvent
         if cli_param_overridden(ctx, "solvent_model"):
             calc_cfg["solvent_model"] = solvent_model
-        from pdb2reaction.backends import apply_effective_precision
-        apply_effective_precision(calc_cfg, precision)
         from pdb2reaction.backends import apply_backend_model_to_calc_cfg
         # Unconditional: also pops a raw backend_model token from a --config YAML
         # (the helper no-ops when neither the CLI arg nor the YAML names one).
         apply_backend_model_to_calc_cfg(calc_cfg, backend_model)
         from pdb2reaction.backends import apply_calc_file_to_calc_cfg
         apply_calc_file_to_calc_cfg(calc_cfg, calc_file, calc_factory)
+        from pdb2reaction.backends import apply_effective_precision
+        apply_effective_precision(calc_cfg, precision)
         apply_backend_defaults(calc_cfg)
 
         # For display: resolved configuration
@@ -1132,6 +1182,17 @@ def cli(
             return
 
         out_dir_path.mkdir(parents=True, exist_ok=True)
+        for name in (
+            "hei.pdb",
+            "hei.cif",
+            "hei.gjf",
+            "final_geometries.pdb",
+            "final_geometries.cif",
+        ):
+            (out_dir_path / name).unlink(missing_ok=True)
+        if not out_json:
+            for name in ("result.json", "summary.json"):
+                (out_dir_path / name).unlink(missing_ok=True)
 
         source_paths = [prep.source_path for prep in prepared_inputs]
 
@@ -1614,6 +1675,8 @@ def cli(
     except KeyboardInterrupt:
         click.echo("Interrupted by user.", err=True)
         sys.exit(130)
+    except click.ClickException:
+        raise
     except Exception as e:
         render_cli_exception(e, label="path optimization", out_dir=out_dir_path, command="path-opt", time_start=time_start)
     finally:

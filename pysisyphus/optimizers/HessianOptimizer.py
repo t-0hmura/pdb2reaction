@@ -40,6 +40,8 @@ import torch
 from pysisyphus._array import get_xp, active_square
 
 def dummy_hessian_update(H, dx, dg):
+    if isinstance(H, torch.Tensor):
+        return torch.zeros_like(H), "no"
     return np.zeros_like(H), "no"
 
 
@@ -508,10 +510,60 @@ class HessianOptimizer(Optimizer):
         "predicted_energy_changes",
     )
 
+    @staticmethod
+    def _restart_list(value):
+        """Serialize an array or tensor without leaving it on its device."""
+        if isinstance(value, torch.Tensor):
+            return value.detach().cpu().tolist()
+        return np.asarray(value).tolist()
+
+    @staticmethod
+    def _restart_backend(value):
+        """Describe the backend and layout of *value* with safe primitives.
+
+        Nested lists cannot express the layout of an empty array -- a ``(0, 0)``
+        active Hessian serializes to ``[]`` -- so the shape travels with the
+        backend spec and is restored explicitly.
+        """
+        if isinstance(value, torch.Tensor):
+            return {
+                "backend": "torch",
+                "dtype": str(value.dtype).rpartition(".")[2],
+                "device": str(value.device),
+                "shape": [int(size) for size in value.shape],
+            }
+        array = np.asarray(value)
+        return {
+            "backend": "numpy",
+            "dtype": str(array.dtype),
+            "shape": [int(size) for size in array.shape],
+        }
+
+    @staticmethod
+    def _restore_array(values, backend):
+        """Rebuild a serialized array in its recorded backend/dtype/device."""
+        backend = backend if isinstance(backend, dict) else {}
+        shape = backend.get("shape")
+        shape = None if shape is None else tuple(int(size) for size in shape)
+        if backend.get("backend") != "torch":
+            restored = np.array(values, dtype=np.dtype(backend.get("dtype", "float64")))
+        else:
+            dtype = getattr(torch, str(backend.get("dtype", "float64")), torch.float64)
+            device = str(backend.get("device", "cpu"))
+            # A checkpoint written on a GPU host must still load on a CPU host.
+            if device.startswith("cuda") and not torch.cuda.is_available():
+                device = "cpu"
+            restored = torch.as_tensor(values, dtype=dtype, device=device)
+        return restored if shape is None else restored.reshape(shape)
+
     def _get_opt_restart_info(self):
         opt_restart_info = {
             "adapt_norm": self.adapt_norm,
-            "H": self.H.tolist(),
+            "H": self._restart_list(self.H),
+            # Backend of the optimizer Hessian and the overlap vector, so a
+            # resume restores the configured backend, dtype, and device instead
+            # of silently falling back to NumPy on the CPU.
+            "H_backend": self._restart_backend(self.H),
             "hessian_recalc_in": self.hessian_recalc_in,
             "predicted_energy_changes": self.predicted_energy_changes,
             # Per-cycle adaptive trust radius (see update_trust_radius).
@@ -526,21 +578,52 @@ class HessianOptimizer(Optimizer):
             # Sliding (dx, dg) buffer for the multi-step TS-BFGS update used when
             # ``hessian_update_window >= 2``; the next Hessian update stacks
             # these columns, so an empty buffer on resume diverges the update.
-            "_sy_buffer_S": [np.asarray(s).tolist() for s in self._sy_buffer_S],
-            "_sy_buffer_Y": [np.asarray(y).tolist() for y in self._sy_buffer_Y],
+            "_sy_buffer_S": [self._restart_list(s) for s in self._sy_buffer_S],
+            "_sy_buffer_Y": [self._restart_list(y) for y in self._sy_buffer_Y],
+            "_sy_buffer_S_backend": [
+                self._restart_backend(s) for s in self._sy_buffer_S
+            ],
+            "_sy_buffer_Y_backend": [
+                self._restart_backend(y) for y in self._sy_buffer_Y
+            ],
             # Previous minimum-mode eigenvector for ``rfo_overlaps`` root
             # following; ``None`` unless overlap-based mode following is active.
             "_prev_eigvec_min": (
                 None
                 if self._prev_eigvec_min is None
-                else np.asarray(self._prev_eigvec_min).tolist()
+                else self._restart_list(self._prev_eigvec_min)
+            ),
+            "_prev_eigvec_min_backend": (
+                None
+                if self._prev_eigvec_min is None
+                else self._restart_backend(self._prev_eigvec_min)
             ),
         }
         return opt_restart_info
 
     def _set_opt_restart_info(self, opt_restart_info):
         self.adapt_norm = opt_restart_info["adapt_norm"]
-        self.H = np.array(opt_restart_info["H"])
+        h_backend = opt_restart_info.get("H_backend")
+        self.H = self._restore_array(
+            opt_restart_info["H"], h_backend
+        )
+        recorded_shape = (
+            h_backend.get("shape") if isinstance(h_backend, dict) else None
+        )
+        h_size = (
+            int(self.H.numel())
+            if isinstance(self.H, torch.Tensor)
+            else int(np.asarray(self.H).size)
+        )
+        if (
+            recorded_shape is None
+            and h_size == 0
+            and getattr(self, "using_active_dofs", False)
+            and np.asarray(getattr(self, "active_dof_indices", ())).size == 0
+        ):
+            # Older checkpoints could not retain the shape of a ``(0, 0)``
+            # active Hessian because it serialized as ``[]``.
+            self.H = self.H.reshape((0, 0))
         self.hessian_recalc_in = opt_restart_info["hessian_recalc_in"]
         self.predicted_energy_changes = opt_restart_info["predicted_energy_changes"]
         # Backward-tolerant: a checkpoint written before trust_radius was
@@ -560,13 +643,27 @@ class HessianOptimizer(Optimizer):
         # Multi-step Hessian-update buffer; only non-empty for
         # ``hessian_update_window >= 2``.  Default [] when the key is absent.
         if "_sy_buffer_S" in opt_restart_info:
-            self._sy_buffer_S = [np.array(s) for s in opt_restart_info["_sy_buffer_S"]]
+            backends = opt_restart_info.get("_sy_buffer_S_backend")
+            self._sy_buffer_S = [
+                self._restore_array(s, backends[i] if backends else None)
+                for i, s in enumerate(opt_restart_info["_sy_buffer_S"])
+            ]
         if "_sy_buffer_Y" in opt_restart_info:
-            self._sy_buffer_Y = [np.array(y) for y in opt_restart_info["_sy_buffer_Y"]]
+            backends = opt_restart_info.get("_sy_buffer_Y_backend")
+            self._sy_buffer_Y = [
+                self._restore_array(y, backends[i] if backends else None)
+                for i, y in enumerate(opt_restart_info["_sy_buffer_Y"])
+            ]
         # Previous minimum-mode eigenvector for ``rfo_overlaps``; default None.
         if "_prev_eigvec_min" in opt_restart_info:
             stored = opt_restart_info["_prev_eigvec_min"]
-            self._prev_eigvec_min = None if stored is None else np.array(stored)
+            self._prev_eigvec_min = (
+                None
+                if stored is None
+                else self._restore_array(
+                    stored, opt_restart_info.get("_prev_eigvec_min_backend")
+                )
+            )
 
     def update_trust_radius(self):
         # The predicted change should be calculated at the end of optimize

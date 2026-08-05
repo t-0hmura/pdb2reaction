@@ -80,3 +80,38 @@ def test_xtb_dense_hessian_rejects_truncation(tmp_path) -> None:
     path.write_text("$hessian\n1.0 0.0\n$end\n", encoding="utf-8")
     with pytest.raises(xtb.XTBError, match="expected at least 9 values, got 2"):
         xtb._parse_xtb_hessian(path, 1)
+
+
+def test_xtb_raw_hessian_requires_exact_finite_square(tmp_path) -> None:
+    path = tmp_path / "hessian.out"
+    matrix = np.arange(9, dtype=float).reshape(3, 3)
+    path.write_text("\n".join(" ".join(map(str, row)) for row in matrix))
+    np.testing.assert_allclose(
+        xtb._parse_xtb_hessian(path, 1),
+        0.5 * (matrix + matrix.T),
+    )
+
+    path.write_text("0 1 2 3 4 5 6 7")
+    with pytest.raises(xtb.XTBError, match="expected exactly 9 finite values"):
+        xtb._parse_xtb_hessian(path, 1)
+
+
+def test_xtb_command_absolutizes_only_path_like_executable(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    assert xtb._xtb_cmd_tokens("xtb --copy") == ["xtb", "--copy"]
+    assert xtb._xtb_cmd_tokens("./bin/xtb --copy")[0] == str(
+        (tmp_path / "bin" / "xtb").resolve()
+    )
+
+    cmd = xtb._build_xtb_cmd(
+        xtb_cmd="xtb",
+        xyz_filename="input.xyz",
+        charge=0,
+        multiplicity=1,
+        solvent="none",
+        solvent_model="alpb",
+        xtb_acc=0.2,
+        mode="hess",
+        xcontrol_filename="raw_hessian.inp",
+    )
+    assert cmd[cmd.index("--input") + 1] == "raw_hessian.inp"

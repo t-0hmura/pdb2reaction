@@ -5,7 +5,6 @@ import re
 import shlex
 import subprocess
 import tempfile
-import sys
 import torch
 
 import h5py
@@ -108,7 +107,7 @@ def get_trans_rot_vectors(cart_coords, masses, rot_thresh=1e-6):
     com = 1 / total_mass * np.sum(coords3d * masses[:, None], axis=0)
     coords3d_centered = coords3d - com[None, :]
 
-    I = inertia_tensor(coords3d, masses)
+    I = inertia_tensor(coords3d_centered, masses)
     _, Iv = np.linalg.eigh(I)
     Iv = Iv.T
 
@@ -127,7 +126,6 @@ def get_trans_rot_vectors(cart_coords, masses, rot_thresh=1e-6):
         """As done in geomeTRIC."""
 
         rot_vecs = np.zeros((3, cart_coords.size))
-        # p_vecs = Iv.dot(coords3d_centered.T).T
         for i in range(masses.size):
             p_vec = Iv.dot(coords3d_centered[i])
             for ix in range(3):
@@ -268,11 +266,10 @@ class Geometry:
 
         # Disallow any coord_kwargs with coord_type == 'cart'
         if (coord_type == "cart") and not (coord_kwargs is None or coord_kwargs == {}):
-            print(
+            raise ValueError(
                 "coord_type is set to 'cart' but coord_kwargs were given. "
                 "This is probably not intended. Exiting!"
             )
-            sys.exit()
 
         # Coordinate systems are handled below
         coord_class = self.coord_types[self.coord_type]
@@ -790,8 +787,6 @@ class Geometry:
         """
         cbt = dict()
         inds = dict()
-        # for i, (atom, c3d) in enumerate(zip(self.atoms, self.coords3d)):
-        # cbt.setdefault(atom, list()).append((i, c3d.tolist()))
         for i, (atom, c3d) in enumerate(zip(self.atoms, self.coords3d)):
             cbt.setdefault(atom, list()).append((c3d))
             inds.setdefault(atom, list()).append(i)
@@ -954,6 +949,8 @@ class Geometry:
         -------
         aligned : bool
             Wether the principal axes are aligned or not.
+        eigenvectors : np.array, shape (3, 3)
+            Column-wise eigenvectors of the inertia tensor.
         """
         w, v = np.linalg.eigh(self.inertia_tensor)
         return np.allclose(v, np.eye(3)), v
@@ -965,8 +962,6 @@ class Geometry:
         """
         I = self.inertia_tensor
         w, v = np.linalg.eigh(I)
-        # rot = np.linalg.solve(v, np.eye(3))
-        # self.coords3d = rot.dot(self.coords3d.T).T
         self.coords3d = v.T.dot(self.coords3d.T).T
 
     def standard_orientation(self):
@@ -1093,12 +1088,6 @@ class Geometry:
         """
         return -self.forces
 
-    # @gradient.setter
-    # def gradient(self, gradient):
-    # """Internal wrapper for setting the gradient."""
-    # # No check here as this is handled by in the forces.setter.
-    # self.forces = -gradient
-
     @property
     def mw_gradient(self):
         """Mass-weighted gradient.
@@ -1120,7 +1109,6 @@ class Geometry:
     @cart_hessian.setter
     def cart_hessian(self, cart_hessian):
         if cart_hessian is not None:
-            # cart_hessian = np.array(cart_hessian)
             if self.within_partial_hessian is not None:
                 active_n_dof = int(self.within_partial_hessian.get("active_n_dof", 0))
                 full_n_dof = int(
@@ -1189,12 +1177,6 @@ class Geometry:
         if getattr(self, "true_hessian", None) is cached:
             self.true_hessian = None
         return hessian
-
-    # @hessian.setter
-    # def hessian(self, hessian):
-    # """Internal wrapper for setting the hessian."""
-    # assert hessian.shape == (self.coords.size, self.coords.size)
-    # self._hessian = hessian
 
     def mass_weigh_hessian(self, hessian):
         partial_layout = (
@@ -1488,7 +1470,7 @@ class Geometry:
 
     def get_imag_frequencies(self, hessian=None, thresh=1e-6):
         vibfreqs, eigvals, *_ = self.get_normal_modes(hessian)
-        return vibfreqs[eigvals < thresh]
+        return vibfreqs[eigvals < -abs(thresh)]
 
     def get_thermoanalysis(
         self, energy=None, cart_hessian=None, T=T_DEFAULT, p=p_DEFAULT, point_group="c1"

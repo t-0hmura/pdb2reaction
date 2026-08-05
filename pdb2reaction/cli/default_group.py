@@ -258,9 +258,11 @@ class DefaultGroup(click.Group):
         # so that --add-linkH, --include-H2O etc. are accepted case-insensitively.
         args = _normalize_argv_option_names(args)
 
-        show_help_or_version = any(a in ("-h", "--help", "--version") for a in args)
+        root_help_or_version = bool(
+            args and args[0] in ("-h", "--help", "--version")
+        )
 
-        if self._default_cmd is not None and not show_help_or_version:
+        if self._default_cmd is not None and not root_help_or_version:
             # A declared group option must not trigger the default-command
             # fallback. Collect every spelling before examining argv[0].
             top_level_opts = set()
@@ -300,6 +302,10 @@ class DefaultGroup(click.Group):
             }
             bool_single_flag_options = {command_name: command_bool_single_flag_options}
 
+        # Keep the canonical option spelling before legacy Boolean values are
+        # rewritten.  The all workflow uses this tuple only for provenance;
+        # Click continues to parse the normalized tuple below.
+        ctx.meta["pdb2reaction.cli.provenance_args"] = tuple(args)
         args, _ = self._normalize_bool_argv(
             args,
             bool_value_options,
@@ -360,10 +366,8 @@ class DefaultGroup(click.Group):
         return super().invoke(ctx)
 
     def list_commands(self, ctx):
-        # Preserve the semantic order declared in `_LAZY_SUBCOMMANDS` so the
-        # canonical pipeline (`all`, `extract`, `opt`, `tsopt`, ...) shows up
-        # first in `--help` instead of being scattered alphabetically. Any
-        # externally-registered subcommands appear at the end, sorted.
+        # Preserve the semantic order declared in `_LAZY_SUBCOMMANDS`; append
+        # externally registered subcommands in sorted order.
         lazy_order = list(self._lazy_subcommands.keys())
         all_cmds = set(super().list_commands(ctx))
         all_cmds.update(lazy_order)

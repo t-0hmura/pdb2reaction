@@ -463,6 +463,7 @@ def test_decimal_overflow_pdb_fields_are_normalized(tmp_path: Path) -> None:
 
 
 def test_duplicate_atom_names_without_altloc_are_preserved(tmp_path: Path) -> None:
+    from pdb2reaction.core.utils import prepare_input_structure
     from pdb2reaction.io.structure_formats import (
         pdb_requires_normalization,
         read_pdb_atom_sites,
@@ -480,7 +481,14 @@ def test_duplicate_atom_names_without_altloc_are_preserved(tmp_path: Path) -> No
     records, nonstandard = read_pdb_atom_sites(source)
     assert [record.atom_name for record in records] == ["C", "H", "H"]
     assert not nonstandard
-    assert not pdb_requires_normalization(source)
+    assert pdb_requires_normalization(source)
+    prepared = prepare_input_structure(source)
+    try:
+        normalized, _ = read_pdb_atom_sites(prepared.source_path)
+        assert len(normalized) == 3
+        assert [record.element for record in normalized] == ["C", "H", "H"]
+    finally:
+        prepared.cleanup()
 
 
 def _altloc_atom_line(

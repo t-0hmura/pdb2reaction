@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from pathlib import Path
 from collections import defaultdict
 from typing import List, Sequence, Optional, Tuple, Dict, Any
@@ -42,10 +43,12 @@ from pdb2reaction.workflows.align_freeze import (
 )
 from pdb2reaction.backends import create_calculator
 from pdb2reaction.core.defaults import (
+    FREQ_KW,
     GEOM_KW_DEFAULT,
     OUT_DIR_ALL,
     SEGMENTS_DIRNAME,
     THRESH_CHOICES,
+    THERMO_KW,
     WORK_DIRNAME,
     UMA_CALC_KW as _UMA_CALC_KW,
     fresh_dmf_config,
@@ -71,6 +74,7 @@ from pdb2reaction.core.utils import (
     convert_xyz_to_gjf,
     detect_freeze_links_logged,
     format_elapsed,
+    lossless_int,
     merge_freeze_atom_groups,
     prepare_input_structure,
     normalize_freeze_atoms,
@@ -370,6 +374,10 @@ def _move_logged(src: Path, dst: Path, *, label: Optional[str] = None, echo: boo
         # shutil.move treats an existing destination *directory* as a target to
         # move into; clear any existing destination *file* first so the result
         # is always the intended path (idempotent across re-runs).
+        if dst.exists() and not dst.is_file():
+            raise IsADirectoryError(
+                f"destination exists and is not a file: {dst}"
+            )
         if dst.is_file():
             dst.unlink()
         shutil.move(str(src), str(dst))
@@ -961,9 +969,17 @@ def _read_path_opt_segment_converged(seg_dir: Path) -> Optional[bool]:
         if not rj.exists():
             return None
         data = json.loads(rj.read_text(encoding="utf-8")) or {}
-        for leaf in data.get("stage_outcomes") or []:
-            if isinstance(leaf, dict) and isinstance(leaf.get("converged"), bool):
-                return bool(leaf["converged"])
+        mep_leaves = [
+            leaf
+            for leaf in data.get("stage_outcomes") or []
+            if isinstance(leaf, dict)
+            and leaf.get("item_id") in {"gsm_mep", "dmf_mep"}
+        ]
+        if len(mep_leaves) != 1:
+            return None
+        converged = mep_leaves[0].get("converged")
+        if isinstance(converged, bool):
+            return converged
         return None
     except Exception as exc:
         logger.debug("Failed to read path-opt segment convergence %s: %s", seg_dir, exc)
@@ -1103,7 +1119,12 @@ def _copy_structures_to_seg_dir(
                         dst_gjf,
                     )
                     claim_destination(dst_gjf)
-                except Exception:
+                except Exception as exc:
+                    _echo(
+                        f"[all] WARNING: Failed to convert {src.name} to "
+                        f"{dst_gjf.name}: {exc}",
+                        err=True,
+                    )
                     copy_destination(src, seg_dir / f"{dst_name}.xyz")
             else:
                 copy_destination(src, seg_dir / f"{dst_name}.xyz")
@@ -1280,7 +1301,7 @@ def _pipeline_aggregate_truth(
         expected.append(seg_id)
         post = post_by_idx.get(idx)
         reason = ""
-        artifacts: List[str] = []
+        artifacts: List[str] = [str(path) for path in s.get("_mep_artifacts", [])]
         # The segment's own reported convergence, threaded from path_search's
         # SegmentReport / the path-opt child leaf.  A missing field is None
         # (fail-closed), never a silent True.
@@ -1309,7 +1330,8 @@ def _pipeline_aggregate_truth(
                 _irc_conv = True if _u is True else (False if _u is False else None)
                 converged = _and3(converged, _irc_conv)
                 if _irc_conv is not True and not reason:
-                    reason = f"irc:{irc.get('reason') or 'not_usable'}"
+                    irc_reason = str(irc.get("reason") or "not_usable")
+                    reason = irc_reason if irc_reason.startswith("irc:") else f"irc:{irc_reason}"
                 _traj = irc.get("traj")
                 if _traj:
                     artifacts.append(str(_traj))
@@ -1373,6 +1395,13 @@ def _pipeline_aggregate_truth(
         agg_exec = agg.execution_status
         agg_reasons = list(agg.status_reasons)
         observed = list(agg.observed_item_ids)
+        if agg_sci == "failed" and any(
+            s.get("kind") != "tsopt" and s.get("converged") is True
+            for s in reactive
+        ):
+            # A converged MEP remains a usable partial result when a requested
+            # downstream stage is missing or unusable.
+            agg_sci = "partial"
     else:
         # No reactive-segment leaves to gate on (degenerate/endpoint-only
         # summary): mirror the legacy completeness axis rather than manufacture a
@@ -1605,6 +1634,9 @@ def _enrich_summary(
         legacy_status=status,
         legacy_reasons=status_reasons,
     )
+    for segment in segments:
+        if isinstance(segment, dict):
+            segment.pop("_mep_artifacts", None)
     summary["mlip_backend"] = mlip_backend
     summary["mlip_model"] = mlip_model
     summary["mlip_precision"] = mlip_precision
@@ -2243,11 +2275,12 @@ def _run_dft_for_state(
     spin: int,
     out_dir: Path,
     args_yaml: Optional[Path],
-    func_basis: str = "wb97m-v/def2-tzvpd",
+    func_basis: Optional[str] = None,
     overrides: Optional[Dict[str, Any]] = None,
     engine: str = "gpu",
     ref_pdb: Optional[Path] = None,
     convert_files: bool = True,
+    allow_charge_mult_mismatch: bool = False,
 ) -> Dict[str, Any]:
     """
     Run dft CLI; return parsed result.yaml dict (may be empty).
@@ -2256,8 +2289,6 @@ def _run_dft_for_state(
     ensure_dir(ddir)
     overrides = overrides or {}
 
-    func_basis_use = overrides.get("func_basis", func_basis)
-
     args = [
         "-i",
         str(pdb_path),
@@ -2265,16 +2296,19 @@ def _run_dft_for_state(
         str(int(q_int)),
         "-m",
         str(int(spin)),
-        "--func-basis",
-        str(func_basis_use),
         "--out-dir",
         str(ddir),
     ]
+    func_basis_use = overrides.get("func_basis", func_basis)
+    if func_basis_use is not None:
+        args.extend(["--func-basis", str(func_basis_use)])
     _append_toggle_arg(args, "--convert-files", bool(convert_files))
     if ref_pdb is not None:
         args.extend(["--ref-pdb", str(ref_pdb)])
     if engine:
         args.extend(["--engine", str(engine)])
+    if allow_charge_mult_mismatch:
+        args.append("--allow-charge-mult-mismatch")
 
     _append_cli_arg(args, "--max-cycle", overrides.get("max_cycle"))
     _append_cli_arg(args, "--conv-tol", overrides.get("conv_tol"))
@@ -2295,10 +2329,10 @@ def _run_dft_for_state(
     proc = _sp.run(cmd, capture_output=True, text=True)
     if proc.stdout:
         _echo(proc.stdout.rstrip())
+    if proc.stderr:
+        _echo(proc.stderr.rstrip(), err=True)
     if proc.returncode != 0:
         _echo(f"[dft] WARNING: dft exited with code {proc.returncode}", err=True)
-        if proc.stderr:
-            _echo(proc.stderr.rstrip(), err=True)
     y = out_dir / "result.yaml"
     if y.exists():
         try:
@@ -2320,11 +2354,12 @@ def _run_dft_sequence(
     q_int: int,
     spin: int,
     args_yaml: Optional[Path],
-    func_basis: str,
+    func_basis: Optional[str],
     overrides: Optional[Dict[str, Any]],
     engine: str,
     ref_pdb: Optional[Path],
     convert_files: bool,
+    allow_charge_mult_mismatch: bool = False,
 ) -> Dict[str, Dict[str, Any]]:
     """Run DFT on a sequence of states."""
     results: Dict[str, Dict[str, Any]] = {}
@@ -2340,6 +2375,7 @@ def _run_dft_sequence(
             engine=engine,
             ref_pdb=ref_pdb,
             convert_files=convert_files,
+            allow_charge_mult_mismatch=allow_charge_mult_mismatch,
         )
         results[label] = res
     return results
@@ -3226,7 +3262,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     type=int,
     default=300,
     show_default=True,
-    help="Maximum GSM optimization cycles.",
+    help="Maximum optimization cycles for the selected MEP/path child (GSM or DMF).",
 )
 @click.option(
     "--climb",
@@ -3543,9 +3579,8 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 @click.option(
     "--dft-engine",
     type=click.Choice(["gpu", "cpu"], case_sensitive=False),
-    default="gpu",
-    show_default=True,
-    help="DFT backend: gpu (GPU4PySCF, raises error if unavailable) or cpu (PySCF).",
+    default=None,
+    help="Override the DFT backend (gpu or cpu); omitted values inherit YAML/defaults.",
 )
 @click.option(
     "-s", "--scan-lists",
@@ -3700,7 +3735,7 @@ def cli(
     dft_max_cycle: Optional[int],
     dft_conv_tol: Optional[float],
     dft_grid_level: Optional[int],
-    dft_engine: str,
+    dft_engine: Optional[str],
     cli_coord_type: Optional[str],
     precision: Optional[str],
     backend_model: Optional[str],
@@ -3741,6 +3776,10 @@ def cli(
     from pdb2reaction.core.utils import current_cli_args
 
     _argv = current_cli_args(ctx)
+    _provenance_argv = list(
+        ctx.meta.get("pdb2reaction.cli.provenance_args", tuple(_argv))
+    )
+    dft_allow_charge_mult_mismatch = "--allow-charge-mult-mismatch" in _argv
     reject_option_like_extra_args(
         ctx.args,
         allowed_options=_negative_bool_aliases,
@@ -3819,7 +3858,7 @@ def cli(
 
     # Engage pipeline-scoped default-verbosity suppression for this invocation.
     set_pipeline_mode(True)
-    argv_all = _argv
+    argv_all = _provenance_argv
 
     def _sigint_handler(signum, frame):
         _echo("\nInterrupted by user.", err=True)
@@ -3870,12 +3909,7 @@ def cli(
         and isinstance(calc_yaml_cfg, dict)
         and calc_yaml_cfg.get("charge") is not None
     ):
-        try:
-            charge_override = int(calc_yaml_cfg["charge"])
-        except (TypeError, ValueError) as exc:
-            raise click.BadParameter(
-                f"calc.charge must be an integer, got {calc_yaml_cfg['charge']!r}."
-            ) from exc
+        charge_override = lossless_int(calc_yaml_cfg["charge"], "calc.charge")
         charge_override_label = "YAML calc.charge"
     spin_cli_explicit = cli_param_overridden(ctx, "spin")
     # Post-IRC endpoint re-optimization uphill-rejection toggle. ``None`` unless
@@ -3891,12 +3925,7 @@ def cli(
         and isinstance(calc_yaml_cfg, dict)
         and calc_yaml_cfg.get("spin") is not None
     ):
-        try:
-            spin = int(calc_yaml_cfg["spin"])
-        except (TypeError, ValueError) as exc:
-            raise click.BadParameter(
-                f"calc.spin must be an integer multiplicity, got {calc_yaml_cfg['spin']!r}."
-            ) from exc
+        spin = lossless_int(calc_yaml_cfg["spin"], "calc.spin multiplicity")
         if spin < 1:
             raise click.BadParameter(
                 f"calc.spin must be an integer multiplicity >= 1, got {spin}."
@@ -4045,14 +4074,17 @@ def cli(
         tsopt_overrides["out_dir"] = tsopt_out_dir
     if hessian_calc_mode is not None:
         tsopt_overrides["hessian_calc_mode"] = hessian_calc_mode
-    if thresh_post is not None:
+    if cli_param_overridden(ctx, "thresh_post"):
         tsopt_overrides["thresh"] = str(thresh_post)
     if flatten_override_requested:
         tsopt_overrides["flatten"] = bool(flatten)
 
     freq_overrides: Dict[str, Any] = {}
     # backend will be injected after calc_cfg_shared is built (see below)
-    from pdb2reaction.workflows.freq import _validated_thermo_condition
+    from pdb2reaction.workflows.freq import (
+        _validate_freq_thermo_config,
+        _validated_thermo_condition,
+    )
 
     if freq_max_write is not None:
         freq_overrides["max_write"] = int(freq_max_write)
@@ -4078,6 +4110,25 @@ def cli(
     if hessian_calc_mode is not None:
         freq_overrides["hessian_calc_mode"] = hessian_calc_mode
 
+    if do_thermo:
+        freq_preflight = dict(FREQ_KW)
+        thermo_preflight = dict(THERMO_KW)
+        apply_yaml_overrides(
+            merged_yaml_cfg,
+            [
+                (freq_preflight, (("freq",),)),
+                (thermo_preflight, (("thermo",),)),
+            ],
+        )
+        for name in ("max_write", "amplitude_ang", "n_frames", "sort"):
+            if name in freq_overrides:
+                freq_preflight[name] = freq_overrides[name]
+        if "temperature" in freq_overrides:
+            thermo_preflight["temperature"] = freq_overrides["temperature"]
+        if "pressure" in freq_overrides:
+            thermo_preflight["pressure_atm"] = freq_overrides["pressure"]
+        _validate_freq_thermo_config(freq_preflight, thermo_preflight)
+
     dft_overrides: Dict[str, Any] = {}
     if dft_max_cycle is not None:
         dft_overrides["max_cycle"] = int(dft_max_cycle)
@@ -4086,7 +4137,19 @@ def cli(
     if dft_grid_level is not None:
         dft_overrides["grid_level"] = int(dft_grid_level)
 
-    dft_func_basis_use = dft_func_basis or "wb97m-v/def2-tzvpd"
+    from pdb2reaction.workflows.dft import DFT_KW as _DFT_KW
+    _dft_effective = dict(_DFT_KW)
+    apply_yaml_overrides(merged_yaml_cfg, [(_dft_effective, (("dft",),))])
+    if dft_func_basis is not None:
+        dft_func_basis_use = dft_func_basis
+    elif _dft_effective.get("func_basis"):
+        dft_func_basis_use = str(_dft_effective["func_basis"])
+    else:
+        dft_func_basis_use = (
+            f"{_dft_effective.get('func', _DFT_KW['func'])}/"
+            f"{_dft_effective.get('basis', _DFT_KW['basis'])}"
+        )
+    dft_engine_use = str(dft_engine or _dft_effective.get("engine", "gpu"))
 
     if show_config or (dry_run and verbose_level() >= 3):
         config_payload: Dict[str, Any] = {
@@ -4133,7 +4196,7 @@ def cli(
                 "tsopt_from_mep_tan": bool(tsopt_from_mep_tan),
                 "thermo": bool(do_thermo),
                 "dft": bool(do_dft),
-                "dft_engine": str(dft_engine),
+                "dft_engine": dft_engine_use,
             },
             "overrides": {
                 "tsopt": tsopt_overrides,
@@ -4620,12 +4683,11 @@ def cli(
     # in-process evaluations and recorded provenance use the same settings.
     from pdb2reaction.backends import apply_backend_model_to_calc_cfg
     apply_backend_model_to_calc_cfg(calc_cfg_shared, backend_model)
-    from pdb2reaction.backends import apply_effective_precision
-    apply_effective_precision(calc_cfg_shared, precision)
-
     # --calc-file overrides --backend with a user ASE Calculator (custom backend).
     from pdb2reaction.backends import apply_calc_file_to_calc_cfg
     apply_calc_file_to_calc_cfg(calc_cfg_shared, calc_file, calc_factory)
+    from pdb2reaction.backends import apply_effective_precision
+    apply_effective_precision(calc_cfg_shared, precision)
     _shared_provenance = calculator_provenance(calc_cfg_shared)
     _mlip_backend_shared = str(_shared_provenance["mlip_backend"])
     _mlip_model_shared = _shared_provenance["mlip_model"]
@@ -4941,11 +5003,12 @@ def cli(
                 q_int,
                 spin,
                 args_yaml,
-                dft_func_basis_use,
+                dft_func_basis,
                 dft_overrides,
                 dft_engine,
                 ref_pdb_for_tsopt_only,
                 convert_files,
+                allow_charge_mult_mismatch=dft_allow_charge_mult_mismatch,
             )
             dR = dft_payloads.get("R") or {}
             dT = dft_payloads.get("TS") or {}
@@ -5016,7 +5079,7 @@ def cli(
                     f"[post] WARNING: Failed to detect bond changes for TSOPT-only endpoints: {e}",
                     err=True,
                 )
-                bond_summary = "(no covalent changes detected)"
+                bond_summary = ""
         else:
             bond_summary = "(no covalent changes detected)"
 
@@ -5234,6 +5297,7 @@ def cli(
                         out_dir,
                         1,
                         _input_suffix,
+                        prepared_input=prepared_all_inputs[0],
                         manifest=manifest,
                     )
                     _echo(f"[all] Wrote R/TS/P for segment 01 → {_seg_out}", narrative=True)
@@ -6014,6 +6078,7 @@ def cli(
                     # the no-tsopt path-opt aggregate gates on real per-segment
                     # convergence rather than assuming the segment converged.
                     "converged": info.get("converged"),
+                    "_mep_artifacts": [str(info["traj"])],
                     "barrier_kcal": float(barrier),
                     "delta_kcal": float(delta),
                     "bond_changes": _path_search._bond_changes_block(bond_summary),
@@ -6072,19 +6137,25 @@ def cli(
             path_deliverables = _claim_path_deliverables(manifest)
             diagram = path_deliverables.get("diagram")
             if diagram is not None:
-                _move_public_logged(
+                if not _move_public_logged(
                     diagram,
                     out_dir / "energy_diagram_MEP.png",
                     label=diagram.name,
-                )
+                ):
+                    raise click.ClickException(
+                        f"Failed to promote {diagram} to the pipeline root."
+                    )
             for name, src in path_deliverables.items():
                 if name == "diagram":
                     continue
-                _move_public_logged(src, out_dir / src.name, label=src.name)
+                if not _move_public_logged(src, out_dir / src.name, label=src.name):
+                    raise click.ClickException(
+                        f"Failed to promote {src} to the pipeline root."
+                    )
 
-            # summary.json / summary.log stay COPIES: the path_dir copy is
-            # re-read (segments) and re-authored later, and the root copy is
-            # consumed by the final-summary banner.
+            # Keep the child summary in path_dir for later segment processing,
+            # while the root publication records the parent pipeline request
+            # before post-processing begins.
             _copy_public_logged(
                 manifest.path("path.summary"),
                 out_dir / "summary.json",
@@ -6093,10 +6164,9 @@ def cli(
             _refresh_current_public_outputs(manifest, out_dir)
             _persist_run_manifest(manifest, out_dir)
         except Exception as e:
-            _echo(
-                f"[all] WARNING: Failed to relocate path-opt summary files: {e}",
-                err=True,
-            )
+            raise click.ClickException(
+                f"Failed to relocate path-opt summary files: {e}"
+            ) from e
         try:
             diag_for_log: Dict[str, Any] = {}
             for diag in summary.get("energy_diagrams", []) or []:
@@ -6292,6 +6362,35 @@ def cli(
             raise click.ClickException(
                 f"[all] Current path-search summary is not a JSON object: {claimed_summary}"
             )
+        provisional_root_summary = deepcopy(path_summary_payload)
+        _enrich_summary(
+            provisional_root_summary,
+            version="",
+            pipeline_mode="path-search",
+            out_dir=out_dir,
+            mlip_backend=_mlip_backend_shared,
+            mlip_model=_mlip_model_shared,
+            mlip_precision=_mlip_precision_shared,
+            charge=q_int,
+            spin=spin,
+            command=command_str,
+            post_segments=None,
+            config={
+                "refine_path": refine_path,
+                "tsopt": do_tsopt,
+                "thermo": do_thermo,
+                "dft": do_dft,
+                "opt_mode": tsopt_opt_mode_default,
+                "path_opt_mode": opt_mode_norm,
+                "post_opt_mode": tsopt_opt_mode_default,
+                "ts_opt_mode": tsopt_opt_mode_default,
+                "endpoint_opt_mode": tsopt_opt_mode_default,
+                "mep_mode": mep_mode_kind,
+                "dmf_correlated": dmf_correlated_effective,
+            },
+            freeze_atoms=_freeze_atoms_for_log(),
+            manifest=manifest,
+        )
         path_segments = path_summary_payload.get("segments") or []
         if not isinstance(path_segments, list):
             raise click.ClickException(
@@ -6354,31 +6453,35 @@ def cli(
             # and land it at root under the canonical name.
             diagram = path_deliverables.get("diagram")
             if diagram is not None:
-                _move_public_logged(
+                if not _move_public_logged(
                     diagram,
                     out_dir / "energy_diagram_MEP.png",
                     label=diagram.name,
-                )
+                ):
+                    raise click.ClickException(
+                        f"Failed to promote {diagram} to the pipeline root."
+                    )
             for name, src in path_deliverables.items():
                 if name == "diagram":
                     continue
-                _move_public_logged(src, out_dir / src.name, label=src.name)
+                if not _move_public_logged(src, out_dir / src.name, label=src.name):
+                    raise click.ClickException(
+                        f"Failed to promote {src} to the pipeline root."
+                    )
 
             # summary.json / summary.log stay COPIES: the path_dir copy is
             # re-read (segments) and re-authored later, and the root copy is
             # consumed by the final-summary banner.
-            _copy_public_logged(
-                claimed_summary,
-                out_dir / "summary.json",
-                label="summary.json",
+            _write_summary_json(out_dir / "summary.json", provisional_root_summary)
+            _echo_detail(
+                f"[all] Published provisional summary.json → {out_dir / 'summary.json'}"
             )
             _refresh_current_public_outputs(manifest, out_dir)
             _persist_run_manifest(manifest, out_dir)
         except Exception as e:
-            _echo(
-                f"[all] WARNING: Failed to relocate path_search summary files: {e}",
-                err=True,
-            )
+            raise click.ClickException(
+                f"Failed to relocate path_search summary files: {e}"
+            ) from e
 
     # Stage 3: merge to full systems (performed by path_search when enabled)
     _echo_section(f"====== [all] Stage 3/{stage_total} — Merge into full-system templates ======")
@@ -6514,16 +6617,20 @@ def cli(
             key="path.summary",
             out_dir=out_dir,
         )
-        copied = _copy_public_logged(
-            summary_path,
-            out_dir / "summary.json",
-            label="summary.json",
-            echo=False,
-        )
-        if not copied:
-            raise click.ClickException(
-                f"Failed to publish summary.json to {out_dir / 'summary.json'}."
-            )
+        root_summary = dict(summary)
+        root_summary["command"] = command_str
+        root_diagrams = []
+        for diagram in root_summary.get("energy_diagrams", []) or []:
+            if not isinstance(diagram, dict):
+                root_diagrams.append(diagram)
+                continue
+            current = dict(diagram)
+            if str(current.get("name", "")).lower().endswith("mep"):
+                current["image"] = str(out_dir / "energy_diagram_MEP.png")
+            root_diagrams.append(current)
+        if root_diagrams:
+            root_summary["energy_diagrams"] = root_diagrams
+        _write_summary_json(out_dir / "summary.json", root_summary)
         _refresh_current_public_outputs(manifest, out_dir)
         _persist_run_manifest(manifest, out_dir)
 
@@ -6624,6 +6731,14 @@ def cli(
 
         if do_tsopt:
             _seg_tsopt_overrides = dict(tsopt_overrides)
+            if (
+                len(reactive) > 1
+                and tsopt_out_dir is not None
+                and tsopt_out_dir.is_absolute()
+            ):
+                _seg_tsopt_overrides["out_dir"] = (
+                    tsopt_out_dir / f"seg_{seg_idx:02d}"
+                )
             _hei_mode_path = seg_root / f"hei_mode_seg_{seg_idx:02d}.txt"
             mep_key = f"path.mep.{seg_idx:02d}.trajectory"
             current_mep = (
@@ -6832,6 +6947,7 @@ def cli(
                     out_dir,
                     seg_idx,
                     _input_suffix,
+                    prepared_input=prepared_all_inputs[0],
                     manifest=manifest,
                 )
                 _echo(f"[all] Wrote R/TS/P for segment {seg_idx:02d} → {_seg_out}", narrative=True)
@@ -6939,6 +7055,11 @@ def cli(
         dG_R = dG_T = dG_P = None
         freq_seg_root = _resolve_override_dir(seg_dir / "freq", freq_out_dir)
         dft_seg_root = _resolve_override_dir(seg_dir / "dft", dft_out_dir)
+        if len(reactive) > 1:
+            if freq_out_dir is not None and freq_out_dir.is_absolute():
+                freq_seg_root = freq_out_dir / f"seg_{seg_idx:02d}"
+            if dft_out_dir is not None and dft_out_dir.is_absolute():
+                dft_seg_root = dft_out_dir / f"seg_{seg_idx:02d}"
 
         if (do_thermo or do_dft) and not state_structs:
             _echo(
@@ -7091,11 +7212,12 @@ def cli(
                     q_int,
                     spin,
                     args_yaml,
-                    dft_func_basis_use,
+                    dft_func_basis,
                     dft_overrides,
                     dft_engine,
                     ref_pdb_for_seg,
                     convert_files,
+                    allow_charge_mult_mismatch=dft_allow_charge_mult_mismatch,
                 )
                 dR = dft_payloads.get("R") or {}
                 dT = dft_payloads.get("TS") or {}

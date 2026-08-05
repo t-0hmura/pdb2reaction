@@ -159,8 +159,9 @@ To add a new backend `XYZModel` exposed as `--backend xyz`:
  `"xyz": {"module": "pdb2reaction.backends.xyz", "pysis_cls": "XYZCalculator",
  "ase_cls": "XYZASECalculator"}` next to existing entries.
 4. **Declare accepted kwargs**: add the set to `_BACKEND_ACCEPTED_KEYS["xyz"]`
- and `_ASE_ACCEPTED_KEYS["xyz"]`. Add `"xyz"` to the `resolve_backend('auto')`
- fallback order if it should participate.
+ and `_ASE_ACCEPTED_KEYS["xyz"]`. If it should participate in
+ `resolve_backend('auto')`, also register its import probe in
+ `_BACKEND_AVAILABILITY_MODULES` and add `"xyz"` to the fallback tuple.
 5. **Document + smoke**: add an entry to this page's file map / per-backend
  table, document model identifiers + install command, and add an `xyz` line
  to `tests/smoke/run.sh` so the new backend is exercised end-to-end.

@@ -369,7 +369,10 @@ class EulerPC(IRC):
                             print(f"WARNING: {msg}")
                             self._oscillation_warning_shown = True
                         self.log(f"\t{msg}")
-                        return prev_coords
+                        # k_coords[-1] is the last microstep that still advanced;
+                        # prev_coords is the point the path reversed onto, which
+                        # on an immediate reversal is the unadvanced start point.
+                        return k_coords[-1].copy()
             if not reached_target:
                 raise RuntimeError(
                     "Corrector integration exhausted its mass-aware step "

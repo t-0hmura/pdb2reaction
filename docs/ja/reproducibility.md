@@ -6,14 +6,14 @@ GPU 上の MLIP 推論は、デフォルトではビット単位で再現しな�
 
 ## `--deterministic`
 
-`--deterministic` はすべての計算サブコマンド（`opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, `all`, `sp`）で受け付けられます。`torch.use_deterministic_algorithms` と `index_reduce_` shim を有効化して PyTorch に strict determinism を要求しますが、任意の custom ASE calculator やすべての third-party custom kernel を制御することはできません。
+`--deterministic` は列挙した MLIP-backed command（`opt`, `tsopt`, `freq`, `irc`, `scan`, `scan2d`, `scan3d`, `path-opt`, `path-search`, `all`, `sp`）で受け付けられます。standalone/out-of-process DFT は制御しません。in-process MLIP stage では `torch.use_deterministic_algorithms` と `index_reduce_` shim を有効化して PyTorch に strict determinism を要求しますが、任意の custom ASE calculator やすべての third-party custom kernel を制御することはできません。
 
 ```bash
 pdb2reaction opt -i input.pdb -q 0 --deterministic
 pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --deterministic
 ```
 
-- これは**プロセス全体に作用します**。`all` で設定すると内部のすべてのステージに伝播するため、ステージごとに渡す必要はありません。
+- これは同一 process 内の MLIP stage に作用します。`all` の in-process MLIP stage には伝播しますが、別 process の DFT までは制御しません。
 - これは**より低速です**。決定的な scatter/reduce カーネルはデフォルトのものよりスループットが低くなります。厳密な同一 stack 再実行性が必要な場合にのみ使用してください。
 - PyTorch が非決定的と認識する演算に決定的 kernel がなければ**明示的に失敗します**。PyTorch の管理外にある外部/custom kernel まで検出する保証ではありません。
 - 環境変数 `PDB2REACTION_STRICT_DETERMINISTIC=1` は、CI や直接の Python API（`create_calculator`）に対する同等のエントリポイントです。
@@ -48,7 +48,7 @@ OMol で学習された UMA バックエンドでは fp64 が TS 最適化と He
 
 AIMNet2 はこれらの機能には対応していません:
 
-- **`--precision fp64`** — AIMNet2 のモデル入力は上流で float32 にキャストされるため、「fp64」実行は実際には fp64 になりません。
+- **`--precision fp64`** — AIMNet2 のモデル入力は上流で float32 にキャストされるため、この指定は受理せずエラーにします。`auto` または `fp32` を使用してください。
 - **`--deterministic`** — AIMNet2 はカスタム CUDA カーネルを通じて原子間力を計算しますが、これは `torch.use_deterministic_algorithms` の制御外にあるため、原子間力はビット単位で再現可能ではありません（エネルギーは再現可能です）。PyTorch の決定的モードはこのカスタム演算を検出も制御もしないため、この制限は明示的に報告されます。
 
 厳密な同一 stack 再実行性が必要なら、対応 backend に

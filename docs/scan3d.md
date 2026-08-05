@@ -108,8 +108,8 @@ Grid-point geometries use `Å×100` tags, so `point_i130_j310_k200.xyz` correspo
 | --- | --- | --- |
 | **Input & charge** | | |
 | `-i, --input PATH` | Structure file accepted by `geom_loader`. | Required unless `--csv` is provided |
-| `-q, --charge INT` | Total charge (CLI > template/`--ligand-charge/-l`). Overrides `--ligand-charge/-l` when both are set. | Required unless template/derivation applies |
-| `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB/mmCIF residue metadata. Used when `-q` is omitted (PDB/mmCIF inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
+| `-q, --charge INT` | Total charge for a fresh scan (CLI > template/`--ligand-charge/-l`). Overrides `--ligand-charge/-l` when both are set. Not needed in plot-only `--csv` mode. | Required for a fresh scan unless template/derivation applies |
+| `-l, --ligand-charge TEXT` | For a fresh scan, either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB/mmCIF residue metadata. Used when `-q` is omitted. Not used in plot-only `--csv` mode. | _None_ |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
 | **Backend & compute** | | |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
@@ -137,7 +137,7 @@ Grid-point geometries use `Å×100` tags, so `point_i130_j310_k200.xyz` correspo
 | `-o, --out-dir TEXT` | Output directory root for grids and plots. | `./result_scan3d/` |
 | `--csv PATH` | Load an existing `surface.csv` and only plot it (no new scan). `-i/--input` and `--scan-lists/-s` become optional. | _None_ |
 | `--dump/--no-dump` | Write `inner_path_d1_###_d2_###_trj.xyz` for each (d₁, d₂). | `False` |
-| `--baseline {min,first}` | Shift kcal/mol energies so the global min or `(i,j,k)=(0,0,0)` is zero. | `min` |
+| `--baseline {min,first}` | Shift Hartree-backed energies so the global min or first eligible grid point is zero. With kcal-only `--csv` input, retain the supplied zero. | `min` |
 | `--zmin FLOAT`, `--zmax FLOAT` | Manual limits for the isosurface color bands (kcal/mol). | Autoscaled |
 | `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
 | `--config FILE` | Base YAML configuration file (applied first). | _None_ |
@@ -149,7 +149,8 @@ The full flag list is in the generated [command reference](reference/commands/in
 ### Shared YAML sections
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical knobs to those documented for
   [YAML Reference](yaml-reference.md), except run-scoped `opt.dump` is ignored.
-  Use `--dump` for scan trajectory output.
+  Use `--dump` for scan trajectory output. Set the command-owned output
+  directory with `-o/--out-dir`; optimizer `out_dir` YAML keys are ignored.
 
 ```yaml
 geom:
@@ -164,13 +165,10 @@ opt:
  thresh: baker # convergence preset (default: baker)
  max_cycles: 10000 # optimizer cycle cap
  dump: false # optimizer dumps (scan trajectories are controlled by --dump)
- out_dir: ./result_scan3d/ # output directory
 lbfgs:
  max_step: 0.3 # maximum step length
- out_dir: ./result_scan3d/ # L-BFGS-specific output directory
 rfo:
  trust_radius: 0.10 # trust-region radius
- out_dir: ./result_scan3d/ # RFO-specific output directory
 bias:
  k: 300.0 # harmonic bias strength (eV·Å⁻²)
 ```
@@ -184,7 +182,9 @@ bias:
 - Ångström limits are converted to Bohr internally to cap L-BFGS steps and RFO
   trust radii; optimizer scratch files live under temporary directories.
 - `--baseline` defaults to the global minimum; `--baseline first` anchors the
-  `(i,j,k)=(0,0,0)` grid point when present.
+  `(i,j,k)=(0,0,0)` grid point when eligible, otherwise it falls back to the
+  eligible minimum. For plot-only CSV containing `energy_kcal` but no
+  `energy_hartree`, the supplied zero is retained.
 - 3D visualization uses RBF interpolation on a 50×50×50 grid with
   semi-transparent step-colored isosurfaces (no cross-sectional planes).
 - `--freeze-links` merges user `freeze_atoms` with detected cap-H parents for

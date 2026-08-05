@@ -108,6 +108,30 @@ def test_aimnet_explicit_device_is_not_silently_dropped(monkeypatch) -> None:
     assert isinstance(calculator._calculator, DeviceRejectingCalculator)
 
 
+def test_aimnet_energy_force_call_does_not_request_hessian() -> None:
+    from pdb2reaction.backends import aimnet2
+
+    captured = {}
+
+    def fake_calculator(_data, *, forces, hessian):
+        captured.update(forces=forces, hessian=hessian)
+        return {
+            "energy": np.array([1.25]),
+            "forces": np.zeros((1, 3)),
+        }
+
+    calculator = object.__new__(aimnet2.AIMNet2Calculator)
+    calculator._calculator = fake_calculator
+    calculator.charge = 0
+    calculator.mult = 1
+
+    energy, forces = calculator._call(["H"], [[0.0, 0.0, 0.0]])
+
+    assert energy == pytest.approx(1.25)
+    np.testing.assert_allclose(forces, 0.0)
+    assert captured == {"forces": True, "hessian": False}
+
+
 def test_aimnet_ase_adapter_forwards_charge_spin_and_results(monkeypatch) -> None:
     from ase import Atoms
     from ase.calculators.calculator import Calculator
@@ -254,3 +278,27 @@ def test_mace_download_cache_is_url_specific_and_atomic(
     assert first.read_text(encoding="utf-8") == "https://one.test/model.pt"
     assert second.read_text(encoding="utf-8") == "https://two.test/model.pt"
     assert published == [first, second]
+
+
+def test_calc_factory_requires_an_effective_calculator_file() -> None:
+    """A configured factory without a calculator file must not run a built-in."""
+    import click
+
+    from pdb2reaction.backends import apply_calc_file_to_calc_cfg
+
+    with pytest.raises(click.BadParameter, match="calc_factory"):
+        apply_calc_file_to_calc_cfg(
+            {"backend": "uma", "calc_factory": "get_calculator"}
+        )
+
+    # A YAML factory stays valid when a CLI calc-file supplies the module.
+    cfg = {"backend": "uma", "calc_factory": "make_calc"}
+    apply_calc_file_to_calc_cfg(cfg, calc_file="/tmp/user_calc.py")
+    assert cfg["backend"] == "custom"
+    assert cfg["calc_file"] == "/tmp/user_calc.py"
+    assert cfg["calc_factory"] == "make_calc"
+
+    # No calc-file and no factory keeps the --backend selection untouched.
+    plain = {"backend": "uma", "model": "uma-s-1p2"}
+    apply_calc_file_to_calc_cfg(plain)
+    assert plain == {"backend": "uma", "model": "uma-s-1p2"}

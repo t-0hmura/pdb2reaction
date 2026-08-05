@@ -77,7 +77,7 @@ pip install -e .
 # 3. Authenticate Hugging Face once (only required for the default UMA backend)
 #    Accept the FAIR Chemistry License v1 at https://huggingface.co/facebook/UMA, then:
 hf auth login                               # interactive
-# OR: export HF_TOKEN=hf_xxx && hf auth login --token "$HF_TOKEN" --add-to-git-credential   # CI / HPC
+# OR, for non-interactive CI/HPC jobs: export HF_TOKEN=hf_xxx
 ```
 
 **Optional extras** (install only what you need):
@@ -98,11 +98,11 @@ Examples use GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int.
 
 ```bash
 # Multi-structure MEP (R + P → MEP, with TS + thermochemistry)
-pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
+pdb2reaction -i examples/1.R.pdb examples/3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     --tsopt --thermo --out-dir result_mep
 
 # Scan mode (single structure → staged bond scan → MEP)
-pdb2reaction -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
+pdb2reaction -i examples/1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' --tsopt --thermo --out-dir result_scan
 
 # TS-only validation (single TS candidate → tsopt → IRC → freq)

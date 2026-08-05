@@ -4,7 +4,7 @@
 
 反応物と生成物の **2 端点**（R → P）が揃っており、再帰的な精密化なしで MEP の初期推定だけが必要な場面で使用します。ストリングベースの経路生成には GSM（デフォルト）を、Direct Max Flux 生成器には `--mep-mode dmf` で DMF を選択します。
 
-MLIP バックエンド（デフォルト: UMA、`-b/--backend` で ORB ・ MACE ・ AIMNet2 も選択可能）で各イメージのエネルギー/勾配/Hessian を評価します。最適化の前に剛体アライメントを行い、ストリングの安定性を向上させます。`freeze_atoms` を指定した場合、RMSD フィットにはその原子群のみを使用しますが、変換自体は全原子に適用されます。
+MLIP バックエンド（デフォルト: UMA、`-b/--backend` で ORB・MACE・AIMNet2 も選択可能）で MEP image の energy/force を評価します。Hessian は選択された単一構造 optimizer の step だけで使用し、GSM/DMF path scoring では要求しません。最適化の前に剛体アライメントを行い、ストリングの安定性を向上させます。`freeze_atoms` を指定した場合、RMSD フィットにはその原子群のみを使用しますが、変換自体は全原子に適用されます。
 
 ```{note}
 **DMF モードでの凍結原子**は、GSM で使用される pysisyphus のハード座標凍結ではなく、`HarmonicFixAtoms`（k=300 eV/Å² の調和拘束）を使用します。そのため、DMF での凍結原子は参照位置からわずかに移動する可能性があり、GSM モードの剛体凍結とは挙動が異なります。
@@ -72,7 +72,7 @@ DMF モードは追加で `cyipopt` が必要です（`--mep-mode dmf` 実行前
 out_dir/
 ├─ final_geometries_trj.xyz # XYZ経路（コメント行にエネルギーを保持）
 ├─ final_geometries.pdb # PDB 参照が利用可能で変換が有効な場合の全画像 PDB
-├─ final_geometries.gjf # Gaussian テンプレート検出時の対応する Gaussian（変換有効時）
+├─ final_geometries.gjf # GSMのみ: Gaussian template検出時（変換有効時）
 ├─ hei.xyz # 最高エネルギー画像（コメント行にエネルギーを保持）
 ├─ hei.pdb # PDB 参照が利用可能な場合のHEI（変換有効時）
 ├─ hei.gjf # Gaussian テンプレートを使用して書き込まれたHEI（変換有効時）
@@ -107,8 +107,8 @@ out_dir/
 | `--mep-mode {gsm\|dmf}` | GSM（ストリングベース）または DMF（Direct Max Flux）経路生成器を選択 | `gsm` |
 | `--dmf-backend {cpu\|gpu}` | DMF 計算バックエンド（`--mep-mode dmf` 時のみ）: `gpu`（`dmf.torch`/CUDA）または `cpu`（`dmf`/NumPy）。GPU メモリ不足時は `cpu` で再実行 | `gpu` |
 | `--max-cycles INT` | MEP 最適化サイクル上限（`stopt.max_cycles`、`stopt.stop_in_when_full`、`dmf.max_cycles` を同時設定） | `300` |
-| `--climb/--no-climb` | クライミングイメージ精密化を有効化（Lanczos 接線も同時切替） | `True` |
-| `--dump/--no-dump` | MEP 軌跡をダンプ（GSM/DMF）。リスタート YAML は YAML で有効化した場合のみ書き出されます | `False` |
+| `--climb/--no-climb` | GSM の climbing-image 精密化を有効化（Lanczos 接線も同時切替）。DMF では受理するが未使用 | `True` |
+| `--dump/--no-dump` | GSM／単一構造 optimizer の軌跡を dump。DMF path solver では受理するが未使用。restart YAML は YAML で有効化した場合のみ書き出す | `False` |
 | `--opt-mode TEXT` | エンドポイント事前最適化用の単一構造オプティマイザ（`grad` = L-BFGS、`hess` = RFO） | `grad` |
 | `--convert-files/--no-convert-files` | 入力トポロジー／テンプレートに応じた XYZ/TRJ → PDB/CIF/GJF companion 生成の切り替え | `True` |
 | `--ref-pdb FILE` | XYZ/GJF 入力用の参照 PDB/mmCIF トポロジー（XYZ 座標を保持して変換を有効化） | _None_ |
@@ -124,7 +124,7 @@ out_dir/
 | `--dry-run/--no-dry-run` | 実行せずに検証と実行計画表示のみを行う | `False` |
 | `--preopt/--no-preopt` | アライメント/MEP 探索前に各エンドポイントを事前最適化（GSM/DMF）。 | `True` |
 | `--preopt-max-cycles INT` | エンドポイント事前最適化サイクルの上限 | `10000` |
-| `--fix-ends/--no-fix-ends` | GSM 成長/精密化中にエンドポイント構造を固定 | `True` |
+| `--fix-ends/--no-fix-ends` | GSM 成長/精密化中に endpoint 構造を固定。DMF では受理するが未使用 | `True` |
 | `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 
 ## YAML 設定

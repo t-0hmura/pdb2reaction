@@ -221,10 +221,16 @@ def _deterministic_callback(ctx, param, value):
     # run as non-deterministic when it is not.
     from pdb2reaction.backends._determinism import is_deterministic_requested
     if is_deterministic_requested():
+        source = ctx.get_parameter_source(param.name)
+        suffix = (
+            " despite --no-deterministic"
+            if source is click.core.ParameterSource.COMMANDLINE
+            else ""
+        )
         click.echo(
             "[determinism] NOTE: PDB2REACTION_STRICT_DETERMINISTIC=1 is set in "
-            "the environment, so this run stays strictly deterministic despite "
-            "--no-deterministic. Unset the variable to disable it.",
+            f"the environment, so this run stays strictly deterministic{suffix}. "
+            "Unset the variable to disable it.",
             err=True,
         )
     return value
@@ -278,10 +284,11 @@ def add_allow_charge_mult_mismatch_option() -> Callable[[Callable], Callable]:
     """Attach ``--allow-charge-mult-mismatch`` to a Click command.
 
     Skips the cluster charge/multiplicity electron-parity check (``validate_charge_spin``)
-    and logs that it was skipped. For users who know their (charge, multiplicity) is intentional
-    despite a parity warning -- e.g. a genuinely open-shell cluster, or a modified/covalently-linked
-    residue whose cluster cut leaves an unpaired electron. Process-global via an eager, value-less
-    callback, so it propagates to every backend and child stage without per-stage forwarding.
+    and logs that it was skipped. Every integer-electron spin state obeys the parity
+    relation, so an open-shell cluster needs a matching multiplicity rather than this
+    option. Reserved for users who intentionally submit a nonstandard electron count.
+    Process-global via an eager, value-less callback, so it propagates to every backend
+    and child stage without per-stage forwarding.
     """
     def decorator(func: Callable) -> Callable:
         return click.option(
@@ -293,7 +300,8 @@ def add_allow_charge_mult_mismatch_option() -> Callable[[Callable], Callable]:
             callback=_allow_charge_mult_mismatch_callback,
             help=(
                 "Skip the cluster charge/multiplicity electron-parity check (logs that it was "
-                "skipped). For an intentional open-shell or modified-residue cluster."
+                "skipped). Open-shell clusters need a matching multiplicity instead; use this "
+                "only for an intentionally nonstandard electron count."
             ),
         )(func)
     return decorator

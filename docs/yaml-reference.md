@@ -37,8 +37,8 @@ This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan
 | `--solvent` | `solvent` | `calc` |
 | _(YAML only)_ | `device` | `calc` |
 | `--thresh` | `thresh` | `opt` |
-| `--max-cycles` | `max_cycles` | `opt` |
-| `--dump` | `dump` | `opt` |
+| `--max-cycles` | `max_cycles` | Command-specific: `opt` for `opt`/`tsopt`, `irc` for `irc`, and `stopt` or `dmf` for the selected path engine |
+| `--dump` | `dump` | Command-specific optimizer/path owner (`opt`, `stopt`, or selected child configuration) |
 | `--opt-mode` | _(CLI only)_ | — |
 | `--freeze-atoms` | `freeze_atoms` | `geom` |
 | `--coord-type` | `coord_type` | `geom` |
@@ -117,7 +117,7 @@ geom:
 
 **Notes:**
 - `freeze_atoms` from YAML is merged with atoms detected via `--freeze-links` for PDB/mmCIF topology inputs
-- Frozen atoms have zeroed forces; their Hessian columns are also zeroed
+- Frozen atoms have zeroed forces. With the default `return_partial_hessian: true`, Hessian evaluation returns only the active-DOF block; setting it false returns a full matrix with frozen rows and columns zeroed
 - Cartesian PHVA always uses the constrained treatment, removing only full-system rigid motions that leave frozen anchors fixed; see [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries)
 - For `irc`, `geom.coord_type` is forced to `cart` after YAML/CLI merging
 
@@ -130,7 +130,7 @@ MLIP backend configuration. Supports multiple backends (UMA, ORB, MACE, AIMNet2)
 ```yaml
 calc:
  backend: uma           # MLIP backend: "uma", "orb", "mace", or "aimnet2"
- precision: auto # auto (per backend: uma fp32, orb/mace fp64) | fp32 | fp64; routed to the backend-native kwarg (ORB precision, MACE default_dtype)
+ precision: auto # auto (uma/aimnet2 fp32, orb/mace fp64) | fp32 | fp64; aimnet2 accepts auto/fp32 and rejects fp64
  charge: 0 # Total system charge (overridden by CLI -q)
  spin: 1 # Spin multiplicity 2S+1 (overridden by CLI -m)
  model: uma-s-1p2 # uma-s-1p2 | uma-m-1p1
@@ -239,7 +239,7 @@ lbfgs:
  mu_reg: null # Regularization strength
  max_mu_reg_adaptions: 10 # Cap on mu adaptations
  reject_uphill: false # Opt in to rejecting energy rises above the tolerance
- uphill_tolerance: 0.001 # Energy-rise tolerance (Hartree)
+ uphill_tolerance: 0.0001 # Energy-rise tolerance (Hartree)
  rejection_step_floor: 1.0e-07 # Smallest retry step
  max_rejections_at_floor: 3 # Stop after repeated rejection at the floor
 ```
@@ -259,7 +259,7 @@ rfo:
  trust_max: 0.10 # Maximum trust radius (bohr)
  max_energy_incr: null # Allowed energy increase per step
  reject_uphill: false # Opt in to rejecting energy rises above the tolerance
- uphill_tolerance: 0.001 # Energy-rise tolerance (Hartree)
+ uphill_tolerance: 0.0001 # Energy-rise tolerance (Hartree)
  rejection_trust_floor: 1.0e-07 # Smallest retry trust radius
  max_rejections_at_floor: 3 # Stop after repeated rejection at the floor
  hessian_update: bfgs # Hessian update scheme: bfgs, bofill, etc.
@@ -320,6 +320,7 @@ For DMF, `--max-nodes` is forwarded as `DirectMaxFlux(nmove=...)`; the installed
 
 ```yaml
 dmf:
+ backend: gpu # gpu (dmf.torch / CUDA, default) | cpu (dmf / NumPy)
  max_cycles: 300 # Maximum DMF/IPOPT iterations (overridden by --max-cycles)
  tol: tight # IPOPT dual_inf_tol: tight (0.04) | middle (0.10) | loose (0.20) or a positive float (overridden by --thresh-dmf)
  correlated: true # Correlated DMF propagation
@@ -346,6 +347,7 @@ dmf:
    eps_rot: 0.01 # Rotational tolerance
    beta: 10.0 # Beta parameter for DMF
    update_teval: false # Update transition evaluation
+ ipopt_options: {} # Raw IPOPT options, e.g. {dual_inf_tol: 0.04}
  k_fix: 300.0 # Harmonic constant for restraints (top-level dmf key, NOT under dmf_options)
 ```
 
@@ -659,10 +661,12 @@ stopt:
 
 opt:
  thresh: gau
- lbfgs:                     # also accepted at top-level as `lbfgs:`
-   max_cycles: 10000
- rfo:                       # also accepted at top-level as `rfo:`
-   max_cycles: 10000
+
+lbfgs:
+ max_cycles: 10000
+
+rfo:
+ max_cycles: 10000
 
 bond:
  bond_factor: 1.2

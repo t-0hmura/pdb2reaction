@@ -675,10 +675,9 @@ def _verbose_callback(ctx: click.Context, param: click.Parameter, value: int) ->
 
 
 # Subcommands that run an iterative optimizer, so their -v 2 genuinely adds
-# per-cycle optimizer tables and GPU VRAM accounting. Every other subcommand
-# is a single-shot compute (sp/freq/dft) or a lightweight IO/analysis step:
-# its -v 2 adds detailed step logging + deliverable paths but no optimizer
-# cycle tables or VRAM lines, so claiming them in the help would mislead.
+# per-cycle optimizer tables. Other subcommands are single-shot compute or
+# lightweight IO/analysis steps. A backend may still emit its own Hessian VRAM
+# detail for any command that evaluates a Hessian, including freq and sp.
 _OPTIMIZER_SUBCOMMANDS = frozenset({
     "all", "opt", "tsopt", "irc",
     "scan", "scan2d", "scan3d",
@@ -688,8 +687,8 @@ _OPTIMIZER_SUBCOMMANDS = frozenset({
 
 def _verbose_help(name: str | None) -> str:
     """`-v/--verbose` help text, specialised per subcommand so the level-2
-    description never claims optimizer cycle tables / VRAM for the non-optimizer
-    commands (extract, sp, freq, dft, file IO, analysis)."""
+    description never claims optimizer cycle tables for non-optimizer commands
+    (extract, sp, freq, dft, file IO, analysis)."""
     if name in _OPTIMIZER_SUBCOMMANDS:
         level2 = "optimizer cycle tables, per-stage timing, VRAM, deliverable paths"
     else:

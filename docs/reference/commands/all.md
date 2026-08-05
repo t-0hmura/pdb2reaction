@@ -100,8 +100,8 @@ Options:
   --max-nodes INTEGER             Movable internal images per GSM/DMF segment;
                                   the complete segment has max_nodes+2 images
                                   including endpoints.  [default: 20]
-  --max-cycles INTEGER            Maximum GSM optimization cycles.  [default:
-                                  300]
+  --max-cycles INTEGER            Maximum optimization cycles for the selected
+                                  MEP/path child (GSM or DMF).  [default: 300]
   --climb BOOLEAN                 Enable climbing image for standard GSM
                                   segments (bridge segments always disable
                                   climbing).  [default: True]
@@ -234,8 +234,8 @@ Options:
                                   1e-9.
   --dft-grid-level INTEGER        Override dft --grid-level value. Defaults to
                                   3.
-  --dft-engine [gpu|cpu]          DFT backend: gpu (GPU4PySCF, raises error if
-                                  unavailable) or cpu (PySCF).  [default: gpu]
+  --dft-engine [gpu|cpu]          Override the DFT backend (gpu or cpu); omitted
+                                  values inherit YAML/defaults.
   -s, --scan-lists TEXT           Scan targets: inline Python literal. Multiple
                                   inline literals define sequential stages, e.g.
                                   '[(12,45,1.35)]'
@@ -292,8 +292,9 @@ Options:
                                   shim). Slower; raises for detected unsupported
                                   ops; custom calculators are outside its scope.
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
-                                  parity check (logs that it was skipped). For
-                                  an intentional open-shell or modified-residue
-                                  cluster.
+                                  parity check (logs that it was skipped). Open-
+                                  shell clusters need a matching multiplicity
+                                  instead; use this only for an intentionally
+                                  nonstandard electron count.
   -h, --help                      Show this message and exit.
 ```

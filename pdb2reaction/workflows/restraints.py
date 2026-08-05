@@ -133,7 +133,10 @@ class HarmonicFixAtoms(Calculator):
             )
         self.indices = idx
         self.ref_positions = ref_pos
-        self.k_fix = float(k_fix)
+        resolved_k_fix = float(k_fix)
+        if not np.isfinite(resolved_k_fix) or resolved_k_fix < 0.0:
+            raise ValueError("k_fix must be finite and non-negative.")
+        self.k_fix = resolved_k_fix
 
     def calculate(self, atoms, properties, system_changes):
         super().calculate(atoms, properties, system_changes)

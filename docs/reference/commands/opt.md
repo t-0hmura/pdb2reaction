@@ -13,8 +13,9 @@ Options:
                                   paths, DEBUG logging).  [0<=x<=3]
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
-  -i, --input FILE                Input structure file (.pdb, .cif, .mmcif,
-                                  .xyz, .gjf, _trj.xyz, ...).  [required]
+  -i, --input FILE                Single-geometry input (.pdb, .cif, .mmcif,
+                                  .xyz, or .gjf). Extract a trajectory frame to
+                                  .xyz before use.  [required]
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
                                   predictor. NOTE: with UMA, workers>1 plus an
                                   explicit Analytical Hessian request is an
@@ -119,8 +120,9 @@ Options:
                                   shim). Slower; raises for detected unsupported
                                   ops; custom calculators are outside its scope.
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
-                                  parity check (logs that it was skipped). For
-                                  an intentional open-shell or modified-residue
-                                  cluster.
+                                  parity check (logs that it was skipped). Open-
+                                  shell clusters need a matching multiplicity
+                                  instead; use this only for an intentionally
+                                  nonstandard electron count.
   -h, --help                      Show this message and exit.
 ```

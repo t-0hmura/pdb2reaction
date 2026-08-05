@@ -91,8 +91,8 @@ out_dir/ (デフォルト:./result_scan3d/)
 | --- | --- | --- |
 | **入力と電荷** | | |
 | `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル（PDB / XYZ / TRJ / GJF） | `--csv` 未指定時は必須 |
-| `-q, --charge INT` | 総電荷（CLI > テンプレート/`--ligand-charge`）。両方指定時は `-q` が優先 | テンプレート/導出がない場合は必須 |
-| `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB/mmCIF 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB/mmCIF 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
+| `-q, --charge INT` | 新規 scan の総電荷（CLI > template/`--ligand-charge`）。両方指定時は `-q` が優先。plot-only `--csv` mode では不要 | 新規 scan で template/導出がない場合は必須 |
+| `-l, --ligand-charge TEXT` | 新規 scan で、単一整数または残基別 mapping から PDB/mmCIF の総電荷を導出。`-q` 省略時に使用。plot-only `--csv` mode では使用しない | _None_ |
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
 | **バックエンドと計算** | | |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
@@ -120,7 +120,7 @@ out_dir/ (デフォルト:./result_scan3d/)
 | `-o, --out-dir TEXT` | グリッドとプロットの出力ディレクトリ | `./result_scan3d/` |
 | `--csv PATH` | 既存の `surface.csv` を読み込みプロットのみ実行（新規スキャンなし）。指定時は `-i/--input` と `-s/--scan-lists` が任意になります | _None_ |
 | `--dump/--no-dump` | 各 (d₁, d₂) ペアの `inner_path_d1_###_d2_###_trj.xyz` を保存 | `False` |
-| `--baseline {min,first}` | kcal/mol の基準をグローバル最小値または `(i,j,k)=(0,0,0)` に設定 | `min` |
+| `--baseline {min,first}` | Hartree 列がある energy の基準を global minimum または最初の eligible grid point に設定。kcal-only の `--csv` input は与えられた zero を保持 | `min` |
 | `--zmin FLOAT`, `--zmax FLOAT` | 等値面の色範囲（kcal/mol） | 自動 |
 | `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 | `--config FILE` | ベース YAML 設定ファイル（最初に適用） | _None_ |
@@ -128,7 +128,7 @@ out_dir/ (デフォルト:./result_scan3d/)
 ## YAML 設定
 
 ### 共有 YAML セクション
-- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml-reference.md) と同じキーを使用しますが、run-scoped の `opt.dump` は無視されます。軌跡出力は `--dump` で制御します。
+- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml-reference.md) と同じキーを使用しますが、run-scoped の `opt.dump` と optimizer `out_dir` は無視されます。軌跡出力は `--dump`、output directory は command-owned の `-o/--out-dir` で制御します。
 
 ```yaml
 geom:
@@ -143,13 +143,10 @@ opt:
  thresh: baker # convergence preset (default: baker)
  max_cycles: 10000 # optimizer cycle cap
  dump: false # optimizer dumps (scan trajectories are controlled by --dump)
- out_dir: ./result_scan3d/ # output directory
 lbfgs:
  max_step: 0.3 # maximum step length
- out_dir: ./result_scan3d/ # L-BFGS-specific output directory
 rfo:
  trust_radius: 0.10 # trust-region radius
- out_dir: ./result_scan3d/ # RFO-specific output directory
 bias:
  k: 300.0 # harmonic bias strength (eV·Å⁻²)
 ```
@@ -165,7 +162,7 @@ bias:
 - 3D グリッドは点数が急激に増加するため、まず `--max-step-size` を大きくするか範囲を狭めることを検討してください。
 - 計算エンジンは MLIP バックエンド（デフォルト: UMA）で、1D/2D スキャンと同じ `HarmonicBiasCalculator` を再利用します。
 - Å 単位の制限値は内部で Bohr に変換され、L-BFGS ステップや RFO 信頼半径の制御に使われます。最適化の一時ファイルはテンポラリディレクトリに配置されます。
-- `--baseline` はデフォルトでグローバル最小値を基準としてゼロにします。`--baseline first` は `(i,j,k)=(0,0,0)` の格子点を基準にします。
+- `--baseline` はデフォルトでグローバル最小値を基準としてゼロにします。`--baseline first` は `(i,j,k)=(0,0,0)` が eligible ならその点を使い、対象外なら eligible minimum へ fallback します。`energy_hartree` がなく `energy_kcal` だけの plot-only CSV では、与えられた zero を保持します。
 - 3D 可視化は 50×50×50 グリッドでの RBF 補間と、半透明の段階的等値面を使用します（断面表示はありません）。
 - `--freeze-links` はユーザー指定の `freeze_atoms` にキャップ水素親原子をマージし、抽出された活性部位モデルの境界を固定します。
 - `-s/--scan-lists` の解釈結果を確認したい場合は `--print-parsed` を追加してください。

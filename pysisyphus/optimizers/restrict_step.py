@@ -34,9 +34,9 @@ def restrict_step(steps, max_step):
 # than bonds, which fixes the dominant failure mode of pysis's plain L2
 # norm where a single flexible dihedral consumes the whole step.
 #
-# This is a pure helper — caller (e.g., an opt-in branch inside RSI-RFO)
-# decides when to substitute it for `np.linalg.norm`. Not yet wired into
-# any optimizer dispatch.
+# `HessianOptimizer.update_trust_radius` substitutes this for
+# `np.linalg.norm` when the opt-in `weighted_trust` flag is set and the
+# geometry carries internals whose `typed_prims` match the step length.
 # ---------------------------------------------------------------------------
 
 import numpy as np

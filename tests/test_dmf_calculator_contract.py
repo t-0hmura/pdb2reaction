@@ -6,6 +6,7 @@ from copy import deepcopy
 from pathlib import Path
 
 import click
+import numpy as np
 import pytest
 
 import pdb2reaction.backends as backends
@@ -219,6 +220,22 @@ def test_main_dmf_ipopt_options_reach_primary_solve(tmp_path: Path) -> None:
     assert options == {"tol": 1.0e-8, "print_level": 3}
 
 
+@pytest.mark.parametrize("invalid", [0, -1, 1.5, True, float("nan")])
+def test_main_dmf_ipopt_options_reject_invalid_explicit_cycle_budget(
+    tmp_path: Path, invalid,
+) -> None:
+    with pytest.raises(click.BadParameter, match="dmf.max_cycles"):
+        path_opt._main_dmf_ipopt_options({}, tmp_path, invalid)
+
+
+@pytest.mark.parametrize("invalid", [-1.0, float("nan"), float("inf")])
+def test_harmonic_fix_atoms_rejects_invalid_force_constant(invalid) -> None:
+    from pdb2reaction.workflows.restraints import HarmonicFixAtoms
+
+    with pytest.raises(ValueError, match="finite and non-negative"):
+        HarmonicFixAtoms([0], np.zeros((1, 3)), k_fix=invalid)
+
+
 def test_dmf_interpolation_cache_is_released_without_emptying_mid_phase() -> None:
     calls = []
 
@@ -232,7 +249,10 @@ def test_dmf_interpolation_cache_is_released_without_emptying_mid_phase() -> Non
     assert calls == [False]
 
 
-def test_torch_dmf_runtime_options_disable_unused_history_and_preserve_precision() -> None:
+def test_torch_dmf_runtime_options_disable_unused_history_and_preserve_precision(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(path_opt.torch.cuda, "is_available", lambda: True)
     assert path_opt._torch_dmf_runtime_kwargs(
         "cpu", {"keep_history": True}, {}, {}
     ) == {}
@@ -244,10 +264,24 @@ def test_torch_dmf_runtime_options_disable_unused_history_and_preserve_precision
     ) == {"keep_history": False, "device": "cuda", "dtype": "float64"}
     assert path_opt._torch_dmf_runtime_kwargs(
         "gpu", {"keep_history": True}, {}, {}
-    ) == {"keep_history": True}
+    ) == {"keep_history": True, "device": "cuda"}
     assert path_opt._torch_dmf_runtime_kwargs(
         "gpu", {"keep_history": True}, {}, {}, supports_keep_history=False
-    ) == {}
+    ) == {"device": "cuda"}
+
+
+def test_default_gpu_dmf_backend_requires_cuda(monkeypatch) -> None:
+    """The public gpu backend must not silently compute on the CPU."""
+    monkeypatch.setattr(path_opt.torch.cuda, "is_available", lambda: False)
+
+    with pytest.raises(click.ClickException, match="requires CUDA"):
+        path_opt._torch_dmf_runtime_kwargs("gpu", {}, {}, {})
+
+    # An explicit expert device stays in charge, and the cpu backend is unaffected.
+    assert path_opt._torch_dmf_runtime_kwargs(
+        "gpu", {"device": "cpu"}, {}, {}
+    ) == {"keep_history": False, "device": "cpu"}
+    assert path_opt._torch_dmf_runtime_kwargs("cpu", {}, {}, {}) == {}
 
 
 def test_requested_preopt_failure_prevents_path_opt_success() -> None:

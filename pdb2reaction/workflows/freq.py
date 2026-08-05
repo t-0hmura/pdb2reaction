@@ -279,6 +279,54 @@ def _validated_thermo_condition(value: object, *, name: str) -> float:
     return resolved
 
 
+def _validate_freq_thermo_config(
+    freq_cfg: Dict[str, Any], thermo_cfg: Dict[str, Any]
+) -> None:
+    """Validate and normalize the frequency/thermochemistry configuration."""
+
+    thermo_cfg["symmetry_number"] = _validated_symmetry_number(
+        thermo_cfg.get("symmetry_number")
+    )
+    thermo_cfg["temperature"] = _validated_thermo_condition(
+        thermo_cfg.get("temperature"), name="temperature"
+    )
+    thermo_cfg["pressure_atm"] = _validated_thermo_condition(
+        thermo_cfg.get("pressure_atm"), name="pressure_atm"
+    )
+    max_write_value = freq_cfg.get("max_write")
+    n_frames_value = freq_cfg.get("n_frames")
+    amplitude_value = freq_cfg.get("amplitude_ang")
+    if (
+        isinstance(max_write_value, bool)
+        or not isinstance(max_write_value, (int, np.integer))
+        or int(max_write_value) < 0
+    ):
+        raise click.BadParameter(
+            f"freq.max_write must be a non-negative integer, got {max_write_value!r}."
+        )
+    if (
+        isinstance(n_frames_value, bool)
+        or not isinstance(n_frames_value, (int, np.integer))
+        or int(n_frames_value) < 1
+    ):
+        raise click.BadParameter(
+            f"freq.n_frames must be a positive integer, got {n_frames_value!r}."
+        )
+    try:
+        amplitude_value = float(amplitude_value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise click.BadParameter(
+            f"freq.amplitude_ang must be finite, got {amplitude_value!r}."
+        ) from exc
+    if not np.isfinite(amplitude_value):
+        raise click.BadParameter(
+            f"freq.amplitude_ang must be finite, got {amplitude_value!r}."
+        )
+    freq_cfg["max_write"] = int(max_write_value)
+    freq_cfg["n_frames"] = int(n_frames_value)
+    freq_cfg["amplitude_ang"] = amplitude_value
+
+
 def _prepare_thermo_output_paths(
     out_dir: Path,
     *,
@@ -561,14 +609,14 @@ def cli(
     # (see apply_effective_precision — the `all` pipeline propagates precision via
     # the config, invoking children with --config and no --precision, so orb child
     # stages silently fell back to float32-high/TF32 before this).
-    from pdb2reaction.backends import apply_effective_precision
-    apply_effective_precision(calc_cfg, precision)
     from pdb2reaction.backends import apply_backend_model_to_calc_cfg
     # Unconditional: also pops a raw backend_model token from a --config YAML
     # (the helper no-ops when neither the CLI arg nor the YAML names one).
     apply_backend_model_to_calc_cfg(calc_cfg, backend_model)
     from pdb2reaction.backends import apply_calc_file_to_calc_cfg
     apply_calc_file_to_calc_cfg(calc_cfg, calc_file, calc_factory)
+    from pdb2reaction.backends import apply_effective_precision
+    apply_effective_precision(calc_cfg, precision)
     apply_backend_defaults(calc_cfg)
     if cli_param_overridden(ctx, "hessian_calc_mode") and hessian_calc_mode is not None:
         calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
@@ -613,52 +661,12 @@ def cli(
         isinstance(_override_thermo, dict)
         and _override_thermo.get("symmetry_number") is not None
     )
-    thermo_cfg["symmetry_number"] = _validated_symmetry_number(
-        thermo_cfg.get("symmetry_number")
-    )
+    _validate_freq_thermo_config(freq_cfg, thermo_cfg)
     symmetry_number_source = _symmetry_number_source(
         config_has_value=_config_has_symmetry_number,
         override_has_value=_override_has_symmetry_number,
         resolved_value=thermo_cfg["symmetry_number"],
     )
-    thermo_cfg["temperature"] = _validated_thermo_condition(
-        thermo_cfg.get("temperature"), name="temperature"
-    )
-    thermo_cfg["pressure_atm"] = _validated_thermo_condition(
-        thermo_cfg.get("pressure_atm"), name="pressure_atm"
-    )
-    max_write_value = freq_cfg.get("max_write")
-    n_frames_value = freq_cfg.get("n_frames")
-    amplitude_value = freq_cfg.get("amplitude_ang")
-    if (
-        isinstance(max_write_value, bool)
-        or not isinstance(max_write_value, (int, np.integer))
-        or int(max_write_value) < 0
-    ):
-        raise click.BadParameter(
-            f"freq.max_write must be a non-negative integer, got {max_write_value!r}."
-        )
-    if (
-        isinstance(n_frames_value, bool)
-        or not isinstance(n_frames_value, (int, np.integer))
-        or int(n_frames_value) < 1
-    ):
-        raise click.BadParameter(
-            f"freq.n_frames must be a positive integer, got {n_frames_value!r}."
-        )
-    try:
-        amplitude_value = float(amplitude_value)
-    except (TypeError, ValueError, OverflowError) as exc:
-        raise click.BadParameter(
-            f"freq.amplitude_ang must be finite, got {amplitude_value!r}."
-        ) from exc
-    if not np.isfinite(amplitude_value):
-        raise click.BadParameter(
-            f"freq.amplitude_ang must be finite, got {amplitude_value!r}."
-        )
-    freq_cfg["max_write"] = int(max_write_value)
-    freq_cfg["n_frames"] = int(n_frames_value)
-    freq_cfg["amplitude_ang"] = amplitude_value
     from pysisyphus.tr_projection import normalize_tr_projection_mode
     geom_cfg["tr_projection"] = normalize_tr_projection_mode(
         geom_cfg.get("tr_projection")
@@ -670,9 +678,8 @@ def cli(
     # Merge CLI --freeze-atoms (already 0-based)
     try:
         freeze_atoms_cli = _parse_freeze_atoms(freeze_atoms_text)
-    except click.BadParameter as e:
-        click.echo(f"ERROR: {e}", err=True)
-        sys.exit(1)
+    except click.BadParameter:
+        raise
     if freeze_atoms_cli:
         merge_freeze_atom_indices(geom_cfg, freeze_atoms_cli)
     # Normalize freeze_atoms and optionally add link-parent indices for PDB inputs
@@ -706,7 +713,7 @@ def cli(
                     "freeze_links": bool(freeze_links),
                     "convert_files": bool(convert_files),
                     "will_run_frequency_analysis": True,
-                    "will_write_modes": True,
+                    "will_write_modes": int(freq_cfg["max_write"]) > 0,
                     "will_dump_thermo_yaml": bool(thermo_cfg.get("dump", False)),
                     "tr_projection": geom_cfg["tr_projection"],
                 },
@@ -1129,6 +1136,8 @@ def cli(
     except KeyboardInterrupt:
         click.echo("Interrupted by user.", err=True)
         sys.exit(130)
+    except click.ClickException:
+        raise
     except Exception as e:
         render_cli_exception(e, label="frequency analysis", out_dir=out_dir_path, command="freq", time_start=time_start)
     finally:

@@ -232,34 +232,45 @@ def normalize_prim_input(prim_inp):
     if prim_inp is None:
         return []
 
-    prim_type, *indices = prim_inp
-    indices = list(map(int, indices))
+    prim_type, *values = prim_inp
 
-    # Nothing to do
+    def normalized(prim_type_):
+        # DISTANCE_FUNCTION carries four atom indices plus a floating coefficient.
+        if prim_type_ == PT.DISTANCE_FUNCTION and len(values) == 5:
+            indices = [int(value) for value in values[:4]]
+            indices.append(float(values[4]))
+        else:
+            indices = [int(value) for value in values]
+        return tuple([prim_type_] + indices)
+
+    # Nothing to resolve, but still normalize the container to a tuple.
     if isinstance(prim_type, PrimTypes):
-        return [prim_inp]
+        return [normalized(prim_type)]
 
     # First check if we got something like an integer
     try:
-        return [tuple([PrimTypes(int(prim_type))] + indices)]
+        return [normalized(PrimTypes(int(prim_type)))]
     # Raised when prim_type is, e.g., "BOND"
     except ValueError:
         pass
 
+    # Check if we got a shortcut, e.g, X/Y/Z/XYZ/ATOM/TRANSLATION/ROTATION etc.
+    # Shortcuts are resolved before direct PrimTypes names, because TRANSLATION
+    # and ROTATION are also generic enum members without a PrimMap entry.
+    try:
+        prim_types_ = PrimTypeShortcuts[str(prim_type).upper()]
+    except KeyError:
+        pass
+    else:
+        return [normalized(prim_type_) for prim_type_ in prim_types_]
+
     # Check if we got a PrimType name
     try:
         prim_type_ = getattr(PrimTypes, str(prim_type).upper())
-        return [tuple([prim_type_] + indices)]
     except AttributeError:
-        pass
-
-    # Check if we got a shortcut, e.g, X/Y/Z/XYZ/ATOM etc.
-    try:
-        prim_types_ = PrimTypeShortcuts[str(prim_type).upper()]
-        return [tuple([prim_type_] + indices) for prim_type_ in prim_types_]
-    except KeyError as error:
         print(f"Could not normalize 'prim_inp'={prim_inp}!")
-        raise error
+        raise KeyError(prim_type)
+    return [normalized(prim_type_)]
 
 
 def normalize_prim_inputs(prim_inps):

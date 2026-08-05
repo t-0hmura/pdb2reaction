@@ -19,6 +19,7 @@ import shlex
 import shutil
 import subprocess
 import tempfile
+from pathlib import Path
 
 import numpy as np
 
@@ -159,6 +160,10 @@ def _xtb_cmd_tokens(xtb_cmd):
     tokens = shlex.split(str(xtb_cmd or "xtb"))
     if not tokens:
         raise XTBError("Empty --xtb-cmd value.")
+    raw_first = tokens[0]
+    first = Path(raw_first).expanduser()
+    if first.is_absolute() or os.sep in raw_first or (os.altsep and os.altsep in raw_first):
+        tokens[0] = str(first.resolve())
     return tokens
 
 
@@ -171,6 +176,7 @@ def _build_xtb_cmd(
     solvent_model,
     xtb_acc,
     mode,
+    xcontrol_filename=None,
 ):
     cmd = _xtb_cmd_tokens(xtb_cmd)
     cmd.extend(
@@ -190,6 +196,9 @@ def _build_xtb_cmd(
         pass
     else:
         raise XTBError("Unknown xTB mode '{}'".format(mode))
+
+    if xcontrol_filename is not None:
+        cmd.extend(["--input", str(xcontrol_filename)])
 
     solvent_name = normalize_solvent_name(solvent)
     if solvent_name != "none":
@@ -215,6 +224,7 @@ def _run_xtb(
     xtb_acc,
     mode,
     ncores,
+    xcontrol_filename=None,
 ):
     cmd = _build_xtb_cmd(
         xtb_cmd=xtb_cmd,
@@ -225,6 +235,7 @@ def _run_xtb(
         solvent_model=solvent_model,
         xtb_acc=xtb_acc,
         mode=mode,
+        xcontrol_filename=xcontrol_filename,
     )
     # xTB ignores ``--threads`` for some operations; OMP_NUM_THREADS is the
     # reliable process-wide thread control used here.
@@ -246,8 +257,8 @@ def _run_xtb(
             "xTB command not found: '{}'. "
             "Install xTB via 'conda install -c conda-forge xtb' "
             "or build from source (https://github.com/grimme-lab/xtb). "
-            "Alternatively, set --xtb-cmd or xtb_cmd in YAML config to the "
-            "path of your xTB binary.".format(xtb_cmd)
+            "Alternatively, put xTB on PATH or set calc.xtb_cmd in YAML to "
+            "the path of your xTB binary.".format(xtb_cmd)
         ) from exc
     except Exception as exc:
         raise XTBError("Failed to run xTB command '{}': {}".format(" ".join(cmd), exc))
@@ -347,7 +358,20 @@ def _parse_xtb_hessian(path, natoms):
             start = i + 1
             break
     if start is None:
-        raise XTBError("Could not locate '$hessian' block in {}".format(path))
+        values = [
+            _parse_float_token(token)
+            for line in lines
+            for token in line.split()
+        ]
+        expected = ndim_expected * ndim_expected
+        if len(values) != expected or not np.isfinite(values).all():
+            raise XTBError(
+                "Raw Hessian parse failed in {}: expected exactly {} finite values, got {}.".format(
+                    path, expected, len(values)
+                )
+            )
+        hess = np.asarray(values, dtype=np.float64).reshape(ndim_expected, ndim_expected)
+        return 0.5 * (hess + hess.T)
 
     data_lines = []
     i = start
@@ -567,6 +591,9 @@ def xtb_hessian(
     xyz_name = "xtb_input.xyz"
     try:
         _write_xyz(os.path.join(run_dir, xyz_name), symbols, coords_ang)
+        xcontrol_name = "raw_hessian.inp"
+        with open(os.path.join(run_dir, xcontrol_name), "w") as handle:
+            handle.write("$write\n  hessian.out=true\n$end\n")
         _run_xtb(
             run_dir=run_dir,
             xyz_filename=xyz_name,
@@ -578,8 +605,9 @@ def xtb_hessian(
             xtb_acc=xtb_acc,
             mode="hess",
             ncores=ncores,
+            xcontrol_filename=xcontrol_name,
         )
-        hess_path = os.path.join(run_dir, "hessian")
+        hess_path = os.path.join(run_dir, "hessian.out")
         if not os.path.isfile(hess_path):
             raise XTBError("xTB Hessian file not found: {}".format(hess_path))
 

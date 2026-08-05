@@ -12,7 +12,7 @@ from pysisyphus.intcoords.PrimTypes import normalize_prim_input, normalize_prim_
 from pysisyphus.optimizers import poly_fit
 from pysisyphus.optimizers.guess_hessians import ts_hessian, HessInit
 from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer, HessUpdate
-from pysisyphus.optimizers.Optimizer import get_data_model, get_h5_group
+from pysisyphus.optimizers.Optimizer import get_data_model
 
 from pysisyphus.helpers import array2string
 import torch
@@ -121,8 +121,9 @@ class TSHessianOptimizer(HessianOptimizer):
             the saddle with a mass-weighted, translation/rotation-projected
             vibrational analysis.
         saddle_imaginary_threshold_cm
-            Minimum absolute imaginary frequency required by exact saddle
-            verification, in cm^-1.
+            Minimum absolute imaginary frequency, in cm^-1, required by the
+            exact-Hessian recovery decision and by imaginary-mode reporting.
+            Saddle order itself counts every negative frequency.
         saddle_recovery_step
             Minimum uphill displacement used to escape a near-flat local minimum
             exposed by exact-Hessian validation.
@@ -313,15 +314,12 @@ class TSHessianOptimizer(HessianOptimizer):
     def prepare_opt(self, *args, **kwargs):
         if self.augment_bonds:
             self.geometry = augment_bonds(self.geometry, root=self.root)
-            # Update data model and HD5 shapes, as the number of coordinates
-            # may have changed.
+            # Update the data model, as the number of coordinates may have
+            # changed.
             if self.dump:
                 self.data_model = get_data_model(
                     self.geometry, self.is_cos, self.max_cycles
                 )
-                # self.h5_group = get_h5_group(
-                #     self.h5_fn, self.h5_group_name, self.data_model
-                # )
 
         # Calculate/set initial hessian
         super().prepare_opt(*args, **kwargs)
@@ -828,7 +826,7 @@ class TSHessianOptimizer(HessianOptimizer):
                 self.higher_order_saddle_checks = 0
             self.table.print(
                 "Exact optimizer-space saddle validation: "
-                f"n_negative={negative_count}."
+                f"n_imag={negative_count}."
             )
             if self._last_exact_target_mode_reanchored:
                 self.table.print(
@@ -841,9 +839,13 @@ class TSHessianOptimizer(HessianOptimizer):
 
         freqs_cm, modes = frequency_data
         self._last_exact_frequencies_cm = freqs_cm.copy()
-        neg_mask = freqs_cm < -self.saddle_imaginary_threshold_cm
-        n_imaginary = int(np.count_nonzero(neg_mask))
-        self._last_exact_n_imaginary = n_imaginary
+        # Saddle order counts every negative root: a genuine soft negative
+        # complement root still raises the Morse index.  The
+        # saddle_imaginary_threshold_cm magnitude gate stays with the recovery
+        # decision, flattening, and imaginary-mode reporting.
+        neg_mask = freqs_cm < 0.0
+        n_negative = int(np.count_nonzero(neg_mask))
+        self._last_exact_n_imaginary = n_negative
         self._last_exact_cart_coords = self.geometry.cart_coords.copy()
         self._last_exact_target_mode_index = None
         self._last_exact_target_mode_overlap = None
@@ -856,7 +858,7 @@ class TSHessianOptimizer(HessianOptimizer):
             # Match the reference against the complete physical spectrum. The
             # match guides root following and recovery, but exact saddle order
             # remains independent of this diagnostic identity assignment.
-            reanchor = n_imaginary > len(self.roots)
+            reanchor = n_negative > len(self.roots)
             reference = self._exact_identity_reference_for_eigenspace(
                 eigvecs,
                 reanchor=reanchor,
@@ -907,11 +909,11 @@ class TSHessianOptimizer(HessianOptimizer):
         # The reference tangent guides root following but does not redefine a
         # first-order saddle. Exact PHVA supplies the order; IRC supplies the
         # endpoint-connectivity test.
-        has_saddle_modes = n_imaginary >= len(self.roots)
-        exact_order = n_imaginary == len(self.roots) and has_saddle_modes
+        has_saddle_modes = n_negative >= len(self.roots)
+        exact_order = n_negative == len(self.roots) and has_saddle_modes
         # Higher-order saddles are rejected by their exact order regardless of
         # which mode has the strongest overlap with the reference tangent.
-        if n_imaginary > len(self.roots) and has_saddle_modes:
+        if n_negative > len(self.roots) and has_saddle_modes:
             self.higher_order_saddle_checks += 1
             if self.higher_order_saddle_checks >= self.max_higher_order_checks:
                 self.request_stop(
@@ -928,7 +930,7 @@ class TSHessianOptimizer(HessianOptimizer):
         lowest = f"{float(freqs_cm[0]):+.2f} cm^-1" if freqs_cm.size else "n/a"
         self.table.print(
             "Exact PHVA saddle validation: "
-            f"n_imag={n_imaginary}, lowest={lowest}."
+            f"n_imag={n_negative}, lowest={lowest}."
         )
         if self._last_exact_target_mode_reanchored:
             self.table.print(
@@ -1590,45 +1592,6 @@ class TSHessianOptimizer(HessianOptimizer):
                 )
                 return
 
-        # --- DEBUG: dump all negative eigvals + overlaps with prev TS mode ---
-        # all_freqs = self._all_mw_freqs_cm()
-        # if isinstance(eigvals, torch.Tensor):
-        #     evs_np = eigvals.cpu().numpy()
-        # else:
-        #     evs_np = np.asarray(eigvals)
-        # n_show = min(int(neg_num) + 2, len(evs_np))
-        # neg_evs_str = ", ".join(f"{float(evs_np[i]):+.3e}" for i in range(n_show))
-        # neg_cm_str = ", ".join(f"{all_freqs[i]:+.1f}" for i in range(min(n_show, len(all_freqs))))
-        # print(f"[ts-mode] cycle neg_count={neg_num}")
-        # print(f"[ts-mode]   eigvals (au)  [0:{n_show}] = [{neg_evs_str}]")
-        # print(f"[ts-mode]   freqs   (cm⁻¹)[0:{n_show}] = [{neg_cm_str}]")
-        #
-        # # Overlaps with previous TS mode (if exists) for all candidates
-        # if self.ts_modes is not None:
-        #     try:
-        #         prev_mode = self.ts_modes[0]
-        #         if isinstance(eigvecs, torch.Tensor):
-        #             if isinstance(prev_mode, torch.Tensor):
-        #                 pm = prev_mode
-        #                 if pm.shape[0] != eigvecs.shape[0]:
-        #                     pm = torch.from_numpy(self.active_from_full(pm.cpu().numpy())).to(eigvecs.device, eigvecs.dtype)
-        #             else:
-        #                 pm_arr = prev_mode if prev_mode.shape[0] == eigvecs.shape[0] else self.active_from_full(prev_mode)
-        #                 pm = torch.from_numpy(np.asarray(pm_arr, dtype=float)).to(eigvecs.device, eigvecs.dtype)
-        #             ovlps_all = torch.abs(eigvecs.T @ pm).cpu().numpy()
-        #         else:
-        #             pm = prev_mode if prev_mode.shape[0] == eigvecs.shape[0] else self.active_from_full(prev_mode)
-        #             ovlps_all = np.abs(eigvecs.T @ pm)
-        #         n_ovlp = min(n_show, len(ovlps_all))
-        #         ovlp_str = ", ".join(f"{float(ovlps_all[i]):.3f}" for i in range(n_ovlp))
-        #         print(f"[ts-mode]   overlap w/ prev[0:{n_ovlp}] = [{ovlp_str}]")
-        #         best = int(np.argmax(ovlps_all))
-        #         print(f"[ts-mode]   best overlap at root={best} ({ovlps_all[best]:.4f}), "
-        #               f"freq={all_freqs[best] if best < len(all_freqs) else 0:+.1f} cm⁻¹")
-        #     except Exception as _e:
-        #         print(f"[ts-mode]   overlap calc failed: {_e}")
-        # --- END DEBUG ---
-
         if not self.track_mode_by_overlap:
             # Fixed-root mode follows the roots requested by the caller.  Root
             # zero is only the constructor default; replacing every configured
@@ -1646,8 +1609,6 @@ class TSHessianOptimizer(HessianOptimizer):
             self.roots = roots
             self.ts_modes = eigvecs[:, self.roots].T
             self.ts_mode_eigvals = eigvals[self.roots]
-            # _cm1 = self._lowest_mw_freq_cm()
-            # print(f"[ts-mode] SELECTED root=0  eigval={float(eigvals[0]):+.6e}  {_cm1:+.1f} cm⁻¹")
             return
 
         # --- Overlap-based mode tracking (track_mode_by_overlap=True) ---
@@ -1700,14 +1661,6 @@ class TSHessianOptimizer(HessianOptimizer):
         self.roots = max_ovlp_inds
         self.ts_modes = ovlp_eigvecs.T[self.roots]
         self.ts_mode_eigvals = eigvals[self.roots]
-        # for i, ev in enumerate(self.ts_mode_eigvals):
-        #     selected_root = int(self.roots[i])
-        #     selected_freq = all_freqs[selected_root] if selected_root < len(all_freqs) else 0.0
-        #     print(
-        #         f"[ts-mode] SELECTED root={selected_root:3d}  eigval={float(ev):+.6e}  "
-        #         f"freq={selected_freq:+.1f} cm⁻¹  "
-        #         f"overlap={float(ovlps[i, int(max_ovlp_inds[i])]):.4f}"
-        #     )
 
     def _lowest_mw_freq_cm(self):
         """Compute the lowest frequency (cm⁻¹) from current Hessian using

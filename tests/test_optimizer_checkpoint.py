@@ -755,3 +755,221 @@ def test_lbfgs_mu_reg_backward_tolerant_without_key(tmp_path) -> None:
     _, opt_b = _lbfgs(tmp_path / "btb", [1.0, 0.0, 0.0], max_cycles=3, mu_reg=0.2)
     opt_b._set_opt_restart_info(info)
     assert opt_b.mu_reg == 0.2
+
+
+@pytest.mark.parametrize(
+    "corrupt",
+    [
+        pytest.param(lambda gi: gi.__setitem__("cart_coords", [0.0, float("nan"), 0.0]),
+                     id="non-finite"),
+        pytest.param(lambda gi: gi.__setitem__("cart_coords", [0.0, 0.0]),
+                     id="wrong-size"),
+        pytest.param(lambda gi: gi.__setitem__("cart_coords", ["x", "y", "z"]),
+                     id="non-numeric"),
+        pytest.param(lambda gi: gi.__setitem__("atoms", ["He"]), id="other-atoms"),
+        pytest.param(lambda gi: gi.__setitem__("coord_type", "redund"),
+                     id="other-coord-type"),
+        pytest.param(lambda gi: gi.pop("cart_coords"), id="missing-key"),
+    ],
+)
+def test_corrupt_nested_geom_info_is_rejected_before_mutation(tmp_path, corrupt) -> None:
+    """Nested geometry state is validated before any optimizer history changes.
+
+    ``Geometry.set_restart_info`` runs last, so without this validation the
+    optimizer histories were already overwritten when it rejected the payload.
+    """
+    _, opt_a = _rfo(tmp_path / "a", [0.5, 0.0, 0.0], max_cycles=2)
+    opt_a.run()
+    ck = tmp_path / "restart.yaml"
+    checkpoint.save_checkpoint(opt_a, ck)
+
+    bad = copy.deepcopy(checkpoint.load_payload(ck))
+    corrupt(bad["restart_info"]["geom_info"])
+
+    geom_b, opt_b = _rfo(tmp_path / "b", [9.9, 9.9, 9.9], max_cycles=200)
+    original_cart = geom_b.cart_coords.copy()
+    bad_ck = tmp_path / "bad.yaml"
+    bad_ck.write_text(yaml.safe_dump(bad, default_flow_style=False, sort_keys=True))
+    with pytest.raises(checkpoint.CheckpointValidationError):
+        checkpoint.load_and_apply(opt_b, bad_ck)
+
+    assert opt_b.coords == [] and opt_b.energies == []
+    assert opt_b.forces == [] and opt_b.steps == []
+    np.testing.assert_allclose(geom_b.cart_coords, original_cart)
+
+
+@pytest.mark.parametrize(
+    "hessian",
+    [
+        pytest.param([[1.0, 0.0, 0.0], [0.0, float("inf"), 0.0], [0.0, 0.0, 1.0]],
+                     id="non-finite"),
+        pytest.param([[1.0, 0.0], [0.0, 1.0]], id="wrong-dimension"),
+        pytest.param([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], id="not-square"),
+        pytest.param([1.0, 1.0, 1.0], id="not-a-matrix"),
+    ],
+)
+def test_invalid_restart_hessian_is_rejected_before_mutation(tmp_path, hessian) -> None:
+    """A restart Hessian is validated for finiteness, shape, and dimension."""
+    _, opt_a = _rfo(tmp_path / "a", [0.5, 0.0, 0.0], max_cycles=2)
+    opt_a.run()
+    ck = tmp_path / "restart.yaml"
+    checkpoint.save_checkpoint(opt_a, ck)
+
+    bad = copy.deepcopy(checkpoint.load_payload(ck))
+    bad["restart_info"]["H"] = hessian
+
+    _, opt_b = _rfo(tmp_path / "b", [9.9, 9.9, 9.9], max_cycles=200)
+    with pytest.raises(checkpoint.CheckpointValidationError):
+        checkpoint.validate_payload(bad, opt_b)
+    assert opt_b.coords == [] and opt_b.energies == []
+
+
+def test_checkpoint_round_trips_the_hessian_array_backend(tmp_path) -> None:
+    """A torch Hessian and overlap vector survive as tensors, not NumPy arrays."""
+    import torch
+
+    _, opt_a = _rfo(tmp_path / "a", [0.5, 0.0, 0.0], max_cycles=2)
+    opt_a.run()
+    opt_a.H = torch.as_tensor(np.asarray(opt_a.H), dtype=torch.float32)
+    opt_a._prev_eigvec_min = torch.zeros(3, dtype=torch.float32)
+    opt_a._sy_buffer_S = [np.ones(3, dtype=np.float32)]
+    opt_a._sy_buffer_Y = [np.full(3, 2.0, dtype=np.float32)]
+
+    ck = tmp_path / "restart.yaml"
+    checkpoint.save_checkpoint(opt_a, ck)
+    assert _only_primitives(yaml.safe_load(ck.read_text()))
+
+    _, opt_b = _rfo(tmp_path / "b", [9.9, 9.9, 9.9], max_cycles=200)
+    checkpoint.load_and_apply(opt_b, ck)
+
+    assert isinstance(opt_b.H, torch.Tensor)
+    assert opt_b.H.dtype == torch.float32
+    assert opt_b.H.device.type == opt_a.H.device.type
+    np.testing.assert_allclose(
+        opt_b.H.detach().cpu().numpy(), opt_a.H.detach().cpu().numpy()
+    )
+    assert isinstance(opt_b._prev_eigvec_min, torch.Tensor)
+    assert opt_b._prev_eigvec_min.dtype == torch.float32
+    assert opt_b._sy_buffer_S[0].dtype == np.float32
+    assert opt_b._sy_buffer_Y[0].dtype == np.float32
+
+    # A NumPy Hessian still restores as a NumPy array.
+    _, opt_c = _rfo(tmp_path / "c", [0.5, 0.0, 0.0], max_cycles=2)
+    opt_c.run()
+    numpy_ck = tmp_path / "numpy.yaml"
+    checkpoint.save_checkpoint(opt_c, numpy_ck)
+    _, opt_d = _rfo(tmp_path / "d", [9.9, 9.9, 9.9], max_cycles=200)
+    checkpoint.load_and_apply(opt_d, numpy_ck)
+    assert isinstance(opt_d.H, np.ndarray)
+
+
+def test_checkpoint_validates_the_resolved_active_hessian_dimension(tmp_path) -> None:
+    """Calculator/frozen active DOFs constrain the accepted Hessian shape."""
+    _, opt = _rfo(tmp_path / "active", [0.5, 0.0, 0.0], max_cycles=2)
+    opt.run()
+    payload = checkpoint.build_envelope(opt)
+    opt._using_active_dofs = True
+    opt._active_dof_indices = np.array([0, 1], dtype=int)
+
+    with pytest.raises(checkpoint.CheckpointValidationError, match="expected dimension 2"):
+        checkpoint.validate_payload(payload, opt)
+
+
+def test_zero_active_hessian_survives_the_save_load_set_round_trip(tmp_path) -> None:
+    """A ``(0, 0)`` active Hessian keeps its layout through a full round trip.
+
+    Nested lists serialize an empty array to ``[]``, so the recorded shape in
+    the backend spec is what preserves the zero active dimension.
+    """
+    _, opt_a = _rfo(tmp_path / "a", [0.5, 0.0, 0.0], max_cycles=2)
+    opt_a.run()
+    opt_a.H = np.zeros((0, 0))
+    # A zero active dimension is the resolved expectation for this payload.
+    opt_a._using_active_dofs = True
+    opt_a._active_dof_indices = np.zeros(0, dtype=int)
+
+    ck = tmp_path / "restart.yaml"
+    checkpoint.save_checkpoint(opt_a, ck)
+    payload = checkpoint.load_payload(ck)
+    assert _only_primitives(payload)
+    assert payload["restart_info"]["H"] == []
+    assert payload["restart_info"]["H_backend"]["shape"] == [0, 0]
+
+    _, opt_b = _rfo(tmp_path / "b", [9.9, 9.9, 9.9], max_cycles=200)
+    opt_b._using_active_dofs = True
+    opt_b._active_dof_indices = np.zeros(0, dtype=int)
+    # Validation accepts the recorded zero dimension instead of rejecting the
+    # flattened one-dimensional payload.
+    checkpoint.validate_payload(payload, opt_b)
+    checkpoint.load_and_apply(opt_b, ck)
+
+    assert isinstance(opt_b.H, np.ndarray)
+    assert opt_b.H.shape == (0, 0)
+
+    # The same layout survives on the torch backend.
+    import torch
+
+    _, opt_c = _rfo(tmp_path / "c", [0.5, 0.0, 0.0], max_cycles=2)
+    opt_c.run()
+    opt_c.H = torch.zeros((0, 0), dtype=torch.float64)
+    opt_c._using_active_dofs = True
+    opt_c._active_dof_indices = np.zeros(0, dtype=int)
+    torch_ck = tmp_path / "torch.yaml"
+    checkpoint.save_checkpoint(opt_c, torch_ck)
+
+    _, opt_d = _rfo(tmp_path / "d", [9.9, 9.9, 9.9], max_cycles=200)
+    opt_d._using_active_dofs = True
+    opt_d._active_dof_indices = np.zeros(0, dtype=int)
+    checkpoint.load_and_apply(opt_d, torch_ck)
+    assert isinstance(opt_d.H, torch.Tensor)
+    assert tuple(opt_d.H.shape) == (0, 0)
+
+
+def test_legacy_empty_hessian_without_recorded_shape_is_zero_square(tmp_path) -> None:
+    """An old zero-active checkpoint restores its lost ``(0, 0)`` layout."""
+
+    _, opt_a = _rfo(tmp_path / "a", [0.5, 0.0, 0.0], max_cycles=2)
+    opt_a.run()
+    payload = checkpoint.build_envelope(opt_a)
+    payload["restart_info"]["H"] = []
+    payload["restart_info"].pop("H_backend")
+
+    _, opt_b = _rfo(tmp_path / "b", [0.5, 0.0, 0.0], max_cycles=2)
+    opt_b._using_active_dofs = True
+    opt_b._active_dof_indices = np.zeros(0, dtype=int)
+    checkpoint.validate_payload(payload, opt_b)
+    opt_b._set_opt_restart_info(payload["restart_info"])
+
+    assert opt_b.H.shape == (0, 0)
+
+
+def test_legacy_empty_hessian_is_rejected_for_nonzero_active_space(tmp_path) -> None:
+    """The legacy exception does not loosen a non-empty active space."""
+
+    _, opt_a = _rfo(tmp_path / "a", [0.5, 0.0, 0.0], max_cycles=2)
+    opt_a.run()
+    payload = checkpoint.build_envelope(opt_a)
+    payload["restart_info"]["H"] = []
+    payload["restart_info"].pop("H_backend")
+
+    _, opt_b = _rfo(tmp_path / "b", [0.5, 0.0, 0.0], max_cycles=2)
+    with pytest.raises(checkpoint.CheckpointValidationError):
+        checkpoint.validate_payload(payload, opt_b)
+
+
+def test_hessian_that_contradicts_its_recorded_shape_is_rejected(tmp_path) -> None:
+    _, opt_a = _rfo(tmp_path / "a", [0.5, 0.0, 0.0], max_cycles=2)
+    opt_a.run()
+    ck = tmp_path / "restart.yaml"
+    checkpoint.save_checkpoint(opt_a, ck)
+
+    bad = copy.deepcopy(checkpoint.load_payload(ck))
+    bad["restart_info"]["H_backend"]["shape"] = [4, 4]
+
+    _, opt_b = _rfo(tmp_path / "b", [9.9, 9.9, 9.9], max_cycles=200)
+    with pytest.raises(checkpoint.CheckpointValidationError):
+        checkpoint.validate_payload(bad, opt_b)
+
+    bad["restart_info"]["H_backend"]["shape"] = ["x", "y"]
+    with pytest.raises(checkpoint.CheckpointValidationError):
+        checkpoint.validate_payload(bad, opt_b)

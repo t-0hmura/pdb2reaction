@@ -10,7 +10,7 @@
 
 ### 1. `--freeze-links/--no-freeze-links`（デフォルト `True`）
 
-`extract` が付加したキャップ水素の親原子を自動的に凍結します。下流の全サブコマンドでデフォルト有効です。
+`extract` が付加したキャップ水素の親原子を下表のサブコマンドで自動的に凍結します。`sp` は link 親を自動凍結せず、明示した `geom.freeze_atoms` のみを使用します。
 
 ```bash
 pdb2reaction extract -i complex.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' -o model.pdb
@@ -80,6 +80,7 @@ JSON出力を有効にすると、`result.json["rigid_projection"]`にtreatment�
 | [`path-search`](path-search.md) | yes | yes | yes |
 | [`scan`](scan.md) / [`scan2d`](scan2d.md) / [`scan3d`](scan3d.md) | yes | yes | yes |
 | [`all`](all.md) | yes | yes | yes |
+| [`sp`](sp.md) | no | no CLI flag | yes |
 
 ## よくある落とし穴
 

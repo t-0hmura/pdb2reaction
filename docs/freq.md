@@ -89,11 +89,11 @@ The tables below cover the options that need explanation; the full flag list is 
 | Option | Description | Default |
 | --- | --- | --- |
 | `-i, --input PATH` | Structure file accepted by the input bridge (`.pdb` / `.cif` / `.mmcif` / `.xyz` / `.trj` / ...). | Required |
-| `-q, --charge INT` | Total charge. When omitted, charge can be inferred from `--ligand-charge/-l`; explicit `-q` overrides any derived value. | Required unless a `.gjf` template or `--ligand-charge/-l` supplies it |
+| `-q, --charge INT` | Total charge. Explicit `-q` overrides YAML `calc.charge` and `--ligand-charge/-l`; when omitted, YAML, residue derivation, or `.gjf` metadata may supply it. | Required unless YAML/template/derivation applies |
 | `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB/mmCIF residue metadata. Used when `-q` is omitted (PDB/mmCIF inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers INT` | UMA predictor parallelism. `workers > 1` cannot be combined with an explicit analytical Hessian request; use `workers = 1` or finite differences. See {ref}`workers-analytical-error`. | `1` |
 | `--workers-per-node INT` | Workers per node, forwarded to the parallel predictor. | `1` |
-| `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
+| `-m, --multiplicity INT` | Spin multiplicity (2S+1). Explicit `-m` overrides YAML `calc.spin`; otherwise YAML, `.gjf`, or `1` is used. | YAML/`.gjf`/`1` |
 | `--freeze-links/--no-freeze-links` | PDB/mmCIF input (or XYZ/GJF with `--ref-pdb`). Freeze parents of cap hydrogens and merge with `geom.freeze_atoms`. See [extract](extract.md) for cap-hydrogen details. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
 | `--max-write INT` | Number of modes to export. | `10` |

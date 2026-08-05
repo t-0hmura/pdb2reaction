@@ -40,8 +40,8 @@ from pdb2reaction.backends import create_calculator, create_ase_calculator
 
 | Function | Description |
 |----------|-------------|
-| `create_calculator(backend="uma", **kwargs)` | Create a pysisyphus-compatible MLIP calculator. Accepts `charge`, `spin`, `model`, `device`, `solvent`, `solvent_model`, `hessian_calc_mode`, `freeze_atoms`, and other backend-specific kwargs. Unknown keys are silently filtered per-backend. |
-| `create_ase_calculator(backend="uma", **kwargs)` | Create an ASE-compatible MLIP calculator (used for DMF workflows and ASE-based tools). Accepts only `model`, `device`, `precision`, `task_name`, and `workers`/`workers_per_node` — `charge`/`spin` (and `solvent`/`hessian_calc_mode`) are silently filtered and instead read from each frame's `atoms.info`. |
+| `create_calculator(backend="uma", **kwargs)` | Create a pysisyphus-compatible MLIP calculator. Accepted kwargs are backend-specific; ignored keys emit a warning. Direct Python `freeze_atoms` indices are 0-based (CLI/YAML convert their 1-based values at the boundary). |
+| `create_ase_calculator(backend="uma", **kwargs)` | Create an ASE-compatible calculator. Accepted kwargs are backend-specific and unsupported keys are filtered without the pysis-factory warning. UMA/ORB/MACE adapters obtain per-frame state from `atoms.info`; AIMNet2 accepts constructor-owned `charge`/`spin` instead. |
 
 ### Example
 
@@ -109,7 +109,7 @@ The correction uses a delta approach: ΔE = E_xTB(solvent) - E_xTB(vacuum), adde
 
 - **MLIP backends** – the default UMA backend loads pretrained UMA checkpoints via `fairchem-core`'s `pretrained_mlip` helpers and forwards charge/spin metadata in the AtomicData batch. Alternative backends (ORB, MACE, AIMNet2) are available via `-b/--backend`.
 - **Device handling** – `device="auto"` selects CUDA when available, otherwise CPU. Graph construction happens on the chosen device; when `workers>1`, the parallel predictor manages device transfers.
-- **Freeze atoms** – provide 1-based indices via `freeze_atoms`; frozen atoms receive zeroed forces. The Hessian matrix either drops frozen degrees of freedom (`return_partial_hessian=True`) or zeroes the corresponding rows and columns in the full matrix.
+- **Freeze atoms** – direct Python calculator APIs use 0-based `freeze_atoms`; CLI/YAML accept 1-based values and convert them before construction. Frozen atoms receive zeroed forces. The Hessian either returns the active block (`return_partial_hessian=True`) or zeroes the corresponding rows and columns in the full matrix.
 - **Precision control** – energies and forces are always returned as float64. Set `hessian_double=False` to obtain the Hessian matrix in the model's native dtype (typically float32).
 - **Multi-worker inference** – `workers>1` spawns `fairchem-core`'s `ParallelMLIPPredictUnit` with `workers_per_node` workers per node, useful for batch throughput.
 
@@ -144,7 +144,7 @@ Common constructor keywords (defaults shown in the rightmost column):
 | `device` | "cuda", "cpu", or automatic selection. | `"auto"` |
 | `workers` / `workers_per_node` | Parallel UMA predictors (UMA backend; ignored by ORB / MACE / AIMNet2); with `workers > 1`, an explicit `Analytical` request raises `BackendError` (a `RuntimeError` subclass). Use `workers = 1` or select finite differences. | `1` / `1` |
 | `max_neigh`, `radius`, `r_edges` | Optional overrides for UMA neighborhood construction. | `None`, `None`, `False` |
-| `freeze_atoms` | List of 1-based atom indices to freeze. | _None_ |
+| `freeze_atoms` | List of 0-based atom indices for the direct Python API (CLI/YAML are 1-based). | _None_ |
 | `hessian_calc_mode` | "Analytical" or "FiniteDifference" for Hessian evaluation. | `"FiniteDifference"` |
 | `return_partial_hessian` | Return only the active-DOF Hessian block instead of the full matrix. | `True` |
 | `hessian_double` | Assemble and return the Hessian in float64 precision. | `True` |

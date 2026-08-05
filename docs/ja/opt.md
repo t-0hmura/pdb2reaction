@@ -1,6 +1,6 @@
 # `opt`
 
-このコマンドは pysisyphus の L-BFGS（`lbfgs`）または RFOptimizer（`rfo`）を用い、MLIP（デフォルト: UMA、`-b/--backend` で ORB ・ MACE ・ AIMNet2 も選択可能）のエネルギー・勾配・Hessian で単一構造を局所極小点へ最適化します。距離拘束や虚振動数モードのフラット化も任意で併用できます。入力構造は `.pdb`、`.cif`、`.mmcif`、`.xyz`、`_trj.xyz`、その他 `geom_loader` がサポートする形式に対応しています。L-BFGS 最小化には `--opt-mode grad`（alias `lbfgs`、デフォルト）、RFOptimizer には `--opt-mode hess`（alias `rfo`）を選択します。
+このコマンドは pysisyphus の L-BFGS（`lbfgs`）または RFOptimizer（`rfo`）を用い、MLIP（デフォルト: UMA、`-b/--backend` で ORB・MACE・AIMNet2 も選択可能）のエネルギー・勾配・Hessian で単一構造を局所極小点へ最適化します。距離拘束や虚振動数モードのフラット化も任意で併用できます。入力は PDB/mmCIF、XYZ、GJF の単一 geometry とし、trajectory は使用する frame を `.xyz` へ抽出してから渡します。L-BFGS 最小化には `--opt-mode grad`（alias `lbfgs`、デフォルト）、RFOptimizer には `--opt-mode hess`（alias `rfo`）を選択します。
 
 ## 実行例
 
@@ -83,7 +83,7 @@ out_dir/
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `-i, --input PATH` | 入力bridgeが受け入れる構造（`.pdb`、`.cif`、`.mmcif`、`.xyz`、`_trj.xyz`、`.gjf`） | 必須 |
+| `-i, --input PATH` | PDB/mmCIF、XYZ、GJF の単一 geometry。trajectory は使用する frame を `.xyz` へ抽出してから指定 | 必須 |
 | `-q, --charge INT` | 総電荷。`.gjf` テンプレートまたは `--ligand-charge`（PDB/mmCIF 入力または `--ref-pdb` 付き XYZ/GJF）が提供しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
 | `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB/mmCIF 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB/mmCIF 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `--workers INT` | UMA 予測器の並列度。`workers > 1` と明示的な解析 Hessian は併用できないため、`workers = 1` または有限差分を使用。{ref}`ja-workers-analytical-error` を参照 | `1` |

@@ -184,6 +184,65 @@ def _prepare_irc_output_dir(
     return resolved
 
 
+def _validate_resolved_irc_config(irc_cfg: Dict[str, Any]) -> None:
+    """Validate resolved IRC numerics before any output directory mutation."""
+
+    for name in (
+        "downhill",
+        "forward",
+        "backward",
+        "force_inflection",
+        "check_bonds",
+        "never_stop",
+        "require_pos_def_hessian",
+    ):
+        if name in irc_cfg and not isinstance(irc_cfg[name], bool):
+            raise click.BadParameter(
+                f"irc.{name} must be a YAML boolean (true or false)."
+            )
+
+    def finite(name: str) -> float:
+        try:
+            value = float(irc_cfg[name])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise click.BadParameter(f"irc.{name} must be a finite number.") from exc
+        if not np.isfinite(value):
+            raise click.BadParameter(f"irc.{name} must be a finite number.")
+        return value
+
+    def integer(name: str, minimum: int) -> int:
+        value = irc_cfg.get(name)
+        if isinstance(value, bool):
+            raise click.BadParameter(f"irc.{name} must be an integer >= {minimum}.")
+        try:
+            resolved = int(value)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise click.BadParameter(
+                f"irc.{name} must be an integer >= {minimum}."
+            ) from exc
+        if resolved != value or resolved < minimum:
+            raise click.BadParameter(f"irc.{name} must be an integer >= {minimum}.")
+        return resolved
+
+    if finite("step_length") <= 0.0:
+        raise click.BadParameter("irc.step_length must be positive.")
+    integer("max_cycles", 1)
+    integer("root", 0)
+    for name in ("rms_grad_thresh", "energy_thresh", "energy_increase_thresh"):
+        if finite(name) < 0.0:
+            raise click.BadParameter(f"irc.{name} must be non-negative.")
+    if (
+        irc_cfg.get("hard_rms_grad_thresh") is not None
+        and finite("hard_rms_grad_thresh") < 0.0
+    ):
+        raise click.BadParameter("irc.hard_rms_grad_thresh must be non-negative.")
+    displ_name = "displ_energy" if irc_cfg.get("displ") == "energy" else "displ_length"
+    if finite(displ_name) <= 0.0:
+        raise click.BadParameter(f"irc.{displ_name} must be positive.")
+    if finite("imag_below") > 0.0:
+        raise click.BadParameter("irc.imag_below must be non-positive.")
+
+
 def _echo_convert_trj_if_exists(
     trj_path: Path,
     prepared_input: "PreparedInputStructure",
@@ -459,14 +518,14 @@ def cli(
                 calc_cfg["solvent"] = solvent
             if cli_param_overridden(ctx, "solvent_model"):
                 calc_cfg["solvent_model"] = solvent_model
-            from pdb2reaction.backends import apply_effective_precision
-            apply_effective_precision(calc_cfg, precision)
             from pdb2reaction.backends import apply_backend_model_to_calc_cfg
             # Unconditional: also pops a raw backend_model token from a --config YAML
             # (the helper no-ops when neither the CLI arg nor the YAML names one).
             apply_backend_model_to_calc_cfg(calc_cfg, backend_model)
             from pdb2reaction.backends import apply_calc_file_to_calc_cfg
             apply_calc_file_to_calc_cfg(calc_cfg, calc_file, calc_factory)
+            from pdb2reaction.backends import apply_effective_precision
+            apply_effective_precision(calc_cfg, precision)
             apply_backend_defaults(calc_cfg)
             if cli_param_overridden(ctx, "hessian_calc_mode") and hessian_calc_mode is not None:
                 calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
@@ -514,9 +573,8 @@ def cli(
             # Merge CLI --freeze-atoms (already 0-based)
             try:
                 freeze_atoms_cli = _parse_freeze_atoms(freeze_atoms_text)
-            except click.BadParameter as e:
-                click.echo(f"ERROR: {e}", err=True)
-                sys.exit(1)
+            except click.BadParameter:
+                raise
             if freeze_atoms_cli:
                 merge_freeze_atom_indices(geom_cfg, freeze_atoms_cli)
             # Normalize freeze_atoms and optionally add link-parent indices for PDB inputs
@@ -547,6 +605,7 @@ def cli(
                 setting="irc.dump_fn",
             )
             out_dir_path = Path(irc_cfg["out_dir"]).resolve()
+            _validate_resolved_irc_config(irc_cfg)
             if show_config:
                 click.echo(
                     pretty_block(
@@ -880,6 +939,7 @@ def cli(
                             getattr(eulerpc, "forward_is_converged", None),
                             _n_fwd,
                             [_irc_files["forward_irc"]] if "forward_irc" in _irc_files else [],
+                            getattr(eulerpc, "forward_energies", []),
                         ),
                         (
                             "backward",
@@ -887,6 +947,7 @@ def cli(
                             getattr(eulerpc, "backward_is_converged", None),
                             _n_bwd,
                             [_irc_files["backward_irc"]] if "backward_irc" in _irc_files else [],
+                            getattr(eulerpc, "backward_energies", []),
                         ),
                     )
                 )
@@ -930,6 +991,8 @@ def cli(
         except KeyboardInterrupt:
             click.echo("Interrupted by user.", err=True)
             sys.exit(130)
+        except click.ClickException:
+            raise
         except Exception as e:
             render_cli_exception(e, label="IRC", out_dir=out_dir_path, command="irc", time_start=time_start)
         finally:

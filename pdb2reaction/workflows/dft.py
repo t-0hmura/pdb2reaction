@@ -40,6 +40,7 @@ from pdb2reaction.core.utils import (
 )
 from pdb2reaction.cli.decorators import resolve_yaml_sources, load_merged_yaml_cfg, _write_error_json
 from pdb2reaction.core.defaults import GEOM_KW_DEFAULT, OUT_DIR_DFT
+from pdb2reaction.cli.common_options import add_allow_charge_mult_mismatch_option
 
 logger = logging.getLogger(__name__)
 
@@ -328,13 +329,30 @@ def _compute_atomic_spin_densities(mol, mf) -> Dict[str, Optional[List[float]]]:
     return {"mulliken": mull, "lowdin": low, "iao": iao_ms}
 
 
-def _prepare_dft_output_dir(path: Path) -> Path:
+def _prepare_dft_output_dir(
+    path: Path,
+    *,
+    protected_inputs: tuple[Optional[Path], ...] = (),
+) -> Path:
     """Create the output directory and invalidate prior public DFT results."""
 
     resolved = Path(path).resolve()
+    owned = [resolved / name for name in ("result.yaml", "result.json", "summary.json")]
+    for protected in protected_inputs:
+        if protected is None:
+            continue
+        protected_path = Path(protected)
+        for destination in owned:
+            same = protected_path.resolve() == destination.resolve()
+            if protected_path.exists() and destination.exists():
+                same = same or protected_path.samefile(destination)
+            if same:
+                raise click.UsageError(
+                    f"Input {protected_path} collides with reserved DFT output {destination}."
+                )
     resolved.mkdir(parents=True, exist_ok=True)
-    for name in ("result.yaml", "result.json", "summary.json"):
-        (resolved / name).unlink(missing_ok=True)
+    for destination in owned:
+        destination.unlink(missing_ok=True)
     return resolved
 
 
@@ -464,6 +482,7 @@ def _finalize_dft_result(
     show_default=True,
     help="Validate options and print the execution plan without running DFT.",
 )
+@add_allow_charge_mult_mismatch_option()
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -634,7 +653,10 @@ def cli(
             geometry = geom_loader(geom_input_path, coord_type=coord_type, **coord_kwargs)
             xyz_s, atoms_list = _geometry_to_pyscf_atoms_string(geometry)
 
-            out_dir_path = _prepare_dft_output_dir(out_dir_path)
+            out_dir_path = _prepare_dft_output_dir(
+                out_dir_path,
+                protected_inputs=(prepared_input.source_path, config_yaml, ref_pdb),
+            )
             # Write a provenance snapshot of the input geometry
             input_xyz = out_dir_path / "input_geometry.xyz"
             input_xyz.write_text(xyz_s if xyz_s.endswith("\n") else (xyz_s + "\n"))

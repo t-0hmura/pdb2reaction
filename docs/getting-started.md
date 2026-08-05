@@ -13,17 +13,20 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'               
 pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --thermo --dft   # full
 ```
 
-Given (i) ≥ 2 structures (R → ... → P), (ii) one structure with `--scan-lists/-s`, or (iii) one TS candidate with `--tsopt`, `pdb2reaction` optionally extracts an **active-site cluster model** when `-c` is supplied, runs the selected MEP/scan/TS-only entry mode, and optionally chains TS optimization, IRC, thermochemical correction, and single-point DFT. Without active-site extraction, pass a small molecule as `.xyz` / `.gjf` (set the net charge with `-q`), or a cluster model you built yourself as PDB/mmCIF; omit `-c/--center` and the structure is analyzed as given.
+Given (i) ≥ 2 structures (R → ... → P), (ii) one structure with `--scan-lists/-s`, or (iii) one TS candidate with `--tsopt`, `pdb2reaction` optionally extracts an **active-site cluster model** when `-c` is supplied, runs the selected MEP/scan/TS-only entry mode, and optionally chains TS optimization, IRC, thermochemical correction, and single-point DFT. Without active-site extraction, omit only `-c/--center`; the full input is analyzed as given, but its charge must still come from explicit `-q`, residue-based `-l` for a PDB/mmCIF, configured `calc.charge`, or valid `.gjf` metadata.
 
 Working examples (BezA C6-methyltransferase, both multi-structure MEP and scan modes): [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples). For setup see [Installation](installation.md); for symptom-first diagnosis see [Common Error Recipes](recipes-common-errors.md) and [Troubleshooting](troubleshooting.md).
 
 ### Pipeline (the `all` subcommand)
 
 ```text
-PDB/mmCIF structure(s) → [extract] → [scan] (optional, --scan-lists) → [path-opt] (MEP) → [tsopt] → [irc] → [freq] → [dft] (optional)
+structure(s) → [extract: with -c] → [scan: with -s] → [MEP: except TS-only] → [tsopt + irc: with --tsopt] → [freq: with --tsopt --thermo] → [dft: with --tsopt --dft]
 ```
 
-Each stage is also a standalone subcommand; `all` orchestrates them and writes unified `summary.json` + `summary.log`.
+The named computational stages (`extract`, scan commands, path commands,
+`tsopt`, `irc`, `freq`, and `dft`) also have standalone subcommands; `all`
+runs the selected stages and writes unified `summary.json` +
+`summary.log`.
 
 ### Key output files
 
@@ -94,7 +97,7 @@ Single-input runs require **either** `--scan-lists/-s` or `--tsopt` — a bare `
 | `-c, --center TEXT` | Substrate / extraction center (residue names, residue IDs, chain-qualified selectors, or PDB/mmCIF paths). |
 | `-l, --ligand-charge TEXT` | Charge mapping (`'SAM:1,GPP:-3'`) or single integer. |
 | `-q, --charge INT` / `-m, --multiplicity INT` | Net system charge / spin multiplicity. |
-| `--tsopt` / `--thermo` / `--dft` | TS optimization + IRC / vibrational analysis / single-point DFT. |
+| `--tsopt` / `--thermo` / `--dft` | TS optimization + IRC / vibrational analysis / single-point DFT. Both `--thermo` and `--dft` require `--tsopt`. |
 | `-b, --backend uma\|orb\|mace\|aimnet2` | MLIP backend (default `uma`). |
 
 Full option matrix: [CLI Conventions](cli-conventions.md) and the generated CLI reference under [reference/commands/index](reference/commands/index.md). Backend cost / VRAM comparison: see [Troubleshooting › Choosing a backend](troubleshooting.md#choosing-a-backend).

@@ -5,7 +5,10 @@ from __future__ import annotations
 from copy import deepcopy
 from pathlib import Path
 
+from click.testing import CliRunner
+
 from pdb2reaction.backends import apply_calc_file_to_calc_cfg
+from pdb2reaction.workflows import opt as opt_workflow
 from pdb2reaction.workflows.opt import _opt_result_provenance
 
 
@@ -46,3 +49,27 @@ def test_custom_fixture_fields_keep_legacy_and_canonical_parity(
     assert result["model"] == result["mlip_model"] == "toy.py:get_calculator"
     assert result["mlip_precision"] is None
     assert calc_cfg == original
+
+
+def test_yaml_opt_mode_selects_optimizer_unless_cli_is_explicit(tmp_path: Path) -> None:
+    xyz = tmp_path / "h2.xyz"
+    xyz.write_text("2\nH2\nH 0 0 0\nH 0 0 0.74\n")
+    config = tmp_path / "config.yaml"
+    config.write_text("opt:\n  opt_mode: lbfgs\n")
+
+    base_args = [
+        "-i", str(xyz), "-q", "0", "--config", str(config), "--dry-run",
+    ]
+    yaml_only = CliRunner().invoke(
+        opt_workflow.cli,
+        [*base_args, "-o", str(tmp_path / "yaml")],
+    )
+    explicit = CliRunner().invoke(
+        opt_workflow.cli,
+        [*base_args, "--opt-mode", "rfo", "-o", str(tmp_path / "cli")],
+    )
+
+    assert yaml_only.exit_code == 0
+    assert "[opt] lbfgs," in yaml_only.output
+    assert explicit.exit_code == 0
+    assert "[opt] rfo," in explicit.output

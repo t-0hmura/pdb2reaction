@@ -78,8 +78,8 @@ aimnet = ["aimnet>=0.2.0"]
 # pip install mace-torch` (e.g. in `pdb2reaction-mace`).
 dft = [
     "pyscf>=2.13.0",
-    "gpu4pyscf-cuda12x>=1.7.0; platform_machine == 'x86_64'",
-    "cupy-cuda12x>=13.0,!=13.4.0; platform_machine == 'x86_64'",
+    "gpu4pyscf-cuda12x>=1.7.0; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "cupy-cuda12x>=13.0,!=13.4.0; sys_platform == 'linux' and platform_machine == 'x86_64'",
     "basis-set-exchange>=0.11",
 ]
 ci = [

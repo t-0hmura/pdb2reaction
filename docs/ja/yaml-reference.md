@@ -36,8 +36,8 @@
 | `--solvent` | `solvent` | `calc` |
 | _(YAML のみ)_ | `device` | `calc` |
 | `--thresh` | `thresh` | `opt` |
-| `--max-cycles` | `max_cycles` | `opt` |
-| `--dump` | `dump` | `opt` |
+| `--max-cycles` | `max_cycles` | コマンド別: `opt`/`tsopt` は `opt`、`irc` は `irc`、path は選択した engine の `stopt` または `dmf` |
+| `--dump` | `dump` | コマンド別の optimizer/path owner（`opt`、`stopt`、または選択された子設定） |
 | `--opt-mode` | _(CLI のみ)_ | — |
 | `--freeze-atoms` | `freeze_atoms` | `geom` |
 | `--coord-type` | `coord_type` | `geom` |
@@ -116,7 +116,7 @@ geom:
 
 **注記:**
 - `freeze_atoms` は PDB/mmCIF トポロジー入力時の `--freeze-links` 検出原子とマージされます。
-- 凍結原子は力がゼロ化され、Hessian の該当列もゼロ化されます。
+- 凍結原子の力はゼロ化されます。デフォルトの `return_partial_hessian: true` では active-DOF block の Hessian だけを返します。false にすると、凍結行・列をゼロ化した full matrix を返します。
 - Cartesian PHVA の剛体モード処理は constrained に固定され、凍結anchorを動かさない全系剛体運動だけを除去します。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
 - `irc` では `geom.coord_type` が YAML/CLI マージ後に `cart` へ強制されます。
 
@@ -129,7 +129,7 @@ MLIP バックエンドの設定。複数バックエンド（UMA, ORB, MACE, AI
 ```yaml
 calc:
  backend: uma           # MLIP backend: "uma", "orb", "mace", or "aimnet2"
- precision: auto # auto (バックエンドデフォルト: uma fp32、orb/mace fp64) | fp32 | fp64; バックエンド固有キー (ORB precision, MACE default_dtype) へ振り分け
+ precision: auto # auto (uma/aimnet2 fp32、orb/mace fp64) | fp32 | fp64; aimnet2 は auto/fp32 のみ受理し fp64 を拒否
  charge: 0 # Total system charge (overridden by CLI -q)
  spin: 1 # Spin multiplicity 2S+1 (overridden by CLI -m)
  model: uma-s-1p2 # uma-s-1p2 | uma-m-1p1
@@ -238,7 +238,7 @@ lbfgs:
  mu_reg: null # Regularization strength
  max_mu_reg_adaptions: 10 # Cap on mu adaptations
  reject_uphill: false # 許容値を超えるenergy上昇の拒否を明示的に有効化
- uphill_tolerance: 0.001 # energy上昇許容値（Hartree）
+ uphill_tolerance: 0.0001 # energy上昇許容値（Hartree）
  rejection_step_floor: 1.0e-07 # retry stepの下限
  max_rejections_at_floor: 3 # 下限での連続拒否後に停止
 ```
@@ -258,7 +258,7 @@ rfo:
  trust_max: 0.10 # Maximum trust radius (bohr)
  max_energy_incr: null # Allowed energy increase per step
  reject_uphill: false # 許容値を超えるenergy上昇の拒否を明示的に有効化
- uphill_tolerance: 0.001 # energy上昇許容値（Hartree）
+ uphill_tolerance: 0.0001 # energy上昇許容値（Hartree）
  rejection_trust_floor: 1.0e-07 # retry trust radiusの下限
  max_rejections_at_floor: 3 # 下限での連続拒否後に停止
  hessian_update: bfgs # Hessian update scheme: bfgs, bofill, etc.
@@ -319,6 +319,7 @@ DMF では `--max-nodes` を `DirectMaxFlux(nmove=...)` に渡します。DMF AP
 
 ```yaml
 dmf:
+ backend: gpu # gpu (dmf.torch / CUDA、default) | cpu (dmf / NumPy)
  max_cycles: 300 # DMF/IPOPT の最大反復数（--max-cycles で上書き）
  tol: tight # IPOPT dual_inf_tol: tight(0.04) | middle(0.10) | loose(0.20) または正の float（--thresh-dmf で上書き）
  correlated: true # Correlated DMF propagation
@@ -345,6 +346,7 @@ dmf:
    eps_rot: 0.01 # Rotational tolerance
    beta: 10.0 # Beta parameter for DMF
    update_teval: false # Update transition evaluation
+ ipopt_options: {} # 生の IPOPT option（例: {dual_inf_tol: 0.04}）
  k_fix: 300.0 # Harmonic constant for restraints (dmf 直下、dmf_options 配下ではない)
 ```
 
@@ -656,10 +658,12 @@ stopt:
 
 opt:
  thresh: gau
- lbfgs:                     # トップレベルの `lbfgs:` としても記述可
-   max_cycles: 10000
- rfo:                       # トップレベルの `rfo:` としても記述可
-   max_cycles: 10000
+
+lbfgs:
+ max_cycles: 10000
+
+rfo:
+ max_cycles: 10000
 
 bond:
  bond_factor: 1.2

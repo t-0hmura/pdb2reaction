@@ -115,8 +115,6 @@ class Pipeline:
         # If this evalutes to True the energy of the current in geometry is
         # quite different and we add the geometry.
         if valid_inds.size == 0:
-            # print("Energy of geometry is very different from the remaining "
-                  # "ones. Adding geometry!")
             reason = "different energy."
             is_new = True
         # Otherwise check the RMSD values for the remaining geometries that
@@ -157,12 +155,9 @@ class Pipeline:
         # Check if the geometry is similar to an already known starting
         # geometry.
         overlaps = new_coords.dot(np.array(self.starting_coords).T)/self.coords_size
-        # print("overlaps with already known starting coordinates")
-        # print(overlaps)
         max_overlap_ind = overlaps.argmax()
         max_overlap = overlaps[max_overlap_ind]
         similar_fn = f"similar_{self.similar_ind:03d}_trj.xyz"
-        # print(f"max overlap is {max_overlap:.1f}, {similar_fn}, index {max_overlap_ind}")
         max_coords = self.starting_coords[max_overlap_ind]
         self.similar_ind += 1
         rmsds = list()
@@ -284,7 +279,6 @@ class Pipeline:
 
         fn = "final_trj.xyz"
         self.write_geoms_to_trj(self.new_geoms, fn)
-        # self.new_energies = np.array(new_energies)
         np.savetxt("energies.dat", self.new_energies)
         first_geom = self.new_geoms[0]
         first_geom.standard_orientation()

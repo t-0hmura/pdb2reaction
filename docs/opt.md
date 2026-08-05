@@ -1,6 +1,6 @@
 # `opt`
 
-Relaxes a single structure toward a local minimum, optionally with distance restraints or imaginary-mode flattening. Use `--opt-mode grad` (alias `lbfgs`, default) for L-BFGS minimization or `--opt-mode hess` (alias `rfo`) for RFOptimizer. The optimizer comes from pysisyphus, while an MLIP backend (UMA by default; ORB, MACE, and AIMNet2 also available via `-b/--backend`) provides energies, gradients, and Hessians. Input structures can be `.pdb`, `.xyz`, `_trj.xyz`, or any format supported by `geom_loader`.
+Relaxes a single structure toward a local minimum, optionally with distance restraints or imaginary-mode flattening. Use `--opt-mode grad` (alias `lbfgs`, default) for L-BFGS minimization or `--opt-mode hess` (alias `rfo`) for RFOptimizer. The optimizer comes from pysisyphus, while an MLIP backend (UMA by default; ORB, MACE, and AIMNet2 also available via `-b/--backend`) provides energies, gradients, and Hessians. Supply one geometry as PDB/mmCIF, XYZ, or GJF; extract a desired trajectory frame to `.xyz` first.
 
 ## Examples
 
@@ -76,7 +76,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `-i, --input PATH` | Input structure accepted by `geom_loader`. | Required |
+| `-i, --input PATH` | One PDB/mmCIF, XYZ, or GJF geometry; extract a trajectory frame to `.xyz` first. | Required |
 | `-q, --charge INT` | Net charge. Required unless a `.gjf` template or `--ligand-charge/-l` (PDB/mmCIF inputs or XYZ/GJF with `--ref-pdb`) supplies it. Overrides `--ligand-charge/-l` when both are set. | Required unless template/derivation applies |
 | `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB/mmCIF residue metadata. Used when `-q` is omitted (PDB/mmCIF inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers INT` | UMA predictor parallelism. `workers > 1` cannot be combined with an explicit analytical Hessian request; use `workers = 1` or finite differences. See {ref}`workers-analytical-error`. | `1` |

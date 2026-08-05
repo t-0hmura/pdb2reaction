@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from copy import deepcopy
 from typing import Any, Dict, Mapping, Optional
+
+import click
 from pysisyphus.tr_projection import DEFAULT_TR_PROJECTION
 
 # Convergence preset choices (single source of truth so opt/tsopt/
@@ -252,6 +254,15 @@ DMF_KW: Dict[str, Any] = {
 }
 
 
+# Top-level ``dmf`` keys the path workflows actually consume.  ``DMF_KW`` covers
+# the defaulted ones; these three are set by the workflows themselves.
+DMF_TOP_LEVEL_KEYS: frozenset = frozenset(DMF_KW) | {
+    "ipopt_options",
+    "max_cycles",
+    "tol",
+}
+
+
 def fresh_dmf_config(
     overrides: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
@@ -274,6 +285,18 @@ def fresh_dmf_config(
                 dst[key] = deepcopy(value)
 
     if overrides:
+        unknown = sorted(set(overrides) - DMF_TOP_LEVEL_KEYS)
+        if unknown:
+            # A retained but unconsumed top-level key (e.g. ``max_cycle``) would
+            # leave its intended setting at the default.  Nested solver/IPOPT
+            # maps keep their pass-through contract.
+            raise click.BadParameter(
+                "Unknown top-level dmf key(s): "
+                + ", ".join(f"dmf.{name}" for name in unknown)
+                + ". Supported: "
+                + ", ".join(f"dmf.{name}" for name in sorted(DMF_TOP_LEVEL_KEYS))
+                + "."
+            )
         _merge(config, overrides)
     return config
 

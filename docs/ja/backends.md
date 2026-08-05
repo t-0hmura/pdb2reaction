@@ -158,8 +158,9 @@ pdb2reaction all    -i R.pdb P.pdb -c 'LIG' --calc-file my_calc.py -q 0 -m 1
    `"xyz": {"module": "pdb2reaction.backends.xyz", "pysis_cls": "XYZCalculator",
    "ase_cls": "XYZASECalculator"}` を追加します。
 4. **受け付ける kwargs を宣言**: `_BACKEND_ACCEPTED_KEYS["xyz"]` と
-   `_ASE_ACCEPTED_KEYS["xyz"]` にセットを追加します。`resolve_backend('auto')` の
-   フォールバック順に参加させたい場合は `"xyz"` を追加します。
+   `_ASE_ACCEPTED_KEYS["xyz"]` に set を追加します。`resolve_backend('auto')` に
+   参加させる場合は `_BACKEND_AVAILABILITY_MODULES` に import probe も登録し、
+   fallback tuple に `"xyz"` を追加します。
 5. **ドキュメント化 + smoke**: 本ページのファイルマップ / バックエンドごとの
    表にエントリを追加し、model identifier + インストールコマンドを記載し、
    新しいバックエンドが end-to-end で実行されるよう `tests/smoke/run.sh` に

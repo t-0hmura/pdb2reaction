@@ -3,8 +3,13 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from pathlib import Path
+
+import tomllib
+from packaging.markers import default_environment
+from packaging.requirements import Requirement
 
 
 def _load(name: str):
@@ -18,6 +23,42 @@ def _load(name: str):
 
 
 rel = _load("check_release_versions")
+REPO_ROOT = Path(__file__).parents[1]
+
+
+def test_dft_gpu_dependencies_are_linux_only() -> None:
+    data = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    requirements = {
+        req.name: req
+        for req in map(Requirement, data["project"]["optional-dependencies"]["dft"])
+    }
+    for package in ("gpu4pyscf-cuda12x", "cupy-cuda12x"):
+        marker = requirements[package].marker
+        assert marker is not None
+        for platform, expected in (("linux", True), ("darwin", False), ("win32", False)):
+            env = default_environment()
+            env.update({"sys_platform": platform, "platform_machine": "x86_64"})
+            assert marker.evaluate(env) is expected
+
+
+def test_mcp_environment_override_sample_is_posix_only() -> None:
+    sample = json.loads(
+        (REPO_ROOT / "examples" / "mcp_client_config.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert sample["_comment"].startswith("POSIX sample")
+    assert "%APPDATA%" not in sample["_comment"]
+    assert "/bin:" in sample["mcpServers"]["pdb2reaction"]["env"]["PATH"]
+
+
+def test_public_single_model_examples_have_balanced_terminators() -> None:
+    for filename in ("1.R.pdb", "2.IM.pdb"):
+        lines = (REPO_ROOT / "examples" / filename).read_text(
+            encoding="utf-8"
+        ).splitlines()
+        assert lines[-1] == "END"
+        assert not any(line.startswith(("MODEL", "ENDMDL")) for line in lines)
 
 
 # --- landing-page release substitution ------------------------------- #

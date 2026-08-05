@@ -13,8 +13,9 @@ Options:
                                   paths, DEBUG logging).  [0<=x<=3]
   --help-advanced                 Show all options (including advanced settings)
                                   and exit.
-  -i, --input FILE                Input structure file (.pdb, .cif, .mmcif,
-                                  .xyz, .gjf, _trj.xyz, ...).  [required]
+  -i, --input FILE                Single-geometry input (.pdb, .cif, .mmcif,
+                                  .xyz, or .gjf). Extract a trajectory frame to
+                                  .xyz before use.  [required]
   --ref-mode FILE                 Advanced/internal path-mode hint for Hessian
                                   TS root selection (.npy or whitespace
                                   Cartesian 3N text). The all workflow supplies
@@ -69,9 +70,10 @@ Options:
   --out-json / --no-out-json      Write machine-readable result.json to out_dir.
                                   [default: no-out-json]
   --hessian-calc-mode [finitedifference|analytical]
-                                  Choose MLIP Hessian evaluation mode (used
-                                  unless YAML sets calc.hessian_calc_mode).
-                                  Defaults to 'FiniteDifference'.
+                                  Choose MLIP Hessian evaluation mode. YAML
+                                  supplies the value when this option is
+                                  omitted; explicit CLI wins. Defaults to
+                                  'FiniteDifference'.
   -b, --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
   --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
@@ -111,9 +113,10 @@ Options:
                                   shim). Slower; raises for detected unsupported
                                   ops; custom calculators are outside its scope.
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
-                                  parity check (logs that it was skipped). For
-                                  an intentional open-shell or modified-residue
-                                  cluster.
+                                  parity check (logs that it was skipped). Open-
+                                  shell clusters need a matching multiplicity
+                                  instead; use this only for an intentionally
+                                  nonstandard electron count.
   --coord-type [cart|redund|dlc|tric]
                                   Optimization coordinate system
                                   (cart|redund|dlc|tric).

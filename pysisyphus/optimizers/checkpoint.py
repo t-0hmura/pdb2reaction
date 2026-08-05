@@ -268,6 +268,120 @@ def _validate_finite(restart_info: Mapping) -> None:
                 )
 
 
+def _validate_geom_info(payload: Mapping, restart_info: Mapping) -> None:
+    """Validate the nested geometry payload against the checkpoint identity.
+
+    ``Geometry.set_restart_info`` runs only after the optimizer histories have
+    already been overwritten, so a corrupted ``geom_info`` must be rejected
+    here, before any mutation.
+    """
+
+    geom_info = restart_info["geom_info"]
+    if not isinstance(geom_info, Mapping):
+        raise CheckpointValidationError("checkpoint geom_info is not a mapping")
+    for key in ("atoms", "cart_coords", "coord_type"):
+        if key not in geom_info:
+            raise CheckpointValidationError(
+                f"checkpoint geom_info is missing required key {key!r}"
+            )
+    identity = payload["geometry_identity"]
+    atoms = geom_info["atoms"]
+    if not isinstance(atoms, (list, tuple)) or [str(a) for a in atoms] != list(
+        identity["atoms"]
+    ):
+        raise CheckpointValidationError(
+            "checkpoint geom_info atoms disagree with its geometry identity"
+        )
+    if str(geom_info["coord_type"]) != str(identity["coord_type"]):
+        raise CheckpointValidationError(
+            "checkpoint geom_info coord_type disagrees with its geometry identity"
+        )
+    try:
+        cart_coords = np.asarray(geom_info["cart_coords"], dtype=float)
+    except (TypeError, ValueError) as exc:
+        raise CheckpointValidationError(
+            f"checkpoint geom_info cart_coords are not numeric: {exc}"
+        ) from exc
+    if cart_coords.ndim != 1 or cart_coords.size != int(identity["cart_size"]):
+        raise CheckpointValidationError(
+            "checkpoint geom_info cart_coords do not match the geometry size "
+            f"{identity['cart_size']}"
+        )
+    if not np.all(np.isfinite(cart_coords)):
+        raise CheckpointValidationError(
+            "checkpoint geom_info cart_coords contain non-finite values"
+        )
+
+
+def _expected_hessian_dim(optimizer: Any) -> int | None:
+    geometry = getattr(optimizer, "geometry", None)
+    if geometry is None:
+        return None
+    if getattr(optimizer, "using_active_dofs", False):
+        active_dofs = getattr(optimizer, "active_dof_indices", None)
+        if active_dofs is not None:
+            return int(np.asarray(active_dofs).size)
+        partial = getattr(geometry, "within_partial_hessian", None) or {}
+        return int(partial.get("active_n_dof", 0)) or None
+    coords = getattr(geometry, "coords", None)
+    return None if coords is None else int(np.asarray(coords).size)
+
+
+def _recorded_array_shape(spec: Any) -> tuple[int, ...] | None:
+    """Return the array layout recorded beside a serialized restart array."""
+
+    if not isinstance(spec, Mapping) or spec.get("shape") is None:
+        return None
+    try:
+        return tuple(int(size) for size in spec["shape"])
+    except (TypeError, ValueError) as exc:
+        raise CheckpointValidationError(
+            f"checkpoint records a non-integer array shape {spec['shape']!r}"
+        ) from exc
+
+
+def _validate_hessian(restart_info: Mapping, optimizer: Any) -> None:
+    """Validate a restart Hessian before any optimizer state is applied."""
+
+    if "H" not in restart_info:
+        return
+    try:
+        hessian = np.asarray(restart_info["H"], dtype=float)
+    except (TypeError, ValueError) as exc:
+        raise CheckpointValidationError(
+            f"checkpoint Hessian is not numeric: {exc}"
+        ) from exc
+    # Nested lists lose the layout of an empty array, so apply the recorded
+    # shape before the squareness check; a zero active dimension is valid.
+    recorded = _recorded_array_shape(restart_info.get("H_backend"))
+    if recorded is not None:
+        try:
+            hessian = hessian.reshape(recorded)
+        except ValueError as exc:
+            raise CheckpointValidationError(
+                f"checkpoint Hessian does not fit its recorded shape "
+                f"{recorded}: {exc}"
+            ) from exc
+    expected = _expected_hessian_dim(optimizer)
+    if recorded is None and hessian.size == 0 and expected == 0:
+        # Checkpoints written before array shapes were recorded serialized a
+        # zero-dimensional active Hessian as ``[]``.
+        hessian = hessian.reshape((0, 0))
+    if hessian.ndim != 2 or hessian.shape[0] != hessian.shape[1]:
+        raise CheckpointValidationError(
+            f"checkpoint Hessian is not square, got shape {hessian.shape}"
+        )
+    if not np.all(np.isfinite(hessian)):
+        raise CheckpointValidationError(
+            "checkpoint Hessian contains non-finite values"
+        )
+    if expected is not None and hessian.shape[0] != expected:
+        raise CheckpointValidationError(
+            f"checkpoint Hessian dimension {hessian.shape[0]} does not match "
+            f"the expected dimension {expected}"
+        )
+
+
 def validate_payload(payload: Any, optimizer: Any) -> dict[str, Any]:
     """Validate a loaded checkpoint completely; return its ``restart_info``.
 
@@ -325,6 +439,8 @@ def validate_payload(payload: Any, optimizer: Any) -> dict[str, Any]:
             )
     _validate_history_lengths(restart_info)
     _validate_finite(restart_info)
+    _validate_geom_info(payload, restart_info)
+    _validate_hessian(restart_info, optimizer)
     return dict(restart_info)
 
 

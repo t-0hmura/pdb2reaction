@@ -48,13 +48,15 @@ Options:
                                   including the two endpoints.  [default: 20]
   --max-cycles INTEGER            Maximum string optimizer cycles (GSM/DMF path
                                   optimization).  [default: 300]
-  --climb / --no-climb            Search for a transition state (climbing image)
-                                  after path growth.  [default: climb]
+  --climb / --no-climb            Enable the GSM climbing-image search after
+                                  path growth (accepted but unused by DMF).
+                                  [default: climb]
   --opt-mode [grad|hess]          Single-structure optimizer for endpoint
                                   preoptimization: grad (=LBFGS) or hess (=RFO).
                                   [default: grad]
-  --dump / --no-dump              Write optimizer trajectory and restarts during
-                                  the run.  [default: no-dump]
+  --dump / --no-dump              Write GSM/single-optimizer trajectory and
+                                  restart data (accepted but unused by DMF).
+                                  [default: no-dump]
   --convert-files / --no-convert-files
                                   Convert XYZ/TRJ outputs into PDB/CIF/GJF
                                   companions based on the input format.
@@ -95,8 +97,9 @@ Options:
   --preopt-max-cycles INTEGER     Maximum cycles for each endpoint
                                   preoptimization pass (LBFGS or RFO; only used
                                   when --preopt is enabled).  [default: 10000]
-  --fix-ends / --no-fix-ends      Fix structures of input endpoints during path
-                                  optimization (GSM/DMF).  [default: fix-ends]
+  --fix-ends / --no-fix-ends      Fix input endpoints during GSM path
+                                  optimization (accepted but unused by DMF).
+                                  [default: fix-ends]
   -b, --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
   --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
@@ -128,8 +131,9 @@ Options:
                                   shim). Slower; raises for detected unsupported
                                   ops; custom calculators are outside its scope.
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
-                                  parity check (logs that it was skipped). For
-                                  an intentional open-shell or modified-residue
-                                  cluster.
+                                  parity check (logs that it was skipped). Open-
+                                  shell clusters need a matching multiplicity
+                                  instead; use this only for an intentionally
+                                  nonstandard electron count.
   -h, --help                      Show this message and exit.
 ```

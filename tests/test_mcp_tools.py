@@ -182,6 +182,33 @@ def test_full_pipeline_uses_explicit_all_and_one_scan_flag(
     assert argv[scan_at + 1 : scan_at + 3] == [first, second]
 
 
+@pytest.mark.parametrize(
+    ("kwargs", "expected"),
+    [
+        ({"refine_path": True}, "--refine-path"),
+        ({"refine_path": False}, "--no-refine-path"),
+        ({"do_tsopt": False}, "--no-tsopt"),
+        ({"do_dft": True}, "--dft"),
+        ({"do_thermo": False}, "--no-thermo"),
+    ],
+)
+def test_full_pipeline_emits_canonical_boolean_flags(
+    registered_tools, tmp_path: Path, kwargs: dict, expected: str
+) -> None:
+    tools, calls = registered_tools
+    tools["run_full_pipeline"](
+        "R.pdb",
+        ligand_charge="LIG:-1",
+        out_dir=str(tmp_path / expected.removeprefix("--")),
+        **kwargs,
+    )
+
+    argv = calls[-1]["argv"]
+    assert expected in argv
+    assert "true" not in argv
+    assert "false" not in argv
+
+
 def test_helper_extra_args_are_appended_once(
     registered_tools,
 ) -> None:
@@ -257,3 +284,39 @@ def test_bool_extra_args_keep_toggle_syntax(registered_tools, tmp_path: Path) ->
     )
 
     assert calls[-1]["argv"][-2:] == ["--convert-files", "--no-deterministic"]
+
+
+@pytest.mark.parametrize(
+    ("tool_name", "input_name"),
+    [("optimize_geometry", "model.xyz"), ("find_transition_state", "ts.xyz")],
+)
+def test_opt_tools_do_not_serialize_omitted_cycle_budget(
+    registered_tools, tmp_path: Path, tool_name: str, input_name: str,
+) -> None:
+    tools, calls = registered_tools
+
+    tools[tool_name](input_name, charge=0, out_dir=str(tmp_path / tool_name))
+
+    assert "--max-cycles" not in calls[-1]["argv"]
+
+
+def test_opt_tools_emit_explicit_negative_boolean_overrides(
+    registered_tools, tmp_path: Path,
+) -> None:
+    tools, calls = registered_tools
+
+    tools["optimize_geometry"](
+        "model.xyz",
+        charge=0,
+        dump_trajectory=False,
+        out_dir=str(tmp_path / "opt"),
+    )
+    assert "--no-dump" in calls[-1]["argv"]
+
+    tools["find_transition_state"](
+        "ts.xyz",
+        charge=0,
+        flatten=False,
+        out_dir=str(tmp_path / "tsopt"),
+    )
+    assert "--no-flatten" in calls[-1]["argv"]

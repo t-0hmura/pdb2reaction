@@ -94,12 +94,12 @@ For PDB/mmCIF inputs, `--ligand-charge/-l` lets you specify charges only for non
 This branch applies to per-stage subcommands (`opt` / `tsopt` / `freq` …)
 and to `all` when `-c/--center` is omitted.
 
-**`all -c/--center` exception:** extraction derives the authoritative total
-from standard residues, ions, and `--ligand-charge/-l`. Explicit `-q` is an
-assertion against that total and aborts on mismatch; it does not replace the
-derived value. When neither CLI charge form is supplied, `calc.charge` is
-checked in the same way. If `-l` is supplied, it is an extraction input and
-takes precedence over configured `calc.charge`.
+**`all -c/--center`:** extraction derives a charge from standard residues,
+ions, and `--ligand-charge/-l`. Explicit `-q` still has highest priority and
+sets the total system charge; a mismatch with the extraction-derived value is
+reported as a warning. When `-q` is omitted, configured `calc.charge` is used
+the same way. If neither total-charge source is supplied, the extracted value
+is used. The `-l` mapping remains an input to extraction.
 
 ```{tip}
 Always provide `--ligand-charge/-l` for non-standard residues (substrates, cofactors, unusual ligands) to ensure correct charge propagation.

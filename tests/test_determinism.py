@@ -2,8 +2,33 @@ from __future__ import annotations
 
 import os
 
+import click
+import numpy as np
 import pytest
 import torch
+from click.testing import CliRunner
+
+from pdb2reaction.cli.common_options import add_deterministic_option
+
+
+def test_environment_determinism_message_distinguishes_omitted_and_negative(
+    monkeypatch,
+) -> None:
+    @click.command()
+    @add_deterministic_option()
+    def command() -> None:
+        click.echo("ok")
+
+    monkeypatch.setenv("PDB2REACTION_STRICT_DETERMINISTIC", "1")
+    runner = CliRunner()
+
+    omitted = runner.invoke(command, [])
+    assert omitted.exit_code == 0
+    assert "despite --no-deterministic" not in omitted.output
+
+    negative = runner.invoke(command, ["--no-deterministic"])
+    assert negative.exit_code == 0
+    assert "despite --no-deterministic" in negative.output
 
 
 def test_failed_shim_self_check_does_not_commit_state(monkeypatch) -> None:
@@ -85,3 +110,34 @@ def test_failed_strict_activation_rolls_back_and_can_retry(monkeypatch) -> None:
         torch.set_rng_state(prior_rng)
         if prior_cuda_rng is not None:
             torch.cuda.set_rng_state_all(prior_cuda_rng)
+
+
+def test_numpy_seed_failure_restores_process_rng_state(monkeypatch) -> None:
+    from pdb2reaction.backends import _determinism
+
+    prior_done = _determinism._DONE
+    prior_orig = _determinism._ORIG_INDEX_REDUCE
+    prior_method = torch.Tensor.index_reduce_
+    prior_numpy_rng = np.random.get_state()
+    original_seed = np.random.seed
+
+    def seed_then_fail(seed):
+        original_seed(seed)
+        raise RuntimeError("injected NumPy seed failure")
+
+    monkeypatch.setattr(np.random, "seed", seed_then_fail)
+    _determinism._DONE = False
+    _determinism._ORIG_INDEX_REDUCE = None
+    try:
+        with pytest.raises(RuntimeError, match="process state was restored"):
+            _determinism.setup_deterministic()
+
+        restored = np.random.get_state()
+        assert restored[0] == prior_numpy_rng[0]
+        assert np.array_equal(restored[1], prior_numpy_rng[1])
+        assert restored[2:] == prior_numpy_rng[2:]
+    finally:
+        torch.Tensor.index_reduce_ = prior_method
+        _determinism._DONE = prior_done
+        _determinism._ORIG_INDEX_REDUCE = prior_orig
+        np.random.set_state(prior_numpy_rng)

@@ -47,10 +47,6 @@ PUBLIC_SHELL_EXAMPLES: tuple[Path, ...] = (REPO_ROOT / "examples" / "run.sh",)
 _ANGLE_PLACEHOLDER_RE = re.compile(r"<[^>]*>")
 _SHELL_BREAKS = frozenset({"|", "||", "&&", ";"})
 
-# Value-style boolean literals rejected in authored guidance.
-BOOL_VALUE_LITERALS = ("true", "false", "yes", "no", "on", "off")
-
-
 @dataclass(frozen=True)
 class AuthoredCommand:
     """One authored CLI command extracted from a public doc/shell source.

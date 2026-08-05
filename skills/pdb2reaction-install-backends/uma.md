@@ -62,10 +62,10 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb \
     -b uma                       # explicit, identical to default
 ```
 
-Available models (select with the `--backend-model` CLI flag, or via the
+Release-tested model examples (select with the `--backend-model` CLI flag, or via the
 `calc.model:` field in `--config` YAML / `pdb2reaction.core.defaults.UMA_CALC_KW`).
-Two equivalent notations are common; all three checkpoints are served
-from the single `facebook/UMA` repo:
+The CLI accepts a model string; the upstream `facebook/UMA` repository is the
+authoritative and evolving checkpoint inventory. These tested examples are:
 
 | config string (`calc.model`) | paper notation | checkpoint in `facebook/UMA` | Notes |
 |---|---|---|---|

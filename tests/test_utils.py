@@ -320,3 +320,107 @@ def test_read_xyz_energies_accepts_keyed_integer_and_decimal_values(
     )
 
     assert read_xyz_energies(trajectory) == [-100.0, -99.5]
+
+
+@pytest.mark.parametrize("raw", [1, -2, 0, "3", "-1.0", 2.0, "  4  "])
+def test_lossless_int_keeps_integral_scientific_input(raw) -> None:
+    from pdb2reaction.core.utils import lossless_int
+
+    assert lossless_int(raw, "calc.charge") == int(float(str(raw).strip()))
+
+
+@pytest.mark.parametrize(
+    "raw", [1.5, -0.5, True, False, "1.5", "x", None, float("nan"), float("inf")]
+)
+def test_lossless_int_rejects_a_changed_electronic_state(raw) -> None:
+    """A fractional or Boolean charge/spin must not be silently converted."""
+    import click
+
+    from pdb2reaction.core.utils import lossless_int
+
+    with pytest.raises(click.BadParameter):
+        lossless_int(raw, "calc.charge")
+
+
+def test_configured_charge_spin_rejects_lossy_values() -> None:
+    import click
+
+    from pdb2reaction.core.utils import resolve_configured_charge_spin
+
+    # Integer-valued decimal syntax stays accepted.
+    assert resolve_configured_charge_spin(
+        {"calc": {"charge": -1.0, "spin": 2}}, charge=None, spin=None
+    ) == (-1, 2)
+    for cfg in (
+        {"calc": {"charge": 1.5}},
+        {"calc": {"charge": True}},
+        {"calc": {"spin": 2.5}},
+        {"calc": {"spin": True}},
+    ):
+        with pytest.raises(click.BadParameter):
+            resolve_configured_charge_spin(cfg, charge=None, spin=None)
+    # A non-positive multiplicity is still rejected on its own terms.
+    with pytest.raises(click.BadParameter):
+        resolve_configured_charge_spin(
+            {"calc": {"spin": 0}}, charge=None, spin=None
+        )
+
+
+def test_yaml_freeze_atoms_require_positive_integral_indices() -> None:
+    """A dropped or truncated entry would change the active subset."""
+    import click
+
+    from pdb2reaction.core.utils import yaml_freeze_to_internal
+
+    assert yaml_freeze_to_internal([3, 1, 2, 2]) == [0, 1, 2]
+    assert yaml_freeze_to_internal(["2", 4.0]) == [1, 3]
+    for bad in ([0], [-1], [1.5], [True], ["x"], [None]):
+        with pytest.raises(click.BadParameter):
+            yaml_freeze_to_internal(bad)
+
+
+def test_yaml_section_distinguishes_absent_from_present_invalid() -> None:
+    """A configured section that is not a mapping must not run defaults."""
+    import click
+
+    from pdb2reaction.core.utils import apply_yaml_overrides
+
+    target = {"a": 1}
+    apply_yaml_overrides({"geom": {"a": 2}}, [(target, (("geom",),))])
+    assert target == {"a": 2}
+
+    # Absent and empty sections keep the defaults, as before.
+    for cfg in ({}, {"geom": None}):
+        target = {"a": 1}
+        apply_yaml_overrides(cfg, [(target, (("geom",),))])
+        assert target == {"a": 1}
+
+    for cfg in ({"geom": 5}, {"geom": [1, 2]}, {"geom": "x"}):
+        with pytest.raises(click.BadParameter, match="geom"):
+            apply_yaml_overrides(cfg, [({}, (("geom",),))])
+
+    # A nested candidate path reports the offending prefix.
+    with pytest.raises(click.BadParameter, match="opt"):
+        apply_yaml_overrides({"opt": 5}, [({}, (("opt", "lbfgs"), ("lbfgs",)))])
+
+
+def test_yaml_loader_reports_input_errors_as_bad_parameter(tmp_path: Path) -> None:
+    """Parse and root-shape failures are user-input errors, not tracebacks."""
+    import click
+
+    from pdb2reaction.core.utils import load_yaml_dict
+
+    good = tmp_path / "good.yaml"
+    good.write_text("calc:\n  charge: -1\n")
+    assert load_yaml_dict(good) == {"calc": {"charge": -1}}
+    assert load_yaml_dict(None) == {}
+
+    broken = tmp_path / "broken.yaml"
+    broken.write_text("calc: [1,\n")
+    with pytest.raises(click.BadParameter, match="invalid YAML"):
+        load_yaml_dict(broken)
+
+    sequence_root = tmp_path / "root.yaml"
+    sequence_root.write_text("- 1\n- 2\n")
+    with pytest.raises(click.BadParameter, match="must be a mapping"):
+        load_yaml_dict(sequence_root)

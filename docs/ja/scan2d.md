@@ -62,7 +62,7 @@ YAML/JSON ファイル書式、インライン Python リテラル構文、原�
 2. `-s/--scan-lists`を2つの4要素tupleへ解析します。3-field selectorは順不同で、重複する残基名／番号には位置固定`CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`を使います。線形gridは`ceil(|high − low| / h) + 1`点（両端を含む）です。
 3. 外側ループで `d1[i]`（近い順）を走査します。各値で **d₁ 拘束のみ**を適用して緩和し、その構造をスナップショットとして保存します。次に内側ループで `d2[j]` を走査し、**d₁ と d₂ の両拘束**を適用して、最も近い既収束構造から緩和を開始します。
 4. 各 `(i, j)` について、`<out-dir>/grid/point_iDDD_jDDD.xyz`（`DDD = round(d × 100)` Å。例 `d1=1.30 Å, d2=3.10 Å` → `point_i130_j310.xyz`）に構造を保存し、バイアス収束の可否を記録し、バイアスを除去した MLIP エネルギーを評価します。丸め後のタグが別の点と重なる場合、後のファイル名には 0 始まりの格子 index `_grid_III_JJJ` が付きます。`--dump` の場合、外側ループごとの内側軌跡が `inner_path_d1_###_trj.xyz`（`###` は外側ステップ index）として保存されます。
-5. すべての点を走査したら、`i,j,d1_A,d2_A,energy_hartree,bias_converged,energy_kcal,d1_label,d2_label` の列を持つ `<out-dir>/surface.csv` を作成し、`--baseline {min|first}` で kcal/mol の基準をシフトします。`--baseline first` では基準点が `(low₁, low₂)` ではなく再並べ替え後の最初の格子点（`i = j = 0`）になります。`scan2d_map.png`（2D コンター）と `scan2d_landscape.html`（3D サーフェス）を `<out-dir>/` に生成します。`--zmin/--zmax` でカラースケールを固定できます。
+5. すべての点を走査したら、`i,j,d1_A,d2_A,energy_hartree,bias_converged,is_preopt,energy_kcal,d1_label,d2_label` の列を持つ `<out-dir>/surface.csv` を作成します。任意の参照行は `i = j = -1`、`is_preopt = true` です。`--baseline {min|first}` で kcal/mol の基準をシフトします。`--baseline first` は再並べ替え後の最初の eligible 格子点（`i = j = 0`）を使い、その点が対象外なら eligible point の最小値へ fallback します。eligible point が少なくとも 3 つあり、重複せず非共線の場合だけ、`scan2d_map.png`（2D contour）と `scan2d_landscape.html`（3D surface）を生成します。条件を満たさない場合も `surface.csv` は残り、plot は生成せず正常に扱います。`--zmin/--zmax` でカラースケールを固定できます。
 
 ## 出力
 
@@ -135,19 +135,16 @@ opt:
  thresh: baker # convergence preset (default: baker)
  max_cycles: 10000 # optimizer cycle cap
  dump: false # optimizer dumps (scan trajectories are controlled by --dump)
- out_dir: ./result_scan2d/ # output directory
 lbfgs:
  max_step: 0.3 # maximum step length
- out_dir: ./result_scan2d/ # L-BFGS-specific output directory
 rfo:
  trust_radius: 0.10 # trust-region radius
- out_dir: ./result_scan2d/ # RFO-specific output directory
 bias:
  k: 300.0 # harmonic bias strength (eV·Å⁻²)
 ```
 
 ### 共有 YAML セクション
-- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml-reference.md) と同じキーを使用しますが、run-scoped の `opt.dump` は無視されます。スキャン軌跡は `--dump` で制御します。
+- `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml-reference.md) と同じキーを使用しますが、run-scoped の `opt.dump` と optimizer `out_dir` は無視されます。スキャン軌跡は `--dump`、出力先は command-owned の `-o/--out-dir` で制御します。
 
 `opt` の詳細は [YAML リファレンス](yaml-reference.md) を参照してください。
 

@@ -6,7 +6,7 @@
 |------|----------|------|
 | **MEP** | Minimum Energy Path | 反応物から生成物へ至る最小エネルギー経路（ポテンシャルエネルギー面上の最も低い経路） |
 | **TS** | Transition State | ポテンシャルエネルギー面上の一次鞍点（first-order saddle point）。反応座標方向にのみ負の曲率（虚振動数）を 1 つ持つ停留点 |
-| **IRC** | Intrinsic Reaction Coordinate（固有反応座標） | 古典的には TS から反応物側・生成物側へ向かう**質量重み付き**最急降下経路として定義され、TS が意図した端点を接続することの検証に使用します。pdb2reaction の EulerPC 積分は**質量重みなしのデカルト座標**で動作します（`irc.md`: `--step-size` は質量重みなしデカルトの Bohr）。`geom.coord_type` は `cart` に強制されます |
+| **IRC** | Intrinsic Reaction Coordinate（固有反応座標） | 古典的には TS から反応物側・生成物側へ向かう**質量重み付き**最急降下経路として定義され、TS が意図した端点を接続することの検証に使用します。pdb2reaction の EulerPC 積分も質量重み付き座標を進めます。`--step-size` は質量重みを戻したデカルト座標で測定する Bohr 値です。`geom.coord_type` は `cart` に強制されます |
 | **GSM** | Growing String Method | 端点からストリング（イメージ列）を伸長・最適化して MEP を近似する手法 |
 | **DMF** | Direct Max Flux | 反応座標方向のフラックスを最大化することで MEP を最適化する chain-of-states 手法。pdb2reaction では `--mep-mode dmf` で選択します |
 | **HEI** | Highest-Energy Image | MEP 上でエネルギーが最大のイメージ。TS の初期推定としてよく使われます |
@@ -102,7 +102,7 @@
 | **Bohr** | 原子単位系の長さ。1 Bohr ≈ 0.529 Å |
 | **Å（オングストローム）** | 10⁻¹⁰ m。原子間距離の標準単位 |
 | **cm⁻¹** | 波数（逆センチメートル）。振動数の標準単位。虚振動数は負の値で表されます |
-| **虚振動数** | Hessian 行列の負の固有値に対応する振動数。TS では 1 本のみ存在（一次鞍点）。負の cm⁻¹ 値で報告されます。検出閾値は `hessian_dimer.neg_freq_thresh_cm`（デフォルト 5 cm⁻¹） |
+| **虚振動数** | Hessian 行列の負の固有値に対応する振動数。TS では 1 本のみ存在（一次鞍点）。負の cm⁻¹ 値で報告されます。TS optimizer と flatten/report 診断は `hessian_dimer.neg_freq_thresh_cm`（デフォルト 5 cm⁻¹）を使い、単独 `freq` は厳密に負のモードをすべて数えます（cutoff 0） |
 
 (ja-frequency-thresholds)=
 ### 振動数閾値: 5 cm⁻¹（虚振動検出）と 100 cm⁻¹（QRRHO rotor cutoff）
@@ -111,7 +111,7 @@
 
 | 閾値 | 役割 | 定義場所 |
 |------|------|----------|
-| **5 cm⁻¹** | *虚振動モード検出カットオフ*。絶対値がこれ未満の負の固有値は虚振動と見なされない（剛体運動または数値ノイズとして扱われる） | `pdb2reaction/core/defaults.py` の `hessian_dimer.neg_freq_thresh_cm = 5.0`。YAML で調整可 |
+| **5 cm⁻¹** | *TS optimizer の虚振動モード検出カットオフ*。TS 最適化・flatten・その report では、絶対値がこれ未満の負の振動数を虚振動と数えない。単独 `freq` は厳密に負のモードをすべて数える | `pdb2reaction/core/defaults.py` の `hessian_dimer.neg_freq_thresh_cm = 5.0`。TS optimizer 診断では YAML で調整可 |
 | **100 cm⁻¹** | *QRRHO rotor cutoff*（Grimme）。`freq` の熱化学計算において、これ未満の **正の** 低振動モードは harmonic-oscillator から自由回転子の entropy へ滑らかに移行する。entropy / Gibbs 自由エネルギーのみに影響 | `thermoanalysis/config.py` の `ROTOR_CUT_DEFAULT = 100.0` |
 
 ## CLI 規則

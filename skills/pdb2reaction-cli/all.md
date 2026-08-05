@@ -25,9 +25,9 @@ pdb2reaction all -i <input(s)> [-c <substrate>] [-l 'RES:Q,...'] \
 
 ## Key flags (cross-mode)
 
-> **Note:** Do not pass `--max-cycles` to `pdb2reaction all`; let each stage
-> use its own default. Set it only when running a single-stage subcommand
-> directly, such as `opt`, `tsopt`, or `path-opt`.
+> **Note:** `all --max-cycles` controls only the selected MEP/path child (GSM
+> or DMF). It is not a shared cycle budget for scan, TSOPT, IRC, freq, or DFT;
+> use each stage-specific option for those stages.
 
 | Flag | Type | Default | Description |
 |---|---|---|---|

@@ -313,6 +313,65 @@ def test_sp_failed_hessian_rerun_does_not_retain_previous_matrix(
     assert not stale.exists()
 
 
+@pytest.mark.parametrize(
+    "bad_hessian",
+    [np.full((3, 3), np.nan), np.eye(2)],
+)
+def test_sp_rejects_nonfinite_or_wrong_size_hessian(
+    monkeypatch, tmp_path: Path, bad_hessian: np.ndarray,
+) -> None:
+    from pdb2reaction.cli import cli as root_cli
+    from pdb2reaction.workflows import sp
+
+    class _BadHessianCalculator(_FakeCalculator):
+        def get_hessian(self, atoms, coords):
+            return {
+                "energy": 1.25,
+                "forces": np.zeros(3),
+                "hessian": bad_hessian,
+            }
+
+    inp = tmp_path / "geom.xyz"
+    inp.write_text("1\nframe\nC 0.0 0.0 0.0\n")
+    out = tmp_path / "out"
+    monkeypatch.setattr(sp, "geom_loader", lambda *_a, **_k: _FakeGeometry())
+    monkeypatch.setattr(
+        sp, "create_calculator", lambda **_k: _BadHessianCalculator()
+    )
+
+    result = CliRunner().invoke(
+        root_cli,
+        ["sp", "-i", str(inp), "-q", "0", "--hess", "-o", str(out)],
+    )
+
+    assert result.exit_code == 1
+    assert "Single-point Hessian must be finite" in result.output
+    assert not (out / "hessian.npy").exists()
+
+
+def test_sp_rejects_config_aliasing_result_json(tmp_path: Path) -> None:
+    from pdb2reaction.cli import cli as root_cli
+
+    inp = tmp_path / "geom.xyz"
+    inp.write_text("1\nframe\nC 0.0 0.0 0.0\n")
+    out = tmp_path / "out"
+    out.mkdir()
+    config = out / "result.json"
+    config.write_text("{}\n")
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "sp", "-i", str(inp), "-q", "0", "--config", str(config),
+            "-o", str(out),
+        ],
+    )
+
+    assert result.exit_code == 2
+    assert "collides with a reserved SP output" in result.output
+    assert config.read_text() == "{}\n"
+
+
 def test_sp_converts_yaml_freeze_atoms_to_internal_indices(
     monkeypatch, tmp_path: Path,
 ) -> None:

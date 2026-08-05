@@ -82,7 +82,7 @@ def _load_user_module(calc_file: str):
         raise BackendError(
             f"Error while importing --calc-file {path}: {exc}"
         ) from exc
-    return module, path
+    return module, path, mod_name
 
 
 def _call_factory(factory, *, charge: int, spin: int, device: str, extra: Dict[str, Any]):
@@ -128,37 +128,40 @@ def load_ase_calculator(
     charge, spin, device
         Forwarded to the factory when its signature accepts them.
     """
-    module, path = _load_user_module(calc_file)
-    if not hasattr(module, calc_factory):
-        exported = [n for n in vars(module) if not n.startswith("_")]
-        raise BackendError(
-            f"--calc-file {path} has no attribute '{calc_factory}'. "
-            f"Define `def {calc_factory}(charge=0, spin=1, **kwargs)` returning "
-            f"an ASE Calculator (or use --calc-factory NAME). "
-            f"Found top-level names: {', '.join(exported) or '(none)'}."
-        )
-    attr = getattr(module, calc_factory)
-
-    # A Calculator instance bound directly to the factory name is accepted as-is.
-    if _is_ase_calculator(attr):
-        return attr
-    if not callable(attr):
-        raise BackendError(
-            f"--calc-file {path}: '{calc_factory}' is neither a callable factory "
-            f"nor an ASE Calculator instance (got {type(attr).__name__})."
-        )
+    module, path, mod_name = _load_user_module(calc_file)
     try:
-        calc = _call_factory(attr, charge=charge, spin=spin, device=device, extra=extra)
-    except Exception as exc:
-        raise BackendError(
-            f"--calc-file {path}: calling {calc_factory}(...) failed: {exc}"
-        ) from exc
-    if not _is_ase_calculator(calc):
-        raise BackendError(
-            f"--calc-file {path}: {calc_factory}(...) returned {type(calc).__name__}, "
-            f"not an ASE Calculator (needs get_potential_energy / get_forces)."
-        )
-    return calc
+        if not hasattr(module, calc_factory):
+            exported = [n for n in vars(module) if not n.startswith("_")]
+            raise BackendError(
+                f"--calc-file {path} has no attribute '{calc_factory}'. "
+                f"Define `def {calc_factory}(charge=0, spin=1, **kwargs)` returning "
+                f"an ASE Calculator (or use --calc-factory NAME). "
+                f"Found top-level names: {', '.join(exported) or '(none)'}."
+            )
+        attr = getattr(module, calc_factory)
+
+        # A Calculator instance bound directly to the factory name is accepted as-is.
+        if _is_ase_calculator(attr):
+            return attr
+        if not callable(attr):
+            raise BackendError(
+                f"--calc-file {path}: '{calc_factory}' is neither a callable factory "
+                f"nor an ASE Calculator instance (got {type(attr).__name__})."
+            )
+        try:
+            calc = _call_factory(attr, charge=charge, spin=spin, device=device, extra=extra)
+        except Exception as exc:
+            raise BackendError(
+                f"--calc-file {path}: calling {calc_factory}(...) failed: {exc}"
+            ) from exc
+        if not _is_ase_calculator(calc):
+            raise BackendError(
+                f"--calc-file {path}: {calc_factory}(...) returned {type(calc).__name__}, "
+                f"not an ASE Calculator (needs get_potential_energy / get_forces)."
+            )
+        return calc
+    finally:
+        sys.modules.pop(mod_name, None)
 
 
 def make_custom_ase_calculator(

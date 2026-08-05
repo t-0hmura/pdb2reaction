@@ -243,7 +243,7 @@ pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode rsprfo --max-cycles 5 --thresh gau_
 # test44: irc --irc-pos-def (PSD-Hessian convergence guard)
 pdb2reaction irc -i ts.pdb -q 0 --max-cycles 3 --irc-pos-def --out-dir test44 > test44.out 2>&1
 
-# test45: opt --print-every 3 (W3a debug throttle, no behavior change)
+# test45: opt --print-every 3 (print-throttling check, no behavior change)
 pdb2reaction opt -i r.pdb -q -1 --opt-mode hess --max-cycles 5 --thresh gau_loose --print-every 3 --out-dir test45 > test45.out 2>&1
 
 # --- Determinism gate ---

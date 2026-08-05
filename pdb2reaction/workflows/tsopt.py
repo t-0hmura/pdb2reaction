@@ -42,7 +42,11 @@ from pysisyphus.tsoptimizers.RSPRFOptimizer import RSPRFOptimizer
 from pysisyphus.tsoptimizers.RSIRFOptimizer import RSIRFOptimizer  # type: ignore
 
 # local helpers from pdb2reaction
-from pdb2reaction.backends import create_calculator
+from pdb2reaction.backends import (
+    BackendError,
+    create_calculator,
+    normalize_hessian_calc_mode,
+)
 from pdb2reaction.core.defaults import (
     GEOM_KW_DEFAULT,
     THRESH_CHOICES,
@@ -848,6 +852,23 @@ def _imaginary_mode_indices_and_values(
     return neg_idx, ims
 
 
+def _certified_negative_frequencies(freqs_cm: np.ndarray) -> List[float]:
+    """Every negative complement root, ascending: the certified imaginary set.
+
+    The exact-Hessian Morse index must not discard a genuine soft negative
+    root, so certification counts ``freq < 0``.  The ``neg_freq_thresh_cm``
+    magnitude threshold stays with recovery, flattening, and mode export
+    through :func:`_imaginary_mode_indices_and_values`.
+    """
+    values = np.asarray(freqs_cm, dtype=float)
+    return [float(value) for value in np.sort(values[values < 0.0])]
+
+
+def _certified_saddle_order(freqs_cm: np.ndarray) -> int:
+    """Number of negative complement roots certifying the saddle order."""
+    return len(_certified_negative_frequencies(freqs_cm))
+
+
 def _warn_if_leading_imaginary_mode_is_soft(ims: List[float]) -> None:
     """
     Warn when the imaginary mode that certifies the saddle is very soft.
@@ -975,6 +996,29 @@ def _tsopt_terminal_status(
     return "not_converged"
 
 
+def _no_exported_mode_message(
+    n_imaginary: int,
+    neg_freq_thresh_cm: float,
+    lowest_freq_cm: float,
+) -> str:
+    """Message for a final Hessian that exported no imaginary-mode file.
+
+    Certification counts every negative root, while mode export keeps the
+    magnitude threshold, so a certified soft root can leave zero exported
+    files.  Only a genuinely mode-free Hessian may say so.
+    """
+    if n_imaginary == 0:
+        return (
+            f"[INFO] No imaginary mode found at the end "
+            f"(ν_min = {lowest_freq_cm:.2f} cm^-1)."
+        )
+    return (
+        f"[INFO] exact n_imag={n_imaginary}; no mode exceeded the "
+        f"{abs(float(neg_freq_thresh_cm)):.0f} cm^-1 export threshold "
+        f"(ν_min = {lowest_freq_cm:.2f} cm^-1)."
+    )
+
+
 def _finalize_dimer_saddle_status(
     runner: Any,
     freqs_cm: np.ndarray,
@@ -982,14 +1026,25 @@ def _finalize_dimer_saddle_status(
 ) -> np.ndarray:
     """Record the final exact-Hessian verdict on a dimer runner."""
 
-    neg_idx, imaginary = _imaginary_mode_indices_and_values(
-        freqs_cm, neg_freq_thresh_cm
-    )
-    runner.n_imaginary_modes = len(neg_idx)
-    runner.imaginary_frequencies_cm = imaginary
-    runner.saddle_order_verified = len(neg_idx) == 1
+    certified = _certified_negative_frequencies(freqs_cm)
+    runner.n_imaginary_modes = len(certified)
+    runner.imaginary_frequencies_cm = certified
+    runner.saddle_order_verified = len(certified) == 1
     if not runner.saddle_order_verified:
         runner.is_converged = False
+    # Mode export and the printed list keep the magnitude threshold, so state
+    # the difference instead of publishing two disagreeing counts silently.
+    neg_idx, reported = _imaginary_mode_indices_and_values(
+        freqs_cm, neg_freq_thresh_cm
+    )
+    if len(reported) != len(certified):
+        emit(
+            f"[tsopt] The final exact Hessian has {len(certified)} negative "
+            f"frequencies, {len(reported)} of them beyond "
+            f"{abs(float(neg_freq_thresh_cm)):.0f} cm^-1; saddle certification "
+            "counts every negative root.",
+            narrative=True,
+        )
     return neg_idx
 
 
@@ -1691,7 +1746,13 @@ class HessianDimer:
         )
         _echo_imaginary_modes(freqs_cm, self.neg_freq_thresh_cm)
         if len(neg_idx) == 0:
-            click.echo("[INFO] No imaginary mode found at the end (ν_min = %.2f cm^-1)." % (freqs_cm.min(),))
+            click.echo(
+                _no_exported_mode_message(
+                    int(self.n_imaginary_modes or 0),
+                    self.neg_freq_thresh_cm,
+                    float(freqs_cm.min()),
+                )
+            )
             del modes
         else:
             _write_all_imaginary_modes(
@@ -1794,7 +1855,7 @@ def _validate_reference_mode_optimizer(
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help="Input structure file (.pdb, .cif, .mmcif, .xyz, .gjf, _trj.xyz, ...).",
+    help="Single-geometry input (.pdb, .cif, .mmcif, .xyz, or .gjf). Extract a trajectory frame to .xyz before use.",
 )
 @click.option(
     "--ref-mode",
@@ -1919,7 +1980,7 @@ def _validate_reference_mode_optimizer(
     "--hessian-calc-mode",
     type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
     default=None,
-    help="Choose MLIP Hessian evaluation mode (used unless YAML sets calc.hessian_calc_mode). Defaults to 'FiniteDifference'.",
+    help="Choose MLIP Hessian evaluation mode. YAML supplies the value when this option is omitted; explicit CLI wins. Defaults to 'FiniteDifference'.",
 )
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
               show_default=True, help="MLIP backend.")
@@ -2036,14 +2097,14 @@ def cli(
             calc_cfg["solvent"] = solvent
         if cli_param_overridden(ctx, "solvent_model"):
             calc_cfg["solvent_model"] = solvent_model
-        from pdb2reaction.backends import apply_effective_precision
-        apply_effective_precision(calc_cfg, precision)
         from pdb2reaction.backends import apply_backend_model_to_calc_cfg
         # Unconditional: also pops a raw backend_model token from a --config YAML
         # (the helper no-ops when neither the CLI arg nor the YAML names one).
         apply_backend_model_to_calc_cfg(calc_cfg, backend_model)
         from pdb2reaction.backends import apply_calc_file_to_calc_cfg
         apply_calc_file_to_calc_cfg(calc_cfg, calc_file, calc_factory)
+        from pdb2reaction.backends import apply_effective_precision
+        apply_effective_precision(calc_cfg, precision)
         apply_backend_defaults(calc_cfg)
         if cli_param_overridden(ctx, "max_cycles"):
             opt_cfg["max_cycles"] = int(max_cycles)
@@ -2105,15 +2166,18 @@ def cli(
                     rsirfo_cfg.setdefault("print_every", opt_print_every)
                     simple_cfg.setdefault("lbfgs", {})
                     if isinstance(simple_cfg["lbfgs"], dict):
-                        simple_cfg["lbfgs"].setdefault("print_every", opt_print_every)
+                        if cli_param_overridden(ctx, "print_every"):
+                            simple_cfg["lbfgs"]["print_every"] = opt_print_every
+                        else:
+                            simple_cfg["lbfgs"].setdefault(
+                                "print_every", opt_print_every
+                            )
             except (TypeError, ValueError):
                 pass
 
-        # Optimizer-side exact validation and the final reported PHVA must use
-        # the same definition of an imaginary mode.
-        rsirfo_cfg["saddle_imaginary_threshold_cm"] = float(
-            simple_cfg.get("neg_freq_thresh_cm", 5.0)
-        )
+        # The neg_freq_thresh_cm controls final PHVA reporting and recovery/flatten
+        # only; the optimizer's internal determination of saddle completion is
+        # gated solely on all negative eigenvalues, independent of any threshold.
 
         # Convert 1-based YAML freeze_atoms to 0-based internal
         if geom_cfg.get("freeze_atoms"):
@@ -2121,9 +2185,8 @@ def cli(
         # Merge CLI --freeze-atoms (already 0-based)
         try:
             freeze_atoms_cli = _parse_freeze_atoms(freeze_atoms_text)
-        except click.BadParameter as e:
-            click.echo(f"ERROR: {e}", err=True)
-            sys.exit(1)
+        except click.BadParameter:
+            raise
         if freeze_atoms_cli:
             merge_freeze_atom_indices(geom_cfg, freeze_atoms_cli)
         # Normalize freeze_atoms and optionally add link-parent indices for PDB inputs
@@ -2133,6 +2196,12 @@ def cli(
         if "freeze_atoms" in geom_cfg:
             calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
         calc_cfg["return_partial_hessian"] = True
+        try:
+            calc_cfg["hessian_calc_mode"] = normalize_hessian_calc_mode(
+                calc_cfg.get("hessian_calc_mode", "FiniteDifference")
+            )
+        except BackendError as exc:
+            raise click.ClickException(str(exc)) from exc
 
         kind = normalize_choice(
             opt_mode,
@@ -2236,7 +2305,64 @@ def cli(
             )
             return
 
+        owned_outputs = tuple(
+            out_dir_path / name
+            for name in (
+                "result.json",
+                "summary.json",
+                "final_geometry.xyz",
+                "final_geometry.pdb",
+                "final_geometry.cif",
+                "final_geometry.gjf",
+            )
+        )
+        for protected in (
+            input_path,
+            prepared_input.original_path,
+            prepared_input.source_path,
+            prepared_input.geom_path,
+            ref_pdb,
+            reference_mode_path,
+            config_yaml,
+        ):
+            if protected is None:
+                continue
+            protected_path = Path(protected)
+            if any(
+                protected_path.resolve() == output.resolve()
+                or (
+                    protected_path.exists()
+                    and output.exists()
+                    and protected_path.samefile(output)
+                )
+                for output in owned_outputs
+            ):
+                raise click.UsageError(
+                    f"Input {protected_path} collides with a reserved TSOPT output "
+                    f"path under {out_dir_path}."
+                )
+
         out_dir_path.mkdir(parents=True, exist_ok=True)
+        for name in (
+            "final_geometry.pdb",
+            "final_geometry.cif",
+            "final_geometry.gjf",
+            "optimization_trj.xyz",
+            "optimization.pdb",
+            "optimization.cif",
+            "optimization_all_trj.xyz",
+            "optimization_all.pdb",
+            "optimization_all.cif",
+        ):
+            (out_dir_path / name).unlink(missing_ok=True)
+        vib_dir = out_dir_path / "vib"
+        if vib_dir.is_dir():
+            for pattern in ("imag_*.pdb", "imag_*.cif", "imag_*_trj.xyz"):
+                for mode_path in vib_dir.glob(pattern):
+                    mode_path.unlink(missing_ok=True)
+        if not out_json:
+            for name in ("result.json", "summary.json"):
+                (out_dir_path / name).unlink(missing_ok=True)
         _tsopt_result_data: Optional[Dict[str, Any]] = None
 
         try:
@@ -2352,9 +2478,11 @@ def cli(
                             _tsopt_result_data["files"][_key] = _trj_name
                     # List imaginary mode vib files
                     _vib_dir = out_dir_path / "vib"
-                    if _vib_dir.exists():
+                    if _vib_dir.is_dir():
                         _tsopt_result_data["files"]["imaginary_mode_files"] = sorted([
-                            f"vib/{f.name}" for f in _vib_dir.iterdir() if f.suffix in ('.xyz', '.pdb', '.cif')
+                            f"vib/{f.name}"
+                            for pattern in ("imag_*.pdb", "imag_*.cif", "imag_*_trj.xyz")
+                            for f in _vib_dir.glob(pattern)
                         ])
 
             else:
@@ -2938,13 +3066,14 @@ def cli(
                     neg_idx = _echo_imaginary_modes(
                         freqs_cm, neg_freq_thresh_cm
                     )
-                _hessian_saddle_verified = len(neg_idx) == 1
+                _saddle_order = _certified_saddle_order(freqs_cm)
+                _hessian_saddle_verified = _saddle_order == 1
                 if not _hessian_saddle_verified:
                     last_optimizer.is_converged = False
-                    if len(neg_idx) == 0:
-                        warning = "No imaginary mode found"
+                    if _saddle_order == 0:
+                        warning = "No negative frequency found"
                     else:
-                        warning = f"Found {len(neg_idx)} imaginary modes"
+                        warning = f"Found {_saddle_order} negative frequencies"
                     click.echo(
                         f"[WARNING] {warning} in the final exact Hessian; "
                         "this geometry is not a first-order saddle and is "
@@ -2972,7 +3101,7 @@ def cli(
 
                 # Collect result data for --out-json (hess-family: rsprfo/rsirfo/trim)
                 if out_json:
-                    _rsirfo_imag = [float(f) for f in freqs_cm if f < -abs(neg_freq_thresh_cm)]
+                    _rsirfo_imag = _certified_negative_frequencies(freqs_cm)
                     # Frequency analysis and failed multistart restoration leave
                     # the shared Geometry intentionally detached.  Evaluate the
                     # final energy through the already-loaded calculator instead
@@ -3108,9 +3237,11 @@ def cli(
                             _tsopt_result_data["files"][_key] = _trj_name
                     # List imaginary mode vib files
                     _vib_dir = out_dir_path / "vib"
-                    if _vib_dir.exists():
+                    if _vib_dir.is_dir():
                         _tsopt_result_data["files"]["imaginary_mode_files"] = sorted([
-                            f"vib/{f.name}" for f in _vib_dir.iterdir() if f.suffix in ('.xyz', '.pdb', '.cif')
+                            f"vib/{f.name}"
+                            for pattern in ("imag_*.pdb", "imag_*.cif", "imag_*_trj.xyz")
+                            for f in _vib_dir.glob(pattern)
                         ])
 
             if _tsopt_result_data is not None:
@@ -3160,6 +3291,8 @@ def cli(
         except KeyboardInterrupt:
             click.echo("Interrupted by user.", err=True)
             sys.exit(130)
+        except click.ClickException:
+            raise
         except Exception as e:
             render_cli_exception(e, label="optimization", out_dir=out_dir_path, command="tsopt", time_start=time_start)
         finally:

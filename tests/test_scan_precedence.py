@@ -176,3 +176,94 @@ def test_scan3d_forwards_actual_click_parameter_sources(monkeypatch, tmp_path):
     assert captured[0]["relax_max_cycles_overridden"] is True
     assert captured[0]["relax_max_cycles"] == 19
     assert captured[0]["thresh"] == "gau_tight"
+
+
+def _path_search_endpoints(tmp_path):
+    reactant = tmp_path / "r.xyz"
+    reactant.write_text("2\nR\nH 0.0 0.0 0.0\nH 0.0 0.0 0.74\n", encoding="utf-8")
+    product = tmp_path / "p.xyz"
+    product.write_text("2\nP\nH 0.0 0.0 0.0\nH 0.0 0.0 1.10\n", encoding="utf-8")
+    return reactant, product
+
+
+def _path_search_dry_run(tmp_path, label, extra):
+    from pdb2reaction.workflows import path_search as path_search_workflow
+
+    reactant, product = _path_search_endpoints(tmp_path)
+    config = tmp_path / "config.yaml"
+    config.write_text("search:\n  refine_mode: minima\n", encoding="utf-8")
+    return CliRunner().invoke(
+        path_search_workflow.cli,
+        [
+            "-i", str(reactant),
+            "-i", str(product),
+            "-q", "0",
+            "--config", str(config),
+            "--mep-mode", "dmf",
+            "--dry-run",
+            "-o", str(tmp_path / label),
+        ]
+        + extra,
+    )
+
+
+def test_explicit_cli_refine_mode_outranks_yaml_search_section(tmp_path):
+    """An explicit --refine-mode must not lose to YAML search.refine_mode."""
+    omitted = _path_search_dry_run(tmp_path, "omitted", [])
+    assert omitted.exit_code == 0
+    assert "refine_mode: minima" in omitted.output
+
+    explicit = _path_search_dry_run(tmp_path, "explicit", ["--refine-mode", "peak"])
+    assert explicit.exit_code == 0
+    assert "refine_mode: peak" in explicit.output
+    assert "refine_mode: minima" not in explicit.output
+
+
+def test_path_search_dry_run_shows_effective_calculator_settings(tmp_path):
+    """Requested blocks render at default verbosity with resolved calc values."""
+    result = _path_search_dry_run(tmp_path, "display", ["--precision", "fp64"])
+
+    assert result.exit_code == 0
+    # The block itself is printed without raising the verbosity ...
+    assert "dry_run_plan" in result.output
+    assert "calc" in result.output
+    # ... and it carries the effective CLI calculator setting.
+    assert "precision: fp64" in result.output
+
+
+def test_path_search_dmf_solvent_is_rejected_before_dry_run(tmp_path):
+    result = _path_search_dry_run(
+        tmp_path,
+        "dmf-solvent",
+        ["--solvent", "water"],
+    )
+
+    assert result.exit_code != 0
+    assert "not compatible with --solvent 'water'" in result.output
+
+
+def test_path_search_yaml_preserves_stopt_cycle_pair_and_output(tmp_path):
+    from pdb2reaction.workflows import path_search as path_search_workflow
+
+    reactant, product = _path_search_endpoints(tmp_path)
+    configured_out = tmp_path / "yaml-output"
+    config = tmp_path / "stopt.yaml"
+    config.write_text(
+        "stopt:\n"
+        f"  out_dir: {configured_out}\n"
+        "  max_cycles: 31\n"
+        "  stop_in_when_full: 7\n"
+    )
+
+    result = CliRunner().invoke(
+        path_search_workflow.cli,
+        [
+            "-i", str(reactant), "-i", str(product), "-q", "0",
+            "--config", str(config), "--mep-mode", "dmf", "--dry-run",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "stop_in_when_full: 7" in result.output
+    assert "max_cycles: 31" in result.output
+    assert f"out_dir: {configured_out}" in result.output

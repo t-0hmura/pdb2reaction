@@ -88,13 +88,14 @@ see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
     per-outer-step inner trajectories are saved as `inner_path_d1_###_trj.xyz`
     when `--dump` (`###` is the outer step index).
 5. After all points are visited, write `<out-dir>/surface.csv` with columns
-    `i,j,d1_A,d2_A,energy_hartree,bias_converged,energy_kcal,d1_label,d2_label`, shifting the kcal
+    `i,j,d1_A,d2_A,energy_hartree,bias_converged,is_preopt,energy_kcal,d1_label,d2_label`. An optional reference row has `i = j = -1` and `is_preopt = true`. Shift the kcal
     reference via `--baseline {min|first}`. With `--baseline first`, the reference
     is the first usable grid entry (`i = j = 0` after reordering), not necessarily
     `(low₁, low₂)`; if that point is unusable, the usable minimum is used.
-    Generate `scan2d_map.png` (2D contour) and
-    `scan2d_landscape.html` (3D surface) in `<out-dir>/`. Use `--zmin/--zmax` to
-    clamp the color scale.
+    When at least three unique, non-collinear eligible points remain, generate
+    `scan2d_map.png` (2D contour) and `scan2d_landscape.html` (3D surface) in
+    `<out-dir>/`. With insufficient support, `surface.csv` remains available
+    and plots are omitted cleanly. Use `--zmin/--zmax` to clamp the color scale.
 
 ## Outputs
 
@@ -165,13 +166,10 @@ opt:
  thresh: baker # convergence preset (default: baker)
  max_cycles: 10000 # optimizer cycle cap
  dump: false # optimizer dumps (scan trajectories are controlled by --dump)
- out_dir: ./result_scan2d/ # output directory
 lbfgs:
  max_step: 0.3 # maximum step length
- out_dir: ./result_scan2d/ # L-BFGS-specific output directory
 rfo:
  trust_radius: 0.10 # trust-region radius
- out_dir: ./result_scan2d/ # RFO-specific output directory
 bias:
  k: 300.0 # harmonic bias strength (eV·Å⁻²)
 ```
@@ -179,7 +177,8 @@ bias:
 ### Shared YAML sections
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical knobs to those documented for
   [YAML Reference](yaml-reference.md). Scan optimizer scratch dumps are disabled;
-  scan trajectory output is controlled by `--dump`.
+  scan trajectory output is controlled by `--dump`. Set the command-owned
+  output directory with `-o/--out-dir`; optimizer `out_dir` YAML keys are ignored.
 
 More YAML options for `opt` are available in [YAML Reference](yaml-reference.md).
 

@@ -53,15 +53,17 @@ verbatim to xTB's ALPB parameter set, so use the spelling xTB
 recognizes. Common entries include `water`, `methanol`, `acetone`,
 `acetonitrile`, `dmso`, `dmf`, `chcl3`, `ch2cl2`, `hexane`,
 `benzene`, `toluene`, `thf`, `nhexan`, `phenol`, `octanol`,
-`woctanol`, `aniline`, `furane`, `ether`, `noctane`, `co2`. The
+`woctanol`, `aniline`, `furane`, and `ether`. Prefer the canonical `hexane`
+spelling (`nhexan` is an accepted alias). The
 authoritative list comes from xTB's ALPB parameter set — run
 `xtb --help` and consult the xTB docs for the version you have
 installed (the set has expanded over xTB releases).
 
 To turn off: omit `--solvent` or pass `--solvent none`.
 
-`--solvent-model` selects `alpb` (default, conda-forge binary) or
-`cpcmx` (requires a source build with CPCM-X enabled).
+`--solvent-model` selects `alpb` (default) or `cpcmx`. Current conda-forge xTB
+recipes enable CPCM-X; confirm the installed binary exposes the capability.
+Use a source build only for a binary that lacks CPCM-X support.
 
 ## How it composes with the base calculator
 

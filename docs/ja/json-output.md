@@ -115,7 +115,7 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 確定前に失敗した場合は JSON が作られないことがあるため、0 以外の終了コードや
 期待した JSON の欠落も失敗のシグナルです。標準エラー出力またはジョブログを確認してください。
 
-収束しなかったが完了したジョブでは、`"status": "not_converged"` と最終 force/step 値を含む `result.json` が書き出されるため、AI エージェントはサイクル数を増やして再試行するかどうかをこの情報をもとに判断できます。
+制御された非収束結果の writer まで到達した job は、`"status": "not_converged"` の `result.json` を書きます。optimizer family は該当する最終 force/step または cycle field を含みますが、DFT と Dimer は所有しない field を出力しません。再試行の判断前に command-specific schema を確認してください。
 
 オプティマイザは `"status": "stalled"` を返すこともあります。これは、設定した force/step の収束基準を満たさないまま、設定ウィンドウにわたってエネルギーが減少しなくなった状態（エネルギープラトー）です。stalled は converged とは別の非収束アウトカムであり、`converged` として報告されることは決してありません。`tsopt` では、停滞した探索を繰り返さないよう flatten/再試行ループも停止します。`opt --flatten` の flatten ループは停止しません — このループは残った虚振動方向へ変位してプラトーから脱出するためのものだからです。存在する場合は `stop_reason` にエネルギー範囲・ウィンドウ・満たせなかった基準が記録されます。stalled は（例えば摂動した構造やより厳しいステップ制御で）再試行し得るものであり、`max_cycles` 枯渇や一般的な失敗のエイリアスではありません。
 
@@ -367,14 +367,14 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 
 ### `dft`
 
-> **注:** `dft` は SCF 収束時 (exit 0) のみ `status: "converged"` を含む
-> `result.json` を書きます。非収束時はexit code 3でJSONを作らないため、exit codeが
-> signalです。汎用 `not_converged` statusは `dft` に適用しません。捕捉された想定外の
-> exceptionでは標準error envelopeをbest effortで書きます。
+> **注:** `dft` は SCF 収束・非収束の両方で `result.json` と
+> `summary.json` を書きます。非収束時は `status: "not_converged"`、
+> `converged: false` を記録して exit code 3 で終了します。未処理 exception
+> では標準 error envelope を書きます。
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `status` | string | `"converged"` |
+| `status` | string | `"converged"` または `"not_converged"` |
 | `converged` | bool | SCF 収束? |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
@@ -410,7 +410,7 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 | `n_link_hydrogens` | int | 炭素原子側に残る切断結合へ追加されたキャップ水素数 |
 | `exclude_backbone` | bool | バックボーンを除外したか |
 | `include_h2o` | bool | 結晶水を含めたか |
-| `ligand_charge_input` | string | ユーザー指定 `--ligand-charge` マッピング |
+| `ligand_charge_input` | string または null | ユーザー指定 `--ligand-charge` mapping。省略時は null |
 | `center` | string | 中心残基 |
 | `radius` | float | 抽出半径 (angstrom) |
 | `input_files` | string[] | 入力 PDB / mmCIF パス |
@@ -425,6 +425,8 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 | `min_energy_hartree` | float | フレーム中の最小エネルギー |
 | `max_energy_hartree` | float | フレーム中の最大エネルギー |
 | `energy_source` | string | `"trajectory_comment"` または `"mlip_recomputed"` |
+| `energy_provenance` | string[] | frame ごとの energy source provenance |
+| `energy_unit` | string | 保存 energy unit（`hartree`） |
 | `backend` | string または null | フレームを再計算した場合のみ MLIP backend。comment energy mode では null |
 | `charge` / `multiplicity` | int または null | 再計算時の解決済み電子状態。それ以外は null |
 | `solvent` / `solvent_model` | string または null | 再計算 calculator の溶媒設定。それ以外は null |

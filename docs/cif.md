@@ -26,6 +26,9 @@ With `--convert-files` enabled (the default), coordinate-producing workflows
 retain the PDB needed between pipeline stages and add a CIF companion with the
 original identifiers:
 
+`extract` is an exception: it has no conversion toggle and automatically writes
+the retained-template CIF companion for a bridged input.
+
 ```text
 final_geometry.pdb  # normalized representation used between pipeline stages
 final_geometry.cif  # original chain/residue identity restored

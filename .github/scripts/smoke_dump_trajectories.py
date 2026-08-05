@@ -115,7 +115,7 @@ def main() -> int:
         raise RuntimeError(f"[dump-smoke] required trajectory smoke cannot run: {reason}")
 
     timeout_raw = ""
-    timeout_env = TIMEOUT_ENV
+    timeout_env = None
     for env_name in (GENERIC_TIMEOUT_ENV, TIMEOUT_ENV):
         raw = os.environ.get(env_name, "").strip()
         if raw:
@@ -129,7 +129,8 @@ def main() -> int:
     if timeout_sec is None:
         print("[dump-smoke] per-case timeout: disabled")
     else:
-        print(f"[dump-smoke] per-case timeout: {timeout_sec:.1f}s (env: {timeout_env})")
+        timeout_source = f"env: {timeout_env}" if timeout_env else "default"
+        print(f"[dump-smoke] per-case timeout: {timeout_sec:.1f}s ({timeout_source})")
 
     with tempfile.TemporaryDirectory(prefix="pdb2_dump_smoke_") as td:
         base = Path(td)

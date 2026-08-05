@@ -58,8 +58,8 @@ effective recomputation request.
 
 - The XYZ comment line must encode the energy. An explicit keyed token
   (`E=` / `Energy:`, any decimal / scientific / negative form) takes
-  precedence; otherwise the lone bare numeric token is used (and when
-  several bare numbers are present, the last one, with a warning). So
+  precedence; otherwise exactly one bare numeric token is accepted. Several
+  bare numbers are rejected as ambiguous. So
   bare floats like `-12345.67` and ASE-style `... energy=-1234.56`
   both work. If the comment line has no numeric token at all, the
   reader raises an error (rather than emitting a silent flat plot).

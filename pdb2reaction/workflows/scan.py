@@ -399,14 +399,14 @@ def cli(
                 calc_cfg["solvent"] = solvent
             if cli_param_overridden(ctx, "solvent_model"):
                 calc_cfg["solvent_model"] = solvent_model
-            from pdb2reaction.backends import apply_effective_precision
-            apply_effective_precision(calc_cfg, precision)
             from pdb2reaction.backends import apply_backend_model_to_calc_cfg
             # Unconditional: also pops a raw backend_model token from a --config YAML
             # (the helper no-ops when neither the CLI arg nor the YAML names one).
             apply_backend_model_to_calc_cfg(calc_cfg, backend_model)
             from pdb2reaction.backends import apply_calc_file_to_calc_cfg
             apply_calc_file_to_calc_cfg(calc_cfg, calc_file, calc_factory)
+            from pdb2reaction.backends import apply_effective_precision
+            apply_effective_precision(calc_cfg, precision)
             if cli_param_overridden(ctx, "dump"):
                 opt_cfg["dump"] = bool(dump)
             if cli_param_overridden(ctx, "print_every") and print_every is not None:
@@ -428,9 +428,8 @@ def cli(
             # Merge CLI --freeze-atoms (already 0-based)
             try:
                 freeze_atoms_cli = _parse_freeze_atoms(freeze_atoms_text)
-            except click.BadParameter as e:
-                click.echo(f"ERROR: {e}", err=True)
-                sys.exit(1)
+            except click.BadParameter:
+                raise
             if freeze_atoms_cli:
                 merge_freeze_atom_indices(geom_cfg, freeze_atoms_cli)
             # Resolve freeze list before logging so printed config matches runtime.
@@ -503,6 +502,9 @@ def cli(
             stages_summary: List[Dict[str, Any]] = []
 
             out_dir_path.mkdir(parents=True, exist_ok=True)
+            if not out_json:
+                for name in ("result.json", "summary.json"):
+                    (out_dir_path / name).unlink(missing_ok=True)
 
             # Load
             coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])

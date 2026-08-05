@@ -77,17 +77,17 @@ out_dir/ (デフォルト:./result_path_search/)
 ├─ mep.gjf # Gaussian テンプレート検出時に対応する Gaussian
 ├─ mep_w_ref.pdb # マージされた全系MEP（参照topologyが必要）
 ├─ mep_w_ref.cif # bridge templateを元IDで復元
-├─ mep_seg_XX_trj.xyz # セグメントごとの MEP 軌跡（XYZ）
-├─ mep_seg_XX.pdb # セグメントごとのPDB（変換有効時）
-├─ mep_seg_XX.cif # bridge入力のCIF
-├─ mep_seg_XX.gjf # セグメントごとに対応する Gaussian（テンプレート検出時）
+├─ mep_seg_XX_trj.xyz # reactive refinement segmentのみ: MEP軌跡（XYZ）
+├─ mep_seg_XX.pdb # reactive refinement segmentのPDB（変換有効時）
+├─ mep_seg_XX.cif # reactive refinement segmentのbridge入力CIF
+├─ mep_seg_XX.gjf # reactive refinement segmentのGaussian（template検出時）
 ├─ mep_w_ref_seg_XX.pdb # 共有結合変化がある場合のマージ済みsegment
 ├─ mep_w_ref_seg_XX.cif # bridge templateのCIF
-├─ hei_seg_XX.xyz # セグメントごとの最高エネルギー画像
-├─ hei_seg_XX.pdb # HEI に対応する PDB（変換有効時）
-├─ hei_seg_XX.cif # bridge入力のCIF
-├─ hei_seg_XX.gjf # HEI に対応する Gaussian（テンプレート検出時）
-├─ hei_mode_seg_XX.txt # HEI の energy-upwinding Cartesian 接線
+├─ hei_seg_XX.xyz # reactive refinement segmentのみ: 最高エネルギーimage
+├─ hei_seg_XX.pdb # reactive refinement segmentのHEI PDB（変換有効時）
+├─ hei_seg_XX.cif # reactive refinement segmentのHEI CIF
+├─ hei_seg_XX.gjf # reactive refinement segmentのHEI Gaussian（template検出時）
+├─ hei_mode_seg_XX.txt # reactive refinement segmentのenergy-upwinding接線
 ├─ hei_w_ref_seg_XX.pdb # 全系コンテキストでマージされた HEI
 ├─ hei_w_ref_seg_XX.cif # bridge templateのCIF
 ├─ summary.json # すべての再帰セグメントの障壁と分類サマリー
@@ -117,7 +117,7 @@ out_dir/ (デフォルト:./result_path_search/)
 | **入力と電荷** | | |
 | `-i, --input PATH` | 反応順序の 2 つ以上の構造（反応物 → 生成物）。各ファイルごとに `-i`/`--input` を繰り返すか、単一の `-i` の後ろに複数ファイルを並べる（例: `-i R.pdb -i IM1.pdb -i P.pdb` または `-i R.pdb IM1.pdb P.pdb`） | 必須 |
 | `-q, --charge INT` | 総電荷。非 `.gjf` 入力では `--ligand-charge` の導出が成功しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
-| `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）または残基別マッピング（例: `GPP:-3,SAM:1`）から PDB/mmCIF トポロジーの全系電荷を導出。裸のXYZでは使用不可だが、`--ref-pdb`でトポロジーを付与すれば使用可。正しいGJFはヘッダーの電荷・多重度を自動継承する | _None_ |
+| `-l, --ligand-charge TEXT` | 単一整数または残基別 mapping から PDB/mmCIF input topology の全系電荷を導出。裸の XYZ には `-q` が必要で、`--ref-pdb` は最終 merge 専用のためこの charge derivation を追加しない。有効な GJF は header の charge/spin を継承可能 | _None_ |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | **バックエンドと計算** | | |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
@@ -147,7 +147,7 @@ out_dir/ (デフォルト:./result_path_search/)
 | `--ref-pdb PATH...` | XYZ/GJF入力の全系マージに使うactive-site PDB/mmCIF参照（入力と同数・同順） | _None_ |
 | **出力と設定** | | |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_path_search/` |
-| `--dump/--no-dump` | MEP（GSM/DMF）と単一構造軌跡をダンプ。リスタート YAML は YAML で有効化した場合のみ書き出されます | `False` |
+| `--dump/--no-dump` | GSM と単一構造 optimizer の軌跡を dump。DMF path solver では受理するが未使用。restart YAML は YAML で有効化した場合のみ書き出す | `False` |
 | `--convert-files/--no-convert-files` | XYZ/TRJ → PDB/CIF/GJFを切り替え。bridge入力は元IDのCIFを追加し、XYZ/GJFは参照topologyなしではPDBを生成しません。 | `True` |
 | `--config FILE` | 明示 CLI 指定より前に適用されるベース YAML | _None_ |
 | `--show-config/--no-show-config` | 解決済み設定（YAML レイヤ情報を含む）を表示して実行継続 | `False` |

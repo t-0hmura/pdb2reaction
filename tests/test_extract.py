@@ -387,3 +387,18 @@ def test_compute_charge_summary_accepts_exact_known_ion_mapping(monkeypatch):
 
     assert result["total_charge"] == 0.0
     assert warnings == []
+
+
+def test_modified_residue_charge_requires_an_integer_value():
+    """`--modified-residue NAME:charge` must not truncate the electronic state."""
+    import click
+    import pytest
+
+    from pdb2reaction.core.utils import lossless_int
+
+    # Integer and integer-valued decimal syntax stay accepted.
+    assert lossless_int("-1", "--modified-residue charge for 'LLP'") == -1
+    assert lossless_int("-1.0", "--modified-residue charge for 'LLP'") == -1
+    for bad in ("-1.5", "0.7", "true", "", "nan"):
+        with pytest.raises(click.BadParameter):
+            lossless_int(bad, "--modified-residue charge for 'LLP'")

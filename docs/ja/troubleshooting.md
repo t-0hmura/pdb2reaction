@@ -97,7 +97,7 @@ pdb2reaction extract -i complex.pdb -c PRE --modified-residue "SEP,TPO,MLY" -o p
 ## 電荷 / スピンの問題
 
 ### 「電荷が必須」系のエラー（非 GJF 入力）
-`.gjf` でない入力では、複数ステージで総電荷が必要になります。`-q/--charge` を省略した場合、ワークフローは `--ligand-charge/-l`（PDB のみ）または `.gjf` テンプレートから電荷を導出しようとしますが、いずれの経路でも解決できないと上記のエラーで停止します。
+`.gjf` でない入力では、複数ステージで総電荷が必要になります。`-q/--charge` を省略した場合、workflow は `--ligand-charge/-l`（PDB/mmCIF、または `--ref-pdb` topology 付き XYZ/GJF）、YAML `calc.charge`、または `.gjf` template から電荷を解決します。いずれの経路でも解決できないと上記のエラーで停止します。
 
 対処:
 - 電荷と多重度を明示する:

@@ -163,8 +163,8 @@ def active_tr_basis(
     )
     q_active_rows = full_q.index_select(0, active_dof_indices)
 
+    frozen_rank = 0
     if not bool(frozen_dofs.any()):
-        frozen_rank = 0
         q_active, rank = _orthonormal_columns(q_active_rows, rtol=rtol)
     else:
         q_frozen_rows = full_q[frozen_dofs]

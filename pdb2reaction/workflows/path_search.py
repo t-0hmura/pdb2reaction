@@ -37,6 +37,7 @@ from pdb2reaction.core.defaults import (
     LBFGS_KW,
     RFO_KW,
     OPT_MODE_ALIASES,
+    DMF_KW,
     fresh_dmf_config,
     GS_KW,
     STOPT_KW,
@@ -46,6 +47,7 @@ from pdb2reaction.core.defaults import (
     apply_backend_defaults,
 )
 from pdb2reaction.workflows.path_opt import (
+    _validate_dmf_solvent_compatibility,
     _optimize_single,
     _run_dmf_mep,
     resolve_dmf_solve_tol,
@@ -80,6 +82,7 @@ from pdb2reaction.core.utils import (
     yaml_freeze_to_internal,
     _parse_freeze_atoms,
     merge_freeze_atom_indices,
+    lossless_int,
 )
 from pdb2reaction.core.result_commit import apply_current_run_id, commit_json
 from pdb2reaction.io.summary import (
@@ -429,10 +432,10 @@ class GSMResult:
 @dataclass
 class SegmentReport:
     tag: str
-    barrier_kcal: float
+    barrier_kcal: Optional[float]
     delta_kcal: float
     summary: str  # summarize_changes string (empty for bridges)
-    kind: str = "seg"          # "seg" or "bridge"
+    kind: str = "seg"          # "seg", "kink", or "bridge"
     seg_index: int = 0         # 1‑based index along final MEP (assigned later)
     # the segment's optimizer convergence, threaded from GSMResult. A
     # reactive segment whose optimizer did not explicitly converge is unusable
@@ -819,18 +822,7 @@ def _stitch_paths(
 
         adj_changed, adj_summary = False, ""
         if segment_builder is not None and bond_cfg is not None:
-            try:
-                adj_changed, adj_summary = has_bond_change(tail, head, bond_cfg)
-            except Exception as exc:
-                # debug-only was invisible at the default verbosity, and "unchanged" here means
-                # no bridging segment is inserted — a reaction step can go missing in silence.
-                click.echo(
-                    f"[path-search] WARNING: bond-change detection at the segment interface "
-                    f"failed ({exc}); treating the interface as unchanged, so no bridging "
-                    "segment is inserted and a reaction step may be missing.",
-                    err=True,
-                )
-                adj_changed, adj_summary = False, ""
+            adj_changed, adj_summary = has_bond_change(tail, head, bond_cfg)
 
         if adj_changed and segment_builder is not None:
             emit(f"[{tag}] Covalent changes detected at interface — inserting a new recursive segment.", narrative=True)
@@ -989,7 +981,7 @@ def _path_leaves_and_expected(
     from pdb2reaction.workflows._outcomes import make_leaf
 
     leaves: List[Any] = list(required_outcomes)
-    reactive = [s for s in segments if getattr(s, "kind", "seg") != "bridge"]
+    reactive = [s for s in segments if getattr(s, "kind", "seg") == "seg"]
     for s in segments:
         # a reactive segment is usable only when its optimizer explicitly
         # converged. A nonconverged (max-cycle) StringOptimizer segment retains
@@ -1105,6 +1097,24 @@ def _build_multistep_path(
             )
         )
         seg_counter[0] += 1
+
+        if not (1 <= int(gsm.hei_idx) <= len(gsm.images) - 2):
+            click.echo(
+                f"[{seg_tag}] WARNING: HEI is at an endpoint. Returning the raw path.",
+                err=True,
+            )
+            _tag_images(gsm.images, pair_index=pair_index)
+            return CombinedPath(
+                images=gsm.images,
+                energies=gsm.energies,
+                segments=[],
+                required_outcomes=[
+                    _raw_path_outcome(
+                        f"raw_{seg_tag}",
+                        engine_converged=getattr(gsm, "is_converged", None),
+                    )
+                ],
+            )
 
         try:
             changed, step_summary = has_bond_change(gsm.images[0], gsm.images[-1], bond_cfg)
@@ -1294,8 +1304,28 @@ def _build_multistep_path(
 
     step_imgs, step_E = ref1.images, ref1.energies
 
+    if not (1 <= int(ref1.hei_idx) <= len(step_imgs) - 2):
+        click.echo(
+            f"[{step_tag_for_report}] WARNING: HEI is at an endpoint. "
+            "Returning the raw refined path.",
+            err=True,
+        )
+        _tag_images(step_imgs, pair_index=pair_index)
+        return CombinedPath(
+            images=step_imgs,
+            energies=step_E,
+            segments=[],
+            required_outcomes=[
+                _raw_path_outcome(
+                    f"raw_{step_tag_for_report}",
+                    engine_converged=getattr(ref1, "is_converged", None),
+                )
+            ],
+        )
+
     _changed, step_summary = has_bond_change(step_imgs[0], step_imgs[-1], bond_cfg)
-    _tag_images(step_imgs, mep_seg_tag=step_tag_for_report, mep_seg_kind="seg",
+    step_kind = "kink" if use_kink else "seg"
+    _tag_images(step_imgs, mep_seg_tag=step_tag_for_report, mep_seg_kind=step_kind,
                 mep_has_bond_changes=bool(_changed), pair_index=pair_index)
 
     left_changed, left_summary = has_bond_change(gA, left_end, bond_cfg)
@@ -1326,10 +1356,10 @@ def _build_multistep_path(
     )
     seg_report = SegmentReport(
         tag=step_tag_for_report,
-        barrier_kcal=float(barrier_kcal),
+        barrier_kcal=None if use_kink else float(barrier_kcal),
         delta_kcal=float(delta_kcal),
         summary=step_summary if _changed else "(no covalent changes detected)",
-        kind="seg",
+        kind=step_kind,
         converged=segment_converged,
     )
 
@@ -2385,9 +2415,10 @@ def cli(
             stopt_cfg["dump"] = bool(dump)
             lbfgs_cfg["dump"] = bool(dump)
             rfo_cfg["dump"] = bool(dump)
-        stopt_cfg["out_dir"] = out_dir
-        lbfgs_cfg["out_dir"] = out_dir
-        rfo_cfg["out_dir"] = out_dir
+        if cli_param_overridden(ctx, "out_dir"):
+            stopt_cfg["out_dir"] = out_dir
+            lbfgs_cfg["out_dir"] = out_dir
+            rfo_cfg["out_dir"] = out_dir
         if cli_param_overridden(ctx, "thresh") and thresh is not None:
             lbfgs_cfg["thresh"] = str(thresh)
             rfo_cfg["thresh"] = str(thresh)
@@ -2411,6 +2442,32 @@ def cli(
         )
         _apply_single_opt_yaml_layer(override_layer_cfg)
 
+        if mep_mode_kind == "dmf":
+            dmf_cycles = lossless_int(dmf_cfg.get("max_cycles"), "dmf.max_cycles")
+            if dmf_cycles < 1:
+                raise click.BadParameter("dmf.max_cycles must be a positive integer.")
+            dmf_cfg["max_cycles"] = dmf_cycles
+            try:
+                k_fix = float(dmf_cfg.get("k_fix", DMF_KW["k_fix"]))
+            except (TypeError, ValueError, OverflowError) as exc:
+                raise click.BadParameter(
+                    "dmf.k_fix must be finite and non-negative."
+                ) from exc
+            if not np.isfinite(k_fix) or k_fix < 0.0:
+                raise click.BadParameter(
+                    "dmf.k_fix must be finite and non-negative."
+                )
+            dmf_cfg["k_fix"] = k_fix
+        else:
+            string_cycles = lossless_int(
+                stopt_cfg.get("max_cycles"), "stopt.max_cycles"
+            )
+            if string_cycles < 1:
+                raise click.BadParameter(
+                    "stopt.max_cycles must be a positive integer."
+                )
+            stopt_cfg["max_cycles"] = string_cycles
+
         # A dormant YAML DMF section does not affect GSM. An explicit CLI
         # tolerance is still validated as user input, regardless of MEP mode.
         if mep_mode_kind == "dmf" or cli_param_overridden(ctx, "thresh_dmf"):
@@ -2422,12 +2479,15 @@ def cli(
         # Merge CLI --freeze-atoms (already 0-based)
         try:
             freeze_atoms_cli = _parse_freeze_atoms(freeze_atoms_text)
-        except click.BadParameter as e:
-            click.echo(f"ERROR: {e}", err=True)
-            sys.exit(1)
+        except click.BadParameter:
+            raise
         if freeze_atoms_cli:
             merge_freeze_atom_indices(geom_cfg, freeze_atoms_cli)
 
+        # An explicit CLI --refine-mode outranks YAML search.refine_mode, which
+        # the merge above applied on top of the pre-seeded CLI value.
+        if cli_param_overridden(ctx, "refine_mode") and refine_mode is not None:
+            search_cfg["refine_mode"] = refine_mode.strip().lower()
         refine_mode_kind = search_cfg.get("refine_mode")
         if refine_mode_kind is None:
             refine_mode_kind = "peak" if mep_mode_kind == "gsm" else "minima"
@@ -2449,33 +2509,65 @@ def cli(
         else:
             single_opt_kind = "rfo"
             single_opt_cfg = rfo_cfg
+        if preopt:
+            preopt_cycles = lossless_int(
+                single_opt_cfg.get("max_cycles"), "preopt max_cycles"
+            )
+            if preopt_cycles < 1:
+                raise click.BadParameter(
+                    "preopt max_cycles must be a positive integer."
+                )
+            single_opt_cfg["max_cycles"] = preopt_cycles
 
-        stopt_cfg["stop_in_when_full"] = int(
-            stopt_cfg.get("max_cycles", STOPT_KW["max_cycles"])
-        )
         out_dir_path = Path(stopt_cfg["out_dir"]).resolve()
+        # Resolve the effective calculator settings before any display: these
+        # calls only normalize the config mapping and instantiate no calculator,
+        # so --show-config/--dry-run must not print pre-CLI values.
+        if cli_param_overridden(ctx, "backend"):
+            calc_cfg["backend"] = backend
+        if cli_param_overridden(ctx, "solvent"):
+            calc_cfg["solvent"] = solvent
+        if cli_param_overridden(ctx, "solvent_model"):
+            calc_cfg["solvent_model"] = solvent_model
+        from pdb2reaction.backends import apply_backend_model_to_calc_cfg
+        # Unconditional: also pops a raw backend_model token from a --config YAML
+        # (the helper no-ops when neither the CLI arg nor the YAML names one).
+        apply_backend_model_to_calc_cfg(calc_cfg, backend_model)
+        from pdb2reaction.backends import apply_calc_file_to_calc_cfg
+        apply_calc_file_to_calc_cfg(calc_cfg, calc_file, calc_factory)
+        from pdb2reaction.backends import apply_effective_precision
+        apply_effective_precision(calc_cfg, precision)
+        apply_backend_defaults(calc_cfg)
+
+        if mep_mode_kind == "dmf":
+            _validate_dmf_solvent_compatibility(calc_cfg)
+
         echo_geom = format_geom_for_echo(geom_cfg)
         echo_calc = format_geom_for_echo(calc_cfg)
         echo_gs   = dict(gs_cfg)
         echo_stopt = dict(stopt_cfg)
         echo_stopt["out_dir"] = str(out_dir_path)
 
-        click.echo(pretty_block("geom", echo_geom))
-        click.echo(pretty_block("calc", echo_calc))
-        click.echo(pretty_block("gs",   echo_gs))
-        click.echo(pretty_block("stopt", echo_stopt))
+        # --show-config/--dry-run exist to print these blocks, so they must not
+        # be suppressed by the default verbosity gate.
+        requested = bool(show_config or dry_run)
+        click.echo(pretty_block("geom", echo_geom, force=requested))
+        click.echo(pretty_block("calc", echo_calc, force=requested))
+        click.echo(pretty_block("gs",   echo_gs, force=requested))
+        click.echo(pretty_block("stopt", echo_stopt, force=requested))
         if mep_mode_kind == "dmf":
-            click.echo(pretty_block("dmf", dmf_cfg))
+            click.echo(pretty_block("dmf", dmf_cfg, force=requested))
         echo_opt = dict(single_opt_cfg)
         echo_opt["out_dir"] = str(out_dir_path)
         echo_opt["out_dir_per_tag"] = f"{out_dir_path}/<tag>_{single_opt_kind}_opt"
-        click.echo(pretty_block("opt." + single_opt_kind, echo_opt))
-        click.echo(pretty_block("bond", bond_cfg))
-        click.echo(pretty_block("search", search_cfg))
+        click.echo(pretty_block("opt." + single_opt_kind, echo_opt, force=requested))
+        click.echo(pretty_block("bond", bond_cfg, force=requested))
+        click.echo(pretty_block("search", search_cfg, force=requested))
         click.echo(
             pretty_block(
                 "run_flags",
                 {"preopt": bool(preopt), "align": bool(align), "mep_mode": mep_mode_kind},
+                force=requested,
             )
         )
 
@@ -2512,6 +2604,7 @@ def cli(
                         "will_run_path_search": True,
                         "will_write_summary": True,
                     },
+                    force=True,
                 )
             )
             click.echo("[dry-run] Validation complete. Path search execution was skipped.")
@@ -2522,6 +2615,8 @@ def cli(
             return
 
         out_dir_path.mkdir(parents=True, exist_ok=True)
+        for name in ("mep.pdb", "mep.cif", "mep_plot.png"):
+            (out_dir_path / name).unlink(missing_ok=True)
 
         geoms = load_prepared_geometries(
             prepared_inputs,
@@ -2536,22 +2631,6 @@ def cli(
                 {int(i) for g in geoms for i in getattr(g, "freeze_atoms", [])}
             )
             calc_cfg["freeze_atoms"] = freeze_union
-
-        if cli_param_overridden(ctx, "backend"):
-            calc_cfg["backend"] = backend
-        if cli_param_overridden(ctx, "solvent"):
-            calc_cfg["solvent"] = solvent
-        if cli_param_overridden(ctx, "solvent_model"):
-            calc_cfg["solvent_model"] = solvent_model
-        from pdb2reaction.backends import apply_effective_precision
-        apply_effective_precision(calc_cfg, precision)
-        from pdb2reaction.backends import apply_backend_model_to_calc_cfg
-        # Unconditional: also pops a raw backend_model token from a --config YAML
-        # (the helper no-ops when neither the CLI arg nor the YAML names one).
-        apply_backend_model_to_calc_cfg(calc_cfg, backend_model)
-        from pdb2reaction.backends import apply_calc_file_to_calc_cfg
-        apply_calc_file_to_calc_cfg(calc_cfg, calc_file, calc_factory)
-        apply_backend_defaults(calc_cfg)
 
         shared_calc = create_calculator(**calc_cfg)
         for g in geoms:
@@ -2873,16 +2952,23 @@ def cli(
                 narrative=True,
             )
 
+        overall_changed: Optional[bool] = None
+        overall_summary = ""
         try:
             overall_changed, overall_summary = has_bond_change(combined_all.images[0], combined_all.images[-1], bond_cfg)
         except Exception as exc:
             logger.debug("Failed to evaluate overall bond changes: %s", exc)
-            overall_changed, overall_summary = False, ""
+            click.echo(
+                f"[overall] WARNING: Failed to evaluate covalent-bond changes: {exc}",
+                err=True,
+            )
 
         emit("\n====== MEP summary started ======\n", narrative=True)
 
         emit("[overall] Covalent-bond changes between first and last image:", narrative=True)
-        if overall_changed and overall_summary.strip():
+        if overall_changed is None:
+            click.echo("  (covalent-bond change detection unavailable)")
+        elif overall_changed and overall_summary.strip():
             click.echo(textwrap.indent(overall_summary.strip(), prefix="  "))
         else:
             click.echo("  (no covalent changes detected)")
@@ -2890,8 +2976,14 @@ def cli(
         if combined_all.segments:
             emit("[segments] Along the final MEP order (ΔE‡, ΔE). Bridges are shown between connected segments:", narrative=True)
             for i, seg in enumerate(combined_all.segments, 1):
-                kind_label = "BRIDGE" if seg.kind == "bridge" else "SEG"
-                click.echo(f"  [{i:02d}] ({kind_label}) {seg.tag}  |  ΔE‡ = {seg.barrier_kcal:.2f} kcal/mol,  ΔE = {seg.delta_kcal:.2f} kcal/mol")
+                kind_label = seg.kind.upper()
+                if seg.kind == "kink":
+                    click.echo(
+                        f"  [{i:02d}] ({kind_label}) {seg.tag}  |  "
+                        f"non-MEP connector, ΔE = {seg.delta_kcal:.2f} kcal/mol"
+                    )
+                else:
+                    click.echo(f"  [{i:02d}] ({kind_label}) {seg.tag}  |  ΔE‡ = {seg.barrier_kcal:.2f} kcal/mol,  ΔE = {seg.delta_kcal:.2f} kcal/mol")
                 if seg.kind != "bridge" and seg.summary.strip():
                     click.echo(textwrap.indent(seg.summary.strip(), prefix="      "))
         else:
@@ -2900,6 +2992,8 @@ def cli(
         emit("====== MEP summary finished ======\n", narrative=True)
 
         diagram_payload: Optional[Dict[str, Any]] = None
+        png_path = out_dir_path / "energy_diagram_MEP.png"
+        png_path.unlink(missing_ok=True)
         try:
             # Map frames to segment indices (for anchoring R/P energies in Hartree)
             frame_seg_indices: List[int] = [int(getattr(im, "mep_seg_index", 0) or 0) for im in combined_all.images]
@@ -2948,7 +3042,8 @@ def cli(
             for s in combined_all.segments:
                 if _is_bond_change_seg(s):
                     ts_count += 1
-                    barrier_kcal = float(getattr(s, "barrier_kcal", float("nan")))
+                    _barrier = getattr(s, "barrier_kcal", None)
+                    barrier_kcal = float(_barrier) if _barrier is not None else float("nan")
                     delta_kcal = float(getattr(s, "delta_kcal", float("nan")))
                     if not np.isfinite(barrier_kcal):
                         barrier_kcal = 0.0
@@ -2980,7 +3075,8 @@ def cli(
                         continue
 
                     delta_kcal = float(getattr(s, "delta_kcal", float("nan")))
-                    barrier_kcal = float(getattr(s, "barrier_kcal", float("nan")))
+                    _barrier = getattr(s, "barrier_kcal", None)
+                    barrier_kcal = float(_barrier) if _barrier is not None else float("nan")
 
                     if s.kind == "bridge":
                         if np.isfinite(barrier_kcal) and barrier_kcal > 1.0e-3:
@@ -3054,7 +3150,6 @@ def cli(
                 "energies_kcal": energies_kcal,
                 "ylabel": "ΔE (kcal/mol)",
                 "energies_au": energies_au,
-                "image": str(out_dir_path / "energy_diagram_MEP.png"),
             }
 
             labels_repr = "[" + ", ".join(f'"{lab}"' for lab in labels) + "]"
@@ -3073,8 +3168,8 @@ def cli(
             fig.update_layout(title=title_note)
 
             try:
-                png_path = out_dir_path / "energy_diagram_MEP.png"
                 fig.write_image(str(png_path), scale=2)
+                diagram_payload["image"] = str(png_path)
                 emit(f"[diagram] Wrote energy diagram (PNG) → '{png_path}'", detail=True)
             except Exception as e:
                 click.echo(f"[diagram] NOTE: PNG export skipped (install 'kaleido' to enable): {e}")
@@ -3100,7 +3195,11 @@ def cli(
                     # no-tsopt aggregate can gate on real per-segment convergence
                     # instead of assuming a segment converged.
                     "converged": s.converged,
-                    "barrier_kcal": float(s.barrier_kcal),
+                    "barrier_kcal": (
+                        float(s.barrier_kcal)
+                        if s.barrier_kcal is not None
+                        else None
+                    ),
                     "delta_kcal": float(s.delta_kcal),
                     "bond_changes": (
                         _bond_changes_block(s.summary) if (s.kind != "bridge") else ""
@@ -3263,7 +3362,7 @@ def cli(
             opt_exc=OptimizationError,
             opt_msg="ERROR: Path search failed — {exc}",
             out_dir=out_dir_path,
-            command="path_search",
+            command="path-search",
             time_start=time_start,
         )
     finally:

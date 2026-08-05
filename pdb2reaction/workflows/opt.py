@@ -67,6 +67,7 @@ from pdb2reaction.core.utils import (
     optimizer_cycle_count,
     optimizer_terminal_status,
     unbiased_energy_hartree,
+    lossless_int,
 )
 from pdb2reaction.cli.common_options import (
     add_ml_charge_spin_options,
@@ -352,7 +353,7 @@ def _seed_rfo_initial_hessian(
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     required=True,
-    help="Input structure file (.pdb, .cif, .mmcif, .xyz, .gjf, _trj.xyz, ...).",
+    help="Single-geometry input (.pdb, .cif, .mmcif, .xyz, or .gjf). Extract a trajectory frame to .xyz before use.",
 )
 @click.option(
     "--workers",
@@ -636,14 +637,14 @@ def cli(
                 calc_cfg["solvent"] = solvent
             if cli_param_overridden(ctx, "solvent_model"):
                 calc_cfg["solvent_model"] = solvent_model
-            from pdb2reaction.backends import apply_effective_precision
-            apply_effective_precision(calc_cfg, precision)
             from pdb2reaction.backends import apply_backend_model_to_calc_cfg
             # Unconditional: also pops a raw backend_model token from a --config YAML
             # (the helper no-ops when neither the CLI arg nor the YAML names one).
             apply_backend_model_to_calc_cfg(calc_cfg, backend_model)
             from pdb2reaction.backends import apply_calc_file_to_calc_cfg
             apply_calc_file_to_calc_cfg(calc_cfg, calc_file, calc_factory)
+            from pdb2reaction.backends import apply_effective_precision
+            apply_effective_precision(calc_cfg, precision)
             apply_backend_defaults(calc_cfg)
             if cli_param_overridden(ctx, "max_cycles"):
                 opt_cfg["max_cycles"] = int(max_cycles)
@@ -670,12 +671,23 @@ def cli(
                     (rfo_cfg, (("rfo",),)),
                 ],
             )
+            opt_mode_effective = opt_cfg.pop("opt_mode", opt_mode)
+            if cli_param_overridden(ctx, "opt_mode"):
+                opt_mode_effective = opt_mode
             try:
                 geom_cfg["tr_projection"] = normalize_tr_projection_mode(
                     geom_cfg.get("tr_projection")
                 )
             except ValueError as exc:
                 raise click.ClickException(str(exc)) from exc
+            effective_max_cycles = lossless_int(
+                opt_cfg.get("max_cycles"), "opt.max_cycles"
+            )
+            if effective_max_cycles < 1:
+                raise click.BadParameter(
+                    "opt.max_cycles must be a positive integer."
+                )
+            opt_cfg["max_cycles"] = effective_max_cycles
 
             # Convert 1-based YAML freeze_atoms to 0-based internal
             if geom_cfg.get("freeze_atoms"):
@@ -683,9 +695,8 @@ def cli(
             # Merge CLI --freeze-atoms (already 0-based)
             try:
                 freeze_atoms_cli = _parse_freeze_atoms(freeze_atoms_text)
-            except click.BadParameter as e:
-                click.echo(f"ERROR: {e}", err=True)
-                sys.exit(1)
+            except click.BadParameter:
+                raise
             if freeze_atoms_cli:
                 merge_freeze_atom_indices(geom_cfg, freeze_atoms_cli)
             # Normalize freeze_atoms and optionally add link-parent indices for PDB inputs
@@ -695,7 +706,7 @@ def cli(
 
             # Normalize and select optimizer kind
             kind = normalize_choice(
-                opt_mode,
+                opt_mode_effective,
                 param="--opt-mode",
                 alias_groups=OPT_MODE_ALIASES,
                 allowed_hint="grad|hess|lbfgs|rfo",
@@ -765,9 +776,8 @@ def cli(
                     resolved_dist_freeze = _resolve_dist_freeze_targets(
                         geometry, dist_freeze
                     )
-                except click.BadParameter as e:
-                    click.echo(f"ERROR: {e}", err=True)
-                    sys.exit(1)
+                except click.BadParameter:
+                    raise
 
             if dry_run:
                 click.echo(
@@ -794,7 +804,28 @@ def cli(
                 )
                 return
 
+            final_destination = out_dir_path / "final_geometry.xyz"
+            source_input = prepared_input.source_path
+            same_input = source_input.resolve() == final_destination.resolve()
+            if source_input.exists() and final_destination.exists():
+                same_input = same_input or source_input.samefile(final_destination)
+            if same_input:
+                raise click.UsageError(
+                    f"Input {source_input} collides with reserved opt output {final_destination}."
+                )
             out_dir_path.mkdir(parents=True, exist_ok=True)
+            for name in (
+                "final_geometry.pdb",
+                "final_geometry.cif",
+                "final_geometry.gjf",
+                "optimization_trj.xyz",
+                "optimization.pdb",
+                "optimization.cif",
+            ):
+                (out_dir_path / name).unlink(missing_ok=True)
+            if not out_json:
+                for name in ("result.json", "summary.json"):
+                    (out_dir_path / name).unlink(missing_ok=True)
 
             # Attach the configured MLIP calculator.
             base_calc = create_calculator(**calc_cfg)
@@ -987,7 +1018,7 @@ def cli(
                     "status": optimizer_terminal_status(last_optimizer),
                     "energy_hartree": final_energy_hartree,
                     "n_opt_cycles": optimizer_cycle_count(last_optimizer),
-                    "opt_mode": opt_cfg.get("opt_mode", opt_mode),
+                    "opt_mode": str(opt_mode_effective),
                     "charge": calc_cfg["charge"],
                     "spin": calc_cfg["spin"],
                     **_opt_result_provenance(calc_cfg),

@@ -364,21 +364,26 @@ def scan_freeze_atoms_toward_target_inplace(
                 Q_new = Q.copy()
                 Q_new[idx] = P[idx]
                 _set_all_coords_disabling_freeze(g_mob, Q_new)
+                final_converged = False
                 try:
                     g_mob.freeze_atoms = np.array(idx, int)
-                    LBFGS(
+                    optimizer = LBFGS(
                         g_mob,
                         out_dir=str(out_dir),
                         max_cycles=int(final_cycles),
                         print_every=100,
                         thresh=thresh,
                         dump=False,
-                    ).run()
+                    )
+                    optimizer.run()
+                    from pdb2reaction.workflows._outcomes import optimizer_converged_bit
+
+                    final_converged = optimizer_converged_bit(optimizer) is True
                 except (ZeroStepLength, OptimizationError) as e:
                     if verbose:
                         click.echo(f"[scan] WARNING: Exception occurred in final relaxation: {e} (continuing)", err=True)
                 g_mob.freeze_atoms = np.array([], int)
-                converged = True
+                converged = final_converged
                 n_steps_done = istep
                 break
 

@@ -126,11 +126,6 @@ def gdiis(err_vecs, coords, forces, ref_step, max_vecs=5, test_direction=True):
         coeffs_str = array2string(coeffs, precision=4)
         log(f"\tGDIIS coefficients: {coeffs_str}")
 
-        # Uncomment these lines and break here to only do the basic check
-        # for linear dependency above.
-        # valid_coeffs = coeffs
-        # break
-
         # Check degree of extra- and interpolation.
         pos_sum = abs(coeffs[coeffs > 0].sum())
         neg_sum = abs(coeffs[coeffs < 0].sum())
@@ -168,10 +163,6 @@ def gdiis(err_vecs, coords, forces, ref_step, max_vecs=5, test_direction=True):
     if valid_coeffs is None:
         return None
 
-    # if len(valid_coeffs) is 2:
-    # print("GDIIS with only 2 cycles. Skipping! Return None")
-    # return None
-
     return diis_result(valid_coeffs, coords, forces, prefix="G")
 
 
@@ -201,22 +192,6 @@ def gediis(coords, energies, forces, hessian=None, max_vecs=3):
     def x2c(x):
         return x ** 2 / (x ** 2).sum()
 
-    # def fun(xs):
-    # """Naive implementation with loops."""
-    # cs = x2c(xs)
-    # first = (cs*E).sum()
-    # sec = 0.
-    # for i, ci in enumerate(cs):
-    # for j, cj in enumerate(cs):
-    # sec += ci * cj * (f[j] - f[i]) @ (R[i] - R[j])
-    # return first - 1/2 * sec
-
-    # def fun(xs):
-    # """Recalculation of all values in every call."""
-    # cs = x2c(xs)
-    # return anp.sum(cs*E) - anp.einsum("i,j,jk,ik", cs, cs, R, f) + anp.einsum("i,ij,ij", cs, R, f)
-
-    # Using precomputed values from above in 'fun()'
     if hessian is None:
 
         def fun(xs):
@@ -229,12 +204,12 @@ def gediis(coords, energies, forces, hessian=None, max_vecs=3):
     else:
         if isinstance(hessian, torch.Tensor):
             hessian_inv = torch.linalg.pinv(hessian, rcond=1e-6)
-            gHig = torch.einsum("ki,ji,ki->k", f, hessian_inv, f).cpu().numpy()
+            gHig = torch.einsum("ki,ij,kj->k", f, hessian_inv, f).cpu().numpy()
         else:
             hessian_inv = np.linalg.pinv(hessian, rcond=1e-6)
             # It doesn't matter if we use forces or gradients, as the signs will cancel.
-            # gHig = 0.5 * np.einsum("ki,ji,ki->k", f, hessian_inv, f)
-            gHig = np.einsum("ki,ji,ki->k", f, hessian_inv, f)
+            # The coordinate-invariant quadratic form is f^T H^-1 f per row of f.
+            gHig = np.einsum("ki,ij,kj->k", f, hessian_inv, f)
 
         def fun(xs):
             """Eq. (5) from [4]."""
@@ -246,22 +221,10 @@ def gediis(coords, energies, forces, hessian=None, max_vecs=3):
                 + (cs * Rifi).sum()
             )
 
-    # def fun(xs):
-    # cs = x2c(xs)
-    # cRjfi = anp.einsum("j,jk,ik->ji", cs, R, f).sum(axis=0)
-    # return anp.sum(
-    # cs * (E + cRjfi + Rifi)
-    # )
-
     jac = grad(fun)
 
     x0 = np.ones(use) / use
     res = minimize(fun, x0=x0, jac=jac)  # , tol=1e-7)
-    # print(res)
-    # print("final x", res.x)
-    # x = res.x
-    # import pdb; pdb.set_trace()
-
     if not res.success:
         log("\tOptimization failed.")
         return None
@@ -272,8 +235,6 @@ def gediis(coords, energies, forces, hessian=None, max_vecs=3):
     log(f"\tOptimization converged!")
     coeff_str = array2string(coeffs, precision=4)
     log(f"\tCoefficients: {coeff_str}")
-    # en_ = (E * coeffs).sum()
-    # import pdb; pdb.set_trace()
     if (hessian is None) and (en_ >= E[0]):
         print(
             f"GEDIIS converged, but proposed energy is above current energy! Returning None"

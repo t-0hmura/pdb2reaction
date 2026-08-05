@@ -30,6 +30,11 @@ pip install "pdb2reaction[mcp]"
 - `run_id`: 各 subprocess 呼び出しの UUID。summary の ID が一致しない場合は
   `summary_run_mismatch` と空の `summary` を返します
 
+product CLI alias は MCP server と同じ Python interpreter の
+`python -m pdb2reaction` に固定され、import 済み package root を child
+`PYTHONPATH` の先頭へ置きます。child は caller の current working directory
+を維持するため、relative scientific input path の意味も変わりません。
+
 ### 構造化されたエラーエンベロープ
 
 サブコマンドが失敗した場合、パース済みの `summary`（または同階層の `result.json`）に拡張エラーエンベロープが含まれます。これにより、エージェントはテキストをパースせずに例外クラスの階層をパターンマッチできます。
@@ -71,12 +76,31 @@ pip install "pdb2reaction[mcp]"
 | `plot_energy_diagram` | `pdb2reaction energy-diagram` | カテゴリ別エネルギーダイアグラム |
 | `detect_bond_changes` | `pdb2reaction bond-summary` | 2 つの PDB 間の結合変化の差分 |
 
+### 電荷と順序付き入力
+
+`charge` と `ligand_charge` を公開する tool では、PDB の残基情報から導出する
+場合は `charge` を省略して per-resname `ligand_charge` mapping を渡します。
+residue context のない XYZ は明示的な total `charge` が必要です。有効な GJF
+header は charge/multiplicity を供給します。両方を指定した場合は明示的な
+`charge` が優先します。
+
+`search_paths` は reactant の `input_pdb` と `product_pdb` を必要とし、順序付き
+intermediate は `intermediate_pdbs` に渡します。1D/full-pipeline の staged scan
+では最初の literal を `scan_lists`、後続を `additional_scan_stages` に入れます。
+
 ## オプトインの IRC 収束ガード
 
 `run_irc`（CLI: `pdb2reaction irc`）は `irc_pos_def: bool` を受け付けます。これにより IRC
 収束には、質量重み付き Hessian が正定値であることが追加で要求され、rms のみの
 基準が局所極小に到達する前に成功と判定してしまう IRC の「ショルダー」での偽収束を
 防ぎます。デフォルトは `None`（rms のみ、従来動作）です。
+
+`run_irc` は `step_size` と `never_stop` も受け付けます。branch が数 frame で
+停止する場合はまず `step_size` を小さくします（典型値 `0.05`）。
+`never_stop=True` は gradient/energy endpoint criteria を無視して max-cycle まで
+追跡しますが、数値・積分 failure は停止します。`run_full_pipeline` は同じ制御を
+`irc_step_size` / `irc_never_stop` として転送し、TS recovery 用の `flatten` と
+`refine_path` も公開します。
 
 `find_transition_state`（CLI: `pdb2reaction tsopt`）は `--opt-mode` により
 代替の TS オプティマイザも公開しています。
@@ -155,6 +179,9 @@ async with stdio_client(server_params) as (read, write):
 - stage tool の出力ファイルは `out_dir` キーワード引数の配下に置かれます（デフォルトは一意の
   `tempfile.mkdtemp(prefix="p2r_mcp_<subcmd>_…")` で、同時並行のエージェント呼び出しが
   衝突しないようになっています）。
-- helper tool は `out_dir` を持たず、指定された出力パスへ書き込みます。`extra_args` は追加の CLI 動作を要求できます。
+- helper tool は `out_dir` を持たず、指定された出力 path へ書き込みます。expert
+  `extra_args` は追加の非管理 CLI 動作を要求できますが、typed output path、
+  `--out-dir`、管理された `--out-json/--no-out-json` toggle は上書きできません。
+  filesystem policy を適用するときは返却 `argv` を確認してください。
 - サーバーは `~/.bashrc` / ログイン環境を変更したり、ソフトウェアをインストールしたりしません。すべての MLIP の重みや PDB 入力は
   あらかじめディスク上に存在している必要があります。

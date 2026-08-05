@@ -2,7 +2,7 @@
 
 ## 目的
 
-既に手元にある TS 候補構造に対して、`tsopt → irc → freq →（任意で dft）` の検証・熱力学計算の一連の処理だけを `pdb2reaction all` で一括実行します。上流の `extract` / `path-opt` はスキップされます。
+既に手元にある TS 候補構造に対して、`pdb2reaction all --tsopt` で `tsopt → irc` を実行します。`--thermo` を加えると `freq`、`--dft` を加えると DFT 一点計算も実行します。上流の `extract` / `path-opt` はスキップされます。
 
 ## 事前に必要なもの
 
@@ -84,7 +84,7 @@ result_ts_only/
 
 | 症状 | 原因 | 対処 |
 |---|---|---|
-| `post_segments[0].ts_imag.n_imag == 0` | TS 候補が極小に落ちてしまう | `path-search` で TS 候補を取り直します。`all` は MEP 接線を内部で渡して有界回復を行いますが、経路情報のない通常の TS のみモードでは目的の隣接鞍点を特定できません |
+| `post_segments[0].ts_imag.n_imag == 0` | TS 候補が極小に落ちてしまう | 経路情報のない通常の TS-only mode は目的の隣接鞍点を特定できず、自動 saddle recovery の default budget も 0 です。endpoint がある場合は `path-search` で TS 候補を取り直します |
 | `n_imag >= 2` | 高次鞍点候補または TS 未収束 | TS の認定には虚振動がちょうど 1 つ必要です。周波数が小さいことだけを理由に余分なモードを除外せず、各虚振動モードの変位を確認してください。必要に応じて `--thresh-post` を厳しくし、`--flatten` と再最適化で余分なモードを除去してから認定します。 |
 | `segments[0].bond_changes` が空（`""` または `(no covalent changes detected)`）、または IRC が想定と違う終点に到達 | 虚振動が反応座標方向と一致していない、または TS が同じ井戸同士を結んでいる（反応物側と生成物側が同一極小） | `segments/seg_01/ts/vib/imag_*_trj.xyz` を PyMOL で可視化し、虚振動が想定の反応方向か確認。違う場合は TS 候補を取り直す |
 

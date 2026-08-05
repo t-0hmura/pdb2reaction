@@ -189,7 +189,7 @@ CLI サブコマンドリゾルバ（`cli/app.py:_LAZY_SUBCOMMANDS`）は **絶�
 | MEP 探索（GSM） | `pdb2reaction/workflows/path_search.py` |
 | MEP optimizer コア（pysisyphus COS） | `pdb2reaction/workflows/path_opt.py` |
 | TS 最適化（RS-P-RFO + Bofill + macro/micro） | `pdb2reaction/workflows/tsopt.py` |
-| 振動解析（PHVA + UMA active block） | `pdb2reaction/workflows/freq.py` |
+| 振動解析（backend-agnostic PHVA + active block） | `pdb2reaction/workflows/freq.py` |
 | IRC 積分（macro / micro） | `pdb2reaction/workflows/irc.py` |
 | 一点 DFT（gpu4pyscf サブプロセス） | `pdb2reaction/workflows/dft.py` |
 | 活性部位抽出（クラスターキャップ） | `pdb2reaction/workflows/extract.py` |

@@ -1007,19 +1007,24 @@ def test_all_pipeline_aggregate_post_missing_fails_closed_when_tsopt_requested()
     # closed (post_missing) until IRC/endpoint post-processing actually runs.
     from pdb2reaction.workflows.all import _pipeline_aggregate_truth
 
-    summary = {"segments": [{"index": 1, "kind": "seg", "barrier_kcal": 10.0}]}
+    summary = {"segments": [{
+        "index": 1,
+        "kind": "seg",
+        "barrier_kcal": 10.0,
+        "converged": True,
+    }]}
     # post_segments=[] (post ran but produced no record for this segment).
     truth = _pipeline_aggregate_truth(
         summary, post_segments=[], config={"tsopt": True}, legacy_status="success",
     )
-    assert truth.scientific_status != "success"        # would have been success (fail-open)
+    assert truth.scientific_status == "partial"
     assert any("segment_1" in r for r in truth.status_reasons)
     # post_segments=None (the very first intermediate write, before post-processing)
     # fails closed too.
     truth_none = _pipeline_aggregate_truth(
         summary, post_segments=None, config={"tsopt": True}, legacy_status="success",
     )
-    assert truth_none.scientific_status != "success"
+    assert truth_none.scientific_status == "partial"
 
 
 def test_all_pipeline_aggregate_no_tsopt_uses_segment_converged() -> None:
@@ -1074,10 +1079,21 @@ def test_read_path_opt_segment_converged_is_tristate(tmp_path: Path) -> None:
 
     assert _read_path_opt_segment_converged(tmp_path) is None
     result = tmp_path / "result.json"
-    result.write_text(json.dumps({"stage_outcomes": [{"converged": True}]}))
+    result.write_text(json.dumps({"stage_outcomes": [
+        {"item_id": "preopt_0", "converged": False},
+        {"item_id": "gsm_mep", "converged": True},
+    ]}))
     assert _read_path_opt_segment_converged(tmp_path) is True
-    result.write_text(json.dumps({"stage_outcomes": [{"converged": False}]}))
+    result.write_text(json.dumps({"stage_outcomes": [
+        {"item_id": "dmf_mep", "converged": False},
+        {"item_id": "postopt_0", "converged": True},
+    ]}))
     assert _read_path_opt_segment_converged(tmp_path) is False
+    result.write_text(json.dumps({"stage_outcomes": [
+        {"item_id": "gsm_mep", "converged": True},
+        {"item_id": "dmf_mep", "converged": False},
+    ]}))
+    assert _read_path_opt_segment_converged(tmp_path) is None
     result.write_text("{ not json")
     assert _read_path_opt_segment_converged(tmp_path) is None
 

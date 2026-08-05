@@ -15,9 +15,9 @@ model changes.
 Use `-q INTEGER` when there are no residues to sum (notably `.xyz` without
 `--ref-pdb`), or to deliberately override the derivation in ordinary geometry
 commands. A valid `.gjf` already carries charge and multiplicity in its header;
-CLI `-q` / `-m` override it. The `all` workflow is intentionally stricter when
-`-c/--center` triggers extraction: there `-q` is an assertion and must match the
-extract-derived total. Set multiplicity explicitly whenever it is not the known
+CLI `-q` / `-m` override it. In `all -c/--center`, explicit `-q` also sets the
+total; disagreement with the extraction-derived charge produces a warning.
+Set multiplicity explicitly whenever it is not the known
 singlet default.
 
 ## Multiplicity (`-m`)
@@ -46,9 +46,9 @@ singlet default.
 2. **Direct total / override** — pass `-q INTEGER` for an input with no residues to
    sum (`.xyz` without `--ref-pdb`), to replace a GJF header deliberately, or
    to override the `-l` derivation in ordinary geometry commands. In those
-   commands `-q` wins over `-l` when both are given. Exception: `all` with
-   `-c/--center` compares `-q` with the extracted total and aborts on a mismatch;
-   `-q` does not silently replace extraction's charge result.
+   commands `-q` wins over `-l` when both are given. In `all -c/--center`,
+   extraction still derives and reports its value. Explicit `-q` sets the total,
+   and a mismatch produces a warning.
 
 The amino-acid table is internal:
 
@@ -154,9 +154,9 @@ lives in the resname:
 Dump the whole table with the `python -c` one-liner above (`FE3` is not a
 key in it). When the deposited resname disagrees with the oxidation state
 the mechanism requires — an `FE` record that is really Fe(II), say — set
-the cluster total explicitly with `-q` in an ordinary geometry command. For
-`all -c/--center`, correct the residue naming/mapping instead because `-q` is a
-consistency assertion, not an override.
+the cluster total explicitly with `-q`. For `all -c/--center`, also correct the
+residue naming/mapping so that the warning does not conceal a model-building
+error.
 
 ## Multiplicity for metals (look-up shortcuts)
 

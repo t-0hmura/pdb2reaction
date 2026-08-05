@@ -6,7 +6,7 @@
 |------|-----------|-------------|
 | **MEP** | Minimum Energy Path | The lowest-energy pathway on a potential energy surface (PES) connecting reactants to products through a transition state. |
 | **TS** | Transition State | A first-order saddle point on the potential energy surface — a stationary point with exactly one direction of negative curvature (one imaginary frequency) along the reaction coordinate. |
-| **IRC** | Intrinsic Reaction Coordinate | Classically defined as the mass-weighted steepest-descent path from a TS toward reactants and products, used to validate TS connectivity. In pdb2reaction the EulerPC integrator runs in **unweighted Cartesian coordinates** (`irc.md`: `--step-size` is in Bohr of unweighted Cartesian); `geom.coord_type` is forced to `cart`. |
+| **IRC** | Intrinsic Reaction Coordinate | Classically defined as the mass-weighted steepest-descent path from a TS toward reactants and products, used to validate TS connectivity. In pdb2reaction the EulerPC integrator advances mass-weighted coordinates; `--step-size` is measured after unweighting, in Cartesian Bohr. `geom.coord_type` is forced to `cart`. |
 | **GSM** | Growing String Method | A string-based method that grows images from endpoints and optimizes them to approximate an MEP. |
 | **DMF** | Direct Max Flux | A chain-of-states method for optimizing an MEP by maximizing flux along the pathway. In pdb2reaction it is selected with `--mep-mode dmf`. |
 | **HEI** | Highest-Energy Image | The image along an MEP with maximum energy; often used as a TS guess. |
@@ -102,7 +102,7 @@
 | **Bohr** | Atomic unit of length; 1 Bohr ≈ 0.529 Å. |
 | **Angstrom (Å)** | 10⁻¹⁰ m; standard unit for interatomic distances. |
 | **cm⁻¹** | Reciprocal centimeters (wavenumber); the standard unit for vibrational frequencies. Imaginary frequencies appear as negative values. |
-| **Imaginary Frequency** | A vibrational frequency corresponding to a negative eigenvalue of the Hessian. A TS has exactly one (first-order saddle point). Reported as a negative cm⁻¹ value. The detection threshold is `hessian_dimer.neg_freq_thresh_cm` (default 5 cm⁻¹). |
+| **Imaginary Frequency** | A vibrational frequency corresponding to a negative eigenvalue of the Hessian. A TS has exactly one (first-order saddle point). Reported as a negative cm⁻¹ value. TS-optimizer and flatten/report diagnostics use `hessian_dimer.neg_freq_thresh_cm` (default 5 cm⁻¹); standalone `freq` counts every strictly negative mode (zero cutoff). |
 
 (frequency-thresholds)=
 ### Frequency thresholds: 5 cm⁻¹ imaginary detection vs 100 cm⁻¹ QRRHO rotor cutoff
@@ -111,7 +111,7 @@ Two unrelated cm⁻¹ thresholds appear in `pdb2reaction`. They act on different
 
 | Threshold | Role | Source |
 |-----------|------|--------|
-| **5 cm⁻¹** | *Imaginary-mode detection cutoff.* Negative eigenvalues with magnitude below this are not counted as imaginary (treated as rigid-body / numerical noise). | `pdb2reaction/core/defaults.py` as `hessian_dimer.neg_freq_thresh_cm = 5.0`; tunable via YAML. |
+| **5 cm⁻¹** | *TS-optimizer imaginary-mode detection cutoff.* In TS optimization, flattening, and its reports, negative frequencies with magnitude below this are not counted as imaginary. Standalone `freq` instead counts every strictly negative mode. | `pdb2reaction/core/defaults.py` as `hessian_dimer.neg_freq_thresh_cm = 5.0`; tunable via YAML for the TS-optimizer diagnostics. |
 | **100 cm⁻¹** | *QRRHO rotor cutoff* (Grimme). Positive low-frequency vibrations are damped between harmonic-oscillator and free-rotor entropy in `freq` thermochemistry; it changes only entropy / Gibbs free energy. | `thermoanalysis/config.py` as `ROTOR_CUT_DEFAULT = 100.0`. |
 
 ## CLI Conventions

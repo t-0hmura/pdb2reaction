@@ -62,20 +62,6 @@ class Kick(Pipeline):
         """
         kept_geoms = self.get_unique_geometries(opt_geoms)
 
-        # cycle_str = f"{self.cur_cycle:03d}_{self.cur_micro_cycle:03d}"
-        # fn_base = f"cycle_{cycle_str}"
-        # trj_fn = f"{fn_base}_trj.xyz"
-        # with open(trj_fn, "w") as handle:
-            # handle.write(make_trj_str_from_geoms(opt_geoms))
-
-        # trj_filtered_fn = f"{fn_base}_filtered_trj.xyz"
-        # with open(trj_filtered_fn, "w") as handle:
-            # handle.write(make_trj_str_from_geoms(kept_geoms))
-
-        # for i, ogeom in enumerate(kept_geoms):
-            # fn = f"geom_{i:02d}_{cycle_str}.xyz"
-            # with open(fn, "w") as handle:
-                # handle.write(ogeom.as_xyz())
         self.cur_micro_cycle += 1
 
         return kept_geoms

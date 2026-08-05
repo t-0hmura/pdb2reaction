@@ -115,11 +115,13 @@ squeue -u "$USER"
 ### 7. Conda envs
 
 ```bash
-conda env list                    # all envs
-# is pdb2reaction installed somewhere?
-for env in $(conda env list | awk '/^[a-zA-Z]/{print $1}'); do
-  conda run -n "$env" python -c 'import pdb2reaction; print("'"$env"': ", pdb2reaction.__version__)' 2>/dev/null
-done
+conda env list --json             # machine-readable prefixes
+# Is pdb2reaction installed somewhere? Probe every returned prefix, including
+# prefix-only and digit/underscore-leading environments.
+while IFS= read -r env_prefix; do
+  conda run -p "$env_prefix" python -c 'import pdb2reaction; print(pdb2reaction.__version__)' 2>/dev/null \
+    && printf 'prefix: %s\n' "$env_prefix"
+done < <(conda env list --json | python -c 'import json,sys; print("\n".join(json.load(sys.stdin)["envs"]))')
 ```
 
 The env that successfully imports `pdb2reaction` is your `<YOUR_ENV>`.
@@ -200,10 +202,12 @@ and a representative pilot run are still needed to choose resource requests.
 
   echo
   echo "=== Conda envs with pdb2reaction ==="
-  for env in $(conda env list 2>/dev/null | awk '/^[a-zA-Z]/{print $1}'); do
-    conda run -n "$env" python -c \
-      'import pdb2reaction; print("'"$env"':", pdb2reaction.__version__)' 2>/dev/null
-  done
+  while IFS= read -r env_prefix; do
+    conda run -p "$env_prefix" python -c \
+      'import pdb2reaction; print(pdb2reaction.__version__)' 2>/dev/null \
+      && printf 'prefix: %s\n' "$env_prefix"
+  done < <(conda env list --json 2>/dev/null | python -c \
+    'import json,sys; print("\n".join(json.load(sys.stdin)["envs"]))')
 } 2>&1
 ```
 

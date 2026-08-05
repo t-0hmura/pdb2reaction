@@ -89,7 +89,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(1, 5, 1.35)]' --print-parsed
   | `pdb2reaction all` | `--scan-max-step-size 0.20 Å` | `--scan-bias-k 300 eV/Å²` |
   | 単独の `pdb2reaction scan` | `--max-step-size 0.20 Å` | `--bias-k 300 eV/Å²` |
 
-  どちらの形式でも、または YAML の `bias` ブロックで上書き可能です（[scan](scan.md) / [yaml-reference](yaml-reference.md#bias) 参照）。
+  step 幅は対応する CLI flag で上書きします。バイアス強度は CLI flag または YAML の `bias.k` で上書きできます（[scan](scan.md) / [yaml-reference](yaml-reference.md#bias) 参照）。
 - 各スキャンステージは、最終緩和構造に対する結合変化チェック（`has_bond_change`）で終了します。ステージごとの結果は scan ログに記録され、`--out-json` 指定時には scan 出力ディレクトリに書き出される集約 `result.json`（その `stages` 配列内）にも記録されます。
 - 再帰的 MEP refinement（`path-search`）は scan の端点を**無条件**に入力として取り込みます。実行されるかどうかのゲートは、scan stage の bond-change フラグ（`has_bond_change`）ではなく `--refine-path` です。
 - `pdb2reaction all --help-advanced` で全オプション（スキャン制御を含む）を確認できます。

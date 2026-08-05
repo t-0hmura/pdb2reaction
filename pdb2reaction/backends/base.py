@@ -6,7 +6,8 @@ Base MLIP calculator class for PySisyphus integration.
 All MLIP backends (UMA, ORB, MACE, AIMNet2) extend ``MLIPCalculator``,
 which inherits from ``pysisyphus.calculators.Calculator``.  Common
 functionality — freeze-atom handling, finite-difference Hessian assembly,
-unit conversion, and timing/VRAM logging — lives here.
+unit conversion, and timing support — lives here. Backend-specific Hessian
+VRAM reporting is owned by the corresponding backend.
 """
 
 from __future__ import annotations

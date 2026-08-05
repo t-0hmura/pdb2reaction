@@ -15,9 +15,10 @@ This document is for **contributors and maintainers**. For end-user usage, see [
 | stage | what runs | how to invoke locally | failure means |
 |---|---|---|---|
 | 1. Unit tests | `pytest tests/ -q` | `pytest tests/ -q` | logic regression; **never delete or skip the failing test** — root-cause it |
-| 2. Engineering markers | `# CHEMISTRY-RULE:N` coverage, `# DOMAIN_PURE` coverage, external-library import scope | `python .github/scripts/check_engineering_markers.py` | a required marker is missing, or an MLIP SDK is imported outside `backends/` |
-| 3. Help registry drift | CLI `--help` and `--help-advanced` compliance with registry | `python .github/scripts/check_help_registry.py` | CLI option mismatch — re-run after CLI changes |
-| 4. Smoke | `tests/smoke/run.sh` exercises the canonical CLI surface (`extract` → `path-search` → `tsopt` → `irc` → `freq` → `all`) on a representative cluster system | copy `tests/smoke/` to scratch, then invoke `bash run.sh` from a site-specific scheduler wrapper | functional regression — root-cause before merge |
+| 2. Engineering markers | `# CHEMISTRY-RULE:N` coverage, `# DOMAIN_PURE` coverage, external-library import scope, import-layer direction | `python .github/scripts/check_engineering_markers.py` and `python .github/scripts/check_import_graph.py` | a required marker is missing, an MLIP SDK is imported outside `backends/`, or an import crosses a forbidden layer |
+| 3. Documentation quality | generated command references, EN/JA structure, links, and authored command contracts | `python .github/scripts/run_docs_quality.py` | public guidance or generated CLI documentation has drifted |
+| 4. Help registry drift | CLI `--help` and `--help-advanced` compliance with registry | `python .github/scripts/check_help_registry.py` | CLI option mismatch — re-run after CLI changes |
+| 5. Smoke | `tests/smoke/run.sh` exercises the canonical CLI surface (`extract` → `path-search` → `tsopt` → `irc` → `freq` → `all`) on a representative cluster system | copy `tests/smoke/` to scratch, then invoke `bash run.sh` from a site-specific scheduler wrapper | functional regression — root-cause before merge |
 
 ### 1.2 Before any patch
 
@@ -100,7 +101,7 @@ must cover the new command when it belongs to the canonical smoke surface.
 | 1 | Create `pdb2reaction/backends/xyz.py` with `XYZCalculator(MLIPCalculator)` (pysisyphus path) and `XYZASECalculator(...)` (ASE path) | new file in L4a |
 | 2 | Subclass `MLIPCalculator` (`backends/base.py:120`) and implement `_compute_energy_forces_ev(elem, coord_ang)`; the base supplies the pysis calculator contract and finite-difference Hessian assembly. Implement the separate ASE adapter in the backend module (see `backends/uma.py`) | `pdb2reaction/backends/base.py`, `pdb2reaction/backends/xyz.py` |
 | 3 | Register in `BACKEND_REGISTRY` dict with `module / pysis_cls / ase_cls` keys, and add the accepted-kwargs set to `_BACKEND_ACCEPTED_KEYS` and `_ASE_ACCEPTED_KEYS` | `pdb2reaction/backends/__init__.py` |
-| 4 | Add `xyz` to `resolve_backend` fallback order if it should participate in `--backend auto` | `pdb2reaction/backends/__init__.py` |
+| 4 | For `--backend auto`, add the `xyz` import probe to `_BACKEND_AVAILABILITY_MODULES` and add `xyz` to the `resolve_backend` fallback tuple | `pdb2reaction/backends/__init__.py` |
 | 5 | Document model identifiers, install command, accepted kwargs in `docs/backends.md`; add a smoke entry in `tests/smoke/run.sh` | `docs/backends.md`, `tests/smoke/run.sh` |
 
 **Gates that catch mistakes**: gate stage 2 confirms the external SDK import
@@ -170,7 +171,7 @@ grep -rn '# DOMAIN_PURE' pdb2reaction/
 
 ### 4.2 VRAM-management invariant (`del` chains)
 
-The IRC / TSopt / Freq stages explicitly `del calc`, `del geom`, `del hess` between stages and the `all` workflow runs `gc.collect()` at stage boundaries. **Do not refactor those `del` / `gc.collect()` statements out** — long-running jobs OOM without them.
+IRC, TSopt, and Freq release their own large calculator, geometry, Hessian, or temporary objects at stage-specific boundaries; `all` also invokes garbage collection between child stages. Preserve those existing release/GC boundaries when changing an owner—there is no single identical `del` sequence shared by all three workflows.
 
 ### 4.3 Divergent files in bundled forks
 

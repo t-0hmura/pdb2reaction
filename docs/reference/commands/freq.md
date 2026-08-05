@@ -103,9 +103,10 @@ Options:
                                   shim). Slower; raises for detected unsupported
                                   ops; custom calculators are outside its scope.
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
-                                  parity check (logs that it was skipped). For
-                                  an intentional open-shell or modified-residue
-                                  cluster.
+                                  parity check (logs that it was skipped). Open-
+                                  shell clusters need a matching multiplicity
+                                  instead; use this only for an intentionally
+                                  nonstandard electron count.
   --coord-type [cart|redund|dlc|tric]
                                   Optimization coordinate system
                                   (cart|redund|dlc|tric).

@@ -234,11 +234,6 @@ def cli(
             calc_cfg["solvent"] = str(solvent)
         if cli_param_overridden(ctx, "solvent_model"):
             calc_cfg["solvent_model"] = str(solvent_model)
-        from pdb2reaction.backends import apply_effective_precision
-        apply_effective_precision(
-            calc_cfg,
-            precision if cli_param_overridden(ctx, "precision") else None,
-        )
         from pdb2reaction.backends import apply_backend_model_to_calc_cfg
         # Use the canonical helper like the other subcommands (was an inline
         # calc_cfg["model"]=... that never popped a --config YAML backend_model
@@ -247,6 +242,11 @@ def cli(
         apply_backend_model_to_calc_cfg(calc_cfg, backend_model)
         # --calc-file overrides --backend with a user ASE Calculator (custom backend).
         apply_calc_file_to_calc_cfg(calc_cfg, calc_file, calc_factory)
+        from pdb2reaction.backends import apply_effective_precision
+        apply_effective_precision(
+            calc_cfg,
+            precision if cli_param_overridden(ctx, "precision") else None,
+        )
         if cli_param_overridden(ctx, "print_every") and print_every is not None:
             # `sp` runs no optimizer, and the backend factory drops keys it does not know, so
             # this value has no effect. Say so instead of ignoring an explicit request silently.
@@ -309,12 +309,40 @@ def cli(
             click.echo(format_elapsed("[time] Elapsed Time for SP", time_start))
             return
 
+        owned_outputs = tuple(
+            out_dir_path / name
+            for name in ("forces.npy", "hessian.npy", "result.json", "summary.json")
+        )
+        for protected in (
+            input_path,
+            prepared_inputs[0].original_path,
+            prepared_inputs[0].source_path,
+            prepared_inputs[0].geom_path,
+            config_yaml,
+        ):
+            if protected is None:
+                continue
+            protected_path = Path(protected)
+            if any(
+                protected_path.resolve() == output.resolve()
+                or (
+                    protected_path.exists()
+                    and output.exists()
+                    and protected_path.samefile(output)
+                )
+                for output in owned_outputs
+            ):
+                raise click.UsageError(
+                    f"Input {protected_path} collides with a reserved SP output "
+                    f"path under {out_dir_path}."
+                )
+
         out_dir_path.mkdir(parents=True, exist_ok=True)
-        # hessian.npy is owned by this invocation.  Remove the previous
-        # generation before either the energy/force or Hessian evaluation can
-        # fail; otherwise a failed ``--hess`` rerun can leave an old matrix
-        # beside the new error envelope.
-        (out_dir_path / "hessian.npy").unlink(missing_ok=True)
+        # These public files are owned by this invocation. Remove the previous
+        # generation before calculator evaluation so a failed rerun cannot
+        # leave old numerical results beside the current error envelope.
+        for name in ("forces.npy", "hessian.npy", "result.json", "summary.json"):
+            (out_dir_path / name).unlink(missing_ok=True)
 
         coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
         coord_kwargs = dict(geom_cfg)
@@ -366,10 +394,6 @@ def cli(
             click.echo(f"[sp] computing Hessian (mode={hessian_mode}) …")
             t0 = time.perf_counter()
             hess_results = calc.get_hessian(geom.atoms, geom.cart_coords)
-            try:
-                geom.set_results(hess_results)
-            except Exception:
-                logger.debug("Failed to cache SP Hessian on Geometry", exc_info=True)
             H_raw = hess_results["hessian"]
             if isinstance(H_raw, torch.Tensor):
                 H_np = H_raw.detach().cpu().numpy()
@@ -378,6 +402,19 @@ def cli(
                     torch.cuda.empty_cache()
             else:
                 H_np = np.asarray(H_raw, dtype=float)
+            n_full_dof = 3 * len(geom.atoms)
+            n_active_dof = n_full_dof - 3 * len(calc_cfg.get("freeze_atoms", []))
+            valid_shapes = {(n_full_dof, n_full_dof), (n_active_dof, n_active_dof)}
+            if H_np.shape not in valid_shapes or not np.all(np.isfinite(H_np)):
+                expected = " or ".join(str(shape) for shape in sorted(valid_shapes))
+                raise ValueError(
+                    "Single-point Hessian must be finite with full or active "
+                    f"Cartesian shape {expected}; got {H_np.shape}."
+                )
+            try:
+                geom.set_results(hess_results)
+            except Exception:
+                logger.debug("Failed to cache SP Hessian on Geometry", exc_info=True)
             elapsed_h = time.perf_counter() - t0
             hessian_path = out_dir_path / "hessian.npy"
             np.save(hessian_path, H_np)

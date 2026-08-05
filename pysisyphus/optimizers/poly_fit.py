@@ -1,6 +1,6 @@
 from collections import namedtuple
 import logging
-from math import sqrt
+from math import isfinite, sqrt
 from pprint import pprint
 
 import numpy as np
@@ -162,7 +162,14 @@ def quartic_fit(e0, e1, g0, g1, maximize=False):
     a3_pre = 2 * e0 - 2 * e1 + 2 * g0
 
     def get_poly(a3, a2, a1, a0):
+        # Equal endpoint energies with vanishing projected gradients make a2
+        # zero, so there is no quartic term to fit.  Report no fit and let the
+        # caller keep its cubic / no-interpolation fallback.
+        if not isfinite(a2) or a2 == 0.0:
+            return None
         a4 = 3 / 8 * a3 ** 2 / a2
+        if not isfinite(a4):
+            return None
         return np.poly1d((a4, a3, a2, a1, a0))
 
     a2 = a2_pre - sqrt_term / 2
@@ -173,6 +180,9 @@ def quartic_fit(e0, e1, g0, g1, maximize=False):
     a3 = a3_pre - sqrt_term
     poly1 = get_poly(a3, a2, a1, a0)
 
+    if poly0 is None or poly1 is None:
+        return None
+
     get_func = get_maximum if maximize else get_minimum
     mr0, mv0 = get_func(poly0)
     mr1, mv1 = get_func(poly1)
@@ -182,41 +192,15 @@ def quartic_fit(e0, e1, g0, g1, maximize=False):
     else:
         mr, mv = (mr0, mv0) if mv0 < mv1 else (mr1, mv1)
 
-    # Shorter sympy implementation. Probably slower? But shouldn't matter...
-    # ... of course it does ;)
-    # a0, a1, a2, a3 = sym.symbols("a:4")
-    # a4 = sym.Rational(3, 8) * a3**2 / a2
-    # s0, s1 = sym.solve((e0-a0,
-    # g0-a1,
-    # e1-a0-a1-a2-a3-a4,
-    # g1-a1-2*a2-3*a3-4*a4,
-    # 3*a3**2 - 8*a2*a4),
-    # (a0, a1, a2, a3)
-    # )
-    # N = lambda exprs: [sym.N(expr) for expr in exprs]
-    # sym_poly0 = get_poly(*N(s0[::-1]))
-    # sym_poly1 = get_poly(*N(s1[::-1]))
-
     fit_result = FitResult(mr, mv, (poly0, poly1))
     return fit_result
 
 
 def cubic_fit(e0, e1, g0, g1):
-    # # Shorter sympy implementation. Probably slower? But shouldn't matter...
-    # # Ok it is really slow ... and it's gone.
-    # a0, a1, a2, a3 = sym.symbols("a:4")
-    # s = sym.solve((e0-a0,
-    # g0-a1,
-    # e1-a0-a1-a2-a3,
-    # g1-a1-2*a2-3*a3),
-    # (a0, a1, a2, a3),
-    # )
-    # coeffs = [float(sym.N(expr)) for expr in (s[a3], s[a2], s[a1], s[a0])]
     d = e0
     c = g0
     b = -(g1 + 2 * g0 + 3 * e0 - 3 * e1)
     a = 2 * (e0 - e1) + g0 + g1
-    # np.testing.assert_allclose([a, b, c, d], coeffs, atol=1e-10)
     poly = np.poly1d((a, b, c, d))
     try:
         mr, mv = get_minimum(poly)

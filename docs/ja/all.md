@@ -77,7 +77,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  └─ (任意) DFT 一点計算 [`dft`](dft.md)
 ```
 
-`all` は次のステージを順に実行します。各ステージはサブコマンドとして単独でも実行できます。
+`all` は次のステージを順に実行します。名前の付いた計算ステージはサブコマンドとして単独でも実行できますが、全系へのマージなど `all` 内部だけの処理もあります。
 
 0. **構造ブリッジと事前チェック**（自動）
  - mmCIF、PDB固定幅を超える構造、altLocを含むPDBは、安全に再採番した内部PDBへ一度だけ正規化します。altLocは全geometry workflow共通の入力ブリッジが残基単位で一貫して選択するため、通常は事前の`fix-altloc`は不要です。通常PDBの元素欄（列77–78）が空の場合だけ`all`が`add-elem-info`を実行します。別途cleaned PDBが必要な場合に限りstandalone `fix-altloc`を使用してください。
@@ -267,8 +267,8 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 | --- | --- | --- |
 | `--tsopt/--no-tsopt` | セグメントごとの TS 最適化+ IRC を実行 | `False` |
 | `--tsopt-from-mep-tan/--no-tsopt-from-mep-tan` | HEI の MEP 接線から初期 TS root を選ぶ。OFF では初期構造の Hessian 振動モードから選ぶ | `True` |
-| `--thermo/--no-thermo` | R/TS/P で振動解析を実行 | `False` |
-| `--dft/--no-dft` | R/TS/P で DFT 一点計算を実行 | `False` |
+| `--thermo/--no-thermo` | R/TS/P で振動解析を実行（`--tsopt` が必要） | `False` |
+| `--dft/--no-dft` | R/TS/P で DFT 一点計算を実行（`--tsopt` が必要） | `False` |
 | `--opt-mode-post [grad\|hess]` | TSOPT/IRC 後最適化のプリセット上書き（`grad` → Dimer/L-BFGS、`hess` → RSPRFO/RFO） | `hess` |
 | `--thresh-post TEXT` | IRC 後エンドポイント最適化の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
 | `--flatten/--no-flatten` | 余分な虚振動モードのフラット化 | `False` |
@@ -344,8 +344,8 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 
 | サブコマンド | YAML セクション |
 |------------|-----------------|
-| [`path-opt`](path-opt.md) | `geom`, `calc`, `gs`, `dmf`, `stopt`, `opt` |
-| [`path-search`](path-search.md) | `geom`, `calc`, `gs`, `stopt`, `opt`, `bond`, `search` |
+| [`path-opt`](path-opt.md) | `geom`, `calc`, `gs`, `dmf`, `stopt`, `opt`, `lbfgs`, `rfo` |
+| [`path-search`](path-search.md) | `geom`, `calc`, `gs`, `dmf`, `stopt`, `opt`, `lbfgs`, `rfo`, `bond`, `search` |
 | [`scan`](scan.md) | `geom`, `calc`, `opt`, `lbfgs`, `rfo`, `bias`, `bond` |
 | [`tsopt`](tsopt.md) | `geom`, `calc`, `opt`, `hessian_dimer`, `rsirfo` |
 | [`freq`](freq.md) | `geom`, `calc`, `freq`, `thermo` |
@@ -368,9 +368,7 @@ dft:
 
 ## 注記
 
-```{tip}
-大規模な活性部位モデルでは、単一構造スキャンワークフロー（`--scan-lists`）の方が、複数構造 MEP ワークフローよりも信頼性の高い反応障壁を得やすい傾向があります。複数の PDB を入力すると、反応座標と無関係な領域の構造差異が蓄積し、障壁を過大評価する可能性があります。スキャンワークフローは単一構造から出発して関連する座標のみを駆動するため、無関係な構造ノイズを最小化できます。この影響はモデルサイズが大きくなるほど顕著になります。
-```
+独立に準備した全系構造どうしでは、反応座標以外の構造差が得られる障壁に影響することがあります。構造を確認し、モデル化した系に対して選択した path workflow を検証してください。
 
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 - 形式電荷を推定できない場合は `--ligand-charge`（数値または残基別マッピング）を必ず指定し、scan/MEP/TSOPT/DFT へ正しい総電荷を伝播させてください。

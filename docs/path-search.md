@@ -85,17 +85,17 @@ out_dir/ (default:./result_path_search/)
 ├─ mep.gjf # Gaussian companion when a Gaussian template is detected
 ├─ mep_w_ref.pdb # Merged full-system MEP (requires reference topology)
 ├─ mep_w_ref.cif # Merged bridge-template MEP with original IDs
-├─ mep_seg_XX_trj.xyz # Per-segment MEP trajectory (XYZ)
-├─ mep_seg_XX.pdb # Per-segment PDB companion (when conversion is enabled)
-├─ mep_seg_XX.cif # Per-segment bridge-input companion
-├─ mep_seg_XX.gjf # Per-segment Gaussian companion (when a template is detected)
+├─ mep_seg_XX_trj.xyz # Reactive refinement segments only: MEP trajectory (XYZ)
+├─ mep_seg_XX.pdb # Reactive refinement segment PDB companion (when conversion is enabled)
+├─ mep_seg_XX.cif # Reactive refinement segment bridge-input companion
+├─ mep_seg_XX.gjf # Reactive refinement segment Gaussian companion (template required)
 ├─ mep_w_ref_seg_XX.pdb # Merged per-segment paths when covalent changes exist
 ├─ mep_w_ref_seg_XX.cif # Merged bridge-template companion
-├─ hei_seg_XX.xyz # Per-segment highest-energy image
-├─ hei_seg_XX.pdb # HEI PDB companion (when conversion is enabled)
-├─ hei_seg_XX.cif # HEI bridge-input companion
-├─ hei_seg_XX.gjf # HEI Gaussian companion (when a template is detected)
-├─ hei_mode_seg_XX.txt # energy-upwinding Cartesian tangent through the HEI
+├─ hei_seg_XX.xyz # Reactive refinement segments only: highest-energy image
+├─ hei_seg_XX.pdb # Reactive refinement segment HEI companion (conversion enabled)
+├─ hei_seg_XX.cif # Reactive refinement segment HEI bridge-input companion
+├─ hei_seg_XX.gjf # Reactive refinement segment HEI Gaussian companion (template required)
+├─ hei_mode_seg_XX.txt # Reactive refinement segment energy-upwinding tangent
 ├─ hei_w_ref_seg_XX.pdb # Merged HEI in full-system context
 ├─ hei_w_ref_seg_XX.cif # Merged HEI for a bridge template
 ├─ summary.json # Barrier and classification summary for every recursive segment
@@ -118,7 +118,7 @@ The table is grouped by purpose; within each group the most-used options come fi
 | **Input & charge** | | |
 | `-i, --input PATH...` | Two or more structures in reaction order (reactant → product). Pass all files after a single `-i`/`--input`. | Required |
 | `-q, --charge INT` | Net charge. Required for non-`.gjf` inputs unless `--ligand-charge/-l` derivation succeeds from PDB/mmCIF topology. Overrides `--ligand-charge/-l` when both are set. | Required unless template/derivation applies |
-| `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB/mmCIF residue metadata. Used when `-q` is omitted for PDB/mmCIF inputs or XYZ/GJF with `--ref-pdb`. Bare XYZ needs `-q`; a valid GJF can instead supply charge/spin in its header. | _None_ |
+| `-l, --ligand-charge TEXT` | Either a scalar integer or a per-residue mapping that derives the total from PDB/mmCIF input topology. Bare XYZ needs `-q`; `--ref-pdb` is for final merging and does not add charge derivation here. A valid GJF can instead supply charge/spin in its header. | _None_ |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | **Backend & compute** | | |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
@@ -148,7 +148,7 @@ The table is grouped by purpose; within each group the most-used options come fi
 | `--ref-pdb PATH...` | Active-site model PDB/mmCIF references used for final full-system merge when inputs are XYZ/GJF (one per input, matching input order). | _None_ |
 | **Output & config** | | |
 | `-o, --out-dir TEXT` | Output directory. | `./result_path_search/` |
-| `--dump/--no-dump` | Dump MEP (GSM/DMF) and single-structure trajectories. Restart YAML is written only when enabled in YAML. | `False` |
+| `--dump/--no-dump` | Dump GSM and single-structure optimizer trajectories. Accepted but unused by the DMF path solver. Restart YAML is written only when enabled in YAML. | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/CIF/GJF companions. Bridge inputs add CIF with original IDs; XYZ/GJF inputs do not produce a PDB companion without a reference topology. | `True` |
 | `--config FILE` | Base YAML configuration layer applied before explicit CLI values. | _None_ |
 | `--show-config/--no-show-config` | Print resolved configuration (including YAML layer metadata) and continue. | `False` |

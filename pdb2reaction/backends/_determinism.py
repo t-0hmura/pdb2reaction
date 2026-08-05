@@ -26,6 +26,8 @@ from __future__ import annotations
 import os
 import threading
 
+import numpy as np
+
 _DONE = False
 _ORIG_INDEX_REDUCE = None
 _SETUP_LOCK = threading.RLock()
@@ -119,6 +121,7 @@ def setup_deterministic() -> None:
         prior_cudnn_deterministic = torch.backends.cudnn.deterministic
         prior_cudnn_benchmark = torch.backends.cudnn.benchmark
         prior_cpu_rng = torch.get_rng_state()
+        prior_numpy_rng = np.random.get_state()
         cuda_available = torch.cuda.is_available()
         prior_cuda_rng = torch.cuda.get_rng_state_all() if cuda_available else None
 
@@ -128,6 +131,7 @@ def setup_deterministic() -> None:
             torch.backends.cudnn.deterministic = True
             torch.backends.cudnn.benchmark = False
             torch.manual_seed(0)
+            np.random.seed(0)
             if cuda_available:
                 torch.cuda.manual_seed_all(0)
             _ORIG_INDEX_REDUCE = orig
@@ -148,6 +152,7 @@ def setup_deterministic() -> None:
             torch.backends.cudnn.deterministic = prior_cudnn_deterministic
             torch.backends.cudnn.benchmark = prior_cudnn_benchmark
             torch.set_rng_state(prior_cpu_rng)
+            np.random.set_state(prior_numpy_rng)
             if prior_cuda_rng is not None:
                 torch.cuda.set_rng_state_all(prior_cuda_rng)
             raise RuntimeError(

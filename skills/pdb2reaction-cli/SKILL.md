@@ -67,10 +67,10 @@ therefore workflow paths, not a claim that CIF metadata is discarded.
 | `--ref-pdb` | Reference PDB/mmCIF used to derive residue context for XYZ/GJF inputs while retaining their coordinates |
 | `--solvent` | On MLIP subcommands that expose it, add the xTB solvent-minus-vacuum correction for a named solvent (e.g. `water`); `none` disables it. In `trj2fig` it applies only when `-q`/`-m` triggers frame recomputation. It is not accepted by `dft`, `extract`, or structure-only utilities. |
 
-For most standalone calculation commands, explicit `-q` takes precedence over
-`-l 'RES:Q'` derivation, then config/defaults. The important exception is
-`all -c/--center`: extraction derives the cluster charge and `-q` is an
-assertion that must match it, not an override. A per-resname `-l` mapping can
+For calculation commands, explicit `-q` takes precedence over
+`-l 'RES:Q'` derivation, then config/defaults. This includes
+`all -c/--center`: extraction derives the cluster charge, but explicit `-q`
+sets the total and a mismatch is reported as a warning. A per-resname `-l` mapping can
 derive charge from a residue-bearing PDB/mmCIF whether or not extraction runs; bare
 XYZ needs an explicit total, while a valid GJF supplies its header value.
 

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import stat
 import tempfile
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -91,6 +92,13 @@ def stage_exact(path: Path, payload: bytes) -> Path:
             handle.write(payload)
             handle.flush()
             os.fsync(handle.fileno())
+        if destination.exists():
+            mode = stat.S_IMODE(destination.stat().st_mode)
+        else:
+            current_umask = os.umask(0)
+            os.umask(current_umask)
+            mode = 0o666 & ~current_umask
+        os.chmod(staged, mode)
         return staged
     except Exception as exc:
         if staged is not None:

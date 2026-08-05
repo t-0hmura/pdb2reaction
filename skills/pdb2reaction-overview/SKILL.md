@@ -120,7 +120,7 @@ python -c "import pdb2reaction.core.defaults as d; print(sorted(n for n in dir(d
 |---|---|
 | Pick a subcommand and run it | `pdb2reaction-cli/SKILL.md` then the per-subcommand md |
 | Read or edit a `.pdb` / `.cif` / `.mmcif` / `.xyz` / `.gjf` input | `pdb2reaction-structure-io/{SKILL,pdb,cif,xyz,gjf}.md` |
-| Decide charge / multiplicity for a substrate | [`pdb2reaction-structure-io/charge-multiplicity.md`](../pdb2reaction-structure-io/charge-multiplicity.md) — for PDB/mmCIF, name unknown ligand charges with `-l 'RES:Q'`; standard amino acids and recognized ions use internal tables. In ordinary geometry commands `-q` can set a verified total; in `all -c` it must match extraction's total. |
+| Decide charge / multiplicity for a substrate | [`pdb2reaction-structure-io/charge-multiplicity.md`](../pdb2reaction-structure-io/charge-multiplicity.md) — for PDB/mmCIF, name unknown ligand charges with `-l 'RES:Q'`; standard amino acids and recognized ions use internal tables. Explicit `-q` sets the total, including in `all -c`; disagreement with the extraction-derived value produces a warning. |
 | Install the toolkit or a specific backend | `pdb2reaction-install-backends/SKILL.md` + the relevant backend md |
 | Build a recipe (multi-step / scan-list / endpoint MEP) | `pdb2reaction-workflows-output/SKILL.md` |
 | Choose a TS-search strategy, or fix a bad imaginary-mode count | `pdb2reaction-ts-strategy/SKILL.md` |

@@ -50,7 +50,7 @@ class ChainOfStates:
         self.climb_lanczos = climb_lanczos
         self.climb_fixed = climb_fixed
         self.energy_min_mix = energy_min_mix
-        # Must not be lower than climb_rms
+        # Must not be higher than climb_rms
         self.climb_lanczos_rms = min(self.climb_rms, climb_lanczos_rms)
         self.scheduler = scheduler
         self.progress = progress
@@ -150,14 +150,6 @@ class ChainOfStates:
         except AttributeError:
             # TODO: move this to another logging level?!
             self.log("There are no tangents to reset.")
-
-    # @property
-    # def freeze_atoms(self):
-    # image_freeze_atoms = [image.freeze_atoms for image in self.images]
-    # lens = [len(fa) for fa in image_freeze_atoms]
-    # len0 = lens[0]
-    # assert all([len_ == len0 for len_ in lens])
-    # return image_freeze_atoms[0]
 
     @property
     def atoms(self):
@@ -657,16 +649,13 @@ class ChainOfStates:
             climb_indices = (hei_index,)
         # We can do two climbing (C2) neb if the highest energy image (HEI)
         # is in moving_indices but not the first or last item in this list.
-        # elif self.climb != "one" and hei_index in move_inds[1:-1]:
         elif hei_index in move_inds[1:-1]:
             climb_indices = (hei_index - 1, hei_index + 1)
-            # climb_indices = (hei_index,)
         # Don't climb when the HEI is the first or last image of the whole
         # NEB.
         else:
             climb_indices = tuple()
             self.log("Want to climb but can't. HEI is first or last image!")
-        # self.log(f"Climbing indices: {climb_indices}")
         return climb_indices
 
     def get_climbing_forces(self, ind):

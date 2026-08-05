@@ -207,6 +207,9 @@ def apply_effective_precision(
     ``_BACKEND_DEFAULT_PRECISION``; already backend-specific values are left
     untouched.
     """
+    if resolve_backend(calc_cfg.get("backend") or "uma") == "custom":
+        calc_cfg.pop("precision", None)
+        return
     eff = cli_precision if cli_precision is not None else calc_cfg.get("precision")
     if eff is None or str(eff).lower() == "auto":
         backend = resolve_backend(calc_cfg.get("backend") or "uma")
@@ -250,12 +253,21 @@ def apply_calc_file_to_calc_cfg(
     raw_file = calc_cfg.pop("calc_file", None)
     raw_factory = calc_cfg.pop("calc_factory", None)
     chosen = calc_file if calc_file is not None else raw_file
+    factory = calc_factory if calc_factory is not None else raw_factory
+    has_factory = factory is not None and str(factory).strip() != ""
     if chosen is None or str(chosen).strip() == "":
+        # An effective factory name without an effective calculator file would
+        # be dropped here and a built-in backend would run instead.
+        if has_factory:
+            raise click.BadParameter(
+                f"calc_factory {str(factory).strip()!r} names a factory inside a "
+                "custom calculator file, but no calculator file is effective. "
+                "Supply --calc-file or calc.calc_file, or drop calc_factory."
+            )
         return  # no calc-file: keep the --backend selection
     calc_cfg["backend"] = "custom"
     calc_cfg["calc_file"] = str(chosen)
-    factory = calc_factory if calc_factory is not None else raw_factory
-    if factory is not None and str(factory).strip() != "":
+    if has_factory:
         calc_cfg["calc_factory"] = str(factory).strip()
     # A user ASE Calculator has no MLIP model variant: drop the inherited UMA
     # default so run headers don't mislabel it as 'uma-s-1p2'.
@@ -308,10 +320,11 @@ def create_calculator(backend: str = "uma", **kwargs) -> MLIPCalculator:
     Parameters
     ----------
     backend : str
-        One of ``'uma'``, ``'orb'``, ``'mace'``, ``'aimnet2'``, ``'auto'``.
+        One of ``'uma'``, ``'orb'``, ``'mace'``, ``'aimnet2'``, ``'custom'``,
+        or ``'auto'``. ``'custom'`` requires ``calc_file``.
     **kwargs
-        Backend-specific and common parameters.  Unknown keys for the
-        selected backend are silently ignored.
+        Backend-specific and common parameters. Unknown keys for the selected
+        backend are ignored with a warning.
 
         Solvent correction keys (``solvent``, ``solvent_model``, ``xtb_cmd``,
         ``xtb_acc``) are extracted and used to wrap the base calculator with
@@ -382,7 +395,8 @@ def create_ase_calculator(backend: str = "uma", **kwargs):
     Parameters
     ----------
     backend : str
-        One of ``'uma'``, ``'orb'``, ``'mace'``, ``'aimnet2'``, ``'auto'``.
+        One of ``'uma'``, ``'orb'``, ``'mace'``, ``'aimnet2'``, ``'custom'``,
+        or ``'auto'``. ``'custom'`` requires ``calc_file``.
     **kwargs
         Backend-specific parameters.
     """

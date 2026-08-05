@@ -1046,8 +1046,22 @@ def merge_freeze_atom_groups(*groups: Sequence[int]) -> List[int]:
 
 
 def yaml_freeze_to_internal(indices: List[int]) -> List[int]:
-    """Convert 1-based YAML freeze_atoms to 0-based internal indices."""
-    return sorted(i - 1 for i in indices if i > 0)
+    """Convert 1-based YAML freeze_atoms to 0-based internal indices.
+
+    Every entry must be a positive integral atom number.  Dropping a
+    non-positive entry or truncating a fractional one would silently change the
+    active optimization/PHVA subset.
+    """
+    converted: List[int] = []
+    for position, raw in enumerate(indices, start=1):
+        value = lossless_int(raw, f"geom.freeze_atoms entry #{position}")
+        if value <= 0:
+            raise click.BadParameter(
+                "geom.freeze_atoms expects 1-based positive indices; entry "
+                f"#{position} is {raw!r}."
+            )
+        converted.append(value - 1)
+    return sorted(set(converted))
 
 
 def _parse_freeze_atoms(arg: Optional[str]) -> List[int]:
@@ -1190,14 +1204,31 @@ def deep_update(dst: Dict[str, Any], src: Optional[Dict[str, Any]]) -> Dict[str,
 
 
 def _get_mapping_section(cfg: Mapping[str, Any], path: _Sequence[str]) -> Optional[Dict[str, Any]]:
+    """Return a configured YAML section, or ``None`` when it is absent.
+
+    An empty section (``geom:``) counts as absent, but a section that is
+    present with a non-mapping value is a configuration error: treating it as
+    absent would silently run defaults for a section the user did configure.
+    """
+    path = tuple(path)
     cur: Any = cfg
-    for key in path:
+    for depth, key in enumerate(path):
         if not isinstance(cur, Mapping):
+            raise click.BadParameter(
+                f"YAML section '{'.'.join(path[:depth])}' must be a mapping, "
+                f"got {type(cur).__name__}."
+            )
+        if key not in cur:
             return None
-        cur = cur.get(key)
+        cur = cur[key]
         if cur is None:
             return None
-    return cur if isinstance(cur, dict) else None
+    if not isinstance(cur, dict):
+        raise click.BadParameter(
+            f"YAML section '{'.'.join(path)}' must be a mapping, got "
+            f"{type(cur).__name__}."
+        )
+    return cur
 
 
 def apply_yaml_overrides(
@@ -1241,11 +1272,19 @@ def load_yaml_dict(path: Optional[Path]) -> Dict[str, Any]:
     if not path:
         return {}
 
-    with open(path, "r") as f:
-        data = yaml.safe_load(f) or {}
+    try:
+        with open(path, "r") as f:
+            data = yaml.safe_load(f) or {}
+    except yaml.YAMLError as exc:
+        # The load runs before each command's own exception rendering, so
+        # report it as the input error it is instead of a raw traceback.
+        raise click.BadParameter(f"invalid YAML in '{path}': {exc}") from exc
 
     if not isinstance(data, dict):
-        raise ValueError(f"YAML root must be a mapping, got: {type(data)}")
+        raise click.BadParameter(
+            f"the YAML root of '{path}' must be a mapping, got "
+            f"{type(data).__name__}."
+        )
 
     return data
 
@@ -2067,6 +2106,35 @@ def fill_charge_spin_from_gjf_inputs(
     return _resolve_field(charge, "charge"), _resolve_field(spin, "spin")
 
 
+def lossless_int(value: Any, label: str) -> int:
+    """Convert a configured scalar to an integer without changing its value.
+
+    Plain ``int(...)`` silently truncates a fractional electron count and maps
+    ``True``/``False`` onto 1/0, so a configured electronic state could differ
+    from the one the user wrote.  Integer-valued decimal syntax such as ``-1.0``
+    stays accepted.  Extractor-derived charges keep their own rounding path.
+    """
+    if isinstance(value, bool):
+        raise click.BadParameter(f"{label} must be an integer, got {value!r}.")
+    if isinstance(value, int):
+        return int(value)
+    number: Optional[float] = None
+    if isinstance(value, float):
+        number = float(value)
+    elif isinstance(value, str):
+        text = value.strip()
+        try:
+            return int(text, 10)
+        except ValueError:
+            try:
+                number = float(text)
+            except ValueError:
+                number = None
+    if number is None or not math.isfinite(number) or not number.is_integer():
+        raise click.BadParameter(f"{label} must be an integer, got {value!r}.")
+    return int(number)
+
+
 def resolve_configured_charge_spin(
     yaml_cfg: Mapping[str, Any],
     *,
@@ -2092,22 +2160,12 @@ def resolve_configured_charge_spin(
     if charge is None and ligand_charge is None and "charge" in calc_cfg:
         raw_charge = calc_cfg.get("charge")
         if raw_charge is not None:
-            try:
-                charge = int(raw_charge)
-            except (TypeError, ValueError) as exc:
-                raise click.BadParameter(
-                    f"calc.charge must be an integer, got {raw_charge!r}."
-                ) from exc
+            charge = lossless_int(raw_charge, "calc.charge")
 
     if spin is None and "spin" in calc_cfg:
         raw_spin = calc_cfg.get("spin")
         if raw_spin is not None:
-            try:
-                spin = int(raw_spin)
-            except (TypeError, ValueError) as exc:
-                raise click.BadParameter(
-                    f"calc.spin must be an integer multiplicity, got {raw_spin!r}."
-                ) from exc
+            spin = lossless_int(raw_spin, "calc.spin multiplicity")
             if spin < 1:
                 raise click.BadParameter(
                     f"calc.spin must be an integer multiplicity >= 1, got {spin}."
@@ -3610,8 +3668,9 @@ def validate_charge_spin(elements, charge, multiplicity):
             f"total_electrons={total}, multiplicity={multiplicity}. Adjust charge (-q / -l) or "
             f"multiplicity (-m) so the electron count matches the spin state (e.g. -m 2 for an odd "
             f"electron count). Common cause: a modified/covalently-linked residue whose cluster cut "
-            f"left an unpaired electron, or an open-shell system. If this charge/multiplicity is "
-            f"intentional, pass --allow-charge-mult-mismatch to skip this check."
+            f"left an unpaired electron while the multiplicity stayed at its closed-shell value. "
+            f"If this charge/multiplicity is intentional, pass --allow-charge-mult-mismatch to "
+            f"skip this check."
         )
 
 

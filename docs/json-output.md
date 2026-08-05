@@ -117,7 +117,10 @@ before the output directory is resolved may not create JSON, so a nonzero exit
 code or missing expected JSON is also a failure signal. Check stderr/job logs
 for the authoritative diagnostic.
 
-For jobs that complete but did not converge, `result.json` is written with `"status": "not_converged"` and the final force/step values, allowing an AI agent to decide whether to retry with more cycles.
+For jobs that reach a controlled non-convergence writer, `result.json` uses
+`"status": "not_converged"`. Optimizer-family payloads expose the applicable
+final force/step or cycle fields; DFT and Dimer omit fields they do not own.
+Consult the command-specific schema before deciding whether to retry.
 
 An optimizer may also report `"status": "stalled"`: the energy stopped decreasing over the configured window (an energy plateau) while the configured force/step convergence criteria remained unmet. A stall is a distinct, non-converged outcome — it is never reported as `converged`. In `tsopt` it also stops the flatten/retry loop rather than repeating a non-progressing search; `opt --flatten` still runs its flatten loop, which exists to displace along the remaining imaginary modes and leave the plateau. When present, a `stop_reason` string records the energy range, window, and the failed criteria. A stall may be retried (e.g. from a perturbed geometry or with tighter step control); it is not an alias for `max_cycles` exhaustion or a generic failure.
 

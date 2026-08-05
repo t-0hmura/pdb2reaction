@@ -1,5 +1,6 @@
 import json
 
+import click
 import pytest
 from click.testing import CliRunner
 
@@ -64,6 +65,20 @@ def test_prepare_dft_output_dir_invalidates_prior_public_results(tmp_path) -> No
     )
 
 
+def test_prepare_dft_output_dir_rejects_input_alias_before_mutation(tmp_path) -> None:
+    from pdb2reaction.workflows.dft import _prepare_dft_output_dir
+
+    result = tmp_path / "result.yaml"
+    result.write_text("input: retained\n", encoding="utf-8")
+    alias = tmp_path / "input.yaml"
+    alias.hardlink_to(result)
+
+    with pytest.raises(click.UsageError, match="collides with reserved DFT output"):
+        _prepare_dft_output_dir(tmp_path, protected_inputs=(alias,))
+
+    assert result.read_text(encoding="utf-8") == "input: retained\n"
+
+
 def test_dft_unexpected_config_failure_uses_yaml_effective_output(
     monkeypatch,
     tmp_path,
@@ -107,3 +122,45 @@ def test_dft_unexpected_config_failure_uses_yaml_effective_output(
     assert payload["status"] == "error"
     assert payload["command"] == "dft"
     assert payload["error"] == "config probe failed"
+
+
+@pytest.mark.parametrize(
+    ("label", "config_text", "expected"),
+    [
+        ("syntax", "calc: [1,\n", "invalid YAML"),
+        ("root", "- 1\n- 2\n", "must be a mapping"),
+        ("section", "geom: 5\n", "YAML section 'geom' must be a mapping"),
+    ],
+)
+def test_malformed_config_yaml_is_an_input_error(
+    tmp_path, label, config_text, expected
+) -> None:
+    """A malformed --config file exits 2 with a message, not a raw traceback.
+
+    The YAML layer is loaded before each command's own exception rendering, so
+    the loader and the section resolver own these diagnostics.
+    """
+    xyz = tmp_path / "h2.xyz"
+    xyz.write_text("2\nH2\nH 0.0 0.0 0.0\nH 0.0 0.0 0.74\n", encoding="utf-8")
+    config = tmp_path / f"{label}.yaml"
+    config.write_text(config_text, encoding="utf-8")
+
+    result = CliRunner().invoke(
+        cli,
+        [
+            "sp",
+            "-i",
+            str(xyz),
+            "-q",
+            "0",
+            "--config",
+            str(config),
+            "--dry-run",
+            "-o",
+            str(tmp_path / f"out_{label}"),
+        ],
+    )
+
+    assert result.exit_code == 2
+    assert expected in result.output
+    assert "Traceback" not in result.output

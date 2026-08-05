@@ -392,6 +392,23 @@ def _formal_charge_to_pdb(value: str) -> str:
     return f"{abs(charge)}{'+' if charge > 0 else '-'}"
 
 
+def pdb_decimal_overflow_shifts(line: str) -> tuple[int, int]:
+    """Return atom-serial and residue-number decimal overflow widths."""
+
+    serial_shift = 0
+    while 11 + serial_shift < len(line) and line[11 + serial_shift].isdigit():
+        serial_shift += 1
+    residue_shift = 0
+    overflow_end = 26 + serial_shift
+    if overflow_end < len(line) and line[overflow_end].isdigit():
+        while overflow_end < len(line) and line[overflow_end].isdigit():
+            overflow_end += 1
+        overflow_value = line[22 + serial_shift : overflow_end].strip()
+        if re.fullmatch(r"[-+]?\d{5,}", overflow_value):
+            residue_shift = overflow_end - (26 + serial_shift)
+    return serial_shift, residue_shift
+
+
 def read_pdb_atom_sites(
     path: Path | str,
     *,
@@ -420,9 +437,7 @@ def read_pdb_atom_sites(
             if not in_first_model or not line.startswith(("ATOM  ", "HETATM")):
                 continue
 
-            serial_shift = 0
-            while 11 + serial_shift < len(line) and line[11 + serial_shift].isdigit():
-                serial_shift += 1
+            serial_shift, residue_shift = pdb_decimal_overflow_shifts(line)
             if serial_shift:
                 nonstandard = True
             offset = serial_shift
@@ -432,17 +447,10 @@ def read_pdb_atom_sites(
             resname = line[17 + offset : 20 + offset].strip()
             chain = line[21 + offset : 22 + offset].strip()
 
-            residue_shift = 0
             resseq_field = line[22 + offset : 26 + offset]
-            if 26 + offset < len(line) and line[26 + offset].isdigit():
-                overflow_end = 26 + offset
-                while overflow_end < len(line) and line[overflow_end].isdigit():
-                    overflow_end += 1
-                overflow_value = line[22 + offset : overflow_end].strip()
-                if re.fullmatch(r"[-+]?\d{5,}", overflow_value):
-                    resseq_field = overflow_value
-                    residue_shift = overflow_end - (26 + offset)
-                    nonstandard = True
+            if residue_shift:
+                resseq_field = line[22 + offset : 26 + offset + residue_shift].strip()
+                nonstandard = True
             try:
                 resseq_value = _hy36decode(4, resseq_field) if not residue_shift else int(resseq_field)
             except ValueError as exc:
@@ -551,7 +559,14 @@ def pdb_requires_normalization(path: Path | str) -> bool:
             return False
         raise
     nres = len(dict.fromkeys(record.residue_key for record in records))
-    return nonstandard or nres >= 10_000 or len(records) >= 99_999
+    atom_keys = [(record.residue_key, record.atom_name.strip()) for record in records]
+    has_duplicate_names = len(atom_keys) != len(set(atom_keys))
+    return (
+        nonstandard
+        or has_duplicate_names
+        or nres >= 10_000
+        or len(records) >= 99_999
+    )
 
 
 def _pdb_atom_field(atom_name: str, element: str) -> str:
@@ -814,7 +829,11 @@ def _cif_quote(value: Any) -> str:
         return "."
     if text in {".", "?"}:
         return text
-    if re.search(r"\s", text) or text[0] in {"_", "#", "$", ";"} or "'" in text or '"' in text:
+    lower = text.lower()
+    reserved = lower in {"loop_", "stop_", "global_"} or lower.startswith(
+        ("data_", "save_")
+    )
+    if reserved or re.search(r"\s", text) or text[0] in {"_", "#", "$", ";"} or "'" in text or '"' in text:
         if "'" not in text:
             return f"'{text}'"
         if '"' not in text:
@@ -942,15 +961,25 @@ def render_pdb_coordinate_frames(
             _pdb_coordinate_field(float(value))
         validated_frames.append(array)
 
-    atom_line_set = set(atom_line_indices)
+    first_atom = atom_line_indices[0]
+    last_atom = atom_line_indices[-1]
+    def file_record(line: str) -> bool:
+        return not line.startswith(("MODEL", "ENDMDL")) and line.strip() != "END"
+
+    prefix_lines = [line for line in ref_lines[:first_atom] if file_record(line)]
+    model_lines = ref_lines[first_atom : last_atom + 1]
+    suffix_lines = [line for line in ref_lines[last_atom + 1 :] if file_record(line)]
+    model_atom_line_set = {
+        index - first_atom for index in atom_line_indices
+    }
     multi_frame = len(validated_frames) > 1
-    output: list[str] = []
+    output: list[str] = list(prefix_lines)
     for model_number, positions in enumerate(validated_frames, start=1):
         if multi_frame:
             output.append(f"MODEL     {model_number:>4d}\n")
         atom_index = 0
-        for line_index, line in enumerate(ref_lines):
-            if line_index not in atom_line_set:
+        for line_index, line in enumerate(model_lines):
+            if line_index not in model_atom_line_set:
                 output.append(line)
                 continue
             x, y, z = positions[atom_index]
@@ -966,6 +995,8 @@ def render_pdb_coordinate_frames(
             output.append("\n")
         if multi_frame:
             output.append("ENDMDL\n")
+    output.extend(suffix_lines)
+    output.append("END\n")
     return "".join(output)
 
 

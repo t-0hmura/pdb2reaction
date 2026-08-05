@@ -14,6 +14,7 @@ import torch
 from pysisyphus.intcoords.BondedFragment import BondedFragment
 from pysisyphus.intcoords.Cartesian import CartesianX, CartesianY
 from pysisyphus.intcoords.LinearDisplacement import LinearDisplacement
+from pysisyphus.intcoords.PrimTypes import PrimTypes
 from pysisyphus.intcoords.RedundantCoords import RedundantCoords
 from pysisyphus.intcoords.Torsion import Torsion
 from pysisyphus.intcoords.exceptions import NeedNewInternalsException
@@ -44,6 +45,16 @@ from thermoanalysis.thermo import (
     vibrational_heat_capacity,
     vibrational_part_funcs,
 )
+
+
+def test_cartesian_geometry_rejects_coordinate_kwargs_without_exit_zero() -> None:
+    with pytest.raises(ValueError, match="coord_kwargs were given"):
+        Geometry(
+            atoms=["He"],
+            coords=np.zeros(3),
+            coord_type="cart",
+            coord_kwargs={"define_prims": []},
+        )
 
 
 def _qcschema_payload() -> dict:
@@ -886,3 +897,541 @@ def test_ts_bfgs_updates_preserve_tensor_device_and_numpy_values(
     assert actual.device.type == device
     assert actual.dtype == torch.float64
     np.testing.assert_allclose(actual.detach().cpu().numpy(), expected)
+
+
+@pytest.mark.parametrize("translation", [0.0, 25.0])
+def test_legacy_trans_rot_vectors_keep_linear_rank_under_translation(
+    translation: float,
+) -> None:
+    """A translated linear molecule keeps rigid rank five, not six."""
+    from pysisyphus.Geometry import get_trans_rot_vectors
+
+    coords3d = np.array(
+        [[0.0, 0.0, -1.2], [0.0, 0.0, 0.0], [0.0, 0.0, 1.2]], dtype=np.float64
+    )
+    coords3d[:, 2] += translation
+    masses = np.array([15.999, 12.011, 15.999], dtype=np.float64)
+
+    tr_vecs = get_trans_rot_vectors(coords3d.reshape(-1), masses)
+    assert tr_vecs.shape[0] == 5
+
+
+def test_active_tr_basis_reports_frozen_rank_for_rank_zero_rigid_basis() -> None:
+    """A rank-zero rigid basis still reports an initialized frozen rank."""
+    from pysisyphus.tr_projection import active_tr_basis
+
+    coords = torch.tensor(
+        [[0.0, 0.0, 0.0], [0.0, 0.0, 1.4], [0.0, 1.1, 0.0]], dtype=torch.float64
+    )
+    masses = torch.tensor([12.0, 1.0, 1.0], dtype=torch.float64)
+
+    basis, info = active_tr_basis(coords, masses, [1, 2], rtol=1.0)
+    assert info.full_rigid_rank == 0
+    assert info.frozen_constraint_rank == 0
+    assert basis.shape[1] == info.effective_rank == 0
+
+
+def test_get_imag_frequencies_rejects_small_positive_eigenvalues() -> None:
+    """A small positive eigenvalue is not reported as an imaginary frequency."""
+    geom = Geometry(("h", "h"), np.array([0.0, 0.0, 0.0, 0.0, 0.0, 1.4]))
+    eigvals = np.array([-1.0e-5, 0.0, 5.0e-7, 1.0e-3])
+    nus = np.array([-11.0, 0.0, 12.0, 500.0])
+    geom.get_normal_modes = lambda hessian=None: (nus, eigvals, None, None)
+
+    np.testing.assert_array_equal(geom.get_imag_frequencies(), np.array([-11.0]))
+
+
+def test_normal_modes_remove_exactly_the_rigid_rank_and_keep_soft_roots() -> None:
+    """Low positive and low negative roots survive the rigid-space removal."""
+    from pysisyphus.normal_modes import _frequencies_cm_and_modes
+    from pysisyphus.tr_projection import active_tr_basis
+
+    atomic_numbers = [6, 1, 8, 7]
+    coords_bohr = np.array(
+        [[0.0, 0.0, 0.0], [2.1, 0.0, 0.0], [0.2, 2.0, 0.0], [0.3, 0.4, 2.2]],
+        dtype=np.float64,
+    )
+    freeze_idx = [0]
+    device = torch.device("cpu")
+
+    masses = torch.as_tensor(
+        np.array([12.011, 1.008, 15.999, 14.007]) * 1822.888486209,
+        dtype=torch.float64,
+    )
+    _, info = active_tr_basis(
+        torch.as_tensor(coords_bohr, dtype=torch.float64),
+        masses,
+        [1, 2, 3],
+        mode="constrained",
+    )
+
+    gen = torch.Generator().manual_seed(7)
+    raw = torch.randn((12, 12), generator=gen, dtype=torch.float64)
+    hessian = (raw.T @ raw + 0.2 * torch.eye(12, dtype=torch.float64)) * 1.0e-9
+    freqs_cm, modes = _frequencies_cm_and_modes(
+        hessian.clone(),
+        atomic_numbers,
+        coords_bohr,
+        device,
+        freeze_idx=freeze_idx,
+    )
+
+    # Exactly the constrained rigid rank is removed from the 9 active DOF.
+    assert freqs_cm.size == 9 - info.effective_rank
+    assert modes.shape == (freqs_cm.size, 12)
+    # The scaled Hessian only produces sub-cm^-1 roots, none of which is dropped.
+    assert np.max(np.abs(freqs_cm)) < 5.0
+
+
+@pytest.mark.parametrize("update_name", ["damped_bfgs_update", "flowchart_update"])
+@pytest.mark.parametrize("device", ["cpu", "cuda"])
+def test_minimization_updates_preserve_tensor_device_and_numpy_values(
+    update_name: str, device: str
+) -> None:
+    if device == "cuda" and not torch.cuda.is_available():
+        pytest.skip("CUDA is unavailable")
+    from pysisyphus.optimizers import hessian_updates
+
+    update = getattr(hessian_updates, update_name)
+    hessian = np.array(
+        [[1.5, 0.1, 0.0], [0.1, 2.0, 0.2], [0.0, 0.2, 3.0]], dtype=np.float64
+    )
+    step = np.array([0.2, -0.1, 0.3], dtype=np.float64)
+    gradient_delta = hessian @ step + np.array([0.1, 0.05, -0.02])
+    expected, _ = update(hessian, step, gradient_delta)
+
+    actual, _ = update(
+        torch.as_tensor(hessian, device=device),
+        torch.as_tensor(step, device=device),
+        torch.as_tensor(gradient_delta, device=device),
+    )
+
+    assert isinstance(actual, torch.Tensor)
+    assert actual.device.type == device
+    assert actual.dtype == torch.float64
+    np.testing.assert_allclose(actual.detach().cpu().numpy(), expected)
+
+
+@pytest.mark.parametrize("device", ["cpu", "cuda"])
+def test_disabled_hessian_update_preserves_the_tensor_backend(device: str) -> None:
+    if device == "cuda" and not torch.cuda.is_available():
+        pytest.skip("CUDA is unavailable")
+    from pysisyphus.optimizers.HessianOptimizer import dummy_hessian_update
+
+    hessian = torch.eye(3, dtype=torch.float64, device=device)
+    update, key = dummy_hessian_update(hessian, None, None)
+
+    assert key == "no"
+    assert isinstance(update, torch.Tensor)
+    assert update.device.type == device
+    assert update.dtype == torch.float64
+    assert isinstance((hessian + update), torch.Tensor)
+
+
+# Two roots below the historical 1e-6 magnitude cutoff, one of each sign, plus
+# four ordinary roots.  A rank-based rigid removal must return all six.
+_COMPLEMENT_OMEGA2 = (-4.0e-7, 2.5e-7, 0.02, 0.05, 0.08, 0.11)
+
+_NORMAL_MODE_COORDS_BOHR = np.array(
+    [
+        [0.0, 0.0, 0.0],
+        [2.05, 0.0, 0.0],
+        [-0.7, 1.95, 0.0],
+        [-0.6, -0.7, 1.85],
+    ],
+    dtype=np.float64,
+)
+_NORMAL_MODE_NUMBERS = [6, 1, 8, 7]
+
+
+def _hessian_with_complement_spectrum(atomic_numbers, coords_bohr, active_idx, omega2):
+    """Cartesian Hessian whose rigid complement has exactly ``omega2``."""
+    from pysisyphus.constants import AMU2AU
+    from pysisyphus.normal_modes import _safe_masses_amu
+    from pysisyphus.tr_projection import active_tr_basis
+
+    masses_amu = _safe_masses_amu(atomic_numbers)
+    coords = torch.as_tensor(coords_bohr.reshape(-1, 3), dtype=torch.float64)
+    basis, info = active_tr_basis(
+        coords,
+        torch.as_tensor(masses_amu * AMU2AU, dtype=torch.float64),
+        list(active_idx),
+        mode="constrained",
+    )
+    complete, _ = torch.linalg.qr(basis, mode="complete")
+    lift = complete[:, info.effective_rank :].T
+    assert lift.shape[0] == len(omega2)
+    hessian_mw = lift.T @ torch.diag(torch.as_tensor(omega2, dtype=torch.float64)) @ lift
+    sqrt_mass = torch.sqrt(
+        torch.repeat_interleave(
+            torch.as_tensor(masses_amu[list(active_idx)], dtype=torch.float64), 3
+        )
+    )
+    return hessian_mw * sqrt_mass.view(-1, 1) * sqrt_mass.view(1, -1), info
+
+
+def _expected_freqs_cm(omega2):
+    import ase.units as units
+
+    from pysisyphus.constants import AU2EV, BOHR2ANG
+
+    scale = (
+        units._hbar
+        * 1e10
+        / np.sqrt(units._e * units._amu)
+        * np.sqrt(AU2EV)
+        / BOHR2ANG
+    )
+    values = np.asarray(omega2, dtype=np.float64)
+    return np.sign(values) * scale * np.sqrt(np.abs(values)) / units.invcm
+
+
+@pytest.mark.parametrize("hessian_kind", ["full", "active_block"])
+def test_compact_normal_modes_keep_low_signed_roots_under_phva(hessian_kind: str) -> None:
+    """PHVA keeps genuine low positive and low negative complement roots."""
+    from pysisyphus.normal_modes import _frequencies_cm_and_modes
+
+    freeze_idx = [0]
+    active_idx = [1, 2, 3]
+    active_block, info = _hessian_with_complement_spectrum(
+        _NORMAL_MODE_NUMBERS,
+        _NORMAL_MODE_COORDS_BOHR,
+        active_idx,
+        _COMPLEMENT_OMEGA2,
+    )
+    # One frozen anchor leaves the three rotations about it as the rigid rank.
+    assert info.effective_rank == 3
+    if hessian_kind == "full":
+        hessian = torch.zeros((12, 12), dtype=torch.float64)
+        # Frozen rows/columns must be discarded, so they carry values that would
+        # visibly contaminate the spectrum if they leaked into the active block.
+        hessian[:3, :3] = torch.eye(3, dtype=torch.float64) * 7.0
+        active_dofs = torch.as_tensor(
+            [3 * atom + axis for atom in active_idx for axis in range(3)],
+            dtype=torch.long,
+        )
+        hessian[active_dofs[:, None], active_dofs[None, :]] = active_block
+    else:
+        hessian = active_block.clone()
+
+    freqs_cm, modes = _frequencies_cm_and_modes(
+        hessian,
+        _NORMAL_MODE_NUMBERS,
+        _NORMAL_MODE_COORDS_BOHR,
+        torch.device("cpu"),
+        freeze_idx=freeze_idx,
+    )
+
+    # Exactly the rigid rank is removed from the nine active DOF.
+    assert freqs_cm.size == 9 - info.effective_rank == len(_COMPLEMENT_OMEGA2)
+    np.testing.assert_allclose(
+        np.sort(freqs_cm), np.sort(_expected_freqs_cm(_COMPLEMENT_OMEGA2)), rtol=1e-8
+    )
+    # Both roots below the historical tolerance survive with their own sign.
+    assert min(abs(value) for value in _COMPLEMENT_OMEGA2[:2]) < 1.0e-6
+    assert (freqs_cm < 0.0).sum() == 1
+    assert modes.shape == (len(_COMPLEMENT_OMEGA2), 12)
+    # Frozen degrees of freedom stay exactly zero after embedding.
+    assert torch.count_nonzero(modes[:, :3]) == 0
+
+
+def test_compact_normal_modes_keep_low_signed_roots_without_frozen_atoms() -> None:
+    """The unconstrained kernel retains both low-magnitude complement roots."""
+    from pysisyphus.constants import AMU2AU
+    from pysisyphus.normal_modes import _frequencies_cm_and_modes, _safe_masses_amu
+    from pysisyphus.tr_projection import active_tr_basis
+
+    active_idx = [0, 1, 2, 3]
+    # A chemically ordinary imaginary mode beside the two low-magnitude roots, so
+    # a saddle-order consumer must count two negative roots, not one.
+    omega2 = (-0.02,) + _COMPLEMENT_OMEGA2[:2] + (0.05, 0.08, 0.15)
+    hessian, info = _hessian_with_complement_spectrum(
+        _NORMAL_MODE_NUMBERS, _NORMAL_MODE_COORDS_BOHR, active_idx, omega2
+    )
+    # No frozen anchor leaves the six full rigid motions as the rigid rank.
+    assert info.effective_rank == 6
+
+    freqs_cm, modes = _frequencies_cm_and_modes(
+        hessian.clone(),
+        _NORMAL_MODE_NUMBERS,
+        _NORMAL_MODE_COORDS_BOHR,
+        torch.device("cpu"),
+    )
+
+    assert freqs_cm.size == 12 - info.effective_rank == len(omega2)
+    np.testing.assert_allclose(
+        np.sort(freqs_cm), np.sort(_expected_freqs_cm(omega2)), rtol=1e-8
+    )
+    assert min(abs(value) for value in omega2[1:3]) < 1.0e-6
+    assert (freqs_cm < 0.0).sum() == 2
+    # Retained modes stay orthogonal to the removed rigid space.
+    basis, _ = active_tr_basis(
+        torch.as_tensor(_NORMAL_MODE_COORDS_BOHR, dtype=torch.float64),
+        torch.as_tensor(
+            _safe_masses_amu(_NORMAL_MODE_NUMBERS) * AMU2AU, dtype=torch.float64
+        ),
+        active_idx,
+        mode="constrained",
+    )
+    overlap = basis.T @ modes.T
+    assert float(torch.max(torch.abs(overlap))) < 1.0e-10
+
+
+def test_normalize_prim_input_expands_translation_and_rotation_shortcuts() -> None:
+    """The advertised TRANSLATION/ROTATION shortcuts reach real primitives."""
+    from pysisyphus.intcoords.PrimTypes import (
+        PrimTypes,
+        normalize_prim_input,
+        prims_from_prim_inputs,
+    )
+
+    translation = normalize_prim_input(["TRANSLATION", 0, 1])
+    rotation = normalize_prim_input(["ROTATION", 0, 1])
+
+    assert [tp[0] for tp in translation] == [
+        PrimTypes.TRANSLATION_X,
+        PrimTypes.TRANSLATION_Y,
+        PrimTypes.TRANSLATION_Z,
+    ]
+    assert [tp[0] for tp in rotation] == [
+        PrimTypes.ROTATION_A,
+        PrimTypes.ROTATION_B,
+        PrimTypes.ROTATION_C,
+    ]
+    # The generic enum members have no PrimMap entry, so only the expanded
+    # component types can be instantiated.
+    assert len(prims_from_prim_inputs([["TRANSLATION", 0, 1]])) == 3
+
+
+def test_normalize_prim_input_keeps_the_distance_function_coefficient() -> None:
+    """The DIST_FUNC coefficient stays a float instead of truncating to zero."""
+    from pysisyphus.intcoords.PrimTypes import PrimTypes, normalize_prim_input
+
+    (typed_prim,) = normalize_prim_input(["DIST_FUNC", 0, 1, 2, 3, 0.5])
+
+    assert typed_prim[0] == PrimTypes.DISTANCE_FUNCTION
+    assert typed_prim[1:5] == (0, 1, 2, 3)
+    assert typed_prim[5] == pytest.approx(0.5)
+
+
+def test_normalize_prim_input_returns_a_hashable_tuple_for_enum_input() -> None:
+    """An enum-headed list input is normalized to the documented tuple."""
+    from pysisyphus.intcoords.PrimTypes import PrimTypes, normalize_prim_input
+
+    (typed_prim,) = normalize_prim_input([PrimTypes.BOND, 0, 1])
+
+    assert typed_prim == (PrimTypes.BOND, 0, 1)
+    assert hash(typed_prim)
+
+
+def test_setup_redundant_keeps_explicit_definitions_on_their_own_atoms() -> None:
+    """Explicit definitions are not remapped twice when atoms are frozen."""
+    from pysisyphus.intcoords.PrimTypes import PrimTypes
+    from pysisyphus.intcoords.setup import setup_redundant
+
+    atoms = ("H", "C", "C", "H")
+    coords3d = np.array(
+        [
+            [-2.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [2.4, 0.0, 0.0],
+            [4.4, 0.0, 0.0],
+        ]
+    )
+    coord_info = setup_redundant(
+        atoms,
+        coords3d,
+        freeze_atoms=[0],
+        define_prims=[(PrimTypes.AUX_BOND, 1, 3)],
+    )
+
+    assert (PrimTypes.AUX_BOND, 1, 3) in coord_info.typed_prims
+    # Frozen atom 0 is excluded from the setup, so naming it is rejected.
+    from pysisyphus.intcoords.exceptions import PrimitiveNotDefinedException
+
+    with pytest.raises(PrimitiveNotDefinedException):
+        setup_redundant(
+            atoms,
+            coords3d,
+            freeze_atoms=[0],
+            define_prims=[(PrimTypes.AUX_BOND, 0, 3)],
+        )
+
+
+def test_find_bonds_keeps_the_bond_array_shape_without_bonds() -> None:
+    """A valid bondless structure serializes instead of sorting a missing axis."""
+    from pysisyphus.intcoords.setup_fast import find_bonds
+    from pysisyphus.io.pdb import get_conect_lines
+
+    coords = np.array([[0.0, 0.0, 0.0]])
+    bonds = find_bonds(("Ne",), coords)
+
+    assert bonds.shape == (0, 2)
+    assert bonds.dtype.kind == "i"
+    assert get_conect_lines(("Ne",), coords) == []
+
+
+def test_find_bonds_for_geom_forwards_the_bond_factor() -> None:
+    """The accepted bond_factor reaches the detector instead of being dropped."""
+    from pysisyphus.intcoords.setup_fast import find_bonds_for_geom
+
+    # Two carbons far enough apart that only a generous factor bonds them.
+    geom = Geometry(("c", "c"), np.array([0.0, 0.0, 0.0, 0.0, 0.0, 4.5]))
+
+    assert find_bonds_for_geom(geom, bond_factor=1.3).tolist() == []
+    assert find_bonds_for_geom(geom, bond_factor=1.7).tolist() == [[0, 1]]
+
+
+def test_redundant_coords_registers_constrained_primitive_indices() -> None:
+    """Constrained primitives go through the typed-primitive setter."""
+    from pysisyphus.intcoords.PrimTypes import PrimTypes
+
+    atoms = ("O", "H", "H")
+    coords3d = np.array(
+        [[0.0, 0.0, 0.0], [1.8, 0.0, 0.0], [-0.5, 1.7, 0.0]]
+    )
+    constraint = (PrimTypes.BOND, 0, 1)
+    red = RedundantCoords(atoms, coords3d, constrain_prims=[constraint])
+
+    assert constraint in red.typed_prims
+    index = red.typed_prims.index(constraint)
+    assert red.constrained_indices == [index]
+    # The per-category index lists cover every typed primitive, constraints
+    # included, so the projector and the primitive list stay aligned.
+    assert index in red.bond_indices
+    assert len(red.primitives) == len(red.typed_prims)
+
+
+def test_augment_bonds_preserves_geometry_state(monkeypatch) -> None:
+    """Augmentation keeps frozen atoms, isotopes, and coordinate options."""
+    from pysisyphus.intcoords import augment_bonds as augment_bonds_module
+
+    atoms = ("O", "H", "H", "H")
+    coords = np.array(
+        [0.0, 0.0, 0.0, 1.8, 0.0, 0.0, -0.5, 1.7, 0.0, 6.0, 0.0, 0.0]
+    )
+    geom = Geometry(
+        atoms,
+        coords,
+        coord_type="redund",
+        freeze_atoms=[0],
+        isotopes=((1, 2.0),),
+    )
+    geom.cart_hessian = np.eye(coords.size)
+    monkeypatch.setattr(
+        augment_bonds_module, "find_missing_strong_bonds", lambda *a, **k: [(1, 3)]
+    )
+
+    new_geom = augment_bonds_module.augment_bonds(geom)
+
+    assert new_geom is not geom
+    assert list(new_geom.freeze_atoms) == [0]
+    assert new_geom.isotopes == geom.isotopes
+    assert new_geom.coord_type == geom.coord_type
+    assert (PrimTypes.AUX_BOND, 1, 3) in new_geom.internal.typed_prims
+
+
+def test_lanczos_returns_the_current_ritz_pair_on_residual_breakdown() -> None:
+    """An exact residual breakdown must not produce a NaN climbing mode."""
+    from pysisyphus.modefollow.lanczos import lanczos
+
+    # A rank-one Hessian exhausts its Krylov space after the first vector.
+    hessian = np.zeros((3, 3))
+    hessian[0, 0] = -0.4
+
+    def grad_getter(coords):
+        return hessian @ np.asarray(coords, dtype=float)
+
+    eigval, eigvec = lanczos(
+        np.zeros(3), grad_getter, guess=np.array([1.0, 0.0, 0.0]), max_cycles=5
+    )
+
+    assert np.isfinite(eigval)
+    assert np.all(np.isfinite(eigvec))
+    assert eigval == pytest.approx(-0.4, abs=1e-6)
+
+
+@pytest.mark.parametrize("guess", [np.zeros(3), np.array([np.nan, 0.0, 0.0])])
+def test_lanczos_rejects_a_degenerate_initial_guess(guess: np.ndarray) -> None:
+    from pysisyphus.modefollow.lanczos import lanczos
+
+    with pytest.raises(ValueError):
+        lanczos(np.zeros(3), lambda coords: np.zeros(3), guess=guess)
+
+
+def test_quartic_fit_reports_no_fit_for_a_degenerate_line() -> None:
+    """Equal endpoint energies with zero gradients no longer divide by zero."""
+    from pysisyphus.optimizers.poly_fit import quartic_fit
+
+    assert quartic_fit(-1.0, -1.0, 0.0, 0.0) is None
+
+
+def test_sim_gediis_weights_use_the_inverse_hessian_quadratic_form() -> None:
+    """The GEDIIS energy model uses f^T H^-1 f, not a row-summed contraction."""
+    forces = np.array([[0.3, -0.1], [0.05, 0.2]])
+    hessian = np.array([[2.0, 0.7], [0.7, 3.0]])
+    hessian_inv = np.linalg.pinv(hessian, rcond=1e-6)
+    expected = np.array([row @ hessian_inv @ row for row in forces])
+
+    actual = np.einsum("ki,ij,kj->k", forces, hessian_inv, forces)
+
+    np.testing.assert_allclose(actual, expected)
+    # The previous row-summed contraction differs for an off-diagonal Hessian.
+    assert not np.allclose(
+        np.einsum("ki,ji,ki->k", forces, hessian_inv, forces), expected
+    )
+    source = inspect.getsource(gdiis_module.gediis)
+    assert 'einsum("ki,ij,kj->k"' in source
+    assert 'einsum("ki,ji,ki->k"' not in source
+
+
+def test_eulerpc_corrector_keeps_the_last_advancing_microstep() -> None:
+    """An immediate DWI reversal returns the advanced point, not the start."""
+    init = np.array([0.0, 0.0])
+    step = np.array([1.0, 0.0])
+    calls = {"n": 0}
+
+    class _ReversingDWI:
+        def interpolate(self, coords, gradient=False):
+            calls["n"] += 1
+            # First microstep advances along +x, the second reverses.
+            sign = -1.0 if calls["n"] == 1 else 1.0
+            return 0.0, sign * step
+
+    irc = EulerPC.__new__(EulerPC)
+    irc.log = lambda *_: None
+    irc._m_sqrt = np.ones(2)
+    irc._act_dofs = np.array([0, 1])
+    irc.get_integration_length_func = lambda _init: (
+        lambda coords: float(np.linalg.norm(coords - init))
+    )
+
+    corrected = EulerPC.corrector_step(irc, init.copy(), 10.0, _ReversingDWI())
+
+    assert calls["n"] == 2
+    assert np.linalg.norm(corrected - init) > 0.0
+
+
+def test_irc_gives_integration_and_energy_rise_priority_over_convergence() -> None:
+    """A converged gradient no longer masks an integration stop or energy rise."""
+    source = inspect.getsource(IRC.irc)
+    stop_at = source.index("if self.integration_stop_requested:")
+    increase_at = source.index("elif energy_increase_msg:")
+    converged_at = source.index("elif self._gradient_converged(rms_grad):")
+    assert stop_at < increase_at < converged_at
+
+    irc = IRC.__new__(IRC)
+    irc.never_stop = False
+    irc.energy_increased = True
+    irc.energy_converged = True
+    assert irc._energy_increase_stop_message() == "Energy increased!"
+    irc.never_stop = True
+    assert irc._energy_increase_stop_message() == ""
+    assert irc._energy_stop_message() == ""
+
+
+def test_irc_resolves_the_requested_hessian_init() -> None:
+    """hessian_init is resolved through get_guess_hessian instead of ignored."""
+    source = inspect.getsource(IRC.run)
+    assert "get_guess_hessian(" in source, source
+    assert "self.init_hessian = self.geometry.hessian" not in source

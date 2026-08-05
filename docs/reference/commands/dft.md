@@ -57,5 +57,10 @@ Options:
                                   [default: no-out-json]
   --dry-run / --no-dry-run        Validate options and print the execution plan
                                   without running DFT.  [default: no-dry-run]
+  --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
+                                  parity check (logs that it was skipped). Open-
+                                  shell clusters need a matching multiplicity
+                                  instead; use this only for an intentionally
+                                  nonstandard electron count.
   -h, --help                      Show this message and exit.
 ```

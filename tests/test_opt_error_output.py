@@ -3,10 +3,52 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
+import pytest
 from click.testing import CliRunner
 
 from pdb2reaction.cli import cli as root_cli
+
+
+def test_opt_invalid_cartesian_coord_kwargs_exit_nonzero(tmp_path: Path) -> None:
+    source = tmp_path / "atom.xyz"
+    source.write_text("1\natom\nHe 0 0 0\n", encoding="utf-8")
+    config = tmp_path / "config.yaml"
+    config.write_text(
+        "geom:\n  coord_type: cart\n  coord_kwargs:\n    define_prims: []\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "opt", "-i", str(source), "-q", "0", "--dry-run",
+            "--config", str(config), "-o", str(tmp_path / "out"),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "coord_kwargs were given" in result.output
+
+
+@pytest.mark.parametrize("budget", ["0", "-1"])
+def test_opt_rejects_nonpositive_effective_cycle_budget(
+    tmp_path: Path, budget: str,
+) -> None:
+    source = tmp_path / "atom.xyz"
+    source.write_text("1\natom\nHe 0 0 0\n", encoding="utf-8")
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "opt", "-i", str(source), "-q", "0", "--max-cycles", budget,
+            "--dry-run", "-o", str(tmp_path / "out"),
+        ],
+    )
+
+    assert result.exit_code == 2
+    assert "opt.max_cycles must be a positive integer" in result.output
 
 
 def test_yaml_output_directory_receives_runtime_error_envelope(tmp_path) -> None:

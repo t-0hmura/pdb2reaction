@@ -118,6 +118,8 @@ out_dir/ (デフォルト:./result_scan/)
 
 ## YAML 設定
 
+scan の output directory は command-owned の `-o/--out-dir` で指定します。YAML の optimizer `out_dir` は無視されます。
+
 ```yaml
 geom:
  coord_type: cart # coordinate type: cartesian vs dlc internals
@@ -155,7 +157,6 @@ opt:
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
- out_dir: ./result_scan/ # output directory
 lbfgs:
  thresh: gau # L-BFGS convergence preset
  max_cycles: 10000 # iteration limit
@@ -176,7 +177,6 @@ lbfgs:
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
- out_dir: ./result_scan/ # output directory
  keep_last: 7 # history size for L-BFGS buffers
  beta: 1.0 # initial damping beta
  gamma_mult: false # multiplicative gamma update toggle
@@ -205,7 +205,6 @@ rfo:
  dump: false # dump trajectory/restart data
  dump_restart: false # dump restart checkpoints
  prefix: "" # filename prefix
- out_dir: ./result_scan/ # output directory
  trust_radius: 0.10 # trust-region radius
  trust_update: true # enable trust-region updates
  trust_min: 0.0001 # minimum trust radius
@@ -274,11 +273,11 @@ pdb2reaction scan -i reactant.pdb \
 (ja-scan-direction-barrier-sign)=
 ### スキャン方向とバリアの符号
 
-`scan`（または経路）が**生成物側**から始まった場合、報告される生のバリアは**逆方向**のバリア `E(TS) − E(product)` です。順方向のバリアを引用するには反応物から計算します。
+`scan` の結果は sampled/final energy を保存しますが、barrier field を認定・出力しません。`scan`（または経路）が**生成物側**から始まり、利用者がそこから障壁を算出する場合、その差は**逆方向**のバリア `E(TS) − E(product)` です。順方向のバリアを引用するには反応物から計算します。
 
 | 実行内容 | 順方向バリア |
 | --- | --- |
-| 生成物始点のスキャン | `E(TS) − E(reactant)` — 生の生成物始点の値では**ない** |
+| 生成物始点のスキャン | `E(TS) − E(reactant)` — 生成物基準の差では**ない** |
 
 これはフラグではなく読み取り時の解釈です。特に結晶構造の生成物複合体から開始した場合は、バリアを引用する前にスキャンがどちらの端点から始まったかを必ず確認してください。
 

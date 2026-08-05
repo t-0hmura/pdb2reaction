@@ -361,9 +361,8 @@ def cli(
         # Merge CLI --freeze-atoms (already 0-based)
         try:
             freeze_atoms_cli = _parse_freeze_atoms(freeze_atoms_text)
-        except click.BadParameter as e:
-            click.echo(f"ERROR: {e}", err=True)
-            sys.exit(1)
+        except click.BadParameter:
+            raise
         if freeze_atoms_cli:
             merge_freeze_atom_indices(geom_cfg, freeze_atoms_cli)
             freeze = list(geom_cfg.get("freeze_atoms", []))
@@ -375,14 +374,14 @@ def cli(
             calc_cfg["solvent"] = solvent
         if cli_param_overridden(ctx, "solvent_model"):
             calc_cfg["solvent_model"] = solvent_model
-        from pdb2reaction.backends import apply_effective_precision
-        apply_effective_precision(calc_cfg, precision)
         from pdb2reaction.backends import apply_backend_model_to_calc_cfg
         # Unconditional: also pops a raw backend_model token from a --config YAML
         # (the helper no-ops when neither the CLI arg nor the YAML names one).
         apply_backend_model_to_calc_cfg(calc_cfg, backend_model)
         from pdb2reaction.backends import apply_calc_file_to_calc_cfg
         apply_calc_file_to_calc_cfg(calc_cfg, calc_file, calc_factory)
+        from pdb2reaction.backends import apply_effective_precision
+        apply_effective_precision(calc_cfg, precision)
         if cli_param_overridden(ctx, "print_every") and print_every is not None:
             opt_cfg["print_every"] = int(print_every)
         if cli_param_overridden(ctx, "cli_coord_type") and cli_coord_type is not None:
@@ -438,6 +437,9 @@ def cli(
                 emit(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j3)}", detail=True)
 
         final_dir = out_dir_path
+        if not out_json:
+            for name in ("result.json", "summary.json"):
+                (final_dir / name).unlink(missing_ok=True)
 
         ref_pdb_path = None
         if csv_path is None and source and source.suffix.lower() == ".pdb":
@@ -799,14 +801,21 @@ def cli(
                                 sblock += "\n"
                             trj_blocks.append(sblock)
 
+                        coords_realized = np.asarray(geom_inner.coords3d, dtype=float)
+                        d1_realized = distance_A_from_coords(coords_realized, i1, j1)
+                        d2_realized = distance_A_from_coords(coords_realized, i2, j2)
+                        d3_realized = distance_A_from_coords(coords_realized, i3, j3)
                         records.append(
                             {
                                 "i": int(i_idx),
                                 "j": int(j_idx),
                                 "k": int(k_idx),
-                                "d1_A": float(d1_target),
-                                "d2_A": float(d2_target),
-                                "d3_A": float(d3_target),
+                                "d1_A": float(d1_realized),
+                                "d2_A": float(d2_realized),
+                                "d3_A": float(d3_realized),
+                                "target_d1_A": float(d1_target),
+                                "target_d2_A": float(d2_target),
+                                "target_d3_A": float(d3_target),
                                 "energy_hartree": E_h,
                                 "bias_converged": converged,
                                 "artifact_written": bool(_artifact_written),
@@ -939,6 +948,7 @@ def cli(
             click.echo(f"[write] Wrote '{surface_csv}'.")
 
         # ===== 3D RBF interpolation & visualization (isosurface only) =====
+        (final_dir / "scan3d_density.html").unlink(missing_ok=True)
         d1_points = df["d1_A"].to_numpy(dtype=float)
         d2_points = df["d2_A"].to_numpy(dtype=float)
         d3_points = df["d3_A"].to_numpy(dtype=float)

@@ -128,7 +128,7 @@ class AIMNet2Calculator(MLIPCalculator):
                 return val
         return None
 
-    def _call(self, symbols, coords_ang, with_hessian: bool):
+    def _call(self, symbols, coords_ang):
         from ase import Atoms
 
         atoms = Atoms(symbols=symbols, positions=np.asarray(coords_ang, dtype=np.float64))
@@ -142,7 +142,7 @@ class AIMNet2Calculator(MLIPCalculator):
             "mult": np.asarray([float(self.mult)], dtype=np.float32),
         }
 
-        out = self._calculator(data, forces=True, hessian=bool(with_hessian))
+        out = self._calculator(data, forces=True, hessian=False)
 
         if isinstance(out, tuple):
             out = list(out)
@@ -152,8 +152,7 @@ class AIMNet2Calculator(MLIPCalculator):
                 raise BackendError(f"Unexpected AIMNet2 output tuple length {len(out)}")
             energy = self._to_scalar(out[0])
             forces = self._extract_array(out[1], force_2d=True)
-            hess = self._extract_array(out[2], force_2d=False) if with_hessian and len(out) > 2 else None
-            return energy, forces, hess
+            return energy, forces
 
         if not isinstance(out, dict):
             raise BackendError(f"Unexpected AIMNet2 output type: {type(out)}")
@@ -168,19 +167,11 @@ class AIMNet2Calculator(MLIPCalculator):
             raise BackendError(f"AIMNet2 output missing forces key. Keys: {sorted(out.keys())}")
         forces = self._extract_array(forces, force_2d=True)
 
-        hess = self._pick_first_available(out, ("hessian", "Hessian", "hess", "hessians"))
-        if hess is not None:
-            hess = self._extract_array(hess, force_2d=False)
-        if with_hessian and hess is None:
-            raise BackendError(f"AIMNet2 output missing hessian key. Keys: {sorted(out.keys())}")
-
-        return energy, forces, hess
+        return energy, forces
 
     def _compute_energy_forces_ev(self, elem, coord_ang):
-        energy, forces, _ = self._call(list(elem), coord_ang, with_hessian=False)
+        energy, forces = self._call(list(elem), coord_ang)
         return energy, np.asarray(forces, dtype=np.float64)
-
-    # Analytical Hessian (reuses existing _call(with_hessian=True) path)
 
     def _supports_analytical_hessian(self) -> bool:
         return True

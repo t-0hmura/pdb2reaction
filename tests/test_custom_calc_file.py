@@ -9,6 +9,7 @@ calculator so the test needs no MLIP weights or GPU.
 from __future__ import annotations
 
 import json
+import sys
 import textwrap
 from pathlib import Path
 
@@ -103,6 +104,34 @@ def test_load_ase_calculator_errors(tmp_path: Path) -> None:
     )
     with pytest.raises(BackendError):
         load_ase_calculator(str(not_a_calc))
+
+
+def test_custom_loader_releases_temporary_modules(tmp_path: Path) -> None:
+    from pdb2reaction.backends.custom import load_ase_calculator
+
+    calc_file = _write(tmp_path / "toy.py", TOY_CALC)
+    before = {name for name in sys.modules if name.startswith("pdb2reaction_calc_file_")}
+
+    load_ase_calculator(str(calc_file))
+
+    after = {name for name in sys.modules if name.startswith("pdb2reaction_calc_file_")}
+    assert after == before
+
+
+def test_custom_loader_releases_module_after_factory_validation_error(
+    tmp_path: Path,
+) -> None:
+    from pdb2reaction.backends.base import BackendError
+    from pdb2reaction.backends.custom import load_ase_calculator
+
+    calc_file = _write(tmp_path / "bad.py", "get_calculator = 42\n")
+    before = {name for name in sys.modules if name.startswith("pdb2reaction_calc_file_")}
+
+    with pytest.raises(BackendError):
+        load_ase_calculator(str(calc_file))
+
+    after = {name for name in sys.modules if name.startswith("pdb2reaction_calc_file_")}
+    assert after == before
 
 
 def test_apply_calc_file_switches_backend() -> None:
@@ -221,6 +250,24 @@ def test_sp_yaml_custom_factory_is_not_overwritten_by_cli_default(
     assert result.exit_code == 0, result.output
     assert "backend: custom" in result.output
     assert "calc_factory: build" in result.output
+
+
+def test_custom_calculator_owns_precision_validation(tmp_path: Path) -> None:
+    calc_file = _write(tmp_path / "toy.py", TOY_CALC)
+    xyz = _write(tmp_path / "water.xyz", WATER_XYZ)
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "sp", "-i", str(xyz), "-q", "0", "--backend", "aimnet2",
+            "--precision", "fp64", "--calc-file", str(calc_file),
+            "--show-config", "--dry-run",
+        ],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "backend: custom" in result.output
 
 
 def test_opt_json_uses_yaml_resolved_custom_provenance(tmp_path: Path) -> None:

@@ -32,7 +32,7 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --ther
 - 量子化学計算に向けた**初期構造の作成**（反応物・ TS ・生成物のクラスターモデル）
 - 基質バリアントや酵素変異体にわたる**反応経路の大量計算**
 
-本 CLI は最小限の手動設定で**多段階の酵素反応機構**を生成します。小分子系や、ユーザーが自分で構築したクラスターモデルにもそのまま適用可能です。活性部位抽出を行わない全系ワークフロー（`--center/-c` と `--ligand-charge/-l` を省略）では、`.xyz` / `.gjf` 形式の小分子（`-q` で正味電荷を指定）や、すでに切り出した PDB / mmCIF のクラスターモデルをそのまま入力できます。
+本 CLI は最小限の手動設定で**多段階の酵素反応機構**を生成します。小分子系や、ユーザーが自分で構築したクラスターモデルにもそのまま適用可能です。活性部位抽出を行わない全系ワークフローでは `--center/-c` だけを省略します。入力構造はそのまま使用されますが、総電荷は明示的な `-q`、PDB/mmCIF 全体へ適用する `-l`、YAML の `calc.charge`、または有効な `.gjf` メタデータのいずれかで解決する必要があります。
 
 **HPC クラスターやマルチ GPU 環境**では、`workers` と
 `workers_per_node` により UMA 推論をノード間で並列化できます。ただし
@@ -44,31 +44,31 @@ system-size feasibility は model、VRAM、Hessian、通信costに依存し、�
 `all` サブコマンドは以下のステージを自動実行します:
 
 ```text
-PDB / mmCIF (R, P)
+入力構造
   |
   v
-[extract]  活性部位モデル抽出（クラスターモデル）
+[extract]  `-c` 指定時のみ活性部位モデルを抽出
   |
   v
-[scan]  （オプション, --scan-lists/-s）段階的距離拘束スキャン
+[scan]  `--scan-lists/-s` 指定時のみ段階的距離拘束スキャン
   |
   v
-[path-opt]  MEP 探索（デフォルトは単一パス path-opt; `--refine-path` で再帰的 path-search に切替）
+[path-opt/path-search]  TS-only 以外で MEP 探索
   |
   v
-[tsopt]  TS 最適化 (RS-P-RFO; 代替として Dimer)
+[tsopt]  `--tsopt` 指定時のみ TS 最適化
   |
   v
-[irc]  固有反応座標
+[irc]  `--tsopt` 指定時のみ固有反応座標
   |
   v
-[freq]  振動解析 + 熱化学 (R, TS, P)
+[freq]  `--tsopt --thermo` 指定時のみ振動解析 + 熱化学
   |
   v
-[dft]  一点 DFT エネルギー（オプション, --dft）
+[dft]  `--tsopt --dft` 指定時のみ一点 DFT エネルギー
 ```
 
-各ステージは単独のサブコマンドとしても実行できます。`all` はこれらを統合し、`summary.json` と `summary.log` を出力します。
+名前の付いた計算ステージ（`extract`、scan 系、path 系、`tsopt`、`irc`、`freq`、`dft`）は単独のサブコマンドとしても実行できます。`all` は選択されたステージを統合し、`summary.json` と `summary.log` を出力します。
 
 ### 主要な出力ファイル
 

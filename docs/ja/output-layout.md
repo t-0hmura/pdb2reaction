@@ -7,8 +7,8 @@
 | ファイル名 | 書き出し元 | 用途 |
 |---|---|---|
 | `summary.json` | 集約結果の書き込み処理まで到達した `all` / `path-search` | 集約ワークフローの正規 JSON エンベロープ（[JSON 出力リファレンス](json-output.md)）。早期の CLI 引数または入力の検証では作られない場合があります。 |
-| `summary.json` | 正常終了した段階別・レポート系コマンドでは `--out-json` 指定時（デフォルトは `--no-out-json`）。捕捉した実行時エラーでは、フラグなしでも可能な範囲でエラーエンベロープを書く場合があります | 個別結果の `result.json` と互換性のあるミラー。書き込み処理が正常終了した場合は同一のバイト列です。`fix-altloc`、`add-elem-info`、`bond-summary` などは出力しません。 |
-| `result.json` | 段階別 `summary.json` と同条件（`opt`、`tsopt`、`freq`、`irc`、`sp`、scan 系、`path-opt`、`dft`、`extract`、`trj2fig`、`energy-diagram`） | 個別結果・レポートの正規エンベロープ。互換ミラーより後に公開されるため、中断した世代を判定するときはこちらを読みます。 |
+| `summary.json` | `--out-json`（default `--no-out-json`）を指定し、段階別・report command が result writer まで到達した場合。制御された DFT 非収束も含むが、早期失敗は best-effort error envelope だけの場合がある | 個別結果の `result.json` と互換性のあるミラー。writer が正常終了した場合は同一 byte。pure utility は出力しない。 |
+| `result.json` | 段階別 `summary.json` と同じ writer 到達条件 | 個別結果・report の正規 envelope。制御された非収束でも生成され得るが、早期 validation/import failure では存在しない場合がある。 |
 | `summary.log` | `path-search`、`all` | 人間可読な実行ログ（セグメント／ステージごとに 1 行）。 |
 | `final_geometry.xyz` | `opt`、`tsopt` | 最適化された構造（XYZ、完全精度）。 |
 | `mep.pdb` / `mep.cif` / `mep_trj.xyz` | `path-search` | 反応経路のフレーム。変換が有効な mmCIF／oversized-PDB topology では `.cif` companion も追加。 |
@@ -33,7 +33,7 @@
 | `sp` | `./result_sp/` |
 | `extract` | `./`（`model.pdb` を書き出し。入力が複数の場合は `model_<input>.pdb`） |
 
-`--out-dir <path>`（または `-o`）で上書きします。
+通常は `--out-dir <path>`（または `-o`）で上書きします。`extract` だけは repeatable な `-o/--output <file>` を使います。
 
 ## スタンドアロン と `all` の比較
 

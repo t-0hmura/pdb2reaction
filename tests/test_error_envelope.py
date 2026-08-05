@@ -6,6 +6,9 @@ import json
 import tempfile
 from pathlib import Path
 
+from click.testing import CliRunner
+
+from pdb2reaction.cli import cli as root_cli
 from pdb2reaction.cli.decorators import _write_error_json
 
 
@@ -46,3 +49,25 @@ def test_error_envelope_mirrors_to_summary_json() -> None:
         r = json.loads((Path(d) / "result.json").read_text())
         s = json.loads((Path(d) / "summary.json").read_text())
         assert r == s
+
+
+def test_path_search_bad_parameter_uses_public_command_and_exit_two(
+    tmp_path: Path,
+) -> None:
+    reactant = tmp_path / "r.xyz"
+    product = tmp_path / "p.xyz"
+    reactant.write_text("1\nr\nHe 0 0 0\n", encoding="utf-8")
+    product.write_text("1\np\nHe 0 0 0.1\n", encoding="utf-8")
+    out = tmp_path / "out"
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "path-search", "-i", str(reactant), "-i", str(product),
+            "-q", "0", "--freeze-atoms", "bad", "-o", str(out),
+        ],
+    )
+
+    assert result.exit_code == 2
+    payload = json.loads((out / "result.json").read_text(encoding="utf-8"))
+    assert payload["command"] == "path-search"

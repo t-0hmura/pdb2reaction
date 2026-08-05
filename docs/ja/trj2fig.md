@@ -26,7 +26,7 @@ pdb2reaction trj2fig -i traj.xyz -q 0 -m 1 -o energy.png
 
 ## 処理の流れ
 
-1. XYZ 軌跡を解析し、各フレームのコメント行からエネルギーを読み取ります。明示的な `E=` / `Energy:` トークンがあればそれを優先し、なければ行内の数値トークンを採用します（`1.5e-3` などの科学表記に対応）。キーなしで数値トークンが複数ある場合は最後の値を採用し、警告を出力します。`-q/-m` がある場合は MLIP バックエンドで再計算した Hartree エネルギーを使用します。エネルギーが取得できない場合は実行を中断します。
+1. XYZ 軌跡を解析し、各 frame の comment line から energy を読み取ります。明示的な `E=` / `Energy:` token があればそれを優先し、なければ単一の bare numeric token だけを受理します（`1.5e-3` などの科学表記に対応）。bare number が複数ある曖昧な comment は拒否します。`-q/-m` がある場合は MLIP backend で再計算した Hartree energy を使用します。energy が取得できない場合は実行を中断します。
 2. 参照指定を正規化:
  - `init` → フレーム `0`（`--reverse-x` が有効な場合は最後のフレーム）
  - `None`/`none`/`null` → 絶対エネルギー（参照なし）

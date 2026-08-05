@@ -21,6 +21,8 @@ overflowを持つPDBにも同じbridgeを使用します。内部PDBのIDは実�
 stage間で必要なPDBを保持し、元IDを復元したCIF companionも生成します。
 `--no-convert-files` では companion 変換を行いません。
 
+`extract` は例外で、conversion toggle を持たず、bridge input では retained-template CIF companion を自動出力します。
+
 ```text
 final_geometry.pdb  # pipeline stage間で使う正規化表現
 final_geometry.cif  # 元のchain/residue identityを復元

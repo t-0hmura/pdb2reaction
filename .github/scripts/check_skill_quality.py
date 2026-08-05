@@ -349,8 +349,8 @@ def _validate_high_risk_semantics(errors: list[str]) -> None:
     _require(
         charge_page,
         (
-            "`-q` is an assertion",
-            "`-q` does not silently replace extraction's charge result",
+            "Explicit `-q` sets the total",
+            "a mismatch produces a warning",
             "only chemically correct",
         ),
         errors,

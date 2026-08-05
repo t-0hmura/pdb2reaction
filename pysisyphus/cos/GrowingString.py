@@ -361,21 +361,6 @@ class GrowingString(GrowingChainOfStates):
         # may be already above the allowed threshold.
         # Over time the string size will equilibrate and the desired parametrization
         # density will actually be realized.
-        # try:
-        # # Dont check climbing images
-        # np.testing.assert_allclose(
-        # np.delete(cur_param_density, climbing_indices),
-        # np.delete(desired_param_density, climbing_indices),
-        # atol=self.reparam_tol
-        # )
-        # except AssertionError as err:
-        # trj_str = self.as_xyz()
-        # fn = "failed_reparametrization_trj.xyz"
-        # with open(fn, "w") as handle:
-        # handle.write(trj_str)
-        # print(f"Wrote coordinates of failed reparametrization to '{fn}'")
-        # raise err
-
         # Regenerate active set after reparametrization
         if self.reset_dlc and not self.fully_grown:
             [image.internal.set_active_set() for image in self.moving_images]
@@ -493,10 +478,6 @@ class GrowingString(GrowingChainOfStates):
                 self.reparam_every_full if self.fully_grown else self.reparam_every
             )
             reparametrized = True
-            # Writing is deactivated, as this does not respect an out_dir or
-            # something similar.
-            # with open("reparametrized_trj.xyz", "w") as handle:
-            # handle.write(self.as_xyz())
 
         return reparametrized
 

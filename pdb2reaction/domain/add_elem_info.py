@@ -23,6 +23,7 @@ import click
 # Reuse the canonical residue/ion/water tables (leaf data module) to keep
 # element inference and charge inference reading one source of truth.
 from pdb2reaction.domain.residue_data import AMINO_ACIDS, ION, WATER_RES
+from pdb2reaction.io.structure_formats import pdb_decimal_overflow_shifts
 
 # Element symbols (IUPAC, 1–118)
 ELEMENTS: set[str] = {
@@ -199,15 +200,16 @@ def guess_element(atom_name: str, resname: str, _is_het: bool = False) -> Option
     return None
 
 
-def _replace_element_field(line: str, symbol: str) -> str:
+def _replace_element_field(line: str, symbol: str, *, field_offset: int = 0) -> str:
     if line.endswith("\r\n"):
         content, ending = line[:-2], "\r\n"
     elif line.endswith(("\n", "\r")):
         content, ending = line[:-1], line[-1:]
     else:
         content, ending = line, ""
-    content = content.ljust(78)
-    return content[:76] + f"{symbol:>2}" + content[78:] + ending
+    start = 76 + int(field_offset)
+    content = content.ljust(start + 2)
+    return content[:start] + f"{symbol:>2}" + content[start + 2:] + ending
 
 
 def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False) -> None:
@@ -233,19 +235,21 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
             continue
 
         total += 1
-        atom_name = line[12:16]
-        resname = line[17:20]
+        serial_shift, residue_shift = pdb_decimal_overflow_shifts(line)
+        field_offset = serial_shift + residue_shift
+        atom_name = line[12 + serial_shift : 16 + serial_shift]
+        resname = line[17 + serial_shift : 20 + serial_shift]
         symbol = guess_element(atom_name, resname, line.startswith("HETATM"))
-        serial_text = line[6:11].strip()
+        serial_text = line[6 : 11 + serial_shift].strip()
         serial = int(serial_text) if serial_text.isdigit() else None
         if symbol is None:
             unknown.append(
                 (
                     model_id,
-                    line[21:22].strip(),
+                    line[21 + serial_shift : 22 + serial_shift].strip(),
                     resname.strip(),
-                    line[22:26].strip(),
-                    line[26:27].strip(),
+                    line[22 + serial_shift : 26 + field_offset].strip(),
+                    line[26 + field_offset : 27 + field_offset].strip(),
                     atom_name.strip(),
                     serial,
                 )
@@ -253,11 +257,11 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
             rewritten.append(line)
             continue
 
-        previous = line[76:78].strip() if len(line.rstrip("\r\n")) >= 78 else ""
+        previous = line[76 + field_offset : 78 + field_offset].strip()
         by_element[symbol] += 1
         if previous != symbol:
             assigned_or_updated += 1
-        rewritten.append(_replace_element_field(line, symbol))
+        rewritten.append(_replace_element_field(line, symbol, field_offset=field_offset))
 
     if effective_overwrite:
         out_path = in_pdb

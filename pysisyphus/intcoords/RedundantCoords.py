@@ -148,7 +148,9 @@ class RedundantCoords:
         # Use supplied typed_prims
         else:
             self.typed_prims = list(
-                dict.fromkeys([*typed_prims, *self.define_prims])
+                dict.fromkeys(
+                    [*typed_prims, *self.define_prims, *self.constrain_prims]
+                )
             )
 
         if self.bonds_only:
@@ -219,8 +221,6 @@ class RedundantCoords:
                 append_to = self._outofplane_inds
             elif pt in DummyCoords:
                 append_to = self._dummycoord_inds
-            elif pt in Cartesians:
-                append_to = self._cartesian_inds
             else:
                 raise Exception("Unhandled PrimType!")
             append_to.append(i)
@@ -576,10 +576,11 @@ class RedundantCoords:
             logger=self.logger,
         )
 
-        self.typed_prims = coord_info.typed_prims
-        for cp in self.constrain_prims:
-            if cp not in self.typed_prims:
-                self.typed_prims.append(cp)
+        # One assignment through the typed-primitive setter, so the constraint
+        # lookup and the per-category index lists stay consistent.
+        self.typed_prims = list(
+            dict.fromkeys([*coord_info.typed_prims, *self.constrain_prims])
+        )
 
         self.fragments = coord_info.fragments
 

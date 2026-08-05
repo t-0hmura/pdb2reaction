@@ -471,6 +471,15 @@ def _walk_directory_tree(
                 entries_seen_ref=entries_seen_ref,
             ):
                 return True
+        elif child.is_dir() and depth >= max_depth:
+            next_prefix = prefix + ("   " if idx == len(children) - 1 else "│  ")
+            lines.append(f"{next_prefix}└─ ... (truncated at depth {max_depth})")
+            entries_seen_ref[0] += 1
+            if entries_seen_ref[0] >= max_entries:
+                lines.append(
+                    f"{next_prefix}   ... (truncated after {max_entries} entries)"
+                )
+                return True
     return False
 
 

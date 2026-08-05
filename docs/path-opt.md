@@ -4,7 +4,7 @@
 
 Use it when you have exactly two endpoint structures (R → P) and need a first-pass MEP without recursive refinement. Choose GSM (default) for a string-based path generator, or switch to DMF with `--mep-mode dmf` for the Direct Max Flux generator.
 
-An MLIP backend (UMA by default; switch with `-b/--backend` to ORB, MACE, or AIMNet2) provides energies, gradients, and Hessians for every image. Before optimization starts, a rigid-body alignment step keeps the string stable.
+An MLIP backend (UMA by default; switch with `-b/--backend` to ORB, MACE, or AIMNet2) provides energies and forces for MEP images. Hessians are used only by selected single-structure optimization steps, not for GSM/DMF path scoring. Before optimization starts, a rigid-body alignment step keeps the string stable.
 
 ```{note}
 **Frozen atoms in DMF mode** use `HarmonicFixAtoms` (harmonic restraints with k=300 eV/Å²) instead of pysisyphus's hard coordinate freeze used by GSM. This means frozen atoms in DMF can move slightly from their reference positions, which differs from the rigid freeze in GSM mode.
@@ -72,7 +72,7 @@ out_dir/
 ├─ final_geometries_trj.xyz # XYZ path; comment line holds energies when provided
 ├─ final_geometries.pdb # PDB of every image when PDB/mmCIF topology is available and conversion enabled
 ├─ final_geometries.cif # Bridged mmCIF/oversized-PDB input: original IDs restored
-├─ final_geometries.gjf # Gaussian companion when a Gaussian template is detected (conversion enabled)
+├─ final_geometries.gjf # GSM only: Gaussian companion when a template is detected (conversion enabled)
 ├─ hei.xyz # Highest-energy image with its energy on the comment line
 ├─ hei.pdb # HEI converted to PDB when a PDB reference is available (conversion enabled)
 ├─ hei.gjf # HEI written using a detected Gaussian template (conversion enabled)
@@ -101,8 +101,8 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--mep-mode {gsm\|dmf}` | Select GSM (string-based) or DMF (Direct Max Flux) path generator. | `gsm` |
 | `--dmf-backend {cpu\|gpu}` | DMF compute backend (`--mep-mode dmf` only): `gpu` (`dmf.torch`/CUDA) or `cpu` (`dmf`/NumPy). On a GPU out-of-memory error, retry with `cpu`. | `gpu` |
 | `--max-cycles INT` | MEP optimizer cycle cap (sets `stopt.max_cycles`, `stopt.stop_in_when_full`, and `dmf.max_cycles`). | `300` |
-| `--climb/--no-climb` | Enable climbing-image refinement (and Lanczos tangent). | `True` |
-| `--dump/--no-dump` | Dump MEP trajectories (GSM/DMF). Restart YAML is written only when enabled in YAML. | `False` |
+| `--climb/--no-climb` | Enable GSM climbing-image refinement (and Lanczos tangent). Accepted but unused with DMF. | `True` |
+| `--dump/--no-dump` | Dump GSM/single-optimizer trajectories. Accepted but unused by the DMF path solver. Restart YAML is written only when enabled in YAML. | `False` |
 | `--opt-mode TEXT` | Single-structure optimizer for endpoint preoptimization (`grad` = L-BFGS, `hess` = RFO). | `grad` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/CIF/GJF companions according to the input topology/template. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology for XYZ/GJF inputs (keeps XYZ coordinates) to enable PDB conversions. | _None_ |
@@ -118,7 +118,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--dry-run/--no-dry-run` | Validate options and print the execution plan without running optimization. | `False` |
 | `--preopt/--no-preopt` | Pre-optimize each endpoint with the selected single-structure optimizer before alignment/MEP search (GSM/DMF). | `True` |
 | `--preopt-max-cycles INT` | Cap for endpoint preoptimization cycles. | `10000` |
-| `--fix-ends/--no-fix-ends` | Keep the endpoint geometries fixed during GSM growth/refinement. | `True` |
+| `--fix-ends/--no-fix-ends` | Keep endpoint geometries fixed during GSM growth/refinement. Accepted but unused with DMF. | `True` |
 | `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
 
 ## YAML configuration

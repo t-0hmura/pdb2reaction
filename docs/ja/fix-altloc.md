@@ -32,11 +32,12 @@ pdb2reaction fix-altloc -i ./structures --inplace --recursive
 
 1. 入力ファイルに非空白の altLoc 文字（列 17）が含まれているかチェック。
  - altLoc が見つからず `--force` が設定されていない場合、ファイルをスキップ。
-2. ラベル付き ATOM/HETATM レコードを残基ごと（残基名、チェーン ID、
-   残基番号、挿入コード、segID）に分ける。
+2. ラベル付き ATOM/HETATM record を残基 identity（chain ID、残基番号、
+   insertion code、segID。残基名は key に含めない）で group 化する。
 3. 各残基で一つの非空白ラベルを選択:
  - ラベル内の解析可能な occupancy（列 55–60）の平均が最大
- - 同値または occupancy が無い場合、ファイル内で最初に現れるラベル
+ - parsed occupancy がない label は、parsed mean のある全 label より下位
+ - score が同じ場合（すべて missing の場合を含む）は file 内の初出順
 4. 空白（共通）原子と選択したラベルの原子を残し、残る重複を occupancy と
    出現順で解決する。
 5. 出力を書き込み:
@@ -81,6 +82,8 @@ N, CA, CB, CD）も、選択した残基ラベルの原子のみを残します�
 ## Python API
 プログラムから利用する場合、モジュールは以下をエクスポートします:
 ```python
+from pathlib import Path
+
 from pdb2reaction.io.pdb_fix import has_altloc, fix_altloc_file
 
 # ファイルにaltLocがあるかチェック

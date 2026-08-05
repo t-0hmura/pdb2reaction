@@ -14,6 +14,7 @@ corresponding command page and in [`pdb2reaction-cli`](../pdb2reaction-cli/SKILL
 | Key | Description |
 |---|---|
 | `schema_version` | Aggregate summary schema version; consumers should validate this before assuming keys or nested shapes |
+| `run_id` | Current-invocation UUID used to prove that the summary belongs to the run that published it |
 | `command` | Full recorded invocation string for this `all` run (for example, `pdb2reaction all -i R.pdb -i P.pdb ...`) |
 | `pdb2reaction_version` | Toolkit version that produced this output |
 | `status` | `"success"`, `"partial"`, or `"failed"` |
@@ -106,6 +107,10 @@ import json
 
 # Reportable per-segment barriers (TSOPT + IRC refined; present when --tsopt ran)
 d = json.load(open("result_all/summary.json"))
+if d.get("schema_version") != "2.0":
+    raise RuntimeError(f"unsupported summary schema: {d.get('schema_version')!r}")
+if d.get("scientific_status") != "success":
+    raise RuntimeError(f"result is not reportable: {d.get('scientific_status_reasons', [])}")
 for ps in d.get("post_segments", []):
     mlip = ps.get("mlip") or {}
     gibbs = ps.get("gibbs_mlip") or {}
