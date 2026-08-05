@@ -280,7 +280,17 @@ class DefaultGroup(click.Group):
                 is_top_level = first[:2] in top_level_opts
             else:
                 is_top_level = False
-            if not args or (args[0].startswith("-") and not is_top_level):
+            first_opt = first.split("=", 1)[0]
+            known_commands = set(self.commands) | set(self._lazy_subcommands)
+            command_after_verbose = (
+                first_opt in {"-v", "--verbose"}
+                and any(arg in known_commands for arg in args[1:])
+            )
+            if not args or (
+                args[0].startswith("-")
+                and not is_top_level
+                and not command_after_verbose
+            ):
                 args.insert(0, self._default_cmd)
 
         bool_value_options = self._command_bool_value_options
