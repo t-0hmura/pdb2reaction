@@ -731,7 +731,7 @@ def test_freq_owns_prepared_cif_through_dry_run_and_preexecution_errors(
         ],
     )
 
-    assert result.exit_code == (0 if not extra else 1), result.output
+    assert result.exit_code == (0 if not extra else 2), result.output
     assert bridge_dirs
     assert all(not path.exists() for path in bridge_dirs)
 
