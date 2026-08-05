@@ -563,17 +563,21 @@ def _pdb_atom_field(atom_name: str, element: str) -> str:
     return f"{name:<4}"
 
 
-def _base36_name(value: int) -> str:
-    """Return a four-character atom identifier for the internal PDB bridge."""
+def _base36_name(value: int, element: str) -> str:
+    """Return an element-preserving atom identifier for the internal PDB bridge."""
 
-    if not 0 <= value < 36**4:
-        raise ValueError("A single residue exceeds the internal PDB atom-name capacity.")
+    prefix = str(element).strip().title()
+    width = 4 - len(prefix)
+    if width < 1 or not 0 <= value < 36**width:
+        raise ValueError(
+            f"A single residue exceeds the internal PDB atom-name capacity for {prefix}."
+        )
     digits = _BASE36_UPPER
     chars = []
-    for _ in range(4):
+    for _ in range(width):
         value, remainder = divmod(value, 36)
         chars.append(digits[remainder])
-    return "".join(reversed(chars))
+    return prefix + "".join(reversed(chars))
 
 
 def _internal_atom_names(records: Sequence[AtomSiteRecord]) -> list[str]:
@@ -595,7 +599,7 @@ def _internal_atom_names(records: Sequence[AtomSiteRecord]) -> list[str]:
         reserved.setdefault(record.residue_key, set()).add(candidate)
 
     used: dict[tuple[str, str, str, str], set[str]] = {}
-    counters: dict[tuple[str, str, str, str], int] = {}
+    counters: dict[tuple[tuple[str, str, str, str], str], int] = {}
     names: list[str] = []
     for record, candidate in zip(records, candidates):
         key = record.residue_key
@@ -603,13 +607,15 @@ def _internal_atom_names(records: Sequence[AtomSiteRecord]) -> list[str]:
         if candidate not in residue_used:
             name = candidate
         else:
-            counter = counters.get(key, 0)
+            element = record.element.strip().title()
+            counter_key = (key, element)
+            counter = counters.get(counter_key, 0)
             while True:
-                name = _base36_name(counter)
+                name = _base36_name(counter, element)
                 counter += 1
                 if name not in reserved[key] and name not in residue_used:
                     break
-            counters[key] = counter
+            counters[counter_key] = counter
         residue_used.add(name)
         names.append(name)
     return names

@@ -491,6 +491,36 @@ def test_duplicate_atom_names_without_altloc_are_preserved(tmp_path: Path) -> No
         prepared.cleanup()
 
 
+def test_duplicate_atom_bridge_preserves_elements_for_geometry_loader(
+    tmp_path: Path,
+) -> None:
+    from pdb2reaction.core.utils import prepare_input_structure
+    from pysisyphus.io.pdb import parse_pdb
+
+    elements = [
+        "C", "C", "C", "C", "C", "C", "H", "H", "H", "H",
+        "H", "C", "H", "O", "C", "H", "C", "H", "H", "H",
+    ]
+    source = tmp_path / "repeated-element-names.pdb"
+    source.write_text(
+        "".join(
+            f"ATOM  {serial:5d} {element:>2s}   MOL     1"
+            f"{float(serial):12.3f}{0.0:8.3f}{0.0:8.3f}"
+            f"{1.0:6.2f}{0.0:6.2f}          {element:>2s}\n"
+            for serial, element in enumerate(elements, start=1)
+        )
+        + "END\n",
+        encoding="utf-8",
+    )
+
+    prepared = prepare_input_structure(source)
+    try:
+        parsed, *_ = parse_pdb(str(prepared.source_path))
+        assert parsed == elements
+    finally:
+        prepared.cleanup()
+
+
 def _altloc_atom_line(
     serial: int,
     label: str,
