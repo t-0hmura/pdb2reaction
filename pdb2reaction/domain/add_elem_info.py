@@ -23,7 +23,6 @@ import click
 # Reuse the canonical residue/ion/water tables (leaf data module) to keep
 # element inference and charge inference reading one source of truth.
 from pdb2reaction.domain.residue_data import AMINO_ACIDS, ION, WATER_RES
-from pdb2reaction.io.structure_formats import pdb_decimal_overflow_shifts
 
 # Element symbols (IUPAC, 1–118)
 ELEMENTS: set[str] = {
@@ -210,6 +209,23 @@ def _replace_element_field(line: str, symbol: str, *, field_offset: int = 0) -> 
     start = 76 + int(field_offset)
     content = content.ljust(start + 2)
     return content[:start] + f"{symbol:>2}" + content[start + 2:] + ending
+
+
+def pdb_decimal_overflow_shifts(line: str) -> tuple[int, int]:
+    """Return atom-serial and residue-number decimal overflow widths."""
+
+    serial_shift = 0
+    while 11 + serial_shift < len(line) and line[11 + serial_shift].isdigit():
+        serial_shift += 1
+    residue_shift = 0
+    overflow_end = 26 + serial_shift
+    if overflow_end < len(line) and line[overflow_end].isdigit():
+        while overflow_end < len(line) and line[overflow_end].isdigit():
+            overflow_end += 1
+        overflow_value = line[22 + serial_shift : overflow_end].strip()
+        if re.fullmatch(r"[-+]?\d{5,}", overflow_value):
+            residue_shift = overflow_end - (26 + serial_shift)
+    return serial_shift, residue_shift
 
 
 def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False) -> None:

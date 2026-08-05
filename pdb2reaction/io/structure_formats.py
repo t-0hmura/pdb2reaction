@@ -392,29 +392,14 @@ def _formal_charge_to_pdb(value: str) -> str:
     return f"{abs(charge)}{'+' if charge > 0 else '-'}"
 
 
-def pdb_decimal_overflow_shifts(line: str) -> tuple[int, int]:
-    """Return atom-serial and residue-number decimal overflow widths."""
-
-    serial_shift = 0
-    while 11 + serial_shift < len(line) and line[11 + serial_shift].isdigit():
-        serial_shift += 1
-    residue_shift = 0
-    overflow_end = 26 + serial_shift
-    if overflow_end < len(line) and line[overflow_end].isdigit():
-        while overflow_end < len(line) and line[overflow_end].isdigit():
-            overflow_end += 1
-        overflow_value = line[22 + serial_shift : overflow_end].strip()
-        if re.fullmatch(r"[-+]?\d{5,}", overflow_value):
-            residue_shift = overflow_end - (26 + serial_shift)
-    return serial_shift, residue_shift
-
-
 def read_pdb_atom_sites(
     path: Path | str,
     *,
     warn_altloc: bool = True,
 ) -> tuple[list[AtomSiteRecord], bool]:
     """Read PDB atom records, including common decimal-overflow variants."""
+
+    from pdb2reaction.domain.add_elem_info import pdb_decimal_overflow_shifts
 
     path = Path(path)
     records: list[AtomSiteRecord] = []
