@@ -7,6 +7,8 @@ behavior, thresholds, or defaults.
 
 from pathlib import Path
 
+import click
+
 import pdb2reaction.backends as backends_mod
 import pdb2reaction.backends.orb as orb_mod
 import pdb2reaction.cli.common_options as common_options_mod
@@ -54,10 +56,17 @@ def test_no_deterministic_cannot_override_the_environment(capsys) -> None:
     class _Ctx:
         resilient_parsing = False
 
+        @staticmethod
+        def get_parameter_source(_name):
+            return click.core.ParameterSource.COMMANDLINE
+
+    class _Param:
+        name = "deterministic"
+
     prev = os.environ.get("PDB2REACTION_STRICT_DETERMINISTIC")
     os.environ["PDB2REACTION_STRICT_DETERMINISTIC"] = "1"
     try:
-        _deterministic_callback(_Ctx(), None, False)
+        _deterministic_callback(_Ctx(), _Param(), False)
         err = capsys.readouterr().err
         assert "stays strictly deterministic despite" in err
     finally:
