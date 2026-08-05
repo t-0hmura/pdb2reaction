@@ -418,9 +418,14 @@ def test_verbose_is_a_per_subcommand_option() -> None:
         assert res.exit_code == 0, res.output
         assert "-v, --verbose" in res.output, f"{name} --help is missing -v"
 
-    root = runner.invoke(root_cli, ["-v", "2", "opt", "--help"])
-    assert root.exit_code != 0
-    assert "No such option" in root.output
+    for argv in (
+        ["-v", "2", "opt", "--help"],
+        ["-v2", "opt", "--help"],
+        ["--verbose=2", "opt", "--help"],
+    ):
+        root = runner.invoke(root_cli, argv)
+        assert root.exit_code != 0, argv
+        assert "No such option" in root.output, argv
 
     # The level is an IntRange(0, 3); 0/1/2/3 are accepted (default 2) and
     # out-of-range values are rejected.

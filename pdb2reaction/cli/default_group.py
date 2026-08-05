@@ -283,7 +283,7 @@ class DefaultGroup(click.Group):
             first_opt = first.split("=", 1)[0]
             known_commands = set(self.commands) | set(self._lazy_subcommands)
             command_after_verbose = (
-                first_opt in {"-v", "--verbose"}
+                (first_opt == "--verbose" or first[:2] == "-v")
                 and any(arg in known_commands for arg in args[1:])
             )
             if not args or (
