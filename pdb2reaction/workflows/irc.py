@@ -750,15 +750,27 @@ def cli(
                 if not getattr(eulerpc, _direction, False):
                     continue
                 _n_frames = len(getattr(eulerpc, f"{_direction}_energies", []))
-                if 0 < _n_frames <= 3:
+                _last_cycle = getattr(eulerpc, f"{_direction}_cycle", None)
+                _reached_cycle_cap = (
+                    _last_cycle is not None
+                    and int(_last_cycle) + 1 >= int(eulerpc.max_cycles)
+                )
+                if 0 < _n_frames <= 3 and not _reached_cycle_cap:
                     _quick_directions.append(_direction)
             if _quick_directions:
-                click.echo(
+                _warning = (
                     "[irc] IRC stopped after only a few frames in "
                     + ", ".join(_quick_directions)
                     + ". Retry with a smaller maximum step, for example "
-                    "--step-size 0.05. If a small uphill/flat section is "
-                    "intentional, also consider --never-stop; it is opt-in.",
+                    "--step-size 0.05."
+                )
+                if not eulerpc.never_stop:
+                    _warning += (
+                        " If a small uphill/flat section is intentional, also "
+                        "consider --never-stop; it is opt-in."
+                    )
+                click.echo(
+                    _warning,
                     err=True,
                 )
 

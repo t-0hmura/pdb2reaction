@@ -535,6 +535,10 @@ fi
 # both IRC branches to continue past it.
 pdb2reaction irc -i ts.pdb -q 0 --config never_stop_config.yaml --never-stop --max-cycles 2 --out-json --out-dir test79_irc_never_stop > test79_irc_never_stop.out 2>&1
 python assert_release_result.py irc-never-stop test79_irc_never_stop >> test79_irc_never_stop.out 2>&1
+if grep -Fq '[irc] IRC stopped after only a few frames' test79_irc_never_stop.out; then
+  echo '[smoke] FAIL test79: cycle-cap completion was reported as early IRC termination' >> test79_irc_never_stop.out
+  exit 1
+fi
 
 # Numerical analytical-vs-FD agreement for every backend installed in the
 # default strict environment. MACE/AIMNet2 use this same required wrapper in
