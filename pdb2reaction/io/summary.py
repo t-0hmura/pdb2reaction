@@ -160,8 +160,7 @@ def _method_citation_record_keys(payload: Dict[str, Any]) -> List[str]:
     thermo_used = bool(payload.get("thermo_executed")) or any(
         isinstance(segment, dict)
         and (
-            "ts_imag" in segment
-            or "thermo_symmetry" in segment
+            "thermo_symmetry" in segment
             or "gibbs_mlip" in segment
             or "gibbs_dft_mlip" in segment
         )
