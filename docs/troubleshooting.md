@@ -61,21 +61,24 @@ pdb2reaction         -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'    # extracti
 
 Measured MLIP force noise/flatness can prevent a selected force threshold from
 being reached; the level depends on backend, model, precision, system, and
-hardware stack. The **energy-plateau guard** prevents endless cycling:
-`opt.energy_plateau: true` stops the run as `stalled` (**not converged**) when
-the configured force/step criteria remain unmet and the energy range over the
-last `opt.energy_plateau_window` (default 50) steps falls below
-`opt.energy_plateau_thresh` (default `1×10⁻⁴ au`). A plateau is diagnostic
-evidence, not acceptance of a stationary point; inspect the final structure,
-forces, and reported status before retrying.
+hardware stack. `--max-cycles` bounds every run, so an optimizer never cycles
+forever. To stop earlier once the energy has flattened, opt in to the
+**energy-plateau stop**: `--stop-plateau` (YAML `opt.energy_plateau: true`)
+ends the run as `stalled` (**not converged**) when the configured force/step
+criteria remain unmet and the energy range over the last
+`--stop-plateau-window` (default 50) steps falls below `--stop-plateau-thresh`
+(default `1×10⁻⁴ au`). A plateau is diagnostic evidence, not acceptance of a
+stationary point; inspect the final structure, forces, and reported status
+before retrying.
 
 For a retry, use one or more of:
 
 - Loosen the force threshold (`--thresh gau` default / `--thresh gau_loose`).
-- Tune `opt.energy_plateau_thresh` / `opt.energy_plateau_window` in YAML.
-- Disable the fallback with `opt.energy_plateau: false` in YAML.
+- Tune `--stop-plateau-thresh` / `--stop-plateau-window` (YAML
+  `opt.energy_plateau_thresh` / `opt.energy_plateau_window`).
+- Leave the plateau stop off (the default) and let `--max-cycles` bound the run.
 
-The fallback is **skipped for chain-of-states optimizers** (optimizers that move a whole chain of path images together), namely the `path-opt` and `path-search` Growing String Method (GSM) / Direct Max Flux (DMF) stages.
+The stop is **skipped for chain-of-states optimizers** (optimizers that move a whole chain of path images together), namely the `path-opt` and `path-search` Growing String Method (GSM) / Direct Max Flux (DMF) stages.
 
 ### TS optimization does not converge / multiple imaginary modes remain
 

@@ -1997,8 +1997,36 @@ def _validate_reference_mode_optimizer(
 @add_coord_type_option()
 @add_print_every_option()
 @click.pass_context
+@click.option(
+    "--stop-plateau/--no-stop-plateau",
+    "stop_plateau",
+    default=False,
+    show_default=True,
+    help=(
+        "Stop when the energy stops changing while the convergence criteria are "
+        "still unmet, and report the run as stalled. It never signals "
+        "convergence; --max-cycles remains the real bound."
+    ),
+)
+@click.option(
+    "--stop-plateau-thresh",
+    "stop_plateau_thresh",
+    type=float,
+    default=None,
+    help="Energy range (hartree) below which --stop-plateau treats the window as flat.",
+)
+@click.option(
+    "--stop-plateau-window",
+    "stop_plateau_window",
+    type=int,
+    default=None,
+    help="Number of consecutive cycles --stop-plateau inspects.",
+)
 def cli(
     ctx: click.Context,
+    stop_plateau: bool,
+    stop_plateau_thresh: Optional[float],
+    stop_plateau_window: Optional[int],
     input_path: Path,
     reference_mode_path: Optional[Path],
     charge: Optional[int],
@@ -2116,6 +2144,23 @@ def cli(
             opt_cfg["thresh"] = str(thresh)
             simple_cfg["thresh"] = str(thresh)
             rsirfo_cfg["thresh"] = str(thresh)
+        # --stop-plateau* reaches every optimizer this command drives: the
+        # RS-I-RFO/RS-P-RFO macro and the dimer's inner LBFGS, whose kwargs come
+        # from `hessian_dimer.lbfgs` alone and inherit nothing from `opt`.
+        _cli_plateau: Dict[str, Any] = {}
+        if cli_param_overridden(ctx, "stop_plateau"):
+            _cli_plateau["energy_plateau"] = bool(stop_plateau)
+        if stop_plateau_thresh is not None:
+            _cli_plateau["energy_plateau_thresh"] = float(stop_plateau_thresh)
+        if stop_plateau_window is not None:
+            _cli_plateau["energy_plateau_window"] = int(stop_plateau_window)
+        if _cli_plateau:
+            _cli_dimer_lbfgs = dict(simple_cfg.get("lbfgs", {}))
+            for _plateau_key, _plateau_val in _cli_plateau.items():
+                opt_cfg[_plateau_key] = _plateau_val
+                rsirfo_cfg[_plateau_key] = _plateau_val
+                _cli_dimer_lbfgs[_plateau_key] = _plateau_val
+            simple_cfg["lbfgs"] = _cli_dimer_lbfgs
         if cli_param_overridden(ctx, "cli_coord_type") and cli_coord_type is not None:
             geom_cfg["coord_type"] = str(cli_coord_type).lower()
         if cli_param_overridden(ctx, "hessian_calc_mode") and hessian_calc_mode is not None:

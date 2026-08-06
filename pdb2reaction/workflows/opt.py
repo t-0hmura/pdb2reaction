@@ -448,6 +448,31 @@ def _seed_rfo_initial_hessian(
     ),
 )
 @click.option(
+    "--stop-plateau/--no-stop-plateau",
+    "stop_plateau",
+    default=False,
+    show_default=True,
+    help=(
+        "Stop when the energy stops changing while the convergence criteria are "
+        "still unmet, and report the run as stalled. It never signals "
+        "convergence; --max-cycles remains the real bound."
+    ),
+)
+@click.option(
+    "--stop-plateau-thresh",
+    "stop_plateau_thresh",
+    type=float,
+    default=None,
+    help="Energy range (hartree) below which --stop-plateau treats the window as flat.",
+)
+@click.option(
+    "--stop-plateau-window",
+    "stop_plateau_window",
+    type=int,
+    default=None,
+    help="Number of consecutive cycles --stop-plateau inspects.",
+)
+@click.option(
     "--flatten/--no-flatten",
     "flatten",
     default=False,
@@ -538,6 +563,9 @@ def cli(
     max_cycles: int,
     opt_mode: str,
     reject_uphill: bool,
+    stop_plateau: bool,
+    stop_plateau_thresh: Optional[float],
+    stop_plateau_window: Optional[int],
     flatten: bool,
     dump: bool,
     out_dir: str,
@@ -660,6 +688,12 @@ def cli(
                 opt_cfg["print_every"] = int(print_every)
             if cli_param_overridden(ctx, "reject_uphill"):
                 rfo_cfg["reject_uphill"] = bool(reject_uphill)
+            if cli_param_overridden(ctx, "stop_plateau"):
+                opt_cfg["energy_plateau"] = bool(stop_plateau)
+            if stop_plateau_thresh is not None:
+                opt_cfg["energy_plateau_thresh"] = float(stop_plateau_thresh)
+            if stop_plateau_window is not None:
+                opt_cfg["energy_plateau_window"] = int(stop_plateau_window)
 
             apply_yaml_overrides(
                 override_layer_cfg,

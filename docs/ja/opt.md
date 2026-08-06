@@ -143,7 +143,7 @@ L-BFGS と RFO の両方で使用される共有オプティマイザ制御:
   文献の Baker 基準より厳しい設定です。プリセット名は
   `pdb2reaction/core/defaults.py`（`THRESH_CHOICES`）に定義されます。
 - `max_cycles`、`print_every`（`100`）、`min_step_norm`（`1e-8`）、`assert_min_step`、収束切り替え（`rms_force` など）、RMSD ベースの `converge_to_geom_rms_thresh`、`overachieve_factor`、`check_eigval_structure`、`line_search`。
-- 平坦なエネルギー地形による停止（`energy_plateau`、`energy_plateau_thresh`、`energy_plateau_window`）— 直近ステップのエネルギーレンジが平坦化した場合、収束扱いにせず `stalled` として停止します（MLIP の力のノイズで力ベース収束に到達できない場合に有効。下の注記を参照）。
+- 平坦なエネルギー地形による停止（`energy_plateau`、`energy_plateau_thresh`、`energy_plateau_window`）— デフォルトは無効で、`--stop-plateau` で opt-in します。有効時は直近ステップのエネルギーレンジが平坦化した場合、収束扱いにせず `stalled` として停止します（MLIP の力のノイズで力ベース収束に到達できない場合に有効。下の注記を参照）。
 - ダンプ/管理項目（`dump`、`dump_restart`、`prefix`、`out_dir`）。
 
 ### `lbfgs`
@@ -161,13 +161,15 @@ L-BFGS と RFO の両方で使用される共有オプティマイザ制御:
 ## 注記
 
 ```{note}
-**平坦なエネルギー地形による停止。** `energy_plateau: true`
-のとき、直近 `energy_plateau_window` ステップのエネルギーレンジ（max − min）が
-`energy_plateau_thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`、50 ステップ）を
-下回ると、optimizerは収束扱いにせず `stalled` として停止します。これにより、backend/model/system依存の
+**平坦なエネルギー地形による停止（opt-in、デフォルト無効）。** `--stop-plateau`
+（YAML `energy_plateau: true`）を指定すると、直近 `--stop-plateau-window`
+ステップのエネルギーレンジ（max − min）が `--stop-plateau-thresh`
+（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`、50 ステップ）を
+下回った時点で、optimizerは収束扱いにせず `stalled` として停止します。これにより、backend/model/system依存の
 force noise/flatnessが選択したforce閾値への到達を妨げる場合でも、無駄なcycleを
-消費せずに停止できます。なお chain-of-states optimizer
-（イメージごとのエネルギー配列を保持するもの）ではこのフォールバックはスキップされます。
+消費せずに停止できます。エネルギーの平坦化は停留点の証拠ではないため収束扱いにはならず、
+`--max-cycles` が常に実質的な上限です。なお chain-of-states optimizer
+（イメージごとのエネルギー配列を保持するもの）ではこの停止はスキップされます。
 ```
 
 ## 関連項目

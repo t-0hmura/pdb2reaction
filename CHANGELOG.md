@@ -23,8 +23,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   values fail explicitly.
 - Rename the `path-opt` / `path-search` string-optimizer preset flag
   `--thresh-stopt` to `--thresh-gsm`. The former spelling is no longer accepted.
+- **The energy-plateau stop is now opt-in and off by default**
+  (`opt.energy_plateau: false`). A flat energy is not evidence of a stationary
+  point, so a run that stopped there reported `stalled` while leaving the
+  geometry unconverged, and a TS search stopped that way typically still
+  carried extra imaginary modes. `--max-cycles` remains the real bound on every
+  run. Turn the stop back on with `--stop-plateau` (see Added); YAML
+  `opt.energy_plateau: true` also still enables it.
 
 ### Added
+- Add `--stop-plateau/--no-stop-plateau`, `--stop-plateau-thresh`, and
+  `--stop-plateau-window` to `opt`, `tsopt`, and `all`, exposing the
+  energy-plateau stop and its two tuning values on the command line.
 - Add `--thresh-gsm` and `--thresh-dmf` to `all`, `path-opt`, and
   `path-search`, separating endpoint, GSM, and DMF convergence controls.
 - Add `all --tsopt-from-mep-tan/--no-tsopt-from-mep-tan` for benchmarkable control

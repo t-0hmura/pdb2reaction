@@ -128,12 +128,15 @@ Full schema (every key and default): [YAML Reference](yaml-reference.md).
 ## Notes
 
 ```{note}
-**Energy plateau stop.** When `energy_plateau: true`, the optimizer
-terminates with status `stalled` (not converged) if the energy range (max − min) over the last
-`energy_plateau_window` steps falls below `energy_plateau_thresh`
-(default `1×10⁻⁴ au ≈ 0.06 kcal/mol` over 50 steps). This prevents wasted cycles when
-the measured force noise/flatness prevents the selected force threshold from being
-reached. The noise level is backend/model/system dependent. The fallback is skipped for chain-of-states
+**Energy plateau stop (opt-in, default off).** With `--stop-plateau` (YAML
+`energy_plateau: true`), the optimizer terminates with status `stalled` (not
+converged) if the energy range (max − min) over the last
+`--stop-plateau-window` steps falls below `--stop-plateau-thresh` (default
+`1×10⁻⁴ au ≈ 0.06 kcal/mol` over 50 steps). It saves cycles when the measured
+force noise/flatness prevents the selected force threshold from being reached;
+the noise level is backend/model/system dependent. A flat energy is not
+evidence of a stationary point, so this never reports convergence and
+`--max-cycles` remains the real bound. The stop is skipped for chain-of-states
 optimizers, which store per-image energy arrays.
 ```
 

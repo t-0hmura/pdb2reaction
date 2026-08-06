@@ -186,7 +186,7 @@ opt:
  overachieve_factor: 0.0 # Factor to tighten thresholds
  check_eigval_structure: false # Validate Hessian eigenstructure
  line_search: true # Enable line search
- energy_plateau: true # Stop as stalled when the energy range flattens (see note below)
+ energy_plateau: false # Opt-in: stop as stalled when the energy range flattens (see note below)
  energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); stalled-state threshold for the plateau check
  energy_plateau_window: 50 # Number of most recent steps inspected for the plateau check
  dump: false # Dump trajectory/restart data
@@ -195,14 +195,17 @@ opt:
  out_dir: ./result_opt/ # Output directory
 ```
 
-**Energy plateau stop:**
-When `energy_plateau: true`, the optimizer terminates as `stalled`, not converged, if the energy range
-(max − min) over the last `energy_plateau_window` steps falls below
-`energy_plateau_thresh` (default `1e-4` au ≈ 0.06 kcal/mol over 50 steps). This prevents
-wasted cycles when MLIP force noise can exceed the `baker` threshold
-(`max_force = 3×10⁻⁴ au`), so the force criterion may never be satisfied
-even after the energy has flattened.
-The fallback is **skipped** for chain-of-states (COS) optimizers such as `stopt`,
+**Energy plateau stop (opt-in, default off):**
+`energy_plateau` is `false` by default; `--stop-plateau` on `opt` / `tsopt` /
+`all` turns it on (`--stop-plateau-thresh` and `--stop-plateau-window` set the
+two values below). When it is on, the optimizer terminates as `stalled`, not
+converged, if the energy range (max − min) over the last
+`energy_plateau_window` steps falls below `energy_plateau_thresh` (default
+`1e-4` au ≈ 0.06 kcal/mol over 50 steps). It saves cycles when MLIP force noise
+can exceed the `baker` threshold (`max_force = 3×10⁻⁴ au`), so the force
+criterion may never be satisfied even after the energy has flattened. It never
+reports convergence, and `max_cycles` remains the real bound on every run.
+The stop is **skipped** for chain-of-states (COS) optimizers such as `stopt`,
 `gs`, and DMF, because those store per-image energy arrays rather than a single scalar
 trace.
 

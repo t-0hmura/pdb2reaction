@@ -253,12 +253,13 @@ opt:
 ```
 
 ```{note}
-**energy plateau fallback。** Hessian-family TS optimizer（RS-P-RFO、
-RS-I-RFO、TRIM）は共通の `energy_plateau` 設定を参照します。直近50 stepの
-energy rangeが `energy_plateau_thresh`（default `1×10⁻⁴ au`）を下回ると、
+**energy plateau stop（opt-in、デフォルト無効）。** Hessian-family TS optimizer（RS-P-RFO、
+RS-I-RFO、TRIM）は共通の `energy_plateau` 設定を参照し、`--stop-plateau` で有効化します。
+有効時、直近50 stepの energy rangeが `--stop-plateau-thresh`（default `1×10⁻⁴ au`）を下回ると、
 exact-Hessian/PHVA terminal validationを開始します。これは一次鞍点とphysical convergenceの
 検査を迂回する無条件収束ではありません。backend/model/system依存のforce floorが選択閾値への
-到達を妨げる場合に無駄なcycleを避けられます。無効化には `energy_plateau: false` を指定します。
+到達を妨げる場合に無駄なcycleを避けられます。デフォルトで無効なのは、平坦なenergyで停止した
+TS探索が余分な虚振動を残したままになりやすいためです。
 ```
 
 ### Dimer モード（`--opt-mode grad`）

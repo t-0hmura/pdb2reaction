@@ -122,5 +122,15 @@ Options:
                                   (cart|redund|dlc|tric).
   --print-every INTEGER RANGE     Print optimizer status every N cycles (debug
                                   knob).  [x>=1]
+  --stop-plateau / --no-stop-plateau
+                                  Stop when the energy stops changing while the
+                                  convergence criteria are still unmet, and
+                                  report the run as stalled. It never signals
+                                  convergence; --max-cycles remains the real
+                                  bound.  [default: no-stop-plateau]
+  --stop-plateau-thresh FLOAT     Energy range (hartree) below which --stop-
+                                  plateau treats the window as flat.
+  --stop-plateau-window INTEGER   Number of consecutive cycles --stop-plateau
+                                  inspects.
   -h, --help                      Show this message and exit.
 ```

@@ -269,14 +269,15 @@ opt:
 ```
 
 ```{note}
-**Energy-plateau fallback.** Hessian-family TS optimizers (RS-P-RFO,
-RS-I-RFO, and TRIM) honor the shared `energy_plateau` setting. An energy
-range below `energy_plateau_thresh` (default `1×10⁻⁴ au` over the last 50
-steps) triggers exact-Hessian/PHVA terminal validation; it does not bypass the
-required first-order saddle and physical convergence checks. This can avoid
-wasted cycles when a backend/model/system-specific force floor prevents the
-selected force threshold from being reached. Set `energy_plateau: false` to
-disable the trigger.
+**Energy-plateau stop (opt-in, default off).** Hessian-family TS optimizers
+(RS-P-RFO, RS-I-RFO, and TRIM) honor the shared `energy_plateau` setting, which
+`--stop-plateau` turns on. An energy range below `--stop-plateau-thresh`
+(default `1×10⁻⁴ au` over the last 50 steps) triggers exact-Hessian/PHVA
+terminal validation; it does not bypass the required first-order saddle and
+physical convergence checks. This can save cycles when a
+backend/model/system-specific force floor prevents the selected force threshold
+from being reached. It is off unless you ask for it, because a TS search that
+stops on a flat energy typically still carries extra imaginary modes.
 ```
 
 ### Dimer mode (`--opt-mode grad`)

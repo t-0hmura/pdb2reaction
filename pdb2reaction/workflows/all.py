@@ -1968,6 +1968,9 @@ def _optimize_endpoint_geom(
     thresh: Optional[str],
     calc_identity_cfg: Optional[Dict[str, Any]] = None,
     reject_uphill: Optional[bool] = None,
+    stop_plateau: Optional[bool] = None,
+    stop_plateau_thresh: Optional[float] = None,
+    stop_plateau_window: Optional[int] = None,
 ) -> Tuple[Any, Path, Optional[bool]]:
     """
     Optimize an endpoint geometry using LBFGS/RFO with settings mirroring path_search defaults.
@@ -2022,6 +2025,15 @@ def _optimize_endpoint_geom(
         # --reject-uphill/--no-reject-uphill flag.
         if sopt_kind == "rfo" and reject_uphill is not None:
             cfg["reject_uphill"] = bool(reject_uphill)
+        # Energy-plateau stop (opt-in). ``None`` inherits OPT_BASE_KW's
+        # default-off setting; an explicit bool comes from the ``all``
+        # command's --stop-plateau/--no-stop-plateau flag.
+        if stop_plateau is not None:
+            cfg["energy_plateau"] = bool(stop_plateau)
+        if stop_plateau_thresh is not None:
+            cfg["energy_plateau_thresh"] = float(stop_plateau_thresh)
+        if stop_plateau_window is not None:
+            cfg["energy_plateau_window"] = int(stop_plateau_window)
 
         # Seed cached IRC endpoint Hessian for RFO when available, but only on
         # a full evaluation-identity match (run/system/evaluator/active
@@ -2461,6 +2473,13 @@ def _run_tsopt_on_hei(
         _append_toggle_arg(ts_args, "--dump", overrides.get("dump"))
         _append_cli_arg(ts_args, "--thresh", overrides.get("thresh"))
         _append_toggle_arg(ts_args, "--flatten", overrides.get("flatten"))
+        _append_toggle_arg(ts_args, "--stop-plateau", overrides.get("stop_plateau"))
+        _append_cli_arg(
+            ts_args, "--stop-plateau-thresh", overrides.get("stop_plateau_thresh")
+        )
+        _append_cli_arg(
+            ts_args, "--stop-plateau-window", overrides.get("stop_plateau_window")
+        )
 
         hess_mode = overrides.get("hessian_calc_mode")
         if hess_mode:
@@ -3482,6 +3501,31 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     ),
 )
 @click.option(
+    "--stop-plateau/--no-stop-plateau",
+    "stop_plateau",
+    default=False,
+    show_default=True,
+    help=(
+        "Stop when the energy stops changing while the convergence criteria are "
+        "still unmet, and report the run as stalled. It never signals "
+        "convergence; --max-cycles remains the real bound."
+    ),
+)
+@click.option(
+    "--stop-plateau-thresh",
+    "stop_plateau_thresh",
+    type=float,
+    default=None,
+    help="Energy range (hartree) below which --stop-plateau treats the window as flat.",
+)
+@click.option(
+    "--stop-plateau-window",
+    "stop_plateau_window",
+    type=int,
+    default=None,
+    help="Number of consecutive cycles --stop-plateau inspects.",
+)
+@click.option(
     "--irc-step-size",
     type=float,
     default=None,
@@ -3721,6 +3765,9 @@ def cli(
     tsopt_out_dir: Optional[Path],
     flatten: bool,
     reject_uphill: bool,
+    stop_plateau: bool,
+    stop_plateau_thresh: Optional[float],
+    stop_plateau_window: Optional[int],
     irc_step_size: Optional[float],
     irc_never_stop: Optional[bool],
     freq_out_dir: Optional[Path],
@@ -3919,6 +3966,14 @@ def cli(
     _reject_uphill_eff = (
         bool(reject_uphill) if cli_param_overridden(ctx, "reject_uphill") else None
     )
+    # Energy-plateau stop. ``None`` unless the flag was explicitly passed, so the
+    # default path inherits OPT_BASE_KW's default-off setting. The stop reports
+    # `stalled`, never `converged`, so it is opt-in. It is threaded into the
+    # in-process endpoint re-optimizations here and into the tsopt child; the
+    # path stages are chain-of-states, which skip the plateau check outright.
+    _stop_plateau_eff = (
+        bool(stop_plateau) if cli_param_overridden(ctx, "stop_plateau") else None
+    )
     spin_configured = False
     if (
         not spin_cli_explicit
@@ -4078,6 +4133,12 @@ def cli(
         tsopt_overrides["thresh"] = str(thresh_post)
     if flatten_override_requested:
         tsopt_overrides["flatten"] = bool(flatten)
+    if _stop_plateau_eff is not None:
+        tsopt_overrides["stop_plateau"] = _stop_plateau_eff
+    if stop_plateau_thresh is not None:
+        tsopt_overrides["stop_plateau_thresh"] = float(stop_plateau_thresh)
+    if stop_plateau_window is not None:
+        tsopt_overrides["stop_plateau_window"] = int(stop_plateau_window)
 
     freq_overrides: Dict[str, Any] = {}
     # backend will be injected after calc_cfg_shared is built (see below)
@@ -4837,6 +4898,9 @@ def cli(
                 thresh=thresh_post,
                 calc_identity_cfg=calc_cfg_shared,
                 reject_uphill=_reject_uphill_eff,
+                stop_plateau=_stop_plateau_eff,
+                stop_plateau_thresh=stop_plateau_thresh,
+                stop_plateau_window=stop_plateau_window,
             )
         except Exception as e:
             _echo(
@@ -4861,6 +4925,9 @@ def cli(
                 thresh=thresh_post,
                 calc_identity_cfg=calc_cfg_shared,
                 reject_uphill=_reject_uphill_eff,
+                stop_plateau=_stop_plateau_eff,
+                stop_plateau_thresh=stop_plateau_thresh,
+                stop_plateau_window=stop_plateau_window,
             )
         except Exception as e:
             _echo(
@@ -6864,6 +6931,9 @@ def cli(
                     thresh=thresh_post,
                     calc_identity_cfg=calc_cfg_shared,
                     reject_uphill=_reject_uphill_eff,
+                    stop_plateau=_stop_plateau_eff,
+                    stop_plateau_thresh=stop_plateau_thresh,
+                    stop_plateau_window=stop_plateau_window,
                 )
             except Exception as e:
                 _echo(
@@ -6888,6 +6958,9 @@ def cli(
                     thresh=thresh_post,
                     calc_identity_cfg=calc_cfg_shared,
                     reject_uphill=_reject_uphill_eff,
+                    stop_plateau=_stop_plateau_eff,
+                    stop_plateau_thresh=stop_plateau_thresh,
+                    stop_plateau_window=stop_plateau_window,
                 )
             except Exception as e:
                 _echo(

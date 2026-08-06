@@ -185,7 +185,7 @@ opt:
  overachieve_factor: 0.0 # Factor to tighten thresholds
  check_eigval_structure: false # Validate Hessian eigenstructure
  line_search: true # Enable line search
- energy_plateau: true # エネルギー地形が平坦になった場合に stalled として停止（下記注記を参照）
+ energy_plateau: false # opt-in: エネルギー地形が平坦になった場合に stalled として停止（下記注記を参照）
  energy_plateau_thresh: 1.0e-04 # au (~0.06 kcal/mol); 平坦判定のレンジ閾値
  energy_plateau_window: 50 # 平坦判定に用いる直近ステップ数
  dump: false # Dump trajectory/restart data
@@ -194,13 +194,15 @@ opt:
  out_dir: ./result_opt/ # Output directory
 ```
 
-**平坦なエネルギー地形による停止:**
-`energy_plateau: true` の場合、直近 `energy_plateau_window` ステップのエネルギーレンジ
+**平坦なエネルギー地形による停止（opt-in、デフォルト無効）:**
+`energy_plateau` のデフォルトは `false` です。`opt` / `tsopt` / `all` の
+`--stop-plateau` で有効化し、`--stop-plateau-thresh` / `--stop-plateau-window` が
+下記の 2 つの値を設定します。有効時、直近 `energy_plateau_window` ステップのエネルギーレンジ
 （max − min）が `energy_plateau_thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`、50 ステップ）
 を下回ると、optimizerは収束扱いにせず `stalled` として停止します。これにより、backend/model/system依存の
 force noise/flatnessが選択したforce閾値への到達を妨げる場合でも、energy landscapeが
 明らかに平坦化していれば無駄なcycleを消費せずに
-停止できます。
+停止できます。収束扱いになることは決してなく、`max_cycles` が常に実質的な上限です。
 ただし chain-of-states（COS）オプティマイザ（`stopt`、`gs`、DMF など）は単一のスカラー
 エネルギー履歴ではなくイメージごとのエネルギー配列を保持するため、このフォールバックは
 **スキップ**されます。

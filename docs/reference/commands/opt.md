@@ -57,6 +57,16 @@ Options:
                                   the retained geometry at the emergency floor.
                                   Ignored in grad/lbfgs mode.  [default: no-
                                   reject-uphill]
+  --stop-plateau / --no-stop-plateau
+                                  Stop when the energy stops changing while the
+                                  convergence criteria are still unmet, and
+                                  report the run as stalled. It never signals
+                                  convergence; --max-cycles remains the real
+                                  bound.  [default: no-stop-plateau]
+  --stop-plateau-thresh FLOAT     Energy range (hartree) below which --stop-
+                                  plateau treats the window as flat.
+  --stop-plateau-window INTEGER   Number of consecutive cycles --stop-plateau
+                                  inspects.
   --flatten / --no-flatten        Enable/disable imaginary-mode flatten loop
                                   after optimization.  [default: no-flatten]
   --dump / --no-dump              Write optimization trajectory to

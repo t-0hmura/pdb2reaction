@@ -150,7 +150,7 @@ opt:
  converge_to_geom_rms_thresh: 0.05 # geom RMS threshold when converging to ref
  overachieve_factor: 0.0 # factor to tighten thresholds
  check_eigval_structure: false # validate Hessian eigenstructure
- energy_plateau: true # enable plateau-based early stop
+ energy_plateau: false # opt-in plateau-based early stop (--stop-plateau)
  energy_plateau_thresh: 1.0e-04 # plateau detection threshold
  energy_plateau_window: 50 # plateau detection window (cycles)
  line_search: true # enable line search
@@ -170,7 +170,7 @@ lbfgs:
  converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
  overachieve_factor: 0.0 # tighten thresholds
  check_eigval_structure: false # validate Hessian eigenstructure
- energy_plateau: true # enable plateau-based early stop
+ energy_plateau: false # opt-in plateau-based early stop (--stop-plateau)
  energy_plateau_thresh: 1.0e-04 # plateau detection threshold
  energy_plateau_window: 50 # plateau detection window (cycles)
  line_search: true # enable line search
@@ -198,7 +198,7 @@ rfo:
  converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
  overachieve_factor: 0.0 # tighten thresholds
  check_eigval_structure: false # validate Hessian eigenstructure
- energy_plateau: true # enable plateau-based early stop
+ energy_plateau: false # opt-in plateau-based early stop (--stop-plateau)
  energy_plateau_thresh: 1.0e-04 # plateau detection threshold
  energy_plateau_window: 50 # plateau detection window (cycles)
  line_search: true # enable line search
