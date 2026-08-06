@@ -148,7 +148,7 @@ pdb2reaction -i r_complex.pdb p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r
 # --- TSOPT-only mode ---
 
 # test20: all (ts input, --tsopt + --thermo)
-pdb2reaction -i ts.pdb -q 0 --tsopt --opt-mode-post grad --thermo --irc-never-stop --max-cycles 100 --thresh gau --thresh-post gau_loose --out-dir test20 > test20.out 2>&1
+pdb2reaction -i ts.pdb -q 0 --tsopt --opt-mode-post grad --thermo --irc-never-stop --thresh gau --thresh-post gau_loose --out-dir test20 > test20.out 2>&1
 python assert_release_result.py all test20 --require-thermo >> test20.out 2>&1
 
 # test21: all (ts input, --tsopt, opt-mode hess)
