@@ -8,6 +8,7 @@ Requires: ``pip install "pdb2reaction[orb]"`` (orb-models).
 
 from __future__ import annotations
 import click
+import warnings
 
 from contextlib import nullcontext
 from typing import Optional, Sequence
@@ -188,7 +189,25 @@ class OrbCalculator(MLIPCalculator):
         last_exc = None
         for attempt, kwargs in enumerate(bases):
             try:
-                out = self._loader(**kwargs)
+                with warnings.catch_warnings():
+                    # orb-models announces the global float64 default and
+                    # suggests `precision='float32-high'`. Both describe exactly
+                    # the precision this backend selects on purpose (TF32 matmul
+                    # noise inflates finite-difference Hessians into spurious
+                    # imaginary modes - see ORB_BACKEND_DEFAULTS), so they are
+                    # noise for our users rather than a signal. Everything else
+                    # orb-models warns about still reaches the log.
+                    warnings.filterwarnings(
+                        "ignore",
+                        message=r"Setting global torch default dtype",
+                        category=UserWarning,
+                    )
+                    warnings.filterwarnings(
+                        "ignore",
+                        message=r"Consider passing 'precision=float32-high'",
+                        category=UserWarning,
+                    )
+                    out = self._loader(**kwargs)
             except Exception as exc:
                 last_exc = exc
                 continue

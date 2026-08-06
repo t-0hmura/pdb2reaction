@@ -155,6 +155,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   mutated nested defaults.
 
 ### Fixed
+- Stop relaying orb-models' two notices about the precision the ORB backend
+  selects on purpose ("Setting global torch default dtype" and "Consider
+  passing 'precision=float32-high'"). Float64 is deliberate: TF32 matmul force
+  noise inflates finite-difference Hessians into spurious imaginary modes.
+  Every other orb-models warning still reaches the log.
 - Forward `all --thresh` to the staged scan stage.
 - Honor a YAML-pinned `dmf.ipopt_options.dual_inf_tol`.
 - Apply the `baker` preset as a deliberately tightened variant of the published
