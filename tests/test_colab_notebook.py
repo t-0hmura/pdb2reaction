@@ -563,7 +563,7 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "rootbox = W.VBox([header, app, W.HTML('<hr" not in app
     assert "role=\"tooltip\"" not in app
     # Standalone opt/tsopt/path-opt users need a cluster model first.
-    assert "b_extract = W.Button(description='Prepare cluster & use it'" in app
+    assert "b_extract = W.Button(description='Extract cluster & use it'" in app
     assert "prep_radius = W.FloatText(" in app
     assert "keep_subcmd=True" in app
     # The wheel ships no examples, so Load example resolves them from the git
@@ -3192,3 +3192,19 @@ def test_colab_navigation_names_resolve_to_real_targets() -> None:
     assert "Installation —" in setup or "Installation —" in setup
     for stale in ("rerun Setup", "restart Setup"):
         assert stale not in app, f"{stale!r} names tab 2, which cannot install anything"
+
+
+def test_extract_panel_explains_itself_when_a_workflow_extracts_internally() -> None:
+    """`all` extracts internally and `extract` IS the extraction command, so the
+    preparation panel is hidden for both. Hiding it with no explanation reads as
+    a missing feature, so a one-line hint takes its place and names the route."""
+    app = _notebook()["cells"][2]["source"]
+
+    assert "extract_hint = W.HTML()" in app
+    assert "extract_panel, extract_hint])" in app
+    # Shown exactly when a full protein is loaded but the workflow self-extracts.
+    assert "_hint_on = _center_active and not _prep_active" in app
+    assert "_extract_hint.layout.display = '' if _hint_on else 'none'" in app
+    assert "select the <code>extract</code> workflow" in app
+    # The button says what it does.
+    assert "description='Extract cluster & use it'" in app

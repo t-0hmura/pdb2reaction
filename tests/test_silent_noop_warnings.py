@@ -30,7 +30,37 @@ def test_dropped_calc_keys_are_reported() -> None:
     # `_filter_kwargs` silently drops calc: keys a backend does not accept.
     src = _src(backends_mod)
     assert "ignored calc setting(s)" in src
-    assert "_dropped = sorted(k for k in kwargs if k not in filtered)" in src
+    assert "k not in filtered and k not in _seeded" in src
+
+
+def test_unusable_calc_keys_are_reported_but_seeded_defaults_are_not() -> None:
+    """Every workflow seeds `calc_cfg` from the UMA-flavoured block, so a key UMA
+    accepts and this backend does not is an untouched default, not a choice.
+    Reporting those buried the line under seven or eight settings per run. A key
+    outside UMA's own accepted set is genuinely unusable and still reported.
+    """
+    accepted_map = backends_mod._BACKEND_ACCEPTED_KEYS
+    seeded = accepted_map["uma"]
+
+    def dropped(backend: str, kwargs: dict) -> list:
+        filtered = backends_mod._filter_kwargs(kwargs, accepted_map[backend])
+        return sorted(k for k in kwargs if k not in filtered and k not in seeded)
+
+    # The measured seeded noise: UMA accepts these, the others do not.
+    noise = {
+        "max_neigh": 30,
+        "print_vram": True,
+        "r_edges": True,
+        "radius": 6.0,
+        "task_name": "omol",
+        "workers": 1,
+        "workers_per_node": 1,
+    }
+    for backend in ("orb", "mace", "aimnet2"):
+        assert set(noise) - accepted_map[backend], f"{backend} accepts all of {noise}"
+        assert dropped(backend, dict(noise)) == []
+        # A key no backend knows is still surfaced.
+        assert dropped(backend, {**noise, "nonexistent_knob": 1}) == ["nonexistent_knob"]
 
 
 def test_orb_reports_an_unhonoured_compile_request() -> None:

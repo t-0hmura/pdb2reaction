@@ -78,6 +78,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   automatically. `thermo.symmetry_number` remains an advanced YAML override.
 
 ### Changed
+- Rename the Colab preparation button to "Extract cluster & use it", and put a
+  one-line hint where the panel used to vanish: `all` extracts internally and
+  `extract` is itself the extraction command, so the panel is hidden for both
+  and the hint names the route to a standalone cluster.
 - Run the Hessian transition-state search without the minimization- and
   maximization-subspace line searches by default, matching the bundled engine's
   own defaults. RS-I-RFO previously enabled both, so TS trajectories can differ;
