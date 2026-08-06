@@ -216,10 +216,15 @@ trace.
 | `gau_vtight` | 2.0e-6 | 1.0e-6 | 6.0e-6 | 4.0e-6 |
 | `baker` | 3.0e-4 | 2.0e-4 | 3.0e-4 | 2.0e-4 |
 
-`baker` is the exception to the four-column rule: it converges when
-`max(|force|) <= 3e-4` **and** (`|delta E| < 1e-6` **or**
-`max(|step|) <= 3e-4`). Its RMS force and RMS step columns are diagnostics,
-not additional terminal gates.
+`baker` adds a fifth criterion to the four columns: `|delta E| < 1e-6` hartree
+against the previous cycle. All five must hold, so this preset is stricter than
+the published Baker criterion (Bakken and Helgaker, *J. Chem. Phys.* **117**,
+9160 (2002)), which requires only `max(|force|) <= 3e-4` **and**
+(`|delta E| < 1e-6` **or** `max(|step|) <= 3e-4`). The looser published form
+accepts geometries whose remaining RMS force still displaces the structure,
+which on machine-learned surfaces ends on higher-order saddle points. A
+zero-length step satisfies the energy criterion by construction, because the
+geometry cannot move.
 
 ---
 

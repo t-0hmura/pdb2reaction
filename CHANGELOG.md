@@ -68,6 +68,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   automatically. `thermo.symmetry_number` remains an advanced YAML override.
 
 ### Changed
+- Run the Hessian transition-state search without the minimization- and
+  maximization-subspace line searches by default, matching the bundled engine's
+  own defaults. RS-I-RFO previously enabled both, so TS trajectories can differ;
+  set `rsirfo.min_line_search` / `rsirfo.max_line_search` in YAML to restore them.
+- Stop forcing one reparametrization pass per growing-string cycle. An image
+  already inside the parametrization tolerance is no longer displaced, and
+  coincident parameter densities are rejected instead of divided.
 - Make `sp --hess` use the shared `FiniteDifference` default for every MLIP
   backend; select `Analytical` explicitly when desired.
 - Give an explicit `all -q/--charge` highest priority over extracted or
@@ -87,9 +94,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Label thermochemistry as `E + G_corr = G`, force uphill rejection off for
   transition-state optimization, and keep its toggle limited to minimum and
   post-IRC endpoint optimization.
-- Apply Baker convergence as maximum force plus energy-change-or-maximum-step,
-  with RMS values diagnostic only, including the final check of a retained
-  lower-energy geometry at the uphill-rejection trust floor.
+- Apply the `baker` preset as a deliberately tightened variant of the published
+  criterion (Bakken and Helgaker, J. Chem. Phys. 117, 9160 (2002)): maximum
+  force, RMS force, maximum step, RMS step and the energy change must all hold,
+  including the final check of a retained lower-energy geometry at the
+  uphill-rejection trust floor. A zero-length step settles the energy criterion,
+  because the geometry cannot move.
 - Remove the unused 74-field `AllContext` scaffold and its mirror-count test.
 - Pin backend setup recipes to the official PyTorch 2.8 wheel matrix and keep
   optional CUDA toolkit/compiler modules out of prebuilt-wheel HPC jobs.
@@ -137,8 +147,30 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 ### Fixed
 - Forward `all --thresh` to the staged scan stage.
 - Honor a YAML-pinned `dmf.ipopt_options.dual_inf_tol`.
-- Apply the Baker maximum-force AND (energy-change OR maximum-step) criterion
-  on every evaluable cycle, including the first retained geometry.
+- Apply the `baker` preset as a deliberately tightened variant of the published
+  criterion (Bakken and Helgaker, J. Chem. Phys. 117, 9160 (2002)): maximum
+  force, RMS force, maximum step, RMS step and the energy change must all hold,
+  on every evaluable cycle including the first retained geometry. The published
+  maximum-gradient AND (energy-change OR step) form accepts geometries whose
+  remaining RMS force still displaces the structure. A zero-length step settles
+  the energy criterion, because the geometry cannot move.
+- Convert Cartesian coordinates from Bohr to Angstrom before the
+  thermochemistry hand-off; the moments of inertia, rotational entropy and
+  absolute Gibbs energies were computed from Bohr values in an Angstrom contract.
+- Require every internal-coordinate component to satisfy the back-transformation
+  tolerance before the iteration is accepted; a single converged component used
+  to end it.
+- Apply the thermochemistry policy's `zpe_scale` (passed on as
+  `zpe_scale_factor`) exactly once to the reported zero-point energy and to the
+  vibrational internal energy. Values other than the default `1.0` were scaled
+  twice.
+- Collect invalid primitive indices from the actual dihedral and bend index
+  lists instead of assuming contiguous ranges, keeping both sets.
+- Correct the diagnostic QRRHO free-rotor partition function (frequency instead
+  of wavenumber, plus the missing factor of pi); reported QRRHO entropy and Gibbs
+  energy come from the Grimme interpolation and are unchanged.
+- Evaluate the vibrational heat capacity through a series expansion for small
+  exponents and `expm1` elsewhere, removing the cancellation error near zero.
 - Resolve legacy MACE-OFF23 size aliases to their upstream model sizes.
 - Keep the IRC running when the EulerPC corrector oscillates. The corrector
   descends the two-point interpolated surface rather than the real potential,

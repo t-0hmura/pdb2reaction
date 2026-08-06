@@ -138,9 +138,9 @@ opt:
 
 ### `opt`
 L-BFGS と RFO の両方で使用される共有オプティマイザ制御:
-- `thresh` プリセット（Gaussian 系または Baker 系）。`baker` は
-  `max(|force|) <= 3e-4` かつ（`|delta E| < 1e-6` または
-  `max(|step|) <= 3e-4`）で収束し、RMS 値は診断用です。プリセット名は
+- `thresh` プリセット（Gaussian 系または Baker 系）。`baker` は4列
+  （max/rms force、max/rms step）に加えて `|delta E| < 1e-6` を要求し、
+  文献の Baker 基準より厳しい設定です。プリセット名は
   `pdb2reaction/core/defaults.py`（`THRESH_CHOICES`）に定義されます。
 - `max_cycles`、`print_every`（`100`）、`min_step_norm`（`1e-8`）、`assert_min_step`、収束切り替え（`rms_force` など）、RMSD ベースの `converge_to_geom_rms_thresh`、`overachieve_factor`、`check_eigval_structure`、`line_search`。
 - 平坦なエネルギー地形による停止（`energy_plateau`、`energy_plateau_thresh`、`energy_plateau_window`）— 直近ステップのエネルギーレンジが平坦化した場合、収束扱いにせず `stalled` として停止します（MLIP の力のノイズで力ベース収束に到達できない場合に有効。下の注記を参照）。

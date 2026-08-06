@@ -2520,8 +2520,10 @@ def cli(
                         )
                     rsirfo_kwargs["reference_mode"] = reference_mode
 
-                # TRIM / RS-P-RFO are pure-numpy, single-pass TS optimizers and
-                # do not support the torch-backed line_search used by RS-I-RFO.
+                # Both subspace line searches are off by default; this keeps them
+                # off for TRIM / RS-P-RFO even when YAML enables them, because
+                # those pure-numpy single-pass optimizers do not support the
+                # torch-backed line search that RS-I-RFO uses.
                 if kind != "rsirfo":
                     rsirfo_kwargs["min_line_search"] = False
                     rsirfo_kwargs["max_line_search"] = False
