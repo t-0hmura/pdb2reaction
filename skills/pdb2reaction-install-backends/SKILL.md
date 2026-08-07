@@ -69,7 +69,7 @@ pdb2reaction sp -i model.xyz --calc-file my_calc.py -q 0 -m 1
 - Works on every listed calculator-backed geometry subcommand (`sp` / `opt` /
   `tsopt` / `freq` / `irc` / `scan` / `scan2d` / `scan3d` / `path-opt` / `path-search`) and
   **the `all` pipeline**
-  (forwarded to each child stage). Rename the factory with `--calc-factory NAME`.
+  (forwarded to each child stage). Rename the factory with `--calc-file-func-name NAME`.
 - Energy/forces follow the ASE eV / eV·Å⁻¹ contract; Hessians use the
   finite-difference path. Frozen atoms (`--freeze-links` / `--freeze-atoms`) are
   honored. Full guide: `docs/backends.md` (Custom backend section).

@@ -494,7 +494,7 @@ def _forward_calc_file_argv(child_args: List[str], calc_cfg: Dict[str, Any]) -> 
     child_args.extend(["--calc-file", str(cf)])
     fac = calc_cfg.get("calc_factory")
     if fac and str(fac) != "get_calculator":
-        child_args.extend(["--calc-factory", str(fac)])
+        child_args.extend(["--calc-file-func-name", str(fac)])
     return True
 
 

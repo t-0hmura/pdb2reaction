@@ -169,7 +169,7 @@ def add_backend_model_option() -> Callable[[Callable], Callable]:
 
 
 def add_calc_file_option() -> Callable[[Callable], Callable]:
-    """Attach ``--calc-file PATH`` (+ ``--calc-factory NAME``) to a Click command.
+    """Attach ``--calc-file PATH`` (+ ``--calc-file-func-name NAME``) to a Click command.
 
     When set, pdb2reaction loads an arbitrary ASE Calculator from the user
     Python file and uses it as the energy/gradient backend (overriding
@@ -177,12 +177,16 @@ def add_calc_file_option() -> Callable[[Callable], Callable]:
     ``pdb2reaction.backends.apply_calc_file_to_calc_cfg``, which switches the
     backend to ``custom``. The file must expose a factory
     ``get_calculator(charge, spin, device, **kwargs) -> ase Calculator``
-    (rename via ``--calc-factory``). Lets users couple GFN-xTB (tblite),
+    (rename via ``--calc-file-func-name``). Lets users couple GFN-xTB (tblite),
     DFTB+, ORCA, or any ASE-compatible engine without modifying pdb2reaction.
     Same wire targets as ``add_precision_option``.
     """
     def decorator(func: Callable) -> Callable:
         func = click.option(
+            # `--calc-factory` said nothing about which file it names.
+            # The new spelling is primary; the old one stays accepted so
+            # published commands keep working.
+            "--calc-file-func-name",
             "--calc-factory",
             "calc_factory",
             type=str,
@@ -202,7 +206,7 @@ def add_calc_file_option() -> Callable[[Callable], Callable]:
             help=(
                 "Python file exposing get_calculator(...) -> an ASE Calculator, "
                 "used as the energy/gradient backend (overrides --backend). "
-                "Couples GFN-xTB / DFTB+ / any ASE engine. See --calc-factory."
+                "Couples GFN-xTB / DFTB+ / any ASE engine. See --calc-file-func-name."
             ),
         )(func)
         return func

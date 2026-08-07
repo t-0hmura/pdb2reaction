@@ -127,7 +127,7 @@ pdb2reaction all    -i R.pdb P.pdb -c 'LIG' --calc-file my_calc.py -q 0 -m 1
 - ファクトリには、シグネチャが受け取る場合（または `**kwargs` を宣言している場合）に
   `charge`・`spin`（多重度。`mult` / `multiplicity` でも渡されます）・`device` が
   渡されるため、全電荷が必要なエンジン（xTB など）も設定できます。ファクトリ名を
-  変える場合は `--calc-factory NAME`、モジュール直下の Calculator インスタンスも
+  変える場合は `--calc-file-func-name NAME`、モジュール直下の Calculator インスタンスも
   受け付けます。
 - Hessian は `MLIPCalculator` から継承する有限差分経路を使うため、`freq` や
   `tsopt --opt-mode hess` も任意エンジンで動作します。凍結原子（`--freeze-links` /
