@@ -2046,10 +2046,9 @@ def test_colab_defers_active_browser_input_deletion(
 ) -> None:
     app, _rendered = _execute_app(monkeypatch, tmp_path)
     source = _notebook()["cells"][2]["source"]
-    for start, end in (("def _do_run_sync", "async def _do_run_async"),
-                       ("async def _do_run_async", "def _do_run(")):
-        run_path = source[source.index(start):source.index(end)]
-        assert "_RUN_EXECUTION['argv'] = list(a)\n    _set_running(True)" in run_path
+    # One run path: the unreachable async twin was removed.
+    run_path = source[source.index("def _do_run_sync"):source.index("def _do_run(")]
+    assert "_RUN_EXECUTION['argv'] = list(a)\n    _set_running(True)" in run_path
     sync_start = source.index("def _do_run_sync")
     sync_prefix = source[sync_start:source.index("    try:\n", sync_start)]
     assert "_RUN_EXECUTION['argv']" not in sync_prefix
@@ -2690,7 +2689,7 @@ def test_colab_gui_guards_state_capabilities_and_current_run_results() -> None:
     assert "submit(event.dataTransfer ? event.dataTransfer.files : []);" in app
     assert "_tab_body.children = [_TAB_PAGES[i][1]]" not in app
     assert "layout=W.Layout(width='560px')" not in app
-    assert app.count("effective = _normalized_scope_argv(a)") == 4
+    assert app.count("effective = _normalized_scope_argv(a)") == 2
 
 
 def test_colab_output_scope_executes_cli_grammar_and_utility_defaults(
@@ -3208,3 +3207,25 @@ def test_extract_panel_explains_itself_when_a_workflow_extracts_internally() -> 
     assert "select the <code>extract</code> workflow" in app
     # The button says what it does.
     assert "description='Extract cluster & use it'" in app
+
+
+def test_the_gui_keeps_one_run_path() -> None:
+    """The cell used to carry an unreachable async twin of the whole execution
+    path (`_start_async_task`, `_do_validate_async`, `_do_run_guarded`,
+    `_do_run_async`, `_stream_async`, `_stop_async_process`,
+    `_validate_command_async`, `_async_task_done`): nothing called any of them,
+    so a reader had two implementations to reason about and only one ever ran.
+    One path only, so the live behaviour is the readable one.
+    """
+    app = _notebook()["cells"][2]["source"]
+
+    for gone in ("_stream_async", "_stop_async_process", "_validate_command_async",
+                 "_do_validate_async", "_async_task_done", "_start_async_task",
+                 "_do_run_async", "_do_run_guarded"):
+        assert gone not in app, gone
+    # The live path, and the loop reference `_dispatch_ui` still needs.
+    assert "def _stream(cmd):" in app
+    assert "def _do_run_sync(" in app
+    assert "subprocess.Popen(cmd" in app
+    assert "asyncio.create_subprocess_exec" not in app
+    assert "_UI_ASYNC_LOOP.call_soon_threadsafe(callback)" in app

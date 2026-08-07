@@ -251,8 +251,8 @@ def _validate_high_risk_semantics(errors: list[str]) -> None:
         opt_page,
         (
             "final convergence check on the retained geometry",
-            "convergence is `max(|force|) <= 3e-4`",
-            "RMS values are diagnostic",
+            "convergence requires ALL of `max(|force|) <= 3e-4`",
+            "deliberately tightened variant of the published",
         ),
         errors,
     )
