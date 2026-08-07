@@ -33,7 +33,11 @@ def add_print_every_option() -> Callable[[Callable], Callable]:
             "print_every",
             type=click.IntRange(min=1),
             default=None,
-            show_default=False,
+            # Declared None so `cli_param_overridden` can tell an explicit value
+            # from an omission; the string reports the effective default, so
+            # --help, the generated reference and the Colab option list stop
+            # reading as unset.
+            show_default="100",
             help="Print optimizer status every N cycles (debug knob).",
         )(func)
     return decorator
@@ -52,7 +56,7 @@ def add_irc_pos_def_option() -> Callable[[Callable], Callable]:
             "--irc-pos-def/--no-irc-pos-def",
             "irc_pos_def",
             default=None,
-            show_default=False,
+            show_default="no-irc-pos-def (rms-only criterion)",
             help="Require pos-def Hessian at IRC convergence (blocks shoulder false-convergence).",
         )(func)
     return decorator
@@ -91,7 +95,7 @@ def add_coord_type_option(
             "cli_coord_type",
             type=click.Choice(list(choices), case_sensitive=False),
             default=None,
-            show_default=False,
+            show_default="cart",
             help=(
                 f"Optimization coordinate system ({options_str})."
             ),
@@ -127,7 +131,7 @@ def add_precision_option() -> Callable[[Callable], Callable]:
             "precision",
             type=click.Choice(["fp32", "fp64"], case_sensitive=False),
             default=None,
-            show_default=False,
+            show_default="per backend: uma fp32; orb, mace fp64",
             help=(
                 "MLIP backend precision: fp32 or fp64. Unset defaults per "
                 "backend (uma: fp32; orb, mace: fp64). Routed to "
@@ -153,7 +157,7 @@ def add_backend_model_option() -> Callable[[Callable], Callable]:
             "backend_model",
             type=str,
             default=None,
-            show_default=False,
+            show_default="the selected backend's own model",
             help=(
                 "Model variant for the selected --backend (e.g. "
                 "uma-s-1p2 / uma-m-1p1 for uma, orb_v3_conservative_omol for orb, "
@@ -254,7 +258,7 @@ def add_deterministic_option() -> Callable[[Callable], Callable]:
         return click.option(
             "--deterministic/--no-deterministic",
             default=False,
-            show_default=False,
+            show_default=True,
             is_eager=True,
             expose_value=False,
             callback=_deterministic_callback,
@@ -294,7 +298,7 @@ def add_allow_charge_mult_mismatch_option() -> Callable[[Callable], Callable]:
         return click.option(
             "--allow-charge-mult-mismatch",
             is_flag=True,
-            default=False,
+            default=False, show_default=True,
             is_eager=True,
             expose_value=False,
             callback=_allow_charge_mult_mismatch_callback,
@@ -346,7 +350,7 @@ def add_ml_charge_spin_options(
             "spin",
             type=click.IntRange(min=1),
             default=None,
-            show_default=False,
+            show_default="1",
             help="Spin multiplicity (2S+1).",
         ),
     ]

@@ -1954,7 +1954,7 @@ def _merge_final_and_write(final_images: List[Any],
     "--refine-mode",
     type=click.Choice(["peak", "minima"], case_sensitive=False),
     default=None,
-    show_default=True,
+    show_default="peak for gsm, minima for dmf",
     help=(
         "Refinement seed selection around the highest-energy image: "
         "'peak' uses HEI±1, 'minima' uses the nearest local minima in each direction. "
@@ -2004,7 +2004,7 @@ def _merge_final_and_write(final_images: List[Any],
     "spin",
     type=int,
     default=None,
-    show_default=False,
+    show_default="1 (or the .gjf template value)",
     help="Spin multiplicity (2S+1; defaults from a .gjf template when available, otherwise 1).",
 )
 @click.option(
@@ -2058,7 +2058,7 @@ def _merge_final_and_write(final_images: List[Any],
     "--thresh",
     type=click.Choice(THRESH_CHOICES, case_sensitive=False),
     default=None,
-    show_default=False,
+    show_default="gau",
     help=(
         "Convergence preset for single-structure optimizations only "
         "(gau_loose|gau|gau_tight|gau_vtight|baker|never). "
@@ -2069,7 +2069,7 @@ def _merge_final_and_write(final_images: List[Any],
     "--thresh-gsm",
     type=click.Choice(THRESH_CHOICES, case_sensitive=False),
     default=None,
-    show_default=False,
+    show_default="gau_loose",
     help=(
         "Convergence preset for the GSM string optimizer "
         "(gau_loose|gau|gau_tight|gau_vtight|baker|never). "
@@ -2080,7 +2080,7 @@ def _merge_final_and_write(final_images: List[Any],
     "--thresh-dmf",
     type=str,
     default=None,
-    show_default=False,
+    show_default="tight",
     help=(
         "IPOPT dual-infeasibility tolerance for the DMF path optimizer: "
         "tight (0.04) | middle (0.10) | loose (0.20) or a positive float. "

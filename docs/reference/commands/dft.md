@@ -24,6 +24,7 @@ Options:
                                   pdb).
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1; inherits from .gjf
                                   when available; otherwise defaults to 1).
+                                  [default: (1)]
   --convert-files / --no-convert-files
                                   Accepted for interface consistency; dft does
                                   not emit PDB/CIF/GJF outputs.  [default:

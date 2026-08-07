@@ -59,6 +59,7 @@ Options:
                                   Convergence preset for the active optimizer (g
                                   au_loose|gau|gau_tight|gau_vtight|baker|never)
                                   . Defaults to 'baker' when not provided.
+                                  [default: (baker)]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config
@@ -73,7 +74,8 @@ Options:
                                   Choose MLIP Hessian evaluation mode. YAML
                                   supplies the value when this option is
                                   omitted; explicit CLI wins. Defaults to
-                                  'FiniteDifference'.
+                                  'FiniteDifference'.  [default:
+                                  (FiniteDifference)]
   -b, --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
   --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
@@ -87,18 +89,21 @@ Options:
                                   omitted (requires PDB/mmCIF input or --ref-
                                   pdb).
   -m, --multiplicity INTEGER RANGE
-                                  Spin multiplicity (2S+1).  [x>=1]
+                                  Spin multiplicity (2S+1).  [default: (1);
+                                  x>=1]
   --precision [fp32|fp64]         MLIP backend precision: fp32 or fp64. Unset
                                   defaults per backend (uma: fp32; orb, mace:
                                   fp64). Routed to backend-specific kwargs (UMA
                                   precision / ORB precision / MACE
                                   default_dtype). aimnet2: fp32 no-op; fp64
-                                  rejected.
+                                  rejected.  [default: (per backend: uma fp32;
+                                  orb, mace fp64)]
   --backend-model TEXT            Model variant for the selected --backend (e.g.
                                   uma-s-1p2 / uma-m-1p1 for uma,
                                   orb_v3_conservative_omol for orb, MACE-OMOL-0
                                   / off:small for mace). Default: the backend's
-                                  built-in model.
+                                  built-in model.  [default: (the selected
+                                  backend's own model)]
   --calc-file FILE                Python file exposing get_calculator(...) -> an
                                   ASE Calculator, used as the energy/gradient
                                   backend (overrides --backend). Couples GFN-xTB
@@ -112,6 +117,7 @@ Options:
                                   (deterministic algorithms + index_reduce_
                                   shim). Slower; raises for detected unsupported
                                   ops; custom calculators are outside its scope.
+                                  [default: no-deterministic]
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
                                   parity check (logs that it was skipped). Open-
                                   shell clusters need a matching multiplicity
@@ -119,9 +125,9 @@ Options:
                                   nonstandard electron count.
   --coord-type [cart|redund|dlc|tric]
                                   Optimization coordinate system
-                                  (cart|redund|dlc|tric).
+                                  (cart|redund|dlc|tric).  [default: (cart)]
   --print-every INTEGER RANGE     Print optimizer status every N cycles (debug
-                                  knob).  [x>=1]
+                                  knob).  [default: (100); x>=1]
   --stop-plateau / --no-stop-plateau
                                   Stop when the energy stops changing while the
                                   convergence criteria are still unmet, and

@@ -218,6 +218,7 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
               "PDB/CIF companions additionally require conversion topology.",
     max_step_help="Maximum change in any scanned bond length per step [Å].",
     thresh_default=None,
+    thresh_shown=OPT_BASE_KW["thresh"],
     include_baseline=False,
     include_zmin_zmax=False,
     args_yaml_sections="geom, calc, opt, lbfgs, rfo, bias, bond",

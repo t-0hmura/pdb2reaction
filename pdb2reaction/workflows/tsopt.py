@@ -1941,7 +1941,7 @@ def _validate_reference_mode_optimizer(
     "--thresh",
     type=click.Choice(THRESH_CHOICES, case_sensitive=False),
     default=None,
-    show_default=False,
+    show_default="baker",
     help=(
         "Convergence preset for the active optimizer "
         "(gau_loose|gau|gau_tight|gau_vtight|baker|never). "
@@ -1979,7 +1979,7 @@ def _validate_reference_mode_optimizer(
 @click.option(
     "--hessian-calc-mode",
     type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
-    default=None,
+    default=None, show_default="FiniteDifference",
     help="Choose MLIP Hessian evaluation mode. YAML supplies the value when this option is omitted; explicit CLI wins. Defaults to 'FiniteDifference'.",
 )
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",

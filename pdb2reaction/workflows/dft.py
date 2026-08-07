@@ -411,7 +411,7 @@ def _finalize_dft_result(
         "when -q is omitted (requires PDB/mmCIF input or --ref-pdb)."
     ),
 )
-@click.option("-m", "--multiplicity", "spin", type=int, default=None, show_default=False, help="Spin multiplicity (2S+1; inherits from .gjf when available; otherwise defaults to 1).")
+@click.option("-m", "--multiplicity", "spin", type=int, default=None, show_default="1", help="Spin multiplicity (2S+1; inherits from .gjf when available; otherwise defaults to 1).")
 @click.option(
     "--convert-files/--no-convert-files",
     "convert_files",

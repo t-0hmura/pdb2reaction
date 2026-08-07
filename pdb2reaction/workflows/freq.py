@@ -489,7 +489,7 @@ def _prepare_frequency_output_paths(
 # Hessian calculation mode
 @click.option("--hessian-calc-mode",
               type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
-              default=None,
+              default=None, show_default="FiniteDifference",
               help="How the ML backend computes Hessian. Defaults to 'FiniteDifference' (can also be set via YAML).")
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
               show_default=True, help="MLIP backend.")

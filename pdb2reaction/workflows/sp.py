@@ -94,7 +94,7 @@ logger = logging.getLogger(__name__)
 @click.option(
     "--hessian-calc-mode", "hessian_calc_mode",
     type=click.Choice(["Analytical", "FiniteDifference"], case_sensitive=False),
-    default=None, show_default=False,
+    default=None, show_default="FiniteDifference",
     help=(
         "Hessian backend when --hess is set. FiniteDifference is the default "
         "for every backend; UMA, ORB, MACE, and AIMNet2 also support an "
@@ -113,11 +113,11 @@ logger = logging.getLogger(__name__)
 )
 @click.option(
     "--show-config/--no-show-config", "show_config",
-    default=False, help="Print resolved configuration and continue execution.",
+    default=False, show_default=True, help="Print resolved configuration and continue execution.",
 )
 @click.option(
     "--dry-run/--no-dry-run", "dry_run",
-    default=False, help="Validate options and print the plan without running the calculation.",
+    default=False, show_default=True, help="Validate options and print the plan without running the calculation.",
 )
 @click.option(
     "--out-json/--no-out-json", "out_json",

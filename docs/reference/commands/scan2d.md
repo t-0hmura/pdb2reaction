@@ -42,7 +42,7 @@ Options:
                                   GPP:-3,SAM:1) used to derive charge when -q is
                                   omitted (requires PDB/mmCIF input or --ref-
                                   pdb).
-  -m, --multiplicity INTEGER      Spin multiplicity (2S+1).
+  -m, --multiplicity INTEGER      Spin multiplicity (2S+1).  [default: (1)]
   --one-based / --zero-based      Interpret (i,j) indices in --scan-lists as
                                   1-based (default) or 0-based.  [default: one-
                                   based]
@@ -51,7 +51,7 @@ Options:
   --bias-k FLOAT                  Harmonic well strength k [eV/Å^2]. Defaults to
                                   YAML bias.k (BIAS_KW['k']=300 in defaults.py)
                                   when omitted; explicit CLI value overrides
-                                  YAML.
+                                  YAML.  [default: (300.0)]
   --relax-max-cycles INTEGER      Maximum optimizer cycles per grid relaxation.
                                   An explicitly provided value overrides YAML
                                   opt.max_cycles.  [default: 10000]
@@ -77,6 +77,7 @@ Options:
   --thresh [gau_loose|gau|gau_tight|gau_vtight|baker|never]
                                   Convergence preset (gau_loose|gau|gau_tight|ga
                                   u_vtight|baker|never).  Defaults to 'baker'.
+                                  [default: (baker)]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --preopt / --no-preopt          Pre-optimize the initial structure without
@@ -104,20 +105,22 @@ Options:
                                   run]
   --coord-type [cart|redund|dlc|tric]
                                   Optimization coordinate system
-                                  (cart|redund|dlc|tric).
+                                  (cart|redund|dlc|tric).  [default: (cart)]
   --print-every INTEGER RANGE     Print optimizer status every N cycles (debug
-                                  knob).  [x>=1]
+                                  knob).  [default: (100); x>=1]
   --precision [fp32|fp64]         MLIP backend precision: fp32 or fp64. Unset
                                   defaults per backend (uma: fp32; orb, mace:
                                   fp64). Routed to backend-specific kwargs (UMA
                                   precision / ORB precision / MACE
                                   default_dtype). aimnet2: fp32 no-op; fp64
-                                  rejected.
+                                  rejected.  [default: (per backend: uma fp32;
+                                  orb, mace fp64)]
   --backend-model TEXT            Model variant for the selected --backend (e.g.
                                   uma-s-1p2 / uma-m-1p1 for uma,
                                   orb_v3_conservative_omol for orb, MACE-OMOL-0
                                   / off:small for mace). Default: the backend's
-                                  built-in model.
+                                  built-in model.  [default: (the selected
+                                  backend's own model)]
   --calc-file FILE                Python file exposing get_calculator(...) -> an
                                   ASE Calculator, used as the energy/gradient
                                   backend (overrides --backend). Couples GFN-xTB
@@ -131,6 +134,7 @@ Options:
                                   (deterministic algorithms + index_reduce_
                                   shim). Slower; raises for detected unsupported
                                   ops; custom calculators are outside its scope.
+                                  [default: no-deterministic]
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
                                   parity check (logs that it was skipped). Open-
                                   shell clusters need a matching multiplicity

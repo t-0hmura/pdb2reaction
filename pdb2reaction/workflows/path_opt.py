@@ -684,7 +684,7 @@ def _optimize_single(
     "spin",
     type=int,
     default=None,
-    show_default=False,
+    show_default="1",
     help="Spin multiplicity (2S+1).",
 )
 @click.option(
@@ -761,7 +761,7 @@ def _optimize_single(
     "--thresh",
     type=click.Choice(THRESH_CHOICES, case_sensitive=False),
     default=None,
-    show_default=False,
+    show_default="gau",
     help=(
         "Convergence preset for endpoint preoptimization only "
         "(gau_loose|gau|gau_tight|gau_vtight|baker|never). "
@@ -772,7 +772,7 @@ def _optimize_single(
     "--thresh-gsm",
     type=click.Choice(THRESH_CHOICES, case_sensitive=False),
     default=None,
-    show_default=False,
+    show_default="gau_loose",
     help=(
         "Convergence preset for the GSM string optimizer "
         "(gau_loose|gau|gau_tight|gau_vtight|baker|never). "
@@ -783,7 +783,7 @@ def _optimize_single(
     "--thresh-dmf",
     type=str,
     default=None,
-    show_default=False,
+    show_default="tight",
     help=(
         "IPOPT dual-infeasibility tolerance for the DMF path optimizer: "
         "tight (0.04) | middle (0.10) | loose (0.20) or a positive float. "

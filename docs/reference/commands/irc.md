@@ -25,23 +25,27 @@ Options:
                                   predictor (workers>1).  [default: 1]
   --max-cycles INTEGER            Maximum number of IRC steps; an explicit value
                                   overrides YAML irc.max_cycles. Defaults to 125
-                                  when not provided.
+                                  when not provided.  [default: (125)]
   --step-size FLOAT               Step length in Bohr (unweighted Cartesian
                                   coordinates); an explicit value overrides YAML
                                   irc.step_length. Default: 0.10 Bohr.
+                                  [default: (0.10)]
   --never-stop / --no-never-stop  Ignore RMS-gradient, hard-gradient, energy-
                                   rise, and energy-change stops and trace until
                                   --max-cycles. Numerical/integration failures
                                   and external interruption still stop the run.
                                   An explicit toggle overrides YAML
-                                  irc.never_stop; default off.
+                                  irc.never_stop; default off.  [default: (no-
+                                  never-stop)]
   --root INTEGER                  Imaginary mode index used for the initial
                                   displacement; an explicit value overrides YAML
-                                  irc.root. Defaults to 0.
+                                  irc.root. Defaults to 0.  [default: (0)]
   --forward / --no-forward        Run the forward IRC; an explicit toggle
                                   overrides YAML irc.forward. Defaults to True.
+                                  [default: (forward)]
   --backward / --no-backward      Run the backward IRC; an explicit toggle
                                   overrides YAML irc.backward. Defaults to True.
+                                  [default: (backward)]
   --freeze-links / --no-freeze-links
                                   Freeze parent atoms of cap hydrogens
                                   (PDB/mmCIF input or XYZ/GJF with --ref-pdb).
@@ -59,7 +63,8 @@ Options:
                                   How the ML backend builds the Hessian
                                   (Analytical or FiniteDifference); an explicit
                                   value overrides YAML calc.hessian_calc_mode.
-                                  Defaults to 'FiniteDifference'.
+                                  Defaults to 'FiniteDifference'.  [default:
+                                  (FiniteDifference)]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config
@@ -82,18 +87,21 @@ Options:
                                   omitted (requires PDB/mmCIF input or --ref-
                                   pdb).
   -m, --multiplicity INTEGER RANGE
-                                  Spin multiplicity (2S+1).  [x>=1]
+                                  Spin multiplicity (2S+1).  [default: (1);
+                                  x>=1]
   --precision [fp32|fp64]         MLIP backend precision: fp32 or fp64. Unset
                                   defaults per backend (uma: fp32; orb, mace:
                                   fp64). Routed to backend-specific kwargs (UMA
                                   precision / ORB precision / MACE
                                   default_dtype). aimnet2: fp32 no-op; fp64
-                                  rejected.
+                                  rejected.  [default: (per backend: uma fp32;
+                                  orb, mace fp64)]
   --backend-model TEXT            Model variant for the selected --backend (e.g.
                                   uma-s-1p2 / uma-m-1p1 for uma,
                                   orb_v3_conservative_omol for orb, MACE-OMOL-0
                                   / off:small for mace). Default: the backend's
-                                  built-in model.
+                                  built-in model.  [default: (the selected
+                                  backend's own model)]
   --calc-file FILE                Python file exposing get_calculator(...) -> an
                                   ASE Calculator, used as the energy/gradient
                                   backend (overrides --backend). Couples GFN-xTB
@@ -107,6 +115,7 @@ Options:
                                   (deterministic algorithms + index_reduce_
                                   shim). Slower; raises for detected unsupported
                                   ops; custom calculators are outside its scope.
+                                  [default: no-deterministic]
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
                                   parity check (logs that it was skipped). Open-
                                   shell clusters need a matching multiplicity
@@ -115,5 +124,7 @@ Options:
   --irc-pos-def / --no-irc-pos-def
                                   Require pos-def Hessian at IRC convergence
                                   (blocks shoulder false-convergence).
+                                  [default: (no-irc-pos-def (rms-only
+                                  criterion))]
   -h, --help                      Show this message and exit.
 ```

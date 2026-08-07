@@ -496,7 +496,7 @@ def _seed_rfo_initial_hessian(
     "--thresh",
     type=click.Choice(THRESH_CHOICES, case_sensitive=False),
     default=None,
-    show_default=False,
+    show_default="gau",
     help=(
         "Convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never). "
         "Defaults to 'gau' when not provided."

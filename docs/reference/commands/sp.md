@@ -32,6 +32,7 @@ Options:
                                   FiniteDifference is the default for every
                                   backend; UMA, ORB, MACE, and AIMNet2 also
                                   support an explicit Analytical request.
+                                  [default: (FiniteDifference)]
   --convert-files / --no-convert-files
                                   Compatibility toggle; sp writes no structure
                                   companions.  [default: convert-files]
@@ -39,9 +40,10 @@ Options:
                                   …).
   --show-config / --no-show-config
                                   Print resolved configuration and continue
-                                  execution.
+                                  execution.  [default: no-show-config]
   --dry-run / --no-dry-run        Validate options and print the plan without
-                                  running the calculation.
+                                  running the calculation.  [default: no-dry-
+                                  run]
   --out-json / --no-out-json      Write machine-readable result.json to out_dir.
                                   [default: no-out-json]
   -b, --backend [uma|orb|mace|aimnet2]
@@ -56,18 +58,21 @@ Options:
                                   GPP:-3,SAM:1) used to derive charge when -q is
                                   omitted (requires PDB/mmCIF input).
   -m, --multiplicity INTEGER RANGE
-                                  Spin multiplicity (2S+1).  [x>=1]
+                                  Spin multiplicity (2S+1).  [default: (1);
+                                  x>=1]
   --precision [fp32|fp64]         MLIP backend precision: fp32 or fp64. Unset
                                   defaults per backend (uma: fp32; orb, mace:
                                   fp64). Routed to backend-specific kwargs (UMA
                                   precision / ORB precision / MACE
                                   default_dtype). aimnet2: fp32 no-op; fp64
-                                  rejected.
+                                  rejected.  [default: (per backend: uma fp32;
+                                  orb, mace fp64)]
   --backend-model TEXT            Model variant for the selected --backend (e.g.
                                   uma-s-1p2 / uma-m-1p1 for uma,
                                   orb_v3_conservative_omol for orb, MACE-OMOL-0
                                   / off:small for mace). Default: the backend's
-                                  built-in model.
+                                  built-in model.  [default: (the selected
+                                  backend's own model)]
   --calc-file FILE                Python file exposing get_calculator(...) -> an
                                   ASE Calculator, used as the energy/gradient
                                   backend (overrides --backend). Couples GFN-xTB
@@ -81,6 +86,7 @@ Options:
                                   (deterministic algorithms + index_reduce_
                                   shim). Slower; raises for detected unsupported
                                   ops; custom calculators are outside its scope.
+                                  [default: no-deterministic]
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
                                   parity check (logs that it was skipped). Open-
                                   shell clusters need a matching multiplicity

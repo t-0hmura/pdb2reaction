@@ -296,7 +296,7 @@ def _echo_convert_trj_if_exists(
 @click.option(
     "--max-cycles",
     type=int,
-    default=None,
+    default=None, show_default="125",
     help=(
         "Maximum number of IRC steps; an explicit value overrides YAML irc.max_cycles. "
         "Defaults to 125 when not provided."
@@ -306,6 +306,7 @@ def _echo_convert_trj_if_exists(
     "--step-size",
     type=float,
     default=None,
+    show_default="0.10",
     help=(
         "Step length in Bohr (unweighted Cartesian coordinates); an explicit value overrides YAML irc.step_length. "
         "Default: 0.10 Bohr."
@@ -315,6 +316,7 @@ def _echo_convert_trj_if_exists(
     "--never-stop/--no-never-stop",
     "never_stop",
     default=None,
+    show_default="no-never-stop",
     help=(
         "Ignore RMS-gradient, hard-gradient, energy-rise, and energy-change "
         "stops and trace until --max-cycles. Numerical/integration failures "
@@ -325,7 +327,7 @@ def _echo_convert_trj_if_exists(
 @click.option(
     "--root",
     type=int,
-    default=None,
+    default=None, show_default="0",
     help=(
         "Imaginary mode index used for the initial displacement; an explicit value overrides YAML irc.root. "
         "Defaults to 0."
@@ -335,6 +337,7 @@ def _echo_convert_trj_if_exists(
     "--forward/--no-forward",
     "forward",
     default=None,
+    show_default="forward",
     help=(
         "Run the forward IRC; an explicit toggle overrides YAML irc.forward. "
         "Defaults to True."
@@ -344,6 +347,7 @@ def _echo_convert_trj_if_exists(
     "--backward/--no-backward",
     "backward",
     default=None,
+    show_default="backward",
     help=(
         "Run the backward IRC; an explicit toggle overrides YAML irc.backward. "
         "Defaults to True."
@@ -387,7 +391,7 @@ def _echo_convert_trj_if_exists(
 @click.option(
     "--hessian-calc-mode",
     type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
-    default=None,
+    default=None, show_default="FiniteDifference",
     help="How the ML backend builds the Hessian (Analytical or FiniteDifference); an explicit value overrides YAML calc.hessian_calc_mode. Defaults to 'FiniteDifference'.",
 )
 @click.option(

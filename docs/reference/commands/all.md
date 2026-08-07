@@ -137,7 +137,7 @@ Options:
                                   gau|gau_tight|gau_vtight|baker|never).
                                   Defaults to 'gau' when not provided. The MEP
                                   stage keeps its own --thresh-gsm / --thresh-
-                                  dmf.
+                                  dmf.  [default: (gau)]
   --thresh-post [gau_loose|gau|gau_tight|gau_vtight|baker|never]
                                   Convergence preset for post-IRC endpoint
                                   optimizations (gau_loose|gau|gau_tight|gau_vti
@@ -146,12 +146,13 @@ Options:
                                   Convergence preset for the GSM string
                                   optimizer of the MEP stage (gau_loose|gau|gau_
                                   tight|gau_vtight|baker|never). Defaults to
-                                  'gau_loose' when not provided.
+                                  'gau_loose' when not provided.  [default:
+                                  (gau_loose)]
   --thresh-dmf TEXT               IPOPT dual-infeasibility tolerance for the DMF
                                   MEP stage: tight (0.04) | middle (0.10) |
                                   loose (0.20) or a positive float. This is not
                                   a Gaussian preset. Defaults to 'tight' when
-                                  not provided.
+                                  not provided.  [default: (tight)]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config
@@ -169,7 +170,8 @@ Options:
   --hessian-calc-mode [finitedifference|analytical]
                                   Common MLIP Hessian calculation mode forwarded
                                   to tsopt and freq. Defaults to
-                                  'FiniteDifference'.
+                                  'FiniteDifference'.  [default:
+                                  (FiniteDifference)]
   --tsopt BOOLEAN                 TS optimization + IRC per reactive segment (or
                                   TSOPT-only mode for single-structure), and
                                   build energy diagrams.  [default: False]
@@ -187,7 +189,7 @@ Options:
                                   generate a DFT//MLIP Gibbs diagram.  [default:
                                   False]
   --tsopt-max-cycles INTEGER      Override tsopt --max-cycles value. Defaults to
-                                  10000 when not provided.
+                                  10000 when not provided.  [default: (10000)]
   --tsopt-out-dir DIRECTORY       Override tsopt output subdirectory (relative
                                   paths are resolved against the default).
   --flatten / --no-flatten        Enable the extra-imaginary-mode flattening
@@ -223,27 +225,28 @@ Options:
   --freq-out-dir DIRECTORY        Override freq output base directory (relative
                                   paths resolved against the default).
   --freq-max-write INTEGER        Override freq --max-write value. Defaults to
-                                  10.
+                                  10.  [default: (10)]
   --freq-amplitude-ang FLOAT      Override freq --amplitude-ang (Å). Defaults to
-                                  0.8.
+                                  0.8.  [default: (0.8)]
   --freq-n-frames INTEGER         Override freq --n-frames value. Defaults to
-                                  20.
+                                  20.  [default: (20)]
   --freq-sort [value|abs]         Override freq mode sorting. Defaults to
-                                  'value'.
+                                  'value'.  [default: (value)]
   --freq-temperature FLOAT        Override freq thermochemistry temperature (K).
-                                  Defaults to 298.15 K.
+                                  Defaults to 298.15 K.  [default: (298.15)]
   --freq-pressure FLOAT           Override freq thermochemistry pressure (atm).
-                                  Defaults to 1.0 atm.
+                                  Defaults to 1.0 atm.  [default: (1.0)]
   --dft-out-dir DIRECTORY         Override dft output base directory (relative
                                   paths resolved against the default).
   --dft-func-basis TEXT           Override dft --func-basis value. Defaults to
-                                  'wb97m-v/def2-tzvpd'.
+                                  'wb97m-v/def2-tzvpd'.  [default:
+                                  (wb97m-v/def2-tzvpd)]
   --dft-max-cycle INTEGER         Override dft --max-cycle value. Defaults to
-                                  100.
+                                  100.  [default: (100)]
   --dft-conv-tol FLOAT            Override dft --conv-tol value. Defaults to
-                                  1e-9.
+                                  1e-9.  [default: (1e-9)]
   --dft-grid-level INTEGER        Override dft --grid-level value. Defaults to
-                                  3.
+                                  3.  [default: (3)]
   --dft-engine [gpu|cpu]          Override the DFT backend (gpu or cpu); omitted
                                   values inherit YAML/defaults.
   -s, --scan-lists TEXT           Scan targets: inline Python literal. Multiple
@@ -262,12 +265,12 @@ Options:
                                   interpretation (True = 1-based, False =
                                   0-based). Defaults to 1-based.
   --scan-max-step-size FLOAT      Override scan --max-step-size (Å). Defaults to
-                                  0.20 Å.
+                                  0.20 Å.  [default: (0.20)]
   --scan-bias-k FLOAT             Override scan harmonic bias strength k
-                                  (eV/Å^2). Defaults to 300.
+                                  (eV/Å^2). Defaults to 300.  [default: (300)]
   --scan-relax-max-cycles INTEGER
                                   Override scan relaxation max cycles per step.
-                                  Defaults to 10000.
+                                  Defaults to 10000.  [default: (10000)]
   --scan-preopt BOOLEAN           Override scan --preopt flag. Inherits from
                                   --preopt when omitted.
   --scan-endopt BOOLEAN           Override scan --endopt flag. Defaults to
@@ -277,17 +280,20 @@ Options:
                                   PDB/mmCIF output conversion in TSOPT-only,
                                   scan, and path_search pipelines.
   --coord-type [cart|dlc]         Optimization coordinate system (cart|dlc).
+                                  [default: (cart)]
   --precision [fp32|fp64]         MLIP backend precision: fp32 or fp64. Unset
                                   defaults per backend (uma: fp32; orb, mace:
                                   fp64). Routed to backend-specific kwargs (UMA
                                   precision / ORB precision / MACE
                                   default_dtype). aimnet2: fp32 no-op; fp64
-                                  rejected.
+                                  rejected.  [default: (per backend: uma fp32;
+                                  orb, mace fp64)]
   --backend-model TEXT            Model variant for the selected --backend (e.g.
                                   uma-s-1p2 / uma-m-1p1 for uma,
                                   orb_v3_conservative_omol for orb, MACE-OMOL-0
                                   / off:small for mace). Default: the backend's
-                                  built-in model.
+                                  built-in model.  [default: (the selected
+                                  backend's own model)]
   --calc-file FILE                Python file exposing get_calculator(...) -> an
                                   ASE Calculator, used as the energy/gradient
                                   backend (overrides --backend). Couples GFN-xTB
@@ -301,6 +307,7 @@ Options:
                                   (deterministic algorithms + index_reduce_
                                   shim). Slower; raises for detected unsupported
                                   ops; custom calculators are outside its scope.
+                                  [default: no-deterministic]
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
                                   parity check (logs that it was skipped). Open-
                                   shell clusters need a matching multiplicity

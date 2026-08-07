@@ -26,7 +26,8 @@ Options:
                                   energy image: 'peak' uses HEI±1, 'minima' uses
                                   the nearest local minima in each direction.
                                   Defaults to peak for gsm and minima for dmf
-                                  when omitted.
+                                  when omitted.  [default: (peak for gsm, minima
+                                  for dmf)]
   -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
                                   unless --ligand-charge derives it from
                                   PDB/mmCIF inputs.
@@ -42,6 +43,7 @@ Options:
                                   omitted (PDB/mmCIF inputs only).
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1; defaults from a .gjf
                                   template when available, otherwise 1).
+                                  [default: (1 (or the .gjf template value))]
   --freeze-links / --no-freeze-links
                                   Freeze parent atoms of cap hydrogens
                                   (PDB/mmCIF input only).  [default: freeze-
@@ -72,17 +74,17 @@ Options:
                                   Convergence preset for single-structure
                                   optimizations only (gau_loose|gau|gau_tight|ga
                                   u_vtight|baker|never). Defaults to 'gau' when
-                                  not provided.
+                                  not provided.  [default: (gau)]
   --thresh-gsm [gau_loose|gau|gau_tight|gau_vtight|baker|never]
                                   Convergence preset for the GSM string
                                   optimizer (gau_loose|gau|gau_tight|gau_vtight|
                                   baker|never). Defaults to 'gau_loose' when not
-                                  provided.
+                                  provided.  [default: (gau_loose)]
   --thresh-dmf TEXT               IPOPT dual-infeasibility tolerance for the DMF
                                   path optimizer: tight (0.04) | middle (0.10) |
                                   loose (0.20) or a positive float. This is not
                                   a Gaussian preset. Defaults to 'tight' when
-                                  not provided.
+                                  not provided.  [default: (tight)]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config
@@ -115,17 +117,20 @@ Options:
                                   'water'). 'none' to disable.  [default: none]
   --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
   --coord-type [cart|dlc]         Optimization coordinate system (cart|dlc).
+                                  [default: (cart)]
   --precision [fp32|fp64]         MLIP backend precision: fp32 or fp64. Unset
                                   defaults per backend (uma: fp32; orb, mace:
                                   fp64). Routed to backend-specific kwargs (UMA
                                   precision / ORB precision / MACE
                                   default_dtype). aimnet2: fp32 no-op; fp64
-                                  rejected.
+                                  rejected.  [default: (per backend: uma fp32;
+                                  orb, mace fp64)]
   --backend-model TEXT            Model variant for the selected --backend (e.g.
                                   uma-s-1p2 / uma-m-1p1 for uma,
                                   orb_v3_conservative_omol for orb, MACE-OMOL-0
                                   / off:small for mace). Default: the backend's
-                                  built-in model.
+                                  built-in model.  [default: (the selected
+                                  backend's own model)]
   --calc-file FILE                Python file exposing get_calculator(...) -> an
                                   ASE Calculator, used as the energy/gradient
                                   backend (overrides --backend). Couples GFN-xTB
@@ -139,6 +144,7 @@ Options:
                                   (deterministic algorithms + index_reduce_
                                   shim). Slower; raises for detected unsupported
                                   ops; custom calculators are outside its scope.
+                                  [default: no-deterministic]
   --allow-charge-mult-mismatch    Skip the cluster charge/multiplicity electron-
                                   parity check (logs that it was skipped). Open-
                                   shell clusters need a matching multiplicity

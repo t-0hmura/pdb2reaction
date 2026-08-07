@@ -195,8 +195,14 @@ def add_scan_common_options(
     dump_help: str,
     max_step_help: str = "Maximum step size per scanned distance [Å].",
     thresh_default: str | None = "baker",
+    # Display-only: a command that resolves `--thresh` downstream must keep its
+    # declared default None so `cli_param_overridden` still sees an omission,
+    # while help/docs/the Colab option list still name the effective value.
+    thresh_shown: str | None = None,
     max_step_size_default: float = 0.20,
     bias_k_default: float | None = None,
+    # Display-only fallback when the command resolves --bias-k downstream.
+    bias_k_shown: str | None = "300.0",
     relax_max_cycles_default: int = 10000,
     opt_mode_default: str = "grad",
     freeze_links_default: bool = True,
@@ -209,7 +215,8 @@ def add_scan_common_options(
     args_yaml_sections: str = "geom, calc, opt, lbfgs, rfo, bias",
 ) -> Callable[[Callable], Callable]:
     """Attach the shared scan2d/scan3d CLI options to a Click command."""
-    thresh_note = f" Defaults to '{thresh_default}'." if thresh_default is not None else ""
+    thresh_effective = thresh_shown if thresh_shown is not None else thresh_default
+    thresh_note = f" Defaults to '{thresh_effective}'." if thresh_effective is not None else ""
     options = [
         click.option(
             "-q",
@@ -253,7 +260,7 @@ def add_scan_common_options(
             "spin",
             type=int,
             default=None,
-            show_default=False,
+            show_default="1",
             help="Spin multiplicity (2S+1).",
         ),
         click.option(
@@ -274,7 +281,7 @@ def add_scan_common_options(
             "--bias-k",
             type=float,
             default=bias_k_default,
-            show_default=False,
+            show_default=(bias_k_default if bias_k_default is not None else bias_k_shown),
             help=(
                 "Harmonic well strength k [eV/Å^2]. "
                 "Defaults to YAML bias.k (BIAS_KW['k']=300 in defaults.py) when omitted; "
@@ -345,7 +352,8 @@ def add_scan_common_options(
             "--thresh",
             type=click.Choice(THRESH_CHOICES, case_sensitive=False),
             default=thresh_default,
-            show_default=False,
+            # Per-command value, so the rendered default matches the command.
+            show_default=(thresh_effective if thresh_effective is not None else False),
             help=(
                 "Convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never). "
                 f"{thresh_note}"

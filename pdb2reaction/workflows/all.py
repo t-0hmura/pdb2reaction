@@ -3346,7 +3346,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "--thresh",
     type=click.Choice(THRESH_CHOICES, case_sensitive=False),
     default=None,
-    show_default=False,
+    show_default="gau",
     help=(
         "Convergence preset for single-structure optimizations and scan "
         "relaxations (gau_loose|gau|gau_tight|gau_vtight|baker|never). "
@@ -3368,7 +3368,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "--thresh-gsm",
     type=click.Choice(THRESH_CHOICES, case_sensitive=False),
     default=None,
-    show_default=False,
+    show_default="gau_loose",
     help=(
         "Convergence preset for the GSM string optimizer of the MEP stage "
         "(gau_loose|gau|gau_tight|gau_vtight|baker|never). "
@@ -3379,7 +3379,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "--thresh-dmf",
     type=str,
     default=None,
-    show_default=False,
+    show_default="tight",
     help=(
         "IPOPT dual-infeasibility tolerance for the DMF MEP stage: "
         "tight (0.04) | middle (0.10) | loose (0.20) or a positive float. "
@@ -3422,7 +3422,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 @click.option(
     "--hessian-calc-mode",
     type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
-    default=None,
+    default=None, show_default="FiniteDifference",
     help="Common MLIP Hessian calculation mode forwarded to tsopt and freq. Defaults to 'FiniteDifference'.",
 )
 # ===== Post-processing toggles =====
@@ -3472,7 +3472,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 @click.option(
     "--tsopt-max-cycles",
     type=int,
-    default=None,
+    default=None, show_default="10000",
     help="Override tsopt --max-cycles value. Defaults to 10000 when not provided.",
 )
 @click.option(
@@ -3555,37 +3555,37 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 @click.option(
     "--freq-max-write",
     type=int,
-    default=None,
+    default=None, show_default="10",
     help="Override freq --max-write value. Defaults to 10.",
 )
 @click.option(
     "--freq-amplitude-ang",
     type=float,
-    default=None,
+    default=None, show_default="0.8",
     help="Override freq --amplitude-ang (Å). Defaults to 0.8.",
 )
 @click.option(
     "--freq-n-frames",
     type=int,
-    default=None,
+    default=None, show_default="20",
     help="Override freq --n-frames value. Defaults to 20.",
 )
 @click.option(
     "--freq-sort",
     type=click.Choice(["value", "abs"], case_sensitive=False),
-    default=None,
+    default=None, show_default="value",
     help="Override freq mode sorting. Defaults to 'value'.",
 )
 @click.option(
     "--freq-temperature",
     type=float,
-    default=None,
+    default=None, show_default="298.15",
     help="Override freq thermochemistry temperature (K). Defaults to 298.15 K.",
 )
 @click.option(
     "--freq-pressure",
     type=float,
-    default=None,
+    default=None, show_default="1.0",
     help="Override freq thermochemistry pressure (atm). Defaults to 1.0 atm.",
 )
 @click.option(
@@ -3599,25 +3599,25 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 @click.option(
     "--dft-func-basis",
     type=str,
-    default=None,
+    default=None, show_default="wb97m-v/def2-tzvpd",
     help="Override dft --func-basis value. Defaults to 'wb97m-v/def2-tzvpd'.",
 )
 @click.option(
     "--dft-max-cycle",
     type=int,
-    default=None,
+    default=None, show_default="100",
     help="Override dft --max-cycle value. Defaults to 100.",
 )
 @click.option(
     "--dft-conv-tol",
     type=float,
-    default=None,
+    default=None, show_default="1e-9",
     help="Override dft --conv-tol value. Defaults to 1e-9.",
 )
 @click.option(
     "--dft-grid-level",
     type=int,
-    default=None,
+    default=None, show_default="3",
     help="Override dft --grid-level value. Defaults to 3.",
 )
 @click.option(
@@ -3662,19 +3662,19 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 @click.option(
     "--scan-max-step-size",
     type=float,
-    default=None,
+    default=None, show_default="0.20",
     help="Override scan --max-step-size (Å). Defaults to 0.20 Å.",
 )
 @click.option(
     "--scan-bias-k",
     type=float,
-    default=None,
+    default=None, show_default="300",
     help="Override scan harmonic bias strength k (eV/Å^2). Defaults to 300.",
 )
 @click.option(
     "--scan-relax-max-cycles",
     type=int,
-    default=None,
+    default=None, show_default="10000",
     help="Override scan relaxation max cycles per step. Defaults to 10000.",
 )
 @click.option(
