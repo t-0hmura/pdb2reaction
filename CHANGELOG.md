@@ -168,6 +168,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   mutated nested defaults.
 
 ### Fixed
+- Report only the calc settings a caller actually chose. Every workflow seeds
+  `calc_cfg` from the UMA-flavoured default block, so a key UMA accepts and the
+  selected backend does not is an untouched default, not a choice: ORB, MACE and
+  AIMNet2 runs printed seven or eight such settings every time, which buries the
+  line it belongs to. A key outside UMA's own accepted set is genuinely unusable
+  and is still reported.
 - Stop relaying orb-models' two notices about the precision the ORB backend
   selects on purpose ("Setting global torch default dtype" and "Consider
   passing 'precision=float32-high'"). Float64 is deliberate: TF32 matmul force
