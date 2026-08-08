@@ -228,6 +228,7 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 | `--selected-resn TEXT` | `--center` と同じID/名前/chain付きselectorで残基を強制包含 | `""` |
 | `--modified-residue TEXT` | 修飾アミノ酸残基名をカンマ区切りで指定（任意で電荷付き）。主鎖切断と電荷計算にアミノ酸として扱う。例: `HD1,HD2,HD3` または `HD1:0,SEP:-2` | `""` |
 | `--freeze-links/--no-freeze-links` | 活性部位モデル PDB でキャップ H の親を凍結 | `True` |
+| `--freeze-atoms TEXT` | 全ステージで凍結する 1-based 原子番号（カンマ区切り）。番号は抽出後モデル基準。`--freeze-links` と YAML `geom.freeze_atoms` にマージされる | _None_ |
 
 (ja-mep-search-options)=
 ### MEP 探索オプション

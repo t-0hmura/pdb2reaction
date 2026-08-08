@@ -463,6 +463,7 @@ def _seed_rfo_initial_hessian(
     "stop_plateau_thresh",
     type=float,
     default=None,
+    show_default="1e-4",
     help="Energy range (hartree) below which --stop-plateau treats the window as flat.",
 )
 @click.option(
@@ -470,6 +471,7 @@ def _seed_rfo_initial_hessian(
     "stop_plateau_window",
     type=int,
     default=None,
+    show_default="50",
     help="Number of consecutive cycles --stop-plateau inspects.",
 )
 @click.option(

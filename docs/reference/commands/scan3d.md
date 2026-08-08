@@ -94,9 +94,9 @@ Options:
                                   'min' or 'first' (i=0,j=0,k=0).  [default:
                                   min]
   --zmin FLOAT                    Lower bound of color scale for plots
-                                  (kcal/mol).
+                                  (kcal/mol).  [default: (the surface minimum)]
   --zmax FLOAT                    Upper bound of color scale for plots
-                                  (kcal/mol).
+                                  (kcal/mol).  [default: (the surface maximum)]
   --print-parsed / --no-print-parsed
                                   Print parsed scan targets after resolving
                                   --scan-lists.  [default: no-print-parsed]
@@ -130,11 +130,11 @@ Options:
                                   backend (overrides --backend). Couples GFN-xTB
                                   / DFTB+ / any ASE engine. See --calc-file-
                                   func-name.
-  --calc-file-func-name, --calc-factory TEXT
-                                  Name of the callable in --calc-file that
+  --calc-file-func-name TEXT      Name of the callable in --calc-file that
                                   returns an ASE Calculator (or a module-level
                                   Calculator instance). CLI overrides config
                                   YAML; otherwise defaults to get_calculator.
+                                  [default: (get_calculator)]
   --deterministic / --no-deterministic
                                   Request strict same-stack PyTorch determinism
                                   (deterministic algorithms + index_reduce_

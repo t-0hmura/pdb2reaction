@@ -64,9 +64,10 @@ Options:
                                   convergence; --max-cycles remains the real
                                   bound.  [default: no-stop-plateau]
   --stop-plateau-thresh FLOAT     Energy range (hartree) below which --stop-
-                                  plateau treats the window as flat.
+                                  plateau treats the window as flat.  [default:
+                                  (1e-4)]
   --stop-plateau-window INTEGER   Number of consecutive cycles --stop-plateau
-                                  inspects.
+                                  inspects.  [default: (50)]
   --flatten / --no-flatten        Enable/disable imaginary-mode flatten loop
                                   after optimization.  [default: no-flatten]
   --dump / --no-dump              Write optimization trajectory to
@@ -124,11 +125,11 @@ Options:
                                   backend (overrides --backend). Couples GFN-xTB
                                   / DFTB+ / any ASE engine. See --calc-file-
                                   func-name.
-  --calc-file-func-name, --calc-factory TEXT
-                                  Name of the callable in --calc-file that
+  --calc-file-func-name TEXT      Name of the callable in --calc-file that
                                   returns an ASE Calculator (or a module-level
                                   Calculator instance). CLI overrides config
                                   YAML; otherwise defaults to get_calculator.
+                                  [default: (get_calculator)]
   --deterministic / --no-deterministic
                                   Request strict same-stack PyTorch determinism
                                   (deterministic algorithms + index_reduce_

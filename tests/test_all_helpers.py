@@ -122,6 +122,30 @@ def test_all_coord_type_is_injected_into_child_config() -> None:
     assert not path.exists()
 
 
+def test_all_cli_freeze_atoms_reach_the_child_config() -> None:
+    """``all --freeze-atoms`` must land in every child stage's geom block.
+
+    The CLI list is merged with YAML ``geom.freeze_atoms`` (never replaced) and
+    stays 1-based on the way out, exactly like the single-stage subcommands.
+    """
+    from pdb2reaction.workflows import all as all_mod
+    from pdb2reaction.workflows.all import _write_args_yaml_with_freeze_atoms
+    from pdb2reaction.workflows._run_session import RunSession
+
+    all_mod._set_yaml_freeze_atoms({"geom": {"freeze_atoms": [3]}}, "14, 7")
+    assert all_mod._freeze_atoms_for_log() == [2, 6, 13]  # 0-based internally
+
+    session = RunSession()
+    path = _write_args_yaml_with_freeze_atoms(
+        None, all_mod._freeze_atoms_for_log(), session=session
+    )
+    assert path is not None
+    payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+    assert payload["geom"]["freeze_atoms"] == [3, 7, 14]
+    session.close()
+    all_mod._set_yaml_freeze_atoms(None)
+
+
 def test_build_energy_level_dict_kcal_projection() -> None:
     d = build_energy_level_dict(
         labels=["R", "TS", "P"],

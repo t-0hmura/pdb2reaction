@@ -484,7 +484,7 @@ CALC_KW: Dict[str, Any] = dict(_UMA_CALC_KW)
 
 
 def _forward_calc_file_argv(child_args: List[str], calc_cfg: Dict[str, Any]) -> bool:
-    """Forward --calc-file/--calc-factory to a child stage's argv when the custom
+    """Forward --calc-file/--calc-file-func-name to a child stage's argv when the custom
     ML backend is active. Children validate -b against the MLIP choices (which
     exclude 'custom'), so the calc-file is forwarded instead of '-b custom'.
     Returns True when it forwarded, so callers skip the --backend forward."""
@@ -816,18 +816,27 @@ _FREEZE_ATOMS_GLOBAL: Optional[List[int]] = None
 _FREEZE_ATOMS_YAML: Optional[List[int]] = None
 
 
-def _set_yaml_freeze_atoms(yaml_cfg: Optional[Dict[str, Any]]) -> None:
-    """Cache freeze_atoms from args-yaml for merging with freeze-links."""
+def _set_yaml_freeze_atoms(
+    yaml_cfg: Optional[Dict[str, Any]],
+    cli_freeze_atoms: Optional[str] = None,
+) -> None:
+    """Cache the explicit freeze_atoms set for merging with freeze-links.
+
+    ``--freeze-atoms`` is the CLI spelling of ``geom.freeze_atoms``: both are
+    1-based, both feed the same cache, and the two lists are merged (not
+    replaced) exactly as they are in every single-stage subcommand.
+    """
     global _FREEZE_ATOMS_YAML
-    if not isinstance(yaml_cfg, dict):
-        _FREEZE_ATOMS_YAML = []
-        return
-    geom_cfg = yaml_cfg.get("geom")
-    if not isinstance(geom_cfg, dict):
-        _FREEZE_ATOMS_YAML = []
-        return
-    raw = normalize_freeze_atoms(geom_cfg.get("freeze_atoms"))
-    _FREEZE_ATOMS_YAML = yaml_freeze_to_internal(raw)
+    geom_cfg = yaml_cfg.get("geom") if isinstance(yaml_cfg, dict) else None
+    from_yaml = (
+        normalize_freeze_atoms(geom_cfg.get("freeze_atoms"))
+        if isinstance(geom_cfg, dict)
+        else []
+    )
+    from_cli = normalize_freeze_atoms(cli_freeze_atoms)
+    _FREEZE_ATOMS_YAML = yaml_freeze_to_internal(
+        merge_freeze_atom_groups(from_yaml, from_cli)
+    )
 
 
 def _get_freeze_atoms(pdb_path: Optional[Path], freeze_links_flag: bool) -> List[int]:
@@ -3254,6 +3263,18 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     help="Freeze parent atoms of cap hydrogens (PDB/mmCIF input or XYZ/GJF with --ref-pdb).",
 )
 @click.option(
+    "--freeze-atoms",
+    "freeze_atoms_text",
+    type=str,
+    default=None,
+    show_default=False,
+    help=(
+        "Comma-separated 1-based atom indices to freeze in every stage "
+        "(e.g., '1,3,5'); indices refer to the extracted model. "
+        "Merged with --freeze-links and YAML geom.freeze_atoms."
+    ),
+)
+@click.option(
     "--mep-mode",
     type=click.Choice(["gsm", "dmf"], case_sensitive=False),
     default="gsm",
@@ -3479,6 +3500,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "--tsopt-out-dir",
     type=click.Path(path_type=Path, file_okay=False),
     default=None,
+    show_default="<segment>/ts",
     help="Override tsopt output subdirectory (relative paths are resolved against the default).",
 )
 @click.option(
@@ -3516,6 +3538,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "stop_plateau_thresh",
     type=float,
     default=None,
+    show_default="1e-4",
     help="Energy range (hartree) below which --stop-plateau treats the window as flat.",
 )
 @click.option(
@@ -3523,12 +3546,14 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "stop_plateau_window",
     type=int,
     default=None,
+    show_default="50",
     help="Number of consecutive cycles --stop-plateau inspects.",
 )
 @click.option(
     "--irc-step-size",
     type=float,
     default=None,
+    show_default="0.10",
     help=(
         "Override IRC --step-size (Bohr). If an IRC stops after only a few "
         "frames, retry with a smaller value such as 0.05."
@@ -3537,6 +3562,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 @click.option(
     "--irc-never-stop/--no-irc-never-stop",
     default=None,
+    show_default="no-irc-never-stop",
     help=(
         "Ignore IRC RMS-gradient, hard-gradient, energy-rise, and "
         "energy-change stops and trace until the IRC max-cycle limit. "
@@ -3548,6 +3574,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "--freq-out-dir",
     type=click.Path(path_type=Path, file_okay=False),
     default=None,
+    show_default="<tsopt dir>/freq",
     help=(
         "Override freq output base directory (relative paths resolved against the default)."
     ),
@@ -3592,6 +3619,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "--dft-out-dir",
     type=click.Path(path_type=Path, file_okay=False),
     default=None,
+    show_default="<tsopt dir>/dft",
     help=(
         "Override dft output base directory (relative paths resolved against the default)."
     ),
@@ -3624,6 +3652,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "--dft-engine",
     type=click.Choice(["gpu", "cpu"], case_sensitive=False),
     default=None,
+    show_default="gpu",
     help="Override the DFT backend (gpu or cpu); omitted values inherit YAML/defaults.",
 )
 @click.option(
@@ -3645,6 +3674,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "--scan-out-dir",
     type=click.Path(path_type=Path, file_okay=False),
     default=None,
+    show_default="<out-dir>/_work/scan",
     help=(
         "Override the scan output directory (default: <out-dir>/scan/). Relative paths are resolved "
         "against the default parent."
@@ -3654,6 +3684,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "--scan-one-based",
     type=click.BOOL,
     default=None,
+    show_default="True",
     help=(
         "Override the scan subcommand indexing interpretation (True = 1-based, False = 0-based). "
         "Defaults to 1-based."
@@ -3682,6 +3713,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "scan_preopt_override",
     type=click.BOOL,
     default=None,
+    show_default="inherits --preopt",
     help="Override scan --preopt flag. Inherits from --preopt when omitted.",
 )
 @click.option(
@@ -3689,6 +3721,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "scan_endopt_override",
     type=click.BOOL,
     default=None,
+    show_default="inherits --endopt",
     help="Override scan --endopt flag. Defaults to False.",
 )
 @click.option(
@@ -3729,6 +3762,7 @@ def cli(
     solvent_model: str,
     spin: int,
     freeze_links_flag: bool,
+    freeze_atoms_text: Optional[str],
     mep_mode: str,
     dmf_backend: str,
     max_nodes: int,
@@ -4393,7 +4427,7 @@ def cli(
         return
 
     yaml_cfg = load_yaml_dict(args_yaml)
-    _set_yaml_freeze_atoms(yaml_cfg)
+    _set_yaml_freeze_atoms(yaml_cfg, freeze_atoms_text)
 
     skip_extract = center_spec is None or str(center_spec).strip() == ""
     first_input = input_paths[0].resolve() if input_paths else None

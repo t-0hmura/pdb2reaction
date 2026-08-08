@@ -71,6 +71,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Add `tsopt --ref-mode PATH` to seed TS mode-following with a reference mode;
   `all` auto-supplies the MEP tangent at the HEI image.
 - Add `all --irc-step-size`, forwarded to the IRC child as `--step-size`.
+- Add `all --freeze-atoms`, the CLI spelling of `geom.freeze_atoms` that every
+  single-stage subcommand already accepted. The list is merged with
+  `--freeze-links` and reaches every child stage.
 - Add `opt`/`all --reject-uphill/--no-reject-uphill` (default off); on `all`
   it applies to post-IRC endpoint re-optimization only.
 - Detect the molecular point group and external rotational symmetry number for
@@ -78,10 +81,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   automatically. `thermo.symmetry_number` remains an advanced YAML override.
 
 ### Changed
-- Rename `--calc-factory` to `--calc-file-func-name`: the old spelling never
-  said which file it names, and the option only means anything together with
-  `--calc-file`. `--calc-factory` stays accepted, so published commands keep
-  working.
+- Report every option's effective default. Options whose real default lives in
+  a config block are declared `None` so an explicit value stays distinguishable
+  from an omission; each now carries that default as a display string, so
+  `--help`, `--help-advanced`, the generated reference and the Colab Options
+  pane stop reading as unset. The Colab controls -- dropdowns included -- label
+  it `default: <value>`, or `default: None` when there genuinely is none.
+- Drop the notice that replaced the preparation panel for workflows that
+  extract internally; the panel is simply hidden.
+- Name the custom-calculator entry point `--calc-file-func-name`. It names a
+  callable inside `--calc-file`, which the previous spelling `--calc-factory`
+  left unsaid. `--calc-factory` is removed rather than aliased.
 - Head the stdout citation block `====== Citations & References ======` like
   every other console section. `summary.log` keeps its numbered
   `[6] Methods and citations`; the two shared one renderer, so the log file's

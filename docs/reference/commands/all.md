@@ -91,6 +91,10 @@ Options:
   --freeze-links BOOLEAN          Freeze parent atoms of cap hydrogens
                                   (PDB/mmCIF input or XYZ/GJF with --ref-pdb).
                                   [default: True]
+  --freeze-atoms TEXT             Comma-separated 1-based atom indices to freeze
+                                  in every stage (e.g., '1,3,5'); indices refer
+                                  to the extracted model. Merged with --freeze-
+                                  links and YAML geom.freeze_atoms.
   --mep-mode [gsm|dmf]            MEP optimizer: Growing String Method (gsm) or
                                   Direct Max Flux (dmf).  [default: gsm]
   --dmf-backend [cpu|gpu]         DMF compute backend (--mep-mode dmf only): gpu
@@ -192,6 +196,7 @@ Options:
                                   10000 when not provided.  [default: (10000)]
   --tsopt-out-dir DIRECTORY       Override tsopt output subdirectory (relative
                                   paths are resolved against the default).
+                                  [default: (<segment>/ts)]
   --flatten / --no-flatten        Enable the extra-imaginary-mode flattening
                                   loop in tsopt (grad: dimer loop, hess: post-
                                   RS-P-RFO); --no-flatten forces
@@ -210,20 +215,23 @@ Options:
                                   convergence; --max-cycles remains the real
                                   bound.  [default: no-stop-plateau]
   --stop-plateau-thresh FLOAT     Energy range (hartree) below which --stop-
-                                  plateau treats the window as flat.
+                                  plateau treats the window as flat.  [default:
+                                  (1e-4)]
   --stop-plateau-window INTEGER   Number of consecutive cycles --stop-plateau
-                                  inspects.
+                                  inspects.  [default: (50)]
   --irc-step-size FLOAT           Override IRC --step-size (Bohr). If an IRC
                                   stops after only a few frames, retry with a
-                                  smaller value such as 0.05.
+                                  smaller value such as 0.05.  [default: (0.10)]
   --irc-never-stop / --no-irc-never-stop
                                   Ignore IRC RMS-gradient, hard-gradient,
                                   energy-rise, and energy-change stops and trace
                                   until the IRC max-cycle limit.
                                   Numerical/integration failures and external
                                   interruption still stop the run. Default off.
+                                  [default: (no-irc-never-stop)]
   --freq-out-dir DIRECTORY        Override freq output base directory (relative
                                   paths resolved against the default).
+                                  [default: (<tsopt dir>/freq)]
   --freq-max-write INTEGER        Override freq --max-write value. Defaults to
                                   10.  [default: (10)]
   --freq-amplitude-ang FLOAT      Override freq --amplitude-ang (Å). Defaults to
@@ -238,6 +246,7 @@ Options:
                                   Defaults to 1.0 atm.  [default: (1.0)]
   --dft-out-dir DIRECTORY         Override dft output base directory (relative
                                   paths resolved against the default).
+                                  [default: (<tsopt dir>/dft)]
   --dft-func-basis TEXT           Override dft --func-basis value. Defaults to
                                   'wb97m-v/def2-tzvpd'.  [default:
                                   (wb97m-v/def2-tzvpd)]
@@ -248,7 +257,8 @@ Options:
   --dft-grid-level INTEGER        Override dft --grid-level value. Defaults to
                                   3.  [default: (3)]
   --dft-engine [gpu|cpu]          Override the DFT backend (gpu or cpu); omitted
-                                  values inherit YAML/defaults.
+                                  values inherit YAML/defaults.  [default:
+                                  (gpu)]
   -s, --scan-lists TEXT           Scan targets: inline Python literal. Multiple
                                   inline literals define sequential stages, e.g.
                                   '[(12,45,1.35)]'
@@ -260,10 +270,12 @@ Options:
                                   to the active site model after extraction.
   --scan-out-dir DIRECTORY        Override the scan output directory (default:
                                   <out-dir>/scan/). Relative paths are resolved
-                                  against the default parent.
+                                  against the default parent.  [default: (<out-
+                                  dir>/_work/scan)]
   --scan-one-based BOOLEAN        Override the scan subcommand indexing
                                   interpretation (True = 1-based, False =
-                                  0-based). Defaults to 1-based.
+                                  0-based). Defaults to 1-based.  [default:
+                                  (True)]
   --scan-max-step-size FLOAT      Override scan --max-step-size (Å). Defaults to
                                   0.20 Å.  [default: (0.20)]
   --scan-bias-k FLOAT             Override scan harmonic bias strength k
@@ -272,9 +284,10 @@ Options:
                                   Override scan relaxation max cycles per step.
                                   Defaults to 10000.  [default: (10000)]
   --scan-preopt BOOLEAN           Override scan --preopt flag. Inherits from
-                                  --preopt when omitted.
+                                  --preopt when omitted.  [default: (inherits
+                                  --preopt)]
   --scan-endopt BOOLEAN           Override scan --endopt flag. Defaults to
-                                  False.
+                                  False.  [default: (inherits --endopt)]
   --ref-pdb FILE                  Reference PDB/mmCIF for topology when -i
                                   provides XYZ inputs. Enables topology-aware
                                   PDB/mmCIF output conversion in TSOPT-only,
@@ -299,11 +312,11 @@ Options:
                                   backend (overrides --backend). Couples GFN-xTB
                                   / DFTB+ / any ASE engine. See --calc-file-
                                   func-name.
-  --calc-file-func-name, --calc-factory TEXT
-                                  Name of the callable in --calc-file that
+  --calc-file-func-name TEXT      Name of the callable in --calc-file that
                                   returns an ASE Calculator (or a module-level
                                   Calculator instance). CLI overrides config
                                   YAML; otherwise defaults to get_calculator.
+                                  [default: (get_calculator)]
   --deterministic / --no-deterministic
                                   Request strict same-stack PyTorch determinism
                                   (deterministic algorithms + index_reduce_

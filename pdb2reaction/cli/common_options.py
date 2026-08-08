@@ -183,15 +183,11 @@ def add_calc_file_option() -> Callable[[Callable], Callable]:
     """
     def decorator(func: Callable) -> Callable:
         func = click.option(
-            # `--calc-factory` said nothing about which file it names.
-            # The new spelling is primary; the old one stays accepted so
-            # published commands keep working.
             "--calc-file-func-name",
-            "--calc-factory",
             "calc_factory",
             type=str,
             default=None,
-            show_default=False,
+            show_default="get_calculator",
             help=(
                 "Name of the callable in --calc-file that returns an ASE "
                 "Calculator (or a module-level Calculator instance). "

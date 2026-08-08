@@ -116,11 +116,11 @@ Options:
                                   backend (overrides --backend). Couples GFN-xTB
                                   / DFTB+ / any ASE engine. See --calc-file-
                                   func-name.
-  --calc-file-func-name, --calc-factory TEXT
-                                  Name of the callable in --calc-file that
+  --calc-file-func-name TEXT      Name of the callable in --calc-file that
                                   returns an ASE Calculator (or a module-level
                                   Calculator instance). CLI overrides config
                                   YAML; otherwise defaults to get_calculator.
+                                  [default: (get_calculator)]
   --deterministic / --no-deterministic
                                   Request strict same-stack PyTorch determinism
                                   (deterministic algorithms + index_reduce_

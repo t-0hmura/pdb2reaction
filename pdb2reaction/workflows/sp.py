@@ -149,6 +149,7 @@ logger = logging.getLogger(__name__)
     "print_every",
     type=click.IntRange(min=1),
     default=None,
+    show_default="100",
     hidden=True,
 )
 @click.pass_context
