@@ -23,7 +23,11 @@ from pdb2reaction.core.utils import (
     optimizer_terminal_status,
     emit_optimizer_terminal_status,
 )
-from pdb2reaction.workflows.tsopt import HessianDimer, _tsopt_terminal_status
+from pdb2reaction.workflows.tsopt import (
+    HessianDimer,
+    _hessian_postprocessing_is_ready,
+    _tsopt_terminal_status,
+)
 
 
 class _QuadraticCalculator(Calculator):
@@ -267,6 +271,20 @@ def test_tsopt_terminal_status_composition():
     # A converged optimizer at a non-first-order structure is not_converged.
     assert _tsopt_terminal_status(converged, saddle_verified=False) == "not_converged"
     assert _tsopt_terminal_status(_FakeOpt(), saddle_verified=True) == "not_converged"
+
+
+def test_hessian_postprocessing_requires_convergence_gate():
+    unconverged = _FakeOpt()
+    unconverged.convergence_criteria_met = False
+    assert _hessian_postprocessing_is_ready(unconverged) is False
+
+    exact_checked = _FakeOpt()
+    exact_checked.convergence_criteria_met = True
+    assert _hessian_postprocessing_is_ready(exact_checked) is True
+
+    externally_stopped = _FakeOpt(is_converged=True)
+    externally_stopped.convergence_criteria_met = False
+    assert _hessian_postprocessing_is_ready(externally_stopped) is False
 
 
 def test_emit_terminal_status_stalled_and_converged_are_distinct(capsys):

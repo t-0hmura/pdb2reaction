@@ -500,8 +500,7 @@ def _seed_rfo_initial_hessian(
     default=None,
     show_default="gau",
     help=(
-        "Convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never). "
-        "Defaults to 'gau' when not provided."
+        "Convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never)."
     ),
 )
 @click.option(

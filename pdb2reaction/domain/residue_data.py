@@ -2,9 +2,7 @@
 
 Product-local, dependency-free data shared by element inference
 (``domain.add_elem_info``), the charge engine (``io.charge``), and the extraction
-workflow (``workflows.extract``). Keeping these constants in a leaf module lets
-lower layers consume them without importing the extraction workflow, which
-previously formed a product import cycle.
+workflow (``workflows.extract``).
 
 A data module must not import Click / Bio / workflow code.
 """
@@ -23,8 +21,8 @@ AMINO_ACIDS: Dict[str, int] = {
     "SER":  0, "THR":  0, "TRP":  0, "TYR":  0, "VAL":  0,
 
     # --- Canonical extras ---
-    "SEC":  0,   # selenocysteine
-    "PYL":  0,   # pyrrolysine
+    # "SEC": 0,  # require an explicit --modified-residue charge
+    # "PYL": 0,  # require an explicit --modified-residue charge
 
     # --- Protonation / tautomers (Amber/CHARMM style) ---
     "HIP": +1,   # fully protonated His
@@ -48,14 +46,15 @@ AMINO_ACIDS: Dict[str, int] = {
 
     # --- Cys family ---
     "CYX":  0,   # disulfide Cys
-    "CSO":  0,   # Cys sulfenic acid
+    # "CSO": 0,  # require an explicit --modified-residue charge
     "CSD": -1,   # Cys sulfinic acid
-    "CSX":  0,   # generic Cys derivative
+    # "CSX": 0,  # require an explicit --modified-residue charge
     "OCS": -1,   # cysteic acid
     "CYM": -1,   # deprotonated Cys
 
     # --- Lys variants / carboxylation ---
-    "MLY": +1, "LLP":  0,
+    "MLY": +1,
+    # "LLP": 0,  # require an explicit --modified-residue charge
     "KCX": -1,   # Lysine Nz-Carboxylic Acid
 
     # --- D isomers (19 residues) ---

@@ -447,6 +447,7 @@ hessian_dimer:
    # Same keys as lbfgs section
    thresh: baker
    max_cycles: 10000
+   line_search: true # 内側の L-BFGS 多項式 line search を有効化
 ```
 
 ```{note}
@@ -471,7 +472,7 @@ rsirfo:
  print_every: 100 # Logging stride
  min_step_norm: 1.0e-08 # Minimum accepted step norm
  assert_min_step: true # Assert when steps stagnate
- roots: [0] # Target root indices
+ roots: [0] # 対象root indexを1個だけ指定（一次鞍点のみ）
  hessian_ref: null # Reference Hessian
  rx_modes: null # Reaction-mode definitions
  prim_coord: null # Primary coordinates to monitor
@@ -481,6 +482,8 @@ rsirfo:
  hessian_recalc_reset: true # Reset recalc counter after exact Hessian
  max_micro_cycles: 50 # Micro-iterations per macro cycle
  augment_bonds: false # Augment reaction path based on bond analysis
+ min_line_search: false # RS-P-RFO のみ: 最小化部分空間で補間
+ max_line_search: false # RS-P-RFO のみ: 最大化部分空間で補間
  assert_neg_eigval: false # Require negative eigenvalue at convergence
  track_mode_by_overlap: false # 前回の Hessian との重なりで追跡対象 TS モードを選ぶ
  reject_mode_loss: false # 確立済みの負曲率を失うtrial棄却はデフォルト無効
@@ -493,6 +496,11 @@ rsirfo:
  saddle_recovery_max_cycles: 0 # n_imag=0 自動回復はデフォルト無効
  # Also inherits rfo-like settings: trust_radius, trust_update, etc.
 ```
+
+`min_line_search` と `max_line_search` を使用するのは `--opt-mode rsprfo`
+です。デフォルトは `false` ですが、YAML で明示した値は保持されます。
+RS-I-RFO と TRIM はこの部分空間 line search を実装していません。Dimer
+では、上記の独立した `hessian_dimer.lbfgs.line_search` を使用します。
 
 ```{note}
 **`--flatten` の優先順位。** Hessian-Dimer と RFO TS 経路の flatten

@@ -298,8 +298,7 @@ def _echo_convert_trj_if_exists(
     type=int,
     default=None, show_default="125",
     help=(
-        "Maximum number of IRC steps; an explicit value overrides YAML irc.max_cycles. "
-        "Defaults to 125 when not provided."
+            "Maximum number of IRC steps; an explicit value overrides YAML irc.max_cycles."
     ),
 )
 @click.option(
@@ -308,8 +307,7 @@ def _echo_convert_trj_if_exists(
     default=None,
     show_default="0.10",
     help=(
-        "Step length in Bohr (unweighted Cartesian coordinates); an explicit value overrides YAML irc.step_length. "
-        "Default: 0.10 Bohr."
+            "Step length in Bohr (unweighted Cartesian coordinates); an explicit value overrides YAML irc.step_length."
     ),
 )
 @click.option(
@@ -320,8 +318,7 @@ def _echo_convert_trj_if_exists(
     help=(
         "Ignore RMS-gradient, hard-gradient, energy-rise, and energy-change "
         "stops and trace until --max-cycles. Numerical/integration failures "
-        "and external interruption still stop the run. An explicit toggle "
-        "overrides YAML irc.never_stop; default off."
+            "and external interruption still stop the run. An explicit toggle overrides YAML irc.never_stop."
     ),
 )
 @click.option(
@@ -329,8 +326,7 @@ def _echo_convert_trj_if_exists(
     type=int,
     default=None, show_default="0",
     help=(
-        "Imaginary mode index used for the initial displacement; an explicit value overrides YAML irc.root. "
-        "Defaults to 0."
+            "Imaginary mode index used for the initial displacement; an explicit value overrides YAML irc.root."
     ),
 )
 @click.option(
@@ -339,8 +335,7 @@ def _echo_convert_trj_if_exists(
     default=None,
     show_default="forward",
     help=(
-        "Run the forward IRC; an explicit toggle overrides YAML irc.forward. "
-        "Defaults to True."
+            "Run the forward IRC; an explicit toggle overrides YAML irc.forward."
     ),
 )
 @click.option(
@@ -349,8 +344,7 @@ def _echo_convert_trj_if_exists(
     default=None,
     show_default="backward",
     help=(
-        "Run the backward IRC; an explicit toggle overrides YAML irc.backward. "
-        "Defaults to True."
+            "Run the backward IRC; an explicit toggle overrides YAML irc.backward."
     ),
 )
 @click.option(
@@ -392,7 +386,7 @@ def _echo_convert_trj_if_exists(
     "--hessian-calc-mode",
     type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
     default=None, show_default="FiniteDifference",
-    help="How the ML backend builds the Hessian (Analytical or FiniteDifference); an explicit value overrides YAML calc.hessian_calc_mode. Defaults to 'FiniteDifference'.",
+    help="How the ML backend builds the Hessian (Analytical or FiniteDifference); an explicit value overrides YAML calc.hessian_calc_mode.",
 )
 @click.option(
     "--config",

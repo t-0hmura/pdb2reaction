@@ -55,11 +55,12 @@ Options:
                                   'A:123A'), names ('SAM'), or chain-qualified
                                   names ('A:SAM', 'A:SAM:123'); comma/space
                                   separated.  [default: ""]
-  --modified-residue TEXT         Comma-separated residue names (with optional
-                                  charge) to treat as amino acids for backbone
-                                  truncation and charge assignment. Examples:
-                                  'HD1,HD2,HD3' or 'HD1:0,SEP:-2'.  [default:
-                                  ""]
+  --modified-residue TEXT         Comma-separated residue names to treat as
+                                  amino acids for backbone truncation and charge
+                                  assignment. NAME:charge adds or overrides the
+                                  nominal charge for this extraction; bare NAME
+                                  defaults to 0. Examples: 'HD1,HD2,HD3' or
+                                  'HD1:0,SEP:-2'.  [default: ""]
   -l, --ligand-charge TEXT        Total charge (number) or per-resname mapping
                                   like 'GPP:-3,SAM:1'. The per-resname mapping
                                   is applied whether or not extraction runs:
@@ -138,8 +139,7 @@ Options:
   --thresh [gau_loose|gau|gau_tight|gau_vtight|baker|never]
                                   Convergence preset for single-structure
                                   optimizations and scan relaxations (gau_loose|
-                                  gau|gau_tight|gau_vtight|baker|never).
-                                  Defaults to 'gau' when not provided. The MEP
+                                  gau|gau_tight|gau_vtight|baker|never). The MEP
                                   stage keeps its own --thresh-gsm / --thresh-
                                   dmf.  [default: (gau)]
   --thresh-post [gau_loose|gau|gau_tight|gau_vtight|baker|never]
@@ -149,14 +149,12 @@ Options:
   --thresh-gsm [gau_loose|gau|gau_tight|gau_vtight|baker|never]
                                   Convergence preset for the GSM string
                                   optimizer of the MEP stage (gau_loose|gau|gau_
-                                  tight|gau_vtight|baker|never). Defaults to
-                                  'gau_loose' when not provided.  [default:
+                                  tight|gau_vtight|baker|never).  [default:
                                   (gau_loose)]
   --thresh-dmf TEXT               IPOPT dual-infeasibility tolerance for the DMF
                                   MEP stage: tight (0.04) | middle (0.10) |
                                   loose (0.20) or a positive float. This is not
-                                  a Gaussian preset. Defaults to 'tight' when
-                                  not provided.  [default: (tight)]
+                                  a Gaussian preset.  [default: (tight)]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config
@@ -173,8 +171,7 @@ Options:
                                   [default: True]
   --hessian-calc-mode [finitedifference|analytical]
                                   Common MLIP Hessian calculation mode forwarded
-                                  to tsopt and freq. Defaults to
-                                  'FiniteDifference'.  [default:
+                                  to tsopt and freq.  [default:
                                   (FiniteDifference)]
   --tsopt BOOLEAN                 TS optimization + IRC per reactive segment (or
                                   TSOPT-only mode for single-structure), and
@@ -192,8 +189,8 @@ Options:
                                   DFT energy diagram. With --thermo, also
                                   generate a DFT//MLIP Gibbs diagram.  [default:
                                   False]
-  --tsopt-max-cycles INTEGER      Override tsopt --max-cycles value. Defaults to
-                                  10000 when not provided.  [default: (10000)]
+  --tsopt-max-cycles INTEGER      Override tsopt --max-cycles value.  [default:
+                                  (10000)]
   --tsopt-out-dir DIRECTORY       Override tsopt output subdirectory (relative
                                   paths are resolved against the default).
                                   [default: (<segment>/ts)]
@@ -227,35 +224,34 @@ Options:
                                   energy-rise, and energy-change stops and trace
                                   until the IRC max-cycle limit.
                                   Numerical/integration failures and external
-                                  interruption still stop the run. Default off.
-                                  [default: (no-irc-never-stop)]
+                                  interruption still stop the run.  [default:
+                                  (no-irc-never-stop)]
   --freq-out-dir DIRECTORY        Override freq output base directory (relative
                                   paths resolved against the default).
                                   [default: (<tsopt dir>/freq)]
-  --freq-max-write INTEGER        Override freq --max-write value. Defaults to
-                                  10.  [default: (10)]
-  --freq-amplitude-ang FLOAT      Override freq --amplitude-ang (Å). Defaults to
-                                  0.8.  [default: (0.8)]
-  --freq-n-frames INTEGER         Override freq --n-frames value. Defaults to
-                                  20.  [default: (20)]
-  --freq-sort [value|abs]         Override freq mode sorting. Defaults to
-                                  'value'.  [default: (value)]
+  --freq-max-write INTEGER        Override freq --max-write value.  [default:
+                                  (10)]
+  --freq-amplitude-ang FLOAT      Override freq --amplitude-ang (Å).  [default:
+                                  (0.8)]
+  --freq-n-frames INTEGER         Override freq --n-frames value.  [default:
+                                  (20)]
+  --freq-sort [value|abs]         Override freq mode sorting.  [default:
+                                  (value)]
   --freq-temperature FLOAT        Override freq thermochemistry temperature (K).
-                                  Defaults to 298.15 K.  [default: (298.15)]
+                                  [default: (298.15)]
   --freq-pressure FLOAT           Override freq thermochemistry pressure (atm).
-                                  Defaults to 1.0 atm.  [default: (1.0)]
+                                  [default: (1.0)]
   --dft-out-dir DIRECTORY         Override dft output base directory (relative
                                   paths resolved against the default).
                                   [default: (<tsopt dir>/dft)]
-  --dft-func-basis TEXT           Override dft --func-basis value. Defaults to
-                                  'wb97m-v/def2-tzvpd'.  [default:
+  --dft-func-basis TEXT           Override dft --func-basis value.  [default:
                                   (wb97m-v/def2-tzvpd)]
-  --dft-max-cycle INTEGER         Override dft --max-cycle value. Defaults to
-                                  100.  [default: (100)]
-  --dft-conv-tol FLOAT            Override dft --conv-tol value. Defaults to
-                                  1e-9.  [default: (1e-9)]
-  --dft-grid-level INTEGER        Override dft --grid-level value. Defaults to
-                                  3.  [default: (3)]
+  --dft-max-cycle INTEGER         Override dft --max-cycle value.  [default:
+                                  (100)]
+  --dft-conv-tol FLOAT            Override dft --conv-tol value.  [default:
+                                  (1e-9)]
+  --dft-grid-level INTEGER        Override dft --grid-level value.  [default:
+                                  (3)]
   --dft-engine [gpu|cpu]          Override the DFT backend (gpu or cpu); omitted
                                   values inherit YAML/defaults.  [default:
                                   (gpu)]
@@ -268,26 +264,24 @@ Options:
                                   CHAIN:RESNAME:RESSEQ[ICODE]:ATOM. When
                                   extraction is used, selections are auto-mapped
                                   to the active site model after extraction.
-  --scan-out-dir DIRECTORY        Override the scan output directory (default:
-                                  <out-dir>/scan/). Relative paths are resolved
-                                  against the default parent.  [default: (<out-
-                                  dir>/_work/scan)]
+  --scan-out-dir DIRECTORY        Override the scan output directory. Relative
+                                  paths are resolved against the default parent.
+                                  [default: (<out-dir>/_work/scan)]
   --scan-one-based BOOLEAN        Override the scan subcommand indexing
                                   interpretation (True = 1-based, False =
-                                  0-based). Defaults to 1-based.  [default:
-                                  (True)]
-  --scan-max-step-size FLOAT      Override scan --max-step-size (Å). Defaults to
-                                  0.20 Å.  [default: (0.20)]
+                                  0-based).  [default: (True)]
+  --scan-max-step-size FLOAT      Override scan --max-step-size (Å).  [default:
+                                  (0.20)]
   --scan-bias-k FLOAT             Override scan harmonic bias strength k
-                                  (eV/Å^2). Defaults to 300.  [default: (300)]
+                                  (eV/Å^2).  [default: (300)]
   --scan-relax-max-cycles INTEGER
                                   Override scan relaxation max cycles per step.
-                                  Defaults to 10000.  [default: (10000)]
+                                  [default: (10000)]
   --scan-preopt BOOLEAN           Override scan --preopt flag. Inherits from
                                   --preopt when omitted.  [default: (inherits
                                   --preopt)]
-  --scan-endopt BOOLEAN           Override scan --endopt flag. Defaults to
-                                  False.  [default: (inherits --endopt)]
+  --scan-endopt BOOLEAN           Override scan --endopt flag.  [default:
+                                  (False)]
   --ref-pdb FILE                  Reference PDB/mmCIF for topology when -i
                                   provides XYZ inputs. Enables topology-aware
                                   PDB/mmCIF output conversion in TSOPT-only,

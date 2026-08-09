@@ -29,12 +29,7 @@ import time
 from pysisyphus.helpers import geom_loader
 from pysisyphus.constants import BOHR2ANG, AMU2AU
 
-# Compatibility re-exports: the pure normal-mode kernel lives in the
-# lower bundled-engine module ``pysisyphus.normal_modes`` (a sibling of
-# ``pysisyphus.tr_projection``), which does not import ``pdb2reaction``.
-# It is re-exported here so existing callers of
-# ``pdb2reaction.workflows.freq`` (opt/tsopt/tests) keep working unchanged and
-# resolve to the SAME function objects as the lower implementation.
+# Compatibility re-exports from the dependency-free bundled-engine module.
 from pysisyphus.normal_modes import (  # noqa: F401
     _safe_masses_amu,
     _mw_projected_hessian,
@@ -490,7 +485,7 @@ def _prepare_frequency_output_paths(
 @click.option("--hessian-calc-mode",
               type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
               default=None, show_default="FiniteDifference",
-              help="How the ML backend computes Hessian. Defaults to 'FiniteDifference' (can also be set via YAML).")
+              help="How the ML backend computes the Hessian (can also be set via YAML).")
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
               show_default=True, help="MLIP backend.")
 @click.option("--solvent", default="none", show_default=True,

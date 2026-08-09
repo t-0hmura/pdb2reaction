@@ -362,18 +362,8 @@ def create_calculator(backend: str = "uma", **kwargs) -> MLIPCalculator:
         )
     accepted = _BACKEND_ACCEPTED_KEYS.get(backend, set())
     filtered = _filter_kwargs(kwargs, accepted)
-    # A `calc:` key this backend does not accept is dropped here. Silence reads
-    # as "applied", which is how a documented-but-ignored setting survives.
-    #
-    # Every workflow seeds `calc_cfg` from the UMA-flavoured default block, so a
-    # key UMA accepts and this backend does not is almost always an untouched
-    # default rather than a choice: reporting those made every ORB / MACE /
-    # AIMNet2 run print seven or eight settings the user never named, which
-    # trains people to ignore the line. Anything outside UMA's own accepted set
-    # is a genuinely unusable key and still reported. The UMA set is the
-    # existing registry entry, so this needs no second source of truth -- and in
-    # particular no import of the seed block, which would close a product import
-    # cycle with `core.defaults`.
+    # Suppress untouched UMA seed keys; warn only about genuinely unusable keys.
+    # The registry avoids an import cycle with ``core.defaults``.
     _seeded = _BACKEND_ACCEPTED_KEYS.get("uma", set())
     _dropped = sorted(k for k in kwargs if k not in filtered and k not in _seeded)
     if _dropped:

@@ -198,9 +198,13 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | `--exclude-backbone / --no-exclude-backbone` | Remove backbone atoms on non-substrate amino acids. | `False` |
 | `--add-linkh / --no-add-linkh` | Add cap hydrogens for severed bonds. | `True` |
 | `--selected-resn TEXT` | Force-include using the same ID/name/chain-qualified selector forms as `--center`. | `""` |
-| `--modified-residue TEXT` | Comma-separated residue names (with optional charge) to treat as amino acids for backbone truncation and charge assignment (e.g. `HD1,HD2,HD3` or `HD1:0,SEP:-2`). | `""` |
+| `--modified-residue TEXT` | Comma-separated residue names to treat as amino acids. `NAME:charge` adds or overrides the nominal charge for this extraction; bare `NAME` defaults to 0. | `""` |
 | `--freeze-links / --no-freeze-links` | Freeze cap parents in active-site model PDBs. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based indices frozen in every stage; indices refer to the extracted model. Merged with `--freeze-links` and YAML `geom.freeze_atoms`. | _None_ |
+
+Built-in amino-acid names follow force-field-normalized Amber/CHARMM
+conventions. Raw PDB CCD name collisions are not inferred automatically; use
+`--modified-residue NAME:charge` to state the intended nominal charge.
 
 ### MEP search
 

@@ -155,7 +155,7 @@ Defaults shown are used when the option is not specified. The full flag list is 
 | `--exclude-backbone / --no-exclude-backbone` | Remove backbone atoms on non-substrate amino acids (PRO / HYP safeguards). | `False` |
 | `--add-linkh / --no-add-linkh` | Add cap hydrogens at 1.09 Å along severed bonds at carbon boundaries only (non-carbon boundaries are not capped). | `True` |
 | `--selected-resn TEXT` | Force-include by the same ID/name/chain-qualified selectors as `--center`. | `""` |
-| `--modified-residue TEXT` | Comma-separated residue names (with optional per-residue charge) to treat as amino acids for backbone truncation and charge assignment (e.g. `HD1,HD2,HD3` or `HD1:0,SEP:-2`). A residue given without a trailing `:charge` defaults to charge 0. | `""` |
+| `--modified-residue TEXT` | Comma-separated residue names to treat as amino acids. `NAME:charge` adds or overrides the nominal charge for this extraction; bare `NAME` defaults to 0. | `""` |
 | `-l, --ligand-charge TEXT` | Total charge or per-resname mapping (e.g. `GPP:-3,SAM:1`). | _None_ |
 | `--out-json / --no-out-json` | Write a machine-readable `result.json` alongside the extracted PDB(s). Schema: [JSON Output Schema](json-output.md). | `False` |
 
@@ -185,7 +185,17 @@ Backbone truncation was not applied.
 Consider preparing the active site model manually.
 ```
 
-Use `--modified-residue` to register non-standard residue names as amino acids so backbone truncation and charge assignment apply automatically — useful for phosphoserine, methylated residues, D-amino acids with unusual names, and MCPB-renamed metal-coordinating residues:
+Use `--modified-residue` to register non-standard residue names as amino acids
+so backbone truncation and charge assignment apply automatically. An explicit
+`NAME:charge` also overrides a nominal charge already present in the built-in
+amino-acid dictionary for this extraction only. A bare `NAME` assigns charge 0.
+This is useful for alternative protonation states, phospho-amino acids,
+methylated residues, unusual D-amino-acid names, and MCPB-renamed
+metal-coordinating residues:
+
+The built-in names follow force-field-normalized Amber/CHARMM conventions.
+No automatic attempt is made to distinguish a colliding raw PDB CCD name;
+specify the intended nominal charge with `--modified-residue NAME:charge`.
 
 ```bash
 # Treat HD1, HD2, HD3 as amino acids (charge defaults to 0)
@@ -195,6 +205,10 @@ pdb2reaction extract -i complex.pdb -c 'SUB' -o model.pdb \
 # Specify explicit charges per modified residue
 pdb2reaction extract -i complex.pdb -c 'SUB' -o model.pdb \
     --modified-residue 'HD1:0,SEP:-2'
+
+# Override an existing built-in nominal charge for this extraction
+pdb2reaction extract -i complex.pdb -c 'SUB' -o model.pdb \
+    --modified-residue 'LYS:0'
 ```
 
 ```{important}
@@ -224,15 +238,13 @@ A dictionary mapping residue names to their nominal integer charges. Membership 
 - Positive (+1): `ARG`, `LYS`
 - Negative (−1): `ASP`, `GLU`
 
-**Canonical extras:** `SEC` (selenocysteine, 0), `PYL` (pyrrolysine, 0).
-
 **Protonation / tautomer variants** (Amber / CHARMM style): `HIP` (+1, fully protonated His), `HID` (0, Nδ-protonated His), `HIE` (0, Nε-protonated His), `ASH` (0, neutral Asp), `GLH` (0, neutral Glu), `LYN` (0, neutral Lys), `ARN` (0, neutral Arg), `TYM` (−1, deprotonated Tyr phenolate).
 
 **Phosphorylated:** dianionic (−2) `SEP`, `TPO`, `PTR`; monoanionic (−1) `S1P`, `T1P`, `Y1P`; phospho-His (phosaa19SB) `H1D` (0), `H2D` (−1), `H1E` (0), `H2E` (−1).
 
-**Cysteine variants:** `CYX` (0, disulfide), `CSO` (0, sulfenic acid), `CSD` (−1, sulfinic acid), `CSX` (0, generic), `OCS` (−1, cysteic acid), `CYM` (−1, deprotonated Cys).
+**Cysteine variants:** `CYX` (0, disulfide), `CSD` (−1, sulfinic acid), `OCS` (−1, cysteic acid), `CYM` (−1, deprotonated Cys).
 
-**Lysine variants / carboxylation:** `MLY` (+1), `LLP` (0), `KCX` (−1, Nz-carboxylic acid).
+**Lysine variants / carboxylation:** `MLY` (+1), `KCX` (−1, Nz-carboxylic acid).
 
 **D-amino acids** (19): `DAL`, `DAR`, `DSG`, `DAS`, `DCY`, `DGN`, `DGL`, `DHI`, `DIL`, `DLE`, `DLY`, `MED`, `DPN`, `DPR`, `DSN`, `DTH`, `DTR`, `DTY`, `DVA`.
 

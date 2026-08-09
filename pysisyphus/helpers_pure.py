@@ -544,6 +544,9 @@ def molecular_volume(
 ) -> Tuple[float, float, float]:
     """Monte-Carlo estimate of molecular volume using Van der Waals spheres.
     Cartesian coordinates and VdW-radii are expected in Bohr!
+
+    Returns the volume per molecule in Bohr³ and Å³, followed by the molar
+    volume in cm³/mol.
     """
     coords3d = np.asarray(coords3d, dtype=float)
     vdw_radii = np.asarray(vdw_radii, dtype=float).reshape(-1, 1)
@@ -575,8 +578,8 @@ def molecular_volume(
     ratio = below_radius / n_trial
     mol_vol = ratio * box_volume  # a0³ / Molecule
     mol_vol_ang3 = mol_vol * BOHR2ANG**3  # Å³ / Molecule
-    molar_vol = mol_vol_ang3 * NA * 1e-24  # l/mol
-    return mol_vol, mol_vol_ang3, molar_vol
+    molar_vol_cm3 = mol_vol_ang3 * NA * 1e-24  # cm³/mol
+    return mol_vol, mol_vol_ang3, molar_vol_cm3
 
 
 def get_cubic_crystal(l, n=2, atom="Na"):

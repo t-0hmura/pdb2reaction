@@ -75,8 +75,7 @@ Options:
   -o, --out-dir TEXT              Output directory.  [default: ./result_opt/]
   --thresh [gau_loose|gau|gau_tight|gau_vtight|baker|never]
                                   Convergence preset (gau_loose|gau|gau_tight|ga
-                                  u_vtight|baker|never). Defaults to 'gau' when
-                                  not provided.  [default: (gau)]
+                                  u_vtight|baker|never).  [default: (gau)]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config

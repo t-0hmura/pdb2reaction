@@ -175,14 +175,17 @@ All fields from `opt`, plus:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `n_imaginary_modes` | int | Number of imaginary frequencies |
-| `imaginary_frequencies_cm` | float[] | Imaginary frequencies (cm⁻¹, negative) |
+| `n_imaginary_modes` | int\|null | Number of imaginary frequencies; `null` when convergence was never reached and PHVA was not run |
+| `imaginary_frequencies_cm` | float[]\|null | Imaginary frequencies (cm⁻¹, negative); `null` when PHVA was not run |
 | `opt_mode` | string | `"rsprfo"` (default), `"rsirfo"`, `"trim"`, or `"dimer"` |
 | `reference_mode_file` | string\|null | Advanced path-mode file supplied through `--ref-mode`; normally generated and passed by `all` |
 | `safeguards` | object | Hessian-TS diagnostics, including exact saddle checks, final target-mode identity/overlap, stop reason, and any explicitly enabled mode-loss/recovery activity. These recovery paths are inactive by default. |
 | `rigid_projection` | object | Rigid-mode and exact-Hessian provenance; see [projection provenance](#rigid-projection-provenance) |
 
 The `files` object may include `imaginary_mode_files` (list of vib file paths).
+When a Hessian-family optimizer never reaches all configured convergence
+criteria, final PHVA and mode export are skipped; both imaginary-mode fields are
+`null`. An energy-plateau exit is `stalled`; other exits are `not_converged`.
 For Cartesian Hessian modes, `status: "converged"` requires the final exact
 PHVA result to contain exactly one significant imaginary mode. Supported
 internal-coordinate Hessian modes instead require one negative root in the

@@ -24,28 +24,26 @@ Options:
   --workers-per-node INTEGER      Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
   --max-cycles INTEGER            Maximum number of IRC steps; an explicit value
-                                  overrides YAML irc.max_cycles. Defaults to 125
-                                  when not provided.  [default: (125)]
+                                  overrides YAML irc.max_cycles.  [default:
+                                  (125)]
   --step-size FLOAT               Step length in Bohr (unweighted Cartesian
                                   coordinates); an explicit value overrides YAML
-                                  irc.step_length. Default: 0.10 Bohr.
-                                  [default: (0.10)]
+                                  irc.step_length.  [default: (0.10)]
   --never-stop / --no-never-stop  Ignore RMS-gradient, hard-gradient, energy-
                                   rise, and energy-change stops and trace until
                                   --max-cycles. Numerical/integration failures
                                   and external interruption still stop the run.
                                   An explicit toggle overrides YAML
-                                  irc.never_stop; default off.  [default: (no-
-                                  never-stop)]
+                                  irc.never_stop.  [default: (no-never-stop)]
   --root INTEGER                  Imaginary mode index used for the initial
                                   displacement; an explicit value overrides YAML
-                                  irc.root. Defaults to 0.  [default: (0)]
+                                  irc.root.  [default: (0)]
   --forward / --no-forward        Run the forward IRC; an explicit toggle
-                                  overrides YAML irc.forward. Defaults to True.
-                                  [default: (forward)]
+                                  overrides YAML irc.forward.  [default:
+                                  (forward)]
   --backward / --no-backward      Run the backward IRC; an explicit toggle
-                                  overrides YAML irc.backward. Defaults to True.
-                                  [default: (backward)]
+                                  overrides YAML irc.backward.  [default:
+                                  (backward)]
   --freeze-links / --no-freeze-links
                                   Freeze parent atoms of cap hydrogens
                                   (PDB/mmCIF input or XYZ/GJF with --ref-pdb).
@@ -63,8 +61,7 @@ Options:
                                   How the ML backend builds the Hessian
                                   (Analytical or FiniteDifference); an explicit
                                   value overrides YAML calc.hessian_calc_mode.
-                                  Defaults to 'FiniteDifference'.  [default:
-                                  (FiniteDifference)]
+                                  [default: (FiniteDifference)]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config

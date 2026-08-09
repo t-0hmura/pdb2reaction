@@ -141,7 +141,7 @@ pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
 | `--exclude-backbone/--no-exclude-backbone` | 非基質アミノ酸の主鎖原子を除去 | `False` |
 | `--add-linkh/--no-add-linkh` | 切断された結合に 1.09 Å のキャップ水素を炭素境界にのみ付加（非炭素境界はキャップしない） | `True` |
 | `--selected-resn TEXT` | `--center` と同じselectorで残基を強制包含 | `""` |
-| `--modified-residue TEXT` | 修飾アミノ酸残基名をカンマ区切りで指定（任意で各残基に電荷付き）。主鎖切断と電荷計算でアミノ酸として扱います。例: `HD1,HD2,HD3` または `HD1:0,SEP:-2`。残基ごとに `:charge` 接尾辞を省略した場合、その残基の電荷は `0` になります（例: `HD1,HD2:-1` では `HD1` が電荷 0、`HD2` が電荷 −1）。フラグ全体のデフォルトは空文字列（無効） | `""` |
+| `--modified-residue TEXT` | アミノ酸として扱う残基名をカンマ区切りで指定。`NAME:charge` はこの抽出中の公称電荷を追加または上書きし、電荷を省略した `NAME` は 0 になります | `""` |
 | `-l, --ligand-charge TEXT` | 総電荷または残基名ごとのマッピング（例: `GPP:-3,SAM:1`） | _None_ |
 | `--out-json/--no-out-json` | 抽出された PDB(s) の隣に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 
@@ -173,7 +173,16 @@ Consider preparing the active site model manually.
 
 ### `--modified-residue` オプション
 
-`--modified-residue` を使用すると、非標準の残基名をアミノ酸として登録でき、主鎖切断と電荷割り当てが自動的に適用されます。修飾アミノ酸残基で非標準の 3 文字コードを持つもの（リン酸化セリン、メチル化残基、特殊な名前の D-アミノ酸、MCPB でリネームされた金属配位残基など）に有用です。
+`--modified-residue` を使用すると、非標準の残基名をアミノ酸として登録でき、
+主鎖切断と電荷割り当てが自動的に適用されます。`NAME:charge` を明示すると、
+組み込みのアミノ酸辞書に既にある残基も、この抽出に限って公称電荷を上書き
+できます。電荷を省略した `NAME` は 0 として登録されます。異なるプロトン化
+状態、リン酸化・メチル化残基、特殊名の D-アミノ酸、MCPB で改名された
+金属配位残基などに利用できます。
+
+組み込み名は、力場で正規化された Amber/CHARMM の命名を前提とします。同じ
+3文字名を持つ raw PDB CCD 化合物との自動判別は行いません。名前が衝突する
+場合は、`--modified-residue NAME:charge` で意図する公称電荷を明示してください。
 
 ```bash
 # HD1, HD2, HD3 をアミノ酸として扱う（電荷はデフォルトで 0）
@@ -183,6 +192,10 @@ pdb2reaction extract -i complex.pdb -c 'SUB' -o model.pdb \
 # 各修飾残基に明示的な電荷を指定
 pdb2reaction extract -i complex.pdb -c 'SUB' -o model.pdb \
   --modified-residue 'HD1:0,SEP:-2'
+
+# 組み込みの公称電荷をこの抽出に限って上書き
+pdb2reaction extract -i complex.pdb -c 'SUB' -o model.pdb \
+  --modified-residue 'LYS:0'
 ```
 
 ```{important}
@@ -214,9 +227,6 @@ pdb2reaction extract -i complex.pdb -c 'SUB' -o model.pdb \
 - 正電荷 (+1): `ARG`, `LYS`
 - 負電荷 (−1): `ASP`, `GLU`
 
-**追加の標準残基：**
-- `SEC`（セレノシステイン、0）、`PYL`（ピロリシン、0）
-
 **プロトン化/互変異性体**（Amber/CHARMM 形式）：
 - `HIP`（+1、完全プロトン化 His）、`HID`（0、Nδプロトン化 His）、`HIE`（0、Nεプロトン化 His）
 - `ASH`（0、中性 Asp）、`GLH`（0、中性 Glu）、`LYN`（0、中性 Lys）、`ARN`（0、中性 Arg）
@@ -228,11 +238,11 @@ pdb2reaction extract -i complex.pdb -c 'SUB' -o model.pdb \
 - リン酸化 His（phosaa19SB）: `H1D`（0）、`H2D`（−1）、`H1E`（0）、`H2E`（−1）
 
 **システイン変異体：**
-- `CYX`（0、ジスルフィド）、`CSO`（0、スルフェン酸）、`CSD`（−1、スルフィン酸）、`CSX`（0、汎用誘導体）
+- `CYX`（0、ジスルフィド）、`CSD`（−1、スルフィン酸）
 - `OCS`（−1、システイン酸）、`CYM`（−1、脱プロトン化 Cys）
 
 **リシン変異体/カルボキシル化：**
-- `MLY`（+1）、`LLP`（0）、`KCX`（−1、Nz-カルボン酸）
+- `MLY`（+1）、`KCX`（−1、Nz-カルボン酸）
 
 **D-アミノ酸**（19 残基）：
 - `DAL`, `DAR`, `DSG`, `DAS`, `DCY`, `DGN`, `DGL`, `DHI`, `DIL`, `DLE`, `DLY`, `MED`, `DPN`, `DPR`, `DSN`, `DTH`, `DTR`, `DTY`, `DVA`

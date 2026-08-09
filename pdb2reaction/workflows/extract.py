@@ -31,10 +31,7 @@ from pdb2reaction.io.structure_formats import (
     template_from_selected_structure,
 )
 
-# Canonical residue/charge data and the charge engine were lowered into leaf
-# modules (``domain.residue_data`` / ``io.charge``) and the console-gated summary
-# logger into ``core.utils`` so that ``domain`` and ``core`` no longer import this
-# workflow. They are re-exported here so existing import paths keep working.
+# Compatibility re-exports from the leaf charge/data modules.
 from pdb2reaction.domain.residue_data import (
     AMINO_ACIDS,
     C_TERMINAL_RESNAMES,
@@ -150,9 +147,10 @@ EXACT_EPS = 1e-3         # Å tolerance for exact match
     "--modified-residue",
     type=str, default="",
     help=(
-        "Comma-separated residue names (with optional charge) to treat as amino acids "
-        "for backbone truncation and charge assignment. "
-        "Examples: 'HD1,HD2,HD3' (charge defaults to 0) or 'HD1:0,SEP:-2'."
+        "Comma-separated residue names to treat as amino acids for backbone "
+        "truncation and charge assignment. NAME:charge adds or overrides the "
+        "nominal charge for this extraction; bare NAME defaults to 0. "
+        "Examples: 'HD1,HD2,HD3' or 'HD1:0,SEP:-2'."
     ),
 )
 @click.option(
@@ -1604,7 +1602,7 @@ def extract(args: argparse.Namespace, api=False) -> Dict[str, Any]:
             "use the 'pdb2reaction extract' CLI or extract_api() for keyword API."
         )
 
-    # Augment AMINO_ACIDS with user-specified modified residues
+    # Augment or override AMINO_ACIDS for this extraction only.
     # Save original state so repeated API calls don't accumulate mutations.
     _amino_acids_snapshot = dict(AMINO_ACIDS)
     try:
@@ -1629,7 +1627,7 @@ def _extract_body(args, api):
                 )
             else:
                 AMINO_ACIDS[token.upper()] = 0
-        _echo_info("[extract] Modified residues added to amino acid list: %s", _mod_res)
+        _echo_info("[extract] Modified-residue overrides applied: %s", _mod_res)
 
     if args.radius == 0.0:
         args.radius = 0.001
@@ -1852,8 +1850,9 @@ def extract_api(complex_pdb: List[str],
     selected_resn : str
         Additional residues to force‑include (comma/space separated).
     modified_residue : str
-        Comma‑separated residue names (with optional charge) to treat as amino acids
-        for backbone truncation and charge assignment. E.g. 'HD1,HD2' or 'HD1:0,SEP:-2'.
+        Comma-separated residue names to treat as amino acids for backbone
+        truncation and charge assignment. ``NAME:charge`` adds or overrides the
+        nominal charge for this extraction; bare ``NAME`` defaults to 0.
     ligand_charge : float | str | dict[str,float] | None
         Either a total charge (float/str) for unknown residues (prefer unknown substrate),
         or a mapping like {'GPP': -3, 'SAM': -1}. In mapping mode, other unknown residues remain 0.

@@ -233,11 +233,33 @@ class TestIonDictCaseFolding:
         raise AssertionError("ION dict literal not found in residue_data.py via AST")
 
 
-def test_modified_residue_nominal_charges_match_ccd_components():
+def test_ambiguous_modified_residue_charges_require_explicit_input():
     from pdb2reaction.domain.residue_data import AMINO_ACIDS
 
-    assert AMINO_ACIDS["PYL"] == 0
-    assert AMINO_ACIDS["LLP"] == 0
+    for residue in ("PYL", "LLP", "SEC", "CSO", "CSX"):
+        assert residue not in AMINO_ACIDS
+
+
+def test_modified_residue_overrides_existing_charge_for_one_extract_call():
+    import pytest
+
+    from pdb2reaction.domain.residue_data import AMINO_ACIDS
+    from pdb2reaction.workflows import extract as extract_module
+
+    class StopAfterOverrides:
+        modified_residue = "lys:0,ZZZ:-2"
+
+        @property
+        def radius(self):
+            assert AMINO_ACIDS["LYS"] == 0
+            assert AMINO_ACIDS["ZZZ"] == -2
+            raise RuntimeError("override check complete")
+
+    with pytest.raises(RuntimeError, match="override check complete"):
+        extract_module.extract(StopAfterOverrides(), api=True)
+
+    assert AMINO_ACIDS["LYS"] == 1
+    assert "ZZZ" not in AMINO_ACIDS
 
 
 def test_compute_charge_summary_terminus_cap_charges():

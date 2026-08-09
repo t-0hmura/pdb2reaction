@@ -26,6 +26,7 @@ from pysisyphus.irc.DWI import DWI
 from pysisyphus.irc.IRC import IRC
 from pysisyphus.irc.Instanton import Instanton
 from pysisyphus.helpers import geom_loader
+from pysisyphus.helpers_pure import molecular_volume
 from pysisyphus.linalg import quaternion_to_rot_mat
 from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
@@ -424,14 +425,6 @@ def test_rsprfo_partition_derivative_matches_secular_finite_difference(
     assert analytic == pytest.approx(numeric, rel=2.0e-7, abs=1.0e-10)
 
 
-def test_rsprfo_fallback_enforces_full_trust_radius() -> None:
-    opt = RSPRFOptimizer.__new__(RSPRFOptimizer)
-    opt.trust_radius = 0.1
-    opt.log = lambda *_: None
-    step = opt._restrict_final_step(np.array([0.12, 0.16]))
-    assert np.linalg.norm(step) == pytest.approx(0.1)
-
-
 def test_rfoptimizer_rejects_oversized_accelerated_displacement() -> None:
     opt = RFOptimizer.__new__(RFOptimizer)
     opt.trust_radius = 0.1
@@ -501,6 +494,56 @@ def test_growing_string_defers_climbing_after_node_insertion() -> None:
     cos.forces_list = [np.zeros(4)]
 
     assert cos.check_for_climbing_start(1.0) is False
+
+
+def test_cos_climbing_rms_uses_moving_active_dofs_only() -> None:
+    image = SimpleNamespace(
+        coord_type="cart", active_dof_indices=np.array([0, 1, 2]),
+    )
+    cos = SimpleNamespace(
+        images=[image, image, image],
+        coords_length=6,
+        moving_indices=[1],
+        forces_list=[
+            np.array(
+                [10.0] * 6
+                + [0.1, 0.1, 0.1, 10.0, 10.0, 10.0]
+                + [10.0] * 6,
+            ),
+        ],
+        rms=lambda arr: np.sqrt(np.mean(np.square(arr))),
+        fully_grown=True,
+    )
+
+    assert ChainOfStates.check_for_climbing_start(cos, 0.2) is True
+
+
+def test_molecular_volume_counts_overlapping_spheres_as_a_union(
+    monkeypatch,
+) -> None:
+    coords = np.zeros((1, 3))
+    radii = np.array([1.5])
+
+    np.random.seed(7)
+    one_sphere = molecular_volume(coords, radii, n_trial=2_000, offset=0.5)
+    np.random.seed(7)
+    coincident_spheres = molecular_volume(
+        np.repeat(coords, 2, axis=0),
+        np.repeat(radii, 2),
+        n_trial=2_000,
+        offset=0.5,
+    )
+
+    assert coincident_spheres == one_sphere
+
+    monkeypatch.setattr(
+        np.random,
+        "rand",
+        lambda n_trial, dimensions: np.full((n_trial, dimensions), 0.5),
+    )
+    box_volume = (2.0 * (radii[0] + 0.5)) ** 3
+    center_sample = molecular_volume(coords, radii, n_trial=1, offset=0.5)
+    assert center_sample[0] == pytest.approx(box_volume)
 
 
 def test_growing_string_reparametrization_guards_zero_density() -> None:

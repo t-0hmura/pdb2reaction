@@ -350,14 +350,8 @@ class EulerPC(IRC):
                     # TODO: Handle this by restarting everything with a smaller stepsize?
                     # Check 10.1039/c7cp03722h SI
                     if osc_norm <= corr_step_length:
-                        # The corrector descends the DWI *interpolated* surface,
-                        # not the real PES, so a reversal here is an artefact of
-                        # the two-point interpolation, not a physical failure.
-                        # Abort only the corrector and keep the last
-                        # non-oscillating point, as upstream pysisyphus does:
-                        # this branch is also the integration loop's escape
-                        # hatch, so raising leaves the step budget below as the
-                        # only exit and kills an otherwise healthy IRC.
+                        # A reversal on the interpolated DWI surface is not a PES
+                        # failure; end only the corrector and keep the last point.
                         msg = (
                             "Corrector-Euler integration oscillated at level "
                             f"{k} ({points} points); keeping the last "

@@ -29,6 +29,7 @@ def test_tsopt_result_validation_requires_verified_first_order_saddle() -> None:
         {"status": "not_converged", "n_imaginary_modes": 1},
         {"status": "converged", "n_imaginary_modes": 0},
         {"status": "converged", "n_imaginary_modes": 2},
+        {"status": "not_converged", "n_imaginary_modes": None},
         {"status": "unknown"},
     ):
         with pytest.raises(click.ClickException, match="IRC was not started"):

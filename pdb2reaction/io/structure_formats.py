@@ -537,9 +537,7 @@ def pdb_requires_normalization(path: Path | str) -> bool:
     try:
         records, nonstandard = read_pdb_atom_sites(path, warn_altloc=False)
     except ValueError as exc:
-        # Preserve the existing validation boundary for empty placeholder
-        # files (notably CLI dry-run/help tests). Real geometry loading will
-        # still report the missing atoms at the normal workflow stage.
+        # Defer empty placeholders to the normal geometry-validation stage.
         if "No ATOM/HETATM records" in str(exc):
             return False
         raise

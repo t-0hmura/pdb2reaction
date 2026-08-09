@@ -226,9 +226,13 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 | `--exclude-backbone/--no-exclude-backbone` | 非基質アミノ酸の主鎖原子を除去 | `False` |
 | `--add-linkh/--no-add-linkh` | 切断結合にキャップ水素を付加 | `True` |
 | `--selected-resn TEXT` | `--center` と同じID/名前/chain付きselectorで残基を強制包含 | `""` |
-| `--modified-residue TEXT` | 修飾アミノ酸残基名をカンマ区切りで指定（任意で電荷付き）。主鎖切断と電荷計算にアミノ酸として扱う。例: `HD1,HD2,HD3` または `HD1:0,SEP:-2` | `""` |
+| `--modified-residue TEXT` | アミノ酸として扱う残基名をカンマ区切りで指定。`NAME:charge` はこの抽出中の公称電荷を追加または上書きし、電荷を省略した `NAME` は 0 になります | `""` |
 | `--freeze-links/--no-freeze-links` | 活性部位モデル PDB でキャップ H の親を凍結 | `True` |
 | `--freeze-atoms TEXT` | 全ステージで凍結する 1-based 原子番号（カンマ区切り）。番号は抽出後モデル基準。`--freeze-links` と YAML `geom.freeze_atoms` にマージされる | _None_ |
+
+組み込みのアミノ酸名は、力場で正規化された Amber/CHARMM の命名を前提とします。
+raw PDB CCD との名前衝突は自動判別しないため、`--modified-residue NAME:charge`
+で意図する公称電荷を明示してください。
 
 (ja-mep-search-options)=
 ### MEP 探索オプション

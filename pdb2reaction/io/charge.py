@@ -2,8 +2,7 @@
 
 Product-local service consumed by both the extraction workflow
 (``workflows.extract``) and CLI-input preparation (``core.utils``). It lives
-below ``core`` so that ``core.utils`` can derive a total charge without importing
-a workflow, which previously formed a product import cycle.
+below ``core`` and depends only on leaf data and identity modules.
 
 Pure of ``core``/``workflows``: it depends only on the canonical residue tables
 (``domain.residue_data``) and structure-identity helpers (``io.structure_formats``).

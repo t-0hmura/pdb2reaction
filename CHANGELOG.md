@@ -110,10 +110,29 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   one-line hint where the panel used to vanish: `all` extracts internally and
   `extract` is itself the extraction command, so the panel is hidden for both
   and the hint names the route to a standalone cluster.
-- Run the Hessian transition-state search without the minimization- and
-  maximization-subspace line searches by default, matching the bundled engine's
-  own defaults. RS-I-RFO previously enabled both, so TS trajectories can differ;
-  set `rsirfo.min_line_search` / `rsirfo.max_line_search` in YAML to restore them.
+- Keep the RS-P-RFO minimization- and maximization-subspace line searches off by
+  default, matching the bundled engine, while honoring explicit
+  `rsirfo.min_line_search` / `rsirfo.max_line_search` YAML values. RS-I-RFO and
+  TRIM do not consume these RS-P-RFO line-search controls.
+- Limit Hessian-family TS workflows to one `rsirfo.roots` entry and keep
+  ordinary-RFO `rfo_overlaps` state tracking out of effective TS optimizer
+  kwargs, matching the v0.4.11 TS configuration boundary.
+- Run exact PHVA only after the actual proposed TS step satisfies every
+  configured convergence criterion. Gaussian-family presets no longer
+  accept a verified saddle from force convergence alone; exact saddle order is
+  the final additional test, and a zero-step higher-order saddle exits cleanly
+  for flattening instead of raising a step-length error.
+- Skip workflow-level PHVA and imaginary-mode export when a Hessian-family TS
+  run never reaches the convergence gate. Both imaginary-mode JSON fields are
+  `null`; plateau exits are `stalled` and other exits are `not_converged`.
+- Require an explicit `--modified-residue NAME:charge` for built-in residue
+  names whose protonation state does not imply one nominal charge. The same
+  option can override an existing dictionary charge for one extraction, after
+  which the built-in mapping is restored.
+- Estimate molecular volume from the union of complete van der Waals spheres,
+  using a radii-aware sampling box so overlaps are not counted twice and outer
+  sphere regions are not clipped. Label the unchanged molar-volume conversion
+  correctly as cm³/mol.
 - Stop forcing one reparametrization pass per growing-string cycle. An image
   already inside the parametrization tolerance is no longer displaced, and
   coincident parameter densities are rejected instead of divided.

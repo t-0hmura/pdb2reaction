@@ -2337,10 +2337,7 @@ def _run_dft_for_state(
 
     if args_yaml is not None:
         args.extend(["--config", str(args_yaml)])
-    # A fresh interpreter isolates the incompatible libcusolver versions linked
-    # by torch (UMA/ORB) and gpu4pyscf.
-    # Run DFT as a real subprocess to avoid libcusolver conflict with torch.
-    # Free GPU memory before spawning subprocess.
+    # Isolate the incompatible libcusolver versions used by torch and gpu4pyscf.
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
@@ -2909,10 +2906,7 @@ def _irc_and_match(
         irc_args.extend(["--step-size", str(float(irc_step_size))])
     if irc_never_stop is not None:
         _append_toggle_arg(irc_args, "--never-stop", bool(irc_never_stop))
-    # request the child's machine-readable result.json so the aggregate can
-    # gate on reported per-direction IRC convergence instead of trajectory-file
-    # existence. A never_stop / max-cycle direction still writes its trajectory,
-    # but the child reports it as nonconverged and we must not promote it.
+    # Request the child's convergence result instead of inferring it from files.
     _append_toggle_arg(irc_args, "--out-json", True)
     _echo()
     _echo_detail(f"[irc] Running EulerPC IRC → out={irc_dir}")
@@ -3191,8 +3185,9 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     default="",
     show_default=True,
     help=(
-        "Comma-separated residue names (with optional charge) to treat as amino acids "
-        "for backbone truncation and charge assignment. "
+        "Comma-separated residue names to treat as amino acids for backbone "
+        "truncation and charge assignment. NAME:charge adds or overrides the "
+        "nominal charge for this extraction; bare NAME defaults to 0. "
         "Examples: 'HD1,HD2,HD3' or 'HD1:0,SEP:-2'."
     ),
 )
@@ -3371,7 +3366,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     help=(
         "Convergence preset for single-structure optimizations and scan "
         "relaxations (gau_loose|gau|gau_tight|gau_vtight|baker|never). "
-        "Defaults to 'gau' when not provided. The MEP stage keeps its own "
+        "The MEP stage keeps its own "
         "--thresh-gsm / --thresh-dmf."
     ),
 )
@@ -3392,8 +3387,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     show_default="gau_loose",
     help=(
         "Convergence preset for the GSM string optimizer of the MEP stage "
-        "(gau_loose|gau|gau_tight|gau_vtight|baker|never). "
-        "Defaults to 'gau_loose' when not provided."
+        "(gau_loose|gau|gau_tight|gau_vtight|baker|never)."
     ),
 )
 @click.option(
@@ -3404,7 +3398,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     help=(
         "IPOPT dual-infeasibility tolerance for the DMF MEP stage: "
         "tight (0.04) | middle (0.10) | loose (0.20) or a positive float. "
-        "This is not a Gaussian preset. Defaults to 'tight' when not provided."
+        "This is not a Gaussian preset."
     ),
 )
 @click.option(
@@ -3444,7 +3438,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "--hessian-calc-mode",
     type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
     default=None, show_default="FiniteDifference",
-    help="Common MLIP Hessian calculation mode forwarded to tsopt and freq. Defaults to 'FiniteDifference'.",
+    help="Common MLIP Hessian calculation mode forwarded to tsopt and freq.",
 )
 # ===== Post-processing toggles =====
 @click.option(
@@ -3494,7 +3488,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "--tsopt-max-cycles",
     type=int,
     default=None, show_default="10000",
-    help="Override tsopt --max-cycles value. Defaults to 10000 when not provided.",
+    help="Override tsopt --max-cycles value.",
 )
 @click.option(
     "--tsopt-out-dir",
@@ -3566,8 +3560,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     help=(
         "Ignore IRC RMS-gradient, hard-gradient, energy-rise, and "
         "energy-change stops and trace until the IRC max-cycle limit. "
-        "Numerical/integration failures and external interruption still "
-        "stop the run. Default off."
+        "Numerical/integration failures and external interruption still stop the run."
     ),
 )
 @click.option(
@@ -3583,37 +3576,37 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "--freq-max-write",
     type=int,
     default=None, show_default="10",
-    help="Override freq --max-write value. Defaults to 10.",
+    help="Override freq --max-write value.",
 )
 @click.option(
     "--freq-amplitude-ang",
     type=float,
     default=None, show_default="0.8",
-    help="Override freq --amplitude-ang (Å). Defaults to 0.8.",
+    help="Override freq --amplitude-ang (Å).",
 )
 @click.option(
     "--freq-n-frames",
     type=int,
     default=None, show_default="20",
-    help="Override freq --n-frames value. Defaults to 20.",
+    help="Override freq --n-frames value.",
 )
 @click.option(
     "--freq-sort",
     type=click.Choice(["value", "abs"], case_sensitive=False),
     default=None, show_default="value",
-    help="Override freq mode sorting. Defaults to 'value'.",
+    help="Override freq mode sorting.",
 )
 @click.option(
     "--freq-temperature",
     type=float,
     default=None, show_default="298.15",
-    help="Override freq thermochemistry temperature (K). Defaults to 298.15 K.",
+    help="Override freq thermochemistry temperature (K).",
 )
 @click.option(
     "--freq-pressure",
     type=float,
     default=None, show_default="1.0",
-    help="Override freq thermochemistry pressure (atm). Defaults to 1.0 atm.",
+    help="Override freq thermochemistry pressure (atm).",
 )
 @click.option(
     "--dft-out-dir",
@@ -3628,25 +3621,25 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "--dft-func-basis",
     type=str,
     default=None, show_default="wb97m-v/def2-tzvpd",
-    help="Override dft --func-basis value. Defaults to 'wb97m-v/def2-tzvpd'.",
+    help="Override dft --func-basis value.",
 )
 @click.option(
     "--dft-max-cycle",
     type=int,
     default=None, show_default="100",
-    help="Override dft --max-cycle value. Defaults to 100.",
+    help="Override dft --max-cycle value.",
 )
 @click.option(
     "--dft-conv-tol",
     type=float,
     default=None, show_default="1e-9",
-    help="Override dft --conv-tol value. Defaults to 1e-9.",
+    help="Override dft --conv-tol value.",
 )
 @click.option(
     "--dft-grid-level",
     type=int,
     default=None, show_default="3",
-    help="Override dft --grid-level value. Defaults to 3.",
+    help="Override dft --grid-level value.",
 )
 @click.option(
     "--dft-engine",
@@ -3676,7 +3669,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     default=None,
     show_default="<out-dir>/_work/scan",
     help=(
-        "Override the scan output directory (default: <out-dir>/scan/). Relative paths are resolved "
+        "Override the scan output directory. Relative paths are resolved "
         "against the default parent."
     ),
 )
@@ -3686,27 +3679,26 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     default=None,
     show_default="True",
     help=(
-        "Override the scan subcommand indexing interpretation (True = 1-based, False = 0-based). "
-        "Defaults to 1-based."
+        "Override the scan subcommand indexing interpretation (True = 1-based, False = 0-based)."
     ),
 )
 @click.option(
     "--scan-max-step-size",
     type=float,
     default=None, show_default="0.20",
-    help="Override scan --max-step-size (Å). Defaults to 0.20 Å.",
+    help="Override scan --max-step-size (Å).",
 )
 @click.option(
     "--scan-bias-k",
     type=float,
     default=None, show_default="300",
-    help="Override scan harmonic bias strength k (eV/Å^2). Defaults to 300.",
+    help="Override scan harmonic bias strength k (eV/Å^2).",
 )
 @click.option(
     "--scan-relax-max-cycles",
     type=int,
     default=None, show_default="10000",
-    help="Override scan relaxation max cycles per step. Defaults to 10000.",
+    help="Override scan relaxation max cycles per step.",
 )
 @click.option(
     "--scan-preopt",
@@ -3721,8 +3713,8 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "scan_endopt_override",
     type=click.BOOL,
     default=None,
-    show_default="inherits --endopt",
-    help="Override scan --endopt flag. Defaults to False.",
+    show_default="False",
+    help="Override scan --endopt flag.",
 )
 @click.option(
     "--ref-pdb",
@@ -6079,9 +6071,7 @@ def cli(
                     "traj": seg_trj,
                     "inputs": (pL, pR),
                     "first_last": first_last,
-                    # Per-segment convergence from the path-opt child, so
-                    # the no-tsopt aggregate fails closed on a nonconverged MEP
-                    # segment instead of assuming it converged.
+                    # Explicit convergence from the path-opt child.
                     "converged": _read_path_opt_segment_converged(seg_dir),
                 }
             )
@@ -6175,9 +6165,6 @@ def cli(
                     "index": seg_idx,
                     "tag": info.get("tag", f"seg_{seg_idx:02d}"),
                     "kind": "seg",
-                    # Use the path-opt child's explicit convergence so
-                    # the no-tsopt path-opt aggregate gates on real per-segment
-                    # convergence rather than assuming the segment converged.
                     "converged": info.get("converged"),
                     "_mep_artifacts": [str(info["traj"])],
                     "barrier_kcal": float(barrier),

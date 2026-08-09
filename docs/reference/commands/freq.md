@@ -61,9 +61,9 @@ Options:
   --out-json / --no-out-json      Write machine-readable result.json to out_dir.
                                   [default: no-out-json]
   --hessian-calc-mode [finitedifference|analytical]
-                                  How the ML backend computes Hessian. Defaults
-                                  to 'FiniteDifference' (can also be set via
-                                  YAML).  [default: (FiniteDifference)]
+                                  How the ML backend computes the Hessian (can
+                                  also be set via YAML).  [default:
+                                  (FiniteDifference)]
   -b, --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
   --solvent TEXT                  Implicit solvent name for xTB correction (e.g.

@@ -12,7 +12,7 @@ from pysisyphus.intcoords.PrimTypes import normalize_prim_input, normalize_prim_
 from pysisyphus.optimizers import poly_fit
 from pysisyphus.optimizers.guess_hessians import ts_hessian, HessInit
 from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer, HessUpdate
-from pysisyphus.optimizers.Optimizer import get_data_model
+from pysisyphus.optimizers.Optimizer import ConvInfo, get_data_model
 
 from pysisyphus.helpers import array2string
 import torch
@@ -262,6 +262,7 @@ class TSHessianOptimizer(HessianOptimizer):
         self.negative_mode_seen = False
         self.rejected_mode_loss_steps = 0
         self.mode_loss_rejections_at_floor = 0
+        self.convergence_criteria_met = False
         self.exact_saddle_checks = 0
         self.saddle_recovery_cycles = 0
         self.saddle_recovery_steps = 0
@@ -802,10 +803,7 @@ class TSHessianOptimizer(HessianOptimizer):
                 self._last_exact_target_mode_is_negative = target_is_negative
                 self._last_exact_target_mode_reanchored = reanchor
 
-            # The reference mode guides root selection and remains diagnostic;
-            # it is not an additional terminal gate. A first-order saddle is
-            # certified by exact curvature, while reaction identity is tested
-            # by the downstream IRC.
+            # Exact curvature sets saddle order; IRC tests reaction identity.
             has_saddle_modes = negative_count >= len(self.roots)
             exact_order = negative_count == len(self.roots) and has_saddle_modes
             self._last_exact_n_imaginary = negative_count
@@ -855,9 +853,7 @@ class TSHessianOptimizer(HessianOptimizer):
         physical_mode = None
         target_is_negative = None
         if self.reference_mode is not None:
-            # Match the reference against the complete physical spectrum. The
-            # match guides root following and recovery, but exact saddle order
-            # remains independent of this diagnostic identity assignment.
+            # Use the reference only to identify and transport the target mode.
             reanchor = n_negative > len(self.roots)
             reference = self._exact_identity_reference_for_eigenspace(
                 eigvecs,
@@ -906,9 +902,6 @@ class TSHessianOptimizer(HessianOptimizer):
                     self._last_exact_target_mode_index = target_index
                     self._last_exact_target_mode_is_negative = target_is_negative
 
-        # The reference tangent guides root following but does not redefine a
-        # first-order saddle. Exact PHVA supplies the order; IRC supplies the
-        # endpoint-connectivity test.
         has_saddle_modes = n_negative >= len(self.roots)
         exact_order = n_negative == len(self.roots) and has_saddle_modes
         # Higher-order saddles are rejected by their exact order regardless of
@@ -1025,6 +1018,16 @@ class TSHessianOptimizer(HessianOptimizer):
         )
         return True
 
+    def _exact_phva_matches_current_geometry(self):
+        """Whether exact PHVA evaluated the geometry that is current now."""
+        if self._last_exact_cart_coords is None:
+            return False
+        current = np.asarray(self.geometry.cart_coords)
+        verified = np.asarray(self._last_exact_cart_coords)
+        return current.shape == verified.shape and np.allclose(
+            current, verified, rtol=0.0, atol=1e-12
+        )
+
     def _exact_saddle_matches_current_geometry(self):
         """Whether exact PHVA verified the geometry that is current now.
 
@@ -1033,15 +1036,9 @@ class TSHessianOptimizer(HessianOptimizer):
         coordinate identity explicit so a stale ``n_imag=1`` result can never
         authorize convergence at a different (possibly minimum) geometry.
         """
-        if (
-            self._last_exact_cart_coords is None
-            or not self._last_exact_saddle_verified
-        ):
-            return False
-        current = np.asarray(self.geometry.cart_coords)
-        verified = np.asarray(self._last_exact_cart_coords)
-        return current.shape == verified.shape and np.allclose(
-            current, verified, rtol=0.0, atol=1e-12
+        return bool(
+            self._last_exact_saddle_verified
+            and self._exact_phva_matches_current_geometry()
         )
 
     def _recovery_mode_has_negative_curvature(self, H, mode=None):
@@ -1093,31 +1090,6 @@ class TSHessianOptimizer(HessianOptimizer):
                     return frequency_cm < -self.saddle_imaginary_threshold_cm
 
         return curvature < -self.small_eigval_thresh
-
-    def _near_terminal_without_eigval_check(self):
-        """Whether force/energy or plateau criteria are nearly terminal."""
-        if not self.forces:
-            return False
-        forces = self._active_convergence_vector(self.forces[-1])
-        if self.thresh == "baker":
-            force_ok = np.abs(forces).max() <= 3.0e-4
-        else:
-            force_ok = True
-            if "max_force_thresh" in self.convergence:
-                force_ok &= np.abs(forces).max() <= self.max_force_thresh
-            if "rms_force_thresh" in self.convergence:
-                force_ok &= (
-                    np.sqrt(np.mean(forces**2)) <= self.rms_force_thresh
-                )
-
-        plateau = False
-        if self.energy_plateau and len(self.energies) >= self.energy_plateau_window:
-            window = self.energies[-self.energy_plateau_window :]
-            plateau = float(np.max(window) - np.min(window)) < self.energy_plateau_thresh
-        # Run exact PHVA once the force is terminal, before a zero proposed
-        # step could abort the cycle. Acceptance still uses the complete
-        # configured convergence rule in check_convergence().
-        return bool(force_ok or plateau)
 
     def _restore_hessian_trial_state(self, snapshot):
         self.H = snapshot["H"]
@@ -1237,52 +1209,7 @@ class TSHessianOptimizer(HessianOptimizer):
                 H, self._physical_ts_mode
             )
 
-        # Validate an apparent terminal point with the exact Hessian before it
-        # can be reported as a transition state.
         exact_checked = False
-        if (
-            self.verify_saddle
-            and self._near_terminal_without_eigval_check()
-            and not self._saddle_recovery_active
-        ):
-            snapshot = None
-            self.H = None
-            self.cur_H = None
-            del H, eigvals, eigvecs
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-            (
-                (gradient, H, eigvals, eigvecs),
-                (has_negative, physical_mode, physical_checked),
-            ) = self._refresh_and_verify_exact_saddle_model(
-                -np.asarray(self.forces[-1])
-            )
-            exact_checked = True
-            resetted = True
-            if not has_negative:
-                if self.saddle_recovery_max_cycles == 0:
-                    self.request_stop(
-                        "exact PHVA found no physical imaginary mode"
-                    )
-                    self._print_or_defer_cycle_message(
-                        "Exact saddle validation found no physical imaginary "
-                        "mode; stopping without accepting a local minimum."
-                    )
-                else:
-                    self._saddle_recovery_active = True
-                    self._saddle_recovery_mode = physical_mode
-                    self._saddle_recovery_sign = None
-                    self._physical_ts_mode = None
-                    self.saddle_recovery_cycles = 0
-                    self._print_or_defer_cycle_message(
-                        "Exact saddle validation found no physical imaginary mode; "
-                        "continuing with saddle-recovery steps instead of accepting "
-                        "a local minimum."
-                    )
-            elif physical_checked:
-                self._saddle_recovery_mode = None
-                self._physical_ts_mode = physical_mode
-
         if has_negative:
             # For a path-guided run that started in a convex region, a
             # quasi-Newton eigenvalue can flicker negative before the physical
@@ -1407,6 +1334,122 @@ class TSHessianOptimizer(HessianOptimizer):
 
         return energy, gradient, H, eigvals, eigvecs, resetted
 
+    @staticmethod
+    def _all_configured_criteria_met(conv_info):
+        """Whether every configured convergence criterion passed."""
+        return all(
+            (
+                conv_info.energy_converged,
+                conv_info.max_force_converged,
+                conv_info.rms_force_converged,
+                conv_info.max_step_converged,
+                conv_info.rms_step_converged,
+            )
+        )
+
+    def _all_configured_values_met(self, step):
+        """Evaluate convergence criteria for an actual proposed step."""
+        if not self.forces or self.thresh == "never":
+            return False
+        if len(self.modified_forces) == len(self.forces):
+            forces = self.modified_forces[-1]
+        else:
+            forces = self.forces[-1]
+        forces = self._active_convergence_vector(forces)
+        step = self._active_convergence_vector(step)
+        values = {
+            "max_force_thresh": np.abs(forces).max(),
+            "rms_force_thresh": np.sqrt(np.mean(np.square(forces))),
+            "max_step_thresh": np.abs(step).max(),
+            "rms_step_thresh": np.sqrt(np.mean(np.square(step))),
+        }
+        criteria_ok = all(
+            values[key] <= getattr(self, key)
+            for key in self.convergence
+        )
+        if self.thresh == "baker":
+            energy_ok = False
+            if len(self.energies) >= 2:
+                current = np.asarray(self.energies[-1])
+                previous = np.asarray(self.energies[-2])
+                energy_ok = bool(
+                    current.shape == previous.shape
+                    and np.all(np.abs(current - previous) < 1e-6)
+                )
+            if values["max_step_thresh"] <= self.min_step_norm:
+                energy_ok = True
+            criteria_ok = criteria_ok and energy_ok
+        return bool(criteria_ok)
+
+    def validate_terminal_saddle_for_step(self, step):
+        """Run exact PHVA after the actual step satisfies convergence criteria."""
+        criteria_met = self._all_configured_values_met(step)
+        if criteria_met:
+            self.convergence_criteria_met = True
+        if (
+            self.verify_saddle
+            and not self._saddle_recovery_active
+            and not self.stop_requested
+            and not self._exact_phva_matches_current_geometry()
+            and criteria_met
+        ):
+            self._validate_terminal_exact_saddle()
+            higher_order = (
+                self._last_exact_n_imaginary is not None
+                and self._last_exact_n_imaginary > len(self.roots)
+            )
+            active_step = self._active_convergence_vector(step)
+            if (
+                higher_order
+                and not self.stop_requested
+                and np.abs(active_step).max() <= self.min_step_norm
+            ):
+                self.request_stop(
+                    "exact higher-order saddle at zero step requires a "
+                    "flatten restart"
+                )
+
+    def _validate_terminal_exact_saddle(self):
+        """Run the exact curvature test after convergence."""
+        self.H = None
+        self.cur_H = None
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        (
+            (_, _, eigvals, eigvecs),
+            (has_negative, physical_mode, physical_checked),
+        ) = self._refresh_and_verify_exact_saddle_model(
+            -np.asarray(self.forces[-1])
+        )
+        self.update_ts_mode(eigvals, eigvecs)
+
+        if has_negative:
+            self.negative_mode_seen = True
+            self.mode_loss_rejections_at_floor = 0
+            self._saddle_recovery_active = False
+            self._saddle_recovery_mode = None
+            self._saddle_recovery_sign = None
+            self.saddle_recovery_cycles = 0
+            if physical_checked:
+                self._physical_ts_mode = physical_mode
+        elif self.saddle_recovery_max_cycles == 0:
+            self.request_stop("exact PHVA found no physical imaginary mode")
+            self._print_or_defer_cycle_message(
+                "Exact saddle validation found no physical imaginary mode; "
+                "stopping without accepting a local minimum."
+            )
+        else:
+            self._saddle_recovery_active = True
+            self._saddle_recovery_mode = physical_mode
+            self._saddle_recovery_sign = None
+            self._physical_ts_mode = None
+            self.saddle_recovery_cycles = 0
+            self._print_or_defer_cycle_message(
+                "Exact saddle validation found no physical imaginary mode; "
+                "continuing with saddle-recovery steps instead of accepting "
+                "a local minimum."
+            )
+
     def check_convergence(self, *args, **kwargs):
         # The TS optimizer owns saddle-recovery vs. energy-plateau precedence,
         # so it always suppresses the base plateau stall (allow_stall=False),
@@ -1425,21 +1468,23 @@ class TSHessianOptimizer(HessianOptimizer):
             # energy-plateau stall.
             return False, conv_info
         if self.verify_saddle:
-            # A plateau or a raw/quasi-Newton root is insufficient. Exact PHVA
-            # at these coordinates is an additional terminal requirement. For
-            # non-Baker presets, a verified saddle whose configured force
-            # thresholds are met is stationary; an outgoing quasi-Newton step
-            # is not a property of the current geometry. The `baker` preset
-            # keeps its own stricter rule (max/rms force, max/rms step and the
-            # energy change must all hold).
+            # Exact PHVA is the final curvature test. It must not replace the
+            # iterative Hessian until every configured force, step, and (for
+            # Baker) energy criterion has passed for this proposed step.
+            terminal_criteria = bool(
+                self.thresh != "never"
+                and self._all_configured_criteria_met(conv_info)
+            )
             exact_current_saddle = self._exact_saddle_matches_current_geometry()
-            if self.thresh in ("baker", "never"):
-                terminal_criteria = base_converged
-            else:
-                terminal_criteria = bool(
-                    conv_info.max_force_converged
-                    and conv_info.rms_force_converged
-                )
+            conv_info = ConvInfo(
+                conv_info.cur_cycle,
+                conv_info.energy_converged,
+                conv_info.max_force_converged,
+                conv_info.rms_force_converged,
+                conv_info.max_step_converged,
+                conv_info.rms_step_converged,
+                exact_current_saddle,
+            )
             converged = bool(exact_current_saddle and terminal_criteria)
             if not converged and outer_allow_stall and exact_current_saddle:
                 # Required curvature is present (a verified first-order saddle
@@ -1731,9 +1776,7 @@ class TSHessianOptimizer(HessianOptimizer):
         ip_step = np.zeros_like(gradient_trans)
         ip_gradient_trans = gradient_trans.copy()
 
-        # ``prev_*`` are consumed by BOTH the max and the min line search below,
-        # so compute them once above both blocks; otherwise min_line_search=True
-        # with max_line_search=False references undefined names (NameError).
+        # Both line-search branches consume the same previous-cycle state.
         if (self.max_line_search or self.min_line_search) and self.cur_cycle > 0:
             prev_energy = self.energies[-2]
             prev_gradient = -self.forces[-2]

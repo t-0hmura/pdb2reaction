@@ -996,6 +996,12 @@ def _tsopt_terminal_status(
     return "not_converged"
 
 
+def _hessian_postprocessing_is_ready(optimizer: Any) -> bool:
+    """Return whether convergence has authorized exact-Hessian work."""
+
+    return bool(getattr(optimizer, "convergence_criteria_met", False))
+
+
 def _no_exported_mode_message(
     n_imaginary: int,
     neg_freq_thresh_cm: float,
@@ -1143,10 +1149,7 @@ class HessianDimer:
         # result.json status reflects whether the TS-opt actually converged.
         self.is_converged = False
 
-        # Propagate the stall state from a child LBFGS whose
-        # energy plateaued (energy stopped decreasing while its force/step
-        # criteria stayed unmet).  A stall stops all later segments/loops and
-        # is never reported as a converged TS.
+        # A child stall stops later loops and remains non-converged.
         self.is_stalled = False
         self.stop_reason = ""
         self.saddle_order_verified = False
@@ -1318,8 +1321,7 @@ class HessianDimer:
         opt.run()
         steps = opt.cur_cycle + 1
         converged = opt.is_converged
-        # Propagate an energy-plateau stall from the child LBFGS. A
-        # stalled child is not converged; the caller stops all later segments.
+        # Propagate an energy-plateau stall from the child LBFGS.
         if getattr(opt, "is_stalled", False):
             self.is_stalled = True
             self.stop_reason = getattr(opt, "stop_reason", "") or self.stop_reason
@@ -1508,9 +1510,7 @@ class HessianDimer:
             v_cart = v_mw / np.sqrt(m3)
             v_cart /= np.linalg.norm(v_cart)
 
-            # v_cart is already the un-mass-weighted Cartesian normal-mode
-            # direction. Preserve it; an additional per-atom mass factor
-            # would rotate the flatten displacement away from the mode.
+            # v_cart is already the un-mass-weighted Cartesian normal mode.
             disp = amp_bohr * v_cart  # Bohr
             ref = self.geom.cart_coords.reshape(-1, 3)
 
@@ -1586,9 +1586,7 @@ class HessianDimer:
         _steps_loose, zero_step_loose, conv_loose = self._dimer_loop(self.thresh_loose)
         self.is_converged = conv_loose
 
-        # (3) Update mode & normal loop. A stalled loose loop stops all further
-        # optimization work: skip the Hessian/mode update and the
-        # normal + flatten loops so a stalled TS search is never retried.
+        # (3) Update mode and run the normal loop unless the loose loop stalled.
         zero_step_normal = zero_step_loose
         if not self.is_stalled:
             H = self._calc_full_hessian_cached(allow_reuse=zero_step_loose)
@@ -1619,8 +1617,7 @@ class HessianDimer:
             _steps_normal, zero_step_normal, conv_normal = self._dimer_loop(self.thresh)
             self.is_converged = conv_normal
 
-        # (4) Flatten loop — exact Hessian each iteration & optional Bofill update.
-        # A stalled optimization never enters the flatten/retry loop.
+        # (4) Flatten loop: exact Hessian each iteration; skip after a stall.
         if self.flatten_max_iter > 0 and not self.is_stalled:
             if self.flatten_loop_bofill:
                 click.echo("Flatten loop with Bofill-updated active Hessian (flatten displacements only)...")
@@ -1692,8 +1689,7 @@ class HessianDimer:
                 _steps_flat, zero_step_flat, conv_flat = self._dimer_loop(self.thresh)
                 self.is_converged = conv_flat
 
-                # A stall inside the flatten loop stops the remaining iterations
-                # Do not keep retrying a stalled optimization.
+                # Stop the remaining flatten iterations after a stall.
                 if self.is_stalled:
                     break
 
@@ -1801,8 +1797,10 @@ def _build_rsirfo_kwargs(
     opt_cfg: Dict[str, Any],
     rsirfo_cfg: Dict[str, Any],
     out_dir_path: Path,
+    *,
+    kind: str = "rsirfo",
 ) -> Dict[str, Any]:
-    """Return the exact kwargs used for RSIRFO after normalization."""
+    """Return normalized kwargs for one Hessian-based TS optimizer."""
     rs_args = dict(rsirfo_cfg)
     opt_base = dict(opt_cfg)
     opt_base["out_dir"] = str(out_dir_path)
@@ -1814,7 +1812,18 @@ def _build_rsirfo_kwargs(
         roots = [int(root_single)]
     if roots is None:
         roots = [0]
-    rs_args["roots"] = [int(x) for x in roots]
+    try:
+        normalized_roots = [int(x) for x in roots]
+    except TypeError as exc:
+        raise click.BadParameter(
+            "rsirfo.roots must be a list containing exactly one root index."
+        ) from exc
+    if len(normalized_roots) != 1:
+        raise click.BadParameter(
+            "rsirfo.roots must contain exactly one root index for a "
+            "first-order transition-state search."
+        )
+    rs_args["roots"] = normalized_roots
     rs_args.pop("root", None)
 
     # Keep top-level opt knobs (max_cycles/dump/thresh/...) authoritative unless
@@ -1825,9 +1834,22 @@ def _build_rsirfo_kwargs(
 
     rsirfo_kwargs = {**opt_base, **rs_args}
 
+    # ``rfo_overlaps`` belongs to ordinary RFO optimization, not TS optimization.
+    rsirfo_kwargs.pop("rfo_overlaps", None)
+
     # RSIRFO ignores these DIIS-related knobs; drop them for clarity.
     for diis_kw in ("gediis", "gdiis", "gdiis_thresh", "gediis_thresh", "gdiis_test_direction", "adapt_step_func"):
         rsirfo_kwargs.pop(diis_kw, None)
+
+    # Only RS-P-RFO calls TSHessianOptimizer.step_and_grad_from_line_search().
+    # RS-I-RFO and TRIM merely inherit the constructor arguments, so exposing
+    # them there would create accepted but ineffective configuration.
+    if kind == "rsprfo":
+        rsirfo_kwargs.setdefault("min_line_search", False)
+        rsirfo_kwargs.setdefault("max_line_search", False)
+    else:
+        rsirfo_kwargs.pop("min_line_search", None)
+        rsirfo_kwargs.pop("max_line_search", None)
 
     return _force_ts_reject_uphill_off(rsirfo_kwargs)
 
@@ -2309,7 +2331,9 @@ def cli(
             )
             click.echo(pretty_block("hessian_dimer", sd_cfg_for_echo))
         else:
-            rsirfo_kwargs_for_echo = _build_rsirfo_kwargs(opt_cfg, rsirfo_cfg, out_dir_path)
+            rsirfo_kwargs_for_echo = _build_rsirfo_kwargs(
+                opt_cfg, rsirfo_cfg, out_dir_path, kind=kind
+            )
             rsirfo_kwargs_for_echo = strip_inherited_keys(
                 rsirfo_kwargs_for_echo,
                 echo_opt,
@@ -2546,7 +2570,9 @@ def cli(
                 echo_resolved_device()
 
                 # Construct RSIRFO optimizer
-                rsirfo_kwargs = _build_rsirfo_kwargs(opt_cfg, rsirfo_cfg, out_dir_path)
+                rsirfo_kwargs = _build_rsirfo_kwargs(
+                    opt_cfg, rsirfo_cfg, out_dir_path, kind=kind
+                )
                 reference_mode = None
                 if reference_mode_path is not None:
                     try:
@@ -2566,14 +2592,6 @@ def cli(
                             f"degree of freedom ({reference_mode.size} read, {expected} expected)."
                         )
                     rsirfo_kwargs["reference_mode"] = reference_mode
-
-                # Both subspace line searches are off by default; this keeps them
-                # off for TRIM / RS-P-RFO even when YAML enables them, because
-                # those pure-numpy single-pass optimizers do not support the
-                # torch-backed line search that RS-I-RFO uses.
-                if kind != "rsirfo":
-                    rsirfo_kwargs["min_line_search"] = False
-                    rsirfo_kwargs["max_line_search"] = False
 
                 optimizer = TSOPT_CLASS_MAP[kind](geometry, **rsirfo_kwargs)
 
@@ -2647,16 +2665,35 @@ def cli(
                     del H
                     return freqs_local, modes_local
 
-                freqs_cm, modes = _calc_freqs_and_modes()
-                click.echo(pretty_block("rigid_projection", rigid_projection_info))
-
                 neg_freq_thresh_cm = float(simple_cfg.get("neg_freq_thresh_cm", 5.0))
-                neg_mask = freqs_cm < -abs(neg_freq_thresh_cm)
-                n_imag = int(np.sum(neg_mask))
-                ims = [float(x) for x in freqs_cm if x < -abs(neg_freq_thresh_cm)]
-                emit(f"[Imaginary modes] n={n_imag}  ({ims})", narrative=True)
-                _warn_if_leading_imaginary_mode_is_soft(ims)
-                initially_reported_ims = tuple(ims)
+                hessian_postprocessing_ready = _hessian_postprocessing_is_ready(
+                    last_optimizer
+                )
+                saddle_multistart_attempts = []
+                if hessian_postprocessing_ready:
+                    freqs_cm, modes = _calc_freqs_and_modes()
+                    click.echo(
+                        pretty_block("rigid_projection", rigid_projection_info)
+                    )
+                    neg_mask = freqs_cm < -abs(neg_freq_thresh_cm)
+                    n_imag = int(np.sum(neg_mask))
+                    ims = [
+                        float(x)
+                        for x in freqs_cm
+                        if x < -abs(neg_freq_thresh_cm)
+                    ]
+                    emit(
+                        f"[Imaginary modes] n={n_imag}  ({ims})",
+                        narrative=True,
+                    )
+                    _warn_if_leading_imaginary_mode_is_soft(ims)
+                    initially_reported_ims = tuple(ims)
+                else:
+                    freqs_cm = np.empty(0, dtype=float)
+                    modes = None
+                    n_imag = None
+                    ims = []
+                    initially_reported_ims = ()
 
                 # A local minimum plus its Hessian does not identify the
                 # intended neighboring saddle.  When the path supplied that
@@ -2664,14 +2701,14 @@ def cli(
                 # bounded displacements on both sides of the original HEI.
                 # Keep the original result if neither same-optimizer restart
                 # reaches a verified first-order saddle.
-                saddle_multistart_attempts = []
                 target_mode_is_negative = getattr(
                     last_optimizer,
                     "_last_exact_target_mode_is_negative",
                     None,
                 )
                 if (
-                    int(rsirfo_kwargs.get("saddle_recovery_max_cycles", 0)) > 0
+                    hessian_postprocessing_ready
+                    and int(rsirfo_kwargs.get("saddle_recovery_max_cycles", 0)) > 0
                     and not last_optimizer.is_converged
                     and not getattr(last_optimizer, "is_stalled", False)
                     and reference_mode is not None
@@ -2829,18 +2866,27 @@ def cli(
                             geometry.as_xyz(), encoding="utf-8"
                         )
 
-                flatten_max_iter = int(simple_cfg.get("flatten_max_iter", 0))
+                flatten_max_iter = (
+                    int(simple_cfg.get("flatten_max_iter", 0))
+                    if hessian_postprocessing_ready
+                    else 0
+                )
                 target_mode_is_negative = getattr(
                     last_optimizer,
                     "_last_exact_target_mode_is_negative",
                     None,
                 )
-                flatten_max_iter, flatten_vetoed = _effective_flatten_iterations(
-                    flatten_max_iter,
-                    has_reference_mode=reference_mode is not None,
-                    n_imag=n_imag,
-                    target_mode_is_negative=target_mode_is_negative,
-                )
+                if hessian_postprocessing_ready:
+                    flatten_max_iter, flatten_vetoed = (
+                        _effective_flatten_iterations(
+                            flatten_max_iter,
+                            has_reference_mode=reference_mode is not None,
+                            n_imag=n_imag,
+                            target_mode_is_negative=target_mode_is_negative,
+                        )
+                    )
+                else:
+                    flatten_vetoed = False
                 if flatten_vetoed:
                     # There is no path-correlated negative mode to preserve.
                     # Flattening unrelated negatives could manufacture the
@@ -3108,49 +3154,63 @@ def cli(
                         click.echo("[convert] WARNING: 'optimization_trj.xyz' not found; skipping conversion.", err=True)
 
                 # --- RSIRFO: write all final imaginary modes ---
-                neg_idx, final_ims = _imaginary_mode_indices_and_values(
-                    freqs_cm, neg_freq_thresh_cm
-                )
-                if tuple(final_ims) != initially_reported_ims:
-                    neg_idx = _echo_imaginary_modes(
+                _hessian_saddle_verified = False
+                if hessian_postprocessing_ready:
+                    neg_idx, final_ims = _imaginary_mode_indices_and_values(
                         freqs_cm, neg_freq_thresh_cm
                     )
-                _saddle_order = _certified_saddle_order(freqs_cm)
-                _hessian_saddle_verified = _saddle_order == 1
-                if not _hessian_saddle_verified:
-                    last_optimizer.is_converged = False
-                    if _saddle_order == 0:
-                        warning = "No negative frequency found"
-                    else:
-                        warning = f"Found {_saddle_order} negative frequencies"
-                    click.echo(
-                        f"[WARNING] {warning} in the final exact Hessian; "
-                        "this geometry is not a first-order saddle and is "
-                        "marked not_converged.",
-                        err=True,
-                    )
-                if len(neg_idx) > 0:
-                    vib_dir = out_dir_path / "vib"
-                    ref_pdb_mode = source_path if source_path.suffix.lower() == ".pdb" else None
-                    _write_all_imaginary_modes(
-                        geometry,
-                        freqs_cm,
-                        modes,
-                        neg_freq_thresh_cm,
-                        _safe_masses_amu(geometry.atomic_numbers).tolist(),
-                        vib_dir,
-                        prepared_input=prepared_input,
-                        ref_pdb=ref_pdb_mode,
-                        amplitude_ang=0.8,
-                        n_frames=20,
-                    )
+                    if tuple(final_ims) != initially_reported_ims:
+                        neg_idx = _echo_imaginary_modes(
+                            freqs_cm, neg_freq_thresh_cm
+                        )
+                    _saddle_order = _certified_saddle_order(freqs_cm)
+                    _hessian_saddle_verified = _saddle_order == 1
+                    if not _hessian_saddle_verified:
+                        last_optimizer.is_converged = False
+                        if _saddle_order == 0:
+                            warning = "No negative frequency found"
+                        else:
+                            warning = (
+                                f"Found {_saddle_order} negative frequencies"
+                            )
+                        click.echo(
+                            f"[WARNING] {warning} in the final exact Hessian; "
+                            "this geometry is not a first-order saddle and is "
+                            "marked not_converged.",
+                            err=True,
+                        )
+                    if len(neg_idx) > 0:
+                        vib_dir = out_dir_path / "vib"
+                        ref_pdb_mode = (
+                            source_path
+                            if source_path.suffix.lower() == ".pdb"
+                            else None
+                        )
+                        _write_all_imaginary_modes(
+                            geometry,
+                            freqs_cm,
+                            modes,
+                            neg_freq_thresh_cm,
+                            _safe_masses_amu(
+                                geometry.atomic_numbers
+                            ).tolist(),
+                            vib_dir,
+                            prepared_input=prepared_input,
+                            ref_pdb=ref_pdb_mode,
+                            amplitude_ang=0.8,
+                            n_frames=20,
+                        )
 
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
 
                 # Collect result data for --out-json (hess-family: rsprfo/rsirfo/trim)
                 if out_json:
-                    _rsirfo_imag = _certified_negative_frequencies(freqs_cm)
+                    _rsirfo_imag = (
+                        _certified_negative_frequencies(freqs_cm)
+                        if hessian_postprocessing_ready
+                        else None
+                    )
                     # Frequency analysis and failed multistart restoration leave
                     # the shared Geometry intentionally detached.  Evaluate the
                     # final energy through the already-loaded calculator instead
@@ -3164,7 +3224,11 @@ def cli(
                             saddle_verified=_hessian_saddle_verified,
                         ),
                         "energy_hartree": _rsirfo_energy,
-                        "n_imaginary_modes": len(_rsirfo_imag),
+                        "n_imaginary_modes": (
+                            len(_rsirfo_imag)
+                            if _rsirfo_imag is not None
+                            else None
+                        ),
                         "imaginary_frequencies_cm": _rsirfo_imag,
                         "opt_mode": kind,
                         "n_atoms": len(geometry.atoms),
@@ -3302,16 +3366,23 @@ def cli(
                     getattr(last_optimizer, "is_converged", False)
                 )
             if _tsopt_failed:
-                click.echo(
-                    "[tsopt] TS optimization did not reach a validated "
-                    "first-order saddle. Retry with --flatten when surplus "
-                    "imaginary modes remain. In the all workflow, "
-                    "--refine-path can improve a poor MEP before tsopt, "
-                    "but recursive refinement may split the path into multiple "
-                    "segments and substantially increase cost; it is off by "
-                    "default.",
-                    err=True,
-                )
+                if kind != "dimer" and not hessian_postprocessing_ready:
+                    click.echo(
+                        "[tsopt] Convergence criteria were not met; PHVA was "
+                        "not run.",
+                        err=True,
+                    )
+                else:
+                    click.echo(
+                        "[tsopt] TS optimization did not reach a validated "
+                        "first-order saddle. Retry with --flatten when surplus "
+                        "imaginary modes remain. In the all workflow, "
+                        "--refine-path can improve a poor MEP before tsopt, "
+                        "but recursive refinement may split the path into "
+                        "multiple segments and substantially increase cost; "
+                        "it is off by default.",
+                        err=True,
+                    )
 
             # result.json (if --out-json)
             if out_json:

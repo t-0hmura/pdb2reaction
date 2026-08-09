@@ -1,16 +1,9 @@
 # pysisyphus/normal_modes.py
 
-"""Pure normal-mode kernel: mass weighting, rigid projection, diagonalization.
+"""Dependency-free normal-mode kernels for the bundled engine.
 
-This is a *lower* bundled-engine module: a sibling of ``pysisyphus.tr_projection``
-that sits BELOW the product workflows. It must import neither ``pdb2reaction`` nor
-``mlmm`` so that bundled-engine code (e.g.
-``pysisyphus.tsoptimizers.TSHessianOptimizer``) can consume the mass/mode kernel
-without an upward product dependency.
-
-The bounded-peak Hessian symmetrizer lives here as well so the module is
-self-contained; ``pdb2reaction.core.utils`` re-exports it for backward
-compatibility.
+Includes mass weighting, rigid projection, diagonalization, and bounded-peak
+Hessian symmetrization.
 """
 
 from __future__ import annotations
@@ -34,10 +27,8 @@ from pysisyphus.tr_projection import (
 def symmetrize_inplace(H, chunk: int = 512):
     """Symmetrize a square Hessian-like tensor in place with bounded peak VRAM.
 
-    Replaces the 2x-peak idiom ``_t = H.T.clone(); H.add_(_t).mul_(0.5); del _t``
-    with a chunked average that writes BOTH triangles symmetrically (no
-    upper-triangle-only tricks). Peak extra allocation is bounded by
-    ``chunk * chunk`` elements (vs ``N * N`` for the naive form).
+    The chunked average writes both triangles and uses at most ``chunk**2``
+    temporary elements.
     """
 
     if H.ndim != 2 or H.shape[0] != H.shape[1]:
@@ -133,8 +124,6 @@ def _mw_projected_hessian(H: torch.Tensor,
             projection_info.clear()
             projection_info.update(info.as_dict())
 
-        # Bounded-peak symmetrization (helper writes both triangles; peak temp
-        # <= chunk^2 instead of full N×N clone).
         symmetrize_inplace(H)
 
         del masses_amu_t, m3, inv_sqrt_m, inv_sqrt_m_col, inv_sqrt_m_row
@@ -168,11 +157,8 @@ def _frequencies_cm_and_modes(H: torch.Tensor,
                               atomic_numbers: List[int],
                               coords_bohr: np.ndarray,
                               device: torch.device,
-                              # tol is retained for signature compatibility and is ignored.
-                              # Rigid modes are removed by diagonalizing the orthogonal
-                              # complement of the rigid basis, so exactly the constrained
-                              # rigid rank is eliminated and every remaining root — including
-                              # genuine low positive and low negative modes — is returned.
+                              # Kept for compatibility; complement diagonalization
+                              # retains every non-rigid root.
                               tol: float = 1e-6,
                               freeze_idx: Optional[List[int]] = None,
                               tr_projection: str = "constrained",
@@ -238,7 +224,6 @@ def _frequencies_cm_and_modes(H: torch.Tensor,
                 masses_act = masses_au_t[active_idx]
                 Hmw_act = _mass_weighted_hessian(H, masses_act)
                 Hmw_act, lift = compact_project_hessian(Hmw_act, Q)
-                # Bounded-peak symmetrization (helper writes both triangles).
                 symmetrize_inplace(Hmw_act)
 
                 omega2, Vred = torch.linalg.eigh(Hmw_act)
@@ -270,7 +255,6 @@ def _frequencies_cm_and_modes(H: torch.Tensor,
                     torch.cuda.empty_cache()
 
                 H, lift = compact_project_hessian(H, Q)
-                # Bounded-peak symmetrization (helper writes both triangles).
                 symmetrize_inplace(H)
 
                 omega2, Vred = torch.linalg.eigh(H)

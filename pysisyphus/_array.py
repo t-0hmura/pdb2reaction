@@ -1,15 +1,6 @@
-"""Tiny array-namespace shim for the pdb2reaction pysisyphus fork.
+"""Matched NumPy/Torch operations for bundled optimizer and IRC paths.
 
-The bundled pysisyphus carries a deliberate torch-vs-numpy dispatch in the
-hot Hessian path so the same code runs both as a numpy CPU optimiser and as a
-torch GPU optimiser. This shim centralizes array-backend selection and matched
-primitive operations so optimizer and IRC paths do not duplicate inline
-``isinstance`` branches.
-
-Behaviour-preserving by construction: torch path and numpy path each call
-the same operation (`torch.outer` / `np.outer` etc.) that the inline branch
-already called, with the same dtype/device coercion via
-`torch.as_tensor(b, dtype=a.dtype, device=a.device)`.
+Torch operands preserve the dtype and device of the leading array.
 """
 from __future__ import annotations
 
@@ -63,18 +54,8 @@ def _dot(a: ArrayLike, b: ArrayLike) -> ArrayLike:
 def active_square(H: ArrayLike, idx, *, row_chunk_bytes: int = 2 * 1024 * 1024) -> ArrayLike:
     """Extract the active square sub-block ``H[idx][:, idx]`` with bounded peak.
 
-    Equivalent to ``H[np.ix_(idx, idx)]`` (numpy) or
-    ``H.index_select(0, idx).index_select(1, idx)`` (torch), but for torch the
-    chained form first materialises a full ``(len(idx), n)`` row temporary. For
-    a large Hessian that intermediate can dominate peak VRAM. This routine
-    preallocates the ``(m, m)`` output and fills it in bounded row chunks, so
-    the transient peak is ``output + one (chunk, n)`` block instead of
-    ``output + (m, n)``. It is a pure gather (no arithmetic) and therefore
-    bit-identical to the chained result. ``row_chunk_bytes`` is a per-block byte
-    budget; the row count is derived from it and clamped to ``[1, m]``.
-
-    numpy inputs keep the simple ``np.ix_`` path (numpy fancy indexing does not
-    build the same oversized intermediate).
+    The Torch path preallocates the output and gathers bit-identical row chunks;
+    ``row_chunk_bytes`` bounds each temporary block. NumPy uses ``np.ix_``.
     """
     if not isinstance(H, torch.Tensor):
         idx_np = np.asarray(idx)

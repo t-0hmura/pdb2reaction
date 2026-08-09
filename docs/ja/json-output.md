@@ -170,14 +170,17 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `n_imaginary_modes` | int | 虚振動の数 |
-| `imaginary_frequencies_cm` | float[] | 虚振動数 (cm⁻¹, 負の値) |
+| `n_imaginary_modes` | int\|null | 虚振動の数。収束に一度も到達せず PHVA を実行しなかった場合は `null` |
+| `imaginary_frequencies_cm` | float[]\|null | 虚振動数 (cm⁻¹, 負の値)。PHVA 未実行時は `null` |
 | `opt_mode` | string | `"rsprfo"` (default) / `"rsirfo"` / `"trim"` / `"dimer"` |
 | `reference_mode_file` | string\|null | `--ref-mode` で渡した advanced path-mode ファイル。通常は `all` が生成して内部指定します |
 | `safeguards` | object | exact saddle check、最終目的modeのindex/overlap、停止理由、および明示的に有効化した場合のmode-loss/recovery診断。これらの回復経路はデフォルト無効 |
 | `rigid_projection` | object | 剛体モードとexact Hessian のprovenance。[projection provenance](#rigid-projection-provenance)を参照 |
 
 `files` には `imaginary_mode_files`（vib ファイルリスト）を含む場合があります。
+Hessian 系 optimizer が設定された全収束基準へ一度も到達しない場合、
+最終 PHVA と mode 出力は実行せず、虚振動関連の2フィールドを `null` とします。
+energy plateau による停止は `stalled`、それ以外は `not_converged` とします。
 Cartesian Hessian mode の `status: "converged"` には、最終 exact PHVA で
 有意な虚振動がちょうど1個必要です。対応する内部座標 mode では、代わりに
 exact optimizer-space Hessian の負の固有値が1個であることを要求します。

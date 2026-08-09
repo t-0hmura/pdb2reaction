@@ -3712,12 +3712,7 @@ def validate_charge_spin_for_prepared(prepared_or_list, charge, multiplicity):
         validate_charge_spin_at_path(prepared.geom_path, charge, multiplicity)
 
 
-# Compatibility re-export: the bounded-peak Hessian symmetrizer lives in the
-# bundled-engine layer (``pysisyphus.normal_modes``) so the pure
-# normal-mode kernel there stays free of any upward ``pdb2reaction`` import. It is
-# re-exported here so existing callers of
-# ``pdb2reaction.core.utils.symmetrize_inplace`` (backends/uma, workflows/tsopt,
-# tests) keep resolving to the SAME function object.
+# Compatibility re-export from the bundled-engine layer.
 from pysisyphus.normal_modes import symmetrize_inplace  # noqa: F401,E402
 
 
