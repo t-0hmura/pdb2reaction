@@ -395,6 +395,9 @@ def _run_fix_altloc(
     force: bool,
 ) -> None:
     """Business logic for fix-altloc (separated from CLI layer)."""
+    if inplace and out is not None:
+        raise click.UsageError("--inplace cannot be used with --out.")
+
     pdb_files = collect_pdb_files(input_path, recursive)
     if not pdb_files:
         raise click.ClickException(f"No .pdb files found in: {input_path}")

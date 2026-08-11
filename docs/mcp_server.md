@@ -154,7 +154,6 @@ VS Code instead uses a top-level `servers` object in `.vscode/mcp.json`
 ### Custom Python MCP client
 
 ```python
-import subprocess
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 

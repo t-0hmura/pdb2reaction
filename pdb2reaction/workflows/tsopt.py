@@ -997,9 +997,12 @@ def _tsopt_terminal_status(
 
 
 def _hessian_postprocessing_is_ready(optimizer: Any) -> bool:
-    """Return whether convergence has authorized exact-Hessian work."""
+    """Return whether convergence or a plateau authorizes final PHVA."""
 
-    return bool(getattr(optimizer, "convergence_criteria_met", False))
+    return bool(
+        getattr(optimizer, "is_converged", False)
+        or getattr(optimizer, "is_stalled", False)
+    )
 
 
 def _no_exported_mode_message(
@@ -1299,7 +1302,6 @@ class HessianDimer:
             "frozen_atoms": self.freeze_atoms,
             "rigid_basis": rigid_basis.detach().cpu().numpy(),
             "rigid_basis_getter": rigid_basis_at,
-            "write_orientations": False,
             "seed": 0,
             "mem": self.mem,
             "out_dir": str(self.out_dir),
@@ -1584,11 +1586,17 @@ class HessianDimer:
             click.echo("Loose dimer loop...")
 
         _steps_loose, zero_step_loose, conv_loose = self._dimer_loop(self.thresh_loose)
-        self.is_converged = conv_loose
+        thresholds_match = self.thresh_loose == self.thresh
+        self.is_converged = bool(conv_loose and thresholds_match)
 
-        # (3) Update mode and run the normal loop unless the loose loop stalled.
-        zero_step_normal = zero_step_loose
-        if not self.is_stalled:
+        # (3) Update mode and run the normal loop only while budget remains.
+        zero_step_normal = False
+        if self.is_stalled:
+            click.echo("[tsopt] Optimization stalled (energy plateau); skipping the normal dimer loop.")
+        elif thresholds_match and conv_loose:
+            zero_step_normal = zero_step_loose
+            click.echo("[tsopt] Loose and final thresholds are identical; strict pass is complete.")
+        elif (self.max_total_cycles - self._cycles_spent) > 0:
             H = self._calc_full_hessian_cached(allow_reuse=zero_step_loose)
             coords_bohr_t = torch.as_tensor(self.geom.cart_coords.reshape(-1, 3),
                                             dtype=H.dtype, device=H.device)
@@ -1616,9 +1624,15 @@ class HessianDimer:
             click.echo("Normal dimer loop...")
             _steps_normal, zero_step_normal, conv_normal = self._dimer_loop(self.thresh)
             self.is_converged = conv_normal
+        else:
+            click.echo("[tsopt] Reached --max-cycles budget after loose loop; skipping normal dimer loop.")
 
-        # (4) Flatten loop: exact Hessian each iteration; skip after a stall.
-        if self.flatten_max_iter > 0 and not self.is_stalled:
+        # (4) Flatten loop: exact Hessian each iteration while budget remains.
+        if (
+            self.flatten_max_iter > 0
+            and not self.is_stalled
+            and (self.max_total_cycles - self._cycles_spent) > 0
+        ):
             if self.flatten_loop_bofill:
                 click.echo("Flatten loop with Bofill-updated active Hessian (flatten displacements only)...")
             else:
@@ -1693,12 +1707,17 @@ class HessianDimer:
                 if self.is_stalled:
                     break
 
+                if (self.max_total_cycles - self._cycles_spent) <= 0:
+                    break
+
                 # (f) After dimer optimization, recompute an exact Hessian for the next iteration
                 H = self._calc_full_hessian_cached(allow_reuse=zero_step_flat)
                 if H.size(0) == 3 * N:
                     H = _extract_active_block(H, mask_dof)
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
+        elif self.flatten_max_iter > 0 and not self.is_stalled:
+            click.echo("[tsopt] Reached --max-cycles budget; skipping flatten loop.")
 
         # Surface non-convergence: if the last optimization loop exhausted the
         # global cycle budget without the optimizer reporting convergence, the
@@ -1723,6 +1742,13 @@ class HessianDimer:
         final_xyz = self.out_dir / "final_geometry.xyz"
         atoms_final = Atoms(self.geom.atoms, positions=(self.geom.cart_coords.reshape(-1, 3) * BOHR2ANG), pbc=False)
         write(final_xyz, atoms_final)
+
+        if not self.is_converged and not self.is_stalled:
+            click.echo(
+                "[tsopt] Convergence criteria were not met; PHVA was not run.",
+                err=True,
+            )
+            return
 
         # Final Hessian → imaginary mode animation
         H = self._calc_full_hessian_cached(allow_reuse=True)
@@ -1791,6 +1817,31 @@ def _force_ts_reject_uphill_off(kwargs: Dict[str, Any]) -> Dict[str, Any]:
     effective = dict(kwargs)
     effective["reject_uphill"] = False
     return effective
+
+
+def _resolve_shared_optimizer_value(
+    opt_cfg: Dict[str, Any],
+    downstream_cfg: Dict[str, Any],
+    key: str,
+    *,
+    opt_explicit: bool,
+    downstream_explicit: bool,
+    downstream_default: Any,
+    downstream_section: str,
+) -> None:
+    """Resolve one duplicated optimizer setting without silent precedence."""
+    if opt_explicit and downstream_explicit and opt_cfg[key] != downstream_cfg[key]:
+        raise click.BadParameter(
+            f"opt.{key} and {downstream_section}.{key} conflict."
+        )
+    if opt_explicit:
+        value = opt_cfg[key]
+    elif downstream_explicit:
+        value = downstream_cfg[key]
+    else:
+        value = downstream_default
+    opt_cfg[key] = value
+    downstream_cfg[key] = value
 
 
 def _build_rsirfo_kwargs(
@@ -1956,7 +2007,7 @@ def _validate_reference_mode_optimizer(
     "--dump/--no-dump",
     default=False,
     show_default=True,
-    help="Write the per-cycle optimization trajectory ('optimization_trj.xyz' for rsirfo/hess, 'optimization_all_trj.xyz' for grad/dimer) in the output directory.",
+    help="Write the per-cycle trajectory ('optimization_trj.xyz' for RS-P-RFO/RS-I-RFO/TRIM, 'optimization_all_trj.xyz' for Dimer).",
 )
 @click.option("-o", "--out-dir", type=str, default=OUT_DIR_TSOPT, show_default=True, help="Output directory.")
 @click.option(
@@ -2166,8 +2217,6 @@ def cli(
             opt_cfg["out_dir"] = out_dir
         if cli_param_overridden(ctx, "thresh") and thresh is not None:
             opt_cfg["thresh"] = str(thresh)
-            simple_cfg["thresh"] = str(thresh)
-            rsirfo_cfg["thresh"] = str(thresh)
         # --stop-plateau* reaches every optimizer this command drives: the
         # RS-I-RFO/RS-P-RFO macro and the dimer's inner LBFGS, whose kwargs come
         # from `hessian_dimer.lbfgs` alone and inherit nothing from `opt`.
@@ -2179,12 +2228,8 @@ def cli(
         if stop_plateau_window is not None:
             _cli_plateau["energy_plateau_window"] = int(stop_plateau_window)
         if _cli_plateau:
-            _cli_dimer_lbfgs = dict(simple_cfg.get("lbfgs", {}))
             for _plateau_key, _plateau_val in _cli_plateau.items():
                 opt_cfg[_plateau_key] = _plateau_val
-                rsirfo_cfg[_plateau_key] = _plateau_val
-                _cli_dimer_lbfgs[_plateau_key] = _plateau_val
-            simple_cfg["lbfgs"] = _cli_dimer_lbfgs
         if cli_param_overridden(ctx, "cli_coord_type") and cli_coord_type is not None:
             geom_cfg["coord_type"] = str(cli_coord_type).lower()
         if cli_param_overridden(ctx, "hessian_calc_mode") and hessian_calc_mode is not None:
@@ -2212,6 +2257,94 @@ def cli(
                 (rsirfo_cfg, (("rsirfo",),)),
             ],
         )
+
+        def _yaml_has(section: str, key: str) -> bool:
+            value = merged_yaml_cfg.get(section)
+            return isinstance(value, dict) and key in value
+
+        kind = normalize_choice(
+            opt_mode,
+            param="--opt-mode",
+            alias_groups=TSOPT_MODE_ALIASES,
+            allowed_hint="grad|hess|dimer|rsirfo|trim|rsprfo",
+        )
+        if kind != "dimer":
+            cli_shared = {
+                "max_cycles": "max_cycles",
+                "dump": "dump",
+                "thresh": "thresh",
+                "out_dir": "out_dir",
+                "print_every": "print_every",
+                "energy_plateau": "stop_plateau",
+                "energy_plateau_thresh": "stop_plateau_thresh",
+                "energy_plateau_window": "stop_plateau_window",
+            }
+            for key in sorted(OPT_BASE_KW_LOCAL.keys() & RSIRFO_KW.keys()):
+                cli_name = cli_shared.get(key)
+                _resolve_shared_optimizer_value(
+                    opt_cfg,
+                    rsirfo_cfg,
+                    key,
+                    opt_explicit=(
+                        _yaml_has("opt", key)
+                        or (cli_name is not None and cli_param_overridden(ctx, cli_name))
+                    ),
+                    downstream_explicit=_yaml_has("rsirfo", key),
+                    downstream_default=RSIRFO_KW[key],
+                    downstream_section="rsirfo",
+                )
+        else:
+            _resolve_shared_optimizer_value(
+                opt_cfg,
+                simple_cfg,
+                "thresh",
+                opt_explicit=(
+                    _yaml_has("opt", "thresh")
+                    or cli_param_overridden(ctx, "thresh")
+                ),
+                downstream_explicit=_yaml_has("hessian_dimer", "thresh"),
+                downstream_default=HESSIAN_DIMER_CLI_KW["thresh"],
+                downstream_section="hessian_dimer",
+            )
+            simple_lbfgs = dict(simple_cfg.get("lbfgs", {}))
+            dimer_shared = {
+                "print_every": "print_every",
+                "energy_plateau": "stop_plateau",
+                "energy_plateau_thresh": "stop_plateau_thresh",
+                "energy_plateau_window": "stop_plateau_window",
+            }
+            dimer_yaml = merged_yaml_cfg.get("hessian_dimer", {})
+            dimer_lbfgs_yaml = (
+                dimer_yaml.get("lbfgs", {})
+                if isinstance(dimer_yaml, dict)
+                else {}
+            )
+            for key, cli_name in dimer_shared.items():
+                _resolve_shared_optimizer_value(
+                    opt_cfg,
+                    simple_lbfgs,
+                    key,
+                    opt_explicit=(
+                        _yaml_has("opt", key)
+                        or cli_param_overridden(ctx, cli_name)
+                    ),
+                    downstream_explicit=(
+                        isinstance(dimer_lbfgs_yaml, dict)
+                        and key in dimer_lbfgs_yaml
+                    ),
+                    downstream_default=HESSIAN_DIMER_CLI_KW["lbfgs"][key],
+                    downstream_section="hessian_dimer.lbfgs",
+                )
+            simple_cfg["lbfgs"] = simple_lbfgs
+
+        _dimer_lbfgs = merged_yaml_cfg.get("hessian_dimer", {})
+        if isinstance(_dimer_lbfgs, dict):
+            _dimer_lbfgs = _dimer_lbfgs.get("lbfgs", {})
+        if isinstance(_dimer_lbfgs, dict) and "max_cycles" in _dimer_lbfgs:
+            raise click.BadParameter(
+                "hessian_dimer.lbfgs.max_cycles is not configurable; "
+                "use opt.max_cycles."
+            )
 
         # A TS search follows a saddle-search direction, so physical energy is
         # not required to decrease. Keep this invariant after every YAML merge.
@@ -2272,12 +2405,6 @@ def cli(
         except BackendError as exc:
             raise click.ClickException(str(exc)) from exc
 
-        kind = normalize_choice(
-            opt_mode,
-            param="--opt-mode",
-            alias_groups=TSOPT_MODE_ALIASES,
-            allowed_hint="grad|hess|dimer|rsirfo|trim|rsprfo",
-        )
         if kind == "dimer":
             update_interval = simple_cfg.get("update_interval_hessian", 500)
             if isinstance(update_interval, bool):

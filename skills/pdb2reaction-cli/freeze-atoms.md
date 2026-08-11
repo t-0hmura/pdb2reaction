@@ -103,7 +103,7 @@ the cap records for downstream use.
 | `opt`, `tsopt`, `freq`, `irc` | ✓ | ✓ | ✓ |
 | `path-opt`, `path-search` | ✓ | ✓ | ✓ |
 | `scan`, `scan2d`, `scan3d` | ✓ | ✓ | ✓ |
-| `all` | ✓ | ✗ (use YAML `geom.freeze_atoms`) | ✓ |
+| `all` | ✓ | ✓ | ✓ |
 | `sp` | ✗ | ✗ | ✓ |
 
 ## Common pitfalls

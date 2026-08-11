@@ -407,7 +407,9 @@ TS optimization uses **two mutually exclusive** algorithm sections, selected by 
 - `--opt-mode dimer` (or `grad`) → uses `hessian_dimer` section
 - `--opt-mode rsprfo` (or `hess`, default), `rsirfo`, or `trim` → uses `rsirfo` section
 
-Shared optimizer settings (`thresh`, `max_cycles`, `dump`) are read from the `opt` section above.
+When the same setting is written in `opt` and the active algorithm section,
+different explicit values are rejected. One explicit value is used by both;
+otherwise the algorithm-specific default wins.
 
 ### `hessian_dimer`
 
@@ -418,7 +420,7 @@ hessian_dimer:
  thresh_loose: gau_loose # Loose convergence preset
  thresh: baker # Main convergence preset
  update_interval_hessian: 500 # Hessian rebuild cadence
- neg_freq_thresh_cm: 5.0 # Imaginary-frequency detection threshold (cm⁻¹)
+ neg_freq_thresh_cm: 5.0 # Ignore smaller modes in animations and flattening (cm⁻¹)
  flatten_amp_ang: 0.1 # Flattening amplitude (Å)
  flatten_max_iter: 50 # Flattening iteration cap (see note below)
  flatten_sep_cutoff: 0.0 # Minimum distance between representative atoms
@@ -445,14 +447,19 @@ hessian_dimer:
    bias_translation: false # Bias translational search
    bias_gaussian_dot: 0.1 # Gaussian bias dot product
    seed: null # RNG seed for rotations
-   write_orientations: true # Write rotation orientations
+   write_orientations: false # Write rotation orientations (explicit true is allowed)
    forward_hessian: true # Propagate Hessian forward
  lbfgs:                    # sibling of `dimer` under `hessian_dimer`, not nested inside it
    # Same keys as the top-level lbfgs section
    thresh: baker
-   max_cycles: 10000
    line_search: true # Enable the inner L-BFGS polynomial line search
 ```
+
+Inner L-BFGS settings live under `hessian_dimer.lbfgs`, not the top-level
+`lbfgs` section. Shared `print_every` and `energy_plateau*` values follow the
+conflict rule above; `line_search` remains independent. `max_cycles` is not
+configurable because each segment receives the cycles remaining from
+`opt.max_cycles`.
 
 ```{note}
 **`flatten_max_iter` default exception.** The CLI seeds
@@ -472,7 +479,7 @@ RS-I-RFO / RS-P-RFO TS optimization settings (used by tsopt `--opt-mode rsirfo`,
 ```yaml
 rsirfo:
  thresh: baker # RS-IRFO convergence preset
- max_cycles: 10000 # Iteration cap
+ max_cycles: 10000 # Shared with opt.max_cycles; conflicting explicit values are rejected
  print_every: 100 # Logging stride
  min_step_norm: 1.0e-08 # Minimum accepted step norm
  assert_min_step: true # Assert when steps stagnate
@@ -494,10 +501,11 @@ rsirfo:
  mode_loss_trust_floor: 1.0e-05 # Positive emergency trust-radius floor for those retries
  max_mode_loss_rejections: 5 # Rejections allowed at that floor before stopping
  verify_saddle: true # Require exact-Hessian projected first-order-saddle validation
- saddle_imaginary_threshold_cm: 5.0 # Minimum |imaginary frequency| counted as negative (cm^-1; positive)
+ saddle_imaginary_threshold_cm: 5.0 # Soft-mode threshold for mode handling (cm^-1; positive)
  saddle_recovery_step: 0.01 # Positive uphill recovery displacement cap in optimizer coordinates
  saddle_recovery_check_interval: 50 # Exact PHVA cadence during n_imag=0 recovery
  saddle_recovery_max_cycles: 0 # Automatic n_imag=0 recovery disabled
+ out_dir: ./result_tsopt/ # Output directory
  # Also inherits rfo-like settings: trust_radius, trust_update, etc.
 ```
 

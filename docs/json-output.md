@@ -175,7 +175,7 @@ All fields from `opt`, plus:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `n_imaginary_modes` | int\|null | Number of imaginary frequencies; `null` when convergence was never reached and PHVA was not run |
+| `n_imaginary_modes` | int\|null | Number of imaginary frequencies; `null` if PHVA was not run |
 | `imaginary_frequencies_cm` | float[]\|null | Imaginary frequencies (cm⁻¹, negative); `null` when PHVA was not run |
 | `opt_mode` | string | `"rsprfo"` (default), `"rsirfo"`, `"trim"`, or `"dimer"` |
 | `reference_mode_file` | string\|null | Advanced path-mode file supplied through `--ref-mode`; normally generated and passed by `all` |

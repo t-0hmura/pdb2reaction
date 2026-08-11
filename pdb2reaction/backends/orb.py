@@ -22,17 +22,6 @@ from .base import (
     _restore_model_after_autograd_hessian,
 )
 
-# Deprecated model aliases
-ORB_DEPRECATED_MODEL_ALIASES = {
-    "orb-v1": "orb-v2",
-    "orb-d3-v1": "orb-d3-v2",
-    "orb-d3-sm-v1": "orb-d3-sm-v2",
-    "orb-d3-xs-v1": "orb-d3-xs-v2",
-    "orb-v1-mptraj-only": "orb-mptraj-only-v2",
-    "orb-mptraj-only-v1": "orb-mptraj-only-v2",
-}
-
-
 def _is_conservative_orb_model(model_name: str) -> bool:
     norm = str(model_name).replace("_", "-").lower()
     return ("conservative" in norm) and ("direct" not in norm)
@@ -151,10 +140,6 @@ class OrbCalculator(MLIPCalculator):
         self._ase_calc = self._build_ase_calculator()
 
     def _resolve_loader(self, model_name: str):
-        norm_dash = str(model_name).replace("_", "-").lower()
-        if norm_dash in ORB_DEPRECATED_MODEL_ALIASES:
-            model_name = ORB_DEPRECATED_MODEL_ALIASES[norm_dash]
-
         if not _is_conservative_orb_model(model_name):
             raise BackendError(f"Only conservative Orb models are supported. Requested '{model_name}'.")
 

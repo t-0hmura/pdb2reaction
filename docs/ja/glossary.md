@@ -102,16 +102,16 @@
 | **Bohr** | 原子単位系の長さ。1 Bohr ≈ 0.529 Å |
 | **Å（オングストローム）** | 10⁻¹⁰ m。原子間距離の標準単位 |
 | **cm⁻¹** | 波数（逆センチメートル）。振動数の標準単位。虚振動数は負の値で表されます |
-| **虚振動数** | Hessian 行列の負の固有値に対応する振動数。TS では 1 本のみ存在（一次鞍点）。負の cm⁻¹ 値で報告されます。TS optimizer と flatten/report 診断は `hessian_dimer.neg_freq_thresh_cm`（デフォルト 5 cm⁻¹）を使い、単独 `freq` は厳密に負のモードをすべて数えます（cutoff 0） |
+| **虚振動数** | Hessian 行列の負の固有値に対応する振動数。TS では 1 本のみ存在（一次鞍点）。負の cm⁻¹ 値で報告され、最終的な TS 判定ではすべての負の振動数を数えます。 |
 
 (ja-frequency-thresholds)=
-### 振動数閾値: 5 cm⁻¹（虚振動検出）と 100 cm⁻¹（QRRHO rotor cutoff）
+### 振動数閾値: 5 cm⁻¹（微小モード処理）と 100 cm⁻¹（QRRHO rotor cutoff）
 
 `pdb2reaction` 内には独立した 2 つの cm⁻¹ 閾値があり、作用するモード集合と用途が全く異なります:
 
 | 閾値 | 役割 | 定義場所 |
 |------|------|----------|
-| **5 cm⁻¹** | *TS optimizer の虚振動モード検出カットオフ*。TS 最適化・flatten・その report では、絶対値がこれ未満の負の振動数を虚振動と数えない。単独 `freq` は厳密に負のモードをすべて数える | `pdb2reaction/core/defaults.py` の `hessian_dimer.neg_freq_thresh_cm = 5.0`。TS optimizer 診断では YAML で調整可 |
+| **5 cm⁻¹** | 絶対値がこれ未満の負の振動数は、モード動画の出力や余分なモードを平坦化する際に無視します。最終的な TS 判定ではすべての負の振動数を数えます。 | `pdb2reaction/core/defaults.py` の `hessian_dimer.neg_freq_thresh_cm = 5.0`。YAML で調整可 |
 | **100 cm⁻¹** | *QRRHO rotor cutoff*（Grimme）。`freq` の熱化学計算において、これ未満の **正の** 低振動モードは harmonic-oscillator から自由回転子の entropy へ滑らかに移行する。entropy / Gibbs 自由エネルギーのみに影響 | `thermoanalysis/config.py` の `ROTOR_CUT_DEFAULT = 100.0` |
 
 ## CLI 規則

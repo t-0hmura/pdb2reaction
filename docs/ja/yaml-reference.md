@@ -403,7 +403,7 @@ TS 最適化は `--opt-mode` で**2 つのアルゴリズム**を切り替えま
 - `--opt-mode dimer`（または `grad`）→ `hessian_dimer` セクション
 - `--opt-mode rsprfo`（または `hess`、デフォルト）、`rsirfo`、`trim` → `rsirfo` セクション
 
-共通オプティマイザ設定（`thresh`, `max_cycles`, `dump`）は上記 `opt` セクションから読み込まれます。
+同じ設定を `opt` と使用中のアルゴリズムセクションの両方へ明示し、値が異なる場合はエラーになります。片方だけを明示した場合は両方でその値を使い、無指定ならアルゴリズム固有のデフォルトを使います。
 
 ### `hessian_dimer`
 
@@ -414,7 +414,7 @@ hessian_dimer:
  thresh_loose: gau_loose # Loose convergence preset
  thresh: baker # Main convergence preset
  update_interval_hessian: 500 # Hessian rebuild cadence
- neg_freq_thresh_cm: 5.0 # Imaginary-frequency detection threshold (cm⁻¹)
+ neg_freq_thresh_cm: 5.0 # 動画出力・平坦化で無視する微小モードの閾値（cm⁻¹）
  flatten_amp_ang: 0.1 # Flattening amplitude (Å)
  flatten_max_iter: 50 # Flattening iteration cap (下記注記を参照)
  flatten_sep_cutoff: 0.0 # Minimum distance between representative atoms
@@ -441,14 +441,19 @@ hessian_dimer:
    bias_translation: false # Bias translational search
    bias_gaussian_dot: 0.1 # Gaussian bias dot product
    seed: null # RNG seed for rotations
-   write_orientations: true # Write rotation orientations
+   write_orientations: false # 方向を出力（明示的な true も可）
    forward_hessian: true # Propagate Hessian forward
  lbfgs:                    # `hessian_dimer` 内で `dimer` と同階層
    # Same keys as lbfgs section
    thresh: baker
-   max_cycles: 10000
    line_search: true # 内側の L-BFGS 多項式 line search を有効化
 ```
+
+内側の L-BFGS 固有設定は、最上位の `lbfgs` ではなく
+`hessian_dimer.lbfgs` に置きます。共通の `print_every` と
+`energy_plateau*` は上記の競合規則に従い、`line_search` は独立です。
+`max_cycles` は設定できず、各 segment には `opt.max_cycles` の残り
+cycle 数が渡されます。
 
 ```{note}
 **`flatten_max_iter` のデフォルト例外。** CLI は YAML 適用前に
@@ -468,7 +473,7 @@ RS-I-RFO / RS-P-RFO TS 最適化（tsopt `--opt-mode rsirfo`、`rsprfo`（`hess`
 ```yaml
 rsirfo:
  thresh: baker # RS-IRFO convergence preset
- max_cycles: 10000 # Iteration cap
+ max_cycles: 10000 # opt.max_cycles と共有。異なる明示値はエラー
  print_every: 100 # Logging stride
  min_step_norm: 1.0e-08 # Minimum accepted step norm
  assert_min_step: true # Assert when steps stagnate
@@ -490,10 +495,11 @@ rsirfo:
  mode_loss_trust_floor: 1.0e-05 # mode-loss retry 用の正の緊急 trust-radius 下限
  max_mode_loss_rejections: 5 # 下限到達後に許す棄却回数
  verify_saddle: true # exact Hessian + 射影振動解析で一次鞍点を検証
- saddle_imaginary_threshold_cm: 5.0 # 負モードと数える |虚振動数| 下限（cm^-1、正値）
+ saddle_imaginary_threshold_cm: 5.0 # モード処理用の微小振動閾値（cm^-1、正値）
  saddle_recovery_step: 0.01 # optimizer 座標での正の上り方向回復変位上限
  saddle_recovery_check_interval: 50 # n_imag=0 回復中の exact PHVA 間隔
  saddle_recovery_max_cycles: 0 # n_imag=0 自動回復はデフォルト無効
+ out_dir: ./result_tsopt/ # 出力ディレクトリ
  # Also inherits rfo-like settings: trust_radius, trust_update, etc.
 ```
 

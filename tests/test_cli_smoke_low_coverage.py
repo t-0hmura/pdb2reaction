@@ -115,6 +115,28 @@ def test_fix_altloc_smoke(tmp_path: Path) -> None:
     assert atom_lines[0][16] == " "
 
 
+def test_fix_altloc_rejects_inplace_with_out(tmp_path: Path) -> None:
+    in_pdb = _write_text(
+        tmp_path / "input.pdb",
+        "ATOM      1  CA AALA A   1       0.000   0.000   0.000  1.00 10.00           C\nEND\n",
+    )
+    original = in_pdb.read_bytes()
+    out_pdb = tmp_path / "unused.pdb"
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "fix-altloc", "-i", str(in_pdb), "--inplace",
+            "--out", str(out_pdb),
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "--inplace cannot be used with --out" in result.output
+    assert in_pdb.read_bytes() == original
+    assert not out_pdb.exists()
+
+
 def test_fix_altloc_selects_one_coherent_residue_conformer(tmp_path: Path) -> None:
     """Do not merge atoms unique to A and B into a hybrid residue."""
     in_pdb = _write_text(

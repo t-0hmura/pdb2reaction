@@ -170,7 +170,7 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `n_imaginary_modes` | int\|null | 虚振動の数。収束に一度も到達せず PHVA を実行しなかった場合は `null` |
+| `n_imaginary_modes` | int\|null | 虚振動の数。PHVA を実行しなかった場合は `null` |
 | `imaginary_frequencies_cm` | float[]\|null | 虚振動数 (cm⁻¹, 負の値)。PHVA 未実行時は `null` |
 | `opt_mode` | string | `"rsprfo"` (default) / `"rsirfo"` / `"trim"` / `"dimer"` |
 | `reference_mode_file` | string\|null | `--ref-mode` で渡した advanced path-mode ファイル。通常は `all` が生成して内部指定します |

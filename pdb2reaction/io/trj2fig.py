@@ -22,7 +22,6 @@ from ase.io import read
 from pysisyphus.constants import AU2KCALPERMOL, ANG2BOHR
 
 from pdb2reaction.core.output import emit
-from pdb2reaction.core.utils import read_xyz_energies
 from pdb2reaction.io.xyz_trajectory import read_xyz_trajectory
 
 logger = logging.getLogger(__name__)
@@ -32,11 +31,6 @@ FONT_SIZE = 18         # tick-label font size
 AXIS_TITLE_SIZE = 20   # axis-title font size
 LINE_WIDTH = 2         # curve width
 MARKER_SIZE = 6        # marker size
-
-
-def read_energies_xyz(fname: Path | str) -> List[float]:
-    """Compatibility wrapper for utils.read_xyz_energies()."""
-    return read_xyz_energies(fname)
 
 
 def recompute_energies(

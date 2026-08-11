@@ -102,16 +102,16 @@
 | **Bohr** | Atomic unit of length; 1 Bohr ≈ 0.529 Å. |
 | **Angstrom (Å)** | 10⁻¹⁰ m; standard unit for interatomic distances. |
 | **cm⁻¹** | Reciprocal centimeters (wavenumber); the standard unit for vibrational frequencies. Imaginary frequencies appear as negative values. |
-| **Imaginary Frequency** | A vibrational frequency corresponding to a negative eigenvalue of the Hessian. A TS has exactly one (first-order saddle point). Reported as a negative cm⁻¹ value. TS-optimizer and flatten/report diagnostics use `hessian_dimer.neg_freq_thresh_cm` (default 5 cm⁻¹); standalone `freq` counts every strictly negative mode (zero cutoff). |
+| **Imaginary Frequency** | A vibrational frequency corresponding to a negative eigenvalue of the Hessian. A TS has exactly one (first-order saddle point). Reported as a negative cm⁻¹ value. Final TS validation counts every negative frequency. |
 
 (frequency-thresholds)=
-### Frequency thresholds: 5 cm⁻¹ imaginary detection vs 100 cm⁻¹ QRRHO rotor cutoff
+### Frequency thresholds: 5 cm⁻¹ small-mode handling vs 100 cm⁻¹ QRRHO rotor cutoff
 
 Two unrelated cm⁻¹ thresholds appear in `pdb2reaction`. They act on different mode populations and serve different purposes:
 
 | Threshold | Role | Source |
 |-----------|------|--------|
-| **5 cm⁻¹** | *TS-optimizer imaginary-mode detection cutoff.* In TS optimization, flattening, and its reports, negative frequencies with magnitude below this are not counted as imaginary. Standalone `freq` instead counts every strictly negative mode. | `pdb2reaction/core/defaults.py` as `hessian_dimer.neg_freq_thresh_cm = 5.0`; tunable via YAML for the TS-optimizer diagnostics. |
+| **5 cm⁻¹** | Negative frequencies smaller than this magnitude are ignored when writing mode animations or choosing extra modes to flatten. Final TS validation still counts every negative frequency. | `pdb2reaction/core/defaults.py` as `hessian_dimer.neg_freq_thresh_cm = 5.0`; tunable via YAML. |
 | **100 cm⁻¹** | *QRRHO rotor cutoff* (Grimme). Positive low-frequency vibrations are damped between harmonic-oscillator and free-rotor entropy in `freq` thermochemistry; it changes only entropy / Gibbs free energy. | `thermoanalysis/config.py` as `ROTOR_CUT_DEFAULT = 100.0`. |
 
 ## CLI Conventions

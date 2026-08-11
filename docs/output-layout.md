@@ -68,6 +68,7 @@ In TSOPT-only mode there is no MEP stage, so `_work/path_opt/` is absent and the
 import json
 from pathlib import Path
 
+out_dir = "result_opt"  # replace with the directory you used
 subcommand = "opt"  # replace with the command you ran
 primary = "summary.json" if subcommand in {"all", "path-search"} else "result.json"
 summary = json.loads((Path(out_dir) / primary).read_text())

@@ -50,10 +50,10 @@ Options:
                                   Dimer; 'hess'/'rsprfo' → RS-P-RFO (Banerjee,
                                   default); 'trim' → TRIM (Helgaker); 'rsirfo' →
                                   RS-I-RFO.  [default: hess]
-  --dump / --no-dump              Write the per-cycle optimization trajectory
-                                  ('optimization_trj.xyz' for rsirfo/hess,
-                                  'optimization_all_trj.xyz' for grad/dimer) in
-                                  the output directory.  [default: no-dump]
+  --dump / --no-dump              Write the per-cycle trajectory
+                                  ('optimization_trj.xyz' for RS-P-RFO/RS-I-
+                                  RFO/TRIM, 'optimization_all_trj.xyz' for
+                                  Dimer).  [default: no-dump]
   -o, --out-dir TEXT              Output directory.  [default: ./result_tsopt/]
   --thresh [gau_loose|gau|gau_tight|gau_vtight|baker|never]
                                   Convergence preset for the active optimizer (g

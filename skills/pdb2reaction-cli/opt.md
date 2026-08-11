@@ -73,7 +73,7 @@ pdb2reaction path-opt -i /tmp/relax_R/final_geometry.pdb /tmp/relax_P/final_geom
 `result.json` (only when `--out-json` is passed) keys: `status`
 (`converged` / `not_converged`; `error` on failure), `n_opt_cycles`, `energy_hartree`,
 `final_max_force`, `final_rms_force`, and the `files` block whose
-`final_geometry_xyz` entry points at the final attempted geometry. When
+`final_geometry_xyz` entry points at the final geometry. When
 `--flatten` runs, `rigid_projection` records the treatment, effective rank,
 and raw Hessian source and shape.
 

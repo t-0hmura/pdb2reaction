@@ -437,7 +437,7 @@ DIMER_KW: Dict[str, Any] = {
     "bias_translation": False,
     "bias_gaussian_dot": 0.1,
     "seed": None,
-    "write_orientations": True,
+    "write_orientations": False,
     "forward_hessian": True,
 }
 
@@ -473,7 +473,7 @@ LBFGS_TS_KW: Dict[str, Any] = {
 HESSIAN_DIMER_CLI_KW: Dict[str, Any] = {
     **HESSIAN_DIMER_KW,
     "dimer": {**DIMER_KW},
-    "lbfgs": {**LBFGS_TS_KW},
+    "lbfgs": {k: v for k, v in LBFGS_TS_KW.items() if k != "max_cycles"},
 }
 
 # RFO-family shared defaults for TS optimization (hess/heavy → RS-P-RFO default; also RS-I-RFO / TRIM)
@@ -517,12 +517,12 @@ RSIRFO_KW: Dict[str, Any] = {
     "mode_loss_trust_floor": 1e-5,
     "max_mode_loss_rejections": 5,
     "verify_saddle": True,
-    # Keep exact optimizer-side PHVA verification aligned with the final
-    # frequency analysis (HESSIAN_DIMER_KW["neg_freq_thresh_cm"]).
+    # Reject sub-threshold soft directions during optional recovery.
     "saddle_imaginary_threshold_cm": 5.0,
     "saddle_recovery_step": 0.01,
     "saddle_recovery_check_interval": 50,
     "saddle_recovery_max_cycles": 0,
+    "out_dir": OUT_DIR_TSOPT,
 }
 
 # Freq calc defaults (alias of UMA_CALC_KW)

@@ -59,12 +59,61 @@ def test_dimer_has_independent_yaml_line_search_setting() -> None:
 
     configured = deepcopy(HESSIAN_DIMER_CLI_KW)
     assert configured["lbfgs"]["line_search"] is True
+    assert "max_cycles" not in configured["lbfgs"]
+    assert configured["dimer"]["write_orientations"] is False
 
     apply_yaml_overrides(
-        {"hessian_dimer": {"lbfgs": {"line_search": False}}},
+        {
+            "hessian_dimer": {
+                "dimer": {"write_orientations": True},
+                "lbfgs": {"line_search": False},
+            }
+        },
         [(configured, (("hessian_dimer",),))],
     )
+    assert configured["dimer"]["write_orientations"] is True
     assert configured["lbfgs"]["line_search"] is False
+
+
+def test_shared_optimizer_value_rejects_explicit_conflict() -> None:
+    from pdb2reaction.workflows.tsopt import _resolve_shared_optimizer_value
+
+    opt_cfg = {"max_cycles": 10}
+    rsirfo_cfg = {"max_cycles": 20}
+    with pytest.raises(click.BadParameter, match="opt.max_cycles"):
+        _resolve_shared_optimizer_value(
+            opt_cfg,
+            rsirfo_cfg,
+            "max_cycles",
+            opt_explicit=True,
+            downstream_explicit=True,
+            downstream_default=300,
+            downstream_section="rsirfo",
+        )
+
+
+@pytest.mark.parametrize(
+    "opt_explicit, downstream_explicit, expected",
+    [(True, False, 10), (False, True, 20), (False, False, 300)],
+)
+def test_shared_optimizer_value_precedence(
+    opt_explicit, downstream_explicit, expected,
+) -> None:
+    from pdb2reaction.workflows.tsopt import _resolve_shared_optimizer_value
+
+    opt_cfg = {"max_cycles": 10}
+    rsirfo_cfg = {"max_cycles": 20}
+    _resolve_shared_optimizer_value(
+        opt_cfg,
+        rsirfo_cfg,
+        "max_cycles",
+        opt_explicit=opt_explicit,
+        downstream_explicit=downstream_explicit,
+        downstream_default=300,
+        downstream_section="rsirfo",
+    )
+    assert opt_cfg["max_cycles"] == expected
+    assert rsirfo_cfg["max_cycles"] == expected
 
 
 def test_rsprfo_yaml_line_search_values_reach_constructor(
@@ -110,6 +159,39 @@ def test_rsprfo_yaml_line_search_values_reach_constructor(
     assert captured["min_line_search"] is True
     assert captured["max_line_search"] is True
     assert "rfo_overlaps" not in captured
+
+
+@pytest.mark.parametrize(
+    ("config_text", "message"),
+    [
+        (
+            "opt:\n  max_cycles: 10\nrsirfo:\n  max_cycles: 20\n",
+            "opt.max_cycles and rsirfo.max_cycles conflict",
+        ),
+        (
+            "opt:\n  out_dir: root-out\nrsirfo:\n  out_dir: downstream-out\n",
+            "opt.out_dir and rsirfo.out_dir conflict",
+        ),
+    ],
+)
+def test_tsopt_rejects_ambiguous_rfo_config(
+    tmp_path, config_text, message,
+) -> None:
+    source = tmp_path / "atom.xyz"
+    source.write_text("1\natom\nHe 0 0 0\n", encoding="utf-8")
+    config = tmp_path / "config.yaml"
+    config.write_text(config_text, encoding="utf-8")
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "tsopt", "-i", str(source), "-q", "0", "--opt-mode", "rsprfo",
+            "--dry-run", "--config", str(config),
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert message in result.output
 
 
 def test_dimer_hessian_update_interval_must_advance(tmp_path) -> None:
@@ -159,19 +241,7 @@ def test_tsopt_dry_run_rejects_invalid_configured_hessian_mode(tmp_path) -> None
     assert "Unsupported hessian_calc_mode 'typo'" in result.output
 
 
-def test_tsopt_cli_print_every_overrides_nested_dimer_config(
-    monkeypatch, tmp_path,
-) -> None:
-    from pdb2reaction.workflows import tsopt
-
-    stripped = []
-    original_strip = tsopt.strip_inherited_keys
-
-    def capture_strip(values, *args, **kwargs):
-        stripped.append(dict(values))
-        return original_strip(values, *args, **kwargs)
-
-    monkeypatch.setattr(tsopt, "strip_inherited_keys", capture_strip)
+def test_tsopt_rejects_cli_nested_dimer_conflict(tmp_path) -> None:
     source = tmp_path / "atom.xyz"
     source.write_text("1\natom\nHe 0 0 0\n", encoding="utf-8")
     config = tmp_path / "config.yaml"
@@ -189,8 +259,41 @@ def test_tsopt_cli_print_every_overrides_nested_dimer_config(
         ],
     )
 
-    assert result.exit_code == 0, result.output
-    assert any(values.get("print_every") == 7 for values in stripped)
+    assert result.exit_code != 0
+    assert "opt.print_every and hessian_dimer.lbfgs.print_every conflict" in result.output
+
+
+@pytest.mark.parametrize(
+    ("config_text", "message"),
+    [
+        (
+            "opt:\n  thresh: gau\nhessian_dimer:\n  thresh: baker\n",
+            "opt.thresh and hessian_dimer.thresh conflict",
+        ),
+        (
+            "hessian_dimer:\n  lbfgs:\n    max_cycles: 5\n",
+            "hessian_dimer.lbfgs.max_cycles is not configurable",
+        ),
+    ],
+)
+def test_tsopt_rejects_ambiguous_dimer_cycle_or_threshold_config(
+    tmp_path, config_text, message,
+) -> None:
+    source = tmp_path / "atom.xyz"
+    source.write_text("1\natom\nHe 0 0 0\n", encoding="utf-8")
+    config = tmp_path / "config.yaml"
+    config.write_text(config_text, encoding="utf-8")
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "tsopt", "-i", str(source), "-q", "0", "--opt-mode", "dimer",
+            "--dry-run", "--config", str(config),
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert message in result.output
 
 
 def test_tsopt_rejects_input_aliasing_final_geometry(tmp_path) -> None:

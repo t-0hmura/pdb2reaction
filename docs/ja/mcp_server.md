@@ -150,7 +150,6 @@ VS Code は `.vscode/mcp.json` でトップレベルの `servers` オブジェ�
 ### カスタム Python MCP クライアント
 
 ```python
-import subprocess
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 

@@ -77,11 +77,11 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
  - `--flatten` が有効な場合、フラット化ループはΔx とΔg を用い、Bofill（SR1/MS ↔ PSB ブレンド; `hessian_dimer.flatten_loop_bofill` で切替）で活性 Hessian を更新します。各ループは虚振動数モード推定 → 1 回フラット化 → ダイマー方向再更新 → dimer+L-BFGS マイクロ区間 → （任意で）Bofill 更新を実行します。虚振動数モードが 1 つになったら最終的な正確な Hessian で振動解析を行います。
  - `root != 0` の場合は初期ダイマー方向のみその root を使用し、以降の更新は最も負のモード（`root = 0`）に従います。
 - **RS-I-RFO モード**: RS-I-RFO を実行し、任意の Hessian 参照や R+S 分割セーフガード、マイクロサイクル制御は `rsirfo` セクションで設定します。`--flatten` が有効で収束後も虚振動数モードが複数残る場合、追加モードをフラット化して RS-I-RFO を再実行し、虚振動数モードが 1 つになるか上限に達するまで繰り返します。
-- **モード出力と変換**: 検出された虚振動数モードはすべて `vib/imag_*_trj.xyz` に書き出されます。変換が有効な場合、PDB入力はPDB companion、mmCIF／oversized-PDB入力はPDBと元IDを復元したCIFを出力します。Gaussian templateでは最終構造のみ`.gjf`を生成します。
+- **モード出力と変換**: 絶対値が設定した閾値（デフォルト 5 cm⁻¹）未満の虚振動数モードは無視し、それ以外を `vib/imag_*_trj.xyz` に書き出します。変換が有効な場合、PDB入力はPDB companion、mmCIF／oversized-PDB入力はPDBと元IDを復元したCIFを出力します。Gaussian templateでは最終構造のみ`.gjf`を生成します。
 
 ## 出力
 
-実行結果は `final_geometry.*`（最適化された鞍点）と `vib/imag_*` モード（妥当な TS ではちょうど 1 つ）を開いて検証します。
+実行結果は `result.json`、`final_geometry.*` の最終構造、`vib/imag_*` モード（妥当な TS ではちょうど 1 つ）から検証します。
 
 - `result_tsopt/final_geometry.pdb`（または `final_geometry.xyz`）
 - `result_tsopt/vib/imag_*_trj.xyz`
@@ -96,7 +96,7 @@ out_dir/ (デフォルト:./result_tsopt/)
 ├─ optimization_all_trj.xyz # --dumpがTrueのときの dimer モードダンプ
 ├─ optimization_all.pdb # PDB 入力の dimer モードに対応する PDB（変換有効時、--dump）
 ├─ optimization_all.cif # bridge入力の元ID復元CIF
-├─ optimization_trj.xyz # --dumpがTrueのときの rsirfo モード軌跡
+├─ optimization_trj.xyz # --dump時の RS-P-RFO/RS-I-RFO/TRIM 軌跡
 ├─ optimization.pdb # rsirfo モードに対応する PDB（変換有効時、--dump）
 ├─ optimization.cif # bridge入力の元ID復元CIF
 ├─ vib/
@@ -185,7 +185,7 @@ MEPを確認し、粗いHEIが原因と判断できる場合に有効化して�
 (ja-wrong-imaginary-mode-count)=
 ### 最適化後に虚振動数の本数が誤っている場合
 
-真の一次鞍点は虚振動数を**ちょうど 1 つ**だけ持ち、そのモードは反応座標に沿って変位します（検出閾値 `hessian_dimer.neg_freq_thresh_cm`、デフォルト 5 cm⁻¹）。`tsopt` が代わりに偽の 2 本目の小さい虚振動数を報告したり、支配的な反応モードが無い場合は、以下のレバーを段階的に強めます。これらは補完的なので併用できます。
+真の一次鞍点は虚振動数を**ちょうど 1 つ**だけ持ち、そのモードは反応座標に沿って変位します。`tsopt` が代わりに偽の 2 本目の小さい虚振動数を報告したり、支配的な反応モードが無い場合は、以下のレバーを段階的に強めます。これらは補完的なので併用できます。
 
 | レバー | フラグ | 効果 |
 | --- | --- | --- |
@@ -256,8 +256,8 @@ opt:
 **energy plateau stop（opt-in、デフォルト無効）。** Hessian-family TS optimizer（RS-P-RFO、
 RS-I-RFO、TRIM）は共通の `energy_plateau` 設定を参照し、`--stop-plateau` で有効化します。
 有効時、直近50 stepの energy rangeが `--stop-plateau-thresh`（default `1×10⁻⁴ au`）を下回ると、
-exact-Hessian/PHVA terminal validationを開始します。これは一次鞍点とphysical convergenceの
-検査を迂回する無条件収束ではありません。backend/model/system依存のforce floorが選択閾値への
+`stalled` として停止し、終端 PHVA を実行します。未収束のまま `max_cycles` に到達した場合は
+PHVA を実行しません。backend/model/system依存のforce floorが選択閾値への
 到達を妨げる場合に無駄なcycleを避けられます。デフォルトで無効なのは、平坦なenergyで停止した
 TS探索が余分な虚振動を残したままになりやすいためです。
 ```
@@ -300,7 +300,7 @@ TS 収束が遅い場合や最適化中に TS モードが失われる場合は�
 
 ## 注記
 
-- 虚振動数モード**検出**の閾値はデフォルトで 5.0 cm⁻¹（`hessian_dimer.neg_freq_thresh_cm` で変更可能）。絶対値がこの閾値未満の負の振動数は虚振動数としてカウントされません。Hessian-family optimizer は一次鞍点のrootを1個だけ追跡します。YAMLでは1要素のlist（例: `rsirfo.roots: [0]`）で設定し、空listまたは複数rootは拒否されます。Dimer は別の単数 key `hessian_dimer.root`（default `0`）を使います。`tsopt` に `--root` CLI flag はありません（[`irc`](irc.md) とは異なります）。
+- 絶対値が設定した閾値（デフォルト 5 cm⁻¹）未満の虚振動は、モードファイル出力と平坦化では無視します。最終的な TS 判定ではすべての負の振動数を数えます。Hessian-family optimizer は一次鞍点のrootを1個だけ追跡します。YAMLでは1要素のlist（例: `rsirfo.roots: [0]`）で設定し、空listまたは複数rootは拒否されます。Dimer は別の単数 key `hessian_dimer.root`（default `0`）を使います。`tsopt` に `--root` CLI flag はありません（[`irc`](irc.md) とは異なります）。
 - `--opt-mode` はワークフロー選択用です（デフォルト: `rsprfo`）。YAML のモードマッピングを手動で変更するのではなく、目的のアルゴリズムに合ったモードを選択してください。
 - Dimer方向、回転force、flatten、最終exact PHVA検証は`freq`と同じ固定の constrained 処理を使用します。Dimerは中心imageが変わるたびにこの基底を再構築します。全凍結anchorと両立する真の剛体null方向でない限り、active fragmentの並進を差し引きません。Hessian RFO最適化自体は、この射影を行わずactive-DOF Cartesian Hessian を扱います。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
 - 設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。

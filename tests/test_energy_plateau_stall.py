@@ -273,18 +273,19 @@ def test_tsopt_terminal_status_composition():
     assert _tsopt_terminal_status(_FakeOpt(), saddle_verified=True) == "not_converged"
 
 
-def test_hessian_postprocessing_requires_convergence_gate():
+def test_hessian_postprocessing_accepts_convergence_or_plateau():
     unconverged = _FakeOpt()
-    unconverged.convergence_criteria_met = False
     assert _hessian_postprocessing_is_ready(unconverged) is False
 
-    exact_checked = _FakeOpt()
-    exact_checked.convergence_criteria_met = True
-    assert _hessian_postprocessing_is_ready(exact_checked) is True
+    converged = _FakeOpt(is_converged=True)
+    assert _hessian_postprocessing_is_ready(converged) is True
 
-    externally_stopped = _FakeOpt(is_converged=True)
-    externally_stopped.convergence_criteria_met = False
-    assert _hessian_postprocessing_is_ready(externally_stopped) is False
+    stalled = _FakeOpt(is_stalled=True)
+    assert _hessian_postprocessing_is_ready(stalled) is True
+
+    stale_criteria = _FakeOpt(is_converged=False)
+    stale_criteria.convergence_criteria_met = True
+    assert _hessian_postprocessing_is_ready(stale_criteria) is False
 
 
 def test_emit_terminal_status_stalled_and_converged_are_distinct(capsys):

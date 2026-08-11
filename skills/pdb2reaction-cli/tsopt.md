@@ -72,7 +72,7 @@ pdb2reaction tsopt -i hei.pdb -l 'SAM:1,GPP:-3' \
 | Path | When | Content |
 |---|---|---|
 | `<out_dir>/result.json` | `--out-json` | machine-readable result |
-| `<out_dir>/final_geometry.xyz` | completed optimizer run | final attempted geometry; it is a validated first-order saddle only when `result.json["status"] == "converged"` and the downstream IRC is correct |
+| `<out_dir>/final_geometry.xyz` | completed optimizer run | final geometry; it is a validated first-order saddle only when `result.json["status"] == "converged"` and the downstream IRC is correct |
 | `<out_dir>/final_geometry.pdb` | `--convert-files` (default on) and PDB/mmCIF topology/reference available | normalized PDB companion used between pipeline stages |
 | `<out_dir>/final_geometry.cif` | `--convert-files` and input/reference required the mmCIF or oversized-PDB bridge | public companion with original IDs |
 | `<out_dir>/final_geometry.gjf` | `--convert-files` and input is `.gjf` | Gaussian companion |
@@ -85,7 +85,7 @@ pdb2reaction tsopt -i hei.pdb -l 'SAM:1,GPP:-3' \
 ```python
 import json
 d = json.load(open("result_tsopt/result.json"))
-print(d["status"])                      # "converged" / "not_converged"; "error" on failure
+print(d["status"])                      # "converged" / "not_converged" / "stalled"; "error" on failure
 print(d["energy_hartree"])
 print(d["n_imaginary_modes"])           # should be 1 for a real TS
 print(d["imaginary_frequencies_cm"])    # list of cm⁻¹
@@ -112,11 +112,13 @@ reaction coordinate.
 ```python
 import json
 d = json.load(open("result_tsopt/result.json"))
-if d["n_imaginary_modes"] == 1:
+if d["status"] != "converged":
+    print("NOT CONVERGED:", d["status"])
+elif d["n_imaginary_modes"] == 1:
     print("OK: single imaginary mode at", d["imaginary_frequencies_cm"][0], "cm-1")
 elif d["n_imaginary_modes"] == 0:
     print("BAD: collapsed to a minimum during refinement")
-elif d["n_imaginary_modes"] > 1:
+elif d["n_imaginary_modes"] is not None and d["n_imaginary_modes"] > 1:
     print("NOT VALIDATED: multiple imaginary modes; inspect vib/imag_*_trj.xyz")
 ```
 

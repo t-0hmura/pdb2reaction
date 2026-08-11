@@ -100,11 +100,11 @@ Add `--dump` to keep the full optimization trajectory for inspection.
 
   Once only one imaginary mode remains, a final exact Hessian is computed for frequency analysis. If `root != 0`, that root seeds only the initial dimer direction; subsequent refreshes follow the most negative mode (`root = 0`).
 - **RS-I-RFO mode** — runs the RS-I-RFO optimizer with optional Hessian reference files, R+S splitting safeguards, and micro-cycle controls defined in the `rsirfo` YAML section. With `--flatten`, when more than one imaginary mode remains after convergence the workflow flattens extra modes and reruns RS-I-RFO until only one imaginary mode remains or the flatten-iteration cap is reached.
-- **Mode export + conversion** — all detected imaginary modes are written to `vib/imag_*_trj.xyz`. With conversion enabled, PDB inputs receive `.pdb` companions and mmCIF/oversized-PDB bridge inputs receive `.pdb` plus `.cif`; Gaussian templates receive a `.gjf` companion for the final geometry only.
+- **Mode export + conversion** — imaginary modes smaller than the configured magnitude threshold (5 cm⁻¹ by default) are ignored; the remaining modes are written to `vib/imag_*_trj.xyz`. With conversion enabled, PDB inputs receive `.pdb` companions and mmCIF/oversized-PDB bridge inputs receive `.pdb` plus `.cif`; Gaussian templates receive a `.gjf` companion for the final geometry only.
 
 ## Outputs
 
-Validate a run by opening `final_geometry.*` (the optimized saddle point) and the `vib/imag_*` modes (expect exactly one for a valid TS).
+Validate a run from `result.json`, the final geometry in `final_geometry.*`, and the `vib/imag_*` modes (expect exactly one for a valid TS).
 
 ```text
 out_dir/   (default: ./result_tsopt/)
@@ -115,7 +115,7 @@ out_dir/   (default: ./result_tsopt/)
 ├─ optimization_all_trj.xyz        # Dimer-mode dump (--dump)
 ├─ optimization_all.pdb            # Dimer-mode PDB companion (--dump, topology input)
 ├─ optimization_all.cif            # Bridge-input companion with original IDs
-├─ optimization_trj.xyz            # RSIRFO-mode trajectory (--dump)
+├─ optimization_trj.xyz            # RS-P-RFO/RS-I-RFO/TRIM trajectory (--dump)
 ├─ optimization.pdb                # RFO-mode PDB companion (--dump)
 ├─ optimization.cif                # Bridge-input companion with original IDs
 ├─ vib/
@@ -204,7 +204,7 @@ only when the coarse HEI is the likely cause.
 
 ### Wrong imaginary-mode count after optimization
 
-A true first-order saddle has **exactly one** imaginary frequency, and its mode displaces along the reaction coordinate (detection cutoff `hessian_dimer.neg_freq_thresh_cm`, default 5 cm⁻¹). If `tsopt` instead reports a spurious second small imaginary mode, or no dominant reaction mode, escalate the following levers — they are complementary, so you can combine them:
+A true first-order saddle has **exactly one** imaginary frequency, and its mode displaces along the reaction coordinate. If `tsopt` instead reports a spurious second small imaginary mode, or no dominant reaction mode, escalate the following levers — they are complementary, so you can combine them:
 
 | Lever | Flag | Effect |
 | --- | --- | --- |
@@ -272,9 +272,9 @@ opt:
 **Energy-plateau stop (opt-in, default off).** Hessian-family TS optimizers
 (RS-P-RFO, RS-I-RFO, and TRIM) honor the shared `energy_plateau` setting, which
 `--stop-plateau` turns on. An energy range below `--stop-plateau-thresh`
-(default `1×10⁻⁴ au` over the last 50 steps) triggers exact-Hessian/PHVA
-terminal validation; it does not bypass the required first-order saddle and
-physical convergence checks. This can save cycles when a
+(default `1×10⁻⁴ au` over the last 50 steps) stops the search as `stalled` and
+runs terminal PHVA. Reaching `max_cycles` without convergence does not run
+PHVA. This can save cycles when a
 backend/model/system-specific force floor prevents the selected force threshold
 from being reached. It is off unless you ask for it, because a TS search that
 stops on a flat energy typically still carries extra imaginary modes.
@@ -309,7 +309,7 @@ Set `rsirfo.track_mode_by_overlap: true` if the TS mode switches root during opt
 
 ## Notes
 
-- Imaginary-frequency **detection** threshold defaults to 5.0 cm⁻¹ (configurable via `hessian_dimer.neg_freq_thresh_cm`). Frequencies with magnitudes below this threshold are not counted as imaginary.
+- Imaginary frequencies smaller than the configured threshold (5 cm⁻¹ by default) are ignored when writing mode files or flattening. Final TS validation counts every negative frequency.
 - Hessian-family optimizers follow exactly one root for a first-order TS. Set it as a one-item YAML list (for example, `rsirfo.roots: [0]`); empty or multi-root lists are rejected. Dimer uses the separate singular `hessian_dimer.root` key (default `0`). `tsopt` has no `--root` CLI flag, unlike [`irc`](irc.md).
 - Use `--opt-mode` to choose the algorithm directly (`rsprfo` by default) rather than editing YAML mode mappings.
 - Dimer orientation, rotation forces, flattening, and final exact PHVA validation use the same constrained projector as `freq`. The Dimer rebuilds this basis whenever its central image changes. It never subtracts translations of the active fragment unless they are actual rigid null directions compatible with every frozen anchor. Hessian RFO optimization itself operates on the active-DOF Cartesian Hessian without this projection. See [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries).
