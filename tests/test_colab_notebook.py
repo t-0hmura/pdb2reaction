@@ -25,7 +25,7 @@ import pytest
 NOTEBOOK = Path(__file__).parents[1] / "examples" / "pdb2reaction_colab.ipynb"
 
 
-def _execute_app(monkeypatch, tmp_path: Path) -> tuple[dict, list]:
+def _execute_app(monkeypatch, tmp_path: Path, *, parent_header: dict | None = None) -> tuple[dict, list]:
     """Execute the complete app cell with real widgets and captured HTML."""
     rendered: list = []
     import IPython.display as ipd
@@ -35,6 +35,8 @@ def _execute_app(monkeypatch, tmp_path: Path) -> tuple[dict, list]:
     monkeypatch.setattr(ipd, "Image", lambda *args, **kwargs: (args, kwargs))
     monkeypatch.chdir(tmp_path)
     namespace = {"TOOL": "pdb2reaction", "BACKEND": "mace", "REPO_DIR": "unused"}
+    if parent_header is not None:
+        namespace["get_ipython"] = lambda: types.SimpleNamespace(parent_header=parent_header)
     source = _notebook()["cells"][2]["source"]
     exec(compile(source, str(NOTEBOOK), "exec"), namespace)
     return namespace, rendered
@@ -50,6 +52,18 @@ def _notebook() -> dict:
         if isinstance(source, list):
             cell["source"] = "".join(source)
     return notebook
+
+
+def test_colab_local_runtime_uses_standard_widgets(monkeypatch, tmp_path: Path) -> None:
+    app, _ = _execute_app(
+        monkeypatch, tmp_path, parent_header={"metadata": {"colab": {"test": True}}}
+    )
+
+    assert app["IN_COLAB"] is False
+    assert app["IS_COLAB_FRONTEND"] is True
+    assert app["_UPLOAD_MODE"] == "basic"
+    assert isinstance(app["upl"], app["W"].FileUpload)
+    assert app["_RUN_LOG_INCREMENTAL"] is False
 
 
 def _root_normalized_subcommand_argv(app: dict, subcommand: str, argv: list[str]) -> list[str]:
@@ -392,7 +406,7 @@ def test_colab_setup_dft_branch_installs_extra_and_checks_gpu(monkeypatch, capsy
     assert "DFT support installed: PySCF %s · GPU4PySCF %s" in setup
     assert "anywidget==0.11.0" in setup
     assert "py3Dmol" not in setup
-    assert "pip('ipywidgets','anywidget==0.11.0','matplotlib')" in setup
+    assert "pip('ipywidgets==7.7.2','anywidget==0.11.0','matplotlib')" in setup
     assert "[%%d/5] %%s".replace("%%", "%") in setup
     assert "time.monotonic()" in setup
     assert ".pysisyphusrc" not in setup
@@ -678,9 +692,13 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "message.batch !== active" in app
     assert "if clear:\n        _bump_drop_generation()" in app
     assert "pdb2reaction_gui.on_drop" not in app
-    # Colab draws no AnyWidget and drops a FileUpload's binary buffers, so there
-    # every upload ships its bytes through invokeFunction from its own zone.
+    # Hosted Colab uses the native bridge; a Colab local runtime needs the
+    # standard FileUpload fallback because google.colab is unavailable there.
     assert "_UPLOAD_MODE = ('colab' if IN_COLAB else" in app
+    assert "_colab_frontend = bool(get_ipython().parent_header.get('metadata', {}).get('colab'))" in app
+    assert "IS_COLAB_FRONTEND = IN_COLAB or _colab_frontend" in app
+    assert "'basic' if IS_COLAB_FRONTEND else" in app
+    assert "if _HAS_DROP_WIDGET and not IS_COLAB_FRONTEND:" in app
     assert "_drop_children = ([upl] if _UPLOAD_MODE == 'anywidget'" in app
     assert "_cwm.register_callback('pdb2reaction_gui.upload_files', _on_colab_upload)" in app
     # callback_ns is local to _molstar_document; the module-level block needs a literal.
@@ -1452,7 +1470,7 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     )
     app["S"]["advanced_overrides"]["all"] = {"verbose": "7"}
     verbose_row = app["_advanced_widget"]("all", verbose_param)
-    assert verbose_row.children[0].value is None
+    assert verbose_row.children[0].value == app["_ADVANCED_DEFAULT"]
     assert "verbose" not in app["S"]["advanced_overrides"]["all"]
 
     app["dd_subcmd"].options = app["_sub_options"](app["SUBS"])
@@ -2345,13 +2363,14 @@ def test_colab_operates_scientific_selectors_and_remaining_buttons(
     session_path = Path(downloads[-1])
     session_bytes = session_path.read_bytes()
     app["w_out"].value = "changed-after-save"
-    app["up_sess"].value = ({
-        "name": "session.json", "type": "application/json",
-        "size": len(session_bytes), "content": memoryview(session_bytes),
+    app["up_sess"].metadata = [{
+        "name": "session.json", "type": "application/json", "size": len(session_bytes),
         "last_modified": datetime.datetime.now(datetime.timezone.utc),
-    },)
+    }]
+    app["up_sess"].data = [session_bytes]
+    app["up_sess"]._counter += 1
     assert app["w_out"].value == saved_out
-    assert app["up_sess"].value == ()
+    assert not app["up_sess"].value
 
     # Real Results discovery, both selectors, navigation, preview and ZIP.
     trajectory_a = tmp_path / "path_a_trj.xyz"
@@ -3214,7 +3233,7 @@ def test_colab_setup_cell_is_frozen() -> None:
     setup = _notebook()["cells"][1]["source"]
     digest = hashlib.sha256(setup.encode("utf-8")).hexdigest()
 
-    assert digest == "84f1abcb966b8944b5af0c5b25db3943de15fcd68647dfd05e3d8928e1022271", (
+    assert digest == "ff956690f466bf32f99e370ac744c93ba005d72c305f83924925da4f6e613130", (
         "the Colab Setup cell changed; it is frozen for this release. Re-read the "
         "Setup contracts above, then update this digest deliberately. Got: " + digest
     )
