@@ -37,6 +37,8 @@ tasks.
   recipe.
 - `pdb2reaction-env-detect`: fallback for detecting scheduler / GPU /
   CUDA / conda env when the environment is unknown.
+- `colab-local-gpu-runtime`: Windows setup and operation for running the Colab
+  interface on a local NVIDIA GPU through WSL2 and Docker Desktop.
 
 Copying this `skills/` directory into another project (e.g. as
 `.claude/skills/` for Claude Code, `~/.claude/skills/` for a

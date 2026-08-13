@@ -54,6 +54,20 @@ def _notebook() -> dict:
     return notebook
 
 
+def _set_file_upload(widget, name: str, media_type: str, content: bytes) -> None:
+    """Deliver one browser upload through the widget's public trait mechanism."""
+    metadata = {
+        "name": name,
+        "type": media_type,
+        "size": len(content),
+        "last_modified": datetime.datetime.now(datetime.timezone.utc),
+    }
+    if hasattr(widget, "_counter"):  # ipywidgets 7
+        widget.set_trait("value", {name: {"metadata": metadata, "content": content}})
+    else:  # ipywidgets 8
+        widget.set_trait("value", ({**metadata, "content": memoryview(content)},))
+
+
 def test_colab_local_runtime_uses_standard_widgets(monkeypatch, tmp_path: Path) -> None:
     app, _ = _execute_app(
         monkeypatch, tmp_path, parent_header={"metadata": {"colab": {"test": True}}}
@@ -2363,12 +2377,7 @@ def test_colab_operates_scientific_selectors_and_remaining_buttons(
     session_path = Path(downloads[-1])
     session_bytes = session_path.read_bytes()
     app["w_out"].value = "changed-after-save"
-    app["up_sess"].metadata = [{
-        "name": "session.json", "type": "application/json", "size": len(session_bytes),
-        "last_modified": datetime.datetime.now(datetime.timezone.utc),
-    }]
-    app["up_sess"].data = [session_bytes]
-    app["up_sess"]._counter += 1
+    _set_file_upload(app["up_sess"], "session.json", "application/json", session_bytes)
     assert app["w_out"].value == saved_out
     assert not app["up_sess"].value
 
