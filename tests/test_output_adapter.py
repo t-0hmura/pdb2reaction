@@ -133,7 +133,9 @@ set_pipeline_mode(True)
 _patch_click_echo()
 print('cycle 400')
 emit('[hessian] Completed FiniteDifference Hessian: 15.44 s', detail=True)
-print('separator')
+print('Convergence thresholds:')
+emit('[hessian] Completed FiniteDifference Hessian: 15.30 s', detail=True)
+emit('[Imaginary modes] n=1', detail=True)
 print('cycle 500')
 """
     proc = subprocess.run(
@@ -147,6 +149,8 @@ print('cycle 500')
     assert proc.stdout.splitlines() == [
         "cycle 400",
         "[hessian] Completed FiniteDifference Hessian: 15.44 s",
-        "separator",
+        "Convergence thresholds:",
+        "[hessian] Completed FiniteDifference Hessian: 15.30 s",
+        "[Imaginary modes] n=1",
         "cycle 500",
     ]
