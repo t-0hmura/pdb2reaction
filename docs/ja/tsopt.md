@@ -254,7 +254,7 @@ opt:
 
 ```{note}
 **energy plateau stop（opt-in、デフォルト無効）。** Hessian-family TS optimizer（RS-P-RFO、
-RS-I-RFO、TRIM）は共通の `energy_plateau` 設定を参照し、`--stop-plateau` で有効化します。
+RS-I-RFO、TRIM、Dimer）は共通の `energy_plateau` 設定を参照し、`--stop-plateau` で有効化します。
 有効時、直近50 stepの energy rangeが `--stop-plateau-thresh`（default `1×10⁻⁴ au`）を下回ると、
 `stalled` として停止し、終端 PHVA を実行します。未収束のまま `max_cycles` に到達した場合は
 PHVA を実行しません。backend/model/system依存のforce floorが選択閾値への

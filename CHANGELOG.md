@@ -120,14 +120,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Limit Hessian-family TS workflows to one `rsirfo.roots` entry and keep
   ordinary-RFO `rfo_overlaps` state tracking out of effective TS optimizer
   kwargs, matching the v0.4.11 TS configuration boundary.
-- Run exact PHVA only after the actual proposed TS step satisfies every
-  configured convergence criterion. Gaussian-family presets no longer
-  accept a verified saddle from force convergence alone; exact saddle order is
-  the final additional test, and a zero-step higher-order saddle exits cleanly
-  for flattening instead of raising a step-length error.
+- Run exact PHVA after the actual proposed TS step satisfies every configured
+  convergence criterion, or after an opt-in energy-plateau stop. Gaussian-family
+  presets no longer accept a verified saddle from force convergence alone;
+  exact saddle order is the final additional test after normal convergence,
+  and a zero-step higher-order saddle exits cleanly for flattening instead of
+  raising a step-length error.
 - Skip workflow-level PHVA and imaginary-mode export when a Hessian-family TS
-  run never reaches the convergence gate. Both imaginary-mode JSON fields are
-  `null`; plateau exits are `stalled` and other exits are `not_converged`.
+  run stops for any reason other than convergence or an energy plateau, including
+  `max_cycles` exhaustion. Both imaginary-mode JSON fields are then `null`.
+  Plateau exits run PHVA but retain `stalled`; other exits are `not_converged`.
 - Require an explicit `--modified-residue NAME:charge` for built-in residue
   names whose protonation state does not imply one nominal charge. The same
   option can override an existing dictionary charge for one extraction, after
@@ -209,6 +211,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   mutated nested defaults.
 
 ### Fixed
+- Keep Hessian status and timing lines adjacent to the surrounding optimizer
+  cycle rows instead of inserting blank lines before and after each Hessian
+  evaluation.
 - Report only the calc settings a caller actually chose. Every workflow seeds
   `calc_cfg` from the UMA-flavoured default block, so a key UMA accepts and the
   selected backend does not is an untouched default, not a choice: ORB, MACE and

@@ -270,7 +270,7 @@ opt:
 
 ```{note}
 **Energy-plateau stop (opt-in, default off).** Hessian-family TS optimizers
-(RS-P-RFO, RS-I-RFO, and TRIM) honor the shared `energy_plateau` setting, which
+(RS-P-RFO, RS-I-RFO, TRIM, and Dimer) honor the shared `energy_plateau` setting, which
 `--stop-plateau` turns on. An energy range below `--stop-plateau-thresh`
 (default `1×10⁻⁴ au` over the last 50 steps) stops the search as `stalled` and
 runs terminal PHVA. Reaching `max_cycles` without convergence does not run
