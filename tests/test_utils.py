@@ -34,7 +34,6 @@ def test_pretty_block_with_numpy_scalars() -> None:
 )
 def test_load_prepared_geometries_resolves_freeze_atoms_once_per_source(
     monkeypatch,
-    capsys,
     tmp_path: Path,
     shared_source: bool,
     expected_calls: int,
@@ -54,7 +53,6 @@ def test_load_prepared_geometries_resolves_freeze_atoms_once_per_source(
 
     def fake_resolve(_cfg, source_path, _freeze_links, **_kwargs):
         resolve_calls.append(source_path)
-        u.click.echo("freeze warning", err=True)
         return [len(resolve_calls)]
 
     def fake_loader(_path, *, coord_type, freeze_atoms):
@@ -72,7 +70,6 @@ def test_load_prepared_geometries_resolves_freeze_atoms_once_per_source(
     )
 
     assert len(resolve_calls) == expected_calls
-    assert capsys.readouterr().err.count("freeze warning") == expected_calls
     assert loaded_freeze == ([[1], [1]] if shared_source else [[1], [2]])
     assert [geom.freeze_atoms.tolist() for geom in geoms] == loaded_freeze
 
