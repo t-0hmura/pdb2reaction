@@ -3450,17 +3450,24 @@ def load_prepared_geometries(
 ) -> List[Any]:
     """Load multiple PreparedInputStructure geometries and apply freeze atom logic."""
     geoms: List[Any] = []
+    freeze_by_source: Dict[Path, List[int]] = {}
 
     for prepared in prepared_inputs:
         src_path = prepared.source_path
         geom_path = prepared.geom_path
-        cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
-        freeze = resolve_freeze_atoms(
-            cfg,
-            src_path,
-            auto_freeze_links,
-            prefix=f"{prefix} {src_path.name}:",
-        )
+        source_key = src_path.resolve()
+        if auto_freeze_links and source_key in freeze_by_source:
+            freeze = list(freeze_by_source[source_key])
+        else:
+            cfg: Dict[str, Any] = {"freeze_atoms": list(base_freeze)}
+            freeze = resolve_freeze_atoms(
+                cfg,
+                src_path,
+                auto_freeze_links,
+                prefix=f"{prefix} {src_path.name}:",
+            )
+            if auto_freeze_links:
+                freeze_by_source[source_key] = list(freeze)
 
         g = geom_loader(geom_path, coord_type=coord_type, freeze_atoms=freeze)
         g.freeze_atoms = np.array(freeze, dtype=int)

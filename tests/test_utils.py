@@ -28,6 +28,55 @@ def test_pretty_block_with_numpy_scalars() -> None:
         set_verbose_level(0)
 
 
+@pytest.mark.parametrize(
+    ("shared_source", "expected_calls"),
+    [(True, 1), (False, 2)],
+)
+def test_load_prepared_geometries_resolves_freeze_atoms_once_per_source(
+    monkeypatch,
+    capsys,
+    tmp_path: Path,
+    shared_source: bool,
+    expected_calls: int,
+) -> None:
+    from types import SimpleNamespace
+
+    from pdb2reaction.core import utils as u
+
+    source_a = tmp_path / "ref-a.pdb"
+    source_b = source_a if shared_source else tmp_path / "ref-b.pdb"
+    prepared = [
+        u.PreparedInputStructure(source_path=source_a, geom_path=tmp_path / "a.xyz"),
+        u.PreparedInputStructure(source_path=source_b, geom_path=tmp_path / "b.xyz"),
+    ]
+    resolve_calls = []
+    loaded_freeze = []
+
+    def fake_resolve(_cfg, source_path, _freeze_links, **_kwargs):
+        resolve_calls.append(source_path)
+        u.click.echo("freeze warning", err=True)
+        return [len(resolve_calls)]
+
+    def fake_loader(_path, *, coord_type, freeze_atoms):
+        loaded_freeze.append(list(freeze_atoms))
+        return SimpleNamespace(coord_type=coord_type)
+
+    monkeypatch.setattr(u, "resolve_freeze_atoms", fake_resolve)
+    monkeypatch.setattr(u, "geom_loader", fake_loader)
+
+    geoms = u.load_prepared_geometries(
+        prepared,
+        coord_type="cart",
+        base_freeze=[],
+        auto_freeze_links=True,
+    )
+
+    assert len(resolve_calls) == expected_calls
+    assert capsys.readouterr().err.count("freeze warning") == expected_calls
+    assert loaded_freeze == ([[1], [1]] if shared_source else [[1], [2]])
+    assert [geom.freeze_atoms.tolist() for geom in geoms] == loaded_freeze
+
+
 def _prepared_with_template(
     tmp_path: Path,
     *,
