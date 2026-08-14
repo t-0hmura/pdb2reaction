@@ -2799,9 +2799,11 @@ def cli(
                 saddle_multistart_attempts = []
                 if hessian_postprocessing_ready:
                     freqs_cm, modes = _calc_freqs_and_modes()
-                    click.echo(
-                        pretty_block("rigid_projection", rigid_projection_info)
+                    projection_block = pretty_block(
+                        "rigid_projection", rigid_projection_info
                     )
+                    if projection_block:
+                        click.echo(projection_block)
                     neg_mask = freqs_cm < -abs(neg_freq_thresh_cm)
                     n_imag = int(np.sum(neg_mask))
                     ims = [

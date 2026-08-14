@@ -1030,7 +1030,11 @@ def cli(
                     )
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
-                click.echo(pretty_block("rigid_projection", rigid_projection_info))
+                projection_block = pretty_block(
+                    "rigid_projection", rigid_projection_info
+                )
+                if projection_block:
+                    click.echo(projection_block)
 
             # Final geometry location (Optimizer sets final_fn during run)
             final_xyz_path = (
