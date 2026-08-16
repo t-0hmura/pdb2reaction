@@ -60,21 +60,21 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 ```text
 全系入力 (PDB/mmCIF/XYZ/GJF)
  │
- ├─ (任意) 活性部位モデル抽出 [`extract`](extract.md) ← --center/-c は PDB/mmCIF
+ ├─ (任意) 活性部位モデル抽出 extract ← --center/-c は PDB/mmCIF
  │ ↓
  │ 活性部位モデル/クラスターモデル (PDB)
  │ │
- │ ├─ (任意) 段階的スキャン [`scan`](scan.md) ← 単一構造ワークフロー
+ │ ├─ (任意) 段階的スキャン scan ← 単一構造ワークフロー
  │ │ ↓
  │ │ 順序付けられた中間体
  │ │ ↓
- │ └─ MEP 探索 [`path-opt`](path-opt.md) または [`path-search`](path-search.md)
+ │ └─ MEP 探索 path-opt または path-search
  │ ↓
  │ MEP 経路 (mep_trj.xyz) + エネルギーダイアグラム
  │ ↓
- └─ (任意) TS 最適化 + IRC [`tsopt`](tsopt.md) → [`irc`](irc.md)
- └─ (任意) 熱化学 [`freq`](freq.md)
- └─ (任意) DFT 一点計算 [`dft`](dft.md)
+ └─ (任意) TS 最適化 + IRC tsopt → irc
+ └─ (任意) 熱化学 freq
+ └─ (任意) DFT 一点計算 dft
 ```
 
 `all` は次のステージを順に実行します。名前の付いた計算ステージはサブコマンドとして単独でも実行できますが、全系へのマージなど `all` 内部だけの処理もあります。
@@ -238,9 +238,8 @@ raw PDB CCD との名前衝突は自動判別しないため、`--modified-resid
 ### MEP 探索オプション
 
 ```{note}
-`pdb2reaction all` では `--max-cycles` を指定せず、各ステージ固有の
-デフォルトを使用してください。`--max-cycles` は `opt`、`tsopt`、
-`path-opt` などの単発サブコマンドを直接実行するときだけ指定します。
+`all --max-cycles` は MEP 専用です。後処理は `--tsopt-max-cycles` と YAML
+`irc.max_cycles`、単独コマンドは各自の `--max-cycles` を使います。
 ```
 
 | オプション | 説明 | デフォルト |
@@ -249,7 +248,7 @@ raw PDB CCD との名前衝突は自動判別しないため、`--modified-resid
 | `--max-nodes INT` | GSM/DMF segment ごとの可動内部イメージ数。両エンジンとも端点2つを保持するため、総イメージ数は `max_nodes + 2` | `20` |
 | `--max-cycles INT` | MEP 最大最適化サイクル | `300` |
 | `--climb/--no-climb` | 標準 GSM セグメントでクライミングイメージを有効化（ブリッジセグメントは常に無効） | `True` |
-| `--opt-mode [grad\|hess]` | ワークフロープリセット（`grad` → L-BFGS/Dimer、`hess` → RFO/RSPRFO）。コマンド個別実行では `opt --opt-mode grad|hess`、`tsopt --opt-mode grad|hess` を推奨。トークンのマッピングはスコープ依存で、`all` の pre-opt デフォルト（`grad`）と `tsopt` のデフォルト（`hess`）は一致しません。詳細は {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
+| `--opt-mode [grad\|hess]` | ワークフロープリセット（`grad` → L-BFGS/Dimer、`hess` → RFO/RSPRFO）。コマンド個別実行では `opt --opt-mode grad\|hess`、`tsopt --opt-mode grad\|hess` を推奨。トークンのマッピングはスコープ依存で、`all` の pre-opt デフォルト（`grad`）と `tsopt` のデフォルト（`hess`）は一致しません。詳細は {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
 | `--thresh TEXT` | 単一構造最適化と scan 緩和の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
 | `--thresh-gsm TEXT` | MEP 段の GSM ストリング最適化の収束プリセット（`--thresh` と同じプリセット群） | `gau_loose` |
 | `--thresh-dmf TEXT` | DMF MEP 段の IPOPT dual-infeasibility 許容値。`tight`(0.04)、`middle`(0.10)、`loose`(0.20) または正の float。Gaussian プリセットではない | `tight` |

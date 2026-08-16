@@ -124,9 +124,9 @@ because explicit fp32 uses reduced `float32-high`/TF32 matmul and can make
 finite-difference Hessians noisy. MACE currently needs a dedicated environment
 because its supported package stack conflicts with `fairchem-core`. AIMNet2
 charge/spin coverage depends on the selected model. For every backend, accept a
-TS only after optimizer convergence, one significant intended imaginary mode,
-and correct IRC endpoints; use cross-backend or DFT checks when the scientific
-claim requires them.
+TS only after optimizer convergence, exactly one imaginary mode corresponding
+to the intended reaction coordinate, and correct IRC endpoints; use cross-backend
+or DFT checks when the scientific claim requires them.
 
 ## GPU memory (VRAM) requirements
 

@@ -90,7 +90,7 @@ out_dir/ (デフォルト:./result_scan3d/)
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | **入力と電荷** | | |
-| `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル（PDB / XYZ / TRJ / GJF） | `--csv` 未指定時は必須 |
+| `-i, --input PATH` | `geom_loader` が受け入れる構造ファイル（PDB / mmCIF / XYZ / TRJ / GJF） | `--csv` 未指定時は必須 |
 | `-q, --charge INT` | 新規 scan の総電荷（CLI > template/`--ligand-charge`）。両方指定時は `-q` が優先。plot-only `--csv` mode では不要 | 新規 scan で template/導出がない場合は必須 |
 | `-l, --ligand-charge TEXT` | 新規 scan で、単一整数または残基別 mapping から PDB/mmCIF の総電荷を導出。`-q` 省略時に使用。plot-only `--csv` mode では使用しない | _None_ |
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |

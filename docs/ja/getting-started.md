@@ -107,7 +107,6 @@ PDB に水素原子がない場合は、pdb2reaction を実行する前に次の
 | ツール | コマンド例 | 備考 |
 |--------|------------|------|
 | **reduce** (Richardson Lab) | `reduce input.pdb > output.pdb` | 高速、結晶構造に広く使用 |
-| **pdb2pqr** | `pdb2pqr --ff=AMBER input.pdb output.pqr` | 水素を追加し部分電荷を割り当て |
 | **Open Babel** | `obabel input.pdb -O output.pdb -h` | 汎用化学情報処理ツールキット |
 | **PyMOL** | `h_add`（PyMOL 内） | 分子可視化ツール（水素付加機能あり） |
 | **tleap** (AmberTools) | `tleap -f leapin` | Amber 力場準備ツール |

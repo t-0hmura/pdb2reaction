@@ -3,7 +3,7 @@
 ```text
 Usage: pdb2reaction dft [OPTIONS]
 
-  Single-point DFT using GPU4PySCF (CPU PySCF backend).
+  Single-point DFT using GPU4PySCF or CPU PySCF.
 
 Options:
   -v, --verbose LEVEL             Console verbosity 0-3 (default 2). 0=silent;

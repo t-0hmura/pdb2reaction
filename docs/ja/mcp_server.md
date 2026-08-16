@@ -19,7 +19,7 @@ pip install "pdb2reaction[mcp]"
 
 18 個のツールがあり、それぞれが CLI サブコマンドに 1 対 1 で対応します。各ツールは次のフィールドを持つ構造化された dict を返します。
 
-- `schema_version`: エンベロープのバージョン。実際の値は `pdb2reaction.mcp._runner.MCP_SUBCMD_RESULT_SCHEMA_VERSION`。値が上がるとフィールドセットや値の型の変更を意味するため、本ドキュメントに書かれたリテラル値ではなく、この定数を参照するようにしてください。
+- `schema_version`: エンベロープのバージョン。クライアントは各レスポンスの値を読み、対応するバージョンと照合してください。Python では `pdb2reaction.mcp._runner.MCP_SUBCMD_RESULT_SCHEMA_VERSION` も照合に利用できます。
 - `status`: `ok` | `failed` | `summary_missing` | `summary_parse_error` | `summary_run_mismatch`
 - `exit_code`: サブプロセスの終了コード
 - `out_dir`: stage tool の管理ディレクトリ。成功した helper tool では null
@@ -150,23 +150,27 @@ VS Code は `.vscode/mcp.json` でトップレベルの `servers` オブジェ�
 ### カスタム Python MCP クライアント
 
 ```python
+import asyncio
+
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-server_params = StdioServerParameters(command="pdb2reaction-mcp")
-async with stdio_client(server_params) as (read, write):
-    async with ClientSession(read, write) as session:
-        await session.initialize()
-        tools = await session.list_tools()
-        result = await session.call_tool(
-            "optimize_geometry",
-            arguments={
-                "input_pdb": "r.pdb",
-                "charge": -1,
-                "max_cycles": 50,
-            },
-        )
-        print(result.content)
+async def main():
+    server_params = StdioServerParameters(command="pdb2reaction-mcp")
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            result = await session.call_tool(
+                "optimize_geometry",
+                arguments={
+                    "input_pdb": "r.pdb",
+                    "charge": -1,
+                    "max_cycles": 50,
+                },
+            )
+            print(result.content)
+
+asyncio.run(main())
 ```
 
 ## サンドボックス / 安全性に関する注意

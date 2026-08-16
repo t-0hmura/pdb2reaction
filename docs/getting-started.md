@@ -55,7 +55,7 @@ Full table: [CLI Conventions](cli-conventions.md).
 
 ### Hydrogen addition (if your PDB lacks H)
 
-`reduce input.pdb > out.pdb` (fast, crystallographic structures) · `pdb2pqr --ff=AMBER input.pdb out.pqr` (also assigns partial charges) · `obabel input.pdb -O out.pdb -h` (general cheminformatics) · PyMOL `h_add` · AmberTools `tleap` (Amber force-field prep). Apply the same tool with consistent settings to **every** input to keep atom order matched across structures.
+`reduce input.pdb > out.pdb` (fast, crystallographic structures) · `obabel input.pdb -O out.pdb -h` (general cheminformatics) · PyMOL `h_add` · AmberTools `tleap` (Amber force-field prep). Apply the same tool with consistent settings to **every** input to keep atom order matched across structures.
 
 ## Quickstart routes
 

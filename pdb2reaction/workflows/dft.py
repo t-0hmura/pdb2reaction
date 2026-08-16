@@ -379,7 +379,7 @@ def _finalize_dft_result(
 
 
 @click.command(
-    help="Single-point DFT using GPU4PySCF (CPU PySCF backend).",
+    help="Single-point DFT using GPU4PySCF or CPU PySCF.",
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.option(

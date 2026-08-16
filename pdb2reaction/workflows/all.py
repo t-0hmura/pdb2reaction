@@ -3131,7 +3131,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
         "or a single **full structure** (with --scan-lists or with --tsopt). "
         "Extraction (-c/--center) accepts PDB/mmCIF. mmCIF is processed through an internal PDB "
         "bridge and emitted again as mmCIF; oversized PDBs use the same safe bridge. "
-        "Repeat -i/--input for each file."
+        "Pass multiple files after one -i/--input, or repeat -i/--input for each file."
     ),
 )
 @click.option(

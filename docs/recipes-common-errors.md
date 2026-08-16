@@ -71,7 +71,7 @@ Typical fix path:
 ## Recipe 4: Convergence and post-processing failures
 
 Signal:
-- TSOPT stalls, IRC branches look unstable, or MEP refinement stops unexpectedly.
+- TSOPT stalls or IRC branches look unstable.
 
 First checks:
 - Confirm TS candidate quality: Cartesian PHVA must contain exactly one negative frequency, and its mode must follow the reaction coordinate. The 5 cm⁻¹ thresholds affect mode files, flattening, and optional saddle recovery, but not the final count.

@@ -205,7 +205,7 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
     type=str,
     multiple=True,
     required=False,
-    help="Scan targets: inline Python literal (e.g. '[(1,5,1.4)]') or a YAML/JSON spec file path. "
+    help="Required. Scan targets: inline Python literal (e.g. '[(1,5,1.4)]') or a YAML/JSON spec file path. "
          "Atom strings accept positional CHAIN:RESNAME:RESSEQ[ICODE]:ATOM. "
          "Multiple inline literals define sequential stages.",
 )

@@ -15,9 +15,9 @@ Options:
                                   and exit.
   -i, --input FILE                Input structure file (.pdb, .cif, .mmcif,
                                   .xyz, _trj.xyz, ...).  [required]
-  -s, --scan-lists TEXT           Scan targets: inline Python literal (e.g.
-                                  '[(1,5,1.4)]') or a YAML/JSON spec file path.
-                                  Atom strings accept positional
+  -s, --scan-lists TEXT           Required. Scan targets: inline Python literal
+                                  (e.g. '[(1,5,1.4)]') or a YAML/JSON spec file
+                                  path. Atom strings accept positional
                                   CHAIN:RESNAME:RESSEQ[ICODE]:ATOM. Multiple
                                   inline literals define sequential stages.
   -q, --charge INTEGER            Total charge. Required for non-.gjf inputs

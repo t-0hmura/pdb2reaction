@@ -68,6 +68,7 @@ import json
 from pathlib import Path
 
 subcommand = "opt"  # 実行したコマンドに置き換える
+out_dir = "result_opt"  # 実際の出力ディレクトリに置き換える
 primary = "summary.json" if subcommand in {"all", "path-search"} else "result.json"
 summary = json.loads((Path(out_dir) / primary).read_text())
 

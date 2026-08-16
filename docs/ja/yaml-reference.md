@@ -524,7 +524,7 @@ IRC 積分設定。
 
 ```yaml
 irc:
- step_length: 0.1 # Integration step length
+ step_length: 0.1 # Integration step length (Bohr)
  never_stop: false # 物理的な端点判定を無視してmax_cyclesまで追跡
  max_cycles: 125 # Maximum steps along IRC
  forward: true # Propagate in forward direction

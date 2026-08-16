@@ -18,10 +18,12 @@ Options:
                                   extra filenames after options
                                   (.png/.jpg/.jpeg/.html/.svg/.pdf/.csv). If
                                   nothing is given, defaults to energy.png.
-  --unit [kcal|hartree]           Energy unit.  [default: kcal]
+  --unit [kcal|hartree]           Target unit for plotted and exported energy
+                                  values.  [default: kcal]
   -r, --reference TEXT            Reference: 'init' (initial frame; last frame
-                                  if --reverse-x), 'None' (absolute E), or an
-                                  integer index.  [default: init]
+                                  if --reverse-x), 'None' (absolute E), or a
+                                  zero-based integer frame index.  [default:
+                                  init]
   -q, --charge INTEGER            Total charge. Triggers energy recomputation
                                   when supplied.
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1). Triggers energy

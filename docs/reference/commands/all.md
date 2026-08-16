@@ -26,8 +26,9 @@ Options:
                                   accepts PDB/mmCIF. mmCIF is processed through
                                   an internal PDB bridge and emitted again as
                                   mmCIF; oversized PDBs use the same safe
-                                  bridge. Repeat -i/--input for each file.
-                                  [required]
+                                  bridge. Pass multiple files after one
+                                  -i/--input, or repeat -i/--input for each
+                                  file.  [required]
   -c, --center TEXT               Substrate specification for the extractor: a
                                   PDB/mmCIF path, a residue-ID list like
                                   '123,124' or 'A:123,B:456' (insertion codes

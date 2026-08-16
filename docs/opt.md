@@ -7,7 +7,7 @@ Relaxes a single structure toward a local minimum, optionally with distance rest
 Command form:
 
 ```bash
-pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
+pdb2reaction opt -i INPUT.{pdb|cif|mmcif|xyz|gjf} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
  [-b/--backend uma|orb|mace|aimnet2] \
  [--opt-mode grad|hess|lbfgs|rfo] [--flatten/--no-flatten] [--freeze-links/--no-freeze-links] \
  [--dist-freeze '[(i,j,target_Å),...]'] [--one-based|--zero-based] \

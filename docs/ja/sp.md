@@ -34,7 +34,7 @@ pdb2reaction sp -i structure.pdb -q 0 -m 1 --hess
 
 | ファイル | 内容 | 書き出し |
 |---|---|---|
-| _stdout_ | エネルギー（スカラー値）(a.u.) と `|force|_max`。`[sp] energy = …` の形式で出力 | 計算成功時 |
+| _stdout_ | エネルギー（スカラー値）(a.u.) と最大力ノルム。`[sp] energy = …` の形式で出力 | 計算成功時 |
 | `forces.npy` | 原子単位 (Hartree / Bohr) の `(N, 3)` 力配列 | 計算成功時 |
 | `hessian.npy` | 質量重みなし Hessian (Hartree / Bohr²)。凍結原子が無ければ `(3N, 3N)`、YAML `geom.freeze_atoms` があればactive block | `--hess` 指定時のみ |
 | `result.json` / `summary.json` | 機械可読なエネルギー (a.u.)、バックエンド、電荷/スピン、npy 出力へのパス、経過時間 | `--out-json` 指定時のみ |

@@ -12,7 +12,7 @@ Python CLIです。geometry/path stageには組み込みMLIPまたはcustom ASE 
 
 ---
 
-## 2. 階層構造（6 つの計算層 + MCP 統合）
+## 2. 階層構造（6 つの計算層）
 
 ### 2.1 階層テーブル
 
@@ -35,7 +35,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 ├── pyproject.toml packages.find = ["pdb2reaction*", ...] (glob, frozen)
 ├── README.md / CONTRIBUTING.md / CHANGELOG.md
 ├── docs/
-│ ├── architecture.md ← this file
+│ ├── ja/architecture.md ← このファイル
 │ └──... (Sphinx ドキュメントサイト)
 ├── pdb2reaction/ ← package body, 6-layer physical dir
 │ ├── __init__.py PEP 562 lazy: _LAZY_SYMBOLS / _LAZY_MODULES + __getattr__

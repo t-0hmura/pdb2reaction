@@ -55,6 +55,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 
 ## Notes
 - Input order is used directly as plotting order.
+- Values are plotted unchanged; set `--label-y` to their unit.
 - At least two numeric values are required.
 
 ## See Also

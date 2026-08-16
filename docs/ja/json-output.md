@@ -497,11 +497,16 @@ import json
 with open("result_opt/result.json") as f:
     result = json.load(f)
 
-if result["status"] == "converged":
+status = result["status"]
+if status == "error":
+    raise RuntimeError(f"{result['error_type']}: {result['error']}")
+elif status == "converged":
     print(f"Energy: {result['energy_hartree']:.6f} Hartree")
-else:
+elif status in {"not_converged", "stalled"}:
     print(f"Not converged after {result['n_opt_cycles']} cycles")
     print(f"Max force: {result['final_max_force']:.6f}")
+else:
+    print(f"Status: {status}")
 ```
 
 ### jq

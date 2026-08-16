@@ -314,13 +314,13 @@ def run_trj2fig(
     "--unit",
     type=click.Choice(["kcal", "hartree"]),
     default="kcal", show_default=True,
-    help="Energy unit.",
+    help="Target unit for plotted and exported energy values.",
 )
 @click.option(
     "-r",
     "--reference",
     default="init", show_default=True,
-    help="Reference: 'init' (initial frame; last frame if --reverse-x), 'None' (absolute E), or an integer index.",
+    help="Reference: 'init' (initial frame; last frame if --reverse-x), 'None' (absolute E), or a zero-based integer frame index.",
 )
 @click.option(
     "-q",

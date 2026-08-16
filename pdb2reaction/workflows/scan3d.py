@@ -188,7 +188,7 @@ def _result_calculator_fields(
         "Scan targets: inline Python literal or a YAML/JSON spec file path. "
         "scan3d expects EXACTLY 3 quadruples (i, j, low, high) — one per "
         "scanned bond axis — e.g. "
-        "'[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]'. "
+        "'[(12,45,1.30,3.10), (10,55,1.20,3.20), (15,60,1.10,3.00)]'. "
         "Atom indices may also be strings like 'CE SAM 216'; use positional "
         "CHAIN:RESNAME:RESSEQ[ICODE]:ATOM when chain qualification is needed. "
         "Step count per axis is set via --max-step-size, NOT inside the tuple "
