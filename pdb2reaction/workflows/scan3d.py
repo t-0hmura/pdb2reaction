@@ -188,7 +188,7 @@ def _result_calculator_fields(
         "Scan targets: inline Python literal or a YAML/JSON spec file path. "
         "scan3d expects EXACTLY 3 quadruples (i, j, low, high) — one per "
         "scanned bond axis — e.g. "
-        "'[(12,45,1.30,3.10), (10,55,1.20,3.20), (15,60,1.10,3.00)]'. "
+        "'[(12,45,1.30,3.10),(10,55,1.20,3.20),(15,60,1.10,3.00)]'. "
         "Atom indices may also be strings like 'CE SAM 216'; use positional "
         "CHAIN:RESNAME:RESSEQ[ICODE]:ATOM when chain qualification is needed. "
         "Step count per axis is set via --max-step-size, NOT inside the tuple "
@@ -819,6 +819,11 @@ def cli(
                                 "energy_hartree": E_h,
                                 "bias_converged": converged,
                                 "artifact_written": bool(_artifact_written),
+                                "geometry_file": (
+                                    str(Path("grid") / f"{point_stem}.xyz")
+                                    if _artifact_written
+                                    else None
+                                ),
                                 "is_preopt": False,
                             }
                         )
@@ -943,7 +948,11 @@ def cli(
             df["d3_label"] = d3_label_csv
             # Keep the internal-only artifact-provenance column out of the public
             # CSV so a genuinely converged run's surface.csv schema is unchanged.
-            _csv_drop3 = [c for c in ("artifact_written",) if c in df.columns]
+            _csv_drop3 = [
+                c
+                for c in ("artifact_written", "geometry_file")
+                if c in df.columns
+            ]
             df.drop(columns=_csv_drop3).to_csv(surface_csv, index=False)
             click.echo(f"[write] Wrote '{surface_csv}'.")
 
@@ -1105,8 +1114,7 @@ def cli(
 
         fig3d.update_layout(
             title="3D Energy Landscape",
-            width=900,
-            height=800,
+            autosize=True,
             scene=dict(
                 bgcolor="rgba(0,0,0,0)",
                 xaxis=dict(
@@ -1158,7 +1166,12 @@ def cli(
         )
 
         html3d = final_dir / "scan3d_density.html"
-        fig3d.write_html(str(html3d))
+        fig3d.write_html(
+            str(html3d),
+            config={"responsive": True, "displaylogo": False},
+            default_width="100%",
+            default_height="100%",
+        )
         click.echo(f"[plot] Wrote '{html3d}'.")
 
         emit("\n====== 3D Scan finished ======\n", narrative=True)
@@ -1215,6 +1228,35 @@ def cli(
                 },
             }
             if csv_path is None:
+                grid_geometry_files = [
+                    str(rec["geometry_file"])
+                    for rec in grid_records
+                    if rec.get("geometry_file")
+                ]
+                result_data["grid_points"] = [
+                    {
+                        "index": [int(rec["i"]), int(rec["j"]), int(rec["k"])],
+                        "distances_angstrom": [
+                            float(rec["d1_A"]),
+                            float(rec["d2_A"]),
+                            float(rec["d3_A"]),
+                        ],
+                        "targets_angstrom": [
+                            float(rec["target_d1_A"]),
+                            float(rec["target_d2_A"]),
+                            float(rec["target_d3_A"]),
+                        ],
+                        "energy_hartree": rec.get("energy_hartree"),
+                        "converged": rec.get("bias_converged"),
+                        "geometry_file": rec.get("geometry_file"),
+                    }
+                    for rec in grid_records
+                ]
+                result_data["current_output_paths"] = [
+                    "surface.csv",
+                    "scan3d_density.html",
+                    *grid_geometry_files,
+                ]
                 _pair1: Dict[str, Any] = {"i": int(i1 + 1), "j": int(j1 + 1), "low": float(low1), "high": float(high1)}
                 _pair2: Dict[str, Any] = {"i": int(i2 + 1), "j": int(j2 + 1), "low": float(low2), "high": float(high2)}
                 _pair3: Dict[str, Any] = {"i": int(i3 + 1), "j": int(j3 + 1), "low": float(low3), "high": float(high3)}
@@ -1255,6 +1297,8 @@ def cli(
                     scientific_status=_sci3,
                     scientific_status_reasons=_sci3_reasons,
                 )
+            else:
+                result_data["current_output_paths"] = ["scan3d_density.html"]
             write_result_json(
                 final_dir, result_data,
                 command="scan3d",

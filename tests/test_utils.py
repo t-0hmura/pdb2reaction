@@ -8,6 +8,34 @@ import numpy as np
 import pytest
 
 
+def test_values_from_bounds_stabilizes_decimal_grid() -> None:
+    """Decimal input must not create an extra interval or noisy target text."""
+    from pdb2reaction.core.utils import values_from_bounds
+
+    values = values_from_bounds(1.4, 2.6, 0.2)
+
+    assert len(values) == 7
+    assert values.tolist() == [1.4, 1.6, 1.8, 2.0, 2.2, 2.4, 2.6]
+    assert [str(float(value)) for value in values] == [
+        "1.4",
+        "1.6",
+        "1.8",
+        "2.0",
+        "2.2",
+        "2.4",
+        "2.6",
+    ]
+
+
+def test_values_from_bounds_keeps_step_cap_for_nonintegral_ratio() -> None:
+    from pdb2reaction.core.utils import values_from_bounds
+
+    values = values_from_bounds(1.4, 2.6, 0.19)
+
+    assert len(values) == 8
+    assert np.max(np.abs(np.diff(values))) <= 0.19 + 1e-12
+
+
 def test_pretty_block_with_numpy_scalars() -> None:
     """pretty_block should normalize NumPy scalars for YAML-safe dumping."""
     from pdb2reaction.core.utils import pretty_block, set_verbose_level

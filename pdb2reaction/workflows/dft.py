@@ -63,6 +63,23 @@ DFT_KW: Dict[str, Any] = {
 }
 
 
+def _def2_ecp_required(atoms, charge_by_symbol) -> bool:
+    """Return whether a def2 calculation contains an ECP-covered element.
+
+    Karlsruhe def2 ECPs start at Rb (Z=37). Passing the basis name through
+    PySCF's ``ecp=`` argument for an all-light-element system only emits one
+    misleading "ECP not found" warning per element.
+    """
+    for atom in atoms:
+        try:
+            symbol = atom[0] if isinstance(atom, (tuple, list)) else str(atom).split()[0]
+            if int(charge_by_symbol(str(symbol))) >= 37:
+                return True
+        except (IndexError, TypeError, ValueError):
+            continue
+    return False
+
+
 
 def _parse_func_basis(s: str) -> Tuple[str, str]:
     """
@@ -671,7 +688,8 @@ def cli(
             # matching def2 ECP explicitly; PySCF applies entries only to
             # elements covered by that ECP family (commonly Rb through Rn).
             _ecp = dft_cfg.get("ecp", None)
-            if _ecp is None and basis.lower().startswith("def2"):
+            if (_ecp is None and basis.lower().startswith("def2")
+                    and _def2_ecp_required(atoms_list, gto.charge)):
                 _ecp = basis
             _build_kw: Dict[str, Any] = dict(
                 atom=atoms_list,

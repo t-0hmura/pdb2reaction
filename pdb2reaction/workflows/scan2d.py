@@ -125,6 +125,94 @@ def _rbf_support(points_x: np.ndarray, points_y: np.ndarray) -> Tuple[int, int]:
     return len(unique), rank
 
 
+def _contour_line_segments(
+    x_grid: np.ndarray,
+    y_grid: np.ndarray,
+    z_grid: np.ndarray,
+    levels: np.ndarray,
+) -> Tuple[List[Optional[float]], List[Optional[float]]]:
+    """Return marching-squares contour segments separated by ``None``.
+
+    Plotly's ``Surface.contours.z.project`` draws directly on the scene floor.
+    When an opaque coloured floor surface occupies the same depth, the two
+    WebGL layers z-fight and produce camera-dependent white speckle. Explicit
+    line segments let the caller place the contours slightly above that floor.
+    """
+
+    x_arr = np.asarray(x_grid, dtype=float)
+    y_arr = np.asarray(y_grid, dtype=float)
+    z_arr = np.asarray(z_grid, dtype=float)
+    if x_arr.ndim != 2 or x_arr.shape != y_arr.shape or x_arr.shape != z_arr.shape:
+        raise ValueError("Contour grids must be matching two-dimensional arrays.")
+
+    edge_corners = ((0, 1), (1, 2), (2, 3), (3, 0))
+    case_pairs = {
+        1: ((3, 0),), 2: ((0, 1),), 3: ((3, 1),), 4: ((1, 2),),
+        6: ((0, 2),), 7: ((3, 2),), 8: ((2, 3),), 9: ((0, 2),),
+        11: ((1, 2),), 12: ((1, 3),), 13: ((0, 1),), 14: ((3, 0),),
+    }
+    line_x: List[Optional[float]] = []
+    line_y: List[Optional[float]] = []
+
+    for level_raw in np.asarray(levels, dtype=float).ravel():
+        level = float(level_raw)
+        if not np.isfinite(level):
+            continue
+        for row in range(z_arr.shape[0] - 1):
+            for col in range(z_arr.shape[1] - 1):
+                points = (
+                    (x_arr[row, col], y_arr[row, col]),
+                    (x_arr[row, col + 1], y_arr[row, col + 1]),
+                    (x_arr[row + 1, col + 1], y_arr[row + 1, col + 1]),
+                    (x_arr[row + 1, col], y_arr[row + 1, col]),
+                )
+                values = (
+                    z_arr[row, col], z_arr[row, col + 1],
+                    z_arr[row + 1, col + 1], z_arr[row + 1, col],
+                )
+                if not all(np.isfinite(value) for value in values):
+                    continue
+
+                case = sum((1 << index) for index, value in enumerate(values) if value > level)
+                if case in (0, 15):
+                    continue
+                if case == 5:
+                    pairs = (((0, 1), (2, 3)) if float(np.mean(values)) > level
+                             else ((3, 0), (1, 2)))
+                elif case == 10:
+                    pairs = (((3, 0), (1, 2)) if float(np.mean(values)) > level
+                             else ((0, 1), (2, 3)))
+                else:
+                    pairs = case_pairs.get(case, ())
+
+                intersections: Dict[int, Tuple[float, float]] = {}
+                for edge in {edge for pair in pairs for edge in pair}:
+                    first, second = edge_corners[edge]
+                    z_first, z_second = float(values[first]), float(values[second])
+                    if z_first == z_second:
+                        continue
+                    fraction = (level - z_first) / (z_second - z_first)
+                    if fraction < -1.0e-12 or fraction > 1.0 + 1.0e-12:
+                        continue
+                    fraction = min(1.0, max(0.0, fraction))
+                    x_first, y_first = points[first]
+                    x_second, y_second = points[second]
+                    intersections[edge] = (
+                        float(x_first + fraction * (x_second - x_first)),
+                        float(y_first + fraction * (y_second - y_first)),
+                    )
+
+                for first_edge, second_edge in pairs:
+                    if first_edge not in intersections or second_edge not in intersections:
+                        continue
+                    first_point = intersections[first_edge]
+                    second_point = intersections[second_edge]
+                    line_x.extend((first_point[0], second_point[0], None))
+                    line_y.extend((first_point[1], second_point[1], None))
+
+    return line_x, line_y
+
+
 def _sort_values_by_reference(values: np.ndarray, ref: Optional[float]) -> np.ndarray:
     """Sort scan values so that those closest to ref come first."""
     if ref is None or not np.isfinite(ref):
@@ -866,6 +954,11 @@ def cli(
                             "energy_hartree": E_h,
                             "bias_converged": converged,
                             "artifact_written": bool(_artifact_written),
+                            "geometry_file": (
+                                str(Path("grid") / f"{point_stem}.xyz")
+                                if _artifact_written
+                                else None
+                            ),
                             "is_preopt": False,
                         }
                     )
@@ -931,7 +1024,11 @@ def cli(
             surface_csv = final_dir / "surface.csv"
             # Keep internal-only eligibility columns out of the public CSV so a
             # genuinely converged run's surface.csv schema is unchanged.
-            _csv_drop = [c for c in ("seed_eligible", "artifact_written") if c in df.columns]
+            _csv_drop = [
+                c
+                for c in ("seed_eligible", "artifact_written", "geometry_file")
+                if c in df.columns
+            ]
             df.drop(columns=_csv_drop).to_csv(surface_csv, index=False)
             click.echo(f"[write] Wrote '{surface_csv}'.")
 
@@ -1088,7 +1185,7 @@ def cli(
             fig2d.write_image(str(png2d), scale=2, engine="kaleido", width=680, height=600)
             click.echo(f"[plot] Wrote '{png2d}'.")
 
-            # ---- 3D surface plus base-plane projection ----
+            # ---- 3D surface plus the authored coloured base-plane projection ----
             spread = vmax - vmin if (vmax > vmin) else 1.0
             z_bottom = vmin - spread
             z_top = vmax
@@ -1129,7 +1226,6 @@ def cli(
                         "end": c_end,
                         "size": c_step,
                         "color": "black",
-                        "project": {"z": True},
                     }
                 },
                 name="3D Surface",
@@ -1148,7 +1244,26 @@ def cli(
                 name="2D Contour Projection (Bottom)",
             )
 
-            fig3d = go.Figure(data=[surface3d, plane_proj])
+            contour_levels = np.arange(
+                c_start, c_end + 0.5 * c_step, c_step, dtype=float
+            )
+            contour_x, contour_y = _contour_line_segments(XI, YI, ZI, contour_levels)
+            contour_z = z_bottom + 0.01
+            bottom_contours = go.Scatter3d(
+                x=contour_x,
+                y=contour_y,
+                z=[contour_z if value is not None else None for value in contour_x],
+                mode="lines",
+                line=dict(color="black", width=3),
+                hoverinfo="skip",
+                showlegend=False,
+                name="2D Contour Lines (Bottom)",
+            )
+
+            # The generated artifact keeps the original scientific rendering.
+            # Notebook-only white grid controls are injected only into the linked
+            # Results card and therefore never modify this authored HTML.
+            fig3d = go.Figure(data=[surface3d, plane_proj, bottom_contours])
             fig3d.update_layout(
                 title="Energy Landscape with 2D PES Scan",
                 width=800,
@@ -1206,7 +1321,12 @@ def cli(
             )
 
             html3d = final_dir / "scan2d_landscape.html"
-            fig3d.write_html(str(html3d))
+            fig3d.write_html(
+                str(html3d),
+                config={"responsive": True, "displaylogo": False},
+                default_width="100%",
+                default_height="100%",
+            )
             click.echo(f"[plot] Wrote '{html3d}'.")
 
             emit("\n====== 2D Scan finished ======\n", narrative=True)
@@ -1220,6 +1340,28 @@ def cli(
                 )
                 grid_records = [
                     rec for rec in records if not bool(rec.get("is_preopt", False))
+                ]
+                grid_geometry_files = [
+                    str(rec["geometry_file"])
+                    for rec in grid_records
+                    if rec.get("geometry_file")
+                ]
+                grid_points = [
+                    {
+                        "index": [int(rec["i"]), int(rec["j"])],
+                        "distances_angstrom": [
+                            float(rec["d1_A"]),
+                            float(rec["d2_A"]),
+                        ],
+                        "targets_angstrom": [
+                            float(rec["target_d1_A"]),
+                            float(rec["target_d2_A"]),
+                        ],
+                        "energy_hartree": rec.get("energy_hartree"),
+                        "converged": rec.get("bias_converged"),
+                        "geometry_file": rec.get("geometry_file"),
+                    }
+                    for rec in grid_records
                 ]
                 grid_seed_eligible = seed_eligible_mask(grid_records)
                 # The optional preoptimization row stays in surface.csv as a
@@ -1253,6 +1395,13 @@ def cli(
                     "pair1": _pair1,
                     "pair2": _pair2,
                     "min_energy_hartree": min_energy,
+                    "grid_points": grid_points,
+                    "current_output_paths": [
+                        "surface.csv",
+                        "scan2d_map.png",
+                        "scan2d_landscape.html",
+                        *grid_geometry_files,
+                    ],
                     "files": {
                         "surface_csv": "surface.csv",
                         "scan2d_map_png": "scan2d_map.png",

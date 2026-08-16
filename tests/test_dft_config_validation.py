@@ -7,6 +7,19 @@ from click.testing import CliRunner
 from pdb2reaction.cli.app import cli
 
 
+def test_def2_ecp_is_only_auto_enabled_for_covered_elements() -> None:
+    from pdb2reaction.workflows.dft import _def2_ecp_required
+
+    atomic_numbers = {"H": 1, "C": 6, "O": 8, "Rb": 37, "I": 53}
+    charge = atomic_numbers.__getitem__
+
+    assert not _def2_ecp_required(
+        [("H", (0, 0, 0)), ("C", (0, 0, 1)), ("O", (0, 1, 0))],
+        charge,
+    )
+    assert _def2_ecp_required([("Rb", (0, 0, 0)), ("I", (0, 0, 3))], charge)
+
+
 def test_dft_rejects_unknown_yaml_engine_before_execution(tmp_path) -> None:
     xyz = tmp_path / "h2.xyz"
     xyz.write_text(

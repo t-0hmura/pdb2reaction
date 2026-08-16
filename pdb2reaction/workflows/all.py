@@ -120,7 +120,15 @@ from pdb2reaction.workflows._run_session import (
     public_output_key as _public_output_key,
     refresh_current_public_outputs as _refresh_current_public_outputs,
 )
-from pdb2reaction.cli.common_options import add_coord_type_option, add_precision_option, add_backend_model_option, add_calc_file_option, add_deterministic_option, add_allow_charge_mult_mismatch_option
+from pdb2reaction.cli.common_options import (
+    add_allow_charge_mult_mismatch_option,
+    add_backend_model_option,
+    add_calc_file_option,
+    add_coord_type_option,
+    add_deterministic_option,
+    add_precision_option,
+    add_print_every_option,
+)
 # Advanced-help visibility/callback: one product-local implementation lives in
 # cli.help_pages; the `all` command routes through it (a presentation-layer
 # dependency) instead of keeping a private copy.
@@ -897,12 +905,13 @@ def _write_args_yaml_with_freeze_atoms(
     coord_type: Optional[str] = None,
     precision: Optional[str] = None,
     backend_model: Optional[str] = None,
+    print_every: Optional[int] = None,
     session: Optional[RunSession] = None,
 ) -> Optional[Path]:
     """
     Write ``freeze_atoms`` and (optionally) ``coord_type`` /
-    ``precision`` into a
-    YAML config under ``geom`` / ``calc`` and produce a temporary YAML file.
+    ``precision`` / ``print_every`` into a YAML config under ``geom`` /
+    ``calc`` / ``opt`` and produce a temporary YAML file.
     Returns the new YAML path, or the original ``args_yaml`` when nothing was
     provided.
 
@@ -915,12 +924,15 @@ def _write_args_yaml_with_freeze_atoms(
     propagated uniformly to opt / tsopt / freq / scan / path-opt / path-search
     without per-call argv plumbing. ``precision`` is propagated the same way
     via ``calc.precision`` so ``all --precision fp64`` reaches every child.
+    ``print_every`` is written to ``opt.print_every`` so every optimizing child
+    stage uses the same explicit progress cadence.
     """
     if (
         not freeze_atoms
         and coord_type is None
         and precision is None
         and backend_model is None
+        and print_every is None
     ):
         return args_yaml
     if session is None:
@@ -954,6 +966,14 @@ def _write_args_yaml_with_freeze_atoms(
         if backend_model is not None:
             calc_cfg["model"] = backend_model
         cfg["calc"] = calc_cfg
+
+    if print_every is not None:
+        opt_cfg = cfg.get("opt")
+        if not isinstance(opt_cfg, dict):
+            opt_cfg = {}
+        opt_cfg = dict(opt_cfg)
+        opt_cfg["print_every"] = int(print_every)
+        cfg["opt"] = opt_cfg
 
     tmp_dir = Path(tempfile.mkdtemp(prefix="tmp_path_search_"))
     session.resources.own_path(tmp_dir)
@@ -2000,6 +2020,7 @@ def _optimize_endpoint_geom(
     stop_plateau: Optional[bool] = None,
     stop_plateau_thresh: Optional[float] = None,
     stop_plateau_window: Optional[int] = None,
+    print_every: Optional[int] = None,
 ) -> Tuple[Any, Path, Optional[bool]]:
     """
     Optimize an endpoint geometry using LBFGS/RFO with settings mirroring path_search defaults.
@@ -2063,6 +2084,8 @@ def _optimize_endpoint_geom(
             cfg["energy_plateau_thresh"] = float(stop_plateau_thresh)
         if stop_plateau_window is not None:
             cfg["energy_plateau_window"] = int(stop_plateau_window)
+        if print_every is not None:
+            cfg["print_every"] = int(print_every)
 
         # Seed cached IRC endpoint Hessian for RFO when available, but only on
         # a full evaluation-identity match (run/system/evaluator/active
@@ -3756,6 +3779,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     ),
 )
 @add_coord_type_option(choices=("cart", "dlc"))
+@add_print_every_option()
 @add_precision_option()
 @add_backend_model_option()
 @add_calc_file_option()
@@ -3838,6 +3862,7 @@ def cli(
     dft_conv_tol: Optional[float],
     dft_grid_level: Optional[int],
     dft_engine: Optional[str],
+    print_every: Optional[int],
     cli_coord_type: Optional[str],
     precision: Optional[str],
     backend_model: Optional[str],
@@ -4033,6 +4058,11 @@ def cli(
     # path stages are chain-of-states, which skip the plateau check outright.
     _stop_plateau_eff = (
         bool(stop_plateau) if cli_param_overridden(ctx, "stop_plateau") else None
+    )
+    print_every_override = (
+        int(print_every)
+        if cli_param_overridden(ctx, "print_every") and print_every is not None
+        else None
     )
     spin_configured = False
     if (
@@ -4295,6 +4325,7 @@ def cli(
                     if cli_param_overridden(ctx, "max_cycles")
                     else None
                 ),
+                "print_every": print_every_override,
                 "climb": (
                     bool(climb)
                     if cli_param_overridden(ctx, "climb")
@@ -4787,6 +4818,7 @@ def cli(
         ),
         precision=precision,
         backend_model=backend_model,
+        print_every=print_every_override,
         session=session,
     )
 
@@ -4961,6 +4993,7 @@ def cli(
                 stop_plateau=_stop_plateau_eff,
                 stop_plateau_thresh=stop_plateau_thresh,
                 stop_plateau_window=stop_plateau_window,
+                print_every=print_every_override,
             )
         except Exception as e:
             _echo(
@@ -4988,6 +5021,7 @@ def cli(
                 stop_plateau=_stop_plateau_eff,
                 stop_plateau_thresh=stop_plateau_thresh,
                 stop_plateau_window=stop_plateau_window,
+                print_every=print_every_override,
             )
         except Exception as e:
             _echo(
@@ -6989,6 +7023,7 @@ def cli(
                     stop_plateau=_stop_plateau_eff,
                     stop_plateau_thresh=stop_plateau_thresh,
                     stop_plateau_window=stop_plateau_window,
+                    print_every=print_every_override,
                 )
             except Exception as e:
                 _echo(
@@ -7016,6 +7051,7 @@ def cli(
                     stop_plateau=_stop_plateau_eff,
                     stop_plateau_thresh=stop_plateau_thresh,
                     stop_plateau_window=stop_plateau_window,
+                    print_every=print_every_override,
                 )
             except Exception as e:
                 _echo(

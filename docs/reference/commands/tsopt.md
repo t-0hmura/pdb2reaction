@@ -130,8 +130,8 @@ Options:
   --coord-type [cart|redund|dlc|tric]
                                   Optimization coordinate system
                                   (cart|redund|dlc|tric).  [default: (cart)]
-  --print-every INTEGER RANGE     Print optimizer status every N cycles (debug
-                                  knob).  [default: (100); x>=1]
+  --print-every INTEGER RANGE     Print optimizer status every N cycles.
+                                  [default: (100); x>=1]
   --stop-plateau / --no-stop-plateau
                                   Stop when the energy stops changing while the
                                   convergence criteria are still unmet, and

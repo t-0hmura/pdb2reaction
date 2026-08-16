@@ -108,8 +108,8 @@ Options:
   --coord-type [cart|redund|dlc|tric]
                                   Optimization coordinate system
                                   (cart|redund|dlc|tric).  [default: (cart)]
-  --print-every INTEGER RANGE     Print optimizer status every N cycles (debug
-                                  knob).  [default: (100); x>=1]
+  --print-every INTEGER RANGE     Print optimizer status every N cycles.
+                                  [default: (100); x>=1]
   --precision [fp32|fp64]         MLIP backend precision: fp32 or fp64. Unset
                                   defaults per backend (uma: fp32; orb, mace:
                                   fp64). Routed to backend-specific kwargs (UMA

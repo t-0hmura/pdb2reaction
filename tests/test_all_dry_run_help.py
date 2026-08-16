@@ -4,10 +4,17 @@ temp-dir cleanup."""
 import importlib
 
 import pytest
+import yaml
+
 from click.testing import CliRunner
 
 from pdb2reaction.cli.app import cli as root_cli
-from pdb2reaction.workflows.all import _charge_override_message, cli
+from pdb2reaction.workflows._run_session import RunSession
+from pdb2reaction.workflows.all import (
+    _charge_override_message,
+    _write_args_yaml_with_freeze_atoms,
+    cli,
+)
 
 
 def test_all_dry_run_help_describes_temporary_extract_precheck():
@@ -29,6 +36,27 @@ def test_all_help_describes_charge_precedence_with_and_without_extraction():
     help_text = " ".join(result.output.split())
     assert "explicit -q/--charge has highest priority" in help_text
     assert "mismatch emits a warning" in help_text
+
+
+def test_all_exposes_and_propagates_print_every(tmp_path):
+    result = CliRunner().invoke(cli, ["--help-advanced"])
+    assert result.exit_code == 0
+    assert "--print-every" in result.output
+    assert "debug knob" not in result.output
+
+    session = RunSession()
+    try:
+        generated = _write_args_yaml_with_freeze_atoms(
+            None,
+            (),
+            print_every=7,
+            session=session,
+        )
+        assert generated is not None
+        payload = yaml.safe_load(generated.read_text(encoding="utf-8"))
+        assert payload["opt"]["print_every"] == 7
+    finally:
+        session.close()
 
 
 def test_all_no_extract_charge_override_reports_the_actual_relation():

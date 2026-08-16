@@ -19,10 +19,10 @@ Options:
   -s, --scan-lists TEXT           Scan targets: inline Python literal or a
                                   YAML/JSON spec file path. scan3d expects
                                   EXACTLY 3 quadruples (i, j, low, high) — one
-                                  per scanned bond axis — e.g.
-                                  '[(12,45,1.30,3.10), (10,55,1.20,3.20),
-                                  (15,60,1.10,3.00)]'. Atom indices may also be
-                                  strings like 'CE SAM 216'; use positional
+                                  per scanned bond axis — e.g. '[(12,45,1.30,3.1
+                                  0),(10,55,1.20,3.20),(15,60,1.10,3.00)]'. Atom
+                                  indices may also be strings like 'CE SAM 216';
+                                  use positional
                                   CHAIN:RESNAME:RESSEQ[ICODE]:ATOM when chain
                                   qualification is needed. Step count per axis
                                   is set via --max-step-size, NOT inside the
@@ -112,8 +112,8 @@ Options:
   --coord-type [cart|redund|dlc|tric]
                                   Optimization coordinate system
                                   (cart|redund|dlc|tric).  [default: (cart)]
-  --print-every INTEGER RANGE     Print optimizer status every N cycles (debug
-                                  knob).  [default: (100); x>=1]
+  --print-every INTEGER RANGE     Print optimizer status every N cycles.
+                                  [default: (100); x>=1]
   --precision [fp32|fp64]         MLIP backend precision: fp32 or fp64. Unset
                                   defaults per backend (uma: fp32; orb, mace:
                                   fp64). Routed to backend-specific kwargs (UMA

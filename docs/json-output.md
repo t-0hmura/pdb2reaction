@@ -319,6 +319,8 @@ the per-cycle force/step convergence keys and Hessian-mode `safeguards` object.
 | `n_points_attempted` | int | Fresh-run grid points attempted, excluding preoptimization |
 | `n_points_usable` | int | Fresh-run points eligible for scientific reuse |
 | `point_outcomes` | object[] | Per-point convergence, energy, artifact, and eligibility data |
+| `grid_points` | object[] | Explicit grid-index, distances, energy, convergence, and `geometry_file` mapping used by interactive Results viewers |
+| `current_output_paths` | string[] | Current-run CSV/HTML/PNG and grid geometries; consumers can exclude stale files without filename inference |
 | `grid_shape` | int[] | Grid dimensions (only when running fresh; absent under `scan3d --csv`) |
 | `pair1`, `pair2` (,`pair3`) | object | `{i, j, low, high}` with optional `label_i`, `label_j`. `scan3d`: present only when running fresh; absent under `--csv` re-plot |
 | `min_energy_hartree` | float | Surface minimum energy |

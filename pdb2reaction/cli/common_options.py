@@ -38,7 +38,7 @@ def add_print_every_option() -> Callable[[Callable], Callable]:
             # --help, the generated reference and the Colab option list stop
             # reading as unset.
             show_default="100",
-            help="Print optimizer status every N cycles (debug knob).",
+            help="Print optimizer status every N cycles.",
         )(func)
     return decorator
 

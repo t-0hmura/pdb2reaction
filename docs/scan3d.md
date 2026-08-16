@@ -87,6 +87,10 @@ unique non-coplanar usable points spanning all three axes.
 ## Outputs
 
 The key deliverables are `surface.csv`, per-point geometries under `grid/`, and the `scan3d_density.html` isosurface plot.
+With `--out-json`, a fresh scan records an explicit `grid_points[]` mapping in
+`result.json`. The isosurfaces are interpolated; interactive clients should use
+the mapped computed grid points, rather than arbitrary isosurface vertices, when
+selecting a corresponding structure.
 
 ```
 out_dir/ (default:./result_scan3d/)

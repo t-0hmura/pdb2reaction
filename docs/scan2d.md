@@ -100,6 +100,9 @@ see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
 ## Outputs
 
 After a run, check `surface.csv`, the per-point structures under `grid/`, and the `scan2d_map.png` / `scan2d_landscape.html` plots.
+With `--out-json`, `result.json` also records an explicit `grid_points[]`
+mapping from each grid index to its written XYZ geometry. Notebook and other
+interactive clients should use this mapping instead of inferring filenames.
 
 ```text
 out_dir/ (default:./result_scan2d/)
