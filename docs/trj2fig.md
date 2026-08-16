@@ -71,8 +71,6 @@ summary.json                         # Byte-identical compatibility mirror on su
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1); triggers energy recomputation when provided. | _None_ |
 | `--reverse-x/--no-reverse-x` | Reverse the x-axis so the last frame appears on the left (and `init` becomes the last frame). | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend for energy recomputation. | `uma` |
-| `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
-| `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 | `--out-json/--no-out-json` | Write a machine-readable `result.json` next to the output(s). See [JSON Output Schema](json-output.md) for the schema. | `False` |
 
 The full flag list is in the generated [command reference](reference/commands/index.md).

@@ -5,9 +5,11 @@ appearing to have been applied. These output-only guards do not change
 behavior, thresholds, or defaults.
 """
 
+import warnings
 from pathlib import Path
 
 import click
+import pytest
 
 import pdb2reaction.backends as backends_mod
 import pdb2reaction.backends.orb as orb_mod
@@ -61,6 +63,29 @@ def test_unusable_calc_keys_are_reported_but_seeded_defaults_are_not() -> None:
         assert dropped(backend, dict(noise)) == []
         # A key no backend knows is still surfaced.
         assert dropped(backend, {**noise, "nonexistent_knob": 1}) == ["nonexistent_knob"]
+
+
+def test_non_uma_worker_parallelism_is_reported_and_removed() -> None:
+    from pdb2reaction.core.defaults import apply_backend_defaults
+
+    cfg = {"backend": "orb", "workers": 4, "workers_per_node": 2}
+    with pytest.warns(UserWarning, match="does not use UMA worker parallelism"):
+        apply_backend_defaults(cfg)
+
+    assert "workers" not in cfg
+    assert "workers_per_node" not in cfg
+
+
+def test_non_uma_default_worker_values_are_silent() -> None:
+    from pdb2reaction.core.defaults import apply_backend_defaults
+
+    cfg = {"backend": "orb", "workers": 1, "workers_per_node": 1}
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        apply_backend_defaults(cfg)
+
+    assert "workers" not in cfg
+    assert "workers_per_node" not in cfg
 
 
 def test_orb_reports_an_unhonoured_compile_request() -> None:

@@ -25,7 +25,6 @@ pdb2reaction scan -i input.pdb \
 | `-s, --scan-lists` | str | required | Inline Python literal `'[(a,b,target),...]'`, or YAML/JSON spec path. **Pass multiple stages as space-separated literals after a single `-s`** — repeating `-s` is rejected. |
 | `-q` / `-l` / `-m` | — | — | Charge / spin |
 | `-b, --backend` | str | `uma` | MLIP backend |
-| `--solvent` | str | `none` | xTB-ALPB solvent |
 | `-o, --out-dir` | path | `./result_scan/` | Output directory |
 | `--ref-pdb` | path | none | Residue context for XYZ/GJF inputs |
 | `--config` / `--dry-run` / `--help-advanced` | — | — | Standard (`scan` has no `--show-config`) |

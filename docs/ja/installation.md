@@ -148,20 +148,6 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
     pip install "pdb2reaction[dft]"
     ```
 
-    暗黙溶媒補正を使用するには、[xTB](https://github.com/grimme-lab/xtb) をインストールし、`xtb` コマンドが `PATH` 上で利用可能であることを確認してください。
-
-    #### xTB のインストール
-
-    **ALPB 溶媒和モデルの場合**（推奨の出発点）:
-
-    ```bash
-    conda install -c conda-forge xtb
-    ```
-
-    **CPCM-X 溶媒和モデルの場合** conda-forge の xtb は CPCM-X を含まないため、ソースからのビルドが必要です。手順は {ref}`ja-recipe-cpcmx-build` を参照。
-
-    カスタム xTB バイナリを使用するには、YAML 設定で `xtb_cmd` キーを設定するか、Python で `calc.xtb_cmd` を使用してください。
-
 8. **インストールの確認**
 
     ```bash

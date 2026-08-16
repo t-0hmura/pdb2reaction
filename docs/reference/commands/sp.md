@@ -33,9 +33,6 @@ Options:
                                   backend; UMA, ORB, MACE, and AIMNet2 also
                                   support an explicit Analytical request.
                                   [default: (FiniteDifference)]
-  --convert-files / --no-convert-files
-                                  Compatibility toggle; sp writes no structure
-                                  companions.  [default: convert-files]
   --config FILE                   YAML config file with sections (calc:, geom:,
                                   …).
   --show-config / --no-show-config
@@ -48,8 +45,10 @@ Options:
                                   [default: no-out-json]
   -b, --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
-  --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
-                                  'water'). 'none' to disable.  [default: none]
+  --solvent TEXT                  Experimental, computationally expensive xTB
+                                  solvent delta correction. Examples: water,
+                                  methanol, acetonitrile, dmso, thf, toluene.
+                                  'none' disables it.  [default: none]
   --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
   -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
                                   unless --ligand-charge is provided (.gjf

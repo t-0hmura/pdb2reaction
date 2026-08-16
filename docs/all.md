@@ -25,7 +25,7 @@ Working examples for GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Ch
 Command form:
 
 ```bash
-pdb2reaction all -i INPUT1 [INPUT2 ...] [-c SUBSTRATE] [-b uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] [options]
+pdb2reaction all -i INPUT1 [INPUT2 ...] [-c SUBSTRATE] [-b uma|orb|mace|aimnet2] [options]
 ```
 
 Multi-structure MEP with TS + thermo + DFT:
@@ -234,9 +234,6 @@ directly, such as `opt`, `tsopt`, or `path-opt`.
 | `--workers`, `--workers-per-node` | UMA predictor parallelism. `workers > 1` cannot be combined with an explicit analytical Hessian request; use `workers = 1` or finite differences. See {ref}`workers-analytical-error`. | `1`, `1` |
 | `--hessian-calc-mode [Analytical\|FiniteDifference]` | Shared MLIP Hessian engine. | `FiniteDifference` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
-| `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
-| `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
-
 ### Post-processing
 
 | Option | Description | Default |

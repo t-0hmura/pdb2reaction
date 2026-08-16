@@ -34,7 +34,6 @@ from pdb2reaction.core.utils import (
     format_geom_for_echo,
     format_elapsed,
     prepared_cli_input,
-    set_convert_file_enabled,
     YamlFlowList,
     cli_param_overridden,
 )
@@ -413,13 +412,6 @@ def _finalize_dft_result(
 )
 @click.option("-m", "--multiplicity", "spin", type=int, default=None, show_default="1", help="Spin multiplicity (2S+1; inherits from .gjf when available; otherwise defaults to 1).")
 @click.option(
-    "--convert-files/--no-convert-files",
-    "convert_files",
-    default=True,
-    show_default=True,
-    help="Accepted for interface consistency; dft does not emit PDB/CIF/GJF outputs.",
-)
-@click.option(
     "--ref-pdb",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
@@ -490,7 +482,6 @@ def cli(
     charge: Optional[int],
     ligand_charge: Optional[str],
     spin: Optional[int],
-    convert_files: bool,
     ref_pdb: Optional[Path],
     func_basis: str,
     max_cycle: int,
@@ -518,7 +509,6 @@ def cli(
         merged_yaml_cfg, charge=charge, spin=spin, ligand_charge=ligand_charge,
     )
 
-    set_convert_file_enabled(convert_files)
     with prepared_cli_input(
         input_path,
         ref_pdb=ref_pdb,
@@ -632,7 +622,6 @@ def cli(
                             "input_geometry": str(geom_input_path),
                             "output_dir": str(out_dir_path),
                             "engine": engine_name,
-                            "convert_files": bool(convert_files),
                             "will_run_scf": True,
                             "will_write_result_yaml": True,
                             "will_run_population_analysis": True,

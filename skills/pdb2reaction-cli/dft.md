@@ -95,11 +95,6 @@ IAO charges, spin densities.
   either a suitable ASE calculator adapter or a separate QM program.
 - `--func-basis` follows PySCF naming. Test a basis name directly, for example
   `python -c "from pyscf import gto; print(len(gto.basis.load('def2-tzvpd', 'C')))"`.
-- The standalone `dft` subcommand does not accept `--solvent` /
-  `--solvent-model` / `-b/--backend`. xTB-ALPB is an MLIP-stage correction.
-  A DFT single point on a solvent-corrected-MLIP geometry still reports the
-  configured PySCF energy only; it does not add an implicit-solvent or xTB
-  correction to the DFT result.
 
 ## See also
 

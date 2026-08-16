@@ -40,8 +40,6 @@ first one whose import succeeds.
 | `pdb2reaction/backends/orb.py` | Orb (Orbital Materials) — precision / compile_model |
 | `pdb2reaction/backends/mace.py` | MACE — default_dtype |
 | `pdb2reaction/backends/aimnet2.py` | AIMNet2 — charge-aware (excluded from 5-backend benchmark for the p2r paper) |
-| `pdb2reaction/backends/solvent.py` | xTB ALPB wrap — wraps any base calculator with a solvent ΔE correction |
-| `pdb2reaction/backends/xtb_alpb_correction.py` | Standalone xTB ALPB correction (distinct API from the wrapper above; do not confuse) |
 
 ## Per-backend characteristics
 

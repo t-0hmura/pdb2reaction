@@ -41,8 +41,6 @@ ase_calc = create_ase_calculator(backend="uma", model="uma-s-1p2", device="cuda"
 | `pdb2reaction/backends/orb.py` | Orb (Orbital Materials) — precision / compile_model |
 | `pdb2reaction/backends/mace.py` | MACE — default_dtype |
 | `pdb2reaction/backends/aimnet2.py` | AIMNet2 — charge-aware（p2r 論文の 5-backend ベンチマークからは除外） |
-| `pdb2reaction/backends/solvent.py` | xTB ALPB ラッパー — 任意のベース calculator を溶媒 ΔE 補正でラップ |
-| `pdb2reaction/backends/xtb_alpb_correction.py` | スタンドアロンの xTB ALPB 補正（上記ラッパーとは別の API。混同しないこと） |
 
 ## バックエンドごとの特性
 

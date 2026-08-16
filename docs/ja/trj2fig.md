@@ -59,8 +59,6 @@ summary.json # writer 成功時に byte 単位で同一の互換ミラー
 | `-m, --multiplicity INT` | スピン多重度（2S+1）。指定時は MLIP バックエンドでエネルギーを再計算 | _None_ |
 | `--reverse-x/--no-reverse-x` | x 軸を反転して最後のフレームを左端に表示し、`init` の参照を最後のフレームに変更 | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | エネルギー再計算用 MLIP バックエンド | `uma` |
-| `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
-| `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 | `--out-json/--no-out-json` | 出力の隣に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 
 ## 注記

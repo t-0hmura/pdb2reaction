@@ -128,6 +128,26 @@ from pdb2reaction.cli.help_pages import _hide_advanced_options, _show_advanced_s
 
 logger = logging.getLogger(__name__)
 
+_ALL_FORWARDED_YAML_SECTIONS = (
+    "geom",
+    "calc",
+    "gs",
+    "dmf",
+    "stopt",
+    "opt",
+    "lbfgs",
+    "rfo",
+    "bond",
+    "search",
+    "hessian_dimer",
+    "rsirfo",
+    "freq",
+    "thermo",
+    "dft",
+    "irc",
+    "bias",
+)
+
 
 def _validate_postprocessing_dependencies(
     *, do_tsopt: bool, do_thermo: bool, do_dft: bool
@@ -3050,17 +3070,26 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
         "--ligand-charge",
         "-q",
         "--charge",
+        "-m",
+        "--multiplicity",
         "--out-dir",
         "--tsopt",
         "--thermo",
         "--dft",
         "--dft-func-basis",
         "--config",
-        "--dry-run",
         "-s",
         "--scan-lists",
+        "--scan-max-step-size",
         "-b",
         "--backend",
+        "--mep-mode",
+        "--max-nodes",
+        "--opt-mode",
+        "--opt-mode-post",
+        "--thresh",
+        "-r",
+        "--radius",
         "--refine-path",
         "-o",
         "--help-advanced",
@@ -3236,7 +3265,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
               show_default=True, help="MLIP backend.")
 @click.option("--solvent", default="none", show_default=True,
-              help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.")
+              help="Experimental, computationally expensive xTB solvent delta correction. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.")
 @click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx"]),
               show_default=True, help="xTB solvent model.")
 # ===== Path search knobs =====
@@ -3963,6 +3992,11 @@ def cli(
 
     args_yaml = config_yaml
     merged_yaml_cfg = load_yaml_dict(config_yaml) if config_yaml is not None else {}
+    if dry_run:
+        apply_yaml_overrides(
+            merged_yaml_cfg,
+            [({}, ((section,),)) for section in _ALL_FORWARDED_YAML_SECTIONS],
+        )
     _dmf_yaml_cfg = (
         merged_yaml_cfg.get("dmf", {})
         if isinstance(merged_yaml_cfg, dict)

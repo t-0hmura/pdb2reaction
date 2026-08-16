@@ -21,7 +21,7 @@ Python CLIです。geometry/path stageには組み込みMLIPまたはcustom ASE 
 | **L1 Interface** | `pdb2reaction/cli/` | Click root group、共有 option-decorator ファクトリ（`common_options.py`）、`--help-advanced`、bool flag 正規化、サブコマンドリゾルバ | `workflows/`, `core/` |
 | **L2 Application** | `pdb2reaction/workflows/` | サブコマンドごとのオーケストレーション; ステージランナー 1 ファイルにつき 1 つ（`all.py`, `path_search.py`, `tsopt.py`, `extract.py`, `irc.py`, `freq.py`, `dft.py`, …） | `domain/`, `backends/`, `io/`, `core/` |
 | **L3 Domain** | `pdb2reaction/domain/` | 化学的に意味を持つヘルパーロジック（結合変化検出、結合サマリ、元素情報伝播） | `core/` |
-| **L4a Infra (MLIP)** | `pdb2reaction/backends/` | MLIP バックエンドディスパッチャ + バックエンドごとのアダプタ（UMA / Orb / MACE / AIMNet2）+ xTB ALPB デルタ補正 | `core/` |
+| **L4a Infra (MLIP)** | `pdb2reaction/backends/` | MLIP バックエンドディスパッチャ + バックエンドごとのアダプタ（UMA / Orb / MACE / AIMNet2） | `core/` |
 | **L4b Infra (I/O)** | `pdb2reaction/io/` | 出力レイアウト、サマリ、軌跡、PDB 修正、エネルギーダイアグラム、Hessian キャッシュ | `core/` |
 | **L5 Foundation** | `pdb2reaction/core/` | defaults（共有defaultの主要source）、utils（structure / coordinate / plot helper）、logging、将来の `errors.py` / `types.py` | (none、設計意図) |
 | (bundle, not a layer) | `<repo>/pysisyphus/`, `<repo>/thermoanalysis/` | repo 内部 fork（optimizer / thermochemistry） | (sibling, layer-external) |
@@ -71,9 +71,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 │ │ ├── base.py MLIPCalculator protocol
 │ │ ├── custom.py custom ASE-calculator adapter
 │ │ ├── _determinism.py deterministic reduction shim
-│ │ ├── uma.py / orb.py / mace.py / aimnet2.py per-backend adapters
-│ │ ├── solvent.py xTB ALPB implicit-solvent helper
-│ │ └── xtb_alpb_correction.py xTB ALPB delta correction
+│ │ └── uma.py / orb.py / mace.py / aimnet2.py per-backend adapters
 │ │
 │ ├── io/ # === L4b Infra (I/O) ===
 │ │ ├── summary.py summary.json / summary.log writer
@@ -106,7 +104,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 
 **L3 `domain/`**。`torch` / `numpy` / `pysisyphus.constants`（数値バックエンド）を import してよい化学的に意味を持つヘルパーロジックですが、MLIP ランタイム（`fairchem`, `orb_models`, `mace`, `aimnet`）を import しては **いけません**。この MLIP 非依存は `.github/scripts/check_engineering_markers.py` がリポジトリ全体で強制します。なお `# DOMAIN_PURE` docstring マーカーはこれとは別のゲートで、backend 非依存を保つべき特定の **workflow モジュール**（`workflows/dft.py` / `workflows/tsopt.py` / `workflows/sp.py`）にのみ付与され、`domain/` のファイルには付きません。domain ヘルパーはどの L2 ステージランナーからでも再利用可能です。
 
-**L4a `backends/`**。MLIP バックエンドディスパッチャ（`__init__.py` + `base.py`）と、サポートする各 MLIP につき1つのadapter（`uma.py`, `orb.py`, `mace.py`, `aimnet2.py`）があります。`solvent.py` と `xtb_alpb_correction.py` は xTB ALPB 暗黙溶媒delta補正を担います。
+**L4a `backends/`**。MLIP バックエンドディスパッチャ（`__init__.py` + `base.py`）と、サポートする各 MLIP につき1つのadapter（`uma.py`, `orb.py`, `mace.py`, `aimnet2.py`）があります。
 
 **L4b `io/`**。出力側I/O: stage summary、energy diagram、trajectory render、PDB altloc修正、PDB/mmCIF bridge/template identifier復元、in-memory Hessian cache。output formatはここが所有しstage runnerが利用します。foundation外importは上記back-edge一覧を参照してください。
 
@@ -214,8 +212,6 @@ CLI サブコマンドリゾルバ（`cli/app.py:_LAZY_SUBCOMMANDS`）は **絶�
 | custom ASE calculator アダプタ | `pdb2reaction/backends/custom.py` |
 | 決定論的 reduction shim | `pdb2reaction/backends/_determinism.py` |
 | バックエンドごとのアダプタ | `pdb2reaction/backends/{uma, orb, mace, aimnet2}.py` |
-| xTB ALPB 暗黙溶媒ヘルパー | `pdb2reaction/backends/solvent.py` |
-| xTB ALPB デルタ補正 | `pdb2reaction/backends/xtb_alpb_correction.py` |
 
 add-a-backend レシピは [Backends](backends.md) を参照してください。
 

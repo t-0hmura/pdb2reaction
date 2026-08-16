@@ -3,6 +3,7 @@ temp-dir cleanup."""
 
 import importlib
 
+import pytest
 from click.testing import CliRunner
 
 from pdb2reaction.cli.app import cli as root_cli
@@ -10,9 +11,13 @@ from pdb2reaction.workflows.all import _charge_override_message, cli
 
 
 def test_all_dry_run_help_describes_temporary_extract_precheck():
-    result = CliRunner().invoke(cli, ["--help"])
-    assert result.exit_code == 0
-    help_text = " ".join(result.output.split())
+    runner = CliRunner()
+    primary = runner.invoke(cli, ["--help"])
+    advanced = runner.invoke(cli, ["--help-advanced"])
+    assert primary.exit_code == 0
+    assert advanced.exit_code == 0
+    assert "--dry-run" not in primary.output
+    help_text = " ".join(advanced.output.split())
     assert "runs extraction in a temporary" in help_text
     assert "derived charge and electron parity" in help_text
     assert "no computational stage or persistent output" in help_text
@@ -48,6 +53,77 @@ def test_all_dry_run_plan_omits_unrequested_extraction(tmp_path):
     assert "extraction was not requested" in result.output
     assert "Planned stages: tsopt -> irc." in result.output
     assert "Planned stages: extract" not in result.output
+
+
+@pytest.mark.parametrize(
+    "section",
+    (
+        "geom",
+        "calc",
+        "gs",
+        "dmf",
+        "stopt",
+        "opt",
+        "lbfgs",
+        "rfo",
+        "bond",
+        "search",
+        "hessian_dimer",
+        "rsirfo",
+        "freq",
+        "thermo",
+        "dft",
+        "irc",
+        "bias",
+    ),
+)
+def test_all_dry_run_rejects_non_mapping_forwarded_yaml_section(tmp_path, section):
+    xyz = tmp_path / "ts.xyz"
+    config = tmp_path / "config.yaml"
+    xyz.write_text("2\nH2\nH 0 0 0\nH 0 0 0.74\n", encoding="utf-8")
+    config.write_text(f"{section}: 1\n", encoding="utf-8")
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "all",
+            "-i",
+            str(xyz),
+            "-q",
+            "0",
+            "--tsopt",
+            "--config",
+            str(config),
+            "--dry-run",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert f"YAML section '{section}' must be a mapping" in result.output
+
+
+def test_all_dry_run_leaves_unknown_yaml_roots_untouched(tmp_path):
+    xyz = tmp_path / "ts.xyz"
+    config = tmp_path / "config.yaml"
+    xyz.write_text("2\nH2\nH 0 0 0\nH 0 0 0.74\n", encoding="utf-8")
+    config.write_text("clac: 1\n", encoding="utf-8")
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "all",
+            "-i",
+            str(xyz),
+            "-q",
+            "0",
+            "--tsopt",
+            "--config",
+            str(config),
+            "--dry-run",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
 
 
 def test_all_xyz_ref_pdb_derives_residue_charge_before_dry_run(tmp_path):

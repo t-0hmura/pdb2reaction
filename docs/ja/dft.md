@@ -14,7 +14,7 @@ GPU4PySCF または CPU PySCF を使用して DFT 一点計算を実行し、エ
 pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULTIPLICITY] \
  [--func-basis 'FUNC/BASIS'] \
  [--max-cycle N] [--conv-tol Eh] [--grid-level L] \
- [--out-dir DIR] [--engine gpu|cpu] [--convert-files/--no-convert-files] \
+ [--out-dir DIR] [--engine gpu|cpu] \
  [--ref-pdb FILE] [--config FILE] [--show-config] [--dry-run]
 ```
 
@@ -86,7 +86,6 @@ out_dir/ (デフォルト:./result_dft/)
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_dft/` |
 | `--engine [gpu\|cpu]` | SCF バックエンド: gpu (GPU4PySCF) または cpu (PySCF)。`--engine` と `--dft-engine` の命名規則は {ref}`ja-engine-vs-dft-engine` を参照 | `gpu` |
 | `--lowmem/--no-lowmem` | closed-shell の GPU 経路で `gpu4pyscf.dft.rks_lowmem.RKS` を使用（密度フィッティングを使わず、メモリ効率の良い直接 JK を使用）。open-shell や CPU エンジン、`rks_lowmem` 未搭載の旧 `gpu4pyscf` では標準 RKS/UKS に自動フォールバック | `True` |
-| `--convert-files/--no-convert-files` | **`dft` では no-op。** 他のサブコマンドとのインターフェース整合性のためだけに受け付けられます。`dft` は PDB や GJF を一切出力せず（`input_geometry.xyz` + `result.yaml` のみ）、このフラグの値は無視されます | `True` |
 | `--ref-pdb FILE` | XYZ/GJF入力の原子数検証とリガンド電荷導出に使う参照PDBまたはmmCIF topology（出力変換なし） | _None_ |
 | `--config FILE` | 明示的な CLI オプション適用前に読み込むベース YAML | _None_ |
 | `--show-config/--no-show-config` | 解決済み設定を表示して実行を継続 | `False` |

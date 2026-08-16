@@ -36,7 +36,6 @@ pdb2reaction path-search -i 1.R.pdb 3.P.pdb \
 | `--thresh-dmf` | str/float | `tight` | DMF IPOPT dual-infeasibility tolerance: `tight`, `middle`, `loose`, or a positive float |
 | `-q, --charge` / `-l` / `-m` | — | — | Charge / multiplicity (see common conventions) |
 | `-b, --backend` | str | `uma` | MLIP backend |
-| `--solvent` | str | none | xTB-ALPB solvent name |
 | `-o, --out-dir` | path | `./result_path_search/` | Output directory |
 | `--config` / `--show-config` / `--dry-run` | — | — | YAML config + preview |
 
@@ -121,10 +120,6 @@ expected files and segment diagnostics separately.
 - Raising `--max-nodes` increases calculator calls and may help an
   under-resolved path, but it does not repair inconsistent endpoints or a
   wrong mechanism. Inspect and pre-relax endpoints before increasing it.
-- `--mep-mode dmf` cannot be combined with `--solvent`, because the DMF ASE
-  path has no xTB correction while the rest of the run would use the corrected
-  surface. Use GSM or omit the solvent correction; pdb2reaction rejects the
-  mixed-PES combination.
 - Output **does not** include refined TSs; those are
   `segments/seg_NN/ts/` produced by the `all` pipeline.
 

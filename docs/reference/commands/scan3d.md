@@ -87,8 +87,10 @@ Options:
                                   bias before the scan.  [default: no-preopt]
   -b, --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
-  --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
-                                  'water'). 'none' to disable.  [default: none]
+  --solvent TEXT                  Experimental, computationally expensive xTB
+                                  solvent delta correction. Examples: water,
+                                  methanol, acetonitrile, dmso, thf, toluene.
+                                  'none' disables it.  [default: none]
   --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
   --baseline [min|first]          Reference for relative energy (kcal/mol):
                                   'min' or 'first' (i=0,j=0,k=0).  [default:

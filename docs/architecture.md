@@ -23,7 +23,7 @@ Two bundled forks (`pysisyphus/`, `thermoanalysis/`) live at the repo top as rep
 | **L1 Interface** | `pdb2reaction/cli/` | Click root group, shared option-decorator factories (`common_options.py`), `--help-advanced`, bool flag normalization, subcommand resolver | `workflows/`, `core/` |
 | **L2 Application** | `pdb2reaction/workflows/` | per-subcommand orchestration; one file per stage runner (`all.py`, `path_search.py`, `tsopt.py`, `extract.py`, `irc.py`, `freq.py`, `dft.py`, …) | `domain/`, `backends/`, `io/`, `core/` |
 | **L3 Domain** | `pdb2reaction/domain/` | chemistry-aware helper logic (bond change detection, bond summary, element-info propagation) | `core/` |
-| **L4a Infra (MLIP)** | `pdb2reaction/backends/` | MLIP backend dispatcher + per-backend adapter (UMA / Orb / MACE / AIMNet2) + xTB ALPB delta correction | `core/` |
+| **L4a Infra (MLIP)** | `pdb2reaction/backends/` | MLIP backend dispatcher + per-backend adapter (UMA / Orb / MACE / AIMNet2) | `core/` |
 | **L4b Infra (I/O)** | `pdb2reaction/io/` | output layout, summary, trajectory, PDB fix, energy diagram, Hessian cache | `core/` |
 | **L5 Foundation** | `pdb2reaction/core/` | defaults (primary source for shared defaults), utilities, logging, output, and result publication | (none, by design intent) |
 | (bundle, not a layer) | `<repo>/pysisyphus/`, `<repo>/thermoanalysis/` | repo-internal forks (optimizer / thermochemistry) | (sibling, layer-external) |
@@ -73,9 +73,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 │ │ ├── base.py MLIPCalculator protocol
 │ │ ├── custom.py custom ASE-calculator adapter
 │ │ ├── _determinism.py deterministic reduction shim
-│ │ ├── uma.py / orb.py / mace.py / aimnet2.py per-backend adapters
-│ │ ├── solvent.py xTB ALPB implicit-solvent helper
-│ │ └── xtb_alpb_correction.py xTB ALPB delta correction
+│ │ └── uma.py / orb.py / mace.py / aimnet2.py per-backend adapters
 │ │
 │ ├── io/ # === L4b Infra (I/O) ===
 │ │ ├── summary.py summary.json / summary.log writer
@@ -108,7 +106,7 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 
 **L3 `domain/`**. Chemistry-aware helper logic that may import `torch` / `numpy` / `pysisyphus.constants` (numeric backends), but **may not import** MLIP runtimes (`fairchem`, `orb_models`, `mace`, `aimnet`). `.github/scripts/check_engineering_markers.py` enforces this deny list via an external-library import-scope check across non-`backends/` files. (The `# DOMAIN_PURE` docstring marker itself lives on selected workflow modules — `workflows/dft.py`, `tsopt.py`, `sp.py` — not on `domain/`.) Domain helpers are reusable by any L2 stage runner.
 
-**L4a `backends/`**. MLIP backend dispatcher (`__init__.py` + `base.py`) plus one adapter per supported MLIP (`uma.py`, `orb.py`, `mace.py`, `aimnet2.py`). `solvent.py` and `xtb_alpb_correction.py` carry the xTB ALPB implicit-solvent delta correction (an opt-in MLIP wrapper); the dispatcher also exposes the custom ASE-calculator boundary.
+**L4a `backends/`**. MLIP backend dispatcher (`__init__.py` + `base.py`) plus one adapter per supported MLIP (`uma.py`, `orb.py`, `mace.py`, `aimnet2.py`). The dispatcher also exposes the custom ASE-calculator boundary.
 
 **L4b `io/`**. Output-side I/O concerns: per-stage summary writer, energy diagram, trajectory rendering, PDB altloc fix, PDB/mmCIF bridge/template restoration, and in-memory Hessian cache. Output format is owned here and consumed by stage runners; current non-foundation imports are listed in the back-edge inventory above.
 
@@ -216,8 +214,6 @@ After step 5 you can read any other file by following the file index in §4. The
 | Custom ASE-calculator adapter | `pdb2reaction/backends/custom.py` |
 | Deterministic reduction shim | `pdb2reaction/backends/_determinism.py` |
 | Per-backend adapters | `pdb2reaction/backends/{uma, orb, mace, aimnet2}.py` |
-| xTB ALPB implicit-solvent helper | `pdb2reaction/backends/solvent.py` |
-| xTB ALPB delta correction | `pdb2reaction/backends/xtb_alpb_correction.py` |
 
 See [Backends](backends.md) for the add-a-backend recipe.
 

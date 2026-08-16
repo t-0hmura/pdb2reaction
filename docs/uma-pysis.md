@@ -57,14 +57,6 @@ calc = create_calculator(
     hessian_calc_mode="Analytical",
 )
 
-# ORB calculator with implicit solvent
-calc_orb = create_calculator(
-    backend="orb",
-    charge=-1,
-    spin=1,
-    solvent="water",
-    solvent_model="alpb",
-)
 ```
 
 The returned calculator implements the pysisyphus calculator interface (`get_energy`, `get_forces`, `get_hessian`). All methods accept `(atoms: List[str], coords: np.ndarray)` where coords are in **Bohr** and return dicts with `"energy"` (hartree), `"forces"` (hartree/bohr), and `"hessian"` (hartree/bohr²).
@@ -93,17 +85,6 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 | **ORB** | `pip install "pdb2reaction[orb]"` | Yes (autograd) | No | orb-models (conservative models only) |
 | **MACE** | dedicated env: install pdb2reaction, then `pip uninstall -y fairchem-core && pip install 'mace-torch>=0.3.8'` (`e3nn` requirements conflict) | Yes (`calc.get_hessian`) | No | mace-torch >= 0.3.8 |
 | **AIMNet2** | `pip install "pdb2reaction[aimnet]"` | Yes (native) | No | aimnet |
-
-### Implicit solvent correction
-
-All backends support xTB-based implicit solvent corrections via `--solvent`:
-
-```bash
-pdb2reaction opt -i input.pdb -q 0 --solvent water
-pdb2reaction opt -i input.pdb -q 0 -b orb --solvent water --solvent-model cpcmx
-```
-
-The correction uses a delta approach: ΔE = E_xTB(solvent) - E_xTB(vacuum), added to the MLIP energy/forces/Hessian. Requires `xtb` to be installed and accessible on `PATH`.
 
 ## Key features
 
@@ -151,12 +132,6 @@ Common constructor keywords (defaults shown in the rightmost column):
 | `out_hess_torch` | Return Hessians as `torch.Tensor` objects. | `True` |
 | `print_timing` | Print Hessian computation timing breakdown. | `True` |
 | `print_vram` | Print CUDA VRAM usage during Hessian evaluation (UMA backend only). | `True` |
-| `solvent` | Implicit solvent name (e.g. `"water"`) or `"none"`. | `"none"` |
-| `solvent_model` | xTB solvent model: `"alpb"` or `"cpcmx"`. | `"alpb"` |
-| `xtb_cmd` | Command used to invoke xTB for the solvent correction. | `"xtb"` |
-| `xtb_acc` | xTB accuracy setting passed to the solvent-correction run. | `0.2` |
-
-
 ## See Also
 
 - [Common Error Recipes](recipes-common-errors.md) -- Symptom-first failure routing

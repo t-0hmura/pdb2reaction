@@ -23,7 +23,7 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml --dump -o ./result_scan_du
 
 ```bash
 pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
+ [-b/--backend uma|orb|mace|aimnet2] \
  [-s/--scan-lists scan.yaml | '[(i,j,targetÅ),...]'] [options] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
@@ -95,8 +95,6 @@ out_dir/ (デフォルト:./result_scan/)
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
 | `--config FILE` | ベース YAML 設定ファイル（最初に適用） | _None_ |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
-| `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
-| `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 | `--preopt/--no-preopt` | スキャン前に無バイアス最適化を実行。**スコープ依存デフォルト:** 単体では `False`、`pdb2reaction all` 経由では `True` に反転されます（{ref}`all → スキャンオプション <ja-scan-options-single-input-runs>` を参照） | `False` |
 | `--endopt/--no-endopt` | 各ステージ後に無バイアス最適化を実行 | `False` |
 | `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |

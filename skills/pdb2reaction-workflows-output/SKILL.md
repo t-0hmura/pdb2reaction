@@ -136,8 +136,7 @@ the TS (one imaginary mode + correct IRC connectivity) before thermo / DFT. By d
 
 pdb2reaction runs the whole pipeline on a cluster model (the active-site cluster)
 with a single MLIP backend, so pass the *same* `-l` / `-q` / `-m` on every
-stage. If an xTB solvent correction is used, keep it consistent across the MLIP
-subcommands that accept `--solvent`; standalone `dft` does not accept that flag.
+stage.
 After each stage, read
 its `result.json` / `summary.json` `status` and gate before continuing.
 

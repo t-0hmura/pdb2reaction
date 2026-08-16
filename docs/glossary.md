@@ -43,7 +43,6 @@
 | **ORB** | ORB Models | Orbital Materials' MLIP backend. Selected with `-b orb`. |
 | **MACE** | MACE | Equivariant message-passing MLIP. Selected with `-b mace`. |
 | **AIMNet2** | Atoms-in-Molecules Neural Network Potential, 2nd generation | Charge-aware neural-network potential (Anstine et al., *Chem. Sci.* 2025); selected with `-b aimnet2`. |
-| **xTB** | Extended Tight Binding | A semi-empirical quantum chemistry method. In pdb2reaction, used for implicit solvation correction via `--solvent`. |
 | **fairchem** | — | Meta's open-source foundation-model toolkit that ships the UMA family of checkpoints. pdb2reaction depends on `fairchem-core` to load UMA predictors. |
 | **ASE** | Atomic Simulation Environment | Python framework providing the Calculator API used by all MLIP backends in pdb2reaction (Larsen et al., *J. Phys. Condens. Matter* 2017). |
 | **task_name** | — | UMA task tag recorded in each inference batch (YAML: `calc.task_name`, default `omol`). Selects the UMA task/preset that a checkpoint was trained for. |
@@ -60,8 +59,6 @@
 | **Hessian** | — | The matrix of second derivatives of energy with respect to atomic coordinates. Eigenvalues yield vibrational frequencies; eigenvectors yield vibrational modes (displacement vectors). Used for vibrational analysis and TS optimization. |
 | **SP** | Single Point | A calculation at a fixed geometry (no optimization); often used for a higher-level energy evaluation. |
 | **Spin Multiplicity** | — | 2S+1, where S is total spin. Singlet = 1, doublet = 2, triplet = 3, etc. Specified with `-m/--multiplicity` (default: 1). |
-| **ALPB** | Analytical Linearized Poisson-Boltzmann | An implicit-solvent model available via xTB (`--solvent-model alpb`, default). |
-| **CPCM-X** | Extended Conductor-like Polarizable Continuum Solvation Model | An implicit-solvent model available via xTB (`--solvent-model cpcmx`); "X" stands for "eXtended", obtained by coupling CPCM with COSMO-RS-style σ-profiles and an SMD-style non-electrostatic term to give realistic solvation free energies for arbitrary solvents (Stahn, Ehlert, Grimme, *J. Phys. Chem. A* 2023). |
 | **cyipopt** | — | Python bindings for the IPOPT interior-point optimizer. Required by the DMF (`--mep-mode dmf`) path refinement pipeline. |
 | **IPOPT** | Interior Point OPTimizer | Open-source nonlinear constrained optimizer (Wächter & Biegler 2006) used by the DMF path-refinement solver via `cyipopt` bindings. |
 | **SCF** | Self-Consistent Field | Iterative procedure that converges the electronic wavefunction in DFT/HF; controlled in `pdb2reaction dft` by `--max-cycle` and `--conv-tol`. |

@@ -65,7 +65,7 @@ therefore workflow paths, not a claim that CIF metadata is discarded.
 | `--dry-run` | Validate options and print the execution plan, then exit before MLIP/DFT stages. Special case: `all -c/--center ... --dry-run` runs extraction in a temporary directory so it can validate the derived charge and electron parity; it does not run scan/MEP/TSOPT/IRC/freq/DFT. |
 | `--help-advanced` | Reveal hidden / advanced flags |
 | `--ref-pdb` | Reference PDB/mmCIF used to derive residue context for XYZ/GJF inputs while retaining their coordinates |
-| `--solvent` | On MLIP subcommands that expose it, add the xTB solvent-minus-vacuum correction for a named solvent (e.g. `water`); `none` disables it. In `trj2fig` it applies only when `-q`/`-m` triggers frame recomputation. It is not accepted by `dft`, `extract`, or structure-only utilities. |
+| `--solvent` | Experimental, computationally expensive xTB correction: `E_xTB(solvent) - E_xTB(vacuum)`. `none` disables it; see `pdb2reaction-install-backends/xtb.md`. |
 
 For calculation commands, explicit `-q` takes precedence over
 `-l 'RES:Q'` derivation, then config/defaults. This includes

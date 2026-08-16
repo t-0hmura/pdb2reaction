@@ -102,8 +102,10 @@ Options:
                                   [default: fix-ends]
   -b, --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
-  --solvent TEXT                  Implicit solvent name for xTB correction (e.g.
-                                  'water'). 'none' to disable.  [default: none]
+  --solvent TEXT                  Experimental, computationally expensive xTB
+                                  solvent delta correction. Examples: water,
+                                  methanol, acetonitrile, dmso, thf, toluene.
+                                  'none' disables it.  [default: none]
   --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
   --coord-type [cart|dlc]         Optimization coordinate system (cart|dlc).
                                   [default: (cart)]

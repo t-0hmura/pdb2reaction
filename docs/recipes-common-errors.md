@@ -74,30 +74,10 @@ Signal:
 - TSOPT stalls, IRC branches look unstable, or MEP refinement stops unexpectedly.
 
 First checks:
-- Confirm TS candidate quality: exactly one imaginary frequency, and the corresponding imaginary mode shows displacement along the reaction coordinate. The detection cutoff is `hessian_dimer.neg_freq_thresh_cm` (default 5 cm⁻¹).
+- Confirm TS candidate quality: Cartesian PHVA must contain exactly one negative frequency, and its mode must follow the reaction coordinate. The 5 cm⁻¹ thresholds affect mode files, flattening, and optional saddle recovery, but not the final count.
 - For a wrong imaginary-mode count (a spurious second small mode, or no dominant reaction mode), raise precision with `--precision fp64` and/or switch to `--coord-type dlc`, then add `--flatten` for residual small modes — these levers are complementary. See [`tsopt` → Wrong imaginary-mode count after optimization](tsopt.md#wrong-imaginary-mode-count-after-optimization).
 - Tune step sizes / trust radii (YAML knobs `max_step`, `trust_radius`/`trust_min`/`trust_max`) and optimizer mode / flattening (CLI flags `--opt-mode`, `--flatten`); these are complementary. For YAML section layout see [YAML Reference](yaml-reference.md); for the canonical fix path see {ref}`Calculation / convergence problems <calculation-convergence-problems>`.
 - If an energy plateau stops the run as `stalled`, keep it classified as non-converged and follow {ref}`Calculation / convergence problems <calculation-convergence-problems>` before retrying.
 
 Typical fix path:
 - Run a smaller diagnostic case, tune thresholds/step sizes, then scale back up.
-
-(recipe-cpcmx-build)=
-## Recipe 5: Building xTB with CPCM-X support
-
-`conda install -c conda-forge xtb` ships with the Analytical Linearized Poisson-Boltzmann (ALPB) solvent model (default `--solvent-model alpb`) but does **not** include CPCM-X (the Conductor-like Polarizable Continuum Model, extended).
-
-To use `--solvent-model cpcmx` you have to build xTB from source with the CPCM-X feature enabled.
-
-Build (requires GCC ≥ 8 per upstream xtb; if CMake cannot autodetect BLAS/LAPACK, pass `-DBLAS_LIBRARIES=...` and `-DLAPACK_LIBRARIES=...`):
-
-```bash
-git clone --depth 1 https://github.com/grimme-lab/xtb.git
-cd xtb
-cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DWITH_CPCMX=ON
-# Two-step build avoids a parallel race in tblite:
-make -C build tblite-lib -j8
-make -C build xtb-exe -j8
-```
-
-Set `CPXHOME` to `<xtb-checkout>/build/_deps/cpcmx-src/` at runtime (the directory must contain `cpcmx.toml` and the `DB/` parameter folder), and either prepend `<xtb-checkout>/build` to `$PATH` or set `calc.xtb_cmd` (YAML) / `--xtb-cmd` (where exposed) to the custom binary.

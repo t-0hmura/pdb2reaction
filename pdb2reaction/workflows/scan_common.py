@@ -385,7 +385,7 @@ def add_scan_common_options(
             "--solvent",
             default="none",
             show_default=True,
-            help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.",
+            help="Experimental, computationally expensive xTB solvent delta correction. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.",
         ),
         click.option(
             "--solvent-model",

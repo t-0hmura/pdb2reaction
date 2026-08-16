@@ -12,7 +12,7 @@ R → … → P の **2 構造以上**から、連続的な最小エネルギー
 
 ```bash
 pdb2reaction path-search -i R.pdb [-i I.pdb ...] -i P.pdb [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1] \
- [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
+ [-b/--backend uma|orb|mace|aimnet2] \
  [--workers N] [--workers-per-node N] \
  [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET] [--thresh-gsm PRESET] [--thresh-dmf TOL] \
  [--refine-mode {peak|minima}] \
@@ -122,8 +122,6 @@ out_dir/ (デフォルト:./result_path_search/)
 | **バックエンドと計算** | | |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--workers`, `--workers-per-node` | UMA 予測器の並列度（`workers_per_node` は並列予測器へ転送）。`workers > 1` と明示的な解析 Hessian は併用不可。{ref}`ja-workers-analytical-error` を参照 | `1`, `1` |
-| `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
-| `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 | **活性領域の凍結** | | |
 | `--freeze-links/--no-freeze-links` | PDB 活性部位モデル読み込み時、キャップ水素の親原子を凍結。詳細は [extract](extract.md) を参照 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |

@@ -25,8 +25,58 @@ from pdb2reaction.cli.help_pages import (
     _hide_advanced_options,
     _show_advanced_subcommand_help,
 )
+from pdb2reaction.cli import cli as root_cli
 from pdb2reaction.workflows.all import cli as all_cli
 from pdb2reaction.workflows.all import _ALL_PRIMARY_HELP_OPTIONS
+
+
+PRIMARY_CLASSIFICATION = [
+    ("scan", "--max-step-size"),
+    ("scan", "--thresh"),
+    ("scan2d", "--max-step-size"),
+    ("scan2d", "--thresh"),
+    ("scan3d", "--max-step-size"),
+    ("scan3d", "--thresh"),
+    ("all", "--scan-max-step-size"),
+    ("all", "--mep-mode"),
+    ("all", "--max-nodes"),
+    ("all", "-r"),
+    ("all", "-m"),
+    ("all", "--opt-mode"),
+    ("all", "--opt-mode-post"),
+    ("all", "--thresh"),
+    ("tsopt", "--dump"),
+    ("path-opt", "--fix-ends"),
+]
+
+ADVANCED_CLASSIFICATION = [
+    ("irc", "--never-stop"),
+    ("all", "--dry-run"),
+    ("all", "--scan-bias-k"),
+    ("all", "--scan-relax-max-cycles"),
+    ("all", "--max-cycles"),
+    ("all", "--tsopt-max-cycles"),
+    ("all", "--hessian-calc-mode"),
+    ("scan", "--relax-max-cycles"),
+    ("scan", "--opt-mode"),
+    ("scan2d", "--relax-max-cycles"),
+    ("scan2d", "--opt-mode"),
+    ("scan3d", "--relax-max-cycles"),
+    ("scan3d", "--opt-mode"),
+    ("path-opt", "--opt-mode"),
+    ("path-search", "--opt-mode"),
+]
+
+
+def _has_option_header(output: str, option: str) -> bool:
+    for line in output.splitlines():
+        stripped = line.lstrip()
+        if not stripped.startswith(option):
+            continue
+        tail = stripped[len(option):]
+        if not tail or tail[0].isspace() or tail[0] in {",", "/"}:
+            return True
+    return False
 
 
 def _run_callback(command: click.Command) -> None:
@@ -37,6 +87,25 @@ def _run_callback(command: click.Command) -> None:
     except (SystemExit, click.exceptions.Exit):
         return
     pytest.fail("advanced-help callback did not exit")
+
+
+@pytest.mark.parametrize(("subcommand", "option"), PRIMARY_CLASSIFICATION)
+def test_selected_options_are_in_primary_help(subcommand: str, option: str) -> None:
+    result = CliRunner().invoke(root_cli, [subcommand, "--help"])
+    assert result.exit_code == 0, result.output
+    assert _has_option_header(result.output, option), result.output
+
+
+@pytest.mark.parametrize(("subcommand", "option"), ADVANCED_CLASSIFICATION)
+def test_selected_options_are_in_advanced_help(subcommand: str, option: str) -> None:
+    runner = CliRunner()
+    primary = runner.invoke(root_cli, [subcommand, "--help"])
+    assert primary.exit_code == 0, primary.output
+    assert not _has_option_header(primary.output, option), primary.output
+
+    advanced = runner.invoke(root_cli, [subcommand, "--help-advanced"])
+    assert advanced.exit_code == 0, advanced.output
+    assert _has_option_header(advanced.output, option), advanced.output
 
 
 def test_basic_help_hides_advanced_options_that_advanced_help_shows():
@@ -51,6 +120,14 @@ def test_basic_help_hides_advanced_options_that_advanced_help_shows():
 
     # A representative primary option stays visible in the basic help.
     assert "--tsopt" in basic.output
+    assert "--solvent" not in basic.output
+    assert "--solvent" in advanced.output
+    assert "experimental" in advanced.output.lower()
+    assert "computationally expensive" in advanced.output.lower()
+    for solvent in (
+        "water", "methanol", "acetonitrile", "dmso", "thf", "toluene",
+    ):
+        assert solvent in advanced.output.lower()
 
     # Compare on each option's rendered help-record column (e.g. "-r, --radius
     # FLOAT"); it carries the metavar so it cannot collide with prose that merely

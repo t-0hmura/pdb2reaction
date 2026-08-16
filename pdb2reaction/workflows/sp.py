@@ -46,7 +46,6 @@ from pdb2reaction.core.utils import (
     prepare_input_structure,
     resolve_charge_spin,
     resolve_freeze_atoms,
-    set_convert_file_enabled,
     validate_charge_spin_for_prepared,
     yaml_freeze_to_internal,
 )
@@ -102,11 +101,6 @@ logger = logging.getLogger(__name__)
     ),
 )
 @click.option(
-    "--convert-files/--no-convert-files", "convert_files",
-    default=True, show_default=True,
-    help="Compatibility toggle; sp writes no structure companions.",
-)
-@click.option(
     "--config", "config_yaml",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None, help="YAML config file with sections (calc:, geom:, …).",
@@ -131,7 +125,7 @@ logger = logging.getLogger(__name__)
 )
 @click.option(
     "--solvent", default="none", show_default=True,
-    help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.",
+    help="Experimental, computationally expensive xTB solvent delta correction. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.",
 )
 @click.option(
     "--solvent-model", "solvent_model",
@@ -144,14 +138,6 @@ logger = logging.getLogger(__name__)
 @add_calc_file_option()
 @add_deterministic_option()
 @add_allow_charge_mult_mismatch_option()
-@click.option(
-    "--print-every",
-    "print_every",
-    type=click.IntRange(min=1),
-    default=None,
-    show_default="100",
-    hidden=True,
-)
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -164,7 +150,6 @@ def cli(
     out_dir: str,
     do_hess: bool,
     hessian_calc_mode: Optional[str],
-    convert_files: bool,
     config_yaml: Optional[Path],
     show_config: bool,
     dry_run: bool,
@@ -176,11 +161,8 @@ def cli(
     backend_model: Optional[str],
     calc_file: Optional[str],
     calc_factory: Optional[str],
-    print_every: Optional[int],
 ) -> None:
     """Compute a single-point MLIP energy + forces (and optionally Hessian)."""
-    set_convert_file_enabled(convert_files)
-
     config_yaml, _override, _legacy = resolve_yaml_sources(
         config_yaml=config_yaml, override_yaml=None, args_yaml_legacy=None,
     )
@@ -248,15 +230,6 @@ def cli(
             calc_cfg,
             precision if cli_param_overridden(ctx, "precision") else None,
         )
-        if cli_param_overridden(ctx, "print_every") and print_every is not None:
-            # `sp` runs no optimizer, and the backend factory drops keys it does not know, so
-            # this value has no effect. Say so instead of ignoring an explicit request silently.
-            click.echo(
-                "[sp] NOTE: --print-every has no effect on sp (no optimizer runs); ignoring it.",
-                err=True,
-            )
-            calc_cfg["print_every"] = int(print_every)
-
         apply_backend_defaults(calc_cfg)
 
         # YAML uses human-facing 1-based atom indices; pysisyphus and the

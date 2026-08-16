@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from copy import deepcopy
 from typing import Any, Dict, Mapping, Optional
 
@@ -109,7 +110,7 @@ _BACKEND_DEFAULTS_MAP: Dict[str, Dict[str, Any]] = {
 
 
 def apply_backend_defaults(cfg: Dict[str, Any]) -> None:
-    """Apply backend-specific defaults to *cfg* in-place.
+    """Apply backend-specific defaults and discard unsupported worker settings.
 
     Only overwrite keys whose current value equals the UMA default
     (i.e., the caller has not explicitly set them via CLI or YAML).
@@ -120,6 +121,24 @@ def apply_backend_defaults(cfg: Dict[str, Any]) -> None:
 
         backend = resolve_backend(backend)
         cfg["backend"] = backend
+    if backend != "uma":
+        unsupported_workers = {
+            key: int(cfg[key])
+            for key in ("workers", "workers_per_node")
+            if key in cfg and int(cfg[key] or 1) != 1
+        }
+        if unsupported_workers:
+            rendered = ", ".join(
+                f"{key}={value}" for key, value in unsupported_workers.items()
+            )
+            warnings.warn(
+                f"Backend {backend!r} does not use UMA worker parallelism; "
+                f"ignoring {rendered}.",
+                UserWarning,
+                stacklevel=2,
+            )
+        cfg.pop("workers", None)
+        cfg.pop("workers_per_node", None)
     defaults = _BACKEND_DEFAULTS_MAP.get(backend)
     if defaults is None:
         return

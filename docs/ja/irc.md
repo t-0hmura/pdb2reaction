@@ -8,7 +8,7 @@
 
 ```bash
 pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] \
- [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
+ [-b/--backend uma|orb|mace|aimnet2] \
  [--workers N] [--workers-per-node N] [-m 2S+1] \
  [--max-cycles N] [--step-size Δs] [--never-stop/--no-never-stop] [--root k] \
  [--forward/--no-forward] [--backward/--no-backward] \
@@ -126,8 +126,6 @@ Hessian を含まず、`result.json.files` にも登録しません。
 | `--show-config/--no-show-config` | 解決済み YAML レイヤー/設定を表示して続行 | `False` |
 | `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
-| `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
-| `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 | `--dry-run/--no-dry-run` | 実行せずに検証と実行計画のみ表示 | `False` |
 
 ## YAML 設定

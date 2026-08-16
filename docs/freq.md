@@ -111,8 +111,6 @@ The tables below cover the options that need explanation; the full flag list is 
 | `--show-config/--no-show-config` | Print resolved YAML layers/config and continue. | `False` |
 | `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
-| `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
-| `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 | `--dry-run/--no-dry-run` | Validate and print execution plan without running frequency analysis. | `False` |
 
 ## YAML configuration

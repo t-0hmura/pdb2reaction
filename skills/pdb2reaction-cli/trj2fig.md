@@ -21,7 +21,7 @@ pdb2reaction trj2fig -i trajectory.xyz \
 | `-o, --out` | path(s) | `energy.png` | Output path; repeat `-o` to write several formats (`.png` / `.svg` / `.pdf` / `.jpg` / `.jpeg` / `.html` / `.csv`) |
 | `--unit` | choice | `kcal` | `kcal` or `hartree` |
 | `-r, --reference` | int / `init` / `None` | `init` | Reference frame for ΔE: `init` (initial frame; last frame if `--reverse-x`), `None` (absolute E), or a 0-based integer index |
-| `-q, --charge` / `-m, --multiplicity` / `-b, --backend` / `--solvent` / `--solvent-model` | — | — | Recompute every frame's energy via the MLIP backend when `-q/--charge` and/or `-m/--multiplicity` are supplied (instead of reading the comment line) |
+| `-q, --charge` / `-m, --multiplicity` / `-b, --backend` | — | — | Recompute every frame's energy via the MLIP backend when `-q/--charge` and/or `-m/--multiplicity` are supplied (instead of reading the comment line) |
 | `--reverse-x/--no-reverse-x` | flag | `--no-reverse-x` | Flip the x-axis |
 | `--out-json / --no-out-json` | flag | `--no-out-json` | Write `result.json` in the first output's directory |
 

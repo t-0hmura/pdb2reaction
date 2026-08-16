@@ -24,7 +24,6 @@ pdb2reaction scan2d -i input.pdb \
 | `-s, --scan-lists` | str | required | Inline Python literal containing **two** 4-tuples `(i, j, low, high)` (one per axis), or a YAML/JSON spec file. |
 | `-q` / `-l` / `-m` | — | — | Charge / spin |
 | `-b, --backend` | str | `uma` | MLIP backend |
-| `--solvent` | str | `none` | xTB-ALPB solvent |
 | `-o, --out-dir` | path | `./result_scan2d/` | Output directory |
 | `--ref-pdb` | path | none | Residue context for XYZ/GJF |
 | `--config` / `--dry-run` / `--help-advanced` | — | — | Standard |

@@ -2147,7 +2147,7 @@ def _merge_final_and_write(final_images: List[Any],
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
               show_default=True, help="MLIP backend.")
 @click.option("--solvent", default="none", show_default=True,
-              help="Implicit solvent name for xTB correction (e.g. 'water'). 'none' to disable.")
+              help="Experimental, computationally expensive xTB solvent delta correction. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.")
 @click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx"]),
               show_default=True, help="xTB solvent model.")
 @add_coord_type_option(choices=("cart", "dlc"))

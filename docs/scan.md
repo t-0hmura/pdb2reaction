@@ -23,7 +23,7 @@ Command form:
 
 ```bash
 pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
+ [-b/--backend uma|orb|mace|aimnet2] \
  [-s/--scan-lists scan.yaml | '[(i,j,targetÅ),...]'] [options] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
@@ -107,8 +107,6 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
 | `--config FILE` | Base YAML configuration file (applied first). | _None_ |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
-| `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
-| `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 | `--preopt/--no-preopt` | Run an unbiased optimization before scanning. **Scope-dependent default:** `False` standalone; flipped to `True` when invoked via `pdb2reaction all` (see [`all` → TSOPT / freq / DFT / scan overrides](all.md#tsopt--freq--dft--scan-overrides)). | `False` |
 | `--endopt/--no-endopt` | Run an unbiased optimization after each stage. | `False` |
 | `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |

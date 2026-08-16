@@ -26,7 +26,6 @@ pdb2reaction scan3d -i input.pdb \
 | `--csv` | path | none | Skip the scan; load a precomputed `surface.csv` for downstream plotting |
 | `-q` / `-l` / `-m` | — | — | Charge / spin |
 | `-b, --backend` | str | `uma` | MLIP backend |
-| `--solvent` | str | `none` | xTB-ALPB solvent |
 | `-o, --out-dir` | path | `./result_scan3d/` | Output directory |
 | `--ref-pdb` / `--config` / `--dry-run` / `--help-advanced` | — | — | Standard |
 | `--out-json / --no-out-json` | flag | `--no-out-json` | Emit `result.json` summary |

@@ -124,7 +124,7 @@ geom:
 
 ### `calc`
 
-MLIP バックエンドの設定。複数バックエンド（UMA, ORB, MACE, AIMNet2）と xTB 溶媒補正に対応。
+MLIP バックエンドの設定。
 
 ```yaml
 calc:
@@ -147,17 +147,16 @@ calc:
  return_partial_hessian: true  # active-DOF ブロックのHessianを返す
  print_timing: true # Hessian計算のタイミング内訳を表示
  print_vram: true # Hessian計算中の CUDA VRAM 使用量を表示 (UMA バックエンドのみ)
- # Solvent correction (xTB)
- solvent: none           # Implicit solvent name (e.g. "water", "methanol") or "none" to disable
+ # 実験的な xTB 溶媒補正（計算コスト大）
+ solvent: none           # none, water, methanol, acetonitrile, dmso, thf, toluene
  solvent_model: alpb     # xTB solvent model: "alpb" or "cpcmx"
- xtb_cmd: xtb            # Path to xTB executable
+ xtb_cmd: xtb            # solvent が none 以外の場合に必要な xTB 実行コマンド
  xtb_acc: 0.2            # xTB accuracy parameter
 ```
 
 **注記:**
 - `backend` で MLIP エンジンを選択。すべてのバックエンド（UMA, ORB, MACE, AIMNet2）が解析 Hessian（`hessian_calc_mode: Analytical`）と有限差分 Hessian の両方に対応。マルチワーカー推論は UMA バックエンド限定。
 - `workers` / `workers_per_node` は UMA バックエンドでのみ有効。
-- `solvent` で xTB ベースの暗黙溶媒補正を有効化（デルタ補正方式）。`xtb` のインストールが必要。
 - 移植性のあるデフォルトは `FiniteDifference` です。`Analytical` は有限変位誤差を避けられますが、速度・メモリ量は backend/model/系に依存するため、対象環境で検証してから選択してください。
 - UMA の `workers > 1` では解析 Hessian が無効になります。`hessian_calc_mode: Analytical` を明示すると `BackendError`（`RuntimeError` のサブクラス）で停止します。解析 Hessian には `workers = 1`、並列実行には `FiniteDifference` を指定してください。詳細は {ref}`MLIP Calculator のHessian評価モード <ja-hessian-evaluation>` を参照してください。
 - 電荷/スピンは `.gjf` テンプレートがあればそれを継承します。
@@ -414,7 +413,7 @@ hessian_dimer:
  thresh_loose: gau_loose # Loose convergence preset
  thresh: baker # Main convergence preset
  update_interval_hessian: 500 # Hessian rebuild cadence
- neg_freq_thresh_cm: 5.0 # 動画出力・平坦化で無視する微小モードの閾値（cm⁻¹）
+ neg_freq_thresh_cm: 5.0 # モード出力・平坦化・任意の鞍点回復で使う閾値（cm⁻¹）
  flatten_amp_ang: 0.1 # Flattening amplitude (Å)
  flatten_max_iter: 50 # Flattening iteration cap (下記注記を参照)
  flatten_sep_cutoff: 0.0 # Minimum distance between representative atoms
@@ -662,7 +661,6 @@ calc:
  model: uma-s-1p2 # uma-s-1p2 | uma-m-1p1
  device: auto
  hessian_calc_mode: FiniteDifference # 移植性のあるデフォルト値。Analytical は事前検証して選択
- solvent: none                 # Set to e.g. "water" for implicit solvent
 
 gs:
  max_nodes: 12

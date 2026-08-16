@@ -23,8 +23,7 @@ pdb2reaction/                          ← the package body, one folder per laye
 │               #      `add-elem-info` subcommands. May use torch/numpy; no
 │               #      MLIP SDK (fairchem/orb_models/mace/aimnet) dependency.
 ├── backends/   # L4a — MLIP backend dispatcher + per-backend adapters
-│               #       (`uma.py`, `orb.py`, `mace.py`, `aimnet2.py`) +
-│               #       xTB ALPB solvent correction.
+│               #       (`uma.py`, `orb.py`, `mace.py`, `aimnet2.py`).
 ├── io/         # L4b — summary writer, energy diagram, trajectory plot,
 │               #       Hessian cache, PDB altloc fix. Hosts the `trj2fig`,
 │               #       `energy-diagram` and `fix-altloc` subcommands.

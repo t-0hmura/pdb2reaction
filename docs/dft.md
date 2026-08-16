@@ -14,7 +14,7 @@ Command form:
 pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULTIPLICITY] \
  [--func-basis 'FUNC/BASIS'] \
  [--max-cycle N] [--conv-tol Eh] [--grid-level L] \
- [--out-dir DIR] [--engine gpu|cpu] [--convert-files/--no-convert-files] \
+ [--out-dir DIR] [--engine gpu|cpu] \
  [--ref-pdb FILE] [--config FILE] [--show-config] [--dry-run]
 ```
 
@@ -92,7 +92,6 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `-o, --out-dir TEXT` | Output directory (`dft.out_dir`). | `./result_dft/` |
 | `--engine [gpu\|cpu]` | SCF backend: gpu (GPU4PySCF) or cpu (PySCF). See {ref}`engine-vs-dft-engine` for the `--engine` vs `--dft-engine` naming convention. | `gpu` |
 | `--lowmem/--no-lowmem` | Use `gpu4pyscf.dft.rks_lowmem.RKS` for closed-shell GPU runs (skips density fitting in favor of memory-efficient direct JK). Open-shell, CPU, or pre-`rks_lowmem` GPU4PySCF installs fall back to standard RKS/UKS automatically. | `True` |
-| `--convert-files/--no-convert-files` | **No-op on `dft`.** Accepted purely for interface consistency with the other subcommands; `dft` never produces PDB or GJF outputs (only `input_geometry.xyz` + `result.yaml`). The flag's value is ignored. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology to validate atom counts and enable ligand-charge derivation for XYZ/GJF inputs (no output conversion). | _None_ |
 | `--config FILE` | Base YAML configuration file applied before explicit CLI options. | _None_ |
 | `--show-config/--no-show-config` | Print resolved configuration and continue execution. | `False` |

@@ -8,7 +8,7 @@ Command form:
 
 ```bash
 pdb2reaction opt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
+ [-b/--backend uma|orb|mace|aimnet2] \
  [--opt-mode grad|hess|lbfgs|rfo] [--flatten/--no-flatten] [--freeze-links/--no-freeze-links] \
  [--dist-freeze '[(i,j,target_Å),...]'] [--one-based|--zero-based] \
  [--bias-k K_eV_per_Å²] [--dump/--no-dump] [-o/--out-dir DIR] \
@@ -101,9 +101,6 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
 | `--dry-run/--no-dry-run` | Validate options and print execution plan without running optimization. | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
-| `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
-| `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
-
 ## YAML configuration
 
 Shared sections reuse [YAML Reference](yaml-reference.md); adjust only the values you need to change. `geom`, `calc`, `opt`, and the optimizer-specific `lbfgs`/`rfo` blocks use the canonical keys and defaults — see [`geom`](yaml-reference.md#geom), [`calc`](yaml-reference.md#calc), [`opt`](yaml-reference.md#opt), [`lbfgs`](yaml-reference.md#lbfgs), [`rfo`](yaml-reference.md#rfo). A minimal representative configuration:

@@ -57,14 +57,6 @@ calc = create_calculator(
     hessian_calc_mode="Analytical",
 )
 
-# 暗黙溶媒付き ORB 計算機
-calc_orb = create_calculator(
-    backend="orb",
-    charge=-1,
-    spin=1,
-    solvent="water",
-    solvent_model="alpb",
-)
 ```
 
 返される計算機は pysisyphus の計算機インターフェース（`get_energy`, `get_forces`, `get_hessian`）を実装しています。すべてのメソッドは `(atoms: List[str], coords: np.ndarray)` を受け取り、coords は **Bohr** 単位です。戻り値は `"energy"`（Hartree）、`"forces"`（Hartree/Bohr）、`"hessian"`（Hartree/Bohr²）を含む dict です。
@@ -93,17 +85,6 @@ pdb2reaction opt -i input.pdb -q 0 -b aimnet2
 | **ORB** | `pip install "pdb2reaction[orb]"` | あり（autograd） | なし | orb-models（conservative モデルのみ） |
 | **MACE** | `pip uninstall -y fairchem-core && pip install mace-torch` | あり（`calc.get_hessian`） | なし | mace-torch >= 0.3.8 |
 | **AIMNet2** | `pip install "pdb2reaction[aimnet]"` | あり（native） | なし | aimnet |
-
-### 暗黙溶媒補正
-
-すべてのバックエンドで xTB ベースの暗黙溶媒補正が `--solvent` により利用可能です:
-
-```bash
-pdb2reaction opt -i input.pdb -q 0 --solvent water
-pdb2reaction opt -i input.pdb -q 0 -b orb --solvent water --solvent-model cpcmx
-```
-
-デルタアプローチによる補正: ΔE = E_xTB(溶媒) - E_xTB(真空) を MLIP エネルギー/力/Hessian に加算します。`xtb` が `PATH` 上にインストールされている必要があります。
 
 ## 主な特徴
 
@@ -151,12 +132,6 @@ UMA バックエンドを `workers > 1` で使用する場合、並列 predictor
 | `out_hess_torch` | Hessian を `torch.Tensor` で返す | `True` |
 | `print_timing` | Hessian 計算のタイミング内訳を表示 | `True` |
 | `print_vram` | Hessian 計算中の CUDA VRAM 使用量を表示（UMA バックエンド限定） | `True` |
-| `solvent` | 暗黙溶媒名（例: `"water"`）または `"none"` | `"none"` |
-| `solvent_model` | xTB 溶媒モデル: `"alpb"` または `"cpcmx"` | `"alpb"` |
-| `xtb_cmd` | 溶媒補正で使用する xTB 実行コマンド | `"xtb"` |
-| `xtb_acc` | 溶媒補正実行時の xTB 精度設定 | `0.2` |
-
-
 ## 関連項目
 
 - [典型エラー別レシピ](recipes-common-errors.md) -- 症状起点の切り分け

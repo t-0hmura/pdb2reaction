@@ -32,7 +32,6 @@ pdb2reaction path-opt -i reactant.pdb product.pdb \
 | `--fix-ends / --no-fix-ends` | flag | `--fix-ends` | Keep GSM endpoint images fixed; accepted but unused with DMF |
 | `-q, --charge` / `-l` / `-m` | — | — | Charge / spin (common conventions) |
 | `-b, --backend` | str | `uma` | MLIP backend |
-| `--solvent` | str | none | xTB-ALPB solvent name |
 | `-o, --out-dir` | path | `./result_path_opt/` | Output directory |
 
 ## Examples
@@ -49,10 +48,6 @@ pdb2reaction path-opt -i R.xyz P.xyz -q 0 -m 1 -b uma -o result_path_opt
 pdb2reaction path-opt -i R.pdb P.pdb -l 'GPP:-3' --mep-mode dmf -b mace \
     -o result_path_opt_dmf
 ```
-
-DMF is optional and cannot be combined with `--solvent`: its ASE path has no
-xTB solvent wrapper, so pdb2reaction rejects that PES mismatch. Use GSM for a
-solvent-corrected path.
 
 ## Output
 

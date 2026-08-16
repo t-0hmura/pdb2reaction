@@ -35,7 +35,6 @@ pdb2reaction tsopt -i ts_guess.{pdb,cif,mmcif,xyz,gjf} \
 | `--workers`, `--workers-per-node` | int | `1`, `1` | UMA predictor workers. `workers > 1` with explicit `Analytical` raises `BackendError`; it does not fall back. Other built-in backends ignore these worker kwargs. |
 | `--ref-mode` | path | none | Advanced/internal Cartesian 3N reaction direction used for initial-root selection and overlap tracking. `all` supplies it by default; with `all --no-tsopt-from-mep-tan`, TSOPT selects from the initial-structure Hessian modes. Ordinary standalone `tsopt` runs should omit it. Visible only in `--help-advanced`. |
 | `-b, --backend` | str | `uma` | MLIP backend |
-| `--solvent` | str | none | xTB-ALPB solvent |
 | `-o, --out-dir` | path | `./result_tsopt/` | Output directory |
 | `--config` / `--show-config` / `--dry-run` / `--help-advanced` | — | — | Standard |
 

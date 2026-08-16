@@ -114,7 +114,7 @@ out_dir/ (デフォルト:./result_tsopt/)
 
 ```bash
 pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
- [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
+ [-b/--backend uma|orb|mace|aimnet2] \
  [--opt-mode grad|hess|dimer|rsirfo|trim|rsprfo] [--flatten/--no-flatten] \
  [--freeze-links/--no-freeze-links] [--max-cycles N] [--thresh PRESET] \
  [--hessian-calc-mode Analytical|FiniteDifference] \
@@ -136,8 +136,6 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
 | `--workers INT` | UMA 予測器の並列度。`workers > 1` と明示的な解析 Hessian は併用できないため、`workers = 1` または有限差分を使用。{ref}`ja-workers-analytical-error` を参照 | `1` |
 | `--workers-per-node INT` | ノードあたりのワーカー数。並列予測器に渡されます | `1` |
 | `--hessian-calc-mode CHOICE` | MLIP Hessian モード（`Analytical` または `FiniteDifference`） | `FiniteDifference` |
-| `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
-| `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 | **活性領域の凍結** | | |
 | `--freeze-links/--no-freeze-links` | PDB/mmCIF 入力（または `--ref-pdb` 付き XYZ/GJF）。キャップ水素の親を凍結（`geom.freeze_atoms` にマージ）。キャップ水素の詳細は [extract](extract.md) を参照 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
@@ -266,13 +264,12 @@ TS探索が余分な虚振動を残したままになりやすいためです。
 
 `--opt-mode grad`（Hessian Guided Dimer + L-BFGS）で使用します。
 
-`hessian_dimer` ブロック全体（内部 `dimer:` とそのネストされた `lbfgs:` を含む）は [`hessian_dimer`](yaml-reference.md#hessian_dimer) に記載されています。内部 `lbfgs:` は [`lbfgs`](yaml-reference.md#lbfgs) セクションを継承し、以下が `tsopt` 固有の上書きです:
+`hessian_dimer` ブロック全体（同じ階層の `dimer:` と `lbfgs:` を含む）は [`hessian_dimer`](yaml-reference.md#hessian_dimer) に記載されています。`hessian_dimer.lbfgs` のキーは [`lbfgs`](yaml-reference.md#lbfgs) と共通で、`tsopt` は値をこの兄弟セクションから読みます:
 
 ```yaml
 hessian_dimer:
- dimer:
-   lbfgs:
-     out_dir: ./result_tsopt/ # tsopt の上書き（defaults.py の値は ./result_opt/）
+  lbfgs:
+    out_dir: ./result_tsopt/ # tsopt の上書き（defaults.py の値は ./result_opt/）
 ```
 
 ### RS-P-RFO / RS-I-RFO モード（`--opt-mode hess`、デフォルト → RS-P-RFO）

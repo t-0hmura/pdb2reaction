@@ -178,15 +178,15 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 | `rigid_projection` | object | 剛体モードとexact Hessian のprovenance。[projection provenance](#rigid-projection-provenance)を参照 |
 
 `files` には `imaginary_mode_files`（vib ファイルリスト）を含む場合があります。
-Hessian 系 optimizer が設定された全収束基準へ一度も到達しない場合、
-最終 PHVA と mode 出力は実行せず、虚振動関連の2フィールドを `null` とします。
-energy plateau による停止は `stalled`、それ以外は `not_converged` とします。
-Cartesian Hessian mode の `status: "converged"` には、最終 exact PHVA で
-有意な虚振動がちょうど1個必要です。対応する内部座標 mode では、代わりに
-exact optimizer-space Hessian の負の固有値が1個であることを要求します。
-高次鞍点と `n_imag=0` 構造は `not_converged` です。エネルギープラトーによる
-`stalled`（上記参照）も同様に `converged` として報告されず、以降の flatten/
-再試行を停止します。収束詳細 (force/step) は
+Hessian 系 optimizer が未収束のまま `max_cycles` に到達した場合、最終 PHVA
+と mode 出力は実行せず、虚振動関連の2フィールドを `null` とします。
+energy plateau で停止した場合は終端 PHVA を実行しますが、status は `stalled`
+のままです。それ以外の未収束は `not_converged` とします。
+Cartesian Hessian mode の `status: "converged"` には、絶対値によるカットオフ
+なしで、最終 exact PHVA の負の振動数がちょうど1個必要です。対応する内部座標
+mode では、負曲率が1個であることを要求します。高次鞍点と `n_imag=0` 構造は
+`not_converged` です。plateau-stalled の場合も以降の flatten/再試行を停止します。
+収束詳細 (force/step) は
 rsirfo モードで利用可能です。
 dimer モードも `status` に `"converged"` / `"not_converged"` / `"stalled"` を
 返しますが、`n_opt_cycles` のみを出力し、Hessian mode の収束詳細と

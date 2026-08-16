@@ -8,7 +8,7 @@ Command synopsis:
 
 ```bash
 pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] \
- [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
+ [-b/--backend uma|orb|mace|aimnet2] \
  [--workers N] [--workers-per-node N] [-m 2S+1] \
  [--max-cycles N] [--step-size Δs] [--never-stop/--no-never-stop] [--root k] \
  [--forward/--no-forward] [--backward/--no-backward] \
@@ -128,8 +128,6 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--show-config/--no-show-config` | Print resolved YAML layers/config and continue. | `False` |
 | `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
-| `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
-| `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 | `--dry-run/--no-dry-run` | Validate and print execution plan without running IRC. | `False` |
 
 ## YAML configuration

@@ -16,7 +16,7 @@ Command form:
 
 ```bash
 pdb2reaction path-opt -i REACTANT.{pdb|cif|mmcif|xyz|gjf} PRODUCT.{pdb|cif|mmcif|xyz|gjf} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
+ [-b/--backend uma|orb|mace|aimnet2] \
  [--workers N] [--workers-per-node N] \
  [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--max-nodes N] [--max-cycles N] \
  [--climb/--no-climb] [--dump/--no-dump] [--thresh PRESET] [--thresh-gsm PRESET] [--thresh-dmf TOL] \
@@ -51,7 +51,6 @@ pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
 ```{note}
 DMF mode additionally requires `cyipopt` (install from conda-forge before running with `--mep-mode dmf`). `pydmf` ships with `pdb2reaction` as a dependency. The default `--dmf-backend gpu` uses the PyTorch/CUDA `dmf.torch` backend; pass `--dmf-backend cpu` (`dmf`/NumPy) on a GPU out-of-memory error.
 
-`--mep-mode dmf` runs on the gas-phase ASE PES and is **incompatible with `--solvent`** (the run aborts with an error). Use `--mep-mode gsm` for solvent-corrected paths — its per-image evaluation goes through the solvent-aware pysisyphus calculator.
 ```
 
 A quick pass that freezes cap parents and disables climb: add `--freeze-links --no-climb`.
@@ -113,8 +112,6 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--config FILE` | Base YAML configuration layer applied before explicit CLI values. | _None_ |
 | `--show-config/--no-show-config` | Print resolved configuration (including YAML layers) and continue. | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
-| `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
-| `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 | `--dry-run/--no-dry-run` | Validate options and print the execution plan without running optimization. | `False` |
 | `--preopt/--no-preopt` | Pre-optimize each endpoint with the selected single-structure optimizer before alignment/MEP search (GSM/DMF). | `True` |
 | `--preopt-max-cycles INT` | Cap for endpoint preoptimization cycles. | `10000` |

@@ -125,7 +125,7 @@ geom:
 
 ### `calc`
 
-MLIP backend configuration. Supports multiple backends (UMA, ORB, MACE, AIMNet2) and optional xTB solvent corrections.
+MLIP backend configuration.
 
 ```yaml
 calc:
@@ -148,17 +148,16 @@ calc:
  return_partial_hessian: true  # Return active-DOF block Hessian
  print_timing: true # Print Hessian timing breakdown
  print_vram: true # Print CUDA VRAM usage during Hessian (UMA backend only)
- # Solvent correction (xTB)
- solvent: none           # Implicit solvent name (e.g. "water", "methanol") or "none" to disable
+ # Experimental xTB solvent correction (computationally expensive)
+ solvent: none           # none, water, methanol, acetonitrile, dmso, thf, or toluene
  solvent_model: alpb     # xTB solvent model: "alpb" or "cpcmx"
- xtb_cmd: xtb            # Path to xTB executable
+ xtb_cmd: xtb            # xTB executable; required when solvent is not none
  xtb_acc: 0.2            # xTB accuracy parameter
 ```
 
 **Notes:**
 - `backend` selects the MLIP engine. All backends (UMA, ORB, MACE, AIMNet2) support both analytical (autograd) and finite-difference Hessians; multi-worker inference is UMA-only.
 - `workers` / `workers_per_node` are effective with the UMA backend only.
-- `solvent` enables xTB-based implicit solvent corrections (delta correction approach). Requires `xtb` to be installed.
 - `FiniteDifference` is the portable default. `Analytical` avoids finite-displacement error, but runtime and memory are backend/model/system dependent; select it only after validating the target setup.
 - `workers > 1` disables analytical Hessians for the UMA parallel predictor. An explicit `hessian_calc_mode: Analytical` request raises `BackendError` (a `RuntimeError` subclass); use `workers = 1` or select `FiniteDifference`. See {ref}`the MLIP Calculator hessian-evaluation note <hessian-evaluation>` for details.
 - Charge/spin inherit `.gjf` template metadata when available
@@ -420,7 +419,7 @@ hessian_dimer:
  thresh_loose: gau_loose # Loose convergence preset
  thresh: baker # Main convergence preset
  update_interval_hessian: 500 # Hessian rebuild cadence
- neg_freq_thresh_cm: 5.0 # Ignore smaller modes in animations and flattening (cm⁻¹)
+ neg_freq_thresh_cm: 5.0 # Mode-file, flattening, and optional-recovery threshold (cm⁻¹)
  flatten_amp_ang: 0.1 # Flattening amplitude (Å)
  flatten_max_iter: 50 # Flattening iteration cap (see note below)
  flatten_sep_cutoff: 0.0 # Minimum distance between representative atoms
@@ -670,7 +669,6 @@ calc:
  model: uma-s-1p2 # uma-s-1p2 | uma-m-1p1
  device: auto
  hessian_calc_mode: FiniteDifference # Portable default; benchmark Analytical before opting in
- solvent: none                 # Set to e.g. "water" for implicit solvent
 
 gs:
  max_nodes: 12

@@ -712,9 +712,11 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "_colab_frontend = bool(get_ipython().parent_header.get('metadata', {}).get('colab'))" in app
     assert "IS_COLAB_FRONTEND = IN_COLAB or _colab_frontend" in app
     assert "'basic' if IS_COLAB_FRONTEND else" in app
-    assert "if _HAS_DROP_WIDGET and not IS_COLAB_FRONTEND:" in app
     assert "_drop_children = ([upl] if _UPLOAD_MODE == 'anywidget'" in app
     assert "_cwm.register_callback('pdb2reaction_gui.upload_files', _on_colab_upload)" in app
+    # Incremental logs use AnyWidget in hosted Colab and ordinary Jupyter,
+    # while Colab local runtimes retain the standard widget path.
+    assert "if _HAS_DROP_WIDGET and (IN_COLAB or not IS_COLAB_FRONTEND):" in app
     # callback_ns is local to _molstar_document; the module-level block needs a literal.
     assert "callback_ns" not in app.split("display(rootbox)")[1]
     assert "bridge.invokeFunction(CONFIG.callback, [spec.role, payload], {})" in app
@@ -758,15 +760,15 @@ def test_colab_viewer_persists_exact_atom_and_residue_context() -> None:
         "last_pick_info", "Generated file preview", "Download current run (.zip)",
         "results_box.add_class('rxresults')", "overflow-x:auto",
         "colab_run.log", "energy unavailable", "Command was cancelled",
-        "Command failed", "_frame_link = W.jslink",
+        "Command failed", "_frame_play_link = W.link",
         # One trajectory control drives the 3D frame and the energy-profile
-        # cursor: the play button is js-linked to the slider, and the slider
+        # cursor: the play button is trait-linked to the slider, and the slider
         # posts the frame to the viewer and the plot.
         "frame_slider = W.IntSlider(", "channel='trajectory'",
         "host.on('plotly_click'", "Plotly.restyle", "artifact_fold._rx_set_open",
         "message.type!=='rx-set-frame'", "update.to(model).update",
-        "channel='trajectory', generation=generation",
-        "''.join(_TRAJ['frames'])",
+        "def _mount_result_models(frames, generation):",
+        "source = ''.join(frames)",
         "display(HTML(_molstar_iframe(source, fmt, show_sequence=(fmt != 'xyz'))))",
     ):
         assert marker in app
@@ -1108,11 +1110,9 @@ def test_colab_app_executes_atomic_view_and_result_transitions(
     assert app["center_widget"] is primary_widget
     assert primary_widget.disabled is True
     assert (app["S"]["center"], app["S"]["center_ids"], app["S"]["lcharge"]) == saved
-    assert any(
-        isinstance(value, str) and '"type":"rx-load-structure"' in value
-        and '"generation":%d' % app["_VIEWER_GENERATION"]["value"] in value
-        for value in calls
-    )
+    signal = app["viewer_signal_out"].value
+    assert "rx-load-structure" in signal
+    assert "&quot;generation&quot;:%d" % app["_VIEWER_GENERATION"]["value"] in signal
     app["dd_subcmd"].value = "scan"
     def _descendants(widget):
         yield widget
@@ -1399,11 +1399,9 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     calls.clear()
     app["cb_water"].value = True
     assert app["S"]["show_water"] is True
-    updates = [
-        value for value in calls
-        if isinstance(value, str) and '"type":"rx-load-structure"' in value
-    ]
-    assert updates and '"showWater":true' in updates[-1]
+    signal = app["viewer_signal_out"].value
+    assert "rx-load-structure" in signal
+    assert "&quot;showWater&quot;:true" in signal
     document = app["_molstar_document"](
         app["S"]["_pdb_text"], "pdb", show_water=True, interactive=True,
     )
@@ -1425,22 +1423,17 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     app["on_click"]("1", "LIG", "3", "A", "C1", "5", "")
     assert app["S"]["_last_pick"]["index"] == 4
     assert app["S"]["_last_pick"]["viewer_index"] == 1
-    assert any(
-        isinstance(value, str) and '"type":"rx-load-structure"' in value
-        for value in calls
-    )
+    signal = app["viewer_signal_out"].value
+    assert "rx-load-structure" in signal
+    assert "&quot;generation&quot;:%d" % app["_VIEWER_GENERATION"]["value"] in signal
     assert [pick["index"] for pick in app["S"]["_pick_history"]] == [4]
 
     # A second Mol* click updates workflow state without publishing a
     # replacement iframe; Mol* retains ownership of its standard focus state.
-    calls.clear()
+    previous_signal = app["viewer_signal_out"].value
     app["on_click"]("2", "MG", "2", "A", "MG", "3", "", live_marked=True)
     assert [pick["index"] for pick in app["S"]["_pick_history"]] == [4, 2]
-    assert not any(
-        isinstance(value, str)
-        and ('class="rxmolstar-frame"' in value or '"type":"rx-load-structure"' in value)
-        for value in calls
-    )
+    assert app["viewer_signal_out"].value == previous_signal
     committed_centers = list(app["S"]["center_ids"])
     app["_clear_highlights_from_browser"](app["_VIEWER_GENERATION"]["value"])
     assert app["S"]["_pick_history"] == []
@@ -1769,11 +1762,9 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     assert app["all_mode"].value == "mep" and not app["b_clear_inputs"].disabled
     assert app["S"]["_view_format"] == "xyz"
     assert app["workspace"].layout.display == ""
-    assert any(
-        isinstance(value, str)
-        and ('class="rxmolstar-frame"' in value or '"type":"rx-load-structure"' in value)
-        for value in calls
-    )
+    viewer = app["viewer_out"].value
+    assert 'class="rxmolstar-frame"' in viewer
+    assert "&quot;format&quot;:&quot;xyz&quot;" in viewer
     # The other half of the routing: with no ligand-charge source the notebook
     # emits -q explicitly, because the CLI requires it for non-.gjf input, and
     # the override checkbox stays dead because there is nothing to override.
@@ -1853,6 +1844,25 @@ def test_colab_exercises_every_workflow_and_advanced_flag_widget(
 ) -> None:
     """Operate every workflow selector and every editable live Click option."""
     app, _ = _execute_app(monkeypatch, tmp_path)
+    for subcommand in (
+        "all", "opt", "tsopt", "irc", "freq", "sp",
+        "scan", "scan2d", "scan3d", "path-opt", "path-search", "trj2fig",
+    ):
+        param = next(
+            option
+            for option in app["_advanced_options"](subcommand)
+            if option.name == "solvent"
+        )
+        assert app["_advanced_status"](subcommand, param) == "rendered"
+        help_text = param.help.lower()
+        assert "experimental" in help_text
+        assert "computationally expensive" in help_text
+        for solvent in (
+            "water", "methanol", "acetonitrile", "dmso", "thf", "toluene",
+        ):
+            assert solvent in help_text
+        search_text = app["_advanced_widget"](subcommand, param)._rx_search
+        assert "experimental" in search_text
     # Every retained CLI workflow remains selectable and restorable.
     option_values = {
         item[1] if isinstance(item, tuple) else item
@@ -2119,7 +2129,7 @@ def test_colab_results_keep_missing_energies_unknown(
     assert app["_TRAJ"]["energies"] == [None, -0.99]
     assert app["_rel_kcal"]() is None
     assert "profile not re-referenced" in app["frame_state"].value
-    assert "Energy profile unavailable" in app["plot_out"].value
+    assert "Per-frame energies were not written" in app["plot_out"].value
 
     missing_middle = tmp_path / "missing_middle_trj.xyz"
     missing_middle.write_text(
@@ -2405,9 +2415,9 @@ def test_colab_operates_scientific_selectors_and_remaining_buttons(
     )
     app["res_btn"].disabled = False
     app["res_btn"].click()
-    # The selector offers the primary result trajectory; per-file semantic
-    # titles are used elsewhere, not to build extra selector entries.
-    assert [label for label, _ in app["traj_choice"].options] == ["Primary result"]
+    assert [label for label, _ in app["traj_choice"].options] == [
+        "Trajectory · path_a_trj.xyz"
+    ]
     app["traj_choice"].value = app["traj_choice"].options[0][1]
     app["frame_next"].click()
     assert app["frame_slider"].value == 1
@@ -2500,11 +2510,9 @@ def test_colab_adversarial_state_transactions_and_editor_ownership(
     assert app["S"]["scan_atoms"][1]["xyz"] == pytest.approx((12.4, 0.0, 0.0))
     calls.clear()
     app["render_viewer"]()
-    assert any(
-        isinstance(value, str) and '"type":"rx-load-structure"' in value
-        and '"generation":%d' % app["_VIEWER_GENERATION"]["value"] in value
-        for value in calls
-    )
+    signal = app["viewer_signal_out"].value
+    assert "rx-load-structure" in signal
+    assert "&quot;generation&quot;:%d" % app["_VIEWER_GENERATION"]["value"] in signal
 
     app["load_pdb"]([str(primary), str(incompatible)], center=["LIG"], lcharge={"LIG": 1})
     app["S"]["scan_atoms"] = [

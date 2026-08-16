@@ -25,7 +25,6 @@ pdb2reaction opt -i input.pdb [-q 0 -m 1] \
 | `--max-cycles` | int | `10000` | Stop after N cycles; see `OPT_BASE_KW["max_cycles"]` |
 | `--reject-uphill / --no-reject-uphill` | toggle | off | Opt in to rejecting an energy-raising Hessian/RFO trial above `1e-4` Hartree, restoring the lower-energy geometry and shrinking the trust radius. At the emergency floor, run one final convergence check on the retained geometry. Ignored in L-BFGS mode. |
 | `-b, --backend` | str | `uma` | MLIP backend |
-| `--solvent` | str | none | xTB-ALPB solvent |
 | `-o, --out-dir` | path | `./result_opt/` | Output directory |
 | `--config` / `--show-config` / `--dry-run` / `--help-advanced` | — | — | Standard |
 

@@ -53,7 +53,6 @@ pdb2reaction all -i <input(s)> [-c <substrate>] [-l 'RES:Q,...'] \
 | `--dft-func-basis` | str | `wb97m-v/def2-tzvpd` | DFT functional/basis (when `--dft`) |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `--workers`, `--workers-per-node` | int | `1`, `1` | UMA predictor workers. `workers > 1` plus an explicit `Analytical` Hessian raises `BackendError`; use one worker or `FiniteDifference`. Other built-in backends ignore these worker kwargs. |
-| `--solvent` | str | none | xTB-ALPB solvent name (`water`, `methanol`, …) |
 | `-o, --out-dir` | path | `./result_all/` | Top-level output directory |
 | `--config` | path | none | YAML config applied before CLI flags |
 | `--show-config` | flag | off | Print the resolved config and continue running |

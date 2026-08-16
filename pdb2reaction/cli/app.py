@@ -183,7 +183,6 @@ _COMMAND_BOOL_TOGGLE_OPTIONS: dict[str, frozenset[str]] = {
     ),
     "dft": frozenset(
         {
-            "--convert-files",
             "--dry-run",
             "--lowmem",
             "--out-json",
@@ -357,6 +356,8 @@ _SUBCOMMAND_PRIMARY_HELP_OPTIONS: dict[str, frozenset[str]] = {
             "--config",
             "-o", "--out-dir",
             "--bias-k",
+            "--max-step-size",
+            "--thresh",
             "--help-advanced",
         }
     ),
@@ -375,6 +376,8 @@ _SUBCOMMAND_PRIMARY_HELP_OPTIONS: dict[str, frozenset[str]] = {
             "--config",
             "-o", "--out-dir",
             "--bias-k",
+            "--max-step-size",
+            "--thresh",
             "--help-advanced",
         }
     ),
@@ -394,6 +397,8 @@ _SUBCOMMAND_PRIMARY_HELP_OPTIONS: dict[str, frozenset[str]] = {
             "--config",
             "-o", "--out-dir",
             "--bias-k",
+            "--max-step-size",
+            "--thresh",
             "--help-advanced",
         }
     ),
@@ -433,6 +438,7 @@ _SUBCOMMAND_PRIMARY_HELP_OPTIONS: dict[str, frozenset[str]] = {
             "-b", "--backend",
             "--config",
             "--max-nodes",
+            "--fix-ends",
             "-o", "--out-dir",
             "--max-cycles",
             "--help-advanced",
@@ -475,6 +481,7 @@ _SUBCOMMAND_PRIMARY_HELP_OPTIONS: dict[str, frozenset[str]] = {
             "-o", "--out-dir",
             "--hessian-calc-mode",
             "--thresh",
+            "--dump", "--no-dump",
             "--help-advanced",
         }
     ),
@@ -510,7 +517,6 @@ _SUBCOMMAND_PRIMARY_HELP_OPTIONS: dict[str, frozenset[str]] = {
             "-b", "--backend",
             "--max-cycles",
             "--step-size",
-            "--never-stop",
             "--forward",
             "--backward",
             "--config",

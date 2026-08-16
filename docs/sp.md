@@ -67,7 +67,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--out-json / --no-out-json` | `--no-out-json` | also write a machine-readable `result.json` (mirrored to `summary.json`) into the output directory |
 | `--show-config / --dry-run` | off | print effective merged config / validate without running |
 
-Run `pdb2reaction sp --help-advanced` for the full list (workers, solvent corrections, etc.).
+Run `pdb2reaction sp --help-advanced` for the full option list.
 
 ## Notes
 

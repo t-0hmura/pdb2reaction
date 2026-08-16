@@ -183,16 +183,15 @@ All fields from `opt`, plus:
 | `rigid_projection` | object | Rigid-mode and exact-Hessian provenance; see [projection provenance](#rigid-projection-provenance) |
 
 The `files` object may include `imaginary_mode_files` (list of vib file paths).
-When a Hessian-family optimizer never reaches all configured convergence
-criteria, final PHVA and mode export are skipped; both imaginary-mode fields are
-`null`. An energy-plateau exit is `stalled`; other exits are `not_converged`.
-For Cartesian Hessian modes, `status: "converged"` requires the final exact
-PHVA result to contain exactly one significant imaginary mode. Supported
-internal-coordinate Hessian modes instead require one negative root in the
-exact optimizer-space Hessian. Higher-order saddles and `n_imag=0` structures
-are reported as `not_converged`. An energy-plateau `stalled` outcome (see the
-general note above) is likewise never reported as `converged` and stops further
-flatten/retry work. Convergence details are
+When a Hessian-family optimizer reaches `max_cycles` without convergence, final
+PHVA and mode export are skipped; both imaginary-mode fields are `null`. An
+energy-plateau exit instead runs terminal PHVA but remains `stalled`; other
+non-converged exits are `not_converged`. For Cartesian Hessian
+modes, `status: "converged"` requires exactly one negative frequency in the final
+exact PHVA, without a magnitude cutoff. Supported internal-coordinate Hessian
+modes instead require one negative-curvature root. Higher-order saddles and
+`n_imag=0` structures are reported as `not_converged`; a plateau-stalled outcome
+also stops further flatten/retry work. Convergence details are
 available for rsirfo mode; dimer mode also reports `status: "converged"`,
 `"not_converged"`, or `"stalled"`, but provides `n_opt_cycles` only and omits
 the per-cycle force/step convergence keys and Hessian-mode `safeguards` object.

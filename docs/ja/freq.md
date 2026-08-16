@@ -88,8 +88,6 @@ out_dir/ (デフォルト:./result_freq/)
 | `--show-config/--no-show-config` | 解決済み YAML レイヤー/設定を表示して続行 | `False` |
 | `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
-| `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
-| `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 | `--dry-run/--no-dry-run` | 実行せずに検証と実行計画のみ表示 | `False` |
 
 ## YAML 設定
@@ -106,7 +104,7 @@ freq:
 ## 注記
 
 - `tsopt` には虚振動数チェックが内蔵されているため、別途 `freq` を実行するのは主に熱化学量の取得や振動モードの詳細検討のためです。
-- 収束した一次の鞍点（TS）では虚振動数が **ちょうど 1 つ**（検出カットオフは `hessian_dimer.neg_freq_thresh_cm`、デフォルト 5 cm⁻¹）になることが期待されます。
+- 収束した一次の鞍点（TS）の Cartesian PHVA では、負の振動数が **ちょうど 1 つ**になることが期待されます。5 cm⁻¹の閾値はモードファイル、平坦化、任意の鞍点回復に使いますが、この本数は変えません。
 - 虚振動数モードは負の振動数として報告されます。`freq` は検出された虚振動数の個数を表示し、`--dump` で詳細を出力します。
 - 全原子を凍結した構造にはactiveな振動DOFがないため、明示的なエラーで停止します。
 - `--hessian-calc-mode` は **デフォルト < config < 明示 CLI** の優先順位で解決されます。CLI で明示的に指定した値は config YAML の `calc.hessian_calc_mode` より優先されます。

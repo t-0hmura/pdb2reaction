@@ -16,7 +16,7 @@ MLIP バックエンド（デフォルト: UMA、`-b/--backend` で ORB・MACE�
 
 ```bash
 pdb2reaction path-opt -i REACTANT.{pdb|cif|mmcif|xyz|gjf} PRODUCT.{pdb|cif|mmcif|xyz|gjf} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] \
+ [-b/--backend uma|orb|mace|aimnet2] \
  [--workers N] [--workers-per-node N] \
  [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--max-nodes N] [--max-cycles N] \
  [--climb/--no-climb] [--dump/--no-dump] [--thresh PRESET] [--thresh-gsm PRESET] [--thresh-dmf TOL] \
@@ -51,7 +51,6 @@ pdb2reaction path-opt -i reactant.pdb product.pdb -q 0 -m 1 \
 ```{note}
 DMF モードは追加で `cyipopt` が必要です（`--mep-mode dmf` 実行前に conda-forge からインストールしてください）。`pydmf` は `pdb2reaction` の依存として同梱されています。デフォルトの `--dmf-backend gpu` は PyTorch/CUDA の `dmf.torch` バックエンドを使用します。GPU メモリ不足時は `--dmf-backend cpu`（`dmf`/NumPy）を指定してください。
 
-`--mep-mode dmf` は気相の ASE PES 上で動作するため、**`--solvent` とは併用できません**（エラーで停止します）。溶媒補正した経路が必要な場合は `--mep-mode gsm` を使用してください（各画像の評価が溶媒対応の pysisyphus 計算機を通ります）。
 ```
 
 キャップ親原子を凍結し、クライミングを無効化して短時間で確認するには `--freeze-links --no-climb` を追加します。
@@ -119,8 +118,6 @@ out_dir/
 | `--config FILE` | 明示 CLI 指定より前に適用されるベース YAML | _None_ |
 | `--show-config/--no-show-config` | 解決済み設定（YAML レイヤ情報を含む）を表示して実行継続 | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
-| `--solvent TEXT` | xTB 暗黙溶媒（例: `water`）。`none` で無効化 | `none` |
-| `--solvent-model {alpb,cpcmx}` | xTB 溶媒モデル | `alpb` |
 | `--dry-run/--no-dry-run` | 実行せずに検証と実行計画表示のみを行う | `False` |
 | `--preopt/--no-preopt` | アライメント/MEP 探索前に各エンドポイントを事前最適化（GSM/DMF）。 | `True` |
 | `--preopt-max-cycles INT` | エンドポイント事前最適化サイクルの上限 | `10000` |

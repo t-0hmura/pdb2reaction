@@ -133,7 +133,7 @@ Command form:
 
 ```bash
 pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l 'RES:Q,...'] [-m 2S+1] \
-    [-b uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx] [--opt-mode grad|hess|dimer|rsirfo|trim|rsprfo] [--flatten / --no-flatten] \
+    [-b uma|orb|mace|aimnet2] [--opt-mode grad|hess|dimer|rsirfo|trim|rsprfo] [--flatten / --no-flatten] \
     [--freeze-links / --no-freeze-links] [--max-cycles N] [--thresh PRESET] \
     [--hessian-calc-mode Analytical|FiniteDifference] \
     [--convert-files / --no-convert-files] [--ref-pdb FILE]
@@ -155,8 +155,6 @@ The tables below cover the options that need explanation. The full flag list is 
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
 | `--workers INT`, `--workers-per-node INT` | UMA predictor parallelism. `workers > 1` cannot be combined with an explicit analytical Hessian request; use `workers = 1` or finite differences. See {ref}`workers-analytical-error`. | `1`, `1` |
 | `--hessian-calc-mode CHOICE` | MLIP Hessian mode (`Analytical` or `FiniteDifference`). | `FiniteDifference` |
-| `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
-| `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 | **Active-region freezing** | | |
 | `--freeze-links / --no-freeze-links` | PDB/mmCIF input (or XYZ/GJF with `--ref-pdb`). Freeze parents of cap hydrogens (merged into `geom.freeze_atoms`). | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g. `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
@@ -282,13 +280,12 @@ stops on a flat energy typically still carries extra imaginary modes.
 
 ### Dimer mode (`--opt-mode grad`)
 
-Used with `--opt-mode grad` (Hessian-Guided Dimer + L-BFGS translation). The full `hessian_dimer` block (including the inner `dimer:` and its nested `lbfgs:`) is documented in [`hessian_dimer`](yaml-reference.md#hessian_dimer); the inner `lbfgs:` inherits from [`lbfgs`](yaml-reference.md#lbfgs), with this `tsopt`-specific override:
+Used with `--opt-mode grad` (Hessian-Guided Dimer + L-BFGS translation). The full `hessian_dimer` block, including its sibling `dimer:` and `lbfgs:` sections, is documented in [`hessian_dimer`](yaml-reference.md#hessian_dimer). The option names under `hessian_dimer.lbfgs` follow the [`lbfgs`](yaml-reference.md#lbfgs) schema, and `tsopt` reads their values from this sibling section:
 
 ```yaml
 hessian_dimer:
-  dimer:
-    lbfgs:
-      out_dir: ./result_tsopt/   # tsopt override (defaults.py value is ./result_opt/)
+  lbfgs:
+    out_dir: ./result_tsopt/   # tsopt override (defaults.py value is ./result_opt/)
 ```
 
 ### RS-P-RFO / RS-I-RFO mode (`--opt-mode hess`, default → RS-P-RFO)

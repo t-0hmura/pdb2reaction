@@ -18,7 +18,7 @@ Command form:
 
 ```bash
 pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1]
- [-b/--backend uma|orb|mace|aimnet2] [--solvent SOLVENT] [--solvent-model alpb|cpcmx]
+ [-b/--backend uma|orb|mace|aimnet2]
  [--workers N] [--workers-per-node N]
  [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET] [--thresh-gsm PRESET] [--thresh-dmf TOL]
  [--refine-mode {peak|minima}]
@@ -123,8 +123,6 @@ The table is grouped by purpose; within each group the most-used options come fi
 | **Backend & compute** | | |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism; `workers_per_node` is forwarded to the parallel predictor. `workers > 1` cannot be combined with an explicit analytical Hessian request. See {ref}`workers-analytical-error`. | `1`, `1` |
-| `--solvent TEXT` | Implicit solvent name for xTB correction (e.g. `water`). `none` to disable. | `none` |
-| `--solvent-model {alpb,cpcmx}` | xTB solvent model. | `alpb` |
 | **Active-region freezing** | | |
 | `--freeze-links/--no-freeze-links` | When loading PDB/mmCIF active-site topology, freeze the parent atoms of cap hydrogens. See [extract](extract.md) for cap-hydrogen details. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
