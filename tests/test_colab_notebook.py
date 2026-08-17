@@ -660,7 +660,6 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "key_opts_box = _collapsible('Key options', key_opts_content)" in app
     assert "cmd += ['--flatten']" in app
     assert "cmd += ['--refine-path']" in app
-    assert "cmd += ['--max-cycles', str(int(mc))]" in app
     # Help is a browser-native disclosure. Opening it needs no Python round trip,
     # which keeps it responsive in Colab while the panel remains in normal flow.
     assert "def _info_markup(tip, revision=0, rich=False):" in app
@@ -1601,7 +1600,7 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     rendered_rows = [child for child in app["adv_rows_box"].children
                      if "rxflagrow" in getattr(child, "_dom_classes", ())]
     assert len(rendered_rows) == len(editable)
-    assert "Key flags" in app["adv_rows_box"].children[0].value
+    assert "Standard flags" in app["adv_rows_box"].children[0].value
     assert any("Advanced flags" in getattr(child, "value", "")
                for child in app["adv_rows_box"].children)
     app["S"]["advanced_overrides"]["all"] = {
@@ -1722,7 +1721,6 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     app["adv_refine"].value = True
     app["adv_mep"].value = "gsm"
     app["adv_thresh"].value = "gau"
-    app["adv_maxcyc"].value = 9
     app["S"]["advanced_overrides"]["all"] = {
         "reject_uphill": False,
         "opt_mode": "grad",
@@ -4396,3 +4394,48 @@ def test_freq_results_expose_ten_written_modes_in_top_selector(
     app["traj_choice"].value = str(modes[-1])
     assert app["_TRAJ"]["path"] == str(modes[-1])
     assert len(app["_TRAJ"]["frames"]) == 2
+
+
+def test_the_notebook_never_names_a_removed_cycle_flag() -> None:
+    """The MEP subcommands split `--max-cycles`, so no curated control can own it."""
+    import click
+    from pdb2reaction.cli import cli as root_cli
+
+    app = _notebook()["cells"][2]["source"]
+    # A single widget cannot name one flag for every command any more, so the
+    # generated panel owns every cycle budget.
+    assert "adv_maxcyc" not in app
+    assert "'--max-cycles'" not in app
+    assert "--max-cycles (0=None)" not in app
+
+    context = click.Context(root_cli)
+
+    def opts_of(sub):
+        command = root_cli.get_command(context, sub)
+        return {opt for param in command.params for opt in param.opts}
+
+    for sub in ("all", "path-opt", "path-search"):
+        available = opts_of(sub)
+        assert "--max-cycles-gsm" in available, sub
+        assert "--max-cycles-dmf" in available, sub
+        assert "--max-cycles" not in available, sub
+    for sub in ("opt", "tsopt", "irc"):
+        assert "--max-cycles" in opts_of(sub), sub
+
+
+def test_refine_path_is_an_optional_stage_and_beza_turns_it_on() -> None:
+    """`--refine-path` selects recursive path-search, so it belongs with the stages."""
+    app = _notebook()["cells"][2]["source"]
+    # It sits in the Optional stages card, not in the curated Key options rows.
+    assert "_flag_row(adv_refine, _option_help('refine_path'" in app
+    assert "_flag_row(adv_flatten, _option_help('flatten'))])," in app
+    stages = app.index("depth_box = W.VBox([depth_label")
+    card_end = app.index("depth_box.add_class('rxcard')", stages)
+    assert "adv_refine" in app[stages:card_end]
+    # The label states both roles, and multi-step detection is spelled out.
+    assert "--refine-path (MEP refinement & multi-step reaction detection)" in app
+    assert "a separate elementary step" in app
+    # BezA runs through an intermediate, so its example ships with it enabled;
+    # the single-step examples turn it back off.
+    assert "adv_refine.value = True" in app
+    assert app.count("adv_refine.value = False") == 2

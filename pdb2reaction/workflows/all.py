@@ -3117,6 +3117,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
         "--radius",
         "--refine-path",
         "-o",
+        "--print-every",
         "--help-advanced",
     }
 )
