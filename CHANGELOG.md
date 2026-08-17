@@ -86,6 +86,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Detect the molecular point group and external rotational symmetry number for
   every `freq` structure and include the rotational `1/sigma` correction
   automatically. `thermo.symmetry_number` remains an advanced YAML override.
+- Announce the first load of each MLIP model -- `[backend] Preparing MLIP model
+  (<backend> / <model>)...` then `[backend] Done.` -- so the silent weight
+  download inside the backend constructor no longer reads as a hang.
 
 ### Changed
 - Report every option's effective default. Options whose real default lives in
@@ -236,7 +239,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Classify the Colab flag panel from the live command definition: options hidden
   from `--help` are listed under Advanced flags and the rest under Key flags, so
   the panel covers every flag of the selected command.
-- Announce a model-weight download only when the weights are not already cached.
 - Offer each transition state's imaginary mode in the `all` and `tsopt` Results
   view, labelled by segment and wavenumber, and animate it as a vibrational mode
   instead of falling back to the reaction path.

@@ -12,6 +12,7 @@ import click
 
 from __future__ import annotations
 
+import contextlib
 import importlib
 import warnings
 from typing import Any, Dict, Optional
@@ -274,6 +275,37 @@ def apply_calc_file_to_calc_cfg(
     calc_cfg.pop("model", None)
 
 
+_ANNOUNCED_MODEL_LOADS: set = set()
+
+
+@contextlib.contextmanager
+def _announce_model_load(backend: str, kwargs: Dict[str, Any]):
+    """Bracket the first load of each model so a download cannot look like a hang.
+
+    Weight downloads happen inside the backend constructor with no output of
+    their own, so a first run appears frozen. Announcing the load and confirming
+    it distinguishes "still fetching" from "already cached" without inspecting
+    another library's cache layout.
+    """
+    from pdb2reaction.core.output import emit
+
+    model = str(kwargs.get("model") or "").strip()
+    key = (backend, model)
+    if key in _ANNOUNCED_MODEL_LOADS:
+        yield
+        return
+    _ANNOUNCED_MODEL_LOADS.add(key)
+    label = f"{backend}{f' / {model}' if model else ''}"
+    emit(f"[backend] Preparing MLIP model ({label})...", narrative=True)
+    try:
+        yield
+    except BaseException:
+        # A load that raised was never completed; a retry must announce again.
+        _ANNOUNCED_MODEL_LOADS.discard(key)
+        raise
+    emit("[backend] Done.", narrative=True)
+
+
 def _import_cls(backend: str, cls_key: str):
     """Import a class from the backend registry."""
     reg = BACKEND_REGISTRY.get(backend)
@@ -373,7 +405,8 @@ def create_calculator(backend: str = "uma", **kwargs) -> MLIPCalculator:
             err=True,
         )
     cls = _import_cls(backend, "pysis_cls")
-    calc = cls(**filtered)
+    with _announce_model_load(backend, filtered):
+        calc = cls(**filtered)
 
     # Wrap with solvent correction if enabled
     from .solvent import solvent_correction_enabled
@@ -419,7 +452,8 @@ def create_ase_calculator(backend: str = "uma", **kwargs):
     accepted = _ASE_ACCEPTED_KEYS.get(backend, set())
     filtered = _filter_kwargs(kwargs, accepted)
     cls = _import_cls(backend, "ase_cls")
-    return cls(**filtered)
+    with _announce_model_load(backend, filtered):
+        return cls(**filtered)
 
 
 __all__ = [
