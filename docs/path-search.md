@@ -22,7 +22,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
  [--workers N] [--workers-per-node N]
  [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET] [--thresh-gsm PRESET] [--thresh-dmf TOL]
  [--refine-mode {peak|minima}]
- [--max-nodes N] [--max-cycles N] [--climb/--no-climb]
+ [--max-nodes N] [--max-cycles-gsm N] [--max-cycles-dmf N] [--climb/--no-climb]
  [--opt-mode grad|hess] [--dump/--no-dump]
  [--out-dir DIR] [--preopt/--no-preopt]
  [--align/--no-align] [--ref-full-pdb FILE...] [--ref-pdb FILE...]
@@ -131,7 +131,8 @@ The table is grouped by purpose; within each group the most-used options come fi
 | `--dmf-backend {cpu\|gpu}` | DMF compute backend (`--mep-mode dmf` only): `gpu` (`dmf.torch`/CUDA) or `cpu` (`dmf`/NumPy). On a GPU out-of-memory error, retry with `cpu`. | `gpu` |
 | `--preopt/--no-preopt` | Pre-optimize each endpoint with the selected single-structure optimizer (L-BFGS/RFO) before MEP search. | `True` |
 | `--max-nodes INT` | Internal nodes per MEP segment (GSM string images or DMF images). | `20` |
-| `--max-cycles INT` | Maximum MEP optimization cycles (GSM/DMF). | `300` |
+| `--max-cycles-gsm INT` | Maximum GSM string-optimizer cycles. | `300` |
+| `--max-cycles-dmf INT` | Maximum DMF IPOPT iterations. | `300` |
 | `--climb/--no-climb` | Enable climbing image for GSM segments (bridge segments always run without climbing). | `True` |
 | **Refinement** | | |
 | `--refine-mode {peak\|minima}` | Seeds for refinement: `peak` optimizes HEI±1; `minima` searches outward from the HEI toward the nearest local minima on each side. Defaults to `peak` for GSM and `minima` for DMF when omitted. | _Auto_ |

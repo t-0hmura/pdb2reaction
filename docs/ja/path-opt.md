@@ -18,7 +18,7 @@ MLIP バックエンド（デフォルト: UMA、`-b/--backend` で ORB・MACE�
 pdb2reaction path-opt -i REACTANT.{pdb|cif|mmcif|xyz|gjf} PRODUCT.{pdb|cif|mmcif|xyz|gjf} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
  [-b/--backend uma|orb|mace|aimnet2] \
  [--workers N] [--workers-per-node N] \
- [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--max-nodes N] [--max-cycles N] \
+ [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--max-nodes N] [--max-cycles-gsm N] [--max-cycles-dmf N] \
  [--climb/--no-climb] [--dump/--no-dump] [--thresh PRESET] [--thresh-gsm PRESET] [--thresh-dmf TOL] \
  [--preopt/--no-preopt] [--preopt-max-cycles N] [--opt-mode grad|hess] [--fix-ends/--no-fix-ends] \
  [--show-config/--no-show-config] [--dry-run/--no-dry-run] \
@@ -105,7 +105,8 @@ out_dir/
 | `--max-nodes INT` | GSM/DMF の可動内部イメージ数。両エンジンとも端点2つを保持するため、総イメージ数は `max_nodes + 2` | `20` |
 | `--mep-mode {gsm\|dmf}` | GSM（ストリングベース）または DMF（Direct Max Flux）経路生成器を選択 | `gsm` |
 | `--dmf-backend {cpu\|gpu}` | DMF 計算バックエンド（`--mep-mode dmf` 時のみ）: `gpu`（`dmf.torch`/CUDA）または `cpu`（`dmf`/NumPy）。GPU メモリ不足時は `cpu` で再実行 | `gpu` |
-| `--max-cycles INT` | MEP 最適化サイクル上限（`stopt.max_cycles`、`stopt.stop_in_when_full`、`dmf.max_cycles` を同時設定） | `300` |
+| `--max-cycles-gsm INT` | GSM string optimizer のサイクル上限（`stopt.max_cycles` と `stopt.stop_in_when_full` を設定） | `300` |
+| `--max-cycles-dmf INT` | DMF の IPOPT 反復上限（`dmf.max_cycles` を設定） | `300` |
 | `--climb/--no-climb` | GSM の climbing-image 精密化を有効化（Lanczos 接線も同時切替）。DMF では受理するが未使用 | `True` |
 | `--dump/--no-dump` | GSM／単一構造 optimizer の軌跡を dump。DMF path solver では受理するが未使用。restart YAML は YAML で有効化した場合のみ書き出す | `False` |
 | `--opt-mode TEXT` | エンドポイント事前最適化用の単一構造オプティマイザ（`grad` = L-BFGS、`hess` = RFO） | `grad` |

@@ -647,7 +647,9 @@ def test_all_show_config_marks_omitted_child_overrides_as_null(
     all_block = result.output.split("\nall:\n", 1)[1].split(
         "\noverrides:\n", 1
     )[0]
-    for key in ("max_nodes", "max_cycles", "climb", "dump", "preopt"):
+    for key in (
+        "max_nodes", "max_cycles_gsm", "max_cycles_dmf", "climb", "dump", "preopt",
+    ):
         assert f"  {key}: null" in all_block
     assert "max_nodes: 13" in result.output
     assert "max_cycles: 17" in result.output

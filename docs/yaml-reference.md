@@ -37,7 +37,9 @@ This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan
 | `--solvent` | `solvent` | `calc` |
 | _(YAML only)_ | `device` | `calc` |
 | `--thresh` | `thresh` | `opt` |
-| `--max-cycles` | `max_cycles` | Command-specific: `opt` for `opt`/`tsopt`, `irc` for `irc`, and `stopt` or `dmf` for the selected path engine |
+| `--max-cycles` | `max_cycles` | Command-specific: `opt` for `opt`/`tsopt` and `irc` for `irc` |
+| `--max-cycles-gsm` | `max_cycles` | `stopt` (also sets `stopt.stop_in_when_full`) |
+| `--max-cycles-dmf` | `max_cycles` | `dmf` |
 | `--dump` | `dump` | Command-specific optimizer/path owner (`opt`, `stopt`, or selected child configuration) |
 | `--opt-mode` | _(CLI only)_ | — |
 | `--freeze-atoms` | `freeze_atoms` | `geom` |
@@ -328,7 +330,7 @@ For DMF, `--max-nodes` is forwarded as `DirectMaxFlux(nmove=...)`; the installed
 ```yaml
 dmf:
  backend: gpu # gpu (dmf.torch / CUDA, default) | cpu (dmf / NumPy)
- max_cycles: 300 # Maximum DMF/IPOPT iterations (overridden by --max-cycles)
+ max_cycles: 300 # Maximum DMF/IPOPT iterations (overridden by --max-cycles-dmf)
  tol: tight # IPOPT dual_inf_tol: tight (0.04) | middle (0.10) | loose (0.20) or a positive float (overridden by --thresh-dmf)
  correlated: true # Correlated DMF propagation
  sequential: true # Sequential DMF execution

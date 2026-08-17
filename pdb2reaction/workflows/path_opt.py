@@ -711,11 +711,21 @@ def _optimize_single(
           "has max_nodes+2 images including the two endpoints."),
 )
 @click.option(
-    "--max-cycles",
+    "--max-cycles-gsm",
     type=int,
-    default=300,
-    show_default=True,
-    help="Maximum string optimizer cycles (GSM/DMF path optimization).",
+    default=None,
+    show_default="300",
+    help="Maximum GSM string-optimizer cycles for the MEP stage.",
+)
+@click.option(
+    "--max-cycles-dmf",
+    type=int,
+    default=None,
+    show_default="300",
+    help=(
+        "Maximum IPOPT iterations for the DMF MEP stage. This is a solver "
+        "iteration count, not a string-optimizer cycle count."
+    ),
 )
 @click.option(
     "--climb/--no-climb",
@@ -863,7 +873,8 @@ def cli(
     freeze_links_flag: bool,
     freeze_atoms_text: Optional[str],
     max_nodes: int,
-    max_cycles: int,
+    max_cycles_gsm: Optional[int],
+    max_cycles_dmf: Optional[int],
     climb: bool,
     opt_mode: str,
     dump: bool,
@@ -979,10 +990,13 @@ def cli(
             geom_cfg["coord_type"] = str(cli_coord_type).lower()
         if cli_param_overridden(ctx, "max_nodes"):
             gs_cfg["max_nodes"] = int(max_nodes)
-        if cli_param_overridden(ctx, "max_cycles"):
-            stopt_cfg["max_cycles"] = int(max_cycles)
-            stopt_cfg["stop_in_when_full"] = int(max_cycles)
-            dmf_cfg["max_cycles"] = int(max_cycles)
+        # The GSM cycle budget also bounds the fully-grown string; DMF's budget
+        # is a separate IPOPT iteration count.
+        if cli_param_overridden(ctx, "max_cycles_gsm") and max_cycles_gsm is not None:
+            stopt_cfg["max_cycles"] = int(max_cycles_gsm)
+            stopt_cfg["stop_in_when_full"] = int(max_cycles_gsm)
+        if cli_param_overridden(ctx, "max_cycles_dmf") and max_cycles_dmf is not None:
+            dmf_cfg["max_cycles"] = int(max_cycles_dmf)
         if cli_param_overridden(ctx, "dmf_backend"):
             dmf_cfg["backend"] = str(dmf_backend).lower()
         if cli_param_overridden(ctx, "climb"):

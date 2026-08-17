@@ -55,8 +55,12 @@ Options:
                                   images including endpoints. When not given,
                                   YAML search.max_nodes_segment applies.
                                   [default: 20]
-  --max-cycles INTEGER            Maximum string optimizer cycles (GSM/DMF path
-                                  optimization).  [default: 300]
+  --max-cycles-gsm INTEGER        Maximum GSM string-optimizer cycles for the
+                                  MEP stage.  [default: (300)]
+  --max-cycles-dmf INTEGER        Maximum IPOPT iterations for the DMF MEP
+                                  stage. This is a solver iteration count, not a
+                                  string-optimizer cycle count.  [default:
+                                  (300)]
   --climb / --no-climb            Enable climbing image for standard GSM
                                   segments (bridge segments always disable
                                   climbing).  [default: climb]

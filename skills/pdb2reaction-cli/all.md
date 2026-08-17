@@ -25,9 +25,9 @@ pdb2reaction all -i <input(s)> [-c <substrate>] [-l 'RES:Q,...'] \
 
 ## Key flags (cross-mode)
 
-> **Note:** `all --max-cycles` controls only the selected MEP/path child (GSM
-> or DMF). It is not a shared cycle budget for scan, TSOPT, IRC, freq, or DFT;
-> use each stage-specific option for those stages.
+> **Note:** `all --max-cycles-gsm` and `all --max-cycles-dmf` bound only the
+> selected MEP/path child. They are not a shared cycle budget for scan, TSOPT,
+> IRC, freq, or DFT; use each stage-specific option for those stages.
 
 | Flag | Type | Default | Description |
 |---|---|---|---|

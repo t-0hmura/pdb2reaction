@@ -36,7 +36,9 @@
 | `--solvent` | `solvent` | `calc` |
 | _(YAML のみ)_ | `device` | `calc` |
 | `--thresh` | `thresh` | `opt` |
-| `--max-cycles` | `max_cycles` | コマンド別: `opt`/`tsopt` は `opt`、`irc` は `irc`、path は選択した engine の `stopt` または `dmf` |
+| `--max-cycles` | `max_cycles` | コマンド別: `opt`/`tsopt` は `opt`、`irc` は `irc` |
+| `--max-cycles-gsm` | `max_cycles` | `stopt`（`stopt.stop_in_when_full` も設定） |
+| `--max-cycles-dmf` | `max_cycles` | `dmf` |
 | `--dump` | `dump` | コマンド別の optimizer/path owner（`opt`、`stopt`、または選択された子設定） |
 | `--opt-mode` | _(CLI のみ)_ | — |
 | `--freeze-atoms` | `freeze_atoms` | `geom` |
@@ -324,7 +326,7 @@ DMF では `--max-nodes` を `DirectMaxFlux(nmove=...)` に渡します。DMF AP
 ```yaml
 dmf:
  backend: gpu # gpu (dmf.torch / CUDA、default) | cpu (dmf / NumPy)
- max_cycles: 300 # DMF/IPOPT の最大反復数（--max-cycles で上書き）
+ max_cycles: 300 # DMF/IPOPT の最大反復数（--max-cycles-dmf で上書き）
  tol: tight # IPOPT dual_inf_tol: tight(0.04) | middle(0.10) | loose(0.20) または正の float（--thresh-dmf で上書き）
  correlated: true # Correlated DMF propagation
  sequential: true # Sequential DMF execution

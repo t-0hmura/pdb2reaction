@@ -112,27 +112,27 @@ pdb2reaction scan2d -i p_complex_model.pdb --ligand-charge 'PRE:-2' --freeze-ato
 pdb2reaction scan3d -i p_complex_model.pdb --ligand-charge 'PRE:-2' --freeze-atoms "$P_COMPLEX_MODEL_FREEZE_ATOMS" --scan-lists "[('PRE 8 C3','PRE 8 O1\'',1.4,1.8),('PRE 8 C1','PRE 8 C8',3.0,3.4),('PRE 8 C1','PRE 8 C7',1.4,1.6)]" --max-step-size 2.0 --relax-max-cycles 100 --thresh gau_loose --out-dir test9 > test9.out 2>&1
 
 # test10: path-opt (gsm)
-pdb2reaction path-opt -i r.pdb p.pdb -q -1 --max-nodes 5 --max-cycles 5 --thresh-gsm gau_loose --no-preopt --no-climb --out-dir test10 > test10.out 2>&1
+pdb2reaction path-opt -i r.pdb p.pdb -q -1 --max-nodes 5 --max-cycles-gsm 5 --thresh-gsm gau_loose --no-preopt --no-climb --out-dir test10 > test10.out 2>&1
 
 # test11: path-search
-pdb2reaction path-search -i r.pdb p.pdb -q -1 --max-nodes 5 --max-cycles 5 --out-dir test11 > test11.out 2>&1
+pdb2reaction path-search -i r.pdb p.pdb -q -1 --max-nodes 5 --max-cycles-gsm 5 --out-dir test11 > test11.out 2>&1
 
 # --- Input format tests (all command) ---
 
 # test12: all (pdb+pdb, --no-refine-path for single-pass path-opt)
-pdb2reaction -i r.pdb p.pdb -q -1 --no-refine-path --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test12 > test12.out 2>&1
+pdb2reaction -i r.pdb p.pdb -q -1 --no-refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test12 > test12.out 2>&1
 
 # test13: all (xyz+xyz, --ref-pdb for PDB conversion, --no-refine-path for single-pass path-opt)
-pdb2reaction -i r.xyz p.xyz -q -1 --ref-pdb r.pdb --no-refine-path --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test13 > test13.out 2>&1
+pdb2reaction -i r.xyz p.xyz -q -1 --ref-pdb r.pdb --no-refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test13 > test13.out 2>&1
 
 # test14: all (gjf+gjf, --no-refine-path for single-pass path-opt)
-pdb2reaction -i r.gjf p.gjf --no-refine-path --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test14 > test14.out 2>&1
+pdb2reaction -i r.gjf p.gjf --no-refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test14 > test14.out 2>&1
 
 # test15: all (scan-lists, pdb)
-pdb2reaction -i r.pdb -q -1 --scan-lists "[(1,5,1.4)]" --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test15 > test15.out 2>&1
+pdb2reaction -i r.pdb -q -1 --scan-lists "[(1,5,1.4)]" --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test15 > test15.out 2>&1
 
 # test16: all (scan-lists, xyz)
-pdb2reaction -i r.xyz -q -1 --scan-lists "[(1,5,1.4)]" --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test16 > test16.out 2>&1
+pdb2reaction -i r.xyz -q -1 --scan-lists "[(1,5,1.4)]" --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test16 > test16.out 2>&1
 
 # --- Complex system tests ---
 
@@ -140,10 +140,10 @@ pdb2reaction -i r.xyz -q -1 --scan-lists "[(1,5,1.4)]" --max-cycles 5 --thresh g
 pdb2reaction opt -i p_complex.pdb --ligand-charge 'PRE:-2' --max-cycles 3 --thresh gau_loose --out-dir test17 > test17.out 2>&1
 
 # test18: all (complex, extract + scan-lists)
-pdb2reaction -i p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' --scan-lists "[('PRE 8 C3','PRE 8 O1\'',1.4),('PRE 8 C1','PRE 8 C8',3.3)]" -r 5.0 --no-exclude-backbone --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test18 > test18.out 2>&1
+pdb2reaction -i p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' --scan-lists "[('PRE 8 C3','PRE 8 O1\'',1.4),('PRE 8 C1','PRE 8 C8',3.3)]" -r 5.0 --no-exclude-backbone --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test18 > test18.out 2>&1
 
 # test19: all (complex, multi-input, --no-refine-path for single-pass path-opt)
-pdb2reaction -i r_complex.pdb p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --no-exclude-backbone --no-refine-path --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test19 > test19.out 2>&1
+pdb2reaction -i r_complex.pdb p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --no-exclude-backbone --no-refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test19 > test19.out 2>&1
 
 # --- TSOPT-only mode ---
 
@@ -152,12 +152,12 @@ pdb2reaction -i ts.pdb -q 0 --tsopt --opt-mode-post grad --thermo --irc-never-st
 python assert_release_result.py all test20 --require-thermo >> test20.out 2>&1
 
 # test21: all (ts input, --tsopt, opt-mode hess)
-pdb2reaction -i ts.pdb -q 0 --tsopt --opt-mode-post hess --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test21 > test21.out 2>&1
+pdb2reaction -i ts.pdb -q 0 --tsopt --opt-mode-post hess --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test21 > test21.out 2>&1
 
 # --- MEP mode ---
 
 # test22: all (pdb+pdb, mep-mode dmf, --no-refine-path for single-pass path-opt)
-pdb2reaction -i r.pdb p.pdb -q -1 --mep-mode dmf --no-refine-path --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test22 > test22.out 2>&1
+pdb2reaction -i r.pdb p.pdb -q -1 --mep-mode dmf --no-refine-path --max-cycles-dmf 5 --thresh gau_loose --thresh-post gau_loose --out-dir test22 > test22.out 2>&1
 
 # --- TSOPT for complex systems ---
 
@@ -230,7 +230,7 @@ pdb2reaction opt -i r.pdb -q -1 --dist-freeze "[(1,2,1.5),(3,4)]" --dry-run --ou
 # --- refine-path ---
 
 # test41: all (pdb+pdb, --refine-path = recursive path_search opt-in; the default is now single-pass path-opt)
-pdb2reaction -i r.pdb p.pdb -q -1 --refine-path --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test41 > test41.out 2>&1
+pdb2reaction -i r.pdb p.pdb -q -1 --refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test41 > test41.out 2>&1
 
 # --- Opt-in TS and IRC methods ---
 
@@ -255,7 +255,7 @@ pdb2reaction opt -i r.pdb -q -1 --opt-mode hess --max-cycles 5 --thresh gau_loos
 # runs carry ~ULP scatter/atomic non-determinism and are not asserted here;
 # `--deterministic` enables torch deterministic algorithms and MUST be
 # bit-reproducible, so any drift is a real regression and fails the smoke.
-det_args="-i r.pdb p.pdb -q -1 --no-refine-path --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --deterministic"
+det_args="-i r.pdb p.pdb -q -1 --no-refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --deterministic"
 pdb2reaction $det_args --out-dir test46_a > test46_a.out 2>&1
 pdb2reaction $det_args --out-dir test46_b > test46_b.out 2>&1
 find test46_a -type f \( -name "*.pdb" -o -name "*.xyz" \) -printf '%P\n' | LC_ALL=C sort > test46_a.manifest
@@ -289,10 +289,10 @@ fi
 # --- --coord-type CLI plumbing, plus the single-point lanes (throttled, fast) ---
 
 # test47: `all --coord-type cart` — explicit cart (== default), verifies CLI plumbing.
-pdb2reaction all -i r.pdb p.pdb -q -1 --coord-type cart --no-refine-path --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test47 > test47.out 2>&1
+pdb2reaction all -i r.pdb p.pdb -q -1 --coord-type cart --no-refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test47 > test47.out 2>&1
 
 # test48: `all --coord-type dlc` — DLC propagated to child opt / tsopt / path-opt stages.
-pdb2reaction all -i r.pdb p.pdb -q -1 --coord-type dlc --no-refine-path --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --out-dir test48 > test48.out 2>&1
+pdb2reaction all -i r.pdb p.pdb -q -1 --coord-type dlc --no-refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test48 > test48.out 2>&1
 
 # test49: `sp` (single-point) — energy + forces.
 pdb2reaction sp -i r.pdb -q -1 --out-dir test49 > test49.out 2>&1
@@ -315,7 +315,7 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --out-dir test51 > test51.out 2>&1
 # thresh, and the post-stages (TS / IRC / DFT) depend on a converged HEI
 # from the MEP — silently broken structure handoff otherwise. test51 (cart)
 # keeps the no-cap default-behaviour check.
-pdb2reaction all -i r.pdb p.pdb -q -1 --coord-type dlc --no-refine-path --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --no-tsopt --no-thermo --no-dft --out-dir test52 > test52.out 2>&1
+pdb2reaction all -i r.pdb p.pdb -q -1 --coord-type dlc --no-refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --no-tsopt --no-thermo --no-dft --out-dir test52 > test52.out 2>&1
 
 # --- Per-stage internal-coordinate code paths ---
 # Each test scoped at a 2-3 cycle cap + thresh gau_loose to exercise the
@@ -436,28 +436,28 @@ pdb2reaction scan3d -i r.pdb -q -1 --scan-lists "[(1,5,2.20,2.21),(1,6,1.75,1.76
 grep -Fq '[scan3d] --dry-run: input, charge/spin parity, and --scan-lists parse OK.' test61_scan3d_fp64.out || { echo "[smoke] FAIL test61: fp64 option did not reach scan3d dry-run" >> test61_scan3d_fp64.out; exit 1; }
 
 # test62: path-opt --mep-mode dmf (Direct Max Flux at the subcommand level)
-pdb2reaction path-opt -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --max-cycles 3 --thresh-dmf middle --no-preopt --no-climb --out-dir test62_pathopt_dmf > test62_pathopt_dmf.out 2>&1
+pdb2reaction path-opt -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --max-cycles-dmf 3 --thresh-dmf middle --no-preopt --no-climb --out-dir test62_pathopt_dmf > test62_pathopt_dmf.out 2>&1
 
 # test63: path-opt --coord-type dlc (p2r keeps DLC for pure-MLIP)
-pdb2reaction path-opt -i r.pdb p.pdb -q -1 --coord-type dlc --max-nodes 5 --max-cycles 3 --no-preopt --no-climb --out-dir test63_pathopt_dlc > test63_pathopt_dlc.out 2>&1
+pdb2reaction path-opt -i r.pdb p.pdb -q -1 --coord-type dlc --max-nodes 5 --max-cycles-gsm 3 --no-preopt --no-climb --out-dir test63_pathopt_dlc > test63_pathopt_dlc.out 2>&1
 
 # test64: path-search --mep-mode dmf
-pdb2reaction path-search -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --max-cycles 3 --no-preopt --out-dir test64_ps_dmf > test64_ps_dmf.out 2>&1
+pdb2reaction path-search -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --max-cycles-dmf 3 --no-preopt --out-dir test64_ps_dmf > test64_ps_dmf.out 2>&1
 
 # test65: path-search --opt-mode hess (RFO single-structure preopt; keep preopt ON)
-pdb2reaction path-search -i r.pdb p.pdb -q -1 --opt-mode hess --workers 1 --max-nodes 5 --max-cycles 3 --out-dir test65_ps_hess > test65_ps_hess.out 2>&1
+pdb2reaction path-search -i r.pdb p.pdb -q -1 --opt-mode hess --workers 1 --max-nodes 5 --max-cycles-gsm 3 --out-dir test65_ps_hess > test65_ps_hess.out 2>&1
 
 # test66: required positive MEP -> TSopt -> IRC -> thermo handoff.
 # --tsopt-max-cycles must cover the opt-in --flatten repair (which draws from this
 # global budget); this system converges to n_imag=1 with no flatten iterations, but
 # 200 keeps the budget above flatten_max_iter (=50, ~135 cycles) so a soft spectator
 # mode could never be starved short of a clean saddle. Product default is 10000.
-pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --thermo --flatten --irc-never-stop --max-cycles 5 --tsopt-max-cycles 200 --thresh gau_loose --thresh-post gau --out-dir test66_all_tsopt > test66_all_tsopt.out 2>&1
+pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --thermo --flatten --irc-never-stop --max-cycles-gsm 5 --tsopt-max-cycles 200 --thresh gau_loose --thresh-post gau --out-dir test66_all_tsopt > test66_all_tsopt.out 2>&1
 python assert_release_result.py all test66_all_tsopt --require-thermo >> test66_all_tsopt.out 2>&1
 grep -Fq '[irc] Reusing cached TS Hessian from tsopt.' test66_all_tsopt.out || { echo '[smoke] FAIL test66: IRC did not report cached TS Hessian reuse' >> test66_all_tsopt.out; exit 1; }
 
 # test67: all --scan-lists (single-PDB scan->path mode of `all`)
-pdb2reaction all -i r.pdb -q -1 --scan-lists "[(1,5,1.4)]" --max-cycles 5 --thresh gau_loose --no-tsopt --no-thermo --no-dft --out-dir test67_all_scan > test67_all_scan.out 2>&1
+pdb2reaction all -i r.pdb -q -1 --scan-lists "[(1,5,1.4)]" --max-cycles-gsm 5 --thresh gau_loose --no-tsopt --no-thermo --no-dft --out-dir test67_all_scan > test67_all_scan.out 2>&1
 
 # test68: opt --coord-type dlc on extracted complex model with explicit frozen boundary atoms
 pdb2reaction opt -i p_complex_model.pdb --ligand-charge 'PRE:-2' --coord-type dlc --freeze-atoms "$P_COMPLEX_MODEL_FREEZE_ATOMS" --max-cycles 3 --thresh gau_loose --out-dir test68_opt_complex_freeze_dlc > test68_opt_complex_freeze_dlc.out 2>&1
@@ -478,10 +478,10 @@ fi
 # path_search opt-in (`--refine-path`) across more input modes than test41.
 
 # test70: all --scan-lists --refine-path (single-PDB scan -> recursive path_search)
-pdb2reaction all -i r.pdb -q -1 --scan-lists "[(1,5,1.4)]" --refine-path --max-cycles 5 --thresh gau_loose --no-tsopt --no-thermo --no-dft --out-dir test70_rp_scan > test70_rp_scan.out 2>&1
+pdb2reaction all -i r.pdb -q -1 --scan-lists "[(1,5,1.4)]" --refine-path --max-cycles-gsm 5 --thresh gau_loose --no-tsopt --no-thermo --no-dft --out-dir test70_rp_scan > test70_rp_scan.out 2>&1
 
 # test71: all (complex multi-input) --refine-path (recursive path_search on the extracted model)
-pdb2reaction all -i r_complex.pdb p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --no-exclude-backbone --refine-path --max-cycles 5 --thresh gau_loose --thresh-post gau_loose --no-tsopt --no-thermo --no-dft --out-dir test71_rp_complex > test71_rp_complex.out 2>&1
+pdb2reaction all -i r_complex.pdb p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --no-exclude-backbone --refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --no-tsopt --no-thermo --no-dft --out-dir test71_rp_complex > test71_rp_complex.out 2>&1
 
 # test72: extract MULTI-INPUT via space-separated '-i a.pdb b.pdb' (one flag, two paths).
 # Regression guard: a single -i with several space-separated paths must NOT drop the 2nd input.

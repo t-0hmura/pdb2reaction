@@ -238,15 +238,17 @@ raw PDB CCD との名前衝突は自動判別しないため、`--modified-resid
 ### MEP 探索オプション
 
 ```{note}
-`all --max-cycles` は MEP 専用です。後処理は `--tsopt-max-cycles` と YAML
-`irc.max_cycles`、単独コマンドは各自の `--max-cycles` を使います。
+`all --max-cycles-gsm` / `--max-cycles-dmf` は MEP 専用です。後処理は
+`--tsopt-max-cycles` と YAML `irc.max_cycles`、単独コマンドは各自の
+`--max-cycles` を使います。
 ```
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `--mep-mode [gsm\|dmf]` | MEP 探索アルゴリズム: GSM（Growing String Method）または DMF（Direct Max Flux） | `gsm` |
 | `--max-nodes INT` | GSM/DMF segment ごとの可動内部イメージ数。両エンジンとも端点2つを保持するため、総イメージ数は `max_nodes + 2` | `20` |
-| `--max-cycles INT` | MEP 最大最適化サイクル | `300` |
+| `--max-cycles-gsm INT` | GSM string optimizer の最大サイクル数 | `300` |
+| `--max-cycles-dmf INT` | DMF の最大 IPOPT 反復数 | `300` |
 | `--climb/--no-climb` | 標準 GSM セグメントでクライミングイメージを有効化（ブリッジセグメントは常に無効） | `True` |
 | `--opt-mode [grad\|hess]` | ワークフロープリセット（`grad` → L-BFGS/Dimer、`hess` → RFO/RSPRFO）。コマンド個別実行では `opt --opt-mode grad\|hess`、`tsopt --opt-mode grad\|hess` を推奨。トークンのマッピングはスコープ依存で、`all` の pre-opt デフォルト（`grad`）と `tsopt` のデフォルト（`hess`）は一致しません。詳細は {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
 | `--thresh TEXT` | 単一構造最適化と scan 緩和の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |

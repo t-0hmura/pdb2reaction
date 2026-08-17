@@ -129,7 +129,7 @@ def test_gsm_ignores_a_dormant_dmf_tolerance(
         [
             command, "-i", str(smoke / "r.pdb"), str(smoke / "p.pdb"),
             "-q", "-1", "-m", "1", "--mep-mode", "gsm",
-            "--max-cycles", "1", "--no-preopt", "--config", str(config),
+            "--max-cycles-gsm", "1", "--no-preopt", "--config", str(config),
             "--dry-run", "--out-dir", str(tmp_path / command),
         ],
     )
@@ -146,7 +146,7 @@ def test_gsm_rejects_an_explicit_invalid_dmf_tolerance(
         [
             command, "-i", str(smoke / "r.pdb"), str(smoke / "p.pdb"),
             "-q", "-1", "-m", "1", "--mep-mode", "gsm",
-            "--thresh-dmf", "nan", "--max-cycles", "1", "--no-preopt",
+            "--thresh-dmf", "nan", "--max-cycles-gsm", "1", "--no-preopt",
             "--dry-run", "--out-dir", str(tmp_path / command),
         ],
     )

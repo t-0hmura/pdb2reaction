@@ -108,8 +108,12 @@ Options:
   --max-nodes INTEGER             Movable internal images per GSM/DMF segment;
                                   the complete segment has max_nodes+2 images
                                   including endpoints.  [default: 20]
-  --max-cycles INTEGER            Maximum optimization cycles for the selected
-                                  MEP/path child (GSM or DMF).  [default: 300]
+  --max-cycles-gsm INTEGER        Maximum GSM string-optimizer cycles for the
+                                  MEP stage.  [default: (300)]
+  --max-cycles-dmf INTEGER        Maximum IPOPT iterations for the DMF MEP
+                                  stage. This is a solver iteration count, not a
+                                  string-optimizer cycle count.  [default:
+                                  (300)]
   --climb BOOLEAN                 Enable climbing image for standard GSM
                                   segments (bridge segments always disable
                                   climbing).  [default: True]
@@ -212,8 +216,9 @@ Options:
                                   Stop when the energy stops changing while the
                                   convergence criteria are still unmet, and
                                   report the run as stalled. It never signals
-                                  convergence; --max-cycles remains the real
-                                  bound.  [default: no-stop-plateau]
+                                  convergence; each stage's own cycle limit
+                                  remains the real bound.  [default: no-stop-
+                                  plateau]
   --stop-plateau-thresh FLOAT     Energy range (hartree) below which --stop-
                                   plateau treats the window as flat.  [default:
                                   (1e-4)]

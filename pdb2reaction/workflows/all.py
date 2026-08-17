@@ -2066,7 +2066,9 @@ def _optimize_endpoint_geom(
         ensure_dir(opt_dir)
         cfg["out_dir"] = str(opt_dir)
         cfg["dump"] = bool(dump)
-        cfg["max_cycles"] = int(cfg.get("max_cycles", 300))
+        # LBFGS_KW/RFO_KW always carry OPT_BASE_KW's max_cycles, so there is no
+        # separate endpoint bound to fall back to.
+        cfg["max_cycles"] = int(cfg["max_cycles"])
         if thresh is not None:
             cfg["thresh"] = str(thresh)
         # RFO-only endpoint re-optimization uphill-rejection toggle (min-scoped).
@@ -3345,11 +3347,21 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
           "max_nodes+2 images including endpoints."),
 )
 @click.option(
-    "--max-cycles",
+    "--max-cycles-gsm",
     type=int,
-    default=300,
-    show_default=True,
-    help="Maximum optimization cycles for the selected MEP/path child (GSM or DMF).",
+    default=None,
+    show_default="300",
+    help="Maximum GSM string-optimizer cycles for the MEP stage.",
+)
+@click.option(
+    "--max-cycles-dmf",
+    type=int,
+    default=None,
+    show_default="300",
+    help=(
+        "Maximum IPOPT iterations for the DMF MEP stage. This is a solver "
+        "iteration count, not a string-optimizer cycle count."
+    ),
 )
 @click.option(
     "--climb",
@@ -3576,7 +3588,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     help=(
         "Stop when the energy stops changing while the convergence criteria are "
         "still unmet, and report the run as stalled. It never signals "
-        "convergence; --max-cycles remains the real bound."
+        "convergence; each stage's own cycle limit remains the real bound."
     ),
 )
 @click.option(
@@ -3811,7 +3823,8 @@ def cli(
     mep_mode: str,
     dmf_backend: str,
     max_nodes: int,
-    max_cycles: int,
+    max_cycles_gsm: Optional[int],
+    max_cycles_dmf: Optional[int],
     climb: bool,
     opt_mode: str,
     opt_mode_post: Optional[str],
@@ -4320,9 +4333,16 @@ def cli(
                     if cli_param_overridden(ctx, "max_nodes")
                     else None
                 ),
-                "max_cycles": (
-                    int(max_cycles)
-                    if cli_param_overridden(ctx, "max_cycles")
+                "max_cycles_gsm": (
+                    int(max_cycles_gsm)
+                    if cli_param_overridden(ctx, "max_cycles_gsm")
+                    and max_cycles_gsm is not None
+                    else None
+                ),
+                "max_cycles_dmf": (
+                    int(max_cycles_dmf)
+                    if cli_param_overridden(ctx, "max_cycles_dmf")
+                    and max_cycles_dmf is not None
                     else None
                 ),
                 "print_every": print_every_override,
@@ -5943,8 +5963,10 @@ def cli(
                 # child's real MEP convergence from result.json.
                 "--out-json",
             ]
-            if cli_param_overridden(ctx, "max_cycles"):
-                po_args.extend(["--max-cycles", str(int(max_cycles))])
+            if cli_param_overridden(ctx, "max_cycles_gsm") and max_cycles_gsm is not None:
+                po_args.extend(["--max-cycles-gsm", str(int(max_cycles_gsm))])
+            if cli_param_overridden(ctx, "max_cycles_dmf") and max_cycles_dmf is not None:
+                po_args.extend(["--max-cycles-dmf", str(int(max_cycles_dmf))])
             _append_toggle_arg(po_args, "--freeze-links", bool(freeze_links_flag and freeze_ref is not None))
             if cli_param_overridden(ctx, "climb"):
                 _append_toggle_arg(po_args, "--climb", bool(climb))
@@ -6404,8 +6426,10 @@ def cli(
         # freeze_ref is None and freeze-links should not be activated.
         _append_toggle_arg(ps_args, "--freeze-links", bool(freeze_links_flag and freeze_ref is not None))
         ps_args.extend(["--mep-mode", mep_mode_kind])
-        if cli_param_overridden(ctx, "max_cycles"):
-            ps_args.extend(["--max-cycles", str(int(max_cycles))])
+        if cli_param_overridden(ctx, "max_cycles_gsm") and max_cycles_gsm is not None:
+            ps_args.extend(["--max-cycles-gsm", str(int(max_cycles_gsm))])
+        if cli_param_overridden(ctx, "max_cycles_dmf") and max_cycles_dmf is not None:
+            ps_args.extend(["--max-cycles-dmf", str(int(max_cycles_dmf))])
         if cli_param_overridden(ctx, "climb"):
             _append_toggle_arg(ps_args, "--climb", bool(climb))
         ps_args.extend(["--opt-mode", str(opt_mode_norm)])

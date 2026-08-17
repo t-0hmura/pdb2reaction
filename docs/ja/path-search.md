@@ -16,7 +16,7 @@ pdb2reaction path-search -i R.pdb [-i I.pdb ...] -i P.pdb [-q CHARGE] [-l, --lig
  [--workers N] [--workers-per-node N] \
  [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET] [--thresh-gsm PRESET] [--thresh-dmf TOL] \
  [--refine-mode {peak|minima}] \
- [--max-nodes N] [--max-cycles N] [--climb/--no-climb] \
+ [--max-nodes N] [--max-cycles-gsm N] [--max-cycles-dmf N] [--climb/--no-climb] \
  [--opt-mode grad|hess] [--dump/--no-dump] \
  [--out-dir DIR] [--preopt/--no-preopt] \
  [--align/--no-align] [--ref-full-pdb FILE...] [--ref-pdb FILE...] \
@@ -130,7 +130,8 @@ out_dir/ (デフォルト:./result_path_search/)
 | `--dmf-backend {cpu\|gpu}` | DMF 計算バックエンド（`--mep-mode dmf` 時のみ）: `gpu`（`dmf.torch`/CUDA）または `cpu`（`dmf`/NumPy）。GPU メモリ不足時は `cpu` で再実行 | `gpu` |
 | `--preopt/--no-preopt` | 選択された単一構造オプティマイザ（L-BFGS/RFO）で MEP 探索前に各エンドポイントを事前最適化。 | `True` |
 | `--max-nodes INT` | MEP セグメントごとの内部ノード（GSM string image または DMF image） | `20` |
-| `--max-cycles INT` | 最大 MEP 最適化サイクル（GSM/DMF） | `300` |
+| `--max-cycles-gsm INT` | GSM string optimizer の最大サイクル数 | `300` |
+| `--max-cycles-dmf INT` | DMF の最大 IPOPT 反復数 | `300` |
 | `--climb/--no-climb` | GSM セグメントのクライミングイメージを有効化（ブリッジは無効） | `True` |
 | **精密化** | | |
 | `--refine-mode {peak\|minima}` | 精密化シード: `peak` は HEI±1、`minima` は HEI から最寄り局所極小点へ外側探索。未指定時は GSM で `peak`、DMF で `minima` | _Auto_ |

@@ -18,7 +18,7 @@ Command form:
 pdb2reaction path-opt -i REACTANT.{pdb|cif|mmcif|xyz|gjf} PRODUCT.{pdb|cif|mmcif|xyz|gjf} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
  [-b/--backend uma|orb|mace|aimnet2] \
  [--workers N] [--workers-per-node N] \
- [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--max-nodes N] [--max-cycles N] \
+ [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--max-nodes N] [--max-cycles-gsm N] [--max-cycles-dmf N] \
  [--climb/--no-climb] [--dump/--no-dump] [--thresh PRESET] [--thresh-gsm PRESET] [--thresh-dmf TOL] \
  [--preopt/--no-preopt] [--preopt-max-cycles N] [--opt-mode grad|hess] [--fix-ends/--no-fix-ends] \
  [--show-config/--no-show-config] [--dry-run/--no-dry-run] \
@@ -99,7 +99,8 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--max-nodes INT` | Number of movable internal images for GSM or DMF. Both engines retain two endpoints, so total images = `max_nodes + 2`. | `20` |
 | `--mep-mode {gsm\|dmf}` | Select GSM (string-based) or DMF (Direct Max Flux) path generator. | `gsm` |
 | `--dmf-backend {cpu\|gpu}` | DMF compute backend (`--mep-mode dmf` only): `gpu` (`dmf.torch`/CUDA) or `cpu` (`dmf`/NumPy). On a GPU out-of-memory error, retry with `cpu`. | `gpu` |
-| `--max-cycles INT` | MEP optimizer cycle cap (sets `stopt.max_cycles`, `stopt.stop_in_when_full`, and `dmf.max_cycles`). | `300` |
+| `--max-cycles-gsm INT` | GSM string-optimizer cycle cap (sets `stopt.max_cycles` and `stopt.stop_in_when_full`). | `300` |
+| `--max-cycles-dmf INT` | DMF IPOPT iteration cap (sets `dmf.max_cycles`). | `300` |
 | `--climb/--no-climb` | Enable GSM climbing-image refinement (and Lanczos tangent). Accepted but unused with DMF. | `True` |
 | `--dump/--no-dump` | Dump GSM/single-optimizer trajectories. Accepted but unused by the DMF path solver. Restart YAML is written only when enabled in YAML. | `False` |
 | `--opt-mode TEXT` | Single-structure optimizer for endpoint preoptimization (`grad` = L-BFGS, `hess` = RFO). | `grad` |

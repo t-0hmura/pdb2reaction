@@ -209,16 +209,17 @@ conventions. Raw PDB CCD name collisions are not inferred automatically; use
 ### MEP search
 
 ```{note}
-Do not set `--max-cycles` on `pdb2reaction all`; let each stage use its own
-default. Set `--max-cycles` only when running a single-stage subcommand
-directly, such as `opt`, `tsopt`, or `path-opt`.
+`--max-cycles-gsm` and `--max-cycles-dmf` bound the MEP stage only; leave
+them unset to let each stage use its own default. The single-stage `opt`
+and `tsopt` subcommands keep their own `--max-cycles`.
 ```
 
 | Option | Description | Default |
 | --- | --- | --- |
 | `--mep-mode [gsm\|dmf]` | MEP algorithm: GSM (Growing String Method) or DMF (Direct Max Flux). | `gsm` |
 | `--max-nodes INT` | Movable internal images per GSM/DMF segment. Both engines retain two endpoints, so total images = `max_nodes + 2`. | `20` |
-| `--max-cycles INT` | MEP maximum optimization cycles. | `300` |
+| `--max-cycles-gsm INT` | Maximum GSM string-optimizer cycles. | `300` |
+| `--max-cycles-dmf INT` | Maximum DMF IPOPT iterations. | `300` |
 | `--climb / --no-climb` | Enable climbing image for standard GSM segments (bridge segments always disable climbing). | `True` |
 | `--opt-mode [grad\|hess]` | Workflow preset (`grad` → L-BFGS / Dimer, `hess` → RFO / RS-P-RFO). Token-to-algorithm mapping depends on scope — see {ref}`opt-mode-semantics` for the per-subcommand table; note that `all`'s pre-opt default (`grad`) differs from `tsopt`'s default (`hess`). | `grad` |
 | `--thresh TEXT` | Convergence preset for single-structure optimizations and scan relaxations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
