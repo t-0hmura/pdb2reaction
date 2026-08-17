@@ -364,6 +364,16 @@ def scan_freeze_atoms_toward_target_inplace(
                 Q_new = Q.copy()
                 Q_new[idx] = P[idx]
                 _set_all_coords_disabling_freeze(g_mob, Q_new)
+                if verbose:
+                    # The step line above reports the gap before this assignment,
+                    # so state the achieved coincidence explicitly.
+                    emit(
+                        f"[scan] step {istep:03d}: anchors set to the reference "
+                        f"({max_remaining_A:.6f} Å -> 0.000000 Å); "
+                        "finishing relaxation with them frozen",
+                        detail=True,
+                    )
+                max_remaining_A = 0.0
                 final_converged = False
                 try:
                     g_mob.freeze_atoms = np.array(idx, int)
