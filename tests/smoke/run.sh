@@ -451,7 +451,7 @@ pdb2reaction path-search -i r.pdb p.pdb -q -1 --opt-mode hess --workers 1 --max-
 # --tsopt-max-cycles must cover the opt-in --flatten repair (which draws from this
 # global budget); this system converges to n_imag=1 with no flatten iterations, but
 # 200 keeps the budget above flatten_max_iter (=50, ~135 cycles) so a soft spectator
-# mode could never be starved short of a clean saddle. Product default is 10000.
+# mode could never be starved short of a clean saddle. Product default is 100000.
 pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --thermo --flatten --irc-never-stop --irc-max-cycles 3 --max-cycles-gsm 5 --tsopt-max-cycles 200 --thresh gau_loose --thresh-post gau --out-dir test66_all_tsopt > test66_all_tsopt.out 2>&1
 python assert_release_result.py all test66_all_tsopt --require-thermo >> test66_all_tsopt.out 2>&1
 grep -Fq '[irc] Reusing cached TS Hessian from tsopt.' test66_all_tsopt.out || { echo '[smoke] FAIL test66: IRC did not report cached TS Hessian reuse' >> test66_all_tsopt.out; exit 1; }

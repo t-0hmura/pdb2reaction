@@ -136,7 +136,7 @@ The tables below cover the options that need explanation; the full flag list is 
 | `--print-parsed/--no-print-parsed` | Print parsed pair tuples after `--scan-lists/-s` resolution. | `False` |
 | `--max-step-size FLOAT` | Maximum change allowed for either distance per increment (Å). Determines the grid density. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
-| `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. An explicit value overrides YAML `opt.max_cycles`. | `10000` |
+| `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. An explicit value overrides YAML `opt.max_cycles`. | `100000` |
 | `--opt-mode TEXT` | `grad` → L-BFGS, `hess` → RFOptimizer. | `grad` |
 | `--freeze-links/--no-freeze-links` | When the input is PDB, freeze parents of cap hydrogens. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
@@ -165,7 +165,7 @@ calc:
  device: auto # MLIP device selection
 opt:
  thresh: baker # convergence preset (default: baker)
- max_cycles: 10000 # optimizer cycle cap
+ max_cycles: 100000 # optimizer cycle cap
  dump: false # optimizer dumps (scan trajectories are controlled by --dump)
 lbfgs:
  max_step: 0.3 # maximum step length
@@ -193,7 +193,7 @@ More YAML options for `opt` are available in [YAML Reference](yaml-reference.md)
   `surface.csv` in downstream fitting or visualization scripts.
 - `--freeze-links` merges user `freeze_atoms` with detected cap-H parents for
   PDB inputs, keeping extracted active site models rigid.
-- An explicitly provided `--relax-max-cycles` overrides YAML `opt.max_cycles`; when omitted, YAML wins, then the default `10000` applies.
+- An explicitly provided `--relax-max-cycles` overrides YAML `opt.max_cycles`; when omitted, YAML wins, then the default `100000` applies.
 
 ## See Also
 - [scan](scan.md) -- 1D bond-distance scan

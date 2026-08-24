@@ -10,13 +10,13 @@ optimizer は `--opt-mode` で選びます。ほとんどの系では `--opt-mod
 `--reject-uphill/--no-reject-uphill` は最小値最適化（`opt` と `all` の
 IRC 後エンドポイント再最適化）だけに適用されます。
 
-optimizer終了時、`tsopt` は最終構造を保持し、数値最適化が非収束でも通常は終端exact PHVAを1回実行します。PHVAが失敗した場合も構造は破棄せず、振動数を捏造せずに失敗理由を記録します。数値optimizer statusと鞍点次数は独立です。一次TS認定には虚振動が**ちょうど1本**であること、意図した変位、そして[`irc`](irc.md)の正しい端点接続が必要です。別途の[`freq`](freq.md)は完全な振動解析や熱化学補正が必要な場合だけ実行します。
+optimizer終了時、`tsopt` は最終構造を保持します。終端exact PHVAは数値収束後だけ実行し、非収束または`stalled`ならPHVAを実行せず停止します。PHVAが失敗した場合も構造は破棄せず、振動数を捏造せずに失敗理由を記録します。数値optimizer statusと鞍点次数は独立です。一次TS認定には虚振動が**ちょうど1本**であること、意図した変位、そして[`irc`](irc.md)の正しい端点接続が必要です。別途の[`freq`](freq.md)は完全な振動解析や熱化学補正が必要な場合だけ実行します。
 
 ### 通常の終端outcomeと致命的errorの境界
 
 | 条件 | `tsopt` の成果物 | `all` の動作 |
 | --- | --- | --- |
-| 収束条件未達、明示cycle上限到達、またはopt-inのenergy plateau | 最終構造とtrajectoryを保持し、終端PHVAを1回試行。成功時はfrequency/modeを記録 | TS成果物を登録後、数値statusが`converged`かつ有効な負rootがある場合を除いてIRC前停止 |
+| 収束条件未達、明示cycle上限到達、またはopt-inのenergy plateau | 最終構造とtrajectoryを保持し、終端PHVAをskip | TS成果物を登録後、IRC前停止 |
 | 終端PHVA失敗 | 構造を保持し、`hessian_status: failed`と理由を記録。frequencyは捏造しない | 成果物登録後にIRC前停止 |
 | 不正入力/geometry、または`ZeroStepLength` / `OptimizationError`など回復不能なoptimizer例外 | structured error envelopeへ進み、それ以前に書かれたfileだけをbest effortで保持 | 通常の数値非収束へ読み替えずstageを中断 |
 
@@ -156,7 +156,7 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
 | `--precision [fp32\|fp64]` | MLIP バックエンド精度。バックエンド固有のキー（UMA `precision` / ORB `precision` / MACE `default_dtype`。`aimnet2`: `fp32` は no-op、`fp64` は拒否）へ振り分け。対象系で対応精度を比較してください。{ref}`再現性: GPU クラスによる精度の選択 <ja-precision-by-gpu-class>` を参照 | バックエンドデフォルト (uma `fp32`、orb・mace `fp64`) |
 | **閾値とサイクル** | | |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`、`gau`、`gau_tight`、`gau_vtight`、`baker`、`never`） | `baker` |
-| `--max-cycles INT` | `opt.max_cycles` に渡されるマクロサイクル上限 | `10000` |
+| `--max-cycles INT` | `opt.max_cycles` に渡されるマクロサイクル上限 | `100000` |
 | **出力と設定** | | |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_tsopt/` |
 | `--convert-files/--no-convert-files` | PDB/mmCIF/Gaussian入力用の XYZ/TRJ → PDB/CIF/GJF 出力を切り替え | `True` |
@@ -263,8 +263,7 @@ opt:
 **energy plateau stop（opt-in、デフォルト無効）。** Hessian-family TS optimizer（RS-P-RFO、
 RS-I-RFO、TRIM、Dimer）は共通の `energy_plateau` 設定を参照し、`--stop-plateau` で有効化します。
 有効時、直近50 stepの energy rangeが `--stop-plateau-thresh`（default `1×10⁻⁴ au`）を下回ると、
-`stalled` として停止し、終端 PHVA を実行します。未収束のまま `max_cycles` に到達した場合は
-PHVA を実行しません。backend/model/system依存のforce floorが選択閾値への
+`stalled` として停止し、未収束のまま `max_cycles` に到達した場合と同様に終端 PHVA を実行しません。backend/model/system依存のforce floorが選択閾値への
 到達を妨げる場合に無駄なcycleを避けられます。デフォルトで無効なのは、平坦なenergyで停止した
 TS探索が余分な虚振動を残したままになりやすいためです。
 ```

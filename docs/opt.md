@@ -87,7 +87,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--bias-k FLOAT` | Harmonic bias strength applied to every `--dist-freeze` tuple (eV·Å⁻²). | `300` |
 | `--freeze-links/--no-freeze-links` | Toggle cap-hydrogen parent freezing (PDB/mmCIF input or XYZ/GJF with `--ref-pdb`). See [extract](extract.md) for cap-hydrogen details. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
-| `--max-cycles INT` | Hard limit on optimization iterations (`opt.max_cycles`). | `10000` |
+| `--max-cycles INT` | Hard limit on optimization iterations (`opt.max_cycles`). | `100000` |
 | `--opt-mode TEXT` | Optimizer preset: `grad` (`lbfgs`) or `hess` (`rfo`). Aliases `lbfgs`/`rfo` are accepted. On `opt`, `grad` = L-BFGS minimization; on `tsopt`, `grad` = Hessian-Guided Dimer TS search. For the full subcommand-dependent table, see {ref}`opt-mode-semantics`. | `grad` |
 | `--flatten/--no-flatten` | Enable/disable the post-optimization imaginary-mode flattening loop. | `False` |
 | `--reject-uphill/--no-reject-uphill` | Opt in to rejecting energy-raising RFO trial steps in `hess` mode with a `1e-4` Hartree tolerance (roll back to the lower-energy geometry and shrink the trust radius); ignored in `grad`/`lbfgs` mode. At the emergency trust floor, the retained geometry receives a final normal convergence check before a non-converged stop is reported. | `False` |
@@ -114,7 +114,7 @@ calc:
   spin: 1
 opt:
   thresh: gau
-  max_cycles: 10000
+  max_cycles: 100000
   out_dir: ./result_opt/  # opt-specific default
 ```
 

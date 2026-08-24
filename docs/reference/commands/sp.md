@@ -27,7 +27,7 @@ Options:
                                   hessian.npy (active block when YAML
                                   geom.freeze_atoms is non-empty).  [default:
                                   no-hess]
-  --hessian-calc-mode [Analytical|FiniteDifference]
+  --hessian-calc-mode [analytical|finitedifference]
                                   Hessian backend when --hess is set.
                                   FiniteDifference is the default for every
                                   backend; UMA, ORB, MACE, and AIMNet2 also
@@ -69,9 +69,8 @@ Options:
   --backend-model TEXT            Model variant for the selected --backend (e.g.
                                   uma-s-1p2 / uma-m-1p1 for uma,
                                   orb_v3_conservative_omol for orb, MACE-OMOL-0
-                                  / off:small for mace). Default: the backend's
-                                  built-in model.  [default: (the selected
-                                  backend's own model)]
+                                  / off:small for mace).  [default: (the
+                                  selected backend's own model)]
   --calc-file FILE                Python file exposing get_calculator(...) -> an
                                   ASE Calculator, used as the energy/gradient
                                   backend (overrides --backend). Couples GFN-xTB

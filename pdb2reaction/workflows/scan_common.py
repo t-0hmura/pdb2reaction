@@ -216,7 +216,6 @@ def add_scan_common_options(
 ) -> Callable[[Callable], Callable]:
     """Attach the shared scan2d/scan3d CLI options to a Click command."""
     thresh_effective = thresh_shown if thresh_shown is not None else thresh_default
-    thresh_note = f" Defaults to '{thresh_effective}'." if thresh_effective is not None else ""
     options = [
         click.option(
             "-q",
@@ -268,7 +267,7 @@ def add_scan_common_options(
             "one_based",
             default=one_based_default,
             show_default=True,
-            help="Interpret (i,j) indices in --scan-lists as 1-based (default) or 0-based.",
+            help="Interpret (i,j) indices in --scan-lists as 1-based or 0-based.",
         ),
         click.option(
             "--max-step-size",
@@ -284,8 +283,7 @@ def add_scan_common_options(
             show_default=(bias_k_default if bias_k_default is not None else bias_k_shown),
             help=(
                 "Harmonic well strength k [eV/Å^2]. "
-                "Defaults to YAML bias.k (BIAS_KW['k']=300 in defaults.py) when omitted; "
-                "explicit CLI value overrides YAML."
+                "YAML bias.k applies when this option is omitted; explicit CLI wins."
             ),
         ),
         click.option(
@@ -354,10 +352,7 @@ def add_scan_common_options(
             default=thresh_default,
             # Per-command value, so the rendered default matches the command.
             show_default=(thresh_effective if thresh_effective is not None else False),
-            help=(
-                "Convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never). "
-                f"{thresh_note}"
-            ),
+            help="Convergence preset (gau_loose|gau|gau_tight|gau_vtight|baker|never).",
         ),
         click.option(
             "--config",

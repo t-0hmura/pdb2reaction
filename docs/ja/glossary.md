@@ -108,7 +108,7 @@
 
 | 閾値 | 役割 | 定義場所 |
 |------|------|----------|
-| **5 cm⁻¹** | 絶対値がこれ未満の負の振動数は、最終 TS 判定、モード動画の出力、余分なモードの平坦化で無視します。 | Hessian系は `rsirfo.saddle_imaginary_threshold_cm`、Dimerは `hessian_dimer.neg_freq_thresh_cm`。どちらも YAML で調整可 |
+| **5 cm⁻¹** | デフォルトの対称zero-mode cutoff。`|frequency| <= cutoff` のモードを振動数/TS分類とtrajectory出力の前に除外します。 | 共有YAML key `freq.zero_cutoff_cm` |
 | **100 cm⁻¹** | *QRRHO rotor cutoff*（Grimme）。`freq` の熱化学計算において、これ未満の **正の** 低振動モードは harmonic-oscillator から自由回転子の entropy へ滑らかに移行する。entropy / Gibbs 自由エネルギーのみに影響 | `thermoanalysis/config.py` の `ROTOR_CUT_DEFAULT = 100.0` |
 
 ## CLI 規則

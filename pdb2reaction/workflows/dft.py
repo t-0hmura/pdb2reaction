@@ -431,7 +431,7 @@ def _finalize_dft_result(
         "when -q is omitted (requires PDB/mmCIF input or --ref-pdb)."
     ),
 )
-@click.option("-m", "--multiplicity", "spin", type=int, default=None, show_default="1", help="Spin multiplicity (2S+1; inherits from .gjf when available; otherwise defaults to 1).")
+@click.option("-m", "--multiplicity", "spin", type=int, default=None, show_default="1", help="Spin multiplicity (2S+1; inherits from .gjf when available).")
 @click.option(
     "--ref-pdb",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),

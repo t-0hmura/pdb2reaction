@@ -36,17 +36,16 @@ Options:
                                   pdb).
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1).  [default: (1)]
   --one-based / --zero-based      Interpret (i,j) indices in --scan-lists as
-                                  1-based (default) or 0-based.  [default: one-
-                                  based]
+                                  1-based or 0-based.  [default: one-based]
   --max-step-size FLOAT           Maximum change in any scanned bond length per
                                   step [Å].  [default: 0.2]
-  --bias-k FLOAT                  Harmonic well strength k [eV/Å^2]. Defaults to
-                                  YAML bias.k (BIAS_KW['k']=300 in defaults.py)
-                                  when omitted; explicit CLI value overrides
-                                  YAML.  [default: (300.0)]
-  --relax-max-cycles INTEGER      Maximum optimizer cycles per grid relaxation.
+  --bias-k FLOAT                  Harmonic well strength k [eV/Å^2]. YAML bias.k
+                                  applies when this option is omitted; explicit
+                                  CLI wins.  [default: (300.0)]
+  --relax-max-cycles INTEGER RANGE
+                                  Maximum optimizer cycles per grid relaxation.
                                   An explicitly provided value overrides YAML
-                                  opt.max_cycles.  [default: 10000]
+                                  opt.max_cycles.  [default: (100000); x>=1]
   --opt-mode [grad|hess]          Relaxation mode: grad (=LBFGS) or hess (=RFO).
                                   [default: grad]
   --freeze-links / --no-freeze-links
@@ -69,8 +68,7 @@ Options:
                                   ./result_scan/]
   --thresh [gau_loose|gau|gau_tight|gau_vtight|baker|never]
                                   Convergence preset (gau_loose|gau|gau_tight|ga
-                                  u_vtight|baker|never).  Defaults to 'gau'.
-                                  [default: (gau)]
+                                  u_vtight|baker|never).  [default: (gau)]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --preopt / --no-preopt          Pre-optimize the initial structure without
@@ -110,9 +108,8 @@ Options:
   --backend-model TEXT            Model variant for the selected --backend (e.g.
                                   uma-s-1p2 / uma-m-1p1 for uma,
                                   orb_v3_conservative_omol for orb, MACE-OMOL-0
-                                  / off:small for mace). Default: the backend's
-                                  built-in model.  [default: (the selected
-                                  backend's own model)]
+                                  / off:small for mace).  [default: (the
+                                  selected backend's own model)]
   --calc-file FILE                Python file exposing get_calculator(...) -> an
                                   ASE Calculator, used as the energy/gradient
                                   backend (overrides --backend). Couples GFN-xTB

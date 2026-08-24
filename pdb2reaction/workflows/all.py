@@ -1859,8 +1859,7 @@ def _ensure_hei_path_tangent(
             except Exception as exc:
                 status["reason"] = f"existing cache rejected: {exc}"
                 _echo(
-                    f"[tsopt] Existing HEI path-mode cache rejected; recomputing: {exc}",
-                    err=True,
+                    f"[tsopt] Existing HEI path-mode cache rejected; recomputing: {exc}"
                 )
 
         hei_pos = np.asarray(hei.positions, dtype=float)
@@ -2713,8 +2712,7 @@ def _run_tsopt_on_hei(
         elif reference_mode is not None:
             _echo(
                 "[tsopt] MEP reference-mode handoff is not applicable to the "
-                "Dimer optimizer; continuing without --ref-mode.",
-                err=True,
+                "Dimer optimizer; continuing without --ref-mode."
             )
 
         _append_cli_arg(ts_args, "--max-cycles", overrides.get("max_cycles"))
@@ -3565,16 +3563,6 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     help="Maximum GSM string-optimizer cycles for the MEP stage.",
 )
 @click.option(
-    "--max-cycles",
-    type=click.IntRange(min=1),
-    default=None,
-    show_default="None",
-    help=(
-        "Compatibility cycle cap for the selected MEP optimizer; mode-specific "
-        "options take precedence."
-    ),
-)
-@click.option(
     "--max-cycles-dmf",
     type=click.IntRange(min=1),
     default=None,
@@ -4052,7 +4040,6 @@ def cli(
     mep_mode: str,
     dmf_backend: str,
     max_nodes: int,
-    max_cycles: Optional[int],
     max_cycles_gsm: Optional[int],
     max_cycles_dmf: Optional[int],
     climb: bool,
@@ -4125,11 +4112,6 @@ def cli(
     are concatenated into the final MEP.  With ``--refine-path``, the recursive ``path_search`` workflow
     is used instead for automatic multistep discovery.
     """
-    if max_cycles is not None:
-        if max_cycles_gsm is None:
-            max_cycles_gsm = max_cycles
-        if max_cycles_dmf is None:
-            max_cycles_dmf = max_cycles
     from pdb2reaction.core.utils import reject_option_like_extra_args
 
     # These negative spellings have long been documented for the legacy
@@ -5504,8 +5486,9 @@ def cli(
             _prod_opt_conv = None
 
         # Clean up endpoint_opt as a temporary working directory
-        shutil.rmtree(endpoint_opt_dir, ignore_errors=True)
-        _echo_detail("[endpoint-opt] Clean endpoint-opt working dir.")
+        if not dump:
+            shutil.rmtree(endpoint_opt_dir, ignore_errors=True)
+            _echo_detail("[endpoint-opt] Clean endpoint-opt working dir.")
 
         pR = _save_single_geom_as_pdb_for_tools(
             g_react_opt, model_ref, struct_dir, "reactant"
@@ -6423,15 +6406,9 @@ def cli(
                 # child's real MEP convergence from result.json.
                 "--out-json",
             ]
-            if (
-                cli_param_overridden(ctx, "max_cycles_gsm")
-                or cli_param_overridden(ctx, "max_cycles")
-            ) and max_cycles_gsm is not None:
+            if cli_param_overridden(ctx, "max_cycles_gsm") and max_cycles_gsm is not None:
                 po_args.extend(["--max-cycles-gsm", str(int(max_cycles_gsm))])
-            if (
-                cli_param_overridden(ctx, "max_cycles_dmf")
-                or cli_param_overridden(ctx, "max_cycles")
-            ) and max_cycles_dmf is not None:
+            if cli_param_overridden(ctx, "max_cycles_dmf") and max_cycles_dmf is not None:
                 po_args.extend(["--max-cycles-dmf", str(int(max_cycles_dmf))])
             _append_toggle_arg(po_args, "--freeze-links", bool(freeze_links_flag and freeze_ref is not None))
             if cli_param_overridden(ctx, "climb"):
@@ -6892,15 +6869,9 @@ def cli(
         # freeze_ref is None and freeze-links should not be activated.
         _append_toggle_arg(ps_args, "--freeze-links", bool(freeze_links_flag and freeze_ref is not None))
         ps_args.extend(["--mep-mode", mep_mode_kind])
-        if (
-            cli_param_overridden(ctx, "max_cycles_gsm")
-            or cli_param_overridden(ctx, "max_cycles")
-        ) and max_cycles_gsm is not None:
+        if cli_param_overridden(ctx, "max_cycles_gsm") and max_cycles_gsm is not None:
             ps_args.extend(["--max-cycles-gsm", str(int(max_cycles_gsm))])
-        if (
-            cli_param_overridden(ctx, "max_cycles_dmf")
-            or cli_param_overridden(ctx, "max_cycles")
-        ) and max_cycles_dmf is not None:
+        if cli_param_overridden(ctx, "max_cycles_dmf") and max_cycles_dmf is not None:
             ps_args.extend(["--max-cycles-dmf", str(int(max_cycles_dmf))])
         if cli_param_overridden(ctx, "climb"):
             _append_toggle_arg(ps_args, "--climb", bool(climb))
@@ -7648,8 +7619,9 @@ def cli(
                 "product_converged": _prod_opt_conv,
             }
 
-            shutil.rmtree(endpoint_opt_dir, ignore_errors=True)
-            _echo_detail("[endpoint-opt] Clean endpoint-opt working dir.")
+            if not dump:
+                shutil.rmtree(endpoint_opt_dir, ignore_errors=True)
+                _echo_detail("[endpoint-opt] Clean endpoint-opt working dir.")
 
             pL = _save_single_geom_as_pdb_for_tools(
                 g_react_opt, ref_struct_template, struct_dir, "reactant"

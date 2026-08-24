@@ -391,7 +391,7 @@ def _seed_rfo_initial_hessian(
     "one_based",
     default=True,
     show_default=True,
-    help="Interpret --dist-freeze / --scan-lists indices as 1-based (default) or 0-based.",
+    help="Interpret --dist-freeze / --scan-lists indices as 1-based or 0-based.",
 )
 @click.option(
     "--bias-k",

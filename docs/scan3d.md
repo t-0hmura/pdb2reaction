@@ -129,7 +129,7 @@ Grid-point geometries use `Å×100` tags, so `point_i130_j310_k200.xyz` correspo
 | **Refinement** | | |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
 | `--opt-mode TEXT` | `grad` → L-BFGS, `hess` → RFOptimizer. | `grad` |
-| `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. An explicit value overrides YAML `opt.max_cycles`. | `10000` |
+| `--relax-max-cycles INT` | Maximum optimizer cycles during each biased relaxation. An explicit value overrides YAML `opt.max_cycles`. | `100000` |
 | `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
 | `--preopt/--no-preopt` | Run an unbiased optimization before scanning. | `False` |
 | **Merge & alignment** | | |
@@ -165,7 +165,7 @@ calc:
  device: auto # MLIP device selection
 opt:
  thresh: baker # convergence preset (default: baker)
- max_cycles: 10000 # optimizer cycle cap
+ max_cycles: 100000 # optimizer cycle cap
  dump: false # optimizer dumps (scan trajectories are controlled by --dump)
 lbfgs:
  max_step: 0.3 # maximum step length
@@ -192,7 +192,7 @@ bias:
 - `--freeze-links` merges user `freeze_atoms` with detected cap-H parents for
   PDB inputs, keeping extracted active site models rigid.
 - Add `--print-parsed` when you want to verify parsed pair targets from `--scan-lists/-s`.
-- An explicitly provided `--relax-max-cycles` overrides YAML `opt.max_cycles`; when omitted, YAML wins, then the default `10000` applies.
+- An explicitly provided `--relax-max-cycles` overrides YAML `opt.max_cycles`; when omitted, YAML wins, then the default `100000` applies.
 
 ## See Also
 - [scan](scan.md) -- 1D bond-distance scan

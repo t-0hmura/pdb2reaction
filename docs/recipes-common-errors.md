@@ -74,7 +74,7 @@ Signal:
 - TSOPT stalls or IRC branches look unstable.
 
 First checks:
-- Confirm TS candidate quality: Cartesian PHVA must contain exactly one negative frequency, and its mode must follow the reaction coordinate. The 5 cm⁻¹ thresholds affect mode files, flattening, and optional saddle recovery, but not the final count.
+- Confirm TS candidate quality: Cartesian PHVA must contain exactly one resolved negative frequency, and its mode must follow the reaction coordinate. The shared `freq.zero_cutoff_cm` value removes `|frequency| <= cutoff` modes before the final count and trajectory output.
 - For a wrong imaginary-mode count (a spurious second small mode, or no dominant reaction mode), raise precision with `--precision fp64` and/or switch to `--coord-type dlc`, then add `--flatten` for residual small modes — these levers are complementary. See [`tsopt` → Wrong imaginary-mode count after optimization](tsopt.md#wrong-imaginary-mode-count-after-optimization).
 - Tune step sizes / trust radii (YAML knobs `max_step`, `trust_radius`/`trust_min`/`trust_max`) and optimizer mode / flattening (CLI flags `--opt-mode`, `--flatten`); these are complementary. For YAML section layout see [YAML Reference](yaml-reference.md); for the canonical fix path see {ref}`Calculation / convergence problems <calculation-convergence-problems>`.
 - If an energy plateau stops the run as `stalled`, keep it classified as non-converged and follow {ref}`Calculation / convergence problems <calculation-convergence-problems>` before retrying.

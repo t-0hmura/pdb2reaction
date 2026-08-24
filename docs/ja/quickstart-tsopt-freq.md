@@ -62,7 +62,7 @@ result_ts_only/
         ├── product.pdb
         ├── ts/
         │   ├── final_geometry.{xyz,pdb}
-        │   └── vib/imag_*_trj.xyz             # 虚振動モードアニメーション
+        │   └── vib/imag_*_trj.xyz             # 虚振動モード軌跡
         ├── irc/
         │   └── {forward,backward,finished}_irc_trj.xyz
         ├── freq/{R,TS,P}/

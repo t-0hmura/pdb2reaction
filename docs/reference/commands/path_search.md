@@ -41,9 +41,9 @@ Options:
   -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
                                   GPP:-3,SAM:1) used to derive charge when -q is
                                   omitted (PDB/mmCIF inputs only).
-  -m, --multiplicity INTEGER      Spin multiplicity (2S+1; defaults from a .gjf
-                                  template when available, otherwise 1).
-                                  [default: (1 (or the .gjf template value))]
+  -m, --multiplicity INTEGER      Spin multiplicity (2S+1; inherits from a .gjf
+                                  template when available).  [default: (1 (or
+                                  the .gjf template value))]
   --freeze-links / --no-freeze-links
                                   Freeze parent atoms of cap hydrogens
                                   (PDB/mmCIF input only).  [default: freeze-
@@ -55,12 +55,12 @@ Options:
                                   images including endpoints. When not given,
                                   YAML search.max_nodes_segment applies.
                                   [default: 20]
-  --max-cycles-gsm INTEGER        Maximum GSM string-optimizer cycles for the
-                                  MEP stage.  [default: (300)]
-  --max-cycles-dmf INTEGER        Maximum IPOPT iterations for the DMF MEP
+  --max-cycles-gsm INTEGER RANGE  Maximum GSM string-optimizer cycles for the
+                                  MEP stage.  [default: (300); x>=1]
+  --max-cycles-dmf INTEGER RANGE  Maximum IPOPT iterations for the DMF MEP
                                   stage. This is a solver iteration count, not a
                                   string-optimizer cycle count.  [default:
-                                  (300)]
+                                  (300); x>=1]
   --climb / --no-climb            Enable climbing image for standard GSM
                                   segments (bridge segments always disable
                                   climbing).  [default: climb]
@@ -77,18 +77,15 @@ Options:
   --thresh [gau_loose|gau|gau_tight|gau_vtight|baker|never]
                                   Convergence preset for single-structure
                                   optimizations only (gau_loose|gau|gau_tight|ga
-                                  u_vtight|baker|never). Defaults to 'gau' when
-                                  not provided.  [default: (gau)]
+                                  u_vtight|baker|never).  [default: (gau)]
   --thresh-gsm [gau_loose|gau|gau_tight|gau_vtight|baker|never]
                                   Convergence preset for the GSM string
                                   optimizer (gau_loose|gau|gau_tight|gau_vtight|
-                                  baker|never). Defaults to 'gau_loose' when not
-                                  provided.  [default: (gau_loose)]
+                                  baker|never).  [default: (gau_loose)]
   --thresh-dmf TEXT               IPOPT dual-infeasibility tolerance for the DMF
                                   path optimizer: tight (0.04) | middle (0.10) |
                                   loose (0.20) or a positive float. This is not
-                                  a Gaussian preset. Defaults to 'tight' when
-                                  not provided.  [default: (tight)]
+                                  a Gaussian preset.  [default: (tight)]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config
@@ -134,9 +131,8 @@ Options:
   --backend-model TEXT            Model variant for the selected --backend (e.g.
                                   uma-s-1p2 / uma-m-1p1 for uma,
                                   orb_v3_conservative_omol for orb, MACE-OMOL-0
-                                  / off:small for mace). Default: the backend's
-                                  built-in model.  [default: (the selected
-                                  backend's own model)]
+                                  / off:small for mace).  [default: (the
+                                  selected backend's own model)]
   --calc-file FILE                Python file exposing get_calculator(...) -> an
                                   ASE Calculator, used as the energy/gradient
                                   backend (overrides --backend). Couples GFN-xTB

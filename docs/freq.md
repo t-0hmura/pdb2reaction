@@ -40,12 +40,12 @@ pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 \
   leave every frozen anchor fixed; a normal multi-anchor cluster boundary therefore usually
   has effective rank 0. Both 3N×3N and active-block Hessians are accepted. See
   [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries).
-- **Mode export**: `--max-write` limits how many modes are animated. Modes are sorted by
-  value (or absolute value with `--sort abs`). The sinusoidal animation amplitude
+- **Mode export**: `--max-write` limits how many mode trajectories are written. Modes are sorted by
+  value (or absolute value with `--sort abs`). The sinusoidal trajectory amplitude
   (`--amplitude-ang`) and frame count (`--n-frames`) match the YAML defaults. `_trj.xyz`
-  animations are produced for every input; topology inputs also receive `.pdb` animations
+  trajectories are produced for every input; topology inputs also receive `.pdb` trajectories
   when `--convert-files` remains enabled, and mmCIF/oversized-PDB bridge inputs additionally
-  receive `.cif` animations with the original identifiers.
+  receive `.cif` trajectories with the original identifiers.
 - **Thermochemistry**: if `thermoanalysis` is installed, a QRRHO-like summary (E, ZPE, E/H/G
   corrections, heat capacities, entropies) is printed using PHVA frequencies. CLI pressure in
   atm is converted internally to Pa. When `--dump`, a `thermoanalysis.yaml` snapshot is
@@ -70,7 +70,7 @@ pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 \
 
 ```text
 out_dir/ (default:./result_freq/)
-├─ mode_XXXX_±freqcm-1_trj.xyz # Per-mode animations
+├─ mode_XXXX_±freqcm-1_trj.xyz # Per-mode trajectories
 ├─ mode_XXXX_±freqcm-1.pdb # PDB/mmCIF topology exists and conversion is enabled
 ├─ mode_XXXX_±freqcm-1.cif # mmCIF/oversized-PDB bridge input
 ├─ frequencies_cm-1.txt # Full frequency list using the selected sort order
@@ -97,8 +97,8 @@ The tables below cover the options that need explanation; the full flag list is 
 | `--freeze-links/--no-freeze-links` | PDB/mmCIF input (or XYZ/GJF with `--ref-pdb`). Freeze parents of cap hydrogens and merge with `geom.freeze_atoms`. See [extract](extract.md) for cap-hydrogen details. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
 | `--max-write INT` | Number of modes to export. | `10` |
-| `--amplitude-ang FLOAT` | Mode animation amplitude (Å). | `0.8` |
-| `--n-frames INT` | Frames per mode animation. | `20` |
+| `--amplitude-ang FLOAT` | Mode-trajectory amplitude (Å). | `0.8` |
+| `--n-frames INT` | Frames per mode trajectory. | `20` |
 | `--sort CHOICE` | Mode ordering: `value` (cm⁻¹) or `abs`. | `value` |
 | `-o, --out-dir TEXT` | Output directory. | `./result_freq/` |
 | `--temperature FLOAT` | Thermochemistry temperature (K). | `298.15` |

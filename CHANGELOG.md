@@ -7,16 +7,26 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased] — 2026-08-19
 
 ### Fixed
+- Keep accepted line-search/GDIIS offsets in minimum RFO instead of applying
+  the trust radius a second time to the full accelerated displacement.
+- Keep an explicit finite cycle cap when resuming a checkpoint written by an
+  uncapped optimizer.
+- Retain endpoint-optimization diagnostics when `--dump` is enabled.
 - Ignore final exact-PHVA negative frequencies smaller than the configured
   saddle-imaginary magnitude threshold when certifying saddle order, matching
   the existing imaginary-mode display, export, recovery, and flattening policy.
 - Gate MEP `--ref-mode` handoff to Hessian TS optimizers; Dimer records the handoff as not applicable instead of receiving an option it rejects.
-- Preserve a non-converged Dimer final structure and stop before terminal PHVA.
+- Preserve a non-converged or stalled TS final structure and stop before terminal PHVA.
 - Use the configurable `freq.zero_cutoff_cm` value for standalone frequency analysis, flattening, and TS saddle classification.
 - Restrict reference-aligned reaction-mode selection to negative exact-PHVA modes and validate the selected frequency before IRC. Invalid or missing selections use an explicit lowest-imaginary root-0 fallback with unverified reaction identity.
 - Separate numerical optimization status from saddle order. A converged higher-order stationary point is not a first-order TS, but `all` may perform warning-labelled diagnostic IRC when a valid negative root exists.
 - Synchronize EN/JA docs, skills, live help, generated command references, and checked-in contract tests with the current behavior.
 - Remove the replaced path-tangent helper and one unreferenced mass-weighted-frequency wrapper; larger workflow and Notebook refactors remain deferred.
+
+### Changed
+- Use finite cycle defaults of 100000 for ordinary optimization and TS/endpoint
+  optimization, 300 for GSM/DMF, and 125 for IRC. An explicit YAML `null`
+  remains the uncapped engine value.
 
 ## [0.4.12] — 2026-07-27
 

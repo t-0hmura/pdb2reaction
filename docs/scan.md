@@ -96,7 +96,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--print-parsed/--no-print-parsed` | Print parsed stage tuples after `--scan-lists/-s` resolution. | `False` |
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
 | `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
-| `--relax-max-cycles INT` | Cap on optimizer cycles during preopt, each biased step, and end-of-stage cleanups. An explicit value overrides YAML `opt.max_cycles`. | `10000` |
+| `--relax-max-cycles INT` | Cap on optimizer cycles during preopt, each biased step, and end-of-stage cleanups. An explicit value overrides YAML `opt.max_cycles`. | `100000` |
 | `--opt-mode TEXT` | `grad` → L-BFGS, `hess` → RFOptimizer. See {ref}`opt-mode-semantics` for how the same token maps to different optimizers under `tsopt`. | `grad` |
 | `--freeze-links/--no-freeze-links` | When the input is PDB, freeze the parents of cap hydrogens. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
@@ -117,7 +117,7 @@ The full flag list is in the generated [command reference](reference/commands/in
   by `--dump` (CLI) only — `opt.dump` and `opt.out_dir` from YAML are run-scoped and
   overwritten (not YAML-tunable); `scan_trj.xyz` is always written, while
   PDB/CIF/GJF companions require conversion and a reference template.
-- An explicitly provided `--relax-max-cycles` overrides YAML `opt.max_cycles`; when omitted, YAML wins, then the default `10000` applies.
+- An explicitly provided `--relax-max-cycles` overrides YAML `opt.max_cycles`; when omitted, YAML wins, then the default `100000` applies.
 
 ### Section `bias`
 - `k` (`300`): Harmonic strength in eV·Å⁻².
@@ -138,7 +138,7 @@ calc:
  task_name: omol         # UMA task name
 opt:
  thresh: gau             # convergence preset
- max_cycles: 10000       # optimizer cycle cap
+ max_cycles: 100000       # optimizer cycle cap
  # out_dir is run-scoped: set via -o/--out-dir, not YAML (a YAML value here is ignored)
 lbfgs:
  max_step: 0.3           # maximum step length (grad mode)

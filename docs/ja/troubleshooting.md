@@ -211,7 +211,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 - オプティマイザモードを切り替えてください: `--opt-mode grad`（Dimer 法）または `--opt-mode hess`（RS-P-RFO 法、デフォルト）
 - 余分な虚振動数モードのフラット化を有効にしてください: `--flatten`（単独の `tsopt`、`opt`、および `pdb2reaction all` で利用可能。デフォルトは無効）
 - coarse MEP のHEIが悪い場合は、`all`を`--refine-path`付きで再実行してください。ただし悪いpathを不要な複数segmentへ分割してcostを増大させることがあるためデフォルトOFFです。まずcoarse MEP を確認してください
-- 最大サイクル数を増やしてください: `--max-cycles 20000`（単独の `tsopt` の場合）、`--tsopt-max-cycles 20000`（`all` の場合）
+- 最大サイクル数を増やしてください: `--max-cycles 200000`（単独の `tsopt` の場合）、`--tsopt-max-cycles 200000`（`all` の場合）
 - より厳しい収束閾値を使ってください: `--thresh baker` または `--thresh gau_tight`
 - YAML でステップサイズ / 信頼半径を縮小してください — L-BFGS/Dimer: `lbfgs.max_step` / `hessian_dimer.lbfgs.max_step`、RFO/RS-I-RFO: `rfo.trust_radius` / `rfo.trust_min` / `rfo.trust_max`（および `rsirfo` セクション）。セクション構成は [YAML リファレンス](yaml-reference.md) を参照
 
@@ -225,9 +225,9 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 
 対処の例:
 - 単独の `irc`: `--step-size 0.05`（デフォルト: 0.10 bohr）、必要なら `--max-cycles 200`。
-- `all`: `--irc-step-size 0.05`。上限は YAML `irc.max_cycles`（`all --max-cycles` は MEP 用）。
+- `all`: `--irc-step-size 0.05`。上限は YAML `irc.max_cycles`（MEP上限は `--max-cycles-gsm` / `--max-cycles-dmf`）。
 - 物理的な停止条件を無視するには、単独で `--never-stop`、`all` で `--irc-never-stop` を指定し、軌跡と端点を確認してください。
-- IRC 実行前に Cartesian PHVA の負の振動数が **ちょうど 1 本** であることを確認してください。5 cm⁻¹の閾値はモードファイル、平坦化、任意の鞍点回復に使いますが、この本数は変えません。
+- IRC 実行前に Cartesian PHVA のresolvedな負の振動数が **ちょうど 1 本** であることを確認してください。共有 `freq.zero_cutoff_cm` は `|frequency| <= cutoff` のモードをこの本数とtrajectory出力の前に除外します。
 
 ---
 

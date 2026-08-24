@@ -115,7 +115,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
 | `--dry-run/--no-dry-run` | Validate options and print the execution plan without running optimization. | `False` |
 | `--preopt/--no-preopt` | Pre-optimize each endpoint with the selected single-structure optimizer before alignment/MEP search (GSM/DMF). | `True` |
-| `--preopt-max-cycles INT` | Cap for endpoint preoptimization cycles. | `10000` |
+| `--preopt-max-cycles INT` | Cap for endpoint preoptimization cycles. | `100000` |
 | `--fix-ends/--no-fix-ends` | Keep endpoint geometries fixed during GSM growth/refinement. Accepted but unused with DMF. | `True` |
 | `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
 

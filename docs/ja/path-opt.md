@@ -121,7 +121,7 @@ out_dir/
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--dry-run/--no-dry-run` | 実行せずに検証と実行計画表示のみを行う | `False` |
 | `--preopt/--no-preopt` | アライメント/MEP 探索前に各エンドポイントを事前最適化（GSM/DMF）。 | `True` |
-| `--preopt-max-cycles INT` | エンドポイント事前最適化サイクルの上限 | `10000` |
+| `--preopt-max-cycles INT` | エンドポイント事前最適化サイクルの上限 | `100000` |
 | `--fix-ends/--no-fix-ends` | GSM 成長/精密化中に endpoint 構造を固定。DMF では受理するが未使用 | `True` |
 | `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 

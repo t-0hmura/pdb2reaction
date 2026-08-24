@@ -84,7 +84,7 @@ out_dir/ (デフォルト:./result_scan/)
 | `--print-parsed/--no-print-parsed` | `-s/--scan-lists` 解釈後のステージ情報を表示 | `False` |
 | `--max-step-size FLOAT` | 1 ステップあたりのスキャン結合の最大変化量（Å）。ステップ数を決定 | `0.20` |
 | `--bias-k FLOAT` | 調和バイアス強度 `k`（eV·Å⁻²） | `300` |
-| `--relax-max-cycles INT` | 前処理・各バイアスステップ・後処理における最適化サイクルの上限。明示値は YAML `opt.max_cycles` を上書き | `10000` |
+| `--relax-max-cycles INT` | 前処理・各バイアスステップ・後処理における最適化サイクルの上限。明示値は YAML `opt.max_cycles` を上書き | `100000` |
 | `--opt-mode TEXT` | `grad` → L-BFGS、`hess` → RFOptimizer。同じトークンが `tsopt` では Dimer / RS-P-RFO に対応する点については {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
 | `--freeze-links/--no-freeze-links` | PDB/mmCIF トポロジー入力時にキャップ水素の親原子を凍結 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
@@ -101,7 +101,7 @@ out_dir/ (デフォルト:./result_scan/)
 
 ### 共有 YAML セクション
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml-reference.md) と同じキーを使用します。`opt.dump` は実行時スコープで常に上書きされる（YAML では設定できない）ため、ステージ軌跡の出力は `--dump`（CLI）で制御します。
-- 明示した `--relax-max-cycles` は YAML `opt.max_cycles` を上書きします。省略時は YAML が優先され、いずれもなければデフォルト `10000` です。
+- 明示した `--relax-max-cycles` は YAML `opt.max_cycles` を上書きします。省略時は YAML が優先され、いずれもなければデフォルト `100000` です。
 
 ### セクション `bias`
 - `k`（`300`）: 調和バイアス強度（eV·Å⁻²）。
@@ -137,7 +137,7 @@ calc:
  return_partial_hessian: true  # partial Hessian over active DOFs
 opt:
  thresh: gau # convergence preset (Gaussian/Baker-style)
- max_cycles: 10000 # optimizer cycle cap
+ max_cycles: 100000 # optimizer cycle cap
  print_every: 100 # logging stride
  min_step_norm: 1.0e-08 # minimum norm for step acceptance
  assert_min_step: true # stop if steps fall below threshold
@@ -157,7 +157,7 @@ opt:
  prefix: "" # filename prefix
 lbfgs:
  thresh: gau # L-BFGS convergence preset
- max_cycles: 10000 # iteration limit
+ max_cycles: 100000 # iteration limit
  print_every: 100 # logging stride
  min_step_norm: 1.0e-08 # minimum accepted step norm
  assert_min_step: true # assert when steps stagnate
@@ -185,7 +185,7 @@ lbfgs:
  max_mu_reg_adaptions: 10 # cap on mu adaptations
 rfo:
  thresh: gau # RFOptimizer convergence preset
- max_cycles: 10000 # iteration cap
+ max_cycles: 100000 # iteration cap
  print_every: 100 # logging stride
  min_step_norm: 1.0e-08 # minimum accepted step norm
  assert_min_step: true # assert when steps stagnate

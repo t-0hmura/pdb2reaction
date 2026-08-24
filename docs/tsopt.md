@@ -17,13 +17,13 @@ raise the physical energy along the reaction mode. The
 `--reject-uphill/--no-reject-uphill` toggle belongs only to minimum
 optimization (`opt` and post-IRC endpoint re-optimization in `all`).
 
-At optimizer termination, `tsopt` retains the final geometry and normally performs one terminal exact-PHVA calculation even when the numerical optimization did not converge. A PHVA failure is recorded without discarding the structure or fabricating frequencies. Numerical optimizer status is independent of saddle order: first-order certification still requires **exactly one** imaginary frequency, the intended displacement, and correct [`irc`](irc.md) connectivity. A separate [`freq`](freq.md) run is needed only for full vibrational analysis or thermochemistry.
+At optimizer termination, `tsopt` retains the final geometry. Terminal exact PHVA runs only after numerical convergence; a non-converged or stalled run stops without PHVA. A PHVA failure is recorded without discarding the structure or fabricating frequencies. Numerical optimizer status is independent of saddle order: first-order certification still requires **exactly one** imaginary frequency, the intended displacement, and correct [`irc`](irc.md) connectivity. A separate [`freq`](freq.md) run is needed only for full vibrational analysis or thermochemistry.
 
 ### Terminal outcomes and fatal errors
 
 | Condition | `tsopt` artifacts | Composite `all` behavior |
 | --- | --- | --- |
-| Convergence criteria unmet, explicit cycle limit reached, or opt-in energy plateau | Retain the final geometry and trajectory; attempt one terminal PHVA and record frequencies/modes when it succeeds | Register the TS result, then stop before IRC unless numerical status is `converged` and a negative reaction root is available |
+| Convergence criteria unmet, explicit cycle limit reached, or opt-in energy plateau | Retain the final geometry and trajectory; skip terminal PHVA | Register the TS result and stop before IRC |
 | Terminal PHVA fails | Retain the geometry and set `hessian_status: failed` with the error; do not invent frequencies | Stop before IRC after artifact registration |
 | Invalid input/geometry or an unrecoverable optimizer exception such as `ZeroStepLength` / `OptimizationError` | Follow the structured error-envelope path; only files already written are retained on a best-effort basis | Abort the stage rather than relabelling it as ordinary non-convergence |
 
@@ -107,7 +107,7 @@ Add `--dump` to keep the full optimization trajectory for inspection.
   - runs a Dimer + L-BFGS micro-segment;
   - optionally performs a Bofill update.
 
-  At termination, one exact PHVA is produced for the retained final geometry when possible, even if numerical convergence was not reached or extra imaginary modes remain. If `root != 0`, that root seeds only the initial dimer direction; subsequent refreshes follow the most negative mode (`root = 0`).
+  At termination, one exact PHVA is produced after numerical convergence; a non-converged or stalled run retains the final geometry and skips PHVA. If `root != 0`, that root seeds only the initial dimer direction; subsequent refreshes follow the most negative mode (`root = 0`).
 - **RS-I-RFO mode** — runs the RS-I-RFO optimizer with optional Hessian reference files, R+S splitting safeguards, and micro-cycle controls defined in the `rsirfo` YAML section. With `--flatten`, when more than one imaginary mode remains after convergence the workflow flattens extra modes and reruns RS-I-RFO until only one imaginary mode remains or the flatten-iteration cap is reached.
 - **Mode export + conversion** — imaginary modes smaller than the configured magnitude threshold (5 cm⁻¹ by default) are ignored; the remaining modes are written to `vib/imag_*_trj.xyz`. With conversion enabled, PDB inputs receive `.pdb` companions and mmCIF/oversized-PDB bridge inputs receive `.pdb` plus `.cif`; Gaussian templates receive a `.gjf` companion for the final geometry only.
 
@@ -175,7 +175,7 @@ The tables below cover the options that need explanation. The full flag list is 
 | `--precision [fp32\|fp64]` | MLIP backend precision, routed to the backend-native kwarg (UMA `precision` / ORB `precision` / MACE `default_dtype`; `aimnet2`: `fp32` no-op, `fp64` rejected). Compare supported settings on the target system; see [Reproducibility](reproducibility.md#choosing-precision-by-backend-and-purpose). | per backend (uma `fp32`; orb, mace `fp64`) |
 | **Thresholds & cycles** | | |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
-| `--max-cycles INT` | Macro-cycle cap forwarded to `opt.max_cycles`. | `10000` |
+| `--max-cycles INT` | Macro-cycle cap forwarded to `opt.max_cycles`. | `100000` |
 | **Output & config** | | |
 | `-o, --out-dir TEXT` | Output directory. | `./result_tsopt/` |
 | `--convert-files / --no-convert-files` | Toggle XYZ/TRJ → PDB/CIF/GJF companions according to the input topology/template. | `True` |
@@ -280,8 +280,7 @@ opt:
 (RS-P-RFO, RS-I-RFO, TRIM, and Dimer) honor the shared `energy_plateau` setting, which
 `--stop-plateau` turns on. An energy range below `--stop-plateau-thresh`
 (default `1×10⁻⁴ au` over the last 50 steps) stops the search as `stalled` and
-runs terminal PHVA. Reaching `max_cycles` without convergence does not run
-PHVA. This can save cycles when a
+skips terminal PHVA, as does reaching `max_cycles` without convergence. This can save cycles when a
 backend/model/system-specific force floor prevents the selected force threshold
 from being reached. It is off unless you ask for it, because a TS search that
 stops on a flat energy typically still carries extra imaginary modes.

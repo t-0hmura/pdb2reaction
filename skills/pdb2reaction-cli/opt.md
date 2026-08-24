@@ -22,7 +22,7 @@ pdb2reaction opt -i input.pdb [-q 0 -m 1] \
 | `-i, --input` | path | required | `.pdb` / `.cif` / `.mmcif` / `.xyz` / `.gjf` |
 | `-q` / `-l` / `-m` | — | — | Charge / spin |
 | `--opt-mode` | str | `grad` | `grad` (L-BFGS) or `hess` (RFO); aliases `lbfgs` / `rfo` |
-| `--max-cycles` | int | `10000` | Stop after N cycles; see `OPT_BASE_KW["max_cycles"]` |
+| `--max-cycles` | int | `100000` | Stop after N cycles; see `OPT_BASE_KW["max_cycles"]` |
 | `--reject-uphill / --no-reject-uphill` | toggle | off | Opt in to rejecting an energy-raising Hessian/RFO trial above `1e-4` Hartree, restoring the lower-energy geometry and shrinking the trust radius. At the emergency floor, run one final convergence check on the retained geometry. Ignored in L-BFGS mode. |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `-o, --out-dir` | path | `./result_opt/` | Output directory |

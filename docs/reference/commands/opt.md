@@ -29,8 +29,7 @@ Options:
                                   (i,j,target_A) triples. Target may be omitted
                                   to freeze at the current distance: (i,j).
   --one-based / --zero-based      Interpret --dist-freeze / --scan-lists indices
-                                  as 1-based (default) or 0-based.  [default:
-                                  one-based]
+                                  as 1-based or 0-based.  [default: one-based]
   --bias-k FLOAT                  Harmonic restraint strength k [eV/Å^2] for
                                   --dist-freeze.  [default: 300]
   --freeze-links / --no-freeze-links
@@ -45,8 +44,8 @@ Options:
                                   [default: convert-files]
   --ref-pdb FILE                  Reference PDB/mmCIF topology to use when the
                                   input is XYZ/GJF (keeps XYZ coordinates).
-  --max-cycles INTEGER            Maximum number of optimization cycles.
-                                  [default: 10000]
+  --max-cycles INTEGER RANGE      Maximum number of optimization cycles.
+                                  [default: (100000); x>=1]
   --opt-mode [grad|hess|lbfgs|rfo]
                                   Optimization mode: grad (lbfgs) or hess (rfo).
                                   Aliases lbfgs/rfo are accepted.  [default:
@@ -118,9 +117,8 @@ Options:
   --backend-model TEXT            Model variant for the selected --backend (e.g.
                                   uma-s-1p2 / uma-m-1p1 for uma,
                                   orb_v3_conservative_omol for orb, MACE-OMOL-0
-                                  / off:small for mace). Default: the backend's
-                                  built-in model.  [default: (the selected
-                                  backend's own model)]
+                                  / off:small for mace).  [default: (the
+                                  selected backend's own model)]
   --calc-file FILE                Python file exposing get_calculator(...) -> an
                                   ASE Calculator, used as the energy/gradient
                                   backend (overrides --backend). Couples GFN-xTB

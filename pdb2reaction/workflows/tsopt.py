@@ -158,7 +158,7 @@ def _flatten_branch_needs_alternate(result: Dict[str, Any]) -> bool:
         getattr(optimizer, "_last_exact_target_mode_is_negative", None)
         is True
     )
-    return int(result["n_imag"]) != 1 or not target_negative
+    return result["n_imag"] != 1 or not target_negative
 
 
 def _effective_flatten_iterations(
@@ -1033,57 +1033,21 @@ def _tsopt_terminal_outcome_message(
     hessian_ready: bool,
     n_imaginary_modes: Optional[int],
 ) -> str:
-    """Describe numerical convergence and saddle order without conflating them."""
+    """Return one concise terminal verdict."""
 
+    if not numerically_converged:
+        return "[tsopt] ERROR: Not converged."
     if not hessian_ready or n_imaginary_modes is None:
-        if numerically_converged:
-            return (
-                "[tsopt] Numerical optimization converged, but terminal exact "
-                "PHVA did not complete; saddle order is unavailable."
-            )
-        return (
-            "[tsopt] Numerical convergence criteria were not met, and terminal "
-            "exact PHVA did not complete; saddle order is unavailable."
-        )
+        return "[tsopt] ERROR: Failed to complete terminal PHVA."
 
     n_imaginary = int(n_imaginary_modes)
     if n_imaginary == 1:
-        if numerically_converged:
-            return (
-                "[tsopt] Validated first-order saddle: numerical optimization "
-                "converged and terminal PHVA found one imaginary mode above "
-                "the configured threshold."
-            )
-        return (
-            "[tsopt] Numerical convergence criteria were not met; terminal PHVA "
-            "found one imaginary mode above the configured threshold, but a "
-            "release-valid saddle requires both conditions. Increase the cycle "
-            "budget or improve the starting structure; --flatten is not indicated "
-            "because no surplus imaginary mode remains."
-        )
-
+        return "[tsopt] Converged (n_imag=1)."
     if n_imaginary == 0:
-        saddle_order = "no imaginary mode"
-        recovery = (
-            "Improve the starting path or transition-state guess; --flatten is "
-            "not indicated because no surplus imaginary mode remains."
-        )
-    else:
-        saddle_order = f"{n_imaginary} imaginary modes"
-        recovery = (
-            "Retry with --flatten to remove surplus imaginary modes. In the all "
-            "workflow, --refine-path can improve a poor MEP before tsopt, but "
-            "recursive refinement may split the path into multiple segments and "
-            "substantially increase cost; it is off by default."
-        )
-
-    if numerically_converged:
-        prefix = "[tsopt] Numerical optimization converged, but"
-    else:
-        prefix = "[tsopt] Numerical convergence criteria were not met, and"
+        return "[tsopt] No imaginary mode detected. Try all --refine-path."
     return (
-        f"{prefix} terminal PHVA found {saddle_order} above the configured "
-        f"threshold; first-order saddle validation failed. {recovery}"
+        f"[tsopt] WARNING: Higher-order stationary point (n_imag={n_imaginary}). "
+        "Try --flatten or all --refine-path."
     )
 
 
@@ -1151,7 +1115,7 @@ def _no_exported_mode_message(
     """Message for a final Hessian that exported no imaginary-mode file."""
     del neg_freq_thresh_cm, lowest_freq_cm
     if n_imaginary == 0:
-        return "[INFO] No imaginary mode detected."
+        return "[tsopt] No imaginary mode detected. Try all --refine-path."
     return "[tsopt] ERROR: Failed to write imaginary mode trajectory."
 
 
@@ -1169,19 +1133,6 @@ def _finalize_dimer_saddle_status(
     neg_idx, _reported = _imaginary_mode_indices_and_values(
         freqs_cm, neg_freq_thresh_cm
     )
-    if len(certified) > 1:
-        click.echo(
-            f"[tsopt] WARNING: terminal PHVA found {len(certified)} negative "
-            "frequencies. The retained geometry is a higher-order stationary "
-            "point, not a certified first-order transition state.",
-            err=True,
-        )
-    elif len(certified) == 0:
-        click.echo(
-            "[tsopt] WARNING: terminal PHVA found no negative frequency; "
-            "the retained geometry is not certified as a transition state.",
-            err=True,
-        )
     return neg_idx
 
 
@@ -1529,7 +1480,6 @@ class HessianDimer:
                     root=self.root, freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None,
                     tr_projection=self.tr_projection,
                     projection_info=self.rigid_projection_info,
-                    frequency_zero_cutoff_cm=self.neg_freq_thresh_cm,
                 )
             else:
                 # partial (active) Hessian returned by UMA
@@ -1539,7 +1489,6 @@ class HessianDimer:
                     self.masses_au_t, active_idx, self.device, root=self.root,
                     tr_projection=self.tr_projection,
                     projection_info=self.rigid_projection_info,
-                    frequency_zero_cutoff_cm=self.neg_freq_thresh_cm,
                 )
             emit(f"[Dimer mode] root={self.root} freq={mode_freq_cm:+.2f} cm^-1", narrative=True)
             np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
@@ -1704,7 +1653,6 @@ class HessianDimer:
                 root=self.root, freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None,
                 tr_projection=self.tr_projection,
                 projection_info=self.rigid_projection_info,
-                frequency_zero_cutoff_cm=self.neg_freq_thresh_cm,
             )
         else:
             click.echo("[CHECK] Using active-block Hessian from UMA (partial Hessian). Skip full-space TR check.")
@@ -1713,7 +1661,6 @@ class HessianDimer:
                 self.masses_au_t, active_idx, self.device, root=self.root,
                 tr_projection=self.tr_projection,
                 projection_info=self.rigid_projection_info,
-                frequency_zero_cutoff_cm=self.neg_freq_thresh_cm,
             )
         emit(f"[Dimer mode] root={self.root} freq={mode_freq_cm:+.2f} cm^-1", narrative=True)
         np.savetxt(self.mode_path, mode_xyz, fmt="%.12f")
@@ -1814,6 +1761,7 @@ class HessianDimer:
                     freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None,
                     tr_projection=self.tr_projection,
                     projection_info=self.rigid_projection_info,
+                    frequency_zero_cutoff_cm=self.neg_freq_thresh_cm,
                 )
                 n_imag = int(np.sum(freqs_cm < -abs(self.neg_freq_thresh_cm)))
                 ims = [float(x) for x in freqs_cm if x < -abs(self.neg_freq_thresh_cm)]
@@ -1880,14 +1828,6 @@ class HessianDimer:
         ):
             click.echo("[tsopt] Reached --max-cycles budget; skipping flatten loop.")
 
-        # Surface non-convergence: if the last optimization loop exhausted the
-        # global cycle budget without the optimizer reporting convergence, the
-        # final geometry is NOT a converged TS. Emit a visible WARNING (the
-        # result.json status is set from self.termination_status at the call
-        # site). A stall is a distinct energy-plateau outcome.
-        if not self.is_converged:
-            click.echo("[tsopt] ERROR: Not converged.", err=True)
-
         # (5) Final outputs
         final_xyz = self.out_dir / "final_geometry.xyz"
         atoms_final = Atoms(self.geom.atoms, positions=(self.geom.cart_coords.reshape(-1, 3) * BOHR2ANG), pbc=False)
@@ -1912,6 +1852,7 @@ class HessianDimer:
                 freeze_idx=self.freeze_atoms if len(self.freeze_atoms) > 0 else None,
                 tr_projection=self.tr_projection,
                 projection_info=self.rigid_projection_info,
+                frequency_zero_cutoff_cm=self.neg_freq_thresh_cm,
             )
 
             del H
@@ -1920,16 +1861,9 @@ class HessianDimer:
             )
             _echo_imaginary_modes(freqs_cm, self.neg_freq_thresh_cm)
             if len(neg_idx) == 0:
-                click.echo(
-                    _no_exported_mode_message(
-                        int(self.n_imaginary_modes or 0),
-                        self.neg_freq_thresh_cm,
-                        float(freqs_cm.min()),
-                    )
-                )
                 del modes
             else:
-                _write_all_imaginary_modes(
+                n_written = _write_all_imaginary_modes(
                     self.geom,
                     freqs_cm,
                     modes,
@@ -1941,6 +1875,15 @@ class HessianDimer:
                     amplitude_ang=0.8,
                     n_frames=20,
                 )
+                if n_written == 0:
+                    click.echo(
+                        _no_exported_mode_message(
+                            int(self.n_imaginary_modes or 0),
+                            self.neg_freq_thresh_cm,
+                            float(freqs_cm.min()),
+                        ),
+                        err=True,
+                    )
                 del modes
 
             self.hessian_status = "completed"
@@ -1951,10 +1894,9 @@ class HessianDimer:
             self.saddle_order_verified = False
             self.n_imaginary_modes = None
             self.imaginary_frequencies_cm = []
-            click.echo(
-                "[tsopt] WARNING: terminal exact PHVA/frequency analysis failed; "
-                f"the final structure is retained: {self.hessian_error}",
-                err=True,
+            emit(
+                f"[tsopt] Terminal PHVA failed: {self.hessian_error}",
+                detail=True,
             )
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
@@ -1964,7 +1906,7 @@ class HessianDimer:
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         emit(f"[DONE] Saved final geometry → {final_xyz}", detail=True)
-        click.echo(f"[DONE] Mode files → {self.vib_dir}")
+        emit(f"[DONE] Mode files → {self.vib_dir}", detail=True)
 
 
 
@@ -2202,8 +2144,7 @@ def _validate_reference_mode_optimizer(
     show_default="baker",
     help=(
         "Convergence preset for the active optimizer "
-        "(gau_loose|gau|gau_tight|gau_vtight|baker|never). "
-        "Defaults to 'baker' when not provided."
+        "(gau_loose|gau|gau_tight|gau_vtight|baker|never)."
     ),
 )
 @click.option(
@@ -2238,7 +2179,7 @@ def _validate_reference_mode_optimizer(
     "--hessian-calc-mode",
     type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
     default=None, show_default="FiniteDifference",
-    help="Choose MLIP Hessian evaluation mode. YAML supplies the value when this option is omitted; explicit CLI wins. Defaults to 'FiniteDifference'.",
+    help="Choose MLIP Hessian evaluation mode. YAML supplies the value when this option is omitted; explicit CLI wins.",
 )
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
               show_default=True, help="MLIP backend.")
@@ -3110,10 +3051,9 @@ def cli(
                         freqs_cm, modes = _terminal_freqs_and_modes(last_optimizer)
                     except Exception as exc:
                         hessian_error = f"{type(exc).__name__}: {exc}"
-                        click.echo(
-                            "[hessian] WARNING: terminal exact PHVA/frequency "
-                            f"analysis is unavailable: {hessian_error}",
-                            err=True,
+                        emit(
+                            f"[tsopt] Terminal PHVA failed: {hessian_error}",
+                            detail=True,
                         )
                         freqs_cm = np.empty(0, dtype=float)
                         modes = None
@@ -3404,25 +3344,27 @@ def cli(
                             branch_freqs, branch_modes = _terminal_freqs_and_modes(
                                 branch_optimizer
                             )
+                            branch_neg = branch_freqs < -abs(
+                                neg_freq_thresh_cm
+                            )
+                            branch_n_imag: Optional[int] = int(np.sum(branch_neg))
+                            branch_ims = [
+                                float(value)
+                                for value in branch_freqs
+                                if value < -abs(neg_freq_thresh_cm)
+                            ]
+                            emit(
+                                f"[Imaginary modes:{branch_label}] "
+                                f"n={branch_n_imag}  ({branch_ims})",
+                                narrative=True,
+                            )
                         else:
                             branch_freqs = np.asarray([], dtype=float)
                             branch_modes = torch.empty(
                                 (0, geometry.cart_coords.size), dtype=torch.float64
                             )
-                        branch_neg = branch_freqs < -abs(
-                            neg_freq_thresh_cm
-                        )
-                        branch_n_imag = int(np.sum(branch_neg))
-                        branch_ims = [
-                            float(value)
-                            for value in branch_freqs
-                            if value < -abs(neg_freq_thresh_cm)
-                        ]
-                        emit(
-                            f"[Imaginary modes:{branch_label}] "
-                            f"n={branch_n_imag}  ({branch_ims})",
-                            narrative=True,
-                        )
+                            branch_n_imag = None
+                            branch_ims = []
                         return {
                             "label": branch_label,
                             "optimizer": branch_optimizer,
@@ -3482,7 +3424,11 @@ def cli(
                         return (
                             0 if getattr(branch_optimizer, "is_converged", False) else 1,
                             0 if target_negative else 1,
-                            abs(int(result["n_imag"]) - 1),
+                            (
+                                abs(int(result["n_imag"]) - 1)
+                                if result["n_imag"] is not None
+                                else 10**9
+                            ),
                             surplus_strength,
                             max_force,
                         )
@@ -3560,7 +3506,7 @@ def cli(
                         )
                         freqs_cm = selected_result["freqs"]
                         modes = selected_result["modes"]
-                        n_imag = int(selected_result["n_imag"])
+                        n_imag = selected_result["n_imag"]
                         ims = list(selected_result["ims"])
                         # Both signed trials share the same final filename.
                         # Restore it to the selected coordinates as well as the

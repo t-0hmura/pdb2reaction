@@ -187,8 +187,8 @@ All fields from `opt`, plus:
 | `rigid_projection` | object | Rigid-mode and exact-Hessian provenance; see [projection provenance](#rigid-projection-provenance) |
 
 The `files` object may include `imaginary_mode_files` (list of vib file paths).
-The retained terminal geometry normally receives one terminal PHVA even after
-numerical non-convergence; a PHVA calculation failure is recorded as
+Terminal PHVA runs only after numerical convergence. A non-converged or stalled
+run retains the terminal geometry and records PHVA as skipped; a PHVA calculation failure is recorded as
 `hessian_status: "failed"` without discarding the structure or fabricating
 frequencies. `status`/`optimization_status` describe numerical optimization,
 while `saddle_validation` describes exact-PHVA order. A numerically converged

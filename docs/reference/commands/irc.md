@@ -23,9 +23,8 @@ Options:
                                   [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
-  --max-cycles INTEGER            Maximum number of IRC steps; an explicit value
-                                  overrides YAML irc.max_cycles.  [default:
-                                  (125)]
+  --max-cycles INTEGER RANGE      Maximum number of IRC steps.  [default: (125);
+                                  x>=1]
   --step-size FLOAT               Step length in Bohr (unweighted Cartesian
                                   coordinates); an explicit value overrides YAML
                                   irc.step_length.  [default: (0.10)]
@@ -57,7 +56,7 @@ Options:
   --ref-pdb FILE                  Reference PDB/mmCIF topology to use when the
                                   input is XYZ/GJF (keeps XYZ coordinates).
   -o, --out-dir TEXT              Output directory.  [default: ./result_irc/]
-  --hessian-calc-mode [FiniteDifference|Analytical]
+  --hessian-calc-mode [finitedifference|analytical]
                                   How the ML backend builds the Hessian
                                   (Analytical or FiniteDifference); an explicit
                                   value overrides YAML calc.hessian_calc_mode.
@@ -98,9 +97,8 @@ Options:
   --backend-model TEXT            Model variant for the selected --backend (e.g.
                                   uma-s-1p2 / uma-m-1p1 for uma,
                                   orb_v3_conservative_omol for orb, MACE-OMOL-0
-                                  / off:small for mace). Default: the backend's
-                                  built-in model.  [default: (the selected
-                                  backend's own model)]
+                                  / off:small for mace).  [default: (the
+                                  selected backend's own model)]
   --calc-file FILE                Python file exposing get_calculator(...) -> an
                                   ASE Calculator, used as the energy/gradient
                                   backend (overrides --backend). Couples GFN-xTB

@@ -102,7 +102,7 @@ out_dir/ (デフォルト:./result_scan2d/)
 | `--print-parsed/--no-print-parsed` | `-s/--scan-lists` 解釈後のペア情報を表示 | `False` |
 | `--max-step-size FLOAT` | 各距離の 1 増分あたりの最大変化量（Å）。グリッド密度を決定 | `0.20` |
 | `--bias-k FLOAT` | 調和バイアス強度 `k`（eV·Å⁻²） | `300` |
-| `--relax-max-cycles INT` | 各バイアス緩和の最大最適化サイクル数。明示値は YAML `opt.max_cycles` を上書き | `10000` |
+| `--relax-max-cycles INT` | 各バイアス緩和の最大最適化サイクル数。明示値は YAML `opt.max_cycles` を上書き | `100000` |
 | `--opt-mode TEXT` | `grad` → L-BFGS、`hess` → RFOptimizer | `grad` |
 | `--freeze-links/--no-freeze-links` | PDB/mmCIF トポロジー入力時にキャップ水素の親原子を凍結 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
@@ -131,7 +131,7 @@ calc:
  device: auto # MLIP device selection
 opt:
  thresh: baker # convergence preset (default: baker)
- max_cycles: 10000 # optimizer cycle cap
+ max_cycles: 100000 # optimizer cycle cap
  dump: false # optimizer dumps (scan trajectories are controlled by --dump)
 lbfgs:
  max_step: 0.3 # maximum step length
@@ -151,7 +151,7 @@ bias:
 - Å 単位の制限値は内部で Bohr に変換され、L-BFGS ステップや RFO 信頼半径の制御に使われます。最適化の一時ファイルはテンポラリディレクトリに配置されます。
 - バイアスはエネルギー記録前に除去されるため、`surface.csv` を下流のフィッティングや可視化スクリプトにそのまま利用できます。
 - `--freeze-links` はユーザー指定の `freeze_atoms` にキャップ水素親原子をマージし、抽出された活性部位モデルの境界を固定します。
-- 明示した `--relax-max-cycles` は YAML `opt.max_cycles` を上書きします。省略時は YAML が優先され、いずれもなければデフォルト `10000` です。
+- 明示した `--relax-max-cycles` は YAML `opt.max_cycles` を上書きします。省略時は YAML が優先され、いずれもなければデフォルト `100000` です。
 
 ## 関連項目
 - [scan](scan.md) -- 1D 結合距離スキャン

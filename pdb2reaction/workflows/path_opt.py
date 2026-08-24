@@ -775,8 +775,7 @@ def _optimize_single(
     show_default="gau",
     help=(
         "Convergence preset for endpoint preoptimization only "
-        "(gau_loose|gau|gau_tight|gau_vtight|baker|never). "
-        "Defaults to 'gau' when not provided."
+        "(gau_loose|gau|gau_tight|gau_vtight|baker|never)."
     ),
 )
 @click.option(
@@ -786,8 +785,7 @@ def _optimize_single(
     show_default="gau_loose",
     help=(
         "Convergence preset for the GSM string optimizer "
-        "(gau_loose|gau|gau_tight|gau_vtight|baker|never). "
-        "Defaults to 'gau_loose' when not provided."
+        "(gau_loose|gau|gau_tight|gau_vtight|baker|never)."
     ),
 )
 @click.option(
@@ -798,7 +796,7 @@ def _optimize_single(
     help=(
         "IPOPT dual-infeasibility tolerance for the DMF path optimizer: "
         "tight (0.04) | middle (0.10) | loose (0.20) or a positive float. "
-        "This is not a Gaussian preset. Defaults to 'tight' when not provided."
+        "This is not a Gaussian preset."
     ),
 )
 @click.option(

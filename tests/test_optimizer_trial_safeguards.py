@@ -85,11 +85,12 @@ def test_flatten_alternate_start_mirrors_primary_about_saddle() -> None:
         (0, False, True),
         (1, False, True),
         (2, True, True),
+        (None, True, True),
         (1, True, False),
     ],
 )
 def test_flatten_skips_alternate_only_for_requested_first_order_branch(
-    n_imag: int,
+    n_imag: int | None,
     target_negative: bool,
     expected: bool,
 ) -> None:

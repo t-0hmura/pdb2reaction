@@ -102,7 +102,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  - `--refine-path` と参照テンプレートがある場合、`mep_w_ref.pdb` を生成し、bridge入力では `mep_w_ref.cif` も生成します。デフォルトの `path-opt` では全系マージを行いません。
 
 5. **オプションのセグメントごとの後処理**（反応セグメントのみ — 結合変化のあるセグメント。ブリッジセグメントはスキップ）
- - `--tsopt`: 各 HEI 活性部位モデルで TS 最適化を実行し、`optimization_status` と `saddle_validation` を別々に記録します。数値非収束、虚振動0本、終端PHVAの失敗/未実施、または負rootを選べない場合は、TS構造・frequency・modeを登録した後にIRC前で停止します。数値収束済み高次停留点は保持され、警告付きの診断的IRCへ進むことがありますが、一次TS認定ではありません。Hessian TS optimizerにはMEP energy-upwinding Cartesian接線候補をCPU/file cache経由で渡し、反応rootのidentityを追跡します（energyを読めない旧trajectoryでは正規化secantを使用）。Dimerは`--ref-mode`を消費しないためhandoff/cacheは適用外です。`--no-tsopt-from-mep-tan`ではcacheを作成・利用せず、初期構造Hessianの振動modeからrootを選びます。続行可能な結果はEulerPC IRCで追跡し、IRC端点を`--thresh-post`（デフォルト`baker`）で再最適化します。エンドポイント最適化の作業ディレクトリは完了後に自動削除されます。エンドポイントRFOの上り坂拒否はデフォルトで無効で、`--reject-uphill`により端点再最適化についてのみ有効化できます。
+ - `--tsopt`: 各 HEI 活性部位モデルで TS 最適化を実行し、`optimization_status` と `saddle_validation` を別々に記録します。数値非収束、虚振動0本、終端PHVAの失敗/未実施、または負rootを選べない場合は、TS構造とresult fieldを登録した後にIRC前で停止します。frequency/modeは終端PHVA成功時だけ記録します。数値収束済み高次停留点は保持され、警告付きの診断的IRCへ進むことがありますが、一次TS認定ではありません。Hessian TS optimizerにはMEP energy-upwinding Cartesian接線候補をCPU/file cache経由で渡し、反応rootのidentityを追跡します（energyを読めない旧trajectoryでは正規化secantを使用）。Dimerは`--ref-mode`を消費しないためhandoff/cacheは適用外です。`--no-tsopt-from-mep-tan`ではcacheを作成・利用せず、初期構造Hessianの振動modeからrootを選びます。続行可能な結果はEulerPC IRCで追跡し、IRC端点を`--thresh-post`（デフォルト`baker`）で再最適化します。エンドポイント最適化の作業ディレクトリは`--dump`時に保持し、それ以外は完了後に削除します。エンドポイントRFOの上り坂拒否はデフォルトで無効で、`--reject-uphill`により端点再最適化についてのみ有効化できます。
  - `--thermo`: (R, TS, P) で `freq` を呼び出し、振動/熱化学データと MLIP Gibbs ダイアグラムを取得
  - `--dft`: (R, TS, P) で DFT 一点計算を実行し、DFT ダイアグラムを構築。`--thermo` と組み合わせると DFT//MLIP Gibbs ダイアグラムも生成
   - 共有の上書きオプション: `--opt-mode`、`--opt-mode-post`（TSOPT/IRC 後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU 優先）など。Cartesian PHVA の剛体モードは、凍結anchorを尊重する constrained 処理に固定されています。
@@ -293,7 +293,7 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `--tsopt-max-cycles INT` | `tsopt --max-cycles` 上書き | `10000` |
+| `--tsopt-max-cycles INT` | `tsopt --max-cycles` 上書き | `100000` |
 | `--tsopt-out-dir PATH` | tsopt 出力サブディレクトリ | _None_ |
 
 ### Freq 上書き
@@ -302,8 +302,8 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 | --- | --- | --- |
 | `--freq-out-dir PATH` | freq 出力ディレクトリ上書き | _None_ |
 | `--freq-max-write INT` | 最大モード出力数 | `10` |
-| `--freq-amplitude-ang FLOAT` | モードアニメーション振幅（Å） | `0.8` |
-| `--freq-n-frames INT` | モードアニメーションフレーム数 | `20` |
+| `--freq-amplitude-ang FLOAT` | モード軌跡の振幅（Å） | `0.8` |
+| `--freq-n-frames INT` | モード軌跡のフレーム数 | `20` |
 | `--freq-sort [value\|abs]` | モードソート方法 | `value` |
 | `--freq-temperature FLOAT` | 熱化学温度（K） | `298.15` |
 | `--freq-pressure FLOAT` | 熱化学圧力（atm） | `1.0` |
@@ -329,7 +329,7 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 | `--scan-one-based/--no-scan-one-based` | `--scan-lists` の原子インデックスの読み方: `True` = 1 始まり、`False` = 0 始まり | _None_（1 始まり） |
 | `--scan-max-step-size FLOAT` | 最大ステップサイズ（Å） | `0.20` |
 | `--scan-bias-k FLOAT` | 調和バイアス強度（eV·Å⁻²） | `300` |
-| `--scan-relax-max-cycles INT` | 緩和サイクル上限 | `10000` |
+| `--scan-relax-max-cycles INT` | 緩和サイクル上限 | `100000` |
 | `--scan-preopt/--no-scan-preopt` | scan の事前最適化トグルを上書き | _None_ |
 | `--scan-endopt/--no-scan-endopt` | scan のステージ終端最適化トグルを上書き | _None_ |
 

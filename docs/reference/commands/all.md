@@ -110,12 +110,12 @@ Options:
   --max-nodes INTEGER             Movable internal images per GSM/DMF segment;
                                   the complete segment has max_nodes+2 images
                                   including endpoints.  [default: 20]
-  --max-cycles-gsm INTEGER        Maximum GSM string-optimizer cycles for the
-                                  MEP stage.  [default: (300)]
-  --max-cycles-dmf INTEGER        Maximum IPOPT iterations for the DMF MEP
+  --max-cycles-gsm INTEGER RANGE  Maximum GSM string-optimizer cycles for the
+                                  MEP stage.  [default: (300); x>=1]
+  --max-cycles-dmf INTEGER RANGE  Maximum IPOPT iterations for the DMF MEP
                                   stage. This is a solver iteration count, not a
                                   string-optimizer cycle count.  [default:
-                                  (300)]
+                                  (300); x>=1]
   --climb BOOLEAN                 Enable climbing image for standard GSM
                                   segments (bridge segments always disable
                                   climbing).  [default: True]
@@ -178,7 +178,7 @@ Options:
   --preopt BOOLEAN                If True, run initial single-structure
                                   optimizations of the active site model inputs.
                                   [default: True]
-  --hessian-calc-mode [FiniteDifference|Analytical]
+  --hessian-calc-mode [finitedifference|analytical]
                                   Common MLIP Hessian calculation mode forwarded
                                   to tsopt and freq.  [default:
                                   (FiniteDifference)]
@@ -199,8 +199,9 @@ Options:
                                   DFT energy diagram. With --thermo, also
                                   generate a DFT//MLIP Gibbs diagram.  [default:
                                   False]
-  --tsopt-max-cycles INTEGER      Override tsopt --max-cycles value.  [default:
-                                  (10000)]
+  --tsopt-max-cycles INTEGER RANGE
+                                  Override tsopt --max-cycles.  [default:
+                                  (100000); x>=1]
   --tsopt-out-dir DIRECTORY       Override tsopt output subdirectory (relative
                                   paths are resolved against the default).
                                   [default: (<segment>/ts)]
@@ -211,10 +212,9 @@ Options:
   --reject-uphill / --no-reject-uphill
                                   Opt in to rejecting uphill RFO trials during
                                   post-IRC endpoint re-optimization only
-                                  (tolerance: 1e-4 Hartree) and final-check the
-                                  retained endpoint at the emergency floor. Does
-                                  not affect TS optimization or path search.
-                                  [default: no-reject-uphill]
+                                  (tolerance: 1e-4 Hartree). Does not affect TS
+                                  optimization or path search.  [default: no-
+                                  reject-uphill]
   --stop-plateau / --no-stop-plateau
                                   Stop when the energy stops changing while the
                                   convergence criteria are still unmet, and
@@ -230,6 +230,8 @@ Options:
   --irc-step-size FLOAT           Override IRC --step-size (Bohr). If an IRC
                                   stops after only a few frames, retry with a
                                   smaller value such as 0.05.  [default: (0.10)]
+  --irc-max-cycles INTEGER RANGE  Cycle cap for each post-TS IRC.  [default:
+                                  (125); x>=1]
   --irc-never-stop / --no-irc-never-stop
                                   Ignore IRC RMS-gradient, hard-gradient,
                                   energy-rise, and energy-change stops and trace
@@ -257,8 +259,8 @@ Options:
                                   [default: (<tsopt dir>/dft)]
   --dft-func-basis TEXT           Override dft --func-basis value.  [default:
                                   (wb97m-v/def2-tzvpd)]
-  --dft-max-cycle INTEGER         Override dft --max-cycle value.  [default:
-                                  (100)]
+  --dft-max-cycle INTEGER RANGE   Override dft --max-cycle value.  [default:
+                                  (100); x>=1]
   --dft-conv-tol FLOAT            Override dft --conv-tol value.  [default:
                                   (1e-9)]
   --dft-grid-level INTEGER        Override dft --grid-level value.  [default:
@@ -285,9 +287,9 @@ Options:
                                   (0.20)]
   --scan-bias-k FLOAT             Override scan harmonic bias strength k
                                   (eV/Å^2).  [default: (300)]
-  --scan-relax-max-cycles INTEGER
+  --scan-relax-max-cycles INTEGER RANGE
                                   Override scan relaxation max cycles per step.
-                                  [default: (10000)]
+                                  [default: (100000); x>=1]
   --scan-preopt BOOLEAN           Override scan --preopt flag. Inherits from
                                   --preopt when omitted.  [default: (inherits
                                   --preopt)]
@@ -311,9 +313,8 @@ Options:
   --backend-model TEXT            Model variant for the selected --backend (e.g.
                                   uma-s-1p2 / uma-m-1p1 for uma,
                                   orb_v3_conservative_omol for orb, MACE-OMOL-0
-                                  / off:small for mace). Default: the backend's
-                                  built-in model.  [default: (the selected
-                                  backend's own model)]
+                                  / off:small for mace).  [default: (the
+                                  selected backend's own model)]
   --calc-file FILE                Python file exposing get_calculator(...) -> an
                                   ASE Calculator, used as the energy/gradient
                                   backend (overrides --backend). Couples GFN-xTB

@@ -37,9 +37,9 @@ Options:
                                   input is XYZ/GJF (keeps XYZ coordinates).
   --max-write INTEGER             How many modes to export (after sorting per
                                   --sort).  [default: 10]
-  --amplitude-ang FLOAT           Animation amplitude (Å) used for both _trj.xyz
-                                  and .pdb.  [default: 0.8]
-  --n-frames INTEGER              Number of frames per mode animation.
+  --amplitude-ang FLOAT           Mode-trajectory amplitude (Å) used for both
+                                  _trj.xyz and .pdb.  [default: 0.8]
+  --n-frames INTEGER              Number of frames per mode trajectory.
                                   [default: 20]
   --sort [value|abs]              Sort modes by 'value' (cm^-1) or by absolute
                                   value.  [default: value]
@@ -60,7 +60,7 @@ Options:
                                   no-dry-run]
   --out-json / --no-out-json      Write machine-readable result.json to out_dir.
                                   [default: no-out-json]
-  --hessian-calc-mode [FiniteDifference|Analytical]
+  --hessian-calc-mode [finitedifference|analytical]
                                   How the ML backend computes the Hessian (can
                                   also be set via YAML).  [default:
                                   (FiniteDifference)]
@@ -91,9 +91,8 @@ Options:
   --backend-model TEXT            Model variant for the selected --backend (e.g.
                                   uma-s-1p2 / uma-m-1p1 for uma,
                                   orb_v3_conservative_omol for orb, MACE-OMOL-0
-                                  / off:small for mace). Default: the backend's
-                                  built-in model.  [default: (the selected
-                                  backend's own model)]
+                                  / off:small for mace).  [default: (the
+                                  selected backend's own model)]
   --calc-file FILE                Python file exposing get_calculator(...) -> an
                                   ASE Calculator, used as the energy/gradient
                                   backend (overrides --backend). Couples GFN-xTB

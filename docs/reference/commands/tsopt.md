@@ -23,7 +23,9 @@ Options:
                                   containing one 3N vector or a 2-D candidate
                                   table. This guides mode identity; it does not
                                   replace the Hessian and is not supported by
-                                  Dimer. all supplies it from the MEP.
+                                  Dimer. The all workflow supplies it from the
+                                  MEP; standalone tsopt users normally leave it
+                                  unset.
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
                                   predictor. NOTE: with UMA, workers>1 plus an
                                   explicit Analytical Hessian request is an
@@ -43,8 +45,8 @@ Options:
                                   [default: convert-files]
   --ref-pdb FILE                  Reference PDB/mmCIF topology to use when the
                                   input is XYZ/GJF (keeps XYZ coordinates).
-  --max-cycles INTEGER            Maximum number of optimization cycles.
-                                  [default: 10000]
+  --max-cycles INTEGER RANGE      Maximum number of optimization cycles.
+                                  [default: (100000); x>=1]
   --flatten / --no-flatten        Enable the extra-imaginary-mode flattening
                                   loop (grad: dimer loop, hess: post-RS-P-RFO).
                                   [default: no-flatten]
@@ -61,8 +63,7 @@ Options:
   --thresh [gau_loose|gau|gau_tight|gau_vtight|baker|never]
                                   Convergence preset for the active optimizer (g
                                   au_loose|gau|gau_tight|gau_vtight|baker|never)
-                                  . Defaults to 'baker' when not provided.
-                                  [default: (baker)]
+                                  .  [default: (baker)]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config
@@ -73,11 +74,10 @@ Options:
                                   no-dry-run]
   --out-json / --no-out-json      Write machine-readable result.json to out_dir.
                                   [default: no-out-json]
-  --hessian-calc-mode [FiniteDifference|Analytical]
+  --hessian-calc-mode [finitedifference|analytical]
                                   Choose MLIP Hessian evaluation mode. YAML
                                   supplies the value when this option is
-                                  omitted; explicit CLI wins. Defaults to
-                                  'FiniteDifference'.  [default:
+                                  omitted; explicit CLI wins.  [default:
                                   (FiniteDifference)]
   -b, --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
@@ -106,9 +106,8 @@ Options:
   --backend-model TEXT            Model variant for the selected --backend (e.g.
                                   uma-s-1p2 / uma-m-1p1 for uma,
                                   orb_v3_conservative_omol for orb, MACE-OMOL-0
-                                  / off:small for mace). Default: the backend's
-                                  built-in model.  [default: (the selected
-                                  backend's own model)]
+                                  / off:small for mace).  [default: (the
+                                  selected backend's own model)]
   --calc-file FILE                Python file exposing get_calculator(...) -> an
                                   ASE Calculator, used as the energy/gradient
                                   backend (overrides --backend). Couples GFN-xTB

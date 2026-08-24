@@ -175,7 +175,7 @@ Shared single-structure optimizer controls used by both L-BFGS and RFO.
 ```yaml
 opt:
  thresh: gau # Convergence preset: gau_loose, gau, gau_tight, gau_vtight, baker, never
- max_cycles: 10000 # Maximum optimizer iterations
+ max_cycles: 100000 # Maximum optimizer iterations
  print_every: 100 # Logging stride
  min_step_norm: 1.0e-08 # Minimum step norm for acceptance
  assert_min_step: true # Stop if steps fall below threshold
@@ -479,7 +479,7 @@ RS-I-RFO / RS-P-RFO TS optimization settings (used by tsopt `--opt-mode rsirfo`,
 ```yaml
 rsirfo:
  thresh: baker # RS-IRFO convergence preset
- max_cycles: 10000 # Shared with opt.max_cycles; conflicting explicit values are rejected
+ max_cycles: 100000 # Shared with opt.max_cycles; conflicting explicit values are rejected
  print_every: 100 # Logging stride
  min_step_norm: 1.0e-08 # Minimum accepted step norm
  assert_min_step: true # Assert when steps stagnate
@@ -692,10 +692,10 @@ opt:
  thresh: gau
 
 lbfgs:
- max_cycles: 10000
+ max_cycles: 100000
 
 rfo:
- max_cycles: 10000
+ max_cycles: 100000
 
 bond:
  bond_factor: 1.2

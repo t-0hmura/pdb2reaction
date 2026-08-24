@@ -174,7 +174,7 @@ L-BFGS/RFO で共通の単一構造最適化設定。
 ```yaml
 opt:
  thresh: gau # Convergence preset: gau_loose, gau, gau_tight, gau_vtight, baker, never
- max_cycles: 10000 # Maximum optimizer iterations
+ max_cycles: 100000 # Maximum optimizer iterations
  print_every: 100 # Logging stride
  min_step_norm: 1.0e-08 # Minimum step norm for acceptance
  assert_min_step: true # Stop if steps fall below threshold
@@ -473,7 +473,7 @@ RS-I-RFO / RS-P-RFO TS 最適化（tsopt `--opt-mode rsirfo`、`rsprfo`（`hess`
 ```yaml
 rsirfo:
  thresh: baker # RS-IRFO convergence preset
- max_cycles: 10000 # opt.max_cycles と共有。異なる明示値はエラー
+ max_cycles: 100000 # opt.max_cycles と共有。異なる明示値はエラー
  print_every: 100 # Logging stride
  min_step_norm: 1.0e-08 # Minimum accepted step norm
  assert_min_step: true # Assert when steps stagnate
@@ -684,10 +684,10 @@ opt:
  thresh: gau
 
 lbfgs:
- max_cycles: 10000
+ max_cycles: 100000
 
 rfo:
- max_cycles: 10000
+ max_cycles: 100000
 
 bond:
  bond_factor: 1.2

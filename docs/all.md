@@ -80,7 +80,7 @@ Full system(s) (PDB / mmCIF / XYZ / GJF)
 3. **MEP search** — by default runs single-pass `path-opt`; `--refine-path` switches to recursive `path-search`. Recursive refinement can improve a poor HEI but can also split a noisy/bad path into unnecessary segments and increase cost, so it is off by default. Segmentation is only a candidate mechanism until TS/frequency/IRC validation. Raw engine output stays under `_work`; `mep.pdb`, bridge-input `mep.cif`, `mep_trj.xyz`, and the diagram are promoted to the top level.
 4. **Merge to full systems** (with `--refine-path`) — writes `mep_w_ref.pdb` and, for mmCIF/oversized-PDB templates, `mep_w_ref.cif`; per-segment equivalents remain under `_work/path_search/`.
 5. **Per-segment post-processing** (reactive segments only — bridge segments without bond changes are skipped):
-   - `--tsopt` — TS optimization on each HEI active-site model. The terminal result separates `optimization_status` from `saddle_validation`. Numerical non-convergence, zero imaginary modes, failed/unavailable terminal PHVA, or inability to select a negative root stops after the TS structure/frequencies/modes are registered and before IRC. A numerically converged higher-order stationary point is retained and may continue through warning-labeled diagnostic IRC; this does not certify a first-order TS. For Hessian TS optimizers, the MEP's energy-upwinding Cartesian tangent candidates are passed through a CPU/file cache to guide reaction-root identity (legacy paths without readable energies use normalized secants). Dimer does not consume `--ref-mode`, so the handoff/cache is marked not applicable. With `--no-tsopt-from-mep-tan`, TSOPT selects its initial root from the initial-structure Hessian modes. A continued result is followed by EulerPC IRC and IRC-endpoint re-optimization with `--thresh-post` (default `baker`). The endpoint optimization working directory is deleted automatically after completion. Endpoint RFO uphill rejection is disabled by default; pass `--reject-uphill` to enable it for endpoint re-optimization only.
+   - `--tsopt` — TS optimization on each HEI active-site model. The terminal result separates `optimization_status` from `saddle_validation`. Numerical non-convergence, zero imaginary modes, failed/unavailable terminal PHVA, or inability to select a negative root stops after the TS geometry and result fields are registered and before IRC; frequencies and modes are present only when terminal PHVA completes. A numerically converged higher-order stationary point is retained and may continue through warning-labeled diagnostic IRC; this does not certify a first-order TS. For Hessian TS optimizers, the MEP's energy-upwinding Cartesian tangent candidates are passed through a CPU/file cache to guide reaction-root identity (legacy paths without readable energies use normalized secants). Dimer does not consume `--ref-mode`, so the handoff/cache is marked not applicable. With `--no-tsopt-from-mep-tan`, TSOPT selects its initial root from the initial-structure Hessian modes. A continued result is followed by EulerPC IRC and IRC-endpoint re-optimization with `--thresh-post` (default `baker`). The endpoint optimization working directory is retained with `--dump` and otherwise removed after completion. Endpoint RFO uphill rejection is disabled by default; pass `--reject-uphill` to enable it for endpoint re-optimization only.
    - `--thermo` — `freq` on (R, TS, P) for vibrational + thermochemistry data and an MLIP Gibbs diagram.
    - `--dft` — single-point DFT on (R, TS, P) and a DFT diagram. With `--thermo`, a DFT//MLIP Gibbs diagram (DFT energies + MLIP thermal correction) is also produced.
    - Shared overrides: `--opt-mode`, `--opt-mode-post`, `--flatten`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, `--dft-engine` (GPU-first by default). Frozen-boundary PHVA always uses the constrained rigid-mode treatment; it is unrelated to the MEP-derived `--ref-mode`. For Hessian evaluation modes see {ref}`hessian-evaluation`.
@@ -262,12 +262,12 @@ TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (on
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `--tsopt-max-cycles INT` | Override `tsopt --max-cycles`. | `10000` |
+| `--tsopt-max-cycles INT` | Override `tsopt --max-cycles`. | `100000` |
 | `--tsopt-out-dir PATH` | Custom tsopt subdirectory. | _None_ |
 | `--freq-out-dir PATH` | Base directory override for freq outputs. | _None_ |
 | `--freq-max-write INT` | Maximum modes to write. | `10` |
-| `--freq-amplitude-ang FLOAT` | Mode animation amplitude (Å). | `0.8` |
-| `--freq-n-frames INT` | Frames per mode animation. | `20` |
+| `--freq-amplitude-ang FLOAT` | Mode-trajectory amplitude (Å). | `0.8` |
+| `--freq-n-frames INT` | Frames per mode trajectory. | `20` |
 | `--freq-sort [value\|abs]` | Mode sorting behavior. | `value` |
 | `--freq-temperature FLOAT` | Thermochemistry temperature (K). | `298.15` |
 | `--freq-pressure FLOAT` | Thermochemistry pressure (atm). | `1.0` |
@@ -282,7 +282,7 @@ TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (on
 | `--scan-one-based / --no-scan-one-based` | How to read the `--scan-lists` atom indices: `True` = 1-based, `False` = 0-based. | _None_ (1-based) |
 | `--scan-max-step-size FLOAT` | Maximum step size (Å). | `0.20` |
 | `--scan-bias-k FLOAT` | Harmonic bias strength (eV · Å⁻²). | `300` |
-| `--scan-relax-max-cycles INT` | Relaxation max cycles per step. | `10000` |
+| `--scan-relax-max-cycles INT` | Relaxation max cycles per step. | `100000` |
 | `--scan-preopt / --no-scan-preopt` | Override the scan preoptimization toggle. | _None_ |
 | `--scan-endopt / --no-scan-endopt` | Override the scan end-of-stage optimization toggle. | _None_ |
 

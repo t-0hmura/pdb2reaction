@@ -281,43 +281,40 @@ def test_tsopt_terminal_outcome_messages_separate_numerical_and_saddle_status():
         hessian_ready=True,
         n_imaginary_modes=1,
     )
-    assert "Numerical convergence criteria were not met" in first_order_not_converged
-    assert "one imaginary mode" in first_order_not_converged
-    assert "--flatten is not indicated" in first_order_not_converged
-    assert "Retry with --flatten" not in first_order_not_converged
+    assert first_order_not_converged == "[tsopt] ERROR: Not converged."
 
     converged_higher_order = _tsopt_terminal_outcome_message(
         numerically_converged=True,
         hessian_ready=True,
         n_imaginary_modes=2,
     )
-    assert "Numerical optimization converged, but" in converged_higher_order
-    assert "2 imaginary modes" in converged_higher_order
-    assert "first-order saddle validation failed" in converged_higher_order
-    assert "Retry with --flatten" in converged_higher_order
+    assert converged_higher_order == (
+        "[tsopt] WARNING: Higher-order stationary point (n_imag=2). "
+        "Try --flatten or all --refine-path."
+    )
 
     converged_minimum = _tsopt_terminal_outcome_message(
         numerically_converged=True,
         hessian_ready=True,
         n_imaginary_modes=0,
     )
-    assert "no imaginary mode" in converged_minimum
-    assert "--flatten is not indicated" in converged_minimum
-    assert "Retry with --flatten" not in converged_minimum
+    assert converged_minimum == (
+        "[tsopt] No imaginary mode detected. Try all --refine-path."
+    )
 
     validated = _tsopt_terminal_outcome_message(
         numerically_converged=True,
         hessian_ready=True,
         n_imaginary_modes=1,
     )
-    assert "Validated first-order saddle" in validated
+    assert validated == "[tsopt] Converged (n_imag=1)."
 
     unavailable = _tsopt_terminal_outcome_message(
         numerically_converged=True,
         hessian_ready=False,
         n_imaginary_modes=None,
     )
-    assert "saddle order is unavailable" in unavailable
+    assert unavailable == "[tsopt] ERROR: Failed to complete terminal PHVA."
 
 
 def test_reaction_mode_selection_uses_the_configured_saddle_threshold():
@@ -508,7 +505,7 @@ def test_dimer_final_message_separates_no_mode_from_write_failure():
     from pdb2reaction.workflows.tsopt import _no_exported_mode_message
 
     assert _no_exported_mode_message(0, 5.0, 12.0) == (
-        "[INFO] No imaginary mode detected."
+        "[tsopt] No imaginary mode detected. Try all --refine-path."
     )
     assert _no_exported_mode_message(1, 5.0, -100.0) == (
         "[tsopt] ERROR: Failed to write imaginary mode trajectory."

@@ -108,7 +108,7 @@ out_dir/ (デフォルト:./result_scan3d/)
 | **緩和** | | |
 | `--bias-k FLOAT` | 調和バイアス強度 `k`（eV·Å⁻²） | `300` |
 | `--opt-mode TEXT` | `grad` → L-BFGS、`hess` → RFOptimizer | `grad` |
-| `--relax-max-cycles INT` | 各バイアス緩和の最大最適化サイクル数。明示値は YAML `opt.max_cycles` を上書き | `10000` |
+| `--relax-max-cycles INT` | 各バイアス緩和の最大最適化サイクル数。明示値は YAML `opt.max_cycles` を上書き | `100000` |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
 | `--preopt/--no-preopt` | スキャン前に無バイアス最適化を実行 | `False` |
 | **マージとアラインメント** | | |
@@ -139,7 +139,7 @@ calc:
  device: auto # MLIP device selection
 opt:
  thresh: baker # convergence preset (default: baker)
- max_cycles: 10000 # optimizer cycle cap
+ max_cycles: 100000 # optimizer cycle cap
  dump: false # optimizer dumps (scan trajectories are controlled by --dump)
 lbfgs:
  max_step: 0.3 # maximum step length
@@ -149,7 +149,7 @@ bias:
  k: 300.0 # harmonic bias strength (eV·Å⁻²)
 ```
 
-明示した `--relax-max-cycles` は YAML `opt.max_cycles` を上書きします。省略時は YAML が優先され、いずれもなければデフォルト `10000` です。
+明示した `--relax-max-cycles` は YAML `opt.max_cycles` を上書きします。省略時は YAML が優先され、いずれもなければデフォルト `100000` です。
 
 ### セクション `bias`
 - `k`（`300`）: 調和バイアス強度（eV·Å⁻²）。

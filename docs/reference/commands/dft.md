@@ -23,15 +23,14 @@ Options:
                                   omitted (requires PDB/mmCIF input or --ref-
                                   pdb).
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1; inherits from .gjf
-                                  when available; otherwise defaults to 1).
-                                  [default: (1)]
+                                  when available).  [default: (1)]
   --ref-pdb FILE                  Reference PDB/mmCIF topology to use when the
                                   input is XYZ/GJF (keeps XYZ coordinates).
   --func-basis TEXT               Exchange–correlation functional and basis set
                                   as 'FUNC/BASIS' (e.g., 'wb97m-v/6-31g**',
                                   'wb97m-v/def2-tzvpd').  [default:
                                   wb97m-v/def2-tzvpd]
-  --max-cycle INTEGER             Maximum SCF iterations.  [default: 100]
+  --max-cycle INTEGER RANGE       Maximum SCF iterations.  [default: 100; x>=1]
   --conv-tol FLOAT                SCF convergence tolerance (Eh).  [default:
                                   1e-09]
   --grid-level INTEGER            Numerical integration grid level (PySCF

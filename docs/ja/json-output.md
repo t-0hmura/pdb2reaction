@@ -182,8 +182,8 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 | `rigid_projection` | object | 剛体モードとexact Hessian のprovenance。[projection provenance](#rigid-projection-provenance)を参照 |
 
 `files` には `imaginary_mode_files`（vib ファイルリスト）を含む場合があります。
-保持した終端構造には、数値非収束後でも通常は終端PHVAを1回実行します。PHVA
-計算が失敗した場合は構造を破棄したり振動数を捏造したりせず、
+終端PHVAは数値収束後だけ実行します。非収束または`stalled`なら終端構造を保持して
+PHVAをskipします。PHVA計算が失敗した場合は構造を破棄したり振動数を捏造したりせず、
 `hessian_status: "failed"` と理由を記録します。`status` / `optimization_status`
 は数値最適化、`saddle_validation` はexact PHVAの鞍点次数を表します。数値収束
 済み高次停留点は`optimization_status: "converged"`かつ

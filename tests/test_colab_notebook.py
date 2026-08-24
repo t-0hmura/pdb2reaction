@@ -5178,7 +5178,7 @@ def test_cycle_flags_are_owned_by_the_live_command_registry() -> None:
         available = opts_of(sub)
         assert "--max-cycles-gsm" in available, sub
         assert "--max-cycles-dmf" in available, sub
-        assert "--max-cycles" in available, sub
+        assert "--max-cycles" not in available, sub
     path_opt = opts_of("path-opt")
     assert "--max-cycles-gsm" in path_opt
     assert "--max-cycles-dmf" in path_opt

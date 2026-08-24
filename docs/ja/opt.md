@@ -94,7 +94,7 @@ out_dir/
 | `--bias-k FLOAT` | すべての `--dist-freeze` タプルに適用される調和バイアス強度（eV·Å⁻²） | `300` |
 | `--freeze-links/--no-freeze-links` | キャップ水素の親原子の凍結を切り替え（PDB/mmCIF 入力、または `--ref-pdb` 付き XYZ/GJF） | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
-| `--max-cycles INT` | 最適化反復の上限 | `10000` |
+| `--max-cycles INT` | 最適化反復の上限 | `100000` |
 | `--opt-mode TEXT` | 最適化モード: `grad`（`lbfgs`）または `hess`（`rfo`）。`lbfgs`/`rfo` も指定可。サブコマンド別の対応表（`opt` は L-BFGS/RFO、`tsopt` は Dimer/RS-P-RFO）は {ref}`ja-opt-mode-semantics` を参照 | `grad` |
 | `--flatten/--no-flatten` | 最適化後の虚振動数モードフラット化ループを有効/無効化 | `False` |
 | `--reject-uphill/--no-reject-uphill` | `hess` モードで RFO の上り坂試行ステップ拒否を明示的に有効化（許容値 `1e-4` Hartree、低エネルギー形状へロールバックして trust radius を縮小）。`grad`/`lbfgs` モードでは無効。emergency trust floor 到達時は、非収束停止を報告する前に保持構造を通常の収束条件で最終確認 | `False` |
@@ -121,7 +121,7 @@ calc:
   spin: 1
 opt:
   thresh: gau
-  max_cycles: 10000
+  max_cycles: 100000
   out_dir: ./result_opt/  # opt-specific default
 ```
 

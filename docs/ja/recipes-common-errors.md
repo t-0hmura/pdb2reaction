@@ -20,7 +20,7 @@
 | 実行時に CUDA OOM | `--radius` を縮小して再抽出（extract / all のみ）、`--opt-mode grad` に切替、有限差分 Hessian のまま、または VRAM の大きい GPU へ | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | TS は収束したが小さい虚振動が複数残る | `--flatten` を追加（`tsopt`、`opt`、`pdb2reaction all` 共通） | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | TSOPT が収束しない | L-BFGS/Dimer: `max_step` を**縮小**。RFO/RS-P-RFO（`tsopt` デフォルト）/RS-I-RFO: `trust_radius`/`trust_min`/`trust_max` を**縮小**。サイクル上限を増やし、TS 品質を確認 | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
-| IRC が正常に終了しない | 単独: `--step-size` / `--max-cycles`。`all`: `--irc-step-size` / YAML `irc.max_cycles`（`all --max-cycles` は MEP 用）。開始構造の虚振動が 1 本か確認 | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
+| IRC が正常に終了しない | 単独: `--step-size` / `--max-cycles`。`all`: `--irc-step-size` / YAML `irc.max_cycles`（MEP上限は `--max-cycles-gsm` / `--max-cycles-dmf`）。開始構造のresolvedな虚振動が 1 本か確認 | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | エネルギー平坦化後に opt/TSOPT が `stalled` で停止する | 未収束として扱い、最終構造と力・ステップ条件を確認してから、適切な閾値またはoptimizer設定で再実行 | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | MEP 探索（GSM/DMF）が失敗 | `--max-nodes` をデフォルト 20 から増やす、`--preopt` 有効化（デフォルト: `all`/`path-search`/`path-opt` で `True`、`scan*` で `False`）、別の `--mep-mode` を試す | {ref}`計算 / 収束の問題 <ts-calc-conv>` |
 | **インストール / 環境** | | |

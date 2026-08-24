@@ -1929,7 +1929,7 @@ def _merge_final_and_write(final_images: List[Any],
     type=int,
     default=None,
     show_default="1 (or the .gjf template value)",
-    help="Spin multiplicity (2S+1; defaults from a .gjf template when available, otherwise 1).",
+    help="Spin multiplicity (2S+1; inherits from a .gjf template when available).",
 )
 @click.option(
     "--freeze-links/--no-freeze-links",
@@ -1952,8 +1952,6 @@ def _merge_final_and_write(final_images: List[Any],
                     "search.max_nodes_segment applies."))
 @click.option("--max-cycles-gsm", type=click.IntRange(min=1), default=None, show_default="300",
               help="Maximum GSM string-optimizer cycles for the MEP stage.")
-@click.option("--max-cycles", type=click.IntRange(min=1), default=None, show_default="None",
-              help="Compatibility cycle cap for the selected MEP optimizer; mode-specific options take precedence.")
 @click.option("--max-cycles-dmf", type=click.IntRange(min=1), default=None, show_default="300",
               help=("Maximum IPOPT iterations for the DMF MEP stage. This is a solver "
                     "iteration count, not a string-optimizer cycle count."))
@@ -1998,8 +1996,7 @@ def _merge_final_and_write(final_images: List[Any],
     show_default="gau",
     help=(
         "Convergence preset for single-structure optimizations only "
-        "(gau_loose|gau|gau_tight|gau_vtight|baker|never). "
-        "Defaults to 'gau' when not provided."
+        "(gau_loose|gau|gau_tight|gau_vtight|baker|never)."
     ),
 )
 @click.option(
@@ -2009,8 +2006,7 @@ def _merge_final_and_write(final_images: List[Any],
     show_default="gau_loose",
     help=(
         "Convergence preset for the GSM string optimizer "
-        "(gau_loose|gau|gau_tight|gau_vtight|baker|never). "
-        "Defaults to 'gau_loose' when not provided."
+        "(gau_loose|gau|gau_tight|gau_vtight|baker|never)."
     ),
 )
 @click.option(
@@ -2021,7 +2017,7 @@ def _merge_final_and_write(final_images: List[Any],
     help=(
         "IPOPT dual-infeasibility tolerance for the DMF path optimizer: "
         "tight (0.04) | middle (0.10) | loose (0.20) or a positive float. "
-        "This is not a Gaussian preset. Defaults to 'tight' when not provided."
+        "This is not a Gaussian preset."
     ),
 )
 @click.option(
@@ -2108,7 +2104,6 @@ def cli(
     freeze_links_flag: bool,
     freeze_atoms_text: Optional[str],
     max_nodes: int,
-    max_cycles: Optional[int],
     max_cycles_gsm: Optional[int],
     max_cycles_dmf: Optional[int],
     climb: bool,
@@ -2158,12 +2153,6 @@ def cli(
     global _PRIMARY_GJF_TEMPLATE
     _PRIMARY_GJF_TEMPLATE = None
     command_str = "pdb2reaction " + " ".join(argv_all)
-    if max_cycles is not None:
-        if max_cycles_gsm is None:
-            max_cycles_gsm = max_cycles
-        if max_cycles_dmf is None:
-            max_cycles_dmf = max_cycles
-
     # Robustly accept both styles for -i/--input, --ref-full-pdb, and --ref-pdb
     i_vals = collect_option_values(argv_all, ("-i", "--input"))
     if i_vals:
@@ -2349,16 +2338,10 @@ def cli(
             search_cfg["max_nodes_segment"] = int(max_nodes)
         # The GSM cycle budget also bounds the fully-grown string; DMF's budget
         # is a separate IPOPT iteration count.
-        if (
-            cli_param_overridden(ctx, "max_cycles_gsm")
-            or cli_param_overridden(ctx, "max_cycles")
-        ) and max_cycles_gsm is not None:
+        if cli_param_overridden(ctx, "max_cycles_gsm") and max_cycles_gsm is not None:
             stopt_cfg["max_cycles"] = int(max_cycles_gsm)
             stopt_cfg["stop_in_when_full"] = int(max_cycles_gsm)
-        if (
-            cli_param_overridden(ctx, "max_cycles_dmf")
-            or cli_param_overridden(ctx, "max_cycles")
-        ) and max_cycles_dmf is not None:
+        if cli_param_overridden(ctx, "max_cycles_dmf") and max_cycles_dmf is not None:
             dmf_cfg["max_cycles"] = int(max_cycles_dmf)
         if cli_param_overridden(ctx, "dmf_backend"):
             dmf_cfg["backend"] = str(dmf_backend).lower()
