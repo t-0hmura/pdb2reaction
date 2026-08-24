@@ -10,13 +10,22 @@ optimizer は `--opt-mode` で選びます。ほとんどの系では `--opt-mod
 `--reject-uphill/--no-reject-uphill` は最小値最適化（`opt` と `all` の
 IRC 後エンドポイント再最適化）だけに適用されます。
 
-収束後、`tsopt` は最終的な Hessian 計算と虚振動数チェックを自動で行います。妥当な TS では虚振動数が **ちょうど 1 つ** です。別途の [`freq`](freq.md) は、完全な振動解析や熱化学補正が必要な場合にのみ実行します。端点の接続性は必ず [`irc`](irc.md) で確認してください。
+optimizer終了時、`tsopt` は最終構造を保持し、数値最適化が非収束でも通常は終端exact PHVAを1回実行します。PHVAが失敗した場合も構造は破棄せず、振動数を捏造せずに失敗理由を記録します。数値optimizer statusと鞍点次数は独立です。一次TS認定には虚振動が**ちょうど1本**であること、意図した変位、そして[`irc`](irc.md)の正しい端点接続が必要です。別途の[`freq`](freq.md)は完全な振動解析や熱化学補正が必要な場合だけ実行します。
+
+### 通常の終端outcomeと致命的errorの境界
+
+| 条件 | `tsopt` の成果物 | `all` の動作 |
+| --- | --- | --- |
+| 収束条件未達、明示cycle上限到達、またはopt-inのenergy plateau | 最終構造とtrajectoryを保持し、終端PHVAを1回試行。成功時はfrequency/modeを記録 | TS成果物を登録後、数値statusが`converged`かつ有効な負rootがある場合を除いてIRC前停止 |
+| 終端PHVA失敗 | 構造を保持し、`hessian_status: failed`と理由を記録。frequencyは捏造しない | 成果物登録後にIRC前停止 |
+| 不正入力/geometry、または`ZeroStepLength` / `OptimizationError`など回復不能なoptimizer例外 | structured error envelopeへ進み、それ以前に書かれたfileだけをbest effortで保持 | 通常の数値非収束へ読み替えずstageを中断 |
+
 
 TS 初期構造がまず必要な場合は、2 端点なら [path-opt](path-opt.md)、2 構造以上なら [path-search](path-search.md) を実行し、得られた HEI を `tsopt` → `irc` の順で最適化・検証してください。mmCIF入力は内部PDBへ変換され、成果物には元IDを復元したCIFも生成されます。XYZ/GJF入力では`--ref-pdb`にPDBまたはmmCIF topologyを指定できます。
 
-`--ref-mode` は通常の単独 `tsopt` に必要なoptionではなく、主に `all` 内部の MEP→TS handoffです。`all` は MEP energyを使った標準のupwinding Cartesian 3N接線を生成してデフォルトで渡し、energyを読めない旧trajectoryだけは正規化secantの二等分線へfallbackします。`all --no-tsopt-from-mep-tan` では TSOPT が初期構造の Hessian を計算し、その振動モードから初期 root を選びます。外部経路から同じ原子順の非ゼロCartesian 3N方向を用意したexpert standalone runだけが`--ref-mode PATH`を直接指定します。
+`--ref-mode` は通常の単独 `tsopt` に必要なoptionではなく、主に `all` 内部の MEP→TS handoffです。同じ原子順のCartesian 3N候補を`.npz`、`.npy`、または空白区切りtext（単一vectorまたは2次元candidate table）から読み込みます。`all` はHessian TS optimizerに対してMEP接線候補をCPU/file cache経由で渡し、energyを読めない旧trajectoryでは正規化secantへfallbackします。Dimerは`--ref-mode`を使用しません。`all --no-tsopt-from-mep-tan`ではcache作成・利用を止め、初期構造Hessianの振動modeからrootを選びます。これは初期Hessianそのものの置換ではなく、root identityとoverlap追跡の参照方向です。終端exact PHVAが鞍点次数を決め、`n_imag=0`は`no_imaginary`、`n_imag>1`は`higher_order`として数値収束statusとは別に記録されます。
 
-接線は初期Hessian rootを選び、modeが回転した後もoverlapで追跡するために使います。失敗した探索を別の探索へ自動変換する機能ではありません。デフォルトでは一時的なmode-lossによるtrial棄却、quasi-Newton固有値構造gate、自動saddle recovery、自動変位multistartを実行しません。終端のexact PHVAが合否を決め、`n_imag = 0`または`n_imag > 1`は`not_converged`です。
+接線は初期Hessian rootを選び、modeが回転した後もoverlapで追跡するために使います。失敗した探索を別の探索へ自動変換する機能ではありません。デフォルトでは一時的なmode-lossによるtrial棄却、quasi-Newton固有値構造gate、自動saddle recovery、自動変位multistartを実行しません。終端exact PHVAは鞍点次数を判定しますが、数値optimizer statusを書き換えません。`n_imag = 0`は`no_imaginary`、`n_imag > 1`は`higher_order`であり、後者は一次TS認定ではないものの、数値収束済みで有効な負rootを選べる場合に限り`all`が警告付き診断IRCへ進むことがあります。
 
 `--flatten`は余剰虚振動を除くための独立した明示optionです。余分な負方向は除去できますが、欠けた反応modeは生成できません。
 
@@ -141,7 +150,7 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
 | **TS optimizer とモード** | | |
 | `--opt-mode TEXT` | TS optimizer プリセット（Choice: `grad` / `hess` / `dimer` / `rsirfo` / `trim` / `rsprfo`）。`grad`/`dimer` → Hessian-Guided Dimer; `hess`/`rsprfo` → RS-P-RFO（Banerjee、デフォルト、non-microiter）; `rsirfo` → RS-I-RFO; `trim` → TRIM（Helgaker、non-microiter）。サブコマンド別の対応表（`opt` は L-BFGS/RFO、`tsopt` は Dimer/RS-P-RFO）は {ref}`ja-opt-mode-semantics` を参照 | `hess` |
-| `--ref-mode PATH` | advanced/internal MEP handoff用のCartesian 3N方向（空白区切りtextまたは`.npy`）。`all`がデフォルトで指定し、通常の単独runでは省略します。外部経路を使うexpert runではroot選択とoverlap追跡に使用します | _None_ |
+| `--ref-mode PATH` | `.npz` / `.npy` / 空白区切りtextのCartesian 3N参照候補（単一vectorまたは2次元table）。Hessian root identity/overlapを案内するだけでHessian自体は置換せず、Dimerでは非対応。`all`がHessian TS optimizerへMEPから供給 | _None_ |
 | `--flatten/--no-flatten` | Dimer と RS-P-RFO / RS-I-RFO / TRIM Hessian family の余剰虚振動モード flatten を有効化。`--ref-mode` は保持する負モードを特定するが、それ自体では flatten を有効化しない | `False` |
 | `--coord-type TEXT` | 最適化座標系（`cart` / `redund` / `dlc` / `tric`）。`cart` がデフォルトです。`dlc` は条件付けを変えますが、どちらも一律に高速・堅牢ではないため問題のseedで比較してください。Hessian 系`tsopt`は4種類すべて、`path-opt` / `path-search`は`cart` / `dlc`のみ受け付けます | `cart` |
 | `--precision [fp32\|fp64]` | MLIP バックエンド精度。バックエンド固有のキー（UMA `precision` / ORB `precision` / MACE `default_dtype`。`aimnet2`: `fp32` は no-op、`fp64` は拒否）へ振り分け。対象系で対応精度を比較してください。{ref}`再現性: GPU クラスによる精度の選択 <ja-precision-by-gpu-class>` を参照 | バックエンドデフォルト (uma `fp32`、orb・mace `fp64`) |
@@ -297,7 +306,7 @@ TS 収束が遅い場合や最適化中に TS モードが失われる場合は�
 
 ## 注記
 
-- 絶対値が設定した閾値（デフォルト 5 cm⁻¹）未満の虚振動は、モードファイル出力と平坦化では無視します。最終的な TS 判定ではすべての負の振動数を数えます。Hessian-family optimizer は一次鞍点のrootを1個だけ追跡します。YAMLでは1要素のlist（例: `rsirfo.roots: [0]`）で設定し、空listまたは複数rootは拒否されます。Dimer は別の単数 key `hessian_dimer.root`（default `0`）を使います。`tsopt` に `--root` CLI flag はありません（[`irc`](irc.md) とは異なります）。
+- 絶対値が設定した閾値（デフォルト 5 cm⁻¹）未満の虚振動は、最終 TS 判定、モードファイル出力、平坦化のすべてで無視します。Hessian-family optimizer は一次鞍点のrootを1個だけ追跡します。YAMLでは1要素のlist（例: `rsirfo.roots: [0]`）で設定し、空listまたは複数rootは拒否されます。Dimer は別の単数 key `hessian_dimer.root`（default `0`）を使います。`tsopt` に `--root` CLI flag はありません（[`irc`](irc.md) とは異なります）。
 - `--opt-mode` はワークフロー選択用です（デフォルト: `rsprfo`）。YAML のモードマッピングを手動で変更するのではなく、目的のアルゴリズムに合ったモードを選択してください。
 - Dimer方向、回転force、flatten、最終exact PHVA検証は`freq`と同じ固定の constrained 処理を使用します。Dimerは中心imageが変わるたびにこの基底を再構築します。全凍結anchorと両立する真の剛体null方向でない限り、active fragmentの並進を差し引きません。Hessian RFO最適化自体は、この射影を行わずactive-DOF Cartesian Hessian を扱います。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
 - 設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。

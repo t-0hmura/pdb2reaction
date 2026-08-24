@@ -280,13 +280,7 @@ _ANNOUNCED_MODEL_LOADS: set = set()
 
 @contextlib.contextmanager
 def _announce_model_load(backend: str, kwargs: Dict[str, Any]):
-    """Bracket the first load of each model so a download cannot look like a hang.
-
-    Weight downloads happen inside the backend constructor with no output of
-    their own, so a first run appears frozen. Announcing the load and confirming
-    it distinguishes "still fetching" from "already cached" without inspecting
-    another library's cache layout.
-    """
+    """Bracket the first load of each model so a download cannot look like a hang."""
     from pdb2reaction.core.output import emit
 
     model = str(kwargs.get("model") or "").strip()
@@ -300,7 +294,6 @@ def _announce_model_load(backend: str, kwargs: Dict[str, Any]):
     try:
         yield
     except BaseException:
-        # A load that raised was never completed; a retry must announce again.
         _ANNOUNCED_MODEL_LOADS.discard(key)
         raise
     emit("[backend] Done.", narrative=True)

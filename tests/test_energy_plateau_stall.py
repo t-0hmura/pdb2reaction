@@ -26,6 +26,8 @@ from pdb2reaction.core.utils import (
 from pdb2reaction.workflows.tsopt import (
     HessianDimer,
     _hessian_postprocessing_is_ready,
+    _thresholded_reaction_mode_index,
+    _tsopt_terminal_outcome_message,
     _tsopt_terminal_status,
 )
 
@@ -268,24 +270,71 @@ def test_stalled_optimizer_never_reports_converged():
 def test_tsopt_terminal_status_composition():
     converged = _FakeOpt(is_converged=True)
     assert _tsopt_terminal_status(converged, saddle_verified=True) == "converged"
-    # A converged optimizer at a non-first-order structure is not_converged.
-    assert _tsopt_terminal_status(converged, saddle_verified=False) == "not_converged"
+    # Numerical convergence is independent of saddle order.
+    assert _tsopt_terminal_status(converged, saddle_verified=False) == "converged"
     assert _tsopt_terminal_status(_FakeOpt(), saddle_verified=True) == "not_converged"
 
 
-def test_hessian_postprocessing_accepts_convergence_or_plateau():
-    unconverged = _FakeOpt()
-    assert _hessian_postprocessing_is_ready(unconverged) is False
+def test_tsopt_terminal_outcome_messages_separate_numerical_and_saddle_status():
+    first_order_not_converged = _tsopt_terminal_outcome_message(
+        numerically_converged=False,
+        hessian_ready=True,
+        n_imaginary_modes=1,
+    )
+    assert "Numerical convergence criteria were not met" in first_order_not_converged
+    assert "one imaginary mode" in first_order_not_converged
+    assert "--flatten is not indicated" in first_order_not_converged
+    assert "Retry with --flatten" not in first_order_not_converged
 
-    converged = _FakeOpt(is_converged=True)
-    assert _hessian_postprocessing_is_ready(converged) is True
+    converged_higher_order = _tsopt_terminal_outcome_message(
+        numerically_converged=True,
+        hessian_ready=True,
+        n_imaginary_modes=2,
+    )
+    assert "Numerical optimization converged, but" in converged_higher_order
+    assert "2 imaginary modes" in converged_higher_order
+    assert "first-order saddle validation failed" in converged_higher_order
+    assert "Retry with --flatten" in converged_higher_order
 
-    stalled = _FakeOpt(is_stalled=True)
-    assert _hessian_postprocessing_is_ready(stalled) is True
+    converged_minimum = _tsopt_terminal_outcome_message(
+        numerically_converged=True,
+        hessian_ready=True,
+        n_imaginary_modes=0,
+    )
+    assert "no imaginary mode" in converged_minimum
+    assert "--flatten is not indicated" in converged_minimum
+    assert "Retry with --flatten" not in converged_minimum
 
-    stale_criteria = _FakeOpt(is_converged=False)
-    stale_criteria.convergence_criteria_met = True
-    assert _hessian_postprocessing_is_ready(stale_criteria) is False
+    validated = _tsopt_terminal_outcome_message(
+        numerically_converged=True,
+        hessian_ready=True,
+        n_imaginary_modes=1,
+    )
+    assert "Validated first-order saddle" in validated
+
+    unavailable = _tsopt_terminal_outcome_message(
+        numerically_converged=True,
+        hessian_ready=False,
+        n_imaginary_modes=None,
+    )
+    assert "saddle order is unavailable" in unavailable
+
+
+def test_reaction_mode_selection_uses_the_configured_saddle_threshold():
+    frequencies = np.array([-450.0, -3.2, 20.0])
+    assert _thresholded_reaction_mode_index(frequencies, 5.0, 1) == 0
+    assert _thresholded_reaction_mode_index(np.array([-3.2, 20.0]), 5.0) is None
+
+
+def test_hessian_postprocessing_requires_numerical_convergence():
+    assert _hessian_postprocessing_is_ready(None) is False
+    assert _hessian_postprocessing_is_ready(_FakeOpt()) is False
+    assert _hessian_postprocessing_is_ready(_FakeOpt(is_converged=True)) is True
+    assert _hessian_postprocessing_is_ready(_FakeOpt(is_stalled=True)) is False
+
+    already_failed = _FakeOpt()
+    already_failed._last_exact_failure_reason = "RuntimeError: failed"
+    assert _hessian_postprocessing_is_ready(already_failed) is False
 
 
 def test_emit_terminal_status_stalled_and_converged_are_distinct(capsys):
@@ -299,9 +348,11 @@ def test_emit_terminal_status_stalled_and_converged_are_distinct(capsys):
 
     emit_optimizer_terminal_status(
         "opt", converged=True, cycles=7, max_cycles=20,
+        converged_message="Numerical optimization converged.",
     )
     conv_out = capsys.readouterr().out
-    assert "Converged!" in conv_out
+    assert "Numerical optimization converged." in conv_out
+    assert "Converged!" not in conv_out
     assert "Stalled" not in conv_out
 
 
@@ -351,8 +402,8 @@ def test_hessian_dimer_stops_after_child_stall(tmp_path):
     assert _tsopt_terminal_status(runner, saddle_verified=True) == "stalled"
 
 
-def test_terminal_saddle_certification_counts_every_negative_root():
-    """Certification and the published imaginary set both count freq < 0."""
+def test_terminal_saddle_certification_uses_magnitude_threshold():
+    """Certification ignores negative roots softer than the configured gate."""
     from pdb2reaction.workflows.tsopt import (
         _certified_negative_frequencies,
         _certified_saddle_order,
@@ -360,27 +411,26 @@ def test_terminal_saddle_certification_counts_every_negative_root():
         _imaginary_mode_indices_and_values,
     )
 
-    # One strong imaginary mode plus a genuine soft negative complement root.
+    # One strong imaginary mode plus a numerically soft negative root.
     freqs_cm = np.array([-450.0, -3.2, 12.0, 640.0])
     reported_idx, reported_values = _imaginary_mode_indices_and_values(freqs_cm, 5.0)
 
-    # Mode export and the printed list keep the magnitude threshold ...
+    # Mode export, printed output, and certification use one threshold.
     assert len(reported_idx) == 1
     assert reported_values == [-450.0]
-    # ... while certification sees the second-order saddle.
-    assert _certified_saddle_order(freqs_cm) == 2
-    assert _certified_negative_frequencies(freqs_cm) == [-450.0, -3.2]
+    assert _certified_saddle_order(freqs_cm, 5.0) == 1
+    assert _certified_negative_frequencies(freqs_cm, 5.0) == [-450.0]
 
     runner = _FakeOpt()
     runner.is_converged = True
     export_idx = _finalize_dimer_saddle_status(runner, freqs_cm, 5.0)
 
-    # The public result is self-consistent: count and list are the certified set.
-    assert runner.n_imaginary_modes == 2
-    assert runner.imaginary_frequencies_cm == [-450.0, -3.2]
-    assert runner.saddle_order_verified is False
-    assert runner.is_converged is False
-    assert _tsopt_terminal_status(runner, saddle_verified=False) == "not_converged"
+    # The public result is self-consistent with the thresholded certified set.
+    assert runner.n_imaginary_modes == 1
+    assert runner.imaginary_frequencies_cm == [-450.0]
+    assert runner.saddle_order_verified is True
+    assert runner.is_converged is True
+    assert _tsopt_terminal_status(runner, saddle_verified=True) == "converged"
     # Mode export still follows the threshold-filtered indices.
     assert export_idx.tolist() == reported_idx.tolist()
 
@@ -394,20 +444,19 @@ def test_terminal_saddle_certification_counts_every_negative_root():
     assert single.is_converged is True
     assert _tsopt_terminal_status(single, saddle_verified=True) == "converged"
 
-    # A lone soft negative root is one certified imaginary mode, and the public
-    # count/list say so even though it is below the reporting threshold.
+    # A lone sub-threshold negative root does not certify a transition state.
     soft = _FakeOpt()
     soft.is_converged = True
     soft_export = _finalize_dimer_saddle_status(soft, np.array([-3.2, 12.0, 640.0]), 5.0)
-    assert soft.n_imaginary_modes == 1
-    assert soft.imaginary_frequencies_cm == [-3.2]
-    assert soft.saddle_order_verified is True
+    assert soft.n_imaginary_modes == 0
+    assert soft.imaginary_frequencies_cm == []
+    assert soft.saddle_order_verified is False
     assert soft.is_converged is True
     assert soft_export.tolist() == []
 
 
-def test_exact_phva_validation_counts_soft_negative_roots():
-    """The bundled exact PHVA branch reports order 2 for [-450, -3.2, +12]."""
+def test_exact_phva_validation_ignores_soft_negative_roots():
+    """The bundled exact PHVA branch reports order 1 for [-450, -3.2, +12]."""
     from pysisyphus.tsoptimizers.RSIRFOptimizer import RSIRFOptimizer
 
     modes = np.eye(3)
@@ -416,8 +465,7 @@ def test_exact_phva_validation_counts_soft_negative_roots():
 
     # TSHessianOptimizer is abstract; RSIRFO is the shipped concrete owner.
     optimizer = RSIRFOptimizer.__new__(RSIRFOptimizer)
-    # Keeping the magnitude threshold at its shipped value proves certification
-    # no longer depends on it.
+    # The shipped magnitude threshold is also the certification threshold.
     optimizer.saddle_imaginary_threshold_cm = 5.0
     optimizer.small_eigval_thresh = 1e-8
     optimizer.roots = np.array([0])
@@ -439,10 +487,10 @@ def test_exact_phva_validation_counts_soft_negative_roots():
         )
     )
 
-    assert optimizer._last_exact_n_imaginary == 2
-    assert optimizer._last_exact_saddle_verified is False
+    assert optimizer._last_exact_n_imaginary == 1
+    assert optimizer._last_exact_saddle_verified is True
     assert has_saddle_modes is True
-    assert any("n_imag=2" in message for message in printed)
+    assert any("n_imag=1" in message for message in printed)
 
     # A single negative root still certifies first order.
     printed.clear()
@@ -456,14 +504,12 @@ def test_exact_phva_validation_counts_soft_negative_roots():
     assert any("n_imag=1" in message for message in printed)
 
 
-def test_dimer_final_message_separates_certification_from_mode_export():
-    """A certified soft root must not be reported as no imaginary mode."""
+def test_dimer_final_message_separates_no_mode_from_write_failure():
     from pdb2reaction.workflows.tsopt import _no_exported_mode_message
 
     assert _no_exported_mode_message(0, 5.0, 12.0) == (
-        "[INFO] No imaginary mode found at the end (ν_min = 12.00 cm^-1)."
+        "[INFO] No imaginary mode detected."
     )
-    assert _no_exported_mode_message(1, 5.0, -3.2) == (
-        "[INFO] exact n_imag=1; no mode exceeded the 5 cm^-1 export threshold "
-        "(ν_min = -3.20 cm^-1)."
+    assert _no_exported_mode_message(1, 5.0, -100.0) == (
+        "[tsopt] ERROR: Failed to write imaginary mode trajectory."
     )

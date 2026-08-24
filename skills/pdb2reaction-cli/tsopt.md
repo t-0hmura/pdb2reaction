@@ -121,11 +121,13 @@ elif d["n_imaginary_modes"] is not None and d["n_imaginary_modes"] > 1:
     print("NOT VALIDATED: multiple imaginary modes; inspect vib/imag_*_trj.xyz")
 ```
 
-For multi-imaginary cases, the command reports `not_converged`. Visualize every
+For multi-imaginary cases, `optimization_status` remains the numerical optimizer
+outcome while `saddle_validation` is `higher_order`. Visualize every
 `vib/imag_*_trj.xyz`; `.pdb`/`.cif` companions exist only with conversion
 topology. Diagnose constraints, precision, and mode character, then obtain a
 better seed or use the documented flatten workflow rather than accepting it as
-a first-order saddle.
+a first-order saddle. `all` may run only warning-labelled diagnostic IRC when a
+valid negative root is available.
 
 ## Caveats
 

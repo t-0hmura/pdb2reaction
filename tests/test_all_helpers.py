@@ -18,23 +18,51 @@ from pdb2reaction.workflows._all_helpers import (
 )
 
 
-def test_tsopt_result_validation_requires_verified_first_order_saddle() -> None:
-    from pdb2reaction.workflows.all import _validate_tsopt_result_payload
+def test_tsopt_continuation_separates_numerical_status_and_saddle_order() -> None:
+    from pdb2reaction.workflows.all import _tsopt_continuation_decision
 
-    _validate_tsopt_result_payload(
-        {"status": "converged", "n_imaginary_modes": 1}
-    )
+    first_order = _tsopt_continuation_decision({
+        "optimization_status": "converged",
+        "hessian_status": "completed",
+        "saddle_validation": "first_order",
+        "n_imaginary_modes": 1,
+        "reaction_mode_index": 0,
+        "reaction_mode_frequency_cm": -450.0,
+    })
+    assert first_order["continue_irc"] is True
+    assert first_order["reason"] == "first_order_saddle"
+
+    higher_order = _tsopt_continuation_decision({
+        "optimization_status": "converged",
+        "hessian_status": "completed",
+        "saddle_validation": "higher_order",
+        "n_imaginary_modes": 2,
+        "reaction_mode_index": 1,
+        "reaction_mode_frequency_cm": -120.0,
+    })
+    assert higher_order["continue_irc"] is True
+    assert higher_order["reason"] == "higher_order_saddle"
+
+    invalid_positive_root = _tsopt_continuation_decision({
+        "optimization_status": "converged",
+        "hessian_status": "completed",
+        "n_imaginary_modes": 2,
+        "imaginary_frequencies_cm": [-450.0, -120.0],
+        "reaction_mode_index": 8,
+        "reaction_mode_frequency_cm": 25.0,
+    })
+    assert invalid_positive_root["continue_irc"] is True
+    assert invalid_positive_root["reaction_mode_index"] == 0
+    assert invalid_positive_root["reaction_mode_frequency_cm"] == -450.0
+    assert invalid_positive_root["reaction_mode_fallback"] is True
 
     for payload in (
-        {"status": "not_converged", "n_imaginary_modes": 1},
-        {"status": "converged", "n_imaginary_modes": 0},
-        {"status": "converged", "n_imaginary_modes": 2},
-        {"status": "not_converged", "n_imaginary_modes": None},
+        {"optimization_status": "not_converged", "hessian_status": "completed", "n_imaginary_modes": 1},
+        {"optimization_status": "converged", "hessian_status": "completed", "n_imaginary_modes": 0},
+        {"optimization_status": "converged", "hessian_status": "failed", "n_imaginary_modes": None},
         {"status": "unknown"},
     ):
-        with pytest.raises(click.ClickException, match="IRC was not started"):
-            _validate_tsopt_result_payload(payload)
-
+        assert _tsopt_continuation_decision(payload)["continue_irc"] is False
 
 def test_all_dft_child_omits_wrapper_defaults_for_yaml_resolution(
     tmp_path: Path, monkeypatch,
@@ -81,30 +109,42 @@ def test_all_stops_before_irc_when_tsopt_result_is_invalid(
     def fake_run_cli_main(_name, _cli, args, **_kwargs) -> None:
         captured_args.extend(args)
         ts_dir = Path(args[args.index("--out-dir") + 1])
+        ts_dir.mkdir(parents=True, exist_ok=True)
+        (ts_dir / "final_geometry.xyz").write_text(
+            "1\nTS\nH 0.0 0.0 0.0\n", encoding="utf-8"
+        )
         (ts_dir / "result.json").write_text(
-            json.dumps(
-                {"status": "not_converged", "n_imaginary_modes": 2}
-            ),
+            json.dumps({
+                "status": "not_converged",
+                "optimization_status": "not_converged",
+                "hessian_status": "completed",
+                "saddle_validation": "higher_order",
+                "n_imaginary_modes": 2,
+                "imaginary_frequencies_cm": [-450.0, -120.0],
+                "reaction_mode_index": 0,
+                "reaction_mode_frequency_cm": -450.0,
+            }),
             encoding="utf-8",
         )
 
     monkeypatch.setattr(all_workflow, "_run_cli_main", fake_run_cli_main)
     monkeypatch.setattr(all_workflow, "_echo_detail", lambda *_a, **_k: None)
 
-    with pytest.raises(click.ClickException, match="IRC was not started"):
-        all_workflow._run_tsopt_on_hei(
-            hei,
-            charge=0,
-            spin=1,
-            calc_cfg={"backend": "uma"},
-            args_yaml=None,
-            out_dir=tmp_path / "segment",
-            freeze_links=False,
-            opt_mode_default="hess",
-            ref_pdb=None,
-            convert_files=False,
-        )
+    _ts_path, ts_geom = all_workflow._run_tsopt_on_hei(
+        hei,
+        charge=0,
+        spin=1,
+        calc_cfg={"backend": "uma"},
+        args_yaml=None,
+        out_dir=tmp_path / "segment",
+        freeze_links=False,
+        opt_mode_default="hess",
+        ref_pdb=None,
+        convert_files=False,
+    )
 
+    assert ts_geom._tsopt_continuation["continue_irc"] is False
+    assert ts_geom._tsopt_continuation["reason"] == "ts_optimization_not_converged"
     assert "--out-json" in captured_args
 
 

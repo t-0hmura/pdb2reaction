@@ -148,9 +148,11 @@ directory so it cannot silently overwrite the original partial run.
 - `segments/seg_NN/` is created when post-processing starts and may therefore
   be partial after a failed TSOPT/IRC/freq/DFT stage. Presence of the directory
   is not a success signal; check `summary.json` and the stage `result.json`.
-  `all` starts IRC only after the TS stage reports `status=converged` and
-  `n_imaginary_modes=1`; a failed or higher-order TS attempt stops the pipeline
-  before IRC and endpoint optimization.
+  `all` starts IRC only after numerical TS convergence, completed terminal
+  PHVA, and selection of a negative root. A converged higher-order result may
+  continue only as warning-labelled diagnostic IRC; it is not first-order TS
+  certification. Numerical non-convergence, zero modes, failed/skipped PHVA,
+  or no valid negative root stops after preserving TS artifacts.
   MEP scratch remains under `<work_path>/seg_NNN_<tag>/` (3-digit;
   `_work/path_opt/` by default, `_work/path_search/` with
   `--refine-path`).

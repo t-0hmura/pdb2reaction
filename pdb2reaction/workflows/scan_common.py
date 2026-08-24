@@ -203,7 +203,7 @@ def add_scan_common_options(
     bias_k_default: float | None = None,
     # Display-only fallback when the command resolves --bias-k downstream.
     bias_k_shown: str | None = "300.0",
-    relax_max_cycles_default: int = 10000,
+    relax_max_cycles_default: int | None = None,
     opt_mode_default: str = "grad",
     freeze_links_default: bool = True,
     dump_default: bool = False,
@@ -290,9 +290,9 @@ def add_scan_common_options(
         ),
         click.option(
             "--relax-max-cycles",
-            type=int,
+            type=click.IntRange(min=1),
             default=relax_max_cycles_default,
-            show_default=True,
+            show_default="100000",
             help=(
                 "Maximum optimizer cycles per grid relaxation. An explicitly "
                 "provided value overrides YAML opt.max_cycles."

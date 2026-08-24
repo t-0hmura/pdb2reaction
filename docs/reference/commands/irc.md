@@ -57,7 +57,7 @@ Options:
   --ref-pdb FILE                  Reference PDB/mmCIF topology to use when the
                                   input is XYZ/GJF (keeps XYZ coordinates).
   -o, --out-dir TEXT              Output directory.  [default: ./result_irc/]
-  --hessian-calc-mode [finitedifference|analytical]
+  --hessian-calc-mode [FiniteDifference|Analytical]
                                   How the ML backend builds the Hessian
                                   (Analytical or FiniteDifference); an explicit
                                   value overrides YAML calc.hessian_calc_mode.

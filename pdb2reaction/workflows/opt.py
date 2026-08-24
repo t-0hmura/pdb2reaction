@@ -35,6 +35,7 @@ from pdb2reaction.core.defaults import (
     OPT_BASE_KW,
     LBFGS_KW,
     RFO_KW,
+    FREQ_KW,
     OPT_MODE_ALIASES,
     THRESH_CHOICES,
     UMA_CALC_KW,
@@ -68,6 +69,7 @@ from pdb2reaction.core.utils import (
     optimizer_terminal_status,
     unbiased_energy_hartree,
     lossless_int,
+    optional_positive_int,
 )
 from pdb2reaction.cli.common_options import (
     add_ml_charge_spin_options,
@@ -85,12 +87,15 @@ from pdb2reaction.workflows.freq import (
     _frequencies_cm_and_modes,
     _calc_energy,
 )
+from pysisyphus.normal_modes import (
+    normalize_frequency_zero_cutoff_cm,
+    resolved_imaginary_mask,
+)
 
 logger = logging.getLogger(__name__)
 
 EV2AU = 1.0 / AU2EV  # eV → Hartree
 H_EVAA_2_AU = EV2AU / (ANG2BOHR * ANG2BOHR)  # (eV/Å^2) → (Hartree/Bohr^2)
-OPT_FLATTEN_NEG_FREQ_THRESH_CM = 5.0
 OPT_FLATTEN_AMP_ANG = 0.10
 OPT_FLATTEN_MAX_ITER = 50
 
@@ -424,9 +429,9 @@ def _seed_rfo_initial_hessian(
 )
 @click.option(
     "--max-cycles",
-    type=int,
-    default=10000,
-    show_default=True,
+    type=click.IntRange(min=1),
+    default=None,
+    show_default="100000",
     help="Maximum number of optimization cycles.",
 )
 @click.option(
@@ -561,7 +566,7 @@ def cli(
     freeze_atoms_text: Optional[str],
     convert_files: bool,
     ref_pdb: Optional[Path],
-    max_cycles: int,
+    max_cycles: Optional[int],
     opt_mode: str,
     reject_uphill: bool,
     stop_plateau: bool,
@@ -641,6 +646,7 @@ def cli(
             opt_cfg = dict(OPT_BASE_KW)
             lbfgs_cfg = dict(LBFGS_KW)
             rfo_cfg = dict(RFO_KW)
+            frequency_cfg = {"zero_cutoff_cm": FREQ_KW["zero_cutoff_cm"]}
 
             apply_yaml_overrides(
                 config_layer_cfg,
@@ -650,6 +656,7 @@ def cli(
                     (opt_cfg, (("opt",),)),
                     (lbfgs_cfg, (("lbfgs",),)),
                     (rfo_cfg, (("rfo",),)),
+                    (frequency_cfg, (("freq",),)),
                 ],
             )
 
@@ -675,7 +682,7 @@ def cli(
             from pdb2reaction.backends import apply_effective_precision
             apply_effective_precision(calc_cfg, precision)
             apply_backend_defaults(calc_cfg)
-            if cli_param_overridden(ctx, "max_cycles"):
+            if cli_param_overridden(ctx, "max_cycles") and max_cycles is not None:
                 opt_cfg["max_cycles"] = int(max_cycles)
             if cli_param_overridden(ctx, "dump"):
                 opt_cfg["dump"] = bool(dump)
@@ -704,7 +711,11 @@ def cli(
                     (opt_cfg, (("opt",),)),
                     (lbfgs_cfg, (("lbfgs",),)),
                     (rfo_cfg, (("rfo",),)),
+                    (frequency_cfg, (("freq",),)),
                 ],
+            )
+            frequency_zero_cutoff_cm = normalize_frequency_zero_cutoff_cm(
+                frequency_cfg["zero_cutoff_cm"]
             )
             opt_mode_effective = opt_cfg.pop("opt_mode", opt_mode)
             if cli_param_overridden(ctx, "opt_mode"):
@@ -715,13 +726,9 @@ def cli(
                 )
             except ValueError as exc:
                 raise click.ClickException(str(exc)) from exc
-            effective_max_cycles = lossless_int(
+            effective_max_cycles = optional_positive_int(
                 opt_cfg.get("max_cycles"), "opt.max_cycles"
             )
-            if effective_max_cycles < 1:
-                raise click.BadParameter(
-                    "opt.max_cycles must be a positive integer."
-                )
             opt_cfg["max_cycles"] = effective_max_cycles
 
             # Convert 1-based YAML freeze_atoms to 0-based internal
@@ -917,7 +924,7 @@ def cli(
                 "opt",
                 converged=getattr(optimizer, "is_converged", None),
                 cycles=optimizer_cycle_count(optimizer),
-                max_cycles=int(opt_cfg.get("max_cycles", 0)) or None,
+                max_cycles=opt_cfg.get("max_cycles"),
                 stalled=getattr(optimizer, "is_stalled", False),
                 stop_reason=getattr(optimizer, "stop_reason", None) or None,
             )
@@ -957,6 +964,7 @@ def cli(
                         freeze_idx=freeze_idx,
                         tr_projection=geom_cfg["tr_projection"],
                         projection_info=rigid_projection_info,
+                        frequency_zero_cutoff_cm=frequency_zero_cutoff_cm,
                     )
                     rigid_projection_info.update({
                         "hessian_space": (
@@ -970,10 +978,12 @@ def cli(
                     return freqs_local, modes_local
 
                 freqs_cm, modes = _calc_freqs_and_modes()
-                neg_mask = freqs_cm < -abs(OPT_FLATTEN_NEG_FREQ_THRESH_CM)
+                neg_mask = resolved_imaginary_mask(
+                    freqs_cm, frequency_zero_cutoff_cm
+                )
                 n_imag = int(np.sum(neg_mask))
-                ims = [float(x) for x in freqs_cm if x < -abs(OPT_FLATTEN_NEG_FREQ_THRESH_CM)]
-                emit(f"[Imaginary modes] n={n_imag}  ({ims})", narrative=True)
+                ims = [float(x) for x in freqs_cm[neg_mask]]
+                emit(f"[Imaginary modes] n={n_imag} ({ims})", narrative=True)
 
                 for it in range(OPT_FLATTEN_MAX_ITER):
                     if n_imag == 0:
@@ -985,7 +995,7 @@ def cli(
                         calc_kwargs_for_flatten,
                         freqs_cm,
                         modes,
-                        OPT_FLATTEN_NEG_FREQ_THRESH_CM,
+                        frequency_zero_cutoff_cm,
                         OPT_FLATTEN_AMP_ANG,
                         calculator=opt_calc,
                     )
@@ -1002,7 +1012,7 @@ def cli(
                         "opt",
                         converged=getattr(optimizer, "is_converged", None),
                         cycles=optimizer_cycle_count(optimizer),
-                        max_cycles=int(opt_cfg.get("max_cycles", 0)) or None,
+                        max_cycles=opt_cfg.get("max_cycles"),
                         stalled=getattr(optimizer, "is_stalled", False),
                         stop_reason=getattr(optimizer, "stop_reason", None) or None,
                     )
@@ -1018,10 +1028,12 @@ def cli(
 
                     geometry.set_calculator(None)
                     freqs_cm, modes = _calc_freqs_and_modes()
-                    neg_mask = freqs_cm < -abs(OPT_FLATTEN_NEG_FREQ_THRESH_CM)
+                    neg_mask = resolved_imaginary_mask(
+                        freqs_cm, frequency_zero_cutoff_cm
+                    )
                     n_imag = int(np.sum(neg_mask))
-                    ims = [float(x) for x in freqs_cm if x < -abs(OPT_FLATTEN_NEG_FREQ_THRESH_CM)]
-                    emit(f"[Imaginary modes] n={n_imag}  ({ims})", narrative=True)
+                    ims = [float(x) for x in freqs_cm[neg_mask]]
+                    emit(f"[Imaginary modes] n={n_imag} ({ims})", narrative=True)
 
                 if n_imag > 0:
                     click.echo(

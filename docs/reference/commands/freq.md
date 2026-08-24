@@ -60,7 +60,7 @@ Options:
                                   no-dry-run]
   --out-json / --no-out-json      Write machine-readable result.json to out_dir.
                                   [default: no-out-json]
-  --hessian-calc-mode [finitedifference|analytical]
+  --hessian-calc-mode [FiniteDifference|Analytical]
                                   How the ML backend computes the Hessian (can
                                   also be set via YAML).  [default:
                                   (FiniteDifference)]

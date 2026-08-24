@@ -27,7 +27,7 @@ Options:
                                   hessian.npy (active block when YAML
                                   geom.freeze_atoms is non-empty).  [default:
                                   no-hess]
-  --hessian-calc-mode [analytical|finitedifference]
+  --hessian-calc-mode [Analytical|FiniteDifference]
                                   Hessian backend when --hess is set.
                                   FiniteDifference is the default for every
                                   backend; UMA, ORB, MACE, and AIMNet2 also

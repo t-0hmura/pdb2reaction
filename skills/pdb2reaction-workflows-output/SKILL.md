@@ -190,10 +190,15 @@ If only `.xyz` remains, either pass verified total `-q`, or keep `-l` and add
 Pass `--out-json` on each standalone subcommand: it writes the `result.json` that the gate
 below reads (these subcommands default to `--no-out-json`).
 
-**GATE** in order: tsopt `result.json` `status` is `converged` (not
-`not_converged`) → freq `result.json` `n_imaginary == 1` (exactly one imaginary frequency)
-whose mode moves the reacting atoms (0 or >1 → fix via fp64 / `--coord-type dlc` /
-`--flatten`, see `pdb2reaction-ts-strategy/SKILL.md` §3, before trusting the barrier) → irc
+**GATE** for first-order certification: tsopt numerical `optimization_status`
+is `converged`; terminal `hessian_status` is `completed`; `saddle_validation` is
+`first_order`; and the one imaginary displacement follows the reacting atoms.
+The composite `all` workflow can also continue warning-labelled **diagnostic**
+IRC from a numerically converged `higher_order` result when a validated negative
+root exists, but that continuation is not first-order certification. Numerical
+non-convergence, zero modes, failed/skipped PHVA, or no valid negative root stops
+`all` after retaining TS artifacts. Then require standalone freq `result.json`
+`n_imaginary == 1` before trusting the barrier → irc
 `result.json` `status == "completed"` **plus** both enabled directions'
 `*_converged` / `*_energy_increased` fields and frame counts are acceptable;
 then confirm the first/last endpoints connect the intended R and P (bond

@@ -4,6 +4,20 @@ All notable changes to **pdb2reaction** will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased] — 2026-08-19
+
+### Fixed
+- Ignore final exact-PHVA negative frequencies smaller than the configured
+  saddle-imaginary magnitude threshold when certifying saddle order, matching
+  the existing imaginary-mode display, export, recovery, and flattening policy.
+- Gate MEP `--ref-mode` handoff to Hessian TS optimizers; Dimer records the handoff as not applicable instead of receiving an option it rejects.
+- Preserve a non-converged Dimer final structure and stop before terminal PHVA.
+- Use the configurable `freq.zero_cutoff_cm` value for standalone frequency analysis, flattening, and TS saddle classification.
+- Restrict reference-aligned reaction-mode selection to negative exact-PHVA modes and validate the selected frequency before IRC. Invalid or missing selections use an explicit lowest-imaginary root-0 fallback with unverified reaction identity.
+- Separate numerical optimization status from saddle order. A converged higher-order stationary point is not a first-order TS, but `all` may perform warning-labelled diagnostic IRC when a valid negative root exists.
+- Synchronize EN/JA docs, skills, live help, generated command references, and checked-in contract tests with the current behavior.
+- Remove the replaced path-tangent helper and one unreferenced mass-weighted-frequency wrapper; larger workflow and Notebook refactors remain deferred.
+
 ## [0.4.12] — 2026-07-27
 
 > Upgrade warning: unchanged inputs can produce different geometries, energies/barriers,
@@ -86,9 +100,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Detect the molecular point group and external rotational symmetry number for
   every `freq` structure and include the rotational `1/sigma` correction
   automatically. `thermo.symmetry_number` remains an advanced YAML override.
-- Announce the first load of each MLIP model -- `[backend] Preparing MLIP model
-  (<backend> / <model>)...` then `[backend] Done.` -- so the silent weight
-  download inside the backend constructor no longer reads as a hang.
 
 ### Changed
 - Report every option's effective default. Options whose real default lives in
@@ -239,6 +250,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Classify the Colab flag panel from the live command definition: options hidden
   from `--help` are listed under Advanced flags and the rest under Key flags, so
   the panel covers every flag of the selected command.
+- Announce a model-weight download only when the weights are not already cached.
 - Offer each transition state's imaginary mode in the `all` and `tsopt` Results
   view, labelled by segment and wavenumber, and animate it as a vibrational mode
   instead of falling back to the reaction path.
@@ -316,7 +328,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Reject `n_imag=0` TS minima using exact Cartesian PHVA or internal-coordinate
   optimizer-space order; restore lost path curvature and flatten only extra modes.
 - Make TS/frequency/IRC/endpoint Hessian reuse coordinate- and direction-safe,
-  and block `all` post-processing unless TS validation reports `n_imag = 1`.
+  and gate `all` continuation on numerical convergence, completed terminal PHVA, and a valid negative IRC root. Higher-order results remain uncertified but may continue through warning-labelled diagnostic IRC.
 - Preserve CLI-over-YAML precedence for charge/spin, flatten, custom calculator
   factory, and scan configuration across standalone and `all` workflows.
 - Leave calculator/solvent provenance null when `scan3d --csv` redraws external

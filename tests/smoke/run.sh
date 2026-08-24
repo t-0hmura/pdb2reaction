@@ -148,7 +148,7 @@ pdb2reaction -i r_complex.pdb p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r
 # --- TSOPT-only mode ---
 
 # test20: all (ts input, --tsopt + --thermo)
-pdb2reaction -i ts.pdb -q 0 --tsopt --opt-mode-post grad --thermo --irc-never-stop --thresh gau --thresh-post gau_loose --out-dir test20 > test20.out 2>&1
+pdb2reaction -i ts.pdb -q 0 --tsopt --opt-mode-post grad --thermo --irc-never-stop --irc-max-cycles 3 --thresh gau --thresh-post gau_loose --out-dir test20 > test20.out 2>&1
 python assert_release_result.py all test20 --require-thermo >> test20.out 2>&1
 
 # test21: all (ts input, --tsopt, opt-mode hess)
@@ -452,7 +452,7 @@ pdb2reaction path-search -i r.pdb p.pdb -q -1 --opt-mode hess --workers 1 --max-
 # global budget); this system converges to n_imag=1 with no flatten iterations, but
 # 200 keeps the budget above flatten_max_iter (=50, ~135 cycles) so a soft spectator
 # mode could never be starved short of a clean saddle. Product default is 10000.
-pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --thermo --flatten --irc-never-stop --max-cycles-gsm 5 --tsopt-max-cycles 200 --thresh gau_loose --thresh-post gau --out-dir test66_all_tsopt > test66_all_tsopt.out 2>&1
+pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --thermo --flatten --irc-never-stop --irc-max-cycles 3 --max-cycles-gsm 5 --tsopt-max-cycles 200 --thresh gau_loose --thresh-post gau --out-dir test66_all_tsopt > test66_all_tsopt.out 2>&1
 python assert_release_result.py all test66_all_tsopt --require-thermo >> test66_all_tsopt.out 2>&1
 grep -Fq '[irc] Reusing cached TS Hessian from tsopt.' test66_all_tsopt.out || { echo '[smoke] FAIL test66: IRC did not report cached TS Hessian reuse' >> test66_all_tsopt.out; exit 1; }
 

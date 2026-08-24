@@ -15,7 +15,7 @@ The TSOPT-only reactant/product labels follow an **energy-order presentation con
 ```
 
 ```{important}
-Without `--tsopt`, the workflow produces **TS candidates** (highest-energy images from MEP search). Adding `--tsopt` refines them into optimized TS structures validated by an imaginary-frequency check. IRC starts only when the optimizer reports a converged first-order saddle (`n_imag = 1`); otherwise `all` stops before downstream post-processing. Always inspect the results (imaginary-frequency count and IRC endpoint connectivity) before mechanistic interpretation.
+Without `--tsopt`, the workflow produces **TS candidates** (highest-energy images from MEP search). Adding `--tsopt` refines them and performs terminal exact-PHVA validation. Numerical optimizer convergence and saddle order are reported separately. `all` proceeds to IRC only when optimization converged, terminal PHVA completed, and a negative reaction direction is available. A converged higher-order stationary point (`n_imag > 1`) may be followed by **diagnostic** IRC with an explicit warning, but it is not certified as a first-order TS. Actual optimizer non-convergence, no imaginary mode, failed/unavailable PHVA, or no valid negative root stops the pipeline after preserving the TS artifacts and before IRC. Always inspect the imaginary modes and IRC endpoint connectivity before mechanistic interpretation.
 ```
 
 ## Examples
@@ -80,7 +80,7 @@ Full system(s) (PDB / mmCIF / XYZ / GJF)
 3. **MEP search** — by default runs single-pass `path-opt`; `--refine-path` switches to recursive `path-search`. Recursive refinement can improve a poor HEI but can also split a noisy/bad path into unnecessary segments and increase cost, so it is off by default. Segmentation is only a candidate mechanism until TS/frequency/IRC validation. Raw engine output stays under `_work`; `mep.pdb`, bridge-input `mep.cif`, `mep_trj.xyz`, and the diagram are promoted to the top level.
 4. **Merge to full systems** (with `--refine-path`) — writes `mep_w_ref.pdb` and, for mmCIF/oversized-PDB templates, `mep_w_ref.cif`; per-segment equivalents remain under `_work/path_search/`.
 5. **Per-segment post-processing** (reactive segments only — bridge segments without bond changes are skipped):
-   - `--tsopt` — TS optimization on each HEI active-site model. A machine-readable exact-Hessian result must report `status=converged` and `n_imag=1`; otherwise the workflow stops before IRC. A validated TS is followed by EulerPC IRC and IRC-endpoint re-optimization with `--thresh-post` (default `baker`). For Hessian TS optimization, the MEP's energy-upwinding Cartesian tangent is passed by default as the reaction reference mode (a normalized secant bisector is used only for legacy trajectories without readable energies). With `--no-tsopt-from-mep-tan`, TSOPT instead computes the initial-structure Hessian and selects the initial mode from its vibrational modes. The endpoint optimization working directory is deleted automatically after completion. Endpoint RFO uphill rejection is disabled by default; pass `--reject-uphill` to enable it for endpoint re-optimization only.
+   - `--tsopt` — TS optimization on each HEI active-site model. The terminal result separates `optimization_status` from `saddle_validation`. Numerical non-convergence, zero imaginary modes, failed/unavailable terminal PHVA, or inability to select a negative root stops after the TS structure/frequencies/modes are registered and before IRC. A numerically converged higher-order stationary point is retained and may continue through warning-labeled diagnostic IRC; this does not certify a first-order TS. For Hessian TS optimizers, the MEP's energy-upwinding Cartesian tangent candidates are passed through a CPU/file cache to guide reaction-root identity (legacy paths without readable energies use normalized secants). Dimer does not consume `--ref-mode`, so the handoff/cache is marked not applicable. With `--no-tsopt-from-mep-tan`, TSOPT selects its initial root from the initial-structure Hessian modes. A continued result is followed by EulerPC IRC and IRC-endpoint re-optimization with `--thresh-post` (default `baker`). The endpoint optimization working directory is deleted automatically after completion. Endpoint RFO uphill rejection is disabled by default; pass `--reject-uphill` to enable it for endpoint re-optimization only.
    - `--thermo` — `freq` on (R, TS, P) for vibrational + thermochemistry data and an MLIP Gibbs diagram.
    - `--dft` — single-point DFT on (R, TS, P) and a DFT diagram. With `--thermo`, a DFT//MLIP Gibbs diagram (DFT energies + MLIP thermal correction) is also produced.
    - Shared overrides: `--opt-mode`, `--opt-mode-post`, `--flatten`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, `--dft-engine` (GPU-first by default). Frozen-boundary PHVA always uses the constrained rigid-mode treatment; it is unrelated to the MEP-derived `--ref-mode`. For Hessian evaluation modes see {ref}`hessian-evaluation`.
@@ -192,7 +192,7 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | Option | Description | Default |
 | --- | --- | --- |
 | `-c, --center TEXT` | PDB/mmCIF path, IDs/names, `CHAIN:RESNAME`, or `CHAIN:RESNAME:RESSEQ`. | Required for extraction |
-| `-r, --radius FLOAT` | Active-site model inclusion cutoff (Å). | `2.6` |
+| `-r, --radius FLOAT` | Active-site model inclusion cutoff (Å). `0` disables radius-based expansion, leaving the `-c` and `--selected-resn` selections. | `2.6` |
 | `--radius-het2het FLOAT` | Independent hetero–hetero cutoff (Å). `0` is internally nudged to `0.001 Å` to avoid empty selections (same as standalone `extract`). | `0.0` |
 | `--include-h2o / --no-include-h2o` | Include waters (HOH / WAT / TIP3 / SOL). | `True` |
 | `--exclude-backbone / --no-exclude-backbone` | Remove backbone atoms on non-substrate amino acids. | `False` |
@@ -240,7 +240,7 @@ and `tsopt` subcommands keep their own `--max-cycles`.
 | Option | Description | Default |
 | --- | --- | --- |
 | `--tsopt / --no-tsopt` | Run TS optimization + IRC per reactive segment. | `False` |
-| `--tsopt-from-mep-tan / --no-tsopt-from-mep-tan` | Select the initial TS root from the HEI MEP tangent; when off, select it from the initial-structure Hessian modes. | `True` |
+| `--tsopt-from-mep-tan / --no-tsopt-from-mep-tan` | For Hessian TS optimizers, guide reaction-root identity with CPU/file-cached HEI tangent candidates. Turning it off disables cache creation/use and selects from the initial Hessian modes. Not applicable to Dimer. | `True` |
 | `--thermo / --no-thermo` | Run vibrational analysis (`freq`) on R / TS / P; requires `--tsopt`. | `False` |
 | `--dft / --no-dft` | Run single-point DFT on R / TS / P; requires `--tsopt`. | `False` |
 | `--opt-mode-post [grad\|hess]` | Optimizer preset for TSOPT + post-IRC (`grad` → Dimer / L-BFGS, `hess` → RS-P-RFO / RFO). | `hess` |
@@ -321,7 +321,7 @@ obtained from independently prepared full-system structures. Inspect the
 structures and validate the selected path workflow for the modeled system.
 
 - Reference PDB templates for merging are derived automatically from the original inputs; the explicit `--ref-full-pdb` option of `path-search` is hidden in this wrapper.
-- Extraction radii: passing `0` to `--radius` or `--radius-het2het` is internally clamped to `0.001 Å` by the extractor.
+- Extraction radii: `-r 0` (or `--radius 0`) disables radius-based expansion, so the model starts from residues selected by `-c` and `--selected-resn`; structural safeguards can still add a required disulfide partner or adjacent backbone context. The extractor internally clamps zero radii to `0.001 Å` to avoid an empty geometric query.
 - Energies in diagrams are reported relative to the first state (reactant) in kcal/mol.
 - Omitting `-c/--center` skips extraction and feeds the entire input structures directly to MEP / `tsopt` / `freq` / `dft`; single-structure runs still require either `--scan-lists/-s` or `--tsopt`.
 

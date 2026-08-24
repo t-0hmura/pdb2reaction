@@ -39,7 +39,8 @@ def test_noop_options_are_removed(command: str, option: str) -> None:
     result = CliRunner().invoke(root_cli, [command, option])
 
     assert result.exit_code == 2
-    assert f"No such option: {option}" in result.output
+    assert "No such option" in result.output
+    assert option in result.output
 
 
 def _xyz(path: Path) -> Path:
@@ -202,7 +203,8 @@ def test_passthrough_commands_reject_unknown_options(
     result = CliRunner().invoke(root_cli, argv)
 
     assert result.exit_code == 2
-    assert f"No such option: {unknown}" in result.output
+    assert "No such option" in result.output
+    assert unknown in result.output
 
 
 @pytest.mark.parametrize("command", ["all", "extract", "path-search"])

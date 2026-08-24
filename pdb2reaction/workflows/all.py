@@ -55,6 +55,7 @@ from pdb2reaction.core.defaults import (
 )
 DEFAULT_COORD_TYPE = GEOM_KW_DEFAULT["coord_type"]
 from pdb2reaction.io.trj2fig import run_trj2fig
+from pdb2reaction.io.path_mode_cache import load_path_mode_cache, write_path_mode_cache
 from pdb2reaction.io.summary import (
     emit_method_citations,
     method_references,
@@ -75,6 +76,7 @@ from pdb2reaction.core.utils import (
     detect_freeze_links_logged,
     format_elapsed,
     lossless_int,
+    optional_positive_int,
     merge_freeze_atom_groups,
     prepare_input_structure,
     normalize_freeze_atoms,
@@ -1800,29 +1802,67 @@ def _ensure_hei_path_tangent(
     mep_trj: Path,
     hei_path: Path,
     mode_path: Path,
-) -> Optional[Path]:
-    """Write the central MEP tangent at the image matching ``hei_path``.
-
-    The normalized Cartesian difference is unit-independent.  This fallback
-    also makes older path-search artifacts usable; new path-search runs emit
-    the same reference-mode file directly when selecting the HEI.
-    """
+) -> Tuple[Optional[Path], Dict[str, Any]]:
+    """Reuse or build a restart-safe CPU/file cache of HEI path modes."""
+    status: Dict[str, Any] = {
+        "enabled": True,
+        "status": "unavailable",
+        "cache_file": str(mode_path),
+        "candidate_count": 0,
+        "candidate_labels": [],
+        "reason": None,
+    }
     if not mep_trj.exists() or not hei_path.exists():
-        return None
+        status["reason"] = "MEP trajectory or HEI structure is missing"
+        return None, status
     try:
         from ase.io import read as ase_read
 
         images = list(ase_read(str(mep_trj), index=":"))
         hei = ase_read(str(hei_path), index=0)
         if len(images) < 2:
-            return None
+            raise ValueError("MEP trajectory contains fewer than two images")
         hei_numbers = np.asarray(hei.numbers)
         if any(
             len(image) != len(hei)
             or not np.array_equal(np.asarray(image.numbers), hei_numbers)
             for image in images
         ):
-            return None
+            raise ValueError("MEP/HEI atom count or atom order differs")
+
+        cache_hei_path = mode_path.with_name(
+            mode_path.stem.replace("hei_mode_", "hei_") + ".xyz"
+        )
+        validation_hei = cache_hei_path if cache_hei_path.exists() else (
+            hei_path if hei_path.suffix.lower() == ".xyz" else None
+        )
+        if mode_path.exists() and mode_path.with_suffix(".json").exists():
+            try:
+                cache = load_path_mode_cache(
+                    mode_path,
+                    trajectory_path=mep_trj,
+                    hei_path=validation_hei,
+                    expected_size=3 * len(hei),
+                    atom_numbers=hei_numbers,
+                )
+                status.update({
+                    "status": "reused",
+                    "candidate_count": len(cache.labels),
+                    "candidate_labels": list(cache.labels),
+                    "reason": None,
+                })
+                _echo(
+                    "[tsopt] Reused HEI path-mode cache "
+                    f"({len(cache.labels)} candidates, CPU/file) → {cache.path}"
+                )
+                return cache.path, status
+            except Exception as exc:
+                status["reason"] = f"existing cache rejected: {exc}"
+                _echo(
+                    f"[tsopt] Existing HEI path-mode cache rejected; recomputing: {exc}",
+                    err=True,
+                )
+
         hei_pos = np.asarray(hei.positions, dtype=float)
         distances = [
             float(np.linalg.norm(np.asarray(image.positions) - hei_pos))
@@ -1844,25 +1884,39 @@ def _ensure_hei_path_tangent(
                 for energy in parsed_energies
             ):
                 energies = parsed_energies
-        tangent = _path_search._normalized_path_tangent(
+
+        cache = write_path_mode_cache(
+            mode_path,
             [np.asarray(image.positions, dtype=float) for image in images],
             index,
             energies=energies,
+            trajectory_path=mep_trj,
+            hei_path=hei_path,
+            atom_numbers=hei_numbers,
+            primary_text_path=mode_path.with_suffix(".txt"),
+            source="all-fallback",
         )
-        if tangent is None:
-            return None
-        mode_path.parent.mkdir(parents=True, exist_ok=True)
-        np.savetxt(mode_path, tangent, fmt="%.17e")
+        if cache is None:
+            raise ValueError("no finite, non-duplicate path-mode candidate could be built")
+        status.update({
+            "status": "created",
+            "candidate_count": len(cache.labels),
+            "candidate_labels": list(cache.labels),
+            "reason": None,
+            "image_index": index,
+        })
         _echo(
-            f"[tsopt] Derived HEI path-tangent reference mode → {mode_path}"
+            "[tsopt] Derived HEI path-mode cache "
+            f"({len(cache.labels)} candidates, CPU/file) → {cache.path}"
         )
-        return mode_path
+        return cache.path, status
     except Exception as exc:
+        status["reason"] = str(exc)
         _echo(
-            f"[tsopt] WARNING: Could not derive HEI path tangent: {exc}",
+            f"[tsopt] WARNING: Could not derive HEI path modes: {exc}",
             err=True,
         )
-        return None
+        return None, status
 
 
 def _select_hei_reference_mode(
@@ -1870,12 +1924,44 @@ def _select_hei_reference_mode(
     mep_trj: Optional[Path],
     hei_path: Path,
     mode_path: Path,
-) -> Optional[Path]:
-    """Return an HEI tangent only when MEP-tangent initialization is enabled."""
-    if not enabled or mep_trj is None:
-        return None
+) -> Tuple[Optional[Path], Dict[str, Any]]:
+    """Return path-mode candidates plus an explicit handoff status record."""
+    if not enabled:
+        # `all --no-tsopt-from-mep-tan` is a real opt-out: do not retain a
+        # path-mode handoff generated by a child path workflow.  Standalone
+        # path-search/path-opt still own their scientific artifacts, but the
+        # composite workflow leaves no cache that could be mistaken for an
+        # enabled TS handoff.
+        for candidate in {
+            mode_path,
+            mode_path.with_suffix(".npz"),
+            mode_path.with_suffix(".json"),
+            mode_path.with_suffix(".txt"),
+        }:
+            try:
+                candidate.unlink()
+            except FileNotFoundError:
+                pass
+            except OSError as exc:
+                logger.debug("Failed to remove disabled path-mode cache %s: %s", candidate, exc)
+        return None, {
+            "enabled": False,
+            "status": "disabled",
+            "cache_file": None,
+            "candidate_count": 0,
+            "candidate_labels": [],
+            "reason": "--no-tsopt-from-mep-tan",
+        }
+    if mep_trj is None:
+        return None, {
+            "enabled": True,
+            "status": "unavailable",
+            "cache_file": str(mode_path),
+            "candidate_count": 0,
+            "candidate_labels": [],
+            "reason": "MEP trajectory was not claimed by the current run",
+        }
     return _ensure_hei_path_tangent(mep_trj, hei_path, mode_path)
-
 
 def _write_segment_energy_diagram(
     prefix: Path,
@@ -2066,9 +2152,11 @@ def _optimize_endpoint_geom(
         ensure_dir(opt_dir)
         cfg["out_dir"] = str(opt_dir)
         cfg["dump"] = bool(dump)
-        # LBFGS_KW/RFO_KW always carry OPT_BASE_KW's max_cycles, so there is no
-        # separate endpoint bound to fall back to.
-        cfg["max_cycles"] = int(cfg["max_cycles"])
+        # ``None`` is the shared no-cap contract; an explicit positive value is
+        # still forwarded unchanged to the optimizer.
+        cfg["max_cycles"] = optional_positive_int(
+            cfg.get("max_cycles"), "endpoint max_cycles"
+        )
         if thresh is not None:
             cfg["thresh"] = str(thresh)
         # RFO-only endpoint re-optimization uphill-rejection toggle (min-scoped).
@@ -2444,15 +2532,118 @@ def _run_dft_sequence(
     return results
 
 
-def _validate_tsopt_result_payload(payload: Dict[str, Any]) -> None:
-    """Reject a TS result that is not a verified first-order saddle."""
-    status = str(payload.get("status") or "unknown")
-    n_imag = payload.get("n_imaginary_modes")
-    if status != "converged" or n_imag != 1:
-        raise click.ClickException(
-            "[tsopt] TS optimization did not produce a validated first-order "
-            f"saddle (status={status!r}, n_imag={n_imag!r}); IRC was not started."
+def _tsopt_reference_mode_is_applicable(opt_mode: Optional[str]) -> bool:
+    """Whether the selected TS optimizer consumes a Hessian reference mode."""
+    mode = str(opt_mode or "hess").strip().lower()
+    return mode not in {"grad", "dimer", "light", "lbfgs"}
+
+
+def _tsopt_continuation_decision(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Return normal-control-flow ownership for the TS-to-IRC boundary.
+
+    Numerical optimizer convergence and exact-PHVA saddle order are deliberately
+    separate. A numerically converged higher-order saddle may continue when an
+    imaginary reaction direction is available; actual numerical non-convergence,
+    a missing/failed Hessian, or zero imaginary modes stops the composite pipeline
+    *after* the TS result and artifacts have been committed.
+    """
+
+    optimization_status = str(
+        payload.get("optimization_status") or payload.get("status") or "unknown"
+    )
+    hessian_status = str(payload.get("hessian_status") or "unknown")
+    saddle_validation = str(payload.get("saddle_validation") or "unavailable")
+
+    raw_n_imag = payload.get("n_imaginary_modes")
+    try:
+        n_imaginary = None if raw_n_imag is None else int(raw_n_imag)
+    except (TypeError, ValueError):
+        n_imaginary = None
+
+    raw_mode_index = payload.get("reaction_mode_index")
+    try:
+        reaction_mode_index = (
+            None if raw_mode_index is None else int(raw_mode_index)
         )
+    except (TypeError, ValueError):
+        reaction_mode_index = None
+
+    raw_mode_frequency = payload.get("reaction_mode_frequency_cm")
+    try:
+        reaction_mode_frequency = (
+            None if raw_mode_frequency is None else float(raw_mode_frequency)
+        )
+    except (TypeError, ValueError):
+        reaction_mode_frequency = None
+    if reaction_mode_frequency is not None and not np.isfinite(reaction_mode_frequency):
+        reaction_mode_frequency = None
+
+    reaction_mode_overlap = payload.get("reaction_mode_overlap")
+    reaction_mode_source = payload.get("reaction_mode_source")
+    continue_irc = False
+    reason = "tsopt_status_unknown"
+    mode_fallback = False
+    mode_fallback_reason = None
+    if optimization_status != "converged":
+        reason = f"ts_optimization_{optimization_status}"
+    elif hessian_status != "completed":
+        reason = f"terminal_hessian_{hessian_status}"
+    elif n_imaginary is None:
+        reason = "imaginary_mode_count_unavailable"
+    elif n_imaginary <= 0:
+        reason = "no_imaginary_reaction_mode"
+    else:
+        continue_irc = True
+        reason = "higher_order_saddle" if n_imaginary > 1 else "first_order_saddle"
+        reaction_mode_index_valid = bool(
+            reaction_mode_index is not None
+            and 0 <= int(reaction_mode_index) < int(n_imaginary)
+        )
+        if (
+            not reaction_mode_index_valid
+            or reaction_mode_frequency is None
+            or reaction_mode_frequency >= 0.0
+        ):
+            # Exact PHVA established at least one negative root. Root 0 is the
+            # deterministic lowest-imaginary fallback, but its chemical identity
+            # is not claimed when reference-aligned selection was unavailable or
+            # produced an invalid/non-negative result.
+            if reaction_mode_index is None:
+                mode_fallback_reason = "reaction_mode_index_missing"
+            elif not reaction_mode_index_valid:
+                mode_fallback_reason = "reaction_mode_index_not_negative_root"
+            else:
+                mode_fallback_reason = "reaction_mode_frequency_missing_or_nonnegative"
+            reaction_mode_index = 0
+            reaction_mode_frequency = None
+            for value in payload.get("imaginary_frequencies_cm") or ():
+                try:
+                    candidate_frequency = float(value)
+                except (TypeError, ValueError):
+                    continue
+                if np.isfinite(candidate_frequency) and candidate_frequency < 0.0:
+                    reaction_mode_frequency = candidate_frequency
+                    break
+            reaction_mode_overlap = None
+            reaction_mode_source = "lowest-imaginary"
+            mode_fallback = True
+
+    return {
+        "continue_irc": continue_irc,
+        "reason": reason,
+        "optimization_status": optimization_status,
+        "saddle_validation": saddle_validation,
+        "hessian_status": hessian_status,
+        "hessian_error": payload.get("hessian_error"),
+        "n_imaginary_modes": n_imaginary,
+        "reaction_mode_index": reaction_mode_index,
+        "reaction_mode_frequency_cm": reaction_mode_frequency,
+        "reaction_mode_overlap": reaction_mode_overlap,
+        "reaction_mode_source": reaction_mode_source,
+        "reaction_mode_fallback": mode_fallback,
+        "reaction_mode_fallback_reason": mode_fallback_reason,
+        "flatten_enabled": bool(payload.get("flatten_enabled", False)),
+    }
 
 
 def _run_tsopt_on_hei(
@@ -2517,8 +2708,14 @@ def _run_tsopt_on_hei(
             ts_args.extend(["--opt-mode", tsopt_mode])
 
         reference_mode = overrides.get("reference_mode")
-        if reference_mode is not None:
+        if reference_mode is not None and _tsopt_reference_mode_is_applicable(opt_mode):
             ts_args.extend(["--ref-mode", str(reference_mode)])
+        elif reference_mode is not None:
+            _echo(
+                "[tsopt] MEP reference-mode handoff is not applicable to the "
+                "Dimer optimizer; continuing without --ref-mode.",
+                err=True,
+            )
 
         _append_cli_arg(ts_args, "--max-cycles", overrides.get("max_cycles"))
         _append_toggle_arg(ts_args, "--dump", overrides.get("dump"))
@@ -2615,7 +2812,7 @@ def _run_tsopt_on_hei(
             raise click.ClickException(
                 f"[tsopt] Could not read TS validation result '{result_path}': {exc}"
             ) from exc
-        _validate_tsopt_result_payload(tsopt_result)
+        tsopt_continuation = _tsopt_continuation_decision(tsopt_result)
 
         ts_pdb = ts_dir / "final_geometry.pdb"
         ts_gjf = ts_dir / "final_geometry.gjf"
@@ -2648,6 +2845,8 @@ def _run_tsopt_on_hei(
             freeze_atoms=_freeze_atoms_for_log(),
         )
         g_ts._tsopt_result = tsopt_result
+        g_ts._tsopt_result_path = result_path
+        g_ts._tsopt_continuation = tsopt_continuation
 
         return ts_geom_path, g_ts
     finally:
@@ -2858,7 +3057,9 @@ def _irc_and_match(
     args_yaml: Optional[Path],
     convert_files: bool,
     irc_step_size: Optional[float] = None,
+    irc_max_cycles: Optional[int] = None,
     irc_never_stop: Optional[bool] = None,
+    irc_root: Optional[int] = None,
     seg_tag: Optional[str] = None,
     endpoint_trajectory: Optional[Path] = None,
     session: Optional[RunSession] = None,
@@ -2949,8 +3150,12 @@ def _irc_and_match(
         irc_args.extend(["--config", str(args_yaml)])
     if irc_step_size is not None:
         irc_args.extend(["--step-size", str(float(irc_step_size))])
+    if irc_max_cycles is not None:
+        irc_args.extend(["--max-cycles", str(int(irc_max_cycles))])
     if irc_never_stop is not None:
         _append_toggle_arg(irc_args, "--never-stop", bool(irc_never_stop))
+    if irc_root is not None:
+        irc_args.extend(["--root", str(int(irc_root))])
     # Request the child's convergence result instead of inferring it from files.
     _append_toggle_arg(irc_args, "--out-json", True)
     _echo()
@@ -3115,6 +3320,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
         "--thresh",
         "-r",
         "--radius",
+        "--selected-resn",
         "--refine-path",
         "-o",
         "--print-every",
@@ -3187,14 +3393,18 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 @click.option(
     "-r",
     "--radius",
-    type=float,
+    type=click.FloatRange(min=0.0),
     default=2.6,
     show_default=True,
-    help="Inclusion cutoff (Å) around substrate atoms.",
+    help=(
+        "Inclusion cutoff (Å) around substrate atoms. Zero is accepted and "
+        "evaluated internally as 0.001 Å (effectively off for ordinary "
+        "radius-based neighbors)."
+    ),
 )
 @click.option(
     "--radius-het2het",
-    type=float,
+    type=click.FloatRange(min=0.0),
     default=0.0,
     show_default=True,
     help="Independent hetero–hetero cutoff (Å) for non‑C/H pairs.",
@@ -3349,14 +3559,24 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 )
 @click.option(
     "--max-cycles-gsm",
-    type=int,
+    type=click.IntRange(min=1),
     default=None,
     show_default="300",
     help="Maximum GSM string-optimizer cycles for the MEP stage.",
 )
 @click.option(
+    "--max-cycles",
+    type=click.IntRange(min=1),
+    default=None,
+    show_default="None",
+    help=(
+        "Compatibility cycle cap for the selected MEP optimizer; mode-specific "
+        "options take precedence."
+    ),
+)
+@click.option(
     "--max-cycles-dmf",
-    type=int,
+    type=click.IntRange(min=1),
     default=None,
     show_default="300",
     help=(
@@ -3522,9 +3742,9 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     default=True,
     show_default=True,
     help=(
-        "Initialize TS root selection from the MEP tangent at the "
-        "highest-energy image. When disabled, TSOPT selects its initial mode "
-        "from the initial-structure Hessian."
+        "Guide Hessian-based TS root identity from MEP tangent candidate(s) at "
+        "the highest-energy image. The CPU/file cache is not created or used "
+        "when disabled. Dimer does not consume this Hessian reference mode."
     ),
 )
 @click.option(
@@ -3551,9 +3771,9 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 )
 @click.option(
     "--tsopt-max-cycles",
-    type=int,
-    default=None, show_default="10000",
-    help="Override tsopt --max-cycles value.",
+    type=click.IntRange(min=1),
+    default=None, show_default="100000",
+    help="Override tsopt --max-cycles.",
 )
 @click.option(
     "--tsopt-out-dir",
@@ -3576,9 +3796,8 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     show_default=True,
     help=(
         "Opt in to rejecting uphill RFO trials during post-IRC endpoint "
-        "re-optimization only (tolerance: 1e-4 Hartree) and final-check the "
-        "retained endpoint at the emergency floor. Does not affect TS "
-        "optimization or path search."
+        "re-optimization only (tolerance: 1e-4 Hartree). Does not affect "
+        "TS optimization or path search."
     ),
 )
 @click.option(
@@ -3616,6 +3835,15 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     help=(
         "Override IRC --step-size (Bohr). If an IRC stops after only a few "
         "frames, retry with a smaller value such as 0.05."
+    ),
+)
+@click.option(
+    "--irc-max-cycles",
+    type=click.IntRange(min=1),
+    default=None,
+    show_default="125",
+    help=(
+        "Cycle cap for each post-TS IRC."
     ),
 )
 @click.option(
@@ -3690,7 +3918,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 )
 @click.option(
     "--dft-max-cycle",
-    type=int,
+    type=click.IntRange(min=1),
     default=None, show_default="100",
     help="Override dft --max-cycle value.",
 )
@@ -3761,8 +3989,8 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 )
 @click.option(
     "--scan-relax-max-cycles",
-    type=int,
-    default=None, show_default="10000",
+    type=click.IntRange(min=1),
+    default=None, show_default="100000",
     help="Override scan relaxation max cycles per step.",
 )
 @click.option(
@@ -3824,6 +4052,7 @@ def cli(
     mep_mode: str,
     dmf_backend: str,
     max_nodes: int,
+    max_cycles: Optional[int],
     max_cycles_gsm: Optional[int],
     max_cycles_dmf: Optional[int],
     climb: bool,
@@ -3862,6 +4091,7 @@ def cli(
     stop_plateau_thresh: Optional[float],
     stop_plateau_window: Optional[int],
     irc_step_size: Optional[float],
+    irc_max_cycles: Optional[int],
     irc_never_stop: Optional[bool],
     freq_out_dir: Optional[Path],
     freq_max_write: Optional[int],
@@ -3895,6 +4125,11 @@ def cli(
     are concatenated into the final MEP.  With ``--refine-path``, the recursive ``path_search`` workflow
     is used instead for automatic multistep discovery.
     """
+    if max_cycles is not None:
+        if max_cycles_gsm is None:
+            max_cycles_gsm = max_cycles
+        if max_cycles_dmf is None:
+            max_cycles_dmf = max_cycles
     from pdb2reaction.core.utils import reject_option_like_extra_args
 
     # These negative spellings have long been documented for the legacy
@@ -4243,6 +4478,13 @@ def cli(
         tsopt_overrides["stop_plateau_thresh"] = float(stop_plateau_thresh)
     if stop_plateau_window is not None:
         tsopt_overrides["stop_plateau_window"] = int(stop_plateau_window)
+
+    tsopt_reference_mode_applicable = _tsopt_reference_mode_is_applicable(
+        tsopt_overrides.get("opt_mode", tsopt_opt_mode_default)
+    )
+    tsopt_reference_mode_enabled = bool(
+        tsopt_from_mep_tan and tsopt_reference_mode_applicable
+    )
 
     freq_overrides: Dict[str, Any] = {}
     # backend will be injected after calc_cfg_shared is built (see below)
@@ -4918,6 +5160,213 @@ def cli(
             public_root=out_dir,
         )
 
+        _tsopt_payload = dict(getattr(g_ts, "_tsopt_result", {}) or {})
+        _tsopt_decision = dict(
+            getattr(g_ts, "_tsopt_continuation", {})
+            or _tsopt_continuation_decision(_tsopt_payload)
+        )
+        _tsopt_result_path = getattr(g_ts, "_tsopt_result_path", None)
+        _tsopt_record: Dict[str, Any] = {
+            **_tsopt_decision,
+            "result_json": (
+                None if _tsopt_result_path is None else str(_tsopt_result_path)
+            ),
+            "final_structure": str(ts_pdb),
+            "imaginary_frequencies_cm": _tsopt_payload.get(
+                "imaginary_frequencies_cm"
+            ),
+            "stop_reason": _tsopt_payload.get("stop_reason"),
+            "files": _tsopt_payload.get("files") or {},
+        }
+
+        if not bool(_tsopt_decision.get("continue_irc")):
+            ensure_dir(struct_dir)
+            _published_ts: Optional[Path] = None
+            try:
+                _published_ts = struct_dir / f"ts{ts_pdb.suffix.lower()}"
+                if _copy_public_logged(
+                    ts_pdb, _published_ts, label="terminal TS structure", echo=False
+                ):
+                    _tsopt_record["published_structure"] = str(_published_ts)
+            except Exception as exc:
+                _echo(
+                    f"[all] WARNING: failed to publish the convenience TS structure: {exc}",
+                    err=True,
+                )
+
+            pipeline_stop = {
+                "stage": "before_irc",
+                "segment": 1,
+                "reason": _tsopt_decision.get("reason"),
+                "tsopt_result": _tsopt_record,
+            }
+            _stop_log: Dict[str, Any] = {
+                "index": 1,
+                "tag": "seg_01",
+                "kind": "tsopt",
+                "bond_changes": "",
+                "post_dir": str(tsroot),
+                "tsopt": _tsopt_record,
+                "pipeline_stop": dict(pipeline_stop),
+            }
+            if _tsopt_payload.get("n_imaginary_modes") is not None:
+                _stop_log["ts_imag"] = {
+                    "n_imag": int(_tsopt_payload["n_imaginary_modes"]),
+                    "imag_freqs_cm": list(
+                        _tsopt_payload.get("imaginary_frequencies_cm") or []
+                    ),
+                }
+
+            summary = {
+                "out_dir": str(tsroot),
+                "n_images": 1,
+                "n_segments": 1,
+                "stopped_before_irc": True,
+                "pipeline_stop": dict(pipeline_stop),
+                "segments": [
+                    {
+                        "index": 1,
+                        "tag": "seg_01",
+                        "kind": "tsopt",
+                        "converged": (
+                            _tsopt_decision.get("optimization_status") == "converged"
+                        ),
+                        "bond_changes": "",
+                    }
+                ],
+            }
+            _enrich_summary(
+                summary,
+                version="",
+                pipeline_mode="tsopt-only",
+                out_dir=out_dir,
+                mlip_backend=_mlip_backend_shared,
+                mlip_model=_mlip_model_shared,
+                mlip_precision=_mlip_precision_shared,
+                charge=q_int,
+                spin=spin,
+                command=command_str,
+                post_segments=[_stop_log],
+                config={
+                    "refine_path": refine_path,
+                    "tsopt": do_tsopt,
+                    "thermo": do_thermo,
+                    "dft": do_dft,
+                    "dft_status": None,
+                    "opt_mode": tsopt_opt_mode_default,
+                    "path_opt_mode": opt_mode_norm,
+                    "post_opt_mode": tsopt_opt_mode_default,
+                    "ts_opt_mode": tsopt_opt_mode_default,
+                    "endpoint_opt_mode": tsopt_opt_mode_default,
+                    "mep_mode": mep_mode_kind,
+                    "dmf_correlated": dmf_correlated_effective,
+                },
+                freeze_atoms=_freeze_atoms_for_log(),
+                manifest=manifest,
+            )
+            summary["stopped_before_irc"] = True
+            summary["pipeline_stop"] = dict(pipeline_stop)
+            _publish_manifest_summary(
+                tsroot / "summary.json",
+                summary,
+                manifest=manifest,
+                key="ts.summary.01",
+                out_dir=out_dir,
+            )
+            _copy_public_logged(
+                tsroot / "summary.json",
+                out_dir / "summary.json",
+                label="summary.json",
+                echo=False,
+            )
+            summary_payload = {
+                "root_out_dir": str(out_dir),
+                "path_dir": str(tsroot),
+                "path_module_dir": "tsopt_single",
+                "pipeline_mode": "tsopt-only",
+                "n_images": 1,
+                "n_segments": 1,
+                "refine_path": bool(refine_path),
+                "flatten": bool(flatten),
+                "tsopt": do_tsopt,
+                "thermo": do_thermo,
+                "dft": do_dft,
+                "status": summary.get("status"),
+                "status_reasons": summary.get("status_reasons", []),
+                "execution_status": summary.get("execution_status"),
+                "scientific_status": summary.get("scientific_status"),
+                "scientific_status_reasons": summary.get(
+                    "scientific_status_reasons", []
+                ),
+                "command": command_str,
+                "charge": q_int,
+                "spin": spin,
+                "segments": summary.get("segments", []),
+                "post_segments": [_stop_log],
+                "stopped_before_irc": True,
+                "pipeline_stop": dict(pipeline_stop),
+                "key_files": summary.get("key_output_files", {}),
+            }
+            try:
+                write_summary_log(tsroot / "summary.log", summary_payload)
+                _copy_public_logged(
+                    tsroot / "summary.log",
+                    out_dir / "summary.log",
+                    label="summary.log",
+                    echo=False,
+                )
+            except Exception as exc:
+                _echo(
+                    f"[write] WARNING: failed to write stopped TS summary.log: {exc}",
+                    err=True,
+                )
+            _persist_run_manifest(manifest, out_dir)
+            _echo(
+                "[all] TS artifacts were finalized, but IRC and every later "
+                f"stage were skipped: {_tsopt_decision.get('reason')}",
+                err=True,
+            )
+            _echo_section(
+                "====== [all] TSOPT-only pipeline stopped before IRC ======"
+            )
+            citation_post_segments = [_stop_log]
+            _emit_final_summary(
+                out_dir,
+                time_start,
+                manifest,
+                citation_payload=_all_method_citation_payload(),
+            )
+            return
+
+        _reaction_mode_fallback = bool(
+            _tsopt_decision.get("reaction_mode_fallback")
+        )
+        _reaction_mode_source = (
+            _tsopt_decision.get("reaction_mode_source") or "unspecified"
+        )
+        if _reaction_mode_fallback:
+            _echo(
+                "[all] WARNING: reference-aligned negative-mode selection was "
+                "unavailable or invalid; IRC falls back to exact-PHVA root 0. "
+                "Reaction-mode identity is unverified "
+                f"({_tsopt_decision.get('reaction_mode_fallback_reason')}).",
+                err=True,
+            )
+        if int(_tsopt_decision.get("n_imaginary_modes") or 0) > 1:
+            _mode_identity = (
+                "aligned with the supplied reference direction"
+                if not _reaction_mode_fallback
+                and _reaction_mode_source == "mep-reference-overlap"
+                else f"selected by {_reaction_mode_source}"
+            )
+            _echo(
+                "[all] WARNING: continuing diagnostic IRC from a numerically "
+                "converged higher-order saddle using negative exact-PHVA mode "
+                f"{_tsopt_decision.get('reaction_mode_index')} {_mode_identity}; "
+                "this is not first-order TS certification.",
+                err=True,
+            )
+
         irc_res = _irc_and_match(
             seg_idx=1,
             seg_dir=tsroot,
@@ -4932,7 +5381,9 @@ def cli(
             args_yaml=args_yaml,
             convert_files=convert_files,
             irc_step_size=irc_step_size,
+            irc_max_cycles=irc_max_cycles,
             irc_never_stop=irc_never_stop,
+            irc_root=_tsopt_decision.get("reaction_mode_index"),
             seg_tag=None,
             session=session,
             manifest=manifest,
@@ -5360,7 +5811,15 @@ def cli(
                     },
                     # Presentation-convention provenance (energy-order R/P).
                     "endpoint_assignment": endpoint_assignment,
+                    "tsopt": _tsopt_record,
                 }
+                if _tsopt_payload.get("n_imaginary_modes") is not None:
+                    segment_log["ts_imag"] = {
+                        "n_imag": int(_tsopt_payload["n_imaginary_modes"]),
+                        "imag_freqs_cm": list(
+                            _tsopt_payload.get("imaginary_frequencies_cm") or []
+                        ),
+                    }
                 if ts_freq_info is not None:
                     segment_log["ts_imag"] = ts_freq_info
                     if ts_freq_info.get("nu_imag_max_cm") is not None:
@@ -5964,9 +6423,15 @@ def cli(
                 # child's real MEP convergence from result.json.
                 "--out-json",
             ]
-            if cli_param_overridden(ctx, "max_cycles_gsm") and max_cycles_gsm is not None:
+            if (
+                cli_param_overridden(ctx, "max_cycles_gsm")
+                or cli_param_overridden(ctx, "max_cycles")
+            ) and max_cycles_gsm is not None:
                 po_args.extend(["--max-cycles-gsm", str(int(max_cycles_gsm))])
-            if cli_param_overridden(ctx, "max_cycles_dmf") and max_cycles_dmf is not None:
+            if (
+                cli_param_overridden(ctx, "max_cycles_dmf")
+                or cli_param_overridden(ctx, "max_cycles")
+            ) and max_cycles_dmf is not None:
                 po_args.extend(["--max-cycles-dmf", str(int(max_cycles_dmf))])
             _append_toggle_arg(po_args, "--freeze-links", bool(freeze_links_flag and freeze_ref is not None))
             if cli_param_overridden(ctx, "climb"):
@@ -6427,9 +6892,15 @@ def cli(
         # freeze_ref is None and freeze-links should not be activated.
         _append_toggle_arg(ps_args, "--freeze-links", bool(freeze_links_flag and freeze_ref is not None))
         ps_args.extend(["--mep-mode", mep_mode_kind])
-        if cli_param_overridden(ctx, "max_cycles_gsm") and max_cycles_gsm is not None:
+        if (
+            cli_param_overridden(ctx, "max_cycles_gsm")
+            or cli_param_overridden(ctx, "max_cycles")
+        ) and max_cycles_gsm is not None:
             ps_args.extend(["--max-cycles-gsm", str(int(max_cycles_gsm))])
-        if cli_param_overridden(ctx, "max_cycles_dmf") and max_cycles_dmf is not None:
+        if (
+            cli_param_overridden(ctx, "max_cycles_dmf")
+            or cli_param_overridden(ctx, "max_cycles")
+        ) and max_cycles_dmf is not None:
             ps_args.extend(["--max-cycles-dmf", str(int(max_cycles_dmf))])
         if cli_param_overridden(ctx, "climb"):
             _append_toggle_arg(ps_args, "--climb", bool(climb))
@@ -6442,6 +6913,8 @@ def cli(
         _append_cli_arg(ps_args, "--thresh-dmf", thresh_dmf)
         ps_args.extend(["--out-dir", str(path_dir)])
         _append_toggle_arg(ps_args, "--convert-files", bool(convert_files))
+        if not tsopt_reference_mode_enabled:
+            ps_args.append("--no-write-hei-mode-cache")
         if args_yaml is not None:
             ps_args.extend(["--config", str(args_yaml)])
         if not _forward_calc_file_argv(ps_args, calc_cfg_shared) and cli_param_overridden(ctx, "backend"):
@@ -6865,6 +7338,7 @@ def cli(
     g_dft_mlip_seg_energies: List[Tuple[float, float, float]] = []
     irc_trj_for_all: List[Tuple[Path, bool]] = []
     post_segment_logs: List[Dict[str, Any]] = []
+    pipeline_stop: Optional[Dict[str, Any]] = None
 
     for s in reactive:
         seg_idx = int(s.get("index", 0) or 0)
@@ -6920,17 +7394,29 @@ def cli(
                 _seg_tsopt_overrides["out_dir"] = (
                     tsopt_out_dir / f"seg_{seg_idx:02d}"
                 )
-            _hei_mode_path = seg_root / f"hei_mode_seg_{seg_idx:02d}.txt"
+            _hei_mode_path = seg_root / f"hei_mode_seg_{seg_idx:02d}.npz"
             mep_key = f"path.mep.{seg_idx:02d}.trajectory"
             current_mep = (
                 manifest.produced[mep_key][0] if mep_key in manifest.produced else None
             )
-            _hei_mode_path = _select_hei_reference_mode(
-                tsopt_from_mep_tan,
-                current_mep,
-                hei_model_path,
-                _hei_mode_path,
-            )
+            if tsopt_from_mep_tan and not tsopt_reference_mode_applicable:
+                _hei_mode_path, _reference_mode_status = _select_hei_reference_mode(
+                    False, current_mep, hei_model_path, _hei_mode_path
+                )
+                _reference_mode_status.update({
+                    "enabled": False,
+                    "requested": True,
+                    "status": "not_applicable_to_dimer",
+                    "reason": "Dimer does not consume Hessian reference modes",
+                })
+            else:
+                _hei_mode_path, _reference_mode_status = _select_hei_reference_mode(
+                    tsopt_reference_mode_enabled,
+                    current_mep,
+                    hei_model_path,
+                    _hei_mode_path,
+                )
+            segment_log["reference_mode"] = _reference_mode_status
             if _hei_mode_path is not None:
                 _seg_tsopt_overrides["reference_mode"] = _hei_mode_path
             ts_pdb, g_ts = _run_tsopt_on_hei(
@@ -6950,6 +7436,72 @@ def cli(
                 artifact_prefix=f"post.{seg_idx:02d}.tsopt",
                 public_root=out_dir,
             )
+
+            _tsopt_payload = dict(getattr(g_ts, "_tsopt_result", {}) or {})
+            _tsopt_decision = dict(
+                getattr(g_ts, "_tsopt_continuation", {})
+                or _tsopt_continuation_decision(_tsopt_payload)
+            )
+            _tsopt_result_path = getattr(g_ts, "_tsopt_result_path", None)
+            segment_log["tsopt"] = {
+                **_tsopt_decision,
+                "result_json": (
+                    None if _tsopt_result_path is None else str(_tsopt_result_path)
+                ),
+                "final_structure": str(ts_pdb),
+                "imaginary_frequencies_cm": _tsopt_payload.get(
+                    "imaginary_frequencies_cm"
+                ),
+                "stop_reason": _tsopt_payload.get("stop_reason"),
+            }
+
+            if not bool(_tsopt_decision.get("continue_irc")):
+                pipeline_stop = {
+                    "stage": "before_irc",
+                    "segment": seg_idx,
+                    "reason": _tsopt_decision.get("reason"),
+                    "tsopt_result": segment_log["tsopt"],
+                }
+                segment_log["pipeline_stop"] = dict(pipeline_stop)
+                summary["stopped_before_irc"] = True
+                summary["pipeline_stop"] = dict(pipeline_stop)
+                _echo(
+                    "[all] TS artifacts were finalized, but IRC and every later "
+                    f"stage were skipped for segment {seg_idx:02d}: "
+                    f"{_tsopt_decision.get('reason')}",
+                    err=True,
+                )
+                _persist_run_manifest(manifest, out_dir)
+                break
+
+            _reaction_mode_fallback = bool(
+                _tsopt_decision.get("reaction_mode_fallback")
+            )
+            _reaction_mode_source = (
+                _tsopt_decision.get("reaction_mode_source") or "unspecified"
+            )
+            if _reaction_mode_fallback:
+                _echo(
+                    "[all] WARNING: reference-aligned negative-mode selection was "
+                    "unavailable or invalid; IRC falls back to exact-PHVA root 0. "
+                    "Reaction-mode identity is unverified "
+                    f"({_tsopt_decision.get('reaction_mode_fallback_reason')}).",
+                    err=True,
+                )
+            if int(_tsopt_decision.get("n_imaginary_modes") or 0) > 1:
+                _mode_identity = (
+                    "aligned with the MEP/reference direction"
+                    if not _reaction_mode_fallback
+                    and _reaction_mode_source == "mep-reference-overlap"
+                    else f"selected by {_reaction_mode_source}"
+                )
+                _echo(
+                    "[all] WARNING: continuing diagnostic IRC from a numerically "
+                    "converged higher-order saddle using negative exact-PHVA mode "
+                    f"{_tsopt_decision.get('reaction_mode_index')} {_mode_identity}; "
+                    "this is not first-order TS certification.",
+                    err=True,
+                )
 
             endpoint_key = f"path.segment.{seg_idx:02d}.endpoint_trajectory"
             current_endpoint_trajectory = (
@@ -6972,7 +7524,9 @@ def cli(
                 args_yaml=args_yaml,
                 convert_files=convert_files,
                 irc_step_size=irc_step_size,
+                irc_max_cycles=irc_max_cycles,
                 irc_never_stop=irc_never_stop,
+                irc_root=_tsopt_decision.get("reaction_mode_index"),
                 seg_tag=str(seg_tag),
                 endpoint_trajectory=current_endpoint_trajectory,
                 session=session,
@@ -7564,6 +8118,11 @@ def cli(
 
     # Refresh summary.json with final energy diagram metadata (including aggregated diagrams)
     summary["energy_diagrams"] = list(energy_diagrams)
+    summary["stopped_before_irc"] = pipeline_stop is not None
+    if pipeline_stop is not None:
+        summary["pipeline_stop"] = dict(pipeline_stop)
+    else:
+        summary.pop("pipeline_stop", None)
     _enrich_summary(
         summary,
         version="",

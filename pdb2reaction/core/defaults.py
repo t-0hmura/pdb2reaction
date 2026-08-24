@@ -8,6 +8,7 @@ from typing import Any, Dict, Mapping, Optional
 
 import click
 from pysisyphus.tr_projection import DEFAULT_TR_PROJECTION
+from pysisyphus.normal_modes import DEFAULT_FREQUENCY_ZERO_CUTOFF_CM
 
 # Convergence preset choices (single source of truth so opt/tsopt/
 # path_opt/path_search/scan/all all reject unknown --thresh values at
@@ -151,7 +152,7 @@ def apply_backend_defaults(cfg: Dict[str, Any]) -> None:
 
 OPT_BASE_KW: Dict[str, Any] = {
     "thresh": "gau",
-    "max_cycles": 10000,
+    "max_cycles": 100000,
     "print_every": 100,
     "min_step_norm": 1e-8,
     "assert_min_step": True,
@@ -409,6 +410,7 @@ IRC_KW: Dict[str, Any] = {
 
 
 FREQ_KW: Dict[str, Any] = {
+    "zero_cutoff_cm": DEFAULT_FREQUENCY_ZERO_CUTOFF_CM,
     "amplitude_ang": 0.8,
     "n_frames": 20,
     "max_write": 10,
@@ -465,7 +467,7 @@ HESSIAN_DIMER_KW: Dict[str, Any] = {
     "thresh_loose": "gau_loose",
     "thresh": "baker",
     "update_interval_hessian": 500,
-    "neg_freq_thresh_cm": 5.0,
+    "neg_freq_thresh_cm": DEFAULT_FREQUENCY_ZERO_CUTOFF_CM,
     "flatten_amp_ang": 0.10,
     "flatten_max_iter": 50,
     "flatten_sep_cutoff": 0.0,
@@ -537,7 +539,7 @@ RSIRFO_KW: Dict[str, Any] = {
     "max_mode_loss_rejections": 5,
     "verify_saddle": True,
     # Reject sub-threshold soft directions during optional recovery.
-    "saddle_imaginary_threshold_cm": 5.0,
+    "saddle_imaginary_threshold_cm": DEFAULT_FREQUENCY_ZERO_CUTOFF_CM,
     "saddle_recovery_step": 0.01,
     "saddle_recovery_check_interval": 50,
     "saddle_recovery_max_cycles": 0,

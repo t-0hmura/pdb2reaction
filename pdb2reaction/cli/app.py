@@ -622,6 +622,7 @@ _SUBCOMMAND_PRIMARY_HELP_OPTIONS: dict[str, frozenset[str]] = {
             "--output",
             "-r",
             "--radius",
+            "--selected-resn",
             "-l",
             "--ligand-charge",
             "--help-advanced",

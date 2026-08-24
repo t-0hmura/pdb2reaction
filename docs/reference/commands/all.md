@@ -39,10 +39,12 @@ Options:
                                   are used directly as active site models.
   -o, --out-dir DIRECTORY         Top-level output directory for the pipeline.
                                   [default: result_all]
-  -r, --radius FLOAT              Inclusion cutoff (Å) around substrate atoms.
-                                  [default: 2.6]
-  --radius-het2het FLOAT          Independent hetero–hetero cutoff (Å) for
-                                  non‑C/H pairs.  [default: 0.0]
+  -r, --radius FLOAT RANGE        Inclusion cutoff (Å) around substrate atoms.
+                                  Zero is accepted and evaluated internally as
+                                  0.001 Å (effectively off for ordinary radius-
+                                  based neighbors).  [default: 2.6; x>=0.0]
+  --radius-het2het FLOAT RANGE    Independent hetero–hetero cutoff (Å) for
+                                  non‑C/H pairs.  [default: 0.0; x>=0.0]
   --include-h2o BOOLEAN           Include waters (HOH/WAT/TIP3/SOL) in the
                                   active site model.  [default: True]
   --exclude-backbone BOOLEAN      Remove backbone atoms on non‑substrate amino
@@ -176,7 +178,7 @@ Options:
   --preopt BOOLEAN                If True, run initial single-structure
                                   optimizations of the active site model inputs.
                                   [default: True]
-  --hessian-calc-mode [finitedifference|analytical]
+  --hessian-calc-mode [FiniteDifference|Analytical]
                                   Common MLIP Hessian calculation mode forwarded
                                   to tsopt and freq.  [default:
                                   (FiniteDifference)]
@@ -184,11 +186,12 @@ Options:
                                   TSOPT-only mode for single-structure), and
                                   build energy diagrams.  [default: False]
   --tsopt-from-mep-tan / --no-tsopt-from-mep-tan
-                                  Initialize TS root selection from the MEP
-                                  tangent at the highest-energy image. When
-                                  disabled, TSOPT selects its initial mode from
-                                  the initial-structure Hessian.  [default:
-                                  tsopt-from-mep-tan]
+                                  Guide Hessian-based TS root identity from MEP
+                                  tangent candidate(s) at the highest-energy
+                                  image. The CPU/file cache is not created or
+                                  used when disabled. Dimer does not consume
+                                  this Hessian reference mode.  [default: tsopt-
+                                  from-mep-tan]
   --thermo BOOLEAN                Run freq on (R, TS, P) per reactive segment
                                   (or TSOPT-only mode) and build Gibbs free-
                                   energy diagram (MLIP).  [default: False]

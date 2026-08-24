@@ -42,6 +42,7 @@ from pdb2reaction.core.utils import (
     _parse_freeze_atoms,
     merge_freeze_atom_indices,
     echo_resolved_device,
+    optional_positive_int,
 )
 from pdb2reaction.cli.common_options import (
     add_ml_charge_spin_options,
@@ -226,7 +227,11 @@ def _validate_resolved_irc_config(irc_cfg: Dict[str, Any]) -> None:
 
     if finite("step_length") <= 0.0:
         raise click.BadParameter("irc.step_length must be positive.")
-    integer("max_cycles", 1)
+    # ``None`` is the canonical unlimited-cycle value shared by the CLI,
+    # defaults, and the bundled IRC engine.  Validate a concrete limit when
+    # one is supplied, but do not turn the no-limit contract into an error.
+    if irc_cfg.get("max_cycles") is not None:
+        integer("max_cycles", 1)
     integer("root", 0)
     for name in ("rms_grad_thresh", "energy_thresh", "energy_increase_thresh"):
         if finite(name) < 0.0:
@@ -295,10 +300,10 @@ def _echo_convert_trj_if_exists(
 )
 @click.option(
     "--max-cycles",
-    type=int,
+    type=click.IntRange(min=1),
     default=None, show_default="125",
     help=(
-            "Maximum number of IRC steps; an explicit value overrides YAML irc.max_cycles."
+            "Maximum number of IRC steps."
     ),
 )
 @click.option(
@@ -529,6 +534,9 @@ def cli(
                 calc_cfg["hessian_calc_mode"] = str(hessian_calc_mode)
             if cli_param_overridden(ctx, "max_cycles") and max_cycles is not None:
                 irc_cfg["max_cycles"] = int(max_cycles)
+            irc_cfg["max_cycles"] = optional_positive_int(
+                irc_cfg.get("max_cycles"), "irc.max_cycles"
+            )
             if cli_param_overridden(ctx, "step_size") and step_size is not None:
                 irc_cfg["step_length"] = float(step_size)
             if cli_param_overridden(ctx, "never_stop") and never_stop is not None:
@@ -750,7 +758,8 @@ def cli(
                 _n_frames = len(getattr(eulerpc, f"{_direction}_energies", []))
                 _last_cycle = getattr(eulerpc, f"{_direction}_cycle", None)
                 _reached_cycle_cap = (
-                    _last_cycle is not None
+                    eulerpc.max_cycles is not None
+                    and _last_cycle is not None
                     and int(_last_cycle) + 1 >= int(eulerpc.max_cycles)
                 )
                 if 0 < _n_frames <= 3 and not _reached_cycle_cap:

@@ -121,13 +121,14 @@ The only `freq`-specific default that differs from the canonical block is the ou
 
 ```yaml
 freq:
+ zero_cutoff_cm: 5.0 # remove |frequency| <= 5.0 cm^-1
  out_dir: ./result_freq/ # freq default
 ```
 
 ## Notes
 
 - `tsopt` already includes an imaginary-frequency check, so a separate `freq` run is mainly for thermochemistry or detailed mode inspection.
-- A properly converged first-order saddle point (TS) is expected to have **exactly one** imaginary frequency. Standalone `freq` counts every negative frequency at zero; `hessian_dimer.neg_freq_thresh_cm` applies only to optimizer-side diagnostics and flattening.
+- A properly converged first-order saddle point (TS) is expected to have **exactly one** imaginary frequency. `freq.zero_cutoff_cm` removes `|frequency| <= cutoff` consistently before standalone and TS-side classification.
 - Imaginary frequencies are reported as negative values in cm⁻¹. `freq` prints how many were detected
   and dumps details when `--dump`.
 - An all-frozen structure has no active vibrational DOF and raises an explicit error.

@@ -63,12 +63,12 @@ along the reaction coordinate).
   `--refine-path` so recursive `path-search` resolves the MEP before
   TSOPT. This is deliberately off by default: a bad/noisy path can be split
   into unnecessary segments and multiply MEP, TSOPT, IRC, and frequency cost.
-- `--ref-mode` is not a normal standalone TSOPT remedy. It is the
-  advanced/internal Cartesian path direction that `all` derives from its MEP
-  and passes by default for initial-root selection and overlap tracking.
-  With `all --no-tsopt-from-mep-tan`, TSOPT computes the initial-structure Hessian
-  and selects its initial root from the resulting vibrational modes. The default
-  search does not launch automatic saddle recovery or displaced multistarts.
+- `--ref-mode` is not a normal standalone TSOPT remedy. It accepts one or
+  more atom-order-matched Cartesian 3N path candidates (`.npz`, `.npy`, or text)
+  and guides Hessian root identity/overlap; it does not replace the Hessian.
+  `all` supplies CPU/file-cached MEP candidates to Hessian TS optimizers by
+  default. Dimer does not consume it. With `all --no-tsopt-from-mep-tan`, cache
+  creation/use is disabled and TSOPT selects from the initial Hessian modes.
   Only external-path expert workflows should provide it manually.
 
 ## 4. P-start scan → barrier is the REVERSE direction

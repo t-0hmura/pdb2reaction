@@ -1120,6 +1120,7 @@ def test_normal_modes_remove_exactly_the_rigid_rank_and_keep_soft_roots() -> Non
         coords_bohr,
         device,
         freeze_idx=freeze_idx,
+        frequency_zero_cutoff_cm=0.0,
     )
 
     # Exactly the constrained rigid rank is removed from the 9 active DOF.
@@ -1266,6 +1267,7 @@ def test_compact_normal_modes_keep_low_signed_roots_under_phva(hessian_kind: str
         _NORMAL_MODE_COORDS_BOHR,
         torch.device("cpu"),
         freeze_idx=freeze_idx,
+        frequency_zero_cutoff_cm=0.0,
     )
 
     # Exactly the rigid rank is removed from the nine active DOF.
@@ -1302,6 +1304,7 @@ def test_compact_normal_modes_keep_low_signed_roots_without_frozen_atoms() -> No
         _NORMAL_MODE_NUMBERS,
         _NORMAL_MODE_COORDS_BOHR,
         torch.device("cpu"),
+        frequency_zero_cutoff_cm=0.0,
     )
 
     assert freqs_cm.size == 12 - info.effective_rank == len(omega2)

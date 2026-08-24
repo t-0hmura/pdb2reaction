@@ -175,6 +175,10 @@ All fields from `opt`, plus:
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `optimization_status` | string | Numerical optimizer outcome: `"converged"`, `"not_converged"`, or `"stalled"`; independent of saddle order |
+| `saddle_validation` | string | `"first_order"`, `"higher_order"`, `"no_imaginary"`, or `"unavailable"` from terminal exact PHVA |
+| `hessian_status` | string | `"completed"`, `"failed"`, `"skipped"`, or `"unavailable"`; `hessian_error` gives the failure reason |
+| `reaction_mode_index` | int\|null | Selected negative exact-PHVA root for downstream IRC; fallback root 0 is explicitly labelled and does not verify reaction identity |
 | `n_imaginary_modes` | int\|null | Number of imaginary frequencies; `null` if PHVA was not run |
 | `imaginary_frequencies_cm` | float[]\|null | Imaginary frequencies (cm⁻¹, negative); `null` when PHVA was not run |
 | `opt_mode` | string | `"rsprfo"` (default), `"rsirfo"`, `"trim"`, or `"dimer"` |
@@ -183,18 +187,18 @@ All fields from `opt`, plus:
 | `rigid_projection` | object | Rigid-mode and exact-Hessian provenance; see [projection provenance](#rigid-projection-provenance) |
 
 The `files` object may include `imaginary_mode_files` (list of vib file paths).
-When a Hessian-family optimizer reaches `max_cycles` without convergence, final
-PHVA and mode export are skipped; both imaginary-mode fields are `null`. An
-energy-plateau exit instead runs terminal PHVA but remains `stalled`; other
-non-converged exits are `not_converged`. For Cartesian Hessian
-modes, `status: "converged"` requires exactly one negative frequency in the final
-exact PHVA, without a magnitude cutoff. Supported internal-coordinate Hessian
-modes instead require one negative-curvature root. Higher-order saddles and
-`n_imag=0` structures are reported as `not_converged`; a plateau-stalled outcome
-also stops further flatten/retry work. Convergence details are
-available for rsirfo mode; dimer mode also reports `status: "converged"`,
-`"not_converged"`, or `"stalled"`, but provides `n_opt_cycles` only and omits
-the per-cycle force/step convergence keys and Hessian-mode `safeguards` object.
+The retained terminal geometry normally receives one terminal PHVA even after
+numerical non-convergence; a PHVA calculation failure is recorded as
+`hessian_status: "failed"` without discarding the structure or fabricating
+frequencies. `status`/`optimization_status` describe numerical optimization,
+while `saddle_validation` describes exact-PHVA order. A numerically converged
+higher-order stationary point remains `optimization_status: "converged"` with
+`saddle_validation: "higher_order"`; it is not a certified first-order TS.
+`all` may use a validated negative root for warning-labelled diagnostic IRC.
+Numerical non-convergence, zero imaginary modes, missing/failed PHVA, or no
+valid negative root stops `all` after TS artifact registration and before IRC.
+Dimer uses the same additive terminal fields but still omits Hessian-family
+per-cycle force/step convergence details and the `safeguards` object.
 
 ### `freq`
 

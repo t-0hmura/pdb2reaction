@@ -9,8 +9,8 @@
 
 from __future__ import annotations
 
-# setuptools_scm generates ``_version.py`` at build time; editable source trees
-# without it use the development fallback.
+# Release metadata and runtime imports share the committed ``_version.py``
+# module; ``pyproject.toml`` reads the same attribute when building artifacts.
 try:
     from pdb2reaction._version import __version__, __version_tuple__
 except ImportError:

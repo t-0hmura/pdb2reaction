@@ -421,7 +421,6 @@ hessian_dimer:
  thresh_loose: gau_loose # Loose convergence preset
  thresh: baker # Main convergence preset
  update_interval_hessian: 500 # Hessian rebuild cadence
- neg_freq_thresh_cm: 5.0 # Mode-file, flattening, and optional-recovery threshold (cm⁻¹)
  flatten_amp_ang: 0.1 # Flattening amplitude (Å)
  flatten_max_iter: 50 # Flattening iteration cap (see note below)
  flatten_sep_cutoff: 0.0 # Minimum distance between representative atoms
@@ -502,7 +501,6 @@ rsirfo:
  mode_loss_trust_floor: 1.0e-05 # Positive emergency trust-radius floor for those retries
  max_mode_loss_rejections: 5 # Rejections allowed at that floor before stopping
  verify_saddle: true # Require exact-Hessian projected first-order-saddle validation
- saddle_imaginary_threshold_cm: 5.0 # Soft-mode threshold for mode handling (cm^-1; positive)
  saddle_recovery_step: 0.01 # Positive uphill recovery displacement cap in optimizer coordinates
  saddle_recovery_check_interval: 50 # Exact PHVA cadence during n_imag=0 recovery
  saddle_recovery_max_cycles: 0 # Automatic n_imag=0 recovery disabled
@@ -571,12 +569,19 @@ Vibrational frequency analysis settings.
 
 ```yaml
 freq:
+ zero_cutoff_cm: 5.0 # Remove modes with |frequency| <= this value (cm^-1)
  amplitude_ang: 0.8 # Displacement amplitude for modes (Å)
- n_frames: 20 # Number of frames per mode animation
+ n_frames: 20 # Number of frames per mode trajectory
  max_write: 10 # Maximum number of modes to write
  sort: value # Sort order: "value" or "abs"
  out_dir: ./result_freq/ # Output directory
 ```
+
+`freq.zero_cutoff_cm` is the single cutoff used by standalone `freq`, `opt`
+flattening, Dimer, and Hessian-family TS optimization. The legacy
+`hessian_dimer.neg_freq_thresh_cm` and
+`rsirfo.saddle_imaginary_threshold_cm` spellings remain accepted as aliases;
+conflicting values are rejected.
 
 ---
 

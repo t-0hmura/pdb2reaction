@@ -32,23 +32,35 @@ def test_opt_invalid_cartesian_coord_kwargs_exit_nonzero(tmp_path: Path) -> None
     assert "coord_kwargs were given" in result.output
 
 
-@pytest.mark.parametrize("budget", ["0", "-1"])
-def test_opt_rejects_nonpositive_effective_cycle_budget(
-    tmp_path: Path, budget: str,
-) -> None:
+def test_opt_rejects_zero_cycle_budget(tmp_path: Path) -> None:
     source = tmp_path / "atom.xyz"
     source.write_text("1\natom\nHe 0 0 0\n", encoding="utf-8")
 
     result = CliRunner().invoke(
         root_cli,
         [
-            "opt", "-i", str(source), "-q", "0", "--max-cycles", budget,
+            "opt", "-i", str(source), "-q", "0", "--max-cycles", "0",
+            "--dry-run", "-o", str(tmp_path / "out"),
+        ],
+    )
+
+    assert result.exit_code != 0
+
+
+def test_opt_rejects_negative_cycle_budget(tmp_path: Path) -> None:
+    source = tmp_path / "atom.xyz"
+    source.write_text("1\natom\nHe 0 0 0\n", encoding="utf-8")
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "opt", "-i", str(source), "-q", "0", "--max-cycles", "-1",
             "--dry-run", "-o", str(tmp_path / "out"),
         ],
     )
 
     assert result.exit_code == 2
-    assert "opt.max_cycles must be a positive integer" in result.output
+    assert "Invalid value for '--max-cycles'" in result.output
 
 
 def test_yaml_output_directory_receives_runtime_error_envelope(tmp_path) -> None:

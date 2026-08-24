@@ -79,7 +79,7 @@ assignment remains ambiguous.
 |---|---|
 | Extra imaginary modes after a finite-difference Hessian | Check the effective precision, inspect the modes, and compare supported settings on the target system. Recompute independently before classifying the stationary point. |
 | `compile_model=True` changes startup/runtime behavior | Benchmark compiled and uncompiled modes with the installed torch/orb versions; disable it if compilation fails or does not amortize. |
-| TS result has more than one imaginary mode | Treat it as not converged: inspect modes, retry from a better MEP seed and/or `--flatten`, then cross-check with UMA/MACE if ambiguity remains. |
+| TS result has more than one imaginary mode | It is not a certified first-order saddle even if the numerical optimizer converged. Inspect modes, retry from a better MEP seed and/or `--flatten`, then cross-check with UMA/MACE if ambiguity remains. |
 
 ## See also
 

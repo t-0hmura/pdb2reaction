@@ -39,7 +39,7 @@ from ase.io import read
 import plotly.graph_objs as go
 
 from pdb2reaction.domain.add_elem_info import guess_element
-from pdb2reaction.core.defaults import RFO_KW
+from pdb2reaction.core.defaults import BOND_KW, RFO_KW
 from pdb2reaction.core.output import (
     _TAG_AWARE_MARKER,
     emit,
@@ -63,10 +63,29 @@ from pdb2reaction.io.structure_formats import (
 )
 from pdb2reaction.core.result_commit import commit_payloads
 from pdb2reaction.io.charge import compute_charge_summary, _format_echo_message
-from pysisyphus.constants import ANG2BOHR
+from pysisyphus.constants import ANG2BOHR, BOHR2ANG
+from pysisyphus.elem_data import COVALENT_RADII
 from pysisyphus.helpers import geom_loader
 
 logger = logging.getLogger(__name__)
+
+
+def optional_positive_int(value: Any, label: str) -> Optional[int]:
+    """Normalize an optional positive cycle bound (``None`` is uncapped)."""
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        raise click.BadParameter(f"{label} must be a positive integer or None.")
+    try:
+        parsed = int(value)
+        numeric = float(value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise click.BadParameter(
+            f"{label} must be a positive integer or None."
+        ) from exc
+    if not math.isfinite(numeric) or numeric != parsed or parsed <= 0:
+        raise click.BadParameter(f"{label} must be a positive integer or None.")
+    return parsed
 
 # CLI verbosity state (set by the top-level --verbose callback in cli/app.py).
 # `pretty_block` and any other config-echo helpers consult `is_verbose()` so
@@ -297,12 +316,15 @@ def emit_optimizer_terminal_status(
     max_cycles: Optional[int],
     stalled: bool = False,
     stop_reason: Optional[str] = None,
+    converged_message: Optional[str] = None,
 ) -> None:
     """Emit a consistent optimizer terminal status at detail verbosity.
 
     ``stalled`` renders the energy-plateau outcome and takes
     precedence over the convergence/max-cycle branches so a stalled run is
-    never printed as ``Converged!``.
+    never printed as ``Converged!``. ``converged_message`` lets callers label
+    numerical convergence explicitly when a separate scientific validation
+    still follows.
     """
     prefix = f"[{label}]"
     if stalled:
@@ -319,7 +341,11 @@ def emit_optimizer_terminal_status(
                 detail=True,
             )
     elif converged is True:
-        emit(f"{prefix} Converged!", narrative=False, detail=True)
+        emit(
+            f"{prefix} {converged_message or 'Converged!'}",
+            narrative=False,
+            detail=True,
+        )
     elif cycles is not None and max_cycles is not None and cycles >= max_cycles:
         emit(
             f"{prefix} Reached max cycles ({cycles}/{max_cycles}).",
@@ -2550,6 +2576,30 @@ def nearest_index(point, pool):
     return best_i, math.sqrt(best_d2)
 
 
+def _pdb_record_element(line: str) -> str:
+    """Return a normalized element symbol for one PDB ATOM/HETATM record."""
+    element = line[76:78].strip()
+    if not element:
+        element = guess_element(
+            line[12:16].strip(),
+            line[17:20].strip(),
+            line.startswith("HETATM"),
+        ) or ""
+    normalized = element.strip().lower()
+    if normalized not in COVALENT_RADII or COVALENT_RADII[normalized] <= 0.0:
+        raise ValueError(
+            f"cannot determine a covalent radius for element {element or '?'}"
+        )
+    return normalized
+
+
+def _link_parent_cutoff_ang(element: str) -> float:
+    """Return the element-specific H-parent covalent-bond cutoff in Å."""
+    return float(BOND_KW["bond_factor"]) * (
+        COVALENT_RADII["h"] + COVALENT_RADII[element]
+    ) * BOHR2ANG
+
+
 def load_pdb_atom_metadata(pdb_path: Path) -> List[Dict[str, Any]]:
     """Return per-atom PDB metadata in file order, restoring original CIF IDs."""
 
@@ -3390,24 +3440,45 @@ def detect_freeze_links(pdb_path):
     """
     others, lkhs = parse_pdb_coords(pdb_path)
 
-    if not lkhs or not others:
+    if not lkhs:
         # --freeze-links defaults on. Returning [] freezes nothing, and the run
         # then reads as "cap parents frozen" when no cap hydrogen was found at
         # all -- usually a structure that was never passed through `extract`.
-        if not lkhs:
-            click.echo(
-                f"[freeze-links] WARNING: no LKH/HL cap hydrogen found in "
-                f"'{pdb_path}'; no cap parent is frozen despite --freeze-links.",
-                err=True,
-            )
+        click.echo(
+            f"[freeze-links] WARNING: no LKH/HL cap hydrogen found in "
+            f"'{pdb_path}'; no cap parent is frozen despite --freeze-links.",
+            err=True,
+        )
         return []
+    if not others:
+        raise ValueError("isolated LKH/HL cap hydrogen has no possible parent atom")
 
     indices = []
-    for (x, y, z, _line) in lkhs:
+    by_index = {entry[0]: entry for entry in others}
+    for (x, y, z, link_line) in lkhs:
         idx, dist = nearest_index((x, y, z), others)
-        if idx >= 0:
-            indices.append(idx)
-    return indices
+        if idx < 0:
+            raise ValueError("isolated LKH/HL cap hydrogen has no possible parent atom")
+        parent_line = by_index[idx][4]
+        element = _pdb_record_element(parent_line)
+        cutoff = _link_parent_cutoff_ang(element)
+        link_serial = link_line[6:11].strip() or "?"
+        parent_name = parent_line[12:16].strip() or "?"
+        parent_resname = parent_line[17:20].strip() or "?"
+        if dist > cutoff:
+            raise ValueError(
+                f"isolated LKH/HL {link_serial}: nearest atom #{idx + 1} "
+                f"({parent_name} {parent_resname}, {element.title()}) is "
+                f"{dist:.3f} Å away, beyond the {cutoff:.3f} Å covalent cutoff"
+            )
+        if verbose_level() >= 3:
+            click.echo(
+                f"[freeze-links] LKH/HL {link_serial} -> atom #{idx + 1} "
+                f"({parent_name} {parent_resname}, {element.title()}): "
+                f"distance={dist:.3f} Å, cutoff={cutoff:.3f} Å"
+            )
+        indices.append(idx)
+    return sorted(set(indices))
 
 
 def detect_freeze_links_logged(pdb_path: Path) -> List[int]:

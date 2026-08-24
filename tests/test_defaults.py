@@ -45,11 +45,11 @@ class TestDefaultsStructure:
 
     def test_lbfgs_has_max_cycles(self):
         assert "max_cycles" in LBFGS_KW
-        assert LBFGS_KW["max_cycles"] > 0
+        assert LBFGS_KW["max_cycles"] == 100000
 
     def test_rfo_has_max_cycles(self):
         assert "max_cycles" in RFO_KW
-        assert RFO_KW["max_cycles"] > 0
+        assert RFO_KW["max_cycles"] == 100000
 
     def test_minimizer_trial_rejection_defaults(self):
         assert LBFGS_KW["reject_uphill"] is False
@@ -115,7 +115,9 @@ class TestDefaultsConsistency:
     def test_no_negative_cycles(self):
         for name, d in [("LBFGS_KW", LBFGS_KW), ("RFO_KW", RFO_KW), ("OPT_BASE_KW", OPT_BASE_KW)]:
             if "max_cycles" in d:
-                assert d["max_cycles"] > 0, f"{name} has non-positive max_cycles"
+                assert d["max_cycles"] is None or d["max_cycles"] > 0, (
+                    f"{name} has an invalid max_cycles"
+                )
 
     def test_solvent_default_is_none(self):
         assert CALC_KW_DEFAULT.get("solvent", "none") == "none"

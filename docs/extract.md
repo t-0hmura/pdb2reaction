@@ -149,12 +149,14 @@ Defaults shown are used when the option is not specified. The full flag list is 
 | `-i, --input PATH...` | One or more protein–ligand PDB/mmCIF files (identical atom identity/order required). | Required |
 | `-c, --center SPEC` | PDB/mmCIF path, residue IDs/names, `CHAIN:RESNAME`, or `CHAIN:RESNAME:RESSEQ`. | Required |
 | `-o, --output PATH...` | Active-site model PDB output(s); see [Outputs](#outputs) for naming/layout. | Auto (`model.pdb` or `model_<input>.pdb`) |
-| `-r, --radius FLOAT` | Atom–atom distance cutoff (Å) for inclusion (internally `0.001 Å` when zero). | `2.6` |
+| `-r, --radius FLOAT` | Atom–atom distance cutoff (Å). `0` disables radius-based expansion, so selection starts from `-c` and `--selected-resn` only (internally guarded as `0.001 Å`). | `2.6` |
 | `--radius-het2het FLOAT` | Independent hetero–hetero cutoff (Å, non C/H). | `0.0` (internally `0.001 Å` when zero) |
 | `--include-h2o / --no-include-h2o` | Include HOH / WAT / H2O / DOD / TIP / TIP3 / SOL waters. | `True` |
 | `--exclude-backbone / --no-exclude-backbone` | Remove backbone atoms on non-substrate amino acids (PRO / HYP safeguards). | `False` |
 | `--add-linkh / --no-add-linkh` | Add cap hydrogens at 1.09 Å along severed bonds at carbon boundaries only (non-carbon boundaries are not capped). | `True` |
 | `--selected-resn TEXT` | Force-include by the same ID/name/chain-qualified selectors as `--center`. | `""` |
+
+With `-r 0`, no neighboring residues are added by the radius search: the model is built from residues selected by `-c` and `--selected-resn`. Structural safeguards can still add a required disulfide partner or adjacent backbone context when applicable.
 | `--modified-residue TEXT` | Comma-separated residue names to treat as amino acids. `NAME:charge` adds or overrides the nominal charge for this extraction; bare `NAME` defaults to 0. | `""` |
 | `-l, --ligand-charge TEXT` | Total charge or per-resname mapping (e.g. `GPP:-3,SAM:1`). | _None_ |
 | `--out-json / --no-out-json` | Write a machine-readable `result.json` alongside the extracted PDB(s). Schema: [JSON Output Schema](json-output.md). | `False` |

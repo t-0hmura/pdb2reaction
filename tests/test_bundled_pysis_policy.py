@@ -121,4 +121,4 @@ def test_the_removed_legacy_projection_is_rejected_not_silently_accepted() -> No
     ) == "converged"
     assert _tsopt_terminal_status(
         hessian_optimizer, saddle_verified=False
-    ) == "not_converged"
+    ) == "converged"

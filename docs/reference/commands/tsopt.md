@@ -16,11 +16,14 @@ Options:
   -i, --input FILE                Single-geometry input (.pdb, .cif, .mmcif,
                                   .xyz, or .gjf). Extract a trajectory frame to
                                   .xyz before use.  [required]
-  --ref-mode FILE                 Advanced/internal path-mode hint for Hessian
-                                  TS root selection (.npy or whitespace
-                                  Cartesian 3N text). The all workflow supplies
-                                  this by default from its MEP; ordinary
-                                  standalone tsopt runs normally omit it.
+  --ref-mode FILE                 Advanced/internal Cartesian reference
+                                  direction(s) for Hessian TS root selection and
+                                  overlap tracking. Accepts .npz path-mode
+                                  caches, .npy arrays, or whitespace text
+                                  containing one 3N vector or a 2-D candidate
+                                  table. This guides mode identity; it does not
+                                  replace the Hessian and is not supported by
+                                  Dimer. all supplies it from the MEP.
   --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
                                   predictor. NOTE: with UMA, workers>1 plus an
                                   explicit Analytical Hessian request is an
@@ -70,7 +73,7 @@ Options:
                                   no-dry-run]
   --out-json / --no-out-json      Write machine-readable result.json to out_dir.
                                   [default: no-out-json]
-  --hessian-calc-mode [finitedifference|analytical]
+  --hessian-calc-mode [FiniteDifference|Analytical]
                                   Choose MLIP Hessian evaluation mode. YAML
                                   supplies the value when this option is
                                   omitted; explicit CLI wins. Defaults to

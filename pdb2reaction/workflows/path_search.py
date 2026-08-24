@@ -83,6 +83,7 @@ from pdb2reaction.core.utils import (
     _parse_freeze_atoms,
     merge_freeze_atom_indices,
     lossless_int,
+    optional_positive_int,
 )
 from pdb2reaction.core.result_commit import apply_current_run_id, commit_json
 from pdb2reaction.io.summary import (
@@ -91,6 +92,7 @@ from pdb2reaction.io.summary import (
     write_summary_log,
 )
 from pdb2reaction.io.trj2fig import run_trj2fig
+from pdb2reaction.io.path_mode_cache import write_path_mode_cache
 from pdb2reaction.io.structure_formats import (
     attach_template_metadata,
     atom_site_from_biopython_atom,
@@ -115,84 +117,6 @@ from pdb2reaction.cli.common_options import (
 from pdb2reaction.cli.decorators import run_cli, resolve_yaml_sources, load_merged_yaml_cfg
 
 logger = logging.getLogger(__name__)
-
-
-def _normalized_path_tangent(
-    coords: Sequence[np.ndarray],
-    index: int,
-    energies: Optional[Sequence[float]] = None,
-) -> Optional[np.ndarray]:
-    """Return the Cartesian path tangent used for the HEI-to-TS handoff.
-
-    When finite image energies are available, use the standard improved
-    upwinding tangent from the chain-of-states optimizer.  It suppresses the
-    low-energy side of a kink at an extremum and is the direction used by the
-    converged string itself.  Older trajectories without readable energies
-    fall back to the spacing-independent bisector of normalized secants.
-    Endpoints use their only available secant.
-    """
-    if len(coords) < 2 or not 0 <= int(index) < len(coords):
-        return None
-
-    arrays = [np.asarray(item, dtype=float).reshape(-1) for item in coords]
-
-    def _unit(vector: np.ndarray) -> Optional[np.ndarray]:
-        norm = float(np.linalg.norm(vector))
-        if not np.isfinite(norm) or norm <= 0.0:
-            return None
-        return vector / norm
-
-    if index == 0:
-        return _unit(arrays[1] - arrays[0])
-    if index == len(arrays) - 1:
-        return _unit(arrays[-1] - arrays[-2])
-
-    incoming_raw = arrays[index] - arrays[index - 1]
-    outgoing_raw = arrays[index + 1] - arrays[index]
-    incoming = _unit(incoming_raw)
-    outgoing = _unit(outgoing_raw)
-    if incoming is None:
-        return outgoing
-    if outgoing is None:
-        return incoming
-
-    if energies is not None and len(energies) == len(arrays):
-        energy_values = np.asarray(energies, dtype=float)
-        prev_energy = float(energy_values[index - 1])
-        image_energy = float(energy_values[index])
-        next_energy = float(energy_values[index + 1])
-        if np.all(np.isfinite((prev_energy, image_energy, next_energy))):
-            if next_energy > image_energy > prev_energy:
-                upwinding = outgoing_raw
-            elif next_energy < image_energy < prev_energy:
-                upwinding = incoming_raw
-            else:
-                next_delta = abs(next_energy - image_energy)
-                prev_delta = abs(prev_energy - image_energy)
-                delta_max = max(next_delta, prev_delta)
-                delta_min = min(next_delta, prev_delta)
-                if next_energy >= prev_energy:
-                    upwinding = (
-                        outgoing_raw * delta_max
-                        + incoming_raw * delta_min
-                    )
-                else:
-                    upwinding = (
-                        outgoing_raw * delta_min
-                        + incoming_raw * delta_max
-                    )
-            tangent = _unit(upwinding)
-            if tangent is not None:
-                return tangent
-
-    tangent = _unit(incoming + outgoing)
-    if tangent is not None:
-        return tangent
-    # An exact reversal has no unique bisector. Try the chord before declining
-    # the handoff rather than emitting a non-finite reference mode.
-    return _unit(arrays[index + 1] - arrays[index - 1])
-
-
 
 def _bond_changes_block(text: Optional[str]):
     """
@@ -2026,9 +1950,11 @@ def _merge_final_and_write(final_images: List[Any],
               help=("Number of movable internal images per GSM/DMF segment; the complete segment "
                     "has max_nodes+2 images including endpoints. When not given, YAML "
                     "search.max_nodes_segment applies."))
-@click.option("--max-cycles-gsm", type=int, default=None, show_default="300",
+@click.option("--max-cycles-gsm", type=click.IntRange(min=1), default=None, show_default="300",
               help="Maximum GSM string-optimizer cycles for the MEP stage.")
-@click.option("--max-cycles-dmf", type=int, default=None, show_default="300",
+@click.option("--max-cycles", type=click.IntRange(min=1), default=None, show_default="None",
+              help="Compatibility cycle cap for the selected MEP optimizer; mode-specific options take precedence.")
+@click.option("--max-cycles-dmf", type=click.IntRange(min=1), default=None, show_default="300",
               help=("Maximum IPOPT iterations for the DMF MEP stage. This is a solver "
                     "iteration count, not a string-optimizer cycle count."))
 @click.option(
@@ -2056,6 +1982,13 @@ def _merge_final_and_write(final_images: List[Any],
     default=True,
     show_default=True,
     help="Convert XYZ/TRJ outputs into PDB/CIF/GJF companions based on the input format.",
+)
+@click.option(
+    "--write-hei-mode-cache/--no-write-hei-mode-cache",
+    default=True,
+    show_default="on",
+    hidden=True,
+    help="Internal all-workflow switch for HEI path-mode cache emission.",
 )
 @click.option("-o", "--out-dir", "out_dir", type=str, default=OUT_DIR_PATH_SEARCH, show_default=True, help="Output directory.")
 @click.option(
@@ -2175,12 +2108,14 @@ def cli(
     freeze_links_flag: bool,
     freeze_atoms_text: Optional[str],
     max_nodes: int,
+    max_cycles: Optional[int],
     max_cycles_gsm: Optional[int],
     max_cycles_dmf: Optional[int],
     climb: bool,
     opt_mode: str,
     dump: bool,
     convert_files: bool,
+    write_hei_mode_cache: bool,
     out_dir: str,
     thresh: Optional[str],
     thresh_gsm: Optional[str],
@@ -2223,6 +2158,11 @@ def cli(
     global _PRIMARY_GJF_TEMPLATE
     _PRIMARY_GJF_TEMPLATE = None
     command_str = "pdb2reaction " + " ".join(argv_all)
+    if max_cycles is not None:
+        if max_cycles_gsm is None:
+            max_cycles_gsm = max_cycles
+        if max_cycles_dmf is None:
+            max_cycles_dmf = max_cycles
 
     # Robustly accept both styles for -i/--input, --ref-full-pdb, and --ref-pdb
     i_vals = collect_option_values(argv_all, ("-i", "--input"))
@@ -2409,10 +2349,16 @@ def cli(
             search_cfg["max_nodes_segment"] = int(max_nodes)
         # The GSM cycle budget also bounds the fully-grown string; DMF's budget
         # is a separate IPOPT iteration count.
-        if cli_param_overridden(ctx, "max_cycles_gsm") and max_cycles_gsm is not None:
+        if (
+            cli_param_overridden(ctx, "max_cycles_gsm")
+            or cli_param_overridden(ctx, "max_cycles")
+        ) and max_cycles_gsm is not None:
             stopt_cfg["max_cycles"] = int(max_cycles_gsm)
             stopt_cfg["stop_in_when_full"] = int(max_cycles_gsm)
-        if cli_param_overridden(ctx, "max_cycles_dmf") and max_cycles_dmf is not None:
+        if (
+            cli_param_overridden(ctx, "max_cycles_dmf")
+            or cli_param_overridden(ctx, "max_cycles")
+        ) and max_cycles_dmf is not None:
             dmf_cfg["max_cycles"] = int(max_cycles_dmf)
         if cli_param_overridden(ctx, "dmf_backend"):
             dmf_cfg["backend"] = str(dmf_backend).lower()
@@ -2451,9 +2397,7 @@ def cli(
         _apply_single_opt_yaml_layer(override_layer_cfg)
 
         if mep_mode_kind == "dmf":
-            dmf_cycles = lossless_int(dmf_cfg.get("max_cycles"), "dmf.max_cycles")
-            if dmf_cycles < 1:
-                raise click.BadParameter("dmf.max_cycles must be a positive integer.")
+            dmf_cycles = optional_positive_int(dmf_cfg.get("max_cycles"), "dmf.max_cycles")
             dmf_cfg["max_cycles"] = dmf_cycles
             try:
                 k_fix = float(dmf_cfg.get("k_fix", DMF_KW["k_fix"]))
@@ -2467,14 +2411,11 @@ def cli(
                 )
             dmf_cfg["k_fix"] = k_fix
         else:
-            string_cycles = lossless_int(
+            string_cycles = optional_positive_int(
                 stopt_cfg.get("max_cycles"), "stopt.max_cycles"
             )
-            if string_cycles < 1:
-                raise click.BadParameter(
-                    "stopt.max_cycles must be a positive integer."
-                )
             stopt_cfg["max_cycles"] = string_cycles
+            stopt_cfg["stop_in_when_full"] = string_cycles
 
         # A dormant YAML DMF section does not affect GSM. An explicit CLI
         # tolerance is still validated as user input, regardless of MEP mode.
@@ -2518,13 +2459,9 @@ def cli(
             single_opt_kind = "rfo"
             single_opt_cfg = rfo_cfg
         if preopt:
-            preopt_cycles = lossless_int(
+            preopt_cycles = optional_positive_int(
                 single_opt_cfg.get("max_cycles"), "preopt max_cycles"
             )
-            if preopt_cycles < 1:
-                raise click.BadParameter(
-                    "preopt max_cycles must be a positive integer."
-                )
             single_opt_cfg["max_cycles"] = preopt_cycles
 
         out_dir_path = Path(stopt_cfg["out_dir"]).resolve()
@@ -2904,18 +2841,24 @@ def cli(
                     hei_trj = out_dir_path / f"hei_seg_{seg_idx:02d}.xyz"
                     write_xyz_trj_with_energy([hei_img], hei_E, hei_trj)
                     emit(f"[write] Wrote segment HEI (active site model) → '{hei_trj}'", detail=True)
-                    if len(idxs) >= 2:
-                        tangent = _normalized_path_tangent(
+                    if write_hei_mode_cache and len(idxs) >= 2:
+                        cache_path = out_dir_path / f"hei_mode_seg_{seg_idx:02d}.npz"
+                        legacy_mode_path = out_dir_path / f"hei_mode_seg_{seg_idx:02d}.txt"
+                        cache = write_path_mode_cache(
+                            cache_path,
                             [image.cart_coords for image in seg_imgs],
                             imax_rel,
                             energies=energies_seg,
+                            trajectory_path=seg_trj,
+                            hei_path=hei_trj,
+                            atom_numbers=getattr(hei_img, "atomic_numbers", None),
+                            primary_text_path=legacy_mode_path,
+                            source="path-search",
                         )
-                        if tangent is not None:
-                            mode_path = out_dir_path / f"hei_mode_seg_{seg_idx:02d}.txt"
-                            np.savetxt(mode_path, tangent, fmt="%.17e")
+                        if cache is not None:
                             emit(
-                                "[write] Wrote HEI path-tangent reference mode "
-                                f"→ '{mode_path}'",
+                                "[write] Wrote HEI path-mode candidates "
+                                f"({len(cache.labels)}; CPU/file cache) → '{cache.path}'",
                                 detail=True,
                             )
                     if needs_pdb or needs_gjf:

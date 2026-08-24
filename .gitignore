@@ -23,9 +23,6 @@ dist/
 *.egg-info/
 *.egg
 
-# setuptools-scm generated version file
-pdb2reaction/_version.py
-
 test-reports/
 .coverage
 

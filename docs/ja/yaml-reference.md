@@ -415,7 +415,6 @@ hessian_dimer:
  thresh_loose: gau_loose # Loose convergence preset
  thresh: baker # Main convergence preset
  update_interval_hessian: 500 # Hessian rebuild cadence
- neg_freq_thresh_cm: 5.0 # モード出力・平坦化・任意の鞍点回復で使う閾値（cm⁻¹）
  flatten_amp_ang: 0.1 # Flattening amplitude (Å)
  flatten_max_iter: 50 # Flattening iteration cap (下記注記を参照)
  flatten_sep_cutoff: 0.0 # Minimum distance between representative atoms
@@ -496,7 +495,6 @@ rsirfo:
  mode_loss_trust_floor: 1.0e-05 # mode-loss retry 用の正の緊急 trust-radius 下限
  max_mode_loss_rejections: 5 # 下限到達後に許す棄却回数
  verify_saddle: true # exact Hessian + 射影振動解析で一次鞍点を検証
- saddle_imaginary_threshold_cm: 5.0 # モード処理用の微小振動閾値（cm^-1、正値）
  saddle_recovery_step: 0.01 # optimizer 座標での正の上り方向回復変位上限
  saddle_recovery_check_interval: 50 # n_imag=0 回復中の exact PHVA 間隔
  saddle_recovery_max_cycles: 0 # n_imag=0 自動回復はデフォルト無効
@@ -565,12 +563,19 @@ irc:
 
 ```yaml
 freq:
+ zero_cutoff_cm: 5.0 # |振動数| がこの値以下のモードを除外（cm^-1）
  amplitude_ang: 0.8 # Displacement amplitude for modes (Å)
- n_frames: 20 # Number of frames per mode animation
+ n_frames: 20 # モードtrajectoryのフレーム数
  max_write: 10 # Maximum number of modes to write
  sort: value # Sort order: "value" or "abs"
  out_dir: ./result_freq/ # Output directory
 ```
+
+`freq.zero_cutoff_cm` は standalone `freq`、`opt` flatten、Dimer、
+Hessian系TS最適化が共有する唯一のcutoffです。旧
+`hessian_dimer.neg_freq_thresh_cm` と
+`rsirfo.saddle_imaginary_threshold_cm` は互換aliasとして受理しますが、
+競合する値はエラーになります。
 
 ---
 

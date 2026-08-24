@@ -170,6 +170,10 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
+| `optimization_status` | string | 数値optimizerの結果: `"converged"` / `"not_converged"` / `"stalled"`。鞍点次数とは独立 |
+| `saddle_validation` | string | 終端exact PHVAによる `"first_order"` / `"higher_order"` / `"no_imaginary"` / `"unavailable"` |
+| `hessian_status` | string | `"completed"` / `"failed"` / `"skipped"` / `"unavailable"`。失敗理由は`hessian_error` |
+| `reaction_mode_index` | int\|null | downstream IRCに使う負のexact-PHVA root。root 0 fallbackは明示され、反応identityを保証しない |
 | `n_imaginary_modes` | int\|null | 虚振動の数。PHVA を実行しなかった場合は `null` |
 | `imaginary_frequencies_cm` | float[]\|null | 虚振動数 (cm⁻¹, 負の値)。PHVA 未実行時は `null` |
 | `opt_mode` | string | `"rsprfo"` (default) / `"rsirfo"` / `"trim"` / `"dimer"` |
@@ -178,19 +182,16 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 | `rigid_projection` | object | 剛体モードとexact Hessian のprovenance。[projection provenance](#rigid-projection-provenance)を参照 |
 
 `files` には `imaginary_mode_files`（vib ファイルリスト）を含む場合があります。
-Hessian 系 optimizer が未収束のまま `max_cycles` に到達した場合、最終 PHVA
-と mode 出力は実行せず、虚振動関連の2フィールドを `null` とします。
-energy plateau で停止した場合は終端 PHVA を実行しますが、status は `stalled`
-のままです。それ以外の未収束は `not_converged` とします。
-Cartesian Hessian mode の `status: "converged"` には、絶対値によるカットオフ
-なしで、最終 exact PHVA の負の振動数がちょうど1個必要です。対応する内部座標
-mode では、負曲率が1個であることを要求します。高次鞍点と `n_imag=0` 構造は
-`not_converged` です。plateau-stalled の場合も以降の flatten/再試行を停止します。
-収束詳細 (force/step) は
-rsirfo モードで利用可能です。
-dimer モードも `status` に `"converged"` / `"not_converged"` / `"stalled"` を
-返しますが、`n_opt_cycles` のみを出力し、Hessian mode の収束詳細と
-`safeguards` は省略されます。
+保持した終端構造には、数値非収束後でも通常は終端PHVAを1回実行します。PHVA
+計算が失敗した場合は構造を破棄したり振動数を捏造したりせず、
+`hessian_status: "failed"` と理由を記録します。`status` / `optimization_status`
+は数値最適化、`saddle_validation` はexact PHVAの鞍点次数を表します。数値収束
+済み高次停留点は`optimization_status: "converged"`かつ
+`saddle_validation: "higher_order"`であり、一次TS認定ではありません。`all`は
+有効な負rootがあれば警告付き診断IRCへ進むことがあります。数値非収束、虚振動
+0本、PHVA未実施/失敗、または有効な負rootなしでは、TS成果物登録後にIRC前で
+停止します。Dimerも同じ追加fieldを出力しますが、Hessian familyのcycleごとの
+force/step収束詳細と`safeguards`は省略します。
 
 ### `freq`
 

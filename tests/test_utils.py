@@ -27,6 +27,48 @@ def test_values_from_bounds_stabilizes_decimal_grid() -> None:
     ]
 
 
+def _pdb_atom(serial, name, resname, x, y, z, element, *, het=False):
+    record = "HETATM" if het else "ATOM  "
+    return (
+        f"{record}{serial:5d} {name:>4s} {resname:>3s} A{1:4d}    "
+        f"{x:8.3f}{y:8.3f}{z:8.3f}  1.00  0.00          {element:>2s}\n"
+    )
+
+
+def test_freeze_links_accepts_a_noncarbon_covalent_parent(tmp_path, capsys) -> None:
+    from pdb2reaction.core.utils import detect_freeze_links, set_verbose_level
+
+    path = tmp_path / "model.pdb"
+    path.write_text(
+        _pdb_atom(1, "NZ", "LYS", 0.0, 0.0, 0.0, "N")
+        + _pdb_atom(2, "HL", "LKH", 1.02, 0.0, 0.0, "H", het=True),
+        encoding="utf-8",
+    )
+    set_verbose_level(2)
+    try:
+        assert detect_freeze_links(path) == [0]
+        assert "distance=" not in capsys.readouterr().out
+        set_verbose_level(3)
+        assert detect_freeze_links(path) == [0]
+        detail = capsys.readouterr().out
+        assert "atom #1" in detail and "distance=1.020 Å" in detail
+    finally:
+        set_verbose_level(0)
+
+
+def test_freeze_links_rejects_an_isolated_lkh(tmp_path) -> None:
+    from pdb2reaction.core.utils import detect_freeze_links
+
+    path = tmp_path / "isolated.pdb"
+    path.write_text(
+        _pdb_atom(1, "SG", "CYS", 0.0, 0.0, 0.0, "S")
+        + _pdb_atom(2, "HL", "LKH", 5.0, 0.0, 0.0, "H", het=True),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="isolated LKH/HL"):
+        detect_freeze_links(path)
+
+
 def test_values_from_bounds_keeps_step_cap_for_nonintegral_ratio() -> None:
     from pdb2reaction.core.utils import values_from_bounds
 

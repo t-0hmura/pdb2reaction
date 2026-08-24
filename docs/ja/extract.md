@@ -135,12 +135,14 @@ pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
 | `-i, --input PATH...` | 1つ以上のタンパク質–リガンド PDB/mmCIF（同一の原子identity/orderが必要） | 必須 |
 | `-c, --center SPEC` | PDB/mmCIFパス、残基ID/名、`CHAIN:RESNAME`、`CHAIN:RESNAME:RESSEQ` | 必須 |
 | `-o, --output PATH...` | 活性部位モデル PDB 出力。1 パス ⇒ マルチ MODEL、N パス ⇒ 入力ごと。複数入力で `-o` 1 つの場合は単一のマルチ MODEL PDB を生成。N 個の `-o` が N 個の入力と一致する場合は N 個の個別 PDB を生成 | 自動（`model.pdb` または `model_<input>.pdb`） |
-| `-r, --radius FLOAT` | 包含のための原子-原子距離カットオフ（Å、0 の場合は内部で 0.001 Å） | `2.6` |
+| `-r, --radius FLOAT` | 包含のための原子-原子距離カットオフ（Å）。`0` では半径による拡張を無効化し、`-c` と `--selected-resn` の選択から開始（内部では `0.001 Å`） | `2.6` |
 | `--radius-het2het FLOAT` | 独立したヘテロ-ヘテロカットオフ（Å、非 C/H） | `0.0`（0 の場合は内部で 0.001 Å） |
 | `--include-h2o/--no-include-h2o` | HOH/WAT/H2O/DOD/TIP/TIP3/SOL 水を含める | `True` |
 | `--exclude-backbone/--no-exclude-backbone` | 非基質アミノ酸の主鎖原子を除去 | `False` |
 | `--add-linkh/--no-add-linkh` | 切断された結合に 1.09 Å のキャップ水素を炭素境界にのみ付加（非炭素境界はキャップしない） | `True` |
 | `--selected-resn TEXT` | `--center` と同じselectorで残基を強制包含 | `""` |
+
+`-r 0` では半径検索による近傍残基を追加せず、`-c` と `--selected-resn` で選んだ残基からモデルを構築します。該当する場合は、構造上必要なジスルフィド結合partnerや隣接主鎖contextが安全策として追加されることがあります。
 | `--modified-residue TEXT` | アミノ酸として扱う残基名をカンマ区切りで指定。`NAME:charge` はこの抽出中の公称電荷を追加または上書きし、電荷を省略した `NAME` は 0 になります | `""` |
 | `-l, --ligand-charge TEXT` | 総電荷または残基名ごとのマッピング（例: `GPP:-3,SAM:1`） | _None_ |
 | `--out-json/--no-out-json` | 抽出された PDB(s) の隣に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |

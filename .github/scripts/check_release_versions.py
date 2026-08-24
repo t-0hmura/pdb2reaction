@@ -115,6 +115,18 @@ def _notebook_version() -> str:
     raise ValueError(f"{NOTEBOOK.name} has no {NOTEBOOK_REF} assignment")
 
 
+def _module_version() -> str:
+    tree = ast.parse(
+        (REPO_ROOT / "pdb2reaction" / "_version.py").read_text(encoding="utf-8")
+    )
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        if any(isinstance(target, ast.Name) and target.id == "__version__" for target in node.targets):
+            return str(ast.literal_eval(node.value))
+    raise ValueError("pdb2reaction/_version.py has no literal __version__")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--expected-version")
@@ -123,6 +135,7 @@ def main() -> int:
     values = {
         "CITATION.cff": _cff_version(),
         "docs/conf.py": _docs_release(),
+        "pdb2reaction/_version.py": _module_version(),
         NOTEBOOK.name: _notebook_version(),
     }
     expected = str(args.expected_version or values["CITATION.cff"]).removeprefix("v")

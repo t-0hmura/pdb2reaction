@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "wheel", "setuptools-scm"]
+requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -139,14 +139,12 @@ markers = [
     "slow: marks tests that take a long time to run",
 ]
 
+[tool.setuptools.dynamic]
+version = {attr = "pdb2reaction._version.__version__"}
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["pdb2reaction*", "pysisyphus*", "thermoanalysis*"]
 
 [tool.setuptools.package-data]
 pdb2reaction = ["py.typed"]
-
-[tool.setuptools_scm]
-version_file = "pdb2reaction/_version.py"
-version_scheme = "guess-next-dev"
-local_scheme = "node-and-date"

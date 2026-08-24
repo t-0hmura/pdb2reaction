@@ -13,7 +13,7 @@ TSOPT のみモードの反応物/生成物ラベルは**エネルギー順に�
 ```
 
 ```{important}
-`--tsopt` **なし**の `all` ワークフローは **TS 候補**（MEP 探索の最高エネルギー画像 / HEI）を出力します。`--tsopt` を追加すると、これらを虚振動数チェックで検証済みの最適化 TS 構造に精密化します。IRC は optimizer が収束した一次鞍点（`n_imag = 1`）を報告した場合だけ開始し、それ以外では downstream 後処理の前に停止します。結果（虚振動数の本数と端点の接続性）は機構解釈の前に必ず目視で確認してください。
+`--tsopt` **なし**の `all` ワークフローは **TS 候補**（MEP 探索の最高エネルギー画像 / HEI）を出力します。`--tsopt` を追加すると最適化と終端 exact PHVA を実行し、数値的な optimizer 収束と鞍点次数を別々に記録します。`all` が IRC へ進むのは、数値最適化が収束し、終端 PHVA が完了し、負の反応方向を選べる場合です。`n_imag > 1` の収束済み高次停留点は警告付きの**診断的** IRCへ進むことがありますが、一次鞍点として認定されません。実際のoptimizer非収束、虚振動0本、PHVA失敗/未実施、または有効な負rootを選べない場合は、TS構造・振動数・modeを保持したままIRC前で停止します。機構解釈の前に虚振動modeとIRC端点接続を必ず確認してください。
 ```
 
 ## 実行例
@@ -102,7 +102,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  - `--refine-path` と参照テンプレートがある場合、`mep_w_ref.pdb` を生成し、bridge入力では `mep_w_ref.cif` も生成します。デフォルトの `path-opt` では全系マージを行いません。
 
 5. **オプションのセグメントごとの後処理**（反応セグメントのみ — 結合変化のあるセグメント。ブリッジセグメントはスキップ）
- - `--tsopt`: 各 HEI 活性部位モデルで TS 最適化を実行します。機械可読な exact-Hessian 結果が `status=converged` かつ `n_imag=1` を報告しない場合は IRC 前に停止します。検証済み TS は EulerPC IRC で追跡し、IRC エンドポイントを `--thresh-post`（デフォルト `baker`）で再最適化します。Hessian TS 最適化には MEP energy-upwinding Cartesian接線を反応参照モードとしてデフォルトで渡します（energyを読めない旧trajectoryだけは正規化secantの二等分線へfallback）。`--no-tsopt-from-mep-tan` では、TSOPT が初期構造の Hessian を計算し、その振動モードから初期モードを選びます。エンドポイント最適化の作業ディレクトリは完了後に自動削除されます。エンドポイント RFO の上り坂拒否はデフォルトで無効で、`--reject-uphill` によりエンドポイント再最適化についてのみ有効化できます。
+ - `--tsopt`: 各 HEI 活性部位モデルで TS 最適化を実行し、`optimization_status` と `saddle_validation` を別々に記録します。数値非収束、虚振動0本、終端PHVAの失敗/未実施、または負rootを選べない場合は、TS構造・frequency・modeを登録した後にIRC前で停止します。数値収束済み高次停留点は保持され、警告付きの診断的IRCへ進むことがありますが、一次TS認定ではありません。Hessian TS optimizerにはMEP energy-upwinding Cartesian接線候補をCPU/file cache経由で渡し、反応rootのidentityを追跡します（energyを読めない旧trajectoryでは正規化secantを使用）。Dimerは`--ref-mode`を消費しないためhandoff/cacheは適用外です。`--no-tsopt-from-mep-tan`ではcacheを作成・利用せず、初期構造Hessianの振動modeからrootを選びます。続行可能な結果はEulerPC IRCで追跡し、IRC端点を`--thresh-post`（デフォルト`baker`）で再最適化します。エンドポイント最適化の作業ディレクトリは完了後に自動削除されます。エンドポイントRFOの上り坂拒否はデフォルトで無効で、`--reject-uphill`により端点再最適化についてのみ有効化できます。
  - `--thermo`: (R, TS, P) で `freq` を呼び出し、振動/熱化学データと MLIP Gibbs ダイアグラムを取得
  - `--dft`: (R, TS, P) で DFT 一点計算を実行し、DFT ダイアグラムを構築。`--thermo` と組み合わせると DFT//MLIP Gibbs ダイアグラムも生成
   - 共有の上書きオプション: `--opt-mode`、`--opt-mode-post`（TSOPT/IRC 後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU 優先）など。Cartesian PHVA の剛体モードは、凍結anchorを尊重する constrained 処理に固定されています。
@@ -220,7 +220,7 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `-c, --center TEXT` | PDB/mmCIFパス、残基ID/名、`CHAIN:RESNAME`、`CHAIN:RESNAME:RESSEQ` | 抽出に必須 |
-| `-r, --radius FLOAT` | 活性部位モデル包含カットオフ（Å） | `2.6` |
+| `-r, --radius FLOAT` | 活性部位モデル包含カットオフ（Å）。`0` では半径による拡張を無効化し、`-c` と `--selected-resn` の選択だけを残す | `2.6` |
 | `--radius-het2het FLOAT` | ヘテロ–ヘテロカットオフ（Å）。`0` を渡すと空の選択を避けるため内部で `0.001 Å` に自動補正されます（単体の `extract` と同じ挙動） | `0.0` |
 | `--include-h2o/--no-include-h2o` | 水分子を含める（HOH/WAT/TIP3/SOL） | `True` |
 | `--exclude-backbone/--no-exclude-backbone` | 非基質アミノ酸の主鎖原子を除去 | `False` |
@@ -269,7 +269,7 @@ raw PDB CCD との名前衝突は自動判別しないため、`--modified-resid
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `--tsopt/--no-tsopt` | セグメントごとの TS 最適化+ IRC を実行 | `False` |
-| `--tsopt-from-mep-tan/--no-tsopt-from-mep-tan` | HEI の MEP 接線から初期 TS root を選ぶ。OFF では初期構造の Hessian 振動モードから選ぶ | `True` |
+| `--tsopt-from-mep-tan/--no-tsopt-from-mep-tan` | Hessian TS optimizerでCPU/file cacheしたHEI接線候補から反応root identityを追跡。OFFではcache作成・利用を止め、初期Hessian modeから選択。Dimerには適用外 | `True` |
 | `--thermo/--no-thermo` | R/TS/P で振動解析を実行（`--tsopt` が必要） | `False` |
 | `--dft/--no-dft` | R/TS/P で DFT 一点計算を実行（`--tsopt` が必要） | `False` |
 | `--opt-mode-post [grad\|hess]` | TSOPT/IRC 後最適化のプリセット上書き（`grad` → Dimer/L-BFGS、`hess` → RSPRFO/RFO） | `hess` |
@@ -377,7 +377,7 @@ dft:
 - 形式電荷を推定できない場合は `--ligand-charge`（数値または残基別マッピング）を必ず指定し、scan/MEP/TSOPT/DFT へ正しい総電荷を伝播させてください。
 - マージ用の参照 PDB テンプレートは元の入力から自動的に導出されます。`path-search` の `--ref-full-pdb` はこのラッパーでは意図的に非公開です。
 - 収束プリセット: `--thresh` のデフォルトは `gau`、`--thresh-post` のデフォルトは `baker`、MEP 段は `--thresh-gsm`（デフォルト `gau_loose`）と `--thresh-dmf`（デフォルト `tight`）が担当。
-- 抽出半径: `--radius` または `--radius-het2het` に `0` を渡すと、内部で `0.001 Å` にクランプされます。
+- 抽出半径: `-r 0`（または `--radius 0`）では半径による拡張を無効化し、`-c` と `--selected-resn` で選んだ残基からモデルを構築します。構造上必要なジスルフィド結合partnerや隣接主鎖contextが安全策として追加される場合があります。空の幾何検索を避けるため、zero radiusは内部で `0.001 Å` にクランプされます。
 - エネルギーダイアグラムは反応物（最初の状態）基準の kcal/mol で表示されます。
 - `-c/--center` を省略すると抽出をスキップし、全構造をそのまま MEP/tsopt/freq/DFT に渡します。ただし単一構造実行では `--scan-lists` か `--tsopt` が必要です。
 

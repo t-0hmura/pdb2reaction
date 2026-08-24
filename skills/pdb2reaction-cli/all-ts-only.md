@@ -76,9 +76,11 @@ print(post["mlip"]["energies_au"])
 If `post["ts_imag"]["n_imag"] != 1`, the geometry is **not a true first-order
 saddle**; see "Distinctive failure modes" below.
 
-`all` requires the TS stage `result.json` to report `status=converged` and
-`n_imaginary_modes=1` before starting IRC. A rejected result leaves the TS
-attempt for diagnosis and stops before endpoint post-processing.
+`all` separates numerical convergence from saddle order. It stops before IRC
+for actual numerical non-convergence, failed/unavailable PHVA, zero imaginary
+modes, or no valid negative root, while preserving the TS artifacts. A
+numerically converged higher-order stationary point may continue through
+warning-labelled diagnostic IRC, but it is not a validated first-order TS.
 
 ## Distinctive failure modes
 

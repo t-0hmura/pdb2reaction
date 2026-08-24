@@ -99,7 +99,7 @@
 | **Bohr** | Atomic unit of length; 1 Bohr ≈ 0.529 Å. |
 | **Angstrom (Å)** | 10⁻¹⁰ m; standard unit for interatomic distances. |
 | **cm⁻¹** | Reciprocal centimeters (wavenumber); the standard unit for vibrational frequencies. Imaginary frequencies appear as negative values. |
-| **Imaginary Frequency** | A vibrational frequency corresponding to a negative eigenvalue of the Hessian. A TS has exactly one (first-order saddle point). Reported as a negative cm⁻¹ value. Final TS validation counts every negative frequency. |
+| **Imaginary Frequency** | A vibrational frequency corresponding to a negative eigenvalue of the Hessian. A TS has exactly one (first-order saddle point). Reported as a negative cm⁻¹ value. Final TS validation ignores negative frequencies smaller than the configured magnitude threshold. |
 
 (frequency-thresholds)=
 ### Frequency thresholds: 5 cm⁻¹ small-mode handling vs 100 cm⁻¹ QRRHO rotor cutoff
@@ -108,7 +108,7 @@ Two unrelated cm⁻¹ thresholds appear in `pdb2reaction`. They act on different
 
 | Threshold | Role | Source |
 |-----------|------|--------|
-| **5 cm⁻¹** | Negative frequencies smaller than this magnitude are ignored when writing mode animations or choosing extra modes to flatten. Final TS validation still counts every negative frequency. | `pdb2reaction/core/defaults.py` as `hessian_dimer.neg_freq_thresh_cm = 5.0`; tunable via YAML. |
+| **5 cm⁻¹** | Default symmetric zero-mode cutoff: modes with `|frequency| <= cutoff` are removed before frequency/TS classification and trajectory output. | Shared YAML key: `freq.zero_cutoff_cm`. |
 | **100 cm⁻¹** | *QRRHO rotor cutoff* (Grimme). Positive low-frequency vibrations are damped between harmonic-oscillator and free-rotor entropy in `freq` thermochemistry; it changes only entropy / Gibbs free energy. | `thermoanalysis/config.py` as `ROTOR_CUT_DEFAULT = 100.0`. |
 
 ## CLI Conventions

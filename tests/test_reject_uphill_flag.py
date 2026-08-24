@@ -3,9 +3,8 @@
 The flag lets a user opt in to the post-IRC endpoint RFO uphill-rejection
 safeguard. These tests pin four falsifiable facts:
 
-1. the shipped default is off (``RFO_KW["reject_uphill"] is False``);
-2. the default path (flag not passed -> ``reject_uphill=None``) leaves the
-   endpoint RFO config byte-identical to ``RFO_KW`` (no behavior change);
+1. the shipped default remains off (``RFO_KW["reject_uphill"] is False``);
+2. the default endpoint-refinement path leaves the RFO configuration unchanged;
 3. an explicit toggle threads ``True``/``False`` into the *endpoint* RFO config
    through the real ``_optimize_endpoint_geom`` code path (rfo branch only);
 4. TS optimizers force uphill rejection off even when YAML-like input tries to
@@ -146,8 +145,8 @@ def test_all_gate_resolves_endpoint_reject_uphill(tmp_path: Path, extra, expecte
 
     Parse `all` the way the CLI does and reproduce the exact resolution line
     ``_reject_uphill_eff = bool(reject_uphill) if cli_param_overridden(...) else None``.
-    The default arm forwards no override and therefore inherits the shared
-    default-off RFO configuration.
+    The default arm forwards no explicit override and therefore inherits the
+    shipped default-off optimizer setting.
     """
     from pdb2reaction.workflows.all import cli as all_cli
     from pdb2reaction.core.utils import cli_param_overridden

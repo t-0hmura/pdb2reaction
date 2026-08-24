@@ -36,6 +36,7 @@ from pdb2reaction.core.utils import (
     prepared_cli_input,
     YamlFlowList,
     cli_param_overridden,
+    optional_positive_int,
 )
 from pdb2reaction.cli.decorators import resolve_yaml_sources, load_merged_yaml_cfg, _write_error_json
 from pdb2reaction.core.defaults import GEOM_KW_DEFAULT, OUT_DIR_DFT
@@ -124,7 +125,10 @@ def _configure_scf_object(mf, dft_cfg: Dict[str, Any], xc: str, *, use_density_f
     which intentionally does not implement `density_fit`.
     """
     mf.xc = xc
-    mf.max_cycle = int(dft_cfg["max_cycle"])
+    configured_max_cycle = dft_cfg.get("max_cycle")
+    mf.max_cycle = (
+        sys.maxsize if configured_max_cycle is None else int(configured_max_cycle)
+    )
     mf.conv_tol = float(dft_cfg["conv_tol"])
     mf.grids.level = int(dft_cfg["grid_level"])
     mf.chkfile = None
@@ -442,7 +446,7 @@ def _finalize_dft_result(
     show_default=True,
     help="Exchange–correlation functional and basis set as 'FUNC/BASIS' (e.g., 'wb97m-v/6-31g**', 'wb97m-v/def2-tzvpd').",
 )
-@click.option("--max-cycle", type=int, default=DFT_KW["max_cycle"], show_default=True, help="Maximum SCF iterations.")
+@click.option("--max-cycle", type=click.IntRange(min=1), default=DFT_KW["max_cycle"], show_default=True, help="Maximum SCF iterations.")
 @click.option("--conv-tol", type=float, default=DFT_KW["conv_tol"], show_default=True, help="SCF convergence tolerance (Eh).")
 @click.option("--grid-level", type=int, default=DFT_KW["grid_level"], show_default=True, help="Numerical integration grid level (PySCF grids.level).")
 @click.option("-o", "--out-dir", type=str, default=DFT_KW["out_dir"], show_default=True, help="Output directory.")
@@ -501,7 +505,7 @@ def cli(
     spin: Optional[int],
     ref_pdb: Optional[Path],
     func_basis: str,
-    max_cycle: int,
+    max_cycle: Optional[int],
     conv_tol: float,
     grid_level: int,
     out_dir: str,
@@ -551,8 +555,11 @@ def cli(
 
             if cli_param_overridden(ctx, "conv_tol"):
                 dft_cfg["conv_tol"] = float(conv_tol)
-            if cli_param_overridden(ctx, "max_cycle"):
-                dft_cfg["max_cycle"] = int(max_cycle)
+            if cli_param_overridden(ctx, "max_cycle") and max_cycle is not None:
+                dft_cfg["max_cycle"] = optional_positive_int(max_cycle, "--max-cycle")
+            dft_cfg["max_cycle"] = optional_positive_int(
+                dft_cfg.get("max_cycle"), "dft.max_cycle"
+            )
             if cli_param_overridden(ctx, "grid_level"):
                 dft_cfg["grid_level"] = int(grid_level)
             if cli_param_overridden(ctx, "out_dir"):

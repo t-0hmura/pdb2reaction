@@ -73,6 +73,7 @@ from pdb2reaction.core.utils import (
     merge_freeze_atom_indices,
     echo_resolved_device,
     lossless_int,
+    optional_positive_int,
 )
 from pdb2reaction.workflows.align_freeze import (
     align_and_refine_sequence_inplace,
@@ -712,14 +713,14 @@ def _optimize_single(
 )
 @click.option(
     "--max-cycles-gsm",
-    type=int,
+    type=click.IntRange(min=1),
     default=None,
     show_default="300",
     help="Maximum GSM string-optimizer cycles for the MEP stage.",
 )
 @click.option(
     "--max-cycles-dmf",
-    type=int,
+    type=click.IntRange(min=1),
     default=None,
     show_default="300",
     help=(
@@ -836,10 +837,10 @@ def _optimize_single(
 )
 @click.option(
     "--preopt-max-cycles",
-    type=int,
-    default=10000,
-    show_default=True,
-    help="Maximum cycles for each endpoint preoptimization pass (LBFGS or RFO; only used when --preopt is enabled).",
+    type=click.IntRange(min=1),
+    default=None,
+    show_default="100000",
+    help="Maximum cycles for each endpoint preoptimization pass.",
 )
 @click.option(
     "--fix-ends/--no-fix-ends",
@@ -889,7 +890,7 @@ def cli(
     dry_run: bool,
     out_json: bool,
     preopt: bool,
-    preopt_max_cycles: int,
+    preopt_max_cycles: Optional[int],
     fix_ends: bool,
     backend: str,
     solvent: str,
@@ -1025,7 +1026,7 @@ def cli(
             stopt_cfg["thresh"] = str(thresh_gsm)
         if cli_param_overridden(ctx, "thresh_dmf") and thresh_dmf is not None:
             dmf_cfg["tol"] = str(thresh_dmf)
-        if cli_param_overridden(ctx, "preopt_max_cycles"):
+        if cli_param_overridden(ctx, "preopt_max_cycles") and preopt_max_cycles is not None:
             lbfgs_cfg["max_cycles"] = int(preopt_max_cycles)
             rfo_cfg["max_cycles"] = int(preopt_max_cycles)
 
@@ -1080,9 +1081,7 @@ def cli(
             "max_cycles", preopt_max_cycles
         )
         if mep_mode_kind == "dmf":
-            dmf_cycles = lossless_int(dmf_cfg.get("max_cycles"), "dmf.max_cycles")
-            if dmf_cycles < 1:
-                raise click.BadParameter("dmf.max_cycles must be a positive integer.")
+            dmf_cycles = optional_positive_int(dmf_cfg.get("max_cycles"), "dmf.max_cycles")
             dmf_cfg["max_cycles"] = dmf_cycles
             try:
                 k_fix = float(dmf_cfg.get("k_fix", DMF_KW["k_fix"]))
@@ -1096,22 +1095,15 @@ def cli(
                 )
             dmf_cfg["k_fix"] = k_fix
         else:
-            string_cycles = lossless_int(
+            string_cycles = optional_positive_int(
                 stopt_cfg.get("max_cycles"), "stopt.max_cycles"
             )
-            if string_cycles < 1:
-                raise click.BadParameter(
-                    "stopt.max_cycles must be a positive integer."
-                )
             stopt_cfg["max_cycles"] = string_cycles
+            stopt_cfg["stop_in_when_full"] = string_cycles
         if preopt:
-            preopt_max_cycles_effective = lossless_int(
+            preopt_max_cycles_effective = optional_positive_int(
                 single_opt_cfg.get("max_cycles"), "preopt max_cycles"
             )
-            if preopt_max_cycles_effective < 1:
-                raise click.BadParameter(
-                    "preopt max_cycles must be a positive integer."
-                )
 
         # Apply backend/solvent CLI overrides early (before display)
         if cli_param_overridden(ctx, "backend"):
@@ -1153,7 +1145,7 @@ def cli(
                 "run_flags",
                 {
                     "preopt": bool(preopt),
-                    "preopt_max_cycles": int(preopt_max_cycles_effective),
+                    "preopt_max_cycles": preopt_max_cycles_effective,
                     "mep_mode": mep_mode_kind,
                 },
             )
@@ -1180,7 +1172,7 @@ def cli(
                         "mep_mode": mep_mode_kind,
                         "opt_mode": ("grad" if opt_kind == "lbfgs" else "hess"),
                         "preopt": bool(preopt),
-                        "preopt_max_cycles": int(preopt_max_cycles_effective),
+                        "preopt_max_cycles": preopt_max_cycles_effective,
                         "freeze_links": bool(freeze_links_flag),
                         "convert_files": bool(convert_files),
                         "will_run_path_opt": True,

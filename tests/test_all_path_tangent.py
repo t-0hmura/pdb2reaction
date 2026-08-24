@@ -14,6 +14,11 @@ from pdb2reaction.workflows.all import (
     _required_xyz_block_energies,
     cli,
 )
+from pdb2reaction.io.path_mode_cache import (
+    build_path_mode_candidates,
+    load_path_mode_cache,
+    write_path_mode_cache,
+)
 
 
 def _replace_xyz_comments(path, comments) -> None:
@@ -44,12 +49,14 @@ def test_disabled_mep_tangent_does_not_build_a_reference_mode(
         "_ensure_hei_path_tangent",
         lambda *args: pytest.fail("disabled tangent builder was called"),
     )
-    assert all_workflow._select_hei_reference_mode(
+    path, status = all_workflow._select_hei_reference_mode(
         False,
         tmp_path / "mep.xyz",
         tmp_path / "hei.xyz",
         tmp_path / "mode.txt",
-    ) is None
+    )
+    assert path is None
+    assert status["status"] == "disabled"
 
 
 def test_hei_path_tangent_uses_neighbors_of_matching_image(tmp_path) -> None:
@@ -76,10 +83,12 @@ def test_hei_path_tangent_uses_neighbors_of_matching_image(tmp_path) -> None:
     write(hei, images[1])
     mode.write_text("1\n0\n0\n", encoding="utf-8")
 
-    result = _ensure_hei_path_tangent(mep, hei, mode)
+    cache_path, status = _ensure_hei_path_tangent(mep, hei, mode)
 
-    assert result == mode
-    tangent = np.loadtxt(mode)
+    assert cache_path == mode.with_suffix(".npz")
+    assert status["status"] == "created"
+    assert status["candidate_count"] >= 1
+    tangent = np.loadtxt(mode.with_suffix(".txt"))
     incoming = (images[1].positions - images[0].positions).reshape(-1)
     outgoing = (images[2].positions - images[1].positions).reshape(-1)
     incoming /= np.linalg.norm(incoming)
@@ -121,10 +130,11 @@ def test_hei_path_tangent_uses_energy_upwinding_when_available(tmp_path) -> None
     write_xyz_trj_with_energy(images, energies, mep)
     write(hei, images[1])
 
-    result = _ensure_hei_path_tangent(mep, hei, mode)
+    cache_path, status = _ensure_hei_path_tangent(mep, hei, mode)
 
-    assert result == mode
-    tangent = np.loadtxt(mode)
+    assert cache_path == mode.with_suffix(".npz")
+    assert status["status"] == "created"
+    tangent = np.loadtxt(mode.with_suffix(".txt"))
     incoming = (images[1].positions - images[0].positions).reshape(-1)
     outgoing = (images[2].positions - images[1].positions).reshape(-1)
     # At this local maximum the next neighbor is higher than the previous
@@ -133,3 +143,39 @@ def test_hei_path_tangent_uses_energy_upwinding_when_available(tmp_path) -> None
     expected = 2.0 * outgoing + 1.5 * incoming
     expected /= np.linalg.norm(expected)
     np.testing.assert_allclose(tangent, expected)
+
+
+def test_path_mode_cache_is_cpu_only_reusable_and_rejects_stale_inputs(tmp_path) -> None:
+    trajectory = tmp_path / "mep.xyz"
+    hei = tmp_path / "hei.xyz"
+    mode = tmp_path / "hei_mode.txt"
+    images = [Atoms("H", positions=[[0.0, 0.0, 0.0]]), Atoms("H", positions=[[1.0, 0.0, 0.0]])]
+    write(trajectory, images)
+    write(hei, images[1])
+    cache = write_path_mode_cache(
+        mode.with_suffix(".npz"),
+        [im.positions for im in images],
+        1,
+        energies=[0.0, -1.25],
+        trajectory_path=trajectory,
+        hei_path=hei,
+        atom_numbers=[1],
+        primary_text_path=mode,
+    )
+    assert cache is not None
+    assert cache.path == mode.with_suffix(".npz")
+    assert cache.path.with_suffix(".json").exists()
+    loaded = load_path_mode_cache(
+        cache.path,
+        trajectory_path=trajectory,
+        hei_path=hei,
+        expected_size=3,
+        atom_numbers=[1],
+    )
+    assert loaded.metadata["image_index"] == 1
+    np.testing.assert_allclose(loaded.primary, [1.0, 0.0, 0.0])
+    trajectory.write_text(trajectory.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="trajectory fingerprint"):
+        load_path_mode_cache(
+            cache.path, trajectory_path=trajectory, hei_path=hei
+        )
