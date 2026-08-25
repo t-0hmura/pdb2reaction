@@ -1288,7 +1288,10 @@ class HessianDimer:
         if allow_reuse:
             cached = self._reuse_cached_hessian()
             if cached is not None:
-                click.echo("[Hessian] Reusing cached raw Hessian (0-step convergence).")
+                emit(
+                    "[Hessian] Reusing cached raw Hessian (0-step convergence).",
+                    detail=True,
+                )
                 self._sync_geom_hessian_cache(cached)
                 return cached
         H = _calc_full_hessian_torch(self.geom, self.uma_kwargs, self.device)

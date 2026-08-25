@@ -29,6 +29,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Remove residual internal acceptance of the retired `light` and `heavy` optimizer aliases.
 
 ### Changed
+- Show Hessian cache-reuse notices at `-v 2`; cache identity and rejection details remain at `-v 3`.
 - Use finite cycle defaults of 100000 for ordinary optimization and TS/endpoint
   optimization, 300 for GSM/DMF, and 125 for IRC. An explicit YAML `null`
   remains the uncapped engine value.

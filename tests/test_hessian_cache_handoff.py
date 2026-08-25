@@ -2,11 +2,22 @@
 
 from __future__ import annotations
 
+import inspect
+
 import numpy as np
 import pytest
 import torch
 
 from pdb2reaction.io import hessian_cache
+
+
+def test_dimer_cache_reuse_is_visible_at_v2() -> None:
+    from pdb2reaction.workflows.tsopt import HessianDimer
+
+    source = inspect.getsource(HessianDimer._calc_full_hessian_cached)
+    marker = "Reusing cached raw Hessian"
+    offset = source.index(marker)
+    assert "detail=True" in source[offset : offset + 200]
 
 
 def setup_function() -> None:
