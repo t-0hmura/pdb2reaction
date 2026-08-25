@@ -130,7 +130,7 @@ ja/glossary
 |---|---|
 | Install + run a first end-to-end pipeline | [Installation](installation.md) · [Getting Started](getting-started.md) |
 | End-to-end pipeline from a PDB | [Quickstart: all](quickstart-all.md) |
-| Reactant only — staged distance scan | [Quickstart: scan](quickstart-scan.md) |
+| Single-structure scan-seeded MEP workflow | [Quickstart: scan](quickstart-scan.md) |
 | TS candidate available — `tsopt → IRC → freq` | [Quickstart: TS-only](quickstart-tsopt-freq.md) |
 | Choosing precision / TS route / imaginary-mode fix / controlled comparison | [`tsopt`](tsopt.md) |
 | Staged-vs-concerted scan / barrier direction | [`scan`](scan.md) |
@@ -152,9 +152,9 @@ ja/glossary
 | [`tsopt`](tsopt.md) | Transition state optimization (Dimer or RS-P-RFO; optional flatten) |
 | [`path-opt`](path-opt.md) | Single-step MEP optimization via GSM or DMF (from 2 structures) |
 | [`path-search`](path-search.md) | Recursive multi-step MEP search with automatic refinement (2+ structures) |
-| [`scan`](scan.md) | 1D bond-length driven scan with restraints |
-| [`scan2d`](scan2d.md) | 2D distance grid scan |
-| [`scan3d`](scan3d.md) | 3D distance grid scan |
+| [`scan`](scan.md) | Restrained distance scan supporting concerted multi-distance and multistage scans |
+| [`scan2d`](scan2d.md) | Two-dimensional energy-landscape exploration and PES mapping |
+| [`scan3d`](scan3d.md) | Three-dimensional energy-landscape exploration and PES mapping |
 | [`freq`](freq.md) | Vibrational frequency analysis & thermochemistry |
 | [`irc`](irc.md) | Intrinsic Reaction Coordinate calculation |
 | [`dft`](dft.md) | Single-point DFT calculations (GPU4PySCF / PySCF) |

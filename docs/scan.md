@@ -2,6 +2,14 @@
 
 Drive a reaction coordinate by scanning bond distances with harmonic restraints. Use `pdb2reaction scan` to drive specific distances in a single structure and explore a plausible path (often before `path-search`/`path-opt`). It performs a staged, bond-length–driven scan using an MLIP backend (UMA by default) and harmonic restraints. At each step, the temporary targets are updated, restraint wells are applied, and the structure is relaxed with L-BFGS (`--opt-mode grad`) or RFOptimizer (`--opt-mode hess`). mmCIF inputs run through the internal PDB bridge and emit CIF with restored IDs. For XYZ/GJF inputs, `--ref-pdb` accepts a PDB or mmCIF reference topology.
 
+## Scan-coordinate staging
+
+One literal defines one stage. Several distance tuples within that literal are
+advanced concertedly. Several literals define sequential stages, each
+starting from the preceding stage endpoint. In contrast, [`scan2d`](scan2d.md)
+and [`scan3d`](scan3d.md) evaluate independent distance axes for
+energy-landscape exploration and PES mapping.
+
 ## Examples
 
 ```bash
@@ -159,16 +167,12 @@ More YAML options for `opt`/`lbfgs`/`rfo`/`bias`/`bond` and their defaults are i
 For the YAML/JSON file format, inline Python literal syntax, atom selectors, and quoting rules,
 see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
 
-### Staged vs concerted scans
+### Synchronized and sequential examples
 
-The number of `(i, j, target)` tuples inside one literal and the number of literals together decide whether the coordinates are driven *together* (concerted) or *in sequence* (staged):
-
-| Mode | Syntax | Use when |
-| --- | --- | --- |
-| Concerted | one `-s`, one literal holding several coordinate tuples | The coordinates move together in a single step; you do not need to break the mechanism into stages |
-| Staged | one `-s`, several space-separated literals (one literal per sequential stage) | The mechanism is known up front and you want clean per-step control and per-stage output |
-
-The staged form requires the mechanism up front and exposes per-stage geometries. When the mechanism is unknown or multi-step, let [`path-search`](path-search.md) auto-segment the path instead of guessing the stages yourself. (A 4-tuple `(i, j, low, high)` expands into a bidirectional 2-stage scan; see [Bidirectional scan](#bidirectional-scan-4-tuple).)
+When the mechanism is not assigned to prescribed stages, the concerted
+form can be followed by [`path-search`](path-search.md) for candidate
+segmentation. A 4-tuple `(i, j, low, high)` instead expands into a
+bidirectional two-stage scan; see [Bidirectional scan](#bidirectional-scan-4-tuple).
 
 ```bash
 # Concerted: two coordinates move together in one stage

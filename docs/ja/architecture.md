@@ -183,7 +183,7 @@ CLI サブコマンドリゾルバ（`cli/app.py:_LAZY_SUBCOMMANDS`）は **絶�
 |---|---|
 | 全パイプラインオーケストレータ | `pdb2reaction/workflows/all.py` |
 | 構造最適化（L-BFGS / RFO） | `pdb2reaction/workflows/opt.py` |
-| 1D / 2D / 3D スキャン + 共有 | `pdb2reaction/workflows/scan{,2d,3d,_common}.py` |
+| Scanと2D/3D energy-landscape grid + 共有 | `pdb2reaction/workflows/scan{,2d,3d,_common}.py` |
 | MEP 探索（GSM） | `pdb2reaction/workflows/path_search.py` |
 | MEP optimizer コア（pysisyphus COS） | `pdb2reaction/workflows/path_opt.py` |
 | TS 最適化（RS-P-RFO + Bofill + macro/micro） | `pdb2reaction/workflows/tsopt.py` |

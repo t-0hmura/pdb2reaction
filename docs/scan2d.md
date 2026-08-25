@@ -186,7 +186,7 @@ More YAML options for `opt` are available in [YAML Reference](yaml-reference.md)
 ## Notes
 
 - The MLIP backend (UMA by default) reuses the same
-  `HarmonicBiasCalculator` as the 1D scan.
+  `HarmonicBiasCalculator` as the `scan` command.
 - Ångström limits are converted to Bohr internally to cap L-BFGS steps and RFO
   trust radii; optimizer scratch files live under temporary directories.
 - The bias is always removed before final energies are recorded so you can reuse
@@ -196,7 +196,7 @@ More YAML options for `opt` are available in [YAML Reference](yaml-reference.md)
 - An explicitly provided `--relax-max-cycles` overrides YAML `opt.max_cycles`; when omitted, YAML wins, then the default `100000` applies.
 
 ## See Also
-- [scan](scan.md) -- 1D bond-distance scan
+- [scan](scan.md) -- Concerted multi-distance and multistage restrained scans
 - [scan3d](scan3d.md) -- 3D distance-grid scan
 - [opt](opt.md) -- single-structure optimization before/after scans
 - [all](all.md) -- end-to-end workflow wrapper

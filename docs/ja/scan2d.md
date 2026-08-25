@@ -147,7 +147,7 @@ bias:
 `opt` の詳細は [YAML リファレンス](yaml-reference.md) を参照してください。
 
 ## 注意事項
-- 計算エンジンは MLIP バックエンド（デフォルト: UMA、`-b/--backend` で切替可能）で、1D スキャンと同じ `HarmonicBiasCalculator` を再利用します。
+- 計算エンジンは MLIP バックエンド（デフォルト: UMA、`-b/--backend` で切替可能）で、`scan`コマンドと同じ`HarmonicBiasCalculator`を再利用します。
 - Å 単位の制限値は内部で Bohr に変換され、L-BFGS ステップや RFO 信頼半径の制御に使われます。最適化の一時ファイルはテンポラリディレクトリに配置されます。
 - バイアスはエネルギー記録前に除去されるため、`surface.csv` を下流のフィッティングや可視化スクリプトにそのまま利用できます。
 - `--freeze-links` はユーザー指定の `freeze_atoms` にキャップ水素親原子をマージし、抽出された活性部位モデルの境界を固定します。

@@ -163,6 +163,13 @@ Each `scan` stage is a list of `(i, j, target_Å)` triples; each `scan2d` / `sca
 
 For `scan`, one literal = one **stage**; multiple stages → multiple literals after a single `--scan-lists` flag. For `scan2d` / `scan3d`, only one literal is accepted (no multi-stage support).
 
+| Command | Accepted scan specification |
+| --- | --- |
+| `scan` | Inline 3-tuples or bidirectional 4-tuples; YAML/JSON is also accepted |
+| `all --scan-lists` | Inline 3-tuples only |
+| `scan2d` | One literal/file containing exactly two `(i,j,low,high)` axes |
+| `scan3d` | One literal/file containing exactly three `(i,j,low,high)` axes |
+
 ## Input file requirements
 
 - **PDB** — must contain hydrogens (add via `reduce` / `pdb2pqr` / Open Babel) and element symbols in cols 77–78 (`pdb2reaction add-elem-info` if missing). Multiple PDBs must share identical atoms in the same order.

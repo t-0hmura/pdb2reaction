@@ -13,7 +13,7 @@
 | 目的 | ワークフロー |
 |------|------------|
 | **End-to-end 初回実行** | [クイックスタート: all](quickstart-all.md) |
-| **反応物のみ** | [クイックスタート: scan](quickstart-scan.md) |
+| **単一構造からスキャンを起点に MEP を構築** | [クイックスタート: scan](quickstart-scan.md) |
 | **TS 候補あり** | [クイックスタート: TS のみモード](quickstart-tsopt-freq.md) |
 | **実行失敗 / エラー** | [典型エラー別レシピ](recipes-common-errors.md) |
 
@@ -31,9 +31,9 @@
 | [`tsopt`](tsopt.md) | 遷移状態最適化（Dimer または RS-P-RFO。[+ 任意 flatten]） |
 | [`path-opt`](path-opt.md) | GSM または DMF による 1 段階の MEP 最適化（2 構造から） |
 | [`path-search`](path-search.md) | 自動精密化を伴う多段階の再帰的 MEP 探索（2 構造以上） |
-| [`scan`](scan.md) | 拘束付き 1D 結合長スキャン |
-| [`scan2d`](scan2d.md) | 2D 距離グリッドスキャン |
-| [`scan3d`](scan3d.md) | 3D 距離グリッドスキャン |
+| [`scan`](scan.md) | 拘束付き距離scan（複数距離の協奏scan・多段階scanに対応） |
+| [`scan2d`](scan2d.md) | 2 次元 energy landscape 探索・PES mapping |
+| [`scan3d`](scan3d.md) | 3 次元 energy landscape 探索・PES mapping |
 | [`freq`](freq.md) | 振動解析と熱化学 |
 | [`irc`](irc.md) | 固有反応座標（IRC: Intrinsic Reaction Coordinate）計算 |
 | [`dft`](dft.md) | DFT 一点計算（GPU4PySCF / PySCF） |

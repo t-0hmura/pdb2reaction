@@ -54,7 +54,8 @@ remove extra negative directions but cannot create a missing reaction mode.
 
 ## Two routes to a TS candidate
 
-`tsopt` refines a candidate you already have; there are two complementary ways to *build* that candidate first. Pick the route that matches the information you have.
+`tsopt` refines an existing candidate. Select the candidate-generation route
+according to the available structural information.
 
 | Route | Subcommand | Use when | What it does |
 | --- | --- | --- | --- |

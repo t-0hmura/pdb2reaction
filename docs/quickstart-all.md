@@ -54,7 +54,7 @@ The minimal command stops after the MEP stage and therefore does **not** create
 `segments/seg_01/{reactant.pdb,ts.pdb,product.pdb}`, `ts/`, and `irc/`; adding
 `--thermo` also adds `freq/`.
 
-**What to check:**
+### Output validation
 
 1. `summary.json` — use `scientific_status` and `scientific_status_reasons` for usability. In path mode, `segments[].barrier_kcal` is the raw MEP electronic barrier; requested post-processing results are reported under `rate_limiting_step` and `post_segments`. `status` is retained for compatibility.
 2. `_work/path_opt/hei_seg_01.pdb` — inspect the highest-energy image; with `--tsopt`, also inspect the canonical `segments/seg_01/*.pdb` R/TS/P structures
@@ -82,6 +82,6 @@ A first-order saddle point shows exactly one imaginary mode along the reaction c
 
 ## Next step
 
-- Single-structure staged scan route: [Quickstart: `pdb2reaction all --scan-lists`](quickstart-scan.md)
+- Scan-defined single-structure route: [Quickstart: `pdb2reaction all --scan-lists`](quickstart-scan.md)
 - TS candidate validation: [Quickstart: TS-only mode](quickstart-tsopt-freq.md)
 - Full option reference: [all](all.md)

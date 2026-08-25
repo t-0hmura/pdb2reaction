@@ -9,8 +9,8 @@
 A single command generates a reasonable initial reaction path:
 
 ```bash
-pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'                       # MEP only
-pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --thermo --dft   # full
+pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3'                       # MEP only
+pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --thermo --dft   # full
 ```
 
 Given (i) ≥ 2 structures (R → ... → P), (ii) one structure with `--scan-lists/-s`, or (iii) one TS candidate with `--tsopt`, `pdb2reaction` optionally extracts an **active-site cluster model** when `-c` is supplied, runs the selected MEP/scan/TS-only entry mode, and optionally chains TS optimization, IRC, thermochemical correction, and single-point DFT. Without active-site extraction, omit only `-c/--center`; the full input is analyzed as given, but its charge must still come from explicit `-q`, residue-based `-l` for a PDB/mmCIF, configured `calc.charge`, or valid `.gjf` metadata.
@@ -60,7 +60,7 @@ Full table: [CLI Conventions](cli-conventions.md).
 ## Quickstart routes
 
 - [Quickstart: `pdb2reaction all`](quickstart-all.md) — multi-structure MEP
-- [Quickstart: single-structure staged scan](quickstart-scan.md) — one PDB + `--scan-lists`
+- [Quickstart: scan-seeded `all` workflow](quickstart-scan.md) — one structure + `--scan-lists`
 - [Quickstart: TS-only mode](quickstart-tsopt-freq.md) — `pdb2reaction all --tsopt`
 - [Interactive Colab GUI](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb) — upload PDB/mmCIF, pick exact residues/atoms in 3D, validate, then run
 
@@ -79,11 +79,11 @@ Two key options on the workflows that use cluster extraction:
 
 ## Main workflow modes
 
-| Mode | Trigger | Use when | Quickstart |
+| Mode | Trigger | Appropriate input | Quickstart |
 |---|---|---|---|
-| Multi-structure MEP | `-i R.cif [I1.cif ...] P.cif` | You have ≥ 2 PDB/mmCIF endpoints or intermediates. | [quickstart-all](quickstart-all.md) |
-| Staged scan | `-i ONE.cif --scan-lists '[...]' [ '[...]' ...]` | You'd rather define the reaction coordinates than provide endpoints. | [quickstart-scan](quickstart-scan.md) |
-| TS-only | `-i TS_CANDIDATE.cif --tsopt` | You already have a TS guess. | [quickstart-tsopt-freq](quickstart-tsopt-freq.md) |
+| Multi-structure MEP | `-i R.cif [I1.cif ...] P.cif` | Two or more endpoint/intermediate structures are available. | [quickstart-all](quickstart-all.md) |
+| Scan-defined single-structure workflow | `-i ONE.cif --scan-lists '[...]' [ '[...]' ...]` | Reaction coordinates are specified instead of endpoint structures. | [quickstart-scan](quickstart-scan.md) |
+| TS-only | `-i TS_CANDIDATE.cif --tsopt` | A TS candidate is already available. | [quickstart-tsopt-freq](quickstart-tsopt-freq.md) |
 
 ```{important}
 Single-input runs require **either** `--scan-lists/-s` or `--tsopt` — a bare `-i ONE.pdb` will not trigger a full workflow.

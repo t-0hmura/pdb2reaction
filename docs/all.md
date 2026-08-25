@@ -7,7 +7,7 @@ PDB; coordinate outputs also include CIF with the original identifiers.
 `all` runs in one of three modes, chosen by what you pass:
 
 - **Multi-structure MEP** (`[mode] all (mep)`) — give ≥ 2 structures in reaction order. With `-c`, `all` first extracts active-site models; without it, the full supplied structures are used. It then runs GSM / DMF MEP search and optionally runs TSOPT + IRC / freq / DFT per reactive segment. With `--refine-path` and full-system templates, it also merges the optimized path back into those templates.
-- **Single-structure staged scan** (`[mode] all (scan-lists)`) — give one structure plus one or more `--scan-lists/-s` literals, each defining a scan stage; the staged scan produces the ordered intermediates that drive the MEP step.
+- **Single-structure scan-defined workflow** (`[mode] all (scan-lists)`) — give one structure plus one or more `--scan-lists/-s` literals. One literal defines one stage; several tuples inside it are advanced concertedly. The stage endpoints form the ordered input series for the MEP step.
 - **TSOPT-only** — give a single input and set `--tsopt` (no `--scan-lists`). `all` skips the MEP / merge stages, runs `tsopt` + EulerPC IRC on the active-site model (or the full input if extraction is skipped), and identifies the higher-energy endpoint as the reactant.
 
 ```{note}
@@ -123,7 +123,9 @@ In **TSOPT-only mode** (single input + `--tsopt`, no `--scan-lists`) there is no
 **The canonical structures are `segments/seg_NN/reactant.*`, `ts.*`, `product.*`** — cite these when reporting mechanisms. The `ts/`, `irc/`, `freq/`, and `dft/` subdirectories inside the same `seg_NN/` hold the per-stage working files (e.g. `ts/vib/imag_*_trj.xyz`, `irc/*_trj.xyz`) for debugging a single stage. The raw MEP-search engine output under `_work/path_opt/` is scratch — the products you need (`mep.pdb`, bridge-input `mep.cif`, `mep_trj.xyz`, `energy_diagram_MEP.png`) are already promoted to the root.
 ```
 
-At `-v 2` the console summarizes active-site charge resolution, YAML contents, scan stages, MEP progress (GSM / DMF), and per-stage timing; see {ref}`verbosity-levels`.
+At `-v 2` the console summarizes active-site charge resolution, scan stages,
+MEP progress (GSM / DMF), and per-stage timing. Resolved configuration details
+are shown at `-v 3`; see {ref}`verbosity-levels`.
 
 ### Plot file naming
 

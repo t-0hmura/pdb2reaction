@@ -185,7 +185,7 @@ After step 5 you can read any other file by following the file index in §4. The
 |---|---|
 | Full pipeline orchestrator | `pdb2reaction/workflows/all.py` |
 | Geometry optimization (L-BFGS / RFO) | `pdb2reaction/workflows/opt.py` |
-| 1D / 2D / 3D scans + shared | `pdb2reaction/workflows/scan{,2d,3d,_common}.py` |
+| Scan and 2D/3D energy-landscape grids + shared | `pdb2reaction/workflows/scan{,2d,3d,_common}.py` |
 | MEP search (GSM) | `pdb2reaction/workflows/path_search.py` |
 | MEP optimizer core (pysisyphus COS) | `pdb2reaction/workflows/path_opt.py` |
 | TS optimization (RS-P-RFO + Bofill + macro/micro) | `pdb2reaction/workflows/tsopt.py` |

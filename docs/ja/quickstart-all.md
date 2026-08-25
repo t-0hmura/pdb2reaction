@@ -54,7 +54,7 @@ result_all/
 `segments/seg_01/{reactant.pdb,ts.pdb,product.pdb}`、`ts/`、`irc/` が追加され、
 `--thermo` も付けると `freq/` が追加されます。
 
-**確認ポイント:**
+### 出力の検証
 
 1. `summary.json` — 利用可否は `scientific_status` と `scientific_status_reasons` で判定します。path mode の `segments[].barrier_kcal` は生の MEP 電子障壁であり、要求した後処理の結果は `rate_limiting_step` と `post_segments` を確認します。`status` は互換性のために残されています
 2. `_work/path_opt/hei_seg_01.pdb` — 最高エネルギー像を確認。`--tsopt` 時は正規 `segments/seg_01/*.pdb` の R/TS/P も確認
@@ -82,6 +82,6 @@ result_all/
 
 ## 次のステップ
 
-- 単一構造の段階的スキャン: [クイックスタート: `pdb2reaction all --scan-lists`](quickstart-scan.md)
+- 単一構造のスキャン定義経路: [クイックスタート: `pdb2reaction all --scan-lists`](quickstart-scan.md)
 - TS 候補の検証: [クイックスタート: TS のみモード](quickstart-tsopt-freq.md)
 - 全オプション: [all](all.md)

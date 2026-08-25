@@ -184,7 +184,7 @@ backend and model; there is no reliable fixed GPU/CPU ratio.
 
 - [Getting Started](getting-started.md) — project overview, pipeline stages, and workflow modes
 - [Quickstart: `pdb2reaction all`](quickstart-all.md) — run the end-to-end workflow from two PDBs
-- [Quickstart: single-structure staged scan](quickstart-scan.md) — `--scan-lists/-s` driven MEP from one PDB
+- [Quickstart: scan-defined single-structure workflow](quickstart-scan.md) — `--scan-lists/-s` driven MEP from one structure
 - [Quickstart: TS-only mode](quickstart-tsopt-freq.md) — validate a TS candidate end-to-end
 - [CLI Conventions](cli-conventions.md) — flag precedence, atom/residue selectors, shared options
 - [Troubleshooting](troubleshooting.md) and [Common Error Recipes](recipes-common-errors.md)

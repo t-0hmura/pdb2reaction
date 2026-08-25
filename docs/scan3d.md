@@ -195,7 +195,7 @@ bias:
 - An explicitly provided `--relax-max-cycles` overrides YAML `opt.max_cycles`; when omitted, YAML wins, then the default `100000` applies.
 
 ## See Also
-- [scan](scan.md) -- 1D bond-distance scan
+- [scan](scan.md) -- Concerted multi-distance and multistage restrained scans
 - [scan2d](scan2d.md) -- 2D distance-grid scan
 - [opt](opt.md) -- single-structure optimization before/after scans
 - [all](all.md) -- end-to-end workflow wrapper

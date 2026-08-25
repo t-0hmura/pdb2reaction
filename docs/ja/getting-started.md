@@ -118,7 +118,7 @@ PDB に水素原子がない場合は、pdb2reaction を実行する前に次の
 セットアップと依存関係の詳細は [インストール](installation.md) を参照してください。
 
 - [クイックスタート: `pdb2reaction all`](quickstart-all.md)
-- [クイックスタート: `pdb2reaction all --scan-lists/-s` で単一構造の段階的スキャン+MEP+TS](quickstart-scan.md)
+- [クイックスタート: スキャンを起点とする `pdb2reaction all`](quickstart-scan.md)
 - [クイックスタート: TS のみモード（`pdb2reaction all --tsopt`）](quickstart-tsopt-freq.md)
 - [Colab GUI](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb) — PDB/mmCIF upload、3Dでchain付き選択、Validate、実行
 
@@ -148,7 +148,7 @@ pdb2reaction all [OPTIONS]...
 | モード | 概要 | クイックスタート |
 |------|-----|--------------|
 | **複数構造 MEP**（2 つ以上の PDB） | 反応座標に沿った複数の PDB（R → … → P）を受け取り、各構造のクラスターモデル抽出 → MEP 探索（デフォルトは単一パス path-opt; `--refine-path` で再帰的 path-search）→ 必要に応じてセグメントごとに TS / IRC / freq / DFT を実行 | [クイックスタート: `pdb2reaction all`](quickstart-all.md) |
-| **単一構造 + 段階的スキャン**（1 PDB + `--scan-lists/-s`） | 1 つの PDB をクラスターモデル上で段階的距離スキャンにかけ、各ステージを単一パス `path-opt`（`--refine-path` で再帰的 `path-search`）に渡して MEP を構築 | [クイックスタート: 単一構造の段階的スキャン](quickstart-scan.md) |
+| **単一構造 + スキャン定義**（1 構造 + `--scan-lists/-s`） | 1 つの構造を距離拘束スキャンにかけ、各ステージを単一パス `path-opt`（`--refine-path` で再帰的 `path-search`）に渡して MEP を構築 | [クイックスタート: スキャン起点ワークフロー](quickstart-scan.md) |
 | **単一構造 TSOPT のみ**（1 PDB + `--tsopt`） | MEP/経路探索を完全にスキップし、TS 候補を最適化 → 双方向 IRC → 端点最適化、必要なら R/TS/P に freq / DFT を実行 | [クイックスタート: TS のみモード](quickstart-tsopt-freq.md) |
 
 ```{important}

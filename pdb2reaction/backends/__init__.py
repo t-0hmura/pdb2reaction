@@ -290,6 +290,7 @@ def _announce_model_load(backend: str, kwargs: Dict[str, Any]):
         return
     _ANNOUNCED_MODEL_LOADS.add(key)
     label = f"{backend}{f' / {model}' if model else ''}"
+    emit("", narrative=True)
     emit(f"[backend] Preparing MLIP model ({label})...", narrative=True)
     try:
         yield
@@ -297,6 +298,7 @@ def _announce_model_load(backend: str, kwargs: Dict[str, Any]):
         _ANNOUNCED_MODEL_LOADS.discard(key)
         raise
     emit("[backend] Done.", narrative=True)
+    emit("", narrative=True)
 
 
 def _import_cls(backend: str, cls_key: str):
