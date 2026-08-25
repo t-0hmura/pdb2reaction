@@ -127,10 +127,6 @@ def _set_cartesian_flatten_coords(geom, cart_coords: np.ndarray) -> None:
 # interchangeable at construction time.
 TSOPT_CLASS_MAP = {"rsirfo": RSIRFOptimizer, "trim": TRIM, "rsprfo": RSPRFOptimizer}
 TSOPT_DISPLAY_NAME = {"rsirfo": "RS-I-RFO", "rsprfo": "RS-P-RFO", "trim": "TRIM"}
-# Total Cartesian displacement norms.  These remain small compared with a
-# typical neighboring-image separation, but the second shell is large enough
-# to escape a shallow minimum reached from a coarse HEI.
-PATH_MODE_RESTART_AMPLITUDES_ANG = (-0.10, 0.10, -0.20, 0.20)
 # A flatten displacement perturbs both the surplus mode and the saddle mode it
 # must retain.  One exact retry cycle can stop before the latter is
 # re-established and was observed to soften both modes together.  Reuse the
@@ -220,68 +216,6 @@ def _transported_path_mode_full(
         return None
     return mode / norm
 
-
-def _initial_path_root_mode_full(optimizer, geometry) -> Optional[np.ndarray]:
-    """Return the HEI's initially selected soft root in full Cartesian space."""
-    if geometry.coord_type not in ("cart", "cartesian"):
-        return None
-    mode = getattr(optimizer, "_initial_reference_root_mode", None)
-    if isinstance(mode, torch.Tensor):
-        mode = mode.detach().cpu().numpy()
-    if mode is None:
-        return None
-    mode = np.asarray(mode, dtype=float).reshape(-1)
-    if mode.size != geometry.cart_coords.size:
-        try:
-            mode = optimizer.full_from_active(mode)
-        except (AttributeError, IndexError, ValueError):
-            return None
-    if mode.size != geometry.cart_coords.size:
-        return None
-    norm = float(np.linalg.norm(mode))
-    if not np.all(np.isfinite(mode)) or norm <= 0.0:
-        return None
-    return mode / norm
-
-
-def _path_restart_mode_candidates(
-    optimizer,
-    geometry,
-    reference_modes: Sequence[np.ndarray],
-    reference_labels: Optional[Sequence[str]] = None,
-) -> List[Tuple[str, np.ndarray]]:
-    """Build bounded restart directions from the cached MEP candidates.
-
-    The file cache may provide energy-upwind, incoming, and outgoing modes.
-    They remain CPU NumPy arrays and are tried in cache order. A materially
-    distinct initial soft root is retained as the final bounded fallback.
-    """
-    labels = list(reference_labels or ())
-    candidates: List[Tuple[str, np.ndarray]] = []
-    for index, raw in enumerate(reference_modes):
-        mode = np.asarray(raw, dtype=float).reshape(-1)
-        norm = float(np.linalg.norm(mode))
-        if (
-            mode.size != geometry.cart_coords.size
-            or not np.all(np.isfinite(mode))
-            or not np.isfinite(norm)
-            or norm <= 0.0
-        ):
-            continue
-        unit = mode / norm
-        if any(abs(float(np.dot(unit, prior))) >= 1.0 - 1.0e-8 for _, prior in candidates):
-            continue
-        label = labels[index] if index < len(labels) else f"mep-candidate-{index + 1}"
-        candidates.append((f"mep-{label}", unit))
-
-    primary = candidates[0][1] if candidates else None
-    soft_root = _initial_path_root_mode_full(optimizer, geometry)
-    if soft_root is not None and (
-        primary is None or abs(float(np.dot(primary, soft_root))) < 0.95
-    ):
-        if not any(abs(float(np.dot(soft_root, prior))) >= 1.0 - 1.0e-8 for _, prior in candidates):
-            candidates.append(("initial-soft-root", soft_root))
-    return candidates
 
 def _mw_projected_hessian_inplace(H: torch.Tensor,
                                   coords_bohr_t: torch.Tensor,
@@ -2887,8 +2821,6 @@ def cli(
                 coord_kwargs = dict(geom_cfg)
                 coord_kwargs.pop("coord_type", None)
                 geometry = geom_loader(geom_input_path, coord_type=coord_type, **coord_kwargs)
-                initial_ts_cart_coords = geometry.cart_coords.copy()
-
                 calc = create_calculator(**calc_cfg)  # includes freeze_atoms / hessian_calc_mode / partial Hessian
                 geometry.set_calculator(calc)
                 echo_resolved_device()
@@ -3042,7 +2974,6 @@ def cli(
                 hessian_postprocessing_ready = _hessian_postprocessing_is_ready(
                     last_optimizer
                 )
-                saddle_multistart_attempts = []
                 hessian_error: Optional[str] = getattr(
                     last_optimizer, "_last_exact_failure_reason", None
                 )
@@ -3083,179 +3014,6 @@ def cli(
                     n_imag = None
                     ims = []
                     initially_reported_ims = ()
-
-                # A local minimum plus its Hessian does not identify the
-                # intended neighboring saddle.  When the path supplied that
-                # missing direction, retry a failed Hessian TS run from small
-                # bounded displacements on both sides of the original HEI.
-                # Keep the original result if neither same-optimizer restart
-                # reaches a verified first-order saddle.
-                target_mode_is_negative = getattr(
-                    last_optimizer,
-                    "_last_exact_target_mode_is_negative",
-                    None,
-                )
-                if (
-                    hessian_postprocessing_ready
-                    and int(rsirfo_kwargs.get("saddle_recovery_max_cycles", 0)) > 0
-                    and not last_optimizer.is_converged
-                    and not getattr(last_optimizer, "is_stalled", False)
-                    and reference_mode is not None
-                    and (n_imag <= 1 or target_mode_is_negative is False)
-                ):
-                    baseline_coords = geometry.cart_coords.copy()
-                    baseline_optimizer = last_optimizer
-                    baseline_freqs = freqs_cm.copy()
-                    baseline_modes = modes.detach().cpu().clone()
-                    restart_modes = _path_restart_mode_candidates(
-                        baseline_optimizer,
-                        geometry,
-                        reference_modes,
-                        reference_mode_labels,
-                    )
-                    multistart_success = False
-                    path_negative_candidate = None
-                    for mode_source, restart_unit in restart_modes:
-                        # If the explicit MEP tangent already recovered the
-                        # requested negative mode, keep that chemically direct
-                        # candidate for flattening rather than trying another
-                        # identity. The soft-root shell is only a true fallback.
-                        if (
-                            mode_source == "initial-soft-root"
-                            and path_negative_candidate is not None
-                        ):
-                            break
-                        restart_kwargs = dict(rsirfo_kwargs)
-                        restart_kwargs["reference_mode"] = restart_unit
-                        for amplitude_ang in PATH_MODE_RESTART_AMPLITUDES_ANG:
-                            geometry.cart_coords = (
-                                initial_ts_cart_coords
-                                + (amplitude_ang / BOHR2ANG) * restart_unit
-                            )
-                            _attach_rsirfo_calc()
-                            optimizer = TSOPT_CLASS_MAP[kind](
-                                geometry, **restart_kwargs
-                            )
-                            emit(
-                                "\n====== TS optimization ("
-                                + TSOPT_DISPLAY_NAME.get(kind, kind.upper())
-                                + ", path-mode restart "
-                                + f"{mode_source} {amplitude_ang:+.2f} Å) ======\n",
-                                narrative=True,
-                            )
-                            optimizer.run()
-                            emit_optimizer_terminal_status(
-                                "tsopt",
-                                converged=getattr(
-                                    optimizer, "is_converged", None
-                                ),
-                                cycles=optimizer_cycle_count(optimizer),
-                                max_cycles=(
-                                    opt_cfg.get("max_cycles")
-                                ),
-                                stalled=getattr(optimizer, "is_stalled", False),
-                                stop_reason=getattr(optimizer, "stop_reason", None) or None,
-                                converged_message="Numerical optimization converged.",
-                            )
-                            last_optimizer = optimizer
-                            geometry.set_calculator(None)
-                            freqs_cm, modes = _terminal_freqs_and_modes(optimizer)
-                            neg_mask = freqs_cm < -abs(neg_freq_thresh_cm)
-                            n_imag = int(np.sum(neg_mask))
-                            ims = [
-                                float(x)
-                                for x in freqs_cm
-                                if x < -abs(neg_freq_thresh_cm)
-                            ]
-                            attempt = {
-                                "mode_source": mode_source,
-                                "displacement_ang": amplitude_ang,
-                                "converged": bool(optimizer.is_converged),
-                                "n_imaginary": n_imag,
-                                "target_mode_negative": getattr(
-                                    optimizer,
-                                    "_last_exact_target_mode_is_negative",
-                                    None,
-                                ),
-                            }
-                            saddle_multistart_attempts.append(attempt)
-                            emit(
-                                "[path-mode restart] "
-                                f"source={mode_source}, "
-                                f"displacement={amplitude_ang:+.2f} Å, "
-                                f"converged={attempt['converged']}, "
-                                f"n_imag={n_imag}",
-                                narrative=True,
-                            )
-                            if optimizer.is_converged and n_imag == 1:
-                                multistart_success = True
-                                break
-
-                            if attempt["target_mode_negative"] is True:
-                                force = (
-                                    optimizer.forces[-1]
-                                    if optimizer.forces
-                                    else geometry.cart_forces
-                                )
-                                if isinstance(force, torch.Tensor):
-                                    force = force.detach().cpu().numpy()
-                                force = np.asarray(force, dtype=float)
-                                score = (
-                                    abs(int(n_imag) - 1),
-                                    float(np.max(np.abs(force))),
-                                )
-                                if (
-                                    path_negative_candidate is None
-                                    or score
-                                    < path_negative_candidate["score"]
-                                ):
-                                    path_negative_candidate = {
-                                        "score": score,
-                                        "coords": geometry.cart_coords.copy(),
-                                        "optimizer": optimizer,
-                                        "freqs": freqs_cm.copy(),
-                                        "modes": modes.detach().cpu().clone(),
-                                    }
-                        if multistart_success:
-                            break
-
-                    if not multistart_success:
-                        if path_negative_candidate is not None:
-                            geometry.cart_coords = path_negative_candidate["coords"]
-                            last_optimizer = path_negative_candidate["optimizer"]
-                            freqs_cm = path_negative_candidate["freqs"]
-                            modes = path_negative_candidate["modes"]
-                            neg_mask = freqs_cm < -abs(neg_freq_thresh_cm)
-                            n_imag = int(np.sum(neg_mask))
-                            ims = [
-                                float(x)
-                                for x in freqs_cm
-                                if x < -abs(neg_freq_thresh_cm)
-                            ]
-                            emit(
-                                "[path-mode restart] Retaining the best "
-                                "path-negative higher-order candidate for "
-                                "bounded extra-mode flattening.",
-                                narrative=True,
-                            )
-                        else:
-                            geometry.cart_coords = baseline_coords
-                            last_optimizer = baseline_optimizer
-                            freqs_cm = baseline_freqs
-                            modes = baseline_modes
-                            neg_mask = freqs_cm < -abs(neg_freq_thresh_cm)
-                            n_imag = int(np.sum(neg_mask))
-                            ims = [
-                                float(x)
-                                for x in freqs_cm
-                                if x < -abs(neg_freq_thresh_cm)
-                            ]
-                        geometry.set_calculator(None)
-                        # Restart attempts overwrite the shared final file;
-                        # restore it together with the selected coordinates.
-                        (out_dir_path / "final_geometry.xyz").write_text(
-                            geometry.as_xyz(), encoding="utf-8"
-                        )
 
                 flatten_max_iter = (
                     int(simple_cfg.get("flatten_max_iter", 0))
@@ -3805,7 +3563,6 @@ def cli(
                             "stop_reason": str(
                                 getattr(last_optimizer, "stop_reason", "")
                             ),
-                            "path_mode_multistart_attempts": saddle_multistart_attempts,
                         },
                     }
                     # Convergence details from optimizer

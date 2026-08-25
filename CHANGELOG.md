@@ -12,6 +12,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Keep an explicit finite cycle cap when resuming a checkpoint written by an
   uncapped optimizer.
 - Retain endpoint-optimization diagnostics when `--dump` is enabled.
+- Remove the unreachable workflow-level path-mode multistart recovery block;
+  non-converged TS runs retain their geometry and skip PHVA/recovery.
 - Ignore final exact-PHVA negative frequencies smaller than the configured
   saddle-imaginary magnitude threshold when certifying saddle order, matching
   the existing imaginary-mode display, export, recovery, and flattening policy.
