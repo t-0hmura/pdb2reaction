@@ -7,6 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased] — 2026-08-19
 
 ### Fixed
+- Preserve the blank line before the first MLIP model-load announcement even when an stderr warning immediately precedes it.
 - Record terminal PHVA as `skipped`, rather than `unavailable`, when a non-converged Hessian TS optimizer does not authorize the analysis.
 - Keep accepted line-search/GDIIS offsets in minimum RFO instead of applying
   the trust radius a second time to the full accelerated displacement.

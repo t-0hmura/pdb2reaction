@@ -118,6 +118,37 @@ def test_adapter_rechecks_current_echo_after_post_bootstrap_monkeypatch(
     assert native_calls == [{"err": True}]
 
 
+def test_stdout_spacing_respects_an_intervening_stderr_line() -> None:
+    code = """
+import click
+from pdb2reaction.core.output import emit
+from pdb2reaction.core.utils import _patch_click_echo
+
+_patch_click_echo()
+emit('[mode]')
+emit('')
+click.echo('[warning]', err=True)
+emit('\\n[backend] Preparing MLIP model (uma / uma-s-1p2)...')
+"""
+    proc = subprocess.run(
+        [sys.executable, "-u", "-c", code],
+        cwd=Path(__file__).resolve().parents[1],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        check=False,
+    )
+
+    assert proc.returncode == 0, proc.stdout
+    assert proc.stdout.splitlines() == [
+        "[mode]",
+        "",
+        "[warning]",
+        "",
+        "[backend] Preparing MLIP model (uma / uma-s-1p2)...",
+    ]
+
+
 def test_hessian_status_does_not_add_blank_lines() -> None:
     code = """
 from pdb2reaction.core.utils import (
