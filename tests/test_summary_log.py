@@ -4,12 +4,15 @@ import json
 import time
 from pathlib import Path
 
+import pytest
+
 from pdb2reaction.io.summary import (
     _fmt_bool,
     _shorten_path,
     _format_energy_rows,
     _format_bond_changes,
     emit_method_citations,
+    format_result_warning,
     format_method_citations,
     method_references,
     write_summary_log,
@@ -170,8 +173,40 @@ def test_write_summary_log_marks_non_successful_results(tmp_path):
     text = dest.read_text(encoding="utf-8")
     assert "Execution status    : completed" in text
     assert "Scientific status   : partial" in text
-    assert "RESULT WARNING" in text
-    assert "Status reason       : segment 1 did not converge" in text
+    assert "RESULT WARNING      : Segment 1 did not converge." in text
+    assert "Status reason" not in text
+
+
+@pytest.mark.parametrize(
+    ("reason", "expected"),
+    [
+        (
+            "all:segment_2:mep_not_converged",
+            "Segment 2: MEP optimization did not converge. Review the MEP trajectory and convergence log.",
+        ),
+        (
+            "all:segment_2:endpoint_opt:product_converged",
+            "Segment 2: the product endpoint optimization did not converge or could not be confirmed. "
+            "Review the endpoint structure and optimizer log.",
+        ),
+        (
+            "all:segment_3:irc:irc:forward:not_converged;irc:backward:energy_invalid",
+            "Segment 3: Forward IRC did not converge. Review its trajectory and IRC log. "
+            "Backward IRC did not produce a valid energy profile. Review its trajectory and IRC log.",
+        ),
+        (
+            "path-search:endpoint_hei;engine_nonconverged",
+            "No reactive segment was identified and the path-search engine did not converge. "
+            "Review the path and path-search log.",
+        ),
+        (
+            "missing:segment_4",
+            "Segment 4: the expected segment result is missing. Review the workflow outputs.",
+        ),
+    ],
+)
+def test_format_result_warning_explains_priority_status_codes(reason, expected):
+    assert format_result_warning(reason) == expected
 
 
 def test_summary_log_tree_lists_only_current_run_paths(tmp_path):
@@ -383,8 +418,8 @@ def test_final_stdout_explains_non_success_scientific_status(
 
     output = capsys.readouterr().out
     assert "Scientific status: partial" in output
-    assert "RESULT WARNING:" in output
-    assert "Status reason: IRC endpoint was not validated" in output
+    assert "RESULT WARNING: IRC endpoint was not validated." in output
+    assert "Status reason:" not in output
     assert output.rstrip().splitlines()[-1].startswith(
         "[time] Elapsed Time for Whole Pipeline"
     )

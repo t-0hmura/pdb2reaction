@@ -418,7 +418,7 @@ _original_click_echo = None
 _PYSIS_L1_ALLOW = re.compile(
     r"^(?:Converged!|Final summary:"
     r"|max\(forces,\s*\w+\):|rms\(forces,\s*\w+\):|energy:\s"
-    r"|Path with \d+ moving images\.|Number of cycles exceeded!"
+    r"|Number of cycles exceeded!"
     r"|Operator indicated convergence!|Insignificant coordinate change"
     r"|Energy plateau detected|Wrote final geometr)"
 )
@@ -448,6 +448,8 @@ def _pysis_stdout_visible(stripped: str) -> bool:
     """Whether a raw-stdout optimizer line is visible at the current level."""
     if verbose_level() <= 0:
         return False                       # -v 0: silent
+    if stripped.startswith("RFO safeguards:"):
+        return verbose_level() >= 3        # diagnostic optimizer counters
     if verbose_level() >= 3:
         return True                        # -v 3: full raw optimizer output
     if verbose_level() >= 2:

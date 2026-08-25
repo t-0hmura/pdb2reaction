@@ -337,10 +337,6 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.out_dir = out_dir.resolve()
         self.out_dir.mkdir(parents=True, exist_ok=True)
 
-        if self.is_cos:
-            moving_image_num = len(self.geometry.moving_indices)
-            print(f"Path with {moving_image_num} moving images.")
-
         # Retained for API compatibility only; nothing writes to this path.
         self.h5_fn = self.get_path_for_fn(h5_fn, with_prefix=False)
         self.h5_group_name = h5_group_name

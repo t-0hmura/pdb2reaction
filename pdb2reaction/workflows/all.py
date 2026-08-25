@@ -58,6 +58,7 @@ from pdb2reaction.io.trj2fig import run_trj2fig
 from pdb2reaction.io.path_mode_cache import load_path_mode_cache, write_path_mode_cache
 from pdb2reaction.io.summary import (
     emit_method_citations,
+    format_result_warning,
     method_references,
     write_summary_log,
 )
@@ -279,12 +280,12 @@ def _emit_final_summary(
             or []
         )
         if scientific_status not in (None, "success"):
-            _echo(
-                "RESULT WARNING: this run is not a complete validated result.",
-                narrative=True,
-            )
-        for reason in status_reasons:
-            _echo(f"Status reason: {reason}", narrative=True)
+            reasons = list(status_reasons) or [None]
+            for reason in reasons:
+                _echo(
+                    f"RESULT WARNING: {format_result_warning(reason)}",
+                    narrative=True,
+                )
         rls = summary.get("rate_limiting_step")
         if isinstance(rls, dict):
             barrier = rls.get("barrier_kcal")
@@ -7021,6 +7022,7 @@ def cli(
             raise click.ClickException(
                 f"[all] Current path-search summary has a non-list segments field: {claimed_summary}"
             )
+        segment_mep_publications: List[Tuple[int, Path]] = []
         for segment in path_segments:
             if not isinstance(segment, dict):
                 continue
@@ -7064,7 +7066,11 @@ def cli(
             manifest.claim_optional(f"path.hei.{current_idx:02d}")
             manifest.claim_optional(f"path.hei_ref.{current_idx:02d}")
             manifest.claim_optional(f"path.hei_gjf.{current_idx:02d}")
-            manifest.claim_optional(f"path.mep.{current_idx:02d}.trajectory")
+            segment_mep = manifest.claim_optional(
+                f"path.mep.{current_idx:02d}.trajectory"
+            )
+            if segment_mep is not None:
+                segment_mep_publications.append((current_idx, segment_mep))
             manifest.claim_optional(
                 f"path.segment.{current_idx:02d}.endpoint_trajectory"
             )
@@ -7092,6 +7098,23 @@ def cli(
                 if not _move_public_logged(src, out_dir / src.name, label=src.name):
                     raise click.ClickException(
                         f"Failed to promote {src} to the pipeline root."
+                    )
+
+            for segment_index, segment_mep in segment_mep_publications:
+                destination = (
+                    out_dir
+                    / SEGMENTS_DIRNAME
+                    / f"seg_{segment_index:02d}"
+                    / "mep_trj.xyz"
+                )
+                ensure_dir(destination.parent)
+                if not _copy_public_logged(
+                    segment_mep,
+                    destination,
+                    label=f"segment {segment_index:02d} MEP trajectory",
+                ):
+                    raise click.ClickException(
+                        f"Failed to publish segment {segment_index:02d} MEP trajectory."
                     )
 
             # summary.json / summary.log stay COPIES: the path_dir copy is

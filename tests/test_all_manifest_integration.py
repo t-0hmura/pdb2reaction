@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import inspect
 import os
 from pathlib import Path
 
@@ -10,6 +11,14 @@ from click.testing import CliRunner
 
 from pdb2reaction.workflows import all as all_workflow
 from pdb2reaction.core.result_commit import RUN_ID_ENV, apply_current_run_id
+
+
+def test_refine_path_publishes_each_segment_mep_trajectory() -> None:
+    source = inspect.getsource(all_workflow.cli.callback)
+    assert "segment_mep_publications" in source
+    assert 'f"seg_{segment_index:02d}"' in source
+    assert '"mep_trj.xyz"' in source
+    assert "Failed to publish segment" in source
 
 
 def _replace_bytes(path: Path, payload: bytes) -> None:

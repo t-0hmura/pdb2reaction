@@ -7,6 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased] — 2026-08-19
 
 ### Fixed
+- Translate internal partial-result codes into concise, actionable warnings in `summary.log` and final stdout.
 - Preserve the blank line before the first MLIP model-load announcement even when an stderr warning immediately precedes it.
 - Record terminal PHVA as `skipped`, rather than `unavailable`, when a non-converged Hessian TS optimizer does not authorize the analysis.
 - Keep accepted line-search/GDIIS offsets in minimum RFO instead of applying
@@ -29,6 +30,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Remove residual internal acceptance of the retired `light` and `heavy` optimizer aliases.
 
 ### Changed
+- Remove the redundant `Path with N moving images.` startup line; tagged GSM sections and `String=...` records identify progress.
+- Publish each refined segment MEP as `segments/seg_NN/mep_trj.xyz` and restore aggregate/per-segment trajectories in Colab Results.
+- Enable repeated trajectory playback by default and place the trajectory/energy view before result status and generated-file details in Colab.
 - Show Hessian cache-reuse notices at `-v 2`; cache identity and rejection details remain at `-v 3`.
 - Use finite cycle defaults of 100000 for ordinary optimization and TS/endpoint
   optimization, 300 for GSM/DMF, and 125 for IRC. An explicit YAML `null`

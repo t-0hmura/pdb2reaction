@@ -8,6 +8,27 @@ import numpy as np
 import pytest
 
 
+def test_rfo_safeguard_summary_requires_verbose_level_three() -> None:
+    from pdb2reaction.core.utils import _pysis_stdout_visible, set_verbose_level
+
+    line = "RFO safeguards: rejected 0 uphill trial(s), skipped 58 unsafe BFGS update(s)."
+    try:
+        for level in (0, 1, 2):
+            set_verbose_level(level)
+            assert not _pysis_stdout_visible(line)
+        set_verbose_level(3)
+        assert _pysis_stdout_visible(line)
+    finally:
+        set_verbose_level(0)
+
+
+def test_optimizer_omits_redundant_moving_image_startup_line() -> None:
+    import inspect
+    from pysisyphus.optimizers.Optimizer import Optimizer
+
+    assert "Path with" not in inspect.getsource(Optimizer.__init__)
+
+
 def test_values_from_bounds_stabilizes_decimal_grid() -> None:
     """Decimal input must not create an extra interval or noisy target text."""
     from pdb2reaction.core.utils import values_from_bounds
