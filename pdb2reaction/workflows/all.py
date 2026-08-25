@@ -2534,7 +2534,7 @@ def _run_dft_sequence(
 def _tsopt_reference_mode_is_applicable(opt_mode: Optional[str]) -> bool:
     """Whether the selected TS optimizer consumes a Hessian reference mode."""
     mode = str(opt_mode or "hess").strip().lower()
-    return mode not in {"grad", "dimer", "light", "lbfgs"}
+    return mode not in {"grad", "dimer", "lbfgs"}
 
 
 def _tsopt_continuation_decision(payload: Dict[str, Any]) -> Dict[str, Any]:

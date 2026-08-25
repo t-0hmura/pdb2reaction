@@ -237,8 +237,8 @@ BOND_KW: Dict[str, Any] = {
 
 
 OPT_MODE_ALIASES = (
-    (("grad", "light", "lbfgs"), "lbfgs"),
-    (("hess", "heavy", "rfo"), "rfo"),
+    (("grad", "lbfgs"), "lbfgs"),
+    (("hess", "rfo"), "rfo"),
 )
 
 # DMF (Direct Max Flux + (C)FB-ENM) defaults
@@ -428,8 +428,8 @@ THERMO_KW: Dict[str, Any] = {
 
 
 TSOPT_MODE_ALIASES = (
-    (("grad", "light", "dimer"), "dimer"),
-    (("hess", "heavy", "rsprfo"), "rsprfo"),
+    (("grad", "dimer"), "dimer"),
+    (("hess", "rsprfo"), "rsprfo"),
     (("rsirfo",), "rsirfo"),
     (("trim",), "trim"),
 )
@@ -497,7 +497,7 @@ HESSIAN_DIMER_CLI_KW: Dict[str, Any] = {
     "lbfgs": {k: v for k, v in LBFGS_TS_KW.items() if k != "max_cycles"},
 }
 
-# RFO-family shared defaults for TS optimization (hess/heavy → RS-P-RFO default; also RS-I-RFO / TRIM)
+# RFO-family shared defaults for TS optimization (hess → RS-P-RFO default; also RS-I-RFO / TRIM)
 
 # Keys to drop from RFO_KW for TS optimizers: the gdiis/gediis family the base
 # Optimizer rejects (it has no **kwargs), plus the reject_uphill group (accepted

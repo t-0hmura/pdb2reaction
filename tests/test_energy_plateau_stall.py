@@ -26,6 +26,7 @@ from pdb2reaction.core.utils import (
 from pdb2reaction.workflows.tsopt import (
     HessianDimer,
     _hessian_postprocessing_is_ready,
+    _hessian_result_status,
     _thresholded_reaction_mode_index,
     _tsopt_terminal_outcome_message,
     _tsopt_terminal_status,
@@ -332,6 +333,29 @@ def test_hessian_postprocessing_requires_numerical_convergence():
     already_failed = _FakeOpt()
     already_failed._last_exact_failure_reason = "RuntimeError: failed"
     assert _hessian_postprocessing_is_ready(already_failed) is False
+
+
+def test_hessian_result_status_marks_nonconverged_phva_as_skipped():
+    assert _hessian_result_status(
+        n_imaginary=None,
+        hessian_error=None,
+        postprocessing_ready=False,
+    ) == "skipped"
+    assert _hessian_result_status(
+        n_imaginary=None,
+        hessian_error="RuntimeError: failed",
+        postprocessing_ready=False,
+    ) == "failed"
+    assert _hessian_result_status(
+        n_imaginary=1,
+        hessian_error="RuntimeError: failed",
+        postprocessing_ready=True,
+    ) == "failed"
+    assert _hessian_result_status(
+        n_imaginary=1,
+        hessian_error=None,
+        postprocessing_ready=True,
+    ) == "completed"
 
 
 def test_emit_terminal_status_stalled_and_converged_are_distinct(capsys):

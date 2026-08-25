@@ -7,6 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased] — 2026-08-19
 
 ### Fixed
+- Record terminal PHVA as `skipped`, rather than `unavailable`, when a non-converged Hessian TS optimizer does not authorize the analysis.
 - Keep accepted line-search/GDIIS offsets in minimum RFO instead of applying
   the trust radius a second time to the full accelerated displacement.
 - Keep an explicit finite cycle cap when resuming a checkpoint written by an
@@ -24,6 +25,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Separate numerical optimization status from saddle order. A converged higher-order stationary point is not a first-order TS, but `all` may perform warning-labelled diagnostic IRC when a valid negative root exists.
 - Synchronize EN/JA docs, skills, live help, generated command references, and checked-in contract tests with the current behavior.
 - Remove the replaced path-tangent helper and one unreferenced mass-weighted-frequency wrapper; larger workflow and Notebook refactors remain deferred.
+- Remove residual internal acceptance of the retired `light` and `heavy` optimizer aliases.
 
 ### Changed
 - Use finite cycle defaults of 100000 for ordinary optimization and TS/endpoint

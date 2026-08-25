@@ -102,11 +102,39 @@ class TestDefaultsStructure:
         canonical_modes = {pair[1] for pair in OPT_MODE_ALIASES}
         assert "lbfgs" in canonical_modes
         assert "rfo" in canonical_modes
+        tokens = {token for aliases, _ in OPT_MODE_ALIASES for token in aliases}
+        assert tokens.isdisjoint({"light", "heavy"})
 
     def test_tsopt_mode_aliases_cover_expected(self):
         canonical_modes = {pair[1] for pair in TSOPT_MODE_ALIASES}
         assert "dimer" in canonical_modes
         assert "rsirfo" in canonical_modes
+        tokens = {token for aliases, _ in TSOPT_MODE_ALIASES for token in aliases}
+        assert tokens.isdisjoint({"light", "heavy"})
+
+    def test_optimizer_hess_presets_resolve_to_product_algorithms(self):
+        from pdb2reaction.core.utils import normalize_choice
+
+        assert normalize_choice(
+            "hess",
+            param="--opt-mode",
+            alias_groups=OPT_MODE_ALIASES,
+            allowed_hint="grad|hess|lbfgs|rfo",
+        ) == "rfo"
+        assert normalize_choice(
+            "hess",
+            param="--opt-mode",
+            alias_groups=TSOPT_MODE_ALIASES,
+            allowed_hint="grad|hess|dimer|rsirfo|trim|rsprfo",
+        ) == "rsprfo"
+
+    def test_public_optimizer_choices_exclude_removed_aliases(self):
+        from pdb2reaction.workflows.opt import cli as opt_cli
+        from pdb2reaction.workflows.tsopt import cli as tsopt_cli
+
+        for command in (opt_cli, tsopt_cli):
+            option = next(param for param in command.params if param.name == "opt_mode")
+            assert set(option.type.choices).isdisjoint({"light", "heavy"})
 
 
 class TestDefaultsConsistency:

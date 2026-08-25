@@ -482,7 +482,7 @@ def test_tsopt_ref_mode_is_documented_as_advanced_all_handoff() -> None:
     assert "--reference-mode" in old_name.output
 
 
-@pytest.mark.parametrize("mode", ["dimer", "grad", "light"])
+@pytest.mark.parametrize("mode", ["dimer", "grad"])
 def test_tsopt_ref_mode_rejects_dimer_aliases(
     mode: str, tmp_path: Path
 ) -> None:

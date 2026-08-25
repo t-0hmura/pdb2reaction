@@ -147,9 +147,9 @@ def _method_citation_record_keys(payload: Dict[str, Any]) -> List[str]:
         path_opt_mode = str(
             payload.get("path_opt_mode") or payload.get("opt_mode") or ""
         ).strip().lower()
-        if path_opt_mode in {"grad", "light", "lbfgs"}:
+        if path_opt_mode in {"grad", "lbfgs"}:
             keys.append("lbfgs")
-        elif path_opt_mode in {"hess", "heavy", "rfo", "rsprfo", "rsirfo"}:
+        elif path_opt_mode in {"hess", "rfo", "rsprfo", "rsirfo"}:
             keys.extend(("rfo", "baker"))
 
     post_segments = payload.get("post_segments") or []
@@ -184,20 +184,19 @@ def _method_citation_record_keys(payload: Dict[str, Any]) -> List[str]:
             payload.get("endpoint_opt_mode") or legacy_post_mode
         ).strip().lower()
 
-        if ts_opt_mode in {"grad", "light", "lbfgs", "dimer"}:
+        if ts_opt_mode in {"grad", "lbfgs", "dimer"}:
             keys.extend(("lbfgs", "dimer"))
-        elif ts_opt_mode in {"hess", "heavy", "rfo", "rsprfo"}:
+        elif ts_opt_mode in {"hess", "rfo", "rsprfo"}:
             keys.extend(("rfo", "rsprfo", "baker"))
         elif ts_opt_mode == "rsirfo":
             keys.extend(("rfo", "baker", "rsirfo"))
         elif ts_opt_mode == "trim":
             keys.extend(("baker", "trim"))
 
-        if endpoint_opt_mode in {"grad", "light", "lbfgs", "dimer"}:
+        if endpoint_opt_mode in {"grad", "lbfgs", "dimer"}:
             keys.append("lbfgs")
         elif endpoint_opt_mode in {
             "hess",
-            "heavy",
             "rfo",
             "rsprfo",
             "rsirfo",

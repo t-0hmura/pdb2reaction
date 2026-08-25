@@ -994,6 +994,22 @@ def _hessian_postprocessing_is_ready(optimizer: Any) -> bool:
     )
 
 
+def _hessian_result_status(
+    *,
+    n_imaginary: Optional[int],
+    hessian_error: Optional[str],
+    postprocessing_ready: bool,
+) -> str:
+    """Classify terminal PHVA execution independently of optimizer status."""
+    if hessian_error:
+        return "failed"
+    if n_imaginary is not None:
+        return "completed"
+    if not postprocessing_ready:
+        return "skipped"
+    return "unavailable"
+
+
 def _saddle_validation_from_count(n_imaginary: Optional[int]) -> str:
     if n_imaginary is None:
         return "unavailable"
@@ -3435,11 +3451,10 @@ def cli(
                         "optimization_status": _optimization_status,
                         "saddle_validation": _saddle_validation,
                         "saddle_order_verified": _hessian_saddle_verified,
-                        "hessian_status": (
-                            "completed"
-                            if hessian_postprocessing_ready
-                            else "failed" if hessian_error
-                            else "unavailable"
+                        "hessian_status": _hessian_result_status(
+                            n_imaginary=_n_imaginary_modes,
+                            hessian_error=hessian_error,
+                            postprocessing_ready=hessian_postprocessing_ready,
                         ),
                         "hessian_error": hessian_error,
                         "energy_hartree": _rsirfo_energy,
