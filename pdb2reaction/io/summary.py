@@ -26,7 +26,12 @@ from pdb2reaction.core.result_commit import commit_exact
 logger = logging.getLogger(__name__)
 
 
-def format_result_warning(reason: Any) -> str:
+def format_result_warning(
+    reason: Any,
+    *,
+    refine_path: bool = False,
+    flatten: bool = False,
+) -> str:
     """Translate an internal scientific-status reason into user-facing English."""
     raw = str(reason or "").strip()
     lowered = raw.lower()
@@ -34,6 +39,12 @@ def format_result_warning(reason: Any) -> str:
     if segment_match is None:
         segment_match = re.fullmatch(r"missing:segment_(\d+)", lowered)
     segment = segment_match.group(1) if segment_match else None
+    human_segment_match = re.match(r"segment\s+(\d+):\s*(.+)$", lowered)
+    if segment is None and human_segment_match is not None:
+        segment = human_segment_match.group(1)
+    human_detail = (
+        human_segment_match.group(2) if human_segment_match is not None else lowered
+    )
 
     def scoped(message: str) -> str:
         if segment is None:
@@ -62,6 +73,81 @@ def format_result_warning(reason: Any) -> str:
             return scoped(" ".join(dict.fromkeys(messages)))
 
     code = lowered.rsplit(":", 1)[-1].strip()
+    if code.startswith("ts_optimization_"):
+        status = code.removeprefix("ts_optimization_")
+        if status == "not_converged":
+            return scoped("TS optimization did not converge. Review the TS trajectory.")
+        return scoped(
+            f"TS optimization status is {status.replace('_', ' ')}. Review the TS trajectory."
+        )
+    if code.startswith("terminal_hessian_"):
+        status = code.removeprefix("terminal_hessian_").replace("_", " ")
+        return scoped(
+            f"terminal Hessian status is {status}. Review the TSOPT result."
+        )
+    if code == "imaginary_mode_count_unavailable":
+        return scoped("imaginary-mode validation was unavailable. Review the TSOPT result.")
+    if code == "no_imaginary_reaction_mode":
+        message = "no imaginary mode was detected."
+        if not refine_path:
+            message += " Consider --refine-path."
+        return scoped(message)
+    if code in {"tsopt_status_unknown", "status_unknown"}:
+        return scoped("TSOPT status could not be confirmed. Review the TSOPT result.")
+    aggregate_messages = {
+        "no usable path segments or energy diagrams were produced": (
+            "No usable path result was produced. Review the MEP output."
+        ),
+        "no usable energy diagram was produced": (
+            "No usable energy diagram was produced. Review the MEP and TSOPT results."
+        ),
+        "requested post-processing produced no segment records": (
+            "Post-processing produced no segment records. Review the TSOPT/IRC output."
+        ),
+        "requested post-processing record is missing": (
+            "the post-processing record is missing. Review the segment output."
+        ),
+        "tsopt/irc refined mlip energies are missing": (
+            "TSOPT/IRC energies are missing. Review the TSOPT and IRC outputs."
+        ),
+        "irc trajectory is missing": (
+            "the IRC trajectory is missing. Review the IRC output."
+        ),
+        "mlip thermochemistry result is missing": (
+            "the MLIP thermochemistry result is missing. Review the frequency output."
+        ),
+        "ts imaginary-mode validation is missing": (
+            "TS imaginary-mode validation is missing. Review the TSOPT result."
+        ),
+        "dft result is missing": (
+            "the DFT result is missing. Review the DFT output."
+        ),
+        "dft//mlip thermochemistry result is missing": (
+            "the DFT//MLIP thermochemistry result is missing. Review the DFT and frequency outputs."
+        ),
+        "dft failed for one or more ts-only states": (
+            "DFT failed for one or more TS-only states. Review the DFT output."
+        ),
+    }
+    if human_detail in aggregate_messages:
+        return scoped(aggregate_messages[human_detail])
+    imag_count_match = re.match(
+        r"ts imaginary-mode validation found n_imag=(\d+), expected 1$",
+        human_detail,
+    )
+    if imag_count_match is not None:
+        n_imag = int(imag_count_match.group(1))
+        recovery: List[str] = []
+        if n_imag > 1 and not flatten:
+            recovery.append("--flatten")
+        if not refine_path:
+            recovery.append("--refine-path")
+        message = f"TS imaginary-mode validation found n_imag={n_imag}."
+        if recovery:
+            message += f" Consider {' '.join(recovery)}."
+        return scoped(message)
+    if human_detail.startswith("dft failed"):
+        return scoped("DFT failed. Review the DFT output.")
     if code == "irc_endpoint_connectivity_unvalidated":
         return (
             "Bond-topology matching between the two IRC endpoints and the two "
@@ -98,8 +184,13 @@ def format_result_warning(reason: Any) -> str:
     endpoint_match = re.search(r":endpoint_opt:([a-z0-9_]+)$", lowered)
     if endpoint_match:
         label = endpoint_match.group(1).removesuffix("_converged").replace("_", " ")
+        subject = (
+            f"{label} optimization"
+            if label.startswith("endpoint ")
+            else f"{label} endpoint optimization"
+        )
         return scoped(
-            f"the {label} endpoint optimization did not converge or could not be confirmed. "
+            f"the {subject} did not converge or could not be confirmed. "
             "Review the endpoint structure and optimizer log."
         )
     if lowered.startswith("missing:segment_"):
@@ -414,6 +505,7 @@ def _format_ts_imag_info(ts_info: Any) -> List[str]:
     n_imag: Optional[int] = None
     nu_imag: Optional[float] = None
     min_abs: Optional[float] = None
+    zero_cutoff: Optional[float] = None
 
     if isinstance(ts_info, dict):
         n_imag = ts_info.get("n_imag")
@@ -421,6 +513,7 @@ def _format_ts_imag_info(ts_info: Any) -> List[str]:
         if nu_imag is None:
             nu_imag = ts_info.get("nu_imag_cm")
         min_abs = ts_info.get("min_abs_imag_cm")
+        zero_cutoff = ts_info.get("frequency_zero_cutoff_cm")
         if nu_imag is None:
             nu_imag = ts_info.get("ts_imag_freq_cm")
     else:
@@ -432,6 +525,8 @@ def _format_ts_imag_info(ts_info: Any) -> List[str]:
 
     n_imag_txt = str(n_imag) if n_imag is not None else "-"
     lines.append(f"      n_imag       : {n_imag_txt}")
+    if zero_cutoff is not None:
+        lines.append(f"      zero cutoff  : {float(zero_cutoff):.2f} cm^-1")
 
     if nu_imag is not None:
         lines.append(f"      ν_imag (max) : {nu_imag:.1f} cm^-1")
@@ -460,6 +555,23 @@ def _format_ts_imag_info(ts_info: Any) -> List[str]:
         lines.append(f"      {note}")
 
     return lines
+
+
+def _format_thermo_symmetry(provenance: Any) -> List[str]:
+    if not isinstance(provenance, dict):
+        return []
+    entries: List[str] = []
+    for label in ("R", "TS", "P", "E1", "E2"):
+        state = provenance.get(label)
+        if not isinstance(state, dict):
+            continue
+        number = state.get("symmetry_number")
+        source = state.get("symmetry_number_source")
+        if number is not None:
+            entries.append(
+                f"{label}={number}" + (f" ({source})" if source else "")
+            )
+    return ["    Thermo symmetry   : " + ", ".join(entries)] if entries else []
 
 
 def _emit_energy_block(
@@ -767,6 +879,7 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
     mlip_model = payload.get("mlip_model")
     lines.append(f"MLIP backend       : {mlip_backend}")
     lines.append(f"MLIP model         : {mlip_model or '-'}")
+    lines.append(f"MLIP precision     : {payload.get('mlip_precision') or '-'}")
     execution_status = payload.get("execution_status")
     scientific_status = payload.get("scientific_status") or payload.get("status")
     if execution_status is not None:
@@ -781,7 +894,14 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
     if scientific_status not in (None, "success"):
         reasons = list(status_reasons) or [None]
         for reason in reasons:
-            lines.append(f"RESULT WARNING      : {format_result_warning(reason)}")
+            lines.append(
+                "RESULT WARNING      : "
+                + format_result_warning(
+                    reason,
+                    refine_path=bool(payload.get("refine_path")),
+                    flatten=bool(payload.get("flatten")),
+                )
+            )
     lines.append(f"Total charge (ML)  : {charge if charge is not None else '-'}")
     lines.append(f"Multiplicity (2S+1): {spin if spin is not None else '-'}")
 
@@ -904,6 +1024,7 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
                 )
             ts_imag = seg.get("ts_imag") or seg.get("ts_imag_freq_cm")
             lines.extend(_format_ts_imag_info(ts_imag))
+            lines.extend(_format_thermo_symmetry(seg.get("thermo_symmetry")))
             if seg.get("irc_plot"):
                 lines.append(
                     f"    IRC plot         : {_shorten_path(seg.get('irc_plot'), root_out_path)}"

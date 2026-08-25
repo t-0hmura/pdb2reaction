@@ -29,6 +29,39 @@ def test_optimizer_omits_redundant_moving_image_startup_line() -> None:
     assert "Path with" not in inspect.getsource(Optimizer.__init__)
 
 
+def test_optimizer_stdout_verbosity_is_monotonic() -> None:
+    from pdb2reaction.core.utils import _pysis_stdout_visible, set_verbose_level
+
+    milestone = "Converged!"
+    detail = "optimizer diagnostic detail"
+    hidden_detail = "Unexpected energy increase in trial step"
+    try:
+        set_verbose_level(1)
+        assert _pysis_stdout_visible(milestone)
+        assert not _pysis_stdout_visible(detail)
+        assert not _pysis_stdout_visible(hidden_detail)
+        set_verbose_level(2)
+        assert _pysis_stdout_visible(milestone)
+        assert _pysis_stdout_visible(detail)
+        assert not _pysis_stdout_visible(hidden_detail)
+        set_verbose_level(3)
+        assert _pysis_stdout_visible(hidden_detail)
+    finally:
+        set_verbose_level(0)
+
+
+def test_freq_and_irc_cache_hits_use_detail_tier() -> None:
+    import inspect
+    from pdb2reaction.workflows import freq, irc
+
+    for module in (freq, irc):
+        source = inspect.getsource(module.cli.callback)
+        assert "Reusing cached TS Hessian" in source
+        assert 'Reusing cached TS Hessian from tsopt.", detail=True' in source or (
+            'Reusing cached TS Hessian.", detail=True' in source
+        )
+
+
 def test_values_from_bounds_stabilizes_decimal_grid() -> None:
     """Decimal input must not create an extra interval or noisy target text."""
     from pdb2reaction.core.utils import values_from_bounds

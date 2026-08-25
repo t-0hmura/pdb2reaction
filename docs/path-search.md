@@ -131,6 +131,7 @@ The table is grouped by purpose; within each group the most-used options come fi
 | `--dmf-backend {cpu\|gpu}` | DMF compute backend (`--mep-mode dmf` only): `gpu` (`dmf.torch`/CUDA) or `cpu` (`dmf`/NumPy). On a GPU out-of-memory error, retry with `cpu`. | `gpu` |
 | `--preopt/--no-preopt` | Pre-optimize each endpoint with the selected single-structure optimizer (L-BFGS/RFO) before MEP search. | `True` |
 | `--max-nodes INT` | Internal nodes per MEP segment (GSM string images or DMF images). | `20` |
+| `--gsm-param {equi\|energy}` | GSM node parameterization after string growth. `energy` concentrates nodes in high-energy regions and may be tried when an equidistant path skips the reaction-coordinate region near the HEI; it does not identify a TS. | `equi` |
 | `--max-cycles-gsm INT` | Maximum GSM string-optimizer cycles. | `300` |
 | `--max-cycles-dmf INT` | Maximum DMF IPOPT iterations. | `300` |
 | `--climb/--no-climb` | Enable climbing image for GSM segments (bridge segments always run without climbing). | `True` |

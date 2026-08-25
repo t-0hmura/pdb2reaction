@@ -203,10 +203,30 @@ def test_write_summary_log_marks_non_successful_results(tmp_path):
             "missing:segment_4",
             "Segment 4: the expected segment result is missing. Review the workflow outputs.",
         ),
+        (
+            "all:segment_2:tsopt:ts_optimization_not_converged",
+            "Segment 2: TS optimization did not converge. Review the TS trajectory.",
+        ),
+        (
+            "segment 2: TS imaginary-mode validation found n_imag=0, expected 1",
+            "Segment 2: TS imaginary-mode validation found n_imag=0. Consider --refine-path.",
+        ),
     ],
 )
 def test_format_result_warning_explains_priority_status_codes(reason, expected):
     assert format_result_warning(reason) == expected
+
+
+def test_format_result_warning_omits_already_active_recovery_flags():
+    reason = "segment 2: TS imaginary-mode validation found n_imag=2, expected 1"
+
+    assert format_result_warning(reason, refine_path=True) == (
+        "Segment 2: TS imaginary-mode validation found n_imag=2. "
+        "Consider --flatten."
+    )
+    assert format_result_warning(reason, refine_path=True, flatten=True) == (
+        "Segment 2: TS imaginary-mode validation found n_imag=2."
+    )
 
 
 def test_summary_log_tree_lists_only_current_run_paths(tmp_path):
@@ -233,6 +253,42 @@ def test_summary_log_tree_lists_only_current_run_paths(tmp_path):
     assert "ts.pdb" in text
     assert "seg_02" not in text
     assert "irc_plot_all.png" not in text
+
+
+def test_summary_log_renders_numerical_provenance_concisely(tmp_path):
+    dest = tmp_path / "summary.log"
+    write_summary_log(
+        dest,
+        {
+            "root_out_dir": str(tmp_path),
+            "mlip_precision": "fp64",
+            "post_segments": [
+                {
+                    "index": 1,
+                    "ts_imag": {
+                        "n_imag": 1,
+                        "nu_imag_max_cm": -430.0,
+                        "frequency_zero_cutoff_cm": 5.0,
+                    },
+                    "thermo_symmetry": {
+                        "R": {
+                            "symmetry_number": 1,
+                            "symmetry_number_source": "automatic",
+                        },
+                        "TS": {
+                            "symmetry_number": 1,
+                            "symmetry_number_source": "automatic",
+                        },
+                    },
+                }
+            ],
+        },
+    )
+
+    text = dest.read_text(encoding="utf-8")
+    assert "MLIP precision     : fp64" in text
+    assert "zero cutoff  : 5.00 cm^-1" in text
+    assert "Thermo symmetry   : R=1 (automatic), TS=1 (automatic)" in text
 
 
 def test_summary_log_ts_only_uses_refined_provenance_and_top_level_counts(tmp_path):
@@ -423,6 +479,30 @@ def test_final_stdout_explains_non_success_scientific_status(
     assert output.rstrip().splitlines()[-1].startswith(
         "[time] Elapsed Time for Whole Pipeline"
     )
+
+
+def test_final_stdout_does_not_repeat_active_recovery_flags(tmp_path, capsys) -> None:
+    from pdb2reaction.workflows.all import _emit_final_summary
+
+    (tmp_path / "summary.json").write_text(
+        json.dumps(
+            {
+                "execution_status": "completed",
+                "scientific_status": "partial",
+                "scientific_status_reasons": [
+                    "segment 2: TS imaginary-mode validation found n_imag=2, expected 1"
+                ],
+                "config": {"refine_path": True, "flatten": True},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    _emit_final_summary(tmp_path, time.time())
+
+    output = capsys.readouterr().out
+    assert "TS imaginary-mode validation found n_imag=2." in output
+    assert "Consider --" not in output
 
 
 def test_citation_block_headers_match_their_destination() -> None:

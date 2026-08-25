@@ -6,7 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased] — 2026-08-19
 
+### Added
+- Add `--gsm-param {equi,energy}` to `all`, `path-opt`, and `path-search` as an advanced GSM node-parameterization control; `equi` remains the default.
+
 ### Fixed
+- Preserve the TSOPT stop cause in aggregate warnings and apply the resolved frequency zero cutoff when `summary.log` counts imaginary modes.
+- Keep optimizer verbosity monotonic and show Hessian cache reuse at `-v 2` without exposing raw DFT child diagnostics below `-v 3`.
 - Translate internal partial-result codes into concise, actionable warnings in `summary.log` and final stdout.
 - Preserve the blank line before the first MLIP model-load announcement even when an stderr warning immediately precedes it.
 - Record terminal PHVA as `skipped`, rather than `unavailable`, when a non-converged Hessian TS optimizer does not authorize the analysis.

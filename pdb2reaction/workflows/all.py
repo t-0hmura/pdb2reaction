@@ -268,6 +268,9 @@ def _emit_final_summary(
                 summary = {}
     if summary:
         _echo_section("====== Pipeline summary ======")
+        summary_config = (
+            summary.get("config") if isinstance(summary.get("config"), dict) else {}
+        )
         execution_status = summary.get("execution_status")
         scientific_status = summary.get("scientific_status")
         if execution_status is not None:
@@ -283,7 +286,18 @@ def _emit_final_summary(
             reasons = list(status_reasons) or [None]
             for reason in reasons:
                 _echo(
-                    f"RESULT WARNING: {format_result_warning(reason)}",
+                    "RESULT WARNING: "
+                    + format_result_warning(
+                        reason,
+                        refine_path=bool(
+                            summary.get(
+                                "refine_path", summary_config.get("refine_path")
+                            )
+                        ),
+                        flatten=bool(
+                            summary.get("flatten", summary_config.get("flatten"))
+                        ),
+                    ),
                     narrative=True,
                 )
         rls = summary.get("rate_limiting_step")
@@ -1248,6 +1262,13 @@ def _derive_pipeline_status(
             index = item.get("index", ordinal)
             prefix = f"segment {index}"
 
+            tsopt_state = item.get("tsopt")
+            if (
+                isinstance(tsopt_state, dict)
+                and tsopt_state.get("continue_irc") is False
+            ):
+                continue
+
             if cfg.get("tsopt"):
                 if not isinstance(item.get("mlip"), dict):
                     reasons.append(f"{prefix}: TSOPT/IRC refined MLIP energies are missing")
@@ -1376,6 +1397,11 @@ def _pipeline_aggregate_truth(
                     if converged is False
                     else "mep_convergence_unknown"
                 )
+            tsopt = post.get("tsopt")
+            if isinstance(tsopt, dict) and tsopt.get("continue_irc") is False:
+                converged = _and3(converged, False)
+                if not reason:
+                    reason = f"tsopt:{tsopt.get('reason') or 'status_unknown'}"
             irc = post.get("irc")
             if isinstance(irc, dict):
                 _u = irc.get("usable")
@@ -2354,8 +2380,22 @@ def _run_freq_for_state(
     return {}
 
 
-def _read_imaginary_frequency(freq_dir: Path) -> Optional[Dict[str, Any]]:
+def _read_imaginary_frequency(
+    freq_dir: Path,
+    frequency_zero_cutoff_cm: Optional[float] = None,
+) -> Optional[Dict[str, Any]]:
     """Return diagnostic info about imaginary frequencies if present."""
+
+    from pysisyphus.normal_modes import (
+        DEFAULT_FREQUENCY_ZERO_CUTOFF_CM,
+        normalize_frequency_zero_cutoff_cm,
+    )
+
+    cutoff = normalize_frequency_zero_cutoff_cm(
+        DEFAULT_FREQUENCY_ZERO_CUTOFF_CM
+        if frequency_zero_cutoff_cm is None
+        else frequency_zero_cutoff_cm
+    )
 
     freq_file = freq_dir / "frequencies_cm-1.txt"
     if not freq_file.exists():
@@ -2371,7 +2411,7 @@ def _read_imaginary_frequency(freq_dir: Path) -> Optional[Dict[str, Any]]:
                 continue
         if not vals:
             return None
-        negatives = [v for v in vals if v < 0.0]
+        negatives = [v for v in vals if v < -cutoff]
         nu_imag = min(negatives) if negatives else None
         min_abs_imag = min((abs(v) for v in negatives), default=None)
         return {
@@ -2379,6 +2419,7 @@ def _read_imaginary_frequency(freq_dir: Path) -> Optional[Dict[str, Any]]:
             "nu_imag_max_cm": nu_imag,
             "min_abs_imag_cm": min_abs_imag,
             "min_freq_cm": min(vals),
+            "frequency_zero_cutoff_cm": cutoff,
         }
     except Exception as exc:
         click.echo(
@@ -2481,7 +2522,7 @@ def _run_dft_for_state(
     if proc.stdout:
         _echo(proc.stdout.rstrip())
     if proc.stderr:
-        _echo(proc.stderr.rstrip(), err=True)
+        _echo(proc.stderr.rstrip())
     if proc.returncode != 0:
         _echo(f"[dft] WARNING: dft exited with code {proc.returncode}", err=True)
     y = out_dir / "result.yaml"
@@ -3557,6 +3598,17 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
           "max_nodes+2 images including endpoints."),
 )
 @click.option(
+    "--gsm-param",
+    type=click.Choice(["equi", "energy"], case_sensitive=False),
+    default=None,
+    show_default="equi",
+    help=(
+        "GSM node parameterization after string growth. The energy scheme "
+        "concentrates nodes in high-energy regions and may be tried when an "
+        "equidistant path skips the reaction-coordinate region near the HEI."
+    ),
+)
+@click.option(
     "--max-cycles-gsm",
     type=click.IntRange(min=1),
     default=None,
@@ -4041,6 +4093,7 @@ def cli(
     mep_mode: str,
     dmf_backend: str,
     max_nodes: int,
+    gsm_param: Optional[str],
     max_cycles_gsm: Optional[int],
     max_cycles_dmf: Optional[int],
     climb: bool,
@@ -4557,6 +4610,12 @@ def cli(
                 "max_nodes": (
                     int(max_nodes)
                     if cli_param_overridden(ctx, "max_nodes")
+                    else None
+                ),
+                "gsm_param": (
+                    str(gsm_param).lower()
+                    if cli_param_overridden(ctx, "gsm_param")
+                    and gsm_param is not None
                     else None
                 ),
                 "max_cycles_gsm": (
@@ -5158,6 +5217,9 @@ def cli(
             "imaginary_frequencies_cm": _tsopt_payload.get(
                 "imaginary_frequencies_cm"
             ),
+            "frequency_zero_cutoff_cm": _tsopt_payload.get(
+                "frequency_zero_cutoff_cm"
+            ),
             "stop_reason": _tsopt_payload.get("stop_reason"),
             "files": _tsopt_payload.get("files") or {},
         }
@@ -5198,6 +5260,9 @@ def cli(
                     "imag_freqs_cm": list(
                         _tsopt_payload.get("imaginary_frequencies_cm") or []
                     ),
+                    "frequency_zero_cutoff_cm": _tsopt_payload.get(
+                        "frequency_zero_cutoff_cm"
+                    ),
                 }
 
             summary = {
@@ -5232,6 +5297,7 @@ def cli(
                 post_segments=[_stop_log],
                 config={
                     "refine_path": refine_path,
+                    "flatten": bool(flatten),
                     "tsopt": do_tsopt,
                     "thermo": do_thermo,
                     "dft": do_dft,
@@ -5274,6 +5340,9 @@ def cli(
                 "tsopt": do_tsopt,
                 "thermo": do_thermo,
                 "dft": do_dft,
+                "mlip_backend": _mlip_backend_shared,
+                "mlip_model": _mlip_model_shared,
+                "mlip_precision": _mlip_precision_shared,
                 "status": summary.get("status"),
                 "status_reasons": summary.get("status_reasons", []),
                 "execution_status": summary.get("execution_status"),
@@ -5291,6 +5360,11 @@ def cli(
                 "key_files": summary.get("key_output_files", {}),
             }
             try:
+                summary_payload["current_output_paths"] = [
+                    path.relative_to(out_dir).as_posix()
+                    for path in _refresh_current_public_outputs(manifest, out_dir)
+                    if path.is_relative_to(out_dir)
+                ]
                 write_summary_log(tsroot / "summary.log", summary_payload)
                 _copy_public_logged(
                     tsroot / "summary.log",
@@ -5747,6 +5821,7 @@ def cli(
             command=command_str,
             config={
                 "refine_path": refine_path,
+                "flatten": bool(flatten),
                 "tsopt": do_tsopt,
                 "thermo": do_thermo,
                 "dft": do_dft,
@@ -5775,7 +5850,12 @@ def cli(
             _copy_public_logged(tsroot / "summary.json", out_dir / "summary.json", label="summary.json")
             try:
                 ts_freq_info = (
-                    _read_imaginary_frequency(freq_root / "TS") if do_thermo else None
+                    _read_imaginary_frequency(
+                        freq_root / "TS",
+                        _tsopt_payload.get("frequency_zero_cutoff_cm"),
+                    )
+                    if do_thermo
+                    else None
                 )
                 segment_log = {
                     "index": 1,
@@ -5802,6 +5882,9 @@ def cli(
                         "n_imag": int(_tsopt_payload["n_imaginary_modes"]),
                         "imag_freqs_cm": list(
                             _tsopt_payload.get("imaginary_frequencies_cm") or []
+                        ),
+                        "frequency_zero_cutoff_cm": _tsopt_payload.get(
+                            "frequency_zero_cutoff_cm"
                         ),
                     }
                 if ts_freq_info is not None:
@@ -5949,6 +6032,7 @@ def cli(
                     post_segments=[segment_log],
                     config={
                         "refine_path": refine_path,
+                        "flatten": bool(flatten),
                         "tsopt": do_tsopt,
                         "thermo": do_thermo,
                         "dft": do_dft,
@@ -6411,6 +6495,8 @@ def cli(
                 po_args.extend(["--max-cycles-gsm", str(int(max_cycles_gsm))])
             if cli_param_overridden(ctx, "max_cycles_dmf") and max_cycles_dmf is not None:
                 po_args.extend(["--max-cycles-dmf", str(int(max_cycles_dmf))])
+            if cli_param_overridden(ctx, "gsm_param") and gsm_param is not None:
+                po_args.extend(["--gsm-param", str(gsm_param).lower()])
             _append_toggle_arg(po_args, "--freeze-links", bool(freeze_links_flag and freeze_ref is not None))
             if cli_param_overridden(ctx, "climb"):
                 _append_toggle_arg(po_args, "--climb", bool(climb))
@@ -6728,6 +6814,7 @@ def cli(
             command=command_str,
             config={
                 "refine_path": refine_path,
+                "flatten": bool(flatten),
                 "tsopt": do_tsopt,
                 "thermo": do_thermo,
                 "dft": do_dft,
@@ -6874,6 +6961,8 @@ def cli(
             ps_args.extend(["--max-cycles-gsm", str(int(max_cycles_gsm))])
         if cli_param_overridden(ctx, "max_cycles_dmf") and max_cycles_dmf is not None:
             ps_args.extend(["--max-cycles-dmf", str(int(max_cycles_dmf))])
+        if cli_param_overridden(ctx, "gsm_param") and gsm_param is not None:
+            ps_args.extend(["--gsm-param", str(gsm_param).lower()])
         if cli_param_overridden(ctx, "climb"):
             _append_toggle_arg(ps_args, "--climb", bool(climb))
         ps_args.extend(["--opt-mode", str(opt_mode_norm)])
@@ -7003,6 +7092,7 @@ def cli(
             post_segments=None,
             config={
                 "refine_path": refine_path,
+                "flatten": bool(flatten),
                 "tsopt": do_tsopt,
                 "thermo": do_thermo,
                 "dft": do_dft,
@@ -7201,6 +7291,7 @@ def cli(
             path_dir=path_dir,
             summary=summary,
             refine_path=refine_path,
+            flatten=flatten,
             do_tsopt=do_tsopt,
             do_thermo=do_thermo,
             do_dft=do_dft,
@@ -7445,6 +7536,9 @@ def cli(
                 "final_structure": str(ts_pdb),
                 "imaginary_frequencies_cm": _tsopt_payload.get(
                     "imaginary_frequencies_cm"
+                ),
+                "frequency_zero_cutoff_cm": _tsopt_payload.get(
+                    "frequency_zero_cutoff_cm"
                 ),
                 "stop_reason": _tsopt_payload.get("stop_reason"),
             }
@@ -7871,7 +7965,14 @@ def cli(
                 )
                 if _thermo_symmetry:
                     segment_log["thermo_symmetry"] = _thermo_symmetry
-                ts_freq_info = _read_imaginary_frequency(freq_seg_root / "TS")
+                ts_freq_info = _read_imaginary_frequency(
+                    freq_seg_root / "TS",
+                    (
+                        _tsopt_payload.get("frequency_zero_cutoff_cm")
+                        if do_tsopt
+                        else None
+                    ),
+                )
                 if ts_freq_info is not None:
                     segment_log["ts_imag"] = ts_freq_info
                     if ts_freq_info.get("nu_imag_max_cm") is not None:
@@ -8132,6 +8233,7 @@ def cli(
         post_segments=post_segment_logs,
         config={
             "refine_path": refine_path,
+            "flatten": bool(flatten),
             "tsopt": do_tsopt,
             "thermo": do_thermo,
             "dft": do_dft,

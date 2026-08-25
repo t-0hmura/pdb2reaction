@@ -712,6 +712,17 @@ def _optimize_single(
           "has max_nodes+2 images including the two endpoints."),
 )
 @click.option(
+    "--gsm-param",
+    type=click.Choice(["equi", "energy"], case_sensitive=False),
+    default=None,
+    show_default="equi",
+    help=(
+        "GSM node parameterization after string growth. The energy scheme "
+        "concentrates nodes in high-energy regions and may be tried when an "
+        "equidistant path skips the reaction-coordinate region near the HEI."
+    ),
+)
+@click.option(
     "--max-cycles-gsm",
     type=click.IntRange(min=1),
     default=None,
@@ -872,6 +883,7 @@ def cli(
     freeze_links_flag: bool,
     freeze_atoms_text: Optional[str],
     max_nodes: int,
+    gsm_param: Optional[str],
     max_cycles_gsm: Optional[int],
     max_cycles_dmf: Optional[int],
     climb: bool,
@@ -989,6 +1001,8 @@ def cli(
             geom_cfg["coord_type"] = str(cli_coord_type).lower()
         if cli_param_overridden(ctx, "max_nodes"):
             gs_cfg["max_nodes"] = int(max_nodes)
+        if cli_param_overridden(ctx, "gsm_param") and gsm_param is not None:
+            gs_cfg["param"] = str(gsm_param).lower()
         # The GSM cycle budget also bounds the fully-grown string; DMF's budget
         # is a separate IPOPT iteration count.
         if cli_param_overridden(ctx, "max_cycles_gsm") and max_cycles_gsm is not None:
@@ -1168,6 +1182,7 @@ def cli(
                         "input_endpoints": [str(p) for p in input_paths],
                         "output_dir": str(out_dir_path),
                         "mep_mode": mep_mode_kind,
+                        "gsm_param": str(gs_cfg.get("param", GS_KW["param"])),
                         "opt_mode": ("grad" if opt_kind == "lbfgs" else "hess"),
                         "preopt": bool(preopt),
                         "preopt_max_cycles": preopt_max_cycles_effective,

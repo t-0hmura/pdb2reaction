@@ -268,6 +268,7 @@ def test_build_pipeline_summary_payload_shape() -> None:
             path_dir=path_dir,
             summary=summary,
             refine_path=True,
+            flatten=True,
             do_tsopt=True,
             do_thermo=False,
             do_dft=True,
@@ -290,6 +291,7 @@ def test_build_pipeline_summary_payload_shape() -> None:
             post_segment_logs=[{"seg": 1, "status": "ok"}],
         )
     assert payload["pipeline_mode"] == "path-search"
+    assert payload["flatten"] is True
     assert payload["dft_func_basis"] == "wb97m-v/def2-tzvpd"
     assert payload["opt_mode"] == "grad"
     assert payload["opt_mode_post"] == "hess"
@@ -322,6 +324,7 @@ def test_build_pipeline_summary_payload_dft_disabled_drops_basis() -> None:
         path_dir=Path("."),
         summary={},
         refine_path=False,
+        flatten=False,
         do_tsopt=False,
         do_thermo=False,
         do_dft=False,
@@ -764,3 +767,21 @@ def test_irc_endpoint_topology_tie_uses_rmsd_and_records_provenance(
     assert assignment["method"] == "rmsd_topology_tie"
     assert assignment["rmsd_swapped"] < assignment["rmsd_direct"]
     assert assignment["connectivity_validated"] is True
+
+
+def test_summary_frequency_reader_uses_the_resolved_zero_cutoff(tmp_path) -> None:
+    from pdb2reaction.workflows.all import _read_imaginary_frequency
+
+    freq_dir = tmp_path / "freq"
+    freq_dir.mkdir()
+    (freq_dir / "frequencies_cm-1.txt").write_text(
+        "1 -4.99\n2 -5.00\n3 -5.01\n4 12.0\n",
+        encoding="utf-8",
+    )
+
+    result = _read_imaginary_frequency(freq_dir, 5.0)
+
+    assert result is not None
+    assert result["n_imag"] == 1
+    assert result["nu_imag_max_cm"] == -5.01
+    assert result["frequency_zero_cutoff_cm"] == 5.0

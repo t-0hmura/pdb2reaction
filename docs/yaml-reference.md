@@ -40,6 +40,7 @@ This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan
 | `--max-cycles` | `max_cycles` | Command-specific: `opt` for `opt`/`tsopt` and `irc` for `irc` |
 | `--max-cycles-gsm` | `max_cycles` | `stopt` (also sets `stopt.stop_in_when_full`) |
 | `--max-cycles-dmf` | `max_cycles` | `dmf` |
+| `--gsm-param` | `param` | `gs` |
 | `--dump` | `dump` | Command-specific optimizer/path owner (`opt`, `stopt`, or selected child configuration) |
 | `--opt-mode` | _(CLI only)_ | — |
 | `--freeze-atoms` | `freeze_atoms` | `geom` |
@@ -315,6 +316,8 @@ gs:
 
 ```{note}
 `gs.max_nodes` / `--max-nodes` is the number of movable internal images for both **GSM** and **DMF**. Both engines retain two endpoints, so the complete path contains `max_nodes + 2` images. See [`path-opt`](path-opt.md).
+
+`gs.param` accepts `equi` or `energy`. Energy weighting is applied only after the GSM string is fully grown and shifts node density toward high-energy regions.
 ```
 
 ---

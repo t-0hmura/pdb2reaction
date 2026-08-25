@@ -105,6 +105,7 @@ out_dir/
 | `--max-nodes INT` | GSM/DMF の可動内部イメージ数。両エンジンとも端点2つを保持するため、総イメージ数は `max_nodes + 2` | `20` |
 | `--mep-mode {gsm\|dmf}` | GSM（ストリングベース）または DMF（Direct Max Flux）経路生成器を選択 | `gsm` |
 | `--dmf-backend {cpu\|gpu}` | DMF 計算バックエンド（`--mep-mode dmf` 時のみ）: `gpu`（`dmf.torch`/CUDA）または `cpu`（`dmf`/NumPy）。GPU メモリ不足時は `cpu` で再実行 | `gpu` |
+| `--gsm-param {equi\|energy}` | 完全成長後のGSMノード配置。`energy` は高エネルギー領域へノード密度を寄せる。等間隔経路がHEI近傍の反応座標領域を飛び越える場合の試行用であり、TSを同定する機能ではない | `equi` |
 | `--max-cycles-gsm INT` | GSM string optimizer のサイクル上限（`stopt.max_cycles` と `stopt.stop_in_when_full` を設定） | `300` |
 | `--max-cycles-dmf INT` | DMF の IPOPT 反復上限（`dmf.max_cycles` を設定） | `300` |
 | `--climb/--no-climb` | GSM の climbing-image 精密化を有効化（Lanczos 接線も同時切替）。DMF では受理するが未使用 | `True` |

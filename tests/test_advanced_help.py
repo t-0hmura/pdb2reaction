@@ -55,6 +55,7 @@ ADVANCED_CLASSIFICATION = [
     ("all", "--scan-bias-k"),
     ("all", "--scan-relax-max-cycles"),
     ("all", "--max-cycles-gsm"),
+    ("all", "--gsm-param"),
     ("all", "--max-cycles-dmf"),
     ("all", "--tsopt-max-cycles"),
     ("all", "--hessian-calc-mode"),
@@ -65,7 +66,9 @@ ADVANCED_CLASSIFICATION = [
     ("scan3d", "--relax-max-cycles"),
     ("scan3d", "--opt-mode"),
     ("path-opt", "--opt-mode"),
+    ("path-opt", "--gsm-param"),
     ("path-search", "--opt-mode"),
+    ("path-search", "--gsm-param"),
 ]
 
 

@@ -703,7 +703,7 @@ def cli(
                 atol=1.1e-3,
             )
             if cached is not None:
-                emit("[irc] Reusing cached TS Hessian from tsopt.", narrative=True)
+                emit("[irc] Reusing cached TS Hessian from tsopt.", detail=True)
                 _dev = calc_cfg.get("device", "auto")
                 if _dev == "auto":
                     _dev = "cuda" if torch.cuda.is_available() else "cpu"

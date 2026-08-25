@@ -1950,6 +1950,17 @@ def _merge_final_and_write(final_images: List[Any],
               help=("Number of movable internal images per GSM/DMF segment; the complete segment "
                     "has max_nodes+2 images including endpoints. When not given, YAML "
                     "search.max_nodes_segment applies."))
+@click.option(
+    "--gsm-param",
+    type=click.Choice(["equi", "energy"], case_sensitive=False),
+    default=None,
+    show_default="equi",
+    help=(
+        "GSM node parameterization after string growth. The energy scheme "
+        "concentrates nodes in high-energy regions and may be tried when an "
+        "equidistant path skips the reaction-coordinate region near the HEI."
+    ),
+)
 @click.option("--max-cycles-gsm", type=click.IntRange(min=1), default=None, show_default="300",
               help="Maximum GSM string-optimizer cycles for the MEP stage.")
 @click.option("--max-cycles-dmf", type=click.IntRange(min=1), default=None, show_default="300",
@@ -2104,6 +2115,7 @@ def cli(
     freeze_links_flag: bool,
     freeze_atoms_text: Optional[str],
     max_nodes: int,
+    gsm_param: Optional[str],
     max_cycles_gsm: Optional[int],
     max_cycles_dmf: Optional[int],
     climb: bool,
@@ -2336,6 +2348,8 @@ def cli(
         if cli_param_overridden(ctx, "max_nodes"):
             gs_cfg["max_nodes"] = int(max_nodes)
             search_cfg["max_nodes_segment"] = int(max_nodes)
+        if cli_param_overridden(ctx, "gsm_param") and gsm_param is not None:
+            gs_cfg["param"] = str(gsm_param).lower()
         # The GSM cycle budget also bounds the fully-grown string; DMF's budget
         # is a separate IPOPT iteration count.
         if cli_param_overridden(ctx, "max_cycles_gsm") and max_cycles_gsm is not None:
@@ -2521,6 +2535,7 @@ def cli(
                         "input_last": str(p_list[-1]) if p_list else None,
                         "output_dir": str(out_dir_path),
                         "mep_mode": mep_mode_kind,
+                        "gsm_param": str(gs_cfg.get("param", GS_KW["param"])),
                         "refine_mode": refine_mode_kind,
                         "opt_mode": ("grad" if opt_kind == "lbfgs" else "hess"),
                         "preopt": bool(preopt),

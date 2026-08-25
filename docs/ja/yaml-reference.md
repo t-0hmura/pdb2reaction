@@ -39,6 +39,7 @@
 | `--max-cycles` | `max_cycles` | コマンド別: `opt`/`tsopt` は `opt`、`irc` は `irc` |
 | `--max-cycles-gsm` | `max_cycles` | `stopt`（`stopt.stop_in_when_full` も設定） |
 | `--max-cycles-dmf` | `max_cycles` | `dmf` |
+| `--gsm-param` | `param` | `gs` |
 | `--dump` | `dump` | コマンド別の optimizer/path owner（`opt`、`stopt`、または選択された子設定） |
 | `--opt-mode` | _(CLI のみ)_ | — |
 | `--freeze-atoms` | `freeze_atoms` | `geom` |
@@ -311,6 +312,8 @@ gs:
 
 ```{note}
 `gs.max_nodes` / `--max-nodes` は **GSM** と **DMF** のどちらでも可動内部画像数です。両エンジンとも端点2つを保持するため、総パス長は `max_nodes + 2` です。詳細は [`path-opt`](path-opt.md) を参照してください。
+
+`gs.param` は `equi` または `energy` を受け付けます。energy weighting はGSMストリングの完全成長後にのみ適用され、高エネルギー領域へノード密度を寄せます。
 ```
 
 ---
