@@ -18,6 +18,23 @@ from pdb2reaction.workflows._all_helpers import (
 )
 
 
+@pytest.mark.parametrize(
+    ("names", "expected"),
+    [
+        (("reactant.pdb", "product.pdb"), ".pdb"),
+        (("reactant.cif", "product.cif"), ".cif"),
+        (("reactant.mmcif", "product.mmcif"), ".cif"),
+        (("reactant.pdb", "product.cif"), ".cif"),
+    ],
+)
+def test_public_merged_coordinate_suffix_tracks_original_input_format(
+    names: tuple[str, ...], expected: str
+) -> None:
+    from pdb2reaction.workflows.all import _public_merged_coordinate_suffix
+
+    assert _public_merged_coordinate_suffix(tuple(Path(name) for name in names)) == expected
+
+
 def test_tsopt_continuation_separates_numerical_status_and_saddle_order() -> None:
     from pdb2reaction.workflows.all import _tsopt_continuation_decision
 

@@ -160,6 +160,16 @@ _ALL_FORWARDED_YAML_SECTIONS = (
 )
 
 
+def _public_merged_coordinate_suffix(input_paths: Sequence[Path]) -> str:
+    """Choose the user-facing merged-trajectory format from original inputs."""
+
+    return (
+        ".cif"
+        if any(path.suffix.lower() in {".cif", ".mmcif"} for path in input_paths)
+        else ".pdb"
+    )
+
+
 def _validate_postprocessing_dependencies(
     *, do_tsopt: bool, do_thermo: bool, do_dft: bool
 ) -> None:
@@ -7224,16 +7234,18 @@ def cli(
     # Stage 3: merge to full systems (performed by path_search when enabled)
     _echo_section(f"====== [all] Stage 3/{stage_total} — Merge into full-system templates ======")
     if refine_path and gave_ref_pdb:
+        merged_suffix = _public_merged_coordinate_suffix(user_input_paths)
         _echo_detail(
             "[all] Merging was carried out by path_search using the original inputs as templates."
         )
         _echo_detail(f"[all] Final products can be found under: {out_dir}")
         _echo_detail(
-            "  - mep_w_ref.pdb/.cif       (full-system merged trajectory)"
+            f"  - mep_w_ref{merged_suffix}       (full-system merged trajectory)"
         )
         _echo_detail(f"[all] Raw per-segment merged trajectories stay under: {path_dir}")
         _echo_detail(
-            "  - mep_w_ref_seg_XX.pdb/.cif (per-segment merged trajectories for covalent-change segments)"
+            f"  - mep_w_ref_seg_XX{merged_suffix} "
+            "(per-segment merged trajectories for covalent-change segments)"
         )
     elif refine_path:
         _echo_detail(
