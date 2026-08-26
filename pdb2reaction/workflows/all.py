@@ -1267,6 +1267,15 @@ def _derive_pipeline_status(
         }
         if not logs and reactive_ids:
             reasons.append("requested post-processing produced no segment records")
+        observed_ids = {
+            item.get("index")
+            for item in logs
+            if item.get("index") is not None
+        }
+        for missing_idx in sorted(reactive_ids - observed_ids, key=str):
+            reasons.append(
+                f"segment {missing_idx}: requested post-processing record is missing"
+            )
 
         for ordinal, item in enumerate(logs, start=1):
             index = item.get("index", ordinal)
@@ -1284,10 +1293,6 @@ def _derive_pipeline_status(
                     reasons.append(f"{prefix}: TSOPT/IRC refined MLIP energies are missing")
                 if not item.get("irc_traj"):
                     reasons.append(f"{prefix}: IRC trajectory is missing")
-
-            if cfg.get("thermo"):
-                if not isinstance(item.get("gibbs_mlip"), dict):
-                    reasons.append(f"{prefix}: MLIP thermochemistry result is missing")
                 ts_imag = item.get("ts_imag")
                 if not isinstance(ts_imag, dict) or ts_imag.get("n_imag") is None:
                     reasons.append(f"{prefix}: TS imaginary-mode validation is missing")
@@ -1296,6 +1301,10 @@ def _derive_pipeline_status(
                         f"{prefix}: TS imaginary-mode validation found "
                         f"n_imag={int(ts_imag['n_imag'])}, expected 1"
                     )
+
+            if cfg.get("thermo"):
+                if not isinstance(item.get("gibbs_mlip"), dict):
+                    reasons.append(f"{prefix}: MLIP thermochemistry result is missing")
 
             if cfg.get("dft"):
                 dft = item.get("dft")
@@ -1358,6 +1367,9 @@ def _pipeline_aggregate_truth(
     segments = summary.get("segments") or []
     reactive = [s for s in segments if _is_reactive_segment(s)]
     cfg = config or {}
+    post_requested = any(
+        bool(cfg.get(name)) for name in ("tsopt", "thermo", "dft")
+    )
     tsopt_requested = bool(cfg.get("tsopt"))
     legacy_reasons = list(legacy_reasons or [])
 
@@ -1450,7 +1462,7 @@ def _pipeline_aggregate_truth(
                         converged = _and3(converged, _v if isinstance(_v, bool) else None)
                         if not (isinstance(_v, bool) and _v) and not reason:
                             reason = f"endpoint_opt:{_k}"
-        elif tsopt_requested:
+        elif post_requested:
             # tsopt was requested but this segment's IRC/endpoint post-processing
             # has not run yet (the intermediate MEP summary is written before
             # post-processing). Fail closed rather than promote a reactive leaf on
@@ -1470,7 +1482,7 @@ def _pipeline_aggregate_truth(
                 "all",
                 seg_id,
                 required=True,
-                executed=True,
+                executed=(post is not None) if post_requested else True,
                 converged=converged,
                 reason=reason,
                 artifacts=artifacts,
@@ -1482,7 +1494,17 @@ def _pipeline_aggregate_truth(
         agg_sci = agg.scientific_status
         agg_exec = agg.execution_status
         agg_reasons = list(agg.status_reasons)
-        observed = list(agg.observed_item_ids)
+        observed = (
+            [
+                item_id
+                for item_id in expected
+                if item_id.removeprefix("segment_") in {
+                    str(index) for index in post_by_idx
+                }
+            ]
+            if post_requested
+            else list(agg.observed_item_ids)
+        )
         if agg_sci == "failed" and any(
             s.get("kind") != "tsopt" and s.get("converged") is True
             for s in reactive

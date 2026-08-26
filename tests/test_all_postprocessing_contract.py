@@ -65,3 +65,49 @@ def test_explicit_no_change_segment_does_not_require_postprocessing() -> None:
     assert status == "success"
     assert truth.scientific_status == "success"
     assert truth.expected_item_ids == ()
+
+
+def test_tsopt_validates_imaginary_mode_without_thermochemistry() -> None:
+    summary = {
+        "segments": [{"index": 1, "kind": "seg", "converged": True}],
+        "energy_diagrams": [{"name": "MEP"}],
+    }
+    post = [{
+        "index": 1,
+        "mlip": {},
+        "irc_traj": "finished_irc_trj.xyz",
+        "ts_imag": {"n_imag": 2},
+    }]
+
+    status, reasons = _derive_pipeline_status(
+        summary,
+        post_segments=post,
+        config={"tsopt": True, "thermo": False, "dft": False},
+    )
+
+    assert status == "partial"
+    assert any("n_imag=2, expected 1" in reason for reason in reasons)
+
+
+def test_postprocessing_reports_each_missing_reactive_segment() -> None:
+    summary = {
+        "segments": [
+            {"index": 1, "kind": "seg", "converged": True},
+            {"index": 2, "kind": "seg", "converged": True},
+        ],
+        "energy_diagrams": [{"name": "MEP"}],
+    }
+
+    status, reasons = _derive_pipeline_status(
+        summary,
+        post_segments=[{
+            "index": 1,
+            "mlip": {},
+            "irc_traj": "finished_irc_trj.xyz",
+            "ts_imag": {"n_imag": 1},
+        }],
+        config={"tsopt": True},
+    )
+
+    assert status == "partial"
+    assert "segment 2: requested post-processing record is missing" in reasons

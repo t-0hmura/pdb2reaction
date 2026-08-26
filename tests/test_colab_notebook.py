@@ -351,6 +351,7 @@ def _viewer_contract() -> dict:
         "_text_preview_html",
         "_atom_signatures",
         "_resolve_atom_query",
+        "_irc_trajectory_role",
         "_trajectory_result_metadata",
         "_trajectory_segment_ranges",
         "_trajectory_semantics",
@@ -932,7 +933,8 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "function wireResultChoices()" in app
     assert "setNativeResultLoading(label,true)" in app
     assert "var selectedIndex=select.selectedIndex" in app
-    assert "bridge.invokeFunction(CONFIG.result_callback,[kind,selectedIndex],{})" in app
+    assert "bridge.invokeFunction(CONFIG.result_callback,[kind,selectedIndex,generation,label],{})" in app
+    assert "generation != _RESULT_SET_GENERATION['value']" in app
     assert "value = options[selected_index][1]" in app
     assert "var nativeFrameTimer=0" in app
     assert "playButtons[0].dataset.rxNativePlay='true'" in app
@@ -1232,7 +1234,7 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "artifact_fold = _collapsible('Generated file preview', artifact_box, on_open=_render_artifact)" in app
     assert "artifact_fold._rx_set_open(bool(visuals and not result_views and not energy_options))" in app
     assert "artifact_fold._rx_body.layout.display == 'none'" in app
-    assert "'x': 'Intrinsic reaction coordinate'" in app
+    assert "'x': 'IRC point'" in app
     assert "tick0:0,dtick:cfg.xTickStep" in app
     assert "showticklabels:true,ticks:'',ticklen:0" in app
     assert "_drop_children = ([upl] if _UPLOAD_MODE == 'anywidget'" in app
@@ -3246,7 +3248,8 @@ def test_colab_operates_scientific_selectors_and_remaining_buttons(
     assert app["frame_prev"].description == "‹"
     assert app["frame_next"].description == "›"
     assert app["frame_controls"].children == (
-        app["frame_prev"], app["frame_next"], app["frame_play"], app["frame_slider"]
+        app["frame_prev"], app["frame_next"], app["frame_play"], app["frame_slider"],
+        app["playback_interval_signal"],
     )
     notebook_text = NOTEBOOK.read_text(encoding="utf-8")
     assert "grid-template-columns:40px 40px 116px minmax(0,1fr)" in notebook_text
@@ -4980,7 +4983,10 @@ def test_results_playback_uses_fifty_ms_for_mep_irc_and_imaginary_modes(
     assert "if(!event.isTrusted||!event.target.closest('button'))return" in source
     assert "if(!ready||!viewer||applyingFrame" in source
     assert "if getattr(frame_play, '_playing', False):\n        return" in source
-    assert "var interval=50;" in source
+    assert "intervalNode.dataset.rxPlaybackInterval" in source
+    assert "var interval=50;" not in source
+    assert "shape:'linear'" in source
+    assert "shape:'spline'" not in source
     assert "vibration?850:50" not in source
     app["frame_slider"].disabled = False
     app["frame_slider"].min = 0
@@ -5234,13 +5240,137 @@ def test_freq_results_expose_ten_written_modes_in_top_selector(
     assert labels[-1] == "Mode 10 of 10 · 1500.00 cm⁻¹"
     assert app["traj_choice"].description == "Mode"
     assert app["result_selector_row"].layout.display == ""
-    assert app["result_selector_meta"].value == ""
+    assert "data-rx-result-generation" in app["result_selector_meta"].value
     assert app["trajectory_head"].children[1] is app["result_loading"]
     assert app["trajectory_head"].children[2] is app["result_selector_row"]
 
     app["traj_choice"].value = str(modes[-1])
     assert app["_TRAJ"]["path"] == str(modes[-1])
     assert len(app["_TRAJ"]["frames"]) == 2
+
+
+def test_results_preserve_segment_and_irc_branch_identity(
+    monkeypatch, tmp_path: Path,
+) -> None:
+    app, _ = _execute_app(monkeypatch, tmp_path)
+
+    structures = {}
+    for segment in (1, 2):
+        structures[segment] = {}
+        for state in ("R", "TS", "P"):
+            path = tmp_path / "segments" / f"seg_{segment:02d}" / f"{state}.xyz"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(f"1\nsegment {segment} {state}\nH {segment} 0 0\n", encoding="utf-8")
+            structures[segment][state] = str(path)
+    summary = tmp_path / "summary.json"
+    summary.write_text(json.dumps({
+        "post_segments": [
+            {
+                "index": segment,
+                "dft": {
+                    "labels": ["R", f"TS{segment}", "P"],
+                    "energies_kcal": [0.0, 5.0 + segment, -1.0],
+                    "structures": structures[segment],
+                },
+            }
+            for segment in (1, 2)
+        ]
+    }), encoding="utf-8")
+    current = [str(summary), *[path for group in structures.values() for path in group.values()]]
+
+    options, _ = app["_energy_diagram_options"](current, [], str(tmp_path), "all")
+    assert ("DFT//MLIP ΔE · Segment 1", "energy:dft_e:seg_1") in options
+    assert ("DFT//MLIP ΔE · Segment 2", "energy:dft_e:seg_2") in options
+    assert app["_ENERGY"]["views"]["energy:dft_e:seg_2"]["structures"] == [
+        structures[2]["R"], structures[2]["TS"], structures[2]["P"]
+    ]
+    nested_result = tmp_path / "segments" / "seg_02" / "result.json"
+    nested_result.write_text(json.dumps({
+        "energy_diagrams": [{
+            "name": "DFT", "labels": ["R", "TS2", "P"],
+            "energies_kcal": [0.0, 7.0, -1.0], "structures": structures[2],
+        }]
+    }), encoding="utf-8")
+    nested_options, _ = app["_energy_diagram_options"](
+        [str(nested_result), *structures[2].values()], [], str(tmp_path), "all")
+    assert ("DFT//MLIP ΔE · Segment 2", "energy:dft_e:seg_2") in nested_options
+    assert ("DFT//MLIP ΔE", "energy:dft_e") not in nested_options
+
+    irc_dir = tmp_path / "segments" / "seg_02" / "irc"
+    irc_dir.mkdir(parents=True, exist_ok=True)
+    finished = irc_dir / "seg02_finished_irc_trj.xyz"
+    forward = irc_dir / "seg02_forward_irc_trj.xyz"
+    for path in (finished, forward):
+        path.write_text("1\nIRC\nH 0 0 0\n", encoding="utf-8")
+    irc_plot = irc_dir / "irc_plot.png"
+    irc_plot.write_bytes(b"\x89PNG\r\n\x1a\n")
+    irc_options, _ = app["_energy_diagram_options"](
+        [str(irc_plot), str(finished), str(forward)],
+        [str(finished), str(forward)], str(tmp_path), "all",
+    )
+    assert ("IRC · Segment 2", "energy:irc:seg_2") in irc_options
+    assert ("IRC · Segment 2 · forward branch", "energy:irc:seg_2:forward") in irc_options
+    assert ("IRC", "energy:irc") not in irc_options
+    labels = [label for label, _path in app["_result_view_candidates"](
+        [str(finished), str(forward)], str(tmp_path), "all")]
+    assert "Combined IRC trajectory · Segment 2" in labels
+    assert "Forward IRC branch · Segment 2" in labels
+
+    (irc_dir / "result.json").write_text(json.dumps({
+        "n_frames_forward": 0, "n_frames_backward": 1, "n_frames_total": 2,
+        "forward_requested": False, "backward_requested": True,
+        "forward_converged": None, "backward_converged": True,
+        "scientific_status": "success",
+    }), encoding="utf-8")
+    semantics = app["_trajectory_semantics"]("irc", str(finished), n_frames=2)
+    assert semantics["title"] == "Backward IRC trajectory"
+    assert semantics["start"] == "input TS"
+    assert "forward" not in semantics["trajectory_status"]
+    assert app["_stationary"]([0.0], {"start": "start", "end": "end"}) == [(0, "only frame")]
+
+    range_dir = tmp_path / "range_check"
+    range_dir.mkdir()
+    range_path = range_dir / "mep_trj.xyz"
+    range_path.write_text("1\na\nH 0 0 0\n", encoding="utf-8")
+    (range_dir / "summary.json").write_text(json.dumps({
+        "segments": [
+            {"index": 1, "kind": "seg", "frame_ranges": [[0, 2]]},
+            {"index": 2, "kind": "seg", "frame_ranges": [[1, 3]]},
+        ]
+    }), encoding="utf-8")
+    range_metadata = app["_trajectory_segment_ranges"](str(range_path), n_frames=3)
+    assert "gap or overlap" in range_metadata["metadata_warning"]
+
+    image_only = tmp_path / "preview.png"
+    image_only.write_bytes(b"\x89PNG\r\n\x1a\n")
+    app["_TRAJ"].update(frames=["old"], path="old.xyz")
+    app["S"].update(
+        _last_out_dir=str(tmp_path), _last_subcmd="all", _last_files=[str(image_only)],
+        _last_manifest={"status": "success", "exit_code": 0},
+    )
+    app["_results"](str(tmp_path))
+    assert app["_TRAJ"]["frames"] == []
+    assert app["_TRAJ"]["path"] is None
+    assert app["trajectory_box"].layout.display == "none"
+
+    recovered_root = tmp_path / "recovered"
+    recovered_irc = recovered_root / "segments" / "seg_02" / "irc" / "finished_irc_trj.xyz"
+    recovered_irc.parent.mkdir(parents=True)
+    recovered_irc.write_text("1\nIRC\nH 0 0 0\n", encoding="utf-8")
+    stale = recovered_root / "unclaimed_old.xyz"
+    stale.write_text("1\nstale\nH 0 0 0\n", encoding="utf-8")
+    (recovered_root / "summary.json").write_text(json.dumps({
+        "pdb2reaction_version": "0.4.12", "status": "success",
+        "current_output_paths": ["summary.json"],
+        "key_output_files": {
+            "seg_02": {"files": ["irc/finished_irc_trj.xyz", "missing.xyz"]}
+        },
+    }), encoding="utf-8")
+    assert app["_recover_existing_results"](str(recovered_root), replace=True)
+    assert str(recovered_irc.resolve()) in app["S"]["_last_files"]
+    assert str(stale.resolve()) not in app["S"]["_last_files"]
+    assert any(path.endswith("missing.xyz") for path in
+               app["S"]["_last_manifest"]["rejected_claims"])
 
 
 def test_cycle_flags_are_owned_by_the_live_command_registry() -> None:
