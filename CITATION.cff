@@ -1,6 +1,8 @@
 cff-version: 1.2.0
 message: >-
-  If you use this software, please cite it using the metadata below.
+  If you use this software, please cite the accompanying preprint shown
+  under preferred-citation. The metadata below describes the software
+  package itself.
 title: pdb2reaction
 type: software
 authors:
@@ -10,3 +12,20 @@ authors:
 license: GPL-3.0-only
 repository-code: "https://github.com/t-0hmura/pdb2reaction"
 version: "0.4.12"
+preferred-citation:
+  type: article
+  title: "pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials"
+  authors:
+    - family-names: Ohmura
+      given-names: Takuto
+      orcid: "https://orcid.org/0009-0008-1215-0168"
+    - family-names: Sato
+      given-names: Hajime
+    - family-names: Terada
+      given-names: Tohru
+  year: 2026
+  month: 5
+  journal: "ChemRxiv"
+  doi: "10.26434/chemrxiv.15003538/v1"
+  url: "https://doi.org/10.26434/chemrxiv.15003538/v1"
+  notes: "Preprint"

@@ -1800,6 +1800,7 @@ def _enrich_summary(
             "post_segments": post_segments or [],
             "mlip_backend": mlip_backend,
             "mlip_model": mlip_model,
+            "mlip_task": mlip_task,
         }
     )
     if freeze_atoms:
@@ -4543,6 +4544,7 @@ def cli(
             "post_segments": citation_post_segments,
             "mlip_backend": _mlip_backend_shared,
             "mlip_model": _mlip_model_shared,
+            "mlip_task": _mlip_task_shared,
         }
 
     tsopt_overrides: Dict[str, Any] = {}

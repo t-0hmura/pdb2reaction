@@ -479,6 +479,27 @@ def test_enrich_summary_uses_backend_neutral_refined_energy_keys(tmp_path: Path)
     )
 
 
+def test_enrich_summary_only_adds_omol25_for_omol(tmp_path: Path) -> None:
+    from pdb2reaction.workflows.all import _enrich_summary
+
+    result = _enrich_summary(
+        {"segments": [], "energy_diagrams": []},
+        version="",
+        pipeline_mode="path-opt",
+        mlip_backend="uma",
+        mlip_model="uma-s-1p2",
+        mlip_task="non-omol",
+        charge=0,
+        spin=1,
+        out_dir=tmp_path,
+    )
+
+    methods = [reference["method"] for reference in result["references"]]
+    assert result["mlip_task"] == "non-omol"
+    assert "UMA" in methods
+    assert "OMol25" not in methods
+
+
 def test_aggregate_summary_writer_injects_current_run_id_atomically(
     tmp_path: Path, monkeypatch
 ) -> None:
