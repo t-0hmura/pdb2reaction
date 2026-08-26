@@ -11,7 +11,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 - Fail closed on unknown execution and missing per-segment post-processing, validate TS imaginary modes without requiring thermochemistry, and clear stale scientific-status reasons.
-- Preserve segment and IRC-branch identity in Colab energy/trajectory views, reset prior result state before reload, and recover only declared or current-run artifacts.
+- Preserve internal result identity while presenting aggregate structure-linked MEP/IRC profiles, reset prior result state before reload, and recover only declared or current-run artifacts.
 - Preserve the TSOPT stop cause in aggregate warnings and apply the resolved frequency zero cutoff when `summary.log` counts imaginary modes.
 - Keep optimizer verbosity monotonic and show Hessian cache reuse at `-v 2` without exposing raw DFT child diagnostics below `-v 3`.
 - Translate internal partial-result codes into concise, actionable warnings in `summary.log` and final stdout.
