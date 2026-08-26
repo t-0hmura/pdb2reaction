@@ -10,9 +10,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Add `--gsm-param {equi,energy}` to `all`, `path-opt`, and `path-search` as an advanced GSM node-parameterization control; `equi` remains the default.
 
 ### Fixed
-- Keep completed Colab Results in the Results tab, preserve navigation between
-  energy and trajectory views, and group imaginary-frequency trajectories under
-  a dedicated child selector.
+- Activate the Colab Results tab before rendering completed results, keep
+  energy/MEP/IRC and imaginary-frequency selectors reusable, and reserve plot
+  space for MEP/IRC labels.
 - Keep Hosted Colab result selectors active after DOM replacement, label TS and
   IRC endpoints without overlap, select `summary.log` in generated files, and
   use pause semantics for trajectory playback.
