@@ -1293,6 +1293,8 @@ def _derive_pipeline_status(
                     reasons.append(f"{prefix}: TSOPT/IRC refined MLIP energies are missing")
                 if not item.get("irc_traj"):
                     reasons.append(f"{prefix}: IRC trajectory is missing")
+
+            if cfg.get("tsopt") or cfg.get("thermo"):
                 ts_imag = item.get("ts_imag")
                 if not isinstance(ts_imag, dict) or ts_imag.get("n_imag") is None:
                     reasons.append(f"{prefix}: TS imaginary-mode validation is missing")
