@@ -12,7 +12,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 ### Fixed
 - Restore the reviewed Colab selection UI: persistent removable chips, concise
   workflow labels and center summaries, explicit frozen-atom completion, and a
-  compact staged-scan editor.
+  compact staged-scan editor; small-molecule freeze picking now starts only on
+  `Pick frozen atoms`.
 - Fail closed on unknown execution and missing per-segment post-processing, validate TS imaginary modes without requiring thermochemistry, and clear stale scientific-status reasons.
 - Preserve internal result identity while presenting aggregate structure-linked MEP/IRC profiles, reset prior result state before reload, and recover only declared or current-run artifacts.
 - Preserve the TSOPT stop cause in aggregate warnings and apply the resolved frequency zero cutoff when `summary.log` counts imaginary modes.

@@ -279,14 +279,14 @@ def test_setup_command_fields_do_not_repaint_hidden_results_or_viewer(monkeypatc
             stack.extend(getattr(widget, "children", ()))
         raise AssertionError("freeze picker button not found: " + description)
 
-    freeze_picker_button("Pick frozen atoms in viewer").click()
+    freeze_picker_button("Pick frozen atoms").click()
     assert app["pick_action"].value == "freezeatom"
     done = freeze_picker_button("Done picking")
     assert done.icon == "check"
     assert done.button_style == "primary"
     done.click()
     assert app["pick_action"].value == "center"
-    assert freeze_picker_button("Pick frozen atoms in viewer").icon == "mouse-pointer"
+    assert freeze_picker_button("Pick frozen atoms").icon == "mouse-pointer"
 
     app["S"]["mode"] = "small"
     app["pick_action"].value = "freezeatom"
@@ -1177,6 +1177,8 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "Aromatic Claisen rearrangement - small molecule" in app
     assert "aromatic_claisen/reactant.xyz" in app
     assert "aromatic_claisen/product.xyz" in app
+    assert "Structures (.pdb/.cif/.xyz/.gjf)" in app
+    assert "Structures, topology, or utility files" not in app
     assert "HCN -> HNC" not in app
     assert "Run Setup first" not in app
     assert "cmd = [CLI, 'extract', '-i', *S['inputs'], '-o', *outs, '-c', ','.join(cen)]" in app
@@ -2426,6 +2428,22 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     assert app["workspace"].layout.display == ""
     assert ('class="rxmolstar-frame"' in app["viewer_out"].value or
             "rx-load-structure" in html.unescape(app["viewer_signal_out"].value))
+    # XYZ inputs have no extraction-center role. The only available action may
+    # be freezeatom, but picking remains inactive until its button is pressed.
+    assert app["pick_action"].value == "freezeatom"
+    assert app["_PICK_ACTION_STATE"]["freeze_active"] is False
+    app["on_click"]("0", live_marked=True, exact=True)
+    assert app["S"]["freeze_atoms"] == []
+    pick_frozen = _widget_with_description(
+        app["freeze_panel"], "Pick frozen atoms"
+    )
+    pick_frozen.click()
+    assert app["pick_action"].value == "freezeatom"
+    assert app["_PICK_ACTION_STATE"]["freeze_active"] is True
+    _widget_with_description(app["freeze_panel"], "Done picking").click()
+    assert app["pick_action"].value == "freezeatom"
+    assert app["_PICK_ACTION_STATE"]["freeze_active"] is False
+    _widget_with_description(app["freeze_panel"], "Pick frozen atoms")
     # The other half of the routing: with no ligand-charge source the notebook
     # emits -q explicitly, because the CLI requires it for non-.gjf input, and
     # the override checkbox stays dead because there is nothing to override.
