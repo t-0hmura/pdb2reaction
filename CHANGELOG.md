@@ -13,6 +13,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Keep completed Colab Results in the Results tab, preserve navigation between
   energy and trajectory views, and group imaginary-frequency trajectories under
   a dedicated child selector.
+- Keep Hosted Colab result selectors active after DOM replacement, label TS and
+  IRC endpoints without overlap, select `summary.log` in generated files, and
+  use pause semantics for trajectory playback.
+- Report the exact MLIP model and UMA task in logs, JSON, and Colab Results, and
+  include model-specific UMA, Orb-v3, MACE, and OMol25 citations.
 - Keep cancelled Colab runs on the active tab and out of completed-result views.
 - Restore the reviewed Colab selection UI: persistent removable chips, concise
   workflow labels and center summaries, explicit frozen-atom completion, and a

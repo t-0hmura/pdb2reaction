@@ -455,7 +455,12 @@ def test_enrich_summary_uses_backend_neutral_refined_energy_keys(tmp_path: Path)
     assert result["rate_limiting_step"]["barrier_kcal"] == 12.5
     assert result["rate_limiting_step"]["method"] == "MLIP_Gibbs"
     assert result["schema_version"]
+    assert result["mlip_model_label"] == "MACE-OMOL-0"
     assert any(ref["method"] == "pdb2reaction" for ref in result["references"])
+    assert any(ref["method"] == "MACE" for ref in result["references"])
+    assert any(
+        ref["method"] == "OMol25" for ref in result["references"]
+    )
     assert any(
         ref["method"] == "Direct Max Flux (DMF)"
         for ref in result["references"]

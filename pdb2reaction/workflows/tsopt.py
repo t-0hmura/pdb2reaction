@@ -2541,14 +2541,11 @@ def cli(
 
         # Default-verbosity entry summary (skipped in child mode; under -v
         # the full pretty_block dump below restores everything).
-        from pdb2reaction.core.utils import echo_run_summary
-        _backend_disp = calc_cfg.get("backend", "?")
-        _model = calc_cfg.get("model")
-        _precision = calc_cfg.get("precision", "fp32")
+        from pdb2reaction.core.utils import calculator_run_label, echo_run_summary
         _max_cycles = opt_cfg.get("max_cycles", "?")
         echo_run_summary({
             "input": str(input_path),
-            "backend": f"{_backend_disp} ({_model}, {_precision})" if _model else _backend_disp,
+            "backend": calculator_run_label(calc_cfg),
             "opt": f"{kind}, max_cycles={_max_cycles}",
             "out": str(out_dir_path),
         })

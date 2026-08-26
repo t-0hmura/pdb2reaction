@@ -281,15 +281,22 @@ _ANNOUNCED_MODEL_LOADS: set = set()
 @contextlib.contextmanager
 def _announce_model_load(backend: str, kwargs: Dict[str, Any]):
     """Bracket the first load of each model so a download cannot look like a hang."""
-    from pdb2reaction.core.output import emit
+    from pdb2reaction.core.output import emit, mlip_model_label
 
     model = str(kwargs.get("model") or "").strip()
-    key = (backend, model)
+    task_name = str(kwargs.get("task_name") or "").strip()
+    if backend == "uma" and not task_name:
+        task_name = "omol"
+    key = (backend, model, task_name)
     if key in _ANNOUNCED_MODEL_LOADS:
         yield
         return
     _ANNOUNCED_MODEL_LOADS.add(key)
-    label = f"{backend}{f' / {model}' if model else ''}"
+    backend_label = {
+        "uma": "UMA", "orb": "ORB", "mace": "MACE", "aimnet2": "AIMNet2",
+    }.get(backend, backend)
+    model_label = mlip_model_label(backend, model, task_name)
+    label = f"{backend_label}{f' / {model_label}' if model else ''}"
     emit(f"\n[backend] Preparing MLIP model ({label})...", narrative=True)
     try:
         yield

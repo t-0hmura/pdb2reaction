@@ -29,6 +29,8 @@ def test_yaml_resolved_orb_fields_keep_legacy_and_canonical_parity() -> None:
         "model": "orb_v3_conservative_omol",
         "mlip_backend": "orb",
         "mlip_model": "orb_v3_conservative_omol",
+        "mlip_model_label": "ORB-v3-conservative-OMol",
+        "mlip_task": None,
         "mlip_precision": "fp64",
     }
     assert calc_cfg == original

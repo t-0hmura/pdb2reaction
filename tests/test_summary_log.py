@@ -135,8 +135,8 @@ def test_summary_log_uses_mlip_provenance_and_labels(tmp_path):
     write_summary_log(dest, payload)
     text = dest.read_text(encoding="utf-8")
 
-    assert "MLIP backend       : mace" in text
-    assert "MLIP model         : mace-off23-small" in text
+    assert "MLIP backend       : MACE" in text
+    assert "MLIP model         : MACE-OFF23-small" in text
     assert "MLIP energies (TSOPT+IRC)" in text
     assert "DFT//MLIP Gibbs" in text
     assert "UMA model" not in text
@@ -375,10 +375,16 @@ def test_method_citations_follow_resolved_methods_and_match_stdout(
     assert all(set(ref) == {"method", "citation", "doi"} for ref in references)
     assert len({ref["doi"] for ref in references}) == len(references)
     assert lines[1] == "Please cite the software and methods used:"
+    cursor = 2
+    previous_method = None
     for index, reference in enumerate(references, start=1):
-        offset = 2 * index
-        assert lines[offset] == f"- {reference['method']}:"
-        assert lines[offset + 1] == f"[{index}] {reference['citation']}"
+        if reference["method"] != previous_method:
+            assert lines[cursor] == f"- {reference['method']}:"
+            cursor += 1
+            previous_method = reference["method"]
+        assert lines[cursor] == f"[{index}] {reference['citation']}"
+        cursor += 1
+    assert cursor == len(lines)
 
 
 def test_method_citations_use_actual_path_and_post_stages() -> None:
@@ -407,6 +413,84 @@ def test_method_citations_use_actual_path_and_post_stages() -> None:
     assert "quasi-RRHO thermochemistry" not in mixed_text
     assert "Keil, F. J." not in mixed_text
     assert "Chakraborty, A." in mixed_text
+
+
+@pytest.mark.parametrize(
+    ("backend", "model", "expected"),
+    [
+        ("uma", "uma-s-1p2", ["UMA", "OMol25"]),
+        (
+            "orb", "orb_v3_conservative_omol",
+            ["Orb-v3", "OMol25"],
+        ),
+        (
+            "mace", "MACE-OMOL-0",
+            ["MACE", "MACE", "OMol25"],
+        ),
+    ],
+)
+def test_method_citations_include_the_executed_mlip_model(
+    backend: str, model: str, expected: list[str],
+) -> None:
+    references = method_references({
+        "mlip_backend": backend,
+        "mlip_model": model,
+    })
+    methods = [reference["method"] for reference in references]
+    for method in set(expected):
+        assert methods.count(method) >= expected.count(method)
+    mlip_references = [
+        reference for reference in references
+        if reference["method"] in {"UMA", "Orb-v3", "MACE", "OMol25"}
+    ]
+    assert all("et al." not in reference["citation"] for reference in mlip_references)
+
+
+def test_mace_citations_share_one_heading_and_keep_both_papers() -> None:
+    block = "\n".join(format_method_citations({
+        "mlip_backend": "mace",
+        "mlip_model": "MACE-OMOL-0",
+    }))
+
+    assert block.count("- MACE:") == 1
+    assert "11423-11436" in block
+    assert "arXiv:2205.06643" in block
+    assert "arXiv:2505.08762" in block
+
+
+def test_orb_omat_model_does_not_claim_omol25_training_data() -> None:
+    methods = [reference["method"] for reference in method_references({
+        "mlip_backend": "orb",
+        "mlip_model": "orb_v3_conservative_inf_omat",
+    })]
+    assert "OMol25" not in methods
+
+
+def test_unknown_orb_family_does_not_claim_orb_v3() -> None:
+    methods = [reference["method"] for reference in method_references({
+        "mlip_backend": "orb",
+        "mlip_model": "orb_v2",
+    })]
+    assert "Orb-v3" not in methods
+
+
+def test_runtime_citations_match_the_p2r_paper_bibliography() -> None:
+    block = "\n".join(format_method_citations({
+        "mlip_backend": "mace",
+        "mlip_model": "MACE-OMOL-0",
+        "pipeline_mode": "path-search",
+        "mep_mode": "gsm",
+        "post_segments": [{"endpoint_opt": {}}],
+        "ts_opt_mode": "hess",
+        "endpoint_opt_mode": "hess",
+    }))
+
+    assert "et al." not in block
+    assert "https://doi.org/10.1021/ct400319w" in block
+    assert "https://doi.org/10.1063/1.4804162" not in block
+    assert "https://doi.org/10.1063/1.3514202" in block
+    assert "https://doi.org/10.1063/1.1724823" in block
+    assert "https://doi.org/10.1039/C7CP03722H" not in block
 
 
 def test_dmf_and_post_references_follow_effective_stage_settings() -> None:

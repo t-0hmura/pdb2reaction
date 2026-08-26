@@ -48,6 +48,8 @@ def test_plot_only_csv_does_not_claim_calculator_provenance(tmp_path, monkeypatc
     assert payload["model"] is None
     assert payload["mlip_backend"] is None
     assert payload["mlip_model"] is None
+    assert payload["mlip_model_label"] is None
+    assert payload["mlip_task"] is None
     assert payload["mlip_precision"] is None
     assert payload["charge"] is None
     assert payload["spin"] is None
@@ -77,6 +79,8 @@ def test_fresh_scan3d_preserves_calculator_and_solvent_provenance() -> None:
         "model": "orb_v3_conservative_omol",
         "mlip_backend": "orb",
         "mlip_model": "orb_v3_conservative_omol",
+        "mlip_model_label": "ORB-v3-conservative-OMol",
+        "mlip_task": None,
         "mlip_precision": "fp64",
         "solvent": "water",
     }

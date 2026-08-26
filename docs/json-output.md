@@ -43,6 +43,8 @@ are present only when the producer supplies the corresponding data:
 | `environment` | object | Hardware info (see below) |
 | `mlip_backend` | string \| null | Optional backend identifier; null when a plot-only command did not evaluate a calculator |
 | `mlip_model` | string \| null | Optional exact model/checkpoint identifier, kept separate from the backend |
+| `mlip_model_label` | string \| null | Optional publication-facing model label derived from the exact identifier |
+| `mlip_task` | string \| null | Optional backend task used by a multi-domain model; `mlip_model` remains the exact identifier |
 | `mlip_precision` | string \| null | Effective public precision token (`fp32` or `fp64`); null for a custom calculator whose dtype is controlled by user code |
 
 Leaf schemas also retain their local `backend` / `model` fields; consumers
@@ -372,6 +374,8 @@ validation can fail before the file exists.
 | `energy_diagrams` | object[] | Per-segment labeled energy profiles (kcal/mol) |
 | `mlip_backend` | string | Backend identifier |
 | `mlip_model` | string \| null | Model identifier, recorded separately from the backend |
+| `mlip_model_label` | string \| null | Publication-facing model label |
+| `mlip_task` | string \| null | Backend task for a multi-domain model |
 | `mlip_precision` | string \| null | Effective `fp32` / `fp64` token; null for custom calculators |
 | `charge` | int | System charge |
 | `spin` | int | Spin multiplicity |
@@ -479,6 +483,8 @@ The `all` and `path-search` commands write `summary.json` with a richer structur
 | `energy_diagrams` | object[] | Energy profiles with labels and kcal/mol values |
 | `mlip_backend` | string | Backend identifier |
 | `mlip_model` | string \| null | Model identifier, recorded separately from the backend |
+| `mlip_model_label` | string \| null | Publication-facing model label |
+| `mlip_task` | string \| null | Backend task for a multi-domain model |
 | `mlip_precision` | string \| null | Effective `fp32` / `fp64` token; null for custom calculators |
 | `charge` | int | System charge |
 | `spin` | int | Spin multiplicity |

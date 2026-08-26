@@ -44,6 +44,7 @@ from pdb2reaction.core.output import (
     _TAG_AWARE_MARKER,
     emit,
     is_verbose,
+    mlip_model_label,
     set_verbose_level,
     verbose_level,
 )
@@ -3047,6 +3048,21 @@ def _canonical_mlip_precision(backend: str, value: Any) -> Optional[str]:
     return token or None
 
 
+def calculator_run_label(calc_cfg: Mapping[str, Any]) -> str:
+    """Format backend, model, task, and precision for concise run headers."""
+    provenance = calculator_provenance(calc_cfg)
+    backend = str(provenance["mlip_backend"])
+    backend_label = {
+        "uma": "UMA", "orb": "ORB", "mace": "MACE", "aimnet2": "AIMNet2",
+    }.get(backend, backend)
+    details = [
+        str(value) for value in (
+            provenance.get("mlip_model_label"), provenance.get("mlip_precision")
+        ) if value not in (None, "")
+    ]
+    return f"{backend_label} ({', '.join(details)})" if details else backend_label
+
+
 def calculator_provenance(calc_cfg: Mapping[str, Any]) -> Dict[str, Any]:
     """Return backend-neutral MLIP provenance for machine-readable outputs."""
     from pdb2reaction.core.defaults import CALC_KW_DEFAULT
@@ -3084,9 +3100,14 @@ def calculator_provenance(calc_cfg: Mapping[str, Any]) -> Dict[str, Any]:
             }.get(backend)
         precision = _canonical_mlip_precision(backend, raw_precision)
 
+    task_name = calc_cfg.get("task_name") if backend == "uma" else None
+    if backend == "uma" and task_name is None:
+        task_name = CALC_KW_DEFAULT.get("task_name")
     return {
         "mlip_backend": backend,
         "mlip_model": None if model is None else str(model),
+        "mlip_model_label": mlip_model_label(backend, model, task_name),
+        "mlip_task": None if task_name is None else str(task_name),
         "mlip_precision": precision,
     }
 
@@ -3660,6 +3681,17 @@ def write_result_json(
         data.setdefault("mlip_backend", data.get("backend"))
     if "model" in data:
         data.setdefault("mlip_model", data.get("model"))
+    mlip_backend = data.get("mlip_backend")
+    mlip_model = data.get("mlip_model")
+    if mlip_backend is not None and mlip_model is not None:
+        mlip_task = data.get("mlip_task")
+        if mlip_task is None and str(mlip_backend).lower() == "uma":
+            mlip_task = data.get("task_name") or "omol"
+            data.setdefault("mlip_task", mlip_task)
+        data.setdefault(
+            "mlip_model_label",
+            mlip_model_label(mlip_backend, mlip_model, mlip_task),
+        )
     if elapsed_seconds is not None:
         data["elapsed_seconds"] = round(elapsed_seconds, 3)
     data.setdefault("environment", _collect_environment_info())

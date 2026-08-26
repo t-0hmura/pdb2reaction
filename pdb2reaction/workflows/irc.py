@@ -661,14 +661,10 @@ def cli(
             )
 
             # Default-verbosity entry summary (skipped in child mode).
-            from pdb2reaction.core.utils import echo_run_summary
-            _model = calc_cfg.get("model")
+            from pdb2reaction.core.utils import calculator_run_label, echo_run_summary
             echo_run_summary({
                 "input": str(input_path),
-                "backend": (
-                    f"{calc_cfg.get('backend', '?')} ({_model}, {calc_cfg.get('precision', 'fp32')})"
-                    if _model else calc_cfg.get("backend", "?")
-                ),
+                "backend": calculator_run_label(calc_cfg),
                 "out": str(out_dir_path),
             })
 

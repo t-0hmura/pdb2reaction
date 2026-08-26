@@ -496,7 +496,7 @@ fi
 # test73: --backend-model routing — the override must reach the resolved config.
 # dry-run + show-config (no model download, fast): proves --backend-model is honored.
 pdb2reaction opt -i r.pdb -q -1 --backend-model uma-m-1p1 --show-config --dry-run --out-dir test73_backend_model > test73_backend_model.out 2>&1
-grep -Eq '^\[backend\] uma \(uma-m-1p1, fp32\)$' test73_backend_model.out || { echo "[smoke] FAIL test73: non-default backend model missing from resolved runtime summary" >> test73_backend_model.out; exit 1; }
+grep -Eq '^\[backend\] UMA \(UMA-M-1\.1 \(OMol\), fp32\)$' test73_backend_model.out || { echo "[smoke] FAIL test73: non-default backend model missing from resolved runtime summary" >> test73_backend_model.out; exit 1; }
 
 # test74: mmCIF input crosses the internal PDB bridge for a real MLIP run and
 # restores the original long chain / large residue identifiers in public CIF.

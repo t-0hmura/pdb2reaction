@@ -385,6 +385,7 @@ def _viewer_contract() -> dict:
     )
     namespace = {
         "os": os, "S": {}, "_TRAJ": {}, "Path": Path, "csv": csv, "html": html,
+        "_AGGREGATE_IRC_METADATA": {},
         "json": json, "_TEXT_PREVIEW_LIMIT": 512 * 1024,
         "SPEC": {}, "_ARTIFACT_KINDS": {
             ".png": "image", ".jpg": "image", ".jpeg": "image", ".svg": "SVG",
@@ -950,13 +951,20 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "register_callback('pdb2reaction_gui.tab_go', _on_colab_tab)" in app
     assert "register_callback('pdb2reaction_gui.select_result', _on_colab_result)" in app
     assert "function wireResultChoices()" in app
+    assert "document.__rxResultChoicesWired" in app
+    assert "document.addEventListener('change',function(event)" in app
+    assert "select.addEventListener('change'" not in app
+    assert "document.querySelector(selector)||select" in app
     assert "setNativeResultLoading(label,true)" in app
     assert "var selectedIndex=select.selectedIndex" in app
     assert "bridge.invokeFunction(CONFIG.result_callback,[kind,selectedIndex,generation,label],{})" in app
     assert "generation != _RESULT_SET_GENERATION['value']" in app
     assert "value = options[selected_index][1]" in app
+    assert "layoutIsExpanded:true" in app
     assert "var nativeFrameTimer=0" in app
     assert "playButtons[0].dataset.rxNativePlay='true'" in app
+    assert "playButtons[1].textContent='Ⅱ'" in app
+    assert "playButtons[1].title='Pause'" in app
     assert "var repeatButton=playButtons.length>=3?playButtons[playButtons.length-1]:null" in app
     assert "if(!repeatButton||!repeatButton.classList.contains('mod-active'))" in app
     assert "if(!vibration){stopNativePlayback(true);return;}" not in app
@@ -2350,6 +2358,8 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     assert app["_artifact_kind"]("job.inp") == "text"
     preview = app["_text_preview_html"](str(result_json), "JSON")
     assert "&quot;energy&quot;" in preview and "-1.25" in preview
+    assert "DejaVu Sans Mono" in preview and "Liberation Mono" in preview
+    assert "background:#0f172a;color:#e2e8f0" in preview
     summary = tmp_path / "summary.json"
     summary.write_text(json.dumps({
         "status": "success", "scientific_status": "partial",
@@ -2364,7 +2374,10 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     assert "MLIP" in summary_html and "partial result" not in summary_html
     assert ">partial</span>" not in summary_html
     scalar_summary = tmp_path / "result.json"
-    scalar_summary.write_text(json.dumps({"energy_hartree": -424.1293588074}), encoding="utf-8")
+    scalar_summary.write_text(json.dumps({
+        "energy_hartree": -424.1293588074,
+        "mlip_model_label": "UMA-S-1.2 (OMol)",
+    }), encoding="utf-8")
     scalar_html = app["_summary_html"](str(scalar_summary))
     assert "energy (Ha):" in scalar_html and "-424.1293588074" in scalar_html
     assert "scientific status unavailable" not in scalar_html
@@ -2372,8 +2385,11 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
         _last_out_dir=str(tmp_path),
         _last_subcmd="sp",
         _last_files=[str(scalar_summary)],
+        _last_manifest={"status": "success", "exit_code": 0},
     )
     assert app["_single_point_energy_ha"](str(tmp_path)) == pytest.approx(-424.1293588074)
+    app["_results"](str(tmp_path))
+    assert "MLIP model: <b>UMA-S-1.2 (OMol)</b>" in app["res_out"].value
     ts_only_summary = tmp_path / "ts_only_summary.json"
     ts_only_summary.write_text(json.dumps({
         "status": "success",
@@ -2382,6 +2398,7 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
         "n_images": 5,
         "mlip_backend": "mace",
         "mlip_model": "MACE-OMOL-0",
+        "mlip_model_label": "MACE-OMOL-0",
         "endpoint_assignment": {"chemical_direction_known": False},
         "segments": [{
             "index": 1, "kind": "tsopt",
@@ -2396,6 +2413,7 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     assert "raw MEP" not in ts_only_html
     assert "IRC frames: 5" not in ts_only_html
     assert "backend/model:" not in ts_only_html
+    assert "MLIP model: <b>MACE-OMOL-0</b>" in ts_only_html
     assert "energy order" in ts_only_html
     extra_artifacts = []
     for name in ("a.txt", "b.txt", "c.txt", "z.txt"):
@@ -2414,6 +2432,16 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     for artifact in (summary, *extra_artifacts):
         assert f"<code>{Path(artifact).name}</code>" in context_html
     assert context_html.count("<code>") == len(extra_artifacts) + 1
+    summary_log = tmp_path / "summary.log"
+    summary_log.write_text("pdb2reaction summary.log\n", encoding="utf-8")
+    image = tmp_path / "energy_diagram_MEP.png"
+    image.write_bytes(b"\x89PNG\r\n\x1a\n")
+    app["S"].update(
+        _last_files=[str(summary), str(summary_log), str(image)],
+        _last_manifest={"status": "success", "exit_code": 0},
+    )
+    app["_results"](str(tmp_path))
+    assert app["artifact_choice"].value == str(summary_log)
     calls.clear()
     app["_structure_preview"](str(primary))
     assert any(
@@ -4691,6 +4719,8 @@ def test_results_replaces_trajectory_with_exact_stationary_model_set(
     assert '"xTickStep":10' in many
     assert "showticklabels:true,ticks:'',ticklen:0,tickfont:{size:14}" in profile
     assert "font:{size:18,color:'#253047'}" in profile
+    assert "const below=/endpoint$/i.test" in profile
+    assert "yshift:below?-18:16,yanchor:below?'top':'bottom'" in profile
 
 
 def test_results_route_single_structures_modes_and_scan_grids(
@@ -5186,9 +5216,26 @@ def test_results_playback_uses_fifty_ms_for_mep_irc_and_imaginary_modes(
     irc_plot.write_bytes(b"\x89PNG\r\n\x1a\n")
     segment_irc = tmp_path / "segments" / "seg_01" / "irc" / "finished_irc_trj.xyz"
     segment_irc.parent.mkdir(parents=True)
-    segment_irc.write_text("1\nenergy=-1.0\nH 0 0 0\n", encoding="utf-8")
+    segment_irc.write_text(
+        "1\nenergy=-1.0\nH 0 0 0\n"
+        "1\nenergy=-0.9\nH 0.1 0 0\n"
+        "1\nenergy=-1.1\nH 0.2 0 0\n",
+        encoding="utf-8",
+    )
+    (segment_irc.parent / "result.json").write_text(json.dumps({
+        "n_frames_forward": 1, "n_frames_backward": 1, "n_frames_total": 3,
+        "forward_converged": True, "backward_converged": True,
+        "scientific_status": "success",
+    }), encoding="utf-8")
     aggregate = app["_aggregate_irc_trajectory"](
         [str(irc_plot), str(segment_irc)], str(tmp_path))
+    aggregate_semantics = app["_trajectory_semantics"](
+        "all", aggregate, n_frames=3,
+    )
+    assert aggregate_semantics["stationary_labels"] == {1: "TS"}
+    assert dict(app["_stationary"](
+        [0.0, 10.0, -1.0], aggregate_semantics,
+    ))[1] == "TS"
     app["_ENERGY"]["aggregate_irc"] = aggregate
     options, _ = app["_energy_diagram_options"](
         [str(irc_plot), str(segment_irc)],

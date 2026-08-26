@@ -1579,6 +1579,8 @@ def _enrich_summary(
     pipeline_mode: str,
     mlip_backend: str,
     mlip_model: Optional[str],
+    mlip_model_label: Optional[str] = None,
+    mlip_task: Optional[str] = None,
     mlip_precision: Optional[str] = None,
     charge: int,
     spin: int,
@@ -1749,8 +1751,18 @@ def _enrich_summary(
     for segment in segments:
         if isinstance(segment, dict):
             segment.pop("_mep_artifacts", None)
+    if mlip_task is None and str(mlip_backend).lower() == "uma":
+        mlip_task = "omol"
+    if mlip_model_label is None:
+        from pdb2reaction.core.utils import mlip_model_label as _format_mlip_model_label
+
+        mlip_model_label = _format_mlip_model_label(
+            mlip_backend, mlip_model, mlip_task
+        )
     summary["mlip_backend"] = mlip_backend
     summary["mlip_model"] = mlip_model
+    summary["mlip_model_label"] = mlip_model_label
+    summary["mlip_task"] = mlip_task
     summary["mlip_precision"] = mlip_precision
     summary["charge"] = charge
     summary["spin"] = spin
@@ -1786,6 +1798,8 @@ def _enrich_summary(
             "mep_mode": citation_config.get("mep_mode"),
             "dmf_correlated": citation_config.get("dmf_correlated"),
             "post_segments": post_segments or [],
+            "mlip_backend": mlip_backend,
+            "mlip_model": mlip_model,
         }
     )
     if freeze_atoms:
@@ -4527,6 +4541,8 @@ def cli(
             "mep_mode": mep_mode,
             "dmf_correlated": dmf_correlated_effective,
             "post_segments": citation_post_segments,
+            "mlip_backend": _mlip_backend_shared,
+            "mlip_model": _mlip_model_shared,
         }
 
     tsopt_overrides: Dict[str, Any] = {}
@@ -5183,6 +5199,8 @@ def cli(
     _shared_provenance = calculator_provenance(calc_cfg_shared)
     _mlip_backend_shared = str(_shared_provenance["mlip_backend"])
     _mlip_model_shared = _shared_provenance["mlip_model"]
+    _mlip_model_label_shared = _shared_provenance["mlip_model_label"]
+    _mlip_task_shared = _shared_provenance["mlip_task"]
     _mlip_precision_shared = _shared_provenance["mlip_precision"]
 
     # Preserve the source of parent CLI overrides. Child commands reread the
@@ -5324,6 +5342,8 @@ def cli(
                 out_dir=out_dir,
                 mlip_backend=_mlip_backend_shared,
                 mlip_model=_mlip_model_shared,
+                mlip_model_label=_mlip_model_label_shared,
+                mlip_task=_mlip_task_shared,
                 mlip_precision=_mlip_precision_shared,
                 charge=q_int,
                 spin=spin,
@@ -5376,6 +5396,8 @@ def cli(
                 "dft": do_dft,
                 "mlip_backend": _mlip_backend_shared,
                 "mlip_model": _mlip_model_shared,
+                "mlip_model_label": _mlip_model_label_shared,
+                "mlip_task": _mlip_task_shared,
                 "mlip_precision": _mlip_precision_shared,
                 "status": summary.get("status"),
                 "status_reasons": summary.get("status_reasons", []),
@@ -5849,6 +5871,8 @@ def cli(
             out_dir=out_dir,
             mlip_backend=_mlip_backend_shared,
             mlip_model=_mlip_model_shared,
+            mlip_model_label=_mlip_model_label_shared,
+            mlip_task=_mlip_task_shared,
             mlip_precision=_mlip_precision_shared,
             charge=q_int,
             spin=spin,
@@ -6012,6 +6036,8 @@ def cli(
                     "dmf_correlated": dmf_correlated_effective,
                     "mlip_backend": _mlip_backend_shared,
                     "mlip_model": _mlip_model_shared,
+                    "mlip_model_label": _mlip_model_label_shared,
+                    "mlip_task": _mlip_task_shared,
                     "mlip_precision": _mlip_precision_shared,
                     "command": command_str,
                     "charge": q_int,
@@ -6059,6 +6085,8 @@ def cli(
                     out_dir=out_dir,
                     mlip_backend=_mlip_backend_shared,
                     mlip_model=_mlip_model_shared,
+                    mlip_model_label=_mlip_model_label_shared,
+                    mlip_task=_mlip_task_shared,
                     mlip_precision=_mlip_precision_shared,
                     charge=q_int,
                     spin=spin,
@@ -6842,6 +6870,8 @@ def cli(
             out_dir=out_dir,
             mlip_backend=_mlip_backend_shared,
             mlip_model=_mlip_model_shared,
+            mlip_model_label=_mlip_model_label_shared,
+            mlip_task=_mlip_task_shared,
             mlip_precision=_mlip_precision_shared,
             charge=q_int,
             spin=spin,
@@ -6950,6 +6980,8 @@ def cli(
                 "dmf_correlated": dmf_correlated_effective,
                 "mlip_backend": _mlip_backend_shared,
                 "mlip_model": _mlip_model_shared,
+                "mlip_model_label": _mlip_model_label_shared,
+                "mlip_task": _mlip_task_shared,
                 "mlip_precision": _mlip_precision_shared,
                 "command": command_str,
                 "charge": q_int,
@@ -7119,6 +7151,8 @@ def cli(
             out_dir=out_dir,
             mlip_backend=_mlip_backend_shared,
             mlip_model=_mlip_model_shared,
+            mlip_model_label=_mlip_model_label_shared,
+            mlip_task=_mlip_task_shared,
             mlip_precision=_mlip_precision_shared,
             charge=q_int,
             spin=spin,
@@ -7342,6 +7376,8 @@ def cli(
             dmf_correlated=dmf_correlated_effective,
             mlip_backend=_mlip_backend_shared,
             mlip_model=_mlip_model_shared,
+            mlip_model_label=_mlip_model_label_shared,
+            mlip_task=_mlip_task_shared,
             mlip_precision=_mlip_precision_shared,
             command_str=command_str,
             q_int=q_int,
@@ -8262,6 +8298,8 @@ def cli(
         out_dir=out_dir,
         mlip_backend=_mlip_backend_shared,
         mlip_model=_mlip_model_shared,
+        mlip_model_label=_mlip_model_label_shared,
+        mlip_task=_mlip_task_shared,
         mlip_precision=_mlip_precision_shared,
         charge=q_int,
         spin=spin,

@@ -3209,6 +3209,8 @@ def cli(
                 "mep_mode": mep_mode,
                 "path_opt_mode": opt_mode,
                 "dmf_correlated": bool(dmf_cfg.get("correlated", False)),
+                "mlip_backend": summary.get("mlip_backend"),
+                "mlip_model": summary.get("mlip_model"),
             }
         )
         try:
@@ -3268,6 +3270,8 @@ def cli(
                 "dmf_correlated": bool(dmf_cfg.get("correlated", False)),
                 "mlip_backend": mlip_backend,
                 "mlip_model": mlip_model,
+                "mlip_model_label": _provenance["mlip_model_label"],
+                "mlip_task": _provenance["mlip_task"],
                 "mlip_precision": _provenance["mlip_precision"],
                 "status": summary.get("status"),
                 "status_reasons": summary.get("status_reasons", []),

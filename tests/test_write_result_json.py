@@ -110,3 +110,4 @@ def test_mlip_backend_and_model_are_recorded_separately() -> None:
         result = json.loads((Path(d) / "result.json").read_text())
     assert result["mlip_backend"] == "orb"
     assert result["mlip_model"] == "orb_v3_conservative_omol"
+    assert result["mlip_model_label"] == "ORB-v3-conservative-OMol"

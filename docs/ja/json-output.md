@@ -43,6 +43,8 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 | `environment` | object | ハードウェア情報（下表参照） |
 | `mlip_backend` | string \| null | 任意のMLIP backend識別子。plot-only commandがcalculatorを評価していない場合はnull |
 | `mlip_model` | string \| null | 任意。backendと分離した正確なmodel/checkpoint名 |
+| `mlip_model_label` | string \| null | 任意。正確な識別子から導出した論文表記用のmodel名 |
+| `mlip_task` | string \| null | 任意。multi-domain modelで使用したbackend task。正確な識別子は`mlip_model`に保持 |
 | `mlip_precision` | string \| null | 実効精度の共通token（`fp32` / `fp64`）。dtypeをuser codeが管理するcustom calculatorではnull |
 
 各leaf schemaの`backend` / `model`も維持されますが、command横断の処理では
@@ -363,6 +365,8 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 | `energy_diagrams` | object[] | セグメントごとのラベル付きエネルギープロファイル (kcal/mol) |
 | `mlip_backend` | string | バックエンド名 |
 | `mlip_model` | string \| null | バックエンドと分離して記録するモデル名 |
+| `mlip_model_label` | string \| null | 論文表記用のモデル名 |
+| `mlip_task` | string \| null | multi-domain modelのbackend task |
 | `mlip_precision` | string \| null | 実効`fp32` / `fp64` token。custom calculatorではnull |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
@@ -470,6 +474,8 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 | `energy_diagrams` | object[] | エネルギーダイアグラム（ラベル + kcal/mol） |
 | `mlip_backend` | string | バックエンド名 |
 | `mlip_model` | string \| null | バックエンドと分離して記録するモデル名 |
+| `mlip_model_label` | string \| null | 論文表記用のモデル名 |
+| `mlip_task` | string \| null | multi-domain modelのbackend task |
 | `mlip_precision` | string \| null | 実効`fp32` / `fp64` token。custom calculatorではnull |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
