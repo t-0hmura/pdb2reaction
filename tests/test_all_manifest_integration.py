@@ -21,6 +21,19 @@ def test_refine_path_publishes_each_segment_mep_trajectory() -> None:
     assert "Failed to publish segment" in source
 
 
+def test_stopped_ts_summary_reuses_the_final_citation_payload() -> None:
+    source = inspect.getsource(all_workflow.cli.callback)
+    stopped_branch = source.split(
+        'if not bool(_tsopt_decision.get("continue_irc")):', 1
+    )[1]
+    stopped_writer = stopped_branch.split("summary_payload = {", 1)[1].split(
+        "write_summary_log", 1
+    )[0]
+
+    assert "citation_post_segments = [_stop_log]" in stopped_branch
+    assert "summary_payload.update(_all_method_citation_payload())" in stopped_writer
+
+
 def _replace_bytes(path: Path, payload: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.parent / f".{path.name}.next"

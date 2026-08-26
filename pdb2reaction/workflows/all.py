@@ -5384,6 +5384,7 @@ def cli(
                 label="summary.json",
                 echo=False,
             )
+            citation_post_segments = [_stop_log]
             summary_payload = {
                 "root_out_dir": str(out_dir),
                 "path_dir": str(tsroot),
@@ -5417,6 +5418,7 @@ def cli(
                 "pipeline_stop": dict(pipeline_stop),
                 "key_files": summary.get("key_output_files", {}),
             }
+            summary_payload.update(_all_method_citation_payload())
             try:
                 summary_payload["current_output_paths"] = [
                     path.relative_to(out_dir).as_posix()
@@ -5444,7 +5446,6 @@ def cli(
             _echo_section(
                 "====== [all] TSOPT-only pipeline stopped before IRC ======"
             )
-            citation_post_segments = [_stop_log]
             _emit_final_summary(
                 out_dir,
                 time_start,
