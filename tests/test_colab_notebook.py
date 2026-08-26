@@ -285,7 +285,7 @@ def test_setup_command_fields_do_not_repaint_hidden_results_or_viewer(monkeypatc
     assert done.icon == "check"
     assert done.button_style == "primary"
     done.click()
-    assert app["pick_action"].value == "inspect"
+    assert app["pick_action"].value == "center"
     assert freeze_picker_button("Pick frozen atoms in viewer").icon == "mouse-pointer"
 
     app["S"]["mode"] = "small"
@@ -992,7 +992,7 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "nglview" not in app
     # "all workflow" mode and the depth switches only apply to `all`.
     assert "all_mode_box = all_mode" in app
-    assert "('Scan 1', 'scan')" in app
+    assert "options=[('MEP', 'mep'), ('Scan', 'scan'), ('TS-only', 'tsonly')]" in app
     assert "style={'button_width': '74px', 'description_width': '0px'}" in app
     assert "depth_label = W.HTML('<b>Optional stages</b>')" in app
     assert "depth_box = W.VBox([depth_label, W.HBox([" in app
@@ -3080,6 +3080,20 @@ def test_colab_operates_scientific_selectors_and_remaining_buttons(
     scan_pair(0, 2)
     _widget_with_description(app["scan_panel"], "Add to stage").click()
     assert len(app["S"]["scan_stages"][0]) == 2
+    staged_controls = list(_widget_descendants(app["scan_panel"]))
+    assert not any(str(getattr(widget, "tooltip", "") or "").startswith("Move coordinate")
+                   for widget in staged_controls)
+    assert not any(getattr(widget, "description", "") == "Use picked pair"
+                   for widget in staged_controls)
+    coordinate_removals = [
+        widget for widget in staged_controls
+        if getattr(widget, "tooltip", "") == "Remove coordinate"
+    ]
+    assert len(coordinate_removals) == 2
+    coordinate_removals[-1].click()
+    assert len(app["S"]["scan_stages"][0]) == 1
+    assert not any(getattr(widget, "tooltip", "") == "Remove coordinate"
+                   for widget in _widget_descendants(app["scan_panel"]))
     app["b_clear_scan"].click()
     assert app["S"]["scan_stages"] == []
     next(
@@ -3140,7 +3154,8 @@ def test_colab_operates_scientific_selectors_and_remaining_buttons(
     pick(2)
     assert app["S"]["freeze_atoms"] == [3]
     assert app["chips_box"].layout.display == "flex"
-    _widget_with_description(app["chips_box"], "⚓3 ✕").click()
+    assert app["chips_box"].layout.min_height == "38px"
+    _widget_with_description(app["chips_box"], "⚓ 3 ✕").click()
     assert app["S"]["freeze_atoms"] == []
     pick(2)
     assert app["S"]["freeze_atoms"] == [3]
@@ -3152,7 +3167,8 @@ def test_colab_operates_scientific_selectors_and_remaining_buttons(
     app["exact_atom"].value = "1"
     app["exact_atom_btn"].click()
     assert app["S"]["_last_pick"]["index"] == 0
-    _widget_with_description(app["chips_box"], "A:LIG:1 ✕")
+    exact_center_chip = _widget_with_description(app["chips_box"], "A:LIG:1 ✕")
+    assert exact_center_chip.button_style == "info"
     app["pick_action"].value = "selectedresn"
     pick(0)
     selected_chip = _widget_with_description(app["chips_box"], "🔒 1 ✕")
@@ -3164,8 +3180,18 @@ def test_colab_operates_scientific_selectors_and_remaining_buttons(
     app["selected_resn"].value = "A:123"
     app["S"]["freeze_atoms"] = [3]
     app["_render_chips"]()
+    app["_render_summary"]()
+    assert "extraction center -c: <code>LIG,A:LIG:1</code>" in app["summary_html"].value
+    assert "exact <code>" not in app["summary_html"].value
+    assert "builds the cluster around this center automatically" not in app["summary_html"].value
     assert "force-included --selected-resn" in app["summary_html"].value
-    for description in ("LIG ✕", "A:LIG:1 ✕", "🔒 A:123 ✕", "⚓3 ✕"):
+    app["dd_subcmd"].value = "all"
+    app["all_mode"].value = "mep"
+    expected_chips = [widget.description for widget in app["chips_box"].children]
+    app["all_mode"].value = "scan"
+    assert app["chips_box"].layout.display == "flex"
+    assert [widget.description for widget in app["chips_box"].children] == expected_chips
+    for description in ("LIG ✕", "A:LIG:1 ✕", "🔒 A:123 ✕", "⚓ 3 ✕"):
         _widget_with_description(app["chips_box"], description).click()
     assert app["center_widget"].value == ()
     assert app["selected_resn"].value == ""
@@ -5545,7 +5571,11 @@ def test_scan_editor_uses_inspector_width_and_content_sized_stage_cards() -> Non
     assert ".rxscan-pair-controls > :last-child { grid-column:1 / -1; }" in app
     assert ".rxscan-add-actions { grid-template-columns:1fr !important; }" in app
     assert ".rxscan-bond > * { flex:0 1 auto !important;" in app
-    assert "label.layout = W.Layout(width='100%', flex='0 1 auto', min_width='0')" in app
+    assert "label.layout = W.Layout(width='auto', flex='1 1 90px', min_width='70px')" in app
+    assert "coordinate_children = [label, target_edit]" in app
+    assert "if len(stage) > 1:" in app
+    assert "bond_remove.add_class('rxscan-coordinate-remove')" in app
+    assert "Move coordinate up" not in app
     assert "label.layout = W.Layout(flex='1 1 230px'" not in app
     assert "description='① Pick atom A'" in app
     assert "description='② Pick atom B'" in app
