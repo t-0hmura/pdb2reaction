@@ -966,6 +966,11 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     result_selector_css = re.search(r"\.rxresult-selector\s*\{([^{}]*)\}", app)
     assert result_selector_css is not None
     assert "display:grid!important" not in re.sub(r"\s+", "", result_selector_css.group(1))
+    assert ".rxresults .rxmolstar-frame { border:0 !important; border-radius:0 !important; }" in app
+    assert ".rxresults-page { row-gap:12px !important;" in app
+    assert "min-height:58px; align-items:center !important" in app
+    assert "Recovered existing result · read-only preview" not in app
+    assert "footer.append('status:" not in app
     assert "var warningHost = document.querySelector('.rxdrop');" in app
     assert "warningHost.parentElement.insertBefore(warning, warningHost.nextSibling);" in app
     assert "File upload controls did not initialize. Rerun the Launch GUI cell." in app
@@ -1485,6 +1490,8 @@ def test_colab_results_bind_irc_truth_and_skip_bridge_extrema(tmp_path: Path) ->
     irc = contract["_trajectory_semantics"]("irc", str(irc_path), n_frames=5)
     assert irc["title"] == "Combined IRC trajectory"
     assert irc["ts_index"] == 2
+    assert irc["ts_label"] == "TS"
+    assert dict(contract["_stationary"]([0.0, 5.0, 10.0, 5.0, 0.0], irc))[2] == "TS"
     assert "partial" in irc["trajectory_status"]
     assert "forward ✓" in irc["trajectory_status"]
     assert "backward ✗" in irc["trajectory_status"]
@@ -2387,7 +2394,8 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     ts_only_html = app["_summary_html"](str(ts_only_summary))
     assert ">success<" not in ts_only_html.lower()
     assert "raw MEP" not in ts_only_html
-    assert "IRC frames: 5" in ts_only_html
+    assert "IRC frames: 5" not in ts_only_html
+    assert "backend/model:" not in ts_only_html
     assert "energy order" in ts_only_html
     extra_artifacts = []
     for name in ("a.txt", "b.txt", "c.txt", "z.txt"):
@@ -3013,6 +3021,8 @@ def test_colab_operates_scientific_selectors_and_remaining_buttons(
     real_results = app["_results"]
     def _fake_results(root):
         loading_seen["value"] = app["_tab_loading"].value
+        loading_seen["results_display"] = app["results_box"].layout.display
+        loading_seen["options_display"] = app["options_box"].layout.display
         app["S"]["_results_presented_dir"] = os.path.abspath(root)
     app["_results"] = _fake_results
     app["S"]["_last_out_dir"] = str(tmp_path)
@@ -3021,6 +3031,8 @@ def test_colab_operates_scientific_selectors_and_remaining_buttons(
     app["res_btn"].disabled = False
     app["_tab_go"](3)
     assert "Loading <b>④ Results</b>…" in loading_seen["value"]
+    assert loading_seen["results_display"] == ""
+    assert loading_seen["options_display"] == "none"
     assert app["_tab_loading"].value == ""
     app["_results"] = real_results
 
@@ -3297,12 +3309,12 @@ def test_colab_operates_scientific_selectors_and_remaining_buttons(
     assert app["res_btn"].description == "Load results"
     assert app["S"]["_last_out_dir"] == str(tmp_path.resolve())
     app["S"]["_last_log"] = "button coverage log"
-    # The selector names the scientifically selected result rather than using
-    # a generic "Primary result" label.
+    # The top selector stays stable while the child selector owns the concrete
+    # profile or trajectory.
     assert [label for label, _ in app["traj_choice"].options] == [
-        "Trajectory · path_a_trj.xyz"
+        "Energy profile & Trajectory"
     ]
-    app["traj_choice"].value = app["traj_choice"].options[0][1]
+    assert [label for label, _ in app["energy_choice"].options] == ["MEP"]
     app["frame_next"].click()
     assert app["frame_slider"].value == 1
     app["frame_prev"].click()
@@ -4424,9 +4436,7 @@ def test_colab_poll_repairs_a_finished_but_stale_frontend() -> None:
         ("flush", True),
         ("running", False, True),
         ("status", "✓ done", "ok", "done", True),
-        ("results", "result"),
         ("tab", 3),
-        ("publish_results",),
         ("publish_run",),
     ]
 
@@ -4450,7 +4460,6 @@ def test_colab_poll_repairs_a_finished_but_stale_frontend() -> None:
     namespace["S"]["_last_manifest"]["status"] = "partial"
     namespace["S"]["_results_presented_dir"] = None
     assert namespace["_colab_poll_run"](False) == {"running": False}
-    assert ("results", "result") in events
     assert ("tab", 3) in events
 
     events.clear()
@@ -4636,12 +4645,25 @@ def test_results_replaces_trajectory_with_exact_stationary_model_set(
     app["_results"](str(tmp_path))
     energy_token = app["energy_choice"].value
     assert app["_ENERGY"]["views"][energy_token]["mode"] == "image"
-    assert app["traj_choice"].value == str(mep)
+    assert app["traj_choice"].value == app["_RESULT_CATEGORY_ENERGY"]
+    assert [label for label, _ in app["traj_choice"].options] == [
+        "Energy profile & Trajectory", "Imaginary frequency",
+    ]
     assert app["_TRAJ"]["path"] == str(mep)
     assert len(app["_TRAJ"]["frames"]) == 5
-    assert "MEP profile" in app["trajectory_intro"].value
+    assert "Energy profile &amp; Trajectory" in app["trajectory_intro"].value
     assert "Vibrational mode" not in app["trajectory_intro"].value
     assert "STALE_MODE_" not in _embedded_document(app["traj_out"].value)
+
+    mep_token = next(value for label, value in app["energy_choice"].options if label == "MEP")
+    app["energy_choice"].value = mep_token
+    assert app["_TRAJ"]["path"] == str(mep)
+    assert app["result_selector_row"].layout.display == ""
+    assert app["energy_choice"].layout.display == ""
+    app["energy_choice"].value = energy_token
+    assert app["traj_choice"].value == app["_RESULT_CATEGORY_ENERGY"]
+    assert app["result_selector_row"].layout.display == ""
+    assert app["energy_choice"].layout.display == ""
 
     source = _notebook()["cells"][2]["source"]
     assert "selected_energy_view.get('mode') == 'image'" in source
@@ -4678,6 +4700,7 @@ def test_results_route_single_structures_modes_and_scan_grids(
     assert "display:grid !important; grid-template-columns:40px 40px 116px" not in raw_notebook
     assert "display:flex !important; flex-direction:column !important; align-self:stretch" not in raw_notebook
     app, _ = _execute_app(monkeypatch, tmp_path)
+    assert app["results_dir"].value == app["w_out"].value
     assert "Structure Viewer" in app["structure_panel_title"].value
     assert "Distance and angle measurements update" not in app["structure_panel_title"].value
     assert "Distance and angle measurements update" in app["structure_panel_info"]._rx_tip
@@ -4788,10 +4811,12 @@ def test_results_route_single_structures_modes_and_scan_grids(
         _last_manifest={"status": "success", "exit_code": 0},
     )
     app["_results"](str(tmp_path))
-    app["traj_choice"].value = str(segment_imaginary)
+    app["traj_choice"].value = app["_RESULT_CATEGORY_IMAGINARY"]
+    assert app["energy_choice"].description == "Mode"
+    app["energy_choice"].value = str(segment_imaginary)
     assert app["_TRAJ"]["path"] == str(segment_imaginary)
     assert len(app["_TRAJ"]["frames"]) == 2
-    assert "Vibrational mode" in app["trajectory_intro"].value
+    assert "Imaginary frequency" in app["trajectory_intro"].value
     assert app["energy_panel"].layout.display == "none"
     assert "rxstructure-only" in app["path_grid"]._dom_classes
     assert app["plot_out"].value == ""
@@ -4807,7 +4832,7 @@ def test_results_route_single_structures_modes_and_scan_grids(
     assert app["result_selector_row"].layout.display == ""
     assert len(app["_TRAJ"]["frames"]) == 2
     assert app["frame_play"].disabled is False
-    assert "Vibrational mode" in app["trajectory_intro"].value
+    assert "Imaginary frequency" in app["trajectory_intro"].value
     assert app["energy_panel"].layout.display == "none"
     assert "rxstructure-only" in app["path_grid"]._dom_classes
     assert app["plot_out"].value == ""
@@ -5363,7 +5388,7 @@ def test_notebook_default_controls_defer_to_live_cli(
     )
 
 
-def test_freq_results_expose_ten_written_modes_in_top_selector(
+def test_freq_results_preserve_all_written_modes_in_top_selector(
     monkeypatch, tmp_path: Path,
 ) -> None:
     app, _ = _execute_app(monkeypatch, tmp_path)

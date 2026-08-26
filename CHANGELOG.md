@@ -10,6 +10,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Add `--gsm-param {equi,energy}` to `all`, `path-opt`, and `path-search` as an advanced GSM node-parameterization control; `equi` remains the default.
 
 ### Fixed
+- Keep completed Colab Results in the Results tab, preserve navigation between
+  energy and trajectory views, and group imaginary-frequency trajectories under
+  a dedicated child selector.
 - Keep cancelled Colab runs on the active tab and out of completed-result views.
 - Restore the reviewed Colab selection UI: persistent removable chips, concise
   workflow labels and center summaries, explicit frozen-atom completion, and a
