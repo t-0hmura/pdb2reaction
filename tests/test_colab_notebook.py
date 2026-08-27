@@ -1101,7 +1101,7 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "_input_box_children.append(example_fold)" in app
     assert "adv_acc = _collapsible(" in app
     assert "def _advanced_options(sub):" in app
-    assert "adv_acc = _collapsible('All flags', adv_box)" in app
+    assert "adv_acc = _collapsible('All options', adv_box)" in app
     assert "row._rx_tier = 'advanced' if bool(getattr(param, 'hidden', False)) else 'key'" in app
     assert "every CLI option accounted for" not in app
     # Freezing is a always-visible Setup card; `freeze_acc` survives only as the
