@@ -236,7 +236,7 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 | `--selected-resn TEXT` | `--center` と同じID/名前/chain付きselectorで残基を強制包含 | `""` |
 | `--modified-residue TEXT` | アミノ酸として扱う残基名をカンマ区切りで指定。`NAME:charge` はこの抽出中の公称電荷を追加または上書きし、電荷を省略した `NAME` は 0 になります | `""` |
 | `--freeze-links/--no-freeze-links` | 活性部位モデル PDB でキャップ H の親を凍結 | `True` |
-| `--freeze-atoms TEXT` | 全ステージで凍結する 1-based 原子番号（カンマ区切り）。番号は抽出後モデル基準。`--freeze-links` と YAML `geom.freeze_atoms` にマージされる | _None_ |
+| `--freeze-atoms TEXT` | 全ステージで凍結する1-based原子番号（カンマ区切り）。抽出時は元のfull input基準で指定し、活性部位モデルへ自動変換される。抽出しない場合は現在の入力構造基準。`--freeze-links` とYAML `geom.freeze_atoms` にマージされる | _None_ |
 
 組み込みのアミノ酸名は、力場で正規化された Amber/CHARMM の命名を前提とします。
 raw PDB CCD との名前衝突は自動判別しないため、`--modified-residue NAME:charge`

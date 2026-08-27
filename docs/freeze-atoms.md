@@ -25,6 +25,11 @@ For XYZ/GJF inputs, no `LKH` atoms are present, so `--freeze-links` has no effec
 
 Comma-separated **1-based** atom indices, applicable to any input format. Complements `--freeze-links` (the union is frozen at run time).
 
+For `all` with active-site extraction, both this CLI list and YAML
+`geom.freeze_atoms` use the **original full input ordering** and are mapped to
+the extracted model automatically. Other commands use the ordering of the
+structure passed directly to that command.
+
 ```bash
 pdb2reaction tsopt -i ts_candidate.xyz -q 0 -m 1 \
   --freeze-atoms '12,15,28,29,42'
@@ -92,7 +97,7 @@ When JSON output is enabled, `result.json["rigid_projection"]` records the treat
 ## Common pitfalls
 
 - **Manually deleted `LKH/HL` records.** `--freeze-links` finds nothing to freeze. Use `--freeze-atoms` to specify the boundary explicitly, or rerun `extract`.
-- **Re-numbered atoms.** `--freeze-atoms` and `geom.freeze_atoms` are 1-based and tied to input atom order; if you re-extract and the order changes, regenerate the index list.
+- **Re-numbered atoms.** `--freeze-atoms` and `geom.freeze_atoms` are 1-based and tied to the applicable input order. `all` maps the original full input to its extracted model; a separately run command on an already extracted model uses that model's order.
 - **XYZ/GJF without a topology.** No `LKH` records exist, so `--freeze-links` is a no-op. Provide `--ref-pdb FILE` or an explicit `--freeze-atoms` list.
 - **`--no-freeze-links`.** Disables the auto-freeze. Useful only for diagnostic runs that intentionally let the boundary relax; production cluster-model runs should leave `--freeze-links` on.
 - **All atoms frozen.** PHVA and IRC require at least one active atom and stop with an explicit error. Reduce the freeze set rather than suppressing the check.

@@ -204,6 +204,47 @@ def test_all_cli_freeze_atoms_reach_the_child_config() -> None:
     all_mod._set_yaml_freeze_atoms(None)
 
 
+def test_all_freeze_and_scan_indices_share_full_to_model_mapping(
+    tmp_path: Path,
+) -> None:
+    from pdb2reaction.workflows.all import (
+        _convert_freeze_atoms_to_model_indices,
+        _convert_scan_lists_to_model_indices,
+    )
+
+    def atom_line(serial, name, resname, chain, resseq, x, element):
+        return (
+            f"ATOM  {serial:5d} {name:>4s} {resname:>3s} {chain}{resseq:4d}    "
+            f"{x:8.3f}{0.0:8.3f}{0.0:8.3f}  1.00  0.00          {element:>2s}\n"
+        )
+
+    full = tmp_path / "full.pdb"
+    full.write_text(
+        atom_line(1, "N", "ALA", "A", 1, 0.0, "N")
+        + atom_line(2, "CA", "ALA", "A", 1, 1.0, "C")
+        + atom_line(3, "C1", "LIG", "A", 2, 2.0, "C")
+        + atom_line(4, "O1", "LIG", "A", 2, 3.0, "O")
+        + "END\n",
+        encoding="utf-8",
+    )
+    model = tmp_path / "model.pdb"
+    model.write_text(
+        atom_line(1, "CA", "ALA", "A", 1, 1.0, "C")
+        + atom_line(2, "C1", "LIG", "A", 2, 2.0, "C")
+        + atom_line(3, "HL", "LKH", "A", 3, 2.5, "H")
+        + "END\n",
+        encoding="utf-8",
+    )
+
+    # Internal freeze indices are 0-based; scan literals are 1-based here.
+    assert _convert_freeze_atoms_to_model_indices([1, 2], full, model) == [0, 1]
+    assert _convert_scan_lists_to_model_indices(
+        ["[(2,3,1.5)]"], full, model
+    ) == [[(1, 2, 1.5)]]
+    with pytest.raises(click.BadParameter, match="not present in the active site model"):
+        _convert_freeze_atoms_to_model_indices([0], full, model)
+
+
 def test_build_energy_level_dict_kcal_projection() -> None:
     d = build_energy_level_dict(
         labels=["R", "TS", "P"],

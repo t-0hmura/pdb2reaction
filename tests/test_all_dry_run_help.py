@@ -2,6 +2,7 @@
 temp-dir cleanup."""
 
 import importlib
+from pathlib import Path
 
 import pytest
 import yaml
@@ -351,3 +352,44 @@ def test_all_dry_run_does_not_report_prior_summary(tmp_path):
     footer = result.output.rstrip().splitlines()[-1]
     assert footer == "[Dry run] --dry-run completed. Input command is valid."
     assert "Elapsed Time for Whole Pipeline" not in result.output
+
+
+def test_all_dry_run_validates_original_freeze_indices_after_extraction(
+    tmp_path: Path,
+) -> None:
+    examples = Path(__file__).parents[1] / "examples"
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "all",
+            "-i", str(examples / "1.R.pdb"), str(examples / "3.P.pdb"),
+            "-o", str(tmp_path / "result"),
+            "-c", "320,321,322",
+            "-l", "GPP:-3,MG:2,SAM:1",
+            "-r", "1.6",
+            "--selected-resn", "186",
+            "--freeze-atoms", "4345,4385,4399,4422",
+            "--dry-run",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "--dry-run completed. Input command is valid." in result.output
+
+    scan_result = CliRunner().invoke(
+        root_cli,
+        [
+            "all",
+            "-i", str(examples / "1.R.pdb"),
+            "-o", str(tmp_path / "scan_result"),
+            "-c", "320,321,322",
+            "-l", "GPP:-3,MG:2,SAM:1",
+            "-r", "1.6",
+            "--selected-resn", "186",
+            "--scan-lists", "[(4345,4385,1.8)]",
+            "--dry-run",
+        ],
+    )
+
+    assert scan_result.exit_code == 0, scan_result.output
+    assert "--dry-run completed. Input command is valid." in scan_result.output

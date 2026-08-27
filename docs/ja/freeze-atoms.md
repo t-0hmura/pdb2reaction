@@ -23,6 +23,9 @@ XYZ/GJF 入力には `LKH` レコードがないため `--freeze-links` は無�
 
 カンマ区切りの **1 始まり** 原子インデックスで、任意の入力形式に適用できます。`--freeze-links` と併用すると和集合が凍結されます。
 
+活性部位抽出を伴う`all`では、CLIリストとYAML
+`geom.freeze_atoms`のどちらも**元のfull inputの原子順**で指定し、抽出後モデルへ自動変換されます。その他のコマンドでは、そのコマンドへ直接渡した構造の原子順を使います。
+
 ```bash
 pdb2reaction tsopt -i ts_candidate.xyz -q 0 -m 1 \
   --freeze-atoms '12,15,28,29,42'
@@ -85,7 +88,7 @@ JSON出力を有効にすると、`result.json["rigid_projection"]`にtreatment�
 ## よくある落とし穴
 
 - **`LKH/HL` レコードを手動削除した場合**: `--freeze-links` が凍結対象を見つけられません。`--freeze-atoms` で明示指定するか、`extract` を再実行してください。
-- **原子インデックスの再番号化**: `--freeze-atoms` と `geom.freeze_atoms` は 1 始まりで入力の原子順に依存します。再抽出で順序が変わったらインデックスを再生成してください。
+- **原子インデックスの再番号化**: `--freeze-atoms` と `geom.freeze_atoms` は1始まりで、対象となる入力の原子順に依存します。`all`は元のfull inputから抽出モデルへ変換しますが、抽出済みモデルを別コマンドへ直接渡す場合はそのモデルの原子順を使います。
 - **トポロジーなしの XYZ/GJF**: `LKH` レコードが無く `--freeze-links` は no-op です。`--ref-pdb FILE` または明示的な `--freeze-atoms` を使用してください。
 - **`--no-freeze-links` の使いどころ**: 自動凍結を切る診断目的のみ。本番のクラスターモデル実行では `--freeze-links` を有効のままにしてください。
 - **全原子を凍結した場合**: PHVAと IRC には少なくとも1個のactive atomが必要なため、明示的なエラーで停止します。checkを回避せず、freeze setを減らしてください。

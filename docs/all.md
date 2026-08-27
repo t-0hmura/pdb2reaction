@@ -208,7 +208,7 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | `--selected-resn TEXT` | Force-include using the same ID/name/chain-qualified selector forms as `--center`. | `""` |
 | `--modified-residue TEXT` | Comma-separated residue names to treat as amino acids. `NAME:charge` adds or overrides the nominal charge for this extraction; bare `NAME` defaults to 0. | `""` |
 | `--freeze-links / --no-freeze-links` | Freeze cap parents in active-site model PDBs. | `True` |
-| `--freeze-atoms TEXT` | Comma-separated 1-based indices frozen in every stage; indices refer to the extracted model. Merged with `--freeze-links` and YAML `geom.freeze_atoms`. | _None_ |
+| `--freeze-atoms TEXT` | Comma-separated 1-based indices frozen in every stage. With extraction, indices refer to the original full input and are mapped to the active-site model; without extraction, they refer to the current input. Merged with `--freeze-links` and YAML `geom.freeze_atoms`. | _None_ |
 
 Built-in amino-acid names follow force-field-normalized Amber/CHARMM
 conventions. Raw PDB CCD name collisions are not inferred automatically; use

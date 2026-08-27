@@ -734,6 +734,42 @@ def _read_full_atom_keys_in_file_order(full_pdb: Path) -> List[AtomKey]:
     return keys
 
 
+AtomIndexMapContext = Tuple[
+    List[AtomKey],
+    Dict[AtomKey, List[int]],
+    List[Dict[AtomKey, int]],
+]
+
+
+def _full_to_model_atom_index_context(
+    full_input_pdb: Path,
+    model_pdb: Path,
+) -> AtomIndexMapContext:
+    """Build the shared structural-key context for full-to-model index mapping."""
+    full_keys = _read_full_atom_keys_in_file_order(full_input_pdb)
+    return (
+        full_keys,
+        _model_key_to_index(model_pdb),
+        _build_variant_occurrence_table(full_keys),
+    )
+
+
+def _lookup_full_atom_index_in_model(
+    idx_one_based: int,
+    context: AtomIndexMapContext,
+) -> Optional[int]:
+    """Return a 1-based model index for one validated 1-based full-PDB index."""
+    full_keys, key_to_model_idx, variant_occ_table = context
+    key = full_keys[idx_one_based - 1]
+    variant_occ = variant_occ_table[idx_one_based - 1]
+    for variant in _key_variants(key):
+        occurrence = variant_occ.get(variant)
+        indices = key_to_model_idx.get(variant)
+        if occurrence is not None and indices and occurrence <= len(indices):
+            return indices[occurrence - 1]
+    return None
+
+
 def _format_atom_key_for_msg(key: AtomKey) -> str:
     """Pretty string for diagnostics."""
     chain, resn, resseq, icode, atom, alt = key
@@ -802,10 +838,8 @@ def _convert_scan_lists_to_model_indices(
         scan_lists_raw, atom_meta=full_atom_meta, one_based=one_based
     )
 
-    orig_keys_in_order = _read_full_atom_keys_in_file_order(full_input_pdb)
-    key_to_model_idx = _model_key_to_index(model_pdb)
-    variant_occ_table = _build_variant_occurrence_table(orig_keys_in_order)
-
+    mapping_context = _full_to_model_atom_index_context(full_input_pdb, model_pdb)
+    orig_keys_in_order = mapping_context[0]
     n_atoms_full = len(orig_keys_in_order)
 
     def _map_full_index_to_model(idx_one_based: int, stage_idx: int, tuple_idx: int, side_label: str) -> int:
@@ -815,15 +849,9 @@ def _convert_scan_lists_to_model_indices(
         and use the atom index (occurrence count) when multiple atoms share a structural key.
         """
         key = orig_keys_in_order[idx_one_based - 1]
-
-        variant_occ = variant_occ_table[idx_one_based - 1]
-        for variant in _key_variants(key):
-            occurrence = variant_occ.get(variant)
-            indices = key_to_model_idx.get(variant)
-            if occurrence is None or not indices:
-                continue
-            if occurrence <= len(indices):
-                return indices[occurrence - 1]
+        mapped = _lookup_full_atom_index_in_model(idx_one_based, mapping_context)
+        if mapped is not None:
+            return mapped
 
         msg_key = _format_atom_key_for_msg(key)
         raise click.BadParameter(
@@ -853,6 +881,44 @@ def _convert_scan_lists_to_model_indices(
             stage_converted.append((pi, pj, target))
         converted.append(stage_converted)
     return converted
+
+
+def _convert_freeze_atoms_to_model_indices(
+    freeze_atoms: Sequence[int],
+    full_input_pdb: Path,
+    model_pdb: Path,
+) -> List[int]:
+    """Map explicit 0-based full-input freezes to 0-based extracted-model indices."""
+    if not freeze_atoms:
+        return []
+
+    mapping_context = _full_to_model_atom_index_context(full_input_pdb, model_pdb)
+    full_keys = mapping_context[0]
+    n_atoms_full = len(full_keys)
+    converted: List[int] = []
+    for position, raw_index in enumerate(freeze_atoms, start=1):
+        idx_zero_based = int(raw_index)
+        idx_one_based = idx_zero_based + 1
+        if idx_zero_based < 0 or idx_one_based > n_atoms_full:
+            raise click.BadParameter(
+                "--freeze-atoms / YAML geom.freeze_atoms entry "
+                f"#{position} references atom index {idx_one_based}, outside the "
+                f"original input atom count ({n_atoms_full})."
+            )
+        mapped_one_based = _lookup_full_atom_index_in_model(
+            idx_one_based, mapping_context
+        )
+        if mapped_one_based is None:
+            key = full_keys[idx_zero_based]
+            raise click.BadParameter(
+                "--freeze-atoms / YAML geom.freeze_atoms entry "
+                f"#{position} references atom index {idx_one_based} "
+                f"(key {_format_atom_key_for_msg(key)}) which is not present in "
+                "the active site model after extraction. Increase extraction "
+                "coverage or choose an atom that survives extraction."
+            )
+        converted.append(mapped_one_based - 1)
+    return sorted(set(converted))
 
 
 def _pdb_needs_elem_fix(p: Path) -> bool:
@@ -885,8 +951,9 @@ def _set_yaml_freeze_atoms(
     """Cache the explicit freeze_atoms set for merging with freeze-links.
 
     ``--freeze-atoms`` is the CLI spelling of ``geom.freeze_atoms``: both are
-    1-based, both feed the same cache, and the two lists are merged (not
-    replaced) exactly as they are in every single-stage subcommand.
+    1-based and the two lists are merged, not replaced.  The cache is initially
+    relative to the full input and is remapped once after ``all`` extracts the
+    active site model; without extraction it already matches the child input.
     """
     global _FREEZE_ATOMS_YAML
     geom_cfg = yaml_cfg.get("geom") if isinstance(yaml_cfg, dict) else None
@@ -3626,7 +3693,9 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     show_default=False,
     help=(
         "Comma-separated 1-based atom indices to freeze in every stage "
-        "(e.g., '1,3,5'); indices refer to the extracted model. "
+        "(e.g., '1,3,5'). With extraction, indices refer to the original full "
+        "input and are mapped to the active site model; otherwise they refer "
+        "to the current input. "
         "Merged with --freeze-links and YAML geom.freeze_atoms."
     ),
 )
@@ -4358,6 +4427,7 @@ def cli(
 
     args_yaml = config_yaml
     merged_yaml_cfg = load_yaml_dict(config_yaml) if config_yaml is not None else {}
+    _set_yaml_freeze_atoms(merged_yaml_cfg, freeze_atoms_text)
     if dry_run:
         apply_yaml_overrides(
             merged_yaml_cfg,
@@ -4787,6 +4857,21 @@ def cli(
                 raise
             except Exception as e:
                 raise click.ClickException(f"[all] --dry-run extract pre-check failed: {e}")
+            if _FREEZE_ATOMS_YAML:
+                _convert_freeze_atoms_to_model_indices(
+                    _FREEZE_ATOMS_YAML,
+                    _first_in,
+                    _dry_out,
+                )
+            if has_scan:
+                _convert_scan_lists_to_model_indices(
+                    scan_lists_raw,
+                    _first_in,
+                    _dry_out,
+                    one_based=(
+                        True if scan_one_based is None else bool(scan_one_based)
+                    ),
+                )
             _cs = _ex.get("charge_summary", {}) if isinstance(_ex, dict) else {}
             _q_total_raw = _cs.get("total_charge", None)
             if _q_total_raw is None:
@@ -4849,7 +4934,6 @@ def cli(
         return
 
     yaml_cfg = load_yaml_dict(args_yaml)
-    _set_yaml_freeze_atoms(yaml_cfg, freeze_atoms_text)
 
     skip_extract = center_spec is None or str(center_spec).strip() == ""
     first_input = input_paths[0].resolve() if input_paths else None
@@ -5158,6 +5242,17 @@ def cli(
 
     _validate_path = model_outputs[0] if model_outputs else input_paths[0]
     validate_charge_spin_at_path(_validate_path, q_int, spin)
+
+    if not skip_extract and model_outputs and _FREEZE_ATOMS_YAML:
+        _FREEZE_ATOMS_YAML = _convert_freeze_atoms_to_model_indices(
+            _FREEZE_ATOMS_YAML,
+            Path(input_paths[0]).resolve(),
+            Path(model_outputs[0]).resolve(),
+        )
+        _echo_detail(
+            "[all] Remapped explicit freeze atom indices from the full input "
+            "to the active site model ordering."
+        )
 
     freeze_ref: Optional[Path] = None
     if freeze_links_flag:

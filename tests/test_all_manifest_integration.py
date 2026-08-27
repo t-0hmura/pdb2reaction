@@ -34,6 +34,63 @@ def test_stopped_ts_summary_reuses_the_final_citation_payload() -> None:
     assert "summary_payload.update(_all_method_citation_payload())" in stopped_writer
 
 
+def test_all_extraction_remaps_original_freeze_indices_before_path_search(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    examples = Path(__file__).parents[1] / "examples"
+    reactant = examples / "1.R.pdb"
+    product = examples / "3.P.pdb"
+    caller_config = tmp_path / "config.yaml"
+    caller_config.write_text(
+        "geom:\n  freeze_atoms: [4345]\n",
+        encoding="utf-8",
+    )
+    captured: dict[str, object] = {}
+
+    def capture_child(name, _cli, args, **_kwargs) -> None:
+        assert name == "path_search"
+        config = Path(args[args.index("--config") + 1])
+        captured["config"] = all_workflow.yaml.safe_load(
+            config.read_text(encoding="utf-8")
+        )
+        captured["inputs"] = [
+            Path(args[index + 1])
+            for index, token in enumerate(args)
+            if token == "-i"
+        ]
+        raise RuntimeError("stop after mapped child config capture")
+
+    monkeypatch.setattr(all_workflow, "_run_cli_main", capture_child)
+    result = CliRunner().invoke(
+        all_workflow.cli,
+        [
+            "-i", str(reactant), "-i", str(product),
+            "-b", "uma",
+            "-o", str(tmp_path / "result"),
+            "-c", "320,321,322",
+            "-l", "GPP:-3,MG:2,SAM:1",
+            "-r", "1.6",
+            "--selected-resn", "186",
+            "--config", str(caller_config),
+            "--freeze-atoms", "4385,4399,4422",
+            "--refine-path", "true",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert isinstance(result.exception, RuntimeError)
+    assert str(result.exception) == "stop after mapped child config capture"
+    child_freezes = captured["config"]["geom"]["freeze_atoms"]
+    assert {47, 87, 101, 124} <= set(child_freezes)
+    assert len(captured["inputs"]) == 2
+    assert all(path.name.startswith("model_") for path in captured["inputs"])
+    model_atom_count = sum(
+        line.startswith(("ATOM", "HETATM"))
+        for line in captured["inputs"][0].read_text(encoding="utf-8").splitlines()
+    )
+    assert all(1 <= index <= model_atom_count for index in child_freezes)
+
+
 def _replace_bytes(path: Path, payload: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.parent / f".{path.name}.next"

@@ -98,9 +98,12 @@ Options:
                                   (PDB/mmCIF input or XYZ/GJF with --ref-pdb).
                                   [default: True]
   --freeze-atoms TEXT             Comma-separated 1-based atom indices to freeze
-                                  in every stage (e.g., '1,3,5'); indices refer
-                                  to the extracted model. Merged with --freeze-
-                                  links and YAML geom.freeze_atoms.
+                                  in every stage (e.g., '1,3,5'). With
+                                  extraction, indices refer to the original full
+                                  input and are mapped to the active site model;
+                                  otherwise they refer to the current input.
+                                  Merged with --freeze-links and YAML
+                                  geom.freeze_atoms.
   --mep-mode [gsm|dmf]            MEP optimizer: Growing String Method (gsm) or
                                   Direct Max Flux (dmf).  [default: gsm]
   --dmf-backend [cpu|gpu]         DMF compute backend (--mep-mode dmf only): gpu
