@@ -11,6 +11,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 - Label the Colab advanced-control disclosure as `Show All options`.
+- Load an existing Colab-workspace file through the validated input queue and
+  restore `./result_all/` whenever a built-in example is loaded.
 - Show machine-readable workflow warnings above Colab result tables while
   keeping Run details limited to execution metadata.
 - Keep the complete MEP summary visible at default pipeline verbosity,
@@ -28,9 +30,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
   while excluding it from energy baselines, interpolation, and plots.
 - Raise the scan2d colored base surface 0.005 kcal/mol above the scene floor,
   keeping explicit contour lines at +0.01 kcal/mol to avoid WebGL z-fighting.
-- Compact the Colab run/output and Results status surfaces, refresh the output
-  default when the displayed structure changes, enlarge scan-grid pick markers,
-  and hide the scan3d color scale.
+- Compact the Colab run/output and Results status surfaces and enlarge
+  scan-grid pick markers while retaining the scan3d color scale.
 - Activate the Colab Results tab before rendering completed results, keep
   energy/MEP/IRC and imaginary-frequency selectors reusable, and reserve plot
   space for MEP/IRC labels.
