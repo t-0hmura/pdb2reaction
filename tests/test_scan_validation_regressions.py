@@ -178,6 +178,8 @@ def test_scan_html_plots_are_responsive_and_scan2d_keeps_native_projection() -> 
     scan3d_source = inspect.getsource(scan3d)
 
     assert "plane_proj = go.Surface" in scan2d_source
+    assert "plane_z = z_bottom + 0.005" in scan2d_source
+    assert "z=np.full_like(ZI, plane_z)" in scan2d_source
     assert "bottom_contours = go.Scatter3d" in scan2d_source
     assert "contour_z = z_bottom + 0.01" in scan2d_source
     assert "go.Figure(data=[surface3d, plane_proj, bottom_contours])" in scan2d_source
