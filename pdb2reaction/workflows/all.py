@@ -11,6 +11,7 @@ import gc
 import json
 import torch
 import logging
+import shlex
 import signal
 import sys
 import tempfile
@@ -4336,7 +4337,7 @@ def cli(
     _FREEZE_ATOMS_GLOBAL = None
     _FREEZE_ATOMS_YAML = None
     set_convert_file_enabled(convert_files)
-    command_str = "pdb2reaction " + " ".join(argv_all)
+    command_str = shlex.join(["pdb2reaction", *map(str, argv_all)])
     time_start = time.perf_counter()
     energy_diagrams: List[Dict[str, Any]] = []
 
@@ -7302,8 +7303,8 @@ def cli(
                 f"Failed to relocate path_search summary files: {e}"
             ) from e
 
-    # Stage 3: merge to full systems (performed by path_search when enabled)
-    _echo_section(f"====== [all] Stage 3/{stage_total} — Merge into full-system templates ======")
+    # Stage 3: publish the core MEP products assembled by path_search.
+    _echo_section(f"====== [all] Stage 3/{stage_total} — Core MEP outputs ======")
     if refine_path and gave_ref_pdb:
         merged_suffix = _public_merged_coordinate_suffix(user_input_paths)
         _echo_detail(
@@ -7332,7 +7333,7 @@ def cli(
     _echo_detail(
         "  - energy_diagram_MEP.png / energy_diagram.* (MEP energy plot)"
     )
-    _echo_section("====== [all] Pipeline (core path) successfully finished ======")
+    _echo_section("====== [all] Core MEP pipeline finished ======")
 
     summary_path = manifest.path("path.summary")
     try:

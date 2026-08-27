@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import shlex
+
 import click
 import pytest
 
@@ -72,6 +74,16 @@ def test_dry_run_detection_covers_legacy_boolean_forms(
     from pdb2reaction.cli.app import _requests_dry_run
 
     assert _requests_dry_run(argv) is expected
+
+
+def test_command_log_is_shell_safe() -> None:
+    from pdb2reaction.cli.app import _quoted_argv
+
+    argv = ["pdb2reaction", "all", "-o", "result_scan2d(1)", "--label", "$x y"]
+    rendered = _quoted_argv(argv)
+
+    assert shlex.split(rendered) == argv
+    assert "'result_scan2d(1)'" in rendered
 
 
 @pytest.mark.parametrize("dry_run", [True, False])

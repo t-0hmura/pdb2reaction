@@ -167,6 +167,15 @@ def test_serializer_roundtrip_and_additive_only(tmp_path: Path) -> None:
     assert isinstance(r["status"], str) and r["status"] == "completed"
 
 
+def test_all_mep_completion_banner_does_not_prejudge_status() -> None:
+    from pdb2reaction.workflows import all as all_workflow
+
+    source = Path(all_workflow.__file__).read_text(encoding="utf-8")
+    assert "Stage 3/{stage_total} — Core MEP outputs" in source
+    assert "Core MEP pipeline finished ======" in source
+    assert "Pipeline (core path) successfully finished" not in source
+
+
 def test_unknown_execution_fails_closed_and_is_not_seed_eligible() -> None:
     leaf = make_leaf(
         "scan", "stage_1", executed=None, converged=True, artifacts=("result.xyz",)

@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Callable
 
 import logging
+import shlex
 import sys
 import textwrap
 import tempfile
@@ -2165,7 +2166,7 @@ def cli(
     prepared_auxiliary: List[PreparedInputStructure] = []
     global _PRIMARY_GJF_TEMPLATE
     _PRIMARY_GJF_TEMPLATE = None
-    command_str = "pdb2reaction " + " ".join(argv_all)
+    command_str = shlex.join(["pdb2reaction", *map(str, argv_all)])
     # Robustly accept both styles for -i/--input, --ref-full-pdb, and --ref-pdb
     i_vals = collect_option_values(argv_all, ("-i", "--input"))
     if i_vals:
@@ -2913,27 +2914,36 @@ def cli(
 
         emit("[overall] Covalent-bond changes between first and last image:", narrative=True)
         if overall_changed is None:
-            click.echo("  (covalent-bond change detection unavailable)")
+            emit("  (covalent-bond change detection unavailable)", narrative=True)
         elif overall_changed and overall_summary.strip():
-            click.echo(textwrap.indent(overall_summary.strip(), prefix="  "))
+            emit(textwrap.indent(overall_summary.strip(), prefix="  "), narrative=True)
         else:
-            click.echo("  (no covalent changes detected)")
+            emit("  (no covalent changes detected)", narrative=True)
 
         if combined_all.segments:
             emit("[segments] Along the final MEP order (ΔE‡, ΔE). Bridges are shown between connected segments:", narrative=True)
             for i, seg in enumerate(combined_all.segments, 1):
                 kind_label = seg.kind.upper()
                 if seg.kind == "kink":
-                    click.echo(
+                    emit(
                         f"  [{i:02d}] ({kind_label}) {seg.tag}  |  "
-                        f"non-MEP connector, ΔE = {seg.delta_kcal:.2f} kcal/mol"
+                        f"non-MEP connector, ΔE = {seg.delta_kcal:.2f} kcal/mol",
+                        narrative=True,
                     )
                 else:
-                    click.echo(f"  [{i:02d}] ({kind_label}) {seg.tag}  |  ΔE‡ = {seg.barrier_kcal:.2f} kcal/mol,  ΔE = {seg.delta_kcal:.2f} kcal/mol")
+                    emit(
+                        f"  [{i:02d}] ({kind_label}) {seg.tag}  |  "
+                        f"ΔE‡ = {seg.barrier_kcal:.2f} kcal/mol,  "
+                        f"ΔE = {seg.delta_kcal:.2f} kcal/mol",
+                        narrative=True,
+                    )
                 if seg.kind != "bridge" and seg.summary.strip():
-                    click.echo(textwrap.indent(seg.summary.strip(), prefix="      "))
+                    emit(
+                        textwrap.indent(seg.summary.strip(), prefix="      "),
+                        narrative=True,
+                    )
         else:
-            click.echo("[segments] (no segment reports)")
+            emit("[segments] (no segment reports)", narrative=True)
 
         emit("====== MEP summary finished ======\n", narrative=True)
 
