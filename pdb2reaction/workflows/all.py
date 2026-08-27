@@ -262,8 +262,8 @@ def _emit_final_summary(
     (status, highest local barrier, reactive-segment count, output dir) so
     the user sees them at the bottom of the log without scrolling back
     through `[diagram] Wrote ...` / `[time] Elapsed Time for X:` clutter.
-    A dry run ends with validation status plus elapsed time; other calls end
-    with the whole-pipeline elapsed line.
+    A dry run ends with validation status only; other calls end with the
+    whole-pipeline elapsed line.
     """
     summary: Dict[str, Any] = {}
     if out_dir is not None:
@@ -334,8 +334,7 @@ def _emit_final_summary(
     if citation_payload:
         emit_method_citations(citation_payload)
     footer = (
-        "Dry run complete. Input commands are valid. (%s)"
-        % format_elapsed("Elapsed time", time_start)
+        "Dry run complete. Input commands are valid."
         if dry_run
         else format_elapsed("[time] Elapsed Time for Whole Pipeline", time_start)
     )
