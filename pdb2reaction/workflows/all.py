@@ -253,15 +253,17 @@ def _emit_final_summary(
     time_start: float,
     manifest: Optional[InvocationManifest] = None,
     citation_payload: Optional[Dict[str, Any]] = None,
+    *,
+    dry_run: bool = False,
 ) -> None:
-    """Print a visual `====== Pipeline summary ======` block + Elapsed line.
+    """Print a pipeline summary followed by its execution-specific footer.
 
     Reads ``summary.json`` if present and lifts the most-asked-for numbers
     (status, highest local barrier, reactive-segment count, output dir) so
     the user sees them at the bottom of the log without scrolling back
     through `[diagram] Wrote ...` / `[time] Elapsed Time for X:` clutter.
-    Falls back to just the Elapsed line when summary.json is absent
-    (dry-run, early failure, TSOPT-only without aggregation).
+    A dry run ends with validation status plus elapsed time; other calls end
+    with the whole-pipeline elapsed line.
     """
     summary: Dict[str, Any] = {}
     if out_dir is not None:
@@ -331,10 +333,13 @@ def _emit_final_summary(
         _echo(narrative=True)
     if citation_payload:
         emit_method_citations(citation_payload)
-    _echo(
-        format_elapsed("[time] Elapsed Time for Whole Pipeline", time_start),
-        narrative=True,
+    footer = (
+        "Dry run complete. Input commands are valid. (%s)"
+        % format_elapsed("Elapsed time", time_start)
+        if dry_run
+        else format_elapsed("[time] Elapsed Time for Whole Pipeline", time_start)
     )
+    _echo(footer, narrative=True)
 
 
 from pdb2reaction.workflows import scan as _scan_cli
@@ -4837,7 +4842,7 @@ def cli(
             ) + ".",
             narrative=True,
         )
-        _emit_final_summary(out_dir, time_start, session.manifest)
+        _emit_final_summary(out_dir, time_start, session.manifest, dry_run=True)
         return
 
     yaml_cfg = load_yaml_dict(args_yaml)
