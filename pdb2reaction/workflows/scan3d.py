@@ -47,6 +47,7 @@ from pdb2reaction.backends import create_calculator
 from pdb2reaction.workflows.restraints import HarmonicBiasCalculator
 from pdb2reaction.workflows._outcomes import (
     attach_outcomes,
+    is_preoptimization_record,
     make_scan_point,
     optimizer_converged_bit,
     scan_scientific_status,
@@ -877,17 +878,19 @@ def cli(
         d2_label_html = axis_label_html(d2_label_csv) if d2_label_csv else "d2 (Å)"
         d3_label_html = axis_label_html(d3_label_csv) if d3_label_csv else "d3 (Å)"
 
+        _grid_rows3 = pd.Series(
+            [
+                not is_preoptimization_record(record)
+                for record in df.to_dict(orient="records")
+            ],
+            index=df.index,
+        )
         modern_surface = "bias_converged" in df.columns
         if modern_surface:
             _eligible_rows3 = df["bias_converged"].map(
                 lambda value: value is True
                 or str(value).strip().lower() == "true"
             )
-            if "is_preopt" in df.columns:
-                _eligible_rows3 &= ~df["is_preopt"].map(
-                    lambda value: value is True
-                    or str(value).strip().lower() == "true"
-                )
             if csv_path is None and "artifact_written" in df.columns:
                 _eligible_rows3 &= df["artifact_written"].map(
                     lambda value: value is True
@@ -897,6 +900,7 @@ def cli(
             # Legacy CSVs have no convergence provenance; retain their
             # established finite-row plotting behavior.
             _eligible_rows3 = pd.Series(True, index=df.index)
+        _eligible_rows3 &= _grid_rows3
 
         if "energy_hartree" in df.columns:
             _eligible_rows3 &= np.isfinite(
@@ -1203,17 +1207,7 @@ def cli(
             else:
                 min_energy = None
 
-            if "is_preopt" in df.columns:
-                _grid_row_count3 = int(
-                    np.count_nonzero(
-                        ~df["is_preopt"].map(
-                            lambda value: str(value).strip().lower()
-                            in {"1", "true", "yes"}
-                        ).to_numpy(dtype=bool)
-                    )
-                )
-            else:
-                _grid_row_count3 = int(len(df))
+            _grid_row_count3 = int(np.count_nonzero(_grid_rows3))
 
             result_data: Dict[str, Any] = {
                 "status": "completed",

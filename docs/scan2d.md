@@ -62,9 +62,10 @@ see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
     run an unbiased preoptimization when `--preopt`. If `-q` is omitted but
     `--ligand-charge/-l` is provided, the structure is treated as an enzyme–substrate
     complex and `extract.py`’s charge summary derives the total charge before the
-    scan (for PDB/mmCIF inputs, or XYZ/GJF when `--ref-pdb` is supplied). The preoptimized
-    structure is saved under `grid/preopt_iDDD_jDDD.*` and its unbiased energy is
-    stored in `surface.csv` with indices `i = j = -1`.
+    scan (for PDB/mmCIF inputs, or XYZ/GJF when `--ref-pdb` is supplied). The
+    starting structure (preoptimized when enabled) is saved under
+    `grid/preopt_iDDD_jDDD.*`; its unbiased energy is always stored in
+    `surface.csv` with indices `i = j = -1`.
 2. Parse targets from `--scan-lists/-s` (YAML/JSON file or inline literal) into two quadruples, normalize indices
     (1-based by default). For PDB/mmCIF topology inputs, each atom entry can be an integer index
     or a selector string like `'TYR,285,CA'`; delimiters may be spaces, commas,
@@ -88,7 +89,9 @@ see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
     per-outer-step inner trajectories are saved as `inner_path_d1_###_trj.xyz`
     when `--dump` (`###` is the outer step index).
 5. After all points are visited, write `<out-dir>/surface.csv` with columns
-    `i,j,d1_A,d2_A,energy_hartree,bias_converged,is_preopt,energy_kcal,d1_label,d2_label`. An optional reference row has `i = j = -1` and `is_preopt = true`. Shift the kcal
+    `i,j,d1_A,d2_A,energy_hartree,bias_converged,is_preopt,energy_kcal,d1_label,d2_label`.
+    The reference row always has `i = j = -1` and `is_preopt = true`; it remains
+    in the table but is excluded from the baseline, interpolation, and plots. Shift the kcal
     reference via `--baseline {min|first}`. With `--baseline first`, the reference
     is the first usable grid entry (`i = j = 0` after reordering), not necessarily
     `(low₁, low₂)`; if that point is unusable, the usable minimum is used.
@@ -113,7 +116,7 @@ out_dir/ (default:./result_scan2d/)
 ├─ grid/point_iDDD_jDDD.pdb # PDB companions when conversion is enabled and templates exist
 ├─ grid/point_iDDD_jDDD.cif # Bridge-input companions with original IDs
 ├─ grid/point_iDDD_jDDD.gjf # Gaussian companions when templates exist and conversion is enabled
-├─ grid/preopt_iDDD_jDDD.xyz # Starting structure (present when --preopt is True), DDD = round(d × 100)
+├─ grid/preopt_iDDD_jDDD.xyz # Starting structure (preoptimized when enabled), DDD = round(d × 100)
 ├─ grid/preopt_iDDD_jDDD.pdb # PDB companion when conversion is enabled
 ├─ grid/preopt_iDDD_jDDD.cif # Bridge-input companion
 ├─ grid/preopt_iDDD_jDDD.gjf # Gaussian companion when templates exist and conversion is enabled

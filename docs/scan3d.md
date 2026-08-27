@@ -74,14 +74,16 @@ pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 -o ./
     geometry and convergence flag.
 6. After the scan completes, assemble `surface.csv` (columns:
     `i,j,k,d1_A,d2_A,d3_A,energy_hartree,bias_converged,is_preopt,energy_kcal,d1_label,d2_label,d3_label`),
+    retaining the starting/preoptimized reference as `i = j = k = -1`,
     apply the kcal/mol baseline shift (`--baseline {min|first}`), and generate a
     3D RBF-interpolated isosurface plot (`scan3d_density.html`) honoring
     `--zmin/--zmax`. When `--csv` is provided, only this plotting step runs.
 
 Plot-only input requires `d1_A`, `d2_A`, `d3_A`, and either
-`energy_hartree` or `energy_kcal`. Rows marked `is_preopt=true`, explicitly
+`energy_hartree` or `energy_kcal`. The `-1` reference remains in the table but
+is excluded from the baseline and plot. Rows marked `is_preopt=true`, explicitly
 unconverged rows, and non-finite rows are excluded; older CSVs without
-provenance are accepted. Interpolation requires at least four
+provenance are accepted, with all-minus-one index rows also treated as references. Interpolation requires at least four
 unique non-coplanar usable points spanning all three axes.
 
 ## Outputs
@@ -94,7 +96,7 @@ selecting a corresponding structure.
 
 ```
 out_dir/ (default:./result_scan3d/)
-├─ surface.csv # Grid metadata; may include a reference row (i=j=k=-1)
+├─ surface.csv # Grid metadata including the reference row (i=j=k=-1)
 ├─ scan3d_density.html # 3D energy isosurface visualization (you can open it with a web browser)
 ├─ grid/point_i###_j###_k###.xyz # Relaxed geometry for each grid point (Å×100 tags)
 ├─ grid/point_i###_j###_k###.pdb # PDB companions when conversion is enabled and templates exist

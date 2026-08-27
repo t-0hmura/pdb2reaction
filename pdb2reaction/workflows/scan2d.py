@@ -639,6 +639,7 @@ def cli(
             # each entry is (d1_A, d2_A, geometry_snapshot)
             visited_geoms: List[Tuple[float, float, Any]] = []
 
+            _preopt_conv: Optional[bool] = None
             if preopt:
                 click.echo("[preopt] Unbiased relaxation of the initial structure ...")
                 preopt_start = _snapshot_geometry(geom_outer)
@@ -654,7 +655,6 @@ def cli(
                     out_dir=tmp_opt_dir,
                     prefix="preopt",
                 )
-                _preopt_conv: Optional[bool] = None
                 try:
                     optimizer0.run()
                     _preopt_conv = optimizer_converged_bit(optimizer0)
@@ -668,21 +668,27 @@ def cli(
                 if _preopt_conv is not True:
                     geom_outer = _snapshot_geometry(preopt_start)
 
-                # Measure optimized distances and record preopt structure
+            # Always retain the starting reference as the -1 table row.  With
+            # --preopt it is the accepted preoptimized geometry; otherwise it
+            # is the unchanged input geometry.  It initializes the scan but is
+            # never a PES/interpolation point.
+            try:
+                coords_outer = np.asarray(getattr(geom_outer, "coords3d"), dtype=float)
+                d1_ref = distance_A_from_coords(coords_outer, i1, j1)
+                d2_ref = distance_A_from_coords(coords_outer, i2, j2)
+
+                d1_tag = distance_tag(d1_ref)
+                d2_tag = distance_tag(d2_ref)
+
+                preopt_xyz_path = grid_dir / f"preopt_i{d1_tag}_j{d2_tag}.xyz"
+                preopt_artifact_written = False
                 try:
-                    coords_outer = np.asarray(getattr(geom_outer, "coords3d"), dtype=float)
-                    d1_ref = distance_A_from_coords(coords_outer, i1, j1)
-                    d2_ref = distance_A_from_coords(coords_outer, i2, j2)
-
-                    d1_tag = distance_tag(d1_ref)
-                    d2_tag = distance_tag(d2_ref)
-
-                    preopt_xyz_path = grid_dir / f"preopt_i{d1_tag}_j{d2_tag}.xyz"
                     s = geom_outer.as_xyz()
                     if not s.endswith("\n"):
                         s += "\n"
                     with open(preopt_xyz_path, "w") as f:
                         f.write(s)
+                    preopt_artifact_written = True
 
                     convert_xyz_like_outputs(
                         preopt_xyz_path,
@@ -692,36 +698,55 @@ def cli(
                         out_gjf_path=grid_dir / f"preopt_i{d1_tag}_j{d2_tag}.gjf",
                         context=f"'{preopt_xyz_path.name}' to PDB/CIF/GJF",
                     )
-
-                    E_pre_h = unbiased_energy_hartree(geom_outer, base_calc)
-                    records.append(
-                        {
-                            "i": int(-1),
-                            "j": int(-1),
-                            "d1_A": float(d1_ref),
-                            "d2_A": float(d2_ref),
-                            "energy_hartree": E_pre_h,
-                            "bias_converged": _preopt_conv,
-                            "artifact_written": True,
-                            "is_preopt": True,
-                        }
-                    )
-                    # Store preoptimized geometry as a candidate for nearest-start
-                    # ONLY when the preopt explicitly converged; a nonconverged
-                    # preopt must never steer later grid points as a seed.
-                    if _preopt_conv is True:
-                        visited_geoms.append(
-                            (float(d1_ref), float(d2_ref), _snapshot_geometry(geom_outer))
-                        )
-
-                    click.echo(
-                        f"[preopt] Recorded preoptimized structure at d1={d1_ref:.3f} Å, d2={d2_ref:.3f} Å."
-                    )
                 except Exception as e:
                     click.echo(
-                        f"[preopt] WARNING: failed to record preoptimized structure: {e}",
+                        f"[reference] WARNING: failed to write or convert "
+                        f"'{preopt_xyz_path.name}': {e}",
                         err=True,
                     )
+
+                try:
+                    E_pre_h = unbiased_energy_hartree(geom_outer, base_calc)
+                except Exception as e:
+                    click.echo(
+                        f"[reference] WARNING: failed to evaluate the unbiased "
+                        f"reference energy: {e}",
+                        err=True,
+                    )
+                    E_pre_h = float("nan")
+
+                records.append(
+                    {
+                        "i": -1,
+                        "j": -1,
+                        "d1_A": float(d1_ref),
+                        "d2_A": float(d2_ref),
+                        "energy_hartree": E_pre_h,
+                        "bias_converged": _preopt_conv,
+                        "artifact_written": preopt_artifact_written,
+                        "is_preopt": True,
+                    }
+                )
+                # Only an explicitly converged preoptimization may steer later
+                # points through nearest-start selection.
+                if _preopt_conv is True:
+                    visited_geoms.append(
+                        (float(d1_ref), float(d2_ref), _snapshot_geometry(geom_outer))
+                    )
+
+                reference_kind = (
+                    "preoptimized" if _preopt_conv is True else "initial"
+                )
+                click.echo(
+                    f"[reference] Recorded {reference_kind} structure at "
+                    f"d1={d1_ref:.3f} Å, d2={d2_ref:.3f} Å."
+                )
+            except Exception as e:
+                click.echo(
+                    f"[reference] WARNING: failed to record the starting "
+                    f"structure: {e}",
+                    err=True,
+                )
 
             max_step_bohr = float(max_step_size) * ANG2BOHR
 

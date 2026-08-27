@@ -58,11 +58,11 @@ YAML/JSON ファイル書式、インライン Python リテラル構文、原�
 
 ## 処理の流れ
 
-1. `geom_loader` で入力構造をロードし、電荷とスピンを解決します。`--preopt` の場合は無バイアスの事前最適化を実行します。`-q` が省略され `--ligand-charge` がある場合、構造は酵素--基質複合体として扱われ、PDB/mmCIF 入力（または `--ref-pdb` 付き XYZ/GJF）では `extract.py` の電荷サマリーから総電荷を導出します。事前最適化構造は `grid/preopt_iDDD_jDDD.*`（`DDD = round(d × 100)` Å）に保存され、`surface.csv` には `i = j = -1` のエントリとしてバイアスなしエネルギーが記録されます。
+1. `geom_loader` で入力構造をロードし、電荷とスピンを解決します。`--preopt` の場合は無バイアスの事前最適化を実行します。`-q` が省略され `--ligand-charge` がある場合、構造は酵素--基質複合体として扱われ、PDB/mmCIF 入力（または `--ref-pdb` 付き XYZ/GJF）では `extract.py` の電荷サマリーから総電荷を導出します。開始構造（有効時は事前最適化後）は `grid/preopt_iDDD_jDDD.*`（`DDD = round(d × 100)` Å）に保存され、`surface.csv` には常に `i = j = -1` のエントリとしてバイアスなしエネルギーが記録されます。
 2. `-s/--scan-lists`を2つの4要素tupleへ解析します。3-field selectorは順不同で、重複する残基名／番号には位置固定`CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`を使います。線形gridは`ceil(|high − low| / h) + 1`点（両端を含む）です。
 3. 外側ループで `d1[i]`（近い順）を走査します。各値で **d₁ 拘束のみ**を適用して緩和し、その構造をスナップショットとして保存します。次に内側ループで `d2[j]` を走査し、**d₁ と d₂ の両拘束**を適用して、最も近い既収束構造から緩和を開始します。
 4. 各 `(i, j)` について、`<out-dir>/grid/point_iDDD_jDDD.xyz`（`DDD = round(d × 100)` Å。例 `d1=1.30 Å, d2=3.10 Å` → `point_i130_j310.xyz`）に構造を保存し、バイアス収束の可否を記録し、バイアスを除去した MLIP エネルギーを評価します。丸め後のタグが別の点と重なる場合、後のファイル名には 0 始まりの格子 index `_grid_III_JJJ` が付きます。`--dump` の場合、外側ループごとの内側軌跡が `inner_path_d1_###_trj.xyz`（`###` は外側ステップ index）として保存されます。
-5. すべての点を走査したら、`i,j,d1_A,d2_A,energy_hartree,bias_converged,is_preopt,energy_kcal,d1_label,d2_label` の列を持つ `<out-dir>/surface.csv` を作成します。任意の参照行は `i = j = -1`、`is_preopt = true` です。`--baseline {min|first}` で kcal/mol の基準をシフトします。`--baseline first` は再並べ替え後の最初の eligible 格子点（`i = j = 0`）を使い、その点が対象外なら eligible point の最小値へ fallback します。eligible point が少なくとも 3 つあり、重複せず非共線の場合だけ、`scan2d_map.png`（2D contour）と `scan2d_landscape.html`（3D surface）を生成します。条件を満たさない場合も `surface.csv` は残り、plot は生成せず正常に扱います。`--zmin/--zmax` でカラースケールを固定できます。
+5. すべての点を走査したら、`i,j,d1_A,d2_A,energy_hartree,bias_converged,is_preopt,energy_kcal,d1_label,d2_label` の列を持つ `<out-dir>/surface.csv` を作成します。参照行は常に `i = j = -1`、`is_preopt = true` として表に残しますが、基準エネルギー、補間、plot からは除外します。`--baseline {min|first}` で kcal/mol の基準をシフトします。`--baseline first` は再並べ替え後の最初の eligible 格子点（`i = j = 0`）を使い、その点が対象外なら eligible point の最小値へ fallback します。eligible point が少なくとも 3 つあり、重複せず非共線の場合だけ、`scan2d_map.png`（2D contour）と `scan2d_landscape.html`（3D surface）を生成します。条件を満たさない場合も `surface.csv` は残り、plot は生成せず正常に扱います。`--zmin/--zmax` でカラースケールを固定できます。
 
 ## 出力
 
@@ -81,7 +81,7 @@ out_dir/ (デフォルト:./result_scan2d/)
 ├─ grid/point_iDDD_jDDD.pdb # 変換有効時に対応する PDB
 ├─ grid/point_iDDD_jDDD.cif # bridge入力。元IDを復元
 ├─ grid/point_iDDD_jDDD.gjf # テンプレートがある場合に対応する Gaussian
-├─ grid/preopt_iDDD_jDDD.xyz # 事前最適化構造（--preopt が True の場合）、DDD = round(d × 100)
+├─ grid/preopt_iDDD_jDDD.xyz # 開始構造（有効時は事前最適化後）、DDD = round(d × 100)
 ├─ grid/preopt_iDDD_jDDD.pdb # 変換有効時に対応する PDB
 ├─ grid/preopt_iDDD_jDDD.cif # bridge入力
 ├─ grid/preopt_iDDD_jDDD.gjf # テンプレートがある場合に対応する Gaussian

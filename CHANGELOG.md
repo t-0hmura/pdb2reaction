@@ -10,6 +10,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Add `--gsm-param {equi,energy}` to `all`, `path-opt`, and `path-search` as an advanced GSM node-parameterization control; `equi` remains the default.
 
 ### Fixed
+- Keep the scan2d/scan3d starting reference as the `-1` row in `surface.csv`
+  while excluding it from energy baselines, interpolation, and plots.
 - Raise the scan2d colored base surface 0.005 kcal/mol above the scene floor,
   keeping explicit contour lines at +0.01 kcal/mol to avoid WebGL z-fighting.
 - Compact the Colab run/output and Results status surfaces, refresh the output
