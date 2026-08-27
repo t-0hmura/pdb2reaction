@@ -47,6 +47,7 @@ from pdb2reaction.core.utils import (
     convert_xyz_like_outputs,
     pretty_block,
     format_geom_for_echo,
+    emit_dry_run_complete,
     format_elapsed,
     PreparedInputStructure,
     prepare_input_structure,
@@ -724,11 +725,7 @@ def cli(
                 },
             )
         )
-        click.echo("[dry-run] Validation complete. Frequency execution was skipped.")
-        emit(
-            format_elapsed("[time] Elapsed Time for Freq", time_start),
-            narrative=True,
-        )
+        emit_dry_run_complete()
         return
 
     out_dir_path.mkdir(parents=True, exist_ok=True)

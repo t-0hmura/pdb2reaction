@@ -550,7 +550,9 @@ def test_opt_accepts_yaml_only_charge_and_spin(tmp_path: Path) -> None:
     )
 
     assert result.exit_code == 0, result.output
-    assert "Validation complete" in result.output
+    assert result.output.rstrip().splitlines()[-1] == (
+        "[Dry run] --dry-run completed. Input command is valid."
+    )
 
 
 @pytest.mark.parametrize(

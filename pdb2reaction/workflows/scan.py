@@ -52,6 +52,7 @@ from pdb2reaction.core.utils import (
     pretty_block,
     strip_inherited_keys,
     format_geom_for_echo,
+    emit_dry_run_complete,
     format_elapsed,
     normalize_choice,
     prepared_cli_input,
@@ -355,10 +356,7 @@ def cli(
             )
             click.echo(f"[scan] preopt={bool(preopt)}  endopt={bool(endopt)}  freeze_links={bool(freeze_links)}")
             click.echo("[scan] No scan / preopt was executed.")
-            emit(
-                format_elapsed("[time] Elapsed Time for Scan", time_start),
-                narrative=True,
-            )
+            emit_dry_run_complete()
             return
 
         def _run() -> None:

@@ -32,6 +32,7 @@ from pdb2reaction.core.utils import (
     apply_yaml_overrides,
     pretty_block,
     format_geom_for_echo,
+    emit_dry_run_complete,
     format_elapsed,
     prepared_cli_input,
     YamlFlowList,
@@ -653,11 +654,7 @@ def cli(
                     ),
                     force=True,
                 )
-                click.echo("[dry-run] Validation complete. DFT execution was skipped.")
-                emit(
-                    format_elapsed("[time] Elapsed Time for DFT", time_start),
-                    narrative=True,
-                )
+                emit_dry_run_complete()
                 return
 
             coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])

@@ -769,6 +769,16 @@ def format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
     return g
 
 
+DRY_RUN_COMPLETE_MESSAGE = (
+    "[Dry run] --dry-run completed. Input command is valid."
+)
+
+
+def emit_dry_run_complete() -> None:
+    """Emit the canonical successful dry-run footer."""
+    emit(DRY_RUN_COMPLETE_MESSAGE, narrative=True)
+
+
 def format_elapsed(prefix: str, start_time: float, end_time: Optional[float] = None) -> str:
     """Return a formatted elapsed-time string with the provided ``prefix`` label."""
     elapsed = max(0.0, (end_time if end_time is not None else time.perf_counter()) - start_time)

@@ -64,6 +64,7 @@ from pdb2reaction.core.utils import (
     pretty_block,
     strip_inherited_keys,
     format_geom_for_echo,
+    emit_dry_run_complete,
     format_elapsed,
     normalize_choice,
     prepared_cli_input,
@@ -495,10 +496,7 @@ def cli(
             )
             click.echo(f"[scan2d] preopt={bool(preopt)}  freeze_links={bool(freeze_links)}")
             click.echo("[scan2d] No 2D scan was executed.")
-            emit(
-                format_elapsed("[time] Elapsed Time for 2D Scan", time_start),
-                narrative=True,
-            )
+            emit_dry_run_complete()
             return
         try:
             yaml_cfg = merged_yaml_cfg

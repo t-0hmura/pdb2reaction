@@ -49,6 +49,7 @@ from pdb2reaction.core.utils import (
     pretty_block,
     strip_inherited_keys,
     format_geom_for_echo,
+    emit_dry_run_complete,
     format_elapsed,
     normalize_choice,
     prepared_cli_input,
@@ -835,11 +836,7 @@ def cli(
                         },
                     )
                 )
-                click.echo("[dry-run] Validation complete. Optimization execution was skipped.")
-                emit(
-                    format_elapsed("[time] Elapsed Time for Opt", time_start),
-                    narrative=True,
-                )
+                emit_dry_run_complete()
                 return
 
             final_destination = out_dir_path / "final_geometry.xyz"

@@ -66,6 +66,7 @@ from pdb2reaction.core.utils import (
     apply_yaml_overrides,
     pretty_block,
     format_geom_for_echo,
+    emit_dry_run_complete,
     format_elapsed,
     normalize_choice,
     prepared_cli_input,
@@ -2603,11 +2604,7 @@ def cli(
                     },
                 )
             )
-            click.echo("[dry-run] Validation complete. TS optimization execution was skipped.")
-            emit(
-                format_elapsed("[time] Elapsed Time for TS Opt", time_start),
-                narrative=True,
-            )
+            emit_dry_run_complete()
             return
 
         owned_outputs = tuple(

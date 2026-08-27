@@ -55,6 +55,7 @@ from pdb2reaction.core.utils import (
     deep_update,
     pretty_block,
     format_geom_for_echo,
+    emit_dry_run_complete,
     format_elapsed,
     prepare_input_structure,
     set_convert_file_enabled,
@@ -1193,11 +1194,7 @@ def cli(
                     },
                 )
             )
-            click.echo("[dry-run] Validation complete. Path optimization execution was skipped.")
-            emit(
-                format_elapsed("[time] Elapsed Time for Path Opt", time_start),
-                narrative=True,
-            )
+            emit_dry_run_complete()
             return
 
         out_dir_path.mkdir(parents=True, exist_ok=True)

@@ -42,6 +42,7 @@ from pdb2reaction.core.defaults import (
 from pdb2reaction.core.utils import (
     apply_yaml_overrides,
     cli_param_overridden,
+    emit_dry_run_complete,
     format_elapsed,
     prepare_input_structure,
     resolve_charge_spin,
@@ -280,7 +281,7 @@ def cli(
 
         if dry_run:
             click.echo(f"[sp] dry-run: would compute SP on {input_path} → {out_dir_path}")
-            click.echo(format_elapsed("[time] Elapsed Time for SP", time_start))
+            emit_dry_run_complete()
             return
 
         owned_outputs = tuple(

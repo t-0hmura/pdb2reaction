@@ -59,6 +59,7 @@ from pdb2reaction.core.utils import (
     unbiased_energy_hartree,
     values_from_bounds,
     pretty_block,
+    emit_dry_run_complete,
     format_elapsed,
     prepared_cli_input,
     validate_charge_spin_for_prepared,
@@ -1349,10 +1350,7 @@ def cli(
                     )
                     click.echo(f"[scan3d] preopt={bool(preopt)}  freeze_links={bool(freeze_links)}")
                     click.echo("[scan3d] No 3D scan was executed.")
-                    emit(
-                        format_elapsed("[time] Elapsed Time for 3D Scan", time_start),
-                        narrative=True,
-                    )
+                    emit_dry_run_complete()
                     return
                 _run_scan3d(
                     prepared_input,
@@ -1367,10 +1365,7 @@ def cli(
                 click.echo(f"[scan3d] csv input  : {csv_path}")
                 click.echo(f"[scan3d] out_dir    : {Path(out_dir).resolve()}")
                 click.echo("[scan3d] No 3D scan was executed.")
-                emit(
-                    format_elapsed("[time] Elapsed Time for 3D Scan", time_start),
-                    narrative=True,
-                )
+                emit_dry_run_complete()
                 return
             _run_scan3d(None, charge, spin, None, None)
     except KeyboardInterrupt:

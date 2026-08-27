@@ -60,6 +60,7 @@ from pdb2reaction.core.utils import (
     apply_yaml_overrides,
     pretty_block,
     format_geom_for_echo,
+    emit_dry_run_complete,
     format_elapsed,
     build_energy_diagram,
     prepare_input_structure,
@@ -2550,11 +2551,7 @@ def cli(
                     force=True,
                 )
             )
-            click.echo("[dry-run] Validation complete. Path search execution was skipped.")
-            emit(
-                format_elapsed("[time] Elapsed Time for Path Search", time_start),
-                narrative=True,
-            )
+            emit_dry_run_complete()
             return
 
         out_dir_path.mkdir(parents=True, exist_ok=True)

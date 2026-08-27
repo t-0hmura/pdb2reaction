@@ -75,6 +75,7 @@ from pdb2reaction.core.utils import (
     convert_xyz_like_outputs,
     convert_xyz_to_gjf,
     detect_freeze_links_logged,
+    emit_dry_run_complete,
     format_elapsed,
     lossless_int,
     optional_positive_int,
@@ -333,12 +334,13 @@ def _emit_final_summary(
         _echo(narrative=True)
     if citation_payload:
         emit_method_citations(citation_payload)
-    footer = (
-        "Dry run complete. Input commands are valid."
-        if dry_run
-        else format_elapsed("[time] Elapsed Time for Whole Pipeline", time_start)
-    )
-    _echo(footer, narrative=True)
+    if dry_run:
+        emit_dry_run_complete()
+    else:
+        _echo(
+            format_elapsed("[time] Elapsed Time for Whole Pipeline", time_start),
+            narrative=True,
+        )
 
 
 from pdb2reaction.workflows import scan as _scan_cli

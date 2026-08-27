@@ -349,5 +349,5 @@ def test_all_dry_run_does_not_report_prior_summary(tmp_path):
     assert "STALE_SENTINEL" not in result.output
     assert "Reactive segments: 99" not in result.output
     footer = result.output.rstrip().splitlines()[-1]
-    assert footer == "Dry run complete. Input commands are valid."
+    assert footer == "[Dry run] --dry-run completed. Input command is valid."
     assert "Elapsed Time for Whole Pipeline" not in result.output

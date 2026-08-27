@@ -31,6 +31,7 @@ from pdb2reaction.core.utils import (
     apply_yaml_overrides,
     pretty_block,
     format_geom_for_echo,
+    emit_dry_run_complete,
     format_elapsed,
     resolve_freeze_atoms,
     prepared_cli_input,
@@ -638,11 +639,7 @@ def cli(
                         },
                     )
                 )
-                click.echo("[dry-run] Validation complete. IRC execution was skipped.")
-                emit(
-                    format_elapsed("[time] Elapsed Time for IRC", time_start),
-                    narrative=True,
-                )
+                emit_dry_run_complete()
                 return
 
             out_dir_path = _prepare_irc_output_dir(
