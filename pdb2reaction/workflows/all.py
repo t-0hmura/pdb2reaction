@@ -4505,6 +4505,7 @@ def cli(
     else:
         all_mode = "path-search" if refine_path else "path-opt"
     all_mode_label = "ts-only" if single_tsopt_mode else ("scan-lists" if has_scan else "mep")
+    all_mode_display = "TS-only" if single_tsopt_mode else ("Scan" if has_scan else "MEP")
     if verbose_level() >= 2:
         _echo(
             f"[mode] all ({all_mode_label}) inputs={len(input_paths)} "
@@ -5394,8 +5395,9 @@ def cli(
             summary_payload = {
                 "root_out_dir": str(out_dir),
                 "path_dir": str(tsroot),
-                "path_module_dir": "tsopt_single",
+                "path_module_dir": "-",
                 "pipeline_mode": "tsopt-only",
+                "pipeline_mode_label": "TS-only",
                 "n_images": 1,
                 "n_segments": 1,
                 "refine_path": bool(refine_path),
@@ -6026,8 +6028,9 @@ def cli(
                 summary_payload = {
                     "root_out_dir": str(out_dir),
                     "path_dir": str(tsroot),
-                    "path_module_dir": tsroot.name,
+                    "path_module_dir": "-",
                     "pipeline_mode": "tsopt-only",
+                    "pipeline_mode_label": "TS-only",
                     "n_images": n_images,
                     "n_segments": 1,
                     "refine_path": refine_path,
@@ -6971,8 +6974,9 @@ def cli(
             summary_payload = {
                 "root_out_dir": str(out_dir),
                 "path_dir": str(path_dir),
-                "path_module_dir": path_dir.name,
+                "path_module_dir": str(path_dir),
                 "pipeline_mode": "path-opt",
+                "pipeline_mode_label": all_mode_display,
                 "refine_path": refine_path,
                 "tsopt": do_tsopt,
                 "thermo": do_thermo,
@@ -7370,6 +7374,7 @@ def cli(
             path_dir=path_dir,
             summary=summary,
             refine_path=refine_path,
+            pipeline_mode_label=all_mode_display,
             flatten=flatten,
             do_tsopt=do_tsopt,
             do_thermo=do_thermo,

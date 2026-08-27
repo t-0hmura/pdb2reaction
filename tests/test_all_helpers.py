@@ -285,6 +285,7 @@ def test_build_pipeline_summary_payload_shape() -> None:
             path_dir=path_dir,
             summary=summary,
             refine_path=True,
+            pipeline_mode_label="Scan",
             flatten=True,
             do_tsopt=True,
             do_thermo=False,
@@ -308,6 +309,8 @@ def test_build_pipeline_summary_payload_shape() -> None:
             post_segment_logs=[{"seg": 1, "status": "ok"}],
         )
     assert payload["pipeline_mode"] == "path-search"
+    assert payload["pipeline_mode_label"] == "Scan"
+    assert payload["path_module_dir"] == str(path_dir)
     assert payload["flatten"] is True
     assert payload["dft_func_basis"] == "wb97m-v/def2-tzvpd"
     assert payload["opt_mode"] == "grad"
@@ -341,6 +344,7 @@ def test_build_pipeline_summary_payload_dft_disabled_drops_basis() -> None:
         path_dir=Path("."),
         summary={},
         refine_path=False,
+        pipeline_mode_label="MEP",
         flatten=False,
         do_tsopt=False,
         do_thermo=False,

@@ -171,6 +171,12 @@ configurationは`-v 3`で表示します。詳細は {ref}`ja-verbosity-levels` 
 | `irc_plot_all.png` | 全セグメント集約 | 全セグメントの IRC プロファイル連結 |
 
 ### `summary.log` の読み方
+ヘッダーでは `all` の入口を `MEP`、`Scan`、`TS-only` のいずれかで示し、
+ルート出力ディレクトリを絶対パスで表示します。`MEP` / `Scan` では内部 path
+module ディレクトリも絶対パスで表示し、`TS-only` では `-` とします。
+`path-opt` / `path-search` などの内部 engine 名は machine-readable
+metadata に保持し、ユーザー向け pipeline mode には使用しません。
+
 ログは番号付きセクションで構成されます:
 - **[1] グローバル MEP 概要** – イメージ/セグメント数、MEP 軌跡プロットのパス、MEP 全体のエネルギーダイアグラム。
 - **[2] セグメント別 MEP サマリー（MLIP パス）** – セグメントごとの障壁（`ΔE‡`）、反応エネルギー（`ΔE`）、結合変化サマリー。

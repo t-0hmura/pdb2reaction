@@ -49,6 +49,7 @@ def build_pipeline_summary_payload(
     path_dir: Path,
     summary: Dict[str, Any],
     refine_path: bool,
+    pipeline_mode_label: str,
     flatten: bool,
     do_tsopt: bool,
     do_thermo: bool,
@@ -98,8 +99,9 @@ def build_pipeline_summary_payload(
     return {
         "root_out_dir": str(out_dir),
         "path_dir": str(path_dir),
-        "path_module_dir": path_dir.name,
+        "path_module_dir": str(path_dir),
         "pipeline_mode": "path-search" if refine_path else "path-opt",
+        "pipeline_mode_label": pipeline_mode_label,
         "refine_path": refine_path,
         "flatten": bool(flatten),
         "tsopt": do_tsopt,
