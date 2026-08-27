@@ -932,6 +932,8 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "def _defer_results_for_tab(request):" in app
     assert "timer = threading.Timer(0.16" in app
     assert "request != _TAB_NAV['request'] or _TAB_NAV['active'] != 3" in app
+    assert "_pane.layout.display = 'block'" in app
+    assert "_pane.layout.display = ('flex' if _j in (i, 1) else 'none')" in app
     assert "def _defer_tab_finish" not in app
     assert "_finish_tab_go(i, _request)" in app
     assert "_TAB_NAV = {'active': 0, 'syncing': False, 'request': 0}" in app
@@ -957,13 +959,13 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "document.__rxResultChoicesWired" in app
     assert "document.addEventListener('change',function(event)" in app
     assert "select.addEventListener('change'" not in app
-    assert "select.isConnected?select:(root.querySelector(selector)||select)" in app
-    assert "rxResultBusy" not in app
-    assert "var root=select.closest('.rxapp')||document" in app
+    assert "document.querySelector(selector)||select" in app
+    assert "rxResultBusy" in app
     assert "setNativeResultLoading(label,true)" in app
     assert "var selectedIndex=select.selectedIndex" in app
     assert "bridge.invokeFunction(CONFIG.result_callback,[kind,selectedIndex,generation,label],{})" in app
     assert "generation != _RESULT_SET_GENERATION['value']" in app
+    assert "_normalise_result_label(options[selected_index][0])" in app
     assert "value = options[selected_index][1]" in app
     assert "layoutIsExpanded:true" in app
     assert "var nativeFrameTimer=0" in app
@@ -3012,13 +3014,13 @@ def test_colab_operates_scientific_selectors_and_remaining_buttons(
     viewer_generation = app["_VIEWER_GENERATION"]["value"]
     for index, (_label, expected_page) in enumerate(app["_TAB_PAGES"]):
         app["_tab_go"](index)
-        assert expected_page.layout.display == ""
+        assert expected_page.layout.display == "flex"
         assert "rxpage-prewarm" not in expected_page._dom_classes
         for page_index, (_name, page) in enumerate(app["_TAB_PAGES"]):
             if page is expected_page:
                 continue
             if page_index == 1:
-                assert page.layout.display == ""
+                assert page.layout.display == "flex"
                 assert "rxpage-prewarm" in page._dom_classes
             else:
                 assert page.layout.display == "none"
@@ -3064,7 +3066,7 @@ def test_colab_operates_scientific_selectors_and_remaining_buttons(
     app["res_btn"].disabled = False
     app["_tab_go"](3)
     assert "Loading <b>④ Results</b>…" in loading_seen["value"]
-    assert loading_seen["results_display"] == ""
+    assert loading_seen["results_display"] == "flex"
     assert loading_seen["options_display"] == "none"
     assert app["_tab_loading"].value == ""
     app["_results"] = real_results
@@ -4527,6 +4529,12 @@ def test_results_render_only_after_results_tab_owns_the_view(
         ("render", app["_TAB_NAV"]["active"], out))
     app["_publish_result_widget_state"] = lambda: events.append(
         ("publish", app["_TAB_NAV"]["active"]))
+    display_events = {index: [] for index in range(4)}
+    for index, (_label, pane) in enumerate(app["_TAB_PAGES"]):
+        pane.layout.observe(
+            lambda change, index=index: display_events[index].append(change["new"]),
+            names="display",
+        )
 
     app["_tab_go"](3)
 
@@ -4534,6 +4542,11 @@ def test_results_render_only_after_results_tab_owns_the_view(
         ("render", 3, str(result_root)),
         ("publish", 3),
     ]
+    assert [pane.layout.display for _label, pane in app["_TAB_PAGES"]] == [
+        "none", "flex", "none", "flex",
+    ]
+    assert all(values[-2:] == ["block", "flex" if index in (1, 3) else "none"]
+               for index, values in display_events.items())
 
 
 def test_cancelled_run_stays_on_the_active_tab_without_result_rendering(
@@ -4637,6 +4650,10 @@ def test_results_replaces_trajectory_with_exact_stationary_model_set(
     tmp_path: Path, monkeypatch,
 ) -> None:
     app, _ = _execute_app(monkeypatch, tmp_path)
+    assert app["_normalise_result_label"]("MLIP\u00a0ΔG") == "MLIP ΔG"
+    assert app["_normalise_result_label"](
+        "Energy\u00a0profile  &\tTrajectory"
+    ) == "Energy profile & Trajectory"
 
     trajectory = tmp_path / "irc_trj.xyz"
     trajectory.write_text("".join(
