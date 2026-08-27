@@ -996,7 +996,7 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "def _collapsible(title, child, on_open=None):" in app
     assert "W.Accordion(" not in app
     assert "example_fold = _collapsible('Examples'" in app
-    assert "_collapsible('Manual ML-region PDB settings', model_upload_box)" in app
+    assert "_collapsible('Manual ML-region PDB settings', model_upload_box)" not in app
     assert "Try an example" not in app
     assert "Use existing ML-region PDB" not in app
     assert "_input_box_children.append(example_fold)" in app
@@ -1283,7 +1283,7 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "_cwm.register_callback('pdb2reaction_gui.load_example', _on_colab_example)" in app
     assert "var uploadPending = 0;" in app
     assert "if(!wire(CONFIG.zones[i])) uploadPending += 1;" in app
-    assert "if not IS_CLUSTER and 'model_upl' in globals():" in app
+    assert "if not IS_CLUSTER and 'model_upl' in globals():" not in app
     assert "if(!wireTabs())pending" not in app
     assert "if(!wireCancel())pending" not in app
     assert "if(warning)warning.remove();" in app
@@ -1294,7 +1294,9 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "try: return _load_example_impl(_)" in app
     assert "_set_operation_loading('files', True)" in app
     assert "_set_operation_loading('session', True)" in app
-    assert "busy_label = {'model': 'ML-region PDB', 'session': 'session'}.get(role, 'files')" in app
+    assert "busy_label = 'session' if role == 'session' else 'files'" in app
+    assert "role == 'model'" not in app
+    assert "ML-region PDB" not in app
     assert "function setNativeOperationLoading(label,active)" in app
     assert "'example_callback': 'pdb2reaction_gui.load_example'" in app
     assert "bridge.invokeFunction(CONFIG.example_callback,[],{})" in app
@@ -1311,7 +1313,7 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "reader.readAsDataURL(file)" in app
     assert "def _decode_colab_batch(files):" in app
     assert "base64.b64decode(entry['b64'], validate=True)" in app
-    for _role in ("'input'", "'model'", "'session'"):
+    for _role in ("'input'", "'session'"):
         assert "role=%s" % _role in app or "role == %s" % _role in app
     assert "_accept_upload_pairs(pairs, 'browser upload')" in app
     assert "_accept_upload_pairs(pairs, 'browser upload')" in app
