@@ -8,12 +8,6 @@
 
 `pdb2reaction` is a Python CLI for elucidating **enzymatic reaction pathways** from **PDB or mmCIF structures** using machine-learning interatomic potentials (MLIPs). Given (i) two or more reaction-ordered structures, (ii) one structure with `--scan-lists`, or (iii) one TS candidate with `--tsopt`, it can run an **MEP search** and optionally chain **TS optimization → IRC → thermochemical correction → DFT single-point**. Active-site extraction is performed only when `-c/--center` is supplied; otherwise the PDB/mmCIF/XYZ/GJF model is used as-is. Each stage is also exposed as an [individual subcommand](#cli-subcommands).
 
-## Colab GUI workspace
-
-An interactive GUI workspace is available in Google Colab. It brings ordered structure input, Mol* visualization and atom picking, controls generated from the live CLI, execution, and linked MEP/IRC/result inspection into one notebook. Choose a GPU runtime and [open the Colab GUI workspace](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb).
-
-<img src="https://raw.githubusercontent.com/t-0hmura/pdb2reaction/main/docs/colab_workspace.png" alt="pdb2reaction Colab GUI workspace showing Mol* structure setup and active-site selection controls" width="90%">
-
 Test a reaction mechanism in a single command:
 
 ```bash
@@ -24,6 +18,12 @@ pdb2reaction all -i R.pdb P.pdb -c 'LIG' -l 'LIG:-1' --tsopt --thermo
 Inputs are not limited to full enzyme PDBs: mmCIF is accepted directly, including multi-character chains and large residue IDs. You can also pass a small molecule as `.xyz` / `.gjf`, or a cluster model you built yourself as PDB/mmCIF, and omit `--center/-c` to skip extraction.
 
 > **Prerequisites:** PDB/mmCIF inputs must already contain hydrogens; reaction-ordered structures must share the same atom identities and order (only coordinates differ). Small-molecule `.xyz` / `.gjf` inputs work when `--center/-c` and `--ligand-charge/-l` are omitted.
+
+## Colab GUI workspace
+
+An interactive GUI workspace is available in Google Colab. It brings ordered structure input, Mol* visualization and atom picking, controls generated from the live CLI, execution, and linked MEP/IRC/result inspection into one notebook. Choose a GPU runtime and [open the Colab GUI workspace](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb).
+
+<img src="https://raw.githubusercontent.com/t-0hmura/pdb2reaction/main/docs/colab_workspace.png" alt="pdb2reaction Colab GUI workspace showing Mol* structure setup and active-site selection controls" width="90%">
 
 ## Related tools
 
