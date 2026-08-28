@@ -22,6 +22,14 @@ def _write_text(path: Path, text: str) -> Path:
     return path
 
 
+def test_root_help_describes_all_entry_routes_without_mandatory_stages() -> None:
+    result = CliRunner().invoke(root_cli, ["--help"])
+
+    assert result.exit_code == 0, result.output
+    assert "End-to-end reaction workflow with MEP, scan, or TS-only entry" in result.output
+    assert "extract -> MEP -> TS -> IRC -> freq -> DFT" not in result.output
+
+
 def test_add_elem_info_smoke(tmp_path: Path) -> None:
     in_pdb = _write_text(
         tmp_path / "input_no_elem.pdb",
@@ -386,6 +394,11 @@ def test_energy_diagram_smoke(tmp_path: Path, monkeypatch) -> None:
         energy_diagram,
         "build_energy_diagram",
         lambda **_kwargs: _DummyFigure(),
+    )
+    monkeypatch.setattr(
+        energy_diagram,
+        "write_plotly_image",
+        lambda figure, path, **kwargs: figure.write_image(path, **kwargs),
     )
 
     runner = CliRunner()

@@ -46,6 +46,7 @@ from pdb2reaction.core.defaults import (
     apply_backend_defaults,
 )
 from pdb2reaction.backends import create_calculator
+from pdb2reaction.io.plotly_image import write_plotly_image
 from pdb2reaction.workflows.restraints import HarmonicBiasCalculator
 from pdb2reaction.workflows._outcomes import (
     attach_outcomes,
@@ -1205,7 +1206,14 @@ def cli(
                 margin=dict(l=10, r=10, b=10, t=40),
             )
             png2d = final_dir / "scan2d_map.png"
-            fig2d.write_image(str(png2d), scale=2, engine="kaleido", width=680, height=600)
+            write_plotly_image(
+                fig2d,
+                png2d,
+                scale=2,
+                engine="kaleido",
+                width=680,
+                height=600,
+            )
             click.echo(f"[plot] Wrote '{png2d}'.")
 
             # ---- 3D surface plus the authored coloured base-plane projection ----

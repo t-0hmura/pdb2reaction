@@ -110,7 +110,7 @@ def _emit_start_header(ctx: click.Context) -> None:
 
 
 _LAZY_SUBCOMMANDS: dict[str, tuple[str, str, str]] = {
-    "all": ("pdb2reaction.workflows.all", "cli", "End-to-end workflow (extract -> MEP -> TS -> IRC -> freq -> DFT)."),
+    "all": ("pdb2reaction.workflows.all", "cli", "End-to-end reaction workflow with MEP, scan, or TS-only entry routes."),
     "scan": ("pdb2reaction.workflows.scan", "cli", "Run staged 1D scan with harmonic restraints."),
     "opt": ("pdb2reaction.workflows.opt", "cli", "Optimize one structure."),
     "path-opt": ("pdb2reaction.workflows.path_opt", "cli", "Optimize a reaction path segment."),
@@ -150,6 +150,7 @@ _COMMAND_BOOL_VALUE_OPTIONS: dict[str, frozenset[str]] = {
             "--scan-preopt",
             "--thermo",
             "--tsopt",
+            "--write-ref-merge",
         }
     ),
 }
@@ -263,6 +264,7 @@ _COMMAND_BOOL_TOGGLE_OPTIONS: dict[str, frozenset[str]] = {
             "--freeze-links",
             "--preopt",
             "--show-config",
+            "--write-ref-merge",
         }
     ),
     "scan": frozenset(

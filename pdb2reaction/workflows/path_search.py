@@ -54,6 +54,7 @@ from pdb2reaction.workflows.path_opt import (
     resolve_dmf_solve_tol,
 )
 from pdb2reaction.workflows._path_yaml_helpers import apply_single_opt_yaml_layer
+from pdb2reaction.io.plotly_image import write_plotly_image
 from pdb2reaction.core.utils import (
     as_list,
     collect_option_values,
@@ -860,6 +861,122 @@ class CombinedPath:
     required_outcomes: List[Any] = field(default_factory=list)
 
 
+def _build_mep_diagram_data(
+    combined: CombinedPath,
+) -> Tuple[Dict[str, Any], List[str]]:
+    """Reduce the complete path to public diagram labels and energies."""
+    path_energies = np.asarray(combined.energies, dtype=float)
+    if path_energies.size == 0 or not np.all(np.isfinite(path_energies)):
+        raise ValueError("MEP diagram requires finite full-path energies.")
+
+    E0_au = float(path_energies[0])
+    EP_au = float(path_energies[-1])
+    ts_groups: List[Dict[str, Any]] = []
+    ts_count = 0
+    current: Optional[Dict[str, Any]] = None
+    E_current_kcal = 0.0
+
+    def _is_bond_change_seg(seg: SegmentReport) -> bool:
+        return (
+            seg.kind == "seg"
+            and bool(seg.summary)
+            and seg.summary.strip() != "(no covalent changes detected)"
+        )
+
+    for seg in combined.segments:
+        if _is_bond_change_seg(seg):
+            ts_count += 1
+            barrier = getattr(seg, "barrier_kcal", None)
+            barrier_kcal = float(barrier) if barrier is not None else float("nan")
+            delta_kcal = float(getattr(seg, "delta_kcal", float("nan")))
+            if not np.isfinite(barrier_kcal):
+                barrier_kcal = 0.0
+            if not np.isfinite(delta_kcal):
+                delta_kcal = 0.0
+
+            first_im_energy = E_current_kcal + delta_kcal
+            current = {
+                "ts_label": f"TS{ts_count}",
+                "ts_energy": E_current_kcal + barrier_kcal,
+                "first_im_energy": first_im_energy,
+                "tail_im_energy": first_im_energy,
+                "has_extra": False,
+                "index": ts_count,
+                "bridge_peaks": [],
+            }
+            ts_groups.append(current)
+            E_current_kcal = first_im_energy
+            continue
+
+        delta_kcal = float(getattr(seg, "delta_kcal", float("nan")))
+        if current is None:
+            if np.isfinite(delta_kcal):
+                E_current_kcal += delta_kcal
+            continue
+
+        barrier = getattr(seg, "barrier_kcal", None)
+        barrier_kcal = float(barrier) if barrier is not None else float("nan")
+        if seg.kind == "bridge" and np.isfinite(barrier_kcal) and barrier_kcal > 1.0e-3:
+            peak_energy = E_current_kcal + barrier_kcal
+            peaks = current.setdefault("bridge_peaks", [])
+            suffix = "" if not peaks else f"_{len(peaks) + 1}"
+            peak_label = f"IM{current['index']}_TS{suffix}"
+            peaks.append({"label": peak_label, "energy": peak_energy})
+            click.echo(
+                "    [bridge] Recorded diagram-only TS peak "
+                f"{peak_label} at "
+                f"{E0_au + peak_energy / AU2KCALPERMOL:.6f} au "
+                "(from segment-level ΔE‡; bridge segments skip tsopt/thermo/DFT)."
+            )
+
+        if np.isfinite(delta_kcal):
+            E_current_kcal += delta_kcal
+            current["tail_im_energy"] = E_current_kcal
+            current["has_extra"] = True
+
+    if not ts_groups:
+        labels = ["R", "P"]
+        energies_kcal = [0.0, (EP_au - E0_au) * AU2KCALPERMOL]
+        chain_tokens = ["R", "-->", "P"]
+    else:
+        labels = ["R"]
+        energies_kcal = [0.0]
+        chain_tokens = ["R"]
+        for index, group in enumerate(ts_groups, start=1):
+            labels.append(group["ts_label"])
+            energies_kcal.append(float(group["ts_energy"]))
+            chain_tokens.extend(["-->", group["ts_label"]])
+
+            if index == len(ts_groups):
+                continue
+            labels.append(f"IM{index}_1")
+            energies_kcal.append(float(group["first_im_energy"]))
+            chain_tokens.extend(["-->", f"IM{index}_1"])
+            for peak in group.get("bridge_peaks", []):
+                labels.append(str(peak["label"]))
+                energies_kcal.append(float(peak["energy"]))
+                chain_tokens.extend(["-->", str(peak["label"])])
+            if group["has_extra"]:
+                labels.append(f"IM{index}_2")
+                energies_kcal.append(float(group["tail_im_energy"]))
+                chain_tokens.extend(["-|-->", f"IM{index}_2"])
+
+        labels.append("P")
+        energies_kcal.append(E_current_kcal)
+        chain_tokens.extend(["-->", "P"])
+
+    payload = {
+        "name": "energy_diagram_MEP",
+        "labels": labels,
+        "energies_kcal": energies_kcal,
+        "ylabel": "ΔE (kcal/mol)",
+        "energies_au": [
+            E0_au + energy / AU2KCALPERMOL for energy in energies_kcal
+        ],
+    }
+    return payload, chain_tokens
+
+
 def _raw_path_outcome(
     item_id: str,
     *,
@@ -1394,6 +1511,17 @@ def _build_multistep_path(
 
 # Full‑system merge helpers (Biopython)
 
+_INSPECTION_MERGE_REMARKS = (
+    "FOR_INSPECTION ACTIVE_SITE_PATH_IN_STATIC_FULL_SYSTEM_TEMPLATE",
+)
+
+
+def _full_system_merge_enabled(
+    ref_pdb_paths: Sequence[Path], *, align: bool, write_ref_merge: bool
+) -> bool:
+    """Return whether full-system coordinate merging for inspection is enabled."""
+    return bool(ref_pdb_paths) and bool(align) and bool(write_ref_merge)
+
 def _atom_key_from_res_atom(res: PDB.Residue.Residue, atom: PDB.Atom.Atom) -> Tuple[str, str, str, str, str]:
     """
     Build a key for atom identity:
@@ -1619,7 +1747,7 @@ def _merge_pair_to_full(pair_images: List[Any],
             a.set_coord(C[i])
             a.set_bfactor(100.0 if i in active_full_idx else 0.0)
 
-        remark_lines: List[str] = []
+        remark_lines: List[str] = list(_INSPECTION_MERGE_REMARKS)
         remark_lines.append(f"PAIR_MERGE FRAC {tfrac:.6f}")
 
         if include_model_indices_for_first_image and kk == 0:
@@ -2067,8 +2195,7 @@ def _merge_final_and_write(final_images: List[Any],
     default=True,
     show_default=True,
     help=("After preoptimization, align all inputs to the *first* input and match freeze_atoms "
-          "using the align_freeze_atoms API. When --align is True and --ref-full-pdb is provided, "
-          "the first reference PDB will be used for all pairs in the final merge.")
+          "using the align_freeze_atoms API.")
 )
 @click.option(
     "--ref-full-pdb",
@@ -2076,9 +2203,16 @@ def _merge_final_and_write(final_images: List[Any],
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     multiple=True,
     default=None,
-    help=("Full-size template PDB/mmCIF files in the same reaction order as --input. "
-          "With --align, only the *first* provided reference structure is used for all pairs "
-          "in the final merge (you may pass just one).")
+    help=("Static full-size PDB/mmCIF template for coordinate merging used for inspection. "
+          "Use the template corresponding to the first -i input.")
+)
+@click.option(
+    "--write-ref-merge/--no-write-ref-merge",
+    "write_ref_merge",
+    default=False,
+    show_default=True,
+    help=("Write mep_w_ref/hei_w_ref coordinate composites for inspection. "
+          "Requires --align and --ref-full-pdb."),
 )
 @click.option(
     "--ref-pdb",
@@ -2135,6 +2269,7 @@ def cli(
     preopt: bool,
     align: bool,
     ref_pdb_paths: Optional[Sequence[Path]],
+    write_ref_merge: bool,
     model_ref_pdb_paths: Optional[Sequence[Path]],
     backend: str,
     solvent: str,
@@ -2245,14 +2380,26 @@ def cli(
         mep_mode_kind = mep_mode.strip().lower()
         refine_mode_kind = refine_mode.strip().lower() if refine_mode else None
 
-        do_merge = bool(ref_pdb_paths) and len(ref_pdb_paths) > 0
+        merge_requested = bool(write_ref_merge)
+        do_merge = _full_system_merge_enabled(
+            ref_pdb_paths,
+            align=align,
+            write_ref_merge=write_ref_merge,
+        )
+        if ref_pdb_paths and not write_ref_merge:
+            ref_pdb_paths = tuple()
+        elif merge_requested and not align:
+            click.echo(
+                "[merge] WARNING: --write-ref-merge requires --align; skipped.",
+                err=True,
+            )
+            ref_pdb_paths = tuple()
+        elif merge_requested and not ref_pdb_paths:
+            click.echo(
+                "[merge] WARNING: --write-ref-merge requires --ref-full-pdb; skipped.",
+                err=True,
+            )
         if do_merge:
-            if align:
-                pass
-            else:
-                if len(ref_pdb_paths) != len(input_paths):
-                    raise click.BadParameter("--ref-full-pdb must be given for each --input (same count and order). "
-                                             "Alternatively, use --align to allow using only the first reference PDB for all pairs.")
             if model_ref_pdb_paths and len(model_ref_pdb_paths) != len(input_paths):
                 raise click.BadParameter("--ref-pdb must be given for each --input (same count and order).")
 
@@ -2876,15 +3023,11 @@ def cli(
 
         if do_merge:
             _merge_start = time.perf_counter()
-            emit("\n====== Full-system merge (active site model → templates) started ======\n", narrative=True)
-            # With --align, use only the first reference PDB for all pairs (replicate it).
-            if align:
-                if not ref_pdb_paths or len(ref_pdb_paths) < 1:
-                    raise click.BadParameter("--ref-full-pdb must provide at least one file when performing final merge with --align.")
-                first_ref = Path(ref_pdb_paths[0])
-                ref_list_for_merge = [first_ref for _ in input_paths]
-            else:
-                ref_list_for_merge = [Path(p) for p in ref_pdb_paths]
+            emit("\n====== Full-system coordinate merge for inspection started ======\n", narrative=True)
+            if not ref_pdb_paths or len(ref_pdb_paths) < 1:
+                raise click.BadParameter("--ref-full-pdb must provide at least one file when performing final merge with --align.")
+            first_ref = Path(ref_pdb_paths[0])
+            ref_list_for_merge = [first_ref for _ in input_paths]
 
             _merge_final_and_write(
                 final_images=list(combined_all.images),
@@ -2895,7 +3038,7 @@ def cli(
                 model_ref_pdbs=[Path(p) for p in model_ref_pdb_paths] if model_ref_pdb_paths else None,
             )
             emit(
-                f"====== Full-system merge finished (elapsed={time.perf_counter() - _merge_start:.1f}s) ======\n",
+                f"====== Full-system coordinate merge for inspection finished (elapsed={time.perf_counter() - _merge_start:.1f}s) ======\n",
                 narrative=True,
             )
 
@@ -2951,162 +3094,9 @@ def cli(
         png_path = out_dir_path / "energy_diagram_MEP.png"
         png_path.unlink(missing_ok=True)
         try:
-            # Map frames to segment indices (for anchoring R/P energies in Hartree)
-            frame_seg_indices: List[int] = [int(getattr(im, "mep_seg_index", 0) or 0) for im in combined_all.images]
-            seg_to_frames: Dict[int, List[int]] = {}
-            for ii, sidx in enumerate(frame_seg_indices):
-                if sidx <= 0:
-                    continue
-                seg_to_frames.setdefault(int(sidx), []).append(ii)
-
-            # Bond‑change segments in the final MEP order
-            bc_segments_in_order: List[SegmentReport] = [
-                s for s in combined_all.segments
-                if (s.kind == "seg" and s.summary and s.summary.strip() != "(no covalent changes detected)")
-            ]
-
-            # Determine which frames to use as R and P for anchoring energies in au
-            start_idx_for_diag = 0
-            end_idx_for_diag = len(combined_all.energies) - 1
-            if bc_segments_in_order:
-                first_bc = bc_segments_in_order[0]
-                last_bc = bc_segments_in_order[-1]
-                idxs_first_bc = seg_to_frames.get(int(first_bc.seg_index), [])
-                idxs_last_bc = seg_to_frames.get(int(last_bc.seg_index), [])
-                if idxs_first_bc:
-                    start_idx_for_diag = int(idxs_first_bc[0])
-                if idxs_last_bc:
-                    end_idx_for_diag = int(idxs_last_bc[-1])
-
-            E0_au = float(combined_all.energies[start_idx_for_diag])
-            EP_au = float(combined_all.energies[end_idx_for_diag])
-
-            # Build TS groups and compressed state energies purely from segment-level ΔE / ΔE‡
-            ts_groups: List[Dict[str, Any]] = []
-            ts_count = 0
-            current: Optional[Dict[str, Any]] = None
-            # Energy of the current state relative to R (in kcal/mol)
-            E_current_kcal = 0.0
-
-            def _is_bond_change_seg(seg: SegmentReport) -> bool:
-                return (
-                    seg.kind == "seg"
-                    and bool(seg.summary)
-                    and seg.summary.strip() != "(no covalent changes detected)"
-                )
-
-            for s in combined_all.segments:
-                if _is_bond_change_seg(s):
-                    ts_count += 1
-                    _barrier = getattr(s, "barrier_kcal", None)
-                    barrier_kcal = float(_barrier) if _barrier is not None else float("nan")
-                    delta_kcal = float(getattr(s, "delta_kcal", float("nan")))
-                    if not np.isfinite(barrier_kcal):
-                        barrier_kcal = 0.0
-                    if not np.isfinite(delta_kcal):
-                        delta_kcal = 0.0
-
-                    ts_e = E_current_kcal + barrier_kcal
-                    first_im_e = E_current_kcal + delta_kcal
-
-                    current = {
-                        "ts_label": f"TS{ts_count}",
-                        "ts_energy": ts_e,
-                        "first_im_energy": first_im_e,
-                        "tail_im_energy": first_im_e,
-                        "has_extra": False,
-                        "index": ts_count,
-                        "bridge_peaks": [],
-                    }
-                    ts_groups.append(current)
-                    E_current_kcal = first_im_e
-                else:
-                    # Segments without covalent changes (bridge or kinks) belong to
-                    # the current TS block if one exists.
-                    if current is None:
-                        # Before the first bond‑change segment: accumulate net ΔE if available.
-                        delta_kcal = float(getattr(s, "delta_kcal", float("nan")))
-                        if np.isfinite(delta_kcal):
-                            E_current_kcal += delta_kcal
-                        continue
-
-                    delta_kcal = float(getattr(s, "delta_kcal", float("nan")))
-                    _barrier = getattr(s, "barrier_kcal", None)
-                    barrier_kcal = float(_barrier) if _barrier is not None else float("nan")
-
-                    if s.kind == "bridge":
-                        if np.isfinite(barrier_kcal) and barrier_kcal > 1.0e-3:
-                            peak_e = E_current_kcal + barrier_kcal
-                            peaks = current.setdefault("bridge_peaks", [])
-                            suffix = "" if len(peaks) == 0 else f"_{len(peaks) + 1}"
-                            peak_label = f"IM{current['index']}_TS{suffix}"
-                            peaks.append({"label": peak_label, "energy": peak_e})
-                            # Log the corresponding peak in au for debugging
-                            peak_e_au = E0_au + peak_e / AU2KCALPERMOL
-                            click.echo(
-                                "    [bridge] Recorded diagram-only TS peak "
-                                f"{peak_label} at {peak_e_au:.6f} au "
-                                "(from segment-level ΔE‡; bridge segments skip tsopt/thermo/DFT)."
-                            )
-
-                    if np.isfinite(delta_kcal):
-                        E_current_kcal += delta_kcal
-                        current["tail_im_energy"] = E_current_kcal
-                        current["has_extra"] = True
-
-            # Assemble labels and energies in kcal/mol
-            labels: List[str]
-            energies_kcal: List[float]
-            chain_tokens: List[str]
-
-            if not ts_groups:
-                # No bond‑change segments: simple R→P diagram
-                labels = ["R", "P"]
-                energies_kcal = [0.0, (EP_au - E0_au) * AU2KCALPERMOL]
-                chain_tokens = ["R", "-->", "P"]
-            else:
-                labels = ["R"]
-                energies_kcal = [0.0]
-                chain_tokens = ["R"]
-
-                for i, g in enumerate(ts_groups, start=1):
-                    last_group = (i == len(ts_groups))
-
-                    labels.append(g["ts_label"])
-                    energies_kcal.append(float(g["ts_energy"]))
-                    chain_tokens.extend(["-->", g["ts_label"]])
-
-                    if last_group:
-                        continue
-
-                    labels.append(f"IM{i}_1")
-                    energies_kcal.append(float(g["first_im_energy"]))
-                    chain_tokens.extend(["-->", f"IM{i}_1"])
-
-                    for bp in g.get("bridge_peaks", []):
-                        labels.append(str(bp["label"]))
-                        energies_kcal.append(float(bp["energy"]))
-                        chain_tokens.extend(["-->", str(bp["label"])])
-
-                    if g["has_extra"]:
-                        labels.append(f"IM{i}_2")
-                        energies_kcal.append(float(g["tail_im_energy"]))
-                        chain_tokens.extend(["-|-->", f"IM{i}_2"])
-
-                labels.append("P")
-                energies_kcal.append(E_current_kcal)
-                chain_tokens.extend(["-->", "P"])
-
-            # Convert back to Hartree (au) for completeness in the summary
-            energies_au: List[float] = [E0_au + ek / AU2KCALPERMOL for ek in energies_kcal]
-
-            diagram_payload = {
-                "name": "energy_diagram_MEP",
-                "labels": labels,
-                "energies_kcal": energies_kcal,
-                "ylabel": "ΔE (kcal/mol)",
-                "energies_au": energies_au,
-            }
+            diagram_payload, chain_tokens = _build_mep_diagram_data(combined_all)
+            labels = diagram_payload["labels"]
+            energies_kcal = diagram_payload["energies_kcal"]
 
             labels_repr = "[" + ", ".join(f'"{lab}"' for lab in labels) + "]"
             energies_repr = "[" + ", ".join(f"{val:.6f}" for val in energies_kcal) + "]"
@@ -3124,11 +3114,11 @@ def cli(
             fig.update_layout(title=title_note)
 
             try:
-                fig.write_image(str(png_path), scale=2)
+                write_plotly_image(fig, png_path, scale=2)
                 diagram_payload["image"] = str(png_path)
                 emit(f"[diagram] Wrote energy diagram (PNG) → '{png_path}'", detail=True)
             except Exception as e:
-                click.echo(f"[diagram] NOTE: PNG export skipped (install 'kaleido' to enable): {e}")
+                click.echo(f"[diagram] NOTE: PNG export skipped: {e}")
 
             chain_text = " ".join(chain_tokens)
             emit(f"[diagram] State label sequence: {chain_text}", detail=True)

@@ -19,7 +19,7 @@ pdb2reaction path-search -i R.pdb [-i I.pdb ...] -i P.pdb [-q CHARGE] [-l, --lig
  [--max-nodes N] [--max-cycles-gsm N] [--max-cycles-dmf N] [--climb/--no-climb] \
  [--opt-mode grad|hess] [--dump/--no-dump] \
  [--out-dir DIR] [--preopt/--no-preopt] \
- [--align/--no-align] [--ref-full-pdb FILE...] [--ref-pdb FILE...] \
+ [--align/--no-align] [--write-ref-merge/--no-write-ref-merge] [--ref-full-pdb FILE...] [--ref-pdb FILE...] \
  [--convert-files/--no-convert-files] \
  [--show-config/--no-show-config] [--dry-run/--no-dry-run]
 ```
@@ -39,13 +39,17 @@ pdb2reaction path-search -i R.pdb -i IM1.pdb -i IM2.pdb -i P.pdb -q -1 -m 1 \
  --out-dir ./result_path_search_multi
 ```
 
-テンプレート参照を使って全系マージ出力を有効化する:
+アライメント済みの静的テンプレートを使って確認用の全系座標compositeを生成する:
 
 ```bash
-# テンプレート参照を使って全系マージ出力を有効化する
+# 活性部位経路を可視化用の静的テンプレートへ挿入する
 pdb2reaction path-search -i R.pdb -i IM1.pdb -i P.pdb -q 0 -m 1 \
- --ref-full-pdb holo_template.pdb --out-dir ./result_path_search_merge
+ --write-ref-merge --ref-full-pdb holo_template.pdb \
+ --out-dir ./result_path_search_merge
 ```
+
+`mep_w_ref*` / `hei_w_ref*` は、`--write-ref-merge`、`--ref-full-pdb`、
+`--align` がすべて有効な場合だけ生成します。
 
 DMF + minima 精密化で探索する:
 
@@ -63,7 +67,7 @@ pdb2reaction path-search -i reactant.pdb -i product.pdb -q 0 -m 1 \
 3. **ねじれ vs. 精密化の決定** – `End1` と `End2` 間に共有結合変化がなければ *ねじれ*（kink: 共有結合変化を伴わない構造変化区間。[用語集](glossary.md) 参照）とみなし、`search.kink_max_nodes` の線形ノードを挿入して個別最適化。結合変化がある場合は *反応セグメント*（端点間に共有結合変化が検出される区間。[用語集](glossary.md) 参照）として扱い、`End1` と `End2` 間に **精密化セグメント (GSM/DMF)** を起動して障壁を先鋭化。
 4. **選択的再帰** – `(A→End1)` と `(End2→B)` の結合変化を `bond` しきい値で比較し、共有結合更新が残るサブ区間のみ再帰的に探索。再帰深度は `search.max_depth` で制限。
 5. **スティッチング & ブリッジング** – 解決済みのサブパスを連結し、RMSD ≤ `search.stitch_rmsd_thresh` の重複エンドポイントを除去。RMSD ギャップが `search.bridge_rmsd_thresh` を超える場合は *ブリッジセグメント*（非隣接の中間体間を接続するセグメント。[用語集](glossary.md) 参照）を GSM/DMF で挿入。境界で結合変化が検出される場合はブリッジではなく新規の再帰セグメントで置換。
-6. **アライメント & マージング（オプション）** – `--align`（デフォルト）で事前最適化構造を先頭入力へ剛体アライメントし、`freeze_atoms` を整合。`--ref-full-pdb` を指定すると活性部位モデル軌跡をフルサイズ PDB テンプレートへマージ（`--align` により先頭テンプレートの再利用が可能）。
+6. **アライメント & 確認用座標マージ（オプション）** – `--align`（デフォルト）で事前最適化構造を先頭入力へ剛体アライメントし、`freeze_atoms` を整合。`--write-ref-merge` と `--ref-full-pdb` を指定すると確認用の座標compositeを生成します。
 
 結合変化の判定は `bond_changes.compare_structures` を用い、`bond` セクションのしきい値に従います。MLIP バックエンドは全構造で共有・再利用されます。
 
@@ -75,21 +79,21 @@ out_dir/ (デフォルト:./result_path_search/)
 ├─ mep.pdb # PDB/mmCIF topology入力で変換有効時
 ├─ mep.cif # mmCIF/oversized-PDB入力。元IDを復元
 ├─ mep.gjf # Gaussian テンプレート検出時に対応する Gaussian
-├─ mep_w_ref.pdb # マージされた全系MEP（参照topologyが必要）
-├─ mep_w_ref.cif # bridge templateを元IDで復元
+├─ mep_w_ref.pdb # 静的全系テンプレートへ活性部位経路を挿入（--write-ref-merge）
+├─ mep_w_ref.cif # 確認用bridge-template companion（--write-ref-merge）
 ├─ mep_seg_XX_trj.xyz # reactive refinement segmentのみ: MEP軌跡（XYZ）
 ├─ mep_seg_XX.pdb # reactive refinement segmentのPDB（変換有効時）
 ├─ mep_seg_XX.cif # reactive refinement segmentのbridge入力CIF
 ├─ mep_seg_XX.gjf # reactive refinement segmentのGaussian（template検出時）
-├─ mep_w_ref_seg_XX.pdb # 共有結合変化がある場合のマージ済みsegment
-├─ mep_w_ref_seg_XX.cif # bridge templateのCIF
+├─ mep_w_ref_seg_XX.pdb # 確認用のsegment別座標composite
+├─ mep_w_ref_seg_XX.cif # 確認用bridge-template companion
 ├─ hei_seg_XX.xyz # reactive refinement segmentのみ: 最高エネルギーimage
 ├─ hei_seg_XX.pdb # reactive refinement segmentのHEI PDB（変換有効時）
 ├─ hei_seg_XX.cif # reactive refinement segmentのHEI CIF
 ├─ hei_seg_XX.gjf # reactive refinement segmentのHEI Gaussian（template検出時）
 ├─ hei_mode_seg_XX.txt # reactive refinement segmentのenergy-upwinding接線
-├─ hei_w_ref_seg_XX.pdb # 全系コンテキストでマージされた HEI
-├─ hei_w_ref_seg_XX.cif # bridge templateのCIF
+├─ hei_w_ref_seg_XX.pdb # 確認用HEI座標composite
+├─ hei_w_ref_seg_XX.cif # 確認用HEI bridge-template companion
 ├─ summary.json # すべての再帰セグメントの障壁と分類サマリー
 ├─ summary.log # 結果要約
 ├─ mep_plot.png # `trj2fig` で生成した ΔE プロファイル（kcal/mol、反応物基準）
@@ -143,7 +147,8 @@ out_dir/ (デフォルト:./result_path_search/)
 | `--thresh-dmf TEXT` | DMF 最適化の IPOPT dual-infeasibility 許容値を上書き（`dmf.tol`）。`tight`(0.04)、`middle`(0.10)、`loose`(0.20) または正の float。Gaussian プリセットは受け付けない | `tight` |
 | **マージとアライメント** | | |
 | `--align/--no-align` | 探索前にすべての入力を最初の構造にアライメント | `True` |
-| `--ref-full-pdb PATH...` | フルサイズテンプレート PDB（入力と同数。`--align` があれば先頭のみ再利用可） | _None_ |
+| `--write-ref-merge/--no-write-ref-merge` | 確認用の `mep_w_ref*` / `hei_w_ref*` 座標compositeを生成 | `False` |
+| `--ref-full-pdb PATH...` | 確認用の座標マージに使う静的全系 PDB/mmCIFテンプレート。`-i` の最初の入力構造に対応するテンプレートを使用 | _None_ |
 | `--ref-pdb PATH...` | XYZ/GJF入力の全系マージに使うactive-site PDB/mmCIF参照（入力と同数・同順） | _None_ |
 | **出力と設定** | | |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_path_search/` |

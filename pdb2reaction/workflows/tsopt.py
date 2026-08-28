@@ -1348,6 +1348,7 @@ class HessianDimer:
 
         # LBFGS kwargs: enforce thresh/max_cycles/out_dir/dump; allow others
         lbfgs_kwargs = _force_ts_reject_uphill_off(self.lbfgs_kwargs)
+        lbfgs_kwargs["line_search"] = False
         lbfgs_kwargs.update({
             "max_cycles": n_steps,
             "thresh": threshold,
@@ -2456,6 +2457,14 @@ def cli(
                 "hessian_dimer.lbfgs.max_cycles is not configurable; "
                 "use opt.max_cycles."
             )
+        if (
+            isinstance(_dimer_lbfgs, dict)
+            and _dimer_lbfgs.get("line_search") is True
+        ):
+            raise click.BadParameter(
+                "hessian_dimer.lbfgs.line_search must be false because the "
+                "Dimer effective force is not the gradient of the physical energy."
+            )
 
         # A TS search follows a saddle-search direction, so physical energy is
         # not required to decrease. Keep this invariant after every YAML merge.
@@ -2464,6 +2473,7 @@ def cli(
         simple_cfg["lbfgs"] = _force_ts_reject_uphill_off(
             simple_cfg.get("lbfgs", {})
         )
+        simple_cfg["lbfgs"]["line_search"] = False
 
         try:
             geom_cfg["tr_projection"] = normalize_tr_projection_mode(

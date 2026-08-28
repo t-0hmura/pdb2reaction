@@ -486,6 +486,10 @@ LBFGS_TS_KW: Dict[str, Any] = {
     # A dimer follows an effective saddle-search force; physical energy need
     # not decrease monotonically along that trajectory.
     "reject_uphill": False,
+    # Dimer supplies a projected/inverted effective TS force together with the
+    # physical PES energy. Polynomial line search requires an energy-conjugate
+    # gradient, so it is not valid for this inner optimizer.
+    "line_search": False,
 }
 
 # Hessian Guided Dimer CLI-level defaults

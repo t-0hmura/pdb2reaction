@@ -6,6 +6,9 @@ GPU4PySCF または CPU PySCF を使用して DFT 一点計算を実行し、エ
 
 > **前提条件:** DFT 依存パッケージ（PySCF、GPU4PySCF）はデフォルトではインストールされません。`pip install "pdb2reaction[dft]"` でインストールしてください。
 
+> **溶媒:** `dft` に `--solvent` はなく、PCM/SMD は有効化されません。
+> `all --solvent` はMLIP stage向けの実験的で計算costの大きいxTB solvent-delta補正だけを制御し、DFTには転送されません。
+
 ## 実行例
 
 コマンド形式:

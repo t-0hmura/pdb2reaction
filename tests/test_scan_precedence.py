@@ -231,6 +231,34 @@ def test_path_search_dry_run_shows_effective_calculator_settings(tmp_path):
     assert "precision: fp64" in result.output
 
 
+def test_path_search_omitted_reference_merge_is_silent(tmp_path):
+    template = tmp_path / "template.pdb"
+    template.write_text("END\n", encoding="utf-8")
+
+    result = _path_search_dry_run(
+        tmp_path,
+        "no-reference-merge",
+        ["--ref-full-pdb", str(template)],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[merge]" not in result.output
+
+
+def test_path_search_explicit_reference_merge_missing_template_warns(tmp_path):
+    result = _path_search_dry_run(
+        tmp_path,
+        "missing-reference-template",
+        ["--write-ref-merge"],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert (
+        "[merge] WARNING: --write-ref-merge requires --ref-full-pdb; skipped."
+        in result.output
+    )
+
+
 def test_path_search_dmf_solvent_is_rejected_before_dry_run(tmp_path):
     result = _path_search_dry_run(
         tmp_path,

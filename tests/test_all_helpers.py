@@ -35,6 +35,58 @@ def test_public_merged_coordinate_suffix_tracks_original_input_format(
     assert _public_merged_coordinate_suffix(tuple(Path(name) for name in names)) == expected
 
 
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
+        (
+            dict(
+                requested=True,
+                refine_path=False,
+                extraction_requested=True,
+                input_paths=(Path("reactant.pdb"),),
+            ),
+            "requires --refine-path",
+        ),
+        (
+            dict(
+                requested=True,
+                refine_path=True,
+                extraction_requested=False,
+                input_paths=(Path("reactant.pdb"),),
+            ),
+            "requires -c/--center",
+        ),
+        (
+            dict(
+                requested=True,
+                refine_path=True,
+                extraction_requested=True,
+                input_paths=(Path("reactant.xyz"),),
+            ),
+            "requires PDB/mmCIF input",
+        ),
+    ],
+)
+def test_reference_merge_request_rejects_missing_prerequisite(
+    kwargs: dict[str, object], message: str,
+) -> None:
+    from pdb2reaction.workflows.all import _validate_reference_merge_request
+
+    with pytest.raises(click.UsageError, match=message):
+        _validate_reference_merge_request(**kwargs)
+
+
+def test_reference_merge_request_accepts_extracted_structure_inputs() -> None:
+    from pdb2reaction.workflows.all import _validate_reference_merge_request
+
+    assert _validate_reference_merge_request(
+        requested=True,
+        refine_path=True,
+        extraction_requested=True,
+        input_paths=(Path("reactant.pdb"), Path("product.mmcif")),
+    )
+
+
 def test_tsopt_continuation_separates_numerical_status_and_saddle_order() -> None:
     from pdb2reaction.workflows.all import _tsopt_continuation_decision
 
@@ -287,10 +339,14 @@ def test_energy_diagram_metadata_does_not_claim_failed_png(
         def update_layout(self, **kwargs) -> None:
             pass
 
-        def write_image(self, *args, **kwargs) -> None:
-            raise RuntimeError("renderer unavailable")
-
     monkeypatch.setattr(all_workflow, "build_energy_diagram", lambda **kwargs: FailingFigure())
+    monkeypatch.setattr(
+        all_workflow,
+        "write_plotly_image",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            RuntimeError("renderer unavailable")
+        ),
+    )
     payload = all_workflow._write_segment_energy_diagram(
         tmp_path / "energy_diagram_MLIP",
         labels=["R", "TS", "P"],

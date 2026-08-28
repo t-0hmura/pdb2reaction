@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 from click.testing import CliRunner
 
 from pdb2reaction.cli import cli as root_cli
@@ -98,3 +97,6 @@ def test_yaml_output_directory_receives_runtime_error_envelope(tmp_path) -> None
     payload = json.loads((out_dir / "result.json").read_text(encoding="utf-8"))
     assert payload["status"] == "error"
     assert "calculator construction failed" in payload["error"]
+    run_log = (out_dir / "run.log").read_text(encoding="utf-8")
+    assert "[command]" in run_log
+    assert "calculator construction failed" in run_log

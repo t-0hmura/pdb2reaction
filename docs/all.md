@@ -6,7 +6,7 @@ PDB; coordinate outputs also include CIF with the original identifiers.
 
 `all` runs in one of three modes, chosen by what you pass:
 
-- **Multi-structure MEP** (`[mode] all (mep)`) — give ≥ 2 structures in reaction order. With `-c`, `all` first extracts active-site models; without it, the full supplied structures are used. It then runs GSM / DMF MEP search and optionally runs TSOPT + IRC / freq / DFT per reactive segment. With `--refine-path` and full-system templates, it also merges the optimized path back into those templates.
+- **Multi-structure MEP** (`[mode] all (mep)`) — give ≥ 2 structures in reaction order. With `-c`, `all` first extracts active-site models; without it, the full supplied structures are used. It then runs GSM / DMF MEP search and optionally runs TSOPT + IRC / freq / DFT per reactive segment. For extracted PDB/mmCIF input, `--refine-path --write-ref-merge` additionally writes a coordinate composite for inspection.
 - **Single-structure scan-defined workflow** (`[mode] all (scan-lists)`) — give one structure plus one or more `--scan-lists/-s` literals. One literal defines one stage; several tuples inside it are advanced concertedly. The stage endpoints form the ordered input series for the MEP step.
 - **TSOPT-only** — give a single input and set `--tsopt` (no `--scan-lists`). `all` skips the MEP / merge stages, runs `tsopt` + EulerPC IRC on the active-site model (or the full input if extraction is skipped), and identifies the higher-energy endpoint as the reactant.
 
@@ -78,7 +78,7 @@ Full system(s) (PDB / mmCIF / XYZ / GJF)
 1. **Active-site model extraction** (when `-c/--center` is set) — accepts PDB/mmCIF paths, IDs/names, `CHAIN:RESNAME`, and `CHAIN:RESNAME:RESSEQ`. Per-input internal PDBs are saved under `<out-dir>/_work/models/`; bridge inputs also produce CIF companions.
 2. **Optional staged scan** (single-input only) — each `--scan-lists/-s` literal is a list of `(i, j, target_Å)` tuples. Atom indices use the original input ordering, 1-based by default (pass `--no-scan-one-based` to interpret them as 0-based), and are remapped to the active-site model ordering. Three-field selectors like `'TYR,285,CA'` are order-flexible; use positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` for repeated names or numbering. Stages run sequentially (stage 2 starts from stage 1's result), and the stage endpoints become the ordered intermediates that feed the MEP step.
 3. **MEP search** — by default runs single-pass `path-opt`; `--refine-path` switches to recursive `path-search`. Recursive refinement can improve a poor HEI but can also split a noisy/bad path into unnecessary segments and increase cost, so it is off by default. Segmentation is only a candidate mechanism until TS/frequency/IRC validation. Raw engine output stays under `_work`; `mep.pdb`, bridge-input `mep.cif`, `mep_trj.xyz`, and the diagram are promoted to the top level.
-4. **Merge to full systems** (with `--refine-path`) — writes `mep_w_ref.pdb` and, for mmCIF/oversized-PDB templates, `mep_w_ref.cif`; per-segment equivalents remain under `_work/path_search/`.
+4. **Full-system coordinate composite for inspection** (optional) — with PDB/mmCIF input and `-c/--center`, `--refine-path --write-ref-merge` writes `mep_w_ref.pdb`; per-segment equivalents remain under `_work/path_search/`.
 5. **Per-segment post-processing** (reactive segments only — bridge segments without bond changes are skipped):
    - `--tsopt` — TS optimization on each HEI active-site model. The terminal result separates `optimization_status` from `saddle_validation`. Numerical non-convergence, zero imaginary modes, failed/unavailable terminal PHVA, or inability to select a negative root stops after the TS geometry and result fields are registered and before IRC; frequencies and modes are present only when terminal PHVA completes. A numerically converged higher-order stationary point is retained and may continue through warning-labeled diagnostic IRC; this does not certify a first-order TS. For Hessian TS optimizers, the MEP's energy-upwinding Cartesian tangent candidates are passed through a CPU/file cache to guide reaction-root identity (legacy paths without readable energies use normalized secants). Dimer does not consume `--ref-mode`, so the handoff/cache is marked not applicable. With `--no-tsopt-from-mep-tan`, TSOPT selects its initial root from the initial-structure Hessian modes. A continued result is followed by EulerPC IRC and IRC-endpoint re-optimization with `--thresh-post` (default `baker`). The endpoint optimization working directory is retained with `--dump` and otherwise removed after completion. Endpoint RFO uphill rejection is disabled by default; pass `--reject-uphill` to enable it for endpoint re-optimization only.
    - `--thermo` — `freq` on (R, TS, P) for vibrational + thermochemistry data and an MLIP Gibbs diagram.
@@ -94,10 +94,10 @@ The tree has three top-level zones: **deliverables at the root**, **per-segment 
 out_dir/   (default: ./result_all/)
 ├─ summary.log                 # Text summary (authored at the root)
 ├─ summary.json                # JSON results
-├─ mep.pdb                     # Merged MEP path (promoted from the engine)
+├─ mep.pdb                     # Concatenated MEP path (promoted from the engine)
 ├─ mep.cif                     # Bridge inputs only; original identifiers restored
-├─ mep_w_ref.pdb               # --refine-path + reference template only
-├─ mep_w_ref.cif               # --refine-path + bridge reference template only
+├─ mep_w_ref.pdb               # Coordinate composite for inspection (--write-ref-merge)
+├─ mep_w_ref.cif               # Bridge-template companion (--write-ref-merge)
 ├─ mep_trj.xyz                 # Full MEP trajectory
 ├─ energy_diagram_MEP.png      # All-segment MEP barriers
 ├─ energy_diagram_*.png        # Aggregated post-processing diagrams (MLIP / Gibbs / DFT, with --tsopt etc.)
@@ -236,6 +236,7 @@ and `tsopt` subcommands keep their own `--max-cycles`.
 | `--thresh-dmf TEXT` | IPOPT dual-infeasibility tolerance of the DMF MEP stage: `tight` (0.04), `middle` (0.10), `loose` (0.20), or a positive float. Not a Gaussian preset. | `tight` |
 | `--preopt / --no-preopt` | Pre-optimize active-site model endpoints before MEP search. Standalone `scan` / `scan2d` / `scan3d` default `--preopt` to `False`. | `True` |
 | `--refine-path / --no-refine-path` | Enable recursive `path-search` with automatic bond-change segmentation / use the default single-pass `path-opt` per adjacent pair. | disabled |
+| `--write-ref-merge` | Write `mep_w_ref*` / `hei_w_ref*` coordinate composites for inspection. Requires `--refine-path`, `-c/--center`, and PDB/mmCIF input. | disabled |
 
 ### MLIP calculator
 
@@ -329,7 +330,7 @@ Structural differences outside the reaction coordinate can affect barriers
 obtained from independently prepared full-system structures. Inspect the
 structures and validate the selected path workflow for the modeled system.
 
-- Reference PDB templates for merging are derived automatically from the original inputs; the explicit `--ref-full-pdb` option of `path-search` is hidden in this wrapper.
+- With `--write-ref-merge`, the static template is derived from the first original input; `path-search --ref-full-pdb` remains internal to this wrapper.
 - Extraction radii: `-r 0` (or `--radius 0`) disables radius-based expansion, so the model starts from residues selected by `-c` and `--selected-resn`; structural safeguards can still add a required disulfide partner or adjacent backbone context. The extractor internally clamps zero radii to `0.001 Å` to avoid an empty geometric query.
 - Energies in diagrams are reported relative to the first state (reactant) in kcal/mol.
 - Omitting `-c/--center` skips extraction and feeds the entire input structures directly to MEP / `tsopt` / `freq` / `dft`; single-structure runs still require either `--scan-lists/-s` or `--tsopt`.

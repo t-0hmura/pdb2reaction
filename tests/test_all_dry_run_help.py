@@ -29,6 +29,26 @@ def test_all_dry_run_help_describes_temporary_extract_precheck():
     assert "runs extraction in a temporary" in help_text
     assert "derived charge and electron parity" in help_text
     assert "no computational stage or persistent output" in help_text
+    assert "Requires -c/--center and PDB/mmCIF input" in help_text
+
+
+def test_all_dry_run_rejects_reference_merge_without_extraction():
+    examples = Path(__file__).parents[1] / "examples"
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "all",
+            "-i", str(examples / "1.R.pdb"), str(examples / "3.P.pdb"),
+            "-q", "-1",
+            "--refine-path",
+            "--write-ref-merge",
+            "--dry-run",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "--write-ref-merge requires -c/--center" in result.output
+    assert "Input command is valid" not in result.output
 
 
 def test_all_help_describes_charge_precedence_with_and_without_extraction():

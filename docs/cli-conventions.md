@@ -97,9 +97,10 @@ and to `all` when `-c/--center` is omitted.
 **`all -c/--center`:** extraction derives a charge from standard residues,
 ions, and `--ligand-charge/-l`. Explicit `-q` still has highest priority and
 sets the total system charge; a mismatch with the extraction-derived value is
-reported as a warning. When `-q` is omitted, configured `calc.charge` is used
-the same way. If neither total-charge source is supplied, the extracted value
-is used. The `-l` mapping remains an input to extraction.
+reported as a warning. Without `-q`, an explicit `--ligand-charge/-l` mapping
+drives extraction and its derived charge takes priority over YAML. When neither
+CLI charge form is supplied, configured `calc.charge` overrides the automatic
+extractor value; if it is also absent, the extractor value is used.
 
 ```{tip}
 Always provide `--ligand-charge/-l` for non-standard residues (substrates, cofactors, unusual ligands) to ensure correct charge propagation.

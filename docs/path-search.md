@@ -25,7 +25,7 @@ pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-ch
  [--max-nodes N] [--max-cycles-gsm N] [--max-cycles-dmf N] [--climb/--no-climb]
  [--opt-mode grad|hess] [--dump/--no-dump]
  [--out-dir DIR] [--preopt/--no-preopt]
- [--align/--no-align] [--ref-full-pdb FILE...] [--ref-pdb FILE...]
+ [--align/--no-align] [--write-ref-merge/--no-write-ref-merge] [--ref-full-pdb FILE...] [--ref-pdb FILE...]
  [--convert-files/--no-convert-files]
  [--show-config/--no-show-config] [--dry-run/--no-dry-run]
 ```
@@ -45,13 +45,17 @@ pdb2reaction path-search -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 -m 1 \
  --out-dir ./result_path_search_multi
 ```
 
-Enable merged full-system outputs with template references:
+Create full-system coordinate composites for inspection with an aligned static template:
 
 ```bash
-# Enable merged full-system outputs with template references
+# Insert the active-site path into a static template for visualization
 pdb2reaction path-search -i R.pdb IM1.pdb P.pdb -q 0 -m 1 \
- --ref-full-pdb holo_template.pdb --out-dir ./result_path_search_merge
+ --write-ref-merge --ref-full-pdb holo_template.pdb \
+ --out-dir ./result_path_search_merge
 ```
+
+`mep_w_ref*` / `hei_w_ref*` files are written only when
+`--write-ref-merge`, `--ref-full-pdb`, and `--align` are all active.
 
 Use DMF mode with minima refinement:
 
@@ -71,7 +75,7 @@ pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
  - Otherwise, the region is a *reactive segment* — a segment in which covalent bond changes are detected between the endpoints (see [Glossary](glossary.md)). Launch a **refinement segment (GSM/DMF)** between `End1` and `End2` to sharpen the barrier.
 4. **Selective recursion** – compare bond changes for `(A→End1)` and `(End2→B)` using the `bond` thresholds. Recurse only on sub-intervals that still contain covalent updates. Recursion depth is capped by `search.max_depth`.
 5. **Stitching & bridging** – concatenate resolved subpaths, dropping duplicate endpoints when RMSD ≤ `search.stitch_rmsd_thresh`. If the RMSD gap between two stitched pieces exceeds `search.bridge_rmsd_thresh`, insert a *bridge segment* — a connecting segment between two non-adjacent intermediates (see [Glossary](glossary.md)) — using GSM/DMF. When the interface itself shows a bond change, a new recursive segment replaces the bridge.
-6. **Alignment & merging (optional)** – with `--align` (default), pre-optimized structures are rigidly aligned to the first input and `freeze_atoms` are reconciled. Provide `--ref-full-pdb` to merge active site model trajectories back into full-size PDB templates (one template per input unless alignment allows reuse of the first file).
+6. **Alignment & coordinate merging for inspection (optional)** – with `--align` (default), pre-optimized structures are rigidly aligned to the first input and `freeze_atoms` are reconciled. `--write-ref-merge` together with `--ref-full-pdb` writes coordinate composites for inspection.
 
 Bond-change detection relies on `bond_changes.compare_structures` with thresholds surfaced under the `bond` YAML section. All MLIP backends are constructed once and shared across structures for efficiency.
 
@@ -83,21 +87,21 @@ out_dir/ (default:./result_path_search/)
 ├─ mep.pdb # PDB/mmCIF topology companion when conversion is enabled
 ├─ mep.cif # mmCIF/oversized-PDB bridge inputs; original IDs restored
 ├─ mep.gjf # Gaussian companion when a Gaussian template is detected
-├─ mep_w_ref.pdb # Merged full-system MEP (requires reference topology)
-├─ mep_w_ref.cif # Merged bridge-template MEP with original IDs
+├─ mep_w_ref.pdb # Active-site path in a static full-system template (--write-ref-merge)
+├─ mep_w_ref.cif # Bridge-template companion for inspection (--write-ref-merge)
 ├─ mep_seg_XX_trj.xyz # Reactive refinement segments only: MEP trajectory (XYZ)
 ├─ mep_seg_XX.pdb # Reactive refinement segment PDB companion (when conversion is enabled)
 ├─ mep_seg_XX.cif # Reactive refinement segment bridge-input companion
 ├─ mep_seg_XX.gjf # Reactive refinement segment Gaussian companion (template required)
-├─ mep_w_ref_seg_XX.pdb # Merged per-segment paths when covalent changes exist
-├─ mep_w_ref_seg_XX.cif # Merged bridge-template companion
+├─ mep_w_ref_seg_XX.pdb # Per-segment coordinate composite for inspection
+├─ mep_w_ref_seg_XX.cif # Bridge-template companion for inspection
 ├─ hei_seg_XX.xyz # Reactive refinement segments only: highest-energy image
 ├─ hei_seg_XX.pdb # Reactive refinement segment HEI companion (conversion enabled)
 ├─ hei_seg_XX.cif # Reactive refinement segment HEI bridge-input companion
 ├─ hei_seg_XX.gjf # Reactive refinement segment HEI Gaussian companion (template required)
 ├─ hei_mode_seg_XX.txt # Reactive refinement segment energy-upwinding tangent
-├─ hei_w_ref_seg_XX.pdb # Merged HEI in full-system context
-├─ hei_w_ref_seg_XX.cif # Merged HEI for a bridge template
+├─ hei_w_ref_seg_XX.pdb # HEI coordinate composite for inspection
+├─ hei_w_ref_seg_XX.cif # HEI bridge-template companion for inspection
 ├─ summary.json # Barrier and classification summary for every recursive segment
 ├─ summary.log # Text summary
 ├─ mep_plot.png # ΔE profile generated via `trj2fig` (kcal/mol, reactant reference)
@@ -144,7 +148,8 @@ The table is grouped by purpose; within each group the most-used options come fi
 | `--thresh-dmf TEXT` | Override the IPOPT dual-infeasibility tolerance of the DMF optimizer (`dmf.tol`): `tight` (0.04), `middle` (0.10), `loose` (0.20), or a positive float. Gaussian presets are rejected. | `tight` |
 | **Merge & alignment** | | |
 | `--align/--no-align` | Align all inputs to the first structure before searching. | `True` |
-| `--ref-full-pdb PATH...` | Full-size PDB/mmCIF templates (one per input, unless `--align` lets you reuse the first). | _None_ |
+| `--write-ref-merge/--no-write-ref-merge` | Write `mep_w_ref*` / `hei_w_ref*` coordinate composites for inspection. | `False` |
+| `--ref-full-pdb PATH...` | Static full-size PDB/mmCIF template for coordinate composites used for inspection. Use the template corresponding to the first `-i` input. | _None_ |
 | `--ref-pdb PATH...` | Active-site model PDB/mmCIF references used for final full-system merge when inputs are XYZ/GJF (one per input, matching input order). | _None_ |
 | **Output & config** | | |
 | `-o, --out-dir TEXT` | Output directory. | `./result_path_search/` |

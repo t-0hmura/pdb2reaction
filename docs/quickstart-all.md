@@ -41,7 +41,7 @@ A successful run produces a directory like:
 result_all/
 ├── summary.log                    # Human-readable summary
 ├── summary.json                   # Machine-readable results
-├── mep.pdb                        # Merged MEP path (promoted to the root)
+├── mep.pdb                        # Concatenated MEP path (promoted to the root)
 ├── energy_diagram_MEP.png         # All-segment MEP energy profile
 └── _work/                         # Pipeline scratch (safe to delete)
     └── path_opt/                  # Raw MEP-engine output (path_search/ with --refine-path)

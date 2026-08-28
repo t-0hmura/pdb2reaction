@@ -23,6 +23,7 @@ from pysisyphus.constants import AU2KCALPERMOL, ANG2BOHR
 
 from pdb2reaction.core.output import emit
 from pdb2reaction.io.xyz_trajectory import read_xyz_trajectory
+from pdb2reaction.io.plotly_image import write_plotly_image
 
 logger = logging.getLogger(__name__)
 
@@ -206,7 +207,7 @@ def save_outputs(
             kw = {"engine": "kaleido"}
             if ext == ".png":
                 kw["scale"] = 2  # high-resolution PNG
-            fig.write_image(out, **kw)
+            write_plotly_image(fig, out, **kw)
             emit(f"[trj2fig] Saved figure -> {out}", detail=True)
         else:
             raise ValueError(f"Unsupported format: {ext}")

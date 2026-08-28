@@ -56,6 +56,7 @@ from pdb2reaction.core.defaults import (
 )
 DEFAULT_COORD_TYPE = GEOM_KW_DEFAULT["coord_type"]
 from pdb2reaction.io.trj2fig import run_trj2fig
+from pdb2reaction.io.plotly_image import write_plotly_image
 from pdb2reaction.io.path_mode_cache import load_path_mode_cache, write_path_mode_cache
 from pdb2reaction.io.summary import (
     emit_method_citations,
@@ -172,6 +173,31 @@ def _public_merged_coordinate_suffix(input_paths: Sequence[Path]) -> str:
     )
 
 
+def _validate_reference_merge_request(
+    *,
+    requested: bool,
+    refine_path: bool,
+    extraction_requested: bool,
+    input_paths: Sequence[Path],
+) -> bool:
+    """Validate and return the effective inspection-composite request."""
+
+    if not requested:
+        return False
+    if not refine_path:
+        raise click.UsageError("--write-ref-merge requires --refine-path.")
+    if not extraction_requested:
+        raise click.UsageError("--write-ref-merge requires -c/--center.")
+    if not all(
+        Path(path).suffix.lower() in {".pdb", ".cif", ".mmcif"}
+        for path in input_paths
+    ):
+        raise click.UsageError(
+            "--write-ref-merge requires PDB/mmCIF input structures."
+        )
+    return True
+
+
 def _validate_postprocessing_dependencies(
     *, do_tsopt: bool, do_thermo: bool, do_dft: bool
 ) -> None:
@@ -180,6 +206,7 @@ def _validate_postprocessing_dependencies(
             "`all --thermo` and `all --dft` require `--tsopt`; an unoptimized "
             "MEP highest-energy image is not a validated transition state."
         )
+
 
 class _EchoState:
     """Encapsulate CLI output state for section-spacing logic.
@@ -2139,7 +2166,7 @@ def _write_segment_energy_diagram(
     image_written = False
     image_error: Optional[str] = None
     try:
-        fig.write_image(str(png), scale=2)
+        write_plotly_image(fig, png, scale=2)
         image_written = True
         _echo(f"[diagram] Wrote energy diagram → {png.name}")
     except Exception as e:
@@ -3810,6 +3837,17 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     ),
 )
 @click.option(
+    "--write-ref-merge",
+    "write_ref_merge",
+    type=click.BOOL,
+    default=False,
+    show_default=True,
+    help=(
+        "Write mep_w_ref/hei_w_ref coordinate composites for inspection in "
+        "recursive --refine-path mode. Requires -c/--center and PDB/mmCIF input."
+    ),
+)
+@click.option(
     "--thresh",
     type=click.Choice(THRESH_CHOICES, case_sensitive=False),
     default=None,
@@ -4227,6 +4265,7 @@ def cli(
     dump: bool,
     convert_files: bool,
     refine_path: bool,
+    write_ref_merge: bool,
     thresh: Optional[str],
     thresh_post: str,
     thresh_gsm: Optional[str],
@@ -4551,10 +4590,18 @@ def cli(
             "or use a single structure with --scan-lists, or a single structure with --tsopt."
         )
 
+    skip_extract = center_spec is None or str(center_spec).strip() == ""
+    user_input_paths = tuple(Path(path) for path in input_paths)
+    write_ref_merge_enabled = _validate_reference_merge_request(
+        requested=bool(write_ref_merge),
+        refine_path=bool(refine_path),
+        extraction_requested=not skip_extract,
+        input_paths=user_input_paths,
+    )
+
     # Normalize mmCIF and PDBs beyond fixed-column limits once, before any
     # extract/dry-run preflight. The prepared objects remain alive for this
     # composite workflow, while every child stage sees an ordinary PDB path.
-    user_input_paths = tuple(Path(path) for path in input_paths)
     prepared_all_inputs = []
     for path in user_input_paths:
         prepared = prepare_input_structure(path)
@@ -4809,8 +4856,7 @@ def cli(
         # -q (charge_override) and run the electron parity check
         # (validate_charge_spin_at_path) on the extracted geometry. No
         # tsopt/path_search/freq is started.
-        _skip_extract_dry = center_spec is None or str(center_spec).strip() == ""
-        if _skip_extract_dry:
+        if skip_extract:
             for prepared_input in prepared_all_inputs:
                 apply_ref_pdb_override(prepared_input, ref_pdb_cli)
             _q_check, _spin_check = resolve_charge_spin(
@@ -4904,7 +4950,7 @@ def cli(
                     raise click.BadParameter(f"[all] --dry-run parity check failed: {e}")
                 _echo(f"[all] --dry-run parity check OK: charge={_q_check:+d}, spin(multiplicity)={int(spin)}", narrative=True)
         extract_note = (
-            "extract pre-check ran" if not _skip_extract_dry
+            "extract pre-check ran" if not skip_extract
             else "extraction was not requested"
         )
         _echo(
@@ -4912,7 +4958,7 @@ def cli(
             narrative=True,
         )
         planned_stages: List[str] = []
-        if not _skip_extract_dry:
+        if not skip_extract:
             planned_stages.append("extract")
         if has_scan:
             planned_stages.append("scan")
@@ -4935,7 +4981,6 @@ def cli(
 
     yaml_cfg = load_yaml_dict(args_yaml)
 
-    skip_extract = center_spec is None or str(center_spec).strip() == ""
     first_input = input_paths[0].resolve() if input_paths else None
 
     out_dir = out_dir.resolve()
@@ -6600,31 +6645,6 @@ def cli(
                     f"Path pre-alignment failed: {e}"
                 ) from e
 
-    # Determine availability of full-system templates for downstream merge/copies
-    def _is_pdb(path: Path) -> bool:
-        return path.suffix.lower() == ".pdb"
-
-    gave_ref_pdb = False
-
-    if skip_extract:
-        _echo(
-            "[all] NOTE: skipping --ref-full-pdb (no --center; inputs already represent full structures)."
-        )
-    elif is_single and has_scan:
-        if _is_pdb(input_paths[0]):
-            gave_ref_pdb = True
-        else:
-            _echo(
-                "[all] NOTE: skipping --ref-full-pdb (single+scan: original input is not a PDB)."
-            )
-    else:
-        if all(_is_pdb(p) for p in input_paths):
-            gave_ref_pdb = True
-        else:
-            _echo(
-                "[all] NOTE: skipping --ref-full-pdb (one or more original inputs are not PDB)."
-            )
-
     # Stage 2: MEP search
     if not refine_path:
         _echo_section(
@@ -7176,9 +7196,10 @@ def cli(
         if cli_param_overridden(ctx, "solvent_model"):
             ps_args.extend(["--solvent-model", str(solvent_model)])
 
-        if gave_ref_pdb:
+        if write_ref_merge_enabled:
             for p in (input_paths if not (is_single and has_scan) else (input_paths[:1] * len(models_for_path))):
                 ps_args.extend(["--ref-full-pdb", str(p)])
+            ps_args.append("--write-ref-merge")
         # Pass --ref-pdb (active site model PDB snapshots) independently of --ref-full-pdb
         # so that path_search can convert XYZ outputs to PDB even without merge.
         if model_ref_pdbs:
@@ -7193,7 +7214,7 @@ def cli(
         _echo_detail(
             f"[all] dispatch path-search: inputs={len(models_for_path)}, "
             f"mode={mep_mode_kind}, preopt={'yes' if preopt else 'no'}, "
-            f"ref-full={'yes' if gave_ref_pdb else 'no'}, out={path_dir}"
+            f"out={path_dir}"
         )
         _echo("[all] pdb2reaction path-search " + " ".join(ps_args))
 
@@ -7400,30 +7421,7 @@ def cli(
 
     # Stage 3: publish the core MEP products assembled by path_search.
     _echo_section(f"====== [all] Stage 3/{stage_total} — Core MEP outputs ======")
-    if refine_path and gave_ref_pdb:
-        merged_suffix = _public_merged_coordinate_suffix(user_input_paths)
-        _echo_detail(
-            "[all] Merging was carried out by path_search using the original inputs as templates."
-        )
-        _echo_detail(f"[all] Final products can be found under: {out_dir}")
-        _echo_detail(
-            f"  - mep_w_ref{merged_suffix}       (full-system merged trajectory)"
-        )
-        _echo_detail(f"[all] Raw per-segment merged trajectories stay under: {path_dir}")
-        _echo_detail(
-            f"  - mep_w_ref_seg_XX{merged_suffix} "
-            "(per-segment merged trajectories for covalent-change segments)"
-        )
-    elif refine_path:
-        _echo_detail(
-            "[all] --ref-full-pdb was not provided; full-system merged trajectories are not produced."
-        )
-        _echo_detail(f"[all] Pocket-only outputs are under: {out_dir}")
-    else:
-        _echo_detail(
-            "[all] path-opt mode produces active site model-level outputs only; full-system merge is not performed."
-        )
-        _echo_detail(f"[all] Aggregated products are under: {out_dir}")
+    _echo_detail(f"[all] Core MEP outputs are under: {out_dir}")
     _echo_detail("  - summary.json             (segment barriers, ΔE, labels)")
     _echo_detail(
         "  - energy_diagram_MEP.png / energy_diagram.* (MEP energy plot)"

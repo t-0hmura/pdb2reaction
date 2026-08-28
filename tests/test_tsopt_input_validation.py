@@ -58,7 +58,7 @@ def test_dimer_has_independent_yaml_line_search_setting() -> None:
     from pdb2reaction.core.utils import apply_yaml_overrides
 
     configured = deepcopy(HESSIAN_DIMER_CLI_KW)
-    assert configured["lbfgs"]["line_search"] is True
+    assert configured["lbfgs"]["line_search"] is False
     assert "max_cycles" not in configured["lbfgs"]
     assert configured["dimer"]["write_orientations"] is False
 
@@ -273,6 +273,10 @@ def test_tsopt_rejects_cli_nested_dimer_conflict(tmp_path) -> None:
         (
             "hessian_dimer:\n  lbfgs:\n    max_cycles: 5\n",
             "hessian_dimer.lbfgs.max_cycles is not configurable",
+        ),
+        (
+            "hessian_dimer:\n  lbfgs:\n    line_search: true\n",
+            "hessian_dimer.lbfgs.line_search must be false",
         ),
     ],
 )

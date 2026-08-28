@@ -77,7 +77,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  └─ (任意) DFT 一点計算 dft
 ```
 
-`all` は次のステージを順に実行します。名前の付いた計算ステージはサブコマンドとして単独でも実行できますが、全系へのマージなど `all` 内部だけの処理もあります。
+`all` は次のステージを順に実行します。名前の付いた計算ステージはサブコマンドとして単独でも実行できますが、静的全系テンプレートへの確認用座標マージなど `all` 内部だけの処理もあります。
 
 0. **構造ブリッジと事前チェック**（自動）
  - mmCIF、PDB固定幅を超える構造、altLocを含むPDBは、安全に再採番した内部PDBへ一度だけ正規化します。altLocは全geometry workflow共通の入力ブリッジが残基単位で一貫して選択するため、通常は事前の`fix-altloc`は不要です。通常PDBの元素欄（列77–78）が空の場合だけ`all`が`add-elem-info`を実行します。別途cleaned PDBが必要な場合に限りstandalone `fix-altloc`を使用してください。
@@ -94,12 +94,12 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  - ステージエンドポイント（`stage_XX/result.pdb`）が、後続 MEP ステップへ渡される順序付き中間体となる
 
 3. **活性部位モデルでの MEP 探索（デフォルトで単一パス `path-opt`、`--refine-path` で再帰的 `path-search`）**
- - デフォルトでは、単一パス `path-opt`（GSM/DMF）を実行します。エンジン生出力は `<out-dir>/_work/path_opt/` に書かれ、マージ済み成果物（`mep.pdb`、`mep_trj.xyz`、`energy_diagram_MEP.png`）はルート直下へ配置します。
+ - デフォルトでは、単一パス `path-opt`（GSM/DMF）を実行します。エンジン生出力は `<out-dir>/_work/path_opt/` に書かれ、連結済み成果物（`mep.pdb`、`mep_trj.xyz`、`energy_diagram_MEP.png`）はルート直下へ配置します。
  - `--refine-path` を指定すると、再帰的 `path-search` に切り替わり、結合変化に基づく多段階反応の候補セグメントを構築します。この分割だけで素反応が確定するわけではなく、TS／虚振動／IRC の検証が必要です。粗い MEP から得た HEI で TSOPT が失敗する場合の精密化に有効です。一方、悪い／ノイズの多い path を不要な複数 segment へ分割して計算時間を大幅に増やすことがあるため、意図せぬ cost 増大を避けてデフォルト OFF です（エンジン生出力は `<out-dir>/_work/path_search/`）。
- - 複数入力 PDB の場合、参照マージ用の全系テンプレートが MEP エンジン（デフォルトは `path-opt`、`--refine-path` 時は `path-search`）に自動的に渡されます（全系マージ自体は `--refine-path` 時のみ実行）。単一構造スキャンの場合は、元の全系 PDB テンプレートが全ステージで再利用されます。
+ - PDB/mmCIF入力で `-c/--center --refine-path --write-ref-merge` を指定すると、元の入力構造を確認用座標compositeのテンプレートとして使います。
 
-4. **活性部位モデルを全系にマージ**（`--refine-path` 使用時のみ）
- - `--refine-path` と参照テンプレートがある場合、`mep_w_ref.pdb` を生成し、bridge入力では `mep_w_ref.cif` も生成します。デフォルトの `path-opt` では全系マージを行いません。
+4. **確認用の全系座標compositeを生成**（オプション）
+ - PDB/mmCIF入力で `-c/--center --refine-path --write-ref-merge` を指定すると、確認用の `mep_w_ref.pdb` を生成します。
 
 5. **オプションのセグメントごとの後処理**（反応セグメントのみ — 結合変化のあるセグメント。ブリッジセグメントはスキップ）
  - `--tsopt`: 各 HEI 活性部位モデルで TS 最適化を実行し、`optimization_status` と `saddle_validation` を別々に記録します。数値非収束、虚振動0本、終端PHVAの失敗/未実施、または負rootを選べない場合は、TS構造とresult fieldを登録した後にIRC前で停止します。frequency/modeは終端PHVA成功時だけ記録します。数値収束済み高次停留点は保持され、警告付きの診断的IRCへ進むことがありますが、一次TS認定ではありません。Hessian TS optimizerにはMEP energy-upwinding Cartesian接線候補をCPU/file cache経由で渡し、反応rootのidentityを追跡します（energyを読めない旧trajectoryでは正規化secantを使用）。Dimerは`--ref-mode`を消費しないためhandoff/cacheは適用外です。`--no-tsopt-from-mep-tan`ではcacheを作成・利用せず、初期構造Hessianの振動modeからrootを選びます。続行可能な結果はEulerPC IRCで追跡し、IRC端点を`--thresh-post`（デフォルト`baker`）で再最適化します。エンドポイント最適化の作業ディレクトリは`--dump`時に保持し、それ以外は完了後に削除します。エンドポイントRFOの上り坂拒否はデフォルトで無効で、`--reject-uphill`により端点再最適化についてのみ有効化できます。
@@ -119,10 +119,10 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 out_dir/ (デフォルト:./result_all/)
 ├─ summary.log                  # 結果要約（ルート直下に生成）
 ├─ summary.json                 # JSON 結果
-├─ mep.pdb                      # マージ済み MEP 経路（エンジンから配置）
+├─ mep.pdb                      # 連結済み MEP 経路（エンジンから配置）
 ├─ mep.cif                      # mmCIF/oversized-PDB入力時。元IDを復元
-├─ mep_w_ref.pdb               # --refine-path + 参照テンプレート使用時のみ
-├─ mep_w_ref.cif               # --refine-path + bridge参照テンプレート使用時のみ
+├─ mep_w_ref.pdb               # 確認用の全系座標composite（--write-ref-merge）
+├─ mep_w_ref.cif               # 確認用bridge-template companion（--write-ref-merge）
 ├─ mep_trj.xyz                 # MEP 全体軌道
 ├─ energy_diagram_MEP.png      # 全セグメントの MEP 障壁
 ├─ energy_diagram_*.png        # 集約後処理ダイアグラム（MLIP / Gibbs / DFT、--tsopt 等で生成）
@@ -265,6 +265,7 @@ raw PDB CCD との名前衝突は自動判別しないため、`--modified-resid
 | `--thresh-dmf TEXT` | DMF MEP 段の IPOPT dual-infeasibility 許容値。`tight`(0.04)、`middle`(0.10)、`loose`(0.20) または正の float。Gaussian プリセットではない | `tight` |
 | `--preopt/--no-preopt` | MEP 前に活性部位モデル端点を事前最適化。単体の `scan`、`scan2d`、`scan3d` では `--preopt` のデフォルトは `False`（`--preopt` を渡すと有効化） | `True` |
 | `--refine-path / --no-refine-path` | 再帰的 `path-search` を有効化 / デフォルトの単一パス `path-opt` を使用 | 無効 |
+| `--write-ref-merge` | 確認用の `mep_w_ref*` / `hei_w_ref*` 座標compositeを生成。`--refine-path`、`-c/--center`、PDB/mmCIF入力が必要 | 無効 |
 
 ### MLIP 計算機オプション
 
@@ -384,7 +385,7 @@ dft:
 
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 - 形式電荷を推定できない場合は `--ligand-charge`（数値または残基別マッピング）を必ず指定し、scan/MEP/TSOPT/DFT へ正しい総電荷を伝播させてください。
-- マージ用の参照 PDB テンプレートは元の入力から自動的に導出されます。`path-search` の `--ref-full-pdb` はこのラッパーでは意図的に非公開です。
+- `--write-ref-merge` 指定時は、確認用の `mep_w_ref*` に使う静的テンプレートを最初の元入力から取得します。`path-search --ref-full-pdb` は内部で処理します。
 - 収束プリセット: `--thresh` のデフォルトは `gau`、`--thresh-post` のデフォルトは `baker`、MEP 段は `--thresh-gsm`（デフォルト `gau_loose`）と `--thresh-dmf`（デフォルト `tight`）が担当。
 - 抽出半径: `-r 0`（または `--radius 0`）では半径による拡張を無効化し、`-c` と `--selected-resn` で選んだ残基からモデルを構築します。構造上必要なジスルフィド結合partnerや隣接主鎖contextが安全策として追加される場合があります。空の幾何検索を避けるため、zero radiusは内部で `0.001 Å` にクランプされます。
 - エネルギーダイアグラムは反応物（最初の状態）基準の kcal/mol で表示されます。

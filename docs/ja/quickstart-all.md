@@ -41,7 +41,7 @@ pdb2reaction all -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
 result_all/
 ├── summary.log                    # テキストサマリ
 ├── summary.json                   # 機械可読な結果
-├── mep.pdb                        # マージ済み MEP 経路（ルート直下に配置）
+├── mep.pdb                        # 連結済み MEP 経路（ルート直下に配置）
 ├── energy_diagram_MEP.png         # 全セグメントの MEP エネルギープロファイル
 └── _work/                         # パイプライン作業領域（削除可）
     └── path_opt/                  # MEP エンジン生出力

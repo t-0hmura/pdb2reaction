@@ -103,15 +103,16 @@ Options:
                                   optimizations of inputs.  [default: preopt]
   --align / --no-align            After preoptimization, align all inputs to the
                                   *first* input and match freeze_atoms using the
-                                  align_freeze_atoms API. When --align is True
-                                  and --ref-full-pdb is provided, the first
-                                  reference PDB will be used for all pairs in
-                                  the final merge.  [default: align]
-  --ref-full-pdb FILE             Full-size template PDB/mmCIF files in the same
-                                  reaction order as --input. With --align, only
-                                  the *first* provided reference structure is
-                                  used for all pairs in the final merge (you may
-                                  pass just one).
+                                  align_freeze_atoms API.  [default: align]
+  --ref-full-pdb FILE             Static full-size PDB/mmCIF template for
+                                  coordinate merging used for inspection. Use
+                                  the template corresponding to the first -i
+                                  input.
+  --write-ref-merge / --no-write-ref-merge
+                                  Write mep_w_ref/hei_w_ref coordinate
+                                  composites for inspection. Requires --align
+                                  and --ref-full-pdb.  [default: no-write-ref-
+                                  merge]
   --ref-pdb FILE                  Pocket reference PDB/mmCIF files used only for
                                   the final full-system merge. Useful when
                                   --input uses XYZ/GJF intermediates but PDB

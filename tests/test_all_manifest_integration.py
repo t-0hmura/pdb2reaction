@@ -58,6 +58,7 @@ def test_all_extraction_remaps_original_freeze_indices_before_path_search(
             for index, token in enumerate(args)
             if token == "-i"
         ]
+        captured["args"] = list(args)
         raise RuntimeError("stop after mapped child config capture")
 
     monkeypatch.setattr(all_workflow, "_run_cli_main", capture_child)
@@ -89,6 +90,44 @@ def test_all_extraction_remaps_original_freeze_indices_before_path_search(
         for line in captured["inputs"][0].read_text(encoding="utf-8").splitlines()
     )
     assert all(1 <= index <= model_atom_count for index in child_freezes)
+    assert "--write-ref-merge" not in captured["args"]
+    assert "--ref-full-pdb" not in captured["args"]
+
+
+def test_all_explicit_reference_merge_is_forwarded_to_path_search(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    examples = Path(__file__).parents[1] / "examples"
+    reactant = examples / "1.R.pdb"
+    product = examples / "3.P.pdb"
+    captured: dict[str, object] = {}
+
+    def capture_child(name, _cli, args, **_kwargs) -> None:
+        assert name == "path_search"
+        captured["args"] = list(args)
+        raise RuntimeError("stop after child argv capture")
+
+    monkeypatch.setattr(all_workflow, "_run_cli_main", capture_child)
+    result = CliRunner().invoke(
+        all_workflow.cli,
+        [
+            "-i", str(reactant), "-i", str(product),
+            "-b", "uma",
+            "-o", str(tmp_path / "result"),
+            "-c", "320,321,322",
+            "-l", "GPP:-3,MG:2,SAM:1",
+            "-r", "1.6",
+            "--selected-resn", "186",
+            "--refine-path", "true",
+            "--write-ref-merge", "true",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert isinstance(result.exception, RuntimeError)
+    args = captured["args"]
+    assert "--write-ref-merge" in args
+    assert args.count("--ref-full-pdb") == 2
 
 
 def _replace_bytes(path: Path, payload: bytes) -> None:

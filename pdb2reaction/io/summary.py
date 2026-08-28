@@ -1280,7 +1280,9 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
         "summary.log": "Human-readable results summary",
         "mep.pdb": "Full MEP as single PDB (all segments)",
         "mep_trj.xyz": "Full MEP as XYZ trajectory",
-        "mep_w_ref.pdb": "Full MEP with protein reference frame",
+        "mep_w_ref.pdb": (
+            "Coordinate composite for inspection"
+        ),
         "mep_plot.png": "MLIP MEP energy plot",
         "energy_diagram_MEP.png": "Compressed MEP diagram",
         "energy_diagram_MLIP_all.png": "MLIP R–TS–P energies (all segments)",
@@ -1341,11 +1343,17 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
                             if _re.match(r"hei_seg_\d+\.", child.name):
                                 annotations.setdefault(crel, "Highest-energy image (approx. TS)")
                             elif _re.match(r"hei_w_ref_seg_\d+\.", child.name):
-                                annotations.setdefault(crel, "HEI with protein reference frame")
+                                annotations.setdefault(
+                                    crel,
+                                    "HEI coordinate composite for inspection",
+                                )
                             elif _re.match(r"mep_seg_\d+_trj\.", child.name):
                                 annotations.setdefault(crel, "Per-segment MEP trajectory")
                             elif _re.match(r"mep_w_ref_seg_\d+\.", child.name):
-                                annotations.setdefault(crel, "Per-segment MEP with protein reference")
+                                annotations.setdefault(
+                                    crel,
+                                    "Per-segment coordinate composite for inspection",
+                                )
                             continue
 
                         crel = f"{path_dir_rel}/{child.name}"

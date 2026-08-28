@@ -9,6 +9,7 @@
 | `summary.json` | 集約結果の書き込み処理まで到達した `all` / `path-search` | 集約ワークフローの正規 JSON エンベロープ（[JSON 出力リファレンス](json-output.md)）。早期の CLI 引数または入力の検証では作られない場合があります。 |
 | `summary.json` | `--out-json`（default `--no-out-json`）を指定し、段階別・report command が result writer まで到達した場合。制御された DFT 非収束も含むが、早期失敗は best-effort error envelope だけの場合がある | 個別結果の `result.json` と互換性のあるミラー。writer が正常終了した場合は同一 byte。pure utility は出力しない。 |
 | `result.json` | 段階別 `summary.json` と同じ writer 到達条件 | 個別結果・report の正規 envelope。制御された非収束でも生成され得るが、早期 validation/import failure では存在しない場合がある。 |
+| `run.log` | コマンドへ到達し、出力ディレクトリが作られた CLI / Colab 実行 | shell-safe な実行コマンドと、コマンド実行中の標準出力・標準エラー。早期の Click 検証、help、version、dry-run、出力先が単一ファイルのユーティリティでは生成しません。 |
 | `summary.log` | `path-search`、`all` | 人間可読な実行ログ（セグメント／ステージごとに 1 行）。 |
 | `final_geometry.xyz` | `opt`、`tsopt` | 最適化された構造（XYZ、完全精度）。 |
 | `mep.pdb` / `mep.cif` / `mep_trj.xyz` | `path-search` | 反応経路のフレーム。変換が有効な mmCIF／oversized-PDB topology では `.cif` companion も追加。 |
@@ -41,13 +42,14 @@
 
 - **スタンドアロンのサブコマンド** → 上記のファイルを含むフラットな `result_<subcmd>/`。`segments/` も `_work/` もありません。これらは `all` が 1 回の実行で複数の書き出し処理を協調させるときにのみ現れます。
 - **`all` の内部では、リーフの書き出し処理はそのままネストされます。** `segments/seg_NN/<subcmd>/` にあるセグメント別のリーフ出力は、スタンドアロンの `result_<subcmd>/` と構造的に同一です — `all` は同じ書き出し処理に別の出力ディレクトリを渡すだけです。
-- **`path-search` / `path-opt` はエンジンの例外です。** スタンドアロンで実行すると、それぞれの出力が成果物となります: `path-search` → `result_path_search/`（`summary.log`、`mep.pdb`、bridge入力時の`mep.cif`、`mep_trj.xyz`、`mep_plot.png`、`energy_diagram_MEP.png`）、`path-opt` → `result_path_opt/`（`final_geometries_trj.xyz`、`hei.xyz`）。`all` の内部では、その生のエンジン出力は `_work/path_opt/`（`--refine-path` 指定時は `_work/path_search/`）下のスクラッチとして扱われ、マージされた成果物（`mep.pdb`、bridge入力時の`mep.cif`、`mep_trj.xyz`、`mep_w_ref.pdb` / `.cif`、`energy_diagram_MEP.png`）のみがパイプラインのルートに配置されます。
+- **`path-search` / `path-opt` はエンジンの例外です。** スタンドアロンで実行すると、それぞれの出力が成果物となります: `path-search` → `result_path_search/`（`summary.log`、`mep.pdb`、bridge入力時の`mep.cif`、`mep_trj.xyz`、`mep_plot.png`、`energy_diagram_MEP.png`）、`path-opt` → `result_path_opt/`（`final_geometries_trj.xyz`、`hei.xyz`）。`all` の内部では、その生のエンジン出力は `_work/path_opt/`（`--refine-path` 指定時は `_work/path_search/`）下のスクラッチとして扱われ、主要成果物（`mep.pdb`、bridge入力時の`mep.cif`、`mep_trj.xyz`、`--write-ref-merge` 指定時の確認用`mep_w_ref.pdb` / `.cif`、`energy_diagram_MEP.png`）のみがパイプラインのルートに配置されます。
 したがって `all` のツリーには 3 つのゾーンがあります。
 
 ```text
 result_all/
 ├─ summary.log · summary.json                 # ルートに書き出し
-├─ mep.{pdb,cif} · mep_w_ref.{pdb,cif} · mep_trj.xyz # CIF は bridge 入力時
+├─ mep.{pdb,cif} · mep_trj.xyz                       # MEP座標
+├─ mep_w_ref.{pdb,cif}                               # 確認用座標composite（--write-ref-merge）
 ├─ energy_diagram_MEP.png · energy_diagram_*.png
 ├─ segments/
 │  └─ seg_NN/                                  # 反応セグメント別の成果物（2桁番号）

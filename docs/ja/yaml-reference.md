@@ -449,12 +449,14 @@ hessian_dimer:
  lbfgs:                    # `hessian_dimer` 内で `dimer` と同階層
    # Same keys as lbfgs section
    thresh: baker
-   line_search: true # 内側の L-BFGS 多項式 line search を有効化
+   line_search: false # 必須: Dimer の有効力は物理エネルギーと共役でない
 ```
 
 内側の L-BFGS 固有設定は、最上位の `lbfgs` ではなく
 `hessian_dimer.lbfgs` に置きます。共通の `print_every` と
-`energy_plateau*` は上記の競合規則に従い、`line_search` は独立です。
+`energy_plateau*` は上記の競合規則に従います。`line_search` は `false`
+固定です。Dimer の射影・反転した有効力は表示する物理エネルギーの勾配では
+ないため、`true` は拒否されます。
 `max_cycles` は設定できず、各 segment には `opt.max_cycles` の残り
 cycle 数が渡されます。
 

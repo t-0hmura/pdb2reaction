@@ -59,6 +59,7 @@ ADVANCED_CLASSIFICATION = [
     ("all", "--max-cycles-dmf"),
     ("all", "--tsopt-max-cycles"),
     ("all", "--hessian-calc-mode"),
+    ("all", "--write-ref-merge"),
     ("scan", "--relax-max-cycles"),
     ("scan", "--opt-mode"),
     ("scan2d", "--relax-max-cycles"),
@@ -69,6 +70,7 @@ ADVANCED_CLASSIFICATION = [
     ("path-opt", "--gsm-param"),
     ("path-search", "--opt-mode"),
     ("path-search", "--gsm-param"),
+    ("path-search", "--write-ref-merge"),
 ]
 
 

@@ -13,6 +13,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 NOTEBOOK = REPO_ROOT / "examples" / "pdb2reaction_colab.ipynb"
 NOTEBOOK_REF = "pdb2reaction_version"
+CHANGELOG = REPO_ROOT / "CHANGELOG.md"
 
 # EN/JA landing pages must render their version header via the MyST `release`
 # substitution rather than a hardcoded literal.
@@ -87,6 +88,30 @@ def check_license_metadata() -> list[str]:
     return []
 
 
+def changelog_release_errors(text: str, expected: str) -> list[str]:
+    errors: list[str] = []
+    unreleased = re.search(
+        r"^## \[Unreleased\][^\n]*\n(?P<body>.*?)(?=^## \[)",
+        text,
+        re.MULTILINE | re.DOTALL,
+    )
+    if unreleased is None:
+        errors.append("CHANGELOG.md has no [Unreleased] section")
+    else:
+        body = unreleased.group("body").strip()
+        if body not in {"", "_No changes yet._"}:
+            errors.append("CHANGELOG.md [Unreleased] contains release payload")
+    if not re.search(
+        rf"^## \[{re.escape(expected)}\] — \d{{4}}-\d{{2}}-\d{{2}}$",
+        text,
+        re.MULTILINE,
+    ):
+        errors.append(
+            f"CHANGELOG.md [{expected}] must use the actual YYYY-MM-DD release date"
+        )
+    return errors
+
+
 def _docs_release() -> str:
     tree = ast.parse((REPO_ROOT / "docs" / "conf.py").read_text(encoding="utf-8"))
     for node in tree.body:
@@ -130,6 +155,7 @@ def _module_version() -> str:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--expected-version")
+    parser.add_argument("--release-mode", action="store_true")
     args = parser.parse_args()
 
     values = {
@@ -146,6 +172,8 @@ def main() -> int:
         errors.append(f"expected {expected}; mismatched: {details}")
     errors.extend(check_landing_pages())
     errors.extend(check_license_metadata())
+    if args.release_mode:
+        errors.extend(changelog_release_errors(CHANGELOG.read_text(encoding="utf-8"), expected))
     if errors:
         raise SystemExit("[release-version] failed:\n  " + "\n  ".join(errors))
     print(

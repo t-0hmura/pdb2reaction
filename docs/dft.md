@@ -6,6 +6,10 @@ Runs single-point DFT with GPU4PySCF or CPU PySCF, reporting energy and populati
 
 > **Prerequisites:** DFT dependencies (PySCF, GPU4PySCF) are **not** included in the default install. Install them with `pip install "pdb2reaction[dft]"`.
 
+> **Solvation:** `dft` has no `--solvent` option; PCM and SMD are not enabled.
+> `all --solvent` controls only the experimental, computationally expensive
+> xTB solvent-delta correction in MLIP stages and is not forwarded to DFT.
+
 ## Examples
 
 Command form:

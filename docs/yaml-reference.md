@@ -455,14 +455,15 @@ hessian_dimer:
  lbfgs:                    # sibling of `dimer` under `hessian_dimer`, not nested inside it
    # Same keys as the top-level lbfgs section
    thresh: baker
-   line_search: true # Enable the inner L-BFGS polynomial line search
+   line_search: false # Required: Dimer effective force is not energy-conjugate
 ```
 
 Inner L-BFGS settings live under `hessian_dimer.lbfgs`, not the top-level
 `lbfgs` section. Shared `print_every` and `energy_plateau*` values follow the
-conflict rule above; `line_search` remains independent. `max_cycles` is not
-configurable because each segment receives the cycles remaining from
-`opt.max_cycles`.
+conflict rule above. `line_search` is fixed to `false`; setting it to `true` is
+rejected because Dimer's projected/inverted effective force is not the gradient
+of the reported physical energy. `max_cycles` is not configurable because each
+segment receives the cycles remaining from `opt.max_cycles`.
 
 ```{note}
 **`flatten_max_iter` default exception.** The CLI seeds

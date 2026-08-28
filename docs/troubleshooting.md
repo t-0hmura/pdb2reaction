@@ -21,7 +21,7 @@ Before a long run, verify:
 | `[multi] Atom count mismatch` / `[multi] Atom order mismatch` | Inputs prepared by different tools / settings, or atom order changed after re-protonation / re-parametrization. | Regenerate **all** structures with the same protonation tool + settings. For MD ensembles, extract frames from the same trajectory + topology. Never reorder PDB atoms after building topology. |
 | Active-site model empty / catalytic residues missing | Default radius too small. | Increase `--radius` (e.g. 2.6 → 3.5 Å); force-include with `--selected-resn 'A:123,B:456'` (see {ref}`selected-resn-takes-ids`); if `--exclude-backbone` over-trims, pass `--no-exclude-backbone`. |
 | Unreliable energies / barriers shifting with model size | Extracted model too small. | Increase `-r` (e.g. `pdb2reaction extract -i complex.pdb -c 'SUB' -o model.pdb -r 4.0`). |
-| Non-standard residues not truncated (SEP / TPO / MLY / D-amino acids) | Backbone truncation + cap-H placement only apply to known three-letter codes. | `--modified-residue "SEP,TPO,MLY"`. If insufficient (unusual backbone topology), build the active-site model manually and pass it (`-i model.pdb`) directly to downstream subcommands. |
+| An unlisted modified residue is not truncated | Backbone truncation + cap-H placement require an amino-acid catalog entry. SEP, TPO, and MLY are already built in. | Register only the unlisted residue and state its nominal charge, for example `--modified-residue "XAA:0"`. A bare name assigns charge 0 and therefore must not be used to re-register a charged built-in residue. If the backbone topology is unusual, build the active-site model manually and pass it directly to downstream subcommands. |
 
 ---
 

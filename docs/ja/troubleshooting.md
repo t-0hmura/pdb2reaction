@@ -83,10 +83,10 @@ Please run `pdb2reaction add-elem-info -i...` to populate element columns before
 
 ### 非標準残基が正しく切断されない
 
-抽出された活性部位モデルに非標準の 3 文字コードを持つ修飾アミノ酸残基（リン酸化セリン、メチル化リシンなど）が含まれている場合、デフォルトでは主鎖切断やキャップ水素付加が適用されません。`--modified-residue` で登録してください:
+内蔵カタログにない修飾アミノ酸残基では、主鎖切断やキャップ水素付加が適用されません。SEP、TPO、MLY は登録済みなので指定不要です。未登録残基だけを、必ず公称電荷付きで登録してください。裸の残基名は電荷 0 を割り当てるため、電荷を持つ内蔵残基の再登録には使えません。
 
 ```bash
-pdb2reaction extract -i complex.pdb -c PRE --modified-residue "SEP,TPO,MLY" -o pocket.pdb
+pdb2reaction extract -i complex.pdb -c PRE --modified-residue "XAA:0" -o pocket.pdb
 ```
 
 `--modified-residue` で対応できない場合（残基の主鎖トポロジーが特殊な場合など）は、活性部位モデルを手動で構築し、下流のコマンド（`opt`、`tsopt`、`path-opt` など）に直接渡してください。

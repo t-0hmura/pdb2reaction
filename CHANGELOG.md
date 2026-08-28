@@ -4,12 +4,36 @@ All notable changes to **pdb2reaction** will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased] — 2026-08-19
+## [Unreleased]
+
+_No changes yet._
+
+## [0.4.12] — pending
 
 ### Added
 - Add `--gsm-param {equi,energy}` to `all`, `path-opt`, and `path-search` as an advanced GSM node-parameterization control; `equi` remains the default.
+- Add advanced `--write-ref-merge` control for optional `mep_w_ref` / `hei_w_ref` coordinate composites.
 
 ### Fixed
+- Keep energy-weighted GSM parametrization finite across minimum-energy and flat intervals while rejecting invalid energies.
+- Anchor multi-step MEP diagram Hartree values to the complete path endpoints.
+- Disable `mep_w_ref` / `hei_w_ref` output by default and restrict explicit
+  generation to aligned `path-search` runs.
+- Bound Plotly/Kaleido static-image export to ten minutes in an isolated
+  renderer process so a stalled Chrome startup or shutdown cannot block a
+  scientific workflow indefinitely.
+- Disable polynomial line search inside the Hessian Guided Dimer and reject
+  attempts to enable it, because the effective Dimer force is not conjugate to
+  the reported physical energy.
+- Keep IRC branches diagnostic when energy-based displacement cannot find a
+  downhill departure; later small-gradient termination can no longer certify
+  or cache such a branch.
+- Correct modified-residue and charge-precedence guidance: built-in charged
+  residues must not be re-registered by a bare zero-charge name, and explicit
+  ligand-charge derivation outranks YAML `calc.charge`.
+- Separate the Colab workspace-path and example actions, restore `opt --dump`
+  trajectories from the `[command]` entry in `run.log`, and persist `run.log`
+  for ordinary output-directory CLI runs.
 - Number TS candidates, validated TS structures, and intermediates across linked
   Colab MEP/IRC trajectories, and label combined IRC endpoints by direction.
 - Map `all --freeze-atoms` and YAML `geom.freeze_atoms` from original full-input
@@ -56,8 +80,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Translate internal partial-result codes into concise, actionable warnings in `summary.log` and final stdout.
 - Preserve the blank line before the first MLIP model-load announcement even when an stderr warning immediately precedes it.
 - Record terminal PHVA as `skipped`, rather than `unavailable`, when a non-converged Hessian TS optimizer does not authorize the analysis.
-- Keep accepted line-search/GDIIS offsets in minimum RFO instead of applying
-  the trust radius a second time to the full accelerated displacement.
+- Bound the complete minimum-RFO line-search/GDIIS displacement by scaling it
+  to the trust radius while preserving its accelerated direction.
+- Enforce the same trust radius on hard-case Newton and reference RFO steps,
+  preventing near-degenerate solvers from returning oversized displacements.
 - Keep an explicit finite cycle cap when resuming a checkpoint written by an
   uncapped optimizer.
 - Retain endpoint-optimization diagnostics when `--dump` is enabled.
@@ -83,8 +109,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Use finite cycle defaults of 100000 for ordinary optimization and TS/endpoint
   optimization, 300 for GSM/DMF, and 125 for IRC. An explicit YAML `null`
   remains the uncapped engine value.
-
-## [0.4.12] — 2026-07-27
 
 > Upgrade warning: unchanged inputs can produce different geometries, energies/barriers,
 > vibrational classifications, thermochemistry, and scientific/terminal status. Consumers of

@@ -26,6 +26,13 @@ import pytest
 NOTEBOOK = Path(__file__).parents[1] / "examples" / "pdb2reaction_colab.ipynb"
 
 
+def test_freq_hint_matches_the_dump_owned_thermoanalysis_output() -> None:
+    text = NOTEBOOK.read_text(encoding="utf-8")
+
+    assert "thermoanalysis.yaml (--dump)" in text
+    assert "thermoanalysis.yaml (--dump/--thermo)" not in text
+
+
 def _embedded_document(frame: str) -> str:
     """Decode either the direct or large-payload iframe contract."""
     packed = re.search(r'data-rx-document="([^"]+)"', frame)
@@ -1388,7 +1395,8 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "if(warning)warning.remove();" in app
     assert "def _set_operation_loading(label, active):" in app
     assert "Loading <b>%s</b>…</div>" in app
-    assert "ex_btn.add_class('rxoperation-trigger')" in app
+    assert "ex_btn.add_class('rxexample-trigger')" in app
+    assert "workspace_load.add_class('rxworkspace-trigger')" in app
     assert "def _load_example_impl(_):" in app
     assert "try: return _load_example_impl(_)" in app
     assert "_set_operation_loading('files', True)" in app
@@ -1398,8 +1406,11 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "ML-region PDB" not in app
     assert "function setNativeOperationLoading(label,active)" in app
     assert "'example_callback': 'pdb2reaction_gui.load_example'" in app
-    assert "bridge.invokeFunction(CONFIG.example_callback,[],{})" in app
-    assert "setNativeOperationLoading('example',false)" in app
+    assert "'workspace_callback': 'pdb2reaction_gui.load_workspace_path'" in app
+    assert "bridge.invokeFunction(callback,[],{})" in app
+    assert ".rxoperation-trigger" not in app
+    assert "setNativeOperationLoading(label,false)" in app
+    assert "_cwm.register_callback('pdb2reaction_gui.load_workspace_path', _on_colab_workspace_path)" in app
     assert "host.dataset.rxOperationBusy==='true'" in app
     assert "wireOperationTriggers();" in app
     assert "Atom identifiers match input 1" not in app
@@ -2133,7 +2144,7 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     assert app["_input_box_children"][1] is app["_drop"]
     assert app["_input_box_children"][2] is app["workspace_path_row"]
     assert app["_input_box_children"][3] is app["input_msg"]
-    assert app["workspace_path"].description == "Workspace path"
+    assert app["workspace_path"].description == "From workspace path"
     assert app["workspace_path"].placeholder == "/content/path/to/file.pdb"
     assert app["workspace_load"].description == "Load"
     assert "rxworkspace-path" in app["workspace_path_row"]._dom_classes
@@ -2844,6 +2855,13 @@ def test_colab_exercises_every_workflow_and_advanced_flag_widget(
             assert solvent in help_text
         search_text = app["_advanced_widget"](subcommand, param)._rx_search
         assert "experimental" in search_text
+    for subcommand in ("all", "path-search"):
+        ref_merge = next(
+            option
+            for option in app["_advanced_options"](subcommand)
+            if option.name == "write_ref_merge"
+        )
+        assert app["_advanced_status"](subcommand, ref_merge) == "rendered"
     # Every retained CLI workflow remains selectable and restorable.
     option_values = {
         item[1] if isinstance(item, tuple) else item
@@ -6042,6 +6060,58 @@ def test_results_aggregate_segment_data_without_segment_controls(
     assert str(stale.resolve()) not in app["S"]["_last_files"]
     assert any(path.endswith("missing.xyz") for path in
                app["S"]["_last_manifest"]["rejected_claims"])
+
+
+def test_existing_opt_dump_uses_command_from_run_log(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    app, _ = _execute_app(monkeypatch, tmp_path)
+    root = tmp_path / "opt_dump"
+    root.mkdir()
+    final = root / "final_geometry.xyz"
+    trajectory = root / "optimization_trj.xyz"
+    final.write_text("1\nfinal\nH 0 0 0\n", encoding="utf-8")
+    trajectory.write_text("1\nstep\nH 0 0 0\n", encoding="utf-8")
+    (root / "result.json").write_text(json.dumps({
+        "pdb2reaction_version": "0.4.12", "status": "converged",
+        "command": "all", "files": {"final_geometry_xyz": final.name},
+    }), encoding="utf-8")
+    argv = ["pdb2reaction", "opt", "-i", "input.xyz", "-q", "0",
+            "-o", str(root), "--dump"]
+    (root / "run.log").write_text(
+        "pdb2reaction ver. 0.4.12\n\n[command] %s\n[mode] opt\n" % shlex.join(argv),
+        encoding="utf-8",
+    )
+
+    assert app["_recover_existing_results"](str(root), replace=True)
+    assert app["S"]["_last_subcmd"] == "opt"
+    assert app["S"]["_last_argv"][1] == "opt"
+    assert str(trajectory.resolve()) in app["S"]["_last_files"]
+    views = app["_result_view_candidates"](
+        app["S"]["_last_files"], str(root), app["S"]["_last_subcmd"])
+    assert ("Optimization trajectory", str(trajectory.resolve())) in views
+
+
+def test_colab_workspace_callback_loads_optimization_trajectory_path(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    app, _ = _execute_app(monkeypatch, tmp_path)
+    source_dir = tmp_path / "result_opt(1)"
+    source_dir.mkdir()
+    source = source_dir / "optimization_trj.xyz"
+    source.write_text(
+        "1\nstep 0\nH 0 0 0\n1\nstep 1\nH 0 0 0.1\n",
+        encoding="utf-8",
+    )
+
+    app["workspace_path"].value = str(source)
+    result = app["_on_colab_workspace_path"]()
+
+    assert result == {"ok": True}
+    managed = Path(app["S"]["inputs"][-1])
+    assert managed.name == source.name
+    assert managed.read_bytes() == source.read_bytes()
+    assert not app["example_msg"].value
 
 
 def test_cycle_flags_are_owned_by_the_live_command_registry() -> None:

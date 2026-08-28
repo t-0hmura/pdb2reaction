@@ -153,6 +153,10 @@ Options:
                                   to run recursive path_search on the full
                                   ordered series for automatic multistep
                                   discovery.  [default: False]
+  --write-ref-merge BOOLEAN       Write mep_w_ref/hei_w_ref coordinate
+                                  composites for inspection in recursive
+                                  --refine-path mode. Requires -c/--center and
+                                  PDB/mmCIF input.  [default: False]
   --thresh [gau_loose|gau|gau_tight|gau_vtight|baker|never]
                                   Convergence preset for single-structure
                                   optimizations and scan relaxations (gau_loose|

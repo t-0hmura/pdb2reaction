@@ -17,6 +17,7 @@ from typing import List, Sequence
 import click
 
 from pdb2reaction.core.utils import build_energy_diagram, ensure_dir
+from pdb2reaction.io.plotly_image import write_plotly_image
 
 _IMG_EXTS = {".png", ".jpg", ".jpeg", ".svg", ".pdf"}
 
@@ -195,7 +196,7 @@ def cli(
         baseline=True,
         showgrid=False,
     )
-    fig.write_image(str(out_img), scale=2)
+    write_plotly_image(fig, out_img, scale=2)
     click.echo(f"[energy-diagram] Saved -> {out_img}")
 
     if out_json:

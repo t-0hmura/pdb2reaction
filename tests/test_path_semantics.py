@@ -5,10 +5,13 @@ from types import SimpleNamespace
 from pdb2reaction.workflows.path_opt import _select_hei_index as select_path_opt_hei
 from pdb2reaction.workflows.path_search import (
     CombinedPath,
+    SegmentReport,
+    _build_mep_diagram_data,
     _frame_ranges_by_segment,
     _select_hei_index as select_path_search_hei,
     _stitch_paths,
 )
+from pysisyphus.constants import AU2KCALPERMOL
 
 
 @pytest.mark.parametrize("selector", [select_path_opt_hei, select_path_search_hei])
@@ -53,6 +56,33 @@ def test_frame_ranges_preserve_bridge_and_disjoint_segment_provenance():
         "frame_stop": 5,
     }
     assert ranges[3]["frame_ranges"] == [[5, 8]]
+
+
+def test_mep_diagram_anchors_au_energies_to_full_path_endpoints():
+    first_energy = -100.0
+    final_delta_kcal = 4.5
+    combined = CombinedPath(
+        images=[SimpleNamespace(), SimpleNamespace()],
+        energies=[first_energy, first_energy + final_delta_kcal / AU2KCALPERMOL],
+        segments=[
+            SegmentReport("lead", 0.0, 2.0, "", kind="kink"),
+            SegmentReport("rxn1", 10.0, 5.0, "Bond formed", kind="seg"),
+            SegmentReport("middle", 0.0, 3.0, "", kind="bridge"),
+            SegmentReport("rxn2", 12.0, -4.0, "Bond broken", kind="seg"),
+            SegmentReport("tail", 0.0, -1.5, "", kind="kink"),
+        ],
+    )
+
+    payload, _ = _build_mep_diagram_data(combined)
+
+    assert payload["energies_au"][0] == pytest.approx(combined.energies[0])
+    assert payload["energies_au"][-1] == pytest.approx(combined.energies[-1])
+    for energy_au, energy_kcal in zip(
+        payload["energies_au"], payload["energies_kcal"]
+    ):
+        assert (energy_au - first_energy) * AU2KCALPERMOL == pytest.approx(
+            energy_kcal
+        )
 
 
 def test_cross_pair_recursive_segment_receives_interface_pair_index(
