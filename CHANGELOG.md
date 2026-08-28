@@ -8,111 +8,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 _No changes yet._
 
-## [0.4.12] — pending
-
-### Added
-- Add `--gsm-param {equi,energy}` to `all`, `path-opt`, and `path-search` as an advanced GSM node-parameterization control; `equi` remains the default.
-- Add advanced `--write-ref-merge` control for optional `mep_w_ref` / `hei_w_ref` coordinate composites.
-
-### Fixed
-- Keep energy-weighted GSM parametrization finite across minimum-energy and flat intervals while rejecting invalid energies.
-- Anchor multi-step MEP diagram Hartree values to the complete path endpoints.
-- Disable `mep_w_ref` / `hei_w_ref` output by default and restrict explicit
-  generation to aligned `path-search` runs.
-- Bound Plotly/Kaleido static-image export to ten minutes in an isolated
-  renderer process so a stalled Chrome startup or shutdown cannot block a
-  scientific workflow indefinitely.
-- Disable polynomial line search inside the Hessian Guided Dimer and reject
-  attempts to enable it, because the effective Dimer force is not conjugate to
-  the reported physical energy.
-- Keep IRC branches diagnostic when energy-based displacement cannot find a
-  downhill departure; later small-gradient termination can no longer certify
-  or cache such a branch.
-- Correct modified-residue and charge-precedence guidance: built-in charged
-  residues must not be re-registered by a bare zero-charge name, and explicit
-  ligand-charge derivation outranks YAML `calc.charge`.
-- Separate the Colab workspace-path and example actions, restore `opt --dump`
-  trajectories from the `[command]` entry in `run.log`, and persist `run.log`
-  for ordinary output-directory CLI runs.
-- Number TS candidates, validated TS structures, and intermediates across linked
-  Colab MEP/IRC trajectories, and label combined IRC endpoints by direction.
-- Map `all --freeze-atoms` and YAML `geom.freeze_atoms` from original full-input
-  indices to extracted active-site model indices before every child stage.
-- Label the Colab advanced-control disclosure as `Show All options`.
-- Load an existing Colab-workspace file through the validated input queue and
-  restore `./result_all/` whenever a built-in example is loaded.
-- Show machine-readable workflow warnings above Colab result tables while
-  keeping Run details limited to execution metadata.
-- Keep the complete MEP summary visible at default pipeline verbosity,
-  including no-change results and every segment's barrier and reaction energy.
-- Reconcile reported frequency modes against active DOF, rigid modes, and the
-  near-zero window; render reproduced commands shell-safely and keep the
-  pre-postprocessing core-MEP completion wording scientifically neutral.
-- Give generated text and log previews a bounded, visible scroll region in the
-  Colab Results panel.
-- Report `all` summary modes as `MEP` / `Scan` / `TS-only` and show absolute
-  root and internal path-module output directories in `summary.log`.
-- Match the interactive Colab energy-level segment and connector proportions
-  to the CLI diagram and shrink overlong level annotations to fit their bars.
-- Keep the scan2d/scan3d starting reference as the `-1` row in `surface.csv`
-  while excluding it from energy baselines, interpolation, and plots.
-- Raise the scan2d colored base surface 0.005 kcal/mol above the scene floor,
-  keeping explicit contour lines at +0.01 kcal/mol to avoid WebGL z-fighting.
-- Compact the Colab run/output and Results status surfaces and enlarge
-  scan-grid pick markers while retaining the scan3d color scale.
-- Activate the Colab Results tab before rendering completed results, keep
-  energy/MEP/IRC and imaginary-frequency selectors reusable, and reserve plot
-  space for MEP/IRC labels.
-- Keep Hosted Colab result selectors active after DOM replacement, label TS and
-  IRC endpoints without overlap, select `summary.log` in generated files, and
-  use pause semantics for trajectory playback.
-- Report the exact MLIP model and UMA task in logs, JSON, and Colab Results, and
-  include model-specific UMA, Orb-v3, MACE, and OMol25 citations.
-- Keep cancelled Colab runs on the active tab and out of completed-result views.
-- Restore the reviewed Colab selection UI: persistent removable chips, concise
-  workflow labels and center summaries, explicit frozen-atom completion, and a
-  compact staged-scan editor; small-molecule freeze picking now starts only on
-  `Pick frozen atoms`.
-- Fail closed on unknown execution and missing per-segment post-processing, validate TS imaginary modes without requiring thermochemistry, and clear stale scientific-status reasons.
-- Preserve internal result identity while presenting aggregate structure-linked MEP/IRC profiles, reset prior result state before reload, and recover only declared or current-run artifacts.
-- Preserve the TSOPT stop cause in aggregate warnings and apply the resolved frequency zero cutoff when `summary.log` counts imaginary modes.
-- Keep optimizer verbosity monotonic and show Hessian cache reuse at `-v 2` without exposing raw DFT child diagnostics below `-v 3`.
-- Translate internal partial-result codes into concise, actionable warnings in `summary.log` and final stdout.
-- Preserve the blank line before the first MLIP model-load announcement even when an stderr warning immediately precedes it.
-- Record terminal PHVA as `skipped`, rather than `unavailable`, when a non-converged Hessian TS optimizer does not authorize the analysis.
-- Bound the complete minimum-RFO line-search/GDIIS displacement by scaling it
-  to the trust radius while preserving its accelerated direction.
-- Enforce the same trust radius on hard-case Newton and reference RFO steps,
-  preventing near-degenerate solvers from returning oversized displacements.
-- Keep an explicit finite cycle cap when resuming a checkpoint written by an
-  uncapped optimizer.
-- Retain endpoint-optimization diagnostics when `--dump` is enabled.
-- Remove the unreachable workflow-level path-mode multistart recovery block;
-  non-converged TS runs retain their geometry and skip PHVA/recovery.
-- Ignore final exact-PHVA negative frequencies smaller than the configured
-  saddle-imaginary magnitude threshold when certifying saddle order, matching
-  the existing imaginary-mode display, export, recovery, and flattening policy.
-- Gate MEP `--ref-mode` handoff to Hessian TS optimizers; Dimer records the handoff as not applicable instead of receiving an option it rejects.
-- Preserve a non-converged or stalled TS final structure and stop before terminal PHVA.
-- Use the configurable `freq.zero_cutoff_cm` value for standalone frequency analysis, flattening, and TS saddle classification.
-- Restrict reference-aligned reaction-mode selection to negative exact-PHVA modes and validate the selected frequency before IRC. Invalid or missing selections use an explicit lowest-imaginary root-0 fallback with unverified reaction identity.
-- Separate numerical optimization status from saddle order. A converged higher-order stationary point is not a first-order TS, but `all` may perform warning-labelled diagnostic IRC when a valid negative root exists.
-- Synchronize EN/JA docs, skills, live help, generated command references, and checked-in contract tests with the current behavior.
-- Remove the replaced path-tangent helper and one unreferenced mass-weighted-frequency wrapper; larger workflow and Notebook refactors remain deferred.
-- Remove residual internal acceptance of the retired `light` and `heavy` optimizer aliases.
-
-### Changed
-- Remove the redundant `Path with N moving images.` startup line; tagged GSM sections and `String=...` records identify progress.
-- Publish each refined segment MEP as `segments/seg_NN/mep_trj.xyz` and restore aggregate/per-segment trajectories in Colab Results.
-- Enable repeated trajectory playback by default and place the trajectory/energy view before result status and generated-file details in Colab.
-- Show Hessian cache-reuse notices at `-v 2`; cache identity and rejection details remain at `-v 3`.
-- Use finite cycle defaults of 100000 for ordinary optimization and TS/endpoint
-  optimization, 300 for GSM/DMF, and 125 for IRC. An explicit YAML `null`
-  remains the uncapped engine value.
+## [0.4.12] — 2026-08-29
 
 > Upgrade warning: unchanged inputs can produce different geometries, energies/barriers,
 > vibrational classifications, thermochemistry, and scientific/terminal status. Consumers of
-> `result.json`/`summary.json` must review the Breaking changes and Machine-readable output sections.
+> `result.json`/`summary.json` consumers must review the Breaking changes and output-schema updates below.
 
 ### Breaking changes
 - **JSON schema 2.0 (breaking).** `post_segments[].uma` became `.mlip`, `gibbs_uma` became
@@ -143,6 +43,8 @@ _No changes yet._
   `opt.energy_plateau: true` also still enables it.
 
 ### Added
+- Add `--gsm-param {equi,energy}` to `all`, `path-opt`, and `path-search` as an advanced GSM node-parameterization control; `equi` remains the default.
+- Add advanced `--write-ref-merge` control for optional `mep_w_ref` / `hei_w_ref` coordinate composites.
 - Add `--stop-plateau/--no-stop-plateau`, `--stop-plateau-thresh`, and
   `--stop-plateau-window` to `opt`, `tsopt`, and `all`, exposing the
   energy-plateau stop and its two tuning values on the command line.
@@ -192,6 +94,13 @@ _No changes yet._
   automatically. `thermo.symmetry_number` remains an advanced YAML override.
 
 ### Changed
+- Remove the redundant `Path with N moving images.` startup line; tagged GSM sections and `String=...` records identify progress.
+- Publish each refined segment MEP as `segments/seg_NN/mep_trj.xyz` and restore aggregate/per-segment trajectories in Colab Results.
+- Enable repeated trajectory playback by default and place the trajectory/energy view before result status and generated-file details in Colab.
+- Show Hessian cache-reuse notices at `-v 2`; cache identity and rejection details remain at `-v 3`.
+- Use finite cycle defaults of 100000 for ordinary optimization and TS/endpoint
+  optimization, 300 for GSM/DMF, and 125 for IRC. An explicit YAML `null`
+  remains the uncapped engine value.
 - Report every option's effective default. Options whose real default lives in
   a config block are declared `None` so an explicit value stays distinguishable
   from an omission; each now carries that default as a display string, so
@@ -320,8 +229,129 @@ _No changes yet._
 - Isolate Direct-Max-Flux configuration per invocation (`fresh_dmf_config`
   deep-copy); repeated in-process/MCP path-optimization runs no longer share
   mutated nested defaults.
+- Bump the MCP subcommand-result envelope `schema_version` from `1.0` to `1.1`
+  (`MCP_SUBCMD_RESULT_SCHEMA_VERSION`). Clients that pin the contract on this
+  constant must update their expected value.
+- `result.json`/`summary.json` gained additive, producer-dependent field families — a `run_id` (from
+  `PDB2REACTION_RUN_ID`; a conflicting id is rejected); `execution_status` and
+  `scientific_status` with reasons and expected/observed item ids; per-stage or
+  per-point outcomes where the producing mode evaluates those leaves; per-segment
+  `converged`, `irc`, and `endpoint_opt` records;
+  `endpoint_assignment` provenance; `current_output_paths`; and resolved
+  calculator/precision provenance. These are additive for consumers that tolerate
+  unknown fields; strict schemas, exhaustive decoders, and snapshot diffs may still
+  need updating. `scientific_status` also participates in usability/promotion
+  decisions, not only provenance. Aggregate success requires every applicable
+  producer convergence signal; direct-TS segments do not invent an MEP gate.
+- `key_output_files` now lists only the artifacts claimed by the current
+  invocation's run manifest rather than files discovered under the output tree, so a
+  reused `-o/--out-dir` no longer reports stale files from an earlier run.
+- Frequency JSON/YAML records `symmetry_number` and
+  `symmetry_number_source`; `all` copies complete child provenance into each
+  post-segment's `thermo_symmetry` map for R/TS/P.
+- Write `result.json`/`summary.json` by staged atomic replace (fsync + `os.replace`,
+  mirror first) and raise on a write failure that was previously swallowed;
+  XYZ→PDB/CIF conversion builds the whole output in memory and validates every frame
+  (atom count, element order, shape, finiteness, PDB column width) before writing,
+  raising where v0.4.11 warned-and-skipped or emitted a corrupt record. Valid-input
+  output bytes are unchanged.
 
 ### Fixed
+- Derive aggregate TS imaginary-mode status from the terminal exact-PHVA TSOPT
+  record, so a validated first-order saddle is not reported as missing
+  validation when the legacy presentation block is absent.
+- Keep Hosted Colab cluster preparation in its shared loading state until the
+  extracted model is selected and Mol* displays it.
+- Restore the intended Mol* expanded-view defaults, clear the manual-command
+  notice on Rebuild, and keep combined-IRC endpoint labels below their markers.
+- Initialize generated Colab numeric controls from each option's effective CLI
+  default instead of its Click range minimum, and omit the flag again when the
+  control is restored to that default.
+- Keep energy-weighted GSM parametrization finite across minimum-energy and flat intervals while rejecting invalid energies.
+- Anchor multi-step MEP diagram Hartree values to the complete path endpoints.
+- Disable `mep_w_ref` / `hei_w_ref` output by default and restrict explicit
+  generation to aligned `path-search` runs.
+- Bound Plotly/Kaleido static-image export to ten minutes in an isolated
+  renderer process so a stalled Chrome startup or shutdown cannot block a
+  scientific workflow indefinitely.
+- Disable polynomial line search inside the Hessian Guided Dimer and reject
+  attempts to enable it, because the effective Dimer force is not conjugate to
+  the reported physical energy.
+- Keep IRC branches diagnostic when energy-based displacement cannot find a
+  downhill departure; later small-gradient termination can no longer certify
+  or cache such a branch.
+- Correct modified-residue and charge-precedence guidance: built-in charged
+  residues must not be re-registered by a bare zero-charge name, and explicit
+  ligand-charge derivation outranks YAML `calc.charge`.
+- Separate the Colab workspace-path and example actions, restore `opt --dump`
+  trajectories from the `[command]` entry in `run.log`, and persist `run.log`
+  for ordinary output-directory CLI runs.
+- Number TS candidates, validated TS structures, and intermediates across linked
+  Colab MEP/IRC trajectories, and label combined IRC endpoints by direction.
+- Map `all --freeze-atoms` and YAML `geom.freeze_atoms` from original full-input
+  indices to extracted active-site model indices before every child stage.
+- Label the Colab advanced-control disclosure as `Show All options`.
+- Load an existing Colab-workspace file through the validated input queue and
+  restore `./result_all/` whenever a built-in example is loaded.
+- Show workflow warnings from `scientific_status_reasons` above Colab result tables while
+  keeping Run details limited to execution metadata.
+- Keep the complete MEP summary visible at default pipeline verbosity,
+  including no-change results and every segment's barrier and reaction energy.
+- Reconcile reported frequency modes against active DOF, rigid modes, and the
+  near-zero window; render reproduced commands shell-safely and keep the
+  pre-postprocessing core-MEP completion wording scientifically neutral.
+- Give generated text and log previews a bounded, visible scroll region in the
+  Colab Results panel.
+- Report `all` summary modes as `MEP` / `Scan` / `TS-only` and show absolute
+  root and internal path-module output directories in `summary.log`.
+- Match the interactive Colab energy-level segment and connector proportions
+  to the CLI diagram and shrink overlong level annotations to fit their bars.
+- Keep the scan2d/scan3d starting reference as the `-1` row in `surface.csv`
+  while excluding it from energy baselines, interpolation, and plots.
+- Raise the scan2d colored base surface 0.005 kcal/mol above the scene floor,
+  keeping explicit contour lines at +0.01 kcal/mol to avoid WebGL z-fighting.
+- Compact the Colab run/output and Results status surfaces and enlarge
+  scan-grid pick markers while retaining the scan3d color scale.
+- Activate the Colab Results tab before rendering completed results, keep
+  energy/MEP/IRC and imaginary-frequency selectors reusable, and reserve plot
+  space for MEP/IRC labels.
+- Keep Hosted Colab result selectors active after DOM replacement, label TS and
+  IRC endpoints without overlap, select `summary.log` in generated files, and
+  use pause semantics for trajectory playback.
+- Report the exact MLIP model and UMA task in logs, JSON, and Colab Results, and
+  include model-specific UMA, Orb-v3, MACE, and OMol25 citations.
+- Keep cancelled Colab runs on the active tab and out of completed-result views.
+- Restore the reviewed Colab selection UI: persistent removable chips, concise
+  workflow labels and center summaries, explicit frozen-atom completion, and a
+  compact staged-scan editor; small-molecule freeze picking now starts only on
+  `Pick frozen atoms`.
+- Fail closed on unknown execution and missing per-segment post-processing, validate TS imaginary modes without requiring thermochemistry, and clear stale scientific-status reasons.
+- Preserve internal result identity while presenting aggregate structure-linked MEP/IRC profiles, reset prior result state before reload, and recover only declared or current-run artifacts.
+- Preserve the TSOPT stop cause in aggregate warnings and apply the resolved frequency zero cutoff when `summary.log` counts imaginary modes.
+- Keep optimizer verbosity monotonic and show Hessian cache reuse at `-v 2` without exposing raw DFT child diagnostics below `-v 3`.
+- Translate internal partial-result codes into concise, actionable warnings in `summary.log` and final stdout.
+- Preserve the blank line before the first MLIP model-load announcement even when an stderr warning immediately precedes it.
+- Record terminal PHVA as `skipped`, rather than `unavailable`, when a non-converged Hessian TS optimizer does not authorize the analysis.
+- Bound the complete minimum-RFO line-search/GDIIS displacement by scaling it
+  to the trust radius while preserving its accelerated direction.
+- Enforce the same trust radius on hard-case Newton and reference RFO steps,
+  preventing near-degenerate solvers from returning oversized displacements.
+- Keep an explicit finite cycle cap when resuming a checkpoint written by an
+  uncapped optimizer.
+- Retain endpoint-optimization diagnostics when `--dump` is enabled.
+- Remove the unreachable workflow-level path-mode multistart recovery block;
+  non-converged TS runs retain their geometry and skip PHVA/recovery.
+- Ignore final exact-PHVA negative frequencies smaller than the configured
+  saddle-imaginary magnitude threshold when certifying saddle order, matching
+  the existing imaginary-mode display, export, recovery, and flattening policy.
+- Gate MEP `--ref-mode` handoff to Hessian TS optimizers; Dimer records the handoff as not applicable instead of receiving an option it rejects.
+- Preserve a non-converged or stalled TS final structure and stop before terminal PHVA.
+- Use the configurable `freq.zero_cutoff_cm` value for standalone frequency analysis, flattening, and TS saddle classification.
+- Restrict reference-aligned reaction-mode selection to negative exact-PHVA modes and validate the selected frequency before IRC. Invalid or missing selections use an explicit lowest-imaginary root-0 fallback with unverified reaction identity.
+- Separate numerical optimization status from saddle order. A converged higher-order stationary point is not a first-order TS, but `all` may perform warning-labelled diagnostic IRC when a valid negative root exists.
+- Synchronize EN/JA docs, skills, live help, generated command references, and checked-in contract tests with the current behavior.
+- Remove the replaced path-tangent helper and one unreferenced mass-weighted-frequency wrapper; larger workflow and Notebook refactors remain deferred.
+- Remove residual internal acceptance of the retired `light` and `heavy` optimizer aliases.
 - Keep the start-up artwork out of a dry run. `--dry-run` now prints only
   the `pdb2reaction ver. <version>` line, so a planning run reads as a plan;
   a real run is unchanged.
@@ -447,34 +477,6 @@ _No changes yet._
   of parsing a stale `thermoanalysis.yaml`, so a failed `freq` no longer contributes
   wrong ZPE/`U`/`H`/`G`/Gibbs numbers.
 
-### Machine-readable output
-- Bump the MCP subcommand-result envelope `schema_version` from `1.0` to `1.1`
-  (`MCP_SUBCMD_RESULT_SCHEMA_VERSION`). Clients that pin the contract on this
-  constant must update their expected value.
-- `result.json`/`summary.json` gained additive, producer-dependent field families — a `run_id` (from
-  `PDB2REACTION_RUN_ID`; a conflicting id is rejected); `execution_status` and
-  `scientific_status` with reasons and expected/observed item ids; per-stage or
-  per-point outcomes where the producing mode evaluates those leaves; per-segment
-  `converged`, `irc`, and `endpoint_opt` records;
-  `endpoint_assignment` provenance; `current_output_paths`; and resolved
-  calculator/precision provenance. These are additive for consumers that tolerate
-  unknown fields; strict schemas, exhaustive decoders, and snapshot diffs may still
-  need updating. `scientific_status` also participates in usability/promotion
-  decisions, not only provenance. Aggregate success requires every applicable
-  producer convergence signal; direct-TS segments do not invent an MEP gate.
-- `key_output_files` now lists only the artifacts claimed by the current
-  invocation's run manifest rather than files discovered under the output tree, so a
-  reused `-o/--out-dir` no longer reports stale files from an earlier run.
-- Frequency JSON/YAML records `symmetry_number` and
-  `symmetry_number_source`; `all` copies complete child provenance into each
-  post-segment's `thermo_symmetry` map for R/TS/P.
-- Write `result.json`/`summary.json` by staged atomic replace (fsync + `os.replace`,
-  mirror first) and raise on a write failure that was previously swallowed;
-  XYZ→PDB/CIF conversion builds the whole output in memory and validates every frame
-  (atom count, element order, shape, finiteness, PDB column width) before writing,
-  raising where v0.4.11 warned-and-skipped or emitted a corrupt record. Valid-input
-  output bytes are unchanged.
-
 ### Documentation
 - Rebuild and validate docs, CLI references, and agent skills for TS/IRC recovery,
   cluster construction, backends, CIF/large structures, and provenance.
@@ -491,7 +493,7 @@ _No changes yet._
   request before loading the model. Use `workers = 1` or select
   `FiniteDifference`; the requested numerical method is no longer changed
   implicitly.
-- `all` diagram filenames and human-readable labels are backend-neutral
+- `all` diagram filenames and labels are backend-neutral
   (`MLIP` / `DFT//MLIP`), and summaries record both `mlip_backend` and
   `mlip_model` without an UMA-specific model field.
 
@@ -713,7 +715,7 @@ Release of the 0.4.4–0.4.6 changes listed below.
   help.` to every user-input-style error so first-time users see a
   recovery path, and routes the full traceback through
   `logging.getLogger(...).exception` so log scrapers / `-v` users get
-  the structured record alongside the human-readable terminal echo.
+  the structured record alongside the terminal echo.
 - Repo-wide ruff `F401` sweep: removed 29 unused imports including the
   unused `warnings` shadow in `backends/__init__.py`.
 - `docs/cli-conventions.md` now spells out the four permanent boolean

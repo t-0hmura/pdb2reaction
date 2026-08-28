@@ -134,7 +134,7 @@ A non-dry `all` run writes the deliverables reached by its enabled stages to
 - `segments/seg_NN/{reactant,ts,product}.*` — the canonical R / TS / P structures to cite
 - `mep_trj.xyz` (plus `mep.pdb` when topology is available and `mep.cif` for bridged inputs) — the merged reaction path in MEP/scan-list modes
 - `energy_diagram_MEP.png` — MEP diagram when MEP construction and static-image export succeed
-- `summary.log` (human-readable) / `summary.json` (machine-readable)
+- `summary.log` / `summary.json`
 
 Pipeline scratch lives under `_work/` (safe to delete). Full layout and filename conventions: [docs/output-layout.md](docs/output-layout.md).
 
