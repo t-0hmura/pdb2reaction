@@ -1396,13 +1396,28 @@ def _derive_pipeline_status(
                     reasons.append(f"{prefix}: IRC trajectory is missing")
 
             if cfg.get("tsopt") or cfg.get("thermo"):
+                # The terminal exact-PHVA result is owned by the TSOPT record.
+                # ``ts_imag`` is the older/thermochemistry presentation block
+                # and is retained as a fallback for pre-schema-2 summaries.
+                tsopt_result = item.get("tsopt")
                 ts_imag = item.get("ts_imag")
-                if not isinstance(ts_imag, dict) or ts_imag.get("n_imag") is None:
+                raw_n_imag = (
+                    tsopt_result.get("n_imaginary_modes")
+                    if isinstance(tsopt_result, dict)
+                    else None
+                )
+                if raw_n_imag is None and isinstance(ts_imag, dict):
+                    raw_n_imag = ts_imag.get("n_imag")
+                try:
+                    n_imag = None if raw_n_imag is None else int(raw_n_imag)
+                except (TypeError, ValueError):
+                    n_imag = None
+                if n_imag is None:
                     reasons.append(f"{prefix}: TS imaginary-mode validation is missing")
-                elif int(ts_imag["n_imag"]) != 1:
+                elif n_imag != 1:
                     reasons.append(
                         f"{prefix}: TS imaginary-mode validation found "
-                        f"n_imag={int(ts_imag['n_imag'])}, expected 1"
+                        f"n_imag={n_imag}, expected 1"
                     )
 
             if cfg.get("thermo"):
@@ -2528,6 +2543,26 @@ def _run_freq_for_state(
             logger.debug("Failed to parse thermoanalysis YAML %s: %s", y, exc)
             return {}
     return {}
+
+
+def _ts_imag_record(
+    n_imag,
+    imag_freqs_cm=None,
+    frequency_zero_cutoff_cm=None,
+) -> Dict[str, Any]:
+    """Build the shared certified TS imaginary-mode summary record."""
+
+    record: Dict[str, Any] = {"n_imag": int(n_imag)}
+    frequencies = [float(value) for value in (imag_freqs_cm or [])]
+    if frequencies:
+        record["imag_freqs_cm"] = frequencies
+        record["nu_imag_max_cm"] = min(frequencies)
+        record["min_abs_imag_cm"] = min(abs(value) for value in frequencies)
+    if frequency_zero_cutoff_cm is not None:
+        record["frequency_zero_cutoff_cm"] = float(
+            frequency_zero_cutoff_cm
+        )
+    return record
 
 
 def _read_imaginary_frequency(
@@ -5457,15 +5492,11 @@ def cli(
                 "pipeline_stop": dict(pipeline_stop),
             }
             if _tsopt_payload.get("n_imaginary_modes") is not None:
-                _stop_log["ts_imag"] = {
-                    "n_imag": int(_tsopt_payload["n_imaginary_modes"]),
-                    "imag_freqs_cm": list(
-                        _tsopt_payload.get("imaginary_frequencies_cm") or []
-                    ),
-                    "frequency_zero_cutoff_cm": _tsopt_payload.get(
-                        "frequency_zero_cutoff_cm"
-                    ),
-                }
+                _stop_log["ts_imag"] = _ts_imag_record(
+                    _tsopt_payload["n_imaginary_modes"],
+                    _tsopt_payload.get("imaginary_frequencies_cm"),
+                    _tsopt_payload.get("frequency_zero_cutoff_cm"),
+                )
 
             summary = {
                 "out_dir": str(tsroot),
@@ -6088,15 +6119,11 @@ def cli(
                     "tsopt": _tsopt_record,
                 }
                 if _tsopt_payload.get("n_imaginary_modes") is not None:
-                    segment_log["ts_imag"] = {
-                        "n_imag": int(_tsopt_payload["n_imaginary_modes"]),
-                        "imag_freqs_cm": list(
-                            _tsopt_payload.get("imaginary_frequencies_cm") or []
-                        ),
-                        "frequency_zero_cutoff_cm": _tsopt_payload.get(
-                            "frequency_zero_cutoff_cm"
-                        ),
-                    }
+                    segment_log["ts_imag"] = _ts_imag_record(
+                        _tsopt_payload["n_imaginary_modes"],
+                        _tsopt_payload.get("imaginary_frequencies_cm"),
+                        _tsopt_payload.get("frequency_zero_cutoff_cm"),
+                    )
                 if ts_freq_info is not None:
                     segment_log["ts_imag"] = ts_freq_info
                     if ts_freq_info.get("nu_imag_max_cm") is not None:
@@ -7722,6 +7749,12 @@ def cli(
                 ),
                 "stop_reason": _tsopt_payload.get("stop_reason"),
             }
+            if _tsopt_payload.get("n_imaginary_modes") is not None:
+                segment_log["ts_imag"] = _ts_imag_record(
+                    _tsopt_payload["n_imaginary_modes"],
+                    _tsopt_payload.get("imaginary_frequencies_cm"),
+                    _tsopt_payload.get("frequency_zero_cutoff_cm"),
+                )
 
             if not bool(_tsopt_decision.get("continue_irc")):
                 pipeline_stop = {
