@@ -15,13 +15,13 @@ Test a reaction mechanism in a single command:
 pdb2reaction all -i R.pdb P.pdb -c 'LIG' -l 'LIG:-1' --tsopt --thermo
 ```
 
-Inputs are not limited to full enzyme PDBs: mmCIF is accepted directly, including multi-character chains and large residue IDs. You can also pass a small molecule as `.xyz` / `.gjf`, or a cluster model you built yourself as PDB/mmCIF, and omit `--center/-c` to skip extraction.
+Protein structures can be supplied in PDB or mmCIF format, including mmCIF files with multi-character chains and large residue IDs. Small molecules are accepted in PDB, mmCIF, XYZ, or GJF format, and prebuilt cluster models can also be supplied as PDB/mmCIF.
 
 > **Prerequisites:** PDB/mmCIF inputs must already contain hydrogens; reaction-ordered structures must share the same atom identities and order (only coordinates differ). Small-molecule `.xyz` / `.gjf` inputs work when `--center/-c` and `--ligand-charge/-l` are omitted.
 
 ## Colab GUI workspace
 
-An interactive GUI workspace is available in Google Colab. It brings ordered structure input, Mol* visualization and atom picking, controls generated from the live CLI, execution, and linked MEP/IRC/result inspection into one notebook. Choose a GPU runtime and [open the Colab GUI workspace](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb).
+**An interactive GUI workspace is available in Google Colab.** It brings ordered structure input, Mol* visualization and atom picking, controls generated from the live CLI, execution, and linked MEP/IRC/result inspection into one notebook. Choose a GPU runtime and [open the Colab GUI workspace](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb).
 
 <img src="https://raw.githubusercontent.com/t-0hmura/pdb2reaction/main/docs/colab_workspace.png" alt="pdb2reaction Colab GUI workspace showing Mol* structure setup and active-site selection controls" width="90%">
 
