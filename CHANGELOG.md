@@ -10,6 +10,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Add `--gsm-param {equi,energy}` to `all`, `path-opt`, and `path-search` as an advanced GSM node-parameterization control; `equi` remains the default.
 
 ### Fixed
+- Number TS candidates, validated TS structures, and intermediates across linked
+  Colab MEP/IRC trajectories, and label combined IRC endpoints by direction.
 - Map `all --freeze-atoms` and YAML `geom.freeze_atoms` from original full-input
   indices to extracted active-site model indices before every child stage.
 - Label the Colab advanced-control disclosure as `Show All options`.
