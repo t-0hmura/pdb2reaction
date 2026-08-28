@@ -1303,8 +1303,12 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "role=\"tooltip\"" not in app
     # Standalone opt/tsopt/path-opt users need a cluster model first.
     assert "b_extract = W.Button(description='Extract cluster & use it'" in app
+    assert "b_extract.add_class('rxextract-trigger')" in app
     assert "_set_operation_loading('input cluster', True)" in app
     assert "_dispatch_ui(lambda outputs=list(outs), state=previous: _finish_extract(outputs, state))" in app
+    assert "wireOperationTrigger('.rxextract-trigger',CONFIG.extract_callback,'input cluster')" in app
+    assert "'extract_callback': 'pdb2reaction_gui.extract_cluster'" in app
+    assert "register_callback('pdb2reaction_gui.extract_cluster', _on_colab_extract_cluster)" in app
     assert "prep_radius = W.BoundedFloatText(" in app
     assert "keep_subcmd=True" in app
     # The wheel ships no examples, so Load example resolves them from the git
@@ -2735,17 +2739,22 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     app["charge_rows"]["LIG"]["use"].value = True
     extract_commands = []
 
+    block_extract = {"value": True}
     extract_started = threading.Event()
     release_extract = threading.Event()
 
     def fake_extract(command, **_kwargs):
         extract_commands.append(list(command))
-        extract_started.set()
-        assert release_extract.wait(timeout=5)
+        if block_extract["value"]:
+            extract_started.set()
+            assert release_extract.wait(timeout=5)
         out_start = command.index("-o") + 1
         out_end = command.index("-c")
         for output in command[out_start:out_end]:
-            Path(output).write_text(primary.read_text(encoding="utf-8"), encoding="utf-8")
+            Path(output).write_text(
+                "REMARK EXTRACTED\n" + primary.read_text(encoding="utf-8"),
+                encoding="utf-8",
+            )
             metadata[str(output)] = [dict(row) for row in metadata[str(primary)]]
         return types.SimpleNamespace(returncode=0, stdout="", stderr="")
 
@@ -2779,6 +2788,29 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     assert app["S"]["mode"] == "mmcif"
     assert app["S"]["_pre_extract"] is None
     assert app["b_revert"].layout.display == "none"
+
+    # Hosted Colab intercepts the same button through its browser-native bridge.
+    # The callback stays pending until load_pdb has committed the extracted
+    # structure and Mol* update on the callback/UI thread.
+    app["center_widget"].value = ("LIG",)
+    app["charge_rows"]["LIG"]["use"].value = True
+    block_extract["value"] = False
+    viewer_generation = app["_VIEWER_GENERATION"]["value"]
+    viewer_signal = app["viewer_signal_out"].value
+    assert app["_on_colab_extract_cluster"]() == {"ok": True}
+    assert app["S"]["inputs"] != original_inputs
+    assert app["S"]["_view_input_index"] == 0
+    assert Path(app["S"]["_pdb_path"]) == Path(app["S"]["inputs"][0])
+    assert app["view_input"].value == 0
+    assert app["_VIEWER_GENERATION"]["value"] > viewer_generation
+    assert app["viewer_signal_out"].value != viewer_signal
+    assert "rx-load-structure" in _embedded_document(app["viewer_signal_out"].value)
+    app["b_revert"].click()
+    inputs_before_error = list(app["S"]["inputs"])
+    assert app["_on_colab_extract_cluster"]() == {"ok": False}
+    assert app["S"]["inputs"] == inputs_before_error
+    assert not app["b_extract"].disabled
+    assert "extract failed" in app["extract_msg"].value
 
     small = tmp_path / "small.xyz"
     small.write_text(
