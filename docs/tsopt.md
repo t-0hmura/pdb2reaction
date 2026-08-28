@@ -19,7 +19,7 @@ optimization (`opt` and post-IRC endpoint re-optimization in `all`).
 
 At optimizer termination, `tsopt` retains the final geometry. Terminal exact PHVA runs only after numerical convergence; a non-converged or stalled run stops without PHVA. A PHVA failure is recorded without discarding the structure or fabricating frequencies. Numerical optimizer status is independent of saddle order: first-order certification still requires **exactly one** imaginary frequency, the intended displacement, and correct [`irc`](irc.md) connectivity. A separate [`freq`](freq.md) run is needed only for full vibrational analysis or thermochemistry.
 
-### Terminal outcomes and fatal errors
+## Terminal outcomes and fatal errors
 
 | Condition | `tsopt` artifacts | Composite `all` behavior |
 | --- | --- | --- |
