@@ -16,6 +16,7 @@ import re
 import shlex
 import subprocess
 import sys
+import threading
 import types
 import zipfile
 from pathlib import Path
@@ -309,11 +310,17 @@ def test_setup_command_fields_do_not_repaint_hidden_results_or_viewer(monkeypatc
     manual = app["cmd_box"].value + " --manual-flag"
     app["cmd_box"].value = manual
     assert app["manual_mode_notice"].layout.display == ""
+    assert "Manual command mode." in app["manual_mode_notice"].value
     app["prep_radius"].value = 3.3
     assert app["cmd_box"].value == manual
     app["b_rebuild"].click()
     assert app["manual_mode_notice"].layout.display == "none"
+    assert app["manual_mode_notice"].value == ""
     assert "-r 3.3" in app["cmd_box"].value
+    assert '"expanded":false' in app["_molstar_document"]("1\nH\nH 0 0 0\n", "xyz")
+    assert '"expanded":true' in app["_molstar_document"](
+        "1\nH\nH 0 0 0\n", "xyz", expanded=True,
+    )
 
 
 def test_distance_restraint_picker_toggles_and_emits_target(
@@ -1073,7 +1080,9 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "generation != _RESULT_SET_GENERATION['value']" in app
     assert "_normalise_result_label(options[selected_index][0])" in app
     assert "value = options[selected_index][1]" in app
-    assert "layoutIsExpanded:true" in app
+    assert "layoutIsExpanded:cfg.expanded" in app
+    assert "'expanded': bool(expanded)" in app
+    assert app.count("expanded=True") >= 4
     assert "var nativeFrameTimer=0" in app
     assert "playButtons[0].dataset.rxNativePlay='true'" in app
     assert "playButtons[1].textContent='Ⅱ'" in app
@@ -1294,6 +1303,8 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "role=\"tooltip\"" not in app
     # Standalone opt/tsopt/path-opt users need a cluster model first.
     assert "b_extract = W.Button(description='Extract cluster & use it'" in app
+    assert "_set_operation_loading('input cluster', True)" in app
+    assert "_dispatch_ui(lambda outputs=list(outs), state=previous: _finish_extract(outputs, state))" in app
     assert "prep_radius = W.BoundedFloatText(" in app
     assert "keep_subcmd=True" in app
     # The wheel ships no examples, so Load example resolves them from the git
@@ -1307,7 +1318,7 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "Structures, topology, or utility files" not in app
     assert "HCN -> HNC" not in app
     assert "Run Setup first" not in app
-    assert "cmd = [CLI, 'extract', '-i', *S['inputs'], '-o', *outs, '-c', ','.join(cen)]" in app
+    assert "cmd = [CLI, 'extract', '-i', *inputs, '-o', *outs, '-c', ','.join(cen)]" in app
     assert "cen = _center_cli_selectors()" in app
     assert "command_footer = W.VBox([command_actions, w_show_run_log]" in app
     assert "cmdline_box.add_class('rxcommand-dock')" in app
@@ -1472,7 +1483,7 @@ def test_colab_viewer_persists_exact_atom_and_residue_context() -> None:
         "show_sequence=False, channel='trajectory',",
         "generation=generation, frame_count=len(frames)",
         "source = ''.join(frames)",
-        "display(HTML(_molstar_iframe(source, fmt, show_sequence=(fmt != 'xyz'))))",
+        "display(HTML(_molstar_iframe(source, fmt, show_sequence=(fmt != 'xyz'), expanded=True)))",
     ):
         assert marker in app
     assert "py3Dmol" not in app
@@ -2724,8 +2735,13 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     app["charge_rows"]["LIG"]["use"].value = True
     extract_commands = []
 
+    extract_started = threading.Event()
+    release_extract = threading.Event()
+
     def fake_extract(command, **_kwargs):
         extract_commands.append(list(command))
+        extract_started.set()
+        assert release_extract.wait(timeout=5)
         out_start = command.index("-o") + 1
         out_end = command.index("-c")
         for output in command[out_start:out_end]:
@@ -2735,7 +2751,15 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
 
     monkeypatch.setattr(app["subprocess"], "run", fake_extract)
     app["b_extract"].click()
+    assert extract_started.wait(timeout=5)
+    try:
+        assert app["_OPERATION_LOADING"] == {"depth": 1, "label": "input cluster"}
+        assert "Loading <b>input cluster</b>…" in app["_tab_loading"].value
+        assert app["extract_msg"].value == ""
+    finally:
+        release_extract.set()
     app["_EXTRACT_TASK"]["thread"].join(timeout=5)
+    assert not app["_EXTRACT_TASK"]["thread"].is_alive()
     assert extract_commands
     assert extract_commands[-1][extract_commands[-1].index("-r") + 1] == "4.2"
     assert extract_commands[-1][extract_commands[-1].index("-l") + 1] == "LIG:0,MG:2"
@@ -2743,6 +2767,12 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     assert app["S"]["_pre_extract"]["inputs"] == original_inputs
     assert app["b_revert"].layout.display == ""
     assert app["S"]["inputs"] != original_inputs
+    assert app["S"]["_view_input_index"] == 0
+    assert Path(app["S"]["_pdb_path"]) == Path(app["S"]["inputs"][0])
+    assert app["view_input"].value == 0
+    assert Path(app["S"]["inputs"][0]).name in app["view_input"].options[0][0]
+    assert app["_OPERATION_LOADING"]["depth"] == 0
+    assert app["_tab_loading"].value == ""
     app["b_revert"].click()
     assert app["dd_subcmd"].value == "sp" and app["S"]["subcmd"] == "sp"
     assert app["S"]["inputs"] == original_inputs
@@ -5068,7 +5098,7 @@ def test_results_replaces_trajectory_with_exact_stationary_model_set(
     assert '"xTickStep":10' in many
     assert "showticklabels:true,ticks:'',ticklen:0,tickfont:{size:14}" in profile
     assert "font:{size:18,color:'#253047'}" in profile
-    assert "const below=/(?:endpoint|scan (?:start|end))$/i.test" in profile
+    assert "const below=/(?:endpoint|scan (?:start|end)|← forward|backward →)$/i.test" in profile
     assert "yshift:below?-18:16,yanchor:below?'top':'bottom'" in profile
     scan_profile = html.unescape(app["_energy_plot_document"](
         [0.0, 10.0, 5.0],
@@ -5077,8 +5107,8 @@ def test_results_replaces_trajectory_with_exact_stationary_model_set(
     assert '"yRange":[-2.2,11.2]' in scan_profile
     irc_profile = html.unescape(app["_energy_plot_document"](
         [0.0, 10.0, 5.0],
-        {"x": "IRC point", "start": "forward endpoint",
-         "end": "backward endpoint", "ts_index": 1, "ts_label": "TS"}, 21,
+        {"x": "IRC point", "start": "← forward",
+         "end": "backward →", "ts_index": 1, "ts_label": "TS"}, 21,
     ))
     assert '"yRange":[-2.2,12.2]' in irc_profile
 
