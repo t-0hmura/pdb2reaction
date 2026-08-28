@@ -15,7 +15,7 @@ Test a reaction mechanism in a single command:
 pdb2reaction all -i R.pdb P.pdb -c 'LIG' -l 'LIG:-1' --tsopt --thermo
 ```
 
-Protein structures can be supplied in PDB or mmCIF format, including mmCIF files with multi-character chains and large residue IDs. Small molecules are accepted in PDB, mmCIF, XYZ, or GJF format, and prebuilt cluster models can also be supplied as PDB/mmCIF.
+Protein structures can be supplied in **PDB** or **mmCIF** format, including mmCIF files with multi-character chains and large residue IDs. Small molecules are accepted in PDB, mmCIF, **XYZ**, or **GJF** format, and prebuilt cluster models can also be supplied as PDB/mmCIF.
 
 > **Prerequisites:** PDB/mmCIF inputs must already contain hydrogens; reaction-ordered structures must share the same atom identities and order (only coordinates differ). Small-molecule `.xyz` / `.gjf` inputs work when `--center/-c` and `--ligand-charge/-l` are omitted.
 
