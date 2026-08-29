@@ -1416,6 +1416,7 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "Loading <b>%s</b>…</div>" in app
     assert "ex_btn.add_class('rxexample-trigger')" in app
     assert "workspace_load.add_class('rxworkspace-trigger')" in app
+    assert "res_btn.add_class('rxresults-load-trigger')" in app
     assert "def _load_example_impl(_):" in app
     assert "try: return _load_example_impl(_)" in app
     assert "_set_operation_loading('files', True)" in app
@@ -1426,10 +1427,13 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "function setNativeOperationLoading(label,active)" in app
     assert "'example_callback': 'pdb2reaction_gui.load_example'" in app
     assert "'workspace_callback': 'pdb2reaction_gui.load_workspace_path'" in app
+    assert "'load_results_callback': 'pdb2reaction_gui.load_results'" in app
     assert "bridge.invokeFunction(callback,[],{})" in app
     assert ".rxoperation-trigger" not in app
     assert "setNativeOperationLoading(label,false)" in app
     assert "_cwm.register_callback('pdb2reaction_gui.load_workspace_path', _on_colab_workspace_path)" in app
+    assert "_cwm.register_callback('pdb2reaction_gui.load_results', _on_colab_load_results)" in app
+    assert "wireOperationTrigger('.rxresults-load-trigger',CONFIG.load_results_callback,'results');" in app
     assert "host.dataset.rxOperationBusy==='true'" in app
     assert "wireOperationTriggers();" in app
     assert "Atom identifiers match input 1" not in app
@@ -6228,6 +6232,54 @@ def test_colab_workspace_callback_loads_optimization_trajectory_path(
     assert managed.name == source.name
     assert managed.read_bytes() == source.read_bytes()
     assert not app["example_msg"].value
+
+
+def test_colab_initial_load_results_uses_native_callback(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    callbacks: dict[str, object] = {}
+    google = types.ModuleType("google")
+    colab = types.ModuleType("google.colab")
+    output = types.ModuleType("google.colab.output")
+    files = types.ModuleType("google.colab.files")
+    userdata = types.ModuleType("google.colab.userdata")
+    output.enable_custom_widget_manager = lambda: None
+    output.register_callback = lambda name, callback: callbacks.__setitem__(name, callback)
+    output.eval_js = lambda _script: None
+    files.download = lambda _path: None
+    userdata.get = lambda _key: None
+    colab.output = output
+    colab.files = files
+    colab.userdata = userdata
+    google.colab = colab
+    for name, module in {
+        "google": google,
+        "google.colab": colab,
+        "google.colab.output": output,
+        "google.colab.files": files,
+        "google.colab.userdata": userdata,
+    }.items():
+        monkeypatch.setitem(sys.modules, name, module)
+
+    app, _ = _execute_app(monkeypatch, tmp_path)
+    assert app["_UPLOAD_MODE"] == "colab"
+    callback = callbacks["pdb2reaction_gui.load_results"]
+
+    root = tmp_path / "existing_result"
+    root.mkdir()
+    trajectory = root / "optimization_trj.xyz"
+    trajectory.write_text("1\nstep\nH 0 0 0\n", encoding="utf-8")
+    (root / "summary.json").write_text(json.dumps({
+        "pdb2reaction_version": "0.4.12",
+        "status": "success",
+        "command": "pdb2reaction opt -i input.xyz -o existing_result --dump",
+        "current_output_paths": [trajectory.name],
+    }), encoding="utf-8")
+    app["results_dir"].value = str(root)
+
+    assert callback() == {"ok": True}
+    assert app["S"]["_last_out_dir"] == str(root.resolve())
+    assert app["_TRAJ"]["path"] == str(trajectory.resolve())
 
 
 def test_cycle_flags_are_owned_by_the_live_command_registry() -> None:

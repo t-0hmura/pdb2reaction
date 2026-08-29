@@ -6,13 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
-_No changes yet._
+### Fixed
+- Route the first Colab `Load results` action through the native browser bridge.
 
 ## [0.4.12] — 2026-08-29
 
 > Upgrade warning: unchanged inputs can produce different geometries, energies/barriers,
-> vibrational classifications, thermochemistry, and scientific/terminal status. Consumers of
-> `result.json`/`summary.json` consumers must review the Breaking changes and output-schema updates below.
+> vibrational classifications, thermochemistry, and scientific/terminal status. Users of
+> `result.json`/`summary.json` must review the Breaking changes and output-schema updates below.
 
 ### Breaking changes
 - **JSON schema 2.0 (breaking).** `post_segments[].uma` became `.mlip`, `gibbs_uma` became
