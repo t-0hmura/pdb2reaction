@@ -6,6 +6,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed
+- Open the Colab example dropdown on the Aromatic Claisen example.
+
 ### Fixed
 - Route the first Colab `Load results` action through the native browser bridge.
 

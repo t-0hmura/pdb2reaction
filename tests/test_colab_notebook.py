@@ -187,6 +187,7 @@ def test_colab_gui_audited_launch_and_feedback_regressions(monkeypatch, tmp_path
         example_a if relpath == "1.R.pdb" else example_b
     )
     app["load_pdb"] = lambda *_args, **_kwargs: None
+    app["ex_choice"].value = "BezA methyltransferase - cluster MEP (R->P)"
     app["_load_example"](None)
     assert "Loaded example:" in app["input_msg"].value
     assert "BezA methyltransferase" in app["input_msg"].value
@@ -3691,6 +3692,7 @@ def test_colab_operates_scientific_selectors_and_remaining_buttons(
 
     # Operate every built-in example branch with local release-matched assets.
     app["_example_file"] = lambda relpath: str(NOTEBOOK.parent / relpath)
+    assert app["ex_choice"].value == "Aromatic Claisen rearrangement - small molecule"
     for choice in app["ex_choice"].options:
         app["S"]["out_dir"] = "./custom-output/"
         app["w_out"].value = "./custom-output/"
