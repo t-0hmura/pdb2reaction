@@ -40,6 +40,7 @@ first one whose import succeeds.
 | `pdb2reaction/backends/orb.py` | Orb (Orbital Materials) — precision / compile_model |
 | `pdb2reaction/backends/mace.py` | MACE — default_dtype |
 | `pdb2reaction/backends/aimnet2.py` | AIMNet2 — charge-aware (excluded from 5-backend benchmark for the p2r paper) |
+| `pdb2reaction/backends/pyscf_dft.py` | Stateful PySCF/GPU4PySCF DFT/HF scanner, exact-coordinate cache, and optional SCF checkpoints |
 
 ## Per-backend characteristics
 
@@ -89,6 +90,36 @@ calc:
 ```
 
 Requires `fairchem-core ≥ 2.0` for the `InferenceSettings` API.
+
+## Stateful DFT backend
+
+`sp`, `opt`, `tsopt`, `irc`, `freq`, `scan*`, `path-opt`, `path-search`, and
+`all` accept `--backend dft --func-basis FUNCTIONAL/BASIS --engine gpu|cpu`.
+The dedicated `pdb2reaction dft` population-analysis command remains available.
+
+Closed-shell GPU low-memory runs rebuild the geometry-bound `rks_lowmem.RKS`
+object at each step and pass the previous converged GPU density as `dm0`.
+Other routes retain one PySCF scanner. Both paths reset geometry-dependent
+intermediates, reuse the electronic state, and use the exact-coordinate cache
+for repeated energy/force requests. PCM and SMD use native PySCF solvent objects.
+
+Low-memory execution is the default (`--lowmem`). Closed-shell GPU calculations
+use `gpu4pyscf.dft.rks_lowmem.RKS` for energy, gradients, and Hessians, including
+PCM/SMD. Open-shell GPU and CPU calculations use standard direct JK without a
+persistent density-fitting tensor. `--no-lowmem` enables density fitting and may
+improve difficult SCF convergence when enough memory is available. PySCF threads
+and host RAM are detected from the scheduler,
+process affinity, and host/cgroup limits; override them with `--dft-nprocs` and
+`--dft-mem`. The memory value is host RAM, not GPU VRAM.
+
+Disk checkpoints are disabled by default because they can be very large. Enable
+them with `--save-scf-checkpoint` and optionally select a shared file with
+`--scf-checkpoint PATH`. When saving is enabled without an explicit path, a leaf
+workflow uses `<out-dir>/_work/dft_scf/state.chk`; `all` keeps separate state-role
+checkpoints. A checkpoint is used
+only when its method, atom order, and coordinates match. `calc.dft.pyscf` passes
+attributes by PySCF object name. Native `.pyscf_conf.py`,
+`PYSCF_CONFIG_FILE`, `PYSCF_MAX_MEMORY`, and `PYSCF_TMPDIR` remain effective.
 
 ## Custom backend — bring your own ASE Calculator (`--calc-file`)
 

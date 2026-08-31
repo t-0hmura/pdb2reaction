@@ -542,6 +542,8 @@ _SUBCOMMAND_PRIMARY_HELP_OPTIONS: dict[str, frozenset[str]] = {
             "--multiplicity",
             "--func-basis",
             "--engine",
+            "--solvent",
+            "--solvent-model",
             "--config",
             "-o", "--out-dir",
             "--help-advanced",

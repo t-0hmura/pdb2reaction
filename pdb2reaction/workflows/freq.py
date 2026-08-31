@@ -66,7 +66,7 @@ from pdb2reaction.core.utils import (
     merge_freeze_atom_indices,
     echo_resolved_device,
 )
-from pdb2reaction.cli.common_options import add_ml_charge_spin_options, add_precision_option, add_backend_model_option, add_calc_file_option, add_deterministic_option, add_allow_charge_mult_mismatch_option, add_coord_type_option
+from pdb2reaction.cli.common_options import add_ml_charge_spin_options, add_precision_option, add_backend_model_option, add_calc_file_option, add_deterministic_option, add_allow_charge_mult_mismatch_option, add_coord_type_option, add_dft_calculator_options
 from pdb2reaction.cli.decorators import resolve_yaml_sources, load_merged_yaml_cfg, render_cli_exception
 
 logger = logging.getLogger(__name__)
@@ -518,12 +518,12 @@ def _prepare_frequency_output_paths(
               type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
               default=None, show_default="FiniteDifference",
               help="How the ML backend computes the Hessian (can also be set via YAML).")
-@click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
-              show_default=True, help="MLIP backend.")
+@click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2", "dft"]), default="uma",
+              show_default=True, help="Energy/force calculator backend.")
 @click.option("--solvent", default="none", show_default=True,
-              help="Experimental, computationally expensive xTB solvent delta correction. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.")
-@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx"]),
-              show_default=True, help="xTB solvent model.")
+              help="Environment model: MLIP backends use the experimental xTB solvent delta; dft uses native PySCF PCM/SMD. 'none' disables it.")
+@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx", "pcm", "smd"]),
+              show_default=True, help="Solvent model: ALPB/CPCMx for MLIP backends; PCM/SMD for dft.")
 @add_ml_charge_spin_options()
 @add_precision_option()
 @add_backend_model_option()
@@ -531,6 +531,7 @@ def _prepare_frequency_output_paths(
 @add_deterministic_option()
 @add_allow_charge_mult_mismatch_option()
 @add_coord_type_option()
+@add_dft_calculator_options()
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -715,6 +716,10 @@ def cli(
     # Ensure calc config reflects the geometry freeze list used in the run.
     calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
     calc_cfg["return_partial_hessian"] = True
+    from pdb2reaction.core.dft_settings import finalize_dft_calculator_config
+    finalize_dft_calculator_config(
+        ctx, calc_cfg, output_dir=freq_cfg.get("out_dir", out_dir)
+    )
 
     out_dir_path = Path(freq_cfg.get("out_dir", out_dir)).resolve()
 

@@ -131,11 +131,8 @@ def test_basic_help_hides_advanced_options_that_advanced_help_shows():
     assert "--solvent" not in basic.output
     assert "--solvent" in advanced.output
     assert "experimental" in advanced.output.lower()
-    assert "computationally expensive" in advanced.output.lower()
-    for solvent in (
-        "water", "methanol", "acetonitrile", "dmso", "thf", "toluene",
-    ):
-        assert solvent in advanced.output.lower()
+    assert "xtb solvent delta" in advanced.output.lower()
+    assert "native pyscf pcm/smd" in advanced.output.lower()
 
     # Compare on each option's rendered help-record column (e.g. "-r, --radius
     # FLOAT"); it carries the metavar so it cannot collide with prose that merely

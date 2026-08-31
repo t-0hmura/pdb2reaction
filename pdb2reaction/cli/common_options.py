@@ -19,6 +19,98 @@ from typing import Callable, Sequence
 import click
 
 
+def _capture_dft_option(ctx: click.Context, param: click.Parameter, value):
+    """Store explicit DFT-only values without changing command signatures."""
+
+    if ctx.resilient_parsing:
+        return value
+    source = ctx.get_parameter_source(param.name)
+    if source not in (None, click.core.ParameterSource.DEFAULT):
+        from pdb2reaction.core.dft_settings import DFT_CLI_META_KEY
+
+        ctx.meta.setdefault(DFT_CLI_META_KEY, {})[param.name] = value
+    return value
+
+
+def add_dft_calculator_options() -> Callable[[Callable], Callable]:
+    """Attach the small option set used only by ``--backend dft``.
+
+    Values are captured in ``Context.meta`` with ``expose_value=False`` so
+    existing workflow signatures and every non-DFT backend stay untouched.
+    """
+
+    def decorator(func: Callable) -> Callable:
+        func = click.option(
+            "--dft-mem",
+            "memory",
+            type=str,
+            default=None,
+            show_default="auto",
+            expose_value=False,
+            callback=_capture_dft_option,
+            help="PySCF host RAM limit (for example 64GB or 120000MB).",
+        )(func)
+        func = click.option(
+            "--dft-nprocs",
+            "nprocs",
+            type=click.IntRange(min=1),
+            default=None,
+            show_default="auto",
+            expose_value=False,
+            callback=_capture_dft_option,
+            help="PySCF/OpenMP CPU threads; GPU count is unaffected.",
+        )(func)
+        func = click.option(
+            "--lowmem/--no-lowmem",
+            default=None,
+            show_default="lowmem",
+            expose_value=False,
+            callback=_capture_dft_option,
+            help=(
+                "Use GPU4PySCF rks_lowmem for closed-shell GPU DFT; open-shell "
+                "GPU and CPU use standard direct JK. --no-lowmem enables density fitting."
+            ),
+        )(func)
+        func = click.option(
+            "--scf-checkpoint",
+            "checkpoint_path",
+            type=click.Path(path_type=str, dir_okay=False),
+            default=None,
+            expose_value=False,
+            callback=_capture_dft_option,
+            help="Load/save the optional structure-bound PySCF checkpoint at PATH.",
+        )(func)
+        func = click.option(
+            "--save-scf-checkpoint/--no-save-scf-checkpoint",
+            default=None,
+            show_default="disabled",
+            expose_value=False,
+            callback=_capture_dft_option,
+            help="Persist a structure-bound PySCF checkpoint (default: disabled).",
+        )(func)
+        func = click.option(
+            "--engine",
+            type=click.Choice(["gpu", "cpu"], case_sensitive=False),
+            default=None,
+            show_default="gpu",
+            expose_value=False,
+            callback=_capture_dft_option,
+            help="PySCF execution engine used by --backend dft.",
+        )(func)
+        func = click.option(
+            "--func-basis",
+            type=str,
+            default=None,
+            show_default="wb97m-v/def2-svp",
+            expose_value=False,
+            callback=_capture_dft_option,
+            help="DFT method as FUNCTIONAL/BASIS; HF/BASIS is also accepted.",
+        )(func)
+        return func
+
+    return decorator
+
+
 def add_print_every_option() -> Callable[[Callable], Callable]:
     """Attach `--print-every N` (debug verbosity throttle).
 

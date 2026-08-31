@@ -38,12 +38,19 @@ Options:
   -o, --out-dir TEXT              Output directory.  [default: ./result_dft/]
   --engine [gpu|cpu]              SCF backend: gpu (GPU4PySCF, raises error if
                                   unavailable) or cpu (PySCF).  [default: gpu]
+  --solvent TEXT                  Implicit-solvent name for native PySCF PCM/SMD
+                                  (for example water).  [default: (none)]
+  --solvent-model [pcm|smd]       Native PySCF implicit-solvent model.
+                                  [default: (smd)]
   --lowmem / --no-lowmem          Use gpu4pyscf rks_lowmem.RKS for closed-shell
-                                  GPU runs (memory-efficient direct JK; mutually
-                                  exclusive with density fitting). Open-shell,
-                                  CPU, or pre-rks_lowmem GPU4PySCF installs
-                                  auto-fall back to standard RKS/UKS with
-                                  density fitting.  [default: lowmem]
+                                  GPU runs, including PCM/SMD (memory-efficient
+                                  direct JK). Open-shell GPU and CPU use
+                                  standard direct-JK RKS/UKS; --no-lowmem
+                                  enables density fitting.  [default: lowmem]
+  --dft-nprocs INTEGER RANGE      PySCF/OpenMP CPU threads; GPU count is
+                                  unaffected.  [default: (auto); x>=1]
+  --dft-mem TEXT                  PySCF host RAM limit (for example 64GB or
+                                  120000MB).  [default: (auto)]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config

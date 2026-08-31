@@ -108,7 +108,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 4. **オプションのセグメントごとの後処理**（通常の MEP／TS 候補が対象。ブリッジは除外し、結合変化は診断として記録）
  - `--tsopt`: 各 HEI を TS 最適化し、終端検証で続行可能な場合は EulerPC IRC と端点再最適化を実行します。振動数とモードは終端 PHVA 成功時のみ記録します。端点最適化には `--thresh-post`（デフォルト: `baker`）を使用し、作業ディレクトリは `--dump` 時、またはいずれかの端点が収束しなかった場合に保持します。`--reject-uphill` はデフォルトで無効で、端点 RFO 再最適化のみに適用します。
  - `--thermo`: (R, TS, P) で `freq` を呼び出し、振動/熱化学データと MLIP Gibbs ダイアグラムを取得
- - `--dft`: (R, TS, P) で DFT 一点計算を実行し、DFT ダイアグラムを構築。`--thermo` と組み合わせると DFT//MLIP Gibbs ダイアグラムも生成
+ - `--dft`: (R, TS, P) で DFT 一点計算を実行し、DFT ダイアグラムを構築。`--thermo` と組み合わせると DFT//MLIP Gibbs ダイアグラムも生成。大規模な本計算では、まずMLIP pipelineを完了し、VRAMを解放した別process/jobで`sp -b dft`を実行することを推奨します。`all -b dft --dft`は主DFT計算を重複するためエラーです。
   - 共有の上書きオプション: `--opt-mode`、`--opt-mode-post`（TSOPT/IRC 後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU 優先）など。Cartesian PHVA の剛体モードは、凍結anchorを尊重する constrained 処理に固定されています。
  - Hessian 評価モードの詳細は {ref}`ja-hessian-evaluation` を参照してください。
 
@@ -337,8 +337,13 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `--dft-engine [gpu\|cpu]` | DFT バックエンド: gpu (GPU4PySCF) または cpu (PySCF)。`all` ラッパーではプレフィックス付きで `--dft-engine` と名付けられていますが、単体の `dft` サブコマンドでは同じオプションが `--engine` という名前になります | `gpu` |
+| `--dft-solvent TEXT` | 後処理DFTで使うPySCF native implicit solvent | `none` |
+| `--dft-solvent-model [pcm\|smd]` | 後処理DFTで使うPySCF native solvent model | `smd` |
 | `--dft-out-dir PATH` | DFT 出力ディレクトリ上書き | _None_ |
 | `--dft-func-basis TEXT` | 汎関数/基底関数ペア | `wb97m-v/def2-svp` |
+| `--lowmem/--no-lowmem` | 主DFT backendまたは任意の`--dft` stageの低memory policy | `--lowmem` |
+| `--dft-nprocs INT` | DFT用PySCF/OpenMP CPU thread数 | `auto` |
+| `--dft-mem SIZE` | DFT用PySCF host RAM上限。GPU VRAMではない | `auto` |
 | `--dft-max-cycle INT` | 最大 SCF サイクル | `100` |
 | `--dft-conv-tol FLOAT` | SCF 収束閾値 | `1e-9` |
 | `--dft-grid-level INT` | PySCF グリッドレベル | `3` |

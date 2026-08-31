@@ -6,7 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
-_No changes yet._
+Target release: **0.5.0**.
+
+### Added
+
+- Add a stateful PySCF/GPU4PySCF calculator backend to calculator-consuming workflows while retaining the standalone `dft` command.
+- Reuse converged SCF state between geometry steps, cache exact repeated requests, support analytical Hessians, and provide opt-in structure-bound checkpoints.
+- Add native PCM/SMD support and automatic PySCF CPU-thread and host-memory resolution.
+
+### Changed
+
+- Use the low-memory direct-JK GPU route by default for closed-shell DFT calculations.
+
 
 ## [0.4.16] — 2026-09-19
 

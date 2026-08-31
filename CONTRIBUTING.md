@@ -204,7 +204,7 @@ Entries in `pdb2reaction/cli/app.py:_LAZY_SUBCOMMANDS` MUST use absolute module 
 
 ### 4.6 Chemistry default choices
 
-Default basis set (def2-TZVPD), default functional (ωB97M-V), default convergence thresholds, default ECP handling, default solvent models — **none** of these are open for change without a `[CHEMISTRY-RULE]` commit, a documented numerical comparison, and maintainer approval. Grep `pdb2reaction/workflows/dft.py` (`DFT_DEFAULT_FUNC` / `DFT_DEFAULT_BASIS`) for the DFT functional/basis and `pdb2reaction/core/defaults.py` for the other defaults; if you think a change is justified, open an issue first.
+Default basis set (def2-SVP), default functional (ωB97M-V), default convergence thresholds, default ECP handling, default solvent models — **none** of these are open for change without a `[CHEMISTRY-RULE]` commit, a documented numerical comparison, and maintainer approval. Grep `pdb2reaction/workflows/dft.py` (`DFT_DEFAULT_FUNC` / `DFT_DEFAULT_BASIS`) for the DFT functional/basis and `pdb2reaction/core/defaults.py` for the other defaults; if you think a change is justified, open an issue first.
 
 ### 4.7 Downstream-parser-visible output
 

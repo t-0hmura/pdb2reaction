@@ -6,8 +6,8 @@ GPU4PySCF または CPU PySCF を使用して DFT 一点計算を実行し、エ
 
 > **前提条件:** DFT 依存パッケージ（PySCF、GPU4PySCF）はデフォルトではインストールされません。`pip install "pdb2reaction[dft]"` でインストールしてください。
 
-> **溶媒:** `dft` に `--solvent` はなく、PCM/SMD は有効化されません。
-> `all --solvent` はMLIP stage向けの実験的で計算costの大きいxTB solvent-delta補正だけを制御し、DFTには転送されません。
+> **溶媒:** `--solvent NAME --solvent-model pcm|smd`はPySCF native implicit solventを
+> 使用します。MLIP backendのxTB solvent-delta補正とは別経路です。
 
 ## 実行例
 
@@ -18,6 +18,7 @@ pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q CHARGE] [-l, --ligand-charge <nu
  [--func-basis 'FUNC/BASIS'] \
  [--max-cycle N] [--conv-tol Eh] [--grid-level L] \
  [--out-dir DIR] [--engine gpu|cpu] \
+ [--solvent NAME] [--solvent-model pcm|smd] \
  [--ref-pdb FILE] [--config FILE] [--show-config] [--dry-run]
 ```
 
@@ -57,7 +58,7 @@ pdb2reaction dft -i input.pdb -l 'LIG:0' -m 1 \
 ## 処理の流れ
 
 1. **入力処理** – 共通bridgeがPDB/mmCIFと`geom_loader`対応形式を受け入れ、座標を`input_geometry.xyz`へ再出力します。XYZ/GJF入力では`--ref-pdb`にPDBまたはmmCIF topologyを指定し、原子数検証と電荷導出に使用できます。DFT 段階自体はPDB/CIF/GJF出力を生成しません。
-2. **SCF ビルド** – `--func-basis` を汎関数と基底に解析します。`--engine` で GPU/CPU を制御します（`gpu` は GPU4PySCF 必須でエラー終了、`cpu` は CPU 固定）。closed-shell + GPU + `--lowmem`（デフォルト）では SCF オブジェクトに `gpu4pyscf.dft.rks_lowmem.RKS` を使用し、メモリ効率の良い直接 JK で密度フィッティングをスキップします。open-shell GPU、CPU、または `--no-lowmem` の経路では密度フィッティングが PySCF のデフォルト設定で自動的に有効化されます。非局所補正（例: VV10）はバックエンドのデフォルトに従い、明示的な上書きは行いません。
+2. **SCF ビルド** – `--func-basis` を汎関数と基底に解析します。`--engine` で GPU/CPU を制御します。低メモリモードは既定で有効です。PCM/SMDを含むclosed-shell GPU計算は`gpu4pyscf.dft.rks_lowmem.RKS`、open-shell GPUとCPUはDF tensorを保持しない標準direct-JK RKS/UKSを使います。十分なメモリがある場合、`--no-lowmem`でdensity fittingを有効にすると難しいSCFの収束が改善することがあります。CPU thread数とhost RAM上限はscheduler/process制約から自動検出し、`--dft-nprocs`と`--dft-mem`で上書きできます。これらの資源値は記録されますが、科学的checkpoint identityには入りません。
 3. **ポピュレーション解析 & 出力** – 収束後（または失敗後）、エネルギー（Hartree/kcal·mol⁻¹）、収束メタデータ、バックエンド情報、および原子ごとの Mulliken/meta-Löwdin/IAO 電荷とスピン密度を要約する `result.yaml` を書き込みます。解析に失敗した項目は `null` に設定され、警告が出力されます。
 
 ## 出力
@@ -88,7 +89,11 @@ out_dir/ (デフォルト:./result_dft/)
 | `--grid-level INT` | PySCF 数値積分グリッドレベル | `3` |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_dft/` |
 | `--engine [gpu\|cpu]` | SCF バックエンド: gpu (GPU4PySCF) または cpu (PySCF)。`--engine` と `--dft-engine` の命名規則は {ref}`ja-engine-vs-dft-engine` を参照 | `gpu` |
-| `--lowmem/--no-lowmem` | closed-shell の GPU 経路で `gpu4pyscf.dft.rks_lowmem.RKS` を使用（密度フィッティングを使わず、メモリ効率の良い直接 JK を使用）。open-shell や CPU エンジン、`rks_lowmem` 未搭載の旧 `gpu4pyscf` では標準 RKS/UKS に自動フォールバック | `True` |
+| `--solvent TEXT` | PySCF native implicit-solvent名。`none`で無効。 | `none` |
+| `--solvent-model [pcm\|smd]` | PySCF native implicit-solvent model。 | `smd` |
+| `--lowmem/--no-lowmem` | PCM/SMDを含むclosed-shell GPU経路で`gpu4pyscf.dft.rks_lowmem.RKS`を使用。open-shell GPUとCPUは標準direct-JK RKS/UKSを使い、`--no-lowmem`でdensity fittingを有効化 | `True` |
+| `--dft-nprocs INT` | PySCF/OpenMP の CPU thread 数。省略時は scheduler/affinity/host から自動検出 | `auto` |
+| `--dft-mem SIZE` | PySCF host RAM 上限（例: `64GB`、`120000MB`）。GPU VRAM ではありません | `auto` |
 | `--ref-pdb FILE` | XYZ/GJF入力の原子数検証とリガンド電荷導出に使う参照PDBまたはmmCIF topology（出力変換なし） | _None_ |
 | `--config FILE` | 明示的な CLI オプション適用前に読み込むベース YAML | _None_ |
 | `--show-config/--no-show-config` | 解決済み設定を表示して実行を継続 | `False` |
@@ -109,6 +114,9 @@ geom:
 dft:
  func: wb97m-v # exchange–correlation functional
  basis: def2-svp # basis set name (alternatively use func_basis: "FUNC/BASIS")
+ lowmem: true # direct-JK低メモリmode。falseでdensity fitting
+ nprocs: auto # 必要なら正の整数で明示
+ memory: auto # 必要なら64GBなどのhost RAM上限
  conv_tol: 1.0e-09 # SCF convergence tolerance (Hartree)
  max_cycle: 100 # maximum SCF iterations
  grid_level: 3 # PySCF grid level

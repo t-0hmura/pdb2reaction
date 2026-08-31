@@ -3104,6 +3104,25 @@ def calculator_provenance(calc_cfg: Mapping[str, Any]) -> Dict[str, Any]:
         from pdb2reaction.backends import resolve_backend
 
         backend = resolve_backend(backend)
+    if backend == "dft":
+        from pdb2reaction.core.dft_settings import resolve_dft_settings
+
+        settings = resolve_dft_settings(calc_cfg)
+        return {
+            "mlip_backend": "dft",
+            "mlip_model": settings.func_basis,
+            "mlip_model_label": settings.func_basis,
+            "mlip_task": settings.engine,
+            "mlip_precision": None,
+            "dft_settings": settings.scientific_identity(),
+            "dft_resources": {
+                "memory_mode": settings.memory_mode,
+                "nprocs": settings.nprocs,
+                "nprocs_source": settings.nprocs_source,
+                "memory_mb": settings.memory_mb,
+                "memory_source": settings.memory_source,
+            },
+        }
     if backend == "custom":
         calc_file = calc_cfg.get("calc_file")
         factory = calc_cfg.get("calc_factory") or "get_calculator"

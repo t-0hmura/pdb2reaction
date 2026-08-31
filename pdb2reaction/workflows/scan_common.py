@@ -371,24 +371,24 @@ def add_scan_common_options(
         ),
         click.option(
             "-b", "--backend",
-            type=click.Choice(["uma", "orb", "mace", "aimnet2"]),
+            type=click.Choice(["uma", "orb", "mace", "aimnet2", "dft"]),
             default="uma",
             show_default=True,
-            help="MLIP backend.",
+            help="Energy/force calculator backend.",
         ),
         click.option(
             "--solvent",
             default="none",
             show_default=True,
-            help="Experimental, computationally expensive xTB solvent delta correction. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.",
+            help="Environment model: MLIP backends use the experimental xTB solvent delta; dft uses native PySCF PCM/SMD. 'none' disables it.",
         ),
         click.option(
             "--solvent-model",
             "solvent_model",
             default="alpb",
-            type=click.Choice(["alpb", "cpcmx"]),
+            type=click.Choice(["alpb", "cpcmx", "pcm", "smd"]),
             show_default=True,
-            help="xTB solvent model.",
+            help="Solvent model: ALPB/CPCMx for MLIP backends; PCM/SMD for dft.",
         ),
     ]
     if include_baseline:

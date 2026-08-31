@@ -186,12 +186,110 @@ def test_all_dft_child_omits_wrapper_defaults_for_yaml_resolution(
         tmp_path / "dft",
         config,
         func_basis=None,
+        overrides={
+            "solvent": "water",
+            "solvent_model": "pcm",
+            "lowmem": False,
+            "nprocs": 8,
+            "memory": "64GB",
+        },
         engine=None,
     )
 
     assert "--func-basis" not in captured["cmd"]
     assert "--engine" not in captured["cmd"]
+    assert captured["cmd"][captured["cmd"].index("--solvent") + 1] == "water"
+    assert captured["cmd"][captured["cmd"].index("--solvent-model") + 1] == "pcm"
+    assert "--no-lowmem" in captured["cmd"]
+    assert captured["cmd"][captured["cmd"].index("--dft-nprocs") + 1] == "8"
+    assert captured["cmd"][captured["cmd"].index("--dft-mem") + 1] == "64GB"
     assert captured["cmd"][-2:] == ["--config", str(config)]
+
+
+def test_all_freq_loads_role_checkpoint_without_rewriting_it(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    from pdb2reaction.workflows import all as all_workflow
+
+    captured: list[str] = []
+    structure = tmp_path / "state.xyz"
+    structure.write_text("1\nstate\nH 0 0 0\n", encoding="utf-8")
+    checkpoint = tmp_path / "state.chk"
+
+    def fake_run(_name, _command, args, **_kwargs):
+        captured.extend(args)
+        return 1
+
+    monkeypatch.setattr(all_workflow, "_run_cli_main", fake_run)
+    monkeypatch.setattr(all_workflow, "_echo", lambda *a, **k: None)
+    all_workflow._run_freq_for_state(
+        structure,
+        0,
+        1,
+        tmp_path / "freq",
+        None,
+        False,
+        None,
+        False,
+        scf_checkpoint=checkpoint,
+    )
+
+    assert "--no-save-scf-checkpoint" in captured
+    assert captured[captured.index("--scf-checkpoint") + 1] == str(checkpoint)
+
+
+def test_role_checkpoint_refresh_updates_every_manifest_alias(tmp_path: Path) -> None:
+    from pdb2reaction.workflows._run_session import InvocationManifest
+    from pdb2reaction.workflows.all import _save_role_scf_checkpoint
+
+    checkpoint = (tmp_path / "state.chk").resolve()
+    metadata = checkpoint.with_suffix(".chk.json")
+    manifest = InvocationManifest()
+    manifest.declare("child.checkpoint", [checkpoint])
+    manifest.declare("child.checkpoint.metadata", [metadata])
+
+    class Calculator:
+        generation = 0
+
+        def save_scf_checkpoint(self, path, _geometry):
+            self.generation += 1
+            destination = Path(path)
+            checkpoint_tmp = destination.with_name(destination.name + ".tmp")
+            metadata_path = Path(str(path) + ".json")
+            metadata_tmp = metadata_path.with_name(metadata_path.name + ".tmp")
+            checkpoint_tmp.write_text(
+                f"checkpoint-{self.generation}\n", encoding="utf-8"
+            )
+            metadata_tmp.write_text(
+                f'{{"generation": {self.generation}}}\n', encoding="utf-8"
+            )
+            checkpoint_tmp.replace(destination)
+            metadata_tmp.replace(metadata_path)
+
+    calculator = Calculator()
+    calculator.save_scf_checkpoint(checkpoint, object())
+    manifest.claim_one("child.checkpoint")
+    manifest.claim_one("child.checkpoint.metadata")
+    old_digest = manifest.produced["child.checkpoint"][1].sha256
+
+    saved = _save_role_scf_checkpoint(
+        calculator,
+        object(),
+        checkpoint,
+        manifest=manifest,
+        key="role.checkpoint",
+    )
+
+    assert saved == checkpoint
+    assert manifest.produced["child.checkpoint"][1].sha256 != old_digest
+    assert (
+        manifest.produced["child.checkpoint"][1].sha256
+        == manifest.produced["role.checkpoint"][1].sha256
+    )
+    assert (
+        manifest.produced["child.checkpoint.metadata"][1].sha256
+        == manifest.produced["role.checkpoint.metadata"][1].sha256
+    )
 
 
 def test_all_stops_before_irc_when_tsopt_result_is_invalid(

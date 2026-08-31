@@ -88,13 +88,16 @@ Options:
                                   [default: 1]
   --workers-per-node INTEGER      Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
-  -b, --backend [uma|orb|mace|aimnet2]
-                                  MLIP backend.  [default: uma]
-  --solvent TEXT                  Experimental, computationally expensive xTB
-                                  solvent delta correction. Examples: water,
-                                  methanol, acetonitrile, dmso, thf, toluene.
-                                  'none' disables it.  [default: none]
-  --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
+  -b, --backend [uma|orb|mace|aimnet2|dft]
+                                  Energy/force calculator backend.  [default:
+                                  uma]
+  --solvent TEXT                  Environment model: MLIP backends use the
+                                  experimental xTB solvent delta; dft uses
+                                  native PySCF PCM/SMD. 'none' disables it.
+                                  [default: none]
+  --solvent-model [alpb|cpcmx|pcm|smd]
+                                  Solvent model: ALPB/CPCMx for MLIP backends;
+                                  PCM/SMD for dft.  [default: alpb]
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1).  [default: 1]
   --freeze-links BOOLEAN          Freeze parent atoms of cap hydrogens
                                   (PDB/mmCIF input or XYZ/GJF with --ref-pdb).
@@ -290,6 +293,10 @@ Options:
   --dft-engine [gpu|cpu]          Override the DFT backend (gpu or cpu); omitted
                                   values inherit YAML/defaults.  [default:
                                   (gpu)]
+  --dft-solvent TEXT              Implicit solvent for post-processing DFT
+                                  single points.  [default: (none)]
+  --dft-solvent-model [pcm|smd]   Native PySCF solvent model for post-processing
+                                  DFT single points.  [default: (smd)]
   -s, --scan-lists TEXT           Scan targets: inline Python literal. Multiple
                                   inline literals define sequential stages, e.g.
                                   '[(12,45,1.35)]'
@@ -358,5 +365,22 @@ Options:
                                   shell clusters need a matching multiplicity
                                   instead; use this only for an intentionally
                                   nonstandard electron count.
+  --func-basis TEXT               DFT method as FUNCTIONAL/BASIS; HF/BASIS is
+                                  also accepted.  [default: (wb97m-v/def2-svp)]
+  --engine [gpu|cpu]              PySCF execution engine used by --backend dft.
+                                  [default: (gpu)]
+  --save-scf-checkpoint / --no-save-scf-checkpoint
+                                  Persist a structure-bound PySCF checkpoint
+                                  (default: disabled).  [default: (disabled)]
+  --scf-checkpoint FILE           Load/save the optional structure-bound PySCF
+                                  checkpoint at PATH.
+  --lowmem / --no-lowmem          Use GPU4PySCF rks_lowmem for closed-shell GPU
+                                  DFT; open-shell GPU and CPU use standard
+                                  direct JK. --no-lowmem enables density
+                                  fitting.  [default: (lowmem)]
+  --dft-nprocs INTEGER RANGE      PySCF/OpenMP CPU threads; GPU count is
+                                  unaffected.  [default: (auto); x>=1]
+  --dft-mem TEXT                  PySCF host RAM limit (for example 64GB or
+                                  120000MB).  [default: (auto)]
   -h, --help                      Show this message and exit.
 ```

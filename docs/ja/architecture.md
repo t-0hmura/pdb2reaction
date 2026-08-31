@@ -274,7 +274,7 @@ grep -rn '# DOMAIN_PURE' pdb2reaction/
 
 | marker | rule | host file |
 |---|---|---|
-| 4 | gpu4pyscf `rks_lowmem` triple-guard | `pdb2reaction/workflows/dft.py` |
+| 4 | gpu4pyscf `rks_lowmem` のclosed-shell/GPU/lowmem guard | `pdb2reaction/core/dft_settings.py` |
 | 5 | def2 family auto-ECP injection | `pdb2reaction/workflows/dft.py` |
 | 7 | `bofill_update` advanced-indexing scatter | `pdb2reaction/workflows/tsopt.py` |
 

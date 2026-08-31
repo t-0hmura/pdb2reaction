@@ -71,7 +71,7 @@ skill (`SKILL.md` plus `core.md`) before doing anything else.
 | `tsopt` | TS refinement per segment (RS-P-RFO default; Dimer alternative) |
 | `irc` | forward / backward EulerPC IRC (caches endpoint Hessians) |
 | `freq` | Hessian, vibrational frequencies, QRRHO thermochemistry |
-| `dft` | (optional) ωB97M-V/def2-TZVPD single point on R, TS, P |
+| `dft` | (optional) ωB97M-V/def2-SVP single point on R, TS, P |
 
 `pdb2reaction all` orchestrates the stages selected by its input mode and
 flags; extraction (`-c`), TS/IRC (`--tsopt`), thermo (`--thermo`), and DFT

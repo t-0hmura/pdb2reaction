@@ -42,6 +42,7 @@ from pdb2reaction.core.utils import (
 from pdb2reaction.cli.decorators import resolve_yaml_sources, load_merged_yaml_cfg, _write_error_json
 from pdb2reaction.core.defaults import GEOM_KW_DEFAULT, OUT_DIR_DFT
 from pdb2reaction.cli.common_options import add_allow_charge_mult_mismatch_option
+from pdb2reaction.core.dft_settings import PCM_DIELECTRIC
 
 logger = logging.getLogger(__name__)
 
@@ -60,9 +61,25 @@ DFT_KW: Dict[str, Any] = {
     "out_dir": OUT_DIR_DFT,    # Output directory
     "func": DFT_DEFAULT_FUNC,  # XC functional (can be overridden via YAML)
     "basis": DFT_DEFAULT_BASIS,# Basis set (can be overridden via YAML)
-    # CHEMISTRY-RULE:4 gpu4pyscf rks_lowmem (closed-shell GPU only) triple-guard.
-    "lowmem": True,            # Use gpu4pyscf rks_lowmem (closed-shell GPU only); auto-fallback otherwise
+    # Closed-shell GPU uses rks_lowmem; open-shell GPU and CPU use direct JK.
+    "lowmem": True,
+    "solvent": "none",
+    "solvent_model": "smd",
 }
+
+
+def _reject_redundant_backend_option(
+    ctx: click.Context, param: click.Parameter, value: Optional[str]
+) -> None:
+    """Give ``dft -b ...`` a targeted error instead of a generic parser error."""
+
+    if value is not None:
+        raise click.UsageError(
+            "`dft` already selects the DFT evaluator; `-b dft` is redundant. "
+            "Use `p2r dft ...` for DFT energy/population analysis, or run "
+            "`p2r sp -b dft ...` later in a separate process/job for a "
+            "Calculator single point."
+        )
 
 
 def _def2_ecp_required(atoms, charge_by_symbol) -> bool:
@@ -125,6 +142,8 @@ def _configure_scf_object(mf, dft_cfg: Dict[str, Any], xc: str, *, use_density_f
     `use_density_fit=False` is required for `gpu4pyscf.dft.rks_lowmem.RKS`,
     which intentionally does not implement `density_fit`.
     """
+    from pdb2reaction.backends.pyscf_dft import _apply_attributes
+
     mf.xc = xc
     configured_max_cycle = dft_cfg.get("max_cycle")
     mf.max_cycle = (
@@ -132,10 +151,58 @@ def _configure_scf_object(mf, dft_cfg: Dict[str, Any], xc: str, *, use_density_f
     )
     mf.conv_tol = float(dft_cfg["conv_tol"])
     mf.grids.level = int(dft_cfg["grid_level"])
+    pyscf_cfg = dft_cfg.get("pyscf", {})
+    if not isinstance(pyscf_cfg, dict):
+        raise click.BadParameter("dft.pyscf must be a mapping.")
+    _apply_attributes(mf, pyscf_cfg.get("mf", {}), "pyscf.mf")
+    _apply_attributes(mf.grids, pyscf_cfg.get("grids", {}), "pyscf.grids")
     mf.chkfile = None
     if use_density_fit:
-        mf = mf.density_fit()
+        density_cfg = pyscf_cfg.get("density_fit", {})
+        if isinstance(density_cfg, bool):
+            density_cfg = {"enabled": density_cfg}
+        if not isinstance(density_cfg, dict):
+            raise click.BadParameter("dft.pyscf.density_fit must be a mapping or boolean.")
+        if density_cfg.get("enabled", True):
+            mf = mf.density_fit(**{
+                key: value for key, value in density_cfg.items() if key != "enabled"
+            })
+            _apply_attributes(
+                mf.with_df, pyscf_cfg.get("with_df", {}), "pyscf.with_df"
+            )
 
+    return mf
+
+
+def _apply_implicit_solvent(mf, dft_cfg: Dict[str, Any]):
+    """Apply native PySCF PCM/SMD after SCF configuration."""
+
+    solvent = str(dft_cfg.get("solvent", "none") or "none").strip()
+    if solvent.casefold() in {"", "none", "gas", "vacuum"}:
+        return mf
+    model = str(dft_cfg.get("solvent_model", "smd") or "smd").strip().lower()
+    solvent_cfg = dft_cfg.get("pyscf", {}).get("with_solvent", {})
+    if not isinstance(solvent_cfg, dict):
+        raise click.BadParameter("dft.pyscf.with_solvent must be a mapping.")
+    if model == "pcm":
+        mf = mf.PCM()
+        if "eps" not in solvent_cfg:
+            try:
+                mf.with_solvent.eps = PCM_DIELECTRIC[solvent.casefold()]
+            except KeyError as exc:
+                raise click.BadParameter(
+                    f"Unknown PCM solvent {solvent!r}; set dft.pyscf.with_solvent.eps."
+                ) from exc
+    elif model == "smd":
+        mf = mf.SMD()
+        mf.with_solvent.solvent = solvent
+    else:
+        raise click.BadParameter("dft.solvent_model must be either 'pcm' or 'smd'.")
+    from pdb2reaction.backends.pyscf_dft import _apply_attributes
+
+    _apply_attributes(
+        mf.with_solvent, solvent_cfg, "dft.pyscf.with_solvent"
+    )
     return mf
 
 
@@ -405,6 +472,12 @@ def _finalize_dft_result(
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.option(
+    "-b", "--backend",
+    callback=_reject_redundant_backend_option,
+    expose_value=False,
+    hidden=True,
+)
+@click.option(
     "-i", "--input",
     "input_path",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
@@ -459,14 +532,43 @@ def _finalize_dft_result(
     help="SCF backend: gpu (GPU4PySCF, raises error if unavailable) or cpu (PySCF).",
 )
 @click.option(
+    "--solvent",
+    type=str,
+    default=None,
+    show_default="none",
+    help="Implicit-solvent name for native PySCF PCM/SMD (for example water).",
+)
+@click.option(
+    "--solvent-model",
+    type=click.Choice(["pcm", "smd"], case_sensitive=False),
+    default=None,
+    show_default="smd",
+    help="Native PySCF implicit-solvent model.",
+)
+@click.option(
     "--lowmem/--no-lowmem",
     "lowmem",
     default=DFT_KW["lowmem"],
     show_default=True,
-    help="Use gpu4pyscf rks_lowmem.RKS for closed-shell GPU runs "
-         "(memory-efficient direct JK; mutually exclusive with density fitting). "
-         "Open-shell, CPU, or pre-rks_lowmem GPU4PySCF installs auto-fall back "
-         "to standard RKS/UKS with density fitting.",
+    help="Use gpu4pyscf rks_lowmem.RKS for closed-shell GPU runs, including "
+         "PCM/SMD (memory-efficient direct JK). Open-shell GPU and CPU use "
+         "standard direct-JK RKS/UKS; --no-lowmem enables density fitting.",
+)
+@click.option(
+    "--dft-nprocs",
+    "nprocs",
+    type=click.IntRange(min=1),
+    default=None,
+    show_default="auto",
+    help="PySCF/OpenMP CPU threads; GPU count is unaffected.",
+)
+@click.option(
+    "--dft-mem",
+    "memory",
+    type=str,
+    default=None,
+    show_default="auto",
+    help="PySCF host RAM limit (for example 64GB or 120000MB).",
 )
 @click.option(
     "--config",
@@ -511,7 +613,11 @@ def cli(
     grid_level: int,
     out_dir: str,
     engine: str,
+    solvent: Optional[str],
+    solvent_model: Optional[str],
     lowmem: bool,
+    nprocs: Optional[int],
+    memory: Optional[str],
     config_yaml: Optional[Path],
     show_config: bool,
     out_json: bool,
@@ -567,6 +673,14 @@ def cli(
                 dft_cfg["out_dir"] = out_dir
             if cli_param_overridden(ctx, "lowmem"):
                 dft_cfg["lowmem"] = bool(lowmem)
+            if cli_param_overridden(ctx, "nprocs") and nprocs is not None:
+                dft_cfg["nprocs"] = int(nprocs)
+            if cli_param_overridden(ctx, "memory") and memory is not None:
+                dft_cfg["memory"] = str(memory)
+            if cli_param_overridden(ctx, "solvent"):
+                dft_cfg["solvent"] = solvent
+            if cli_param_overridden(ctx, "solvent_model"):
+                dft_cfg["solvent_model"] = solvent_model
             # Resolve the YAML-effective directory before any later validation
             # can fail, so an unexpected error is never reported into the CLI
             # default directory instead of the configured one.
@@ -611,7 +725,72 @@ def cli(
                     f"got {engine_name!r}."
                 )
             dft_cfg["engine"] = engine_name
+            from pdb2reaction.core.dft_settings import resolve_dft_settings
+
+            _stateful_keys = {
+                "func_basis", "func", "functional", "basis", "engine",
+                "conv_tol", "max_cycle", "grid_level", "verbose",
+                "lowmem", "density_fit", "auxbasis", "solvent", "solvent_model",
+                "nprocs", "memory", "memory_mb",
+                "pyscf",
+            }
+            _settings_dft_cfg = {
+                key: value
+                for key, value in dft_cfg.items()
+                if key in _stateful_keys
+            }
+            _yaml_dft_cfg = (
+                merged_yaml_cfg.get("dft", {})
+                if isinstance(merged_yaml_cfg, dict)
+                else {}
+            )
+            if not isinstance(_yaml_dft_cfg, dict):
+                _yaml_dft_cfg = {}
+            _pyscf_detail = _settings_dft_cfg.get("pyscf", {})
+            if isinstance(_pyscf_detail, dict):
+                for _name, _section, _attribute in (
+                    ("conv_tol", "mf", "conv_tol"),
+                    ("max_cycle", "mf", "max_cycle"),
+                    ("grid_level", "grids", "level"),
+                    ("verbose", "mol", "verbose"),
+                ):
+                    _section_cfg = _pyscf_detail.get(_section, {})
+                    if (
+                        isinstance(_section_cfg, dict)
+                        and _attribute in _section_cfg
+                        and _name not in _yaml_dft_cfg
+                        and not cli_param_overridden(ctx, _name)
+                    ):
+                        _settings_dft_cfg.pop(_name, None)
+            resolved_settings = resolve_dft_settings(
+                {
+                    "backend": "dft",
+                    "charge": int(resolved_charge),
+                    "spin": multiplicity,
+                    "dft": _settings_dft_cfg,
+                }
+            )
+            xc = resolved_settings.functional
+            basis = resolved_settings.basis
+            dft_cfg["conv_tol"] = resolved_settings.conv_tol
+            dft_cfg["max_cycle"] = resolved_settings.max_cycle
+            dft_cfg["grid_level"] = resolved_settings.grid_level
+            dft_cfg["verbose"] = resolved_settings.verbose
+            dft_cfg["lowmem"] = resolved_settings.lowmem
+            dft_cfg["density_fit"] = resolved_settings.density_fit
+            dft_cfg["auxbasis"] = resolved_settings.auxbasis
+            dft_cfg["pyscf"] = resolved_settings.pyscf
+            dft_cfg["nprocs"] = resolved_settings.nprocs
+            dft_cfg["nprocs_source"] = resolved_settings.nprocs_source
+            dft_cfg["memory_mb"] = resolved_settings.memory_mb
+            dft_cfg["memory_source"] = resolved_settings.memory_source
             lowmem_requested = bool(dft_cfg.get("lowmem", True))
+            solvent_name = str(dft_cfg.get("solvent", "none") or "none").strip()
+            solvent_enabled = solvent_name.casefold() not in {"", "none", "gas", "vacuum"}
+            solvent_model_name = str(dft_cfg.get("solvent_model", "smd") or "smd").strip().lower()
+            if solvent_enabled and solvent_model_name not in {"pcm", "smd"}:
+                raise click.BadParameter("dft.solvent_model must be either 'pcm' or 'smd'.")
+            use_rks_lowmem = resolved_settings.use_rks_lowmem
             echo_cfg = {
                 "charge": int(resolved_charge),
                 "multiplicity": multiplicity,
@@ -624,6 +803,12 @@ def cli(
                 "out_dir": str(out_dir_path),
                 "engine": engine_name,
                 "lowmem": lowmem_requested,
+                "nprocs": resolved_settings.nprocs,
+                "nprocs_source": resolved_settings.nprocs_source,
+                "memory_mb": resolved_settings.memory_mb,
+                "memory_source": resolved_settings.memory_source,
+                "solvent": solvent_name if solvent_enabled else "none",
+                "solvent_model": solvent_model_name if solvent_enabled else "none",
             }
             click.echo(pretty_block("geom", format_geom_for_echo(geom_cfg)))
             click.echo(pretty_block("dft", echo_cfg))
@@ -673,12 +858,17 @@ def cli(
             click.echo(f"[write] Wrote '{input_xyz}'.")
 
             try:
-                from pyscf import gto
+                from pdb2reaction.backends.pyscf_dft import _apply_attributes
+                _pyscf_cfg = dft_cfg.get("pyscf", {})
+                if not isinstance(_pyscf_cfg, dict):
+                    raise click.BadParameter("dft.pyscf must be a mapping.")
+                from pyscf import gto, lib as _pyscf_lib
             except (ModuleNotFoundError, ImportError) as e:
                 click.echo(f"ERROR: PySCF import failed: {e}", err=True)
                 sys.exit(2)
 
             from pdb2reaction.core.utils import is_verbose
+            _pyscf_lib.num_threads(int(resolved_settings.nprocs))
             mol = gto.Mole()
             # PySCF verbose level: 0 silent / 2 warnings / 3 info / 4 prints the
             # full `[INPUT]` per-atom coordinate dump + SCF iteration banner.
@@ -686,8 +876,21 @@ def cli(
             # level to >=4 to restore the dump for debugging (~600 lines saved
             # per pipeline).
             mol.verbose = int(dft_cfg.pop("verbose", 0))
+            if resolved_settings.memory_mb is not None:
+                mol.max_memory = int(resolved_settings.memory_mb)
             if is_verbose():
                 mol.verbose = max(mol.verbose, 4)
+            managed_pyscf = {"atom", "charge", "spin", "unit", "output", "stdout", "chkfile"}
+            for section, values in _pyscf_cfg.items():
+                if not isinstance(values, dict):
+                    continue
+                invalid = sorted(managed_pyscf & set(values))
+                if invalid:
+                    raise click.BadParameter(
+                        f"dft.pyscf.{section} cannot set workflow-owned field(s): "
+                        + ", ".join(invalid)
+                    )
+            _apply_attributes(mol, _pyscf_cfg.get("mol", {}), "pyscf.mol")
             # PySCF does not infer ``ecp=`` from a def2 basis. Request the
             # matching def2 ECP explicitly; PySCF applies entries only to
             # elements covered by that ECP family (commonly Rb through Rn).
@@ -750,16 +953,15 @@ def cli(
                     # ``rks_lowmem`` is available only in recent gpu4pyscf and
                     # applies only to closed-shell RKS calculations.
                     rks_lowmem_mod = None
-                    if lowmem_requested and spin2s == 0:
+                    if use_rks_lowmem:
                         try:
                             from gpu4pyscf.dft import rks_lowmem as rks_lowmem_mod  # type: ignore
-                        except ImportError:
-                            click.echo(
-                                "[lowmem] WARNING: gpu4pyscf.dft.rks_lowmem is not available "
-                                "in this gpu4pyscf install; falling back to standard RKS.",
-                                err=True,
-                            )
-                            rks_lowmem_mod = None
+                        except ImportError as exc:
+                            raise click.ClickException(
+                                "gpu4pyscf.dft.rks_lowmem is required by the default "
+                                "closed-shell GPU low-memory path. Install a compatible "
+                                "GPU4PySCF release or explicitly use --no-lowmem."
+                            ) from exc
 
                     if rks_lowmem_mod is not None:
                         mf = rks_lowmem_mod.RKS(mol, xc=xc)
@@ -768,6 +970,8 @@ def cli(
                         engine_label = "gpu4pyscf(rks_lowmem)"
                         # density_fit is intentionally NotImplemented in rks_lowmem.
                         mf = _configure_scf_object(mf, dft_cfg, xc, use_density_fit=False)
+                        if solvent_enabled:
+                            mf = _apply_implicit_solvent(mf, dft_cfg)
                     else:
                         if lowmem_requested and spin2s != 0:
                             click.echo(
@@ -775,10 +979,24 @@ def cli(
                                 "open-shell run uses standard UKS.",
                                 err=True,
                             )
-                        mf = make_ks(gdf)
+                        if solvent_enabled:
+                            from pyscf import dft as pdft
+
+                            mf = make_ks(pdft)
+                            mf = _configure_scf_object(
+                                mf, dft_cfg, xc,
+                                use_density_fit=resolved_settings.density_fit,
+                            )
+                            mf = _apply_implicit_solvent(mf, dft_cfg)
+                            mf = mf.to_gpu()
+                        else:
+                            mf = make_ks(gdf)
+                            mf = _configure_scf_object(
+                                mf, dft_cfg, xc,
+                                use_density_fit=resolved_settings.density_fit,
+                            )
                         using_gpu = True
                         engine_label = "gpu4pyscf"
-                        mf = _configure_scf_object(mf, dft_cfg, xc)
                     e_tot = mf.kernel()
 
                 except Exception as e:
@@ -793,7 +1011,11 @@ def cli(
 
                 from pyscf import dft as pdft
                 mf = make_ks(pdft)
-                mf = _configure_scf_object(mf, dft_cfg, xc)
+                mf = _configure_scf_object(
+                    mf, dft_cfg, xc,
+                    use_density_fit=resolved_settings.density_fit,
+                )
+                mf = _apply_implicit_solvent(mf, dft_cfg)
                 e_tot = mf.kernel()
 
 
@@ -801,6 +1023,8 @@ def cli(
             converged = bool(getattr(mf, "converged", False))
             if e_tot is None:
                 e_tot = float(getattr(mf, "e_tot", np.nan))
+
+            memory_mode = resolved_settings.memory_mode
 
             e_h = float(e_tot)
             if not np.isfinite(e_h):
@@ -870,6 +1094,8 @@ def cli(
                     "engine": engine_label,
                     "used_gpu": bool(using_gpu),
                     "used_lowmem": bool(using_lowmem),
+                    "lowmem_requested": lowmem_requested,
+                    "memory_mode": memory_mode,
                 },
                 # Table-style outputs (flow lists)
                 "charges [index, element, mulliken, lowdin, iao]": charges_rows_flow,
@@ -901,6 +1127,16 @@ def cli(
                 "engine": engine_label,
                 "used_gpu": bool(using_gpu),
                 "used_lowmem": bool(using_lowmem),
+                "lowmem_requested": lowmem_requested,
+                "dft_resources": {
+                    "memory_mode": memory_mode,
+                    "nprocs": resolved_settings.nprocs,
+                    "nprocs_source": resolved_settings.nprocs_source,
+                    "memory_mb": resolved_settings.memory_mb,
+                    "memory_source": resolved_settings.memory_source,
+                },
+                "solvent": solvent_name if solvent_enabled else "none",
+                "solvent_model": solvent_model_name if solvent_enabled else "none",
                 "charges": {k: v for k, v in charges.items()},
                 "spin_densities": {k: v for k, v in spins.items()},
                 "files": {
@@ -913,6 +1149,12 @@ def cli(
                     "WARNING: SCF did not converge to the requested tolerance.",
                     err=True,
                 )
+                if lowmem_requested:
+                    click.echo(
+                        "[lowmem] Retry with --no-lowmem if sufficient GPU and host "
+                        "memory are available; density-fitted SCF may converge more robustly.",
+                        err=True,
+                    )
             _finalize_dft_result(
                 out_json=out_json,
                 out_dir=out_dir_path,

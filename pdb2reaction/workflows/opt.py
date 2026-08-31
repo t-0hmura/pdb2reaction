@@ -79,6 +79,7 @@ from pdb2reaction.cli.common_options import (
     add_precision_option, add_backend_model_option,
     add_calc_file_option,
     add_deterministic_option, add_allow_charge_mult_mismatch_option,
+    add_dft_calculator_options,
 )
 from pdb2reaction.cli.decorators import run_cli, resolve_yaml_sources, load_merged_yaml_cfg
 from pdb2reaction.workflows.freq import (
@@ -537,12 +538,12 @@ def _seed_rfo_initial_hessian(
     show_default=True,
     help="Validate options and print the execution plan without running optimization.",
 )
-@click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
-              show_default=True, help="MLIP backend.")
+@click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2", "dft"]), default="uma",
+              show_default=True, help="Energy/force calculator backend.")
 @click.option("--solvent", default="none", show_default=True,
-              help="Experimental, computationally expensive xTB solvent delta correction. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.")
-@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx"]),
-              show_default=True, help="xTB solvent model.")
+              help="Environment model: MLIP backends use the experimental xTB solvent delta; dft uses native PySCF PCM/SMD. 'none' disables it.")
+@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx", "pcm", "smd"]),
+              show_default=True, help="Solvent model: ALPB/CPCMx for MLIP backends; PCM/SMD for dft.")
 @add_coord_type_option()
 @add_ml_charge_spin_options()
 @add_print_every_option()
@@ -551,6 +552,7 @@ def _seed_rfo_initial_hessian(
 @add_calc_file_option()
 @add_deterministic_option()
 @add_allow_charge_mult_mismatch_option()
+@add_dft_calculator_options()
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -746,6 +748,10 @@ def cli(
             resolve_freeze_atoms(geom_cfg, source_path, freeze_links)
             calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
             calc_cfg["return_partial_hessian"] = True
+            from pdb2reaction.core.dft_settings import finalize_dft_calculator_config
+            finalize_dft_calculator_config(
+                ctx, calc_cfg, output_dir=opt_cfg["out_dir"]
+            )
 
             # Normalize and select optimizer kind
             kind = normalize_choice(

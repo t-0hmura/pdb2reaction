@@ -153,6 +153,30 @@ def test_summary_log_does_not_invent_default_backend(tmp_path):
     assert "MLIP backend       : uma" not in text
 
 
+def test_summary_log_labels_primary_dft_without_mlip_composite_rows(tmp_path):
+    dest = tmp_path / "summary.log"
+    write_summary_log(dest, {
+        "mlip_backend": "dft",
+        "mlip_model": "wb97m-v/def2-svp",
+        "mlip_model_label": "wb97m-v/def2-svp",
+        "mlip_task": "gpu",
+        "segments": [{"index": 1, "kind": "tsopt", "barrier_kcal": 8.0}],
+        "post_segments": [{
+            "index": 1,
+            "kind": "tsopt",
+            "mlip": {"barrier_kcal": 8.0, "delta_kcal": -2.0},
+            "dft": {"barrier_kcal": 9.0, "delta_kcal": -1.0},
+            "gibbs_dft_mlip": {"barrier_kcal": 10.0, "delta_kcal": 0.0},
+        }],
+    })
+
+    text = dest.read_text(encoding="utf-8")
+    assert "Calculator backend : PySCF DFT" in text
+    assert "DFT energies (TSOPT+IRC)" in text
+    assert "MLIP backend" not in text
+    assert "DFT//MLIP" not in text
+
+
 @pytest.mark.parametrize("display_mode", ["MEP", "Scan", "TS-only"])
 def test_all_summary_header_uses_entry_mode_and_absolute_directories(
     tmp_path, display_mode,

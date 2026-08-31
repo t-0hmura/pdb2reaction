@@ -11,7 +11,7 @@ description: Install recipes for pdb2reaction core + MLIP / DFT / xTB backends, 
 
 - a recent **PyTorch** wheel matching your CUDA driver,
 - one or more **MLIP backends** (UMA / Orb / MACE / AIMNet2),
-- optional **PySCF / GPU4PySCF** for DFT single points,
+- optional **PySCF / GPU4PySCF** for DFT calculations,
 - optional **xtb** for ALPB solvent corrections.
 
 Bundled and installed automatically with the package: `pysisyphus` (a

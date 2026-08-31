@@ -5,7 +5,7 @@ from __future__ import annotations
 from copy import deepcopy
 from pathlib import Path
 from collections import defaultdict
-from typing import List, Sequence, Optional, Tuple, Dict, Any
+from typing import List, Sequence, Optional, Tuple, Dict, Any, Mapping
 
 import gc
 import json
@@ -134,6 +134,7 @@ from pdb2reaction.cli.common_options import (
     add_deterministic_option,
     add_precision_option,
     add_print_every_option,
+    add_dft_calculator_options,
 )
 # Advanced-help visibility/callback: one product-local implementation lives in
 # cli.help_pages; the `all` command routes through it (a presentation-layer
@@ -205,6 +206,20 @@ def _validate_postprocessing_dependencies(
         raise click.UsageError(
             "`all --thermo` and `all --dft` require `--tsopt`; an unoptimized "
             "MEP highest-energy image is not a validated transition state."
+        )
+
+
+def _reject_redundant_dft_postprocessing(
+    *, effective_backend: str, do_dft: bool
+) -> None:
+    """Reject a post-DFT stage while the primary pipeline already uses DFT."""
+
+    if do_dft and str(effective_backend).strip().lower() == "dft":
+        raise click.UsageError(
+            "`--dft` cannot be combined with the effective calculator backend "
+            "`dft`. Finish the DFT pipeline first, then run `p2r sp -b dft ...` "
+            "in a separate process/job so the pipeline calculator and its VRAM "
+            "are released before the final single point."
         )
 
 
@@ -1034,6 +1049,7 @@ def _write_args_yaml_with_freeze_atoms(
     precision: Optional[str] = None,
     backend_model: Optional[str] = None,
     print_every: Optional[int] = None,
+    dft_settings: Optional[Mapping[str, Any]] = None,
     session: Optional[RunSession] = None,
 ) -> Optional[Path]:
     """
@@ -1061,6 +1077,7 @@ def _write_args_yaml_with_freeze_atoms(
         and precision is None
         and backend_model is None
         and print_every is None
+        and dft_settings is None
     ):
         return args_yaml
     if session is None:
@@ -1084,7 +1101,7 @@ def _write_args_yaml_with_freeze_atoms(
         geom_cfg["coord_type"] = coord_type
     cfg["geom"] = geom_cfg
 
-    if precision is not None or backend_model is not None:
+    if precision is not None or backend_model is not None or dft_settings is not None:
         calc_cfg = cfg.get("calc")
         if not isinstance(calc_cfg, dict):
             calc_cfg = {}
@@ -1093,6 +1110,8 @@ def _write_args_yaml_with_freeze_atoms(
             calc_cfg["precision"] = precision
         if backend_model is not None:
             calc_cfg["model"] = backend_model
+        if dft_settings is not None:
+            calc_cfg["dft"] = dict(dft_settings)
         cfg["calc"] = calc_cfg
 
     if print_every is not None:
@@ -2659,6 +2678,7 @@ def _run_freq_for_state(
     ref_pdb: Optional[Path],
     convert_files: bool,
     overrides: Optional[Dict[str, Any]] = None,
+    scf_checkpoint: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """
     Run freq CLI; return parsed thermo dict (may be empty).
@@ -2729,6 +2749,12 @@ def _run_freq_for_state(
 
     if args_yaml is not None:
         args.extend(["--config", str(args_yaml)])
+    if scf_checkpoint is not None:
+        args.extend([
+            "--no-save-scf-checkpoint",
+            "--scf-checkpoint",
+            str(scf_checkpoint),
+        ])
     _freq_rc = _run_cli_main("freq", _freq_cli.cli, args, on_nonzero="warn", prefix="freq")
     y = fdir / "thermoanalysis.yaml"
     # a nonzero freq exit means the thermochemistry is NOT usable, even if a
@@ -2750,6 +2776,78 @@ def _run_freq_for_state(
             logger.debug("Failed to parse thermoanalysis YAML %s: %s", y, exc)
             return {}
     return {}
+
+
+def _dft_checkpoint_enabled(calc_cfg: Mapping[str, Any]) -> bool:
+    if str(calc_cfg.get("backend", "")).strip().lower() != "dft":
+        return False
+    settings = calc_cfg.get("dft_settings")
+    return isinstance(settings, Mapping) and bool(
+        settings.get("save_scf_checkpoint", False)
+    )
+
+
+def _save_role_scf_checkpoint(
+    calculator: Any,
+    geometry: Any,
+    destination: Path,
+    *,
+    manifest: InvocationManifest,
+    key: str,
+) -> Optional[Path]:
+    saver = getattr(calculator, "save_scf_checkpoint", None)
+    if not callable(saver):
+        return None
+    if isinstance(geometry, (str, Path)):
+        geometry = geom_loader(Path(geometry), coord_type=DEFAULT_COORD_TYPE)
+    destination = Path(destination).resolve()
+    metadata = destination.with_suffix(destination.suffix + ".json")
+    if key not in manifest.expected:
+        manifest.declare(key, [destination])
+    metadata_key = f"{key}.metadata"
+    if metadata_key not in manifest.expected:
+        manifest.declare(metadata_key, [metadata])
+    saver(destination, geometry)
+    # A role path may already be owned by the producing child stage. Refresh
+    # every declaration for the exact path so no manifest stamp describes the
+    # pre-refresh checkpoint.
+    for declared_key, candidates in manifest.expected.items():
+        if destination in candidates or metadata in candidates:
+            manifest.claim_one(declared_key)
+    claimed = manifest.path(key)
+    return claimed
+
+
+def _prepare_role_scf_checkpoint(
+    calc_cfg: Mapping[str, Any],
+    geometry_path: Path,
+    destination: Path,
+    *,
+    manifest: InvocationManifest,
+    key: str,
+) -> Optional[Path]:
+    if not _dft_checkpoint_enabled(calc_cfg):
+        return None
+    cfg = deepcopy(dict(calc_cfg))
+    settings = dict(cfg["dft_settings"])
+    settings["checkpoint_path"] = str(destination)
+    cfg["dft_settings"] = settings
+    geometry = geom_loader(Path(geometry_path), coord_type=DEFAULT_COORD_TYPE)
+    calculator = create_calculator(**cfg)
+    destination = Path(destination).resolve()
+    metadata = destination.with_suffix(destination.suffix + ".json")
+    manifest.declare(key, [destination])
+    manifest.declare(f"{key}.metadata", [metadata])
+    try:
+        geometry.set_calculator(calculator)
+        geometry.energy
+    finally:
+        close = getattr(calculator, "close", None)
+        if callable(close):
+            close()
+    claimed = manifest.claim_one(key)
+    manifest.claim_one(f"{key}.metadata")
+    return claimed
 
 
 def _ts_imag_record(
@@ -2900,6 +2998,11 @@ def _run_dft_for_state(
     _append_cli_arg(args, "--max-cycle", overrides.get("max_cycle"))
     _append_cli_arg(args, "--conv-tol", overrides.get("conv_tol"))
     _append_cli_arg(args, "--grid-level", overrides.get("grid_level"))
+    _append_cli_arg(args, "--solvent", overrides.get("solvent"))
+    _append_cli_arg(args, "--solvent-model", overrides.get("solvent_model"))
+    _append_toggle_arg(args, "--lowmem", overrides.get("lowmem"))
+    _append_cli_arg(args, "--dft-nprocs", overrides.get("nprocs"))
+    _append_cli_arg(args, "--dft-mem", overrides.get("memory"))
 
     if args_yaml is not None:
         args.extend(["--config", str(args_yaml)])
@@ -3138,6 +3241,13 @@ def _run_tsopt_on_hei(
         ref_pdb = prepared_input.source_path if needs_pdb else None
         ts_dir = _resolve_override_dir(out_dir / "ts", overrides.get("out_dir"))
         ensure_dir(ts_dir)
+        scf_checkpoint = _prepare_role_scf_checkpoint(
+            calc_cfg,
+            hei_pdb,
+            ts_dir / "_work" / "dft_scf" / "state.chk",
+            manifest=manifest,
+            key=f"{artifact_prefix}.scf_checkpoint",
+        )
 
         freeze_use = overrides.get("freeze_links")
         if freeze_use is None:
@@ -3226,6 +3336,12 @@ def _run_tsopt_on_hei(
 
         if args_yaml is not None:
             ts_args.extend(["--config", str(args_yaml)])
+        if scf_checkpoint is not None:
+            ts_args.extend([
+                "--save-scf-checkpoint",
+                "--scf-checkpoint",
+                str(scf_checkpoint),
+            ])
         if ref_pdb is not None:
             ts_args.extend(["--ref-pdb", str(ref_pdb)])
         ts_args.append("--out-json")
@@ -3305,6 +3421,9 @@ def _run_tsopt_on_hei(
         g_ts._tsopt_result = tsopt_result
         g_ts._tsopt_result_path = result_path
         g_ts._tsopt_continuation = tsopt_continuation
+        if scf_checkpoint is not None:
+            manifest.claim_one(f"{artifact_prefix}.scf_checkpoint")
+            manifest.claim_one(f"{artifact_prefix}.scf_checkpoint.metadata")
 
         return ts_geom_path, g_ts
     finally:
@@ -3597,6 +3716,26 @@ def _irc_and_match(
 
     irc_dir = seg_dir / "irc"
     ensure_dir(irc_dir)
+    irc_checkpoint: Optional[Path] = None
+    if _dft_checkpoint_enabled(calc_cfg):
+        checkpoint_destination = irc_dir / "_work" / "dft_scf" / "state.chk"
+        ts_checkpoint = (
+            Path(ref_pdb_for_seg).parent / "_work" / "dft_scf" / "state.chk"
+        )
+        if ts_checkpoint.is_file() and ts_checkpoint.with_suffix(
+            ts_checkpoint.suffix + ".json"
+        ).is_file():
+            # Read the converged TS density without overwriting it. The parent
+            # saves exact R/TS/P role checkpoints after endpoint optimization.
+            irc_checkpoint = ts_checkpoint
+        else:
+            irc_checkpoint = _prepare_role_scf_checkpoint(
+                calc_cfg,
+                ref_pdb_for_seg,
+                checkpoint_destination,
+                manifest=manifest,
+                key=f"{artifact_prefix}.scf_checkpoint",
+            )
 
     irc_args: List[str] = [
         "-i",
@@ -3655,6 +3794,12 @@ def _irc_and_match(
 
     if args_yaml is not None:
         irc_args.extend(["--config", str(args_yaml)])
+    if irc_checkpoint is not None:
+        irc_args.extend([
+            "--no-save-scf-checkpoint",
+            "--scf-checkpoint",
+            str(irc_checkpoint),
+        ])
     if irc_step_size is not None:
         irc_args.extend(["--step-size", str(float(irc_step_size))])
     if irc_max_cycles is not None:
@@ -3734,7 +3879,15 @@ def _irc_and_match(
         raise click.ClickException("IRC endpoint candidates contain nonfinite coordinates.")
     g_left = _geom_from_angstrom(elems, c_first, freeze_atoms)
     g_right = _geom_from_angstrom(elems, c_last, freeze_atoms)
-    shared_calc = create_calculator(**calc_cfg)
+    endpoint_calc_cfg = deepcopy(dict(calc_cfg))
+    if irc_checkpoint is not None:
+        endpoint_settings = dict(endpoint_calc_cfg["dft_settings"])
+        # Load the TS state explicitly below. Keeping it as the calculator's
+        # automatic save destination would overwrite the TS checkpoint with
+        # whichever endpoint was evaluated last when the shared lease closes.
+        endpoint_settings["checkpoint_path"] = None
+        endpoint_calc_cfg["dft_settings"] = endpoint_settings
+    shared_calc = create_calculator(**endpoint_calc_cfg)
     lease = CalculatorLease(shared_calc)
     if session is not None:
         session.resources.add(lease.release)
@@ -3742,6 +3895,8 @@ def _irc_and_match(
         lease.attach(g_ts)
         lease.attach(g_left)
         lease.attach(g_right)
+        if irc_checkpoint is not None:
+            shared_calc.load_scf_checkpoint(irc_checkpoint, g_ts)
         (
             g_left,
             g_right,
@@ -3756,7 +3911,6 @@ def _irc_and_match(
             freeze_atoms=freeze_atoms,
             seg_tag=seg_tag,
         )
-
         try:
             run_trj2fig(
                 finished_trj,
@@ -3791,6 +3945,7 @@ def _irc_and_match(
             "freeze_atoms": list(freeze_atoms),
             "calculator_lease": lease,
             "irc_outcome": irc_outcome,
+            "scf_checkpoint": irc_checkpoint,
         }
     except BaseException:
         lease.release()
@@ -3815,6 +3970,8 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
         "--thermo",
         "--dft",
         "--dft-func-basis",
+        "--dft-solvent",
+        "--dft-solvent-model",
         "--config",
         "-s",
         "--scan-lists",
@@ -4007,12 +4164,12 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     show_default=True,
     help="Workers per node when using a parallel MLIP predictor (workers>1).",
 )
-@click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
-              show_default=True, help="MLIP backend.")
+@click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2", "dft"]), default="uma",
+              show_default=True, help="Energy/force calculator backend.")
 @click.option("--solvent", default="none", show_default=True,
-              help="Experimental, computationally expensive xTB solvent delta correction. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.")
-@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx"]),
-              show_default=True, help="xTB solvent model.")
+              help="Environment model: MLIP backends use the experimental xTB solvent delta; dft uses native PySCF PCM/SMD. 'none' disables it.")
+@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx", "pcm", "smd"]),
+              show_default=True, help="Solvent model: ALPB/CPCMx for MLIP backends; PCM/SMD for dft.")
 # ===== Path search knobs =====
 @click.option(
     "-m",
@@ -4477,6 +4634,20 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     help="Override the DFT backend (gpu or cpu); omitted values inherit YAML/defaults.",
 )
 @click.option(
+    "--dft-solvent",
+    type=str,
+    default=None,
+    show_default="none",
+    help="Implicit solvent for post-processing DFT single points.",
+)
+@click.option(
+    "--dft-solvent-model",
+    type=click.Choice(["pcm", "smd"], case_sensitive=False),
+    default=None,
+    show_default="smd",
+    help="Native PySCF solvent model for post-processing DFT single points.",
+)
+@click.option(
     "-s", "--scan-lists",
     "scan_lists_raw",
     type=str,
@@ -4561,6 +4732,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 @add_calc_file_option()
 @add_deterministic_option()
 @add_allow_charge_mult_mismatch_option()
+@add_dft_calculator_options()
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -4643,6 +4815,8 @@ def cli(
     dft_conv_tol: Optional[float],
     dft_grid_level: Optional[int],
     dft_engine: Optional[str],
+    dft_solvent: Optional[str],
+    dft_solvent_model: Optional[str],
     print_every: Optional[int],
     cli_coord_type: Optional[str],
     precision: Optional[str],
@@ -4805,6 +4979,32 @@ def cli(
     args_yaml = config_yaml
     merged_yaml_cfg = load_yaml_dict(config_yaml) if config_yaml is not None else {}
     _set_yaml_freeze_atoms(merged_yaml_cfg, freeze_atoms_text)
+    _guard_calc_cfg = _build_calc_cfg(
+        0,
+        1,
+        yaml_cfg=merged_yaml_cfg,
+        backend=backend if cli_param_overridden(ctx, "backend") else None,
+    )
+    from pdb2reaction.backends import apply_calc_file_to_calc_cfg as _guard_calc_file
+
+    _guard_calc_file(_guard_calc_cfg, calc_file, calc_factory)
+    _reject_redundant_dft_postprocessing(
+        effective_backend=str(_guard_calc_cfg.get("backend", "")),
+        do_dft=do_dft,
+    )
+    _post_dft_resource_cli: Dict[str, Any] = {}
+    if (
+        str(_guard_calc_cfg.get("backend", "")).strip().lower() != "dft"
+        and do_dft
+    ):
+        from pdb2reaction.core.dft_settings import DFT_CLI_META_KEY
+
+        _dft_cli_meta = ctx.meta.get(DFT_CLI_META_KEY, {})
+        for _resource_name in ("lowmem", "nprocs", "memory"):
+            if _resource_name in _dft_cli_meta:
+                _post_dft_resource_cli[_resource_name] = _dft_cli_meta.pop(
+                    _resource_name
+                )
     if dry_run:
         apply_yaml_overrides(
             merged_yaml_cfg,
@@ -5097,6 +5297,11 @@ def cli(
         dft_overrides["conv_tol"] = float(dft_conv_tol)
     if dft_grid_level is not None:
         dft_overrides["grid_level"] = int(dft_grid_level)
+    if dft_solvent is not None:
+        dft_overrides["solvent"] = str(dft_solvent)
+    if dft_solvent_model is not None:
+        dft_overrides["solvent_model"] = str(dft_solvent_model).lower()
+    dft_overrides.update(_post_dft_resource_cli)
 
     from pdb2reaction.workflows.dft import DFT_KW as _DFT_KW
     _dft_effective = dict(_DFT_KW)
@@ -5181,6 +5386,8 @@ def cli(
                 "thermo": bool(do_thermo),
                 "dft": bool(do_dft),
                 "dft_engine": dft_engine_use,
+                "dft_solvent": dft_overrides.get("solvent"),
+                "dft_solvent_model": dft_overrides.get("solvent_model"),
             },
             "overrides": {
                 "tsopt": tsopt_overrides,
@@ -5206,6 +5413,8 @@ def cli(
         # -q (charge_override) and run the electron parity check
         # (validate_charge_spin_at_path) on the extracted geometry. No
         # tsopt/path_search/freq is started.
+        _dry_charge: Optional[int] = None
+        _dry_spin = int(spin)
         if skip_extract:
             for prepared_input in prepared_all_inputs:
                 apply_ref_pdb_override(prepared_input, ref_pdb_cli)
@@ -5222,6 +5431,8 @@ def cli(
                     _q_check,
                     _spin_check,
                 )
+            _dry_charge = int(_q_check)
+            _dry_spin = int(_spin_check)
             _echo(
                 "[all] --dry-run parity check OK: "
                 f"charge={_q_check:+d}, spin(multiplicity)={_spin_check}",
@@ -5286,6 +5497,7 @@ def cli(
                         narrative=True,
                     )
                 _q_check = int(charge_override) if charge_override is not None else int(_q_extracted)
+                _dry_charge = int(_q_check)
                 # Use the module-level import (line 68). A nested
                 # `from pdb2reaction.core.utils import validate_charge_spin_at_path` inside
                 # this dry_run block would mark the name as a local in
@@ -5299,6 +5511,36 @@ def cli(
                 except ValueError as e:
                     raise click.BadParameter(f"[all] --dry-run parity check failed: {e}")
                 _echo(f"[all] --dry-run parity check OK: charge={_q_check:+d}, spin(multiplicity)={int(spin)}", narrative=True)
+        if _dry_charge is None:
+            raise click.BadParameter(
+                "[all] --dry-run could not resolve the calculator charge."
+            )
+        _dry_calc_cfg = _build_calc_cfg(
+            _dry_charge,
+            _dry_spin,
+            workers=workers if cli_param_overridden(ctx, "workers") else None,
+            workers_per_node=(
+                workers_per_node
+                if cli_param_overridden(ctx, "workers_per_node")
+                else None
+            ),
+            yaml_cfg=merged_yaml_cfg,
+            backend=backend if cli_param_overridden(ctx, "backend") else None,
+            solvent=solvent if cli_param_overridden(ctx, "solvent") else None,
+            solvent_model=(
+                solvent_model
+                if cli_param_overridden(ctx, "solvent_model")
+                else None
+            ),
+        )
+        from pdb2reaction.backends import apply_backend_model_to_calc_cfg
+        apply_backend_model_to_calc_cfg(_dry_calc_cfg, backend_model)
+        from pdb2reaction.backends import apply_calc_file_to_calc_cfg
+        apply_calc_file_to_calc_cfg(_dry_calc_cfg, calc_file, calc_factory)
+        from pdb2reaction.backends import apply_effective_precision
+        apply_effective_precision(_dry_calc_cfg, precision)
+        from pdb2reaction.core.dft_settings import finalize_dft_calculator_config
+        finalize_dft_calculator_config(ctx, _dry_calc_cfg)
         extract_note = (
             "extract pre-check ran" if not skip_extract
             else "extraction was not requested"
@@ -5696,6 +5938,15 @@ def cli(
     apply_calc_file_to_calc_cfg(calc_cfg_shared, calc_file, calc_factory)
     from pdb2reaction.backends import apply_effective_precision
     apply_effective_precision(calc_cfg_shared, precision)
+    from pdb2reaction.core.dft_settings import finalize_dft_calculator_config
+    finalize_dft_calculator_config(ctx, calc_cfg_shared)
+    if str(calc_cfg_shared.get("backend", "")).lower() == "dft":
+        args_yaml = _write_args_yaml_with_freeze_atoms(
+            args_yaml,
+            _freeze_atoms_for_log(),
+            dft_settings=calc_cfg_shared["dft_settings"],
+            session=session,
+        )
     _shared_provenance = calculator_provenance(calc_cfg_shared)
     _mlip_backend_shared = str(_shared_provenance["mlip_backend"])
     _mlip_model_shared = _shared_provenance["mlip_model"]
@@ -6219,6 +6470,33 @@ def cli(
             g_prod_opt, model_ref, struct_dir, "product"
         )
 
+        scf_checkpoints: Dict[str, Path] = {}
+        working_scf_checkpoint = irc_res.get("scf_checkpoint")
+        if working_scf_checkpoint is not None:
+            # The TS checkpoint already has a manifest identity from tsopt.
+            # Refresh it against the exact serialized TS coordinates, then add
+            # only the two endpoint roles (three large files total).
+            saved_ts = _save_role_scf_checkpoint(
+                calculator_lease.calculator,
+                geom_loader(pT, coord_type=DEFAULT_COORD_TYPE),
+                working_scf_checkpoint,
+                manifest=manifest,
+                key="post.01.scf_checkpoint.TS",
+            )
+            if saved_ts is not None:
+                scf_checkpoints["TS"] = saved_ts
+            for role, geometry_path in (("R", pR), ("P", pP)):
+                saved = _save_role_scf_checkpoint(
+                    calculator_lease.calculator,
+                    geometry_path,
+                    tsroot / "_work" / "dft_scf" / f"{role}.chk",
+                    manifest=manifest,
+                    key=f"post.01.scf_checkpoint.{role}",
+                )
+                if saved is not None:
+                    scf_checkpoints[role] = saved
+            _persist_run_manifest(manifest, out_dir)
+
         e_react = float(g_react_opt.energy)
         e_prod = float(g_prod_opt.energy)
 
@@ -6264,6 +6542,7 @@ def cli(
                 ref_pdb_for_tsopt_only,
                 convert_files,
                 overrides=freq_overrides,
+                scf_checkpoint=scf_checkpoints.get("TS"),
             )
             from pdb2reaction.io.hessian_cache import clear as _clear_hess_cache
             _clear_hess_cache()  # TS Hessian consumed; R/P need exact computation
@@ -6277,6 +6556,7 @@ def cli(
                 ref_pdb_for_tsopt_only,
                 convert_files,
                 overrides=freq_overrides,
+                scf_checkpoint=scf_checkpoints.get("R"),
             )
             tP = _run_freq_for_state(
                 pP,
@@ -6288,6 +6568,7 @@ def cli(
                 ref_pdb_for_tsopt_only,
                 convert_files,
                 overrides=freq_overrides,
+                scf_checkpoint=scf_checkpoints.get("P"),
             )
             thermo_payloads = {"R": tR, "TS": tT, "P": tP}
             GR = _thermo_value_ha(tR, "sum_EE_and_thermal_free_energy_ha")
@@ -8480,6 +8761,30 @@ def cli(
             )
             state_structs = {"R": pL, "TS": pT, "P": pR}
 
+            scf_checkpoints: Dict[str, Path] = {}
+            working_scf_checkpoint = irc_res.get("scf_checkpoint")
+            if working_scf_checkpoint is not None:
+                saved_ts = _save_role_scf_checkpoint(
+                    calculator_lease.calculator,
+                    geom_loader(pT, coord_type=DEFAULT_COORD_TYPE),
+                    working_scf_checkpoint,
+                    manifest=manifest,
+                    key=f"post.{seg_idx:02d}.scf_checkpoint.TS",
+                )
+                if saved_ts is not None:
+                    scf_checkpoints["TS"] = saved_ts
+                for role, geometry_path in (("R", pL), ("P", pR)):
+                    saved = _save_role_scf_checkpoint(
+                        calculator_lease.calculator,
+                        geometry_path,
+                        seg_dir / "_work" / "dft_scf" / f"{role}.chk",
+                        manifest=manifest,
+                        key=f"post.{seg_idx:02d}.scf_checkpoint.{role}",
+                    )
+                    if saved is not None:
+                        scf_checkpoints[role] = saved
+                _persist_run_manifest(manifest, out_dir)
+
             eR = float(g_react_opt.energy)
             eT = float(gT.energy)
             eP = float(g_prod_opt.energy)
@@ -8657,6 +8962,7 @@ def cli(
                     ref_pdb_for_seg,
                     convert_files,
                     overrides=freq_overrides,
+                    scf_checkpoint=scf_checkpoints.get("TS"),
                 )
                 from pdb2reaction.io.hessian_cache import clear as _clear_hess_cache
                 _clear_hess_cache()  # TS Hessian consumed; R/P need exact computation
@@ -8670,6 +8976,7 @@ def cli(
                     ref_pdb_for_seg,
                     convert_files,
                     overrides=freq_overrides,
+                    scf_checkpoint=scf_checkpoints.get("R"),
                 )
                 tP = _run_freq_for_state(
                     p_prod,
@@ -8681,6 +8988,7 @@ def cli(
                     ref_pdb_for_seg,
                     convert_files,
                     overrides=freq_overrides,
+                    scf_checkpoint=scf_checkpoints.get("P"),
                 )
                 thermo_payloads = {"R": tR, "TS": tT, "P": tP}
                 from pdb2reaction.workflows._all_helpers import (

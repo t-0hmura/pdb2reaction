@@ -153,10 +153,10 @@ An optimizer may also report `"status": "stalled"`: the energy stopped decreasin
 | `energy_hartree` | float | Final energy (Hartree) |
 | `n_opt_cycles` | int | Optimization cycles completed |
 | `opt_mode` | string | `"grad"`, `"hess"`, `"lbfgs"`, or `"rfo"` |
-| `backend` | string | MLIP backend (`"uma"`, `"orb"`, `"mace"`, `"aimnet2"`, or `"custom"` with `--calc-file`) |
+| `backend` | string | Calculator backend (`"uma"`, `"orb"`, `"mace"`, `"aimnet2"`, `"dft"`, or `"custom"` with `--calc-file`); DFT compatibility fields use `FUNCTIONAL/BASIS` as the model, record the engine separately, and leave MLIP precision null |
 | `charge` | int | System charge |
 | `spin` | int | Spin multiplicity |
-| `model` | string | MLIP model identifier |
+| `model` | string | MLIP model identifier, or `FUNCTIONAL/BASIS` for `dft` |
 | `n_atoms` | int | Total atoms |
 | `n_freeze_atoms` | int | Frozen atoms |
 | `solvent` | string | Implicit solvent or `"none"` |
@@ -418,7 +418,7 @@ See also the extended [`summary.json` section](#summary-json-path-search-all) fo
 | `basis_set` | string | Basis set |
 | `engine` | string | Effective engine label (`"gpu4pyscf(rks_lowmem)"`, `"gpu4pyscf"`, or `"pyscf(cpu)"`) |
 | `used_gpu` | bool | GPU acceleration used? |
-| `used_lowmem` | bool | `gpu4pyscf.dft.rks_lowmem.RKS` actually used? (False on open-shell, CPU, `--no-lowmem`, or pre-`rks_lowmem` GPU4PySCF) |
+| `used_lowmem` | bool | `gpu4pyscf.dft.rks_lowmem.RKS` actually used? (False on open-shell, CPU, or `--no-lowmem`) |
 | `charges` | object | `{mulliken, lowdin, iao}` per-atom arrays |
 | `spin_densities` | object | `{mulliken, lowdin, iao}` per-atom arrays |
 | `files` | object | `{"result_yaml": "result.yaml", "input_geometry_xyz": "input_geometry.xyz"}` |

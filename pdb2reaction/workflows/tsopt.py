@@ -93,6 +93,7 @@ from pdb2reaction.cli.common_options import (
     add_deterministic_option, add_allow_charge_mult_mismatch_option,
     add_coord_type_option,
     add_print_every_option,
+    add_dft_calculator_options,
 )
 from pdb2reaction.cli.decorators import resolve_yaml_sources, load_merged_yaml_cfg, _write_error_json, render_cli_exception
 from pdb2reaction.io.path_mode_cache import read_reference_mode_candidates
@@ -2197,12 +2198,12 @@ def _validate_reference_mode_optimizer(
     default=None, show_default="FiniteDifference",
     help="Choose MLIP Hessian evaluation mode. YAML supplies the value when this option is omitted; explicit CLI wins.",
 )
-@click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
-              show_default=True, help="MLIP backend.")
+@click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2", "dft"]), default="uma",
+              show_default=True, help="Energy/force calculator backend.")
 @click.option("--solvent", default="none", show_default=True,
-              help="Experimental, computationally expensive xTB solvent delta correction. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.")
-@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx"]),
-              show_default=True, help="xTB solvent model.")
+              help="Environment model: MLIP backends use the experimental xTB solvent delta; dft uses native PySCF PCM/SMD. 'none' disables it.")
+@click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx", "pcm", "smd"]),
+              show_default=True, help="Solvent model: ALPB/CPCMx for MLIP backends; PCM/SMD for dft.")
 @add_ml_charge_spin_options()
 @add_precision_option()
 @add_backend_model_option()
@@ -2211,6 +2212,7 @@ def _validate_reference_mode_optimizer(
 @add_allow_charge_mult_mismatch_option()
 @add_coord_type_option()
 @add_print_every_option()
+@add_dft_calculator_options()
 @click.pass_context
 @click.option(
     "--stop-plateau/--no-stop-plateau",
@@ -2588,6 +2590,11 @@ def cli(
             )
         except BackendError as exc:
             raise click.ClickException(str(exc)) from exc
+
+        from pdb2reaction.core.dft_settings import finalize_dft_calculator_config
+        finalize_dft_calculator_config(
+            ctx, calc_cfg, output_dir=opt_cfg["out_dir"]
+        )
 
         if kind == "dimer":
             update_interval = simple_cfg.get("update_interval_hessian", 500)

@@ -91,7 +91,7 @@ Full system(s) (PDB / mmCIF / XYZ / GJF)
 4. **Per-segment post-processing** (ordinary MEP/TS candidates; bridge segments are skipped, and bond changes are diagnostic):
    - `--tsopt` — Optimize each HEI, then run EulerPC IRC and re-optimize its endpoints when terminal validation permits. Frequencies and modes are recorded only when terminal PHVA completes. Endpoint optimization uses `--thresh-post` (default `baker`); its working directory is retained with `--dump` or when either endpoint does not converge. `--reject-uphill` is off by default and applies only to endpoint RFO re-optimization.
    - `--thermo` — `freq` on (R, TS, P) for vibrational + thermochemistry data and an MLIP Gibbs diagram.
-   - `--dft` — single-point DFT on (R, TS, P) and a DFT diagram. With `--thermo`, a DFT//MLIP Gibbs diagram (DFT energies + MLIP thermal correction) is also produced.
+   - `--dft` — single-point DFT on (R, TS, P) and a DFT diagram. With `--thermo`, a DFT//MLIP Gibbs diagram (DFT energies + MLIP thermal correction) is also produced. For large production calculations, finish the MLIP pipeline first and run `sp -b dft` later in a separate process/job so the DFT step starts with released VRAM. `all -b dft --dft` is rejected because it would repeat the primary DFT calculation.
    - Shared overrides: `--opt-mode`, `--opt-mode-post`, `--flatten`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, `--dft-engine` (GPU-first by default). Frozen-boundary PHVA always uses the constrained rigid-mode treatment; it is unrelated to the MEP-derived `--ref-mode`. For Hessian evaluation modes see {ref}`hessian-evaluation`.
 5. **TSOPT-only mode** (single input + `--tsopt`, no `--scan-lists`) — skips MEP / merge; runs `tsopt` + EulerPC IRC and generates the same energy diagrams plus optional freq / DFT outputs.
 
@@ -262,7 +262,7 @@ and `tsopt` subcommands keep their own `--max-cycles`.
 | --- | --- | --- |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism. `workers > 1` cannot be combined with an explicit analytical Hessian request; use `workers = 1` or finite differences. See {ref}`workers-analytical-error`. | `1`, `1` |
 | `--hessian-calc-mode [Analytical\|FiniteDifference]` | Shared MLIP Hessian engine. | `FiniteDifference` |
-| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
+| `-b, --backend {uma,orb,mace,aimnet2,dft}` | Energy/force calculator backend. | `uma` |
 ### Post-processing
 
 | Option | Description | Default |
@@ -300,9 +300,14 @@ TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (on
 | `--freq-temperature FLOAT` | Thermochemistry temperature (K). | `298.15` |
 | `--freq-pressure FLOAT` | Thermochemistry pressure (atm). | `1.0` |
 | `--dft-engine [gpu\|cpu]` | DFT backend (GPU4PySCF or PySCF). In `all` the option is named `--dft-engine`; the standalone `dft` subcommand uses `--engine`. | `gpu` |
+| `--dft-solvent TEXT` | Native PySCF implicit solvent for post-processing DFT. | `none` |
+| `--dft-solvent-model [pcm\|smd]` | Native PySCF solvent model for post-processing DFT. | `smd` |
 | `--dft-out-dir PATH` | DFT outputs base directory override. | _None_ |
 | `--dft-func-basis TEXT` | Functional / basis pair. | `wb97m-v/def2-svp` |
 | `--dft-max-cycle INT` | Maximum SCF iterations. | `100` |
+| `--lowmem/--no-lowmem` | Low-memory policy for a primary DFT backend or the optional `--dft` stage. | `--lowmem` |
+| `--dft-nprocs INT` | PySCF/OpenMP CPU threads for DFT. | `auto` |
+| `--dft-mem SIZE` | PySCF host-RAM limit for DFT; not GPU VRAM. | `auto` |
 | `--dft-conv-tol FLOAT` | SCF convergence tolerance. | `1e-9` |
 | `--dft-grid-level INT` | PySCF grid level. | `3` |
 | `-s, --scan-lists TEXT...` | Staged scans: `(i, j, target_Å)` tuples (single-input runs). | _None_ |

@@ -1,14 +1,51 @@
 import click
 import pytest
+from click.testing import CliRunner
 
 from pdb2reaction.io.summary import write_summary_log
 from pdb2reaction.workflows.all import (
     _derive_pipeline_status,
     _enrich_summary,
     _pipeline_aggregate_truth,
+    _reject_redundant_dft_postprocessing,
     _ts_imag_record,
     _validate_postprocessing_dependencies,
 )
+
+
+def test_all_rejects_post_dft_when_primary_backend_is_dft() -> None:
+    with pytest.raises(click.UsageError, match="separate process/job"):
+        _reject_redundant_dft_postprocessing(
+            effective_backend="dft", do_dft=True
+        )
+    _reject_redundant_dft_postprocessing(
+        effective_backend="uma", do_dft=True
+    )
+
+
+@pytest.mark.parametrize("via_yaml", [False, True])
+def test_all_cli_rejects_redundant_dft_before_pipeline(tmp_path, via_yaml) -> None:
+    from pdb2reaction.workflows.all import cli as all_cli
+
+    xyz = tmp_path / "h2.xyz"
+    xyz.write_text("2\nH2\nH 0 0 0\nH 0 0 0.74\n", encoding="utf-8")
+    out_dir = tmp_path / "result"
+    args = [
+        "-i", str(xyz), "-i", str(xyz), "-q", "0", "--dft", "true", "--dry-run",
+        "--out-dir", str(out_dir),
+    ]
+    if via_yaml:
+        config = tmp_path / "dft.yaml"
+        config.write_text("calc:\n  backend: dft\n", encoding="utf-8")
+        args.extend(["--config", str(config)])
+    else:
+        args.extend(["-b", "dft"])
+
+    result = CliRunner().invoke(all_cli, args)
+
+    assert result.exit_code == 2
+    assert "separate process/job" in result.output
+    assert not out_dir.exists()
 
 
 @pytest.mark.parametrize(

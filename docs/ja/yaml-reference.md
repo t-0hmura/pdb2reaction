@@ -127,11 +127,11 @@ geom:
 
 ### `calc`
 
-MLIP バックエンドの設定。
+energy/force calculatorの設定。
 
 ```yaml
 calc:
- backend: uma           # MLIP backend: "uma", "orb", "mace", or "aimnet2"
+ backend: uma           # uma, orb, mace, aimnet2, dft
  precision: auto # auto (uma/aimnet2 fp32、orb/mace fp64) | fp32 | fp64; aimnet2 は auto/fp32 のみ受理し fp64 を拒否
  charge: 0 # Total system charge (overridden by CLI -q)
  spin: 1 # Spin multiplicity 2S+1 (overridden by CLI -m)
@@ -155,10 +155,30 @@ calc:
  solvent_model: alpb     # xTB solvent model: "alpb" or "cpcmx"
  xtb_cmd: xtb            # solvent が none 以外の場合に必要な xTB 実行コマンド
  xtb_acc: 0.2            # xTB accuracy parameter
+ # backend: dft の場合だけ使用
+ dft:
+  func_basis: wb97m-v/def2-svp
+  engine: gpu             # gpu (GPU4PySCF) | cpu (PySCF)
+  lowmem: true             # DF tensorを保持しないdirect JK
+  density_fit: false       # --no-lowmemで既定有効
+  nprocs: auto             # scheduler/affinityからPySCF thread数を決定
+  memory: auto             # host RAM上限（例64GB、GPU VRAMではない）
+  solvent: none
+  solvent_model: smd      # pcm | smd
+  save_scf_checkpoint: false
+  checkpoint_path: null   # leafで有効時: <out-dir>/_work/dft_scf/state.chk
+  pyscf:
+   mol: {}
+   mf: {}
+   grids: {}
+   density_fit: {}
+   with_df: {}
+   with_solvent: {}
 ```
 
 **注記:**
-- `backend` で MLIP エンジンを選択。すべてのバックエンド（UMA, ORB, MACE, AIMNet2）が解析 Hessian（`hessian_calc_mode: Analytical`）と有限差分 Hessian の両方に対応。マルチワーカー推論は UMA バックエンド限定。
+- `backend: dft`はstateful PySCF/GPU4PySCF scannerを選択します。後述のtop-level `dft:` sectionは独立したpopulation解析subcommand用です。
+- MLIP backendは解析Hessianと有限差分Hessianに対応し、multi-worker推論はUMA限定です。DFTはPySCF解析Hessianを使います。
 - `workers` / `workers_per_node` は UMA バックエンドでのみ有効。
 - 移植性のあるデフォルトは `FiniteDifference` です。`Analytical` は有限変位誤差を避けられますが、速度・メモリ量は backend/model/系に依存するため、対象環境で検証してから選択してください。
 - UMA の `workers > 1` では解析 Hessian が無効になります。`hessian_calc_mode: Analytical` を明示すると `BackendError`（`RuntimeError` のサブクラス）で停止します。解析 Hessian には `workers = 1`、並列実行には `FiniteDifference` を指定してください。詳細は {ref}`MLIP Calculator のHessian評価モード <ja-hessian-evaluation>` を参照してください。
@@ -616,7 +636,12 @@ dft:
  max_cycle: 100 # Maximum SCF iterations
  grid_level: 3 # PySCF grid level
  engine: gpu # SCF backend: "gpu" (GPU4PySCF) or "cpu" (PySCF)
- lowmem: true # closed-shell GPU で gpu4pyscf rks_lowmem.RKS を使用
+ solvent: none # PySCF native solvent名
+ solvent_model: smd # pcm | smd
+ pyscf: {} # PySCF object名attribute転送
+ lowmem: true # 低memory direct JK。falseでdensity fitting
+ nprocs: auto # scheduler/affinityからPySCF thread数を決定
+ memory: auto # host RAM上限（例64GB、GPU VRAMではない）
  verbose: 0 # PySCF verbosity (0-9); CLI -v 2/3 では実行時 PySCF verbosity が >=4
  out_dir: ./result_dft/ # Output directory root
 ```

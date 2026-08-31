@@ -148,10 +148,10 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 | `energy_hartree` | float | 最終エネルギー (Hartree) |
 | `n_opt_cycles` | int | 最適化サイクル数 |
 | `opt_mode` | string | `"grad"` / `"hess"` / `"lbfgs"` / `"rfo"` |
-| `backend` | string | MLIP バックエンド (`"uma"`, `"orb"`, `"mace"`, `"aimnet2"`、または `--calc-file` 時の `"custom"`) |
+| `backend` | string | calculator backend（`"uma"`, `"orb"`, `"mace"`, `"aimnet2"`, `"dft"`、または `--calc-file` 時の `"custom"`）。DFTの互換fieldではmodelを`FUNCTIONAL/BASIS`、engineを別field、MLIP precisionをnullとする |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
-| `model` | string | MLIP モデル名 |
+| `model` | string | MLIPモデル名。`dft`では`FUNCTIONAL/BASIS` |
 | `n_atoms` | int | 原子数 |
 | `n_freeze_atoms` | int | 凍結原子数 |
 | `solvent` | string | 暗黙溶媒 or `"none"` |
@@ -409,7 +409,7 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 | `basis_set` | string | 基底関数 |
 | `engine` | string | 実効エンジンラベル (`"gpu4pyscf(rks_lowmem)"` / `"gpu4pyscf"` / `"pyscf(cpu)"`) |
 | `used_gpu` | bool | GPU 使用? |
-| `used_lowmem` | bool | `gpu4pyscf.dft.rks_lowmem.RKS` を実際に使用したか? (open-shell, CPU, `--no-lowmem`, あるいは `rks_lowmem` 未搭載の旧 `gpu4pyscf` では False) |
+| `used_lowmem` | bool | `gpu4pyscf.dft.rks_lowmem.RKS`を実際に使用したか（open-shell、CPU、`--no-lowmem`ではFalse） |
 | `charges` | object | `{mulliken, lowdin, iao}` 原子電荷配列 |
 | `spin_densities` | object | `{mulliken, lowdin, iao}` スピン密度配列 |
 | `files` | object | `{"result_yaml": "result.yaml", "input_geometry_xyz": "input_geometry.xyz"}` |

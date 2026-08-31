@@ -95,6 +95,7 @@ from pdb2reaction.cli.common_options import (
     add_coord_type_option,
     add_print_every_option,
     add_precision_option, add_backend_model_option,
+    add_dft_calculator_options,
     add_calc_file_option,
     add_deterministic_option, add_allow_charge_mult_mismatch_option,
 )
@@ -249,6 +250,7 @@ def _result_calculator_fields(
 @add_calc_file_option()
 @add_deterministic_option()
 @add_allow_charge_mult_mismatch_option()
+@add_dft_calculator_options()
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -391,6 +393,10 @@ def cli(
         if cli_param_overridden(ctx, "cli_coord_type") and cli_coord_type is not None:
             geom_cfg["coord_type"] = str(cli_coord_type).lower()
         apply_backend_defaults(calc_cfg)
+        from pdb2reaction.core.dft_settings import finalize_dft_calculator_config
+        finalize_dft_calculator_config(
+            ctx, calc_cfg, output_dir=opt_cfg["out_dir"]
+        )
 
         pdb_atom_meta: List[Dict[str, Any]] = list(scan_atom_meta)
         d1_label_csv = None

@@ -4,7 +4,6 @@ MLIP backend factory and registry.
 Usage::
 
     from pdb2reaction.backends import create_calculator, create_ase_calculator
-import click
 
     calc = create_calculator(backend="uma", charge=0, spin=1, ...)
     ase_calc = create_ase_calculator(backend="uma", model="uma-s-1p2", ...)
@@ -42,6 +41,11 @@ BACKEND_REGISTRY: Dict[str, Dict[str, str]] = {
         "pysis_cls": "AIMNet2Calculator",
         "ase_cls": "AIMNet2ASECalculator",
     },
+    "dft": {
+        "module": "pdb2reaction.backends.pyscf_dft",
+        "pysis_cls": "DFTCalculator",
+        "ase_cls": "DFTASECalculator",
+    },
     # User-supplied ASE Calculator loaded from a Python file (``--calc-file``).
     # Not auto-resolvable (needs a file); selected by passing ``--calc-file``.
     "custom": {
@@ -78,6 +82,10 @@ _BACKEND_ACCEPTED_KEYS: Dict[str, set] = {
         "print_timing",
         "model",
     },
+    "dft": {
+        "freeze_atoms", "hessian_calc_mode", "return_partial_hessian",
+        "hessian_double", "out_hess_torch", "print_timing", "dft_settings",
+    },
     "custom": {
         "charge", "spin", "device", "freeze_atoms", "hessian_calc_mode",
         "return_partial_hessian", "hessian_double", "out_hess_torch",
@@ -96,6 +104,7 @@ _ASE_ACCEPTED_KEYS: Dict[str, set] = {
     "orb": {"model", "device", "precision", "compile_model"},
     "mace": {"model", "device", "default_dtype"},
     "aimnet2": {"model", "device", "charge", "spin"},
+    "dft": {"dft_settings"},
     "custom": {"calc_file", "calc_factory", "charge", "spin", "device"},
 }
 
@@ -211,6 +220,9 @@ def apply_effective_precision(
     if resolve_backend(calc_cfg.get("backend") or "uma") == "custom":
         calc_cfg.pop("precision", None)
         return
+    if resolve_backend(calc_cfg.get("backend") or "uma") == "dft":
+        calc_cfg.pop("precision", None)
+        return
     eff = cli_precision if cli_precision is not None else calc_cfg.get("precision")
     if eff is None or str(eff).lower() == "auto":
         backend = resolve_backend(calc_cfg.get("backend") or "uma")
@@ -280,7 +292,7 @@ _ANNOUNCED_MODEL_LOADS: set = set()
 
 @contextlib.contextmanager
 def _announce_model_load(backend: str, kwargs: Dict[str, Any]):
-    """Bracket the first load of each model so a download cannot look like a hang."""
+    """Bracket the first load of each calculator so setup cannot look like a hang."""
     from pdb2reaction.core.output import emit, mlip_model_label
 
     model = str(kwargs.get("model") or "").strip()
@@ -294,10 +306,12 @@ def _announce_model_load(backend: str, kwargs: Dict[str, Any]):
     _ANNOUNCED_MODEL_LOADS.add(key)
     backend_label = {
         "uma": "UMA", "orb": "ORB", "mace": "MACE", "aimnet2": "AIMNet2",
+        "dft": "PySCF DFT",
     }.get(backend, backend)
     model_label = mlip_model_label(backend, model, task_name)
     label = f"{backend_label}{f' / {model_label}' if model else ''}"
-    emit(f"\n[backend] Preparing MLIP model ({label})...", narrative=True)
+    noun = "DFT calculator" if backend == "dft" else "MLIP model"
+    emit(f"\n[backend] Preparing {noun} ({label})...", narrative=True)
     try:
         yield
     except BaseException:
@@ -353,7 +367,7 @@ def create_calculator(backend: str = "uma", **kwargs) -> MLIPCalculator:
     Parameters
     ----------
     backend : str
-        One of ``'uma'``, ``'orb'``, ``'mace'``, ``'aimnet2'``, ``'custom'``,
+        One of ``'uma'``, ``'orb'``, ``'mace'``, ``'aimnet2'``, ``'dft'``, ``'custom'``,
         or ``'auto'``. ``'custom'`` requires ``calc_file``.
     **kwargs
         Backend-specific and common parameters. Unknown keys for the selected
@@ -411,7 +425,7 @@ def create_calculator(backend: str = "uma", **kwargs) -> MLIPCalculator:
 
     # Wrap with solvent correction if enabled
     from .solvent import solvent_correction_enabled
-    if solvent_correction_enabled(solvent):
+    if backend != "dft" and solvent_correction_enabled(solvent):
         from .solvent import SolventCorrectedCalculator
         calc = SolventCorrectedCalculator(
             calc,
@@ -430,7 +444,7 @@ def create_ase_calculator(backend: str = "uma", **kwargs):
     Parameters
     ----------
     backend : str
-        One of ``'uma'``, ``'orb'``, ``'mace'``, ``'aimnet2'``, ``'custom'``,
+        One of ``'uma'``, ``'orb'``, ``'mace'``, ``'aimnet2'``, ``'dft'``, ``'custom'``,
         or ``'auto'``. ``'custom'`` requires ``calc_file``.
     **kwargs
         Backend-specific parameters.

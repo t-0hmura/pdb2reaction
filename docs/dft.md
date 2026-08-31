@@ -6,9 +6,9 @@ Runs single-point DFT with GPU4PySCF or CPU PySCF, reporting energy and populati
 
 > **Prerequisites:** DFT dependencies (PySCF, GPU4PySCF) are **not** included in the default install. Install them with `pip install "pdb2reaction[dft]"`.
 
-> **Solvation:** `dft` has no `--solvent` option; PCM and SMD are not enabled.
-> `all --solvent` controls only the experimental, computationally expensive
-> xTB solvent-delta correction in MLIP stages and is not forwarded to DFT.
+> **Solvation:** `--solvent NAME --solvent-model pcm|smd` uses native PySCF
+> implicit solvent. This is separate from the xTB solvent-delta correction used
+> by MLIP backends.
 
 ## Examples
 
@@ -18,7 +18,9 @@ Command form:
 pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULTIPLICITY] \
  [--func-basis 'FUNC/BASIS'] \
  [--max-cycle N] [--conv-tol Eh] [--grid-level L] \
- [--out-dir DIR] [--engine gpu|cpu] \
+ [--out-dir DIR] [--engine gpu|cpu] [--lowmem|--no-lowmem] \
+ [--dft-nprocs N] [--dft-mem SIZE] \
+ [--solvent NAME] [--solvent-model pcm|smd] \
  [--ref-pdb FILE] [--config FILE] [--show-config] [--dry-run]
 ```
 
@@ -58,7 +60,7 @@ When `-q` is omitted but `--ligand-charge/-l` is provided, the input is treated 
 ## Workflow
 
 1. **Input handling** – PDB, mmCIF, XYZ, GJF, and other files loadable by `geom_loader` are accepted. Coordinates are re-exported as `input_geometry.xyz`. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB/mmCIF topology for atom-count validation and (if you also use `--ligand-charge/-l`) charge derivation; the DFT stage itself does **not** emit PDB/CIF/GJF outputs.
-2. **SCF build** – `--func-basis` is parsed into functional and basis. `--engine` controls GPU/CPU preference (`gpu` requires GPU4PySCF and raises an error if unavailable; `cpu` forces CPU). On the closed-shell GPU path with `--lowmem` (default), the SCF object is `gpu4pyscf.dft.rks_lowmem.RKS`, which uses a memory-efficient direct-JK pipeline (no density fitting); on the open-shell GPU, CPU, or `--no-lowmem` paths, density fitting is enabled automatically with PySCF defaults. Nonlocal corrections (e.g., VV10) are not configured explicitly beyond the backend defaults.
+2. **SCF build** – `--func-basis` is parsed into functional and basis. `--engine` controls GPU/CPU preference (`gpu` requires GPU4PySCF and raises an error if unavailable; `cpu` forces CPU). Low-memory mode is on by default: closed-shell GPU calculations, including PCM/SMD, use `gpu4pyscf.dft.rks_lowmem.RKS`; open-shell GPU and CPU use standard direct-JK RKS/UKS without retaining a density-fitting tensor. `--no-lowmem` enables density fitting and can improve difficult SCF convergence when sufficient memory is available. PySCF thread count and host-RAM limit are detected from scheduler/process limits; `--dft-nprocs` and `--dft-mem` override them. These resource values are recorded but do not invalidate a scientific checkpoint identity.
 3. **Population analysis & outputs** – After convergence (or failure) the command writes `result.yaml` summarizing the energy (in hartree and kcal/mol), convergence metadata, backend info, and per-atom Mulliken/meta-Löwdin/IAO charges and spin densities (UKS only for spins). Any failed analysis column is set to `null` with a warning.
 
 ## Outputs
@@ -95,7 +97,11 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--grid-level INT` | PySCF numerical integration grid level (`dft.grid_level`). | `3` |
 | `-o, --out-dir TEXT` | Output directory (`dft.out_dir`). | `./result_dft/` |
 | `--engine [gpu\|cpu]` | SCF backend: gpu (GPU4PySCF) or cpu (PySCF). See {ref}`engine-vs-dft-engine` for the `--engine` vs `--dft-engine` naming convention. | `gpu` |
-| `--lowmem/--no-lowmem` | Use `gpu4pyscf.dft.rks_lowmem.RKS` for closed-shell GPU runs (skips density fitting in favor of memory-efficient direct JK). Open-shell, CPU, or pre-`rks_lowmem` GPU4PySCF installs fall back to standard RKS/UKS automatically. | `True` |
+| `--solvent TEXT` | Native PySCF implicit-solvent name; `none` disables solvation. | `none` |
+| `--solvent-model [pcm\|smd]` | Native PySCF implicit-solvent model. | `smd` |
+| `--lowmem/--no-lowmem` | Use `gpu4pyscf.dft.rks_lowmem.RKS` for closed-shell GPU runs, including PCM/SMD. Open-shell GPU and CPU use standard direct-JK RKS/UKS; `--no-lowmem` enables density fitting. | `True` |
+| `--dft-nprocs INT` | PySCF/OpenMP CPU threads. Omission uses scheduler/affinity/host detection. | `auto` |
+| `--dft-mem SIZE` | PySCF host-RAM limit, for example `64GB` or `120000MB`; this is not GPU VRAM. | `auto` |
 | `--ref-pdb FILE` | Reference PDB topology to validate atom counts and enable ligand-charge derivation for XYZ/GJF inputs (no output conversion). | _None_ |
 | `--config FILE` | Base YAML configuration file applied before explicit CLI options. | _None_ |
 | `--show-config/--no-show-config` | Print resolved configuration and continue execution. | `False` |
@@ -116,6 +122,9 @@ geom:
 dft:
  func: wb97m-v # exchange–correlation functional
  basis: def2-svp # basis set name (alternatively use func_basis: "FUNC/BASIS")
+ lowmem: true # direct-JK low-memory mode; false enables density fitting
+ nprocs: auto # optional explicit positive integer
+ memory: auto # optional host-RAM limit such as 64GB
  conv_tol: 1.0e-09 # SCF convergence tolerance (hartree)
  max_cycle: 100 # maximum SCF iterations
  grid_level: 3 # PySCF grid level

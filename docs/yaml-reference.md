@@ -128,11 +128,11 @@ geom:
 
 ### `calc`
 
-MLIP backend configuration.
+Energy/force calculator configuration.
 
 ```yaml
 calc:
- backend: uma           # MLIP backend: "uma", "orb", "mace", or "aimnet2"
+ backend: uma           # uma, orb, mace, aimnet2, or dft
  precision: auto # auto (uma/aimnet2 fp32, orb/mace fp64) | fp32 | fp64; aimnet2 accepts auto/fp32 and rejects fp64
  charge: 0 # Total system charge (overridden by CLI -q)
  spin: 1 # Spin multiplicity 2S+1 (overridden by CLI -m)
@@ -156,10 +156,30 @@ calc:
  solvent_model: alpb     # xTB solvent model: "alpb" or "cpcmx"
  xtb_cmd: xtb            # xTB executable; required when solvent is not none
  xtb_acc: 0.2            # xTB accuracy parameter
+ # Used only when backend: dft
+ dft:
+  func_basis: wb97m-v/def2-svp
+  engine: gpu             # gpu (GPU4PySCF) | cpu (PySCF)
+  lowmem: true             # direct JK without a persistent DF tensor
+  density_fit: false       # enabled by --no-lowmem unless set explicitly
+  nprocs: auto             # PySCF/OpenMP threads from scheduler/affinity
+  memory: auto             # host RAM limit, e.g. 64GB (not GPU VRAM)
+  solvent: none
+  solvent_model: smd      # pcm | smd
+  save_scf_checkpoint: false
+  checkpoint_path: null   # leaf default when enabled: <out-dir>/_work/dft_scf/state.chk
+  pyscf:
+   mol: {}
+   mf: {}
+   grids: {}
+   density_fit: {}
+   with_df: {}
+   with_solvent: {}
 ```
 
 **Notes:**
-- `backend` selects the MLIP engine. All backends (UMA, ORB, MACE, AIMNet2) support both analytical (autograd) and finite-difference Hessians; multi-worker inference is UMA-only.
+- `backend: dft` selects the stateful PySCF/GPU4PySCF scanner; the standalone top-level `dft:` section below remains the dedicated population-analysis command configuration.
+- All MLIP backends support analytical (autograd) and finite-difference Hessians; multi-worker inference is UMA-only. DFT supports PySCF analytical and finite-difference Hessians.
 - `workers` / `workers_per_node` are effective with the UMA backend only.
 - `FiniteDifference` is the portable default. `Analytical` avoids finite-displacement error, but runtime and memory are backend/model/system dependent; select it only after validating the target setup.
 - `workers > 1` disables analytical Hessians for the UMA parallel predictor. An explicit `hessian_calc_mode: Analytical` request raises `BackendError` (a `RuntimeError` subclass); use `workers = 1` or select `FiniteDifference`. See {ref}`the MLIP Calculator hessian-evaluation note <hessian-evaluation>` for details.
@@ -623,7 +643,12 @@ dft:
  max_cycle: 100 # Maximum SCF iterations
  grid_level: 3 # PySCF grid level
  engine: gpu # SCF backend: "gpu" (GPU4PySCF) or "cpu" (PySCF)
- lowmem: true # Use gpu4pyscf rks_lowmem.RKS for closed-shell GPU runs
+ solvent: none # Native PySCF solvent name
+ solvent_model: smd # pcm | smd
+ pyscf: {} # PySCF object-name attribute forwarding
+ lowmem: true # Low-memory direct JK; false enables density fitting
+ nprocs: auto # PySCF/OpenMP threads from scheduler/affinity
+ memory: auto # Host RAM limit, e.g. 64GB (not GPU VRAM)
  verbose: 0 # PySCF verbosity (0-9); CLI -v 2/3 raises runtime PySCF verbosity to >=4
  out_dir: ./result_dft/ # Output directory root
 ```

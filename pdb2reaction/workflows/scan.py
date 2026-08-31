@@ -80,6 +80,7 @@ from pdb2reaction.cli.common_options import (
     add_coord_type_option,
     add_print_every_option,
     add_precision_option, add_backend_model_option,
+    add_dft_calculator_options,
     add_calc_file_option,
     add_deterministic_option, add_allow_charge_mult_mismatch_option,
 )
@@ -263,6 +264,7 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
 @add_calc_file_option()
 @add_deterministic_option()
 @add_allow_charge_mult_mismatch_option()
+@add_dft_calculator_options()
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -435,6 +437,10 @@ def cli(
             freeze = resolve_freeze_atoms(geom_cfg, source_path, freeze_links)
             calc_cfg["freeze_atoms"] = list(geom_cfg.get("freeze_atoms", []))
             calc_cfg["return_partial_hessian"] = True
+            from pdb2reaction.core.dft_settings import finalize_dft_calculator_config
+            finalize_dft_calculator_config(
+                ctx, calc_cfg, output_dir=opt_cfg["out_dir"]
+            )
 
             # Present final config
             out_dir_path = Path(opt_cfg["out_dir"]).resolve()

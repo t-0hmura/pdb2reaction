@@ -14,6 +14,8 @@ pdb2reaction dft -i geom.{pdb,cif,mmcif,xyz,gjf} \
     [-q 0 -m 1] [-l 'RES:Q,...'] \
     [--func-basis 'wb97m-v/def2-svp'] \
     [--engine gpu|cpu] \
+    [--solvent NAME --solvent-model pcm|smd] \
+    [--dft-nprocs INT --dft-mem SIZE] \
     [-o ./result_dft/]
 ```
 
@@ -26,7 +28,9 @@ pdb2reaction dft -i geom.{pdb,cif,mmcif,xyz,gjf} \
 | `--ref-pdb` | path | none | Reference PDB/mmCIF so `-l` works on `.xyz` input |
 | `--func-basis` | str | `wb97m-v/def2-svp` | `'FUNC/BASIS'` |
 | `--engine` | str | `gpu` | `gpu` (GPU4PySCF) or `cpu` (PySCF) |
-| `--lowmem / --no-lowmem` | toggle | `--lowmem` | Closed-shell GPU uses `rks_lowmem.RKS` (no DF); open-shell / CPU / older gpu4pyscf automatically fall back to RKS/UKS+DF |
+| `--lowmem / --no-lowmem` | toggle | `--lowmem` | Closed-shell GPU uses `rks_lowmem.RKS`, including PCM/SMD; open-shell GPU and CPU use standard direct-JK RKS/UKS. `--no-lowmem` enables density fitting by default. |
+| `--solvent` / `--solvent-model` | str / choice | `none` / `smd` | Native PySCF PCM or SMD implicit solvent. |
+| `--dft-nprocs` / `--dft-mem` | int / size | auto / auto | Override scheduler/environment-derived thread count and memory limit. |
 | `--config` | path | none | YAML config file |
 | `-o, --out-dir` | path | `./result_dft/` | Output directory |
 | `--show-config` / `--dry-run` / `--help-advanced` | — | — | Standard |
@@ -87,12 +91,10 @@ IAO charges, spin densities.
 
 ## Caveats
 
-- `pdb2reaction dft` runs only **single points**, not optimization.
-  The built-in `tsopt` / `opt` backend choices are MLIPs
-  (`-b uma|orb|mace|aimnet2`), but those optimizers can also use an
-  arbitrary ASE Calculator through `--calc-file`. There is no built-in
-  PySCF/GPU4PySCF geometry optimizer; DFT-level refinement therefore needs
-  either a suitable ASE calculator adapter or a separate QM program.
+- `pdb2reaction dft` remains an energy/population-analysis **single-point**
+  command. As an optional calculator backend, `sp`, `opt`, `tsopt`, `irc`,
+  `freq`, scan/path workflows, and `all` also accept `-b dft`; those iterative
+  paths reuse the last converged density/orbitals.
 - `--func-basis` follows PySCF naming. Test a basis name directly, for example
   `python -c "from pyscf import gto; print(len(gto.basis.load('def2-tzvpd', 'C')))"`.
 

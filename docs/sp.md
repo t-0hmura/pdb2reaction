@@ -58,7 +58,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `-q, --charge INT` | — | total charge; alternatively derive it with `-l` for residue-bearing PDB/mmCIF, while a valid GJF can inherit its header value |
 | `-l, --ligand-charge TEXT` | — | per-residue charge mapping (e.g. `SAM:1,GPP:-3`), used to derive `-q` automatically |
 | `-m, --multiplicity INT` | `1` | spin multiplicity, 2S+1 (optional; defaults to 1. GJF inherits the template) |
-| `-b, --backend [uma\|orb\|mace\|aimnet2]` | `uma` | MLIP backend selection |
+| `-b, --backend [uma\|orb\|mace\|aimnet2\|dft]` | `uma` | Energy/force calculator backend |
 | `--hess / --no-hess` | `--no-hess` | also compute and write `hessian.npy` |
 | `--hessian-calc-mode [Analytical\|FiniteDifference]` | `FiniteDifference` | select the Hessian mode (only applies with `--hess`) |
 | `-o, --out-dir PATH` | `./result_sp/` | output directory |

@@ -1,10 +1,127 @@
 import json
+from pathlib import Path
 
 import click
 import pytest
 from click.testing import CliRunner
 
 from pdb2reaction.cli.app import cli
+
+
+def test_dft_rejects_redundant_backend_selector() -> None:
+    result = CliRunner().invoke(cli, ["dft", "-b", "dft"])
+
+    assert result.exit_code == 2
+    assert "already selects the DFT evaluator" in result.output
+    assert "sp -b dft" in result.output
+
+
+def test_calculator_leaf_help_describes_backend_specific_solvent() -> None:
+    result = CliRunner().invoke(cli, ["sp", "--help-advanced"])
+
+    assert result.exit_code == 0, result.output
+    assert "xTB solvent delta" in result.output
+    assert "native PySCF PCM/SMD" in result.output
+
+
+def test_dft_resource_defaults_are_lowmem_and_explicit_values_normalize(
+    monkeypatch,
+) -> None:
+    from pdb2reaction.core.dft_settings import resolve_dft_settings
+
+    monkeypatch.setenv("OMP_NUM_THREADS", "6")
+    settings = resolve_dft_settings({"backend": "dft"})
+    explicit = resolve_dft_settings({
+        "backend": "dft",
+        "dft": {"nprocs": 3, "memory": "64GB"},
+    })
+
+    assert settings.func_basis == "wb97m-v/def2-svp"
+    assert settings.lowmem is True
+    assert settings.density_fit is False
+    assert settings.nprocs <= 6
+    assert explicit.nprocs == 3
+    assert explicit.memory_mb == 64000
+
+
+def test_standalone_dft_accepts_pyscf_object_defaults_without_false_conflict(
+    tmp_path,
+) -> None:
+    config = tmp_path / "pyscf.yaml"
+    config.write_text(
+        "dft:\n"
+        "  pyscf:\n"
+        "    mf:\n"
+        "      conv_tol: 2.0e-8\n"
+        "    grids:\n"
+        "      level: 1\n"
+        "    mol:\n"
+        "      max_memory: 4096\n",
+        encoding="utf-8",
+    )
+    gjf = Path(__file__).resolve().parent / "smoke" / "h2.gjf"
+
+    result = CliRunner().invoke(
+        cli,
+        [
+            "dft", "-v", "3", "-i", str(gjf), "--engine", "cpu", "--config", str(config),
+            "--show-config", "--dry-run", "--out-dir", str(tmp_path / "result"),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "conv_tol: 2.0e-08" in result.output
+    assert "grid_level: 1" in result.output
+    assert "memory_mb: 4096" in result.output
+
+
+def test_dft_resources_are_provenance_but_not_checkpoint_identity() -> None:
+    from pdb2reaction.core.dft_settings import resolve_dft_settings
+    from pdb2reaction.core.utils import calculator_provenance
+
+    small = resolve_dft_settings({
+        "backend": "dft", "dft": {"nprocs": 2, "memory": "4GB"}
+    })
+    large = resolve_dft_settings({
+        "backend": "dft", "dft": {"nprocs": 16, "memory": "64GB"}
+    })
+    provenance = calculator_provenance({
+        "backend": "dft", "dft_settings": large.to_dict()
+    })
+
+    assert small.scientific_identity() == large.scientific_identity()
+    assert provenance["dft_resources"] == {
+        "memory_mode": "gpu4pyscf_rks_lowmem",
+        "nprocs": 16,
+        "nprocs_source": "explicit",
+        "memory_mb": 64000,
+        "memory_source": "explicit",
+    }
+
+
+@pytest.mark.parametrize(
+    ("dft", "expected"),
+    [
+        ({}, "gpu4pyscf_rks_lowmem"),
+        ({"engine": "cpu"}, "direct_jk"),
+        ({"multiplicity": 2}, "direct_jk"),
+        ({"lowmem": False}, "density_fit"),
+    ],
+)
+def test_dft_memory_mode_tracks_the_effective_driver(dft, expected) -> None:
+    from pdb2reaction.core.dft_settings import resolve_dft_settings
+
+    calc = {"backend": "dft", "dft": dft}
+    if "multiplicity" in dft:
+        calc["spin"] = dft["multiplicity"]
+    assert resolve_dft_settings(calc).memory_mode == expected
+
+
+def test_dft_yaml_nprocs_reports_a_click_validation_error() -> None:
+    from pdb2reaction.core.dft_settings import resolve_dft_settings
+
+    with pytest.raises(click.BadParameter, match="positive integer"):
+        resolve_dft_settings({"backend": "dft", "dft": {"nprocs": "many"}})
 
 
 def test_def2_ecp_is_only_auto_enabled_for_covered_elements() -> None:
@@ -177,3 +294,143 @@ def test_malformed_config_yaml_is_an_input_error(
     assert result.exit_code == 2
     assert expected in result.output
     assert "Traceback" not in result.output
+
+
+def test_leaf_dft_checkpoint_defaults_under_output_directory(tmp_path) -> None:
+    from pdb2reaction.core.dft_settings import (
+        DFT_CLI_META_KEY,
+        finalize_dft_calculator_config,
+    )
+
+    command = click.Command("sp")
+    ctx = click.Context(command, info_name="sp")
+    ctx.params["out_dir"] = tmp_path / "result"
+    ctx.meta[DFT_CLI_META_KEY] = {"save_scf_checkpoint": True}
+    calc_cfg = {"backend": "dft", "charge": 0, "spin": 1}
+
+    finalize_dft_calculator_config(ctx, calc_cfg)
+
+    assert calc_cfg["dft_settings"]["checkpoint_path"] == str(
+        tmp_path / "result" / "_work" / "dft_scf" / "state.chk"
+    )
+
+
+def test_leaf_dft_checkpoint_uses_yaml_effective_output_directory(tmp_path) -> None:
+    from pdb2reaction.core.dft_settings import (
+        DFT_CLI_META_KEY,
+        finalize_dft_calculator_config,
+    )
+
+    ctx = click.Context(click.Command("sp"), info_name="sp")
+    ctx.params["out_dir"] = tmp_path / "click-default"
+    ctx.meta[DFT_CLI_META_KEY] = {"save_scf_checkpoint": True}
+    calc_cfg = {"backend": "dft", "charge": 0, "spin": 1}
+    effective_out = tmp_path / "yaml-output"
+
+    finalize_dft_calculator_config(ctx, calc_cfg, output_dir=effective_out)
+
+    assert calc_cfg["dft_settings"]["checkpoint_path"] == str(
+        effective_out / "_work" / "dft_scf" / "state.chk"
+    )
+
+
+@pytest.mark.parametrize(
+    "dft_config",
+    [
+        {"lowmem": "false"},
+        {"density_fit": "false"},
+        {"save_scf_checkpoint": "false"},
+        {"embedcharge": "false"},
+        {"pyscf": {"density_fit": {"enabled": "false"}}},
+    ],
+)
+def test_dft_yaml_booleans_require_yaml_boolean_type(dft_config) -> None:
+    from pdb2reaction.core.dft_settings import resolve_dft_settings
+
+    with pytest.raises(click.BadParameter, match="must be true or false"):
+        resolve_dft_settings({"backend": "dft", "dft": dft_config})
+
+
+@pytest.mark.parametrize("pbs_var", ["PBS_NP", "PBS_NUM_PPN"])
+def test_dft_resources_honor_pbs_cpu_counts(monkeypatch, pbs_var) -> None:
+    from pdb2reaction.core import dft_settings
+
+    for name in (
+        "OMP_NUM_THREADS",
+        "SLURM_CPUS_PER_TASK",
+        "NSLOTS",
+        "PBS_NP",
+        "PBS_NUM_PPN",
+        "PBS_NODEFILE",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv(pbs_var, "3")
+    monkeypatch.setattr(dft_settings, "_affinity_count", lambda: None)
+
+    assert dft_settings.resolve_dft_settings({"backend": "dft"}).nprocs == 3
+
+
+def test_dft_resources_honor_pbs_nodefile(monkeypatch, tmp_path) -> None:
+    from pdb2reaction.core import dft_settings
+
+    for name in (
+        "OMP_NUM_THREADS",
+        "SLURM_CPUS_PER_TASK",
+        "NSLOTS",
+        "PBS_NP",
+        "PBS_NUM_PPN",
+        "PBS_NODEFILE",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    nodefile = tmp_path / "pbs_nodes"
+    nodefile.write_text("node02\nnode02\nnode03\n", encoding="utf-8")
+    monkeypatch.setenv("PBS_NODEFILE", str(nodefile))
+    monkeypatch.setattr(dft_settings, "_affinity_count", lambda: None)
+
+    assert dft_settings.resolve_dft_settings({"backend": "dft"}).nprocs == 3
+
+
+def test_dft_shorthand_conflict_with_pyscf_object_setting_is_rejected() -> None:
+    from pdb2reaction.core.dft_settings import resolve_dft_settings
+
+    with pytest.raises(click.BadParameter, match="with_solvent.solvent"):
+        resolve_dft_settings(
+            {
+                "backend": "dft",
+                "dft": {
+                    "solvent": "water",
+                    "pyscf": {"with_solvent": {"solvent": "methanol"}},
+                },
+            }
+        )
+
+
+def test_iterative_dft_does_not_inherit_legacy_calc_solvent_scope() -> None:
+    from pdb2reaction.core.dft_settings import resolve_dft_settings
+
+    settings = resolve_dft_settings(
+        {"backend": "dft", "solvent": "water", "solvent_model": "alpb"}
+    )
+
+    assert settings.solvent == "none"
+    assert settings.solvent_model == "none"
+
+
+def test_standalone_solvent_config_cannot_replace_pyscf_callable() -> None:
+    from types import SimpleNamespace
+
+    from pdb2reaction.backends.base import BackendError
+    from pdb2reaction.workflows.dft import _apply_implicit_solvent
+
+    solvent = SimpleNamespace(eps=None, reset=lambda: None)
+    mf = SimpleNamespace(PCM=lambda: mf, with_solvent=solvent)
+
+    with pytest.raises(BackendError, match="callable attribute"):
+        _apply_implicit_solvent(
+            mf,
+            {
+                "solvent": "water",
+                "solvent_model": "pcm",
+                "pyscf": {"with_solvent": {"reset": "disabled"}},
+            },
+        )
