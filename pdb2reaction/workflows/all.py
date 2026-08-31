@@ -1441,6 +1441,7 @@ def _derive_pipeline_status(
     *,
     post_segments: Optional[list],
     config: Optional[dict],
+    primary_backend: Optional[str] = None,
 ) -> Tuple[str, List[str]]:
     """Return the aggregate pipeline status and machine-readable reasons.
 
@@ -1461,6 +1462,9 @@ def _derive_pipeline_status(
         reasons.append("no usable energy diagram was produced")
 
     cfg = config or {}
+    primary_label = (
+        "DFT" if str(primary_backend or "").strip().lower() == "dft" else "MLIP"
+    )
     requested = any(bool(cfg.get(name)) for name in ("tsopt", "thermo", "dft"))
 
     # A requested post stage with no reactive segment never runs at all. That
@@ -1508,13 +1512,17 @@ def _derive_pipeline_status(
 
             if cfg.get("tsopt"):
                 if not isinstance(item.get("mlip"), dict):
-                    reasons.append(f"{prefix}: TSOPT/IRC refined MLIP energies are missing")
+                    reasons.append(
+                        f"{prefix}: TSOPT/IRC refined {primary_label} energies are missing"
+                    )
                 if not item.get("irc_traj"):
                     reasons.append(f"{prefix}: IRC trajectory is missing")
 
             if cfg.get("thermo"):
                 if not isinstance(item.get("gibbs_mlip"), dict):
-                    reasons.append(f"{prefix}: MLIP thermochemistry result is missing")
+                    reasons.append(
+                        f"{prefix}: {primary_label} thermochemistry result is missing"
+                    )
 
             if cfg.get("dft"):
                 dft = item.get("dft")
@@ -1908,6 +1916,7 @@ def _enrich_summary(
     freeze_atoms: Optional[str] = None,
     out_dir: Optional[Path] = None,
     manifest: Optional[InvocationManifest] = None,
+    calculator_provenance_data: Optional[Mapping[str, Any]] = None,
 ) -> dict:
     """Add machine-readable metadata to summary dict for AI agent consumption.
 
@@ -1929,7 +1938,11 @@ def _enrich_summary(
         summary,
         post_segments=post_segments,
         config=config,
+        primary_backend=mlip_backend,
     )
+
+    primary_method = "DFT" if str(mlip_backend).strip().lower() == "dft" else "MLIP"
+    primary_gibbs_method = f"{primary_method}_Gibbs"
 
     # Legacy ``rate_limiting_step`` key: highest independently referenced local
     # barrier among reactive segments. This is not a kinetic RLS assignment.
@@ -1947,8 +1960,8 @@ def _enrich_summary(
         for candidate_method, candidate_key in (
             ("DFT//MLIP_Gibbs", "gibbs_dft_mlip"),
             ("DFT", "dft"),
-            ("MLIP_Gibbs", "gibbs_mlip"),
-            ("MLIP", "mlip"),
+            (primary_gibbs_method, "gibbs_mlip"),
+            (primary_method, "mlip"),
         ):
             covered = True
             for segment in reactive:
@@ -1965,7 +1978,7 @@ def _enrich_summary(
                 method_key = candidate_key
                 break
         if best_method is None:
-            best_method = "MLIP" if ts_only else "MEP"
+            best_method = primary_method if ts_only else "MEP"
 
         # Prefer the refined TSOPT+IRC barrier (post_segments' mlip/gibbs_mlip) matching
         # best_method; segments[*].barrier_kcal is only the un-refined MEP band and must
@@ -1987,7 +2000,7 @@ def _enrich_summary(
                 if b is None or not np.isfinite(float(b)):
                     continue
                 cur_method = (
-                    "MLIP"
+                    primary_method
                     if ts_only and s.get("kind") == "tsopt"
                     else "MEP"
                 )
@@ -2013,8 +2026,8 @@ def _enrich_summary(
     }
     method_rank = {
         "MEP": 0,
-        "MLIP": 1,
-        "MLIP_Gibbs": 2,
+        primary_method: 1,
+        primary_gibbs_method: 2,
         "DFT": 3,
         "DFT//MLIP_Gibbs": 4,
     }
@@ -2024,10 +2037,10 @@ def _enrich_summary(
         ("energy_diagram_G_DFT_plus_MLIP", "DFT//MLIP_Gibbs"),
         ("energy_diagram_DFT_all", "DFT"),
         ("energy_diagram_DFT", "DFT"),
-        ("energy_diagram_G_MLIP_all", "MLIP_Gibbs"),
-        ("energy_diagram_G_MLIP", "MLIP_Gibbs"),
-        ("energy_diagram_MLIP_all", "MLIP"),
-        ("energy_diagram_MLIP", "MLIP"),
+        ("energy_diagram_G_MLIP_all", primary_gibbs_method),
+        ("energy_diagram_G_MLIP", primary_gibbs_method),
+        ("energy_diagram_MLIP_all", primary_method),
+        ("energy_diagram_MLIP", primary_method),
         ("energy_diagram_MEP", "MEP"),
         ("MEP", "MEP"),
     ):
@@ -2084,6 +2097,15 @@ def _enrich_summary(
     summary["mlip_model_label"] = mlip_model_label
     summary["mlip_task"] = mlip_task
     summary["mlip_precision"] = mlip_precision
+    if calculator_provenance_data is not None:
+        for key in (
+            "primary_method",
+            "primary_method_label",
+            "dft_settings",
+            "dft_resources",
+        ):
+            if key in calculator_provenance_data:
+                summary[key] = deepcopy(calculator_provenance_data[key])
     summary["charge"] = charge
     summary["spin"] = spin
     if manifest is not None:
@@ -2787,6 +2809,22 @@ def _dft_checkpoint_enabled(calc_cfg: Mapping[str, Any]) -> bool:
     )
 
 
+def _without_auto_checkpoint_target(
+    calc_cfg: Mapping[str, Any],
+) -> Dict[str, Any]:
+    """Return a transient calculator config that cannot overwrite an input checkpoint."""
+
+    cfg = deepcopy(dict(calc_cfg))
+    settings = cfg.get("dft_settings")
+    if str(cfg.get("backend", "")).strip().lower() == "dft" and isinstance(
+        settings, Mapping
+    ):
+        transient_settings = dict(settings)
+        transient_settings["checkpoint_path"] = None
+        cfg["dft_settings"] = transient_settings
+    return cfg
+
+
 def _save_role_scf_checkpoint(
     calculator: Any,
     geometry: Any,
@@ -2828,10 +2866,8 @@ def _prepare_role_scf_checkpoint(
 ) -> Optional[Path]:
     if not _dft_checkpoint_enabled(calc_cfg):
         return None
-    cfg = deepcopy(dict(calc_cfg))
-    settings = dict(cfg["dft_settings"])
-    settings["checkpoint_path"] = str(destination)
-    cfg["dft_settings"] = settings
+    cfg = _without_auto_checkpoint_target(calc_cfg)
+    initial_checkpoint = dict(calc_cfg["dft_settings"]).get("checkpoint_path")
     geometry = geom_loader(Path(geometry_path), coord_type=DEFAULT_COORD_TYPE)
     calculator = create_calculator(**cfg)
     destination = Path(destination).resolve()
@@ -2839,9 +2875,14 @@ def _prepare_role_scf_checkpoint(
     manifest.declare(key, [destination])
     manifest.declare(f"{key}.metadata", [metadata])
     try:
+        if initial_checkpoint:
+            calculator.load_scf_checkpoint(Path(initial_checkpoint), geometry)
         geometry.set_calculator(calculator)
         geometry.energy
+        calculator.save_scf_checkpoint(destination, geometry)
     finally:
+        if getattr(geometry, "calculator", None) is calculator:
+            geometry.calculator = None
         close = getattr(calculator, "close", None)
         if callable(close):
             close()
@@ -5302,6 +5343,24 @@ def cli(
     if dft_solvent_model is not None:
         dft_overrides["solvent_model"] = str(dft_solvent_model).lower()
     dft_overrides.update(_post_dft_resource_cli)
+    _post_dft_cli_names = (
+        "dft_out_dir",
+        "dft_func_basis",
+        "dft_max_cycle",
+        "dft_conv_tol",
+        "dft_grid_level",
+        "dft_engine",
+        "dft_solvent",
+        "dft_solvent_model",
+    )
+    _unused_post_dft = [
+        name for name in _post_dft_cli_names if cli_param_overridden(ctx, name)
+    ]
+    if _unused_post_dft and not do_dft:
+        raise click.BadParameter(
+            "Post-DFT option(s) require --dft: "
+            + ", ".join("--" + name.replace("_", "-") for name in _unused_post_dft)
+        )
 
     from pdb2reaction.workflows.dft import DFT_KW as _DFT_KW
     _dft_effective = dict(_DFT_KW)
@@ -5316,6 +5375,81 @@ def cli(
             f"{_dft_effective.get('basis', _DFT_KW['basis'])}"
         )
     dft_engine_use = str(dft_engine or _dft_effective.get("engine", "gpu"))
+    _post_settings = None
+    if do_dft:
+        from pdb2reaction.core.dft_settings import (
+            parse_func_basis as _parse_post_func_basis,
+            resolve_dft_settings as _resolve_post_dft_settings,
+            standalone_dft_settings_mapping as _standalone_post_mapping,
+        )
+
+        _post_validation = dict(_dft_effective)
+        _post_func, _post_basis = _parse_post_func_basis(dft_func_basis_use)
+        _post_validation.update(dft_overrides)
+        _post_validation.update(
+            {
+                "func_basis": dft_func_basis_use,
+                "func": _post_func,
+                "basis": _post_basis,
+                "engine": dft_engine_use,
+            }
+        )
+        _post_settings = _resolve_post_dft_settings(
+            {
+                "backend": "dft",
+                "charge": int(charge_override or 0),
+                "spin": int(spin),
+                "dft": _standalone_post_mapping(_post_validation),
+            }
+        )
+    _primary_preview_cfg = deepcopy(_guard_calc_cfg)
+    if str(_primary_preview_cfg.get("backend", "")).lower() == "dft":
+        from pdb2reaction.core.dft_settings import finalize_dft_calculator_config
+
+        _primary_preview_cfg["charge"] = int(charge_override or 0)
+        _primary_preview_cfg["spin"] = int(spin)
+        finalize_dft_calculator_config(ctx, _primary_preview_cfg)
+    _primary_preview = calculator_provenance(_primary_preview_cfg)
+    if str(_primary_preview_cfg.get("backend", "")).lower() == "dft":
+        _preview_identity = dict(_primary_preview["dft_settings"])
+        _preview_identity["charge"] = (
+            None if charge_override is None else int(charge_override)
+        )
+        _preview_identity["multiplicity"] = (
+            int(spin) if (spin_cli_explicit or spin_configured) else None
+        )
+        _primary_preview["dft_settings"] = _preview_identity
+        if charge_override is None or not (spin_cli_explicit or spin_configured):
+            _primary_preview["state_resolution"] = "input preparation"
+    _post_dft_preview = (
+        {
+            "enabled": True,
+            "engine": _post_settings.engine,
+            "dft_settings": {
+                **_post_settings.scientific_identity(),
+                "charge": (
+                    None if charge_override is None else int(charge_override)
+                ),
+                "multiplicity": (
+                    int(spin)
+                    if (spin_cli_explicit or spin_configured)
+                    else None
+                ),
+            },
+            "dft_resources": {
+                "memory_mode": _post_settings.memory_mode,
+                "nprocs": _post_settings.nprocs,
+                "nprocs_source": _post_settings.nprocs_source,
+                "memory_mb": _post_settings.memory_mb,
+                "memory_source": _post_settings.memory_source,
+            },
+            "out_dir_override": (
+                None if dft_out_dir is None else str(dft_out_dir)
+            ),
+        }
+        if _post_settings is not None
+        else None
+    )
 
     if show_config or (dry_run and verbose_level() >= 3):
         config_payload: Dict[str, Any] = {
@@ -5392,8 +5526,9 @@ def cli(
             "overrides": {
                 "tsopt": tsopt_overrides,
                 "freq": freq_overrides,
-                "dft": dft_overrides,
             },
+            "primary_calculator": _primary_preview,
+            "post_dft": _post_dft_preview,
         }
         if merged_yaml_cfg:
             config_payload["effective_yaml"] = merged_yaml_cfg
@@ -5941,10 +6076,13 @@ def cli(
     from pdb2reaction.core.dft_settings import finalize_dft_calculator_config
     finalize_dft_calculator_config(ctx, calc_cfg_shared)
     if str(calc_cfg_shared.get("backend", "")).lower() == "dft":
+        child_dft_settings = dict(calc_cfg_shared["dft_settings"])
+        child_dft_settings["save_scf_checkpoint"] = False
+        child_dft_settings["checkpoint_path"] = None
         args_yaml = _write_args_yaml_with_freeze_atoms(
             args_yaml,
             _freeze_atoms_for_log(),
-            dft_settings=calc_cfg_shared["dft_settings"],
+            dft_settings=child_dft_settings,
             session=session,
         )
     _shared_provenance = calculator_provenance(calc_cfg_shared)
@@ -5953,6 +6091,9 @@ def cli(
     _mlip_model_label_shared = _shared_provenance["mlip_model_label"]
     _mlip_task_shared = _shared_provenance["mlip_task"]
     _mlip_precision_shared = _shared_provenance["mlip_precision"]
+    _primary_diagram_label = (
+        "DFT" if _mlip_backend_shared == "dft" else "MLIP"
+    )
 
     # Preserve the source of parent CLI overrides. Child commands reread the
     # same YAML, so even values equal to child defaults must remain explicit.
@@ -6088,6 +6229,7 @@ def cli(
                 version="",
                 pipeline_mode="tsopt-only",
                 out_dir=out_dir,
+                calculator_provenance_data=_shared_provenance,
                 mlip_backend=_mlip_backend_shared,
                 mlip_model=_mlip_model_shared,
                 mlip_model_label=_mlip_model_label_shared,
@@ -6504,7 +6646,7 @@ def cli(
             tsroot / "energy_diagram_MLIP",
             labels=["R", "TS", "P"],
             energies_au=[e_react, eT, e_prod],
-            title_note="(MLIP, TSOPT + IRC)",
+            title_note=f"({_primary_diagram_label}, TSOPT + IRC)",
         )
         if diag_payload:
             energy_diagrams.append(diag_payload)
@@ -6589,7 +6731,7 @@ def cli(
                         tsroot / "energy_diagram_G_MLIP",
                         labels=["R", "TS", "P"],
                         energies_au=[GR, GT, GP],
-                        title_note="(MLIP + Thermal Correction)",
+                        title_note=f"({_primary_diagram_label} + Thermal Correction)",
                         ylabel="ΔG (kcal/mol)",
                     )
                     if diag_payload:
@@ -6741,6 +6883,7 @@ def cli(
             version="",
             pipeline_mode="tsopt-only",
             out_dir=out_dir,
+            calculator_provenance_data=_shared_provenance,
             mlip_backend=_mlip_backend_shared,
             mlip_model=_mlip_model_shared,
             mlip_model_label=_mlip_model_label_shared,
@@ -6949,6 +7092,7 @@ def cli(
                     version="",
                     pipeline_mode="tsopt-only",
                     out_dir=out_dir,
+                    calculator_provenance_data=_shared_provenance,
                     mlip_backend=_mlip_backend_shared,
                     mlip_model=_mlip_model_shared,
                     mlip_model_label=_mlip_model_label_shared,
@@ -7340,12 +7484,25 @@ def cli(
                 _geoms = [geom_loader(str(p), coord_type=DEFAULT_COORD_TYPE) for p in models_for_path]
                 for _g in _geoms:
                     _g.freeze_atoms = np.array(_fa, dtype=int)
-                _align_calc = create_calculator(**calc_cfg_shared)
-                alignment_results = align_and_refine_sequence_inplace(
-                    _geoms, shared_calc=_align_calc,
-                    out_dir=_align_dir / "refine", verbose=True,
+                _align_calc = create_calculator(
+                    **_without_auto_checkpoint_target(calc_cfg_shared)
                 )
-                if any(result.get("scan", {}).get("n_steps", 0) > 0 for result in alignment_results):
+                try:
+                    alignment_results = align_and_refine_sequence_inplace(
+                        _geoms, shared_calc=_align_calc,
+                        out_dir=_align_dir / "refine", verbose=True,
+                    )
+                finally:
+                    for _g in _geoms:
+                        if getattr(_g, "calculator", None) is _align_calc:
+                            _g.calculator = None
+                    _close_align = getattr(_align_calc, "close", None)
+                    if callable(_close_align):
+                        _close_align()
+                if any(
+                    result.get("scan", {}).get("n_steps", 0) > 0
+                    for result in alignment_results
+                ):
                     path_optimizers.add("lbfgs")
                 failed_pairs = alignment_failed_pair_indices(alignment_results)
                 if failed_pairs:
@@ -7353,7 +7510,6 @@ def cli(
                         "Input alignment did not converge for pair(s): "
                         + ", ".join(str(index) for index in failed_pairs)
                     )
-                del _align_calc
                 _new_models: List[Path] = []
                 for _i, (_g, _orig) in enumerate(zip(_geoms, models_for_path)):
                     _xyz = _align_dir / f"{_i:03d}.xyz"
@@ -7747,6 +7903,7 @@ def cli(
             version="",
             pipeline_mode="path-opt",
             out_dir=out_dir,
+            calculator_provenance_data=_shared_provenance,
             mlip_backend=_mlip_backend_shared,
             mlip_model=_mlip_model_shared,
             mlip_model_label=_mlip_model_label_shared,
@@ -8035,6 +8192,7 @@ def cli(
             version="",
             pipeline_mode="path-search",
             out_dir=out_dir,
+            calculator_provenance_data=_shared_provenance,
             mlip_backend=_mlip_backend_shared,
             mlip_model=_mlip_model_shared,
             mlip_model_label=_mlip_model_label_shared,
@@ -8792,7 +8950,7 @@ def cli(
                 seg_dir / "energy_diagram_MLIP",
                 labels=["R", f"TS{seg_idx}", "P"],
                 energies_au=[eR, eT, eP],
-                title_note="(MLIP, TSOPT + IRC)",
+                title_note=f"({_primary_diagram_label}, TSOPT + IRC)",
             )
             if diag_payload:
                 energy_diagrams.append(diag_payload)
@@ -8885,7 +9043,7 @@ def cli(
                 )
                 continue
 
-            calc_args = dict(calc_cfg_shared)
+            calc_args = _without_auto_checkpoint_target(calc_cfg_shared)
             calc = create_calculator(**calc_args)
             gL.set_calculator(calc)
             gR.set_calculator(calc)
@@ -8908,6 +9066,10 @@ def cli(
         # freq/DFT run as CLI subprocesses and don't need them.
         if do_tsopt:
             calculator_lease.release()
+        else:
+            close_calc = getattr(calc, "close", None)
+            if callable(close_calc):
+                close_calc()
         for _g in (
             locals().get("gL"), locals().get("gR"), locals().get("gT"),
             locals().get("g_ts"), locals().get("g_react_opt"), locals().get("g_prod_opt"),
@@ -9024,7 +9186,7 @@ def cli(
                             seg_dir / "energy_diagram_G_MLIP",
                             labels=["R", f"TS{seg_idx}", "P"],
                             energies_au=gibbs_vals,
-                            title_note="(MLIP + Thermal Correction)",
+                            title_note=f"({_primary_diagram_label} + Thermal Correction)",
                             ylabel="ΔG (kcal/mol)",
                         )
                         if diag_payload:
@@ -9198,7 +9360,7 @@ def cli(
                 out_dir / "energy_diagram_MLIP_all",
                 labels=tsopt_all_labels,
                 energies_au=tsopt_all_energies,
-                title_note="(MLIP, TSOPT + IRC; all segments)",
+                title_note=f"({_primary_diagram_label}, TSOPT + IRC; all segments)",
             )
             if diag_payload:
                 energy_diagrams.append(diag_payload)
@@ -9211,7 +9373,7 @@ def cli(
                 out_dir / "energy_diagram_G_MLIP_all",
                 labels=g_mlip_all_labels,
                 energies_au=g_mlip_all_energies,
-                title_note="(MLIP + Thermal Correction; all segments)",
+                title_note=f"({_primary_diagram_label} + Thermal Correction; all segments)",
                 ylabel="ΔG (kcal/mol)",
             )
             if diag_payload:
@@ -9264,6 +9426,7 @@ def cli(
         version="",
         pipeline_mode="path-search" if refine_path else "path-opt",
         out_dir=out_dir,
+        calculator_provenance_data=_shared_provenance,
         mlip_backend=_mlip_backend_shared,
         mlip_model=_mlip_model_shared,
         mlip_model_label=_mlip_model_label_shared,

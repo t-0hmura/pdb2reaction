@@ -102,6 +102,7 @@ def _calc_full_hessian_torch(
     refresh_geom_meta: bool = False,
     calculator=None,
     cache_geometry: bool = True,
+    result_metadata: Optional[dict] = None,
 ) -> torch.Tensor:
     """
     Return Hessian as torch.Tensor in Hartree/Bohr^2 (3N or 3N_act square).
@@ -136,12 +137,23 @@ def _calc_full_hessian_torch(
         return _to_torch(cached, clone=True)
 
     calc = calculator
+    owns_calculator = calc is None
     if calc is None:
         kw = dict(calc_kwargs or {})
         kw["out_hess_torch"] = True
         calc = create_calculator(**kw)
         echo_resolved_device()
-    results = calc.get_hessian(geom.atoms, geom.cart_coords)
+    try:
+        results = calc.get_hessian(geom.atoms, geom.cart_coords)
+    finally:
+        if owns_calculator:
+            close = getattr(calc, "close", None)
+            if callable(close):
+                close()
+    if result_metadata is not None and results.get("energy") is not None:
+        energy = float(results["energy"])
+        if np.isfinite(energy):
+            result_metadata["energy"] = energy
 
     # Keep Geometry cache in sync so optimizers/freq analysis can share one Hessian
     # evaluation on unchanged coordinates.
@@ -163,6 +175,7 @@ def _calc_energy(geom, calc_kwargs: dict, calc=None) -> float:
     """
     Compute electronic energy (Hartree) from the configured calculator.
     """
+    owns_calculator = calc is None
     if calc is None:
         calc = create_calculator(**calc_kwargs)
     geom.set_calculator(calc)
@@ -170,6 +183,10 @@ def _calc_energy(geom, calc_kwargs: dict, calc=None) -> float:
         E = float(geom.energy)
     finally:
         geom.set_calculator(None)
+        if owns_calculator:
+            close = getattr(calc, "close", None)
+            if callable(close):
+                close()
     if not np.isfinite(E):
         raise ValueError("Electronic energy must be finite for thermochemistry.")
     return E
@@ -818,6 +835,7 @@ def cli(
             _hess_identity(geometry, _ts_calc_cfg, role="ts"),
             atol=1.1e-3,
         )
+        _fresh_hessian_result: Dict[str, float] = {}
         if _cached_ts is not None:
             emit("[freq] Reusing cached TS Hessian.", detail=True)
             H = _cached_ts["hessian"]
@@ -831,6 +849,7 @@ def cli(
                 calc_cfg,
                 device,
                 cache_geometry=False,
+                result_metadata=_fresh_hessian_result,
             )
         coords_bohr = geometry.cart_coords.reshape(-1, 3)
 
@@ -961,10 +980,15 @@ def cli(
             from thermoanalysis.constants import J2AU, NA, J2CAL
             from thermoanalysis.config import WORKFLOW_THERMO_POLICY
 
+            scf_energy = (
+                _fresh_hessian_result["energy"]
+                if "energy" in _fresh_hessian_result
+                else _calc_energy(geometry, calc_cfg)
+            )
             qc_data = {
                 "coords3d": geometry.cart_coords.reshape(-1, 3) * BOHR2ANG,  # Å
                 "wavenumbers": freqs_cm,                                 # cm^-1
-                "scf_energy": _calc_energy(geometry, calc_cfg),          # Hartree
+                "scf_energy": scf_energy,                                  # Hartree
                 "masses": masses_amu,
                 "mult": int(calc_cfg["spin"]),
             }

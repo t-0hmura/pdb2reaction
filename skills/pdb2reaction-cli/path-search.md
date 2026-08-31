@@ -19,7 +19,7 @@ for its MEP stage.
 ```bash
 pdb2reaction path-search -i 1.R.pdb 3.P.pdb \
     [--mep-mode gsm|dmf] [--refine-mode peak|minima] \
-    [--max-nodes 20] [-l 'RES:Q,...'] [-b uma|orb|mace|aimnet2] \
+    [--max-nodes 20] [-l 'RES:Q,...'] [-b uma|orb|mace|aimnet2|dft] \
     [-o ./result_path_search/]
 ```
 
@@ -36,7 +36,7 @@ pdb2reaction path-search -i 1.R.pdb 3.P.pdb \
 | `--thresh-gsm` | str | `gau_loose` | GSM string-optimizer convergence preset |
 | `--thresh-dmf` | str/float | `tight` | DMF IPOPT dual-infeasibility tolerance: `tight`, `middle`, `loose`, or a positive float |
 | `-q, --charge` / `-l` / `-m` | — | — | Charge / multiplicity (see common conventions) |
-| `-b, --backend` | str | `uma` | MLIP backend |
+| `-b, --backend` | str | `uma` | MLIP backend or optional DFT calculator |
 | `-o, --out-dir` | path | `./result_path_search/` | Output directory |
 | `--config` / `--show-config` / `--dry-run` | — | — | YAML config + preview |
 

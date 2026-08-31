@@ -14,7 +14,7 @@ Partial-Hessian variant (PHVA) activates automatically when
 pdb2reaction freq -i geom.{pdb,cif,xyz,gjf} \
     [-q 0 -m 1] [-l 'RES:Q,...'] \
     [--temperature 298.15] [--pressure 1.0] \
-    [-b uma|orb|mace|aimnet2] [-o ./result_freq/]
+    [-b uma|orb|mace|aimnet2|dft] [-o ./result_freq/]
 ```
 
 ## Key flags
@@ -27,7 +27,7 @@ pdb2reaction freq -i geom.{pdb,cif,xyz,gjf} \
 | `--pressure` | float | 1.0 | atm, for thermochemistry |
 | `--hessian-calc-mode` | str | `FiniteDifference` | `Analytical` / `FiniteDifference`; check `UMA_CALC_KW` |
 | `--workers`, `--workers-per-node` | int | `1`, `1` | UMA predictor workers. An explicit `Analytical` request with `workers > 1` raises `BackendError`; use one worker or finite differences. Other built-in backends ignore these worker kwargs. |
-| `-b, --backend` | str | `uma` | MLIP backend |
+| `-b, --backend` | str | `uma` | MLIP backend or optional DFT calculator |
 | `-o, --out-dir` | path | `./result_freq/` | Output directory |
 | `--config` / `--show-config` / `--dry-run` / `--help-advanced` | — | — | Standard |
 

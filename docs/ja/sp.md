@@ -1,6 +1,6 @@
 # `sp`
 
-`pdb2reaction sp` は、単一の構造に対して MLIP のエネルギー + 原子間力（オプションで Hessian）を評価します。用途は次のとおりです。
+`pdb2reaction sp` は、単一の構造に対して選択したcalculatorのエネルギー + 原子間力（オプションで Hessian）を評価します。用途は次のとおりです。
 
 - 最適化の実行前に、構造のエネルギー / 原子間力 / Hessian を手早くサニティチェックする
 - バックエンド同士を直接比較する
@@ -11,7 +11,7 @@
 コマンド形式:
 
 ```bash
-pdb2reaction sp -i FILE [-q INT | -l 'RES:Q,...'] [-m INT] [-b uma|orb|mace|aimnet2] [--hess] [options]
+pdb2reaction sp -i FILE [-q INT | -l 'RES:Q,...'] [-m INT] [-b uma|orb|mace|aimnet2|dft] [--hess] [options]
 ```
 
 エネルギー + 原子間力（UMA バックエンド、中性閉殻）:
@@ -60,7 +60,7 @@ UMA、ORB、MACE、AIMNet2 はすべて解析 Hessian を実装しています�
 | `-q, --charge INT` | — | 系の総電荷。残基情報を持つPDB/mmCIFでは `-l` から導出でき、有効なGJFではheader値を継承可能 |
 | `-l, --ligand-charge TEXT` | — | 残基別の電荷マッピング（例: `SAM:1,GPP:-3`）。`-q` の自動導出に使用 |
 | `-m, --multiplicity INT` | `1` | スピン多重度、2S+1（任意；省略時は 1。GJF はテンプレートから継承） |
-| `-b, --backend [uma\|orb\|mace\|aimnet2]` | `uma` | MLIP バックエンドの選択 |
+| `-b, --backend [uma\|orb\|mace\|aimnet2\|dft]` | `uma` | MLIP バックエンドまたは任意の DFT calculator |
 | `--hess / --no-hess` | `--no-hess` | `hessian.npy` も計算して書き出す |
 | `--hessian-calc-mode [Analytical\|FiniteDifference]` | `FiniteDifference` | Hessian モードを選択（`--hess` 指定時のみ有効） |
 | `-o, --out-dir PATH` | `./result_sp/` | 出力ディレクトリ |

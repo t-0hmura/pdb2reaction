@@ -288,6 +288,37 @@ def test_one_shot_hessian_evaluation_does_not_duplicate_geometry_cache() -> None
     assert result.data_ptr() == expected.data_ptr()
 
 
+def test_owned_hessian_calculator_closes_and_returns_energy_metadata(
+    monkeypatch,
+) -> None:
+    geometry = _CachedGeometry()
+    geometry._hessian = None
+    evaluator = _StaticBase(
+        {
+            "energy": -1.25,
+            "forces": np.zeros(6),
+            "hessian": torch.eye(6, dtype=torch.float64),
+        }
+    )
+    closed = []
+    evaluator.close = lambda: closed.append(True)
+    monkeypatch.setattr(
+        "pdb2reaction.workflows.freq.create_calculator", lambda **kwargs: evaluator
+    )
+    metadata = {}
+
+    _calc_full_hessian_torch(
+        geometry,
+        {},
+        torch.device("cpu"),
+        cache_geometry=False,
+        result_metadata=metadata,
+    )
+
+    assert closed == [True]
+    assert metadata["energy"] == pytest.approx(-1.25)
+
+
 def test_restrained_rfo_seed_uses_exact_wrapper_and_never_reads_irc_cache(
     monkeypatch,
 ) -> None:

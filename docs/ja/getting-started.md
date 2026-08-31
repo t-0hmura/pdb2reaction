@@ -167,7 +167,7 @@ pdb2reaction all [OPTIONS]...
 | `-q, --charge INT` | 総電荷の強制上書き |
 | `-m, --multiplicity INT` | スピン多重度（例: 一重項は `1`） |
 | `--tsopt` | TS 最適化と IRC を有効化 |
-| `-b, --backend TEXT` | MLIP バックエンドの選択（`uma`, `orb`, `mace`, `aimnet2`） |
+| `-b, --backend TEXT` | MLIP バックエンドの選択（任意で `dft`） |
 
 オプションの完全な一覧は [CLI 規約](cli-conventions.md) と [自動生成 CLI リファレンス](../reference/commands/index.md) を参照してください。
 

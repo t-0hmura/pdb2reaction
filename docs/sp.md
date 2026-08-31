@@ -1,13 +1,13 @@
 # `sp`
 
-`pdb2reaction sp` evaluates the MLIP energy and atomic forces (optionally a Hessian) at a single geometry. Use it for a quick energy / forces / Hessian sanity check on a structure before running an optimization, for comparing backends head-to-head, or for generating reference values and Hessians outside the optimizer loop.
+`pdb2reaction sp` evaluates the selected calculator's energy and atomic forces (optionally a Hessian) at a single geometry. Use it for a quick energy / forces / Hessian sanity check on a structure before running an optimization, for comparing backends head-to-head, or for generating reference values and Hessians outside the optimizer loop.
 
 ## Examples
 
 Command form:
 
 ```bash
-pdb2reaction sp -i FILE [-q INT | -l 'RES:Q,...'] [-m INT] [-b uma|orb|mace|aimnet2] [--hess] [options]
+pdb2reaction sp -i FILE [-q INT | -l 'RES:Q,...'] [-m INT] [-b uma|orb|mace|aimnet2|dft] [--hess] [options]
 ```
 
 Energy + forces (UMA backend, neutral closed-shell):
@@ -58,7 +58,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `-q, --charge INT` | — | total charge; alternatively derive it with `-l` for residue-bearing PDB/mmCIF, while a valid GJF can inherit its header value |
 | `-l, --ligand-charge TEXT` | — | per-residue charge mapping (e.g. `SAM:1,GPP:-3`), used to derive `-q` automatically |
 | `-m, --multiplicity INT` | `1` | spin multiplicity, 2S+1 (optional; defaults to 1. GJF inherits the template) |
-| `-b, --backend [uma\|orb\|mace\|aimnet2\|dft]` | `uma` | Energy/force calculator backend |
+| `-b, --backend [uma\|orb\|mace\|aimnet2\|dft]` | `uma` | MLIP backend or optional DFT calculator |
 | `--hess / --no-hess` | `--no-hess` | also compute and write `hessian.npy` |
 | `--hessian-calc-mode [Analytical\|FiniteDifference]` | `FiniteDifference` | select the Hessian mode (only applies with `--hess`) |
 | `-o, --out-dir PATH` | `./result_sp/` | output directory |
@@ -74,7 +74,7 @@ Run `pdb2reaction sp --help-advanced` for the full option list.
 - `sp` has no freeze CLI flag, but honors the 1-based YAML
   `geom.freeze_atoms` list. Frozen forces are zeroed by the backend geometry
   contract and `--hess` writes the active partial-Hessian block by default.
-- For single-point DFT (gpu4pyscf / PySCF) benchmarking use [`dft`](dft.md) instead.
+- Use [`dft`](dft.md) when population analysis is needed; `sp -b dft` provides the calculator single-point route.
 
 ## See Also
 

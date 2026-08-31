@@ -19,6 +19,8 @@ Protein structures can be supplied in **PDB** or **mmCIF** format, including mmC
 
 > **Prerequisites:** PDB/mmCIF inputs must already contain hydrogens; reaction-ordered structures must share the same atom identities and order (only coordinates differ). Small-molecule `.xyz` / `.gjf` inputs work when `--center/-c` and `--ligand-charge/-l` are omitted.
 
+MLIP remains the default; calculator workflows also accept optional `-b dft` through PySCF/GPU4PySCF. Select the method with `--func-basis` and pass advanced PySCF attributes through `calc.dft.pyscf` in YAML ([DFT guide](docs/dft.md)).
+
 ## Colab GUI workspace
 
 **An interactive GUI workspace is available in Google Colab.** It brings ordered structure input, Mol* visualization and atom picking, controls generated from the live CLI, execution, and linked MEP/IRC/result inspection into one notebook. Choose a GPU runtime and [open the Colab GUI workspace](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb).
@@ -71,7 +73,7 @@ hf auth login                               # interactive
 | Extra | Adds |
 |---|---|
 | `[orb]` / `[aimnet]` | Orb / AIMNet2 MLIP backend (`-b orb` / `-b aimnet2`) — *not* HF-gated |
-| `[dft]` | PySCF + GPU4PySCF single-point DFT (`--dft` / `pdb2reaction dft`) |
+| `[dft]` | Optional `-b dft` calculator and standalone `pdb2reaction dft` command |
 | `[mcp]` | Model Context Protocol server for agent clients |
 
 The MACE backend (`-b mace`) is **not** a pip extra: `mace-torch` pins `e3nn==0.4.4`, which conflicts with `fairchem-core`'s `e3nn>=0.5` (UMA), so it needs a dedicated environment — `pip uninstall -y fairchem-core && pip install mace-torch` (see [docs/installation.md](docs/installation.md)).
@@ -140,7 +142,7 @@ Pipeline scratch lives under `_work/` (safe to delete). Full layout and filename
 | `freq` | Vibrational analysis + thermochemistry | [freq](docs/freq.md) |
 | `irc` | IRC (EulerPC) | [irc](docs/irc.md) |
 | `dft` | Single-point DFT (GPU4PySCF / PySCF) | [dft](docs/dft.md) |
-| `sp` | Single-point MLIP energy / forces / Hessian | [sp](docs/sp.md) |
+| `sp` | Single-point calculator energy / forces / Hessian (MLIP or `-b dft`) | [sp](docs/sp.md) |
 | `bond-summary` | Compare structures, report bond changes | [bond-summary](docs/bond-summary.md) |
 | `trj2fig` / `energy-diagram` | Energy plot / R→TS→P diagram | [trj2fig](docs/trj2fig.md) · [energy-diagram](docs/energy-diagram.md) |
 

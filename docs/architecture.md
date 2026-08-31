@@ -73,7 +73,8 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 │ │ ├── base.py MLIPCalculator protocol
 │ │ ├── custom.py custom ASE-calculator adapter
 │ │ ├── _determinism.py deterministic reduction shim
-│ │ └── uma.py / orb.py / mace.py / aimnet2.py per-backend adapters
+│ │ ├── pyscf_dft.py optional PySCF/GPU4PySCF adapter
+│ │ └── uma.py / orb.py / mace.py / aimnet2.py MLIP adapters
 │ │
 │ ├── io/ # === L4b Infra (I/O) ===
 │ │ ├── summary.py summary.json / summary.log writer
@@ -213,6 +214,7 @@ After step 5 you can read any other file by following the file index in §4. The
 | `MLIPCalculator` protocol + base | `pdb2reaction/backends/base.py` |
 | Custom ASE-calculator adapter | `pdb2reaction/backends/custom.py` |
 | Deterministic reduction shim | `pdb2reaction/backends/_determinism.py` |
+| Optional DFT calculator adapter | `pdb2reaction/backends/pyscf_dft.py` |
 | Per-backend adapters | `pdb2reaction/backends/{uma, orb, mace, aimnet2}.py` |
 
 See [Backends](backends.md) for the add-a-backend recipe.

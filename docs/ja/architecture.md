@@ -75,7 +75,8 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 │ │ ├── base.py MLIPCalculator protocol
 │ │ ├── custom.py custom ASE-calculator adapter
 │ │ ├── _determinism.py deterministic reduction shim
-│ │ └── uma.py / orb.py / mace.py / aimnet2.py per-backend adapters
+│ │ ├── pyscf_dft.py 任意の PySCF/GPU4PySCF adapter
+│ │ └── uma.py / orb.py / mace.py / aimnet2.py MLIP adapters
 │ │
 │ ├── io/ # === L4b Infra (I/O) ===
 │ │ ├── summary.py summary.json / summary.log writer
@@ -215,6 +216,7 @@ CLI サブコマンドリゾルバ（`cli/app.py:_LAZY_SUBCOMMANDS`）は **絶�
 | `MLIPCalculator` プロトコル + base | `pdb2reaction/backends/base.py` |
 | custom ASE calculator アダプタ | `pdb2reaction/backends/custom.py` |
 | 決定論的 reduction shim | `pdb2reaction/backends/_determinism.py` |
+| 任意の DFT calculator adapter | `pdb2reaction/backends/pyscf_dft.py` |
 | バックエンドごとのアダプタ | `pdb2reaction/backends/{uma, orb, mace, aimnet2}.py` |
 
 add-a-backend レシピは [Backends](backends.md) を参照してください。

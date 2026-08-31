@@ -138,7 +138,7 @@ out_dir/ (デフォルト:./result_tsopt/)
 
 ```bash
 pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m 2S+1] \
- [-b/--backend uma|orb|mace|aimnet2] \
+ [-b/--backend uma|orb|mace|aimnet2|dft] \
  [--opt-mode grad|hess|dimer|rsirfo|trim|rsprfo] [--flatten/--no-flatten] \
  [--freeze-links/--no-freeze-links] [--max-cycles N] [--thresh PRESET] \
  [--hessian-calc-mode Analytical|FiniteDifference] \
@@ -156,7 +156,7 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | `--ref-pdb FILE` | XYZ/GJF入力に使用する参照PDBまたはmmCIF topology | _None_ |
 | **バックエンドと計算** | | |
-| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
+| `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP バックエンド（任意で `dft`） | `uma` |
 | `--workers INT` | UMA 予測器の並列度。`workers > 1` と明示的な解析 Hessian は併用できないため、`workers = 1` または有限差分を使用。{ref}`ja-workers-analytical-error` を参照 | `1` |
 | `--workers-per-node INT` | ノードあたりのワーカー数。並列予測器に渡されます | `1` |
 | `--hessian-calc-mode CHOICE` | MLIP Hessian モード（`Analytical` または `FiniteDifference`） | `FiniteDifference` |

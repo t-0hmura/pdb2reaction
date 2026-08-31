@@ -14,7 +14,7 @@ electronic-state changes or establish a mechanism.
 pdb2reaction scan3d -i input.pdb \
     -s '[(a1,b1,low_1,high_1), (a2,b2,low_2,high_2), (a3,b3,low_3,high_3)]' \
     [--csv surface.csv] \
-    [-l 'RES:Q,...'] [-b uma|orb|mace|aimnet2] [-o ./result_scan3d/]
+    [-l 'RES:Q,...'] [-b uma|orb|mace|aimnet2|dft] [-o ./result_scan3d/]
 ```
 
 ## Key flags
@@ -25,7 +25,7 @@ pdb2reaction scan3d -i input.pdb \
 | `-s, --scan-lists` | str | required (unless `--csv`) | Python literal with **three** 4-tuples `(i, j, low, high)` |
 | `--csv` | path | none | Skip the scan; load a precomputed `surface.csv` for downstream plotting |
 | `-q` / `-l` / `-m` | — | — | Charge / spin |
-| `-b, --backend` | str | `uma` | MLIP backend |
+| `-b, --backend` | str | `uma` | MLIP backend or optional DFT calculator |
 | `-o, --out-dir` | path | `./result_scan3d/` | Output directory |
 | `--ref-pdb` / `--config` / `--dry-run` / `--help-advanced` | — | — | Standard |
 | `--out-json / --no-out-json` | flag | `--no-out-json` | Emit `result.json` summary |

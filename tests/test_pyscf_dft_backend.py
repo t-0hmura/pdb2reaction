@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import shutil
 import numpy as np
 import pytest
 
@@ -171,6 +173,44 @@ def test_last_good_checkpoint_survives_lost_scanner(tmp_path) -> None:
 
     assert checkpoint.is_file()
     assert checkpoint.with_suffix(".chk.json").is_file()
+
+
+def test_checkpoint_rejects_mixed_binary_and_metadata_generations(tmp_path) -> None:
+    from pdb2reaction.backends import create_calculator
+
+    atoms = (["He"], np.zeros((1, 3)))
+    first_path = tmp_path / "first.chk"
+    second_path = tmp_path / "second.chk"
+    for path in (first_path, second_path):
+        calc = create_calculator(
+            backend="dft",
+            dft_settings=_settings(save_scf_checkpoint=True),
+            print_timing=False,
+        )
+        calc.get_energy(atoms[0], atoms[1].reshape(-1))
+        calc.save_scf_checkpoint(path, atoms)
+        calc.close()
+
+    shutil.copyfile(
+        second_path.with_suffix(".chk.json"),
+        first_path.with_suffix(".chk.json"),
+    )
+    metadata_path = first_path.with_suffix(".chk.json")
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata["schema"] = 1
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+    restored = create_calculator(
+        backend="dft",
+        dft_settings=_settings(save_scf_checkpoint=True),
+        print_timing=False,
+    )
+
+    assert not restored.load_scf_checkpoint(first_path, atoms)
+    assert restored.session.checkpoint_status["reason"] == "schema_mismatch"
+    metadata["schema"] = 2
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+    assert not restored.load_scf_checkpoint(first_path, atoms)
+    assert restored.session.checkpoint_status["reason"] == "generation_mismatch"
 
 
 def test_explicit_checkpoint_load_does_not_make_it_an_automatic_save_target(

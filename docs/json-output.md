@@ -419,6 +419,10 @@ See also the extended [`summary.json` section](#summary-json-path-search-all) fo
 | `engine` | string | Effective engine label (`"gpu4pyscf(rks_lowmem)"`, `"gpu4pyscf"`, or `"pyscf(cpu)"`) |
 | `used_gpu` | bool | GPU acceleration used? |
 | `used_lowmem` | bool | `gpu4pyscf.dft.rks_lowmem.RKS` actually used? (False on open-shell, CPU, or `--no-lowmem`) |
+| `lowmem_requested` | bool | Whether low-memory mode was requested |
+| `dft_settings` / `dft_resources` | object | Canonical scientific settings and effective host resources |
+| `effective_ecp` | string/object \| null | Effective ECP passed to PySCF |
+| `solvent` / `solvent_model` | string | Effective native implicit-solvent settings |
 | `charges` | object | `{mulliken, lowdin, iao}` per-atom arrays |
 | `spin_densities` | object | `{mulliken, lowdin, iao}` per-atom arrays |
 | `files` | object | `{"result_yaml": "result.yaml", "input_geometry_xyz": "input_geometry.xyz"}` |

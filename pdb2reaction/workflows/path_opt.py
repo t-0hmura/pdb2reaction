@@ -267,6 +267,9 @@ def _validate_dmf_solvent_compatibility(calc_cfg: Mapping[str, Any]) -> None:
     """Reject the unsupported DMF/implicit-solvent PES mismatch."""
 
     solvent = str(calc_cfg.get("solvent", "none") or "none").strip().lower()
+    backend = str(calc_cfg.get("backend", "uma") or "uma").strip().lower()
+    if backend == "dft":
+        return
     if solvent not in ("", "none"):
         raise click.ClickException(
             f"--mep-mode dmf is not compatible with --solvent '{solvent}': the DMF path "
@@ -298,11 +301,8 @@ def _run_dmf_mep(
     [3] S.-i. Koda and  S. Saito, Correlated Flat-bottom Elastic Network Model for Improved Bond Rearrangement in Reaction Paths, JCTC, 21, 3513−3522 (2025). [doi: 10.1021/acs.jctc.4c01549]
     """
 
-    # DMF optimizes on the ASE-path PES, which has no implicit-solvent wrapper
-    # (solvent is a pysisyphus-path-only xTB correction). Under --solvent the DMF
-    # path would be optimized gas-phase while the rest of the pipeline uses the
-    # solvent PES — an opt-PES ≠ score-PES mismatch. Refuse and direct the user to
-    # GSM, whose per-image eval goes through the solvent-aware pysisyphus calculator.
+    # MLIP solvent corrections are not part of the ASE DMF evaluator. The DFT
+    # ASE adapter is self-consistently solvent-aware and is allowed by the guard.
     _validate_dmf_solvent_compatibility(calc_cfg)
 
     dmf_backend = str((dmf_cfg or {}).get("backend", "gpu")).strip().lower()

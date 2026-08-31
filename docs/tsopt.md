@@ -158,7 +158,7 @@ Command form:
 
 ```bash
 pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l 'RES:Q,...'] [-m 2S+1] \
-    [-b uma|orb|mace|aimnet2] [--opt-mode grad|hess|dimer|rsirfo|trim|rsprfo] [--flatten / --no-flatten] \
+    [-b uma|orb|mace|aimnet2|dft] [--opt-mode grad|hess|dimer|rsirfo|trim|rsprfo] [--flatten / --no-flatten] \
     [--freeze-links / --no-freeze-links] [--max-cycles N] [--thresh PRESET] \
     [--hessian-calc-mode Analytical|FiniteDifference] \
     [--convert-files / --no-convert-files] [--ref-pdb FILE]
@@ -177,7 +177,7 @@ The tables below cover the options that need explanation. The full flag list is 
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | `--ref-pdb FILE` | Reference PDB/mmCIF topology when the input is XYZ / GJF (keeps XYZ coordinates). | _None_ |
 | **Backend & compute** | | |
-| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
+| `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP backend, or optional DFT calculator. | `uma` |
 | `--workers INT`, `--workers-per-node INT` | UMA predictor parallelism. `workers > 1` cannot be combined with an explicit analytical Hessian request; use `workers = 1` or finite differences. See {ref}`workers-analytical-error`. | `1`, `1` |
 | `--hessian-calc-mode CHOICE` | MLIP Hessian mode (`Analytical` or `FiniteDifference`). | `FiniteDifference` |
 | **Active-region freezing** | | |

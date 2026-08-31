@@ -20,7 +20,7 @@ pdb2reaction tsopt -i ts_guess.{pdb,cif,mmcif,xyz,gjf} \
     [-q 0 -m 1] [-l 'RES:Q,...'] \
     [--opt-mode grad|hess|dimer|rsirfo|trim|rsprfo] \
     [--max-cycles 100000] \
-    [-b uma|orb|mace|aimnet2] [-o ./result_tsopt/]
+    [-b uma|orb|mace|aimnet2|dft] [-o ./result_tsopt/]
 ```
 
 ## Key flags
@@ -34,7 +34,7 @@ pdb2reaction tsopt -i ts_guess.{pdb,cif,mmcif,xyz,gjf} \
 | `--hessian-calc-mode` | str | (live default) | `Analytical` or `FiniteDifference` (default: `FiniteDifference`); selects how the initial Hessian is computed |
 | `--workers`, `--workers-per-node` | int | `1`, `1` | UMA predictor workers. `workers > 1` with explicit `Analytical` raises `BackendError`; it does not fall back. Other built-in backends ignore these worker kwargs. |
 | `--ref-mode` | path | none | Advanced/internal Cartesian 3N reaction direction used for initial-root selection and overlap tracking. `all` supplies it by default; with `all --no-tsopt-from-mep-tan`, TSOPT selects from the initial-structure Hessian modes. Ordinary standalone `tsopt` runs should omit it. Visible only in `--help-advanced`. |
-| `-b, --backend` | str | `uma` | MLIP backend |
+| `-b, --backend` | str | `uma` | MLIP backend or optional DFT calculator |
 | `-o, --out-dir` | path | `./result_tsopt/` | Output directory |
 | `--config` / `--show-config` / `--dry-run` / `--help-advanced` | — | — | Standard |
 

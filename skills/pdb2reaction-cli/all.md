@@ -20,7 +20,7 @@ validated elementary steps.
 ```bash
 pdb2reaction all -i <input(s)> [-c <centers>] [-l 'RES:Q,...'] \
     [--scan-lists '...'] [--tsopt] [--thermo] [--dft] \
-    [-b uma|orb|mace|aimnet2] [-o result_all/]
+    [-b uma|orb|mace|aimnet2|dft] [-o result_all/]
 ```
 
 ## Key flags (cross-mode)
@@ -49,9 +49,9 @@ pdb2reaction all -i <input(s)> [-c <centers>] [-l 'RES:Q,...'] \
 | `--irc-never-stop/--no-irc-never-stop` | flag | off | Ignore IRC gradient and energy stops and trace to the cycle cap; propagation failures still stop |
 | `--reject-uphill / --no-reject-uphill` | toggle | off | Opt in to rejection above `1e-4` Hartree during Hessian/RFO post-IRC endpoint re-optimization only. At the emergency floor, the retained endpoint receives a final convergence check. It never affects TS optimization or path search. |
 | `--thermo / --no-thermo` | toggle | off | Run freq + thermochemistry on R / TS / P |
-| `--dft / --no-dft` | toggle | off | Run DFT single point on R / TS / P |
+| `--dft / --no-dft` | toggle | off | Run DFT single point on R / TS / P; incompatible with `-b dft` |
 | `--dft-func-basis` | str | `wb97m-v/def2-svp` | DFT functional/basis (when `--dft`) |
-| `-b, --backend` | str | `uma` | MLIP backend |
+| `-b, --backend` | str | `uma` | MLIP backend or optional DFT calculator |
 | `--workers`, `--workers-per-node` | int | `1`, `1` | UMA predictor workers. `workers > 1` plus an explicit `Analytical` Hessian raises `BackendError`; use one worker or `FiniteDifference`. Other built-in backends ignore these worker kwargs. |
 | `-o, --out-dir` | path | `./result_all/` | Top-level output directory |
 | `--config` | path | none | YAML config applied before CLI flags |

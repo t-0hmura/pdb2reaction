@@ -100,21 +100,29 @@ def test_dft_resources_are_provenance_but_not_checkpoint_identity() -> None:
 
 
 @pytest.mark.parametrize(
-    ("dft", "expected"),
+    ("dft", "spin", "expected"),
     [
-        ({}, "gpu4pyscf_rks_lowmem"),
-        ({"engine": "cpu"}, "direct_jk"),
-        ({"multiplicity": 2}, "direct_jk"),
-        ({"lowmem": False}, "density_fit"),
+        ({}, 1, "gpu4pyscf_rks_lowmem"),
+        ({"engine": "cpu"}, 1, "direct_jk"),
+        ({}, 2, "direct_jk"),
+        ({"lowmem": False}, 1, "density_fit"),
     ],
 )
-def test_dft_memory_mode_tracks_the_effective_driver(dft, expected) -> None:
+def test_dft_memory_mode_tracks_the_effective_driver(dft, spin, expected) -> None:
     from pdb2reaction.core.dft_settings import resolve_dft_settings
 
-    calc = {"backend": "dft", "dft": dft}
-    if "multiplicity" in dft:
-        calc["spin"] = dft["multiplicity"]
+    calc = {"backend": "dft", "spin": spin, "dft": dft}
     assert resolve_dft_settings(calc).memory_mode == expected
+
+
+@pytest.mark.parametrize(
+    "key", ["charge", "multiplicity", "embedcharge", "embedcharge_cutoff"]
+)
+def test_calculator_dft_mapping_rejects_top_level_owned_state(key) -> None:
+    from pdb2reaction.core.dft_settings import resolve_dft_settings
+
+    with pytest.raises(click.BadParameter, match=f"calc.dft.{key}"):
+        resolve_dft_settings({"backend": "dft", "dft": {key: 1}})
 
 
 def test_dft_yaml_nprocs_reports_a_click_validation_error() -> None:
@@ -135,6 +143,79 @@ def test_def2_ecp_is_only_auto_enabled_for_covered_elements() -> None:
         charge,
     )
     assert _def2_ecp_required([("Rb", (0, 0, 0)), ("I", (0, 0, 3))], charge)
+
+
+def test_detailed_pyscf_ecp_is_preserved_and_conflicts_fail_closed() -> None:
+    from pdb2reaction.workflows.dft import _resolve_effective_ecp
+
+    assert _resolve_effective_ecp(
+        None,
+        {},
+        "sto-3g",
+        [("H", (0, 0, 0))],
+        lambda _symbol: 1,
+    ) is None
+
+    configured = {"I": "def2-tzvp"}
+    effective = _resolve_effective_ecp(
+        None,
+        configured,
+        "def2-svp",
+        [("I", (0, 0, 0))],
+        lambda _symbol: 53,
+    )
+    assert effective is configured
+
+    with pytest.raises(click.BadParameter, match="conflicts"):
+        _resolve_effective_ecp(
+            "def2-svp",
+            configured,
+            "def2-svp",
+            [("I", (0, 0, 0))],
+            lambda _symbol: 53,
+        )
+
+
+@pytest.mark.parametrize(
+    ("model", "detail", "expected"),
+    [
+        ("pcm", {"eps": 12.5}, ("pcm", 12.5)),
+        ("smd", {"solvent": "acetonitrile"}, ("smd", "acetonitrile")),
+    ],
+)
+def test_detailed_pyscf_solvent_attributes_reach_native_model(
+    model, detail, expected
+) -> None:
+    from pdb2reaction.workflows.dft import _apply_implicit_solvent
+
+    class Solvent:
+        eps = None
+        solvent = None
+
+    class MF:
+        def __init__(self):
+            self.with_solvent = Solvent()
+            self.applied = None
+
+        def PCM(self):
+            self.applied = "pcm"
+            return self
+
+        def SMD(self):
+            self.applied = "smd"
+            return self
+
+    mf = _apply_implicit_solvent(
+        MF(),
+        {
+            "solvent": "water",
+            "solvent_model": model,
+            "pyscf": {"with_solvent": detail},
+        },
+    )
+
+    attribute = "eps" if model == "pcm" else "solvent"
+    assert (mf.applied, getattr(mf.with_solvent, attribute)) == expected
 
 
 def test_dft_rejects_unknown_yaml_engine_before_execution(tmp_path) -> None:
@@ -340,7 +421,6 @@ def test_leaf_dft_checkpoint_uses_yaml_effective_output_directory(tmp_path) -> N
         {"lowmem": "false"},
         {"density_fit": "false"},
         {"save_scf_checkpoint": "false"},
-        {"embedcharge": "false"},
         {"pyscf": {"density_fit": {"enabled": "false"}}},
     ],
 )
@@ -433,4 +513,112 @@ def test_standalone_solvent_config_cannot_replace_pyscf_callable() -> None:
                 "solvent_model": "pcm",
                 "pyscf": {"with_solvent": {"reset": "disabled"}},
             },
+        )
+
+
+def test_standalone_density_fit_forwards_canonical_auxbasis() -> None:
+    from pdb2reaction.workflows.dft import _configure_scf_object
+
+    class Mutable:
+        pass
+
+    class MF:
+        grids = Mutable()
+        with_df = Mutable()
+
+        def density_fit(self, **kwargs):
+            self.density_kwargs = kwargs
+            return self
+
+    mf = _configure_scf_object(
+        MF(),
+        {
+            "conv_tol": 1.0e-9,
+            "max_cycle": 20,
+            "grid_level": 1,
+            "auxbasis": "def2-universal-jkfit",
+            "pyscf": {"density_fit": {"enabled": True}},
+        },
+        "pbe",
+    )
+
+    assert mf.density_kwargs == {"auxbasis": "def2-universal-jkfit"}
+
+
+@pytest.mark.parametrize(
+    "pyscf_config, field",
+    [
+        ({"mol": {"basis": "sto-3g"}}, "basis"),
+        ({"mf": {"xc": "pbe"}}, "xc"),
+    ],
+)
+def test_dft_rejects_resolver_owned_pyscf_method_fields(
+    pyscf_config, field
+) -> None:
+    from pdb2reaction.core.dft_settings import resolve_dft_settings
+
+    with pytest.raises(click.BadParameter, match=field):
+        resolve_dft_settings(
+            {"backend": "dft", "dft": {"pyscf": pyscf_config}}
+        )
+
+
+@pytest.mark.parametrize("conv_tol", [float("nan"), float("inf"), float("-inf")])
+def test_dft_rejects_nonfinite_convergence_tolerance(conv_tol) -> None:
+    from pdb2reaction.core.dft_settings import resolve_dft_settings
+
+    with pytest.raises(click.BadParameter, match="conv_tol"):
+        resolve_dft_settings(
+            {"backend": "dft", "dft": {"conv_tol": conv_tol}}
+        )
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "typo_setting",
+        "charge",
+        "multiplicity",
+        "save_scf_checkpoint",
+        "checkpoint_path",
+        "nprocs_source",
+        "memory_source",
+        "embedcharge",
+        "embedcharge_cutoff",
+    ],
+)
+def test_standalone_dft_mapping_fails_closed_on_unowned_key(key) -> None:
+    from pdb2reaction.core.dft_settings import standalone_dft_settings_mapping
+
+    with pytest.raises(click.BadParameter, match=f"dft.{key}"):
+        standalone_dft_settings_mapping({"out_dir": "result", key: 1})
+
+
+@pytest.mark.parametrize(
+    "calc_cfg, message",
+    [
+        ({"charge": 0.5}, "calc.charge"),
+        ({"spin": 0}, "calc.spin"),
+        ({"dft": {"embedcharge_cutoff": float("nan")}}, "embedcharge_cutoff"),
+        ({"dft": {"nprocs": 1.5}}, "DFT nprocs"),
+    ],
+)
+def test_dft_rejects_invalid_canonical_charge_spin_and_cutoff(
+    calc_cfg, message
+) -> None:
+    from pdb2reaction.core.dft_settings import resolve_dft_settings
+
+    with pytest.raises(click.BadParameter, match=message):
+        resolve_dft_settings({"backend": "dft", **calc_cfg})
+
+
+def test_dmf_solvent_guard_is_backend_capability_aware() -> None:
+    from pdb2reaction.workflows.path_opt import _validate_dmf_solvent_compatibility
+
+    _validate_dmf_solvent_compatibility(
+        {"backend": "dft", "solvent": "water", "solvent_model": "pcm"}
+    )
+    with pytest.raises(click.ClickException, match="gas-phase ASE PES"):
+        _validate_dmf_solvent_compatibility(
+            {"backend": "uma", "solvent": "water", "solvent_model": "alpb"}
         )

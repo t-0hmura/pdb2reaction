@@ -98,7 +98,7 @@ Single-input runs require **either** `--scan-lists/-s` or `--tsopt` — a bare `
 | `-l, --ligand-charge TEXT` | Charge mapping (`'SAM:1,GPP:-3'`) or single integer. |
 | `-q, --charge INT` / `-m, --multiplicity INT` | Net system charge / spin multiplicity. |
 | `--tsopt` / `--thermo` / `--dft` | TS optimization + IRC / vibrational analysis / single-point DFT. Both `--thermo` and `--dft` require `--tsopt`. |
-| `-b, --backend uma\|orb\|mace\|aimnet2` | MLIP backend (default `uma`). |
+| `-b, --backend uma\|orb\|mace\|aimnet2\|dft` | MLIP backend (default `uma`), or optional DFT calculator. |
 
 Full option matrix: [CLI Conventions](cli-conventions.md) and the generated CLI reference under [reference/commands/index](reference/commands/index.md). Backend cost / VRAM comparison: see [Troubleshooting › Choosing a backend](troubleshooting.md#choosing-a-backend).
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import uuid
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 
@@ -60,6 +61,67 @@ def deepcopy_value(value: Any) -> Any:
     return value
 
 
+def _write_checkpoint_generation(path: Path, generation: str) -> None:
+    import h5py
+
+    with h5py.File(path, "a") as handle:
+        handle.attrs["p2r_record_generation"] = generation
+
+
+def _read_checkpoint_generation(path: Path) -> str:
+    import h5py
+
+    with h5py.File(path, "r") as handle:
+        value = handle.attrs["p2r_record_generation"]
+    if isinstance(value, bytes):
+        value = value.decode("utf-8")
+    return str(value)
+
+
+def _validated_checkpoint_record(
+    loaded_mol: Any,
+    record: Mapping[str, Any],
+    symbols: Sequence[str],
+    coords_ang: np.ndarray,
+) -> Dict[str, Any]:
+    energy = float(record["e_tot"])
+    mo_coeff = _to_numpy(record["mo_coeff"])
+    mo_occ = _to_numpy(record["mo_occ"])
+    mo_energy = _to_numpy(record["mo_energy"])
+    if not np.isfinite(energy) or any(
+        value is None or not np.all(np.isfinite(value))
+        for value in (mo_coeff, mo_occ, mo_energy)
+    ):
+        raise ValueError("checkpoint contains non-finite SCF data")
+    if mo_coeff.ndim not in (2, 3) or mo_occ.shape != mo_energy.shape:
+        raise ValueError("checkpoint orbital arrays have inconsistent ranks")
+    if mo_coeff.shape[-1] != mo_occ.shape[-1]:
+        raise ValueError("checkpoint orbital dimensions are inconsistent")
+    if mo_coeff.ndim == 3 and mo_coeff.shape[0] != mo_occ.shape[0]:
+        raise ValueError("checkpoint spin dimensions are inconsistent")
+    if int(loaded_mol.nao_nr()) != int(mo_coeff.shape[-2]):
+        raise ValueError("checkpoint AO dimension is inconsistent")
+    loaded_symbols = tuple(
+        str(loaded_mol.atom_symbol(index)) for index in range(int(loaded_mol.natm))
+    )
+    if loaded_symbols != tuple(map(str, symbols)):
+        raise ValueError("checkpoint Mole symbols do not match metadata")
+    loaded_coords = np.asarray(
+        loaded_mol.atom_coords(unit="Angstrom"), dtype=float
+    ).reshape(-1, 3)
+    if loaded_coords.shape != coords_ang.shape or not np.allclose(
+        loaded_coords, coords_ang, atol=1.0e-8, rtol=0.0
+    ):
+        raise ValueError("checkpoint Mole coordinates do not match metadata")
+    return {
+        "energy": energy,
+        "mol": loaded_mol,
+        "mo_energy": mo_energy.copy(),
+        "mo_coeff": mo_coeff.copy(),
+        "mo_occ": mo_occ.copy(),
+    }
+
+
 def _settings_from_mapping(values: Mapping[str, Any]) -> DFTSettings:
     raw = dict(values)
     return resolve_dft_settings(
@@ -67,7 +129,7 @@ def _settings_from_mapping(values: Mapping[str, Any]) -> DFTSettings:
             "backend": "dft",
             "charge": raw.get("charge", 0),
             "spin": raw.get("multiplicity", 1),
-            "dft": raw,
+            "dft_settings": raw,
         }
     )
 
@@ -340,6 +402,10 @@ class PySCFDFTSession:
             "mo_coeff": _to_numpy(self._scanner.mo_coeff).copy(),
             "mo_occ": _to_numpy(self._scanner.mo_occ).copy(),
             "mo_energy": _to_numpy(self._scanner.mo_energy).copy(),
+            "symbols": self._last_symbols,
+            "coordinates_angstrom": (
+                None if self._last_coords is None else self._last_coords.copy()
+            ),
         }
 
     def evaluate(
@@ -438,10 +504,13 @@ class PySCFDFTSession:
             return tuple(map(str, atoms[0])), np.asarray(atoms[1], dtype=float).reshape(-1, 3)
         raise TypeError("atoms must be ASE Atoms, pysisyphus Geometry, or (symbols, coordinates).")
 
-    def _metadata(self, symbols: Sequence[str], coords_ang: np.ndarray) -> Dict[str, Any]:
+    def _metadata(
+        self, symbols: Sequence[str], coords_ang: np.ndarray, *, generation: str
+    ) -> Dict[str, Any]:
         identity = json.dumps(self.settings.scientific_identity(), sort_keys=True, separators=(",", ":"))
         return {
-            "schema": 1,
+            "schema": 2,
+            "generation": generation,
             "symbols": list(map(str, symbols)),
             "coordinates_angstrom": np.asarray(coords_ang, dtype=float).tolist(),
             "scientific_identity_sha256": hashlib.sha256(identity.encode("utf-8")).hexdigest(),
@@ -457,27 +526,39 @@ class PySCFDFTSession:
 
         destination = Path(path)
         destination.parent.mkdir(parents=True, exist_ok=True)
-        tmp = destination.with_name(destination.name + ".tmp")
+        generation = uuid.uuid4().hex
+        tmp = destination.with_name(f"{destination.name}.{generation}.tmp")
         metadata_path = destination.with_suffix(destination.suffix + ".json")
-        metadata_tmp = metadata_path.with_name(metadata_path.name + ".tmp")
+        metadata_tmp = metadata_path.with_name(
+            f"{metadata_path.name}.{generation}.tmp"
+        )
         record = self._last_good
         if record is None:
             self._commit_last_good()
             record = self._last_good
-        chkfile.dump_scf(
-            record["mol"],
-            str(tmp),
-            float(record["energy"]),
-            record["mo_energy"],
-            record["mo_coeff"],
-            record["mo_occ"],
-        )
-        metadata_tmp.write_text(
-            json.dumps(self._metadata(symbols, coords), indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
-        )
-        os.replace(tmp, destination)
-        os.replace(metadata_tmp, metadata_path)
+        try:
+            chkfile.dump_scf(
+                record["mol"],
+                str(tmp),
+                float(record["energy"]),
+                record["mo_energy"],
+                record["mo_coeff"],
+                record["mo_occ"],
+            )
+            _write_checkpoint_generation(tmp, generation)
+            metadata_tmp.write_text(
+                json.dumps(
+                    self._metadata(symbols, coords, generation=generation),
+                    indent=2,
+                    sort_keys=True,
+                ) + "\n",
+                encoding="utf-8",
+            )
+            os.replace(tmp, destination)
+            os.replace(metadata_tmp, metadata_path)
+        finally:
+            tmp.unlink(missing_ok=True)
+            metadata_tmp.unlink(missing_ok=True)
         return destination
 
     def save_last_checkpoint(self, path=None) -> Optional[Path]:
@@ -501,10 +582,28 @@ class PySCFDFTSession:
                 "path": str(destination),
             }
             return False
+
         symbols, coords = self._coerce_atoms(atoms)
         try:
             metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-            expected = self._metadata(symbols, coords)
+            if metadata.get("schema") != 2:
+                self.checkpoint_status = {
+                    "loaded": False,
+                    "reason": "schema_mismatch",
+                    "path": str(destination),
+                }
+                return False
+            expected = self._metadata(
+                symbols, coords, generation=str(metadata.get("generation", ""))
+            )
+            generation = str(metadata.get("generation", ""))
+            if not generation or _read_checkpoint_generation(destination) != generation:
+                self.checkpoint_status = {
+                    "loaded": False,
+                    "reason": "generation_mismatch",
+                    "path": str(destination),
+                }
+                return False
             if metadata.get("symbols") != expected["symbols"]:
                 self.checkpoint_status = {
                     "loaded": False, "reason": "symbols_mismatch", "path": str(destination)
@@ -524,13 +623,13 @@ class PySCFDFTSession:
             from pyscf.scf import chkfile
 
             loaded_mol, record = chkfile.load_scf(str(destination))
-            self._last_good = {
-                "energy": float(record["e_tot"]),
-                "mol": loaded_mol,
-                "mo_energy": _to_numpy(record["mo_energy"]).copy(),
-                "mo_coeff": _to_numpy(record["mo_coeff"]).copy(),
-                "mo_occ": _to_numpy(record["mo_occ"]).copy(),
-            }
+            if int(loaded_mol.charge) != int(self.settings.charge) or int(
+                loaded_mol.spin
+            ) != int(self.settings.multiplicity) - 1:
+                raise ValueError("checkpoint Mole charge/spin mismatch")
+            self._last_good = _validated_checkpoint_record(
+                loaded_mol, record, symbols, coords
+            )
             self._scanner = None
             self._pending_checkpoint = True
             self._checkpoint_attempted = True
@@ -545,6 +644,19 @@ class PySCFDFTSession:
                 "loaded": False, "reason": "invalid_checkpoint", "path": str(destination)
             }
             return False
+
+    def close(self) -> None:
+        """Release all live electronic state owned by this session."""
+
+        self._scanner = None
+        self._last_good = None
+        self._cache.clear()
+        self._last_key = None
+        self._last_symbols = None
+        self._last_coords = None
+        self._last_mm_coords = None
+        self._last_mm_charges = None
+        self._pending_checkpoint = False
 
 
 class DFTCalculator(MLIPCalculator):
@@ -593,9 +705,12 @@ class DFTCalculator(MLIPCalculator):
     def close(self) -> None:
         if self._closed:
             return
-        if self.settings.save_scf_checkpoint:
-            self.session.save_last_checkpoint()
-        self._closed = True
+        try:
+            if self.settings.save_scf_checkpoint:
+                self.session.save_last_checkpoint()
+        finally:
+            self.session.close()
+            self._closed = True
 
     def __del__(self):
         try:
@@ -642,9 +757,12 @@ try:
         def close(self) -> None:
             if self._closed:
                 return
-            if self.settings.save_scf_checkpoint:
-                self.session.save_last_checkpoint()
-            self._closed = True
+            try:
+                if self.settings.save_scf_checkpoint:
+                    self.session.save_last_checkpoint()
+            finally:
+                self.session.close()
+                self._closed = True
 
         def __del__(self):
             try:

@@ -35,7 +35,7 @@ Working examples for GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Ch
 Command form:
 
 ```bash
-pdb2reaction all -i INPUT1 [INPUT2 ...] [-c CENTERS] [-b uma|orb|mace|aimnet2] [options]
+pdb2reaction all -i INPUT1 [INPUT2 ...] [-c CENTERS] [-b uma|orb|mace|aimnet2|dft] [options]
 ```
 
 Multi-structure MEP with TS + thermo + DFT:
@@ -262,7 +262,7 @@ and `tsopt` subcommands keep their own `--max-cycles`.
 | --- | --- | --- |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism. `workers > 1` cannot be combined with an explicit analytical Hessian request; use `workers = 1` or finite differences. See {ref}`workers-analytical-error`. | `1`, `1` |
 | `--hessian-calc-mode [Analytical\|FiniteDifference]` | Shared MLIP Hessian engine. | `FiniteDifference` |
-| `-b, --backend {uma,orb,mace,aimnet2,dft}` | Energy/force calculator backend. | `uma` |
+| `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP backend, or optional DFT calculator. | `uma` |
 ### Post-processing
 
 | Option | Description | Default |

@@ -26,7 +26,7 @@ defaults to `uma`. Full flags: the matching `<sub>.md` next to this file, or
 | `opt` | Geometry minimization (L-BFGS / RFO) | `pdb2reaction opt -i geom.pdb -q 0 -m 1 -o out` | `out/final_geometry.xyz` |
 | `tsopt` | TS optimization (RS-P-RFO / Dimer) | `pdb2reaction tsopt -i ts.xyz -q 0 -m 1 -o out` | `out/final_geometry.xyz`; one imaginary mode is necessary but mode displacement and IRC connectivity are also required for TS validation |
 | `freq` | Hessian + QRRHO thermo | `pdb2reaction freq -i geom.xyz -q 0 -m 1 -o out` | after successful evaluation, `out/frequencies_cm-1.txt`; `out/thermoanalysis.yaml` with `--dump` (`all --thermo` sets it) |
-| `sp` | Single-point MLIP energy + forces (+optional Hessian) | `pdb2reaction sp -i geom.pdb -q 0 -m 1 -o out` | `out/forces.npy` (+ `out/hessian.npy` with `--hess`); energy printed to stdout; `out/result.json` + `out/summary.json` only with `--out-json` |
+| `sp` | Single-point calculator energy + forces (+optional Hessian) | `pdb2reaction sp -i geom.pdb -q 0 -m 1 -o out` | `out/forces.npy` (+ `out/hessian.npy` with `--hess`); energy printed to stdout; `out/result.json` + `out/summary.json` only with `--out-json` |
 | `irc` | IRC from a TS | `pdb2reaction irc -i ts.xyz -q 0 -m 1 -o out` | `out/{forward,backward,finished}_irc_trj.xyz` |
 | `dft` | Single-point DFT (PySCF / GPU4PySCF) | `pdb2reaction dft -i geom.pdb -q 0 -m 1 --func-basis 'wb97m-v/def2-tzvpd' -o out` | after a successful calculation, `out/result.yaml`; `out/result.json` with `--out-json` |
 | `scan` | 1D distance scan w/ restraints | `pdb2reaction scan -i 1.R.pdb -q 0 -m 1 -s '[(a,b,1.6)]' -o out` | `out/scan_trj.xyz`, per-stage `stage_NN/result.xyz` |
@@ -58,7 +58,7 @@ therefore workflow paths, not a claim that CIF metadata is discarded.
 | `-q, --charge` | Total charge (integer) |
 | `-l, --ligand-charge` | `'RES1:Q1,RES2:Q2'` per-residue mapping (PDB/mmCIF metadata) |
 | `-m, --multiplicity` | Spin multiplicity (2S+1), default 1 |
-| `-b, --backend` | MLIP backend: `uma` / `orb` / `mace` / `aimnet2` |
+| `-b, --backend` | Calculator backend: `uma` / `orb` / `mace` / `aimnet2` / `dft` |
 | `-o, --out-dir` | Output directory, subcommand-specific default |
 | `--config` | YAML configuration file applied before CLI flags |
 | `--show-config` | Print the resolved configuration, then **continue** with the full run |

@@ -8,7 +8,7 @@ Command form:
 
 ```bash
 pdb2reaction opt -i INPUT.{pdb|cif|mmcif|xyz|gjf} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [-b/--backend uma|orb|mace|aimnet2] \
+ [-b/--backend uma|orb|mace|aimnet2|dft] \
  [--opt-mode grad|hess|lbfgs|rfo] [--flatten/--no-flatten] [--freeze-links/--no-freeze-links] \
  [--dist-freeze '[(i,j,target_Å),...]'] [--one-based|--zero-based] \
  [--bias-k K_eV_per_Å²] [--dump/--no-dump] [-o/--out-dir DIR] \
@@ -101,7 +101,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--show-config/--no-show-config` | Print resolved YAML layer information before execution. | `False` |
 | `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
 | `--dry-run/--no-dry-run` | Validate options and print execution plan without running optimization. | `False` |
-| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
+| `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP backend, or optional DFT calculator. | `uma` |
 ## YAML configuration
 
 Shared sections reuse [YAML Reference](yaml-reference.md); adjust only the values you need to change. `geom`, `calc`, `opt`, and the optimizer-specific `lbfgs`/`rfo` blocks use the canonical keys and defaults — see [`geom`](yaml-reference.md#geom), [`calc`](yaml-reference.md#calc), [`opt`](yaml-reference.md#opt), [`lbfgs`](yaml-reference.md#lbfgs), [`rfo`](yaml-reference.md#rfo). A minimal representative configuration:

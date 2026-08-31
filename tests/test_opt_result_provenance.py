@@ -32,6 +32,8 @@ def test_yaml_resolved_orb_fields_keep_legacy_and_canonical_parity() -> None:
         "mlip_model_label": "ORB-v3-conservative-OMol",
         "mlip_task": None,
         "mlip_precision": "fp64",
+        "primary_method": "mlip",
+        "primary_method_label": "MLIP",
     }
     assert calc_cfg == original
 

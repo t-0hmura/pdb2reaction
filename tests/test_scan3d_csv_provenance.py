@@ -82,5 +82,7 @@ def test_fresh_scan3d_preserves_calculator_and_solvent_provenance() -> None:
         "mlip_model_label": "ORB-v3-conservative-OMol",
         "mlip_task": None,
         "mlip_precision": "fp64",
+        "primary_method": "mlip",
+        "primary_method_label": "MLIP",
         "solvent": "water",
     }

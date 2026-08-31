@@ -162,6 +162,8 @@ def test_custom_calculator_provenance_uses_loader_default_factory() -> None:
         "mlip_model_label": "toy.py:get_calculator",
         "mlip_task": None,
         "mlip_precision": None,
+        "primary_method": "mlip",
+        "primary_method_label": "MLIP",
     }
 
 
@@ -192,6 +194,8 @@ def test_calculator_provenance_uses_backend_defaults() -> None:
         "mlip_model_label": "ORB-v3-conservative-OMol",
         "mlip_task": None,
         "mlip_precision": "fp64",
+        "primary_method": "mlip",
+        "primary_method_label": "MLIP",
     }
 
 

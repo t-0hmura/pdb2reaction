@@ -14,7 +14,7 @@ before calling it elementary.
 ```bash
 pdb2reaction path-opt -i reactant.pdb product.pdb \
     [--mep-mode gsm|dmf] [--max-nodes 20] \
-    [-l 'RES:Q,...'] [-b uma|orb|mace|aimnet2] \
+    [-l 'RES:Q,...'] [-b uma|orb|mace|aimnet2|dft] \
     [-o ./result_path_opt/]
 ```
 
@@ -31,7 +31,7 @@ pdb2reaction path-opt -i reactant.pdb product.pdb \
 | `--preopt / --no-preopt` | flag | `--preopt` | Optimize each endpoint before constructing the string |
 | `--fix-ends / --no-fix-ends` | flag | `--fix-ends` | Keep GSM endpoint images fixed; accepted but unused with DMF |
 | `-q, --charge` / `-l` / `-m` | — | — | Charge / spin (common conventions) |
-| `-b, --backend` | str | `uma` | MLIP backend |
+| `-b, --backend` | str | `uma` | MLIP backend or optional DFT calculator |
 | `-o, --out-dir` | path | `./result_path_opt/` | Output directory |
 
 ## Examples

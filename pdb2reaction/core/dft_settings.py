@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 import re
 from copy import deepcopy
@@ -41,6 +42,10 @@ _MANAGED_PYSCF_FIELDS = {
     "stdout",
     "chkfile",
 }
+_SECTION_MANAGED_PYSCF_FIELDS = {
+    "mol": {"basis"},
+    "mf": {"xc"},
+}
 _TOP_LEVEL_FIELDS = {
     "func_basis",
     "func",
@@ -67,6 +72,34 @@ _TOP_LEVEL_FIELDS = {
     "memory",
     "memory_mb",
     "memory_source",
+    "pyscf",
+}
+_CALCULATOR_DFT_FIELDS = _TOP_LEVEL_FIELDS - {
+    "charge",
+    "multiplicity",
+    "embedcharge",
+    "embedcharge_cutoff",
+    "nprocs_source",
+    "memory_source",
+}
+_STANDALONE_FIELDS = {
+    "func_basis",
+    "func",
+    "functional",
+    "basis",
+    "engine",
+    "conv_tol",
+    "max_cycle",
+    "grid_level",
+    "verbose",
+    "lowmem",
+    "density_fit",
+    "auxbasis",
+    "solvent",
+    "solvent_model",
+    "nprocs",
+    "memory",
+    "memory_mb",
     "pyscf",
 }
 
@@ -178,9 +211,11 @@ def resolve_dft_resources(raw: Mapping[str, Any]) -> Tuple[int, str, Optional[in
     explicit_nprocs = raw.get("nprocs")
     if explicit_nprocs not in (None, "", "auto"):
         try:
-            nprocs = int(explicit_nprocs)
-        except (TypeError, ValueError) as exc:
-            raise click.BadParameter("DFT nprocs must be a positive integer.") from exc
+            nprocs = _exact_int(explicit_nprocs, "DFT nprocs")
+        except click.BadParameter as exc:
+            raise click.BadParameter(
+                "DFT nprocs must be a positive integer."
+            ) from exc
         if nprocs < 1:
             raise click.BadParameter("DFT nprocs must be >= 1.")
         source = str(raw.get("nprocs_source") or "explicit")
@@ -243,6 +278,35 @@ def _strict_bool(value: Any, path: str) -> bool:
     if not isinstance(value, bool):
         raise click.BadParameter(f"{path} must be true or false.")
     return value
+
+
+def _exact_int(value: Any, path: str) -> int:
+    if isinstance(value, bool):
+        raise click.BadParameter(f"{path} must be an integer.")
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError) as exc:
+        raise click.BadParameter(f"{path} must be an integer.") from exc
+    try:
+        if float(value) != float(parsed):
+            raise click.BadParameter(f"{path} must be an integer.")
+    except (TypeError, ValueError) as exc:
+        raise click.BadParameter(f"{path} must be an integer.") from exc
+    return parsed
+
+
+def standalone_dft_settings_mapping(
+    dft_cfg: Mapping[str, Any], *, extra_fields: Tuple[str, ...] = ("out_dir", "ecp")
+) -> Dict[str, Any]:
+    """Validate standalone-only keys, then return the canonical DFT subset."""
+
+    raw = deepcopy(dict(dft_cfg))
+    unknown = sorted(set(raw) - _STANDALONE_FIELDS - set(extra_fields))
+    if unknown:
+        raise click.BadParameter(
+            "Unknown dft key(s): " + ", ".join(f"dft.{key}" for key in unknown)
+        )
+    return {key: value for key, value in raw.items() if key in _STANDALONE_FIELDS}
 
 
 @dataclass(frozen=True)
@@ -323,6 +387,7 @@ class DFTSettings:
             "solvent": self.solvent,
             "solvent_model": self.solvent_model,
             "embedcharge": self.embedcharge,
+            "embedcharge_cutoff": self.embedcharge_cutoff if self.embedcharge else None,
             "pyscf": scientific_pyscf,
         }
 
@@ -336,16 +401,22 @@ def resolve_dft_settings(
     """Resolve ``calc.dft`` and explicit flat CLI values once."""
 
     nested = _mapping(calc_cfg.get("dft"), "calc.dft")
+    unknown = sorted(set(nested) - _CALCULATOR_DFT_FIELDS)
+    if unknown:
+        raise click.BadParameter(
+            "Unknown calc.dft key(s): "
+            + ", ".join(f"calc.dft.{key}" for key in unknown)
+        )
     serialized = calc_cfg.get("dft_settings")
     if serialized is not None:
         serialized_map = _mapping(serialized, "calc.dft_settings")
+        unknown_serialized = sorted(set(serialized_map) - _TOP_LEVEL_FIELDS)
+        if unknown_serialized:
+            raise click.BadParameter(
+                "Unknown calc.dft_settings key(s): "
+                + ", ".join(unknown_serialized)
+            )
         nested = {**serialized_map, **nested}
-
-    unknown = sorted(set(nested) - _TOP_LEVEL_FIELDS)
-    if unknown:
-        raise click.BadParameter(
-            "Unknown calc.dft key(s): " + ", ".join(f"calc.dft.{key}" for key in unknown)
-        )
 
     explicit = {key: value for key, value in dict(cli_values or {}).items() if value is not None}
     raw = {**nested, **explicit}
@@ -382,7 +453,10 @@ def resolve_dft_settings(
             pyscf_cfg[section] = {"enabled": bool(values)}
         else:
             pyscf_cfg[section] = _mapping(values, f"calc.dft.pyscf.{section}")
-        managed = sorted(_MANAGED_PYSCF_FIELDS & set(pyscf_cfg[section]))
+        managed = sorted(
+            (_MANAGED_PYSCF_FIELDS | _SECTION_MANAGED_PYSCF_FIELDS.get(section, set()))
+            & set(pyscf_cfg[section])
+        )
         if managed:
             raise click.BadParameter(
                 f"calc.dft.pyscf.{section} cannot set workflow-owned field(s): "
@@ -403,7 +477,17 @@ def resolve_dft_settings(
             raise click.BadParameter(
                 f"calc.dft.{name} conflicts with calc.dft.pyscf.{section}.{attribute}."
             )
-        resolved_simple[name] = cast(direct if direct is not None else detailed if detailed is not None else default)
+        value = direct if direct is not None else detailed if detailed is not None else default
+        try:
+            resolved_simple[name] = (
+                _exact_int(value, f"calc.dft.{name}")
+                if cast is int
+                else cast(value)
+            )
+        except (TypeError, ValueError) as exc:
+            raise click.BadParameter(
+                f"calc.dft.{name} has an invalid value."
+            ) from exc
 
     lowmem = _strict_bool(raw.get("lowmem", True), "calc.dft.lowmem")
     density_cfg = pyscf_cfg.get("density_fit", {})
@@ -489,7 +573,7 @@ def resolve_dft_settings(
     if max_cycle < 1:
         raise click.BadParameter("calc.dft.max_cycle must be >= 1.")
     conv_tol = float(resolved_simple["conv_tol"])
-    if conv_tol <= 0:
+    if not math.isfinite(conv_tol) or conv_tol <= 0:
         raise click.BadParameter("calc.dft.conv_tol must be positive.")
 
     save_checkpoint = _strict_bool(
@@ -509,12 +593,30 @@ def resolve_dft_settings(
         resource_raw["memory_mb"] = int(detailed_memory)
     nprocs, nprocs_source, memory_mb, memory_source = resolve_dft_resources(resource_raw)
 
+    charge = _exact_int(calc_cfg.get("charge", raw.get("charge", 0)), "calc.charge")
+    multiplicity = _exact_int(
+        calc_cfg.get("spin", raw.get("multiplicity", 1)), "calc.spin"
+    )
+    if multiplicity < 1:
+        raise click.BadParameter("calc.spin must be >= 1.")
+    cutoff_raw = raw.get("embedcharge_cutoff", 12.0)
+    try:
+        embedcharge_cutoff = None if cutoff_raw is None else float(cutoff_raw)
+    except (TypeError, ValueError) as exc:
+        raise click.BadParameter(
+            "calc.dft.embedcharge_cutoff must be positive."
+        ) from exc
+    if embedcharge_cutoff is not None and (
+        not math.isfinite(embedcharge_cutoff) or embedcharge_cutoff <= 0
+    ):
+        raise click.BadParameter("calc.dft.embedcharge_cutoff must be positive.")
+
     return DFTSettings(
         functional=str(functional),
         basis=str(basis),
         engine=engine,
-        charge=int(calc_cfg.get("charge", raw.get("charge", 0))),
-        multiplicity=int(calc_cfg.get("spin", raw.get("multiplicity", 1))),
+        charge=charge,
+        multiplicity=multiplicity,
         conv_tol=conv_tol,
         max_cycle=max_cycle,
         grid_level=int(resolved_simple["grid_level"]),
@@ -527,11 +629,7 @@ def resolve_dft_settings(
         save_scf_checkpoint=save_checkpoint,
         checkpoint_path=None if checkpoint_path in (None, "") else str(checkpoint_path),
         embedcharge=embedcharge,
-        embedcharge_cutoff=(
-            None
-            if raw.get("embedcharge_cutoff", 12.0) is None
-            else float(raw.get("embedcharge_cutoff", 12.0))
-        ),
+        embedcharge_cutoff=embedcharge_cutoff,
         nprocs=nprocs,
         nprocs_source=nprocs_source,
         memory_mb=memory_mb,
@@ -614,4 +712,5 @@ __all__ = [
     "resolve_dft_resources",
     "PCM_DIELECTRIC",
     "resolve_dft_settings",
+    "standalone_dft_settings_mapping",
 ]

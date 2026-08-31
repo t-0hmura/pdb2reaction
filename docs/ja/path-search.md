@@ -12,7 +12,7 @@ R → … → P の **2 構造以上**から、連続的な最小エネルギー
 
 ```bash
 pdb2reaction path-search -i R.pdb [-i I.pdb ...] -i P.pdb [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1] \
- [-b/--backend uma|orb|mace|aimnet2] \
+ [-b/--backend uma|orb|mace|aimnet2|dft] \
  [--workers N] [--workers-per-node N] \
  [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET] [--thresh-gsm PRESET] [--thresh-dmf TOL] \
  [--refine-mode {peak|minima}] \
@@ -113,7 +113,7 @@ out_dir/ (デフォルト:./result_path_search/)
 | `-l, --ligand-charge TEXT` | 単一整数または残基別 mapping から PDB/mmCIF input topology の全系電荷を導出。裸の XYZ には `-q` が必要で、`--ref-pdb` は最終 merge 専用のためこの charge derivation を追加しない。有効な GJF は header の charge/spin を継承可能 | _None_ |
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | **バックエンドと計算** | | |
-| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
+| `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP バックエンド（任意で `dft`） | `uma` |
 | `--workers`, `--workers-per-node` | UMA 予測器の並列度（`workers_per_node` は並列予測器へ転送）。`workers > 1` と明示的な解析 Hessian は併用不可。{ref}`ja-workers-analytical-error` を参照 | `1`, `1` |
 | **活性領域の凍結** | | |
 | `--freeze-links/--no-freeze-links` | PDB 活性部位モデル読み込み時、キャップ水素の親原子を凍結。詳細は [extract](extract.md) を参照 | `True` |

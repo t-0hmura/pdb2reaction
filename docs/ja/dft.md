@@ -120,9 +120,12 @@ dft:
  conv_tol: 1.0e-09 # SCF convergence tolerance (Hartree)
  max_cycle: 100 # maximum SCF iterations
  grid_level: 3 # PySCF grid level
+ pyscf: {mf: {level_shift: 0.2}} # 任意の PySCF object attribute
  verbose: 0 # PySCF verbose レベル (0-9); CLI -v 2/3 では実行時 PySCF verbose レベル が >=4
  out_dir: ./result_dft/ # output directory root
 ```
+
+`dft` subcommand は `dft.pyscf` を、`-b dft` の calculator workflow は同じ PySCF object 名を `calc.dft.pyscf` から読みます。
 
 全keyとdefaultは [YAMLリファレンス](yaml-reference.md) を参照してください。
 

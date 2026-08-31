@@ -88,6 +88,8 @@ flags; extraction (`-c`), TS/IRC (`--tsopt`), thermo (`--thermo`), and DFT
 | `orb` | `orb_v3_conservative_omol` | Conservative model integration; pdb2reaction defaults it to fp64 because explicit fp32/TF32 can make finite-difference Hessians noisy. Validate `n_imag=1` and IRC like every backend. |
 | `aimnet2` | AIMNet2 family | Model-specific element/state domains: default 14-element organic model, with separately selected radical, Pd, and reactive models |
 
+Optional `-b dft` uses PySCF/GPU4PySCF; see `pdb2reaction-cli/dft.md`.
+
 Backend-specific install notes live in
 `pdb2reaction-install-backends/{uma,mace,orb,aimnet2}.md`. The default-value
 dictionaries are in `pdb2reaction.core.defaults` (read live, not transcribed):

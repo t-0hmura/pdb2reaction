@@ -292,6 +292,74 @@ def test_role_checkpoint_refresh_updates_every_manifest_alias(tmp_path: Path) ->
     )
 
 
+def test_role_checkpoint_preserves_initial_input_and_owns_explicit_destination(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    from pdb2reaction.workflows import all as all_workflow
+    from pdb2reaction.workflows._run_session import InvocationManifest
+
+    initial = tmp_path / "initial.chk"
+    initial.write_bytes(b"initial")
+    destination = tmp_path / "role.chk"
+    events = []
+    captured_cfg = {}
+
+    class Geometry:
+        calculator = None
+
+        def set_calculator(self, calculator):
+            self.calculator = calculator
+
+        @property
+        def energy(self):
+            events.append("evaluate")
+            return -1.0
+
+    class Calculator:
+        def load_scf_checkpoint(self, path, geometry):
+            events.append(("load", Path(path)))
+            return True
+
+        def save_scf_checkpoint(self, path, geometry):
+            events.append(("save", Path(path)))
+            Path(path).write_bytes(b"role")
+            Path(str(path) + ".json").write_text("{}\n", encoding="utf-8")
+
+        def close(self):
+            events.append("close")
+
+    def create_calculator(**cfg):
+        captured_cfg.update(cfg)
+        return Calculator()
+
+    monkeypatch.setattr(all_workflow, "geom_loader", lambda *a, **k: Geometry())
+    monkeypatch.setattr(all_workflow, "create_calculator", create_calculator)
+
+    saved = all_workflow._prepare_role_scf_checkpoint(
+        {
+            "backend": "dft",
+            "dft_settings": {
+                "save_scf_checkpoint": True,
+                "checkpoint_path": str(initial),
+            },
+        },
+        tmp_path / "state.xyz",
+        destination,
+        manifest=InvocationManifest(),
+        key="role.checkpoint",
+    )
+
+    assert saved == destination.resolve()
+    assert initial.read_bytes() == b"initial"
+    assert captured_cfg["dft_settings"]["checkpoint_path"] is None
+    assert events == [
+        ("load", initial),
+        "evaluate",
+        ("save", destination.resolve()),
+        "close",
+    ]
+
+
 def test_all_stops_before_irc_when_tsopt_result_is_invalid(
     tmp_path: Path, monkeypatch,
 ) -> None:
@@ -711,6 +779,40 @@ def test_enrich_summary_uses_backend_neutral_refined_energy_keys(tmp_path: Path)
         ref["method"] == "Limited-memory BFGS (L-BFGS)"
         for ref in result["references"]
     )
+
+
+def test_enrich_summary_labels_primary_dft_compatibility_energy_keys(
+    tmp_path: Path,
+) -> None:
+    from pdb2reaction.workflows.all import _enrich_summary
+
+    result = _enrich_summary(
+        {
+            "segments": [{"index": 1, "kind": "seg", "barrier_kcal": 5.0}],
+            "energy_diagrams": [
+                {
+                    "name": "energy_diagram_MLIP_all",
+                    "energies_kcal": [0.0, 8.0, -2.0],
+                }
+            ],
+        },
+        version="",
+        pipeline_mode="path-opt",
+        mlip_backend="dft",
+        mlip_model="hf/sto-3g",
+        charge=0,
+        spin=1,
+        post_segments=[{"index": 1, "mlip": {"barrier_kcal": 8.0}}],
+        calculator_provenance_data={
+            "primary_method": "dft",
+            "primary_method_label": "DFT",
+        },
+        out_dir=tmp_path,
+    )
+
+    assert result["rate_limiting_step"]["method"] == "DFT"
+    assert result["overall_reaction_energy_method"] == "DFT"
+    assert result["primary_method_label"] == "DFT"
 
 
 def test_enrich_summary_only_adds_omol25_for_omol(tmp_path: Path) -> None:

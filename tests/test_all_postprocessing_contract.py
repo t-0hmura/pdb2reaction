@@ -77,6 +77,79 @@ def test_all_accepts_scientifically_defined_postprocessing_combinations(
     )
 
 
+def test_all_show_config_separates_canonical_primary_and_post_dft(tmp_path) -> None:
+    from pdb2reaction.workflows.all import cli as all_cli
+
+    xyz = tmp_path / "h2.xyz"
+    xyz.write_text("2\nH2\nH 0 0 0\nH 0 0 0.74\n", encoding="utf-8")
+    post_out = tmp_path / "post_dft"
+    result = CliRunner().invoke(
+        all_cli,
+        [
+            "-i", str(xyz), "-i", str(xyz), "-q", "-1", "-m", "2",
+            "--tsopt", "true", "--dft", "true",
+            "--dft-func-basis", "hf/sto-3g",
+            "--dft-engine", "cpu", "--dft-out-dir", str(post_out),
+            "--show-config", "--dry-run", "--out-dir", str(tmp_path / "result"),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "primary_calculator:" in result.output
+    assert "primary_method_label: MLIP" in result.output
+    assert "post_dft:" in result.output
+    assert "functional: hf" in result.output
+    assert "basis: sto-3g" in result.output
+    assert "charge: -1" in result.output
+    assert "multiplicity: 2" in result.output
+    assert "engine: cpu" in result.output
+    assert f"out_dir_override: {post_out}" in result.output
+
+
+def test_all_show_config_primary_dft_uses_explicit_state(tmp_path) -> None:
+    from pdb2reaction.workflows.all import cli as all_cli
+
+    xyz = tmp_path / "h2.xyz"
+    xyz.write_text("2\nH2\nH 0 0 0\nH 0 0 0.74\n", encoding="utf-8")
+    result = CliRunner().invoke(
+        all_cli,
+        [
+            "-i", str(xyz), "-i", str(xyz), "-q", "-1", "-m", "2",
+            "-b", "dft", "--func-basis", "hf/sto-3g", "--engine", "cpu",
+            "--show-config", "--dry-run", "--out-dir", str(tmp_path / "result"),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "primary_method_label: DFT" in result.output
+    assert "charge: -1" in result.output
+    assert "multiplicity: 2" in result.output
+    assert "post_dft: null" in result.output
+
+
+@pytest.mark.parametrize(
+    "primary_backend, expected",
+    [("dft", "DFT thermochemistry"), ("uma", "MLIP thermochemistry")],
+)
+def test_missing_thermochemistry_reason_uses_primary_calculator_label(
+    primary_backend, expected
+) -> None:
+    status, reasons = _derive_pipeline_status(
+        {
+            "segments": [
+                {"index": 1, "kind": "seg", "bond_changes": "C1-O2"}
+            ],
+            "energy_diagrams": [{"name": "MEP"}],
+        },
+        post_segments=[{"index": 1}],
+        config={"tsopt": False, "thermo": True, "dft": False},
+        primary_backend=primary_backend,
+    )
+
+    assert status == "partial"
+    assert any(expected in reason for reason in reasons)
+
+
 @pytest.mark.parametrize("bond_changes", ["", "(no covalent changes detected)", "forming 1-2"])
 def test_bond_diagnostics_do_not_suppress_requested_postprocessing(bond_changes):
     from pdb2reaction.workflows.all import _is_reactive_segment

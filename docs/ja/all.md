@@ -31,7 +31,7 @@ TSOPT のみモードの反応物/生成物ラベルは**エネルギー順に�
 コマンド形式:
 
 ```bash
-pdb2reaction all -i INPUT1 [INPUT2 ...] [-c CENTERS] [-b/--backend uma|orb|mace|aimnet2] [options]
+pdb2reaction all -i INPUT1 [INPUT2 ...] [-c CENTERS] [-b/--backend uma|orb|mace|aimnet2|dft] [options]
 ```
 
 TS 最適化・IRC・熱化学・DFT まで一括実行する複数構造 MEP:
@@ -287,7 +287,7 @@ raw PDB CCD との名前衝突は自動判別しないため、`--modified-resid
 | --- | --- | --- |
 | `--workers`, `--workers-per-node` | UMA 予測器の並列度。`workers > 1` と明示的な解析 Hessian は併用できないため、`workers = 1` または有限差分を使用。診断上の注意は {ref}`ja-workers-analytical-error` を参照 | `1`, `1` |
 | `--hessian-calc-mode [Analytical\|FiniteDifference]` | 共有 MLIP Hessian エンジン | `FiniteDifference` |
-| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
+| `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP バックエンド（任意で `dft`） | `uma` |
 ### 後処理オプション
 
 | オプション | 説明 | デフォルト |

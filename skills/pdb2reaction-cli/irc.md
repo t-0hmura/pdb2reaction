@@ -14,7 +14,7 @@ R / P, use `pdb2reaction all`.)
 pdb2reaction irc -i ts.{pdb,cif,xyz,gjf} \
     [-q 0 -m 1] [-l 'RES:Q,...'] \
     [--max-cycles 125] [--step-size 0.1] [--never-stop] \
-    [-b uma|orb|mace|aimnet2] [-o ./result_irc/]
+    [-b uma|orb|mace|aimnet2|dft] [-o ./result_irc/]
 ```
 
 ## Key flags
@@ -27,7 +27,7 @@ pdb2reaction irc -i ts.{pdb,cif,xyz,gjf} \
 | `--step-size` | float | `0.10` | Step in Bohr (unweighted Cartesian); maps to `IRC_KW["step_length"]` |
 | `--never-stop / --no-never-stop` | bool | `False` | Ignore gradient and energy endpoint criteria and trace to `max_cycles`; propagation failures still stop |
 | `--workers`, `--workers-per-node` | int | `1`, `1` | UMA predictor workers. `workers > 1` plus an explicit `Analytical` Hessian raises `BackendError`; use one worker or finite differences. |
-| `-b, --backend` | str | `uma` | MLIP backend |
+| `-b, --backend` | str | `uma` | MLIP backend or optional DFT calculator |
 | `-o, --out-dir` | path | `./result_irc/` | Output directory |
 | `--config` / `--show-config` / `--dry-run` / `--help-advanced` | — | — | Standard |
 

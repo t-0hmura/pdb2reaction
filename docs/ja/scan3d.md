@@ -14,7 +14,7 @@ XYZ/GJF 入力では、`--ref-pdb` で参照 PDB/mmCIF トポロジーを指定�
 
 ```bash
 pdb2reaction scan3d [-i INPUT.{pdb|xyz|trj|...}] [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [-b/--backend uma|orb|mace|aimnet2] \
+ [-b/--backend uma|orb|mace|aimnet2|dft] \
  [-s/--scan-lists scan3d.yaml | '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE] [--csv PATH]
 ```
@@ -95,7 +95,7 @@ out_dir/ (デフォルト:./result_scan3d/)
 | `-l, --ligand-charge TEXT` | 新規 scan で、単一整数または残基別 mapping から PDB/mmCIF の総電荷を導出。`-q` 省略時に使用。plot-only `--csv` mode では使用しない | _None_ |
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
 | **バックエンドと計算** | | |
-| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
+| `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP バックエンド（任意で `dft`） | `uma` |
 | `--workers`, `--workers-per-node` | UMA 予測器の並列度（`workers_per_node` は並列予測器へ転送）。`workers > 1` と明示的な解析 Hessian は併用不可。{ref}`ja-workers-analytical-error` を参照 | `1`, `1` |
 | **活性領域の凍結** | | |
 | `--freeze-links/--no-freeze-links` | PDB/mmCIF トポロジー入力時にキャップ水素の親原子を凍結 | `True` |

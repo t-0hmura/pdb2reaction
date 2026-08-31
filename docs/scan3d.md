@@ -14,7 +14,7 @@ Command form:
 
 ```bash
 pdb2reaction scan3d [-i INPUT.{pdb|xyz|trj|...}] [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [-b/--backend uma|orb|mace|aimnet2] \
+ [-b/--backend uma|orb|mace|aimnet2|dft] \
  [-s/--scan-lists scan3d.yaml | '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE] [--csv PATH]
 ```
@@ -118,7 +118,7 @@ Grid-point geometries use `Å×100` tags, so `point_i130_j310_k200.xyz` correspo
 | `-l, --ligand-charge TEXT` | For a fresh scan, either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB/mmCIF residue metadata. Used when `-q` is omitted. Not used in plot-only `--csv` mode. | _None_ |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
 | **Backend & compute** | | |
-| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
+| `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP backend, or optional DFT calculator. | `uma` |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism; `workers_per_node` is forwarded to the parallel predictor. `workers > 1` cannot be combined with an explicit analytical Hessian request. See {ref}`workers-analytical-error`. | `1`, `1` |
 | **Active-region freezing** | | |
 | `--freeze-links/--no-freeze-links` | When the input is PDB, freeze parents of cap hydrogens. | `True` |

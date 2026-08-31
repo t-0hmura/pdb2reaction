@@ -10,7 +10,7 @@ IRC 単独の `scientific_status` や方向別の成功判定は出力しませ�
 
 ```bash
 pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] \
- [-b/--backend uma|orb|mace|aimnet2] \
+ [-b/--backend uma|orb|mace|aimnet2|dft] \
  [--workers N] [--workers-per-node N] [-m 2S+1] \
  [--max-cycles N] [--step-size Δs] [--never-stop/--no-never-stop] [--root k] \
  [--forward/--no-forward] [--backward/--no-backward] \
@@ -127,7 +127,7 @@ Hessian を含まず、`result.json.files` にも登録しません。
 | `--config FILE` | 明示 CLI 適用前に読み込むベース YAML | _None_ |
 | `--show-config/--no-show-config` | 解決済み YAML レイヤー/設定を表示して続行 | `False` |
 | `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
-| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
+| `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP バックエンド（任意で `dft`） | `uma` |
 | `--dry-run/--no-dry-run` | 実行せずに検証と実行計画のみ表示 | `False` |
 
 ## YAML 設定

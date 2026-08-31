@@ -16,7 +16,7 @@ Command form:
 
 ```bash
 pdb2reaction path-opt -i REACTANT.{pdb|cif|mmcif|xyz|gjf} PRODUCT.{pdb|cif|mmcif|xyz|gjf} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [-b/--backend uma|orb|mace|aimnet2] \
+ [-b/--backend uma|orb|mace|aimnet2|dft] \
  [--workers N] [--workers-per-node N] \
  [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--max-nodes N] [--max-cycles-gsm N] [--max-cycles-dmf N] \
  [--climb/--no-climb] [--dump/--no-dump] [--thresh PRESET] [--thresh-gsm PRESET] [--thresh-dmf TOL] \
@@ -113,7 +113,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--thresh-dmf TEXT` | Override the IPOPT dual-infeasibility tolerance of the DMF optimizer (`dmf.tol`): `tight` (0.04), `middle` (0.10), `loose` (0.20), or a positive float. Gaussian presets are rejected. | `tight` |
 | `--config FILE` | Base YAML configuration layer applied before explicit CLI values. | _None_ |
 | `--show-config/--no-show-config` | Print resolved configuration (including YAML layers) and continue. | `False` |
-| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
+| `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP backend, or optional DFT calculator. | `uma` |
 | `--dry-run/--no-dry-run` | Validate options and print the execution plan without running optimization. | `False` |
 | `--preopt/--no-preopt` | Pre-optimize each endpoint with the selected single-structure optimizer before alignment/MEP search (GSM/DMF). | `True` |
 | `--preopt-max-cycles INT` | Cap for endpoint preoptimization cycles. | `100000` |

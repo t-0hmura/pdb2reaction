@@ -117,7 +117,7 @@ The tables below cover the options that need explanation; the full flag list is 
 | `--config FILE` | Base YAML configuration applied before explicit CLI options. | _None_ |
 | `--show-config/--no-show-config` | Print resolved YAML layers/config and continue. | `False` |
 | `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
-| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
+| `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP backend, or optional DFT calculator. | `uma` |
 | `--dry-run/--no-dry-run` | Validate and print execution plan without running frequency analysis. | `False` |
 
 ## YAML configuration

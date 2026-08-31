@@ -8,7 +8,7 @@
 
 ```bash
 pdb2reaction opt -i INPUT.{pdb|cif|mmcif|xyz|gjf} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [-b/--backend uma|orb|mace|aimnet2] \
+ [-b/--backend uma|orb|mace|aimnet2|dft] \
  [--opt-mode grad|hess|lbfgs|rfo] [--flatten/--no-flatten] [--freeze-links/--no-freeze-links] \
  [--dist-freeze '[(i,j,target_Å),...]'] [--one-based|--zero-based] \
  [--bias-k K_eV_per_Å²] [--dump/--no-dump] [-o/--out-dir DIR] \
@@ -108,7 +108,7 @@ out_dir/
 | `--show-config/--no-show-config` | 実行前に解決済み YAML レイヤ情報を表示 | `False` |
 | `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 | `--dry-run/--no-dry-run` | 実行せずに設定検証と実行計画表示のみ行う | `False` |
-| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
+| `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP バックエンド（任意で `dft`） | `uma` |
 ## YAML 設定
 
 共有セクションは [YAML リファレンス](yaml-reference.md) を再利用し、変更が必要な値だけを調整します。`geom`、`calc`、`opt`、オプティマイザ固有の `lbfgs`/`rfo` ブロックは正規のキーとデフォルトを使用します。代表的な最小構成:

@@ -1028,10 +1028,6 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
         or payload.get("opt_mode")
         or "-"
     )
-    opt_mode_disp = payload.get("opt_mode") or "-"
-    lines.append(
-        f"Opt mode           : {opt_mode_disp}  (grad: lbfgs/dimer; hess: rfo/rsprfo)"
-    )
     ts_opt_mode = payload.get("ts_opt_mode") or legacy_post_mode
     endpoint_opt_mode = payload.get("endpoint_opt_mode") or legacy_post_mode
 

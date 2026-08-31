@@ -18,7 +18,7 @@ Command form:
 
 ```bash
 pdb2reaction path-search -i R.pdb [I.pdb ...] P.pdb [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1]
- [-b/--backend uma|orb|mace|aimnet2]
+ [-b/--backend uma|orb|mace|aimnet2|dft]
  [--workers N] [--workers-per-node N]
  [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET] [--thresh-gsm PRESET] [--thresh-dmf TOL]
  [--refine-mode {peak|minima}]
@@ -114,7 +114,7 @@ The table is grouped by purpose; within each group the most-used options come fi
 | `-l, --ligand-charge TEXT` | Either a scalar integer or a per-residue mapping that derives the total from PDB/mmCIF input topology. Bare XYZ needs `-q`; `--ref-pdb` is for final merging and does not add charge derivation here. A valid GJF can instead supply charge/spin in its header. | _None_ |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). | `.gjf` template value or `1` |
 | **Backend & compute** | | |
-| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
+| `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP backend, or optional DFT calculator. | `uma` |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism; `workers_per_node` is forwarded to the parallel predictor. `workers > 1` cannot be combined with an explicit analytical Hessian request. See {ref}`workers-analytical-error`. | `1`, `1` |
 | **Active-region freezing** | | |
 | `--freeze-links/--no-freeze-links` | When loading PDB/mmCIF active-site topology, freeze the parent atoms of cap hydrogens. See [extract](extract.md) for cap-hydrogen details. | `True` |

@@ -3122,6 +3122,8 @@ def calculator_provenance(calc_cfg: Mapping[str, Any]) -> Dict[str, Any]:
                 "memory_mb": settings.memory_mb,
                 "memory_source": settings.memory_source,
             },
+            "primary_method": "dft",
+            "primary_method_label": "DFT",
         }
     if backend == "custom":
         calc_file = calc_cfg.get("calc_file")
@@ -3160,6 +3162,8 @@ def calculator_provenance(calc_cfg: Mapping[str, Any]) -> Dict[str, Any]:
         "mlip_model_label": mlip_model_label(backend, model, task_name),
         "mlip_task": None if task_name is None else str(task_name),
         "mlip_precision": precision,
+        "primary_method": "mlip",
+        "primary_method_label": "MLIP",
     }
 
 

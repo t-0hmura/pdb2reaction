@@ -16,7 +16,7 @@ Command form:
 
 ```bash
 pdb2reaction scan2d -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [-b/--backend uma|orb|mace|aimnet2] \
+ [-b/--backend uma|orb|mace|aimnet2|dft] \
  [-s/--scan-lists scan2d.yaml | '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
@@ -149,7 +149,7 @@ The tables below cover the options that need explanation; the full flag list is 
 | `-o, --out-dir TEXT` | Output directory root for grids and plots. | `./result_scan2d/` |
 | `--thresh TEXT` | Convergence preset override (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `baker` |
 | `--config FILE` | Base YAML configuration file (applied first). | _None_ |
-| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
+| `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP backend, or optional DFT calculator. | `uma` |
 | `--preopt/--no-preopt` | Run an unbiased optimization before scanning. | `False` |
 | `--baseline {min,first}` | Shift kcal/mol energies so the global min or first grid point is zero. | `min` |
 | `--zmin FLOAT`, `--zmax FLOAT` | Manual limits for the contour/surface color scale (kcal/mol). | Autoscaled |

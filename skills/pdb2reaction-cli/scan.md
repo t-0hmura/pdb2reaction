@@ -14,7 +14,7 @@ pipeline is wanted; use standalone `scan` when the scan itself is the task.
 pdb2reaction scan -i input.pdb \
     -s '[(idx_a, idx_b, target_A), ...]' \
     [-l 'RES:Q,...'] [-q / -m] \
-    [-b uma|orb|mace|aimnet2] [-o ./result_scan/]
+    [-b uma|orb|mace|aimnet2|dft] [-o ./result_scan/]
 ```
 
 ## Key flags
@@ -24,7 +24,7 @@ pdb2reaction scan -i input.pdb \
 | `-i, --input` | path | required | Reactant `.pdb` / `.cif` / `.mmcif` / `.xyz` / `.gjf` |
 | `-s, --scan-lists` | str | required | Inline Python literal `'[(a,b,target),...]'`, or YAML/JSON spec path. **Pass multiple stages as space-separated literals after a single `-s`** — repeating `-s` is rejected. |
 | `-q` / `-l` / `-m` | — | — | Charge / spin |
-| `-b, --backend` | str | `uma` | MLIP backend |
+| `-b, --backend` | str | `uma` | MLIP backend or optional DFT calculator |
 | `-o, --out-dir` | path | `./result_scan/` | Output directory |
 | `--ref-pdb` | path | none | Residue context for XYZ/GJF inputs |
 | `--config` / `--dry-run` / `--help-advanced` | — | — | Standard (`scan` has no `--show-config`) |

@@ -13,7 +13,7 @@ the grid alone does not prove a concerted or stepwise mechanism.
 pdb2reaction scan2d -i input.pdb \
     -s '[(a1, b1, low_A, high_A), (a2, b2, low_B, high_B)]' \
     [-l 'RES:Q,...'] \
-    [-b uma|orb|mace|aimnet2] [-o ./result_scan2d/]
+    [-b uma|orb|mace|aimnet2|dft] [-o ./result_scan2d/]
 ```
 
 ## Key flags
@@ -23,7 +23,7 @@ pdb2reaction scan2d -i input.pdb \
 | `-i, --input` | path | required | Reactant `.pdb` / `.cif` / `.mmcif` / `.xyz` / `.gjf` |
 | `-s, --scan-lists` | str | required | Inline Python literal containing **two** 4-tuples `(i, j, low, high)` (one per axis), or a YAML/JSON spec file. |
 | `-q` / `-l` / `-m` | — | — | Charge / spin |
-| `-b, --backend` | str | `uma` | MLIP backend |
+| `-b, --backend` | str | `uma` | MLIP backend or optional DFT calculator |
 | `-o, --out-dir` | path | `./result_scan2d/` | Output directory |
 | `--ref-pdb` | path | none | Residue context for XYZ/GJF |
 | `--config` / `--dry-run` / `--help-advanced` | — | — | Standard |

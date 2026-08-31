@@ -4,7 +4,7 @@
 
 Evaluate one MLIP energy and force array, with an optional Hessian. Use
 this for backend/precision checks and stationary-point diagnostics without
-starting an optimizer. Use `dft` instead for a PySCF/GPU4PySCF single point.
+starting an optimizer. `-b dft` selects the optional PySCF/GPU4PySCF calculator.
 
 ## Synopsis
 
@@ -12,7 +12,7 @@ starting an optimizer. Use `dft` instead for a PySCF/GPU4PySCF single point.
 pdb2reaction sp -i geom.{pdb,cif,mmcif,xyz,gjf} \
     [-q 0 -m 1] [-l 'RES:Q,...'] \
     [--hess --hessian-calc-mode Analytical] \
-    [-b uma|orb|mace|aimnet2] [-o ./result_sp/]
+    [-b uma|orb|mace|aimnet2|dft] [-o ./result_sp/]
 ```
 
 ## Key flags
@@ -25,7 +25,7 @@ pdb2reaction sp -i geom.{pdb,cif,mmcif,xyz,gjf} \
 | `--hessian-calc-mode` | `FiniteDifference` | Finite differences are the default for every backend; an explicit `Analytical` request is supported by all four backends |
 | `--precision` | backend-dependent | Unset means UMA/AIMNet2 fp32 and ORB/MACE fp64; AIMNet2 rejects fp64 |
 | `--workers` / `--workers-per-node` | `1` / `1` | UMA predictor parallelism; other built-in backends filter these keys |
-| `-b, --backend` | `uma` | MLIP backend |
+| `-b, --backend` | `uma` | MLIP backend or optional DFT calculator |
 | `-o, --out-dir` | `./result_sp/` | Output directory |
 | `--out-json` | off | Write identical `result.json` and `summary.json` payloads |
 | `--show-config` / `--dry-run` | off | Print-and-continue / validate-and-exit |

@@ -16,7 +16,7 @@ pdb2reaction scan2d -i input.pdb -q 0 -s scan2d.yaml -o ./result_scan2d/
 
 ```bash
 pdb2reaction scan2d -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
- [-b/--backend uma|orb|mace|aimnet2] \
+ [-b/--backend uma|orb|mace|aimnet2|dft] \
  [-s/--scan-lists scan2d.yaml | '[(i,j,lowÅ,highÅ), (i,j,lowÅ,highÅ)]'] [options] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
@@ -112,7 +112,7 @@ out_dir/ (デフォルト:./result_scan2d/)
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_scan2d/` |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
 | `--config FILE` | ベース YAML 設定ファイル（最初に適用） | _None_ |
-| `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
+| `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP バックエンド（任意で `dft`） | `uma` |
 | `--preopt/--no-preopt` | スキャン前に無バイアス最適化を実行 | `False` |
 | `--baseline {min,first}` | kcal/mol の基準をグローバル最小値または最初の格子点に設定 | `min` |
 | `--zmin FLOAT`, `--zmax FLOAT` | カラースケールの下限/上限（kcal/mol） | 自動 |

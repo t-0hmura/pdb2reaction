@@ -159,7 +159,7 @@ See [Installation](installation.md) for prerequisites.
 | [`freq`](freq.md) | Vibrational frequency analysis & thermochemistry |
 | [`irc`](irc.md) | Intrinsic Reaction Coordinate calculation |
 | [`dft`](dft.md) | Single-point DFT calculations (GPU4PySCF / PySCF) |
-| [`sp`](sp.md) | Single-point MLIP energy + forces / Hessian |
+| [`sp`](sp.md) | Single-point calculator energy + forces / Hessian (MLIP or `-b dft`) |
 | [`trj2fig`](trj2fig.md) | Plot energy profiles from XYZ trajectories |
 | [`energy-diagram`](energy-diagram.md) | Draw an energy diagram from numeric values |
 | [`bond-summary`](bond-summary.md) | Detect and report covalent bond changes between consecutive structures |

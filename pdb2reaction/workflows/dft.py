@@ -99,6 +99,35 @@ def _def2_ecp_required(atoms, charge_by_symbol) -> bool:
     return False
 
 
+def _resolve_effective_ecp(
+    requested_ecp: Any,
+    configured_mol_ecp: Any,
+    basis: str,
+    atoms: Sequence[Any],
+    charge_by_symbol,
+) -> Any:
+    """Resolve explicit, detailed-PySCF, and def2 automatic ECP ownership."""
+
+    if (
+        requested_ecp is not None
+        and configured_mol_ecp
+        and str(requested_ecp) != str(configured_mol_ecp)
+    ):
+        raise click.BadParameter(
+            "dft.ecp conflicts with dft.pyscf.mol.ecp."
+        )
+    effective_ecp = requested_ecp
+    if effective_ecp is None and configured_mol_ecp:
+        effective_ecp = configured_mol_ecp
+    if (
+        effective_ecp is None
+        and basis.lower().startswith("def2")
+        and _def2_ecp_required(atoms, charge_by_symbol)
+    ):
+        effective_ecp = basis
+    return effective_ecp
+
+
 
 def _parse_func_basis(s: str) -> Tuple[str, str]:
     """
@@ -164,9 +193,12 @@ def _configure_scf_object(mf, dft_cfg: Dict[str, Any], xc: str, *, use_density_f
         if not isinstance(density_cfg, dict):
             raise click.BadParameter("dft.pyscf.density_fit must be a mapping or boolean.")
         if density_cfg.get("enabled", True):
-            mf = mf.density_fit(**{
+            density_kwargs = {
                 key: value for key, value in density_cfg.items() if key != "enabled"
-            })
+            }
+            if dft_cfg.get("auxbasis") is not None:
+                density_kwargs.setdefault("auxbasis", dft_cfg["auxbasis"])
+            mf = mf.density_fit(**density_kwargs)
             _apply_attributes(
                 mf.with_df, pyscf_cfg.get("with_df", {}), "pyscf.with_df"
             )
@@ -696,6 +728,7 @@ def cli(
                 func_basis_value = dft_cfg.get("func_basis")
             if func_basis_value:
                 cfg_func, cfg_basis = _parse_func_basis(func_basis_value)
+                dft_cfg["func_basis"] = str(func_basis_value)
                 dft_cfg["func"] = cfg_func
                 dft_cfg["basis"] = cfg_basis
 
@@ -725,20 +758,12 @@ def cli(
                     f"got {engine_name!r}."
                 )
             dft_cfg["engine"] = engine_name
-            from pdb2reaction.core.dft_settings import resolve_dft_settings
+            from pdb2reaction.core.dft_settings import (
+                resolve_dft_settings,
+                standalone_dft_settings_mapping,
+            )
 
-            _stateful_keys = {
-                "func_basis", "func", "functional", "basis", "engine",
-                "conv_tol", "max_cycle", "grid_level", "verbose",
-                "lowmem", "density_fit", "auxbasis", "solvent", "solvent_model",
-                "nprocs", "memory", "memory_mb",
-                "pyscf",
-            }
-            _settings_dft_cfg = {
-                key: value
-                for key, value in dft_cfg.items()
-                if key in _stateful_keys
-            }
+            _settings_dft_cfg = standalone_dft_settings_mapping(dft_cfg)
             _yaml_dft_cfg = (
                 merged_yaml_cfg.get("dft", {})
                 if isinstance(merged_yaml_cfg, dict)
@@ -780,6 +805,8 @@ def cli(
             dft_cfg["density_fit"] = resolved_settings.density_fit
             dft_cfg["auxbasis"] = resolved_settings.auxbasis
             dft_cfg["pyscf"] = resolved_settings.pyscf
+            dft_cfg["solvent"] = resolved_settings.solvent
+            dft_cfg["solvent_model"] = resolved_settings.solvent_model
             dft_cfg["nprocs"] = resolved_settings.nprocs
             dft_cfg["nprocs_source"] = resolved_settings.nprocs_source
             dft_cfg["memory_mb"] = resolved_settings.memory_mb
@@ -894,10 +921,14 @@ def cli(
             # PySCF does not infer ``ecp=`` from a def2 basis. Request the
             # matching def2 ECP explicitly; PySCF applies entries only to
             # elements covered by that ECP family (commonly Rb through Rn).
-            _ecp = dft_cfg.get("ecp", None)
-            if (_ecp is None and basis.lower().startswith("def2")
-                    and _def2_ecp_required(atoms_list, gto.charge)):
-                _ecp = basis
+            configured_mol_ecp = getattr(mol, "ecp", None)
+            _ecp = _resolve_effective_ecp(
+                dft_cfg.get("ecp"),
+                configured_mol_ecp,
+                basis,
+                atoms_list,
+                gto.charge,
+            )
             _build_kw: Dict[str, Any] = dict(
                 atom=atoms_list,
                 unit="Angstrom",
@@ -905,8 +936,9 @@ def cli(
                 spin=int(spin2s),
                 basis=basis,
             )
-            if _ecp:
+            if _ecp and not configured_mol_ecp:
                 _build_kw["ecp"] = _ecp
+            if _ecp:
                 click.echo(f"[dft] Using ECP: {_ecp}")
             mol.build(**_build_kw)
 
@@ -1124,6 +1156,8 @@ def cli(
                 "energy_kcal_per_mol": e_kcal,
                 "xc_functional": xc,
                 "basis_set": basis,
+                "effective_ecp": _ecp,
+                "dft_settings": resolved_settings.scientific_identity(),
                 "engine": engine_label,
                 "used_gpu": bool(using_gpu),
                 "used_lowmem": bool(using_lowmem),
