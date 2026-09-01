@@ -2687,6 +2687,15 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     )
     app["_results"](str(tmp_path))
     assert app["artifact_choice"].value == str(summary_log)
+    work_summary = tmp_path / "_work" / "path_opt" / "summary.log"
+    work_summary.parent.mkdir(parents=True, exist_ok=True)
+    work_summary.write_text("scratch summary\n", encoding="utf-8")
+    app["S"].update(
+        _last_files=[str(work_summary), str(summary), str(summary_log), str(image)],
+    )
+    app["_results"](str(tmp_path))
+    # The deliverable at the output root wins over scratch under _work/.
+    assert app["artifact_choice"].value == str(summary_log)
     calls.clear()
     app["_structure_preview"](str(primary))
     assert any(

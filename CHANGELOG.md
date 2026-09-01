@@ -10,9 +10,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 - Open the Colab example dropdown on the Aromatic Claisen example.
 - Explain the `all` modes, `-c`, and every built-in example inside the Colab GUI.
 - Link the CLI user guide and the UMA licence/token pages from the Colab notebook.
+- Recommend `gsm` or `dmf` by node count in the Colab `--mep-mode` help.
 
 ### Fixed
 - Route the first Colab `Load results` action through the native browser bridge.
+- Default the Colab generated-file preview to `summary.log` at the output root.
 
 ## [0.4.12] — 2026-08-29
 
