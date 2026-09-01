@@ -8,11 +8,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 - Open the Colab example dropdown on the Aromatic Claisen example.
-- Link the user guide from the Colab notebook header and point first-time users at the
-  built-in examples and the per-control info buttons.
-- Give each `all` mode its pipeline route and explain what `-c` selects.
-- Walk each built-in example through Input, Setup, Options, the pipeline it runs, what
-  every step does, and how to read the results.
+- Explain the `all` modes, `-c`, and every built-in example inside the Colab GUI.
+- Link the CLI user guide and the UMA licence/token pages from the Colab notebook.
 
 ### Fixed
 - Route the first Colab `Load results` action through the native browser bridge.
