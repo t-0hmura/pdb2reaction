@@ -6,6 +6,7 @@ from types import ModuleType, SimpleNamespace
 
 import numpy as np
 import pytest
+from ase import Atoms
 
 
 # The CPU-only CI environment intentionally omits the optional FAIR-Chem runtime.
@@ -33,7 +34,8 @@ if importlib.util.find_spec("fairchem") is None:
     )
 
 from pdb2reaction.backends.base import BackendError
-from pdb2reaction.backends.uma import UMACalculator, _positive_worker_count
+from pdb2reaction.backends import uma as uma_module
+from pdb2reaction.backends.uma import UMAcore, UMACalculator, _positive_worker_count
 
 
 def test_workers_gt_one_with_analytical_hessian_is_an_error():
@@ -44,6 +46,85 @@ def test_workers_gt_one_with_analytical_hessian_is_an_error():
 def test_workers_gt_one_with_finite_difference_is_allowed():
     calc = UMACalculator(workers=2, hessian_calc_mode="FiniteDifference")
     assert calc._core_kw["workers"] == 2
+
+
+def test_analytical_mode_requests_differentiable_inference_settings():
+    analytical = UMACalculator(hessian_calc_mode="Analytical")
+    finite_difference = UMACalculator(hessian_calc_mode="FiniteDifference")
+
+    assert analytical._core_kw["analytical_hessian"] is True
+    assert finite_difference._core_kw["analytical_hessian"] is False
+
+
+@pytest.mark.parametrize(
+    ("precision", "expected_dtype"),
+    [("fp32", "float32"), ("fp64", "float64")],
+)
+def test_analytical_mode_uses_noncompiled_precision_matched_settings(
+    monkeypatch, precision, expected_dtype
+):
+    captured = {}
+
+    class FakeSettings:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+    def fake_get_predict_unit(_model, **kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace()
+
+    monkeypatch.setattr(uma_module, "_UMAInferenceSettings", FakeSettings)
+    monkeypatch.setattr(
+        uma_module.pretrained_mlip,
+        "get_predict_unit",
+        fake_get_predict_unit,
+        raising=False,
+    )
+
+    UMAcore(
+        ["H"],
+        device="cpu",
+        precision=precision,
+        analytical_hessian=True,
+    )
+
+    settings = captured["inference_settings"]
+    assert settings.kwargs == {
+        "compile": False,
+        "base_precision_dtype": expected_dtype,
+    }
+
+
+def test_serial_uma_batch_stays_on_cpu_for_fairchem_lazy_initialization():
+    class FakeData:
+        dataset = None
+
+    class FakeAtomicData:
+        @staticmethod
+        def from_ase(*_args, **_kwargs):
+            return FakeData()
+
+    class FakeBatch:
+        def to(self, _device):
+            pytest.fail("pdb2reaction must leave FAIR-Chem input device transfer to FAIR-Chem")
+
+    core = object.__new__(UMAcore)
+    core.has_torch_model = False
+    core._AtomicData = FakeAtomicData
+    core._collater = lambda *_args, **_kwargs: FakeBatch()
+    core.parallel_predict = False
+    core.elem = ["H"]
+    core.charge = 0
+    core.spin = 1
+    core.task_name = "omol"
+    core.precision = "fp32"
+    core._max_neigh = None
+    core._radius = None
+    core._r_edges = False
+
+    batch = core._ase_to_batch(Atoms("H", positions=[[0.0, 0.0, 0.0]]))
+
+    assert isinstance(batch, FakeBatch)
 
 
 @pytest.mark.parametrize("value", [0, -1, 1.5, True])

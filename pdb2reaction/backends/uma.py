@@ -103,6 +103,7 @@ class UMAcore:
         radius: Optional[float] = None,
         r_edges: bool = False,
         precision: str = "fp32",
+        analytical_hessian: bool = False,
     ):
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -126,11 +127,20 @@ class UMAcore:
                 "UMA precision='fp64' requires fairchem-core's InferenceSettings; "
                 "upgrade fairchem-core (≥ 2.0) or pass precision='fp32'."
             )
-        uma_inference_settings = (
-            _UMAInferenceSettings(base_precision_dtype="float64")
-            if self.precision == "fp64" and _UMAInferenceSettings is not None
-            else None
-        )
+        uma_inference_settings = None
+        if _UMAInferenceSettings is not None and (
+            self.precision == "fp64" or analytical_hessian
+        ):
+            # FAIR-Chem 2.22's named default enables torch.compile. The
+            # compiled backward does not support the double backward used by
+            # pdb2reaction's analytical Hessian, so that route requests the
+            # public non-compiled settings object explicitly.
+            uma_inference_settings = _UMAInferenceSettings(
+                compile=False,
+                base_precision_dtype=(
+                    "float64" if self.precision == "fp64" else "float32"
+                )
+            )
 
         self._AtomicData = AtomicData
         self._collater = data_list_collater
@@ -220,8 +230,9 @@ class UMAcore:
         )
         data.dataset = self.task_name
         batch = self._collater([data], otf_graph=True)
-        if not self.parallel_predict:
-            batch = batch.to(self.device)
+        # FAIR-Chem owns the device transfer. Since 2.22 its first prediction
+        # prepares the still-CPU model from this batch before moving both to
+        # the execution device.
         return batch
 
     def compute(
@@ -261,7 +272,7 @@ class UMAcore:
                     return self.predict.predict(batch)["energy"].squeeze()
 
                 H = torch.autograd.functional.hessian(e_fn, batch.pos.view(-1), vectorize=False)
-                H = H.view(len(atoms), 3, len(atoms), 3).detach()
+                H = H.view(len(atoms), 3, len(atoms), 3).to(self.device).detach()
             finally:
                 self.predict.model.eval()
                 for p, flag in zip(self.predict.model.parameters(), p_flags):
@@ -357,6 +368,7 @@ class UMACalculator(MLIPCalculator):
             radius=radius,
             r_edges=r_edges,
             precision=precision,
+            analytical_hessian=(mode == "Analytical"),
         )
         self.out_hess_torch = out_hess_torch
         self.print_vram = bool(print_vram)

@@ -7,6 +7,8 @@ need the same frequency/IRC validation as every backend.
 
 ## Install
 
+Use Python 3.12 for the current `orb-models` 0.7 release.
+
 ```bash
 pip install 'pdb2reaction[orb]'         # pulls orb-models
 ```

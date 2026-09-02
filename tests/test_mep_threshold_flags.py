@@ -188,6 +188,36 @@ def test_all_show_config_reports_each_threshold_owner(tmp_path: Path) -> None:
     assert "thresh_dmf: middle" in result.output
 
 
+@pytest.mark.parametrize(
+    ("mode_args", "expected_path", "expected_post"),
+    [
+        ([], "grad", "hess"),
+        (["--opt-mode", "grad"], "grad", "grad"),
+        (["--opt-mode", "hess", "--opt-mode-post", "grad"], "hess", "grad"),
+    ],
+)
+def test_all_show_config_reports_effective_optimizer_modes(
+    tmp_path: Path,
+    mode_args: list[str],
+    expected_path: str,
+    expected_post: str,
+) -> None:
+    smoke = Path(__file__).resolve().parent / "smoke"
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "all", "-i", str(smoke / "r.pdb"), str(smoke / "p.pdb"),
+            "-q", "-1", "--show-config", "--dry-run",
+            "--out-dir", str(tmp_path / "all"), *mode_args,
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert f"path_opt_mode: {expected_path}" in result.output
+    assert f"post_opt_mode: {expected_post}" in result.output
+    assert f"opt_mode_post: {expected_post}" in result.output
+
+
 @pytest.mark.parametrize("command", ["path-opt", "path-search"])
 def test_explicit_gsm_param_overrides_yaml(tmp_path: Path, command: str) -> None:
     smoke = Path(__file__).resolve().parent / "smoke"

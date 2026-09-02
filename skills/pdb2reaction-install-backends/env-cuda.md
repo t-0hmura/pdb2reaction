@@ -3,18 +3,17 @@
 Prerequisite: driver version, CPU architecture, and CUDA source from
 `pdb2reaction-env-detect/SKILL.md`.
 
-## Step 1. Pick an official PyTorch 2.8 wheel
+## Step 1. Pick an official PyTorch 2.13 wheel
 
-`pdb2reaction` pins `torch~=2.8.0`. PyTorch's official 2.8.0 matrix
-publishes Linux/Windows wheels for `cu126`, `cu128`, `cu129`, and `cpu`.
-It does not publish a 2.8.0 wheel on `cu118`, `cu121`, or `cu124`.
+The current FAIR-Chem release selects PyTorch 2.13. PyTorch's official 2.13.0
+matrix publishes Linux/Windows wheels for `cu126`, `cu130`, `cu132`, and `cpu`.
 
 Pick the index supported by the site's driver **and the GPU architecture**:
 
 - use the cluster administrator's tested module/wheel combination when one is
   supplied;
 - `cu126` is the conservative starting point for pre-Blackwell hardware;
-- use `cu128` or `cu129` when the GPU architecture or a dependency explicitly
+- use `cu130` or `cu132` when the GPU architecture or a dependency explicitly
   requires it (for example, a wheel built for newer Blackwell devices);
 - use `cpu` only when no NVIDIA GPU is assigned.
 
@@ -68,7 +67,7 @@ conda install -c nvidia cuda-toolkit=<MAJOR.MINOR>   # e.g. 12.6
 ## Step 3. Install torch matching `<cu_index>`
 
 ```bash
-pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/<cu_index>
+pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/<cu_index>
 ```
 
 Verify:
@@ -123,7 +122,7 @@ Symptoms that you have this problem:
 ## Step 5. CPU-only fallback
 
 ```bash
-pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cpu
 ```
 
 `pdb2reaction` runs MLIP backends on CPU but is usually much slower; measure a

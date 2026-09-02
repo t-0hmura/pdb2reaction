@@ -41,6 +41,27 @@ def test_dft_gpu_dependencies_are_linux_only() -> None:
             assert marker.evaluate(env) is expected
 
 
+def test_runtime_metadata_allows_the_current_fairchem_stack() -> None:
+    text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert '"fairchem-core"' in text
+    assert '"torch"' in text
+    assert '"torch~=' not in text
+    assert '"numpy"' in text
+    assert '"numpy>=' not in text
+
+
+def test_no_deps_ci_jobs_install_the_current_fairchem_torch_minor() -> None:
+    install = (
+        "pip install torch==2.13.0 --index-url "
+        "https://download.pytorch.org/whl/cpu"
+    )
+    for name in ("test.yml", "docs_quality.yml", "markers.yml"):
+        text = (REPO_ROOT / ".github" / "workflows" / name).read_text(
+            encoding="utf-8"
+        )
+        assert install in text, name
+
+
 def test_mcp_environment_override_sample_is_posix_only() -> None:
     sample = json.loads(
         (REPO_ROOT / "examples" / "mcp_client_config.json").read_text(
@@ -70,7 +91,7 @@ def test_real_landing_pages_use_release_substitution() -> None:
 
 def test_hardcoded_landing_literal_is_rejected(tmp_path, monkeypatch) -> None:
     page = tmp_path / "index.md"
-    page.write_text("# Title\n\n*Version: v0.4.13*\n", encoding="utf-8")
+    page.write_text("# Title\n\n*Version: v0.4.14*\n", encoding="utf-8")
     monkeypatch.setattr(rel, "LANDING_PAGES", (page,))
     errors = rel.check_landing_pages()
     assert errors

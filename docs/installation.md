@@ -9,7 +9,7 @@ Refer to the upstream projects for additional details:
 
 ## Quick start
 
-This example assumes the default GSM MEP mode (`--mep-mode gsm`). For DMF (`--mep-mode dmf`), install cyipopt via conda first. PyTorch 2.8.0 publishes `cu126`, `cu128`, and `cu129` wheels; choose the site's tested index for its driver and GPU architecture.
+This example assumes the default GSM MEP mode (`--mep-mode gsm`). For DMF (`--mep-mode dmf`), install cyipopt via conda first. PyTorch 2.13.0 publishes `cu126`, `cu130`, and `cu132` wheels; choose the site's tested index for its driver and GPU architecture.
 
 ### Required
 
@@ -19,8 +19,8 @@ This example assumes the default GSM MEP mode (`--mep-mode gsm`). For DMF (`--me
 # 3) Install headless Chrome for Plotly static image export (PNG)
 #    Downloads a Chromium binary; requires internet access.
 
-TORCH_INDEX=cu126  # use cu128/cu129 when required by the GPU/site stack
-pip install 'torch==2.8.0' --index-url "https://download.pytorch.org/whl/${TORCH_INDEX}"
+TORCH_INDEX=cu130  # use cu126/cu132 when required by the GPU/site stack
+pip install 'torch==2.13.0' --index-url "https://download.pytorch.org/whl/${TORCH_INDEX}"
 pip install pdb2reaction
 plotly_get_chrome -y
 ```
@@ -43,7 +43,7 @@ You only need to do this once per machine / environment.
 
   ```bash
   # Create and activate a dedicated conda environment
-  conda create -n <your-env> python=3.11 -y
+  conda create -n <your-env> python=3.12 -y
   conda activate <your-env>
 
   # Install cyipopt (required for the DMF method in MEP search)
@@ -81,7 +81,7 @@ If you prefer to build the environment piece by piece:
 2. **Create and activate a conda environment**
 
     ```bash
-    conda create -n <your-env> python=3.11 -y
+    conda create -n <your-env> python=3.12 -y
     conda activate <your-env>
     ```
 
@@ -97,10 +97,10 @@ If you prefer to build the environment piece by piece:
     Conservative pre-Blackwell example:
 
     ```bash
-    pip install 'torch==2.8.0' --index-url https://download.pytorch.org/whl/cu126
+    pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu126
     ```
 
-    The official 2.8.0 matrix also provides `cu128`, `cu129`, and `cpu`.
+    The official 2.13.0 matrix also provides `cu130`, `cu132`, and `cpu`.
     Select by driver and GPU architecture, then verify with
     `torch.cuda.is_available()`; the `nvidia-smi` "CUDA Version" banner is not a
     local-toolkit version selector. See [PyTorch's version matrix](https://pytorch.org/get-started/previous-versions/).
@@ -129,7 +129,7 @@ If you prefer to build the environment piece by piece:
     pdb2reaction uses UMA by default. To use alternative backends, install the corresponding optional dependency:
 
     ```bash
-    # ORB backend
+    # ORB backend (current orb-models requires Python 3.12)
     pip install "pdb2reaction[orb]"
 
     # AIMNet2 backend
@@ -171,7 +171,7 @@ If you prefer to build the environment piece by piece:
 
 ## System requirements
 
-**GPU / CUDA / VRAM.** Use one of PyTorch 2.8.0's official CUDA wheels (`cu126`, `cu128`, or `cu129`) that supports both the driver and GPU architecture. Newer GPU architectures may require a newer wheel; a local toolkit with the same numeric version is not required for prebuilt wheels. Required VRAM depends on backend/model, atom count, Hessian mode, precision, and active degrees of freedom. Pilot a representative production stage and monitor peak allocation; the smoke suite is a correctness check, not a production-memory estimate.
+**GPU / CUDA / VRAM.** Use one of PyTorch 2.13.0's official CUDA wheels (`cu126`, `cu130`, or `cu132`) that supports both the driver and GPU architecture. Newer GPU architectures may require a newer wheel; a local toolkit with the same numeric version is not required for prebuilt wheels. Required VRAM depends on backend/model, atom count, Hessian mode, precision, and active degrees of freedom. Pilot a representative production stage and monitor peak allocation; the smoke suite is a correctness check, not a production-memory estimate.
 
 **RAM.** Size host memory from a representative run; dense Hessians, model loading, and concurrent worker/process stages can dominate.
 

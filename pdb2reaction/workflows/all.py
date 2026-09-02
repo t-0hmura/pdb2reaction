@@ -4848,8 +4848,10 @@ def cli(
                     if cli_param_overridden(ctx, "climb")
                     else None
                 ),
-                "opt_mode": str(opt_mode),
-                "opt_mode_post": (None if opt_mode_post is None else str(opt_mode_post)),
+                "opt_mode": str(opt_mode_norm),
+                "opt_mode_post": str(tsopt_opt_mode_default),
+                "path_opt_mode": str(opt_mode_norm),
+                "post_opt_mode": str(tsopt_opt_mode_default),
                 "thresh": thresh,
                 "thresh_gsm": thresh_gsm,
                 "thresh_dmf": thresh_dmf,

@@ -45,7 +45,7 @@ Protein structures can be supplied in **PDB** or **mmCIF** format, including mmC
 | Component | Requirement |
 |---|---|
 | OS / Python | Linux recommended. Python >= 3.11. |
-| GPU / CUDA / VRAM | CUDA-capable NVIDIA GPU recommended for production, with a compatible driver and official PyTorch 2.8 CUDA wheel (`cu126`, `cu128`, or `cu129`). Required VRAM is backend/model/system/workflow dependent; pilot the real calculation. |
+| GPU / CUDA / VRAM | CUDA-capable NVIDIA GPU recommended for production, with a compatible driver and official PyTorch 2.13 CUDA wheel (`cu126`, `cu130`, or `cu132`). Required VRAM is backend/model/system/workflow dependent; pilot the real calculation. |
 | RAM / Disk | Size for the selected environment, model cache, structures, trajectories, and DFT scratch; no atom-count-only minimum is reliable. |
 
 CPU-only execution works but is usually much slower; benchmark the selected backend/model. Full requirement and tuning details: [docs/installation.md](docs/installation.md).
@@ -53,8 +53,8 @@ CPU-only execution works but is usually much slower; benchmark the selected back
 ## Installation
 
 ```bash
-# 1. CUDA-enabled PyTorch (choose the official 2.8 wheel for your driver/GPU)
-pip install 'torch==2.8.0' --index-url https://download.pytorch.org/whl/cu126
+# 1. CUDA-enabled PyTorch (choose the official 2.13 wheel for your driver/GPU)
+pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
 
 # 2. pdb2reaction (editable from a local clone, or `pip install pdb2reaction`)
 pip install -e .

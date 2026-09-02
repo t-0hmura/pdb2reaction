@@ -1210,7 +1210,6 @@ def cli(
                 fig2d,
                 png2d,
                 scale=2,
-                engine="kaleido",
                 width=680,
                 height=600,
             )

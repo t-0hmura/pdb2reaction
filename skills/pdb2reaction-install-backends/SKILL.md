@@ -78,8 +78,8 @@ pdb2reaction sp -i model.xyz --calc-file my_calc.py -q 0 -m 1
 
 `fairchem-core` (UMA) and `mace-torch` pin **different `e3nn` versions**
 which cannot coexist. Solution: keep UMA in your default env (`<env_a>`)
-and put MACE in a second env (`<env_b>`). Other backends (Orb, AIMNet2,
-DFT, xTB) can sit in either.
+and put MACE in a second env (`<env_b>`). Current Orb uses the Python 3.12
+default environment; AIMNet2, DFT, and xTB can sit in either.
 
 `pdb2reaction` itself is the same code in both envs; only the calculator
 plugin set differs.
@@ -87,7 +87,8 @@ plugin set differs.
 ## Conda env templates
 
 Replace `<...>` with the values you discovered in `env-detect`. The
-templates assume `python=3.11`; `pdb2reaction` requires Python ≥ 3.11.
+The combined-backend template uses `python=3.12` for current ORB;
+`pdb2reaction` itself requires Python ≥ 3.11.
 
 `env_pdb2reaction.yml` (UMA / Orb / AIMNet2 / DFT / xTB):
 
@@ -95,12 +96,12 @@ templates assume `python=3.11`; `pdb2reaction` requires Python ≥ 3.11.
 name: <your_env>
 channels: [conda-forge, nvidia]
 dependencies:
-  - python=3.11
+  - python=3.12
   - xtb                                # if you need xtb.md features (binary; called via subprocess)
   - pip
   - pip:
       - --extra-index-url https://download.pytorch.org/whl/<cu_index>
-      - torch==2.8.0
+      - torch==2.13.0
       - pdb2reaction[orb,aimnet,dft]   # extras: see core.md / per-backend md
 ```
 
@@ -117,16 +118,16 @@ dependencies:
   - pip
   - pip:
       - --extra-index-url https://download.pytorch.org/whl/<cu_index>
-      - torch==2.8.0
+      - torch==2.13.0
       - pdb2reaction
 # After conda env create, run inside the env:
 #   pip uninstall -y fairchem-core      # remove UMA's e3nn pin
 #   pip install mace-torch              # pulls the e3nn version MACE needs
 ```
 
-`<cu_index>` is one of `cpu`, `cu126`, `cu128`, `cu129` — the indexes in
-PyTorch's official 2.8.0 install matrix, which is the version family this
-release pins. See `env-cuda.md`; do not infer the correct index only from the
+`<cu_index>` is one of `cpu`, `cu126`, `cu130`, `cu132` — the indexes in
+PyTorch's official 2.13.0 install matrix, which is the version family this
+release is tested with. See `env-cuda.md`; do not infer the correct index only from the
 "CUDA Version" banner printed by `nvidia-smi`.
 
 ## Verify the install
@@ -159,7 +160,7 @@ go back to `env-cuda.md`.
 | `RuntimeError: CUDA out of memory` during freq | Hessian evaluation too large for VRAM | switch to `--hessian-calc-mode FiniteDifference` (see `pdb2reaction-cli/freq.md`) or reduce the active region |
 
 ## See also
-`pyproject.toml` lists the canonical extras and version pins. To inspect
+`pyproject.toml` lists the canonical extras and required compatibility constraints. To inspect
 without opening the file:
 
 ```bash

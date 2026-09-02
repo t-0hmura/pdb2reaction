@@ -382,6 +382,22 @@ def test_trj2fig_json_preserves_same_named_outputs(tmp_path: Path) -> None:
     assert payload["files"] == {"same.csv": str(second)}
 
 
+def test_trj2fig_static_export_uses_current_plotly_api(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    def _capture(_figure, path, **kwargs):
+        captured["path"] = path
+        captured["kwargs"] = kwargs
+
+    monkeypatch.setattr(trj2fig, "write_plotly_image", _capture)
+    output = tmp_path / "profile.png"
+    trj2fig.save_outputs([output], object(), [0.0], [0.0], "kcal", True)
+
+    assert captured == {"path": output, "kwargs": {"scale": 2}}
+
+
 def test_energy_diagram_smoke(tmp_path: Path, monkeypatch) -> None:
     out_png = tmp_path / "energy_diagram.png"
 

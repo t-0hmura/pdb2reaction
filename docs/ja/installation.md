@@ -9,7 +9,7 @@
 
 ## クイックスタート
 
-以下はデフォルトの GSM による MEP 探索（`--mep-mode gsm`）を前提とした最小セットアップです。DMF（`--mep-mode dmf`）を使用する場合は、先に conda で cyipopt をインストールしてください。PyTorch 2.8.0 は `cu126`、`cu128`、`cu129` wheel を配布しているため、site で検証済みの driver・GPU architecture に合う index を選びます。
+以下はデフォルトの GSM による MEP 探索（`--mep-mode gsm`）を前提とした最小セットアップです。DMF（`--mep-mode dmf`）を使用する場合は、先に conda で cyipopt をインストールしてください。PyTorch 2.13.0 は `cu126`、`cu130`、`cu132` wheel を配布しているため、site で検証済みの driver・GPU architecture に合う index を選びます。
 
 ### 必須
 
@@ -19,8 +19,8 @@
 # 3) Plotly 静的画像 (PNG) エクスポート用のヘッドレス Chrome をインストール
 #    Chromium binaryをdownload（internet接続が必要）
 
-TORCH_INDEX=cu126  # GPU/site stack が必要とする場合は cu128/cu129
-pip install 'torch==2.8.0' --index-url "https://download.pytorch.org/whl/${TORCH_INDEX}"
+TORCH_INDEX=cu130  # GPU/site stack が必要とする場合は cu126/cu132
+pip install 'torch==2.13.0' --index-url "https://download.pytorch.org/whl/${TORCH_INDEX}"
 pip install pdb2reaction
 plotly_get_chrome -y
 ```
@@ -43,7 +43,7 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 
   ```bash
   # 専用のconda環境を作成してアクティブ化
-  conda create -n <your-env> python=3.11 -y
+  conda create -n <your-env> python=3.12 -y
   conda activate <your-env>
 
   # cyipoptをインストール（MEP 探索のDMF法に必要）
@@ -81,7 +81,7 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 2. **conda 環境を作成してアクティブ化**
 
     ```bash
-    conda create -n <your-env> python=3.11 -y
+    conda create -n <your-env> python=3.12 -y
     conda activate <your-env>
     ```
 
@@ -97,10 +97,10 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
     Blackwell より前の GPU に対する保守的な例:
 
     ```bash
-    pip install 'torch==2.8.0' --index-url https://download.pytorch.org/whl/cu126
+    pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu126
     ```
 
-    公式 2.8.0 matrix には `cu128`、`cu129`、`cpu` もあります。driver と
+    公式 2.13.0 matrix には `cu130`、`cu132`、`cpu` もあります。driver と
     GPU architecture で選び、`torch.cuda.is_available()` で検証します。
     `nvidia-smi` の "CUDA Version" 表示を local toolkit の選択値として扱わないでください。
 
@@ -128,7 +128,7 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
     pdb2reaction はデフォルトで UMA を使用します。他のバックエンドを使用する場合は、対応するオプション依存関係をインストールしてください:
 
     ```bash
-    # ORB バックエンド
+    # ORB バックエンド（現行 orb-models は Python 3.12 が必要）
     pip install "pdb2reaction[orb]"
 
     # AIMNet2 バックエンド
@@ -170,7 +170,7 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 
 ## システム要件
 
-**GPU / CUDA / VRAM:** PyTorch 2.8.0 の公式 CUDA wheel（`cu126`、`cu128`、`cu129`）から、driver と GPU architecture の両方に対応するものを選びます。新しい GPU architecture では新しい wheel が必要なことがありますが、prebuilt wheel と同じ番号の local toolkit は不要です。必要VRAMはbackend/model、原子数、Hessian mode、precision、active自由度に依存します。代表的なproduction stageをpilot実行してpeak allocationを測定してください。smoke suiteはcorrectness checkでありproduction memoryの見積りではありません。
+**GPU / CUDA / VRAM:** PyTorch 2.13.0 の公式 CUDA wheel（`cu126`、`cu130`、`cu132`）から、driver と GPU architecture の両方に対応するものを選びます。新しい GPU architecture では新しい wheel が必要なことがありますが、prebuilt wheel と同じ番号の local toolkit は不要です。必要VRAMはbackend/model、原子数、Hessian mode、precision、active自由度に依存します。代表的なproduction stageをpilot実行してpeak allocationを測定してください。smoke suiteはcorrectness checkでありproduction memoryの見積りではありません。
 
 **RAM:** 代表runで必要量を測定します。dense Hessian、model load、並行worker/process stageが支配的になり得ます。
 

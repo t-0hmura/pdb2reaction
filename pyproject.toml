@@ -40,10 +40,10 @@ dependencies = [
     # pdb2reaction core dependencies
     "fairchem-core",
     "pydmf>=1.2",  # >=1.2 ships dmf.torch for optional --mep-mode dmf / --dmf-backend gpu (the CLI default is gsm)
-    "torch~=2.8.0",
-    "numpy>=2.0,<2.5",
+    "torch",
+    "numpy",
     "biopython",
-    "ase>=3.26.0",
+    "ase",
     "pyyaml",
     "click",
     "plotly>=6.1.1",
@@ -65,11 +65,11 @@ dependencies = [
 
     # thermoanalysis dependencies (bundled)
     "pandas",
-    "pymsym>=0.3.5,<0.4",
+    "pymsym",
 ]
 
 [project.optional-dependencies]
-orb = ["orb-models"]
+orb = ["orb-models>=0.7.0"]
 aimnet = ["aimnet>=0.2.0"]
 # NOTE: MACE is intentionally NOT exposed as a `[mace]` extra — `mace-torch`
 # hard-pins `e3nn==0.4.4` while fairchem-core requires `e3nn>=0.5`, so the two
@@ -116,7 +116,7 @@ docs = [
     "sphinx-autobuild>=2024.0",
 ]
 mcp = [
-    "mcp[cli]>=1.0",
+    "mcp[cli]>=1.29,<2",
 ]
 
 [project.urls]

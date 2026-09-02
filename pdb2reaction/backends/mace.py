@@ -134,9 +134,19 @@ class MACECalculator(MLIPCalculator):
         try:
             from mace.calculators import mace_anicc, mace_mp, mace_off, mace_omol
         except Exception as exc:
+            from importlib.metadata import PackageNotFoundError, version
+
+            try:
+                installed_version = version("mace-torch")
+            except PackageNotFoundError:
+                raise BackendError(
+                    "Could not import mace.calculators because mace-torch is not "
+                    "installed. Install it in a separate environment with: "
+                    "pip install mace-torch"
+                ) from exc
             raise BackendError(
-                "Could not import mace.calculators. "
-                "Install with: pip install mace-torch (separate env required)"
+                f"Installed mace-torch {installed_version} failed to import "
+                f"mace.calculators: {type(exc).__name__}: {exc}"
             ) from exc
 
         mp_aliases = []

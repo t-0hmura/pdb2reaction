@@ -178,6 +178,29 @@ def test_all_summary_header_uses_entry_mode_and_absolute_directories(
     assert "Pipeline mode      : path-search" not in text
 
 
+def test_all_summary_separates_path_and_post_optimizer_modes(tmp_path):
+    dest = tmp_path / "summary.log"
+    write_summary_log(
+        dest,
+        {
+            "pipeline_mode": "path-opt",
+            "tsopt": True,
+            "opt_mode": "grad",
+            "path_opt_mode": "grad",
+            "opt_mode_post": "hess",
+            "post_opt_mode": "hess",
+        },
+    )
+
+    text = dest.read_text(encoding="utf-8")
+    assert "Opt mode (path)    : grad  (grad: lbfgs; hess: rfo)" in text
+    assert (
+        "Opt mode (post)    : hess  (grad: dimer/lbfgs; hess: rsprfo/rfo)"
+        in text
+    )
+    assert "Opt mode           :" not in text
+
+
 def test_write_summary_log_marks_non_successful_results(tmp_path):
     dest = tmp_path / "summary.log"
 

@@ -302,8 +302,8 @@ def _run_dmf_mep(
     except Exception as e:
         raise click.ClickException(
             "DMF mode (--mep-mode dmf) requires ase, cyipopt, and pydmf>=1.2 "
-            "(`pip install 'pydmf[torch]'` for the default GPU backend; the `cpu` "
-            "backend needs only `pip install pydmf`). "
+            "(install cyipopt from conda-forge for either backend; use "
+            "`pip install 'pydmf[torch]'` for the default GPU backend). "
             f"Import error: {e}"
         ) from e
 
