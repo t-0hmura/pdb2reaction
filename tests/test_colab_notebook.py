@@ -205,6 +205,9 @@ def test_colab_gui_audited_launch_and_feedback_regressions(monkeypatch, tmp_path
     assert "COMT is a catechol O-methyltransferase" in app["example_about"].value
     assert "In this <b>Endpoint mode</b> example" in app["example_about"].value
     assert "searches for the MEP connecting them" in app["example_about"].value
+    assert app["example_about"].value.index(
+        "In this <b>Endpoint mode</b>"
+    ) < app["example_about"].value.index("<br>COMT is")
     assert app["adv_refine"].value is False
 
     app["ex_choice"].value = "COMT O-methyltransferase - cluster model (Scan-lists mode)"
@@ -215,6 +218,9 @@ def test_colab_gui_audited_launch_and_feedback_regressions(monkeypatch, tmp_path
     assert app["S"]["scan_target"] == pytest.approx(1.5)
     assert "In this <b>Scan-lists mode</b> example" in app["example_about"].value
     assert "generates the second endpoint" in app["example_about"].value
+    assert app["example_about"].value.index(
+        "In this <b>Scan-lists mode</b>"
+    ) < app["example_about"].value.index("<br>COMT is")
     assert "only the reactant PDB structure" in app["example_about"].value
     assert "Scan-lists mode" in app["example_about"].value
     assert app["adv_refine"].value is False
