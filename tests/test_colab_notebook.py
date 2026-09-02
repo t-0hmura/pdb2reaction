@@ -192,6 +192,9 @@ def test_colab_gui_audited_launch_and_feedback_regressions(monkeypatch, tmp_path
     assert app["ex_choice"].layout.width == "560px"
     example_loads = []
     app["load_pdb"] = lambda paths, **kwargs: example_loads.append((paths, kwargs))
+    for key in ("claisen", "comt", "beza"):
+        assert "In this <b>Endpoint mode</b> example" in app["_EXAMPLE_ABOUT"][key]
+    assert "In this <b>Scan-lists mode</b> example" in app["_EXAMPLE_ABOUT"]["comt_scan"]
     app["ex_choice"].value = "COMT O-methyltransferase - cluster model (Endpoint mode)"
     app["_load_example"](None)
     assert "COMT O-methyltransferase" in app["input_msg"].value
@@ -199,8 +202,9 @@ def test_colab_gui_audited_launch_and_feedback_regressions(monkeypatch, tmp_path
     assert app["adv_radius"].value == pytest.approx(2.0)
     assert example_loads[-1][1]["center"] == ["CAT", "SAM", "MG"]
     assert example_loads[-1][1]["lcharge"] == {"CAT": -1, "SAM": 0, "MG": 2}
-    assert "single-step S<sub>N</sub>2 O-methylation" in app["example_about"].value
-    assert "Endpoint mode starts from supplied reactant and product structures" in app["example_about"].value
+    assert "COMT is a catechol O-methyltransferase" in app["example_about"].value
+    assert "In this <b>Endpoint mode</b> example" in app["example_about"].value
+    assert "searches for the MEP connecting them" in app["example_about"].value
     assert app["adv_refine"].value is False
 
     app["ex_choice"].value = "COMT O-methyltransferase - cluster model (Scan-lists mode)"
@@ -209,7 +213,7 @@ def test_colab_gui_audited_launch_and_feedback_regressions(monkeypatch, tmp_path
     assert example_loads[-1][1]["scan_preset"] == "[('SAM 216 CE','CAT 217 O2',1.50)]"
     assert app["prep_radius"].value == pytest.approx(2.0)
     assert app["S"]["scan_target"] == pytest.approx(1.5)
-    assert "Scan-lists mode starts from a reactant structure only" in app["example_about"].value
+    assert "In this <b>Scan-lists mode</b> example" in app["example_about"].value
     assert "generates the second endpoint" in app["example_about"].value
     assert "only the reactant PDB structure" in app["example_about"].value
     assert "Scan-lists mode" in app["example_about"].value
@@ -220,7 +224,7 @@ def test_colab_gui_audited_launch_and_feedback_regressions(monkeypatch, tmp_path
     assert "Loaded example:" in app["input_msg"].value
     assert "BezA methyltransferase" in app["input_msg"].value
     assert "proton abstraction from GPP by Glu186" in app["example_about"].value
-    assert "Endpoint mode starts from supplied reactant and product structures" in app["example_about"].value
+    assert "In this <b>Endpoint mode</b> example" in app["example_about"].value
     assert "can take a long time on a T4 GPU" in app["example_about"].value
     assert app["prep_radius"].value == pytest.approx(2.6)
     assert app["adv_radius"].value == pytest.approx(2.6)
@@ -1361,8 +1365,8 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "COMT O-methyltransferase - cluster model (Scan-lists mode)" in app
     assert "comt/1.R.pdb" in app
     assert "comt/3.P.pdb" in app
-    assert app.count("Endpoint mode starts from supplied reactant and product structures") == 3
-    assert app.count("Scan-lists mode starts from a reactant structure only") == 1
+    assert "<b>Reaction</b> —" not in app
+    assert "<b>Mode</b> —" not in app
     assert "Structures (.pdb/.cif/.xyz/.gjf)" in app
     assert "Structures, topology, or utility files" not in app
     assert "HCN -> HNC" not in app
