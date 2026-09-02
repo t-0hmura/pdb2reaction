@@ -189,11 +189,27 @@ def test_colab_gui_audited_launch_and_feedback_regressions(monkeypatch, tmp_path
     app["_example_file"] = lambda relpath: str(
         example_a if relpath == "1.R.pdb" else example_b
     )
-    app["load_pdb"] = lambda *_args, **_kwargs: None
+    example_loads = []
+    app["load_pdb"] = lambda paths, **kwargs: example_loads.append((paths, kwargs))
+    app["ex_choice"].value = "COMT O-methyltransferase - cluster MEP (R->P)"
+    app["_load_example"](None)
+    assert "COMT O-methyltransferase" in app["input_msg"].value
+    assert app["prep_radius"].value == pytest.approx(2.0)
+    assert app["adv_radius"].value == pytest.approx(2.0)
+    assert example_loads[-1][1]["center"] == ["CAT", "SAM", "MG"]
+    assert example_loads[-1][1]["lcharge"] == {"CAT": -1, "SAM": 0, "MG": 2}
+    assert "single-step S<sub>N</sub>2 O-methylation" in app["example_about"].value
+    assert app["adv_refine"].value is False
+
     app["ex_choice"].value = "BezA methyltransferase - cluster MEP (R->P)"
     app["_load_example"](None)
     assert "Loaded example:" in app["input_msg"].value
     assert "BezA methyltransferase" in app["input_msg"].value
+    assert "proton abstraction from GPP by Glu186" in app["example_about"].value
+    assert "can take a long time on a T4 GPU" in app["example_about"].value
+    assert app["prep_radius"].value == pytest.approx(2.6)
+    assert app["adv_radius"].value == pytest.approx(2.6)
+    assert app["adv_refine"].value is True
 
 
 def test_setup_command_fields_do_not_repaint_hidden_results_or_viewer(monkeypatch, tmp_path: Path) -> None:
@@ -1326,6 +1342,9 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "Aromatic Claisen rearrangement - small molecule" in app
     assert "aromatic_claisen/reactant.xyz" in app
     assert "aromatic_claisen/product.xyz" in app
+    assert "COMT O-methyltransferase - cluster MEP (R->P)" in app
+    assert "comt/1.R.pdb" in app
+    assert "comt/3.P.pdb" in app
     assert "Structures (.pdb/.cif/.xyz/.gjf)" in app
     assert "Structures, topology, or utility files" not in app
     assert "HCN -> HNC" not in app
@@ -6350,7 +6369,7 @@ def test_refine_path_is_an_optional_stage_and_beza_turns_it_on() -> None:
     # BezA runs through an intermediate, so its example ships with it enabled;
     # the single-step examples turn it back off.
     assert "adv_refine.value = True" in app
-    assert app.count("adv_refine.value = False") == 2
+    assert app.count("adv_refine.value = False") == 3
 
 
 def test_colab_setup_exposes_linked_nonnegative_radius_and_selected_resn() -> None:

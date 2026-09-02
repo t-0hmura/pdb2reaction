@@ -6,6 +6,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+- Add a compact COMT methyl-transfer example to the Colab notebook.
+
 ### Changed
 - Open the Colab example dropdown on the Aromatic Claisen example.
 - Explain the `all` modes, `-c`, and every built-in example inside the Colab GUI.
