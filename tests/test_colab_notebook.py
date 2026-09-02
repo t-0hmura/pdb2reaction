@@ -657,7 +657,7 @@ def test_colab_responsive_contract_covers_the_whole_four_step_app() -> None:
 def test_colab_setup_is_pinned_to_matching_release_and_one_backend() -> None:
     setup = _notebook()["cells"][1]["source"]
 
-    assert 'pdb2reaction_version = "v0.4.12"' in setup
+    assert 'pdb2reaction_version = "v0.4.13"' in setup
     assert "first run takes several minutes" in setup
     # The release notebook installs the pinned wheel from PyPI, the same way a
     # normal user does, so the version guard compares what pip actually resolved
@@ -752,7 +752,7 @@ def test_colab_setup_installs_missing_cyipopt(monkeypatch) -> None:
     monkeypatch.setattr(
         importlib.metadata,
         "version",
-        lambda name: "0.4.12" if name == "pdb2reaction" else "test",
+        lambda name: "0.4.13" if name == "pdb2reaction" else "test",
     )
     monkeypatch.setattr(
         os.path,
@@ -822,7 +822,7 @@ def test_colab_setup_dft_branch_installs_extra_and_checks_gpu(monkeypatch, capsy
     versions = {
         "pyscf": "2.11.0",
         "gpu4pyscf-cuda12x": "1.5.2",
-        "pdb2reaction": "0.4.12",
+        "pdb2reaction": "0.4.13",
     }
     monkeypatch.setattr(subprocess, "run", fake_run)
     monkeypatch.setattr(subprocess, "Popen", _FakePopen)
@@ -835,8 +835,8 @@ def test_colab_setup_dft_branch_installs_extra_and_checks_gpu(monkeypatch, capsy
     installs = [argv for argv in calls if "install" in argv]
     # One pinned install carries the extra, so the DFT branch differs from the
     # plain branch only by the `[dft]` marker on the same requested version.
-    assert any("pdb2reaction[dft]==0.4.12" in argv for argv in installs)
-    assert not any("pdb2reaction==0.4.12" in argv for argv in installs)
+    assert any("pdb2reaction[dft]==0.4.13" in argv for argv in installs)
+    assert not any("pdb2reaction==0.4.13" in argv for argv in installs)
     assert popen_calls == []          # no streamed pip log, only the announcement
     logged = capsys.readouterr().out
     assert "install_dft is ticked" in logged
@@ -893,7 +893,7 @@ def test_colab_setup_operates_orb_and_uma_branches(
     monkeypatch.setattr(
         importlib.metadata,
         "version",
-        lambda name: "0.4.12" if name == "pdb2reaction" else "test",
+        lambda name: "0.4.13" if name == "pdb2reaction" else "test",
     )
     monkeypatch.delenv("HF_TOKEN", raising=False)
     if use_token:
@@ -938,7 +938,7 @@ def test_colab_setup_handles_cancelled_uma_sign_in(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
         importlib.metadata,
         "version",
-        lambda name: "0.4.12" if name == "pdb2reaction" else "test",
+        lambda name: "0.4.13" if name == "pdb2reaction" else "test",
     )
     monkeypatch.delenv("HF_TOKEN", raising=False)
 
@@ -961,25 +961,25 @@ def test_colab_setup_explains_unavailable_release(monkeypatch) -> None:
 
     def fake_run(argv, **_kwargs):
         command = [str(value) for value in argv]
-        failed = any(value == "pdb2reaction==0.4.12" for value in command)
+        failed = any(value == "pdb2reaction==0.4.13" for value in command)
         return types.SimpleNamespace(stdout="GPU 0", stderr="", returncode=1 if failed else 0)
 
     monkeypatch.setattr(subprocess, "run", fake_run)
     monkeypatch.setattr(importlib.util, "find_spec", lambda _name: object())
-    monkeypatch.setattr(importlib.metadata, "version", lambda _name: "0.4.12")
+    monkeypatch.setattr(importlib.metadata, "version", lambda _name: "0.4.13")
 
     with pytest.raises(RuntimeError) as error:
         exec(compile(setup, str(NOTEBOOK), "exec"), {})
 
     message = str(error.value)
-    assert "Could not install pdb2reaction==0.4.12 from PyPI" in message
-    assert "version v0.4.12 may not be published" in message
+    assert "Could not install pdb2reaction==0.4.13 from PyPI" in message
+    assert "version v0.4.13 may not be published" in message
     assert "pdb2reaction-src.zip pair, then enter debug" in message
 
 
 def test_colab_setup_explains_missing_debug_zip(monkeypatch, tmp_path) -> None:
     setup = _notebook()["cells"][1]["source"].replace(
-        'pdb2reaction_version = "v0.4.12"', 'pdb2reaction_version = "debug"', 1,
+        'pdb2reaction_version = "v0.4.13"', 'pdb2reaction_version = "debug"', 1,
     ).replace("install_dft = True", "install_dft = False", 1)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(
@@ -996,7 +996,7 @@ def test_colab_setup_explains_missing_debug_zip(monkeypatch, tmp_path) -> None:
     message = str(error.value)
     assert "Debug mode needs the adjacent source ZIP" in message
     assert "pdb2reaction-src.zip" in message
-    assert "enter v0.4.12 for a published release install" in message
+    assert "enter v0.4.13 for a published release install" in message
 
 
 def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
@@ -4651,7 +4651,7 @@ def test_colab_uma_login_accepts_a_colab_secret(monkeypatch) -> None:
     monkeypatch.setattr(importlib.util, "find_spec", lambda _name: object())
     monkeypatch.setattr(
         importlib.metadata, "version",
-        lambda name: "0.4.12" if name == "pdb2reaction" else "test",
+        lambda name: "0.4.13" if name == "pdb2reaction" else "test",
     )
     monkeypatch.delenv("HF_TOKEN", raising=False)
 

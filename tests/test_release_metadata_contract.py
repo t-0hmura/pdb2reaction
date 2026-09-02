@@ -70,7 +70,7 @@ def test_real_landing_pages_use_release_substitution() -> None:
 
 def test_hardcoded_landing_literal_is_rejected(tmp_path, monkeypatch) -> None:
     page = tmp_path / "index.md"
-    page.write_text("# Title\n\n*Version: v0.4.12*\n", encoding="utf-8")
+    page.write_text("# Title\n\n*Version: v0.4.13*\n", encoding="utf-8")
     monkeypatch.setattr(rel, "LANDING_PAGES", (page,))
     errors = rel.check_landing_pages()
     assert errors

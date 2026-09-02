@@ -11,7 +11,7 @@ authors:
     orcid: "https://orcid.org/0009-0008-1215-0168"
 license: GPL-3.0-only
 repository-code: "https://github.com/t-0hmura/pdb2reaction"
-version: "0.4.12"
+version: "0.4.13"
 preferred-citation:
   type: article
   title: "pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials"

@@ -93,7 +93,7 @@
   title        = {pdb2reaction},
   year         = {2026},
   month        = {7},
-  version      = {0.4.12},
+  version      = {0.4.13},
   url          = {https://github.com/t-0hmura/pdb2reaction},
   license      = {GPL-3.0},
   doi          = {10.5281/zenodo.19197865}
