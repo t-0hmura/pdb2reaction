@@ -7,7 +7,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
-- Add a compact COMT methyl-transfer example to the Colab notebook.
+- Add compact COMT methyl-transfer examples for the Colab Endpoint and
+  Scan-lists modes.
 
 ### Changed
 - Open the Colab example dropdown on the Aromatic Claisen example.

@@ -187,11 +187,12 @@ def test_colab_gui_audited_launch_and_feedback_regressions(monkeypatch, tmp_path
     example_a.write_text("END\n", encoding="utf-8")
     example_b.write_text("END\n", encoding="utf-8")
     app["_example_file"] = lambda relpath: str(
-        example_a if relpath == "1.R.pdb" else example_b
+        example_a if relpath.endswith("1.R.pdb") else example_b
     )
+    assert app["ex_choice"].layout.width == "560px"
     example_loads = []
     app["load_pdb"] = lambda paths, **kwargs: example_loads.append((paths, kwargs))
-    app["ex_choice"].value = "COMT O-methyltransferase - cluster MEP (R->P)"
+    app["ex_choice"].value = "COMT O-methyltransferase - cluster model (Endpoint mode)"
     app["_load_example"](None)
     assert "COMT O-methyltransferase" in app["input_msg"].value
     assert app["prep_radius"].value == pytest.approx(2.0)
@@ -201,7 +202,17 @@ def test_colab_gui_audited_launch_and_feedback_regressions(monkeypatch, tmp_path
     assert "single-step S<sub>N</sub>2 O-methylation" in app["example_about"].value
     assert app["adv_refine"].value is False
 
-    app["ex_choice"].value = "BezA methyltransferase - cluster MEP (R->P)"
+    app["ex_choice"].value = "COMT O-methyltransferase - cluster model (Scan-lists mode)"
+    app["_load_example"](None)
+    assert len(example_loads[-1][0]) == 1
+    assert example_loads[-1][1]["scan_preset"] == "[('SAM 216 CE','CAT 217 O2',1.50)]"
+    assert app["prep_radius"].value == pytest.approx(2.0)
+    assert app["S"]["scan_target"] == pytest.approx(1.5)
+    assert "only the reactant PDB structure" in app["example_about"].value
+    assert "Scan-lists mode" in app["example_about"].value
+    assert app["adv_refine"].value is False
+
+    app["ex_choice"].value = "BezA methyltransferase - cluster model (Endpoint mode)"
     app["_load_example"](None)
     assert "Loaded example:" in app["input_msg"].value
     assert "BezA methyltransferase" in app["input_msg"].value
@@ -1151,8 +1162,8 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "nglview" not in app
     # "all workflow" mode and the depth switches only apply to `all`.
     assert "all_mode_box = all_mode" in app
-    assert "options=[('MEP', 'mep'), ('Scan', 'scan'), ('TS-only', 'tsonly')]" in app
-    assert "style={'button_width': '74px', 'description_width': '0px'}" in app
+    assert "options=[('Endpoint mode', 'mep'), ('Scan-lists mode', 'scan'), ('TS-only mode', 'tsonly')]" in app
+    assert "style={'button_width': '118px', 'description_width': '0px'}" in app
     assert "depth_label = W.HTML('<b>Optional stages</b>')" in app
     assert "depth_box = W.VBox([depth_label, W.HBox([" in app
     assert "_flag_row(w_ts" in app and "_flag_row(w_th" in app
@@ -1342,7 +1353,8 @@ def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:
     assert "Aromatic Claisen rearrangement - small molecule" in app
     assert "aromatic_claisen/reactant.xyz" in app
     assert "aromatic_claisen/product.xyz" in app
-    assert "COMT O-methyltransferase - cluster MEP (R->P)" in app
+    assert "COMT O-methyltransferase - cluster model (Endpoint mode)" in app
+    assert "COMT O-methyltransferase - cluster model (Scan-lists mode)" in app
     assert "comt/1.R.pdb" in app
     assert "comt/3.P.pdb" in app
     assert "Structures (.pdb/.cif/.xyz/.gjf)" in app
@@ -6369,7 +6381,7 @@ def test_refine_path_is_an_optional_stage_and_beza_turns_it_on() -> None:
     # BezA runs through an intermediate, so its example ships with it enabled;
     # the single-step examples turn it back off.
     assert "adv_refine.value = True" in app
-    assert app.count("adv_refine.value = False") == 3
+    assert app.count("adv_refine.value = False") == 4
 
 
 def test_colab_setup_exposes_linked_nonnegative_radius_and_selected_resn() -> None:
