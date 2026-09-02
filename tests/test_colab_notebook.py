@@ -225,7 +225,7 @@ def test_colab_gui_audited_launch_and_feedback_regressions(monkeypatch, tmp_path
     assert "Scan-lists mode" in app["example_about"].value
     assert app["adv_refine"].value is False
 
-    app["ex_choice"].value = "BezA methyltransferase - cluster model (Endpoint mode)"
+    app["ex_choice"].value = "BezA methyltransferase - cluster model (Endpoint mode + multi-step detection)"
     app["_load_example"](None)
     assert "Loaded example:" in app["input_msg"].value
     assert "BezA methyltransferase" in app["input_msg"].value
