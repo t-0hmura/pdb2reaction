@@ -151,8 +151,10 @@ Options:
                                   adjacent pair and concatenate the segments
                                   (default; no path_search). Use --refine-path
                                   to run recursive path_search on the full
-                                  ordered series for automatic multistep
-                                  discovery.  [default: False]
+                                  ordered series: it discovers multistep
+                                  mechanisms and also refines a single-step MEP,
+                                  which can improve a poor HEI or TS estimate.
+                                  [default: False]
   --write-ref-merge BOOLEAN       Write mep_w_ref/hei_w_ref coordinate
                                   composites for inspection in recursive
                                   --refine-path mode. Requires -c/--center and

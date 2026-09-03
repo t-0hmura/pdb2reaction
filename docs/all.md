@@ -235,7 +235,7 @@ and `tsopt` subcommands keep their own `--max-cycles`.
 | `--thresh-gsm TEXT` | Convergence preset for the GSM string optimizer of the MEP stage (same presets as `--thresh`). | `gau_loose` |
 | `--thresh-dmf TEXT` | IPOPT dual-infeasibility tolerance of the DMF MEP stage: `tight` (0.04), `middle` (0.10), `loose` (0.20), or a positive float. Not a Gaussian preset. | `tight` |
 | `--preopt / --no-preopt` | Pre-optimize active-site model endpoints before MEP search. Standalone `scan` / `scan2d` / `scan3d` default `--preopt` to `False`. | `True` |
-| `--refine-path / --no-refine-path` | Enable recursive `path-search` with automatic bond-change segmentation / use the default single-pass `path-opt` per adjacent pair. | disabled |
+| `--refine-path / --no-refine-path` | Enable recursive `path-search` with automatic bond-change segmentation / use the default single-pass `path-opt` per adjacent pair. Recursive refinement also applies to a single-step MEP, where it can improve a poor HEI or TS estimate. | disabled |
 | `--write-ref-merge` | Write `mep_w_ref*` / `hei_w_ref*` coordinate composites for inspection. Requires `--refine-path`, `-c/--center`, and PDB/mmCIF input. | disabled |
 
 ### MLIP calculator

@@ -264,7 +264,7 @@ raw PDB CCD との名前衝突は自動判別しないため、`--modified-resid
 | `--thresh-gsm TEXT` | MEP 段の GSM ストリング最適化の収束プリセット（`--thresh` と同じプリセット群） | `gau_loose` |
 | `--thresh-dmf TEXT` | DMF MEP 段の IPOPT dual-infeasibility 許容値。`tight`(0.04)、`middle`(0.10)、`loose`(0.20) または正の float。Gaussian プリセットではない | `tight` |
 | `--preopt/--no-preopt` | MEP 前に活性部位モデル端点を事前最適化。単体の `scan`、`scan2d`、`scan3d` では `--preopt` のデフォルトは `False`（`--preopt` を渡すと有効化） | `True` |
-| `--refine-path / --no-refine-path` | 再帰的 `path-search` を有効化 / デフォルトの単一パス `path-opt` を使用 | 無効 |
+| `--refine-path / --no-refine-path` | 再帰的 `path-search` を有効化 / デフォルトの単一パス `path-opt` を使用。再帰的 refine は single-step MEP にも適用でき、poor な HEI や TS 推定を改善できる | 無効 |
 | `--write-ref-merge` | 確認用の `mep_w_ref*` / `hei_w_ref*` 座標compositeを生成。`--refine-path`、`-c/--center`、PDB/mmCIF入力が必要 | 無効 |
 
 ### MLIP 計算機オプション

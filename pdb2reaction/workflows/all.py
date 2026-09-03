@@ -3938,7 +3938,8 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     help=(
         "Run a single-pass path-opt GSM between each adjacent pair and concatenate the "
         "segments (default; no path_search). Use --refine-path to run recursive "
-        "path_search on the full ordered series for automatic multistep discovery."
+        "path_search on the full ordered series: it discovers multistep mechanisms and "
+        "also refines a single-step MEP, which can improve a poor HEI or TS estimate."
     ),
 )
 @click.option(
