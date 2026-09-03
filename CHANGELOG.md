@@ -27,6 +27,9 @@ _No changes yet._
 - Restore static image export with current Plotly releases.
 - Report TS/IRC-endpoint optimizer modes and requested/effective TS optimizer JSON separately.
 - Report IRC directions as stopped/failed/disabled and base composite acceptance on optimized endpoints.
+- Show the formatted result warning, including its recovery guidance such as
+  `--flatten` for a TS with more than one imaginary mode, in the Colab alert
+  instead of the raw status code.
 
 ## [0.4.13] — 2026-09-02
 
