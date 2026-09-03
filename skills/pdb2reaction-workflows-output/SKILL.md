@@ -199,10 +199,11 @@ root exists, but that continuation is not first-order certification. Numerical
 non-convergence, zero modes, failed/skipped PHVA, or no valid negative root stops
 `all` after retaining TS artifacts. Then require standalone freq `result.json`
 `n_imaginary == 1` before trusting the barrier → irc
-`result.json` `status == "completed"` **plus** both enabled directions'
-`*_converged` / `*_energy_increased` fields and frame counts are acceptable;
-then confirm the first/last endpoints connect the intended R and P (bond
-changes match this step). `completed` alone only means the runner returned.
+`result.json` `scientific_status == "success"` **plus** each enabled direction's
+`*_status == "stopped"`, valid downhill-departure field, and nontrivial frame
+count; then optimize and confirm the first/last endpoints connect the intended
+R and P (bond changes match this step). `*_endpoint_stationary` and its legacy
+`*_converged` alias are diagnostics; `completed` alone only means the runner returned.
 A TS that fails any gate is not validated as this elementary step.
 
 **Stage 3 — optimize and identify the raw IRC ends**

@@ -53,7 +53,7 @@ cross-command provenance contract.
 
 ### Execution and scientific truth
 
-Multi-stage and scan producers add the fields below when they can evaluate constituent work. These fields are additive and producer-dependent; the command-specific `status` remains for compatibility. Consumers should use `scientific_status` and the leaf outcomes when deciding whether a result is usable. Missing or ambiguous convergence is fail-closed and cannot promote a leaf to usable.
+Multi-stage and scan producers add the fields below when they can evaluate constituent work. These fields are additive and producer-dependent; the command-specific `status` remains for compatibility. Consumers should use `scientific_status` and the leaf outcomes when deciding whether a result is usable. Missing required acceptance signals are fail-closed. IRC endpoint stationarity is diagnostic rather than an acceptance signal; IRC usability is reported separately from propagation validity.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -184,6 +184,8 @@ All fields from `opt`, plus:
 | `n_imaginary_modes` | int\|null | Number of imaginary frequencies; `null` if PHVA was not run |
 | `imaginary_frequencies_cm` | float[]\|null | Imaginary frequencies (cm⁻¹, negative); `null` when PHVA was not run |
 | `opt_mode` | string | `"rsprfo"` (default), `"rsirfo"`, `"trim"`, or `"dimer"` |
+| `opt_mode_requested` | string | Requested CLI preset (`grad`, `hess`, or an explicit algorithm) |
+| `optimizer` | string | Effective optimizer algorithm used by the run |
 | `reference_mode_file` | string\|null | Advanced path-mode file supplied through `--ref-mode`; normally generated and passed by `all` |
 | `safeguards` | object | Hessian-TS diagnostics, including exact saddle checks, final target-mode identity/overlap, stop reason, and any explicitly enabled mode-loss/recovery activity. These recovery paths are inactive by default. |
 | `rigid_projection` | object | Rigid-mode and exact-Hessian provenance; see [projection provenance](#rigid-projection-provenance) |
@@ -259,8 +261,12 @@ per-cycle force/step convergence details and the `safeguards` object.
 | `energy_last_hartree` | float | Energy of the last stitched-path endpoint; standalone IRC does not assign chemical identity |
 | `endpoint_energy_orientation` | string | `"finished_first_to_finished_last"` |
 | `energy_reactant_hartree` / `energy_product_hartree` | float | Legacy aliases for first / last, respectively; do not infer chemical R/P identity from these names |
-| `forward_converged` | bool \| null | Forward IRC converged? `null` when the integrator did not expose the flag |
-| `backward_converged` | bool \| null | Backward IRC converged? `null` when the integrator did not expose the flag |
+| `forward_requested` / `backward_requested` | bool | Whether each direction was requested |
+| `forward_status` / `backward_status` | string | `stopped`, `failed`, or `disabled`; use these for directional propagation status |
+| `forward_endpoint_stationary` / `backward_endpoint_stationary` | bool \| null | Whether the raw IRC endpoint met the stationary-point threshold; diagnostic only |
+| `forward_converged` / `backward_converged` | bool \| null | Compatibility aliases for `*_endpoint_stationary`; not the IRC usability gate |
+| `forward_downhill_departure_valid` / `backward_downhill_departure_valid` | bool \| null | Whether the branch established a downhill departure from the TS |
+| `forward_integration_stop_reason` / `backward_integration_stop_reason` | string \| null | Non-empty only for a numerical propagation failure |
 | `forward_energy_increased` | bool \| null | Final forward step exceeded `irc.energy_increase_thresh` (default `0` Hartree: any rise) |
 | `backward_energy_increased` | bool \| null | Final backward step exceeded `irc.energy_increase_thresh` (default `0` Hartree: any rise) |
 | `backend` | string | MLIP backend |
@@ -284,6 +290,8 @@ per-cycle force/step convergence details and the `safeguards` object.
 | Field | Type | Description |
 |-------|------|-------------|
 | `status` | string | `"completed"` |
+| `scan_opt_mode` | string | Optimizer preset used for the constrained relaxations |
+| `scan_optimizer` | string | Effective optimizer identity (`lbfgs` or `rfo`) |
 | `charge` | int | System charge |
 | `spin` | int | Spin multiplicity |
 | `backend` | string | MLIP backend |
@@ -478,6 +486,7 @@ The `all` and `path-search` commands write `summary.json` with a richer structur
 | `execution_status` / `scientific_status` | string / string | Execution completeness and scientific usability; evaluate these separately from legacy `status`. |
 | `scientific_status_reasons` | string[] | Reasons for incomplete or unusable science; omitted on clean success. |
 | `expected_item_ids` / `observed_item_ids` | string[] | Expected and observed aggregate leaves. |
+| `config` | object | Effective settings. `mep_mode` identifies GSM/DMF; `ts_opt_mode` and `endpoint_opt_mode` identify the configured post-processing presets. Generic `opt_mode*` keys retain the resolved CLI inputs. `path_opt_mode` is the single-structure optimizer used for endpoint preoptimization (see `preopt`), not the MEP path algorithm. |
 | `n_segments` | int | Segment count |
 | `segments` | object[] | Per-segment `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` (list of `{title: [entries]}` dicts produced by `_bond_changes_block`; bridge segments emit `""`). |
 | `energy_diagrams` | object[] | Energy profiles with labels and kcal/mol values |
@@ -499,6 +508,7 @@ The `all` command additionally includes:
 | `overall_reaction_energy_kcal` | float | Overall reaction energy |
 | `overall_reaction_energy_method` | string | Method of the overall reaction energy (`MEP`, `MLIP`, `MLIP_Gibbs`, `DFT`, or `DFT//MLIP_Gibbs`) |
 | `post_segments` | list | Per-segment TS/IRC/freq/DFT results |
+| `post_segments[].irc` / `.endpoint_assignment` / `.endpoint_opt` | object | Raw propagation, pre-optimization orientation, and final optimized-endpoint acceptance, respectively. Normal raw stopping is diagnostic; endpoint convergence and optimized connectivity govern MEP-mode acceptance. |
 | `post_segments[].thermo_symmetry` | object | Child-reported point-group and rotational-symmetry provenance by state. Only R/TS/P states with valid symmetry-number provenance are included; missing states are omitted, and the field is absent only when no state has valid provenance. |
 | `current_output_paths` | string[] | Sorted paths relative to `--out-dir`, limited to artifacts claimed by the current invocation. |
 | `key_output_files` | object | Current-run output index: root filename → description; each `seg_NN` entry is `{description, files}` with paths relative to that segment directory. |

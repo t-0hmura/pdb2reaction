@@ -388,9 +388,10 @@ def test_build_pipeline_summary_payload_shape() -> None:
             do_thermo=False,
             do_dft=True,
             dft_func_basis_use="wb97m-v/def2-tzvpd",
-            opt_mode="GRAD",
-            opt_mode_post="HESS",
+            opt_mode="HESS",
+            opt_mode_post="GRAD",
             path_opt_mode="GRAD",
+            preopt=True,
             post_opt_mode="HESS",
             ts_opt_mode="HESS",
             endpoint_opt_mode="GRAD",
@@ -410,8 +411,8 @@ def test_build_pipeline_summary_payload_shape() -> None:
     assert payload["path_module_dir"] == str(path_dir)
     assert payload["flatten"] is True
     assert payload["dft_func_basis"] == "wb97m-v/def2-tzvpd"
-    assert payload["opt_mode"] == "grad"
-    assert payload["opt_mode_post"] == "hess"
+    assert payload["opt_mode"] == "hess"
+    assert payload["opt_mode_post"] == "grad"
     assert payload["path_opt_mode"] == "grad"
     assert payload["post_opt_mode"] == "hess"
     assert payload["ts_opt_mode"] == "hess"
@@ -450,6 +451,7 @@ def test_build_pipeline_summary_payload_dft_disabled_drops_basis() -> None:
         opt_mode=None,
         opt_mode_post=None,
         path_opt_mode=None,
+        preopt=False,
         post_opt_mode=None,
         ts_opt_mode=None,
         endpoint_opt_mode=None,
@@ -911,6 +913,35 @@ def test_irc_endpoint_topology_tie_uses_rmsd_and_records_provenance(
     assert assignment["method"] == "rmsd_topology_tie"
     assert assignment["rmsd_swapped"] < assignment["rmsd_direct"]
     assert assignment["connectivity_validated"] is True
+
+
+def test_optimized_endpoint_validation_requires_assigned_direct_pair(
+    tmp_path, monkeypatch,
+) -> None:
+    from pdb2reaction.workflows import all as workflow
+
+    monkeypatch.setattr(
+        workflow,
+        "_orient_irc_endpoints",
+        lambda *args, **kwargs: (
+            args[0], args[1], "forward", "backward", False,
+            {"match_matrix": {
+                "left_to_mep_left": True,
+                "left_to_mep_right": False,
+                "right_to_mep_left": False,
+                "right_to_mep_right": True,
+            }},
+        ),
+    )
+    result = workflow._validate_optimized_endpoint_pair(
+        object(),
+        object(),
+        endpoint_trajectory=tmp_path / "mep.xyz",
+        freeze_atoms=[],
+        seg_tag="seg_01",
+    )
+    assert result["source"] == "optimized_endpoints"
+    assert result["connectivity_validated"] is True
 
 
 def test_summary_frequency_reader_uses_the_resolved_zero_cutoff(tmp_path) -> None:

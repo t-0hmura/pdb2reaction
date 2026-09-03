@@ -1,6 +1,6 @@
 # `irc`
 
-遷移状態（TS）から反応物・生成物方向へ EulerPC（Euler Predictor-Corrector）ベースの固有反応座標（IRC）積分を実行します。`tsopt` で最適化・検証済みの TS 構造を出発点に経路を追跡し、端点接続性（R ↔ TS ↔ P）を確認します。デフォルトで前方・後方の両方向を実行します。`--no-backward`（または `--no-forward`）で一方向のみをたどります。Hessian のデフォルトは有限差分です。解析 autograd の速度とメモリ量は backend・model・系サイズ・precision・GPU に依存するため、対象環境で検証した場合にだけ明示的に選択してください。mmCIF入力は内部PDBで計算し、出力CIFに元IDを復元します。XYZ/GJF入力では`--ref-pdb`にPDBまたはmmCIF topologyを指定できます。一般的な手順は `tsopt` → `irc` です。
+`tsopt` で最適化・検証した遷移状態（TS）から、EulerPC（Euler Predictor-Corrector）ベースの固有反応座標（IRC）を両方向へ積分します。`stopped` と報告された方向は、有限の軌跡、確認済み downhill departure、数値伝播失敗なしを満たします。最適化後端点とその接続性は複合 `all` workflow で検証します。`--no-backward`（または `--no-forward`）で一方向のみをたどります。Hessian のデフォルトは有限差分です。解析 autograd の速度とメモリ量は backend・model・系サイズ・precision・GPU に依存するため、対象環境で検証した場合にだけ明示的に選択してください。mmCIF入力は内部PDBで計算し、出力CIFに元IDを復元します。XYZ/GJF入力では`--ref-pdb`にPDBまたはmmCIF topologyを指定できます。一般的な手順は `tsopt` → `irc` です。
 
 ## 実行例
 
@@ -150,7 +150,7 @@ calc:
 ## 注意事項
 
 - MLIP バックエンド（デフォルト: UMA）は IRC 全体で再利用されます。`step_length` を大きくし過ぎると EulerPC が不安定になることがあります。ほぼ直ちに停止する分岐は、まず小さい `--step-size`（例: `0.05`）で再試行してください。
-- `--never-stop` はデフォルトOFFです。有効時は物理的端点で収束宣言せずcycle上限まで進むため、軌跡と端点接続を確認してください。
+- `--never-stop` はデフォルトOFFです。有効時は物理的端点判定で停止せずcycle上限まで進むため、軌跡を確認し、端点を最適化・検証してください。
 - `--freeze-links` が有効な場合、キャップ水素の親原子が自動的に凍結されます（{ref}`キャップ水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
 - `result.json["rigid_projection"]`にtreatment、effective rank、初期 Hessian のsourceとshapeを記録します。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
 

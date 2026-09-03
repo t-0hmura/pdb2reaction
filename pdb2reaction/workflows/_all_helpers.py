@@ -58,6 +58,7 @@ def build_pipeline_summary_payload(
     opt_mode: Optional[str],
     opt_mode_post: Optional[str],
     path_opt_mode: Optional[str],
+    preopt: bool,
     post_opt_mode: Optional[str],
     ts_opt_mode: Optional[str],
     endpoint_opt_mode: Optional[str],
@@ -113,6 +114,7 @@ def build_pipeline_summary_payload(
         "path_opt_mode": (
             path_opt_mode.lower() if path_opt_mode else None
         ),
+        "preopt": bool(preopt),
         "post_opt_mode": (
             post_opt_mode.lower() if post_opt_mode else None
         ),

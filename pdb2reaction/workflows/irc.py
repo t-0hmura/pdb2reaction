@@ -902,10 +902,20 @@ def cli(
                     "n_frames_forward": _n_fwd,
                     "n_frames_backward": _n_bwd,
                     "n_frames_total": len(_all_e),
+                    "forward_requested": bool(getattr(eulerpc, "forward", False)),
+                    "backward_requested": bool(getattr(eulerpc, "backward", False)),
                     "forward_converged": getattr(eulerpc, 'forward_is_converged', None),
                     "backward_converged": getattr(eulerpc, 'backward_is_converged', None),
+                    # Compatibility aliases above describe whether the raw IRC
+                    # endpoint met the stationary-point criterion.  Normal IRC
+                    # termination is reported separately as stopped and is
+                    # interpreted by endpoint optimization in composite runs.
+                    "forward_endpoint_stationary": getattr(eulerpc, 'forward_is_converged', None),
+                    "backward_endpoint_stationary": getattr(eulerpc, 'backward_is_converged', None),
                     "forward_integration_converged": getattr(eulerpc, 'forward_integration_converged', None),
                     "backward_integration_converged": getattr(eulerpc, 'backward_integration_converged', None),
+                    "forward_integration_stop_reason": getattr(eulerpc, 'forward_integration_stop_reason', None),
+                    "backward_integration_stop_reason": getattr(eulerpc, 'backward_integration_stop_reason', None),
                     "forward_downhill_departure_valid": getattr(eulerpc, 'forward_downhill_departure_valid', None),
                     "backward_downhill_departure_valid": getattr(eulerpc, 'backward_downhill_departure_valid', None),
                     "forward_energy_increased": getattr(eulerpc, 'forward_energy_increased', None),
@@ -938,14 +948,16 @@ def cli(
                 }
                 result_data.update(_directional_endpoint_energy_fields(_all_e, _ts_e))
 
-                # Record one LeafOutcome per requested IRC direction. A
-                # requested direction is usable only when it explicitly
-                # converged; a disabled direction is optional (not a failure).
-                # Legacy ``status`` stays "completed" (the IRC process ran).
+                # Record one LeafOutcome per requested IRC direction.  A normal
+                # stop is usable input to endpoint optimization; only missing or
+                # invalid trajectories, failed downhill departure, and numerical
+                # integration failure are unusable.  Endpoint-stationarity stays
+                # available above as a diagnostic and for Hessian-cache safety.
                 from pdb2reaction.workflows._outcomes import (
                     aggregate_workflow_truth as _agg_truth,
                     attach_outcomes as _attach,
                     irc_direction_leaves as _irc_dir_leaves,
+                    irc_direction_statuses as _irc_dir_statuses,
                 )
                 _dir_leaves, _dir_expected = _irc_dir_leaves(
                     (
@@ -953,6 +965,8 @@ def cli(
                             "forward",
                             bool(getattr(eulerpc, "forward", False)),
                             getattr(eulerpc, "forward_is_converged", None),
+                            getattr(eulerpc, "forward_downhill_departure_valid", None),
+                            getattr(eulerpc, "forward_integration_stop_reason", None),
                             _n_fwd,
                             [_irc_files["forward_irc"]] if "forward_irc" in _irc_files else [],
                             getattr(eulerpc, "forward_energies", []),
@@ -961,6 +975,8 @@ def cli(
                             "backward",
                             bool(getattr(eulerpc, "backward", False)),
                             getattr(eulerpc, "backward_is_converged", None),
+                            getattr(eulerpc, "backward_downhill_departure_valid", None),
+                            getattr(eulerpc, "backward_integration_stop_reason", None),
                             _n_bwd,
                             [_irc_files["backward_irc"]] if "backward_irc" in _irc_files else [],
                             getattr(eulerpc, "backward_energies", []),
@@ -969,6 +985,7 @@ def cli(
                 )
                 _irc_truth = _agg_truth(_dir_leaves, _dir_expected)
                 _attach(result_data, truth=_irc_truth, stage_outcomes=_dir_leaves)
+                result_data.update(_irc_dir_statuses(_dir_leaves))
 
                 # Bond changes between IRC endpoints
                 try:

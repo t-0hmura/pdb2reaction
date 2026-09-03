@@ -976,6 +976,12 @@ def cli(
                 )
                 result_data: Dict[str, Any] = {
                     "status": "completed",
+                    "scan_opt_mode": str(opt_mode).lower(),
+                    "scan_optimizer": (
+                        "lbfgs"
+                        if str(opt_mode).strip().lower() in {"grad", "lbfgs"}
+                        else "rfo"
+                    ),
                     "charge": resolved_charge,
                     "spin": resolved_spin,
                     "backend": calc_cfg.get("backend", backend),

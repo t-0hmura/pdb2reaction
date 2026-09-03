@@ -1,6 +1,6 @@
 # `irc`
 
-Runs EulerPC (Euler Predictor-Corrector)-based intrinsic reaction coordinate (IRC) integration from an optimized transition state (validated by `tsopt`) toward reactants and products, confirming endpoint connectivity (R ↔ TS ↔ P). By default both forward and backward branches are computed; use `--no-backward` (or `--no-forward`) to follow only one direction. Hessians default to finite differences; analytical autograd is an explicit alternative whose speed and memory cost depend on the backend, model, system size, precision, and GPU, so validate it on the target setup instead of treating it as a blanket recommendation. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB/mmCIF topology while keeping the XYZ coordinates, enabling format-aware companion output. A typical workflow is `tsopt` → `irc`.
+Runs EulerPC (Euler Predictor-Corrector)-based intrinsic reaction coordinate (IRC) integration from an optimized transition state (validated by `tsopt`) in both directions. A direction reported as `stopped` has a finite trajectory and a validated downhill departure without a numerical propagation failure; optimized endpoints and their connectivity are validated by the composite `all` workflow. Use `--no-backward` (or `--no-forward`) to follow only one direction. Hessians default to finite differences; analytical autograd is an explicit alternative whose speed and memory cost depend on the backend, model, system size, precision, and GPU, so validate it on the target setup instead of treating it as a blanket recommendation. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB/mmCIF topology while keeping the XYZ coordinates, enabling format-aware companion output. A typical workflow is `tsopt` → `irc`.
 
 ## Examples
 
@@ -152,7 +152,7 @@ See {ref}`exit-codes` in CLI Conventions.
 ## Notes
 
 - The MLIP backend (UMA by default) is reused throughout the IRC; aggressive `step_length` values can destabilize EulerPC. A branch that stops almost immediately should be retried with a smaller `--step-size` (for example `0.05`) before changing other controls.
-- `--never-stop` is intentionally off by default. It deliberately traces to the cycle limit rather than declaring convergence at a physical endpoint. Inspect the trajectory and endpoint connectivity; increase `--max-cycles` only when the extra path is scientifically useful.
+- `--never-stop` is intentionally off by default. It deliberately traces to the cycle limit instead of stopping at a physical endpoint criterion. Inspect the trajectory and optimize/validate the endpoints; increase `--max-cycles` only when the extra path is scientifically useful.
 - When `--freeze-links` is active, cap-hydrogen parent atoms are automatically frozen (see {ref}`Cap hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
 - `result.json["rigid_projection"]` records the treatment, effective rank, and initial Hessian source and shape. See [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries).
 

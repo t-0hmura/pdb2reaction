@@ -22,11 +22,11 @@ corresponding command page and in [`pdb2reaction-cli`](../pdb2reaction-cli/SKILL
 | `scientific_status` | Whether the produced science is usable (`success`, `partial`, or `failed`); gate consumption on this field, not legacy `status` alone |
 | `scientific_status_reasons` | Reasons for missing or unusable leaves; omitted on clean success |
 | `expected_item_ids` / `observed_item_ids` | Expected vs observed leaf IDs; compare them before accepting an aggregate |
-| `stage_outcomes` / `point_outcomes` | Producer- and mode-dependent fail-closed records. When present, require explicit convergence and `usable` / `seed_eligible`; neither array is universal at the `all` root. |
+| `stage_outcomes` / `point_outcomes` | Producer- and mode-dependent fail-closed records. Require `usable` / `seed_eligible` and interpret `converged` by leaf type; IRC direction leaves use `converged: null` and expose propagation status separately. Neither array is universal at the `all` root. |
 | `charge` / `spin` | Resolved cluster charge / multiplicity |
 | `environment` | `{device, gpu_name, gpu_vram_gb, cuda_version, cpu, n_cpus, ram_gb}` |
 | `references` | Methods actually used by the resolved workflow, as `{method, citation, doi}` records. The same set appears at the tail of `summary.log` and final stdout immediately before elapsed time. |
-| `config` | Full effective config after CLI + YAML + defaults merge |
+| `config` | Full effective config after CLI + YAML + defaults merge. `mep_mode` identifies GSM/DMF; `ts_opt_mode` and `endpoint_opt_mode` identify configured post-processing presets. Generic `opt_mode*` keys retain the resolved CLI inputs. `path_opt_mode` is the single-structure optimizer used for endpoint preoptimization (see `preopt`), not the MEP path algorithm. |
 | `freeze_atoms` | Resolved union of YAML `geom.freeze_atoms` and auto-detected cap-H parents. These are 0-based internal indices; `summary.log` echoes them as 1-based. |
 | `n_images` | MEP image count in path-search / path-opt; IRC trajectory frame count in tsopt-only mode |
 | `n_segments` | Total MEP segment count (reactive + bridge) |
@@ -68,6 +68,9 @@ Present when `--tsopt`, `--thermo`, or `--dft` was passed:
 | `mep_barrier_kcal` / `mep_delta_kcal` | MEP-level (un-refined) barrier / ΔE, mirroring `segments[i]` (refined post-IRC/tsopt energies live in the per-segment `mlip` block) |
 | `post_dir` | Subdirectory holding tsopt / freq / IRC outputs for this segment |
 | `irc_plot` / `irc_traj` | Paths to the IRC trace PNG and trajectory XYZ |
+| `irc` | Raw propagation record. `reason: "stopped"` is normal; direction status and endpoint-stationarity diagnostics remain separate from final endpoint acceptance. |
+| `endpoint_assignment` | Pre-optimization IRC-to-MEP orientation provenance; diagnostic, not the final connectivity verdict. |
+| `endpoint_opt` | Final endpoint convergence flags plus `connectivity_validated` and its optimized-structure topology record; this is the endpoint acceptance gate in MEP modes. |
 | `mlip` | Selected MLIP backend's electronic-energy block. Read top-level `mlip_backend` / `mlip_model` / `mlip_precision` for exact provenance. |
 | `ts_imag` | Dict `{n_imag, nu_imag_max_cm, min_abs_imag_cm, min_freq_cm}` describing the TS spectrum |
 | `ts_imag_freq_cm` | Peak imaginary frequency (cm⁻¹); same as `ts_imag.nu_imag_max_cm` |

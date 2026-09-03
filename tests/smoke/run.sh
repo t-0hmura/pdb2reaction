@@ -165,7 +165,8 @@ pdb2reaction -i r.pdb p.pdb -q -1 --mep-mode dmf --no-refine-path --max-cycles-d
 pdb2reaction tsopt -i ts_complex.pdb -q -1 --opt-mode hess --max-cycles 3 --thresh gau_loose --out-dir test23 > test23.out 2>&1
 
 # test24: tsopt (complex, grad)
-pdb2reaction tsopt -i ts_complex.pdb -q -1 --opt-mode grad --max-cycles 100 --thresh gau --out-dir test24 > test24.out 2>&1
+pdb2reaction tsopt -i ts_complex.pdb -q -1 --opt-mode grad --max-cycles 100 --thresh gau --out-json --out-dir test24 > test24.out 2>&1
+python assert_release_result.py tsopt-optimizer test24 --expected-mode grad --expected-optimizer dimer >> test24.out 2>&1
 
 # --- Dry-run validation ---
 
@@ -377,7 +378,8 @@ pdb2reaction freq -i r.pdb -q -1 --hessian-calc-mode Analytical --max-write 3 --
 pdb2reaction irc -i ts.pdb -q 0 --hessian-calc-mode analytical --max-cycles 2 --out-dir test57_irc_anahess > test57_irc_anahess.out 2>&1
 
 # test58: scan --opt-mode hess (RFO relaxation vs default LBFGS)
-pdb2reaction scan -i r.pdb -q -1 --opt-mode hess --scan-lists "[(1,5,1.4)]" --max-step-size 2.0 --relax-max-cycles 2 --no-preopt --no-endopt --out-dir test58_scan_hess > test58_scan_hess.out 2>&1
+pdb2reaction scan -i r.pdb -q -1 --opt-mode hess --scan-lists "[(1,5,1.4)]" --max-step-size 2.0 --relax-max-cycles 2 --no-preopt --no-endopt --out-json --out-dir test58_scan_hess > test58_scan_hess.out 2>&1
+python assert_release_result.py scan-optimizer test58_scan_hess --expected-mode hess --expected-optimizer rfo >> test58_scan_hess.out 2>&1
 
 # test59: scan2d --opt-mode hess (RFO per-grid relaxation).  Start from a
 # converged test8 point and use the smallest genuine 2D grid (2 × 2).  The

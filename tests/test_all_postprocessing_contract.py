@@ -138,6 +138,7 @@ def test_path_postprocessing_uses_terminal_tsopt_imaginary_mode_record(
         "endpoint_opt": {
             "reactant_converged": True,
             "product_converged": True,
+            "connectivity_validated": True,
         },
     }]
 

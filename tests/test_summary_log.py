@@ -178,7 +178,7 @@ def test_all_summary_header_uses_entry_mode_and_absolute_directories(
     assert "Pipeline mode      : path-search" not in text
 
 
-def test_all_summary_separates_path_and_post_optimizer_modes(tmp_path):
+def test_all_summary_separates_ts_and_endpoint_optimizer_modes(tmp_path):
     dest = tmp_path / "summary.log"
     write_summary_log(
         dest,
@@ -189,16 +189,36 @@ def test_all_summary_separates_path_and_post_optimizer_modes(tmp_path):
             "path_opt_mode": "grad",
             "opt_mode_post": "hess",
             "post_opt_mode": "hess",
+            "ts_opt_mode": "hess",
+            "endpoint_opt_mode": "hess",
+            "mep_mode": "gsm",
+            "post_segments": [{"tsopt": {}, "endpoint_opt": {}}],
         },
     )
 
     text = dest.read_text(encoding="utf-8")
-    assert "Opt mode (path)    : grad  (grad: lbfgs; hess: rfo)" in text
-    assert (
-        "Opt mode (post)    : hess  (grad: dimer/lbfgs; hess: rsprfo/rfo)"
-        in text
-    )
+    assert "Path optimization" not in text
+    assert "MEP mode           : gsm" in text
+    assert "TS optimization    : hess (RS-P-RFO)" in text
+    assert "IRC endpoint optimization: hess (RFO)" in text
     assert "Opt mode           :" not in text
+
+
+def test_all_summary_omits_endpoint_optimizer_before_irc(tmp_path):
+    dest = tmp_path / "summary.log"
+    write_summary_log(
+        dest,
+        {
+            "pipeline_mode": "tsopt-only",
+            "ts_opt_mode": "hess",
+            "endpoint_opt_mode": "hess",
+            "post_segments": [{"tsopt": {}, "pipeline_stop": {"stage": "before_irc"}}],
+        },
+    )
+    text = dest.read_text(encoding="utf-8")
+    assert "TS optimization    : hess (RS-P-RFO)" in text
+    assert "IRC endpoint optimization" not in text
+    assert "Path optimization" not in text
 
 
 def test_write_summary_log_marks_non_successful_results(tmp_path):
@@ -239,7 +259,8 @@ def test_write_summary_log_marks_non_successful_results(tmp_path):
         ),
         (
             "all:segment_3:irc:irc:forward:not_converged;irc:backward:energy_invalid",
-            "Segment 3: Forward IRC did not converge. Review its trajectory and IRC log. "
+            "Segment 3: Forward IRC stopped before its endpoint-stationarity threshold. "
+            "Review the trajectory and optimized endpoint result. "
             "Backward IRC did not produce a valid energy profile. Review its trajectory and IRC log.",
         ),
         (
@@ -474,12 +495,14 @@ def test_method_citations_use_actual_path_and_post_stages() -> None:
             }
         ],
     }
+    no_preopt = {**path_only, "preopt": False}
 
     path_text = "\n".join(format_method_citations(path_only))
     ts_text = "\n".join(format_method_citations(ts_only))
     irc_text = "\n".join(format_method_citations(irc_only))
     endpoint_text = "\n".join(format_method_citations(endpoint_only))
     complete_text = "\n".join(format_method_citations(complete))
+    no_preopt_text = "\n".join(format_method_citations(no_preopt))
 
     assert "Limited-memory BFGS (L-BFGS)" in path_text
     assert "RFO / P-RFO" not in path_text
@@ -496,6 +519,7 @@ def test_method_citations_use_actual_path_and_post_stages() -> None:
     assert "Euler predictor-corrector IRC" in complete_text
     assert "quasi-RRHO thermochemistry" not in complete_text
     assert "Chakraborty, A." in complete_text
+    assert "Limited-memory BFGS (L-BFGS)" not in no_preopt_text
 
 
 @pytest.mark.parametrize(
@@ -701,3 +725,34 @@ def test_citation_block_headers_match_their_destination() -> None:
     assert stdout_block[0] == "====== Citations & References ======"
     # Only the header differs; the citations themselves are one source.
     assert log_block[1:] == stdout_block[1:]
+
+
+def test_path_stage_citation_follows_the_preoptimization_stage() -> None:
+    """A DMF/GSM MEP cites its own algorithm; the single-structure optimizer is
+    cited only when endpoint preoptimization actually ran."""
+
+    base = {
+        "pipeline_mode": "path-opt",
+        "mep_mode": "dmf",
+        "path_opt_mode": "grad",
+    }
+    with_preopt = {
+        reference["method"]
+        for reference in method_references({**base, "preopt": True})
+    }
+    without_preopt = {
+        reference["method"]
+        for reference in method_references({**base, "preopt": False})
+    }
+    assert "Direct Max Flux (DMF)" in with_preopt
+    assert "Direct Max Flux (DMF)" in without_preopt
+    assert "Limited-memory BFGS (L-BFGS)" in with_preopt
+    assert "Limited-memory BFGS (L-BFGS)" not in without_preopt
+
+    rfo_preopt = {
+        reference["method"]
+        for reference in method_references(
+            {**base, "path_opt_mode": "hess", "preopt": False}
+        )
+    }
+    assert "RFO / P-RFO" not in rfo_preopt

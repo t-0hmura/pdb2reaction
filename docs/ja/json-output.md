@@ -52,7 +52,7 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 
 ### 実行結果と科学的妥当性
 
-複数段階のワークフローと scan の出力処理は、構成要素を評価できる場合に以下のフィールドを追加します。出力されるフィールドはコマンドによって異なり、各コマンド固有の `status` も互換性のため維持されます。結果を利用できるか判断する際は、`scientific_status` と各 outcome を確認してください。収束を確認できない個別結果は安全側に倒して扱われ、`usable` にはなりません。
+複数段階のワークフローと scan の出力処理は、構成要素を評価できる場合に以下のフィールドを追加します。出力されるフィールドはコマンドによって異なり、各コマンド固有の `status` も互換性のため維持されます。結果を利用できるか判断する際は、`scientific_status` と各 outcome を確認してください。必須の受理判定が欠ける場合は安全側に倒します。IRC 端点の stationary 判定は診断情報であり、伝播の利用可否とは分離されます。
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
@@ -179,6 +179,8 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 | `n_imaginary_modes` | int\|null | 虚振動の数。PHVA を実行しなかった場合は `null` |
 | `imaginary_frequencies_cm` | float[]\|null | 虚振動数 (cm⁻¹, 負の値)。PHVA 未実行時は `null` |
 | `opt_mode` | string | `"rsprfo"` (default) / `"rsirfo"` / `"trim"` / `"dimer"` |
+| `opt_mode_requested` | string | CLI で要求した preset（`grad` / `hess` / 明示 algorithm） |
+| `optimizer` | string | 実際に使用した optimizer algorithm |
 | `reference_mode_file` | string\|null | `--ref-mode` で渡した advanced path-mode ファイル。通常は `all` が生成して内部指定します |
 | `safeguards` | object | exact saddle check、最終目的modeのindex/overlap、停止理由、および明示的に有効化した場合のmode-loss/recovery診断。これらの回復経路はデフォルト無効 |
 | `rigid_projection` | object | 剛体モードとexact Hessian のprovenance。[projection provenance](#rigid-projection-provenance)を参照 |
@@ -252,8 +254,12 @@ force/step収束詳細と`safeguards`は省略します。
 | `energy_last_hartree` | float | stitched path の最後の端点エネルギー。standalone IRC は化学的identityを割り当てない |
 | `endpoint_energy_orientation` | string | `"finished_first_to_finished_last"` |
 | `energy_reactant_hartree` / `energy_product_hartree` | float | first / last の旧alias。key名から化学的R/P identityを推定しないこと |
-| `forward_converged` | bool \| null | 前方 IRC 収束? インテグレータがフラグを公開しない場合は `null` |
-| `backward_converged` | bool \| null | 後方 IRC 収束? インテグレータがフラグを公開しない場合は `null` |
+| `forward_requested` / `backward_requested` | bool | 各方向を要求したか |
+| `forward_status` / `backward_status` | string | 各方向の伝播状態: `stopped` / `failed` / `disabled` |
+| `forward_endpoint_stationary` / `backward_endpoint_stationary` | bool \| null | 生 IRC 端点が stationary threshold を満たしたか。診断専用 |
+| `forward_converged` / `backward_converged` | bool \| null | `*_endpoint_stationary` の互換 alias。IRC 利用可否の gate ではない |
+| `forward_downhill_departure_valid` / `backward_downhill_departure_valid` | bool \| null | TS から downhill に離れたことを確認できたか |
+| `forward_integration_stop_reason` / `backward_integration_stop_reason` | string \| null | 数値伝播が失敗した場合だけ非空になる理由 |
 | `forward_energy_increased` | bool \| null | 前方の最終stepで`irc.energy_increase_thresh`（デフォルト`0` Hartree、上昇はすべて対象）を超えてenergyが上昇したか |
 | `backward_energy_increased` | bool \| null | 後方の最終stepで`irc.energy_increase_thresh`（デフォルト`0` Hartree、上昇はすべて対象）を超えてenergyが上昇したか |
 | `backend` | string | MLIP バックエンド |
@@ -277,6 +283,8 @@ force/step収束詳細と`safeguards`は省略します。
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `status` | string | `"completed"` |
+| `scan_opt_mode` | string | 拘束緩和に使用した optimizer preset |
+| `scan_optimizer` | string | 実効 optimizer identity（`lbfgs` / `rfo`） |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
 | `backend` | string | MLIPバックエンド |
@@ -469,6 +477,7 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 | `execution_status` / `scientific_status` | string / string | 実行の完了度と科学的な利用可能性。従来の `status` とは分けて評価します。 |
 | `scientific_status_reasons` | string[] | 不完全または利用できない科学的結果の理由。正常終了時は省略されます。 |
 | `expected_item_ids` / `observed_item_ids` | string[] | 期待された集約項目と観測された集約項目。 |
+| `config` | object | 実効設定。`mep_mode` は GSM/DMF、`ts_opt_mode` / `endpoint_opt_mode` は設定済み後処理 preset を示す。generic `opt_mode*` は解決済み CLI 入力を保持する。`path_opt_mode` は端点 preoptimization に使う単一構造 optimizer であり（`preopt` を参照）、MEP path algorithm ではない。 |
 | `n_segments` | int | セグメント数 |
 | `segments` | object[] | セグメントごとの `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` |
 | `energy_diagrams` | object[] | エネルギーダイアグラム（ラベル + kcal/mol） |
@@ -490,6 +499,7 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 | `overall_reaction_energy_kcal` | float | 全体反応エネルギー |
 | `overall_reaction_energy_method` | string | 全体反応energyのmethod (`MEP`, `MLIP`, `MLIP_Gibbs`, `DFT`, `DFT//MLIP_Gibbs`) |
 | `post_segments` | list | セグメントごとの TS/IRC/freq/DFT 結果 |
+| `post_segments[].irc` / `.endpoint_assignment` / `.endpoint_opt` | object | 順に、生の伝播、最適化前の向き付け、最適化済み端点の最終受理判定。生 IRC の通常停止は診断であり、MEP mode は端点最適化の収束と最適化後 connectivity で受理する。 |
 | `post_segments[].thermo_symmetry` | object | 子 freq が報告した状態別の点群・回転対称 provenance。有効な対称数 provenance を持つ R/TS/P 状態だけを含み、欠けた状態は省略する。どの状態にも有効な provenance が無い場合だけフィールド全体を省略する。 |
 | `current_output_paths` | string[] | `--out-dir` からの相対パスを並べたリスト。現在の呼び出しが記録した成果物だけを含みます。 |
 | `key_output_files` | object | 現在の呼び出しの出力索引。ルートファイルはファイル名 → 説明、各 `seg_NN` は `{description, files}` で、`files` はそのセグメントディレクトリからの相対パスです。 |
