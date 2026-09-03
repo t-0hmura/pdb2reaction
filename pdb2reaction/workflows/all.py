@@ -3806,7 +3806,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "--max-cycles-dmf",
     type=click.IntRange(min=1),
     default=None,
-    show_default="300",
+    show_default="3000",
     help=(
         "Maximum IPOPT iterations for the DMF MEP stage. This is a solver "
         "iteration count, not a string-optimizer cycle count."

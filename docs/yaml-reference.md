@@ -333,7 +333,7 @@ For DMF, `--max-nodes` is forwarded as `DirectMaxFlux(nmove=...)`; the installed
 ```yaml
 dmf:
  backend: gpu # gpu (dmf.torch / CUDA, default) | cpu (dmf / NumPy)
- max_cycles: 300 # Maximum DMF/IPOPT iterations (overridden by --max-cycles-dmf)
+ max_cycles: 3000 # Maximum DMF/IPOPT iterations (overridden by --max-cycles-dmf)
  tol: tight # IPOPT dual_inf_tol: tight (0.04) | middle (0.10) | loose (0.20) or a positive float (overridden by --thresh-dmf)
  correlated: true # Correlated DMF propagation
  sequential: true # Sequential DMF execution

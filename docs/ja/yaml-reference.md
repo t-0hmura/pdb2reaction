@@ -329,7 +329,7 @@ DMF では `--max-nodes` を `DirectMaxFlux(nmove=...)` に渡します。DMF AP
 ```yaml
 dmf:
  backend: gpu # gpu (dmf.torch / CUDA、default) | cpu (dmf / NumPy)
- max_cycles: 300 # DMF/IPOPT の最大反復数（--max-cycles-dmf で上書き）
+ max_cycles: 3000 # DMF/IPOPT の最大反復数（--max-cycles-dmf で上書き）
  tol: tight # IPOPT dual_inf_tol: tight(0.04) | middle(0.10) | loose(0.20) または正の float（--thresh-dmf で上書き）
  correlated: true # Correlated DMF propagation
  sequential: true # Sequential DMF execution

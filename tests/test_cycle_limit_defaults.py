@@ -12,7 +12,7 @@ from pdb2reaction.workflows.dft import DFT_KW
 
 def test_internal_cycle_defaults_keep_finite_backstops() -> None:
     assert OPT_BASE_KW["max_cycles"] == 100000
-    assert DMF_KW["max_cycles"] == 300
+    assert DMF_KW["max_cycles"] == 3000
     assert STOPT_KW["max_cycles"] == 300
     assert STOPT_KW["stop_in_when_full"] == 300
     assert IRC_KW["max_cycles"] == 125

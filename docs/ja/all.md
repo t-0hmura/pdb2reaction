@@ -257,7 +257,7 @@ raw PDB CCD との名前衝突は自動判別しないため、`--modified-resid
 | `--max-nodes INT` | GSM/DMF segment ごとの可動内部イメージ数。両エンジンとも端点2つを保持するため、総イメージ数は `max_nodes + 2` | `20` |
 | `--gsm-param [equi\|energy]` | 完全成長後のGSMノード配置。`energy` は高エネルギー領域へノード密度を寄せる。等間隔経路がHEI近傍の反応座標領域を飛び越える場合の試行用であり、TSを同定する機能ではない | `equi` |
 | `--max-cycles-gsm INT` | GSM string optimizer の最大サイクル数 | `300` |
-| `--max-cycles-dmf INT` | DMF の最大 IPOPT 反復数 | `300` |
+| `--max-cycles-dmf INT` | DMF の最大 IPOPT 反復数 | `3000` |
 | `--climb/--no-climb` | 標準 GSM セグメントでクライミングイメージを有効化（ブリッジセグメントは常に無効） | `True` |
 | `--opt-mode [grad\|hess]` | ワークフロープリセット（`grad` → L-BFGS/Dimer、`hess` → RFO/RSPRFO）。コマンド個別実行では `opt --opt-mode grad\|hess`、`tsopt --opt-mode grad\|hess` を推奨。トークンのマッピングはスコープ依存で、`all` の pre-opt デフォルト（`grad`）と `tsopt` のデフォルト（`hess`）は一致しません。詳細は {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
 | `--thresh TEXT` | 単一構造最適化と scan 緩和の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |

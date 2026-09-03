@@ -228,7 +228,7 @@ and `tsopt` subcommands keep their own `--max-cycles`.
 | `--max-nodes INT` | Movable internal images per GSM/DMF segment. Both engines retain two endpoints, so total images = `max_nodes + 2`. | `20` |
 | `--gsm-param [equi\|energy]` | GSM node parameterization after string growth. `energy` concentrates nodes in high-energy regions and may be tried when an equidistant path skips the reaction-coordinate region near the HEI; it does not identify a TS. | `equi` |
 | `--max-cycles-gsm INT` | Maximum GSM string-optimizer cycles. | `300` |
-| `--max-cycles-dmf INT` | Maximum DMF IPOPT iterations. | `300` |
+| `--max-cycles-dmf INT` | Maximum DMF IPOPT iterations. | `3000` |
 | `--climb / --no-climb` | Enable climbing image for standard GSM segments (bridge segments always disable climbing). | `True` |
 | `--opt-mode [grad\|hess]` | Workflow preset (`grad` → L-BFGS / Dimer, `hess` → RFO / RS-P-RFO). Token-to-algorithm mapping depends on scope — see {ref}`opt-mode-semantics` for the per-subcommand table; note that `all`'s pre-opt default (`grad`) differs from `tsopt`'s default (`hess`). | `grad` |
 | `--thresh TEXT` | Convergence preset for single-structure optimizations and scan relaxations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
