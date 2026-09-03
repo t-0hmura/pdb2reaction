@@ -440,6 +440,12 @@ grep -Fq '[scan3d] --dry-run: input, charge/spin parity, and --scan-lists parse 
 # test62: path-opt --mep-mode dmf (Direct Max Flux at the subcommand level)
 pdb2reaction path-opt -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --max-cycles-dmf 3 --thresh-dmf middle --no-preopt --no-climb --out-dir test62_pathopt_dmf > test62_pathopt_dmf.out 2>&1
 
+# test62b: path-opt --mep-mode dmf WITH frozen atoms. No other lane enters the DMF
+# harmonic-restraint branch, so this is its only coverage. The checker compares the
+# optimized path against the FB-ENM interpolation the per-image restraint references.
+pdb2reaction path-opt -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --freeze-atoms 1,3,5 --max-cycles-dmf 40 --thresh-dmf middle --no-preopt --no-climb --out-json --out-dir test62b_dmf_freeze > test62b_dmf_freeze.out 2>&1
+python assert_release_result.py dmf-freeze test62b_dmf_freeze --frozen-atoms 1,3,5 >> test62b_dmf_freeze.out 2>&1
+
 # test63: path-opt --coord-type dlc (p2r keeps DLC for pure-MLIP)
 pdb2reaction path-opt -i r.pdb p.pdb -q -1 --coord-type dlc --max-nodes 5 --max-cycles-gsm 3 --no-preopt --no-climb --out-dir test63_pathopt_dlc > test63_pathopt_dlc.out 2>&1
 
