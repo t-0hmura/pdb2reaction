@@ -68,7 +68,7 @@ Present when `--tsopt`, `--thermo`, or `--dft` was passed:
 | `mep_barrier_kcal` / `mep_delta_kcal` | MEP-level (un-refined) barrier / ΔE, mirroring `segments[i]` (refined post-IRC/tsopt energies live in the per-segment `mlip` block) |
 | `post_dir` | Subdirectory holding tsopt / freq / IRC outputs for this segment |
 | `irc_plot` / `irc_traj` | Paths to the IRC trace PNG and trajectory XYZ |
-| `irc` | Raw propagation record. `reason: "stopped"` is normal; direction status and endpoint-stationarity diagnostics remain separate from final endpoint acceptance. |
+| `irc` | Raw propagation record. `reason: "stopped"` is normal; direction status and endpoint-stationarity diagnostics remain separate from final endpoint acceptance. Sub-keys: `usable`, `reason`, `forward_status`, `backward_status`, `n_frames_forward`, `n_frames_backward`, `traj`, `scientific_status` (`forward_converged` / `backward_converged` were removed in schema 3.0; read `*_status` instead). |
 | `endpoint_assignment` | Pre-optimization IRC-to-MEP orientation provenance; diagnostic, not the final connectivity verdict. |
 | `endpoint_opt` | Final endpoint convergence flags plus `connectivity_validated` and its optimized-structure topology record; this is the endpoint acceptance gate in MEP modes. |
 | `mlip` | Selected MLIP backend's electronic-energy block. Read top-level `mlip_backend` / `mlip_model` / `mlip_precision` for exact provenance. |

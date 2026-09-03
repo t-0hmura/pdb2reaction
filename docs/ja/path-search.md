@@ -134,6 +134,7 @@ out_dir/ (デフォルト:./result_path_search/)
 | `--dmf-backend {cpu\|gpu}` | DMF 計算バックエンド（`--mep-mode dmf` 時のみ）: `gpu`（`dmf.torch`/CUDA）または `cpu`（`dmf`/NumPy）。GPU メモリ不足時は `cpu` で再実行 | `gpu` |
 | `--preopt/--no-preopt` | 選択された単一構造オプティマイザ（L-BFGS/RFO）で MEP 探索前に各エンドポイントを事前最適化。 | `True` |
 | `--max-nodes INT` | MEP セグメントごとの内部ノード（GSM string image または DMF image） | `20` |
+| `--max-depth INT` | 許可する再帰分割の階層数。`0` で分割無効。上限に達した区間は `seg_NNN_maxdepth` タグで、素反応1段の保証はない | `10` |
 | `--gsm-param {equi\|energy}` | 完全成長後のGSMノード配置。`energy` は高エネルギー領域へノード密度を寄せる。等間隔経路がHEI近傍の反応座標領域を飛び越える場合の試行用であり、TSを同定する機能ではない | `equi` |
 | `--max-cycles-gsm INT` | GSM string optimizer の最大サイクル数 | `300` |
 | `--max-cycles-dmf INT` | DMF の最大 IPOPT 反復数 | `3000` |

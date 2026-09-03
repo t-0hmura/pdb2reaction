@@ -1132,6 +1132,20 @@ def _read_summary(summary_path: Path) -> List[Dict[str, Any]]:
         return []
 
 
+def _read_path_opt_preopt_converged(seg_dir: Path) -> Optional[bool]:
+    """Read the requested endpoint-preoptimization aggregate from a child."""
+    try:
+        rj = seg_dir / "result.json"
+        if not rj.exists():
+            return None
+        data = json.loads(rj.read_text(encoding="utf-8")) or {}
+        value = data.get("preopt_converged")
+        return value if isinstance(value, bool) else None
+    except Exception as exc:
+        logger.debug("Failed to read path-opt preopt convergence %s: %s", seg_dir, exc)
+        return None
+
+
 def _read_path_opt_segment_converged(seg_dir: Path) -> Optional[bool]:
     """Read a path-opt segment child's reported MEP convergence (tri-state).
 
@@ -1356,6 +1370,16 @@ def _derive_pipeline_status(
     cfg = config or {}
     requested = any(bool(cfg.get(name)) for name in ("tsopt", "thermo", "dft"))
 
+    # A requested post stage with no reactive segment never runs at all. That
+    # precondition is independent of whether the per-segment records exist yet,
+    # so it is checked OUTSIDE the ``post_segments`` gate below: on the route
+    # that returns early here, the intermediate summary is the one that ships,
+    # and it otherwise reported ``success`` for stages that were skipped.
+    if requested and not any(_is_reactive_segment(item) for item in segments):
+        reasons.append(
+            "requested post-processing did not run: no reactive segment was identified"
+        )
+
     # ``None`` means this is an intermediate summary written before the final
     # per-segment records exist.  An explicit list, including an empty one,
     # means post-processing is complete and can be validated.
@@ -1505,6 +1529,23 @@ def _pipeline_aggregate_truth(
 
     leaves: List[Any] = []
     expected: List[str] = []
+    if summary.get("preopt_requested") is True:
+        # Endpoint preoptimization feeds every barrier in this run, so a
+        # nonconverged endpoint must reach the parent verdict rather than only
+        # the path child's own `stage_outcomes`.
+        _preopt = summary.get("preopt_converged")
+        _preopt_conv = _preopt if isinstance(_preopt, bool) else None
+        leaves.append(
+            make_leaf(
+                "all",
+                "preopt",
+                required=True,
+                executed=True,
+                converged=_preopt_conv,
+                reason=("ok" if _preopt_conv is True else "preopt_not_converged"),
+            )
+        )
+        expected.append("preopt")
     for s in reactive:
         idx = s.get("index")
         if idx is None:
@@ -1537,8 +1578,21 @@ def _pipeline_aggregate_truth(
                     else "mep_convergence_unknown"
                 )
             tsopt = post.get("tsopt")
-            if isinstance(tsopt, dict) and tsopt.get("continue_irc") is False:
-                converged = _and3(converged, False)
+            if not isinstance(tsopt, dict):
+                # Fail closed only when TSOPT was actually requested: this record
+                # is appended before the TS stage runs and legitimately carries no
+                # `tsopt` key on a route that never ran it. Gated the same way the
+                # sibling `endpoint_opt` branch below gates its missing case.
+                if tsopt_requested:
+                    converged = _and3(converged, None)
+                    if not reason:
+                        reason = "tsopt_missing"
+            elif tsopt.get("continue_irc") is not True:
+                # `is not True` rather than `is False`: a malformed or absent
+                # decision is unknown, not a pass.
+                converged = _and3(
+                    converged, False if tsopt.get("continue_irc") is False else None
+                )
                 if not reason:
                     reason = f"tsopt:{tsopt.get('reason') or 'status_unknown'}"
             irc = post.get("irc")
@@ -1606,16 +1660,21 @@ def _pipeline_aggregate_truth(
             )
         )
 
-    if leaves:
+    # Keyed on SEGMENT leaves: the `preopt` leaf alone must not take a degenerate
+    # summary down the per-segment path, whose fail-closed composition would turn
+    # an ancillary preoptimization failure into a whole-run `failed`.
+    if any(leaf.item_id != "preopt" for leaf in leaves):
         agg = aggregate_workflow_truth(leaves, expected)
         agg_sci = agg.scientific_status
         agg_exec = agg.execution_status
         agg_reasons = list(agg.status_reasons)
         observed = (
-            [
+            (["preopt"] if summary.get("preopt_requested") is True else [])
+            + [
                 item_id
                 for item_id in expected
-                if item_id.removeprefix("segment_") in {
+                if item_id != "preopt"
+                and item_id.removeprefix("segment_") in {
                     str(index) for index in post_by_idx
                 }
             ]
@@ -1637,6 +1696,20 @@ def _pipeline_aggregate_truth(
         agg_exec = "failed" if legacy_status == "failed" else "completed"
         agg_reasons = []
         observed = list(expected)
+        preopt_leaf = next(
+            (leaf for leaf in leaves if leaf.item_id == "preopt"), None
+        )
+        if preopt_leaf is not None and not preopt_leaf.usable:
+            # A failed endpoint preoptimization is a real defect but not the whole
+            # result -- the MEP and its diagram still shipped -- so it demotes to
+            # `partial`, the same verdict it produces when a reactive segment is
+            # present.
+            if agg_sci != "failed":
+                agg_sci = "partial"
+            agg_reasons = [
+                f"{preopt_leaf.stage}:{preopt_leaf.item_id}:"
+                f"{preopt_leaf.reason or 'unusable'}"
+            ]
 
     # Compose with the legacy completeness axis: keep the MORE severe verdict.
     if _STATUS_SEVERITY.get(legacy_status, 0) >= _STATUS_SEVERITY.get(agg_sci, 0):
@@ -1912,6 +1985,11 @@ def _enrich_summary(
             "endpoint_opt_mode": citation_config.get("endpoint_opt_mode"),
             "mep_mode": citation_config.get("mep_mode"),
             "dmf_correlated": citation_config.get("dmf_correlated"),
+            # The path-optimizer citation is gated on `preopt`, and a missing
+            # key reads as "preoptimization ran". Without this the reference
+            # list in summary.json cites a single-structure optimizer that a
+            # `--no-preopt` run never used, contradicting summary.log.
+            "preopt": citation_config.get("preopt"),
             "post_segments": post_segments or [],
             "mlip_backend": mlip_backend,
             "mlip_model": mlip_model,
@@ -3240,9 +3318,17 @@ def _validate_optimized_endpoint_pair(
         and matrix.get("left_to_mep_left") is True
         and matrix.get("right_to_mep_right") is True
     )
+    # Carry the probe's own resolution label rather than asserting the strongest
+    # one: a `rmsd_topology_tie` or `rmsd_topology_unmatched` resolution published
+    # as `bond_topology` misstates how the pairing was established.
+    probe_method = probe.get("method") if isinstance(probe, dict) else None
     result: Dict[str, Any] = {
         "source": "optimized_endpoints",
-        "method": "bond_topology",
+        "method": (
+            "bond_topology"
+            if direct
+            else (str(probe_method) if probe_method else "unresolved")
+        ),
         "connectivity_validated": direct,
         "match_matrix": matrix,
     }
@@ -3857,9 +3943,9 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     show_default="10",
     help=(
         "Recursive subdivision levels allowed by --refine-path. 0 performs no "
-        "subdivision and yields a single MEP segment. Reaching the limit is not "
-        "an error: the remaining interval is returned as one un-subdivided "
-        "segment tagged seg_NNN_maxdepth, which is therefore not guaranteed to "
+        "subdivision, returning each input pair as one MEP segment. Reaching the limit is not "
+        "an error: the remaining interval is returned as one segment that was not subdivided, "
+        "tagged seg_NNN_maxdepth, and is therefore not guaranteed to "
         "be a single elementary step."
     ),
 )
@@ -4505,6 +4591,12 @@ def cli(
         do_thermo = False
     if "--no-dft" in _negative_bool_args:
         do_dft = False
+
+    # `--max-depth` is consumed only by the recursive splitter, so accepting it
+    # on the single-pass route would silently drop the request while the config
+    # echo still reported the value.
+    if max_depth is not None and not refine_path:
+        raise click.UsageError("--max-depth requires --refine-path.")
 
     global _FREEZE_ATOMS_GLOBAL, _FREEZE_ATOMS_YAML
     from pdb2reaction.core.utils import (
@@ -6780,6 +6872,7 @@ def cli(
             manifest.declare("path.summary", [path_dir / "summary.json"])
         combined_blocks: List[str] = []
         path_opt_segments: List[Dict[str, Any]] = []
+        path_opt_preopt_convergences: List[Optional[bool]] = []
         for idx, (pL, pR) in enumerate(zip(models_for_path, models_for_path[1:]), start=1):
             # NOTE: internal MEP-engine scratch (3-digit, under _work/); user-facing segment width is 2-digit (segments/seg_NN/).
             seg_dir = (path_dir / f"seg_{idx:03d}_mep").resolve()
@@ -7006,6 +7099,9 @@ def cli(
                     "converged": _read_path_opt_segment_converged(seg_dir),
                 }
             )
+            path_opt_preopt_convergences.append(
+                _read_path_opt_preopt_converged(seg_dir)
+            )
 
         final_trj = path_dir / "mep_trj.xyz"
         try:
@@ -7110,6 +7206,16 @@ def cli(
             "n_segments": len(segments_summary),
             "segments": segments_summary,
         }
+        if preopt:
+            from pdb2reaction.workflows._outcomes import combine_step_convergence
+
+            summary["preopt_requested"] = True
+            summary["preopt_converged"] = combine_step_convergence(
+                path_opt_preopt_convergences
+            )
+        else:
+            summary["preopt_requested"] = False
+            summary["preopt_converged"] = None
         if energy_diagrams:
             summary["energy_diagrams"] = list(energy_diagrams)
         _enrich_summary(
@@ -7474,6 +7580,11 @@ def cli(
                 [
                     path_dir / f"{base_tag}_refine_mep" / "final_geometries_trj.xyz",
                     path_dir / f"{base_tag}_mep" / "final_geometries_trj.xyz",
+                    # The scratch directory is named after the FULL tag, so a
+                    # suffixed segment (`seg_NNN_maxdepth`, `seg_NNN_kinklimit`)
+                    # matched neither stripped candidate and silently lost
+                    # MEP-based IRC endpoint orientation.
+                    path_dir / f"{current_tag}_mep" / "final_geometries_trj.xyz",
                 ],
                 snapshot=path_stage_snapshot,
             )
@@ -7700,6 +7811,7 @@ def cli(
 
     if not segments:
         _echo("[post] No segments found in summary; nothing to do.", narrative=True)
+        summary["pipeline_stop"] = {"stage": "post", "reason": "no_segments"}
         _write_pipeline_summary_log([])
         _finalize_current_summary()
         _emit_final_summary(
@@ -7713,6 +7825,7 @@ def cli(
     reactive = [s for s in segments if _is_reactive_segment(s)]
     if not reactive:
         _echo("[post] No bond-change segments. Skipping TS/thermo/DFT.", narrative=True)
+        summary["pipeline_stop"] = {"stage": "post", "reason": "no_reactive_segment"}
         _write_pipeline_summary_log([])
         _finalize_current_summary()
         _emit_final_summary(

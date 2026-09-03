@@ -32,8 +32,8 @@ def test_cap_counts_levels_so_zero_subdivides_nothing() -> None:
 
 def test_deliberate_zero_keeps_the_ordinary_segment_tag() -> None:
     assert "if max_depth <= 0:" in SRC
-    assert "_terminate_with_maxdepth(use_maxdepth_tag=False)" in SRC
     assert "use_maxdepth_tag: bool = True" in SRC
+    assert "use_maxdepth_tag=False," in SRC
 
 
 def test_max_depth_option_is_declared_on_both_entry_points() -> None:

@@ -192,6 +192,26 @@ def resolve_dmf_solve_tol(
     return value
 
 
+def _publish_preopt_contract(result_data: dict, preopt_outcomes, preopt: bool) -> None:
+    """Record the folded endpoint-preoptimization bit for the parent to gate on.
+
+    The preopt leaves already gate this command's own aggregate, but ``all``
+    recomputes its verdict from its own leaves and cannot see them. Without this
+    key a nonconverged endpoint preoptimization is overwritten with ``success``
+    in the parent while the unusable leaf stays visible in ``stage_outcomes``.
+    """
+    from pdb2reaction.workflows._outcomes import combine_step_convergence
+
+    result_data["preopt_requested"] = bool(preopt)
+    result_data["preopt_converged"] = (
+        combine_step_convergence(
+            getattr(outcome, "converged", None) for outcome in preopt_outcomes
+        )
+        if preopt
+        else None
+    )
+
+
 def _combine_path_opt_outcomes(preopt_outcomes, mep_outcome):
     """Combine requested endpoint preoptimizations with the MEP outcome."""
     from pdb2reaction.workflows._outcomes import aggregate_workflow_truth
@@ -1473,6 +1493,7 @@ def cli(
                     preopt_outcomes,
                     _dmf_leaf,
                 )
+                _publish_preopt_contract(result_data, preopt_outcomes, preopt)
                 _attach(
                     result_data,
                     truth=_dmf_truth,
@@ -1669,6 +1690,7 @@ def cli(
                 preopt_outcomes,
                 _gsm_leaf,
             )
+            _publish_preopt_contract(result_data_gsm, preopt_outcomes, preopt)
             _attach(
                 result_data_gsm,
                 truth=_gsm_truth,

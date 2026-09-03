@@ -74,12 +74,20 @@ def test_aggregate_success_partial_failed() -> None:
         [make_leaf("p", "seg_1", executed=True, converged=True)], ["seg_1"]
     )
     assert (t.scientific_status, t.execution_status) == ("success", "completed")
-    # A usable diagnostic artifact + a missing required leaf -> partial.
+    # A REQUIRED leaf's own artifact promotes nothing: when no required output is
+    # usable the science failed, and the run's completion is carried by
+    # `execution_status` instead. Only a diagnostic (non-required) leaf's
+    # artifact can raise a run to `partial`.
     raw = LeafOutcome("p", "raw", required=True, executed=True, converged=True,
                       usable=False, reason="endpoint_hei", artifacts=("mep.pdb",))
     t2 = aggregate_workflow_truth([raw], ["seg_1"])
-    assert t2.scientific_status == "partial"
+    assert (t2.scientific_status, t2.execution_status) == ("failed", "completed")
     assert "missing:seg_1" in t2.status_reasons
+    diagnostic = LeafOutcome("p", "diag", required=False, executed=True,
+                             converged=True, usable=False, reason="endpoint_hei",
+                             artifacts=("mep.pdb",))
+    t2b = aggregate_workflow_truth([raw, diagnostic], ["seg_1"])
+    assert t2b.scientific_status == "partial"
     # Nothing usable, no artifact, execution failed -> failed.
     t3 = aggregate_workflow_truth(
         [make_leaf("p", "seg_1", required=True, executed=False, converged=None)], ["seg_1"]
@@ -97,7 +105,10 @@ def test_aggregate_distinguishes_unusable_from_missing() -> None:
     )
     truth = aggregate_workflow_truth([leaf], ["seg_1"])
 
-    assert truth.scientific_status == "partial"
+    # The unusable-vs-missing distinction lives in the reasons and in
+    # `observed_item_ids`, not in the headline word: an unusable required leaf
+    # with only its own artifact is not a partial scientific result.
+    assert (truth.scientific_status, truth.execution_status) == ("failed", "completed")
     assert truth.observed_item_ids == ("seg_1",)
     assert "p:seg_1:not_converged" in truth.status_reasons
     assert "missing:seg_1" not in truth.status_reasons
@@ -343,7 +354,9 @@ def test_path_endpoint_hei_zero_segments_is_partial_not_success() -> None:
         [], raw_artifacts=["mep.pdb", "energy_diagram_MEP.png"]
     )
     truth = aggregate_workflow_truth(leaves, expected)
-    assert truth.scientific_status == "partial"  # would have been "success"
+    # No reaction step was identified, so nothing scientifically usable was
+    # produced; the run still completed, which `execution_status` reports.
+    assert (truth.scientific_status, truth.execution_status) == ("failed", "completed")
     # The raw path is retained as a reportable-but-unusable diagnostic artifact.
     raw = [leaf for leaf in leaves if leaf.item_id == "raw_path"][0]
     assert raw.usable is False and raw.reason == "endpoint_hei"
@@ -852,9 +865,12 @@ def test_dmf_nonconverged_leaf_unusable_artifact_retained() -> None:
                      artifacts=["final_geometries_trj.xyz"], reason=reason)
     assert leaf.usable is False                    # not promoted by artifact
     assert "final_geometries_trj.xyz" in leaf.artifacts  # artifact retained
-    # Unusable required leaf whose trajectory is retained -> partial (a reportable
-    # diagnostic), never success.
-    assert aggregate_workflow_truth([leaf], ["dmf_mep"]).scientific_status == "partial"
+    # The retained trajectory is inspectable but is the unusable required leaf's
+    # OWN artifact, so it promotes nothing: the science failed while the run
+    # completed. `status_reasons` names the IPOPT code.
+    truth = aggregate_workflow_truth([leaf], ["dmf_mep"])
+    assert (truth.scientific_status, truth.execution_status) == ("failed", "completed")
+    assert "path-opt:dmf_mep:ipopt_status_2" in truth.status_reasons
 
 
 def test_dmf_converged_leaf_is_success() -> None:
@@ -990,6 +1006,9 @@ def test_all_pipeline_aggregate_uses_optimized_endpoints_not_raw_irc_stop() -> N
 
     stopped = [{
         "index": 1,
+        # A real `all --tsopt` record always carries the TS decision; the
+        # aggregate fails closed without it.
+        "tsopt": {"continue_irc": True},
         "irc_traj": "finished_irc_trj.xyz",
         "irc": {"usable": True, "reason": "stopped",
                 "traj": "finished_irc_trj.xyz"},
@@ -1008,6 +1027,7 @@ def test_all_pipeline_aggregate_uses_optimized_endpoints_not_raw_irc_stop() -> N
     # Every requested IRC direction converged + endpoints converged -> success.
     converged = [{
         "index": 1,
+        "tsopt": {"continue_irc": True},
         "irc_traj": "finished_irc_trj.xyz",
         "irc": {"usable": True, "reason": "stopped", "traj": "finished_irc_trj.xyz"},
         "endpoint_assignment": {"connectivity_validated": True},
@@ -1030,6 +1050,7 @@ def test_all_pipeline_tsopt_only_does_not_require_mep_convergence() -> None:
     summary = {"segments": [{"index": 1, "kind": "tsopt", "barrier_kcal": 10.0}]}
     post = [{
         "index": 1,
+        "tsopt": {"continue_irc": True},
         "irc": {"usable": True, "reason": "ok"},
         "endpoint_assignment": {"connectivity_validated": True},
         "endpoint_opt": {"reactant_converged": True, "product_converged": True},
@@ -1123,6 +1144,7 @@ def test_all_pipeline_requires_validated_optimized_endpoint_connectivity() -> No
     }
     base = {
         "index": 1,
+        "tsopt": {"continue_irc": True},
         "irc": {"usable": True, "reason": "ok"},
         "endpoint_assignment": {"connectivity_validated": True},
     }

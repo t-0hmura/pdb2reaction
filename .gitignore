@@ -49,6 +49,9 @@ tests/smoke/test*/
 tests/smoke/test*.out
 tests/smoke/test*.png
 tests/smoke/result_*/
+# A CLI probe run from the repository root drops these here; they carry host
+# hardware and local paths and must never reach the published tree.
+/result_*/
 tests/smoke/internal_coords.log
 tests/smoke/p_complex_model.pdb
 tests/smoke/model_r.pdb

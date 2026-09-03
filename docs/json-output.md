@@ -254,6 +254,7 @@ per-cycle force/step convergence details and the `safeguards` object.
 |-------|------|-------------|
 | `status` | string | `"completed"` |
 | `n_frames_forward` | int | Forward IRC frames |
+| `forward_short_branch` / `backward_short_branch` | bool | Branch produced at most three frames without reaching the cycle cap; diagnostic only |
 | `n_frames_backward` | int | Backward IRC frames |
 | `n_frames_total` | int | Total frames |
 | `energy_first_hartree` | float | Energy of the first stitched-path endpoint; standalone IRC does not assign chemical identity |
@@ -377,6 +378,8 @@ validation can fail before the file exists.
 |-------|------|-------------|
 | `status` | string | `"success"` / `"partial"` |
 | `n_segments` | int | Recursive MEP segment count |
+| `search_max_depth` | int | Effective recursion cap; `0` means subdivision was disabled |
+| `preopt_requested` / `preopt_converged` | bool / bool \| null | Endpoint preoptimization request and its folded convergence; the `all` aggregate gates on it |
 | `segments` | object[] | Per-segment `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` (list of `{title: [entries]}` dicts; bridge segments emit `""`). |
 | `energy_diagrams` | object[] | Per-segment labeled energy profiles (kcal/mol) |
 | `mlip_backend` | string | Backend identifier |
@@ -484,6 +487,7 @@ The `all` and `path-search` commands write `summary.json` with a richer structur
 | `status` | string | `"success"` / `"partial"` / `"failed"` (`all`); `"success"` / `"partial"` (`path-search`) |
 | `execution_status` / `scientific_status` | string / string | Execution completeness and scientific usability; evaluate these separately from legacy `status`. |
 | `scientific_status_reasons` | string[] | Reasons for incomplete or unusable science; omitted on clean success. |
+| `pipeline_stop` | object \| absent | Present only on an early stop: `stage`, `reason`, and the stage's record. Rendered in `summary.log` as `Pipeline stop`. |
 | `expected_item_ids` / `observed_item_ids` | string[] | Expected and observed aggregate leaves. |
 | `config` | object | Effective settings. `mep_mode` identifies GSM/DMF; `ts_opt_mode` and `endpoint_opt_mode` identify the configured post-processing presets. Generic `opt_mode*` keys retain the resolved CLI inputs. `path_opt_mode` is the single-structure optimizer used for endpoint preoptimization (see `preopt`), not the MEP path algorithm. |
 | `n_segments` | int | Segment count |

@@ -910,6 +910,12 @@ def cli(
                     "backward_integration_stop_reason": getattr(eulerpc, 'backward_integration_stop_reason', None),
                     "forward_downhill_departure_valid": getattr(eulerpc, 'forward_downhill_departure_valid', None),
                     "backward_downhill_departure_valid": getattr(eulerpc, 'backward_downhill_departure_valid', None),
+                    # The console already warns that a branch stopped after only a
+                    # few frames; record it so the artifact says what stderr said.
+                    # This is diagnostic, not a verdict: the adopted contract keeps
+                    # an ordinary stop usable.
+                    "forward_short_branch": "forward" in _quick_directions,
+                    "backward_short_branch": "backward" in _quick_directions,
                     "forward_energy_increased": getattr(eulerpc, 'forward_energy_increased', None),
                     "backward_energy_increased": getattr(eulerpc, 'backward_energy_increased', None),
                     "backend": calc_cfg.get("backend", backend),

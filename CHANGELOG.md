@@ -11,8 +11,10 @@ _No changes yet._
 ## [0.4.14] — 2026-09-02
 
 > Upgrade warning: unchanged inputs can produce a different `scientific_status` for
-> standalone `irc` and for `all`, a different `status` / `converged` for a DMF
-> `path-opt`, and one subdivision level fewer for a configured `search.max_depth`;
+> standalone `irc` and for `all` (including `failed` where a run with no usable
+> required output previously read `partial`), a different `status` / `converged`
+> for a DMF `path-opt`, a looser DMF iteration cap, and one subdivision level
+> fewer for a configured `search.max_depth`;
 > `result.json` / `summary.json` now carry `schema_version: "3.0"`. Users of those
 > files must review the Breaking changes below before upgrading.
 
@@ -39,9 +41,19 @@ _No changes yet._
   `"converged"` / `true` for `Solve_Succeeded` or `Solved_To_Acceptable_Level`,
   `"not_converged"` / `false` for any other status, and `"completed"` / `null`
   only when none is readable.
+- **An unusable required output is `failed`, not `partial` (breaking).** A
+  required leaf's own retained trajectory no longer promotes a run; only a
+  diagnostic leaf's artifact can. A run with no usable required output now reads
+  `scientific_status: "failed"` with `execution_status: "completed"` — an IRC
+  whose every direction hard-failed, an endpoint-HEI path, or a nonconverged MEP.
+- **`all` reports a requested post stage that never ran (breaking).** With no
+  reactive segment, `--tsopt` / `--thermo` / `--dft` were skipped under a
+  reasonless `success`. It is now `partial`, and `pipeline_stop` records
+  `post` / `no_reactive_segment`.
 - **`search.max_depth` counts subdivision levels (breaking).** The cap is now
   `depth >= max_depth`, so the value is the number of recursive subdivision
-  levels allowed and `0` performs none, yielding a single MEP segment. A
+  levels allowed and `0` performs none, returning each input pair as one MEP
+  segment. A
   configured `search.max_depth: N` therefore subdivides one level less than
   before; the default 10 permits 10 levels, previously 11.
 
@@ -49,18 +61,46 @@ _No changes yet._
 - Add IRC `forward_status` / `backward_status` (`stopped`, `failed`, `disabled`),
   `*_requested`, and `*_integration_stop_reason` to `result.json`, and document the
   already-published `*_integration_converged`.
-- Add TSOPT `opt_mode_requested` / `optimizer`, scan `scan_opt_mode` /
-  `scan_optimizer`, and `all` `config.ts_opt_mode` / `config.endpoint_opt_mode`.
+- Add TSOPT `opt_mode_requested` / `optimizer` and scan `scan_opt_mode` /
+  `scan_optimizer`.
 - Add `post_segments[].endpoint_opt.connectivity_validated` with the optimized
   reactant/product bond-topology record.
 - Add the advanced `--max-depth` option to `path-search` and to `all --refine-path`,
   exposing the recursive-subdivision level cap that was previously YAML-only.
+- Add path-search `search_max_depth` and `preopt_requested` /
+  `preopt_converged`, IRC `forward_short_branch` / `backward_short_branch`, `all`
+  `config.preopt` / `config.max_depth`, and `Pipeline stop` / `Recursion depth
+  cap` lines in `summary.log`.
 
 ### Changed
 - Support fairchem-core 2.22 and current compatible runtime dependencies.
-- Raise the default DMF IPOPT iteration cap (`--max-cycles-dmf`, `dmf.max_cycles`) from 300 to 3000, matching the solver's own default.
+- Raise the default DMF IPOPT iteration cap (`--max-cycles-dmf`,
+  `dmf.max_cycles`) from 300 to 3000, matching the solver's own default. A DMF
+  MEP that previously stopped at that cap can now continue.
+- `all` `config.ts_opt_mode` / `config.endpoint_opt_mode` are `null` when TS
+  optimization was not requested, instead of always carrying the default preset.
 
 ### Fixed
+- Relay `preopt` into `summary.json`'s `references`: with `--no-preopt` it cited
+  an optimizer the run never used, contradicting `summary.log` and stdout.
+- Carry `pipeline_stop` into the `summary.log` payload; the line was reachable
+  only on the TS-only route, so an early stop looked like a completed run.
+- Publish a segment record for an interval that abandoned recursion, and reject
+  one whose HEI sits at an endpoint. A failed bond-change evaluation now carries
+  a sentinel instead of an empty summary, which read as "no covalent change" and
+  dropped the interval from post-processing.
+- Fail closed on a missing `tsopt` post-segment record when TSOPT was requested,
+  and give `tsopt_missing` / `endpoint_opt_missing` messages.
+- Report `endpoint_opt.connectivity.method` from the probe's own resolution
+  instead of always claiming `bond_topology`.
+- Match a suffixed segment's MEP scratch directory when claiming its endpoint
+  trajectory, so a depth-capped segment keeps its IRC endpoint orientation.
+- Reject `--max-depth` without `--refine-path`, which was accepted, dropped, and
+  still echoed.
+- Report a missing IRC direction record as `failed`, not `disabled`.
+- Gate the `all` verdict on endpoint-preoptimization convergence: `path-opt` /
+  `path-search` publish the folded bit and the parent builds a required `preopt`
+  leaf, so a nonconverged endpoint is no longer overwritten with `success`.
 - Restore static image export with current Plotly releases.
 - Report TS/IRC-endpoint optimizer modes and requested/effective TS optimizer JSON separately.
 - Show the formatted result warning, including its recovery guidance such as

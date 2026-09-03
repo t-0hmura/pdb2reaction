@@ -247,6 +247,7 @@ force/step収束詳細と`safeguards`は省略します。
 |-----------|------|------|
 | `status` | string | `"completed"` |
 | `n_frames_forward` | int | 前方 IRC フレーム数 |
+| `forward_short_branch` / `backward_short_branch` | bool | cycle 上限前に3フレーム以内で停止した分岐。診断用のみ |
 | `n_frames_backward` | int | 後方 IRC フレーム数 |
 | `n_frames_total` | int | 全フレーム数 |
 | `energy_first_hartree` | float | stitched path の最初の端点エネルギー。standalone IRC は化学的identityを割り当てない |
@@ -368,6 +369,8 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 |-----------|------|------|
 | `status` | string | `"success"` / `"partial"` |
 | `n_segments` | int | 再帰 MEP のセグメント数 |
+| `search_max_depth` | int | 実効の再帰分割階層上限。`0` は分割無効 |
+| `preopt_requested` / `preopt_converged` | bool / bool \| null | 端点事前最適化の要求と畳み込み収束。`all` の集約が判定に使う |
 | `segments` | object[] | セグメントごとの `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes`（`{title: [entries]}` dict のリスト。bridge セグメントは `""`）。 |
 | `energy_diagrams` | object[] | セグメントごとのラベル付きエネルギープロファイル (kcal/mol) |
 | `mlip_backend` | string | バックエンド名 |
@@ -475,6 +478,7 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 | `status` | string | `"success"` / `"partial"` / `"failed"` (`all`); `"success"` / `"partial"` (`path-search`) |
 | `execution_status` / `scientific_status` | string / string | 実行の完了度と科学的な利用可能性。従来の `status` とは分けて評価します。 |
 | `scientific_status_reasons` | string[] | 不完全または利用できない科学的結果の理由。正常終了時は省略されます。 |
+| `pipeline_stop` | object \| 不在 | 早期停止時のみ存在。`stage`・`reason`・該当ステージの記録。`summary.log` では `Pipeline stop` |
 | `expected_item_ids` / `observed_item_ids` | string[] | 期待された集約項目と観測された集約項目。 |
 | `config` | object | 実効設定。`mep_mode` は GSM/DMF、`ts_opt_mode` / `endpoint_opt_mode` は設定済み後処理 preset を示す。generic `opt_mode*` は解決済み CLI 入力を保持する。`path_opt_mode` は端点 preoptimization に使う単一構造 optimizer であり（`preopt` を参照）、MEP path algorithm ではない。 |
 | `n_segments` | int | セグメント数 |

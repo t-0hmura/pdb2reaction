@@ -65,8 +65,12 @@ def test_explicit_no_change_segment_does_not_require_postprocessing() -> None:
         legacy_reasons=reasons,
     )
 
-    assert status == "success"
-    assert truth.scientific_status == "success"
+    # The no-change segment still requires no per-segment record, which is what
+    # this test guards. The headline verdict now says what actually happened:
+    # TSOPT was requested and never ran, because nothing was reactive.
+    assert status == "partial"
+    assert any("no reactive segment" in reason for reason in reasons)
+    assert truth.scientific_status == "partial"
     assert truth.expected_item_ids == ()
 
 

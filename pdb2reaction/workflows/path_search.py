@@ -1112,6 +1112,7 @@ def _build_multistep_path(
         reason_msg: Optional[str] = None,
         *,
         use_maxdepth_tag: bool = True,
+        convergence_unknown: bool = False,
     ) -> CombinedPath:
         if reason_msg:
             click.echo(reason_msg)
@@ -1172,11 +1173,19 @@ def _build_multistep_path(
                 ],
             )
 
+        bond_eval_failed = False
         try:
             changed, step_summary = has_bond_change(gsm.images[0], gsm.images[-1], bond_cfg)
         except Exception as e:
             click.echo(f"[{seg_tag}] WARNING: Failed to evaluate bond changes at max depth: {e}", err=True)
-            changed, step_summary = True, ""
+            # Keep the interval reactive so it still receives post-processing:
+            # `_is_reactive_segment` reads this text, and an empty string there
+            # reads as "no covalent change" and drops the segment silently. The
+            # sentinel is non-empty for that reason, and convergence becomes
+            # unknown so the aggregate cannot report success on an interval whose
+            # chemistry was never established.
+            bond_eval_failed = True
+            changed, step_summary = True, "(bond-change evaluation failed)"
 
         try:
             barrier_kcal = (max(gsm.energies) - gsm.energies[0]) * AU2KCALPERMOL
@@ -1192,7 +1201,11 @@ def _build_multistep_path(
             delta_kcal=float(delta_kcal),
             summary=step_summary if changed else "(no covalent changes detected)",
             kind="seg",
-            converged=getattr(gsm, "is_converged", None),
+            converged=(
+                None
+                if (bond_eval_failed or convergence_unknown)
+                else getattr(gsm, "is_converged", None)
+            ),
         )
 
         _tag_images(
@@ -1207,12 +1220,21 @@ def _build_multistep_path(
 
     # `max_depth` counts LEVELS of recursive subdivision, so 0 performs none at
     # all and reproduces a single-segment MEP. Reaching the cap is not a failure:
-    # the remaining interval is returned as one un-subdivided segment.
+    # the remaining interval is returned as one segment, not subdivided further.
     max_depth = int(search_cfg.get("max_depth", SEARCH_KW["max_depth"]))
     if depth >= max_depth:
         if max_depth <= 0:
             # Reachable only at depth 0: subdivision was switched off, not spent.
-            return _terminate_with_maxdepth(use_maxdepth_tag=False)
+            # Say so: without the `_maxdepth` tag this run is otherwise identical
+            # to one whose recursion terminated on a verified elementary step.
+            return _terminate_with_maxdepth(
+                reason_msg=(
+                    f"[{branch_tag}] Recursive subdivision is disabled "
+                    "(max_depth=0); returning one MEP segment, which is not "
+                    "guaranteed to be a single elementary step."
+                ),
+                use_maxdepth_tag=False,
+            )
         click.echo(f"[{branch_tag}] Reached maximum recursion depth. Returning current endpoints only.")
         return _terminate_with_maxdepth()
 
@@ -1452,7 +1474,10 @@ def _build_multistep_path(
             "Please check the initial structure and the generated intermediate structures. "
             "Alternatively, try switching the mep-mode. If that still fails, try including intermediate structures in the inputs."
         )
-        return _terminate_with_maxdepth(reason_msg=warning_msg)
+        # The path is suspect, so convergence is reported as unknown.
+        return _terminate_with_maxdepth(
+            reason_msg=warning_msg, convergence_unknown=True
+        )
 
     parts.append((step_imgs, step_E))
     seg_reports.append(seg_report)
@@ -2101,10 +2126,11 @@ def _merge_final_and_write(final_images: List[Any],
                     "has max_nodes+2 images including endpoints. When not given, YAML "
                     "search.max_nodes_segment applies."))
 @click.option("--max-depth", type=click.IntRange(min=0), default=None, show_default="10",
-              help=("Number of recursive subdivision levels allowed while splitting a multistep "
-                    "path. 0 performs no subdivision and yields a single MEP segment. Reaching "
-                    "the limit is not an error: the remaining interval is returned as one "
-                    "un-subdivided segment tagged seg_NNN_maxdepth, which is therefore not "
+              help=("Number of recursive subdivision levels allowed while splitting a "
+                    "multistep path. 0 performs no subdivision, returning each input "
+                    "pair as one MEP segment. Reaching the limit is not an error: the "
+                    "remaining interval is returned as one segment that was not "
+                    "subdivided, tagged seg_NNN_maxdepth, and is therefore not "
                     "guaranteed to be a single elementary step. When not given, YAML "
                     "search.max_depth applies."))
 @click.option(
@@ -3209,6 +3235,26 @@ def cli(
             raw_artifacts=_raw_arts,
             required_outcomes=combined_all.required_outcomes,
         )
+        # The preopt leaves already gate this child's own aggregate, but `all`
+        # recomputes the verdict from its own leaves and cannot see them. Publish
+        # the folded bit so the parent can carry the same gate; otherwise a
+        # nonconverged endpoint preoptimization is overwritten with `success`
+        # while the unusable leaf stays visible in `stage_outcomes`.
+        from pdb2reaction.workflows._outcomes import (
+            combine_step_convergence as _combine_step_convergence,
+        )
+        _preopt_converged = (
+            _combine_step_convergence(
+                getattr(outcome, "converged", None) for outcome in preopt_outcomes
+            )
+            if preopt
+            else None
+        )
+        summary["search_max_depth"] = int(
+            search_cfg.get("max_depth", SEARCH_KW["max_depth"])
+        )
+        summary["preopt_requested"] = bool(preopt)
+        summary["preopt_converged"] = _preopt_converged
         _path_truth = _agg_truth(_path_leaves, _path_expected)
         # Legacy byte-compat: `status` stays the diagram-based value it always
         # had — "success" when an energy diagram was produced, else "partial".
@@ -3236,6 +3282,11 @@ def cli(
                 "mep_mode": mep_mode,
                 "path_opt_mode": opt_mode,
                 "dmf_correlated": bool(dmf_cfg.get("correlated", False)),
+                # The path-optimizer citation is gated on `preopt`, and a missing
+                # key reads as "preoptimization ran". Without this the reference
+                # list in summary.json cites a single-structure optimizer that a
+                # `--no-preopt` run never used, contradicting summary.log.
+                "preopt": bool(preopt),
                 "mlip_backend": summary.get("mlip_backend"),
                 "mlip_model": summary.get("mlip_model"),
                 "mlip_task": summary.get("mlip_task"),

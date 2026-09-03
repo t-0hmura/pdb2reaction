@@ -558,6 +558,7 @@ if grep -Fq 'Reached maximum recursion depth' test80_ps_max_depth0.out; then
   echo '[smoke] FAIL test80: --max-depth 0 announced an exhausted recursion budget' >> test80_ps_max_depth0.out
   exit 1
 fi
+grep -Fq 'Recursive subdivision is disabled' test80_ps_max_depth0.out || { echo '[smoke] FAIL test80: --max-depth 0 did not announce that subdivision is disabled' >> test80_ps_max_depth0.out; exit 1; }
 
 # Numerical analytical-vs-FD agreement for every backend installed in the
 # default strict environment. MACE/AIMNet2 use this same required wrapper in
