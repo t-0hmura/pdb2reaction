@@ -11,9 +11,10 @@ _No changes yet._
 ## [0.4.14] — 2026-09-02
 
 > Upgrade warning: unchanged inputs can produce a different `scientific_status` for
-> standalone `irc` and for `all`, and `result.json` / `summary.json` now carry
-> `schema_version: "3.0"`. Users of those files must review the Breaking changes below
-> before upgrading.
+> standalone `irc` and for `all`, a different `status` / `converged` for a DMF
+> `path-opt`, and one subdivision level fewer for a configured `search.max_depth`;
+> `result.json` / `summary.json` now carry `schema_version: "3.0"`. Users of those
+> files must review the Breaking changes below before upgrading.
 
 ### Breaking changes
 - **JSON schema 3.0 (breaking).** Remove the IRC `forward_converged` /
@@ -32,6 +33,17 @@ _No changes yet._
   validation of the optimized endpoints against their assigned MEP endpoints. A
   run whose `post_segments[].endpoint_opt` record is absent or whose optimized
   topology does not match no longer reports `success`.
+- **DMF `path-opt` reports its own convergence (breaking).** `status` /
+  `converged` were pinned to `"completed"` / `null` regardless of the IPOPT
+  outcome. They now carry the IPOPT bit in the tri-state form GSM uses:
+  `"converged"` / `true` for `Solve_Succeeded` or `Solved_To_Acceptable_Level`,
+  `"not_converged"` / `false` for any other status, and `"completed"` / `null`
+  only when none is readable.
+- **`search.max_depth` counts subdivision levels (breaking).** The cap is now
+  `depth >= max_depth`, so the value is the number of recursive subdivision
+  levels allowed and `0` performs none, yielding a single MEP segment. A
+  configured `search.max_depth: N` therefore subdivides one level less than
+  before; the default 10 permits 10 levels, previously 11.
 
 ### Added
 - Add IRC `forward_status` / `backward_status` (`stopped`, `failed`, `disabled`),
@@ -41,6 +53,8 @@ _No changes yet._
   `scan_optimizer`, and `all` `config.ts_opt_mode` / `config.endpoint_opt_mode`.
 - Add `post_segments[].endpoint_opt.connectivity_validated` with the optimized
   reactant/product bond-topology record.
+- Add the advanced `--max-depth` option to `path-search` and to `all --refine-path`,
+  exposing the recursive-subdivision level cap that was previously YAML-only.
 
 ### Changed
 - Support fairchem-core 2.22 and current compatible runtime dependencies.

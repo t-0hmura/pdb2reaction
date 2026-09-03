@@ -339,7 +339,7 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `status` | string | `"converged"` / `"not_converged"` / `"completed"` |
-| `converged` | bool | 収束判定 |
+| `converged` | bool \| null | 収束判定: エンジン自身の収束シグナルによる `true` / `false`。読み取れない場合は `null`（`status` は `"completed"` となり、収束を主張しない） |
 | `mep_mode` | string | `"dmf"` / `"gsm"` |
 | `backend` | string | MLIP バックエンド |
 | `charge` | int | 系の電荷 |

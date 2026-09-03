@@ -348,7 +348,7 @@ CSV lacks complete provenance.
 | Field | Type | Description |
 |-------|------|-------------|
 | `status` | string | `"converged"` / `"not_converged"` / `"completed"` |
-| `converged` | bool | Convergence flag |
+| `converged` | bool \| null | Convergence flag: `true` / `false` from the engine's own convergence signal, `null` when it exposed none (`status` is then `"completed"`, never a success claim) |
 | `mep_mode` | string | `"dmf"` or `"gsm"` |
 | `backend` | string | MLIP backend |
 | `charge` | int | System charge |

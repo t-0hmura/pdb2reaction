@@ -73,7 +73,7 @@ pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
 3. **Decide between kink vs. refinement**:
  - If no covalent bond change is detected between `End1` and `End2`, treat the region as a *kink* — a conformational rearrangement with no bond breaking or formation (see [Glossary](glossary.md)): insert `search.kink_max_nodes` linear nodes and optimize each individually.
  - Otherwise, the region is a *reactive segment* — a segment in which covalent bond changes are detected between the endpoints (see [Glossary](glossary.md)). Launch a **refinement segment (GSM/DMF)** between `End1` and `End2` to sharpen the barrier.
-4. **Selective recursion** – compare bond changes for `(A→End1)` and `(End2→B)` using the `bond` thresholds. Recurse only on sub-intervals that still contain covalent updates. Recursion depth is capped by `search.max_depth`.
+4. **Selective recursion** – compare bond changes for `(A→End1)` and `(End2→B)` using the `bond` thresholds. Recurse only on sub-intervals that still contain covalent updates. `search.max_depth` sets how many levels of recursive subdivision are allowed; `0` performs none and yields a single MEP segment. Reaching the limit is not an error: the remaining interval is returned as one un-subdivided segment tagged `seg_NNN_maxdepth`, which is therefore not guaranteed to be a single elementary step.
 5. **Stitching & bridging** – concatenate resolved subpaths, dropping duplicate endpoints when RMSD ≤ `search.stitch_rmsd_thresh`. If the RMSD gap between two stitched pieces exceeds `search.bridge_rmsd_thresh`, insert a *bridge segment* — a connecting segment between two non-adjacent intermediates (see [Glossary](glossary.md)) — using GSM/DMF. When the interface itself shows a bond change, a new recursive segment replaces the bridge.
 6. **Alignment & coordinate merging for inspection (optional)** – with `--align` (default), pre-optimized structures are rigidly aligned to the first input and `freeze_atoms` are reconciled. `--write-ref-merge` together with `--ref-full-pdb` writes coordinate composites for inspection.
 
@@ -190,7 +190,7 @@ bond:
  margin_fraction: 0.05 # tolerance margin for comparisons
  delta_fraction: 0.05 # minimum relative change to flag bonds
 search:
- max_depth: 10 # recursion depth limit
+ max_depth: 10 # recursive subdivision levels allowed (0 = no subdivision)
  stitch_rmsd_thresh: 0.0001 # RMSD threshold for stitching segments
  bridge_rmsd_thresh: 0.0001 # RMSD threshold for bridging nodes
  max_nodes_segment: 20 # max nodes per segment

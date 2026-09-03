@@ -867,23 +867,27 @@ def test_dmf_converged_leaf_is_success() -> None:
     assert aggregate_workflow_truth([leaf], ["dmf_mep"]).scientific_status == "success"
 
 
-def test_dmf_result_status_is_legacy_byte_compatible() -> None:
-    # DMFMepResult exposed no readable is_converged, so the legacy DMF
-    # result.json `status` field always read "completed" and its `converged`
-    # field always read null. Explicit convergence is carried by
-    # scientific_status / stage_outcomes; NEITHER legacy field may flip on a
-    # genuinely-converged run (a non-additive value change would break byte-compat).
+def test_dmf_result_status_matches_the_gsm_convergence_form() -> None:
+    # Both MEP engines answer "did this converge?" the same way: `converged`
+    # carries the tri-state bit and `status` is derived from it, so a DMF
+    # consumer reading either field gets the IPOPT result rather than a pinned
+    # placeholder. Schema 3.0 replaced the earlier byte-compatible pinning.
     from pdb2reaction.workflows import path_opt
 
     src = Path(path_opt.__file__).read_text(encoding="utf-8")
-    # The DMF result_data must pin the legacy status literal, not derive it from
-    # _dmf_converged (which would flip "completed"->"converged").
-    assert '"status": "completed",' in src
-    assert '"status": "converged" if _dmf_converged' not in src
-    # The DMF `converged` legacy field must stay pinned to null (its base value),
-    # never the real IPOPT bit (which would flip null->true/false non-additively).
-    assert '"converged": None,' in src
-    assert '"converged": _dmf_converged' not in src
+    # DMF publishes the real IPOPT bit, and derives `status` from it exactly as
+    # the GSM branch does.
+    assert '"converged": _dmf_converged,' in src
+    assert 'if _dmf_converged is True' in src
+    assert '"not_converged" if _dmf_converged is False else "completed"' in src
+    # The pinned placeholders are gone.
+    assert '"converged": None,\n' not in src
+    # An unreadable IPOPT status stays tri-state rather than claiming an outcome.
+    from pdb2reaction.workflows._outcomes import ipopt_status_to_converged
+
+    assert ipopt_status_to_converged(None)[0] is None
+    assert ipopt_status_to_converged(0)[0] is True
+    assert ipopt_status_to_converged(2)[0] is False
     # ...but the IPOPT truth must still feed the additive scientific_status leaf.
     assert 'converged=_dmf_converged' in src
 

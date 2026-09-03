@@ -31,6 +31,7 @@ pdb2reaction path-search -i 1.R.pdb 3.P.pdb \
 | `--mep-mode` | str | `gsm` | `gsm` (Growing String) or `dmf` (Direct Max Flux) |
 | `--refine-mode` | str | engine-dependent | `peak` (HEI±1; GSM default) or `minima` (nearest local minima; DMF default) |
 | `--max-nodes` | int | 20 | Max internal nodes per segment string |
+| `--max-depth` | int | 10 | Recursive subdivision levels allowed; `0` = no subdivision (single MEP segment). At the limit the remaining interval is returned as one un-subdivided `seg_NNN_maxdepth` segment, not guaranteed to be one elementary step |
 | `--thresh` | str | `gau` | Single-structure optimization convergence preset |
 | `--thresh-gsm` | str | `gau_loose` | GSM string-optimizer convergence preset |
 | `--thresh-dmf` | str/float | `tight` | DMF IPOPT dual-infeasibility tolerance: `tight`, `middle`, `loose`, or a positive float |

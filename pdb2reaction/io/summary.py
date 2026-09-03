@@ -167,10 +167,10 @@ def format_result_warning(
         "irc_endpoint_connectivity_unvalidated",
         "optimized_endpoint_connectivity_unvalidated",
     }:
-        return (
-            "Bond-topology matching between the optimized IRC endpoints and "
-            "the two input endpoint structures could not be validated. Review "
-            "both optimized endpoint structures before using this result."
+        return scoped(
+            "bond-topology matching between the optimized IRC endpoints and the "
+            "segment's assigned MEP endpoints could not be validated. Review both "
+            "optimized endpoint structures before using this result."
         )
     priority_messages = {
         "mep_not_converged": (
@@ -1034,6 +1034,15 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
         lines.append(f"Execution status    : {execution_status}")
     if scientific_status is not None:
         lines.append(f"Scientific status   : {scientific_status}")
+    pipeline_stop = payload.get("pipeline_stop")
+    if isinstance(pipeline_stop, dict):
+        # The request echo above reports what was ASKED for. Without this line a
+        # run that stopped early and a run that completed look identical in the
+        # only file a downstream reader may receive.
+        stop_stage = str(pipeline_stop.get("stage") or "unknown")
+        stop_reason = str(pipeline_stop.get("reason") or "").strip()
+        stop_text = f"{stop_stage} ({stop_reason})" if stop_reason else stop_stage
+        lines.append(f"Pipeline stop       : {stop_text}")
     status_reasons = (
         payload.get("scientific_status_reasons")
         or payload.get("status_reasons")

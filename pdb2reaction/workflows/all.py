@@ -3851,6 +3851,19 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
           "max_nodes+2 images including endpoints."),
 )
 @click.option(
+    "--max-depth",
+    type=click.IntRange(min=0),
+    default=None,
+    show_default="10",
+    help=(
+        "Recursive subdivision levels allowed by --refine-path. 0 performs no "
+        "subdivision and yields a single MEP segment. Reaching the limit is not "
+        "an error: the remaining interval is returned as one un-subdivided "
+        "segment tagged seg_NNN_maxdepth, which is therefore not guaranteed to "
+        "be a single elementary step."
+    ),
+)
+@click.option(
     "--gsm-param",
     type=click.Choice(["equi", "energy"], case_sensitive=False),
     default=None,
@@ -4358,6 +4371,7 @@ def cli(
     mep_mode: str,
     dmf_backend: str,
     max_nodes: int,
+    max_depth: Optional[int],
     gsm_param: Optional[str],
     max_cycles_gsm: Optional[int],
     max_cycles_dmf: Optional[int],
@@ -4896,6 +4910,11 @@ def cli(
                     str(gsm_param).lower()
                     if cli_param_overridden(ctx, "gsm_param")
                     and gsm_param is not None
+                    else None
+                ),
+                "max_depth": (
+                    int(max_depth)
+                    if cli_param_overridden(ctx, "max_depth") and max_depth is not None
                     else None
                 ),
                 "max_cycles_gsm": (
@@ -7255,6 +7274,8 @@ def cli(
         # freeze_ref is None and freeze-links should not be activated.
         _append_toggle_arg(ps_args, "--freeze-links", bool(freeze_links_flag and freeze_ref is not None))
         ps_args.extend(["--mep-mode", mep_mode_kind])
+        if cli_param_overridden(ctx, "max_depth") and max_depth is not None:
+            ps_args.extend(["--max-depth", str(int(max_depth))])
         if cli_param_overridden(ctx, "max_cycles_gsm") and max_cycles_gsm is not None:
             ps_args.extend(["--max-cycles-gsm", str(int(max_cycles_gsm))])
         if cli_param_overridden(ctx, "max_cycles_dmf") and max_cycles_dmf is not None:

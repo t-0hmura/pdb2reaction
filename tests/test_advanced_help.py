@@ -68,6 +68,8 @@ ADVANCED_CLASSIFICATION = [
     ("scan3d", "--opt-mode"),
     ("path-opt", "--opt-mode"),
     ("path-opt", "--gsm-param"),
+    ("all", "--max-depth"),
+    ("path-search", "--max-depth"),
     ("path-search", "--opt-mode"),
     ("path-search", "--gsm-param"),
     ("path-search", "--write-ref-merge"),

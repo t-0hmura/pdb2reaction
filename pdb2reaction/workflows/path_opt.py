@@ -1413,16 +1413,17 @@ def cli(
                 _dmf_converged = getattr(dmf_res, 'is_converged', None)
                 _dmf_reason = getattr(dmf_res, 'reason', "") or ""
                 result_data: Dict[str, Any] = {
-                    # Legacy byte compatibility: DMFMepResult exposed no
-                    # readable is_converged, so both the legacy `status` and the
-                    # legacy `converged` fields always read "completed" / null.
-                    # The new IPOPT convergence truth is carried ONLY by the
-                    # additive scientific_status / stage_outcomes (attached below);
-                    # both legacy values are pinned to their base so no downstream
-                    # consumer of `status`/`converged` observes a non-additive flip
-                    # on a genuinely converged run.
-                    "status": "completed",
-                    "converged": None,
+                    # `status` / `converged` carry the IPOPT convergence bit in the
+                    # same tri-state form GSM uses, so the two MEP engines answer
+                    # "did this converge?" identically. A missing or unreadable
+                    # IPOPT status stays `None` / "completed" rather than claiming
+                    # either outcome.
+                    "status": (
+                        "converged"
+                        if _dmf_converged is True
+                        else ("not_converged" if _dmf_converged is False else "completed")
+                    ),
+                    "converged": _dmf_converged,
                     "mep_mode": "dmf",
                     "backend": calc_cfg.get("backend", backend),
                     "charge": calc_cfg["charge"],
