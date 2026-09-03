@@ -263,8 +263,7 @@ per-cycle force/step convergence details and the `safeguards` object.
 | `energy_reactant_hartree` / `energy_product_hartree` | float | Legacy aliases for first / last, respectively; do not infer chemical R/P identity from these names |
 | `forward_requested` / `backward_requested` | bool | Whether each direction was requested |
 | `forward_status` / `backward_status` | string | `stopped`, `failed`, or `disabled`; use these for directional propagation status |
-| `forward_endpoint_stationary` / `backward_endpoint_stationary` | bool \| null | Whether the raw IRC endpoint met the stationary-point threshold; diagnostic only |
-| `forward_converged` / `backward_converged` | bool \| null | Compatibility aliases for `*_endpoint_stationary`; not the IRC usability gate |
+| `forward_integration_converged` / `backward_integration_converged` | bool \| null | Whether the direction stopped because the RMS-gradient stationarity criterion fired; diagnostic only, and always `false` under `--never-stop`, which bypasses that criterion. Combine it with `*_downhill_departure_valid` to reconstruct the condition the removed `*_converged` reported. |
 | `forward_downhill_departure_valid` / `backward_downhill_departure_valid` | bool \| null | Whether the branch established a downhill departure from the TS |
 | `forward_integration_stop_reason` / `backward_integration_stop_reason` | string \| null | Non-empty only for a numerical propagation failure |
 | `forward_energy_increased` | bool \| null | Final forward step exceeded `irc.energy_increase_thresh` (default `0` Hartree: any rise) |

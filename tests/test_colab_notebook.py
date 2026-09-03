@@ -1697,6 +1697,8 @@ def test_colab_results_bind_irc_truth_and_skip_bridge_extrema(tmp_path: Path) ->
             "n_frames_forward": 2,
             "n_frames_backward": 2,
             "n_frames_total": 5,
+            # Pre-schema-3.0 payload: exercises the legacy-key fallback the
+            # notebook keeps for result.json files written by older releases.
             "forward_converged": True,
             "backward_converged": False,
             "scientific_status": "partial",
@@ -5838,7 +5840,8 @@ def test_results_playback_uses_path_speed_except_for_energy_levels(
     )
     (segment_irc.parent / "result.json").write_text(json.dumps({
         "n_frames_forward": 1, "n_frames_backward": 1, "n_frames_total": 3,
-        "forward_converged": True, "backward_converged": True,
+        "forward_requested": True, "backward_requested": True,
+        "forward_status": "stopped", "backward_status": "stopped",
         "scientific_status": "success",
     }), encoding="utf-8")
     aggregate = app["_aggregate_irc_trajectory"](
@@ -5877,7 +5880,8 @@ def test_results_playback_uses_path_speed_except_for_energy_levels(
     )
     (segment_irc_2.parent / "result.json").write_text(json.dumps({
         "n_frames_forward": 1, "n_frames_backward": 1, "n_frames_total": 3,
-        "forward_converged": True, "backward_converged": True,
+        "forward_requested": True, "backward_requested": True,
+        "forward_status": "stopped", "backward_status": "stopped",
         "scientific_status": "success",
     }), encoding="utf-8")
     aggregate = app["_aggregate_irc_trajectory"](
@@ -6189,7 +6193,7 @@ def test_results_aggregate_segment_data_without_segment_controls(
     (irc_dir / "result.json").write_text(json.dumps({
         "n_frames_forward": 0, "n_frames_backward": 1, "n_frames_total": 2,
         "forward_requested": False, "backward_requested": True,
-        "forward_converged": None, "backward_converged": True,
+        "forward_status": "disabled", "backward_status": "stopped",
         "scientific_status": "success",
     }), encoding="utf-8")
     semantics = app["_trajectory_semantics"]("irc", str(finished), n_frames=2)

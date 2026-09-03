@@ -81,7 +81,7 @@ print(d["endpoint_energy_orientation"])
 print(d.get("bond_changes_direction"))
 print(d["status"])                 # "completed" means the runner returned and wrote output
 print(d["forward_status"], d["backward_status"])
-print(d["forward_endpoint_stationary"], d["backward_endpoint_stationary"])
+print(d["forward_integration_converged"], d["backward_integration_converged"])
 print(d["forward_energy_increased"], d["backward_energy_increased"])
 print(d["never_stop"], d["never_stop_energy_bypasses"])
 print(d["rigid_projection"]["treatment"], d["rigid_projection"]["effective_rank"])
@@ -89,10 +89,12 @@ print(d["rigid_projection"]["treatment"], d["rigid_projection"]["effective_rank"
 
 `completed` is not an IRC convergence verdict; it means the runner returned.
 Each requested direction reports
-`*_status` as `stopped` or `failed`; `*_endpoint_stationary` records only
-whether the raw endpoint met the stationary-point threshold. The legacy
-`*_converged` keys alias that diagnostic and do not decide whether a finite,
-downhill trajectory can proceed to endpoint optimization.
+`*_status` as `stopped` or `failed`, which is the usability axis.
+`*_integration_converged` records only whether the RMS-gradient stationarity
+criterion fired, so `--never-stop` always leaves it false; pair it with
+`*_downhill_departure_valid` when you need both conditions. Neither decides
+whether a finite, downhill trajectory can proceed to endpoint optimization.
+Schema 3.0 removed the `*_converged` keys.
 `never_stop` records whether the opt-in mode was enabled;
 `never_stop_energy_bypasses` records how many energy-rise/change stops it
 actually bypassed.

@@ -202,8 +202,9 @@ non-convergence, zero modes, failed/skipped PHVA, or no valid negative root stop
 `result.json` `scientific_status == "success"` **plus** each enabled direction's
 `*_status == "stopped"`, valid downhill-departure field, and nontrivial frame
 count; then optimize and confirm the first/last endpoints connect the intended
-R and P (bond changes match this step). `*_endpoint_stationary` and its legacy
-`*_converged` alias are diagnostics; `completed` alone only means the runner returned.
+R and P (bond changes match this step). `*_integration_converged` and
+`*_downhill_departure_valid` are diagnostics; `completed` alone only means the
+runner returned.
 A TS that fails any gate is not validated as this elementary step.
 
 **Stage 3 — optimize and identify the raw IRC ends**

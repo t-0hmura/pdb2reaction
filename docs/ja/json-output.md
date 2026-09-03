@@ -256,8 +256,7 @@ force/step収束詳細と`safeguards`は省略します。
 | `energy_reactant_hartree` / `energy_product_hartree` | float | first / last の旧alias。key名から化学的R/P identityを推定しないこと |
 | `forward_requested` / `backward_requested` | bool | 各方向を要求したか |
 | `forward_status` / `backward_status` | string | 各方向の伝播状態: `stopped` / `failed` / `disabled` |
-| `forward_endpoint_stationary` / `backward_endpoint_stationary` | bool \| null | 生 IRC 端点が stationary threshold を満たしたか。診断専用 |
-| `forward_converged` / `backward_converged` | bool \| null | `*_endpoint_stationary` の互換 alias。IRC 利用可否の gate ではない |
+| `forward_integration_converged` / `backward_integration_converged` | bool \| null | RMS 勾配の停留判定が発火して停止したか。診断専用で、`--never-stop` はこの判定を迂回するため常に `false`。削除した `*_converged` が表していた条件は、`*_downhill_departure_valid` との連言で再構成できる |
 | `forward_downhill_departure_valid` / `backward_downhill_departure_valid` | bool \| null | TS から downhill に離れたことを確認できたか |
 | `forward_integration_stop_reason` / `backward_integration_stop_reason` | string \| null | 数値伝播が失敗した場合だけ非空になる理由 |
 | `forward_energy_increased` | bool \| null | 前方の最終stepで`irc.energy_increase_thresh`（デフォルト`0` Hartree、上昇はすべて対象）を超えてenergyが上昇したか |

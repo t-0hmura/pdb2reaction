@@ -110,7 +110,7 @@ import json
 
 # Reportable per-segment barriers (TSOPT + IRC refined; present when --tsopt ran)
 d = json.load(open("result_all/summary.json"))
-if d.get("schema_version") != "2.0":
+if d.get("schema_version") != "3.0":
     raise RuntimeError(f"unsupported summary schema: {d.get('schema_version')!r}")
 if d.get("scientific_status") != "success":
     raise RuntimeError(f"result is not reportable: {d.get('scientific_status_reasons', [])}")
