@@ -253,6 +253,9 @@ def test_all_manifest_ignores_stale_scan_stages_and_records_distinct_runs(
         assert "STALE_SENTINEL" not in json.dumps(public_summary)
         assert "summary.log" in public_summary["key_output_files"]
         assert "unrelated.txt" not in public_summary["key_output_files"]
+        assert "Limited-memory BFGS (L-BFGS)" not in (
+            out_dir / "summary.log"
+        ).read_text(encoding="utf-8")
         assert "output.public.summary.log" in produced
         assert "output.public.unrelated.txt" not in produced
         assert child_run_ids[child_start:]

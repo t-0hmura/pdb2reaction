@@ -1345,6 +1345,43 @@ def test_read_path_opt_segment_converged_is_tristate(tmp_path: Path) -> None:
     assert _read_path_opt_segment_converged(tmp_path) is None
 
 
+def test_requested_preopt_nonconvergence_gates_parent_truth(tmp_path: Path) -> None:
+    from pdb2reaction.workflows.all import (
+        _pipeline_aggregate_truth,
+        _read_path_opt_preopt_converged,
+    )
+
+    (tmp_path / "result.json").write_text(
+        json.dumps({"preopt_requested": True, "preopt_converged": False})
+    )
+    assert _read_path_opt_preopt_converged(tmp_path) is False
+
+    base = {"preopt_requested": True, "preopt_converged": False}
+    reactive = _pipeline_aggregate_truth(
+        {
+            **base,
+            "segments": [
+                {"index": 1, "kind": "seg", "converged": True}
+            ],
+        },
+        post_segments=None,
+        config={"tsopt": False},
+        legacy_status="success",
+    )
+    assert reactive.scientific_status == "partial"
+    assert any("preopt" in reason for reason in reactive.status_reasons)
+
+    degenerate = _pipeline_aggregate_truth(
+        {**base, "segments": []},
+        post_segments=None,
+        config={"tsopt": False},
+        legacy_status="success",
+    )
+    assert degenerate.execution_status == "completed"
+    assert degenerate.scientific_status == "partial"
+    assert any("preopt" in reason for reason in degenerate.status_reasons)
+
+
 def test_all_path_opt_child_emits_machine_result() -> None:
     """The no-refine path-opt producer must enable its result.json contract."""
     from pdb2reaction.workflows import all as all_workflow

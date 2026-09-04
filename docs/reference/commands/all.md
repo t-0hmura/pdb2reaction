@@ -113,9 +113,10 @@ Options:
   --max-nodes INTEGER             Movable internal images per GSM/DMF segment;
                                   the complete segment has max_nodes+2 images
                                   including endpoints.  [default: 20]
-  --max-depth INTEGER RANGE       Recursive subdivision levels allowed by
+  --max-depth INTEGER RANGE       Recursive subdivision levels; requires
                                   --refine-path. 0 performs no subdivision,
-                                  returning each input pair as one MEP segment.
+                                  returning each input pair as one MEP segment
+                                  (none when its HEI sits at an endpoint).
                                   Reaching the limit is not an error: the
                                   remaining interval is returned as one segment
                                   that was not subdivided, tagged

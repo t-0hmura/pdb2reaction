@@ -1230,8 +1230,8 @@ def _build_multistep_path(
             return _terminate_with_maxdepth(
                 reason_msg=(
                     f"[{branch_tag}] Recursive subdivision is disabled "
-                    "(max_depth=0); returning one MEP segment, which is not "
-                    "guaranteed to be a single elementary step."
+                    "(max_depth=0); evaluating the current MEP without further "
+                    "splitting."
                 ),
                 use_maxdepth_tag=False,
             )
@@ -2128,7 +2128,8 @@ def _merge_final_and_write(final_images: List[Any],
 @click.option("--max-depth", type=click.IntRange(min=0), default=None, show_default="10",
               help=("Number of recursive subdivision levels allowed while splitting a "
                     "multistep path. 0 performs no subdivision, returning each input "
-                    "pair as one MEP segment. Reaching the limit is not an error: the "
+                    "pair as one MEP segment (none when its HEI sits at an endpoint). "
+                    "Reaching the limit is not an error: the "
                     "remaining interval is returned as one segment that was not "
                     "subdivided, tagged seg_NNN_maxdepth, and is therefore not "
                     "guaranteed to be a single elementary step. When not given, YAML "
@@ -3341,6 +3342,7 @@ def cli(
                 "path_module_dir": "path_search",
                 "pipeline_mode": "path-search",
                 "refine_path": True,
+                "preopt": bool(preopt),
                 "tsopt": False,
                 "thermo": False,
                 "dft": False,
@@ -3366,6 +3368,7 @@ def cli(
                 "mep": mep_info,
                 "segments": summary.get("segments", []),
                 "energy_diagrams": summary.get("energy_diagrams", []),
+                "search_max_depth": summary.get("search_max_depth"),
                 "key_files": {},
             }
             summary_payload_for_citations = summary_payload
