@@ -69,8 +69,8 @@ _No changes yet._
   exposing the recursive-subdivision level cap that was previously YAML-only.
 - Add path-search `search_max_depth` and `preopt_requested` /
   `preopt_converged`, IRC `forward_short_branch` / `backward_short_branch`, `all`
-  `config.preopt` / `config.max_depth`, and `Pipeline stop` / `Recursion depth
-  cap` lines in `summary.log`.
+  `config.preopt`, and `Pipeline stop` / `Recursion depth cap` lines in
+  `summary.log`.
 
 ### Changed
 - Support fairchem-core 2.22 and current compatible runtime dependencies.
@@ -83,8 +83,9 @@ _No changes yet._
 ### Fixed
 - Relay `preopt` into `summary.json`'s `references`: with `--no-preopt` it cited
   an optimizer the run never used, contradicting `summary.log` and stdout.
-- Carry `pipeline_stop` into the `summary.log` payload; the line was reachable
-  only on the TS-only route, so an early stop looked like a completed run.
+- Carry `pipeline_stop` into the `summary.log` payload; only the TS-only route
+  supplied the key, so the new line never rendered for a path run that stopped
+  early.
 - Publish a segment record for an interval that abandoned recursion, and reject
   one whose HEI sits at an endpoint. A failed bond-change evaluation now carries
   a sentinel instead of an empty summary, which read as "no covalent change" and

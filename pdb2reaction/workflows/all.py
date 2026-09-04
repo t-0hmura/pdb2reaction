@@ -3313,10 +3313,15 @@ def _validate_optimized_endpoint_pair(
             "reason": f"optimized_endpoint_validation_failed:{exc}",
         }
     matrix = probe.get("match_matrix") if isinstance(probe, dict) else None
+    # The XOR the producer uses: an all-True matrix is a `rmsd_topology_tie`, in
+    # which the optimized endpoints are topologically indistinguishable from both
+    # MEP endpoints and nothing was actually discriminated.
     direct = bool(
         isinstance(matrix, dict)
         and matrix.get("left_to_mep_left") is True
         and matrix.get("right_to_mep_right") is True
+        and matrix.get("left_to_mep_right") is not True
+        and matrix.get("right_to_mep_left") is not True
     )
     # Carry the probe's own resolution label rather than asserting the strongest
     # one: a `rmsd_topology_tie` or `rmsd_topology_unmatched` resolution published
@@ -6293,8 +6298,6 @@ def cli(
                     "post_dir": str(tsroot),
                     "irc_plot": str(irc_plot_path) if isinstance(irc_plot_path, Path) else None,
                     "irc_traj": str(irc_trj_path) if isinstance(irc_trj_path, Path) else None,
-                    # Raw IRC propagation and optimized endpoint convergence
-                    # are independent aggregate inputs.
                     "irc": irc_res.get("irc_outcome"),
                     "endpoint_opt": {
                         "reactant_converged": _react_opt_conv,
@@ -8064,8 +8067,6 @@ def cli(
             if isinstance(irc_trj_path, Path) and irc_trj_path.exists():
                 segment_log["irc_traj"] = str(irc_trj_path)
 
-            # Raw IRC status/orientation are diagnostics.  Scientific endpoint
-            # acceptance is determined after endpoint optimization below.
             segment_log["irc"] = irc_res.get("irc_outcome")
             segment_log["endpoint_assignment"] = irc_res.get(
                 "endpoint_assignment"
@@ -8162,8 +8163,6 @@ def cli(
                 freeze_atoms=irc_res.get("freeze_atoms") or [],
                 seg_tag=str(seg_tag),
             )
-            # Endpoint optimization owns final endpoint acceptance.  Raw IRC
-            # assignment above remains available only as orientation provenance.
             segment_log["endpoint_opt"] = {
                 "reactant_converged": _react_opt_conv,
                 "product_converged": _prod_opt_conv,
