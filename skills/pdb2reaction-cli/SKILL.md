@@ -100,7 +100,7 @@ pdb2reaction all -i 1.R.pdb \
 
 ```bash
 pdb2reaction tsopt -i ts_guess.xyz -q -1 -m 1 -b uma -o result_tsopt
-pdb2reaction freq  -i result_tsopt/final_geometry.xyz -q -1 -m 1 -b uma -o result_freq
+pdb2reaction freq  -i result_tsopt/final_geometry.xyz -q -1 -m 1 -b uma -o result_freq  # optional: full modes / thermochemistry
 pdb2reaction irc   -i result_tsopt/final_geometry.xyz -q -1 -m 1 -b uma -o result_irc
 ```
 

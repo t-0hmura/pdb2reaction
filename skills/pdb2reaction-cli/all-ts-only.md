@@ -4,7 +4,7 @@
 
 You already have a **TS candidate** (typically from another QM code, an
 older `pdb2reaction` run, or a manual guess) and want to run only the
-validation stages without the upstream extract/path search: `tsopt → irc`,
+validation stages without an MEP search: `tsopt → irc`,
 plus R/TS/P `freq` when `--thermo` and DFT when `--dft`.
 
 ## Synopsis
@@ -46,7 +46,8 @@ pdb2reaction irc   -i result_tsopt/final_geometry.xyz -q "$TOTAL_CHARGE" -m 1 -o
 pdb2reaction freq  -i result_tsopt/final_geometry.xyz -q "$TOTAL_CHARGE" -m 1 -o result_freq -b uma
 ```
 
-`extract` and MEP search are skipped entirely. The output tree for a
+MEP search is skipped; PDB/mmCIF extraction runs only when `-c` is supplied.
+The output tree for a
 completed run is:
 
 | Path | When | Content |

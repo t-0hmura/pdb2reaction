@@ -84,16 +84,16 @@ The stop is **skipped for chain-of-states optimizers** (optimizers that move a w
 
 Try the following, in order:
 
-1. Switch the optimizer mode: `--opt-mode grad` (Dimer Method) ↔ `--opt-mode hess` (Restricted-Step Partitioned-RFO, RS-P-RFO).
+1. Switch between `grad` (Dimer Method) and `hess` (Restricted-Step Partitioned-RFO, RS-P-RFO): use `tsopt --opt-mode` or `all --opt-mode-post`.
 2. Add `--flatten` (available on standalone `tsopt` / `opt` / `pdb2reaction all`).
 3. If the HEI came from a coarse MEP, retry `all` with `--refine-path`. This may split a poor path into unnecessary segments and multiply cost, so it is off by default and should follow inspection of the coarse MEP.
 4. Raise the cycle limit: `--max-cycles 200000` (standalone `tsopt`) or `--tsopt-max-cycles 200000` (`all`).
-5. Tighten the force threshold: `--thresh baker` / `gau_tight`.
+5. Tighten the convergence preset to `baker` or `gau_tight`: use `tsopt --thresh` or `all --thresh-post`.
 6. Reduce step sizes / trust radii via YAML: `lbfgs.max_step`, `hessian_dimer.lbfgs.max_step`, `rfo.trust_radius` / `trust_min` / `trust_max`, the `rsirfo` block — see [YAML Reference](yaml-reference.md).
 
 ### IRC does not terminate properly
 
-Reduce `--step-size 0.05` (default 0.10 bohr), especially when a branch stops after only a few frames; raise `--max-cycles 200`; confirm that Cartesian PHVA has exactly one resolved negative frequency before IRC. The shared `freq.zero_cutoff_cm` value removes `|frequency| <= cutoff` modes before this count and trajectory output. To bypass every physical endpoint criterion and trace to the cycle limit, add opt-in `--never-stop`; inspect the resulting trajectory and endpoints.
+For standalone `irc`, try `--step-size 0.05` (default 0.10 bohr) and `--max-cycles 200`; for `all`, use `--irc-step-size 0.05` and `--irc-max-cycles 200`. A smaller step can help when a branch stops after only a few frames. Confirm that Cartesian PHVA has exactly one resolved negative frequency before IRC. The shared `freq.zero_cutoff_cm` value removes `|frequency| <= cutoff` modes before this count and trajectory output. To bypass physical endpoint criteria and trace to the cycle limit, use `irc --never-stop` or `all --irc-never-stop`; inspect the resulting trajectory and endpoints.
 
 ### MEP search (GSM / DMF) fails or misses bonds
 

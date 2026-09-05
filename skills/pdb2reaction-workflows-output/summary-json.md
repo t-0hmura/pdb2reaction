@@ -173,8 +173,7 @@ Reading rules (cutoff: 1.20× covalent radii, margin 0.05; algorithm in [`pdb2re
 - "Bond broken (k)" entries list bonds that exist in R but not P.
 - An unexpected or large set of changes is not a numeric validator. Inspect
   the endpoint geometries and covalent-radius cutoff, then establish segment
-  validity with TS optimization, an independent frequency calculation, and
-  IRC connectivity.
+  validity with TS optimization, terminal PHVA, and IRC connectivity.
 
 ## Failed-run output
 

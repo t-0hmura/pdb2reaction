@@ -52,7 +52,7 @@ pdb2reaction dft -i input.pdb -l 'LIG:0' -m 1 \
  --engine gpu --out-dir ./result_dft_ligand
 ```
 
-`-q` が省略され `--ligand-charge/-l` がある場合、入力は酵素−基質複合体として扱われ、`extract.py` の電荷サマリーから総電荷を計算します。明示的な `-q` は常に最優先です。`.gjf` 以外の入力で `--ligand-charge/-l` もない場合は中断します。
+`-q` が省略され `--ligand-charge/-l` がある場合、入力は酵素−基質複合体として扱われ、`extract.py` の電荷サマリーから総電荷を計算します。明示的な `-q` は常に最優先です。どちらの CLI 電荷指定もない場合は YAML `calc.charge`、GJF ヘッダーの順に参照し、電荷が決まらなければ中断します。
 
 ## 処理の流れ
 
@@ -79,9 +79,9 @@ out_dir/ (デフォルト:./result_dft/)
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
 | `-i, --input PATH` | 入力bridgeが受け入れる構造（`.pdb`/`.cif`/`.mmcif`/`.xyz`/`_trj.xyz`/`.gjf`/…） | 必須 |
-| `-q, --charge INT` | PySCF に提供される総電荷。`.gjf` テンプレートまたは `--ligand-charge`（PDB/mmCIF 入力または `--ref-pdb` 付き XYZ/GJF）が提供しない限り必須。両方指定時は `-q` が優先 | テンプレート/導出が適用されない限り必須 |
+| `-q, --charge INT` | PySCF に提供される総電荷。優先順位は `-q` → `--ligand-charge/-l` による残基電荷の導出 → YAML `calc.charge` → GJF ヘッダー | 他の指定から電荷が決まらなければ必須 |
 | `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB/mmCIF 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB/mmCIF 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
-| `-m, --multiplicity INT` | スピン多重度（2S+1）。PySCF 用に `2S` に変換 | `.gjf` テンプレート値または `1` |
+| `-m, --multiplicity INT` | スピン多重度（2S+1）。PySCF 用に `2S` に変換 | YAML `calc.spin` → GJF → `1` |
 | `--func-basis TEXT` | `FUNC/BASIS` 形式の汎関数/基底ペア | `wb97m-v/def2-tzvpd` |
 | `--max-cycle INT` | 最大 SCF 反復 | `100` |
 | `--conv-tol FLOAT` | SCF 収束許容値（Hartree） | `1e-9` |

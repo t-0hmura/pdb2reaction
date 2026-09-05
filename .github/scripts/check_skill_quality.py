@@ -270,8 +270,8 @@ def _validate_high_risk_semantics(errors: list[str]) -> None:
     _require(
         freq_page,
         (
-            "every strictly negative frequency",
-            "`tsopt` deliberately applies",
+            "`freq` and `tsopt` both exclude",
+            "freq.zero_cutoff_cm",
             "E + G_corr = G",
         ),
         errors,

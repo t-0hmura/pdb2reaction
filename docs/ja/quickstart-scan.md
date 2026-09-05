@@ -24,6 +24,15 @@
 
 `-s/--scan-lists` はコマンドライン上で Python リテラル文字列を直接受け取ります。原子セレクタの構文（残基/原子トークン、区切り文字、順序）と外側/内側のクォートのルールについては、{ref}`CLI 規約: スキャンリスト仕様 <ja-scan-list-spec>` を参照してください。
 
+入力、抽出、電荷、スキャン原子対応を含む `all` 全体を事前検証します:
+
+```bash
+pdb2reaction all -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
+  -s '[(1, 5, 1.35)]' --dry-run
+```
+
+standalone `scan --print-parsed` はスキャン仕様だけを検証し、`all` 固有の抽出や原子index remappingは検証しません。
+
 ### 基本構文
 
 各リテラルは 3 要素タプル `(atom1, atom2, target_distance_Å)` のリストです。3 番目の要素は必ず **ångström** 単位の目標距離で、ちょうど 3 要素が必要です。1 リテラル = 1 ステージ。
@@ -83,16 +92,7 @@ result_scan/
 
 1. `_work/scan/stage_01/scan_trj.xyz` — 結合距離の変化を PyMOL で確認
 2. `mep.pdb` と `_work/path_opt/hei_seg_01.pdb` — 最適化後の MEP と最高エネルギー像を確認
-3. `summary.log` — 障壁高さと結合変化
-
-入力、抽出、電荷、スキャン原子対応を含む `all` 全体を事前検証します:
-
-```bash
-pdb2reaction all -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
-  -s '[(1, 5, 1.35)]' --dry-run
-```
-
-standalone `scan --print-parsed` はスキャン仕様だけを検証し、`all` 固有の抽出や原子index remappingは検証しません。
+3. `summary.json` — [実行結果と理由](json-output.md#実行結果と科学的妥当性)を確認してから、`summary.log` の反応障壁と結合変化を解釈
 
 ## 補足
 

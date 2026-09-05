@@ -2,14 +2,14 @@
 
 ## 目的
 
-既に手元にある TS 候補構造に対して、`pdb2reaction all --tsopt` で `tsopt → irc` を実行します。`--thermo` を加えると `freq`、`--dft` を加えると DFT 一点計算も実行します。上流の `extract` / `path-opt` はスキップされます。
+手元の TS 候補に対して、MEP を省き、`pdb2reaction all --tsopt` で `tsopt → irc` を実行します。`--thermo` で `freq`、`--dft` で DFT 一点計算を追加できます。PDB/mmCIF の抽出は `-c` 指定時のみ行います。
 
 ## 事前に必要なもの
 
 - pdb2reaction がインストール済み（[インストール](installation.md)を参照）
 - TS 候補構造 1 つ: PDB/mmCIF（残基／電荷情報を持つため推奨）、XYZ、または GJF
 - 電荷は `-q`、`-l`、GJF ヘッダー、または設定ファイルで指定します。優先順位は [電荷の指定](cli-conventions.md#電荷の指定)を参照してください。
-- 多重度は `-m` → GJF ヘッダー → `1` の順で解決します。
+- 多重度は `-m` → YAML `calc.spin` → GJF ヘッダー → `1` の順で決まります。
 - TS-only モードは、入力が 1 つ、`--scan-lists` なし、`--tsopt` 指定で選択されます。2 構造以上なら MEP、単一構造と `--scan-lists` ならスキャンを実行します。
 
 ## 最小コマンド

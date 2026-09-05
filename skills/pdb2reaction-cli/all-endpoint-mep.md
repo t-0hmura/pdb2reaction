@@ -96,7 +96,7 @@ Same as `all.md`. Specifically for endpoint-MEP mode:
 
 - The appropriate choice between `--mep-mode gsm` and `--mep-mode dmf`
   is system- and environment-dependent. GSM is the software default; DMF is
-  optional and needs its separate environment. Inspect and validate either MEP.
+  optional and needs cyipopt (see [installation](../pdb2reaction-install-backends/core.md#prerequisites)). Inspect and validate either MEP.
 - With `--refine-path`, path search may propose **more reactive segments**
   than adjacent input pairs. Compare `summary.json["n_segments_reactive"]`
   with `len(inputs) - 1`; top-level `n_segments` also counts bridge segments.

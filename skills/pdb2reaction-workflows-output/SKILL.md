@@ -89,7 +89,7 @@ extract / path-search:
 
 ```bash
 pdb2reaction tsopt -i ts.xyz -q -1 -m 1 -b uma -o result_tsopt
-pdb2reaction freq  -i result_tsopt/final_geometry.xyz -q -1 -m 1 -b uma -o result_freq
+pdb2reaction freq  -i result_tsopt/final_geometry.xyz -q -1 -m 1 -b uma -o result_freq  # optional: full modes / thermochemistry
 pdb2reaction irc   -i result_tsopt/final_geometry.xyz -q -1 -m 1 -b uma -o result_irc
 ```
 
@@ -126,12 +126,12 @@ Composite the energies with `energy-diagram` (see below).
 Run the pipeline as separate subcommands instead of one `pdb2reaction all` when you want
 to **judge each stage's success before spending GPU time on the next** — e.g. confirm
 path-search found the right segments / bond changes before optimizing a TS, or validate
-the TS (one imaginary mode + correct IRC connectivity) before thermo / DFT. By default
-`pdb2reaction all` runs this chain (the MEP stage is single-pass `path-opt`; pass
+the TS (one imaginary mode + correct IRC connectivity) before thermo / DFT.
+`pdb2reaction all` selects stages from this chain (the MEP stage is single-pass `path-opt`; pass
 `--refine-path` to swap in recursive `path-search`):
 
 ```
-[extract] → [scan] → MEP → (per candidate seg) tsopt → irc → endpoint opt → [freq R/TS/P] → [dft] → energy-diagram
+[extract] → [scan] → MEP → [--tsopt: TS → IRC → endpoint opt] → [--thermo: freq R/TS/P] → [--dft] → energy-diagram
 ```
 
 pdb2reaction runs the whole pipeline on a cluster model (the active-site cluster)
@@ -176,7 +176,7 @@ the default behavior of `all`.
 
 ```bash
 pdb2reaction tsopt -i mep/hei.pdb -l 'SAM:1,GPP:-3' -b uma --out-json -o seg_01/ts
-pdb2reaction freq  -i seg_01/ts/final_geometry.pdb -l 'SAM:1,GPP:-3' -b uma --out-json -o seg_01/freq_TS
+pdb2reaction freq  -i seg_01/ts/final_geometry.pdb -l 'SAM:1,GPP:-3' -b uma --out-json -o seg_01/freq_TS  # optional: full modes / thermochemistry
 pdb2reaction irc   -i seg_01/ts/final_geometry.pdb -l 'SAM:1,GPP:-3' -b uma --out-json -o seg_01/irc
 ```
 
@@ -197,8 +197,8 @@ The composite `all` workflow can also continue warning-labelled **diagnostic**
 IRC from a numerically converged `higher_order` result when a validated negative
 root exists, but that continuation is not first-order certification. Numerical
 non-convergence, zero modes, failed/skipped PHVA, or no valid negative root stops
-`all` after retaining TS artifacts. Then require standalone freq `result.json`
-`n_imaginary == 1` before trusting the barrier → irc
+`all` after retaining TS artifacts. An additional standalone `freq` is optional;
+if run, check its modes and `n_imaginary == 1`. Require irc
 `result.json` `scientific_status == "success"` **plus** each enabled direction's
 `*_status == "stopped"`, valid downhill-departure field, and nontrivial frame
 count; then optimize and confirm the first/last endpoints connect the intended
@@ -229,7 +229,7 @@ energy alone. If you need the canonical
 `all` instead of manually inventing those paths.
 
 **Stage 4 — thermochemistry** (optional, = `all --thermo`): run freq on the
-actual TS and the two optimized endpoints:
+actual TS (the optional Stage 2 calculation) and the two optimized endpoints:
 
 ```bash
 pdb2reaction freq -i seg_01/end_first/final_geometry.pdb -l 'SAM:1,GPP:-3' -b uma --dump --out-json -o seg_01/freq_first

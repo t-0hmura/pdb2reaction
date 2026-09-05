@@ -13,6 +13,7 @@ automatically with `pip install pdb2reaction`.
 - A working PyTorch install matching your CUDA driver — see `env-cuda.md`
 - (For DFT) PySCF / GPU4PySCF — see `dft.md`
 - (For ALPB) xtb — see `xtb.md`
+- (For DMF) `conda install -c conda-forge cyipopt -y`; pydmf is a core dependency.
 
 ## Install from PyPI (recommended)
 

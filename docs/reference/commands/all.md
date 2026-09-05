@@ -174,9 +174,9 @@ Options:
                                   stage keeps its own --thresh-gsm / --thresh-
                                   dmf.  [default: (gau)]
   --thresh-post [gau_loose|gau|gau_tight|gau_vtight|baker|never]
-                                  Convergence preset for post-IRC endpoint
-                                  optimizations (gau_loose|gau|gau_tight|gau_vti
-                                  ght|baker|never).  [default: baker]
+                                  Convergence preset for TS and post-IRC
+                                  endpoint optimizations (gau_loose|gau|gau_tigh
+                                  t|gau_vtight|baker|never).  [default: baker]
   --thresh-gsm [gau_loose|gau|gau_tight|gau_vtight|baker|never]
                                   Convergence preset for the GSM string
                                   optimizer of the MEP stage (gau_loose|gau|gau_

@@ -128,9 +128,9 @@ needs an explicit `-q <total_charge>`; take the value from the parent run's
 cd result_all
 RUN_ID="$(date +%Y%m%d-%H%M%S)"
 TOTAL_CHARGE=-1  # replace with summary.json["charge"]
-pdb2reaction tsopt -i _work/path_opt/hei_seg_03.xyz -q "$TOTAL_CHARGE" -o "segments/seg_03/retry_${RUN_ID}/ts" -b uma
-pdb2reaction irc   -i "segments/seg_03/retry_${RUN_ID}/ts/final_geometry.xyz" -q "$TOTAL_CHARGE" -o "segments/seg_03/retry_${RUN_ID}/irc" -b uma
-pdb2reaction freq  -i "segments/seg_03/retry_${RUN_ID}/ts/final_geometry.xyz" -q "$TOTAL_CHARGE" -o "segments/seg_03/retry_${RUN_ID}/freq" -b uma
+pdb2reaction tsopt -i _work/path_opt/hei_seg_03.xyz -q "$TOTAL_CHARGE" --out-json -o "segments/seg_03/retry_${RUN_ID}/ts" -b uma
+pdb2reaction irc   -i "segments/seg_03/retry_${RUN_ID}/ts/final_geometry.xyz" -q "$TOTAL_CHARGE" --out-json -o "segments/seg_03/retry_${RUN_ID}/irc" -b uma
+pdb2reaction freq  -i "segments/seg_03/retry_${RUN_ID}/ts/final_geometry.xyz" -q "$TOTAL_CHARGE" --out-json -o "segments/seg_03/retry_${RUN_ID}/freq" -b uma
 ```
 
 Inspect every retry `result.json` and the structures before deliberately

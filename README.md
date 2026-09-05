@@ -171,7 +171,7 @@ Agent Skills for Claude Code / Codex / Cursor etc. in [`skills/`](skills/) — c
 
 - **MACE + UMA cannot coexist** (`e3nn` version conflict). Use separate conda envs.
 - **DFT single-point cost** depends strongly on basis, functional, grid, elements, and hardware; pilot one representative structure before batching.
-- **Every backend's TS** requires an independent frequency calculation and IRC connectivity check. The pdb2reaction ORB default is fp64; independently validate frequencies and IRC results when selecting `fp32`/TF32.
+- **Every backend's TS** requires frequency and IRC connectivity checks. Use `tsopt`'s terminal PHVA for saddle-order validation; a separate `freq` run is optional for further analysis. The pdb2reaction ORB default is fp64; independently validate frequencies and IRC results when selecting `fp32`/TF32.
 - **CPU-only execution** is supported but usually much slower than GPU.
 
 ## Contributing

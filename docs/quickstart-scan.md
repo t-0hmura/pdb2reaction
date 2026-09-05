@@ -25,6 +25,17 @@ sequential stages.
 
 `--scan-lists/-s` accepts Python-literal strings directly on the command line. For atom selector syntax (residue/atom tokens, separators, ordering) and outer/inner quoting rules, see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
 
+Validate the complete `all` input, extraction, charge, and scan mapping before
+execution with:
+
+```bash
+pdb2reaction all -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
+  -s '[(1, 5, 1.35)]' --dry-run
+```
+
+Standalone `scan --print-parsed` validates only the scan specification; it does
+not validate `all`-specific extraction or atom-index remapping.
+
 ### Basic syntax
 
 Each literal is a list of 3-tuples `(atom1, atom2, target_distance_Å)`. Exactly three elements per tuple are required; the third is always the target distance in **ångströms**. One literal = one stage.
@@ -87,18 +98,7 @@ outputs after successful validation; add `--thermo` for `freq/` outputs.
 
 1. `_work/scan/stage_01/scan_trj.xyz` — open in PyMOL to verify bond distances change as expected
 2. `mep.pdb` and `_work/path_opt/hei_seg_01.pdb` — inspect the optimized MEP and its highest-energy image
-3. `summary.log` — barrier heights and bond change summary
-
-Validate the complete `all` input, extraction, charge, and scan mapping before
-execution with:
-
-```bash
-pdb2reaction all -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
-  -s '[(1, 5, 1.35)]' --dry-run
-```
-
-Standalone `scan --print-parsed` validates only the scan specification; it does
-not validate `all`-specific extraction or atom-index remapping.
+3. `summary.json` — check [result status and reasons](json-output.md#execution-and-scientific-truth) before interpreting barriers and bond changes in `summary.log`
 
 ## Notes
 

@@ -18,8 +18,8 @@ So ORB and MACE run fp64 Hessians by default; UMA and AIMNet2 default to fp32.
 
 Leave precision unset (`auto`) to preserve the backend default. When precision
 matters, compare supported settings on the target model, system, and hardware.
-AIMNet2 accepts fp32 only. Every setting still requires independent frequency
-and IRC validation; precision is not proof of a saddle.
+AIMNet2 accepts fp32 only. Every setting still requires frequency and IRC
+validation; precision is not proof of a saddle.
 
 | Backend | fp32 routes to | fp64 routes to |
 |---|---|---|
@@ -43,7 +43,7 @@ and IRC validation; precision is not proof of a saddle.
 
 - There is **no** `opt --restraint` flag, but `opt` **does** support harmonic distance restraints via `--dist-freeze` (with `--bias-k`); `scan` is the route for *driving/walking* a reacting coordinate up to a TS candidate.
 - `scan` supports `--preopt` (unbiased optimization of the **initial structure** before the scan) and `--endopt` (unbiased optimization of **each stage's result**, run after that stage); both default off.
-- Feed either route's TS candidate into `tsopt → freq → irc` to confirm it (see `pdb2reaction-cli`).
+- Feed either route's candidate into `tsopt → irc`. Terminal PHVA checks saddle order; add `freq` for full modes or thermochemistry (see `pdb2reaction-cli`).
 
 ## 3. Wrong imaginary-mode count after TS-opt
 
@@ -58,7 +58,7 @@ along the reaction coordinate).
 | Flatten spurious modes | `--flatten` | Extra-imaginary-mode flattening loop (`grad`: dimer loop; `hess`: post-RS-P-RFO); `--no-flatten` forces `flatten_max_iter=0`. On `tsopt`, `opt`, `all` |
 
 - `--coord-type` choices: `cart` (default) | `redund` | `dlc` | `tric`. On `path-opt` / `path-search` only `cart` / `dlc` are accepted.
-- Inspect all mode displacements, the MEP seed, and optimizer stop reason before retrying an appropriate precision/coordinate/flattening setting. AIMNet2 rejects fp64. In every case, independently recompute frequencies and verify IRC connectivity.
+- Inspect all mode displacements, the MEP seed, and optimizer stop reason before retrying an appropriate precision/coordinate/flattening setting. AIMNet2 rejects fp64. Check the new terminal PHVA result and IRC connectivity.
 - If a path-derived HEI is simply poor, rerun the parent `all` command with
   `--refine-path` so recursive `path-search` resolves the MEP before
   TSOPT. This is deliberately off by default: a bad/noisy path can be split

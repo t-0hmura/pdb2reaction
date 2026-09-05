@@ -6,7 +6,7 @@ Recursive minimum-energy-path (MEP) search across two or more
 endpoints. Detects bond changes along the candidate MEP and
 **recursively re-segments** the path using bond-change evidence to isolate
 candidate elementary steps. It does not prove that each segment has exactly
-one transition state; TSOPT, an independent frequency calculation, and IRC
+one transition state; TSOPT, terminal PHVA, and IRC
 provide that validation. Output includes per-segment HEI candidates and a
 stitched MEP.
 
@@ -89,7 +89,7 @@ tsopt / irc / freq / dft are `all`'s job (it writes them under
 `summary.json["segments"]` lists path-segmentation candidates in MEP order,
 including non-reactive bridge/kink segments. A `kind: "seg"` entry with bond
 changes is a TS candidate, not proof of an elementary step; validate it with
-TSOPT, an independent frequency calculation, and IRC. A representative entry is:
+TSOPT, terminal PHVA, and IRC. A representative entry is:
 
 ```python
 {

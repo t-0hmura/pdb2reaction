@@ -4069,7 +4069,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     default="baker",
     show_default=True,
     help=(
-        "Convergence preset for post-IRC endpoint optimizations "
+        "Convergence preset for TS and post-IRC endpoint optimizations "
         "(gau_loose|gau|gau_tight|gau_vtight|baker|never)."
     ),
 )

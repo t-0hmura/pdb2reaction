@@ -2,13 +2,13 @@
 
 ## Goal
 
-Validate an existing TS candidate end-to-end without running extract or the MEP (path-opt) stage. `pdb2reaction all --tsopt` runs `tsopt → irc`; `--thermo` adds `freq`, and `--dft` adds DFT single-points.
+Validate an existing TS candidate without the MEP stage. `pdb2reaction all --tsopt` runs `tsopt → irc`; `--thermo` adds `freq`, and `--dft` adds DFT single-points. PDB/mmCIF inputs are extracted only when `-c` is supplied.
 
 ## Prerequisites
 
 - pdb2reaction installed (see [Installation](installation.md))
 - One TS candidate geometry: PDB/mmCIF, XYZ, or GJF. PDB/mmCIF carries residue metadata.
-- Charge: use `-q`, `-l`, a GJF header, or a configuration file; see [charge precedence](cli-conventions.md#charge-specification). Multiplicity comes from `-m`, then the GJF header, then `1`.
+- Charge: use `-q`, `-l`, a GJF header, or a configuration file; see [charge precedence](cli-conventions.md#charge-specification). Multiplicity comes from `-m`, then YAML `calc.spin`, then the GJF header, then `1`.
 - TS-only mode requires one input, no `--scan-lists`, and `--tsopt`. Two or more inputs use the MEP route; one input with `--scan-lists` uses the scan route.
 
 ## Minimal command

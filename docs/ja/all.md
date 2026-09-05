@@ -181,6 +181,9 @@ metadata に保持し、ユーザー向け pipeline mode には使用しませ�
 - **[5] 出力ディレクトリ構造** – 生成ファイルを注釈付きでまとめたツリー。
 
 ### `summary.json` の読み方
+
+エネルギーを解釈する前に `scientific_status` と `scientific_status_reasons` を確認します。部分結果や途中停止の扱いは[実行結果と科学的妥当性](json-output.md#実行結果と科学的妥当性)を参照してください。
+
 JSON 結果の代表的なトップレベルキーは以下のとおりです。
 - `out_dir`, `n_images`, `n_segments` – 実行メタデータと総数。
 - `segments` – `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` を含むセグメント配列。
@@ -280,7 +283,7 @@ raw PDB CCD との名前衝突は自動判別しないため、`--modified-resid
 | `--thermo/--no-thermo` | R/TS/P で振動解析を実行（`--tsopt` が必要） | `False` |
 | `--dft/--no-dft` | R/TS/P で DFT 一点計算を実行（`--tsopt` が必要） | `False` |
 | `--opt-mode-post [grad\|hess]` | TSOPT/IRC 後最適化のプリセット上書き（`grad` → Dimer/L-BFGS、`hess` → RSPRFO/RFO） | `hess` |
-| `--thresh-post TEXT` | IRC 後エンドポイント最適化の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
+| `--thresh-post TEXT` | TS 最適化と IRC 後端点最適化の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
 | `--flatten/--no-flatten` | 余分な虚振動モードのフラット化 | `False` |
 | `--reject-uphill/--no-reject-uphill` | IRC 後の**エンドポイント再最適化のみ**で RFO の上り坂ステップ拒否を明示的に有効化（許容値 `1e-4` Hartree、低エネルギー形状へロールバックして trust radius を縮小）。TS 最適化では拒否を常に無効化し、経路探索には影響しない。emergency floor 到達時は、保持したエンドポイントを通常の収束条件で最終確認 | `False` |
 | `--irc-step-size FLOAT` | IRC のEulerPC最大step（Bohr）を上書き。数frameですぐ止まる場合は`0.05`など小さい値で再試行 | IRC デフォルト`0.10` |

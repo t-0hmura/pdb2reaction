@@ -159,6 +159,8 @@ The log is organized into numbered sections:
 
 ### Reading `summary.json`
 
+Before interpreting energies, check `scientific_status` and `scientific_status_reasons`; see [result status and stage outcomes](json-output.md#execution-and-scientific-truth) for partial or stopped runs.
+
 Top-level keys: `out_dir`, `n_images`, `n_segments` (run metadata and counts); `segments` (per-segment entries with `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes`); `energy_diagrams` (optional payloads with `labels`, `energies_kcal`, `energies_au`, `ylabel`, `image` paths). `summary.json` intentionally omits the formatted tables and filesystem tree from `summary.log`.
 
 ## CLI options
@@ -254,7 +256,7 @@ and `tsopt` subcommands keep their own `--max-cycles`.
 | `--thermo / --no-thermo` | Run vibrational analysis (`freq`) on R / TS / P; requires `--tsopt`. | `False` |
 | `--dft / --no-dft` | Run single-point DFT on R / TS / P; requires `--tsopt`. | `False` |
 | `--opt-mode-post [grad\|hess]` | Optimizer preset for TSOPT + post-IRC (`grad` → Dimer / L-BFGS, `hess` → RS-P-RFO / RFO). | `hess` |
-| `--thresh-post TEXT` | Convergence preset for post-IRC endpoint optimizations. | `baker` |
+| `--thresh-post TEXT` | Convergence preset for TS and post-IRC endpoint optimizations. | `baker` |
 | `--flatten / --no-flatten` | Enable surplus-imaginary-mode flattening in `tsopt`. | `False` |
 | `--reject-uphill / --no-reject-uphill` | Opt in to rejecting energy-raising RFO steps during post-IRC **endpoint re-optimization only**, using a `1e-4` Hartree tolerance (roll back to the lower-energy geometry and shrink the trust radius); TS optimization forces rejection off, and path search is unaffected. At the emergency floor, the retained endpoint receives a final normal convergence check. | `False` |
 | `--irc-step-size FLOAT` | Override the IRC maximum EulerPC step (Bohr). If IRC stops after only a few frames, retry with a smaller value such as `0.05`. | IRC default `0.10` |

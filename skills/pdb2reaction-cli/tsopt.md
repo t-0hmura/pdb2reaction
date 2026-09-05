@@ -149,8 +149,8 @@ valid negative root is available.
   default; inspect the coarse MEP before enabling it.
 - Curvature is precision-sensitive on every backend. Keep the backend's
   effective precision (Orb defaults to fp64), inspect the actual mode, and
-  confirm the result with an independent `freq` plus IRC rather than ranking a
-  saddle from optimizer convergence alone.
+  check terminal PHVA and IRC connectivity rather than ranking a saddle from
+  optimizer convergence alone. Use standalone `freq` for additional analysis.
 - All four built-in backends implement analytical Hessians. For UMA only, its
   multi-worker predictor cannot expose the autograd model, so combine
   `Analytical` with `--workers 1` or use explicit finite differences.
