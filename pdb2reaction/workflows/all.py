@@ -1985,11 +1985,8 @@ def _enrich_summary(
             "endpoint_opt_mode": citation_config.get("endpoint_opt_mode"),
             "mep_mode": citation_config.get("mep_mode"),
             "dmf_correlated": citation_config.get("dmf_correlated"),
-            # The path-optimizer citation is gated on `preopt`, and a missing
-            # key reads as "preoptimization ran". Without this the reference
-            # list in summary.json cites a single-structure optimizer that a
-            # `--no-preopt` run never used, contradicting summary.log.
             "preopt": citation_config.get("preopt"),
+            "path_optimizers": summary.get("path_optimizers"),
             "post_segments": post_segments or [],
             "mlip_backend": mlip_backend,
             "mlip_model": mlip_model,
@@ -3950,8 +3947,8 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
         "Recursive subdivision levels; requires --refine-path. 0 performs no "
         "subdivision, returning each input pair as one MEP segment (none when its "
         "HEI sits at an endpoint). Reaching the limit is not "
-        "an error: the remaining interval is returned as one segment that was not subdivided, "
-        "tagged seg_NNN_maxdepth, and is therefore not guaranteed to "
+        "an error. Any segment retained at a positive cap is tagged "
+        "seg_NNN_maxdepth and is not guaranteed to "
         "be a single elementary step."
     ),
 )
@@ -4870,12 +4867,14 @@ def cli(
         tsopt_opt_mode_default = "hess"
 
     citation_post_segments: List[Dict[str, Any]] = []
+    path_optimizers: set[str] = set()
 
     def _all_method_citation_payload() -> Dict[str, Any]:
         return {
             "pipeline_mode": all_mode,
             "path_opt_mode": opt_mode_norm,
             "preopt": bool(preopt),
+            "path_optimizers": sorted(path_optimizers),
             "post_opt_mode": tsopt_opt_mode_default,
             "ts_opt_mode": tsopt_opt_mode_default,
             "endpoint_opt_mode": tsopt_opt_mode_default,
@@ -6765,6 +6764,8 @@ def cli(
                 f"[all] Staged scan did not produce a scientifically usable path: {detail}"
             )
         scan_preopt_usable = scan_result.get("preopt_converged") is True
+        if scan_preopt_use or any(stage.get("optimizer_status") for stage in scan_result.get("stages", [])):
+            path_optimizers.add("lbfgs" if scan_opt_mode_use == "grad" else "rfo")
 
         stage_results = [
             manifest.claim_one(f"scan.stage.{stage_idx:02d}")
@@ -6838,6 +6839,8 @@ def cli(
                     _geoms, shared_calc=_align_calc,
                     out_dir=_align_dir / "refine", verbose=True,
                 )
+                if any(result.get("scan", {}).get("n_steps", 0) > 0 for result in alignment_results):
+                    path_optimizers.add("lbfgs")
                 failed_pairs = alignment_failed_pair_indices(alignment_results)
                 if failed_pairs:
                     raise click.ClickException(
@@ -7003,7 +7006,13 @@ def cli(
             child_hei_gjf = manifest.claim_optional(
                 f"path.segment.{idx:02d}.hei_child_gjf"
             )
-            manifest.claim_one(f"path.segment.{idx:02d}.result")
+            path_result = manifest.claim_one(f"path.segment.{idx:02d}.result")
+            try:
+                methods = json.loads(path_result.read_text(encoding="utf-8")).get("path_optimizers", [])
+                if isinstance(methods, list):
+                    path_optimizers.update(method for method in methods if method in ("lbfgs", "rfo"))
+            except (OSError, ValueError, AttributeError) as exc:
+                logger.warning("Could not read path-opt citation provenance: %s", exc)
 
             try:
                 mirror_dir = path_dir / f"{seg_tag}_mep"
@@ -7189,7 +7198,7 @@ def cli(
                     f"[all] WARNING: Failed to detect bond changes for segment {seg_idx:02d}: {e}",
                     err=True,
                 )
-                bond_summary = "(no covalent changes detected)"
+                bond_summary = "(bond-change analysis unavailable)"
 
             segments_summary.append(
                 {
@@ -7209,6 +7218,7 @@ def cli(
             "n_images": len(read_xyz_as_blocks(final_trj)),
             "n_segments": len(segments_summary),
             "segments": segments_summary,
+            "path_optimizers": sorted(path_optimizers),
         }
         if preopt:
             from pdb2reaction.workflows._outcomes import combine_step_convergence
@@ -7508,6 +7518,8 @@ def cli(
                 f"[all] Current path-search summary is not a JSON object: {claimed_summary}"
             )
         provisional_root_summary = deepcopy(path_summary_payload)
+        path_optimizers.update(path_summary_payload.get("path_optimizers", []))
+        provisional_root_summary["path_optimizers"] = sorted(path_optimizers)
         _enrich_summary(
             provisional_root_summary,
             version="",
@@ -7681,6 +7693,8 @@ def cli(
             f"[all] Current path summary is not a JSON object: {summary_path}"
         )
     summary: Dict[str, Any] = summary_loaded
+    path_optimizers.update(summary.get("path_optimizers", []))
+    summary["path_optimizers"] = sorted(path_optimizers)
     _publish_manifest_summary(
         summary_path,
         summary,

@@ -859,6 +859,7 @@ class CombinedPath:
     energies: List[float]
     segments: List[SegmentReport]
     required_outcomes: List[Any] = field(default_factory=list)
+    single_opt_executed: bool = False
 
 
 def _build_mep_diagram_data(
@@ -1107,6 +1108,7 @@ def _build_multistep_path(
     )
     gs_seg_cfg = _gs_cfg_with_overrides(gs_cfg, max_nodes=seg_max_nodes)
     max_seq_kink = int(search_cfg.get("max_seq_kink", 2))
+    single_opt_executed = False
 
     def _terminate_with_maxdepth(
         reason_msg: Optional[str] = None,
@@ -1165,6 +1167,7 @@ def _build_multistep_path(
                 images=gsm.images,
                 energies=gsm.energies,
                 segments=[],
+                single_opt_executed=single_opt_executed,
                 required_outcomes=[
                     _raw_path_outcome(
                         f"raw_{seg_tag}",
@@ -1216,7 +1219,10 @@ def _build_multistep_path(
             pair_index=pair_index,
         )
 
-        return CombinedPath(images=gsm.images, energies=gsm.energies, segments=[seg_report])
+        return CombinedPath(
+            images=gsm.images, energies=gsm.energies, segments=[seg_report],
+            single_opt_executed=single_opt_executed,
+        )
 
     # `max_depth` counts LEVELS of recursive subdivision, so 0 performs none at
     # all and reproduces a single-segment MEP. Reaching the cap is not a failure:
@@ -1304,6 +1310,7 @@ def _build_multistep_path(
         right_img = gsm0.images[hei + 1]
         emit(f"[{tag0}] Refining HEI±1 (peak mode).", narrative=True)
 
+    single_opt_executed = True
     left_end, left_conv = _optimize_single(
         left_img,
         shared_calc,
@@ -1400,6 +1407,7 @@ def _build_multistep_path(
             images=step_imgs,
             energies=step_E,
             segments=[],
+            single_opt_executed=True,
             required_outcomes=[
                 _raw_path_outcome(
                     f"raw_{step_tag_for_report}",
@@ -1551,6 +1559,7 @@ def _build_multistep_path(
         energies=stitched_E,
         segments=seg_reports,
         required_outcomes=required_outcomes,
+        single_opt_executed=True,
     )
 
 
@@ -2129,9 +2138,8 @@ def _merge_final_and_write(final_images: List[Any],
               help=("Number of recursive subdivision levels allowed while splitting a "
                     "multistep path. 0 performs no subdivision, returning each input "
                     "pair as one MEP segment (none when its HEI sits at an endpoint). "
-                    "Reaching the limit is not an error: the "
-                    "remaining interval is returned as one segment that was not "
-                    "subdivided, tagged seg_NNN_maxdepth, and is therefore not "
+                    "Reaching the limit is not an error. Any segment retained at a "
+                    "positive cap is tagged seg_NNN_maxdepth and is not "
                     "guaranteed to be a single elementary step. When not given, YAML "
                     "search.max_depth applies."))
 @click.option(
@@ -2795,6 +2803,7 @@ def cli(
                     break
 
         preopt_outcomes: List[Any] = []
+        path_optimizers: set[str] = set()
         if preopt:
             from pdb2reaction.workflows._outcomes import make_leaf as _mk_leaf
 
@@ -2821,6 +2830,7 @@ def cli(
                     )
                 )
             geoms = new_geoms
+            path_optimizers.add(single_opt_kind)
         else:
             click.echo("[init] Skipping endpoint preoptimization as requested by --no-preopt.")
 
@@ -2837,6 +2847,8 @@ def cli(
                     verbose=True,
                 )
                 failed_pairs = alignment_failed_pair_indices(alignment_results)
+                if any(result.get("scan", {}).get("n_steps", 0) > 0 for result in alignment_results):
+                    path_optimizers.add("lbfgs")
                 if failed_pairs:
                     raise click.ClickException(
                         "Input alignment did not converge for pair(s): "
@@ -2880,6 +2892,9 @@ def cli(
                 kink_seq_count=_trailing_kink_count(seg_reports_all),
             )
 
+            if pair_path.single_opt_executed:
+                path_optimizers.add(single_opt_kind)
+
             if i == 0:
                 combined_imgs = list(pair_path.images)
                 combined_Es = list(pair_path.energies)
@@ -2908,6 +2923,8 @@ def cli(
                         kink_seq_count=_trailing_kink_count(seg_reports_all),
                     )
                     required_outcomes_all.extend(sub.required_outcomes)
+                    if sub.single_opt_executed:
+                        path_optimizers.add(single_opt_kind)
                     return sub
 
                 parts = [(combined_imgs, combined_Es), (pair_path.images, pair_path.energies)]
@@ -3256,6 +3273,7 @@ def cli(
         )
         summary["preopt_requested"] = bool(preopt)
         summary["preopt_converged"] = _preopt_converged
+        summary["path_optimizers"] = sorted(path_optimizers)
         _path_truth = _agg_truth(_path_leaves, _path_expected)
         # Legacy byte-compat: `status` stays the diagram-based value it always
         # had — "success" when an energy diagram was produced, else "partial".
@@ -3283,11 +3301,8 @@ def cli(
                 "mep_mode": mep_mode,
                 "path_opt_mode": opt_mode,
                 "dmf_correlated": bool(dmf_cfg.get("correlated", False)),
-                # The path-optimizer citation is gated on `preopt`, and a missing
-                # key reads as "preoptimization ran". Without this the reference
-                # list in summary.json cites a single-structure optimizer that a
-                # `--no-preopt` run never used, contradicting summary.log.
                 "preopt": bool(preopt),
+                "path_optimizers": summary["path_optimizers"],
                 "mlip_backend": summary.get("mlip_backend"),
                 "mlip_model": summary.get("mlip_model"),
                 "mlip_task": summary.get("mlip_task"),
@@ -3343,6 +3358,7 @@ def cli(
                 "pipeline_mode": "path-search",
                 "refine_path": True,
                 "preopt": bool(preopt),
+                "path_optimizers": summary["path_optimizers"],
                 "tsopt": False,
                 "thermo": False,
                 "dft": False,

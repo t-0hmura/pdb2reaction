@@ -81,6 +81,10 @@ _No changes yet._
   optimization was not requested, instead of always carrying the default preset.
 
 ### Fixed
+- Record executed single-structure methods in `path_optimizers`, preserving
+  citations for scan, alignment, and recursive refinement with `--no-preopt`.
+- Keep unavailable bond-change analysis distinct from confirmed no-change in
+  pairwise `all` paths, so requested post-processing remains eligible.
 - Relay `preopt` consistently into path-search citation payloads: with
   `--no-preopt`, `summary.json`, `summary.log`, and stdout no longer cite an
   optimizer the run never used.

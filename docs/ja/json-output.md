@@ -370,6 +370,7 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 | `status` | string | `"success"` / `"partial"` |
 | `n_segments` | int | 再帰 MEP のセグメント数 |
 | `search_max_depth` | int | 実効の再帰分割階層上限。`0` は分割無効 |
+| `path_optimizers` | string[] | 経路の準備・精密化で実際に使用した単一構造オプティマイザ（`lbfgs`, `rfo`）。`all` ではスキャン・アライメントの実行も含む。`path-opt` の `result.json` と `all` の `summary.json` にも記録 |
 | `preopt_requested` / `preopt_converged` | bool / bool \| null | 端点事前最適化を実行したか、および全端点が収束したか。読み取れない端点があれば `null`。`all` の集約が判定に使う |
 | `segments` | object[] | セグメントごとの `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes`（`{title: [entries]}` dict のリスト。bridge セグメントは `""`）。 |
 | `energy_diagrams` | object[] | セグメントごとのラベル付きエネルギープロファイル (kcal/mol) |

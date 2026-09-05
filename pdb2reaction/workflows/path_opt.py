@@ -1263,6 +1263,7 @@ def cli(
 
         # Optional endpoint pre-optimization (LBFGS/RFO) before alignment/GSM
         preopt_outcomes = []
+        path_optimizers: set[str] = set()
         if preopt:
             from pdb2reaction.workflows._outcomes import make_leaf as _mk_leaf
 
@@ -1290,6 +1291,7 @@ def cli(
             for i, g in enumerate(geoms):
                 tag = f"{_seg_prefix}init{i:02d}"
                 try:
+                    path_optimizers.add(single_opt_kind)
                     g_opt, preopt_converged = _optimize_single(
                         g,
                         shared_calc,
@@ -1345,6 +1347,8 @@ def cli(
                 verbose=True,
             )
             failed_pairs = alignment_failed_pair_indices(alignment_results)
+            if any(result.get("scan", {}).get("n_steps", 0) > 0 for result in alignment_results):
+                path_optimizers.add("lbfgs")
             if failed_pairs:
                 raise click.ClickException(
                     "Input alignment did not converge for pair(s): "
@@ -1494,6 +1498,7 @@ def cli(
                     _dmf_leaf,
                 )
                 _publish_preopt_contract(result_data, preopt_outcomes, preopt)
+                result_data["path_optimizers"] = sorted(path_optimizers)
                 _attach(
                     result_data,
                     truth=_dmf_truth,
@@ -1691,6 +1696,7 @@ def cli(
                 _gsm_leaf,
             )
             _publish_preopt_contract(result_data_gsm, preopt_outcomes, preopt)
+            result_data_gsm["path_optimizers"] = sorted(path_optimizers)
             _attach(
                 result_data_gsm,
                 truth=_gsm_truth,

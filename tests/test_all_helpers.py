@@ -360,7 +360,8 @@ def test_energy_diagram_metadata_does_not_claim_failed_png(
     assert "renderer unavailable" in payload["image_error"]
 
 
-def test_build_pipeline_summary_payload_shape() -> None:
+@pytest.mark.parametrize("path_optimizers", [[], ["lbfgs", "rfo"]])
+def test_build_pipeline_summary_payload_shape(path_optimizers) -> None:
     with tempfile.TemporaryDirectory() as d:
         out_dir = Path(d) / "out"
         path_dir = Path(d) / "path"
@@ -376,6 +377,7 @@ def test_build_pipeline_summary_payload_shape() -> None:
             "execution_status": "completed",
             "scientific_status": "failed",
             "scientific_status_reasons": ["endpoint optimization failed"],
+            "path_optimizers": path_optimizers,
         }
         payload = build_pipeline_summary_payload(
             out_dir=out_dir,
@@ -414,6 +416,7 @@ def test_build_pipeline_summary_payload_shape() -> None:
     assert payload["opt_mode"] == "hess"
     assert payload["opt_mode_post"] == "grad"
     assert payload["path_opt_mode"] == "grad"
+    assert payload["path_optimizers"] == path_optimizers
     assert payload["post_opt_mode"] == "hess"
     assert payload["ts_opt_mode"] == "hess"
     assert payload["endpoint_opt_mode"] == "grad"

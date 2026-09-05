@@ -7,6 +7,7 @@ import inspect
 import os
 from pathlib import Path
 
+import pytest
 from click.testing import CliRunner
 
 from pdb2reaction.workflows import all as all_workflow
@@ -144,8 +145,9 @@ def _trajectory() -> bytes:
     )
 
 
+@pytest.mark.parametrize("bond_analysis_fails", [False, True])
 def test_all_manifest_ignores_stale_scan_stages_and_records_distinct_runs(
-    tmp_path: Path, monkeypatch,
+    tmp_path: Path, monkeypatch, bond_analysis_fails: bool,
 ) -> None:
     monkeypatch.delenv(RUN_ID_ENV, raising=False)
     source = tmp_path / "input.xyz"
@@ -169,11 +171,12 @@ def test_all_manifest_ignores_stale_scan_stages_and_records_distinct_runs(
         "_write_segment_energy_diagram",
         lambda *_a, **_k: None,
     )
-    monkeypatch.setattr(
-        all_workflow._path_search,
-        "has_bond_change",
-        lambda *_a, **_k: (False, ""),
-    )
+    def bond_changes(*_args, **_kwargs):
+        if bond_analysis_fails:
+            raise ValueError("classification unavailable")
+        return False, ""
+
+    monkeypatch.setattr(all_workflow._path_search, "has_bond_change", bond_changes)
 
     emit_hei = {"value": True}
     child_run_ids: list[tuple[str | None, str | None]] = []
@@ -195,6 +198,7 @@ def test_all_manifest_ignores_stale_scan_stages_and_records_distinct_runs(
                         {
                             "scientific_status": "success",
                             "preopt_converged": None,
+                            "stages": ([{"optimizer_status": "converged"}] if scan_optimized else []),
                         }
                     )
                 ).encode("utf-8"),
@@ -220,7 +224,7 @@ def test_all_manifest_ignores_stale_scan_stages_and_records_distinct_runs(
     monkeypatch.setattr(all_workflow, "_run_cli_main", fake_child)
 
     run_ids = []
-    for _ in range(2):
+    for scan_optimized in (False, True):
         child_start = len(child_run_ids)
         result = CliRunner().invoke(
             all_workflow.cli,
@@ -250,12 +254,18 @@ def test_all_manifest_ignores_stale_scan_stages_and_records_distinct_runs(
             (out_dir / "summary.json").read_text(encoding="utf-8")
         )
         assert public_summary["run_id"] == internal["run_id"]
+        segment = public_summary["segments"][0]
+        assert all_workflow._is_reactive_segment(segment) is bond_analysis_fails
+        if bond_analysis_fails:
+            assert segment["bond_changes"] == "(bond-change analysis unavailable)"
         assert "STALE_SENTINEL" not in json.dumps(public_summary)
         assert "summary.log" in public_summary["key_output_files"]
         assert "unrelated.txt" not in public_summary["key_output_files"]
-        assert "Limited-memory BFGS (L-BFGS)" not in (
+        assert public_summary["path_optimizers"] == (["lbfgs"] if scan_optimized else [])
+        assert ("Limited-memory BFGS (L-BFGS)" in (
             out_dir / "summary.log"
-        ).read_text(encoding="utf-8")
+        ).read_text(encoding="utf-8")) is scan_optimized
+        assert ("Limited-memory BFGS (L-BFGS)" in result.output) is scan_optimized
         assert "output.public.summary.log" in produced
         assert "output.public.unrelated.txt" not in produced
         assert child_run_ids[child_start:]

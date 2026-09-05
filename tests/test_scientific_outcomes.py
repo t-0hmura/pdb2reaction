@@ -1097,6 +1097,7 @@ def test_all_pipeline_aggregate_gates_on_endpoint_opt() -> None:
     # IRC usable but the product endpoint optimization did not converge.
     post = [{
         "index": 1,
+        "tsopt": {"continue_irc": True},
         "irc": {"usable": True, "reason": "ok"},
         "endpoint_opt": {
             "reactant_converged": True,
@@ -1108,6 +1109,7 @@ def test_all_pipeline_aggregate_gates_on_endpoint_opt() -> None:
         summary, post_segments=post, config=config, legacy_status="success",
     )
     assert truth.scientific_status != "success"
+    assert any(reason.endswith("endpoint_opt:product_converged") for reason in truth.status_reasons)
 
 
 def test_all_pipeline_aggregate_preserves_legacy_severity() -> None:
@@ -1184,7 +1186,11 @@ def test_all_pipeline_requires_complete_endpoint_opt_record() -> None:
     from pdb2reaction.workflows.all import _pipeline_aggregate_truth
 
     summary = {"segments": [{"index": 1, "kind": "seg", "converged": True}]}
-    base = {"index": 1, "irc": {"usable": True, "reason": "stopped"}}
+    base = {
+        "index": 1,
+        "tsopt": {"continue_irc": True},
+        "irc": {"usable": True, "reason": "stopped"},
+    }
     missing = _pipeline_aggregate_truth(
         summary, post_segments=[base], config={"tsopt": True},
         legacy_status="success",
@@ -1200,6 +1206,8 @@ def test_all_pipeline_requires_complete_endpoint_opt_record() -> None:
     )
     assert missing.scientific_status != "success"
     assert incomplete.scientific_status != "success"
+    assert any(reason.endswith("endpoint_opt_missing") for reason in missing.status_reasons)
+    assert any(reason.endswith("endpoint_opt:product_converged") for reason in incomplete.status_reasons)
 
 
 def test_all_pipeline_aggregate_post_missing_fails_closed_when_tsopt_requested() -> None:
@@ -1306,6 +1314,7 @@ def test_all_pipeline_post_success_cannot_promote_bad_mep(
     }]}
     post = [{
         "index": 1,
+        "tsopt": {"continue_irc": True},
         "irc": {"usable": True, "reason": "ok"},
         "endpoint_assignment": {"connectivity_validated": True},
         "endpoint_opt": {
@@ -1319,6 +1328,8 @@ def test_all_pipeline_post_success_cannot_promote_bad_mep(
         legacy_status="success",
     )
     assert truth.scientific_status != "success"
+    expected_reason = "mep_not_converged" if mep_converged is False else "mep_convergence_unknown"
+    assert any(reason.endswith(expected_reason) for reason in truth.status_reasons)
 
 
 def test_read_path_opt_segment_converged_is_tristate(tmp_path: Path) -> None:

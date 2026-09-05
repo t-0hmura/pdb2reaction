@@ -756,3 +756,24 @@ def test_path_stage_citation_follows_the_preoptimization_stage() -> None:
         )
     }
     assert "RFO / P-RFO" not in rfo_preopt
+
+@pytest.mark.parametrize(
+    "methods,expected",
+    [
+        ([], set()),
+        (["lbfgs"], {"Limited-memory BFGS (L-BFGS)"}),
+        (["rfo"], {"RFO / P-RFO"}),
+        (["lbfgs", "rfo"], {"Limited-memory BFGS (L-BFGS)", "RFO / P-RFO"}),
+    ],
+)
+def test_path_citations_follow_execution_instead_of_initial_preopt(methods, expected):
+    payload = {
+        "pipeline_mode": "path-search", "mep_mode": "gsm",
+        "path_opt_mode": "hess", "preopt": False, "path_optimizers": methods,
+    }
+    cited = {reference["method"] for reference in method_references(payload)}
+    optimizer_methods = {"Limited-memory BFGS (L-BFGS)", "RFO / P-RFO"}
+    assert cited & optimizer_methods == expected
+    # An explicit empty execution record also overrides a requested stage.
+    payload["preopt"] = True
+    assert {reference["method"] for reference in method_references(payload)} & optimizer_methods == expected
