@@ -81,6 +81,10 @@ _No changes yet._
   optimization was not requested, instead of always carrying the default preset.
 
 ### Fixed
+- Reject fewer than two GSM internal nodes during `path-opt` / `path-search`
+  preflight, including dry runs and YAML configuration.
+- Clarify input roles, TS validation, and GSM/DMF help; shorten installation
+  guidance and repeated introductory documentation.
 - Record executed single-structure methods in `path_optimizers`, preserving
   citations for scan, alignment, and recursive refinement with `--no-preopt`.
 - Keep unavailable bond-change analysis distinct from confirmed no-change in

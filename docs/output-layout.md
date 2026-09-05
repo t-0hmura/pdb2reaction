@@ -1,6 +1,6 @@
 # Output Directory Layout
 
-Each `pdb2reaction` subcommand writes to its output directory under the filename conventions below, which agents and downstream scripts can rely on.
+Each `pdb2reaction` subcommand writes the following files to its output directory.
 
 ## Filename conventions
 
@@ -10,7 +10,7 @@ Each `pdb2reaction` subcommand writes to its output directory under the filename
 | `summary.json` | per-stage/report runs that reach their result writer with `--out-json` (default `--no-out-json`); controlled DFT nonconvergence is included, while early failures may write only a best-effort error envelope | Compatibility mirror of the leaf `result.json`. A successful writer return guarantees identical bytes; pure utilities such as `fix-altloc`, `add-elem-info`, and `bond-summary` do not use it. |
 | `result.json` | same writer-reaching conditions as the per-stage `summary.json` (`opt`, `tsopt`, `freq`, `irc`, `sp`, scan variants, `path-opt`, `dft`, `extract`, `trj2fig`, `energy-diagram`) | Authoritative leaf/report envelope. Controlled nonconvergence may still produce it; early validation/import failures may occur before it exists. |
 | `run.log` | dispatched CLI and Colab runs once their output directory exists | Shell-safe command plus stdout/stderr emitted during command execution. Early Click validation, help, version, dry-run, and file-only utilities do not create it. |
-| `summary.log` | `path-search`, `all` | Human-readable run log (one row per segment / stage). |
+| `summary.log` | `path-search`, `all` | Run summary (one row per segment / stage). |
 | `final_geometry.xyz` | `opt`, `tsopt` | Optimized geometry (XYZ, full precision). |
 | `mep.pdb` / `mep.cif` / `mep_trj.xyz` | `path-search` | Reaction path frames; `.cif` is added for mmCIF/oversized-PDB topology when conversion is enabled. |
 | `final_geometries_trj.xyz` / `hei.xyz` | `path-opt` | Standalone path-opt trajectory (full path) and highest-energy image (`.pdb` / `.cif` / `.gjf` companions when applicable and conversion is enabled). |
@@ -38,10 +38,8 @@ Override stage directories with `--out-dir <path>` (or `-o`). `extract` uses rep
 
 ## Standalone vs `all`
 
-A subcommand run on its own writes a **flat** result directory. The same writer, when orchestrated by `all`, nests into a structured tree. The two layouts differ by design:
+A standalone subcommand writes a flat `result_<subcmd>/` directory, without `segments/` or `_work/`. Inside `all`, each post-processing stage uses the same file layout under `segments/seg_NN/<subcmd>/`.
 
-- **Standalone subcommand** → flat `result_<subcmd>/` with the files above. There is no `segments/` and no `_work/`; those only appear when `all` coordinates several writers in one run.
-- **Inside `all`, leaf writers nest unchanged.** A per-segment leaf output at `segments/seg_NN/<subcmd>/` is structurally identical to the standalone `result_<subcmd>/` — `all` simply hands the same writer a different output directory.
 - **`path-search` / `path-opt` are the engine exception.** Run standalone, each is itself a deliverable: `path-search` → `result_path_search/` (`summary.log`, `mep.pdb`, optional `mep.cif`, `mep_trj.xyz`, `mep_plot.png`, `energy_diagram_MEP.png`), and `path-opt` → `result_path_opt/` (`final_geometries_trj.xyz`, `hei.xyz`). Inside `all`, the raw engine output is treated as scratch under `_work/path_opt/` (or `_work/path_search/` with `--refine-path`), and only the core products (`mep.pdb`, optional `mep.cif`, `mep_trj.xyz`, optional inspection `mep_w_ref.pdb` / `.cif` with `--write-ref-merge`, `energy_diagram_MEP.png`) are promoted to the pipeline root.
 
 The `all` tree therefore has three zones:

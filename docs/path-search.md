@@ -45,18 +45,6 @@ pdb2reaction path-search -i R.pdb IM1.pdb IM2.pdb P.pdb -q -1 -m 1 \
  --out-dir ./result_path_search_multi
 ```
 
-Create full-system coordinate composites for inspection with an aligned static template:
-
-```bash
-# Insert the active-site path into a static template for visualization
-pdb2reaction path-search -i R.pdb IM1.pdb P.pdb -q 0 -m 1 \
- --write-ref-merge --ref-full-pdb holo_template.pdb \
- --out-dir ./result_path_search_merge
-```
-
-`mep_w_ref*` / `hei_w_ref*` files are written only when
-`--write-ref-merge`, `--ref-full-pdb`, and `--align` are all active.
-
 Use DMF mode with minima refinement:
 
 ```bash
@@ -67,6 +55,8 @@ pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
 
 ## Workflow
 
+After optional preoptimization, `--align` (default) aligns adjacent inputs in sequence. When frozen atoms are present, their positions are matched stepwise while the remaining atoms relax, before MEP search.
+
 1. **Initial segment per pair (GSM/DMF)** – run `GrowingString` or DMF between each adjacent input (A→B) to obtain a coarse MEP and identify the highest-energy image (HEI).
 2. **Local relaxation around HEI** – refine either HEI ± 1 (`refine-mode=peak`) or the nearest local minima on each side of the HEI (`refine-mode=minima`) with the chosen single-structure optimizer (`opt-mode`) to recover nearby minima (`End1`, `End2`).
     > **Default:** When `--refine-mode` is omitted, it defaults to `peak` for GSM and `minima` for DMF.
@@ -75,7 +65,6 @@ pdb2reaction path-search -i reactant.pdb product.pdb -q 0 -m 1 \
  - Otherwise, the region is a *reactive segment* — a segment in which covalent bond changes are detected between the endpoints (see [Glossary](glossary.md)). Launch a **refinement segment (GSM/DMF)** between `End1` and `End2` to sharpen the barrier.
 4. **Selective recursion** – compare bond changes for `(A→End1)` and `(End2→B)` using the `bond` thresholds. Recurse only on sub-intervals that still contain covalent updates. `search.max_depth` sets how many levels of recursive subdivision are allowed; `0` performs no subdivision. Reaching the limit is not an error. Any segment retained at a positive cap is tagged `seg_NNN_maxdepth` and is not guaranteed to be a single elementary step.
 5. **Stitching & bridging** – concatenate resolved subpaths, dropping duplicate endpoints when RMSD ≤ `search.stitch_rmsd_thresh`. If the RMSD gap between two stitched pieces exceeds `search.bridge_rmsd_thresh`, insert a *bridge segment* — a connecting segment between two non-adjacent intermediates (see [Glossary](glossary.md)) — using GSM/DMF. When the interface itself shows a bond change, a new recursive segment replaces the bridge.
-6. **Alignment & coordinate merging for inspection (optional)** – with `--align` (default), pre-optimized structures are rigidly aligned to the first input and `freeze_atoms` are reconciled. `--write-ref-merge` together with `--ref-full-pdb` writes coordinate composites for inspection.
 
 Bond-change detection relies on `bond_changes.compare_structures` with thresholds surfaced under the `bond` YAML section. All MLIP backends are constructed once and shared across structures for efficiency.
 
@@ -148,8 +137,8 @@ The table is grouped by purpose; within each group the most-used options come fi
 | `--thresh-gsm TEXT` | Override convergence preset for the GSM string optimizer (`stopt.thresh`). | `gau_loose` |
 | `--thresh-dmf TEXT` | Override the IPOPT dual-infeasibility tolerance of the DMF optimizer (`dmf.tol`): `tight` (0.04), `middle` (0.10), `loose` (0.20), or a positive float. Gaussian presets are rejected. | `tight` |
 | **Merge & alignment** | | |
-| `--align/--no-align` | Align all inputs to the first structure before searching. | `True` |
-| `--write-ref-merge/--no-write-ref-merge` | Write `mep_w_ref*` / `hei_w_ref*` coordinate composites for inspection. | `False` |
+| `--align/--no-align` | Align adjacent inputs in sequence before MEP search. | `True` |
+| `--write-ref-merge/--no-write-ref-merge` | Write `mep_w_ref*` / `hei_w_ref*` for inspection. Requires `--align` and `--ref-full-pdb`. | `False` |
 | `--ref-full-pdb PATH...` | Static full-size PDB/mmCIF template for coordinate composites used for inspection. Use the template corresponding to the first `-i` input. | _None_ |
 | `--ref-pdb PATH...` | Active-site model PDB/mmCIF references used for final full-system merge when inputs are XYZ/GJF (one per input, matching input order). | _None_ |
 | **Output & config** | | |

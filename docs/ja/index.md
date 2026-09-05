@@ -6,7 +6,7 @@
 
 <img src="../overview.png" alt="pdb2reaction ワークフロー概要" width="90%">
 
-**pdb2reaction** は、機械学習原子間ポテンシャル（MLIP: Machine Learning Interatomic Potential）を使用して、PDB 構造から酵素反応経路を自動的に解明する Python 製 CLI ツールキットです。
+**pdb2reaction** は、機械学習原子間ポテンシャル（MLIP: Machine Learning Interatomic Potential）を使用して、PDB 構造から酵素反応経路の候補を探索する Python 製 CLI ツールキットです。
 
 ## クイックスタート
 
@@ -23,7 +23,7 @@
 
 | サブコマンド | 説明 |
 |---------|------|
-| [`all`](all.md) | 任意の抽出、endpoint-MEP / scan-list / TS-only の入力mode、任意の TS/IRC・熱化学・DFT stageを統括 |
+| [`all`](all.md) | 抽出（任意）と、入力に応じた MEP 探索・スキャン・TS のみモード、任意の TS/IRC・熱化学・DFT を統括 |
 | [`extract`](extract.md) | タンパク質–リガンド複合体から活性部位モデル（バインディングポケット）を抽出 |
 | [`fix-altloc`](fix-altloc.md) | PDB の代替位置指示子を解決 |
 | [`add-elem-info`](add-elem-info.md) | PDB の元素列（77–78）を修復 |
@@ -31,7 +31,7 @@
 | [`tsopt`](tsopt.md) | 遷移状態最適化（Dimer または RS-P-RFO。[+ 任意 flatten]） |
 | [`path-opt`](path-opt.md) | GSM または DMF による 1 段階の MEP 最適化（2 構造から） |
 | [`path-search`](path-search.md) | 自動精密化を伴う多段階の再帰的 MEP 探索（2 構造以上） |
-| [`scan`](scan.md) | 拘束付き距離scan（複数距離の協奏scan・多段階scanに対応） |
+| [`scan`](scan.md) | 拘束付き距離スキャン（複数距離の協奏スキャン・多段階スキャンに対応） |
 | [`scan2d`](scan2d.md) | 2 次元 energy landscape 探索・PES mapping |
 | [`scan3d`](scan3d.md) | 3 次元 energy landscape 探索・PES mapping |
 | [`freq`](freq.md) | 振動解析と熱化学 |
@@ -58,8 +58,8 @@
 
 ### ハードウェア
 - **OS**: Linux
-- **GPU（本番計算で推奨）**: 使用backendとPyTorch wheelに対応するNVIDIA driver。CPU-only実行も対応するが低速
-- **VRAM / RAM**: backend/model、系、Hessian mode、precision、並行度に依存。代表stageをpilot実行してpeak使用量を測定
+- **GPU（本番計算で推奨）**: 使用するバックエンドと PyTorch wheel に対応する NVIDIA ドライバー。CPU のみでも実行可能ですが低速です
+- **VRAM / RAM**: バックエンド・モデル、対象系、Hessian 計算モード、精度、並列度に依存。代表的な処理を試行し、最大使用量を測定
 
 ### ソフトウェア
 - Python >= 3.11

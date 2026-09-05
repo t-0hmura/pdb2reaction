@@ -3,12 +3,11 @@
 ```text
 Usage: pdb2reaction all [OPTIONS]
 
-  Run active site model extraction → optional staged scan → MEP search → full-
-  structure merge in one run. If exactly one input is provided: (a) with --scan-
-  lists, run staged scan on the active site model (or full structure when
-  extraction is skipped) and use stage results as inputs for path-opt
-  (path_search with --refine-path); (b) with --tsopt and no --scan-lists, run
-  TSOPT-only mode.
+  Run active site model extraction → optional staged scan → MEP search in one
+  run. If exactly one input is provided: (a) with --scan-lists, run staged scan
+  on the active site model (or full structure when extraction is skipped) and
+  use stage results as inputs for path-opt (path_search with --refine-path); (b)
+  with --tsopt and no --scan-lists, run TSOPT-only mode.
 
 Options:
   -v, --verbose LEVEL             Console verbosity 0-3 (default 2). 0=silent;
@@ -155,14 +154,15 @@ Options:
   --convert-files BOOLEAN         Convert XYZ/TRJ outputs into PDB/CIF/GJF
                                   companions based on the input format.
                                   [default: True]
-  --refine-path BOOLEAN           Run a single-pass path-opt GSM between each
-                                  adjacent pair and concatenate the segments
-                                  (default; no path_search). Use --refine-path
-                                  to run recursive path_search on the full
-                                  ordered series: it discovers multistep
-                                  mechanisms and also refines a single-step MEP,
-                                  which can improve a poor HEI or TS estimate.
-                                  [default: False]
+  --refine-path BOOLEAN           Run a single-pass path-opt with the selected
+                                  GSM/DMF method between each adjacent pair and
+                                  concatenate the segments (default; no
+                                  path_search). Use --refine-path to run
+                                  recursive path-search on the full ordered
+                                  series: it proposes multistep reaction paths
+                                  and also refines a single-step MEP, which can
+                                  improve a poor HEI or TS estimate.  [default:
+                                  False]
   --write-ref-merge BOOLEAN       Write mep_w_ref/hei_w_ref coordinate
                                   composites for inspection in recursive
                                   --refine-path mode. Requires -c/--center and

@@ -56,8 +56,8 @@ CPU-only execution works but is usually much slower; benchmark the selected back
 # 1. CUDA-enabled PyTorch (choose the official 2.13 wheel for your driver/GPU)
 pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
 
-# 2. pdb2reaction (editable from a local clone, or `pip install pdb2reaction`)
-pip install -e .
+# 2. Install pdb2reaction
+pip install pdb2reaction
 
 # 3. Authenticate Hugging Face once (only required for the default UMA backend)
 #    Accept the FAIR Chemistry License v1 at https://huggingface.co/facebook/UMA, then:
@@ -79,7 +79,7 @@ CUDA module loads, alternative-backend recipes, DMF/`cyipopt` setup, Plotly Chro
 
 ## Quick Examples
 
-Examples use GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)) — runnable MEP and scan commands are in [`examples/run.sh`](examples/run.sh).
+Examples use GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)). Run the commands below from the repository root; the complete MEP and scan examples are in [`examples/run.sh`](examples/run.sh).
 
 ```bash
 # Multi-structure MEP (R + P → MEP, with TS + thermochemistry)

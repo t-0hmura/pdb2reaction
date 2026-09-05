@@ -12,18 +12,18 @@ IRC 後エンドポイント再最適化）だけに適用されます。
 
 optimizer終了時、`tsopt` は最終構造を保持します。終端exact PHVAは数値収束後だけ実行し、非収束または`stalled`ならPHVAを実行せず停止します。PHVAが失敗した場合も構造は破棄せず、振動数を捏造せずに失敗理由を記録します。数値optimizer statusと鞍点次数は独立です。一次TS認定には虚振動が**ちょうど1本**であること、意図した変位、そして[`irc`](irc.md)の正しい端点接続が必要です。別途の[`freq`](freq.md)は完全な振動解析や熱化学補正が必要な場合だけ実行します。
 
-## 通常の終端outcomeと致命的errorの境界
+## 最適化の終了状態とエラー時の出力
 
 | 条件 | `tsopt` の成果物 | `all` の動作 |
 | --- | --- | --- |
-| 収束条件未達、明示cycle上限到達、またはopt-inのenergy plateau | 最終構造とtrajectoryを保持し、終端PHVAをskip | TS成果物を登録後、IRC前停止 |
-| 終端PHVA失敗 | 構造を保持し、`hessian_status: failed`と理由を記録。frequencyは捏造しない | 成果物登録後にIRC前停止 |
-| 不正入力/geometry、または`ZeroStepLength` / `OptimizationError`など回復不能なoptimizer例外 | structured error envelopeへ進み、それ以前に書かれたfileだけをbest effortで保持 | 通常の数値非収束へ読み替えずstageを中断 |
+| 収束条件未達、明示したサイクル上限への到達、有効化したエネルギープラトー停止 | 最終構造と軌跡を保持し、終端 PHVA を省略 | TS 結果の登録後、IRC 前で停止 |
+| 終端 PHVA の失敗 | 構造を保持し、`hessian_status: failed` と理由を記録 | 結果の登録後、IRC 前で停止 |
+| 不正な入力・構造、または `ZeroStepLength` / `OptimizationError` など回復不能なオプティマイザの例外 | エラー情報を記録し、それ以前に書かれたファイルを可能な範囲で保持 | 通常の数値非収束とは区別して処理を中断 |
 
 
 TS 初期構造がまず必要な場合は、2 端点なら [path-opt](path-opt.md)、2 構造以上なら [path-search](path-search.md) を実行し、得られた HEI を `tsopt` → `irc` の順で最適化・検証してください。mmCIF入力は内部PDBへ変換され、成果物には元IDを復元したCIFも生成されます。XYZ/GJF入力では`--ref-pdb`にPDBまたはmmCIF topologyを指定できます。
 
-`--ref-mode` は通常の単独 `tsopt` に必要なoptionではなく、主に `all` 内部の MEP→TS handoffです。同じ原子順のCartesian 3N候補を`.npz`、`.npy`、または空白区切りtext（単一vectorまたは2次元candidate table）から読み込みます。`all` はHessian TS optimizerに対してMEP接線候補をCPU/file cache経由で渡し、energyを読めない旧trajectoryでは正規化secantへfallbackします。Dimerは`--ref-mode`を使用しません。`all --no-tsopt-from-mep-tan`ではcache作成・利用を止め、初期構造Hessianの振動modeからrootを選びます。これは初期Hessianそのものの置換ではなく、root identityとoverlap追跡の参照方向です。終端exact PHVAが鞍点次数を決め、`n_imag=0`は`no_imaginary`、`n_imag>1`は`higher_order`として数値収束statusとは別に記録されます。
+`--ref-mode` は通常の単独 `tsopt` に必要なoptionではなく、主に `all` 内部の MEP→TS handoffです。同じ原子順のCartesian 3N候補を`.npz`、`.npy`、または空白区切りtext（単一vectorまたは2次元candidate table）から読み込みます。`all` はHessian TS optimizerに対してMEP接線候補をCPU/file cache経由で渡し、energyを読めない旧trajectoryでは正規化secantへfallbackします。Dimerは`--ref-mode`を使用しません。`all --no-tsopt-from-mep-tan`ではcache作成・利用を止め、初期構造Hessianの振動modeからrootを選びます。これは初期Hessianそのものの置換ではなく、root identityとoverlap追跡の参照方向です。
 
 接線は初期Hessian rootを選び、modeが回転した後もoverlapで追跡するために使います。失敗した探索を別の探索へ自動変換する機能ではありません。デフォルトでは一時的なmode-lossによるtrial棄却、quasi-Newton固有値構造gate、自動saddle recovery、自動変位multistartを実行しません。終端exact PHVAは鞍点次数を判定しますが、数値optimizer statusを書き換えません。`n_imag = 0`は`no_imaginary`、`n_imag > 1`は`higher_order`であり、後者は一次TS認定ではないものの、数値収束済みで有効な負rootを選べる場合に限り`all`が警告付き診断IRCへ進むことがあります。
 
@@ -40,7 +40,7 @@ TS 初期構造がまず必要な場合は、2 端点なら [path-opt](path-opt.
 | (a) MEP / 経路探索 | [`path-search`](path-search.md) | 両端点（反応物**および**生成物）があり、TS を自動でブラケットしたい | 再帰的な最小エネルギー経路探索（GSM / DMF）と結合変化検出。多段階経路を自動分割し、各反応区間を精密化し、区間ごとの最高エネルギー像（`hei_seg_NN.xyz`）を返す |
 | (b) 距離拘束スキャン | [`scan`](scan.md) | 反応物のみがある、または特定の反応距離を直接駆動したい | 調和距離拘束 `E = ½k(r − target)²` で各反応距離を完全緩和しながら駆動し、系を TS 候補まで押し上げる |
 
-`opt --restraint` フラグはありません。`opt` は `--dist-freeze`（調和拘束、強さは `--bias-k`）で距離を拘束しますが駆動はせず、距離を駆動する積み上げ経路は `scan`（`--preopt` / `--endopt` で駆動経路まわりの端点を緩和できる）です。いずれの経路で得た候補も `tsopt → freq → irc` に渡して最適化・検証します。
+`opt --restraint` フラグはありません。`opt` は `--dist-freeze`（調和拘束、強さは `--bias-k`）で距離を拘束しますが駆動はせず、距離を駆動する積み上げ経路は `scan`（`--preopt` / `--endopt` で駆動経路まわりの端点を緩和できる）です。いずれの経路で得た候補も `tsopt → irc` で最適化・検証します。全振動モードや熱化学量が必要な場合は `freq` を実行します。
 
 ## 実行例
 
@@ -90,7 +90,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
 
 ## 出力
 
-実行結果は `result.json`、`final_geometry.*` の最終構造、`vib/imag_*` モード（妥当な TS ではちょうど 1 つ）から検証します。
+実行結果は `final_geometry.*` の最終構造、`vib/imag_*` モード（妥当な TS ではちょうど 1 つ）、`--out-json` 指定時の `result.json` から検証します。
 
 - `result_tsopt/final_geometry.pdb`（または `final_geometry.xyz`）
 - `result_tsopt/vib/imag_*_trj.xyz`

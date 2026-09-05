@@ -152,7 +152,7 @@ To add a new backend `XYZModel` exposed as `--backend xyz`:
  forces_eV_Ang)`. Optionally override `_compute_analytical_hessian_ev(elem,
  coord_ang) -> hessian_eV_Ang2` if the backend exposes an analytical Hessian;
  otherwise the base class supplies the FD-Hessian assembly + unit conversion
- (eV/Å → Hartree/Bohr) for free.
+ (eV/Å → Hartree/Bohr).
 3. **Register in `BACKEND_REGISTRY`** (`backends/__init__.py`): add
  `"xyz": {"module": "pdb2reaction.backends.xyz", "pysis_cls": "XYZCalculator",
  "ase_cls": "XYZASECalculator"}` next to existing entries.

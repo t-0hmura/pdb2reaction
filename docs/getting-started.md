@@ -32,8 +32,8 @@ runs the selected stages and writes unified `summary.json` +
 
 | File | Description |
 |---|---|
-| `summary.json` | Machine-readable results (barriers, energies, bond changes, environment) |
-| `summary.log` | Human-readable text summary with directory tree |
+| `summary.json` | Barriers, energies, bond changes, and environment |
+| `summary.log` | Result summary with directory tree |
 | `segments/seg_NN/` | Created when a reactive segment enters requested post-processing; canonical R/TS/P appear after successful `--tsopt` + IRC/endpoint processing |
 | `mep.pdb` / `mep.cif` | Merged MEP trajectory; CIF companion preserves bridged input identifiers |
 | `energy_diagram_*.png` | Energy profile plots (electronic / Gibbs-corrected) |
@@ -66,7 +66,7 @@ Full table: [CLI Conventions](cli-conventions.md).
 
 ## Command line basics
 
-The CLI entry point is `pdb2reaction` (alias `p2r`; both register from the same setuptools entry point). The default subcommand is `all`:
+The CLI command is `pdb2reaction` (alias `p2r`). The default subcommand is `all`:
 
 ```bash
 pdb2reaction [OPTIONS]...    # equivalent to:  pdb2reaction all [OPTIONS]...
@@ -104,11 +104,10 @@ Full option matrix: [CLI Conventions](cli-conventions.md) and the generated CLI 
 
 ## Run summaries
 
-An `all` run that reaches aggregate summary writing produces root
-`summary.log` (human) + `summary.json` (machine) with the CLI command, global
-MEP statistics, per-segment barriers/bond changes, and enabled post-stage
-energies. Segment directories contain conditional stage artifacts; they do not
-each carry an aggregate summary pair.
+Read `summary.log` and `summary.json` in the output directory for the command,
+MEP statistics, segment barriers/bond changes, and post-processing energies.
+Early input errors may leave these files absent. Segment directories contain
+the requested stage results, not separate run-level summaries.
 
 ## HPC / multi-GPU
 

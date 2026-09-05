@@ -4,7 +4,7 @@
 
 <img src="../overview.png" alt="pdb2reaction workflow overview" width="90%">
 
-`pdb2reaction` は、機械学習原子間ポテンシャル（MLIP: Machine Learning Interatomic Potential）を用いて **PDB / mmCIF 構造から酵素反応経路を解明する** Python 製の CLI ツールキットです。MLIP は DFT 参照データ（エネルギー・原子間力、および周期境界条件の学習データを持つ foundation model では応力テンソルも）で学習されたニューラルネットワークモデルで、DFT のポテンシャルエネルギー曲面をごくわずかな計算コストで近似します。
+`pdb2reaction` は、機械学習原子間ポテンシャル（MLIP: Machine Learning Interatomic Potential）を用いて **PDB / mmCIF 構造から酵素反応経路の候補を探索する** Python 製の CLI ツールキットです。MLIP は DFT 参照データ（エネルギー・原子間力、および周期境界条件の学習データを持つ foundation model では応力テンソルも）で学習されたニューラルネットワークモデルで、DFT のポテンシャルエネルギー曲面をごくわずかな計算コストで近似します。
 
 多くのケースでは、次のような **1 コマンド** で反応経路の初期案を得られます。
 ```bash
@@ -26,18 +26,18 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --ther
 - Growing String Method (GSM) や Direct Max Flux (DMF) などの経路最適化手法で **最小エネルギー経路 (MEP: Minimum Energy Path)** を探索
 - 必要に応じて **遷移状態（TS: Transition State）** を最適化し、**IRC（固有反応座標: Intrinsic Reaction Coordinate）計算**・**振動解析**・**DFT 一点計算** を実行
 
-計算には機械学習原子間ポテンシャル（MLIP）を用います。デフォルトのバックエンドは Meta の **UMA** ですが、`-b/--backend` により **ORB**、**MACE**、**AIMNet2** も選択できます。クラスターモデルの TS 最適化・IRC 検証・QRRHO 熱化学を単一GPUで実行できるかは、cluster size、backend/model、Hessian mode、precision、hardwareに依存します。
+計算には機械学習原子間ポテンシャル（MLIP）を用います。デフォルトのバックエンドは Meta の **UMA** ですが、`-b/--backend` により **ORB**、**MACE**、**AIMNet2** も選択できます。クラスターモデルの TS 最適化・IRC 検証・QRRHO 熱化学を単一の GPU で実行できるかは、系の大きさ、バックエンド／モデル、Hessian の計算法、計算精度、ハードウェアに依存します。
 
 - DFT 等の量子化学計算では検証に時間がかかる規模の**反応機構解析の試行錯誤**
 - 量子化学計算に向けた**初期構造の作成**（反応物・ TS ・生成物のクラスターモデル）
 - 基質バリアントや酵素変異体にわたる**反応経路の大量計算**
 
-本 CLI は最小限の手動設定で**多段階の酵素反応機構**を生成します。小分子系や、ユーザーが自分で構築したクラスターモデルにもそのまま適用可能です。活性部位抽出を行わない全系ワークフローでは `--center/-c` だけを省略します。入力構造はそのまま使用されますが、総電荷は明示的な `-q`、PDB/mmCIF 全体へ適用する `-l`、YAML の `calc.charge`、または有効な `.gjf` メタデータのいずれかで解決する必要があります。
+本 CLI は多段階反応経路の候補を探索し、TS・IRC 計算による検証を支援します。小分子系や、ユーザーが自分で構築したクラスターモデルにも適用できます。活性部位抽出を行わない場合は `--center/-c` を省略します。総電荷は `-q`、PDB/mmCIF 全体へ適用する `-l`、YAML の `calc.charge`、または `.gjf` の設定から決定します。
 
 **HPC クラスターやマルチ GPU 環境**では、`workers` と
-`workers_per_node` により UMA 推論をノード間で並列化できます。ただし
-system-size feasibility は model、VRAM、Hessian、通信costに依存し、完全な
-タンパク質系を保証するものではありません（詳細は [MLIP バックエンド](uma-pysis.md)）。
+`workers_per_node` により UMA 推論をノード間で並列化できます。扱える系の規模は
+モデル、VRAM、Hessian の計算法、通信負荷に依存し、全タンパク質を扱えるとは
+限りません（[MLIP バックエンド](uma-pysis.md)）。
 
 ### パイプライン概要
 
@@ -74,10 +74,10 @@ system-size feasibility は model、VRAM、Hessian、通信costに依存し、�
 
 | ファイル | 説明 |
 |---------|------|
-| `summary.json` | 機械可読な結果（障壁、エネルギー、結合変化、環境情報） |
+| `summary.json` | 反応障壁、エネルギー、結合変化、環境情報 |
 | `summary.log` | ディレクトリツリー付きテキストサマリ |
-| `segments/seg_XX/` | reactive segmentがrequested post-processingへ入ると作成。canonical R/TS/Pは `--tsopt` + IRC/端点処理成功後に生成 |
-| `mep.pdb` / `mep.cif` | MEP 軌跡。bridge入力ではCIFが元のchain/残基IDを保持 |
+| `segments/seg_XX/` | 反応セグメントの後処理結果。R/TS/P 構造は TSOPT・IRC・端点処理の成功後に生成 |
+| `mep.pdb` / `mep.cif` | MEP 軌跡。内部変換した入力の元の鎖・残基 ID は CIF に保持 |
 | `energy_diagram_*.png` | エネルギープロファイル図（電子/Gibbs 補正） |
 
 ```{important}
@@ -124,7 +124,7 @@ PDB に水素原子がない場合は、pdb2reaction を実行する前に次の
 
 ## コマンドの基本構成
 
-`pip` でインストールされる `pdb2reaction` コマンドが主な起点です。短縮エイリアス **`p2r`** も `pdb2reaction` パッケージが同じ setuptools entry point で登録しており（`pip install pdb2reaction` 直後から両方利用可能）、すべてのコマンドをどちらの名前でも実行できます。内部的には **Click** ライブラリを使用しており、デフォルトのサブコマンドは `all` です。
+`pip install pdb2reaction` で `pdb2reaction` と短縮名 `p2r` が使えます。どちらも同じコマンドを実行し、サブコマンドを省略すると `all` が選ばれます。
 
 つまり:
 
@@ -173,7 +173,7 @@ pdb2reaction all [OPTIONS]...
 
 ## サマリーファイル
 
-`pdb2reaction all` が aggregate summary writer まで到達すると、rootに以下を出力します。早期のCLI/input検証では作られない場合があります。
+実行全体の結果は、出力ディレクトリ直下の次のファイルで確認します。入力検証などで早期に停止すると、作成されない場合があります。
 
 - `summary.log` – 結果要約
 - `summary.json` – JSON 結果
@@ -185,7 +185,7 @@ pdb2reaction all [OPTIONS]...
 - セグメントごとの障壁高さと主要な結合変化
 - MLIP バックエンド、熱化学、DFT 後処理で得られたエネルギー（有効な場合）
 
-`segments/seg_NN/` には成功したrequested stageのartifactが条件付きで置かれます。各segment rootにaggregate `summary.log` / `summary.json` があるとは限らないため、root summaryと各stage artifactを確認してください。
+`segments/seg_NN/` には、指定した後処理の結果が保存されます。各セグメントに実行全体のサマリーがあるとは限らないため、出力ディレクトリ直下の `summary.log` / `summary.json` と各処理の結果を確認してください。
 
 ## CLI サブコマンド
 

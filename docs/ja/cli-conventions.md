@@ -2,15 +2,13 @@
 
 ## ブール値オプション
 
-手入力のコマンド、docs、skill では flag pair を使用します。
+オン・オフは `--flag` / `--no-flag` で指定します。
 
 ```bash
 --tsopt --thermo --no-dft
 ```
 
-旧来の value-style 表記も後方互換のため入力としては受理しますが、
-canonical な表記ではなく、docs・skill・生成コマンドからは出力しません。
-root CLI の `bool_compat` が互換入力を正規化します。
+旧来の値指定も、互換性のため受け付けます。
 
 よく使うブール値オプション：
 - `--tsopt`, `--thermo`, `--dft` — 後処理ステージの有効化
@@ -41,8 +39,8 @@ pdb2reaction all --help-advanced # 全オプション
 |---|---|
 | `-v 0` | 無出力。成功は終了コードと出力成果物で確認します。 |
 | `-v 1` | マイルストーンのみ: バージョン、入力要約、主要設定、出力先、dry-run / 最終ステータス。banner・`[command]`・`[mode]`・config dump は出ません。 |
-| `-v 2` | デフォルト。banner、`[command]`、`[mode]`、ステージ進捗、主要な optimizer サイクル表、終了ステータス、Hessian 1 行要約、thermo / DFT 要約、経過時間を追加します。 |
-| `-v 3` | デバッグ: resolved config / dry-run plan、backend DEBUG、raw optimizer・内部座標の詳細、`[HessianTiming]`、`[HessianVRAM]`。 |
+| `-v 2` | デフォルト。banner、`[command]`、`[mode]`、ステージ進捗、主要なオプティマイザのサイクル表、終了ステータス、Hessian 1 行要約、thermo / DFT 要約、経過時間を追加します。 |
+| `-v 3` | デバッグ: resolved config / dry-run plan、backend DEBUG、オプティマイザ・内部座標の詳細、`[HessianTiming]`、`[HessianVRAM]`。 |
 
 意味的な失敗はどのレベルでも失敗です。`-v 3` でのみ現れる `Traceback` も実行失敗を意味します。
 

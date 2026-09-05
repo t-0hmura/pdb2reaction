@@ -2256,8 +2256,8 @@ def _merge_final_and_write(final_images: List[Any],
     "align",
     default=True,
     show_default=True,
-    help=("After preoptimization, align all inputs to the *first* input and match freeze_atoms "
-          "using the align_freeze_atoms API.")
+    help=("After optional preoptimization, align adjacent inputs in sequence "
+          "and match frozen-atom positions while relaxing the remaining atoms.")
 )
 @click.option(
     "--ref-full-pdb",
@@ -2607,6 +2607,14 @@ def cli(
         )
         _apply_single_opt_yaml_layer(override_layer_cfg)
 
+        if mep_mode_kind == "gsm" and int(
+            search_cfg.get("max_nodes_segment", gs_cfg.get("max_nodes", GS_KW["max_nodes"]))
+        ) < 2:
+            raise click.BadParameter(
+                "GSM requires at least 2 internal nodes.",
+                param_hint="--max-nodes / search.max_nodes_segment",
+            )
+
         if mep_mode_kind == "dmf":
             dmf_cycles = optional_positive_int(dmf_cfg.get("max_cycles"), "dmf.max_cycles")
             dmf_cfg["max_cycles"] = dmf_cycles
@@ -2834,11 +2842,11 @@ def cli(
         else:
             click.echo("[init] Skipping endpoint preoptimization as requested by --no-preopt.")
 
-        # Align all inputs to the first structure, guided by freeze constraints, when requested
+        # Align adjacent inputs in sequence, guided by freeze constraints.
         align_thresh = str(single_opt_cfg.get("thresh", "gau"))
         if align:
             try:
-                emit("\n====== Aligning all inputs to the first structure (freeze-guided scan + relaxation) ======\n", narrative=True)
+                emit("\n====== Aligning adjacent inputs in sequence (freeze-guided scan + relaxation) ======\n", narrative=True)
                 alignment_results = align_and_refine_sequence_inplace(
                     geoms,
                     thresh=align_thresh,

@@ -61,7 +61,7 @@ out_dir/ (デフォルト:./result_freq/)
 
 ## CLI オプション
 
-以下の表は説明が必要なオプションを扱います。全フラグの一覧は生成された [コマンドリファレンス](../reference/commands/index.md) にあります（ここで手作業で複製しないでください）。
+以下の表は説明が必要なオプションを扱います。全フラグの一覧は生成された [コマンドリファレンス](../reference/commands/index.md) にあります。
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
@@ -86,7 +86,7 @@ out_dir/ (デフォルト:./result_freq/)
 | `--ref-pdb FILE` | XYZ/GJF入力に使用する参照PDBまたはmmCIF topology（XYZ座標は保持） | _None_ |
 | `--config FILE` | 明示 CLI 適用前に読み込むベース YAML | _None_ |
 | `--show-config/--no-show-config` | 解決済み YAML レイヤー/設定を表示して続行 | `False` |
-| `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
+| `--out-json/--no-out-json` | `out_dir` に `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--dry-run/--no-dry-run` | 実行せずに検証と実行計画のみ表示 | `False` |
 

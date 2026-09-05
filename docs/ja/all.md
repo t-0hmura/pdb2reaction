@@ -9,11 +9,11 @@
 - **TSOPT のみ** — 1 つの入力構造に `--scan-lists` を省略して `--tsopt` を指定し、MEP/マージをスキップして TS 最適化 + IRC（必要に応じて freq / DFT）だけ実行する場合。高エネルギー側の IRC 端点を反応物として提示します。
 
 ```{note}
-TSOPT のみモードの反応物/生成物ラベルは**エネルギー順に基づく表示上の慣例**であり、化学的に確定した反応方向ではありません。高エネルギー側の IRC 端点を反応物として提示します（エネルギーが厳密に等しい場合は左側の端点を反応物とする決定的な規則）。R/P ラベル、`reactant_irc`/`product_irc` のファイル名、障壁・ΔE はこの慣例のもとで計算されます。機械可読サマリーの `endpoint_assignment`（`policy = "higher_energy_endpoint_as_reactant"`、`chemical_direction_known = false`）にこの方針が明示されるので、ラベルだけから化学的方向を読み取らず、このフィールドを参照してください。中立的な端点名への変更は将来のメジャースキーマに委ねます。
+TSOPT のみモードの反応物/生成物ラベルは**エネルギー順に基づく表示上の慣例**であり、化学的に確定した反応方向ではありません。高エネルギー側の IRC 端点を反応物として提示します（エネルギーが厳密に等しい場合は左側の端点を反応物とする決定的な規則）。R/P ラベル、`reactant_irc`/`product_irc` のファイル名、障壁・ΔE はこの慣例のもとで計算されます。`summary.json` の `endpoint_assignment`（`policy = "higher_energy_endpoint_as_reactant"`、`chemical_direction_known = false`）にこの方針が明示されるので、ラベルだけから化学的方向を読み取らず、このフィールドを参照してください。
 ```
 
 ```{important}
-`--tsopt` **なし**の `all` ワークフローは **TS 候補**（MEP 探索の最高エネルギー画像 / HEI）を出力します。`--tsopt` を追加すると最適化と終端 exact PHVA を実行し、数値的な optimizer 収束と鞍点次数を別々に記録します。`all` が IRC へ進むのは、数値最適化が収束し、終端 PHVA が完了し、負の反応方向を選べる場合です。`n_imag > 1` の収束済み高次停留点は警告付きの**診断的** IRCへ進むことがありますが、一次鞍点として認定されません。実際のoptimizer非収束、虚振動0本、PHVA失敗/未実施、または有効な負rootを選べない場合は、TS構造・振動数・modeを保持したままIRC前で停止します。機構解釈の前に虚振動modeとIRC端点接続を必ず確認してください。
+`--tsopt` **なし**の `all` ワークフローは **TS 候補**（MEP 探索の最高エネルギー画像 / HEI）を出力します。`--tsopt` を追加すると最適化と終端 exact PHVA を実行し、数値的な optimizer 収束と鞍点次数を別々に記録します。`all` が IRC へ進むのは、数値最適化が収束し、終端 PHVA が完了し、負の反応方向を選べる場合です。`n_imag > 1` の収束済み高次停留点は警告付きの**診断的** IRCへ進むことがありますが、一次鞍点として認定されません。実際のoptimizer非収束、虚振動0本、PHVA失敗/未実施、または有効な負rootを選べない場合は、TS 構造と結果を保持して IRC 前で停止します。機構解釈の前に虚振動modeとIRC端点接続を必ず確認してください。
 ```
 
 ## 実行例
@@ -96,19 +96,15 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 3. **活性部位モデルでの MEP 探索（デフォルトで単一パス `path-opt`、`--refine-path` で再帰的 `path-search`）**
  - デフォルトでは、単一パス `path-opt`（GSM/DMF）を実行します。エンジン生出力は `<out-dir>/_work/path_opt/` に書かれ、連結済み成果物（`mep.pdb`、`mep_trj.xyz`、`energy_diagram_MEP.png`）はルート直下へ配置します。
  - `--refine-path` を指定すると、再帰的 `path-search` に切り替わり、結合変化に基づく多段階反応の候補セグメントを構築します。この分割だけで素反応が確定するわけではなく、TS／虚振動／IRC の検証が必要です。粗い MEP から得た HEI で TSOPT が失敗する場合の精密化に有効です。一方、悪い／ノイズの多い path を不要な複数 segment へ分割して計算時間を大幅に増やすことがあるため、意図せぬ cost 増大を避けてデフォルト OFF です（エンジン生出力は `<out-dir>/_work/path_search/`）。
- - PDB/mmCIF入力で `-c/--center --refine-path --write-ref-merge` を指定すると、元の入力構造を確認用座標compositeのテンプレートとして使います。
 
-4. **確認用の全系座標compositeを生成**（オプション）
- - PDB/mmCIF入力で `-c/--center --refine-path --write-ref-merge` を指定すると、確認用の `mep_w_ref.pdb` を生成します。
-
-5. **オプションのセグメントごとの後処理**（反応セグメントのみ — 結合変化のあるセグメント。ブリッジセグメントはスキップ）
- - `--tsopt`: 各 HEI 活性部位モデルで TS 最適化を実行し、`optimization_status` と `saddle_validation` を別々に記録します。数値非収束、虚振動0本、終端PHVAの失敗/未実施、または負rootを選べない場合は、TS構造とresult fieldを登録した後にIRC前で停止します。frequency/modeは終端PHVA成功時だけ記録します。数値収束済み高次停留点は保持され、警告付きの診断的IRCへ進むことがありますが、一次TS認定ではありません。Hessian TS optimizerにはMEP energy-upwinding Cartesian接線候補をCPU/file cache経由で渡し、反応rootのidentityを追跡します（energyを読めない旧trajectoryでは正規化secantを使用）。Dimerは`--ref-mode`を消費しないためhandoff/cacheは適用外です。`--no-tsopt-from-mep-tan`ではcacheを作成・利用せず、初期構造Hessianの振動modeからrootを選びます。続行可能な結果はEulerPC IRCで追跡し、IRC端点を`--thresh-post`（デフォルト`baker`）で再最適化します。エンドポイント最適化の作業ディレクトリは`--dump`時に保持し、それ以外は完了後に削除します。エンドポイントRFOの上り坂拒否はデフォルトで無効で、`--reject-uphill`により端点再最適化についてのみ有効化できます。
+4. **オプションのセグメントごとの後処理**（反応セグメントのみ — 結合変化のあるセグメント。ブリッジセグメントはスキップ）
+ - `--tsopt`: 各 HEI を TS 最適化し、終端検証で続行可能な場合は EulerPC IRC と端点再最適化を実行します。振動数とモードは終端 PHVA 成功時のみ記録します。端点最適化には `--thresh-post`（デフォルト: `baker`）を使用し、作業ディレクトリは `--dump` 時に保持します。`--reject-uphill` はデフォルトで無効で、端点 RFO 再最適化のみに適用します。
  - `--thermo`: (R, TS, P) で `freq` を呼び出し、振動/熱化学データと MLIP Gibbs ダイアグラムを取得
  - `--dft`: (R, TS, P) で DFT 一点計算を実行し、DFT ダイアグラムを構築。`--thermo` と組み合わせると DFT//MLIP Gibbs ダイアグラムも生成
   - 共有の上書きオプション: `--opt-mode`、`--opt-mode-post`（TSOPT/IRC 後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU 優先）など。Cartesian PHVA の剛体モードは、凍結anchorを尊重する constrained 処理に固定されています。
  - Hessian 評価モードの詳細は {ref}`ja-hessian-evaluation` を参照してください。
 
-6. **TSOPT のみモード**（単一入力、`--tsopt`、`--scan-lists` なし）
+5. **TSOPT のみモード**（単一入力、`--tsopt`、`--scan-lists` なし）
  - MEP/マージステージをスキップし、活性部位モデル（または抽出がスキップされた場合は全入力構造）で `tsopt` → EulerPC IRC を実行し、高エネルギー側の IRC 終端を反応物 (R) として識別したうえで、エネルギーダイアグラム一式とオプションの freq/DFT 出力を生成します。
 
 ## 出力

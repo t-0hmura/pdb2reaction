@@ -10,17 +10,12 @@ Use paired flags in commands, documentation, and agent instructions:
 |---|---|
 | Positive flag | `--tsopt` |
 | Negative flag | `--no-tsopt` |
-| Enable | `--tsopt` |
-| Disable | `--no-tsopt` |
 
 ```bash
 --tsopt --thermo --no-dft
 ```
 
-Older value-style invocations remain accepted for compatibility, but are not
-the canonical syntax and must not be emitted by docs, skills, or generated
-commands. The root CLI normalizes both forms and
-`tests/test_bool_compat_cli.py` keeps the compatibility path covered.
+Older value-style invocations remain accepted for compatibility. Use paired flags for new commands.
 
 Common toggles: `--tsopt` / `--thermo` / `--dft` (post-processing stages) · `--freeze-links` (freeze cap-H parents, default `True`) · `--dump` (write trajectory files) · `--preopt` / `--endopt` (pre/post optimization) · `--climb` (climbing-image MEP) · `--convert-files` (generate format-aware PDB / CIF / GJF companions).
 

@@ -25,7 +25,7 @@ At optimizer termination, `tsopt` retains the final geometry. Terminal exact PHV
 | --- | --- | --- |
 | Convergence criteria unmet, explicit cycle limit reached, or opt-in energy plateau | Retain the final geometry and trajectory; skip terminal PHVA | Register the TS result and stop before IRC |
 | Terminal PHVA fails | Retain the geometry and set `hessian_status: failed` with the error; do not invent frequencies | Stop before IRC after artifact registration |
-| Invalid input/geometry or an unrecoverable optimizer exception such as `ZeroStepLength` / `OptimizationError` | Follow the structured error-envelope path; only files already written are retained on a best-effort basis | Abort the stage rather than relabelling it as ordinary non-convergence |
+| Invalid input/geometry or an unrecoverable optimizer exception such as `ZeroStepLength` / `OptimizationError` | Follow the structured error-envelope path; only files already written are retained on a best-effort basis | Abort the stage rather than relabeling it as ordinary non-convergence |
 
 
 If you need a TS guess first, run [`path-opt`](path-opt.md) (two structures) or [`path-search`](path-search.md) (two or more structures), then optimize the HEI with `tsopt` → `irc`. For XYZ / GJF inputs, `--ref-pdb` supplies a reference PDB/mmCIF topology while keeping the XYZ coordinates, enabling format-aware PDB / CIF / GJF companion output.
@@ -44,7 +44,7 @@ is **not** an initial Hessian replacement and does not make a failed TS search
 successful. Terminal exact PHVA remains authoritative for saddle order.
 `n_imag = 0` is `no_imaginary`; `n_imag > 1` is `higher_order`. Neither state
 rewrites a numerically converged optimizer result as numerical non-convergence.
-A higher-order result may be used only for warning-labelled diagnostic IRC by
+A higher-order result may be used only for warning-labeled diagnostic IRC by
 `all`, never as first-order TS certification.
 
 `--flatten` is a separate, explicit cleanup for surplus imaginary modes. It can
@@ -62,7 +62,7 @@ according to the available structural information.
 | (a) MEP / path search | [`path-search`](path-search.md) | You have both endpoints (reactant **and** product) and want the TS bracketed automatically | Recursive minimum-energy-path search (GSM / DMF) with bond-change detection; it auto-segments a multi-step path, refines each reactive segment, and returns the highest-energy image per segment (`hei_seg_NN.xyz`) |
 | (b) Distance-restrained scan | [`scan`](scan.md) | You have only the reactant, or want to drive a specific reacting distance directly | Harmonic distance restraints, `E = ½k(r − target)²`, drive each reacting distance with full relaxation, advancing the system toward a TS candidate |
 
-There is no `opt --restraint` flag: `opt` restrains distances with `--dist-freeze` (harmonic, `--bias-k`) rather than driving them, and the distance-driven build-up route is `scan` (which can relax the endpoints around the driven path with `--preopt` / `--endopt`). Feed the candidate from either route into `tsopt → freq → irc` to optimize and validate it.
+There is no `opt --restraint` flag: `opt` restrains distances with `--dist-freeze` (harmonic, `--bias-k`) rather than driving them, and the distance-driven build-up route is `scan` (which can relax the endpoints around the driven path with `--preopt` / `--endopt`). Optimize and validate candidates from either route with `tsopt → irc`; add `freq` for full vibrational analysis or thermochemistry.
 
 ## Examples
 
@@ -114,7 +114,7 @@ Add `--dump` to keep the full optimization trajectory for inspection.
 
 ## Outputs
 
-Validate a run from `result.json`, the final geometry in `final_geometry.*`, and the `vib/imag_*` modes (expect exactly one for a valid TS).
+Validate a run from `result.json` (with `--out-json`), the final geometry in `final_geometry.*`, and the `vib/imag_*` modes (expect exactly one for a valid TS).
 
 ```text
 out_dir/   (default: ./result_tsopt/)

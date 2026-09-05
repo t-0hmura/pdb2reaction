@@ -86,7 +86,7 @@ Options:
   --endopt / --no-endopt          After each stage, run an additional unbiased
                                   optimization of the stage result.  [default:
                                   no-endopt]
-  --out-json / --no-out-json      Write machine-readable result.json to out_dir.
+  --out-json / --no-out-json      Write result.json to the output directory.
                                   [default: no-out-json]
   --dry-run / --no-dry-run        Resolve and validate options (input,
                                   charge/spin parity, --scan-lists parse) and

@@ -3710,7 +3710,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 
 @click.command(
     help=(
-        "Run active site model extraction → optional staged scan → MEP search → full-structure merge in one run.\n"
+        "Run active site model extraction → optional staged scan → MEP search in one run.\n"
         "If exactly one input is provided: (a) with --scan-lists, run staged scan on the active site model (or full structure "
         "when extraction is skipped) and use stage results as inputs for path-opt (path_search with --refine-path); "
         "(b) with --tsopt and no --scan-lists, run TSOPT-only mode."
@@ -4034,9 +4034,9 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     default=False,
     show_default=True,
     help=(
-        "Run a single-pass path-opt GSM between each adjacent pair and concatenate the "
+        "Run a single-pass path-opt with the selected GSM/DMF method between each adjacent pair and concatenate the "
         "segments (default; no path_search). Use --refine-path to run recursive "
-        "path_search on the full ordered series: it discovers multistep mechanisms and "
+        "path-search on the full ordered series: it proposes multistep reaction paths and "
         "also refines a single-step MEP, which can improve a poor HEI or TS estimate."
     ),
 )
@@ -4531,7 +4531,7 @@ def cli(
       - with --scan-lists: run staged scan and use stage results as inputs for path-opt (or path_search),
       - with --tsopt and no --scan-lists: run TSOPT-only mode (no MEP search).
 
-    By default, a single-pass ``path-opt`` GSM is run between each adjacent pair of inputs and the segments
+    By default, a single-pass ``path-opt`` with the selected GSM/DMF method is run between each adjacent pair of inputs and the segments
     are concatenated into the final MEP.  With ``--refine-path``, the recursive ``path_search`` workflow
     is used instead for automatic multistep discovery.
     """

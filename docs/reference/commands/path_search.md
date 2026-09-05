@@ -111,9 +111,10 @@ Options:
                                   dry-run]
   --preopt / --no-preopt          If True, run initial single-structure
                                   optimizations of inputs.  [default: preopt]
-  --align / --no-align            After preoptimization, align all inputs to the
-                                  *first* input and match freeze_atoms using the
-                                  align_freeze_atoms API.  [default: align]
+  --align / --no-align            After optional preoptimization, align adjacent
+                                  inputs in sequence and match frozen-atom
+                                  positions while relaxing the remaining atoms.
+                                  [default: align]
   --ref-full-pdb FILE             Static full-size PDB/mmCIF template for
                                   coordinate merging used for inspection. Use
                                   the template corresponding to the first -i

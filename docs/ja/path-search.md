@@ -39,18 +39,6 @@ pdb2reaction path-search -i R.pdb -i IM1.pdb -i IM2.pdb -i P.pdb -q -1 -m 1 \
  --out-dir ./result_path_search_multi
 ```
 
-アライメント済みの静的テンプレートを使って確認用の全系座標compositeを生成する:
-
-```bash
-# 活性部位経路を可視化用の静的テンプレートへ挿入する
-pdb2reaction path-search -i R.pdb -i IM1.pdb -i P.pdb -q 0 -m 1 \
- --write-ref-merge --ref-full-pdb holo_template.pdb \
- --out-dir ./result_path_search_merge
-```
-
-`mep_w_ref*` / `hei_w_ref*` は、`--write-ref-merge`、`--ref-full-pdb`、
-`--align` がすべて有効な場合だけ生成します。
-
 DMF + minima 精密化で探索する:
 
 ```bash
@@ -61,13 +49,14 @@ pdb2reaction path-search -i reactant.pdb -i product.pdb -q 0 -m 1 \
 
 ## 処理の流れ
 
+任意の事前最適化の後、`--align`（デフォルト）で隣接入力を順にアライメントします。凍結原子がある場合は、その位置を段階的に一致させながら残りの原子を緩和してから、MEP 探索に進みます。
+
 1. **ペアごとの初期セグメント（GSM/DMF）** – 各隣接入力（A→B）間で `GrowingString` または DMF を実行し、粗い MEP と最高エネルギー画像（HEI）を取得。
 2. **HEI 周辺の局所緩和** – `refine-mode=peak` なら HEI±1、`refine-mode=minima` なら HEI 近傍の局所極小点を、選択した単一構造オプティマイザ（`opt-mode`）で精密化し `End1`/`End2` を得る。
    > **デフォルト:** `--refine-mode` 省略時は GSM では `peak`、DMF では `minima` が選択されます。
 3. **ねじれ vs. 精密化の決定** – `End1` と `End2` 間に共有結合変化がなければ *ねじれ*（kink: 共有結合変化を伴わない構造変化区間。[用語集](glossary.md) 参照）とみなし、`search.kink_max_nodes` の線形ノードを挿入して個別最適化。結合変化がある場合は *反応セグメント*（端点間に共有結合変化が検出される区間。[用語集](glossary.md) 参照）として扱い、`End1` と `End2` 間に **精密化セグメント (GSM/DMF)** を起動して障壁を先鋭化。
 4. **選択的再帰** – `(A→End1)` と `(End2→B)` の結合変化を `bond` しきい値で比較し、共有結合更新が残るサブ区間のみ再帰的に探索。`search.max_depth` は許可する再帰分割の階層数で、`0` なら分割しない。上限到達はエラーではない。正の上限で残るセグメントには `seg_NNN_maxdepth` タグを付けるが、その区間が素反応1段である保証はない。
 5. **スティッチング & ブリッジング** – 解決済みのサブパスを連結し、RMSD ≤ `search.stitch_rmsd_thresh` の重複エンドポイントを除去。RMSD ギャップが `search.bridge_rmsd_thresh` を超える場合は *ブリッジセグメント*（非隣接の中間体間を接続するセグメント。[用語集](glossary.md) 参照）を GSM/DMF で挿入。境界で結合変化が検出される場合はブリッジではなく新規の再帰セグメントで置換。
-6. **アライメント & 確認用座標マージ（オプション）** – `--align`（デフォルト）で事前最適化構造を先頭入力へ剛体アライメントし、`freeze_atoms` を整合。`--write-ref-merge` と `--ref-full-pdb` を指定すると確認用の座標compositeを生成します。
 
 結合変化の判定は `bond_changes.compare_structures` を用い、`bond` セクションのしきい値に従います。MLIP バックエンドは全構造で共有・再利用されます。
 
@@ -147,8 +136,8 @@ out_dir/ (デフォルト:./result_path_search/)
 | `--thresh-gsm TEXT` | GSM ストリング最適化の収束プリセットを上書き（`stopt.thresh`） | `gau_loose` |
 | `--thresh-dmf TEXT` | DMF 最適化の IPOPT dual-infeasibility 許容値を上書き（`dmf.tol`）。`tight`(0.04)、`middle`(0.10)、`loose`(0.20) または正の float。Gaussian プリセットは受け付けない | `tight` |
 | **マージとアライメント** | | |
-| `--align/--no-align` | 探索前にすべての入力を最初の構造にアライメント | `True` |
-| `--write-ref-merge/--no-write-ref-merge` | 確認用の `mep_w_ref*` / `hei_w_ref*` 座標compositeを生成 | `False` |
+| `--align/--no-align` | MEP 探索前に隣接入力を順にアライメント | `True` |
+| `--write-ref-merge/--no-write-ref-merge` | 確認用の `mep_w_ref*` / `hei_w_ref*` を生成。`--align` と `--ref-full-pdb` が必要。 | `False` |
 | `--ref-full-pdb PATH...` | 確認用の座標マージに使う静的全系 PDB/mmCIFテンプレート。`-i` の最初の入力構造に対応するテンプレートを使用 | _None_ |
 | `--ref-pdb PATH...` | XYZ/GJF入力の全系マージに使うactive-site PDB/mmCIF参照（入力と同数・同順） | _None_ |
 | **出力と設定** | | |

@@ -4,7 +4,7 @@
 
 ## スキャン座標のステージ構成
 
-1 リテラルは 1 ステージを定義します。同一リテラル内の複数距離タプルは
+3 要素タプルの入力では、1 リテラルが 1 ステージを定義します。同一リテラル内の複数距離タプルは
 協奏的に駆動し、複数リテラルは多段階scanとして前ステージの端点から順次実行されます。
 これに対し [`scan2d`](scan2d.md) / [`scan3d`](scan3d.md) は独立な
 距離軸を用いて energy landscape を探索し、PESを描画します。
@@ -104,7 +104,7 @@ out_dir/ (デフォルト:./result_scan/)
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP バックエンド | `uma` |
 | `--preopt/--no-preopt` | スキャン前に無バイアス最適化を実行。**スコープ依存デフォルト:** 単体では `False`、`pdb2reaction all` 経由では `True` に反転されます（{ref}`all → スキャンオプション <ja-scan-options-single-input-runs>` を参照） | `False` |
 | `--endopt/--no-endopt` | 各ステージ後に無バイアス最適化を実行 | `False` |
-| `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
+| `--out-json/--no-out-json` | `out_dir` に `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 
 ### 共有 YAML セクション
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: [YAML リファレンス](yaml-reference.md) と同じキーを使用します。`opt.dump` は実行時スコープで常に上書きされる（YAML では設定できない）ため、ステージ軌跡の出力は `--dump`（CLI）で制御します。
@@ -123,7 +123,7 @@ out_dir/ (デフォルト:./result_scan/)
 
 ## YAML 設定
 
-scan の output directory は command-owned の `-o/--out-dir` で指定します。YAML の optimizer `out_dir` は無視されます。
+出力先は `-o/--out-dir` で指定します。YAML のオプティマイザの `out_dir` は無視されます。
 
 ```yaml
 geom:
@@ -259,7 +259,7 @@ pdb2reaction scan -i reactant.pdb \
     -s '[("Ca RES 10","Cb RES 11",1.6),("H RES 11","O GLU 20",1.0)]' -o result_concerted
 ```
 
-段階的スキャンでは 1 つの `-s/--scan-lists` フラグの後に複数のリテラルを並べます。各リテラルが 1 ステージになります。
+段階的スキャンでは 1 つの `-s/--scan-lists` フラグの後に複数のリテラルを並べます。
 
 ```bash
 # ステージ 1: 1 つの結合を 1.35 Å に駆動
@@ -305,7 +305,7 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
 
 ## 注意事項
 
-- スキャンの入力は 1 つの構造 + `-s/--scan-lists scan.yaml`（推奨）または `-s/--scan-lists` の 1 個以上のインラインリテラル（1 リテラル = 1 ステージ）です。YAML/JSON ファイルパスはシェルのクォート問題を避けられ、バージョン管理にも向きます。インライン Python リテラルは単純な単一ステージのスキャンには十分です。
+- スキャンの入力は 1 つの構造 + `-s/--scan-lists scan.yaml`（推奨）または `-s/--scan-lists` の 1 個以上のインラインリテラルです。YAML/JSON ファイルパスはシェルのクォート問題を避けられ、バージョン管理にも向きます。インライン Python リテラルは単純な単一ステージのスキャンには十分です。
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 - `-s/--scan-lists` には単一フラグの後に複数リテラルを並べます。ターゲット距離は正の値である必要があります。原子インデックスは内部で 0 始まりに正規化されます。PDB/mmCIF トポロジーではセレクタ文字列を使用できます。3フィールドの従来形は順不同ですが、chainまで指定する4フィールド形は `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` の位置固定です。繰り返し残基では4フィールド形を使用してください。
 - `--freeze-links` が有効な場合、キャップ水素の親原子は自動的に凍結されます（{ref}`キャップ水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。

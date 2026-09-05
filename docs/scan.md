@@ -1,10 +1,10 @@
 # `scan`
 
-Drive a reaction coordinate by scanning bond distances with harmonic restraints. Use `pdb2reaction scan` to drive specific distances in a single structure and explore a plausible path (often before `path-search`/`path-opt`). It performs a staged, bond-length–driven scan using an MLIP backend (UMA by default) and harmonic restraints. At each step, the temporary targets are updated, restraint wells are applied, and the structure is relaxed with L-BFGS (`--opt-mode grad`) or RFOptimizer (`--opt-mode hess`). mmCIF inputs run through the internal PDB bridge and emit CIF with restored IDs. For XYZ/GJF inputs, `--ref-pdb` accepts a PDB or mmCIF reference topology.
+Use `pdb2reaction scan` to drive specific distances in a single structure and explore a plausible path (often before `path-search`/`path-opt`). It uses harmonic restraints and an MLIP backend (UMA by default). At each step, the temporary targets are updated, restraint wells are applied, and the structure is relaxed with L-BFGS (`--opt-mode grad`) or RFOptimizer (`--opt-mode hess`). mmCIF inputs run through the internal PDB bridge and emit CIF with restored IDs. For XYZ/GJF inputs, `--ref-pdb` accepts a PDB or mmCIF reference topology.
 
 ## Scan-coordinate staging
 
-One literal defines one stage. Several distance tuples within that literal are
+For 3-tuple input, one literal defines one stage. Several distance tuples within that literal are
 advanced concertedly. Several literals define sequential stages, each
 starting from the preceding stage endpoint. In contrast, [`scan2d`](scan2d.md)
 and [`scan3d`](scan3d.md) evaluate independent distance axes for
@@ -99,7 +99,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB/mmCIF residue metadata. Used when `-q` is omitted (PDB/mmCIF inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--workers`, `--workers-per-node` | UMA predictor parallelism; `workers_per_node` is forwarded to the parallel predictor. `workers > 1` cannot be combined with an explicit analytical Hessian request. See {ref}`workers-analytical-error`. | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
-| `-s, --scan-lists TEXT` | Scan targets: a YAML/JSON spec file path (recommended) or inline Python literal with `(i,j,targetÅ)` triples or `(i,j,start,end)` 4-tuples for bidirectional scans. Each inline literal is one stage; supply multiple literals after a single flag. `i`/`j` can be integer indices, three-field selectors, or positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`. | Required |
+| `-s, --scan-lists TEXT` | Scan targets: a YAML/JSON spec file path (recommended) or inline Python literal with `(i,j,targetÅ)` triples or `(i,j,start,end)` 4-tuples for bidirectional scans. Supply multiple literals after a single flag. `i`/`j` can be integer indices, three-field selectors, or positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`. | Required |
 | `--one-based/--zero-based` | Interpret atom indices as 1- or 0-based. These are mutually exclusive toggle aliases for the same flag (`--one-based` sets it to `True`, `--zero-based` sets it to `False`). | `True` |
 | `--print-parsed/--no-print-parsed` | Print parsed stage tuples after `--scan-lists/-s` resolution. | `False` |
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
@@ -117,7 +117,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `-b, --backend {uma,orb,mace,aimnet2}` | MLIP backend. | `uma` |
 | `--preopt/--no-preopt` | Run an unbiased optimization before scanning. **Scope-dependent default:** `False` standalone; flipped to `True` when invoked via `pdb2reaction all` (see [`all` → TSOPT / freq / DFT / scan overrides](all.md#tsopt--freq--dft--scan-overrides)). | `False` |
 | `--endopt/--no-endopt` | Run an unbiased optimization after each stage. | `False` |
-| `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
+| `--out-json/--no-out-json` | Write `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
 
 ### Shared YAML sections
 - `geom`, `calc`, `opt`, `lbfgs`, `rfo`: identical keys to those documented in
@@ -230,7 +230,7 @@ This is equivalent to two manual stages with a geometry reset between them. Mixe
 
 ## Notes
 
-- The scan input is one structure plus `-s/--scan-lists scan.yaml` (recommended) or one or more `--scan-lists/-s` inline literals (each literal = one stage). YAML/JSON file paths avoid shell-quoting pitfalls and version better; inline literals are fine for simple single-stage scans.
+- The scan input is one structure plus `-s/--scan-lists scan.yaml` (recommended) or one or more `--scan-lists/-s` inline literals. YAML/JSON file paths avoid shell-quoting pitfalls and version better; inline literals are fine for simple single-stage scans.
 - Provide multiple literals after a single `--scan-lists/-s` flag. Tuples must have positive targets. Atom indices are normalized to 0-based internally for computation. For PDB/mmCIF topology inputs, `i`/`j` can be integer indices or selector strings (see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`).
 - When `--freeze-links` is active, cap-hydrogen parent atoms are automatically frozen (see {ref}`Cap hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
 

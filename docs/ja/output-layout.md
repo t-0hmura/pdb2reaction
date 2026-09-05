@@ -1,16 +1,16 @@
 # 出力ディレクトリのレイアウト
 
-このページでは、各 `pdb2reaction` サブコマンドが出力ディレクトリに書き出すファイルと、エージェントや下流スクリプトが依拠すべき規約をまとめます。
+各 `pdb2reaction` サブコマンドの出力ファイルと配置をまとめます。
 
 ## ファイル名の規約
 
 | ファイル名 | 書き出し元 | 用途 |
 |---|---|---|
 | `summary.json` | 集約結果の書き込み処理まで到達した `all` / `path-search` | 集約ワークフローの正規 JSON エンベロープ（[JSON 出力リファレンス](json-output.md)）。早期の CLI 引数または入力の検証では作られない場合があります。 |
-| `summary.json` | `--out-json`（default `--no-out-json`）を指定し、段階別・report command が result writer まで到達した場合。制御された DFT 非収束も含むが、早期失敗は best-effort error envelope だけの場合がある | 個別結果の `result.json` と互換性のあるミラー。writer が正常終了した場合は同一 byte。pure utility は出力しない。 |
-| `result.json` | 段階別 `summary.json` と同じ writer 到達条件 | 個別結果・report の正規 envelope。制御された非収束でも生成され得るが、早期 validation/import failure では存在しない場合がある。 |
+| `summary.json` | `--out-json`（デフォルト: `--no-out-json`）を指定し、個別計算・レポートの結果を書き出した場合。DFT の非収束時にも出力。早期失敗時はエラー情報だけの場合あり | `result.json` の互換用コピー。書き込み正常終了時は同一内容。`fix-altloc`、`add-elem-info`、`bond-summary` は対象外。 |
+| `result.json` | 個別計算の `summary.json` と同じ条件 | 個別計算・レポートの正規 JSON。非収束時にも生成される場合があるが、早期の入力検証・インポートエラーでは存在しない場合あり。 |
 | `run.log` | コマンドへ到達し、出力ディレクトリが作られた CLI / Colab 実行 | shell-safe な実行コマンドと、コマンド実行中の標準出力・標準エラー。早期の Click 検証、help、version、dry-run、出力先が単一ファイルのユーティリティでは生成しません。 |
-| `summary.log` | `path-search`、`all` | 人間可読な実行ログ（セグメント／ステージごとに 1 行）。 |
+| `summary.log` | `path-search`、`all` | 実行要約（セグメント／ステージごとに 1 行）。 |
 | `final_geometry.xyz` | `opt`、`tsopt` | 最適化された構造（XYZ、完全精度）。 |
 | `mep.pdb` / `mep.cif` / `mep_trj.xyz` | `path-search` | 反応経路のフレーム。変換が有効な mmCIF／oversized-PDB topology では `.cif` companion も追加。 |
 | `final_geometries_trj.xyz` / `hei.xyz` | `path-opt` | スタンドアロンの path-opt 軌跡と最高エネルギーイメージ（変換が有効な場合は `.pdb` / `.cif` / `.gjf` companion も生成）。 |
@@ -38,10 +38,8 @@
 
 ## スタンドアロン と `all` の比較
 
-単独で実行したサブコマンドは**フラット**な結果ディレクトリを書き出します。同じ書き出し処理でも、`all` によってオーケストレーションされると構造化されたツリーにネストされます。この 2 つのレイアウトは設計上異なります。
+単独実行では `result_<subcmd>/` にファイルが並び、`segments/` や `_work/` はありません。`all` では、後処理の各段階が同じファイル構成で `segments/seg_NN/<subcmd>/` に配置されます。
 
-- **スタンドアロンのサブコマンド** → 上記のファイルを含むフラットな `result_<subcmd>/`。`segments/` も `_work/` もありません。これらは `all` が 1 回の実行で複数の書き出し処理を協調させるときにのみ現れます。
-- **`all` の内部では、リーフの書き出し処理はそのままネストされます。** `segments/seg_NN/<subcmd>/` にあるセグメント別のリーフ出力は、スタンドアロンの `result_<subcmd>/` と構造的に同一です — `all` は同じ書き出し処理に別の出力ディレクトリを渡すだけです。
 - **`path-search` / `path-opt` はエンジンの例外です。** スタンドアロンで実行すると、それぞれの出力が成果物となります: `path-search` → `result_path_search/`（`summary.log`、`mep.pdb`、bridge入力時の`mep.cif`、`mep_trj.xyz`、`mep_plot.png`、`energy_diagram_MEP.png`）、`path-opt` → `result_path_opt/`（`final_geometries_trj.xyz`、`hei.xyz`）。`all` の内部では、その生のエンジン出力は `_work/path_opt/`（`--refine-path` 指定時は `_work/path_search/`）下のスクラッチとして扱われ、主要成果物（`mep.pdb`、bridge入力時の`mep.cif`、`mep_trj.xyz`、`--write-ref-merge` 指定時の確認用`mep_w_ref.pdb` / `.cif`、`energy_diagram_MEP.png`）のみがパイプラインのルートに配置されます。
 したがって `all` のツリーには 3 つのゾーンがあります。
 

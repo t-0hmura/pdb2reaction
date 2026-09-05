@@ -1,6 +1,6 @@
 # インストール
 
-`pdb2reaction` は Linux 環境（ローカルワークステーションまたは HPC クラスター）向けで、本番計算では通常 CUDA 対応 GPU を使用します。prebuilt の **PyTorch** wheel は CUDA runtime library を同梱するため、必要なのは互換 NVIDIA driver であり、local CUDA toolkit ではありません。toolkit が必要なのは CUDA extension や GPU package を source build する場合です。
+`pdb2reaction` は Linux 環境（ローカルワークステーションまたは HPC クラスター）向けで、本番計算では通常 CUDA 対応 GPU を使用します。ビルド済みの **PyTorch** wheel は CUDA ランタイムを同梱するため、通常は互換性のある NVIDIA ドライバーだけが必要です。CUDA 拡張や GPU パッケージをソースからビルドする場合は、CUDA toolkit も必要です。
 
 詳細は上流プロジェクトを参照してください:
 
@@ -170,13 +170,13 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 
 ## システム要件
 
-**GPU / CUDA / VRAM:** PyTorch 2.13.0 の公式 CUDA wheel（`cu126`、`cu130`、`cu132`）から、driver と GPU architecture の両方に対応するものを選びます。新しい GPU architecture では新しい wheel が必要なことがありますが、prebuilt wheel と同じ番号の local toolkit は不要です。必要VRAMはbackend/model、原子数、Hessian mode、precision、active自由度に依存します。代表的なproduction stageをpilot実行してpeak allocationを測定してください。smoke suiteはcorrectness checkでありproduction memoryの見積りではありません。
+**GPU / CUDA / VRAM:** PyTorch 2.13.0 の公式 CUDA wheel（`cu126`、`cu130`、`cu132`）から、ドライバーと GPU アーキテクチャの両方に対応するものを選びます。新しい GPU では新しい wheel が必要なことがありますが、同じ番号の CUDA toolkit は不要です。必要な VRAM はバックエンド・モデル、原子数、Hessian 計算モード、精度、Active DOF に依存します。本番計算で使う代表的な処理を試行し、最大メモリ使用量を測定してください。スモークテストは動作確認用で、本番計算のメモリ見積もりには使えません。
 
-**RAM:** 代表runで必要量を測定します。dense Hessian、model load、並行worker/process stageが支配的になり得ます。
+**RAM:** 代表的な計算で必要量を測定します。密な Hessian、モデルの読み込み、ワーカーやプロセスの並列実行が主なメモリ消費要因になる場合があります。
 
-**ディスク:** 選択したenvironment、backend weight cache、生成trajectory/Hessian、`plotly_get_chrome` が任意installするChromiumを含めて見積もります。production前に対象filesystem上の実sizeを確認してください。
+**ディスク:** 使用環境、バックエンドのモデル重みキャッシュ、生成する軌跡・Hessian、任意で `plotly_get_chrome` がインストールする Chromium を含めて見積もります。本番計算前に、保存先のファイルシステムで実際の使用量を確認してください。
 
-CPU のみでも実行できますが、通常は大幅に遅くなります。backend/model ごとに測定し、固定の GPU/CPU 比を仮定しないでください。
+CPU のみでも実行できますが、通常は大幅に遅くなります。バックエンド・モデルごとに測定し、固定の GPU/CPU 比を仮定しないでください。
 
 ## 次のステップ
 

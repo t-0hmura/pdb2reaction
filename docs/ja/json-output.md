@@ -162,7 +162,7 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 | `final_rms_force` | float | 最終 RMS gradient |
 | `final_max_step` | float | 最終 max 変位 (Bohr) |
 | `final_rms_step` | float | 最終 RMS 変位 |
-| `convergence_thresholds` | object | `{max_force_thresh, rms_force_thresh, max_step_thresh, rms_step_thresh}` (Hartree/Bohr) |
+| `convergence_thresholds` | object | `{max_force_thresh, rms_force_thresh, max_step_thresh, rms_step_thresh}`。力/ステップの単位は Cartesian で Hartree/Bohr と Bohr、角度成分で Hartree/rad と rad。 |
 | `files` | object | 出力ファイルマップ |
 | `rigid_projection` | object | 任意。`--flatten`実行時に含む。[projection provenance](#rigid-projection-provenance)を参照 |
 

@@ -167,7 +167,7 @@ An optimizer may also report `"status": "stalled"`: the energy stopped decreasin
 | `final_rms_force` | float | Last RMS gradient |
 | `final_max_step` | float | Last max displacement (Bohr) |
 | `final_rms_step` | float | Last RMS displacement |
-| `convergence_thresholds` | object | `{max_force_thresh, rms_force_thresh, max_step_thresh, rms_step_thresh}` (Hartree/Bohr) |
+| `convergence_thresholds` | object | `{max_force_thresh, rms_force_thresh, max_step_thresh, rms_step_thresh}`. Force/step units: Hartree/Bohr and Bohr (Cartesian), Hartree/rad and rad (angular). |
 | `files` | object | Output file map |
 | `rigid_projection` | object | Optional; present when `--flatten` runs. See [projection provenance](#rigid-projection-provenance). |
 

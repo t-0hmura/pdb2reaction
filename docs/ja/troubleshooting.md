@@ -73,7 +73,7 @@ Please run `pdb2reaction add-elem-info -i...` to populate element columns before
 - モデルサイズを大きくすると結果が大幅に変わる
 
 対処:
-- 抽出された活性部位モデルが小さすぎると、エネルギーや障壁の計算値が不正確になることがあります。抽出半径を大きくする（例: `-r 4.0` 以上）ことで、タンパク質環境をより多く含めて精度を改善できます:
+- 抽出された活性部位モデルが小さすぎると、エネルギーや障壁の計算値が不正確になることがあります。抽出半径を大きくする（例: `-r 4.0`）などして、モデルサイズと境界位置への感度を確認してください:
 
   ```bash
   pdb2reaction extract -i complex.pdb -c 'SUB' -o model.pdb -r 4.0
@@ -196,7 +196,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 対処:
 - 無限反復は `--max-cycles` が常に防ぎます。エネルギーが平坦化した時点で早く止めたい場合は、**エネルギー平坦化停止**を opt-in してください。`--stop-plateau`（YAML `opt.energy_plateau: true`）を指定すると、設定した力・ステップの収束条件を満たさないまま、直近 `--stop-plateau-window`（デフォルト 50）ステップのエネルギーレンジが `--stop-plateau-thresh`（デフォルト `1×10⁻⁴ au ≈ 0.06 kcal/mol`）を下回った時点で、計算は `stalled`（**未収束**）として停止します。平坦化だけでは停留点を受理できません。最終構造、力、結果statusを確認してから再実行してください。
 - 再実行では、必要に応じて力の閾値を `--thresh gau`（`opt` のデフォルト）または `--thresh gau_loose` に変更してください。
-- `--stop-plateau-thresh` / `--stop-plateau-window`（YAML `opt.energy_plateau_thresh` / `opt.energy_plateau_window`）で判定を調整できます。既定どおり無効のままにすれば、`--max-cycles` だけが上限になります。
+- `--stop-plateau-thresh` / `--stop-plateau-window`（YAML `opt.energy_plateau_thresh` / `opt.energy_plateau_window`）で判定を調整できます。デフォルトどおり無効のままにすれば、`--max-cycles` だけが上限になります。
 - 注意: この平坦地形停止は **chain-of-states オプティマイザ**（`path-opt`、`path-search` の string/GSM（Growing String Method）/DMF（Direct Max Flux）段階）では**スキップ**されます（単一のスカラーエネルギー履歴ではなく、イメージごとのエネルギー配列を保持しているため）。
 
 ---

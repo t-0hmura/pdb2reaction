@@ -8,13 +8,9 @@
 
 - pdb2reaction がインストール済み（[インストール](installation.md)を参照）
 - TS 候補構造 1 つ: PDB/mmCIF（残基／電荷情報を持つため推奨）、XYZ、または GJF
-- 電荷指定（次のいずれか **ひとつ**を必ず指定）:
-  - `-q INT` — 全電荷を整数で直接指定
-  - `-l 'RES:Q,...'` — 残基ごとのリガンド電荷（タンパク質–リガンド複合体 PDB の場合）
-  - `.gjf` ヘッダから自動取得（Gaussian 入力を渡した場合のみ）
-- `-m/--multiplicity` — デフォルトは `1`（一重項）。ラジカル種では明示が必要です
-- `.xyz` 入力では電荷を `-q`、または `--ref-pdb cluster.pdb` と `-l` の組み合わせで解決します。多重度は一重項の `1` がデフォルトで、開殻系では `-m` を明示してください
-- TS のみモードに入る条件は **3 つすべて成立**: (1) `-i` 入力がちょうど 1 つ、(2) `--scan-lists` が無い、(3) `--tsopt` が指定されている。そうでない場合 CLI は入力ゲートで `BadParameter` を送出します（`Provide at least two structures with -i/--input in reaction order, or use a single structure with --scan-lists, or a single structure with --tsopt.`）。
+- 電荷は `-q`、`-l`、GJF ヘッダー、または設定ファイルで指定します。優先順位は [電荷の指定](cli-conventions.md#電荷の指定)を参照してください。
+- 多重度は `-m` → GJF ヘッダー → `1` の順で解決します。
+- TS-only モードは、入力が 1 つ、`--scan-lists` なし、`--tsopt` 指定で選択されます。2 構造以上なら MEP、単一構造と `--scan-lists` ならスキャンを実行します。
 
 ## 最小コマンド
 
@@ -53,7 +49,7 @@ pdb2reaction all -i ts_candidate.pdb -l 'SAM:1,GPP:-3' \
 
 ```text
 result_ts_only/
-├── summary.log                                # 人間可読サマリー
+├── summary.log                                # 実行要約
 ├── summary.json                               # status: success | partial | failed
 └── segments/
     └── seg_01/                                # TS のみモードの成果物
@@ -85,7 +81,7 @@ result_ts_only/
 | 症状 | 原因 | 対処 |
 |---|---|---|
 | `post_segments[0].ts_imag.n_imag == 0` | TS 候補が極小に落ちてしまう | 経路情報のない通常の TS-only mode は目的の隣接鞍点を特定できず、自動 saddle recovery の default budget も 0 です。endpoint がある場合は `path-search` で TS 候補を取り直します |
-| `n_imag >= 2` | 高次鞍点候補または TS 未収束 | TS の認定には虚振動がちょうど 1 つ必要です。周波数が小さいことだけを理由に余分なモードを除外せず、各虚振動モードの変位を確認してください。必要に応じて `--thresh-post` を厳しくし、`--flatten` と再最適化で余分なモードを除去してから認定します。 |
+| `n_imag >= 2` | 高次鞍点候補または TS 未収束 | TS の認定には虚振動がちょうど 1 つ必要です。周波数が小さいことだけを理由に余分なモードを除外せず、各虚振動モードの変位を確認してください。必要に応じて `all --thresh-post gau_tight` または単独の `tsopt --thresh gau_tight` と `--flatten` で再最適化します。 |
 | `segments[0].bond_changes` が空（`""` または `(no covalent changes detected)`）、または IRC が想定と違う終点に到達 | 虚振動が反応座標方向と一致していない、または TS が同じ井戸同士を結んでいる（反応物側と生成物側が同一極小） | `segments/seg_01/ts/vib/imag_*_trj.xyz` を PyMOL で可視化し、虚振動が想定の反応方向か確認。違う場合は TS 候補を取り直す |
 
 ## 補足

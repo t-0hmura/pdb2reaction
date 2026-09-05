@@ -7,9 +7,9 @@ Validate an existing TS candidate end-to-end without running extract or the MEP 
 ## Prerequisites
 
 - pdb2reaction installed (see [Installation](installation.md))
-- One TS candidate geometry: `.pdb` (preferred — carries residue / charge info) or `.xyz`
-- Charge: exactly one of `-q/--charge INT`, `--ligand-charge/-l 'RES:Q,...'`, or a `.gjf` header. For `.xyz`, supply `-q` unless `--ref-pdb` enables residue-based resolution. Multiplicity defaults to 1; specify `-m` for open-shell systems.
-- TS-only mode activates when **all three** hold: exactly one `-i` input, no `--scan-lists`, and `--tsopt`. Otherwise the CLI raises `BadParameter` at the input gate (`Provide at least two structures with -i/--input in reaction order, or use a single structure with --scan-lists, or a single structure with --tsopt.`)
+- One TS candidate geometry: PDB/mmCIF, XYZ, or GJF. PDB/mmCIF carries residue metadata.
+- Charge: use `-q`, `-l`, a GJF header, or a configuration file; see [charge precedence](cli-conventions.md#charge-specification). Multiplicity comes from `-m`, then the GJF header, then `1`.
+- TS-only mode requires one input, no `--scan-lists`, and `--tsopt`. Two or more inputs use the MEP route; one input with `--scan-lists` uses the scan route.
 
 ## Minimal command
 
@@ -49,7 +49,7 @@ A successful run produces:
 
 ```text
 result_ts_only/
-├── summary.log                                # Human-readable summary
+├── summary.log                                # Run summary
 ├── summary.json                               # status: success | partial | failed
 └── segments/
     └── seg_01/                                # TS-only deliverables
@@ -79,7 +79,7 @@ Walk these in order; each step has a fast pass/fail check before you move on.
   but a requested post-stage result is missing/failed or a validator did not
   pass; inspect `scientific_status_reasons`. `"failed"` means no usable path result was
   produced.
-- `rate_limiting_step.barrier_kcal` and `segments[0].delta_kcal` are the headline ΔE‡ and ΔE in kcal/mol.
+- `rate_limiting_step.barrier_kcal` and `segments[0].delta_kcal` give ΔE‡ and ΔE in kcal/mol using the higher-energy IRC endpoint as R. Check `endpoint_assignment` and assign chemical R/P identities before interpretation.
 - `post_segments[0].gibbs_mlip.barrier_kcal` / `.delta_kcal` are the same numbers with ZPE + thermal corrections applied (ΔG‡, ΔG at 298.15 K, 1 atm).
 
 **2. Imaginary mode at the saddle** — `post_segments[0].ts_imag`:
@@ -117,9 +117,9 @@ In PyMOL: `align` the three states, label the reactive atoms (`label name C12+O1
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `post_segments[0].ts_imag.n_imag == 0` | TS guess collapsed to a minimum | Re-do the TS guess with `path-search`; by default `all` uses the MEP tangent to select and track the uphill root. An ordinary TS-only run without path information cannot identify the intended neighboring saddle |
-| `n_imag >= 2` | The geometry is not a certified first-order saddle | Re-run freq/tsopt with a tighter `--thresh-post` (`gau_tight` or tighter) and inspect every imaginary-mode displacement. Certification requires the recomputed result itself to have exactly one imaginary mode, regardless of the magnitude of the additional mode. Use `--flatten` to target extra modes (see [tsopt](tsopt.md), `hessian_dimer.flatten_max_iter`). |
+| `n_imag >= 2` | The geometry is not a certified first-order saddle | Re-optimize with `all --thresh-post gau_tight` or standalone `tsopt --thresh gau_tight`, then inspect every imaginary-mode displacement. Certification requires the recomputed result itself to have exactly one imaginary mode, regardless of the magnitude of the additional mode. Use `--flatten` to target extra modes (see [tsopt](tsopt.md), `hessian_dimer.flatten_max_iter`). |
 | `segments[0].bond_changes` is empty (`""` or `"(no covalent changes detected)"`) or IRC reaches the wrong endpoint | Imaginary mode not along the intended coordinate, or TS connects two essentially identical wells | Visualize `segments/seg_01/ts/vib/imag_*_trj.xyz` in PyMOL; if the mode is wrong, re-pick the TS guess |
-| `freq/{R,P}/frequencies_cm-1.txt` shows residual imaginary modes | The endpoint may not be a fully converged minimum | Thermochemistry remains available. If minimum certification matters, optionally tighten convergence (`--thresh-post gau_tight`) or extend IRC max cycles in YAML; see [freq](freq.md) |
+| `freq/{R,P}/frequencies_cm-1.txt` shows residual imaginary modes | The endpoint may not be a fully converged minimum | Thermochemistry remains available. If minimum certification matters, optionally re-optimize with `all --thresh-post gau_tight` or extend IRC max cycles in YAML; see [freq](freq.md) |
 
 ## Tips
 

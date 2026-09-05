@@ -1077,6 +1077,12 @@ def cli(
 
         mep_mode_kind = mep_mode.strip().lower()
 
+        if mep_mode_kind == "gsm" and int(gs_cfg["max_nodes"]) < 2:
+            raise click.BadParameter(
+                "GSM requires at least 2 internal nodes.",
+                param_hint="--max-nodes / gs.max_nodes",
+            )
+
         # A dormant YAML DMF section does not affect GSM. An explicit CLI
         # tolerance is still validated as user input, regardless of MEP mode.
         if mep_mode_kind == "dmf" or cli_param_overridden(ctx, "thresh_dmf"):
