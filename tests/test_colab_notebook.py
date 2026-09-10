@@ -213,7 +213,7 @@ def test_colab_gui_audited_launch_and_feedback_regressions(monkeypatch, tmp_path
     app["ex_choice"].value = "COMT O-methyltransferase - cluster model (Scan-lists mode)"
     app["_load_example"](None)
     assert len(example_loads[-1][0]) == 1
-    assert example_loads[-1][1]["scan_preset"] == "[('SAM 216 CE','CAT 217 O2',1.50)]"
+    assert example_loads[-1][1]["scan_preset"] == '[("SAM 216 CE","CAT 217 O2",1.50)]'
     assert app["prep_radius"].value == pytest.approx(2.0)
     assert app["S"]["scan_target"] == pytest.approx(1.5)
     assert "In this <b>Scan-lists mode</b> example" in app["example_about"].value
