@@ -162,6 +162,22 @@ class UMAcore:
                 predict_kwargs["inference_settings"] = uma_inference_settings
             self.predict = pretrained_mlip.get_predict_unit(model, **predict_kwargs)
 
+        # fairchem initializes the predict unit lazily, on the first predict():
+        # `_lazy_init` first merges the MOLE experts (the CUDA `merge_mole` fast
+        # path that `get_predict_unit` selects by default) and only afterwards
+        # calls `move_to_device`, so during that merge the model still sits on the
+        # CPU. `_ase_to_batch` hands over a batch that already lives on the GPU,
+        # which makes the merge index CPU embedding weights with CUDA indices:
+        # "Expected all tensors to be on the same device, but got index is on
+        # cuda:0, different from other tensors on cpu". Move the predictor up
+        # front so model and batch agree from the very first call. When the
+        # installed fairchem does not expose the hook, leave the batch on the CPU
+        # instead and let fairchem's own `data.to(self.device)` do the transfer.
+        _move_to_device = getattr(self.predict, "move_to_device", None)
+        self.predict_on_device = not self.parallel_predict and callable(_move_to_device)
+        if self.predict_on_device:
+            _move_to_device()
+
         self.has_torch_model = hasattr(self.predict, "model") and isinstance(
             getattr(self.predict, "model", None), nn.Module
         )
@@ -220,7 +236,7 @@ class UMAcore:
         )
         data.dataset = self.task_name
         batch = self._collater([data], otf_graph=True)
-        if not self.parallel_predict:
+        if self.predict_on_device:
             batch = batch.to(self.device)
         return batch
 
