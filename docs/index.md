@@ -1,5 +1,7 @@
 # pdb2reaction Documentation
 
+[GitHub](https://github.com/t-0hmura/pdb2reaction) · [ChemRxiv preprint](https://doi.org/10.26434/chemrxiv.15003538/v1) · [Open in Google Colab](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb)
+
 *Version: v{{ release }}* — Python CLI for enzymatic reaction-path elucidation from PDB structures using machine-learning interatomic potentials (MLIPs).
 
 <img src="./overview.png" alt="pdb2reaction workflow overview" width="90%">

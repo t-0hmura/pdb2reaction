@@ -1,5 +1,7 @@
 # pdb2reaction ドキュメント
 
+[GitHub](https://github.com/t-0hmura/pdb2reaction) · [ChemRxiv 論文](https://doi.org/10.26434/chemrxiv.15003538/v1) · [Google Colabで実行](https://colab.research.google.com/github/t-0hmura/pdb2reaction/blob/main/examples/pdb2reaction_colab.ipynb)
+
 *バージョン: v{{ release }}*
 
 ---
