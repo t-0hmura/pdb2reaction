@@ -108,7 +108,7 @@
 
 | 閾値 | 役割 | 定義場所 |
 |------|------|----------|
-| **5 cm⁻¹** | デフォルトの対称zero-mode cutoff。`|frequency| <= cutoff` のモードを表示とtrajectory出力の前に除外しますが、厳密なTS判定では負の微小モードも数えます。 | 共有YAML key `freq.zero_cutoff_cm` |
+| **5 cm⁻¹** | デフォルトの near-zero 分類幅。resolved な負モード数とTSモード選択は `frequency < -cutoff` を使います。完全な物理振動数と正の熱化学モードは保持し、厳密なTS判定では負の微小モードも数えます。 | 共有YAML key `freq.zero_cutoff_cm` |
 | **100 cm⁻¹** | *QRRHO rotor cutoff*（Grimme）。`freq` の熱化学計算において、これ未満の **正の** 低振動モードは harmonic-oscillator から自由回転子の entropy へ滑らかに移行する。entropy / Gibbs 自由エネルギーのみに影響 | `thermoanalysis/config.py` の `ROTOR_CUT_DEFAULT = 100.0` |
 
 ## CLI 規則

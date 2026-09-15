@@ -255,3 +255,25 @@ def test_selected_flatten_branch_owns_opposite_near_sign_metadata(chosen, expect
     assert primary["projection"]["near_zero_frequencies_cm"] == [-2.]
     assert alternate["projection"]["near_zero_frequencies_cm"] == [2.]
     assert _strict_negative_count(selected["freqs"], live) == expected
+
+
+@pytest.mark.parametrize("near", [[-2.], [2.]])
+def test_legacy_packet_with_omitted_vectors_must_be_recomputed(near):
+    optimizer, geometry = _two_atom_exact_cache()
+    optimizer._last_rigid_projection_info.update({
+        "raw_mode_count": 4, "near_zero_frequencies_cm": near,
+    })
+    assert tsopt._optimizer_exact_frequency_data(optimizer, geometry) is None
+
+
+def test_complete_cache_reuses_soft_pairs_without_double_counting():
+    from pysisyphus.normal_modes import frequency_partition_info
+    optimizer, geometry = _two_atom_exact_cache()
+    optimizer._last_exact_frequencies_cm = np.array([-100., -2., 2.])
+    optimizer._last_rigid_projection_info.update(
+        frequency_partition_info(optimizer._last_exact_frequencies_cm, 5.))
+    reused = tsopt._optimizer_exact_frequency_data(optimizer, geometry)
+    assert reused is not None
+    np.testing.assert_array_equal(reused[0], [-100., -2., 2.])
+    assert reused[1].shape == (3, 9)
+    assert tsopt._strict_negative_count(reused[0], reused[2]) == 2

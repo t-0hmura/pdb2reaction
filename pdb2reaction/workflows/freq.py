@@ -37,6 +37,7 @@ from pysisyphus.normal_modes import (  # noqa: F401
     _frequencies_cm_and_modes,
     _mw_mode_to_cart,
     normalize_frequency_zero_cutoff_cm,
+    resolved_imaginary_mask,
 )
 
 # local helpers from pdb2reaction
@@ -69,7 +70,7 @@ logger = logging.getLogger(__name__)
 
 
 def _format_mode_accounting(
-    resolved_mode_count: int,
+    physical_mode_count: int,
     active_dof: int,
     projection_info: dict,
 ) -> str:
@@ -78,8 +79,8 @@ def _format_mode_accounting(
     near_zero_count = int(projection_info.get("near_zero_mode_count", 0))
     cutoff = float(projection_info.get("frequency_zero_cutoff_cm", 0.0))
     return (
-        f"{resolved_mode_count} modes = {active_dof} active DOF - "
-        f"{rigid_count} rigid - {near_zero_count} near-zero "
+        f"{physical_mode_count} modes = {active_dof} active DOF - "
+        f"{rigid_count} rigid; {near_zero_count} near-zero retained "
         f"(|ν|≤{cutoff:.1f} cm⁻¹)"
     )
 
@@ -876,12 +877,15 @@ def cli(
             order = np.argsort(freqs_cm)
 
         n_write = int(min(freq_cfg["max_write"], len(order)))
-        _imag = [f for f in freqs_cm if f < 0]
+        _imag_mask = resolved_imaginary_mask(freqs_cm, freq_cfg["zero_cutoff_cm"])
+        _imag = freqs_cm[_imag_mask]
+        _n_negative = int(np.count_nonzero(freqs_cm < 0.0))
         _preview_n = min(20, len(order))
         _freq_preview = ", ".join(f"{float(freqs_cm[j]):+.1f}" for j in order[:_preview_n])
         _suffix = ", ..." if len(order) > _preview_n else ""
         emit(
-            f"[freq] {len(freqs_cm)} modes ({len(_imag)} imaginary); "
+            f"[freq] {len(freqs_cm)} modes ({len(_imag)} resolved imaginary, "
+            f"{_n_negative} negative in total); "
             f"first {_preview_n} by {freq_cfg['sort']}: [{_freq_preview}{_suffix}] cm⁻¹; "
             f"full list: {out_dir_path / 'frequencies_cm-1.txt'}",
             narrative=True,
@@ -993,7 +997,7 @@ def cli(
             to_cal_per_mol = lambda x: float(x) * au2CalMol
             J_per_Kmol_to_cal_per_Kmol = lambda j: float(j) * J2CAL
 
-            n_imag = int(np.sum(freqs_cm < 0.0))
+            n_imag = int(np.count_nonzero(_imag_mask))
 
             EE = float(tr.U_el)
             ZPE = float(tr.ZPE)
@@ -1051,6 +1055,7 @@ def cli(
                     "symmetry_number": symmetry_number,
                     "symmetry_number_source": symmetry_number_source,
                     "num_imag_freq": n_imag,
+                    "n_negative_modes": _n_negative,
                     "n_freeze_atoms": len(freeze_list),
                     "thermo_policy": _thermo_policy.as_dict(),
                     "rigid_projection": _rigid_projection,
@@ -1114,11 +1119,13 @@ def cli(
         if out_json:
             from pdb2reaction.core.utils import calculator_provenance, write_result_json
             _all_freqs = [float(f) for f in freqs_cm]
-            _imag_freqs = [f for f in _all_freqs if f < 0.0]
+            _imag_freqs = [float(f) for f in _imag]
             result_data = {
                 "status": "completed",
                 "n_modes": len(_all_freqs),
                 "n_imaginary": len(_imag_freqs),
+                "n_negative_modes": _n_negative,
+                "frequency_representation": "complete",
                 "frequency_zero_cutoff_cm": freq_cfg["zero_cutoff_cm"],
                 "frequencies_cm": _all_freqs,
                 "imaginary_frequencies_cm": _imag_freqs,

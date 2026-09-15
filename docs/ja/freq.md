@@ -1,5 +1,10 @@
 # `freq`
 
+`frequencies_cm-1.txt`、JSON の `frequencies_cm` と `n_modes` は、既存の固定原子・剛体射影を適用した後の完全な符号付き物理モードを保持します。`--max-write` と `--sort` はモードファイルの出力範囲・順序だけを変更します。`n_imaginary`（YAML の `num_imag_freq`）は閾値より負の resolved 本数、`n_negative_modes` は微小な負モードも含む本数です。`frequency_representation: complete` の `near_zero_frequencies_cm` は完全配列の部分集合なので、配列へ追加して二重計数しないでください。
+
+熱化学は従来どおり QRRHO（rotor cutoff 100 cm⁻¹、虚振動数反転なし、正の振動数floorなし）を使い、正の低振動数モードも保持します。`freq.zero_cutoff_cm` を変えても、同じ完全振動数から計算する熱化学値は変わりません。
+
+
 MLIP バックエンド（デフォルト: UMA、`-b/--backend` で ORB ・ MACE ・ AIMNet2 も選択可能）を用いて振動数と熱化学量（ZPE、ギブズ自由エネルギーなど）を計算します。完全な振動解析（極小点に虚振動数がないこと、TS にちょうど 1 つあること等の確認）が必要な場合や、これらの熱化学補正が必要な場合に使用します。デフォルトは有限差分です。`--hessian-calc-mode Analytical` は変位幅による誤差を避けられますが、速度は backend/model/系に依存し、通常はより多くの accelerator memory を使います。対象環境で速度・メモリ・結果を検証して選択してください。虚振動数は負の値で表示されます。
 
 ## 実行例
@@ -104,7 +109,7 @@ freq:
 ## 注記
 
 - `tsopt` には虚振動数チェックが内蔵されているため、別途 `freq` を実行するのは主に熱化学量の取得や振動モードの詳細検討のためです。
-- 収束した一次の鞍点（TS）の Cartesian PHVA では、resolvedな負の振動数が **ちょうど 1 つ**になることが期待されます。共有 `freq.zero_cutoff_cm` は表示本数とtrajectory出力に適用されます。厳密なTS判定にはnear-zero内の負モードも含めた本数が1であることが必要です。
+- 収束した一次の鞍点（TS）の Cartesian PHVA では、resolvedな負の振動数が **ちょうど 1 つ**になることが期待されます。共有 `freq.zero_cutoff_cm` は resolved な虚振動数の本数とTSモード選択に適用されます。厳密なTS判定には、完全な物理振動数に含まれる near-zero 内の負モードも含めた本数が1であることが必要です。
 - 虚振動数モードは負の振動数として報告されます。`freq` は検出された虚振動数の個数を表示し、`--dump` で詳細を出力します。
 - 全原子を凍結した構造にはactiveな振動DOFがないため、明示的なエラーで停止します。
 - `--hessian-calc-mode` は **デフォルト < config < 明示 CLI** の優先順位で解決されます。CLI で明示的に指定した値は config YAML の `calc.hessian_calc_mode` より優先されます。

@@ -108,7 +108,7 @@ Two unrelated cm⁻¹ thresholds appear in `pdb2reaction`. They act on different
 
 | Threshold | Role | Source |
 |-----------|------|--------|
-| **5 cm⁻¹** | Default symmetric zero-mode cutoff: modes with `|frequency| <= cutoff` are removed before display and trajectory output, but negative near-zero modes still count for strict TS acceptance. | Shared YAML key: `freq.zero_cutoff_cm`. |
+| **5 cm⁻¹** | Default near-zero classification window. Resolved imaginary counts and TS mode selection use `frequency < -cutoff`; complete physical frequencies and positive thermal modes are retained. Strict TS acceptance also counts negative near-zero modes. | Shared YAML key: `freq.zero_cutoff_cm`. |
 | **100 cm⁻¹** | *QRRHO rotor cutoff* (Grimme). Positive low-frequency vibrations are damped between harmonic-oscillator and free-rotor entropy in `freq` thermochemistry; it changes only entropy / Gibbs free energy. | `thermoanalysis/config.py` as `ROTOR_CUT_DEFAULT = 100.0`. |
 
 ## CLI Conventions

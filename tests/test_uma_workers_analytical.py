@@ -370,3 +370,140 @@ def test_uma_core_is_rebuilt_when_composition_changes(monkeypatch):
     calculator._ensure_core(["N", "N"])
     assert calculator._core is not first
     assert built == [["H", "H"], ["N", "N"]]
+
+
+def _lazy_preparation_core(monkeypatch, *, device, precision, workers=1):
+    """Model the PR298 preparation order with CPU tensors and logical devices."""
+    dtype = torch.float64 if precision == "fp64" else torch.float32
+    events = []
+
+    class Batch:
+        def __init__(self, data):
+            self.pos = data.pos
+            self.charge, self.spin = data.charge, data.spin
+            self.device = self.charge_device = self.spin_device = "cpu"
+
+        def to(self, target):
+            # No CUDA allocation: these labels track the ordering contract.
+            self.device = self.charge_device = self.spin_device = str(target)
+            events.append(("batch_to", str(target)))
+            return self
+
+    class LazyPredictor:
+        def __init__(self):
+            if workers == 1:
+                self.model = torch.nn.Module()
+                self.model.backbone = torch.nn.Module()
+            self.model_device = "cpu"
+            self.initialized = False
+
+        def predict(self, batch):
+            if not self.initialized:
+                assert (batch.device == batch.charge_device == batch.spin_device
+                        == self.model_device), "lazy preparation device mismatch"
+                events.append(("prepare", self.model_device))
+                self.model_device = device
+                self.initialized = True
+            assert batch.device == "cpu", "the predictor must receive a host batch"
+            assert (batch.charge, batch.spin) == (-1, 2)
+            assert batch.pos.dtype == dtype and batch.pos.device.type == "cpu"
+            batch.to(device)  # FAIR-Chem's transfer follows its lazy preparation.
+            assert batch.device == self.model_device
+            events.append(("predict", batch.device))
+            return {"energy": (batch.pos ** 2).sum().reshape(1),
+                    "forces": -2 * batch.pos}
+
+    predictor = LazyPredictor()  # Deliberately exposes no move_to_device hook.
+
+    class AtomicData:
+        @staticmethod
+        def from_ase(atoms, **kwargs):
+            keys = kwargs["r_data_keys"]
+            return SimpleNamespace(
+                pos=torch.tensor(atoms.positions, dtype=kwargs["target_dtype"]),
+                charge=atoms.info.get("charge", 0) if "charge" in keys else 0,
+                spin=atoms.info.get("spin", 0) if "spin" in keys else 0,
+                dataset=None,
+            )
+
+    def collate(data, **kwargs):
+        assert len(data) == 1 and data[0].dataset == "omol"
+        assert kwargs == {"otf_graph": True}
+        return Batch(data[0])
+
+    def serial_factory(model, **kwargs):
+        assert model == "uma-s-1p2" and kwargs["device"] == device
+        assert kwargs["workers"] == 1
+        events.append(("construct", "serial"))
+        return predictor
+
+    def parallel_factory(**kwargs):
+        assert kwargs["device"] == device and kwargs["num_workers"] == workers
+        events.append(("construct", "parallel"))
+        return predictor
+
+    monkeypatch.setattr(uma_module, "AtomicData", AtomicData)
+    monkeypatch.setattr(uma_module, "data_list_collater", collate)
+    monkeypatch.setattr(uma_module, "_UMAInferenceSettings", SimpleNamespace)
+    monkeypatch.setattr(uma_module.pretrained_mlip, "get_predict_unit", serial_factory, raising=False)
+    monkeypatch.setattr(uma_module.pretrained_mlip, "pretrained_checkpoint_path_from_name",
+                        lambda _model: "/unused-checkpoint", raising=False)
+    monkeypatch.setattr(uma_module.pretrained_mlip, "get_reference_energies",
+                        lambda *_args, **_kwargs: {}, raising=False)
+    monkeypatch.setattr(uma_module, "ParallelMLIPPredictUnit", parallel_factory)
+    monkeypatch.setattr(uma_module, "guess_inference_settings", lambda name: name)
+    core = UMAcore(["O", "H", "H"], model="uma-s-1p2", charge=-1, spin=2,
+                   device=device, precision=precision, workers=workers)
+    assert events == [("construct", "parallel" if workers > 1 else "serial")]
+    assert not predictor.initialized
+    return core, predictor, events
+
+
+@pytest.mark.parametrize("entry", ["compute", "forces_tensor"])
+@pytest.mark.parametrize("device", ["cpu", "cuda"])
+@pytest.mark.parametrize("precision", ["fp32", "fp64"])
+def test_fresh_uma_entries_prepare_before_predictor_owned_transfer(
+    monkeypatch, entry, device, precision,
+):
+    core, predictor, events = _lazy_preparation_core(
+        monkeypatch, device=device, precision=precision,
+    )
+    positions = np.array([[0., 0., 0.], [.757, .586, 0.], [-.757, .586, 0.]])
+    for displacement in (0., .001):
+        current = positions.copy()
+        current[1, 0] += displacement
+        if entry == "compute":
+            result = core.compute(current, forces=True)
+            assert result["energy"] == pytest.approx((current ** 2).sum(), rel=1e-6)
+            force = result["forces"]
+        else:
+            result = core.forces_tensor(current)
+            assert not result.requires_grad
+            assert result.dtype == (torch.float64 if precision == "fp64" else torch.float32)
+            force = result.numpy()
+        np.testing.assert_allclose(force, -2 * current, rtol=1e-6)
+    assert predictor.initialized
+    assert events[1:] == [("prepare", "cpu"), ("batch_to", device), ("predict", device),
+                          ("batch_to", device), ("predict", device)]
+
+
+def test_parallel_uma_constructor_keeps_host_handoff(monkeypatch):
+    core, _, events = _lazy_preparation_core(
+        monkeypatch, device="cuda", precision="fp32", workers=2,
+    )
+    assert core.parallel_predict and not core.has_torch_model
+    result = core.compute(np.ones((3, 3)), forces=True)
+    np.testing.assert_array_equal(result["forces"], -2 * np.ones((3, 3)))
+    assert events == [("construct", "parallel"), ("prepare", "cpu"),
+                      ("batch_to", "cuda"), ("predict", "cuda")]
+
+
+def test_lazy_preparation_control_detects_premature_device_transfer(monkeypatch):
+    core, predictor, _ = _lazy_preparation_core(
+        monkeypatch, device="cuda", precision="fp32",
+    )
+    batch = core._ase_to_batch(Atoms("OHH", positions=np.zeros((3, 3))))
+    batch.to("cuda")  # Recreate the reported old caller's ordering defect.
+    with pytest.raises(AssertionError, match="lazy preparation device mismatch"):
+        predictor.predict(batch)
+    assert not predictor.initialized

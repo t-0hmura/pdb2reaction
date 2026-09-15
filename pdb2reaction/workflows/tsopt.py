@@ -110,6 +110,7 @@ from pysisyphus.normal_modes import (
     normalize_frequency_zero_cutoff_cm,
     resolved_imaginary_mask,
     _strict_negative_count,
+    frequency_partition_info,
 )
 
 logger = logging.getLogger(__name__)
@@ -1068,11 +1069,22 @@ def _optimizer_exact_frequency_data(
         != normalize_frequency_zero_cutoff_cm(frequency_zero_cutoff_cm)
     ):
         return None
+    # An old resolved-only cache cannot supply its omitted mode vectors.
+    # Let the established exact-Hessian path produce a complete PHVA instead.
+    if projection.get("frequency_representation") != "complete":
+        if len(projection["near_zero_frequencies_cm"]) != 0:
+            return None
+        projection.update(frequency_partition_info(freqs, frequency_zero_cutoff_cm))
     modes_t = (
         modes.detach().cpu().clone()
         if isinstance(modes, torch.Tensor)
         else torch.as_tensor(np.asarray(modes), dtype=torch.float64).clone()
     )
+    if (
+        tuple(modes_t.shape) != (len(freqs), current.size)
+        or not bool(torch.isfinite(modes_t).all())
+    ):
+        return None
     projection.update({
         "source": "optimizer_terminal_exact_phva",
         "reused_without_hessian_recalculation": True,

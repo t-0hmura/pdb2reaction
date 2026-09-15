@@ -65,7 +65,7 @@ pdb2reaction freq -i ts.pdb -l 'SAM:1' \
 ```python
 import json
 d = json.load(open("result_freq/result.json"))
-print(d["n_imaginary"])                       # negative modes after near-zero filtering
+print(d["n_imaginary"])                       # resolved negative modes below the reporting threshold
 print(d["rigid_projection"]["treatment"], d["rigid_projection"]["effective_rank"])
 print(d["frequencies_cm"][:5])                # first five frequencies (cm-1)
 t = d["thermochemistry"]
@@ -120,9 +120,10 @@ freeze of `LKH/HL` cap-H parents written by `extract`), and YAML
   frequency. Zero is ideal when independently certifying a minimum, but R/P
   imaginary counts do not block their thermochemistry.
 - An all-frozen structure has no active vibrational DOF and raises an error.
-- `freq` and `tsopt` both exclude modes with `|frequency| <= freq.zero_cutoff_cm`
-  (5 cm⁻¹ by default) before counting imaginary modes. Inspect the retained
-  `frequencies_cm` and displacements, not just the integer.
+- `freq` retains every signed physical mode and its positive thermal contribution.
+  `freq.zero_cutoff_cm` (5 cm⁻¹ by default) defines resolved imaginary counts and
+  TS mode eligibility; strict curvature also includes weak negative modes.
+  Inspect complete `frequencies_cm`, `n_negative_modes` and displacements.
 - A small-magnitude imaginary frequency may be numerical or a real shallow
   mode; inspect its displacement and repeat the Hessian at suitable precision.
   The 100 cm⁻¹ QRRHO cutoff regularizes low-frequency thermochemistry but

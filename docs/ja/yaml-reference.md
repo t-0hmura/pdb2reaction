@@ -568,7 +568,7 @@ irc:
 
 ```yaml
 freq:
- zero_cutoff_cm: 5.0 # |振動数| がこの値以下のモードを除外（cm^-1）
+ zero_cutoff_cm: 5.0 # near-zero と分類する |振動数| の上限（cm^-1）。モードは保持
  amplitude_ang: 0.8 # Displacement amplitude for modes (Å)
  n_frames: 20 # モードtrajectoryのフレーム数
  max_write: 10 # Maximum number of modes to write
@@ -582,7 +582,7 @@ Hessian系TS最適化が共有する唯一のcutoffです。旧
 `rsirfo.saddle_imaginary_threshold_cm` は互換aliasとして受理しますが、
 競合する値はエラーになります。
 
-このcutoffは表示・モード選択用です。Cartesian PHVAの受理は負のnear-zeroも含めて数え、OPTは厳密0、一次TSは厳密1かつresolved1を要求します。
+このcutoffは resolved な負モード数とTS/flattenのモード選択用です。完全な物理振動数配列からモードを削除せず、熱化学へ渡す正の振動数も変えません。Cartesian PHVAの受理は負のnear-zeroも含めて数え、OPTは厳密0、一次TSは厳密1かつresolved1を要求します。
 
 ---
 

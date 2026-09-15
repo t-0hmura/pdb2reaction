@@ -1,5 +1,10 @@
 # `freq`
 
+`frequencies_cm-1.txt`, JSON `frequencies_cm`, and `n_modes` retain the complete signed physical spectrum after the existing frozen-atom and rigid-mode projection. `--max-write` and `--sort` control only which mode files are written and their order. `n_imaginary` (YAML `num_imag_freq`) is the resolved negative count below the reporting threshold; `n_negative_modes` also includes weak negative modes. With `frequency_representation: complete`, `near_zero_frequencies_cm` is a subset of the complete array; do not append it and count modes twice.
+
+Thermochemistry retains the existing QRRHO policy (100 cm⁻¹ rotor cutoff, no imaginary inversion and no positive-frequency floor), including positive low-frequency modes. Changing `freq.zero_cutoff_cm` does not change thermal values computed from the same complete spectrum.
+
+
 Compute vibrational frequencies and thermochemistry (ZPE, Gibbs energy, etc.) using an MLIP backend (UMA by default; `-b/--backend` also supports ORB, MACE, AIMNet2). Use it when full vibrational analysis is required — for example, to confirm that a stationary point is a true minimum with no imaginary frequencies, or that a TS has exactly one — or when thermochemistry corrections (ZPE, Gibbs energy) are needed. Finite differences are the default. `--hessian-calc-mode Analytical` avoids displacement error but may be faster or slower and usually needs more accelerator memory; benchmark and validate the selected backend/model on the target system. Imaginary frequencies appear as negative values.
 
 ## Examples
@@ -121,14 +126,14 @@ The only `freq`-specific default that differs from the canonical block is the ou
 
 ```yaml
 freq:
- zero_cutoff_cm: 5.0 # remove |frequency| <= 5.0 cm^-1
+ zero_cutoff_cm: 5.0 # classify |frequency| <= 5.0 cm^-1 as near-zero; retain all modes
  out_dir: ./result_freq/ # freq default
 ```
 
 ## Notes
 
 - `tsopt` already includes an imaginary-frequency check, so a separate `freq` run is mainly for thermochemistry or detailed mode inspection.
-- A properly converged first-order saddle point (TS) is expected to have **exactly one** imaginary frequency. `freq.zero_cutoff_cm` controls resolved display/output counts; strict TS acceptance also requires exactly one negative frequency when the near-zero partition is included.
+- A properly converged first-order saddle point (TS) is expected to have **exactly one** imaginary frequency. `freq.zero_cutoff_cm` controls the resolved imaginary count and TS mode eligibility; strict TS acceptance also requires exactly one negative frequency in the complete physical spectrum, including the near-zero subset.
 - Imaginary frequencies are reported as negative values in cm⁻¹. `freq` prints how many were detected
   and dumps details when `--dump`.
 - An all-frozen structure has no active vibrational DOF and raises an explicit error.
