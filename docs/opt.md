@@ -45,6 +45,7 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hess \
 
 ## Workflow
 
+- **RFO curvature check**: Without `--flatten`, RFO checks the calculated Hessian before accepting a numerical candidate. Cartesian runs require no negative frequencies, including negative modes in the display zero window in the active subspace; internal-coordinate runs retain their optimizer-space check, not this strict PHVA certificate. Negative curvature causes continued optimization.
 - **Optimizer naming**: the CLI accepts `grad|lbfgs` and `hess|rfo`; in the YAML `opt_mode` key, use `lbfgs` or `rfo` directly. See {ref}`opt-mode-semantics` for the per-subcommand token→algorithm mapping.
 - **Flatten loop**: `--flatten` enables post-optimization flattening of imaginary vibrational modes. In `opt`, all detected imaginary modes are flattened each iteration until none remain or the internal loop cap is reached. Its PHVA eigensolver always uses the constrained rigid-mode treatment.
 - **Restraints**: `--dist-freeze` consumes Python-literal tuples `(i, j, target_Å)` where `target_Å` is the target distance in Å; omitting the third element restrains the starting distance. `--bias-k` sets a global harmonic strength (eV·Å⁻²). Indices default to 1-based but can be flipped to 0-based with `--zero-based`.
@@ -137,7 +138,7 @@ evidence of a stationary point, so this never reports convergence and
 optimizers, which store per-image energy arrays.
 ```
 
-The fixed constrained rigid-mode treatment applies only when `--flatten` runs; it does not change L-BFGS or RFO optimization steps. See [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries).
+The constrained rigid-mode treatment is used by Cartesian RFO curvature checks and by `--flatten`. It does not change L-BFGS. See [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries).
 
 ## See Also
 

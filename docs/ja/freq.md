@@ -104,7 +104,7 @@ freq:
 ## 注記
 
 - `tsopt` には虚振動数チェックが内蔵されているため、別途 `freq` を実行するのは主に熱化学量の取得や振動モードの詳細検討のためです。
-- 収束した一次の鞍点（TS）の Cartesian PHVA では、resolvedな負の振動数が **ちょうど 1 つ**になることが期待されます。共有 `freq.zero_cutoff_cm` は `|frequency| <= cutoff` のモードをこの本数とtrajectory出力の前に除外します。
+- 収束した一次の鞍点（TS）の Cartesian PHVA では、resolvedな負の振動数が **ちょうど 1 つ**になることが期待されます。共有 `freq.zero_cutoff_cm` は表示本数とtrajectory出力に適用されます。厳密なTS判定にはnear-zero内の負モードも含めた本数が1であることが必要です。
 - 虚振動数モードは負の振動数として報告されます。`freq` は検出された虚振動数の個数を表示し、`--dump` で詳細を出力します。
 - 全原子を凍結した構造にはactiveな振動DOFがないため、明示的なエラーで停止します。
 - `--hessian-calc-mode` は **デフォルト < config < 明示 CLI** の優先順位で解決されます。CLI で明示的に指定した値は config YAML の `calc.hessian_calc_mode` より優先されます。

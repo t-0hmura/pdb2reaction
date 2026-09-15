@@ -99,7 +99,7 @@
 | **Bohr** | 原子単位系の長さ。1 Bohr ≈ 0.529 Å |
 | **Å（オングストローム）** | 10⁻¹⁰ m。原子間距離の標準単位 |
 | **cm⁻¹** | 波数（逆センチメートル）。振動数の標準単位。虚振動数は負の値で表されます |
-| **虚振動数** | Hessian 行列の負の固有値に対応する振動数。TS では 1 本のみ存在（一次鞍点）。負の cm⁻¹ 値で報告され、最終的な TS 判定では設定した絶対値閾値未満の負の振動数を無視します。 |
+| **虚振動数** | Hessian 行列の負の固有値に対応する振動数。TS では 1 本のみ存在（一次鞍点）。負の cm⁻¹ 値で報告され、最終的な TS 判定では設定した表示閾値以下の負の振動数も数えます。 |
 
 (ja-frequency-thresholds)=
 ### 振動数閾値: 5 cm⁻¹（微小モード処理）と 100 cm⁻¹（QRRHO rotor cutoff）
@@ -108,7 +108,7 @@
 
 | 閾値 | 役割 | 定義場所 |
 |------|------|----------|
-| **5 cm⁻¹** | デフォルトの対称zero-mode cutoff。`|frequency| <= cutoff` のモードを振動数/TS分類とtrajectory出力の前に除外します。 | 共有YAML key `freq.zero_cutoff_cm` |
+| **5 cm⁻¹** | デフォルトの対称zero-mode cutoff。`|frequency| <= cutoff` のモードを表示とtrajectory出力の前に除外しますが、厳密なTS判定では負の微小モードも数えます。 | 共有YAML key `freq.zero_cutoff_cm` |
 | **100 cm⁻¹** | *QRRHO rotor cutoff*（Grimme）。`freq` の熱化学計算において、これ未満の **正の** 低振動モードは harmonic-oscillator から自由回転子の entropy へ滑らかに移行する。entropy / Gibbs 自由エネルギーのみに影響 | `thermoanalysis/config.py` の `ROTOR_CUT_DEFAULT = 100.0` |
 
 ## CLI 規則

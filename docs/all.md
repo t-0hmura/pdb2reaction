@@ -79,11 +79,17 @@ Full system(s) (PDB / mmCIF / XYZ / GJF)
 2. **Optional staged scan** (single-input only) — each `--scan-lists/-s` literal is a list of `(i, j, target_Å)` tuples. Atom indices use the original input ordering, 1-based by default (pass `--no-scan-one-based` to interpret them as 0-based), and are remapped to the active-site model ordering. Three-field selectors like `'TYR,285,CA'` are order-flexible; use positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` for repeated names or numbering. Stages run sequentially (stage 2 starts from stage 1's result), and the stage endpoints become the ordered intermediates that feed the MEP step.
 3. **MEP search** — by default runs single-pass `path-opt`; `--refine-path` switches to recursive `path-search`. Recursive refinement can improve a poor HEI but can also split a noisy/bad path into unnecessary segments and increase cost, so it is off by default. Segmentation is only a candidate mechanism until TS/frequency/IRC validation. Raw engine output stays under `_work`; `mep.pdb`, bridge-input `mep.cif`, `mep_trj.xyz`, and the diagram are promoted to the top level.
 4. **Per-segment post-processing** (reactive segments only — bridge segments without bond changes are skipped):
-   - `--tsopt` — Optimize each HEI, then run EulerPC IRC and re-optimize its endpoints when terminal validation permits. Frequencies and modes are recorded only when terminal PHVA completes. Endpoint optimization uses `--thresh-post` (default `baker`); its working directory is retained with `--dump` and otherwise removed. `--reject-uphill` is off by default and applies only to endpoint RFO re-optimization.
+   - `--tsopt` — Optimize each HEI, then run EulerPC IRC and re-optimize its endpoints when terminal validation permits. Frequencies and modes are recorded only when terminal PHVA completes. Endpoint optimization uses `--thresh-post` (default `baker`); its working directory is retained with `--dump` or when either endpoint does not converge. `--reject-uphill` is off by default and applies only to endpoint RFO re-optimization.
    - `--thermo` — `freq` on (R, TS, P) for vibrational + thermochemistry data and an MLIP Gibbs diagram.
    - `--dft` — single-point DFT on (R, TS, P) and a DFT diagram. With `--thermo`, a DFT//MLIP Gibbs diagram (DFT energies + MLIP thermal correction) is also produced.
    - Shared overrides: `--opt-mode`, `--opt-mode-post`, `--flatten`, `--hessian-calc-mode`, `--tsopt-max-cycles`, `--tsopt-out-dir`, `--freq-*`, `--dft-*`, `--dft-engine` (GPU-first by default). Frozen-boundary PHVA always uses the constrained rigid-mode treatment; it is unrelated to the MEP-derived `--ref-mode`. For Hessian evaluation modes see {ref}`hessian-evaluation`.
 5. **TSOPT-only mode** (single input + `--tsopt`, no `--scan-lists`) — skips MEP / merge; runs `tsopt` + EulerPC IRC and generates the same energy diagrams plus optional freq / DFT outputs.
+
+An endpoint execution error or missing valid final structure stops that segment
+before frequency/DFT and refined diagrams. `endpoint_opt/failure.json` records
+the error; TS/IRC structures and endpoint diagnostics are retained. Diagnostic
+frequency/DFT calculations may still run after ordinary nonconvergence with
+finite output.
 
 ## Outputs
 

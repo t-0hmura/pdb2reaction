@@ -128,7 +128,7 @@ freq:
 ## Notes
 
 - `tsopt` already includes an imaginary-frequency check, so a separate `freq` run is mainly for thermochemistry or detailed mode inspection.
-- A properly converged first-order saddle point (TS) is expected to have **exactly one** imaginary frequency. `freq.zero_cutoff_cm` removes `|frequency| <= cutoff` consistently before standalone and TS-side classification.
+- A properly converged first-order saddle point (TS) is expected to have **exactly one** imaginary frequency. `freq.zero_cutoff_cm` controls resolved display/output counts; strict TS acceptance also requires exactly one negative frequency when the near-zero partition is included.
 - Imaginary frequencies are reported as negative values in cm⁻¹. `freq` prints how many were detected
   and dumps details when `--dump`.
 - An all-frozen structure has no active vibrational DOF and raises an explicit error.

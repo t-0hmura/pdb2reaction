@@ -98,7 +98,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  - `--refine-path` を指定すると、再帰的 `path-search` に切り替わり、結合変化に基づく多段階反応の候補セグメントを構築します。この分割だけで素反応が確定するわけではなく、TS／虚振動／IRC の検証が必要です。粗い MEP から得た HEI で TSOPT が失敗する場合の精密化に有効です。一方、悪い／ノイズの多い path を不要な複数 segment へ分割して計算時間を大幅に増やすことがあるため、意図せぬ cost 増大を避けてデフォルト OFF です（エンジン生出力は `<out-dir>/_work/path_search/`）。
 
 4. **オプションのセグメントごとの後処理**（反応セグメントのみ — 結合変化のあるセグメント。ブリッジセグメントはスキップ）
- - `--tsopt`: 各 HEI を TS 最適化し、終端検証で続行可能な場合は EulerPC IRC と端点再最適化を実行します。振動数とモードは終端 PHVA 成功時のみ記録します。端点最適化には `--thresh-post`（デフォルト: `baker`）を使用し、作業ディレクトリは `--dump` 時に保持します。`--reject-uphill` はデフォルトで無効で、端点 RFO 再最適化のみに適用します。
+ - `--tsopt`: 各 HEI を TS 最適化し、終端検証で続行可能な場合は EulerPC IRC と端点再最適化を実行します。振動数とモードは終端 PHVA 成功時のみ記録します。端点最適化には `--thresh-post`（デフォルト: `baker`）を使用し、作業ディレクトリは `--dump` 時、またはいずれかの端点が収束しなかった場合に保持します。`--reject-uphill` はデフォルトで無効で、端点 RFO 再最適化のみに適用します。
  - `--thermo`: (R, TS, P) で `freq` を呼び出し、振動/熱化学データと MLIP Gibbs ダイアグラムを取得
  - `--dft`: (R, TS, P) で DFT 一点計算を実行し、DFT ダイアグラムを構築。`--thermo` と組み合わせると DFT//MLIP Gibbs ダイアグラムも生成
   - 共有の上書きオプション: `--opt-mode`、`--opt-mode-post`（TSOPT/IRC 後最適化のプリセット上書き）、`--flatten/--no-flatten`、`--hessian-calc-mode`、`--tsopt-max-cycles`、`--tsopt-out-dir`、`--freq-*`、`--dft-*`、`--dft-engine`（GPU 優先）など。Cartesian PHVA の剛体モードは、凍結anchorを尊重する constrained 処理に固定されています。
@@ -106,6 +106,12 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 
 5. **TSOPT のみモード**（単一入力、`--tsopt`、`--scan-lists` なし）
  - MEP/マージステージをスキップし、活性部位モデル（または抽出がスキップされた場合は全入力構造）で `tsopt` → EulerPC IRC を実行し、高エネルギー側の IRC 終端を反応物 (R) として識別したうえで、エネルギーダイアグラム一式とオプションの freq/DFT 出力を生成します。
+
+端点最適化の実行エラーや有効な最終構造の欠落がある場合、そのセグメントの
+振動解析・DFT・精密化後のダイアグラムは実行しません。
+`endpoint_opt/failure.json` にエラーを記録し、TS・IRC 構造と端点の診断用出力を
+保持します。通常の未収束でも有限な出力があれば、診断目的の振動解析・DFT は
+続行する場合があります。
 
 ## 出力
 

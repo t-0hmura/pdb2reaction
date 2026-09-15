@@ -707,6 +707,7 @@ class Geometry:
                     **coord_kwargs,
                 )
                 self._coords = coords3d.flatten()
+                self.clear()
                 raise RebuiltInternalsException(
                     typed_prims=self.internal.typed_prims.copy()
                 )

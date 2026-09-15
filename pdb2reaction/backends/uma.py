@@ -10,6 +10,7 @@ Provides ``UMACalculator`` (PySisyphus-compatible) and ``UMAASECalculator``
 from __future__ import annotations
 
 import time
+from contextlib import contextmanager
 from typing import Any, Dict, Optional, Sequence
 
 import click
@@ -78,6 +79,60 @@ def _positive_worker_count(value: Any, name: str) -> int:
     if count < 1:
         raise BackendError(f"{name} must be a positive integer, got {value!r}.")
     return count
+
+
+@contextmanager
+def _uma_analytical_head_scope(model):
+    """Enable UMA's EFS derivative graph without training its backbone."""
+    inner = getattr(model, "module", model)
+    try:
+        head = inner.output_heads["energyandforcehead"].head
+        backbone = inner.backbone
+    except (AttributeError, KeyError, TypeError) as exc:
+        raise RuntimeError(
+            "UMA analytical Hessian requires the energyandforcehead EFS head; "
+            "use FiniteDifference with this unsupported model layout."
+        ) from exc
+    modules = list(model.modules())
+    if (
+        not isinstance(head, nn.Module)
+        or not isinstance(backbone, nn.Module)
+        or not any(head is module for module in modules)
+        or any(head is module for module in backbone.modules())
+        or head is model
+        or head is inner
+    ):
+        raise RuntimeError("UMA analytical Hessian requires a separate EFS head.")
+
+    module_flags = [(module, module.training) for module in modules]
+    parameter_flags = [(parameter, parameter.requires_grad) for parameter in model.parameters()]
+    dropout_types = (
+        nn.Dropout, nn.Dropout1d, nn.Dropout2d, nn.Dropout3d,
+        nn.AlphaDropout, nn.FeatureAlphaDropout,
+    )
+    dropout_flags = [
+        (module, module.p) for module in head.modules()
+        if isinstance(module, dropout_types)
+    ]
+    try:
+        for parameter, _ in parameter_flags:
+            parameter.requires_grad_(False)
+        # Backbone training enables functional composition dropout in UMA.
+        # Only the EFS head needs training=True to retain the force graph.
+        model.eval()
+        head.train(True)
+        for module, _ in dropout_flags:
+            module.p = 0.0
+            module.training = False
+        yield
+    finally:
+        for module, probability in dropout_flags:
+            module.p = probability
+        # Recursive train()/eval() would overwrite saved mixed child states.
+        for module, training in module_flags:
+            module.training = training
+        for parameter, requires_grad in parameter_flags:
+            parameter.requires_grad_(requires_grad)
 
 
 class UMAcore:
@@ -262,21 +317,15 @@ class UMAcore:
         forces_np = res["forces"].detach().cpu().numpy() if (forces or hessian) else None
 
         if hessian:
-            p_flags = [p.requires_grad for p in self.predict.model.parameters()]
-            for p in self.predict.model.parameters():
-                p.requires_grad_(False)
-            self.predict.model.train()
             try:
-                def e_fn(flat):
-                    batch.pos = flat.view(-1, 3)
-                    return self.predict.predict(batch)["energy"].squeeze()
+                with _uma_analytical_head_scope(self.predict.model):
+                    def e_fn(flat):
+                        batch.pos = flat.view(-1, 3)
+                        return self.predict.predict(batch)["energy"].squeeze()
 
-                H = torch.autograd.functional.hessian(e_fn, batch.pos.view(-1), vectorize=False)
-                H = H.view(len(atoms), 3, len(atoms), 3).to(self.device).detach()
+                    H = torch.autograd.functional.hessian(e_fn, batch.pos.view(-1), vectorize=False)
+                    H = H.view(len(atoms), 3, len(atoms), 3).to(self.device).detach()
             finally:
-                self.predict.model.eval()
-                for p, flag in zip(self.predict.model.parameters(), p_flags):
-                    p.requires_grad_(flag)
                 if self.device.type == "cuda":
                     torch.cuda.empty_cache()
         else:

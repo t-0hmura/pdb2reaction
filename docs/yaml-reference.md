@@ -587,6 +587,8 @@ flattening, Dimer, and Hessian-family TS optimization. The legacy
 `rsirfo.saddle_imaginary_threshold_cm` spellings remain accepted as aliases;
 conflicting values are rejected.
 
+This cutoff controls display and mode selection. Cartesian PHVA acceptance also counts negative near-zero modes: strict zero for OPT, and strict one plus resolved one for first-order TS.
+
 ---
 
 ### `thermo`

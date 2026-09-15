@@ -582,6 +582,8 @@ Hessian系TS最適化が共有する唯一のcutoffです。旧
 `rsirfo.saddle_imaginary_threshold_cm` は互換aliasとして受理しますが、
 競合する値はエラーになります。
 
+このcutoffは表示・モード選択用です。Cartesian PHVAの受理は負のnear-zeroも含めて数え、OPTは厳密0、一次TSは厳密1かつresolved1を要求します。
+
 ---
 
 ### `thermo`

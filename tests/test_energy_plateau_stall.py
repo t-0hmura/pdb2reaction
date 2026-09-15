@@ -281,6 +281,7 @@ def test_tsopt_terminal_outcome_messages_separate_numerical_and_saddle_status():
         numerically_converged=False,
         hessian_ready=True,
         n_imaginary_modes=1,
+        n_negative_modes=1,
     )
     assert first_order_not_converged == "[tsopt] ERROR: Not converged."
 
@@ -288,9 +289,10 @@ def test_tsopt_terminal_outcome_messages_separate_numerical_and_saddle_status():
         numerically_converged=True,
         hessian_ready=True,
         n_imaginary_modes=2,
+        n_negative_modes=2,
     )
     assert converged_higher_order == (
-        "[tsopt] WARNING: Higher-order stationary point (n_imag=2). "
+        "[tsopt] WARNING: Higher-order stationary point (n_imag=2, n_negative=2). "
         "Try --flatten or all --refine-path."
     )
 
@@ -298,6 +300,7 @@ def test_tsopt_terminal_outcome_messages_separate_numerical_and_saddle_status():
         numerically_converged=True,
         hessian_ready=True,
         n_imaginary_modes=0,
+        n_negative_modes=0,
     )
     assert converged_minimum == (
         "[tsopt] No imaginary mode detected. Try all --refine-path."
@@ -307,6 +310,7 @@ def test_tsopt_terminal_outcome_messages_separate_numerical_and_saddle_status():
         numerically_converged=True,
         hessian_ready=True,
         n_imaginary_modes=1,
+        n_negative_modes=1,
     )
     assert validated == "[tsopt] Converged (n_imag=1)."
 
@@ -314,6 +318,7 @@ def test_tsopt_terminal_outcome_messages_separate_numerical_and_saddle_status():
         numerically_converged=True,
         hessian_ready=False,
         n_imaginary_modes=None,
+        n_negative_modes=None,
     )
     assert unavailable == "[tsopt] ERROR: Failed to complete terminal PHVA."
 
@@ -423,8 +428,8 @@ def test_hessian_dimer_stops_after_child_stall(tmp_path):
     assert _tsopt_terminal_status(runner, saddle_verified=True) == "stalled"
 
 
-def test_terminal_saddle_certification_uses_magnitude_threshold():
-    """Certification ignores negative roots softer than the configured gate."""
+def test_terminal_saddle_certification_separates_magnitude_threshold():
+    """Display filtering must not hide a negative root from strict certification."""
     from pdb2reaction.workflows.tsopt import (
         _certified_negative_frequencies,
         _certified_saddle_order,
@@ -436,7 +441,7 @@ def test_terminal_saddle_certification_uses_magnitude_threshold():
     freqs_cm = np.array([-450.0, -3.2, 12.0, 640.0])
     reported_idx, reported_values = _imaginary_mode_indices_and_values(freqs_cm, 5.0)
 
-    # Mode export, printed output, and certification use one threshold.
+    # Legacy display/export helpers keep their resolved-count convention.
     assert len(reported_idx) == 1
     assert reported_values == [-450.0]
     assert _certified_saddle_order(freqs_cm, 5.0) == 1
@@ -444,12 +449,14 @@ def test_terminal_saddle_certification_uses_magnitude_threshold():
 
     runner = _FakeOpt()
     runner.is_converged = True
+    runner.rigid_projection_info = {"raw_mode_count": 4, "near_zero_frequencies_cm": []}
     export_idx = _finalize_dimer_saddle_status(runner, freqs_cm, 5.0)
 
-    # The public result is self-consistent with the thresholded certified set.
+    # Resolved public display stays one; strict certification rejects the extra root.
     assert runner.n_imaginary_modes == 1
     assert runner.imaginary_frequencies_cm == [-450.0]
-    assert runner.saddle_order_verified is True
+    assert runner.saddle_order_verified is False
+    assert runner.n_negative_modes == 2
     assert runner.is_converged is True
     assert _tsopt_terminal_status(runner, saddle_verified=True) == "converged"
     # Mode export still follows the threshold-filtered indices.
@@ -458,6 +465,7 @@ def test_terminal_saddle_certification_uses_magnitude_threshold():
     # A genuine first-order saddle still certifies.
     single = _FakeOpt()
     single.is_converged = True
+    single.rigid_projection_info = {"raw_mode_count": 3, "near_zero_frequencies_cm": []}
     _finalize_dimer_saddle_status(single, np.array([-450.0, 12.0, 640.0]), 5.0)
     assert single.n_imaginary_modes == 1
     assert single.imaginary_frequencies_cm == [-450.0]
@@ -468,6 +476,7 @@ def test_terminal_saddle_certification_uses_magnitude_threshold():
     # A lone sub-threshold negative root does not certify a transition state.
     soft = _FakeOpt()
     soft.is_converged = True
+    soft.rigid_projection_info = {"raw_mode_count": 3, "near_zero_frequencies_cm": []}
     soft_export = _finalize_dimer_saddle_status(soft, np.array([-3.2, 12.0, 640.0]), 5.0)
     assert soft.n_imaginary_modes == 0
     assert soft.imaginary_frequencies_cm == []
@@ -476,8 +485,8 @@ def test_terminal_saddle_certification_uses_magnitude_threshold():
     assert soft_export.tolist() == []
 
 
-def test_exact_phva_validation_ignores_soft_negative_roots():
-    """The bundled exact PHVA branch reports order 1 for [-450, -3.2, +12]."""
+def test_exact_phva_validation_rejects_soft_negative_roots():
+    """The exact PHVA branch reports resolved1/strict2 for [-450, -3.2, +12]."""
     from pysisyphus.tsoptimizers.RSIRFOptimizer import RSIRFOptimizer
 
     modes = np.eye(3)
@@ -486,7 +495,7 @@ def test_exact_phva_validation_ignores_soft_negative_roots():
 
     # TSHessianOptimizer is abstract; RSIRFO is the shipped concrete owner.
     optimizer = RSIRFOptimizer.__new__(RSIRFOptimizer)
-    # The shipped magnitude threshold is also the certification threshold.
+    # The magnitude threshold still controls resolved reaction-mode eligibility.
     optimizer.saddle_imaginary_threshold_cm = 5.0
     optimizer.small_eigval_thresh = 1e-8
     optimizer.roots = np.array([0])
@@ -497,6 +506,7 @@ def test_exact_phva_validation_ignores_soft_negative_roots():
     optimizer.forces = []
     optimizer.geometry = SimpleNamespace(cart_coords=np.zeros(3))
     optimizer.table = SimpleNamespace(print=printed.append)
+    optimizer._last_rigid_projection_info = {"raw_mode_count": 3, "near_zero_frequencies_cm": []}
     optimizer._mw_frequencies_and_modes = lambda: (frequencies["value"], modes)
     optimizer._recovery_mode_from_mw = lambda _modes, index: modes[:, int(index)]
     optimizer._record_exact_saddle_candidate = lambda: None
@@ -509,7 +519,8 @@ def test_exact_phva_validation_ignores_soft_negative_roots():
     )
 
     assert optimizer._last_exact_n_imaginary == 1
-    assert optimizer._last_exact_saddle_verified is True
+    assert optimizer._last_exact_saddle_verified is False
+    assert optimizer._last_exact_n_negative == 2
     assert has_saddle_modes is True
     assert any("n_imag=1" in message for message in printed)
 

@@ -54,6 +54,16 @@ pdb2reaction         -i R.pdb P.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3'    # extracti
 
 ---
 
+### DMF is unusually slow inside IPOPT
+
+If IPOPT/MUMPS uses multithreaded BLIS, nested threads can cause long waits.
+Set `BLIS_NUM_THREADS=1` before starting Python or the CLI, for example in
+the job script. Leave the outer OpenMP/MM thread count unchanged.
+Manual `BLIS_JC_NT`, `BLIS_PC_NT`, `BLIS_IC_NT`, `BLIS_JR_NT`, or
+`BLIS_IR_NT` settings override this limit; remove them from that job's
+configuration. Restart an existing notebook kernel after changing the settings.
+See [BLIS thread controls](https://github.com/flame/blis/blob/2.0/docs/Multithreading.md).
+
 (calculation-convergence-problems)=
 ## Calculation / convergence
 

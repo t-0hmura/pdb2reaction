@@ -1853,7 +1853,9 @@ def _enrich_summary(
                 # In TS-only mode segments[*] is itself the refined
                 # TS-minus-assigned-endpoint result; no MEP was run.  Ordinary
                 # path segments still fall back to the raw MEP band.
-                b = s.get("barrier_kcal", 0) or 0
+                b = s.get("barrier_kcal")
+                if b is None or not np.isfinite(float(b)):
+                    continue
                 cur_method = (
                     "MLIP"
                     if ts_only and s.get("kind") == "tsopt"
@@ -2389,6 +2391,8 @@ def _optimize_endpoint_geom(
         is the fail-closed tri-state convergence bit of the final optimizer:
         an endpoint whose optimization did not explicitly converge is retained as
         a geometry/artifact but must not promote its segment to a usable success.
+        Missing, stale, unreadable or nonfinite final output raises; a normal
+        finite nonconverged return remains available for diagnostic continuation.
     """
     from pdb2reaction.workflows._outcomes import optimizer_converged_bit
     geom.set_calculator(getattr(geom, "calculator", None))
@@ -2478,6 +2482,10 @@ def _optimize_endpoint_geom(
 
         _echo_detail(f"[endpoint-opt] Optimizing '{tag}' with {label} → {opt_dir}")
         opt = OptClass(geom, **cfg)
+        endpoint_manifest = InvocationManifest()
+        if opt.final_fn is None:
+            raise click.ClickException(f"[endpoint-opt] No final geometry path for '{tag}'.")
+        endpoint_manifest.declare("final", [Path(opt.final_fn)])
         try:
             opt.run()
             _endpoint_conv = optimizer_converged_bit(opt)
@@ -2498,7 +2506,7 @@ def _optimize_endpoint_geom(
                 )
             commit_exact(current_final, geom.as_xyz().encode("utf-8"))
 
-        final_xyz = Path(opt.final_fn) if isinstance(opt.final_fn, (str, Path)) else opt.final_fn
+        final_xyz = endpoint_manifest.claim_one("final")
 
     if final_xyz is None:
         raise click.ClickException(f"[endpoint-opt] No optimized geometry was produced for '{tag}'.")
@@ -2508,11 +2516,15 @@ def _optimize_endpoint_geom(
         coord_type=DEFAULT_COORD_TYPE,
         freeze_atoms=getattr(geom, "freeze_atoms", []),
     )
+    if not np.isfinite(g_final.cart_coords).all():
+        raise click.ClickException(f"[endpoint-opt] Nonfinite final coordinates for '{tag}'.")
     try:
         g_final.freeze_atoms = np.array(getattr(geom, "freeze_atoms", []), dtype=int)
     except Exception as exc:
         logger.debug("Failed to propagate freeze_atoms to optimized endpoint geometry: %s", exc)
     g_final.set_calculator(getattr(geom, "calculator", None))
+    if not np.isfinite(float(g_final.energy)):
+        raise click.ClickException(f"[endpoint-opt] Nonfinite final energy for '{tag}'.")
     return g_final, final_xyz, _endpoint_conv
 
 
@@ -2860,6 +2872,14 @@ def _tsopt_continuation_decision(payload: Dict[str, Any]) -> Dict[str, Any]:
     except (TypeError, ValueError):
         n_imaginary = None
 
+    raw_n_negative = payload.get("n_negative_modes")
+    try:
+        n_negative = None if raw_n_negative is None else int(raw_n_negative)
+    except (TypeError, ValueError):
+        n_negative = None
+    if n_negative is not None and n_negative < 0:
+        n_negative = None
+
     raw_mode_index = payload.get("reaction_mode_index")
     try:
         reaction_mode_index = (
@@ -2894,7 +2914,15 @@ def _tsopt_continuation_decision(payload: Dict[str, Any]) -> Dict[str, Any]:
         reason = "no_imaginary_reaction_mode"
     else:
         continue_irc = True
-        reason = "higher_order_saddle" if n_imaginary > 1 else "first_order_saddle"
+        # Continue IRC under the existing resolved-mode policy, but never turn
+        # a strict higher-order (or unavailable) proof into first-order status.
+        reason = (
+            "higher_order_saddle"
+            if (n_negative is not None and n_negative > 1)
+            or saddle_validation == "higher_order" or n_imaginary > 1
+            else "first_order_saddle" if n_negative == n_imaginary == 1
+            else "saddle_order_unavailable"
+        )
         reaction_mode_index_valid = bool(
             reaction_mode_index is not None
             and 0 <= int(reaction_mode_index) < int(n_imaginary)
@@ -2936,6 +2964,7 @@ def _tsopt_continuation_decision(payload: Dict[str, Any]) -> Dict[str, Any]:
         "hessian_status": hessian_status,
         "hessian_error": payload.get("hessian_error"),
         "n_imaginary_modes": n_imaginary,
+        "n_negative_modes": n_negative,
         "reaction_mode_index": reaction_mode_index,
         "reaction_mode_frequency_cm": reaction_mode_frequency,
         "reaction_mode_overlap": reaction_mode_overlap,
@@ -5914,16 +5943,17 @@ def cli(
 
         ensure_dir(struct_dir)
         model_ref = ref_pdb_for_topology or ts_initial_pdb
-        _save_single_geom_as_pdb_for_tools(
+        p_react_irc = _save_single_geom_as_pdb_for_tools(
             g_react_irc, model_ref, struct_dir, "reactant_irc"
         )
-        _save_single_geom_as_pdb_for_tools(
+        p_prod_irc = _save_single_geom_as_pdb_for_tools(
             g_prod_irc, model_ref, struct_dir, "product_irc"
         )
         pT = _save_single_geom_as_pdb_for_tools(gT, model_ref, struct_dir, "ts")
 
         endpoint_opt_dir = tsroot / "endpoint_opt"
         ensure_dir(endpoint_opt_dir)
+        _endpoint_failures: Dict[str, Any] = {}
 
         # Map IRC left/right Hessians → R/P endpoint (left=forward, right=backward)
         from pdb2reaction.io.hessian_cache import (
@@ -5959,8 +5989,11 @@ def cli(
                 f"[post] WARNING: Reactant endpoint optimization failed in TSOPT-only mode: {e}",
                 err=True,
             )
-            g_react_opt = g_react_irc
             _react_opt_conv = None
+            _endpoint_failures["reactant"] = {
+                "error_type": type(e).__name__, "error": str(e),
+            }
+            g_react_opt = None
 
         _hess_discard("irc_endpoint")
         _c = _hess_load(_prod_hk)
@@ -5987,11 +6020,92 @@ def cli(
                 f"[post] WARNING: Product endpoint optimization failed in TSOPT-only mode: {e}",
                 err=True,
             )
-            g_prod_opt = g_prod_irc
             _prod_opt_conv = None
+            _endpoint_failures["product"] = {
+                "error_type": type(e).__name__, "error": str(e),
+            }
+            g_prod_opt = None
+
+        if _endpoint_failures:
+            # Current coordinates may be an unaccepted partial iterate; keep the
+            # original IRC snapshot distinct from this diagnostic observation.
+            for _state, _geom, _irc_path in (
+                ("reactant", g_react_irc, p_react_irc),
+                ("product", g_prod_irc, p_prod_irc),
+            ):
+                if _state not in _endpoint_failures:
+                    continue
+                _failure = _endpoint_failures[_state]
+                _failure["irc_structure"] = str(_irc_path)
+                _failure["geometry_role"] = "last_observed_acceptance_unknown"
+                try:
+                    _failure["coordinates_finite"] = bool(np.isfinite(_geom.cart_coords).all())
+                    if _failure["coordinates_finite"]:
+                        _observed = endpoint_opt_dir / f"{_state}_last_observed.xyz"
+                        commit_exact(_observed, _geom.as_xyz().encode("utf-8"))
+                        _failure["last_observed_xyz"] = str(_observed)
+                except Exception as exc:
+                    _failure["diagnostic_error"] = str(exc)
+            _endpoint_stop = {
+                "stage": "endpoint_opt", "segment": 1,
+                "reason": "endpoint_execution_failed", "failures": _endpoint_failures,
+                "diagnostic_dir": str(endpoint_opt_dir), "ts_structure": str(pT),
+            }
+            commit_json(endpoint_opt_dir / "failure.json", _endpoint_stop)
+            _stop_log = {
+                "index": 1, "tag": "seg_01", "kind": "tsopt",
+                "post_dir": str(tsroot), "pipeline_stop": _endpoint_stop,
+                "irc": irc_res.get("irc_outcome"),
+                "irc_plot": str(irc_plot_path) if irc_plot_path else None,
+                "irc_traj": str(irc_trj_path) if irc_trj_path else None,
+                "endpoint_assignment": endpoint_assignment,
+                "endpoint_opt": {
+                    "reactant_converged": _react_opt_conv,
+                    "product_converged": _prod_opt_conv,
+                    "failures": _endpoint_failures,
+                },
+                "tsopt": _tsopt_record,
+            }
+            calculator_lease.release()
+            for _geom in (gL, gR, gT, g_react_irc, g_prod_irc, g_react_opt, g_prod_opt):
+                if _geom is not None:
+                    _geom.calculator = None
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            summary = {
+                "out_dir": str(tsroot), "n_images": None, "n_segments": 1,
+                "segments": [{"index": 1, "tag": "seg_01", "kind": "tsopt"}],
+                "pipeline_stop": _endpoint_stop, "energy_diagrams": [],
+            }
+            _enrich_summary(
+                summary, version="", pipeline_mode="tsopt-only",
+                out_dir=out_dir, manifest=manifest, post_segments=[_stop_log],
+                charge=q_int, spin=spin, command=command_str,
+                mlip_backend=_mlip_backend_shared, mlip_model=_mlip_model_shared,
+                mlip_model_label=_mlip_model_label_shared, mlip_task=_mlip_task_shared,
+                mlip_precision=_mlip_precision_shared,
+                freeze_atoms=_freeze_atoms_for_log(),
+                config={
+                    "tsopt": do_tsopt, "thermo": do_thermo, "dft": do_dft,
+                    "ts_opt_mode": tsopt_opt_mode_default,
+                    "endpoint_opt_mode": tsopt_opt_mode_default,
+                    "mep_mode": mep_mode_kind,
+                },
+            )
+            citation_post_segments = [_stop_log]
+            _publish_manifest_summary(
+                tsroot / "summary.json", summary, manifest=manifest,
+                key="ts.summary.01", out_dir=out_dir,
+            )
+            _copy_public_logged(tsroot / "summary.json", out_dir / "summary.json", label="summary.json", echo=False)
+            _persist_run_manifest(manifest, out_dir)
+            _echo("[all] Endpoint optimization failed; dependent stages skipped. Diagnostics retained.", err=True)
+            _emit_final_summary(out_dir, time_start, manifest, citation_payload=_all_method_citation_payload())
+            return
 
         # Clean up endpoint_opt as a temporary working directory
-        if not dump:
+        if not dump and _react_opt_conv is True and _prod_opt_conv is True:
             shutil.rmtree(endpoint_opt_dir, ignore_errors=True)
             _echo_detail("[endpoint-opt] Clean endpoint-opt working dir.")
 
@@ -6880,6 +6994,7 @@ def cli(
         combined_blocks: List[str] = []
         path_opt_segments: List[Dict[str, Any]] = []
         path_opt_preopt_convergences: List[Optional[bool]] = []
+        mep_ref_pdb: Optional[Path] = None
         for idx, (pL, pR) in enumerate(zip(models_for_path, models_for_path[1:]), start=1):
             # NOTE: internal MEP-engine scratch (3-digit, under _work/); user-facing segment width is 2-digit (segments/seg_NN/).
             seg_dir = (path_dir / f"seg_{idx:03d}_mep").resolve()
@@ -6925,6 +7040,8 @@ def cli(
                 ref_pdb_for_seg = pR
             elif is_single and has_scan and input_paths[0].suffix.lower() == ".pdb":
                 ref_pdb_for_seg = input_paths[0]
+            if idx == 1:
+                mep_ref_pdb = ref_pdb_for_seg
             if ref_pdb_for_seg is not None:
                 po_args.extend(["--ref-pdb", str(ref_pdb_for_seg)])
             if thresh is not None:
@@ -7033,15 +7150,16 @@ def cli(
                 manifest.declare(f"path.mep.{idx:02d}.trajectory", [seg_mep_trj])
                 shutil.copy2(seg_trj, seg_mep_trj)
                 manifest.claim_one(f"path.mep.{idx:02d}.trajectory")
-                if models_for_path[0].suffix.lower() == ".pdb":
+                if convert_files and ref_pdb_for_seg is not None:
                     seg_mep_pdb = path_dir / f"mep_seg_{idx:02d}.pdb"
                     manifest.declare(f"path.mep.{idx:02d}.pdb", [seg_mep_pdb])
-                    _path_search._convert_to_pdb_logged(
+                    converted_pdb = _path_search._convert_to_pdb_logged(
                         seg_mep_trj,
-                        ref_pdb_path=models_for_path[0],
+                        ref_pdb_path=ref_pdb_for_seg,
                         out_path=seg_mep_pdb,
                     )
-                    manifest.claim_one(f"path.mep.{idx:02d}.pdb")
+                    if converted_pdb is not None:
+                        manifest.claim_one(f"path.mep.{idx:02d}.pdb")
             except Exception as e:
                 _echo(
                     f"[all] WARNING: failed to emit per-segment trajectory copies for segment {idx:02d}: {e}",
@@ -7131,9 +7249,9 @@ def cli(
             _echo(f"[plot] WARNING: Failed to plot concatenated MEP: {e}", err=True)
 
         try:
-            if models_for_path[0].suffix.lower() == ".pdb":
+            if convert_files and mep_ref_pdb is not None:
                 mep_pdb = _path_search._convert_to_pdb_logged(
-                    final_trj, ref_pdb_path=models_for_path[0], out_path=path_dir / "mep.pdb"
+                    final_trj, ref_pdb_path=mep_ref_pdb, out_path=path_dir / "mep.pdb"
                 )
                 current_mep_pdb = manifest.claim_optional(
                     "path.deliverable.mep.pdb"
@@ -8091,18 +8209,19 @@ def cli(
                 irc_trj_for_all.append((irc_trj_path, reverse_irc))
 
             ref_struct_template = ref_pdb_for_seg or hei_model_path
-            _save_single_geom_as_pdb_for_tools(
+            p_react_irc = _save_single_geom_as_pdb_for_tools(
                 gL, ref_struct_template, struct_dir, "reactant_irc"
             )
             pT = _save_single_geom_as_pdb_for_tools(
                 gT, ref_struct_template, struct_dir, "ts"
             )
-            _save_single_geom_as_pdb_for_tools(
+            p_prod_irc = _save_single_geom_as_pdb_for_tools(
                 gR, ref_struct_template, struct_dir, "product_irc"
             )
 
             endpoint_opt_dir = seg_dir / "endpoint_opt"
             ensure_dir(endpoint_opt_dir)
+            _endpoint_failures: Dict[str, Any] = {}
 
             # Map IRC left/right Hessians → R/P endpoint
             # When reverse_irc is True, _irc_and_match swapped left/right to match GSM endpoints,
@@ -8140,8 +8259,11 @@ def cli(
                     f"[post] WARNING: Reactant endpoint optimization failed for segment {seg_idx:02d}: {e}",
                     err=True,
                 )
-                g_react_opt = gL
                 _react_opt_conv = None
+                _endpoint_failures["reactant"] = {
+                    "error_type": type(e).__name__, "error": str(e),
+                }
+                g_react_opt = None
 
             _hess_discard("irc_endpoint")
             _c = _hess_load(_right_hk)
@@ -8168,8 +8290,53 @@ def cli(
                     f"[post] WARNING: Product endpoint optimization failed for segment {seg_idx:02d}: {e}",
                     err=True,
                 )
-                g_prod_opt = gR
                 _prod_opt_conv = None
+                _endpoint_failures["product"] = {
+                    "error_type": type(e).__name__, "error": str(e),
+                }
+                g_prod_opt = None
+
+            if _endpoint_failures:
+                # Current coordinates may be an unaccepted partial iterate; keep the
+                # original IRC snapshot distinct from this diagnostic observation.
+                for _state, _geom, _irc_path in (
+                    ("reactant", gL, p_react_irc),
+                    ("product", gR, p_prod_irc),
+                ):
+                    if _state not in _endpoint_failures:
+                        continue
+                    _failure = _endpoint_failures[_state]
+                    _failure["irc_structure"] = str(_irc_path)
+                    _failure["geometry_role"] = "last_observed_acceptance_unknown"
+                    try:
+                        _failure["coordinates_finite"] = bool(np.isfinite(_geom.cart_coords).all())
+                        if _failure["coordinates_finite"]:
+                            _observed = endpoint_opt_dir / f"{_state}_last_observed.xyz"
+                            commit_exact(_observed, _geom.as_xyz().encode("utf-8"))
+                            _failure["last_observed_xyz"] = str(_observed)
+                    except Exception as exc:
+                        _failure["diagnostic_error"] = str(exc)
+                _endpoint_stop = {
+                    "stage": "endpoint_opt", "segment": seg_idx,
+                    "reason": "endpoint_execution_failed", "failures": _endpoint_failures,
+                    "diagnostic_dir": str(endpoint_opt_dir), "ts_structure": str(pT),
+                }
+                commit_json(endpoint_opt_dir / "failure.json", _endpoint_stop)
+                segment_log["pipeline_stop"] = _endpoint_stop
+                segment_log["endpoint_opt"] = {
+                    "reactant_converged": _react_opt_conv,
+                    "product_converged": _prod_opt_conv,
+                    "failures": _endpoint_failures,
+                }
+                calculator_lease.release()
+                for _geom in (gL, gR, gT, g_react_opt, g_prod_opt):
+                    if _geom is not None:
+                        _geom.calculator = None
+                gc.collect()
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                _echo(f"[all] Segment {seg_idx:02d}: endpoint optimization failed; dependent stages skipped. Diagnostics retained.", err=True)
+                continue
 
             _optimized_connectivity = _validate_optimized_endpoint_pair(
                 g_react_opt,
@@ -8187,7 +8354,7 @@ def cli(
                 "connectivity": _optimized_connectivity,
             }
 
-            if not dump:
+            if not dump and _react_opt_conv is True and _prod_opt_conv is True:
                 shutil.rmtree(endpoint_opt_dir, ignore_errors=True)
                 _echo_detail("[endpoint-opt] Clean endpoint-opt working dir.")
 

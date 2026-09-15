@@ -17,7 +17,37 @@ raise the physical energy along the reaction mode. The
 `--reject-uphill/--no-reject-uphill` toggle belongs only to minimum
 optimization (`opt` and post-IRC endpoint re-optimization in `all`).
 
-At optimizer termination, `tsopt` retains the final geometry. Terminal exact PHVA runs only after numerical convergence; a non-converged or stalled run stops without PHVA. A PHVA failure is recorded without discarding the structure or fabricating frequencies. Numerical optimizer status is independent of saddle order: first-order certification still requires **exactly one** imaginary frequency, the intended displacement, and correct [`irc`](irc.md) connectivity. A separate [`freq`](freq.md) run is needed only for full vibrational analysis or thermochemistry.
+RS-P-RFO checks calculated curvature when a candidate meets the numerical tolerances. Without `--flatten`, it continues if surplus negative modes remain and accepts only the requested saddle order. Zero imaginary modes stop the search by default. These checks do not guarantee convergence or reaction identity: inspect the imaginary mode and verify [`irc`](irc.md) connectivity.
+
+`tsopt` retains the final geometry. A non-converged or stalled run skips the final PHVA output stage, even if curvature was checked during optimization. A PHVA failure is recorded with its reason. Use a separate [`freq`](freq.md) run for full vibrational analysis or thermochemistry.
+
+
+`n_imaginary_modes` remains the resolved display count; `n_negative_modes` counts all negative frequencies in the complete finite PHVA partition, including near-zero modes. First-order certification requires both counts to equal one; incomplete partitions cannot certify it.
+
+## Cartesian RS-P-RFO defaults
+
+For ordinary, unweighted Cartesian coordinates, `hess` / `rsprfo` uses
+`hessian_update: ts_bfgs` and `trust_norm: max_atom`. The initial and maximum
+trust radius are **0.1 Å** (about **0.1889726 Bohr**), bounding each atom's
+three-dimensional displacement. The minimum radius remains 1e-4 Bohr.
+YAML radii remain in **Bohr**.
+
+An explicit `hessian_update`, including `bofill`, is preserved independently.
+If any of `trust_norm`, `trust_radius`, `trust_min`, or `trust_max` is present
+in `opt` or `rsirfo`, an omitted norm retains its previous global-L2 meaning.
+Explicit `trust_norm: l2` also retains the previous 0.1-Bohr radius defaults.
+With explicit `trust_norm: max_atom`, only an omitted initial or maximum radius
+receives the 0.1-Å default; explicit numeric radii are preserved.
+Internal or mass-weighted coordinates, weighted trust, RS-I-RFO, TRIM and Dimer
+retain their existing defaults.
+
+For the previous Cartesian norm and Hessian update, use:
+
+```yaml
+rsirfo:
+  trust_norm: l2
+  hessian_update: bofill
+```
 
 ## Terminal outcomes and fatal errors
 
@@ -40,12 +70,12 @@ secants. Dimer does not consume `--ref-mode`. With
 its initial root from the initial-structure Hessian modes.
 
 The reference direction guides Hessian-root identity and overlap tracking; it
-is **not** an initial Hessian replacement and does not make a failed TS search
-successful. Terminal exact PHVA remains authoritative for saddle order.
-`n_imag = 0` is `no_imaginary`; `n_imag > 1` is `higher_order`. Neither state
-rewrites a numerically converged optimizer result as numerical non-convergence.
-A higher-order result may be used only for warning-labeled diagnostic IRC by
-`all`, never as first-order TS certification.
+is **not** an initial Hessian replacement. `n_imag = 0` is `no_imaginary`;
+`n_imag > 1` is `higher_order`. RS-P-RFO without `--flatten` continues from
+the latter rather than accepting it. Other TS optimizers and explicit flatten
+runs can retain a numerically converged higher-order candidate. `all` may use
+such a candidate only for warning-labeled diagnostic IRC, never as first-order
+TS certification.
 
 `--flatten` is a separate, explicit cleanup for surplus imaginary modes. It can
 remove extra negative directions but cannot create a missing reaction mode.
@@ -303,8 +333,7 @@ Used with `--opt-mode hess` (RS-P-RFO, the default; `rsirfo` selects RS-I-RFO an
 
 ```yaml
 rsirfo:
-  trust_max: 0.10              # maximum trust radius (bohr)
-  out_dir: ./result_tsopt/     # tsopt override (defaults.py value is ./result_opt/)
+  out_dir: ./result_tsopt/     # output directory
   hessian_recalc: 500          # rebuild exact Hessian every N macro steps
   saddle_recovery_max_cycles: 0      # automatic n_imag=0 recovery is disabled
 ```
@@ -315,7 +344,7 @@ Set `rsirfo.track_mode_by_overlap: true` if the TS mode switches root during opt
 
 ## Notes
 
-- Imaginary frequencies smaller than the configured threshold (5 cm⁻¹ by default) are ignored consistently by final TS validation, mode-file output, and flattening.
+- The configured threshold (5 cm⁻¹ by default) still controls mode display, selection, and flattening; final TS acceptance also counts negative modes inside that zero window.
 - Hessian-family optimizers follow exactly one root for a first-order TS. Set it as a one-item YAML list (for example, `rsirfo.roots: [0]`); empty or multi-root lists are rejected. Dimer uses the separate singular `hessian_dimer.root` key (default `0`). `tsopt` has no `--root` CLI flag, unlike [`irc`](irc.md).
 - Use `--opt-mode` to choose the algorithm directly (`rsprfo` by default) rather than editing YAML mode mappings.
 - Dimer orientation, rotation forces, flattening, and final exact PHVA validation use the same constrained projector as `freq`. The Dimer rebuilds this basis whenever its central image changes. It never subtracts translations of the active fragment unless they are actual rigid null directions compatible with every frozen anchor. Hessian RFO optimization itself operates on the active-DOF Cartesian Hessian without this projection. See [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries).

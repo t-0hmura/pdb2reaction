@@ -98,9 +98,10 @@ def test_the_removed_legacy_projection_is_rejected_not_silently_accepted() -> No
         normalize_tr_projection_mode("legacy-active")
 
     # The constrained projection certifies a frozen first-order saddle on the
-    # imaginary-mode count alone; no projection-dependent veto remains.
+    # complete strict and resolved counts; no projection-dependent veto remains.
     runner = SimpleNamespace(
         tr_projection="constrained",
+        rigid_projection_info={"raw_mode_count": 2, "near_zero_frequencies_cm": []},
         freeze_atoms=[0],
         is_converged=True,
         stop_reason="",

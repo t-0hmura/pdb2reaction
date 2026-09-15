@@ -895,6 +895,7 @@ def cli(
                     return LBFGS(geometry, **lbfgs_args)
                 if run_kind == "rfo":
                     rfo_args = {**rfo_cfg, **common_kwargs}
+                    rfo_args["flatten_enabled"] = bool(flatten)
                     return RFOptimizer(geometry, **rfo_args)
                 raise click.BadParameter(f"Unknown optimizer kind '{run_kind}'.")
 

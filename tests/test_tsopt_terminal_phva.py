@@ -4,6 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 import torch
 
 from pdb2reaction.workflows import tsopt
@@ -21,7 +22,11 @@ def test_optimizer_terminal_phva_carries_the_exact_hessian_for_irc_cache():
         _last_exact_cart_coords=np.zeros(3),
         _last_exact_frequencies_cm=np.array([-100.0, 20.0, 30.0]),
         _last_exact_modes=torch.eye(3),
-        _last_rigid_projection_info={},
+        _last_rigid_projection_info={
+            "active_atoms": [0], "frozen_atoms": [],
+            "treatment": "constrained", "frequency_zero_cutoff_cm": 5.0,
+            "raw_mode_count": 3, "near_zero_frequencies_cm": [],
+        },
         cur_H=exact_hessian,
     )
 
@@ -32,6 +37,54 @@ def test_optimizer_terminal_phva_carries_the_exact_hessian_for_irc_cache():
     cached_hessian = reused[3]
     assert torch.equal(cached_hessian, exact_hessian)
     assert cached_hessian.data_ptr() != exact_hessian.data_ptr()
+
+
+def _two_atom_exact_cache():
+    geometry = SimpleNamespace(
+        cart_coords=np.zeros(9), freeze_atoms=[2], tr_projection="constrained",
+    )
+    optimizer = SimpleNamespace(
+        _last_exact_cart_coords=np.zeros(9),
+        _last_exact_frequencies_cm=np.array([-100., 20., 30.]),
+        _last_exact_modes=torch.zeros((3, 9)),
+        _last_rigid_projection_info={
+            "active_atoms": [0, 1], "frozen_atoms": [2],
+            "treatment": "constrained", "frequency_zero_cutoff_cm": 5.,
+            "raw_mode_count": 3, "near_zero_frequencies_cm": [],
+        },
+        cur_H=torch.eye(6),
+    )
+    return optimizer, geometry
+
+
+@pytest.mark.parametrize(
+    "requested, reusable", [([0, 1], True), ([0, 2], False), ([0, 1, 2], False)]
+)
+def test_exact_frequency_cache_requires_matching_active_atoms(requested, reusable):
+    optimizer, geometry = _two_atom_exact_cache()
+    cached = tsopt._optimizer_exact_frequency_data(
+        optimizer, geometry, requested_active_atoms=requested,
+    )
+    assert (cached is not None) is reusable
+
+
+def test_exact_frequency_cache_detects_restored_full_geometry_mask():
+    optimizer, geometry = _two_atom_exact_cache()
+    geometry.freeze_atoms = []
+    assert tsopt._optimizer_exact_frequency_data(optimizer, geometry) is None
+
+
+@pytest.mark.parametrize("change", ["cutoff", "projection", "missing_metadata"])
+def test_exact_frequency_cache_requires_matching_analysis_conditions(change):
+    optimizer, geometry = _two_atom_exact_cache()
+    kwargs = {}
+    if change == "cutoff":
+        kwargs["frequency_zero_cutoff_cm"] = 10.
+    elif change == "projection":
+        geometry.tr_projection = "different"
+    else:
+        optimizer._last_rigid_projection_info.clear()
+    assert tsopt._optimizer_exact_frequency_data(optimizer, geometry, **kwargs) is None
 
 
 def _runner(tmp_path, monkeypatch, *, stalled):
@@ -140,3 +193,65 @@ def test_dimer_plateau_saves_final_structure_and_skips_phva(
     assert (tmp_path / "final_geometry.xyz").is_file()
     assert "ERROR: Not converged." not in capsys.readouterr().err
     assert runner.is_stalled is True
+
+
+@pytest.mark.parametrize("key,value", [
+    ("raw_mode_count", 4), ("near_zero_frequencies_cm", [float("nan")]),
+    ("near_zero_frequencies_cm", None),
+])
+def test_legacy_cache_without_complete_partition_is_not_reused(key, value):
+    optimizer, geometry = _two_atom_exact_cache()
+    optimizer._last_rigid_projection_info[key] = value
+    assert tsopt._optimizer_exact_frequency_data(optimizer, geometry) is None
+
+
+@pytest.mark.parametrize("near,strict,expected", [([-3.2], 2, False), ([3.2], 1, True)])
+def test_final_dimer_verdict_uses_near_zero_partition(near, strict, expected):
+    runner = SimpleNamespace(rigid_projection_info={
+        "raw_mode_count": 3, "near_zero_frequencies_cm": near,
+    })
+    indices = tsopt._finalize_dimer_saddle_status(runner, np.array([-100., 12.]), 5.)
+    assert runner.saddle_order_verified is expected
+    assert runner.n_imaginary_modes == 1
+    assert runner.n_negative_modes == strict
+    assert indices.tolist() == [0]
+
+
+@pytest.mark.parametrize("chosen,expected", [("primary", 2), ("alternate", 1)])
+def test_selected_flatten_branch_owns_opposite_near_sign_metadata(chosen, expected):
+    """Exercise the actual branch packet/restore expressions without running PES."""
+    import ast
+    from copy import deepcopy
+    from pysisyphus.normal_modes import _strict_negative_count
+
+    tree = ast.parse(Path(tsopt.__file__).read_text())
+    branch = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "_run_flatten_branch")
+    packet_expr = next(n.value for n in branch.body if isinstance(n, ast.Return))
+    live = {"raw_mode_count": 3, "near_zero_frequencies_cm": [-2.]}
+    env = dict(deepcopy=deepcopy, rigid_projection_info=live, branch_ready=True,
+               branch_label="primary", label="primary", branch_optimizer=None,
+               geometry=SimpleNamespace(cart_coords=np.zeros(3)),
+               branch_freqs=np.array([-100., 12.]), branch_modes=torch.zeros((2, 3)),
+               branch_n_imag=1, branch_ims=[-100.], converged=True,
+               safeguards={}, cycles=1, branch_micro_obj=None, branch_micro_cycles=0)
+    expression = compile(ast.Expression(packet_expr), "<native branch packet>", "eval")
+    primary = eval(expression, env)
+    live["near_zero_frequencies_cm"][0] = 2.
+    env.update(branch_label="alternate", label="alternate")
+    alternate = eval(expression, env)
+    selected = primary if chosen == "primary" else alternate
+    update = next(
+        n for n in ast.walk(tree) if isinstance(n, ast.Expr) and isinstance(n.value, ast.Call)
+        and isinstance(n.value.func, ast.Attribute) and n.value.func.attr == "update"
+        and ast.unparse(n.value.func.value) == "rigid_projection_info"
+        and any(isinstance(child, ast.Subscript)
+                and isinstance(child.value, ast.Name) and child.value.id == "selected_result"
+                and isinstance(child.slice, ast.Constant) and child.slice.value == "projection"
+                for child in ast.walk(n.value))
+    )
+    env["selected_result"] = selected
+    live.clear()
+    exec(compile(ast.Module(body=[update], type_ignores=[]), "<native branch restore>", "exec"), env)
+    assert primary["projection"]["near_zero_frequencies_cm"] == [-2.]
+    assert alternate["projection"]["near_zero_frequencies_cm"] == [2.]
+    assert _strict_negative_count(selected["freqs"], live) == expected

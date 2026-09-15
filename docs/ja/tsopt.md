@@ -2,7 +2,7 @@
 
 `pdb2reaction tsopt` は、遷移状態（TS）*候補*を一次鞍点に最適化します。虚振動数チェックを内蔵しています。候補には `path-opt` / `path-search` の最高エネルギー像（HEI: highest-energy image）、または自前の構造を使えます。
 
-optimizer は `--opt-mode` で選びます。ほとんどの系では `--opt-mode hess`（デフォルトの **RS-P-RFO**: Restricted-Step Partitioned Rational Function Optimization、Banerjee）を使ってください。完全 Hessian を用いるため、一般的により堅牢です。RS-P-RFO で収束しない場合や完全 Hessian の再計算コストが過大な場合は、`--opt-mode grad`（**Hessian-Guided Dimer**）に切り替えます。候補に複数の虚振動数があり余分なモードの除去が必要な場合は、`--flatten`（デフォルト無効）を有効化します。
+オプティマイザは `--opt-mode` で選びます。デフォルトの `hess` は **RS-P-RFO**（Restricted-Step Partitioned Rational Function Optimization、Banerjee）です。完全 Hessian の再計算コストが大きい場合や別の探索法を試す場合は、`grad`（**Hessian-Guided Dimer**）を使います。候補に余分な虚振動がある場合は、明示的な再探索として `--flatten`（デフォルト無効）も使えます。
 
 `tsopt` は、YAML 上書き後も RFO 系および Dimer optimizer の
 `reject_uphill` を常に `false` に固定します。鞍点探索では反応モードに
@@ -10,7 +10,37 @@ optimizer は `--opt-mode` で選びます。ほとんどの系では `--opt-mod
 `--reject-uphill/--no-reject-uphill` は最小値最適化（`opt` と `all` の
 IRC 後エンドポイント再最適化）だけに適用されます。
 
-optimizer終了時、`tsopt` は最終構造を保持します。終端exact PHVAは数値収束後だけ実行し、非収束または`stalled`ならPHVAを実行せず停止します。PHVAが失敗した場合も構造は破棄せず、振動数を捏造せずに失敗理由を記録します。数値optimizer statusと鞍点次数は独立です。一次TS認定には虚振動が**ちょうど1本**であること、意図した変位、そして[`irc`](irc.md)の正しい端点接続が必要です。別途の[`freq`](freq.md)は完全な振動解析や熱化学補正が必要な場合だけ実行します。
+RS-P-RFO は、数値条件を満たした候補で曲率を計算・確認します。`--flatten` なしでは、余分な負のモードが残ると探索を続け、指定した鞍点次数を満たすまで受理しません。虚振動 0 本ではデフォルトで停止します。収束や反応の同一性を保証するものではないため、虚振動の変位と [`irc`](irc.md) の接続性も確認してください。
+
+`tsopt` は最終構造を保持します。非収束や `stalled` の場合は、探索中に曲率を確認していても、最終 PHVA の出力段階には進みません。PHVA の失敗時は理由を記録します。完全な振動解析や熱化学補正が必要な場合は、別途 [`freq`](freq.md) を実行します。
+
+
+`n_imaginary_modes` は表示閾値を超える負モード数、`n_negative_modes` はnear-zeroを含む完全で有限なPHVAの負モード数です。一次鞍点の証明には両方が1であることを要求し、partitionが不完全なら証明しません。
+
+## Cartesian RS-P-RFO の既定値
+
+通常の質量重み付きでない Cartesian 座標では、`hess` / `rsprfo` は
+`hessian_update: ts_bfgs` と `trust_norm: max_atom` を使用します。
+初期・最大信頼半径は **0.1 Å**（約 **0.1889726 Bohr**）で、各原子の
+3次元変位を制限します。最小半径は 1e-4 Bohr のままです。
+YAML の半径の単位は引き続き **Bohr** です。
+
+`bofill` など、明示した `hessian_update` は独立に保持します。
+`opt` または `rsirfo` に `trust_norm`、`trust_radius`、`trust_min`、
+`trust_max` のいずれかがあれば、norm 省略時は従来の全体 L2 ノルムの
+意味を保ちます。`trust_norm: l2` を明示した場合も、未指定の初期・最大
+半径は従来の 0.1 Bohr です。`trust_norm: max_atom` を明示した場合だけ、
+未指定の初期・最大半径を 0.1 Å に設定し、明示した数値は保持します。
+内部座標、質量重み付き座標、weighted trust、RS-I-RFO、TRIM、Dimer の
+既定値は変わりません。
+
+従来の Cartesian ノルムと Hessian 更新を使用する設定例:
+
+```yaml
+rsirfo:
+  trust_norm: l2
+  hessian_update: bofill
+```
 
 ## 最適化の終了状態とエラー時の出力
 
@@ -25,7 +55,7 @@ TS 初期構造がまず必要な場合は、2 端点なら [path-opt](path-opt.
 
 `--ref-mode` は通常の単独 `tsopt` に必要なoptionではなく、主に `all` 内部の MEP→TS handoffです。同じ原子順のCartesian 3N候補を`.npz`、`.npy`、または空白区切りtext（単一vectorまたは2次元candidate table）から読み込みます。`all` はHessian TS optimizerに対してMEP接線候補をCPU/file cache経由で渡し、energyを読めない旧trajectoryでは正規化secantへfallbackします。Dimerは`--ref-mode`を使用しません。`all --no-tsopt-from-mep-tan`ではcache作成・利用を止め、初期構造Hessianの振動modeからrootを選びます。これは初期Hessianそのものの置換ではなく、root identityとoverlap追跡の参照方向です。
 
-接線は初期Hessian rootを選び、modeが回転した後もoverlapで追跡するために使います。失敗した探索を別の探索へ自動変換する機能ではありません。デフォルトでは一時的なmode-lossによるtrial棄却、quasi-Newton固有値構造gate、自動saddle recovery、自動変位multistartを実行しません。終端exact PHVAは鞍点次数を判定しますが、数値optimizer statusを書き換えません。`n_imag = 0`は`no_imaginary`、`n_imag > 1`は`higher_order`であり、後者は一次TS認定ではないものの、数値収束済みで有効な負rootを選べる場合に限り`all`が警告付き診断IRCへ進むことがあります。
+接線は初期 Hessian root の選択と、モード回転後の overlap 追跡に使います。既定では、一時的な mode-loss による試行棄却、準 Newton 固有値構造による停止、虚振動 0 本からの自動回復、多点再探索は行いません。`n_imag = 0` は `no_imaginary`、`n_imag > 1` は `higher_order` です。`--flatten` なしの RS-P-RFO は高次候補から探索を続けます。他の TS オプティマイザや明示的な flatten は、数値収束した高次候補を保持する場合があります。有効な負 root があれば `all` が警告付き診断 IRC に使うことはありますが、一次 TS 認定にはなりません。
 
 `--flatten`は余剰虚振動を除くための独立した明示optionです。余分な負方向は除去できますが、欠けた反応modeは生成できません。
 
@@ -288,8 +318,7 @@ hessian_dimer:
 
 ```yaml
 rsirfo:
- trust_max: 0.10 # 最大信頼半径 (bohr)
- out_dir: ./result_tsopt/ # tsopt の上書き（defaults.py の値は ./result_opt/）
+ out_dir: ./result_tsopt/ # 出力ディレクトリ
  hessian_recalc: 500 # N マクロステップごとに exact Hessian を再計算
  saddle_recovery_check_interval: 50 # 自動回復をYAMLで有効化した場合のexact PHVA間隔
  saddle_recovery_max_cycles: 0 # n_imag=0 自動回復はデフォルト無効
@@ -305,7 +334,7 @@ TS 収束が遅い場合や最適化中に TS モードが失われる場合は�
 
 ## 注記
 
-- 絶対値が設定した閾値（デフォルト 5 cm⁻¹）未満の虚振動は、最終 TS 判定、モードファイル出力、平坦化のすべてで無視します。Hessian-family optimizer は一次鞍点のrootを1個だけ追跡します。YAMLでは1要素のlist（例: `rsirfo.roots: [0]`）で設定し、空listまたは複数rootは拒否されます。Dimer は別の単数 key `hessian_dimer.root`（default `0`）を使います。`tsopt` に `--root` CLI flag はありません（[`irc`](irc.md) とは異なります）。
+- 表示・モード選択・平坦化では設定した閾値（デフォルト 5 cm⁻¹）を維持しますが、最終 TS 判定では負の微小モードも数えます。Hessian-family optimizer は一次鞍点のrootを1個だけ追跡します。YAMLでは1要素のlist（例: `rsirfo.roots: [0]`）で設定し、空listまたは複数rootは拒否されます。Dimer は別の単数 key `hessian_dimer.root`（default `0`）を使います。`tsopt` に `--root` CLI flag はありません（[`irc`](irc.md) とは異なります）。
 - `--opt-mode` はワークフロー選択用です（デフォルト: `rsprfo`）。YAML のモードマッピングを手動で変更するのではなく、目的のアルゴリズムに合ったモードを選択してください。
 - Dimer方向、回転force、flatten、最終exact PHVA検証は`freq`と同じ固定の constrained 処理を使用します。Dimerは中心imageが変わるたびにこの基底を再構築します。全凍結anchorと両立する真の剛体null方向でない限り、active fragmentの並進を差し引きません。Hessian RFO最適化自体は、この射影を行わずactive-DOF Cartesian Hessian を扱います。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
 - 設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。

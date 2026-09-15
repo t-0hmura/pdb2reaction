@@ -95,6 +95,7 @@ def test_tsopt_continuation_separates_numerical_status_and_saddle_order() -> Non
         "hessian_status": "completed",
         "saddle_validation": "first_order",
         "n_imaginary_modes": 1,
+        "n_negative_modes": 1,
         "reaction_mode_index": 0,
         "reaction_mode_frequency_cm": -450.0,
     })
@@ -963,3 +964,18 @@ def test_summary_frequency_reader_uses_the_resolved_zero_cutoff(tmp_path) -> Non
     assert result["n_imag"] == 1
     assert result["nu_imag_max_cm"] == -5.01
     assert result["frequency_zero_cutoff_cm"] == 5.0
+
+
+def test_strict_higher_order_is_not_reclassified_by_resolved_count():
+    from pdb2reaction.workflows.all import _tsopt_continuation_decision
+
+    payload = dict(optimization_status="converged", hessian_status="completed",
+                   n_imaginary_modes=1, n_negative_modes=2, saddle_validation="higher_order",
+                   reaction_mode_index=0, reaction_mode_frequency_cm=-100.)
+    result = _tsopt_continuation_decision(payload)
+    assert result["continue_irc"] is True  # existing diagnostic IRC policy
+    assert result["reason"] == "higher_order_saddle"
+    assert result["n_negative_modes"] == 2
+    payload.pop("n_negative_modes")
+    payload["saddle_validation"] = "first_order"  # legacy resolved-only claim
+    assert _tsopt_continuation_decision(payload)["reason"] == "saddle_order_unavailable"
