@@ -270,7 +270,8 @@ def _validate_high_risk_semantics(errors: list[str]) -> None:
     _require(
         freq_page,
         (
-            "`freq` and `tsopt` both exclude",
+            "`freq` retains every signed physical mode",
+            "strict curvature also includes weak negative modes",
             "freq.zero_cutoff_cm",
             "E + G_corr = G",
         ),
