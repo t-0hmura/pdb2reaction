@@ -64,7 +64,7 @@
 - **VRAM / RAM**: バックエンド・モデル、対象系、Hessian 計算モード、精度、並列度に依存。代表的な処理を試行し、最大使用量を測定
 
 ### ソフトウェア
-- Python >= 3.11
+- Python 3.11–3.12
 - CPU版またはCUDA対応PyTorch。prebuilt wheelはCUDA runtimeを同梱し、local CUDA toolkitは通常不要（source build時のみ必要）
 
 セットアップは [インストール](installation.md) を参照してください。

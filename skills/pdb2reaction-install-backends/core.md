@@ -9,7 +9,7 @@ automatically with `pip install pdb2reaction`.
 
 ## Prerequisites
 
-- Python ≥ 3.11
+- Python 3.11–3.12
 - A working PyTorch install matching your CUDA driver — see `env-cuda.md`
 - (For DFT) PySCF / GPU4PySCF — see `dft.md`
 - (For ALPB) xtb — see `xtb.md`

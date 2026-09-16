@@ -128,7 +128,7 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
     pdb2reaction はデフォルトで UMA を使用します。他のバックエンドを使用する場合は、対応するオプション依存関係をインストールしてください:
 
     ```bash
-    # ORB バックエンド（Python 3.12 以上は orb-models 0.7 系、Python 3.11 は最後の 0.5 系）
+    # ORB バックエンド（Python 3.12 は orb-models 0.7 系、Python 3.11 は最後の 0.5 系）
     pip install "pdb2reaction[orb]"
 
     # AIMNet2 バックエンド

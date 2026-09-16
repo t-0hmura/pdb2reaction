@@ -88,7 +88,7 @@ plugin set differs.
 
 Replace `<...>` with the values you discovered in `env-detect`.
 The combined-backend template uses `python=3.12` for current ORB;
-`pdb2reaction` itself requires Python ≥ 3.11.
+`pdb2reaction` itself requires Python 3.11–3.12.
 
 `env_pdb2reaction.yml` (UMA / Orb / AIMNet2 / DFT / xTB):
 
