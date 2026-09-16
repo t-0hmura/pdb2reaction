@@ -105,7 +105,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  - デフォルトでは、単一パス `path-opt`（GSM/DMF）を実行します。エンジン生出力は `<out-dir>/_work/path_opt/` に書かれ、連結済み成果物（`mep.pdb`、`mep_trj.xyz`、`energy_diagram_MEP.png`）はルート直下へ配置します。
  - `--refine-path` を指定すると、再帰的 `path-search` に切り替わり、結合変化に基づく多段階反応の候補セグメントを構築します。この分割だけで素反応が確定するわけではなく、TS／虚振動／IRC の検証が必要です。粗い MEP から得た HEI で TSOPT が失敗する場合の精密化に有効です。一方、悪い／ノイズの多い path を不要な複数 segment へ分割して計算時間を大幅に増やすことがあるため、意図せぬ cost 増大を避けてデフォルト OFF です（エンジン生出力は `<out-dir>/_work/path_search/`）。
 
-4. **オプションのセグメントごとの後処理**（反応セグメントのみ — 結合変化のあるセグメント。ブリッジセグメントはスキップ）
+4. **オプションのセグメントごとの後処理**（通常の MEP／TS 候補が対象。ブリッジは除外し、結合変化は診断として記録）
  - `--tsopt`: 各 HEI を TS 最適化し、終端検証で続行可能な場合は EulerPC IRC と端点再最適化を実行します。振動数とモードは終端 PHVA 成功時のみ記録します。端点最適化には `--thresh-post`（デフォルト: `baker`）を使用し、作業ディレクトリは `--dump` 時、またはいずれかの端点が収束しなかった場合に保持します。`--reject-uphill` はデフォルトで無効で、端点 RFO 再最適化のみに適用します。
  - `--thermo`: (R, TS, P) で `freq` を呼び出し、振動/熱化学データと MLIP Gibbs ダイアグラムを取得
  - `--dft`: (R, TS, P) で DFT 一点計算を実行し、DFT ダイアグラムを構築。`--thermo` と組み合わせると DFT//MLIP Gibbs ダイアグラムも生成

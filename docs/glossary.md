@@ -12,7 +12,7 @@
 | **HEI** | Highest-Energy Image | The image along an MEP with maximum energy; often used as a TS guess. |
 | **Image** | — | A single geometry (one "node") along a chain-of-states path. |
 | **Segment** | — | An MEP between two adjacent endpoints (e.g., R → I1, I1 → I2, …). |
-| **Reactive segment** | — | A segment in which covalent bond changes are detected between the endpoints. Only reactive segments proceed to TS optimization. |
+| **Reactive segment** | — | A candidate reaction segment. Requested TS optimization processes ordinary MEP/TS candidates; endpoint bond changes are recorded separately. |
 | **Bridge segment** | — | A segment connecting two non-adjacent intermediates that still contains unresolved bond changes; `path-search` recursively subdivides bridge segments until all reactive regions are isolated. |
 | **Kink** | — | A region along an MEP where no covalent bond change is detected but a geometric distortion persists. `path-search` inserts linearly interpolated nodes and optimizes them individually rather than running a full string calculation. |
 | **PES** | Potential Energy Surface | A hypersurface of energy as a function of atomic coordinates. |
