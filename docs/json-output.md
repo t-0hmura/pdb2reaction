@@ -379,7 +379,7 @@ validation can fail before the file exists.
 |-------|------|-------------|
 | `status` | string | `"success"` / `"partial"` |
 | `n_segments` | int | Recursive MEP segment count |
-| `search_max_depth` | int | Effective zero-based recursion cap; depth 0 is processed even at limit 0 |
+| `search_max_depth` | int | Effective recursion cap; `0` means subdivision was disabled |
 | `path_optimizers` | string[] | Single-structure optimizers actually used during path preparation/refinement (`lbfgs`, `rfo`); includes scan and alignment work in `all`. Also present in `path-opt` `result.json` and `all` `summary.json` |
 | `preopt_requested` / `preopt_converged` | bool / bool \| null | Whether endpoint preoptimization ran, and whether every endpoint converged; `null` when any endpoint reported no readable signal. `all` uses this preliminary convergence signal unless requested final TS and both endpoint optimizations have converged for every reactive segment; the original field remains reported |
 | `segments` | object[] | Per-segment `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` (list of `{title: [entries]}` dicts; bridge segments emit `""`). |

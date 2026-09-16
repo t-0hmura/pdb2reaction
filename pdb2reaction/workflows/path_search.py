@@ -1112,12 +1112,14 @@ def _build_multistep_path(
 
     def _terminate_with_maxdepth(
         reason_msg: Optional[str] = None,
+        *,
+        use_maxdepth_tag: bool = True,
     ) -> CombinedPath:
         if reason_msg:
             click.echo(reason_msg)
 
         # A depth-limited interval need not be one elementary reaction step.
-        seg_tag = f"seg_{seg_counter[0]:03d}_maxdepth"
+        seg_tag = f"seg_{seg_counter[0]:03d}" + ("_maxdepth" if use_maxdepth_tag else "")
         gsm = (
             _run_dmf_between(
                 gA,
@@ -1169,11 +1171,7 @@ def _build_multistep_path(
             changed, step_summary = has_bond_change(gsm.images[0], gsm.images[-1], bond_cfg)
         except Exception as e:
             click.echo(f"[{seg_tag}] WARNING: Failed to evaluate bond changes at max depth: {e}", err=True)
-            # Keep the interval reactive so it still receives post-processing:
-            # `_is_reactive_segment` reads this text, and an empty string there
-            # reads as "no covalent change" and drops the segment silently. The
-            # sentinel is non-empty for that reason. Preserve the solver's
-            # numerical convergence separately from this chemical diagnostic.
+            # Preserve the diagnostic separately from solver convergence.
             changed, step_summary = True, "(bond-change evaluation failed)"
 
         try:
@@ -1206,12 +1204,14 @@ def _build_multistep_path(
             single_opt_executed=single_opt_executed,
         )
 
-    # Preserve the established zero-based depth limit: process depth N and
-    # stop subdivision when entering a child deeper than max_depth.
+    # Depth 0 is the input interval; the cap counts subdivision levels.
     max_depth = int(search_cfg.get("max_depth", SEARCH_KW["max_depth"]))
-    if depth > max_depth:
-        click.echo(f"[{branch_tag}] Reached maximum recursion depth. Returning current endpoints only.")
-        return _terminate_with_maxdepth()
+    if depth >= max_depth:
+        if max_depth == 0:
+            click.echo(f"[{branch_tag}] Recursive subdivision disabled. Running one MEP interval.")
+        else:
+            click.echo(f"[{branch_tag}] Reached maximum recursion depth. Running the retained MEP interval.")
+        return _terminate_with_maxdepth(use_maxdepth_tag=max_depth > 0)
 
     seg_id = seg_counter[0]
     seg_counter[0] += 1
@@ -2101,8 +2101,17 @@ def _merge_final_and_write(final_images: List[Any],
               help=("Number of movable internal images per GSM/DMF segment; the complete segment "
                     "has max_nodes+2 images including endpoints. When not given, YAML "
                     "search.max_nodes_segment applies."))
-@click.option("--max-depth", type=click.IntRange(min=0), default=None, show_default="10",
-              help=("Zero-based recursion depth limit for multistep refinement. Depth 0 is processed even when the limit is 0. Capped child intervals use seg_NNN_maxdepth and may contain multiple steps. When omitted, YAML search.max_depth applies."))
+@click.option(
+    "--max-depth",
+    type=click.IntRange(min=0),
+    default=None,
+    show_default="10",
+    help=(
+        "Maximum recursive subdivision levels. "
+        "0 disables subdivision. Intervals retained at a positive cap use "
+        "seg_NNN_maxdepth and may contain multiple steps. When omitted, YAML search.max_depth applies."
+    ),
+)
 @click.option(
     "--gsm-param",
     type=click.Choice(["equi", "energy"], case_sensitive=False),
@@ -2116,7 +2125,7 @@ def _merge_final_and_write(final_images: List[Any],
 )
 @click.option("--max-cycles-gsm", type=click.IntRange(min=1), default=None, show_default="300",
               help="Maximum GSM string-optimizer cycles for the MEP stage.")
-@click.option("--max-cycles-dmf", type=click.IntRange(min=1), default=None, show_default="300",
+@click.option("--max-cycles-dmf", type=click.IntRange(min=1), default=None, show_default="3000",
               help=("Maximum IPOPT iterations for the DMF MEP stage. This is a solver "
                     "iteration count, not a string-optimizer cycle count."))
 @click.option(

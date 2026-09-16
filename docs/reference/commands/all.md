@@ -112,9 +112,9 @@ Options:
   --max-nodes INTEGER             Movable internal images per GSM/DMF segment;
                                   the complete segment has max_nodes+2 images
                                   including endpoints.  [default: 20]
-  --max-depth INTEGER RANGE       Zero-based recursion depth limit; requires
-                                  --refine-path. Depth 0 is processed even when
-                                  the limit is 0. Capped child intervals use
+  --max-depth INTEGER RANGE       Maximum recursive subdivision levels; requires
+                                  --refine-path. 0 disables subdivision.
+                                  Intervals retained at a positive cap use
                                   seg_NNN_maxdepth and may contain multiple
                                   steps.  [default: (10); x>=0]
   --gsm-param [equi|energy]       GSM node parameterization after string growth.
@@ -127,7 +127,7 @@ Options:
   --max-cycles-dmf INTEGER RANGE  Maximum IPOPT iterations for the DMF MEP
                                   stage. This is a solver iteration count, not a
                                   string-optimizer cycle count.  [default:
-                                  (300); x>=1]
+                                  (3000); x>=1]
   --climb BOOLEAN                 Enable climbing image for standard GSM
                                   segments (bridge segments always disable
                                   climbing).  [default: True]

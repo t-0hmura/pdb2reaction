@@ -3946,8 +3946,8 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     default=None,
     show_default="10",
     help=(
-        "Zero-based recursion depth limit; requires --refine-path. Depth 0 is "
-        "processed even when the limit is 0. Capped child intervals use "
+        "Maximum recursive subdivision levels; requires --refine-path. "
+        "0 disables subdivision. Intervals retained at a positive cap use "
         "seg_NNN_maxdepth and may contain multiple steps."
     ),
 )
@@ -3973,7 +3973,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "--max-cycles-dmf",
     type=click.IntRange(min=1),
     default=None,
-    show_default="300",
+    show_default="3000",
     help=(
         "Maximum IPOPT iterations for the DMF MEP stage. This is a solver "
         "iteration count, not a string-optimizer cycle count."

@@ -333,7 +333,7 @@ For DMF, `--max-nodes` is forwarded as `DirectMaxFlux(nmove=...)`; the installed
 ```yaml
 dmf:
  backend: gpu # gpu (dmf.torch / CUDA, default) | cpu (dmf / NumPy)
- max_cycles: 300 # Maximum DMF/IPOPT iterations (overridden by --max-cycles-dmf)
+ max_cycles: 3000 # Maximum DMF/IPOPT iterations (overridden by --max-cycles-dmf)
  tol: tight # IPOPT dual_inf_tol: tight (0.04) | middle (0.10) | loose (0.20) or a positive float (overridden by --thresh-dmf)
  correlated: true # Correlated DMF propagation
  sequential: true # Sequential DMF execution
@@ -373,7 +373,7 @@ Recursive path search settings (path-search only).
 
 ```yaml
 search:
- max_depth: 10 # Zero-based recursion depth limit (depth 0 is processed at limit 0)
+ max_depth: 10 # Recursive subdivision levels allowed (0 = no subdivision)
  stitch_rmsd_thresh: 0.0001 # RMSD threshold for stitching segments
  bridge_rmsd_thresh: 0.0001 # RMSD threshold for bridging nodes
  max_nodes_segment: 20 # Max nodes per segment
