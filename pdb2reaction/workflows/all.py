@@ -1353,8 +1353,8 @@ def _derive_pipeline_status(
 
     A usable MEP is the baseline for ``success``.  When the final
     post-processing records are available, every requested optional stage must
-    also have produced its expected result, and a thermochemistry run must
-    confirm exactly one TS imaginary mode.  Optional-stage failures therefore
+    also have produced its expected result, and requested thermochemistry must
+    have produced its result.  Optional-stage failures therefore
     remain visible even when an earlier MLIP energy diagram exists.
     """
 
@@ -1419,31 +1419,6 @@ def _derive_pipeline_status(
                 if not item.get("irc_traj"):
                     reasons.append(f"{prefix}: IRC trajectory is missing")
 
-            if cfg.get("tsopt") or cfg.get("thermo"):
-                # The terminal exact-PHVA result is owned by the TSOPT record.
-                # ``ts_imag`` is the older/thermochemistry presentation block
-                # and is retained as a fallback for pre-schema-2 summaries.
-                tsopt_result = item.get("tsopt")
-                ts_imag = item.get("ts_imag")
-                raw_n_imag = (
-                    tsopt_result.get("n_imaginary_modes")
-                    if isinstance(tsopt_result, dict)
-                    else None
-                )
-                if raw_n_imag is None and isinstance(ts_imag, dict):
-                    raw_n_imag = ts_imag.get("n_imag")
-                try:
-                    n_imag = None if raw_n_imag is None else int(raw_n_imag)
-                except (TypeError, ValueError):
-                    n_imag = None
-                if n_imag is None:
-                    reasons.append(f"{prefix}: TS imaginary-mode validation is missing")
-                elif n_imag != 1:
-                    reasons.append(
-                        f"{prefix}: TS imaginary-mode validation found "
-                        f"n_imag={n_imag}, expected 1"
-                    )
-
             if cfg.get("thermo"):
                 if not isinstance(item.get("gibbs_mlip"), dict):
                     reasons.append(f"{prefix}: MLIP thermochemistry result is missing")
@@ -1482,25 +1457,19 @@ def _pipeline_aggregate_truth(
     legacy_status: str,
     legacy_reasons: Optional[Sequence[str]] = None,
 ):
-    """Compose the ``all``-pipeline aggregate from per-segment leaves.
+    """Compose requested workflow completion from per-segment results.
 
-    One required :class:`LeafOutcome` is built per reactive segment.  A path
-    segment is usable only when its MEP, exact TS order, endpoint optimizations,
-    and optimized endpoint topology are accepted.  A direct TSOPT segment has no
-    MEP/topology gate.  Raw IRC endpoint stationarity and pre-optimization
-    endpoint assignment remain diagnostics; finite downhill propagation without
-    an integration failure is usable input to endpoint optimization.
-
-    The convergence-gated aggregate is then composed with the legacy completeness
-    axis (``legacy_status`` from :func:`_derive_pipeline_status`, which already
-    covers DFT / thermo / n_imag): ``scientific_status`` is the MORE severe of
-    the two so the new field carries at least as much information as the legacy
-    ``status``.
-    The legacy ``status`` string itself is untouched (byte-compatible).
+    With TSOPT requested, final TS and endpoint numerical optimizations replace
+    their preliminary MEP/preoptimization convergence criteria. Unprocessed path
+    intervals and missing requested results remain required. Without TSOPT, the
+    MEP is the final optimization. Frequency counts, IRC stop conditions and
+    endpoint topology remain diagnostics. The legacy completeness axis also
+    accounts for requested thermochemistry and DFT results.
     """
 
     from pdb2reaction.workflows._outcomes import (
         AggregateTruth,
+        LeafOutcome,
         aggregate_workflow_truth,
         make_leaf,
     )
@@ -1527,12 +1496,28 @@ def _pipeline_aggregate_truth(
             return None
         return True
 
+    def _final_optimizations_complete(segment: dict) -> bool:
+        post = post_by_idx.get(segment.get("index")) or {}
+        ts = post.get("tsopt") or {}
+        endpoints = post.get("endpoint_opt") or {}
+        if not isinstance(ts, dict) or not isinstance(endpoints, dict):
+            return False
+        endpoint_keys = ("reactant_converged", "product_converged")
+        return (
+            ts.get("optimization_status") == "converged"
+            and all(endpoints.get(key) is True for key in endpoint_keys)
+        )
+
+    preopt_superseded = (
+        tsopt_requested and bool(reactive)
+        and all(_final_optimizations_complete(segment) for segment in reactive)
+    )
+
     leaves: List[Any] = []
     expected: List[str] = []
-    if summary.get("preopt_requested") is True:
-        # Endpoint preoptimization feeds every barrier in this run, so a
-        # nonconverged endpoint must reach the parent verdict rather than only
-        # the path child's own `stage_outcomes`.
+    if summary.get("preopt_requested") is True and not preopt_superseded:
+        # Keep preliminary convergence until final endpoint optimizations
+        # supersede it for every reactive segment.
         _preopt = summary.get("preopt_converged")
         _preopt_conv = _preopt if isinstance(_preopt, bool) else None
         leaves.append(
@@ -1546,6 +1531,24 @@ def _pipeline_aggregate_truth(
             )
         )
         expected.append("preopt")
+    represented = {f"segment_{item.get('index')}" for item in reactive}
+    for item in summary.get("stage_outcomes") or []:
+        if not isinstance(item, dict) or item.get("stage") != "path":
+            continue
+        item_id = str(item.get("item_id") or "")
+        if not item.get("required", True) or not item_id or item_id in represented or item_id == "preopt":
+            continue
+        if preopt_superseded and item_id.startswith("preopt_endpoint_") and item.get("executed") is True:
+            # Original per-endpoint convergence remains in stage_outcomes.
+            continue
+        leaves.append(LeafOutcome(
+            stage="path", item_id=item_id, required=True,
+            executed=item.get("executed"), converged=item.get("converged"),
+            usable=item.get("usable") is True,
+            reason=str(item.get("reason") or ""),
+            artifacts=tuple(str(path) for path in item.get("artifacts") or []),
+        ))
+        expected.append(item_id)
     for s in reactive:
         idx = s.get("index")
         if idx is None:
@@ -1567,10 +1570,9 @@ def _pipeline_aggregate_truth(
             True if s.get("kind") == "tsopt" else seg_converged
         )
         if post is not None:
-            # Post-processing ran: compose its explicit IRC / endpoint records
-            # with the MEP engine's own convergence.  Successful downstream
-            # work must never promote a nonconverged/unknown path segment.
-            converged: Optional[bool] = mep_converged
+            # A requested final TS/endpoint optimization supersedes its MEP
+            # seed's convergence. Original segment diagnostics stay unchanged.
+            converged: Optional[bool] = True if tsopt_requested else mep_converged
             if converged is not True:
                 reason = (
                     "mep_not_converged"
@@ -1587,31 +1589,14 @@ def _pipeline_aggregate_truth(
                     converged = _and3(converged, None)
                     if not reason:
                         reason = "tsopt_missing"
-            elif tsopt.get("continue_irc") is not True:
-                # `is not True` rather than `is False`: a malformed or absent
-                # decision is unknown, not a pass.
-                converged = _and3(
-                    converged, False if tsopt.get("continue_irc") is False else None
-                )
+            elif tsopt.get("optimization_status") != "converged":
+                status = tsopt.get("optimization_status")
+                converged = _and3(converged, False if status else None)
                 if not reason:
-                    reason = f"tsopt:{tsopt.get('reason') or 'status_unknown'}"
+                    reason = f"tsopt:{tsopt.get('reason') or ('optimization_' + str(status or 'unknown'))}"
             irc = post.get("irc")
-            if isinstance(irc, dict):
-                _u = irc.get("usable")
-                _irc_conv = True if _u is True else (False if _u is False else None)
-                converged = _and3(converged, _irc_conv)
-                if _irc_conv is not True and not reason:
-                    irc_reason = str(irc.get("reason") or "not_usable")
-                    reason = irc_reason if irc_reason.startswith("irc:") else f"irc:{irc_reason}"
-                _traj = irc.get("traj")
-                if _traj:
-                    artifacts.append(str(_traj))
-            elif tsopt_requested:
-                # IRC requested but no directional record: fail closed
-                # rather than trust the trajectory file's existence.
-                converged = _and3(converged, None)
-                if not reason:
-                    reason = "irc_missing"
+            if isinstance(irc, dict) and irc.get("traj"):
+                artifacts.append(str(irc["traj"]))
             eo = post.get("endpoint_opt")
             if isinstance(eo, dict):
                 for _k in ("reactant_converged", "product_converged"):
@@ -1619,16 +1604,6 @@ def _pipeline_aggregate_truth(
                     converged = _and3(converged, _v if isinstance(_v, bool) else None)
                     if not (isinstance(_v, bool) and _v) and not reason:
                         reason = f"endpoint_opt:{_k}"
-                if tsopt_requested and s.get("kind") != "tsopt":
-                    _connectivity = eo.get("connectivity_validated")
-                    _connectivity_truth = (
-                        _connectivity
-                        if isinstance(_connectivity, bool)
-                        else None
-                    )
-                    converged = _and3(converged, _connectivity_truth)
-                    if _connectivity_truth is not True and not reason:
-                        reason = "optimized_endpoint_connectivity_unvalidated"
             elif tsopt_requested:
                 converged = _and3(converged, None)
                 if not reason:
@@ -1668,19 +1643,8 @@ def _pipeline_aggregate_truth(
         agg_sci = agg.scientific_status
         agg_exec = agg.execution_status
         agg_reasons = list(agg.status_reasons)
-        observed = (
-            (["preopt"] if summary.get("preopt_requested") is True else [])
-            + [
-                item_id
-                for item_id in expected
-                if item_id != "preopt"
-                and item_id.removeprefix("segment_") in {
-                    str(index) for index in post_by_idx
-                }
-            ]
-            if post_requested
-            else list(agg.observed_item_ids)
-        )
+        observed = ([leaf.item_id for leaf in leaves if leaf.executed is True]
+                    if post_requested else list(agg.observed_item_ids))
         if agg_sci == "failed" and any(
             s.get("kind") != "tsopt" and s.get("converged") is True
             for s in reactive
@@ -1928,9 +1892,9 @@ def _enrich_summary(
     # expose the execution/scientific split plus expected/observed segment IDs so
     # a forward-compatible consumer can tell "the pipeline ran" from "the science
     # is complete and usable". ``scientific_status`` is computed from explicit
-    # per-segment LeafOutcomes (IRC directional + endpoint-opt convergence)
-    # composed with the legacy completeness axis, so a nonconverged IRC/endpoint
-    # leaf whose trajectory still exists cannot make the pipeline a success.
+    # final per-segment optimization outcomes and requested output completeness.
+    # IRC stop conditions and frequency/topology diagnostics remain separately
+    # available without imposing another optimizer acceptance criterion.
     _apply_pipeline_truth(
         summary,
         post_segments=post_segments,
@@ -2002,6 +1966,16 @@ def _enrich_summary(
     # concrete provenance lives in top-level mlip_backend/mlip_model fields.
     if post_segments:
         summary["post_segments"] = _json_safe(post_segments)
+        for segment in summary["post_segments"]:
+            ts = segment.get("tsopt") if isinstance(segment, dict) else None
+            if not isinstance(ts, dict):
+                continue
+            modes = segment.get("ts_imag")
+            if not isinstance(modes, dict):
+                continue
+            for key in ("n_imaginary_modes", "n_negative_modes", "optimization_status", "saddle_validation"):
+                if key in ts:
+                    modes[key] = ts[key]
 
     # Key output file paths for AI agent consumption
     if "out_dir" in summary:
@@ -2768,7 +2742,7 @@ def _run_dft_for_state(
     func_basis_use = overrides.get("func_basis", func_basis)
     if func_basis_use is not None:
         args.extend(["--func-basis", str(func_basis_use)])
-    _append_toggle_arg(args, "--convert-files", bool(convert_files))
+    # DFT accepts XYZ directly and has no conversion toggle.
     if ref_pdb is not None:
         args.extend(["--ref-pdb", str(ref_pdb)])
     if engine:
@@ -2790,10 +2764,17 @@ def _run_dft_for_state(
     cmd = [sys.executable, "-m", "pdb2reaction", "dft"] + list(args)
     _echo(f"\n[dft] subprocess: {' '.join(cmd)}")
     proc = _sp.run(cmd, capture_output=True, text=True)
+    # Parser errors occur before the DFT CLI installs its own run log.
+    # Retain both subprocess streams even on that early exit, and make stderr
+    # visible in the parent at its default verbosity.
+    with (ddir / "run.log").open("a", encoding="utf-8") as handle:
+        for stream in (proc.stdout, proc.stderr):
+            if stream:
+                handle.write(stream.rstrip() + "\n")
     if proc.stdout:
         _echo(proc.stdout.rstrip())
     if proc.stderr:
-        _echo(proc.stderr.rstrip())
+        _echo(proc.stderr.rstrip(), err=True, narrative=True)
     if proc.returncode != 0:
         _echo(f"[dft] WARNING: dft exited with code {proc.returncode}", err=True)
     y = out_dir / "result.yaml"
@@ -2809,6 +2790,9 @@ def _run_dft_for_state(
     converged = (data.get("energy") or {}).get("converged", False)
     data["_dft_converged"] = bool(converged)
     data["_dft_failed"] = not bool(converged) or proc.returncode != 0
+    data["_dft_returncode"] = proc.returncode
+    if proc.returncode and proc.stderr:
+        data["_dft_stderr"] = proc.stderr.strip()
     return data
 
 
@@ -2914,13 +2898,12 @@ def _tsopt_continuation_decision(payload: Dict[str, Any]) -> Dict[str, Any]:
         reason = "no_imaginary_reaction_mode"
     else:
         continue_irc = True
-        # Continue IRC under the existing resolved-mode policy, but never turn
-        # a strict higher-order (or unavailable) proof into first-order status.
+        # Preserve the frequency producer's classification and all counts.
+        # Raw signs do not impose an additional acceptance threshold here.
         reason = (
             "higher_order_saddle"
-            if (n_negative is not None and n_negative > 1)
-            or saddle_validation == "higher_order" or n_imaginary > 1
-            else "first_order_saddle" if n_negative == n_imaginary == 1
+            if saddle_validation == "higher_order" or n_imaginary > 1
+            else "first_order_saddle" if saddle_validation == "first_order" and n_imaginary == 1
             else "saddle_order_unavailable"
         )
         reaction_mode_index_valid = bool(
@@ -3371,84 +3354,52 @@ def _validate_optimized_endpoint_pair(
     return result
 
 
-def _read_irc_outcome(irc_dir: Path) -> Dict[str, Any]:
-    """Read the IRC child's ``result.json`` into a fail-closed execution record.
-
-    A normally stopped finite/downhill trajectory is usable input to the
-    endpoint optimizations.  Endpoint stationarity remains diagnostic and does
-    not decide the composite result.  Missing metadata/trajectory, invalid
-    downhill departure, or numerical integration failure remain unusable.
-    """
-
-    outcome: Dict[str, Any] = {
-        "usable": False,
-        "reason": "irc_result_missing",
-        "scientific_status": None,
-        "forward_status": None,
-        "backward_status": None,
-        "n_frames_forward": None,
-        "n_frames_backward": None,
-        "traj": None,
+def _write_endpoint_failure_summary_log(
+    summary: dict, *, out_dir: Path, tsroot: Path,
+    manifest: InvocationManifest, citation_payload: dict,
+) -> None:
+    """Publish the normal human-readable summary on the endpoint error route."""
+    payload = {
+        **summary, **(summary.get("config") or {}), **citation_payload,
+        "root_out_dir": str(out_dir), "path_dir": str(tsroot),
+        "path_module_dir": "-", "pipeline_mode": "tsopt-only",
+        "pipeline_mode_label": "TS-only",
+        "key_files": summary.get("key_output_files", {}),
     }
+    local_log = tsroot / "summary.log"
+    write_summary_log(local_log, payload)
+    root_log = out_dir / "summary.log"
+    _declare_public_output(manifest, out_dir, root_log)
+    shutil.copy2(local_log, root_log)
+    _claim_public_output(manifest, out_dir, root_log)
+
+
+def _read_irc_outcome(irc_dir: Path) -> Dict[str, Any]:
+    """Read stop diagnostics; no independent IRC acceptance verdict is made.
+
+    The caller loads and validates current candidate coordinates. Missing or
+    unreadable diagnostic metadata is reported without replacing endpoint
+    optimization with an IRC convergence criterion.
+    """
     result_path = irc_dir / "result.json"
-    if not result_path.exists():
-        return outcome
+    outcome: Dict[str, Any] = {"traj": None}
     try:
         data = json.loads(result_path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        outcome["reason"] = "irc_result_unreadable"
+        if not isinstance(data, dict):
+            raise ValueError("IRC result is not a JSON object")
+    except (OSError, ValueError) as exc:
+        outcome["metadata_error"] = str(exc)
+        logger.warning("Could not read IRC diagnostics %s: %s", result_path, exc)
         return outcome
-    if not isinstance(data, dict):
-        outcome["reason"] = "irc_result_unreadable"
-        return outcome
-
-    sci = data.get("scientific_status")
-    outcome["scientific_status"] = sci
-    outcome["forward_status"] = data.get("forward_status")
-    outcome["backward_status"] = data.get("backward_status")
-    outcome["n_frames_forward"] = data.get("n_frames_forward")
-    outcome["n_frames_backward"] = data.get("n_frames_backward")
-    _files = data.get("files") if isinstance(data.get("files"), dict) else {}
-    outcome["traj"] = _files.get("finished_irc")
-
-    _direction_status_valid = True
-    for _direction in ("forward", "backward"):
-        _requested = data.get(f"{_direction}_requested")
-        _status = data.get(f"{_direction}_status")
-        if not isinstance(_requested, bool) or _status != (
-            "stopped" if _requested else "disabled"
-        ):
-            _direction_status_valid = False
-    _traj_path = Path(str(outcome["traj"])) if outcome["traj"] else None
-    if _traj_path is not None and not _traj_path.is_absolute():
-        _traj_path = irc_dir / _traj_path
-    _trajectory_valid = bool(
-        _traj_path is not None
-        and _traj_path.is_file()
-        and _traj_path.stat().st_size > 0
-    )
-
-    if sci == "success" and _direction_status_valid and _trajectory_valid:
-        outcome["usable"] = True
-        outcome["reason"] = "stopped"
-    elif sci == "success" and not _direction_status_valid:
-        outcome["usable"] = False
-        outcome["reason"] = "irc_direction_status_invalid"
-    elif sci == "success":
-        outcome["usable"] = False
-        outcome["reason"] = "irc_trajectory_missing"
-    elif isinstance(sci, str):
-        outcome["usable"] = False
-        reasons = data.get("scientific_status_reasons")
-        outcome["reason"] = (
-            ";".join(str(r) for r in reasons)
-            if isinstance(reasons, list) and reasons
-            else f"irc_{sci}"
-        )
-    else:
-        # No explicit status field: fail closed rather than trust file existence.
-        outcome["usable"] = False
-        outcome["reason"] = "irc_status_unknown"
+    for direction in ("forward", "backward"):
+        for suffix in ("requested", "integration_converged", "integration_stop_reason",
+                       "downhill_departure_valid", "energy_increased", "short_branch"):
+            key = f"{direction}_{suffix}"
+            if key in data:
+                outcome[key] = data[key]
+        outcome[f"n_frames_{direction}"] = data.get(f"n_frames_{direction}")
+    files = data.get("files") if isinstance(data.get("files"), dict) else {}
+    outcome["traj"] = files.get("finished_irc")
     return outcome
 
 
@@ -3593,8 +3544,8 @@ def _irc_and_match(
     _run_cli_main("irc", _irc_cli.cli, irc_args, on_nonzero="raise", prefix="irc")
 
     # Read the child's per-direction propagation result.  Raw endpoint
-    # stationarity is diagnostic; finite downhill trajectories without an
-    # integration failure are usable inputs to endpoint optimization.
+    # stationarity is diagnostic; finite retained candidates proceed to
+    # endpoint optimization regardless of the recorded stop reason.
     irc_outcome = _read_irc_outcome(irc_dir)
 
     finished_pdb = irc_dir / "finished_irc.pdb"
@@ -3632,6 +3583,8 @@ def _irc_and_match(
             pdb_destination,
         )
     elems, c_first, c_last = read_xyz_first_last(finished_trj)
+    if not np.isfinite(c_first).all() or not np.isfinite(c_last).all():
+        raise click.ClickException("IRC endpoint candidates contain nonfinite coordinates.")
     g_left = _geom_from_angstrom(elems, c_first, freeze_atoms)
     g_right = _geom_from_angstrom(elems, c_last, freeze_atoms)
     shared_calc = create_calculator(**calc_cfg)
@@ -4003,7 +3956,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "--max-cycles-dmf",
     type=click.IntRange(min=1),
     default=None,
-    show_default="3000",
+    show_default="300",
     help=(
         "Maximum IPOPT iterations for the DMF MEP stage. This is a solver "
         "iteration count, not a string-optimizer cycle count."
@@ -6099,6 +6052,10 @@ def cli(
                 key="ts.summary.01", out_dir=out_dir,
             )
             _copy_public_logged(tsroot / "summary.json", out_dir / "summary.json", label="summary.json", echo=False)
+            _write_endpoint_failure_summary_log(
+                summary, out_dir=out_dir, tsroot=tsroot, manifest=manifest,
+                citation_payload=_all_method_citation_payload(),
+            )
             _persist_run_manifest(manifest, out_dir)
             _echo("[all] Endpoint optimization failed; dependent stages skipped. Diagnostics retained.", err=True)
             _emit_final_summary(out_dir, time_start, manifest, citation_payload=_all_method_citation_payload())

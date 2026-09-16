@@ -1,6 +1,6 @@
 # `tsopt`
 
-`pdb2reaction tsopt` は、遷移状態（TS）*候補*を一次鞍点に最適化します。虚振動数チェックを内蔵しています。候補には `path-opt` / `path-search` の最高エネルギー像（HEI: highest-energy image）、または自前の構造を使えます。
+`pdb2reaction tsopt` は、遷移状態（TS）*候補*を最適化し、最終的な虚振動数解析を報告します。候補には `path-opt` / `path-search` の最高エネルギー像（HEI: highest-energy image）、または自前の構造を使えます。
 
 オプティマイザは `--opt-mode` で選びます。デフォルトの `hess` は **RS-P-RFO**（Restricted-Step Partitioned Rational Function Optimization、Banerjee）です。完全 Hessian の再計算コストが大きい場合や別の探索法を試す場合は、`grad`（**Hessian-Guided Dimer**）を使います。候補に余分な虚振動がある場合は、明示的な再探索として `--flatten`（デフォルト無効）も使えます。
 
@@ -10,37 +10,22 @@
 `--reject-uphill/--no-reject-uphill` は最小値最適化（`opt` と `all` の
 IRC 後エンドポイント再最適化）だけに適用されます。
 
-RS-P-RFO は、数値条件を満たした候補で曲率を計算・確認します。`--flatten` なしでは、余分な負のモードが残ると探索を続け、指定した鞍点次数を満たすまで受理しません。虚振動 0 本ではデフォルトで停止します。収束や反応の同一性を保証するものではないため、虚振動の変位と [`irc`](irc.md) の接続性も確認してください。
+RS-P-RFO は数値収束条件を満たすと終了します。最終 PHVA は曲率を別途報告し、虚振動の本数を理由に追加の最適化ステップを要求しません。追加探索は明示的な `--flatten`、または正の `rsirfo.saddle_recovery_max_cycles`（既定値 0）で有効にします。反応の妥当性はモード変位と [`irc`](irc.md) の接続性から確認してください。
 
 `tsopt` は最終構造を保持します。非収束や `stalled` の場合は、探索中に曲率を確認していても、最終 PHVA の出力段階には進みません。PHVA の失敗時は理由を記録します。完全な振動解析や熱化学補正が必要な場合は、別途 [`freq`](freq.md) を実行します。
 
 
-`n_imaginary_modes` は表示閾値を超える負モード数、`n_negative_modes` はnear-zeroを含む完全で有限なPHVAの負モード数です。一次鞍点の証明には両方が1であることを要求し、partitionが不完全なら証明しません。
+`n_imaginary_modes` は選択した分類基準による本数、`n_negative_modes` は完全で有限な PHVA の全負振動数の本数です。`saddle_validation` と `saddle_order_verified` は分類基準による本数を表し、`optimization_status` とは独立です。生の負モード数で追加探索や失敗判定を行いません。最終 PHVA を再計算した場合はその基底を使用し、最適化時のモード番号や overlap は同一の検証済み PHVA を再利用できる場合だけ引き継ぎます。
+
+虚振動の既定の分類は、元の PySisyphus と同じ質量重み付き Hessian の固有値 < −10⁻⁶ Hartree/(bohr²·amu) です。対応する振動数の絶対値は `eigval_to_wavenumber` から導く約 5.14 cm⁻¹ で、独立に丸めた閾値ではありません。`imaginary_mode_criterion`、`imaginary_eigenvalue_threshold`（正の絶対値）、`imaginary_eigenvalue_units`、`imaginary_frequency_threshold_cm` に分類基準を記録します。従来の `freq.zero_cutoff_cm` の明示指定は非推奨の警告付きで利用できます。この分類基準は最適化座標の `small_eigval_thresh` = 10⁻⁸ とは別です。振動数の符号を変えたり、物理モードを除いたりしません。
 
 ## Cartesian RS-P-RFO の既定値
 
-通常の質量重み付きでない Cartesian 座標では、`hess` / `rsprfo` は
-`hessian_update: ts_bfgs` と `trust_norm: max_atom` を使用します。
-初期・最大信頼半径は **0.1 Å**（約 **0.1889726 Bohr**）で、各原子の
-3次元変位を制限します。最小半径は 1e-4 Bohr のままです。
-YAML の半径の単位は引き続き **Bohr** です。
-
-`bofill` など、明示した `hessian_update` は独立に保持します。
-`opt` または `rsirfo` に `trust_norm`、`trust_radius`、`trust_min`、
-`trust_max` のいずれかがあれば、norm 省略時は従来の全体 L2 ノルムの
-意味を保ちます。`trust_norm: l2` を明示した場合も、未指定の初期・最大
-半径は従来の 0.1 Bohr です。`trust_norm: max_atom` を明示した場合だけ、
-未指定の初期・最大半径を 0.1 Å に設定し、明示した数値は保持します。
-内部座標、質量重み付き座標、weighted trust、RS-I-RFO、TRIM、Dimer の
-既定値は変わりません。
-
-従来の Cartesian ノルムと Hessian 更新を使用する設定例:
-
-```yaml
-rsirfo:
-  trust_norm: l2
-  hessian_update: bofill
-```
+`hess` / `rsprfo` の既定値は `hessian_update: bofill`、全体の L2 ノルム、
+初期・最大信頼半径 0.1 Bohr、最小半径 1e-4 Bohr です。
+YAML の半径は Bohr 単位で、`opt` / `rsirfo` の既存の優先順位を保持します。
+`trust_norm: max_atom` は明示的に選択でき、各原子の3次元変位を制限します。
+この選択だけで半径や Hessian 更新法を変更しません。`ts_bfgs` も明示指定できます。
 
 ## 最適化の終了状態とエラー時の出力
 
@@ -55,7 +40,7 @@ TS 初期構造がまず必要な場合は、2 端点なら [path-opt](path-opt.
 
 `--ref-mode` は通常の単独 `tsopt` に必要なoptionではなく、主に `all` 内部の MEP→TS handoffです。同じ原子順のCartesian 3N候補を`.npz`、`.npy`、または空白区切りtext（単一vectorまたは2次元candidate table）から読み込みます。`all` はHessian TS optimizerに対してMEP接線候補をCPU/file cache経由で渡し、energyを読めない旧trajectoryでは正規化secantへfallbackします。Dimerは`--ref-mode`を使用しません。`all --no-tsopt-from-mep-tan`ではcache作成・利用を止め、初期構造Hessianの振動modeからrootを選びます。これは初期Hessianそのものの置換ではなく、root identityとoverlap追跡の参照方向です。
 
-接線は初期 Hessian root の選択と、モード回転後の overlap 追跡に使います。既定では、一時的な mode-loss による試行棄却、準 Newton 固有値構造による停止、虚振動 0 本からの自動回復、多点再探索は行いません。`n_imag = 0` は `no_imaginary`、`n_imag > 1` は `higher_order` です。`--flatten` なしの RS-P-RFO は高次候補から探索を続けます。他の TS オプティマイザや明示的な flatten は、数値収束した高次候補を保持する場合があります。有効な負 root があれば `all` が警告付き診断 IRC に使うことはありますが、一次 TS 認定にはなりません。
+接線は初期 Hessian root の選択と、モード回転後の overlap 追跡に使います。既定では、一時的な mode-loss による試行棄却、準 Newton 固有値構造による停止、虚振動 0 本からの自動回復、多点再探索は行いません。`n_imag = 0` は `no_imaginary`、`n_imag > 1` は `higher_order` です。これらは選択した虚振動の分類基準による記述で、数値収束を保持します。追加の変位には明示的な再探索設定が必要です。目的反応の候補として解釈する前に、最終モードと IRC を確認してください。
 
 `--flatten`は余剰虚振動を除くための独立した明示optionです。余分な負方向は除去できますが、欠けた反応modeは生成できません。
 
@@ -116,7 +101,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
  - `--flatten` が有効な場合、フラット化ループはΔx とΔg を用い、Bofill（SR1/MS ↔ PSB ブレンド; `hessian_dimer.flatten_loop_bofill` で切替）で活性 Hessian を更新します。各ループは虚振動数モード推定 → 1 回フラット化 → ダイマー方向再更新 → dimer+L-BFGS マイクロ区間 → （任意で）Bofill 更新を実行します。虚振動数モードが 1 つになったら最終的な正確な Hessian で振動解析を行います。
  - `root != 0` の場合は初期ダイマー方向のみその root を使用し、以降の更新は最も負のモード（`root = 0`）に従います。
 - **RS-I-RFO モード**: RS-I-RFO を実行し、任意の Hessian 参照や R+S 分割セーフガード、マイクロサイクル制御は `rsirfo` セクションで設定します。`--flatten` が有効で収束後も虚振動数モードが複数残る場合、追加モードをフラット化して RS-I-RFO を再実行し、虚振動数モードが 1 つになるか上限に達するまで繰り返します。
-- **モード出力と変換**: 絶対値が設定した閾値（デフォルト 5 cm⁻¹）未満の虚振動数モードは無視し、それ以外を `vib/imag_*_trj.xyz` に書き出します。変換が有効な場合、PDB入力はPDB companion、mmCIF／oversized-PDB入力はPDBと元IDを復元したCIFを出力します。Gaussian templateでは最終構造のみ`.gjf`を生成します。
+- **モード出力と変換**: 選択した基準で虚振動と分類したモードを `vib/imag_*_trj.xyz` に書き出します。変換が有効な場合、PDB入力はPDB companion、mmCIF／oversized-PDB入力はPDBと元IDを復元したCIFを出力します。Gaussian templateでは最終構造のみ`.gjf`を生成します。
 
 ## 出力
 
@@ -334,7 +319,7 @@ TS 収束が遅い場合や最適化中に TS モードが失われる場合は�
 
 ## 注記
 
-- 表示・モード選択・平坦化では設定した閾値（デフォルト 5 cm⁻¹）を維持しますが、最終 TS 判定では負の微小モードも数えます。Hessian-family optimizer は一次鞍点のrootを1個だけ追跡します。YAMLでは1要素のlist（例: `rsirfo.roots: [0]`）で設定し、空listまたは複数rootは拒否されます。Dimer は別の単数 key `hessian_dimer.root`（default `0`）を使います。`tsopt` に `--root` CLI flag はありません（[`irc`](irc.md) とは異なります）。
+- 表示・モード選択・明示的な平坦化は選択した虚振動の分類基準に従います。生の負モード数は診断値で、数値収束を上書きしません。Hessian-family optimizer は一次鞍点のrootを1個だけ追跡します。YAMLでは1要素のlist（例: `rsirfo.roots: [0]`）で設定し、空listまたは複数rootは拒否されます。Dimer は別の単数 key `hessian_dimer.root`（default `0`）を使います。`tsopt` に `--root` CLI flag はありません（[`irc`](irc.md) とは異なります）。
 - `--opt-mode` はワークフロー選択用です（デフォルト: `rsprfo`）。YAML のモードマッピングを手動で変更するのではなく、目的のアルゴリズムに合ったモードを選択してください。
 - Dimer方向、回転force、flatten、最終exact PHVA検証は`freq`と同じ固定の constrained 処理を使用します。Dimerは中心imageが変わるたびにこの基底を再構築します。全凍結anchorと両立する真の剛体null方向でない限り、active fragmentの並進を差し引きません。Hessian RFO最適化自体は、この射影を行わずactive-DOF Cartesian Hessian を扱います。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
 - 設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。

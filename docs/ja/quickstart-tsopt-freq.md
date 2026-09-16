@@ -70,7 +70,9 @@ result_ts_only/
 
 **確認ポイント（実行順）:**
 
-1. `summary.json` の `scientific_status` が `"success"` であること。`"partial"` または `"failed"` なら `scientific_status_reasons` を確認します。互換用の `status` は科学的な可否判定には使いません。
+ここで `n_imag` は結果に記録された分類基準による値で、完全振動数ファイルの負符号をすべて数えた値ではありません。
+
+1. `summary.json` の `scientific_status: "success"` は、必要な計算結果と該当する数値最適化の完了を示します。`"partial"` または `"failed"` なら `scientific_status_reasons` を確認します。振動数の分類と端点接続性は、反応を解釈するための情報として別途確認します。
 2. `post_segments[0].ts_imag.n_imag == 1` — 一次鞍点の必要条件です。振動数の大きさだけで反応性を判定せず、modeを可視化して IRC 接続を確認します。系ごとのnoise評価で柔らかい非反応modeを特定した場合だけ、YAMLの opt-in filter `irc.imag_below` をデフォルトの `0.0` より負側へ設定します。IRC が受理するのは `ν <= imag_below` のmodeです。
 3. `segments/seg_01/irc/{forward,backward}_irc_trj.xyz` を PyMOL で開き、R 端・P 端まで到達していることを確認。
 4. `segments[0].bond_changes` が空でなく、想定どおりの結合切断・形成が記録されていること。
@@ -80,7 +82,7 @@ result_ts_only/
 
 | 症状 | 原因 | 対処 |
 |---|---|---|
-| `post_segments[0].ts_imag.n_imag == 0` | TS 候補が極小に落ちてしまう | 経路情報のない通常の TS-only mode は目的の隣接鞍点を特定できず、自動 saddle recovery の default budget も 0 です。endpoint がある場合は `path-search` で TS 候補を取り直します |
+| `post_segments[0].ts_imag.n_imag == 0` | 選択した基準では虚振動がない | 経路情報のない通常の TS-only mode は目的の隣接鞍点を特定できず、自動 saddle recovery の default budget も 0 です。endpoint がある場合は `path-search` で TS 候補を取り直します |
 | `n_imag >= 2` | 高次鞍点候補または TS 未収束 | TS の認定には虚振動がちょうど 1 つ必要です。周波数が小さいことだけを理由に余分なモードを除外せず、各虚振動モードの変位を確認してください。必要に応じて `all --thresh-post gau_tight` または単独の `tsopt --thresh gau_tight` と `--flatten` で再最適化します。 |
 | `segments[0].bond_changes` が空（`""` または `(no covalent changes detected)`）、または IRC が想定と違う終点に到達 | 虚振動が反応座標方向と一致していない、または TS が同じ井戸同士を結んでいる（反応物側と生成物側が同一極小） | `segments/seg_01/ts/vib/imag_*_trj.xyz` を PyMOL で可視化し、虚振動が想定の反応方向か確認。違う場合は TS 候補を取り直す |
 

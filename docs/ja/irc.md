@@ -1,6 +1,8 @@
 # `irc`
 
-`tsopt` で最適化・検証した遷移状態（TS）から、EulerPC（Euler Predictor-Corrector）ベースの固有反応座標（IRC）を両方向へ積分します。`stopped` と報告された方向は、有限の軌跡、確認済み downhill departure、数値伝播失敗なしを満たします。最適化後端点とその接続性は複合 `all` workflow で検証します。`--no-backward`（または `--no-forward`）で一方向のみをたどります。Hessian のデフォルトは有限差分です。解析 autograd の速度とメモリ量は backend・model・系サイズ・precision・GPU に依存するため、対象環境で検証した場合にだけ明示的に選択してください。mmCIF入力は内部PDBで計算し、出力CIFに元IDを復元します。XYZ/GJF入力では`--ref-pdb`にPDBまたはmmCIF topologyを指定できます。一般的な手順は `tsopt` → `irc` です。
+`tsopt` で最適化・検証した遷移状態（TS）から、EulerPC（Euler Predictor-Corrector）ベースの固有反応座標（IRC）を両方向へ積分します。IRC は軌跡と端点候補、停止理由を出力します。`all` は保存された端点を最適化し、TSOPT と端点 OPT の数値収束を記録します。`--no-backward`（または `--no-forward`）で一方向のみをたどります。Hessian のデフォルトは有限差分です。解析 autograd の速度とメモリ量は backend・model・系サイズ・precision・GPU に依存するため、対象環境で検証した場合にだけ明示的に選択してください。mmCIF入力は内部PDBで計算し、出力CIFに元IDを復元します。XYZ/GJF入力では`--ref-pdb`にPDBまたはmmCIF topologyを指定できます。一般的な手順は `tsopt` → `irc` です。
+
+IRC 単独の `scientific_status` や方向別の成功判定は出力しません。予測子の内部積分予算による停止でも、有限の保存端点は端点 OPT に渡します。軌跡・停止理由は保持し、欠損構造、非有限の座標・エネルギー、実行例外はエラーとして報告します。目的の R/P との対応は機構検討の情報であり、最適化収束とは別です。
 
 ## 実行例
 

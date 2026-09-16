@@ -2,6 +2,8 @@
 
 `frequencies_cm-1.txt`, JSON `frequencies_cm`, and `n_modes` retain the complete signed physical spectrum after the existing frozen-atom and rigid-mode projection. `--max-write` and `--sort` control only which mode files are written and their order. `n_imaginary` (YAML `num_imag_freq`) is the resolved negative count below the reporting threshold; `n_negative_modes` also includes weak negative modes. With `frequency_representation: complete`, `near_zero_frequencies_cm` is a subset of the complete array; do not append it and count modes twice.
 
+The default imaginary-mode criterion is the original PySisyphus mass-weighted Hessian rule: eigenvalue < −10⁻⁶ Hartree/(bohr²·amu). The equivalent frequency magnitude is derived by `eigval_to_wavenumber` (about 5.14 cm⁻¹); it is not an independently rounded cutoff. `imaginary_mode_criterion`, `imaginary_eigenvalue_threshold` (positive magnitude), `imaginary_eigenvalue_units`, and `imaginary_frequency_threshold_cm` record the rule. Explicit legacy `freq.zero_cutoff_cm` overrides remain available with a deprecation warning. This reporting criterion is separate from the optimizer-coordinate `small_eigval_thresh` of 10⁻⁸. No sign is changed and no physical mode is removed.
+
 Thermochemistry retains the existing QRRHO policy (100 cm⁻¹ rotor cutoff, no imaginary inversion and no positive-frequency floor), including positive low-frequency modes. Changing `freq.zero_cutoff_cm` does not change thermal values computed from the same complete spectrum.
 
 
@@ -126,14 +128,14 @@ The only `freq`-specific default that differs from the canonical block is the ou
 
 ```yaml
 freq:
- zero_cutoff_cm: 5.0 # classify |frequency| <= 5.0 cm^-1 as near-zero; retain all modes
+ # zero_cutoff_cm: 5.0  # legacy override; omit for the original eigenvalue criterion
  out_dir: ./result_freq/ # freq default
 ```
 
 ## Notes
 
 - `tsopt` already includes an imaginary-frequency check, so a separate `freq` run is mainly for thermochemistry or detailed mode inspection.
-- A properly converged first-order saddle point (TS) is expected to have **exactly one** imaginary frequency. `freq.zero_cutoff_cm` controls the resolved imaginary count and TS mode eligibility; strict TS acceptance also requires exactly one negative frequency in the complete physical spectrum, including the near-zero subset.
+- A properly converged first-order saddle point (TS) is expected to have **exactly one** imaginary frequency. `n_imaginary` uses the selected criterion. `n_negative_modes` records every negative sign, including modes inside that window, as a separate diagnostic; it does not override numerical convergence.
 - Imaginary frequencies are reported as negative values in cm⁻¹. `freq` prints how many were detected
   and dumps details when `--dump`.
 - An all-frozen structure has no active vibrational DOF and raises an explicit error.

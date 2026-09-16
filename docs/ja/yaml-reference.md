@@ -329,7 +329,7 @@ DMF では `--max-nodes` を `DirectMaxFlux(nmove=...)` に渡します。DMF AP
 ```yaml
 dmf:
  backend: gpu # gpu (dmf.torch / CUDA、default) | cpu (dmf / NumPy)
- max_cycles: 3000 # DMF/IPOPT の最大反復数（--max-cycles-dmf で上書き）
+ max_cycles: 300 # DMF/IPOPT の最大反復数（--max-cycles-dmf で上書き）
  tol: tight # IPOPT dual_inf_tol: tight(0.04) | middle(0.10) | loose(0.20) または正の float（--thresh-dmf で上書き）
  correlated: true # Correlated DMF propagation
  sequential: true # Sequential DMF execution
@@ -568,7 +568,7 @@ irc:
 
 ```yaml
 freq:
- zero_cutoff_cm: 5.0 # near-zero と分類する |振動数| の上限（cm^-1）。モードは保持
+ # zero_cutoff_cm: 5.0 # 非推奨の明示的上書き。元の固有値基準を使う場合は省略
  amplitude_ang: 0.8 # Displacement amplitude for modes (Å)
  n_frames: 20 # モードtrajectoryのフレーム数
  max_write: 10 # Maximum number of modes to write
@@ -582,7 +582,7 @@ Hessian系TS最適化が共有する唯一のcutoffです。旧
 `rsirfo.saddle_imaginary_threshold_cm` は互換aliasとして受理しますが、
 競合する値はエラーになります。
 
-このcutoffは resolved な負モード数とTS/flattenのモード選択用です。完全な物理振動数配列からモードを削除せず、熱化学へ渡す正の振動数も変えません。Cartesian PHVAの受理は負のnear-zeroも含めて数え、OPTは厳密0、一次TSは厳密1かつresolved1を要求します。
+既定では質量重み付き Hessian の固有値 < −10⁻⁶ Hartree/(bohr²·amu) を虚振動と分類します。対応する振動数の閾値は約 −5.14 cm⁻¹ です。従来の `freq.zero_cutoff_cm` を明示すると、非推奨の警告付きでこの基準を上書きします。選択した虚振動の本数は鞍点次数を記述し、すべての負符号の数は `n_negative_modes` に別途記録します。いずれも最適化の数値収束を変更しません。符号付き物理モードと熱化学に使う正のモードはすべて保持します。
 
 ---
 

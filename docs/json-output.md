@@ -53,12 +53,12 @@ cross-command provenance contract.
 
 ### Execution and scientific truth
 
-Multi-stage and scan producers add the fields below when they can evaluate constituent work. These fields are additive and producer-dependent; the command-specific `status` remains for compatibility. Consumers should use `scientific_status` and the leaf outcomes when deciding whether a result is usable. Missing required acceptance signals are fail-closed. IRC endpoint stationarity is diagnostic rather than an acceptance signal; IRC usability is reported separately from propagation validity.
+Multi-stage and scan producers add the fields below when they can evaluate constituent work. These fields are additive and producer-dependent; the command-specific `status` remains for compatibility. Consumers can inspect requested-stage completion using `scientific_status` and the leaf outcomes. Missing required optimization or calculation results remain incomplete. IRC stop conditions and stationarity are diagnostics. IRC does not publish an independent `scientific_status`; `all` uses TSOPT and endpoint-OPT numerical outcomes.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `execution_status` | string | Normally `completed` or `failed`; reports whether required constituent commands executed. |
-| `scientific_status` | string | `success`, `partial`, or `failed`; reports whether the produced scientific result is complete and usable. |
+| `scientific_status` | string | `success`, `partial`, or `failed`; reports completion of requested calculation stages and optimization/SCF outcomes. Mode and connectivity interpretation remains separate. |
 | `scientific_status_reasons` | string[] | Reasons for unusable or missing leaves; omitted on clean success. This is distinct from an aggregate workflow's legacy `status_reasons`. |
 | `expected_item_ids` / `observed_item_ids` | string[] | Expected and observed leaf identifiers used to detect missing aggregate work. |
 | `stage_outcomes` | object[] | Stage leaves with `stage`, `item_id`, `required`, `executed`, `converged`, `usable`, `reason`, and `artifacts`. |
@@ -250,6 +250,8 @@ per-cycle force/step convergence details and the `safeguards` object.
 
 ### `irc`
 
+`status: "completed"` records return from execution. IRC does not publish its own `scientific_status`, `stage_outcomes`, or `forward_status` / `backward_status`. Directional stop reasons and trajectories are retained; `all` reports subsequent endpoint optimization under `endpoint_opt`.
+
 | Field | Type | Description |
 |-------|------|-------------|
 | `status` | string | `"completed"` |
@@ -263,7 +265,6 @@ per-cycle force/step convergence details and the `safeguards` object.
 | `endpoint_energy_orientation` | string | `"finished_first_to_finished_last"` |
 | `energy_reactant_hartree` / `energy_product_hartree` | float | Legacy aliases for first / last, respectively; do not infer chemical R/P identity from these names |
 | `forward_requested` / `backward_requested` | bool | Whether each direction was requested |
-| `forward_status` / `backward_status` | string | `stopped`, `failed`, or `disabled`; use these for directional propagation status |
 | `forward_integration_converged` / `backward_integration_converged` | bool \| null | Whether the direction stopped because the RMS-gradient stationarity criterion fired; diagnostic only, and always `false` under `--never-stop`, which bypasses that criterion. Combine it with `*_downhill_departure_valid` to reconstruct the condition the removed `*_converged` reported. |
 | `forward_downhill_departure_valid` / `backward_downhill_departure_valid` | bool \| null | Whether the branch established a downhill departure from the TS |
 | `forward_integration_stop_reason` / `backward_integration_stop_reason` | string \| null | Non-empty only for a numerical propagation failure |
@@ -380,7 +381,7 @@ validation can fail before the file exists.
 | `n_segments` | int | Recursive MEP segment count |
 | `search_max_depth` | int | Effective recursion cap; `0` means subdivision was disabled |
 | `path_optimizers` | string[] | Single-structure optimizers actually used during path preparation/refinement (`lbfgs`, `rfo`); includes scan and alignment work in `all`. Also present in `path-opt` `result.json` and `all` `summary.json` |
-| `preopt_requested` / `preopt_converged` | bool / bool \| null | Whether endpoint preoptimization ran, and whether every endpoint converged; `null` when any endpoint reported no readable signal. The `all` aggregate gates on it |
+| `preopt_requested` / `preopt_converged` | bool / bool \| null | Whether endpoint preoptimization ran, and whether every endpoint converged; `null` when any endpoint reported no readable signal. `all` uses this preliminary convergence signal unless requested final TS and both endpoint optimizations have converged for every reactive segment; the original field remains reported |
 | `segments` | object[] | Per-segment `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` (list of `{title: [entries]}` dicts; bridge segments emit `""`). |
 | `energy_diagrams` | object[] | Per-segment labeled energy profiles (kcal/mol) |
 | `mlip_backend` | string | Backend identifier |
@@ -487,8 +488,8 @@ The `all` and `path-search` commands write `summary.json` with a richer structur
 |-------|------|-------------|
 | `status` | string | `"success"` / `"partial"` / `"failed"` (`all`); `"success"` / `"partial"` (`path-search`) |
 | `execution_status` / `scientific_status` | string / string | Execution completeness and scientific usability; evaluate these separately from legacy `status`. |
-| `scientific_status_reasons` | string[] | Reasons for incomplete or unusable science; omitted on clean success. |
-| `pipeline_stop` | object \| absent | Present only on an early stop. `stage` is `post` (`reason` `no_segments` / `no_reactive_segment`) or `before_irc` (a TSOPT reason, plus `segment` and `tsopt_result`). Rendered in `summary.log` as `Pipeline stop`. |
+| `scientific_status_reasons` | string[] | Reasons for incomplete or unrequested work; omitted on clean success. |
+| `pipeline_stop` | object \| absent | Present only on an early stop. `stage` is `post` (`reason` `no_segments` / `no_reactive_segment`), `before_irc` (a TSOPT reason, plus `segment` and `tsopt_result`), or `endpoint_opt` (`endpoint_execution_failed` and endpoint-specific `failures`). Rendered in `summary.log` as `Pipeline stop`. |
 | `expected_item_ids` / `observed_item_ids` | string[] | Expected and observed aggregate leaves. |
 | `config` | object | Effective settings. `mep_mode` identifies GSM/DMF; `ts_opt_mode` and `endpoint_opt_mode` identify the configured post-processing presets. Generic `opt_mode*` keys retain the resolved CLI inputs. `path_opt_mode` is the single-structure optimizer used for endpoint preoptimization (see `preopt`), not the MEP path algorithm. |
 | `n_segments` | int | Segment count |
@@ -512,7 +513,7 @@ The `all` command additionally includes:
 | `overall_reaction_energy_kcal` | float | Overall reaction energy |
 | `overall_reaction_energy_method` | string | Method of the overall reaction energy (`MEP`, `MLIP`, `MLIP_Gibbs`, `DFT`, or `DFT//MLIP_Gibbs`) |
 | `post_segments` | list | Per-segment TS/IRC/freq/DFT results |
-| `post_segments[].irc` / `.endpoint_assignment` / `.endpoint_opt` | object | Raw propagation, pre-optimization orientation, and final optimized-endpoint acceptance, respectively. Normal raw stopping is diagnostic; endpoint convergence and optimized connectivity govern MEP-mode acceptance. |
+| `post_segments[].irc` / `.endpoint_assignment` / `.endpoint_opt` | object | IRC stop diagnostics, endpoint orientation, and endpoint-OPT convergence, respectively. IRC stopping and topology correspondence are not independent success gates; connectivity information remains available for mechanism interpretation. |
 | `post_segments[].thermo_symmetry` | object | Child-reported point-group and rotational-symmetry provenance by state. Only R/TS/P states with valid symmetry-number provenance are included; missing states are omitted, and the field is absent only when no state has valid provenance. |
 | `current_output_paths` | string[] | Sorted paths relative to `--out-dir`, limited to artifacts claimed by the current invocation. |
 | `key_output_files` | object | Current-run output index: root filename → description; each `seg_NN` entry is `{description, files}` with paths relative to that segment directory. |

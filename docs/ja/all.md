@@ -16,6 +16,14 @@ TSOPT のみモードの反応物/生成物ラベルは**エネルギー順に�
 `--tsopt` **なし**の `all` ワークフローは **TS 候補**（MEP 探索の最高エネルギー画像 / HEI）を出力します。`--tsopt` を追加すると最適化と終端 exact PHVA を実行し、数値的な optimizer 収束と鞍点次数を別々に記録します。`all` が IRC へ進むのは、数値最適化が収束し、終端 PHVA が完了し、負の反応方向を選べる場合です。`n_imag > 1` の収束済み高次停留点は警告付きの**診断的** IRCへ進むことがありますが、一次鞍点として認定されません。実際のoptimizer非収束、虚振動0本、PHVA失敗/未実施、または有効な負rootを選べない場合は、TS 構造と結果を保持して IRC 前で停止します。機構解釈の前に虚振動modeとIRC端点接続を必ず確認してください。
 ```
 
+### 最適化結果と IRC 診断
+
+TSOPT と両端点 OPT の数値収束を集約します。IRC の停止条件は独立した成功・失敗判定にしません。予測子の積分予算で停止しても、有限の保存端点を最適化できます。端点構造の欠損・非有限値や実行例外は引き続き報告します。振動数の本数・符号と目的の R/P への対応は診断・機構情報として保持し、別名の最適化成功条件にはしません。要求した MEP、熱化学、DFT の結果が欠ける場合は、その段階の不足を記録します。端点実行エラーでも `summary.json`、`summary.log`、`endpoint_opt/failure.json` を残します。
+
+`--tsopt` を要求した場合、処理済み区間では最終 TS・両端最適化の収束を用い、
+その入力を作った MEP・事前最適化の収束は診断として残します。未処理区間、要求出力の欠落、
+最終最適化の失敗は完了扱いにしません。`--tsopt` を指定しない場合は MEP が最終最適化です。
+
 ## 実行例
 
 [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) ディレクトリに GPP C6-メチル基転移酵素 BezA（[Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)）の完全な `all` ワークフロースクリプト（MEP およびスキャンパイプライン）があります。
@@ -263,7 +271,7 @@ raw PDB CCD との名前衝突は自動判別しないため、`--modified-resid
 | `--max-depth INT` | 許可する再帰分割の階層数（`--refine-path` が必須）。`0` で分割無効（入力ペアごとに1セグメント、HEI が端点なら0）。上限に達した区間は `seg_NNN_maxdepth` タグで、素反応1段の保証はない | `10` |
 | `--gsm-param [equi\|energy]` | 完全成長後のGSMノード配置。`energy` は高エネルギー領域へノード密度を寄せる。等間隔経路がHEI近傍の反応座標領域を飛び越える場合の試行用であり、TSを同定する機能ではない | `equi` |
 | `--max-cycles-gsm INT` | GSM string optimizer の最大サイクル数 | `300` |
-| `--max-cycles-dmf INT` | DMF の最大 IPOPT 反復数 | `3000` |
+| `--max-cycles-dmf INT` | DMF の最大 IPOPT 反復数 | `300` |
 | `--climb/--no-climb` | 標準 GSM セグメントでクライミングイメージを有効化（ブリッジセグメントは常に無効） | `True` |
 | `--opt-mode [grad\|hess]` | ワークフロープリセット（`grad` → L-BFGS/Dimer、`hess` → RFO/RSPRFO）。コマンド個別実行では `opt --opt-mode grad\|hess`、`tsopt --opt-mode grad\|hess` を推奨。トークンのマッピングはスコープ依存で、`all` の pre-opt デフォルト（`grad`）と `tsopt` のデフォルト（`hess`）は一致しません。詳細は {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
 | `--thresh TEXT` | 単一構造最適化と scan 緩和の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |

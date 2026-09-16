@@ -107,6 +107,8 @@ from pdb2reaction.workflows.freq import (
 )
 from pysisyphus.normal_modes import (
     DEFAULT_FREQUENCY_ZERO_CUTOFF_CM,
+    frequency_criterion_info,
+    warn_legacy_frequency_cutoff,
     normalize_frequency_zero_cutoff_cm,
     resolved_imaginary_mask,
     _strict_negative_count,
@@ -410,7 +412,6 @@ def _calc_gradient(geom, calc_kwargs: dict) -> np.ndarray:
     return g
 
 
-
 def _active_indices(N: int, freeze_idx: Optional[List[int]]) -> List[int]:
     if not freeze_idx:
         return list(range(N))
@@ -632,8 +633,6 @@ def _mw_tr_project_active_inplace(H: torch.Tensor,
         return (H, lift) if compact else H
 
 
-
-
 def _mode_direction_by_root_from_Hact(H: torch.Tensor,
                                       coords_bohr: np.ndarray,
                                       atomic_numbers: List[int],
@@ -810,7 +809,7 @@ def _certified_negative_frequencies(
     freqs_cm: np.ndarray,
     neg_freq_thresh_cm: float,
 ) -> List[float]:
-    """Legacy resolved display/export set, not a strict saddle certificate."""
+    """Imaginary frequencies under the selected classification criterion."""
     _indices, values = _imaginary_mode_indices_and_values(freqs_cm, neg_freq_thresh_cm)
     return [float(value) for value in np.sort(values)]
 
@@ -819,8 +818,22 @@ def _certified_saddle_order(
     freqs_cm: np.ndarray,
     neg_freq_thresh_cm: float,
 ) -> int:
-    """Legacy resolved count; strict acceptance additionally checks the partition."""
+    """Count imaginary modes under the selected classification criterion."""
     return len(_certified_negative_frequencies(freqs_cm, neg_freq_thresh_cm))
+
+
+def _matching_optimizer_mode_index(optimizer, freqs_cm, projection_info, cutoff_cm):
+    """Return an optimizer index only in its reused terminal mode basis."""
+    if projection_info.get("source") != "optimizer_terminal_exact_phva":
+        return None
+    index = getattr(optimizer, "_last_exact_target_mode_index", None)
+    if index is None:
+        return None
+    index = int(index)
+    frequencies = np.asarray(freqs_cm, dtype=float)
+    if not (0 <= index < frequencies.size):
+        return None
+    return index if resolved_imaginary_mask(frequencies, cutoff_cm)[index] else None
 
 
 def _thresholded_reaction_mode_index(
@@ -977,13 +990,13 @@ def _tsopt_terminal_outcome_message(
 
     if not numerically_converged:
         return "[tsopt] ERROR: Not converged."
-    if not hessian_ready or n_imaginary_modes is None or n_negative_modes is None:
-        return "[tsopt] ERROR: Failed to complete terminal PHVA."
+    if not hessian_ready or n_imaginary_modes is None:
+        return "[tsopt] Converged; terminal PHVA is unavailable."
 
     n_imaginary = int(n_imaginary_modes)
-    if n_imaginary == n_negative_modes == 1:
+    if n_imaginary == 1:
         return "[tsopt] Converged (n_imag=1)."
-    if n_negative_modes > 1:
+    if n_imaginary > 1:
         return (
             f"[tsopt] WARNING: Higher-order stationary point "
             f"(n_imag={n_imaginary}, n_negative={n_negative_modes}). "
@@ -1025,12 +1038,13 @@ def _hessian_result_status(
 def _saddle_validation_from_count(
     n_imaginary: Optional[int], n_negative: Optional[int] = None,
 ) -> str:
-    """Keep resolved mode availability separate from strict saddle order."""
-    if n_imaginary is None or n_negative is None:
+    """Describe order under the selected criterion; raw signs are diagnostic."""
+    del n_negative  # Retained for compatibility with callers reporting raw signs.
+    if n_imaginary is None:
         return "unavailable"
-    if int(n_imaginary) == int(n_negative) == 1:
+    if int(n_imaginary) == 1:
         return "first_order"
-    if int(n_negative) > 1:
+    if int(n_imaginary) > 1:
         return "higher_order"
     return "no_imaginary"
 
@@ -1126,7 +1140,7 @@ def _finalize_dimer_saddle_status(
     runner.n_negative_modes = _strict_negative_count(
         freqs_cm, getattr(runner, "rigid_projection_info", None)
     )
-    runner.saddle_order_verified = runner.n_negative_modes == len(certified) == 1
+    runner.saddle_order_verified = len(certified) == 1
     neg_idx, _reported = _imaginary_mode_indices_and_values(
         freqs_cm, neg_freq_thresh_cm
     )
@@ -1162,7 +1176,7 @@ class HessianDimer:
                  thresh: str = "baker",
                  update_interval_hessian: int = 500,
                  # Compatibility alias for freq.zero_cutoff_cm.
-                 neg_freq_thresh_cm: float = 5.0,
+                 neg_freq_thresh_cm: float = DEFAULT_FREQUENCY_ZERO_CUTOFF_CM,
                  flatten_amp_ang: float = 0.10,
                  flatten_max_iter: int = 0,
                  mem: int = 100000,
@@ -1913,7 +1927,6 @@ class HessianDimer:
         emit(f"[DONE] Mode files → {self.vib_dir}", detail=True)
 
 
-
 # Geometry defaults
 GEOM_KW = dict(GEOM_KW_DEFAULT)
 
@@ -1958,52 +1971,6 @@ def _resolve_shared_optimizer_value(
         value = downstream_default
     opt_cfg[key] = value
     downstream_cfg[key] = value
-
-
-def _apply_cartesian_ts_defaults(
-    opt_cfg: Dict[str, Any],
-    rsirfo_cfg: Dict[str, Any],
-    geom_cfg: Dict[str, Any],
-    *,
-    kind: str,
-    config_layer_cfg: Dict[str, Any],
-    override_layer_cfg: Dict[str, Any],
-) -> None:
-    """Fill Cartesian RS-P-RFO defaults without reinterpreting explicit radii."""
-    # These keys are not shared OPT_BASE_KW/RSIRFO_KW defaults. Follow this
-    # product's existing _build_rsirfo_kwargs precedence for their values.
-    effective = {**opt_cfg, **rsirfo_cfg}
-    coord_kwargs = geom_cfg.get("coord_kwargs") or {}
-    if (
-        kind != "rsprfo"
-        or str(geom_cfg.get("coord_type", "cart")).lower() not in ("cart", "cartesian")
-        or bool(coord_kwargs.get("mass_weighted", False))
-        or bool(effective.get("weighted_trust", False))
-    ):
-        return
-
-    def explicit(key: str) -> bool:
-        # Presence, including an explicit old default value, is authoritative.
-        # Use both raw layers: an ignored non-mapping override must not erase
-        # the provenance of a valid base section.
-        return any(
-            isinstance(layer.get(section), dict) and key in layer[section]
-            for layer in (config_layer_cfg, override_layer_cfg)
-            for section in ("opt", "rsirfo")
-        )
-
-    if not explicit("hessian_update"):
-        rsirfo_cfg["hessian_update"] = "ts_bfgs"
-
-    trust_keys = ("trust_norm", "trust_radius", "trust_min", "trust_max")
-    configured_trust = any(explicit(key) for key in trust_keys)
-    if configured_trust and effective.get("trust_norm", "l2") != "max_atom":
-        return  # A legacy radius alone retains its original global-L2 meaning.
-    if not configured_trust:
-        rsirfo_cfg["trust_norm"] = "max_atom"
-    for key in ("trust_radius", "trust_max"):
-        if not explicit(key):
-            rsirfo_cfg[key] = 0.1 / BOHR2ANG
 
 
 def _build_rsirfo_kwargs(
@@ -2091,7 +2058,6 @@ def _validate_reference_mode_optimizer(
             "--opt-mode hess, rsirfo, rsprfo, or trim.",
             param_hint="--ref-mode",
         )
-
 
 
 @click.command(
@@ -2465,6 +2431,7 @@ def cli(
                 )
             cutoff = alias_value
             cutoff_source = f"{section}.{key}"
+        warn_legacy_frequency_cutoff(cutoff)
         frequency_cfg["zero_cutoff_cm"] = cutoff
         simple_cfg["neg_freq_thresh_cm"] = cutoff
         rsirfo_cfg["saddle_imaginary_threshold_cm"] = cutoff
@@ -2577,10 +2544,6 @@ def cli(
         except ValueError as exc:
             raise click.ClickException(str(exc)) from exc
 
-        _apply_cartesian_ts_defaults(
-            opt_cfg, rsirfo_cfg, geom_cfg, kind=kind,
-            config_layer_cfg=config_layer_cfg, override_layer_cfg=override_layer_cfg,
-        )
 
         if "print_every" in opt_cfg:
             try:
@@ -2787,7 +2750,7 @@ def cli(
                     thresh_loose=simple_cfg.get("thresh_loose", "gau_loose"),
                     thresh=simple_cfg.get("thresh", "baker"),
                     update_interval_hessian=int(simple_cfg.get("update_interval_hessian", 500)),
-                    neg_freq_thresh_cm=float(simple_cfg.get("neg_freq_thresh_cm", 5.0)),
+                    neg_freq_thresh_cm=float(simple_cfg.get("neg_freq_thresh_cm", DEFAULT_FREQUENCY_ZERO_CUTOFF_CM)),
                     flatten_amp_ang=float(simple_cfg.get("flatten_amp_ang", 0.10)),
                     flatten_max_iter=int(simple_cfg.get("flatten_max_iter", 0)),
                     mem=int(simple_cfg.get("mem", 100000)),
@@ -2888,6 +2851,7 @@ def cli(
                         "energy_hartree": _dimer_energy,
                         "n_imaginary_modes": runner.n_imaginary_modes,
                         "n_negative_modes": getattr(runner, "n_negative_modes", None),
+                        **frequency_criterion_info(runner.neg_freq_thresh_cm),
                         "frequency_zero_cutoff_cm": runner.neg_freq_thresh_cm,
                         "imaginary_frequencies_cm": _dimer_imag,
                         "opt_mode": "dimer",
@@ -3286,10 +3250,9 @@ def cli(
                         negative_indices = np.flatnonzero(
                             branch_freqs < -abs(neg_freq_thresh_cm)
                         )
-                        target_index = getattr(
-                            branch_optimizer,
-                            "_last_exact_target_mode_index",
-                            None,
+                        target_index = _matching_optimizer_mode_index(
+                            branch_optimizer, branch_freqs,
+                            result["projection"], neg_freq_thresh_cm,
                         )
                         surplus_strength = 0.0
                         for mode_index in negative_indices:
@@ -3477,7 +3440,7 @@ def cli(
                         freqs_cm, neg_freq_thresh_cm
                     )
                     _n_negative_modes = _strict_negative_count(freqs_cm, rigid_projection_info)
-                    _hessian_saddle_verified = _n_negative_modes == _saddle_order == 1
+                    _hessian_saddle_verified = _saddle_order == 1
                     if not _hessian_saddle_verified:
                         if _n_negative_modes is None:
                             warning = "Incomplete PHVA partition; strict saddle order unavailable"
@@ -3545,9 +3508,10 @@ def cli(
                     _reaction_mode_index = None
                     _reaction_mode_frequency = None
                     _reaction_mode_overlap = None
-                    _candidate_mode_index = getattr(
-                        last_optimizer, "_last_exact_target_mode_index", None
-                    )
+                    _candidate_mode_index = _matching_optimizer_mode_index(
+                        last_optimizer, freqs_cm, rigid_projection_info,
+                        neg_freq_thresh_cm,
+                    ) if hessian_postprocessing_ready else None
                     _selected_mode_index = (
                         _thresholded_reaction_mode_index(
                             freqs_cm,
@@ -3585,6 +3549,7 @@ def cli(
                         "energy_hartree": _rsirfo_energy,
                         "n_imaginary_modes": _n_imaginary_modes,
                         "n_negative_modes": _n_negative_modes,
+                        **frequency_criterion_info(neg_freq_thresh_cm),
                         "frequency_zero_cutoff_cm": neg_freq_thresh_cm,
                         "reaction_mode_index": _reaction_mode_index,
                         "reaction_mode_frequency_cm": _reaction_mode_frequency,
@@ -3749,7 +3714,7 @@ def cli(
                 )
                 _terminal_saddle_verified = bool(
                     getattr(runner, "saddle_order_verified", False)
-                    and getattr(runner, "n_negative_modes", None) == _terminal_n_imaginary == 1
+                    and _terminal_n_imaginary == 1
                 )
                 _terminal_n_negative = getattr(runner, "n_negative_modes", None)
             else:
@@ -3766,10 +3731,7 @@ def cli(
             _terminal_numerically_converged = bool(
                 getattr(_terminal_optimizer, "is_converged", False)
             )
-            _tsopt_failed = not (
-                _terminal_numerically_converged
-                and _terminal_saddle_verified
-            )
+            _tsopt_failed = not _terminal_numerically_converged
             click.echo(
                 _tsopt_terminal_outcome_message(
                     numerically_converged=_terminal_numerically_converged,

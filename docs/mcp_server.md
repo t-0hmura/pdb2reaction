@@ -94,11 +94,11 @@ all stage values.
 
 ## Opt-in IRC controls
 
-`run_irc` (CLI: `pdb2reaction irc`) accepts `irc_pos_def: bool` — when set,
-IRC convergence additionally requires a positive-definite mass-weighted
-Hessian, blocking the IRC "shoulder" false-convergence where the rms-only
-criterion calls success before reaching the local minimum. Defaults to
-`None` (rms-only, legacy).
+`run_irc` (CLI: `pdb2reaction irc`) accepts `irc_pos_def: bool`. When enabled,
+the IRC gradient-convergence stop also requires a positive-definite
+mass-weighted Hessian. This is an integration diagnostic, not a separate
+workflow-success verdict. The option is off by default; endpoint OPT reports
+its own convergence.
 
 `run_irc` also accepts `step_size` and `never_stop`. When a branch stops after
 only a few frames, reduce `step_size` (typically to `0.05`) first. Set

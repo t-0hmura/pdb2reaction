@@ -45,7 +45,7 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hess \
 
 ## 処理の流れ
 
-- **RFO の曲率確認**: `--flatten` なしの RFO は、数値条件を満たした候補で Hessian を計算します。Cartesian 座標では活性部分空間の負の振動数（微小モードを含む）が 0 本であることを確認し、内部座標では従来の最適化空間の固有値を確認し、この厳密PHVA証明とは区別します。負の曲率が残る場合は最適化を続けます。
+- **収束と振動数**: RFO は数値収束条件の結果を報告します。極小点の判定だけを目的とした追加Hessian計算や最適化の自動継続は行いません。振動数は [`freq`](freq.md) で別途解析でき、`--flatten` は明示的に指定した場合に実行します。
 - **オプティマイザ**: `--opt-mode grad`（alias: `lbfgs`、デフォルト）→ L-BFGS、`--opt-mode hess`（alias: `rfo`）→ RFOptimizer。サブコマンド別のトークン→アルゴリズム対応は {ref}`ja-opt-mode-semantics` を参照。
   > **命名規則の注意:** CLI は `grad|lbfgs` および `hess|rfo` を受け付けます。YAML では `lbfgs` または `rfo` を直接指定してください。
 - **Flatten loop**: `--flatten` を有効にすると、最適化後に虚振動数モードのフラット化ループを実行します。`opt` では各反復で検出された虚振動数モードをすべてフラット化し、虚振動数が残らなくなるか内部ループ上限に達するまで繰り返します。PHVAの固有値解析は、凍結anchorを尊重する constrained 処理に固定されています。

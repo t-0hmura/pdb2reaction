@@ -43,3 +43,11 @@ def test_orb_extra_selects_the_supported_api_for_each_python(python_version):
     else:
         assert "0.7.0" in specifier and "0.8.0" in specifier
         assert "0.6.99" not in specifier
+
+
+def test_version_tuple_matches_the_packaged_version() -> None:
+    from packaging.version import Version
+    from pdb2reaction import _version
+
+    assert _version.__version_tuple__ == _version.version_tuple == Version(_version.__version__).release
+    assert _version.version == _version.__version__

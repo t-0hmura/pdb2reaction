@@ -74,7 +74,7 @@ If `--tsopt` is enabled, you should also see:
 [Imaginary modes] n=1 ([-425.9])
 ```
 
-A first-order saddle point shows exactly one imaginary mode along the reaction coordinate. IRC validation (run automatically as part of `--tsopt`) confirms it connects the expected reactant and product.
+A first-order saddle has one imaginary mode under the selected criterion. Inspect the IRC trajectory and optimized endpoints produced by `--tsopt` to determine whether they connect the intended reactant and product; execution alone does not establish that correspondence.
 
 ## Tips
 

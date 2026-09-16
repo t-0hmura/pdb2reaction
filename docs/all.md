@@ -18,6 +18,16 @@ The TSOPT-only reactant/product labels follow an **energy-order presentation con
 Without `--tsopt`, the workflow produces **TS candidates** (highest-energy images from MEP search). Adding `--tsopt` refines them and performs terminal exact-PHVA validation. Numerical optimizer convergence and saddle order are reported separately. `all` proceeds to IRC only when optimization converged, terminal PHVA completed, and a negative reaction direction is available. A converged higher-order stationary point (`n_imag > 1`) may be followed by **diagnostic** IRC with an explicit warning, but it is not certified as a first-order TS. Actual optimizer non-convergence, no imaginary mode, failed/unavailable PHVA, or no valid negative root stops the pipeline after preserving the TS artifacts and before IRC. Always inspect the imaginary modes and IRC endpoint connectivity before mechanistic interpretation.
 ```
 
+### Optimization completion and IRC diagnostics
+
+The aggregate uses numerical convergence of TSOPT and both endpoint optimizations. IRC stop conditions are not an independent success/failure test: a predictor-budget stop may still supply finite candidates for endpoint OPT. Missing/nonfinite structures and execution exceptions remain reported. Frequency counts/signs and correspondence with intended R/P structures are retained as diagnostic/mechanism information, not additional optimizer-success gates. Missing requested MEP, thermochemistry or DFT work remains visible in its own stage outcome. Endpoint execution errors retain `summary.json`, `summary.log` and `endpoint_opt/failure.json`.
+
+When `--tsopt` is requested, completed TS and endpoint optimizations supersede
+preliminary MEP/preoptimization convergence for the processed segment. The
+original convergence fields remain available. Unprocessed intervals, missing
+requested outputs and final optimization failures still prevent completion.
+Without `--tsopt`, MEP convergence remains the final optimization criterion.
+
 ## Examples
 
 Working examples for GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)) covering both multi-structure MEP and scan-based pipelines: [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples).
@@ -236,7 +246,7 @@ and `tsopt` subcommands keep their own `--max-cycles`.
 | `--max-depth INT` | Recursive subdivision levels allowed; requires `--refine-path`. `0` disables subdivision, returning each input pair as one MEP segment (none when its HEI sits at an endpoint). A capped interval is tagged `seg_NNN_maxdepth` and may hold more than one step. | `10` |
 | `--gsm-param [equi\|energy]` | GSM node parameterization after string growth. `energy` concentrates nodes in high-energy regions and may be tried when an equidistant path skips the reaction-coordinate region near the HEI; it does not identify a TS. | `equi` |
 | `--max-cycles-gsm INT` | Maximum GSM string-optimizer cycles. | `300` |
-| `--max-cycles-dmf INT` | Maximum DMF IPOPT iterations. | `3000` |
+| `--max-cycles-dmf INT` | Maximum DMF IPOPT iterations. | `300` |
 | `--climb / --no-climb` | Enable climbing image for standard GSM segments (bridge segments always disable climbing). | `True` |
 | `--opt-mode [grad\|hess]` | Workflow preset (`grad` → L-BFGS / Dimer, `hess` → RFO / RS-P-RFO). Token-to-algorithm mapping depends on scope — see {ref}`opt-mode-semantics` for the per-subcommand table; note that `all`'s pre-opt default (`grad`) differs from `tsopt`'s default (`hess`). | `grad` |
 | `--thresh TEXT` | Convergence preset for single-structure optimizations and scan relaxations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |

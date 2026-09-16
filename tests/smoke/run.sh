@@ -455,13 +455,11 @@ pdb2reaction path-search -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --max
 # test65: path-search --opt-mode hess (RFO single-structure preopt; keep preopt ON)
 pdb2reaction path-search -i r.pdb p.pdb -q -1 --opt-mode hess --workers 1 --max-nodes 5 --max-cycles-gsm 3 --out-dir test65_ps_hess > test65_ps_hess.out 2>&1
 
-# test66: required positive MEP -> TSopt -> IRC -> thermo handoff.
-# --tsopt-max-cycles must cover the opt-in --flatten repair (which draws from this
-# global budget); this system converges to n_imag=1 with no flatten iterations, but
-# 200 keeps the budget above flatten_max_iter (=50, ~135 cycles) so a soft spectator
-# mode could never be starved short of a clean saddle. Product default is 100000.
-pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --thermo --flatten --irc-never-stop --irc-max-cycles 3 --max-cycles-gsm 5 --tsopt-max-cycles 200 --thresh gau_loose --thresh-post gau --out-dir test66_all_tsopt > test66_all_tsopt.out 2>&1
-python assert_release_result.py all test66_all_tsopt --require-thermo >> test66_all_tsopt.out 2>&1
+# test66: real MEP -> TSOPT -> endpoint OPT -> thermo -> CPU SCF handoff.
+# This lane explicitly requests --flatten. It verifies workflow execution and
+# requested DFT outputs; it is not no-flatten optimizer validation.
+pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --thermo --dft --flatten --irc-never-stop --irc-max-cycles 3 --max-cycles-gsm 5 --tsopt-max-cycles 200 --thresh gau_loose --thresh-post gau --dft-func-basis 'hf/sto-3g' --dft-grid-level 0 --dft-conv-tol 1e-5 --dft-max-cycle 40 --dft-engine cpu --out-dir test66_all_tsopt > test66_all_tsopt.out 2>&1
+python assert_release_result.py all test66_all_tsopt --require-thermo --require-dft >> test66_all_tsopt.out 2>&1
 grep -Fq '[irc] Reusing cached TS Hessian from tsopt.' test66_all_tsopt.out || { echo '[smoke] FAIL test66: IRC did not report cached TS Hessian reuse' >> test66_all_tsopt.out; exit 1; }
 
 # test67: all --scan-lists (single-PDB scan->path mode of `all`)

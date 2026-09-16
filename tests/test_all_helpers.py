@@ -799,7 +799,7 @@ def test_enrich_summary_marks_requested_dft_failure_partial(tmp_path: Path) -> N
     assert result["status_reasons"] == ["segment 1: DFT failed (TS)"]
 
 
-def test_enrich_summary_marks_non_saddle_thermochemistry_partial(tmp_path: Path) -> None:
+def test_enrich_summary_keeps_thermochemistry_count_diagnostic(tmp_path: Path) -> None:
     from pdb2reaction.workflows.all import _enrich_summary
 
     result = _enrich_summary(
@@ -824,8 +824,8 @@ def test_enrich_summary_marks_non_saddle_thermochemistry_partial(tmp_path: Path)
         out_dir=tmp_path,
     )
 
-    assert result["status"] == "partial"
-    assert "n_imag=0, expected 1" in result["status_reasons"][0]
+    assert result["status"] == "success"
+    assert not result.get("status_reasons")
 
 
 def test_enrich_summary_success_requires_all_requested_post_results(tmp_path: Path) -> None:
@@ -978,4 +978,4 @@ def test_strict_higher_order_is_not_reclassified_by_resolved_count():
     assert result["n_negative_modes"] == 2
     payload.pop("n_negative_modes")
     payload["saddle_validation"] = "first_order"  # legacy resolved-only claim
-    assert _tsopt_continuation_decision(payload)["reason"] == "saddle_order_unavailable"
+    assert _tsopt_continuation_decision(payload)["reason"] == "first_order_saddle"

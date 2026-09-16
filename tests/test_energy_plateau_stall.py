@@ -320,7 +320,7 @@ def test_tsopt_terminal_outcome_messages_separate_numerical_and_saddle_status():
         n_imaginary_modes=None,
         n_negative_modes=None,
     )
-    assert unavailable == "[tsopt] ERROR: Failed to complete terminal PHVA."
+    assert unavailable == "[tsopt] Converged; terminal PHVA is unavailable."
 
 
 def test_reaction_mode_selection_uses_the_configured_saddle_threshold():
@@ -429,7 +429,7 @@ def test_hessian_dimer_stops_after_child_stall(tmp_path):
 
 
 def test_terminal_saddle_certification_separates_magnitude_threshold():
-    """Display filtering must not hide a negative root from strict certification."""
+    """Raw negative signs remain visible without overriding the selected criterion."""
     from pdb2reaction.workflows.tsopt import (
         _certified_negative_frequencies,
         _certified_saddle_order,
@@ -452,10 +452,10 @@ def test_terminal_saddle_certification_separates_magnitude_threshold():
     runner.rigid_projection_info = {"raw_mode_count": 4, "near_zero_frequencies_cm": []}
     export_idx = _finalize_dimer_saddle_status(runner, freqs_cm, 5.0)
 
-    # Resolved public display stays one; strict certification rejects the extra root.
+    # The selected criterion counts one mode; the raw count still records two.
     assert runner.n_imaginary_modes == 1
     assert runner.imaginary_frequencies_cm == [-450.0]
-    assert runner.saddle_order_verified is False
+    assert runner.saddle_order_verified is True
     assert runner.n_negative_modes == 2
     assert runner.is_converged is True
     assert _tsopt_terminal_status(runner, saddle_verified=True) == "converged"
@@ -485,7 +485,7 @@ def test_terminal_saddle_certification_separates_magnitude_threshold():
     assert soft_export.tolist() == []
 
 
-def test_exact_phva_validation_rejects_soft_negative_roots():
+def test_exact_phva_validation_reports_soft_negative_roots():
     """The exact PHVA branch reports resolved1/strict2 for [-450, -3.2, +12]."""
     from pysisyphus.tsoptimizers.RSIRFOptimizer import RSIRFOptimizer
 
@@ -519,7 +519,7 @@ def test_exact_phva_validation_rejects_soft_negative_roots():
     )
 
     assert optimizer._last_exact_n_imaginary == 1
-    assert optimizer._last_exact_saddle_verified is False
+    assert optimizer._last_exact_saddle_verified is True
     assert optimizer._last_exact_n_negative == 2
     assert has_saddle_modes is True
     assert any("n_imag=1" in message for message in printed)

@@ -44,10 +44,13 @@ def test_dft_gpu_dependencies_are_linux_only() -> None:
 def test_runtime_metadata_allows_the_current_fairchem_stack() -> None:
     text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
     assert '"fairchem-core"' in text
-    assert '"torch"' in text
+    assert '"torch>=2.8,<2.14"' in text
     assert '"torch~=' not in text
-    assert '"numpy"' in text
-    assert '"numpy>=' not in text
+    requirements = {r.name: r for r in map(Requirement, tomllib.loads(text)["project"]["dependencies"])}
+    assert "2.4.6" in requirements["numpy"].specifier
+    assert "2.5.0" not in requirements["numpy"].specifier
+    assert "2.13.0" in requirements["torch"].specifier
+    assert "2.14.0" not in requirements["torch"].specifier
 
 
 def test_no_deps_ci_jobs_install_the_current_fairchem_torch_minor() -> None:

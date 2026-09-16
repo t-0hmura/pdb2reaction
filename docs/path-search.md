@@ -127,7 +127,7 @@ The table is grouped by purpose; within each group the most-used options come fi
 | `--max-depth INT` | Recursive subdivision levels allowed. `0` disables subdivision, returning each input pair as one MEP segment (none when its HEI sits at an endpoint). A capped interval is tagged `seg_NNN_maxdepth` and may hold more than one step. | `10` |
 | `--gsm-param {equi\|energy}` | GSM node parameterization after string growth. `energy` concentrates nodes in high-energy regions and may be tried when an equidistant path skips the reaction-coordinate region near the HEI; it does not identify a TS. | `equi` |
 | `--max-cycles-gsm INT` | Maximum GSM string-optimizer cycles. | `300` |
-| `--max-cycles-dmf INT` | Maximum DMF IPOPT iterations. | `3000` |
+| `--max-cycles-dmf INT` | Maximum DMF IPOPT iterations. | `300` |
 | `--climb/--no-climb` | Enable climbing image for GSM segments (bridge segments always run without climbing). | `True` |
 | **Refinement** | | |
 | `--refine-mode {peak\|minima}` | Seeds for refinement: `peak` optimizes HEI±1; `minima` searches outward from the HEI toward the nearest local minima on each side. Defaults to `peak` for GSM and `minima` for DMF when omitted. | _Auto_ |

@@ -333,7 +333,7 @@ For DMF, `--max-nodes` is forwarded as `DirectMaxFlux(nmove=...)`; the installed
 ```yaml
 dmf:
  backend: gpu # gpu (dmf.torch / CUDA, default) | cpu (dmf / NumPy)
- max_cycles: 3000 # Maximum DMF/IPOPT iterations (overridden by --max-cycles-dmf)
+ max_cycles: 300 # Maximum DMF/IPOPT iterations (overridden by --max-cycles-dmf)
  tol: tight # IPOPT dual_inf_tol: tight (0.04) | middle (0.10) | loose (0.20) or a positive float (overridden by --thresh-dmf)
  correlated: true # Correlated DMF propagation
  sequential: true # Sequential DMF execution
@@ -573,7 +573,7 @@ Vibrational frequency analysis settings.
 
 ```yaml
 freq:
- zero_cutoff_cm: 5.0 # Near-zero classification window (cm^-1); modes are retained
+ # zero_cutoff_cm: 5.0 # Deprecated explicit override; omit for the original eigenvalue criterion
  amplitude_ang: 0.8 # Displacement amplitude for modes (Å)
  n_frames: 20 # Number of frames per mode trajectory
  max_write: 10 # Maximum number of modes to write
@@ -587,7 +587,7 @@ flattening, Dimer, and Hessian-family TS optimization. The legacy
 `rsirfo.saddle_imaginary_threshold_cm` spellings remain accepted as aliases;
 conflicting values are rejected.
 
-This cutoff controls resolved imaginary counts and TS/flatten mode selection. It never removes modes from the complete physical frequency array or changes the positive frequencies supplied to thermochemistry. Cartesian PHVA acceptance also counts negative near-zero modes: strict zero for OPT, and strict one plus resolved one for first-order TS.
+The default selects mass-weighted Hessian eigenvalues < −10⁻⁶ Hartree/(bohr²·amu), equivalent to a frequency below the derived cutoff of about −5.14 cm⁻¹. An explicit legacy `freq.zero_cutoff_cm` overrides this criterion with a deprecation warning. The selected imaginary count describes saddle order; every negative sign is also reported separately as `n_negative_modes`. Neither count changes numerical optimizer convergence. All signed physical modes and positive thermochemistry modes are retained.
 
 ---
 

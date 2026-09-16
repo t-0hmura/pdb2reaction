@@ -74,7 +74,7 @@ def test_explicit_no_change_segment_does_not_require_postprocessing() -> None:
     assert truth.expected_item_ids == ()
 
 
-def test_tsopt_validates_imaginary_mode_without_thermochemistry() -> None:
+def test_tsopt_frequency_counts_do_not_replace_optimizer_completion() -> None:
     summary = {
         "segments": [{"index": 1, "kind": "seg", "converged": True}],
         "energy_diagrams": [{"name": "MEP"}],
@@ -92,8 +92,8 @@ def test_tsopt_validates_imaginary_mode_without_thermochemistry() -> None:
         config={"tsopt": True, "thermo": False, "dft": False},
     )
 
-    assert status == "partial"
-    assert any("n_imag=2, expected 1" in reason for reason in reasons)
+    assert status == "success"
+    assert reasons == []
 
 
 def test_tsopt_imaginary_mode_record_carries_certification_details() -> None:

@@ -522,81 +522,17 @@ def test_path_preopt_failure_is_required() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _irc_direction_leaves(*, forward, forward_conv, backward, backward_conv,
-                          n_fwd=10, n_bwd=10, forward_downhill=True,
-                          backward_downhill=True, forward_error="",
-                          backward_error=""):
-    """Exercise _outcomes.irc_direction_leaves, the directional-leaf builder that
-    irc.py calls in production (bind to the shared helper, don't copy it)."""
-    from pdb2reaction.workflows._outcomes import irc_direction_leaves
-    return irc_direction_leaves(
-        (
-            ("forward", bool(forward), forward_conv, forward_downhill,
-             forward_error, n_fwd,
-             ["forward_irc.pdb"] if forward else []),
-            ("backward", bool(backward), backward_conv, backward_downhill,
-             backward_error, n_bwd,
-             ["backward_irc.pdb"] if backward else []),
-        )
-    )
 
 
-def test_irc_normal_stop_is_usable_without_endpoint_stationarity() -> None:
-    leaves, expected = _irc_direction_leaves(
-        forward=True, forward_conv=True, backward=True, backward_conv=False
-    )
-    truth = aggregate_workflow_truth(leaves, expected)
-    assert truth.scientific_status == "success"
-    backward = [leaf for leaf in leaves if leaf.item_id == "backward"][0]
-    assert backward.usable is True
-    assert backward.converged is None and backward.reason == "stopped"
 
 
-def test_irc_one_sided_request_succeeds() -> None:
-    from pdb2reaction.workflows._outcomes import irc_direction_statuses
-
-    # Backward explicitly disabled: its absence is optional, not a failure.
-    leaves, expected = _irc_direction_leaves(
-        forward=True, forward_conv=True, backward=False, backward_conv=None
-    )
-    truth = aggregate_workflow_truth(leaves, expected)
-    assert truth.scientific_status == "success"
-    assert expected == ["forward"]
-    assert irc_direction_statuses(leaves) == {
-        "forward_status": "stopped",
-        "backward_status": "disabled",
-    }
 
 
-def test_irc_stationarity_attribute_absent_does_not_invalidate_stop() -> None:
-    leaves, expected = _irc_direction_leaves(
-        forward=True, forward_conv=None, backward=False, backward_conv=None
-    )
-    truth = aggregate_workflow_truth(leaves, expected)
-    assert truth.scientific_status == "success"
 
 
-def test_irc_invalid_departure_or_integration_failure_is_unusable() -> None:
-    from pdb2reaction.workflows._outcomes import irc_direction_statuses
 
-    leaves, expected = _irc_direction_leaves(
-        forward=True,
-        forward_conv=False,
-        backward=True,
-        backward_conv=False,
-        forward_downhill=False,
-        backward_error="integration failed",
-    )
-    truth = aggregate_workflow_truth(leaves, expected)
-    assert truth.scientific_status != "success"
-    assert {leaf.reason for leaf in leaves} == {
-        "downhill_departure_invalid",
-        "integration_failed",
-    }
-    assert irc_direction_statuses(leaves) == {
-        "forward_status": "failed",
-        "backward_status": "failed",
-    }
+
+
 
 
 def test_irc_hessian_cache_gate_condition() -> None:
@@ -949,51 +885,7 @@ def test_producer_records_nonconvergence_from_optimizer() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_read_irc_outcome_accepts_normal_stop_and_rejects_hard_failure(tmp_path: Path) -> None:
-    from pdb2reaction.workflows.all import _read_irc_outcome
 
-    irc_dir = tmp_path / "irc"
-    irc_dir.mkdir()
-    (irc_dir / "finished_irc_trj.xyz").write_text("1\nframe\nH 0 0 0\n")
-    # A converged both-direction IRC child result.
-    (irc_dir / "result.json").write_text(json.dumps({
-        "status": "completed",
-        "scientific_status": "success",
-        "forward_requested": True,
-        "backward_requested": True,
-        "forward_status": "stopped",
-        "backward_status": "stopped",
-        "files": {"finished_irc": "finished_irc_trj.xyz"},
-    }))
-    ok = _read_irc_outcome(irc_dir)
-    assert ok["usable"] is True and ok["traj"] == "finished_irc_trj.xyz"
-
-    # Reaching a cycle limit is a normal stop, not a composite failure.
-    (irc_dir / "result.json").write_text(json.dumps({
-        "status": "completed",
-        "scientific_status": "success",
-        "forward_requested": True,
-        "backward_requested": True,
-        "forward_status": "stopped",
-        "backward_status": "stopped",
-        "files": {"finished_irc": "finished_irc_trj.xyz"},
-    }))
-    stopped = _read_irc_outcome(irc_dir)
-    assert stopped["usable"] is True
-    assert stopped["reason"] == "stopped"
-
-    (irc_dir / "result.json").write_text(json.dumps({
-        "status": "completed",
-        "scientific_status": "partial",
-        "scientific_status_reasons": ["irc:backward:integration_failed"],
-        "files": {"finished_irc": "finished_irc_trj.xyz"},
-    }))
-    bad = _read_irc_outcome(irc_dir)
-    assert bad["usable"] is False and "integration_failed" in bad["reason"]
-
-    # A missing result.json fails closed.
-    (irc_dir / "result.json").unlink()
-    assert _read_irc_outcome(irc_dir)["usable"] is False
 
 
 def test_all_pipeline_aggregate_uses_optimized_endpoints_not_raw_irc_stop() -> None:
@@ -1008,7 +900,7 @@ def test_all_pipeline_aggregate_uses_optimized_endpoints_not_raw_irc_stop() -> N
         "index": 1,
         # A real `all --tsopt` record always carries the TS decision; the
         # aggregate fails closed without it.
-        "tsopt": {"continue_irc": True},
+        "tsopt": {"continue_irc": True, "optimization_status": "converged"},
         "irc_traj": "finished_irc_trj.xyz",
         "irc": {"usable": True, "reason": "stopped",
                 "traj": "finished_irc_trj.xyz"},
@@ -1027,7 +919,7 @@ def test_all_pipeline_aggregate_uses_optimized_endpoints_not_raw_irc_stop() -> N
     # Every requested IRC direction converged + endpoints converged -> success.
     converged = [{
         "index": 1,
-        "tsopt": {"continue_irc": True},
+        "tsopt": {"continue_irc": True, "optimization_status": "converged"},
         "irc_traj": "finished_irc_trj.xyz",
         "irc": {"usable": True, "reason": "stopped", "traj": "finished_irc_trj.xyz"},
         "endpoint_assignment": {"connectivity_validated": True},
@@ -1050,7 +942,7 @@ def test_all_pipeline_tsopt_only_does_not_require_mep_convergence() -> None:
     summary = {"segments": [{"index": 1, "kind": "tsopt", "barrier_kcal": 10.0}]}
     post = [{
         "index": 1,
-        "tsopt": {"continue_irc": True},
+        "tsopt": {"continue_irc": True, "optimization_status": "converged"},
         "irc": {"usable": True, "reason": "ok"},
         "endpoint_assignment": {"connectivity_validated": True},
         "endpoint_opt": {"reactant_converged": True, "product_converged": True},
@@ -1072,6 +964,7 @@ def test_all_pipeline_preserves_tsopt_stop_reason_before_missing_irc() -> None:
         "tsopt": {
             "continue_irc": False,
             "reason": "ts_optimization_not_converged",
+            "optimization_status": "not_converged",
         },
     }]
     truth = _pipeline_aggregate_truth(
@@ -1097,7 +990,7 @@ def test_all_pipeline_aggregate_gates_on_endpoint_opt() -> None:
     # IRC usable but the product endpoint optimization did not converge.
     post = [{
         "index": 1,
-        "tsopt": {"continue_irc": True},
+        "tsopt": {"continue_irc": True, "optimization_status": "converged"},
         "irc": {"usable": True, "reason": "ok"},
         "endpoint_opt": {
             "reactant_converged": True,
@@ -1136,7 +1029,7 @@ def test_all_pipeline_aggregate_preserves_legacy_severity() -> None:
     assert "segment 1: DFT failed (TS)" in truth.status_reasons
 
 
-def test_all_pipeline_requires_validated_optimized_endpoint_connectivity() -> None:
+def test_all_pipeline_connectivity_is_separate_from_optimizer_completion() -> None:
     from pdb2reaction.workflows.all import _pipeline_aggregate_truth
 
     summary = {
@@ -1146,7 +1039,7 @@ def test_all_pipeline_requires_validated_optimized_endpoint_connectivity() -> No
     }
     base = {
         "index": 1,
-        "tsopt": {"continue_irc": True},
+        "tsopt": {"continue_irc": True, "optimization_status": "converged"},
         "irc": {"usable": True, "reason": "ok"},
         "endpoint_assignment": {"connectivity_validated": True},
     }
@@ -1173,7 +1066,7 @@ def test_all_pipeline_requires_validated_optimized_endpoint_connectivity() -> No
         post_segments=[unvalidated],
         config={"tsopt": True},
         legacy_status="success",
-    ).scientific_status != "success"
+    ).scientific_status == "success"
     assert _pipeline_aggregate_truth(
         summary,
         post_segments=[validated],
@@ -1188,7 +1081,7 @@ def test_all_pipeline_requires_complete_endpoint_opt_record() -> None:
     summary = {"segments": [{"index": 1, "kind": "seg", "converged": True}]}
     base = {
         "index": 1,
-        "tsopt": {"continue_irc": True},
+        "tsopt": {"continue_irc": True, "optimization_status": "converged"},
         "irc": {"usable": True, "reason": "stopped"},
     }
     missing = _pipeline_aggregate_truth(
@@ -1302,10 +1195,10 @@ def test_all_pipeline_aggregate_no_tsopt_uses_segment_converged() -> None:
 
 
 @pytest.mark.parametrize("mep_converged", [False, None])
-def test_all_pipeline_post_success_cannot_promote_bad_mep(
+def test_all_pipeline_final_optimizations_supersede_mep_seed_convergence(
     mep_converged: bool | None,
 ) -> None:
-    """Successful IRC/endpoints cannot overwrite false/unknown MEP truth."""
+    """The final optimized result supersedes the seed while retaining its diagnostics."""
     from pdb2reaction.workflows.all import _pipeline_aggregate_truth
 
     summary = {"segments": [{
@@ -1314,7 +1207,7 @@ def test_all_pipeline_post_success_cannot_promote_bad_mep(
     }]}
     post = [{
         "index": 1,
-        "tsopt": {"continue_irc": True},
+        "tsopt": {"continue_irc": True, "optimization_status": "converged"},
         "irc": {"usable": True, "reason": "ok"},
         "endpoint_assignment": {"connectivity_validated": True},
         "endpoint_opt": {
@@ -1327,9 +1220,8 @@ def test_all_pipeline_post_success_cannot_promote_bad_mep(
         summary, post_segments=post, config={"tsopt": True},
         legacy_status="success",
     )
-    assert truth.scientific_status != "success"
-    expected_reason = "mep_not_converged" if mep_converged is False else "mep_convergence_unknown"
-    assert any(reason.endswith(expected_reason) for reason in truth.status_reasons)
+    assert truth.scientific_status == "success"
+    assert summary["segments"][0]["converged"] is mep_converged
 
 
 def test_read_path_opt_segment_converged_is_tristate(tmp_path: Path) -> None:

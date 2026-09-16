@@ -74,15 +74,13 @@ Walk these in order; each step has a fast pass/fail check before you move on.
 
 **1. Top-level verdict** — open `result_ts_only/summary.json`:
 
-- `scientific_status` should be `"success"`: all requested result records exist and the
-  TS imaginary-mode validator passed. `"partial"` means a usable path exists
-  but a requested post-stage result is missing/failed or a validator did not
-  pass; inspect `scientific_status_reasons`. `"failed"` means no usable path result was
-  produced.
+- `scientific_status: "success"` means the required calculation results and applicable numerical optimization outcomes are complete. `"partial"` or `"failed"` identifies incomplete or unusable requested work; inspect `scientific_status_reasons`. Frequency counts and endpoint connectivity remain separate information for interpreting the reaction.
 - `rate_limiting_step.barrier_kcal` and `segments[0].delta_kcal` give ΔE‡ and ΔE in kcal/mol using the higher-energy IRC endpoint as R. Check `endpoint_assignment` and assign chemical R/P identities before interpretation.
 - `post_segments[0].gibbs_mlip.barrier_kcal` / `.delta_kcal` are the same numbers with ZPE + thermal corrections applied (ΔG‡, ΔG at 298.15 K, 1 atm).
 
 **2. Imaginary mode at the saddle** — `post_segments[0].ts_imag`:
+
+Here `n_imag` uses the criterion recorded in the result, not the count of all negative entries in the complete frequency file.
 
 - `n_imag` must be exactly `1`. `nu_imag_max_cm` (negative cm⁻¹) is the imaginary wavenumber.
 - Magnitude alone does not establish chemical relevance: inspect the mode and
@@ -101,7 +99,7 @@ The merged trajectory (forward + backward) should land on the intended reactant 
 
 **4. Endpoint minima and thermochemistry** — for each of R, TS, P:
 
-- `result_ts_only/segments/seg_01/freq/{R,TS,P}/frequencies_cm-1.txt` — TS must have exactly one negative frequency (matching step 2). Zero is ideal when independently certifying R/P as minima, but residual R/P imaginary modes do not block thermochemistry or aggregate success.
+- `result_ts_only/segments/seg_01/freq/{R,TS,P}/frequencies_cm-1.txt` retains the complete signed spectrum. For first-order classification, the TS should have one imaginary mode under the selected criterion (`n_imag`); `n_negative_modes` additionally reports every negative sign. Inspect R/P modes when assessing endpoint character. Frequency counts do not override numerical convergence or block thermochemistry.
 - `result_ts_only/segments/seg_01/freq/{R,TS,P}/thermoanalysis.yaml` — fields are `electronic_energy_ha`, `zpe_correction_ha`, `sum_EE_and_ZPE_ha`, and `sum_EE_and_thermal_free_energy_ha` (the absolute Gibbs energy in hartree, at `temperature_K: 298.15`, `pressure_atm: 1.0`). Subtract R from TS for ΔG‡; p2r already reports the difference in `gibbs_mlip.barrier_kcal`.
 
 **5. Visual structure check** — load the canonical R/TS/P PDBs:
@@ -116,7 +114,7 @@ In PyMOL: `align` the three states, label the reactive atoms (`label name C12+O1
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `post_segments[0].ts_imag.n_imag == 0` | TS guess collapsed to a minimum | Re-do the TS guess with `path-search`; by default `all` uses the MEP tangent to select and track the uphill root. An ordinary TS-only run without path information cannot identify the intended neighboring saddle |
+| `post_segments[0].ts_imag.n_imag == 0` | No imaginary mode under the selected criterion | Re-do the TS guess with `path-search`; by default `all` uses the MEP tangent to select and track the uphill root. An ordinary TS-only run without path information cannot identify the intended neighboring saddle |
 | `n_imag >= 2` | The geometry is not a certified first-order saddle | Re-optimize with `all --thresh-post gau_tight` or standalone `tsopt --thresh gau_tight`, then inspect every imaginary-mode displacement. Certification requires the recomputed result itself to have exactly one imaginary mode, regardless of the magnitude of the additional mode. Use `--flatten` to target extra modes (see [tsopt](tsopt.md), `hessian_dimer.flatten_max_iter`). |
 | `segments[0].bond_changes` is empty (`""` or `"(no covalent changes detected)"`) or IRC reaches the wrong endpoint | Imaginary mode not along the intended coordinate, or TS connects two essentially identical wells | Visualize `segments/seg_01/ts/vib/imag_*_trj.xyz` in PyMOL; if the mode is wrong, re-pick the TS guess |
 | `freq/{R,P}/frequencies_cm-1.txt` shows residual imaginary modes | The endpoint may not be a fully converged minimum | Thermochemistry remains available. If minimum certification matters, optionally re-optimize with `all --thresh-post gau_tight` or extend IRC max cycles in YAML; see [freq](freq.md) |

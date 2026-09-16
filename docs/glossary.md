@@ -99,16 +99,16 @@
 | **Bohr** | Atomic unit of length; 1 Bohr ≈ 0.529 Å. |
 | **Angstrom (Å)** | 10⁻¹⁰ m; standard unit for interatomic distances. |
 | **cm⁻¹** | Reciprocal centimeters (wavenumber); the standard unit for vibrational frequencies. Imaginary frequencies appear as negative values. |
-| **Imaginary Frequency** | A vibrational frequency corresponding to a negative eigenvalue of the Hessian. A TS has exactly one (first-order saddle point). Reported as a negative cm⁻¹ value. Final TS acceptance includes negative frequencies inside the configured display zero window. |
+| **Imaginary Frequency** | A vibrational frequency corresponding to a negative eigenvalue of the Hessian. A TS has exactly one (first-order saddle point). Reported as a negative cm⁻¹ value. Saddle-order classification uses the selected imaginary-mode criterion; every negative sign is also retained as a separate diagnostic. |
 
 (frequency-thresholds)=
-### Frequency thresholds: 5 cm⁻¹ small-mode handling vs 100 cm⁻¹ QRRHO rotor cutoff
+### Imaginary-mode criterion and QRRHO rotor cutoff
 
-Two unrelated cm⁻¹ thresholds appear in `pdb2reaction`. They act on different mode populations and serve different purposes:
+Imaginary-mode classification and the QRRHO rotor cutoff serve different purposes:
 
 | Threshold | Role | Source |
 |-----------|------|--------|
-| **5 cm⁻¹** | Default near-zero classification window. Resolved imaginary counts and TS mode selection use `frequency < -cutoff`; complete physical frequencies and positive thermal modes are retained. Strict TS acceptance also counts negative near-zero modes. | Shared YAML key: `freq.zero_cutoff_cm`. |
+| **Eigenvalue < −10⁻⁶ Hartree/(bohr²·amu)** | Default imaginary-mode criterion, equivalent to a frequency below about −5.14 cm⁻¹. Complete signed frequencies and positive thermochemistry modes are retained. Raw negative counts are separate diagnostics and do not change numerical convergence. | Derived by `eigval_to_wavenumber`; legacy override: `freq.zero_cutoff_cm`. |
 | **100 cm⁻¹** | *QRRHO rotor cutoff* (Grimme). Positive low-frequency vibrations are damped between harmonic-oscillator and free-rotor entropy in `freq` thermochemistry; it changes only entropy / Gibbs free energy. | `thermoanalysis/config.py` as `ROTOR_CUT_DEFAULT = 100.0`. |
 
 ## CLI Conventions
