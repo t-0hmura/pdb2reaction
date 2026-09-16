@@ -129,7 +129,7 @@ If you prefer to build the environment piece by piece:
     pdb2reaction uses UMA by default. To use alternative backends, install the corresponding optional dependency:
 
     ```bash
-    # ORB backend (Python 3.12 installs orb-models 0.7+; Python 3.11 installs the last 0.5.x)
+    # ORB backend (Python 3.12+ installs orb-models 0.7+; Python 3.11 installs the last 0.5.x)
     pip install "pdb2reaction[orb]"
 
     # AIMNet2 backend

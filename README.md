@@ -44,7 +44,7 @@ Protein structures can be supplied in **PDB** or **mmCIF** format, including mmC
 
 | Component | Requirement |
 |---|---|
-| OS / Python | Linux recommended. Python 3.11–3.12. |
+| OS / Python | Linux recommended. Python >= 3.11. |
 | GPU / CUDA / VRAM | CUDA-capable NVIDIA GPU recommended for production, with a compatible driver and official PyTorch 2.13 CUDA wheel (`cu126`, `cu130`, or `cu132`). Required VRAM is backend/model/system/workflow dependent; pilot the real calculation. |
 | RAM / Disk | Size for the selected environment, model cache, structures, trajectories, and DFT scratch; no atom-count-only minimum is reliable. |
 
