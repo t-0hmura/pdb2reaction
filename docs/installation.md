@@ -56,7 +56,7 @@ You only need to do this once per machine / environment.
   module load cuda/<your-version>   # e.g. cuda/12.6 or cuda/12.9
   ```
 
-> **Tip:** UMA is the default MLIP backend. To use ORB or AIMNet2, install the corresponding extra (e.g. `pip install "pdb2reaction[orb]"`) and pass `-b/--backend orb` to any command. See step 7 below.
+> **Tip:** UMA is the default MLIP backend. To use ORB or AIMNet2, install the corresponding extra (e.g. `pip install --only-binary=dm-tree "pdb2reaction[orb]"`) and pass `-b/--backend orb` to any command. See step 7 below.
 
 ```{warning}
 **MACE:** `mace-torch` requires `e3nn==0.4.4`, which conflicts with `fairchem-core`'s `e3nn>=0.5` pin (UMA). The two cannot coexist, so MACE needs a dedicated conda env; the canonical recipe is `pip uninstall -y fairchem-core && pip install mace-torch` in that env.
@@ -129,8 +129,8 @@ If you prefer to build the environment piece by piece:
     pdb2reaction uses UMA by default. To use alternative backends, install the corresponding optional dependency:
 
     ```bash
-    # ORB backend (Python 3.12+ installs orb-models 0.7+; Python 3.11 installs the last 0.5.x)
-    pip install "pdb2reaction[orb]"
+    # ORB backend (Requires Python 3.11 or 3.12; 3.12 recommended)
+    pip install --only-binary=dm-tree "pdb2reaction[orb]"
 
     # AIMNet2 backend
     pip install "pdb2reaction[aimnet]"

@@ -9,7 +9,7 @@ automatically with `pip install pdb2reaction`.
 
 ## Prerequisites
 
-- Python ≥ 3.11
+- Python ≥ 3.11; 3.12 recommended. ORB requires 3.11 or 3.12.
 - A working PyTorch install matching your CUDA driver — see `env-cuda.md`
 - (For DFT) PySCF / GPU4PySCF — see `dft.md`
 - (For ALPB) xtb — see `xtb.md`
@@ -20,7 +20,7 @@ automatically with `pip install pdb2reaction`.
 ```bash
 conda activate <YOUR_ENV>
 pip install pdb2reaction                         # core (UMA via fairchem-core); Orb requires the [orb] extra
-pip install 'pdb2reaction[orb,aimnet,dft]'        # extras as needed
+pip install --only-binary=dm-tree 'pdb2reaction[orb,aimnet,dft]'        # extras as needed
 plotly_get_chrome -y                             # headless Chrome for Plotly PNG export (needs network)
 ```
 
@@ -62,7 +62,7 @@ python -c "import importlib.metadata as m; print(m.metadata('pdb2reaction').get_
 ```bash
 git clone https://github.com/t-0hmura/pdb2reaction.git pdb2reaction
 cd pdb2reaction
-pip install -e '.[orb,aimnet,dft]'
+pip install --only-binary=dm-tree -e '.[orb,aimnet,dft]'
 ```
 
 ## Verify the install

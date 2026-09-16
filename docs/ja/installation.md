@@ -56,7 +56,7 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
   module load cuda/<your-version>   # 例: cuda/12.6 または cuda/12.9
   ```
 
-> **ヒント:** UMA がデフォルトの MLIP バックエンドです。ORB や AIMNet2 を使用するには、対応する extra をインストール（例: `pip install "pdb2reaction[orb]"`）し、コマンドに `-b/--backend orb` を渡してください。下の手順 7 を参照。
+> **ヒント:** UMA がデフォルトの MLIP バックエンドです。ORB や AIMNet2 を使用するには、対応する extra をインストール（例: `pip install --only-binary=dm-tree "pdb2reaction[orb]"`）し、コマンドに `-b/--backend orb` を渡してください。下の手順 7 を参照。
 
 ```{warning}
 **MACE:** `mace-torch` は `e3nn==0.4.4` を要求し、`fairchem-core` の `e3nn>=0.5` pin（UMA）と競合します。両者は共存できないため、MACE には専用の conda env が必要です。標準 recipe はその env で `pip uninstall -y fairchem-core && pip install mace-torch` です。
@@ -128,8 +128,8 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
     pdb2reaction はデフォルトで UMA を使用します。他のバックエンドを使用する場合は、対応するオプション依存関係をインストールしてください:
 
     ```bash
-    # ORB バックエンド（Python 3.12 以上は orb-models 0.7 系、Python 3.11 は最後の 0.5 系）
-    pip install "pdb2reaction[orb]"
+    # ORB バックエンド（Python 3.11／3.12 が必要、3.12 推奨）
+    pip install --only-binary=dm-tree "pdb2reaction[orb]"
 
     # AIMNet2 バックエンド
     pip install "pdb2reaction[aimnet]"
