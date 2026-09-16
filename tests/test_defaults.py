@@ -70,7 +70,9 @@ class TestDefaultsStructure:
         assert RSIRFO_KW["check_eigval_structure"] is False
         assert RSIRFO_KW["reject_mode_loss"] is False
         assert RSIRFO_KW["verify_saddle"] is True
-        assert RSIRFO_KW["saddle_imaginary_threshold_cm"] == 5.0
+        from pysisyphus.helpers_pure import eigval_to_wavenumber
+
+        assert RSIRFO_KW["saddle_imaginary_threshold_cm"] == float(eigval_to_wavenumber(1e-6))
         assert RSIRFO_KW["saddle_recovery_check_interval"] == 50
         assert RSIRFO_KW["saddle_recovery_max_cycles"] == 0
 

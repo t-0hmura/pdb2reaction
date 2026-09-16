@@ -5,6 +5,7 @@ from typing import List, Optional
 import h5py
 import numpy as np
 
+from pysisyphus._array import as_numpy
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import log
 from pysisyphus.normal_modes import DEFAULT_FREQUENCY_ZERO_CUTOFF_CM
@@ -1696,7 +1697,7 @@ class TSHessianOptimizer(HessianOptimizer):
                 else:
                     selected = None
             else:
-                reference = np.asarray(reference, dtype=float)
+                reference = np.asarray(as_numpy(reference), dtype=float)
                 if reference.shape[0] != eigvecs.shape[0]:
                     reference = self.active_from_full(reference)
                 overlaps = np.abs(eigvecs.T @ reference)
@@ -1776,6 +1777,16 @@ class TSHessianOptimizer(HessianOptimizer):
                 self.ts_modes = np.stack(
                     [self.active_from_full(mode) for mode in self.ts_modes]
                 )
+
+        # Exact refresh can replace a NumPy model with a Torch Hessian (or
+        # vice versa) without changing its coordinate basis. Match only the
+        # small mode history after the existing active-DOF projection.
+        if isinstance(ovlp_eigvecs, torch.Tensor):
+            self.ts_modes = torch.as_tensor(
+                self.ts_modes, dtype=ovlp_eigvecs.dtype, device=ovlp_eigvecs.device
+            )
+        else:
+            self.ts_modes = np.asarray(as_numpy(self.ts_modes), dtype=ovlp_eigvecs.dtype)
 
         self.log(f"Overlaps of previous TS mode with current {infix}mode(s):")
         if isinstance(eigvecs, torch.Tensor):

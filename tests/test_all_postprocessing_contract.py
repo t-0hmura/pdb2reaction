@@ -132,6 +132,7 @@ def test_path_postprocessing_uses_terminal_tsopt_imaginary_mode_record(
         "mlip": {"barrier_kcal": 40.10, "delta_kcal": 10.93},
         "irc_traj": "finished_irc_trj.xyz",
         "tsopt": {
+            "optimization_status": "converged",
             "continue_irc": True,
             "saddle_validation": "first_order",
             "n_imaginary_modes": 1,
