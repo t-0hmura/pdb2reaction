@@ -92,7 +92,7 @@ result_scan/
 
 1. `_work/scan/stage_01/scan_trj.xyz` — 結合距離の変化を PyMOL で確認
 2. `mep.pdb` と `_work/path_opt/hei_seg_01.pdb` — 最適化後の MEP と最高エネルギー像を確認
-3. `summary.json` — [実行結果と理由](json-output.md#実行結果と科学的妥当性)を確認してから、`summary.log` の反応障壁と結合変化を解釈
+3. `summary.json` — [実行結果と理由](json-output.md#実行と要求段階の完了状況)を確認してから、`summary.log` の反応障壁と結合変化を解釈
 
 ## 補足
 

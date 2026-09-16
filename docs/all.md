@@ -175,7 +175,7 @@ The log is organized into numbered sections:
 
 ### Reading `summary.json`
 
-Before interpreting energies, check `scientific_status` and `scientific_status_reasons`; see [result status and stage outcomes](json-output.md#execution-and-scientific-truth) for partial or stopped runs.
+Before interpreting energies, check `scientific_status` and `scientific_status_reasons`; see [result status and stage outcomes](json-output.md#execution-and-requested-stage-completion) for partial or stopped runs.
 
 Top-level keys: `out_dir`, `n_images`, `n_segments` (run metadata and counts); `segments` (per-segment entries with `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes`); `energy_diagrams` (optional payloads with `labels`, `energies_kcal`, `energies_au`, `ylabel`, `image` paths). `summary.json` intentionally omits the formatted tables and filesystem tree from `summary.log`.
 
@@ -243,7 +243,7 @@ and `tsopt` subcommands keep their own `--max-cycles`.
 | --- | --- | --- |
 | `--mep-mode [gsm\|dmf]` | MEP algorithm: GSM (Growing String Method) or DMF (Direct Max Flux). | `gsm` |
 | `--max-nodes INT` | Movable internal images per GSM/DMF segment. Both engines retain two endpoints, so total images = `max_nodes + 2`. | `20` |
-| `--max-depth INT` | Recursive subdivision levels allowed; requires `--refine-path`. `0` disables subdivision, returning each input pair as one MEP segment (none when its HEI sits at an endpoint). A capped interval is tagged `seg_NNN_maxdepth` and may hold more than one step. | `10` |
+| `--max-depth INT` | Zero-based recursion depth limit; requires `--refine-path`. Depth 0 is processed even at limit 0; deeper child intervals are retained without further subdivision. A capped interval is tagged `seg_NNN_maxdepth` and may hold more than one step. | `10` |
 | `--gsm-param [equi\|energy]` | GSM node parameterization after string growth. `energy` concentrates nodes in high-energy regions and may be tried when an equidistant path skips the reaction-coordinate region near the HEI; it does not identify a TS. | `equi` |
 | `--max-cycles-gsm INT` | Maximum GSM string-optimizer cycles. | `300` |
 | `--max-cycles-dmf INT` | Maximum DMF IPOPT iterations. | `300` |

@@ -255,7 +255,7 @@ def test_all_manifest_ignores_stale_scan_stages_and_records_distinct_runs(
         )
         assert public_summary["run_id"] == internal["run_id"]
         segment = public_summary["segments"][0]
-        assert all_workflow._is_reactive_segment(segment) is bond_analysis_fails
+        assert all_workflow._is_reactive_segment(segment)
         if bond_analysis_fails:
             assert segment["bond_changes"] == "(bond-change analysis unavailable)"
         assert "STALE_SENTINEL" not in json.dumps(public_summary)
@@ -402,5 +402,47 @@ def test_all_stops_before_path_search_when_scan_outcome_failed(
     )
 
     assert result.exit_code != 0
-    assert "did not produce a scientifically usable path" in result.output
+    assert "did not produce usable terminal seeds" in result.output
     assert dispatched == ["scan"]
+
+
+@pytest.mark.parametrize("case", ["terminal_converged", "terminal_failed", "energy_nan", "coords_nan", "missing", "stale"])
+def test_all_uses_terminal_scan_seeds_independently_of_middle_steps(tmp_path, monkeypatch, case):
+    source = tmp_path / "input.xyz"
+    source.write_text("2\nH2\nH 0 0 0\nH 0 0 0.74\n")
+    out = tmp_path / "out"
+    stage_path = out / "_work/scan/stage_01/result.xyz"
+    valid_frame = "2\nE=-1.0 unit=hartree\nH 0 0 0\nH 0 0 0.80\n"
+    if case == "stale":
+        _replace_bytes(stage_path, valid_frame.encode())
+    dispatched = []
+
+    def child(name, _cli, args, **kwargs):
+        dispatched.append(name)
+        if name != "scan":
+            raise RuntimeError("terminal seed handoff reached")
+        child_out = Path(args[args.index("--out-dir") + 1])
+        if case not in {"missing", "stale"}:
+            frame = valid_frame.replace("0.80", "nan") if case == "coords_nan" else valid_frame
+            _replace_bytes(child_out / "stage_01/result.xyz", frame.encode())
+        payload = {"scientific_status": "failed",
+                   "scientific_status_reasons": ["stage_1:not_converged"],
+                   "preopt_converged": None,
+                   "stages": [{"index": 1, "n_steps": 2,
+                               "converged": case != "terminal_failed",
+                               "final_energy_hartree": float("nan") if case == "energy_nan" else -1.0}]}
+        _replace_bytes(child_out / "result.json", json.dumps(apply_current_run_id(payload)).encode())
+
+    monkeypatch.setattr(all_workflow, "_run_cli_main", child)
+    result = CliRunner().invoke(all_workflow.cli, [
+        "-i", str(source), "-q", "0", "--scan-lists", "[(1,2,0.80)]",
+        "--no-preopt", "--out-dir", str(out),
+    ])
+    assert result.exit_code != 0
+    if case == "terminal_converged":
+        assert str(result.exception) == "terminal seed handoff reached"
+        assert len(dispatched) == 2
+        assert "incomplete intermediate steps" in result.output
+    else:
+        assert dispatched == ["scan"]
+        assert "terminal seed handoff reached" not in result.output

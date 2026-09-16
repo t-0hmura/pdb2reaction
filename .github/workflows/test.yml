@@ -58,10 +58,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cpu
           pip install -e . --no-deps
-          pip install click pyyaml numpy biopython scipy ase \
+          pip install click pyyaml 'numpy>=2.0,<2.5' biopython scipy 'ase>=3.26.0' \
             autograd dask distributed h5py fabric jinja2 joblib \
             matplotlib natsort psutil rmsd sympy scikit-learn \
-            pandas tabulate plotly ipywidgets pymsym pytest pytest-cov
+            pandas tabulate 'plotly>=6.1.1' ipywidgets 'pymsym>=0.3.5,<0.4' pytest pytest-cov
 
       - name: Run unit tests (CPU-only, no GPU)
         timeout-minutes: 10

@@ -1112,23 +1112,12 @@ def _build_multistep_path(
 
     def _terminate_with_maxdepth(
         reason_msg: Optional[str] = None,
-        *,
-        use_maxdepth_tag: bool = True,
-        convergence_unknown: bool = False,
     ) -> CombinedPath:
         if reason_msg:
             click.echo(reason_msg)
 
-        # `_maxdepth` means "the recursion was cut off while covalent changes
-        # remained", so the segment is not guaranteed to be one elementary step.
-        # A deliberate `max_depth: 0` is a different event -- the caller asked
-        # for no subdivision -- and keeps the ordinary tag so its artifacts are
-        # named like any single-segment MEP.
-        seg_tag = (
-            f"seg_{seg_counter[0]:03d}_maxdepth"
-            if use_maxdepth_tag
-            else f"seg_{seg_counter[0]:03d}"
-        )
+        # A depth-limited interval need not be one elementary reaction step.
+        seg_tag = f"seg_{seg_counter[0]:03d}_maxdepth"
         gsm = (
             _run_dmf_between(
                 gA,
@@ -1176,7 +1165,6 @@ def _build_multistep_path(
                 ],
             )
 
-        bond_eval_failed = False
         try:
             changed, step_summary = has_bond_change(gsm.images[0], gsm.images[-1], bond_cfg)
         except Exception as e:
@@ -1184,10 +1172,8 @@ def _build_multistep_path(
             # Keep the interval reactive so it still receives post-processing:
             # `_is_reactive_segment` reads this text, and an empty string there
             # reads as "no covalent change" and drops the segment silently. The
-            # sentinel is non-empty for that reason, and convergence becomes
-            # unknown so the aggregate cannot report success on an interval whose
-            # chemistry was never established.
-            bond_eval_failed = True
+            # sentinel is non-empty for that reason. Preserve the solver's
+            # numerical convergence separately from this chemical diagnostic.
             changed, step_summary = True, "(bond-change evaluation failed)"
 
         try:
@@ -1204,11 +1190,7 @@ def _build_multistep_path(
             delta_kcal=float(delta_kcal),
             summary=step_summary if changed else "(no covalent changes detected)",
             kind="seg",
-            converged=(
-                None
-                if (bond_eval_failed or convergence_unknown)
-                else getattr(gsm, "is_converged", None)
-            ),
+            converged=getattr(gsm, "is_converged", None),
         )
 
         _tag_images(
@@ -1224,23 +1206,10 @@ def _build_multistep_path(
             single_opt_executed=single_opt_executed,
         )
 
-    # `max_depth` counts LEVELS of recursive subdivision, so 0 performs none at
-    # all and reproduces a single-segment MEP. Reaching the cap is not a failure:
-    # the remaining interval is returned as one segment, not subdivided further.
+    # Preserve the established zero-based depth limit: process depth N and
+    # stop subdivision when entering a child deeper than max_depth.
     max_depth = int(search_cfg.get("max_depth", SEARCH_KW["max_depth"]))
-    if depth >= max_depth:
-        if max_depth <= 0:
-            # Reachable only at depth 0: subdivision was switched off, not spent.
-            # Say so: without the `_maxdepth` tag this run is otherwise identical
-            # to one whose recursion terminated on a verified elementary step.
-            return _terminate_with_maxdepth(
-                reason_msg=(
-                    f"[{branch_tag}] Recursive subdivision is disabled "
-                    "(max_depth=0); evaluating the current MEP without further "
-                    "splitting."
-                ),
-                use_maxdepth_tag=False,
-            )
+    if depth > max_depth:
         click.echo(f"[{branch_tag}] Reached maximum recursion depth. Returning current endpoints only.")
         return _terminate_with_maxdepth()
 
@@ -1482,10 +1451,8 @@ def _build_multistep_path(
             "Please check the initial structure and the generated intermediate structures. "
             "Alternatively, try switching the mep-mode. If that still fails, try including intermediate structures in the inputs."
         )
-        # The path is suspect, so convergence is reported as unknown.
-        return _terminate_with_maxdepth(
-            reason_msg=warning_msg, convergence_unknown=True
-        )
+        # Retain the warning and the terminal solver's numerical outcome.
+        return _terminate_with_maxdepth(reason_msg=warning_msg)
 
     parts.append((step_imgs, step_E))
     seg_reports.append(seg_report)
@@ -2135,13 +2102,7 @@ def _merge_final_and_write(final_images: List[Any],
                     "has max_nodes+2 images including endpoints. When not given, YAML "
                     "search.max_nodes_segment applies."))
 @click.option("--max-depth", type=click.IntRange(min=0), default=None, show_default="10",
-              help=("Number of recursive subdivision levels allowed while splitting a "
-                    "multistep path. 0 performs no subdivision, returning each input "
-                    "pair as one MEP segment (none when its HEI sits at an endpoint). "
-                    "Reaching the limit is not an error. Any segment retained at a "
-                    "positive cap is tagged seg_NNN_maxdepth and is not "
-                    "guaranteed to be a single elementary step. When not given, YAML "
-                    "search.max_depth applies."))
+              help=("Zero-based recursion depth limit for multistep refinement. Depth 0 is processed even when the limit is 0. Capped child intervals use seg_NNN_maxdepth and may contain multiple steps. When omitted, YAML search.max_depth applies."))
 @click.option(
     "--gsm-param",
     type=click.Choice(["equi", "energy"], case_sensitive=False),

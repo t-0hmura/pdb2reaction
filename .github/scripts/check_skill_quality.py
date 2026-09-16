@@ -262,6 +262,7 @@ def _validate_high_risk_semantics(errors: list[str]) -> None:
         (
             "`completed` is not an IRC convergence verdict",
             "`*_converged`",
+            "IRC has no independent scientific success verdict",
             "`never_stop_energy_bypasses`",
             "inserts one underscore",
         ),
@@ -271,12 +272,19 @@ def _validate_high_risk_semantics(errors: list[str]) -> None:
         freq_page,
         (
             "`freq` retains every signed physical mode",
-            "strict curvature also includes weak negative modes",
+            "`-1e-6` Hartree/(bohr²·amu)",
+            "Raw negative counts are diagnostic",
             "freq.zero_cutoff_cm",
             "E + G_corr = G",
         ),
         errors,
     )
+    for page in (irc_page, output_page, summary_page):
+        text = page.read_text(encoding="utf-8")
+        for obsolete in ('d["forward_status"]', 'd["backward_status"]',
+                         '`*_status == "stopped"`'):
+            if obsolete in text:
+                _issue(errors, page, f"removed IRC verdict used: {obsolete}")
     _require(
         summary_page,
         (

@@ -80,7 +80,6 @@ print(d.get("bond_changes"))        # omitted if endpoint comparison was unavail
 print(d["endpoint_energy_orientation"])
 print(d.get("bond_changes_direction"))
 print(d["status"])                 # "completed" means the runner returned and wrote output
-print(d["forward_status"], d["backward_status"])
 print(d["forward_requested"], d["backward_requested"])
 print(d["forward_integration_converged"], d["backward_integration_converged"])
 print(d["forward_integration_stop_reason"], d["backward_integration_stop_reason"])
@@ -90,13 +89,15 @@ print(d["rigid_projection"]["treatment"], d["rigid_projection"]["effective_rank"
 ```
 
 `completed` is not an IRC convergence verdict; it means the runner returned.
-Each requested direction reports
-`*_status` as `stopped` or `failed`, which is the usability axis.
-`*_integration_converged` records only whether the RMS-gradient stationarity
-criterion fired, so `--never-stop` always leaves it false; pair it with
-`*_downhill_departure_valid` when you need both conditions. Neither decides
-whether a finite, downhill trajectory can proceed to endpoint optimization.
-Schema 3.0 removed the `*_converged` keys.
+IRC has no independent scientific success verdict. Each requested direction
+records its frame count and `*_integration_stop_reason`.
+`*_integration_converged` records whether the RMS-gradient stationarity
+criterion fired, so `--never-stop` leaves it false. This field and
+`*_downhill_departure_valid` are diagnostics, not endpoint-optimization gates.
+Finite retained endpoints can proceed to optimization after a predictor-budget
+or max-cycle stop. Missing or non-finite coordinates and execution errors must
+still be reported. Schema 3.0 removed the old `*_converged` and direction-status
+keys; read the diagnostics shown above.
 `never_stop` records whether the opt-in mode was enabled;
 `never_stop_energy_bypasses` records how many energy-rise/change stops it
 actually bypassed.

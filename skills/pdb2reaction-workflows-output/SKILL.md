@@ -198,14 +198,14 @@ IRC from a numerically converged `higher_order` result when a validated negative
 root exists, but that continuation is not first-order certification. Numerical
 non-convergence, zero modes, failed/skipped PHVA, or no valid negative root stops
 `all` after retaining TS artifacts. An additional standalone `freq` is optional;
-if run, check its modes and `n_imaginary == 1`. Require irc
-`result.json` `scientific_status == "success"` **plus** each enabled direction's
-`*_status == "stopped"`, valid downhill-departure field, and nontrivial frame
-count; then optimize and confirm the first/last endpoints connect the intended
-R and P (bond changes match this step). `*_integration_converged` and
-`*_downhill_departure_valid` are diagnostics; `completed` alone only means the
-runner returned.
-A TS that fails any gate is not validated as this elementary step.
+if run, inspect its modes and the selected imaginary count. IRC has no independent
+scientific success verdict: read frame counts, retained coordinates and stop
+reasons, then optimize the finite retained endpoints. `*_integration_converged`
+and `*_downhill_departure_valid` are diagnostics; `completed` means the runner
+returned. A predictor-budget stop alone does not block endpoint optimization.
+Check the optimized endpoints against the intended R/P as a separate mechanism
+assessment, not an additional optimizer-completion gate. A first-order numerical
+TS does not by itself establish the intended elementary reaction.
 
 **Stage 3 — optimize and identify the raw IRC ends**
 

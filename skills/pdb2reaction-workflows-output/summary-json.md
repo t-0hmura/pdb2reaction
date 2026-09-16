@@ -19,10 +19,10 @@ corresponding command page and in [`pdb2reaction-cli`](../pdb2reaction-cli/SKILL
 | `pdb2reaction_version` | Toolkit version that produced this output |
 | `status` | `"success"`, `"partial"`, or `"failed"` |
 | `execution_status` | Whether required leaves executed (`completed` or `failed`) |
-| `scientific_status` | Whether the produced science is usable (`success`, `partial`, or `failed`); gate consumption on this field, not legacy `status` alone |
+| `scientific_status` | Completion of requested numerical/calculation stages (`success`, `partial`, or `failed`); inspect per-stage reasons |
 | `scientific_status_reasons` | Reasons for missing or unusable leaves; omitted on clean success |
 | `expected_item_ids` / `observed_item_ids` | Expected vs observed leaf IDs; compare them before accepting an aggregate |
-| `stage_outcomes` / `point_outcomes` | Producer- and mode-dependent fail-closed records. Require `usable` / `seed_eligible` and interpret `converged` by leaf type; IRC direction leaves use `converged: null` and expose propagation status separately. Neither array is universal at the `all` root. |
+| `stage_outcomes` / `point_outcomes` | Producer- and mode-dependent stage/scan-point records. Interpret `converged` by stage type. IRC has stop diagnostics without direction success/failure verdicts. Neither array is universal at the `all` root. |
 | `charge` / `spin` | Resolved cluster charge / multiplicity |
 | `environment` | `{device, gpu_name, gpu_vram_gb, cuda_version, cpu, n_cpus, ram_gb}` |
 | `references` | Methods actually used by the resolved workflow, as `{method, citation, doi}` records. The same set appears at the tail of `summary.log` and final stdout immediately before elapsed time. |
@@ -68,9 +68,9 @@ Present when `--tsopt`, `--thermo`, or `--dft` was passed:
 | `mep_barrier_kcal` / `mep_delta_kcal` | MEP-level (un-refined) barrier / ΔE, mirroring `segments[i]` (refined post-IRC/tsopt energies live in the per-segment `mlip` block) |
 | `post_dir` | Subdirectory holding tsopt / freq / IRC outputs for this segment |
 | `irc_plot` / `irc_traj` | Paths to the IRC trace PNG and trajectory XYZ |
-| `irc` | Raw propagation record. `reason: "stopped"` is normal; direction status and endpoint-stationarity diagnostics remain separate from final endpoint acceptance. Sub-keys: `usable`, `reason`, `forward_status`, `backward_status`, `n_frames_forward`, `n_frames_backward`, `traj`, `scientific_status` (`forward_converged` / `backward_converged` were removed in schema 3.0; read `*_status` instead). |
+| `irc` | Diagnostic propagation record: `traj`, `n_frames_forward`, `n_frames_backward`, `forward_requested`, `backward_requested`, and each direction's `*_integration_converged`, `*_integration_stop_reason`, `*_downhill_departure_valid`, `*_energy_increased`, `*_short_branch`. No independent IRC scientific verdict or direction-status keys. Finite retained endpoints are passed to endpoint optimization. |
 | `endpoint_assignment` | Pre-optimization IRC-to-MEP orientation provenance; diagnostic, not the final connectivity verdict. |
-| `endpoint_opt` | Final endpoint convergence flags plus `connectivity_validated` and its optimized-structure topology record; this is the endpoint acceptance gate in MEP modes. |
+| `endpoint_opt` | Actual numerical convergence of both optimized endpoints, plus a separate `connectivity_validated` diagnostic and topology record. Connectivity does not add a numerical-completion gate. |
 | `mlip` | Selected MLIP backend's electronic-energy block. Read top-level `mlip_backend` / `mlip_model` / `mlip_precision` for exact provenance. |
 | `ts_imag` | Dict `{n_imag, nu_imag_max_cm, min_abs_imag_cm, min_freq_cm}` describing the TS spectrum |
 | `ts_imag_freq_cm` | Peak imaginary frequency (cm⁻¹); same as `ts_imag.nu_imag_max_cm` |
@@ -108,12 +108,12 @@ mode are they computed from the post-IRC `reactant.xyz` / `product.xyz`.
 ```python
 import json
 
-# Reportable per-segment barriers (TSOPT + IRC refined; present when --tsopt ran)
+# Per-segment barriers from completed requested stages
 d = json.load(open("result_all/summary.json"))
 if d.get("schema_version") != "3.0":
     raise RuntimeError(f"unsupported summary schema: {d.get('schema_version')!r}")
 if d.get("scientific_status") != "success":
-    raise RuntimeError(f"result is not reportable: {d.get('scientific_status_reasons', [])}")
+    raise RuntimeError(f"requested workflow is incomplete: {d.get('scientific_status_reasons', [])}")
 for ps in d.get("post_segments", []):
     mlip = ps.get("mlip") or {}
     gibbs = ps.get("gibbs_mlip") or {}

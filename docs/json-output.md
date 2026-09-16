@@ -51,7 +51,7 @@ Leaf schemas also retain their local `backend` / `model` fields; consumers
 should prefer `mlip_backend` / `mlip_model` / `mlip_precision` for a uniform
 cross-command provenance contract.
 
-### Execution and scientific truth
+### Execution and requested-stage completion
 
 Multi-stage and scan producers add the fields below when they can evaluate constituent work. These fields are additive and producer-dependent; the command-specific `status` remains for compatibility. Consumers can inspect requested-stage completion using `scientific_status` and the leaf outcomes. Missing required optimization or calculation results remain incomplete. IRC stop conditions and stationarity are diagnostics. IRC does not publish an independent `scientific_status`; `all` uses TSOPT and endpoint-OPT numerical outcomes.
 
@@ -379,7 +379,7 @@ validation can fail before the file exists.
 |-------|------|-------------|
 | `status` | string | `"success"` / `"partial"` |
 | `n_segments` | int | Recursive MEP segment count |
-| `search_max_depth` | int | Effective recursion cap; `0` means subdivision was disabled |
+| `search_max_depth` | int | Effective zero-based recursion cap; depth 0 is processed even at limit 0 |
 | `path_optimizers` | string[] | Single-structure optimizers actually used during path preparation/refinement (`lbfgs`, `rfo`); includes scan and alignment work in `all`. Also present in `path-opt` `result.json` and `all` `summary.json` |
 | `preopt_requested` / `preopt_converged` | bool / bool \| null | Whether endpoint preoptimization ran, and whether every endpoint converged; `null` when any endpoint reported no readable signal. `all` uses this preliminary convergence signal unless requested final TS and both endpoint optimizations have converged for every reactive segment; the original field remains reported |
 | `segments` | object[] | Per-segment `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` (list of `{title: [entries]}` dicts; bridge segments emit `""`). |
@@ -487,11 +487,12 @@ The `all` and `path-search` commands write `summary.json` with a richer structur
 | Field | Type | Description |
 |-------|------|-------------|
 | `status` | string | `"success"` / `"partial"` / `"failed"` (`all`); `"success"` / `"partial"` (`path-search`) |
-| `execution_status` / `scientific_status` | string / string | Execution completeness and scientific usability; evaluate these separately from legacy `status`. |
-| `scientific_status_reasons` | string[] | Reasons for incomplete or unrequested work; omitted on clean success. |
+| `execution_status` / `scientific_status` | string / string | Execution completeness and completion of requested numerical/calculation stages. |
+| `scientific_status_reasons` | string[] | Reasons for missing or unusable requested results; omitted on success. |
 | `pipeline_stop` | object \| absent | Present only on an early stop. `stage` is `post` (`reason` `no_segments` / `no_reactive_segment`), `before_irc` (a TSOPT reason, plus `segment` and `tsopt_result`), or `endpoint_opt` (`endpoint_execution_failed` and endpoint-specific `failures`). Rendered in `summary.log` as `Pipeline stop`. |
 | `expected_item_ids` / `observed_item_ids` | string[] | Expected and observed aggregate leaves. |
 | `config` | object | Effective settings. `mep_mode` identifies GSM/DMF; `ts_opt_mode` and `endpoint_opt_mode` identify the configured post-processing presets. Generic `opt_mode*` keys retain the resolved CLI inputs. `path_opt_mode` is the single-structure optimizer used for endpoint preoptimization (see `preopt`), not the MEP path algorithm. |
+| `scan` | object \| absent | Preliminary scan status, stage outcomes and diagnostics in scan-seeded `all` runs. |
 | `n_segments` | int | Segment count |
 | `segments` | object[] | Per-segment `index`, `tag`, `kind`, `barrier_kcal`, `delta_kcal`, `bond_changes` (list of `{title: [entries]}` dicts produced by `_bond_changes_block`; bridge segments emit `""`). |
 | `energy_diagrams` | object[] | Energy profiles with labels and kcal/mol values |

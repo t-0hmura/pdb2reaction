@@ -1325,22 +1325,42 @@ def _copy_structures_to_seg_dir(
     return seg_dir
 
 
+def _scan_terminal_seeds_usable(result: dict, paths: Sequence[Path]) -> bool:
+    """Validate terminal scan seeds despite earlier constrained-step failures."""
+    stages = result.get("stages")
+    if not isinstance(stages, list) or len(stages) != len(paths) or not paths:
+        return False
+    leaves = {item.get("item_id"): item for item in (result.get("stage_outcomes") or [])
+              if isinstance(item, dict)}
+    for index, (stage, path) in enumerate(zip(stages, paths), start=1):
+        if not isinstance(stage, dict) or stage.get("index") != index:
+            return False
+        leaf = leaves.get(f"stage_{index}", {})
+        no_optimization = (
+            stage.get("n_steps") == 0 and stage.get("converged") is None
+            and leaf.get("usable") is True
+            and leaf.get("reason") == "no_optimization_requested"
+        )
+        if stage.get("converged") is not True and not no_optimization:
+            return False
+        energy = stage.get("final_energy_hartree")
+        if (isinstance(energy, bool) or not isinstance(energy, (int, float))
+                or not np.isfinite(energy)):
+            return False
+        try:
+            with prepare_input_structure(path) as prepared:
+                geometry = geom_loader(prepared.geom_path, coord_type="cart")
+                coordinates = np.asarray(geometry.cart_coords)
+                if not coordinates.size or not np.isfinite(coordinates).all():
+                    return False
+        except Exception:
+            return False
+    return True
+
+
 def _is_reactive_segment(item: Any) -> bool:
-    """Return whether a segment legitimately requires TS post-processing."""
-    if not isinstance(item, dict):
-        return False
-    kind = item.get("kind", "seg")
-    if kind == "tsopt":
-        return True
-    if kind != "seg":
-        return False
-    # Legacy/directly constructed segment records predate bond-change
-    # serialization and remain reactive.  Only an explicit no-change result
-    # suppresses post-processing.
-    if "bond_changes" not in item:
-        return True
-    changes = str(item.get("bond_changes", "")).strip()
-    return bool(changes and changes != "(no covalent changes detected)")
+    """Select TS-capable segments independently of bond-detection diagnostics."""
+    return isinstance(item, dict) and item.get("kind", "seg") in {"seg", "tsopt"}
 
 
 def _derive_pipeline_status(
@@ -2218,19 +2238,19 @@ def _write_segment_energy_diagram(
         return None
     e0 = energies_au[0]
     energies_kcal = [(e - e0) * AU2KCALPERMOL for e in energies_au]
-    fig = build_energy_diagram(
-        energies=energies_kcal,
-        labels=labels,
-        ylabel=ylabel,
-        baseline=True,
-        showgrid=False,
-    )
-    if title_note:
-        fig.update_layout(title=title_note)
     png = prefix.with_suffix(".png")
     image_written = False
     image_error: Optional[str] = None
     try:
+        fig = build_energy_diagram(
+            energies=energies_kcal,
+            labels=labels,
+            ylabel=ylabel,
+            baseline=True,
+            showgrid=False,
+        )
+        if title_note:
+            fig.update_layout(title=title_note)
         write_plotly_image(fig, png, scale=2)
         image_written = True
         _echo(f"[diagram] Wrote energy diagram → {png.name}")
@@ -3926,12 +3946,9 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     default=None,
     show_default="10",
     help=(
-        "Recursive subdivision levels; requires --refine-path. 0 performs no "
-        "subdivision, returning each input pair as one MEP segment (none when its "
-        "HEI sits at an endpoint). Reaching the limit is not "
-        "an error. Any segment retained at a positive cap is tagged "
-        "seg_NNN_maxdepth and is not guaranteed to "
-        "be a single elementary step."
+        "Zero-based recursion depth limit; requires --refine-path. Depth 0 is "
+        "processed even when the limit is 0. Capped child intervals use "
+        "seg_NNN_maxdepth and may contain multiple steps."
     ),
 )
 @click.option(
@@ -6683,6 +6700,7 @@ def cli(
 
     # Stage 1b: optional staged scan (single-structure)
     models_for_path: List[Path]
+    scan_diagnostics: Optional[dict] = None
     model_ref_pdbs: Optional[List[Path]] = None
     if is_single and has_scan:
         _echo_section("====== [all] Stage 1b — Staged scan on input ======")
@@ -6828,12 +6846,6 @@ def cli(
             raise click.ClickException(
                 f"[all] Could not read scan outcome from {scan_result_path}: {exc}"
             ) from exc
-        if scan_result.get("scientific_status") != "success":
-            reasons = scan_result.get("scientific_status_reasons") or []
-            detail = "; ".join(str(reason) for reason in reasons) or "unknown reason"
-            raise click.ClickException(
-                f"[all] Staged scan did not produce a scientifically usable path: {detail}"
-            )
         scan_preopt_usable = scan_result.get("preopt_converged") is True
         if scan_preopt_use or any(stage.get("optimizer_status") for stage in scan_result.get("stages", [])):
             path_optimizers.add("lbfgs" if scan_opt_mode_use == "grad" else "rfo")
@@ -6842,6 +6854,19 @@ def cli(
             manifest.claim_one(f"scan.stage.{stage_idx:02d}")
             for stage_idx in range(1, len(scan_stage_literals) + 1)
         ]
+        if (scan_result.get("scientific_status") != "success"
+                and not _scan_terminal_seeds_usable(scan_result, stage_results)):
+            reasons = scan_result.get("scientific_status_reasons") or []
+            detail = "; ".join(str(reason) for reason in reasons) or "unknown reason"
+            raise click.ClickException(
+                f"[all] Staged scan did not produce usable terminal seeds: {detail}"
+            )
+        scan_diagnostics = {key: scan_result[key] for key in (
+            "scientific_status", "scientific_status_reasons", "stages",
+            "preopt_converged", "stage_outcomes",
+        ) if key in scan_result}
+        if scan_result.get("scientific_status") != "success":
+            _echo("[all] WARNING: Scan has incomplete intermediate steps; continuing from valid terminal seeds.", err=True)
         stage_ref_results = {
             stage_idx: manifest.claim_optional(f"scan.stage_ref.{stage_idx:02d}")
             for stage_idx in range(1, len(scan_stage_literals) + 1)
@@ -7768,6 +7793,8 @@ def cli(
             f"[all] Current path summary is not a JSON object: {summary_path}"
         )
     summary: Dict[str, Any] = summary_loaded
+    if scan_diagnostics is not None:
+        summary["scan"] = scan_diagnostics
     path_optimizers.update(summary.get("path_optimizers", []))
     summary["path_optimizers"] = sorted(path_optimizers)
     _publish_manifest_summary(
@@ -7917,7 +7944,7 @@ def cli(
 
     reactive = [s for s in segments if _is_reactive_segment(s)]
     if not reactive:
-        _echo("[post] No bond-change segments. Skipping TS/thermo/DFT.", narrative=True)
+        _echo("[post] No TS-capable segments. Skipping TS/thermo/DFT.", narrative=True)
         summary["pipeline_stop"] = {"stage": "post", "reason": "no_reactive_segment"}
         _write_pipeline_summary_log([])
         _finalize_current_summary()

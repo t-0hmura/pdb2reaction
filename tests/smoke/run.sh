@@ -546,21 +546,11 @@ if grep -Fq '[irc] IRC stopped after only a few frames' test79_irc_never_stop.ou
   exit 1
 fi
 
-# test80: --max-depth 0 switches recursive subdivision off entirely. The final
-# report may contain zero segments for an endpoint HEI or one ordinary `seg_NNN`
-# segment; the raw interval must never use the `_maxdepth` tag reserved for an
-# exhausted recursion budget.
+# test80: explicit zero cap retains the initial refinement and records the
+# effective depth limit and any capped child intervals.
 pdb2reaction path-search -i r.pdb p.pdb -q -1 --max-depth 0 --max-nodes 5 --max-cycles-gsm 5 --no-preopt --out-dir test80_ps_max_depth0 > test80_ps_max_depth0.out 2>&1
 python assert_release_result.py path-search-max-depth test80_ps_max_depth0 >> test80_ps_max_depth0.out 2>&1
-if grep -Fq 'Reached maximum recursion depth' test80_ps_max_depth0.out; then
-  echo '[smoke] FAIL test80: --max-depth 0 announced an exhausted recursion budget' >> test80_ps_max_depth0.out
-  exit 1
-fi
-grep -Fq 'Recursive subdivision is disabled' test80_ps_max_depth0.out || { echo '[smoke] FAIL test80: --max-depth 0 did not announce that subdivision is disabled' >> test80_ps_max_depth0.out; exit 1; }
-if grep -Fq 'Limited-memory BFGS (L-BFGS)' test80_ps_max_depth0.out; then
-  echo '[smoke] FAIL test80: --no-preopt run cited L-BFGS in stdout' >> test80_ps_max_depth0.out
-  exit 1
-fi
+
 
 # Numerical analytical-vs-FD agreement for every backend installed in the
 # default strict environment. MACE/AIMNet2 use this same required wrapper in

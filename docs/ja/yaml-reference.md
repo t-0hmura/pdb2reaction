@@ -369,7 +369,7 @@ dmf:
 
 ```yaml
 search:
- max_depth: 10 # 許可する再帰分割の階層数（0 = 分割しない）
+ max_depth: 10 # 0始まりの再帰深さ上限（上限0でも深さ0を処理）
  stitch_rmsd_thresh: 0.0001 # RMSD threshold for stitching segments
  bridge_rmsd_thresh: 0.0001 # RMSD threshold for bridging nodes
  max_nodes_segment: 20 # Max nodes per segment

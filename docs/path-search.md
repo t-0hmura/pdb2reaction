@@ -63,7 +63,7 @@ After optional preoptimization, `--align` (default) aligns adjacent inputs in se
 3. **Decide between kink vs. refinement**:
  - If no covalent bond change is detected between `End1` and `End2`, treat the region as a *kink* — a conformational rearrangement with no bond breaking or formation (see [Glossary](glossary.md)): insert `search.kink_max_nodes` linear nodes and optimize each individually.
  - Otherwise, the region is a *reactive segment* — a segment in which covalent bond changes are detected between the endpoints (see [Glossary](glossary.md)). Launch a **refinement segment (GSM/DMF)** between `End1` and `End2` to sharpen the barrier.
-4. **Selective recursion** – compare bond changes for `(A→End1)` and `(End2→B)` using the `bond` thresholds. Recurse only on sub-intervals that still contain covalent updates. `search.max_depth` sets how many levels of recursive subdivision are allowed; `0` performs no subdivision. Reaching the limit is not an error. Any segment retained at a positive cap is tagged `seg_NNN_maxdepth` and is not guaranteed to be a single elementary step.
+4. **Selective recursion** – compare bond changes for `(A→End1)` and `(End2→B)` using the `bond` thresholds. Recurse only on sub-intervals that still contain covalent updates. `search.max_depth` limits zero-based recursion depth. Depth 0 is processed even when the limit is 0; children beyond the limit are retained without further subdivision. A capped interval is tagged `seg_NNN_maxdepth` and is not guaranteed to be a single elementary step.
 5. **Stitching & bridging** – concatenate resolved subpaths, dropping duplicate endpoints when RMSD ≤ `search.stitch_rmsd_thresh`. If the RMSD gap between two stitched pieces exceeds `search.bridge_rmsd_thresh`, insert a *bridge segment* — a connecting segment between two non-adjacent intermediates (see [Glossary](glossary.md)) — using GSM/DMF. When the interface itself shows a bond change, a new recursive segment replaces the bridge.
 
 Bond-change detection relies on `bond_changes.compare_structures` with thresholds surfaced under the `bond` YAML section. All MLIP backends are constructed once and shared across structures for efficiency.
@@ -124,7 +124,7 @@ The table is grouped by purpose; within each group the most-used options come fi
 | `--dmf-backend {cpu\|gpu}` | DMF compute backend (`--mep-mode dmf` only): `gpu` (`dmf.torch`/CUDA) or `cpu` (`dmf`/NumPy). On a GPU out-of-memory error, retry with `cpu`. | `gpu` |
 | `--preopt/--no-preopt` | Pre-optimize each endpoint with the selected single-structure optimizer (L-BFGS/RFO) before MEP search. | `True` |
 | `--max-nodes INT` | Internal nodes per MEP segment (GSM string images or DMF images). | `20` |
-| `--max-depth INT` | Recursive subdivision levels allowed. `0` disables subdivision, returning each input pair as one MEP segment (none when its HEI sits at an endpoint). A capped interval is tagged `seg_NNN_maxdepth` and may hold more than one step. | `10` |
+| `--max-depth INT` | Zero-based recursion depth limit. Depth 0 is processed even at limit 0; deeper child intervals are retained without further subdivision. A capped interval is tagged `seg_NNN_maxdepth` and may hold more than one step. | `10` |
 | `--gsm-param {equi\|energy}` | GSM node parameterization after string growth. `energy` concentrates nodes in high-energy regions and may be tried when an equidistant path skips the reaction-coordinate region near the HEI; it does not identify a TS. | `equi` |
 | `--max-cycles-gsm INT` | Maximum GSM string-optimizer cycles. | `300` |
 | `--max-cycles-dmf INT` | Maximum DMF IPOPT iterations. | `300` |
@@ -180,7 +180,7 @@ bond:
  margin_fraction: 0.05 # tolerance margin for comparisons
  delta_fraction: 0.05 # minimum relative change to flag bonds
 search:
- max_depth: 10 # recursive subdivision levels allowed (0 = no subdivision)
+ max_depth: 10 # zero-based recursion depth limit (depth 0 is processed at limit 0)
  stitch_rmsd_thresh: 0.0001 # RMSD threshold for stitching segments
  bridge_rmsd_thresh: 0.0001 # RMSD threshold for bridging nodes
  max_nodes_segment: 20 # max nodes per segment

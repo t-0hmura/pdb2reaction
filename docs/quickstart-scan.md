@@ -98,7 +98,7 @@ outputs after successful validation; add `--thermo` for `freq/` outputs.
 
 1. `_work/scan/stage_01/scan_trj.xyz` — open in PyMOL to verify bond distances change as expected
 2. `mep.pdb` and `_work/path_opt/hei_seg_01.pdb` — inspect the optimized MEP and its highest-energy image
-3. `summary.json` — check [result status and reasons](json-output.md#execution-and-scientific-truth) before interpreting barriers and bond changes in `summary.log`
+3. `summary.json` — check [result status and reasons](json-output.md#execution-and-requested-stage-completion) before interpreting barriers and bond changes in `summary.log`
 
 ## Notes
 

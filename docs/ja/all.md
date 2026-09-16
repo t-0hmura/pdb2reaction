@@ -196,7 +196,7 @@ metadata に保持し、ユーザー向け pipeline mode には使用しませ�
 
 ### `summary.json` の読み方
 
-エネルギーを解釈する前に `scientific_status` と `scientific_status_reasons` を確認します。部分結果や途中停止の扱いは[実行結果と科学的妥当性](json-output.md#実行結果と科学的妥当性)を参照してください。
+エネルギーを解釈する前に `scientific_status` と `scientific_status_reasons` を確認します。部分結果や途中停止の扱いは[実行と要求段階の完了状況](json-output.md#実行と要求段階の完了状況)を参照してください。
 
 JSON 結果の代表的なトップレベルキーは以下のとおりです。
 - `out_dir`, `n_images`, `n_segments` – 実行メタデータと総数。
@@ -268,7 +268,7 @@ raw PDB CCD との名前衝突は自動判別しないため、`--modified-resid
 | --- | --- | --- |
 | `--mep-mode [gsm\|dmf]` | MEP 探索アルゴリズム: GSM（Growing String Method）または DMF（Direct Max Flux） | `gsm` |
 | `--max-nodes INT` | GSM/DMF segment ごとの可動内部イメージ数。両エンジンとも端点2つを保持するため、総イメージ数は `max_nodes + 2` | `20` |
-| `--max-depth INT` | 許可する再帰分割の階層数（`--refine-path` が必須）。`0` で分割無効（入力ペアごとに1セグメント、HEI が端点なら0）。上限に達した区間は `seg_NNN_maxdepth` タグで、素反応1段の保証はない | `10` |
+| `--max-depth INT` | 0始まりの再帰深さ上限（`--refine-path` が必須）。上限0でも深さ0の処理を行い、それより深い子区間は分割せず保持する。上限に達した区間は `seg_NNN_maxdepth` タグで、素反応1段の保証はない | `10` |
 | `--gsm-param [equi\|energy]` | 完全成長後のGSMノード配置。`energy` は高エネルギー領域へノード密度を寄せる。等間隔経路がHEI近傍の反応座標領域を飛び越える場合の試行用であり、TSを同定する機能ではない | `equi` |
 | `--max-cycles-gsm INT` | GSM string optimizer の最大サイクル数 | `300` |
 | `--max-cycles-dmf INT` | DMF の最大 IPOPT 反復数 | `300` |
