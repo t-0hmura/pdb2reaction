@@ -581,13 +581,17 @@ freq:
  out_dir: ./result_freq/ # Output directory
 ```
 
-`freq.zero_cutoff_cm` is the single cutoff used by standalone `freq`, `opt`
-flattening, Dimer, and Hessian-family TS optimization. The legacy
-`hessian_dimer.neg_freq_thresh_cm` and
-`rsirfo.saddle_imaginary_threshold_cm` spellings remain accepted as aliases;
-conflicting values are rejected.
+The default imaginary-mode criterion is a mass-weighted Hessian eigenvalue
+< −10⁻⁶ Hartree/(bohr²·amu), equivalent to a frequency below about −5.14 cm⁻¹.
+Standalone `freq`, `opt` flattening, Dimer, and Hessian TS workflows share it.
+`n_negative_modes` separately counts every negative sign; neither count
+changes numerical convergence. The complete signed spectrum and all positive
+thermochemistry modes are retained.
 
-The default selects mass-weighted Hessian eigenvalues < −10⁻⁶ Hartree/(bohr²·amu), equivalent to a frequency below the derived cutoff of about −5.14 cm⁻¹. An explicit legacy `freq.zero_cutoff_cm` overrides this criterion with a deprecation warning. The selected imaginary count describes saddle order; every negative sign is also reported separately as `n_negative_modes`. Neither count changes numerical optimizer convergence. All signed physical modes and positive thermochemistry modes are retained.
+An explicit `freq.zero_cutoff_cm` overrides the criterion with a deprecation
+warning. Legacy aliases `hessian_dimer.neg_freq_thresh_cm` and
+`rsirfo.saddle_imaginary_threshold_cm` remain accepted; conflicting values
+are rejected.
 
 ---
 

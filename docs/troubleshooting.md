@@ -103,7 +103,7 @@ Try the following, in order:
 
 ### IRC does not terminate properly
 
-For standalone `irc`, try `--step-size 0.05` (default 0.10 bohr) and `--max-cycles 200`; for `all`, use `--irc-step-size 0.05` and `--irc-max-cycles 200`. A smaller step can help when a branch stops after only a few frames. Confirm that Cartesian PHVA has exactly one resolved negative frequency before IRC. The shared `freq.zero_cutoff_cm` sets this resolved count and the TS imaginary-mode export threshold; it does not remove modes from the complete frequency output or thermochemistry input. To bypass physical endpoint criteria and trace to the cycle limit, use `irc --never-stop` or `all --irc-never-stop`; inspect the resulting trajectory and endpoints.
+For standalone `irc`, try `--step-size 0.05` (default 0.10 bohr) and `--max-cycles 200`; for `all`, use `--irc-step-size 0.05` and `--irc-max-cycles 200`. A smaller step can help when a branch stops after only a few frames. Confirm that Cartesian PHVA has exactly one resolved negative frequency before IRC. The default criterion is a mass-weighted Hessian eigenvalue < −10⁻⁶ Hartree/(bohr²·amu). An explicit `freq.zero_cutoff_cm` override is deprecated; neither setting removes modes from the complete spectrum or positive modes from thermochemistry. See [freq](freq.md). To bypass physical endpoint criteria and trace to the cycle limit, use `irc --never-stop` or `all --irc-never-stop`; inspect the resulting trajectory and endpoints.
 
 ### MEP search (GSM / DMF) fails or misses bonds
 

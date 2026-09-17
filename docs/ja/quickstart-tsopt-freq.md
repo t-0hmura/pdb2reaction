@@ -68,23 +68,22 @@ result_ts_only/
             └── result.yaml                    # 常に出力（--dft 時）
 ```
 
-**確認ポイント（実行順）:**
+## 結果の確認
 
-ここで `n_imag` は結果に記録された分類基準による値で、完全振動数ファイルの負符号をすべて数えた値ではありません。
+1. **完了状況:** `summary.json` の `scientific_status` と `scientific_status_reasons` を確認します。必要な計算・数値最適化の完了を表し、虚振動数や化学的接続性は別に確認します。
+2. **TSのモード:** `post_segments[0].ts_imag.n_imag` が記録された分類基準で `1` か確認します。波数は `nu_imag_max_cm` です。`segments/seg_01/ts/vib/imag_*_trj.xyz` を可視化し、想定する結合の変位を確認してください。大きさだけでは反応性を判定できません。`irc.imag_below`（既定 `0.0` cm⁻¹、`ν <= imag_below` を受理）は、系ごとのノイズ評価後にだけ負側へ変更します。
+3. **接続性と構造:** `segments/seg_01/irc/finished_irc_trj.xyz`、同じセグメントの `reactant.pdb`・`ts.pdb`・`product.pdb`、`segments[0].bond_changes` を確認します。原子対応、構造、想定する結合変化を点検してください。TS-onlyモードは高エネルギーのIRC端点をRと呼ぶため、化学的な方向を判断する前に `endpoint_assignment` を確認します。詳細は [all](all.md) を参照してください。
+4. **端点の振動:** `segments/seg_01/freq/{R,TS,P}/frequencies_cm-1.txt` を確認します。完全な符号付き振動数を保持し、`n_negative_modes` はすべての負符号を数えます。R/Pに虚振動が残っても熱化学は計算されますが、極小点と判断する前にモードを確認します。
+5. **エネルギー:** `rate_limiting_step.barrier_kcal` と `segments[0].delta_kcal` はΔE‡とΔE、`post_segments[0].gibbs_mlip.barrier_kcal` / `.delta_kcal` はΔG‡とΔGです。各状態の `thermoanalysis.yaml` に `electronic_energy_ha`、`zpe_correction_ha`、`sum_EE_and_ZPE_ha`、`sum_EE_and_thermal_free_energy_ha` と温度・圧力（既定298.15 K、1 atm）を記録します。TSまたはPから選択したRの値を引きます。ラベルだけで化学的なR/Pを判断しないでください。
 
-1. `summary.json` の `scientific_status: "success"` は、必要な計算結果と該当する数値最適化の完了を示します。`"partial"` または `"failed"` なら `scientific_status_reasons` を確認します。振動数の分類と端点接続性は、反応を解釈するための情報として別途確認します。
-2. `post_segments[0].ts_imag.n_imag == 1` — 一次鞍点の必要条件です。振動数の大きさだけで反応性を判定せず、modeを可視化して IRC 接続を確認します。系ごとのnoise評価で柔らかい非反応modeを特定した場合だけ、YAMLの opt-in filter `irc.imag_below` をデフォルトの `0.0` より負側へ設定します。IRC が受理するのは `ν <= imag_below` のmodeです。
-3. `segments/seg_01/irc/{forward,backward}_irc_trj.xyz` を PyMOL で開き、R 端・P 端まで到達していることを確認。
-4. `segments[0].bond_changes` が空でなく、想定どおりの結合切断・形成が記録されていること。
-5. `segments/seg_01/freq/{R,TS,P}/frequencies_cm-1.txt` を診断用に確認します。一次鞍点の条件として TS は虚振動がちょうど 1 つ必要です。R/P の虚振動は熱化学解析を妨げません。
+エネルギー差の単位はkcal/mol、`thermoanalysis.yaml` の状態エネルギーはhartreeです。
 
-**トラブルシュート:**
-
-| 症状 | 原因 | 対処 |
-|---|---|---|
-| `post_segments[0].ts_imag.n_imag == 0` | 選択した基準では虚振動がない | 経路情報のない通常の TS-only mode は目的の隣接鞍点を特定できず、自動 saddle recovery の default budget も 0 です。endpoint がある場合は `path-search` で TS 候補を取り直します |
-| `n_imag >= 2` | 高次鞍点候補または TS 未収束 | TS の認定には虚振動がちょうど 1 つ必要です。周波数が小さいことだけを理由に余分なモードを除外せず、各虚振動モードの変位を確認してください。必要に応じて `all --thresh-post gau_tight` または単独の `tsopt --thresh gau_tight` と `--flatten` で再最適化します。 |
-| `segments[0].bond_changes` が空（`""` または `(no covalent changes detected)`）、または IRC が想定と違う終点に到達 | 虚振動が反応座標方向と一致していない、または TS が同じ井戸同士を結んでいる（反応物側と生成物側が同一極小） | `segments/seg_01/ts/vib/imag_*_trj.xyz` を PyMOL で可視化し、虚振動が想定の反応方向か確認。違う場合は TS 候補を取り直す |
+| 結果 | 次の確認 |
+|---|---|
+| `n_imag == 0` | TS候補またはMEPを改善します。経路情報のないTS-only計算は目的の隣接鞍点を特定できず、saddle recoveryの既定上限は0です。 |
+| `n_imag >= 2` | 各虚振動を確認し、`all --thresh-post gau_tight` または `tsopt --thresh gau_tight` で再最適化します。`--flatten` は余分なモードに対する明示的な選択肢です。一次鞍点の分類には選択した基準で1本が必要です。 |
+| `bond_changes` が空、または想定外の端点 | TSモードとIRCを確認します。意図した極小点同士を結んでいない可能性があります。 |
+| R/Pに虚振動が残る | 端点構造とモードを確認し、必要なら端点最適化を厳しくするかIRCを延長します。[freq](freq.md) を参照してください。 |
 
 ## 補足
 

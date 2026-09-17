@@ -237,7 +237,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 - 単独の `irc`: `--step-size 0.05`（デフォルト: 0.10 bohr）、必要なら `--max-cycles 200`。
 - `all`: `--irc-step-size 0.05`、必要なら `--irc-max-cycles 200`（YAML では `irc.max_cycles`）。MEP の上限は `--max-cycles-gsm` / `--max-cycles-dmf` で別に指定します。
 - 物理的な停止条件を無視するには、単独で `--never-stop`、`all` で `--irc-never-stop` を指定し、軌跡と端点を確認してください。
-- IRC 実行前に Cartesian PHVA のresolvedな負の振動数が **ちょうど 1 本** であることを確認してください。共有 `freq.zero_cutoff_cm` はこの resolved 本数とTS虚振動モード出力の閾値です。完全な振動数出力と熱化学入力からモードを削除しません。
+- IRC 実行前に Cartesian PHVA のresolvedな負の振動数が **ちょうど 1 本** であることを確認してください。既定の分類基準は質量重み付き Hessian の固有値 < −10⁻⁶ Hartree/(bohr²·amu) です。`freq.zero_cutoff_cm` の明示的な上書きは非推奨です。いずれも完全な振動数からモードを削除せず、熱化学には正の低振動数も使います。詳細は [freq](freq.md) を参照してください。
 
 ---
 

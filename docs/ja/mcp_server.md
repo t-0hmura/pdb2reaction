@@ -90,10 +90,10 @@ intermediate は `intermediate_pdbs` に渡します。1D/full-pipeline の stag
 
 ## オプトインの IRC 収束ガード
 
-`run_irc`（CLI: `pdb2reaction irc`）は `irc_pos_def: bool` を受け付けます。これにより IRC
-収束には、質量重み付き Hessian が正定値であることが追加で要求され、rms のみの
-基準が局所極小に到達する前に成功と判定してしまう IRC の「ショルダー」での偽収束を
-防ぎます。デフォルトは `None`（rms のみ、従来動作）です。
+`run_irc` の `irc_pos_def=True` は、RMS勾配による停止に、質量重み付き
+Hessianの正定値性を追加で要求します。これは積分の停止診断であり、
+ワークフロー全体の成功判定ではありません。既定では無効です。
+`None` は未指定を表し、端点OPTの収束は別に記録します。
 
 `run_irc` は `step_size` と `never_stop` も受け付けます。branch が数 frame で
 停止する場合はまず `step_size` を小さくします（典型値 `0.05`）。

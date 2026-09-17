@@ -14,6 +14,10 @@ Python CLIです。geometry/path stageには組み込みMLIPまたはcustom ASE 
 
 ## 2. 階層構造（6 つの計算層）
 
+任意のMCP統合 `pdb2reaction/mcp/` は、この6層の計算コアの外にあります。
+エントリポイントは `p2r-mcp` / `pdb2reaction-mcp` です。
+[構成と使い方](mcp_server.md)を参照してください。
+
 ### 2.1 階層テーブル
 
 | layer | dir | responsibility | may depend on |

@@ -576,13 +576,15 @@ freq:
  out_dir: ./result_freq/ # Output directory
 ```
 
-`freq.zero_cutoff_cm` は standalone `freq`、`opt` flatten、Dimer、
-Hessian系TS最適化が共有する唯一のcutoffです。旧
-`hessian_dimer.neg_freq_thresh_cm` と
-`rsirfo.saddle_imaginary_threshold_cm` は互換aliasとして受理しますが、
-競合する値はエラーになります。
+虚振動の既定の分類基準は、質量重み付き Hessian の固有値
+< −10⁻⁶ Hartree/(bohr²·amu)（振動数で約 −5.14 cm⁻¹ 未満）です。
+単独の `freq`、`opt` のflatten、Dimer、Hessian系TS最適化で共通です。
+`n_negative_modes` は負符号をすべて数えた別の診断値で、どちらの本数も
+数値収束を変更しません。完全な符号付き振動数と、熱化学に使う正のモードを保持します。
 
-既定では質量重み付き Hessian の固有値 < −10⁻⁶ Hartree/(bohr²·amu) を虚振動と分類します。対応する振動数の閾値は約 −5.14 cm⁻¹ です。従来の `freq.zero_cutoff_cm` を明示すると、非推奨の警告付きでこの基準を上書きします。選択した虚振動の本数は鞍点次数を記述し、すべての負符号の数は `n_negative_modes` に別途記録します。いずれも最適化の数値収束を変更しません。符号付き物理モードと熱化学に使う正のモードはすべて保持します。
+`freq.zero_cutoff_cm` を明示すると、非推奨の警告付きで分類基準を上書きします。
+旧名 `hessian_dimer.neg_freq_thresh_cm` と
+`rsirfo.saddle_imaginary_threshold_cm` も受理しますが、競合する値はエラーです。
 
 ---
 

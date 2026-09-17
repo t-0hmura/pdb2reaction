@@ -176,6 +176,54 @@ See [Installation](installation.md) for prerequisites.
 | **MLIP backend settings** | [MLIP Calculator](uma-pysis.md) |
 | **Terminology** | [Glossary](glossary.md) |
 
+## System requirements
+
+### Hardware
+
+- **OS:** Linux.
+- **GPU (recommended):** an NVIDIA driver compatible with the backend and PyTorch wheel. CPU execution is also supported but slower.
+- **VRAM / RAM:** depends on the model, system, Hessian mode, precision, and parallelism. Measure peak use on a representative calculation.
+
+### Software
+
+- Python >= 3.11.
+- CPU or CUDA-enabled PyTorch. Prebuilt wheels include their CUDA runtime; a local toolkit is normally needed only for source builds.
+
+See [Installation](installation.md) for setup.
+
+## Agent skills
+
+`skills/` contains guides for CLI commands, structure I/O, backends, workflows, output analysis, and HPC use.
+See the [Skills index](https://github.com/t-0hmura/pdb2reaction/blob/main/skills/README.md) for installation and the full list.
+
+## Citation
+
+```bibtex
+@misc{ohmura2026pdb2reaction,
+  author = {Ohmura, Takuto and Sato, Hajime and Terada, Tohru},
+  title  = {pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials},
+  year   = {2026}, doi = {10.26434/chemrxiv.15003538/v1}, note = {ChemRxiv preprint}
+}
+```
+
+To cite the software or a specific release, use the Zenodo record:
+
+```bibtex
+@software{ohmura2026pdb2reaction_software,
+  author       = {Ohmura, Takuto},
+  title        = {pdb2reaction},
+  year         = {2026},
+  version      = {0.4.15},
+  url          = {https://github.com/t-0hmura/pdb2reaction},
+  license      = {GPL-3.0},
+  doi          = {10.5281/zenodo.19197865}
+}
+```
+
+## License
+
+GNU General Public License v3 (GPL-3.0).
+
 ## Getting Help
 
 ```bash
@@ -188,19 +236,3 @@ pdb2reaction <subcommand> --help
 # Advanced options (dry-run, internal tuning, etc.)
 pdb2reaction <subcommand> --help-advanced
 ```
-
-## Citation
-
-```bibtex
-@misc{ohmura2026pdb2reaction,
-  author = {Ohmura, Takuto and Sato, Hajime and Terada, Tohru},
-  title  = {pdb2reaction: End-to-End Reaction-Path Elucidation from PDB Structures Using Machine-Learning Interatomic Potentials},
-  year   = {2026}, doi = {10.26434/chemrxiv.15003538/v1}, note = {ChemRxiv preprint}
-}
-```
-
-A Zenodo software record is also available (DOI `10.5281/zenodo.19197865`).
-
-## License
-
-GNU General Public License v3 (GPL-3.0).

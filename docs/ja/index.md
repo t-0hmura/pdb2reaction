@@ -94,7 +94,6 @@
   author       = {Ohmura, Takuto},
   title        = {pdb2reaction},
   year         = {2026},
-  month        = {7},
   version      = {0.4.15},
   url          = {https://github.com/t-0hmura/pdb2reaction},
   license      = {GPL-3.0},
