@@ -1553,6 +1553,30 @@ def build_energy_diagram(
     return fig
 
 
+def _iter_plain_xyz_atoms(path: Path):
+    """Read one standard XYZ frame at a time, leaving comments uninterpreted."""
+    from io import StringIO
+    from itertools import islice
+    from ase.io import read as ase_read
+    from ase.io.formats import open_with_compression
+
+    # ASE's plain XYZ reader repeatedly removes the first line of a list.
+    # Feeding it one frame avoids quadratic work across a long trajectory.
+    with open_with_compression(str(path), mode="rt") as stream:
+        for frame_number, header in enumerate(stream, start=1):
+            try:
+                count = int(header)
+            except ValueError as exc:
+                raise ValueError(f"Malformed XYZ header in frame {frame_number} of {path}") from exc
+            if count <= 0:
+                raise ValueError(f"Invalid XYZ atom count in frame {frame_number} of {path}")
+            comment = stream.readline()
+            rows = list(islice(stream, count))
+            if not comment or len(rows) != count:
+                raise ValueError(f"Incomplete XYZ frame {frame_number} of {path}")
+            yield ase_read(StringIO(header + comment + "".join(rows)), index=0, format="xyz")
+
+
 def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -> None:
     """Overlay coordinates from *xyz_path* onto the topology of *ref_pdb_path* and write to *out_pdb_path*.
 
@@ -1569,9 +1593,7 @@ def convert_xyz_to_pdb(xyz_path: Path, ref_pdb_path: Path, out_pdb_path: Path) -
           MODEL/ENDMDL blocks are written for each frame.
         - The complete trajectory is validated before the destination is atomically replaced.
     """
-    from ase.io import read as ase_read
-
-    traj = ase_read(str(xyz_path), index=":", format="xyz")
+    traj = list(_iter_plain_xyz_atoms(xyz_path))
     if not traj:
         raise ValueError(f"No frames found in {xyz_path}.")
     symbols = [frame.get_chemical_symbols() for frame in traj]
