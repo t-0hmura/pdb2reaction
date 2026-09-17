@@ -1,52 +1,173 @@
 # Installation
 
-The standard setup uses Linux, Python 3.12, and an NVIDIA GPU. The example below uses the PyTorch CUDA 13 wheel and requires a compatible NVIDIA driver. For another driver/GPU combination, select a wheel from [PyTorch's version matrix](https://pytorch.org/get-started/previous-versions/). The wheel includes its CUDA runtime.
+`pdb2reaction` is intended for Linux environments (local workstations or HPC clusters), and production runs normally use a CUDA-capable GPU. Prebuilt **PyTorch** wheels include their CUDA runtime libraries: they need a compatible NVIDIA driver, but not a local CUDA toolkit. A toolkit is needed only when building a CUDA extension or GPU package from source.
 
-(step-by-step-installation)=
+Refer to the upstream projects for additional details:
+
+- fairchem / UMA: <https://github.com/facebookresearch/fairchem>, <https://huggingface.co/facebook/UMA>
+- Hugging Face token & security: <https://huggingface.co/docs/hub/security-tokens>
+
 ## Quick start
+
+This example assumes the default GSM MEP mode (`--mep-mode gsm`). For DMF (`--mep-mode dmf`), install cyipopt via conda first. PyTorch 2.13.0 publishes `cu126`, `cu130`, and `cu132` wheels; choose the site's tested index for its driver and GPU architecture.
 
 ### Required
 
-Accept the [UMA model license](https://huggingface.co/facebook/UMA), then copy this block into a terminal. `hf auth login` prompts for your Hugging Face credentials.
-
 ```bash
-conda create -n pdb2reaction python=3.12 pip -y
-conda activate pdb2reaction
-pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cu130
+# 1) Install a CUDA-enabled PyTorch build
+# 2) Install pdb2reaction
+# 3) Install headless Chrome for Plotly static image export (PNG)
+#    Downloads a Chromium binary; requires internet access.
+
+TORCH_INDEX=cu130  # use cu126/cu132 when required by the GPU/site stack
+pip install 'torch==2.13.0' --index-url "https://download.pytorch.org/whl/${TORCH_INDEX}"
 pip install pdb2reaction
 plotly_get_chrome -y
-hf auth login
-pdb2reaction --version
 ```
 
-This sets up the default UMA backend and Chrome for PNG export. Reactivate the environment with `conda activate pdb2reaction` in a new terminal.
+Finally, log in to **Hugging Face Hub** so that UMA models can be downloaded (requires a free HF account with read-only token; you may need to accept the UMA model license at <https://huggingface.co/facebook/UMA>):
+
+```bash
+hf auth login
+# or, with an access token in scripts:
+hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
+```
+
+(Recent `huggingface_hub` releases ship the `hf` CLI; older versions still expose `huggingface-cli login`, which is being deprecated.)
+
+You only need to do this once per machine / environment.
 
 ### Optional
 
-Run only the commands needed for your workflow, in the same active environment:
+- If you want to use the Direct Max Flux (DMF) method for MEP search, create a conda environment and install cyipopt before installing pdb2reaction.
 
-| Feature | Install |
-|---|---|
-| ORB (`-b orb`) | `pip install --only-binary=dm-tree "pdb2reaction[orb]"` |
-| AIMNet2 (`-b aimnet2`) | `pip install "pdb2reaction[aimnet]"` |
-| DFT (`--dft` / `pdb2reaction dft`) | `pip install "pdb2reaction[dft]"` |
-| MCP server | `pip install "pdb2reaction[mcp]"` |
-| DMF paths (`--mep-mode dmf`) | `conda install -c conda-forge cyipopt "numpy>=2,<2.5" -y` |
+  ```bash
+  # Create and activate a dedicated conda environment
+  conda create -n <your-env> python=3.12 -y
+  conda activate <your-env>
 
-ORB requires Python 3.11 or 3.12; the quick-start environment uses 3.12. ORB and AIMNet2 do not need UMA authentication. PyDMF is already a core dependency; DMF additionally needs cyipopt.
+  # Install cyipopt (required for the DMF method in MEP search)
+  conda install -c conda-forge cyipopt -y
+  ```
 
-The DFT extra installs GPU4PySCF on x86_64. On aarch64, use CPU PySCF with `--engine cpu` for the `dft` command. See [DFT](dft.md).
+- If an HPC site requires a CUDA module for locally built extensions, load the exact module documented by that site. Do not load a second CUDA runtime merely to install a prebuilt PyTorch wheel; first test the wheel with the NVIDIA driver alone.
 
-MACE needs a separate environment because its e3nn dependency conflicts with UMA. See the [MACE installation recipe](https://github.com/t-0hmura/pdb2reaction/blob/main/skills/pdb2reaction-install-backends/mace.md).
+  ```bash
+  module load cuda/<your-version>   # e.g. cuda/12.6 or cuda/12.9
+  ```
 
-## Verify GPU access
+> **Tip:** UMA is the default MLIP backend. To use ORB or AIMNet2, install the corresponding extra (e.g. `pip install --only-binary=dm-tree "pdb2reaction[orb]"`) and pass `-b/--backend orb` to any command. See step 7 below.
 
-```bash
-python -c "import torch; print('CUDA:', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'N/A')"
-python -m pip check
+```{warning}
+**MACE:** `mace-torch` requires `e3nn==0.4.4`, which conflicts with `fairchem-core`'s `e3nn>=0.5` pin (UMA). The two cannot coexist, so MACE needs a dedicated conda env; the canonical recipe is `pip uninstall -y fairchem-core && pip install mace-torch` in that env.
 ```
 
-On a cluster, run the GPU check inside an allocated GPU job. If CUDA is unavailable, check the driver, selected PyTorch wheel and scheduler GPU allocation; diagnostic details are available with `python -m torch.utils.collect_env`.
+
+(step-by-step-installation)=
+## Step-by-step installation
+
+If you prefer to build the environment piece by piece:
+
+1. **Load a CUDA toolkit only when the site/build requires one**
+
+    A prebuilt PyTorch wheel does not require `nvcc`. If a dependency must be
+    built from source, use `module avail cuda` and load the compiler/toolkit
+    combination documented by the cluster:
+
+    ```bash
+    module load cuda/<your-version>
+    ```
+
+2. **Create and activate a conda environment**
+
+    ```bash
+    conda create -n <your-env> python=3.12 -y
+    conda activate <your-env>
+    ```
+
+3. **Install cyipopt**
+    Required if you want to use the DMF method (`--mep-mode dmf`) in MEP search. You can skip this step if you only use GSM.
+
+    ```bash
+    conda install -c conda-forge cyipopt -y
+    ```
+
+4. **Install PyTorch with the right CUDA build**
+
+    Conservative pre-Blackwell example:
+
+    ```bash
+    pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu126
+    ```
+
+    The official 2.13.0 matrix also provides `cu130`, `cu132`, and `cpu`.
+    Select by driver and GPU architecture, then verify with
+    `torch.cuda.is_available()`; the `nvidia-smi` "CUDA Version" banner is not a
+    local-toolkit version selector. See [PyTorch's version matrix](https://pytorch.org/get-started/previous-versions/).
+
+5. **Install `pdb2reaction` itself and Chrome for visualization**
+
+    ```bash
+    pip install pdb2reaction
+    plotly_get_chrome -y
+    ```
+
+6. **Log in to Hugging Face Hub (UMA model)**
+
+    ```bash
+    hf auth login
+    ```
+
+    See also:
+
+    - <https://github.com/facebookresearch/fairchem>
+    - <https://huggingface.co/facebook/UMA>
+    - <https://huggingface.co/docs/hub/security-tokens>
+
+7. **(Optional) Install additional MLIP backends**
+
+    pdb2reaction uses UMA by default. To use alternative backends, install the corresponding optional dependency:
+
+    ```bash
+    # ORB backend (Requires Python 3.11 or 3.12; 3.12 recommended)
+    pip install --only-binary=dm-tree "pdb2reaction[orb]"
+
+    # AIMNet2 backend
+    pip install "pdb2reaction[aimnet]"
+
+    # MACE backend (use a separate conda environment because mace-torch
+    # pins e3nn==0.4.4 which conflicts with UMA's fairchem-core)
+    conda create -n <mace-env> python=3.11 -y && conda activate <mace-env> \
+        && pip install pdb2reaction \
+        && pip uninstall -y fairchem-core \
+        && pip install mace-torch
+
+    # DFT single-point post-processing (`--dft` / `pdb2reaction dft`)
+    # Installs gpu4pyscf-cuda12x, PySCF, and related dependencies.
+    # Note: gpu4pyscf-cuda12x publishes x86_64 wheels on PyPI; on
+    # aarch64 build from source (https://github.com/pyscf/gpu4pyscf).
+    pip install "pdb2reaction[dft]"
+    ```
+
+8. **Verify installation**
+
+    ```bash
+    pdb2reaction --version
+    ```
+
+    This should display the installed version. To verify GPU access:
+
+    ```bash
+    python -c "import torch; print('CUDA:', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'N/A')"
+    ```
+
+    If `CUDA: False`, inspect the installed wheel, scheduler GPU visibility,
+    driver, and environment libraries before changing versions:
+
+    ```bash
+    python -m torch.utils.collect_env
+    python -m pip check
+    ```
 
 ## System requirements
 

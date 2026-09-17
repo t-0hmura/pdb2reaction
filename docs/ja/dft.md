@@ -131,7 +131,7 @@ dft:
 - **新しい GPU architecture:** OOM や unsupported-kernel error は、実メモリ需要だけでなく package/kernel compatibility が原因の場合があります。engine を変更する前に GPU4PySCF/CuPy version と traceback を確認し、全 Blackwell card に同じ既知不具合があると扱わないでください。
 - **CPU backend:** `--engine cpu` は対応していますが、実用性は method/system/hardware に依存します。固定の atom-count cutoff ではなく代表 single point を計測してください。
 - **HPC scratch:** PySCF / GPU4PySCF は積分や中間fileを `$PYSCF_TMPDIR`（未設定なら `$TMPDIR`、最後は `/tmp`）へ書きます。代表runの実使用量とsite quotaを確認し、必要なら `PYSCF_TMPDIR` をjob filesystem配下へ向けてください（例: `export PYSCF_TMPDIR="$PBS_O_WORKDIR"`）。
-- この extra が導入する GPU4PySCF wheel は x86_64 向けです。それ以外のアーキテクチャでは `--engine cpu` を使用してください。
+- GPU4PySCF のコンパイル済みホイールは非 x86 環境では動作しない場合があります。ソースからビルドしてください（参照: https://github.com/pyscf/gpu4pyscf）。
 - 補助基底の推定は未実装です。密度フィッティングの挙動は処理の流れ（SCF ビルド）と `--lowmem` CLI オプションで説明しています。
 - YAML 入力ファイルのルートはマッピングでなければなりません。`dft` セクションは任意です。マッピング以外のルートは `load_yaml_dict` でエラーになります。
 - IAO の電荷/スピン解析は難しい系で失敗する場合があり、`result.yaml` の該当項目は `null` となり警告が出力されます。
