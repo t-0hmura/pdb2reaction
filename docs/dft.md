@@ -135,7 +135,7 @@ See {ref}`exit-codes` in CLI Conventions.
 - **New GPU architectures:** an OOM or unsupported-kernel failure can reflect package/kernel compatibility as well as true memory demand. Diagnose the actual GPU4PySCF/CuPy versions and traceback before switching engine; do not treat all Blackwell cards as one known failure mode.
 - **CPU backend:** `--engine cpu` is supported, but feasibility is method/system/hardware dependent. Time a representative single point rather than applying a fixed atom-count cutoff.
 - **HPC scratch:** PySCF / GPU4PySCF write to `$PYSCF_TMPDIR` (then `$TMPDIR`, `/tmp`); on nodes with a small or tmpfs `/tmp`, set `PYSCF_TMPDIR` to the job filesystem (e.g. `export PYSCF_TMPDIR="$PBS_O_WORKDIR"`) before launching.
-- Compiled GPU4PySCF wheels may not support non-x86 systems; build from source in that case (see https://github.com/pyscf/gpu4pyscf).
+- The GPU4PySCF wheels installed by this extra target x86_64. On other architectures, use `--engine cpu`.
 - No auxiliary basis guessing is implemented; density-fitting behavior is described under Workflow (SCF build) and the `--lowmem` CLI option.
 - The YAML input file must have a mapping root; the `dft` section is optional. Non-mapping roots raise an error via `load_yaml_dict`.
 - IAO spin/charge analysis may fail for challenging systems; corresponding columns in `result.yaml` become `null` and a warning is printed.

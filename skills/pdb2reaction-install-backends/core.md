@@ -13,15 +13,20 @@ automatically with `pip install pdb2reaction`.
 - A working PyTorch install matching your CUDA driver — see `env-cuda.md`
 - (For DFT) PySCF / GPU4PySCF — see `dft.md`
 - (For ALPB) xtb — see `xtb.md`
-- (For DMF) `conda install -c conda-forge cyipopt -y`; pydmf is a core dependency.
+- (For DMF) `conda install -c conda-forge cyipopt "numpy>=2,<2.5" -y`; pydmf is a core dependency.
 
 ## Install from PyPI (recommended)
 
+The example uses a CUDA 13-compatible NVIDIA driver. Accept the [UMA model license](https://huggingface.co/facebook/UMA) before `hf auth login`. Add backend extras from the table below when needed.
+
 ```bash
-conda activate <YOUR_ENV>
-pip install pdb2reaction                         # core (UMA via fairchem-core); Orb requires the [orb] extra
-pip install --only-binary=dm-tree 'pdb2reaction[orb,aimnet,dft]'        # extras as needed
-plotly_get_chrome -y                             # headless Chrome for Plotly PNG export (needs network)
+conda create -n pdb2reaction python=3.12 pip -y
+conda activate pdb2reaction
+pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cu130
+pip install pdb2reaction
+plotly_get_chrome -y
+hf auth login
+pdb2reaction --version
 ```
 
 Static Plotly export requires a Kaleido-compatible Chrome/Chromium runtime.
@@ -129,4 +134,4 @@ conda env remove -n <YOUR_ENV>
 
 - `env-cuda.md` — torch / CUDA setup that must come first
 - `uma.md`, `orb.md`, `mace.md`, `aimnet2.md` — backend-specific extras
-- `dft.md` — `[dft]` install details and aarch64 fallback
+- `dft.md` — `[dft]` installation and CPU/GPU selection

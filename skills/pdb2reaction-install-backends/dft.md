@@ -30,14 +30,13 @@ it in automatically. Install it only when the selected GPU4PySCF path requires i
 On `aarch64` (`uname -m`), the `gpu4pyscf-cuda12x` PyPI wheel is
 x86_64-only. The extras install will succeed for `pyscf` and
 `basis-set-exchange` but skip GPU4PySCF, leaving you on CPU PySCF.
-Build `gpu4pyscf` from source
-(https://github.com/pyscf/gpu4pyscf) to use `--engine gpu` on aarch64.
+Use `--engine cpu` on aarch64.
 
 Verify:
 
 ```bash
 python -c "import pyscf; print('pyscf       :', pyscf.__version__)"
-python -c "import gpu4pyscf; print('gpu4pyscf   :', gpu4pyscf.__version__)"   # wheel: x86_64; source build possible
+python -c "import gpu4pyscf; print('gpu4pyscf   :', gpu4pyscf.__version__)"   # x86_64 GPU installation only
 python -c "import cupy; print('cupy        :', cupy.__version__)"
 ```
 
@@ -82,7 +81,7 @@ python -c "from pdb2reaction.workflows.dft import DFT_KW; print(DFT_KW)"
 | `cupy.cuda.runtime.CUDARuntimeError: invalid device ordinal` | Requested local device index is outside the scheduler-visible set | Keep the scheduler's `CUDA_VISIBLE_DEVICES`; select a valid **local** ordinal (usually 0 in a one-GPU job) |
 | `RuntimeError: CUDA out of memory` mid-SCF | The selected method/system exceeds available VRAM | Try the same method with `--engine cpu` or a larger-memory GPU. A smaller basis/grid is a different scientific method and must be labeled/revalidated. |
 | `gpu4pyscf` imports but SCF stalls/fails near startup | The message alone does not identify cuTENSOR or another dependency | Capture the full traceback/log, run `pip check`, and compare with the installed GPU4PySCF version's official requirements before installing extra CUDA libraries. |
-| aarch64: `--engine gpu` requested but no `gpu4pyscf` | x86_64-only wheel | Re-run with `--engine cpu` or build from source (see Install). |
+| aarch64: `--engine gpu` requested but no `gpu4pyscf` | x86_64-only wheel | Re-run with `--engine cpu`. |
 
 ## Resource planning
 

@@ -53,17 +53,23 @@ CPU-only execution works but is usually much slower; benchmark the selected back
 
 ## Installation
 
+For Linux with an NVIDIA GPU and a CUDA 13-compatible driver, copy this block into a terminal. Accept the [UMA model license](https://huggingface.co/facebook/UMA) before logging in.
+
 ```bash
-# 1. CUDA-enabled PyTorch (choose the official 2.13 wheel for your driver/GPU)
+conda create -n pdb2reaction python=3.12 pip -y
+conda activate pdb2reaction
+
+# 1. Install CUDA-enabled PyTorch
 pip install 'torch==2.13.0' --index-url https://download.pytorch.org/whl/cu130
 
 # 2. Install pdb2reaction
 pip install pdb2reaction
+plotly_get_chrome -y
 
 # 3. Authenticate Hugging Face once (only required for the default UMA backend)
 #    Accept the FAIR Chemistry License v1 at https://huggingface.co/facebook/UMA, then:
-hf auth login                               # interactive
-# OR, for non-interactive CI/HPC jobs: export HF_TOKEN=hf_xxx
+hf auth login
+pdb2reaction --version
 ```
 
 **Optional extras** (install only what you need):
