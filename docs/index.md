@@ -132,19 +132,14 @@ ja/glossary
 
 ## Quick start
 
-| Goal | Page |
-|---|---|
-| Install + run a first end-to-end pipeline | [Installation](installation.md) · [Getting Started](getting-started.md) |
-| End-to-end pipeline from a PDB | [Quickstart: all](quickstart-all.md) |
-| Single-structure scan-seeded MEP workflow | [Quickstart: scan](quickstart-scan.md) |
-| TS candidate available — `tsopt → IRC → freq` | [Quickstart: TS-only](quickstart-tsopt-freq.md) |
-| Choosing precision / TS route / imaginary-mode fix / controlled comparison | [`tsopt`](tsopt.md) |
-| Staged-vs-concerted scan / barrier direction | [`scan`](scan.md) |
-| Run failure / error | [Common Error Recipes](recipes-common-errors.md) · [Troubleshooting](troubleshooting.md) |
-| CLI conventions / structure formats / YAML | [CLI Conventions](cli-conventions.md) · [mmCIF and large structures](cif.md) · [YAML Reference](yaml-reference.md) |
-| Same-stack repeatability (`--deterministic`) | [Reproducibility](reproducibility.md) |
-| MLIP backend settings / HPC examples | [MLIP Calculator](uma-pysis.md) · [HPC Examples](hpc-example.md) |
-| Cluster boundary atoms (cap-H, `--freeze-atoms`) | [Frozen Atoms](freeze-atoms.md) |
+| Goal | Workflow |
+|------|----------|
+| **First end-to-end run** | [Quickstart: all](quickstart-all.md) |
+| **Build an MEP from a single structure using a scan** | [Quickstart: scan](quickstart-scan.md) |
+| **TS candidate available** | [Quickstart: TS-only mode](quickstart-tsopt-freq.md) |
+| **Run failure / error** | [Common Error Recipes](recipes-common-errors.md) |
+
+See [Installation](installation.md) for prerequisites.
 
 ## Subcommands
 
@@ -168,6 +163,18 @@ ja/glossary
 | [`trj2fig`](trj2fig.md) | Plot energy profiles from XYZ trajectories |
 | [`energy-diagram`](energy-diagram.md) | Draw an energy diagram from numeric values |
 | [`bond-summary`](bond-summary.md) | Detect and report covalent bond changes between consecutive structures |
+
+## Configuration and reference
+
+| Topic | Page |
+|-------|------|
+| **CLI conventions and input requirements** | [CLI Conventions](cli-conventions.md) · [mmCIF and large structures](cif.md) |
+| **Cluster boundary atoms (cap hydrogens, `--freeze-atoms`)** | [Frozen Atoms](freeze-atoms.md) |
+| **Common errors and fixes** | [Troubleshooting](troubleshooting.md) |
+| **CLI command reference** | [Command Reference](reference/commands/index.md) |
+| **YAML configuration options** | [YAML Reference](yaml-reference.md) |
+| **MLIP backend settings** | [MLIP Calculator](uma-pysis.md) |
+| **Terminology** | [Glossary](glossary.md) |
 
 ## Getting Help
 
