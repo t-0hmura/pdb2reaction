@@ -39,29 +39,7 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
 
 ### 任意
 
-- MEP 探索で Direct Max Flux（DMF）法を使用する場合は、conda 環境を作成し、pdb2reaction のインストール前に cyipopt をインストールしてください。
-
-  ```bash
-  # 専用のconda環境を作成してアクティブ化
-  conda create -n <your-env> python=3.12 -y
-  conda activate <your-env>
-
-  # cyipoptをインストール（MEP 探索のDMF法に必要）
-  conda install -c conda-forge cyipopt -y
-  ```
-
-- HPC site が local build extension 用に CUDA module を要求する場合のみ、site 指定の module をロードします。prebuilt PyTorch wheel のインストールだけのために別の CUDA runtime を追加せず、まず NVIDIA driver と wheel の組合せを検証してください。
-
-  ```bash
-  module load cuda/<your-version>   # 例: cuda/12.6 または cuda/12.9
-  ```
-
-> **ヒント:** UMA がデフォルトの MLIP バックエンドです。ORB や AIMNet2 を使用するには、対応する extra をインストール（例: `pip install --only-binary=dm-tree "pdb2reaction[orb]"`）し、コマンドに `-b/--backend orb` を渡してください。下の手順 7 を参照。
-
-```{warning}
-**MACE:** `mace-torch` は `e3nn==0.4.4` を要求し、`fairchem-core` の `e3nn>=0.5` pin（UMA）と競合します。両者は共存できないため、MACE には専用の conda env が必要です。標準 recipe はその env で `pip uninstall -y fairchem-core && pip install mace-torch` です。
-```
-
+DMF を使う場合は、必須コマンドの実行前に環境を作成し、cyipopt を導入します（下記の手順 2〜3）。CUDA module はソースビルドで必要な場合のみ使用します（手順 1）。ORB・AIMNet2・MACE・DFT の導入は手順 7 を参照してください。MACE の `e3nn==0.4.4` は UMA の `e3nn>=0.5` と競合するため、専用環境が必要です。
 
 (ja-step-by-step-installation)=
 ## 詳細なインストール手順
@@ -75,7 +53,7 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
     compiler/toolkit の組合せをロードしてください:
 
     ```bash
-    module load cuda/<your-version>
+    module load cuda/<your-version>   # 例: cuda/12.6 または cuda/12.9
     ```
 
 2. **conda 環境を作成してアクティブ化**
@@ -117,15 +95,11 @@ hf auth login --token '<YOUR_ACCESS_TOKEN>' --add-to-git-credential
     hf auth login
     ```
 
-    参照:
-
-    - <https://github.com/facebookresearch/fairchem>
-    - <https://huggingface.co/facebook/UMA>
-    - <https://huggingface.co/docs/hub/security-tokens>
+    利用許諾と非対話型ログインは、上の「必須」を参照してください。
 
 7. **（任意）追加の MLIP バックエンドをインストール**
 
-    pdb2reaction はデフォルトで UMA を使用します。他のバックエンドを使用する場合は、対応するオプション依存関係をインストールしてください:
+    pdb2reaction はデフォルトで UMA を使用します。他のバックエンドは対応する extra を導入し、`-b/--backend`（例: `-b orb`）で選択します:
 
     ```bash
     # ORB バックエンド（Python 3.11／3.12 が必要、3.12 推奨）

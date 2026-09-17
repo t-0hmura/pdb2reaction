@@ -39,29 +39,7 @@ You only need to do this once per machine / environment.
 
 ### Optional
 
-- If you want to use the Direct Max Flux (DMF) method for MEP search, create a conda environment and install cyipopt before installing pdb2reaction.
-
-  ```bash
-  # Create and activate a dedicated conda environment
-  conda create -n <your-env> python=3.12 -y
-  conda activate <your-env>
-
-  # Install cyipopt (required for the DMF method in MEP search)
-  conda install -c conda-forge cyipopt -y
-  ```
-
-- If an HPC site requires a CUDA module for locally built extensions, load the exact module documented by that site. Do not load a second CUDA runtime merely to install a prebuilt PyTorch wheel; first test the wheel with the NVIDIA driver alone.
-
-  ```bash
-  module load cuda/<your-version>   # e.g. cuda/12.6 or cuda/12.9
-  ```
-
-> **Tip:** UMA is the default MLIP backend. To use ORB or AIMNet2, install the corresponding extra (e.g. `pip install --only-binary=dm-tree "pdb2reaction[orb]"`) and pass `-b/--backend orb` to any command. See step 7 below.
-
-```{warning}
-**MACE:** `mace-torch` requires `e3nn==0.4.4`, which conflicts with `fairchem-core`'s `e3nn>=0.5` pin (UMA). The two cannot coexist, so MACE needs a dedicated conda env; the canonical recipe is `pip uninstall -y fairchem-core && pip install mace-torch` in that env.
-```
-
+For DMF, create the environment and install cyipopt before the required commands (steps 2–3 below). CUDA modules are needed only for source builds that require them (step 1). ORB, AIMNet2, MACE and DFT installation are covered in step 7; MACE requires a separate environment because its `e3nn==0.4.4` conflicts with UMA's `e3nn>=0.5`.
 
 (step-by-step-installation)=
 ## Step-by-step installation
@@ -75,7 +53,7 @@ If you prefer to build the environment piece by piece:
     combination documented by the cluster:
 
     ```bash
-    module load cuda/<your-version>
+    module load cuda/<your-version>   # e.g. cuda/12.6 or cuda/12.9
     ```
 
 2. **Create and activate a conda environment**
@@ -118,15 +96,11 @@ If you prefer to build the environment piece by piece:
     hf auth login
     ```
 
-    See also:
-
-    - <https://github.com/facebookresearch/fairchem>
-    - <https://huggingface.co/facebook/UMA>
-    - <https://huggingface.co/docs/hub/security-tokens>
+    For license requirements and non-interactive login, see the Required section above.
 
 7. **(Optional) Install additional MLIP backends**
 
-    pdb2reaction uses UMA by default. To use alternative backends, install the corresponding optional dependency:
+    pdb2reaction uses UMA by default. For another backend, install its extra and select it with `-b/--backend` (for example, `-b orb`):
 
     ```bash
     # ORB backend (Requires Python 3.11 or 3.12; 3.12 recommended)
