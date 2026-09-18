@@ -338,7 +338,7 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 | --- | --- | --- |
 | `--dft-engine [gpu\|cpu]` | DFT バックエンド: gpu (GPU4PySCF) または cpu (PySCF)。`all` ラッパーではプレフィックス付きで `--dft-engine` と名付けられていますが、単体の `dft` サブコマンドでは同じオプションが `--engine` という名前になります | `gpu` |
 | `--dft-out-dir PATH` | DFT 出力ディレクトリ上書き | _None_ |
-| `--dft-func-basis TEXT` | 汎関数/基底関数ペア | `wb97m-v/def2-tzvpd` |
+| `--dft-func-basis TEXT` | 汎関数/基底関数ペア | `wb97m-v/def2-svp` |
 | `--dft-max-cycle INT` | 最大 SCF サイクル | `100` |
 | `--dft-conv-tol FLOAT` | SCF 収束閾値 | `1e-9` |
 | `--dft-grid-level INT` | PySCF グリッドレベル | `3` |

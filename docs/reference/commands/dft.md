@@ -29,7 +29,7 @@ Options:
   --func-basis TEXT               Exchange–correlation functional and basis set
                                   as 'FUNC/BASIS' (e.g., 'wb97m-v/6-31g**',
                                   'wb97m-v/def2-tzvpd').  [default:
-                                  wb97m-v/def2-tzvpd]
+                                  wb97m-v/def2-svp]
   --max-cycle INTEGER RANGE       Maximum SCF iterations.  [default: 100; x>=1]
   --conv-tol FLOAT                SCF convergence tolerance (Eh).  [default:
                                   1e-09]

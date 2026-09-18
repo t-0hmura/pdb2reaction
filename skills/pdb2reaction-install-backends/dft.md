@@ -64,7 +64,7 @@ Common flag set:
 | `-i, --input` | `.pdb`, `.cif` / `.mmcif`, `.xyz`, or `.gjf` input | required |
 | `-q, --charge` / `-l, --ligand-charge` | Total charge or per-residue mapping | required for `.xyz` without `--ref-pdb` |
 | `-m, --multiplicity` | Spin multiplicity (2S+1) | 1 |
-| `--func-basis` | `'FUNC/BASIS'` like `'wb97m-v/def2-tzvpd'` | `wb97m-v/def2-tzvpd` |
+| `--func-basis` | `'FUNC/BASIS'` like `'wb97m-v/def2-tzvpd'` | `wb97m-v/def2-svp` |
 | `--engine` | `gpu` / `cpu` | `gpu` |
 | `-o, --out-dir` | Output directory | `./result_dft/` |
 

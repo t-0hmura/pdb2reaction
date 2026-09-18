@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 
 DFT_DEFAULT_FUNC = "wb97m-v"
 # CHEMISTRY-RULE:5 def2 family default basis (= auto-ECP for heavy atoms via def2).
-DFT_DEFAULT_BASIS = "def2-tzvpd"
+DFT_DEFAULT_BASIS = "def2-svp"
 
 DFT_KW: Dict[str, Any] = {
     "conv_tol": 1e-9,          # SCF convergence tolerance (Eh)

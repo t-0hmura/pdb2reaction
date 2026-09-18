@@ -4447,7 +4447,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 @click.option(
     "--dft-func-basis",
     type=str,
-    default=None, show_default="wb97m-v/def2-tzvpd",
+    default=None, show_default="wb97m-v/def2-svp",
     help="Override dft --func-basis value.",
 )
 @click.option(

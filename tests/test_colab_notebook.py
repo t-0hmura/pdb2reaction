@@ -754,7 +754,7 @@ def test_colab_setup_installs_missing_cyipopt(monkeypatch) -> None:
     monkeypatch.setattr(
         importlib.metadata,
         "version",
-        lambda name: "0.4.15" if name == "pdb2reaction" else "test",
+        lambda name: "0.4.16" if name == "pdb2reaction" else "test",
     )
     monkeypatch.setattr(
         os.path,
@@ -824,7 +824,7 @@ def test_colab_setup_dft_branch_installs_extra_and_checks_gpu(monkeypatch, capsy
     versions = {
         "pyscf": "2.11.0",
         "gpu4pyscf-cuda12x": "1.5.2",
-        "pdb2reaction": "0.4.15",
+        "pdb2reaction": "0.4.16",
     }
     monkeypatch.setattr(subprocess, "run", fake_run)
     monkeypatch.setattr(subprocess, "Popen", _FakePopen)
@@ -837,8 +837,8 @@ def test_colab_setup_dft_branch_installs_extra_and_checks_gpu(monkeypatch, capsy
     installs = [argv for argv in calls if "install" in argv]
     # One pinned install carries the extra, so the DFT branch differs from the
     # plain branch only by the `[dft]` marker on the same requested version.
-    assert any("pdb2reaction[dft]==0.4.15" in argv for argv in installs)
-    assert not any("pdb2reaction==0.4.15" in argv for argv in installs)
+    assert any("pdb2reaction[dft]==0.4.16" in argv for argv in installs)
+    assert not any("pdb2reaction==0.4.16" in argv for argv in installs)
     assert popen_calls == []          # no streamed pip log, only the announcement
     logged = capsys.readouterr().out
     assert "install_dft is ticked" in logged
@@ -895,7 +895,7 @@ def test_colab_setup_operates_orb_and_uma_branches(
     monkeypatch.setattr(
         importlib.metadata,
         "version",
-        lambda name: "0.4.15" if name == "pdb2reaction" else "test",
+        lambda name: "0.4.16" if name == "pdb2reaction" else "test",
     )
     monkeypatch.delenv("HF_TOKEN", raising=False)
     if use_token:
@@ -940,7 +940,7 @@ def test_colab_setup_handles_cancelled_uma_sign_in(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
         importlib.metadata,
         "version",
-        lambda name: "0.4.15" if name == "pdb2reaction" else "test",
+        lambda name: "0.4.16" if name == "pdb2reaction" else "test",
     )
     monkeypatch.delenv("HF_TOKEN", raising=False)
 
@@ -963,18 +963,18 @@ def test_colab_setup_explains_unavailable_release(monkeypatch) -> None:
 
     def fake_run(argv, **_kwargs):
         command = [str(value) for value in argv]
-        failed = any(value == "pdb2reaction==0.4.15" for value in command)
+        failed = any(value == "pdb2reaction==0.4.16" for value in command)
         return types.SimpleNamespace(stdout="GPU 0", stderr="", returncode=1 if failed else 0)
 
     monkeypatch.setattr(subprocess, "run", fake_run)
     monkeypatch.setattr(importlib.util, "find_spec", lambda _name: object())
-    monkeypatch.setattr(importlib.metadata, "version", lambda _name: "0.4.15")
+    monkeypatch.setattr(importlib.metadata, "version", lambda _name: "0.4.16")
 
     with pytest.raises(RuntimeError) as error:
         exec(compile(setup, str(NOTEBOOK), "exec"), {})
 
     message = str(error.value)
-    assert "Could not install pdb2reaction==0.4.15 from PyPI" in message
+    assert "Could not install pdb2reaction==0.4.16 from PyPI" in message
     assert "version v0.4.16 may not be published" in message
     assert "pdb2reaction-src.zip pair, then enter debug" in message
 
@@ -4357,7 +4357,7 @@ def test_colab_release_state_and_linked_results_regressions(
     assert "shapes.push({type:'line',xref:'x',yref:'paper',x0:1" not in notebook_source
     assert "the profile, controls, and molecular structure stay synchronized" not in notebook_source
     assert "never" in {value for _label, value in app["adv_thresh"].options}
-    assert app["adv_dftfb"].placeholder == "wb97m-v/def2-tzvpd"
+    assert app["adv_dftfb"].placeholder == "wb97m-v/def2-svp"
 
     reactant = tmp_path / "reactant.xyz"
     product = tmp_path / "product.xyz"
@@ -4658,7 +4658,7 @@ def test_colab_uma_login_accepts_a_colab_secret(monkeypatch) -> None:
     monkeypatch.setattr(importlib.util, "find_spec", lambda _name: object())
     monkeypatch.setattr(
         importlib.metadata, "version",
-        lambda name: "0.4.15" if name == "pdb2reaction" else "test",
+        lambda name: "0.4.16" if name == "pdb2reaction" else "test",
     )
     monkeypatch.delenv("HF_TOKEN", raising=False)
 
@@ -6077,8 +6077,16 @@ def test_notebook_default_controls_defer_to_live_cli(
     all_params = {param.name: param for param in
                   app["_advanced_command"]("all").params}
     assert app["_cli_default_label"](all_params["dft_func_basis"]) == (
-        "default: wb97m-v/def2-tzvpd"
+        "default: wb97m-v/def2-svp"
     )
+    app["set_subcmd"]("all")
+    with monkeypatch.context() as patch:
+        patch.setattr(all_params["dft_func_basis"], "show_default", "wb97m-v/def2-tzvpd")
+        app["_sync_capability_controls"]()
+        assert app["adv_dftfb"].placeholder == "wb97m-v/def2-tzvpd"
+        assert app["adv_dftfb"].value == ""
+    app["_sync_capability_controls"]()
+    assert app["adv_dftfb"].placeholder == "wb97m-v/def2-svp"
 
 
 def test_freq_results_preserve_all_written_modes_in_top_selector(

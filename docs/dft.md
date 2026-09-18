@@ -1,6 +1,6 @@
 # `dft`
 
-Runs single-point DFT with GPU4PySCF or CPU PySCF, reporting energy and population analysis (Mulliken, meta-Löwdin, IAO charges). The default functional/basis is ωB97M-V/def2-tzvpd. Use it to evaluate DFT energies (and population analysis) on small active-site models, typically at MLIP-optimized R/TS/P geometries. Select the backend via `--engine` (default `gpu`); use `cpu` when no GPU is available, or for portable/debug runs.
+Runs single-point DFT with GPU4PySCF or CPU PySCF, reporting energy and population analysis (Mulliken, meta-Löwdin, IAO charges). The default functional/basis is ωB97M-V/def2-svp. Use it to evaluate DFT energies (and population analysis) on small active-site models, typically at MLIP-optimized R/TS/P geometries. Select the backend via `--engine` (default `gpu`); use `cpu` when no GPU is available, or for portable/debug runs.
 
 > See {ref}`engine-vs-dft-engine` for the `--engine` (standalone `dft`) vs `--dft-engine` (forwarded through `pdb2reaction all`) naming convention.
 
@@ -89,7 +89,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `-q, --charge INT` | Total charge supplied to PySCF. Overrides residue-based `--ligand-charge/-l` derivation, YAML `calc.charge`, and the GJF header, in that order. | Required if charge is otherwise unresolved |
 | `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB/mmCIF residue metadata. Used when `-q` is omitted (PDB/mmCIF inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). Converted to `2S` for PySCF. | YAML `calc.spin`, then GJF, then `1` |
-| `--func-basis TEXT` | Functional/basis pair in `FUNC/BASIS` form (quote strings with `*`). | `wb97m-v/def2-tzvpd` |
+| `--func-basis TEXT` | Functional/basis pair in `FUNC/BASIS` form (quote strings with `*`). | `wb97m-v/def2-svp` |
 | `--max-cycle INT` | Maximum SCF iterations (`dft.max_cycle`). | `100` |
 | `--conv-tol FLOAT` | SCF convergence tolerance in hartree (`dft.conv_tol`). | `1e-9` |
 | `--grid-level INT` | PySCF numerical integration grid level (`dft.grid_level`). | `3` |
@@ -115,7 +115,7 @@ geom:
  coord_type: cart # optional geom_loader settings
 dft:
  func: wb97m-v # exchange–correlation functional
- basis: def2-tzvpd # basis set name (alternatively use func_basis: "FUNC/BASIS")
+ basis: def2-svp # basis set name (alternatively use func_basis: "FUNC/BASIS")
  conv_tol: 1.0e-09 # SCF convergence tolerance (hartree)
  max_cycle: 100 # maximum SCF iterations
  grid_level: 3 # PySCF grid level

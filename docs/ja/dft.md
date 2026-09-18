@@ -1,6 +1,6 @@
 # `dft`
 
-GPU4PySCF または CPU PySCF を使用して DFT 一点計算を実行し、エネルギーとポピュレーション解析（population analysis: Mulliken、meta-Löwdin、IAO 電荷）を出力します。デフォルトの汎関数/基底関数は ωB97M-V/def2-tzvpd です。小規模な活性部位モデルの DFT 一点エネルギー（およびポピュレーション解析）を得たい場面で使用します。多くは、MLIP で最適化した R/TS/P 構造上の DFT 一点エネルギー評価に用います。バックエンドは `--engine`（デフォルト `gpu`）で選択します。GPU が利用できない場合や移植性・デバッグ目的の実行には `cpu` を使用します。
+GPU4PySCF または CPU PySCF を使用して DFT 一点計算を実行し、エネルギーとポピュレーション解析（population analysis: Mulliken、meta-Löwdin、IAO 電荷）を出力します。デフォルトの汎関数/基底関数は ωB97M-V/def2-svp です。小規模な活性部位モデルの DFT 一点エネルギー（およびポピュレーション解析）を得たい場面で使用します。多くは、MLIP で最適化した R/TS/P 構造上の DFT 一点エネルギー評価に用います。バックエンドは `--engine`（デフォルト `gpu`）で選択します。GPU が利用できない場合や移植性・デバッグ目的の実行には `cpu` を使用します。
 
 > `--engine`（単体の `dft`）と `--dft-engine`（`pdb2reaction all` から転送する場合）の命名規則は {ref}`ja-engine-vs-dft-engine` を参照してください。
 
@@ -82,7 +82,7 @@ out_dir/ (デフォルト:./result_dft/)
 | `-q, --charge INT` | PySCF に提供される総電荷。優先順位は `-q` → `--ligand-charge/-l` による残基電荷の導出 → YAML `calc.charge` → GJF ヘッダー | 他の指定から電荷が決まらなければ必須 |
 | `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB/mmCIF 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB/mmCIF 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `-m, --multiplicity INT` | スピン多重度（2S+1）。PySCF 用に `2S` に変換 | YAML `calc.spin` → GJF → `1` |
-| `--func-basis TEXT` | `FUNC/BASIS` 形式の汎関数/基底ペア | `wb97m-v/def2-tzvpd` |
+| `--func-basis TEXT` | `FUNC/BASIS` 形式の汎関数/基底ペア | `wb97m-v/def2-svp` |
 | `--max-cycle INT` | 最大 SCF 反復 | `100` |
 | `--conv-tol FLOAT` | SCF 収束許容値（Hartree） | `1e-9` |
 | `--grid-level INT` | PySCF 数値積分グリッドレベル | `3` |
@@ -108,7 +108,7 @@ geom:
  coord_type: cart # optional geom_loader settings
 dft:
  func: wb97m-v # exchange–correlation functional
- basis: def2-tzvpd # basis set name (alternatively use func_basis: "FUNC/BASIS")
+ basis: def2-svp # basis set name (alternatively use func_basis: "FUNC/BASIS")
  conv_tol: 1.0e-09 # SCF convergence tolerance (Hartree)
  max_cycle: 100 # maximum SCF iterations
  grid_level: 3 # PySCF grid level

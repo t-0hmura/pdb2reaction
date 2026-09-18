@@ -301,7 +301,7 @@ TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (on
 | `--freq-pressure FLOAT` | Thermochemistry pressure (atm). | `1.0` |
 | `--dft-engine [gpu\|cpu]` | DFT backend (GPU4PySCF or PySCF). In `all` the option is named `--dft-engine`; the standalone `dft` subcommand uses `--engine`. | `gpu` |
 | `--dft-out-dir PATH` | DFT outputs base directory override. | _None_ |
-| `--dft-func-basis TEXT` | Functional / basis pair. | `wb97m-v/def2-tzvpd` |
+| `--dft-func-basis TEXT` | Functional / basis pair. | `wb97m-v/def2-svp` |
 | `--dft-max-cycle INT` | Maximum SCF iterations. | `100` |
 | `--dft-conv-tol FLOAT` | SCF convergence tolerance. | `1e-9` |
 | `--dft-grid-level INT` | PySCF grid level. | `3` |

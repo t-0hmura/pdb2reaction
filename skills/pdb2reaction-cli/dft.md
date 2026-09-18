@@ -12,7 +12,7 @@ input.
 ```bash
 pdb2reaction dft -i geom.{pdb,cif,mmcif,xyz,gjf} \
     [-q 0 -m 1] [-l 'RES:Q,...'] \
-    [--func-basis 'wb97m-v/def2-tzvpd'] \
+    [--func-basis 'wb97m-v/def2-svp'] \
     [--engine gpu|cpu] \
     [-o ./result_dft/]
 ```
@@ -24,7 +24,7 @@ pdb2reaction dft -i geom.{pdb,cif,mmcif,xyz,gjf} \
 | `-i, --input` | path | required | `.pdb` / `.cif` / `.mmcif` / `.xyz` / `.gjf` |
 | `-q` / `-l` / `-m` | — | — | Charge / spin (required for `.xyz` without `--ref-pdb`) |
 | `--ref-pdb` | path | none | Reference PDB/mmCIF so `-l` works on `.xyz` input |
-| `--func-basis` | str | `wb97m-v/def2-tzvpd` | `'FUNC/BASIS'` |
+| `--func-basis` | str | `wb97m-v/def2-svp` | `'FUNC/BASIS'` |
 | `--engine` | str | `gpu` | `gpu` (GPU4PySCF) or `cpu` (PySCF) |
 | `--lowmem / --no-lowmem` | toggle | `--lowmem` | Closed-shell GPU uses `rks_lowmem.RKS` (no DF); open-shell / CPU / older gpu4pyscf automatically fall back to RKS/UKS+DF |
 | `--config` | path | none | YAML config file |
@@ -33,7 +33,7 @@ pdb2reaction dft -i geom.{pdb,cif,mmcif,xyz,gjf} \
 
 ## Examples
 
-### Default DFT//MLIP on a TS
+### DFT//MLIP on a TS
 
 ```bash
 pdb2reaction dft -i seg_01/ts.pdb \

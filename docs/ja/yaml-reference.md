@@ -610,7 +610,7 @@ DFT 計算設定。
 ```yaml
 dft:
  func: wb97m-v # Exchange-correlation functional
- basis: def2-tzvpd # Basis set name
+ basis: def2-svp # Basis set name
  func_basis: null # Combined "FUNC/BASIS" string (overrides func/basis)
  conv_tol: 1.0e-09 # SCF convergence tolerance (hartree)
  max_cycle: 100 # Maximum SCF iterations
@@ -717,7 +717,7 @@ thermo:
 
 dft:
  func: wb97m-v
- basis: def2-tzvpd
+ basis: def2-svp
  grid_level: 3
 ```
 

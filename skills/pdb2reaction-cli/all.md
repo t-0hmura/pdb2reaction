@@ -50,7 +50,7 @@ pdb2reaction all -i <input(s)> [-c <substrate>] [-l 'RES:Q,...'] \
 | `--reject-uphill / --no-reject-uphill` | toggle | off | Opt in to rejection above `1e-4` Hartree during Hessian/RFO post-IRC endpoint re-optimization only. At the emergency floor, the retained endpoint receives a final convergence check. It never affects TS optimization or path search. |
 | `--thermo / --no-thermo` | toggle | off | Run freq + thermochemistry on R / TS / P |
 | `--dft / --no-dft` | toggle | off | Run DFT single point on R / TS / P |
-| `--dft-func-basis` | str | `wb97m-v/def2-tzvpd` | DFT functional/basis (when `--dft`) |
+| `--dft-func-basis` | str | `wb97m-v/def2-svp` | DFT functional/basis (when `--dft`) |
 | `-b, --backend` | str | `uma` | MLIP backend |
 | `--workers`, `--workers-per-node` | int | `1`, `1` | UMA predictor workers. `workers > 1` plus an explicit `Analytical` Hessian raises `BackendError`; use one worker or `FiniteDifference`. Other built-in backends ignore these worker kwargs. |
 | `-o, --out-dir` | path | `./result_all/` | Top-level output directory |
