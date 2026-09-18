@@ -213,7 +213,7 @@ To cite the software or a specific release, use the Zenodo record:
   author       = {Ohmura, Takuto},
   title        = {pdb2reaction},
   year         = {2026},
-  version      = {0.4.15},
+  version      = {0.4.16},
   url          = {https://github.com/t-0hmura/pdb2reaction},
   license      = {GPL-3.0},
   doi          = {10.5281/zenodo.19197865}

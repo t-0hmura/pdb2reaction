@@ -659,7 +659,7 @@ def test_colab_responsive_contract_covers_the_whole_four_step_app() -> None:
 def test_colab_setup_is_pinned_to_matching_release_and_one_backend() -> None:
     setup = _notebook()["cells"][1]["source"]
 
-    assert 'pdb2reaction_version = "v0.4.15"' in setup
+    assert 'pdb2reaction_version = "v0.4.16"' in setup
     assert "first run takes several minutes" in setup
     # The release notebook installs the pinned wheel from PyPI, the same way a
     # normal user does, so the version guard compares what pip actually resolved
@@ -975,13 +975,13 @@ def test_colab_setup_explains_unavailable_release(monkeypatch) -> None:
 
     message = str(error.value)
     assert "Could not install pdb2reaction==0.4.15 from PyPI" in message
-    assert "version v0.4.15 may not be published" in message
+    assert "version v0.4.16 may not be published" in message
     assert "pdb2reaction-src.zip pair, then enter debug" in message
 
 
 def test_colab_setup_explains_missing_debug_zip(monkeypatch, tmp_path) -> None:
     setup = _notebook()["cells"][1]["source"].replace(
-        'pdb2reaction_version = "v0.4.15"', 'pdb2reaction_version = "debug"', 1,
+        'pdb2reaction_version = "v0.4.16"', 'pdb2reaction_version = "debug"', 1,
     ).replace("install_dft = True", "install_dft = False", 1)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(
@@ -998,7 +998,7 @@ def test_colab_setup_explains_missing_debug_zip(monkeypatch, tmp_path) -> None:
     message = str(error.value)
     assert "Debug mode needs the adjacent source ZIP" in message
     assert "pdb2reaction-src.zip" in message
-    assert "enter v0.4.15 for a published release install" in message
+    assert "enter v0.4.16 for a published release install" in message
 
 
 def test_colab_gui_tracks_current_structure_and_execution_contracts() -> None:

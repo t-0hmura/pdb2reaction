@@ -8,6 +8,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/).
 
 _No changes yet._
 
+## [0.4.16] — 2026-09-18
+
+### Changed
+
+- Report execution and scientific status separately; classify a valid TS1 with one unsuccessful endpoint and a converged higher-order saddle point as `partial`.
+
+### Fixed
+
+- Stream XYZ trajectories during PDB/CIF conversion to reduce peak memory.
+- Align the English and Japanese guides and update installation and release links.
+
 ## [0.4.15] — 2026-09-16
 
 Replaces the withdrawn v0.4.14 release.
