@@ -31,7 +31,7 @@ TSOPT のみモードの反応物/生成物ラベルは**エネルギー順に�
 コマンド形式:
 
 ```bash
-pdb2reaction all -i INPUT1 [INPUT2 ...] [-c SUBSTRATE] [-b/--backend uma|orb|mace|aimnet2] [options]
+pdb2reaction all -i INPUT1 [INPUT2 ...] [-c CENTERS] [-b/--backend uma|orb|mace|aimnet2] [options]
 ```
 
 TS 最適化・IRC・熱化学・DFT まで一括実行する複数構造 MEP:
@@ -91,7 +91,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  - mmCIF、PDB固定幅を超える構造、altLocを含むPDBは、安全に再採番した内部PDBへ一度だけ正規化します。altLocは全geometry workflow共通の入力ブリッジが残基単位で一貫して選択するため、通常は事前の`fix-altloc`は不要です。通常PDBの元素欄（列77–78）が空の場合だけ`all`が`add-elem-info`を実行します。別途cleaned PDBが必要な場合に限りstandalone `fix-altloc`を使用してください。
 
 1. **活性部位モデル抽出**（`-c/--center` が指定された場合）
- - 基質は PDB/mmCIF パス、残基ID/名、`A:SAM`、または `A:SAM:123` で指定可能
+ - `-c`にはPDB/mmCIF、残基ID/名、`A:SAM`、または`A:SAM:123`を指定可能。通常は基質と触媒残基を指定し、一致した各残基から半径展開
  - 抽出オプション: `--radius`、`--radius-het2het`、`--include-h2o`、`--exclude-backbone`、`--add-linkh`、`--selected-resn`、`--verbose`
  - 入力ごとの内部PDBは `_work/models/` に保存し、mmCIF/oversized-PDB入力では元IDを復元したCIFも生成
  - **最初の活性部位モデルの総電荷**がスキャン/MEP/TSOPT に伝播
@@ -244,7 +244,7 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 | `-r, --radius FLOAT` | 活性部位モデル包含カットオフ（Å）。`0` では半径による拡張を無効化し、`-c` と `--selected-resn` の選択だけを残す | `2.6` |
 | `--radius-het2het FLOAT` | ヘテロ–ヘテロカットオフ（Å）。`0` を渡すと空の選択を避けるため内部で `0.001 Å` に自動補正されます（単体の `extract` と同じ挙動） | `0.0` |
 | `--include-h2o/--no-include-h2o` | 水分子を含める（HOH/WAT/TIP3/SOL） | `True` |
-| `--exclude-backbone/--no-exclude-backbone` | 非基質アミノ酸の主鎖原子を除去 | `False` |
+| `--exclude-backbone/--no-exclude-backbone` | 抽出中心以外のアミノ酸の主鎖原子を除去 | `False` |
 | `--add-linkh/--no-add-linkh` | 切断結合にキャップ水素を付加 | `True` |
 | `--selected-resn TEXT` | `--center` と同じID/名前/chain付きselectorで残基を強制包含 | `""` |
 | `--modified-residue TEXT` | アミノ酸として扱う残基名をカンマ区切りで指定。`NAME:charge` はこの抽出中の公称電荷を追加または上書きし、電荷を省略した `NAME` は 0 になります | `""` |

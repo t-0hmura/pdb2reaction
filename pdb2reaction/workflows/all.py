@@ -3882,10 +3882,11 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     required=False,
     default=None,
     help=(
-        "Substrate specification for the extractor: "
+        "Extraction centers (normally substrate + catalytic residues): "
         "a PDB/mmCIF path, a residue-ID list like '123,124' or 'A:123,B:456' "
         "(insertion codes OK: '123A' / 'A:123A'), "
         "a residue-name list like 'GPP,SAM', or chain-qualified 'A:SAM' / 'A:SAM:123'. "
+        "Each match starts radius expansion. "
         "When omitted, extraction is skipped and the **full input structure(s)** are used directly as active site models."
     ),
 )
@@ -3905,7 +3906,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     default=2.6,
     show_default=True,
     help=(
-        "Inclusion cutoff (Å) around substrate atoms. Zero is accepted and "
+        "Inclusion cutoff (Å) around center atoms. Zero is accepted and "
         "evaluated internally as 0.001 Å (effectively off for ordinary "
         "radius-based neighbors)."
     ),
@@ -3947,7 +3948,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     default="",
     show_default=True,
     help=(
-        "Force-include residues using the same selectors as -c/--center: IDs ('123', "
+        "Force-include residues without radius expansion using the same selectors as -c/--center: IDs ('123', "
         "'A:123A'), names ('SAM'), or chain-qualified names ('A:SAM', 'A:SAM:123'); "
         "comma/space separated."
     ),

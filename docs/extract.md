@@ -12,7 +12,7 @@ Command form:
 
 ```bash
 pdb2reaction extract -i COMPLEX.pdb [COMPLEX2.pdb ...] \
-    -c SUBSTRATE_SPEC \
+    -c CENTER_SPEC \
     [-o MODEL.pdb [MODEL2.pdb ...]] \
     [--radius Å] [--radius-het2het Å] \
     [--include-h2o / --no-include-h2o] \
@@ -58,15 +58,15 @@ pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
 
 ### Residue inclusion
 
-- Always include the substrate residues from `-c/--center`.
-- **Standard cutoff (`--radius`, default 2.6 Å)**: with `--no-exclude-backbone` (default), any atom within the cutoff makes its residue qualify (i.e. includes the residue). With `--exclude-backbone`, amino-acid residues must contact the substrate with a **non-backbone** atom (not N / H* / CA / HA* / C / O / OXT). Non-amino acids always use any atom.
-- **Independent hetero–hetero cutoff (`--radius-het2het`)**: adds residues when a substrate hetero atom (non C/H) lies within the specified Å of a protein hetero atom. With backbone exclusion enabled, the protein atom must be non-backbone.
+- `-c/--center` normally lists the substrate and catalytic residues; every match is included and starts radius expansion.
+- **Standard cutoff (`--radius`, default 2.6 Å)**: with `--no-exclude-backbone` (default), any atom within the cutoff makes its residue qualify (i.e. includes the residue). With `--exclude-backbone`, amino-acid residues must contact a center with a **non-backbone** atom (not N / H* / CA / HA* / C / O / OXT). Non-amino acids always use any atom.
+- **Independent hetero–hetero cutoff (`--radius-het2het`)**: adds residues when a center hetero atom (non C/H) lies within the specified Å of a protein hetero atom. With backbone exclusion enabled, the protein atom must be non-backbone.
 - **Water handling**: HOH / WAT / H2O / DOD / TIP / TIP3 / SOL are included by default (`--include-h2o`).
-- **Forced inclusion**: `--selected-resn` accepts the same ID/name/chain-qualified selectors as `--center`; see {ref}`selected-resn-takes-ids`.
+- **Forced inclusion**: `--selected-resn` accepts the same selectors as `--center` without starting radius expansion; see {ref}`selected-resn-takes-ids`.
 - **Chain/name disambiguation**: `A:SAM` selects every SAM in chain A and
   warns on multiple matches; `A:SAM:123` selects one intended residue.
 - **Neighbor safeguards**:
-  - When backbone exclusion is off and a residue contacts the substrate with a backbone atom, the peptide-adjacent N / C neighbors (C–N ≤ 1.9 Å) are auto-included; termini keep caps (N/H* or C/O/OXT).
+  - When backbone exclusion is off and a residue contacts a center with a backbone atom, the peptide-adjacent N / C neighbors (C–N ≤ 1.9 Å) are auto-included; termini keep caps (N/H* or C/O/OXT).
   - Disulfide bonds (SG–SG ≤ 2.5 Å) bring both cysteines.
   - Non-terminal PRO residues always pull in the N-side amino acid; CA is preserved even when backbone atoms are removed, and under `--exclude-backbone` the neighbor's C / O / OXT remain to maintain the peptide bond.
 
@@ -74,7 +74,7 @@ pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
 
 - Isolated residues retain only side-chain atoms; amino-acid backbone atoms (N, CA, C, O, OXT plus N/CA hydrogens) are removed except for PRO / HYP safeguards.
 - Continuous peptide stretches keep internal backbone atoms; only terminal caps (N/H* or C/O/OXT) are removed. TER awareness prevents capping across chain breaks.
-- With `--exclude-backbone`, main-chain atoms on all **non-substrate** amino acids are stripped (subject to PRO / HYP safeguards and PRO neighbor retention).
+- With `--exclude-backbone`, main-chain atoms on amino acids outside the **extraction centers** are stripped (subject to PRO / HYP safeguards and PRO neighbor retention).
 - Non-amino-acid residues never lose atoms named like backbone (N / CA / HA / H / H1 / H2 / H3).
 
 ### Cap hydrogens (`--add-linkh`)
@@ -87,6 +87,8 @@ pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
 
 Treat every severed bond as a chemical modeling decision, not just a geometric
 radius cutoff.
+
+The extractor warns when an inferred non-C–C covalent bond crosses the model boundary.
 
 - For a retained protein-backbone fragment, choose the residue span so its two
   main-chain ends terminate consistently at alpha carbons (PDB atom name
@@ -152,7 +154,7 @@ Defaults shown are used when the option is not specified. The full flag list is 
 | `-r, --radius FLOAT` | Atom–atom distance cutoff (Å). `0` disables radius-based expansion, so selection starts from `-c` and `--selected-resn` only (internally guarded as `0.001 Å`). | `2.6` |
 | `--radius-het2het FLOAT` | Independent hetero–hetero cutoff (Å, non C/H). | `0.0` (internally `0.001 Å` when zero) |
 | `--include-h2o / --no-include-h2o` | Include HOH / WAT / H2O / DOD / TIP / TIP3 / SOL waters. | `True` |
-| `--exclude-backbone / --no-exclude-backbone` | Remove backbone atoms on non-substrate amino acids (PRO / HYP safeguards). | `False` |
+| `--exclude-backbone / --no-exclude-backbone` | Remove backbone atoms from amino acids outside the extraction centers (PRO / HYP safeguards). | `False` |
 | `--add-linkh / --no-add-linkh` | Add cap hydrogens at 1.09 Å along severed bonds at carbon boundaries only (non-carbon boundaries are not capped). | `True` |
 | `--selected-resn TEXT` | Force-include by the same ID/name/chain-qualified selectors as `--center`. | `""` |
 
@@ -161,7 +163,7 @@ With `-r 0`, no neighboring residues are added by the radius search: the model i
 | `-l, --ligand-charge TEXT` | Total charge or per-resname mapping (e.g. `GPP:-3,SAM:1`). | _None_ |
 | `--out-json / --no-out-json` | Write a machine-readable `result.json` alongside the extracted PDB(s). Schema: [JSON Output Schema](json-output.md). | `False` |
 
-### Substrate specification (`-c/--center`)
+### Center specification (`-c/--center`)
 
 - **PDB/mmCIF path**: coordinates must match the first input exactly (tolerance 1e-3 Å); residue IDs propagate to other structures.
 - **Residue IDs**: `'123,124'`, `'A:123,B:456'`, `'123A'`, `'A:123A'` (insertion codes supported).
@@ -257,7 +259,7 @@ A dictionary mapping residue names to their nominal integer charges. Membership 
 
 ### `BACKBONE_ATOMS`
 
-Atom names treated as backbone for amino acids; under `--exclude-backbone` these are removed from non-substrate residues:
+Atom names treated as backbone for amino acids; under `--exclude-backbone` these are removed from amino acids outside the extraction centers:
 
 ```
 N, C, O, CA, OXT, H, H1, H2, H3, HN, HA, HA2, HA3

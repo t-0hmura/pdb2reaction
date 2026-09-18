@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Cuts an active-site cluster from a PDB/mmCIF around a substrate selection.
+Cuts an active-site cluster from a PDB/mmCIF around extraction centers.
 Supported carbon-boundary truncations are capped with hydrogens (cap-H); the
 extractor does not generically cap every severed bond type. Residue
 charges are summed (`-l 'RES:Q'` for non-standard residues). The internal
@@ -12,7 +12,7 @@ a CIF companion with original identifiers.
 ## Synopsis
 
 ```bash
-pdb2reaction extract -i complex.pdb -c <substrate-spec> [-l 'RES:Q,...'] \
+pdb2reaction extract -i complex.pdb -c <center-spec> [-l 'RES:Q,...'] \
     [-r <radius_A>] [-o cluster.pdb] [--out-json]
 ```
 
@@ -21,7 +21,7 @@ pdb2reaction extract -i complex.pdb -c <substrate-spec> [-l 'RES:Q,...'] \
 | flag | type | default | description |
 |---|---|---|---|
 | `-i, --input` | path(s) | required | Protein–substrate complex PDB/mmCIF file(s); multi-input requires identical atom identities and order (and therefore identical counts) |
-| `-c, --center` | str | required | Residue names (`'GPP,SAM'`), IDs (`'A:44,B:321'`), chain-qualified names (`'B:SAM'`), exact named ID (`'B:SAM:321'`), or a PDB/mmCIF path |
+| `-c, --center` | str | required | Substrate + catalytic residues; every match starts radius expansion. Accepts names (`'GPP,SAM'`), IDs (`'A:44,B:321'`), chain-qualified names (`'B:SAM'`), exact named IDs (`'B:SAM:321'`), or a PDB/mmCIF path |
 | `-r, --radius` | float | 2.6 | Pocket radius (Å) around `-c` atoms |
 | `--radius-het2het` | float | `0` | Separate radius for HET-to-HET inclusion (`0` disables) |
 | `-l, --ligand-charge` | str | none | Charge for unknown ligands: total (`-3`) or per-resname mapping (`'GPP:-3,SAM:1'`); amino acids and ions use internal tables |
@@ -29,7 +29,7 @@ pdb2reaction extract -i complex.pdb -c <substrate-spec> [-l 'RES:Q,...'] \
 | `--include-h2o / --no-include-h2o` | flag | `--include-h2o` | Include water residues found within radius |
 | `--exclude-backbone / --no-exclude-backbone` | flag | `--no-exclude-backbone` | Trim backbone atoms outside the active site |
 | `--add-linkh / --no-add-linkh` | flag | `--add-linkh` | Cap severed bonds with cap hydrogens |
-| `--selected-resn` | str | none | Force-include extra residue IDs or names (`'A:123,B:456'`, `'A:SAM'`) |
+| `--selected-resn` | str | none | Force-include residue IDs or names without radius expansion (`'A:123,B:456'`, `'A:SAM'`) |
 | `--modified-residue` | str | none | Comma-separated residue names (with optional charge) to **treat as amino acids** for backbone truncation and charge assignment. Examples: `'HD1,HD2,HD3'` (charge defaults to 0) or `'HD1:0,SEP:-2'`. |
 | `--out-json / --no-out-json` | flag | off | Write a JSON summary alongside the PDB |
 

@@ -18,7 +18,7 @@ validated elementary steps.
 ## Synopsis
 
 ```bash
-pdb2reaction all -i <input(s)> [-c <substrate>] [-l 'RES:Q,...'] \
+pdb2reaction all -i <input(s)> [-c <centers>] [-l 'RES:Q,...'] \
     [--scan-lists '...'] [--tsopt] [--thermo] [--dft] \
     [-b uma|orb|mace|aimnet2] [-o result_all/]
 ```
@@ -32,7 +32,7 @@ pdb2reaction all -i <input(s)> [-c <substrate>] [-l 'RES:Q,...'] \
 | Flag | Type | Default | Description |
 |---|---|---|---|
 | `-i, --input` | path(s) | required | One or more reaction-ordered structures, or a TS-candidate alone |
-| `-c, --center` | str | (uses input as-is) | Residue names, IDs, PDB/mmCIF path, chain-qualified name (`'B:SAM'`), or exact named ID (`'B:SAM:321'`) |
+| `-c, --center` | str | (uses input as-is) | Substrate + catalytic residues; every match starts radius expansion |
 | `-l, --ligand-charge` | str | none | Per-resname charges, e.g. `'SAM:1,GPP:-3'` (or a bare number = total). With `-c` it feeds extraction; without `-c` it derives the total from the full PDB/mmCIF model. |
 | `-q, --charge` | int | derived from `-l` | Explicit total system charge with highest priority. If it differs from the extract/workflow-derived value, `all` warns and uses `-q`; omit it to use automatic derivation. |
 | `-m, --multiplicity` | int | 1 | Spin multiplicity (2S+1) |

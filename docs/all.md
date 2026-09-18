@@ -35,7 +35,7 @@ Working examples for GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Ch
 Command form:
 
 ```bash
-pdb2reaction all -i INPUT1 [INPUT2 ...] [-c SUBSTRATE] [-b uma|orb|mace|aimnet2] [options]
+pdb2reaction all -i INPUT1 [INPUT2 ...] [-c CENTERS] [-b uma|orb|mace|aimnet2] [options]
 ```
 
 Multi-structure MEP with TS + thermo + DFT:
@@ -85,7 +85,7 @@ Full system(s) (PDB / mmCIF / XYZ / GJF)
 `all` runs the following stages in order. Stages 0 and 1 are automatic preprocessing; the rest fire based on the flags you pass.
 
 0. **Structure bridge and preflight** (automatic) — mmCIF, oversized/nonstandard PDB, and PDB altloc input are converted once to a safely reindexed internal PDB; altloc is selected coherently per residue. For an ordinary PDB with blank element columns, `all` runs `add-elem-info`. Standalone `fix-altloc` is only needed when you want a cleaned PDB deliverable; standalone commands use the same bridge. Missing element data must still be repaired for an ordinary PDB or supplied as mmCIF `_atom_site.type_symbol`.
-1. **Active-site model extraction** (when `-c/--center` is set) — accepts PDB/mmCIF paths, IDs/names, `CHAIN:RESNAME`, and `CHAIN:RESNAME:RESSEQ`. Per-input internal PDBs are saved under `<out-dir>/_work/models/`; bridge inputs also produce CIF companions.
+1. **Active-site model extraction** (when `-c/--center` is set) — accepts PDB/mmCIF paths, IDs/names, `CHAIN:RESNAME`, and `CHAIN:RESNAME:RESSEQ`; normally use substrate + catalytic residues. Every match starts radius expansion. Per-input internal PDBs are saved under `<out-dir>/_work/models/`; bridge inputs also produce CIF companions.
 2. **Optional staged scan** (single-input only) — each `--scan-lists/-s` literal is a list of `(i, j, target_Å)` tuples. Atom indices use the original input ordering, 1-based by default (pass `--no-scan-one-based` to interpret them as 0-based), and are remapped to the active-site model ordering. Three-field selectors like `'TYR,285,CA'` are order-flexible; use positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` for repeated names or numbering. Stages run sequentially (stage 2 starts from stage 1's result), and the stage endpoints become the ordered intermediates that feed the MEP step.
 3. **MEP search** — by default runs single-pass `path-opt`; `--refine-path` switches to recursive `path-search`. Recursive refinement can improve a poor HEI but can also split a noisy/bad path into unnecessary segments and increase cost, so it is off by default. Segmentation is only a candidate mechanism until TS/frequency/IRC validation. Raw engine output stays under `_work`; `mep.pdb`, bridge-input `mep.cif`, `mep_trj.xyz`, and the diagram are promoted to the top level.
 4. **Per-segment post-processing** (ordinary MEP/TS candidates; bridge segments are skipped, and bond changes are diagnostic):
@@ -220,7 +220,7 @@ Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: C
 | `-r, --radius FLOAT` | Active-site model inclusion cutoff (Å). `0` disables radius-based expansion, leaving the `-c` and `--selected-resn` selections. | `2.6` |
 | `--radius-het2het FLOAT` | Independent hetero–hetero cutoff (Å). `0` is internally nudged to `0.001 Å` to avoid empty selections (same as standalone `extract`). | `0.0` |
 | `--include-h2o / --no-include-h2o` | Include waters (HOH / WAT / TIP3 / SOL). | `True` |
-| `--exclude-backbone / --no-exclude-backbone` | Remove backbone atoms on non-substrate amino acids. | `False` |
+| `--exclude-backbone / --no-exclude-backbone` | Remove backbone atoms from amino acids outside the extraction centers. | `False` |
 | `--add-linkh / --no-add-linkh` | Add cap hydrogens for severed bonds. | `True` |
 | `--selected-resn TEXT` | Force-include using the same ID/name/chain-qualified selector forms as `--center`. | `""` |
 | `--modified-residue TEXT` | Comma-separated residue names to treat as amino acids. `NAME:charge` adds or overrides the nominal charge for this extraction; bare `NAME` defaults to 0. | `""` |

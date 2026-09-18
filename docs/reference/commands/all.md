@@ -28,20 +28,22 @@ Options:
                                   bridge. Pass multiple files after one
                                   -i/--input, or repeat -i/--input for each
                                   file.  [required]
-  -c, --center TEXT               Substrate specification for the extractor: a
-                                  PDB/mmCIF path, a residue-ID list like
-                                  '123,124' or 'A:123,B:456' (insertion codes
-                                  OK: '123A' / 'A:123A'), a residue-name list
-                                  like 'GPP,SAM', or chain-qualified 'A:SAM' /
-                                  'A:SAM:123'. When omitted, extraction is
-                                  skipped and the **full input structure(s)**
-                                  are used directly as active site models.
+  -c, --center TEXT               Extraction centers (normally substrate +
+                                  catalytic residues): a PDB/mmCIF path, a
+                                  residue-ID list like '123,124' or
+                                  'A:123,B:456' (insertion codes OK: '123A' /
+                                  'A:123A'), a residue-name list like 'GPP,SAM',
+                                  or chain-qualified 'A:SAM' / 'A:SAM:123'. Each
+                                  match starts radius expansion. When omitted,
+                                  extraction is skipped and the **full input
+                                  structure(s)** are used directly as active
+                                  site models.
   -o, --out-dir DIRECTORY         Top-level output directory for the pipeline.
                                   [default: result_all]
-  -r, --radius FLOAT RANGE        Inclusion cutoff (Å) around substrate atoms.
-                                  Zero is accepted and evaluated internally as
-                                  0.001 Å (effectively off for ordinary radius-
-                                  based neighbors).  [default: 2.6; x>=0.0]
+  -r, --radius FLOAT RANGE        Inclusion cutoff (Å) around center atoms. Zero
+                                  is accepted and evaluated internally as 0.001
+                                  Å (effectively off for ordinary radius-based
+                                  neighbors).  [default: 2.6; x>=0.0]
   --radius-het2het FLOAT RANGE    Independent hetero–hetero cutoff (Å) for
                                   non‑C/H pairs.  [default: 0.0; x>=0.0]
   --include-h2o BOOLEAN           Include waters (HOH/WAT/TIP3/SOL) in the
@@ -52,11 +54,12 @@ Options:
   --add-linkh BOOLEAN             Add cap hydrogens for severed bonds (carbon
                                   boundaries only) in active site models.
                                   [default: True]
-  --selected-resn TEXT            Force-include residues using the same
-                                  selectors as -c/--center: IDs ('123',
-                                  'A:123A'), names ('SAM'), or chain-qualified
-                                  names ('A:SAM', 'A:SAM:123'); comma/space
-                                  separated.  [default: ""]
+  --selected-resn TEXT            Force-include residues without radius
+                                  expansion using the same selectors as
+                                  -c/--center: IDs ('123', 'A:123A'), names
+                                  ('SAM'), or chain-qualified names ('A:SAM',
+                                  'A:SAM:123'); comma/space separated.
+                                  [default: ""]
   --modified-residue TEXT         Comma-separated residue names to treat as
                                   amino acids for backbone truncation and charge
                                   assignment. NAME:charge adds or overrides the

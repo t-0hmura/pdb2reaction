@@ -3,7 +3,7 @@
 ```text
 Usage: pdb2reaction extract [OPTIONS]
 
-  Extract an active site model around substrate residues (from PDB/mmCIF or
+  Extract an active site model around extraction centers (from PDB/mmCIF or
   residue IDs/names), with biochemically aware truncation and optional cap-H;
   mmCIF inputs also produce mmCIF outputs.
 
@@ -22,24 +22,25 @@ Options:
                                   through an internal safe bridge. If multiple,
                                   they must have identical atom counts and
                                   ordering.  [required]
-  -c, --center TEXT               Substrate specification: a PDB/mmCIF path, a
-                                  comma/space-separated residue-ID list like
-                                  '123,124' or 'A:123,B:456' (insertion codes
-                                  supported), a residue-name list like
-                                  'GPP,SAM', or a chain-qualified name like
-                                  'A:SAM' (all matches in chain A) / 'A:SAM:123'
-                                  (one residue).  [required]
+  -c, --center TEXT               Centers (normally substrate + catalytic
+                                  residues): a PDB/mmCIF path, a comma/space-
+                                  separated residue-ID list like '123,124' or
+                                  'A:123,B:456' (insertion codes supported), a
+                                  residue-name list like 'GPP,SAM', or a chain-
+                                  qualified name like 'A:SAM' (all matches in
+                                  chain A) / 'A:SAM:123' (one residue). Each
+                                  match starts radius expansion.  [required]
   -o, --output TEXT               Internal/output PDB path(s). For mmCIF or
                                   oversized-PDB input, a .cif companion with the
                                   original chain/residue IDs is written
                                   automatically. One path creates multi-MODEL
                                   output; N paths create one output per input.
-  -r, --radius FLOAT RANGE        Cutoff (angstrom) around substrate atoms for
+  -r, --radius FLOAT RANGE        Cutoff (angstrom) around center atoms for
                                   active-site inclusion. Zero is accepted and
                                   evaluated internally as 0.001 angstrom
                                   (effectively off for ordinary radius-based
                                   neighbors).  [default: 2.6; x>=0.0]
-  --radius-het2het FLOAT RANGE    Cutoff (angstrom) for substrate hetero-atom
+  --radius-het2het FLOAT RANGE    Cutoff (angstrom) for center hetero-atom
                                   (non-C/H) to neighbor hetero-atom proximity. 0
                                   is treated as 0.001 angstrom (effectively
                                   off).  [default: 0; x>=0.0]
@@ -47,13 +48,14 @@ Options:
                                   Include waters (HOH/WAT/TIP3/SOL).  [default:
                                   include-h2o]
   --exclude-backbone / --no-exclude-backbone
-                                  Delete main-chain atoms from non-substrate
-                                  amino acids.  [default: no-exclude-backbone]
+                                  Delete main-chain atoms from amino acids
+                                  outside the extraction centers.  [default: no-
+                                  exclude-backbone]
   --add-linkh / --no-add-linkh    Add cap hydrogens (carbon boundaries only) at
                                   1.09 angstrom along cut-bond directions.
                                   [default: add-linkh]
-  --selected-resn TEXT            Comma/space-separated residue IDs/names to
-                                  force-include; chain-qualified A:SAM is
+  --selected-resn TEXT            Residue IDs/names to force-include without
+                                  radius expansion; chain-qualified A:SAM is
                                   supported.
   --modified-residue TEXT         Comma-separated residue names to treat as
                                   amino acids for backbone truncation and charge
