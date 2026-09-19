@@ -8649,14 +8649,25 @@ def cli(
         summary["scan"] = scan_diagnostics
     path_optimizers.update(summary.get("path_optimizers", []))
     summary["path_optimizers"] = sorted(path_optimizers)
-    _publish_manifest_summary(
-        summary_path,
-        summary,
-        manifest=manifest,
-        key="path.summary",
-        out_dir=out_dir,
-    )
-    _copy_public_logged(summary_path, out_dir / "summary.json", label="summary.json", echo=False)
+    if resuming:
+        root_summary_path = out_dir / "summary.json"
+        _declare_public(root_summary_path)
+        _write_summary_json(root_summary_path, summary)
+        _claim_public(root_summary_path)
+    else:
+        _publish_manifest_summary(
+            summary_path,
+            summary,
+            manifest=manifest,
+            key="path.summary",
+            out_dir=out_dir,
+        )
+        _copy_public_logged(
+            summary_path,
+            out_dir / "summary.json",
+            label="summary.json",
+            echo=False,
+        )
     _refresh_current_public_outputs(manifest, out_dir)
     _persist_run_manifest(manifest, out_dir)
     segments = _read_summary(summary_path)
@@ -8739,13 +8750,14 @@ def cli(
         summary["current_output_paths"] = _current_output_paths(
             manifest, out_dir
         )
-        _publish_manifest_summary(
-            summary_path,
-            summary,
-            manifest=manifest,
-            key="path.summary",
-            out_dir=out_dir,
-        )
+        if not resuming:
+            _publish_manifest_summary(
+                summary_path,
+                summary,
+                manifest=manifest,
+                key="path.summary",
+                out_dir=out_dir,
+            )
         root_summary = dict(summary)
         root_summary["command"] = command_str
         root_diagrams = []
@@ -8759,7 +8771,10 @@ def cli(
             root_diagrams.append(current)
         if root_diagrams:
             root_summary["energy_diagrams"] = root_diagrams
-        _write_summary_json(out_dir / "summary.json", root_summary)
+        root_summary_path = out_dir / "summary.json"
+        _declare_public(root_summary_path)
+        _write_summary_json(root_summary_path, root_summary)
+        _claim_public(root_summary_path)
         _refresh_current_public_outputs(manifest, out_dir)
         _persist_run_manifest(manifest, out_dir)
 
@@ -9799,25 +9814,32 @@ def cli(
         freeze_atoms=_freeze_atoms_for_log(),
         manifest=manifest,
     )
-    _publish_manifest_summary(
-        path_dir / "summary.json",
-        summary,
-        manifest=manifest,
-        key="path.summary",
-        out_dir=out_dir,
-    )
-    _echo_detail(f"[write] Updated '{path_dir / 'summary.json'}' with energy diagrams.")
     dst_summary = out_dir / "summary.json"
-    if not _copy_public_logged(
-        path_dir / "summary.json",
-        dst_summary,
-        label="summary.json",
-        echo=False,
-    ):
-        raise click.ClickException(
-            f"Failed to publish summary.json to {dst_summary}."
+    if resuming:
+        _declare_public(dst_summary)
+        _write_summary_json(dst_summary, summary)
+        _claim_public(dst_summary)
+    else:
+        _publish_manifest_summary(
+            path_dir / "summary.json",
+            summary,
+            manifest=manifest,
+            key="path.summary",
+            out_dir=out_dir,
         )
-    _echo_detail(f"[all] Copied summary.json → {dst_summary}")
+        _echo_detail(
+            f"[write] Updated '{path_dir / 'summary.json'}' with energy diagrams."
+        )
+        if not _copy_public_logged(
+            path_dir / "summary.json",
+            dst_summary,
+            label="summary.json",
+            echo=False,
+        ):
+            raise click.ClickException(
+                f"Failed to publish summary.json to {dst_summary}."
+            )
+        _echo_detail(f"[all] Copied summary.json → {dst_summary}")
     _write_pipeline_summary_log(post_segment_logs)
     # summary.log becomes current-run owned only after the writer returns;
     # republish JSON once more so key_output_files includes that final root
