@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 class StagedScanRequest:
     """One fully parsed 1D scan request shared by planning and execution."""
 
-    stages: tuple[tuple[tuple[int, int, float], ...], ...]
+    stages: tuple[tuple[tuple[Any, ...], ...], ...]
     one_based: bool
     source: str
     raw_values: tuple[str, ...]
@@ -35,8 +35,8 @@ class StagedScanRequest:
 class GridScanRequest:
     """One fully parsed 2D/3D scan request shared by planning and execution."""
 
-    pairs: tuple[tuple[int, int, float, float], ...]
-    raw_pairs: tuple[tuple[Any, Any, float, float], ...]
+    pairs: tuple[tuple[Any, ...], ...]
+    raw_pairs: tuple[tuple[Any, ...], ...]
     one_based: bool
     source: str
     raw_value: str
@@ -88,7 +88,7 @@ def parse_staged_scan_request(
     source = option_name
     reset_before: set[int] = set()
     snapshot_before: set[int] = set()
-    stages: list[list[tuple[int, int, float]]]
+    stages: list[list[tuple[Any, ...]]]
     if len(values) == 1 and is_scan_spec_file(values[0]):
         spec_path = Path(values[0])
         (
@@ -115,24 +115,7 @@ def parse_staged_scan_request(
                 atom_meta=atom_meta,
                 option_name=f"{option_name} #{value_index}",
             )
-            for entry in parsed:
-                if any(float(distance) <= 0.0 for distance in entry[2:]):
-                    raise click.BadParameter(
-                        f"Non-positive target length in {option_name} #{value_index}: {entry}."
-                    )
-            if any(len(entry) == 4 for entry in parsed):
-                for entry in parsed:
-                    if len(entry) == 4:
-                        i, j, start, end = entry
-                        stage_index = len(stages)
-                        stages.append([(i, j, start)])
-                        snapshot_before.add(stage_index)
-                        reset_before.add(stage_index + 1)
-                        stages.append([(i, j, end)])
-                    else:
-                        stages.append([entry])
-            else:
-                stages.append(parsed)
+            stages.append(parsed)
 
     return StagedScanRequest(
         stages=tuple(tuple(stage) for stage in stages),
@@ -193,7 +176,7 @@ def add_scan_common_options(
     out_dir_default: str,
     baseline_help: str,
     dump_help: str,
-    max_step_help: str = "Maximum step size per scanned distance [Å].",
+    max_step_help: str = "Maximum scanned distance change per step [Å].",
     thresh_default: str | None = "baker",
     # Display-only: a command that resolves `--thresh` downstream must keep its
     # declared default None so `cli_param_overridden` still sees an omission,
@@ -267,7 +250,7 @@ def add_scan_common_options(
             "one_based",
             default=one_based_default,
             show_default=True,
-            help="Interpret (i,j) indices in --scan-lists as 1-based or 0-based.",
+            help="Interpret atom indices in --scan-lists as 1-based or 0-based.",
         ),
         click.option(
             "--max-step-size",
@@ -277,12 +260,26 @@ def add_scan_common_options(
             help=max_step_help,
         ),
         click.option(
+            "--max-angle-step-size",
+            type=click.FloatRange(min=0.0, min_open=True),
+            default=5.0,
+            show_default=True,
+            help="Maximum scanned angle change per step [degree].",
+        ),
+        click.option(
+            "--max-dihedral-step-size",
+            type=click.FloatRange(min=0.0, min_open=True),
+            default=10.0,
+            show_default=True,
+            help="Maximum scanned dihedral change per step [degree].",
+        ),
+        click.option(
             "--bias-k",
             type=float,
             default=bias_k_default,
             show_default=(bias_k_default if bias_k_default is not None else bias_k_shown),
             help=(
-                "Harmonic well strength k [eV/Å^2]. "
+                "Harmonic well strength k [eV/Å^2 for distances; eV/rad^2 for angles]. "
                 "YAML bias.k applies when this option is omitted; explicit CLI wins."
             ),
         ),

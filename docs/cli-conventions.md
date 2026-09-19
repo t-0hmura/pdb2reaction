@@ -146,13 +146,14 @@ pairs:                     # scan2d (exactly 2 entries) / scan3d (exactly 3 entr
   - [2, 8, 1.20, 3.20]
 ```
 
-Each `scan` stage is a list of `(i, j, target_Å)` triples; each `scan2d` / `scan3d` axis is `(i, j, low_Å, high_Å)`. Indices may be integers, three-field selectors, or positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` selectors.
+Each `scan` stage accepts distance targets and distance, angle, or dihedral ranges. Each `scan2d` / `scan3d` axis is `(i,j,low,high)`, `(i,j,k,low,high)`, or `(i,j,k,l,low,high)`. Indices may be integers, three-field selectors, or positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` selectors.
 
 **Inline literal**: wrap in **single quotes** so the shell does not interpret parens / spaces; use double-quoted PDB selectors inside.
 
 ```bash
 -s '[(atom1, atom2, target_Å), ...]'             # scan: triples
--s '[(atom1, atom2, low_Å, high_Å), ...]'        # scan2d / scan3d: quadruples
+-s '[(atom1, atom2, low_Å, high_Å), ...]'        # distance range
+-s '[(atom1, atom2, atom3, low_deg, high_deg)]'  # angle range
 -s '[("TYR,285,CA","SAM,309,C10",1.35)]'         # quoted selectors
 -s "[(\"TYR,285,CA\",\"SAM,309,C10\",1.35)]"       # avoid: double-quoted outer literal requires escaping inner quotes
 ```
@@ -163,8 +164,8 @@ For `scan`, one literal = one **stage**; multiple stages → multiple literals a
 | --- | --- |
 | `scan` | Inline 3-tuples or bidirectional 4-tuples; YAML/JSON is also accepted |
 | `all --scan-lists` | Inline 3-tuples only |
-| `scan2d` | One literal/file containing exactly two `(i,j,low,high)` axes |
-| `scan3d` | One literal/file containing exactly three `(i,j,low,high)` axes |
+| `scan2d` | One literal/file containing exactly two distance, angle, or dihedral axes |
+| `scan3d` | One literal/file containing exactly three distance, angle, or dihedral axes |
 
 ## Input file requirements
 

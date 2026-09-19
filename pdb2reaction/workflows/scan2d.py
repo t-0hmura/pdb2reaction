@@ -1,7 +1,7 @@
 # pdb2reaction/workflows/scan2d.py
 
 """
-2D grid scan with harmonic restraints on two inter-atomic distances.
+2D grid scan with harmonic restraints on two internal coordinates.
 
 Example:
     pdb2reaction scan2d -i input.pdb -q 0 --scan-lists '[(12,45,1.30,3.10),(10,55,1.20,3.20)]'
@@ -92,6 +92,15 @@ from pdb2reaction.core.utils import (
 from pdb2reaction.workflows.scan_common import (
     add_scan_common_options,
     parse_grid_scan_request,
+)
+from pdb2reaction.domain.scan_coordinates import (
+    coordinate_atoms,
+    coordinate_bounds,
+    coordinate_kind,
+    coordinate_step_cap,
+    coordinate_unit,
+    coordinate_value,
+    format_coordinate,
 )
 from pdb2reaction.cli.decorators import (
     _write_error_json,
@@ -338,7 +347,7 @@ def _build_scan_context(
 
 
 @click.command(
-    help="2D distance scan with harmonic restraints.",
+    help="2D internal-coordinate scan with harmonic restraints.",
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 @click.option(
@@ -355,14 +364,12 @@ def _build_scan_context(
     type=str,
     required=True,
     help=(
-        "Scan targets: inline Python literal or a YAML/JSON spec file path. "
-        "scan2d expects EXACTLY 2 quadruples (i, j, low, high) — one per "
-        "scanned bond axis — e.g. '[(12,45,1.30,3.10),(10,55,1.20,3.20)]'. "
+        "Two scan ranges as an inline literal or YAML/JSON file: distance "
+        "(i,j,low,high), angle (i,j,k,low,high), or dihedral "
+        "(i,j,k,l,low,high). "
         "Atom indices may also be strings like 'CE SAM 216'; use positional "
         "CHAIN:RESNAME:RESSEQ[ICODE]:ATOM when chain qualification is needed. "
-        "Step count per axis is set via --max-step-size, NOT inside the tuple "
-        "(scan2d does not accept a 5th element; the scan command's 3-tuple "
-        "(i, j, target) form is rejected here too)."
+        "Distances use Å; angles and dihedrals use degrees."
     ),
 )
 @add_scan_common_options(
@@ -417,6 +424,8 @@ def cli(
     scan_list_raw: Optional[str],
     one_based: bool,
     max_step_size: float,
+    max_angle_step_size: float,
+    max_dihedral_step_size: float,
     bias_k: float,
     relax_max_cycles: int,
     opt_mode: str,
@@ -580,9 +589,21 @@ def cli(
             raw_pairs = list(scan_request.raw_pairs)
             scan_one_based = scan_request.one_based
             scan_source = scan_request.source
-            (i1, j1, low1, high1), (i2, j2, low2, high2) = parsed
-            d1_label_csv = axis_label_csv("d1", i1, j1, scan_one_based, pdb_atom_meta, raw_pairs[0])
-            d2_label_csv = axis_label_csv("d2", i2, j2, scan_one_based, pdb_atom_meta, raw_pairs[1])
+            axis1, axis2 = parsed
+            kind1, kind2 = coordinate_kind(axis1, is_range=True), coordinate_kind(axis2, is_range=True)
+            unit1 = "Å" if kind1 == "distance" else "deg"
+            unit2 = "Å" if kind2 == "distance" else "deg"
+            atoms1, atoms2 = coordinate_atoms(axis1, is_range=True), coordinate_atoms(axis2, is_range=True)
+            low1, high1 = coordinate_bounds(axis1)
+            low2, high2 = coordinate_bounds(axis2)
+            if kind1 == "distance":
+                d1_label_csv = axis_label_csv("d1", *atoms1, scan_one_based, pdb_atom_meta, raw_pairs[0])
+            else:
+                d1_label_csv = f"d1_{kind1}_{'_'.join(str(i + 1) for i in atoms1)}_deg"
+            if kind2 == "distance":
+                d2_label_csv = axis_label_csv("d2", *atoms2, scan_one_based, pdb_atom_meta, raw_pairs[1])
+            else:
+                d2_label_csv = f"d2_{kind2}_{'_'.join(str(i + 1) for i in atoms2)}_deg"
             d1_label_html = axis_label_html(d1_label_csv)
             d2_label_html = axis_label_html(d2_label_csv)
             if print_parsed:
@@ -599,7 +620,7 @@ def cli(
             click.echo(
                 pretty_block(
                     "scan-list (1-based)",
-                    {"d1": (i1+1, j1+1, low1, high1), "d2": (i2+1, j2+1, low2, high2)},
+                    {"d1": format_coordinate(axis1, is_range=True), "d2": format_coordinate(axis2, is_range=True)},
                 )
             )
 
@@ -607,10 +628,9 @@ def cli(
                 emit("[scan2d] PDB atom details for scanned pairs:", detail=True)
                 legend = format_pdb_atom_metadata_header()
                 emit(f"        legend: {legend}", detail=True)
-                emit(f"  d1 i: {format_pdb_atom_metadata(pdb_atom_meta, i1)}", detail=True)
-                emit(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j1)}", detail=True)
-                emit(f"  d2 i: {format_pdb_atom_metadata(pdb_atom_meta, i2)}", detail=True)
-                emit(f"     j: {format_pdb_atom_metadata(pdb_atom_meta, j2)}", detail=True)
+                for label, atoms in (("d1", atoms1), ("d2", atoms2)):
+                    for pos, atom in enumerate(atoms, start=1):
+                        emit(f"  {label} atom {pos}: {format_pdb_atom_metadata(pdb_atom_meta, atom)}", detail=True)
 
             # Temporary and grid directories
             tmp_root = Path(tempfile.mkdtemp(prefix="scan2d_tmp_"))
@@ -681,8 +701,8 @@ def cli(
             # never a PES/interpolation point.
             try:
                 coords_outer = np.asarray(getattr(geom_outer, "coords3d"), dtype=float)
-                d1_ref = distance_A_from_coords(coords_outer, i1, j1)
-                d2_ref = distance_A_from_coords(coords_outer, i2, j2)
+                d1_ref = coordinate_value(coords_outer, axis1, is_range=True)
+                d2_ref = coordinate_value(coords_outer, axis2, is_range=True)
 
                 d1_tag = distance_tag(d1_ref)
                 d2_tag = distance_tag(d2_ref)
@@ -746,7 +766,7 @@ def cli(
                 )
                 click.echo(
                     f"[reference] Recorded {reference_kind} structure at "
-                    f"d1={d1_ref:.3f} Å, d2={d2_ref:.3f} Å."
+                    f"d1={d1_ref:.3f} {unit1}, d2={d2_ref:.3f} {unit2}."
                 )
             except Exception as e:
                 click.echo(
@@ -758,8 +778,8 @@ def cli(
             max_step_bohr = float(max_step_size) * ANG2BOHR
 
             # Construct scan grids and reorder so that points near the preopt geometry are visited first
-            d1_values = values_from_bounds(low1, high1, float(max_step_size))
-            d2_values = values_from_bounds(low2, high2, float(max_step_size))
+            d1_values = values_from_bounds(low1, high1, coordinate_step_cap(kind1, max_step_size, max_angle_step_size, max_dihedral_step_size))
+            d2_values = values_from_bounds(low2, high2, coordinate_step_cap(kind2, max_step_size, max_angle_step_size, max_dihedral_step_size))
             used_grid_stems: set[str] = set()
 
             d1_values = _sort_values_by_reference(d1_values, d1_ref)
@@ -767,10 +787,10 @@ def cli(
 
             N1, N2 = len(d1_values), len(d2_values)
             click.echo(
-                f"[grid] d1 steps = {N1}  values(A)={list(map(lambda x:f'{x:.3f}', d1_values))}"
+                f"[grid] d1 steps = {N1}  values({unit1})={list(map(lambda x:f'{x:.3f}', d1_values))}"
             )
             click.echo(
-                f"[grid] d2 steps = {N2}  values(A)={list(map(lambda x:f'{x:.3f}', d2_values))}"
+                f"[grid] d2 steps = {N2}  values({unit2})={list(map(lambda x:f'{x:.3f}', d2_values))}"
             )
             emit(f"[grid] total grid points = {N1*N2}", narrative=True)
 
@@ -790,9 +810,9 @@ def cli(
                 _cur_row_start = len(visited_geoms)
 
                 click.echo(
-                    f"[stage] d1 step {i_idx+1}/{N1}: target = {d1_target:.3f} Å"
+                    f"[stage] d1 step {i_idx+1}/{N1}: target = {d1_target:.3f} {unit1}"
                 )
-                biased.set_pairs([(i1, j1, float(d1_target))])
+                biased.set_restraints([(*atoms1, float(d1_target))])
                 geom_outer_start = _snapshot_geometry(geom_outer)
                 geom_outer.set_calculator(biased)
 
@@ -828,8 +848,8 @@ def cli(
                 # Store the d1-relaxed structure as a candidate for nearest-start
                 try:
                     coords_inner = np.asarray(getattr(geom_inner, "coords3d"), dtype=float)
-                    d1_cur = distance_A_from_coords(coords_inner, i1, j1)
-                    d2_cur = distance_A_from_coords(coords_inner, i2, j2)
+                    d1_cur = coordinate_value(coords_inner, axis1, is_range=True)
+                    d2_cur = coordinate_value(coords_inner, axis2, is_range=True)
                     if (
                         outer_converged is True
                         and np.isfinite(coords_inner).all()
@@ -845,7 +865,7 @@ def cli(
                         )
                 except Exception as e:
                     click.echo(
-                        f"[nearest-start] WARNING: failed to store d1-relaxed structure for d1={d1_target:.3f} Å: {e}",
+                        f"[nearest-start] WARNING: failed to store d1-relaxed structure for d1={d1_target:.3f} {unit1}: {e}",
                         err=True,
                     )
 
@@ -880,10 +900,10 @@ def cli(
                                 err=True,
                             )
 
-                    biased.set_pairs(
+                    biased.set_restraints(
                         [
-                            (i1, j1, float(d1_target)),
-                            (i2, j2, float(d2_target)),
+                            (*atoms1, float(d1_target)),
+                            (*atoms2, float(d2_target)),
                         ]
                     )
                     geom_inner.set_calculator(biased)
@@ -953,8 +973,8 @@ def cli(
                     if converged is True:
                         try:
                             coords_inner = np.asarray(getattr(geom_inner, "coords3d"), dtype=float)
-                            d1_cur = distance_A_from_coords(coords_inner, i1, j1)
-                            d2_cur = distance_A_from_coords(coords_inner, i2, j2)
+                            d1_cur = coordinate_value(coords_inner, axis1, is_range=True)
+                            d2_cur = coordinate_value(coords_inner, axis2, is_range=True)
                             visited_geoms.append(
                                 (float(d1_cur), float(d2_cur), _snapshot_geometry(geom_inner))
                             )
@@ -971,8 +991,8 @@ def cli(
                         trj_blocks.append(sblock)
 
                     coords_realized = np.asarray(geom_inner.coords3d, dtype=float)
-                    d1_realized = distance_A_from_coords(coords_realized, i1, j1)
-                    d2_realized = distance_A_from_coords(coords_realized, i2, j2)
+                    d1_realized = coordinate_value(coords_realized, axis1, is_range=True)
+                    d2_realized = coordinate_value(coords_realized, axis2, is_range=True)
                     records.append(
                         {
                             "i": int(i_idx),
@@ -1050,6 +1070,12 @@ def cli(
             df["energy_kcal"] = (df["energy_hartree"] - ref) * AU2KCALPERMOL
             df["d1_label"] = d1_label_csv
             df["d2_label"] = d2_label_csv
+            for axis_number, axis_kind in ((1, kind1), (2, kind2)):
+                df[f"q{axis_number}"] = df[f"d{axis_number}_A"]
+                df[f"q{axis_number}_unit"] = coordinate_unit(axis_kind)
+                target_column = f"target_d{axis_number}_A"
+                if target_column in df.columns:
+                    df[f"target_q{axis_number}"] = df[target_column]
 
             surface_csv = final_dir / "surface.csv"
             # Keep internal-only eligibility columns out of the public CSV so a
@@ -1383,23 +1409,27 @@ def cli(
                     for rec in grid_records
                     if rec.get("geometry_file")
                 ]
-                grid_points = [
-                    {
+                grid_points = []
+                for rec in grid_records:
+                    point = {
                         "index": [int(rec["i"]), int(rec["j"])],
-                        "distances_angstrom": [
+                        "coordinate_values": [
                             float(rec["d1_A"]),
                             float(rec["d2_A"]),
                         ],
-                        "targets_angstrom": [
+                        "coordinate_targets": [
                             float(rec["target_d1_A"]),
                             float(rec["target_d2_A"]),
                         ],
+                        "coordinate_units": [coordinate_unit(kind1), coordinate_unit(kind2)],
                         "energy_hartree": rec.get("energy_hartree"),
                         "converged": rec.get("bias_converged"),
                         "geometry_file": rec.get("geometry_file"),
                     }
-                    for rec in grid_records
-                ]
+                    if kind1 == kind2 == "distance":
+                        point["distances_angstrom"] = list(point["coordinate_values"])
+                        point["targets_angstrom"] = list(point["coordinate_targets"])
+                    grid_points.append(point)
                 grid_seed_eligible = seed_eligible_mask(grid_records)
                 # The optional preoptimization row stays in surface.csv as a
                 # plotting reference, but it is not a grid point.
@@ -1411,13 +1441,15 @@ def cli(
                 min_energy = (
                     min(eligible_grid_energies) if eligible_grid_energies else None
                 )
-                _pair1: Dict[str, Any] = {"i": int(i1 + 1), "j": int(j1 + 1), "low": float(low1), "high": float(high1)}
-                _pair2: Dict[str, Any] = {"i": int(i2 + 1), "j": int(j2 + 1), "low": float(low2), "high": float(high2)}
+                _pair1: Dict[str, Any] = {"kind": kind1, "atoms_1based": [int(i + 1) for i in atoms1], "unit": coordinate_unit(kind1), "low": float(low1), "high": float(high1)}
+                _pair2: Dict[str, Any] = {"kind": kind2, "atoms_1based": [int(i + 1) for i in atoms2], "unit": coordinate_unit(kind2), "low": float(low2), "high": float(high2)}
+                if kind1 == "distance":
+                    _pair1.update(i=int(atoms1[0] + 1), j=int(atoms1[1] + 1))
+                if kind2 == "distance":
+                    _pair2.update(i=int(atoms2[0] + 1), j=int(atoms2[1] + 1))
                 if pdb_atom_meta:
-                    _pair1["label_i"] = atom_label_from_meta(pdb_atom_meta, i1)
-                    _pair1["label_j"] = atom_label_from_meta(pdb_atom_meta, j1)
-                    _pair2["label_i"] = atom_label_from_meta(pdb_atom_meta, i2)
-                    _pair2["label_j"] = atom_label_from_meta(pdb_atom_meta, j2)
+                    _pair1["atom_labels"] = [atom_label_from_meta(pdb_atom_meta, i) for i in atoms1]
+                    _pair2["atom_labels"] = [atom_label_from_meta(pdb_atom_meta, i) for i in atoms2]
                 result_data: Dict[str, Any] = {
                     "status": "completed",
                     "charge": resolved_charge,
@@ -1427,6 +1459,8 @@ def cli(
                     **calculator_provenance(calc_cfg),
                     "solvent": calc_cfg.get("solvent", "none"),
                     "max_step_size_angstrom": float(max_step_size),
+                    "max_angle_step_size_degree": float(max_angle_step_size),
+                    "max_dihedral_step_size_degree": float(max_dihedral_step_size),
                     "n_grid_points": len(grid_records),
                     "grid_shape": [len(d1_values), len(d2_values)],
                     "pair1": _pair1,

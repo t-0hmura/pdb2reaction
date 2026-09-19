@@ -97,7 +97,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  - **最初の活性部位モデルの総電荷**がスキャン/MEP/TSOPT に伝播
 
 2. **オプションの段階的スキャン（単一入力のみ）**
- - 各 `--scan-lists` 引数は MLIP スキャンステージを記述する `(i,j,target_Å)` タプルの Python ライクなリスト。原子インデックスは元の入力順序を参照し、デフォルトでは 1 始まりです（`--no-scan-one-based` を指定すると 0 始まりとして読みます）。いずれの場合も活性部位モデル順序に自動変換されます。3-field selector（例: `'TYR,285,CA'`）はtoken順を問いません。残基名や番号が重複するときは、位置固定の`CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`（例: `A:SAM:320:C1`）でchainを明示します。
+ - 各 `--scan-lists` 引数は距離`(i,j,target_Å)`、角度`(i,j,k,target_deg)`、二面角`(i,j,k,l,target_deg)`を記述するPythonライクなリストです。原子インデックスは元の入力順序を参照し、デフォルトでは 1 始まりです（`--no-scan-one-based` を指定すると 0 始まりとして読みます）。いずれの場合も活性部位モデル順序に自動変換されます。3-field selector（例: `'TYR,285,CA'`）はtoken順を問いません。残基名や番号が重複するときは、位置固定の`CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`（例: `A:SAM:320:C1`）でchainを明示します。
  - 単一リテラルは 1 ステージスキャンを実行し、複数リテラルは**順次**実行されるため、ステージ 2 はステージ 1 の結果から開始されます。複数リテラルは 1 つの `-s/--scan-lists` に並べて指定します（例: `-s '[(…)]' '[(…)]'`）。
  - ステージエンドポイント（`stage_XX/result.pdb`）が、後続 MEP ステップへ渡される順序付き中間体となる
 
@@ -353,7 +353,7 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `-s, --scan-lists TEXT...` | 段階的スキャン: `(i,j,target_Å)` タプル | _None_ |
+| `-s, --scan-lists TEXT...` | 距離・角度・二面角targetの段階的scan | _None_ |
 | `--scan-out-dir PATH` | scan 出力ディレクトリ上書き | _None_ |
 | `--scan-one-based/--no-scan-one-based` | `--scan-lists` の原子インデックスの読み方: `True` = 1 始まり、`False` = 0 始まり | _None_（1 始まり） |
 | `--scan-max-step-size FLOAT` | 最大ステップサイズ（Å） | `0.20` |

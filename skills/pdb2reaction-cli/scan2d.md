@@ -21,7 +21,7 @@ pdb2reaction scan2d -i input.pdb \
 | flag | type | default | description |
 |---|---|---|---|
 | `-i, --input` | path | required | Reactant `.pdb` / `.cif` / `.mmcif` / `.xyz` / `.gjf` |
-| `-s, --scan-lists` | str | required | Inline Python literal containing **two** 4-tuples `(i, j, low, high)` (one per axis), or a YAML/JSON spec file. |
+| `-s, --scan-lists` | str | required | Two distance `(i,j,low,high)`, angle `(i,j,k,low,high)`, or dihedral `(i,j,k,l,low,high)` ranges, inline or in YAML/JSON. |
 | `-q` / `-l` / `-m` | — | — | Charge / spin |
 | `-b, --backend` | str | `uma` | MLIP backend or optional DFT calculator |
 | `-o, --out-dir` | path | `./result_scan2d/` | Output directory |

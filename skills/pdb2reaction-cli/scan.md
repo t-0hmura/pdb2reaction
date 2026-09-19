@@ -2,8 +2,8 @@
 
 ## Purpose
 
-1D bond-length-driven scan with staged harmonic restraints and inter-stage
-relaxation. Drive one or more bonds toward target distances and inspect the
+1D internal-coordinate scan with staged harmonic restraints and inter-stage
+relaxation. Drive distances, angles, or dihedrals and inspect the
 trajectory or select frames as later path endpoints. Use
 `pdb2reaction all --scan-lists` when the integrated downstream MEP/TS/IRC
 pipeline is wanted; use standalone `scan` when the scan itself is the task.
@@ -22,7 +22,7 @@ pdb2reaction scan -i input.pdb \
 | flag | type | default | description |
 |---|---|---|---|
 | `-i, --input` | path | required | Reactant `.pdb` / `.cif` / `.mmcif` / `.xyz` / `.gjf` |
-| `-s, --scan-lists` | str | required | Inline Python literal `'[(a,b,target),...]'`, or YAML/JSON spec path. **Pass multiple stages as space-separated literals after a single `-s`** — repeating `-s` is rejected. |
+| `-s, --scan-lists` | str | required | Distance target/range, angle range, or dihedral range in an inline Python literal or YAML/JSON spec. **Pass multiple stages as space-separated literals after a single `-s`** — repeating `-s` is rejected. |
 | `-q` / `-l` / `-m` | — | — | Charge / spin |
 | `-b, --backend` | str | `uma` | MLIP backend or optional DFT calculator |
 | `-o, --out-dir` | path | `./result_scan/` | Output directory |
@@ -35,6 +35,9 @@ names repeat, use `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`, for example
 `("A:SAM:320:CS1", "B:GPP:321:C7", 1.60)`. Multiple stages chain
 sequentially as space-separated literals after a **single** `-s`; each
 stage starts from the previous stage's final geometry.
+
+Range forms are `(i,j,low,high)`, `(i,j,k,low,high)`, and
+`(i,j,k,l,low,high)`. Distances use Å; angular values use degrees.
 
 ## Examples
 
@@ -81,8 +84,7 @@ the stitched trajectory with `trj2fig.md` when it exists.
   double quotes inside. Atom-name strings use `"NAME RESNAME RESID"`
   with single spaces.
 - A chain-qualified selector is positional:
-  `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`. The legacy three-field form remains
-  order-flexible.
+  `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`. Three-field selectors are order-flexible.
 - Stage *k+1* starts from stage *k*'s final geometry; a diverged
   stage poisons downstream stages.
 - For coupled multi-bond drives in one stage, put multiple tuples in

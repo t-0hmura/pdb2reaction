@@ -2,6 +2,9 @@
 
 調和拘束と MLIP 緩和により、2 距離 `(d₁, d₂)` のグリッドスキャンを行い、`(d₁, d₂)` 上の 2D ポテンシャル面を得ます。TS 領域の特定や、MEP 精密化前の反応ランドスケープの可視化に使います。`scan2d` は `--max-step-size` に基づいて両軸の線形グリッドを作成し、各格子点を対応する拘束付きで緩和して、可視化用にバイアスなしの MLIP エネルギーを記録します。入力は 1 つの構造 + `-s/--scan-lists scan2d.yaml`（推奨）、またはちょうど 2 つの 4 要素タプルを含む `-s/--scan-lists` の **単一** インラインリテラルです。デフォルトのバックエンドは UMA で、`-b/--backend` で他のバックエンドも選択できます。L-BFGS の代わりに RFOptimizer を使う場合は `--opt-mode hess` を指定してください。
 
+各軸には角度`(i,j,k,low,high)`または二面角
+`(i,j,k,l,low,high)`も指定できます。角度値には度を使います。
+
 XYZ/GJF 入力では、`--ref-pdb` で参照 PDB/mmCIF トポロジーを指定すると、XYZ 座標を保持したまま PDB/CIF/GJF companion を生成できます。
 
 ## 実行例
@@ -51,7 +54,7 @@ pdb2reaction scan2d -i input.pdb -q 0 \
 
 ### スキャンリスト仕様
 
-`scan2d` はちょうど **2 つ**の4 要素タプル `(i, j, low_Å, high_Å)` を受け付けます（YAML/JSON では `pairs` キー、インラインでは単一リテラル）。`scan` と異なり、リテラルは **1 つだけ**を受け付けます（複数ステージは非対応）。
+`scan2d` はちょうど **2つ**の距離・角度・二面角rangeを受け付けます（YAML/JSON では `pairs` キー、インラインでは単一リテラル）。`scan` と異なり、リテラルは **1 つだけ**を受け付けます（複数ステージは非対応）。
 
 YAML/JSON ファイル書式、インライン Python リテラル構文、原子セレクタ、クォート規則については
 {ref}`CLI 規約: スキャンリスト仕様 <ja-scan-list-spec>` を参照してください。
@@ -97,11 +100,13 @@ out_dir/ (デフォルト:./result_scan2d/)
 | `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB/mmCIF 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB/mmCIF 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
 | `--workers`, `--workers-per-node` | UMA 予測器の並列度（`workers_per_node` は並列予測器へ転送）。`workers > 1` と明示的な解析 Hessian は併用不可。{ref}`ja-workers-analytical-error` を参照 | `1`, `1` |
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
-| `-s, --scan-lists TEXT` | スキャンターゲット: YAML/JSON スペックファイルパス（推奨）または **単一**のインライン Python リテラルで 2 つの4 要素タプル `(i,j,lowÅ,highÅ)` を指定。`i`/`j` は整数インデックスまたは PDB セレクタ（`'TYR,285,CA'`） | 必須 |
+| `-s, --scan-lists TEXT` | YAML/JSONまたは単一inline literalで2つの距離・角度・二面角rangeを指定 | 必須 |
 | `--one-based/--zero-based` | `(i, j)` のインデックスを 1 始まり/0 始まりとして解釈 | `True` |
 | `--print-parsed/--no-print-parsed` | `-s/--scan-lists` 解釈後のペア情報を表示 | `False` |
 | `--max-step-size FLOAT` | 各距離の 1 増分あたりの最大変化量（Å）。グリッド密度を決定 | `0.20` |
-| `--bias-k FLOAT` | 調和バイアス強度 `k`（eV·Å⁻²） | `300` |
+| `--max-angle-step-size FLOAT` | 角度の1stepあたりの最大変化量（度） | `5.0` |
+| `--max-dihedral-step-size FLOAT` | 二面角の1stepあたりの最大変化量（度） | `10.0` |
+| `--bias-k FLOAT` | 調和バイアス強度。距離はeV·Å⁻²、角度はeV·rad⁻² | `300` |
 | `--relax-max-cycles INT` | 各バイアス緩和の最大最適化サイクル数。明示値は YAML `opt.max_cycles` を上書き | `100000` |
 | `--opt-mode TEXT` | `grad` → L-BFGS、`hess` → RFOptimizer | `grad` |
 | `--freeze-links/--no-freeze-links` | PDB/mmCIF トポロジー入力時にキャップ水素の親原子を凍結 | `True` |

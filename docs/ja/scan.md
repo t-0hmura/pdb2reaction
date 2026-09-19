@@ -9,6 +9,10 @@
 これに対し [`scan2d`](scan2d.md) / [`scan3d`](scan3d.md) は独立な
 距離軸を用いて energy landscape を探索し、PESを描画します。
 
+角度rangeは`(i,j,k,low,high)`、二面角rangeは
+`(i,j,k,l,low,high)`で指定し、角度値には度を使います。どちらも
+下記の距離rangeと同じ2passの`low` / `high` stageとして実行します。
+
 ## 実行例
 
 ```bash
@@ -90,7 +94,9 @@ out_dir/ (デフォルト:./result_scan/)
 | `--one-based/--zero-based` | 原子インデックスを 1 始まり/0 始まりとして解釈。これらは同一フラグの相互排他エイリアス（`--one-based` → `True`、`--zero-based` → `False`） | `True` |
 | `--print-parsed/--no-print-parsed` | `-s/--scan-lists` 解釈後のステージ情報を表示 | `False` |
 | `--max-step-size FLOAT` | 1 ステップあたりのスキャン結合の最大変化量（Å）。ステップ数を決定 | `0.20` |
-| `--bias-k FLOAT` | 調和バイアス強度 `k`（eV·Å⁻²） | `300` |
+| `--max-angle-step-size FLOAT` | 角度の1stepあたりの最大変化量（度） | `5.0` |
+| `--max-dihedral-step-size FLOAT` | 二面角の1stepあたりの最大変化量（度） | `10.0` |
+| `--bias-k FLOAT` | 調和バイアス強度。距離はeV·Å⁻²、角度はeV·rad⁻² | `300` |
 | `--relax-max-cycles INT` | 前処理・各バイアスステップ・後処理における最適化サイクルの上限。明示値は YAML `opt.max_cycles` を上書き | `100000` |
 | `--opt-mode TEXT` | `grad` → L-BFGS、`hess` → RFOptimizer。同じトークンが `tsopt` では Dimer / RS-P-RFO に対応する点については {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
 | `--freeze-links/--no-freeze-links` | PDB/mmCIF トポロジー入力時にキャップ水素の親原子を凍結 | `True` |
@@ -298,6 +304,9 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
 ```
 
 これは 2 つの手動ステージの間にジオメトリリセットを行うのと同等ですが、スクリプトを書く必要がありません。同じリテラル内で 3-tuple と 4-tuple を混在させることもできます。
+
+角度rangeは`(i,j,k,low,high)`、二面角rangeは
+`(i,j,k,l,low,high)`で指定します。
 
 ```{note}
 **4-tuple 使用時のステージ番号。** 1 つの 4-tuple は出力ツリー内で **2 つ** のステージに展開されます。`start` パスは `stage_NN/` に、`end` パスは `stage_NN+1/` に書き込まれます。したがって最初のリテラルとして 1 個の 4-tuple を渡した場合、1 つの統合された `stage_01/` ではなく `stage_01/` と `stage_02/` が作成されます。3-tuple と 4-tuple を混在させた場合、カウンターは 3-tuple ごとに `+1`、4-tuple ごとに `+2` 進みます。

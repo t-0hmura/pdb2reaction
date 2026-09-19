@@ -3,7 +3,7 @@
 ## When to use
 
 You have **only the reactant** (no product structure) and you can
-articulate the chemistry as a sequence of staged distance scans —
+articulate the chemistry as a sequence of staged internal-coordinate scans —
 e.g. "first push the methyl from S of SAM to C7 of GPP, then snap H11
 to OE2 of GLU 186". `pdb2reaction all` runs each stage in order and ties
 the resulting trajectories into an MEP. By default the MEP stage is
@@ -29,8 +29,9 @@ stage *k+1*.
 
 ## `--scan-lists` syntax
 
-Each argument is a Python literal-eval expression: a list of bond
-tuples, where each tuple is `(atom_a, atom_b, target_distance_Å)`.
+Each argument is a Python literal-eval expression containing distance
+`(i,j,target_Å)`, angle `(i,j,k,target_deg)`, or dihedral
+`(i,j,k,l,target_deg)` tuples.
 
 ```
 [ ("<atom-spec>", "<atom-spec>", <float>) , ... ]
@@ -73,7 +74,7 @@ Examples:
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--scan-lists` | required once | One or more following literal values, one per distance-restraint stage |
+| `--scan-lists` | required once | One or more following literal values, one per restraint stage |
 | `--mep-mode` | `gsm` | After scans complete, MEP refinement uses GSM unless `dmf` |
 
 Unlike endpoint-MEP mode, `-i` is **one reactant structure** in
@@ -123,7 +124,7 @@ its `summary.json`.
 ## See also
 
 - `all.md` — base orientation.
-- `scan.md`, `scan2d.md`, `scan3d.md` — standalone distance scan
+- `scan.md`, `scan2d.md`, `scan3d.md` — standalone scan
   subcommands (without the surrounding pipeline).
 - `path-search.md` — what happens after all scans complete.
 - Defaults: `import pdb2reaction.core.defaults as d; print(d.SEARCH_KW, d.STOPT_KW)`.

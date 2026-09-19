@@ -22,7 +22,7 @@ pdb2reaction scan3d -i input.pdb \
 | flag | type | default | description |
 |---|---|---|---|
 | `-i, --input` | path | required (unless `--csv`) | Reactant `.pdb` / `.cif` / `.mmcif` / `.xyz` / `.gjf` |
-| `-s, --scan-lists` | str | required (unless `--csv`) | Python literal with **three** 4-tuples `(i, j, low, high)` |
+| `-s, --scan-lists` | str | required (unless `--csv`) | Three distance, angle, or dihedral ranges, inline or in YAML/JSON |
 | `--csv` | path | none | Skip the scan; load a precomputed `surface.csv` for downstream plotting |
 | `-q` / `-l` / `-m` | — | — | Charge / spin |
 | `-b, --backend` | str | `uma` | MLIP backend or optional DFT calculator |

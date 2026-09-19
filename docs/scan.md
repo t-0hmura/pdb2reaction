@@ -10,6 +10,10 @@ starting from the preceding stage endpoint. In contrast, [`scan2d`](scan2d.md)
 and [`scan3d`](scan3d.md) evaluate independent distance axes for
 energy-landscape exploration and PES mapping.
 
+Angle ranges use `(i,j,k,low,high)` and dihedral ranges use
+`(i,j,k,l,low,high)`; angular values are in degrees. Each range follows the
+same two-pass `low` / `high` staging described below.
+
 ## Examples
 
 ```bash
@@ -103,7 +107,9 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--one-based/--zero-based` | Interpret atom indices as 1- or 0-based. These are mutually exclusive toggle aliases for the same flag (`--one-based` sets it to `True`, `--zero-based` sets it to `False`). | `True` |
 | `--print-parsed/--no-print-parsed` | Print parsed stage tuples after `--scan-lists/-s` resolution. | `False` |
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
-| `--bias-k FLOAT` | Harmonic bias strength `k` in eV·Å⁻². | `300` |
+| `--max-angle-step-size FLOAT` | Maximum angle change per step (degrees). | `5.0` |
+| `--max-dihedral-step-size FLOAT` | Maximum dihedral change per step (degrees). | `10.0` |
+| `--bias-k FLOAT` | Harmonic bias strength `k`: eV·Å⁻² for distances and eV·rad⁻² for angles. | `300` |
 | `--relax-max-cycles INT` | Cap on optimizer cycles during preopt, each biased step, and end-of-stage cleanups. An explicit value overrides YAML `opt.max_cycles`. | `100000` |
 | `--opt-mode TEXT` | `grad` → L-BFGS, `hess` → RFOptimizer. See {ref}`opt-mode-semantics` for how the same token maps to different optimizers under `tsopt`. | `grad` |
 | `--freeze-links/--no-freeze-links` | When the input is PDB, freeze the parents of cap hydrogens. | `True` |
@@ -223,6 +229,9 @@ pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
 ```
 
 This is equivalent to two manual stages with a geometry reset between them. Mixed 3-tuples and 4-tuples are accepted in the same literal.
+
+The corresponding range forms are `(i,j,k,low,high)` for an angle and
+`(i,j,k,l,low,high)` for a dihedral.
 
 ```{note}
 **Stage counter with 4-tuples.** A 4-tuple expands into **two** stages in the output tree: the `start` pass is written under `stage_NN/` and the `end` pass under `stage_NN+1/`. So if you pass a single 4-tuple as your first literal, you will see `stage_01/` and `stage_02/`, not one combined `stage_01/`. When mixing 3-tuples and 4-tuples, the counter advances by `+1` per 3-tuple and `+2` per 4-tuple.

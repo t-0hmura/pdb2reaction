@@ -827,13 +827,13 @@ def _parse_scan_lists_literals(
     atom_meta: Optional[Sequence[Dict[str, Any]]] = None,
     *,
     one_based: bool = True,
-) -> List[List[Tuple[int, int, float]]]:
+) -> List[List[Tuple[Any, ...]]]:
     """Parse ``--scan-lists`` literals, interpreting them per ``one_based``.
 
     ``one_based`` is how to READ the user's literal (it follows ``--scan-one-based``); the
     returned stages are always 1-based so the downstream index mapping stays base-agnostic.
     """
-    stages: List[List[Tuple[int, int, float]]] = []
+    stages: List[List[Tuple[Any, ...]]] = []
     for idx_stage, literal in enumerate(scan_lists_raw, start=1):
         tuples, _ = parse_scan_list_triples(
             literal,
@@ -846,18 +846,13 @@ def _parse_scan_lists_literals(
             raise click.BadParameter(
                 f"--scan-lists #{idx_stage} must contain at least one (i,j,target) triple."
             )
-        if any(len(entry) != 3 for entry in tuples):
-            raise click.BadParameter(
-                "pdb2reaction all accepts only (i,j,target) scan triples; "
-                "use standalone scan for bidirectional (i,j,start,end) stages."
-            )
         stages.append(tuples)
     return stages
 
 
-def _format_scan_stage(stage: List[Tuple[int, int, float]]) -> str:
+def _format_scan_stage(stage: List[Tuple[Any, ...]]) -> str:
     """Serialize a scan stage back into a Python-like literal string."""
-    return "[" + ", ".join(f"({i},{j},{target})" for (i, j, target) in stage) + "]"
+    return repr([tuple(entry) for entry in stage])
 
 
 def _convert_scan_lists_to_model_indices(
@@ -866,7 +861,7 @@ def _convert_scan_lists_to_model_indices(
     model_pdb: Path,
     *,
     one_based: bool = True,
-) -> List[List[Tuple[int, int, float]]]:
+) -> List[List[Tuple[Any, ...]]]:
     """
     Convert user-provided atom indices (based on the full input PDB) to model indices.
     Returns the converted stages as lists of (i,j,target) with 1-based model indices.
@@ -905,24 +900,26 @@ def _convert_scan_lists_to_model_indices(
             "or choose atoms that survive in the active site model."
         )
 
-    converted: List[List[Tuple[int, int, float]]] = []
+    from pdb2reaction.domain.scan_coordinates import coordinate_atoms
+    converted: List[List[Tuple[Any, ...]]] = []
     for stage_idx, stage in enumerate(stages, start=1):
-        stage_converted: List[Tuple[int, int, float]] = []
-        for tuple_idx, (idx_i, idx_j, target) in enumerate(stage, start=1):
-            if idx_i <= 0 or idx_j <= 0:
+        stage_converted: List[Tuple[Any, ...]] = []
+        for tuple_idx, entry in enumerate(stage, start=1):
+            atoms = coordinate_atoms(entry)
+            if any(index <= 0 for index in atoms):
                 raise click.BadParameter(
                     f"--scan-lists #{stage_idx} tuple #{tuple_idx} must use 1-based atom indices."
                 )
-            if idx_i > n_atoms_full or idx_j > n_atoms_full:
+            if any(index > n_atoms_full for index in atoms):
                 raise click.BadParameter(
                     f"--scan-lists #{stage_idx} tuple #{tuple_idx} references an atom index "
                     f"beyond the input PDB atom count ({n_atoms_full})."
                 )
-
-            pi = _map_full_index_to_model(idx_i, stage_idx, tuple_idx, "i")
-            pj = _map_full_index_to_model(idx_j, stage_idx, tuple_idx, "j")
-
-            stage_converted.append((pi, pj, target))
+            mapped = tuple(
+                _map_full_index_to_model(index, stage_idx, tuple_idx, f"atom {pos}")
+                for pos, index in enumerate(atoms, start=1)
+            )
+            stage_converted.append((*mapped, float(entry[-1])))
         converted.append(stage_converted)
     return converted
 
@@ -4733,9 +4730,9 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     multiple=True,
     required=False,
     help=(
-        "Scan targets: inline Python literal. "
-        "Multiple inline literals define sequential stages, e.g. "
-        "'[(12,45,1.35)]' '[(10,55,2.20),(23,34,1.80)]'. "
+        "Scan targets: distance (i,j,target), angle (i,j,k,target), or dihedral "
+        "(i,j,k,l,target). Multiple inline literals define sequential stages. "
+        "Distances use Å; angles and dihedrals use degrees. "
         "Indices refer to the original full input ordering (1-based); atom strings may use "
         "CHAIN:RESNAME:RESSEQ[ICODE]:ATOM. When extraction is used, selections are auto-mapped "
         "to the active site model after extraction."
@@ -7356,7 +7353,11 @@ def cli(
             if scan_one_based_effective:
                 stage_use = stage
             else:
-                stage_use = [(i - 1, j - 1, target) for (i, j, target) in stage]
+                from pdb2reaction.domain.scan_coordinates import coordinate_atoms
+                stage_use = [
+                    (*tuple(i - 1 for i in coordinate_atoms(entry)), float(entry[-1]))
+                    for entry in stage
+                ]
             scan_stage_literals.append(_format_scan_stage(stage_use))
 
         scan_preopt_use = preopt if scan_preopt_override is None else bool(
@@ -7370,6 +7371,7 @@ def cli(
         scan_args: List[str] = [
             "-i",
             str(scan_input_pdb),
+            "--target-mode",
             "-q",
             str(int(q_int)),
             "-m",

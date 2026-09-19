@@ -2,6 +2,9 @@
 
 調和拘束と機械学習原子間ポテンシャル（MLIP）緩和により、3 距離 `(d₁, d₂, d₃)` のグリッドスキャンを行い、その距離空間上の 3次元ポテンシャルエネルギー分布（マップ）を生成します。この分布を得たいとき、または既存の `surface.csv` を再プロットしたいときに使用します。
 
+各軸には角度`(i,j,k,low,high)`または二面角
+`(i,j,k,l,low,high)`も指定できます。角度値には度を使います。
+
 コマンドの呼び出し方は 2 通りあります。新規スキャンを実行するには、ターゲットを `-s/--scan-lists` で指定します（YAML/JSON ファイルパスが推奨、またはインライン Python リテラル）。エネルギーを再評価せずに既存の `surface.csv` を再プロットするだけなら、`--csv` で渡します。スキャン中、`scan3d` は d₁ → d₂ → d₃ の順にループをネストし、対応する調和拘束をかけて各格子点を緩和します。
 
 デフォルトのオプティマイザは L-BFGS（`--opt-mode grad`）です。RFOptimizer が必要な場合は `--opt-mode hess` を指定してください。
@@ -101,12 +104,14 @@ out_dir/ (デフォルト:./result_scan3d/)
 | `--freeze-links/--no-freeze-links` | PDB/mmCIF トポロジー入力時にキャップ水素の親原子を凍結 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
 | **スキャンターゲット** | | |
-| `-s, --scan-lists TEXT` | スキャンターゲット: YAML/JSON スペックファイルパス（推奨）または **単一**のインライン Python リテラルで 3 つの4 要素タプル `(i,j,lowÅ,highÅ)` を指定。`i`/`j` は整数インデックスまたは PDB セレクタ | `--csv` 未指定時に必須 |
+| `-s, --scan-lists TEXT` | YAML/JSONまたは単一inline literalで3つの距離・角度・二面角rangeを指定 | `--csv` 未指定時に必須 |
 | `--one-based/--zero-based` | `(i, j)` のインデックスを 1 始まり/0 始まりとして解釈 | `True` |
 | `--print-parsed/--no-print-parsed` | `-s/--scan-lists` 解釈後のペア情報を表示 | `False` |
 | `--max-step-size FLOAT` | 各距離の 1 増分あたりの最大変化量（Å）。グリッド密度を決定 | `0.20` |
+| `--max-angle-step-size FLOAT` | 角度の1stepあたりの最大変化量（度） | `5.0` |
+| `--max-dihedral-step-size FLOAT` | 二面角の1stepあたりの最大変化量（度） | `10.0` |
 | **緩和** | | |
-| `--bias-k FLOAT` | 調和バイアス強度 `k`（eV·Å⁻²） | `300` |
+| `--bias-k FLOAT` | 調和バイアス強度。距離はeV·Å⁻²、角度はeV·rad⁻² | `300` |
 | `--opt-mode TEXT` | `grad` → L-BFGS、`hess` → RFOptimizer | `grad` |
 | `--relax-max-cycles INT` | 各バイアス緩和の最大最適化サイクル数。明示値は YAML `opt.max_cycles` を上書き | `100000` |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |
@@ -156,7 +161,7 @@ bias:
 
 ## 注記
 
-- `scan3d` はちょうど **3 つ**の4 要素タプル `(i, j, low_Å, high_Å)` を受け付けます（YAML/JSON では `pairs` キー、インラインでは単一リテラル）。`scan` と異なり、リテラルは **1 つだけ**を受け付けます（複数ステージは非対応）。YAML/JSON ファイル書式、インライン Python リテラル構文、原子セレクタ、クォート規則については {ref}`CLI 規約: スキャンリスト仕様 <ja-scan-list-spec>` を参照してください。
+- `scan3d` はちょうど **3つ**の距離・角度・二面角rangeを受け付けます（YAML/JSON では `pairs` キー、インラインでは単一リテラル）。`scan` と異なり、リテラルは **1 つだけ**を受け付けます（複数ステージは非対応）。YAML/JSON ファイル書式、インライン Python リテラル構文、原子セレクタ、クォート規則については {ref}`CLI 規約: スキャンリスト仕様 <ja-scan-list-spec>` を参照してください。
 - 3D グリッドは点数が急激に増加するため、まず `--max-step-size` を大きくするか範囲を狭めることを検討してください。
 - 計算エンジンは MLIP バックエンド（デフォルト: UMA）で、1D/2D スキャンと同じ `HarmonicBiasCalculator` を再利用します。
 - Å 単位の制限値は内部で Bohr に変換され、L-BFGS ステップや RFO 信頼半径の制御に使われます。最適化の一時ファイルはテンポラリディレクトリに配置されます。

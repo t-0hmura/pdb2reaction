@@ -493,6 +493,34 @@ def test_all_freeze_and_scan_indices_share_full_to_model_mapping(
         _convert_freeze_atoms_to_model_indices([0], full, model)
 
 
+def test_all_remaps_every_angle_and_dihedral_atom(tmp_path: Path) -> None:
+    from pdb2reaction.workflows.all import _convert_scan_lists_to_model_indices
+
+    def atom_line(serial, name, x):
+        return (
+            f"HETATM{serial:5d} {name:>4s} LIG A   1    "
+            f"{x:8.3f}{0.0:8.3f}{0.0:8.3f}  1.00  0.00           C\n"
+        )
+
+    full = tmp_path / "full.pdb"
+    full.write_text(
+        "".join(atom_line(i, f"C{i}", float(i)) for i in range(1, 5)) + "END\n",
+        encoding="utf-8",
+    )
+    model = tmp_path / "model.pdb"
+    model.write_text(
+        "".join(
+            atom_line(new_i, f"C{old_i}", float(old_i))
+            for new_i, old_i in enumerate((4, 2, 1, 3), start=1)
+        ) + "END\n",
+        encoding="utf-8",
+    )
+
+    assert _convert_scan_lists_to_model_indices(
+        ["[(1,2,3,110.0),(1,2,3,4,-60.0)]"], full, model
+    ) == [[(3, 2, 4, 110.0), (3, 2, 4, 1, -60.0)]]
+
+
 def test_build_energy_level_dict_kcal_projection() -> None:
     d = build_energy_level_dict(
         labels=["R", "TS", "P"],

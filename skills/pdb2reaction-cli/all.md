@@ -37,7 +37,7 @@ pdb2reaction all -i <input(s)> [-c <centers>] [-l 'RES:Q,...'] \
 | `-q, --charge` | int | derived from `-l` | Explicit total system charge with highest priority. If it differs from the extract/workflow-derived value, `all` warns and uses `-q`; omit it to use automatic derivation. |
 | `-m, --multiplicity` | int | 1 | Spin multiplicity (2S+1) |
 | `-r, --radius` | float | 2.6 | Pocket radius (Å) when `-c` triggers extraction |
-| `-s, --scan-lists` | one flag followed by one or more values | none | Staged distance scans (mode 2 — `all-scan-list.md`). Use one `-s` occurrence; each following Python literal is one sequential stage. Repeating the flag is rejected. |
+| `-s, --scan-lists` | one flag followed by one or more values | none | Staged distance, angle, or dihedral targets (mode 2 — `all-scan-list.md`). Use one `-s` occurrence; each following Python literal is one sequential stage. Repeating the flag is rejected. |
 | `--refine-path / --no-refine-path` | toggle | off | Recursive `path-search` when enabled; single-pass `path-opt` when disabled. Refinement can improve a poor TS seed but may split a bad path into unnecessary segments and greatly increase cost |
 | `--thresh` | str | `gau` | Convergence preset for single-structure optimization and scan relaxation |
 | `--thresh-gsm` | str | `gau_loose` | Convergence preset for the GSM string optimizer |
