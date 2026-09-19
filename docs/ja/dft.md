@@ -4,7 +4,7 @@ GPU4PySCF または CPU PySCF を使用して DFT 一点計算を実行し、エ
 
 > `--engine`（単体の `dft`）と `--dft-engine`（`pdb2reaction all` から転送する場合）の命名規則は {ref}`ja-engine-vs-dft-engine` を参照してください。
 
-> **前提条件:** DFT 依存パッケージ（PySCF、GPU4PySCF）はデフォルトではインストールされません。`pip install "pdb2reaction[dft]"` でインストールしてください。
+> **前提条件:** native CUDA 13 GPU4PySCF は `pdb2reaction[dft]`、CUDA 12 site では `pdb2reaction[dft-cuda12]` をインストールします。
 
 > **溶媒:** `--solvent NAME --solvent-model pcm|smd`はPySCF native implicit solventを
 > 使用します。MLIP backendのxTB solvent-delta補正とは別経路です。

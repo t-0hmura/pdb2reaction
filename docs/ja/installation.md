@@ -115,9 +115,9 @@ DMF を使う場合は、必須コマンドの実行前に環境を作成し、c
         && pip uninstall -y fairchem-core \
         && pip install mace-torch
 
-    # DFT 一点計算の後処理（`--dft` / `pdb2reaction dft`）
-    # gpu4pyscf-cuda12x、PySCF、および関連依存をインストールします。
-    # 注: gpu4pyscf-cuda12x は PyPI で x86_64 wheel を配布。aarch64 では
+    # DFT calculator／後処理（`-b dft`、`--dft`、`pdb2reaction dft`）
+    # [dft] は Linux x86_64 で native CUDA 13 stack を導入します。
+    # CUDA 12 site では [dft-cuda12] を使用します。aarch64 では
     # ソースからビルドしてください (https://github.com/pyscf/gpu4pyscf)。
     pip install "pdb2reaction[dft]"
     ```

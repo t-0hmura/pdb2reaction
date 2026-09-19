@@ -73,7 +73,7 @@ hf auth login                               # interactive
 | Extra | Adds |
 |---|---|
 | `[orb]` / `[aimnet]` | Orb / AIMNet2 MLIP backend (`-b orb` / `-b aimnet2`) — *not* HF-gated |
-| `[dft]` | Optional `-b dft` calculator and standalone `pdb2reaction dft` command |
+| `[dft]` / `[dft-cuda12]` | DFT calculator and standalone command with native CUDA 13 / CUDA 12 GPU4PySCF |
 | `[mcp]` | Model Context Protocol server for agent clients |
 
 The MACE backend (`-b mace`) is **not** a pip extra: `mace-torch` pins `e3nn==0.4.4`, which conflicts with `fairchem-core`'s `e3nn>=0.5` (UMA), so it needs a dedicated environment — `pip uninstall -y fairchem-core && pip install mace-torch` (see [docs/installation.md](docs/installation.md)).

@@ -116,9 +116,9 @@ If you prefer to build the environment piece by piece:
         && pip uninstall -y fairchem-core \
         && pip install mace-torch
 
-    # DFT single-point post-processing (`--dft` / `pdb2reaction dft`)
-    # Installs gpu4pyscf-cuda12x, PySCF, and related dependencies.
-    # Note: gpu4pyscf-cuda12x publishes x86_64 wheels on PyPI; on
+    # DFT calculator and post-processing (`-b dft`, `--dft`, `pdb2reaction dft`)
+    # [dft] installs the native CUDA 13 stack on Linux x86_64.
+    # Use [dft-cuda12] on a CUDA 12 site. On aarch64, GPU4PySCF must be
     # aarch64 build from source (https://github.com/pyscf/gpu4pyscf).
     pip install "pdb2reaction[dft]"
     ```

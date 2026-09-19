@@ -38,9 +38,9 @@ classifiers = [
 ]
 dependencies = [
     # pdb2reaction core dependencies
-    "fairchem-core",
+    "fairchem-core>=2.22,<3",
     "pydmf>=1.2",  # >=1.2 ships dmf.torch for optional --mep-mode dmf / --dmf-backend gpu (the CLI default is gsm)
-    "torch>=2.8,<2.14",
+    "torch>=2.13,<2.14",
     "numpy>=2.0,<2.5",
     "biopython",
     "ase>=3.26.0",
@@ -82,14 +82,20 @@ aimnet = ["aimnet>=0.2.0"]
 # pip install mace-torch` (e.g. in `pdb2reaction-mace`).
 dft = [
     "pyscf>=2.13.0",
-    "gpu4pyscf-cuda12x>=1.7.0; sys_platform == 'linux' and platform_machine == 'x86_64'",
-    "cupy-cuda12x>=13.0,!=13.4.0; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "gpu4pyscf-cuda13x>=1.8.1,<2; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "cupy-cuda13x>=13.6,<15; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "basis-set-exchange>=0.11",
+]
+dft-cuda12 = [
+    "pyscf>=2.13.0",
+    "gpu4pyscf-cuda12x>=1.8.1,<2; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "cupy-cuda12x>=13.6,<15; sys_platform == 'linux' and platform_machine == 'x86_64'",
     "basis-set-exchange>=0.11",
 ]
 ci = [
     # Non-GPU deps sufficient for unit tests and docs generation
     # NOTE: torch CPU must be installed separately via --index-url
-    "torch>=2.8,<2.14",
+    "torch>=2.13,<2.14",
     "ase>=3.26.0",
     "numpy>=2.0,<2.5",
     "biopython",

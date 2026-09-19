@@ -4,7 +4,7 @@ Runs single-point DFT with GPU4PySCF or CPU PySCF, reporting energy and populati
 
 > See {ref}`engine-vs-dft-engine` for the `--engine` (standalone `dft`) vs `--dft-engine` (forwarded through `pdb2reaction all`) naming convention.
 
-> **Prerequisites:** DFT dependencies (PySCF, GPU4PySCF) are **not** included in the default install. Install them with `pip install "pdb2reaction[dft]"`.
+> **Prerequisites:** Install `pdb2reaction[dft]` for native CUDA 13 GPU4PySCF, or `pdb2reaction[dft-cuda12]` on a CUDA 12 site.
 
 > **Solvation:** `--solvent NAME --solvent-model pcm|smd` uses native PySCF
 > implicit solvent. This is separate from the xTB solvent-delta correction used

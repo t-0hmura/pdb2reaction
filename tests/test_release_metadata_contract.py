@@ -32,21 +32,26 @@ def test_dft_gpu_dependencies_are_linux_only() -> None:
         req.name: req
         for req in map(Requirement, data["project"]["optional-dependencies"]["dft"])
     }
-    for package in ("gpu4pyscf-cuda12x", "cupy-cuda12x"):
+    for package in ("gpu4pyscf-cuda13x", "cupy-cuda13x"):
         marker = requirements[package].marker
         assert marker is not None
         for platform, expected in (("linux", True), ("darwin", False), ("win32", False)):
             env = default_environment()
             env.update({"sys_platform": platform, "platform_machine": "x86_64"})
             assert marker.evaluate(env) is expected
+    cuda12 = {
+        req.name: req
+        for req in map(Requirement, data["project"]["optional-dependencies"]["dft-cuda12"])
+    }
+    assert {"gpu4pyscf-cuda12x", "cupy-cuda12x"} <= set(cuda12)
 
 
 def test_runtime_metadata_allows_the_current_fairchem_stack() -> None:
     text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    assert '"fairchem-core"' in text
-    assert '"torch>=2.8,<2.14"' in text
     assert '"torch~=' not in text
     requirements = {r.name: r for r in map(Requirement, tomllib.loads(text)["project"]["dependencies"])}
+    assert "2.22.0" in requirements["fairchem-core"].specifier
+    assert "3.0.0" not in requirements["fairchem-core"].specifier
     assert "2.4.6" in requirements["numpy"].specifier
     assert "2.5.0" not in requirements["numpy"].specifier
     assert "2.13.0" in requirements["torch"].specifier

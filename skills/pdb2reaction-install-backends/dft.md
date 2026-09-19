@@ -12,6 +12,7 @@ not pulled by the default install.
 
 ```bash
 pip install 'pdb2reaction[dft]'
+# CUDA 12 systems: pip install 'pdb2reaction[dft-cuda12]'
 ```
 
 This pulls (canonical pin in `pyproject.toml`):
@@ -19,15 +20,15 @@ This pulls (canonical pin in `pyproject.toml`):
 | Package | Purpose | Platform |
 |---|---|---|
 | `pyscf>=2.13.0` | Reference SCF / DFT engine | All |
-| `gpu4pyscf-cuda12x>=1.7.0` | CUDA acceleration of PySCF | **x86_64 only** |
-| `cupy-cuda12x>=13.0,!=13.4.0` | Tensor backend for GPU4PySCF | x86_64 only |
+| `gpu4pyscf-cuda13x>=1.8.1,<2` | CUDA acceleration of PySCF | **x86_64 only** |
+| `cupy-cuda13x>=13.6,<15` | Tensor backend for GPU4PySCF | x86_64 only |
 | `basis-set-exchange>=0.11` | Programmatic basis-set lookup | All |
 
-`cutensor-cu12` (cuTENSOR / RIJCOSX kernels, x86_64 only) is a separate
+`cutensor-cu13` (cuTENSOR / RIJCOSX kernels, x86_64 only) is a separate
 optional installation; neither the `[dft]` extra nor GPU4PySCF metadata pulls
 it in automatically. Install it only when the selected GPU4PySCF path requires it.
 
-On `aarch64` (`uname -m`), the `gpu4pyscf-cuda12x` PyPI wheel is
+On `aarch64` (`uname -m`), the `gpu4pyscf-cuda13x` PyPI wheel is
 x86_64-only. The extras install will succeed for `pyscf` and
 `basis-set-exchange` but skip GPU4PySCF, leaving you on CPU PySCF.
 Build `gpu4pyscf` from source

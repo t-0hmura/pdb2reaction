@@ -140,7 +140,7 @@ under Linux containers, some HPC nodes):
 
 - torch wheels exist for aarch64 + CUDA on recent versions; check
   `https://download.pytorch.org/whl/torch/`.
-- **The `gpu4pyscf-cuda12x` PyPI wheel is x86_64 only.** The packaged extra
+- **The `gpu4pyscf-cuda13x` PyPI wheel is x86_64 only.** The packaged extra
   therefore uses CPU PySCF on aarch64. A compatible source-built GPU4PySCF
   environment is an expert, opt-in alternative and must be validated first;
   see `dft.md`.
@@ -167,4 +167,4 @@ PY
 - `core.md` — install `pdb2reaction` itself (after torch is healthy).
 - Backend mds (`uma.md`, `mace.md`, …) — extras that piggyback on the
   torch you just installed.
-- `dft.md` — `gpu4pyscf-cuda12x` install + aarch64 fallback.
+- `dft.md` — `gpu4pyscf-cuda13x` install + aarch64 fallback.

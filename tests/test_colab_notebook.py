@@ -699,7 +699,7 @@ def test_colab_setup_is_pinned_to_matching_release_and_one_backend() -> None:
     assert "coinor-libipopt-dev" in setup
     assert "pip('cyipopt')" in setup
     assert "_missing_dmf" in setup
-    assert "_dft_packages = {'pyscf': 'pyscf', 'gpu4pyscf': 'gpu4pyscf-cuda12x'}" in setup
+    assert "_dft_packages = {'pyscf': 'pyscf', 'gpu4pyscf': 'gpu4pyscf-cuda13x'}" in setup
     # The exact `debug` sentinel installs the snapshot in editable mode. It is
     # admitted only through a bundle marker that matches this
     # notebook, and only from an archive that stays inside its own directory.
@@ -823,7 +823,7 @@ def test_colab_setup_dft_branch_installs_extra_and_checks_gpu(monkeypatch, capsy
 
     versions = {
         "pyscf": "2.11.0",
-        "gpu4pyscf-cuda12x": "1.5.2",
+        "gpu4pyscf-cuda13x": "1.5.2",
         "pdb2reaction": "0.5.0",
     }
     monkeypatch.setattr(subprocess, "run", fake_run)

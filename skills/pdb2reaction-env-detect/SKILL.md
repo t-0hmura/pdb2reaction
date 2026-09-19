@@ -52,7 +52,7 @@ uname -s                          # Linux / Darwin
 lscpu | grep -E "^(Architecture|Model name|CPU\(s\)):"
 ```
 
-On `aarch64` (ARM64), the packaged **`gpu4pyscf-cuda12x` PyPI wheel is not
+On `aarch64` (ARM64), the packaged **`gpu4pyscf-cuda13x` PyPI wheel is not
 available**, so the supported extra uses CPU PySCF. An expert may instead use
 a separately source-built GPU4PySCF environment, but must validate imports and
 a representative SCF before selecting `--engine gpu`. Other backends (UMA /
@@ -222,4 +222,4 @@ delete it after extracting the placeholder values.
 - [`pdb2reaction-install-backends/env-cuda.md`](../pdb2reaction-install-backends/env-cuda.md) — uses the driver,
   GPU architecture, and official PyTorch matrix to choose a wheel; a toolkit module is only for source builds.
 - [`pdb2reaction-install-backends/dft.md`](../pdb2reaction-install-backends/dft.md) — uses `uname -m` to decide
-  between `gpu4pyscf-cuda12x` (x86_64) and CPU PySCF (aarch64).
+  between `gpu4pyscf-cuda13x` (x86_64) and CPU PySCF (aarch64).
