@@ -49,6 +49,7 @@ def test_dynamic_smoke_excludes_usage_synopses() -> None:
     selected = smoke._select_executable_all_commands(
         [
             "pdb2reaction all [OPTIONS]...",
+            "pdb2reaction all -i R.pdb P.pdb --resume-segment 2 --out-dir prior",
             "pdb2reaction all -i R.pdb P.pdb -c LIG --dry-run",
         ]
     )

@@ -204,7 +204,7 @@ def _validate_option_names(commands: list[str]) -> None:
 
 
 def _select_executable_all_commands(commands: list[str]) -> list[str]:
-    """Select concrete ``all`` examples, retaining synopsis for static checks only."""
+    """Select ``all`` examples that can run without prior calculation artifacts."""
 
     all_cmds: set[str] = set()
     for cmd in commands:
@@ -212,6 +212,11 @@ def _select_executable_all_commands(commands: list[str]) -> list[str]:
             continue
         tokens = shlex.split(cmd)
         if not tokens or tokens[0] != TOOL_NAME:
+            continue
+        # Resume is validated statically above. Executing it requires an
+        # existing, identity-matched MEP and is intentionally incompatible
+        # with the synthetic --dry-run lane used here.
+        if "--resume-segment" in tokens:
             continue
         if len(tokens) >= 2 and tokens[1] == "all":
             all_cmds.add(cmd)
