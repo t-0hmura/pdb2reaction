@@ -52,11 +52,11 @@ PRIMARY_CLASSIFICATION = [
 ADVANCED_CLASSIFICATION = [
     ("irc", "--never-stop"),
     ("all", "--dry-run"),
-    ("all", "--scan-bias-k"),
+    ("all", "--scan-restraint-k"),
     ("all", "--scan-relax-max-cycles"),
     ("all", "--max-cycles-gsm"),
     ("all", "--gsm-param"),
-    ("all", "--max-cycles-dmf"),
+    ("all", "--dmf-max-iterations"),
     ("all", "--tsopt-max-cycles"),
     ("all", "--hessian-calc-mode"),
     ("all", "--write-ref-merge"),
@@ -130,9 +130,10 @@ def test_basic_help_hides_advanced_options_that_advanced_help_shows():
     assert "--tsopt" in basic.output
     assert "--solvent" not in basic.output
     assert "--solvent" in advanced.output
-    assert "experimental" in advanced.output.lower()
-    assert "xtb solvent delta" in advanced.output.lower()
-    assert "native pyscf pcm/smd" in advanced.output.lower()
+    advanced_text = " ".join(advanced.output.lower().split())
+    assert "experimental" in advanced_text
+    assert "xtb solvent delta" in advanced_text
+    assert "native pyscf pcm/smd" in advanced_text
 
     # Compare on each option's rendered help-record column (e.g. "-r, --radius
     # FLOAT"); it carries the metavar so it cannot collide with prose that merely
