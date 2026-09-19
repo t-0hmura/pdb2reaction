@@ -272,7 +272,7 @@ def _validate_high_risk_semantics(errors: list[str]) -> None:
         freq_page,
         (
             "`freq` retains every signed physical mode",
-            "`-1e-6` Hartree/(bohr²·amu)",
+            "ν < −5.00 cm⁻¹",
             "Raw negative counts are diagnostic",
             "freq.zero_cutoff_cm",
             "E + G_corr = G",

@@ -38,7 +38,6 @@ from pysisyphus.normal_modes import (  # noqa: F401
     _mw_mode_to_cart,
     DEFAULT_FREQUENCY_ZERO_CUTOFF_CM,
     frequency_criterion_info,
-    warn_legacy_frequency_cutoff,
     normalize_frequency_zero_cutoff_cm,
     resolved_imaginary_mask,
 )
@@ -368,7 +367,6 @@ def _validate_freq_thermo_config(
             f"freq.zero_cutoff_cm must be finite and non-negative, got "
             f"{freq_cfg.get('zero_cutoff_cm')!r}."
         ) from exc
-    warn_legacy_frequency_cutoff(freq_cfg["zero_cutoff_cm"])
 
 
 def _prepare_thermo_output_paths(

@@ -106,6 +106,8 @@ from pdb2reaction.core.utils import (
     xyz_blocks_first_last,
     cli_param_overridden,
     calculator_provenance,
+    optimizer_cycle_count,
+    optimizer_terminal_status,
     verbose_level,
 )
 from pdb2reaction.core.result_commit import (
@@ -2536,6 +2538,7 @@ def _optimize_endpoint_geom(
     stop_plateau_thresh: Optional[float] = None,
     stop_plateau_window: Optional[int] = None,
     print_every: Optional[int] = None,
+    outcome: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Any, Path, Optional[bool]]:
     """
     Optimize an endpoint geometry using LBFGS/RFO with settings mirroring path_search defaults.
@@ -2555,6 +2558,8 @@ def _optimize_endpoint_geom(
         a geometry/artifact but must not promote its segment to a usable success.
         Missing, stale, unreadable or nonfinite final output raises; a normal
         finite nonconverged return remains available for diagnostic continuation.
+        When ``outcome`` is supplied, it is populated with the terminal status,
+        executed cycle count, configured cycle limit, and stop reason.
     """
     from pdb2reaction.workflows._outcomes import optimizer_converged_bit
     geom.set_calculator(getattr(geom, "calculator", None))
@@ -2565,6 +2570,9 @@ def _optimize_endpoint_geom(
         run_sequence = ("rfo",)
     else:
         run_sequence = ("rfo",)
+
+    if outcome is not None:
+        outcome.clear()
 
     final_xyz: Optional[Path] = None
     _endpoint_conv: Optional[bool] = None
@@ -2667,6 +2675,19 @@ def _optimize_endpoint_geom(
                     f"[endpoint-opt] No final geometry path is available for '{tag}'."
                 )
             commit_exact(current_final, geom.as_xyz().encode("utf-8"))
+
+        if outcome is not None:
+            outcome.update(
+                {
+                    "status": optimizer_terminal_status(opt),
+                    "converged": _endpoint_conv,
+                    "n_opt_cycles": optimizer_cycle_count(opt),
+                    "max_cycles": cfg.get("max_cycles"),
+                }
+            )
+            _stop_reason = getattr(opt, "stop_reason", "") or ""
+            if _stop_reason:
+                outcome["stop_reason"] = str(_stop_reason)
 
         final_xyz = endpoint_manifest.claim_one("final")
 
@@ -2909,6 +2930,23 @@ def _ts_imag_record(
             frequency_zero_cutoff_cm
         )
     return record
+
+
+_TSOPT_SUMMARY_METADATA_KEYS = (
+    "imaginary_frequencies_cm",
+    "frequency_zero_cutoff_cm",
+    "imaginary_mode_criterion",
+    "imaginary_frequency_threshold_cm",
+    "n_opt_cycles",
+    "max_cycles",
+    "stop_reason",
+)
+
+
+def _tsopt_summary_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Select TSOPT diagnostics that the parent ``all`` summary preserves."""
+
+    return {key: payload.get(key) for key in _TSOPT_SUMMARY_METADATA_KEYS}
 
 
 def _read_imaginary_frequency(
@@ -6159,13 +6197,7 @@ def cli(
                 None if _tsopt_result_path is None else str(_tsopt_result_path)
             ),
             "final_structure": str(ts_pdb),
-            "imaginary_frequencies_cm": _tsopt_payload.get(
-                "imaginary_frequencies_cm"
-            ),
-            "frequency_zero_cutoff_cm": _tsopt_payload.get(
-                "frequency_zero_cutoff_cm"
-            ),
-            "stop_reason": _tsopt_payload.get("stop_reason"),
+            **_tsopt_summary_metadata(_tsopt_payload),
             "files": _tsopt_payload.get("files") or {},
         }
 
@@ -6461,6 +6493,7 @@ def cli(
         if _c:
             _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"), identity=_c.get("identity"))
         _react_opt_conv: Optional[bool] = None
+        _react_opt_outcome: Dict[str, Any] = {}
         try:
             g_react_opt, _, _react_opt_conv = _optimize_endpoint_geom(
                 g_react_irc,
@@ -6475,6 +6508,7 @@ def cli(
                 stop_plateau_thresh=stop_plateau_thresh,
                 stop_plateau_window=stop_plateau_window,
                 print_every=print_every_override,
+                outcome=_react_opt_outcome,
             )
         except Exception as e:
             _echo(
@@ -6482,6 +6516,14 @@ def cli(
                 err=True,
             )
             _react_opt_conv = None
+            _react_opt_outcome.update(
+                {
+                    "status": "error",
+                    "converged": None,
+                    "error_type": type(e).__name__,
+                    "error": str(e),
+                }
+            )
             _endpoint_failures["reactant"] = {
                 "error_type": type(e).__name__, "error": str(e),
             }
@@ -6492,6 +6534,7 @@ def cli(
         if _c:
             _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"), identity=_c.get("identity"))
         _prod_opt_conv: Optional[bool] = None
+        _prod_opt_outcome: Dict[str, Any] = {}
         try:
             g_prod_opt, _, _prod_opt_conv = _optimize_endpoint_geom(
                 g_prod_irc,
@@ -6506,6 +6549,7 @@ def cli(
                 stop_plateau_thresh=stop_plateau_thresh,
                 stop_plateau_window=stop_plateau_window,
                 print_every=print_every_override,
+                outcome=_prod_opt_outcome,
             )
         except Exception as e:
             _echo(
@@ -6513,6 +6557,14 @@ def cli(
                 err=True,
             )
             _prod_opt_conv = None
+            _prod_opt_outcome.update(
+                {
+                    "status": "error",
+                    "converged": None,
+                    "error_type": type(e).__name__,
+                    "error": str(e),
+                }
+            )
             _endpoint_failures["product"] = {
                 "error_type": type(e).__name__, "error": str(e),
             }
@@ -6554,6 +6606,8 @@ def cli(
                 "endpoint_opt": {
                     "reactant_converged": _react_opt_conv,
                     "product_converged": _prod_opt_conv,
+                    "reactant": dict(_react_opt_outcome),
+                    "product": dict(_prod_opt_outcome),
                     "failures": _endpoint_failures,
                 },
                 "tsopt": _tsopt_record,
@@ -6943,6 +6997,8 @@ def cli(
                     "endpoint_opt": {
                         "reactant_converged": _react_opt_conv,
                         "product_converged": _prod_opt_conv,
+                        "reactant": dict(_react_opt_outcome),
+                        "product": dict(_prod_opt_outcome),
                     },
                     # Presentation-convention provenance (energy-order R/P).
                     "endpoint_assignment": endpoint_assignment,
@@ -8643,13 +8699,7 @@ def cli(
                     None if _tsopt_result_path is None else str(_tsopt_result_path)
                 ),
                 "final_structure": str(ts_pdb),
-                "imaginary_frequencies_cm": _tsopt_payload.get(
-                    "imaginary_frequencies_cm"
-                ),
-                "frequency_zero_cutoff_cm": _tsopt_payload.get(
-                    "frequency_zero_cutoff_cm"
-                ),
-                "stop_reason": _tsopt_payload.get("stop_reason"),
+                **_tsopt_summary_metadata(_tsopt_payload),
             }
             if _tsopt_payload.get("n_imaginary_modes") is not None:
                 segment_log["ts_imag"] = _ts_imag_record(
@@ -8792,6 +8842,7 @@ def cli(
             if _c:
                 _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"), identity=_c.get("identity"))
             _react_opt_conv: Optional[bool] = None
+            _react_opt_outcome: Dict[str, Any] = {}
             try:
                 g_react_opt, _, _react_opt_conv = _optimize_endpoint_geom(
                     gL,
@@ -8806,6 +8857,7 @@ def cli(
                     stop_plateau_thresh=stop_plateau_thresh,
                     stop_plateau_window=stop_plateau_window,
                     print_every=print_every_override,
+                    outcome=_react_opt_outcome,
                 )
             except Exception as e:
                 _echo(
@@ -8813,6 +8865,14 @@ def cli(
                     err=True,
                 )
                 _react_opt_conv = None
+                _react_opt_outcome.update(
+                    {
+                        "status": "error",
+                        "converged": None,
+                        "error_type": type(e).__name__,
+                        "error": str(e),
+                    }
+                )
                 _endpoint_failures["reactant"] = {
                     "error_type": type(e).__name__, "error": str(e),
                 }
@@ -8823,6 +8883,7 @@ def cli(
             if _c:
                 _hess_store("irc_endpoint", _c["hessian"], active_dofs=_c.get("active_dofs"), meta=_c.get("meta"), identity=_c.get("identity"))
             _prod_opt_conv: Optional[bool] = None
+            _prod_opt_outcome: Dict[str, Any] = {}
             try:
                 g_prod_opt, _, _prod_opt_conv = _optimize_endpoint_geom(
                     gR,
@@ -8837,6 +8898,7 @@ def cli(
                     stop_plateau_thresh=stop_plateau_thresh,
                     stop_plateau_window=stop_plateau_window,
                     print_every=print_every_override,
+                    outcome=_prod_opt_outcome,
                 )
             except Exception as e:
                 _echo(
@@ -8844,6 +8906,14 @@ def cli(
                     err=True,
                 )
                 _prod_opt_conv = None
+                _prod_opt_outcome.update(
+                    {
+                        "status": "error",
+                        "converged": None,
+                        "error_type": type(e).__name__,
+                        "error": str(e),
+                    }
+                )
                 _endpoint_failures["product"] = {
                     "error_type": type(e).__name__, "error": str(e),
                 }
@@ -8879,6 +8949,8 @@ def cli(
                 segment_log["endpoint_opt"] = {
                     "reactant_converged": _react_opt_conv,
                     "product_converged": _prod_opt_conv,
+                    "reactant": dict(_react_opt_outcome),
+                    "product": dict(_prod_opt_outcome),
                     "failures": _endpoint_failures,
                 }
                 calculator_lease.release()
@@ -8901,6 +8973,8 @@ def cli(
             segment_log["endpoint_opt"] = {
                 "reactant_converged": _react_opt_conv,
                 "product_converged": _prod_opt_conv,
+                "reactant": dict(_react_opt_outcome),
+                "product": dict(_prod_opt_outcome),
                 "connectivity_validated": _optimized_connectivity.get(
                     "connectivity_validated"
                 ),

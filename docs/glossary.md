@@ -108,7 +108,7 @@ Imaginary-mode classification and the QRRHO rotor cutoff serve different purpose
 
 | Threshold | Role | Source |
 |-----------|------|--------|
-| **Eigenvalue < −10⁻⁶ Hartree/(bohr²·amu)** | Default imaginary-mode criterion, equivalent to a frequency below about −5.14 cm⁻¹. Complete signed frequencies and positive thermochemistry modes are retained. Raw negative counts are separate diagnostics and do not change numerical convergence. | Derived by `eigval_to_wavenumber`; legacy override: `freq.zero_cutoff_cm`. |
+| **ν < −5.00 cm⁻¹** | Default imaginary-mode criterion. Complete signed frequencies and positive thermochemistry modes are retained. Raw negative counts are separate diagnostics and do not change numerical convergence. | Configurable magnitude: `freq.zero_cutoff_cm`. |
 | **100 cm⁻¹** | *QRRHO rotor cutoff* (Grimme). Positive low-frequency vibrations are damped between harmonic-oscillator and free-rotor entropy in `freq` thermochemistry; it changes only entropy / Gibbs free energy. | `thermoanalysis/config.py` as `ROTOR_CUT_DEFAULT = 100.0`. |
 
 ## CLI Conventions

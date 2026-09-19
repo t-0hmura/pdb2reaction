@@ -70,7 +70,8 @@ Present when `--tsopt`, `--thermo`, or `--dft` was passed:
 | `irc_plot` / `irc_traj` | Paths to the IRC trace PNG and trajectory XYZ |
 | `irc` | Diagnostic propagation record: `traj`, `n_frames_forward`, `n_frames_backward`, `forward_requested`, `backward_requested`, and each direction's `*_integration_converged`, `*_integration_stop_reason`, `*_downhill_departure_valid`, `*_energy_increased`, `*_short_branch`. No independent IRC scientific verdict or direction-status keys. Finite retained endpoints are passed to endpoint optimization. |
 | `endpoint_assignment` | Pre-optimization IRC-to-MEP orientation provenance; diagnostic, not the final connectivity verdict. |
-| `endpoint_opt` | Actual numerical convergence of both optimized endpoints, plus a separate `connectivity_validated` diagnostic and topology record. Connectivity does not add a numerical-completion gate. |
+| `tsopt` | TS terminal record. `n_opt_cycles` is the executed optimization-cycle count and `max_cycles` is the configured limit, including normally non-converged runs. |
+| `endpoint_opt` | Actual numerical convergence of both optimized endpoints. `reactant` / `product` include `status`, `n_opt_cycles`, `max_cycles`, and any `stop_reason`; connectivity remains a separate diagnostic and does not add a numerical-completion gate. |
 | `mlip` | Selected MLIP backend's electronic-energy block. Read top-level `mlip_backend` / `mlip_model` / `mlip_precision` for exact provenance. |
 | `ts_imag` | Dict `{n_imag, nu_imag_max_cm, min_abs_imag_cm, min_freq_cm}` describing the TS spectrum |
 | `ts_imag_freq_cm` | Peak imaginary frequency (cm⁻¹); same as `ts_imag.nu_imag_max_cm` |

@@ -109,7 +109,6 @@ from pdb2reaction.workflows.freq import (
 from pysisyphus.normal_modes import (
     DEFAULT_FREQUENCY_ZERO_CUTOFF_CM,
     frequency_criterion_info,
-    warn_legacy_frequency_cutoff,
     normalize_frequency_zero_cutoff_cm,
     resolved_imaginary_mask,
     _strict_negative_count,
@@ -2433,7 +2432,6 @@ def cli(
                 )
             cutoff = alias_value
             cutoff_source = f"{section}.{key}"
-        warn_legacy_frequency_cutoff(cutoff)
         frequency_cfg["zero_cutoff_cm"] = cutoff
         simple_cfg["neg_freq_thresh_cm"] = cutoff
         rsirfo_cfg["saddle_imaginary_threshold_cm"] = cutoff

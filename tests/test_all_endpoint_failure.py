@@ -184,6 +184,14 @@ def test_endpoint_boundary_retains_provenance_and_stops_consumers(
     def optimize(*args, **kwargs):
         index = len(opt_calls)
         opt_calls.append(index)
+        metadata = kwargs.get("outcome")
+        if metadata is not None:
+            metadata.update({
+                "status": "converged",
+                "converged": True,
+                "n_opt_cycles": index + 3,
+                "max_cycles": 3000,
+            })
         geom, _mode, directory, tag = args[:4]
         child = directory / tag
         child.mkdir(parents=True, exist_ok=True)
@@ -276,6 +284,10 @@ def test_endpoint_boundary_retains_provenance_and_stops_consumers(
     else:
         assert all(state in events for state in states)
         assert (root / "endpoint_opt").exists() is (dump or outcome == "not_converged")
+    if branch == "seg":
+        endpoint_record = namespace["segment_log"]["endpoint_opt"]
+        assert endpoint_record["reactant"]["n_opt_cycles"] == 3
+        assert endpoint_record["product"]["n_opt_cycles"] == 4
 
 
 @pytest.mark.parametrize(
@@ -296,6 +308,9 @@ def test_endpoint_helper_requires_current_finite_output(monkeypatch, tmp_path, o
         def __init__(self, geometry, **_kwargs):
             self.final_fn = final_path
             self.is_converged = outcome == "converged"
+            self.is_stalled = False
+            self.cur_cycle = 6
+            self.stop_reason = ""
 
         def run(self):
             geom.cart_coords[0] = 2
@@ -316,9 +331,16 @@ def test_endpoint_helper_requires_current_finite_output(monkeypatch, tmp_path, o
                 geom, "grad", tmp_path, "reactant", dump=False, thresh=None,
             )
     else:
+        endpoint_outcome = {}
         result, path, converged = workflow._optimize_endpoint_geom(
             geom, "grad", tmp_path, "reactant", dump=False, thresh=None,
+            outcome=endpoint_outcome,
         )
         assert result is terminal and path == final_path
         assert converged is (outcome == "converged")
         assert path.is_file()
+        assert endpoint_outcome["status"] == (
+            "converged" if outcome == "converged" else "not_converged"
+        )
+        assert endpoint_outcome["n_opt_cycles"] == 7
+        assert "max_cycles" in endpoint_outcome

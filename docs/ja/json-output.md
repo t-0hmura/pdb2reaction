@@ -178,6 +178,7 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 | `reaction_mode_index` | int\|null | downstream IRCに使う負のexact-PHVA root。root 0 fallbackは明示され、反応identityを保証しない |
 | `n_imaginary_modes` | int\|null | 虚振動の数。PHVA を実行しなかった場合は `null` |
 | `imaginary_frequencies_cm` | float[]\|null | 虚振動数 (cm⁻¹, 負の値)。PHVA 未実行時は `null` |
+| `frequency_zero_cutoff_cm` / `imaginary_mode_criterion` / `imaginary_frequency_threshold_cm` | float / string / float | 既定値は`5.0`、`"frequency_cutoff_cm"`、`-5.0`で、ν < −5.00 cm⁻¹だけを虚振動として数えます。 |
 | `opt_mode` | string | `"rsprfo"` (default) / `"rsirfo"` / `"trim"` / `"dimer"` |
 | `opt_mode_requested` | string | CLI で要求した preset（`grad` / `hess` / 明示 algorithm） |
 | `optimizer` | string | 実際に使用した optimizer algorithm |
@@ -510,7 +511,8 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 | `overall_reaction_energy_method` | string | 全体反応energyのmethod (`MEP`, `MLIP`, `MLIP_Gibbs`, `DFT`, `DFT//MLIP_Gibbs`) |
 | `post_segments` | list | セグメントごとの TS/IRC/freq/DFT 結果 |
 | `post_segments[].tsopt.energy_valid` / `.structure_valid` | bool | 既存の終端Hessian結果と組み合わせる有限TSの確認。status判定のための追加Hessian・最適化は実行しません。 |
-| `post_segments[].irc` / `.endpoint_assignment` / `.endpoint_opt` | object | 順に IRC 停止診断、端点の向き付け、端点 OPT の収束記録。IRC 停止・結合対応は独立した成功条件にしない。端点の connectivity 情報は機構解釈用に保持する。 |
+| `post_segments[].tsopt.n_opt_cycles` / `.max_cycles` | int / int\|null | TS 最適化で実行したサイクル数と設定上限。通常の非収束時にも記録します。 |
+| `post_segments[].irc` / `.endpoint_assignment` / `.endpoint_opt` | object | 順に IRC 停止診断、端点の向き付け、端点 OPT の収束記録。`endpoint_opt.reactant` / `.product` に `status`, `n_opt_cycles`, `max_cycles`, `stop_reason`（存在する場合）を記録します。IRC 停止・結合対応は独立した成功条件にせず、connectivity 情報は機構解釈用に保持します。 |
 | `post_segments[].thermo_symmetry` | object | 子 freq が報告した状態別の点群・回転対称 provenance。有効な対称数 provenance を持つ R/TS/P 状態だけを含み、欠けた状態は省略する。どの状態にも有効な provenance が無い場合だけフィールド全体を省略する。 |
 | `current_output_paths` | string[] | `--out-dir` からの相対パスを並べたリスト。現在の呼び出しが記録した成果物だけを含みます。 |
 | `key_output_files` | object | 現在の呼び出しの出力索引。ルートファイルはファイル名 → 説明、各 `seg_NN` は `{description, files}` で、`files` はそのセグメントディレクトリからの相対パスです。 |

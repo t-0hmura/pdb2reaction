@@ -593,7 +593,7 @@ Vibrational frequency analysis settings.
 
 ```yaml
 freq:
- # zero_cutoff_cm: 5.0 # Deprecated explicit override; omit for the original eigenvalue criterion
+ zero_cutoff_cm: 5.0 # Imaginary modes satisfy ν < -zero_cutoff_cm
  amplitude_ang: 0.8 # Displacement amplitude for modes (Å)
  n_frames: 20 # Number of frames per mode trajectory
  max_write: 10 # Maximum number of modes to write
@@ -601,15 +601,14 @@ freq:
  out_dir: ./result_freq/ # Output directory
 ```
 
-The default imaginary-mode criterion is a mass-weighted Hessian eigenvalue
-< −10⁻⁶ Hartree/(bohr²·amu), equivalent to a frequency below about −5.14 cm⁻¹.
+The default imaginary-mode criterion is ν < −5.00 cm⁻¹.
 Standalone `freq`, `opt` flattening, Dimer, and Hessian TS workflows share it.
 `n_negative_modes` separately counts every negative sign; neither count
 changes numerical convergence. The complete signed spectrum and all positive
 thermochemistry modes are retained.
 
-An explicit `freq.zero_cutoff_cm` overrides the criterion with a deprecation
-warning. Legacy aliases `hessian_dimer.neg_freq_thresh_cm` and
+`freq.zero_cutoff_cm` sets the cutoff magnitude. Legacy aliases
+`hessian_dimer.neg_freq_thresh_cm` and
 `rsirfo.saddle_imaginary_threshold_cm` remain accepted; conflicting values
 are rejected.
 

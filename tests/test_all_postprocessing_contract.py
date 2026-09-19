@@ -9,6 +9,7 @@ from pdb2reaction.workflows.all import (
     _pipeline_aggregate_truth,
     _reject_redundant_dft_postprocessing,
     _ts_imag_record,
+    _tsopt_summary_metadata,
     _validate_postprocessing_dependencies,
 )
 
@@ -199,6 +200,27 @@ def test_tsopt_imaginary_mode_record_carries_certification_details() -> None:
         "min_abs_imag_cm": 512.31,
         "frequency_zero_cutoff_cm": 5.0,
     }
+
+
+def test_all_preserves_tsopt_cycle_and_frequency_criterion_metadata() -> None:
+    payload = {
+        "imaginary_frequencies_cm": [-512.31],
+        "frequency_zero_cutoff_cm": 5.0,
+        "imaginary_mode_criterion": "frequency_cutoff_cm",
+        "imaginary_frequency_threshold_cm": -5.0,
+        "n_opt_cycles": 37,
+        "max_cycles": 3000,
+        "stop_reason": None,
+        "private_child_field": "not propagated",
+    }
+
+    record = _tsopt_summary_metadata(payload)
+
+    assert record["n_opt_cycles"] == 37
+    assert record["max_cycles"] == 3000
+    assert record["imaginary_mode_criterion"] == "frequency_cutoff_cm"
+    assert record["imaginary_frequency_threshold_cm"] == -5.0
+    assert "private_child_field" not in record
 
 
 def test_path_postprocessing_uses_terminal_tsopt_imaginary_mode_record(

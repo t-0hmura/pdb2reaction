@@ -588,7 +588,7 @@ irc:
 
 ```yaml
 freq:
- # zero_cutoff_cm: 5.0 # 非推奨の明示的上書き。元の固有値基準を使う場合は省略
+ zero_cutoff_cm: 5.0 # ν < -zero_cutoff_cm を虚振動として数える
  amplitude_ang: 0.8 # Displacement amplitude for modes (Å)
  n_frames: 20 # モードtrajectoryのフレーム数
  max_write: 10 # Maximum number of modes to write
@@ -596,13 +596,12 @@ freq:
  out_dir: ./result_freq/ # Output directory
 ```
 
-虚振動の既定の分類基準は、質量重み付き Hessian の固有値
-< −10⁻⁶ Hartree/(bohr²·amu)（振動数で約 −5.14 cm⁻¹ 未満）です。
+虚振動の既定の分類基準は ν < −5.00 cm⁻¹ です。
 単独の `freq`、`opt` のflatten、Dimer、Hessian系TS最適化で共通です。
 `n_negative_modes` は負符号をすべて数えた別の診断値で、どちらの本数も
 数値収束を変更しません。完全な符号付き振動数と、熱化学に使う正のモードを保持します。
 
-`freq.zero_cutoff_cm` を明示すると、非推奨の警告付きで分類基準を上書きします。
+`freq.zero_cutoff_cm` は閾値の絶対値を指定します。
 旧名 `hessian_dimer.neg_freq_thresh_cm` と
 `rsirfo.saddle_imaginary_threshold_cm` も受理しますが、競合する値はエラーです。
 

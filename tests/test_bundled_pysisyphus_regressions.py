@@ -1175,11 +1175,11 @@ def test_active_tr_basis_reports_frozen_rank_for_rank_zero_rigid_basis() -> None
     assert basis.shape[1] == info.effective_rank == 0
 
 
-def test_get_imag_frequencies_rejects_small_positive_eigenvalues() -> None:
-    """A small positive eigenvalue is not reported as an imaginary frequency."""
+def test_get_imag_frequencies_uses_strict_negative_five_cm_cutoff() -> None:
+    """The geometry helper uses the public cm^-1 classification rule."""
     geom = Geometry(("h", "h"), np.array([0.0, 0.0, 0.0, 0.0, 0.0, 1.4]))
-    eigvals = np.array([-1.0e-5, 0.0, 5.0e-7, 1.0e-3])
-    nus = np.array([-11.0, 0.0, 12.0, 500.0])
+    eigvals = np.array([-1.0e-5, -1.0e-8, -1.0e-8, 1.0e-3])
+    nus = np.array([-11.0, -5.0, -4.99, 500.0])
     geom.get_normal_modes = lambda hessian=None: (nus, eigvals, None, None)
 
     np.testing.assert_array_equal(geom.get_imag_frequencies(), np.array([-11.0]))
@@ -1273,8 +1273,8 @@ def test_disabled_hessian_update_preserves_the_tensor_backend(device: str) -> No
     assert isinstance((hessian + update), torch.Tensor)
 
 
-# Two roots below the historical 1e-6 magnitude cutoff, one of each sign, plus
-# four ordinary roots.  A rank-based rigid removal must return all six.
+# Two tiny roots, one of each sign, plus four ordinary roots. A rank-based
+# rigid removal must return all six.
 _COMPLEMENT_OMEGA2 = (-4.0e-7, 2.5e-7, 0.02, 0.05, 0.08, 0.11)
 
 _NORMAL_MODE_COORDS_BOHR = np.array(

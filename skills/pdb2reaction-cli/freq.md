@@ -122,10 +122,8 @@ freeze of `LKH/HL` cap-H parents written by `extract`), and YAML
   independently certifying a minimum; R/P imaginary counts do not block thermochemistry.
 - An all-frozen structure has no active vibrational DOF and raises an error.
 - `freq` retains every signed physical mode and its positive thermal contribution.
-  The default imaginary criterion is a mass-weighted Hessian eigenvalue below
-  `-1e-6` Hartree/(bohr²·amu), equivalent to approximately -5.140487 cm⁻¹.
-  An explicit `freq.zero_cutoff_cm` is a legacy classification override, recorded
-  with a warning. Positive modes between 0 and 5 cm⁻¹ remain in thermochemistry.
+  The default imaginary criterion is ν < −5.00 cm⁻¹. `freq.zero_cutoff_cm`
+  sets the cutoff magnitude. Positive modes between 0 and 5 cm⁻¹ remain in thermochemistry.
   Raw negative counts are diagnostic and do not add a pipeline failure gate.
   Inspect complete `frequencies_cm`, `n_negative_modes` and displacements.
 - A small-magnitude imaginary frequency may be numerical or a real shallow

@@ -17,7 +17,7 @@ Target release: **0.5.0**.
 ### Changed
 
 - Use the low-memory direct-JK GPU route by default for closed-shell DFT calculations.
-
+- Classify imaginary modes with the strict ν < −5.00 cm⁻¹ criterion and include optimization cycle counts in `all` summaries.
 
 ## [0.4.16] — 2026-09-19
 

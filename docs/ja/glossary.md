@@ -108,7 +108,7 @@
 
 | 閾値 | 役割 | 定義場所 |
 |------|------|----------|
-| **固有値 < −10⁻⁶ Hartree/(bohr²·amu)** | 既定の虚振動分類基準。振動数では約 −5.14 cm⁻¹ 未満に相当します。符号付き振動数と熱化学に使う正のモードはすべて保持します。負符号の総数は別の診断値で、数値収束を変更しません。 | `eigval_to_wavenumber` から導出。旧上書き指定: `freq.zero_cutoff_cm` |
+| **ν < −5.00 cm⁻¹** | 既定の虚振動分類基準。符号付き振動数と熱化学に使う正のモードはすべて保持します。負符号の総数は別の診断値で、数値収束を変更しません。 | 絶対値は`freq.zero_cutoff_cm`で設定可能 |
 | **100 cm⁻¹** | *QRRHO rotor cutoff*（Grimme）。`freq` の熱化学計算において、これ未満の **正の** 低振動モードは harmonic-oscillator から自由回転子の entropy へ滑らかに移行する。entropy / Gibbs 自由エネルギーのみに影響 | `thermoanalysis/config.py` の `ROTOR_CUT_DEFAULT = 100.0` |
 
 ## CLI 規則
