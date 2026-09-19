@@ -65,7 +65,7 @@ pdb2reaction path-search -i reactant.pdb -i product.pdb -q 0 -m 1 \
 ```
 out_dir/ (デフォルト:./result_path_search/)
 ├─ mep_trj.xyz # 主要 MEP 軌跡
-├─ mep.pdb # PDB/mmCIF topology入力で変換有効時
+├─ mep_trj.pdb # PDB/mmCIF topology入力で変換有効時
 ├─ mep.cif # mmCIF/oversized-PDB入力。元IDを復元
 ├─ mep.gjf # Gaussian テンプレート検出時に対応する Gaussian
 ├─ mep_w_ref.pdb # 静的全系テンプレートへ活性部位経路を挿入（--write-ref-merge）

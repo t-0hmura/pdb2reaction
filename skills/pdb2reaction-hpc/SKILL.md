@@ -172,7 +172,7 @@ directly:
 - `path-search` — has no resume; restart it with two or more structures in
   reaction order (`-i A.pdb -i B.pdb …`; the CLI requires at least two `-i`
   paths). Reuse the original endpoints, or split the partial multi-model
-  `mep.pdb` / `mep_trj.xyz` trajectory into single-structure files and pass
+  `mep_trj.pdb` / `mep_trj.xyz` trajectory into single-structure files and pass
   those frames as separate `-i` flags.
 
 For walltime-truncated `all` runs, point `--out-dir` at a persistent

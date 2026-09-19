@@ -77,7 +77,7 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --ther
 | `summary.json` | 反応障壁、エネルギー、結合変化、環境情報 |
 | `summary.log` | ディレクトリツリー付きテキストサマリ |
 | `segments/seg_XX/` | 反応セグメントの後処理結果。R/TS/P 構造は TSOPT・IRC・端点処理の成功後に生成 |
-| `mep.pdb` / `mep.cif` | MEP 軌跡。内部変換した入力の元の鎖・残基 ID は CIF に保持 |
+| `mep_trj.pdb` / `mep.cif` | MEP 軌跡。内部変換した入力の元の鎖・残基 ID は CIF に保持 |
 | `energy_diagram_*.png` | エネルギープロファイル図（電子/Gibbs 補正） |
 
 ```{important}

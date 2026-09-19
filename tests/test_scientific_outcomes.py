@@ -79,13 +79,13 @@ def test_aggregate_success_partial_failed() -> None:
     # `execution_status` instead. Only a diagnostic (non-required) leaf's
     # artifact can raise a run to `partial`.
     raw = LeafOutcome("p", "raw", required=True, executed=True, converged=True,
-                      usable=False, reason="endpoint_hei", artifacts=("mep.pdb",))
+                      usable=False, reason="endpoint_hei", artifacts=("mep_trj.pdb",))
     t2 = aggregate_workflow_truth([raw], ["seg_1"])
     assert (t2.scientific_status, t2.execution_status) == ("failed", "completed")
     assert "missing:seg_1" in t2.status_reasons
     diagnostic = LeafOutcome("p", "diag", required=False, executed=True,
                              converged=True, usable=False, reason="endpoint_hei",
-                             artifacts=("mep.pdb",))
+                             artifacts=("mep_trj.pdb",))
     t2b = aggregate_workflow_truth([raw, diagnostic], ["seg_1"])
     assert t2b.scientific_status == "partial"
     # Nothing usable, no artifact, execution failed -> failed.
@@ -101,7 +101,7 @@ def test_aggregate_distinguishes_unusable_from_missing() -> None:
         "seg_1",
         executed=True,
         converged=False,
-        artifacts=("mep.pdb",),
+        artifacts=("mep_trj.pdb",),
     )
     truth = aggregate_workflow_truth([leaf], ["seg_1"])
 
@@ -351,7 +351,7 @@ def test_path_endpoint_hei_zero_segments_is_partial_not_success() -> None:
 
     # Endpoint-HEI branch returns segments=[] but a raw R/P diagram can be drawn.
     leaves, expected = _path_leaves_and_expected(
-        [], raw_artifacts=["mep.pdb", "energy_diagram_MEP.png"]
+        [], raw_artifacts=["mep_trj.pdb", "energy_diagram_MEP.png"]
     )
     truth = aggregate_workflow_truth(leaves, expected)
     # No reaction step was identified, so nothing scientifically usable was
@@ -360,14 +360,14 @@ def test_path_endpoint_hei_zero_segments_is_partial_not_success() -> None:
     # The raw path is retained as a reportable-but-unusable diagnostic artifact.
     raw = [leaf for leaf in leaves if leaf.item_id == "raw_path"][0]
     assert raw.usable is False and raw.reason == "endpoint_hei"
-    assert "mep.pdb" in raw.artifacts
+    assert "mep_trj.pdb" in raw.artifacts
 
 
 def test_path_engine_nonconverged_endpoint_reason_retained() -> None:
     from pdb2reaction.workflows.path_search import _path_leaves_and_expected
 
     leaves, expected = _path_leaves_and_expected(
-        [], raw_artifacts=["mep.pdb"], engine_converged=False
+        [], raw_artifacts=["mep_trj.pdb"], engine_converged=False
     )
     raw = [leaf for leaf in leaves if leaf.item_id == "raw_path"][0]
     assert "endpoint_hei" in raw.reason and "engine_nonconverged" in raw.reason
@@ -410,7 +410,7 @@ def test_path_bridge_only_is_not_success() -> None:
 
     bridge = SegmentReport(tag="bridge_01", barrier_kcal=0.0, delta_kcal=0.0,
                            summary="", kind="bridge", seg_index=1)
-    leaves, expected = _path_leaves_and_expected([bridge], raw_artifacts=["mep.pdb"])
+    leaves, expected = _path_leaves_and_expected([bridge], raw_artifacts=["mep_trj.pdb"])
     truth = aggregate_workflow_truth(leaves, expected)
     # A path made only of a non-reactive bridge has no usable reactive segment.
     assert truth.scientific_status != "success"
@@ -465,7 +465,7 @@ def test_endpoint_hei_pair_is_not_hidden_by_later_segment() -> None:
     endpoint_pair = _raw_path_outcome(
         "raw_seg_000",
         engine_converged=False,
-        artifacts=["mep.pdb"],
+        artifacts=["mep_trj.pdb"],
     )
     later_segment = SegmentReport(
         tag="seg_01",

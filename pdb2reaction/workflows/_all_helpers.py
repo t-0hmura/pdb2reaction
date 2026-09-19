@@ -93,7 +93,7 @@ def build_pipeline_summary_payload(
     mep_info = {
         "n_images": summary.get("n_images"),
         "n_segments": summary.get("n_segments"),
-        "traj_pdb": str(out_dir / "mep.pdb") if (out_dir / "mep.pdb").exists() else None,
+        "traj_pdb": str(out_dir / "mep_trj.pdb") if (out_dir / "mep_trj.pdb").exists() else None,
         "mep_plot": str(out_dir / "energy_diagram_MEP.png") if (out_dir / "energy_diagram_MEP.png").exists() else None,
         "diagram": diag_for_log,
     }

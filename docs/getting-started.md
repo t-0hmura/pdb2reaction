@@ -35,7 +35,7 @@ runs the selected stages and writes unified `summary.json` +
 | `summary.json` | Barriers, energies, bond changes, and environment |
 | `summary.log` | Result summary with directory tree |
 | `segments/seg_NN/` | Created when a reactive segment enters requested post-processing; canonical R/TS/P appear after successful `--tsopt` + IRC/endpoint processing |
-| `mep.pdb` / `mep.cif` | Merged MEP trajectory; CIF companion preserves bridged input identifiers |
+| `mep_trj.pdb` / `mep.cif` | Merged MEP trajectory; CIF companion preserves bridged input identifiers |
 | `energy_diagram_*.png` | Energy profile plots (electronic / Gibbs-corrected) |
 
 ```{important}

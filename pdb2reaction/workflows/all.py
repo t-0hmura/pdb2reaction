@@ -4246,7 +4246,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2", "dft"]), default="uma",
               show_default=True, help="Energy/force calculator backend.")
 @click.option("--solvent", default="none", show_default=True,
-              help="Environment model: MLIP backends use the experimental xTB solvent delta; dft uses native PySCF PCM/SMD. 'none' disables it.")
+              help="Experimental, computationally expensive xTB solvent delta correction for MLIP backends; dft uses native PySCF PCM/SMD. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.")
 @click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx", "pcm", "smd"]),
               show_default=True, help="Solvent model: ALPB/CPCMx for MLIP backends; PCM/SMD for dft.")
 # ===== Path search knobs =====
@@ -5749,6 +5749,9 @@ def cli(
     first_input = input_paths[0].resolve() if input_paths else None
 
     out_dir = out_dir.resolve()
+    # Remove the pre-0.5 aggregate trajectory name so a resumed output tree
+    # cannot present both the retired and canonical filenames.
+    (out_dir / "mep.pdb").unlink(missing_ok=True)
     # Public ownership is established at each producer immediately before its
     # exact destination is written.  No root/segments traversal participates
     # in provenance admission.
@@ -7855,10 +7858,10 @@ def cli(
         try:
             if convert_files and mep_ref_pdb is not None:
                 mep_pdb = _path_search._convert_to_pdb_logged(
-                    final_trj, ref_pdb_path=mep_ref_pdb, out_path=path_dir / "mep.pdb"
+                    final_trj, ref_pdb_path=mep_ref_pdb, out_path=path_dir / "mep_trj.pdb"
                 )
                 current_mep_pdb = manifest.claim_optional(
-                    "path.deliverable.mep.pdb"
+                    "path.deliverable.mep_trj.pdb"
                 )
                 if mep_pdb and current_mep_pdb is not None:
                     dst = out_dir / current_mep_pdb.name
@@ -8048,7 +8051,7 @@ def cli(
             mep_info = {
                 "n_images": summary.get("n_images"),
                 "n_segments": summary.get("n_segments"),
-                "traj_pdb": str(out_dir / "mep.pdb") if (out_dir / "mep.pdb").resolve(strict=False) in current_public_set else None,
+                "traj_pdb": str(out_dir / "mep_trj.pdb") if (out_dir / "mep_trj.pdb").resolve(strict=False) in current_public_set else None,
                 "traj_cif": str(out_dir / "mep.cif") if (out_dir / "mep.cif").resolve(strict=False) in current_public_set else None,
                 "mep_plot": str(out_dir / "energy_diagram_MEP.png") if (out_dir / "energy_diagram_MEP.png").resolve(strict=False) in current_public_set else None,
                 "diagram": diag_for_log,
@@ -8196,7 +8199,7 @@ def cli(
         for name in (
             "energy_diagram_MEP.png",
             "energy_diagram_mep.png",
-            "mep.pdb",
+            "mep_trj.pdb",
             "mep.cif",
             "mep_w_ref.pdb",
             "mep_w_ref.cif",
@@ -8484,7 +8487,7 @@ def cli(
         ]
         mep_payload = summary_payload.get("mep") or {}
         for field, name in (
-            ("traj_pdb", "mep.pdb"),
+            ("traj_pdb", "mep_trj.pdb"),
             ("mep_plot", "energy_diagram_MEP.png"),
         ):
             candidate = (out_dir / name).resolve(strict=False)

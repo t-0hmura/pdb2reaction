@@ -73,7 +73,7 @@ Bond-change detection relies on `bond_changes.compare_structures` with threshold
 ```text
 out_dir/ (default:./result_path_search/)
 ├─ mep_trj.xyz # Primary MEP trajectory
-├─ mep.pdb # PDB/mmCIF topology companion when conversion is enabled
+├─ mep_trj.pdb # PDB/mmCIF topology companion when conversion is enabled
 ├─ mep.cif # mmCIF/oversized-PDB bridge inputs; original IDs restored
 ├─ mep.gjf # Gaussian companion when a Gaussian template is detected
 ├─ mep_w_ref.pdb # Active-site path in a static full-system template (--write-ref-merge)

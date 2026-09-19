@@ -1436,7 +1436,7 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
         # Top-level files
         "summary.json": "Machine-readable results (JSON)",
         "summary.log": "Human-readable results summary",
-        "mep.pdb": "Full MEP as single PDB (all segments)",
+        "mep_trj.pdb": "Full MEP as single PDB (all segments)",
         "mep_trj.xyz": "Full MEP as XYZ trajectory",
         "mep_w_ref.pdb": (
             "Coordinate composite for inspection"

@@ -120,7 +120,7 @@ A non-dry `all` run writes the deliverables reached by its enabled stages to
 `--out-dir` (default `./result_all/`):
 
 - `segments/seg_NN/{reactant,ts,product}.*` — the canonical R / TS / P structures to cite
-- `mep_trj.xyz` (plus `mep.pdb` when topology is available and `mep.cif` for bridged inputs) — the merged reaction path in MEP/scan-list modes
+- `mep_trj.xyz` (plus `mep_trj.pdb` when topology is available and `mep.cif` for bridged inputs) — the merged reaction path in MEP/scan-list modes
 - `energy_diagram_MEP.png` — MEP diagram when MEP construction and static-image export succeed
 - `summary.log` / `summary.json`
 

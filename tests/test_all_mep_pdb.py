@@ -117,11 +117,10 @@ def test_all_path_opt_mep_pdb_publication(tmp_path: Path, monkeypatch, case: str
     assert summary["run_id"] == manifest["run_id"]
     assert summary["n_images"] == 3 and summary["n_segments"] == 2
     assert (out / "mep_trj.xyz").read_text() == "".join(_frame(i) for i in range(3))
-    assert not (out / "mep_trj.pdb").exists()  # Current release filename is mep.pdb.
     expected_pdb = convert and has_reference
-    assert (out / "mep.pdb").exists() is expected_pdb
-    assert ("mep.pdb" in summary["key_output_files"]) is expected_pdb
-    assert ("output.public.mep.pdb" in manifest["produced"]) is expected_pdb
+    assert (out / "mep_trj.pdb").exists() is expected_pdb
+    assert ("mep_trj.pdb" in summary["key_output_files"]) is expected_pdb
+    assert ("output.public.mep_trj.pdb" in manifest["produced"]) is expected_pdb
     path_dir = out / "_work/path_opt"
     if has_reference:
         labels = ["RAW", "MID"] if case == "direct_pdb" else ["PRE", "S01"]
@@ -136,4 +135,4 @@ def test_all_path_opt_mep_pdb_publication(tmp_path: Path, monkeypatch, case: str
         if expected_pdb:
             _assert_pdb(segment_pdb, [index - 1, index], labels[index - 1])
     if expected_pdb:
-        _assert_pdb(out / "mep.pdb", [0, 1, 2], labels[0])
+        _assert_pdb(out / "mep_trj.pdb", [0, 1, 2], labels[0])

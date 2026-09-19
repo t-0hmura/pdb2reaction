@@ -2260,7 +2260,7 @@ def _merge_final_and_write(final_images: List[Any],
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2", "dft"]), default="uma",
               show_default=True, help="Energy/force calculator backend.")
 @click.option("--solvent", default="none", show_default=True,
-              help="Environment model: MLIP backends use the experimental xTB solvent delta; dft uses native PySCF PCM/SMD. 'none' disables it.")
+              help="Experimental, computationally expensive xTB solvent delta correction for MLIP backends; dft uses native PySCF PCM/SMD. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.")
 @click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx", "pcm", "smd"]),
               show_default=True, help="Solvent model: ALPB/CPCMx for MLIP backends; PCM/SMD for dft.")
 @add_coord_type_option(choices=("cart", "dlc"))
@@ -2752,7 +2752,7 @@ def cli(
             return
 
         out_dir_path.mkdir(parents=True, exist_ok=True)
-        for name in ("mep.pdb", "mep.cif", "mep_plot.png"):
+        for name in ("mep_trj.pdb", "mep.pdb", "mep.cif", "mep_plot.png"):
             (out_dir_path / name).unlink(missing_ok=True)
 
         geoms = load_prepared_geometries(
@@ -2967,7 +2967,7 @@ def cli(
 
         # Final MEP output rule:
         # - Always write 'mep_trj.xyz' (XYZ) for intermediate handoff.
-        # - If reference topologies are available, also emit mep.pdb and a
+        # - If reference topologies are available, also emit mep_trj.pdb and a
         #   public CIF/GJF companion when applicable.
         main_prepared = prepared_inputs[0]
         needs_pdb = ref_pdb_for_segments is not None
@@ -2989,7 +2989,7 @@ def cli(
                     final_trj,
                     main_prepared,
                     ref_pdb_path=ref_pdb_for_segments,
-                    out_pdb_path=out_dir_path / "mep.pdb" if needs_pdb else None,
+                    out_pdb_path=out_dir_path / "mep_trj.pdb" if needs_pdb else None,
                     out_gjf_path=out_dir_path / "mep.gjf" if needs_gjf else None,
                 )
                 if did_convert:
@@ -3229,7 +3229,7 @@ def cli(
             attach_outcomes as _attach_outcomes,
         )
         _raw_arts = [
-            _f for _f in ("mep.pdb", "mep.cif", "mep_plot.png", "energy_diagram_MEP.png")
+            _f for _f in ("mep_trj.pdb", "mep.cif", "mep_plot.png", "energy_diagram_MEP.png")
             if (out_dir_path / _f).exists()
         ]
         _path_leaves, _path_expected = _path_leaves_and_expected(
@@ -3327,7 +3327,7 @@ def cli(
             mep_info = {
                 "n_images": len(combined_all.images),
                 "n_segments": len(combined_all.segments),
-                "traj_pdb": str(out_dir_path / "mep.pdb") if (out_dir_path / "mep.pdb").exists() else None,
+                "traj_pdb": str(out_dir_path / "mep_trj.pdb") if (out_dir_path / "mep_trj.pdb").exists() else None,
                 "traj_cif": str(out_dir_path / "mep.cif") if (out_dir_path / "mep.cif").exists() else None,
                 "mep_plot": str(out_dir_path / "mep_plot.png") if (out_dir_path / "mep_plot.png").exists() else None,
                 "diagram": diag_for_log,

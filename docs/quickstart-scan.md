@@ -76,7 +76,7 @@ Stages run sequentially; each starts from the previous stage's relaxed result.
 result_scan/
 ├── summary.log
 ├── summary.json
-├── mep.pdb                        # Full MEP path (promoted to the root)
+├── mep_trj.pdb                        # Full MEP path (promoted to the root)
 ├── energy_diagram_MEP.png         # MEP energy plot (promoted to the root)
 └── _work/                         # Pipeline scratch (safe to delete)
     ├── scan/
@@ -97,7 +97,7 @@ outputs after successful validation; add `--thermo` for `freq/` outputs.
 ### Output validation
 
 1. `_work/scan/stage_01/scan_trj.xyz` — open in PyMOL to verify bond distances change as expected
-2. `mep.pdb` and `_work/path_opt/hei_seg_01.pdb` — inspect the optimized MEP and its highest-energy image
+2. `mep_trj.pdb` and `_work/path_opt/hei_seg_01.pdb` — inspect the optimized MEP and its highest-energy image
 3. `summary.json` — check [result status and reasons](json-output.md#execution-and-requested-stage-completion) before interpreting barriers and bond changes in `summary.log`
 
 ## Notes

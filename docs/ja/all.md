@@ -102,7 +102,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  - ステージエンドポイント（`stage_XX/result.pdb`）が、後続 MEP ステップへ渡される順序付き中間体となる
 
 3. **活性部位モデルでの MEP 探索（デフォルトで単一パス `path-opt`、`--refine-path` で再帰的 `path-search`）**
- - デフォルトでは、単一パス `path-opt`（GSM/DMF）を実行します。エンジン生出力は `<out-dir>/_work/path_opt/` に書かれ、連結済み成果物（`mep.pdb`、`mep_trj.xyz`、`energy_diagram_MEP.png`）はルート直下へ配置します。
+ - デフォルトでは、単一パス `path-opt`（GSM/DMF）を実行します。エンジン生出力は `<out-dir>/_work/path_opt/` に書かれ、連結済み成果物（`mep_trj.pdb`、`mep_trj.xyz`、`energy_diagram_MEP.png`）はルート直下へ配置します。
  - `--refine-path` を指定すると、再帰的 `path-search` に切り替わり、結合変化に基づく多段階反応の候補セグメントを構築します。この分割だけで素反応が確定するわけではなく、TS／虚振動／IRC の検証が必要です。粗い MEP から得た HEI で TSOPT が失敗する場合の精密化に有効です。一方、悪い／ノイズの多い path を不要な複数 segment へ分割して計算時間を大幅に増やすことがあるため、意図せぬ cost 増大を避けてデフォルト OFF です（エンジン生出力は `<out-dir>/_work/path_search/`）。
 
 4. **オプションのセグメントごとの後処理**（通常の MEP／TS 候補が対象。ブリッジは除外し、結合変化は診断として記録）
@@ -129,7 +129,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 out_dir/ (デフォルト:./result_all/)
 ├─ summary.log                  # 結果要約（ルート直下に生成）
 ├─ summary.json                 # JSON 結果
-├─ mep.pdb                      # 連結済み MEP 経路（エンジンから配置）
+├─ mep_trj.pdb                      # 連結済み MEP 経路（エンジンから配置）
 ├─ mep.cif                      # mmCIF/oversized-PDB入力時。元IDを復元
 ├─ mep_w_ref.pdb               # 確認用の全系座標composite（--write-ref-merge）
 ├─ mep_w_ref.cif               # 確認用bridge-template companion（--write-ref-merge）
@@ -155,7 +155,7 @@ out_dir/ (デフォルト:./result_all/)
 **TSOPT のみモード**（単一入力 + `--tsopt`、`--scan-lists` なし）では MEP ステージが無く、最適化済み R/TS/P と `ts/`・`irc/`・`freq/`・`dft/` は `segments/seg_01/` 直下に生成され、MEP 作業ディレクトリ（`_work/path_opt/`）は存在しません。
 
 ```{note}
-**正規構造は `segments/seg_NN/reactant.*`・`ts.*`・`product.*`** です — 機構を報告する際はこれらを引用してください。同じ `seg_NN/` 内の `ts/`・`irc/`・`freq/`・`dft/` サブディレクトリは各ステージの作業ファイル（例: `ts/vib/imag_*_trj.xyz`、`irc/*_trj.xyz`）を保持し、特定ステージのデバッグに使います。`_work/path_opt/` 配下の MEP エンジン生出力は作業領域であり、必要な成果物（`mep.pdb`、bridge入力時の`mep.cif`、`mep_trj.xyz`、`energy_diagram_MEP.png`）は既にルートへ配置済みです。
+**正規構造は `segments/seg_NN/reactant.*`・`ts.*`・`product.*`** です — 機構を報告する際はこれらを引用してください。同じ `seg_NN/` 内の `ts/`・`irc/`・`freq/`・`dft/` サブディレクトリは各ステージの作業ファイル（例: `ts/vib/imag_*_trj.xyz`、`irc/*_trj.xyz`）を保持し、特定ステージのデバッグに使います。`_work/path_opt/` 配下の MEP エンジン生出力は作業領域であり、必要な成果物（`mep_trj.pdb`、bridge入力時の`mep.cif`、`mep_trj.xyz`、`energy_diagram_MEP.png`）は既にルートへ配置済みです。
 ```
 
 `-v 2` では活性部位モデルの電荷解決結果、スキャンステージ、MEP

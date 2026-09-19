@@ -470,7 +470,7 @@ def current_key_output_files(
         "summary.log": "Human-readable results summary",
         "summary.json": "Machine-readable results summary",
         "mep_trj.xyz": "Full MEP trajectory",
-        "mep.pdb": "Full MEP as PDB",
+        "mep_trj.pdb": "Full MEP as PDB",
         "energy_diagram_MEP.png": "MEP energy plot",
         "irc_plot_all.png": "Aggregated IRC plot",
     }
@@ -587,7 +587,7 @@ def declare_path_deliverables(
         ],
     }
     for name in (
-        "mep.pdb",
+        "mep_trj.pdb",
         "mep.cif",
         "mep_w_ref.pdb",
         "mep_w_ref.cif",

@@ -380,7 +380,7 @@ def add_scan_common_options(
             "--solvent",
             default="none",
             show_default=True,
-            help="Environment model: MLIP backends use the experimental xTB solvent delta; dft uses native PySCF PCM/SMD. 'none' disables it.",
+            help="Experimental, computationally expensive xTB solvent delta correction for MLIP backends; dft uses native PySCF PCM/SMD. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.",
         ),
         click.option(
             "--solvent-model",

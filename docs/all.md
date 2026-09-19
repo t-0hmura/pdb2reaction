@@ -87,7 +87,7 @@ Full system(s) (PDB / mmCIF / XYZ / GJF)
 0. **Structure bridge and preflight** (automatic) — mmCIF, oversized/nonstandard PDB, and PDB altloc input are converted once to a safely reindexed internal PDB; altloc is selected coherently per residue. For an ordinary PDB with blank element columns, `all` runs `add-elem-info`. Standalone `fix-altloc` is only needed when you want a cleaned PDB deliverable; standalone commands use the same bridge. Missing element data must still be repaired for an ordinary PDB or supplied as mmCIF `_atom_site.type_symbol`.
 1. **Active-site model extraction** (when `-c/--center` is set) — accepts PDB/mmCIF paths, IDs/names, `CHAIN:RESNAME`, and `CHAIN:RESNAME:RESSEQ`; normally use substrate + catalytic residues. Every match starts radius expansion. Per-input internal PDBs are saved under `<out-dir>/_work/models/`; bridge inputs also produce CIF companions.
 2. **Optional staged scan** (single-input only) — each `--scan-lists/-s` literal is a list of `(i, j, target_Å)` tuples. Atom indices use the original input ordering, 1-based by default (pass `--no-scan-one-based` to interpret them as 0-based), and are remapped to the active-site model ordering. Three-field selectors like `'TYR,285,CA'` are order-flexible; use positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` for repeated names or numbering. Stages run sequentially (stage 2 starts from stage 1's result), and the stage endpoints become the ordered intermediates that feed the MEP step.
-3. **MEP search** — by default runs single-pass `path-opt`; `--refine-path` switches to recursive `path-search`. Recursive refinement can improve a poor HEI but can also split a noisy/bad path into unnecessary segments and increase cost, so it is off by default. Segmentation is only a candidate mechanism until TS/frequency/IRC validation. Raw engine output stays under `_work`; `mep.pdb`, bridge-input `mep.cif`, `mep_trj.xyz`, and the diagram are promoted to the top level.
+3. **MEP search** — by default runs single-pass `path-opt`; `--refine-path` switches to recursive `path-search`. Recursive refinement can improve a poor HEI but can also split a noisy/bad path into unnecessary segments and increase cost, so it is off by default. Segmentation is only a candidate mechanism until TS/frequency/IRC validation. Raw engine output stays under `_work`; `mep_trj.pdb`, bridge-input `mep.cif`, `mep_trj.xyz`, and the diagram are promoted to the top level.
 4. **Per-segment post-processing** (ordinary MEP/TS candidates; bridge segments are skipped, and bond changes are diagnostic):
    - `--tsopt` — Optimize each HEI, then run EulerPC IRC and re-optimize its endpoints when terminal validation permits. Frequencies and modes are recorded only when terminal PHVA completes. Endpoint optimization uses `--thresh-post` (default `baker`); its working directory is retained with `--dump` or when either endpoint does not converge. `--reject-uphill` is off by default and applies only to endpoint RFO re-optimization.
    - `--thermo` — `freq` on (R, TS, P) for vibrational + thermochemistry data and an MLIP Gibbs diagram.
@@ -109,7 +109,7 @@ The tree has three top-level zones: **deliverables at the root**, **per-segment 
 out_dir/   (default: ./result_all/)
 ├─ summary.log                 # Text summary (authored at the root)
 ├─ summary.json                # JSON results
-├─ mep.pdb                     # Concatenated MEP path (promoted from the engine)
+├─ mep_trj.pdb                     # Concatenated MEP path (promoted from the engine)
 ├─ mep.cif                     # Bridge inputs only; original identifiers restored
 ├─ mep_w_ref.pdb               # Coordinate composite for inspection (--write-ref-merge)
 ├─ mep_w_ref.cif               # Bridge-template companion (--write-ref-merge)
@@ -135,7 +135,7 @@ out_dir/   (default: ./result_all/)
 In **TSOPT-only mode** (single input + `--tsopt`, no `--scan-lists`) there is no MEP stage: the optimized R/TS/P plus `ts/`, `irc/`, `freq/`, and `dft/` land directly under `segments/seg_01/`, and the MEP work directory (`_work/path_opt/`) is absent.
 
 ```{note}
-**The canonical structures are `segments/seg_NN/reactant.*`, `ts.*`, `product.*`** — cite these when reporting mechanisms. The `ts/`, `irc/`, `freq/`, and `dft/` subdirectories inside the same `seg_NN/` hold the per-stage working files (e.g. `ts/vib/imag_*_trj.xyz`, `irc/*_trj.xyz`) for debugging a single stage. The raw MEP-search engine output under `_work/path_opt/` is scratch — the products you need (`mep.pdb`, bridge-input `mep.cif`, `mep_trj.xyz`, `energy_diagram_MEP.png`) are already promoted to the root.
+**The canonical structures are `segments/seg_NN/reactant.*`, `ts.*`, `product.*`** — cite these when reporting mechanisms. The `ts/`, `irc/`, `freq/`, and `dft/` subdirectories inside the same `seg_NN/` hold the per-stage working files (e.g. `ts/vib/imag_*_trj.xyz`, `irc/*_trj.xyz`) for debugging a single stage. The raw MEP-search engine output under `_work/path_opt/` is scratch — the products you need (`mep_trj.pdb`, bridge-input `mep.cif`, `mep_trj.xyz`, `energy_diagram_MEP.png`) are already promoted to the root.
 ```
 
 At `-v 2` the console summarizes active-site charge resolution, scan stages,

@@ -82,7 +82,7 @@ Three zones: deliverables at `<out_dir>/`, per-segment deliverables under `<out_
 |---|---|---|
 | `<out_dir>/summary.json` | pipeline reaches its summary writer | machine-readable per-stage results; early CLI/input validation can fail before this file exists |
 | `<out_dir>/summary.log` | pipeline reaches its summary writer | human-readable text + dir tree; early CLI/input validation can fail before this file exists |
-| `<out_dir>/mep_trj.xyz`; `mep.pdb`; bridge inputs also `mep.cif` | successful MEP/scan-list mode; companions additionally require `--convert-files` and topology | stitched MEP across segments |
+| `<out_dir>/mep_trj.xyz`; `mep_trj.pdb`; bridge inputs also `mep.cif` | successful MEP/scan-list mode; companions additionally require `--convert-files` and topology | stitched MEP across segments |
 | `<out_dir>/mep_w_ref.pdb`; bridge inputs also `.cif` | requested recursive full-template merge succeeds; CIF additionally needs bridge metadata | MEP merged into the full-system template |
 | `<out_dir>/energy_diagram_MEP.png` | MEP/scan-list mode when diagram export succeeds | bare all-segment MEP energies |
 | `<out_dir>/energy_diagram_{MLIP,G_MLIP,DFT,G_DFT_plus_MLIP}_all.png` | matching stages provide finite energies and PNG export succeeds | aggregated multi-segment diagrams |

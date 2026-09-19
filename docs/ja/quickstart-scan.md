@@ -70,7 +70,7 @@ pdb2reaction all -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 -s \
 result_scan/
 ├── summary.log
 ├── summary.json
-├── mep.pdb                        # MEP 全体パス（ルートへ配置）
+├── mep_trj.pdb                        # MEP 全体パス（ルートへ配置）
 ├── energy_diagram_MEP.png         # MEP エネルギー図（ルートへ配置）
 └── _work/                         # パイプラインの作業領域（削除可）
     ├── scan/
@@ -91,7 +91,7 @@ result_scan/
 ### 出力の検証
 
 1. `_work/scan/stage_01/scan_trj.xyz` — 結合距離の変化を PyMOL で確認
-2. `mep.pdb` と `_work/path_opt/hei_seg_01.pdb` — 最適化後の MEP と最高エネルギー像を確認
+2. `mep_trj.pdb` と `_work/path_opt/hei_seg_01.pdb` — 最適化後の MEP と最高エネルギー像を確認
 3. `summary.json` — [実行結果と理由](json-output.md#実行と要求段階の完了状況)を確認してから、`summary.log` の反応障壁と結合変化を解釈
 
 ## 補足
