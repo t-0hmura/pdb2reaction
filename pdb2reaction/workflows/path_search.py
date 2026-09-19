@@ -2049,13 +2049,16 @@ def _merge_final_and_write(final_images: List[Any],
     ),
 )
 @click.option(
+    "--uma-workers",
     "--workers",
+    "workers",
     type=int,
     default=UMA_CALC_KW["workers"],
     show_default=True,
     help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
 )
 @click.option(
+    "--uma-workers-per-node",
     "--workers-per-node",
     "workers_per_node",
     type=int,
@@ -2126,7 +2129,7 @@ def _merge_final_and_write(final_images: List[Any],
 )
 @click.option("--max-cycles-gsm", type=click.IntRange(min=1), default=None, show_default="300",
               help="Maximum GSM string-optimizer cycles for the MEP stage.")
-@click.option("--max-cycles-dmf", type=click.IntRange(min=1), default=None, show_default="3000",
+@click.option("--dmf-max-iterations", "--max-cycles-dmf", "max_cycles_dmf", type=click.IntRange(min=1), default=None, show_default="3000",
               help=("Maximum IPOPT iterations for the DMF MEP stage. This is a solver "
                     "iteration count, not a string-optimizer cycle count."))
 @click.option(
@@ -2184,7 +2187,9 @@ def _merge_final_and_write(final_images: List[Any],
     ),
 )
 @click.option(
+    "--dmf-tol",
     "--thresh-dmf",
+    "thresh_dmf",
     type=str,
     default=None,
     show_default="tight",

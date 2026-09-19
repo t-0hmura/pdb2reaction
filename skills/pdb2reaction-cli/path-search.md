@@ -34,7 +34,7 @@ pdb2reaction path-search -i 1.R.pdb 3.P.pdb \
 | `--max-depth` | int | 10 | Recursive subdivision levels; `0` disables it. A capped interval is tagged `seg_NNN_maxdepth` |
 | `--thresh` | str | `gau` | Single-structure optimization convergence preset |
 | `--thresh-gsm` | str | `gau_loose` | GSM string-optimizer convergence preset |
-| `--thresh-dmf` | str/float | `tight` | DMF IPOPT dual-infeasibility tolerance: `tight`, `middle`, `loose`, or a positive float |
+| `--dmf-tol` | str/float | `tight` | DMF IPOPT dual-infeasibility tolerance: `tight`, `middle`, `loose`, or a positive float |
 | `-q, --charge` / `-l` / `-m` | — | — | Charge / multiplicity (see common conventions) |
 | `-b, --backend` | str | `uma` | MLIP backend or optional DFT calculator |
 | `-o, --out-dir` | path | `./result_path_search/` | Output directory |

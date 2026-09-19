@@ -15,12 +15,14 @@ Options:
                                   and exit.
   -i, --input FILE                Input structure (PDB / mmCIF / XYZ / GJF).
                                   [required]
-  --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
+  --uma-workers, --workers INTEGER
+                                  MLIP predictor workers; >1 spawns a parallel
                                   predictor. NOTE: with UMA, workers>1 plus an
                                   explicit Analytical Hessian request is an
                                   error; use workers=1 or FiniteDifference.
                                   [default: 1]
-  --workers-per-node INTEGER      Workers per node when using a parallel MLIP
+  --uma-workers-per-node, --workers-per-node INTEGER
+                                  Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
   -o, --out-dir TEXT              Output directory.  [default: ./result_sp/]
   --hess / --no-hess              Also compute a Hessian and save it to
@@ -80,7 +82,8 @@ Options:
                                   backend (overrides --backend). Couples GFN-xTB
                                   / DFTB+ / any ASE engine. See --calc-file-
                                   func-name.
-  --calc-file-func-name TEXT      Name of the callable in --calc-file that
+  --calc-factory, --calc-file-func-name TEXT
+                                  Name of the callable in --calc-file that
                                   returns an ASE Calculator (or a module-level
                                   Calculator instance). CLI overrides config
                                   YAML; otherwise defaults to get_calculator.
@@ -98,20 +101,22 @@ Options:
                                   nonstandard electron count.
   --func-basis TEXT               DFT method as FUNCTIONAL/BASIS; HF/BASIS is
                                   also accepted.  [default: (wb97m-v/def2-svp)]
-  --engine [gpu|cpu]              PySCF execution engine used by --backend dft.
+  --dft-engine, --engine [gpu|cpu]
+                                  PySCF execution engine used by --backend dft.
                                   [default: (gpu)]
   --save-scf-checkpoint / --no-save-scf-checkpoint
                                   Persist a structure-bound PySCF checkpoint
                                   (default: disabled).  [default: (disabled)]
   --scf-checkpoint FILE           Load/save the optional structure-bound PySCF
                                   checkpoint at PATH.
-  --lowmem / --no-lowmem          Use GPU4PySCF rks_lowmem for closed-shell GPU
+  --dft-low-memory, --lowmem / --no-dft-low-memory, --no-lowmem
+                                  Use GPU4PySCF rks_lowmem for closed-shell GPU
                                   DFT; open-shell GPU and CPU use standard
-                                  direct JK. --no-lowmem enables density
+                                  direct JK. --no-dft-low-memory enables density
                                   fitting.  [default: (lowmem)]
   --dft-nprocs INTEGER RANGE      PySCF/OpenMP CPU threads; GPU count is
                                   unaffected.  [default: (auto); x>=1]
-  --dft-mem TEXT                  PySCF host RAM limit (for example 64GB or
+  --dft-memory, --dft-mem TEXT    PySCF host RAM limit (for example 64GB or
                                   120000MB).  [default: (auto)]
   -h, --help                      Show this message and exit.
 ```

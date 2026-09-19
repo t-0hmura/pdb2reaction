@@ -410,7 +410,7 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 | `basis_set` | string | 基底関数 |
 | `engine` | string | 実効エンジンラベル (`"gpu4pyscf(rks_lowmem)"` / `"gpu4pyscf"` / `"pyscf(cpu)"`) |
 | `used_gpu` | bool | GPU 使用? |
-| `used_lowmem` | bool | `gpu4pyscf.dft.rks_lowmem.RKS`を実際に使用したか（open-shell、CPU、`--no-lowmem`ではFalse） |
+| `used_lowmem` | bool | `gpu4pyscf.dft.rks_lowmem.RKS`を実際に使用したか（open-shell、CPU、`--no-dft-low-memory`ではFalse） |
 | `lowmem_requested` | bool | low-memory modeを要求したか |
 | `dft_settings` / `dft_resources` | object | 正規化済み科学設定と実効host resource |
 | `effective_ecp` | string/object \| null | PySCFへ渡した実効ECP |

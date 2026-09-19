@@ -2907,9 +2907,9 @@ def parse_dist_freeze_list(
     *,
     one_based: bool,
     atom_meta: Optional[Sequence[Dict[str, Any]]],
-    option_name: str = "--dist-freeze",
+    option_name: str = "--distance-restraint",
 ) -> List[Tuple[int, int, Optional[float]]]:
-    """Parse ``--dist-freeze`` entries: ``(i,j)`` or ``(i,j,target_A)``.
+    """Parse distance-restraint entries: ``(i,j)`` or ``(i,j,target_A)``.
 
     Uses the same :func:`resolve_scan_index` as ``--scan-lists``, so string
     atom specs (e.g. ``'A:SER:123:OG'``) are supported when PDB metadata is
@@ -2972,7 +2972,7 @@ def parse_dist_freeze_spec(
     *,
     one_based_default: bool,
     atom_meta: Optional[Sequence[Dict[str, Any]]],
-    option_name: str = "--dist-freeze",
+    option_name: str = "--distance-restraint",
 ) -> List[Tuple[int, int, Optional[float]]]:
     """Parse a YAML/JSON dist-freeze spec file.
 

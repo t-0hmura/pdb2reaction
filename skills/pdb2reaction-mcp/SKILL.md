@@ -54,7 +54,7 @@ See [`examples/mcp_client_config.json`](../../examples/mcp_client_config.json) f
 | `optimize_path` | `pdb2reaction path-opt` | Two-endpoint MEP optimization |
 | `search_paths` | `pdb2reaction path-search` | Recursive reaction-pathway search |
 | `run_full_pipeline` | `pdb2reaction all` | Configurable end-to-end pipeline; TS/IRC, thermo/freq, and DFT stages run only when their tool arguments enable them |
-| `run_single_point_dft` | `pdb2reaction dft` | Single-point DFT via GPU4PySCF by default; CPU PySCF is available through `extra_args=["--engine", "cpu"]` |
+| `run_single_point_dft` | `pdb2reaction dft` | Single-point DFT via GPU4PySCF by default; CPU PySCF is available through `extra_args=["--dft-engine", "cpu"]` |
 
 ### Structure / I/O helpers
 

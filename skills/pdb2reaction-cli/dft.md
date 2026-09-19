@@ -13,9 +13,9 @@ input.
 pdb2reaction dft -i geom.{pdb,cif,mmcif,xyz,gjf} \
     [-q 0 -m 1] [-l 'RES:Q,...'] \
     [--func-basis 'wb97m-v/def2-svp'] \
-    [--engine gpu|cpu] \
+    [--dft-engine gpu|cpu] \
     [--solvent NAME --solvent-model pcm|smd] \
-    [--dft-nprocs INT --dft-mem SIZE] \
+    [--dft-nprocs INT --dft-memory SIZE] \
     [-o ./result_dft/]
 ```
 
@@ -27,10 +27,10 @@ pdb2reaction dft -i geom.{pdb,cif,mmcif,xyz,gjf} \
 | `-q` / `-l` / `-m` | — | — | Charge / spin (required for `.xyz` without `--ref-pdb`) |
 | `--ref-pdb` | path | none | Reference PDB/mmCIF so `-l` works on `.xyz` input |
 | `--func-basis` | str | `wb97m-v/def2-svp` | `'FUNC/BASIS'` |
-| `--engine` | str | `gpu` | `gpu` (GPU4PySCF) or `cpu` (PySCF) |
-| `--lowmem / --no-lowmem` | toggle | `--lowmem` | Closed-shell GPU uses `rks_lowmem.RKS`, including PCM/SMD; open-shell GPU and CPU use standard direct-JK RKS/UKS. `--no-lowmem` enables density fitting by default. |
+| `--dft-engine` | str | `gpu` | `gpu` (GPU4PySCF) or `cpu` (PySCF) |
+| `--dft-low-memory / --no-dft-low-memory` | toggle | `--dft-low-memory` | Closed-shell GPU uses `rks_lowmem.RKS`, including PCM/SMD; open-shell GPU and CPU use standard direct-JK RKS/UKS. `--no-dft-low-memory` enables density fitting by default. |
 | `--solvent` / `--solvent-model` | str / choice | `none` / `smd` | Native PySCF PCM or SMD implicit solvent. |
-| `--dft-nprocs` / `--dft-mem` | int / size | auto / auto | Override scheduler/environment-derived thread count and memory limit. |
+| `--dft-nprocs` / `--dft-memory` | int / size | auto / auto | Override scheduler/environment-derived thread count and memory limit. |
 | `--config` | path | none | YAML config file |
 | `-o, --out-dir` | path | `./result_dft/` | Output directory |
 | `--show-config` / `--dry-run` / `--help-advanced` | — | — | Standard |
@@ -43,7 +43,7 @@ pdb2reaction dft -i geom.{pdb,cif,mmcif,xyz,gjf} \
 pdb2reaction dft -i seg_01/ts.pdb \
     -l 'SAM:1,GPP:-3' \
     --func-basis 'wb97m-v/def2-tzvpd' \
-    --engine gpu --out-json
+    --dft-engine gpu --out-json
 ```
 
 `--out-json` enables the `result.json` example below; omit it for `result.yaml` only.
@@ -53,7 +53,7 @@ pdb2reaction dft -i seg_01/ts.pdb \
 ```bash
 pdb2reaction dft -i ts.xyz -q 0 -m 1 \
     --func-basis 'wb97m-v/def2-svp' \
-    --engine cpu \
+    --dft-engine cpu \
     -o result_dft_cpu
 ```
 
@@ -73,7 +73,7 @@ d = json.load(open("result_dft/result.json"))
 print(d["energy_hartree"])
 print(d["xc_functional"], d["basis_set"])  # e.g. "wb97m-v", "def2-tzvpd"
 print(d["engine"])           # "gpu4pyscf(rks_lowmem)", "gpu4pyscf", or "pyscf(cpu)"
-print(d["used_gpu"], d["used_lowmem"])  # bool, bool (lowmem False on open-shell / CPU / --no-lowmem)
+print(d["used_gpu"], d["used_lowmem"])  # bool, bool (lowmem False on open-shell / CPU / --no-dft-low-memory)
 print(d["converged"])        # True / False (exit code 3 if False)
 ```
 
@@ -86,8 +86,8 @@ IAO charges, spin densities.
 |---|---|
 | `OSError: libcusolver.so.11 not found` | Capture `pip check` and compare the clean-environment library-loading test in [`env-cuda.md`](../pdb2reaction-install-backends/env-cuda.md); do not guess a library path. |
 | `cupy ... invalid device ordinal` | Keep the scheduler-provided `CUDA_VISIBLE_DEVICES` and select a valid local ordinal (usually device 0 in a one-GPU allocation). Do not unset the scheduler's isolation variable. |
-| `RuntimeError: CUDA out of memory` | First try the same method with `--engine cpu` or a larger-memory GPU. Lowering the grid or basis changes the scientific method, so do it only as an explicit new calculation and label it accordingly. |
-| aarch64 `--engine gpu` raises `ClickException` ("GPU backend failed...") | PyPI wheel is x86_64-only; re-submit with `--engine cpu` or build `gpu4pyscf` from source (https://github.com/pyscf/gpu4pyscf) |
+| `RuntimeError: CUDA out of memory` | First try the same method with `--dft-engine cpu` or a larger-memory GPU. Lowering the grid or basis changes the scientific method, so do it only as an explicit new calculation and label it accordingly. |
+| aarch64 `--dft-engine gpu` raises `ClickException` ("GPU backend failed...") | PyPI wheel is x86_64-only; re-submit with `--dft-engine cpu` or build `gpu4pyscf` from source (https://github.com/pyscf/gpu4pyscf) |
 
 ## Caveats
 

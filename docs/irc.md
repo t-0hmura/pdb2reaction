@@ -11,7 +11,7 @@ Command synopsis:
 ```bash
 pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] \
  [-b/--backend uma|orb|mace|aimnet2|dft] \
- [--workers N] [--workers-per-node N] [-m 2S+1] \
+ [--uma-workers N] [--uma-workers-per-node N] [-m 2S+1] \
  [--max-cycles N] [--step-size Δs] [--never-stop/--no-never-stop] [--root k] \
  [--forward/--no-forward] [--backward/--no-backward] \
  [--freeze-links/--no-freeze-links] \
@@ -110,8 +110,8 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `-i, --input PATH` | Transition-state structure accepted by `geom_loader`. | Required |
 | `-q, --charge INT` | Total charge. Explicit `-q` has highest priority; otherwise see {ref}`Charge specification <charge-specification>`. | Required unless YAML/template/derivation applies |
 | `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB/mmCIF residue metadata. Used when `-q` is omitted (PDB/mmCIF inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
-| `--workers INT` | UMA predictor parallelism. `workers > 1` cannot be combined with an explicit analytical Hessian request; use `workers = 1` or finite differences. See {ref}`workers-analytical-error`. | `1` |
-| `--workers-per-node INT` | Workers per node, forwarded to the parallel predictor. | `1` |
+| `--uma-workers INT` | UMA predictor parallelism. `workers > 1` cannot be combined with an explicit analytical Hessian request; use `workers = 1` or finite differences. See {ref}`workers-analytical-error`. | `1` |
+| `--uma-workers-per-node INT` | Workers per node, forwarded to the parallel predictor. | `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). Explicit `-m` overrides YAML `calc.spin`; otherwise YAML, `.gjf`, or `1` is used. | YAML/`.gjf`/`1` |
 | `--max-cycles INT` | Maximum IRC steps. An explicit value overrides YAML `irc.max_cycles`. | `125` |
 | `--step-size FLOAT` | Step length in unweighted Cartesian coordinates (Bohr). An explicit value overrides YAML `irc.step_length`. | `0.10` |

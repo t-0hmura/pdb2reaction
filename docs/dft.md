@@ -1,8 +1,6 @@
 # `dft`
 
-Runs single-point DFT with GPU4PySCF or CPU PySCF, reporting energy and population analysis (Mulliken, meta-Löwdin, IAO charges). The default functional/basis is ωB97M-V/def2-svp. Use it to evaluate DFT energies (and population analysis) on small active-site models, typically at MLIP-optimized R/TS/P geometries. Select the backend via `--engine` (default `gpu`); use `cpu` when no GPU is available, or for portable/debug runs.
-
-> See {ref}`engine-vs-dft-engine` for the `--engine` (standalone `dft`) vs `--dft-engine` (forwarded through `pdb2reaction all`) naming convention.
+Runs single-point DFT with GPU4PySCF or CPU PySCF, reporting energy and population analysis (Mulliken, meta-Löwdin, IAO charges). The default functional/basis is ωB97M-V/def2-svp. Use it to evaluate DFT energies (and population analysis) on small active-site models, typically at MLIP-optimized R/TS/P geometries. Select the backend via `--dft-engine` (default `gpu`); use `cpu` when no GPU is available, or for portable/debug runs.
 
 > **Prerequisites:** Install `pdb2reaction[dft]` for native CUDA 13 GPU4PySCF, or `pdb2reaction[dft-cuda12]` on a CUDA 12 site.
 
@@ -17,9 +15,9 @@ Command form:
 ```bash
 pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULTIPLICITY] \
  [--func-basis 'FUNC/BASIS'] \
- [--max-cycle N] [--conv-tol Eh] [--grid-level L] \
- [--out-dir DIR] [--engine gpu|cpu] [--lowmem|--no-lowmem] \
- [--dft-nprocs N] [--dft-mem SIZE] \
+ [--scf-max-cycles N] [--scf-tol Eh] [--grid-level L] \
+ [--out-dir DIR] [--dft-engine gpu|cpu] [--dft-low-memory|--no-dft-low-memory] \
+ [--dft-nprocs N] [--dft-memory SIZE] \
  [--solvent NAME] [--solvent-model pcm|smd] \
  [--ref-pdb FILE] [--config FILE] [--show-config] [--dry-run]
 ```
@@ -27,15 +25,15 @@ pdb2reaction dft -i INPUT.{pdb|xyz|gjf|...} [-q CHARGE] [-l, --ligand-charge <nu
 Basic GPU single point.
 
 ```bash
-pdb2reaction dft -i input.pdb -q 0 -m 1 --engine gpu --out-dir ./result_dft
+pdb2reaction dft -i input.pdb -q 0 -m 1 --dft-engine gpu --out-dir ./result_dft
 ```
 
 Run with tighter SCF settings.
 
 ```bash
 pdb2reaction dft -i input.pdb -q 0 -m 1 \
- --func-basis 'wb97m-v/def2-tzvpd' --conv-tol 1e-10 --max-cycle 200 \
- --engine gpu --out-dir ./result_dft_tight
+ --func-basis 'wb97m-v/def2-tzvpd' --scf-tol 1e-10 --scf-max-cycles 200 \
+ --dft-engine gpu --out-dir ./result_dft_tight
 ```
 
 > **Caveat:** The tight `def2-tzvpd` setting is expensive. There is no
@@ -45,14 +43,14 @@ pdb2reaction dft -i input.pdb -q 0 -m 1 \
 Force CPU backend for portability.
 
 ```bash
-pdb2reaction dft -i input.pdb -q 0 -m 1 --engine cpu --out-dir ./result_dft_cpu
+pdb2reaction dft -i input.pdb -q 0 -m 1 --dft-engine cpu --out-dir ./result_dft_cpu
 ```
 
 Derive total charge from ligand mapping when `-q` is omitted.
 
 ```bash
 pdb2reaction dft -i input.pdb -l 'LIG:0' -m 1 \
- --engine gpu --out-dir ./result_dft_ligand
+ --dft-engine gpu --out-dir ./result_dft_ligand
 ```
 
 When `-q` is omitted but `--ligand-charge/-l` is provided, the input is treated as an enzyme–substrate complex and `extract.py`’s charge summary computes the total charge; an explicit `-q` still overrides. Without either CLI charge option, YAML `calc.charge` takes precedence over a GJF header; unresolved charge stops the run.
@@ -60,7 +58,7 @@ When `-q` is omitted but `--ligand-charge/-l` is provided, the input is treated 
 ## Workflow
 
 1. **Input handling** – PDB, mmCIF, XYZ, GJF, and other files loadable by `geom_loader` are accepted. Coordinates are re-exported as `input_geometry.xyz`. For XYZ/GJF inputs, `--ref-pdb` supplies a reference PDB/mmCIF topology for atom-count validation and (if you also use `--ligand-charge/-l`) charge derivation; the DFT stage itself does **not** emit PDB/CIF/GJF outputs.
-2. **SCF build** – `--func-basis` is parsed into functional and basis. `--engine` controls GPU/CPU preference (`gpu` requires GPU4PySCF and raises an error if unavailable; `cpu` forces CPU). Low-memory mode is on by default: closed-shell GPU calculations, including PCM/SMD, use `gpu4pyscf.dft.rks_lowmem.RKS`; open-shell GPU and CPU use standard direct-JK RKS/UKS without retaining a density-fitting tensor. `--no-lowmem` enables density fitting and can improve difficult SCF convergence when sufficient memory is available. PySCF thread count and host-RAM limit are detected from scheduler/process limits; `--dft-nprocs` and `--dft-mem` override them. These resource values are recorded but do not invalidate a scientific checkpoint identity.
+2. **SCF build** – `--func-basis` is parsed into functional and basis. `--dft-engine` controls GPU/CPU preference (`gpu` requires GPU4PySCF and raises an error if unavailable; `cpu` forces CPU). Low-memory mode is on by default: closed-shell GPU calculations, including PCM/SMD, use `gpu4pyscf.dft.rks_lowmem.RKS`; open-shell GPU and CPU use standard direct-JK RKS/UKS without retaining a density-fitting tensor. `--no-dft-low-memory` enables density fitting and can improve difficult SCF convergence when sufficient memory is available. PySCF thread count and host-RAM limit are detected from scheduler/process limits; `--dft-nprocs` and `--dft-memory` override them. These resource values are recorded but do not invalidate a scientific checkpoint identity.
 3. **Population analysis & outputs** – After convergence (or failure) the command writes `result.yaml` summarizing the energy (in hartree and kcal/mol), convergence metadata, backend info, and per-atom Mulliken/meta-Löwdin/IAO charges and spin densities (UKS only for spins). Any failed analysis column is set to `null` with a warning.
 
 ## Outputs
@@ -92,16 +90,16 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB/mmCIF residue metadata. Used when `-q` is omitted (PDB/mmCIF inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). Converted to `2S` for PySCF. | YAML `calc.spin`, then GJF, then `1` |
 | `--func-basis TEXT` | Functional/basis pair in `FUNC/BASIS` form (quote strings with `*`). | `wb97m-v/def2-svp` |
-| `--max-cycle INT` | Maximum SCF iterations (`dft.max_cycle`). | `100` |
-| `--conv-tol FLOAT` | SCF convergence tolerance in hartree (`dft.conv_tol`). | `1e-9` |
+| `--scf-max-cycles INT` | Maximum SCF iterations (`dft.max_cycle`). | `100` |
+| `--scf-tol FLOAT` | SCF convergence tolerance in hartree (`dft.conv_tol`). | `1e-9` |
 | `--grid-level INT` | PySCF numerical integration grid level (`dft.grid_level`). | `3` |
 | `-o, --out-dir TEXT` | Output directory (`dft.out_dir`). | `./result_dft/` |
-| `--engine [gpu\|cpu]` | SCF backend: gpu (GPU4PySCF) or cpu (PySCF). See {ref}`engine-vs-dft-engine` for the `--engine` vs `--dft-engine` naming convention. | `gpu` |
+| `--dft-engine [gpu\|cpu]` | SCF backend: gpu (GPU4PySCF) or cpu (PySCF). | `gpu` |
 | `--solvent TEXT` | Native PySCF implicit-solvent name; `none` disables solvation. | `none` |
 | `--solvent-model [pcm\|smd]` | Native PySCF implicit-solvent model. | `smd` |
-| `--lowmem/--no-lowmem` | Use `gpu4pyscf.dft.rks_lowmem.RKS` for closed-shell GPU runs, including PCM/SMD. Open-shell GPU and CPU use standard direct-JK RKS/UKS; `--no-lowmem` enables density fitting. | `True` |
+| `--dft-low-memory/--no-dft-low-memory` | Use `gpu4pyscf.dft.rks_lowmem.RKS` for closed-shell GPU runs, including PCM/SMD. Open-shell GPU and CPU use standard direct-JK RKS/UKS; `--no-dft-low-memory` enables density fitting. | `True` |
 | `--dft-nprocs INT` | PySCF/OpenMP CPU threads. Omission uses scheduler/affinity/host detection. | `auto` |
-| `--dft-mem SIZE` | PySCF host-RAM limit, for example `64GB` or `120000MB`; this is not GPU VRAM. | `auto` |
+| `--dft-memory SIZE` | PySCF host-RAM limit, for example `64GB` or `120000MB`; this is not GPU VRAM. | `auto` |
 | `--ref-pdb FILE` | Reference PDB topology to validate atom counts and enable ligand-charge derivation for XYZ/GJF inputs (no output conversion). | _None_ |
 | `--config FILE` | Base YAML configuration file applied before explicit CLI options. | _None_ |
 | `--show-config/--no-show-config` | Print resolved configuration and continue execution. | `False` |
@@ -145,10 +143,10 @@ See {ref}`exit-codes` in CLI Conventions.
 
 - **System size / basis cost:** `def2-tzvpd` is expensive, but there is no universal atom-count or VRAM cutoff. Basis-function count, elements, functional, grid, density-fitting path, and GPU all matter. Pilot one representative structure and monitor peak memory. A smaller basis such as `def2-svp` is cheaper but changes the method; do not attach a universal barrier-error estimate to that change.
 - **New GPU architectures:** an OOM or unsupported-kernel failure can reflect package/kernel compatibility as well as true memory demand. Diagnose the actual GPU4PySCF/CuPy versions and traceback before switching engine; do not treat all Blackwell cards as one known failure mode.
-- **CPU backend:** `--engine cpu` is supported, but feasibility is method/system/hardware dependent. Time a representative single point rather than applying a fixed atom-count cutoff.
+- **CPU backend:** `--dft-engine cpu` is supported, but feasibility is method/system/hardware dependent. Time a representative single point rather than applying a fixed atom-count cutoff.
 - **HPC scratch:** PySCF / GPU4PySCF write to `$PYSCF_TMPDIR` (then `$TMPDIR`, `/tmp`); on nodes with a small or tmpfs `/tmp`, set `PYSCF_TMPDIR` to the job filesystem (e.g. `export PYSCF_TMPDIR="$PBS_O_WORKDIR"`) before launching.
 - Compiled GPU4PySCF wheels may not support non-x86 systems; build from source in that case (see https://github.com/pyscf/gpu4pyscf).
-- No auxiliary basis guessing is implemented; density-fitting behavior is described under Workflow (SCF build) and the `--lowmem` CLI option.
+- No auxiliary basis guessing is implemented; density-fitting behavior is described under Workflow (SCF build) and the `--dft-low-memory` CLI option.
 - The YAML input file must have a mapping root; the `dft` section is optional. Non-mapping roots raise an error via `load_yaml_dict`.
 - IAO spin/charge analysis may fail for challenging systems; corresponding columns in `result.yaml` become `null` and a warning is printed.
 

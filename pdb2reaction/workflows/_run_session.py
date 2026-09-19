@@ -237,6 +237,59 @@ class InvocationManifest:
         self.produced[logical_key] = (path, stamp)
         return path
 
+    def adopt_existing(
+        self,
+        key: str,
+        path: Path,
+        *,
+        sha256_expected: str,
+    ) -> Path:
+        """Adopt a verified artifact from an earlier invocation.
+
+        Normal claims only admit files created or changed by the current run.
+        ``all --resume-segment`` is the one exception: it loads the previous
+        private manifest, verifies the full file digest, and then calls this
+        method for the immutable MEP inputs and retained public outputs.
+        """
+
+        logical_key = str(key)
+        if logical_key in self.expected:
+            raise ValueError(f"artifact key {logical_key!r} was already declared")
+        normalized = _lexical_absolute(path)
+        stamp = ArtifactStamp.capture(normalized, digest=True)
+        if not stamp.exists:
+            raise ArtifactClaimError(
+                f"Resume artifact {logical_key!r} is missing or is not a regular file: "
+                f"{normalized}"
+            )
+        expected = str(sha256_expected or "").strip().lower()
+        if not expected or stamp.sha256 != expected:
+            raise ArtifactClaimError(
+                f"Resume artifact {logical_key!r} does not match the recorded run: "
+                f"{normalized}"
+            )
+        self.expected[logical_key] = (normalized,)
+        self.baseline[logical_key] = {str(normalized): stamp}
+        self.produced[logical_key] = (normalized, stamp)
+        return normalized
+
+    def record_current(self, key: str, path: Path) -> Path:
+        """Record an exact artifact written by the current in-process owner."""
+
+        logical_key = str(key)
+        if logical_key in self.expected:
+            raise ValueError(f"artifact key {logical_key!r} was already declared")
+        normalized = _lexical_absolute(path)
+        stamp = ArtifactStamp.capture(normalized, digest=True)
+        if not stamp.exists:
+            raise ArtifactClaimError(
+                f"Current artifact {logical_key!r} is missing: {normalized}"
+            )
+        self.expected[logical_key] = (normalized,)
+        self.baseline[logical_key] = {str(normalized): ArtifactStamp(False)}
+        self.produced[logical_key] = (normalized, stamp)
+        return normalized
+
     def require(self, keys: Iterable[str]) -> None:
         missing = [str(key) for key in keys if str(key) not in self.produced]
         if missing:

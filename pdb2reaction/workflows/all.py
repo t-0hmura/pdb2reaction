@@ -23,6 +23,8 @@ import yaml
 import numpy as np
 import shutil
 
+from pdb2reaction.cli.bool_compat import BoolCompatCommand
+
 # pysisyphus helpers/constants
 from pysisyphus.helpers import geom_loader
 from pysisyphus.constants import BOHR2ANG, AU2KCALPERMOL
@@ -127,6 +129,16 @@ from pdb2reaction.workflows._run_session import (
     declare_path_deliverables as _declare_path_deliverables,
     public_output_key as _public_output_key,
     refresh_current_public_outputs as _refresh_current_public_outputs,
+)
+from pdb2reaction.workflows._segment_resume import (
+    build_resume_identity,
+    file_sha256,
+    invalidate_from_segment,
+    load_previous_manifest,
+    retained_energy_diagrams,
+    retained_post_segments,
+    retained_public_artifact,
+    validate_resume_identity,
 )
 from pdb2reaction.cli.common_options import (
     add_allow_charge_mult_mismatch_option,
@@ -4045,7 +4057,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
         "--tsopt",
         "--thermo",
         "--dft",
-        "--dft-func-basis",
+        "--func-basis",
         "--dft-solvent",
         "--dft-solvent-model",
         "--config",
@@ -4063,6 +4075,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
         "--radius",
         "--selected-resn",
         "--refine-path",
+        "--resume-segment",
         "-o",
         "--print-every",
         "--help-advanced",
@@ -4071,6 +4084,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 
 
 @click.command(
+    cls=BoolCompatCommand,
     help=(
         "Run active site model extraction → optional staged scan → MEP search in one run.\n"
         "If exactly one input is provided: (a) with --scan-lists, run staged scan on the active site model (or full structure "
@@ -4152,25 +4166,22 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     help="Independent hetero–hetero cutoff (Å) for non‑C/H pairs.",
 )
 @click.option(
-    "--include-h2o",
+    "--include-h2o/--no-include-h2o",
     "include_h2o",
-    type=click.BOOL,
     default=True,
     show_default=True,
     help="Include waters (HOH/WAT/TIP3/SOL) in the active site model.",
 )
 @click.option(
-    "--exclude-backbone",
+    "--exclude-backbone/--no-exclude-backbone",
     "exclude_backbone",
-    type=click.BOOL,
     default=False,
     show_default=True,
     help="Remove backbone atoms on non‑substrate amino acids (with PRO/HYP safeguards).",
 )
 @click.option(
-    "--add-linkh",
+    "--add-linkh/--no-add-linkh",
     "add_linkh",
-    type=click.BOOL,
     default=True,
     show_default=True,
     help="Add cap hydrogens for severed bonds (carbon boundaries only) in active site models.",
@@ -4226,13 +4237,16 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     ),
 )
 @click.option(
+    "--uma-workers",
     "--workers",
+    "workers",
     type=int,
     default=CALC_KW["workers"],
     show_default=True,
     help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
 )
 @click.option(
+    "--uma-workers-per-node",
     "--workers-per-node",
     "workers_per_node",
     type=int,
@@ -4257,9 +4271,8 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     help="Spin multiplicity (2S+1).",
 )
 @click.option(
-    "--freeze-links",
+    "--freeze-links/--no-freeze-links",
     "freeze_links_flag",
-    type=click.BOOL,
     default=True,
     show_default=True,
     help="Freeze parent atoms of cap hydrogens (PDB/mmCIF input or XYZ/GJF with --ref-pdb).",
@@ -4331,7 +4344,9 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     help="Maximum GSM string-optimizer cycles for the MEP stage.",
 )
 @click.option(
+    "--dmf-max-iterations",
     "--max-cycles-dmf",
+    "max_cycles_dmf",
     type=click.IntRange(min=1),
     default=None,
     show_default="3000",
@@ -4341,8 +4356,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     ),
 )
 @click.option(
-    "--climb",
-    type=click.BOOL,
+    "--climb/--no-climb",
     default=True,
     show_default=True,
     help="Enable climbing image for standard GSM segments (bridge segments always disable climbing).",
@@ -4368,8 +4382,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     ),
 )
 @click.option(
-    "--dump",
-    type=click.BOOL,
+    "--dump/--no-dump",
     default=False,
     show_default=True,
     help=(
@@ -4380,17 +4393,15 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     ),
 )
 @click.option(
-    "--convert-files",
+    "--convert-files/--no-convert-files",
     "convert_files",
-    type=click.BOOL,
     default=True,
     show_default=True,
     help="Convert XYZ/TRJ outputs into PDB/CIF/GJF companions based on the input format.",
 )
 @click.option(
-    "--refine-path",
+    "--refine-path/--no-refine-path",
     "refine_path",
-    type=click.BOOL,
     default=False,
     show_default=True,
     help=(
@@ -4401,9 +4412,8 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     ),
 )
 @click.option(
-    "--write-ref-merge",
+    "--write-ref-merge/--no-write-ref-merge",
     "write_ref_merge",
-    type=click.BOOL,
     default=False,
     show_default=True,
     help=(
@@ -4420,7 +4430,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
         "Convergence preset for single-structure optimizations and scan "
         "relaxations (gau_loose|gau|gau_tight|gau_vtight|baker|never). "
         "The MEP stage keeps its own "
-        "--thresh-gsm / --thresh-dmf."
+        "--thresh-gsm / --dmf-tol."
     ),
 )
 @click.option(
@@ -4444,7 +4454,9 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     ),
 )
 @click.option(
+    "--dmf-tol",
     "--thresh-dmf",
+    "thresh_dmf",
     type=str,
     default=None,
     show_default="tight",
@@ -4460,6 +4472,17 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
     default=None,
     help="Base YAML configuration file applied before explicit CLI options.",
+)
+@click.option(
+    "--resume-segment",
+    type=click.IntRange(min=1),
+    default=None,
+    show_default="disabled",
+    help=(
+        "Reuse the verified MEP in --out-dir and rerun post-processing from "
+        "segment N. Repeat the original path/extraction/calculator options; "
+        "post-processing options may be changed."
+    ),
 )
 @click.option(
     "--show-config/--no-show-config",
@@ -4480,9 +4503,8 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     ),
 )
 @click.option(
-    "--preopt",
+    "--preopt/--no-preopt",
     "preopt",
-    type=click.BOOL,
     default=True,
     show_default=True,
     help="If True, run initial single-structure optimizations of the active site model inputs.",
@@ -4495,9 +4517,8 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 )
 # ===== Post-processing toggles =====
 @click.option(
-    "--tsopt",
+    "--tsopt/--no-tsopt",
     "do_tsopt",
-    type=click.BOOL,
     default=False,
     show_default=True,
     help=(
@@ -4516,9 +4537,8 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     ),
 )
 @click.option(
-    "--thermo",
+    "--thermo/--no-thermo",
     "do_thermo",
-    type=click.BOOL,
     default=False,
     show_default=True,
     help=(
@@ -4527,9 +4547,8 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     ),
 )
 @click.option(
-    "--dft",
+    "--dft/--no-dft",
     "do_dft",
-    type=click.BOOL,
     default=False,
     show_default=True,
     help=(
@@ -4679,22 +4698,28 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     ),
 )
 @click.option(
+    "--func-basis",
     "--dft-func-basis",
+    "dft_func_basis",
     type=str,
     default=None, show_default="wb97m-v/def2-svp",
     help="Override dft --func-basis value.",
 )
 @click.option(
+    "--scf-max-cycles",
     "--dft-max-cycle",
+    "dft_max_cycle",
     type=click.IntRange(min=1),
     default=None, show_default="100",
-    help="Override dft --max-cycle value.",
+    help="Override the DFT SCF iteration limit.",
 )
 @click.option(
+    "--scf-tol",
     "--dft-conv-tol",
+    "dft_conv_tol",
     type=float,
     default=None, show_default="1e-9",
-    help="Override dft --conv-tol value.",
+    help="Override the DFT SCF convergence tolerance.",
 )
 @click.option(
     "--dft-grid-level",
@@ -4704,6 +4729,8 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 )
 @click.option(
     "--dft-engine",
+    "--engine",
+    "dft_engine",
     type=click.Choice(["gpu", "cpu"], case_sensitive=False),
     default=None,
     show_default="gpu",
@@ -4749,8 +4776,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     ),
 )
 @click.option(
-    "--scan-one-based",
-    type=click.BOOL,
+    "--scan-one-based/--scan-zero-based",
     default=None,
     show_default="True",
     help=(
@@ -4764,7 +4790,9 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     help="Override scan --max-step-size (Å).",
 )
 @click.option(
+    "--scan-restraint-k",
     "--scan-bias-k",
+    "scan_bias_k",
     type=float,
     default=None, show_default="300",
     help="Override scan harmonic bias strength k (eV/Å^2).",
@@ -4776,17 +4804,15 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     help="Override scan relaxation max cycles per step.",
 )
 @click.option(
-    "--scan-preopt",
+    "--scan-preopt/--no-scan-preopt",
     "scan_preopt_override",
-    type=click.BOOL,
     default=None,
     show_default="inherits --preopt",
     help="Override scan --preopt flag. Inherits from --preopt when omitted.",
 )
 @click.option(
-    "--scan-endopt",
+    "--scan-endopt/--no-scan-endopt",
     "scan_endopt_override",
-    type=click.BOOL,
     default=None,
     show_default="False",
     help="Override scan --endopt flag.",
@@ -4808,7 +4834,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 @add_calc_file_option()
 @add_deterministic_option()
 @add_allow_charge_mult_mismatch_option()
-@add_dft_calculator_options()
+@add_dft_calculator_options(include_method=False, include_engine=False)
 @click.pass_context
 def cli(
     ctx: click.Context,
@@ -4851,6 +4877,7 @@ def cli(
     thresh_gsm: Optional[str],
     thresh_dmf: Optional[str],
     config_yaml: Optional[Path],
+    resume_segment: Optional[int],
     show_config: bool,
     dry_run: bool,
     preopt: bool,
@@ -4972,6 +4999,18 @@ def cli(
     if "--no-dft" in _negative_bool_args:
         do_dft = False
 
+    resuming = resume_segment is not None
+    if resuming and dry_run:
+        raise click.UsageError(
+            "--resume-segment performs a verified in-place continuation and "
+            "cannot be combined with --dry-run."
+        )
+    if resuming and not (do_tsopt or do_thermo or do_dft):
+        raise click.UsageError(
+            "--resume-segment requires at least one post-processing stage: "
+            "--tsopt, --thermo, or --dft."
+        )
+
     # `--max-depth` is consumed only by the recursive splitter, so accepting it
     # on the single-pass route would silently drop the request while the config
     # echo still reported the value.
@@ -5064,6 +5103,22 @@ def cli(
     from pdb2reaction.backends import apply_calc_file_to_calc_cfg as _guard_calc_file
 
     _guard_calc_file(_guard_calc_cfg, calc_file, calc_factory)
+    _primary_dft_active = (
+        str(_guard_calc_cfg.get("backend", "")).strip().lower() == "dft"
+    )
+    if _primary_dft_active:
+        from pdb2reaction.core.dft_settings import DFT_CLI_META_KEY
+
+        _primary_dft_meta = ctx.meta.setdefault(DFT_CLI_META_KEY, {})
+        for _option_name, _setting_name, _value in (
+            ("dft_func_basis", "func_basis", dft_func_basis),
+            ("dft_max_cycle", "max_cycle", dft_max_cycle),
+            ("dft_conv_tol", "conv_tol", dft_conv_tol),
+            ("dft_grid_level", "grid_level", dft_grid_level),
+            ("dft_engine", "engine", dft_engine),
+        ):
+            if cli_param_overridden(ctx, _option_name) and _value is not None:
+                _primary_dft_meta[_setting_name] = _value
     _reject_redundant_dft_postprocessing(
         effective_backend=str(_guard_calc_cfg.get("backend", "")),
         do_dft=do_dft,
@@ -5388,8 +5443,15 @@ def cli(
         "dft_solvent",
         "dft_solvent_model",
     )
+    _shared_dft_cli_names = {
+        "dft_func_basis", "dft_max_cycle", "dft_conv_tol",
+        "dft_grid_level", "dft_engine",
+    }
     _unused_post_dft = [
-        name for name in _post_dft_cli_names if cli_param_overridden(ctx, name)
+        name
+        for name in _post_dft_cli_names
+        if cli_param_overridden(ctx, name)
+        and not (_primary_dft_active and name in _shared_dft_cli_names)
     ]
     if _unused_post_dft and not do_dft:
         raise click.BadParameter(
@@ -5816,6 +5878,28 @@ def cli(
     models_dir = out_dir / WORK_DIRNAME / "models"
     path_dir = out_dir / WORK_DIRNAME / ("path_search" if refine_path else "path_opt")
     scan_dir = _resolve_override_dir(out_dir / WORK_DIRNAME / "scan", scan_out_dir)
+    previous_manifest_payload: Optional[Dict[str, Any]] = None
+    previous_root_summary: Optional[Dict[str, Any]] = None
+    if resuming:
+        prior_manifest_path = out_dir / WORK_DIRNAME / "_run_manifest.json"
+        prior_summary_path = out_dir / "summary.json"
+        previous_manifest_payload = load_previous_manifest(
+            prior_manifest_path, out_dir=out_dir
+        )
+        try:
+            loaded_prior_summary = json.loads(
+                prior_summary_path.read_text(encoding="utf-8")
+            )
+        except (OSError, json.JSONDecodeError) as exc:
+            raise click.ClickException(
+                f"Cannot read the saved summary required for resume: "
+                f"{prior_summary_path}: {exc}"
+            ) from exc
+        if not isinstance(loaded_prior_summary, dict):
+            raise click.ClickException(
+                f"Saved summary is not a JSON object: {prior_summary_path}"
+            )
+        previous_root_summary = loaded_prior_summary
     stage_total = 4 if (do_tsopt or do_thermo or do_dft) else 3
     ensure_dir(out_dir)
     if not skip_extract:
@@ -6132,6 +6216,134 @@ def cli(
     _primary_diagram_label = (
         "DFT" if _mlip_backend_shared == "dft" else "MLIP"
     )
+
+    _resume_path_request = {
+        "center": None if center_spec is None else str(center_spec),
+        "radius": float(radius),
+        "radius_het2het": float(radius_het2het),
+        "include_h2o": bool(include_h2o),
+        "exclude_backbone": bool(exclude_backbone),
+        "add_linkh": bool(add_linkh),
+        "selected_resn": str(selected_resn or ""),
+        "modified_residue": str(modified_residue or ""),
+        "ligand_charge": None if ligand_charge is None else str(ligand_charge),
+        "freeze_links": bool(freeze_links_flag),
+        "freeze_atoms": _freeze_atoms_for_log(),
+        "scan_lists": [str(value) for value in scan_lists_raw],
+        "scan_one_based": (
+            True if scan_one_based is None else bool(scan_one_based)
+        ),
+        "scan_max_step_size": scan_max_step_size,
+        "scan_bias_k": scan_bias_k,
+        "scan_relax_max_cycles": scan_relax_max_cycles,
+        "scan_preopt": scan_preopt_override,
+        "scan_endopt": scan_endopt_override,
+        "refine_path": bool(refine_path),
+        "mep_mode": str(mep_mode_kind),
+        "dmf_backend": str(dmf_backend),
+        "max_nodes": int(max_nodes),
+        "max_depth": max_depth,
+        "gsm_param": gsm_param,
+        "max_cycles_gsm": max_cycles_gsm,
+        "max_cycles_dmf": max_cycles_dmf,
+        "climb": bool(climb),
+        "opt_mode": str(opt_mode_norm),
+        "preopt": bool(preopt),
+        "thresh": thresh,
+        "thresh_gsm": thresh_gsm,
+        "thresh_dmf": thresh_dmf,
+        "coord_type": None if cli_coord_type is None else str(cli_coord_type),
+        "config_sha256": (
+            None if config_yaml is None else file_sha256(config_yaml)
+        ),
+    }
+    _resume_calculator_identity = {
+        key: deepcopy(_shared_provenance.get(key))
+        for key in (
+            "mlip_backend",
+            "mlip_model",
+            "mlip_task",
+            "mlip_precision",
+            "primary_method",
+            "dft_settings",
+        )
+        if key in _shared_provenance
+    }
+    resume_identity = build_resume_identity(
+        inputs=user_input_paths,
+        ref_pdb=ref_pdb_cli,
+        pipeline_mode="path-search" if refine_path else "path-opt",
+        path_request=_resume_path_request,
+        calculator_identity=_resume_calculator_identity,
+        charge=q_int,
+        spin=spin,
+    )
+
+    if resuming:
+        assert previous_manifest_payload is not None
+        assert previous_root_summary is not None
+        prior_segments = previous_root_summary.get("segments") or []
+        available_indices = [
+            int(item.get("index", 0) or 0)
+            for item in prior_segments
+            if isinstance(item, dict)
+        ]
+        validate_resume_identity(
+            previous_root_summary.get("resume_identity"),
+            resume_identity,
+            segment=int(resume_segment),
+            available_segments=available_indices,
+        )
+
+        produced = previous_manifest_payload["produced"]
+        source_prefixes = (
+            "path.hei.",
+            "path.hei_ref.",
+            "path.hei_gjf.",
+            "path.mep.",
+        )
+        for artifact_key, entry in produced.items():
+            keep_source = (
+                artifact_key == "path.summary"
+                or artifact_key.startswith(source_prefixes)
+                or (
+                    artifact_key.startswith("path.segment.")
+                    and artifact_key.endswith(".endpoint_trajectory")
+                )
+            )
+            artifact_path = Path(entry["path"])
+            keep_public = (
+                artifact_key.startswith("output.public.")
+                and retained_public_artifact(
+                    artifact_path,
+                    out_dir=out_dir,
+                    resume_segment=int(resume_segment),
+                )
+            )
+            if not (keep_source or keep_public):
+                continue
+            manifest.adopt_existing(
+                artifact_key,
+                artifact_path,
+                sha256_expected=entry["stamp"]["sha256"],
+            )
+        if "path.summary" not in manifest.produced:
+            raise click.ClickException(
+                "The saved run manifest does not contain the path summary required for resume."
+            )
+        selected_hei_key = f"path.hei.{int(resume_segment):02d}"
+        if selected_hei_key not in manifest.produced:
+            raise click.ClickException(
+                f"The saved MEP has no verified HEI artifact for segment "
+                f"{int(resume_segment):02d}."
+            )
+        invalidate_from_segment(out_dir, int(resume_segment))
+        _persist_run_manifest(manifest, out_dir)
+        _echo(
+            f"[all] Reusing the verified MEP and resuming post-processing at "
+            f"segment {int(resume_segment):02d}.",
+            narrative=True,
+        )
 
     # Preserve the source of parent CLI overrides. Child commands reread the
     # same YAML, so even values equal to child defaults must remain explicit.
@@ -7312,7 +7524,7 @@ def cli(
     models_for_path: List[Path]
     scan_diagnostics: Optional[dict] = None
     model_ref_pdbs: Optional[List[Path]] = None
-    if is_single and has_scan:
+    if is_single and has_scan and not resuming:
         _echo_section("====== [all] Stage 1b — Staged scan on input ======")
         ensure_dir(scan_dir)
 
@@ -7535,7 +7747,7 @@ def cli(
             models_for_path = list(model_outputs)
 
     # --- Global pre-alignment for coordinate continuity across segments ---
-    if not refine_path and len(models_for_path) >= 2:
+    if not resuming and not refine_path and len(models_for_path) >= 2:
         _fa = _freeze_atoms_for_log()
         if _fa:
             try:
@@ -7589,7 +7801,7 @@ def cli(
                 ) from e
 
     # Stage 2: MEP search
-    if not refine_path:
+    if not refine_path and not resuming:
         _echo_section(
             f"====== [all] Stage 2/{stage_total} — Pairwise MEP search via path-opt (no recursive path_search) ======"
         )
@@ -8103,7 +8315,7 @@ def cli(
                 f"[write] WARNING: Failed to write summary.log for path-opt branch: {e}",
                 err=True,
             )
-    if refine_path:
+    if refine_path and not resuming:
         # --- recursive GSM path_search branch ---
         _echo_section(
             f"====== [all] Stage 2/{stage_total} — MEP search on input structures (recursive GSM) ======"
@@ -8422,6 +8634,17 @@ def cli(
             f"[all] Current path summary is not a JSON object: {summary_path}"
         )
     summary: Dict[str, Any] = summary_loaded
+    summary["resume_identity"] = resume_identity
+    if resuming:
+        summary["energy_diagrams"] = retained_energy_diagrams(
+            previous_root_summary or summary,
+            int(resume_segment),
+        )
+        summary.pop("pipeline_stop", None)
+        summary["stopped_before_irc"] = False
+        summary["resumed_from_segment"] = int(resume_segment)
+    else:
+        summary.pop("resumed_from_segment", None)
     if scan_diagnostics is not None:
         summary["scan"] = scan_diagnostics
     path_optimizers.update(summary.get("path_optimizers", []))
@@ -8571,8 +8794,14 @@ def cli(
         )
         return
 
-    reactive = [s for s in segments if _is_reactive_segment(s)]
-    if not reactive:
+    all_reactive = [s for s in segments if _is_reactive_segment(s)]
+    reactive = [
+        s
+        for s in all_reactive
+        if not resuming
+        or int(s.get("index", 0) or 0) >= int(resume_segment)
+    ]
+    if not all_reactive:
         _echo("[post] No TS-capable segments. Skipping TS/thermo/DFT.", narrative=True)
         summary["pipeline_stop"] = {"stage": "post", "reason": "no_reactive_segment"}
         _write_pipeline_summary_log([])
@@ -8591,8 +8820,44 @@ def cli(
     dft_seg_energies: List[Tuple[float, float, float]] = []
     g_dft_mlip_seg_energies: List[Tuple[float, float, float]] = []
     irc_trj_for_all: List[Tuple[Path, bool]] = []
-    post_segment_logs: List[Dict[str, Any]] = []
+    post_segment_logs: List[Dict[str, Any]] = (
+        retained_post_segments(previous_root_summary or {}, int(resume_segment))
+        if resuming
+        else []
+    )
     pipeline_stop: Optional[Dict[str, Any]] = None
+
+    def _restore_prior_energy(key: str, target: List[Tuple[float, float, float]]) -> None:
+        for prior in post_segment_logs:
+            block = prior.get(key)
+            values = block.get("energies_au") if isinstance(block, dict) else None
+            if not isinstance(values, list) or len(values) != 3:
+                continue
+            try:
+                triple = tuple(float(value) for value in values)
+            except (TypeError, ValueError):
+                continue
+            if np.isfinite(triple).all():
+                target.append(triple)
+
+    if resuming:
+        _restore_prior_energy("mlip", tsopt_seg_energies)
+        _restore_prior_energy("gibbs_mlip", g_mlip_seg_energies)
+        _restore_prior_energy("dft", dft_seg_energies)
+        _restore_prior_energy("gibbs_dft_mlip", g_dft_mlip_seg_energies)
+        for prior in post_segment_logs:
+            trajectory = prior.get("irc_traj")
+            if not trajectory:
+                continue
+            path = Path(str(trajectory))
+            if path.is_file():
+                assignment = prior.get("endpoint_assignment")
+                reverse = bool(
+                    assignment.get("reversed", False)
+                    if isinstance(assignment, dict)
+                    else False
+                )
+                irc_trj_for_all.append((path, reverse))
 
     for s in reactive:
         seg_idx = int(s.get("index", 0) or 0)
@@ -9431,7 +9696,7 @@ def cli(
                             err=True,
                         )
 
-    if len(tsopt_seg_energies) == len(reactive):
+    if len(tsopt_seg_energies) == len(all_reactive):
         tsopt_all_energies = [e for triple in tsopt_seg_energies for e in triple]
         tsopt_all_labels = _build_global_segment_labels(len(tsopt_seg_energies))
         if tsopt_all_labels and len(tsopt_all_labels) == len(tsopt_all_energies):
@@ -9444,7 +9709,7 @@ def cli(
             if diag_payload:
                 energy_diagrams.append(diag_payload)
 
-    if do_thermo and len(g_mlip_seg_energies) == len(reactive):
+    if do_thermo and len(g_mlip_seg_energies) == len(all_reactive):
         g_mlip_all_energies = [e for triple in g_mlip_seg_energies for e in triple]
         g_mlip_all_labels = _build_global_segment_labels(len(g_mlip_seg_energies))
         if g_mlip_all_labels and len(g_mlip_all_labels) == len(g_mlip_all_energies):
@@ -9458,7 +9723,7 @@ def cli(
             if diag_payload:
                 energy_diagrams.append(diag_payload)
 
-    if do_dft and len(dft_seg_energies) == len(reactive):
+    if do_dft and len(dft_seg_energies) == len(all_reactive):
         dft_all_energies = [e for triple in dft_seg_energies for e in triple]
         dft_all_labels = _build_global_segment_labels(len(dft_seg_energies))
         if dft_all_labels and len(dft_all_labels) == len(dft_all_energies):
@@ -9471,7 +9736,7 @@ def cli(
             if diag_payload:
                 energy_diagrams.append(diag_payload)
 
-    if do_dft and do_thermo and len(g_dft_mlip_seg_energies) == len(reactive):
+    if do_dft and do_thermo and len(g_dft_mlip_seg_energies) == len(all_reactive):
         g_dft_mlip_all_energies = [e for triple in g_dft_mlip_seg_energies for e in triple]
         g_dft_mlip_all_labels = _build_global_segment_labels(len(g_dft_mlip_seg_energies))
         if g_dft_mlip_all_labels and len(g_dft_mlip_all_labels) == len(g_dft_mlip_all_energies):

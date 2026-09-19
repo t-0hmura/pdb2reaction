@@ -131,10 +131,10 @@ For many segments, fan out independent work (parallel `seg_NN/` jobs or the
 | Workload | CPU | GPU |
 |---|---|---|
 | MLIP inference (any backend) | Supported but often substantially slower; benchmark the actual model/system | Recommended for production-scale workloads |
-| `pdb2reaction dft` | Supported with `--engine cpu`; pilot actual method/system | GPU recommended when the GPU4PySCF stack supports the requested calculation |
+| `pdb2reaction dft` | Supported with `--dft-engine cpu`; pilot actual method/system | GPU recommended when the GPU4PySCF stack supports the requested calculation |
 | Analytical Hessian (supported built-in backend) | Can avoid GPU memory pressure but may be impractical | Autograd can use the accelerator, but speed and peak memory are backend/model/system dependent; pilot it |
 
-Check [`pdb2reaction-install-backends/dft.md`](../pdb2reaction-install-backends/dft.md) for `--engine gpu` / `cpu`
+Check [`pdb2reaction-install-backends/dft.md`](../pdb2reaction-install-backends/dft.md) for `--dft-engine gpu` / `cpu`
 specifics. On aarch64 the packaged extra provides CPU PySCF; only a separately
 source-built and locally validated GPU4PySCF environment can enable GPU DFT.
 
@@ -164,20 +164,11 @@ for this check. Never cancel by a guessed ID or broad name match.
 
 ## Failed jobs / restart
 
-If a job fails or is killed by walltime, individual stages can be
-re-run on the partial output by invoking the standalone subcommands
-directly:
-
-- `tsopt`, `freq`, `irc`, `dft` — re-run on the previous output.
-- `path-search` — has no resume; restart it with two or more structures in
-  reaction order (`-i A.pdb -i B.pdb …`; the CLI requires at least two `-i`
-  paths). Reuse the original endpoints, or split the partial multi-model
-  `mep_trj.pdb` / `mep_trj.xyz` trajectory into single-structure files and pass
-  those frames as separate `-i` flags.
-
-For walltime-truncated `all` runs, point `--out-dir` at a persistent
-location and pick up where you left off by chaining the appropriate
-subcommands against the artifacts that `all` already produced.
+For a completed MEP with failed segment post-processing, repeat the original
+`all` command against the persistent `--out-dir` and add
+`--resume-segment N`. Keep the original inputs, extraction, path, and
+calculator settings; post-processing settings may change. If the MEP itself
+did not complete, restart the path calculation from its endpoint structures.
 
 ## Parallel job submission patterns
 
@@ -215,8 +206,8 @@ shared list with file-lock-protected counter increment.
 
 ## Multi-node MLIP inference (`workers > 1`, UMA only)
 
-Most subcommands that touch geometry expose `--workers` and
-`--workers-per-node`, which spin up a Ray cluster of UMA predictor
+Most subcommands that touch geometry expose `--uma-workers` and
+`--uma-workers-per-node`, which spin up a Ray cluster of UMA predictor
 workers. **Two important caveats:**
 
 1. The `workers` / `workers_per_node` flags are filtered to the UMA

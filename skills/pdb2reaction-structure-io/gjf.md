@@ -42,7 +42,7 @@ pdb2reaction tsopt -i ts.gjf -b uma -o result_tsopt
 pdb2reaction tsopt -i ts.gjf -q -1 -m 2 -b uma -o result_tsopt
 
 # DFT — note --func-basis takes precedence over the route line
-pdb2reaction dft -i ts.gjf --func-basis 'wb97m-v/def2-tzvpd' --engine gpu
+pdb2reaction dft -i ts.gjf --func-basis 'wb97m-v/def2-tzvpd' --dft-engine gpu
 ```
 
 ## Generating gjf from pdb2reaction outputs

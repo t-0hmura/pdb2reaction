@@ -61,7 +61,7 @@
 | **スピン多重度** | Spin Multiplicity | 2S+1（S は全スピン量子数）。一重項（singlet）= 1、二重項（doublet）= 2、三重項（triplet）= 3 など。`-m/--multiplicity` で指定（デフォルト: 1） |
 | **cyipopt** | — | IPOPT 内点法ソルバの Python バインディング。DMF（`--mep-mode dmf`）経路精密化パイプラインが依存します |
 | **IPOPT** | Interior Point OPTimizer | 非線形制約付き最適化のオープンソース solver（Wächter & Biegler 2006）。DMF 経路精密化で `cyipopt` 経由で使用されます。 |
-| **SCF** | Self-Consistent Field | DFT/HF で電子波動関数を反復収束させる手続き。`pdb2reaction dft` では `--max-cycle` / `--conv-tol` で制御されます。 |
+| **SCF** | Self-Consistent Field | DFT/HF で電子波動関数を反復収束させる手続き。`pdb2reaction dft` では `--scf-max-cycles` / `--scf-tol` で制御されます。 |
 
 ## 構造生物学・活性部位モデル抽出
 

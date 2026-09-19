@@ -13,10 +13,10 @@ R → … → P の **2 構造以上**から、連続的な最小エネルギー
 ```bash
 pdb2reaction path-search -i R.pdb [-i I.pdb ...] -i P.pdb [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [--multiplicity 2S+1] \
  [-b/--backend uma|orb|mace|aimnet2|dft] \
- [--workers N] [--workers-per-node N] \
- [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET] [--thresh-gsm PRESET] [--thresh-dmf TOL] \
+ [--uma-workers N] [--uma-workers-per-node N] \
+ [--mep-mode {gsm|dmf}] [--freeze-links/--no-freeze-links] [--thresh PRESET] [--thresh-gsm PRESET] [--dmf-tol TOL] \
  [--refine-mode {peak|minima}] \
- [--max-nodes N] [--max-cycles-gsm N] [--max-cycles-dmf N] [--climb/--no-climb] \
+ [--max-nodes N] [--max-cycles-gsm N] [--dmf-max-iterations N] [--climb/--no-climb] \
  [--opt-mode grad|hess] [--dump/--no-dump] \
  [--out-dir DIR] [--preopt/--no-preopt] \
  [--align/--no-align] [--write-ref-merge/--no-write-ref-merge] [--ref-full-pdb FILE...] [--ref-pdb FILE...] \
@@ -114,7 +114,7 @@ out_dir/ (デフォルト:./result_path_search/)
 | `-m, --multiplicity INT` | スピン多重度（2S+1） | `.gjf` テンプレート値または `1` |
 | **バックエンドと計算** | | |
 | `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP バックエンド（任意で `dft`） | `uma` |
-| `--workers`, `--workers-per-node` | UMA 予測器の並列度（`workers_per_node` は並列予測器へ転送）。`workers > 1` と明示的な解析 Hessian は併用不可。{ref}`ja-workers-analytical-error` を参照 | `1`, `1` |
+| `--uma-workers`, `--uma-workers-per-node` | UMA 予測器の並列度（`workers_per_node` は並列予測器へ転送）。`workers > 1` と明示的な解析 Hessian は併用不可。{ref}`ja-workers-analytical-error` を参照 | `1`, `1` |
 | **活性領域の凍結** | | |
 | `--freeze-links/--no-freeze-links` | PDB 活性部位モデル読み込み時、キャップ水素の親原子を凍結。詳細は [extract](extract.md) を参照 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
@@ -126,7 +126,7 @@ out_dir/ (デフォルト:./result_path_search/)
 | `--max-depth INT` | 許可する再帰分割の階層数。`0` で分割無効（入力ペアごとに1セグメント、HEI が端点なら0）。上限に達した区間は `seg_NNN_maxdepth` タグで、素反応1段の保証はない | `10` |
 | `--gsm-param {equi\|energy}` | 完全成長後のGSMノード配置。`energy` は高エネルギー領域へノード密度を寄せる。等間隔経路がHEI近傍の反応座標領域を飛び越える場合の試行用であり、TSを同定する機能ではない | `equi` |
 | `--max-cycles-gsm INT` | GSM string optimizer の最大サイクル数 | `300` |
-| `--max-cycles-dmf INT` | DMF の最大 IPOPT 反復数 | `3000` |
+| `--dmf-max-iterations INT` | DMF の最大 IPOPT 反復数 | `3000` |
 | `--climb/--no-climb` | GSM セグメントのクライミングイメージを有効化（ブリッジは無効） | `True` |
 | **精密化** | | |
 | `--refine-mode {peak\|minima}` | 精密化シード: `peak` は HEI±1、`minima` は HEI から最寄り局所極小点へ外側探索。未指定時は GSM で `peak`、DMF で `minima` | _Auto_ |
@@ -134,7 +134,7 @@ out_dir/ (デフォルト:./result_path_search/)
 | **収束閾値** | | |
 | `--thresh TEXT` | 単一構造最適化のみの収束プリセットを上書き（`opt.lbfgs/rfo.thresh`） | `gau` |
 | `--thresh-gsm TEXT` | GSM ストリング最適化の収束プリセットを上書き（`stopt.thresh`） | `gau_loose` |
-| `--thresh-dmf TEXT` | DMF 最適化の IPOPT dual-infeasibility 許容値を上書き（`dmf.tol`）。`tight`(0.04)、`middle`(0.10)、`loose`(0.20) または正の float。Gaussian プリセットは受け付けない | `tight` |
+| `--dmf-tol TEXT` | DMF 最適化の IPOPT dual-infeasibility 許容値を上書き（`dmf.tol`）。`tight`(0.04)、`middle`(0.10)、`loose`(0.20) または正の float。Gaussian プリセットは受け付けない | `tight` |
 | **マージとアライメント** | | |
 | `--align/--no-align` | MEP 探索前に隣接入力を順にアライメント | `True` |
 | `--write-ref-merge/--no-write-ref-merge` | 確認用の `mep_w_ref*` / `hei_w_ref*` を生成。`--align` と `--ref-full-pdb` が必要。 | `False` |

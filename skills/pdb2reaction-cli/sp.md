@@ -24,13 +24,13 @@ pdb2reaction sp -i geom.{pdb,cif,mmcif,xyz,gjf} \
 | `--hess / --no-hess` | off | Also write a Hessian; without frozen atoms it is `(3N, 3N)`, while YAML `geom.freeze_atoms` selects the active partial block |
 | `--hessian-calc-mode` | `FiniteDifference` | Finite differences are the default for every backend; an explicit `Analytical` request is supported by all four backends |
 | `--precision` | backend-dependent | Unset means UMA/AIMNet2 fp32 and ORB/MACE fp64; AIMNet2 rejects fp64 |
-| `--workers` / `--workers-per-node` | `1` / `1` | UMA predictor parallelism; other built-in backends filter these keys |
+| `--uma-workers` / `--uma-workers-per-node` | `1` / `1` | UMA predictor parallelism; other built-in backends filter these keys |
 | `-b, --backend` | `uma` | MLIP backend or optional DFT calculator |
 | `-o, --out-dir` | `./result_sp/` | Output directory |
 | `--out-json` | off | Write identical `result.json` and `summary.json` payloads |
 | `--show-config` / `--dry-run` | off | Print-and-continue / validate-and-exit |
 
-With UMA, `--workers` greater than 1 cannot honor an explicit Analytical
+With UMA, `--uma-workers` greater than 1 cannot honor an explicit Analytical
 Hessian request and raises `BackendError`; select FiniteDifference or use one
 worker. No Hessian restriction applies when `--hess` is absent.
 

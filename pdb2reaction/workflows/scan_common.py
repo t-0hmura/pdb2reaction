@@ -211,13 +211,16 @@ def add_scan_common_options(
             ),
         ),
         click.option(
+            "--uma-workers",
             "--workers",
+            "workers",
             type=int,
             default=workers_default,
             show_default=True,
             help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
         ),
         click.option(
+            "--uma-workers-per-node",
             "--workers-per-node",
             "workers_per_node",
             type=int,
@@ -274,7 +277,9 @@ def add_scan_common_options(
             help="Maximum scanned dihedral change per step [degree].",
         ),
         click.option(
+            "--restraint-k",
             "--bias-k",
+            "bias_k",
             type=float,
             default=bias_k_default,
             show_default=(bias_k_default if bias_k_default is not None else bias_k_shown),

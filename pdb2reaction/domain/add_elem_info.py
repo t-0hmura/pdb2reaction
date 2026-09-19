@@ -315,7 +315,7 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
     help="Input PDB filepath.",
 )
 @click.option(
-    "-o", "--out",
+    "-o", "--output", "--out",
     "out_pdb",
     type=click.Path(path_type=Path, dir_okay=False),
     default=None,

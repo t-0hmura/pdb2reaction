@@ -187,7 +187,7 @@ ray status
 # --- Ray setup end ---
 
 pdb2reaction opt -i test.pdb -q -5 -m 1 \
- --workers "${TOTAL_WORKERS}" --workers-per-node "${GPUS_PER_NODE}"
+ --uma-workers "${TOTAL_WORKERS}" --uma-workers-per-node "${GPUS_PER_NODE}"
 ```
 
 ## ウォールタイム見積り

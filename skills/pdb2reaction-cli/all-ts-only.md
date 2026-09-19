@@ -13,7 +13,7 @@ plus R/TS/P `freq` when `--thermo` and DFT when `--dft`.
 pdb2reaction all -i ts_candidate.xyz \
     -q -1 -m 1 -b uma \
     --tsopt --thermo \
-    [--dft --dft-func-basis 'wb97m-v/def2-tzvpd'] \
+    [--dft --func-basis 'wb97m-v/def2-tzvpd'] \
     -o result_ts_only
 ```
 

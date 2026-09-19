@@ -75,8 +75,8 @@ out_dir/ (デフォルト:./result_freq/)
 | `-i, --input PATH` | 入力bridgeが受け入れる構造（`.pdb` / `.cif` / `.mmcif` / `.xyz` / `.trj` / ...） | 必須 |
 | `-q, --charge INT` | 総電荷。明示的な `-q` が最優先。その他の解決順序は {ref}`電荷の指定 <ja-charge-specification>` を参照 | YAML/テンプレート/導出がない限り必須 |
 | `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB/mmCIF 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB/mmCIF 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
-| `--workers INT` | UMA 予測器の並列度。`workers > 1` と明示的な解析 Hessian は併用できないため、`workers = 1` または有限差分を使用。{ref}`ja-workers-analytical-error` を参照 | `1` |
-| `--workers-per-node INT` | ノードあたりのワーカー数。並列予測器に渡されます | `1` |
+| `--uma-workers INT` | UMA 予測器の並列度。`workers > 1` と明示的な解析 Hessian は併用できないため、`workers = 1` または有限差分を使用。{ref}`ja-workers-analytical-error` を参照 | `1` |
+| `--uma-workers-per-node INT` | ノードあたりのワーカー数。並列予測器に渡されます | `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1）。明示的な `-m` は YAML `calc.spin` より優先し、省略時は YAML、`.gjf`、`1` の順に解決 | YAML/`.gjf`/`1` |
 | `--freeze-links/--no-freeze-links` | PDB/mmCIF 入力（または `--ref-pdb` 付き XYZ/GJF）。キャップ水素の親を凍結し `geom.freeze_atoms` にマージ。キャップ水素の詳細は [extract](extract.md) を参照 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |

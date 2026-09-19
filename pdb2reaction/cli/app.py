@@ -111,7 +111,7 @@ def _emit_start_header(ctx: click.Context) -> None:
 
 _LAZY_SUBCOMMANDS: dict[str, tuple[str, str, str]] = {
     "all": ("pdb2reaction.workflows.all", "cli", "End-to-end reaction workflow with MEP, scan, or TS-only entry routes."),
-    "scan": ("pdb2reaction.workflows.scan", "cli", "Run staged 1D scan with harmonic restraints."),
+    "scan": ("pdb2reaction.workflows.scan", "cli", "Run a staged 1D coordinate scan with harmonic restraints."),
     "opt": ("pdb2reaction.workflows.opt", "cli", "Optimize one structure."),
     "path-opt": ("pdb2reaction.workflows.path_opt", "cli", "Optimize a reaction path segment."),
     "path-search": ("pdb2reaction.workflows.path_search", "cli", "Search reaction pathways recursively."),
@@ -122,17 +122,26 @@ _LAZY_SUBCOMMANDS: dict[str, tuple[str, str, str]] = {
     "add-elem-info": ("pdb2reaction.domain.add_elem_info", "cli", "Repair/add PDB element columns."),
     "dft": ("pdb2reaction.workflows.dft", "cli", "Run single-point DFT."),
     "sp": ("pdb2reaction.workflows.sp", "cli", "Run single-point MLIP energy + forces."),
-    "scan2d": ("pdb2reaction.workflows.scan2d", "cli", "Run 2D distance scan."),
-    "scan3d": ("pdb2reaction.workflows.scan3d", "cli", "Run 3D distance scan."),
+    "scan2d": ("pdb2reaction.workflows.scan2d", "cli", "Run a 2D coordinate scan."),
+    "scan3d": ("pdb2reaction.workflows.scan3d", "cli", "Run a 3D coordinate scan."),
     "extract": ("pdb2reaction.workflows.extract", "cli", "Extract an active site model."),
     "fix-altloc": ("pdb2reaction.io.pdb_fix", "cli", "Resolve PDB alternate locations."),
     "energy-diagram": ("pdb2reaction.io.energy_diagram", "cli", "Draw energy diagrams from values."),
     "bond-summary": ("pdb2reaction.domain.bond_summary", "cli", "Detect bond changes between structures."),
 }
 
-# ``all`` retains value-style Click booleans for its established interface;
-# toggle-style options on other commands are discovered at runtime.
-_COMMAND_BOOL_VALUE_OPTIONS: dict[str, frozenset[str]] = {
+_COMMAND_BOOL_VALUE_OPTIONS: dict[str, frozenset[str]] = {}
+
+# Manual toggle-option hints.  ``DefaultGroup._resolve_bool_options()``
+# auto-detects toggle options from Click's ``is_bool_flag`` attribute,
+# but entries here ensure correct normalization *before* the lazy
+# subcommand is imported (needed for early argv rewriting).
+_COMMAND_BOOL_TOGGLE_OPTIONS: dict[str, frozenset[str]] = {
+    "add-elem-info": frozenset(
+        {
+            "--overwrite",
+        }
+    ),
     "all": frozenset(
         {
             "--add-linkh",
@@ -151,22 +160,6 @@ _COMMAND_BOOL_VALUE_OPTIONS: dict[str, frozenset[str]] = {
             "--thermo",
             "--tsopt",
             "--write-ref-merge",
-        }
-    ),
-}
-
-# Manual toggle-option hints.  ``DefaultGroup._resolve_bool_options()``
-# auto-detects toggle options from Click's ``is_bool_flag`` attribute,
-# but entries here ensure correct normalization *before* the lazy
-# subcommand is imported (needed for early argv rewriting).
-_COMMAND_BOOL_TOGGLE_OPTIONS: dict[str, frozenset[str]] = {
-    "add-elem-info": frozenset(
-        {
-            "--overwrite",
-        }
-    ),
-    "all": frozenset(
-        {
             "--dry-run",
             "--flatten",
             "--show-config",
@@ -324,6 +317,9 @@ _COMMAND_BOOL_TOGGLE_OPTIONS: dict[str, frozenset[str]] = {
 }
 
 _COMMAND_BOOL_TOGGLE_NEGATIVE_ALIASES: dict[str, dict[str, str]] = {
+    "all": {
+        "--scan-one-based": "--scan-zero-based",
+    },
     "scan": {
         "--one-based": "--zero-based",
     },
@@ -353,7 +349,7 @@ _SUBCOMMAND_PRIMARY_HELP_OPTIONS: dict[str, frozenset[str]] = {
             "-s", "--scan-lists",
             "--config",
             "-o", "--out-dir",
-            "--bias-k",
+            "--restraint-k",
             "--max-step-size",
             "--thresh",
             "--print-every",
@@ -374,7 +370,7 @@ _SUBCOMMAND_PRIMARY_HELP_OPTIONS: dict[str, frozenset[str]] = {
             "-s", "--scan-lists",
             "--config",
             "-o", "--out-dir",
-            "--bias-k",
+            "--restraint-k",
             "--max-step-size",
             "--thresh",
             "--print-every",
@@ -396,7 +392,7 @@ _SUBCOMMAND_PRIMARY_HELP_OPTIONS: dict[str, frozenset[str]] = {
             "--csv",
             "--config",
             "-o", "--out-dir",
-            "--bias-k",
+            "--restraint-k",
             "--max-step-size",
             "--thresh",
             "--print-every",
@@ -417,8 +413,8 @@ _SUBCOMMAND_PRIMARY_HELP_OPTIONS: dict[str, frozenset[str]] = {
             "--opt-mode",
             "--thresh",
             "--dump", "--no-dump",
-            "--dist-freeze",
-            "--bias-k",
+            "--distance-restraint",
+            "--restraint-k",
             "--config",
             "-o", "--out-dir",
             "--max-cycles",
@@ -443,7 +439,7 @@ _SUBCOMMAND_PRIMARY_HELP_OPTIONS: dict[str, frozenset[str]] = {
             "--fix-ends",
             "-o", "--out-dir",
             "--max-cycles-gsm",
-            "--max-cycles-dmf",
+            "--dmf-max-iterations",
             "--help-advanced",
         }
     ),
@@ -464,7 +460,7 @@ _SUBCOMMAND_PRIMARY_HELP_OPTIONS: dict[str, frozenset[str]] = {
             "--max-nodes",
             "-o", "--out-dir",
             "--max-cycles-gsm",
-            "--max-cycles-dmf",
+            "--dmf-max-iterations",
             "--help-advanced",
         }
     ),
@@ -541,7 +537,7 @@ _SUBCOMMAND_PRIMARY_HELP_OPTIONS: dict[str, frozenset[str]] = {
             "-m",
             "--multiplicity",
             "--func-basis",
-            "--engine",
+            "--dft-engine",
             "--solvent",
             "--solvent-model",
             "--config",

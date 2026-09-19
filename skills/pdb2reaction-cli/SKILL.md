@@ -120,7 +120,7 @@ test -f "$TS_FILE"
 pdb2reaction dft -i "$TS_FILE" \
     -l 'SAM:1,GPP:-3' \
     --func-basis 'wb97m-v/def2-tzvpd' \
-    --engine gpu
+    --dft-engine gpu
 ```
 
 ### Bond-change report between R and P
@@ -139,7 +139,7 @@ pdb2reaction bond-summary -i reactant.pdb -i product.pdb
 | `--config` YAML ignored | YAML is read **after** built-in defaults but **before** explicit CLI flags. Anything also given on CLI overrides YAML. |
 | `--help-advanced` flags differ between versions | They are subject to change; if a flag isn't in `--help`, check `--help-advanced` and version-pin if the workflow is shared. |
 | OOM on the Hessian step | Try `--hessian-calc-mode FiniteDifference` to avoid the analytical autograd graph, use a justified frozen boundary/PHVA, or select a smaller backend model. The active-space Hessian itself remains dense, so benchmark memory rather than assuming any one switch is sufficient. |
-| UMA `--workers > 1` with an explicit analytical Hessian | This raises `BackendError`; it never silently changes the requested method. Use `--workers 1` for `Analytical`, or explicitly select `FiniteDifference`. ORB/MACE/AIMNet2 do not use these worker flags. All four built-in backends implement analytical Hessians when used in a supported configuration. |
+| UMA `--uma-workers > 1` with an explicit analytical Hessian | This raises `BackendError`; it never silently changes the requested method. Use `--uma-workers 1` for `Analytical`, or explicitly select `FiniteDifference`. ORB/MACE/AIMNet2 do not use these worker flags. All four built-in backends implement analytical Hessians when used in a supported configuration. |
 
 ## Defaults
 

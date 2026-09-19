@@ -38,7 +38,7 @@
 | `--thresh` | `thresh` | `opt` |
 | `--max-cycles` | `max_cycles` | コマンド別: `opt`/`tsopt` は `opt`、`irc` は `irc` |
 | `--max-cycles-gsm` | `max_cycles` | `stopt`（`stopt.stop_in_when_full` も設定） |
-| `--max-cycles-dmf` | `max_cycles` | `dmf` |
+| `--dmf-max-iterations` | `max_cycles` | `dmf` |
 | `--gsm-param` | `param` | `gs` |
 | `--dump` | `dump` | コマンド別の optimizer/path owner（`opt`、`stopt`、または選択された子設定） |
 | `--opt-mode` | _(CLI のみ)_ | — |
@@ -46,14 +46,10 @@
 | `--coord-type` | `coord_type` | `geom` |
 | `--temperature`（freq、`all --freq-temperature`） | `temperature` | `thermo` |
 | `--pressure`（freq、`all --freq-pressure`） | `pressure_atm` | `thermo` |
-| `--engine`（`dft` サブコマンド） / `--dft-engine`（`all` ラッパー） | `engine` | `dft` |
+| `--dft-engine` | `engine` | `dft` |
 
 ```{note}
 **名前不一致 — `--pressure` vs `pressure_atm`.** CLI フラグは `--pressure`（単位は暗黙的に atm）、`thermo:` 配下の対応 YAML キーは `pressure_atm`（単位接尾辞付き）です。いずれも atm で扱い、内部で Pa に変換されます。
-```
-
-```{note}
-**名前不一致 — `--engine` vs `--dft-engine`.** 単体の `dft` サブコマンドでは `--engine`（gpu / cpu）です。`pdb2reaction all` では他の engine 系オプションと衝突を避けるため、同じフラグが `--dft-engine` にリネームされます — {ref}`CLI 規約の --engine vs --dft-engine 節 <ja-engine-vs-dft-engine>` を参照してください。
 ```
 
 ### サブコマンド別の `--thresh` デフォルト
@@ -160,7 +156,7 @@ calc:
   func_basis: wb97m-v/def2-svp
   engine: gpu             # gpu (GPU4PySCF) | cpu (PySCF)
   lowmem: true             # DF tensorを保持しないdirect JK
-  density_fit: false       # --no-lowmemで既定有効
+  density_fit: false       # --no-dft-low-memoryで既定有効
   nprocs: auto             # scheduler/affinityからPySCF thread数を決定
   memory: auto             # host RAM上限（例64GB、GPU VRAMではない）
   solvent: none
@@ -349,8 +345,8 @@ DMF では `--max-nodes` を `DirectMaxFlux(nmove=...)` に渡します。DMF AP
 ```yaml
 dmf:
  backend: gpu # gpu (dmf.torch / CUDA、default) | cpu (dmf / NumPy)
- max_cycles: 3000 # DMF/IPOPT の最大反復数（--max-cycles-dmf で上書き）
- tol: tight # IPOPT dual_inf_tol: tight(0.04) | middle(0.10) | loose(0.20) または正の float（--thresh-dmf で上書き）
+ max_cycles: 3000 # DMF/IPOPT の最大反復数（--dmf-max-iterations で上書き）
+ tol: tight # IPOPT dual_inf_tol: tight(0.04) | middle(0.10) | loose(0.20) または正の float（--dmf-tol で上書き）
  correlated: true # Correlated DMF propagation
  sequential: true # Sequential DMF execution
  fbenm_only_endpoints: false # Run FB-ENM beyond endpoints
@@ -664,10 +660,10 @@ bias:
 
 | YAML キー | 使用元 | CLI フラグ |
 |----------|-------|-----------|
-| `bias.k` | `scan`, `scan2d`, `scan3d` | `--bias-k` |
+| `bias.k` | `scan`, `scan2d`, `scan3d` | `--restraint-k` |
 | `dmf.k_fix` | `path-opt` / `path-search` で `mep_mode: dmf` を使用する場合 | —（YAML 専用） |
 
-`opt` も `--bias-k`（`--dist-freeze` 原子ペアに適用）を受け付けますが、これは CLI フラグからのみ読み取られ、同じ `300.0` をデフォルト値とします。`bias:` YAML セクションは参照しません。
+`opt` も `--restraint-k`（`--distance-restraint` 原子ペアに適用）を受け付けますが、これは CLI フラグからのみ読み取られ、同じ `300.0` をデフォルト値とします。`bias:` YAML セクションは参照しません。
 
 調和拘束の強さを調整したい場合はこれらのいずれかを上書きしてください。値を小さく（例: `20.0`）すると、柔らかい誘導項としてジオメトリが緩和しやすくなります。デフォルトの `300.0` はほぼ剛体的に固定する値です。
 

@@ -97,7 +97,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  - **最初の活性部位モデルの総電荷**がスキャン/MEP/TSOPT に伝播
 
 2. **オプションの段階的スキャン（単一入力のみ）**
- - 各 `--scan-lists` 引数は距離`(i,j,target_Å)`、角度`(i,j,k,target_deg)`、二面角`(i,j,k,l,target_deg)`を記述するPythonライクなリストです。原子インデックスは元の入力順序を参照し、デフォルトでは 1 始まりです（`--no-scan-one-based` を指定すると 0 始まりとして読みます）。いずれの場合も活性部位モデル順序に自動変換されます。3-field selector（例: `'TYR,285,CA'`）はtoken順を問いません。残基名や番号が重複するときは、位置固定の`CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`（例: `A:SAM:320:C1`）でchainを明示します。
+ - 各 `--scan-lists` 引数は距離`(i,j,target_Å)`、角度`(i,j,k,target_deg)`、二面角`(i,j,k,l,target_deg)`を記述するPythonライクなリストです。原子インデックスは元の入力順序を参照し、デフォルトでは 1 始まりです（`--scan-zero-based` を指定すると 0 始まりとして読みます）。いずれの場合も活性部位モデル順序に自動変換されます。3-field selector（例: `'TYR,285,CA'`）はtoken順を問いません。残基名や番号が重複するときは、位置固定の`CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`（例: `A:SAM:320:C1`）でchainを明示します。
  - 単一リテラルは 1 ステージスキャンを実行し、複数リテラルは**順次**実行されるため、ステージ 2 はステージ 1 の結果から開始されます。複数リテラルは 1 つの `-s/--scan-lists` に並べて指定します（例: `-s '[(…)]' '[(…)]'`）。
  - ステージエンドポイント（`stage_XX/result.pdb`）が、後続 MEP ステップへ渡される順序付き中間体となる
 
@@ -259,7 +259,7 @@ raw PDB CCD との名前衝突は自動判別しないため、`--modified-resid
 ### MEP 探索オプション
 
 ```{note}
-`all --max-cycles-gsm` / `--max-cycles-dmf` は MEP 専用です。後処理は
+`all --max-cycles-gsm` / `--dmf-max-iterations` は MEP 専用です。後処理は
 `--tsopt-max-cycles` と YAML `irc.max_cycles`、単独コマンドは各自の
 `--max-cycles` を使います。
 ```
@@ -271,12 +271,12 @@ raw PDB CCD との名前衝突は自動判別しないため、`--modified-resid
 | `--max-depth INT` | 許可する再帰分割の階層数（`--refine-path` が必須）。`0` で分割無効（入力ペアごとに1セグメント、HEI が端点なら0）。上限に達した区間は `seg_NNN_maxdepth` タグで、素反応1段の保証はない | `10` |
 | `--gsm-param [equi\|energy]` | 完全成長後のGSMノード配置。`energy` は高エネルギー領域へノード密度を寄せる。等間隔経路がHEI近傍の反応座標領域を飛び越える場合の試行用であり、TSを同定する機能ではない | `equi` |
 | `--max-cycles-gsm INT` | GSM string optimizer の最大サイクル数 | `300` |
-| `--max-cycles-dmf INT` | DMF の最大 IPOPT 反復数 | `3000` |
+| `--dmf-max-iterations INT` | DMF の最大 IPOPT 反復数 | `3000` |
 | `--climb/--no-climb` | 標準 GSM セグメントでクライミングイメージを有効化（ブリッジセグメントは常に無効） | `True` |
 | `--opt-mode [grad\|hess]` | ワークフロープリセット（`grad` → L-BFGS/Dimer、`hess` → RFO/RSPRFO）。コマンド個別実行では `opt --opt-mode grad\|hess`、`tsopt --opt-mode grad\|hess` を推奨。トークンのマッピングはスコープ依存で、`all` の pre-opt デフォルト（`grad`）と `tsopt` のデフォルト（`hess`）は一致しません。詳細は {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
 | `--thresh TEXT` | 単一構造最適化と scan 緩和の収束プリセット（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau` |
 | `--thresh-gsm TEXT` | MEP 段の GSM ストリング最適化の収束プリセット（`--thresh` と同じプリセット群） | `gau_loose` |
-| `--thresh-dmf TEXT` | DMF MEP 段の IPOPT dual-infeasibility 許容値。`tight`(0.04)、`middle`(0.10)、`loose`(0.20) または正の float。Gaussian プリセットではない | `tight` |
+| `--dmf-tol TEXT` | DMF MEP 段の IPOPT dual-infeasibility 許容値。`tight`(0.04)、`middle`(0.10)、`loose`(0.20) または正の float。Gaussian プリセットではない | `tight` |
 | `--preopt/--no-preopt` | MEP 前に活性部位モデル端点を事前最適化。単体の `scan`、`scan2d`、`scan3d` では `--preopt` のデフォルトは `False`（`--preopt` を渡すと有効化） | `True` |
 | `--refine-path / --no-refine-path` | 再帰的 `path-search` を有効化 / デフォルトの単一パス `path-opt` を使用。再帰的 refine は single-step MEP にも適用でき、poor な HEI や TS 推定を改善できる | 無効 |
 | `--write-ref-merge` | 確認用の `mep_w_ref*` / `hei_w_ref*` 座標compositeを生成。`--refine-path`、`-c/--center`、PDB/mmCIF入力が必要 | 無効 |
@@ -285,7 +285,7 @@ raw PDB CCD との名前衝突は自動判別しないため、`--modified-resid
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `--workers`, `--workers-per-node` | UMA 予測器の並列度。`workers > 1` と明示的な解析 Hessian は併用できないため、`workers = 1` または有限差分を使用。診断上の注意は {ref}`ja-workers-analytical-error` を参照 | `1`, `1` |
+| `--uma-workers`, `--uma-workers-per-node` | UMA 予測器の並列度。`workers > 1` と明示的な解析 Hessian は併用できないため、`workers = 1` または有限差分を使用。診断上の注意は {ref}`ja-workers-analytical-error` を参照 | `1`, `1` |
 | `--hessian-calc-mode [Analytical\|FiniteDifference]` | 共有 MLIP Hessian エンジン | `FiniteDifference` |
 | `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP バックエンド（任意で `dft`） | `uma` |
 ### 後処理オプション
@@ -336,16 +336,16 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 
 | オプション | 説明 | デフォルト |
 | --- | --- | --- |
-| `--dft-engine [gpu\|cpu]` | DFT バックエンド: gpu (GPU4PySCF) または cpu (PySCF)。`all` ラッパーではプレフィックス付きで `--dft-engine` と名付けられていますが、単体の `dft` サブコマンドでは同じオプションが `--engine` という名前になります | `gpu` |
+| `--dft-engine [gpu\|cpu]` | DFT バックエンド: gpu (GPU4PySCF) または cpu (PySCF) | `gpu` |
 | `--dft-solvent TEXT` | 後処理DFTで使うPySCF native implicit solvent | `none` |
 | `--dft-solvent-model [pcm\|smd]` | 後処理DFTで使うPySCF native solvent model | `smd` |
 | `--dft-out-dir PATH` | DFT 出力ディレクトリ上書き | _None_ |
-| `--dft-func-basis TEXT` | 汎関数/基底関数ペア | `wb97m-v/def2-svp` |
-| `--lowmem/--no-lowmem` | 主DFT backendまたは任意の`--dft` stageの低memory policy | `--lowmem` |
+| `--func-basis TEXT` | 汎関数/基底関数ペア | `wb97m-v/def2-svp` |
+| `--dft-low-memory/--no-dft-low-memory` | 主DFT backendまたは任意の`--dft` stageの低memory policy | `--dft-low-memory` |
 | `--dft-nprocs INT` | DFT用PySCF/OpenMP CPU thread数 | `auto` |
-| `--dft-mem SIZE` | DFT用PySCF host RAM上限。GPU VRAMではない | `auto` |
-| `--dft-max-cycle INT` | 最大 SCF サイクル | `100` |
-| `--dft-conv-tol FLOAT` | SCF 収束閾値 | `1e-9` |
+| `--dft-memory SIZE` | DFT用PySCF host RAM上限。GPU VRAMではない | `auto` |
+| `--scf-max-cycles INT` | 最大 SCF サイクル | `100` |
+| `--scf-tol FLOAT` | SCF 収束閾値 | `1e-9` |
 | `--dft-grid-level INT` | PySCF グリッドレベル | `3` |
 
 (ja-scan-options-single-input-runs)=
@@ -355,12 +355,28 @@ TSOPT の最適化モードは、`--opt-mode-post`（指定時）→ `--opt-mode
 | --- | --- | --- |
 | `-s, --scan-lists TEXT...` | 距離・角度・二面角targetの段階的scan | _None_ |
 | `--scan-out-dir PATH` | scan 出力ディレクトリ上書き | _None_ |
-| `--scan-one-based/--no-scan-one-based` | `--scan-lists` の原子インデックスの読み方: `True` = 1 始まり、`False` = 0 始まり | _None_（1 始まり） |
+| `--scan-one-based/--scan-zero-based` | `--scan-lists` の原子インデックスの読み方 | 1 始まり |
 | `--scan-max-step-size FLOAT` | 最大ステップサイズ（Å） | `0.20` |
-| `--scan-bias-k FLOAT` | 調和バイアス強度（eV·Å⁻²） | `300` |
+| `--scan-restraint-k FLOAT` | 調和バイアス強度（eV·Å⁻²） | `300` |
 | `--scan-relax-max-cycles INT` | 緩和サイクル上限 | `100000` |
 | `--scan-preopt/--no-scan-preopt` | scan の事前最適化トグルを上書き | _None_ |
 | `--scan-endopt/--no-scan-endopt` | scan のステージ終端最適化トグルを上書き | _None_ |
+
+## セグメントから後処理を再開する
+
+元の`all`コマンドと同じ入力、抽出、経路、calculator設定、`--out-dir`を
+指定し、`--resume-segment N`を追加します。`--tsopt-max-cycles`などの
+後処理設定は変更できます。
+
+```bash
+pdb2reaction all -i R.pdb P.pdb -c 'SUB,CYS:112,ASP:114' \
+  --tsopt --thermo --tsopt-max-cycles 200000 \
+  --resume-segment 3 --out-dir result_all
+```
+
+保存済みの入力とMEP artifactを検証し、`N`より前の完了済みセグメントを
+保持して、`N`以降の後処理出力と集約summaryを再生成します。出力directory
+には、以前の`all`実行が書いた再開用metadataが必要です。
 
 ## YAML 設定
 
@@ -405,7 +421,7 @@ dft:
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 - 形式電荷を推定できない場合は `--ligand-charge`（数値または残基別マッピング）を必ず指定し、scan/MEP/TSOPT/DFT へ正しい総電荷を伝播させてください。
 - `--write-ref-merge` 指定時は、確認用の `mep_w_ref*` に使う静的テンプレートを最初の元入力から取得します。`path-search --ref-full-pdb` は内部で処理します。
-- 収束プリセット: `--thresh` のデフォルトは `gau`、`--thresh-post` のデフォルトは `baker`、MEP 段は `--thresh-gsm`（デフォルト `gau_loose`）と `--thresh-dmf`（デフォルト `tight`）が担当。
+- 収束プリセット: `--thresh` のデフォルトは `gau`、`--thresh-post` のデフォルトは `baker`、MEP 段は `--thresh-gsm`（デフォルト `gau_loose`）と `--dmf-tol`（デフォルト `tight`）が担当。
 - 抽出半径: `-r 0`（または `--radius 0`）では半径による拡張を無効化し、`-c` と `--selected-resn` で選んだ残基からモデルを構築します。構造上必要なジスルフィド結合partnerや隣接主鎖contextが安全策として追加される場合があります。空の幾何検索を避けるため、zero radiusは内部で `0.001 Å` にクランプされます。
 - エネルギーダイアグラムは反応物（最初の状態）基準の kcal/mol で表示されます。
 - `-c/--center` を省略すると抽出をスキップし、全構造をそのまま MEP/tsopt/freq/DFT に渡します。ただし単一構造実行では `--scan-lists` か `--tsopt` が必要です。

@@ -20,8 +20,9 @@ def test_calculator_leaf_help_describes_backend_specific_solvent() -> None:
     result = CliRunner().invoke(cli, ["sp", "--help-advanced"])
 
     assert result.exit_code == 0, result.output
-    assert "xTB solvent delta" in result.output
-    assert "native PySCF PCM/SMD" in result.output
+    normalized_help = " ".join(result.output.split())
+    assert "xTB solvent delta" in normalized_help
+    assert "native PySCF PCM/SMD" in normalized_help
 
 
 def test_dft_resource_defaults_are_lowmem_and_explicit_values_normalize(

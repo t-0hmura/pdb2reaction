@@ -26,7 +26,7 @@ pdb2reaction freq -i geom.{pdb,cif,xyz,gjf} \
 | `--temperature` | float | 298.15 | K, for thermochemistry |
 | `--pressure` | float | 1.0 | atm, for thermochemistry |
 | `--hessian-calc-mode` | str | `FiniteDifference` | `Analytical` / `FiniteDifference`; check `UMA_CALC_KW` |
-| `--workers`, `--workers-per-node` | int | `1`, `1` | UMA predictor workers. An explicit `Analytical` request with `workers > 1` raises `BackendError`; use one worker or finite differences. Other built-in backends ignore these worker kwargs. |
+| `--uma-workers`, `--uma-workers-per-node` | int | `1`, `1` | UMA predictor workers. An explicit `Analytical` request with `workers > 1` raises `BackendError`; use one worker or finite differences. Other built-in backends ignore these worker kwargs. |
 | `-b, --backend` | str | `uma` | MLIP backend or optional DFT calculator |
 | `-o, --out-dir` | path | `./result_freq/` | Output directory |
 | `--config` / `--show-config` / `--dry-run` / `--help-advanced` | — | — | Standard |
@@ -135,7 +135,7 @@ freeze of `LKH/HL` cap-H parents written by `extract`), and YAML
   model, system, precision, and hardware; both paths still materialize a dense
   active-space Hessian.
 - UMA's multi-worker predictor has no analytical autograd model. Therefore
-  `--workers > 1 --hessian-calc-mode Analytical` is rejected rather than
+  `--uma-workers > 1 --hessian-calc-mode Analytical` is rejected rather than
   silently changing the requested numerical method. UMA, ORB, MACE, and
   AIMNet2 all support explicit analytical Hessians in their supported
   single-calculator configurations.

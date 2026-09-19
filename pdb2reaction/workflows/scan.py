@@ -263,7 +263,9 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
          "Atom strings accept positional CHAIN:RESNAME:RESSEQ[ICODE]:ATOM. "
          "Multiple inline literals define sequential stages.",
 )
-@click.option("--target-mode", is_flag=True, default=False, hidden=True)
+@click.option(
+    "--target-mode", is_flag=True, default=False, show_default=True, hidden=True
+)
 @add_scan_common_options(
     workers_default=UMA_CALC_KW["workers"],
     workers_per_node_default=UMA_CALC_KW["workers_per_node"],

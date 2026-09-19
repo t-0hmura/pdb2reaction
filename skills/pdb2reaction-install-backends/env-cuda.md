@@ -37,7 +37,7 @@ building PyTorch/GPU4PySCF from source. In that case, use one of these setups:
 ```bash
 module load <CUDA_MODULE>           # exact name from `module avail cuda`
 module load gcc                     # toolchain for the CUDA build (see note below)
-module load <OPENMPI_MODULE>        # only when running multi-node Ray (`--workers > 1`); single-node runs do not need it
+module load <OPENMPI_MODULE>        # only when running multi-node Ray (`--uma-workers > 1`); single-node runs do not need it
 nvcc --version                      # confirm
 echo "$CUDA_HOME"                   # often set by the module
 ```
@@ -128,8 +128,8 @@ pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cpu
 `pdb2reaction` runs MLIP backends on CPU but is usually much slower; measure a
 representative structure rather than assuming a fixed slowdown. For DFT
 (`pdb2reaction dft`), CPU PySCF is **not** an
-automatic fallback — pass `--engine cpu` explicitly when the GPU
-backend is unavailable; with the default `--engine gpu` the command
+automatic fallback — pass `--dft-engine cpu` explicitly when the GPU
+backend is unavailable; with the default `--dft-engine gpu` the command
 raises a `ClickException` rather than silently falling back. See
 `dft.md`.
 

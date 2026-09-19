@@ -86,7 +86,7 @@ Full system(s) (PDB / mmCIF / XYZ / GJF)
 
 0. **Structure bridge and preflight** (automatic) — mmCIF, oversized/nonstandard PDB, and PDB altloc input are converted once to a safely reindexed internal PDB; altloc is selected coherently per residue. For an ordinary PDB with blank element columns, `all` runs `add-elem-info`. Standalone `fix-altloc` is only needed when you want a cleaned PDB deliverable; standalone commands use the same bridge. Missing element data must still be repaired for an ordinary PDB or supplied as mmCIF `_atom_site.type_symbol`.
 1. **Active-site model extraction** (when `-c/--center` is set) — accepts PDB/mmCIF paths, IDs/names, `CHAIN:RESNAME`, and `CHAIN:RESNAME:RESSEQ`; normally use substrate + catalytic residues. Every match starts radius expansion. Per-input internal PDBs are saved under `<out-dir>/_work/models/`; bridge inputs also produce CIF companions.
-2. **Optional staged scan** (single-input only) — each `--scan-lists/-s` literal contains distance `(i,j,target_Å)`, angle `(i,j,k,target_deg)`, or dihedral `(i,j,k,l,target_deg)` tuples. Atom indices use the original input ordering, 1-based by default (pass `--no-scan-one-based` to interpret them as 0-based), and are remapped to the active-site model ordering. Three-field selectors like `'TYR,285,CA'` are order-flexible; use positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` for repeated names or numbering. Stages run sequentially (stage 2 starts from stage 1's result), and the stage endpoints become the ordered intermediates that feed the MEP step.
+2. **Optional staged scan** (single-input only) — each `--scan-lists/-s` literal contains distance `(i,j,target_Å)`, angle `(i,j,k,target_deg)`, or dihedral `(i,j,k,l,target_deg)` tuples. Atom indices use the original input ordering, 1-based by default (pass `--scan-zero-based` to interpret them as 0-based), and are remapped to the active-site model ordering. Three-field selectors like `'TYR,285,CA'` are order-flexible; use positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` for repeated names or numbering. Stages run sequentially (stage 2 starts from stage 1's result), and the stage endpoints become the ordered intermediates that feed the MEP step.
 3. **MEP search** — by default runs single-pass `path-opt`; `--refine-path` switches to recursive `path-search`. Recursive refinement can improve a poor HEI but can also split a noisy/bad path into unnecessary segments and increase cost, so it is off by default. Segmentation is only a candidate mechanism until TS/frequency/IRC validation. Raw engine output stays under `_work`; `mep_trj.pdb`, bridge-input `mep.cif`, `mep_trj.xyz`, and the diagram are promoted to the top level.
 4. **Per-segment post-processing** (ordinary MEP/TS candidates; bridge segments are skipped, and bond changes are diagnostic):
    - `--tsopt` — Optimize each HEI, then run EulerPC IRC and re-optimize its endpoints when terminal validation permits. Frequencies and modes are recorded only when terminal PHVA completes. Endpoint optimization uses `--thresh-post` (default `baker`); its working directory is retained with `--dump` or when either endpoint does not converge. `--reject-uphill` is off by default and applies only to endpoint RFO re-optimization.
@@ -234,7 +234,7 @@ conventions. Raw PDB CCD name collisions are not inferred automatically; use
 ### MEP search
 
 ```{note}
-`--max-cycles-gsm` and `--max-cycles-dmf` bound the MEP stage only; leave
+`--max-cycles-gsm` and `--dmf-max-iterations` bound the MEP stage only; leave
 them unset to let each stage use its own default. The single-stage `opt`
 and `tsopt` subcommands keep their own `--max-cycles`.
 ```
@@ -246,12 +246,12 @@ and `tsopt` subcommands keep their own `--max-cycles`.
 | `--max-depth INT` | Recursive subdivision levels allowed; requires `--refine-path`. `0` disables subdivision, returning each input pair as one MEP segment (none when its HEI sits at an endpoint). A capped interval is tagged `seg_NNN_maxdepth` and may hold more than one step. | `10` |
 | `--gsm-param [equi\|energy]` | GSM node parameterization after string growth. `energy` concentrates nodes in high-energy regions and may be tried when an equidistant path skips the reaction-coordinate region near the HEI; it does not identify a TS. | `equi` |
 | `--max-cycles-gsm INT` | Maximum GSM string-optimizer cycles. | `300` |
-| `--max-cycles-dmf INT` | Maximum DMF IPOPT iterations. | `3000` |
+| `--dmf-max-iterations INT` | Maximum DMF IPOPT iterations. | `3000` |
 | `--climb / --no-climb` | Enable climbing image for standard GSM segments (bridge segments always disable climbing). | `True` |
 | `--opt-mode [grad\|hess]` | Workflow preset (`grad` → L-BFGS / Dimer, `hess` → RFO / RS-P-RFO). Token-to-algorithm mapping depends on scope — see {ref}`opt-mode-semantics` for the per-subcommand table; note that `all`'s pre-opt default (`grad`) differs from `tsopt`'s default (`hess`). | `grad` |
 | `--thresh TEXT` | Convergence preset for single-structure optimizations and scan relaxations (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
 | `--thresh-gsm TEXT` | Convergence preset for the GSM string optimizer of the MEP stage (same presets as `--thresh`). | `gau_loose` |
-| `--thresh-dmf TEXT` | IPOPT dual-infeasibility tolerance of the DMF MEP stage: `tight` (0.04), `middle` (0.10), `loose` (0.20), or a positive float. Not a Gaussian preset. | `tight` |
+| `--dmf-tol TEXT` | IPOPT dual-infeasibility tolerance of the DMF MEP stage: `tight` (0.04), `middle` (0.10), `loose` (0.20), or a positive float. Not a Gaussian preset. | `tight` |
 | `--preopt / --no-preopt` | Pre-optimize active-site model endpoints before MEP search. Standalone `scan` / `scan2d` / `scan3d` default `--preopt` to `False`. | `True` |
 | `--refine-path / --no-refine-path` | Enable recursive `path-search` with automatic bond-change segmentation / use the default single-pass `path-opt` per adjacent pair. Recursive refinement also applies to a single-step MEP, where it can improve a poor HEI or TS estimate. | disabled |
 | `--write-ref-merge` | Write `mep_w_ref*` / `hei_w_ref*` coordinate composites for inspection. Requires `--refine-path`, `-c/--center`, and PDB/mmCIF input. | disabled |
@@ -260,7 +260,7 @@ and `tsopt` subcommands keep their own `--max-cycles`.
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `--workers`, `--workers-per-node` | UMA predictor parallelism. `workers > 1` cannot be combined with an explicit analytical Hessian request; use `workers = 1` or finite differences. See {ref}`workers-analytical-error`. | `1`, `1` |
+| `--uma-workers`, `--uma-workers-per-node` | UMA predictor parallelism. `workers > 1` cannot be combined with an explicit analytical Hessian request; use `workers = 1` or finite differences. See {ref}`workers-analytical-error`. | `1`, `1` |
 | `--hessian-calc-mode [Analytical\|FiniteDifference]` | Shared MLIP Hessian engine. | `FiniteDifference` |
 | `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP backend, or optional DFT calculator. | `uma` |
 ### Post-processing
@@ -299,25 +299,42 @@ TSOPT optimizer selection order: `--opt-mode-post` (if set) → `--opt-mode` (on
 | `--freq-sort [value\|abs]` | Mode sorting behavior. | `value` |
 | `--freq-temperature FLOAT` | Thermochemistry temperature (K). | `298.15` |
 | `--freq-pressure FLOAT` | Thermochemistry pressure (atm). | `1.0` |
-| `--dft-engine [gpu\|cpu]` | DFT backend (GPU4PySCF or PySCF). In `all` the option is named `--dft-engine`; the standalone `dft` subcommand uses `--engine`. | `gpu` |
+| `--dft-engine [gpu\|cpu]` | DFT backend (GPU4PySCF or PySCF). | `gpu` |
 | `--dft-solvent TEXT` | Native PySCF implicit solvent for post-processing DFT. | `none` |
 | `--dft-solvent-model [pcm\|smd]` | Native PySCF solvent model for post-processing DFT. | `smd` |
 | `--dft-out-dir PATH` | DFT outputs base directory override. | _None_ |
-| `--dft-func-basis TEXT` | Functional / basis pair. | `wb97m-v/def2-svp` |
-| `--dft-max-cycle INT` | Maximum SCF iterations. | `100` |
-| `--lowmem/--no-lowmem` | Low-memory policy for a primary DFT backend or the optional `--dft` stage. | `--lowmem` |
+| `--func-basis TEXT` | Functional / basis pair. | `wb97m-v/def2-svp` |
+| `--scf-max-cycles INT` | Maximum SCF iterations. | `100` |
+| `--dft-low-memory/--no-dft-low-memory` | Low-memory policy for a primary DFT backend or the optional `--dft` stage. | `--dft-low-memory` |
 | `--dft-nprocs INT` | PySCF/OpenMP CPU threads for DFT. | `auto` |
-| `--dft-mem SIZE` | PySCF host-RAM limit for DFT; not GPU VRAM. | `auto` |
-| `--dft-conv-tol FLOAT` | SCF convergence tolerance. | `1e-9` |
+| `--dft-memory SIZE` | PySCF host-RAM limit for DFT; not GPU VRAM. | `auto` |
+| `--scf-tol FLOAT` | SCF convergence tolerance. | `1e-9` |
 | `--dft-grid-level INT` | PySCF grid level. | `3` |
 | `-s, --scan-lists TEXT...` | Staged distance, angle, or dihedral targets (single-input runs). | _None_ |
 | `--scan-out-dir PATH` | Override the scan output directory. | _None_ |
-| `--scan-one-based / --no-scan-one-based` | How to read the `--scan-lists` atom indices: `True` = 1-based, `False` = 0-based. | _None_ (1-based) |
+| `--scan-one-based / --scan-zero-based` | How to read the `--scan-lists` atom indices. | 1-based |
 | `--scan-max-step-size FLOAT` | Maximum step size (Å). | `0.20` |
-| `--scan-bias-k FLOAT` | Harmonic bias strength (eV · Å⁻²). | `300` |
+| `--scan-restraint-k FLOAT` | Harmonic bias strength (eV · Å⁻²). | `300` |
 | `--scan-relax-max-cycles INT` | Relaxation max cycles per step. | `100000` |
 | `--scan-preopt / --no-scan-preopt` | Override the scan preoptimization toggle. | _None_ |
 | `--scan-endopt / --no-scan-endopt` | Override the scan end-of-stage optimization toggle. | _None_ |
+
+## Resume post-processing at a segment
+
+Repeat the original `all` command with the same inputs, extraction, path, and
+calculator settings, the same `--out-dir`, and add `--resume-segment N`.
+Post-processing settings such as `--tsopt-max-cycles` may be changed.
+
+```bash
+pdb2reaction all -i R.pdb P.pdb -c 'SUB,CYS:112,ASP:114' \
+  --tsopt --thermo --tsopt-max-cycles 200000 \
+  --resume-segment 3 --out-dir result_all
+```
+
+The command verifies the saved inputs and MEP artifacts, preserves completed
+segments before `N`, removes post-processing outputs from `N` onward, and
+rebuilds the aggregate summary and diagrams. The output directory must contain
+resume metadata from an earlier `all` run.
 
 ## YAML configuration
 

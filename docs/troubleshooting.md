@@ -120,7 +120,7 @@ The minimum energy path (MEP) search can stall or skip an expected bond change. 
 
 - **OOM** — reduce the active-site model only after checking that required residues remain, lower `--max-nodes`, or use `--opt-mode grad` when a full-Hessian optimizer is not required.
 - **Analytical Hessian** — keep the portable `FiniteDifference` default until the selected backend/model and representative atom count have been piloted. Analytical autograd normally has a larger memory peak, but no universal atom-count or VRAM cutoff applies.
-- **`workers > 1`** — may improve UMA throughput, depending on the hardware and workload, but the parallel predictor has no analytical Hessian. An explicit `Analytical` request raises `BackendError` (a `RuntimeError` subclass); use `--workers 1` for an analytical Hessian, or select `FiniteDifference`.
+- **`workers > 1`** — may improve UMA throughput, depending on the hardware and workload, but the parallel predictor has no analytical Hessian. An explicit `Analytical` request raises `BackendError` (a `RuntimeError` subclass); use `--uma-workers 1` for an analytical Hessian, or select `FiniteDifference`.
 - **Large systems** — make a chemically justified smaller active-site model and run radius/boundary sensitivity checks; multi-GPU support is backend- and workflow-specific, so do not assume that increasing GPU count reduces memory per worker.
 - **DFT scratch on HPC** — if PySCF/GPU4PySCF uses temporary disk for the chosen calculation, point `PYSCF_TMPDIR` at a filesystem with verified capacity and performance. Do not assume that node-local `/tmp`, `$PBS_O_WORKDIR`, or another shared path is suitable at every site.
 

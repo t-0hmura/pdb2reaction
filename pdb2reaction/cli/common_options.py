@@ -32,7 +32,9 @@ def _capture_dft_option(ctx: click.Context, param: click.Parameter, value):
     return value
 
 
-def add_dft_calculator_options() -> Callable[[Callable], Callable]:
+def add_dft_calculator_options(
+    *, include_method: bool = True, include_engine: bool = True
+) -> Callable[[Callable], Callable]:
     """Attach the small option set used only by ``--backend dft``.
 
     Values are captured in ``Context.meta`` with ``expose_value=False`` so
@@ -41,6 +43,7 @@ def add_dft_calculator_options() -> Callable[[Callable], Callable]:
 
     def decorator(func: Callable) -> Callable:
         func = click.option(
+            "--dft-memory",
             "--dft-mem",
             "memory",
             type=str,
@@ -61,6 +64,7 @@ def add_dft_calculator_options() -> Callable[[Callable], Callable]:
             help="PySCF/OpenMP CPU threads; GPU count is unaffected.",
         )(func)
         func = click.option(
+            "--dft-low-memory/--no-dft-low-memory",
             "--lowmem/--no-lowmem",
             default=None,
             show_default="lowmem",
@@ -68,7 +72,7 @@ def add_dft_calculator_options() -> Callable[[Callable], Callable]:
             callback=_capture_dft_option,
             help=(
                 "Use GPU4PySCF rks_lowmem for closed-shell GPU DFT; open-shell "
-                "GPU and CPU use standard direct JK. --no-lowmem enables density fitting."
+                "GPU and CPU use standard direct JK. --no-dft-low-memory enables density fitting."
             ),
         )(func)
         func = click.option(
@@ -88,24 +92,27 @@ def add_dft_calculator_options() -> Callable[[Callable], Callable]:
             callback=_capture_dft_option,
             help="Persist a structure-bound PySCF checkpoint (default: disabled).",
         )(func)
-        func = click.option(
-            "--engine",
-            type=click.Choice(["gpu", "cpu"], case_sensitive=False),
-            default=None,
-            show_default="gpu",
-            expose_value=False,
-            callback=_capture_dft_option,
-            help="PySCF execution engine used by --backend dft.",
-        )(func)
-        func = click.option(
-            "--func-basis",
-            type=str,
-            default=None,
-            show_default="wb97m-v/def2-svp",
-            expose_value=False,
-            callback=_capture_dft_option,
-            help="DFT method as FUNCTIONAL/BASIS; HF/BASIS is also accepted.",
-        )(func)
+        if include_engine:
+            func = click.option(
+                "--dft-engine",
+                "--engine",
+                type=click.Choice(["gpu", "cpu"], case_sensitive=False),
+                default=None,
+                show_default="gpu",
+                expose_value=False,
+                callback=_capture_dft_option,
+                help="PySCF execution engine used by --backend dft.",
+            )(func)
+        if include_method:
+            func = click.option(
+                "--func-basis",
+                type=str,
+                default=None,
+                show_default="wb97m-v/def2-svp",
+                expose_value=False,
+                callback=_capture_dft_option,
+                help="DFT method as FUNCTIONAL/BASIS; HF/BASIS is also accepted.",
+            )(func)
         return func
 
     return decorator
@@ -274,6 +281,7 @@ def add_calc_file_option() -> Callable[[Callable], Callable]:
     """
     def decorator(func: Callable) -> Callable:
         func = click.option(
+            "--calc-factory",
             "--calc-file-func-name",
             "calc_factory",
             type=str,

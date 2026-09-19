@@ -107,8 +107,8 @@ outputs after successful validation; add `--thermo` for `freq/` outputs.
 
   | Command | Step / bias | Relaxation limit | Preopt / endopt |
   | --- | --- | --- | --- |
-  | `pdb2reaction all` | `--scan-max-step-size 0.20 Å`; `--scan-bias-k 300 eV/Å²` | `--scan-relax-max-cycles 100000` | scan preopt inherits parent `--preopt` (on by default); endopt is off (`--no-scan-endopt`) |
-  | `pdb2reaction scan` | `--max-step-size 0.20 Å`; `--bias-k 300 eV/Å²` | `--relax-max-cycles 100000` | `--no-preopt`; `--no-endopt` |
+  | `pdb2reaction all` | `--scan-max-step-size 0.20 Å`; `--scan-restraint-k 300 eV/Å²` | `--scan-relax-max-cycles 100000` | scan preopt inherits parent `--preopt` (on by default); endopt is off (`--no-scan-endopt`) |
+  | `pdb2reaction scan` | `--max-step-size 0.20 Å`; `--restraint-k 300 eV/Å²` | `--relax-max-cycles 100000` | `--no-preopt`; `--no-endopt` |
 
   Override the step width with the corresponding CLI flag. Override the bias
   strength with that CLI flag or YAML `bias.k`. See [scan](scan.md) and

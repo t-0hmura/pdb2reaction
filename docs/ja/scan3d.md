@@ -99,7 +99,7 @@ out_dir/ (デフォルト:./result_scan3d/)
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
 | **バックエンドと計算** | | |
 | `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP バックエンド（任意で `dft`） | `uma` |
-| `--workers`, `--workers-per-node` | UMA 予測器の並列度（`workers_per_node` は並列予測器へ転送）。`workers > 1` と明示的な解析 Hessian は併用不可。{ref}`ja-workers-analytical-error` を参照 | `1`, `1` |
+| `--uma-workers`, `--uma-workers-per-node` | UMA 予測器の並列度（`workers_per_node` は並列予測器へ転送）。`workers > 1` と明示的な解析 Hessian は併用不可。{ref}`ja-workers-analytical-error` を参照 | `1`, `1` |
 | **活性領域の凍結** | | |
 | `--freeze-links/--no-freeze-links` | PDB/mmCIF トポロジー入力時にキャップ水素の親原子を凍結 | `True` |
 | `--freeze-atoms TEXT` | 凍結する原子の 1 始まりインデックスをカンマ区切りで明示的に指定（例: `'1,3,5'`）。`--freeze-links` と併用可、任意の入力形式に適用 | _None_ |
@@ -111,7 +111,7 @@ out_dir/ (デフォルト:./result_scan3d/)
 | `--max-angle-step-size FLOAT` | 角度の1stepあたりの最大変化量（度） | `5.0` |
 | `--max-dihedral-step-size FLOAT` | 二面角の1stepあたりの最大変化量（度） | `10.0` |
 | **緩和** | | |
-| `--bias-k FLOAT` | 調和バイアス強度。距離はeV·Å⁻²、角度はeV·rad⁻² | `300` |
+| `--restraint-k FLOAT` | 調和バイアス強度。距離はeV·Å⁻²、角度はeV·rad⁻² | `300` |
 | `--opt-mode TEXT` | `grad` → L-BFGS、`hess` → RFOptimizer | `grad` |
 | `--relax-max-cycles INT` | 各バイアス緩和の最大最適化サイクル数。明示値は YAML `opt.max_cycles` を上書き | `100000` |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `baker` |

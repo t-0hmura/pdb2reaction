@@ -99,7 +99,7 @@ pdb2reaction freq -i r.pdb -q -1 --out-dir test4 > test4.out 2>&1
 pdb2reaction irc -i ts.pdb -q 0 --max-cycles 3 --never-stop --out-dir test5 > test5.out 2>&1
 
 # test6: dft (lightweight: hf/sto-3g, cpu)
-pdb2reaction dft -i h2.gjf --func-basis 'hf/sto-3g' --grid-level 0 --conv-tol 1e-5 --max-cycle 40 --engine cpu --out-dir test6 > test6.out 2>&1
+pdb2reaction dft -i h2.gjf --func-basis 'hf/sto-3g' --grid-level 0 --scf-tol 1e-5 --scf-max-cycles 40 --dft-engine cpu --out-dir test6 > test6.out 2>&1
 
 # test7: scan (1D)
 pdb2reaction scan -i r.pdb -q -1 --scan-lists "[(1,5,1.4)]" --max-step-size 2.0 --relax-max-cycles 3 --no-preopt --no-endopt --out-dir test7 > test7.out 2>&1
@@ -157,7 +157,7 @@ pdb2reaction -i ts.pdb -q 0 --tsopt --opt-mode-post hess --max-cycles-gsm 5 --th
 # --- MEP mode ---
 
 # test22: all (pdb+pdb, mep-mode dmf, --no-refine-path for single-pass path-opt)
-pdb2reaction -i r.pdb p.pdb -q -1 --mep-mode dmf --no-refine-path --max-cycles-dmf 5 --thresh gau_loose --thresh-post gau_loose --out-dir test22 > test22.out 2>&1
+pdb2reaction -i r.pdb p.pdb -q -1 --mep-mode dmf --no-refine-path --dmf-max-iterations 5 --thresh gau_loose --thresh-post gau_loose --out-dir test22 > test22.out 2>&1
 
 # --- TSOPT for complex systems ---
 
@@ -225,8 +225,8 @@ pdb2reaction opt -i r.pdb -q -1 --opt-mode grad --max-cycles 3 --thresh gau_loos
 
 # --- dist-freeze ---
 
-# test40: opt --dist-freeze --dry-run (inline 3-tuple + 2-tuple)
-pdb2reaction opt -i r.pdb -q -1 --dist-freeze "[(1,2,1.5),(3,4)]" --dry-run --out-dir test40 > test40.out 2>&1
+# test40: opt --distance-restraint --dry-run (inline 3-tuple + 2-tuple)
+pdb2reaction opt -i r.pdb -q -1 --distance-restraint "[(1,2,1.5),(3,4)]" --dry-run --out-dir test40 > test40.out 2>&1
 
 # --- refine-path ---
 
@@ -365,8 +365,8 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --backend orb --out-dir test53 > test53.ou
 python assert_release_result.py provenance test53 --expected-backend orb --expected-model orb_v3_conservative_omol --expected-precision fp64 >> test53.out 2>&1
 
 # ---- Subcommand-specific regression coverage ----
-# test54: opt --dist-freeze + --bias-k (harmonic restraint actually applied at runtime, not dry-run)
-pdb2reaction opt -i r.pdb -q -1 --dist-freeze "[(1,2,1.5)]" --bias-k 150 --max-cycles 3 --thresh gau_loose --out-dir test54_opt_biask > test54_opt_biask.out 2>&1
+# test54: opt --distance-restraint + --restraint-k (harmonic restraint actually applied at runtime, not dry-run)
+pdb2reaction opt -i r.pdb -q -1 --distance-restraint "[(1,2,1.5)]" --restraint-k 150 --max-cycles 3 --thresh gau_loose --out-dir test54_opt_biask > test54_opt_biask.out 2>&1
 
 # test55: opt --freeze-atoms (explicit user-frozen DOF, distinct from --freeze-links)
 pdb2reaction opt -i r.pdb -q -1 --freeze-atoms '1,3,5' --max-cycles 3 --thresh gau_loose --no-flatten --out-dir test55_opt_freeze > test55_opt_freeze.out 2>&1
@@ -438,27 +438,27 @@ pdb2reaction scan3d -i r.pdb -q -1 --scan-lists "[(1,5,2.20,2.21),(1,6,1.75,1.76
 grep -Fq '[scan3d] --dry-run: input, charge/spin parity, and --scan-lists parse OK.' test61_scan3d_fp64.out || { echo "[smoke] FAIL test61: fp64 option did not reach scan3d dry-run" >> test61_scan3d_fp64.out; exit 1; }
 
 # test62: path-opt --mep-mode dmf (Direct Max Flux at the subcommand level)
-pdb2reaction path-opt -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --max-cycles-dmf 3 --thresh-dmf middle --no-preopt --no-climb --out-dir test62_pathopt_dmf > test62_pathopt_dmf.out 2>&1
+pdb2reaction path-opt -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --dmf-max-iterations 3 --dmf-tol middle --no-preopt --no-climb --out-dir test62_pathopt_dmf > test62_pathopt_dmf.out 2>&1
 
 # test62b: path-opt --mep-mode dmf WITH frozen atoms. No other lane enters the DMF
 # harmonic-restraint branch, so this is its only coverage. The checker compares the
 # optimized path against the FB-ENM interpolation the per-image restraint references.
-pdb2reaction path-opt -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --freeze-atoms 1,3,5 --max-cycles-dmf 40 --thresh-dmf middle --no-preopt --no-climb --out-json --out-dir test62b_dmf_freeze > test62b_dmf_freeze.out 2>&1
+pdb2reaction path-opt -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --freeze-atoms 1,3,5 --dmf-max-iterations 40 --dmf-tol middle --no-preopt --no-climb --out-json --out-dir test62b_dmf_freeze > test62b_dmf_freeze.out 2>&1
 python assert_release_result.py dmf-freeze test62b_dmf_freeze --frozen-atoms 1,3,5 >> test62b_dmf_freeze.out 2>&1
 
 # test63: path-opt --coord-type dlc (p2r keeps DLC for pure-MLIP)
 pdb2reaction path-opt -i r.pdb p.pdb -q -1 --coord-type dlc --max-nodes 5 --max-cycles-gsm 3 --no-preopt --no-climb --out-dir test63_pathopt_dlc > test63_pathopt_dlc.out 2>&1
 
 # test64: path-search --mep-mode dmf
-pdb2reaction path-search -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --max-cycles-dmf 3 --no-preopt --out-dir test64_ps_dmf > test64_ps_dmf.out 2>&1
+pdb2reaction path-search -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --dmf-max-iterations 3 --no-preopt --out-dir test64_ps_dmf > test64_ps_dmf.out 2>&1
 
 # test65: path-search --opt-mode hess (RFO single-structure preopt; keep preopt ON)
-pdb2reaction path-search -i r.pdb p.pdb -q -1 --opt-mode hess --workers 1 --max-nodes 5 --max-cycles-gsm 3 --out-dir test65_ps_hess > test65_ps_hess.out 2>&1
+pdb2reaction path-search -i r.pdb p.pdb -q -1 --opt-mode hess --uma-workers 1 --max-nodes 5 --max-cycles-gsm 3 --out-dir test65_ps_hess > test65_ps_hess.out 2>&1
 
 # test66: real MEP -> TSOPT -> endpoint OPT -> thermo -> CPU SCF handoff.
 # This lane explicitly requests --flatten. It verifies workflow execution and
 # requested DFT outputs; it is not no-flatten optimizer validation.
-pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --thermo --dft --flatten --irc-never-stop --irc-max-cycles 3 --max-cycles-gsm 5 --tsopt-max-cycles 200 --thresh gau_loose --thresh-post gau --dft-func-basis 'hf/sto-3g' --dft-grid-level 0 --dft-conv-tol 1e-5 --dft-max-cycle 40 --dft-engine cpu --out-dir test66_all_tsopt > test66_all_tsopt.out 2>&1
+pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --thermo --dft --flatten --irc-never-stop --irc-max-cycles 3 --max-cycles-gsm 5 --tsopt-max-cycles 200 --thresh gau_loose --thresh-post gau --func-basis 'hf/sto-3g' --dft-grid-level 0 --scf-tol 1e-5 --scf-max-cycles 40 --dft-engine cpu --out-dir test66_all_tsopt > test66_all_tsopt.out 2>&1
 python assert_release_result.py all test66_all_tsopt --require-thermo --require-dft >> test66_all_tsopt.out 2>&1
 grep -Fq '[irc] Reusing cached TS Hessian from tsopt.' test66_all_tsopt.out || { echo '[smoke] FAIL test66: IRC did not report cached TS Hessian reuse' >> test66_all_tsopt.out; exit 1; }
 
@@ -531,7 +531,7 @@ python assert_release_result.py sp-hessian test77_custom >> test77_custom.out 2>
 
 # test78: explicit Analytical + workers>1 is a required rejection contract.
 rc=0
-pdb2reaction sp -i r.pdb -q -1 --hess --hessian-calc-mode Analytical --workers 2 --out-dir test78_workers > test78_workers.out 2>&1 || rc=$?
+pdb2reaction sp -i r.pdb -q -1 --hess --hessian-calc-mode Analytical --uma-workers 2 --out-dir test78_workers > test78_workers.out 2>&1 || rc=$?
 if [ "$rc" -ne 1 ] || ! grep -Fq "Analytical Hessian cannot be combined with UMA workers>1: the parallel predictor exposes no autograd model. Use workers=1 or select hessian_calc_mode='FiniteDifference'." test78_workers.out || [ -e test78_workers/hessian.npy ]; then
   echo "[smoke] FAIL test78: Analytical + workers>1 was not rejected exactly" >> test78_workers.out
   exit 1
@@ -550,6 +550,28 @@ fi
 # effective depth limit and any capped child intervals.
 pdb2reaction path-search -i r.pdb p.pdb -q -1 --max-depth 0 --max-nodes 5 --max-cycles-gsm 5 --no-preopt --out-dir test80_ps_max_depth0 > test80_ps_max_depth0.out 2>&1
 python assert_release_result.py path-search-max-depth test80_ps_max_depth0 >> test80_ps_max_depth0.out 2>&1
+
+# test81: standalone scan accepts angle and dihedral ranges.
+pdb2reaction scan -i r.pdb -q -1 --scan-lists "[(1,2,3,35.0,35.1),(1,2,3,4,-35.3,-35.2)]" --dry-run --out-dir test81_scan_angular > test81_scan_angular.out 2>&1
+
+# test82: all accepts angle and dihedral targets without an extra mode flag.
+pdb2reaction all -i r.pdb -q -1 --scan-lists "[(1,2,3,35.1),(1,2,3,4,-35.2)]" --dry-run --out-dir test82_all_angular > test82_all_angular.out 2>&1
+
+# test83: resume post-processing without recomputing or changing the saved MEP.
+test83_path_summary="test12/_work/path_opt/summary.json"
+test -s "$test83_path_summary" || { echo "[smoke] FAIL test83: source MEP summary missing" > test83_resume.out; exit 1; }
+test83_before=$(sha256sum "$test83_path_summary" | awk '{print $1}')
+pdb2reaction all -i r.pdb p.pdb -q -1 --no-refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --tsopt --tsopt-max-cycles 1 --resume-segment 1 --out-dir test12 > test83_resume.out 2>&1
+test83_after=$(sha256sum "$test83_path_summary" | awk '{print $1}')
+test "$test83_before" = "$test83_after" || { echo "[smoke] FAIL test83: resume changed the saved MEP summary" >> test83_resume.out; exit 1; }
+python - <<'PY'
+import json
+from pathlib import Path
+
+summary = json.loads(Path("test12/summary.json").read_text(encoding="utf-8"))
+assert summary["resumed_from_segment"] == 1
+assert summary["resume_identity"]["schema_version"] == 1
+PY
 
 
 # Numerical analytical-vs-FD agreement for every backend installed in the

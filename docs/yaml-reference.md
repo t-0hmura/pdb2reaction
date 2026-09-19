@@ -39,7 +39,7 @@ This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan
 | `--thresh` | `thresh` | `opt` |
 | `--max-cycles` | `max_cycles` | Command-specific: `opt` for `opt`/`tsopt` and `irc` for `irc` |
 | `--max-cycles-gsm` | `max_cycles` | `stopt` (also sets `stopt.stop_in_when_full`) |
-| `--max-cycles-dmf` | `max_cycles` | `dmf` |
+| `--dmf-max-iterations` | `max_cycles` | `dmf` |
 | `--gsm-param` | `param` | `gs` |
 | `--dump` | `dump` | Command-specific optimizer/path owner (`opt`, `stopt`, or selected child configuration) |
 | `--opt-mode` | _(CLI only)_ | — |
@@ -47,14 +47,10 @@ This precedence applies uniformly to `all`, `opt`, `tsopt`, `freq`, `irc`, `scan
 | `--coord-type` | `coord_type` | `geom` |
 | `--temperature` (freq, `all --freq-temperature`) | `temperature` | `thermo` |
 | `--pressure` (freq, `all --freq-pressure`) | `pressure_atm` | `thermo` |
-| `--engine` (`dft` subcommand) / `--dft-engine` (`all` wrapper) | `engine` | `dft` |
+| `--dft-engine` | `engine` | `dft` |
 
 ```{note}
 **Name mismatch — `--pressure` vs `pressure_atm`.** On the CLI the flag is `--pressure` (units implicit: atm); the matching YAML key under `thermo:` is `pressure_atm` with an explicit unit suffix. Both carry atm values and get converted to Pa internally.
-```
-
-```{note}
-**Name mismatch — `--engine` vs `--dft-engine`.** The standalone `dft` subcommand exposes the backend selector as `--engine` (gpu / cpu). In `pdb2reaction all`, to avoid colliding with other engines, the same flag is renamed `--dft-engine` — see {ref}`the --engine vs --dft-engine note in CLI Conventions <engine-vs-dft-engine>`.
 ```
 
 ### Default `--thresh` per subcommand
@@ -161,7 +157,7 @@ calc:
   func_basis: wb97m-v/def2-svp
   engine: gpu             # gpu (GPU4PySCF) | cpu (PySCF)
   lowmem: true             # direct JK without a persistent DF tensor
-  density_fit: false       # enabled by --no-lowmem unless set explicitly
+  density_fit: false       # enabled by --no-dft-low-memory unless set explicitly
   nprocs: auto             # PySCF/OpenMP threads from scheduler/affinity
   memory: auto             # host RAM limit, e.g. 64GB (not GPU VRAM)
   solvent: none
@@ -353,8 +349,8 @@ For DMF, `--max-nodes` is forwarded as `DirectMaxFlux(nmove=...)`; the installed
 ```yaml
 dmf:
  backend: gpu # gpu (dmf.torch / CUDA, default) | cpu (dmf / NumPy)
- max_cycles: 3000 # Maximum DMF/IPOPT iterations (overridden by --max-cycles-dmf)
- tol: tight # IPOPT dual_inf_tol: tight (0.04) | middle (0.10) | loose (0.20) or a positive float (overridden by --thresh-dmf)
+ max_cycles: 3000 # Maximum DMF/IPOPT iterations (overridden by --dmf-max-iterations)
+ tol: tight # IPOPT dual_inf_tol: tight (0.04) | middle (0.10) | loose (0.20) or a positive float (overridden by --dmf-tol)
  correlated: true # Correlated DMF propagation
  sequential: true # Sequential DMF execution
  fbenm_only_endpoints: false # Run FB-ENM beyond endpoints
@@ -671,10 +667,10 @@ bias:
 
 | YAML key | Used by | CLI flag |
 |----------|---------|----------|
-| `bias.k` | `scan`, `scan2d`, `scan3d` | `--bias-k` |
+| `bias.k` | `scan`, `scan2d`, `scan3d` | `--restraint-k` |
 | `dmf.k_fix` | `path-opt` / `path-search` when `mep_mode: dmf` | — (YAML only) |
 
-`opt` also accepts `--bias-k` (applied to `--dist-freeze` pairs) but reads it only from the CLI flag, which defaults to the same `300.0` constant; it does not honor the `bias:` YAML section.
+`opt` also accepts `--restraint-k` (applied to `--distance-restraint` pairs) but reads it only from the CLI flag, which defaults to the same `300.0` constant; it does not honor the `bias:` YAML section.
 
 Override any of these to tune how stiff the harmonic restraint is. A smaller value (e.g. `20.0`) is appropriate when the geometry should relax against a soft guidance term; the default `300.0` enforces near-rigid pinning.
 

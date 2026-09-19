@@ -113,7 +113,7 @@ FUNC_BASIS='wb97m-v/def2-tzvpd'
 pdb2reaction dft -i result_mep/segments/seg_01/reactant.pdb \
     -l "$LIGAND_CHARGE" \
     --func-basis "$FUNC_BASIS" \
-    --engine gpu \
+    --dft-engine gpu \
     -o dft_R
 pdb2reaction dft -i result_mep/segments/seg_01/ts.pdb      -l "$LIGAND_CHARGE" --func-basis "$FUNC_BASIS" -o dft_TS
 pdb2reaction dft -i result_mep/segments/seg_01/product.pdb -l "$LIGAND_CHARGE" --func-basis "$FUNC_BASIS" -o dft_P

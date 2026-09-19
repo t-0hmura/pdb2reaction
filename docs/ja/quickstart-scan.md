@@ -101,8 +101,8 @@ result_scan/
 
   | コマンド | step / bias | 緩和上限 | preopt / endopt |
   | --- | --- | --- | --- |
-  | `pdb2reaction all` | `--scan-max-step-size 0.20 Å`; `--scan-bias-k 300 eV/Å²` | `--scan-relax-max-cycles 100000` | scan preoptはparent `--preopt`（デフォルトON）を継承; endoptはOFF（`--no-scan-endopt`） |
-  | `pdb2reaction scan` | `--max-step-size 0.20 Å`; `--bias-k 300 eV/Å²` | `--relax-max-cycles 100000` | `--no-preopt`; `--no-endopt` |
+  | `pdb2reaction all` | `--scan-max-step-size 0.20 Å`; `--scan-restraint-k 300 eV/Å²` | `--scan-relax-max-cycles 100000` | scan preoptはparent `--preopt`（デフォルトON）を継承; endoptはOFF（`--no-scan-endopt`） |
+  | `pdb2reaction scan` | `--max-step-size 0.20 Å`; `--restraint-k 300 eV/Å²` | `--relax-max-cycles 100000` | `--no-preopt`; `--no-endopt` |
 
   step 幅は対応する CLI flag で上書きします。バイアス強度は CLI flag または YAML の `bias.k` で上書きできます（[scan](scan.md) / [yaml-reference](yaml-reference.md#bias) 参照）。
 - 各スキャンステージは、最終緩和構造に対する結合変化チェック（`has_bond_change`）で終了します。ステージごとの結果は scan ログに記録され、`--out-json` 指定時には scan 出力ディレクトリに書き出される集約 `result.json`（その `stages` 配列内）にも記録されます。

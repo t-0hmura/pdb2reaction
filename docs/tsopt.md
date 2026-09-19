@@ -77,7 +77,7 @@ according to the available structural information.
 | (a) MEP / path search | [`path-search`](path-search.md) | You have both endpoints (reactant **and** product) and want the TS bracketed automatically | Recursive minimum-energy-path search (GSM / DMF) with bond-change detection; it auto-segments a multi-step path, refines each reactive segment, and returns the highest-energy image per segment (`hei_seg_NN.xyz`) |
 | (b) Distance-restrained scan | [`scan`](scan.md) | You have only the reactant, or want to drive a specific reacting distance directly | Harmonic distance restraints, `E = ½k(r − target)²`, drive each reacting distance with full relaxation, advancing the system toward a TS candidate |
 
-There is no `opt --restraint` flag: `opt` restrains distances with `--dist-freeze` (harmonic, `--bias-k`) rather than driving them, and the distance-driven build-up route is `scan` (which can relax the endpoints around the driven path with `--preopt` / `--endopt`). Optimize and validate candidates from either route with `tsopt → irc`; add `freq` for full vibrational analysis or thermochemistry.
+There is no `opt --restraint` flag: `opt` restrains distances with `--distance-restraint` (harmonic, `--restraint-k`) rather than driving them, and the distance-driven build-up route is `scan` (which can relax the endpoints around the driven path with `--preopt` / `--endopt`). Optimize and validate candidates from either route with `tsopt → irc`; add `freq` for full vibrational analysis or thermochemistry.
 
 ## Examples
 
@@ -178,7 +178,7 @@ The tables below cover the options that need explanation. The full flag list is 
 | `--ref-pdb FILE` | Reference PDB/mmCIF topology when the input is XYZ / GJF (keeps XYZ coordinates). | _None_ |
 | **Backend & compute** | | |
 | `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP backend, or optional DFT calculator. | `uma` |
-| `--workers INT`, `--workers-per-node INT` | UMA predictor parallelism. `workers > 1` cannot be combined with an explicit analytical Hessian request; use `workers = 1` or finite differences. See {ref}`workers-analytical-error`. | `1`, `1` |
+| `--uma-workers INT`, `--uma-workers-per-node INT` | UMA predictor parallelism. `workers > 1` cannot be combined with an explicit analytical Hessian request; use `workers = 1` or finite differences. See {ref}`workers-analytical-error`. | `1`, `1` |
 | `--hessian-calc-mode CHOICE` | MLIP Hessian mode (`Analytical` or `FiniteDifference`). | `FiniteDifference` |
 | **Active-region freezing** | | |
 | `--freeze-links / --no-freeze-links` | PDB/mmCIF input (or XYZ/GJF with `--ref-pdb`). Freeze parents of cap hydrogens (merged into `geom.freeze_atoms`). | `True` |

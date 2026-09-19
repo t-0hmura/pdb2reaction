@@ -552,12 +552,14 @@ def _finalize_dft_result(
     show_default=True,
     help="Exchange–correlation functional and basis set as 'FUNC/BASIS' (e.g., 'wb97m-v/6-31g**', 'wb97m-v/def2-tzvpd').",
 )
-@click.option("--max-cycle", type=click.IntRange(min=1), default=DFT_KW["max_cycle"], show_default=True, help="Maximum SCF iterations.")
-@click.option("--conv-tol", type=float, default=DFT_KW["conv_tol"], show_default=True, help="SCF convergence tolerance (Eh).")
-@click.option("--grid-level", type=int, default=DFT_KW["grid_level"], show_default=True, help="Numerical integration grid level (PySCF grids.level).")
+@click.option("--scf-max-cycles", "--max-cycle", "max_cycle", type=click.IntRange(min=1), default=DFT_KW["max_cycle"], show_default=True, help="Maximum SCF iterations.")
+@click.option("--scf-tol", "--conv-tol", "conv_tol", type=float, default=DFT_KW["conv_tol"], show_default=True, help="SCF convergence tolerance (Eh).")
+@click.option("--dft-grid-level", "--grid-level", "grid_level", type=int, default=DFT_KW["grid_level"], show_default=True, help="Numerical integration grid level (PySCF grids.level).")
 @click.option("-o", "--out-dir", type=str, default=DFT_KW["out_dir"], show_default=True, help="Output directory.")
 @click.option(
+    "--dft-engine",
     "--engine",
+    "engine",
     type=click.Choice(["gpu", "cpu"], case_sensitive=False),
     default="gpu",
     show_default=True,
@@ -578,13 +580,14 @@ def _finalize_dft_result(
     help="Native PySCF implicit-solvent model.",
 )
 @click.option(
+    "--dft-low-memory/--no-dft-low-memory",
     "--lowmem/--no-lowmem",
     "lowmem",
     default=DFT_KW["lowmem"],
     show_default=True,
     help="Use gpu4pyscf rks_lowmem.RKS for closed-shell GPU runs, including "
          "PCM/SMD (memory-efficient direct JK). Open-shell GPU and CPU use "
-         "standard direct-JK RKS/UKS; --no-lowmem enables density fitting.",
+         "standard direct-JK RKS/UKS; --no-dft-low-memory enables density fitting.",
 )
 @click.option(
     "--dft-nprocs",
@@ -595,6 +598,7 @@ def _finalize_dft_result(
     help="PySCF/OpenMP CPU threads; GPU count is unaffected.",
 )
 @click.option(
+    "--dft-memory",
     "--dft-mem",
     "memory",
     type=str,
@@ -695,7 +699,7 @@ def cli(
             if cli_param_overridden(ctx, "conv_tol"):
                 dft_cfg["conv_tol"] = float(conv_tol)
             if cli_param_overridden(ctx, "max_cycle") and max_cycle is not None:
-                dft_cfg["max_cycle"] = optional_positive_int(max_cycle, "--max-cycle")
+                dft_cfg["max_cycle"] = optional_positive_int(max_cycle, "--scf-max-cycles")
             dft_cfg["max_cycle"] = optional_positive_int(
                 dft_cfg.get("max_cycle"), "dft.max_cycle"
             )
@@ -1034,7 +1038,7 @@ def cli(
                 except Exception as e:
                     raise click.ClickException(
                         f"[gpu] GPU backend failed: {e}. "
-                        "Use --engine cpu to explicitly run on CPU."
+                        "Use --dft-engine cpu to explicitly run on CPU."
                     )
 
             if engine == "cpu":

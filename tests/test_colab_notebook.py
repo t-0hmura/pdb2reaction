@@ -410,7 +410,7 @@ def test_distance_restraint_picker_toggles_and_emits_target(
     restraint = app["freeze_pair_lit"]()
     assert ",1.8)" in restraint
     command = app["build_cmd"]()
-    assert command[command.index("--dist-freeze") + 1] == restraint
+    assert command[command.index("--distance-restraint") + 1] == restraint
 
 
 def _root_normalized_subcommand_argv(app: dict, subcommand: str, argv: list[str]) -> list[str]:
@@ -2431,7 +2431,7 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     }
     advanced_argv = app["_advanced_argv"]("all")
     assert advanced_argv[advanced_argv.index("--radius-het2het") + 1] == "4.5"
-    assert advanced_argv[advanced_argv.index("--include-h2o") + 1] == "false"
+    assert "--no-include-h2o" in advanced_argv
 
     sp_hessian = next(param for param in app["_advanced_options"]("sp")
                       if param.name == "hessian_calc_mode")
@@ -2500,7 +2500,7 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     app["charge_rows"]["LIG"]["use"].value = False
     app["w_q"].value = 0
     app["w_charge_ok"].value = True
-    assert "--dist-freeze" not in app["build_cmd"]()
+    assert "--distance-restraint" not in app["build_cmd"]()
     app["dd_subcmd"].value = "opt"
     assert "Distance restraints" in " ".join(
         getattr(child, "value", "") for child in app["freeze_panel"].children
@@ -2577,8 +2577,7 @@ def test_colab_compact_selection_upload_viewer_and_advanced_contracts(
     assert command[command.index("--opt-mode-post") + 1] == "grad"
     assert command[command.index("--thresh-post") + 1] == "baker"
     assert command[command.index("--hessian-calc-mode") + 1] == "FiniteDifference"
-    assert command[command.index("--preopt") + 1] == "false"
-    assert "--no-preopt" not in command
+    assert "--no-preopt" in command
     assert "--tsopt" in command
     app["all_mode"].value = "mep"
     assert not app["w_ts"].value and not app["w_ts"].disabled
@@ -6380,11 +6379,11 @@ def test_cycle_flags_are_owned_by_the_live_command_registry() -> None:
     for sub in ("all", "path-search"):
         available = opts_of(sub)
         assert "--max-cycles-gsm" in available, sub
-        assert "--max-cycles-dmf" in available, sub
+        assert "--dmf-max-iterations" in available, sub
         assert "--max-cycles" not in available, sub
     path_opt = opts_of("path-opt")
     assert "--max-cycles-gsm" in path_opt
-    assert "--max-cycles-dmf" in path_opt
+    assert "--dmf-max-iterations" in path_opt
     assert "--max-cycles" not in path_opt
     for sub in ("opt", "tsopt", "irc"):
         assert "--max-cycles" in opts_of(sub), sub

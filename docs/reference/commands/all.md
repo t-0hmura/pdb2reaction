@@ -46,14 +46,16 @@ Options:
                                   neighbors).  [default: 2.6; x>=0.0]
   --radius-het2het FLOAT RANGE    Independent hetero–hetero cutoff (Å) for
                                   non‑C/H pairs.  [default: 0.0; x>=0.0]
-  --include-h2o BOOLEAN           Include waters (HOH/WAT/TIP3/SOL) in the
-                                  active site model.  [default: True]
-  --exclude-backbone BOOLEAN      Remove backbone atoms on non‑substrate amino
+  --include-h2o / --no-include-h2o
+                                  Include waters (HOH/WAT/TIP3/SOL) in the
+                                  active site model.  [default: include-h2o]
+  --exclude-backbone / --no-exclude-backbone
+                                  Remove backbone atoms on non‑substrate amino
                                   acids (with PRO/HYP safeguards).  [default:
-                                  False]
-  --add-linkh BOOLEAN             Add cap hydrogens for severed bonds (carbon
+                                  no-exclude-backbone]
+  --add-linkh / --no-add-linkh    Add cap hydrogens for severed bonds (carbon
                                   boundaries only) in active site models.
-                                  [default: True]
+                                  [default: add-linkh]
   --selected-resn TEXT            Force-include residues without radius
                                   expansion using the same selectors as
                                   -c/--center: IDs ('123', 'A:123A'), names
@@ -81,12 +83,14 @@ Options:
                                   highest priority over extractor/workflow-
                                   derived charge; a mismatch emits a warning.
                                   Omit it to use automatic charge derivation.
-  --workers INTEGER               MLIP predictor workers; >1 spawns a parallel
+  --uma-workers, --workers INTEGER
+                                  MLIP predictor workers; >1 spawns a parallel
                                   predictor. NOTE: with UMA, workers>1 plus an
                                   explicit Analytical Hessian request is an
                                   error; use workers=1 or FiniteDifference.
                                   [default: 1]
-  --workers-per-node INTEGER      Workers per node when using a parallel MLIP
+  --uma-workers-per-node, --workers-per-node INTEGER
+                                  Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
   -b, --backend [uma|orb|mace|aimnet2|dft]
                                   Energy/force calculator backend.  [default:
@@ -100,9 +104,10 @@ Options:
                                   Solvent model: ALPB/CPCMx for MLIP backends;
                                   PCM/SMD for dft.  [default: alpb]
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1).  [default: 1]
-  --freeze-links BOOLEAN          Freeze parent atoms of cap hydrogens
+  --freeze-links / --no-freeze-links
+                                  Freeze parent atoms of cap hydrogens
                                   (PDB/mmCIF input or XYZ/GJF with --ref-pdb).
-                                  [default: True]
+                                  [default: freeze-links]
   --freeze-atoms TEXT             Comma-separated 1-based atom indices to freeze
                                   in every stage (e.g., '1,3,5'). With
                                   extraction, indices refer to the original full
@@ -131,13 +136,14 @@ Options:
                                   region near the HEI.  [default: (equi)]
   --max-cycles-gsm INTEGER RANGE  Maximum GSM string-optimizer cycles for the
                                   MEP stage.  [default: (300); x>=1]
-  --max-cycles-dmf INTEGER RANGE  Maximum IPOPT iterations for the DMF MEP
+  --dmf-max-iterations, --max-cycles-dmf INTEGER RANGE
+                                  Maximum IPOPT iterations for the DMF MEP
                                   stage. This is a solver iteration count, not a
                                   string-optimizer cycle count.  [default:
                                   (3000); x>=1]
-  --climb BOOLEAN                 Enable climbing image for standard GSM
+  --climb / --no-climb            Enable climbing image for standard GSM
                                   segments (bridge segments always disable
-                                  climbing).  [default: True]
+                                  climbing).  [default: climb]
   --opt-mode [grad|hess]          Optimizer mode forwarded to scan/tsopt and
                                   used for single optimizations: grad
                                   (=LBFGS/Dimer) or hess (=RFO for scan/opt; RS-
@@ -147,18 +153,20 @@ Options:
                                   mode when explicitly provided; otherwise falls
                                   back to the default ('hess' = RS-P-RFO).
                                   [default: hess]
-  --dump BOOLEAN                  Dump GSM/MEP trajectories. An explicit parent
+  --dump / --no-dump              Dump GSM/MEP trajectories. An explicit parent
                                   toggle is forwarded to path-search/path-opt
                                   and scan/tsopt; when omitted, child
                                   YAML/defaults apply. When --thermo is enabled,
                                   freq always retains thermoanalysis.yaml
                                   because the composite workflow consumes that
                                   file; --no-dump does not suppress it.
-                                  [default: False]
-  --convert-files BOOLEAN         Convert XYZ/TRJ outputs into PDB/CIF/GJF
+                                  [default: no-dump]
+  --convert-files / --no-convert-files
+                                  Convert XYZ/TRJ outputs into PDB/CIF/GJF
                                   companions based on the input format.
-                                  [default: True]
-  --refine-path BOOLEAN           Run a single-pass path-opt with the selected
+                                  [default: convert-files]
+  --refine-path / --no-refine-path
+                                  Run a single-pass path-opt with the selected
                                   GSM/DMF method between each adjacent pair and
                                   concatenate the segments (default; no
                                   path_search). Use --refine-path to run
@@ -166,17 +174,19 @@ Options:
                                   series: it proposes multistep reaction paths
                                   and also refines a single-step MEP, which can
                                   improve a poor HEI or TS estimate.  [default:
-                                  False]
-  --write-ref-merge BOOLEAN       Write mep_w_ref/hei_w_ref coordinate
+                                  no-refine-path]
+  --write-ref-merge / --no-write-ref-merge
+                                  Write mep_w_ref/hei_w_ref coordinate
                                   composites for inspection in recursive
                                   --refine-path mode. Requires -c/--center and
-                                  PDB/mmCIF input.  [default: False]
+                                  PDB/mmCIF input.  [default: no-write-ref-
+                                  merge]
   --thresh [gau_loose|gau|gau_tight|gau_vtight|baker|never]
                                   Convergence preset for single-structure
                                   optimizations and scan relaxations (gau_loose|
                                   gau|gau_tight|gau_vtight|baker|never). The MEP
-                                  stage keeps its own --thresh-gsm / --thresh-
-                                  dmf.  [default: (gau)]
+                                  stage keeps its own --thresh-gsm / --dmf-tol.
+                                  [default: (gau)]
   --thresh-post [gau_loose|gau|gau_tight|gau_vtight|baker|never]
                                   Convergence preset for TS and post-IRC
                                   endpoint optimizations (gau_loose|gau|gau_tigh
@@ -186,12 +196,17 @@ Options:
                                   optimizer of the MEP stage (gau_loose|gau|gau_
                                   tight|gau_vtight|baker|never).  [default:
                                   (gau_loose)]
-  --thresh-dmf TEXT               IPOPT dual-infeasibility tolerance for the DMF
+  --dmf-tol, --thresh-dmf TEXT    IPOPT dual-infeasibility tolerance for the DMF
                                   MEP stage: tight (0.04) | middle (0.10) |
                                   loose (0.20) or a positive float. This is not
                                   a Gaussian preset.  [default: (tight)]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
+  --resume-segment INTEGER RANGE  Reuse the verified MEP in --out-dir and rerun
+                                  post-processing from segment N. Repeat the
+                                  original path/extraction/calculator options;
+                                  post-processing options may be changed.
+                                  [default: (disabled); x>=1]
   --show-config / --no-show-config
                                   Print resolved configuration and continue
                                   execution.  [default: no-show-config]
@@ -201,16 +216,16 @@ Options:
                                   electron parity; no computational stage or
                                   persistent output is produced.  [default: no-
                                   dry-run]
-  --preopt BOOLEAN                If True, run initial single-structure
+  --preopt / --no-preopt          If True, run initial single-structure
                                   optimizations of the active site model inputs.
-                                  [default: True]
+                                  [default: preopt]
   --hessian-calc-mode [finitedifference|analytical]
                                   Common MLIP Hessian calculation mode forwarded
                                   to tsopt and freq.  [default:
                                   (FiniteDifference)]
-  --tsopt BOOLEAN                 TS optimization + IRC per reactive segment (or
+  --tsopt / --no-tsopt            TS optimization + IRC per reactive segment (or
                                   TSOPT-only mode for single-structure), and
-                                  build energy diagrams.  [default: False]
+                                  build energy diagrams.  [default: no-tsopt]
   --tsopt-from-mep-tan / --no-tsopt-from-mep-tan
                                   Guide Hessian-based TS root identity from MEP
                                   tangent candidate(s) at the highest-energy
@@ -218,13 +233,13 @@ Options:
                                   used when disabled. Dimer does not consume
                                   this Hessian reference mode.  [default: tsopt-
                                   from-mep-tan]
-  --thermo BOOLEAN                Run freq on (R, TS, P) per reactive segment
+  --thermo / --no-thermo          Run freq on (R, TS, P) per reactive segment
                                   (or TSOPT-only mode) and build Gibbs free-
-                                  energy diagram (MLIP).  [default: False]
-  --dft BOOLEAN                   Run DFT single-point on (R, TS, P) and build
+                                  energy diagram (MLIP).  [default: no-thermo]
+  --dft / --no-dft                Run DFT single-point on (R, TS, P) and build
                                   DFT energy diagram. With --thermo, also
                                   generate a DFT//MLIP Gibbs diagram.  [default:
-                                  False]
+                                  no-dft]
   --tsopt-max-cycles INTEGER RANGE
                                   Override tsopt --max-cycles.  [default:
                                   (100000); x>=1]
@@ -283,15 +298,19 @@ Options:
   --dft-out-dir DIRECTORY         Override dft output base directory (relative
                                   paths resolved against the default).
                                   [default: (<tsopt dir>/dft)]
-  --dft-func-basis TEXT           Override dft --func-basis value.  [default:
+  --func-basis, --dft-func-basis TEXT
+                                  Override dft --func-basis value.  [default:
                                   (wb97m-v/def2-svp)]
-  --dft-max-cycle INTEGER RANGE   Override dft --max-cycle value.  [default:
-                                  (100); x>=1]
-  --dft-conv-tol FLOAT            Override dft --conv-tol value.  [default:
-                                  (1e-9)]
+  --scf-max-cycles, --dft-max-cycle INTEGER RANGE
+                                  Override the DFT SCF iteration limit.
+                                  [default: (100); x>=1]
+  --scf-tol, --dft-conv-tol FLOAT
+                                  Override the DFT SCF convergence tolerance.
+                                  [default: (1e-9)]
   --dft-grid-level INTEGER        Override dft --grid-level value.  [default:
                                   (3)]
-  --dft-engine [gpu|cpu]          Override the DFT backend (gpu or cpu); omitted
+  --dft-engine, --engine [gpu|cpu]
+                                  Override the DFT backend (gpu or cpu); omitted
                                   values inherit YAML/defaults.  [default:
                                   (gpu)]
   --dft-solvent TEXT              Implicit solvent for post-processing DFT
@@ -310,20 +329,24 @@ Options:
   --scan-out-dir DIRECTORY        Override the scan output directory. Relative
                                   paths are resolved against the default parent.
                                   [default: (<out-dir>/_work/scan)]
-  --scan-one-based BOOLEAN        Override the scan subcommand indexing
+  --scan-one-based / --scan-zero-based
+                                  Override the scan subcommand indexing
                                   interpretation (True = 1-based, False =
                                   0-based).  [default: (True)]
   --scan-max-step-size FLOAT      Override scan --max-step-size (Å).  [default:
                                   (0.20)]
-  --scan-bias-k FLOAT             Override scan harmonic bias strength k
+  --scan-restraint-k, --scan-bias-k FLOAT
+                                  Override scan harmonic bias strength k
                                   (eV/Å^2).  [default: (300)]
   --scan-relax-max-cycles INTEGER RANGE
                                   Override scan relaxation max cycles per step.
                                   [default: (100000); x>=1]
-  --scan-preopt BOOLEAN           Override scan --preopt flag. Inherits from
+  --scan-preopt / --no-scan-preopt
+                                  Override scan --preopt flag. Inherits from
                                   --preopt when omitted.  [default: (inherits
                                   --preopt)]
-  --scan-endopt BOOLEAN           Override scan --endopt flag.  [default:
+  --scan-endopt / --no-scan-endopt
+                                  Override scan --endopt flag.  [default:
                                   (False)]
   --ref-pdb FILE                  Reference PDB/mmCIF for topology when -i
                                   provides XYZ inputs. Enables topology-aware
@@ -350,7 +373,8 @@ Options:
                                   backend (overrides --backend). Couples GFN-xTB
                                   / DFTB+ / any ASE engine. See --calc-file-
                                   func-name.
-  --calc-file-func-name TEXT      Name of the callable in --calc-file that
+  --calc-factory, --calc-file-func-name TEXT
+                                  Name of the callable in --calc-file that
                                   returns an ASE Calculator (or a module-level
                                   Calculator instance). CLI overrides config
                                   YAML; otherwise defaults to get_calculator.
@@ -366,22 +390,19 @@ Options:
                                   shell clusters need a matching multiplicity
                                   instead; use this only for an intentionally
                                   nonstandard electron count.
-  --func-basis TEXT               DFT method as FUNCTIONAL/BASIS; HF/BASIS is
-                                  also accepted.  [default: (wb97m-v/def2-svp)]
-  --engine [gpu|cpu]              PySCF execution engine used by --backend dft.
-                                  [default: (gpu)]
   --save-scf-checkpoint / --no-save-scf-checkpoint
                                   Persist a structure-bound PySCF checkpoint
                                   (default: disabled).  [default: (disabled)]
   --scf-checkpoint FILE           Load/save the optional structure-bound PySCF
                                   checkpoint at PATH.
-  --lowmem / --no-lowmem          Use GPU4PySCF rks_lowmem for closed-shell GPU
+  --dft-low-memory, --lowmem / --no-dft-low-memory, --no-lowmem
+                                  Use GPU4PySCF rks_lowmem for closed-shell GPU
                                   DFT; open-shell GPU and CPU use standard
-                                  direct JK. --no-lowmem enables density
+                                  direct JK. --no-dft-low-memory enables density
                                   fitting.  [default: (lowmem)]
   --dft-nprocs INTEGER RANGE      PySCF/OpenMP CPU threads; GPU count is
                                   unaffected.  [default: (auto); x>=1]
-  --dft-mem TEXT                  PySCF host RAM limit (for example 64GB or
+  --dft-memory, --dft-mem TEXT    PySCF host RAM limit (for example 64GB or
                                   120000MB).  [default: (auto)]
   -h, --help                      Show this message and exit.
 ```

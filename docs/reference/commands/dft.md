@@ -30,26 +30,31 @@ Options:
                                   as 'FUNC/BASIS' (e.g., 'wb97m-v/6-31g**',
                                   'wb97m-v/def2-tzvpd').  [default:
                                   wb97m-v/def2-svp]
-  --max-cycle INTEGER RANGE       Maximum SCF iterations.  [default: 100; x>=1]
-  --conv-tol FLOAT                SCF convergence tolerance (Eh).  [default:
+  --scf-max-cycles, --max-cycle INTEGER RANGE
+                                  Maximum SCF iterations.  [default: 100; x>=1]
+  --scf-tol, --conv-tol FLOAT     SCF convergence tolerance (Eh).  [default:
                                   1e-09]
-  --grid-level INTEGER            Numerical integration grid level (PySCF
+  --dft-grid-level, --grid-level INTEGER
+                                  Numerical integration grid level (PySCF
                                   grids.level).  [default: 3]
   -o, --out-dir TEXT              Output directory.  [default: ./result_dft/]
-  --engine [gpu|cpu]              SCF backend: gpu (GPU4PySCF, raises error if
+  --dft-engine, --engine [gpu|cpu]
+                                  SCF backend: gpu (GPU4PySCF, raises error if
                                   unavailable) or cpu (PySCF).  [default: gpu]
   --solvent TEXT                  Implicit-solvent name for native PySCF PCM/SMD
                                   (for example water).  [default: (none)]
   --solvent-model [pcm|smd]       Native PySCF implicit-solvent model.
                                   [default: (smd)]
-  --lowmem / --no-lowmem          Use gpu4pyscf rks_lowmem.RKS for closed-shell
+  --dft-low-memory, --lowmem / --no-dft-low-memory, --no-lowmem
+                                  Use gpu4pyscf rks_lowmem.RKS for closed-shell
                                   GPU runs, including PCM/SMD (memory-efficient
                                   direct JK). Open-shell GPU and CPU use
-                                  standard direct-JK RKS/UKS; --no-lowmem
-                                  enables density fitting.  [default: lowmem]
+                                  standard direct-JK RKS/UKS; --no-dft-low-
+                                  memory enables density fitting.  [default:
+                                  dft-low-memory]
   --dft-nprocs INTEGER RANGE      PySCF/OpenMP CPU threads; GPU count is
                                   unaffected.  [default: (auto); x>=1]
-  --dft-mem TEXT                  PySCF host RAM limit (for example 64GB or
+  --dft-memory, --dft-mem TEXT    PySCF host RAM limit (for example 64GB or
                                   120000MB).  [default: (auto)]
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.

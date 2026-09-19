@@ -675,13 +675,16 @@ def _optimize_single(
     help="Total charge. Required unless a .gjf template provides charge metadata or --ligand-charge is supplied for PDB/mmCIF inputs.",
 )
 @click.option(
+    "--uma-workers",
     "--workers",
+    "workers",
     type=int,
     default=UMA_CALC_KW["workers"],
     show_default=True,
     help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
 )
 @click.option(
+    "--uma-workers-per-node",
     "--workers-per-node",
     "workers_per_node",
     type=int,
@@ -751,7 +754,9 @@ def _optimize_single(
     help="Maximum GSM string-optimizer cycles for the MEP stage.",
 )
 @click.option(
+    "--dmf-max-iterations",
     "--max-cycles-dmf",
+    "max_cycles_dmf",
     type=click.IntRange(min=1),
     default=None,
     show_default="3000",
@@ -821,7 +826,9 @@ def _optimize_single(
     ),
 )
 @click.option(
+    "--dmf-tol",
     "--thresh-dmf",
+    "thresh_dmf",
     type=str,
     default=None,
     show_default="tight",

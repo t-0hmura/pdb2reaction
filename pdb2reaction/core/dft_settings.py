@@ -440,7 +440,7 @@ def resolve_dft_settings(
 
     engine = str(raw.get("engine", "gpu")).strip().lower()
     if engine not in {"cpu", "gpu"}:
-        raise click.BadParameter("DFT engine must be 'cpu' or 'gpu'.", param_hint="--engine")
+        raise click.BadParameter("DFT engine must be 'cpu' or 'gpu'.", param_hint="--dft-engine")
 
     pyscf_cfg = _mapping(raw.get("pyscf"), "calc.dft.pyscf")
     bad_sections = sorted(set(pyscf_cfg) - _PYSCF_SECTIONS)

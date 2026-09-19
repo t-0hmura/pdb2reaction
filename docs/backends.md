@@ -94,7 +94,7 @@ Requires `fairchem-core ≥ 2.0` for the `InferenceSettings` API.
 ## Stateful DFT backend
 
 `sp`, `opt`, `tsopt`, `irc`, `freq`, `scan*`, `path-opt`, `path-search`, and
-`all` accept `--backend dft --func-basis FUNCTIONAL/BASIS --engine gpu|cpu`.
+`all` accept `--backend dft --func-basis FUNCTIONAL/BASIS --dft-engine gpu|cpu`.
 The dedicated `pdb2reaction dft` population-analysis command remains available.
 
 Closed-shell GPU low-memory runs rebuild the geometry-bound `rks_lowmem.RKS`
@@ -103,14 +103,14 @@ Other routes retain one PySCF scanner. Both paths reset geometry-dependent
 intermediates, reuse the electronic state, and use the exact-coordinate cache
 for repeated energy/force requests. PCM and SMD use native PySCF solvent objects.
 
-Low-memory execution is the default (`--lowmem`). Closed-shell GPU calculations
+Low-memory execution is the default (`--dft-low-memory`). Closed-shell GPU calculations
 use `gpu4pyscf.dft.rks_lowmem.RKS` for energy, gradients, and Hessians, including
 PCM/SMD. Open-shell GPU and CPU calculations use standard direct JK without a
-persistent density-fitting tensor. `--no-lowmem` enables density fitting and may
+persistent density-fitting tensor. `--no-dft-low-memory` enables density fitting and may
 improve difficult SCF convergence when enough memory is available. PySCF threads
 and host RAM are detected from the scheduler,
 process affinity, and host/cgroup limits; override them with `--dft-nprocs` and
-`--dft-mem`. The memory value is host RAM, not GPU VRAM.
+`--dft-memory`. The memory value is host RAM, not GPU VRAM.
 
 Disk checkpoints are disabled by default because they can be very large. Enable
 them with `--save-scf-checkpoint` and optionally select a shared file with

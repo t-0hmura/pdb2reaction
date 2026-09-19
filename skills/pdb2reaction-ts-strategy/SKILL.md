@@ -41,7 +41,7 @@ validation; precision is not proof of a saddle.
 | (a) MEP / path search | `path-search` | Have both endpoints (R and P); want the TS bracketed automatically | Recursive GSM/DMF MEP with bond-change detection; auto-segments a multi-step path, refines each reactive segment, returns `hei_seg_NN.xyz` (highest-energy image per segment) |
 | (b) Distance-restrained build-up | `scan` | Have only the reactant (or want to drive a specific reacting distance) | Staged harmonic restraints `E=½k(r−target)²` (scan default `k=300` via `BIAS_KW`; the `10.0` in `HarmonicBiasCalculator` is only an unused constructor fallback) optimize the remaining degrees of freedom while driving each distance; frames are biased geometries, not stationary points on the bare PES |
 
-- There is **no** `opt --restraint` flag, but `opt` **does** support harmonic distance restraints via `--dist-freeze` (with `--bias-k`); `scan` is the route for *driving/walking* a reacting coordinate up to a TS candidate.
+- There is **no** `opt --restraint` flag, but `opt` **does** support harmonic distance restraints via `--distance-restraint` (with `--restraint-k`); `scan` is the route for *driving/walking* a reacting coordinate up to a TS candidate.
 - `scan` supports `--preopt` (unbiased optimization of the **initial structure** before the scan) and `--endopt` (unbiased optimization of **each stage's result**, run after that stage); both default off.
 - Feed either route's candidate into `tsopt → irc`. Terminal PHVA checks saddle order; add `freq` for full modes or thermochemistry (see `pdb2reaction-cli`).
 

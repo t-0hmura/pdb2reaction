@@ -272,7 +272,7 @@ class PySCFDFTSession:
                 mf = mf.to_gpu()
             except (ImportError, ModuleNotFoundError) as exc:
                 raise BackendError(
-                    "GPU4PySCF is required for --engine gpu. Install a compatible gpu4pyscf package."
+                    "GPU4PySCF is required for --dft-engine gpu. Install a compatible gpu4pyscf package."
                 ) from exc
             except Exception as exc:
                 raise BackendError(f"Could not move the PySCF method to GPU4PySCF: {exc}") from exc

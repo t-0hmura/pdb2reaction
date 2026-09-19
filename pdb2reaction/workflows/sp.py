@@ -76,11 +76,11 @@ logger = logging.getLogger(__name__)
     help="Input structure (PDB / mmCIF / XYZ / GJF).",
 )
 @click.option(
-    "--workers", type=int, default=UMA_CALC_KW["workers"], show_default=True,
+    "--uma-workers", "--workers", "workers", type=int, default=UMA_CALC_KW["workers"], show_default=True,
     help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
 )
 @click.option(
-    "--workers-per-node", "workers_per_node",
+    "--uma-workers-per-node", "--workers-per-node", "workers_per_node",
     type=int, default=UMA_CALC_KW["workers_per_node"], show_default=True,
     help="Workers per node when using a parallel MLIP predictor (workers>1).",
 )

@@ -322,17 +322,15 @@ PDB セレクタのトークンは、カンマ `,`、スペース、スラッシ
 - 両方とも値は **atm** 単位で扱われ、内部で Pa に変換されます。
 
 (ja-engine-vs-dft-engine)=
-### `--engine`（単体 `dft`）vs `--dft-engine`（`all` 内）
+### DFT engine
 
-- **単体 `dft`** サブコマンドではバックエンド選択フラグは **`--engine`**（値: `gpu`, `cpu`）です。
-- **`pdb2reaction all`** 内では同じオプションが **`--dft-engine`** にリネームされます（`all` ラッパーで他の engine 系フラグと衝突しないようプレフィックスで区別するため）。
-- YAML では両方とも同じ `dft` セクション設定に解決されます。{ref}`YAML リファレンスの dft セクション <ja-dft-section>` を参照してください。
-
-等価なコマンド:
+単体`dft`と`all`はどちらも`--dft-engine gpu|cpu`を使います。対応するYAML
+keyは`dft.engine`です。{ref}`YAML リファレンスの dft セクション <ja-dft-section>`
+も参照してください。
 
 ```bash
 # 単体 dft
-pdb2reaction dft -i ts.xyz -q 0 --engine gpu
+pdb2reaction dft -i ts.xyz -q 0 --dft-engine gpu
 
 # all ラッパー内で同じ処理
 pdb2reaction all -i r.pdb p.pdb -c SAM --tsopt --dft --dft-engine gpu

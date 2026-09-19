@@ -235,7 +235,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 
 対処の例:
 - 単独の `irc`: `--step-size 0.05`（デフォルト: 0.10 bohr）、必要なら `--max-cycles 200`。
-- `all`: `--irc-step-size 0.05`、必要なら `--irc-max-cycles 200`（YAML では `irc.max_cycles`）。MEP の上限は `--max-cycles-gsm` / `--max-cycles-dmf` で別に指定します。
+- `all`: `--irc-step-size 0.05`、必要なら `--irc-max-cycles 200`（YAML では `irc.max_cycles`）。MEP の上限は `--max-cycles-gsm` / `--dmf-max-iterations` で別に指定します。
 - 物理的な停止条件を無視するには、単独で `--never-stop`、`all` で `--irc-never-stop` を指定し、軌跡と端点を確認してください。
 - IRC 実行前に Cartesian PHVA で −5.00 cm⁻¹ 未満の振動数が **ちょうど 1 本** であることを確認してください。`freq.zero_cutoff_cm` で別の閾値絶対値を指定できます。完全な振動数からモードを削除せず、熱化学には正の低振動数も使います。詳細は [freq](freq.md) を参照してください。
 
@@ -257,7 +257,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 
 - **VRAM 不足**: 必要な残基が残ることを確認してから活性部位モデルを小さくする、`--max-nodes` を減らす、full-Hessian optimizer が不要なら `--opt-mode grad` を使う
 - **解析 Hessian が遅いまたは OOM**: 対象 backend/model と代表的な原子数で試験するまでは、移植性のあるデフォルト `FiniteDifference` を維持してください。解析 autograd は通常メモリピークが大きくなりますが、一般化できる原子数・VRAM の境界値はありません
-- **workers > 1**: hardware と workload によっては UMA throughput が向上しますが、並列 predictor は解析 Hessian を持ちません。`Analytical` を明示すると `BackendError`（`RuntimeError` のサブクラス）で停止します。解析 Hessian には `--workers 1`、並列実行には `FiniteDifference` を指定してください
+- **workers > 1**: hardware と workload によっては UMA throughput が向上しますが、並列 predictor は解析 Hessian を持ちません。`Analytical` を明示すると `BackendError`（`RuntimeError` のサブクラス）で停止します。解析 Hessian には `--uma-workers 1`、並列実行には `FiniteDifference` を指定してください
 - **大規模系**: 化学的に妥当な小さい活性部位モデルを作り、半径・境界位置への感度を確認してください。multi-GPU の対応範囲は backend/workflow ごとに異なり、GPU 数を増やしても worker 当たりのメモリが減るとは限りません
 - **HPC で DFT を回すとき**: 選択した計算が temporary disk を使う場合は、容量と性能を確認した filesystem に `PYSCF_TMPDIR` を設定してください。`/tmp`、`$PBS_O_WORKDIR`、shared filesystem のどれが適切かは site ごとに異なります
 

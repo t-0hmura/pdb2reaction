@@ -55,7 +55,7 @@ lscpu | grep -E "^(Architecture|Model name|CPU\(s\)):"
 On `aarch64` (ARM64), the packaged **`gpu4pyscf-cuda13x` PyPI wheel is not
 available**, so the supported extra uses CPU PySCF. An expert may instead use
 a separately source-built GPU4PySCF environment, but must validate imports and
-a representative SCF before selecting `--engine gpu`. Other backends (UMA /
+a representative SCF before selecting `--dft-engine gpu`. Other backends (UMA /
 MACE / Orb / AIMNet2) work when compatible wheels exist for the platform.
 
 ### 3. GPU
@@ -65,7 +65,7 @@ nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv 2>/dev/null
   || echo "no NVIDIA GPU detected"
 ```
 
-If no GPU: stay on CPU — for DFT use `--engine cpu`; MLIP backends auto-fall back to CPU. Omit `gpus=N` from the PBS preamble.
+If no GPU: stay on CPU — for DFT use `--dft-engine cpu`; MLIP backends auto-fall back to CPU. Omit `gpus=N` from the PBS preamble.
 If a GPU is present, note the **driver version** and **VRAM** — both
 constrain which torch CUDA index and which model size you can use.
 

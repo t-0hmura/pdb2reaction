@@ -11,7 +11,7 @@ IRC 単独の `scientific_status` や方向別の成功判定は出力しませ�
 ```bash
 pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] \
  [-b/--backend uma|orb|mace|aimnet2|dft] \
- [--workers N] [--workers-per-node N] [-m 2S+1] \
+ [--uma-workers N] [--uma-workers-per-node N] [-m 2S+1] \
  [--max-cycles N] [--step-size Δs] [--never-stop/--no-never-stop] [--root k] \
  [--forward/--no-forward] [--backward/--no-backward] \
  [--freeze-links/--no-freeze-links] \
@@ -108,8 +108,8 @@ Hessian を含まず、`result.json.files` にも登録しません。
 | `-i, --input PATH` | `geom_loader` が受け入れる遷移状態構造 | 必須 |
 | `-q, --charge INT` | 総電荷。明示的な `-q` が最優先。その他の解決順序は {ref}`電荷の指定 <ja-charge-specification>` を参照 | YAML/テンプレート/導出がない限り必須 |
 | `-l, --ligand-charge TEXT` | 単一の整数（例: `-1`）でリガンド総電荷を指定するか、残基別マッピング（例: `GPP:-3,SAM:1`）で PDB/mmCIF 残基電荷から全系の電荷を導出。`-q` 省略時に使用（PDB/mmCIF 入力、または `--ref-pdb` 付き XYZ/GJF） | _None_ |
-| `--workers INT` | UMA 予測器の並列度。`workers > 1` と明示的な解析 Hessian は併用できないため、`workers = 1` または有限差分を使用。{ref}`ja-workers-analytical-error` を参照 | `1` |
-| `--workers-per-node INT` | ノードあたりのワーカー数。並列予測器に渡されます | `1` |
+| `--uma-workers INT` | UMA 予測器の並列度。`workers > 1` と明示的な解析 Hessian は併用できないため、`workers = 1` または有限差分を使用。{ref}`ja-workers-analytical-error` を参照 | `1` |
+| `--uma-workers-per-node INT` | ノードあたりのワーカー数。並列予測器に渡されます | `1` |
 | `-m, --multiplicity INT` | スピン多重度（2S+1）。明示的な `-m` は YAML `calc.spin` より優先し、省略時は YAML、`.gjf`、`1` の順に解決 | YAML/`.gjf`/`1` |
 | `--max-cycles INT` | 最大 IRC ステップ。明示値は YAML `irc.max_cycles` より優先 | `125` |
 | `--step-size FLOAT` | ステップ長（Bohr、非質量加重デカルト座標）。明示値は YAML `irc.step_length` より優先 | `0.10` |

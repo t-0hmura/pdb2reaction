@@ -55,7 +55,7 @@ TS 初期構造がまず必要な場合は、2 端点なら [path-opt](path-opt.
 | (a) MEP / 経路探索 | [`path-search`](path-search.md) | 両端点（反応物**および**生成物）があり、TS を自動でブラケットしたい | 再帰的な最小エネルギー経路探索（GSM / DMF）と結合変化検出。多段階経路を自動分割し、各反応区間を精密化し、区間ごとの最高エネルギー像（`hei_seg_NN.xyz`）を返す |
 | (b) 距離拘束スキャン | [`scan`](scan.md) | 反応物のみがある、または特定の反応距離を直接駆動したい | 調和距離拘束 `E = ½k(r − target)²` で各反応距離を完全緩和しながら駆動し、系を TS 候補まで押し上げる |
 
-`opt --restraint` フラグはありません。`opt` は `--dist-freeze`（調和拘束、強さは `--bias-k`）で距離を拘束しますが駆動はせず、距離を駆動する積み上げ経路は `scan`（`--preopt` / `--endopt` で駆動経路まわりの端点を緩和できる）です。いずれの経路で得た候補も `tsopt → irc` で最適化・検証します。全振動モードや熱化学量が必要な場合は `freq` を実行します。
+`opt --restraint` フラグはありません。`opt` は `--distance-restraint`（調和拘束、強さは `--restraint-k`）で距離を拘束しますが駆動はせず、距離を駆動する積み上げ経路は `scan`（`--preopt` / `--endopt` で駆動経路まわりの端点を緩和できる）です。いずれの経路で得た候補も `tsopt → irc` で最適化・検証します。全振動モードや熱化学量が必要な場合は `freq` を実行します。
 
 ## 実行例
 
@@ -157,8 +157,8 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
 | `--ref-pdb FILE` | XYZ/GJF入力に使用する参照PDBまたはmmCIF topology | _None_ |
 | **バックエンドと計算** | | |
 | `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP バックエンド（任意で `dft`） | `uma` |
-| `--workers INT` | UMA 予測器の並列度。`workers > 1` と明示的な解析 Hessian は併用できないため、`workers = 1` または有限差分を使用。{ref}`ja-workers-analytical-error` を参照 | `1` |
-| `--workers-per-node INT` | ノードあたりのワーカー数。並列予測器に渡されます | `1` |
+| `--uma-workers INT` | UMA 予測器の並列度。`workers > 1` と明示的な解析 Hessian は併用できないため、`workers = 1` または有限差分を使用。{ref}`ja-workers-analytical-error` を参照 | `1` |
+| `--uma-workers-per-node INT` | ノードあたりのワーカー数。並列予測器に渡されます | `1` |
 | `--hessian-calc-mode CHOICE` | MLIP Hessian モード（`Analytical` または `FiniteDifference`） | `FiniteDifference` |
 | **活性領域の凍結** | | |
 | `--freeze-links/--no-freeze-links` | PDB/mmCIF 入力（または `--ref-pdb` 付き XYZ/GJF）。キャップ水素の親を凍結（`geom.freeze_atoms` にマージ）。キャップ水素の詳細は [extract](extract.md) を参照 | `True` |

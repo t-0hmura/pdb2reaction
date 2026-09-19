@@ -10,8 +10,8 @@ Command form:
 pdb2reaction opt -i INPUT.{pdb|cif|mmcif|xyz|gjf} [-q CHARGE] [-l, --ligand-charge <number|'RES:Q,...'>] [-m MULT] \
  [-b/--backend uma|orb|mace|aimnet2|dft] \
  [--opt-mode grad|hess|lbfgs|rfo] [--flatten/--no-flatten] [--freeze-links/--no-freeze-links] \
- [--dist-freeze '[(i,j,target_Å),...]'] [--one-based|--zero-based] \
- [--bias-k K_eV_per_Å²] [--dump/--no-dump] [-o/--out-dir DIR] \
+ [--distance-restraint '[(i,j,target_Å),...]'] [--one-based|--zero-based] \
+ [--restraint-k K_eV_per_Å²] [--dump/--no-dump] [-o/--out-dir DIR] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
@@ -28,12 +28,12 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --thresh gau_tight --dump \
  --out-dir ./result_opt_tight
 ```
 
-Add a harmonic distance restraint. The example uses `--bias-k 20.0` (a loose restraint suitable for gently guiding the structure toward the target distance); the default `bias.k` is 300 eV·Å⁻² and is better when you want the restraint to dominate during optimization:
+Add a harmonic distance restraint. The example uses `--restraint-k 20.0` (a loose restraint suitable for gently guiding the structure toward the target distance); the default `bias.k` is 300 eV·Å⁻² and is better when you want the restraint to dominate during optimization:
 
 ```bash
 pdb2reaction opt -i input.pdb -q 0 -m 1 \
- --dist-freeze '[(1,5,2.0)]' --bias-k 20.0 --out-dir ./result_opt_rest
-# 2-tuple form restrains atoms 1 and 5 to their current distance: --dist-freeze '[(1,5)]'
+ --distance-restraint '[(1,5,2.0)]' --restraint-k 20.0 --out-dir ./result_opt_rest
+# 2-tuple form restrains atoms 1 and 5 to their current distance: --distance-restraint '[(1,5)]'
 ```
 
 Switch explicitly to RFO mode:
@@ -48,7 +48,7 @@ pdb2reaction opt -i input.pdb -q 0 -m 1 --opt-mode hess \
 - **Convergence and frequencies**: RFO reports its numerical convergence criteria. It does not request an additional Hessian or resume optimization solely to certify a minimum. Use [`freq`](freq.md) for a separate vibrational analysis; `--flatten` remains an explicit request for mode cleanup.
 - **Optimizer naming**: the CLI accepts `grad|lbfgs` and `hess|rfo`; in the YAML `opt_mode` key, use `lbfgs` or `rfo` directly. See {ref}`opt-mode-semantics` for the per-subcommand token→algorithm mapping.
 - **Flatten loop**: `--flatten` enables post-optimization flattening of imaginary vibrational modes. In `opt`, all detected imaginary modes are flattened each iteration until none remain or the internal loop cap is reached. Its PHVA eigensolver always uses the constrained rigid-mode treatment.
-- **Restraints**: `--dist-freeze` consumes Python-literal tuples `(i, j, target_Å)` where `target_Å` is the target distance in Å; omitting the third element restrains the starting distance. `--bias-k` sets a global harmonic strength (eV·Å⁻²). Indices default to 1-based but can be flipped to 0-based with `--zero-based`.
+- **Restraints**: `--distance-restraint` consumes Python-literal tuples `(i, j, target_Å)` where `target_Å` is the target distance in Å; omitting the third element restrains the starting distance. `--restraint-k` sets a global harmonic strength (eV·Å⁻²). Indices default to 1-based but can be flipped to 0-based with `--zero-based`.
 - **Charge/spin resolution**: Charge is resolved via the standard priority chain (see {ref}`CLI Conventions: Charge specification <charge-specification>` for details).
 - **Freeze atoms**: When `--freeze-links` is active, cap-hydrogen parent atoms are automatically frozen (see {ref}`Cap hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
 - **Dumping & conversion**: `--dump` mirrors `opt.dump=True` and writes `optimization_trj.xyz`; when conversion is enabled, PDB inputs receive `.pdb` companions and mmCIF/oversized-PDB bridge inputs receive both `.pdb` and `.cif`. `opt.dump_restart` can emit restart YAML snapshots.
@@ -80,12 +80,12 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `-i, --input PATH` | One PDB/mmCIF, XYZ, or GJF geometry; extract a trajectory frame to `.xyz` first. | Required |
 | `-q, --charge INT` | Net charge. Required unless a `.gjf` template or `--ligand-charge/-l` (PDB/mmCIF inputs or XYZ/GJF with `--ref-pdb`) supplies it. Overrides `--ligand-charge/-l` when both are set. | Required unless template/derivation applies |
 | `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB/mmCIF residue metadata. Used when `-q` is omitted (PDB/mmCIF inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
-| `--workers INT` | UMA predictor parallelism. `workers > 1` cannot be combined with an explicit analytical Hessian request; use `workers = 1` or finite differences. See {ref}`workers-analytical-error`. | `1` |
-| `--workers-per-node INT` | Workers per node, forwarded to the parallel predictor. | `1` |
+| `--uma-workers INT` | UMA predictor parallelism. `workers > 1` cannot be combined with an explicit analytical Hessian request; use `workers = 1` or finite differences. See {ref}`workers-analytical-error`. | `1` |
+| `--uma-workers-per-node INT` | Workers per node, forwarded to the parallel predictor. | `1` |
 | `-m, --multiplicity INT` | Spin multiplicity (2S+1). Falls back to `.gjf` template or `1`. | Template/`1` |
-| `--dist-freeze TEXT` | Repeatable string parsed as Python literal describing `(i,j,target_Å)` tuples for harmonic restraints. | _None_ |
-| `--one-based/--zero-based` | Interpret `--dist-freeze` indices as 1-based (default) or 0-based. | `True` |
-| `--bias-k FLOAT` | Harmonic bias strength applied to every `--dist-freeze` tuple (eV·Å⁻²). | `300` |
+| `--distance-restraint TEXT` | Repeatable string parsed as Python literal describing `(i,j,target_Å)` tuples for harmonic restraints. | _None_ |
+| `--one-based/--zero-based` | Interpret `--distance-restraint` indices as 1-based (default) or 0-based. | `True` |
+| `--restraint-k FLOAT` | Harmonic bias strength applied to every `--distance-restraint` tuple (eV·Å⁻²). | `300` |
 | `--freeze-links/--no-freeze-links` | Toggle cap-hydrogen parent freezing (PDB/mmCIF input or XYZ/GJF with `--ref-pdb`). See [extract](extract.md) for cap-hydrogen details. | `True` |
 | `--freeze-atoms TEXT` | Comma-separated 1-based atom indices to freeze explicitly (e.g., `'1,3,5'`). Complements `--freeze-links`; applies to any input format. | _None_ |
 | `--max-cycles INT` | Hard limit on optimization iterations (`opt.max_cycles`). | `100000` |

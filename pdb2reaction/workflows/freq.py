@@ -436,13 +436,16 @@ def _prepare_frequency_output_paths(
     help="Input structure file (.pdb, .cif, .mmcif, .xyz, .gjf, _trj.xyz, ...).",
 )
 @click.option(
+    "--uma-workers",
     "--workers",
+    "workers",
     type=int,
     default=CALC_KW["workers"],
     show_default=True,
     help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
 )
 @click.option(
+    "--uma-workers-per-node",
     "--workers-per-node",
     "workers_per_node",
     type=int,

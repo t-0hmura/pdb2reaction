@@ -93,7 +93,7 @@ calc:
 ## Stateful DFT backend
 
 `sp`、`opt`、`tsopt`、`irc`、`freq`、`scan*`、`path-opt`、`path-search`、`all`で
-`--backend dft --func-basis FUNCTIONAL/BASIS --engine gpu|cpu`を使用できます。
+`--backend dft --func-basis FUNCTIONAL/BASIS --dft-engine gpu|cpu`を使用できます。
 population解析用の独立した`pdb2reaction dft` subcommandも維持されています。
 
 closed-shell GPU lowmem経路ではgeometryごとに`rks_lowmem.RKS`を再構築し、直前に収束した
@@ -101,12 +101,12 @@ GPU densityを`dm0`として渡します。それ以外の経路は1個のPySCF 
 両経路ともgeometry依存の中間量をresetしながら電子状態を再利用し、同一座標のenergy/force
 要求にはmemory cacheを使います。PCM/SMDはPySCF native solventです。
 
-`--lowmem`が既定です。closed-shell GPUではPCM/SMDを含むenergy・gradient・Hessian計算に
+`--dft-low-memory`が既定です。closed-shell GPUではPCM/SMDを含むenergy・gradient・Hessian計算に
 `gpu4pyscf.dft.rks_lowmem.RKS`を使います。open-shell GPUとCPUではDF tensorを保持しない
-標準direct-JKを使います。十分なmemoryがある場合は`--no-lowmem`でdensity fittingを
+標準direct-JKを使います。十分なmemoryがある場合は`--no-dft-low-memory`でdensity fittingを
 有効にすると難しいSCFの収束が改善することがあります。
 PySCF thread数とhost RAMはscheduler、process affinity、host/cgroup制約から自動検出し、
-`--dft-nprocs`と`--dft-mem`で上書きできます。memory指定はGPU VRAMではなくhost RAMです。
+`--dft-nprocs`と`--dft-memory`で上書きできます。memory指定はGPU VRAMではなくhost RAMです。
 
 disk checkpointは巨大化し得るため既定OFFです。`--save-scf-checkpoint`で有効にし、必要なら
 `--scf-checkpoint PATH`で共有先を指定します。保存を有効にしてPATHを省略した場合、leaf workflowは

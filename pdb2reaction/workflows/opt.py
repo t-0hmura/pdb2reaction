@@ -120,7 +120,7 @@ def _parse_dist_freeze_args(
     one_based: bool,
     atom_meta: Optional[Sequence[Dict[str, Any]]],
 ) -> List[Tuple[int, int, Optional[float]]]:
-    """Parse all ``--dist-freeze`` arguments (inline literal or spec file).
+    """Parse all ``--distance-restraint`` arguments (inline literal or spec file).
 
     Accepts the same format as ``--scan-lists``: inline Python literal
     (e.g. ``'[(1,5,1.4)]'``) or a YAML/JSON spec file path.  String atom
@@ -156,7 +156,7 @@ def _resolve_dist_freeze_targets(
     for (i, j, target) in tuples:
         if not (0 <= i < n and 0 <= j < n):
             raise click.BadParameter(
-                f"--dist-freeze indices {(i, j)} are out of bounds for the loaded geometry (N={n})."
+                f"--distance-restraint indices {(i, j)} are out of bounds for the loaded geometry (N={n})."
             )
         if target is None:
             vec = coords_ang[i] - coords_ang[j]
@@ -363,13 +363,16 @@ def _seed_rfo_initial_hessian(
     help="Single-geometry input (.pdb, .cif, .mmcif, .xyz, or .gjf). Extract a trajectory frame to .xyz before use.",
 )
 @click.option(
+    "--uma-workers",
     "--workers",
+    "workers",
     type=int,
     default=UMA_CALC_KW["workers"],
     show_default=True,
     help="MLIP predictor workers; >1 spawns a parallel predictor. NOTE: with UMA, workers>1 plus an explicit Analytical Hessian request is an error; use workers=1 or FiniteDifference.",
 )
 @click.option(
+    "--uma-workers-per-node",
     "--workers-per-node",
     "workers_per_node",
     type=int,
@@ -378,6 +381,7 @@ def _seed_rfo_initial_hessian(
     help="Workers per node when using a parallel MLIP predictor (workers>1).",
 )
 @click.option(
+    "--distance-restraint",
     "--dist-freeze",
     "dist_freeze_raw",
     type=str,
@@ -393,14 +397,16 @@ def _seed_rfo_initial_hessian(
     "one_based",
     default=True,
     show_default=True,
-    help="Interpret --dist-freeze / --scan-lists indices as 1-based or 0-based.",
+    help="Interpret --distance-restraint / --scan-lists indices as 1-based or 0-based.",
 )
 @click.option(
+    "--restraint-k",
     "--bias-k",
+    "bias_k",
     type=float,
     default=BIAS_KW["k"],
     show_default=True,
-    help="Harmonic restraint strength k [eV/Å^2] for --dist-freeze.",
+    help="Harmonic restraint strength k [eV/Å^2] for --distance-restraint.",
 )
 @click.option(
     "--freeze-links/--no-freeze-links",

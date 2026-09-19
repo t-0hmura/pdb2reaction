@@ -14,7 +14,7 @@ Options:
   --help-advanced               Show all options (including advanced settings)
                                 and exit.
   -i, --input FILE              Input PDB filepath.  [required]
-  -o, --out FILE                Output PDB filepath (default: replace ".pdb"
+  -o, --output, --out FILE      Output PDB filepath (default: replace ".pdb"
                                 with "_add_elem.pdb"; when provided, --overwrite
                                 is ignored).
   --overwrite / --no-overwrite  Overwrite the input file in-place when -o/--out

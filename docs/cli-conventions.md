@@ -218,13 +218,14 @@ A few CLI flags use slightly different names than their YAML counterparts, and a
 - **`--pressure` (CLI) vs `pressure_atm` (YAML)** — on `freq` the flag is `--pressure FLOAT`; in `all` it is exposed as `--freq-pressure`. YAML key: `thermo.pressure_atm`. Both carry **atm** values (converted to Pa internally).
 
 (engine-vs-dft-engine)=
-### `--engine` (`dft`) vs `--dft-engine` (`all`)
+### DFT engine
 
-- **`--engine` (`dft`) vs `--dft-engine` (`all`)** — standalone `dft` accepts `--engine gpu|cpu`; inside `pdb2reaction all` it is renamed `--dft-engine` (prefix-disambiguated). Both map to the same YAML `dft` section setting.
+Standalone `dft` and `all` both use `--dft-engine gpu|cpu`. The corresponding
+YAML key is `dft.engine`.
 
 ```bash
-pdb2reaction dft -i ts.xyz -q 0 --engine gpu                                  # standalone
-pdb2reaction all -i r.pdb p.pdb -c SAM --tsopt --dft --dft-engine gpu         # after TS optimization in `all`
+pdb2reaction dft -i ts.xyz -q 0 --dft-engine gpu
+pdb2reaction all -i r.pdb p.pdb -c SAM --tsopt --dft --dft-engine gpu
 ```
 
 ## YAML configuration

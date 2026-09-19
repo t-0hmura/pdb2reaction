@@ -31,7 +31,7 @@ pdb2reaction all -i ts_candidate.xyz -q -1 -b uma \
 
 ```bash
 pdb2reaction all -i ts_candidate.pdb -l 'SAM:1,GPP:-3' \
-    --tsopt --thermo --dft --dft-func-basis 'wb97m-v/def2-tzvpd' \
+    --tsopt --thermo --dft --func-basis 'wb97m-v/def2-tzvpd' \
     -o ./result_ts_only
 ```
 

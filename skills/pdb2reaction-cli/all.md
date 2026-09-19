@@ -25,7 +25,7 @@ pdb2reaction all -i <input(s)> [-c <centers>] [-l 'RES:Q,...'] \
 
 ## Key flags (cross-mode)
 
-> **Note:** `all --max-cycles-gsm` and `all --max-cycles-dmf` bound only the
+> **Note:** `all --max-cycles-gsm` and `all --dmf-max-iterations` bound only the
 > selected MEP/path child. They are not a shared cycle budget for scan, TSOPT,
 > IRC, freq, or DFT; use each stage-specific option for those stages.
 
@@ -41,7 +41,7 @@ pdb2reaction all -i <input(s)> [-c <centers>] [-l 'RES:Q,...'] \
 | `--refine-path / --no-refine-path` | toggle | off | Recursive `path-search` when enabled; single-pass `path-opt` when disabled. Refinement can improve a poor TS seed but may split a bad path into unnecessary segments and greatly increase cost |
 | `--thresh` | str | `gau` | Convergence preset for single-structure optimization and scan relaxation |
 | `--thresh-gsm` | str | `gau_loose` | Convergence preset for the GSM string optimizer |
-| `--thresh-dmf` | str/float | `tight` | DMF IPOPT dual-infeasibility tolerance: `tight`, `middle`, `loose`, or a positive float |
+| `--dmf-tol` | str/float | `tight` | DMF IPOPT dual-infeasibility tolerance: `tight`, `middle`, `loose`, or a positive float |
 | `--tsopt / --no-tsopt` | toggle | off | Run TS optimization + IRC per reactive segment (also required to enter TS-only mode with a single `-i`) |
 | `--tsopt-from-mep-tan / --no-tsopt-from-mep-tan` | toggle | on | Select the initial TS root from the HEI MEP tangent; off selects from the initial-structure Hessian modes |
 | `--flatten/--no-flatten` | flag | off | Enable surplus-imaginary-mode cleanup when TSOPT does not reach a first-order saddle |
@@ -50,9 +50,9 @@ pdb2reaction all -i <input(s)> [-c <centers>] [-l 'RES:Q,...'] \
 | `--reject-uphill / --no-reject-uphill` | toggle | off | Opt in to rejection above `1e-4` Hartree during Hessian/RFO post-IRC endpoint re-optimization only. At the emergency floor, the retained endpoint receives a final convergence check. It never affects TS optimization or path search. |
 | `--thermo / --no-thermo` | toggle | off | Run freq + thermochemistry on R / TS / P |
 | `--dft / --no-dft` | toggle | off | Run DFT single point on R / TS / P; incompatible with `-b dft` |
-| `--dft-func-basis` | str | `wb97m-v/def2-svp` | DFT functional/basis (when `--dft`) |
+| `--func-basis` | str | `wb97m-v/def2-svp` | DFT functional/basis (when `--dft`) |
 | `-b, --backend` | str | `uma` | MLIP backend or optional DFT calculator |
-| `--workers`, `--workers-per-node` | int | `1`, `1` | UMA predictor workers. `workers > 1` plus an explicit `Analytical` Hessian raises `BackendError`; use one worker or `FiniteDifference`. Other built-in backends ignore these worker kwargs. |
+| `--uma-workers`, `--uma-workers-per-node` | int | `1`, `1` | UMA predictor workers. `workers > 1` plus an explicit `Analytical` Hessian raises `BackendError`; use one worker or `FiniteDifference`. Other built-in backends ignore these worker kwargs. |
 | `-o, --out-dir` | path | `./result_all/` | Top-level output directory |
 | `--config` | path | none | YAML config applied before CLI flags |
 | `--show-config` | flag | off | Print the resolved config and continue running |
@@ -116,26 +116,13 @@ Requested post-processing is recorded separately in `post_segments`; match
 the two lists by `index` because bridge/skipped segments can make their list
 positions differ. See the schema skill before assuming nested keys.
 
-## Re-running individual stages
+## Resume a failed segment
 
-To rerun a specific stage (for example after a walltime hit), call the
-standalone subcommands directly on the segment outputs `all` produced.
-Each standalone subcommand resolves charge on its own, so an `.xyz` input
-needs an explicit `-q <total_charge>`; take the value from the parent run's
-`summary.json` (`d["charge"]`). Spin defaults to 1 (`-m` to override):
-
-```bash
-cd result_all
-RUN_ID="$(date +%Y%m%d-%H%M%S)"
-TOTAL_CHARGE=-1  # replace with summary.json["charge"]
-pdb2reaction tsopt -i _work/path_opt/hei_seg_03.xyz -q "$TOTAL_CHARGE" --out-json -o "segments/seg_03/retry_${RUN_ID}/ts" -b uma
-pdb2reaction irc   -i "segments/seg_03/retry_${RUN_ID}/ts/final_geometry.xyz" -q "$TOTAL_CHARGE" --out-json -o "segments/seg_03/retry_${RUN_ID}/irc" -b uma
-pdb2reaction freq  -i "segments/seg_03/retry_${RUN_ID}/ts/final_geometry.xyz" -q "$TOTAL_CHARGE" --out-json -o "segments/seg_03/retry_${RUN_ID}/freq" -b uma
-```
-
-Inspect every retry `result.json` and the structures before deliberately
-adopting it as a canonical segment result. A retry is kept in a unique
-directory so it cannot silently overwrite the original partial run.
+Repeat the original `all` command with the same MEP-defining settings and
+`--out-dir`, add `--resume-segment N`, and change only post-processing options.
+The command verifies the saved artifacts, preserves earlier completed
+segments, reruns segment `N` and later segments, and rebuilds the aggregate
+summary.
 
 ## Caveats
 
@@ -158,7 +145,7 @@ directory so it cannot silently overwrite the original partial run.
   `--refine-path`).
 - All four built-in backends implement analytical Hessians. The special
   restriction is UMA's parallel predictor: an explicit analytical request
-  with `--workers > 1` is an error, not an automatic finite-difference fallback.
+  with `--uma-workers > 1` is an error, not an automatic finite-difference fallback.
 
 ## See also
 
