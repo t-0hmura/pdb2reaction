@@ -5856,6 +5856,16 @@ def cli(
             _claim_public(dst)
         return moved
 
+    def _publish_root_summary(payload: Dict[str, Any]) -> Path:
+        """Publish the current aggregate without modifying the saved MEP summary."""
+
+        destination = out_dir / "summary.json"
+        _declare_public(destination)
+        payload["run_id"] = manifest.run_id
+        published = _write_summary_json(destination, payload)
+        _claim_public(destination)
+        return published
+
     def _write_public_energy_diagram(
         prefix: Path,
         labels: List[str],
@@ -8650,10 +8660,7 @@ def cli(
     path_optimizers.update(summary.get("path_optimizers", []))
     summary["path_optimizers"] = sorted(path_optimizers)
     if resuming:
-        root_summary_path = out_dir / "summary.json"
-        _declare_public(root_summary_path)
-        _write_summary_json(root_summary_path, summary)
-        _claim_public(root_summary_path)
+        _publish_root_summary(summary)
     else:
         _publish_manifest_summary(
             summary_path,
@@ -8771,10 +8778,7 @@ def cli(
             root_diagrams.append(current)
         if root_diagrams:
             root_summary["energy_diagrams"] = root_diagrams
-        root_summary_path = out_dir / "summary.json"
-        _declare_public(root_summary_path)
-        _write_summary_json(root_summary_path, root_summary)
-        _claim_public(root_summary_path)
+        _publish_root_summary(root_summary)
         _refresh_current_public_outputs(manifest, out_dir)
         _persist_run_manifest(manifest, out_dir)
 
@@ -9816,9 +9820,7 @@ def cli(
     )
     dst_summary = out_dir / "summary.json"
     if resuming:
-        _declare_public(dst_summary)
-        _write_summary_json(dst_summary, summary)
-        _claim_public(dst_summary)
+        _publish_root_summary(summary)
     else:
         _publish_manifest_summary(
             path_dir / "summary.json",
