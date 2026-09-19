@@ -91,10 +91,11 @@ Options:
   -b, --backend [uma|orb|mace|aimnet2|dft]
                                   Energy/force calculator backend.  [default:
                                   uma]
-  --solvent TEXT                  Environment model: MLIP backends use the
-                                  experimental xTB solvent delta; dft uses
-                                  native PySCF PCM/SMD. 'none' disables it.
-                                  [default: none]
+  --solvent TEXT                  Experimental, computationally expensive xTB
+                                  solvent delta correction for MLIP backends;
+                                  dft uses native PySCF PCM/SMD. Examples:
+                                  water, methanol, acetonitrile, dmso, thf,
+                                  toluene. 'none' disables it.  [default: none]
   --solvent-model [alpb|cpcmx|pcm|smd]
                                   Solvent model: ALPB/CPCMx for MLIP backends;
                                   PCM/SMD for dft.  [default: alpb]
@@ -297,13 +298,13 @@ Options:
                                   single points.  [default: (none)]
   --dft-solvent-model [pcm|smd]   Native PySCF solvent model for post-processing
                                   DFT single points.  [default: (smd)]
-  -s, --scan-lists TEXT           Scan targets: inline Python literal. Multiple
-                                  inline literals define sequential stages, e.g.
-                                  '[(12,45,1.35)]'
-                                  '[(10,55,2.20),(23,34,1.80)]'. Indices refer
-                                  to the original full input ordering (1-based);
-                                  atom strings may use
-                                  CHAIN:RESNAME:RESSEQ[ICODE]:ATOM. When
+  -s, --scan-lists TEXT           Scan targets: distance (i,j,target), angle
+                                  (i,j,k,target), or dihedral (i,j,k,l,target).
+                                  Multiple inline literals define sequential
+                                  stages. Distances use Å; angles and dihedrals
+                                  use degrees. Indices refer to the original
+                                  full input ordering (1-based); atom strings
+                                  may use CHAIN:RESNAME:RESSEQ[ICODE]:ATOM. When
                                   extraction is used, selections are auto-mapped
                                   to the active site model after extraction.
   --scan-out-dir DIRECTORY        Override the scan output directory. Relative

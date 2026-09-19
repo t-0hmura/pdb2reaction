@@ -82,10 +82,11 @@ Options:
   -b, --backend [uma|orb|mace|aimnet2|dft]
                                   Energy/force calculator backend.  [default:
                                   uma]
-  --solvent TEXT                  Environment model: MLIP backends use the
-                                  experimental xTB solvent delta; dft uses
-                                  native PySCF PCM/SMD. 'none' disables it.
-                                  [default: none]
+  --solvent TEXT                  Experimental, computationally expensive xTB
+                                  solvent delta correction for MLIP backends;
+                                  dft uses native PySCF PCM/SMD. Examples:
+                                  water, methanol, acetonitrile, dmso, thf,
+                                  toluene. 'none' disables it.  [default: none]
   --solvent-model [alpb|cpcmx|pcm|smd]
                                   Solvent model: ALPB/CPCMx for MLIP backends;
                                   PCM/SMD for dft.  [default: alpb]

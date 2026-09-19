@@ -3,7 +3,7 @@
 ```text
 Usage: pdb2reaction scan [OPTIONS]
 
-  Bond-length driven scan with staged harmonic restraints and relaxation.
+  Internal-coordinate scan with harmonic restraints and relaxation.
 
 Options:
   -v, --verbose LEVEL             Console verbosity 0-3 (default 2). 0=silent;
@@ -15,9 +15,11 @@ Options:
                                   and exit.
   -i, --input FILE                Input structure file (.pdb, .cif, .mmcif,
                                   .xyz, _trj.xyz, ...).  [required]
-  -s, --scan-lists TEXT           Required. Scan targets: inline Python literal
-                                  (e.g. '[(1,5,1.4)]') or a YAML/JSON spec file
-                                  path. Atom strings accept positional
+  -s, --scan-lists TEXT           Required. Scan ranges: distance
+                                  (i,j,low,high), angle (i,j,k,low,high), or
+                                  dihedral (i,j,k,l,low,high). A YAML/JSON spec
+                                  file path is also accepted. Atom strings
+                                  accept positional
                                   CHAIN:RESNAME:RESSEQ[ICODE]:ATOM. Multiple
                                   inline literals define sequential stages.
   -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
@@ -35,11 +37,18 @@ Options:
                                   omitted (requires PDB/mmCIF input or --ref-
                                   pdb).
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1).  [default: (1)]
-  --one-based / --zero-based      Interpret (i,j) indices in --scan-lists as
+  --one-based / --zero-based      Interpret atom indices in --scan-lists as
                                   1-based or 0-based.  [default: one-based]
-  --max-step-size FLOAT           Maximum change in any scanned bond length per
-                                  step [Å].  [default: 0.2]
-  --bias-k FLOAT                  Harmonic well strength k [eV/Å^2]. YAML bias.k
+  --max-step-size FLOAT           Maximum scanned distance change per step [Å].
+                                  [default: 0.2]
+  --max-angle-step-size FLOAT RANGE
+                                  Maximum scanned angle change per step
+                                  [degree].  [default: 5.0; x>0.0]
+  --max-dihedral-step-size FLOAT RANGE
+                                  Maximum scanned dihedral change per step
+                                  [degree].  [default: 10.0; x>0.0]
+  --bias-k FLOAT                  Harmonic well strength k [eV/Å^2 for
+                                  distances; eV/rad^2 for angles]. YAML bias.k
                                   applies when this option is omitted; explicit
                                   CLI wins.  [default: (300.0)]
   --relax-max-cycles INTEGER RANGE
@@ -76,10 +85,11 @@ Options:
   -b, --backend [uma|orb|mace|aimnet2|dft]
                                   Energy/force calculator backend.  [default:
                                   uma]
-  --solvent TEXT                  Environment model: MLIP backends use the
-                                  experimental xTB solvent delta; dft uses
-                                  native PySCF PCM/SMD. 'none' disables it.
-                                  [default: none]
+  --solvent TEXT                  Experimental, computationally expensive xTB
+                                  solvent delta correction for MLIP backends;
+                                  dft uses native PySCF PCM/SMD. Examples:
+                                  water, methanol, acetonitrile, dmso, thf,
+                                  toluene. 'none' disables it.  [default: none]
   --solvent-model [alpb|cpcmx|pcm|smd]
                                   Solvent model: ALPB/CPCMx for MLIP backends;
                                   PCM/SMD for dft.  [default: alpb]

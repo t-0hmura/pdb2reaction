@@ -3,7 +3,7 @@
 ```text
 Usage: pdb2reaction scan2d [OPTIONS]
 
-  2D distance scan with harmonic restraints.
+  2D internal-coordinate scan with harmonic restraints.
 
 Options:
   -v, --verbose LEVEL             Console verbosity 0-3 (default 2). 0=silent;
@@ -15,19 +15,14 @@ Options:
                                   and exit.
   -i, --input FILE                Input structure file (.pdb, .cif, .mmcif,
                                   .xyz, _trj.xyz, ...).  [required]
-  -s, --scan-lists TEXT           Scan targets: inline Python literal or a
-                                  YAML/JSON spec file path. scan2d expects
-                                  EXACTLY 2 quadruples (i, j, low, high) — one
-                                  per scanned bond axis — e.g.
-                                  '[(12,45,1.30,3.10),(10,55,1.20,3.20)]'. Atom
-                                  indices may also be strings like 'CE SAM 216';
-                                  use positional
+  -s, --scan-lists TEXT           Two scan ranges as an inline literal or
+                                  YAML/JSON file: distance (i,j,low,high), angle
+                                  (i,j,k,low,high), or dihedral
+                                  (i,j,k,l,low,high). Atom indices may also be
+                                  strings like 'CE SAM 216'; use positional
                                   CHAIN:RESNAME:RESSEQ[ICODE]:ATOM when chain
-                                  qualification is needed. Step count per axis
-                                  is set via --max-step-size, NOT inside the
-                                  tuple (scan2d does not accept a 5th element;
-                                  the scan command's 3-tuple (i, j, target) form
-                                  is rejected here too).  [required]
+                                  qualification is needed. Distances use Å;
+                                  angles and dihedrals use degrees.  [required]
   -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
                                   unless --ligand-charge is provided (PDB/mmCIF
                                   inputs or XYZ/GJF with --ref-pdb).
@@ -43,11 +38,18 @@ Options:
                                   omitted (requires PDB/mmCIF input or --ref-
                                   pdb).
   -m, --multiplicity INTEGER      Spin multiplicity (2S+1).  [default: (1)]
-  --one-based / --zero-based      Interpret (i,j) indices in --scan-lists as
+  --one-based / --zero-based      Interpret atom indices in --scan-lists as
                                   1-based or 0-based.  [default: one-based]
-  --max-step-size FLOAT           Maximum step size per scanned distance [Å].
+  --max-step-size FLOAT           Maximum scanned distance change per step [Å].
                                   [default: 0.2]
-  --bias-k FLOAT                  Harmonic well strength k [eV/Å^2]. YAML bias.k
+  --max-angle-step-size FLOAT RANGE
+                                  Maximum scanned angle change per step
+                                  [degree].  [default: 5.0; x>0.0]
+  --max-dihedral-step-size FLOAT RANGE
+                                  Maximum scanned dihedral change per step
+                                  [degree].  [default: 10.0; x>0.0]
+  --bias-k FLOAT                  Harmonic well strength k [eV/Å^2 for
+                                  distances; eV/rad^2 for angles]. YAML bias.k
                                   applies when this option is omitted; explicit
                                   CLI wins.  [default: (300.0)]
   --relax-max-cycles INTEGER RANGE
@@ -83,10 +85,11 @@ Options:
   -b, --backend [uma|orb|mace|aimnet2|dft]
                                   Energy/force calculator backend.  [default:
                                   uma]
-  --solvent TEXT                  Environment model: MLIP backends use the
-                                  experimental xTB solvent delta; dft uses
-                                  native PySCF PCM/SMD. 'none' disables it.
-                                  [default: none]
+  --solvent TEXT                  Experimental, computationally expensive xTB
+                                  solvent delta correction for MLIP backends;
+                                  dft uses native PySCF PCM/SMD. Examples:
+                                  water, methanol, acetonitrile, dmso, thf,
+                                  toluene. 'none' disables it.  [default: none]
   --solvent-model [alpb|cpcmx|pcm|smd]
                                   Solvent model: ALPB/CPCMx for MLIP backends;
                                   PCM/SMD for dft.  [default: alpb]
