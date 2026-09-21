@@ -50,6 +50,18 @@ PRIMARY_CLASSIFICATION = [
 ]
 
 ADVANCED_CLASSIFICATION = [
+    ("sp", "--solvent-xtb-cmd"),
+    ("opt", "--solvent-xtb-cmd"),
+    ("tsopt", "--solvent-xtb-cmd"),
+    ("freq", "--solvent-xtb-cmd"),
+    ("irc", "--solvent-xtb-cmd"),
+    ("path-opt", "--solvent-xtb-cmd"),
+    ("path-search", "--solvent-xtb-cmd"),
+    ("scan", "--solvent-xtb-cmd"),
+    ("scan2d", "--solvent-xtb-cmd"),
+    ("scan3d", "--solvent-xtb-cmd"),
+    ("all", "--solvent-xtb-cmd"),
+    ("trj2fig", "--solvent-xtb-cmd"),
     ("irc", "--never-stop"),
     ("all", "--dry-run"),
     ("all", "--scan-restraint-k"),
@@ -131,7 +143,6 @@ def test_basic_help_hides_advanced_options_that_advanced_help_shows():
     assert "--solvent" not in basic.output
     assert "--solvent" in advanced.output
     advanced_text = " ".join(advanced.output.lower().split())
-    assert "experimental" in advanced_text
     assert "xtb solvent delta" in advanced_text
     assert "native pyscf pcm/smd" in advanced_text
 

@@ -54,12 +54,14 @@ def test_all_calculator_cli_values_override_yaml() -> None:
         spin=2,
         workers=8,
         workers_per_node=4,
+        xtb_cmd="xtb --etemp 1200",
         yaml_cfg={
             "calc": {
                 "charge": 0,
                 "spin": 1,
                 "workers": 2,
                 "workers_per_node": 2,
+                "xtb_cmd": "xtb --etemp 600",
             }
         },
     )
@@ -68,6 +70,7 @@ def test_all_calculator_cli_values_override_yaml() -> None:
     assert cfg["spin"] == 2
     assert cfg["workers"] == 8
     assert cfg["workers_per_node"] == 4
+    assert cfg["xtb_cmd"] == "xtb --etemp 1200"
 
 
 def test_child_runtime_forwarding_is_explicit_only() -> None:

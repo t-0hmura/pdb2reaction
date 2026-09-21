@@ -14,9 +14,65 @@ Subcommands not covered by this factory:
 
 from __future__ import annotations
 
-from typing import Callable, Sequence
+from typing import Any, Callable, MutableMapping, Optional, Sequence
 
 import click
+
+
+SOLVENT_XTB_CLI_META_KEY = "pdb2reaction.solvent_xtb_cmd"
+
+
+def _capture_solvent_xtb_cmd(
+    ctx: click.Context, param: click.Parameter, value: Optional[str]
+) -> Optional[str]:
+    """Store an explicit xTB solvent command without widening CLI signatures."""
+
+    if ctx.resilient_parsing or value is None:
+        return value
+    value = str(value).strip()
+    if not value:
+        raise click.BadParameter("must not be empty", param=param)
+    source = ctx.get_parameter_source(param.name)
+    if source not in (None, click.core.ParameterSource.DEFAULT):
+        ctx.meta[SOLVENT_XTB_CLI_META_KEY] = value
+    return value
+
+
+def add_solvent_xtb_cmd_option() -> Callable[[Callable], Callable]:
+    """Attach the advanced xTB command override used by MLIP solvent correction."""
+
+    def decorator(func: Callable) -> Callable:
+        return click.option(
+            "--solvent-xtb-cmd",
+            type=str,
+            default=None,
+            expose_value=False,
+            callback=_capture_solvent_xtb_cmd,
+            help=(
+                "Command for the xTB solvent correction, including optional xTB "
+                "arguments. If xTB SCC convergence is poor, increasing --etemp "
+                "may help (for example: 'xtb --etemp 1000')."
+            ),
+        )(func)
+
+    return decorator
+
+
+def solvent_xtb_cmd_override(ctx: click.Context) -> Optional[str]:
+    """Return the explicit advanced CLI override, if one was supplied."""
+
+    value = ctx.meta.get(SOLVENT_XTB_CLI_META_KEY)
+    return None if value is None else str(value)
+
+
+def apply_solvent_xtb_cmd_override(
+    ctx: click.Context, calc_cfg: MutableMapping[str, Any]
+) -> None:
+    """Apply the explicit CLI tier after YAML and defaults."""
+
+    value = solvent_xtb_cmd_override(ctx)
+    if value is not None:
+        calc_cfg["xtb_cmd"] = value
 
 
 def _capture_dft_option(ctx: click.Context, param: click.Parameter, value):

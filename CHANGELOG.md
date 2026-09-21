@@ -10,6 +10,8 @@ Target release: **0.5.0**.
 
 ### Added
 
+- Allow additional xTB solvent arguments with `--solvent-xtb-cmd`.
+
 - Add a stateful PySCF/GPU4PySCF calculator backend to calculator-consuming workflows while retaining the standalone `dft` command.
 - Reuse converged SCF state between geometry steps, cache exact repeated requests, support analytical Hessians, and provide opt-in structure-bound checkpoints.
 - Add native PCM/SMD support and automatic PySCF CPU-thread and host-memory resolution.

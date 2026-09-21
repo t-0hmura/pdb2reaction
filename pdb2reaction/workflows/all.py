@@ -141,6 +141,8 @@ from pdb2reaction.workflows._segment_resume import (
     validate_resume_identity,
 )
 from pdb2reaction.cli.common_options import (
+    add_solvent_xtb_cmd_option,
+    solvent_xtb_cmd_override,
     add_allow_charge_mult_mismatch_option,
     add_backend_model_option,
     add_calc_file_option,
@@ -660,6 +662,7 @@ def _build_calc_cfg(
     backend: Optional[str] = None,
     solvent: Optional[str] = None,
     solvent_model: Optional[str] = None,
+    xtb_cmd: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Return a calculator configuration honoring YAML overrides when provided.
 
@@ -688,6 +691,8 @@ def _build_calc_cfg(
         cfg["solvent"] = solvent
     if solvent_model is not None:
         cfg["solvent_model"] = solvent_model
+    if xtb_cmd is not None:
+        cfg["xtb_cmd"] = xtb_cmd
     # Apply backend-specific defaults (model, precision, etc.) when switching
     # away from UMA.  Only overwrites keys that still hold UMA default values.
     from pdb2reaction.core.defaults import apply_backend_defaults
@@ -1061,6 +1066,7 @@ def _write_args_yaml_with_freeze_atoms(
     backend_model: Optional[str] = None,
     print_every: Optional[int] = None,
     dft_settings: Optional[Mapping[str, Any]] = None,
+    solvent_xtb_cmd: Optional[str] = None,
     session: Optional[RunSession] = None,
 ) -> Optional[Path]:
     """
@@ -1089,6 +1095,7 @@ def _write_args_yaml_with_freeze_atoms(
         and backend_model is None
         and print_every is None
         and dft_settings is None
+        and solvent_xtb_cmd is None
     ):
         return args_yaml
     if session is None:
@@ -1112,7 +1119,12 @@ def _write_args_yaml_with_freeze_atoms(
         geom_cfg["coord_type"] = coord_type
     cfg["geom"] = geom_cfg
 
-    if precision is not None or backend_model is not None or dft_settings is not None:
+    if (
+        precision is not None
+        or backend_model is not None
+        or dft_settings is not None
+        or solvent_xtb_cmd is not None
+    ):
         calc_cfg = cfg.get("calc")
         if not isinstance(calc_cfg, dict):
             calc_cfg = {}
@@ -1123,6 +1135,8 @@ def _write_args_yaml_with_freeze_atoms(
             calc_cfg["model"] = backend_model
         if dft_settings is not None:
             calc_cfg["dft"] = dict(dft_settings)
+        if solvent_xtb_cmd is not None:
+            calc_cfg["xtb_cmd"] = solvent_xtb_cmd
         cfg["calc"] = calc_cfg
 
     if print_every is not None:
@@ -4257,9 +4271,10 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2", "dft"]), default="uma",
               show_default=True, help="Energy/force calculator backend.")
 @click.option("--solvent", default="none", show_default=True,
-              help="Experimental, computationally expensive xTB solvent delta correction for MLIP backends; dft uses native PySCF PCM/SMD. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.")
+              help="Computationally expensive xTB solvent delta correction for MLIP backends; dft uses native PySCF PCM/SMD. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.")
 @click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx", "pcm", "smd"]),
               show_default=True, help="Solvent model: ALPB/CPCMx for MLIP backends; PCM/SMD for dft.")
+@add_solvent_xtb_cmd_option()
 # ===== Path search knobs =====
 @click.option(
     "-m",
@@ -5099,6 +5114,7 @@ def cli(
         1,
         yaml_cfg=merged_yaml_cfg,
         backend=backend if cli_param_overridden(ctx, "backend") else None,
+        xtb_cmd=solvent_xtb_cmd_override(ctx),
     )
     from pdb2reaction.backends import apply_calc_file_to_calc_cfg as _guard_calc_file
 
@@ -5764,6 +5780,7 @@ def cli(
                 if cli_param_overridden(ctx, "solvent_model")
                 else None
             ),
+            xtb_cmd=solvent_xtb_cmd_override(ctx),
         )
         from pdb2reaction.backends import apply_backend_model_to_calc_cfg
         apply_backend_model_to_calc_cfg(_dry_calc_cfg, backend_model)
@@ -6183,6 +6200,7 @@ def cli(
         precision=precision,
         backend_model=backend_model,
         print_every=print_every_override,
+        solvent_xtb_cmd=solvent_xtb_cmd_override(ctx),
         session=session,
     )
 
@@ -6195,6 +6213,7 @@ def cli(
         backend=backend if cli_param_overridden(ctx, "backend") else None,
         solvent=solvent if cli_param_overridden(ctx, "solvent") else None,
         solvent_model=solvent_model if cli_param_overridden(ctx, "solvent_model") else None,
+        xtb_cmd=solvent_xtb_cmd_override(ctx),
     )
     # Resolve model and precision in the shared calculator mapping so both
     # in-process evaluations and recorded provenance use the same settings.

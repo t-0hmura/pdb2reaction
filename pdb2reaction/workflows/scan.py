@@ -82,6 +82,8 @@ from pdb2reaction.cli.decorators import (
     run_cli,
 )
 from pdb2reaction.cli.common_options import (
+    add_solvent_xtb_cmd_option,
+    apply_solvent_xtb_cmd_override,
     add_coord_type_option,
     add_print_every_option,
     add_precision_option, add_backend_model_option,
@@ -266,6 +268,7 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
 @click.option(
     "--target-mode", is_flag=True, default=False, show_default=True, hidden=True
 )
+@add_solvent_xtb_cmd_option()
 @add_scan_common_options(
     workers_default=UMA_CALC_KW["workers"],
     workers_per_node_default=UMA_CALC_KW["workers_per_node"],
@@ -512,6 +515,7 @@ def cli(
                 calc_cfg["solvent"] = solvent
             if cli_param_overridden(ctx, "solvent_model"):
                 calc_cfg["solvent_model"] = solvent_model
+            apply_solvent_xtb_cmd_override(ctx, calc_cfg)
             from pdb2reaction.backends import apply_backend_model_to_calc_cfg
             # Unconditional: also pops a raw backend_model token from a --config YAML
             # (the helper no-ops when neither the CLI arg nor the YAML names one).

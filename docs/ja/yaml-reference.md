@@ -146,10 +146,10 @@ calc:
  return_partial_hessian: true  # active-DOF ブロックのHessianを返す
  print_timing: true # Hessian計算のタイミング内訳を表示
  print_vram: true # Hessian計算中の CUDA VRAM 使用量を表示 (UMA バックエンドのみ)
- # 実験的な xTB 溶媒補正（計算コスト大）
+ # xTB 溶媒補正（計算コスト大）
  solvent: none           # none, water, methanol, acetonitrile, dmso, thf, toluene
  solvent_model: alpb     # xTB solvent model: "alpb" or "cpcmx"
- xtb_cmd: xtb            # solvent が none 以外の場合に必要な xTB 実行コマンド
+ xtb_cmd: xtb            # xTBコマンドと追加オプションを指定可能（例: "xtb --etemp 1000"）
  xtb_acc: 0.2            # xTB accuracy parameter
  # backend: dft の場合だけ使用
  dft:

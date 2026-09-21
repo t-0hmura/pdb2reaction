@@ -428,6 +428,24 @@ def test_all_coord_type_is_injected_into_child_config() -> None:
     assert not path.exists()
 
 
+def test_all_solvent_xtb_command_is_injected_into_child_config() -> None:
+    from pdb2reaction.workflows.all import _write_args_yaml_with_freeze_atoms
+    from pdb2reaction.workflows._run_session import RunSession
+
+    session = RunSession()
+    path = _write_args_yaml_with_freeze_atoms(
+        None,
+        [],
+        solvent_xtb_cmd="xtb --etemp 1200",
+        session=session,
+    )
+    assert path is not None
+    payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+    assert payload["calc"]["xtb_cmd"] == "xtb --etemp 1200"
+    session.close()
+    assert not path.exists()
+
+
 def test_all_cli_freeze_atoms_reach_the_child_config() -> None:
     """``all --freeze-atoms`` must land in every child stage's geom block.
 

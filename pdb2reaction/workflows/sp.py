@@ -51,6 +51,8 @@ from pdb2reaction.core.utils import (
     yaml_freeze_to_internal,
 )
 from pdb2reaction.cli.common_options import (
+    add_solvent_xtb_cmd_option,
+    apply_solvent_xtb_cmd_override,
     add_ml_charge_spin_options,
     add_precision_option,
     add_backend_model_option,
@@ -127,13 +129,14 @@ logger = logging.getLogger(__name__)
 )
 @click.option(
     "--solvent", default="none", show_default=True,
-    help="Experimental, computationally expensive xTB solvent delta correction for MLIP backends; dft uses native PySCF PCM/SMD. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.",
+    help="Computationally expensive xTB solvent delta correction for MLIP backends; dft uses native PySCF PCM/SMD. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.",
 )
 @click.option(
     "--solvent-model", "solvent_model",
     default="alpb", type=click.Choice(["alpb", "cpcmx", "pcm", "smd"]),
     show_default=True, help="Solvent model: ALPB/CPCMx for MLIP backends; PCM/SMD for dft.",
 )
+@add_solvent_xtb_cmd_option()
 @add_ml_charge_spin_options(allow_ref_pdb=False)
 @add_precision_option()
 @add_backend_model_option()
@@ -220,6 +223,7 @@ def cli(
             calc_cfg["solvent"] = str(solvent)
         if cli_param_overridden(ctx, "solvent_model"):
             calc_cfg["solvent_model"] = str(solvent_model)
+        apply_solvent_xtb_cmd_override(ctx, calc_cfg)
         from pdb2reaction.backends import apply_backend_model_to_calc_cfg
         # Use the canonical helper like the other subcommands (was an inline
         # calc_cfg["model"]=... that never popped a --config YAML backend_model

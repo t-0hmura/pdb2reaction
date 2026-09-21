@@ -91,6 +91,24 @@ calc:
 
 Requires `fairchem-core ≥ 2.0` for the `InferenceSettings` API.
 
+## xTB solvent correction
+
+For MLIP backends, `--solvent NAME` adds
+`E_xTB(solvent) - E_xTB(vacuum)` and the corresponding force/Hessian difference
+to the base surface. It is intended mainly for small-molecule solution
+calculations. Each correction evaluates both solvent and vacuum xTB, so large
+cluster models become expensive; roughly 200–300 atoms is a practical upper
+range rather than a hard limit. Benchmark the actual system and hardware.
+
+This route can compare a small-molecule solution barrier with an enzyme-cluster
+barrier when the reacting species, charge, multiplicity, backend/model, and
+energy references are kept consistent. Continuum solvation is also used in
+enzyme cluster studies to approximate omitted protein surroundings, but p2r's
+option represents a named bulk solvent. Use it on an enzyme cluster only when
+that environmental model is justified. Additional xTB arguments can be passed
+with `--solvent-xtb-cmd`, for example `xtb --etemp 1000` for difficult SCC
+convergence.
+
 ## Stateful DFT backend
 
 `sp`, `opt`, `tsopt`, `irc`, `freq`, `scan*`, `path-opt`, `path-search`, and

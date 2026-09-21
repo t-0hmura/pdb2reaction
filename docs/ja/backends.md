@@ -90,6 +90,21 @@ calc:
 
 `InferenceSettings` API のため `fairchem-core ≥ 2.0` が必要です。
 
+## xTB溶媒補正
+
+MLIP backendでは、`--solvent NAME`により
+`E_xTB(solvent) - E_xTB(vacuum)`と対応するforce/Hessian差分をbase PESへ加えます。
+主な用途は小分子の溶液中計算です。補正の各評価でsolventとvacuumのxTB計算を行うため、
+大きなクラスタモデルでは高コストになります。200–300原子程度を実用上の上限目安とし、
+実際の系とhardwareで事前にbenchmarkしてください。これはハード上限ではありません。
+
+反応種、電荷、多重度、backend/model、energy基準を揃えれば、小分子の溶液中障壁と
+酵素クラスタの障壁を比較できます。酵素クラスタ研究でも省略したタンパク質環境を
+連続誘電体で近似する場合がありますが、p2rの指定は名前付きbulk solventを表します。
+酵素クラスタへ適用する場合は、その環境モデルに根拠があることを確認してください。
+xTBのSCC収束が悪い場合は、`--solvent-xtb-cmd 'xtb --etemp 1000'`のように
+追加オプションを指定できます。
+
 ## Stateful DFT backend
 
 `sp`、`opt`、`tsopt`、`irc`、`freq`、`scan*`、`path-opt`、`path-search`、`all`で

@@ -115,3 +115,19 @@ def test_xtb_command_absolutizes_only_path_like_executable(tmp_path, monkeypatch
         xcontrol_filename="raw_hessian.inp",
     )
     assert cmd[cmd.index("--input") + 1] == "raw_hessian.inp"
+
+
+def test_xtb_command_keeps_explicit_scc_convergence_options() -> None:
+    cmd = xtb._build_xtb_cmd(
+        xtb_cmd="xtb --etemp 1200 --iterations 500",
+        xyz_filename="input.xyz",
+        charge=-1,
+        multiplicity=1,
+        solvent="water",
+        solvent_model="alpb",
+        xtb_acc=0.2,
+        mode="grad",
+    )
+
+    assert cmd[:5] == ["xtb", "--etemp", "1200", "--iterations", "500"]
+    assert cmd[5] == "input.xyz"

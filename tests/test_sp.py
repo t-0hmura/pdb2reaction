@@ -43,6 +43,48 @@ class _FakeCalculator:
         }
 
 
+def test_sp_solvent_xtb_command_overrides_yaml(monkeypatch, tmp_path: Path) -> None:
+    from pdb2reaction.cli import cli as root_cli
+    from pdb2reaction.workflows import sp
+
+    inp = tmp_path / "geom.xyz"
+    inp.write_text("1\nframe\nC 0.0 0.0 0.0\n", encoding="utf-8")
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text(
+        "calc:\n  xtb_cmd: 'xtb --etemp 600'\n",
+        encoding="utf-8",
+    )
+    created: list[dict] = []
+    monkeypatch.setattr(sp, "geom_loader", lambda *_args, **_kwargs: _FakeGeometry())
+
+    def fake_create_calculator(**kwargs):
+        created.append(dict(kwargs))
+        return _FakeCalculator()
+
+    monkeypatch.setattr(sp, "create_calculator", fake_create_calculator)
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "sp",
+            "-i",
+            str(inp),
+            "-q",
+            "0",
+            "-m",
+            "1",
+            "--config",
+            str(cfg),
+            "--solvent-xtb-cmd",
+            "xtb --etemp 1200",
+            "-o",
+            str(tmp_path / "out"),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert created[0]["xtb_cmd"] == "xtb --etemp 1200"
+
+
 @pytest.mark.parametrize(
     ("backend", "mode_args", "expected_mode"),
     [

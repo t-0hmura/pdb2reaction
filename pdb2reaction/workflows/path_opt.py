@@ -81,7 +81,7 @@ from pdb2reaction.workflows.align_freeze import (
     alignment_failed_pair_indices,
 )
 from pdb2reaction.workflows._path_yaml_helpers import apply_single_opt_yaml_layer
-from pdb2reaction.cli.common_options import add_coord_type_option, add_precision_option, add_backend_model_option, add_calc_file_option, add_deterministic_option, add_allow_charge_mult_mismatch_option, add_dft_calculator_options
+from pdb2reaction.cli.common_options import add_coord_type_option, add_precision_option, add_backend_model_option, add_calc_file_option, add_deterministic_option, add_allow_charge_mult_mismatch_option, add_dft_calculator_options, add_solvent_xtb_cmd_option, apply_solvent_xtb_cmd_override
 from pdb2reaction.cli.decorators import resolve_yaml_sources, load_merged_yaml_cfg, _write_error_json, render_cli_exception
 
 logger = logging.getLogger(__name__)
@@ -888,9 +888,10 @@ def _optimize_single(
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2", "dft"]), default="uma",
               show_default=True, help="Energy/force calculator backend.")
 @click.option("--solvent", default="none", show_default=True,
-              help="Experimental, computationally expensive xTB solvent delta correction for MLIP backends; dft uses native PySCF PCM/SMD. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.")
+              help="Computationally expensive xTB solvent delta correction for MLIP backends; dft uses native PySCF PCM/SMD. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.")
 @click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx", "pcm", "smd"]),
               show_default=True, help="Solvent model: ALPB/CPCMx for MLIP backends; PCM/SMD for dft.")
+@add_solvent_xtb_cmd_option()
 @add_coord_type_option(choices=("cart", "dlc"))
 @add_precision_option()
 @add_backend_model_option()
@@ -1159,6 +1160,7 @@ def cli(
             calc_cfg["solvent"] = solvent
         if cli_param_overridden(ctx, "solvent_model"):
             calc_cfg["solvent_model"] = solvent_model
+        apply_solvent_xtb_cmd_override(ctx, calc_cfg)
         from pdb2reaction.backends import apply_backend_model_to_calc_cfg
         # Unconditional: also pops a raw backend_model token from a --config YAML
         # (the helper no-ops when neither the CLI arg nor the YAML names one).

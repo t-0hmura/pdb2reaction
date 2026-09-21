@@ -65,7 +65,7 @@ from pdb2reaction.core.utils import (
     merge_freeze_atom_indices,
     echo_resolved_device,
 )
-from pdb2reaction.cli.common_options import add_ml_charge_spin_options, add_precision_option, add_backend_model_option, add_calc_file_option, add_deterministic_option, add_allow_charge_mult_mismatch_option, add_coord_type_option, add_dft_calculator_options
+from pdb2reaction.cli.common_options import add_ml_charge_spin_options, add_precision_option, add_backend_model_option, add_calc_file_option, add_deterministic_option, add_allow_charge_mult_mismatch_option, add_coord_type_option, add_dft_calculator_options, add_solvent_xtb_cmd_option, apply_solvent_xtb_cmd_override
 from pdb2reaction.cli.decorators import resolve_yaml_sources, load_merged_yaml_cfg, render_cli_exception
 
 logger = logging.getLogger(__name__)
@@ -508,7 +508,7 @@ def _prepare_frequency_output_paths(
     "dump",
     default=THERMO_KW["dump"],
     show_default=True,
-    help="When True, write 'thermoanalysis.yaml' under out-dir.",
+    help="Write 'thermoanalysis.yaml' under out-dir.",
 )
 @click.option(
     "--show-config/--no-show-config",
@@ -539,9 +539,10 @@ def _prepare_frequency_output_paths(
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2", "dft"]), default="uma",
               show_default=True, help="Energy/force calculator backend.")
 @click.option("--solvent", default="none", show_default=True,
-              help="Experimental, computationally expensive xTB solvent delta correction for MLIP backends; dft uses native PySCF PCM/SMD. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.")
+              help="Computationally expensive xTB solvent delta correction for MLIP backends; dft uses native PySCF PCM/SMD. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.")
 @click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx", "pcm", "smd"]),
               show_default=True, help="Solvent model: ALPB/CPCMx for MLIP backends; PCM/SMD for dft.")
+@add_solvent_xtb_cmd_option()
 @add_ml_charge_spin_options()
 @add_precision_option()
 @add_backend_model_option()
@@ -651,6 +652,7 @@ def cli(
         calc_cfg["solvent"] = solvent
     if cli_param_overridden(ctx, "solvent_model"):
         calc_cfg["solvent_model"] = solvent_model
+    apply_solvent_xtb_cmd_override(ctx, calc_cfg)
     # Precision: the `--precision` CLI flag wins, else the config's calc.precision
     # (see apply_effective_precision — the `all` pipeline propagates precision via
     # the config, invoking children with --config and no --precision, so orb child

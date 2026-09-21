@@ -2983,14 +2983,10 @@ def test_colab_exercises_every_workflow_and_advanced_flag_widget(
         )
         assert app["_advanced_status"](subcommand, param) == "rendered"
         help_text = param.help.lower()
-        assert "experimental" in help_text
-        assert "computationally expensive" in help_text
-        for solvent in (
-            "water", "methanol", "acetonitrile", "dmso", "thf", "toluene",
-        ):
-            assert solvent in help_text
-        search_text = app["_advanced_widget"](subcommand, param)._rx_search
-        assert "experimental" in search_text
+        assert "xtb" in help_text
+        assert "solvent delta" in help_text
+        if subcommand != "trj2fig":
+            assert "native pyscf pcm/smd" in help_text
     for subcommand in ("all", "path-search"):
         ref_merge = next(
             option

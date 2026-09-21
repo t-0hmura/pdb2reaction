@@ -339,7 +339,9 @@ def test_trj2fig_recompute_json_records_actual_provenance(
         [
             "trj2fig", "-i", str(trj), "-o", str(out_csv),
             "-q", "-1", "-m", "2", "-b", "orb",
-            "--solvent", "water", "--out-json",
+            "--solvent", "water",
+            "--solvent-xtb-cmd", "xtb --etemp 1200",
+            "--out-json",
         ],
         catch_exceptions=False,
     )
@@ -352,8 +354,10 @@ def test_trj2fig_recompute_json_records_actual_provenance(
     assert payload["charge"] == -1
     assert payload["multiplicity"] == 2
     assert payload["solvent"] == "water"
+    assert payload["xtb_cmd"] == "xtb --etemp 1200"
     assert seen["backend"] == "orb"
     assert seen["solvent"] == "water"
+    assert seen["xtb_cmd"] == "xtb --etemp 1200"
 
 
 def test_trj2fig_json_preserves_same_named_outputs(tmp_path: Path) -> None:

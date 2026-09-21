@@ -75,14 +75,18 @@ Options:
   -b, --backend [uma|orb|mace|aimnet2|dft]
                                   Energy/force calculator backend.  [default:
                                   uma]
-  --solvent TEXT                  Experimental, computationally expensive xTB
-                                  solvent delta correction for MLIP backends;
-                                  dft uses native PySCF PCM/SMD. Examples:
-                                  water, methanol, acetonitrile, dmso, thf,
-                                  toluene. 'none' disables it.  [default: none]
+  --solvent TEXT                  Computationally expensive xTB solvent delta
+                                  correction for MLIP backends; dft uses native
+                                  PySCF PCM/SMD. Examples: water, methanol,
+                                  acetonitrile, dmso, thf, toluene. 'none'
+                                  disables it.  [default: none]
   --solvent-model [alpb|cpcmx|pcm|smd]
                                   Solvent model: ALPB/CPCMx for MLIP backends;
                                   PCM/SMD for dft.  [default: alpb]
+  --solvent-xtb-cmd TEXT          Command for the xTB solvent correction,
+                                  including optional xTB arguments. If xTB SCC
+                                  convergence is poor, increasing --etemp may
+                                  help (for example: 'xtb --etemp 1000').
   -q, --charge INTEGER            Total charge. Required for non-.gjf inputs
                                   unless --ligand-charge is provided (.gjf
                                   templates inherit the charge automatically).

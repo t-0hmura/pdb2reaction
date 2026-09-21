@@ -22,6 +22,10 @@ from ase.io import read
 from pysisyphus.constants import AU2KCALPERMOL, ANG2BOHR
 
 from pdb2reaction.core.output import emit
+from pdb2reaction.cli.common_options import (
+    add_solvent_xtb_cmd_option,
+    solvent_xtb_cmd_override,
+)
 from pdb2reaction.io.xyz_trajectory import read_xyz_trajectory
 from pdb2reaction.io.plotly_image import write_plotly_image
 
@@ -37,6 +41,7 @@ MARKER_SIZE = 6        # marker size
 def recompute_energies(
     traj_path: Path, charge: Optional[int], multiplicity: Optional[int],
     backend: str = "uma", solvent: str = "none", solvent_model: str = "alpb",
+    xtb_cmd: str = "xtb",
 ) -> List[float]:
     """
     Recalculate Hartree energies for every frame using the backend factory.
@@ -55,7 +60,7 @@ def recompute_energies(
     )
     calc = create_calculator(
         backend=backend, charge=charge or 0, spin=multiplicity or 1,
-        solvent=solvent, solvent_model=solvent_model,
+        solvent=solvent, solvent_model=solvent_model, xtb_cmd=xtb_cmd,
     )
     energies: List[float] = []
     for atoms in frames:
@@ -243,6 +248,7 @@ def run_trj2fig(
     backend: str = "uma",
     solvent: str = "none",
     solvent_model: str = "alpb",
+    xtb_cmd: str = "xtb",
 ) -> dict:
     """Run trj2fig and return a summary dict with energies and output paths."""
     traj = input_path.expanduser().resolve()
@@ -258,6 +264,7 @@ def run_trj2fig(
         energies = recompute_energies(
             traj, charge, multiplicity,
             backend=backend, solvent=solvent, solvent_model=solvent_model,
+            xtb_cmd=xtb_cmd,
         )
         energy_provenance = ["mlip-recomputed"] * len(energies)
     values, ylabel, is_delta = transform_series(energies, reference, unit, reverse_x)
@@ -280,6 +287,7 @@ def run_trj2fig(
         "multiplicity": int(multiplicity if multiplicity is not None else 1) if recomputed else None,
         "solvent": str(solvent) if recomputed else None,
         "solvent_model": str(solvent_model) if recomputed else None,
+        "xtb_cmd": str(xtb_cmd) if recomputed else None,
     }
 
 
@@ -348,9 +356,10 @@ def run_trj2fig(
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
               show_default=True, help="MLIP backend.")
 @click.option("--solvent", default="none", show_default=True,
-              help="Experimental, computationally expensive xTB solvent delta correction. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.")
+              help="Computationally expensive xTB solvent delta correction. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.")
 @click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx"]),
               show_default=True, help="xTB solvent model.")
+@add_solvent_xtb_cmd_option()
 @click.option(
     "--out-json/--no-out-json",
     "out_json",
@@ -358,7 +367,9 @@ def run_trj2fig(
     show_default=True,
     help="Write machine-readable result.json to the output directory.",
 )
+@click.pass_context
 def cli(
+    ctx: click.Context,
     input_path: Path,
     outs: Tuple[Path, ...],
     extra_outs: Tuple[Path, ...],
@@ -389,6 +400,7 @@ def cli(
             backend=backend,
             solvent=solvent,
             solvent_model=solvent_model,
+            xtb_cmd=solvent_xtb_cmd_override(ctx) or "xtb",
         )
     except (ValueError, RuntimeError) as exc:
         raise click.ClickException(str(exc)) from exc
@@ -413,6 +425,7 @@ def cli(
             "multiplicity": info["multiplicity"],
             "solvent": info["solvent"],
             "solvent_model": info["solvent_model"],
+            "xtb_cmd": info["xtb_cmd"],
             # Preserve order and duplicate basenames across output
             # directories. ``files`` remains the legacy compatibility map.
             "output_files": [str(p) for p in written_paths],

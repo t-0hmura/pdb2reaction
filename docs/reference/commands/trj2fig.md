@@ -32,11 +32,15 @@ Options:
                                   [default: no-reverse-x]
   -b, --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
-  --solvent TEXT                  Experimental, computationally expensive xTB
-                                  solvent delta correction. Examples: water,
-                                  methanol, acetonitrile, dmso, thf, toluene.
-                                  'none' disables it.  [default: none]
+  --solvent TEXT                  Computationally expensive xTB solvent delta
+                                  correction. Examples: water, methanol,
+                                  acetonitrile, dmso, thf, toluene. 'none'
+                                  disables it.  [default: none]
   --solvent-model [alpb|cpcmx]    xTB solvent model.  [default: alpb]
+  --solvent-xtb-cmd TEXT          Command for the xTB solvent correction,
+                                  including optional xTB arguments. If xTB SCC
+                                  convergence is poor, increasing --etemp may
+                                  help (for example: 'xtb --etemp 1000').
   --out-json / --no-out-json      Write machine-readable result.json to the
                                   output directory.  [default: no-out-json]
   -h, --help                      Show this message and exit.
