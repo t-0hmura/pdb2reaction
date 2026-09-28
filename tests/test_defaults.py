@@ -51,6 +51,9 @@ class TestDefaultsStructure:
         assert "max_cycles" in RFO_KW
         assert RFO_KW["max_cycles"] == 100000
 
+    def test_rfo_hessian_update_default(self):
+        assert RFO_KW["hessian_update"] == "ts_bfgs"
+
     def test_minimizer_trial_rejection_defaults(self):
         assert LBFGS_KW["reject_uphill"] is False
         assert RFO_KW["reject_uphill"] is False

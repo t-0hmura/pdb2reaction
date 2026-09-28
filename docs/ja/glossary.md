@@ -22,6 +22,7 @@
 | 用語 | 正式名称 | 説明 |
 |------|----------|------|
 | **BFGS** | Broyden-Fletcher-Goldfarb-Shanno | 準ニュートン型の Hessian 更新スキーム（`hessian_update: bfgs`） |
+| **TS-BFGS** | Transition-State BFGS | ステップ方向の曲率が正であることを要求しない BFGS 型の Hessian 更新スキーム。モデル Hessian が不定値のままでも更新できます。RFO による極小化の既定（`hessian_update: ts_bfgs`） |
 | **L-BFGS** | Limited-memory BFGS | 勾配履歴から Hessian を近似する準ニュートン法。`opt --opt-mode grad` で使用 |
 | **RFO** | Rational Function Optimization | 明示的な Hessian 情報を使用する信頼領域最適化法。`opt --opt-mode hess` で使用 |
 | **RS-I-RFO** | Restricted-Step Image-RFO | Hessian 行列の 1 つの負固有値方向に沿って一次鞍点を探索する RFO 変種。`tsopt --opt-mode rsirfo` で選択（`hess` のデフォルトは RS-P-RFO） |

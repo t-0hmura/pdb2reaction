@@ -221,7 +221,7 @@ rfo:
  trust_min: 0.0001 # minimum trust radius
  trust_max: 0.10 # maximum trust radius
  max_energy_incr: null # allowed energy increase per step
- hessian_update: bfgs # Hessian update scheme
+ hessian_update: ts_bfgs # Hessian update scheme
  hessian_init: calc # Hessian initialization source
  hessian_recalc: 500 # rebuild Hessian every N steps
  hessian_recalc_adapt: null # adaptive Hessian rebuild factor

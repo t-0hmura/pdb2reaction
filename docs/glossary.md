@@ -22,6 +22,7 @@
 | Term | Full Name | Description |
 |------|-----------|-------------|
 | **BFGS** | Broyden-Fletcher-Goldfarb-Shanno | A quasi-Newton Hessian update scheme (`hessian_update: bfgs`). |
+| **TS-BFGS** | Transition-State BFGS | A BFGS-type Hessian update that does not require positive curvature along the step, so the model Hessian can stay indefinite. Default for RFO minimization (`hessian_update: ts_bfgs`). |
 | **L-BFGS** | Limited-memory BFGS | A quasi-Newton optimization algorithm that approximates the Hessian using a limited history of gradients. Used in `opt --opt-mode grad`. |
 | **RFO** | Rational Function Optimization | A trust-region optimization method that uses explicit Hessian information. Used in `opt --opt-mode hess`. |
 | **RS-I-RFO** | Restricted-Step Image-RFO | A variant of RFO for saddle point (TS) optimization that follows one negative eigenvalue. Selectable via `tsopt --opt-mode rsirfo` (the `hess` default is RS-P-RFO). |
