@@ -12,7 +12,7 @@ IRC 後エンドポイント再最適化）だけに適用されます。
 
 RS-P-RFO は数値収束条件を満たすと終了します。最終 PHVA は曲率を別途報告し、虚振動の本数を理由に追加の最適化ステップを要求しません。追加探索は明示的な `--flatten`、または正の `rsirfo.saddle_recovery_max_cycles`（既定値 0）で有効にします。反応の妥当性はモード変位と [`irc`](irc.md) の接続性から確認してください。
 
-`tsopt` は最終構造を保持します。非収束や `stalled` の場合は、探索中に曲率を確認していても、最終 PHVA の出力段階には進みません。PHVA の失敗時は理由を記録します。完全な振動解析や熱化学補正が必要な場合は、別途 [`freq`](freq.md) を実行します。
+`tsopt` は最終構造を保持します。収束せずに終わった場合は、探索中に曲率を確認していても、最終 PHVA の出力段階には進みません。エネルギープラトーで停止した場合（`stalled`）は終端 PHVA を実行し、n_imag を報告します。PHVA の失敗時は理由を記録します。完全な振動解析や熱化学補正が必要な場合は、別途 [`freq`](freq.md) を実行します。
 
 
 `n_imaginary_modes` は選択した分類基準による本数、`n_negative_modes` は完全で有限な PHVA の全負振動数の本数です。`saddle_validation` と `saddle_order_verified` は分類基準による本数を表し、`optimization_status` とは独立です。生の負モード数で追加探索や失敗判定を行いません。最終 PHVA を再計算した場合はその基底を使用し、最適化時のモード番号や overlap は同一の検証済み PHVA を再利用できる場合だけ引き継ぎます。
@@ -31,7 +31,8 @@ YAML の半径は Bohr 単位で、`opt` / `rsirfo` の既存の優先順位を�
 
 | 条件 | `tsopt` の成果物 | `all` の動作 |
 | --- | --- | --- |
-| 収束条件未達、明示したサイクル上限への到達、有効化したエネルギープラトー停止 | 最終構造と軌跡を保持し、終端 PHVA を省略 | TS 結果の登録後、IRC 前で停止 |
+| 収束条件未達、明示したサイクル上限への到達 | 最終構造と軌跡を保持し、終端 PHVA を省略 | TS 結果の登録後、IRC 前で停止 |
+| 有効化したエネルギープラトー停止（`stalled`） | 最終構造と軌跡を保持し、終端 PHVA を実行して n_imag を報告 | TS 結果の登録後、IRC 前で停止 |
 | 終端 PHVA の失敗 | 構造を保持し、`hessian_status: failed` と理由を記録 | 結果の登録後、IRC 前で停止 |
 | 不正な入力・構造、または `ZeroStepLength` / `OptimizationError` など回復不能なオプティマイザの例外 | エラー情報を記録し、それ以前に書かれたファイルを可能な範囲で保持 | 通常の数値非収束とは区別して処理を中断 |
 
@@ -278,7 +279,7 @@ opt:
 **energy plateau stop（opt-in、デフォルト無効）。** Hessian-family TS optimizer（RS-P-RFO、
 RS-I-RFO、TRIM、Dimer）は共通の `energy_plateau` 設定を参照し、`--stop-plateau` で有効化します。
 有効時、直近50 stepの energy rangeが `--stop-plateau-thresh`（default `1×10⁻⁴ au`）を下回ると、
-`stalled` として停止し、未収束のまま `max_cycles` に到達した場合と同様に終端 PHVA を実行しません。backend/model/system依存のforce floorが選択閾値への
+`stalled` として停止し、終端 PHVA を実行して n_imag を報告します（未収束のまま `max_cycles` に到達した場合は実行しません）。backend/model/system依存のforce floorが選択閾値への
 到達を妨げる場合に無駄なcycleを避けられます。デフォルトで無効なのは、平坦なenergyで停止した
 TS探索が余分な虚振動を残したままになりやすいためです。
 ```

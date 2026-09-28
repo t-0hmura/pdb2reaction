@@ -19,7 +19,7 @@ optimization (`opt` and post-IRC endpoint re-optimization in `all`).
 
 RS-P-RFO terminates when its numerical convergence criteria are met. Final PHVA reports curvature separately and does not request extra optimization steps because of imaginary-mode counts. Additional searches require explicit `--flatten` or a positive `rsirfo.saddle_recovery_max_cycles` budget (default 0). Inspect the mode and [`irc`](irc.md) connectivity to assess the proposed reaction.
 
-`tsopt` retains the final geometry. A non-converged or stalled run skips the final PHVA output stage, even if curvature was checked during optimization. A PHVA failure is recorded with its reason. Use a separate [`freq`](freq.md) run for full vibrational analysis or thermochemistry.
+`tsopt` retains the final geometry. A run that ends without converging skips the final PHVA output stage, even if curvature was checked during optimization; a run stopped on an energy plateau (`stalled`) still runs terminal PHVA and reports n_imag. A PHVA failure is recorded with its reason. Use a separate [`freq`](freq.md) run for full vibrational analysis or thermochemistry.
 
 
 `n_imaginary_modes` counts modes under the selected criterion; `n_negative_modes` records every negative frequency in the complete finite PHVA spectrum. `saddle_validation` and `saddle_order_verified` describe the selected-criterion count, independently of `optimization_status`. The raw negative count does not trigger further optimization or failure. A recomputed final PHVA uses its own mode basis: cached optimizer indices and overlaps are reused only with the same validated terminal PHVA packet.
@@ -39,7 +39,8 @@ available as an explicit choice.
 
 | Condition | `tsopt` artifacts | Composite `all` behavior |
 | --- | --- | --- |
-| Convergence criteria unmet, explicit cycle limit reached, or opt-in energy plateau | Retain the final geometry and trajectory; skip terminal PHVA | Register the TS result and stop before IRC |
+| Convergence criteria unmet or explicit cycle limit reached | Retain the final geometry and trajectory; skip terminal PHVA | Register the TS result and stop before IRC |
+| Opt-in energy plateau (`stalled`) | Retain the final geometry and trajectory; run terminal PHVA and report n_imag | Register the TS result and stop before IRC |
 | Terminal PHVA fails | Retain the geometry and set `hessian_status: failed` with the error; do not invent frequencies | Stop before IRC after artifact registration |
 | Invalid input/geometry or an unrecoverable optimizer exception such as `ZeroStepLength` / `OptimizationError` | Follow the structured error-envelope path; only files already written are retained on a best-effort basis | Abort the stage rather than relabeling it as ordinary non-convergence |
 
@@ -123,7 +124,7 @@ Add `--dump` to keep the full optimization trajectory for inspection.
   - runs a Dimer + L-BFGS micro-segment;
   - optionally performs a Bofill update.
 
-  At termination, one exact PHVA is produced after numerical convergence; a non-converged or stalled run retains the final geometry and skips PHVA. If `root != 0`, that root seeds only the initial dimer direction; subsequent refreshes follow the most negative mode (`root = 0`).
+  At termination, one exact PHVA is produced after numerical convergence or a plateau stop; a run that ends without either retains the final geometry and skips PHVA. If `root != 0`, that root seeds only the initial dimer direction; subsequent refreshes follow the most negative mode (`root = 0`).
 - **RS-I-RFO mode** — runs the RS-I-RFO optimizer with optional Hessian reference files, R+S splitting safeguards, and micro-cycle controls defined in the `rsirfo` YAML section. With `--flatten`, when more than one imaginary mode remains after convergence the workflow flattens extra modes and reruns RS-I-RFO until only one imaginary mode remains or the flatten-iteration cap is reached.
 - **Mode export + conversion** — modes classified as imaginary by the selected criterion are written to `vib/imag_*_trj.xyz`. With conversion enabled, PDB inputs receive `.pdb` companions and mmCIF/oversized-PDB bridge inputs receive `.pdb` plus `.cif`; Gaussian templates receive a `.gjf` companion for the final geometry only.
 
@@ -295,8 +296,8 @@ opt:
 **Energy-plateau stop (opt-in, default off).** Hessian-family TS optimizers
 (RS-P-RFO, RS-I-RFO, TRIM, and Dimer) honor the shared `energy_plateau` setting, which
 `--stop-plateau` turns on. An energy range below `--stop-plateau-thresh`
-(default `1×10⁻⁴ au` over the last 50 steps) stops the search as `stalled` and
-skips terminal PHVA, as does reaching `max_cycles` without convergence. This can save cycles when a
+(default `1×10⁻⁴ au` over the last 50 steps) stops the search as `stalled`;
+terminal PHVA still runs and reports n_imag, while reaching `max_cycles` without convergence skips it. This can save cycles when a
 backend/model/system-specific force floor prevents the selected force threshold
 from being reached. It is off unless you ask for it, because a TS search that
 stops on a flat energy typically still carries extra imaginary modes.

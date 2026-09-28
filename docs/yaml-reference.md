@@ -513,8 +513,8 @@ rsirfo:
  hessian_recalc_reset: true # Reset recalc counter after exact Hessian
  max_micro_cycles: 50 # Micro-iterations per macro cycle
  augment_bonds: false # Augment reaction path based on bond analysis
- min_line_search: false # RS-P-RFO only: interpolate in the minimization subspace
- max_line_search: false # RS-P-RFO only: interpolate in the maximization subspace
+ min_line_search: false # Always false: RS-P-RFO does not use line searches
+ max_line_search: false # Always false: RS-P-RFO does not use line searches
  assert_neg_eigval: false # Require negative eigenvalue at convergence
  track_mode_by_overlap: false # Track the selected TS mode by overlap with the previous Hessian
  reject_mode_loss: false # Optional trial rejection after established mode loss
@@ -528,9 +528,9 @@ rsirfo:
  # Also inherits rfo-like settings: trust_radius, trust_update, etc.
 ```
 
-`min_line_search` and `max_line_search` are consumed by `--opt-mode rsprfo`.
-They default to `false`, but explicit YAML values are preserved. RS-I-RFO and
-TRIM do not implement this subspace line-search step. Dimer uses the separate
+RS-P-RFO does not use line searches: an explicit `true` for `min_line_search`
+or `max_line_search` prints a warning and falls back to `false`. RS-I-RFO and
+TRIM ignore both keys. Dimer uses the separate
 `hessian_dimer.lbfgs.line_search` setting shown above.
 
 ```{note}

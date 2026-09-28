@@ -508,8 +508,8 @@ rsirfo:
  hessian_recalc_reset: true # Reset recalc counter after exact Hessian
  max_micro_cycles: 50 # Micro-iterations per macro cycle
  augment_bonds: false # Augment reaction path based on bond analysis
- min_line_search: false # RS-P-RFO のみ: 最小化部分空間で補間
- max_line_search: false # RS-P-RFO のみ: 最大化部分空間で補間
+ min_line_search: false # 常に false: RS-P-RFO は line search を使わない
+ max_line_search: false # 常に false: RS-P-RFO は line search を使わない
  assert_neg_eigval: false # Require negative eigenvalue at convergence
  track_mode_by_overlap: false # 前回の Hessian との重なりで追跡対象 TS モードを選ぶ
  reject_mode_loss: false # 確立済みの負曲率を失うtrial棄却はデフォルト無効
@@ -523,9 +523,9 @@ rsirfo:
  # Also inherits rfo-like settings: trust_radius, trust_update, etc.
 ```
 
-`min_line_search` と `max_line_search` を使用するのは `--opt-mode rsprfo`
-です。デフォルトは `false` ですが、YAML で明示した値は保持されます。
-RS-I-RFO と TRIM はこの部分空間 line search を実装していません。Dimer
+RS-P-RFO は line search を使いません。`min_line_search` または
+`max_line_search` に `true` を書くと警告を出して `false` に戻します。
+RS-I-RFO と TRIM はどちらの key も無視します。Dimer
 では、上記の独立した `hessian_dimer.lbfgs.line_search` を使用します。
 
 ```{note}

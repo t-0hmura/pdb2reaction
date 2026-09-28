@@ -285,6 +285,14 @@ def test_tsopt_terminal_outcome_messages_separate_numerical_and_saddle_status():
     )
     assert first_order_not_converged == "[tsopt] ERROR: Not converged."
 
+    plateau = _tsopt_terminal_outcome_message(
+        numerically_converged=False,
+        hessian_ready=True,
+        n_imaginary_modes=2,
+        stalled=True,
+    )
+    assert plateau == "[tsopt] ERROR: Not converged (plateau stop, n_imag=2)."
+
     converged_higher_order = _tsopt_terminal_outcome_message(
         numerically_converged=True,
         hessian_ready=True,
@@ -329,11 +337,11 @@ def test_reaction_mode_selection_uses_the_configured_saddle_threshold():
     assert _thresholded_reaction_mode_index(np.array([-3.2, 20.0]), 5.0) is None
 
 
-def test_hessian_postprocessing_requires_numerical_convergence():
+def test_hessian_postprocessing_requires_convergence_or_plateau_stop():
     assert _hessian_postprocessing_is_ready(None) is False
     assert _hessian_postprocessing_is_ready(_FakeOpt()) is False
     assert _hessian_postprocessing_is_ready(_FakeOpt(is_converged=True)) is True
-    assert _hessian_postprocessing_is_ready(_FakeOpt(is_stalled=True)) is False
+    assert _hessian_postprocessing_is_ready(_FakeOpt(is_stalled=True)) is True
 
     already_failed = _FakeOpt()
     already_failed._last_exact_failure_reason = "RuntimeError: failed"

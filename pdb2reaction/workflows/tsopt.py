@@ -987,10 +987,13 @@ def _tsopt_terminal_outcome_message(
     hessian_ready: bool,
     n_imaginary_modes: Optional[int],
     n_negative_modes: Optional[int] = None,
+    stalled: bool = False,
 ) -> str:
     """Return one concise terminal verdict."""
 
     if not numerically_converged:
+        if stalled and hessian_ready and n_imaginary_modes is not None:
+            return f"[tsopt] ERROR: Not converged (plateau stop, n_imag={int(n_imaginary_modes)})."
         return "[tsopt] ERROR: Not converged."
     if not hessian_ready or n_imaginary_modes is None:
         return "[tsopt] Converged; terminal PHVA is unavailable."
@@ -1013,10 +1016,11 @@ def _tsopt_terminal_outcome_message(
 
 
 def _hessian_postprocessing_is_ready(optimizer: Any) -> bool:
-    """Whether numerical convergence authorizes terminal PHVA."""
+    """Whether convergence or a plateau stop authorizes terminal PHVA."""
     return bool(
         optimizer is not None
-        and getattr(optimizer, "is_converged", False)
+        and (getattr(optimizer, "is_converged", False)
+             or getattr(optimizer, "is_stalled", False))
         and not getattr(optimizer, "_last_exact_failure_reason", None)
     )
 
@@ -1851,7 +1855,7 @@ class HessianDimer:
         atoms_final = Atoms(self.geom.atoms, positions=(self.geom.cart_coords.reshape(-1, 3) * BOHR2ANG), pbc=False)
         write(final_xyz, atoms_final)
 
-        if not self.is_converged:
+        if not (self.is_converged or self.is_stalled):
             self.saddle_order_verified = False
             self.n_imaginary_modes = None
             self.n_negative_modes = None
@@ -2027,8 +2031,8 @@ def _build_rsirfo_kwargs(
     # RS-I-RFO and TRIM merely inherit the constructor arguments, so exposing
     # them there would create accepted but ineffective configuration.
     if kind == "rsprfo":
-        rsirfo_kwargs.setdefault("min_line_search", False)
-        rsirfo_kwargs.setdefault("max_line_search", False)
+        rsirfo_kwargs["min_line_search"] = False
+        rsirfo_kwargs["max_line_search"] = False
     else:
         rsirfo_kwargs.pop("min_line_search", None)
         rsirfo_kwargs.pop("max_line_search", None)
@@ -2534,6 +2538,16 @@ def cli(
                 "hessian_dimer.lbfgs.line_search must be false because the "
                 "Dimer effective force is not the gradient of the physical energy."
             )
+        if kind == "rsprfo":
+            # RS-P-RFO does not use line searches; an explicit true falls back to false.
+            for key in ("min_line_search", "max_line_search"):
+                if rsirfo_cfg.get(key):
+                    click.echo(
+                        "[tsopt] WARNING: RS-P-RFO does not use line searches; "
+                        f"rsirfo.{key} is set to false.",
+                        err=True,
+                    )
+                    rsirfo_cfg[key] = False
 
         # A TS search follows a saddle-search direction, so physical energy is
         # not required to decrease. Keep this invariant after every YAML merge.
@@ -3388,7 +3402,9 @@ def cli(
                         Path(selected_final).write_text(
                             geometry.as_xyz(), encoding="utf-8"
                         )
-                        if not hessian_postprocessing_ready:
+                        if not hessian_postprocessing_ready or getattr(
+                            optimizer, "is_stalled", False
+                        ):
                             break
                         if (
                             reference_mode is not None
@@ -3750,6 +3766,7 @@ def cli(
                     hessian_ready=_terminal_hessian_ready,
                     n_imaginary_modes=_terminal_n_imaginary,
                     n_negative_modes=_terminal_n_negative,
+                    stalled=bool(getattr(_terminal_optimizer, "is_stalled", False)),
                 ),
                 err=_tsopt_failed,
             )

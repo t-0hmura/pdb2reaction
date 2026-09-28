@@ -26,8 +26,8 @@ def test_subspace_line_search_kwargs_exist_only_for_rsprfo(tmp_path) -> None:
     configured = {"min_line_search": True, "max_line_search": True}
 
     rsprfo = _build_rsirfo_kwargs({}, configured, tmp_path, kind="rsprfo")
-    assert rsprfo["min_line_search"] is True
-    assert rsprfo["max_line_search"] is True
+    assert rsprfo["min_line_search"] is False
+    assert rsprfo["max_line_search"] is False
 
     for kind in ("rsirfo", "trim"):
         kwargs = _build_rsirfo_kwargs({}, configured, tmp_path, kind=kind)
@@ -116,10 +116,10 @@ def test_shared_optimizer_value_precedence(
     assert rsirfo_cfg["max_cycles"] == expected
 
 
-def test_rsprfo_yaml_line_search_values_reach_constructor(
+def test_rsprfo_yaml_line_search_true_falls_back_to_false(
     monkeypatch, tmp_path,
 ) -> None:
-    """An explicit YAML choice must not be replaced by workflow policy."""
+    """RS-P-RFO does not use line searches; an explicit true is warned about and set to false."""
     from pdb2reaction.workflows import tsopt
 
     class ConstructorReached(RuntimeError):
@@ -156,8 +156,10 @@ def test_rsprfo_yaml_line_search_values_reach_constructor(
 
     assert result.exit_code == 1
     assert "ConstructorReached" in result.output
-    assert captured["min_line_search"] is True
-    assert captured["max_line_search"] is True
+    assert captured["min_line_search"] is False
+    assert captured["max_line_search"] is False
+    assert "rsirfo.min_line_search is set to false" in result.output
+    assert "rsirfo.max_line_search is set to false" in result.output
     assert "rfo_overlaps" not in captured
 
 
