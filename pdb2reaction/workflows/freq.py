@@ -868,10 +868,11 @@ def cli(
         # (run/system/evaluator/active space/potential) matches; the
         # all-workflow may pass the TS through a three-decimal PDB, so the
         # coordinate field keeps the wider bohr tolerance.
+        _frozen_atoms = {int(i) for i in freeze_list}
         _active_dofs = [
             3 * atom + axis
             for atom in range(len(geometry.atomic_numbers))
-            if atom not in set(int(i) for i in freeze_list)
+            if atom not in _frozen_atoms
             for axis in range(3)
         ]
         _fresh_hessian_result: Dict[str, float] = {}

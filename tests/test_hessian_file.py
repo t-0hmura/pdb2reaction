@@ -143,18 +143,25 @@ def test_hessian_file_at_a_reserved_output_path_is_rejected(
     assert reserved.read_bytes() == b"existing"
 
 
-def test_irc_read_hess_needs_the_calc_hessian_init(tmp_path) -> None:
+@pytest.mark.parametrize("dry_run", [[], ["--dry-run"]])
+@pytest.mark.parametrize(
+    ("command", "section", "extra"),
+    [("irc", "irc", []), ("tsopt", "rsirfo", ["--opt-mode", "hess"])],
+)
+def test_read_hess_needs_the_calc_hessian_init(
+    tmp_path, command, section, extra, dry_run
+) -> None:
     source = tmp_path / "atom.xyz"
     source.write_text("1\natom\nHe 0 0 0\n", encoding="utf-8")
-    config = tmp_path / "irc.yaml"
-    config.write_text("irc:\n  hessian_init: unit\n", encoding="utf-8")
+    config = tmp_path / "config.yaml"
+    config.write_text(f"{section}:\n  hessian_init: unit\n", encoding="utf-8")
     hess = tmp_path / "h.npy"
     np.save(hess, np.eye(3))
 
     result = CliRunner().invoke(
         root_cli,
-        ["irc", "-i", str(source), "-q", "0", "-o", str(tmp_path / "out"),
-         "--config", str(config), "--read-hess", str(hess)],
+        [command, "-i", str(source), "-q", "0", "-o", str(tmp_path / "out"),
+         "--config", str(config), "--read-hess", str(hess)] + extra + dry_run,
     )
 
     assert result.exit_code == 2, result.output

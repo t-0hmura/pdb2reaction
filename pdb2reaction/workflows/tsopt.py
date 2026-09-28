@@ -1292,7 +1292,7 @@ class HessianDimer:
         # result.json status reflects whether the TS-opt actually converged.
         self.is_converged = False
 
-        # A child stall stops later loops and remains non-converged.
+        # Stall state of the last optimization loop; a stall is never converged.
         self.is_stalled = False
         self.stop_reason = ""
         self.saddle_order_verified = False
@@ -1525,6 +1525,8 @@ class HessianDimer:
         steps_in_this_call = 0
         zero_step_converged = False
         loop_converged = False
+        self.is_stalled = False
+        self.stop_reason = ""
         while True:
             remaining_global = (
                 None
@@ -1820,7 +1822,6 @@ class HessianDimer:
         # (4) Flatten loop: exact Hessian each iteration while budget remains.
         if (
             self.flatten_max_iter > 0
-            and not self.is_stalled
             and (
                 self.max_total_cycles is None
                 or (self.max_total_cycles - self._cycles_spent) > 0
@@ -1900,10 +1901,6 @@ class HessianDimer:
                 _steps_flat, zero_step_flat, conv_flat = self._dimer_loop(self.thresh)
                 self.is_converged = conv_flat
 
-                # Stop the remaining flatten iterations after a stall.
-                if self.is_stalled:
-                    break
-
                 if (
                     self.max_total_cycles is not None
                     and (self.max_total_cycles - self._cycles_spent) <= 0
@@ -1916,11 +1913,7 @@ class HessianDimer:
                     H = _extract_active_block(H, mask_dof)
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
-        elif (
-            self.flatten_max_iter > 0
-            and not self.is_stalled
-            and self.max_total_cycles is not None
-        ):
+        elif self.flatten_max_iter > 0 and self.max_total_cycles is not None:
             click.echo("[tsopt] Reached --max-cycles budget; skipping flatten loop.")
 
         # (5) Final outputs
@@ -2762,6 +2755,10 @@ def cli(
             rsirfo_kwargs_for_echo = _build_rsirfo_kwargs(
                 opt_cfg, rsirfo_cfg, out_dir_path, kind=kind
             )
+            if read_hess and rsirfo_kwargs_for_echo.get("hessian_init", "calc") != "calc":
+                raise click.BadParameter(
+                    "--read-hess needs hessian_init: calc.", param_hint="--read-hess"
+                )
             rsirfo_kwargs_for_echo = strip_inherited_keys(
                 rsirfo_kwargs_for_echo,
                 echo_opt,
@@ -3071,11 +3068,6 @@ def cli(
                 )
 
                 if read_hess:
-                    if rsirfo_kwargs.get("hessian_init", "calc") != "calc":
-                        raise click.BadParameter(
-                            "--read-hess needs hessian_init: calc.",
-                            param_hint="--read-hess",
-                        )
                     _initial = _load_initial_hessian_file(read_hess, geometry, calc_cfg)
                     _n_dof = int(geometry.cart_coords.size)
                     _dofs = _initial["active_dofs"]
@@ -3107,6 +3099,15 @@ def cli(
                     converged_message="Numerical optimization converged.",
                 )
                 last_optimizer = optimizer
+                # Command-level --max-cycles budget shared with the flatten retries.
+                heavy_cycle_limit = rsirfo_kwargs.get("max_cycles")
+                heavy_cycles_spent = int(optimizer_cycle_count(optimizer) or 0)
+
+                def _heavy_budget_left() -> bool:
+                    return (
+                        heavy_cycle_limit is None
+                        or int(heavy_cycle_limit) - heavy_cycles_spent > 0
+                    )
 
                 # --- RSIRFO: count imaginary modes and optional flatten loop ---
                 geometry.set_calculator(None)
@@ -3293,11 +3294,9 @@ def cli(
                         "path-correlated mode is not negative.",
                         err=True,
                     )
-                if (
-                    flatten_max_iter > 0
-                    and n_imag > 1
-                    and not getattr(last_optimizer, "is_stalled", False)
-                ):
+                if flatten_max_iter > 0 and n_imag > 1 and not _heavy_budget_left():
+                    click.echo("[tsopt] Reached --max-cycles budget; skipping flatten loop.")
+                elif flatten_max_iter > 0 and n_imag > 1:
                     click.echo("[flatten] Extra imaginary modes detected; starting RSIRFO flatten loop.")
                     masses_amu = _safe_masses_amu(geometry.atomic_numbers)
                     roots = rsirfo_kwargs.get("roots", [0])
@@ -3315,6 +3314,10 @@ def cli(
                         _attach_rsirfo_calc()
                         retry_kwargs = dict(rsirfo_kwargs)
                         retry_kwargs["flatten_enabled"] = True
+                        if heavy_cycle_limit is not None:
+                            retry_kwargs["max_cycles"] = (
+                                int(heavy_cycle_limit) - heavy_cycles_spent
+                            )
                         if branch_reference_mode is not None:
                             retry_kwargs["reference_mode"] = (
                                 branch_reference_mode
@@ -3335,14 +3338,13 @@ def cli(
                                 branch_optimizer, "is_converged", None
                             ),
                             cycles=optimizer_cycle_count(branch_optimizer),
-                            max_cycles=(
-                                opt_cfg.get("max_cycles")
-                            ),
+                            max_cycles=retry_kwargs.get("max_cycles"),
                             stalled=getattr(branch_optimizer, "is_stalled", False),
                             stop_reason=getattr(branch_optimizer, "stop_reason", None) or None,
                             converged_message="Numerical optimization converged.",
                         )
                         geometry.set_calculator(None)
+                        cycles = int(optimizer_cycle_count(branch_optimizer) or 0)
                         branch_ready = _hessian_postprocessing_is_ready(
                             branch_optimizer
                         )
@@ -3380,6 +3382,7 @@ def cli(
                             "modes": branch_modes.detach().cpu().clone(),
                             "n_imag": branch_n_imag,
                             "ims": branch_ims,
+                            "cycles": cycles,
                         }
 
                     def _flatten_branch_score(
@@ -3440,6 +3443,9 @@ def cli(
                         )
 
                     for it in range(flatten_max_iter):
+                        if not _heavy_budget_left():
+                            click.echo("[tsopt] Reached --max-cycles budget; stopping flatten loop.")
+                            break
                         click.echo(f"[flatten] RSIRFO iteration {it + 1}/{flatten_max_iter}")
                         flatten_reference_mode = _transported_path_mode_full(
                             last_optimizer,
@@ -3474,11 +3480,28 @@ def cli(
                             flatten_reference_mode,
                             "primary",
                         )
+                        heavy_cycles_spent += primary_result["cycles"]
                         selected_result = primary_result
                         if (
                             reference_mode is not None
                             and _flatten_branch_needs_alternate(primary_result)
+                            and not _heavy_budget_left()
                         ):
+                            click.echo(
+                                "[flatten] Skipping alternate signed branch: "
+                                "--max-cycles budget exhausted."
+                            )
+                        elif (
+                            reference_mode is not None
+                            and _flatten_branch_needs_alternate(primary_result)
+                        ):
+                            from pdb2reaction.io.hessian_cache import (
+                                load as _hess_load,
+                                restore as _hess_restore,
+                            )
+
+                            # The alternate branch overwrites the cached TS Hessian.
+                            primary_ts_hessian = _hess_load("ts")
                             alternate_start = _mirrored_flatten_start(
                                 pre_flatten_coords,
                                 primary_start,
@@ -3488,6 +3511,7 @@ def cli(
                                 flatten_reference_mode,
                                 "alternate",
                             )
+                            heavy_cycles_spent += alternate_result["cycles"]
                             primary_score = _flatten_branch_score(
                                 primary_result
                             )
@@ -3496,6 +3520,8 @@ def cli(
                             )
                             if alternate_score < primary_score:
                                 selected_result = alternate_result
+                            else:
+                                _hess_restore("ts", primary_ts_hessian)
                             emit(
                                 "[flatten] Signed-branch probe selected "
                                 f"{selected_result['label']} "
@@ -3525,9 +3551,7 @@ def cli(
                         Path(selected_final).write_text(
                             geometry.as_xyz(), encoding="utf-8"
                         )
-                        if not hessian_postprocessing_ready or getattr(
-                            optimizer, "is_stalled", False
-                        ):
+                        if not hessian_postprocessing_ready:
                             break
                         if (
                             reference_mode is not None
@@ -3716,7 +3740,7 @@ def cli(
                         "opt_mode_requested": str(opt_mode).strip().lower(),
                         "optimizer": kind,
                         "n_atoms": len(geometry.atoms),
-                        "n_opt_cycles": optimizer_cycle_count(last_optimizer),
+                        "n_opt_cycles": heavy_cycles_spent,
                         "backend": calc_cfg.get("backend", backend),
                         "charge": calc_cfg["charge"],
                         "spin": calc_cfg["spin"],

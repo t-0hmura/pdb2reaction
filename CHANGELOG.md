@@ -28,8 +28,14 @@ Target release: **0.5.0**.
 - Name the aggregate MEP trajectory `mep_trj.pdb` and its bridged-input CIF companion `mep_trj.cif`.
 - Use the TS-BFGS Hessian update by default for RFO minimizations (`rfo.hessian_update: ts_bfgs`).
 - Run terminal PHVA after an energy-plateau stop (`stalled`) in `tsopt` and report n_imag; runs that end at the cycle limit still skip it.
+- Keep running `tsopt --flatten` after an energy-plateau stop, since flattening can still remove extra imaginary modes. The flatten retries share the remaining `--max-cycles` budget, and `n_opt_cycles` in `result.json` counts every cycle.
 - Warn and fall back to `false` when `rsirfo.min_line_search` or `rsirfo.max_line_search` is `true` for RS-P-RFO.
 - Describe `--show-config` as printing the loaded YAML file and its top-level keys, and `--dry-run` as validating options and inputs, matching what they print at the default verbosity.
+
+### Fixed
+
+- When `tsopt --flatten` also tries the displacement in the opposite direction and keeps the first result, `--dump-hess` and IRC now use the Hessian of that result.
+- `tsopt --dry-run` now rejects `--read-hess` with a `hessian_init` other than `calc`, as a real run does.
 
 ## [0.4.16] — 2026-09-19
 
