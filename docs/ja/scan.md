@@ -22,7 +22,7 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
 
 ```bash
 # リテラル入力を使う
-pdb2reaction scan -i input.pdb -q 0 -m 1 -s '[("TYR,285,CA","SAM,309,C10",1.35)]'
+pdb2reaction scan -i input.pdb -q 0 -m 1 -s '[("SAM,320,CS1","GPP,321,C7",1.60)]'
 ```
 
 ```bash
@@ -45,7 +45,7 @@ pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <n
 
 1. `geom_loader` で構造を読み込み、電荷を解決します。電荷の解決順序の詳細は {ref}`CLI 規約: 電荷の指定 <ja-charge-specification>` を参照してください。
 2. `--preopt` の場合、バイアスをかける前に無バイアスの前処理最適化を実行し、開始構造を緩和します。
-3. `-s/--scan-lists`からstage targetを読み取り、indexを正規化します。3-field selector（例: `'TYR,285,CA'`）は順不同です。残基名や番号が重複するときは、位置固定の`CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`を使います。
+3. `-s/--scan-lists`からstage targetを読み取り、indexを正規化します。3-field selector（例: `'SAM,320,CS1'`）は順不同です。残基名や番号が重複するときは、位置固定の`CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`を使います。
     各結合について変位 `Δ = target − current` を計算し、`h = --max-step-size` として `N = ceil(max(|Δ|) / h)` ステップに分割します。各結合は `δ = Δ / N` ずつ更新されます。
 4. すべてのステップを順に進め、一時ターゲットを更新しながら調和ポテンシャル `E = Σ ½ k (|ri − rj| − target)²` を適用し、MLIP バックエンドで最適化します。最適化サイクルの上限は YAML `opt.max_cycles` から読み、明示した `--relax-max-cycles` がそれを上書きします。
 5. 各ステージの最終ステップ後、必要に応じて無バイアス緩和（`--endopt`）を実行し、共有結合の変化を報告して `result.*` を出力します。
@@ -73,7 +73,7 @@ out_dir/ (デフォルト:./result_scan/)
 └─ scan.cif # bridge入力のCIF軌跡
 ```
 
-- `geom`/`calc`/`opt`/`bias`/`bond` および最適化ブロックの解決結果と、各ステージの結合変化レポートがコンソールに出力されます。
+- 各ステージの結合変化レポートがコンソールに出力されます。`-v 3` では `geom`/`calc`/`opt`/`bias`/`bond` および最適化ブロックの解決結果も出力されます。
 
 主な確認先:
 
@@ -159,7 +159,7 @@ opt:
  max_force_only: false # rely only on max force convergence
  force_only: false # skip displacement checks
  converge_to_geom_rms_thresh: 0.05 # geom RMS threshold when converging to ref
- overachieve_factor: 0.0 # factor to tighten thresholds
+ overachieve_factor: 0.0 # 0.0 = off; >0: converge when forces < thresh/factor, ignoring step (not used by baker)
  check_eigval_structure: false # validate Hessian eigenstructure
  energy_plateau: false # opt-in plateau-based early stop (--stop-plateau)
  energy_plateau_thresh: 1.0e-04 # plateau detection threshold
@@ -179,7 +179,7 @@ lbfgs:
  max_force_only: false # rely only on max force convergence
  force_only: false # skip displacement checks
  converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
- overachieve_factor: 0.0 # tighten thresholds
+ overachieve_factor: 0.0 # 0.0 = off; >0: converge when forces < thresh/factor, ignoring step (not used by baker)
  check_eigval_structure: false # validate Hessian eigenstructure
  energy_plateau: false # opt-in plateau-based early stop (--stop-plateau)
  energy_plateau_thresh: 1.0e-04 # plateau detection threshold
@@ -207,7 +207,7 @@ rfo:
  max_force_only: false # rely only on max force convergence
  force_only: false # skip displacement checks
  converge_to_geom_rms_thresh: 0.05 # RMS threshold when targeting geometry
- overachieve_factor: 0.0 # tighten thresholds
+ overachieve_factor: 0.0 # 0.0 = off; >0: converge when forces < thresh/factor, ignoring step (not used by baker)
  check_eigval_structure: false # validate Hessian eigenstructure
  energy_plateau: false # opt-in plateau-based early stop (--stop-plateau)
  energy_plateau_thresh: 1.0e-04 # plateau detection threshold
@@ -227,7 +227,7 @@ rfo:
  hessian_recalc_adapt: null # adaptive Hessian rebuild factor
  small_eigval_thresh: 1.0e-08 # eigenvalue threshold for stability
  alpha0: 1.0 # initial micro step
- max_micro_cycles: 50 # micro-iteration limit
+ max_micro_cycles: 50 # RS iteration limit per step
  rfo_overlaps: false # enable RFO overlaps
  gediis: false # enable GEDIIS
  gdiis: true # enable GDIIS
@@ -262,17 +262,17 @@ YAML/JSON ファイル書式、インライン Python リテラル構文、原�
 # 協奏的: 2 つの座標を 1 ステージで一緒に駆動
 pdb2reaction scan -i reactant.pdb \
     -q 0 -m 1 \
-    -s '[("Ca RES 10","Cb RES 11",1.6),("H RES 11","O GLU 20",1.0)]' -o result_concerted
+    -s '[("CS1 SAM 320","GPP 321 C7",1.60),("GPP 321 H11","GLU 186 OE2",0.90)]' -o result_concerted
 ```
 
 段階的スキャンでは 1 つの `-s/--scan-lists` フラグの後に複数のリテラルを並べます。
 
 ```bash
-# ステージ 1: 1 つの結合を 1.35 Å に駆動
-# ステージ 2: 2 つの結合を同時に駆動
+# ステージ 1: メチル基転移の距離を 1.60 Å まで駆動
+# ステージ 2: 続いてプロトン移動の距離を 0.90 Å まで駆動
 -s \
- '[("TYR,285,CA","SAM,309,C10",1.35)]' \
- '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]'
+ '[("SAM,320,CS1","GPP,321,C7",1.60)]' \
+ '[("GPP,321,H11","GLU,186,OE2",0.90)]'
 ```
 
 ステージは順次実行され、各ステージは前ステージの緩和結果から開始します。
@@ -303,13 +303,13 @@ pdb2reaction scan -i reactant.pdb \
 pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
 ```
 
-これは 2 つの手動ステージの間にジオメトリリセットを行うのと同等ですが、スクリプトを書く必要がありません。同じリテラル内で 3-tuple と 4-tuple を混在させることもできます。
+これは 2 つの手動ステージの間にジオメトリリセットを行うのと同等ですが、スクリプトを書く必要がありません。インラインリテラルでは 3-tuple と 4-tuple を混在できません（1 つのリテラルの中でも、リテラルどうしでも）。target と range を組み合わせるときは、YAML/JSON スペックの `stages:` に並べます。
 
 角度rangeは`(i,j,k,low,high)`、二面角rangeは
 `(i,j,k,l,low,high)`で指定します。
 
 ```{note}
-**4-tuple 使用時のステージ番号。** 1 つの 4-tuple は出力ツリー内で **2 つ** のステージに展開されます。`start` パスは `stage_NN/` に、`end` パスは `stage_NN+1/` に書き込まれます。したがって最初のリテラルとして 1 個の 4-tuple を渡した場合、1 つの統合された `stage_01/` ではなく `stage_01/` と `stage_02/` が作成されます。3-tuple と 4-tuple を混在させた場合、カウンターは 3-tuple ごとに `+1`、4-tuple ごとに `+2` 進みます。
+**4-tuple 使用時のステージ番号。** 1 つの 4-tuple は出力ツリー内で **2 つ** のステージに展開されます。`start` パスは `stage_NN/` に、`end` パスは `stage_NN+1/` に書き込まれます。したがって最初のリテラルとして 1 個の 4-tuple を渡した場合、1 つの統合された `stage_01/` ではなく `stage_01/` と `stage_02/` が作成されます。スペックの 1 ステージに 3-tuple と 4-tuple を混在させた場合は、各項目が別のステージとして順に実行され、カウンターは 3-tuple ごとに `+1`、4-tuple ごとに `+2` 進みます。
 ```
 
 ## 注意事項

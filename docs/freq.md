@@ -53,7 +53,7 @@ pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 \
   trajectories are produced for every input; topology inputs also receive `.pdb` trajectories
   when `--convert-files` remains enabled, and mmCIF/oversized-PDB bridge inputs additionally
   receive `.cif` trajectories with the original identifiers.
-- **Thermochemistry**: if `thermoanalysis` is installed, a QRRHO-like summary (E, ZPE, E/H/G
+- **Thermochemistry**: a QRRHO-like summary (E, ZPE, E/H/G
   corrections, heat capacities, entropies) is printed using PHVA frequencies. CLI pressure in
   atm is converted internally to Pa. When `--dump`, a `thermoanalysis.yaml` snapshot is
   also written. The console reports the structure energy in Hartree as
@@ -81,7 +81,7 @@ out_dir/ (default:./result_freq/)
 ├─ mode_XXXX_±freqcm-1.pdb # PDB/mmCIF topology exists and conversion is enabled
 ├─ mode_XXXX_±freqcm-1.cif # mmCIF/oversized-PDB bridge input
 ├─ frequencies_cm-1.txt # Full frequency list using the selected sort order
-└─ thermoanalysis.yaml # Present when `thermoanalysis` is importable and --dump is True
+└─ thermoanalysis.yaml # Present when --dump is True
 ```
 - Console blocks summarizing resolved `geom`, `calc`, `freq`, and thermochemistry settings.
 
@@ -112,13 +112,15 @@ The tables below cover the options that need explanation; the full flag list is 
 | `--pressure FLOAT` | Thermochemistry pressure (atm). On the CLI this flag is `--pressure`; the matching YAML key under `thermo:` is `pressure_atm` (explicit unit suffix). Both are in atm and get converted to Pa internally. | `1.0` |
 | `--dump/--no-dump` | Write `thermoanalysis.yaml`. Standalone `freq` defaults to off. `pdb2reaction all --thermo` always retains this internal file because the composite workflow consumes it; `all --no-dump` still controls optional scan/MEP/TS trajectories but does not suppress the thermochemistry channel. | `False` |
 | `--hessian-calc-mode CHOICE` | MLIP Hessian mode (`Analytical` or `FiniteDifference`). | `FiniteDifference` |
+| `--read-hess PATH` | Use the Hessian in a NumPy `.npy` file instead of computing it (for example one written by `freq` or `tsopt --dump-hess`). | _None_ |
+| `--dump-hess PATH` | Save the Hessian as a NumPy `.npy` array for `--read-hess` in `freq`, `tsopt`, or `irc`, or for other programs. | _None_ |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/CIF companions when a PDB/mmCIF topology is available (GJF is not written). | `True` |
 | `--ref-pdb FILE` | Reference PDB or mmCIF topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--config FILE` | Base YAML configuration applied before explicit CLI options. | _None_ |
-| `--show-config/--no-show-config` | Print resolved YAML layers/config and continue. | `False` |
+| `--show-config/--no-show-config` | Print the loaded YAML file and its top-level keys, then continue. | `False` |
 | `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP backend, or optional DFT calculator. | `uma` |
-| `--dry-run/--no-dry-run` | Validate and print execution plan without running frequency analysis. | `False` |
+| `--dry-run/--no-dry-run` | Validate options and inputs without running frequency analysis. | `False` |
 
 ## YAML configuration
 
@@ -128,7 +130,6 @@ The only `freq`-specific default that differs from the canonical block is the ou
 
 ```yaml
 freq:
- zero_cutoff_cm: 5.0    # imaginary modes satisfy nu < -zero_cutoff_cm
  out_dir: ./result_freq/ # freq default
 ```
 
@@ -139,6 +140,7 @@ freq:
 - Imaginary frequencies are reported as negative values in cm⁻¹. `freq` prints how many were detected
   and dumps details when `--dump`.
 - An all-frozen structure has no active vibrational DOF and raises an explicit error.
+- A `--read-hess` / `--dump-hess` file is one plain NumPy array (`numpy.save`): the Cartesian Hessian in Hartree/bohr², not mass-weighted, with atoms in input order. It covers all atoms (3N × 3N) or, when atoms are frozen, only the movable ones. `--read-hess` checks only that the matrix is square, finite, symmetric, and one of these two sizes, so pass a Hessian computed for the same geometry, charge, multiplicity, and calculator.
 - `--hessian-calc-mode` follows the standard precedence (defaults < config < explicit CLI); an explicit CLI `--hessian-calc-mode` value takes precedence over `calc.hessian_calc_mode` in the config YAML.
 
 ## See Also

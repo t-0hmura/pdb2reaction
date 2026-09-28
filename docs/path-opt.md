@@ -79,7 +79,7 @@ out_dir/
 └─ <optimizer dumps> # Trajectory dumps when --dump (restart YAML only via YAML dump_restart)
 ```
 
-Console output echoes the resolved YAML blocks and prints cycle-by-cycle MEP progress (GSM/DMF) with timing information.
+Console output prints cycle-by-cycle MEP progress (GSM/DMF) with timing information; `-v 3` also echoes the resolved configuration blocks.
 
 See {ref}`CLI Conventions: Configuration precedence <configuration-precedence>` for the full resolution order.
 
@@ -112,9 +112,9 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--thresh-gsm TEXT` | Override convergence preset for the GSM string optimizer (`stopt.thresh`). | `gau_loose` |
 | `--dmf-tol TEXT` | Override the IPOPT dual-infeasibility tolerance of the DMF optimizer (`dmf.tol`): `tight` (0.04), `middle` (0.10), `loose` (0.20), or a positive float. Gaussian presets are rejected. | `tight` |
 | `--config FILE` | Base YAML configuration layer applied before explicit CLI values. | _None_ |
-| `--show-config/--no-show-config` | Print resolved configuration (including YAML layers) and continue. | `False` |
+| `--show-config/--no-show-config` | Print the loaded YAML file and its top-level keys, then continue. | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP backend, or optional DFT calculator. | `uma` |
-| `--dry-run/--no-dry-run` | Validate options and print the execution plan without running optimization. | `False` |
+| `--dry-run/--no-dry-run` | Validate options and inputs without running optimization. | `False` |
 | `--preopt/--no-preopt` | Pre-optimize each endpoint with the selected single-structure optimizer before alignment/MEP search (GSM/DMF). | `True` |
 | `--preopt-max-cycles INT` | Cap for endpoint preoptimization cycles. | `100000` |
 | `--fix-ends/--no-fix-ends` | Keep endpoint geometries fixed during GSM growth/refinement. Accepted but unused with DMF. | `True` |

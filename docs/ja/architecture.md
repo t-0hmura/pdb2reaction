@@ -27,7 +27,7 @@ Python CLIです。geometry/path stageには組み込みMLIPまたはcustom ASE 
 | **L3 Domain** | `pdb2reaction/domain/` | 化学的に意味を持つヘルパーロジック（結合変化検出、結合サマリ、元素情報伝播） | `core/` |
 | **L4a Infra (MLIP)** | `pdb2reaction/backends/` | MLIP バックエンドディスパッチャ + バックエンドごとのアダプタ（UMA / Orb / MACE / AIMNet2） | `core/` |
 | **L4b Infra (I/O)** | `pdb2reaction/io/` | 出力レイアウト、サマリ、軌跡、PDB 修正、エネルギーダイアグラム、Hessian キャッシュ | `core/` |
-| **L5 Foundation** | `pdb2reaction/core/` | defaults（共有defaultの主要source）、utils（structure / coordinate / plot helper）、logging、将来の `errors.py` / `types.py` | (none、設計意図) |
+| **L5 Foundation** | `pdb2reaction/core/` | defaults（共有defaultの主要source）、utils（structure / coordinate / plot helper）、logging、output、result の公開 | (none、設計意図) |
 | (bundle, not a layer) | `<repo>/pysisyphus/`, `<repo>/thermoanalysis/` | repo 内部 fork（optimizer / thermochemistry） | (sibling, layer-external) |
 
 **依存方向（設計目標）**: `L1 → L2 → {L3, L4} → L5`。全面的な top-to-bottom 方向は機械的には強制していません。強制対象の subset では product module graph を**非循環**（`pdb2reaction/*` モジュール間に強連結成分が無い）に保ち、`core`/`domain` から `workflows/*` への import を禁止します。CIは2つのゲートで別々の不変条件を検査します。`.github/scripts/check_engineering_markers.py` は `# CHEMISTRY-RULE:{4,5,7}` マーカーと `# DOMAIN_PURE` マーカー、MLIP SDK（`fairchem`/`orb_models`/`mace`/`aimnet`）が `backends/` 下のみで import されることを検査し、`.github/scripts/check_import_graph.py`（静的AST import graph）は product cycleが無いこと・`pysisyphus/**` が `pdb2reaction` を import しないこと・`core → workflows` / `domain → workflows` back-edgeが無いことを検査します。残る許容される下向きedge / 一方向facadeは `workflows/* → cli.common_options`/`cli.decorators`/`cli.help_pages`、`core/utils.py → domain.add_elem_info`/`io.structure_formats`/`io.charge`、`io/charge.py → domain.residue_data`/`io.structure_formats`、`io/structure_formats.py → domain.add_elem_info`、`io/trj2fig.py → backends` です。正準residue table（`domain/residue_data.py`）、charge engine（`io/charge.py`）、console-gated charge-summary logger（`core/utils.py`）は既存importパス維持のため `workflows/extract.py` から再exportされます。同梱forkはlayer graph外にあり、絶対package path（`from pysisyphus.X import Y`）で各layerからimportできます。
@@ -90,6 +90,8 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 │ │
 │ └── core/ # === L5 Foundation ===
 │   ├── defaults.py 共有defaultの主要source
+│   ├── dft_settings.py DFT の設定の解決（CHEMISTRY-RULE:4）
+│   ├── logging.py -v / --verbose の配線
 │   ├── utils.py PDB / XYZ / plot helpers
 │   ├── output.py / result_commit.py output／result ownership
 │   └── pes_composition.py energy成分合成
@@ -146,7 +148,7 @@ pdb2reaction myaction                 ──► pdb2reaction/cli/app.py
 遅延 import 互換性の 2 階層と CLI ディスパッチ:
 
 1. **Root シンボル属性**（`from pdb2reaction import <Symbol>`）— `pdb2reaction/__init__.py:_LAZY_SYMBOLS` + PEP 562 `__getattr__` が処理します。シンボルは初回アクセス時に layer-dir パスから読み込まれ、`pdb2reaction` import 時の import コストはゼロのまま保たれます。
-2. **Root モジュール属性**（`from pdb2reaction import <module>`）— `_LAZY_MODULES` が処理します。`__getattr__` は `importlib.import_module` を介してモジュールオブジェクト自体を返します。`pdb2reaction` は現在、参照されるモジュール属性パスは 0 件です（レジストリは空です。root 属性アクセスは将来の拡張のために予約されています）。
+2. **Root モジュール属性**（`from pdb2reaction import <module>`）— `_LAZY_MODULES` が処理します。`__getattr__` は `importlib.import_module` を介してモジュールオブジェクト自体を返します。レジストリは空で、root のモジュール属性は公開していません。
 
 CLI サブコマンドリゾルバ（`cli/app.py:_LAZY_SUBCOMMANDS`）は **絶対** モジュールパス（例: `"pdb2reaction.workflows.all"`）を使うため、`default_group.py` を `cli/` に移動してもサブコマンド探索が気づかないうちに動かなくなることはありません（レジストリはもはや `__package__` に依存しません）。
 
@@ -191,10 +193,10 @@ CLI サブコマンドリゾルバ（`cli/app.py:_LAZY_SUBCOMMANDS`）は **絶�
 | Scanと2D/3D energy-landscape grid + 共有 | `pdb2reaction/workflows/scan{,2d,3d,_common}.py` |
 | MEP 探索（GSM） | `pdb2reaction/workflows/path_search.py` |
 | MEP optimizer コア（pysisyphus COS） | `pdb2reaction/workflows/path_opt.py` |
-| TS 最適化（RS-P-RFO + Bofill + macro/micro） | `pdb2reaction/workflows/tsopt.py` |
+| TS 最適化（RS-P-RFO / RS-I-RFO / TRIM / Dimer + Bofill） | `pdb2reaction/workflows/tsopt.py` |
 | 振動解析（backend-agnostic PHVA + active block） | `pdb2reaction/workflows/freq.py` |
-| IRC 積分（macro / micro） | `pdb2reaction/workflows/irc.py` |
-| 一点 DFT（gpu4pyscf サブプロセス） | `pdb2reaction/workflows/dft.py` |
+| IRC 積分 | `pdb2reaction/workflows/irc.py` |
+| 一点 DFT（PySCF / GPU4PySCF、同じプロセス内） | `pdb2reaction/workflows/dft.py` |
 | 活性部位抽出（クラスターキャップ） | `pdb2reaction/workflows/extract.py` |
 | 拘束ヘルパー | `pdb2reaction/workflows/restraints.py` |
 | Kabsch / frozen-subset アラインメント | `pdb2reaction/workflows/align_freeze.py` |
@@ -260,7 +262,7 @@ touch 制限の境界については各ディレクトリの `README.md` を参�
 
 ### 5.1 化学ルール（grep レシピ）
 
-正確性に直結する 3 つのルールは `workflows/dft.py` と `workflows/tsopt.py` に実装されています。これらは smoke テストでは検出 **されません**。ここでの静かな乖離は反応経路の精度を壊します。インラインの `# CHEMISTRY-RULE:N` マーカーと `# DOMAIN_PURE` モジュール docstring マーカーがルールを識別し、`.github/scripts/check_engineering_markers.py` が CI でマーカーの完全性を強制します。
+正確性に直結する 3 つのルールは `core/dft_settings.py`、`workflows/dft.py`、`workflows/tsopt.py` に実装されています。これらは smoke テストでは検出 **されません**。ここでの静かな乖離は反応経路の精度を壊します。インラインの `# CHEMISTRY-RULE:N` マーカーがルールを識別し、`.github/scripts/check_engineering_markers.py` が CI でマーカーの完全性を強制します。
 
 編集前にすべての化学ルールを見つけるには:
 
@@ -268,7 +270,7 @@ touch 制限の境界については各ディレクトリの `README.md` を参�
 # List all rule sites in the repo (host file + line)
 grep -rnE '# CHEMISTRY-RULE:[0-9]+' pdb2reaction/
 
-# List every # DOMAIN_PURE marker (= chemistry-rule host modules)
+# List every # DOMAIN_PURE marker (modules the CI check requires to carry it)
 grep -rn '# DOMAIN_PURE' pdb2reaction/
 ```
 
@@ -334,5 +336,5 @@ Fresh-eyes ツアー（§3）の後は、この深さ優先の読み順に従っ
 6. `pdb2reaction/workflows/tsopt.py` — RS-P-RFO + Bofill scatter（CHEMISTRY-RULE:7）。
 7. `pdb2reaction/workflows/freq.py` — クラスターモデル上での振動解析。
 8. `pdb2reaction/workflows/irc.py` — VRAM 管理 + IRC 積分。
-9. `pdb2reaction/workflows/dft.py` — gpu4pyscf による一点 DFT（CHEMISTRY-RULE:4 + :5）。
+9. `pdb2reaction/workflows/dft.py` — PySCF / GPU4PySCF による一点 DFT（CHEMISTRY-RULE:5。rule 4 は `core/dft_settings.py`）。
 10. `pdb2reaction/core/utils.py` — 共有 PDB / XYZ / plot ヘルパー。

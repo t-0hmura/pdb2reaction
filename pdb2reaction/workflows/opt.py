@@ -530,7 +530,7 @@ def _seed_rfo_initial_hessian(
     "show_config",
     default=False,
     show_default=True,
-    help="Print resolved configuration and continue execution.",
+    help="Print the loaded YAML file and its top-level keys, then continue.",
 )
 @click.option(
     "--out-json/--no-out-json",
@@ -544,7 +544,7 @@ def _seed_rfo_initial_hessian(
     "dry_run",
     default=False,
     show_default=True,
-    help="Validate options and print the execution plan without running optimization.",
+    help="Validate options and inputs without running optimization.",
 )
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2", "dft"]), default="uma",
               show_default=True, help="Energy/force calculator backend.")

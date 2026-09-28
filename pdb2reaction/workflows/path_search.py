@@ -2213,7 +2213,7 @@ def _merge_final_and_write(final_images: List[Any],
     "show_config",
     default=False,
     show_default=True,
-    help="Print resolved configuration and continue execution.",
+    help="Print the resolved configuration blocks and the loaded YAML file, then continue.",
 )
 @click.option(
     "--dry-run/--no-dry-run",
@@ -2761,7 +2761,7 @@ def cli(
             return
 
         out_dir_path.mkdir(parents=True, exist_ok=True)
-        for name in ("mep_trj.pdb", "mep.pdb", "mep.cif", "mep_plot.png"):
+        for name in ("mep_trj.pdb", "mep.pdb", "mep_trj.cif", "mep.cif", "mep_plot.png"):
             (out_dir_path / name).unlink(missing_ok=True)
 
         geoms = load_prepared_geometries(
@@ -3238,7 +3238,7 @@ def cli(
             attach_outcomes as _attach_outcomes,
         )
         _raw_arts = [
-            _f for _f in ("mep_trj.pdb", "mep.cif", "mep_plot.png", "energy_diagram_MEP.png")
+            _f for _f in ("mep_trj.pdb", "mep_trj.cif", "mep_plot.png", "energy_diagram_MEP.png")
             if (out_dir_path / _f).exists()
         ]
         _path_leaves, _path_expected = _path_leaves_and_expected(
@@ -3337,7 +3337,7 @@ def cli(
                 "n_images": len(combined_all.images),
                 "n_segments": len(combined_all.segments),
                 "traj_pdb": str(out_dir_path / "mep_trj.pdb") if (out_dir_path / "mep_trj.pdb").exists() else None,
-                "traj_cif": str(out_dir_path / "mep.cif") if (out_dir_path / "mep.cif").exists() else None,
+                "traj_cif": str(out_dir_path / "mep_trj.cif") if (out_dir_path / "mep_trj.cif").exists() else None,
                 "mep_plot": str(out_dir_path / "mep_plot.png") if (out_dir_path / "mep_plot.png").exists() else None,
                 "diagram": diag_for_log,
             }

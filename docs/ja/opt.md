@@ -68,7 +68,7 @@ out_dir/
 ├─ optimization.cif # bridge入力。元IDを復元した軌跡
 └─ restart*.yml # opt.dump_restart 設定時のリスタートファイル（任意）
 ```
-コンソールには解決済みの `geom`/`calc`/`opt`/`lbfgs`/`rfo` ブロックとサイクル進行、総実行時間が出力されます。
+コンソールにはサイクル進行と総実行時間が出力されます。`-v 3` では解決済みの `geom`/`calc`/`opt`/`lbfgs`/`rfo` ブロックも出力されます。
 
 最適化後は、主な成果物として次を確認します。
 
@@ -105,9 +105,9 @@ out_dir/
 | `-o, --out-dir TEXT` | すべてのファイルの出力ディレクトリ | `./result_opt/` |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`、`gau`、`gau_tight`、`gau_vtight`、`baker`、`never`） | `gau` |
 | `--config FILE` | ベース YAML 設定ファイル | _None_ |
-| `--show-config/--no-show-config` | 実行前に解決済み YAML レイヤ情報を表示 | `False` |
+| `--show-config/--no-show-config` | 読み込んだ YAML ファイルとその最上位の key を表示して実行を継続 | `False` |
 | `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
-| `--dry-run/--no-dry-run` | 実行せずに設定検証と実行計画表示のみ行う | `False` |
+| `--dry-run/--no-dry-run` | 実行せずにオプションと入力を検証する | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP バックエンド（任意で `dft`） | `uma` |
 ## YAML 設定
 
@@ -148,7 +148,7 @@ L-BFGS と RFO の両方で使用される共有オプティマイザ制御:
 `opt` を L-BFGS 固有の設定で拡張: `keep_last`、`beta`、`gamma_mult`、`max_step`、`control_step`、`double_damp`、およびオプションの正則化パラメータ `mu_reg`/`max_mu_reg_adaptions`
 
 ### `rfo`
-`opt` を RFOptimizer 固有の設定で拡張: 信頼領域サイジング（`trust_radius`、`trust_min`、`trust_max`、`trust_update`）、`max_energy_incr`、Hessian 管理（`hessian_update`、`hessian_init`、`hessian_recalc`、`hessian_recalc_adapt`、`small_eigval_thresh`）、マイクロイテレーション制御（`alpha0`、`max_micro_cycles`、`rfo_overlaps`）、DIIS ヘルパー（`gdiis`、`gediis`、閾値、`gdiis_test_direction`）、および `adapt_step_func`
+`opt` を RFOptimizer 固有の設定で拡張: 信頼領域サイジング（`trust_radius`、`trust_min`、`trust_max`、`trust_update`）、`max_energy_incr`、Hessian 管理（`hessian_update`、`hessian_init`、`hessian_recalc`、`hessian_recalc_adapt`、`small_eigval_thresh`）、RS 反復の制御（`alpha0`、`max_micro_cycles`、`rfo_overlaps`）、DIIS ヘルパー（`gdiis`、`gediis`、閾値、`gdiis_test_direction`）、および `adapt_step_func`
 
 ### opt 固有のデフォルト
 

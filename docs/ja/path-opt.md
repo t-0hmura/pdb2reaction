@@ -85,7 +85,7 @@ out_dir/
 - `result_path_opt/hei.xyz`
 - `result_path_opt/hei.pdb`（PDB 変換が有効な場合）
 
-コンソールには解決済み YAML ブロックが出力され、GSM/DMF の MEP 進行状況とタイミングが報告されます。
+コンソールには GSM/DMF の MEP 進行状況とタイミングが報告されます。`-v 3` では解決済みの設定ブロックも出力されます。
 
 設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
 
@@ -118,9 +118,9 @@ out_dir/
 | `--thresh-gsm TEXT` | GSM ストリング最適化（成長およびクライミング精密化）の収束プリセットを上書き（`stopt.thresh`; `gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau_loose` |
 | `--dmf-tol TEXT` | DMF 最適化の IPOPT dual-infeasibility 許容値を上書き（`dmf.tol`）。`tight`(0.04)、`middle`(0.10)、`loose`(0.20) または正の float。Gaussian プリセットは受け付けない | `tight` |
 | `--config FILE` | 明示 CLI 指定より前に適用されるベース YAML | _None_ |
-| `--show-config/--no-show-config` | 解決済み設定（YAML レイヤ情報を含む）を表示して実行継続 | `False` |
+| `--show-config/--no-show-config` | 読み込んだ YAML ファイルとその最上位の key を表示して実行を継続 | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP バックエンド（任意で `dft`） | `uma` |
-| `--dry-run/--no-dry-run` | 実行せずに検証と実行計画表示のみを行う | `False` |
+| `--dry-run/--no-dry-run` | 実行せずにオプションと入力を検証する | `False` |
 | `--preopt/--no-preopt` | アライメント/MEP 探索前に各エンドポイントを事前最適化（GSM/DMF）。 | `True` |
 | `--preopt-max-cycles INT` | エンドポイント事前最適化サイクルの上限 | `100000` |
 | `--fix-ends/--no-fix-ends` | GSM 成長/精密化中に endpoint 構造を固定。DMF では受理するが未使用 | `True` |

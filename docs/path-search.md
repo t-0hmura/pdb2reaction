@@ -74,7 +74,7 @@ Bond-change detection relies on `bond_changes.compare_structures` with threshold
 out_dir/ (default:./result_path_search/)
 ├─ mep_trj.xyz # Primary MEP trajectory
 ├─ mep_trj.pdb # PDB/mmCIF topology companion when conversion is enabled
-├─ mep.cif # mmCIF/oversized-PDB bridge inputs; original IDs restored
+├─ mep_trj.cif # mmCIF/oversized-PDB bridge inputs; original IDs restored
 ├─ mep.gjf # Gaussian companion when a Gaussian template is detected
 ├─ mep_w_ref.pdb # Active-site path in a static full-system template (--write-ref-merge)
 ├─ mep_w_ref.cif # Bridge-template companion for inspection (--write-ref-merge)
@@ -146,7 +146,7 @@ The table is grouped by purpose; within each group the most-used options come fi
 | `--dump/--no-dump` | Dump GSM and single-structure optimizer trajectories. Accepted but unused by the DMF path solver. Restart YAML is written only when enabled in YAML. | `False` |
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/CIF/GJF companions. Bridge inputs add CIF with original IDs; XYZ/GJF inputs do not produce a PDB companion without a reference topology. | `True` |
 | `--config FILE` | Base YAML configuration layer applied before explicit CLI values. | _None_ |
-| `--show-config/--no-show-config` | Print resolved configuration (including YAML layer metadata) and continue. | `False` |
+| `--show-config/--no-show-config` | Print the resolved configuration blocks and the loaded YAML file, then continue. | `False` |
 | `--dry-run/--no-dry-run` | Validate options and print the execution plan without running path search. | `False` |
 
 See {ref}`CLI Conventions: Configuration precedence <configuration-precedence>` for the full resolution order.

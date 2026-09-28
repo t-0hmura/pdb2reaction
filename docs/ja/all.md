@@ -97,7 +97,7 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
  - **最初の活性部位モデルの総電荷**がスキャン/MEP/TSOPT に伝播
 
 2. **オプションの段階的スキャン（単一入力のみ）**
- - 各 `--scan-lists` 引数は距離`(i,j,target_Å)`、角度`(i,j,k,target_deg)`、二面角`(i,j,k,l,target_deg)`を記述するPythonライクなリストです。原子インデックスは元の入力順序を参照し、デフォルトでは 1 始まりです（`--scan-zero-based` を指定すると 0 始まりとして読みます）。いずれの場合も活性部位モデル順序に自動変換されます。3-field selector（例: `'TYR,285,CA'`）はtoken順を問いません。残基名や番号が重複するときは、位置固定の`CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`（例: `A:SAM:320:C1`）でchainを明示します。
+ - 各 `--scan-lists` 引数は距離`(i,j,target_Å)`、角度`(i,j,k,target_deg)`、二面角`(i,j,k,l,target_deg)`を記述するPythonライクなリストです。原子インデックスは元の入力順序を参照し、デフォルトでは 1 始まりです（`--scan-zero-based` を指定すると 0 始まりとして読みます）。いずれの場合も活性部位モデル順序に自動変換されます。3-field selector（例: `'SAM,320,CS1'`）はtoken順を問いません。残基名や番号が重複するときは、位置固定の`CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`（例: `A:SAM:320:CS1`）でchainを明示します。
  - 単一リテラルは 1 ステージスキャンを実行し、複数リテラルは**順次**実行されるため、ステージ 2 はステージ 1 の結果から開始されます。複数リテラルは 1 つの `-s/--scan-lists` に並べて指定します（例: `-s '[(…)]' '[(…)]'`）。
  - ステージエンドポイント（`stage_XX/result.pdb`）が、後続 MEP ステップへ渡される順序付き中間体となる
 
@@ -129,8 +129,8 @@ pdb2reaction all -i TS_candidate.pdb -c 'SAM,GPP,MG' \
 out_dir/ (デフォルト:./result_all/)
 ├─ summary.log                  # 結果要約（ルート直下に生成）
 ├─ summary.json                 # JSON 結果
-├─ mep_trj.pdb                      # 連結済み MEP 経路（エンジンから配置）
-├─ mep.cif                      # mmCIF/oversized-PDB入力時。元IDを復元
+├─ mep_trj.pdb                  # 連結済み MEP 経路（エンジンから配置）
+├─ mep_trj.cif                  # mmCIF/oversized-PDB入力時。元IDを復元
 ├─ mep_w_ref.pdb               # 確認用の全系座標composite（--write-ref-merge）
 ├─ mep_w_ref.cif               # 確認用bridge-template companion（--write-ref-merge）
 ├─ mep_trj.xyz                 # MEP 全体軌道
@@ -155,7 +155,7 @@ out_dir/ (デフォルト:./result_all/)
 **TSOPT のみモード**（単一入力 + `--tsopt`、`--scan-lists` なし）では MEP ステージが無く、最適化済み R/TS/P と `ts/`・`irc/`・`freq/`・`dft/` は `segments/seg_01/` 直下に生成され、MEP 作業ディレクトリ（`_work/path_opt/`）は存在しません。
 
 ```{note}
-**正規構造は `segments/seg_NN/reactant.*`・`ts.*`・`product.*`** です — 機構を報告する際はこれらを引用してください。同じ `seg_NN/` 内の `ts/`・`irc/`・`freq/`・`dft/` サブディレクトリは各ステージの作業ファイル（例: `ts/vib/imag_*_trj.xyz`、`irc/*_trj.xyz`）を保持し、特定ステージのデバッグに使います。`_work/path_opt/` 配下の MEP エンジン生出力は作業領域であり、必要な成果物（`mep_trj.pdb`、bridge入力時の`mep.cif`、`mep_trj.xyz`、`energy_diagram_MEP.png`）は既にルートへ配置済みです。
+**正規構造は `segments/seg_NN/reactant.*`・`ts.*`・`product.*`** です — 機構を報告する際はこれらを引用してください。同じ `seg_NN/` 内の `ts/`・`irc/`・`freq/`・`dft/` サブディレクトリは各ステージの作業ファイル（例: `ts/vib/imag_*_trj.xyz`、`irc/*_trj.xyz`）を保持し、特定ステージのデバッグに使います。`_work/path_opt/` 配下の MEP エンジン生出力は作業領域であり、必要な成果物（`mep_trj.pdb`、bridge入力時の`mep_trj.cif`、`mep_trj.xyz`、`energy_diagram_MEP.png`）は既にルートへ配置済みです。
 ```
 
 `-v 2` では活性部位モデルの電荷解決結果、スキャンステージ、MEP
@@ -243,7 +243,7 @@ JSON 結果の代表的なトップレベルキーは以下のとおりです。
 | `-c, --center TEXT` | PDB/mmCIFパス、残基ID/名、`CHAIN:RESNAME`、`CHAIN:RESNAME:RESSEQ` | 抽出に必須 |
 | `-r, --radius FLOAT` | 活性部位モデル包含カットオフ（Å）。`0` では半径による拡張を無効化し、`-c` と `--selected-resn` の選択だけを残す | `2.6` |
 | `--radius-het2het FLOAT` | ヘテロ–ヘテロカットオフ（Å）。`0` を渡すと空の選択を避けるため内部で `0.001 Å` に自動補正されます（単体の `extract` と同じ挙動） | `0.0` |
-| `--include-h2o/--no-include-h2o` | 水分子を含める（HOH/WAT/TIP3/SOL） | `True` |
+| `--include-h2o/--no-include-h2o` | 水分子を含める（HOH/WAT/H2O/DOD/TIP/TIP3/SOL） | `True` |
 | `--exclude-backbone/--no-exclude-backbone` | 抽出中心以外のアミノ酸の主鎖原子を除去 | `False` |
 | `--add-linkh/--no-add-linkh` | 切断結合にキャップ水素を付加 | `True` |
 | `--selected-resn TEXT` | `--center` と同じID/名前/chain付きselectorで残基を強制包含 | `""` |

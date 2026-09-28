@@ -16,7 +16,7 @@ explicit `geom.freeze_atoms` list. Recipe:
 
 ```bash
 pdb2reaction extract -i complex.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' -o model.pdb
-pdb2reaction opt -i model.pdb -q 0 -m 1   # --freeze-links is True; LKH parents auto-frozen
+pdb2reaction opt -i model.pdb -l 'SAM:1,GPP:-3' -m 1   # --freeze-links is True; LKH parents auto-frozen
 ```
 
 For XYZ/GJF inputs, no `LKH` atoms are present, so `--freeze-links` has no effect; use the next two methods instead. `--ref-pdb FILE` lets XYZ/GJF runs inherit a PDB topology and re-enable cap-hydrogen detection.

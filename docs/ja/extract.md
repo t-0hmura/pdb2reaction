@@ -143,11 +143,11 @@ pdb2reaction extract -i complex1.pdb -i complex2.pdb -c 'GPP,SAM' \
 | `--exclude-backbone/--no-exclude-backbone` | 抽出中心以外のアミノ酸の主鎖原子を除去 | `False` |
 | `--add-linkh/--no-add-linkh` | 切断された結合に 1.09 Å のキャップ水素を炭素境界にのみ付加（非炭素境界はキャップしない） | `True` |
 | `--selected-resn TEXT` | `--center` と同じselectorで残基を強制包含 | `""` |
-
-`-r 0` では半径検索による近傍残基を追加せず、`-c` と `--selected-resn` で選んだ残基からモデルを構築します。該当する場合は、構造上必要なジスルフィド結合partnerや隣接主鎖contextが安全策として追加されることがあります。
 | `--modified-residue TEXT` | アミノ酸として扱う残基名をカンマ区切りで指定。`NAME:charge` はこの抽出中の公称電荷を追加または上書きし、電荷を省略した `NAME` は 0 になります | `""` |
 | `-l, --ligand-charge TEXT` | 総電荷または残基名ごとのマッピング（例: `GPP:-3,SAM:1`） | _None_ |
 | `--out-json/--no-out-json` | 抽出された PDB(s) の隣に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
+
+`-r 0` では半径検索による近傍残基を追加せず、`-c` と `--selected-resn` で選んだ残基からモデルを構築します。該当する場合は、構造上必要なジスルフィド結合partnerや隣接主鎖contextが安全策として追加されることがあります。
 
 ### 中心指定（`-c/--center`）
 

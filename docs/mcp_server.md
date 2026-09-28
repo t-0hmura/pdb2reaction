@@ -106,11 +106,13 @@ the max-cycle cap; numerical/integration failures still stop. `run_full_pipeline
 forwards the same controls as `irc_step_size` / `irc_never_stop` and exposes
 `flatten` plus `refine_path` for TS recovery.
 
-`find_transition_state` (CLI: `pdb2reaction tsopt`) also exposes the
-alternative TS optimizers via `--opt-mode`:
+`find_transition_state` (CLI: `pdb2reaction tsopt`) selects the TS optimizer with
+`opt_mode` (CLI `--opt-mode`):
 
-- `opt_mode="trim"` — Helgaker (1991) trust-region image-minimization TS opt
-- `opt_mode="rsprfo"` — Banerjee (1985) restricted-step P-RFO TS opt
+- `opt_mode="hess"` (default, same as `"rsprfo"`) — Banerjee (1985) restricted-step P-RFO
+- `opt_mode="grad"` / `"dimer"` — Hessian-guided Dimer
+- `opt_mode="trim"` — Helgaker (1991) trust-region image minimization
+- `opt_mode="rsirfo"` — RS-I-RFO
 
 ## Client configuration
 

@@ -29,9 +29,9 @@ Recommended: YAML/JSON spec file.
 cat > scan3d.yaml << 'YAML'
 one_based: true
 pairs:
- - ["TYR,285,CA", "SAM,309,C10", 1.30, 3.10]
- - ["TYR,285,CB", "SAM,309,C11", 1.20, 3.20]
- - ["TYR,285,CG", "SAM,309,C12", 1.10, 3.00]
+ - ["SAM,320,CS1", "GPP,321,C7", 1.50, 3.00]
+ - ["GPP,321,H11", "GLU,186,OE2", 0.90, 2.50]
+ - ["SAM,320,SD", "SAM,320,CS1", 1.80, 3.00]
 YAML
 pdb2reaction scan3d -i input.pdb -q 0 -s scan3d.yaml
 ```
@@ -41,7 +41,7 @@ Alternative: inline Python literal.
 ```bash
 # Alternative: inline Python literal
 pdb2reaction scan3d -i input.pdb -q 0 \
- -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20),("TYR,285,CG","SAM,309,C12",1.10,3.00)]'
+ -s '[("SAM,320,CS1","GPP,321,C7",1.50,3.00),("GPP,321,H11","GLU,186,OE2",0.90,2.50),("SAM,320,SD","SAM,320,CS1",1.80,3.00)]'
 ```
 
 Plot only from an existing `surface.csv` (skip new energy evaluation).
@@ -61,7 +61,7 @@ pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 -o ./
     when `--ref-pdb` is supplied).
 2. Parse targets from `--scan-lists/-s` (YAML/JSON file or inline literal; default 1-based indices unless
     `--zero-based` is passed) into three quadruples. For PDB/mmCIF topology inputs, each
-    atom entry can be an integer index or a selector string like `'TYR,285,CA'`;
+    atom entry can be an integer index or a selector string like `'SAM,320,CS1'`;
     delimiters may be spaces, commas, slashes, backticks, or backslashes, and
     token order is flexible; use positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` for
     repeated names or numbering. Build each linear grid using

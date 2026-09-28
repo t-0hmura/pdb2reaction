@@ -29,9 +29,9 @@ pdb2reaction scan3d [-i INPUT.{pdb|xyz|trj|...}] [-q CHARGE] [-l, --ligand-charg
 cat > scan3d.yaml << 'YAML'
 one_based: true
 pairs:
- - ["TYR,285,CA", "SAM,309,C10", 1.30, 3.10]
- - ["TYR,285,CB", "SAM,309,C11", 1.20, 3.20]
- - ["TYR,285,CG", "SAM,309,C12", 1.10, 3.00]
+ - ["SAM,320,CS1", "GPP,321,C7", 1.50, 3.00]
+ - ["GPP,321,H11", "GLU,186,OE2", 0.90, 2.50]
+ - ["SAM,320,SD", "SAM,320,CS1", 1.80, 3.00]
 YAML
 pdb2reaction scan3d -i input.pdb -q 0 -s scan3d.yaml
 ```
@@ -41,7 +41,7 @@ pdb2reaction scan3d -i input.pdb -q 0 -s scan3d.yaml
 ```bash
 # 代替: Python リテラル
 pdb2reaction scan3d -i input.pdb -q 0 \
- -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20),("TYR,285,CG","SAM,309,C12",1.10,3.00)]'
+ -s '[("SAM,320,CS1","GPP,321,C7",1.50,3.00),("GPP,321,H11","GLU,186,OE2",0.90,2.50),("SAM,320,SD","SAM,320,CS1",1.80,3.00)]'
 ```
 
 L-BFGS 緩和、内側軌跡ダンプ、HTML 等値面プロット。
@@ -49,7 +49,7 @@ L-BFGS 緩和、内側軌跡ダンプ、HTML 等値面プロット。
 ```bash
 # L-BFGS 緩和、内側軌跡ダンプ、HTML 等値面プロット
 pdb2reaction scan3d -i input.pdb -q 0 \
- -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20),("TYR,285,CG","SAM,309,C12",1.10,3.00)]' \
+ -s '[("SAM,320,CS1","GPP,321,C7",1.50,3.00),("GPP,321,H11","GLU,186,OE2",0.90,2.50),("SAM,320,SD","SAM,320,CS1",1.80,3.00)]' \
  --max-step-size 0.20 --dump -o ./result_scan3d/ --opt-mode grad \
  --preopt --baseline min
 ```

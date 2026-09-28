@@ -92,11 +92,11 @@ Options:
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config
-                                  Print resolved configuration and continue
-                                  execution.  [default: no-show-config]
-  --dry-run / --no-dry-run        Validate options and print the execution plan
-                                  without running path optimization.  [default:
-                                  no-dry-run]
+                                  Print the loaded YAML file and its top-level
+                                  keys, then continue.  [default: no-show-
+                                  config]
+  --dry-run / --no-dry-run        Validate options and inputs without running
+                                  path optimization.  [default: no-dry-run]
   --out-json / --no-out-json      Write machine-readable result.json to out_dir.
                                   [default: no-out-json]
   --preopt / --no-preopt          Preoptimize each endpoint via the selected

@@ -17,7 +17,7 @@ pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <nu
  [--freeze-links/--no-freeze-links] \
  [--out-dir DIR] [--config FILE] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE] \
- [--hessian-calc-mode Analytical|FiniteDifference] \
+ [--hessian-calc-mode Analytical|FiniteDifference] [--read-hess FILE] \
  [--show-config] [--dry-run]
 ```
 
@@ -126,11 +126,12 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/CIF companions when a reference PDB/mmCIF topology is available. | `True` |
 | `--ref-pdb FILE` | Reference PDB or mmCIF topology to use when the input is XYZ/GJF (keeps XYZ coordinates). | _None_ |
 | `--hessian-calc-mode CHOICE` | MLIP Hessian mode (`calc.hessian_calc_mode`); an explicit value overrides YAML. | `FiniteDifference` |
+| `--read-hess PATH` | Start from the Hessian in a NumPy `.npy` file (for example from `freq` or `tsopt --dump-hess`) instead of computing it. Needs `irc.hessian_init: calc` (the default). | _None_ |
 | `--config FILE` | Base YAML configuration applied before explicit CLI options. | _None_ |
-| `--show-config/--no-show-config` | Print resolved YAML layers/config and continue. | `False` |
+| `--show-config/--no-show-config` | Print the loaded YAML file and its top-level keys, then continue. | `False` |
 | `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP backend, or optional DFT calculator. | `uma` |
-| `--dry-run/--no-dry-run` | Validate and print execution plan without running IRC. | `False` |
+| `--dry-run/--no-dry-run` | Validate options and inputs without running IRC. | `False` |
 
 ## YAML configuration
 
@@ -156,6 +157,7 @@ See {ref}`exit-codes` in CLI Conventions.
 - The MLIP backend (UMA by default) is reused throughout the IRC; aggressive `step_length` values can destabilize EulerPC. A branch that stops almost immediately should be retried with a smaller `--step-size` (for example `0.05`) before changing other controls.
 - `--never-stop` is intentionally off by default. It deliberately traces to the cycle limit instead of stopping at a physical endpoint criterion. Inspect the trajectory and optimize/validate the endpoints; increase `--max-cycles` only when the extra path is scientifically useful.
 - When `--freeze-links` is active, cap-hydrogen parent atoms are automatically frozen (see {ref}`Cap hydrogen and frozen atoms <link-hydrogen-and-frozen-atoms>`).
+- `--read-hess` takes the same `.npy` file as [`freq`](freq.md) (all atoms, or only the movable ones) and checks only its size, symmetry, and finiteness. When the file is used, `result.json["rigid_projection"]["hessian_source"]` is `"file"`.
 - `result.json["rigid_projection"]` records the treatment, effective rank, and initial Hessian source and shape. See [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries).
 
 ## See Also

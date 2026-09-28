@@ -82,13 +82,13 @@ Options:
   --config FILE                   Base YAML configuration file applied before
                                   explicit CLI options.
   --show-config / --no-show-config
-                                  Print resolved configuration and continue
-                                  execution.  [default: no-show-config]
+                                  Print the loaded YAML file and its top-level
+                                  keys, then continue.  [default: no-show-
+                                  config]
   --out-json / --no-out-json      Write machine-readable result.json to out_dir.
                                   [default: no-out-json]
-  --dry-run / --no-dry-run        Validate options and print the execution plan
-                                  without running optimization.  [default: no-
-                                  dry-run]
+  --dry-run / --no-dry-run        Validate options and inputs without running
+                                  optimization.  [default: no-dry-run]
   -b, --backend [uma|orb|mace|aimnet2|dft]
                                   Energy/force calculator backend.  [default:
                                   uma]

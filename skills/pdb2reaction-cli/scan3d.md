@@ -2,10 +2,11 @@
 
 ## Purpose
 
-3D distance scan with harmonic restraints. Drives three bonds toward
-target distances and produces a 3D grid of restrained optimized geometries.
+3D scan with harmonic restraints. Drives three distance, angle, or dihedral
+coordinates toward their targets and produces a 3D grid of restrained optimized
+geometries.
 Use it when a three-coordinate grid is required; lower-dimensional scans need
-fewer attempted optimizations but answer a different question. A distance grid does not by itself model
+fewer attempted optimizations but answer a different question. A scan grid does not by itself model
 electronic-state changes or establish a mechanism.
 
 ## Synopsis

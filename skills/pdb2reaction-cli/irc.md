@@ -26,6 +26,7 @@ pdb2reaction irc -i ts.{pdb,cif,xyz,gjf} \
 | `--max-cycles` | int | 125 | Max IRC steps per branch (forward + backward) |
 | `--step-size` | float | `0.10` | Step in Bohr (unweighted Cartesian); maps to `IRC_KW["step_length"]` |
 | `--never-stop / --no-never-stop` | bool | `False` | Ignore gradient and energy endpoint criteria and trace to `max_cycles`; propagation failures still stop |
+| `--read-hess` | path | — | `.npy` Hessian (3N×3N, or movable atoms only) from `freq`/`tsopt --dump-hess` or any `numpy.save`; needs `irc.hessian_init: calc` |
 | `--uma-workers`, `--uma-workers-per-node` | int | `1`, `1` | UMA predictor workers. `workers > 1` plus an explicit `Analytical` Hessian raises `BackendError`; use one worker or finite differences. |
 | `-b, --backend` | str | `uma` | MLIP backend or optional DFT calculator |
 | `-o, --out-dir` | path | `./result_irc/` | Output directory |
@@ -86,6 +87,7 @@ print(d["forward_integration_stop_reason"], d["backward_integration_stop_reason"
 print(d["forward_energy_increased"], d["backward_energy_increased"])
 print(d["never_stop"], d["never_stop_energy_bypasses"])
 print(d["rigid_projection"]["treatment"], d["rigid_projection"]["effective_rank"])
+print(d["rigid_projection"]["hessian_source"])  # "file", "cache", or "fresh"
 ```
 
 `completed` is not an IRC convergence verdict; it means the runner returned.
@@ -96,13 +98,11 @@ criterion fired, so `--never-stop` leaves it false. This field and
 `*_downhill_departure_valid` are diagnostics, not endpoint-optimization gates.
 Finite retained endpoints can proceed to optimization after a predictor-budget
 or max-cycle stop. Missing or non-finite coordinates and execution errors must
-still be reported. Schema 3.0 removed the old `*_converged` and direction-status
-keys; read the diagnostics shown above.
+still be reported.
 `never_stop` records whether the opt-in mode was enabled;
 `never_stop_energy_bypasses` records how many energy-rise/change stops it
 actually bypassed.
-The older `energy_reactant_hartree` / `energy_product_hartree` keys are retained
-as directional first/last aliases only. Standalone IRC has no endpoint
+Standalone IRC has no endpoint
 references, so compare `finished_first.xyz` and `finished_last.xyz` with the
 intended states before assigning chemical R/P labels.
 `endpoint_energy_orientation` and, when present, `bond_changes_direction` are
@@ -143,11 +143,11 @@ for b in bc["broken"]: print("BROKEN ", b)
   every surface.
 - The bond-change detector is geometry-based (covalent-radius cutoff),
   not physics-based. Metal–ligand bonds may flicker on the borderline.
-- In the in-process `all` workflow, IRC may reuse TSOPT's cached Hessian only
-  when its stored Cartesian coordinate fingerprint matches the IRC start
-  (1.1e-3 bohr absolute tolerance to allow three-decimal PDB round-tripping).
-  A missing or mismatched fingerprint is rejected and a fresh Hessian is
-  calculated; endpoint Hessians are stored separately for endpoint RFO.
+- In the in-process `all` workflow, IRC reuses TSOPT's cached Hessian only
+  when the geometry (1.1e-3 bohr tolerance, for three-decimal PDB
+  round-tripping), calculator settings, and frozen atoms all match; otherwise
+  a fresh Hessian is calculated. Endpoint Hessians are stored separately for
+  endpoint RFO.
 - The fixed constrained treatment removes only full-system rigid motions that
   leave frozen anchors fixed. It does not select a reaction path; see
   `freeze-atoms.md`. An all-frozen structure raises an explicit error.

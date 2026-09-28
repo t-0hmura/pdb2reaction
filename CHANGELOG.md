@@ -17,6 +17,7 @@ Target release: **0.5.0**.
 - Add native PCM/SMD support and automatic PySCF CPU-thread and host-memory resolution.
 - Add distance, angle, and dihedral coordinates to `scan`, `scan2d`, `scan3d`, and `all`.
 - Add verified `all --resume-segment N` post-processing restart from a saved MEP.
+- Add `--read-hess` to `freq`, `tsopt`, and `irc`, and `--dump-hess` to `freq` and `tsopt`. The file is one plain NumPy `.npy` array (Cartesian Hessian in Hartree/bohr², all atoms or only the movable ones), so other programs can read and write it too; `freq` and `irc` report `hessian_source: "file"` when it is used.
 
 ### Changed
 
@@ -24,10 +25,11 @@ Target release: **0.5.0**.
 - Use the current FAIR-Chem/Torch stack and native CUDA 13 DFT wheels; retain CUDA 12 through the `dft-cuda12` extra.
 - Classify imaginary modes with the strict ν < −5.00 cm⁻¹ criterion and include optimization cycle counts in `all` summaries.
 - Use common CLI names with compatibility aliases, canonical boolean toggles, and conflict-checked YAML/CLI precedence.
-- Name the aggregate PDB trajectory `mep_trj.pdb`.
+- Name the aggregate MEP trajectory `mep_trj.pdb` and its bridged-input CIF companion `mep_trj.cif`.
 - Use the TS-BFGS Hessian update by default for RFO minimizations (`rfo.hessian_update: ts_bfgs`).
 - Run terminal PHVA after an energy-plateau stop (`stalled`) in `tsopt` and report n_imag; runs that end at the cycle limit still skip it.
 - Warn and fall back to `false` when `rsirfo.min_line_search` or `rsirfo.max_line_search` is `true` for RS-P-RFO.
+- Describe `--show-config` as printing the loaded YAML file and its top-level keys, and `--dry-run` as validating options and inputs, matching what they print at the default verbosity.
 
 ## [0.4.16] — 2026-09-19
 
@@ -48,7 +50,7 @@ Replaces the withdrawn v0.4.14 release.
 
 ### Breaking changes
 
-- JSON schema 3.0 removes IRC directional success fields; diagnostics are reported separately from numerical convergence.
+- JSON schema 3.0 removes IRC directional success fields and the `energy_reactant_hartree` / `energy_product_hartree` aliases; diagnostics are reported separately from numerical convergence.
 
 ### Changed
 

@@ -199,8 +199,10 @@ The tables below cover the options that need explanation. The full flag list is 
 | `--dump / --no-dump` | Dump trajectories. | `False` |
 | `--out-json / --no-out-json` | Write a machine-readable `result.json` to `out_dir`. Schema: [JSON Output Schema](json-output.md). | `False` |
 | `--config FILE` | Base YAML configuration applied before explicit CLI options. | _None_ |
-| `--show-config / --no-show-config` | Print resolved config layers and continue execution. | `False` |
-| `--dry-run / --no-dry-run` | Validate inputs / config and print the execution plan without running TS optimization. | `False` |
+| `--show-config / --no-show-config` | Print the loaded YAML file and its top-level keys, then continue. | `False` |
+| `--read-hess PATH` | Start from the Hessian in a NumPy `.npy` file (for example from `freq` or `tsopt --dump-hess`; format in [`freq`](freq.md)) instead of computing it. RS-P-RFO / RS-I-RFO / TRIM also need `rsirfo.hessian_init: calc` (the default). | _None_ |
+| `--dump-hess PATH` | Save the final-geometry Hessian as a NumPy `.npy` array for `--read-hess` in `freq`, `tsopt`, or `irc`, or for other programs. Written only when the final Hessian was computed. | _None_ |
+| `--dry-run / --no-dry-run` | Validate options and inputs without running TS optimization. | `False` |
 
 (flatten-precedence-caveat)=
 ### `--flatten` precedence caveat

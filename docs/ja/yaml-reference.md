@@ -200,7 +200,7 @@ opt:
  max_force_only: false # Rely only on max force convergence
  force_only: false # Skip displacement checks
  converge_to_geom_rms_thresh: 0.05 # RMS threshold when converging to reference geometry
- overachieve_factor: 0.0 # Factor to tighten thresholds
+ overachieve_factor: 0.0 # 0.0 = off; >0: converge when forces < thresh/factor, ignoring step (not used by baker)
  check_eigval_structure: false # Validate Hessian eigenstructure
  line_search: true # Enable line search
  energy_plateau: false # opt-in: エネルギー地形が平坦になった場合に stalled として停止（下記注記を参照）
@@ -290,7 +290,7 @@ rfo:
  hessian_recalc_adapt: null # Adaptive Hessian rebuild factor
  small_eigval_thresh: 1.0e-08 # Eigenvalue threshold for stability
  alpha0: 1.0 # Initial micro step
- max_micro_cycles: 50 # Micro-iteration limit
+ max_micro_cycles: 50 # RS iteration limit per step
  rfo_overlaps: false # Enable RFO overlaps
  gediis: false # Enable GEDIIS
  gdiis: true # Enable GDIIS
@@ -316,7 +316,7 @@ gs:
  reparam_every: 1 # Reparameterization stride
  reparam_every_full: 1 # Full reparameterization stride
  param: equi # Parameterization scheme
- max_micro_cycles: 10 # Micro-iteration limit
+ max_micro_cycles: 10 # RS iteration limit per step
  reset_dlc: true # Rebuild delocalized coordinates each step
  climb: true # Enable climbing image
  climb_rms: 0.0005 # Climbing RMS threshold
@@ -506,7 +506,7 @@ rsirfo:
  hessian_update: bofill # Hessian update scheme
  hessian_recalc: 500 # Rebuild exact Hessian every N macro steps (rfo から継承)
  hessian_recalc_reset: true # Reset recalc counter after exact Hessian
- max_micro_cycles: 50 # Micro-iterations per macro cycle
+ max_micro_cycles: 50 # RS iteration limit per step
  augment_bonds: false # Augment reaction path based on bond analysis
  min_line_search: false # 常に false: RS-P-RFO は line search を使わない
  max_line_search: false # 常に false: RS-P-RFO は line search を使わない

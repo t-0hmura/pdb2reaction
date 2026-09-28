@@ -142,7 +142,7 @@ def test_every_option_with_an_effective_default_shows_it() -> None:
         "-c", "--center", "-q", "--charge", "-l",
         "--ligand-charge", "--freeze-atoms", "--distance-restraint", "--dist-freeze", "--model-pdb",
         "--model-indices", "-s", "--scan-lists", "--label-x", "--selected-resn",
-        "--modified-residue", "--ref-mode", "--hessian-ref", "--csv",
+        "--modified-residue", "--ref-mode", "--hessian-ref", "--read-hess", "--dump-hess", "--csv",
         "--parm", "--real-parm7",
     }
 

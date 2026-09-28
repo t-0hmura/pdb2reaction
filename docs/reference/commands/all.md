@@ -47,8 +47,9 @@ Options:
   --radius-het2het FLOAT RANGE    Independent hetero–hetero cutoff (Å) for
                                   non‑C/H pairs.  [default: 0.0; x>=0.0]
   --include-h2o / --no-include-h2o
-                                  Include waters (HOH/WAT/TIP3/SOL) in the
-                                  active site model.  [default: include-h2o]
+                                  Include waters (HOH/WAT/H2O/DOD/TIP/TIP3/SOL)
+                                  in the active site model.  [default:
+                                  include-h2o]
   --exclude-backbone / --no-exclude-backbone
                                   Remove backbone atoms on non‑substrate amino
                                   acids (with PRO/HYP safeguards).  [default:

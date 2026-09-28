@@ -88,6 +88,8 @@ pdb2reaction/ [GH: t-0hmura/pdb2reaction]
 │ │
 │ └── core/ # === L5 Foundation ===
 │   ├── defaults.py primary source for shared defaults
+│   ├── dft_settings.py DFT option resolution (CHEMISTRY-RULE:4)
+│   ├── logging.py -v / --verbose wiring
 │   ├── utils.py PDB / XYZ / plot helpers
 │   ├── output.py / result_commit.py output/result ownership
 │   └── pes_composition.py energy-component composition
@@ -189,10 +191,10 @@ After step 5 you can read any other file by following the file index in §4. The
 | Scan and 2D/3D energy-landscape grids + shared | `pdb2reaction/workflows/scan{,2d,3d,_common}.py` |
 | MEP search (GSM) | `pdb2reaction/workflows/path_search.py` |
 | MEP optimizer core (pysisyphus COS) | `pdb2reaction/workflows/path_opt.py` |
-| TS optimization (RS-P-RFO + Bofill + macro/micro) | `pdb2reaction/workflows/tsopt.py` |
+| TS optimization (RS-P-RFO / RS-I-RFO / TRIM / Dimer + Bofill) | `pdb2reaction/workflows/tsopt.py` |
 | Vibrational analysis (PHVA + backend-agnostic active-DOF Hessian handling) | `pdb2reaction/workflows/freq.py` |
-| IRC integration (macro / micro) | `pdb2reaction/workflows/irc.py` |
-| Single-point DFT (gpu4pyscf subprocess) | `pdb2reaction/workflows/dft.py` |
+| IRC integration | `pdb2reaction/workflows/irc.py` |
+| Single-point DFT (PySCF / GPU4PySCF, in-process) | `pdb2reaction/workflows/dft.py` |
 | Active-site extraction (cluster cap) | `pdb2reaction/workflows/extract.py` |
 | Restraint helpers | `pdb2reaction/workflows/restraints.py` |
 | Kabsch / frozen-subset alignment | `pdb2reaction/workflows/align_freeze.py` |
@@ -258,7 +260,7 @@ See each dir's `README.md` for the touch-restriction boundary.
 
 ### 5.1 Chemistry rules (grep recipe)
 
-Three correctness-critical rules are implemented in `workflows/dft.py` and `workflows/tsopt.py`. They are **not** detected by smoke tests — silent drift here breaks reaction-path accuracy. Inline `# CHEMISTRY-RULE:N` markers and `# DOMAIN_PURE` module-docstring markers identify the rules; `.github/scripts/check_engineering_markers.py` enforces marker completeness in CI.
+Three correctness-critical rules are implemented in `core/dft_settings.py`, `workflows/dft.py`, and `workflows/tsopt.py`. They are **not** detected by smoke tests — silent drift here breaks reaction-path accuracy. Inline `# CHEMISTRY-RULE:N` markers identify the rules; `.github/scripts/check_engineering_markers.py` enforces marker completeness in CI.
 
 To find every chemistry rule before editing:
 
@@ -266,7 +268,7 @@ To find every chemistry rule before editing:
 # List all rule sites in the repo (host file + line)
 grep -rnE '# CHEMISTRY-RULE:[0-9]+' pdb2reaction/
 
-# List every # DOMAIN_PURE marker (= chemistry-rule host modules)
+# List every # DOMAIN_PURE marker (modules the CI check requires to carry it)
 grep -rn '# DOMAIN_PURE' pdb2reaction/
 ```
 
@@ -340,5 +342,5 @@ After the Fresh-eyes tour (§3), follow this depth-first reading order:
 6. `pdb2reaction/workflows/tsopt.py` — RS-P-RFO + Bofill scatter (CHEMISTRY-RULE:7).
 7. `pdb2reaction/workflows/freq.py` — vibrational analysis on the cluster model.
 8. `pdb2reaction/workflows/irc.py` — VRAM hygiene + IRC integration.
-9. `pdb2reaction/workflows/dft.py` — single-point DFT with gpu4pyscf (CHEMISTRY-RULE:4 + :5).
+9. `pdb2reaction/workflows/dft.py` — single-point DFT with PySCF / GPU4PySCF (CHEMISTRY-RULE:5; rule 4 lives in `core/dft_settings.py`).
 10. `pdb2reaction/core/utils.py` — shared PDB / XYZ / plot helpers.

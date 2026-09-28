@@ -47,10 +47,10 @@ ase_calc = create_ase_calculator(backend="uma", model="uma-s-1p2", device="cuda"
 
 | backend | install | model identifier | precision option |
 |---------|---------|------------------|------------------|
-| `uma` | `pip install fairchem-core` + HF auth | `uma-s-1p2` / `uma-s-1p1` | `precision="fp32" \| "fp64"` |
-| `orb` | `pip install orb-models` | `orb_v3_conservative_omol` | `precision="float32-high" \| "float32-highest" \| "float64"`（`fp32` / `float32` は正規化される別名） |
+| `uma` | 同梱（`fairchem-core` は本体の依存）+ HF auth | `uma-s-1p2` / `uma-s-1p1` | `precision="fp32" \| "fp64"` |
+| `orb` | `pip install "pdb2reaction[orb]"` | `orb_v3_conservative_omol` | `precision="float32-high" \| "float32-highest" \| "float64"`（`fp32` / `float32` は正規化される別名） |
 | `mace` | 専用 conda env で pdb2reaction を入れた後、`pip uninstall -y fairchem-core && pip install 'mace-torch>=0.3.8'`（現行版どうしも `e3nn` 要件が競合） | `MACE-OMOL-0` | `default_dtype="float64"` |
-| `aimnet2` | `pip install aimnet` | `aimnet2` | n/a |
+| `aimnet2` | `pip install "pdb2reaction[aimnet]"` | `aimnet2` | n/a |
 
 ### 精度（precision）
 
@@ -88,7 +88,7 @@ calc:
   precision: fp64
 ```
 
-`InferenceSettings` API のため `fairchem-core ≥ 2.0` が必要です。
+`InferenceSettings` API は本体の依存の `fairchem-core`（≥ 2.22）に含まれます。
 
 ## xTB溶媒補正
 

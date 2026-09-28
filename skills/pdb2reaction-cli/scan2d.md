@@ -2,9 +2,9 @@
 
 ## Purpose
 
-2D distance scan with harmonic restraints. Drives two bonds toward
-target distances simultaneously and produces a 2D grid of relaxed
-geometries. It can help inspect coupling between two chosen coordinates, but
+2D scan with harmonic restraints. Drives two distance, angle, or dihedral
+coordinates toward their targets simultaneously and produces a 2D grid of
+relaxed geometries. It can help inspect coupling between two chosen coordinates, but
 the grid alone does not prove a concerted or stepwise mechanism.
 
 ## Synopsis

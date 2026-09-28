@@ -212,7 +212,8 @@ workers. **Two important caveats:**
 
 1. The `workers` / `workers_per_node` flags are filtered to the UMA
    backend (see `pdb2reaction/backends/__init__.py:_BACKEND_ACCEPTED_KEYS`).
-   ORB / MACE / AIMNet2 silently drop the kwarg.
+   ORB / MACE / AIMNet2 ignore them and emit a UserWarning when either is not 1
+   (`apply_backend_defaults` in `pdb2reaction/core/defaults.py`).
 2. With UMA, `workers > 1` plus an explicit
    `hessian_calc_mode=Analytical` request raises `BackendError` (a
    `RuntimeError` subclass) before the requested method can be changed; use

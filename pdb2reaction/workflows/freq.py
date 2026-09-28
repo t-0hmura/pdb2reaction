@@ -191,6 +191,19 @@ def _calc_energy(geom, calc_kwargs: dict, calc=None) -> float:
     return E
 
 
+def _dump_hessian_file(path, H, geom, active_dofs, *, label: str = "freq") -> Path:
+    """Write a ``--dump-hess`` file holding the ``active_dofs`` block of ``H``."""
+    from pdb2reaction.io.hessian_file import save_hessian_file
+
+    hess = H.detach().cpu().numpy() if isinstance(H, torch.Tensor) else np.asarray(H)
+    dofs = [int(d) for d in active_dofs]
+    if hess.shape[0] == geom.cart_coords.size and len(dofs) != hess.shape[0]:
+        hess = hess[np.ix_(dofs, dofs)]
+    written = save_hessian_file(path, hess)
+    emit(f"[{label}] Hessian saved → {written} (shape={hess.shape})", narrative=True)
+    return written
+
+
 def _fmt_ha(x: float) -> str:
     return f"{float(x): .6f} Ha"
 
@@ -515,14 +528,32 @@ def _prepare_frequency_output_paths(
     "show_config",
     default=False,
     show_default=True,
-    help="Print resolved configuration and continue execution.",
+    help="Print the loaded YAML file and its top-level keys, then continue.",
 )
 @click.option(
     "--dry-run/--no-dry-run",
     "dry_run",
     default=False,
     show_default=True,
-    help="Validate options and print the execution plan without running frequency analysis.",
+    help="Validate options and inputs without running frequency analysis.",
+)
+@click.option(
+    "--read-hess",
+    "read_hess",
+    type=click.Path(exists=True, dir_okay=False),
+    default=None,
+    help="Use the Hessian in this .npy file (e.g. from freq or tsopt "
+         "--dump-hess) instead of computing it: the Cartesian Hessian of the "
+         "input geometry in Hartree/bohr^2, for all atoms or only the movable ones.",
+)
+@click.option(
+    "--dump-hess",
+    "dump_hess",
+    type=click.Path(dir_okay=False),
+    default=None,
+    help="Save the Hessian as a NumPy .npy array (Cartesian, Hartree/bohr^2; "
+         "movable atoms only when atoms are frozen) for '--read-hess' in freq, "
+         "tsopt, or irc, or for other programs.",
 )
 @click.option(
     "--out-json/--no-out-json",
@@ -576,6 +607,8 @@ def cli(
     dump: bool,
     show_config: bool,
     dry_run: bool,
+    read_hess: Optional[str],
+    dump_hess: Optional[str],
     out_json: bool,
     # hessian
     hessian_calc_mode: Optional[str],
@@ -787,6 +820,8 @@ def cli(
             ref_pdb,
             config_yaml,
             override_yaml,
+            Path(read_hess) if read_hess else None,
+            Path(dump_hess) if dump_hess else None,
         ),
     )
 
@@ -833,27 +868,56 @@ def cli(
         # (run/system/evaluator/active space/potential) matches; the
         # all-workflow may pass the TS through a three-decimal PDB, so the
         # coordinate field keeps the wider bohr tolerance.
-        _cached_ts = _hess_load_matching(
-            "ts",
-            _hess_identity(geometry, _ts_calc_cfg, role="ts"),
-            atol=1.1e-3,
-        )
+        _active_dofs = [
+            3 * atom + axis
+            for atom in range(len(geometry.atomic_numbers))
+            if atom not in set(int(i) for i in freeze_list)
+            for axis in range(3)
+        ]
         _fresh_hessian_result: Dict[str, float] = {}
-        if _cached_ts is not None:
-            emit("[freq] Reusing cached TS Hessian.", detail=True)
-            H = _cached_ts["hessian"]
-            if isinstance(H, torch.Tensor):
-                H = H.to(device=device)
-            else:
-                H = torch.as_tensor(H, device=device)
+        # Priority: --read-hess file > Hessian from an earlier stage > fresh.
+        _cached_ts = None
+        _hessian_source = "fresh"
+        _dump_hess_path = None
+        if read_hess:
+            from pdb2reaction.io.hessian_file import load_hessian_file
+
+            try:
+                _loaded = load_hessian_file(
+                    read_hess,
+                    n_atoms=len(geometry.atomic_numbers),
+                    active_dofs=_active_dofs,
+                )
+            except ValueError as exc:
+                raise click.ClickException(str(exc)) from exc
+            emit(f"[freq] Hessian read from {read_hess}.", narrative=True)
+            H = torch.as_tensor(_loaded, dtype=torch.float64, device=device)
+            _hessian_source = "file"
+            del _loaded
         else:
-            H = _calc_full_hessian_torch(
-                geometry,
-                calc_cfg,
-                device,
-                cache_geometry=False,
-                result_metadata=_fresh_hessian_result,
+            _cached_ts = _hess_load_matching(
+                "ts",
+                _hess_identity(geometry, _ts_calc_cfg, role="ts"),
+                atol=1.1e-3,
             )
+            if _cached_ts is not None:
+                _hessian_source = "cache"
+                emit("[freq] Reusing cached TS Hessian.", detail=True)
+                H = _cached_ts["hessian"]
+                if isinstance(H, torch.Tensor):
+                    H = H.to(device=device)
+                else:
+                    H = torch.as_tensor(H, device=device)
+            else:
+                H = _calc_full_hessian_torch(
+                    geometry,
+                    calc_cfg,
+                    device,
+                    cache_geometry=False,
+                    result_metadata=_fresh_hessian_result,
+                )
+        if dump_hess:
+            _dump_hess_path = _dump_hessian_file(dump_hess, H, geometry, _active_dofs)
         coords_bohr = geometry.cart_coords.reshape(-1, 3)
 
         # PHVA: use the freeze list to carve out the active subspace and apply TR projection there.
@@ -883,7 +947,7 @@ def cli(
                     else "active"
                 ),
                 "hessian_shape": list(H.shape),
-                "hessian_source": "cache" if _cached_ts is not None else "fresh",
+                "hessian_source": _hessian_source,
                 "hessian_representation": "cartesian-unweighted-unprojected",
             }
         )
@@ -1186,6 +1250,8 @@ def cli(
             }
             if _thermo_data is not None and bool(thermo_cfg.get("dump", False)):
                 result_data["files"]["thermoanalysis_yaml"] = "thermoanalysis.yaml"
+            if _dump_hess_path is not None:
+                result_data["files"]["hessian_npy"] = str(_dump_hess_path.resolve())
             write_result_json(
                 out_dir_path, result_data,
                 command="freq",

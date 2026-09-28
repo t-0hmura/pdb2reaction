@@ -641,7 +641,7 @@ def declare_path_deliverables(
     }
     for name in (
         "mep_trj.pdb",
-        "mep.cif",
+        "mep_trj.cif",
         "mep_w_ref.pdb",
         "mep_w_ref.cif",
         "mep_trj.xyz",

@@ -12,7 +12,7 @@ Each `pdb2reaction` subcommand writes the following files to its output director
 | `run.log` | dispatched CLI and Colab runs once their output directory exists | Shell-safe command plus stdout/stderr emitted during command execution. Early Click validation, help, version, dry-run, and file-only utilities do not create it. |
 | `summary.log` | `path-search`, `all` | Run summary (one row per segment / stage). |
 | `final_geometry.xyz` | `opt`, `tsopt` | Optimized geometry (XYZ, full precision). |
-| `mep_trj.pdb` / `mep.cif` / `mep_trj.xyz` | `path-search` | Reaction path frames; `.cif` is added for mmCIF/oversized-PDB topology when conversion is enabled. |
+| `mep_trj.pdb` / `mep_trj.cif` / `mep_trj.xyz` | `path-search` | Reaction path frames; `.cif` is added for mmCIF/oversized-PDB topology when conversion is enabled. |
 | `final_geometries_trj.xyz` / `hei.xyz` | `path-opt` | Standalone path-opt trajectory (full path) and highest-energy image (`.pdb` / `.cif` / `.gjf` companions when applicable and conversion is enabled). |
 | `mep_plot.png` | `path-search` | Energy profile (PNG) of the MEP. (`all` promotes the styled `energy_diagram_MEP.png` to the root instead.) |
 | `finished_irc_trj.xyz` / `forward_irc_trj.xyz` / `backward_irc_trj.xyz` | `irc` | IRC trajectories (full path plus per-branch; `.pdb` and, for bridge topology, `.cif` companions when a reference topology is available). |
@@ -38,16 +38,16 @@ Override stage directories with `--out-dir <path>` (or `-o`). `extract` uses rep
 
 ## Standalone vs `all`
 
-A standalone subcommand writes a flat `result_<subcmd>/` directory, without `segments/` or `_work/`. Inside `all`, each post-processing stage uses the same file layout under `segments/seg_NN/<subcmd>/`.
+A standalone subcommand writes a flat `result_<subcmd>/` directory, without `segments/` or `_work/`. Inside `all`, each post-processing stage uses the same file layout under `segments/seg_NN/` in `ts/`, `irc/`, `freq/`, and `dft/`.
 
-- **`path-search` / `path-opt` are the engine exception.** Run standalone, each is itself a deliverable: `path-search` → `result_path_search/` (`summary.log`, `mep_trj.pdb`, optional `mep.cif`, `mep_trj.xyz`, `mep_plot.png`, `energy_diagram_MEP.png`), and `path-opt` → `result_path_opt/` (`final_geometries_trj.xyz`, `hei.xyz`). Inside `all`, the raw engine output is treated as scratch under `_work/path_opt/` (or `_work/path_search/` with `--refine-path`), and only the core products (`mep_trj.pdb`, optional `mep.cif`, `mep_trj.xyz`, optional inspection `mep_w_ref.pdb` / `.cif` with `--write-ref-merge`, `energy_diagram_MEP.png`) are promoted to the pipeline root.
+- **`path-search` / `path-opt` are the engine exception.** Run standalone, each is itself a deliverable: `path-search` → `result_path_search/` (`summary.log`, `mep_trj.pdb`, optional `mep_trj.cif`, `mep_trj.xyz`, `mep_plot.png`, `energy_diagram_MEP.png`), and `path-opt` → `result_path_opt/` (`final_geometries_trj.xyz`, `hei.xyz`). Inside `all`, the raw engine output is treated as scratch under `_work/path_opt/` (or `_work/path_search/` with `--refine-path`), and only the core products (`mep_trj.pdb`, optional `mep_trj.cif`, `mep_trj.xyz`, optional inspection `mep_w_ref.pdb` / `.cif` with `--write-ref-merge`, `energy_diagram_MEP.png`) are promoted to the pipeline root.
 
 The `all` tree therefore has three zones:
 
 ```text
 result_all/
 ├─ summary.log · summary.json                 # authored at the root
-├─ mep.{pdb,cif} · mep_trj.xyz                       # Core MEP coordinates
+├─ mep_trj.pdb · mep_trj.cif · mep_trj.xyz           # Core MEP coordinates
 ├─ mep_w_ref.{pdb,cif}                               # Composite for inspection (--write-ref-merge)
 ├─ energy_diagram_MEP.png · energy_diagram_*.png
 ├─ segments/

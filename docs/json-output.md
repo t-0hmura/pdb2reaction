@@ -84,7 +84,7 @@ are not current results.
 | `active_atom_count` / `frozen_atom_count` | int | Active and frozen atom counts |
 | `active_atoms` / `frozen_atoms` | int[] | 0-based atom indices used by the projection kernel |
 | `hessian_space` | string | `"full"` or `"active"` input Hessian space |
-| `hessian_source` / `source` | string | Hessian provenance. `freq`/`irc` use `hessian_source`; `opt`/`tsopt` use `source`. |
+| `hessian_source` / `source` | string | Hessian provenance. `freq`/`irc` use `hessian_source`: `"file"` (`--read-hess`), `"cache"` (earlier stage in the same run), or `"fresh"`; `opt`/`tsopt` use `source`. |
 | `hessian_shape` / `raw_hessian_shape` | int[2] | Input Hessian shape. `freq`/`irc` use `hessian_shape`; `opt`/`tsopt` use `raw_hessian_shape`. |
 
 `constrained` removes only full-system rigid motions that leave frozen anchors fixed. The treatment is fixed; stale non-constrained values fail explicitly. See [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries).
@@ -191,7 +191,7 @@ All fields from `opt`, plus:
 | `safeguards` | object | Hessian-TS diagnostics, including exact saddle checks, final target-mode identity/overlap, stop reason, and any explicitly enabled mode-loss/recovery activity. These recovery paths are inactive by default. |
 | `rigid_projection` | object | Rigid-mode and exact-Hessian provenance; see [projection provenance](#rigid-projection-provenance) |
 
-The `files` object may include `imaginary_mode_files` (list of vib file paths).
+The `files` object may include `imaginary_mode_files` (list of vib file paths) and `hessian_npy` (absolute path of the `--dump-hess` file).
 Terminal PHVA runs after numerical convergence or an energy-plateau stop (`stalled`).
 A run that ends without either retains the terminal geometry and records PHVA as skipped; a PHVA calculation failure is recorded as
 `hessian_status: "failed"` without discarding the structure or fabricating
@@ -225,7 +225,7 @@ per-cycle force/step convergence details and the `safeguards` object.
 | `temperature_K` | float | Temperature (K) |
 | `pressure_atm` | float | Pressure (atm) |
 | `input_file` | string | Input filename |
-| `files` | object | `{"frequencies_txt": "frequencies_cm-1.txt"}` |
+| `files` | object | `{"frequencies_txt": "frequencies_cm-1.txt"}`; includes `hessian_npy` (absolute path) when `--dump-hess` wrote a file |
 | `rigid_projection` | object | Rigid-mode and Hessian provenance; also written to `thermoanalysis.yaml` with `--dump` |
 
 **`thermochemistry`** (null if thermoanalysis unavailable):
@@ -264,7 +264,6 @@ per-cycle force/step convergence details and the `safeguards` object.
 | `energy_ts_hartree` | float | TS energy |
 | `energy_last_hartree` | float | Energy of the last stitched-path endpoint; standalone IRC does not assign chemical identity |
 | `endpoint_energy_orientation` | string | `"finished_first_to_finished_last"` |
-| `energy_reactant_hartree` / `energy_product_hartree` | float | Legacy aliases for first / last, respectively; do not infer chemical R/P identity from these names |
 | `forward_requested` / `backward_requested` | bool | Whether each direction was requested |
 | `forward_integration_converged` / `backward_integration_converged` | bool \| null | Whether the direction stopped because the RMS-gradient stationarity criterion fired; diagnostic only, and always `false` under `--never-stop`, which bypasses that criterion. Combine it with `*_downhill_departure_valid` to reconstruct the condition the removed `*_converged` reported. |
 | `forward_downhill_departure_valid` / `backward_downhill_departure_valid` | bool \| null | Whether the branch established a downhill departure from the TS |

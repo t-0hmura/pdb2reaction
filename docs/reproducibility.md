@@ -75,7 +75,7 @@ validated TS:
 | --- | --- | --- |
 | Routine run | Leave unset (`auto`) | Keeps tested defaults: UMA/AIMNet2 fp32, ORB/MACE fp64. |
 | Speed screening | Explicit `--precision fp32` only when needed | This downgrades ORB/MACE; do not trust those finite-difference Hessians as final. |
-| Final TS/Hessian | Keep ORB/MACE fp64; consider UMA fp64 if noise matters | Validate with an independent frequency calculation and IRC regardless of precision. |
+| Final TS/Hessian | Keep ORB/MACE fp64; consider UMA fp64 if noise matters | Regardless of precision, check n_imag from `tsopt`'s terminal PHVA and confirm connectivity with IRC. |
 
 fp64 has a non-trivial effect on TS optimization and Hessians for the
 OMol-trained UMA backend. Measure the hardware cost and document the production

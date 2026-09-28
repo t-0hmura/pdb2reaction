@@ -83,7 +83,7 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 | `active_atom_count` / `frozen_atom_count` | int | active／frozen原子数 |
 | `active_atoms` / `frozen_atoms` | int[] | 射影kernelが使用した0始まり原子index |
 | `hessian_space` | string | 入力 Hessian 空間: `"full"` / `"active"` |
-| `hessian_source` / `source` | string | Hessian provenance。`freq`/`irc`は`hessian_source`、`opt`/`tsopt`は`source`を使用 |
+| `hessian_source` / `source` | string | Hessian provenance。`freq`/`irc`は`hessian_source`で、`"file"`（`--read-hess`）、`"cache"`（同じ実行の前の stage）、`"fresh"`（新規計算）のいずれか。`opt`/`tsopt`は`source`を使用 |
 | `hessian_shape` / `raw_hessian_shape` | int[2] | 入力 Hessian shape。`freq`/`irc`は`hessian_shape`、`opt`/`tsopt`は`raw_hessian_shape`を使用 |
 
 `constrained`は凍結anchorを動かさない全系剛体運動だけを除去します。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
@@ -186,7 +186,7 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 | `safeguards` | object | exact saddle check、最終目的modeのindex/overlap、停止理由、および明示的に有効化した場合のmode-loss/recovery診断。これらの回復経路はデフォルト無効 |
 | `rigid_projection` | object | 剛体モードとexact Hessian のprovenance。[projection provenance](#rigid-projection-provenance)を参照 |
 
-`files` には `imaginary_mode_files`（vib ファイルリスト）を含む場合があります。
+`files` には `imaginary_mode_files`（vib ファイルリスト）と `hessian_npy`（`--dump-hess` のファイルの絶対 path）を含む場合があります。
 終端PHVAは数値収束後とエネルギープラトー停止（`stalled`）後に実行します。それ以外の非収束では
 終端構造を保持してPHVAをskipします。PHVA計算が失敗した場合は構造を破棄したり振動数を捏造したりせず、
 `hessian_status: "failed"` と理由を記録します。`status` / `optimization_status`
@@ -218,7 +218,7 @@ force/step収束詳細と`safeguards`は省略します。
 | `temperature_K` | float | 温度 (K) |
 | `pressure_atm` | float | 圧力 (atm) |
 | `input_file` | string | 入力ファイル名 |
-| `files` | object | `{"frequencies_txt": "frequencies_cm-1.txt"}` |
+| `files` | object | `{"frequencies_txt": "frequencies_cm-1.txt"}`。`--dump-hess` で書いたときは `hessian_npy`（絶対 path）を含む |
 | `rigid_projection` | object | 剛体モードと Hessian provenance。`--dump`時は`thermoanalysis.yaml`にも記録 |
 
 **`thermochemistry`** (thermoanalysis 利用不可時は null):
@@ -257,7 +257,6 @@ force/step収束詳細と`safeguards`は省略します。
 | `energy_ts_hartree` | float | TS エネルギー |
 | `energy_last_hartree` | float | stitched path の最後の端点エネルギー。standalone IRC は化学的identityを割り当てない |
 | `endpoint_energy_orientation` | string | `"finished_first_to_finished_last"` |
-| `energy_reactant_hartree` / `energy_product_hartree` | float | first / last の旧alias。key名から化学的R/P identityを推定しないこと |
 | `forward_requested` / `backward_requested` | bool | 各方向を要求したか |
 | `forward_integration_converged` / `backward_integration_converged` | bool \| null | RMS 勾配の停留判定が発火して停止したか。診断専用で、`--never-stop` はこの判定を迂回するため常に `false`。削除した `*_converged` が表していた条件は、`*_downhill_departure_valid` との連言で再構成できる |
 | `forward_downhill_departure_valid` / `backward_downhill_departure_valid` | bool \| null | TS から downhill に離れたことを確認できたか |

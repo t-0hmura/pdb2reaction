@@ -60,7 +60,8 @@ python -c "from pdb2reaction.workflows.extract import AMINO_ACIDS, ION; print(di
 name to formal charge.)
 
 For unknown/non-standard ligand residues, supply `-l`. Recognized monatomic
-ions use the internal `ION` table and must not be repeated in `-l`. A mapping
+ions use the internal `ION` table; listing one in `-l` with the same value is
+accepted, and a different value is ignored with a warning. A mapping
 does not override a standard amino-acid or recognized-ion entry. For a
 non-default protonation/oxidation state represented by such a resname, either
 use an appropriate distinct residue name during model construction or provide
@@ -77,7 +78,7 @@ When you don't know a ligand's formal charge:
   before MLIP/DFT stages. `all -c/--center ... --dry-run` deliberately performs
   extraction in a temporary directory so it can print and validate the
   extracted model's charge and electron parity; the temporary directory is
-  removed afterward. `--show-config` prints the resolved configuration but then
+  removed afterward. `--show-config` prints configuration details but then
   proceeds with the full run, so it is not a preview. `pdb2reaction extract ...
   --verbose 2` prints the per-residue charge sum used for `cluster.pdb`.
 
@@ -115,7 +116,7 @@ protonation state against the relevant mechanism before using a value.
 
 | Ligand | Resname (PDB) | Charge at pH 7 |
 |---|---|---|
-| Methionine sulfonium (SAM) | `SAM` | +1 |
+| S-Adenosylmethionine (SAM) | `SAM` | +1 |
 | Adenosylhomocysteine | `SAH` | 0 |
 | Geranyl pyrophosphate | `GPP` | −3 |
 | ATP | `ATP` | −4 |

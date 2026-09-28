@@ -26,6 +26,7 @@ pdb2reaction freq -i geom.{pdb,cif,xyz,gjf} \
 | `--temperature` | float | 298.15 | K, for thermochemistry |
 | `--pressure` | float | 1.0 | atm, for thermochemistry |
 | `--hessian-calc-mode` | str | `FiniteDifference` | `Analytical` / `FiniteDifference`; check `UMA_CALC_KW` |
+| `--read-hess` / `--dump-hess` | path | — | Read / save the Hessian as a plain NumPy `.npy` array (`tsopt` has both flags, `irc` only `--read-hess`) |
 | `--uma-workers`, `--uma-workers-per-node` | int | `1`, `1` | UMA predictor workers. An explicit `Analytical` request with `workers > 1` raises `BackendError`; use one worker or finite differences. Other built-in backends ignore these worker kwargs. |
 | `-b, --backend` | str | `uma` | MLIP backend or optional DFT calculator |
 | `-o, --out-dir` | path | `./result_freq/` | Output directory |
@@ -48,6 +49,20 @@ pdb2reaction freq -i ts.pdb -l 'SAM:1' \
     --temperature 310.15 --pressure 1.0 \
     -b uma -o result_freq_310K
 ```
+
+### Pass the Hessian on to IRC
+
+```bash
+pdb2reaction freq -i ts.xyz -q 0 -m 1 --dump-hess result_freq/hessian.npy -o result_freq
+pdb2reaction irc -i ts.xyz -q 0 -m 1 --read-hess result_freq/hessian.npy -o result_irc
+```
+
+`--dump-hess` writes at that exact path (a relative path is resolved from the
+current directory, not under `--out-dir`). The file is one `numpy.save` array:
+the Cartesian Hessian in Hartree/bohr² (not mass-weighted), atoms in input
+order, 3N×3N or only the movable atoms when some are frozen. `--read-hess`
+checks only size, symmetry, and finiteness, so pass a Hessian computed for the
+same geometry, charge, multiplicity, and calculator.
 
 ## Output
 

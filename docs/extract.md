@@ -157,11 +157,11 @@ Defaults shown are used when the option is not specified. The full flag list is 
 | `--exclude-backbone / --no-exclude-backbone` | Remove backbone atoms from amino acids outside the extraction centers (PRO / HYP safeguards). | `False` |
 | `--add-linkh / --no-add-linkh` | Add cap hydrogens at 1.09 Å along severed bonds at carbon boundaries only (non-carbon boundaries are not capped). | `True` |
 | `--selected-resn TEXT` | Force-include by the same ID/name/chain-qualified selectors as `--center`. | `""` |
-
-With `-r 0`, no neighboring residues are added by the radius search: the model is built from residues selected by `-c` and `--selected-resn`. Structural safeguards can still add a required disulfide partner or adjacent backbone context when applicable.
 | `--modified-residue TEXT` | Comma-separated residue names to treat as amino acids. `NAME:charge` adds or overrides the nominal charge for this extraction; bare `NAME` defaults to 0. | `""` |
 | `-l, --ligand-charge TEXT` | Total charge or per-resname mapping (e.g. `GPP:-3,SAM:1`). | _None_ |
 | `--out-json / --no-out-json` | Write a machine-readable `result.json` alongside the extracted PDB(s). Schema: [JSON Output Schema](json-output.md). | `False` |
+
+With `-r 0`, no neighboring residues are added by the radius search: the model is built from residues selected by `-c` and `--selected-resn`. Structural safeguards can still add a required disulfide partner or adjacent backbone context when applicable.
 
 ### Center specification (`-c/--center`)
 

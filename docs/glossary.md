@@ -13,7 +13,7 @@
 | **Image** | — | A single geometry (one "node") along a chain-of-states path. |
 | **Segment** | — | An MEP between two adjacent endpoints (e.g., R → I1, I1 → I2, …). |
 | **Reactive segment** | — | A candidate reaction segment. Requested TS optimization processes ordinary MEP/TS candidates; endpoint bond changes are recorded separately. |
-| **Bridge segment** | — | A segment connecting two non-adjacent intermediates that still contains unresolved bond changes; `path-search` recursively subdivides bridge segments until all reactive regions are isolated. |
+| **Bridge segment** | — | An MEP inserted between two neighbouring sub-paths whose facing endpoints differ (RMSD above `search.bridge_rmsd_thresh`) without a bond change. A bridge is not subdivided and skips TS optimization, thermochemistry, and DFT; when the interface does show a bond change, `path-search` inserts a new recursive segment instead. |
 | **Kink** | — | A region along an MEP where no covalent bond change is detected but a geometric distortion persists. `path-search` inserts linearly interpolated nodes and optimizes them individually rather than running a full string calculation. |
 | **PES** | Potential Energy Surface | A hypersurface of energy as a function of atomic coordinates. |
 
@@ -118,7 +118,7 @@ Imaginary-mode classification and the QRRHO rotor cutoff serve different purpose
 |------|-------------|
 | **Boolean option** | CLI flags that accept toggle form (`--flag` / `--no-flag`) or value form (`True`/`False`, `yes`/`no`, `1`/`0`). Example: `--tsopt`. |
 | **Residue selector** | A specification like `'SAM,GPP'` (names) or `'A:123,B:456'` (chain:ID). |
-| **Atom selector** | A specification like `'TYR,285,CA'` identifying a specific atom by residue name, number, and atom name. |
+| **Atom selector** | A specification like `'SAM,320,CS1'` identifying a specific atom by residue name, number, and atom name. |
 
 ## See Also
 

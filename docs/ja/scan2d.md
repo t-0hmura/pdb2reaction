@@ -30,8 +30,8 @@ pdb2reaction scan2d -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge 
 cat > scan2d.yaml << 'YAML'
 one_based: true
 pairs:
- - ["TYR,285,CA", "SAM,309,C10", 1.30, 3.10]
- - ["TYR,285,CB", "SAM,309,C11", 1.20, 3.20]
+ - ["SAM,320,CS1", "GPP,321,C7", 1.50, 3.00]
+ - ["GPP,321,H11", "GLU,186,OE2", 0.90, 2.50]
 YAML
 pdb2reaction scan2d -i input.pdb -q 0 -s scan2d.yaml
 ```
@@ -40,14 +40,14 @@ pdb2reaction scan2d -i input.pdb -q 0 -s scan2d.yaml
 
 ```bash
 pdb2reaction scan2d -i input.pdb -q 0 \
- -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20)]'
+ -s '[("SAM,320,CS1","GPP,321,C7",1.50,3.00),("GPP,321,H11","GLU,186,OE2",0.90,2.50)]'
 ```
 
 L-BFGS、内側軌跡ダンプ、Plotly 出力:
 
 ```bash
 pdb2reaction scan2d -i input.pdb -q 0 \
- -s '[("TYR,285,CA","SAM,309,C10",1.30,3.10),("TYR,285,CB","SAM,309,C11",1.20,3.20)]' \
+ -s '[("SAM,320,CS1","GPP,321,C7",1.50,3.00),("GPP,321,H11","GLU,186,OE2",0.90,2.50)]' \
  --max-step-size 0.20 --dump -o ./result_scan2d/ --opt-mode grad \
  --preopt --baseline min
 ```

@@ -81,8 +81,9 @@ the stitched trajectory with `trj2fig.md` when it exists.
 ## Caveats
 
 - `-s` is Python literal-eval. Quote with single quotes outside,
-  double quotes inside. Atom-name strings use `"NAME RESNAME RESID"`
-  with single spaces.
+  double quotes inside. An atom spec has three fields (residue name,
+  residue number, atom name) in any order, separated by spaces, commas,
+  slashes, backticks, or backslashes (e.g. `"SAM 320 CS1"`, `"CS1 SAM 320"`).
 - A chain-qualified selector is positional:
   `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`. Three-field selectors are order-flexible.
 - Stage *k+1* starts from stage *k*'s final geometry; a diverged

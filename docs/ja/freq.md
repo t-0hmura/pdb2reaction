@@ -39,7 +39,7 @@ pdb2reaction freq -i ts_or_min.pdb -q 0 -m 1 \
 - **MLIP バックエンド**: `--hessian-calc-mode` で解析的または有限差分 Hessian を選択します。MLIP バックエンドは原子が凍結されている場合、部分（活性）Hessian ブロックを返すことがあります。Hessian 評価モードの詳細は {ref}`ja-hessian-evaluation` を参照してください。
 - **PHVAと剛体モード**: 凍結原子がある場合、固有値解析はactive部分空間内で行います。デフォルトの`constrained`は、すべての凍結anchorを動かさない全系剛体運動だけを除去するため、通常の複数anchorクラスターモデルではeffective rankは通常0です。3N×3N Hessian とactive block Hessian の両方に対応します。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
 - **モードのエクスポート**: `--max-write` で出力するモード軌跡数を制限できます。モードは値順 (`value`) でソートされ、`--sort abs` を指定すると絶対値順になります。すべての入力に `_trj.xyz` を出力し、`--convert-files` 有効時はtopology入力に`.pdb`、mmCIF／oversized-PDB入力に元IDを復元した`.cif`も出力します。
-- **熱化学**: `thermoanalysis` がインストールされている場合、QRRHO に準じたサマリー（E、ZPE、E/H/G 補正、熱容量、エントロピー）が PHVA 振動数に基づいて出力されます。CLI の圧力（atm）は内部で Pa に変換されます。構造の Gibbs free energy は Hartree 単位で `E + G_corr = G`（電子エネルギー + Gibbs free-energy 補正 = Gibbs free energy）と明示します。`--dump` を指定すると `thermoanalysis.yaml` も書き込まれます。解析対象構造ごとに分子点群と外部回転対称数を自動判定し、`1/σ` 補正を常に適用します。必要な場合に限り、YAML の `thermo.symmetry_number` で判定値を上書きできます。
+- **熱化学**: QRRHO に準じたサマリー（E、ZPE、E/H/G 補正、熱容量、エントロピー）が PHVA 振動数に基づいて出力されます。CLI の圧力（atm）は内部で Pa に変換されます。構造の Gibbs free energy は Hartree 単位で `E + G_corr = G`（電子エネルギー + Gibbs free-energy 補正 = Gibbs free energy）と明示します。`--dump` を指定すると `thermoanalysis.yaml` も書き込まれます。解析対象構造ごとに分子点群と外部回転対称数を自動判定し、`1/σ` 補正を常に適用します。必要な場合に限り、YAML の `thermo.symmetry_number` で判定値を上書きできます。
 - **振動数処理ポリシー**: `freq` は **standalone-freq ポリシー**（QRRHO、rotor cutoff 100 cm⁻¹、周波数・ZPE スケール 1、虚振動数の反転**なし**、正振動数のフロア**なし**）を適用します。これは一部の bundled-engine 経路が使う内部の `Geometry.get_thermoanalysis` ポリシー（小さな虚振動数を −15 cm⁻¹ から反転し、25 cm⁻¹ 未満の正振動数をフロアする）とは意図的に異なります。いずれも普遍的な科学的デフォルトではなく、各エントリポイントに固有です。有効なポリシー（`kind`、`rotor_cutoff_cm`、`frequency_scale`、`zpe_scale`、`invert_imag_from_cm`、`positive_frequency_floor_cm`）は `thermoanalysis.yaml` と `result.json` の `thermo_policy` にシリアライズされます。
 - **性能**: GPU メモリ使用量を抑えるため、Hessian は 1 つだけ保持します。
 
@@ -51,7 +51,7 @@ out_dir/ (デフォルト:./result_freq/)
 ├─ mode_XXXX_±freqcm-1.pdb # PDB テンプレートが存在し変換が有効な場合のみ
 ├─ mode_XXXX_±freqcm-1.cif # mmCIF/oversized-PDB入力
 ├─ frequencies_cm-1.txt # 選択したソート順での全振動数リスト
-└─ thermoanalysis.yaml # thermoanalysisが利用可能で--dumpを有効にした場合
+└─ thermoanalysis.yaml # --dumpを有効にした場合
 ```
 - コンソールには `geom`/`calc`/`freq`/熱化学の設定要約ブロックが出力されます。
 
@@ -89,13 +89,15 @@ out_dir/ (デフォルト:./result_freq/)
 | `--pressure FLOAT` | 熱化学計算の圧力（atm）。CLI では `--pressure` ですが、対応する YAML キー（`thermo:` 配下）は `pressure_atm`（単位接尾辞付き）です。いずれも atm で指定し、内部で Pa に変換されます | `1.0` |
 | `--dump/--no-dump` | `thermoanalysis.yaml` を書き込みます。単体 `freq` のデフォルトは OFF です。`pdb2reaction all --thermo` はこのファイルを内部入力として使用するため常に保持し、`all --no-dump` でも抑止しません（任意の scan/MEP/TS 軌跡には `--no-dump` が適用されます） | `False` |
 | `--hessian-calc-mode CHOICE` | MLIP Hessian モード（`Analytical` または `FiniteDifference`） | `FiniteDifference` |
+| `--read-hess PATH` | Hessian を計算せず、NumPy の `.npy` ファイル（`freq`・`tsopt` の `--dump-hess` で書いたものなど）から読む | _None_ |
+| `--dump-hess PATH` | Hessian を NumPy の `.npy` 配列として保存する。`freq`・`tsopt`・`irc` の `--read-hess` や、ほかのプログラムで使える | _None_ |
 | `--convert-files/--no-convert-files` | topology入力に PDB companion、mmCIF／oversized-PDB bridge入力に元IDを復元したCIF companionを生成（GJFは出力しない） | `True` |
 | `--ref-pdb FILE` | XYZ/GJF入力に使用する参照PDBまたはmmCIF topology（XYZ座標は保持） | _None_ |
 | `--config FILE` | 明示 CLI 適用前に読み込むベース YAML | _None_ |
-| `--show-config/--no-show-config` | 解決済み YAML レイヤー/設定を表示して続行 | `False` |
+| `--show-config/--no-show-config` | 読み込んだ YAML ファイルとその最上位の key を表示して実行を継続 | `False` |
 | `--out-json/--no-out-json` | `out_dir` に `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP バックエンド（任意で `dft`） | `uma` |
-| `--dry-run/--no-dry-run` | 実行せずに検証と実行計画のみ表示 | `False` |
+| `--dry-run/--no-dry-run` | 実行せずにオプションと入力を検証する | `False` |
 
 ## YAML 設定
 
@@ -114,6 +116,7 @@ freq:
 - 収束した一次の鞍点（TS）の Cartesian PHVA では、resolvedな負の振動数が **ちょうど 1 つ**になることが期待されます。`n_imaginary` は選択した分類基準による本数です。`n_negative_modes` は閾値内も含むすべての負の符号を別の診断値として記録し、数値収束を上書きしません。
 - 虚振動数モードは負の振動数として報告されます。`freq` は検出された虚振動数の個数を表示し、`--dump` で詳細を出力します。
 - 全原子を凍結した構造にはactiveな振動DOFがないため、明示的なエラーで停止します。
+- `--read-hess`・`--dump-hess` のファイルは、`numpy.save` で書いた配列 1 つです。中身は Cartesian の Hessian（Hartree/bohr²、質量はかけない）で、原子は入力の順です。全原子の 3N×3N か、凍結原子があるときは動ける原子の分だけを持ちます。`--read-hess` が確かめるのは、正方・有限・対称で、この 2 つの大きさのどちらかであることだけです。同じ構造・電荷・多重度・計算設定で求めた Hessian を渡してください。
 - `--hessian-calc-mode` は **デフォルト < config < 明示 CLI** の優先順位で解決されます。CLI で明示的に指定した値は config YAML の `calc.hessian_calc_mode` より優先されます。
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 

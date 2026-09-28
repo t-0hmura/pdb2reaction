@@ -82,7 +82,7 @@ Three zones: deliverables at `<out_dir>/`, per-segment deliverables under `<out_
 |---|---|---|
 | `<out_dir>/summary.json` | pipeline reaches its summary writer | machine-readable per-stage results; early CLI/input validation can fail before this file exists |
 | `<out_dir>/summary.log` | pipeline reaches its summary writer | human-readable text + dir tree; early CLI/input validation can fail before this file exists |
-| `<out_dir>/mep_trj.xyz`; `mep_trj.pdb`; bridge inputs also `mep.cif` | successful MEP/scan-list mode; companions additionally require `--convert-files` and topology | stitched MEP across segments |
+| `<out_dir>/mep_trj.xyz`; `mep_trj.pdb`; bridge inputs also `mep_trj.cif` | successful MEP/scan-list mode; companions additionally require `--convert-files` and topology | stitched MEP across segments |
 | `<out_dir>/mep_w_ref.pdb`; bridge inputs also `.cif` | requested recursive full-template merge succeeds; CIF additionally needs bridge metadata | MEP merged into the full-system template |
 | `<out_dir>/energy_diagram_MEP.png` | MEP/scan-list mode when diagram export succeeds | bare all-segment MEP energies |
 | `<out_dir>/energy_diagram_{MLIP,G_MLIP,DFT,G_DFT_plus_MLIP}_all.png` | matching stages provide finite energies and PNG export succeeds | aggregated multi-segment diagrams |
@@ -129,9 +129,9 @@ summary.
 - `--scan-lists` is a Python literal-eval expression. Most
   shell-quoting trouble traces back to single vs double quotes. Put all
   stage literals after one flag occurrence; do not repeat `-s`.
-- If `summary.json` shows `"status": "failed"` (or `"partial"`) for any segment, look
-  at the corresponding `summary.log` block; per-stage errors are also
-  duplicated into `segments/seg_NN/<stage>/result.json`.
+- If `summary.json["scientific_status"]` is not `"success"`, read `scientific_status_reasons`, then look
+  at the corresponding `summary.log` block. Per-stage `result.json` exists
+  only for the TS and IRC stages (and scan and path-opt), not for freq or DFT.
 - `segments/seg_NN/` is created when post-processing starts and may therefore
   be partial after a failed TSOPT/IRC/freq/DFT stage. Presence of the directory
   is not a success signal; check `summary.json` and the stage `result.json`.

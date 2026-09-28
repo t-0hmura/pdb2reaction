@@ -259,8 +259,8 @@ _snapshot_geometry = make_snapshot_geometry(_COORD_TYPE_DEFAULT)
     type=str,
     multiple=True,
     required=False,
-    help="Required. Scan ranges: distance (i,j,low,high), angle (i,j,k,low,high), "
-         "or dihedral (i,j,k,l,low,high). "
+    help="Required. Distance targets (i,j,target), or scan ranges: distance (i,j,low,high), "
+         "angle (i,j,k,low,high), or dihedral (i,j,k,l,low,high). "
          "A YAML/JSON spec file path is also accepted. "
          "Atom strings accept positional CHAIN:RESNAME:RESSEQ[ICODE]:ATOM. "
          "Multiple inline literals define sequential stages.",
@@ -406,14 +406,14 @@ def cli(
         if len(cli_scan_values) == 1 and is_scan_spec_file(cli_scan_values[0]):
             spec_root = _load_scan_spec_root(Path(cli_scan_values[0]))
         try:
-            legacy_targets = all(
+            distance_targets = all(
                 not is_scan_spec_file(value)
                 and all(len(entry) == 3 for entry in ast.literal_eval(value))
                 for value in cli_scan_values
             )
         except Exception:
-            legacy_targets = True
-        if target_mode or legacy_targets or (spec_root is not None and "stages" in spec_root):
+            distance_targets = True
+        if target_mode or distance_targets or (spec_root is not None and "stages" in spec_root):
             scan_request = parse_staged_scan_request(
                 cli_scan_values, one_based=one_based, atom_meta=pdb_atom_meta,
             )

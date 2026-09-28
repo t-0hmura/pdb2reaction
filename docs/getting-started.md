@@ -35,7 +35,7 @@ runs the selected stages and writes unified `summary.json` +
 | `summary.json` | Barriers, energies, bond changes, and environment |
 | `summary.log` | Result summary with directory tree |
 | `segments/seg_NN/` | Created when a reactive segment enters requested post-processing; canonical R/TS/P appear after successful `--tsopt` + IRC/endpoint processing |
-| `mep_trj.pdb` / `mep.cif` | Merged MEP trajectory; CIF companion preserves bridged input identifiers |
+| `mep_trj.pdb` / `mep_trj.cif` | Merged MEP trajectory; CIF companion preserves bridged input identifiers |
 | `energy_diagram_*.png` | Energy profile plots (electronic / Gibbs-corrected) |
 
 ```{important}
@@ -49,7 +49,7 @@ runs the selected stages and writes unified `summary.json` +
 |---|---|---|
 | Residue selectors | `'SAM,GPP'` or `'A:123,B:456'` | Quote multi-value strings. |
 | Charge mapping | `-l 'SAM:1,GPP:-3'` | Colon separates name and charge; comma separates entries. |
-| Atom selectors | `'TYR,285,CA'` or `'A:TYR:285:CA'` | Use positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` when identifiers repeat. |
+| Atom selectors | `'SAM,320,CS1'` or `'A:SAM:320:CS1'` | Use positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` when identifiers repeat. |
 
 Full table: [CLI Conventions](cli-conventions.md).
 
@@ -100,7 +100,7 @@ Single-input runs require **either** `--scan-lists/-s` or `--tsopt` — a bare `
 | `--tsopt` / `--thermo` / `--dft` | TS optimization + IRC / vibrational analysis / single-point DFT. Both `--thermo` and `--dft` require `--tsopt`. |
 | `-b, --backend uma\|orb\|mace\|aimnet2\|dft` | MLIP backend (default `uma`), or optional DFT calculator. |
 
-Full option matrix: [CLI Conventions](cli-conventions.md) and the generated CLI reference under [reference/commands/index](reference/commands/index.md). Backend cost / VRAM comparison: see [Troubleshooting › Choosing a backend](troubleshooting.md#choosing-a-backend).
+Full option matrix: [CLI Conventions](cli-conventions.md) and the generated CLI reference under [reference/commands/index](reference/commands/index.md). How to choose a backend and estimate GPU memory: see [Troubleshooting › Choosing a backend](troubleshooting.md#choosing-a-backend).
 
 ## Run summaries
 

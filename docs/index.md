@@ -20,12 +20,10 @@ installation
 quickstart-all
 quickstart-scan
 quickstart-tsopt-freq
+cif
 freeze-atoms
 recipes-common-errors
 troubleshooting
-cli-conventions
-cif
-reproducibility
 ```
 
 ```{toctree}
@@ -34,23 +32,23 @@ reproducibility
 :hidden:
 
 all
-extract
 fix-altloc
 add-elem-info
+extract
 opt
-tsopt
-path-opt
-path-search
 scan
 scan2d
 scan3d
-freq
+path-opt
+path-search
+tsopt
 irc
+freq
 dft
 sp
+bond-summary
 trj2fig
 energy-diagram
-bond-summary
 ```
 
 ```{toctree}
@@ -58,16 +56,18 @@ bond-summary
 :caption: Reference
 :hidden:
 
+cli-conventions
+reproducibility
 reference/commands/index
 yaml-reference
 json-output
+output-layout
 uma-pysis
 backends
-architecture
-output-layout
-mcp_server
 hpc-example
+mcp_server
 glossary
+architecture
 ```
 
 ```{toctree}
@@ -81,12 +81,10 @@ ja/installation
 ja/quickstart-all
 ja/quickstart-scan
 ja/quickstart-tsopt-freq
+ja/cif
 ja/freeze-atoms
 ja/recipes-common-errors
 ja/troubleshooting
-ja/cli-conventions
-ja/cif
-ja/reproducibility
 ```
 
 ```{toctree}
@@ -95,23 +93,23 @@ ja/reproducibility
 :hidden:
 
 ja/all
-ja/extract
 ja/fix-altloc
 ja/add-elem-info
+ja/extract
 ja/opt
-ja/tsopt
-ja/path-opt
-ja/path-search
 ja/scan
 ja/scan2d
 ja/scan3d
-ja/freq
+ja/path-opt
+ja/path-search
+ja/tsopt
 ja/irc
+ja/freq
 ja/dft
 ja/sp
+ja/bond-summary
 ja/trj2fig
 ja/energy-diagram
-ja/bond-summary
 ```
 
 ```{toctree}
@@ -119,15 +117,17 @@ ja/bond-summary
 :caption: リファレンス
 :hidden:
 
+ja/cli-conventions
+ja/reproducibility
 ja/yaml-reference
 ja/json-output
+ja/output-layout
 ja/uma-pysis
 ja/backends
-ja/architecture
-ja/output-layout
-ja/mcp_server
 ja/hpc-example
+ja/mcp_server
 ja/glossary
+ja/architecture
 ```
 
 ## Quick start

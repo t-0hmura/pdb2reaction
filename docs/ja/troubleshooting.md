@@ -222,7 +222,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 - 余分な虚振動数モードのフラット化を有効にしてください: `--flatten`（単独の `tsopt`、`opt`、および `pdb2reaction all` で利用可能。デフォルトは無効）
 - coarse MEP のHEIが悪い場合は、`all`を`--refine-path`付きで再実行してください。ただし悪いpathを不要な複数segmentへ分割してcostを増大させることがあるためデフォルトOFFです。まずcoarse MEP を確認してください
 - 最大サイクル数を増やしてください: `--max-cycles 200000`（単独の `tsopt` の場合）、`--tsopt-max-cycles 200000`（`all` の場合）
-- 収束プリセットを `baker` または `gau_tight` に変更してください。単独では `tsopt --thresh`、`all` では `--thresh-post` を使います。
+- 収束プリセットを既定の `baker` から `gau_tight`（さらに `gau_vtight`）へ締めてください。単独では `tsopt --thresh`、`all` では `--thresh-post` を使います。
 - YAML でステップサイズ / 信頼半径を縮小してください — L-BFGS/Dimer: `lbfgs.max_step` / `hessian_dimer.lbfgs.max_step`、RFO/RS-I-RFO: `rfo.trust_radius` / `rfo.trust_min` / `rfo.trust_max`（および `rsirfo` セクション）。セクション構成は [YAML リファレンス](yaml-reference.md) を参照
 
 ---
@@ -249,7 +249,7 @@ Plotly/Chrome 系のエラーで静的画像が出ない場合:
 
 対処の例:
 - `--max-nodes` をデフォルトの 20 より増やしてください（複雑な反応には 30 や 40 など）
-- 端点の事前最適化を有効にしてください: `--preopt`
+- 端点の事前最適化は既定で有効です。`--no-preopt` を付けていたら外してください
 - 別の MEP 手法を試してください: `--mep-mode dmf`（GSM が失敗した場合）またはその逆
 - YAML で結合検出パラメータを調整してください（`bond.bond_factor`、`bond.delta_fraction`）
 

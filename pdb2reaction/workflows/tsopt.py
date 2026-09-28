@@ -105,6 +105,7 @@ from pdb2reaction.workflows.freq import (
     _mass_weighted_hessian,
     _calc_full_hessian_torch,
     _calc_energy,
+    _dump_hessian_file,
     _write_mode_trj_and_pdb,
     _frequencies_cm_and_modes,
 )
@@ -1153,6 +1154,49 @@ def _finalize_dimer_saddle_status(
     return neg_idx
 
 
+def _load_initial_hessian_file(path, geom, calc_kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    """Read a ``--read-hess`` file in the basis a fresh evaluation uses."""
+    from pdb2reaction.io.hessian_file import load_hessian_file
+
+    freeze = calc_kwargs.get("freeze_atoms")
+    frozen = set(int(i) for i in (geom.freeze_atoms if freeze is None else freeze))
+    dofs = [
+        3 * atom + axis
+        for atom in range(len(geom.atomic_numbers))
+        if atom not in frozen
+        for axis in range(3)
+    ]
+    try:
+        hessian = load_hessian_file(path, n_atoms=len(geom.atomic_numbers), active_dofs=dofs)
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+    emit(f"[tsopt] Initial Hessian read from {path}.", narrative=True)
+    return {"hessian": hessian, "active_dofs": dofs}
+
+
+def _dump_terminal_hessian(path, geom, calc_kwargs: Dict[str, Any]) -> Optional[Path]:
+    """Write the final TS Hessian for ``--dump-hess``; ``None`` if there is none."""
+    from pdb2reaction.io.hessian_cache import identity_from_context, load_matching
+
+    entry = load_matching(
+        "ts",
+        identity_from_context(geom, calc_kwargs, role="ts"),
+        atol=1.0e-8,
+        any_run=True,
+    )
+    if entry is None or entry.get("hessian") is None:
+        click.echo(
+            "[tsopt] WARNING: no Hessian at the final geometry; "
+            "the --dump-hess file was not written.",
+            err=True,
+        )
+        return None
+    dofs = entry.get("active_dofs")
+    if dofs is None:
+        dofs = range(int(geom.cart_coords.size))
+    return _dump_hessian_file(path, entry["hessian"], geom, dofs, label="tsopt")
+
+
 class HessianDimer:
     """
     Hessian Guided Dimer TS search with periodic Hessian updates.
@@ -1286,6 +1330,8 @@ class HessianDimer:
 
         self._raw_hessian_cache_cpu: Optional[torch.Tensor] = None
         self._raw_hessian_coords_cpu: Optional[np.ndarray] = None
+        # Set from ``--read-hess``; used instead of the first Hessian evaluation.
+        self.initial_hessian: Optional[Dict[str, Any]] = None
 
     @property
     def termination_status(self) -> str:
@@ -1346,6 +1392,26 @@ class HessianDimer:
         if self.device.type == "cpu":
             H_dev = H_dev.clone()
         return H_dev
+
+    def _store_ts_hessian(self, H: torch.Tensor) -> None:
+        """Publish the final raw Hessian for a following IRC/freq or ``--dump-hess``."""
+        from pdb2reaction.io.hessian_cache import identity_from_context, store
+
+        n_atoms = len(self.geom.atomic_numbers)
+        active_dofs = None
+        if H.shape[0] < 3 * n_atoms:
+            active_dofs = [
+                3 * atom + axis
+                for atom in _active_indices(n_atoms, self.freeze_atoms)
+                for axis in range(3)
+            ]
+        store(
+            "ts",
+            H,
+            active_dofs=active_dofs,
+            meta={"cart_coords": self.geom.cart_coords, "source": "tsopt_exact"},
+            identity=identity_from_context(self.geom, self.uma_kwargs, role="ts"),
+        )
 
     def _calc_full_hessian_cached(self, allow_reuse: bool) -> torch.Tensor:
         """
@@ -1665,7 +1731,14 @@ class HessianDimer:
         mask_dof = _active_mask_dof(N, self.freeze_atoms if len(self.freeze_atoms) > 0 else [])
 
         # (1) Initial Hessian → pick direction by `root`
-        H = self._calc_full_hessian_cached(allow_reuse=False)
+        if self.initial_hessian is not None:
+            H = torch.as_tensor(
+                self.initial_hessian["hessian"], dtype=torch.float64, device=self.device
+            )
+            self._cache_raw_hessian_cpu(H)
+            self._sync_geom_hessian_cache(H)
+        else:
+            H = self._calc_full_hessian_cached(allow_reuse=False)
         coords_bohr_t = torch.as_tensor(self.geom.cart_coords.reshape(-1, 3),
                                         dtype=H.dtype, device=H.device)
 
@@ -1867,6 +1940,7 @@ class HessianDimer:
         # Final Hessian → imaginary mode trajectory
         try:
             H = self._calc_full_hessian_cached(allow_reuse=True)
+            self._store_ts_hessian(H)
             freqs_cm, modes = _frequencies_cm_and_modes(
                 H,
                 self.geom.atomic_numbers,
@@ -2184,14 +2258,32 @@ def _validate_reference_mode_optimizer(
     "show_config",
     default=False,
     show_default=True,
-    help="Print resolved configuration and continue execution.",
+    help="Print the loaded YAML file and its top-level keys, then continue.",
 )
 @click.option(
     "--dry-run/--no-dry-run",
     "dry_run",
     default=False,
     show_default=True,
-    help="Validate options and print the execution plan without running TS optimization.",
+    help="Validate options and inputs without running TS optimization.",
+)
+@click.option(
+    "--read-hess",
+    "read_hess",
+    type=click.Path(exists=True, dir_okay=False),
+    default=None,
+    help="Start from the Hessian in this .npy file (e.g. from freq or tsopt "
+         "--dump-hess) instead of computing it: the Cartesian Hessian of the "
+         "input geometry in Hartree/bohr^2, for all atoms or only the movable ones.",
+)
+@click.option(
+    "--dump-hess",
+    "dump_hess",
+    type=click.Path(dir_okay=False),
+    default=None,
+    help="Save the Hessian of the final geometry as a NumPy .npy array "
+         "(Cartesian, Hartree/bohr^2; movable atoms only when atoms are frozen) "
+         "for '--read-hess' in freq, tsopt, or irc, or for other programs.",
 )
 @click.option(
     "--out-json/--no-out-json",
@@ -2275,6 +2367,8 @@ def cli(
     config_yaml: Optional[Path],
     show_config: bool,
     dry_run: bool,
+    read_hess: Optional[str],
+    dump_hess: Optional[str],
     out_json: bool,
     hessian_calc_mode: Optional[str],
     backend: str,
@@ -2725,6 +2819,8 @@ def cli(
             ref_pdb,
             reference_mode_path,
             config_yaml,
+            Path(read_hess) if read_hess else None,
+            Path(dump_hess) if dump_hess else None,
         ):
             if protected is None:
                 continue
@@ -2794,6 +2890,10 @@ def cli(
                     geom_kwargs=dict(geom_cfg),
                     prepared_input=prepared_input,
                 )
+                if read_hess:
+                    runner.initial_hessian = _load_initial_hessian_file(
+                        read_hess, runner.geom, runner.uma_kwargs
+                    )
 
                 emit("\n====== TS optimization (Hessian Guided Dimer) ======\n", narrative=True)
                 runner.run()
@@ -2969,6 +3069,29 @@ def cli(
                 rsirfo_kwargs["flatten_enabled"] = bool(
                     int(simple_cfg.get("flatten_max_iter", 0)) > 0
                 )
+
+                if read_hess:
+                    if rsirfo_kwargs.get("hessian_init", "calc") != "calc":
+                        raise click.BadParameter(
+                            "--read-hess needs hessian_init: calc.",
+                            param_hint="--read-hess",
+                        )
+                    _initial = _load_initial_hessian_file(read_hess, geometry, calc_cfg)
+                    _n_dof = int(geometry.cart_coords.size)
+                    _dofs = _initial["active_dofs"]
+                    if len(_dofs) < _n_dof:
+                        geometry.within_partial_hessian = {
+                            "active_atoms": np.array(sorted({d // 3 for d in _dofs}), dtype=int),
+                            "active_dofs": np.array(_dofs, dtype=int),
+                            "active_n_dof": len(_dofs),
+                            "full_n_dof": _n_dof,
+                        }
+                    geometry.cart_hessian = torch.as_tensor(
+                        _initial["hessian"],
+                        dtype=torch.float64,
+                        device=_torch_device(calc_cfg.get("device", "auto")),
+                    )
+                    del _initial
 
                 optimizer = TSOPT_CLASS_MAP[kind](geometry, **rsirfo_kwargs)
 
@@ -3770,6 +3893,15 @@ def cli(
                 ),
                 err=_tsopt_failed,
             )
+
+            if dump_hess:
+                _dump_hess_path = _dump_terminal_hessian(
+                    dump_hess,
+                    runner.geom if kind == "dimer" else geometry,
+                    runner.uma_kwargs if kind == "dimer" else calc_cfg,
+                )
+                if _dump_hess_path is not None and _tsopt_result_data is not None:
+                    _tsopt_result_data["files"]["hessian_npy"] = str(_dump_hess_path.resolve())
 
             # result.json (if --out-json)
             if out_json:

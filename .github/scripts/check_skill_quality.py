@@ -261,7 +261,7 @@ def _validate_high_risk_semantics(errors: list[str]) -> None:
         irc_page,
         (
             "`completed` is not an IRC convergence verdict",
-            "`*_converged`",
+            "`*_integration_converged`",
             "IRC has no independent scientific success verdict",
             "`never_stop_energy_bypasses`",
             "inserts one underscore",

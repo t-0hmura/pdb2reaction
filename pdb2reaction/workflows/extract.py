@@ -147,7 +147,7 @@ _MAX_BOUNDARY_BOND_DISTANCE = _BOUNDARY_BOND_SCALE * 2.0 * max(
     "--include-h2o/--no-include-h2o",
     "include_h2o",
     default=True, show_default=True,
-    help="Include waters (HOH/WAT/TIP3/SOL).",
+    help="Include waters (HOH/WAT/H2O/DOD/TIP/TIP3/SOL).",
 )
 @click.option(
     "--exclude-backbone/--no-exclude-backbone",

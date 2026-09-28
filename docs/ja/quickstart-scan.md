@@ -6,7 +6,7 @@
 
 ## 事前に必要なもの
 
-- 入力構造: PDB/mmCIF、XYZ、または GJF
+- 入力構造: PDB/mmCIF、XYZ、または GJF。以下のコマンドは同梱の [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) にある `1.R.pdb` を使うので、そのディレクトリで実行します。
 - 対象状態に対応した電荷（`-q/--charge` または `-l/--ligand-charge`）・多重度（`-m`）
 
 ## スキャンワークフローの選択
@@ -27,24 +27,24 @@
 入力、抽出、電荷、スキャン原子対応を含む `all` 全体を事前検証します:
 
 ```bash
-pdb2reaction all -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
-  -s '[(1, 5, 1.35)]' --dry-run
+pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
+  -s '[(4360, 4419, 1.60)]' --dry-run
 ```
 
 standalone `scan --print-parsed` はスキャン仕様だけを検証し、`all` 固有の抽出や原子index remappingは検証しません。
 
 ### 基本構文
 
-各リテラルは 3 要素タプル `(atom1, atom2, target_distance_Å)` のリストです。3 番目の要素は必ず **ångström** 単位の目標距離で、ちょうど 3 要素が必要です。1 リテラル = 1 ステージ。
+各リテラルは target tuple のリストです。距離 `(atom1, atom2, target_Å)`、角度 `(atom1, atom2, atom3, target_deg)`、二面角 `(atom1, atom2, atom3, atom4, target_deg)` を書けます。距離は **ångström**、角度は度の単位です。1 リテラル = 1 ステージ。
 
 ```bash
 # 単一ステージ、整数原子インデックス（デフォルトで1-based）
-pdb2reaction all -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 \
- -s '[(1, 5, 1.35)]' -o ./result_scan
+pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 \
+ -s '[(4360, 4419, 1.60)]' -o ./result_scan
 
 # 単一ステージ、PDBセレクタ文字列
-pdb2reaction all -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 \
- -s '[("TYR,285,CA", "SAM,309,C10", 1.35)]' -o ./result_scan
+pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 \
+ -s '[("SAM,320,CS1", "GPP,321,C7", 1.60)]' -o ./result_scan
 ```
 
 全系 PDB/mmCIF から活性部位モデルを抽出する場合は `-c/--center` を指定します。抽出済みクラスターモデル、または XYZ/GJF をそのまま解析する場合は省略します。`-m/--multiplicity` のデフォルトは `1`（一重項）ですが、ここでは明示しています。
@@ -54,11 +54,11 @@ pdb2reaction all -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 \
 複数のリテラルを渡すと、各リテラルが順番に 1 ステージとして実行されます:
 
 ```bash
-# ステージ1: 1つの結合を 1.35 Å に駆動
-# ステージ2: 2つの結合を同時に駆動
-pdb2reaction all -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 -s \
-  '[("TYR,285,CA","SAM,309,C10",1.35)]' \
-  '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]' \
+# ステージ1: メチル基転移の距離を 1.60 Å まで駆動
+# ステージ2: 続いてプロトン移動の距離を 0.90 Å まで駆動
+pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 -s \
+  '[("SAM,320,CS1","GPP,321,C7",1.60)]' \
+  '[("GPP,321,H11","GLU,186,OE2",0.90)]' \
   -o ./result_scan
 ```
 

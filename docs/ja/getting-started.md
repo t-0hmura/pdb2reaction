@@ -77,7 +77,7 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --ther
 | `summary.json` | 反応障壁、エネルギー、結合変化、環境情報 |
 | `summary.log` | ディレクトリツリー付きテキストサマリ |
 | `segments/seg_XX/` | 反応セグメントの後処理結果。R/TS/P 構造は TSOPT・IRC・端点処理の成功後に生成 |
-| `mep_trj.pdb` / `mep.cif` | MEP 軌跡。内部変換した入力の元の鎖・残基 ID は CIF に保持 |
+| `mep_trj.pdb` / `mep_trj.cif` | MEP 軌跡。内部変換した入力の元の鎖・残基 ID は CIF に保持 |
 | `energy_diagram_*.png` | エネルギープロファイル図（電子/Gibbs 補正） |
 
 ```{important}
@@ -96,7 +96,7 @@ pdb2reaction -i 1.R.pdb 3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --ther
 |-----|-----|------|
 | **残基セレクタ** | `'SAM,GPP'`, `'A:123,B:456'` | 複数値はシェル展開防止のためクォート |
 | **電荷マッピング** | `-l 'SAM:1,GPP:-3'` | コロンで名前と電荷を区切り、カンマでエントリを区切る |
-| **原子セレクタ** | `'TYR,285,CA'` または `'A:TYR:285:CA'` | 重複時は位置固定の `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` |
+| **原子セレクタ** | `'SAM,320,CS1'` または `'A:SAM:320:CS1'` | 重複時は位置固定の `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` |
 
 詳細は [CLI 規約](cli-conventions.md) を参照してください。
 

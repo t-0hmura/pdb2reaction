@@ -23,7 +23,7 @@ pdb2reaction scan -i input.pdb -q 0 -m 1 -s scan.yaml -o ./result_scan
 
 ```bash
 # Inline Python literal
-pdb2reaction scan -i input.pdb -q 0 -m 1 -s '[("TYR,285,CA","SAM,309,C10",1.35)]'
+pdb2reaction scan -i input.pdb -q 0 -m 1 -s '[("SAM,320,CS1","GPP,321,C7",1.60)]'
 ```
 
 ```bash
@@ -49,7 +49,7 @@ pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <n
     biasing so the starting point is relaxed.
 3. Parse stage targets from `--scan-lists/-s` (YAML/JSON file or inline literal), then normalize the
     `(i, j)` indices (1-based by default). When the input is a PDB, each entry
-    may be either an integer index or an atom selector string like `'TYR,285,CA'`;
+    may be either an integer index or an atom selector string like `'SAM,320,CS1'`;
     selector fields can be separated by spaces, commas, slashes, backticks, or
     backslashes and may be in any order. For repeated names or numbering, use
     positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`.
@@ -90,7 +90,7 @@ out_dir/ (default:./result_scan/)
 └─ scan.cif # Combined bridge-input CIF trajectory
 ```
 
-- Console summaries of the resolved `geom`, `calc`, `opt`, `bias`, `bond`, and optimizer blocks plus per-stage bond-change reports.
+- Per-stage bond-change reports on the console; `-v 3` also prints the resolved `geom`, `calc`, `opt`, `bias`, `bond`, and optimizer blocks.
 
 ## CLI options
 
@@ -103,7 +103,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `-l, --ligand-charge TEXT` | Either a scalar integer (e.g., `-1`) for the total ligand charge, or a per-residue mapping (e.g., `GPP:-3,SAM:1`) that derives the total from PDB/mmCIF residue metadata. Used when `-q` is omitted (PDB/mmCIF inputs or XYZ/GJF with `--ref-pdb`). | _None_ |
 | `--uma-workers`, `--uma-workers-per-node` | UMA predictor parallelism; `workers_per_node` is forwarded to the parallel predictor. `workers > 1` cannot be combined with an explicit analytical Hessian request. See {ref}`workers-analytical-error`. | `1`, `1` |
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
-| `-s, --scan-lists TEXT` | Scan targets: a YAML/JSON spec file path (recommended) or inline Python literal with `(i,j,targetÅ)` triples or `(i,j,start,end)` 4-tuples for bidirectional scans. Supply multiple literals after a single flag. `i`/`j` can be integer indices, three-field selectors, or positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`. | Required |
+| `-s, --scan-lists TEXT` | Scan targets: a YAML/JSON spec file path (recommended) or inline Python literal with `(i,j,targetÅ)` distance targets, or distance `(i,j,low,high)`, angle `(i,j,k,low,high)`, and dihedral `(i,j,k,l,low,high)` ranges for bidirectional scans. Supply multiple literals after a single flag. `i`/`j` can be integer indices, three-field selectors, or positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`. | Required |
 | `--one-based/--zero-based` | Interpret atom indices as 1- or 0-based. These are mutually exclusive toggle aliases for the same flag (`--one-based` sets it to `True`, `--zero-based` sets it to `False`). | `True` |
 | `--print-parsed/--no-print-parsed` | Print parsed stage tuples after `--scan-lists/-s` resolution. | `False` |
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
@@ -184,17 +184,17 @@ bidirectional two-stage scan; see [Bidirectional scan](#bidirectional-scan-4-tup
 # Concerted: two coordinates move together in one stage
 pdb2reaction scan -i reactant.pdb \
     -q 0 -m 1 \
-    -s '[("Ca RES 10","Cb RES 11",1.6),("H RES 11","O GLU 20",1.0)]' -o result_concerted
+    -s '[("CS1 SAM 320","GPP 321 C7",1.60),("GPP 321 H11","GLU 186 OE2",0.90)]' -o result_concerted
 ```
 
 Pass multiple literals after a single `--scan-lists/-s` flag for a staged scan. Each literal becomes one stage:
 
 ```bash
-# Stage 1: drive one bond to 1.35 Å
-# Stage 2: drive two bonds simultaneously
+# Stage 1: drive the methyl-transfer distance to 1.60 Å
+# Stage 2: then drive the proton transfer to 0.90 Å
 -s \
- '[("TYR,285,CA","SAM,309,C10",1.35)]' \
- '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]'
+ '[("SAM,320,CS1","GPP,321,C7",1.60)]' \
+ '[("GPP,321,H11","GLU,186,OE2",0.90)]'
 ```
 
 Stages run sequentially; each starts from the previous stage's relaxed result.
@@ -228,13 +228,13 @@ The concatenated trajectory is assembled as `start → initial → end`, giving 
 pdb2reaction scan -i input.pdb -q 0 -s '[(12, 45, 1.35, 2.50)]'
 ```
 
-This is equivalent to two manual stages with a geometry reset between them. Mixed 3-tuples and 4-tuples are accepted in the same literal.
+This is equivalent to two manual stages with a geometry reset between them. Inline literals cannot mix 3-tuples and 4-tuples, within one literal or across literals; to combine targets and ranges, list them under `stages:` in a YAML/JSON spec.
 
 The corresponding range forms are `(i,j,k,low,high)` for an angle and
 `(i,j,k,l,low,high)` for a dihedral.
 
 ```{note}
-**Stage counter with 4-tuples.** A 4-tuple expands into **two** stages in the output tree: the `start` pass is written under `stage_NN/` and the `end` pass under `stage_NN+1/`. So if you pass a single 4-tuple as your first literal, you will see `stage_01/` and `stage_02/`, not one combined `stage_01/`. When mixing 3-tuples and 4-tuples, the counter advances by `+1` per 3-tuple and `+2` per 4-tuple.
+**Stage counter with 4-tuples.** A 4-tuple expands into **two** stages in the output tree: the `start` pass is written under `stage_NN/` and the `end` pass under `stage_NN+1/`. So if you pass a single 4-tuple as your first literal, you will see `stage_01/` and `stage_02/`, not one combined `stage_01/`. When a spec stage mixes 3-tuples and 4-tuples, each entry runs as its own stage and the counter advances by `+1` per 3-tuple and `+2` per 4-tuple.
 ```
 
 ## Notes

@@ -63,7 +63,7 @@ Examples:
 
 ```bash
 # One stage, two bonds driven together (concerted SN2):
---scan-lists '[("CS1 SAM 320","C7 GPP 321",1.60),("C7 GPP 321","S SAM 320",3.0)]'
+--scan-lists '[("CS1 SAM 320","C7 GPP 321",1.60),("CS1 SAM 320","SD SAM 320",3.0)]'
 
 # Two stages, one bond each (stepwise mechanism):
 --scan-lists '[("CS1 SAM 320","C7 GPP 321",1.60)]' \

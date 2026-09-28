@@ -573,6 +573,36 @@ assert summary["resumed_from_segment"] == 1
 assert summary["resume_identity"]["schema_version"] == 1
 PY
 
+# test84: a freq Hessian file seeds IRC and each TS path; a file of the wrong size is rejected.
+pdb2reaction freq -i ts.pdb -q 0 --max-write 1 --dump-hess test84_freq/hessian.npy --out-json --out-dir test84_freq > test84_freq.out 2>&1
+python assert_release_result.py hessian-dump test84_freq --hessian-file test84_freq/hessian.npy >> test84_freq.out 2>&1
+pdb2reaction irc -i ts.pdb -q 0 --read-hess test84_freq/hessian.npy --max-cycles 2 --out-json --out-dir test84_irc > test84_irc.out 2>&1
+python assert_release_result.py hessian-read test84_irc >> test84_irc.out 2>&1
+python -c 'import numpy as np; np.save("test84_small.npy", np.eye(6))'
+test84_rc=0
+pdb2reaction irc -i ts.pdb -q 0 --read-hess test84_small.npy --max-cycles 1 --out-dir test84_wrong > test84_wrong.out 2>&1 || test84_rc=$?
+if [ "$test84_rc" -eq 0 ] || ! grep -Fq 'is 6x6; expected' test84_wrong.out; then
+  echo "[smoke] FAIL test84: a Hessian file of the wrong size was not rejected" >> test84_wrong.out
+  exit 1
+fi
+for test84_mode in hess grad; do
+  pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode "$test84_mode" --read-hess test84_freq/hessian.npy --max-cycles 2 --out-dir "test84_tsopt_$test84_mode" > "test84_tsopt_$test84_mode.out" 2>&1
+  grep -Fq '[tsopt] Initial Hessian read from test84_freq/hessian.npy' "test84_tsopt_$test84_mode.out" || { echo "[smoke] FAIL test84: tsopt --opt-mode $test84_mode did not start from --read-hess" >> "test84_tsopt_$test84_mode.out"; exit 1; }
+done
+
+# test85: a converged RS-P-RFO run writes its final Hessian for freq and IRC.
+pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode hess --max-cycles 300 --thresh gau_loose --dump-hess test85_tsopt/ts_hessian.npy --out-json --out-dir test85_tsopt > test85_tsopt.out 2>&1
+python assert_release_result.py hessian-dump test85_tsopt --hessian-file test85_tsopt/ts_hessian.npy >> test85_tsopt.out 2>&1
+pdb2reaction freq -i test85_tsopt/final_geometry.pdb -q 0 --max-write 1 --read-hess test85_tsopt/ts_hessian.npy --out-json --out-dir test85_freq > test85_freq.out 2>&1
+python assert_release_result.py hessian-read test85_freq >> test85_freq.out 2>&1
+pdb2reaction irc -i test85_tsopt/final_geometry.pdb -q 0 --read-hess test85_tsopt/ts_hessian.npy --max-cycles 2 --out-json --out-dir test85_irc > test85_irc.out 2>&1
+python assert_release_result.py hessian-read test85_irc >> test85_irc.out 2>&1
+
+# test86: a converged Dimer run writes its final Hessian for IRC.
+pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode grad --max-cycles 300 --thresh gau_loose --dump-hess test86_dimer/ts_hessian.npy --out-json --out-dir test86_dimer > test86_dimer.out 2>&1
+python assert_release_result.py hessian-dump test86_dimer --hessian-file test86_dimer/ts_hessian.npy >> test86_dimer.out 2>&1
+pdb2reaction irc -i test86_dimer/final_geometry.pdb -q 0 --read-hess test86_dimer/ts_hessian.npy --max-cycles 2 --out-json --out-dir test86_irc > test86_irc.out 2>&1
+python assert_release_result.py hessian-read test86_irc >> test86_irc.out 2>&1
 
 # Numerical analytical-vs-FD agreement for every backend installed in the
 # default strict environment. MACE/AIMNet2 use this same required wrapper in

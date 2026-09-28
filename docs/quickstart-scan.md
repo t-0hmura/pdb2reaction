@@ -6,7 +6,7 @@ Run `pdb2reaction all` from a single structure by defining one or more distance 
 
 ## Prerequisites
 
-- Input structure: PDB/mmCIF; XYZ/GJF is also accepted when extraction is omitted and atom indices are used
+- Input structure: PDB/mmCIF; XYZ/GJF is also accepted when extraction is omitted and atom indices are used. The commands below use `1.R.pdb` from the bundled [`examples/`](https://github.com/t-0hmura/pdb2reaction/tree/main/examples) directory; run them there.
 - Charge (`-q/--charge` or `--ligand-charge/-l`) and multiplicity (`-m`) for the target state
 
 ## Selection among scan workflows
@@ -29,8 +29,8 @@ Validate the complete `all` input, extraction, charge, and scan mapping before
 execution with:
 
 ```bash
-pdb2reaction all -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
-  -s '[(1, 5, 1.35)]' --dry-run
+pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
+  -s '[(4360, 4419, 1.60)]' --dry-run
 ```
 
 Standalone `scan --print-parsed` validates only the scan specification; it does
@@ -38,16 +38,16 @@ not validate `all`-specific extraction or atom-index remapping.
 
 ### Basic syntax
 
-Each literal is a list of 3-tuples `(atom1, atom2, target_distance_Å)`. Exactly three elements per tuple are required; the third is always the target distance in **ångströms**. One literal = one stage.
+Each literal is a list of target tuples: distance `(atom1, atom2, target_Å)`, angle `(atom1, atom2, atom3, target_deg)`, or dihedral `(atom1, atom2, atom3, atom4, target_deg)`. Distances are in **ångströms** and angles in degrees. One literal = one stage.
 
 ```bash
 # Single stage, integer atom indices (1-based by default)
-pdb2reaction all -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 \
- -s '[(1, 5, 1.35)]' -o ./result_scan
+pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 \
+ -s '[(4360, 4419, 1.60)]' -o ./result_scan
 
 # Single stage, PDB selector strings
-pdb2reaction all -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 \
- -s '[("TYR,285,CA", "SAM,309,C10", 1.35)]' -o ./result_scan
+pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 \
+ -s '[("SAM,320,CS1", "GPP,321,C7", 1.60)]' -o ./result_scan
 ```
 
 Use `-c/--center` when an active-site model must be extracted from a full-system
@@ -60,11 +60,11 @@ defaults to `1` (singlet) but is shown explicitly here for clarity.
 Pass multiple literals — each becomes one sequential stage:
 
 ```bash
-# Stage 1: drive one bond to 1.35 Å
-# Stage 2: drive two bonds simultaneously
-pdb2reaction all -i input.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 -s \
-  '[("TYR,285,CA","SAM,309,C10",1.35)]' \
-  '[("TYR,285,CA","SAM,309,C10",2.20),("TYR,285,CB","SAM,309,C11",1.80)]' \
+# Stage 1: drive the methyl-transfer distance to 1.60 Å
+# Stage 2: then drive the proton transfer to 0.90 Å
+pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' -m 1 -s \
+  '[("SAM,320,CS1","GPP,321,C7",1.60)]' \
+  '[("GPP,321,H11","GLU,186,OE2",0.90)]' \
   -o ./result_scan
 ```
 

@@ -102,9 +102,9 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--dft-memory SIZE` | PySCF host-RAM limit, for example `64GB` or `120000MB`; this is not GPU VRAM. | `auto` |
 | `--ref-pdb FILE` | Reference PDB topology to validate atom counts and enable ligand-charge derivation for XYZ/GJF inputs (no output conversion). | _None_ |
 | `--config FILE` | Base YAML configuration file applied before explicit CLI options. | _None_ |
-| `--show-config/--no-show-config` | Print resolved configuration and continue execution. | `False` |
+| `--show-config/--no-show-config` | Print the loaded YAML file and its top-level keys, then continue. | `False` |
 | `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
-| `--dry-run/--no-dry-run` | Validate options and print execution plan without running DFT. | `False` |
+| `--dry-run/--no-dry-run` | Validate options and inputs without running DFT. | `False` |
 
 ## YAML configuration
 

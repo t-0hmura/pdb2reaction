@@ -164,6 +164,29 @@ def check_tsopt(root: Path) -> None:
         raise SystemExit("TS optimization requested/effective optimizer provenance is wrong")
 
 
+def check_hessian_dump(root: Path, hessian_file: Path) -> None:
+    """A freq or tsopt run names its --dump-hess file in result.json."""
+    payload = json.loads((root / "result.json").read_text(encoding="utf-8"))
+    reported = (payload.get("files") or {}).get("hessian_npy")
+    if reported is None or Path(str(reported)).resolve() != hessian_file.resolve():
+        raise SystemExit(f"result does not identify its Hessian dump: {reported!r}")
+    hessian = np.load(hessian_file, allow_pickle=False)
+    if hessian.ndim != 2 or hessian.shape[0] != hessian.shape[1] or hessian.shape[0] % 3:
+        raise SystemExit(f"dumped Hessian has an invalid shape: {hessian.shape}")
+    if not np.all(np.isfinite(hessian)):
+        raise SystemExit("dumped Hessian is not finite")
+    if not np.allclose(hessian, hessian.T):
+        raise SystemExit("dumped Hessian is not symmetric")
+
+
+def check_hessian_read(root: Path) -> None:
+    """A freq or irc --read-hess run reports the file as its Hessian source."""
+    payload = json.loads((root / "result.json").read_text(encoding="utf-8"))
+    source = (payload.get("rigid_projection") or {}).get("hessian_source")
+    if source != "file":
+        raise SystemExit(f"run did not use --read-hess: hessian_source={source!r}")
+
+
 def check_tsopt_optimizer(root: Path, expected_mode: str, expected_optimizer: str) -> None:
     """Assert TS requested/effective optimizer provenance without requiring convergence.
 
@@ -437,7 +460,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "kind",
-        choices=("all", "tsopt", "tsopt-optimizer", "scan-optimizer", "dmf-freeze", "opt-config", "sp-hessian", "irc-never-stop", "path-search-max-depth", "provenance"),
+        choices=("all", "tsopt", "tsopt-optimizer", "scan-optimizer", "dmf-freeze", "opt-config", "sp-hessian", "hessian-dump", "hessian-read", "irc-never-stop", "path-search-max-depth", "provenance"),
     )
     parser.add_argument("root", type=Path)
     parser.add_argument("--require-thermo", action="store_true")
@@ -450,6 +473,7 @@ def main() -> None:
     parser.add_argument("--expected-mode")
     parser.add_argument("--frozen-atoms")
     parser.add_argument("--expected-optimizer")
+    parser.add_argument("--hessian-file", type=Path)
     args = parser.parse_args()
     if args.kind == "all":
         check_all(args.root, args.require_thermo, args.require_dft)
@@ -487,6 +511,12 @@ def main() -> None:
         )
     elif args.kind == "sp-hessian":
         check_sp_hessian(args.root)
+    elif args.kind == "hessian-dump":
+        if args.hessian_file is None:
+            parser.error("hessian-dump requires --hessian-file")
+        check_hessian_dump(args.root, args.hessian_file)
+    elif args.kind == "hessian-read":
+        check_hessian_read(args.root)
     elif args.kind == "irc-never-stop":
         check_irc_never_stop(args.root)
     elif args.kind == "path-search-max-depth":

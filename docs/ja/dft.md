@@ -94,9 +94,9 @@ out_dir/ (デフォルト:./result_dft/)
 | `--dft-memory SIZE` | PySCF host RAM 上限（例: `64GB`、`120000MB`）。GPU VRAM ではありません | `auto` |
 | `--ref-pdb FILE` | XYZ/GJF入力の原子数検証とリガンド電荷導出に使う参照PDBまたはmmCIF topology（出力変換なし） | _None_ |
 | `--config FILE` | 明示的な CLI オプション適用前に読み込むベース YAML | _None_ |
-| `--show-config/--no-show-config` | 解決済み設定を表示して実行を継続 | `False` |
+| `--show-config/--no-show-config` | 読み込んだ YAML ファイルとその最上位の key を表示して実行を継続 | `False` |
 | `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
-| `--dry-run/--no-dry-run` | 実行せずに設定検証と実行計画表示のみ行う | `False` |
+| `--dry-run/--no-dry-run` | 実行せずにオプションと入力を検証する | `False` |
 
 ## YAML 設定
 

@@ -81,7 +81,7 @@ layer graph and may be imported by any layer.
 4. **Bundled-fork edits are supported but high-risk**: preserve upstream attribution, add a regression test for the exact failure mode, and run the matching optimizer/IRC/thermochemistry benchmark. A `[CHEMISTRY-RULE:N]` prefix is required only when an actual marked chemistry rule changes.
 
 ## See also
-- Full architecture (~320 lines): [`docs/architecture.md`](../../docs/architecture.md)
+- Full architecture: [`docs/architecture.md`](../../docs/architecture.md)
 - Contributor recipe + per-step gate cycle: [`CONTRIBUTING.md`](../../CONTRIBUTING.md)
 - Engineering-marker coverage check: [`.github/scripts/check_engineering_markers.py`](../../.github/scripts/check_engineering_markers.py)
 - Import-graph gate (no product cycle / no `core`·`domain` → `workflows` / no `pysisyphus` → product): [`.github/scripts/check_import_graph.py`](../../.github/scripts/check_import_graph.py) (tests in `tests/test_import_graph.py`)

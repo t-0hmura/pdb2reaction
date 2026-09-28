@@ -138,7 +138,7 @@ pdb2reaction runs the whole pipeline on a cluster model (the active-site cluster
 with a single MLIP backend, so pass the *same* `-l` / `-q` / `-m` on every
 stage.
 After each stage, read
-its `result.json` / `summary.json` `status` and gate before continuing.
+its `result.json` gate fields (for `all`, `summary.json["scientific_status"]`) before continuing.
 
 **Stage 0 — prep** (optional): if you start from full structures, cut the active-site
 cluster with `-c 'RES,...' -r 2.6` (or pre-extract; see

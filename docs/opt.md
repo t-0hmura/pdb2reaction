@@ -67,7 +67,7 @@ out_dir/
 ├─ optimization.cif # Bridge-input trajectory with original IDs restored
 └─ restart*.yml # Optional restarts when opt.dump_restart is set
 ```
-The console prints the resolved `geom`, `calc`, `opt`, and `lbfgs`/`rfo` blocks, along with cycle-by-cycle progress and total runtime.
+The console prints cycle-by-cycle progress and total runtime; `-v 3` also prints the resolved `geom`, `calc`, `opt`, and `lbfgs`/`rfo` blocks.
 
 See {ref}`CLI Conventions: Configuration precedence <configuration-precedence>` for the full resolution order.
 
@@ -98,9 +98,9 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `-o, --out-dir TEXT` | Output directory for all files. | `./result_opt/` |
 | `--thresh TEXT` | Override convergence preset (`gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`). | `gau` |
 | `--config FILE` | Base YAML configuration file. | _None_ |
-| `--show-config/--no-show-config` | Print resolved YAML layer information before execution. | `False` |
+| `--show-config/--no-show-config` | Print the loaded YAML file and its top-level keys, then continue. | `False` |
 | `--out-json/--no-out-json` | Write a machine-readable `result.json` to `out_dir`. See [JSON Output Schema](json-output.md) for the schema. | `False` |
-| `--dry-run/--no-dry-run` | Validate options and print execution plan without running optimization. | `False` |
+| `--dry-run/--no-dry-run` | Validate options and inputs without running optimization. | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP backend, or optional DFT calculator. | `uma` |
 ## YAML configuration
 

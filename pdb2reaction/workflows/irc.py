@@ -70,9 +70,6 @@ def _directional_endpoint_energy_fields(all_energies: Any, ts_energy: Any) -> Di
         "energy_ts_hartree": ts,
         "energy_last_hartree": last,
         "endpoint_energy_orientation": "finished_first_to_finished_last",
-        # Compatibility aliases: directional only, not chemical assignments.
-        "energy_reactant_hartree": first,
-        "energy_product_hartree": last,
     }
 
 
@@ -412,14 +409,23 @@ def _echo_convert_trj_if_exists(
     "show_config",
     default=False,
     show_default=True,
-    help="Print resolved configuration and continue execution.",
+    help="Print the loaded YAML file and its top-level keys, then continue.",
 )
 @click.option(
     "--dry-run/--no-dry-run",
     "dry_run",
     default=False,
     show_default=True,
-    help="Validate options and print the execution plan without running IRC.",
+    help="Validate options and inputs without running IRC.",
+)
+@click.option(
+    "--read-hess",
+    "read_hess",
+    type=click.Path(exists=True, dir_okay=False),
+    default=None,
+    help="Start from the Hessian in this .npy file (e.g. from freq or tsopt "
+         "--dump-hess): the Cartesian Hessian of the input geometry in "
+         "Hartree/bohr^2, for all atoms or only the movable ones.",
 )
 @click.option(
     "--out-json/--no-out-json",
@@ -467,6 +473,7 @@ def cli(
     config_yaml: Optional[Path],
     show_config: bool,
     dry_run: bool,
+    read_hess: Optional[str],
     out_json: bool,
     backend: str,
     solvent: str,
@@ -626,6 +633,10 @@ def cli(
             )
             out_dir_path = Path(irc_cfg["out_dir"]).resolve()
             _validate_resolved_irc_config(irc_cfg)
+            if read_hess and irc_cfg.get("hessian_init", "calc") != "calc":
+                raise click.BadParameter(
+                    "--read-hess needs hessian_init: calc.", param_hint="--read-hess"
+                )
             if show_config:
                 click.echo(
                     pretty_block(
@@ -667,6 +678,7 @@ def cli(
                     ref_pdb,
                     config_yaml,
                     override_yaml,
+                    Path(read_hess) if read_hess else None,
                 ),
             )
 
@@ -693,23 +705,50 @@ def cli(
             geometry.set_calculator(calc)
             echo_resolved_device()
 
-            # Seed cached TS Hessian if available (from tsopt in ``all`` workflow)
+            # Seed the initial Hessian.
+            # Priority: --read-hess file > Hessian from tsopt in ``all`` > fresh.
             from pdb2reaction.io.hessian_cache import (
                 discard as _hess_discard,
                 load_matching as _hess_load_matching,
                 store as _hess_store,
                 identity_from_context as _hess_identity,
             )
-            # Reuse the tsopt TS Hessian only on a full evaluation-identity
-            # match; the all-workflow may pass the TS through a three-decimal
-            # PDB, so the coordinate field keeps the wider bohr tolerance.
-            cached = _hess_load_matching(
-                "ts",
-                _hess_identity(geometry, calc_cfg, role="ts"),
-                atol=1.1e-3,
-            )
+            if read_hess:
+                from pdb2reaction.io.hessian_file import load_hessian_file
+
+                _frozen = set(int(i) for i in calc_cfg.get("freeze_atoms") or [])
+                _dofs = [
+                    3 * atom + axis
+                    for atom in range(len(geometry.atomic_numbers))
+                    if atom not in _frozen
+                    for axis in range(3)
+                ]
+                try:
+                    _loaded = load_hessian_file(
+                        read_hess, n_atoms=len(geometry.atomic_numbers), active_dofs=_dofs
+                    )
+                except ValueError as exc:
+                    raise click.ClickException(str(exc)) from exc
+                cached = {
+                    "hessian": _loaded,
+                    "active_dofs": None if len(_dofs) == geometry.cart_coords.size else _dofs,
+                }
+                _hessian_source = "file"
+                emit(f"[irc] Initial Hessian read from {read_hess}.", narrative=True)
+                del _loaded
+            else:
+                # Reuse the tsopt TS Hessian only on a full evaluation-identity
+                # match; the all-workflow may pass the TS through a three-decimal
+                # PDB, so the coordinate field keeps the wider bohr tolerance.
+                cached = _hess_load_matching(
+                    "ts",
+                    _hess_identity(geometry, calc_cfg, role="ts"),
+                    atol=1.1e-3,
+                )
+                _hessian_source = "fresh" if cached is None else "cache"
+                if cached is not None:
+                    emit("[irc] Reusing cached TS Hessian from tsopt.", detail=True)
             if cached is not None:
-                emit("[irc] Reusing cached TS Hessian from tsopt.", detail=True)
                 _dev = calc_cfg.get("device", "auto")
                 if _dev == "auto":
                     _dev = "cuda" if torch.cuda.is_available() else "cpu"
@@ -955,7 +994,7 @@ def cli(
                             "active" if len(eulerpc._act_atoms) < len(geometry.atoms) else "full"
                         ),
                         "hessian_shape": list(eulerpc.init_hessian_shape),
-                        "hessian_source": "cache" if cached is not None else "fresh",
+                        "hessian_source": _hessian_source,
                         "hessian_representation": "cartesian-unweighted-unprojected",
                     },
                     "n_freeze_atoms": len(geom_cfg.get("freeze_atoms", [])),

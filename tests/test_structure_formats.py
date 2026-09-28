@@ -1358,3 +1358,34 @@ def test_long_mmcif_resname_matches_ligand_charge_mapping(tmp_path: Path) -> Non
         assert (charge, spin) == (-1, 1)
     finally:
         prepared.cleanup()
+
+
+def test_mep_trajectory_cif_companion_is_a_path_deliverable(tmp_path: Path) -> None:
+    from pdb2reaction.core.utils import convert_xyz_to_pdb, prepare_input_structure
+    from pdb2reaction.io.structure_formats import unregister_coordinate_template
+    from pdb2reaction.workflows._run_session import (
+        InvocationManifest,
+        claim_path_deliverables,
+        declare_path_deliverables,
+    )
+
+    source = tmp_path / "input.cif"
+    _write_minimal_cif(source)
+    path_dir = tmp_path / "_work" / "path_opt"
+    path_dir.mkdir(parents=True)
+    manifest = InvocationManifest()
+    declare_path_deliverables(manifest, path_dir)
+    xyz = path_dir / "mep_trj.xyz"
+    xyz.write_text(
+        "2\nf1\nC 0.0 1.0 2.0\nO 1.0 1.0 2.0\n2\nf2\nC 0.1 1.0 2.0\nO 1.1 1.0 2.0\n",
+        encoding="utf-8",
+    )
+    out_pdb = path_dir / "mep_trj.pdb"
+    prepared = prepare_input_structure(source)
+    try:
+        convert_xyz_to_pdb(xyz, prepared.source_path, out_pdb)
+        claimed = claim_path_deliverables(manifest)
+        assert claimed["mep_trj.cif"] == out_pdb.with_suffix(".cif")
+    finally:
+        unregister_coordinate_template(out_pdb)
+        prepared.cleanup()

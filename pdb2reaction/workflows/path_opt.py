@@ -850,14 +850,14 @@ def _optimize_single(
     "show_config",
     default=False,
     show_default=True,
-    help="Print resolved configuration and continue execution.",
+    help="Print the loaded YAML file and its top-level keys, then continue.",
 )
 @click.option(
     "--dry-run/--no-dry-run",
     "dry_run",
     default=False,
     show_default=True,
-    help="Validate options and print the execution plan without running path optimization.",
+    help="Validate options and inputs without running path optimization.",
 )
 @click.option(
     "--out-json/--no-out-json",

@@ -66,7 +66,7 @@ pdb2reaction path-search -i reactant.pdb -i product.pdb -q 0 -m 1 \
 out_dir/ (デフォルト:./result_path_search/)
 ├─ mep_trj.xyz # 主要 MEP 軌跡
 ├─ mep_trj.pdb # PDB/mmCIF topology入力で変換有効時
-├─ mep.cif # mmCIF/oversized-PDB入力。元IDを復元
+├─ mep_trj.cif # mmCIF/oversized-PDB入力。元IDを復元
 ├─ mep.gjf # Gaussian テンプレート検出時に対応する Gaussian
 ├─ mep_w_ref.pdb # 静的全系テンプレートへ活性部位経路を挿入（--write-ref-merge）
 ├─ mep_w_ref.cif # 確認用bridge-template companion（--write-ref-merge）
@@ -145,7 +145,7 @@ out_dir/ (デフォルト:./result_path_search/)
 | `--dump/--no-dump` | GSM と単一構造 optimizer の軌跡を dump。DMF path solver では受理するが未使用。restart YAML は YAML で有効化した場合のみ書き出す | `False` |
 | `--convert-files/--no-convert-files` | XYZ/TRJ → PDB/CIF/GJFを切り替え。bridge入力は元IDのCIFを追加し、XYZ/GJFは参照topologyなしではPDBを生成しません。 | `True` |
 | `--config FILE` | 明示 CLI 指定より前に適用されるベース YAML | _None_ |
-| `--show-config/--no-show-config` | 解決済み設定（YAML レイヤ情報を含む）を表示して実行継続 | `False` |
+| `--show-config/--no-show-config` | 解決済みの設定ブロックと読み込んだ YAML ファイルを表示して実行を継続 | `False` |
 | `--dry-run/--no-dry-run` | 実行せずに検証と実行計画表示のみを行う | `False` |
 
 設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。

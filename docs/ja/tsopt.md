@@ -99,7 +99,7 @@ pdb2reaction tsopt -i ts_cand.pdb -q 0 -m 1 \
 - **MLIP Hessian（デフォルト: UMA）**: `--hessian-calc-mode` で解析的 Hessian と有限差分 Hessian を切り替えます。いずれも活性（PHVA）部分空間を考慮します。凍結原子が存在する場合、MLIP バックエンドは活性ブロックのみを返すことがあります。Hessian 評価モードの詳細は {ref}`ja-hessian-evaluation` を参照してください。
 - **Dimer モード詳細**:
  - Hessian Guided Dimer 段階は、active部分空間のexact Hessian を周期的に評価してダイマー方向を更新します。剛体モード処理は constrained に固定され、凍結anchorを動かさない全系剛体運動だけを除去します。保存・回転・試行する全方向で凍結Cartesian成分をゼロに保ち、中心外のforce評価でも凍結座標を中心imageと厳密に一致させます。`root == 0` のときは最小固有対に `torch.lobpcg` を優先し、失敗時は `torch.linalg.eigh` にフォールバックします。
- - `--flatten` が有効な場合、フラット化ループはΔx とΔg を用い、Bofill（SR1/MS ↔ PSB ブレンド; `hessian_dimer.flatten_loop_bofill` で切替）で活性 Hessian を更新します。各ループは虚振動数モード推定 → 1 回フラット化 → ダイマー方向再更新 → dimer+L-BFGS マイクロ区間 → （任意で）Bofill 更新を実行します。虚振動数モードが 1 つになったら最終的な正確な Hessian で振動解析を行います。
+ - `--flatten` が有効な場合、フラット化ループはΔx とΔg を用い、Bofill（SR1/MS ↔ PSB ブレンド; `hessian_dimer.flatten_loop_bofill` で切替）で活性 Hessian を更新します。各ループは虚振動数モード推定 → 1 回フラット化 → ダイマー方向再更新 → dimer+L-BFGS マイクロ区間 → （任意で）Bofill 更新を実行します。虚振動数モードが 1 つになるとループを抜けます。終端の PHVA は、数値収束またはエネルギープラトー停止のときに最終構造で 1 回だけ行い、max cycles で未収束のときは行いません。
  - `root != 0` の場合は初期ダイマー方向のみその root を使用し、以降の更新は最も負のモード（`root = 0`）に従います。
 - **RS-I-RFO モード**: RS-I-RFO を実行し、任意の Hessian 参照や R+S 分割セーフガード、マイクロサイクル制御は `rsirfo` セクションで設定します。`--flatten` が有効で収束後も虚振動数モードが複数残る場合、追加モードをフラット化して RS-I-RFO を再実行し、虚振動数モードが 1 つになるか上限に達するまで繰り返します。
 - **モード出力と変換**: 選択した基準で虚振動と分類したモードを `vib/imag_*_trj.xyz` に書き出します。変換が有効な場合、PDB入力はPDB companion、mmCIF／oversized-PDB入力はPDBと元IDを復元したCIFを出力します。Gaussian templateでは最終構造のみ`.gjf`を生成します。
@@ -169,7 +169,7 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
 | `--ref-mode PATH` | `.npz` / `.npy` / 空白区切りtextのCartesian 3N参照候補（単一vectorまたは2次元table）。Hessian root identity/overlapを案内するだけでHessian自体は置換せず、Dimerでは非対応。`all`がHessian TS optimizerへMEPから供給 | _None_ |
 | `--flatten/--no-flatten` | Dimer と RS-P-RFO / RS-I-RFO / TRIM Hessian family の余剰虚振動モード flatten を有効化。`--ref-mode` は保持する負モードを特定するが、それ自体では flatten を有効化しない | `False` |
 | `--coord-type TEXT` | 最適化座標系（`cart` / `redund` / `dlc` / `tric`）。`cart` がデフォルトです。`dlc` は条件付けを変えますが、どちらも一律に高速・堅牢ではないため問題のseedで比較してください。Hessian 系`tsopt`は4種類すべて、`path-opt` / `path-search`は`cart` / `dlc`のみ受け付けます | `cart` |
-| `--precision [fp32\|fp64]` | MLIP バックエンド精度。バックエンド固有のキー（UMA `precision` / ORB `precision` / MACE `default_dtype`。`aimnet2`: `fp32` は no-op、`fp64` は拒否）へ振り分け。対象系で対応精度を比較してください。{ref}`再現性: GPU クラスによる精度の選択 <ja-precision-by-gpu-class>` を参照 | バックエンドデフォルト (uma `fp32`、orb・mace `fp64`) |
+| `--precision [fp32\|fp64]` | MLIP バックエンド精度。バックエンド固有のキー（UMA `precision` / ORB `precision` / MACE `default_dtype`。`aimnet2`: `fp32` は no-op、`fp64` は拒否）へ振り分け。対象系で対応精度を比較してください。{ref}`再現性: backend と用途による精度の選択 <ja-precision-by-gpu-class>` を参照 | バックエンドデフォルト (uma `fp32`、orb・mace `fp64`) |
 | **閾値とサイクル** | | |
 | `--thresh TEXT` | 収束プリセットの上書き（`gau_loose`、`gau`、`gau_tight`、`gau_vtight`、`baker`、`never`） | `baker` |
 | `--max-cycles INT` | `opt.max_cycles` に渡されるマクロサイクル上限 | `100000` |
@@ -179,8 +179,10 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
 | `--dump/--no-dump` | 軌跡をダンプ | `False` |
 | `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 | `--config FILE` | 明示 CLI オプションより前に適用するベース YAML 設定ファイル | _None_ |
-| `--show-config/--no-show-config` | 解決後の設定レイヤーを表示して実行を継続 | `False` |
-| `--dry-run/--no-dry-run` | 実行せずに入力/設定を検証し、実行計画を表示 | `False` |
+| `--show-config/--no-show-config` | 読み込んだ YAML ファイルとその最上位の key を表示して実行を継続 | `False` |
+| `--read-hess PATH` | Hessian を計算せず、NumPy の `.npy` ファイル（`freq`・`tsopt` の `--dump-hess` で書いたものなど。形式は [`freq`](freq.md)）から初期 Hessian を読む。RS-P-RFO・RS-I-RFO・TRIM では `rsirfo.hessian_init: calc`（デフォルト）も必要 | _None_ |
+| `--dump-hess PATH` | 最終構造の Hessian を NumPy の `.npy` 配列として保存する。`freq`・`tsopt`・`irc` の `--read-hess` や、ほかのプログラムで使える。最終 Hessian を計算したときだけ書く | _None_ |
+| `--dry-run/--no-dry-run` | 実行せずにオプションと入力を検証する | `False` |
 
 (ja-flatten-precedence-caveat)=
 ### `--flatten` 優先順位の注意

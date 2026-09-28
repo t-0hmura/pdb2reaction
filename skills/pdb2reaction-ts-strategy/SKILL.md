@@ -134,4 +134,4 @@ on the **same chemical composition**, keep one common atom set and order.
 
 - `pdb2reaction-cli/SKILL.md` — per-subcommand flags (`scan` / `tsopt` / `path-search` / `freq` / `irc`).
 - `pdb2reaction-workflows-output/SKILL.md` — six canonical workflows, R/TS/P paths, `--deterministic`.
-- docs `tsopt.md` (TS routes / imaginary-mode fix / controlled comparison), `scan.md` (staged vs concerted, barrier direction), `reproducibility.md` (precision by GPU class).
+- docs `tsopt.md` (TS routes / imaginary-mode fix / controlled comparison), `scan.md` (staged vs concerted, barrier direction), `reproducibility.md` (precision by backend and purpose).

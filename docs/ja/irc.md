@@ -17,7 +17,7 @@ pdb2reaction irc -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <nu
  [--freeze-links/--no-freeze-links] \
  [--out-dir DIR] [--config FILE] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE] \
- [--hessian-calc-mode Analytical|FiniteDifference] \
+ [--hessian-calc-mode Analytical|FiniteDifference] [--read-hess FILE] \
  [--show-config] [--dry-run]
 ```
 
@@ -124,11 +124,12 @@ Hessian を含まず、`result.json.files` にも登録しません。
 | `--convert-files/--no-convert-files` | 参照PDB/mmCIF topologyがある場合の XYZ/TRJ → PDB/CIF を切り替え | `True` |
 | `--ref-pdb FILE` | XYZ/GJF入力に使用する参照PDBまたはmmCIF topology | _None_ |
 | `--hessian-calc-mode CHOICE` | MLIP Hessian モード。明示値は YAML `calc.hessian_calc_mode` より優先 | `FiniteDifference` |
+| `--read-hess PATH` | Hessian を計算せず、NumPy の `.npy` ファイル（`freq`・`tsopt` の `--dump-hess` で書いたものなど）から初期 Hessian を読む。`irc.hessian_init: calc`（デフォルト）が必要 | _None_ |
 | `--config FILE` | 明示 CLI 適用前に読み込むベース YAML | _None_ |
-| `--show-config/--no-show-config` | 解決済み YAML レイヤー/設定を表示して続行 | `False` |
+| `--show-config/--no-show-config` | 読み込んだ YAML ファイルとその最上位の key を表示して実行を継続 | `False` |
 | `--out-json/--no-out-json` | `out_dir` に機械可読な `result.json` を書き出す。スキーマは [JSON 出力スキーマ](json-output.md) を参照 | `False` |
 | `-b, --backend {uma,orb,mace,aimnet2,dft}` | MLIP バックエンド（任意で `dft`） | `uma` |
-| `--dry-run/--no-dry-run` | 実行せずに検証と実行計画のみ表示 | `False` |
+| `--dry-run/--no-dry-run` | 実行せずにオプションと入力を検証する | `False` |
 
 ## YAML 設定
 
@@ -154,6 +155,7 @@ calc:
 - MLIP バックエンド（デフォルト: UMA）は IRC 全体で再利用されます。`step_length` を大きくし過ぎると EulerPC が不安定になることがあります。ほぼ直ちに停止する分岐は、まず小さい `--step-size`（例: `0.05`）で再試行してください。
 - `--never-stop` はデフォルトOFFです。有効時は物理的端点判定で停止せずcycle上限まで進むため、軌跡を確認し、端点を最適化・検証してください。
 - `--freeze-links` が有効な場合、キャップ水素の親原子が自動的に凍結されます（{ref}`キャップ水素と凍結原子 <ja-link-hydrogen-and-frozen-atoms>` を参照）。
+- `--read-hess` は [`freq`](freq.md) と同じ `.npy` ファイル（全原子か、動ける原子だけ）を受け、確かめるのは大きさ・対称・有限だけです。ファイルから読んだときの `result.json["rigid_projection"]["hessian_source"]` は `"file"` です。
 - `result.json["rigid_projection"]`にtreatment、effective rank、初期 Hessian のsourceとshapeを記録します。詳細は[凍結原子](freeze-atoms.md#凍結境界での剛体モード)を参照してください。
 
 ## 関連項目

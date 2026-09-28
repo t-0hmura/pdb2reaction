@@ -4184,7 +4184,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "include_h2o",
     default=True,
     show_default=True,
-    help="Include waters (HOH/WAT/TIP3/SOL) in the active site model.",
+    help="Include waters (HOH/WAT/H2O/DOD/TIP/TIP3/SOL) in the active site model.",
 )
 @click.option(
     "--exclude-backbone/--no-exclude-backbone",
@@ -8295,7 +8295,7 @@ def cli(
                 "n_images": summary.get("n_images"),
                 "n_segments": summary.get("n_segments"),
                 "traj_pdb": str(out_dir / "mep_trj.pdb") if (out_dir / "mep_trj.pdb").resolve(strict=False) in current_public_set else None,
-                "traj_cif": str(out_dir / "mep.cif") if (out_dir / "mep.cif").resolve(strict=False) in current_public_set else None,
+                "traj_cif": str(out_dir / "mep_trj.cif") if (out_dir / "mep_trj.cif").resolve(strict=False) in current_public_set else None,
                 "mep_plot": str(out_dir / "energy_diagram_MEP.png") if (out_dir / "energy_diagram_MEP.png").resolve(strict=False) in current_public_set else None,
                 "diagram": diag_for_log,
             }
@@ -8443,7 +8443,7 @@ def cli(
             "energy_diagram_MEP.png",
             "energy_diagram_mep.png",
             "mep_trj.pdb",
-            "mep.cif",
+            "mep_trj.cif",
             "mep_w_ref.pdb",
             "mep_w_ref.cif",
             "mep_trj.xyz",

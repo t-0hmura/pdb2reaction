@@ -45,8 +45,8 @@ Options:
                                   is treated as 0.001 angstrom (effectively
                                   off).  [default: 0; x>=0.0]
   --include-h2o / --no-include-h2o
-                                  Include waters (HOH/WAT/TIP3/SOL).  [default:
-                                  include-h2o]
+                                  Include waters (HOH/WAT/H2O/DOD/TIP/TIP3/SOL).
+                                  [default: include-h2o]
   --exclude-backbone / --no-exclude-backbone
                                   Delete main-chain atoms from amino acids
                                   outside the extraction centers.  [default: no-

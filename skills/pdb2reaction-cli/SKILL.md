@@ -61,11 +61,11 @@ therefore workflow paths, not a claim that CIF metadata is discarded.
 | `-b, --backend` | Calculator backend: `uma` / `orb` / `mace` / `aimnet2` / `dft` |
 | `-o, --out-dir` | Output directory, subcommand-specific default |
 | `--config` | YAML configuration file applied before CLI flags |
-| `--show-config` | Print the resolved configuration, then **continue** with the full run |
-| `--dry-run` | Validate options and print the execution plan, then exit before MLIP/DFT stages. Special case: `all -c/--center ... --dry-run` runs extraction in a temporary directory so it can validate the derived charge and electron parity; it does not run scan/MEP/TSOPT/IRC/freq/DFT. |
+| `--show-config` | Print the loaded YAML file and its top-level keys (`all`, `path-search`, and `sp` print the resolved settings), then **continue** with the full run |
+| `--dry-run` | Validate options and inputs, then exit before MLIP/DFT stages. Special case: `all -c/--center ... --dry-run` runs extraction in a temporary directory so it can validate the derived charge and electron parity; it does not run scan/MEP/TSOPT/IRC/freq/DFT. |
 | `--help-advanced` | Reveal hidden / advanced flags |
 | `--ref-pdb` | Reference PDB/mmCIF used to derive residue context for XYZ/GJF inputs while retaining their coordinates |
-| `--solvent` | Computationally expensive xTB correction: `E_xTB(solvent) - E_xTB(vacuum)`. Intended mainly for small-molecule solution calculations; `none` disables it. See `pdb2reaction-install-backends/xtb.md`. |
+| `--solvent` | MLIP backends: computationally expensive xTB correction `E_xTB(solvent) - E_xTB(vacuum)`, intended mainly for small-molecule solution calculations. `-b dft` and the `dft` subcommand: native PySCF PCM/SMD (`--solvent-model`). `none` disables it. See `pdb2reaction-install-backends/xtb.md`. |
 
 For calculation commands, explicit `-q` takes precedence over
 `-l 'RES:Q'` derivation, then config/defaults. This includes

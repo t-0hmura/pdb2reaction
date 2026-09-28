@@ -118,6 +118,11 @@ def _runner(tmp_path, monkeypatch, *, stalled):
     runner.saddle_order_verified = False
     runner.prepared_input = None
     runner.ref_pdb = None
+    runner.initial_hessian = None
+    runner._raw_hessian_cache_cpu = None
+    runner._raw_hessian_coords_cpu = None
+    runner.stored_hessians = []
+    runner._store_ts_hessian = runner.stored_hessians.append
 
     hessian_calls = []
     mode_exports = []
@@ -171,6 +176,7 @@ def test_dimer_max_cycles_saves_final_structure_and_skips_phva(
     runner.run()
 
     assert len(hessian_calls) == 1
+    assert runner.stored_hessians == []
     assert mode_exports == []
     assert runner.n_imaginary_modes is None
     assert runner.hessian_status == "skipped"
@@ -188,12 +194,23 @@ def test_dimer_plateau_runs_terminal_phva(
     runner.run()
 
     assert len(hessian_calls) == 2
+    assert len(runner.stored_hessians) == 1
     assert mode_exports == [True]
     assert runner.n_imaginary_modes == 1
     assert runner.hessian_status == "completed"
     assert (tmp_path / "final_geometry.xyz").is_file()
     assert "ERROR: Not converged." not in capsys.readouterr().err
     assert runner.is_stalled is True
+
+
+def test_dimer_read_hessian_replaces_the_initial_evaluation(monkeypatch, tmp_path):
+    runner, hessian_calls, _ = _runner(tmp_path, monkeypatch, stalled=True)
+    runner.initial_hessian = {"hessian": 2.0 * np.eye(3), "active_dofs": [0, 1, 2]}
+
+    runner.run()
+
+    assert hessian_calls == [True]
+    assert torch.equal(runner._raw_hessian_cache_cpu, 2.0 * torch.eye(3, dtype=torch.float64))
 
 
 @pytest.mark.parametrize("key,value", [

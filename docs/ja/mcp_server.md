@@ -102,11 +102,13 @@ Hessianの正定値性を追加で要求します。これは積分の停止診�
 `irc_step_size` / `irc_never_stop` として転送し、TS recovery 用の `flatten` と
 `refine_path` も公開します。
 
-`find_transition_state`（CLI: `pdb2reaction tsopt`）は `--opt-mode` により
-代替の TS オプティマイザも公開しています。
+`find_transition_state`（CLI: `pdb2reaction tsopt`）は `opt_mode`（CLI の `--opt-mode`）で
+TS オプティマイザを選びます。
 
-- `opt_mode="trim"` — Helgaker (1991) の trust-region image-minimization TS opt
-- `opt_mode="rsprfo"` — Banerjee (1985) の restricted-step P-RFO TS opt
+- `opt_mode="hess"`（既定、`"rsprfo"` と同じ）— Banerjee (1985) の restricted-step P-RFO
+- `opt_mode="grad"` / `"dimer"` — Hessian を使う Dimer
+- `opt_mode="trim"` — Helgaker (1991) の trust-region image minimization
+- `opt_mode="rsirfo"` — RS-I-RFO
 
 ## クライアント設定
 

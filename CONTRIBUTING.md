@@ -87,7 +87,7 @@ cover common contributor changes.
 | 5 | Add a docs page `docs/myaction.md` (and `docs/ja/myaction.md` if you maintain the JP set); add a unit test in `tests/test_myaction.py` | new files |
 
 **Gates that catch mistakes**: gate stage 1 exercises the unit/regression test;
-stage 3 catches registry/help drift (including boolean registration); stage 4
+stage 4 catches registry/help drift (including boolean registration); stage 5
 must cover the new command when it belongs to the canonical smoke surface.
 
 **Note on absolute paths**: `_LAZY_SUBCOMMANDS` entries MUST use **absolute** module paths (`pdb2reaction.workflows.myaction`). Relative dotted strings (`".myaction"`) silently break subcommand discovery if `default_group.py` ever moves; see `docs/architecture.md` §5.5.
@@ -99,13 +99,13 @@ must cover the new command when it belongs to the canonical smoke surface.
 | step | action | file |
 |---|---|---|
 | 1 | Create `pdb2reaction/backends/xyz.py` with `XYZCalculator(MLIPCalculator)` (pysisyphus path) and `XYZASECalculator(...)` (ASE path) | new file in L4a |
-| 2 | Subclass `MLIPCalculator` (`backends/base.py:120`) and implement `_compute_energy_forces_ev(elem, coord_ang)`; the base supplies the pysis calculator contract and finite-difference Hessian assembly. Implement the separate ASE adapter in the backend module (see `backends/uma.py`) | `pdb2reaction/backends/base.py`, `pdb2reaction/backends/xyz.py` |
+| 2 | Subclass `MLIPCalculator` (`backends/base.py`) and implement `_compute_energy_forces_ev(elem, coord_ang)`; the base supplies the pysis calculator contract and finite-difference Hessian assembly. Implement the separate ASE adapter in the backend module (see `backends/uma.py`) | `pdb2reaction/backends/base.py`, `pdb2reaction/backends/xyz.py` |
 | 3 | Register in `BACKEND_REGISTRY` dict with `module / pysis_cls / ase_cls` keys, and add the accepted-kwargs set to `_BACKEND_ACCEPTED_KEYS` and `_ASE_ACCEPTED_KEYS` | `pdb2reaction/backends/__init__.py` |
 | 4 | For `--backend auto`, add the `xyz` import probe to `_BACKEND_AVAILABILITY_MODULES` and add `xyz` to the `resolve_backend` fallback tuple | `pdb2reaction/backends/__init__.py` |
 | 5 | Document model identifiers, install command, accepted kwargs in `docs/backends.md`; add a smoke entry in `tests/smoke/run.sh` | `docs/backends.md`, `tests/smoke/run.sh` |
 
 **Gates that catch mistakes**: gate stage 2 confirms the external SDK import
-stays inside `backends/`; gate stage 4 exercises the backend end to end after
+stays inside `backends/`; gate stage 5 exercises the backend end to end after
 the recipe's smoke entry (step 5) is added.
 
 ### 3.3 Add an output format
@@ -121,7 +121,7 @@ the recipe's smoke entry (step 5) is added.
 | 5 | Add docs in `docs/json-output.md` + a unit test for round-trip serialisation | `docs/json-output.md`, new test |
 
 **Gates that catch mistakes**: the unit test in step 5 checks the writer; add
-gate-stage-4 smoke coverage when the artefact belongs to the canonical smoke
+gate-stage-5 smoke coverage when the artefact belongs to the canonical smoke
 surface. Any downstream-parser-visible change is governed by §1.4.
 
 ### 3.4 Add a workflow stage
@@ -160,7 +160,7 @@ These are **hard constraints** enforced by the release process. Violating them e
 
 ### 4.1 Chemistry rules
 
-The reaction-path correctness rules listed in [`docs/architecture.md`](docs/architecture.md) §5.1 must not be reordered, simplified, or factored out. They are marked with `# CHEMISTRY-RULE:N` inline comments and `# DOMAIN_PURE` module-docstring markers. The CI gate `.github/scripts/check_engineering_markers.py` enforces marker completeness and confines MLIP-only SDK imports (`fairchem`, `orb_models`, `mace`, `aimnet`) to the `backends/` layer. The three rules are #4 (gpu4pyscf `rks_lowmem`) and #5 (def2 auto-ECP) in `workflows/dft.py`, and #7 (`bofill_update` advanced-indexing) in `workflows/tsopt.py`.
+The reaction-path correctness rules listed in [`docs/architecture.md`](docs/architecture.md) §5.1 must not be reordered, simplified, or factored out. They are marked with `# CHEMISTRY-RULE:N` inline comments and `# DOMAIN_PURE` module-docstring markers. The CI gate `.github/scripts/check_engineering_markers.py` enforces marker completeness and confines MLIP-only SDK imports (`fairchem`, `orb_models`, `mace`, `aimnet`) to the `backends/` layer. The three rules are #4 (gpu4pyscf `rks_lowmem`) in `core/dft_settings.py`, #5 (def2 auto-ECP) in `workflows/dft.py`, and #7 (`bofill_update` advanced-indexing) in `workflows/tsopt.py`.
 
 Use the grep recipe before any patch:
 
@@ -220,7 +220,7 @@ The prefix identifies the expected scope and the gate cycle stage to exercise.
 | prefix | meaning | typical pattern |
 |---|---|---|
 | `[CHEMISTRY FREEZE]` | Explicit "no chemistry change" marker on a polish-only edit; maintainers verify the scope | `[CHEMISTRY FREEZE] docstring polish on IRC.py — no logic change` |
-| `[CHEMISTRY-RULE]` | Modifies a chemistry-correctness rule; requires maintainer approval and a documented scheduled numerical benchmark | `[CHEMISTRY-RULE:4] dft.py adjust rks_lowmem cutoff after gpu4pyscf update` |
+| `[CHEMISTRY-RULE]` | Modifies a chemistry-correctness rule; requires maintainer approval and a documented scheduled numerical benchmark | `[CHEMISTRY-RULE:4] dft_settings.py adjust rks_lowmem cutoff after gpu4pyscf update` |
 | `[DOMAIN_PURE]` | Adjusts the `# DOMAIN_PURE` marker or the import-deny gate | `[DOMAIN_PURE] add tsopt.py to deny-gate scope` |
 
 ---

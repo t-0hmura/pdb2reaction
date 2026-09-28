@@ -45,7 +45,7 @@ Three things make it different from gluing together generic tools:
 
 ## When *not* to use it
 
-- Pure QM (DFT-only) without MLIP: stick with ORCA/Gaussian/Q-Chem directly.
+- Pure QM methods that PySCF/GPU4PySCF does not provide: use a dedicated QM code (plain DFT runs with `-b dft`).
 - Explicit-solvent QM/MM with full force-field embedding: out of scope
   (`pdb2reaction` is cluster-model only).
 - Free-energy simulations (umbrella sampling, metadynamics): out of scope.

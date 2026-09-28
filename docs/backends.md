@@ -46,10 +46,10 @@ first one whose import succeeds.
 
 | backend | install | model identifier | precision option |
 |---------|---------|------------------|------------------|
-| `uma` | `pip install fairchem-core` + HF auth | `uma-s-1p2` / `uma-s-1p1` | `precision="fp32" \| "fp64"` |
-| `orb` | `pip install orb-models` | `orb_v3_conservative_omol` | `precision="float32-high" \| "float32-highest" \| "float64"` (`fp32` / `float32` are normalized aliases) |
+| `uma` | included (`fairchem-core` is a core dependency) + HF auth | `uma-s-1p2` / `uma-s-1p1` | `precision="fp32" \| "fp64"` |
+| `orb` | `pip install "pdb2reaction[orb]"` | `orb_v3_conservative_omol` | `precision="float32-high" \| "float32-highest" \| "float64"` (`fp32` / `float32` are normalized aliases) |
 | `mace` | dedicated conda env: install pdb2reaction, then `pip uninstall -y fairchem-core && pip install 'mace-torch>=0.3.8'` (`mace-torch` pins `e3nn==0.4.4`, `fairchem-core` requires `e3nn>=0.5`) | `MACE-OMOL-0` | `default_dtype="float64"` |
-| `aimnet2` | `pip install aimnet` | `aimnet2` | n/a |
+| `aimnet2` | `pip install "pdb2reaction[aimnet]"` | `aimnet2` | n/a |
 
 ### Precision
 
@@ -89,7 +89,7 @@ calc:
  precision: fp64
 ```
 
-Requires `fairchem-core ≥ 2.0` for the `InferenceSettings` API.
+The `InferenceSettings` API comes with the bundled `fairchem-core` (≥ 2.22).
 
 ## xTB solvent correction
 

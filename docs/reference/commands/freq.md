@@ -55,11 +55,20 @@ Options:
   --dump / --no-dump              Write 'thermoanalysis.yaml' under out-dir.
                                   [default: no-dump]
   --show-config / --no-show-config
-                                  Print resolved configuration and continue
-                                  execution.  [default: no-show-config]
-  --dry-run / --no-dry-run        Validate options and print the execution plan
-                                  without running frequency analysis.  [default:
-                                  no-dry-run]
+                                  Print the loaded YAML file and its top-level
+                                  keys, then continue.  [default: no-show-
+                                  config]
+  --dry-run / --no-dry-run        Validate options and inputs without running
+                                  frequency analysis.  [default: no-dry-run]
+  --read-hess FILE                Use the Hessian in this .npy file (e.g. from
+                                  freq or tsopt --dump-hess) instead of
+                                  computing it: the Cartesian Hessian of the
+                                  input geometry in Hartree/bohr^2, for all
+                                  atoms or only the movable ones.
+  --dump-hess FILE                Save the Hessian as a NumPy .npy array
+                                  (Cartesian, Hartree/bohr^2; movable atoms only
+                                  when atoms are frozen) for '--read-hess' in
+                                  freq, tsopt, or irc, or for other programs.
   --out-json / --no-out-json      Write machine-readable result.json to out_dir.
                                   [default: no-out-json]
   --hessian-calc-mode [finitedifference|analytical]

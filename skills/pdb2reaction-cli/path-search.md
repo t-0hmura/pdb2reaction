@@ -73,7 +73,7 @@ pdb2reaction path-search -i 1.R.pdb 3.P.pdb \
 | `<out_dir>/summary.json`, `summary.log` | successful/partial path construction | machine + human result; handled runtime failures write the standard error envelope, while early CLI/input validation can fail before output exists |
 | `<out_dir>/mep_trj.xyz` | successful/partial path construction | stitched candidate MEP across all path segments |
 | `<out_dir>/mep_trj.pdb` | `--convert-files` and PDB/mmCIF reference available | normalized PDB companion used between pipeline stages |
-| `<out_dir>/mep.cif` | `--convert-files` and input/reference required the mmCIF or oversized-PDB bridge | public trajectory with original IDs |
+| `<out_dir>/mep_trj.cif` | `--convert-files` and input/reference required the mmCIF or oversized-PDB bridge | public trajectory with original IDs |
 | `<out_dir>/mep.gjf` | `--convert-files` and input is `.gjf` | GJF companion |
 | `<out_dir>/mep_w_ref.{pdb,cif}`, `mep_w_ref_seg_NN.{pdb,cif}` | `--ref-full-pdb` merge requested and succeeds; CIF needs a bridged reference | active-site MEP merged into the full-system reference template(s) |
 | `<out_dir>/mep_plot.png` | plotting succeeds | MEP energy plot |

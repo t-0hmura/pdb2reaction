@@ -607,7 +607,7 @@ def test_opt_rejects_the_removed_projection_mode_from_yaml(
         root_cli,
         [
             "opt", "-i", str(input_path), "--config", str(config),
-            "--dry-run", "-v", "3",
+            "--dry-run", "-v", "3", "-o", str(tmp_path / "out"),
         ],
     )
 

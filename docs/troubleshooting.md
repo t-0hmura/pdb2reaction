@@ -98,7 +98,7 @@ Try the following, in order:
 2. Add `--flatten` (available on standalone `tsopt` / `opt` / `pdb2reaction all`).
 3. If the HEI came from a coarse MEP, retry `all` with `--refine-path`. This may split a poor path into unnecessary segments and multiply cost, so it is off by default and should follow inspection of the coarse MEP.
 4. Raise the cycle limit: `--max-cycles 200000` (standalone `tsopt`) or `--tsopt-max-cycles 200000` (`all`).
-5. Tighten the convergence preset to `baker` or `gau_tight`: use `tsopt --thresh` or `all --thresh-post`.
+5. Tighten the convergence preset from the default `baker` to `gau_tight` (or `gau_vtight`): use `tsopt --thresh` or `all --thresh-post`.
 6. Reduce step sizes / trust radii via YAML: `lbfgs.max_step`, `hessian_dimer.lbfgs.max_step`, `rfo.trust_radius` / `trust_min` / `trust_max`, the `rsirfo` block — see [YAML Reference](yaml-reference.md).
 
 ### IRC does not terminate properly
@@ -110,7 +110,7 @@ For standalone `irc`, try `--step-size 0.05` (default 0.10 bohr) and `--max-cycl
 The minimum energy path (MEP) search can stall or skip an expected bond change. Try the following:
 
 - Raise `--max-nodes 30` / `40` for complex reactions.
-- Add `--preopt`.
+- Keep endpoint preoptimization on (the default); remove `--no-preopt` if you passed it.
 - Try the alternate method: `--mep-mode dmf` ↔ `gsm`.
 - Tune `bond.bond_factor` / `bond.delta_fraction` in YAML.
 

@@ -42,7 +42,7 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --deterministic
 | --- | --- | --- |
 | 通常実行 | 未指定 (`auto`) | UMA/AIMNet2 fp32、ORB/MACE fp64 という tested default を保つ。 |
 | 速度優先screening | 必要な場合だけ明示的 `--precision fp32` | ORB/MACE のデフォルトを下げるため、その finite-difference Hessian を最終結果として信頼しない。 |
-| 最終 TS/Hessian | ORB/MACE は fp64 を維持し、noise が問題なら UMA fp64 を検討 | precision にかかわらず独立 freq と IRC が必要。 |
+| 最終 TS/Hessian | ORB/MACE は fp64 を維持し、noise が問題なら UMA fp64 を検討 | precision にかかわらず、`tsopt` 終端の PHVA で n_imag を確かめ、IRC でつながりを確かめる。 |
 
 OMol で学習された UMA バックエンドでは fp64 が TS 最適化と Hessian に影響し得ます。hardware cost を測定し、本番設定を記録してください。`--deterministic` は別の同一-stack再実行性 control であり、低精度 PES の精度を改善するものではありません。
 

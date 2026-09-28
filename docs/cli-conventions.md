@@ -43,7 +43,7 @@ Supported by `all`, `scan` / `scan2d` / `scan3d`, `opt`, `path-opt`, `path-searc
 | `-v 0` | Silent. Confirm success from the exit code and the output artifacts. |
 | `-v 1` | Milestones only: version, input summary, key settings, output location, dry-run / final status. No banner, `[command]`, `[mode]`, or config dump. |
 | `-v 2` | Default. Adds the banner, `[command]`, `[mode]`, stage progress, the main optimizer cycle table, terminal status, the one-line Hessian summary, thermo / DFT summaries, and elapsed time. |
-| `-v 3` | Debug: resolved config / dry-run plan, backend DEBUG, raw optimizer and internal-coordinate chatter, `[HessianTiming]`, and `[HessianVRAM]`. |
+| `-v 3` | Debug: resolved config, backend DEBUG, raw optimizer and internal-coordinate chatter, `[HessianTiming]`, and `[HessianVRAM]`. |
 
 A semantic failure is a failure at any level: a `Traceback` that appears only at `-v 3` still means the run failed.
 
@@ -115,8 +115,8 @@ Use `-m/--multiplicity` consistently in `all` and per-stage subcommands.
 
 ```bash
 --scan-lists '[(1, 5, 2.0)]'                                          # 1-based integer indices
---scan-lists '[("TYR,285,CA", "SAM,309,C10", 2.20)]'                  # PDB-style selector strings
---scan-lists '[("A:TYR:285:CA", "B:SAM:309:C10", 2.20)]'              # chain-qualified
+--scan-lists '[("SAM,320,CS1", "GPP,321,C7", 1.60)]'                  # PDB-style selector strings
+--scan-lists '[("A:SAM:320:CS1", "A:GPP:321:C7", 1.60)]'              # chain-qualified
 ```
 
 Three-field selector delimiters are space · comma · slash · backtick ·
@@ -154,8 +154,8 @@ Each `scan` stage accepts distance targets and distance, angle, or dihedral rang
 -s '[(atom1, atom2, target_Å), ...]'             # scan: triples
 -s '[(atom1, atom2, low_Å, high_Å), ...]'        # distance range
 -s '[(atom1, atom2, atom3, low_deg, high_deg)]'  # angle range
--s '[("TYR,285,CA","SAM,309,C10",1.35)]'         # quoted selectors
--s "[(\"TYR,285,CA\",\"SAM,309,C10\",1.35)]"       # avoid: double-quoted outer literal requires escaping inner quotes
+-s '[("SAM,320,CS1","GPP,321,C7",1.60)]'         # quoted selectors
+-s "[(\"SAM,320,CS1\",\"GPP,321,C7\",1.60)]"       # avoid: double-quoted outer literal requires escaping inner quotes
 ```
 
 For `scan`, one literal = one **stage**; multiple stages → multiple literals after a single `--scan-lists` flag. For `scan2d` / `scan3d`, only one literal is accepted (no multi-stage support).
@@ -163,7 +163,7 @@ For `scan`, one literal = one **stage**; multiple stages → multiple literals a
 | Command | Accepted scan specification |
 | --- | --- |
 | `scan` | Inline 3-tuples or bidirectional 4-tuples; YAML/JSON is also accepted |
-| `all --scan-lists` | Inline 3-tuples only |
+| `all --scan-lists` | Inline distance, angle, or dihedral target tuples only (no ranges, no YAML/JSON) |
 | `scan2d` | One literal/file containing exactly two distance, angle, or dihedral axes |
 | `scan3d` | One literal/file containing exactly three distance, angle, or dihedral axes |
 
@@ -187,7 +187,7 @@ For `scan`, one literal = one **stage**; multiple stages → multiple literals a
 | `5` | HEI export error | `path-opt` |
 | `130` | Keyboard interrupt (SIGINT) | every subcommand |
 
-Subcommands that only use `0 / 1 / 130` (e.g. `irc`, `freq`) follow the same scheme; they simply don't currently raise the optimizer-specific errors.
+`irc` and `freq` use `0 / 1 / 2 / 130` from the same scheme; they do not raise the optimizer-specific codes 3–5.
 
 (opt-mode-semantics)=
 

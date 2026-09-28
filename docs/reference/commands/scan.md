@@ -15,13 +15,14 @@ Options:
                                   and exit.
   -i, --input FILE                Input structure file (.pdb, .cif, .mmcif,
                                   .xyz, _trj.xyz, ...).  [required]
-  -s, --scan-lists TEXT           Required. Scan ranges: distance
-                                  (i,j,low,high), angle (i,j,k,low,high), or
-                                  dihedral (i,j,k,l,low,high). A YAML/JSON spec
-                                  file path is also accepted. Atom strings
-                                  accept positional
-                                  CHAIN:RESNAME:RESSEQ[ICODE]:ATOM. Multiple
-                                  inline literals define sequential stages.
+  -s, --scan-lists TEXT           Required. Distance targets (i,j,target), or
+                                  scan ranges: distance (i,j,low,high), angle
+                                  (i,j,k,low,high), or dihedral
+                                  (i,j,k,l,low,high). A YAML/JSON spec file path
+                                  is also accepted. Atom strings accept
+                                  positional CHAIN:RESNAME:RESSEQ[ICODE]:ATOM.
+                                  Multiple inline literals define sequential
+                                  stages.
   --solvent-xtb-cmd TEXT          Command for the xTB solvent correction,
                                   including optional xTB arguments. If xTB SCC
                                   convergence is poor, increasing --etemp may

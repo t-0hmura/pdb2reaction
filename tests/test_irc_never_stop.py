@@ -119,8 +119,8 @@ def test_directional_endpoint_energy_fields_keep_legacy_aliases() -> None:
     assert fields["energy_last_hartree"] == -11.0
     assert fields["energy_ts_hartree"] == -8.5
     assert fields["endpoint_energy_orientation"] == "finished_first_to_finished_last"
-    assert fields["energy_reactant_hartree"] == fields["energy_first_hartree"]
-    assert fields["energy_product_hartree"] == fields["energy_last_hartree"]
+    assert "energy_reactant_hartree" not in fields
+    assert "energy_product_hartree" not in fields
 
 
 def test_workflow_uses_engine_normalized_prefix(tmp_path) -> None:

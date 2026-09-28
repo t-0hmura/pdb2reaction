@@ -97,7 +97,7 @@ UMA accepts these calculator kwargs (canonical list in
 | `freeze_atoms` | Indices of atoms held fixed (cap-atom parents, frozen residues) |
 | `hessian_calc_mode` | `'FiniteDifference'` (default) or `'Analytical'` |
 | `return_partial_hessian`, `hessian_double` | Memory / numerical-precision toggles |
-| `precision` | `'fp32'` (UMA's default — the fairchem baseline) or `'fp64'` for full-precision base inference (needs fairchem-core ≥ 2.0). `--precision fp64` also forces a fp64 Hessian, and can change TSopt / Hessian numerics non-trivially |
+| `precision` | `'fp32'` (UMA's default — the fairchem baseline) or `'fp64'` for full-precision base inference. `--precision fp64` also forces a fp64 Hessian, and can change TSopt / Hessian numerics non-trivially |
 | `workers`, `workers_per_node` | Multi-GPU inference (uses Ray) |
 | `max_neigh`, `radius` | Neighbor-list cutoffs |
 

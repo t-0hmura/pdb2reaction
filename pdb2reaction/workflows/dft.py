@@ -618,7 +618,7 @@ def _finalize_dft_result(
     "show_config",
     default=False,
     show_default=True,
-    help="Print resolved configuration and continue execution.",
+    help="Print the loaded YAML file and its top-level keys, then continue.",
 )
 @click.option(
     "--out-json/--no-out-json",
@@ -632,7 +632,7 @@ def _finalize_dft_result(
     "dry_run",
     default=False,
     show_default=True,
-    help="Validate options and print the execution plan without running DFT.",
+    help="Validate options and inputs without running DFT.",
 )
 @add_allow_charge_mult_mismatch_option()
 @click.pass_context

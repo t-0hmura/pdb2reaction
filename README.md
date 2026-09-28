@@ -82,7 +82,7 @@ CUDA module loads, alternative-backend recipes, DMF/`cyipopt` setup, Plotly Chro
 
 ## Quick Examples
 
-Examples use GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)). Run the commands below from the repository root; the complete MEP and scan examples are in [`examples/run.sh`](examples/run.sh).
+Examples use GPP C6-methyltransferase BezA ([Tsutsumi et al., *Angew. Chem. Int. Ed.* 2022, 61, e202111217](https://doi.org/10.1002/anie.202111217)). Run the commands below from the repository root (`git clone https://github.com/t-0hmura/pdb2reaction && cd pdb2reaction`); the complete MEP and scan examples are in [`examples/run.sh`](examples/run.sh).
 
 ```bash
 # Multi-structure MEP (R + P → MEP, with TS + thermochemistry)
@@ -93,7 +93,7 @@ pdb2reaction -i examples/1.R.pdb examples/3.P.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:
 pdb2reaction -i examples/1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
     -s '[("CS1 SAM 320","GPP 321 C7",1.60)]' --tsopt --thermo --out-dir result_scan
 
-# TS-only validation (single TS candidate → tsopt → IRC → freq)
+# TS-only validation (your own TS candidate → tsopt → IRC → freq)
 pdb2reaction -i TS_candidate.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' --tsopt --thermo --out-dir result_tsonly
 ```
 
@@ -112,7 +112,7 @@ boundaries on aliphatic C–C single bonds whenever possible, avoid cutting
 peptide/polar/conjugated/metal bonds, and use the identical atom order and cap
 topology for every state. See [the cluster-boundary checklist](docs/extract.md#building-or-auditing-a-cluster-model-manually).
 
-Per-stage walkthrough (`extract` → `opt` → `path-opt` → `tsopt` → `irc` → `freq` → `dft`): [docs/getting-started.md](docs/getting-started.md) and [docs/quickstart-all.md](docs/quickstart-all.md).
+Each stage (`extract` → `opt` → `path-opt` → `tsopt` → `irc` → `freq` → `dft`) also runs as its own subcommand; see [CLI Subcommands](#cli-subcommands) for the per-stage pages.
 
 ## Output
 
@@ -120,7 +120,7 @@ A non-dry `all` run writes the deliverables reached by its enabled stages to
 `--out-dir` (default `./result_all/`):
 
 - `segments/seg_NN/{reactant,ts,product}.*` — the canonical R / TS / P structures to cite
-- `mep_trj.xyz` (plus `mep_trj.pdb` when topology is available and `mep.cif` for bridged inputs) — the merged reaction path in MEP/scan-list modes
+- `mep_trj.xyz` (plus `mep_trj.pdb` when topology is available and `mep_trj.cif` for bridged inputs) — the merged reaction path in MEP/scan-list modes
 - `energy_diagram_MEP.png` — MEP diagram when MEP construction and static-image export succeed
 - `summary.log` / `summary.json`
 
