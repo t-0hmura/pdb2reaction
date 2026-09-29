@@ -11,6 +11,7 @@ from collections import defaultdict
 from collections.abc import MutableMapping
 from dataclasses import dataclass, field
 import errno
+import fcntl
 from hashlib import sha256
 import gc
 import logging
@@ -393,6 +394,34 @@ class InvocationResources:
             raise TypeError("owned object must expose cleanup()")
         self.add(cleanup)
         return owner
+
+    def own_exclusive_lock(self, path: Path) -> Path:
+        """Hold one non-blocking process lock until this resource scope closes."""
+
+        lock_path = _lexical_absolute(path)
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
+        try:
+            descriptor = os.open(lock_path, flags, 0o600)
+            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as exc:
+            if "descriptor" in locals():
+                os.close(descriptor)
+            if exc.errno in {errno.EACCES, errno.EAGAIN}:
+                raise ArtifactClaimError(
+                    f"Another pdb2reaction run is already using output directory "
+                    f"{lock_path.parent.parent}."
+                ) from exc
+            raise
+
+        def release() -> None:
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_UN)
+            finally:
+                os.close(descriptor)
+
+        self.add(release)
+        return lock_path
 
     def close(self) -> None:
         if self.closed:

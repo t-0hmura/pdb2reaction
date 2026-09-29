@@ -23,6 +23,8 @@ from pysisyphus.constants import AU2KCALPERMOL, ANG2BOHR
 
 from pdb2reaction.core.output import emit
 from pdb2reaction.cli.common_options import (
+    add_backend_model_option,
+    add_precision_option,
     add_solvent_xtb_cmd_option,
     solvent_xtb_cmd_override,
 )
@@ -41,7 +43,8 @@ MARKER_SIZE = 6        # marker size
 def recompute_energies(
     traj_path: Path, charge: Optional[int], multiplicity: Optional[int],
     backend: str = "uma", solvent: str = "none", solvent_model: str = "alpb",
-    xtb_cmd: str = "xtb",
+    xtb_cmd: str = "xtb", backend_model: Optional[str] = None,
+    precision: Optional[str] = None,
 ) -> List[float]:
     """
     Recalculate Hartree energies for every frame using the backend factory.
@@ -58,9 +61,14 @@ def recompute_energies(
     validate_charge_spin(
         frames[0].get_chemical_symbols(), charge or 0, multiplicity or 1
     )
+    calc_cfg, _ = _resolved_backend_config(
+        backend, backend_model=backend_model, precision=precision
+    )
+    calc_cfg.pop("backend")
     calc = create_calculator(
         backend=backend, charge=charge or 0, spin=multiplicity or 1,
         solvent=solvent, solvent_model=solvent_model, xtb_cmd=xtb_cmd,
+        **calc_cfg,
     )
     energies: List[float] = []
     for atoms in frames:
@@ -69,6 +77,32 @@ def recompute_energies(
         energies.append(float(calc.get_energy(elems, coords_bohr)["energy"]))
 
     return energies
+
+
+def _resolved_backend_config(
+    backend: str,
+    *,
+    backend_model: Optional[str] = None,
+    precision: Optional[str] = None,
+) -> Tuple[dict, dict]:
+    """Resolve backend-specific model/precision and its public provenance."""
+    from pdb2reaction.backends import (
+        apply_backend_model_to_calc_cfg,
+        apply_effective_precision,
+    )
+    from pdb2reaction.core.utils import calculator_provenance
+
+    calc_cfg = {"backend": backend}
+    apply_backend_model_to_calc_cfg(calc_cfg, backend_model)
+    apply_effective_precision(calc_cfg, precision)
+    provenance = calculator_provenance(calc_cfg)
+    return calc_cfg, {
+        key: provenance[key]
+        for key in (
+            "mlip_backend", "mlip_model", "mlip_model_label", "mlip_task",
+            "mlip_precision",
+        )
+    }
 
 
 def _parse_reference_spec(spec: str | None) -> str | int | None:
@@ -249,6 +283,8 @@ def run_trj2fig(
     solvent: str = "none",
     solvent_model: str = "alpb",
     xtb_cmd: str = "xtb",
+    backend_model: Optional[str] = None,
+    precision: Optional[str] = None,
 ) -> dict:
     """Run trj2fig and return a summary dict with energies and output paths."""
     traj = input_path.expanduser().resolve()
@@ -260,11 +296,21 @@ def run_trj2fig(
         parsed = read_xyz_trajectory(traj, require_energies=True)
         energies = [float(value) for value in parsed["energies_ha"]]
         energy_provenance = list(parsed["energy_provenance"])
+        provenance = {
+            "mlip_backend": None,
+            "mlip_model": None,
+            "mlip_model_label": None,
+            "mlip_task": None,
+            "mlip_precision": None,
+        }
     else:
+        _, provenance = _resolved_backend_config(
+            backend, backend_model=backend_model, precision=precision
+        )
         energies = recompute_energies(
             traj, charge, multiplicity,
             backend=backend, solvent=solvent, solvent_model=solvent_model,
-            xtb_cmd=xtb_cmd,
+            xtb_cmd=xtb_cmd, backend_model=backend_model, precision=precision,
         )
         energy_provenance = ["mlip-recomputed"] * len(energies)
     values, ylabel, is_delta = transform_series(energies, reference, unit, reverse_x)
@@ -283,6 +329,7 @@ def run_trj2fig(
         "energy_unit": "hartree",
         # A CLI backend default is not provenance when no calculator ran.
         "backend": backend if recomputed else None,
+        **provenance,
         "charge": int(charge if charge is not None else 0) if recomputed else None,
         "multiplicity": int(multiplicity if multiplicity is not None else 1) if recomputed else None,
         "solvent": str(solvent) if recomputed else None,
@@ -342,7 +389,7 @@ def run_trj2fig(
 @click.option(
     "-m",
     "--multiplicity",
-    type=int,
+    type=click.IntRange(min=1),
     default=None,
     show_default="1",
     help="Spin multiplicity (2S+1). Triggers energy recomputation when supplied.",
@@ -355,6 +402,8 @@ def run_trj2fig(
 )
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2"]), default="uma",
               show_default=True, help="MLIP backend.")
+@add_backend_model_option()
+@add_precision_option()
 @click.option("--solvent", default="none", show_default=True,
               help="Computationally expensive xTB solvent delta correction. Examples: water, methanol, acetonitrile, dmso, thf, toluene. 'none' disables it.")
 @click.option("--solvent-model", "solvent_model", default="alpb", type=click.Choice(["alpb", "cpcmx"]),
@@ -379,6 +428,8 @@ def cli(
     multiplicity: Optional[int],
     reverse_x: bool,
     backend: str,
+    backend_model: Optional[str],
+    precision: Optional[str],
     solvent: str,
     solvent_model: str,
     out_json: bool,
@@ -401,6 +452,8 @@ def cli(
             solvent=solvent,
             solvent_model=solvent_model,
             xtb_cmd=solvent_xtb_cmd_override(ctx) or "xtb",
+            backend_model=backend_model,
+            precision=precision,
         )
     except (ValueError, RuntimeError) as exc:
         raise click.ClickException(str(exc)) from exc
@@ -421,6 +474,11 @@ def cli(
             "energy_provenance": info["energy_provenance"],
             "energy_unit": info["energy_unit"],
             "backend": info["backend"],
+            "mlip_backend": info["mlip_backend"],
+            "mlip_model": info["mlip_model"],
+            "mlip_model_label": info["mlip_model_label"],
+            "mlip_task": info["mlip_task"],
+            "mlip_precision": info["mlip_precision"],
             "charge": info["charge"],
             "multiplicity": info["multiplicity"],
             "solvent": info["solvent"],

@@ -10,7 +10,7 @@ For detailed documentation, see: docs/irc.md
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import logging
 import sys
@@ -249,6 +249,30 @@ def _validate_resolved_irc_config(irc_cfg: Dict[str, Any]) -> None:
         raise click.BadParameter("irc.imag_below must be non-positive.")
 
 
+def _resolve_hessian_device(requested: str, cuda_available: bool) -> Tuple[str, str]:
+    """Return ``(effective_device, reason)`` for the IRC seed Hessian.
+
+    An explicit ``cuda`` request raises ValueError without CUDA instead of
+    silently moving to CPU; ``cpu`` is an explicit offload.
+    """
+    req = (requested or "auto").strip().lower()
+    if req == "cpu":
+        return "cpu", "explicit_cpu"
+    if req == "cuda":
+        if not cuda_available:
+            raise ValueError(
+                "--hess-device cuda was requested but no CUDA device is available; "
+                "an explicit CUDA request is never silently moved to CPU. "
+                "Use --hess-device cpu (or auto) instead."
+            )
+        return "cuda", "explicit_cuda"
+    if req == "auto":
+        if cuda_available:
+            return "cuda", "auto_gpu_first"
+        return "cpu", "auto_no_cuda"
+    raise ValueError(f"Unknown --hess-device value {requested!r}.")
+
+
 def _echo_convert_trj_if_exists(
     trj_path: Path,
     prepared_input: "PreparedInputStructure",
@@ -428,6 +452,16 @@ def _echo_convert_trj_if_exists(
          "Hartree/bohr^2, for all atoms or only the movable ones.",
 )
 @click.option(
+    "--hess-device",
+    "hess_device",
+    type=click.Choice(["auto", "cuda", "cpu"], case_sensitive=False),
+    default="auto",
+    show_default=True,
+    help="Device for initial Hessian storage and IRC operations (auto/cuda/cpu). "
+         "Use 'cpu' for large systems to avoid VRAM limits. "
+         "Applies when irc.hessian_init is calc (the default).",
+)
+@click.option(
     "--out-json/--no-out-json",
     "out_json",
     default=False,
@@ -474,6 +508,7 @@ def cli(
     show_config: bool,
     dry_run: bool,
     read_hess: Optional[str],
+    hess_device: str,
     out_json: bool,
     backend: str,
     solvent: str,
@@ -637,6 +672,23 @@ def cli(
                 raise click.BadParameter(
                     "--read-hess needs hessian_init: calc.", param_hint="--read-hess"
                 )
+            _requested_hess_device = (hess_device or "auto").strip().lower()
+            if _requested_hess_device == "auto":
+                _dev = calc_cfg.get("device", "auto")
+                if _dev == "auto":
+                    _dev = "cuda" if torch.cuda.is_available() else "cpu"
+                _hess_dev = torch.device(_dev)
+                _hess_dev_reason = (
+                    "auto_gpu_first" if _hess_dev.type == "cuda" else "auto_cpu"
+                )
+            else:
+                try:
+                    _eff_hess_device, _hess_dev_reason = _resolve_hessian_device(
+                        _requested_hess_device, torch.cuda.is_available()
+                    )
+                except ValueError as exc:
+                    raise click.ClickException(str(exc)) from exc
+                _hess_dev = torch.device(_eff_hess_device)
             if show_config:
                 click.echo(
                     pretty_block(
@@ -713,6 +765,14 @@ def cli(
                 store as _hess_store,
                 identity_from_context as _hess_identity,
             )
+            _seeds_initial_hessian = irc_cfg.get("hessian_init", "calc") in (None, "calc")
+            if _seeds_initial_hessian:
+                click.echo(
+                    f"[device] IRC Hessian device: requested={_requested_hess_device}, "
+                    f"effective={_hess_dev.type} ({_hess_dev_reason})."
+                )
+                if _hess_dev.type == "cpu":
+                    click.echo("[device] Hessian operations will run on CPU.")
             if read_hess:
                 from pdb2reaction.io.hessian_file import load_hessian_file
 
@@ -736,6 +796,10 @@ def cli(
                 _hessian_source = "file"
                 emit(f"[irc] Initial Hessian read from {read_hess}.", narrative=True)
                 del _loaded
+            elif not _seeds_initial_hessian:
+                # EulerPC builds any other hessian_init itself.
+                cached = None
+                _hessian_source = "fresh"
             else:
                 # Reuse the tsopt TS Hessian only on a full evaluation-identity
                 # match; the all-workflow may pass the TS through a three-decimal
@@ -749,15 +813,12 @@ def cli(
                 if cached is not None:
                     emit("[irc] Reusing cached TS Hessian from tsopt.", detail=True)
             if cached is not None:
-                _dev = calc_cfg.get("device", "auto")
-                if _dev == "auto":
-                    _dev = "cuda" if torch.cuda.is_available() else "cpu"
                 active_dofs = cached.get("active_dofs")
                 h_raw = cached["hessian"]
                 if isinstance(h_raw, torch.Tensor):
-                    h_init = h_raw.to(device=torch.device(_dev))
+                    h_init = h_raw.to(device=_hess_dev)
                 else:
-                    h_init = torch.as_tensor(h_raw, dtype=torch.float64, device=torch.device(_dev))
+                    h_init = torch.as_tensor(h_raw, dtype=torch.float64, device=_hess_dev)
                 if active_dofs is not None:
                     geometry.within_partial_hessian = {
                         "active_n_dof": len(active_dofs),
@@ -765,6 +826,19 @@ def cli(
                         "active_dofs": active_dofs,
                         "active_atoms": sorted(set(d // 3 for d in active_dofs)),
                     }
+                geometry.cart_hessian = h_init
+                click.echo(f"[irc] Initial Hessian seeded (shape={h_init.shape[0]}x{h_init.shape[1]}).")
+                del h_init
+            elif _seeds_initial_hessian and _requested_hess_device != "auto":
+                # Evaluate the fresh seed here so it is stored on the requested
+                # device; otherwise EulerPC keeps it on the calculator's device.
+                _h_fresh = geometry.cart_hessian
+                geometry.results.pop("hessian", None)
+                if isinstance(_h_fresh, torch.Tensor):
+                    h_init = _h_fresh.to(device=_hess_dev)
+                else:
+                    h_init = torch.as_tensor(_h_fresh, dtype=torch.float64, device=_hess_dev)
+                del _h_fresh
                 geometry.cart_hessian = h_init
                 click.echo(f"[irc] Initial Hessian seeded (shape={h_init.shape[0]}x{h_init.shape[1]}).")
                 del h_init

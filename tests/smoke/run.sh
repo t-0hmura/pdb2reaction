@@ -320,13 +320,8 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --coord-type dlc --no-refine-path --max-cy
 
 # --- Per-stage internal-coordinate code paths ---
 # Each test scoped at a 2-3 cycle cap + thresh gau_loose to exercise the
-# --coord-type code path without long convergence. Frequency analysis remains
-# Cartesian because the only thing an internal-coordinate flag would add is
-# an unrelated B-matrix construction:
-#   - freq: vibrational analysis uses cart Hessian regardless of
-#     --coord-type; the only thing the flag adds is an SVD on the internal
-#     B-matrix that occasionally fails on cuSOLVER. freq + cart is already
-#     covered by test4.
+# --coord-type code path without long convergence. Frequency analysis always
+# uses Cartesian coordinates (freq has no --coord-type) and is covered by test4.
 
 # test52a: opt --coord-type dlc
 pdb2reaction opt -i r.pdb -q -1 --coord-type dlc --max-cycles 3 --thresh gau_loose --out-dir test52a_opt_dlc > test52a_opt_dlc.out 2>&1

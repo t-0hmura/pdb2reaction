@@ -12,6 +12,7 @@ For detailed documentation, see: docs/add-elem-info.md
 from __future__ import annotations
 
 import collections
+import os
 import re
 import sys
 import time
@@ -36,7 +37,8 @@ ELEMENTS: set[str] = {
 }
 
 # Common residue classes
-PROTEIN_RES = set(AMINO_ACIDS.keys())
+# SEC, PYL, CSO, CSX and LLP are amino acids whether or not the charge table lists them.
+PROTEIN_RES = set(AMINO_ACIDS.keys()) | {"SEC", "PYL", "CSO", "CSX", "LLP"}
 NUCLEIC_RES = {
     "DA","DT","DG","DC","DI",
     "A","U","G","C","I",
@@ -90,9 +92,15 @@ def _symbol_from_aligned_atom_name(atom_name: str) -> Optional[str]:
         return None
     raw = atom_name[:4]
     if raw[0].isspace():
+        # LEaP writes GAFF chlorine and bromine from column 14 (" CL1", " BR1").
+        if raw[1:3].upper() in {"CL", "BR"}:
+            return raw[1:3].capitalize()
         return _normalize_symbol(raw.lstrip()[:1])
     if raw[0].isdigit():
         return _normalize_symbol(raw.lstrip("0123456789")[:1])
+    # Four-character hydrogen names start in column 13 (HG11 is H, not Hg).
+    if raw[0] in "Hh" and not any(ch.isspace() for ch in raw):
+        return "H"
     return _normalize_symbol(raw[:2])
 
 
@@ -113,16 +121,22 @@ def _default_out_pdb_path(in_pdb: str) -> str:
 def guess_element(atom_name: str, resname: str, _is_het: bool = False) -> Optional[str]:
     """
     Infer the element from atom name + residue name.
+    Pass the raw four-character PDB atom-name field (columns 13-16): its column
+    alignment tells `` NA `` (N) from ``NA  `` (Na).
     Priority:
       1) Ion residues: prefer the residue name (NH4 / H3O+ handled per-atom as H/N/O)
       2) Polymers (protein/nucleic acid) and water: follow convention (H/C/N/O/S/P/Se)
-      3) Other ligands: use atom-name prefix; then normalization
+      3) Other ligands: PDB column alignment; shorter names use H/C/P prefixes, then normalization
       4) Unresolved → None
     """
     name_u = atom_name.strip().upper()
     res_u = resname.strip().upper()
+    is_protein = res_u in PROTEIN_RES
+    is_nucl = res_u in NUCLEIC_RES
+    is_water = res_u in WATER_RES
 
-    if res_u in {k.upper() for k in ION.keys()}:
+    # Residue I is inosine, not iodide.
+    if res_u in {k.upper() for k in ION.keys()} and not is_nucl:
         # Genuinely polyatomic ions (NH4, H3O+) contain more than one element,
         # so decide per atom name (treat D* as H). Monatomic metal/halogen ions
         # fall through to residue-name resolution below, so an ion whose symbol
@@ -139,13 +153,13 @@ def guess_element(atom_name: str, resname: str, _is_het: bool = False) -> Option
         if sym:
             return sym
 
-    is_protein = res_u in PROTEIN_RES
-    is_nucl = res_u in NUCLEIC_RES
-    is_water = res_u in WATER_RES
     if is_protein or is_nucl or is_water:
-        # Water: only O and H (treat D* as H)
+        # Water: O and H (D* is H; leading digits as in 1HW are skipped); virtual sites are EP
         if is_water:
-            if name_u.startswith(("H", "D")):
+            water_name = name_u.lstrip("0123456789")
+            if water_name.startswith(("EP", "LP")) or water_name in {"M", "MW"}:
+                return "EP"
+            if water_name.startswith(("H", "D")):
                 return "H"
             return "O"
 
@@ -180,18 +194,15 @@ def guess_element(atom_name: str, resname: str, _is_het: bool = False) -> Option
     if aligned is not None:
         return aligned
 
-    # Unaligned programmatic inputs retain the historical prefix fallback.
+    # Names shorter than four characters carry no column alignment.
     if name_u.startswith(("H", "D")):
         return "H"
     if name_u.startswith("C") and not name_u.startswith("CL"):
         return "C"
-    if name_u.startswith("N"):
-        return "N"
-    if name_u.startswith("O"):
-        return "O"
     if name_u.startswith("P"):
         return "P"
 
+    # Metals and halogens often appear as the atom name (FE, ZN, MG, CL, BR, I, F, ...)
     sym = _normalize_symbol(name_u)
     if sym:
         return sym
@@ -230,8 +241,21 @@ def pdb_decimal_overflow_shifts(line: str) -> tuple[int, int]:
 
 def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False) -> None:
     # If an explicit output path is provided, never overwrite in-place even when --overwrite is
-    # passed. This keeps -o/-\-out as the higher-priority choice.
+    # passed. This keeps -o/--out as the higher-priority choice.
     effective_overwrite = overwrite and out_pdb is None
+    if effective_overwrite:
+        out_path = in_pdb
+    else:
+        out_path = out_pdb if out_pdb else _default_out_pdb_path(in_pdb)
+    input_path = Path(in_pdb).expanduser().resolve()
+    output_path = Path(out_path).expanduser().resolve()
+    aliases_input = input_path == output_path
+    if not aliases_input and input_path.exists() and output_path.exists():
+        aliases_input = os.path.samefile(input_path, output_path)
+    if aliases_input and not overwrite:
+        raise ValueError(
+            "Output physically aliases the input; use --overwrite to replace it."
+        )
 
     total = 0
     assigned_or_updated = 0
@@ -279,10 +303,6 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
             assigned_or_updated += 1
         rewritten.append(_replace_element_field(line, symbol, field_offset=field_offset))
 
-    if effective_overwrite:
-        out_path = in_pdb
-    else:
-        out_path = out_pdb if out_pdb else _default_out_pdb_path(in_pdb)
     with open(out_path, "w", encoding="utf-8", errors="surrogateescape", newline="") as handle:
         handle.writelines(rewritten)
 
@@ -319,7 +339,7 @@ def assign_elements(in_pdb: str, out_pdb: Optional[str], overwrite: bool = False
     "out_pdb",
     type=click.Path(path_type=Path, dir_okay=False),
     default=None,
-    help='Output PDB filepath (default: replace ".pdb" with "_add_elem.pdb"; when provided, --overwrite is ignored).',
+    help='Output PDB filepath (default: replace ".pdb" with "_add_elem.pdb"; when provided, --overwrite is ignored unless this is the input file, which requires it).',
 )
 @click.option(
     "--overwrite/--no-overwrite",

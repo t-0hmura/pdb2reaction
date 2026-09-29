@@ -38,7 +38,9 @@ Options:
                                   GPP:-3,SAM:1) used to derive charge when -q is
                                   omitted (requires PDB/mmCIF input or --ref-
                                   pdb).
-  -m, --multiplicity INTEGER      Spin multiplicity (2S+1).  [default: (1)]
+  -m, --multiplicity INTEGER RANGE
+                                  Spin multiplicity (2S+1).  [default: (1);
+                                  x>=1]
   --freeze-links / --no-freeze-links
                                   Freeze parent atoms of cap hydrogens
                                   (PDB/mmCIF input or XYZ/GJF with --ref-pdb).
@@ -79,8 +81,9 @@ Options:
                                   ./result_path_opt/]
   --thresh [gau_loose|gau|gau_tight|gau_vtight|baker|never]
                                   Convergence preset for endpoint
-                                  preoptimization only (gau_loose|gau|gau_tight|
-                                  gau_vtight|baker|never).  [default: (gau)]
+                                  preoptimization and the post-alignment
+                                  relaxation only (gau_loose|gau|gau_tight|gau_v
+                                  tight|baker|never).  [default: (gau)]
   --thresh-gsm [gau_loose|gau|gau_tight|gau_vtight|baker|never]
                                   Convergence preset for the GSM string
                                   optimizer (gau_loose|gau|gau_tight|gau_vtight|

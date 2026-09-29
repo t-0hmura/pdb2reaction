@@ -349,8 +349,8 @@ def cli(
             geom_kw=dict(GEOM_KW_DEFAULT),
             calc_kw=dict(UMA_CALC_KW),
             opt_kw={**OPT_BASE_KW, "thresh": "baker"},
-            lbfgs_kw=dict(LBFGS_KW),
-            rfo_kw=dict(RFO_KW),
+            lbfgs_kw={**LBFGS_KW, "thresh": "baker"},
+            rfo_kw={**RFO_KW, "thresh": "baker"},
             bias_kw=dict(BIAS_KW),
             charge=charge_val,
             spin=spin_val,
@@ -358,6 +358,7 @@ def cli(
             workers_per_node=workers_per_node,
             out_dir=out_dir,
             thresh=thresh if thresh_overridden else None,
+            print_every=print_every if cli_param_overridden(ctx, "print_every") else None,
             # bias_k is None when neither CLI --bias-k nor YAML bias.k set
             # (the common-decorator default flipped to None to enable YAML
             # override). `build_scan_configs` handles None via
@@ -401,8 +402,6 @@ def cli(
         apply_calc_file_to_calc_cfg(calc_cfg, calc_file, calc_factory)
         from pdb2reaction.backends import apply_effective_precision
         apply_effective_precision(calc_cfg, precision)
-        if cli_param_overridden(ctx, "print_every") and print_every is not None:
-            opt_cfg["print_every"] = int(print_every)
         if cli_param_overridden(ctx, "cli_coord_type") and cli_coord_type is not None:
             geom_cfg["coord_type"] = str(cli_coord_type).lower()
         apply_backend_defaults(calc_cfg)

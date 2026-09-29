@@ -222,40 +222,24 @@ def format_result_warning(
         endpoint_code = endpoint_match.group(1)
         if endpoint_code.endswith("_execution_failed"):
             label = endpoint_code.removesuffix("_execution_failed").replace("_", " ")
-            subject = (
-                f"{label} optimization"
-                if label.startswith("endpoint ")
-                else f"{label} endpoint optimization"
-            )
+            subject = f"{label} endpoint optimization"
             return scoped(
                 f"the {subject} raised an exception. Review failure.json and the optimizer log."
             )
         if endpoint_code.endswith("_not_converged"):
             label = endpoint_code.removesuffix("_not_converged").replace("_", " ")
-            subject = (
-                f"{label} optimization"
-                if label.startswith("endpoint ")
-                else f"{label} endpoint optimization"
-            )
+            subject = f"{label} endpoint optimization"
             return scoped(
                 f"the {subject} did not converge. Review the endpoint structure and optimizer log."
             )
         if endpoint_code.endswith("_convergence_unknown"):
             label = endpoint_code.removesuffix("_convergence_unknown").replace("_", " ")
-            subject = (
-                f"{label} optimization"
-                if label.startswith("endpoint ")
-                else f"{label} endpoint optimization"
-            )
+            subject = f"{label} endpoint optimization"
             return scoped(
                 f"the {subject} could not be confirmed. Review the endpoint structure and optimizer log."
             )
         label = endpoint_code.removesuffix("_converged").replace("_", " ")
-        subject = (
-            f"{label} optimization"
-            if label.startswith("endpoint ")
-            else f"{label} endpoint optimization"
-        )
+        subject = f"{label} endpoint optimization"
         return scoped(
             f"the {subject} did not converge or could not be confirmed. "
             "Review the endpoint structure and optimizer log."
@@ -718,7 +702,7 @@ def _format_thermo_symmetry(provenance: Any) -> List[str]:
     if not isinstance(provenance, dict):
         return []
     entries: List[str] = []
-    for label in ("R", "TS", "P", "E1", "E2"):
+    for label in ("R", "TS", "P"):
         state = provenance.get(label)
         if not isinstance(state, dict):
             continue
@@ -1543,7 +1527,7 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
                                 if sub.exists():
                                     annotations.setdefault(f"{crel}/{subdir_name}", desc)
                         # init optimization dirs
-                        elif _re.match(r"init\d+_lbfgs_opt$", child.name):
+                        elif _re.match(r"init\d+_(lbfgs|rfo)_opt$", child.name):
                             idx = _re.search(r"init(\d+)", child.name).group(1)
                             annotations.setdefault(crel, f"Initial optimization of endpoint {idx}")
                         # GSM/NEB path dirs
@@ -1551,9 +1535,9 @@ def write_summary_log(dest: Path, payload: Dict[str, Any]) -> None:
                             annotations.setdefault(crel, "Initial GSM/NEB path")
                         elif _re.match(r"seg_\d+_refine_mep$", child.name):
                             annotations.setdefault(crel, "Refined GSM/NEB path")
-                        elif _re.match(r"seg_\d+_left_lbfgs_opt$", child.name):
+                        elif _re.match(r"seg_\d+_left_(lbfgs|rfo)_opt$", child.name):
                             annotations.setdefault(crel, "Optimized left (R) endpoint")
-                        elif _re.match(r"seg_\d+_right_lbfgs_opt$", child.name):
+                        elif _re.match(r"seg_\d+_right_(lbfgs|rfo)_opt$", child.name):
                             annotations.setdefault(crel, "Optimized right (P) endpoint")
                         elif _re.search(r"_bridge_mep$", child.name):
                             annotations.setdefault(crel, "Bridge MEP (non-reactive conformational change)")

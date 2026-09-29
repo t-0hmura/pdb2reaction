@@ -89,12 +89,64 @@ def test_add_elem_info_changes_only_the_element_field(tmp_path: Path) -> None:
     assert actual[3][78:] == atom[78:]
 
 
+def test_add_elem_info_output_that_aliases_the_input_requires_overwrite(
+    tmp_path: Path,
+) -> None:
+    source = _write_text(
+        tmp_path / "enzyme.pdb",
+        "ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00 10.00\nEND\n",
+    )
+    before = source.read_bytes()
+    link = tmp_path / "link.pdb"
+    link.symlink_to(source)
+
+    for output in (source, link):
+        refused = CliRunner().invoke(
+            root_cli, ["add-elem-info", "-i", str(source), "-o", str(output)]
+        )
+        assert refused.exit_code == 2
+        assert "use --overwrite" in refused.output
+        assert source.read_bytes() == before
+
+    accepted = CliRunner().invoke(
+        root_cli,
+        ["add-elem-info", "-i", str(source), "-o", str(source), "--overwrite"],
+    )
+    assert accepted.exit_code == 0, accepted.output
+    assert source.read_text(encoding="utf-8")[76:78] == " C"
+
+
 def test_add_elem_info_uses_raw_atom_name_alignment() -> None:
     from pdb2reaction.domain.add_elem_info import guess_element
 
     assert guess_element(" NA ", "LIG", True) == "N"
     assert guess_element("PT  ", "LIG", True) == "Pt"
     assert guess_element(" PT ", "LIG", True) == "P"
+
+
+def test_element_inference_disambiguates_inosine_and_numeric_water_hydrogen() -> None:
+    from pdb2reaction.domain.add_elem_info import guess_element
+
+    assert guess_element("C1'", "I", False) == "C"
+    assert guess_element("N9", "I", False) == "N"
+    assert guess_element("1HW", "HOH", True) == "H"
+    assert guess_element("OW", "HOH", True) == "O"
+    assert guess_element(" EP ", "HOH", True) == "EP"
+    assert guess_element("MW", "SOL", True) == "EP"
+    assert guess_element(" SE ", "SEC", False) == "Se"
+    assert guess_element("NA", "LIG", True) == "Na"
+
+
+def test_element_inference_reads_leap_halogens_and_four_character_hydrogens() -> None:
+    from pdb2reaction.domain.add_elem_info import guess_element
+
+    assert guess_element(" CL1", "LIG", False) == "Cl"
+    assert guess_element(" BR1", "LIG", False) == "Br"
+    assert guess_element(" C1 ", "LIG", False) == "C"
+    assert guess_element("HG11", "LIG", True) == "H"
+    assert guess_element("HO2A", "LIG", True) == "H"
+    assert guess_element("HG  ", "LIG", True) == "Hg"
+    assert guess_element("HG1 ", "LIG", True) == "Hg"
 
 
 def test_fix_altloc_smoke(tmp_path: Path) -> None:
@@ -271,6 +323,11 @@ def test_trj2fig_csv_smoke(tmp_path: Path) -> None:
     assert payload["backend"] is None
     assert payload["charge"] is None
     assert payload["solvent"] is None
+    for key in (
+        "mlip_backend", "mlip_model", "mlip_model_label", "mlip_task",
+        "mlip_precision",
+    ):
+        assert payload[key] is None
 
 
 def test_trj2fig_rejects_missing_frame_zero_energy_without_outputs(
@@ -358,6 +415,91 @@ def test_trj2fig_recompute_json_records_actual_provenance(
     assert seen["backend"] == "orb"
     assert seen["solvent"] == "water"
     assert seen["xtb_cmd"] == "xtb --etemp 1200"
+
+
+@pytest.mark.parametrize(
+    ("args", "expected", "expected_request"),
+    [
+        (
+            ["-b", "orb", "--backend-model", "orb-test-model", "--precision", "fp64"],
+            ("orb", "orb-test-model", "ORB-test-model", None, "fp64"),
+            ("orb-test-model", "fp64"),
+        ),
+        (
+            ["-b", "uma"],
+            ("uma", "uma-s-1p2", "UMA-S-1.2 (OMol)", "omol", "fp32"),
+            (None, None),
+        ),
+    ],
+)
+def test_trj2fig_recompute_json_records_calculator_provenance(
+    tmp_path: Path, monkeypatch, args, expected, expected_request
+) -> None:
+    trj = _write_text(
+        tmp_path / "traj.xyz",
+        "1\nno-energy-needed\nH 0.0 0.0 0.0\n",
+    )
+    seen: dict = {}
+
+    def _fake_recompute(path, charge, multiplicity, **kwargs):
+        seen.update(kwargs)
+        return [-0.5]
+
+    monkeypatch.setattr(trj2fig, "recompute_energies", _fake_recompute)
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "trj2fig", "-i", str(trj), "-o", str(tmp_path / "energy.csv"),
+            "-q", "0", "-m", "2", *args, "--out-json",
+        ],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0, result.output
+    payload = json.loads((tmp_path / "result.json").read_text(encoding="utf-8"))
+    assert tuple(
+        payload[key]
+        for key in (
+            "mlip_backend", "mlip_model", "mlip_model_label", "mlip_task",
+            "mlip_precision",
+        )
+    ) == expected
+    assert payload["backend"] == expected[0]
+    assert (seen["backend_model"], seen["precision"]) == expected_request
+
+
+def test_trj2fig_recompute_passes_backend_model_and_precision(
+    tmp_path: Path, monkeypatch
+) -> None:
+    import pdb2reaction.backends as backends
+
+    trj = _write_text(
+        tmp_path / "traj.xyz",
+        "1\nno-energy-needed\nH 0.0 0.0 0.0\n",
+    )
+    created: list = []
+
+    class _Calc:
+        def get_energy(self, elems, coords):
+            return {"energy": -0.5}
+
+    def _fake_create(**kwargs):
+        created.append(kwargs)
+        return _Calc()
+
+    monkeypatch.setattr(backends, "create_calculator", _fake_create)
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "trj2fig", "-i", str(trj), "-o", str(tmp_path / "energy.csv"),
+            "-q", "0", "-m", "2", "-b", "orb",
+            "--backend-model", "orb_v3_direct_omol", "--precision", "fp32",
+        ],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0, result.output
+    assert created[0]["backend"] == "orb"
+    assert created[0]["model"] == "orb_v3_direct_omol"
+    assert created[0]["precision"] == "float32-high"
 
 
 def test_trj2fig_json_preserves_same_named_outputs(tmp_path: Path) -> None:

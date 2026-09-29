@@ -53,7 +53,10 @@ from pdb2reaction.workflows.path_opt import (
     _run_dmf_mep,
     resolve_dmf_solve_tol,
 )
-from pdb2reaction.workflows._path_yaml_helpers import apply_single_opt_yaml_layer
+from pdb2reaction.workflows._path_yaml_helpers import (
+    apply_single_opt_yaml_layer,
+    check_single_opt_yaml_conflicts,
+)
 from pdb2reaction.io.plotly_image import write_plotly_image
 from pdb2reaction.core.utils import (
     as_list,
@@ -123,6 +126,50 @@ from pdb2reaction.cli.common_options import (
 from pdb2reaction.cli.decorators import run_cli, resolve_yaml_sources, load_merged_yaml_cfg
 
 logger = logging.getLogger(__name__)
+
+
+class _PathSearchOutputCollisionError(click.UsageError):
+    """A path-search destination aliases a consumed input."""
+
+
+def _paths_physically_alias(path_a: Path, path_b: Path) -> bool:
+    """Return whether two paths identify the same filesystem object."""
+
+    try:
+        if path_a.exists() and path_b.exists() and path_a.samefile(path_b):
+            return True
+    except OSError:
+        pass
+    return path_a.expanduser().resolve() == path_b.expanduser().resolve()
+
+
+def _reject_path_search_output_collisions(
+    out_dir: Path,
+    protected_inputs: Sequence[Optional[Path]],
+) -> None:
+    """Reject fixed path-search outputs that would replace an input."""
+
+    destinations = tuple(
+        out_dir / name
+        for name in (
+            "mep_trj.xyz",
+            "mep_trj.pdb",
+            "mep_trj.cif",
+            "mep_plot.png",
+            "energy_diagram_MEP.png",
+            "summary.json",
+            "summary.log",
+        )
+    )
+    for destination in destinations:
+        for protected in protected_inputs:
+            if protected is None:
+                continue
+            if _paths_physically_alias(destination, Path(protected)):
+                raise _PathSearchOutputCollisionError(
+                    f"Output '{destination}' aliases consumed input '{protected}'."
+                )
+
 
 def _bond_changes_block(text: Optional[str]):
     """
@@ -2083,7 +2130,7 @@ def _merge_final_and_write(final_images: List[Any],
     "-m",
     "--multiplicity",
     "spin",
-    type=int,
+    type=click.IntRange(min=1),
     default=None,
     show_default="1 (or the .gjf template value)",
     help="Spin multiplicity (2S+1; inherits from a .gjf template when available).",
@@ -2220,7 +2267,7 @@ def _merge_final_and_write(final_images: List[Any],
     "dry_run",
     default=False,
     show_default=True,
-    help="Validate options and print the execution plan without running path search.",
+    help="Validate options and inputs without running path search.",
 )
 @click.option(
     "--preopt/--no-preopt",
@@ -2394,6 +2441,13 @@ def cli(
         config_yaml=config_yaml,
         override_yaml=None,
     )
+    error_stopt_cfg = dict(STOPT_KW)
+    error_stopt_cfg["out_dir"] = out_dir
+    apply_yaml_overrides(config_layer_cfg, [(error_stopt_cfg, (("stopt",),))])
+    if cli_param_overridden(ctx, "out_dir"):
+        error_stopt_cfg["out_dir"] = out_dir
+    apply_yaml_overrides(override_layer_cfg, [(error_stopt_cfg, (("stopt",),))])
+    error_out_dir = Path(error_stopt_cfg["out_dir"]).resolve()
     from pdb2reaction.core.utils import resolve_configured_charge_spin
     charge, spin = resolve_configured_charge_spin(
         merged_yaml_cfg, charge=charge, spin=spin, ligand_charge=ligand_charge,
@@ -2479,9 +2533,9 @@ def cli(
                 layer_cfg,
                 lbfgs_cfg=lbfgs_cfg,
                 rfo_cfg=rfo_cfg,
+                stopt_cfg=stopt_cfg,
                 opt_base_kw=OPT_BASE_KW,
                 deep_update=deep_update,
-                apply_yaml_overrides=apply_yaml_overrides,
             )
 
         apply_yaml_overrides(
@@ -2657,6 +2711,10 @@ def cli(
         else:
             single_opt_kind = "rfo"
             single_opt_cfg = rfo_cfg
+        for layer_cfg in (config_layer_cfg, override_layer_cfg):
+            check_single_opt_yaml_conflicts(
+                layer_cfg, kind=single_opt_kind, opt_base_kw=OPT_BASE_KW
+            )
         if preopt:
             preopt_cycles = optional_positive_int(
                 single_opt_cfg.get("max_cycles"), "preopt max_cycles"
@@ -2697,9 +2755,9 @@ def cli(
         echo_stopt = dict(stopt_cfg)
         echo_stopt["out_dir"] = str(out_dir_path)
 
-        # --show-config/--dry-run exist to print these blocks, so they must not
-        # be suppressed by the default verbosity gate.
-        requested = bool(show_config or dry_run)
+        # --show-config exists to print these blocks, so it bypasses the default
+        # verbosity gate; --dry-run shows them only at -v 3.
+        requested = bool(show_config)
         click.echo(pretty_block("geom", echo_geom, force=requested))
         click.echo(pretty_block("calc", echo_calc, force=requested))
         click.echo(pretty_block("gs",   echo_gs, force=requested))
@@ -2732,6 +2790,20 @@ def cli(
                 force=True)
             )
 
+        _reject_path_search_output_collisions(
+            out_dir_path,
+            (
+                *p_list,
+                *(prepared.original_path for prepared in prepared_inputs),
+                *(prepared.source_path for prepared in prepared_inputs),
+                *(prepared.geom_path for prepared in prepared_inputs),
+                *ref_pdb_paths,
+                *model_ref_pdb_paths,
+                config_yaml,
+                Path(calc_cfg["calc_file"]) if calc_cfg.get("calc_file") else None,
+            ),
+        )
+
         if dry_run:
             click.echo(
                 pretty_block(
@@ -2754,7 +2826,6 @@ def cli(
                         "will_run_path_search": True,
                         "will_write_summary": True,
                     },
-                    force=True,
                 )
             )
             emit_dry_run_complete()
@@ -3396,7 +3467,6 @@ def cli(
             narrative=True,
         )
 
-    out_dir_path = Path(out_dir).resolve()
     try:
         run_cli(
             _run,
@@ -3405,9 +3475,10 @@ def cli(
             zero_step_msg="ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).",
             opt_exc=OptimizationError,
             opt_msg="ERROR: Path search failed — {exc}",
-            out_dir=out_dir_path,
+            out_dir=error_out_dir,
             command="path-search",
             time_start=time_start,
+            unrecorded_exc=(_PathSearchOutputCollisionError,),
         )
     finally:
         for prepared in prepared_inputs:

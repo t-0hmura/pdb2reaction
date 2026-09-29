@@ -25,10 +25,11 @@ Options:
                                   Workers per node when using a parallel MLIP
                                   predictor (workers>1).  [default: 1]
   -o, --out-dir TEXT              Output directory.  [default: ./result_sp/]
+  --freeze-atoms TEXT             Comma-separated 1-based atom indices to freeze
+                                  (e.g., '1,3,5').
   --hess / --no-hess              Also compute a Hessian and save it to
-                                  hessian.npy (active block when YAML
-                                  geom.freeze_atoms is non-empty).  [default:
-                                  no-hess]
+                                  hessian.npy (active block when atoms are
+                                  frozen).  [default: no-hess]
   --hessian-calc-mode [analytical|finitedifference]
                                   Hessian backend when --hess is set.
                                   FiniteDifference is the default for every

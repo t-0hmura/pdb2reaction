@@ -241,3 +241,64 @@ def test_scan2d_bottom_contours_are_explicit_line_segments() -> None:
     assert any(value is None for value in line_x)
     assert all(value is None or 1.0 <= value <= 2.0 for value in line_x)
     assert all(value is None or 1.0 <= value <= 2.0 for value in line_y)
+
+
+class _ConstantScanCalculator:
+    def get_energy(self, elem, coords, **kwargs):
+        return {"energy": -1.0}
+
+    def get_forces(self, elem, coords, **kwargs):
+        return {"energy": -1.0, "forces": np.zeros(np.asarray(coords).size)}
+
+
+def _restraint_reaching_optimizer(geom, *args, **kwargs):
+    """Fake optimizer: place each restrained atom at its target along x."""
+    from types import SimpleNamespace
+
+    from pysisyphus.constants import ANG2BOHR
+
+    def run():
+        coords = np.array(geom.coords3d, dtype=float)
+        for first, second, target in getattr(geom.calculator, "_restraints", []):
+            coords[second] = coords[first] + np.array([float(target) * ANG2BOHR, 0.0, 0.0])
+        geom.coords3d = coords
+
+    return SimpleNamespace(run=run, is_converged=True)
+
+
+def test_scan2d_png_export_failure_is_a_note(tmp_path, monkeypatch) -> None:
+    from click.testing import CliRunner
+
+    from pdb2reaction.cli import cli as root_cli
+    from pdb2reaction.workflows import scan2d
+
+    def _no_png(*args, **kwargs):
+        raise RuntimeError("image export unavailable")
+
+    monkeypatch.setattr(scan2d, "create_calculator", lambda **kwargs: _ConstantScanCalculator())
+    monkeypatch.setattr(scan2d, "make_sopt_optimizer", _restraint_reaching_optimizer)
+    monkeypatch.setattr(scan2d, "write_plotly_image", _no_png)
+    structure = tmp_path / "system.pdb"
+    structure.write_text(
+        "HETATM    1  C1  LIG A   1       0.000   0.000   0.000  1.00  0.00           C\n"
+        "HETATM    2  C2  LIG A   1       1.000   0.000   0.000  1.00  0.00           C\n"
+        "HETATM    3  C3  LIG A   1       2.000   0.000   0.000  1.00  0.00           C\n"
+        "HETATM    4  C4  LIG A   1       3.000   0.000   0.000  1.00  0.00           C\n"
+        "END\n",
+        encoding="utf-8",
+    )
+    out_dir = tmp_path / "out"
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "scan2d", "-i", str(structure), "-q", "0", "-m", "1",
+            "--scan-lists", "[(1,2,1.000,1.008),(3,4,1.000,1.004)]",
+            "--max-step-size", "0.004", "--out-dir", str(out_dir),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "[plot] NOTE: PNG export skipped: image export unavailable" in result.output
+    assert (out_dir / "scan2d_landscape.html").exists()
+    assert not (out_dir / "scan2d_map.png").exists()

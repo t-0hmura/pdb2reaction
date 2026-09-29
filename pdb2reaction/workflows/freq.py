@@ -47,6 +47,7 @@ from pdb2reaction.backends import create_calculator
 from pdb2reaction.core.defaults import GEOM_KW_DEFAULT, FREQ_CALC_KW, FREQ_KW, THERMO_KW, apply_backend_defaults
 from pdb2reaction.core.utils import (
     apply_yaml_overrides,
+    yaml_section_has_key,
     convert_xyz_like_outputs,
     pretty_block,
     format_geom_for_echo,
@@ -65,7 +66,7 @@ from pdb2reaction.core.utils import (
     merge_freeze_atom_indices,
     echo_resolved_device,
 )
-from pdb2reaction.cli.common_options import add_ml_charge_spin_options, add_precision_option, add_backend_model_option, add_calc_file_option, add_deterministic_option, add_allow_charge_mult_mismatch_option, add_coord_type_option, add_dft_calculator_options, add_solvent_xtb_cmd_option, apply_solvent_xtb_cmd_override
+from pdb2reaction.cli.common_options import add_ml_charge_spin_options, add_precision_option, add_backend_model_option, add_calc_file_option, add_deterministic_option, add_allow_charge_mult_mismatch_option, add_dft_calculator_options, add_solvent_xtb_cmd_option, apply_solvent_xtb_cmd_override
 from pdb2reaction.cli.decorators import resolve_yaml_sources, load_merged_yaml_cfg, render_cli_exception
 
 logger = logging.getLogger(__name__)
@@ -567,6 +568,18 @@ def _prepare_frequency_output_paths(
               type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
               default=None, show_default="FiniteDifference",
               help="How the ML backend computes the Hessian (can also be set via YAML).")
+@click.option(
+    "--hess-device",
+    "hess_device",
+    type=click.Choice(["auto", "cuda", "cpu"], case_sensitive=False),
+    default="auto",
+    show_default=True,
+    help=(
+        "Device for post-evaluation Hessian placement and diagonalization "
+        "(auto/cuda/cpu). Use 'cpu' to move the evaluated Hessian off GPU before "
+        "diagonalization. The calculator itself still runs on its own device."
+    ),
+)
 @click.option("-b", "--backend", type=click.Choice(["uma", "orb", "mace", "aimnet2", "dft"]), default="uma",
               show_default=True, help="Energy/force calculator backend.")
 @click.option("--solvent", default="none", show_default=True,
@@ -580,7 +593,6 @@ def _prepare_frequency_output_paths(
 @add_calc_file_option()
 @add_deterministic_option()
 @add_allow_charge_mult_mismatch_option()
-@add_coord_type_option()
 @add_dft_calculator_options()
 @click.pass_context
 def cli(
@@ -612,6 +624,7 @@ def cli(
     out_json: bool,
     # hessian
     hessian_calc_mode: Optional[str],
+    hess_device: str,
     # backend
     backend: str,
     solvent: str,
@@ -620,7 +633,6 @@ def cli(
     backend_model: Optional[str],
     calc_file: Optional[str],
     calc_factory: Optional[str],
-    cli_coord_type: Optional[str],
 ) -> None:
     config_yaml, override_yaml, _ = resolve_yaml_sources(
         config_yaml=config_yaml,
@@ -659,6 +671,7 @@ def cli(
     calc_cfg = dict(CALC_KW)
     freq_cfg = dict(FREQ_KW)
     thermo_cfg = dict(THERMO_KW)
+    thermo_paths = (("thermo",), ("freq", "thermo"))
 
     apply_yaml_overrides(
         config_layer_cfg,
@@ -666,13 +679,12 @@ def cli(
             (geom_cfg, (("geom",),)),
             (calc_cfg, (("calc",),)),
             (freq_cfg, (("freq",),)),
-            (thermo_cfg, (("thermo",),)),
+            (thermo_cfg, thermo_paths),
         ],
     )
-    _config_thermo = config_layer_cfg.get("thermo")
     _config_has_symmetry_number = (
-        isinstance(_config_thermo, dict)
-        and _config_thermo.get("symmetry_number") is not None
+        yaml_section_has_key(config_layer_cfg, thermo_paths, "symmetry_number")
+        and thermo_cfg.get("symmetry_number") is not None
     )
 
     if cli_param_overridden(ctx, "workers"):
@@ -711,8 +723,6 @@ def cli(
         freq_cfg["sort"] = str(sort)
     if cli_param_overridden(ctx, "out_dir"):
         freq_cfg["out_dir"] = str(out_dir)
-    if cli_param_overridden(ctx, "cli_coord_type") and cli_coord_type is not None:
-        geom_cfg["coord_type"] = str(cli_coord_type).lower()
     if cli_param_overridden(ctx, "temperature"):
         thermo_cfg["temperature"] = float(temperature)
     if cli_param_overridden(ctx, "pressure_atm"):
@@ -734,13 +744,12 @@ def cli(
             (geom_cfg, (("geom",),)),
             (calc_cfg, (("calc",),)),
             (freq_cfg, (("freq",),)),
-            (thermo_cfg, (("thermo",),)),
+            (thermo_cfg, thermo_paths),
         ],
     )
-    _override_thermo = override_layer_cfg.get("thermo")
     _override_has_symmetry_number = (
-        isinstance(_override_thermo, dict)
-        and _override_thermo.get("symmetry_number") is not None
+        yaml_section_has_key(override_layer_cfg, thermo_paths, "symmetry_number")
+        and thermo_cfg.get("symmetry_number") is not None
     )
     _validate_freq_thermo_config(freq_cfg, thermo_cfg)
     symmetry_number_source = _symmetry_number_source(
@@ -775,6 +784,14 @@ def cli(
     )
 
     out_dir_path = Path(freq_cfg.get("out_dir", out_dir)).resolve()
+
+    if hess_device.lower() != "auto":
+        # An explicit cuda request without CUDA fails here, also under --dry-run (as in irc).
+        from pdb2reaction.workflows.irc import _resolve_hessian_device
+        try:
+            _resolve_hessian_device(hess_device, torch.cuda.is_available())
+        except ValueError as exc:
+            raise click.ClickException(str(exc)) from exc
 
     if show_config:
         click.echo(
@@ -845,7 +862,9 @@ def cli(
     }
     click.echo(pretty_block("thermo", thermo_block))
 
-    coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
+    # freq builds a Cartesian Hessian, so it always loads Cartesian coordinates
+    # (geom.coord_type from YAML, including the value written by `all`, is ignored).
+    coord_type = "cart"
     coord_kwargs = dict(geom_cfg)
     coord_kwargs.pop("coord_type", None)
     geometry = geom_loader(geom_input_path, coord_type=coord_type, **coord_kwargs)
@@ -853,7 +872,12 @@ def cli(
     # Masses (AU tensor for TR projection & MW->Cart conversion)
     masses_amu = _safe_masses_amu(geometry.atomic_numbers)
     masses_au_t = torch.as_tensor(masses_amu * AMU2AU, dtype=torch.float32)
-    device = _torch_device(calc_cfg.get("device", "auto"))
+    if hess_device.lower() == "auto":
+        device = _torch_device(calc_cfg.get("device", "auto"))
+    else:
+        device = _torch_device(hess_device.lower())
+    if device.type == "cpu":
+        click.echo("[device] Hessian placement and diagonalization will run on CPU after evaluation.")
     masses_au_t = masses_au_t.to(device=device)
 
     try:

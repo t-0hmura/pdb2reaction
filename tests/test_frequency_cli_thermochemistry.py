@@ -111,3 +111,26 @@ def test_frequency_cli_retains_soft_modes_and_thermal_input(tmp_path, monkeypatc
     for payload in payloads[1:]:
         np.testing.assert_array_equal(payload["frequencies_cm"], payloads[0]["frequencies_cm"])
         assert payload["thermochemistry"] == payloads[0]["thermochemistry"]
+
+
+def test_frequency_always_loads_cartesian_coordinates(tmp_path, monkeypatch):
+    source = tmp_path / "carbon.pdb"
+    source.write_text(
+        "HETATM    1  C1  MOL A   1       0.000   0.000   0.000  1.00  0.00           C  \nEND\n"
+    )
+    config = tmp_path / "config.yaml"
+    config.write_text(yaml.safe_dump({"geom": {"coord_type": "dlc"}}))
+    seen = []
+
+    def stop(path, coord_type, **kwargs):
+        seen.append(coord_type)
+        raise RuntimeError("geometry loaded")
+
+    monkeypatch.setattr(workflow, "geom_loader", stop)
+    base = ["freq", "-i", str(source), "-q", "0", "-m", "1", "--no-freeze-links",
+            "-o", str(tmp_path / "out")]
+    rejected = CliRunner().invoke(root_cli, [*base, "--coord-type", "dlc"])
+    assert rejected.exit_code == 2
+    assert "No such option" in rejected.output
+    CliRunner().invoke(root_cli, [*base, "--config", str(config)])
+    assert seen == ["cart"]

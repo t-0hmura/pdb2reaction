@@ -450,3 +450,38 @@ def test_sp_converts_yaml_freeze_atoms_to_internal_indices(
     assert loaded[0]["freeze_atoms"] == [0]
     assert created[0]["freeze_atoms"] == [0]
     assert created[0]["return_partial_hessian"] is True
+
+
+def test_sp_merges_cli_freeze_atoms_with_yaml(monkeypatch, tmp_path: Path) -> None:
+    from pdb2reaction.cli import cli as root_cli
+    from pdb2reaction.workflows import sp
+
+    inp = tmp_path / "geom.xyz"
+    inp.write_text("3\nframe\nC 0.0 0.0 0.0\nC 0.0 0.0 1.5\nC 0.0 0.0 3.0\n")
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text("geom:\n  freeze_atoms: [3]\n")
+    loaded: list[dict] = []
+    created: list[dict] = []
+
+    def fake_loader(*_args, **kwargs):
+        loaded.append(dict(kwargs))
+        return _FakeGeometry()
+
+    def fake_create_calculator(**kwargs):
+        created.append(dict(kwargs))
+        return _FakeCalculator()
+
+    monkeypatch.setattr(sp, "geom_loader", fake_loader)
+    monkeypatch.setattr(sp, "create_calculator", fake_create_calculator)
+
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "sp", "-i", str(inp), "-q", "0", "-m", "1", "--config", str(cfg),
+            "--freeze-atoms", "1", "-o", str(tmp_path / "out"),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert loaded[0]["freeze_atoms"] == [0, 2]
+    assert created[0]["freeze_atoms"] == [0, 2]

@@ -40,10 +40,12 @@ from pdb2reaction.core.defaults import (
     apply_backend_defaults,
 )
 from pdb2reaction.core.utils import (
+    _parse_freeze_atoms,
     apply_yaml_overrides,
     cli_param_overridden,
     emit_dry_run_complete,
     format_elapsed,
+    merge_freeze_atom_indices,
     prepare_input_structure,
     resolve_charge_spin,
     resolve_freeze_atoms,
@@ -91,8 +93,13 @@ logger = logging.getLogger(__name__)
     show_default=True, help="Output directory.",
 )
 @click.option(
+    "--freeze-atoms", "freeze_atoms_text",
+    type=str, default=None, show_default=False,
+    help="Comma-separated 1-based atom indices to freeze (e.g., '1,3,5').",
+)
+@click.option(
     "--hess/--no-hess", "do_hess", default=False, show_default=True,
-    help="Also compute a Hessian and save it to hessian.npy (active block when YAML geom.freeze_atoms is non-empty).",
+    help="Also compute a Hessian and save it to hessian.npy (active block when atoms are frozen).",
 )
 @click.option(
     "--hessian-calc-mode", "hessian_calc_mode",
@@ -154,6 +161,7 @@ def cli(
     workers: int,
     workers_per_node: int,
     out_dir: str,
+    freeze_atoms_text: Optional[str],
     do_hess: bool,
     hessian_calc_mode: Optional[str],
     config_yaml: Optional[Path],
@@ -243,6 +251,9 @@ def cli(
         # calculator adapters use 0-based indices internally.
         if geom_cfg.get("freeze_atoms"):
             geom_cfg["freeze_atoms"] = yaml_freeze_to_internal(geom_cfg["freeze_atoms"])
+        freeze_atoms_cli = _parse_freeze_atoms(freeze_atoms_text)
+        if freeze_atoms_cli:
+            merge_freeze_atom_indices(geom_cfg, freeze_atoms_cli)
 
         resolved_charge, resolved_spin = resolve_charge_spin(
             prepared_inputs, charge=charge, spin=spin,

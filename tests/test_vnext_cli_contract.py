@@ -39,3 +39,32 @@ def test_conflicting_alias_values_are_rejected_before_execution() -> None:
     )
     assert result.exit_code == 2
     assert "Conflicting values were supplied through aliases" in result.output
+
+
+def test_every_multiplicity_option_requires_a_positive_integer() -> None:
+    context = click.Context(root_cli)
+    checked = []
+    for command_name in root_cli.list_commands(context):
+        command = root_cli.get_command(context, command_name)
+        for parameter in getattr(command, "params", ()):
+            if isinstance(parameter, click.Option) and "--multiplicity" in parameter.opts:
+                checked.append(command_name)
+                assert isinstance(parameter.type, click.IntRange), command_name
+                assert parameter.type.min == 1, command_name
+    assert checked
+
+
+def test_shared_choice_options_use_one_case_rule() -> None:
+    expected = {"--backend": True, "--solvent-model": True, "--dft-solvent-model": True, "--dft-engine": False}
+    context = click.Context(root_cli)
+    checked = set()
+    for command_name in root_cli.list_commands(context):
+        command = root_cli.get_command(context, command_name)
+        for parameter in getattr(command, "params", ()):
+            if not isinstance(parameter, click.Option) or not isinstance(parameter.type, click.Choice):
+                continue
+            for flag, case_sensitive in expected.items():
+                if flag in parameter.opts:
+                    checked.add(flag)
+                    assert parameter.type.case_sensitive is case_sensitive, (command_name, flag)
+    assert checked == set(expected)

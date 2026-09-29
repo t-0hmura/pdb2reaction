@@ -250,6 +250,7 @@ def _build_scan_context(
     workers_per_node: int,
     out_dir: str,
     thresh: Optional[str],
+    print_every: Optional[int],
     bias_k: Optional[float],
     opt_mode: str,
     relax_max_cycles: int,
@@ -271,8 +272,15 @@ def _build_scan_context(
     List[int],
     Path,
 ]:
+    kind = normalize_choice(
+        opt_mode,
+        param="--opt-mode",
+        alias_groups=OPT_MODE_ALIASES,
+        allowed_hint="grad|hess",
+    )
     geom_cfg, calc_cfg, opt_cfg, lbfgs_cfg, rfo_cfg, bias_cfg = build_scan_configs(
         yaml_cfg,
+        kind=kind,
         geom_kw=geom_kw,
         calc_kw=calc_kw,
         opt_kw=opt_kw,
@@ -285,19 +293,13 @@ def _build_scan_context(
         workers_per_node=workers_per_node,
         out_dir=out_dir,
         thresh=thresh,
+        print_every=print_every,
         bias_k=bias_k,
         relax_max_cycles=relax_max_cycles,
         relax_max_cycles_overridden=relax_max_cycles_overridden,
         set_charge_spin=set_charge_spin,
         workers_overridden=workers_overridden,
         workers_per_node_overridden=workers_per_node_overridden,
-    )
-
-    kind = normalize_choice(
-        opt_mode,
-        param="--opt-mode",
-        alias_groups=OPT_MODE_ALIASES,
-        allowed_hint="grad|hess",
     )
 
     # Convert 1-based YAML freeze_atoms to 0-based internal
@@ -530,8 +532,8 @@ def cli(
                 geom_kw=dict(GEOM_KW_DEFAULT),
                 calc_kw=dict(UMA_CALC_KW),
                 opt_kw={**OPT_BASE_KW, "thresh": "baker"},
-                lbfgs_kw=dict(LBFGS_KW),
-                rfo_kw=dict(RFO_KW),
+                lbfgs_kw={**LBFGS_KW, "thresh": "baker"},
+                rfo_kw={**RFO_KW, "thresh": "baker"},
                 bias_kw=dict(BIAS_KW),
                 charge=resolved_charge,
                 spin=resolved_spin,
@@ -539,6 +541,7 @@ def cli(
                 workers_per_node=workers_per_node,
                 out_dir=out_dir,
                 thresh=thresh if thresh_overridden else None,
+                print_every=print_every if cli_param_overridden(ctx, "print_every") else None,
                 # bias_k is None when neither CLI --bias-k nor YAML bias.k set
                 # (the common-decorator default flipped to None to enable YAML
                 # override). `build_scan_configs` handles None via
@@ -579,8 +582,6 @@ def cli(
             apply_calc_file_to_calc_cfg(calc_cfg, calc_file, calc_factory)
             from pdb2reaction.backends import apply_effective_precision
             apply_effective_precision(calc_cfg, precision)
-            if cli_param_overridden(ctx, "print_every") and print_every is not None:
-                opt_cfg["print_every"] = int(print_every)
             if cli_param_overridden(ctx, "cli_coord_type") and cli_coord_type is not None:
                 geom_cfg["coord_type"] = str(cli_coord_type).lower()
             apply_backend_defaults(calc_cfg)
@@ -1242,14 +1243,21 @@ def cli(
                 margin=dict(l=10, r=10, b=10, t=40),
             )
             png2d = final_dir / "scan2d_map.png"
-            write_plotly_image(
-                fig2d,
-                png2d,
-                scale=2,
-                width=680,
-                height=600,
-            )
-            click.echo(f"[plot] Wrote '{png2d}'.")
+            try:
+                write_plotly_image(
+                    fig2d,
+                    png2d,
+                    scale=2,
+                    width=680,
+                    height=600,
+                )
+            except Exception as e:
+                click.echo(
+                    f"[plot] NOTE: PNG export skipped: {e}",
+                    err=True,
+                )
+            else:
+                click.echo(f"[plot] Wrote '{png2d}'.")
 
             # ---- 3D surface plus the authored coloured base-plane projection ----
             spread = vmax - vmin if (vmax > vmin) else 1.0

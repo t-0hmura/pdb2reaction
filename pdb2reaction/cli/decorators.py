@@ -36,6 +36,25 @@ def resolve_yaml_sources(
     return config_yaml, override_yaml, False
 
 
+# Union of the top-level sections read by any subcommand, so a shared config file does not warn.
+_KNOWN_YAML_SECTIONS = frozenset({
+    "geom", "calc", "opt", "lbfgs", "rfo", "rsirfo", "stopt", "gs", "dmf",
+    "sp", "freq", "thermo", "hessian_dimer", "irc", "dft", "bond",
+    "bias", "search",
+})
+
+
+def _warn_unknown_yaml_sections(merged: Dict[str, Any]) -> None:
+    """Report top-level YAML sections that no command reads (for example a misspelled ``clac:``)."""
+    bad = sorted(str(k) for k in merged if k not in _KNOWN_YAML_SECTIONS)
+    if bad:
+        click.echo(
+            f"[config] WARNING: YAML section(s) {', '.join(bad)} are not recognized and were "
+            f"ignored. Known sections: {', '.join(sorted(_KNOWN_YAML_SECTIONS))}.",
+            err=True,
+        )
+
+
 def load_merged_yaml_cfg(
     config_yaml: Optional[Path],
     override_yaml: Optional[Path],
@@ -54,6 +73,7 @@ def load_merged_yaml_cfg(
     # tree.
     merged: Dict[str, Any] = deepcopy(config_dict)
     deep_update(merged, deepcopy(override_dict))
+    _warn_unknown_yaml_sections(merged)
     return merged, config_dict, override_dict
 
 
@@ -161,15 +181,20 @@ def run_cli(
     out_dir: Optional[Path] = None,
     command: Optional[str] = None,
     time_start: Optional[float] = None,
+    unrecorded_exc: Tuple[Type[BaseException], ...] = (),
 ) -> None:
-    """Standard CLI exception handling with consistent messaging."""
+    """Standard CLI exception handling with consistent messaging.
+
+    Exceptions in ``unrecorded_exc`` skip the error record, e.g. when an output
+    would replace an input.
+    """
     try:
         fn()
     except KeyboardInterrupt:
         click.echo("Interrupted by user.", err=True)
         sys.exit(130)
     except Exception as e:
-        if out_dir and command:
+        if out_dir and command and not isinstance(e, unrecorded_exc):
             _write_error_json(out_dir, command, e, label, time_start)
         if zero_step_exc is not None and isinstance(e, zero_step_exc):
             click.echo(

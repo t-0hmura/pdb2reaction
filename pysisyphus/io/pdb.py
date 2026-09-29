@@ -57,6 +57,9 @@ def parse_atom_name(name):
     org_name = name
     assert len(name) == 4
     name_lower = name.lower()
+    # LEaP writes GAFF chlorine and bromine from column 14 (" CL1", " BR1").
+    if name_lower[0] == " " and name_lower[1:3] in ("cl", "br"):
+        return name_lower[1:3].capitalize()
     # Cases like " SOD" require special handling. Sticking to the PDB specification (!)
     # and using only the first two characters would result in S (sulphur).
     use_full_name = name_lower in FULL_NAME

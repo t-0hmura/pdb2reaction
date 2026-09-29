@@ -61,6 +61,7 @@ _REQUIRED_RESTART_KEYS = (
     "coords",
     "forces",
     "steps",
+    "cart_coords",
     "geom_info",
 )
 
@@ -367,10 +368,6 @@ def _validate_hessian(restart_info: Mapping, optimizer: Any) -> None:
                 f"{recorded}: {exc}"
             ) from exc
     expected = _expected_hessian_dim(optimizer)
-    if recorded is None and hessian.size == 0 and expected == 0:
-        # Checkpoints written before array shapes were recorded serialized a
-        # zero-dimensional active Hessian as ``[]``.
-        hessian = hessian.reshape((0, 0))
     if hessian.ndim != 2 or hessian.shape[0] != hessian.shape[1]:
         raise CheckpointValidationError(
             f"checkpoint Hessian is not square, got shape {hessian.shape}"

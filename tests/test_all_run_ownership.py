@@ -10,6 +10,7 @@ from click.testing import CliRunner
 import pytest
 
 from pdb2reaction.workflows import all as all_workflow
+from pdb2reaction.workflows._run_session import InvocationResources
 from pdb2reaction.workflows._run_session import RunSession
 from pdb2reaction.workflows._run_session import declare_public_output
 from pdb2reaction.core.result_commit import RUN_ID_ENV
@@ -101,6 +102,37 @@ def test_all_restores_exact_process_state_and_prepared_resources(
     all_workflow._echo_state._started = False
     all_workflow._FREEZE_ATOMS_GLOBAL = None
     all_workflow._FREEZE_ATOMS_YAML = None
+
+
+def test_all_refuses_an_output_directory_locked_by_another_run(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    inputs = [tmp_path / "left.xyz", tmp_path / "right.xyz"]
+    for path in inputs:
+        _write_h2(path)
+    out_dir = tmp_path / "out"
+    holder = InvocationResources()
+    holder.own_exclusive_lock(out_dir / all_workflow.WORK_DIRNAME / ".run.lock")
+
+    def reached_run_body(*_args, **_kwargs):
+        raise AssertionError("run body started without the output lock")
+
+    monkeypatch.setattr(all_workflow, "_resolve_override_dir", reached_run_body)
+    try:
+        result = CliRunner().invoke(
+            all_workflow.cli,
+            [
+                "-i", str(inputs[0]),
+                "-i", str(inputs[1]),
+                "-q", "0",
+                "--out-dir", str(out_dir),
+            ],
+        )
+    finally:
+        holder.close()
+
+    assert result.exit_code != 0
+    assert "already using output directory" in result.output
 
 
 def test_generated_yaml_is_session_owned_and_caller_yaml_is_preserved(

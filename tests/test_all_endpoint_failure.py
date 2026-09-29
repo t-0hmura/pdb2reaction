@@ -290,6 +290,100 @@ def test_endpoint_boundary_retains_provenance_and_stops_consumers(
         assert endpoint_record["product"]["n_opt_cycles"] == 4
 
 
+def ts_only_statements_from_irc():
+    """The TS-only body from the IRC call to its end, plus names bound before it."""
+    tree = ast.parse(Path(workflow.__file__).read_text())
+    for function in ast.walk(tree):
+        if not isinstance(function, ast.FunctionDef):
+            continue
+        branch = next((
+            node for node in function.body
+            if isinstance(node, ast.If) and isinstance(node.test, ast.Name)
+            and node.test.id == "single_tsopt_mode"
+            and any(isinstance(statement, ast.Assign)
+                    and any(isinstance(target, ast.Name) and target.id == "irc_res"
+                            for target in statement.targets)
+                    for statement in node.body)
+        ), None)
+        if branch is None:
+            continue
+        start = next(
+            index for index, statement in enumerate(branch.body)
+            if isinstance(statement, ast.Assign)
+            and any(isinstance(target, ast.Name) and target.id == "irc_res"
+                    for target in statement.targets)
+        )
+        first_line = branch.body[start].lineno
+        bound_before = {arg.arg for arg in function.args.args + function.args.kwonlyargs}
+        bound_before.update(
+            node.id for node in ast.walk(function)
+            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store)
+            and node.lineno < first_line
+        )
+        return copy.deepcopy(branch.body[start:]), bound_before
+    raise AssertionError("TS-only branch not found")
+
+
+def test_ts_only_endpoint_failure_records_irc_trajectory(monkeypatch, tmp_path):
+    statements, bound_before = ts_only_statements_from_irc()
+    monkeypatch.setattr(hessian_cache, "load", lambda *_a: None)
+    monkeypatch.setattr(hessian_cache, "discard", lambda *_a: None)
+    root = tmp_path / "segment"
+    trajectory = tmp_path / "irc" / "finished_irc_trj.xyz"
+    left, right, ts = Geometry(1), Geometry(2), Geometry(3)
+    lease = SimpleNamespace(release=lambda: None)
+    records = []
+
+    def optimize(geom, _mode, _directory, tag, **kwargs):
+        if tag == "product":
+            raise ValueError("product endpoint failure")
+        return Geometry(10), None, True
+
+    def enrich(summary, **kwargs):
+        records.append(kwargs["post_segments"][0])
+
+    names = {node.id for statement in statements for node in ast.walk(statement)
+             if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)}
+    namespace = {name: None for name in names if not hasattr(builtins, name)}
+    namespace.update(vars(workflow))
+    namespace.update({
+        "tsroot": root, "struct_dir": root / "structures", "out_dir": tmp_path,
+        "dump": False, "_tsopt_decision": {}, "_tsopt_record": {},
+        "_irc_and_match": lambda **_kw: {
+            "left_min_geom": left, "right_min_geom": right, "ts_geom": ts,
+            "calculator_lease": lease, "irc_trj_path": trajectory,
+        },
+        "_save_single_geom_as_pdb_for_tools": lambda _g, _ref, directory, name: directory / f"{name}.pdb",
+        "_optimize_endpoint_geom": optimize,
+        "commit_json": lambda *_a, **_kw: None, "commit_exact": lambda *_a, **_kw: None,
+        "_enrich_summary": enrich,
+        "_publish_manifest_summary": lambda *_a, **_kw: None,
+        "_copy_public_logged": lambda *_a, **_kw: None,
+        "_persist_run_manifest": lambda *_a: None,
+        "_write_endpoint_failure_summary_log": lambda *_a, **_kw: None,
+        "_all_method_citation_payload": lambda: {},
+        "_freeze_atoms_for_log": lambda: [],
+        "_emit_final_summary": lambda *_a, **_kw: None,
+    })
+    namespace["__builtins__"] = __builtins__
+    # Names bound before the IRC call in production are passed in; everything
+    # else the branch assigns is local, as in the real function.
+    local = {node.id for statement in statements for node in ast.walk(statement)
+             if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store)}
+    inputs = sorted(local & bound_before)
+    function = ast.parse("def exercise():\n    pass\n").body[0]
+    function.args.args = [ast.arg(arg=name) for name in inputs]
+    function.body = statements
+    exec(compile(ast.fix_missing_locations(ast.Module(body=[function], type_ignores=[])),
+                 str(workflow.__file__), "exec"), namespace)
+    namespace["exercise"](*(namespace.get(name) for name in inputs))
+
+    (stop_log,) = records
+    assert stop_log["pipeline_stop"]["stage"] == "endpoint_opt"
+    assert set(stop_log["endpoint_opt"]["failures"]) == {"product"}
+    assert stop_log["irc_traj"] == str(trajectory)
+
+
 @pytest.mark.parametrize(
     "outcome",
     ["converged", "not_converged", "handled_stop", "missing", "stale", "nonfinite_coords", "nonfinite_energy"],

@@ -379,3 +379,17 @@ def test_hessian_dimer_passes_geometry_constraints_to_dimer(tmp_path, monkeypatc
     np.testing.assert_allclose(basis.T @ basis, np.eye(3), atol=2.0e-12)
     assert runner.rigid_projection_info["effective_rank"] == 3
     assert captured["lbfgs_kwargs"]["line_search"] is False
+
+
+@pytest.mark.parametrize("coord_type", ["cart", "redund", "dlc"])
+def test_calc_gradient_is_cartesian_for_internal_coordinates(monkeypatch, coord_type):
+    import pdb2reaction.workflows.tsopt as tsopt
+    from pysisyphus.Geometry import Geometry
+
+    monkeypatch.setattr(tsopt, "create_calculator", lambda **kwargs: RecordingCalculator())
+    monkeypatch.setattr(tsopt, "echo_resolved_device", lambda: None)
+    geom = Geometry(["C", "H", "O", "N", "S"], COORDS.reshape(-1), coord_type=coord_type)
+
+    grad = tsopt._calc_gradient(geom, {})
+
+    np.testing.assert_allclose(grad, -np.linspace(-0.5, 0.5, COORDS.size))

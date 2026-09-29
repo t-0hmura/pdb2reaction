@@ -80,7 +80,10 @@ from pdb2reaction.workflows.align_freeze import (
     align_and_refine_sequence_inplace,
     alignment_failed_pair_indices,
 )
-from pdb2reaction.workflows._path_yaml_helpers import apply_single_opt_yaml_layer
+from pdb2reaction.workflows._path_yaml_helpers import (
+    apply_single_opt_yaml_layer,
+    check_single_opt_yaml_conflicts,
+)
 from pdb2reaction.cli.common_options import add_coord_type_option, add_precision_option, add_backend_model_option, add_calc_file_option, add_deterministic_option, add_allow_charge_mult_mismatch_option, add_dft_calculator_options, add_solvent_xtb_cmd_option, apply_solvent_xtb_cmd_override
 from pdb2reaction.cli.decorators import resolve_yaml_sources, load_merged_yaml_cfg, _write_error_json, render_cli_exception
 
@@ -707,7 +710,7 @@ def _optimize_single(
     "-m",
     "--multiplicity",
     "spin",
-    type=int,
+    type=click.IntRange(min=1),
     default=None,
     show_default="1",
     help="Spin multiplicity (2S+1).",
@@ -811,7 +814,8 @@ def _optimize_single(
     default=None,
     show_default="gau",
     help=(
-        "Convergence preset for endpoint preoptimization only "
+        "Convergence preset for endpoint preoptimization and the "
+        "post-alignment relaxation only "
         "(gau_loose|gau|gau_tight|gau_vtight|baker|never)."
     ),
 )
@@ -990,9 +994,9 @@ def cli(
                 layer_cfg,
                 lbfgs_cfg=lbfgs_cfg,
                 rfo_cfg=rfo_cfg,
+                stopt_cfg=stopt_cfg,
                 opt_base_kw=OPT_BASE_KW,
                 deep_update=deep_update,
-                apply_yaml_overrides=apply_yaml_overrides,
             )
 
         apply_yaml_overrides(
@@ -1123,6 +1127,10 @@ def cli(
         else:
             single_opt_kind = "rfo"
             single_opt_cfg = rfo_cfg
+        for layer_cfg in (config_layer_cfg, override_layer_cfg):
+            check_single_opt_yaml_conflicts(
+                layer_cfg, kind=single_opt_kind, opt_base_kw=OPT_BASE_KW
+            )
 
         single_opt_cfg = dict(single_opt_cfg)
         preopt_max_cycles_effective = single_opt_cfg.get(

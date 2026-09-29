@@ -53,6 +53,14 @@ def test_ts_rfo_omits_rfo_overlaps_and_requires_one_root(kind, tmp_path) -> None
             _build_rsirfo_kwargs({}, {"roots": roots}, tmp_path, kind=kind)
 
 
+@pytest.mark.parametrize("kind", ("rsprfo", "rsirfo", "trim"))
+def test_ts_rfo_rejects_single_root_key(kind, tmp_path) -> None:
+    from pdb2reaction.workflows.tsopt import _build_rsirfo_kwargs
+
+    with pytest.raises(click.BadParameter, match="rsirfo.root is not supported"):
+        _build_rsirfo_kwargs({}, {"root": 1}, tmp_path, kind=kind)
+
+
 def test_dimer_has_independent_yaml_line_search_setting() -> None:
     from pdb2reaction.core.defaults import HESSIAN_DIMER_CLI_KW
     from pdb2reaction.core.utils import apply_yaml_overrides
@@ -76,12 +84,12 @@ def test_dimer_has_independent_yaml_line_search_setting() -> None:
 
 
 def test_shared_optimizer_value_rejects_explicit_conflict() -> None:
-    from pdb2reaction.workflows.tsopt import _resolve_shared_optimizer_value
+    from pdb2reaction.core.utils import resolve_shared_optimizer_value
 
     opt_cfg = {"max_cycles": 10}
     rsirfo_cfg = {"max_cycles": 20}
     with pytest.raises(click.BadParameter, match="opt.max_cycles"):
-        _resolve_shared_optimizer_value(
+        resolve_shared_optimizer_value(
             opt_cfg,
             rsirfo_cfg,
             "max_cycles",
@@ -99,11 +107,11 @@ def test_shared_optimizer_value_rejects_explicit_conflict() -> None:
 def test_shared_optimizer_value_precedence(
     opt_explicit, downstream_explicit, expected,
 ) -> None:
-    from pdb2reaction.workflows.tsopt import _resolve_shared_optimizer_value
+    from pdb2reaction.core.utils import resolve_shared_optimizer_value
 
     opt_cfg = {"max_cycles": 10}
     rsirfo_cfg = {"max_cycles": 20}
-    _resolve_shared_optimizer_value(
+    resolve_shared_optimizer_value(
         opt_cfg,
         rsirfo_cfg,
         "max_cycles",

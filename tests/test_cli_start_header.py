@@ -42,6 +42,8 @@ def test_lazy_subcommand_header_uses_context_info_name(monkeypatch) -> None:
         (["pdb2reaction", "bond-summary", "--json", "yes"], True),
         (["pdb2reaction", "bond-summary", "--json=false"], False),
         (["pdb2reaction", "bond-summary", "--json", "--no-json"], False),
+        (["pdb2reaction", "bond-summary", "--no-json", "False"], True),
+        (["pdb2reaction", "bond-summary", "--no-json=True"], False),
         (["pdb2reaction", "sp", "--json=true"], False),
     ],
 )

@@ -28,7 +28,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from numbers import Real, Integral
 from pathlib import Path
-from typing import Any, Dict, Optional, Sequence, List, Tuple, Callable, Iterator
+from typing import Any, Collection, Dict, Optional, Sequence, List, Tuple, Callable, Iterator
 
 import click
 from click.core import ParameterSource
@@ -745,6 +745,54 @@ def strip_inherited_keys(
     return trimmed
 
 
+def resolve_shared_optimizer_value(
+    opt_cfg: Dict[str, Any],
+    downstream_cfg: Dict[str, Any],
+    key: str,
+    *,
+    opt_explicit: bool,
+    downstream_explicit: bool,
+    downstream_default: Any,
+    downstream_section: str,
+) -> None:
+    """Resolve one duplicated optimizer setting without silent precedence."""
+    if opt_explicit and downstream_explicit and opt_cfg[key] != downstream_cfg[key]:
+        raise click.BadParameter(
+            f"opt.{key} and {downstream_section}.{key} conflict."
+        )
+    if opt_explicit:
+        value = opt_cfg[key]
+    elif downstream_explicit:
+        value = downstream_cfg[key]
+    else:
+        value = downstream_default
+    opt_cfg[key] = value
+    downstream_cfg[key] = value
+
+
+def resolve_shared_optimizer_keys(
+    opt_cfg: Dict[str, Any],
+    downstream_cfg: Dict[str, Any],
+    downstream_defaults: Mapping[str, Any],
+    *,
+    downstream_section: str,
+    opt_explicit: Collection[str],
+    downstream_explicit: Collection[str],
+    skip: Sequence[str] = ("out_dir", "prefix"),
+) -> None:
+    """Apply :func:`resolve_shared_optimizer_value` to every key shared by ``opt`` and one optimizer section."""
+    for key in sorted((opt_cfg.keys() & downstream_defaults.keys()) - set(skip)):
+        resolve_shared_optimizer_value(
+            opt_cfg,
+            downstream_cfg,
+            key,
+            opt_explicit=key in opt_explicit,
+            downstream_explicit=key in downstream_explicit,
+            downstream_default=downstream_defaults[key],
+            downstream_section=downstream_section,
+        )
+
+
 def format_geom_for_echo(geom_cfg: Dict[str, Any]) -> Dict[str, Any]:
     """
     Normalize geometry configuration for CLI echo output.
@@ -1245,6 +1293,14 @@ def _get_mapping_section(cfg: Mapping[str, Any], path: _Sequence[str]) -> Option
     return cur
 
 
+# Nested spellings of top-level sections (opt.lbfgs = lbfgs, opt.rfo = rfo,
+# freq.thermo = thermo). They are never keys of the parent section itself.
+_NESTED_YAML_SECTIONS: Dict[Tuple[str, ...], frozenset] = {
+    ("opt",): frozenset({"lbfgs", "rfo"}),
+    ("freq",): frozenset({"thermo"}),
+}
+
+
 def apply_yaml_overrides(
     yaml_cfg: Mapping[str, Any],
     overrides: _Sequence[Tuple[Dict[str, Any], _Sequence[_Sequence[str]]]],
@@ -1257,26 +1313,54 @@ def apply_yaml_overrides(
         Parsed YAML configuration (root-level mapping).
     overrides : Sequence[Tuple[Dict[str, Any], Sequence[Sequence[str]]]]
         Each entry consists of the target dictionary to update followed by one or
-        more candidate key paths. The first existing path is used. For example::
+        more key paths that spell the same section. For example::
 
             apply_yaml_overrides(
                 yaml_cfg,
                 [
                     (geom_cfg, (("geom",),)),
-                    (lbfgs_cfg, (("opt", "lbfgs"), ("lbfgs",))),
+                    (lbfgs_cfg, (("lbfgs",), ("opt", "lbfgs"))),
                 ],
             )
 
-        This mirrors the previous ``deep_update(..., yaml_cfg.get(...))`` pattern
-        while centralizing the shared logic.
+        Every present path is applied, and a key set to different values under
+        two of the paths is rejected. The nested sections ``opt.lbfgs``,
+        ``opt.rfo`` and ``freq.thermo`` never reach the ``opt``/``freq`` target.
     """
     for target, paths in overrides:
+        merged: Dict[str, Any] = {}
+        origin: Dict[str, str] = {}
         for path in paths:
             norm_path = tuple(path)
             section = _get_mapping_section(yaml_cfg, norm_path)
-            if section is not None:
-                deep_update(target, section)
-                break
+            if section is None:
+                continue
+            nested = _NESTED_YAML_SECTIONS.get(norm_path, frozenset())
+            label = ".".join(norm_path)
+            for key, value in section.items():
+                if key in nested:
+                    continue
+                if key in merged and merged[key] != value:
+                    raise click.BadParameter(
+                        f"{origin[key]}.{key} and {label}.{key} conflict."
+                    )
+                merged[key] = value
+                origin.setdefault(key, label)
+        if merged:
+            deep_update(target, merged)
+
+
+def yaml_section_has_key(
+    yaml_cfg: Mapping[str, Any],
+    paths: _Sequence[_Sequence[str]],
+    key: str,
+) -> bool:
+    """Return True when any candidate YAML section explicitly defines ``key``."""
+    for path in paths:
+        section = _get_mapping_section(yaml_cfg, tuple(path))
+        if isinstance(section, Mapping) and (key in section):
+            return True
+    return False
 
 
 def load_yaml_dict(path: Optional[Path]) -> Dict[str, Any]:
@@ -1306,6 +1390,7 @@ def load_yaml_dict(path: Optional[Path]) -> Dict[str, Any]:
 def build_scan_configs(
     yaml_cfg: Mapping[str, Any],
     *,
+    kind: str,
     geom_kw: Dict[str, Any],
     calc_kw: Dict[str, Any],
     opt_kw: Dict[str, Any],
@@ -1319,6 +1404,7 @@ def build_scan_configs(
     workers_per_node: int = 1,
     out_dir: str = ".",
     thresh: Optional[str] = None,
+    print_every: Optional[int] = None,
     bias_k: Optional[float] = None,
     relax_max_cycles: Optional[int] = None,
     relax_max_cycles_overridden: bool = False,
@@ -1333,11 +1419,13 @@ def build_scan_configs(
     other subcommands (e.g. ``opt``).  ``workers`` / ``workers_per_node`` carry a
     non-``None`` CLI default, so they are only treated as a CLI override when the
     caller signals it via ``workers_overridden`` / ``workers_per_node_overridden``
-    (typically ``cli_param_overridden(ctx, "workers")``). ``thresh`` / ``bias_k``
-    default to ``None`` and are self-gating. ``relax_max_cycles`` is applied only
-    when its source flag says the user supplied it explicitly.  The returned
-    dictionaries are therefore the sole effective configuration consumed by
-    optimizer construction and config echoing.
+    (typically ``cli_param_overridden(ctx, "workers")``). ``thresh`` /
+    ``print_every`` / ``bias_k`` default to ``None`` and are self-gating.
+    ``relax_max_cycles`` is applied only when its source flag says the user
+    supplied it explicitly. Keys shared by ``opt`` and the ``kind`` optimizer
+    section are then resolved with :func:`resolve_shared_optimizer_keys`.  The
+    returned dictionaries are therefore the sole effective configuration
+    consumed by optimizer construction and config echoing.
     """
     geom_cfg = dict(geom_kw)
     calc_cfg = dict(calc_kw)
@@ -1353,8 +1441,8 @@ def build_scan_configs(
             (geom_cfg, (("geom",),)),
             (calc_cfg, (("calc",),)),
             (opt_cfg, (("opt",),)),
-            (lbfgs_cfg, (("lbfgs",),)),
-            (rfo_cfg, (("rfo",),)),
+            (lbfgs_cfg, (("lbfgs",), ("opt", "lbfgs"))),
+            (rfo_cfg, (("rfo",), ("opt", "rfo"))),
             (bias_cfg, (("bias",),)),
             *list(extra_overrides),
         ],
@@ -1373,12 +1461,34 @@ def build_scan_configs(
     # out_dir / dump are run-scoped (not YAML-tunable) and always set.
     opt_cfg["out_dir"] = out_dir
     opt_cfg["dump"] = False
+    cli_keys = set()
     if thresh is not None:
         opt_cfg["thresh"] = str(thresh)
+        cli_keys.add("thresh")
+    if print_every is not None:
+        opt_cfg["print_every"] = int(print_every)
+        cli_keys.add("print_every")
     if relax_max_cycles_overridden and relax_max_cycles is not None:
         opt_cfg["max_cycles"] = int(relax_max_cycles)
+        cli_keys.add("max_cycles")
     if bias_k is not None:
         bias_cfg["k"] = float(bias_k)
+
+    sopt_defaults = lbfgs_kw if kind == "lbfgs" else rfo_kw
+    resolve_shared_optimizer_keys(
+        opt_cfg,
+        lbfgs_cfg if kind == "lbfgs" else rfo_cfg,
+        sopt_defaults,
+        downstream_section=kind,
+        opt_explicit={
+            key for key in opt_cfg if yaml_section_has_key(yaml_cfg, (("opt",),), key)
+        } | cli_keys,
+        downstream_explicit={
+            key for key in sopt_defaults
+            if yaml_section_has_key(yaml_cfg, ((kind,), ("opt", kind)), key)
+        },
+        skip=("dump", "out_dir", "prefix"),
+    )
 
     return geom_cfg, calc_cfg, opt_cfg, lbfgs_cfg, rfo_cfg, bias_cfg
 
@@ -2599,7 +2709,7 @@ def _pdb_record_element(line: str) -> str:
     element = line[76:78].strip()
     if not element:
         element = guess_element(
-            line[12:16].strip(),
+            line[12:16],
             line[17:20].strip(),
             line.startswith("HETATM"),
         ) or ""
@@ -2646,7 +2756,7 @@ def load_pdb_atom_metadata(pdb_path: Path) -> List[Dict[str, Any]]:
                 resseq = None
 
             if not element_txt:
-                inferred = guess_element(atom_name, res_name, is_hetatm)
+                inferred = guess_element(line[12:16], res_name, is_hetatm)
                 element_txt = inferred or ""
 
             atoms.append(

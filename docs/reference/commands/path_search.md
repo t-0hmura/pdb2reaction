@@ -43,9 +43,10 @@ Options:
   -l, --ligand-charge TEXT        Total charge or per-resname mapping (e.g.,
                                   GPP:-3,SAM:1) used to derive charge when -q is
                                   omitted (PDB/mmCIF inputs only).
-  -m, --multiplicity INTEGER      Spin multiplicity (2S+1; inherits from a .gjf
+  -m, --multiplicity INTEGER RANGE
+                                  Spin multiplicity (2S+1; inherits from a .gjf
                                   template when available).  [default: (1 (or
-                                  the .gjf template value))]
+                                  the .gjf template value)); x>=1]
   --freeze-links / --no-freeze-links
                                   Freeze parent atoms of cap hydrogens
                                   (PDB/mmCIF input only).  [default: freeze-
@@ -106,9 +107,8 @@ Options:
                                   Print the resolved configuration blocks and
                                   the loaded YAML file, then continue.
                                   [default: no-show-config]
-  --dry-run / --no-dry-run        Validate options and print the execution plan
-                                  without running path search.  [default: no-
-                                  dry-run]
+  --dry-run / --no-dry-run        Validate options and inputs without running
+                                  path search.  [default: no-dry-run]
   --preopt / --no-preopt          If True, run initial single-structure
                                   optimizations of inputs.  [default: preopt]
   --align / --no-align            After optional preoptimization, align adjacent

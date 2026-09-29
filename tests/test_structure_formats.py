@@ -336,6 +336,10 @@ def test_bundled_pdb_parser_distinguishes_two_letter_atoms_from_hydrogens(
         (" PB ", "P"),
         (" SG ", "S"),
         (" OG ", "O"),
+        ("CA  ", "C"),
+        (" CL1", "CL"),
+        (" BR1", ""),
+        (" CL2", "C"),
         (" NH1", "NH"),
         ("ZN  ", "N"),
     ]
@@ -363,6 +367,10 @@ def test_bundled_pdb_parser_distinguishes_two_letter_atoms_from_hydrogens(
         "P",
         "S",
         "O",
+        "C",
+        "Cl",
+        "Br",
+        "C",
         "N",
         "Zn",
     ]
@@ -1389,3 +1397,22 @@ def test_mep_trajectory_cif_companion_is_a_path_deliverable(tmp_path: Path) -> N
     finally:
         unregister_coordinate_template(out_pdb)
         prepared.cleanup()
+
+
+def test_blank_element_columns_follow_fixed_column_atom_names(tmp_path: Path) -> None:
+    from pdb2reaction.core.utils import _pdb_record_element, load_pdb_atom_metadata
+    from pdb2reaction.io.structure_formats import read_pdb_atom_sites
+
+    rows = [(" NA ", "HEM"), (" N1A", "NAD"), (" O1G", "ATP"), ("1HW ", "HOH")]
+    lines = [
+        f"HETATM{i:>5} {name} {res} A{i:>4}    {float(i):8.3f}{0.0:8.3f}{0.0:8.3f}"
+        f"{1.0:6.2f}{0.0:6.2f}{'':14}\n"
+        for i, (name, res) in enumerate(rows, 1)
+    ]
+    source = tmp_path / "blank_elements.pdb"
+    source.write_text("".join(lines) + "END\n", encoding="utf-8")
+
+    records, _ = read_pdb_atom_sites(source)
+    assert [record.element for record in records] == ["N", "N", "O", "H"]
+    assert [atom["element"] for atom in load_pdb_atom_metadata(source)] == ["N", "N", "O", "H"]
+    assert [_pdb_record_element(line) for line in lines] == ["n", "n", "o", "h"]

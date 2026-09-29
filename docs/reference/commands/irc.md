@@ -76,6 +76,11 @@ Options:
                                   Hessian of the input geometry in
                                   Hartree/bohr^2, for all atoms or only the
                                   movable ones.
+  --hess-device [auto|cuda|cpu]   Device for initial Hessian storage and IRC
+                                  operations (auto/cuda/cpu). Use 'cpu' for
+                                  large systems to avoid VRAM limits. Applies
+                                  when irc.hessian_init is calc (the default).
+                                  [default: auto]
   --out-json / --no-out-json      Write machine-readable result.json to out_dir.
                                   [default: no-out-json]
   -b, --backend [uma|orb|mace|aimnet2|dft]

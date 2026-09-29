@@ -43,7 +43,9 @@ Options:
                                   GPP:-3,SAM:1) used to derive charge when -q is
                                   omitted (requires PDB/mmCIF input or --ref-
                                   pdb).
-  -m, --multiplicity INTEGER      Spin multiplicity (2S+1).  [default: (1)]
+  -m, --multiplicity INTEGER RANGE
+                                  Spin multiplicity (2S+1).  [default: (1);
+                                  x>=1]
   --one-based / --zero-based      Interpret atom indices in --scan-lists as
                                   1-based or 0-based.  [default: one-based]
   --max-step-size FLOAT           Maximum scanned distance change per step [Å].

@@ -75,6 +75,7 @@ from pdb2reaction.core.utils import (
     set_convert_file_enabled,
     convert_xyz_like_outputs,
     strip_inherited_keys,
+    resolve_shared_optimizer_value,
     cli_param_overridden,
     yaml_freeze_to_internal,
     _parse_freeze_atoms,
@@ -410,7 +411,7 @@ def _calc_gradient(geom, calc_kwargs: dict) -> np.ndarray:
     calc = create_calculator(**calc_kwargs)
     geom.set_calculator(calc)
     echo_resolved_device()
-    g = np.array(geom.gradient, dtype=float).reshape(-1)
+    g = np.array(geom.cart_gradient, dtype=float).reshape(-1)
     geom.set_calculator(None)
     return g
 
@@ -1248,6 +1249,7 @@ class HessianDimer:
                  # also apply in grad mode.
                  geom_kwargs: Optional[Dict[str, Any]] = None,
                  prepared_input: Optional["PreparedInputStructure"] = None,
+                 skip_final_freq: bool = False,
                  ) -> None:
 
         self.fn = fn
@@ -1281,6 +1283,8 @@ class HessianDimer:
         self.flatten_sep_cutoff = float(flatten_sep_cutoff)
         self.flatten_k = int(flatten_k)
         self.flatten_loop_bofill = bool(flatten_loop_bofill)
+        # Skip the terminal PHVA after convergence; a plateau stop still runs it.
+        self.skip_final_freq = bool(skip_final_freq)
 
         # Track total cycles globally across all loops/segments
         self._cycles_spent = 0
@@ -1295,6 +1299,8 @@ class HessianDimer:
         # Stall state of the last optimization loop; a stall is never converged.
         self.is_stalled = False
         self.stop_reason = ""
+        # Why a requested flatten loop stopped early or never ran (result.json).
+        self.flatten_skip_reason: Optional[str] = None
         self.saddle_order_verified = False
         self.n_imaginary_modes: Optional[int] = None
         self.n_negative_modes = None
@@ -1846,6 +1852,9 @@ class HessianDimer:
                     self.max_total_cycles is not None
                     and (self.max_total_cycles - self._cycles_spent) <= 0
                 ):
+                    self.flatten_skip_reason = (
+                        "max-cycles budget exhausted during flattening"
+                    )
                     break
 
                 # (a) Frequencies & modes from the active Hessian
@@ -1873,6 +1882,7 @@ class HessianDimer:
 
                 did_flatten = self._flatten_once_with_modes(freqs_cm, modes_embedded)
                 if not did_flatten:
+                    self.flatten_skip_reason = "no eligible extra imaginary modes"
                     break
 
                 if self.flatten_loop_bofill:
@@ -1905,6 +1915,9 @@ class HessianDimer:
                     self.max_total_cycles is not None
                     and (self.max_total_cycles - self._cycles_spent) <= 0
                 ):
+                    self.flatten_skip_reason = (
+                        "max-cycles budget exhausted during flattening"
+                    )
                     break
 
                 # (f) After dimer optimization, recompute an exact Hessian for the next iteration
@@ -1914,6 +1927,9 @@ class HessianDimer:
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
         elif self.flatten_max_iter > 0 and self.max_total_cycles is not None:
+            self.flatten_skip_reason = (
+                "max-cycles budget exhausted before flattening"
+            )
             click.echo("[tsopt] Reached --max-cycles budget; skipping flatten loop.")
 
         # (5) Final outputs
@@ -1928,6 +1944,20 @@ class HessianDimer:
             self.imaginary_frequencies_cm = []
             self.hessian_status = "skipped"
             self.hessian_error = None
+            return
+
+        if self.skip_final_freq and not self.is_stalled:
+            click.echo(
+                "[tsopt] WARNING: TS saddle-point order is not verified (--skip-final-freq).",
+                err=True,
+            )
+            self.saddle_order_verified = False
+            self.n_imaginary_modes = None
+            self.n_negative_modes = None
+            self.imaginary_frequencies_cm = []
+            self.hessian_status = "skipped"
+            self.hessian_error = None
+            emit(f"[DONE] Saved final geometry → {final_xyz}", detail=True)
             return
 
         # Final Hessian → imaginary mode trajectory
@@ -2021,31 +2051,6 @@ def _force_ts_reject_uphill_off(kwargs: Dict[str, Any]) -> Dict[str, Any]:
     return effective
 
 
-def _resolve_shared_optimizer_value(
-    opt_cfg: Dict[str, Any],
-    downstream_cfg: Dict[str, Any],
-    key: str,
-    *,
-    opt_explicit: bool,
-    downstream_explicit: bool,
-    downstream_default: Any,
-    downstream_section: str,
-) -> None:
-    """Resolve one duplicated optimizer setting without silent precedence."""
-    if opt_explicit and downstream_explicit and opt_cfg[key] != downstream_cfg[key]:
-        raise click.BadParameter(
-            f"opt.{key} and {downstream_section}.{key} conflict."
-        )
-    if opt_explicit:
-        value = opt_cfg[key]
-    elif downstream_explicit:
-        value = downstream_cfg[key]
-    else:
-        value = downstream_default
-    opt_cfg[key] = value
-    downstream_cfg[key] = value
-
-
 def _build_rsirfo_kwargs(
     opt_cfg: Dict[str, Any],
     rsirfo_cfg: Dict[str, Any],
@@ -2059,10 +2064,11 @@ def _build_rsirfo_kwargs(
     opt_base["out_dir"] = str(out_dir_path)
     rs_args["out_dir"] = str(out_dir_path)
 
+    if "root" in rs_args:
+        raise click.BadParameter(
+            "rsirfo.root is not supported; set rsirfo.roots to a one-item list."
+        )
     roots = rs_args.get("roots", None)
-    root_single = rs_args.get("root", None)
-    if roots is None and root_single is not None:
-        roots = [int(root_single)]
     if roots is None:
         roots = [0]
     try:
@@ -2077,7 +2083,6 @@ def _build_rsirfo_kwargs(
             "first-order transition-state search."
         )
     rs_args["roots"] = normalized_roots
-    rs_args.pop("root", None)
 
     # Keep top-level opt knobs (max_cycles/dump/thresh/...) authoritative unless
     # rsirfo.* explicitly overrides them to a non-default value.
@@ -2261,6 +2266,19 @@ def _validate_reference_mode_optimizer(
     help="Validate options and inputs without running TS optimization.",
 )
 @click.option(
+    "--skip-final-freq/--no-skip-final-freq",
+    "skip_final_freq",
+    default=False,
+    show_default=True,
+    help=(
+        "Skip the terminal PHVA/frequency analysis after convergence (a plateau "
+        "stop still runs it); RS-P-RFO/RS-I-RFO/TRIM also skip --flatten, which "
+        "needs it. Standalone tsopt retains the final structure with unverified "
+        "saddle order; all stops before IRC because no imaginary direction can "
+        "be validated."
+    ),
+)
+@click.option(
     "--read-hess",
     "read_hess",
     type=click.Path(exists=True, dir_okay=False),
@@ -2360,6 +2378,7 @@ def cli(
     config_yaml: Optional[Path],
     show_config: bool,
     dry_run: bool,
+    skip_final_freq: bool,
     read_hess: Optional[str],
     dump_hess: Optional[str],
     out_json: bool,
@@ -2374,6 +2393,11 @@ def cli(
     cli_coord_type: Optional[str],
     print_every: Optional[int],
 ) -> None:
+    if dump_hess and skip_final_freq:
+        raise click.BadParameter(
+            "--dump-hess needs the final Hessian; drop --skip-final-freq.",
+            param_hint="--dump-hess",
+        )
     config_yaml, override_yaml, _ = resolve_yaml_sources(
         config_yaml=config_yaml,
         override_yaml=None,
@@ -2553,7 +2577,7 @@ def cli(
             }
             for key in sorted(OPT_BASE_KW_LOCAL.keys() & RSIRFO_KW.keys()):
                 cli_name = cli_shared.get(key)
-                _resolve_shared_optimizer_value(
+                resolve_shared_optimizer_value(
                     opt_cfg,
                     rsirfo_cfg,
                     key,
@@ -2566,7 +2590,7 @@ def cli(
                     downstream_section="rsirfo",
                 )
         else:
-            _resolve_shared_optimizer_value(
+            resolve_shared_optimizer_value(
                 opt_cfg,
                 simple_cfg,
                 "thresh",
@@ -2592,7 +2616,7 @@ def cli(
                 else {}
             )
             for key, cli_name in dimer_shared.items():
-                _resolve_shared_optimizer_value(
+                resolve_shared_optimizer_value(
                     opt_cfg,
                     simple_lbfgs,
                     key,
@@ -2886,6 +2910,7 @@ def cli(
                     # Propagate geometry settings (freeze_atoms, coord_type, ...) to the HessianDimer runner
                     geom_kwargs=dict(geom_cfg),
                     prepared_input=prepared_input,
+                    skip_final_freq=skip_final_freq,
                 )
                 if read_hess:
                     runner.initial_hessian = _load_initial_hessian_file(
@@ -3001,7 +3026,7 @@ def cli(
                         "flatten_enabled": bool(
                             int(simple_cfg.get("flatten_max_iter", 0)) > 0
                         ),
-                        "flatten_skip_reason": None,
+                        "flatten_skip_reason": runner.flatten_skip_reason,
                         "files": {"final_geometry_xyz": "final_geometry.xyz"},
                         "rigid_projection": dict(runner.rigid_projection_info),
                     }
@@ -3066,6 +3091,8 @@ def cli(
                 rsirfo_kwargs["flatten_enabled"] = bool(
                     int(simple_cfg.get("flatten_max_iter", 0)) > 0
                 )
+                # Why a requested flatten loop stopped early or never ran (result.json).
+                _flatten_skip_reason: Optional[str] = None
 
                 if read_hess:
                     _initial = _load_initial_hessian_file(read_hess, geometry, calc_cfg)
@@ -3226,6 +3253,18 @@ def cli(
                 hessian_error: Optional[str] = getattr(
                     last_optimizer, "_last_exact_failure_reason", None
                 )
+                # A plateau stop still needs PHVA to report n_imag.
+                _plateau_stop = bool(getattr(last_optimizer, "is_stalled", False))
+                _final_freq_skipped = bool(
+                    skip_final_freq and hessian_postprocessing_ready and not _plateau_stop
+                )
+                if _final_freq_skipped:
+                    click.echo(
+                        "[tsopt] WARNING: TS saddle-point order is not verified "
+                        "(--skip-final-freq).",
+                        err=True,
+                    )
+                    hessian_postprocessing_ready = False
                 if hessian_postprocessing_ready:
                     try:
                         freqs_cm, modes = _terminal_freqs_and_modes(last_optimizer)
@@ -3289,12 +3328,20 @@ def cli(
                     # There is no path-correlated negative mode to preserve.
                     # Flattening unrelated negatives could manufacture the
                     # wrong n_imag=1 saddle, so leave this run non-converged.
+                    _flatten_skip_reason = (
+                        "target mode sign never determined"
+                        if target_mode_is_negative is None
+                        else "target mode is not negative"
+                    )
                     click.echo(
-                        "[flatten] Skipping extra-mode flattening because the "
-                        "path-correlated mode is not negative.",
+                        "[flatten] Skipping extra-mode flattening: "
+                        f"{_flatten_skip_reason}.",
                         err=True,
                     )
                 if flatten_max_iter > 0 and n_imag > 1 and not _heavy_budget_left():
+                    _flatten_skip_reason = (
+                        "max-cycles budget exhausted before flattening"
+                    )
                     click.echo("[tsopt] Reached --max-cycles budget; skipping flatten loop.")
                 elif flatten_max_iter > 0 and n_imag > 1:
                     click.echo("[flatten] Extra imaginary modes detected; starting RSIRFO flatten loop.")
@@ -3444,6 +3491,9 @@ def cli(
 
                     for it in range(flatten_max_iter):
                         if not _heavy_budget_left():
+                            _flatten_skip_reason = (
+                                "max-cycles budget exhausted during flattening"
+                            )
                             click.echo("[tsopt] Reached --max-cycles budget; stopping flatten loop.")
                             break
                         click.echo(f"[flatten] RSIRFO iteration {it + 1}/{flatten_max_iter}")
@@ -3467,6 +3517,9 @@ def cli(
                             reference_mode=flatten_reference_mode,
                         )
                         if not did_flatten:
+                            _flatten_skip_reason = (
+                                "no eligible extra imaginary modes"
+                            )
                             click.echo("[flatten] No eligible modes to flatten; stopping.")
                             break
                         # ``_flatten_once`` has already chosen its lower-energy
@@ -3664,10 +3717,10 @@ def cli(
                         if hessian_postprocessing_ready
                         else None
                     )
-                    # Frequency analysis and failed multistart restoration leave
-                    # the shared Geometry intentionally detached.  Evaluate the
-                    # final energy through the already-loaded calculator instead
-                    # of dereferencing ``geometry.energy`` with calculator=None.
+                    # Frequency analysis leaves the shared Geometry intentionally
+                    # detached.  Evaluate the final energy through the
+                    # already-loaded calculator instead of dereferencing
+                    # ``geometry.energy`` with calculator=None.
                     _rsirfo_energy = _calc_energy(
                         geometry, calc_cfg, calc=calc
                     )
@@ -3735,7 +3788,9 @@ def cli(
                             else "lowest-imaginary" if _reaction_mode_index is not None
                             else None
                         ),
-                        "imaginary_frequencies_cm": _rsirfo_imag,
+                        "imaginary_frequencies_cm": (
+                            [] if _final_freq_skipped else _rsirfo_imag
+                        ),
                         "opt_mode": kind,
                         "opt_mode_requested": str(opt_mode).strip().lower(),
                         "optimizer": kind,
@@ -3758,9 +3813,13 @@ def cli(
                         "reference_mode_candidate_count": len(reference_modes),
                         "reference_mode_candidate_labels": list(reference_mode_labels),
                         "reference_mode_cache": dict(reference_mode_metadata),
+                        "flatten_requested": bool(
+                            int(simple_cfg.get("flatten_max_iter", 0)) > 0
+                        ),
                         "flatten_enabled": bool(
                             int(simple_cfg.get("flatten_max_iter", 0)) > 0
                         ),
+                        "flatten_skip_reason": _flatten_skip_reason,
                         "files": {"final_geometry_xyz": str(final_xyz_path.name)},
                         "rigid_projection": dict(rigid_projection_info),
                         "safeguards": {

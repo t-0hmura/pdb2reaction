@@ -201,6 +201,7 @@ def register_all(mcp) -> None:
         flatten: Optional[bool] = None,
         hessian_calc_mode: Optional[str] = None,
         print_every: Optional[int] = None,
+        skip_final_freq: bool = False,
         ref_pdb: Optional[str] = None,
         out_dir: Optional[str] = None,
         extra_args: Optional[list[str]] = None,
@@ -240,6 +241,8 @@ def register_all(mcp) -> None:
             argv.extend(["--hessian-calc-mode", hessian_calc_mode])
         if print_every is not None:
             argv.extend(["--print-every", str(print_every)])
+        if skip_final_freq:
+            argv.append("--skip-final-freq")
         if ref_pdb:
             argv.extend(["--ref-pdb", ref_pdb])
         argv.extend(_shared_calc_flags(

@@ -537,7 +537,7 @@ def _finalize_dft_result(
         "when -q is omitted (requires PDB/mmCIF input or --ref-pdb)."
     ),
 )
-@click.option("-m", "--multiplicity", "spin", type=int, default=None, show_default="1", help="Spin multiplicity (2S+1; inherits from .gjf when available).")
+@click.option("-m", "--multiplicity", "spin", type=click.IntRange(min=1), default=None, show_default="1", help="Spin multiplicity (2S+1; inherits from .gjf when available).")
 @click.option(
     "--ref-pdb",
     type=click.Path(path_type=Path, exists=True, dir_okay=False),
@@ -574,7 +574,7 @@ def _finalize_dft_result(
 )
 @click.option(
     "--solvent-model",
-    type=click.Choice(["pcm", "smd"], case_sensitive=False),
+    type=click.Choice(["pcm", "smd"]),
     default=None,
     show_default="smd",
     help="Native PySCF implicit-solvent model.",
@@ -868,7 +868,6 @@ def cli(
                             "will_run_population_analysis": True,
                         },
                     ),
-                    force=True,
                 )
                 emit_dry_run_complete()
                 return

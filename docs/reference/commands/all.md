@@ -108,7 +108,8 @@ Options:
                                   including optional xTB arguments. If xTB SCC
                                   convergence is poor, increasing --etemp may
                                   help (for example: 'xtb --etemp 1000').
-  -m, --multiplicity INTEGER      Spin multiplicity (2S+1).  [default: 1]
+  -m, --multiplicity INTEGER RANGE
+                                  Spin multiplicity (2S+1).  [default: 1; x>=1]
   --freeze-links / --no-freeze-links
                                   Freeze parent atoms of cap hydrogens
                                   (PDB/mmCIF input or XYZ/GJF with --ref-pdb).
@@ -255,6 +256,13 @@ Options:
                                   loop in tsopt (grad: dimer loop, hess: post-
                                   RS-P-RFO); --no-flatten forces
                                   flatten_max_iter=0.  [default: no-flatten]
+  --skip-final-freq / --no-skip-final-freq
+                                  Skip terminal PHVA/frequency analysis in
+                                  tsopt. The TS structure is retained with
+                                  unverified saddle order, and all stops before
+                                  IRC because no imaginary reaction direction
+                                  can be validated.  [default: no-skip-final-
+                                  freq]
   --reject-uphill / --no-reject-uphill
                                   Opt in to rejecting uphill RFO trials during
                                   post-IRC endpoint re-optimization only

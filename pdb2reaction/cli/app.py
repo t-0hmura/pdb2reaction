@@ -54,15 +54,17 @@ def _toggle_enabled(args: list[str], flag: str) -> bool:
     while i < len(args):
         name, separator, value = args[i].partition("=")
         name = name.lower()
-        if name == f"--no-{flag}":
-            enabled = False
-        elif name == f"--{flag}":
+        if name in (f"--{flag}", f"--no-{flag}"):
             parsed = _parse_bool_literal(value) if separator else None
             if parsed is None and not separator and i + 1 < len(args):
                 parsed = _parse_bool_literal(args[i + 1])
                 if parsed is not None:
                     i += 1
-            enabled = True if parsed is None else parsed
+            positive = name == f"--{flag}"
+            if parsed is None:
+                enabled = positive
+            else:
+                enabled = parsed if positive else not parsed
         i += 1
     return enabled
 
@@ -163,6 +165,7 @@ _COMMAND_BOOL_TOGGLE_OPTIONS: dict[str, frozenset[str]] = {
             "--dry-run",
             "--flatten",
             "--show-config",
+            "--skip-final-freq",
         }
     ),
     "bond-summary": frozenset(
@@ -312,6 +315,7 @@ _COMMAND_BOOL_TOGGLE_OPTIONS: dict[str, frozenset[str]] = {
             "--freeze-links",
             "--out-json",
             "--show-config",
+            "--skip-final-freq",
         }
     ),
 }

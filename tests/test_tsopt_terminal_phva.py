@@ -108,6 +108,7 @@ def _runner(tmp_path, monkeypatch, *, stalled):
     runner.neg_freq_thresh_cm = 5.0
     runner.tr_projection = "none"
     runner.rigid_projection_info = {}
+    runner.skip_final_freq = False
     runner.max_total_cycles = 1
     runner._cycles_spent = 0
     runner.is_converged = False

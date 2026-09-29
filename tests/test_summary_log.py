@@ -833,3 +833,18 @@ def test_path_citations_follow_execution_instead_of_initial_preopt(methods, expe
     # An explicit empty execution record also overrides a requested stage.
     payload["preopt"] = True
     assert {reference["method"] for reference in method_references(payload)} & optimizer_methods == expected
+
+
+@pytest.mark.parametrize("kind", ["lbfgs", "rfo"])
+def test_path_endpoint_optimizer_dirs_are_annotated(tmp_path, kind):
+    path_dir = tmp_path / "path_search"
+    for name in (f"init00_{kind}_opt", f"seg_000_left_{kind}_opt", f"seg_000_right_{kind}_opt"):
+        (path_dir / name).mkdir(parents=True)
+    dest = tmp_path / "summary.log"
+
+    write_summary_log(dest, {"root_out_dir": str(tmp_path), "path_dir": str(path_dir)})
+    text = dest.read_text(encoding="utf-8")
+
+    assert "Initial optimization of endpoint 00" in text
+    assert "Optimized left (R) endpoint" in text
+    assert "Optimized right (P) endpoint" in text

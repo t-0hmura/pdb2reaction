@@ -27,7 +27,6 @@ Ownership and reuse semantics
 This cache is an internal workflow implementation detail.
 """
 
-import hashlib
 import os
 from collections.abc import Mapping
 from typing import Any, Dict, Optional, Sequence
@@ -129,21 +128,12 @@ def _norm_int(value: Any) -> Optional[int]:
         return None
 
 
-def _file_digest(path: Any) -> Optional[str]:
-    """Return the SHA-256 of a file's content, or *None* when unreadable."""
-
-    try:
-        hasher = hashlib.sha256()
-        with open(os.fspath(path), "rb") as handle:
-            for block in iter(lambda: handle.read(1 << 20), b""):
-                hasher.update(block)
-        return hasher.hexdigest()
-    except (OSError, TypeError):
-        return None
-
-
 def _potential_identity(calc_cfg: Mapping) -> Dict[str, Any]:
-    """Composition of the evaluated potential beyond the bare MLIP backend."""
+    """Composition of the evaluated potential beyond the bare MLIP backend.
+
+    ``calc_file`` is matched by path, not content: reuse is limited to one run,
+    in which the file does not change.
+    """
 
     potential: Dict[str, Any] = {}
     for key in (
@@ -166,9 +156,6 @@ def _potential_identity(calc_cfg: Mapping) -> Dict[str, Any]:
     calc_file = calc_cfg.get("calc_file")
     if calc_file:
         potential["calc_file"] = str(calc_file)
-        digest = _file_digest(calc_file)
-        if digest is not None:
-            potential["calc_file_sha256"] = digest
     return potential
 
 

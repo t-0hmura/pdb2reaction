@@ -18,6 +18,12 @@ Target release: **0.5.0**.
 - Add distance, angle, and dihedral coordinates to `scan`, `scan2d`, `scan3d`, and `all`.
 - Add verified `all --resume-segment N` post-processing restart from a saved MEP.
 - Add `--read-hess` to `freq`, `tsopt`, and `irc`, and `--dump-hess` to `freq` and `tsopt`. The file is one plain NumPy `.npy` array (Cartesian Hessian in Hartree/bohr², all atoms or only the movable ones), so other programs can read and write it too; `freq` and `irc` report `hessian_source: "file"` when it is used.
+- Add `--backend-model` and `--precision` to `trj2fig` for the energies it recomputes with `-q`/`-m`, and `--freeze-atoms` to `sp` (combined with YAML `geom.freeze_atoms`).
+- Add `mlip_backend`, `mlip_model`, `mlip_model_label`, `mlip_task`, and `mlip_precision` to the `trj2fig` `result.json`; they are null when the energies are read from the trajectory comments.
+- Warn when a YAML file has a top-level section that no command reads, such as a misspelled `clac:`.
+- `tsopt` and `all` accept `--skip-final-freq/--no-skip-final-freq` (listed under `--help-advanced`) to skip the terminal frequency analysis after convergence; the TS is kept with `hessian_status: skipped` and unverified saddle order, a plateau stop still runs it, and `all` stops before IRC. It cannot be combined with `--dump-hess`.
+- `freq` and `irc` accept `--hess-device auto|cuda|cpu` (listed under `--help-advanced`) to place the Hessian off the GPU; an explicit `cuda` request without a CUDA device is an error, also with `--dry-run`, instead of falling back to CPU.
+- Add `flatten_requested` and `flatten_skip_reason` to the `tsopt` `result.json` for RS-P-RFO, RS-I-RFO, and TRIM. With `--flatten`, `flatten_skip_reason` says why the flatten loop stopped early or never ran: the `--max-cycles` budget ran out before or during flattening, no extra imaginary mode could be flattened, or the `--ref-mode` target mode was not negative or its sign was never determined; it is null otherwise.
 
 ### Changed
 
@@ -28,14 +34,41 @@ Target release: **0.5.0**.
 - Name the aggregate MEP trajectory `mep_trj.pdb` and its bridged-input CIF companion `mep_trj.cif`.
 - Use the TS-BFGS Hessian update by default for RFO minimizations (`rfo.hessian_update: ts_bfgs`).
 - Run terminal PHVA after an energy-plateau stop (`stalled`) in `tsopt` and report n_imag; runs that end at the cycle limit still skip it.
-- Keep running `tsopt --flatten` after an energy-plateau stop, since flattening can still remove extra imaginary modes. The flatten retries share the remaining `--max-cycles` budget, and `n_opt_cycles` in `result.json` counts every cycle.
+- Keep running `opt --flatten` and `tsopt --flatten` after an energy-plateau stop, since flattening can still remove extra imaginary modes. The flatten retries share the remaining `--max-cycles` budget, and `n_opt_cycles` in `result.json` counts every cycle.
 - Warn and fall back to `false` when `rsirfo.min_line_search` or `rsirfo.max_line_search` is `true` for RS-P-RFO.
 - Describe `--show-config` as printing the loaded YAML file and its top-level keys, and `--dry-run` as validating options and inputs, matching what they print at the default verbosity.
+- `all` stops with an error when another run is already using the same output directory.
+- `path-search` stops before writing when one of its fixed outputs (`mep_trj.*`, `mep_plot.png`, `energy_diagram_MEP.png`, `summary.json`, `summary.log`) would replace an input file.
+- `add-elem-info` requires `--overwrite` when `-o` names the input file, including through a symlink.
+- `add-elem-info` reads residue `I` as inosine, numbered water hydrogens such as `1HW` as H, and water virtual sites (`EP`, `LP`, `M`, `MW`) as `EP` instead of O, and applies the amino-acid rules to SEC, PYL, CSO, CSX, and LLP.
+- `path-search --dry-run` shows its plan block only at `-v 3`, and `path-search` prints its settings blocks at the default verbosity only with `--show-config`.
+- `path-opt` and `path-search` stop with an error when one YAML file sets the same optimizer key to different values in `opt:` and the section of the optimizer that runs (`lbfgs:` / `opt.lbfgs:` / `stopt.lbfgs:`, or the `rfo` equivalents), in two of those sections, or when `opt:` or `stopt:` is not a mapping.
+- A value for the same key under `lbfgs` and `opt.lbfgs`, `rfo` and `opt.rfo`, or `thermo` and `freq.thermo` is applied once when both agree and rejected when they differ.
+- The in-run Hessian cache matches a custom calculator file (`calc_file`) by path; its SHA-256 content hash is no longer part of the match key.
+- Loading optimizer restart data rejects data missing a key that the optimizer records (for example `trust_radius`, the uphill-rejection counters, `cart_coords`, `mu_reg`) before any optimizer state changes.
+- **Breaking:** `dft --solvent-model` and `all --dft-solvent-model` accept only lowercase `pcm` or `smd`.
+- **Breaking:** Remove `freq --coord-type`; `freq` always uses Cartesian coordinates and ignores `geom.coord_type` in YAML.
+- **Breaking:** `rsirfo.root` in YAML is an error; set `rsirfo.roots` to a one-item list instead.
 
 ### Fixed
 
 - When `tsopt --flatten` also tries the displacement in the opposite direction and keeps the first result, `--dump-hess` and IRC now use the Hessian of that result.
 - `tsopt --dry-run` now rejects `--read-hess` with a `hessian_init` other than `calc`, as a real run does.
+- `opt`, `scan`, `scan2d`, and `scan3d` now apply `lbfgs:`/`rfo:` settings such as `max_cycles`, `thresh`, and `print_every` when `opt:` and the command line leave them unset; different explicit values in both places are an error, as in `tsopt`.
+- `all`, `dft`, `path-opt`, `path-search`, `scan`, `scan2d`, `scan3d`, and `trj2fig` now reject a multiplicity below 1 at the command line, as the other commands do.
+- `bond-summary --no-json false` keeps stdout JSON-only: the start header now reads `--no-json false` and `--no-dry-run false` as `--json` and `--dry-run`, as the commands do.
+- `path-search` writes its error `result.json` to `stopt.out_dir` when that is set in YAML, where its results go.
+- Blank PDB element columns are inferred from the fixed-column atom name, as `add-elem-info` does, so a ligand atom `PT  ` reads as Pt instead of P and a water hydrogen `1HW ` as H instead of O.
+- `add-elem-info` and blank element columns read the chlorine and bromine names that LEaP writes from column 14 (` CL1`, ` BR1`) as Cl and Br, and four-character ligand hydrogen names such as `HG11` as H instead of Hg.
+- PDB geometries keep chlorine and bromine atoms named from column 14 (` CL1`, ` BR1`) as Cl and Br; they were read as C and B even when the element column said Cl or Br.
+- `scan2d` no longer stops when the PNG export of its 2D map fails; it prints `[plot] NOTE: PNG export skipped: …` and still writes the HTML plots.
+- `path-opt` and `path-search` apply `stopt.lbfgs:` and `stopt.rfo:` to the single-structure optimizers; these sections were ignored for pre-optimization and left inside the string-optimizer settings.
+- `opt`, `scan`, `scan2d`, and `scan3d` accept the nested `opt.lbfgs` and `opt.rfo` YAML sections; the nested block was passed to the optimizer as an unknown keyword and the run failed after the calculator was set up.
+- `freq` and the `all --thermo` preflight read the nested `freq.thermo` YAML section; it was ignored and the defaults (298.15 K, 1 atm) were used.
+- `all` in TS-only mode no longer raises `UnboundLocalError` when an endpoint optimization fails; the failure record keeps the IRC trajectory path.
+- Dimer `tsopt` fills `flatten_skip_reason` in `result.json` (budget used up before or during flattening, or no eligible extra imaginary mode) instead of always writing null.
+- Optimizer restart data written on a GPU that is unavailable when loading (no CUDA, or fewer devices than the writer) are restored on the CPU instead of failing mid-load.
+- `irc` with a `hessian_init` other than `calc` no longer loads the cached TS Hessian from `tsopt`, and its `result.json` no longer reports `hessian_source: cache`.
 
 ## [0.4.16] — 2026-09-19
 

@@ -1082,7 +1082,7 @@ def _write_args_yaml_with_freeze_atoms(
 
     ``coord_type`` (when set) overrides ``geom.coord_type`` for every child
     stage that reads this YAML — the path is how ``all --coord-type`` is
-    propagated uniformly to opt / tsopt / freq / scan / path-opt / path-search
+    propagated uniformly to opt / tsopt / scan / path-opt / path-search
     without per-call argv plumbing. ``precision`` is propagated the same way
     via ``calc.precision`` so ``all --precision fp64`` reaches every child.
     ``print_every`` is written to ``opt.print_every`` so every optimizing child
@@ -3186,7 +3186,9 @@ def _tsopt_reference_mode_is_applicable(opt_mode: Optional[str]) -> bool:
     return mode not in {"grad", "dimer", "lbfgs"}
 
 
-def _tsopt_continuation_decision(payload: Dict[str, Any]) -> Dict[str, Any]:
+def _tsopt_continuation_decision(
+    payload: Dict[str, Any], *, skip_final_freq: bool = False
+) -> Dict[str, Any]:
     """Return normal-control-flow ownership for the TS-to-IRC boundary.
 
     Numerical optimizer convergence and exact-PHVA saddle order are deliberately
@@ -3242,6 +3244,8 @@ def _tsopt_continuation_decision(payload: Dict[str, Any]) -> Dict[str, Any]:
     mode_fallback_reason = None
     if optimization_status != "converged":
         reason = f"ts_optimization_{optimization_status}"
+    elif skip_final_freq:
+        reason = "terminal_hessian_explicitly_skipped"
     elif hessian_status != "completed":
         reason = f"terminal_hessian_{hessian_status}"
     elif n_imaginary is None:
@@ -3307,6 +3311,7 @@ def _tsopt_continuation_decision(payload: Dict[str, Any]) -> Dict[str, Any]:
         "reaction_mode_fallback": mode_fallback,
         "reaction_mode_fallback_reason": mode_fallback_reason,
         "flatten_enabled": bool(payload.get("flatten_enabled", False)),
+        "skip_final_freq": bool(skip_final_freq),
     }
 
 
@@ -3391,6 +3396,9 @@ def _run_tsopt_on_hei(
         _append_toggle_arg(ts_args, "--dump", overrides.get("dump"))
         _append_cli_arg(ts_args, "--thresh", overrides.get("thresh"))
         _append_toggle_arg(ts_args, "--flatten", overrides.get("flatten"))
+        _append_toggle_arg(
+            ts_args, "--skip-final-freq", overrides.get("skip_final_freq")
+        )
         _append_toggle_arg(ts_args, "--stop-plateau", overrides.get("stop_plateau"))
         _append_cli_arg(
             ts_args, "--stop-plateau-thresh", overrides.get("stop_plateau_thresh")
@@ -3488,7 +3496,10 @@ def _run_tsopt_on_hei(
             raise click.ClickException(
                 f"[tsopt] Could not read TS validation result '{result_path}': {exc}"
             ) from exc
-        tsopt_continuation = _tsopt_continuation_decision(tsopt_result)
+        tsopt_continuation = _tsopt_continuation_decision(
+            tsopt_result,
+            skip_final_freq=bool(overrides.get("skip_final_freq")),
+        )
 
         ts_pdb = ts_dir / "final_geometry.pdb"
         ts_gjf = ts_dir / "final_geometry.gjf"
@@ -4280,7 +4291,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "-m",
     "--multiplicity",
     "spin",
-    type=int,
+    type=click.IntRange(min=1),
     default=1,
     show_default=True,
     help="Spin multiplicity (2S+1).",
@@ -4592,6 +4603,17 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     help="Enable the extra-imaginary-mode flattening loop in tsopt (grad: dimer loop, hess: post-RS-P-RFO); --no-flatten forces flatten_max_iter=0.",
 )
 @click.option(
+    "--skip-final-freq/--no-skip-final-freq",
+    "skip_final_freq",
+    default=False,
+    show_default=True,
+    help=(
+        "Skip terminal PHVA/frequency analysis in tsopt. The TS structure is "
+        "retained with unverified saddle order, and all stops before IRC because "
+        "no imaginary reaction direction can be validated."
+    ),
+)
+@click.option(
     "--reject-uphill/--no-reject-uphill",
     "reject_uphill",
     default=False,
@@ -4760,7 +4782,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
 )
 @click.option(
     "--dft-solvent-model",
-    type=click.Choice(["pcm", "smd"], case_sensitive=False),
+    type=click.Choice(["pcm", "smd"]),
     default=None,
     show_default="smd",
     help="Native PySCF solvent model for post-processing DFT single points.",
@@ -4913,6 +4935,7 @@ def cli(
     tsopt_max_cycles: Optional[int],
     tsopt_out_dir: Optional[Path],
     flatten: bool,
+    skip_final_freq: bool,
     reject_uphill: bool,
     stop_plateau: bool,
     stop_plateau_thresh: Optional[float],
@@ -5373,6 +5396,8 @@ def cli(
         tsopt_overrides["thresh"] = str(thresh_post)
     if flatten_override_requested:
         tsopt_overrides["flatten"] = bool(flatten)
+    if cli_param_overridden(ctx, "skip_final_freq"):
+        tsopt_overrides["skip_final_freq"] = bool(skip_final_freq)
     if _stop_plateau_eff is not None:
         tsopt_overrides["stop_plateau"] = _stop_plateau_eff
     if stop_plateau_thresh is not None:
@@ -5425,7 +5450,7 @@ def cli(
             merged_yaml_cfg,
             [
                 (freq_preflight, (("freq",),)),
-                (thermo_preflight, (("thermo",),)),
+                (thermo_preflight, (("thermo",), ("freq", "thermo"))),
             ],
         )
         for name in ("max_write", "amplitude_ang", "n_frames", "sort"):
@@ -5828,6 +5853,7 @@ def cli(
     # Remove the pre-0.5 aggregate trajectory name so a resumed output tree
     # cannot present both the retired and canonical filenames.
     (out_dir / "mep.pdb").unlink(missing_ok=True)
+    session.resources.own_exclusive_lock(out_dir / WORK_DIRNAME / ".run.lock")
     # Public ownership is established at each producer immediately before its
     # exact destination is written.  No root/segments traversal participates
     # in provenance admission.
@@ -6428,7 +6454,10 @@ def cli(
         _tsopt_payload = dict(getattr(g_ts, "_tsopt_result", {}) or {})
         _tsopt_decision = dict(
             getattr(g_ts, "_tsopt_continuation", {})
-            or _tsopt_continuation_decision(_tsopt_payload)
+            or _tsopt_continuation_decision(
+                _tsopt_payload,
+                skip_final_freq=bool(tsopt_overrides.get("skip_final_freq", False)),
+            )
         )
         _tsopt_result_path = getattr(g_ts, "_tsopt_result_path", None)
         _tsopt_record: Dict[str, Any] = {
@@ -6678,6 +6707,8 @@ def cli(
         gT = irc_res["ts_geom"]
         calculator_lease = irc_res["calculator_lease"]
         irc_plot_path = irc_res.get("irc_plot_path")
+        # Bound here so the endpoint-failure record can cite the IRC trajectory.
+        irc_trj_path = irc_res.get("irc_trj_path")
 
         eL = float(gL.energy)
         eR_raw = float(gR.energy)
@@ -8997,7 +9028,12 @@ def cli(
             _tsopt_payload = dict(getattr(g_ts, "_tsopt_result", {}) or {})
             _tsopt_decision = dict(
                 getattr(g_ts, "_tsopt_continuation", {})
-                or _tsopt_continuation_decision(_tsopt_payload)
+                or _tsopt_continuation_decision(
+                    _tsopt_payload,
+                    skip_final_freq=bool(
+                        _seg_tsopt_overrides.get("skip_final_freq", False)
+                    ),
+                )
             )
             _tsopt_result_path = getattr(g_ts, "_tsopt_result_path", None)
             segment_log["tsopt"] = {

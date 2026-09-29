@@ -46,8 +46,10 @@ from pdb2reaction.backends import create_calculator
 from pdb2reaction.core.utils import (
     resolve_freeze_atoms,
     apply_yaml_overrides,
+    yaml_section_has_key,
     pretty_block,
     strip_inherited_keys,
+    resolve_shared_optimizer_keys,
     format_geom_for_echo,
     emit_dry_run_complete,
     format_elapsed,
@@ -666,8 +668,8 @@ def cli(
                     (geom_cfg, (("geom",),)),
                     (calc_cfg, (("calc",),)),
                     (opt_cfg, (("opt",),)),
-                    (lbfgs_cfg, (("lbfgs",),)),
-                    (rfo_cfg, (("rfo",),)),
+                    (lbfgs_cfg, (("lbfgs",), ("opt", "lbfgs"))),
+                    (rfo_cfg, (("rfo",), ("opt", "rfo"))),
                     (frequency_cfg, (("freq",),)),
                 ],
             )
@@ -722,8 +724,8 @@ def cli(
                     (geom_cfg, (("geom",),)),
                     (calc_cfg, (("calc",),)),
                     (opt_cfg, (("opt",),)),
-                    (lbfgs_cfg, (("lbfgs",),)),
-                    (rfo_cfg, (("rfo",),)),
+                    (lbfgs_cfg, (("lbfgs",), ("opt", "lbfgs"))),
+                    (rfo_cfg, (("rfo",), ("opt", "rfo"))),
                     (frequency_cfg, (("freq",),)),
                 ],
             )
@@ -733,6 +735,40 @@ def cli(
             opt_mode_effective = opt_cfg.pop("opt_mode", opt_mode)
             if cli_param_overridden(ctx, "opt_mode"):
                 opt_mode_effective = opt_mode
+            kind = normalize_choice(
+                opt_mode_effective,
+                param="--opt-mode",
+                alias_groups=OPT_MODE_ALIASES,
+                allowed_hint="grad|hess|lbfgs|rfo",
+            )
+            cli_shared = {
+                "max_cycles": "max_cycles",
+                "dump": "dump",
+                "thresh": "thresh",
+                "print_every": "print_every",
+                "energy_plateau": "stop_plateau",
+                "energy_plateau_thresh": "stop_plateau_thresh",
+                "energy_plateau_window": "stop_plateau_window",
+            }
+
+            sopt_defaults = LBFGS_KW if kind == "lbfgs" else RFO_KW
+            resolve_shared_optimizer_keys(
+                opt_cfg,
+                lbfgs_cfg if kind == "lbfgs" else rfo_cfg,
+                sopt_defaults,
+                downstream_section=kind,
+                opt_explicit={
+                    key for key in opt_cfg
+                    if yaml_section_has_key(merged_yaml_cfg, (("opt",),), key)
+                } | {
+                    key for key, name in cli_shared.items()
+                    if cli_param_overridden(ctx, name)
+                },
+                downstream_explicit={
+                    key for key in sopt_defaults
+                    if yaml_section_has_key(merged_yaml_cfg, ((kind,), ("opt", kind)), key)
+                },
+            )
             try:
                 geom_cfg["tr_projection"] = normalize_tr_projection_mode(
                     geom_cfg.get("tr_projection")
@@ -763,13 +799,6 @@ def cli(
                 ctx, calc_cfg, output_dir=opt_cfg["out_dir"]
             )
 
-            # Normalize and select optimizer kind
-            kind = normalize_choice(
-                opt_mode_effective,
-                param="--opt-mode",
-                alias_groups=OPT_MODE_ALIASES,
-                allowed_hint="grad|hess|lbfgs|rfo",
-            )
             main_kind = kind
             flatten_kind = kind
 
@@ -905,12 +934,13 @@ def cli(
             # Ensure paths (strings) are OK; Optimizer expects str, not Path
             common_kwargs["out_dir"] = str(out_dir_path)
 
-            def _build_optimizer(run_kind: str):
+            def _build_optimizer(run_kind: str, max_cycles: Optional[int] = None):
+                budget = {} if max_cycles is None else {"max_cycles": max_cycles}
                 if run_kind == "lbfgs":
-                    lbfgs_args = {**lbfgs_cfg, **common_kwargs}
+                    lbfgs_args = {**lbfgs_cfg, **common_kwargs, **budget}
                     return LBFGS(geometry, **lbfgs_args)
                 if run_kind == "rfo":
-                    rfo_args = {**rfo_cfg, **common_kwargs}
+                    rfo_args = {**rfo_cfg, **common_kwargs, **budget}
                     rfo_args["flatten_enabled"] = bool(flatten)
                     return RFOptimizer(geometry, **rfo_args)
                 raise click.BadParameter(f"Unknown optimizer kind '{run_kind}'.")
@@ -940,13 +970,21 @@ def cli(
             )
             last_optimizer = optimizer
             rigid_projection_info: Dict[str, Any] = {}
+            # Command-level --max-cycles budget shared with the flatten retries.
+            opt_cycle_limit = opt_cfg.get("max_cycles")
+            opt_cycles_spent = int(optimizer_cycle_count(optimizer) or 0)
 
-            # A stalled optimization is precisely when the flatten loop is
-            # wanted: it rebuilds the Hessian and displaces along the remaining
-            # imaginary modes to leave the plateau. The no-retry rule
-            # belongs inside the loop (a flatten *retry* that stalls again is
-            # not making progress and stops there), not in front of it.
-            if flatten:
+            def _opt_budget_left() -> bool:
+                return (
+                    opt_cycle_limit is None
+                    or int(opt_cycle_limit) - opt_cycles_spent > 0
+                )
+
+            # Flatten also runs after an energy-plateau stop, since flattening
+            # can still remove the remaining imaginary modes.
+            if flatten and not _opt_budget_left():
+                click.echo("[flatten] Reached --max-cycles budget; skipping flatten loop.")
+            elif flatten:
                 emit("\n====== Optimization (Flatten loop) ======\n", narrative=True)
 
                 geometry.set_calculator(None)
@@ -998,6 +1036,9 @@ def cli(
                 for it in range(OPT_FLATTEN_MAX_ITER):
                     if n_imag == 0:
                         break
+                    if not _opt_budget_left():
+                        click.echo("[flatten] Reached --max-cycles budget; stopping flatten loop.")
+                        break
                     click.echo(f"[flatten] iteration {it + 1}/{OPT_FLATTEN_MAX_ITER}")
                     did_flatten = _flatten_all_imag_modes_for_geom(
                         geometry,
@@ -1014,7 +1055,12 @@ def cli(
                         break
 
                     _attach_opt_calc()
-                    optimizer = _build_optimizer(flatten_kind)
+                    retry_max_cycles = (
+                        None
+                        if opt_cycle_limit is None
+                        else int(opt_cycle_limit) - opt_cycles_spent
+                    )
+                    optimizer = _build_optimizer(flatten_kind, max_cycles=retry_max_cycles)
                     restart_label = "LBFGS" if flatten_kind == "lbfgs" else "RFO"
                     emit(f"\n====== Optimization ({restart_label}, flatten retry) ======\n", narrative=True)
                     optimizer.run()
@@ -1022,19 +1068,12 @@ def cli(
                         "opt",
                         converged=getattr(optimizer, "is_converged", None),
                         cycles=optimizer_cycle_count(optimizer),
-                        max_cycles=opt_cfg.get("max_cycles"),
+                        max_cycles=retry_max_cycles,
                         stalled=getattr(optimizer, "is_stalled", False),
                         stop_reason=getattr(optimizer, "stop_reason", None) or None,
                     )
                     last_optimizer = optimizer
-
-                    # Stop retrying a stalled optimization.
-                    if getattr(optimizer, "is_stalled", False):
-                        click.echo(
-                            "[flatten] Optimization stalled (energy plateau); "
-                            "stopping the flatten loop."
-                        )
-                        break
+                    opt_cycles_spent += int(optimizer_cycle_count(optimizer) or 0)
 
                     geometry.set_calculator(None)
                     freqs_cm, modes = _calc_freqs_and_modes()
@@ -1047,7 +1086,7 @@ def cli(
 
                 if n_imag > 0:
                     click.echo(
-                        f"[flatten] WARNING: Remaining imaginary modes after {OPT_FLATTEN_MAX_ITER} iterations: {n_imag}",
+                        f"[flatten] WARNING: Remaining imaginary modes after the flatten loop: {n_imag}",
                         err=True,
                     )
                 if torch.cuda.is_available():
@@ -1078,7 +1117,7 @@ def cli(
                 result_data = {
                     "status": optimizer_terminal_status(last_optimizer),
                     "energy_hartree": final_energy_hartree,
-                    "n_opt_cycles": optimizer_cycle_count(last_optimizer),
+                    "n_opt_cycles": opt_cycles_spent,
                     "opt_mode": str(opt_mode_effective),
                     "charge": calc_cfg["charge"],
                     "spin": calc_cfg["spin"],

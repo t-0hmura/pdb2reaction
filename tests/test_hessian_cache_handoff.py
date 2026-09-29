@@ -231,6 +231,47 @@ def test_identity_from_context_round_trips_through_cache(monkeypatch) -> None:
     ) is None
 
 
+def test_custom_calculator_file_is_matched_by_path(monkeypatch, tmp_path) -> None:
+    from pdb2reaction.core.result_commit import RUN_ID_ENV
+
+    monkeypatch.setenv(RUN_ID_ENV, "run-custom-path")
+
+    class _Geom:
+        atomic_numbers = np.array([1])
+        cart_coords = np.zeros(3)
+        freeze_atoms = np.array([], dtype=int)
+
+    calc_file = tmp_path / "calculator.py"
+    calc_file.write_text("VALUE = 1\n", encoding="utf-8")
+    cfg = {
+        "backend": "custom",
+        "calc_file": str(calc_file),
+        "calc_factory": "get_calculator",
+        "charge": 0,
+        "spin": 1,
+    }
+    first = hessian_cache.identity_from_context(_Geom(), cfg, role="ts")
+    hessian_cache.store("ts", np.eye(3), identity=first)
+
+    # New bytes at the same path still reuse; no content hash is recorded.
+    calc_file.write_text("VALUE = 2\n", encoding="utf-8")
+    rewritten = hessian_cache.identity_from_context(_Geom(), cfg, role="ts")
+    assert "calc_file_sha256" not in rewritten["evaluator"]["potential"]
+    assert rewritten["evaluator"]["potential"]["calc_file"] == str(calc_file)
+    assert hessian_cache.load_matching("ts", rewritten) is not None
+
+    # The same bytes at a different path reject.
+    moved = tmp_path / "moved" / "calculator.py"
+    moved.parent.mkdir()
+    moved.write_text("VALUE = 2\n", encoding="utf-8")
+    assert hessian_cache.load_matching(
+        "ts",
+        hessian_cache.identity_from_context(
+            _Geom(), dict(cfg, calc_file=str(moved)), role="ts"
+        ),
+    ) is None
+
+
 @pytest.mark.parametrize(
     "change",
     [

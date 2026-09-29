@@ -75,6 +75,11 @@ Options:
                                   How the ML backend computes the Hessian (can
                                   also be set via YAML).  [default:
                                   (FiniteDifference)]
+  --hess-device [auto|cuda|cpu]   Device for post-evaluation Hessian placement
+                                  and diagonalization (auto/cuda/cpu). Use 'cpu'
+                                  to move the evaluated Hessian off GPU before
+                                  diagonalization. The calculator itself still
+                                  runs on its own device.  [default: auto]
   -b, --backend [uma|orb|mace|aimnet2|dft]
                                   Energy/force calculator backend.  [default:
                                   uma]
@@ -134,9 +139,6 @@ Options:
                                   shell clusters need a matching multiplicity
                                   instead; use this only for an intentionally
                                   nonstandard electron count.
-  --coord-type [cart|redund|dlc|tric]
-                                  Optimization coordinate system
-                                  (cart|redund|dlc|tric).  [default: (cart)]
   --func-basis TEXT               DFT method as FUNCTIONAL/BASIS; HF/BASIS is
                                   also accepted.  [default: (wb97m-v/def2-svp)]
   --dft-engine, --engine [gpu|cpu]

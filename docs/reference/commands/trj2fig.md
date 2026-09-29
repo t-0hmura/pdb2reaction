@@ -26,12 +26,26 @@ Options:
                                   init]
   -q, --charge INTEGER            Total charge. Triggers energy recomputation
                                   when supplied.
-  -m, --multiplicity INTEGER      Spin multiplicity (2S+1). Triggers energy
-                                  recomputation when supplied.  [default: (1)]
+  -m, --multiplicity INTEGER RANGE
+                                  Spin multiplicity (2S+1). Triggers energy
+                                  recomputation when supplied.  [default: (1);
+                                  x>=1]
   --reverse-x / --no-reverse-x    Reverse the x-axis (last frame on the left).
                                   [default: no-reverse-x]
   -b, --backend [uma|orb|mace|aimnet2]
                                   MLIP backend.  [default: uma]
+  --backend-model TEXT            Model variant for the selected --backend (e.g.
+                                  uma-s-1p2 / uma-m-1p1 for uma,
+                                  orb_v3_conservative_omol for orb, MACE-OMOL-0
+                                  / off:small for mace).  [default: (the
+                                  selected backend's own model)]
+  --precision [fp32|fp64]         MLIP backend precision: fp32 or fp64. Unset
+                                  defaults per backend (uma: fp32; orb, mace:
+                                  fp64). Routed to backend-specific kwargs (UMA
+                                  precision / ORB precision / MACE
+                                  default_dtype). aimnet2: fp32 no-op; fp64
+                                  rejected.  [default: (per backend: uma fp32;
+                                  orb, mace fp64)]
   --solvent TEXT                  Computationally expensive xTB solvent delta
                                   correction. Examples: water, methanol,
                                   acetonitrile, dmso, thf, toluene. 'none'

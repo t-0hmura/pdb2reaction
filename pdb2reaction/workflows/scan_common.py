@@ -243,7 +243,7 @@ def add_scan_common_options(
             "-m",
             "--multiplicity",
             "spin",
-            type=int,
+            type=click.IntRange(min=1),
             default=None,
             show_default="1",
             help="Spin multiplicity (2S+1).",

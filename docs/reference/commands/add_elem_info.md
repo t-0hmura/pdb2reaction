@@ -16,7 +16,8 @@ Options:
   -i, --input FILE              Input PDB filepath.  [required]
   -o, --output, --out FILE      Output PDB filepath (default: replace ".pdb"
                                 with "_add_elem.pdb"; when provided, --overwrite
-                                is ignored).
+                                is ignored unless this is the input file, which
+                                requires it).
   --overwrite / --no-overwrite  Overwrite the input file in-place when -o/--out
                                 is omitted.  [default: no-overwrite]
   -h, --help                    Show this message and exit.

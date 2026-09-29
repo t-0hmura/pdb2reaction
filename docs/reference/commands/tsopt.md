@@ -74,6 +74,15 @@ Options:
                                   config]
   --dry-run / --no-dry-run        Validate options and inputs without running TS
                                   optimization.  [default: no-dry-run]
+  --skip-final-freq / --no-skip-final-freq
+                                  Skip the terminal PHVA/frequency analysis
+                                  after convergence (a plateau stop still runs
+                                  it); RS-P-RFO/RS-I-RFO/TRIM also skip
+                                  --flatten, which needs it. Standalone tsopt
+                                  retains the final structure with unverified
+                                  saddle order; all stops before IRC because no
+                                  imaginary direction can be validated.
+                                  [default: no-skip-final-freq]
   --read-hess FILE                Start from the Hessian in this .npy file (e.g.
                                   from freq or tsopt --dump-hess) instead of
                                   computing it: the Cartesian Hessian of the

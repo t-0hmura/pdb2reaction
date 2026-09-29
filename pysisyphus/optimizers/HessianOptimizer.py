@@ -512,27 +512,25 @@ class HessianOptimizer(Optimizer):
             # the first cycle.
             self.hessian_recalc_in = self.hessian_recalc - 1
 
-    # Subclass restart keys required for a bit-exact resume.  ``trust_radius``
-    # is adapted every cycle in :meth:`update_trust_radius`; omitting it from
-    # the restart payload silently reset a resumed run to
-    # ``min(trust_radius, trust_max)`` and diverged the trajectory.  It is a
-    # newly added key, so it is *restored tolerantly* (see
-    # :meth:`_set_opt_restart_info`) and is deliberately absent from the
-    # transactional-load required set below to keep pre-``trust_radius``
-    # checkpoints loadable.  The same holds for the newer uphill-rejection
-    # counters (``rejections_at_floor`` / ``rejected_uphill_steps`` /
-    # ``uphill_rejection_stalled``), the multi-step Hessian buffer
-    # (``_sy_buffer_S`` / ``_sy_buffer_Y``, empty unless
-    # ``hessian_update_window >= 2``) and ``_prev_eigvec_min`` (``None`` unless
-    # ``rfo_overlaps``): all are serialized unconditionally but restored
-    # presence-guarded, so a checkpoint written before they existed still
-    # loads.  Keeping them out of the required set below preserves that
-    # backward tolerance; the presence-guard means an absent key never raises.
+    # Subclass restart keys a checkpoint must carry for a bit-exact resume; the
+    # loader rejects a checkpoint missing any of them before changing state.
+    # ``trust_norm`` is not required: a checkpoint without it uses the L2 norm.
     required_opt_restart_keys = (
         "adapt_norm",
         "H",
+        "H_backend",
         "hessian_recalc_in",
         "predicted_energy_changes",
+        "trust_radius",
+        "rejections_at_floor",
+        "rejected_uphill_steps",
+        "uphill_rejection_stalled",
+        "_sy_buffer_S",
+        "_sy_buffer_Y",
+        "_sy_buffer_S_backend",
+        "_sy_buffer_Y_backend",
+        "_prev_eigvec_min",
+        "_prev_eigvec_min_backend",
     )
 
     @staticmethod
@@ -564,8 +562,7 @@ class HessianOptimizer(Optimizer):
             "shape": [int(size) for size in array.shape],
         }
 
-    @staticmethod
-    def _restore_array(values, backend):
+    def _restore_array(self, values, backend):
         """Rebuild a serialized array in its recorded backend/dtype/device."""
         backend = backend if isinstance(backend, dict) else {}
         shape = backend.get("shape")
@@ -575,10 +572,16 @@ class HessianOptimizer(Optimizer):
         else:
             dtype = getattr(torch, str(backend.get("dtype", "float64")), torch.float64)
             device = str(backend.get("device", "cpu"))
-            # A checkpoint written on a GPU host must still load on a CPU host.
-            if device.startswith("cuda") and not torch.cuda.is_available():
-                device = "cpu"
-            restored = torch.as_tensor(values, dtype=dtype, device=device)
+            try:
+                restored = torch.as_tensor(values, dtype=dtype, device=device)
+            except Exception:
+                # A device this host lacks (no CUDA, or fewer GPUs than the
+                # writer) only changes the placement; the resume continues.
+                self.log(
+                    f"Checkpoint device {device!r} is unavailable; "
+                    "restoring on the CPU."
+                )
+                restored = torch.as_tensor(values, dtype=dtype, device="cpu")
         return restored if shape is None else restored.reshape(shape)
 
     def _get_opt_restart_info(self):
@@ -644,67 +647,35 @@ class HessianOptimizer(Optimizer):
     def _set_opt_restart_info(self, opt_restart_info):
         self._check_restart_trust_norm(opt_restart_info)
         self.adapt_norm = opt_restart_info["adapt_norm"]
-        h_backend = opt_restart_info.get("H_backend")
         self.H = self._restore_array(
-            opt_restart_info["H"], h_backend
+            opt_restart_info["H"], opt_restart_info["H_backend"]
         )
-        recorded_shape = (
-            h_backend.get("shape") if isinstance(h_backend, dict) else None
-        )
-        h_size = (
-            int(self.H.numel())
-            if isinstance(self.H, torch.Tensor)
-            else int(np.asarray(self.H).size)
-        )
-        if (
-            recorded_shape is None
-            and h_size == 0
-            and getattr(self, "using_active_dofs", False)
-            and np.asarray(getattr(self, "active_dof_indices", ())).size == 0
-        ):
-            # Older checkpoints could not retain the shape of a ``(0, 0)``
-            # active Hessian because it serialized as ``[]``.
-            self.H = self.H.reshape((0, 0))
         self.hessian_recalc_in = opt_restart_info["hessian_recalc_in"]
         self.predicted_energy_changes = opt_restart_info["predicted_energy_changes"]
-        # Backward-tolerant: a checkpoint written before trust_radius was
-        # serialized keeps the __init__-constrained value already in place.
-        if "trust_radius" in opt_restart_info:
-            self.trust_radius = float(opt_restart_info["trust_radius"])
-        # Uphill-rejection adaptive state.  All presence-guarded so a checkpoint
-        # written before these keys existed keeps the __init__ defaults.
-        if "rejections_at_floor" in opt_restart_info:
-            self.rejections_at_floor = int(opt_restart_info["rejections_at_floor"])
-        if "rejected_uphill_steps" in opt_restart_info:
-            self.rejected_uphill_steps = int(opt_restart_info["rejected_uphill_steps"])
-        if "uphill_rejection_stalled" in opt_restart_info:
-            self.uphill_rejection_stalled = bool(
-                opt_restart_info["uphill_rejection_stalled"]
+        self.trust_radius = float(opt_restart_info["trust_radius"])
+        self.rejections_at_floor = int(opt_restart_info["rejections_at_floor"])
+        self.rejected_uphill_steps = int(opt_restart_info["rejected_uphill_steps"])
+        self.uphill_rejection_stalled = bool(
+            opt_restart_info["uphill_rejection_stalled"]
+        )
+        backends = opt_restart_info["_sy_buffer_S_backend"]
+        self._sy_buffer_S = [
+            self._restore_array(s, backends[i])
+            for i, s in enumerate(opt_restart_info["_sy_buffer_S"])
+        ]
+        backends = opt_restart_info["_sy_buffer_Y_backend"]
+        self._sy_buffer_Y = [
+            self._restore_array(y, backends[i])
+            for i, y in enumerate(opt_restart_info["_sy_buffer_Y"])
+        ]
+        stored = opt_restart_info["_prev_eigvec_min"]
+        self._prev_eigvec_min = (
+            None
+            if stored is None
+            else self._restore_array(
+                stored, opt_restart_info["_prev_eigvec_min_backend"]
             )
-        # Multi-step Hessian-update buffer; only non-empty for
-        # ``hessian_update_window >= 2``.  Default [] when the key is absent.
-        if "_sy_buffer_S" in opt_restart_info:
-            backends = opt_restart_info.get("_sy_buffer_S_backend")
-            self._sy_buffer_S = [
-                self._restore_array(s, backends[i] if backends else None)
-                for i, s in enumerate(opt_restart_info["_sy_buffer_S"])
-            ]
-        if "_sy_buffer_Y" in opt_restart_info:
-            backends = opt_restart_info.get("_sy_buffer_Y_backend")
-            self._sy_buffer_Y = [
-                self._restore_array(y, backends[i] if backends else None)
-                for i, y in enumerate(opt_restart_info["_sy_buffer_Y"])
-            ]
-        # Previous minimum-mode eigenvector for ``rfo_overlaps``; default None.
-        if "_prev_eigvec_min" in opt_restart_info:
-            stored = opt_restart_info["_prev_eigvec_min"]
-            self._prev_eigvec_min = (
-                None
-                if stored is None
-                else self._restore_array(
-                    stored, opt_restart_info.get("_prev_eigvec_min_backend")
-                )
-            )
+        )
 
     def update_trust_radius(self):
         # The predicted change should be calculated at the end of optimize

@@ -1,13 +1,22 @@
 """Regression tests for ``defaults < --config < CLI`` scan precedence."""
 
+from pathlib import Path
+
+import click
+import pytest
 from click.testing import CliRunner
 
+from pdb2reaction.cli import cli as root_cli
+from pdb2reaction.core import utils as core_utils
+from pdb2reaction.core.defaults import LBFGS_KW, OPT_BASE_KW
 from pdb2reaction.core.utils import build_scan_configs, build_sopt_kwargs
+from pdb2reaction.workflows import scan as scan_workflow
 from pdb2reaction.workflows import scan3d as scan3d_workflow
 
 
 def _base_kw():
     return dict(
+        kind="lbfgs",
         geom_kw={},
         calc_kw={"workers": 1, "workers_per_node": 1},
         opt_kw={"thresh": "default"},
@@ -128,6 +137,62 @@ def test_grid_scan_default_is_baker_without_masking_yaml():
     assert yaml_opt["thresh"] == "gau_tight"
 
 
+def _shared_kw():
+    kw = _base_kw()
+    kw["opt_kw"] = {**OPT_BASE_KW, "thresh": "baker"}
+    kw["lbfgs_kw"] = {**LBFGS_KW, "thresh": "baker"}
+    return kw
+
+
+def test_scan_optimizer_section_applies_when_opt_keeps_defaults():
+    _, _, opt_cfg, lbfgs_cfg, _, _ = build_scan_configs(
+        {"lbfgs": {"max_cycles": 50, "thresh": "gau"}}, **_shared_kw()
+    )
+
+    assert opt_cfg["max_cycles"] == lbfgs_cfg["max_cycles"] == 50
+    assert opt_cfg["thresh"] == lbfgs_cfg["thresh"] == "gau"
+
+
+@pytest.mark.parametrize(
+    ("yaml_cfg", "cli"),
+    [
+        ({"opt": {"max_cycles": 10}, "lbfgs": {"max_cycles": 50}}, {}),
+        (
+            {"lbfgs": {"max_cycles": 50}},
+            {"relax_max_cycles": 10, "relax_max_cycles_overridden": True},
+        ),
+    ],
+)
+def test_scan_explicit_shared_key_conflict_is_an_error(yaml_cfg, cli):
+    with pytest.raises(click.BadParameter, match="opt.max_cycles and lbfgs.max_cycles conflict"):
+        build_scan_configs(yaml_cfg, **_shared_kw(), **cli)
+
+
+def test_scan_cli_uses_optimizer_section_value(tmp_path, monkeypatch):
+    config = tmp_path / "scan.yaml"
+    config.write_text("lbfgs:\n  max_cycles: 50\n", encoding="utf-8")
+    blocks = {}
+
+    def capture(title, content, **_kwargs):
+        blocks[title] = dict(content)
+        if title == "bias":
+            raise RuntimeError("stop after config echo")
+        return ""
+
+    monkeypatch.setattr(scan_workflow, "pretty_block", capture)
+    result = CliRunner().invoke(
+        root_cli,
+        [
+            "scan", "-i", str(Path(__file__).parent / "smoke" / "r.pdb"),
+            "-q", "-1", "--config", str(config),
+            "--scan-lists", "[(1, 2, 1.0)]", "--out-dir", str(tmp_path / "out"),
+        ],
+    )
+
+    assert "opt" in blocks, result.output
+    assert blocks["opt"]["max_cycles"] == 50
+
+
 def test_scan3d_forwards_actual_click_parameter_sources(monkeypatch, tmp_path):
     csv_path = tmp_path / "surface.csv"
     csv_path.write_text("energy_hartree\n0.0\n", encoding="utf-8")
@@ -207,8 +272,9 @@ def _path_search_dry_run(tmp_path, label, extra):
     )
 
 
-def test_explicit_cli_refine_mode_outranks_yaml_search_section(tmp_path):
+def test_explicit_cli_refine_mode_outranks_yaml_search_section(tmp_path, monkeypatch):
     """An explicit --refine-mode must not lose to YAML search.refine_mode."""
+    monkeypatch.setattr(core_utils, "verbose_level", lambda: 3)
     omitted = _path_search_dry_run(tmp_path, "omitted", [])
     assert omitted.exit_code == 0
     assert "refine_mode: minima" in omitted.output
@@ -219,12 +285,17 @@ def test_explicit_cli_refine_mode_outranks_yaml_search_section(tmp_path):
     assert "refine_mode: minima" not in explicit.output
 
 
-def test_path_search_dry_run_shows_effective_calculator_settings(tmp_path):
-    """Requested blocks render at default verbosity with resolved calc values."""
+def test_path_search_dry_run_shows_effective_calculator_settings(tmp_path, monkeypatch):
+    """The dry-run blocks render only at -v 3, with resolved calc values."""
+    monkeypatch.setattr(core_utils, "verbose_level", lambda: 2)
+    default = _path_search_dry_run(tmp_path, "default", ["--precision", "fp64"])
+    assert default.exit_code == 0
+    assert "dry_run_plan" not in default.output
+
+    monkeypatch.setattr(core_utils, "verbose_level", lambda: 3)
     result = _path_search_dry_run(tmp_path, "display", ["--precision", "fp64"])
 
     assert result.exit_code == 0
-    # The block itself is printed without raising the verbosity ...
     assert "dry_run_plan" in result.output
     assert "calc" in result.output
     # ... and it carries the effective CLI calculator setting.
@@ -270,9 +341,10 @@ def test_path_search_dmf_solvent_is_rejected_before_dry_run(tmp_path):
     assert "not compatible with --solvent 'water'" in result.output
 
 
-def test_path_search_yaml_preserves_stopt_cycle_pair_and_output(tmp_path):
+def test_path_search_yaml_preserves_stopt_cycle_pair_and_output(tmp_path, monkeypatch):
     from pdb2reaction.workflows import path_search as path_search_workflow
 
+    monkeypatch.setattr(core_utils, "verbose_level", lambda: 3)
     reactant, product = _path_search_endpoints(tmp_path)
     configured_out = tmp_path / "yaml-output"
     config = tmp_path / "stopt.yaml"

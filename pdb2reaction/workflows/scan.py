@@ -487,8 +487,15 @@ def cli(
             bias_cfg  = dict(BIAS_KW)
             bond_cfg  = dict(BOND_KW)
 
+            kind = normalize_choice(
+                opt_mode,
+                param="--opt-mode",
+                alias_groups=OPT_MODE_ALIASES,
+                allowed_hint="grad|hess",
+            )
             geom_cfg, calc_cfg, opt_cfg, lbfgs_cfg, rfo_cfg, bias_cfg = build_scan_configs(
                 yaml_cfg,
+                kind=kind,
                 geom_kw=geom_cfg,
                 calc_kw=calc_cfg,
                 opt_kw=opt_cfg,
@@ -502,6 +509,7 @@ def cli(
                 workers_per_node=workers_per_node,
                 out_dir=out_dir,
                 thresh=thresh if thresh_overridden else None,
+                print_every=print_every if cli_param_overridden(ctx, "print_every") else None,
                 bias_k=bias_k,
                 relax_max_cycles=relax_max_cycles,
                 relax_max_cycles_overridden=cycles_overridden,
@@ -526,18 +534,9 @@ def cli(
             apply_effective_precision(calc_cfg, precision)
             if cli_param_overridden(ctx, "dump"):
                 opt_cfg["dump"] = bool(dump)
-            if cli_param_overridden(ctx, "print_every") and print_every is not None:
-                opt_cfg["print_every"] = int(print_every)
             if cli_param_overridden(ctx, "cli_coord_type") and cli_coord_type is not None:
                 geom_cfg["coord_type"] = str(cli_coord_type).lower()
             apply_backend_defaults(calc_cfg)
-
-            kind = normalize_choice(
-                opt_mode,
-                param="--opt-mode",
-                alias_groups=OPT_MODE_ALIASES,
-                allowed_hint="grad|hess",
-            )
 
             # Convert 1-based YAML freeze_atoms to 0-based internal
             if geom_cfg.get("freeze_atoms"):
