@@ -61,6 +61,7 @@ Target release: **0.5.0**.
 
 ### Fixed
 
+- Identify the affected path-search interval in endpoint-maximum warnings instead of implying that the whole path has no reactive segment.
 - When `tsopt --flatten` also tries the displacement in the opposite direction and keeps the first result, `--dump-hess` and IRC now use the Hessian of that result.
 - `tsopt --dry-run` now rejects `--read-hess` with a `hessian_init` other than `calc`, as a real run does.
 - `opt`, `scan`, `scan2d`, and `scan3d` now apply `lbfgs:`/`rfo:` settings such as `max_cycles`, `thresh`, and `print_every` when `opt:` and the command line leave them unset; different explicit values in both places are an error, as in `tsopt`.
