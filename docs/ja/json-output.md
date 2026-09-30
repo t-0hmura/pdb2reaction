@@ -37,7 +37,8 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 | `schema_version` | string | エンベロープのスキーマバージョン。現在値は `pdb2reaction.core.utils.RESULT_JSON_SCHEMA_VERSION` にあります（このドキュメント中のリテラルではなく、この定数を参照してください）。値が上がった場合は構造変更を意味します。 |
 | `command` | string | leaf envelope はサブコマンド名（例: `"opt"`）、aggregate `all` / `path-search` summary は完全な invocation string |
 | `pdb2reaction_version` | string | パッケージバージョン |
-| `status` | string | commandごとに異なります（下記参照）。`converged` / `not_converged` / `stalled`（opt, tsopt）、`completed`（irc, freq）、`ok` / `partial` / `failed`（bond-summary）、`success` / `partial` / `failed`（`all`）、`success` / `partial`（`path-search`）、失敗時の `error` などです |
+| `execution_status` | string | 実行の完了状況: `completed` / `failed`。 |
+| `scientific_status` | string | 結果の利用可否: `success` / `partial` / `failed`。 |
 | `run_id` | string | 任意。現在の MCP 呼び出し UUID。プロダクト固有の実行環境が有効な場合のみ注入され、producer 側の値と衝突する場合は拒否されます。 |
 | `elapsed_seconds` | float | 任意の実行時間（秒）。shared writerへ時間を渡さないproducerでは省略 |
 | `environment` | object | ハードウェア情報（下表参照） |
@@ -52,13 +53,13 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 
 ### 実行と要求段階の完了状況
 
-複数段階のワークフローと scan の出力処理は、構成要素を評価できる場合に以下のフィールドを追加します。出力されるフィールドはコマンドによって異なり、各コマンド固有の `status` も互換性のため維持されます。結果を利用できるか判断する際は、`scientific_status` と各 outcome を確認してください。必須の受理判定が欠ける場合は安全側に倒します。IRC の停止理由・端点 stationary 判定は診断情報です。IRC 独立の `scientific_status` は出力せず、all は TSOPT と両端点 OPT の数値収束を集約します。
+すべての結果に `execution_status` と `scientific_status` を出します。複数段階の計算と scan は、以下の個別の結果も保持します。必要な最適化や計算が欠けていれば未完了です。IRC の停止理由は診断として残し、通常の積分終了は `completed` / `success`、all の判定は TS と端点の最適化から行います。
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
 | `execution_status` | string | 通常は `completed` または `failed`。端点未収束は実行完了、捕捉した端点例外は実行失敗です。 |
 | `scientific_status` | string | `success`、`partial`、`failed`。有効なTS1と片端OPT失敗の組合せ、および収束済みHOSPは`partial`です。 |
-| `scientific_status_reasons` | string[] | 利用できない、または欠落した個別結果の理由。正常終了時は省略されます。集約ワークフローの従来の `status_reasons` とは別です。 |
+| `scientific_status_reasons` | string[] | 利用できない、または欠落した個別結果の理由。正常終了時は省略されます。 |
 | `expected_item_ids` / `observed_item_ids` | string[] | 集約結果の欠落を検出するための、期待された項目と観測された項目の ID。 |
 | `stage_outcomes` | object[] | `stage`、`item_id`、`required`、`executed`、`converged`、`usable`、`reason`、`artifacts` を持つ段階別 outcome。 |
 | `point_outcomes` | object[] | `point_id`、`executed`、`converged`、`energy_valid`、`artifact_written`、`seed_eligible`、`reason` を持つ scan 点別 outcome。 |
@@ -100,7 +101,7 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 | `n_cpus` | int | `<int>` |
 | `ram_gb` | float | `<ram in GB>` |
 
-### エラーエンベロープ（`status == "error"` のとき）
+### エラーエンベロープ（`execution_status == "failed"` のとき）
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
@@ -112,14 +113,14 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 
 ## エラー処理
 
-捕捉された実行時例外では、`"status": "error"` と `"error_type"` を含む
+捕捉された実行時例外では、`"execution_status": "failed"` と `"error_type"` を含む
 `result.json` を可能な範囲で書き出します。使用法・入力検証による終了や出力先の
 確定前に失敗した場合は JSON が作られないことがあるため、0 以外の終了コードや
 期待した JSON の欠落も失敗のシグナルです。標準エラー出力またはジョブログを確認してください。
 
-制御された非収束結果の writer まで到達した job は、`"status": "not_converged"` の `result.json` を書きます。optimizer family は該当する最終 force/step または cycle field を含みますが、DFT と Dimer は所有しない field を出力しません。再試行の判断前に command-specific schema を確認してください。
+制御された非収束結果の writer まで到達した job は、`"optimization_status": "not_converged"` の `result.json` を書きます。optimizer family は該当する最終 force/step または cycle field を含みますが、DFT と Dimer は所有しない field を出力しません。再試行の判断前に command-specific schema を確認してください。
 
-オプティマイザは `"status": "stalled"` を返すこともあります。これは、設定した force/step の収束基準を満たさないまま、設定ウィンドウにわたってエネルギーが減少しなくなった状態（エネルギープラトー）です。stalled は converged とは別の非収束アウトカムであり、`converged` として報告されることは決してありません。`--flatten` を指定した `tsopt` と `opt` は、stalled の後も flatten ループを実行します。残った虚振動の方向へ変位すればプラトーから抜けられることがあるためです。`--max-cycles` の残りが 0 のときは実行しません。存在する場合は `stop_reason` にエネルギー範囲・ウィンドウ・満たせなかった基準が記録されます。stalled は（例えば摂動した構造やより厳しいステップ制御で）再試行し得るものであり、`max_cycles` 枯渇や一般的な失敗のエイリアスではありません。
+オプティマイザは `"optimization_status": "stalled"` を返すこともあります。これは、設定した force/step の収束基準を満たさないまま、設定ウィンドウにわたってエネルギーが減少しなくなった状態（エネルギープラトー）です。stalled は converged とは別の非収束アウトカムであり、`converged` として報告されることは決してありません。`--flatten` を指定した `tsopt` と `opt` は、stalled の後も flatten ループを実行します。残った虚振動の方向へ変位すればプラトーから抜けられることがあるためです。`--max-cycles` の残りが 0 のときは実行しません。存在する場合は `stop_reason` にエネルギー範囲・ウィンドウ・満たせなかった基準が記録されます。stalled は（例えば摂動した構造やより厳しいステップ制御で）再試行し得るものであり、`max_cycles` 枯渇や一般的な失敗のエイリアスではありません。
 
 ## サブコマンド別スキーマ
 
@@ -127,7 +128,6 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `status` | string | `"ok"` |
 | `stage` | string | `"sp"` |
 | `input` | string | 準備後の公開入力path |
 | `backend` / `model` | string / string \| null | local MLIP provenance（共通の`mlip_*` fieldにもmirror） |
@@ -143,7 +143,7 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `status` | string | `"converged"` / `"not_converged"` / `"stalled"`（エネルギープラトー、上記参照） |
+| `optimization_status` | string | `"converged"` / `"not_converged"` / `"stalled"`（エネルギープラトー、上記参照） |
 | `stop_reason` | string | 非収束停止（stalled/stopped）時のみ出力。エネルギープラトーの範囲・ウィンドウと満たせなかった基準を記録 |
 | `energy_hartree` | float | 最終エネルギー (Hartree) |
 | `n_opt_cycles` | int | 最適化サイクル数 |
@@ -202,7 +202,6 @@ force/step収束詳細と`safeguards`は省略します。
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `status` | string | `"completed"` |
 | `n_modes` | int | 基準振動モードの総数 |
 | `n_imaginary` | int | 虚モード数 |
 | `frequencies_cm` | float[] | 全振動数 (cm⁻¹) |
@@ -244,11 +243,10 @@ force/step収束詳細と`safeguards`は省略します。
 
 ### `irc`
 
-`status: "completed"` は実行が戻ったことを示します。IRC 独自の `scientific_status`、`stage_outcomes`、`forward_status` / `backward_status` は出力しません。方向ごとの停止理由と軌跡を保持し、端点最適化の結果は `all` の `endpoint_opt` に記録します。
+IRC は共通の2欄に加え、方向ごとの停止理由と軌跡を残します。all は、その後の端点最適化を `endpoint_opt` に記録します。
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `status` | string | `"completed"` |
 | `n_frames_forward` | int | 前方 IRC フレーム数 |
 | `forward_short_branch` / `backward_short_branch` | bool | cycle 上限前に3フレーム以内で停止した分岐。診断用のみ |
 | `n_frames_backward` | int | 後方 IRC フレーム数 |
@@ -283,7 +281,6 @@ force/step収束詳細と`safeguards`は省略します。
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `status` | string | `"completed"` |
 | `scan_opt_mode` | string | 拘束緩和に使用した optimizer preset |
 | `scan_optimizer` | string | 実効 optimizer identity（`lbfgs` / `rfo`） |
 | `charge` | int | 系の電荷 |
@@ -315,7 +312,6 @@ force/step収束詳細と`safeguards`は省略します。
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `status` | string | `"completed"` |
 | `charge` | int \| null | 系の電荷。plot-onlyの`scan3d --csv`ではnull |
 | `spin` | int \| null | スピン多重度。plot-onlyの`scan3d --csv`ではnull |
 | `backend` | string \| null | MLIPバックエンド。plot-onlyの`scan3d --csv`ではnull |
@@ -340,8 +336,8 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `status` | string | `"converged"` / `"not_converged"` / `"completed"` |
-| `converged` | bool \| null | 収束判定: エンジン自身の収束シグナルによる `true` / `false`。読み取れない場合は `null`（`status` は `"completed"` となり、収束を主張しない） |
+| `optimization_status` | string | `"converged"` / `"not_converged"` / `"completed"` |
+| `converged` | bool \| null | 収束判定: エンジン自身の収束シグナルによる `true` / `false`。読み取れない場合は `null`（`optimization_status` は `"completed"` となり、収束を主張しない） |
 | `mep_mode` | string | `"dmf"` / `"gsm"` |
 | `backend` | string | MLIP バックエンド |
 | `charge` | int | 系の電荷 |
@@ -368,7 +364,6 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `status` | string | `"success"` / `"partial"` |
 | `n_segments` | int | 再帰 MEP のセグメント数 |
 | `search_max_depth` | int | 実効の再帰分割階層上限。`0` は分割無効 |
 | `path_optimizers` | string[] | 経路の準備・精密化で実際に使用した単一構造オプティマイザ（`lbfgs`, `rfo`）。`all` ではスキャン・アライメントの実行も含む。`path-opt` の `result.json` と `all` の `summary.json` にも記録 |
@@ -389,12 +384,11 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 
 > **注:** `dft` は SCF 収束・非収束の両方で `result.json` と
 > `summary.json` を書きます。非収束時は `status: "not_converged"`、
-> `converged: false` を記録して exit code 3 で終了します。未処理 exception
+> `converged: false` を記録して exit code 1 で終了します。未処理 exception
 > では標準 error envelope を書きます。
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `status` | string | `"converged"` または `"not_converged"` |
 | `converged` | bool | SCF 収束? |
 | `charge` | int | 系の電荷 |
 | `spin` | int | スピン多重度 |
@@ -422,7 +416,6 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `status` | string | `"ok"` |
 | `n_atoms_raw` | int | 選択残基に含まれるbackbone/truncation filter前の原子数（入力全体ではない） |
 | `n_atoms_extracted` | int | truncation後に保持した原子数（cap-H追加前） |
 | `total_charge` | float | 合計電荷 |
@@ -444,7 +437,6 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `status` | string | `"ok"` |
 | `n_frames` | int | 軌跡フレーム数 |
 | `min_energy_hartree` | float | フレーム中の最小エネルギー |
 | `max_energy_hartree` | float | フレーム中の最大エネルギー |
@@ -461,7 +453,6 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `status` | string | `"ok"` |
 | `n_points` | int | エネルギーデータ点数 |
 | `files` | object | 出力ダイアグラムファイル |
 
@@ -471,7 +462,6 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `status` | string | `"ok"`（全ペアが正常に比較できた場合）、`"partial"`（一部のペアが失敗した場合）、`"failed"`（正常に比較できたペアが無い場合） |
 | `comparisons` | object[] | ペアごとの比較（`structure_a` (string), `structure_b` (string), `bonds_formed` (int), `bonds_broken` (int)） |
 
 (ja-summary-json-path-search-all)=
@@ -481,7 +471,6 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 
 | フィールド | 型 | 説明 |
 |-----------|------|------|
-| `status` | string | `"success"` / `"partial"` / `"failed"` (`all`); `"success"` / `"partial"` (`path-search`) |
 | `execution_status` / `scientific_status` | string / string | 実行の完了度と、要求した数値最適化・計算段階の完了度。 |
 | `scientific_status_reasons` | string[] | 要求した結果の欠損・未収束などの理由。正常終了時は省略されます。 |
 | `pipeline_stop` | object \| 不在 | 早期停止時のみ存在。`stage` は `post`（`reason` は `no_segments` / `no_reactive_segment`）、`before_irc`（TSOPT の理由と `segment`・`tsopt_result`）、または `endpoint_opt`（`endpoint_execution_failed` と端点別 `failures`）。`summary.log` では `Pipeline stop` |
@@ -511,7 +500,7 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 | `post_segments` | list | セグメントごとの TS/IRC/freq/DFT 結果 |
 | `post_segments[].tsopt.energy_valid` / `.structure_valid` | bool | 既存の終端Hessian結果と組み合わせる有限TSの確認。status判定のための追加Hessian・最適化は実行しません。 |
 | `post_segments[].tsopt.n_opt_cycles` / `.max_cycles` | int / int\|null | TS 最適化で実行したサイクル数と設定上限。通常の非収束時にも記録します。 |
-| `post_segments[].irc` / `.endpoint_assignment` / `.endpoint_opt` | object | 順に IRC 停止診断、端点の向き付け、端点 OPT の収束記録。`endpoint_opt.reactant` / `.product` に `status`, `n_opt_cycles`, `max_cycles`, `stop_reason`（存在する場合）を記録します。IRC 停止・結合対応は独立した成功条件にせず、connectivity 情報は機構解釈用に保持します。 |
+| `post_segments[].irc` / `.endpoint_assignment` / `.endpoint_opt` | object | 順に IRC 停止診断、端点の向き付け、端点 OPT の収束記録。`endpoint_opt.reactant` / `.product` に `optimization_status`, `n_opt_cycles`, `max_cycles`, `stop_reason`（存在する場合）を記録します。IRC 停止・結合対応は独立した成功条件にせず、connectivity 情報は機構解釈用に保持します。 |
 | `post_segments[].thermo_symmetry` | object | 子 freq が報告した状態別の点群・回転対称 provenance。有効な対称数 provenance を持つ R/TS/P 状態だけを含み、欠けた状態は省略する。どの状態にも有効な provenance が無い場合だけフィールド全体を省略する。 |
 | `current_output_paths` | string[] | `--out-dir` からの相対パスを並べたリスト。現在の呼び出しが記録した成果物だけを含みます。 |
 | `key_output_files` | object | 現在の呼び出しの出力索引。ルートファイルはファイル名 → 説明、各 `seg_NN` は `{description, files}` で、`files` はそのセグメントディレクトリからの相対パスです。 |
@@ -526,8 +515,8 @@ import json
 with open("result_opt/result.json") as f:
     result = json.load(f)
 
-status = result["status"]
-if status == "error":
+status = result.get("optimization_status")
+if result["execution_status"] == "failed":
     raise RuntimeError(f"{result['error_type']}: {result['error']}")
 elif status == "converged":
     print(f"Energy: {result['energy_hartree']:.6f} Hartree")
@@ -542,7 +531,7 @@ else:
 
 ```bash
 # 収束確認
-jq '.status' result.json
+jq '{execution_status, scientific_status}' result.json
 
 # 障壁エネルギー取得
 jq '.barrier_kcal' result.json

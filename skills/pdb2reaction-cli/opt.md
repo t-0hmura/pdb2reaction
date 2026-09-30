@@ -63,13 +63,13 @@ pdb2reaction path-opt -i /tmp/relax_R/final_geometry.pdb /tmp/relax_P/final_geom
 | Path | When | Content |
 |---|---|---|
 | `<out_dir>/result.json` | `--out-json` | machine-readable result |
-| `<out_dir>/final_geometry.xyz` | completed optimizer run | final geometry; inspect `result.json["status"]` before calling it converged |
+| `<out_dir>/final_geometry.xyz` | completed optimizer run | final geometry; inspect `result.json["optimization_status"]` before calling it converged |
 | `<out_dir>/final_geometry.pdb` | `--convert-files` (default on) and PDB/mmCIF topology/reference available | normalized PDB companion used between pipeline stages |
 | `<out_dir>/final_geometry.cif` | `--convert-files` and input/reference required the mmCIF or oversized-PDB bridge | public companion with original chain/residue IDs |
 | `<out_dir>/optimization_trj.xyz` | `--dump` | full optimization trajectory |
 | `<out_dir>/optimization.{pdb,cif}` | `--dump`, `--convert-files`, and conversion topology; CIF only for bridge inputs | topology-bearing trajectory companions |
 
-`result.json` (only when `--out-json` is passed) keys: `status`
+`result.json` (only when `--out-json` is passed) keys: `optimization_status`
 (`converged` / `not_converged`; `error` on failure), `n_opt_cycles`, `energy_hartree`,
 `final_max_force`, `final_rms_force`, and the `files` block whose
 `final_geometry_xyz` entry points at the final geometry. When

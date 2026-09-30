@@ -187,7 +187,7 @@ def test_endpoint_boundary_retains_provenance_and_stops_consumers(
         metadata = kwargs.get("outcome")
         if metadata is not None:
             metadata.update({
-                "status": "converged",
+                "optimization_status": "converged",
                 "converged": True,
                 "n_opt_cycles": index + 3,
                 "max_cycles": 3000,
@@ -433,7 +433,7 @@ def test_endpoint_helper_requires_current_finite_output(monkeypatch, tmp_path, o
         assert result is terminal and path == final_path
         assert converged is (outcome == "converged")
         assert path.is_file()
-        assert endpoint_outcome["status"] == (
+        assert endpoint_outcome["optimization_status"] == (
             "converged" if outcome == "converged" else "not_converged"
         )
         assert endpoint_outcome["n_opt_cycles"] == 7

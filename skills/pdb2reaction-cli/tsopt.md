@@ -72,7 +72,7 @@ pdb2reaction tsopt -i hei.pdb -l 'SAM:1,GPP:-3' \
 | Path | When | Content |
 |---|---|---|
 | `<out_dir>/result.json` | `--out-json` | machine-readable result |
-| `<out_dir>/final_geometry.xyz` | completed optimizer run | final geometry; it is a validated first-order saddle only when `result.json["status"] == "converged"` and the downstream IRC is correct |
+| `<out_dir>/final_geometry.xyz` | completed optimizer run | final geometry; it is a validated first-order saddle only when `result.json["optimization_status"] == "converged"` and the downstream IRC is correct |
 | `<out_dir>/final_geometry.pdb` | `--convert-files` (default on) and PDB/mmCIF topology/reference available | normalized PDB companion used between pipeline stages |
 | `<out_dir>/final_geometry.cif` | `--convert-files` and input/reference required the mmCIF or oversized-PDB bridge | public companion with original IDs |
 | `<out_dir>/final_geometry.gjf` | `--convert-files` and input is `.gjf` | Gaussian companion |

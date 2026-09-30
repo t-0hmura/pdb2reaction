@@ -227,7 +227,7 @@ Options:
                                   [default: preopt]
   --hessian-calc-mode [finitedifference|analytical]
                                   Common MLIP Hessian calculation mode forwarded
-                                  to tsopt and freq.  [default:
+                                  to tsopt, irc and freq.  [default:
                                   (FiniteDifference)]
   --tsopt / --no-tsopt            TS optimization + IRC per reactive segment (or
                                   TSOPT-only mode for single-structure), and

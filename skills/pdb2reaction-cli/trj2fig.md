@@ -46,7 +46,7 @@ pdb2reaction trj2fig -i mep.xyz \
     -o mep.png -o mep.html -o mep.csv --out-json
 ```
 
-`result.json` contains `status`, `n_frames`, the minimum/maximum Hartree
+`result.json` contains `execution_status`, `scientific_status`, `n_frames`, the minimum/maximum Hartree
 energies, `energy_source`, calculator provenance, and a `files` mapping for
 every output. With comment-line energies, `energy_source` is
 `trajectory_comment` and backend/charge/multiplicity/solvent fields are null;

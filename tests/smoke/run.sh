@@ -84,13 +84,13 @@ P_COMPLEX_MODEL_FREEZE_ATOMS="1,32"
 # --- Subcommand tests (individual) ---
 
 # test1: opt (grad / lbfgs)
-pdb2reaction opt -i r.pdb -q -1 --opt-mode grad --max-cycles 5 --thresh gau_loose --dump --out-dir test1 > test1.out 2>&1
+python run_limited.py pdb2reaction opt -i r.pdb -q -1 --opt-mode grad --max-cycles 5 --thresh gau_loose --dump --out-dir test1 > test1.out 2>&1
 
 # test2: opt (hess / rfo)
-pdb2reaction opt -i r.pdb -q -1 --opt-mode hess --max-cycles 3 --thresh gau_loose --out-dir test2 > test2.out 2>&1
+python run_limited.py pdb2reaction opt -i r.pdb -q -1 --opt-mode hess --max-cycles 3 --thresh gau_loose --out-dir test2 > test2.out 2>&1
 
 # test3: tsopt (hess)
-pdb2reaction tsopt -i ts.pdb -q 0 --max-cycles 5 --thresh gau_loose --out-dir test3 > test3.out 2>&1
+python run_limited.py pdb2reaction tsopt -i ts.pdb -q 0 --max-cycles 5 --thresh gau_loose --out-dir test3 > test3.out 2>&1
 
 # test4: freq
 pdb2reaction freq -i r.pdb -q -1 --out-dir test4 > test4.out 2>&1
@@ -112,10 +112,10 @@ pdb2reaction scan2d -i p_complex_model.pdb --ligand-charge 'PRE:-2' --freeze-ato
 pdb2reaction scan3d -i p_complex_model.pdb --ligand-charge 'PRE:-2' --freeze-atoms "$P_COMPLEX_MODEL_FREEZE_ATOMS" --scan-lists "[('PRE 8 C3','PRE 8 O1\'',1.4,1.8),('PRE 8 C1','PRE 8 C8',3.0,3.4),('PRE 8 C1','PRE 8 C7',1.4,1.6)]" --max-step-size 2.0 --relax-max-cycles 100 --thresh gau_loose --out-dir test9 > test9.out 2>&1
 
 # test10: path-opt (gsm)
-pdb2reaction path-opt -i r.pdb p.pdb -q -1 --max-nodes 5 --max-cycles-gsm 5 --thresh-gsm gau_loose --no-preopt --no-climb --out-dir test10 > test10.out 2>&1
+python run_limited.py pdb2reaction path-opt -i r.pdb p.pdb -q -1 --max-nodes 5 --max-cycles-gsm 5 --thresh-gsm gau_loose --no-preopt --no-climb --out-dir test10 > test10.out 2>&1
 
 # test11: path-search
-pdb2reaction path-search -i r.pdb p.pdb -q -1 --max-nodes 5 --max-cycles-gsm 5 --out-dir test11 > test11.out 2>&1
+python run_limited.py pdb2reaction path-search -i r.pdb p.pdb -q -1 --max-nodes 5 --max-cycles-gsm 5 --out-dir test11 > test11.out 2>&1
 
 # --- Input format tests (all command) ---
 
@@ -137,7 +137,7 @@ pdb2reaction -i r.xyz -q -1 --scan-lists "[(1,5,1.4)]" --max-cycles-gsm 5 --thre
 # --- Complex system tests ---
 
 # test17: opt (complex, ligand-charge)
-pdb2reaction opt -i p_complex.pdb --ligand-charge 'PRE:-2' --max-cycles 3 --thresh gau_loose --out-dir test17 > test17.out 2>&1
+python run_limited.py pdb2reaction opt -i p_complex.pdb --ligand-charge 'PRE:-2' --max-cycles 3 --thresh gau_loose --out-dir test17 > test17.out 2>&1
 
 # test18: all (complex, extract + scan-lists)
 pdb2reaction -i p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' --scan-lists "[('PRE 8 C3','PRE 8 O1\'',1.4),('PRE 8 C1','PRE 8 C8',3.3)]" -r 5.0 --no-exclude-backbone --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test18 > test18.out 2>&1
@@ -162,7 +162,7 @@ pdb2reaction -i r.pdb p.pdb -q -1 --mep-mode dmf --no-refine-path --dmf-max-iter
 # --- TSOPT for complex systems ---
 
 # test23: tsopt (complex, hess)
-pdb2reaction tsopt -i ts_complex.pdb -q -1 --opt-mode hess --max-cycles 3 --thresh gau_loose --out-dir test23 > test23.out 2>&1
+python run_limited.py pdb2reaction tsopt -i ts_complex.pdb -q -1 --opt-mode hess --max-cycles 3 --thresh gau_loose --out-dir test23 > test23.out 2>&1
 
 # test24: tsopt (complex, grad)
 pdb2reaction tsopt -i ts_complex.pdb -q -1 --opt-mode grad --max-cycles 100 --thresh gau --out-json --out-dir test24 > test24.out 2>&1
@@ -221,7 +221,7 @@ pdb2reaction scan2d -i p_complex_model.pdb --ligand-charge 'PRE:-2' --freeze-ato
 # --- Solvent correction (requires xTB) ---
 
 # test39: opt (solvent water)
-pdb2reaction opt -i r.pdb -q -1 --opt-mode grad --max-cycles 3 --thresh gau_loose --solvent water --out-dir test39 > test39.out 2>&1
+python run_limited.py pdb2reaction opt -i r.pdb -q -1 --opt-mode grad --max-cycles 3 --thresh gau_loose --solvent water --out-dir test39 > test39.out 2>&1
 
 # --- dist-freeze ---
 
@@ -236,16 +236,16 @@ pdb2reaction -i r.pdb p.pdb -q -1 --refine-path --max-cycles-gsm 5 --thresh gau_
 # --- Opt-in TS and IRC methods ---
 
 # test42: tsopt --opt-mode trim (Helgaker trust-region image-min TS opt)
-pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode trim --max-cycles 5 --thresh gau_loose --out-dir test42 > test42.out 2>&1
+python run_limited.py pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode trim --max-cycles 5 --thresh gau_loose --out-dir test42 > test42.out 2>&1
 
 # test43: tsopt --opt-mode rsprfo (Banerjee restricted-step P-RFO TS opt)
-pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode rsprfo --max-cycles 5 --thresh gau_loose --out-dir test43 > test43.out 2>&1
+python run_limited.py pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode rsprfo --max-cycles 5 --thresh gau_loose --out-dir test43 > test43.out 2>&1
 
 # test44: irc --irc-pos-def (PSD-Hessian convergence guard)
 pdb2reaction irc -i ts.pdb -q 0 --max-cycles 3 --irc-pos-def --out-dir test44 > test44.out 2>&1
 
 # test45: opt --print-every 3 (print-throttling check, no behavior change)
-pdb2reaction opt -i r.pdb -q -1 --opt-mode hess --max-cycles 5 --thresh gau_loose --print-every 3 --out-dir test45 > test45.out 2>&1
+python run_limited.py pdb2reaction opt -i r.pdb -q -1 --opt-mode hess --max-cycles 5 --thresh gau_loose --print-every 3 --out-dir test45 > test45.out 2>&1
 
 # --- Determinism gate ---
 
@@ -290,10 +290,10 @@ fi
 # --- --coord-type CLI plumbing, plus the single-point lanes (throttled, fast) ---
 
 # test47: `all --coord-type cart` — explicit cart (== default), verifies CLI plumbing.
-pdb2reaction all -i r.pdb p.pdb -q -1 --coord-type cart --no-refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test47 > test47.out 2>&1
+python run_limited.py pdb2reaction all -i r.pdb p.pdb -q -1 --coord-type cart --no-refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test47 > test47.out 2>&1
 
 # test48: `all --coord-type dlc` — DLC propagated to child opt / tsopt / path-opt stages.
-pdb2reaction all -i r.pdb p.pdb -q -1 --coord-type dlc --no-refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test48 > test48.out 2>&1
+python run_limited.py pdb2reaction all -i r.pdb p.pdb -q -1 --coord-type dlc --no-refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test48 > test48.out 2>&1
 
 # test49: `sp` (single-point) — energy + forces.
 pdb2reaction sp -i r.pdb -q -1 --out-dir test49 > test49.out 2>&1
@@ -316,7 +316,7 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --out-dir test51 > test51.out 2>&1
 # thresh, and the post-stages (TS / IRC / DFT) depend on a converged HEI
 # from the MEP — silently broken structure handoff otherwise. test51 (cart)
 # keeps the no-cap default-behaviour check.
-pdb2reaction all -i r.pdb p.pdb -q -1 --coord-type dlc --no-refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --no-tsopt --no-thermo --no-dft --out-dir test52 > test52.out 2>&1
+python run_limited.py pdb2reaction all -i r.pdb p.pdb -q -1 --coord-type dlc --no-refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --no-tsopt --no-thermo --no-dft --out-dir test52 > test52.out 2>&1
 
 # --- Per-stage internal-coordinate code paths ---
 # Each test scoped at a 2-3 cycle cap + thresh gau_loose to exercise the
@@ -324,36 +324,36 @@ pdb2reaction all -i r.pdb p.pdb -q -1 --coord-type dlc --no-refine-path --max-cy
 # uses Cartesian coordinates (freq has no --coord-type) and is covered by test4.
 
 # test52a: opt --coord-type dlc
-pdb2reaction opt -i r.pdb -q -1 --coord-type dlc --max-cycles 3 --thresh gau_loose --out-dir test52a_opt_dlc > test52a_opt_dlc.out 2>&1
+python run_limited.py pdb2reaction opt -i r.pdb -q -1 --coord-type dlc --max-cycles 3 --thresh gau_loose --out-dir test52a_opt_dlc > test52a_opt_dlc.out 2>&1
 
 # test52b-e: Hessian TS optimization must accept every documented coordinate
 # system. The DLC case includes frozen atoms and therefore exercises the
 # partial-Cartesian-Hessian -> internal-coordinate handoff regression.
-pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode hess --coord-type cart --max-cycles 2 --thresh gau_loose --out-dir test52b_ts_cart > test52b_ts_cart.out 2>&1
-pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode hess --coord-type redund --max-cycles 2 --thresh gau_loose --out-dir test52c_ts_redund > test52c_ts_redund.out 2>&1
-pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode hess --coord-type dlc --freeze-atoms 1,3,5 --max-cycles 2 --thresh gau_loose --out-dir test52d_ts_dlc_freeze > test52d_ts_dlc_freeze.out 2>&1
-pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode hess --coord-type tric --max-cycles 2 --thresh gau_loose --out-dir test52e_ts_tric > test52e_ts_tric.out 2>&1
+python run_limited.py pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode hess --coord-type cart --max-cycles 2 --thresh gau_loose --out-dir test52b_ts_cart > test52b_ts_cart.out 2>&1
+python run_limited.py pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode hess --coord-type redund --max-cycles 2 --thresh gau_loose --out-dir test52c_ts_redund > test52c_ts_redund.out 2>&1
+python run_limited.py pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode hess --coord-type dlc --freeze-atoms 1,3,5 --max-cycles 2 --thresh gau_loose --out-dir test52d_ts_dlc_freeze > test52d_ts_dlc_freeze.out 2>&1
+python run_limited.py pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode hess --coord-type tric --max-cycles 2 --thresh gau_loose --out-dir test52e_ts_tric > test52e_ts_tric.out 2>&1
 
 # test52d_scan_dlc: scan --coord-type dlc (1D).  The bare `test52d` label belongs
 # to the tsopt lane above; this one is named after its own out-dir.
 pdb2reaction scan -i r.pdb -q -1 --coord-type dlc --scan-lists "[(1,5,1.4)]" --max-step-size 2.0 --relax-max-cycles 3 --no-preopt --no-endopt --out-dir test52d_scan_dlc > test52d_scan_dlc.out 2>&1
 
 # test52g: opt --coord-type redund
-pdb2reaction opt -i r.pdb -q -1 --coord-type redund --max-cycles 3 --thresh gau_loose --out-dir test52g_opt_redund > test52g_opt_redund.out 2>&1
+python run_limited.py pdb2reaction opt -i r.pdb -q -1 --coord-type redund --max-cycles 3 --thresh gau_loose --out-dir test52g_opt_redund > test52g_opt_redund.out 2>&1
 
 # test52j: scan --coord-type redund
 pdb2reaction scan -i r.pdb -q -1 --coord-type redund --scan-lists "[(1,5,1.4)]" --max-step-size 2.0 --relax-max-cycles 3 --no-preopt --no-endopt --out-dir test52j_scan_redund > test52j_scan_redund.out 2>&1
 
 # test52k: opt --coord-type tric
-pdb2reaction opt -i r.pdb -q -1 --coord-type tric --max-cycles 3 --thresh gau_loose --out-dir test52k_opt_tric > test52k_opt_tric.out 2>&1
+python run_limited.py pdb2reaction opt -i r.pdb -q -1 --coord-type tric --max-cycles 3 --thresh gau_loose --out-dir test52k_opt_tric > test52k_opt_tric.out 2>&1
 
 # --- Multi-mode flag code-path verify (single-stage) ---
 
 # test52m: opt --precision fp64 (alternate precision)
-pdb2reaction opt -i r.pdb -q -1 --precision fp64 --max-cycles 3 --thresh gau_loose --out-dir test52m_opt_fp64 > test52m_opt_fp64.out 2>&1
+python run_limited.py pdb2reaction opt -i r.pdb -q -1 --precision fp64 --max-cycles 3 --thresh gau_loose --out-dir test52m_opt_fp64 > test52m_opt_fp64.out 2>&1
 
 # test52n: opt --precision fp32 (explicit fp32 dispatch; default is fp32, this pins the explicit path alongside test52m fp64)
-pdb2reaction opt -i r.pdb -q -1 --precision fp32 --max-cycles 3 --thresh gau_loose --out-dir test52n_opt_fp32 > test52n_opt_fp32.out 2>&1
+python run_limited.py pdb2reaction opt -i r.pdb -q -1 --precision fp32 --max-cycles 3 --thresh gau_loose --out-dir test52n_opt_fp32 > test52n_opt_fp32.out 2>&1
 
 # test53: full `all` with `--backend orb` — exercises the non-default MLIP backend.
 pdb2reaction all -i r.pdb p.pdb -q -1 --backend orb --out-dir test53 > test53.out 2>&1
@@ -361,10 +361,10 @@ python assert_release_result.py provenance test53 --expected-backend orb --expec
 
 # ---- Subcommand-specific regression coverage ----
 # test54: opt --distance-restraint + --restraint-k (harmonic restraint actually applied at runtime, not dry-run)
-pdb2reaction opt -i r.pdb -q -1 --distance-restraint "[(1,2,1.5)]" --restraint-k 150 --max-cycles 3 --thresh gau_loose --out-dir test54_opt_biask > test54_opt_biask.out 2>&1
+python run_limited.py pdb2reaction opt -i r.pdb -q -1 --distance-restraint "[(1,2,1.5)]" --restraint-k 150 --max-cycles 3 --thresh gau_loose --out-dir test54_opt_biask > test54_opt_biask.out 2>&1
 
 # test55: opt --freeze-atoms (explicit user-frozen DOF, distinct from --freeze-links)
-pdb2reaction opt -i r.pdb -q -1 --freeze-atoms '1,3,5' --max-cycles 3 --thresh gau_loose --no-flatten --out-dir test55_opt_freeze > test55_opt_freeze.out 2>&1
+python run_limited.py pdb2reaction opt -i r.pdb -q -1 --freeze-atoms '1,3,5' --max-cycles 3 --thresh gau_loose --no-flatten --out-dir test55_opt_freeze > test55_opt_freeze.out 2>&1
 
 # test56: freq --hessian-calc-mode Analytical (workflow analytical path)
 pdb2reaction freq -i r.pdb -q -1 --hessian-calc-mode Analytical --max-write 3 --out-dir test56_freq_anahess > test56_freq_anahess.out 2>&1
@@ -391,15 +391,13 @@ if grep -Fq 'Traceback (most recent call last)' test59_scan2d_hess.out; then
   exit 1
 fi
 if [ "$rc" -eq 0 ]; then
-  test -s test59_scan2d_hess/scan2d_map.png || { echo "[smoke] FAIL test59: successful run omitted the 2D plot" >> test59_scan2d_hess.out; exit 1; }
-elif [ "$rc" -eq 1 ]; then
-  if grep -Fq 'No converged finite grid point with a written geometry is available' test59_scan2d_hess.out; then
-    grep -Fq '[plot] No finite data for plotting.' test59_scan2d_hess.out \
-      || { echo "[smoke] FAIL test59: no-data exit omitted the plotting diagnostic" >> test59_scan2d_hess.out; exit 1; }
-  else
-    grep -Fq '[plot] ERROR: A 2D energy surface requires at least three non-collinear' test59_scan2d_hess.out \
-      || { echo "[smoke] FAIL test59: exit 1 was not a controlled insufficient-support outcome" >> test59_scan2d_hess.out; exit 1; }
+  if ! grep -Fq '[plot] NOTE: Plots skipped' test59_scan2d_hess.out; then
+    test -s test59_scan2d_hess/scan2d_map.png || { echo "[smoke] FAIL test59: successful run omitted the 2D plot" >> test59_scan2d_hess.out; exit 1; }
   fi
+elif [ "$rc" -eq 1 ]; then
+  grep -Fq 'No converged finite grid point with a written geometry is available' test59_scan2d_hess.out \
+    && grep -Fq '[plot] No finite data for plotting.' test59_scan2d_hess.out \
+    || { echo "[smoke] FAIL test59: exit 1 was not the controlled no-data outcome" >> test59_scan2d_hess.out; exit 1; }
 else
   echo "[smoke] FAIL test59: unexpected exit status $rc" >> test59_scan2d_hess.out
   exit 1
@@ -417,7 +415,9 @@ if grep -Fq 'Traceback (most recent call last)' test60_scan3d_hess.out; then
   exit 1
 fi
 if [ "$rc" -eq 0 ]; then
-  test -s test60_scan3d_hess/scan3d_density.html || { echo "[smoke] FAIL test60: successful run omitted the 3D plot" >> test60_scan3d_hess.out; exit 1; }
+  if ! grep -Fq '[plot] NOTE: Volume plot skipped' test60_scan3d_hess.out; then
+    test -s test60_scan3d_hess/scan3d_density.html || { echo "[smoke] FAIL test60: successful run omitted the 3D plot" >> test60_scan3d_hess.out; exit 1; }
+  fi
 elif [ "$rc" -eq 1 ]; then
   grep -Fq 'No converged finite grid point with a written geometry is available' test60_scan3d_hess.out \
     && grep -Fq '[plot] No finite data for plotting.' test60_scan3d_hess.out \
@@ -442,26 +442,26 @@ pdb2reaction path-opt -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --freeze
 python assert_release_result.py dmf-freeze test62b_dmf_freeze --frozen-atoms 1,3,5 >> test62b_dmf_freeze.out 2>&1
 
 # test63: path-opt --coord-type dlc (p2r keeps DLC for pure-MLIP)
-pdb2reaction path-opt -i r.pdb p.pdb -q -1 --coord-type dlc --max-nodes 5 --max-cycles-gsm 3 --no-preopt --no-climb --out-dir test63_pathopt_dlc > test63_pathopt_dlc.out 2>&1
+python run_limited.py pdb2reaction path-opt -i r.pdb p.pdb -q -1 --coord-type dlc --max-nodes 5 --max-cycles-gsm 3 --no-preopt --no-climb --out-dir test63_pathopt_dlc > test63_pathopt_dlc.out 2>&1
 
 # test64: path-search --mep-mode dmf
 pdb2reaction path-search -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --dmf-max-iterations 3 --no-preopt --out-dir test64_ps_dmf > test64_ps_dmf.out 2>&1
 
 # test65: path-search --opt-mode hess (RFO single-structure preopt; keep preopt ON)
-pdb2reaction path-search -i r.pdb p.pdb -q -1 --opt-mode hess --uma-workers 1 --max-nodes 5 --max-cycles-gsm 3 --out-dir test65_ps_hess > test65_ps_hess.out 2>&1
+python run_limited.py pdb2reaction path-search -i r.pdb p.pdb -q -1 --opt-mode hess --uma-workers 1 --max-nodes 5 --max-cycles-gsm 3 --out-dir test65_ps_hess > test65_ps_hess.out 2>&1
 
 # test66: real MEP -> TSOPT -> endpoint OPT -> thermo -> CPU SCF handoff.
 # This lane explicitly requests --flatten. It verifies workflow execution and
 # requested DFT outputs; it is not no-flatten optimizer validation.
-pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --thermo --dft --flatten --irc-never-stop --irc-max-cycles 3 --max-cycles-gsm 5 --tsopt-max-cycles 200 --thresh gau_loose --thresh-post gau --func-basis 'hf/sto-3g' --dft-grid-level 0 --scf-tol 1e-5 --scf-max-cycles 40 --dft-engine cpu --out-dir test66_all_tsopt > test66_all_tsopt.out 2>&1
+python run_limited.py pdb2reaction all -i r.pdb p.pdb -q -1 --tsopt --thermo --dft --flatten --irc-never-stop --irc-max-cycles 3 --max-cycles-gsm 5 --tsopt-max-cycles 200 --thresh gau_loose --thresh-post gau --func-basis 'hf/sto-3g' --dft-grid-level 0 --scf-tol 1e-5 --scf-max-cycles 40 --dft-engine cpu --out-dir test66_all_tsopt > test66_all_tsopt.out 2>&1
 python assert_release_result.py all test66_all_tsopt --require-thermo --require-dft >> test66_all_tsopt.out 2>&1
 grep -Fq '[irc] Reusing cached TS Hessian from tsopt.' test66_all_tsopt.out || { echo '[smoke] FAIL test66: IRC did not report cached TS Hessian reuse' >> test66_all_tsopt.out; exit 1; }
 
 # test67: all --scan-lists (single-PDB scan->path mode of `all`)
-pdb2reaction all -i r.pdb -q -1 --scan-lists "[(1,5,1.4)]" --max-cycles-gsm 5 --thresh gau_loose --no-tsopt --no-thermo --no-dft --out-dir test67_all_scan > test67_all_scan.out 2>&1
+python run_limited.py pdb2reaction all -i r.pdb -q -1 --scan-lists "[(1,5,1.4)]" --max-cycles-gsm 5 --thresh gau_loose --no-tsopt --no-thermo --no-dft --out-dir test67_all_scan > test67_all_scan.out 2>&1
 
 # test68: opt --coord-type dlc on extracted complex model with explicit frozen boundary atoms
-pdb2reaction opt -i p_complex_model.pdb --ligand-charge 'PRE:-2' --coord-type dlc --freeze-atoms "$P_COMPLEX_MODEL_FREEZE_ATOMS" --max-cycles 3 --thresh gau_loose --out-dir test68_opt_complex_freeze_dlc > test68_opt_complex_freeze_dlc.out 2>&1
+python run_limited.py pdb2reaction opt -i p_complex_model.pdb --ligand-charge 'PRE:-2' --coord-type dlc --freeze-atoms "$P_COMPLEX_MODEL_FREEZE_ATOMS" --max-cycles 3 --thresh gau_loose --out-dir test68_opt_complex_freeze_dlc > test68_opt_complex_freeze_dlc.out 2>&1
 python check_frozen_atoms.py p_complex_model.pdb test68_opt_complex_freeze_dlc/final_geometry.pdb "$P_COMPLEX_MODEL_FREEZE_ATOMS" test68 >> test68_opt_complex_freeze_dlc.out 2>&1
 
 # test69: scan --coord-type dlc on extracted complex model with explicit frozen boundary atoms.
@@ -479,10 +479,10 @@ fi
 # path_search opt-in (`--refine-path`) across more input modes than test41.
 
 # test70: all --scan-lists --refine-path (single-PDB scan -> recursive path_search)
-pdb2reaction all -i r.pdb -q -1 --scan-lists "[(1,5,1.4)]" --refine-path --max-cycles-gsm 5 --thresh gau_loose --no-tsopt --no-thermo --no-dft --out-dir test70_rp_scan > test70_rp_scan.out 2>&1
+python run_limited.py pdb2reaction all -i r.pdb -q -1 --scan-lists "[(1,5,1.4)]" --refine-path --max-cycles-gsm 5 --thresh gau_loose --no-tsopt --no-thermo --no-dft --out-dir test70_rp_scan > test70_rp_scan.out 2>&1
 
 # test71: all (complex multi-input) --refine-path (recursive path_search on the extracted model)
-pdb2reaction all -i r_complex.pdb p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --no-exclude-backbone --refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --no-tsopt --no-thermo --no-dft --out-dir test71_rp_complex > test71_rp_complex.out 2>&1
+python run_limited.py pdb2reaction all -i r_complex.pdb p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --no-exclude-backbone --refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --no-tsopt --no-thermo --no-dft --out-dir test71_rp_complex > test71_rp_complex.out 2>&1
 
 # test72: extract MULTI-INPUT via space-separated '-i a.pdb b.pdb' (one flag, two paths).
 # Regression guard: a single -i with several space-separated paths must NOT drop the 2nd input.
@@ -501,7 +501,7 @@ grep -Eq '^\[backend\] UMA \(UMA-M-1\.1 \(OMol\), fp32\)$' test73_backend_model.
 
 # test74: mmCIF input crosses the internal PDB bridge for a real MLIP run and
 # restores the original long chain / large residue identifiers in public CIF.
-pdb2reaction opt -i r_complex.cif -q 0 --max-cycles 1 --thresh gau_loose --out-dir test74_opt_cif > test74_opt_cif.out 2>&1
+python run_limited.py pdb2reaction opt -i r_complex.cif -q 0 --max-cycles 1 --thresh gau_loose --out-dir test74_opt_cif > test74_opt_cif.out 2>&1
 test -s test74_opt_cif/final_geometry.pdb || { echo "[smoke] FAIL test74: final PDB missing" >> test74_opt_cif.out; exit 1; }
 test -s test74_opt_cif/final_geometry.cif || { echo "[smoke] FAIL test74: final CIF missing" >> test74_opt_cif.out; exit 1; }
 grep -q 'LONG_CHAIN' test74_opt_cif/final_geometry.cif || { echo "[smoke] FAIL test74: auth chain was not restored" >> test74_opt_cif.out; exit 1; }
@@ -516,7 +516,7 @@ python assert_cif_selection.py model_from_cif.pdb model_from_cif.cif >> test75_e
 
 # test76: runtime YAML precedence reaches a real calculation (config-only
 # charge/model/precision, with CLI max-cycles overriding the YAML budget).
-pdb2reaction opt -i r.pdb --config runtime_config.yaml --show-config --max-cycles 1 --out-json --out-dir test76_config > test76_config.out 2>&1
+python run_limited.py pdb2reaction opt -i r.pdb --config runtime_config.yaml --show-config --max-cycles 1 --out-json --out-dir test76_config > test76_config.out 2>&1
 python assert_release_result.py opt-config test76_config --expected-charge -1 --expected-model uma-s-1p2 --expected-max-cycles 1 --expected-precision fp64 >> test76_config.out 2>&1
 
 # test77: a user ASE calculator that implements energy/forces only supports
@@ -543,7 +543,7 @@ fi
 
 # test80: explicit zero cap retains the initial refinement and records the
 # effective depth limit and any capped child intervals.
-pdb2reaction path-search -i r.pdb p.pdb -q -1 --max-depth 0 --max-nodes 5 --max-cycles-gsm 5 --no-preopt --out-dir test80_ps_max_depth0 > test80_ps_max_depth0.out 2>&1
+python run_limited.py pdb2reaction path-search -i r.pdb p.pdb -q -1 --max-depth 0 --max-nodes 5 --max-cycles-gsm 5 --no-preopt --out-dir test80_ps_max_depth0 > test80_ps_max_depth0.out 2>&1
 python assert_release_result.py path-search-max-depth test80_ps_max_depth0 >> test80_ps_max_depth0.out 2>&1
 
 # test81: standalone scan accepts angle and dihedral ranges.
@@ -556,7 +556,7 @@ pdb2reaction all -i r.pdb -q -1 --scan-lists "[(1,2,3,35.1),(1,2,3,4,-35.2)]" --
 test83_path_summary="test12/_work/path_opt/summary.json"
 test -s "$test83_path_summary" || { echo "[smoke] FAIL test83: source MEP summary missing" > test83_resume.out; exit 1; }
 test83_before=$(sha256sum "$test83_path_summary" | awk '{print $1}')
-pdb2reaction all -i r.pdb p.pdb -q -1 --no-refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --tsopt --tsopt-max-cycles 1 --resume-segment 1 --out-dir test12 > test83_resume.out 2>&1
+python run_limited.py pdb2reaction all -i r.pdb p.pdb -q -1 --no-refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --tsopt --tsopt-max-cycles 1 --resume-segment 1 --out-dir test12 > test83_resume.out 2>&1
 test83_after=$(sha256sum "$test83_path_summary" | awk '{print $1}')
 test "$test83_before" = "$test83_after" || { echo "[smoke] FAIL test83: resume changed the saved MEP summary" >> test83_resume.out; exit 1; }
 python - <<'PY'

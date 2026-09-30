@@ -131,7 +131,7 @@ def test_sp_propagates_resolved_hessian_mode_to_backend(
     assert created[0]["hessian_calc_mode"] == expected_mode
     assert np.array_equal(np.load(out / "hessian.npy"), np.eye(3))
     payload = json.loads((out / "result.json").read_text())
-    assert payload["status"] == "ok"
+    assert payload["scientific_status"] == "success"
 
 
 def test_sp_default_hessian_uses_fd_with_parallel_uma_workers(

@@ -88,7 +88,7 @@ def _install_lightweight_pipeline(monkeypatch, events, calculators, geometries):
         out_dir.mkdir(parents=True, exist_ok=True)
         if name == "tsopt":
             (out_dir / "result.json").write_text(
-                json.dumps({"status": "converged", "n_imaginary_modes": 1}),
+                json.dumps({"optimization_status": "converged", "n_imaginary_modes": 1}),
                 encoding="utf-8",
             )
             (out_dir / "final_geometry.xyz").write_text(
@@ -258,7 +258,7 @@ def test_tsopt_rejects_unchanged_prior_result(tmp_path: Path, monkeypatch) -> No
     ts_dir = tmp_path / "seg" / "ts"
     ts_dir.mkdir(parents=True)
     (ts_dir / "result.json").write_text(
-        json.dumps({"status": "converged", "n_imaginary_modes": 1}),
+        json.dumps({"optimization_status": "converged", "n_imaginary_modes": 1}),
         encoding="utf-8",
     )
     (ts_dir / "final_geometry.xyz").write_text(
@@ -308,7 +308,7 @@ def test_tsopt_never_converts_an_unclaimed_stale_xyz(
         assert name == "tsopt"
         out_dir = Path(args[args.index("--out-dir") + 1])
         (out_dir / "result.json").write_text(
-            json.dumps({"status": "converged", "n_imaginary_modes": 1}),
+            json.dumps({"optimization_status": "converged", "n_imaginary_modes": 1}),
             encoding="utf-8",
         )
         (out_dir / "final_geometry.pdb").write_text("CURRENT\n", encoding="utf-8")

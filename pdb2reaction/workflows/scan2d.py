@@ -11,6 +11,8 @@ For detailed documentation, see: docs/scan2d.md
 
 from __future__ import annotations
 
+from pdb2reaction.cli.completion import completion_guard, record_completion
+
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -92,6 +94,7 @@ from pdb2reaction.core.utils import (
 from pdb2reaction.workflows.scan_common import (
     add_scan_common_options,
     parse_grid_scan_request,
+    scan_point_support,
 )
 from pdb2reaction.domain.scan_coordinates import (
     coordinate_atoms,
@@ -126,17 +129,14 @@ _snapshot_geometry = make_snapshot_geometry(GEOM_KW_DEFAULT["coord_type"])
 def _rbf_support(points_x: np.ndarray, points_y: np.ndarray) -> Tuple[int, int]:
     """Return the unique-point count and geometric rank for 2D interpolation."""
 
-    points = np.column_stack(
-        (
-            np.asarray(points_x, dtype=float),
-            np.asarray(points_y, dtype=float),
+    return scan_point_support(
+        np.column_stack(
+            (
+                np.asarray(points_x, dtype=float),
+                np.asarray(points_y, dtype=float),
+            )
         )
     )
-    unique = np.unique(points, axis=0)
-    if len(unique) < 2:
-        return len(unique), 0
-    rank = int(np.linalg.matrix_rank(unique - unique[0]))
-    return len(unique), rank
 
 
 def _contour_line_segments(
@@ -385,13 +385,6 @@ def _build_scan_context(
     dump_help="Write inner scan trajectories per d1-step as TRJ under result_scan2d/grid/.",
 )
 @click.option(
-    "--print-parsed/--no-print-parsed",
-    "print_parsed",
-    default=False,
-    show_default=True,
-    help="Print parsed scan targets after resolving --scan-lists.",
-)
-@click.option(
     "--out-json/--no-out-json",
     "out_json",
     default=False,
@@ -443,7 +436,6 @@ def cli(
     thresh: Optional[str],
     config_yaml: Optional[Path],
     preopt: bool,
-    print_parsed: bool,
     baseline: str,
     zmin: Optional[float],
     zmax: Optional[float],
@@ -611,17 +603,6 @@ def cli(
                 d2_label_csv = f"d2_{kind2}_{'_'.join(str(i + 1) for i in atoms2)}_deg"
             d1_label_html = axis_label_html(d1_label_csv)
             d2_label_html = axis_label_html(d2_label_csv)
-            if print_parsed:
-                click.echo(
-                    pretty_block(
-                        "scan-parsed",
-                        {
-                            "source": scan_source,
-                            "one_based": bool(scan_one_based),
-                            "pairs": parsed,
-                        },
-                    force=True)
-                )
             click.echo(
                 pretty_block(
                     "scan-list (1-based)",
@@ -1107,84 +1088,167 @@ def cli(
             )
             if not np.any(mask):
                 click.echo("[plot] No finite data for plotting.")
-                sys.exit(1)
             n_unique, support_rank = _rbf_support(
                 d1_points[mask], d2_points[mask]
             )
-            if n_unique < 3 or support_rank < 2:
-                message = (
-                    "A 2D energy surface requires at least three non-collinear "
-                    "converged finite grid points; found "
-                    f"{n_unique} unique point(s) with geometric rank "
-                    f"{support_rank}. surface.csv was written, but plots were "
-                    "not generated."
+            # Too few or collinear usable points: keep surface.csv, skip only the plots.
+            plots_written = n_unique >= 3 and support_rank >= 2
+            if not plots_written:
+                if n_unique:
+                    click.echo(
+                        "[plot] NOTE: Plots skipped: a 2D energy surface needs at least "
+                        "three non-collinear converged finite grid points; found "
+                        f"{n_unique} unique point(s) with geometric rank {support_rank}.",
+                        err=True,
+                    )
+            else:
+                x_min, x_max = float(np.min(d1_points[mask])), float(
+                    np.max(d1_points[mask])
                 )
-                error = ValueError(message)
-                _write_error_json(
-                    final_dir,
-                    "scan2d",
-                    error,
-                    "InsufficientPlotData",
-                    time_start,
+                y_min, y_max = float(np.min(d2_points[mask])), float(
+                    np.max(d2_points[mask])
                 )
-                click.echo(f"[plot] ERROR: {message}", err=True)
-                sys.exit(1)
-            x_min, x_max = float(np.min(d1_points[mask])), float(
-                np.max(d1_points[mask])
-            )
-            y_min, y_max = float(np.min(d2_points[mask])), float(
-                np.max(d2_points[mask])
-            )
 
-            xi = np.linspace(x_min, x_max, 50)
-            yi = np.linspace(y_min, y_max, 50)
-            XI, YI = np.meshgrid(xi, yi)
+                xi = np.linspace(x_min, x_max, 50)
+                yi = np.linspace(y_min, y_max, 50)
+                XI, YI = np.meshgrid(xi, yi)
 
-            rbf = Rbf(
-                d1_points[mask], d2_points[mask], z_points[mask], function="multiquadric"
-            )
-            ZI = rbf(XI, YI)
+                rbf = Rbf(
+                    d1_points[mask], d2_points[mask], z_points[mask], function="multiquadric"
+                )
+                ZI = rbf(XI, YI)
 
-            vmin = float(np.nanmin(ZI)) if zmin is None else float(zmin)
-            vmax = float(np.nanmax(ZI)) if zmax is None else float(zmax)
-            if (
-                not np.isfinite(vmin)
-                or not np.isfinite(vmax)
-                or vmax <= vmin
-            ):
-                vmin, vmax = float(np.nanmin(ZI)), float(np.nanmax(ZI))
+                vmin = float(np.nanmin(ZI)) if zmin is None else float(zmin)
+                vmax = float(np.nanmax(ZI)) if zmax is None else float(zmax)
+                if (
+                    not np.isfinite(vmin)
+                    or not np.isfinite(vmax)
+                    or vmax <= vmin
+                ):
+                    vmin, vmax = float(np.nanmin(ZI)), float(np.nanmax(ZI))
 
-            # Choose neat contour/tick steps
-            def _nice_step(span: float) -> float:
-                if span <= 0:
-                    return 1.0
-                raw = span / 6.0
-                mag = 10 ** math.floor(math.log10(raw))
-                candidates = (0.5, 1, 2, 5, 10, 20)
-                best = candidates[0] * mag
-                best_err = abs(best - raw)
-                for m in candidates[1:]:
-                    s = m * mag
-                    err = abs(s - raw)
-                    if err < best_err:
-                        best, best_err = s, err
-                return best
+                # Choose neat contour/tick steps
+                def _nice_step(span: float) -> float:
+                    if span <= 0:
+                        return 1.0
+                    raw = span / 6.0
+                    mag = 10 ** math.floor(math.log10(raw))
+                    candidates = (0.5, 1, 2, 5, 10, 20)
+                    best = candidates[0] * mag
+                    best_err = abs(best - raw)
+                    for m in candidates[1:]:
+                        s = m * mag
+                        err = abs(s - raw)
+                        if err < best_err:
+                            best, best_err = s, err
+                    return best
 
-            c_step = _nice_step(vmax - vmin)
-            c_start = math.floor(vmin / c_step) * c_step
-            c_end = math.ceil(vmax / c_step) * c_step
+                c_step = _nice_step(vmax - vmin)
+                c_start = math.floor(vmin / c_step) * c_step
+                c_end = math.ceil(vmax / c_step) * c_step
 
-            # ---- 2D contour plot (PNG with explicit size) ----
-            fig2d = go.Figure(
-                data=go.Contour(
+                # ---- 2D contour plot (PNG with explicit size) ----
+                fig2d = go.Figure(
+                    data=go.Contour(
+                        z=ZI,
+                        x=xi,
+                        y=yi,
+                        contours=dict(start=c_start, end=c_end, size=c_step),
+                        zmin=vmin,
+                        zmax=vmax,
+                        contours_coloring="heatmap",
+                        colorscale="plasma",
+                        colorbar=dict(
+                            title=dict(
+                                text="(kcal/mol)", side="top", font=dict(size=16, color="#1C1C1C")
+                            ),
+                            tickfont=dict(size=14, color="#1C1C1C"),
+                            ticks="inside",
+                            ticklen=10,
+                            tickcolor="#1C1C1C",
+                            outlinecolor="#1C1C1C",
+                            outlinewidth=2,
+                            lenmode="fraction",
+                            len=1.11,
+                            x=1.05,
+                            y=0.53,
+                            xanchor="left",
+                            yanchor="middle",
+                        ),
+                    )
+                )
+                fig2d.update_layout(
+                    width=640,
+                    height=600,
+                    xaxis_title=d1_label_html,
+                    yaxis_title=d2_label_html,
+                    plot_bgcolor="white",
+                    xaxis=dict(
+                        range=[x_min, x_max],
+                        showline=True,
+                        linewidth=3,
+                        linecolor="#1C1C1C",
+                        mirror=True,
+                        tickson="boundaries",
+                        ticks="inside",
+                        tickwidth=3,
+                        tickcolor="#1C1C1C",
+                        title_font=dict(size=18, color="#1C1C1C"),
+                        tickfont=dict(size=18, color="#1C1C1C"),
+                        tickvals=list(np.linspace(x_min, x_max, 6)),
+                        tickformat=".2f",
+                    ),
+                    yaxis=dict(
+                        range=[y_min, y_max],
+                        showline=True,
+                        linewidth=3,
+                        linecolor="#1C1C1C",
+                        mirror=True,
+                        tickson="boundaries",
+                        ticks="inside",
+                        tickwidth=3,
+                        tickcolor="#1C1C1C",
+                        title_font=dict(size=18, color="#1C1C1C"),
+                        tickfont=dict(size=18, color="#1C1C1C"),
+                        tickvals=list(np.linspace(y_min, y_max, 6)),
+                        tickformat=".2f",
+                    ),
+                    margin=dict(l=10, r=10, b=10, t=40),
+                )
+                png2d = final_dir / "scan2d_map.png"
+                try:
+                    write_plotly_image(
+                        fig2d,
+                        png2d,
+                        scale=2,
+                        width=680,
+                        height=600,
+                    )
+                except Exception as e:
+                    click.echo(
+                        f"[plot] NOTE: PNG export skipped: {e}",
+                        err=True,
+                    )
+                else:
+                    click.echo(f"[plot] Wrote '{png2d}'.")
+
+                # ---- 3D surface plus the authored coloured base-plane projection ----
+                spread = vmax - vmin if (vmax > vmin) else 1.0
+                z_bottom = vmin - spread
+                z_top = vmax
+
+                # Avoid ticks below zmin (= vmin) and snap to sensible values
+                z_step = _nice_step(vmax - vmin)
+                z_start_tick = math.ceil(vmin / z_step) * z_step  # First tick must be ≥ vmin
+                z_ticks = np.arange(z_start_tick, z_top + 0.5 * z_step, z_step).tolist()
+
+                surface3d = go.Surface(
+                    x=XI,
+                    y=YI,
                     z=ZI,
-                    x=xi,
-                    y=yi,
-                    contours=dict(start=c_start, end=c_end, size=c_step),
-                    zmin=vmin,
-                    zmax=vmax,
-                    contours_coloring="heatmap",
                     colorscale="plasma",
+                    cmin=vmin,
+                    cmax=vmax,
                     colorbar=dict(
                         title=dict(
                             text="(kcal/mol)", side="top", font=dict(size=16, color="#1C1C1C")
@@ -1202,320 +1266,239 @@ def cli(
                         xanchor="left",
                         yanchor="middle",
                     ),
+                    contours={
+                        "z": {
+                            "show": True,
+                            "start": c_start,
+                            "end": c_end,
+                            "size": c_step,
+                            "color": "black",
+                        }
+                    },
+                    name="3D Surface",
                 )
-            )
-            fig2d.update_layout(
-                width=640,
-                height=600,
-                xaxis_title=d1_label_html,
-                yaxis_title=d2_label_html,
-                plot_bgcolor="white",
-                xaxis=dict(
-                    range=[x_min, x_max],
-                    showline=True,
-                    linewidth=3,
-                    linecolor="#1C1C1C",
-                    mirror=True,
-                    tickson="boundaries",
-                    ticks="inside",
-                    tickwidth=3,
-                    tickcolor="#1C1C1C",
-                    title_font=dict(size=18, color="#1C1C1C"),
-                    tickfont=dict(size=18, color="#1C1C1C"),
-                    tickvals=list(np.linspace(x_min, x_max, 6)),
-                    tickformat=".2f",
-                ),
-                yaxis=dict(
-                    range=[y_min, y_max],
-                    showline=True,
-                    linewidth=3,
-                    linecolor="#1C1C1C",
-                    mirror=True,
-                    tickson="boundaries",
-                    ticks="inside",
-                    tickwidth=3,
-                    tickcolor="#1C1C1C",
-                    title_font=dict(size=18, color="#1C1C1C"),
-                    tickfont=dict(size=18, color="#1C1C1C"),
-                    tickvals=list(np.linspace(y_min, y_max, 6)),
-                    tickformat=".2f",
-                ),
-                margin=dict(l=10, r=10, b=10, t=40),
-            )
-            png2d = final_dir / "scan2d_map.png"
-            try:
-                write_plotly_image(
-                    fig2d,
-                    png2d,
-                    scale=2,
-                    width=680,
-                    height=600,
+
+                plane_z = z_bottom + 0.005
+                plane_proj = go.Surface(
+                    x=XI,
+                    y=YI,
+                    z=np.full_like(ZI, plane_z),
+                    surfacecolor=ZI,
+                    colorscale="plasma",
+                    cmin=vmin,
+                    cmax=vmax,
+                    showscale=False,
+                    opacity=1.0,
+                    name="2D Contour Projection (Bottom)",
                 )
-            except Exception as e:
-                click.echo(
-                    f"[plot] NOTE: PNG export skipped: {e}",
-                    err=True,
+
+                contour_levels = np.arange(
+                    c_start, c_end + 0.5 * c_step, c_step, dtype=float
                 )
-            else:
-                click.echo(f"[plot] Wrote '{png2d}'.")
+                contour_x, contour_y = _contour_line_segments(XI, YI, ZI, contour_levels)
+                contour_z = z_bottom + 0.01
+                bottom_contours = go.Scatter3d(
+                    x=contour_x,
+                    y=contour_y,
+                    z=[contour_z if value is not None else None for value in contour_x],
+                    mode="lines",
+                    line=dict(color="black", width=3),
+                    hoverinfo="skip",
+                    showlegend=False,
+                    name="2D Contour Lines (Bottom)",
+                )
 
-            # ---- 3D surface plus the authored coloured base-plane projection ----
-            spread = vmax - vmin if (vmax > vmin) else 1.0
-            z_bottom = vmin - spread
-            z_top = vmax
-
-            # Avoid ticks below zmin (= vmin) and snap to sensible values
-            z_step = _nice_step(vmax - vmin)
-            z_start_tick = math.ceil(vmin / z_step) * z_step  # First tick must be ≥ vmin
-            z_ticks = np.arange(z_start_tick, z_top + 0.5 * z_step, z_step).tolist()
-
-            surface3d = go.Surface(
-                x=XI,
-                y=YI,
-                z=ZI,
-                colorscale="plasma",
-                cmin=vmin,
-                cmax=vmax,
-                colorbar=dict(
-                    title=dict(
-                        text="(kcal/mol)", side="top", font=dict(size=16, color="#1C1C1C")
+                # The generated artifact keeps the original scientific rendering.
+                # Notebook-only white grid controls are injected only into the linked
+                # Results card and therefore never modify this authored HTML.
+                fig3d = go.Figure(data=[surface3d, plane_proj, bottom_contours])
+                fig3d.update_layout(
+                    title="Energy Landscape with 2D PES Scan",
+                    width=800,
+                    height=700,
+                    scene=dict(
+                        bgcolor="rgba(0,0,0,0)",
+                        xaxis=dict(
+                            title=d1_label_html,
+                            range=[x_min, x_max],
+                            showline=True,
+                            linewidth=4,
+                            linecolor="#1C1C1C",
+                            mirror=True,
+                            ticks="inside",
+                            tickwidth=4,
+                            tickcolor="#1C1C1C",
+                            gridcolor="rgba(0,0,0,0.1)",
+                            zerolinecolor="rgba(0,0,0,0.1)",
+                            showbackground=False,
+                        ),
+                        yaxis=dict(
+                            title=d2_label_html,
+                            range=[y_min, y_max],
+                            showline=True,
+                            linewidth=4,
+                            linecolor="#1C1C1C",
+                            mirror=True,
+                            ticks="inside",
+                            tickwidth=4,
+                            tickcolor="#1C1C1C",
+                            gridcolor="rgba(0,0,0,0.1)",
+                            zerolinecolor="rgba(0,0,0,0.1)",
+                            showbackground=False,
+                        ),
+                        zaxis=dict(
+                            title="Potential Energy (kcal/mol)",
+                            range=[z_bottom, z_top],
+                            tickmode="array",
+                            tickvals=z_ticks,
+                            showline=True,
+                            linewidth=4,
+                            linecolor="#1C1C1C",
+                            mirror=True,
+                            ticks="inside",
+                            tickwidth=4,
+                            tickcolor="#1C1C1C",
+                            showgrid=True,
+                            gridcolor="rgba(0,0,0,0.1)",
+                            zerolinecolor="rgba(0,0,0,0.1)",
+                            showbackground=False,
+                        ),
                     ),
-                    tickfont=dict(size=14, color="#1C1C1C"),
-                    ticks="inside",
-                    ticklen=10,
-                    tickcolor="#1C1C1C",
-                    outlinecolor="#1C1C1C",
-                    outlinewidth=2,
-                    lenmode="fraction",
-                    len=1.11,
-                    x=1.05,
-                    y=0.53,
-                    xanchor="left",
-                    yanchor="middle",
-                ),
-                contours={
-                    "z": {
-                        "show": True,
-                        "start": c_start,
-                        "end": c_end,
-                        "size": c_step,
-                        "color": "black",
-                    }
-                },
-                name="3D Surface",
-            )
+                    margin=dict(l=10, r=20, b=10, t=40),
+                    paper_bgcolor="white",
+                )
 
-            plane_z = z_bottom + 0.005
-            plane_proj = go.Surface(
-                x=XI,
-                y=YI,
-                z=np.full_like(ZI, plane_z),
-                surfacecolor=ZI,
-                colorscale="plasma",
-                cmin=vmin,
-                cmax=vmax,
-                showscale=False,
-                opacity=1.0,
-                name="2D Contour Projection (Bottom)",
-            )
-
-            contour_levels = np.arange(
-                c_start, c_end + 0.5 * c_step, c_step, dtype=float
-            )
-            contour_x, contour_y = _contour_line_segments(XI, YI, ZI, contour_levels)
-            contour_z = z_bottom + 0.01
-            bottom_contours = go.Scatter3d(
-                x=contour_x,
-                y=contour_y,
-                z=[contour_z if value is not None else None for value in contour_x],
-                mode="lines",
-                line=dict(color="black", width=3),
-                hoverinfo="skip",
-                showlegend=False,
-                name="2D Contour Lines (Bottom)",
-            )
-
-            # The generated artifact keeps the original scientific rendering.
-            # Notebook-only white grid controls are injected only into the linked
-            # Results card and therefore never modify this authored HTML.
-            fig3d = go.Figure(data=[surface3d, plane_proj, bottom_contours])
-            fig3d.update_layout(
-                title="Energy Landscape with 2D PES Scan",
-                width=800,
-                height=700,
-                scene=dict(
-                    bgcolor="rgba(0,0,0,0)",
-                    xaxis=dict(
-                        title=d1_label_html,
-                        range=[x_min, x_max],
-                        showline=True,
-                        linewidth=4,
-                        linecolor="#1C1C1C",
-                        mirror=True,
-                        ticks="inside",
-                        tickwidth=4,
-                        tickcolor="#1C1C1C",
-                        gridcolor="rgba(0,0,0,0.1)",
-                        zerolinecolor="rgba(0,0,0,0.1)",
-                        showbackground=False,
-                    ),
-                    yaxis=dict(
-                        title=d2_label_html,
-                        range=[y_min, y_max],
-                        showline=True,
-                        linewidth=4,
-                        linecolor="#1C1C1C",
-                        mirror=True,
-                        ticks="inside",
-                        tickwidth=4,
-                        tickcolor="#1C1C1C",
-                        gridcolor="rgba(0,0,0,0.1)",
-                        zerolinecolor="rgba(0,0,0,0.1)",
-                        showbackground=False,
-                    ),
-                    zaxis=dict(
-                        title="Potential Energy (kcal/mol)",
-                        range=[z_bottom, z_top],
-                        tickmode="array",
-                        tickvals=z_ticks,
-                        showline=True,
-                        linewidth=4,
-                        linecolor="#1C1C1C",
-                        mirror=True,
-                        ticks="inside",
-                        tickwidth=4,
-                        tickcolor="#1C1C1C",
-                        showgrid=True,
-                        gridcolor="rgba(0,0,0,0.1)",
-                        zerolinecolor="rgba(0,0,0,0.1)",
-                        showbackground=False,
-                    ),
-                ),
-                margin=dict(l=10, r=20, b=10, t=40),
-                paper_bgcolor="white",
-            )
-
-            html3d = final_dir / "scan2d_landscape.html"
-            fig3d.write_html(
-                str(html3d),
-                config={"responsive": True, "displaylogo": False},
-                default_width="100%",
-                default_height="100%",
-            )
-            click.echo(f"[plot] Wrote '{html3d}'.")
+                html3d = final_dir / "scan2d_landscape.html"
+                fig3d.write_html(
+                    str(html3d),
+                    config={"responsive": True, "displaylogo": False},
+                    default_width="100%",
+                    default_height="100%",
+                )
+                click.echo(f"[plot] Wrote '{html3d}'.")
 
             emit("\n====== 2D Scan finished ======\n", narrative=True)
 
             # result.json (if --out-json)
-            if out_json:
-                from pdb2reaction.core.utils import (
-                    atom_label_from_meta,
-                    calculator_provenance,
-                    write_result_json,
-                )
-                grid_records = [
-                    rec for rec in records if not bool(rec.get("is_preopt", False))
-                ]
-                grid_geometry_files = [
-                    str(rec["geometry_file"])
-                    for rec in grid_records
-                    if rec.get("geometry_file")
-                ]
-                grid_points = []
-                for rec in grid_records:
-                    point = {
-                        "index": [int(rec["i"]), int(rec["j"])],
-                        "coordinate_values": [
-                            float(rec["d1_A"]),
-                            float(rec["d2_A"]),
-                        ],
-                        "coordinate_targets": [
-                            float(rec["target_d1_A"]),
-                            float(rec["target_d2_A"]),
-                        ],
-                        "coordinate_units": [coordinate_unit(kind1), coordinate_unit(kind2)],
-                        "energy_hartree": rec.get("energy_hartree"),
-                        "converged": rec.get("bias_converged"),
-                        "geometry_file": rec.get("geometry_file"),
-                    }
-                    if kind1 == kind2 == "distance":
-                        point["distances_angstrom"] = list(point["coordinate_values"])
-                        point["targets_angstrom"] = list(point["coordinate_targets"])
-                    grid_points.append(point)
-                grid_seed_eligible = seed_eligible_mask(grid_records)
-                # The optional preoptimization row stays in surface.csv as a
-                # plotting reference, but it is not a grid point.
-                eligible_grid_energies = [
-                    float(rec["energy_hartree"])
-                    for rec, eligible in zip(grid_records, grid_seed_eligible)
-                    if bool(eligible)
-                ]
-                min_energy = (
-                    min(eligible_grid_energies) if eligible_grid_energies else None
-                )
-                _pair1: Dict[str, Any] = {"kind": kind1, "atoms_1based": [int(i + 1) for i in atoms1], "unit": coordinate_unit(kind1), "low": float(low1), "high": float(high1)}
-                _pair2: Dict[str, Any] = {"kind": kind2, "atoms_1based": [int(i + 1) for i in atoms2], "unit": coordinate_unit(kind2), "low": float(low2), "high": float(high2)}
-                if kind1 == "distance":
-                    _pair1.update(i=int(atoms1[0] + 1), j=int(atoms1[1] + 1))
-                if kind2 == "distance":
-                    _pair2.update(i=int(atoms2[0] + 1), j=int(atoms2[1] + 1))
-                if pdb_atom_meta:
-                    _pair1["atom_labels"] = [atom_label_from_meta(pdb_atom_meta, i) for i in atoms1]
-                    _pair2["atom_labels"] = [atom_label_from_meta(pdb_atom_meta, i) for i in atoms2]
-                result_data: Dict[str, Any] = {
-                    "status": "completed",
-                    "charge": resolved_charge,
-                    "spin": resolved_spin,
-                    "backend": calc_cfg.get("backend", backend),
-                    "model": calc_cfg.get("model"),
-                    **calculator_provenance(calc_cfg),
-                    "solvent": calc_cfg.get("solvent", "none"),
-                    "max_step_size_angstrom": float(max_step_size),
-                    "max_angle_step_size_degree": float(max_angle_step_size),
-                    "max_dihedral_step_size_degree": float(max_dihedral_step_size),
-                    "n_grid_points": len(grid_records),
-                    "grid_shape": [len(d1_values), len(d2_values)],
-                    "pair1": _pair1,
-                    "pair2": _pair2,
-                    "min_energy_hartree": min_energy,
-                    "grid_points": grid_points,
-                    "current_output_paths": [
-                        "surface.csv",
-                        "scan2d_map.png",
-                        "scan2d_landscape.html",
-                        *grid_geometry_files,
+            from pdb2reaction.core.utils import (
+                atom_label_from_meta,
+                calculator_provenance,
+                write_result_json,
+            )
+            grid_records = [
+                rec for rec in records if not bool(rec.get("is_preopt", False))
+            ]
+            grid_geometry_files = [
+                str(rec["geometry_file"])
+                for rec in grid_records
+                if rec.get("geometry_file")
+            ]
+            grid_points = []
+            for rec in grid_records:
+                point = {
+                    "index": [int(rec["i"]), int(rec["j"])],
+                    "coordinate_values": [
+                        float(rec["d1_A"]),
+                        float(rec["d2_A"]),
                     ],
-                    "files": {
-                        "surface_csv": "surface.csv",
-                        "scan2d_map_png": "scan2d_map.png",
-                        "scan2d_landscape_html": "scan2d_landscape.html",
-                    },
+                    "coordinate_targets": [
+                        float(rec["target_d1_A"]),
+                        float(rec["target_d2_A"]),
+                    ],
+                    "coordinate_units": [coordinate_unit(kind1), coordinate_unit(kind2)],
+                    "energy_hartree": rec.get("energy_hartree"),
+                    "converged": rec.get("bias_converged"),
+                    "geometry_file": rec.get("geometry_file"),
                 }
-                # Additive outcome fields: every attempted point, with its
-                # seed-eligibility, plus an aggregate scientific_status. Legacy
-                # ``status`` stays "completed" (the process completed).
-                _point_outcomes = [
-                    make_scan_point(
-                        f"i{rec.get('i')}_j{rec.get('j')}",
-                        executed=True,
-                        converged=rec.get("bias_converged"),
-                        energy=rec.get("energy_hartree"),
-                        artifact_written=bool(rec.get("artifact_written", False)),
-                    )
-                    for rec in grid_records
-                ]
-                _sci, _sci_reasons = scan_scientific_status(_point_outcomes)
-                result_data["execution_status"] = "completed"
-                result_data["n_points_attempted"] = len(_point_outcomes)
-                result_data["n_points_usable"] = sum(
-                    1 for p in _point_outcomes if p.seed_eligible
+                if kind1 == kind2 == "distance":
+                    point["distances_angstrom"] = list(point["coordinate_values"])
+                    point["targets_angstrom"] = list(point["coordinate_targets"])
+                grid_points.append(point)
+            grid_seed_eligible = seed_eligible_mask(grid_records)
+            # The optional preoptimization row stays in surface.csv as a
+            # plotting reference, but it is not a grid point.
+            eligible_grid_energies = [
+                float(rec["energy_hartree"])
+                for rec, eligible in zip(grid_records, grid_seed_eligible)
+                if bool(eligible)
+            ]
+            min_energy = (
+                min(eligible_grid_energies) if eligible_grid_energies else None
+            )
+            _pair1: Dict[str, Any] = {"kind": kind1, "atoms_1based": [int(i + 1) for i in atoms1], "unit": coordinate_unit(kind1), "low": float(low1), "high": float(high1)}
+            _pair2: Dict[str, Any] = {"kind": kind2, "atoms_1based": [int(i + 1) for i in atoms2], "unit": coordinate_unit(kind2), "low": float(low2), "high": float(high2)}
+            if kind1 == "distance":
+                _pair1.update(i=int(atoms1[0] + 1), j=int(atoms1[1] + 1))
+            if kind2 == "distance":
+                _pair2.update(i=int(atoms2[0] + 1), j=int(atoms2[1] + 1))
+            if pdb_atom_meta:
+                _pair1["atom_labels"] = [atom_label_from_meta(pdb_atom_meta, i) for i in atoms1]
+                _pair2["atom_labels"] = [atom_label_from_meta(pdb_atom_meta, i) for i in atoms2]
+            plot_files = (
+                {
+                    "scan2d_map_png": "scan2d_map.png",
+                    "scan2d_landscape_html": "scan2d_landscape.html",
+                }
+                if plots_written
+                else {}
+            )
+            # A failed PNG export only prints a NOTE; list files that exist.
+            if not (final_dir / "scan2d_map.png").is_file():
+                plot_files.pop("scan2d_map_png", None)
+            result_data: Dict[str, Any] = {
+                "status": "completed",
+                "charge": resolved_charge,
+                "spin": resolved_spin,
+                "backend": calc_cfg.get("backend", backend),
+                "model": calc_cfg.get("model"),
+                **calculator_provenance(calc_cfg),
+                "solvent": calc_cfg.get("solvent", "none"),
+                "max_step_size_angstrom": float(max_step_size),
+                "max_angle_step_size_degree": float(max_angle_step_size),
+                "max_dihedral_step_size_degree": float(max_dihedral_step_size),
+                "n_grid_points": len(grid_records),
+                "grid_shape": [len(d1_values), len(d2_values)],
+                "pair1": _pair1,
+                "pair2": _pair2,
+                "min_energy_hartree": min_energy,
+                "grid_points": grid_points,
+                "current_output_paths": [
+                    "surface.csv",
+                    *plot_files.values(),
+                    *grid_geometry_files,
+                ],
+                "files": {
+                    "surface_csv": "surface.csv",
+                    **plot_files,
+                },
+            }
+            # Additive outcome fields: every attempted point, with its
+            # seed-eligibility, plus an aggregate scientific_status. Legacy
+            # ``status`` stays "completed" (the process completed).
+            _point_outcomes = [
+                make_scan_point(
+                    f"i{rec.get('i')}_j{rec.get('j')}",
+                    executed=True,
+                    converged=rec.get("bias_converged"),
+                    energy=rec.get("energy_hartree"),
+                    artifact_written=bool(rec.get("artifact_written", False)),
                 )
-                attach_outcomes(
-                    result_data,
-                    point_outcomes=_point_outcomes,
-                    scientific_status=_sci,
-                    scientific_status_reasons=_sci_reasons,
-                )
+                for rec in grid_records
+            ]
+            _sci, _sci_reasons = scan_scientific_status(_point_outcomes)
+            result_data["execution_status"] = "completed"
+            result_data["n_points_attempted"] = len(_point_outcomes)
+            result_data["n_points_usable"] = sum(
+                1 for p in _point_outcomes if p.seed_eligible
+            )
+            attach_outcomes(
+                result_data,
+                point_outcomes=_point_outcomes,
+                scientific_status=_sci,
+                scientific_status_reasons=_sci_reasons,
+            )
+            record_completion(result_data, command="scan2d")
+            if out_json:
                 write_result_json(
                     final_dir, result_data,
                     command="scan2d",
@@ -1544,3 +1527,5 @@ def cli(
         finally:
             if tmp_root is not None:
                 shutil.rmtree(tmp_root, ignore_errors=True)
+
+cli.callback = completion_guard(cli.callback)

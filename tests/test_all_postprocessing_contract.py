@@ -277,7 +277,7 @@ def test_path_postprocessing_uses_terminal_tsopt_imaginary_mode_record(
         config={"tsopt": True, "thermo": False, "dft": False},
     )
 
-    assert summary["status"] == "success"
+    assert summary["scientific_status"] == "success"
     assert summary["scientific_status"] == "success"
     assert "status_reasons" not in summary
     assert "scientific_status_reasons" not in summary

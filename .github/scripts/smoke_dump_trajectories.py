@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import json
 import subprocess
 import sys
 import tempfile
@@ -59,7 +60,7 @@ def _frame_count(xyz_path: Path) -> int:
 
 
 def _run_cli(args: list[str], timeout_sec: float | None = None) -> None:
-    cmd = [sys.executable, "-m", CLI_MODULE, *args]
+    cmd = [sys.executable, "-m", CLI_MODULE, *args, "--out-json"]
     try:
         proc = subprocess.run(
             cmd,
@@ -72,9 +73,12 @@ def _run_cli(args: list[str], timeout_sec: float | None = None) -> None:
         raise RuntimeError(
             f"Command timed out after {timeout_sec} sec: {' '.join(cmd)}"
         ) from exc
-    if proc.returncode != 0:
+    from pdb2reaction.cli.completion import completion_code
+    out_dir = Path(args[args.index("--out-dir") + 1])
+    payload = json.loads((out_dir / "result.json").read_text())
+    if payload.get("execution_status") != "completed" or proc.returncode != completion_code(payload):
         tail = (proc.stdout + "\n" + proc.stderr)[-3000:]
-        raise RuntimeError(f"Command failed: {' '.join(cmd)}\n{tail}")
+        raise RuntimeError(f"Command failed or returned an inconsistent exit code: {' '.join(cmd)}\n{tail}")
 
 
 def _check_runnable() -> tuple[bool, str]:

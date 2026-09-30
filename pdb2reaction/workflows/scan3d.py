@@ -11,6 +11,8 @@ For detailed documentation, see: docs/scan3d.md
 
 from __future__ import annotations
 
+from pdb2reaction.cli.completion import completion_guard, record_completion
+
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -84,6 +86,7 @@ from pdb2reaction.workflows.scan_common import (
     GridScanRequest,
     add_scan_common_options,
     parse_grid_scan_request,
+    scan_point_support,
 )
 from pdb2reaction.domain.scan_coordinates import (
     coordinate_atoms,
@@ -125,19 +128,15 @@ def _rbf_support_3d(
     points_z: np.ndarray,
 ) -> Tuple[int, int]:
     """Return the unique-point count and geometric rank for 3D interpolation."""
-    points = np.column_stack(
-        (
-            np.asarray(points_x, dtype=float),
-            np.asarray(points_y, dtype=float),
-            np.asarray(points_z, dtype=float),
+    return scan_point_support(
+        np.column_stack(
+            (
+                np.asarray(points_x, dtype=float),
+                np.asarray(points_y, dtype=float),
+                np.asarray(points_z, dtype=float),
+            )
         )
     )
-    if len(points) == 0:
-        return 0, 0
-    unique = np.unique(points, axis=0)
-    if len(unique) <= 1:
-        return len(unique), 0
-    return len(unique), int(np.linalg.matrix_rank(unique - unique[0]))
 
 
 def _extract_axis_label(df: pd.DataFrame, column: str, fallback: Optional[str]) -> Optional[str]:
@@ -229,13 +228,6 @@ def _result_calculator_fields(
     max_step_help="Maximum scanned distance change per step [Å].",
 )
 @click.option(
-    "--print-parsed/--no-print-parsed",
-    "print_parsed",
-    default=False,
-    show_default=True,
-    help="Print parsed scan targets after resolving --scan-lists.",
-)
-@click.option(
     "--out-json/--no-out-json",
     "out_json",
     default=False,
@@ -288,7 +280,6 @@ def cli(
     thresh: Optional[str],
     config_yaml: Optional[Path],
     preopt: bool,
-    print_parsed: bool,
     baseline: str,
     zmin: Optional[float],
     zmax: Optional[float],
@@ -435,17 +426,6 @@ def cli(
                 else:
                     labels.append(f"{name}_{kind_axis}_{'_'.join(str(i + 1) for i in atoms_axis)}_deg")
             d1_label_csv, d2_label_csv, d3_label_csv = labels
-            if print_parsed:
-                click.echo(
-                    pretty_block(
-                        "scan-parsed",
-                        {
-                            "source": scan_source,
-                            "one_based": bool(scan_one_based),
-                            "pairs": parsed,
-                        },
-                    force=True)
-                )
             click.echo(
                 pretty_block(
                     "scan-list (1-based)",
@@ -1010,329 +990,323 @@ def cli(
         mask &= _eligible_rows3.to_numpy(dtype=bool)
         if not np.any(mask):
             click.echo("[plot] No finite data for plotting.")
-            sys.exit(1)
         n_unique, support_rank = _rbf_support_3d(
             d1_points[mask],
             d2_points[mask],
             d3_points[mask],
         )
-        if n_unique < 4 or support_rank < 3:
-            message = (
-                "A 3D energy volume requires at least four non-coplanar "
-                "converged finite grid points; found "
-                f"{n_unique} unique point(s) with geometric rank "
-                f"{support_rank}. surface.csv was written, but the volume "
-                "plot was not generated."
+        # Too few or coplanar usable points: keep the data, skip only the volume plot.
+        plot_written = n_unique >= 4 and support_rank >= 3
+        if not plot_written:
+            if n_unique:
+                click.echo(
+                    "[plot] NOTE: Volume plot skipped: a 3D energy volume needs at least "
+                    "four non-coplanar converged finite grid points; found "
+                    f"{n_unique} unique point(s) with geometric rank {support_rank}.",
+                    err=True,
+                )
+        else:
+            x_min, x_max = float(np.min(d1_points[mask])), float(np.max(d1_points[mask]))
+            y_min, y_max = float(np.min(d2_points[mask])), float(np.max(d2_points[mask]))
+            z_min_val, z_max_val = float(np.min(d3_points[mask])), float(np.max(d3_points[mask]))
+
+            xi = np.linspace(x_min, x_max, _VOLUME_GRID_N)
+            yi = np.linspace(y_min, y_max, _VOLUME_GRID_N)
+            zi = np.linspace(z_min_val, z_max_val, _VOLUME_GRID_N)
+
+            click.echo("[plot] 3D RBF interpolation on a 50×50×50 grid ...")
+            rbf3d = Rbf(
+                d1_points[mask],
+                d2_points[mask],
+                d3_points[mask],
+                z_points[mask],
+                function="multiquadric",
             )
-            error = ValueError(message)
-            _write_error_json(
-                final_dir,
-                "scan3d",
-                error,
-                "InsufficientPlotData",
-                time_start,
+
+            XI, YI, ZI = np.meshgrid(xi, yi, zi, indexing="xy")
+            X_flat = XI.flatten()
+            Y_flat = YI.flatten()
+            Z_flat = ZI.flatten()
+            E_flat = rbf3d(X_flat, Y_flat, Z_flat)
+
+            vmin = float(np.nanmin(E_flat)) if zmin is None else float(zmin)
+            vmax = float(np.nanmax(E_flat)) if zmax is None else float(zmax)
+            if not np.isfinite(vmin) or not np.isfinite(vmax) or vmax <= vmin:
+                vmin, vmax = float(np.nanmin(E_flat)), float(np.nanmax(E_flat))
+
+            # Discrete isosurfaces (mesh) with banded colors (no XY/YZ/ZX planes)
+            n_levels = 8
+            level_values = np.linspace(vmin, vmax, n_levels + 2)[1:-1]
+            level_colors = [
+                "#0d0887",
+                "#5b02a3",
+                "#9c179e",
+                "#cb4679",
+                "#ed7953",
+                "#fb9f3a",
+                "#fdca26",
+                "#f0f921",
+            ]
+
+            # One opacity per isosurface level (outermost surfaces more transparent)
+            level_opacity = [
+                1.000,
+                0.667,
+                0.444,
+                0.296,
+                0.198,
+                0.132,
+                0.088,
+                0.059,
+            ]
+
+            isosurfaces = []
+            for lvl, color, opacity_lvl in zip(level_values, level_colors, level_opacity):
+                trace = go.Isosurface(
+                    x=X_flat,
+                    y=Y_flat,
+                    z=Z_flat,
+                    value=E_flat,
+                    isomin=lvl,
+                    isomax=lvl,
+                    surface_count=1,
+                    opacity=opacity_lvl,
+                    showscale=False,
+                    colorscale=[[0.0, color], [1.0, color]],
+                    caps=dict(x_show=False, y_show=False, z_show=False),
+                    name=f"{lvl:.1f} kcal/mol",
+                )
+                isosurfaces.append(trace)
+
+            # Add a dummy scatter trace to host a global colorbar
+            colorbar_colorscale = [
+                [idx / (len(level_colors) - 1), col]
+                for idx, col in enumerate(level_colors)
+            ]
+            cb_tickvals = [float(v) for v in level_values]
+            cb_ticktext = [f"{v:.1f}" for v in level_values]
+
+            colorbar_trace = go.Scatter3d(
+                x=[x_min],
+                y=[y_min],
+                z=[z_min_val],
+                mode="markers",
+                marker=dict(
+                    size=0,
+                    opacity=0.0,
+                    color=[vmin, vmax],
+                    colorscale=colorbar_colorscale,
+                    showscale=True,
+                    colorbar=dict(
+                        title=dict(text="(kcal/mol)", side="top", font=dict(size=16, color="#1C1C1C")),
+                        tickfont=dict(size=14, color="#1C1C1C"),
+                        ticks="inside",
+                        ticklen=10,
+                        tickcolor="#1C1C1C",
+                        outlinecolor="#1C1C1C",
+                        outlinewidth=2,
+                        lenmode="fraction",
+                        len=1.11,
+                        x=1.05,
+                        y=0.53,
+                        xanchor="left",
+                        yanchor="middle",
+                        tickvals=cb_tickvals,
+                        ticktext=cb_ticktext,
+                    ),
+                ),
+                hoverinfo="none",
+                showlegend=False,
             )
-            click.echo(f"[plot] ERROR: {message}", err=True)
-            sys.exit(1)
 
-        x_min, x_max = float(np.min(d1_points[mask])), float(np.max(d1_points[mask]))
-        y_min, y_max = float(np.min(d2_points[mask])), float(np.max(d2_points[mask]))
-        z_min_val, z_max_val = float(np.min(d3_points[mask])), float(np.max(d3_points[mask]))
+            fig3d = go.Figure(data=isosurfaces + [colorbar_trace])
 
-        xi = np.linspace(x_min, x_max, _VOLUME_GRID_N)
-        yi = np.linspace(y_min, y_max, _VOLUME_GRID_N)
-        zi = np.linspace(z_min_val, z_max_val, _VOLUME_GRID_N)
-
-        click.echo("[plot] 3D RBF interpolation on a 50×50×50 grid ...")
-        rbf3d = Rbf(
-            d1_points[mask],
-            d2_points[mask],
-            d3_points[mask],
-            z_points[mask],
-            function="multiquadric",
-        )
-
-        XI, YI, ZI = np.meshgrid(xi, yi, zi, indexing="xy")
-        X_flat = XI.flatten()
-        Y_flat = YI.flatten()
-        Z_flat = ZI.flatten()
-        E_flat = rbf3d(X_flat, Y_flat, Z_flat)
-
-        vmin = float(np.nanmin(E_flat)) if zmin is None else float(zmin)
-        vmax = float(np.nanmax(E_flat)) if zmax is None else float(zmax)
-        if not np.isfinite(vmin) or not np.isfinite(vmax) or vmax <= vmin:
-            vmin, vmax = float(np.nanmin(E_flat)), float(np.nanmax(E_flat))
-
-        # Discrete isosurfaces (mesh) with banded colors (no XY/YZ/ZX planes)
-        n_levels = 8
-        level_values = np.linspace(vmin, vmax, n_levels + 2)[1:-1]
-        level_colors = [
-            "#0d0887",
-            "#5b02a3",
-            "#9c179e",
-            "#cb4679",
-            "#ed7953",
-            "#fb9f3a",
-            "#fdca26",
-            "#f0f921",
-        ]
-
-        # One opacity per isosurface level (outermost surfaces more transparent)
-        level_opacity = [
-            1.000,
-            0.667,
-            0.444,
-            0.296,
-            0.198,
-            0.132,
-            0.088,
-            0.059,
-        ]
-
-        isosurfaces = []
-        for lvl, color, opacity_lvl in zip(level_values, level_colors, level_opacity):
-            trace = go.Isosurface(
-                x=X_flat,
-                y=Y_flat,
-                z=Z_flat,
-                value=E_flat,
-                isomin=lvl,
-                isomax=lvl,
-                surface_count=1,
-                opacity=opacity_lvl,
-                showscale=False,
-                colorscale=[[0.0, color], [1.0, color]],
-                caps=dict(x_show=False, y_show=False, z_show=False),
-                name=f"{lvl:.1f} kcal/mol",
+            fig3d.update_layout(
+                title="3D Energy Landscape",
+                autosize=True,
+                scene=dict(
+                    bgcolor="rgba(0,0,0,0)",
+                    xaxis=dict(
+                        title=d1_label_html,
+                        range=[x_min, x_max],
+                        showline=True,
+                        linewidth=4,
+                        linecolor="#1C1C1C",
+                        mirror=True,
+                        ticks="inside",
+                        tickwidth=4,
+                        tickcolor="#1C1C1C",
+                        gridcolor="rgba(0,0,0,0.1)",
+                        zerolinecolor="rgba(0,0,0,0.1)",
+                        showbackground=False,
+                    ),
+                    yaxis=dict(
+                        title=d2_label_html,
+                        range=[y_min, y_max],
+                        showline=True,
+                        linewidth=4,
+                        linecolor="#1C1C1C",
+                        mirror=True,
+                        ticks="inside",
+                        tickwidth=4,
+                        tickcolor="#1C1C1C",
+                        gridcolor="rgba(0,0,0,0.1)",
+                        zerolinecolor="rgba(0,0,0,0.1)",
+                        showbackground=False,
+                    ),
+                    zaxis=dict(
+                        title=d3_label_html,
+                        range=[z_min_val, z_max_val],
+                        showline=True,
+                        linewidth=4,
+                        linecolor="#1C1C1C",
+                        mirror=True,
+                        ticks="inside",
+                        tickwidth=4,
+                        tickcolor="#1C1C1C",
+                        gridcolor="rgba(0,0,0,0.1)",
+                        zerolinecolor="rgba(0,0,0,0.1)",
+                        showbackground=False,
+                    ),
+                    aspectmode="cube",
+                ),
+                margin=dict(l=10, r=20, b=10, t=40),
+                paper_bgcolor="white",
             )
-            isosurfaces.append(trace)
 
-        # Add a dummy scatter trace to host a global colorbar
-        colorbar_colorscale = [
-            [idx / (len(level_colors) - 1), col]
-            for idx, col in enumerate(level_colors)
-        ]
-        cb_tickvals = [float(v) for v in level_values]
-        cb_ticktext = [f"{v:.1f}" for v in level_values]
-
-        colorbar_trace = go.Scatter3d(
-            x=[x_min],
-            y=[y_min],
-            z=[z_min_val],
-            mode="markers",
-            marker=dict(
-                size=0,
-                opacity=0.0,
-                color=[vmin, vmax],
-                colorscale=colorbar_colorscale,
-                showscale=True,
-                colorbar=dict(
-                    title=dict(text="(kcal/mol)", side="top", font=dict(size=16, color="#1C1C1C")),
-                    tickfont=dict(size=14, color="#1C1C1C"),
-                    ticks="inside",
-                    ticklen=10,
-                    tickcolor="#1C1C1C",
-                    outlinecolor="#1C1C1C",
-                    outlinewidth=2,
-                    lenmode="fraction",
-                    len=1.11,
-                    x=1.05,
-                    y=0.53,
-                    xanchor="left",
-                    yanchor="middle",
-                    tickvals=cb_tickvals,
-                    ticktext=cb_ticktext,
-                ),
-            ),
-            hoverinfo="none",
-            showlegend=False,
-        )
-
-        fig3d = go.Figure(data=isosurfaces + [colorbar_trace])
-
-        fig3d.update_layout(
-            title="3D Energy Landscape",
-            autosize=True,
-            scene=dict(
-                bgcolor="rgba(0,0,0,0)",
-                xaxis=dict(
-                    title=d1_label_html,
-                    range=[x_min, x_max],
-                    showline=True,
-                    linewidth=4,
-                    linecolor="#1C1C1C",
-                    mirror=True,
-                    ticks="inside",
-                    tickwidth=4,
-                    tickcolor="#1C1C1C",
-                    gridcolor="rgba(0,0,0,0.1)",
-                    zerolinecolor="rgba(0,0,0,0.1)",
-                    showbackground=False,
-                ),
-                yaxis=dict(
-                    title=d2_label_html,
-                    range=[y_min, y_max],
-                    showline=True,
-                    linewidth=4,
-                    linecolor="#1C1C1C",
-                    mirror=True,
-                    ticks="inside",
-                    tickwidth=4,
-                    tickcolor="#1C1C1C",
-                    gridcolor="rgba(0,0,0,0.1)",
-                    zerolinecolor="rgba(0,0,0,0.1)",
-                    showbackground=False,
-                ),
-                zaxis=dict(
-                    title=d3_label_html,
-                    range=[z_min_val, z_max_val],
-                    showline=True,
-                    linewidth=4,
-                    linecolor="#1C1C1C",
-                    mirror=True,
-                    ticks="inside",
-                    tickwidth=4,
-                    tickcolor="#1C1C1C",
-                    gridcolor="rgba(0,0,0,0.1)",
-                    zerolinecolor="rgba(0,0,0,0.1)",
-                    showbackground=False,
-                ),
-                aspectmode="cube",
-            ),
-            margin=dict(l=10, r=20, b=10, t=40),
-            paper_bgcolor="white",
-        )
-
-        html3d = final_dir / "scan3d_density.html"
-        fig3d.write_html(
-            str(html3d),
-            config={"responsive": True, "displaylogo": False},
-            default_width="100%",
-            default_height="100%",
-        )
-        click.echo(f"[plot] Wrote '{html3d}'.")
+            html3d = final_dir / "scan3d_density.html"
+            fig3d.write_html(
+                str(html3d),
+                config={"responsive": True, "displaylogo": False},
+                default_width="100%",
+                default_height="100%",
+            )
+            click.echo(f"[plot] Wrote '{html3d}'.")
 
         emit("\n====== 3D Scan finished ======\n", narrative=True)
 
         # result.json (if --out-json)
-        if out_json:
-            from pdb2reaction.core.utils import atom_label_from_meta, write_result_json
-            grid_records = (
-                [
-                    rec
-                    for rec in records
-                    if not bool(rec.get("is_preopt", False))
-                ]
-                if csv_path is None
-                else []
+        from pdb2reaction.core.utils import atom_label_from_meta, write_result_json
+        grid_records = (
+            [
+                rec
+                for rec in records
+                if not bool(rec.get("is_preopt", False))
+            ]
+            if csv_path is None
+            else []
+        )
+        if not df.empty and "energy_hartree" in df.columns:
+            _eligible_energies = df.loc[
+                _eligible_rows3, "energy_hartree"
+            ].to_numpy(dtype=float)
+            min_energy = (
+                float(np.min(_eligible_energies))
+                if len(_eligible_energies)
+                else None
             )
-            if not df.empty and "energy_hartree" in df.columns:
-                _eligible_energies = df.loc[
-                    _eligible_rows3, "energy_hartree"
-                ].to_numpy(dtype=float)
-                min_energy = (
-                    float(np.min(_eligible_energies))
-                    if len(_eligible_energies)
-                    else None
-                )
-            else:
-                min_energy = None
+        else:
+            min_energy = None
 
-            _grid_row_count3 = int(np.count_nonzero(_grid_rows3))
+        _grid_row_count3 = int(np.count_nonzero(_grid_rows3))
+        plot_files = (
+            {"scan3d_density_html": "scan3d_density.html"} if plot_written else {}
+        )
 
-            result_data: Dict[str, Any] = {
-                "status": "completed",
-                **_result_calculator_fields(
-                    calc_cfg,
-                    backend=backend,
-                    charge=charge_val,
-                    spin=spin_val,
-                    plot_only=csv_path is not None,
-                ),
-                "n_grid_points": _grid_row_count3,
-                "min_energy_hartree": min_energy,
-                "files": {
-                    "scan3d_density_html": "scan3d_density.html",
-                },
-            }
-            if csv_path is None:
-                grid_geometry_files = [
-                    str(rec["geometry_file"])
-                    for rec in grid_records
-                    if rec.get("geometry_file")
-                ]
-                result_data["grid_points"] = []
-                for rec in grid_records:
-                    point = {
-                        "index": [int(rec["i"]), int(rec["j"]), int(rec["k"])],
-                        "coordinate_values": [
-                            float(rec["d1_A"]),
-                            float(rec["d2_A"]),
-                            float(rec["d3_A"]),
-                        ],
-                        "coordinate_targets": [
-                            float(rec["target_d1_A"]),
-                            float(rec["target_d2_A"]),
-                            float(rec["target_d3_A"]),
-                        ],
-                        "coordinate_units": [coordinate_unit(kind) for kind in kinds],
-                        "energy_hartree": rec.get("energy_hartree"),
-                        "converged": rec.get("bias_converged"),
-                        "geometry_file": rec.get("geometry_file"),
-                    }
-                    if all(kind == "distance" for kind in kinds):
-                        point["distances_angstrom"] = list(point["coordinate_values"])
-                        point["targets_angstrom"] = list(point["coordinate_targets"])
-                    result_data["grid_points"].append(point)
-                result_data["current_output_paths"] = [
-                    "surface.csv",
-                    "scan3d_density.html",
-                    *grid_geometry_files,
-                ]
-                _pair1: Dict[str, Any] = {"kind": kinds[0], "atoms_1based": [int(i + 1) for i in atoms1], "unit": coordinate_unit(kinds[0]), "low": float(low1), "high": float(high1)}
-                _pair2: Dict[str, Any] = {"kind": kinds[1], "atoms_1based": [int(i + 1) for i in atoms2], "unit": coordinate_unit(kinds[1]), "low": float(low2), "high": float(high2)}
-                _pair3: Dict[str, Any] = {"kind": kinds[2], "atoms_1based": [int(i + 1) for i in atoms3], "unit": coordinate_unit(kinds[2]), "low": float(low3), "high": float(high3)}
-                for payload, kind_axis, atoms_axis in zip(
-                    (_pair1, _pair2, _pair3), kinds, (atoms1, atoms2, atoms3)
-                ):
-                    if kind_axis == "distance":
-                        payload.update(i=int(atoms_axis[0] + 1), j=int(atoms_axis[1] + 1))
-                if pdb_atom_meta:
-                    _pair1["atom_labels"] = [atom_label_from_meta(pdb_atom_meta, i) for i in atoms1]
-                    _pair2["atom_labels"] = [atom_label_from_meta(pdb_atom_meta, i) for i in atoms2]
-                    _pair3["atom_labels"] = [atom_label_from_meta(pdb_atom_meta, i) for i in atoms3]
-                result_data["pair1"] = _pair1
-                result_data["pair2"] = _pair2
-                result_data["pair3"] = _pair3
-                result_data["grid_shape"] = [len(d1_values), len(d2_values), len(d3_values)]
-                result_data["files"]["surface_csv"] = "surface.csv"
-                # Additive outcome fields (fresh scan only; plot-only has no
-                # per-point convergence provenance). Legacy ``status`` stays
-                # "completed".
-                _point_outcomes3 = [
-                    make_scan_point(
-                        f"i{rec.get('i')}_j{rec.get('j')}_k{rec.get('k')}",
-                        executed=True,
-                        converged=rec.get("bias_converged"),
-                        energy=rec.get("energy_hartree"),
-                        artifact_written=bool(rec.get("artifact_written", False)),
-                    )
-                    for rec in grid_records
-                ]
-                _sci3, _sci3_reasons = scan_scientific_status(_point_outcomes3)
-                result_data["execution_status"] = "completed"
-                result_data["n_points_attempted"] = len(_point_outcomes3)
-                result_data["n_points_usable"] = sum(
-                    1 for p in _point_outcomes3 if p.seed_eligible
+        result_data: Dict[str, Any] = {
+            "status": "completed",
+            **_result_calculator_fields(
+                calc_cfg,
+                backend=backend,
+                charge=charge_val,
+                spin=spin_val,
+                plot_only=csv_path is not None,
+            ),
+            "n_grid_points": _grid_row_count3,
+            "min_energy_hartree": min_energy,
+            "files": dict(plot_files),
+        }
+        if csv_path is None:
+            grid_geometry_files = [
+                str(rec["geometry_file"])
+                for rec in grid_records
+                if rec.get("geometry_file")
+            ]
+            result_data["grid_points"] = []
+            for rec in grid_records:
+                point = {
+                    "index": [int(rec["i"]), int(rec["j"]), int(rec["k"])],
+                    "coordinate_values": [
+                        float(rec["d1_A"]),
+                        float(rec["d2_A"]),
+                        float(rec["d3_A"]),
+                    ],
+                    "coordinate_targets": [
+                        float(rec["target_d1_A"]),
+                        float(rec["target_d2_A"]),
+                        float(rec["target_d3_A"]),
+                    ],
+                    "coordinate_units": [coordinate_unit(kind) for kind in kinds],
+                    "energy_hartree": rec.get("energy_hartree"),
+                    "converged": rec.get("bias_converged"),
+                    "geometry_file": rec.get("geometry_file"),
+                }
+                if all(kind == "distance" for kind in kinds):
+                    point["distances_angstrom"] = list(point["coordinate_values"])
+                    point["targets_angstrom"] = list(point["coordinate_targets"])
+                result_data["grid_points"].append(point)
+            result_data["current_output_paths"] = [
+                "surface.csv",
+                *plot_files.values(),
+                *grid_geometry_files,
+            ]
+            _pair1: Dict[str, Any] = {"kind": kinds[0], "atoms_1based": [int(i + 1) for i in atoms1], "unit": coordinate_unit(kinds[0]), "low": float(low1), "high": float(high1)}
+            _pair2: Dict[str, Any] = {"kind": kinds[1], "atoms_1based": [int(i + 1) for i in atoms2], "unit": coordinate_unit(kinds[1]), "low": float(low2), "high": float(high2)}
+            _pair3: Dict[str, Any] = {"kind": kinds[2], "atoms_1based": [int(i + 1) for i in atoms3], "unit": coordinate_unit(kinds[2]), "low": float(low3), "high": float(high3)}
+            for payload, kind_axis, atoms_axis in zip(
+                (_pair1, _pair2, _pair3), kinds, (atoms1, atoms2, atoms3)
+            ):
+                if kind_axis == "distance":
+                    payload.update(i=int(atoms_axis[0] + 1), j=int(atoms_axis[1] + 1))
+            if pdb_atom_meta:
+                _pair1["atom_labels"] = [atom_label_from_meta(pdb_atom_meta, i) for i in atoms1]
+                _pair2["atom_labels"] = [atom_label_from_meta(pdb_atom_meta, i) for i in atoms2]
+                _pair3["atom_labels"] = [atom_label_from_meta(pdb_atom_meta, i) for i in atoms3]
+            result_data["pair1"] = _pair1
+            result_data["pair2"] = _pair2
+            result_data["pair3"] = _pair3
+            result_data["grid_shape"] = [len(d1_values), len(d2_values), len(d3_values)]
+            result_data["files"]["surface_csv"] = "surface.csv"
+            # Additive outcome fields (fresh scan only; plot-only has no
+            # per-point convergence provenance). Legacy ``status`` stays
+            # "completed".
+            _point_outcomes3 = [
+                make_scan_point(
+                    f"i{rec.get('i')}_j{rec.get('j')}_k{rec.get('k')}",
+                    executed=True,
+                    converged=rec.get("bias_converged"),
+                    energy=rec.get("energy_hartree"),
+                    artifact_written=bool(rec.get("artifact_written", False)),
                 )
-                attach_outcomes(
-                    result_data,
-                    point_outcomes=_point_outcomes3,
-                    scientific_status=_sci3,
-                    scientific_status_reasons=_sci3_reasons,
-                )
-            else:
-                result_data["current_output_paths"] = ["scan3d_density.html"]
+                for rec in grid_records
+            ]
+            _sci3, _sci3_reasons = scan_scientific_status(_point_outcomes3)
+            result_data["execution_status"] = "completed"
+            result_data["n_points_attempted"] = len(_point_outcomes3)
+            result_data["n_points_usable"] = sum(
+                1 for p in _point_outcomes3 if p.seed_eligible
+            )
+            attach_outcomes(
+                result_data,
+                point_outcomes=_point_outcomes3,
+                scientific_status=_sci3,
+                scientific_status_reasons=_sci3_reasons,
+            )
+        else:
+            result_data["scientific_status"] = "success" if n_unique else "failed"
+            result_data["current_output_paths"] = list(plot_files.values())
+        record_completion(result_data, command="scan3d")
+        if out_json:
             write_result_json(
                 final_dir, result_data,
                 command="scan3d",
@@ -1346,9 +1320,9 @@ def cli(
     try:
         if csv_path is None:
             if input_path is None:
-                raise click.ClickException("-i/--input is required unless --csv is provided.")
+                raise click.BadParameter("-i/--input is required unless --csv is provided.")
             if scan_list_raw is None:
-                raise click.ClickException("--scan-lists is required unless --csv is provided.")
+                raise click.BadParameter("--scan-lists is required unless --csv is provided.")
             with prepared_cli_input(
                 input_path,
                 ref_pdb=ref_pdb,
@@ -1415,3 +1389,5 @@ def cli(
     finally:
         if _scan3d_tmp_root is not None:
             shutil.rmtree(_scan3d_tmp_root, ignore_errors=True)
+
+cli.callback = completion_guard(cli.callback)

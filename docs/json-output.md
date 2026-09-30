@@ -37,7 +37,8 @@ are present only when the producer supplies the corresponding data:
 | `schema_version` | string | Envelope schema version; current value lives at `pdb2reaction.core.utils.RESULT_JSON_SCHEMA_VERSION` — pin against that constant rather than the literal in this doc. A version bump signals a structural change. |
 | `command` | string | Leaf envelopes use the subcommand name (e.g. `"opt"`); aggregate `all` / `path-search` summaries record the full invocation string |
 | `pdb2reaction_version` | string | Package version |
-| `status` | string | Value depends on the subcommand (see each section below): e.g. `converged` / `not_converged` / `stalled` (opt, tsopt), `completed` (irc, freq), `ok` / `partial` / `failed` (bond-summary), `success` / `partial` / `failed` (`all`), `success` / `partial` (`path-search`), and `error` on failure |
+| `execution_status` | string | Execution completion: `completed` / `failed`. |
+| `scientific_status` | string | Result usability: `success` / `partial` / `failed`. |
 | `run_id` | string | Optional current MCP invocation UUID. It is injected only when the product-specific run environment is active; a conflicting producer value is rejected. |
 | `elapsed_seconds` | float | Optional wall-clock time; omitted by producers that do not pass timing to the shared writer |
 | `environment` | object | Hardware info (see below) |
@@ -53,13 +54,13 @@ cross-command provenance contract.
 
 ### Execution and requested-stage completion
 
-Multi-stage and scan producers add the fields below when they can evaluate constituent work. These fields are additive and producer-dependent; the command-specific `status` remains for compatibility. Consumers can inspect requested-stage completion using `scientific_status` and the leaf outcomes. Missing required optimization or calculation results remain incomplete. IRC stop conditions and stationarity are diagnostics. IRC does not publish an independent `scientific_status`; `all` uses TSOPT and endpoint-OPT numerical outcomes.
+Every result reports `execution_status` and `scientific_status`. Multi-stage and scan results also retain the constituent outcomes below. Missing required optimizations or calculations remain incomplete. IRC stop conditions are diagnostics; a normal integration return reports `completed` / `success`, and `all` judges the TS and endpoint optimizations separately.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `execution_status` | string | Normally `completed` or `failed`; endpoint nonconvergence is completed execution, while a captured endpoint exception is failed execution. |
 | `scientific_status` | string | `success`, `partial`, or `failed`. A valid TS1 plus one failed endpoint OPT is partial; a converged higher-order saddle is also partial. |
-| `scientific_status_reasons` | string[] | Reasons for unusable or missing leaves; omitted on clean success. This is distinct from an aggregate workflow's legacy `status_reasons`. |
+| `scientific_status_reasons` | string[] | Reasons for unusable or missing leaves; omitted on clean success. |
 | `expected_item_ids` / `observed_item_ids` | string[] | Expected and observed leaf identifiers used to detect missing aggregate work. |
 | `stage_outcomes` | object[] | Stage leaves with `stage`, `item_id`, `required`, `executed`, `converged`, `usable`, `reason`, and `artifacts`. |
 | `point_outcomes` | object[] | Scan points with `point_id`, `executed`, `converged`, `energy_valid`, `artifact_written`, `seed_eligible`, and `reason`. |
@@ -89,7 +90,7 @@ are not current results.
 
 `constrained` removes only full-system rigid motions that leave frozen anchors fixed. The treatment is fixed; stale non-constrained values fail explicitly. See [Frozen Atoms](freeze-atoms.md#rigid-modes-with-frozen-boundaries).
 
-### Error envelope (when `status == "error"`)
+### Error envelope (when `execution_status == "failed"`)
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -114,17 +115,17 @@ are not current results.
 ## Error handling
 
 Caught runtime exceptions write a best-effort `result.json` with
-`"status": "error"` and an `"error_type"`. Usage/validation exits and failures
+`"execution_status": "failed"` and an `"error_type"`. Usage/validation exits and failures
 before the output directory is resolved may not create JSON, so a nonzero exit
 code or missing expected JSON is also a failure signal. Check stderr/job logs
 for the authoritative diagnostic.
 
 For jobs that reach a controlled non-convergence writer, `result.json` uses
-`"status": "not_converged"`. Optimizer-family payloads expose the applicable
+`"optimization_status": "not_converged"`. Optimizer-family payloads expose the applicable
 final force/step or cycle fields; DFT and Dimer omit fields they do not own.
 Consult the command-specific schema before deciding whether to retry.
 
-An optimizer may also report `"status": "stalled"`: the energy stopped decreasing over the configured window (an energy plateau) while the configured force/step convergence criteria remained unmet. A stall is a distinct, non-converged outcome — it is never reported as `converged`. With `--flatten`, `tsopt` and `opt` still run the flatten loop after a stall, since displacing along the remaining imaginary modes can leave the plateau; the loop is skipped once no `--max-cycles` budget remains. When present, a `stop_reason` string records the energy range, window, and the failed criteria. A stall may be retried (e.g. from a perturbed geometry or with tighter step control); it is not an alias for `max_cycles` exhaustion or a generic failure.
+An optimizer may also report `"optimization_status": "stalled"`: the energy stopped decreasing over the configured window (an energy plateau) while the configured force/step convergence criteria remained unmet. A stall is a distinct, non-converged outcome — it is never reported as `converged`. With `--flatten`, `tsopt` and `opt` still run the flatten loop after a stall, since displacing along the remaining imaginary modes can leave the plateau; the loop is skipped once no `--max-cycles` budget remains. When present, a `stop_reason` string records the energy range, window, and the failed criteria. A stall may be retried (e.g. from a perturbed geometry or with tighter step control); it is not an alias for `max_cycles` exhaustion or a generic failure.
 
 ## Subcommand schemas
 
@@ -132,7 +133,6 @@ An optimizer may also report `"status": "stalled"`: the energy stopped decreasin
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `status` | string | `"ok"` |
 | `stage` | string | `"sp"` |
 | `input` | string | Prepared public input path |
 | `backend` / `model` | string / string \| null | Local MLIP provenance, mirrored to the common `mlip_*` fields |
@@ -148,7 +148,7 @@ An optimizer may also report `"status": "stalled"`: the energy stopped decreasin
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `status` | string | `"converged"`, `"not_converged"`, or `"stalled"` (energy plateau; see above) |
+| `optimization_status` | string | `"converged"`, `"not_converged"`, or `"stalled"` (energy plateau; see above) |
 | `stop_reason` | string | Present only for a non-converged stop (stalled/stopped); records the energy plateau range/window and failed criteria |
 | `energy_hartree` | float | Final energy (Hartree) |
 | `n_opt_cycles` | int | Optimization cycles completed |
@@ -195,7 +195,7 @@ The `files` object may include `imaginary_mode_files` (list of vib file paths) a
 Terminal PHVA runs after numerical convergence or an energy-plateau stop (`stalled`).
 A run that ends without either retains the terminal geometry and records PHVA as skipped; a PHVA calculation failure is recorded as
 `hessian_status: "failed"` without discarding the structure or fabricating
-frequencies. `status`/`optimization_status` describe numerical optimization,
+frequencies. `optimization_status` describes numerical optimization,
 while `saddle_validation` describes exact-PHVA order. A numerically converged
 higher-order stationary point remains `optimization_status: "converged"` with
 `saddle_validation: "higher_order"`; it is not a certified first-order TS.
@@ -209,7 +209,6 @@ per-cycle force/step convergence details and the `safeguards` object.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `status` | string | `"completed"` |
 | `n_modes` | int | Total normal modes |
 | `n_imaginary` | int | Imaginary frequency count |
 | `frequencies_cm` | float[] | All frequencies (cm⁻¹) |
@@ -251,11 +250,10 @@ per-cycle force/step convergence details and the `safeguards` object.
 
 ### `irc`
 
-`status: "completed"` records return from execution. IRC does not publish its own `scientific_status`, `stage_outcomes`, or `forward_status` / `backward_status`. Directional stop reasons and trajectories are retained; `all` reports subsequent endpoint optimization under `endpoint_opt`.
+IRC publishes the common completion fields and retains directional stop reasons and trajectories; `all` reports subsequent endpoint optimization under `endpoint_opt`.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `status` | string | `"completed"` |
 | `n_frames_forward` | int | Forward IRC frames |
 | `forward_short_branch` / `backward_short_branch` | bool | Branch produced at most three frames without reaching the cycle cap; diagnostic only |
 | `n_frames_backward` | int | Backward IRC frames |
@@ -290,7 +288,6 @@ per-cycle force/step convergence details and the `safeguards` object.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `status` | string | `"completed"` |
 | `scan_opt_mode` | string | Optimizer preset used for the constrained relaxations |
 | `scan_optimizer` | string | Effective optimizer identity (`lbfgs` or `rfo`) |
 | `charge` | int | System charge |
@@ -322,7 +319,6 @@ per-cycle force/step convergence details and the `safeguards` object.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `status` | string | `"completed"` |
 | `charge` | int \| null | System charge; null for plot-only `scan3d --csv` |
 | `spin` | int \| null | Spin multiplicity; null for plot-only `scan3d --csv` |
 | `backend` | string \| null | MLIP backend; null for plot-only `scan3d --csv` |
@@ -349,8 +345,8 @@ CSV lacks complete provenance.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `status` | string | `"converged"` / `"not_converged"` / `"completed"` |
-| `converged` | bool \| null | Convergence flag: `true` / `false` from the engine's own convergence signal, `null` when it exposed none (`status` is then `"completed"`, never a success claim) |
+| `optimization_status` | string | `"converged"` / `"not_converged"` / `"completed"` |
+| `converged` | bool \| null | Convergence flag: `true` / `false` from the engine's own convergence signal, `null` when it exposed none (`optimization_status` is then `"completed"`, never a success claim) |
 | `mep_mode` | string | `"dmf"` or `"gsm"` |
 | `backend` | string | MLIP backend |
 | `charge` | int | System charge |
@@ -377,7 +373,6 @@ validation can fail before the file exists.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `status` | string | `"success"` / `"partial"` |
 | `n_segments` | int | Recursive MEP segment count |
 | `search_max_depth` | int | Effective recursion cap; `0` means subdivision was disabled |
 | `path_optimizers` | string[] | Single-structure optimizers actually used during path preparation/refinement (`lbfgs`, `rfo`); includes scan and alignment work in `all`. Also present in `path-opt` `result.json` and `all` `summary.json` |
@@ -398,12 +393,11 @@ See also the extended [`summary.json` section](#summary-json-path-search-all) fo
 
 > **Note:** `dft` writes `result.json` and `summary.json` for both converged and
 > non-converged SCF attempts. Non-convergence records
-> `status: "not_converged"` and `converged: false`, then exits with code 3.
+> `scientific_status: "failed"` and `converged: false`, then exits with code 1.
 > An unhandled exception writes the standard `error` envelope.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `status` | string | `"converged"` or `"not_converged"` |
 | `converged` | bool | SCF converged? |
 | `charge` | int | System charge |
 | `spin` | int | Spin multiplicity |
@@ -431,7 +425,6 @@ See also the extended [`summary.json` section](#summary-json-path-search-all) fo
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `status` | string | `"ok"` |
 | `n_atoms_raw` | int | Atoms in selected residues before backbone/truncation filtering (not the whole input structure) |
 | `n_atoms_extracted` | int | Selected atoms kept after truncation, before cap-H addition |
 | `total_charge` | float | Computed total charge |
@@ -453,7 +446,6 @@ See also the extended [`summary.json` section](#summary-json-path-search-all) fo
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `status` | string | `"ok"` |
 | `n_frames` | int | Number of trajectory frames |
 | `min_energy_hartree` | float | Minimum energy across frames |
 | `max_energy_hartree` | float | Maximum energy across frames |
@@ -470,7 +462,6 @@ See also the extended [`summary.json` section](#summary-json-path-search-all) fo
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `status` | string | `"ok"` |
 | `n_points` | int | Number of energy data points |
 | `files` | object | Output diagram files |
 
@@ -480,7 +471,6 @@ When `--json` is enabled, `bond-summary` prints JSON to **stdout** (no `result.j
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `status` | string | `"ok"` (every pair compared without error), `"partial"` (some pairs failed), or `"failed"` (no pair compared successfully) |
 | `comparisons` | object[] | Per-pair comparison with `structure_a` (string), `structure_b` (string), `bonds_formed` (int count), `bonds_broken` (int count). |
 
 (summary-json-path-search-all)=
@@ -490,7 +480,6 @@ The `all` and `path-search` commands write `summary.json` with a richer structur
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `status` | string | `"success"` / `"partial"` / `"failed"` (`all`); `"success"` / `"partial"` (`path-search`) |
 | `execution_status` / `scientific_status` | string / string | Execution completeness and completion of requested numerical/calculation stages. |
 | `scientific_status_reasons` | string[] | Reasons for missing or unusable requested results; omitted on success. |
 | `pipeline_stop` | object \| absent | Present only on an early stop. `stage` is `post` (`reason` `no_segments` / `no_reactive_segment`), `before_irc` (a TSOPT reason, plus `segment` and `tsopt_result`), or `endpoint_opt` (`endpoint_execution_failed` and endpoint-specific `failures`). Rendered in `summary.log` as `Pipeline stop`. |
@@ -520,7 +509,7 @@ The `all` command additionally includes:
 | `post_segments` | list | Per-segment TS/IRC/freq/DFT results |
 | `post_segments[].tsopt.energy_valid` / `.structure_valid` | bool | Finite terminal TS checks combined with the existing terminal-Hessian result; status classification runs no extra Hessian or optimization. |
 | `post_segments[].tsopt.n_opt_cycles` / `.max_cycles` | int / int\|null | TS optimization cycles executed and configured limit. These are reported for both converged and normally non-converged runs. |
-| `post_segments[].irc` / `.endpoint_assignment` / `.endpoint_opt` | object | IRC stop diagnostics, endpoint orientation, and endpoint-OPT convergence, respectively. `endpoint_opt.reactant` and `.product` report `status`, `n_opt_cycles`, `max_cycles`, and any `stop_reason`. IRC stopping and topology correspondence are not independent success gates; connectivity information remains available for mechanism interpretation. |
+| `post_segments[].irc` / `.endpoint_assignment` / `.endpoint_opt` | object | IRC stop diagnostics, endpoint orientation, and endpoint-OPT convergence, respectively. `endpoint_opt.reactant` and `.product` report `optimization_status`, `n_opt_cycles`, `max_cycles`, and any `stop_reason`. IRC stopping and topology correspondence are not independent success gates; connectivity information remains available for mechanism interpretation. |
 | `post_segments[].thermo_symmetry` | object | Child-reported point-group and rotational-symmetry provenance by state. Only R/TS/P states with valid symmetry-number provenance are included; missing states are omitted, and the field is absent only when no state has valid provenance. |
 | `current_output_paths` | string[] | Sorted paths relative to `--out-dir`, limited to artifacts claimed by the current invocation. |
 | `key_output_files` | object | Current-run output index: root filename → description; each `seg_NN` entry is `{description, files}` with paths relative to that segment directory. |
@@ -535,8 +524,8 @@ import json
 with open("result_opt/result.json") as f:
     result = json.load(f)
 
-status = result["status"]
-if status == "error":
+status = result.get("optimization_status")
+if result["execution_status"] == "failed":
     raise RuntimeError(f"{result['error_type']}: {result['error']}")
 elif status == "converged":
     print(f"Energy: {result['energy_hartree']:.6f} Hartree")
@@ -551,7 +540,7 @@ else:
 
 ```bash
 # Check convergence
-jq '.status' result.json
+jq '{execution_status, scientific_status}' result.json
 
 # Get barrier from path-opt
 jq '.barrier_kcal' result.json

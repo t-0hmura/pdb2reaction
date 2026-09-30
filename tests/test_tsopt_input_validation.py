@@ -247,7 +247,7 @@ def test_tsopt_dry_run_rejects_invalid_configured_hessian_mode(tmp_path) -> None
         ],
     )
 
-    assert result.exit_code == 1
+    assert result.exit_code == 2
     assert "Unsupported hessian_calc_mode 'typo'" in result.output
 
 

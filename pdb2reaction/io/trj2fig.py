@@ -9,6 +9,8 @@ For detailed documentation, see: docs/trj2fig.md
 
 from __future__ import annotations
 
+from pdb2reaction.cli.completion import completion_guard
+
 import csv
 import logging
 import time
@@ -496,3 +498,6 @@ def cli(
         format_elapsed("[time] Elapsed Time for Trajectory Figure", time_start),
         narrative=True,
     )
+
+
+cli.callback = completion_guard(cli.callback)

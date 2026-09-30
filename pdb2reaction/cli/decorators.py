@@ -202,11 +202,11 @@ def run_cli(
                 or "ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).",
                 err=True,
             )
-            sys.exit(2)
+            sys.exit(1)
         if opt_exc is not None and isinstance(e, opt_exc):
             msg = opt_msg or "ERROR: Optimization failed - {exc}"
             click.echo(msg.format(exc=e), err=True)
-            sys.exit(3)
+            sys.exit(1)
         # User-input errors raised in the command body (after Click's own
         # option parsing) should render as a clean one-line message, not a
         # raw Python traceback. Click's UsageError/BadParameter/ClickException

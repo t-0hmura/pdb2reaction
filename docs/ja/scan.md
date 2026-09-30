@@ -39,7 +39,7 @@ pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <n
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
-> **Note:** `-s/--scan-lists` の解釈結果を確認したい場合は `--print-parsed` を追加してください。
+> **Note:** `--dry-run` で、計算せずに入力とスキャン仕様を検証できます。
 
 ## 処理の流れ
 
@@ -92,7 +92,6 @@ out_dir/ (デフォルト:./result_scan/)
 | `-m, --multiplicity INT` | スピン多重度 2S+1。`.gjf` テンプレートがあれば継承し、未指定時は `1` | `.gjf` テンプレート値または `1` |
 | `-s, --scan-lists TEXT` | YAML/JSONまたはinline literal。`i`/`j`は整数、3-field selector、または位置固定`CHAIN:RESNAME:RESSEQ[ICODE]:ATOM` | 必須 |
 | `--one-based/--zero-based` | 原子インデックスを 1 始まり/0 始まりとして解釈。これらは同一フラグの相互排他エイリアス（`--one-based` → `True`、`--zero-based` → `False`） | `True` |
-| `--print-parsed/--no-print-parsed` | `-s/--scan-lists` 解釈後のステージ情報を表示 | `False` |
 | `--max-step-size FLOAT` | 1 ステップあたりのスキャン結合の最大変化量（Å）。ステップ数を決定 | `0.20` |
 | `--max-angle-step-size FLOAT` | 角度の1stepあたりの最大変化量（度） | `5.0` |
 | `--max-dihedral-step-size FLOAT` | 二面角の1stepあたりの最大変化量（度） | `10.0` |

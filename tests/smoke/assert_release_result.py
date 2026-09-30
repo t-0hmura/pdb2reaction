@@ -50,7 +50,7 @@ def check_dft_states(segment_root: Path, segment: dict) -> None:
 
     dft = segment.get("dft") or {}
     energies = dft.get("energies_au") or []
-    if dft.get("status") == "failed" or len(energies) != 3 or not all(
+    if dft.get("scientific_status") == "failed" or len(energies) != 3 or not all(
         isinstance(value, (int, float)) and not isinstance(value, bool)
         and math.isfinite(float(value)) for value in energies
     ):
@@ -90,12 +90,12 @@ def check_all(root: Path, require_thermo: bool, require_dft: bool) -> None:
     # `partial` that says what is missing.  A silent degradation, or a `failed`,
     # still fails the lane -- and so does a `partial` with no stated reason,
     # which is how a missing outcome record would look.
-    status = summary.get("status")
+    execution = summary.get("execution_status")
     scientific = summary.get("scientific_status")
-    if status not in ("success", "partial") or scientific not in ("success", "partial"):
+    if execution != "completed" or scientific not in ("success", "partial"):
         raise SystemExit(
             f"all summary is neither success nor an explained partial: "
-            f"status={status!r} scientific_status={scientific!r}"
+            f"execution_status={execution!r} scientific_status={scientific!r}"
         )
     reasons = summary.get("scientific_status_reasons") or []
     if scientific == "partial" and not reasons:
@@ -156,8 +156,8 @@ def check_all(root: Path, require_thermo: bool, require_dft: bool) -> None:
 def check_tsopt(root: Path) -> None:
     payload = json.loads((root / "result.json").read_text(encoding="utf-8"))
     require_finite(payload)
-    if payload.get("status") != "converged":
-        raise SystemExit(f"TS optimization did not converge: {payload.get('status')!r}")
+    if payload.get("optimization_status") != "converged":
+        raise SystemExit(f"TS optimization did not converge: {payload.get('optimization_status')!r}")
     if int(payload.get("n_imaginary_modes", -1)) != 1:
         raise SystemExit("TS optimization did not produce exactly one imaginary mode")
     if payload.get("opt_mode_requested") != "grad" or payload.get("optimizer") != "dimer":
@@ -237,7 +237,7 @@ def check_opt_config(
 def check_sp_hessian(root: Path) -> None:
     payload = json.loads((root / "result.json").read_text(encoding="utf-8"))
     require_finite(payload)
-    if payload.get("status") != "ok" or payload.get("backend") != "custom":
+    if payload.get("scientific_status") != "success" or payload.get("backend") != "custom":
         raise SystemExit("custom calculator SP did not complete successfully")
     if payload.get("custom_calculator") != "harmonic_calc.py:get_calculator":
         raise SystemExit(
@@ -355,10 +355,10 @@ def check_dmf_frozen_atoms(root: Path, frozen_1based: str) -> None:
 
 
 def check_irc_direction_status_contract(payload: dict) -> None:
-    """IRC retains stop diagnostics and candidates, not a scientific verdict."""
+    """IRC retains directional diagnostics alongside the common result fields."""
     for removed in ("forward_converged", "backward_converged",
                     "forward_endpoint_stationary", "backward_endpoint_stationary",
-                    "forward_status", "backward_status", "scientific_status", "stage_outcomes"):
+                    "forward_status", "backward_status", "stage_outcomes"):
         if removed in payload:
             raise SystemExit(f"IRC still publishes an independent acceptance field: {removed}")
     requested = [d for d in ("forward", "backward") if payload.get(f"{d}_requested") is True]
@@ -374,7 +374,7 @@ def check_irc_direction_status_contract(payload: dict) -> None:
 def check_irc_never_stop(root: Path) -> None:
     payload = json.loads((root / "result.json").read_text(encoding="utf-8"))
     require_finite(payload)
-    if payload.get("status") != "completed" or payload.get("never_stop") is not True:
+    if payload.get("execution_status") != "completed" or payload.get("never_stop") is not True:
         raise SystemExit("IRC never-stop run did not complete with the requested mode")
     if int(payload.get("never_stop_energy_bypasses", 0)) < 1:
         raise SystemExit("IRC never-stop did not bypass an actual energy stop")

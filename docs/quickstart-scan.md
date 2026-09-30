@@ -33,7 +33,7 @@ pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
   -s '[(4360, 4419, 1.60)]' --dry-run
 ```
 
-Standalone `scan --print-parsed` validates only the scan specification; it does
+Standalone `scan --dry-run` validates the input and scan specification; it does
 not validate `all`-specific extraction or atom-index remapping.
 
 ### Basic syntax

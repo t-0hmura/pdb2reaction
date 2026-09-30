@@ -91,7 +91,7 @@ def test_all_path_opt_mep_pdb_publication(tmp_path: Path, monkeypatch, case: str
             left = Path(args[args.index("-i") + 1])
             assert left.suffix == (".pdb" if case == "direct_pdb" else ".xyz")
             _write(child_out / "final_geometries_trj.xyz", _frame(pair) + _frame(pair + 1))
-            payload = {"stage_outcomes": [{"converged": True}], "preopt_converged": True}
+            payload = {"stage_outcomes": [{"item_id": "gsm_mep", "converged": True}], "preopt_converged": True}
         else:
             raise AssertionError(f"Unexpected computational child: {name}")
         _write(child_out / "result.json", json.dumps(apply_current_run_id(payload)))

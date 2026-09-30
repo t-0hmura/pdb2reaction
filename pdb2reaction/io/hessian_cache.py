@@ -155,7 +155,8 @@ def _potential_identity(calc_cfg: Mapping) -> Dict[str, Any]:
             potential[key] = _canon(val)
     calc_file = calc_cfg.get("calc_file")
     if calc_file:
-        potential["calc_file"] = str(calc_file)
+        from pathlib import Path
+        potential["calc_file"] = str(Path(calc_file).expanduser().resolve())
     return potential
 
 

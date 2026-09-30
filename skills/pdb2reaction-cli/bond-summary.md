@@ -45,7 +45,8 @@ With `--json`, stdout is one envelope and no file is written:
 
 ```json
 {
-  "status": "ok",
+  "execution_status": "completed",
+  "scientific_status": "success",
   "comparisons": [
     {
       "structure_a": "1.R.pdb",

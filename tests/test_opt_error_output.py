@@ -27,7 +27,7 @@ def test_opt_invalid_cartesian_coord_kwargs_exit_nonzero(tmp_path: Path) -> None
         ],
     )
 
-    assert result.exit_code == 1
+    assert result.exit_code == 2
     assert "coord_kwargs were given" in result.output
 
 
@@ -95,7 +95,7 @@ def test_yaml_output_directory_receives_runtime_error_envelope(tmp_path) -> None
 
     assert result.exit_code == 1
     payload = json.loads((out_dir / "result.json").read_text(encoding="utf-8"))
-    assert payload["status"] == "error"
+    assert payload["execution_status"] == "failed"
     assert "calculator construction failed" in payload["error"]
     run_log = (out_dir / "run.log").read_text(encoding="utf-8")
     assert "[command]" in run_log

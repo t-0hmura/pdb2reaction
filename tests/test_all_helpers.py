@@ -665,8 +665,8 @@ def test_build_pipeline_summary_payload_shape(path_optimizers) -> None:
     assert payload["mep_mode"] == "dmf"
     assert payload["dmf_correlated"] is True
     assert payload["mlip_backend"] == "mace"
-    assert payload["status"] == "partial"
-    assert payload["status_reasons"] == ["legacy incomplete"]
+    assert "status" not in payload
+    assert "status_reasons" not in payload
     assert payload["execution_status"] == "completed"
     assert payload["scientific_status"] == "failed"
     assert payload["scientific_status_reasons"] == [
@@ -1051,7 +1051,7 @@ def test_enrich_summary_marks_requested_dft_failure_partial(tmp_path: Path) -> N
 
     result = _enrich_summary(
         {
-            "segments": [{"index": 1, "kind": "seg", "barrier_kcal": 5.0}],
+            "segments": [{"index": 1, "kind": "seg", "barrier_kcal": 5.0, "converged": True}],
             "energy_diagrams": [{"name": "energy_diagram_MEP"}],
         },
         version="",
@@ -1063,15 +1063,15 @@ def test_enrich_summary_marks_requested_dft_failure_partial(tmp_path: Path) -> N
         post_segments=[
             {
                 "index": 1,
-                "dft": {"status": "failed", "failed_states": ["TS"]},
+                "dft": {"scientific_status": "failed", "failed_states": ["TS"]},
             }
         ],
         config={"tsopt": False, "thermo": False, "dft": True},
         out_dir=tmp_path,
     )
 
-    assert result["status"] == "partial"
-    assert result["status_reasons"] == ["segment 1: DFT failed (TS)"]
+    assert result["scientific_status"] == "partial"
+    assert result["scientific_status_reasons"] == ["segment 1: DFT failed (TS)"]
 
 
 def test_enrich_summary_keeps_thermochemistry_count_diagnostic(tmp_path: Path) -> None:
@@ -1079,7 +1079,7 @@ def test_enrich_summary_keeps_thermochemistry_count_diagnostic(tmp_path: Path) -
 
     result = _enrich_summary(
         {
-            "segments": [{"index": 1, "kind": "seg", "barrier_kcal": 5.0}],
+            "segments": [{"index": 1, "kind": "seg", "barrier_kcal": 5.0, "converged": True}],
             "energy_diagrams": [{"name": "energy_diagram_G_MLIP_all"}],
         },
         version="",
@@ -1099,7 +1099,7 @@ def test_enrich_summary_keeps_thermochemistry_count_diagnostic(tmp_path: Path) -
         out_dir=tmp_path,
     )
 
-    assert result["status"] == "success"
+    assert result["scientific_status"] == "success"
     assert not result.get("status_reasons")
 
 
@@ -1108,7 +1108,7 @@ def test_enrich_summary_success_requires_all_requested_post_results(tmp_path: Pa
 
     result = _enrich_summary(
         {
-            "segments": [{"index": 1, "kind": "seg", "barrier_kcal": 5.0}],
+            "segments": [{"index": 1, "kind": "seg", "barrier_kcal": 5.0, "converged": True}],
             "energy_diagrams": [{"name": "energy_diagram_G_DFT_plus_MLIP_all"}],
         },
         version="",
@@ -1121,6 +1121,8 @@ def test_enrich_summary_success_requires_all_requested_post_results(tmp_path: Pa
             {
                 "index": 1,
                 "mlip": {"barrier_kcal": 5.0},
+                "tsopt": {"optimization_status": "converged"},
+                "endpoint_opt": {"reactant_converged": True, "product_converged": True},
                 "irc_traj": "finished_irc_trj.xyz",
                 "gibbs_mlip": {"barrier_kcal": 4.0},
                 "ts_imag": {"n_imag": 1},
@@ -1132,7 +1134,7 @@ def test_enrich_summary_success_requires_all_requested_post_results(tmp_path: Pa
         out_dir=tmp_path,
     )
 
-    assert result["status"] == "success"
+    assert result["scientific_status"] == "success"
     assert "status_reasons" not in result
 def test_irc_endpoint_topology_tie_uses_rmsd_and_records_provenance(
     monkeypatch,

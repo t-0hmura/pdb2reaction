@@ -31,7 +31,7 @@ pdb2reaction all -i 1.R.pdb -c 'SAM,GPP,MG' -l 'SAM:1,GPP:-3' \
   -s '[(4360, 4419, 1.60)]' --dry-run
 ```
 
-standalone `scan --print-parsed` はスキャン仕様だけを検証し、`all` 固有の抽出や原子index remappingは検証しません。
+standalone `scan --dry-run` は入力とスキャン仕様を検証し、`all` 固有の抽出や原子index remappingは検証しません。
 
 ### 基本構文
 

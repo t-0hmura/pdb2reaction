@@ -257,9 +257,9 @@ def test_dft_nonconvergence_commits_json_before_exit(tmp_path) -> None:
             elapsed_seconds=1.0,
         )
 
-    assert caught.value.code == 3
+    assert caught.value.code == 1
     payload = json.loads((tmp_path / "result.json").read_text())
-    assert payload["status"] == "not_converged"
+    assert payload["scientific_status"] == "failed"
     assert payload["converged"] is False
 
 
@@ -331,7 +331,7 @@ def test_dft_unexpected_config_failure_uses_yaml_effective_output(
 
     assert result.exit_code == 1
     payload = json.loads((effective_out / "result.json").read_text())
-    assert payload["status"] == "error"
+    assert payload["execution_status"] == "failed"
     assert payload["command"] == "dft"
     assert payload["error"] == "config probe failed"
 

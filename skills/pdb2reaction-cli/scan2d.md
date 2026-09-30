@@ -54,7 +54,7 @@ pdb2reaction scan2d -i 1.R.pdb -l 'SAM:1,GPP:-3' \
 | `<out_dir>/surface.csv` | at least one grid record | 2D energy surface (i, j, d1_A, d2_A, energy_hartree, bias_converged, energy_kcal, plus axis labels) |
 
 `result.json` stores grid metadata and file paths; per-point energies and
-convergence flags are in `surface.csv`. `result.json["status"] == "completed"`
+convergence flags are in `surface.csv`. `result.json["optimization_status"] == "completed"`
 means the grid and plots were written, not that every `bias_converged` value is
 true.
 When rounded distance tags collide, later point filenames append

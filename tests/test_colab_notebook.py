@@ -7,9 +7,12 @@ import ast
 import base64
 import csv
 import datetime
+import functools
+import gc
 import glob
 import gzip
 import html
+import io
 import json
 import os
 import re
@@ -18,6 +21,7 @@ import subprocess
 import sys
 import threading
 import types
+import urllib.request
 import zipfile
 from pathlib import Path
 
@@ -25,6 +29,52 @@ import pytest
 
 
 NOTEBOOK = Path(__file__).parents[1] / "examples" / "pdb2reaction_colab.ipynb"
+
+# Offline stand-ins for the pinned Mol* CDN files; the JavaScript is long enough
+# that viewer documents still take the gzip-packed iframe path like the real bundle.
+_MOLSTAR_STAND_IN = {
+    "molstar.js": b"/* Mol* stand-in */\n" + b"window.molstar = window.molstar || {};\n" * 28_000,
+    "molstar.css": b".msp-plugin { display: block; }\n" * 200,
+}
+_NETWORK_URLOPEN = urllib.request.urlopen
+
+
+def _offline_molstar_urlopen(request, *args, **kwargs):
+    url = getattr(request, "full_url", request)
+    name = str(url).rsplit("/", 1)[-1]
+    if "/molstar@" in str(url) and name in _MOLSTAR_STAND_IN:
+        return io.BytesIO(_MOLSTAR_STAND_IN[name])
+    return _NETWORK_URLOPEN(request, *args, **kwargs)
+
+
+@functools.lru_cache(maxsize=None)
+def _cell_code(index: int):
+    """Compile one notebook cell once; each test still executes it afresh."""
+    return compile(_notebook()["cells"][index]["source"], str(NOTEBOOK), "exec")
+
+
+@functools.lru_cache(maxsize=None)
+def _parsed(source: str) -> ast.Module:
+    """Parse notebook source once; callers only read the tree."""
+    return ast.parse(source)
+
+
+@pytest.fixture(autouse=True)
+def _close_test_widgets():
+    """ipywidgets keeps every open widget alive; release each test's widgets."""
+    yield
+    widgets = sys.modules.get("ipywidgets")
+    if widgets is not None:
+        widgets.Widget.close_all()
+
+
+@pytest.fixture(autouse=True, scope="module")
+def _batch_garbage_collection():
+    """Each app run leaves many cyclic widget objects; collect them in larger batches."""
+    thresholds = gc.get_threshold()
+    gc.set_threshold(10_000, 50, 50)
+    yield
+    gc.set_threshold(*thresholds)
 
 
 def test_freq_hint_matches_the_dump_owned_thermoanalysis_output() -> None:
@@ -52,6 +102,7 @@ def _execute_app(monkeypatch, tmp_path: Path, *, parent_header: dict | None = No
     monkeypatch.setattr(ipd, "clear_output", lambda *args, **kwargs: None)
     monkeypatch.setattr(ipd, "HTML", lambda value: value)
     monkeypatch.setattr(ipd, "Image", lambda *args, **kwargs: (args, kwargs))
+    monkeypatch.setattr(urllib.request, "urlopen", _offline_molstar_urlopen)
     monkeypatch.chdir(tmp_path)
     # The local-GPU runtime is built from a Colab-compatible image and therefore
     # ships google.colab even though native Colab kernel bridges are unavailable.
@@ -69,8 +120,7 @@ def _execute_app(monkeypatch, tmp_path: Path, *, parent_header: dict | None = No
     namespace = {"TOOL": "pdb2reaction", "BACKEND": "mace", "REPO_DIR": "unused"}
     if parent_header is not None:
         namespace["get_ipython"] = lambda: types.SimpleNamespace(parent_header=parent_header)
-    source = _notebook()["cells"][2]["source"]
-    exec(compile(source, str(NOTEBOOK), "exec"), namespace)
+    exec(_cell_code(2), namespace)
     return namespace, rendered
 
 
@@ -435,7 +485,7 @@ def test_every_distance_spinner_uses_point_two_step(
 ) -> None:
     source = _notebook()["cells"][2]["source"]
     explicit = []
-    for node in ast.walk(ast.parse(source)):
+    for node in ast.walk(_parsed(source)):
         if not (
             isinstance(node, ast.Call)
             and isinstance(node.func, ast.Attribute)
@@ -497,7 +547,7 @@ def _output_contract() -> dict:
         "_snapshot_files", "_snapshot_output_scope",
         "_output_scope_collision", "_structured_current_paths",
     }
-    tree = ast.parse(source)
+    tree = _parsed(source)
     module = ast.Module(
         body=[node for node in tree.body
               if isinstance(node, ast.FunctionDef) and node.name in wanted],
@@ -537,7 +587,7 @@ def _viewer_contract() -> dict:
         "_trajectory_frame_context",
         "_stationary",
     }
-    tree = ast.parse(source)
+    tree = _parsed(source)
     module = ast.Module(
         body=[node for node in tree.body
               if isinstance(node, ast.FunctionDef) and node.name in wanted],
@@ -4739,7 +4789,7 @@ def test_advanced_dropdowns_select_their_default_label() -> None:
     source = _notebook()["cells"][2]["source"]
     wanted = {"_cli_default_label", "_set_advanced_override", "_advanced_widget"}
     functions = [
-        node for node in ast.parse(source).body
+        node for node in _parsed(source).body
         if isinstance(node, ast.FunctionDef) and node.name in wanted
     ]
     import click
@@ -4781,7 +4831,7 @@ def test_advanced_numeric_controls_use_the_effective_cli_default() -> None:
         "_set_advanced_override", "_advanced_widget",
     }
     functions = [
-        node for node in ast.parse(source).body
+        node for node in _parsed(source).body
         if isinstance(node, ast.FunctionDef) and node.name in wanted
     ]
     import click
@@ -4841,7 +4891,7 @@ def test_the_gui_keeps_one_run_path() -> None:
 
 def test_colab_poll_repairs_a_finished_but_stale_frontend() -> None:
     source = _notebook()["cells"][2]["source"]
-    tree = ast.parse(source)
+    tree = _parsed(source)
     poll_node = next(
         node for node in ast.walk(tree)
         if isinstance(node, ast.FunctionDef) and node.name == "_colab_poll_run"
@@ -5086,7 +5136,7 @@ def test_cancelled_run_stays_on_the_active_tab_without_result_rendering(
 
 def test_cancel_keeps_polling_until_worker_publishes_terminal_state() -> None:
     source = _notebook()["cells"][2]["source"]
-    tree = ast.parse(source)
+    tree = _parsed(source)
     cancel_node = next(
         node for node in ast.walk(tree)
         if isinstance(node, ast.FunctionDef) and node.name == "_cancel_run"
@@ -6930,30 +6980,31 @@ def test_ts_result_reports_convergence_and_raw_spectrum_separately(monkeypatch, 
     app, _ = _execute_app(monkeypatch, tmp_path)
     result = tmp_path / "result.json"
     result.write_text(json.dumps({
-        "status": "converged", "optimization_status": "converged",
+        "execution_status": "completed", "scientific_status": "success", "optimization_status": "converged",
         "saddle_validation": "higher_order", "n_imaginary_modes": 1,
         "n_negative_modes": 2, "imaginary_frequencies_cm": [-100.0],
     }), encoding="utf-8")
     app["S"].update(_last_out_dir=str(tmp_path), _last_subcmd="tsopt",
                     _last_files=[str(result)], _last_manifest={})
     context = app["_result_context_html"](str(tmp_path))
-    assert "Converged" in context
+    assert "Completed" in context
     assert "numerical optimization: <b>converged</b>" in context
     assert "negative frequencies (raw): <b>2</b>" in context
     assert "frequency analysis: <b>higher_order</b>" in context
     assert "Failed" not in context and "Partial" not in context
     summary = app["_summary_html"](str(result))
     assert "negative frequencies (raw): <b>2</b>" in summary
-    result.write_text(json.dumps({"converged": None}), encoding="utf-8")
+    result.write_text(json.dumps({"execution_status": "completed", "scientific_status": "failed", "optimization_status": "unknown"}), encoding="utf-8")
     unknown = app["_result_context_html"](str(tmp_path))
-    assert "Unknown" in unknown and "Not converged" not in unknown
+    assert "numerical optimization: <b>unknown</b>" in unknown
+    assert "Failed" in unknown and "Not converged" not in unknown
 
 
 def test_irc_trajectory_displays_stop_diagnostics_without_a_success_verdict(monkeypatch, tmp_path: Path) -> None:
     app, _ = _execute_app(monkeypatch, tmp_path)
     trajectory = tmp_path / "finished_irc_trj.xyz"
     trajectory.write_text("1\n0\nH 0 0 0\n", encoding="utf-8")
-    payload = {"status": "completed", "forward_requested": True, "backward_requested": True,
+    payload = {"execution_status": "completed", "scientific_status": "success", "forward_requested": True, "backward_requested": True,
                "n_frames_forward": 8, "n_frames_backward": 17, "n_frames_total": 26,
                "forward_integration_converged": True, "backward_integration_converged": False,
                "backward_integration_stop_reason": "predictor budget exhausted"}

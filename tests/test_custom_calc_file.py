@@ -308,7 +308,7 @@ def test_opt_json_uses_yaml_resolved_custom_provenance(tmp_path: Path) -> None:
         catch_exceptions=False,
     )
 
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == 1, result.output
     payload = json.loads((out_dir / "result.json").read_text(encoding="utf-8"))
     assert payload["backend"] == payload["mlip_backend"] == "custom"
     assert payload["model"] == payload["mlip_model"] == "toy.py:get_calculator"

@@ -56,7 +56,7 @@ result_all/
 
 ### 出力の検証
 
-1. `summary.json` — 利用可否は `scientific_status` と `scientific_status_reasons` で判定します。path mode の `segments[].barrier_kcal` は生の MEP 電子障壁であり、要求した後処理の結果は `rate_limiting_step` と `post_segments` を確認します。`status` は互換性のために残されています
+1. `summary.json` — 利用可否は `scientific_status` と `scientific_status_reasons` で判定します。path mode の `segments[].barrier_kcal` は生の MEP 電子障壁であり、要求した後処理の結果は `rate_limiting_step` と `post_segments` を確認します。
 2. `_work/path_opt/hei_seg_01.pdb` — 最高エネルギー像を確認。`--tsopt` 時は正規 `segments/seg_01/*.pdb` の R/TS/P も確認
 3. `energy_diagram_*.png` — 明確な障壁があるエネルギープロファイル
 

@@ -40,7 +40,7 @@ pdb2reaction scan -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <n
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
-> **Note:** Add `--print-parsed` when you want to verify parsed stage targets from `--scan-lists/-s`.
+> **Note:** Use `--dry-run` to validate the input and scan spec without calculating.
 
 ## Workflow
 
@@ -105,7 +105,6 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
 | `-s, --scan-lists TEXT` | Scan targets: a YAML/JSON spec file path (recommended) or inline Python literal with `(i,j,targetÅ)` distance targets, or distance `(i,j,low,high)`, angle `(i,j,k,low,high)`, and dihedral `(i,j,k,l,low,high)` ranges for bidirectional scans. Supply multiple literals after a single flag. `i`/`j` can be integer indices, three-field selectors, or positional `CHAIN:RESNAME:RESSEQ[ICODE]:ATOM`. | Required |
 | `--one-based/--zero-based` | Interpret atom indices as 1- or 0-based. These are mutually exclusive toggle aliases for the same flag (`--one-based` sets it to `True`, `--zero-based` sets it to `False`). | `True` |
-| `--print-parsed/--no-print-parsed` | Print parsed stage tuples after `--scan-lists/-s` resolution. | `False` |
 | `--max-step-size FLOAT` | Maximum change in any scanned bond per step (Å). Controls the number of integration steps. | `0.20` |
 | `--max-angle-step-size FLOAT` | Maximum angle change per step (degrees). | `5.0` |
 | `--max-dihedral-step-size FLOAT` | Maximum dihedral change per step (degrees). | `10.0` |

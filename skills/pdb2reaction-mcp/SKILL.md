@@ -69,12 +69,14 @@ See [`examples/mcp_client_config.json`](../../examples/mcp_client_config.json) f
 
 ## `SubcmdResult` return schema
 
-Every tool returns the same structured dict so the calling agent can dispatch on `status` without parsing stderr:
+Every tool returns the same structured dict so the calling agent can read `execution_status` and `scientific_status` without parsing stderr:
 
 ```python
 {
-    "schema_version": "1.1",         # pin to MCP_SUBCMD_RESULT_SCHEMA_VERSION
-    "status": "ok" | "failed" | "summary_missing" | "summary_parse_error" | "summary_run_mismatch",
+    "schema_version": "2.0",         # pin to MCP_SUBCMD_RESULT_SCHEMA_VERSION
+    "execution_status": "completed" | "failed",
+    "scientific_status": "success" | "partial" | "failed",
+    "summary_status": "ok" | "not_required" | "summary_missing" | "summary_parse_error" | "summary_run_mismatch",
     "exit_code": int,                # subprocess exit code
     "out_dir": str | None,           # working directory the CLI wrote to (None for the I/O helpers)
     "summary": dict,                 # parsed summary.json; {} for the I/O helpers
@@ -91,7 +93,7 @@ a different invocation; clients must not treat that stale summary as the
 current result. `run_id` identifies the invocation used for this ownership
 check.
 
-`summary` and `out_dir` carry data for the 12 tools that run their subcommand against an output directory (the stage runners, the scans, `optimize_path`, `search_paths`, `run_full_pipeline`, `run_single_point_dft`). The 6 structure / I/O helper tools (`extract_active_site`, `add_element_info`, `fix_altloc`, `plot_trajectory`, `plot_energy_diagram`, `detect_bond_changes`) run with `out_dir=None` and write no summary.json: they always return `summary={}` and `out_dir=None`, with `status` taken straight from the exit code (`ok` / `failed`). Read their result from `stdout_tail`, and their failure reason from `stderr_tail` / `exit_code`.
+`summary` and `out_dir` carry data for the 12 tools that run their subcommand against an output directory (the stage runners, the scans, `optimize_path`, `search_paths`, `run_full_pipeline`, `run_single_point_dft`). The 6 structure / I/O helper tools (`extract_active_site`, `add_element_info`, `fix_altloc`, `plot_trajectory`, `plot_energy_diagram`, `detect_bond_changes`) run with `out_dir=None` and write no summary.json: they always return `summary={}` and `out_dir=None`, with the execution/scientific status derived from the exit code. Read their result from `stdout_tail`, and their failure reason from `stderr_tail` / `exit_code`.
 
 For those 12 summary-writing tools, a failed subcommand additionally surfaces a structured exception envelope inside `summary`:
 
@@ -144,7 +146,7 @@ refinement can split a poor path into extra segments and increase cost.
 
 - The MCP server inherits the calling environment's PATH, conda env, and CUDA setup. Long-running tools (opt / tsopt / irc) launch the `pdb2reaction` CLI in a subprocess — set `timeout_seconds` on each call to bound runaway computations.
 - The 12 stage / scan / pipeline tools take an `out_dir` kwarg and write their output (including `summary.json`) there; left unset, it defaults to a unique `tempfile.mkdtemp("p2r_mcp_<subcmd>_…")` so concurrent agent calls don't collide.
-- The 6 structure / I-O helpers (`extract_active_site`, `add_element_info`, `fix_altloc`, `plot_trajectory`, `plot_energy_diagram`, `detect_bond_changes`) take no `out_dir`: each writes to the path given by its required `output_pdb` / `output_png` argument (`detect_bond_changes` writes no file). They return `status: "ok"` with `out_dir: null` and an empty `summary` — read their result from `stdout_tail` and the file they wrote.
+- The 6 structure / I-O helpers (`extract_active_site`, `add_element_info`, `fix_altloc`, `plot_trajectory`, `plot_energy_diagram`, `detect_bond_changes`) take no `out_dir`: each writes to the path given by its required `output_pdb` / `output_png` argument (`detect_bond_changes` writes no file). They return `execution_status: "completed"` and `scientific_status: "success"` with `out_dir: null` and an empty `summary` — read their result from `stdout_tail` and the file they wrote.
 - The server leaves `~/.bashrc` / login env untouched and installs no software.
   Normal named parameters write to `out_dir` or the explicit helper output
   path. `extra_args` is an expert escape hatch and can request additional CLI

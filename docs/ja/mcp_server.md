@@ -20,7 +20,9 @@ pip install "pdb2reaction[mcp]"
 18 個のツールがあり、それぞれが CLI サブコマンドに 1 対 1 で対応します。各ツールは次のフィールドを持つ構造化された dict を返します。
 
 - `schema_version`: エンベロープのバージョン。クライアントは各レスポンスの値を読み、対応するバージョンと照合してください。Python では `pdb2reaction.mcp._runner.MCP_SUBCMD_RESULT_SCHEMA_VERSION` も照合に利用できます。
-- `status`: `ok` | `failed` | `summary_missing` | `summary_parse_error` | `summary_run_mismatch`
+- `execution_status`: `completed` | `failed`
+- `scientific_status`: `success` | `partial` | `failed`
+- `summary_status`: `ok` | `not_required` | `summary_missing` | `summary_parse_error` | `summary_run_mismatch`
 - `exit_code`: サブプロセスの終了コード
 - `out_dir`: stage tool の管理ディレクトリ。成功した helper tool では null
 - `summary`: パース済みの `summary.json`。管理 summary を持たない成功 helper では空 object

@@ -9,6 +9,8 @@ For detailed documentation, see: docs/opt.md
 
 from __future__ import annotations
 
+from pdb2reaction.cli.completion import completion_guard, record_completion
+
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -774,7 +776,7 @@ def cli(
                     geom_cfg.get("tr_projection")
                 )
             except ValueError as exc:
-                raise click.ClickException(str(exc)) from exc
+                raise click.BadParameter(str(exc)) from exc
             effective_max_cycles = optional_positive_int(
                 opt_cfg.get("max_cycles"), "opt.max_cycles"
             )
@@ -847,6 +849,8 @@ def cli(
                 )
 
             coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
+            from pdb2reaction.core.utils import validate_geometry_config
+            validate_geometry_config(geom_cfg)
             coord_kwargs = dict(geom_cfg)
             coord_kwargs.pop("coord_type", None)
             geometry = geom_loader(
@@ -1111,56 +1115,57 @@ def cli(
                 final_xyz_path=final_xyz_path,
             )
 
+            from pdb2reaction.core.utils import write_result_json
+            final_energy_hartree = unbiased_energy_hartree(geometry, base_calc)
+            result_data = {
+                "status": optimizer_terminal_status(last_optimizer),
+                "energy_hartree": final_energy_hartree,
+                "n_opt_cycles": opt_cycles_spent,
+                "opt_mode": str(opt_mode_effective),
+                "charge": calc_cfg["charge"],
+                "spin": calc_cfg["spin"],
+                **_opt_result_provenance(calc_cfg),
+                "n_atoms": len(geometry.atoms),
+                "n_freeze_atoms": len(geom_cfg.get("freeze_atoms", [])),
+                "solvent": calc_cfg.get("solvent", "none"),
+                "thresh": opt_cfg.get("thresh", "gau"),
+                "max_cycles": opt_cfg.get("max_cycles"),
+                "input_file": str(prepared_input.display_path),
+                "files": {
+                    "final_geometry_xyz": str(final_xyz_path.name),
+                },
+            }
+            # Additive stop_reason, present only for a non-converged stop
+            # (stalled/stopped) so a genuinely converged run's JSON stays
+            # byte-compatible.
+            _opt_stop_reason = getattr(last_optimizer, "stop_reason", "") or ""
+            if _opt_stop_reason:
+                result_data["stop_reason"] = _opt_stop_reason
+            if rigid_projection_info:
+                result_data["rigid_projection"] = dict(rigid_projection_info)
+            if hasattr(last_optimizer, 'max_forces') and last_optimizer.max_forces:
+                result_data["final_max_force"] = float(last_optimizer.max_forces[-1])
+                result_data["final_rms_force"] = float(last_optimizer.rms_forces[-1])
+            # Convergence thresholds (numeric values for the named preset)
+            if hasattr(last_optimizer, 'convergence') and last_optimizer.convergence:
+                result_data["convergence_thresholds"] = {k: float(v) for k, v in last_optimizer.convergence.items()}
+            # Final step convergence values
+            if hasattr(last_optimizer, 'max_steps') and last_optimizer.max_steps:
+                result_data["final_max_step"] = float(last_optimizer.max_steps[-1])
+                result_data["final_rms_step"] = float(last_optimizer.rms_steps[-1])
+            # Add PDB/CIF/GJF companions if generated.
+            for ext in (".pdb", ".cif", ".gjf"):
+                f = out_dir_path / f"final_geometry{ext}"
+                if f.exists():
+                    result_data["files"][f"final_geometry_{ext[1:]}"] = f.name
+            # Add trajectory files if they exist
+            for name in ("optimization_trj.xyz", "optimization.pdb", "optimization.cif"):
+                _tf = out_dir_path / name
+                if _tf.exists():
+                    key = name.replace(".", "_").replace("-", "_")
+                    result_data["files"][key] = name
+            record_completion(result_data, command='opt')
             if out_json:
-                from pdb2reaction.core.utils import write_result_json
-                final_energy_hartree = unbiased_energy_hartree(geometry, base_calc)
-                result_data = {
-                    "status": optimizer_terminal_status(last_optimizer),
-                    "energy_hartree": final_energy_hartree,
-                    "n_opt_cycles": opt_cycles_spent,
-                    "opt_mode": str(opt_mode_effective),
-                    "charge": calc_cfg["charge"],
-                    "spin": calc_cfg["spin"],
-                    **_opt_result_provenance(calc_cfg),
-                    "n_atoms": len(geometry.atoms),
-                    "n_freeze_atoms": len(geom_cfg.get("freeze_atoms", [])),
-                    "solvent": calc_cfg.get("solvent", "none"),
-                    "thresh": opt_cfg.get("thresh", "gau"),
-                    "max_cycles": opt_cfg.get("max_cycles"),
-                    "input_file": str(prepared_input.display_path),
-                    "files": {
-                        "final_geometry_xyz": str(final_xyz_path.name),
-                    },
-                }
-                # Additive stop_reason, present only for a non-converged stop
-                # (stalled/stopped) so a genuinely converged run's JSON stays
-                # byte-compatible.
-                _opt_stop_reason = getattr(last_optimizer, "stop_reason", "") or ""
-                if _opt_stop_reason:
-                    result_data["stop_reason"] = _opt_stop_reason
-                if rigid_projection_info:
-                    result_data["rigid_projection"] = dict(rigid_projection_info)
-                if hasattr(last_optimizer, 'max_forces') and last_optimizer.max_forces:
-                    result_data["final_max_force"] = float(last_optimizer.max_forces[-1])
-                    result_data["final_rms_force"] = float(last_optimizer.rms_forces[-1])
-                # Convergence thresholds (numeric values for the named preset)
-                if hasattr(last_optimizer, 'convergence') and last_optimizer.convergence:
-                    result_data["convergence_thresholds"] = {k: float(v) for k, v in last_optimizer.convergence.items()}
-                # Final step convergence values
-                if hasattr(last_optimizer, 'max_steps') and last_optimizer.max_steps:
-                    result_data["final_max_step"] = float(last_optimizer.max_steps[-1])
-                    result_data["final_rms_step"] = float(last_optimizer.rms_steps[-1])
-                # Add PDB/CIF/GJF companions if generated.
-                for ext in (".pdb", ".cif", ".gjf"):
-                    f = out_dir_path / f"final_geometry{ext}"
-                    if f.exists():
-                        result_data["files"][f"final_geometry_{ext[1:]}"] = f.name
-                # Add trajectory files if they exist
-                for name in ("optimization_trj.xyz", "optimization.pdb", "optimization.cif"):
-                    _tf = out_dir_path / name
-                    if _tf.exists():
-                        key = name.replace(".", "_").replace("-", "_")
-                        result_data["files"][key] = name
                 write_result_json(
                     out_dir_path, result_data,
                     command="opt",
@@ -1183,3 +1188,5 @@ def cli(
         command="opt",
         time_start=time_start,
     )
+
+cli.callback = completion_guard(cli.callback)

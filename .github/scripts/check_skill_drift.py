@@ -7,10 +7,8 @@ Catches three classes of staleness:
 
 1. **Unknown CLI flags** — any ``--flag-name`` token that exists nowhere
    in the Click subcommand graph. Either a typo or a removed flag.
-2. **Unknown status literals** — result status is command-specific:
-   optimizers use ``converged`` / ``not_converged``; completed stage
-   runners use ``completed`` or ``ok``; aggregate workflows use
-   ``success`` / ``partial`` / ``failed``; failures use ``error``.
+2. **Unknown result literals** — execution and scientific outcomes have
+   separate enums; optimizer and summary-reading diagnostics remain separate.
 3. **Renamed strings** — file names and JSON keys that were renamed in
    the source (``opt_trj.xyz`` → ``optimization_trj.xyz``,
    ``"n_cycles"`` → ``"n_opt_cycles"``, etc.). Maintained as a small
@@ -32,7 +30,7 @@ SKILLS_DIR = REPO_ROOT / "skills"
 
 sys.path.insert(0, str(REPO_ROOT))
 from pdb2reaction.cli import cli as root_cli  # noqa: E402
-from pdb2reaction.core.utils import RESULT_JSON_STATUS_VALUES  # noqa: E402
+from pdb2reaction.core.utils import RESULT_JSON_EXECUTION_STATUS_VALUES, RESULT_JSON_SCIENTIFIC_STATUS_VALUES  # noqa: E402
 
 
 # Renamed file/key/string literals — (old, new, note).
@@ -61,15 +59,16 @@ RENAMED_STRINGS: list[tuple[str, str, str]] = [
      "skill referenced a log file that is not produced"),
 ]
 
-# Status is command-specific; this is the union of public values documented in
-# docs/json-output.md and emitted by the workflows.
-CANONICAL_STATUS: set[str] = set(RESULT_JSON_STATUS_VALUES)
+from pdb2reaction.mcp._runner import MCP_SUMMARY_STATUS_VALUES
 
-# MCP runner-level status vocabulary (pdb2reaction/mcp/_runner.py): a
-# distinct enum from the CLI summary.json status above, valid only inside
-# the pdb2reaction-mcp skill.
-MCP_STATUS: set[str] = {"ok", "summary_missing", "summary_parse_error"}
-MCP_SKILL_DIRS: set[str] = {"pdb2reaction-mcp"}
+STATUS_VALUES = {
+    "execution_status": set(RESULT_JSON_EXECUTION_STATUS_VALUES),
+    "scientific_status": set(RESULT_JSON_SCIENTIFIC_STATUS_VALUES),
+    "optimization_status": {"converged", "not_converged", "stalled", "unknown", "completed", "error"},
+    "summary_status": set(MCP_SUMMARY_STATUS_VALUES),
+    "status": set(),
+}
+MCP_SKILL_DIRS = {"pdb2reaction-mcp"}
 
 # Match a backtick-quoted flag in prose (`--foo`) — the typical
 # "documented CLI option" callout in skill markdown tables. Bash
@@ -77,7 +76,7 @@ MCP_SKILL_DIRS: set[str] = {"pdb2reaction-mcp"}
 # .github/scripts/check_skill_commands.py; this script targets prose where
 # bare ``--xxx`` could be a non-pdb2reaction system tool.
 FLAG_TOKEN_RE = re.compile(r"`(--[a-z][a-z0-9-]*)`")
-STATUS_RE = re.compile(r'"status"\s*:\s*"([a-zA-Z_]+)"')
+STATUS_RE = re.compile(r'"(status|execution_status|scientific_status|optimization_status|summary_status)"\s*:\s*"([a-zA-Z_]+)"')
 
 # Skill subdirs that document the pdb2reaction CLI (not external tools
 # like pip / conda / nvidia-smi / sbatch). Unknown-flag check is
@@ -142,15 +141,12 @@ def _scan_file(path: Path, flag_union: set[str]) -> list[str]:
                     f"(not registered on any subcommand)"
                 )
 
-        # 2. Status enum literals
-        allowed_status = CANONICAL_STATUS | (MCP_STATUS if in_mcp_dir else set())
+        # Result fields have independent value sets.
         for m in STATUS_RE.finditer(line):
-            v = m.group(1)
-            if v not in allowed_status:
-                warnings.append(
-                    f"{rel}:{lineno}: status {v!r} not in canonical "
-                    f"{{{', '.join(sorted(allowed_status))}}}"
-                )
+            name, value = m.groups()
+            allowed = STATUS_VALUES[name] if name != "summary_status" or in_mcp_dir else set()
+            if value not in allowed:
+                warnings.append(f"{rel}:{lineno}: {name} {value!r} is not a public result value")
 
         # 3. Renamed strings
         for old, new, note in RENAMED_STRINGS:

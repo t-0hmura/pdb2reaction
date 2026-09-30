@@ -886,6 +886,7 @@ def register_all(mcp) -> None:
         output_pdb: str,
         *,
         overwrite: bool = False,
+        overwrite_elem: bool = False,
         extra_args: Optional[list[str]] = None,
         timeout_seconds: Optional[float] = None,
     ) -> dict[str, Any]:
@@ -893,6 +894,8 @@ def register_all(mcp) -> None:
         argv: list[str] = ["pdb2reaction", "add-elem-info", "-i", input_pdb, "-o", output_pdb]
         if overwrite:
             argv.append("--overwrite")
+        if overwrite_elem:
+            argv.append("--overwrite-elem")
         _append_extra_args(argv, extra_args, reserved=_UTILITY_OUTPUT_RESERVED)
         return run_subcmd(argv, out_dir=None, timeout=timeout_seconds).to_dict()
 

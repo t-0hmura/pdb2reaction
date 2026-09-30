@@ -24,7 +24,9 @@ def test_subcmd_result_to_dict_carries_schema_version() -> None:
     r = SubcmdResult(status="ok", exit_code=0, argv=["pdb2reaction", "opt"])
     d = r.to_dict()
     assert d["schema_version"] == MCP_SUBCMD_RESULT_SCHEMA_VERSION
-    assert d["status"] == "ok"
+    assert d["execution_status"] == "completed"
+    assert d["scientific_status"] == "success"
+    assert "status" not in d
     assert d["exit_code"] == 0
     assert d["argv"] == ["pdb2reaction", "opt"]
     assert "run_id" in d

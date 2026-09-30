@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pdb2reaction.cli.completion import completion_guard, record_completion
+
 from copy import deepcopy
 from pathlib import Path
 from collections import defaultdict
@@ -547,12 +549,18 @@ def _run_cli_main(
         code = getattr(e, "code", 1)
         if code not in (None, 0):
             exit_code = code if isinstance(code, int) else 1
-            if exit_code == 130:
+            if exit_code in {2, 130}:
                 raise
+            from pdb2reaction.cli.completion import record_child_failure
+            record_child_failure(getattr(e, "completion_result", None))
             if on_nonzero == "raise":
                 raise click.ClickException(f"[{label}] {cmd_name} exit code {code}.")
             _echo(f"[{label}] WARNING: {cmd_name} exited with code {code}", err=True)
     except Exception as e:
+        if isinstance(e, click.ClickException) and e.exit_code == 2:
+            raise SystemExit(2) from e
+        from pdb2reaction.cli.completion import record_child_failure
+        record_child_failure()
         exit_code = 1
         if on_exception == "raise":
             raise click.ClickException(f"[{label}] {cmd_name} failed: {e}")
@@ -1064,15 +1072,14 @@ def _write_args_yaml_with_freeze_atoms(
     coord_type: Optional[str] = None,
     precision: Optional[str] = None,
     backend_model: Optional[str] = None,
-    print_every: Optional[int] = None,
     dft_settings: Optional[Mapping[str, Any]] = None,
     solvent_xtb_cmd: Optional[str] = None,
     session: Optional[RunSession] = None,
 ) -> Optional[Path]:
     """
     Write ``freeze_atoms`` and (optionally) ``coord_type`` /
-    ``precision`` / ``print_every`` into a YAML config under ``geom`` /
-    ``calc`` / ``opt`` and produce a temporary YAML file.
+    ``precision`` into a YAML config under ``geom`` / ``calc`` and produce a
+    temporary YAML file.
     Returns the new YAML path, or the original ``args_yaml`` when nothing was
     provided.
 
@@ -1085,15 +1092,12 @@ def _write_args_yaml_with_freeze_atoms(
     propagated uniformly to opt / tsopt / scan / path-opt / path-search
     without per-call argv plumbing. ``precision`` is propagated the same way
     via ``calc.precision`` so ``all --precision fp64`` reaches every child.
-    ``print_every`` is written to ``opt.print_every`` so every optimizing child
-    stage uses the same explicit progress cadence.
     """
     if (
         not freeze_atoms
         and coord_type is None
         and precision is None
         and backend_model is None
-        and print_every is None
         and dft_settings is None
         and solvent_xtb_cmd is None
     ):
@@ -1138,14 +1142,6 @@ def _write_args_yaml_with_freeze_atoms(
         if solvent_xtb_cmd is not None:
             calc_cfg["xtb_cmd"] = solvent_xtb_cmd
         cfg["calc"] = calc_cfg
-
-    if print_every is not None:
-        opt_cfg = cfg.get("opt")
-        if not isinstance(opt_cfg, dict):
-            opt_cfg = {}
-        opt_cfg = dict(opt_cfg)
-        opt_cfg["print_every"] = int(print_every)
-        cfg["opt"] = opt_cfg
 
     tmp_dir = Path(tempfile.mkdtemp(prefix="tmp_path_search_"))
     session.resources.own_path(tmp_dir)
@@ -1553,7 +1549,7 @@ def _derive_pipeline_status(
                 dft = item.get("dft")
                 if not isinstance(dft, dict):
                     reasons.append(f"{prefix}: DFT result is missing")
-                elif dft.get("status") == "failed":
+                elif dft.get("scientific_status") == "failed":
                     failed_states = dft.get("failed_states") or []
                     detail = f" ({', '.join(map(str, failed_states))})" if failed_states else ""
                     reasons.append(f"{prefix}: DFT failed{detail}")
@@ -1847,7 +1843,7 @@ def _pipeline_aggregate_truth(
         # summary): mirror the legacy completeness axis rather than manufacture a
         # spurious failure.
         agg_sci = legacy_status
-        agg_exec = "failed" if legacy_status == "failed" else "completed"
+        agg_exec = "completed"
         agg_reasons = []
         observed = list(expected)
         preopt_leaf = next(
@@ -1874,7 +1870,7 @@ def _pipeline_aggregate_truth(
         scientific = "partial"
     execution = (
         "failed"
-        if legacy_status == "failed" or agg_exec == "failed" or endpoint_execution_failed
+        if agg_exec == "failed" or endpoint_execution_failed
         else "completed"
     )
     reasons = legacy_reasons + [r for r in agg_reasons if r not in legacy_reasons]
@@ -1901,9 +1897,7 @@ def _apply_pipeline_truth(
 ) -> None:
     """Write the outcome axes onto ``summary`` in place.
 
-    Never touches the legacy overloaded ``status`` field; only adds
-    ``execution_status`` / ``scientific_status`` / expected+observed IDs and the
-    distinct ``scientific_status_reasons`` key.
+    Publish execution/scientific outcomes and retain stage diagnostics.
     """
 
     truth = _pipeline_aggregate_truth(
@@ -1921,6 +1915,11 @@ def _apply_pipeline_truth(
         summary["scientific_status_reasons"] = list(truth.status_reasons)
     else:
         summary.pop("scientific_status_reasons", None)
+
+    from pdb2reaction.cli.completion import record_completion
+    summary.pop("status", None)
+    summary.pop("status_reasons", None)
+    summary.update(record_completion(summary, command="all"))
 
 
 def _enrich_summary(
@@ -2702,7 +2701,7 @@ def _optimize_endpoint_geom(
         if outcome is not None:
             outcome.update(
                 {
-                    "status": optimizer_terminal_status(opt),
+                    "optimization_status": optimizer_terminal_status(opt),
                     "converged": _endpoint_conv,
                     "n_opt_cycles": optimizer_cycle_count(opt),
                     "max_cycles": cfg.get("max_cycles"),
@@ -3199,7 +3198,7 @@ def _tsopt_continuation_decision(
     """
 
     optimization_status = str(
-        payload.get("optimization_status") or payload.get("status") or "unknown"
+        payload.get("optimization_status") or "unknown"
     )
     hessian_status = str(payload.get("hessian_status") or "unknown")
     saddle_validation = str(payload.get("saddle_validation") or "unavailable")
@@ -3393,6 +3392,7 @@ def _run_tsopt_on_hei(
             )
 
         _append_cli_arg(ts_args, "--max-cycles", overrides.get("max_cycles"))
+        _append_cli_arg(ts_args, "--print-every", overrides.get("print_every"))
         _append_toggle_arg(ts_args, "--dump", overrides.get("dump"))
         _append_cli_arg(ts_args, "--thresh", overrides.get("thresh"))
         _append_toggle_arg(ts_args, "--flatten", overrides.get("flatten"))
@@ -3806,6 +3806,7 @@ def _irc_and_match(
     artifact_prefix: str = "irc",
     public_root: Optional[Path] = None,
     runtime_overrides: Optional[Dict[str, Any]] = None,
+    hessian_calc_mode: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Run IRC via the irc CLI (EulerPC), then map the IRC endpoints to (left, right).
@@ -3921,6 +3922,8 @@ def _irc_and_match(
         _append_toggle_arg(irc_args, "--never-stop", bool(irc_never_stop))
     if irc_root is not None:
         irc_args.extend(["--root", str(int(irc_root))])
+    if hessian_calc_mode:
+        irc_args.extend(["--hessian-calc-mode", str(hessian_calc_mode)])
     # Request the child's convergence result instead of inferring it from files.
     _append_toggle_arg(irc_args, "--out-json", True)
     _echo()
@@ -4539,7 +4542,7 @@ _ALL_PRIMARY_HELP_OPTIONS = frozenset(
     "--hessian-calc-mode",
     type=click.Choice(["FiniteDifference", "Analytical"], case_sensitive=False),
     default=None, show_default="FiniteDifference",
-    help="Common MLIP Hessian calculation mode forwarded to tsopt and freq.",
+    help="Common MLIP Hessian calculation mode forwarded to tsopt, irc and freq.",
 )
 # ===== Post-processing toggles =====
 @click.option(
@@ -5386,6 +5389,8 @@ def cli(
     tsopt_overrides: Dict[str, Any] = {}
     if tsopt_max_cycles is not None:
         tsopt_overrides["max_cycles"] = int(tsopt_max_cycles)
+    if print_every_override is not None:
+        tsopt_overrides["print_every"] = print_every_override
     if dump_override_requested:
         tsopt_overrides["dump"] = bool(dump)
     if tsopt_out_dir is not None:
@@ -6225,7 +6230,6 @@ def cli(
         ),
         precision=precision,
         backend_model=backend_model,
-        print_every=print_every_override,
         solvent_xtb_cmd=solvent_xtb_cmd_override(ctx),
         session=session,
     )
@@ -6596,8 +6600,6 @@ def cli(
                 "mlip_model_label": _mlip_model_label_shared,
                 "mlip_task": _mlip_task_shared,
                 "mlip_precision": _mlip_precision_shared,
-                "status": summary.get("status"),
-                "status_reasons": summary.get("status_reasons", []),
                 "execution_status": summary.get("execution_status"),
                 "scientific_status": summary.get("scientific_status"),
                 "scientific_status_reasons": summary.get(
@@ -6700,6 +6702,7 @@ def cli(
             artifact_prefix="post.01.irc",
             public_root=out_dir,
             runtime_overrides=child_runtime_overrides,
+            hessian_calc_mode=hessian_calc_mode,
         )
         _persist_run_manifest(manifest, out_dir)
         gL = irc_res["left_min_geom"]
@@ -6790,7 +6793,7 @@ def cli(
             _react_opt_conv = None
             _react_opt_outcome.update(
                 {
-                    "status": "error",
+                    "optimization_status": "error",
                     "converged": None,
                     "error_type": type(e).__name__,
                     "error": str(e),
@@ -6831,7 +6834,7 @@ def cli(
             _prod_opt_conv = None
             _prod_opt_outcome.update(
                 {
-                    "status": "error",
+                    "optimization_status": "error",
                     "converged": None,
                     "error_type": type(e).__name__,
                     "error": str(e),
@@ -7175,7 +7178,6 @@ def cli(
 
         n_images: Optional[int] = None
         try:
-            irc_trj_path = irc_res.get("irc_trj_path")
             if isinstance(irc_trj_path, Path) and irc_trj_path.exists():
                 n_images = len(read_xyz_as_blocks(irc_trj_path, strict=True))
         except Exception as exc:
@@ -7327,7 +7329,7 @@ def cli(
                         )
                     else:
                         segment_log["dft"] = {
-                            "status": "failed",
+                            "scientific_status": "failed",
                             "failed_states": [s for s, e in zip(["R", "TS", "P"], [eR_dft, eT_dft, eP_dft]) if e is None],
                         }
                     if (
@@ -7674,6 +7676,7 @@ def cli(
         # `--thresh` is None unless the user passed it, so the default scan
         # relaxation preset and the `--config` YAML tier stay effective.
         _append_cli_arg(scan_args, "--thresh", thresh)
+        _append_cli_arg(scan_args, "--print-every", print_every_override)
         if args_yaml is not None:
             scan_args.extend(["--config", str(args_yaml)])
         if not _forward_calc_file_argv(scan_args, calc_cfg_shared) and cli_param_overridden(ctx, "backend"):
@@ -7929,6 +7932,7 @@ def cli(
                 po_args.extend(["--thresh", str(thresh)])
             _append_cli_arg(po_args, "--thresh-gsm", thresh_gsm)
             _append_cli_arg(po_args, "--thresh-dmf", thresh_dmf)
+            _append_cli_arg(po_args, "--print-every", print_every_override)
             if args_yaml is not None:
                 po_args.extend(["--config", str(args_yaml)])
             if not _forward_calc_file_argv(po_args, calc_cfg_shared) and cli_param_overridden(ctx, "backend"):
@@ -8411,6 +8415,7 @@ def cli(
             ps_args.extend(["--thresh", str(thresh)])
         _append_cli_arg(ps_args, "--thresh-gsm", thresh_gsm)
         _append_cli_arg(ps_args, "--thresh-dmf", thresh_dmf)
+        _append_cli_arg(ps_args, "--print-every", print_every_override)
         ps_args.extend(["--out-dir", str(path_dir)])
         _append_toggle_arg(ps_args, "--convert-files", bool(convert_files))
         if not tsopt_reference_mode_enabled:
@@ -9131,6 +9136,7 @@ def cli(
                 artifact_prefix=f"post.{seg_idx:02d}.irc",
                 public_root=out_dir,
                 runtime_overrides=child_runtime_overrides,
+                hessian_calc_mode=hessian_calc_mode,
             )
             _persist_run_manifest(manifest, out_dir)
 
@@ -9211,7 +9217,7 @@ def cli(
                 _react_opt_conv = None
                 _react_opt_outcome.update(
                     {
-                        "status": "error",
+                        "optimization_status": "error",
                         "converged": None,
                         "error_type": type(e).__name__,
                         "error": str(e),
@@ -9252,7 +9258,7 @@ def cli(
                 _prod_opt_conv = None
                 _prod_opt_outcome.update(
                     {
-                        "status": "error",
+                        "optimization_status": "error",
                         "converged": None,
                         "error_type": type(e).__name__,
                         "error": str(e),
@@ -9689,7 +9695,7 @@ def cli(
                     _failed_states = [s for s, e in zip(["R", "TS", "P"], [eR_dft, eT_dft, eP_dft]) if e is None]
                     _echo(f"[dft] WARNING: DFT failed for state(s): {', '.join(_failed_states)}. Skipping DFT diagrams.", err=True)
                     segment_log["dft"] = {
-                        "status": "failed",
+                        "scientific_status": "failed",
                         "failed_states": _failed_states,
                     }
                 if _dft_all_ok:
@@ -9912,3 +9918,5 @@ def cli(
 
 
 _hide_advanced_options(cli, _ALL_PRIMARY_HELP_OPTIONS)
+
+cli.callback = completion_guard(cli.callback)

@@ -139,7 +139,6 @@ The tables below cover the options that need explanation; the full flag list is 
 | `-m, --multiplicity INT` | Spin multiplicity 2S+1. Inherits the `.gjf` template value when available; defaults to `1` when omitted. | `.gjf` template value or `1` |
 | `-s, --scan-lists TEXT` | Two distance, angle, or dihedral ranges in YAML/JSON or one inline Python literal. Atom entries can be integer indices or PDB selectors. | Required |
 | `--one-based/--zero-based` | Interpret `(i, j)` indices as 1- or 0-based. | `True` |
-| `--print-parsed/--no-print-parsed` | Print parsed pair tuples after `--scan-lists/-s` resolution. | `False` |
 | `--max-step-size FLOAT` | Maximum change allowed for either distance per increment (Å). Determines the grid density. | `0.20` |
 | `--max-angle-step-size FLOAT` | Maximum angle change per step (degrees). | `5.0` |
 | `--max-dihedral-step-size FLOAT` | Maximum dihedral change per step (degrees). | `10.0` |

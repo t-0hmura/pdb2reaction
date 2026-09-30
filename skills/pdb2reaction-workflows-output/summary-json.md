@@ -17,7 +17,6 @@ corresponding command page and in [`pdb2reaction-cli`](../pdb2reaction-cli/SKILL
 | `run_id` | Current-invocation UUID used to prove that the summary belongs to the run that published it |
 | `command` | Full recorded invocation string for this `all` run (for example, `pdb2reaction all -i R.pdb -i P.pdb ...`) |
 | `pdb2reaction_version` | Toolkit version that produced this output |
-| `status` | `"success"`, `"partial"`, or `"failed"` |
 | `execution_status` | Whether required leaves executed (`completed` or `failed`) |
 | `scientific_status` | Completion of requested numerical/calculation stages (`success`, `partial`, or `failed`); inspect per-stage reasons |
 | `scientific_status_reasons` | Reasons for missing or unusable leaves; omitted on clean success |
@@ -71,13 +70,13 @@ Present when `--tsopt`, `--thermo`, or `--dft` was passed:
 | `irc` | Diagnostic propagation record: `traj`, `n_frames_forward`, `n_frames_backward`, `forward_requested`, `backward_requested`, and each direction's `*_integration_converged`, `*_integration_stop_reason`, `*_downhill_departure_valid`, `*_energy_increased`, `*_short_branch`. No independent IRC scientific verdict or direction-status keys. Finite retained endpoints are passed to endpoint optimization. |
 | `endpoint_assignment` | Pre-optimization IRC-to-MEP orientation provenance; diagnostic, not the final connectivity verdict. |
 | `tsopt` | TS terminal record. `n_opt_cycles` is the executed optimization-cycle count and `max_cycles` is the configured limit, including normally non-converged runs. |
-| `endpoint_opt` | Actual numerical convergence of both optimized endpoints. `reactant` / `product` include `status`, `n_opt_cycles`, `max_cycles`, and any `stop_reason`; connectivity remains a separate diagnostic and does not add a numerical-completion gate. |
+| `endpoint_opt` | Actual numerical convergence of both optimized endpoints. `reactant` / `product` include `optimization_status`, `n_opt_cycles`, `max_cycles`, and any `stop_reason`; connectivity remains a separate diagnostic and does not add a numerical-completion gate. |
 | `mlip` | Selected MLIP backend's electronic-energy block. Read top-level `mlip_backend` / `mlip_model` / `mlip_precision` for exact provenance. |
 | `ts_imag` | Dict `{n_imag, nu_imag_max_cm, min_abs_imag_cm, min_freq_cm}` describing the TS spectrum |
 | `ts_imag_freq_cm` | Peak imaginary frequency (cm⁻¹); same as `ts_imag.nu_imag_max_cm` |
 | `gibbs_mlip` | MLIP electronic energy + QRRHO thermal correction (when `--thermo`) |
 | `thermo_symmetry` | Per-state `R` / `TS` / `P` map of detected point-group and rotational-symmetry provenance copied from successful frequency children. Missing states are omitted. |
-| `dft` | DFT//MLIP single-point energies (when `--dft`). Same shape as `mlip`: `{labels, energies_au, energies_kcal, barrier_kcal, delta_kcal, diagram, structures}`. If DFT failed for any of R/TS/P, the block is `{"status": "failed", "failed_states": [...]}` instead, and no DFT diagram is written. |
+| `dft` | DFT//MLIP single-point energies (when `--dft`). Same shape as `mlip`: `{labels, energies_au, energies_kcal, barrier_kcal, delta_kcal, diagram, structures}`. If DFT failed for any of R/TS/P, the block is `{"scientific_status": "failed", "failed_states": [...]}` instead, and no DFT diagram is written. |
 | `gibbs_dft_mlip` | DFT electronic energy + MLIP QRRHO thermal correction (when `--dft` **and** `--thermo`, and all three DFT single-points succeeded). Same shape as `mlip`; read `barrier_kcal` here for the DFT//MLIP ΔG‡. |
 
 `mlip`, `gibbs_mlip`, and `gibbs_dft_mlip` are the only emitted identifiers;

@@ -56,7 +56,7 @@ The minimal command stops after the MEP stage and therefore does **not** create
 
 ### Output validation
 
-1. `summary.json` — use `scientific_status` and `scientific_status_reasons` for usability. In path mode, `segments[].barrier_kcal` is the raw MEP electronic barrier; requested post-processing results are reported under `rate_limiting_step` and `post_segments`. `status` is retained for compatibility.
+1. `summary.json` — use `scientific_status` and `scientific_status_reasons` for usability. In path mode, `segments[].barrier_kcal` is the raw MEP electronic barrier; requested post-processing results are reported under `rate_limiting_step` and `post_segments`.
 2. `_work/path_opt/hei_seg_01.pdb` — inspect the highest-energy image; with `--tsopt`, also inspect the canonical `segments/seg_01/*.pdb` R/TS/P structures
 3. `energy_diagram_*.png` — the energy profile should show a clear barrier
 

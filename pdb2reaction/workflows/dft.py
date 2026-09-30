@@ -10,6 +10,8 @@ For detailed documentation, see: docs/dft.md
 
 from __future__ import annotations
 
+from pdb2reaction.cli.completion import completion_guard
+
 import logging
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, Tuple, List, Union
@@ -495,7 +497,7 @@ def _finalize_dft_result(
             elapsed_seconds=elapsed_seconds,
         )
     if not bool(payload["converged"]):
-        raise SystemExit(3)
+        raise SystemExit(1)
 
 
 
@@ -873,6 +875,8 @@ def cli(
                 return
 
             coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
+            from pdb2reaction.core.utils import validate_geometry_config
+            validate_geometry_config(geom_cfg)
             coord_kwargs = dict(geom_cfg)
             coord_kwargs.pop("coord_type", None)
             geometry = geom_loader(geom_input_path, coord_type=coord_type, **coord_kwargs)
@@ -895,7 +899,7 @@ def cli(
                 from pyscf import gto, lib as _pyscf_lib
             except (ModuleNotFoundError, ImportError) as e:
                 click.echo(f"ERROR: PySCF import failed: {e}", err=True)
-                sys.exit(2)
+                sys.exit(1)
 
             from pdb2reaction.core.utils import is_verbose
             _pyscf_lib.num_threads(int(resolved_settings.nprocs))
@@ -1213,3 +1217,5 @@ def cli(
             tb = "".join(traceback.format_exception(type(e), e, e.__traceback__))
             click.echo("Unhandled error during DFT single-point:\n" + textwrap.indent(tb, "  "), err=True)
             sys.exit(1)
+
+cli.callback = completion_guard(cli.callback)

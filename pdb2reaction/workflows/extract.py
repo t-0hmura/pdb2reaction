@@ -9,6 +9,8 @@ For detailed documentation, see: docs/extract.md
 
 from __future__ import annotations
 
+from pdb2reaction.cli.completion import completion_guard
+
 import argparse
 import io as _io
 import os
@@ -1995,3 +1997,5 @@ def extract_api(complex_pdb: List[str],
         verbose=verbose,
     )
     return extract(ns, api=True)
+
+cli.callback = completion_guard(cli.callback)

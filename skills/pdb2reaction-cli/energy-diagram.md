@@ -48,7 +48,7 @@ pdb2reaction energy-diagram -i "[0.0, 21.5, -18.2]" \
 ```
 
 With `--out-json`, `result.json` is written in the image directory with
-`status`, `n_points`, and `files` (the resolved image path).
+`execution_status`, `scientific_status`, `n_points`, and `files` (the resolved image path).
 
 ## Caveats
 

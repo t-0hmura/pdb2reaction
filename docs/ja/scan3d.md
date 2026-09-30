@@ -106,7 +106,6 @@ out_dir/ (デフォルト:./result_scan3d/)
 | **スキャンターゲット** | | |
 | `-s, --scan-lists TEXT` | YAML/JSONまたは単一inline literalで3つの距離・角度・二面角rangeを指定 | `--csv` 未指定時に必須 |
 | `--one-based/--zero-based` | `(i, j)` のインデックスを 1 始まり/0 始まりとして解釈 | `True` |
-| `--print-parsed/--no-print-parsed` | `-s/--scan-lists` 解釈後のペア情報を表示 | `False` |
 | `--max-step-size FLOAT` | 各距離の 1 増分あたりの最大変化量（Å）。グリッド密度を決定 | `0.20` |
 | `--max-angle-step-size FLOAT` | 角度の1stepあたりの最大変化量（度） | `5.0` |
 | `--max-dihedral-step-size FLOAT` | 二面角の1stepあたりの最大変化量（度） | `10.0` |
@@ -168,7 +167,7 @@ bias:
 - `--baseline` はデフォルトでグローバル最小値を基準としてゼロにします。`--baseline first` は `(i,j,k)=(0,0,0)` が eligible ならその点を使い、対象外なら eligible minimum へ fallback します。`energy_hartree` がなく `energy_kcal` だけの plot-only CSV では、与えられた zero を保持します。
 - 3D 可視化は 50×50×50 グリッドでの RBF 補間と、半透明の段階的等値面を使用します（断面表示はありません）。
 - `--freeze-links` はユーザー指定の `freeze_atoms` にキャップ水素親原子をマージし、抽出された活性部位モデルの境界を固定します。
-- `-s/--scan-lists` の解釈結果を確認したい場合は `--print-parsed` を追加してください。
+- `--dry-run` で、計算せずに入力とスキャン仕様を検証できます。
 - 症状起点で切り分ける場合は [典型エラー別レシピ](recipes-common-errors.md) を先に参照し、詳細は [トラブルシューティング](troubleshooting.md) を確認してください。
 
 ## 関連項目

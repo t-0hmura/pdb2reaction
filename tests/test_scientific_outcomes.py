@@ -152,7 +152,7 @@ def test_optimizer_converged_bit_normalizes_numpy_boolean() -> None:
     assert combine_step_convergence([np.bool_(True), np.bool_(False)]) is False
 
 
-def test_serializer_roundtrip_and_additive_only(tmp_path: Path) -> None:
+def test_serializer_roundtrip_retains_diagnostics(tmp_path: Path) -> None:
     from pdb2reaction.core.utils import write_result_json, RESULT_JSON_SCHEMA_VERSION
 
     leaf = make_leaf("scan", "stage_1", executed=True, converged=True)
@@ -164,7 +164,7 @@ def test_serializer_roundtrip_and_additive_only(tmp_path: Path) -> None:
     r = json.loads((tmp_path / "result.json").read_text())
 
     # Legacy contract preserved.
-    assert r["status"] == "completed"
+    assert r["execution_status"] == "completed"
     assert r["schema_version"] == RESULT_JSON_SCHEMA_VERSION
     assert r["min_energy_hartree"] == -1.5
     # Additive outcome fields contain the observed values.
@@ -175,7 +175,7 @@ def test_serializer_roundtrip_and_additive_only(tmp_path: Path) -> None:
 
     # An old reader that only knows `status` obtains the same type/value and is
     # unaffected by the additive fields.
-    assert isinstance(r["status"], str) and r["status"] == "completed"
+    assert "status" not in r
 
 
 def test_all_mep_completion_banner_does_not_prejudge_status() -> None:
@@ -724,7 +724,7 @@ def test_all_freq_leaves_symmetry_detection_to_each_child(
 # ---------------------------------------------------------------------------
 
 
-def test_legacy_converged_output_is_byte_compatible(tmp_path: Path) -> None:
+def test_converged_output_retains_scientific_data(tmp_path: Path) -> None:
     from pdb2reaction.core.utils import write_result_json
 
     # A representative subset of the legacy scan2d result payload for a fully
@@ -755,6 +755,9 @@ def test_legacy_converged_output_is_byte_compatible(tmp_path: Path) -> None:
     r = json.loads((tmp_path / "result.json").read_text())
 
     for key, value in legacy.items():
+        if key == "status":
+            assert key not in r
+            continue
         assert r[key] == value, f"legacy key {key} changed"
     # Only additive keys are new; scientific_status reports success.
     assert r["scientific_status"] == "success"

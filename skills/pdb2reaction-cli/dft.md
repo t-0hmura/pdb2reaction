@@ -74,7 +74,7 @@ print(d["energy_hartree"])
 print(d["xc_functional"], d["basis_set"])  # e.g. "wb97m-v", "def2-tzvpd"
 print(d["engine"])           # "gpu4pyscf(rks_lowmem)", "gpu4pyscf", or "pyscf(cpu)"
 print(d["used_gpu"], d["used_lowmem"])  # bool, bool (lowmem False on open-shell / CPU / --no-dft-low-memory)
-print(d["converged"])        # True / False (exit code 3 if False)
+print(d["converged"])        # True / False (exit code 1 if False)
 ```
 
 `result.yaml` carries the run info: grid_level, Mulliken / Loewdin /

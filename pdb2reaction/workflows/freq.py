@@ -11,6 +11,8 @@ For detailed documentation, see: docs/freq.md
 
 from __future__ import annotations
 
+from pdb2reaction.cli.completion import completion_guard
+
 import gc
 import logging
 import sys
@@ -865,6 +867,8 @@ def cli(
     # freq builds a Cartesian Hessian, so it always loads Cartesian coordinates
     # (geom.coord_type from YAML, including the value written by `all`, is ignored).
     coord_type = "cart"
+    from pdb2reaction.core.utils import validate_geometry_config
+    validate_geometry_config(geom_cfg)
     coord_kwargs = dict(geom_cfg)
     coord_kwargs.pop("coord_type", None)
     geometry = geom_loader(geom_input_path, coord_type=coord_type, **coord_kwargs)
@@ -1304,3 +1308,5 @@ def cli(
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+
+cli.callback = completion_guard(cli.callback)

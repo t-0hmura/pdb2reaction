@@ -129,7 +129,6 @@ Grid-point geometries use `Å×100` tags, so `point_i130_j310_k200.xyz` correspo
 | **Scan targets** | | |
 | `-s, --scan-lists TEXT` | Three distance, angle, or dihedral ranges in YAML/JSON or one inline Python literal. Atom entries can be integer indices or PDB selectors. | Required unless `--csv` is provided |
 | `--one-based/--zero-based` | Interpret `(i, j)` indices as 1- or 0-based. | `True` |
-| `--print-parsed/--no-print-parsed` | Print parsed pair tuples after `--scan-lists/-s` resolution. | `False` |
 | `--max-step-size FLOAT` | Maximum change allowed per distance increment (Å). Controls grid density. | `0.20` |
 | `--max-angle-step-size FLOAT` | Maximum angle change per step (degrees). | `5.0` |
 | `--max-dihedral-step-size FLOAT` | Maximum dihedral change per step (degrees). | `10.0` |
@@ -198,7 +197,7 @@ bias:
   semi-transparent step-colored isosurfaces (no cross-sectional planes).
 - `--freeze-links` merges user `freeze_atoms` with detected cap-H parents for
   PDB inputs, keeping extracted active site models rigid.
-- Add `--print-parsed` when you want to verify parsed pair targets from `--scan-lists/-s`.
+- Use `--dry-run` to validate the input and scan spec without calculating.
 - An explicitly provided `--relax-max-cycles` overrides YAML `opt.max_cycles`; when omitted, YAML wins, then the default `100000` applies.
 
 ## See Also

@@ -107,9 +107,6 @@ Options:
                                   (kcal/mol).  [default: (the surface minimum)]
   --zmax FLOAT                    Upper bound of color scale for plots
                                   (kcal/mol).  [default: (the surface maximum)]
-  --print-parsed / --no-print-parsed
-                                  Print parsed scan targets after resolving
-                                  --scan-lists.  [default: no-print-parsed]
   --out-json / --no-out-json      Write machine-readable result.json to out_dir.
                                   [default: no-out-json]
   --dry-run / --no-dry-run        Resolve and validate options (input,

@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from pdb2reaction.cli.completion import completion_guard, record_completion
+
 import gc
 from copy import deepcopy
 import logging
@@ -65,6 +67,7 @@ from pdb2reaction.core.defaults import (
 from pdb2reaction.core.utils import (
     resolve_freeze_atoms,
     apply_yaml_overrides,
+    unused_nested_yaml_sections,
     pretty_block,
     format_geom_for_echo,
     emit_dry_run_complete,
@@ -1170,7 +1173,7 @@ def _load_initial_hessian_file(path, geom, calc_kwargs: Dict[str, Any]) -> Dict[
     try:
         hessian = load_hessian_file(path, n_atoms=len(geom.atomic_numbers), active_dofs=dofs)
     except ValueError as exc:
-        raise click.ClickException(str(exc)) from exc
+        raise click.BadParameter(str(exc)) from exc
     emit(f"[tsopt] Initial Hessian read from {path}.", narrative=True)
     return {"hessian": hessian, "active_dofs": dofs}
 
@@ -2528,6 +2531,12 @@ def cli(
                 (frequency_cfg, (("freq",),)),
             ],
         )
+        _unused_yaml = unused_nested_yaml_sections(merged_yaml_cfg)
+        if _unused_yaml:
+            click.echo(
+                "[tsopt] NOTE: Ignoring YAML sections that tsopt does not use: "
+                f"{', '.join(_unused_yaml)}."
+            )
 
         def _yaml_has(section: str, key: str) -> bool:
             value = merged_yaml_cfg.get(section)
@@ -2674,7 +2683,7 @@ def cli(
                 geom_cfg.get("tr_projection")
             )
         except ValueError as exc:
-            raise click.ClickException(str(exc)) from exc
+            raise click.BadParameter(str(exc)) from exc
 
 
         if "print_every" in opt_cfg:
@@ -2719,7 +2728,7 @@ def cli(
                 calc_cfg.get("hessian_calc_mode", "FiniteDifference")
             )
         except BackendError as exc:
-            raise click.ClickException(str(exc)) from exc
+            raise click.BadParameter(str(exc)) from exc
 
         from pdb2reaction.core.dft_settings import finalize_dft_calculator_config
         finalize_dft_calculator_config(
@@ -2959,105 +2968,106 @@ def cli(
                         click.echo("[convert] WARNING: 'optimization_all_trj.xyz' not found; skipping conversion.", err=True)
 
                 # Collect result data for --out-json (dimer mode)
-                if out_json:
-                    _dimer_energy = _calc_energy(runner.geom, dict(calc_cfg))
-                    _dimer_imag = list(runner.imaginary_frequencies_cm)
-                    _dimer_status = _tsopt_terminal_status(
-                        runner, saddle_verified=runner.saddle_order_verified
-                    )
-                    _dimer_saddle_validation = _saddle_validation_from_count(
-                        runner.n_imaginary_modes, getattr(runner, "n_negative_modes", None)
-                    )
-                    _dimer_reaction_mode_index = (
-                        0
-                        if runner.n_imaginary_modes is not None
-                        and int(runner.n_imaginary_modes) > 0
+                _dimer_energy = _calc_energy(runner.geom, dict(calc_cfg))
+                _dimer_imag = list(runner.imaginary_frequencies_cm)
+                _dimer_status = _tsopt_terminal_status(
+                    runner, saddle_verified=runner.saddle_order_verified
+                )
+                _dimer_saddle_validation = _saddle_validation_from_count(
+                    runner.n_imaginary_modes, getattr(runner, "n_negative_modes", None)
+                )
+                _dimer_reaction_mode_index = (
+                    0
+                    if runner.n_imaginary_modes is not None
+                    and int(runner.n_imaginary_modes) > 0
+                    else None
+                )
+                _dimer_reaction_mode_frequency = (
+                    float(_dimer_imag[0])
+                    if _dimer_reaction_mode_index is not None and _dimer_imag
+                    else None
+                )
+                _tsopt_result_data = {
+                    "status": _dimer_status,
+                    "optimization_status": _dimer_status,
+                    "saddle_validation": _dimer_saddle_validation,
+                    "saddle_order_verified": bool(
+                        runner.saddle_order_verified and _dimer_saddle_validation == "first_order"
+                    ),
+                    "hessian_status": getattr(runner, "hessian_status", "unavailable"),
+                    "hessian_error": getattr(runner, "hessian_error", None),
+                    "reaction_mode_index": _dimer_reaction_mode_index,
+                    "reaction_mode_frequency_cm": _dimer_reaction_mode_frequency,
+                    "reaction_mode_overlap": None,
+                    "reaction_mode_source": (
+                        "lowest-imaginary"
+                        if _dimer_reaction_mode_index is not None
                         else None
-                    )
-                    _dimer_reaction_mode_frequency = (
-                        float(_dimer_imag[0])
-                        if _dimer_reaction_mode_index is not None and _dimer_imag
-                        else None
-                    )
-                    _tsopt_result_data = {
-                        "status": _dimer_status,
-                        "optimization_status": _dimer_status,
-                        "saddle_validation": _dimer_saddle_validation,
-                        "saddle_order_verified": bool(
-                            runner.saddle_order_verified and _dimer_saddle_validation == "first_order"
-                        ),
-                        "hessian_status": getattr(runner, "hessian_status", "unavailable"),
-                        "hessian_error": getattr(runner, "hessian_error", None),
-                        "reaction_mode_index": _dimer_reaction_mode_index,
-                        "reaction_mode_frequency_cm": _dimer_reaction_mode_frequency,
-                        "reaction_mode_overlap": None,
-                        "reaction_mode_source": (
-                            "lowest-imaginary"
-                            if _dimer_reaction_mode_index is not None
-                            else None
-                        ),
-                        "energy_hartree": _dimer_energy,
-                        "n_imaginary_modes": runner.n_imaginary_modes,
-                        "n_negative_modes": getattr(runner, "n_negative_modes", None),
-                        **frequency_criterion_info(runner.neg_freq_thresh_cm),
-                        "frequency_zero_cutoff_cm": runner.neg_freq_thresh_cm,
-                        "imaginary_frequencies_cm": _dimer_imag,
-                        "opt_mode": "dimer",
-                        "opt_mode_requested": str(opt_mode).strip().lower(),
-                        "optimizer": "dimer",
-                        "n_atoms": len(runner.geom.atomic_numbers),
-                        "n_opt_cycles": runner._cycles_spent,
-                        "backend": calc_cfg.get("backend", backend),
-                        "charge": calc_cfg["charge"],
-                        "spin": calc_cfg["spin"],
-                        "model": calc_cfg.get("model"),
-                        "n_freeze_atoms": len(geom_cfg.get("freeze_atoms", [])),
-                        "solvent": calc_cfg.get("solvent", "none"),
-                        "thresh": opt_cfg.get("thresh", simple_cfg.get("thresh")),
-                        "max_cycles": opt_cfg.get("max_cycles", simple_cfg.get("max_cycles")),
-                        "input_file": str(input_path),
-                        "reference_mode_file": None,
-                        "reference_mode_candidate_count": 0,
-                        "reference_mode_candidate_labels": [],
-                        "reference_mode_cache": {},
-                        "flatten_requested": bool(
-                            int(simple_cfg.get("flatten_max_iter", 0)) > 0
-                        ),
-                        "flatten_enabled": bool(
-                            int(simple_cfg.get("flatten_max_iter", 0)) > 0
-                        ),
-                        "flatten_skip_reason": runner.flatten_skip_reason,
-                        "files": {"final_geometry_xyz": "final_geometry.xyz"},
-                        "rigid_projection": dict(runner.rigid_projection_info),
-                    }
-                    # Additive stop_reason, present only for a non-converged
-                    # stop so a converged TS run's JSON stays byte-compatible.
-                    _dimer_stop_reason = getattr(runner, "stop_reason", "") or ""
-                    if _dimer_stop_reason:
-                        _tsopt_result_data["stop_reason"] = _dimer_stop_reason
-                    for ext in (".pdb", ".cif", ".gjf"):
-                        f = out_dir_path / f"final_geometry{ext}"
-                        if f.exists():
-                            _tsopt_result_data["files"][f"final_geometry_{ext[1:]}"] = f.name
-                    # Add trajectory files if they exist
-                    for _trj_name in ("optimization_all_trj.xyz", "optimization_all.pdb", "optimization_all.cif"):
-                        _tf = out_dir_path / _trj_name
-                        if _tf.exists():
-                            _key = _trj_name.replace(".", "_").replace("-", "_")
-                            _tsopt_result_data["files"][_key] = _trj_name
-                    # List imaginary mode vib files
-                    _vib_dir = out_dir_path / "vib"
-                    if _vib_dir.is_dir():
-                        _tsopt_result_data["files"]["imaginary_mode_files"] = sorted([
-                            f"vib/{f.name}"
-                            for pattern in ("imag_*.pdb", "imag_*.cif", "imag_*_trj.xyz")
-                            for f in _vib_dir.glob(pattern)
-                        ])
+                    ),
+                    "energy_hartree": _dimer_energy,
+                    "n_imaginary_modes": runner.n_imaginary_modes,
+                    "n_negative_modes": getattr(runner, "n_negative_modes", None),
+                    **frequency_criterion_info(runner.neg_freq_thresh_cm),
+                    "frequency_zero_cutoff_cm": runner.neg_freq_thresh_cm,
+                    "imaginary_frequencies_cm": _dimer_imag,
+                    "opt_mode": "dimer",
+                    "opt_mode_requested": str(opt_mode).strip().lower(),
+                    "optimizer": "dimer",
+                    "n_atoms": len(runner.geom.atomic_numbers),
+                    "n_opt_cycles": runner._cycles_spent,
+                    "backend": calc_cfg.get("backend", backend),
+                    "charge": calc_cfg["charge"],
+                    "spin": calc_cfg["spin"],
+                    "model": calc_cfg.get("model"),
+                    "n_freeze_atoms": len(geom_cfg.get("freeze_atoms", [])),
+                    "solvent": calc_cfg.get("solvent", "none"),
+                    "thresh": opt_cfg.get("thresh", simple_cfg.get("thresh")),
+                    "max_cycles": opt_cfg.get("max_cycles", simple_cfg.get("max_cycles")),
+                    "input_file": str(input_path),
+                    "reference_mode_file": None,
+                    "reference_mode_candidate_count": 0,
+                    "reference_mode_candidate_labels": [],
+                    "reference_mode_cache": {},
+                    "flatten_requested": bool(
+                        int(simple_cfg.get("flatten_max_iter", 0)) > 0
+                    ),
+                    "flatten_enabled": bool(
+                        int(simple_cfg.get("flatten_max_iter", 0)) > 0
+                    ),
+                    "flatten_skip_reason": runner.flatten_skip_reason,
+                    "files": {"final_geometry_xyz": "final_geometry.xyz"},
+                    "rigid_projection": dict(runner.rigid_projection_info),
+                }
+                # Additive stop_reason, present only for a non-converged
+                # stop so a converged TS run's JSON stays byte-compatible.
+                _dimer_stop_reason = getattr(runner, "stop_reason", "") or ""
+                if _dimer_stop_reason:
+                    _tsopt_result_data["stop_reason"] = _dimer_stop_reason
+                for ext in (".pdb", ".cif", ".gjf"):
+                    f = out_dir_path / f"final_geometry{ext}"
+                    if f.exists():
+                        _tsopt_result_data["files"][f"final_geometry_{ext[1:]}"] = f.name
+                # Add trajectory files if they exist
+                for _trj_name in ("optimization_all_trj.xyz", "optimization_all.pdb", "optimization_all.cif"):
+                    _tf = out_dir_path / _trj_name
+                    if _tf.exists():
+                        _key = _trj_name.replace(".", "_").replace("-", "_")
+                        _tsopt_result_data["files"][_key] = _trj_name
+                # List imaginary mode vib files
+                _vib_dir = out_dir_path / "vib"
+                if _vib_dir.is_dir():
+                    _tsopt_result_data["files"]["imaginary_mode_files"] = sorted([
+                        f"vib/{f.name}"
+                        for pattern in ("imag_*.pdb", "imag_*.cif", "imag_*_trj.xyz")
+                        for f in _vib_dir.glob(pattern)
+                    ])
 
             else:
                 # hess-family optimizer (RS-P-RFO default / RS-I-RFO / TRIM)
                 # Build the geometry and attach the configured MLIP calculator.
                 coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
+                from pdb2reaction.core.utils import validate_geometry_config
+                validate_geometry_config(geom_cfg)
                 coord_kwargs = dict(geom_cfg)
                 coord_kwargs.pop("coord_type", None)
                 geometry = geom_loader(geom_input_path, coord_type=coord_type, **coord_kwargs)
@@ -3265,6 +3275,20 @@ def cli(
                         err=True,
                     )
                     hessian_postprocessing_ready = False
+                # Flattening starts from the terminal Hessian; say why it is absent.
+                _flatten_configured = int(simple_cfg.get("flatten_max_iter", 0)) > 0
+                if _flatten_configured and _final_freq_skipped:
+                    _flatten_skip_reason = "final Hessian skipped (--skip-final-freq)"
+                elif (
+                    _flatten_configured
+                    and not getattr(last_optimizer, "is_converged", False)
+                    and not _plateau_stop
+                    and not _heavy_budget_left()
+                ):
+                    _flatten_skip_reason = (
+                        "max-cycles budget exhausted before flattening"
+                    )
+                    click.echo("[tsopt] Reached --max-cycles budget; skipping flatten loop.")
                 if hessian_postprocessing_ready:
                     try:
                         freqs_cm, modes = _terminal_freqs_and_modes(last_optimizer)
@@ -3605,6 +3629,14 @@ def cli(
                             geometry.as_xyz(), encoding="utf-8"
                         )
                         if not hessian_postprocessing_ready:
+                            if (
+                                not getattr(optimizer, "is_converged", False)
+                                and not getattr(optimizer, "is_stalled", False)
+                                and not _heavy_budget_left()
+                            ):
+                                _flatten_skip_reason = (
+                                    "max-cycles budget exhausted during flattening"
+                                )
                             break
                         if (
                             reference_mode is not None
@@ -3709,234 +3741,233 @@ def cli(
                     torch.cuda.empty_cache()
 
                 # Collect result data for --out-json (hess-family: rsprfo/rsirfo/trim)
-                if out_json:
-                    _rsirfo_imag = (
-                        _certified_negative_frequencies(
-                            freqs_cm, neg_freq_thresh_cm
-                        )
-                        if hessian_postprocessing_ready
-                        else None
+                _rsirfo_imag = (
+                    _certified_negative_frequencies(
+                        freqs_cm, neg_freq_thresh_cm
                     )
-                    # Frequency analysis leaves the shared Geometry intentionally
-                    # detached.  Evaluate the final energy through the
-                    # already-loaded calculator instead of dereferencing
-                    # ``geometry.energy`` with calculator=None.
-                    _rsirfo_energy = _calc_energy(
-                        geometry, calc_cfg, calc=calc
-                    )
-                    _optimization_status = _tsopt_terminal_status(
-                        last_optimizer, saddle_verified=_hessian_saddle_verified
-                    )
-                    _n_imaginary_modes = (
-                        len(_rsirfo_imag) if _rsirfo_imag is not None else None
-                    )
-                    _saddle_validation = _saddle_validation_from_count(
-                        _n_imaginary_modes, _n_negative_modes
-                    )
-                    _reaction_mode_index = None
-                    _reaction_mode_frequency = None
-                    _reaction_mode_overlap = None
-                    _candidate_mode_index = _matching_optimizer_mode_index(
-                        last_optimizer, freqs_cm, rigid_projection_info,
+                    if hessian_postprocessing_ready
+                    else None
+                )
+                # Frequency analysis leaves the shared Geometry intentionally
+                # detached.  Evaluate the final energy through the
+                # already-loaded calculator instead of dereferencing
+                # ``geometry.energy`` with calculator=None.
+                _rsirfo_energy = _calc_energy(
+                    geometry, calc_cfg, calc=calc
+                )
+                _optimization_status = _tsopt_terminal_status(
+                    last_optimizer, saddle_verified=_hessian_saddle_verified
+                )
+                _n_imaginary_modes = (
+                    len(_rsirfo_imag) if _rsirfo_imag is not None else None
+                )
+                _saddle_validation = _saddle_validation_from_count(
+                    _n_imaginary_modes, _n_negative_modes
+                )
+                _reaction_mode_index = None
+                _reaction_mode_frequency = None
+                _reaction_mode_overlap = None
+                _candidate_mode_index = _matching_optimizer_mode_index(
+                    last_optimizer, freqs_cm, rigid_projection_info,
+                    neg_freq_thresh_cm,
+                ) if hessian_postprocessing_ready else None
+                _selected_mode_index = (
+                    _thresholded_reaction_mode_index(
+                        freqs_cm,
                         neg_freq_thresh_cm,
-                    ) if hessian_postprocessing_ready else None
-                    _selected_mode_index = (
-                        _thresholded_reaction_mode_index(
-                            freqs_cm,
-                            neg_freq_thresh_cm,
-                            _candidate_mode_index,
-                        )
-                        if hessian_postprocessing_ready and freqs_cm.size
-                        else None
+                        _candidate_mode_index,
                     )
-                    if _selected_mode_index is not None:
-                        _reaction_mode_index = _selected_mode_index
-                        _reaction_mode_frequency = float(
-                            freqs_cm[_reaction_mode_index]
+                    if hessian_postprocessing_ready and freqs_cm.size
+                    else None
+                )
+                if _selected_mode_index is not None:
+                    _reaction_mode_index = _selected_mode_index
+                    _reaction_mode_frequency = float(
+                        freqs_cm[_reaction_mode_index]
+                    )
+                    if (
+                        _candidate_mode_index is not None
+                        and _reaction_mode_index == int(_candidate_mode_index)
+                    ):
+                        _reaction_mode_overlap = getattr(
+                            last_optimizer,
+                            "_last_exact_target_mode_overlap",
+                            None,
                         )
-                        if (
-                            _candidate_mode_index is not None
-                            and _reaction_mode_index == int(_candidate_mode_index)
-                        ):
-                            _reaction_mode_overlap = getattr(
+                _tsopt_result_data = {
+                    "status": _optimization_status,
+                    "optimization_status": _optimization_status,
+                    "saddle_validation": _saddle_validation,
+                    "saddle_order_verified": _hessian_saddle_verified,
+                    "hessian_status": _hessian_result_status(
+                        n_imaginary=_n_imaginary_modes,
+                        hessian_error=hessian_error,
+                        postprocessing_ready=hessian_postprocessing_ready,
+                    ),
+                    "hessian_error": hessian_error,
+                    "energy_hartree": _rsirfo_energy,
+                    "n_imaginary_modes": _n_imaginary_modes,
+                    "n_negative_modes": _n_negative_modes,
+                    **frequency_criterion_info(neg_freq_thresh_cm),
+                    "frequency_zero_cutoff_cm": neg_freq_thresh_cm,
+                    "reaction_mode_index": _reaction_mode_index,
+                    "reaction_mode_frequency_cm": _reaction_mode_frequency,
+                    "reaction_mode_overlap": _reaction_mode_overlap,
+                    "reaction_mode_source": (
+                        "mep-reference-overlap"
+                        if _reaction_mode_overlap is not None
+                        else "lowest-imaginary" if _reaction_mode_index is not None
+                        else None
+                    ),
+                    "imaginary_frequencies_cm": (
+                        [] if _final_freq_skipped else _rsirfo_imag
+                    ),
+                    "opt_mode": kind,
+                    "opt_mode_requested": str(opt_mode).strip().lower(),
+                    "optimizer": kind,
+                    "n_atoms": len(geometry.atoms),
+                    "n_opt_cycles": heavy_cycles_spent,
+                    "backend": calc_cfg.get("backend", backend),
+                    "charge": calc_cfg["charge"],
+                    "spin": calc_cfg["spin"],
+                    "model": calc_cfg.get("model"),
+                    "n_freeze_atoms": len(geom_cfg.get("freeze_atoms", [])),
+                    "solvent": calc_cfg.get("solvent", "none"),
+                    "thresh": opt_cfg.get("thresh", simple_cfg.get("thresh")),
+                    "max_cycles": opt_cfg.get("max_cycles", simple_cfg.get("max_cycles")),
+                    "input_file": str(input_path),
+                    "reference_mode_file": (
+                        None
+                        if reference_mode_path is None
+                        else str(reference_mode_path)
+                    ),
+                    "reference_mode_candidate_count": len(reference_modes),
+                    "reference_mode_candidate_labels": list(reference_mode_labels),
+                    "reference_mode_cache": dict(reference_mode_metadata),
+                    "flatten_requested": bool(
+                        int(simple_cfg.get("flatten_max_iter", 0)) > 0
+                    ),
+                    "flatten_enabled": bool(
+                        int(simple_cfg.get("flatten_max_iter", 0)) > 0
+                    ),
+                    "flatten_skip_reason": _flatten_skip_reason,
+                    "files": {"final_geometry_xyz": str(final_xyz_path.name)},
+                    "rigid_projection": dict(rigid_projection_info),
+                    "safeguards": {
+                        "rejected_mode_loss_trials": int(
+                            getattr(last_optimizer, "rejected_mode_loss_steps", 0)
+                        ),
+                        "exact_saddle_checks": int(
+                            getattr(last_optimizer, "exact_saddle_checks", 0)
+                        ),
+                        "saddle_recovery_steps": int(
+                            getattr(last_optimizer, "saddle_recovery_steps", 0)
+                        ),
+                        "saddle_recovery_check_interval": int(
+                            getattr(
                                 last_optimizer,
-                                "_last_exact_target_mode_overlap",
-                                None,
+                                "saddle_recovery_check_interval",
+                                0,
                             )
-                    _tsopt_result_data = {
-                        "status": _optimization_status,
-                        "optimization_status": _optimization_status,
-                        "saddle_validation": _saddle_validation,
-                        "saddle_order_verified": _hessian_saddle_verified,
-                        "hessian_status": _hessian_result_status(
-                            n_imaginary=_n_imaginary_modes,
-                            hessian_error=hessian_error,
-                            postprocessing_ready=hessian_postprocessing_ready,
                         ),
-                        "hessian_error": hessian_error,
-                        "energy_hartree": _rsirfo_energy,
-                        "n_imaginary_modes": _n_imaginary_modes,
-                        "n_negative_modes": _n_negative_modes,
-                        **frequency_criterion_info(neg_freq_thresh_cm),
-                        "frequency_zero_cutoff_cm": neg_freq_thresh_cm,
-                        "reaction_mode_index": _reaction_mode_index,
-                        "reaction_mode_frequency_cm": _reaction_mode_frequency,
-                        "reaction_mode_overlap": _reaction_mode_overlap,
-                        "reaction_mode_source": (
-                            "mep-reference-overlap"
-                            if _reaction_mode_overlap is not None
-                            else "lowest-imaginary" if _reaction_mode_index is not None
-                            else None
+                        "saddle_recovery_max_cycles": int(
+                            getattr(
+                                last_optimizer,
+                                "saddle_recovery_max_cycles",
+                                0,
+                            )
                         ),
-                        "imaginary_frequencies_cm": (
-                            [] if _final_freq_skipped else _rsirfo_imag
+                        "last_exact_n_imaginary": getattr(
+                            last_optimizer, "_last_exact_n_imaginary", None
                         ),
-                        "opt_mode": kind,
-                        "opt_mode_requested": str(opt_mode).strip().lower(),
-                        "optimizer": kind,
-                        "n_atoms": len(geometry.atoms),
-                        "n_opt_cycles": heavy_cycles_spent,
-                        "backend": calc_cfg.get("backend", backend),
-                        "charge": calc_cfg["charge"],
-                        "spin": calc_cfg["spin"],
-                        "model": calc_cfg.get("model"),
-                        "n_freeze_atoms": len(geom_cfg.get("freeze_atoms", [])),
-                        "solvent": calc_cfg.get("solvent", "none"),
-                        "thresh": opt_cfg.get("thresh", simple_cfg.get("thresh")),
-                        "max_cycles": opt_cfg.get("max_cycles", simple_cfg.get("max_cycles")),
-                        "input_file": str(input_path),
-                        "reference_mode_file": (
-                            None
-                            if reference_mode_path is None
-                            else str(reference_mode_path)
+                        "last_exact_n_negative": getattr(
+                            last_optimizer, "_last_exact_n_negative", None
                         ),
-                        "reference_mode_candidate_count": len(reference_modes),
-                        "reference_mode_candidate_labels": list(reference_mode_labels),
-                        "reference_mode_cache": dict(reference_mode_metadata),
-                        "flatten_requested": bool(
-                            int(simple_cfg.get("flatten_max_iter", 0)) > 0
+                        "last_exact_validation": getattr(
+                            last_optimizer, "_last_exact_validation", "unavailable"
                         ),
-                        "flatten_enabled": bool(
-                            int(simple_cfg.get("flatten_max_iter", 0)) > 0
+                        "last_exact_failure_reason": getattr(
+                            last_optimizer, "_last_exact_failure_reason", None
                         ),
-                        "flatten_skip_reason": _flatten_skip_reason,
-                        "files": {"final_geometry_xyz": str(final_xyz_path.name)},
-                        "rigid_projection": dict(rigid_projection_info),
-                        "safeguards": {
-                            "rejected_mode_loss_trials": int(
-                                getattr(last_optimizer, "rejected_mode_loss_steps", 0)
-                            ),
-                            "exact_saddle_checks": int(
-                                getattr(last_optimizer, "exact_saddle_checks", 0)
-                            ),
-                            "saddle_recovery_steps": int(
-                                getattr(last_optimizer, "saddle_recovery_steps", 0)
-                            ),
-                            "saddle_recovery_check_interval": int(
-                                getattr(
-                                    last_optimizer,
-                                    "saddle_recovery_check_interval",
-                                    0,
-                                )
-                            ),
-                            "saddle_recovery_max_cycles": int(
-                                getattr(
-                                    last_optimizer,
-                                    "saddle_recovery_max_cycles",
-                                    0,
-                                )
-                            ),
-                            "last_exact_n_imaginary": getattr(
-                                last_optimizer, "_last_exact_n_imaginary", None
-                            ),
-                            "last_exact_n_negative": getattr(
-                                last_optimizer, "_last_exact_n_negative", None
-                            ),
-                            "last_exact_validation": getattr(
-                                last_optimizer, "_last_exact_validation", "unavailable"
-                            ),
-                            "last_exact_failure_reason": getattr(
-                                last_optimizer, "_last_exact_failure_reason", None
-                            ),
-                            "last_exact_target_mode_index": getattr(
+                        "last_exact_target_mode_index": getattr(
+                            last_optimizer,
+                            "_last_exact_target_mode_index",
+                            None,
+                        ),
+                        "last_exact_target_mode_overlap": getattr(
+                            last_optimizer,
+                            "_last_exact_target_mode_overlap",
+                            None,
+                        ),
+                        "last_exact_target_mode_is_negative": getattr(
+                            last_optimizer,
+                            "_last_exact_target_mode_is_negative",
+                            None,
+                        ),
+                        "last_exact_target_mode_reanchored": bool(
+                            getattr(
                                 last_optimizer,
-                                "_last_exact_target_mode_index",
-                                None,
-                            ),
-                            "last_exact_target_mode_overlap": getattr(
-                                last_optimizer,
-                                "_last_exact_target_mode_overlap",
-                                None,
-                            ),
-                            "last_exact_target_mode_is_negative": getattr(
-                                last_optimizer,
-                                "_last_exact_target_mode_is_negative",
-                                None,
-                            ),
-                            "last_exact_target_mode_reanchored": bool(
-                                getattr(
-                                    last_optimizer,
-                                    "_last_exact_target_mode_reanchored",
-                                    False,
-                                )
-                            ),
-                            "initial_reference_root_index": getattr(
-                                last_optimizer,
-                                "_initial_reference_root_index",
-                                None,
-                            ),
-                            "initial_reference_root_overlap": getattr(
-                                last_optimizer,
-                                "_initial_reference_root_overlap",
-                                None,
-                            ),
-                            "initial_reference_root_eigenvalue": getattr(
-                                last_optimizer,
-                                "_initial_reference_root_eigenvalue",
-                                None,
-                            ),
-                            "last_recovery_mode_curvature": getattr(
-                                last_optimizer,
-                                "_last_recovery_mode_curvature",
-                                None,
-                            ),
-                            "last_recovery_mode_frequency_cm": getattr(
-                                last_optimizer,
-                                "_last_recovery_mode_frequency_cm",
-                                None,
-                            ),
-                            "stop_reason": str(
-                                getattr(last_optimizer, "stop_reason", "")
-                            ),
-                        },
-                    }
-                    # Convergence details from optimizer
-                    if hasattr(last_optimizer, 'max_forces') and last_optimizer.max_forces:
-                        _tsopt_result_data["final_max_force"] = float(last_optimizer.max_forces[-1])
-                        _tsopt_result_data["final_rms_force"] = float(last_optimizer.rms_forces[-1])
-                    if hasattr(last_optimizer, 'convergence') and last_optimizer.convergence:
-                        _tsopt_result_data["convergence_thresholds"] = {k: float(v) for k, v in last_optimizer.convergence.items()}
-                    if hasattr(last_optimizer, 'max_steps') and last_optimizer.max_steps:
-                        _tsopt_result_data["final_max_step"] = float(last_optimizer.max_steps[-1])
-                        _tsopt_result_data["final_rms_step"] = float(last_optimizer.rms_steps[-1])
-                    for ext in (".pdb", ".cif", ".gjf"):
-                        f = out_dir_path / f"final_geometry{ext}"
-                        if f.exists():
-                            _tsopt_result_data["files"][f"final_geometry_{ext[1:]}"] = f.name
-                    # Add trajectory files if they exist
-                    for _trj_name in ("optimization_trj.xyz", "optimization.pdb", "optimization.cif"):
-                        _tf = out_dir_path / _trj_name
-                        if _tf.exists():
-                            _key = _trj_name.replace(".", "_").replace("-", "_")
-                            _tsopt_result_data["files"][_key] = _trj_name
-                    # List imaginary mode vib files
-                    _vib_dir = out_dir_path / "vib"
-                    if _vib_dir.is_dir():
-                        _tsopt_result_data["files"]["imaginary_mode_files"] = sorted([
-                            f"vib/{f.name}"
-                            for pattern in ("imag_*.pdb", "imag_*.cif", "imag_*_trj.xyz")
-                            for f in _vib_dir.glob(pattern)
-                        ])
+                                "_last_exact_target_mode_reanchored",
+                                False,
+                            )
+                        ),
+                        "initial_reference_root_index": getattr(
+                            last_optimizer,
+                            "_initial_reference_root_index",
+                            None,
+                        ),
+                        "initial_reference_root_overlap": getattr(
+                            last_optimizer,
+                            "_initial_reference_root_overlap",
+                            None,
+                        ),
+                        "initial_reference_root_eigenvalue": getattr(
+                            last_optimizer,
+                            "_initial_reference_root_eigenvalue",
+                            None,
+                        ),
+                        "last_recovery_mode_curvature": getattr(
+                            last_optimizer,
+                            "_last_recovery_mode_curvature",
+                            None,
+                        ),
+                        "last_recovery_mode_frequency_cm": getattr(
+                            last_optimizer,
+                            "_last_recovery_mode_frequency_cm",
+                            None,
+                        ),
+                        "stop_reason": str(
+                            getattr(last_optimizer, "stop_reason", "")
+                        ),
+                    },
+                }
+                # Convergence details from optimizer
+                if hasattr(last_optimizer, 'max_forces') and last_optimizer.max_forces:
+                    _tsopt_result_data["final_max_force"] = float(last_optimizer.max_forces[-1])
+                    _tsopt_result_data["final_rms_force"] = float(last_optimizer.rms_forces[-1])
+                if hasattr(last_optimizer, 'convergence') and last_optimizer.convergence:
+                    _tsopt_result_data["convergence_thresholds"] = {k: float(v) for k, v in last_optimizer.convergence.items()}
+                if hasattr(last_optimizer, 'max_steps') and last_optimizer.max_steps:
+                    _tsopt_result_data["final_max_step"] = float(last_optimizer.max_steps[-1])
+                    _tsopt_result_data["final_rms_step"] = float(last_optimizer.rms_steps[-1])
+                for ext in (".pdb", ".cif", ".gjf"):
+                    f = out_dir_path / f"final_geometry{ext}"
+                    if f.exists():
+                        _tsopt_result_data["files"][f"final_geometry_{ext[1:]}"] = f.name
+                # Add trajectory files if they exist
+                for _trj_name in ("optimization_trj.xyz", "optimization.pdb", "optimization.cif"):
+                    _tf = out_dir_path / _trj_name
+                    if _tf.exists():
+                        _key = _trj_name.replace(".", "_").replace("-", "_")
+                        _tsopt_result_data["files"][_key] = _trj_name
+                # List imaginary mode vib files
+                _vib_dir = out_dir_path / "vib"
+                if _vib_dir.is_dir():
+                    _tsopt_result_data["files"]["imaginary_mode_files"] = sorted([
+                        f"vib/{f.name}"
+                        for pattern in ("imag_*.pdb", "imag_*.cif", "imag_*_trj.xyz")
+                        for f in _vib_dir.glob(pattern)
+                    ])
 
             if kind == "dimer":
                 _terminal_optimizer = runner
@@ -3987,9 +4018,10 @@ def cli(
                     _tsopt_result_data["files"]["hessian_npy"] = str(_dump_hess_path.resolve())
 
             # result.json (if --out-json)
+            from pdb2reaction.core.utils import calculator_provenance, write_result_json
+            _tsopt_result_data.update(calculator_provenance(calc_cfg))
+            record_completion(_tsopt_result_data, command='tsopt')
             if out_json:
-                from pdb2reaction.core.utils import calculator_provenance, write_result_json
-                _tsopt_result_data.update(calculator_provenance(calc_cfg))
                 write_result_json(
                     out_dir_path, _tsopt_result_data,
                     command="tsopt",
@@ -4005,11 +4037,11 @@ def cli(
         except ZeroStepLength as e:
             _write_error_json(out_dir_path, "tsopt", e, "ZeroStepLength", time_start)
             click.echo("ERROR: Proposed step length dropped below the minimum allowed (ZeroStepLength).", err=True)
-            sys.exit(2)
+            sys.exit(1)
         except OptimizationError as e:
             _write_error_json(out_dir_path, "tsopt", e, "OptimizationError", time_start)
             click.echo(f"ERROR: Optimization failed — {e}", err=True)
-            sys.exit(3)
+            sys.exit(1)
         except KeyboardInterrupt:
             click.echo("Interrupted by user.", err=True)
             sys.exit(130)
@@ -4024,3 +4056,5 @@ def cli(
             gc.collect()  # break cyclic refs inside torch.nn.Module
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
+
+cli.callback = completion_guard(cli.callback)

@@ -9,6 +9,8 @@ Examples:
 
 from __future__ import annotations
 
+from pdb2reaction.cli.completion import completion_guard
+
 import ast
 import time
 from pathlib import Path
@@ -215,3 +217,6 @@ def cli(
         format_elapsed("[time] Elapsed Time for Energy Diagram", time_start),
         narrative=True,
     )
+
+
+cli.callback = completion_guard(cli.callback)

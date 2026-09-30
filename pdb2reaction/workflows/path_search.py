@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pdb2reaction.cli.completion import completion_guard, record_completion
+
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Callable
@@ -2195,6 +2197,15 @@ def _merge_final_and_write(final_images: List[Any],
     help="Single-structure optimizer: grad (=LBFGS) or hess (=RFO).",
 )
 @click.option(
+    "--print-every",
+    "print_every",
+    type=click.IntRange(min=1),
+    default=None,
+    show_default="100",
+    hidden=True,
+    help="Print single-structure optimizer status every N cycles (not GSM/DMF).",
+)
+@click.option(
     "--dump/--no-dump",
     default=False,
     show_default=True,
@@ -2346,6 +2357,7 @@ def cli(
     max_cycles_dmf: Optional[int],
     climb: bool,
     opt_mode: str,
+    print_every: Optional[int],
     dump: bool,
     convert_files: bool,
     write_hei_mode_cache: bool,
@@ -2625,6 +2637,9 @@ def cli(
             stopt_cfg["thresh"] = str(thresh_gsm)
         if cli_param_overridden(ctx, "thresh_dmf") and thresh_dmf is not None:
             dmf_cfg["tol"] = str(thresh_dmf)
+        if cli_param_overridden(ctx, "print_every") and print_every is not None:
+            lbfgs_cfg["print_every"] = int(print_every)
+            rfo_cfg["print_every"] = int(print_every)
 
         # Final YAML overrides (highest precedence)
         apply_yaml_overrides(
@@ -3353,6 +3368,9 @@ def cli(
             _legacy_status = "partial"  # endpoint-HEI demotion
         summary["status"] = _legacy_status
         _attach_outcomes(summary, truth=_path_truth, stage_outcomes=_path_leaves)
+        summary.pop("status", None)
+        summary.pop("status_reasons", None)
+        record_completion(summary, command="path-search")
         from pdb2reaction.core.utils import calculator_provenance
 
         summary.update(calculator_provenance(calc_cfg))
@@ -3486,3 +3504,5 @@ def cli(
         for prepared in prepared_auxiliary:
             prepared.cleanup()
         _PRIMARY_GJF_TEMPLATE = None
+
+cli.callback = completion_guard(cli.callback)

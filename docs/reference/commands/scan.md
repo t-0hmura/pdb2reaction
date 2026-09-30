@@ -102,9 +102,6 @@ Options:
   --solvent-model [alpb|cpcmx|pcm|smd]
                                   Solvent model: ALPB/CPCMx for MLIP backends;
                                   PCM/SMD for dft.  [default: alpb]
-  --print-parsed / --no-print-parsed
-                                  Print parsed scan targets after resolving
-                                  --scan-lists.  [default: no-print-parsed]
   --endopt / --no-endopt          After each stage, run an additional unbiased
                                   optimization of the stage result.  [default:
                                   no-endopt]

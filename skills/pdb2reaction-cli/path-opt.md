@@ -54,7 +54,7 @@ pdb2reaction path-opt -i R.pdb P.pdb -l 'GPP:-3' --mep-mode dmf -b mace \
 | Path | When | Content |
 |---|---|---|
 | `<out_dir>/result.json` | `--out-json` | machine-readable result |
-| `<out_dir>/final_geometries_trj.xyz` | completed path optimizer run | final string trajectory; inspect JSON `status` before calling it converged |
+| `<out_dir>/final_geometries_trj.xyz` | completed path optimizer run | final string trajectory; inspect JSON `optimization_status` before calling it converged |
 | `<out_dir>/final_geometries.{pdb,cif,gjf}` | `--convert-files` (default on) AND topology/template present; CIF needs a bridged input/reference | PDB / CIF / GJF companions |
 | `<out_dir>/hei.{xyz,pdb,cif,gjf}` | path result reaches HEI writing; non-XYZ companions need a topology/template plus `--convert-files` | highest-energy image (TS candidate) |
 | `<out_dir>/dmf_initial_trj.xyz`, `dmf_ipopt.out` | `--mep-mode dmf` | DMF-mode artifacts |

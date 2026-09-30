@@ -2,6 +2,7 @@
 
 import click
 import inspect
+import json
 import numpy as np
 import pytest
 
@@ -294,7 +295,7 @@ def test_scan2d_png_export_failure_is_a_note(tmp_path, monkeypatch) -> None:
         [
             "scan2d", "-i", str(structure), "-q", "0", "-m", "1",
             "--scan-lists", "[(1,2,1.000,1.008),(3,4,1.000,1.004)]",
-            "--max-step-size", "0.004", "--out-dir", str(out_dir),
+            "--max-step-size", "0.004", "--out-json", "--out-dir", str(out_dir),
         ],
     )
 
@@ -302,3 +303,6 @@ def test_scan2d_png_export_failure_is_a_note(tmp_path, monkeypatch) -> None:
     assert "[plot] NOTE: PNG export skipped: image export unavailable" in result.output
     assert (out_dir / "scan2d_landscape.html").exists()
     assert not (out_dir / "scan2d_map.png").exists()
+    payload = json.loads((out_dir / "result.json").read_text(encoding="utf-8"))
+    assert "scan2d_map_png" not in payload["files"]
+    assert "scan2d_map.png" not in payload["current_output_paths"]

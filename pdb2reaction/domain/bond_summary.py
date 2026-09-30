@@ -12,6 +12,8 @@ For detailed documentation, see: docs/bond-summary.md
 
 from __future__ import annotations
 
+from pdb2reaction.cli.completion import completion_guard, record_completion
+
 import time
 from pathlib import Path
 from typing import List
@@ -86,7 +88,7 @@ def cli(inputs: tuple, extra_inputs: tuple, device: str, bond_factor: float, one
     for f in files:
         p = Path(f)
         if not p.exists():
-            raise click.FileError(f, hint="File not found.")
+            raise click.BadParameter(f"File not found: {f}", param_hint="-i/--input")
         geoms.append((p.name, _load_geom(f)))
 
     comparisons_json: List[dict] = []
@@ -136,6 +138,14 @@ def cli(inputs: tuple, extra_inputs: tuple, device: str, bond_factor: float, one
     else:
         status = "failed"
 
+    payload = record_completion(
+        {
+            "status": status,
+            "execution_status": "failed" if n_failed else "completed",
+            "comparisons": comparisons_json,
+        },
+        command="bond-summary",
+    )
     if out_json:
         import json as _json
         # `--json` is an explicit machine-readable deliverable: it must always
@@ -145,7 +155,7 @@ def cli(inputs: tuple, extra_inputs: tuple, device: str, bond_factor: float, one
         # pdb2reaction.core.utils._patch_click_echo.
         emit(
             _json.dumps(
-                {"status": status, "comparisons": comparisons_json},
+                payload,
                 indent=2, ensure_ascii=False,
             ),
             force=True,
@@ -162,3 +172,6 @@ def cli(inputs: tuple, extra_inputs: tuple, device: str, bond_factor: float, one
             format_elapsed("[time] Elapsed Time for Bond Summary", time_start),
             narrative=True,
         )
+
+
+cli.callback = completion_guard(cli.callback)

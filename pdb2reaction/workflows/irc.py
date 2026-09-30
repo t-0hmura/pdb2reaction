@@ -9,6 +9,8 @@ For detailed documentation, see: docs/irc.md
 
 from __future__ import annotations
 
+from pdb2reaction.cli.completion import completion_guard
+
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
@@ -748,6 +750,8 @@ def cli(
             click.echo(pretty_block("irc",  {**irc_cfg, "out_dir": str(out_dir_path)}))
 
             coord_type = geom_cfg.get("coord_type", GEOM_KW_DEFAULT["coord_type"])
+            from pdb2reaction.core.utils import validate_geometry_config
+            validate_geometry_config(geom_cfg)
             coord_kwargs = dict(geom_cfg)
             coord_kwargs.pop("coord_type", None)
 
@@ -1129,3 +1133,5 @@ def cli(
             gc.collect()  # break cyclic refs inside torch.nn.Module
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
+
+cli.callback = completion_guard(cli.callback)

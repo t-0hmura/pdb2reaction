@@ -72,7 +72,7 @@ out_dir = "result_opt"  # 実際の出力ディレクトリに置き換える
 primary = "summary.json" if subcommand in {"all", "path-search"} else "result.json"
 summary = json.loads((Path(out_dir) / primary).read_text())
 
-if summary["status"] == "error":
+if summary["execution_status"] == "failed":
     error_type = summary.get("error_type", "RuntimeError")
     raise RuntimeError(f"{error_type}: {summary['error']}")
 ```

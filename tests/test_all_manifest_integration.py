@@ -209,7 +209,7 @@ def test_all_manifest_ignores_stale_scan_stages_and_records_distinct_runs(
                 child_out / "result.json",
                 json.dumps(
                     apply_current_run_id({
-                        "stage_outcomes": [{"converged": True}],
+                        "stage_outcomes": [{"item_id": "gsm_mep", "converged": True}],
                     })
                 ).encode("utf-8"),
             )

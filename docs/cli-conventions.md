@@ -177,17 +177,14 @@ For `scan`, one literal = one **stage**; multiple stages → multiple literals a
 
 ## Exit codes
 
-| Code | Meaning | Typical emitter |
-|---|---|---|
-| `0` | Success | every subcommand |
-| `1` | Unexpected internal error, or intentional partial utility completion | every subcommand; `bond-summary` |
-| `2` | CLI usage, configuration, or input error; zero step length; missing dependency; command-specific processing failure | Click/parser layer; `opt`, `tsopt`, `path-search`; `dft`; utility commands |
-| `3` | Optimizer failure **or** SCF not converged | `opt`, `tsopt`, `path-opt`, `path-search`; `dft` |
-| `4` | Trajectory write error | `path-opt` |
-| `5` | HEI export error | `path-opt` |
-| `130` | Keyboard interrupt (SIGINT) | every subcommand |
+| Code | Meaning |
+|---|---|
+| `0` | Success or usable partial results |
+| `1` | Non-convergence, no usable result, runtime exception, or output failure |
+| `2` | Invalid input, CLI arguments, or configuration |
+| `130` | User interruption (SIGINT) |
 
-`irc` and `freq` use `0 / 1 / 2 / 130` from the same scheme; they do not raise the optimizer-specific codes 3–5.
+Exit codes do not depend on JSON output. An IRC cycle limit alone is not a failure; all judges the TS and endpoint optimizations.
 
 (opt-mode-semantics)=
 
