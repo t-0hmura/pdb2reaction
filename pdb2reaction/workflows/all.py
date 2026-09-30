@@ -531,6 +531,8 @@ def _run_cli_main(
     a swallowed exception, ``None`` when unknown). Callers that need explicit
     stage results — e.g. FREQ/DFT thermochemistry — must gate on this code rather
     than infer success from an output file's existence.
+    ``on_nonzero="result"`` lets completed scientific failures reach the caller's
+    result checks, while execution errors still raise.
     """
     saved = list(sys.argv)
     label = prefix or cmd_name
@@ -552,8 +554,14 @@ def _run_cli_main(
             if exit_code in {2, 130}:
                 raise
             from pdb2reaction.cli.completion import record_child_failure
-            record_child_failure(getattr(e, "completion_result", None))
-            if on_nonzero == "raise":
+            verdict = getattr(e, "completion_result", None)
+            record_child_failure(verdict)
+            completed_failure = (
+                exit_code == 1 and isinstance(verdict, dict)
+                and verdict.get("execution_status") == "completed"
+                and verdict.get("scientific_status") == "failed"
+            )
+            if on_nonzero == "raise" or (on_nonzero == "result" and not completed_failure):
                 raise click.ClickException(f"[{label}] {cmd_name} exit code {code}.")
             _echo(f"[{label}] WARNING: {cmd_name} exited with code {code}", err=True)
     except Exception as e:
@@ -3479,7 +3487,7 @@ def _run_tsopt_on_hei(
                         public_root,
                         destination,
                     )
-        _run_cli_main("tsopt", _tsopt.cli, ts_args, on_nonzero="raise", prefix="tsopt")
+        _run_cli_main("tsopt", _tsopt.cli, ts_args, on_nonzero="result", prefix="tsopt")
 
         result_path = manifest.claim_one(result_key)
         if public_root is not None and _is_pipeline_public_destination(

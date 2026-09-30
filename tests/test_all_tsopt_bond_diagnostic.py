@@ -10,10 +10,13 @@ import json
 import os
 from pathlib import Path
 
+import click
 import pytest
 from click.testing import CliRunner
 
 from pdb2reaction.cli import cli as root_cli
+from pdb2reaction.cli.completion import completion_guard
+from pdb2reaction.core.utils import write_result_json
 from pdb2reaction.core.result_commit import RUN_ID_ENV, apply_current_run_id
 from pdb2reaction.workflows import all as all_workflow
 
@@ -54,14 +57,15 @@ def _pdb(index):
 
 
 @pytest.mark.parametrize(
-    "bond_changed,do_tsopt",
+    "bond_changed,do_tsopt,finalize_ts",
     [
-        pytest.param(False, True, id="no-bond-change-still-dispatches"),
-        pytest.param(True, True, id="bond-change-ordinary-control"),
-        pytest.param(False, False, id="explicit-tsopt-opt-out"),
+        pytest.param(False, True, False, id="no-bond-change-still-dispatches"),
+        pytest.param(True, True, False, id="bond-change-ordinary-control"),
+        pytest.param(False, False, False, id="explicit-tsopt-opt-out"),
+        pytest.param(True, True, True, id="nonconverged-ts-finalizes-parent"),
     ],
 )
-def test_all_tsopt_dispatch_ignores_bond_diagnostic(tmp_path, monkeypatch, bond_changed, do_tsopt):
+def test_all_tsopt_dispatch_ignores_bond_diagnostic(tmp_path, monkeypatch, bond_changed, do_tsopt, finalize_ts):
     monkeypatch.delenv(RUN_ID_ENV, raising=False)
     out = tmp_path / "out"
     inputs = [_write(tmp_path / f"input{i}.pdb", _pdb(i)) for i in (0, 2)]
@@ -70,8 +74,24 @@ def test_all_tsopt_dispatch_ignores_bond_diagnostic(tmp_path, monkeypatch, bond_
     bond_calls = []
     ts_calls = []
     calculator_calls = []
+    real_dispatch = all_workflow._run_cli_main
 
     def child(name, _cli, args, **kwargs):
+        if name == "tsopt" and finalize_ts:
+            ts_calls.append(Path(args[args.index("-i") + 1]))
+            ts_dir = Path(args[args.index("--out-dir") + 1])
+
+            @click.command(context_settings={"ignore_unknown_options": True, "allow_extra_args": True})
+            def unfinished_ts():
+                _write(ts_dir / "final_geometry.xyz", _frame(1))
+                write_result_json(ts_dir, {
+                    "optimization_status": "not_converged", "converged": False,
+                    "execution_status": "completed", "scientific_status": "failed",
+                    "hessian_status": "skipped", "n_imaginary_modes": None,
+                }, command="tsopt")
+
+            unfinished_ts.callback = completion_guard(unfinished_ts.callback)
+            return real_dispatch(name, unfinished_ts, args, **kwargs)
         assert name == "path-opt"
         child_calls.append(name)
         child_out = Path(args[args.index("--out-dir") + 1])
@@ -112,12 +132,13 @@ def test_all_tsopt_dispatch_ignores_bond_diagnostic(tmp_path, monkeypatch, bond_
     monkeypatch.setattr(all_workflow, "close_matplotlib_figures", lambda: None)
     monkeypatch.setattr(all_workflow, "_write_segment_energy_diagram", diagram)
     monkeypatch.setattr(all_workflow._path_search, "has_bond_change", bond_diagnostic)
-    monkeypatch.setattr(all_workflow, "_run_tsopt_on_hei", stop_at_ts)
+    if not finalize_ts:
+        monkeypatch.setattr(all_workflow, "_run_tsopt_on_hei", stop_at_ts)
     args = ["all", *[arg for path in inputs for arg in ("-i", str(path))]]
     args += ["-q", "0", "-m", "1", "--out-dir", str(out),
              "--no-preopt", "--convert-files", "true", "--no-freeze-links",
              "--no-tsopt-from-mep-tan", "--tsopt", "true" if do_tsopt else "false"]
-    if do_tsopt:
+    if do_tsopt and not finalize_ts:
         with pytest.raises(ReachedTSDispatch):
             CliRunner().invoke(root_cli, args, catch_exceptions=False)
     else:
@@ -132,6 +153,11 @@ def test_all_tsopt_dispatch_ignores_bond_diagnostic(tmp_path, monkeypatch, bond_
     summary = json.loads((out / "summary.json").read_text())
     segment, = summary["segments"]
     assert summary["n_segments"] == 1 and summary["n_images"] == 3
+    if finalize_ts:
+        assert summary["execution_status"] == "completed"
+        assert summary["scientific_status"] == "partial"
+        assert summary["stopped_before_irc"] is True
+        assert summary["post_segments"][0]["tsopt"]["optimization_status"] == "not_converged"
     assert segment["kind"] == "seg"
     assert segment["converged"] is True
     expected = "Bond formed" if bond_changed else "(no covalent changes detected)"
