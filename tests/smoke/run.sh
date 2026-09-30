@@ -102,7 +102,7 @@ pdb2reaction irc -i ts.pdb -q 0 --max-cycles 3 --never-stop --out-dir test5 > te
 pdb2reaction dft -i h2.gjf --func-basis 'hf/sto-3g' --grid-level 0 --scf-tol 1e-5 --scf-max-cycles 40 --dft-engine cpu --out-dir test6 > test6.out 2>&1
 
 # test7: scan (1D)
-pdb2reaction scan -i r.pdb -q -1 --scan-lists "[(1,5,1.4)]" --max-step-size 2.0 --relax-max-cycles 3 --no-preopt --no-endopt --out-dir test7 > test7.out 2>&1
+python run_limited.py pdb2reaction scan -i r.pdb -q -1 --scan-lists "[(1,5,1.4)]" --max-step-size 2.0 --relax-max-cycles 3 --no-preopt --no-endopt --out-dir test7 > test7.out 2>&1
 
 # test8: scan2d (extract model first)
 pdb2reaction extract -i p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --no-exclude-backbone --include-h2o -o p_complex_model.pdb
@@ -120,19 +120,19 @@ python run_limited.py pdb2reaction path-search -i r.pdb p.pdb -q -1 --max-nodes 
 # --- Input format tests (all command) ---
 
 # test12: all (pdb+pdb, --no-refine-path for single-pass path-opt)
-pdb2reaction -i r.pdb p.pdb -q -1 --no-refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test12 > test12.out 2>&1
+python run_limited.py pdb2reaction all -i r.pdb p.pdb -q -1 --no-refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test12 > test12.out 2>&1
 
 # test13: all (xyz+xyz, --ref-pdb for PDB conversion, --no-refine-path for single-pass path-opt)
-pdb2reaction -i r.xyz p.xyz -q -1 --ref-pdb r.pdb --no-refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test13 > test13.out 2>&1
+python run_limited.py pdb2reaction all -i r.xyz p.xyz -q -1 --ref-pdb r.pdb --no-refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test13 > test13.out 2>&1
 
 # test14: all (gjf+gjf, --no-refine-path for single-pass path-opt)
-pdb2reaction -i r.gjf p.gjf --no-refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test14 > test14.out 2>&1
+python run_limited.py pdb2reaction all -i r.gjf p.gjf --no-refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test14 > test14.out 2>&1
 
 # test15: all (scan-lists, pdb)
-pdb2reaction -i r.pdb -q -1 --scan-lists "[(1,5,1.4)]" --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test15 > test15.out 2>&1
+python run_limited.py pdb2reaction all -i r.pdb -q -1 --scan-lists "[(1,5,1.4)]" --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test15 > test15.out 2>&1
 
 # test16: all (scan-lists, xyz)
-pdb2reaction -i r.xyz -q -1 --scan-lists "[(1,5,1.4)]" --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test16 > test16.out 2>&1
+python run_limited.py pdb2reaction all -i r.xyz -q -1 --scan-lists "[(1,5,1.4)]" --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test16 > test16.out 2>&1
 
 # --- Complex system tests ---
 
@@ -140,10 +140,10 @@ pdb2reaction -i r.xyz -q -1 --scan-lists "[(1,5,1.4)]" --max-cycles-gsm 5 --thre
 python run_limited.py pdb2reaction opt -i p_complex.pdb --ligand-charge 'PRE:-2' --max-cycles 3 --thresh gau_loose --out-dir test17 > test17.out 2>&1
 
 # test18: all (complex, extract + scan-lists)
-pdb2reaction -i p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' --scan-lists "[('PRE 8 C3','PRE 8 O1\'',1.4),('PRE 8 C1','PRE 8 C8',3.3)]" -r 5.0 --no-exclude-backbone --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test18 > test18.out 2>&1
+python run_limited.py pdb2reaction all -i p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' --scan-lists "[('PRE 8 C3','PRE 8 O1\'',1.4),('PRE 8 C1','PRE 8 C8',3.3)]" -r 5.0 --no-exclude-backbone --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test18 > test18.out 2>&1
 
 # test19: all (complex, multi-input, --no-refine-path for single-pass path-opt)
-pdb2reaction -i r_complex.pdb p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --no-exclude-backbone --no-refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test19 > test19.out 2>&1
+python run_limited.py pdb2reaction all -i r_complex.pdb p_complex.pdb -c 'PRE' --ligand-charge 'PRE:-2' -r 5.0 --no-exclude-backbone --no-refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test19 > test19.out 2>&1
 
 # --- TSOPT-only mode ---
 
@@ -157,7 +157,7 @@ pdb2reaction -i ts.pdb -q 0 --tsopt --opt-mode-post hess --max-cycles-gsm 5 --th
 # --- MEP mode ---
 
 # test22: all (pdb+pdb, mep-mode dmf, --no-refine-path for single-pass path-opt)
-pdb2reaction -i r.pdb p.pdb -q -1 --mep-mode dmf --no-refine-path --dmf-max-iterations 5 --thresh gau_loose --thresh-post gau_loose --out-dir test22 > test22.out 2>&1
+python run_limited.py pdb2reaction all -i r.pdb p.pdb -q -1 --mep-mode dmf --no-refine-path --dmf-max-iterations 5 --thresh gau_loose --thresh-post gau_loose --out-dir test22 > test22.out 2>&1
 
 # --- TSOPT for complex systems ---
 
@@ -165,7 +165,7 @@ pdb2reaction -i r.pdb p.pdb -q -1 --mep-mode dmf --no-refine-path --dmf-max-iter
 python run_limited.py pdb2reaction tsopt -i ts_complex.pdb -q -1 --opt-mode hess --max-cycles 3 --thresh gau_loose --out-dir test23 > test23.out 2>&1
 
 # test24: tsopt (complex, grad)
-pdb2reaction tsopt -i ts_complex.pdb -q -1 --opt-mode grad --max-cycles 100 --thresh gau --out-json --out-dir test24 > test24.out 2>&1
+python run_limited.py pdb2reaction tsopt -i ts_complex.pdb -q -1 --opt-mode grad --max-cycles 100 --thresh gau --out-json --out-dir test24 > test24.out 2>&1
 python assert_release_result.py tsopt-optimizer test24 --expected-mode grad --expected-optimizer dimer >> test24.out 2>&1
 
 # --- Dry-run validation ---
@@ -213,7 +213,7 @@ pdb2reaction fix-altloc -i r_complex.pdb -o r_complex_fixalt.pdb > test36.out 2>
 # --- YAML scan spec ---
 
 # test37: scan (1D, YAML spec file)
-pdb2reaction scan -i r.pdb -q -1 -s scan_spec.yaml --max-step-size 2.0 --relax-max-cycles 3 --no-preopt --no-endopt --out-dir test37 > test37.out 2>&1
+python run_limited.py pdb2reaction scan -i r.pdb -q -1 -s scan_spec.yaml --max-step-size 2.0 --relax-max-cycles 3 --no-preopt --no-endopt --out-dir test37 > test37.out 2>&1
 
 # test38: scan2d (YAML spec file)
 pdb2reaction scan2d -i p_complex_model.pdb --ligand-charge 'PRE:-2' --freeze-atoms "$P_COMPLEX_MODEL_FREEZE_ATOMS" -s scan2d_spec.yaml --max-step-size 2.0 --relax-max-cycles 100 --thresh gau_loose --out-dir test38 > test38.out 2>&1
@@ -231,7 +231,7 @@ pdb2reaction opt -i r.pdb -q -1 --distance-restraint "[(1,2,1.5),(3,4)]" --dry-r
 # --- refine-path ---
 
 # test41: all (pdb+pdb, --refine-path = recursive path_search opt-in; the default is now single-pass path-opt)
-pdb2reaction -i r.pdb p.pdb -q -1 --refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test41 > test41.out 2>&1
+python run_limited.py pdb2reaction all -i r.pdb p.pdb -q -1 --refine-path --max-cycles-gsm 5 --thresh gau_loose --thresh-post gau_loose --out-dir test41 > test41.out 2>&1
 
 # --- Opt-in TS and IRC methods ---
 
@@ -336,13 +336,13 @@ python run_limited.py pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode hess --coord-
 
 # test52d_scan_dlc: scan --coord-type dlc (1D).  The bare `test52d` label belongs
 # to the tsopt lane above; this one is named after its own out-dir.
-pdb2reaction scan -i r.pdb -q -1 --coord-type dlc --scan-lists "[(1,5,1.4)]" --max-step-size 2.0 --relax-max-cycles 3 --no-preopt --no-endopt --out-dir test52d_scan_dlc > test52d_scan_dlc.out 2>&1
+python run_limited.py pdb2reaction scan -i r.pdb -q -1 --coord-type dlc --scan-lists "[(1,5,1.4)]" --max-step-size 2.0 --relax-max-cycles 3 --no-preopt --no-endopt --out-dir test52d_scan_dlc > test52d_scan_dlc.out 2>&1
 
 # test52g: opt --coord-type redund
 python run_limited.py pdb2reaction opt -i r.pdb -q -1 --coord-type redund --max-cycles 3 --thresh gau_loose --out-dir test52g_opt_redund > test52g_opt_redund.out 2>&1
 
 # test52j: scan --coord-type redund
-pdb2reaction scan -i r.pdb -q -1 --coord-type redund --scan-lists "[(1,5,1.4)]" --max-step-size 2.0 --relax-max-cycles 3 --no-preopt --no-endopt --out-dir test52j_scan_redund > test52j_scan_redund.out 2>&1
+python run_limited.py pdb2reaction scan -i r.pdb -q -1 --coord-type redund --scan-lists "[(1,5,1.4)]" --max-step-size 2.0 --relax-max-cycles 3 --no-preopt --no-endopt --out-dir test52j_scan_redund > test52j_scan_redund.out 2>&1
 
 # test52k: opt --coord-type tric
 python run_limited.py pdb2reaction opt -i r.pdb -q -1 --coord-type tric --max-cycles 3 --thresh gau_loose --out-dir test52k_opt_tric > test52k_opt_tric.out 2>&1
@@ -373,7 +373,7 @@ pdb2reaction freq -i r.pdb -q -1 --hessian-calc-mode Analytical --max-write 3 --
 pdb2reaction irc -i ts.pdb -q 0 --hessian-calc-mode analytical --max-cycles 2 --out-dir test57_irc_anahess > test57_irc_anahess.out 2>&1
 
 # test58: scan --opt-mode hess (RFO relaxation vs default LBFGS)
-pdb2reaction scan -i r.pdb -q -1 --opt-mode hess --scan-lists "[(1,5,1.4)]" --max-step-size 2.0 --relax-max-cycles 2 --no-preopt --no-endopt --out-json --out-dir test58_scan_hess > test58_scan_hess.out 2>&1
+python run_limited.py pdb2reaction scan -i r.pdb -q -1 --opt-mode hess --scan-lists "[(1,5,1.4)]" --max-step-size 2.0 --relax-max-cycles 2 --no-preopt --no-endopt --out-json --out-dir test58_scan_hess > test58_scan_hess.out 2>&1
 python assert_release_result.py scan-optimizer test58_scan_hess --expected-mode hess --expected-optimizer rfo >> test58_scan_hess.out 2>&1
 
 # test59: scan2d --opt-mode hess (RFO per-grid relaxation).  Start from a
@@ -433,19 +433,19 @@ pdb2reaction scan3d -i r.pdb -q -1 --scan-lists "[(1,5,2.20,2.21),(1,6,1.75,1.76
 grep -Fq '[scan3d] --dry-run: input, charge/spin parity, and --scan-lists parse OK.' test61_scan3d_fp64.out || { echo "[smoke] FAIL test61: fp64 option did not reach scan3d dry-run" >> test61_scan3d_fp64.out; exit 1; }
 
 # test62: path-opt --mep-mode dmf (Direct Max Flux at the subcommand level)
-pdb2reaction path-opt -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --dmf-max-iterations 3 --dmf-tol middle --no-preopt --no-climb --out-dir test62_pathopt_dmf > test62_pathopt_dmf.out 2>&1
+python run_limited.py pdb2reaction path-opt -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --dmf-max-iterations 3 --dmf-tol middle --no-preopt --no-climb --out-dir test62_pathopt_dmf > test62_pathopt_dmf.out 2>&1
 
 # test62b: path-opt --mep-mode dmf WITH frozen atoms. No other lane enters the DMF
 # harmonic-restraint branch, so this is its only coverage. The checker compares the
 # optimized path against the FB-ENM interpolation the per-image restraint references.
-pdb2reaction path-opt -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --freeze-atoms 1,3,5 --dmf-max-iterations 40 --dmf-tol middle --no-preopt --no-climb --out-json --out-dir test62b_dmf_freeze > test62b_dmf_freeze.out 2>&1
+python run_limited.py pdb2reaction path-opt -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --freeze-atoms 1,3,5 --dmf-max-iterations 40 --dmf-tol middle --no-preopt --no-climb --out-json --out-dir test62b_dmf_freeze > test62b_dmf_freeze.out 2>&1
 python assert_release_result.py dmf-freeze test62b_dmf_freeze --frozen-atoms 1,3,5 >> test62b_dmf_freeze.out 2>&1
 
 # test63: path-opt --coord-type dlc (p2r keeps DLC for pure-MLIP)
 python run_limited.py pdb2reaction path-opt -i r.pdb p.pdb -q -1 --coord-type dlc --max-nodes 5 --max-cycles-gsm 3 --no-preopt --no-climb --out-dir test63_pathopt_dlc > test63_pathopt_dlc.out 2>&1
 
 # test64: path-search --mep-mode dmf
-pdb2reaction path-search -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --dmf-max-iterations 3 --no-preopt --out-dir test64_ps_dmf > test64_ps_dmf.out 2>&1
+python run_limited.py pdb2reaction path-search -i r.pdb p.pdb -q -1 --mep-mode dmf --max-nodes 5 --dmf-max-iterations 3 --no-preopt --out-dir test64_ps_dmf > test64_ps_dmf.out 2>&1
 
 # test65: path-search --opt-mode hess (RFO single-structure preopt; keep preopt ON)
 python run_limited.py pdb2reaction path-search -i r.pdb p.pdb -q -1 --opt-mode hess --uma-workers 1 --max-nodes 5 --max-cycles-gsm 3 --out-dir test65_ps_hess > test65_ps_hess.out 2>&1
@@ -467,7 +467,7 @@ python check_frozen_atoms.py p_complex_model.pdb test68_opt_complex_freeze_dlc/f
 # test69: scan --coord-type dlc on extracted complex model with explicit frozen boundary atoms.
 # Keep preopt enabled: this is the regression path that can trigger internal-coordinate rebuilds.
 # Use a small non-reactive target so this tests coordinate integrity, not chemistry.
-pdb2reaction scan -i p_complex_model.pdb --ligand-charge 'PRE:-2' --coord-type dlc --freeze-atoms "$P_COMPLEX_MODEL_FREEZE_ATOMS" --scan-lists "[('PRE 8 C3','PRE 8 O1\'',3.2)]" --max-step-size 0.2 --relax-max-cycles 3 --no-endopt --out-dir test69_scan_complex_freeze_dlc > test69_scan_complex_freeze_dlc.out 2>&1
+python run_limited.py pdb2reaction scan -i p_complex_model.pdb --ligand-charge 'PRE:-2' --coord-type dlc --freeze-atoms "$P_COMPLEX_MODEL_FREEZE_ATOMS" --scan-lists "[('PRE 8 C3','PRE 8 O1\'',3.2)]" --max-step-size 0.2 --relax-max-cycles 3 --no-endopt --out-dir test69_scan_complex_freeze_dlc > test69_scan_complex_freeze_dlc.out 2>&1
 python check_frozen_atoms.py p_complex_model.pdb test69_scan_complex_freeze_dlc/stage_01/result.pdb "$P_COMPLEX_MODEL_FREEZE_ATOMS" test69 >> test69_scan_complex_freeze_dlc.out 2>&1
 if grep -q "Covalent-bond changes (start vs final): Yes" test69_scan_complex_freeze_dlc.out; then
   echo "[bond-check] test69: unexpected covalent-bond changes in non-reactive DLC+freeze scan" >> test69_scan_complex_freeze_dlc.out
