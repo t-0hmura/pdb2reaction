@@ -581,7 +581,7 @@ if [ "$test84_rc" -eq 0 ] || ! grep -Fq 'is 6x6; expected' test84_wrong.out; the
   exit 1
 fi
 for test84_mode in hess grad; do
-  pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode "$test84_mode" --read-hess test84_freq/hessian.npy --max-cycles 2 --out-dir "test84_tsopt_$test84_mode" > "test84_tsopt_$test84_mode.out" 2>&1
+  python run_limited.py pdb2reaction tsopt -i ts.pdb -q 0 --opt-mode "$test84_mode" --read-hess test84_freq/hessian.npy --max-cycles 2 --out-dir "test84_tsopt_$test84_mode" > "test84_tsopt_$test84_mode.out" 2>&1
   grep -Fq '[tsopt] Initial Hessian read from test84_freq/hessian.npy' "test84_tsopt_$test84_mode.out" || { echo "[smoke] FAIL test84: tsopt --opt-mode $test84_mode did not start from --read-hess" >> "test84_tsopt_$test84_mode.out"; exit 1; }
   if sed '/^Spent /q' "test84_tsopt_$test84_mode.out" | grep -Fq '[hessian] Completed'; then
     echo "[smoke] FAIL test84: tsopt --opt-mode $test84_mode recomputed the --read-hess Hessian" >> "test84_tsopt_$test84_mode.out"
