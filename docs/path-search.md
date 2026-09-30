@@ -133,7 +133,7 @@ The table is grouped by purpose; within each group the most-used options come fi
 | `--refine-mode {peak\|minima}` | Seeds for refinement: `peak` optimizes HEI±1; `minima` searches outward from the HEI toward the nearest local minima on each side. Defaults to `peak` for GSM and `minima` for DMF when omitted. | _Auto_ |
 | `--opt-mode TEXT` | Single-structure optimizer for HEI±1/kink nodes. `grad` maps to L-BFGS; `hess` maps to RFO. See {ref}`opt-mode-semantics` for how the same token maps across subcommands (tsopt uses Dimer/RS-P-RFO, not L-BFGS/RFO). | `grad` |
 | **Convergence thresholds** | | |
-| `--thresh TEXT` | Override convergence preset for single-structure optimizations only (`opt.lbfgs/rfo.thresh`). | `gau` |
+| `--thresh TEXT` | Convergence preset for single-structure optimization and input alignment (`opt.lbfgs/rfo.thresh`). | `gau` |
 | `--thresh-gsm TEXT` | Override convergence preset for the GSM string optimizer (`stopt.thresh`). | `gau_loose` |
 | `--dmf-tol TEXT` | Override the IPOPT dual-infeasibility tolerance of the DMF optimizer (`dmf.tol`): `tight` (0.04), `middle` (0.10), `loose` (0.20), or a positive float. Gaussian presets are rejected. | `tight` |
 | **Merge & alignment** | | |
@@ -147,7 +147,7 @@ The table is grouped by purpose; within each group the most-used options come fi
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/CIF/GJF companions. Bridge inputs add CIF with original IDs; XYZ/GJF inputs do not produce a PDB companion without a reference topology. | `True` |
 | `--config FILE` | Base YAML configuration layer applied before explicit CLI values. | _None_ |
 | `--show-config/--no-show-config` | Print the resolved configuration blocks and the loaded YAML file, then continue. | `False` |
-| `--dry-run/--no-dry-run` | Validate options and print the execution plan without running path search. | `False` |
+| `--dry-run/--no-dry-run` | Validate options and inputs without running path search. | `False` |
 
 See {ref}`CLI Conventions: Configuration precedence <configuration-precedence>` for the full resolution order.
 
@@ -189,6 +189,9 @@ search:
  max_seq_kink: 2 # max sequential kinks
  refine_mode: null # optional refinement strategy (auto-chooses when null)
 ```
+
+Single-structure settings also accept `stopt.lbfgs` / `stopt.rfo`;
+see [YAML Reference](yaml-reference.md#stopt) for aliases and conflict checks.
 
 ## See Also
 

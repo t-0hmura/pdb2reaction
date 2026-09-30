@@ -85,7 +85,9 @@ pdb2reaction tsopt -i hei.pdb -l 'SAM:1,GPP:-3' \
 ```python
 import json
 d = json.load(open("result_tsopt/result.json"))
-print(d["status"])                      # "converged" / "not_converged" / "stalled"; "error" on failure
+print(d["execution_status"])           # "completed" / "failed"
+print(d["scientific_status"])          # "success" / "partial" / "failed"
+print(d["optimization_status"])        # "converged" / "not_converged" / "stalled"
 print(d["energy_hartree"])
 print(d["n_imaginary_modes"])           # should be 1 for a real TS
 print(d["imaginary_frequencies_cm"])    # list of cm⁻¹
@@ -112,8 +114,8 @@ reaction coordinate.
 ```python
 import json
 d = json.load(open("result_tsopt/result.json"))
-if d["status"] != "converged":
-    print("NOT CONVERGED:", d["status"])
+if d["optimization_status"] != "converged":
+    print("NOT CONVERGED:", d["optimization_status"])
 elif d["n_imaginary_modes"] == 1:
     print("OK: single imaginary mode at", d["imaginary_frequencies_cm"][0], "cm-1")
 elif d["n_imaginary_modes"] == 0:

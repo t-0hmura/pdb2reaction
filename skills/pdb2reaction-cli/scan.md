@@ -24,6 +24,8 @@ pdb2reaction scan -i input.pdb \
 | `-i, --input` | path | required | Reactant `.pdb` / `.cif` / `.mmcif` / `.xyz` / `.gjf` |
 | `-s, --scan-lists` | str | required | Distance target/range, angle range, or dihedral range in an inline Python literal or YAML/JSON spec. **Pass multiple stages as space-separated literals after a single `-s`** — repeating `-s` is rejected. |
 | `-q` / `-l` / `-m` | — | — | Charge / spin |
+| `--relax-max-cycles` | int | 100000 | Optimizer-cycle limit; an explicit value overrides YAML `opt.max_cycles` |
+| `--opt-mode` | str | `grad` | Single-structure optimizer: L-BFGS (`grad`) or RFO (`hess`) |
 | `-b, --backend` | str | `uma` | MLIP backend or optional DFT calculator |
 | `-o, --out-dir` | path | `./result_scan/` | Output directory |
 | `--ref-pdb` | path | none | Residue context for XYZ/GJF inputs |
@@ -73,8 +75,8 @@ Each space-separated literal after a single `-s` is one stage; do **not** repeat
 | `<out_dir>/scan.pdb` | stitched XYZ exists, `--convert-files`, and PDB/mmCIF topology/reference available | normalized PDB companion used between pipeline stages |
 | `<out_dir>/scan.cif` | stitched XYZ exists, `--convert-files`, and input/reference required the mmCIF or oversized-PDB bridge | public trajectory with original IDs |
 
-`result.json` uses top-level `status: "completed"` when the runner returned;
-that is not proof every optimizer converged. Inspect each
+`result.json` separates `execution_status` (`completed` / `failed`) from
+`scientific_status` (`success` / `partial` / `failed`). Inspect each
 `stages[i]["converged"]`, target distance, final energy, and trajectory. Plot
 the stitched trajectory with `trj2fig.md` when it exists.
 

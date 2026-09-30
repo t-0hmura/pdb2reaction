@@ -50,7 +50,7 @@ pdb2reaction all -i ts_candidate.pdb -l 'SAM:1,GPP:-3' \
 ```text
 result_ts_only/
 ├── summary.log                                # 実行要約
-├── summary.json                               # status: success | partial | failed
+├── summary.json                               # scientific_status: success | partial | failed
 └── segments/
     └── seg_01/                                # TS のみモードの成果物
         ├── reactant.pdb                       # 正準 R/TS/P は seg_01/ 直下（TS のみモード）

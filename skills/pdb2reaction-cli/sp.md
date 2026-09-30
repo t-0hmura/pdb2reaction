@@ -21,7 +21,8 @@ pdb2reaction sp -i geom.{pdb,cif,mmcif,xyz,gjf} \
 |---|---|---|
 | `-i, --input` | required | Input PDB, mmCIF, XYZ, or GJF |
 | `-q` / `-l` / `-m` | resolved by common rules | Total charge / per-residue charge mapping / multiplicity |
-| `--hess / --no-hess` | off | Also write a Hessian; without frozen atoms it is `(3N, 3N)`, while YAML `geom.freeze_atoms` selects the active partial block |
+| `--hess / --no-hess` | off | Also write a Hessian; without frozen atoms it is `(3N, 3N)`, while `--freeze-atoms` or YAML `geom.freeze_atoms` selects the active partial block |
+| `--freeze-atoms` | unset | Explicit frozen-atom selection; `sp` does not automatically freeze link atoms |
 | `--hessian-calc-mode` | `FiniteDifference` | Finite differences are the default for every backend; an explicit `Analytical` request is supported by all four backends |
 | `--precision` | backend-dependent | Unset means UMA/AIMNet2 fp32 and ORB/MACE fp64; AIMNet2 rejects fp64 |
 | `--uma-workers` / `--uma-workers-per-node` | `1` / `1` | UMA predictor parallelism; other built-in backends filter these keys |
@@ -54,11 +55,11 @@ pdb2reaction sp -i geom.xyz -q -2 -m 1 -b mace \
 | Path | When | Content |
 |---|---|---|
 | `<out_dir>/forces.npy` | successful calculation | `(N, 3)` forces in Hartree/Bohr |
-| `<out_dir>/hessian.npy` | `--hess` | mass-unweighted Hessian in Hartree/Bohr² (full or YAML-freeze active block) |
+| `<out_dir>/hessian.npy` | `--hess` | mass-unweighted Hessian in Hartree/Bohr² (full or explicitly selected active block) |
 | `<out_dir>/result.json`, `summary.json` | `--out-json` | status, energy, provenance, charge/spin, and file paths |
 | stdout | successful single-point calculation | energy in Hartree, maximum force, and elapsed time |
 
-The JSON payload uses `status: "ok"`, `energy_au`, `forces_path`, and
+The JSON payload uses `execution_status: "completed"`, `scientific_status: "success"`, `energy_au`, `forces_path`, and
 `hessian_path`. `hessian_path` is null when `--hess` was not requested.
 `sp` does not write `summary.log`.
 

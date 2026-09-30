@@ -189,7 +189,7 @@ MCP の利用側は、割り当てられている場合には現在の `run_id` 
 `files` には `imaginary_mode_files`（vib ファイルリスト）と `hessian_npy`（`--dump-hess` のファイルの絶対 path）を含む場合があります。
 終端PHVAは数値収束後とエネルギープラトー停止（`stalled`）後に実行します。それ以外の非収束では
 終端構造を保持してPHVAをskipします。PHVA計算が失敗した場合は構造を破棄したり振動数を捏造したりせず、
-`hessian_status: "failed"` と理由を記録します。`status` / `optimization_status`
+`hessian_status: "failed"` と理由を記録します。`optimization_status`
 は数値最適化、`saddle_validation` はexact PHVAの鞍点次数を表します。数値収束
 済み高次停留点は`optimization_status: "converged"`かつ
 `saddle_validation: "higher_order"`であり、一次TS認定ではありません。`all`は
@@ -383,7 +383,7 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 ### `dft`
 
 > **注:** `dft` は SCF 収束・非収束の両方で `result.json` と
-> `summary.json` を書きます。非収束時は `status: "not_converged"`、
+> `summary.json` を書きます。非収束時は `scientific_status: "failed"`、
 > `converged: false` を記録して exit code 1 で終了します。未処理 exception
 > では標準 error envelope を書きます。
 
@@ -441,6 +441,7 @@ outcome count は fresh scan で出力します。plot-only `scan3d --csv` は
 | `min_energy_hartree` | float | フレーム中の最小エネルギー |
 | `max_energy_hartree` | float | フレーム中の最大エネルギー |
 | `energy_source` | string | `"trajectory_comment"` または `"mlip_recomputed"` |
+| `mlip_backend` / `mlip_model` / `mlip_model_label` / `mlip_task` / `mlip_precision` | string \| null | 再計算の設定。軌跡コメントを読む場合はすべて null |
 | `energy_provenance` | string[] | frame ごとの energy source provenance |
 | `energy_unit` | string | 保存 energy unit（`hartree`） |
 | `backend` | string または null | フレームを再計算した場合のみ MLIP backend。comment energy mode では null |

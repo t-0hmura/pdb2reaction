@@ -80,7 +80,7 @@ result.json (if --out-json)  # extraction stats: charges, atom counts, cap-H cou
 ```python
 import json
 d = json.load(open("result.json"))
-print(d["status"], d["total_charge"])
+print(d["execution_status"], d["scientific_status"], d["total_charge"])
 print(d["n_atoms_raw"], "->", d["n_atoms_extracted"])
 print(d["n_link_hydrogens"])
 print(d["files"])              # {basename: full_path} for each written PDB/CIF

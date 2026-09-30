@@ -70,6 +70,12 @@ pdb2reaction scan3d --csv ./result_scan3d/surface.csv --zmin -10 --zmax 40 -o ./
 5. 内側ループで `d3[k]` を走査し、**3 つの拘束すべて**を適用して緩和します。バイアスを除去したエネルギーを測定し、構造と収束フラグを書き出します。
 6. 完了後に `surface.csv`（カラム: `i,j,k,d1_A,d2_A,d3_A,energy_hartree,bias_converged,is_preopt,energy_kcal,d1_label,d2_label,d3_label`）を組み立て、開始／事前最適化構造を常に `i = j = k = -1` の参照行として残します。この行は基準エネルギー、補間、plot から除外します。`--baseline {min|first}` で kcal/mol の基準を設定し、`--zmin/--zmax` に従った 3D RBF 補間等値面図 `scan3d_density.html` を生成します。丸め後の距離タグが別の点と重なる場合、後の構造ファイル名には 0 始まりの格子 index `_grid_III_JJJ_KKK` が付きます。`--csv` が指定された場合、この可視化ステップのみを実行します。プロットには `d1_A`、`d2_A`、`d3_A` と Hartree または kcal/mol の energy 列が必要で、事前最適化行・明示的な非収束行・非有限行を除外します。旧CSVでも全 index が `-1` の行は参照行として除外します。4 点以上の非共面 usable point が 3 軸すべてを張る必要があります。
 
+`d1_A` / `d2_A` / `d3_A` は緩和後の実測値、
+`target_d1_A` / `target_d2_A` / `target_d3_A` は拘束の目標値です。
+ファイル名の距離タグは目標値を表します。使える点があっても補間に足りない
+場合は CSV を保持して図だけを省略します（`scientific_status: partial`、終了コード 0）。
+使える点が 0 個なら `scientific_status: failed`、終了コード 1 です。
+
 ## 出力
 
 主要な成果物は `surface.csv`、`grid/` 配下の各点の構造、そして等値面図 `scan3d_density.html` です。

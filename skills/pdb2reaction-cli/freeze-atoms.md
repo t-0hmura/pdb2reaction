@@ -92,8 +92,8 @@ With JSON output, inspect `result.json["rigid_projection"]` for `treatment`, `ef
 
 ## Subcommand coverage
 
-The geometry workflows below honor the listed sources. `sp` has no freeze
-CLI flags, but it honors 1-based YAML `geom.freeze_atoms`; with `--hess`, the
+The geometry workflows below honor the listed sources. `sp` accepts
+`--freeze-atoms` and 1-based YAML `geom.freeze_atoms`; with `--hess`, the
 default partial-Hessian setting writes the active block. `extract` only creates
 the cap records for downstream use.
 
@@ -104,7 +104,7 @@ the cap records for downstream use.
 | `path-opt`, `path-search` | ✓ | ✓ | ✓ |
 | `scan`, `scan2d`, `scan3d` | ✓ | ✓ | ✓ |
 | `all` | ✓ | ✓ | ✓ |
-| `sp` | ✗ | ✗ | ✓ |
+| `sp` | ✗ | ✓ | ✓ |
 
 ## Common pitfalls
 

@@ -89,6 +89,13 @@ unconverged rows, and non-finite rows are excluded; older CSVs without
 provenance are accepted, with all-minus-one index rows also treated as references. Interpolation requires at least four
 unique non-coplanar usable points spanning all three axes.
 
+The `d1_A` / `d2_A` / `d3_A` columns store measured coordinates after relaxation;
+`target_d1_A` / `target_d2_A` / `target_d3_A` store restraint targets.
+Filename distance tags describe the targets. With usable points but insufficient
+interpolation support, the CSV is retained and the plot is omitted
+(`scientific_status: partial`, exit 0). No usable points gives
+`scientific_status: failed` and exit 1.
+
 ## Outputs
 
 The key deliverables are `surface.csv`, per-point geometries under `grid/`, and the `scan3d_density.html` isosurface plot.

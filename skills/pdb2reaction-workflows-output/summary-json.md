@@ -177,8 +177,8 @@ Reading rules (cutoff: 1.20× covalent radii, margin 0.05; algorithm in [`pdb2re
 
 ## Failed-run output
 
-When `summary.json["scientific_status"] != "success"` (or, for legacy output
-without that field, `summary.json["status"] != "success"`), look at:
+When `summary.json["execution_status"] == "failed"` or
+`summary.json["scientific_status"] != "success"`, look at:
 
 1. `summary.log` — human-readable, prints the failure point first.
 2. `segments/seg_NN/<stage>/result.json` — per-stage status (which step

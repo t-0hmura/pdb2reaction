@@ -32,10 +32,11 @@ pdb2reaction path-search -i 1.R.pdb 3.P.pdb \
 | `--refine-mode` | str | engine-dependent | `peak` (HEI±1; GSM default) or `minima` (nearest local minima; DMF default) |
 | `--max-nodes` | int | 20 | Max internal nodes per segment string |
 | `--max-depth` | int | 10 | Recursive subdivision levels; `0` disables it. A capped interval is tagged `seg_NNN_maxdepth` |
-| `--thresh` | str | `gau` | Single-structure optimization convergence preset |
+| `--thresh` | str | `gau` | Single-structure optimization and input-alignment convergence preset |
 | `--thresh-gsm` | str | `gau_loose` | GSM string-optimizer convergence preset |
 | `--dmf-tol` | str/float | `tight` | DMF IPOPT dual-infeasibility tolerance: `tight`, `middle`, `loose`, or a positive float |
 | `-q, --charge` / `-l` / `-m` | — | — | Charge / multiplicity (see common conventions) |
+| `--opt-mode` | str | `grad` | Single-structure optimizer: L-BFGS (`grad`) or RFO (`hess`) |
 | `-b, --backend` | str | `uma` | MLIP backend or optional DFT calculator |
 | `-o, --out-dir` | path | `./result_path_search/` | Output directory |
 | `--config` / `--show-config` / `--dry-run` | — | — | YAML config + preview |
@@ -105,10 +106,9 @@ TSOPT, terminal PHVA, and IRC. A representative entry is:
 }
 ```
 
-Top-level `summary.json["status"]` is `"success"` when energy-diagram
-metadata was constructed, or `"partial"` when it was not. `success` does not
-guarantee that PNG export succeeded or that the MEP converged; inspect the
-expected files and segment diagnostics separately.
+`summary.json` reports `execution_status` and `scientific_status` separately.
+The scientific outcome includes MEP convergence and usable segment results.
+Inspect the expected files and per-segment diagnostics as well.
 
 ## Caveats
 

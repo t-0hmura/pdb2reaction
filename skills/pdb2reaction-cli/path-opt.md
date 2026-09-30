@@ -25,12 +25,13 @@ pdb2reaction path-opt -i reactant.pdb product.pdb \
 | `-i, --input` | path(s) | required (= 2) | Reactant and product with identical atom identities and ordering |
 | `--mep-mode` | str | `gsm` | `gsm` (Growing String) or `dmf` (Direct Max Flux) |
 | `--max-nodes` | int | 20 | Max internal nodes (final string ≤ `max-nodes + 2`) |
-| `--thresh` | str | `gau` | Endpoint preoptimization convergence preset |
+| `--thresh` | str | `gau` | Single-structure optimization and input-alignment convergence preset |
 | `--thresh-gsm` | str | `gau_loose` | GSM string-optimizer convergence preset |
 | `--dmf-tol` | str/float | `tight` | DMF IPOPT dual-infeasibility tolerance: `tight`, `middle`, `loose`, or a positive float |
 | `--preopt / --no-preopt` | flag | `--preopt` | Optimize each endpoint before constructing the string |
 | `--fix-ends / --no-fix-ends` | flag | `--fix-ends` | Keep GSM endpoint images fixed; accepted but unused with DMF |
 | `-q, --charge` / `-l` / `-m` | — | — | Charge / spin (common conventions) |
+| `--opt-mode` | str | `grad` | Single-structure optimizer: L-BFGS (`grad`) or RFO (`hess`) |
 | `-b, --backend` | str | `uma` | MLIP backend or optional DFT calculator |
 | `-o, --out-dir` | path | `./result_path_opt/` | Output directory |
 

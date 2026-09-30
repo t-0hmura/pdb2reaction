@@ -23,6 +23,7 @@ pdb2reaction scan2d -i input.pdb \
 | `-i, --input` | path | required | Reactant `.pdb` / `.cif` / `.mmcif` / `.xyz` / `.gjf` |
 | `-s, --scan-lists` | str | required | Two distance `(i,j,low,high)`, angle `(i,j,k,low,high)`, or dihedral `(i,j,k,l,low,high)` ranges, inline or in YAML/JSON. |
 | `-q` / `-l` / `-m` | — | — | Charge / spin |
+| `--opt-mode` | str | `grad` | Single-structure optimizer: L-BFGS (`grad`) or RFO (`hess`) |
 | `-b, --backend` | str | `uma` | MLIP backend or optional DFT calculator |
 | `-o, --out-dir` | path | `./result_scan2d/` | Output directory |
 | `--ref-pdb` | path | none | Residue context for XYZ/GJF |
@@ -54,9 +55,10 @@ pdb2reaction scan2d -i 1.R.pdb -l 'SAM:1,GPP:-3' \
 | `<out_dir>/surface.csv` | at least one grid record | 2D energy surface (i, j, d1_A, d2_A, energy_hartree, bias_converged, energy_kcal, plus axis labels) |
 
 `result.json` stores grid metadata and file paths; per-point energies and
-convergence flags are in `surface.csv`. `result.json["optimization_status"] == "completed"`
-means the grid and plots were written, not that every `bias_converged` value is
-true.
+convergence flags are in `surface.csv`. `result.json["execution_status"] == "completed"`
+means execution finished, without claiming convergence for every point.
+Plots may be omitted when usable points do not support interpolation; check
+`scientific_status` and each point's `bias_converged` value.
 When rounded distance tags collide, later point filenames append
 `_grid_III_JJJ` with zero-based grid indices.
 

@@ -80,7 +80,8 @@ print(d["energy_first_hartree"], d["energy_ts_hartree"], d["energy_last_hartree"
 print(d.get("bond_changes"))        # omitted if endpoint comparison was unavailable/failed
 print(d["endpoint_energy_orientation"])
 print(d.get("bond_changes_direction"))
-print(d["status"])                 # "completed" means the runner returned and wrote output
+print(d["execution_status"])       # "completed" / "failed"
+print(d["scientific_status"])      # "success" / "partial" / "failed"
 print(d["forward_requested"], d["backward_requested"])
 print(d["forward_integration_converged"], d["backward_integration_converged"])
 print(d["forward_integration_stop_reason"], d["backward_integration_stop_reason"])

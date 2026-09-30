@@ -132,7 +132,7 @@ out_dir/ (デフォルト:./result_path_search/)
 | `--refine-mode {peak\|minima}` | 精密化シード: `peak` は HEI±1、`minima` は HEI から最寄り局所極小点へ外側探索。未指定時は GSM で `peak`、DMF で `minima` | _Auto_ |
 | `--opt-mode TEXT` | HEI±1/ねじれノード用の単一構造オプティマイザ（`grad`=L-BFGS、`hess`=RFO）。同じトークンが `tsopt` では Dimer / RS-P-RFO へ対応する点については {ref}`ja-opt-mode-semantics` を参照してください | `grad` |
 | **収束閾値** | | |
-| `--thresh TEXT` | 単一構造最適化のみの収束プリセットを上書き（`opt.lbfgs/rfo.thresh`） | `gau` |
+| `--thresh TEXT` | 単一構造最適化と入力構造の整列の収束プリセット（`opt.lbfgs/rfo.thresh`）。 | `gau` |
 | `--thresh-gsm TEXT` | GSM ストリング最適化の収束プリセットを上書き（`stopt.thresh`） | `gau_loose` |
 | `--dmf-tol TEXT` | DMF 最適化の IPOPT dual-infeasibility 許容値を上書き（`dmf.tol`）。`tight`(0.04)、`middle`(0.10)、`loose`(0.20) または正の float。Gaussian プリセットは受け付けない | `tight` |
 | **マージとアライメント** | | |
@@ -146,7 +146,7 @@ out_dir/ (デフォルト:./result_path_search/)
 | `--convert-files/--no-convert-files` | XYZ/TRJ → PDB/CIF/GJFを切り替え。bridge入力は元IDのCIFを追加し、XYZ/GJFは参照topologyなしではPDBを生成しません。 | `True` |
 | `--config FILE` | 明示 CLI 指定より前に適用されるベース YAML | _None_ |
 | `--show-config/--no-show-config` | 解決済みの設定ブロックと読み込んだ YAML ファイルを表示して実行を継続 | `False` |
-| `--dry-run/--no-dry-run` | 実行せずに検証と実行計画表示のみを行う | `False` |
+| `--dry-run/--no-dry-run` | 計算せずにオプションと入力を検証する | `False` |
 
 設定の優先順位は {ref}`CLI 規約: 設定の優先順位 <ja-configuration-precedence>` を参照してください。
 
@@ -192,6 +192,9 @@ search:
 ## 注記
 
 - 入力は 2 つ以上が必須。満たさない場合、`-i/--input` の "invalid value" エラーで終了します。
+
+単一構造の設定は `stopt.lbfgs` / `stopt.rfo` でも指定できます。
+別の書き方と矛盾の検査は [YAML リファレンス](yaml-reference.md#stopt) を参照してください。
 
 ## 関連項目
 

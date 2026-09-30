@@ -58,6 +58,10 @@ summary.json                         # Byte-identical compatibility mirror on su
   two outputs with the same basename in different directories.
 - Console diagnostics describing parsing failures or unsupported extensions.
 
+JSON records `mlip_backend`, `mlip_model`, `mlip_model_label`, `mlip_task`,
+and `mlip_precision` for recomputed energies. These fields are null when
+reading trajectory comments.
+
 ## CLI options
 
 | Option | Description | Default |

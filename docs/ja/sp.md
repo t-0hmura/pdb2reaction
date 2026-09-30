@@ -36,7 +36,7 @@ pdb2reaction sp -i structure.pdb -q 0 -m 1 --hess
 |---|---|---|
 | _stdout_ | エネルギー（スカラー値）(a.u.) と最大力ノルム。`[sp] energy = …` の形式で出力 | 計算成功時 |
 | `forces.npy` | 原子単位 (Hartree / Bohr) の `(N, 3)` 力配列 | 計算成功時 |
-| `hessian.npy` | 質量重みなし Hessian (Hartree / Bohr²)。凍結原子が無ければ `(3N, 3N)`、YAML `geom.freeze_atoms` があればactive block | `--hess` 指定時のみ |
+| `hessian.npy` | 質量重みなし Hessian (Hartree / Bohr²)。凍結原子が無ければ `(3N, 3N)`、`--freeze-atoms` または YAML `geom.freeze_atoms` があれば active block | `--hess` 指定時のみ |
 | `result.json` / `summary.json` | 機械可読なエネルギー (a.u.)、バックエンド、電荷/スピン、npy 出力へのパス、経過時間 | `--out-json` 指定時のみ |
 
 `sp` は人間可読な `summary.log` を書き出しません。
@@ -61,6 +61,7 @@ UMA、ORB、MACE、AIMNet2 はすべて解析 Hessian を実装しています�
 | `-l, --ligand-charge TEXT` | — | 残基別の電荷マッピング（例: `SAM:1,GPP:-3`）。`-q` の自動導出に使用 |
 | `-m, --multiplicity INT` | `1` | スピン多重度、2S+1（任意；省略時は 1。GJF はテンプレートから継承） |
 | `-b, --backend [uma\|orb\|mace\|aimnet2\|dft]` | `uma` | MLIP バックエンドまたは任意の DFT calculator |
+| `--freeze-atoms TEXT` | 未指定 | 凍結原子を明示指定。リンク原子の自動凍結は行わない |
 | `--hess / --no-hess` | `--no-hess` | `hessian.npy` も計算して書き出す |
 | `--hessian-calc-mode [Analytical\|FiniteDifference]` | `FiniteDifference` | Hessian モードを選択（`--hess` 指定時のみ有効） |
 | `-o, --out-dir PATH` | `./result_sp/` | 出力ディレクトリ |
@@ -73,7 +74,7 @@ UMA、ORB、MACE、AIMNet2 はすべて解析 Hessian を実装しています�
 
 ## 注記
 
-- `sp` はfreeze用CLI flagを持ちませんが、1-basedのYAML
+- `sp` は `--freeze-atoms` と 1-based の YAML
   `geom.freeze_atoms` を反映します。凍結原子のforceはgeometry/backend契約により
   zero化され、`--hess` はデフォルトでactive partial-Hessian blockを書き出します。
 - 一点 DFT（gpu4pyscf / PySCF）のベンチマークには、代わりに [`dft`](dft.md) を使用してください。

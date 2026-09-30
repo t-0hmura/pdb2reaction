@@ -50,7 +50,7 @@ A successful run produces:
 ```text
 result_ts_only/
 ├── summary.log                                # Run summary
-├── summary.json                               # status: success | partial | failed
+├── summary.json                               # scientific_status: success | partial | failed
 └── segments/
     └── seg_01/                                # TS-only deliverables
         ├── reactant.pdb                        # Canonical R/TS/P (TS-only mode)

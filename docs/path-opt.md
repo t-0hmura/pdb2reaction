@@ -108,7 +108,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `--convert-files/--no-convert-files` | Toggle XYZ/TRJ → PDB/CIF/GJF companions according to the input topology/template. | `True` |
 | `--ref-pdb FILE` | Reference PDB topology for XYZ/GJF inputs (keeps XYZ coordinates) to enable PDB conversions. | _None_ |
 | `-o, --out-dir TEXT` | Output directory. | `./result_path_opt/` |
-| `--thresh TEXT` | Override convergence preset for endpoint preoptimization only (`opt.lbfgs/rfo.thresh`). | `gau` |
+| `--thresh TEXT` | Convergence preset for single-structure optimization and input alignment (`opt.lbfgs/rfo.thresh`). | `gau` |
 | `--thresh-gsm TEXT` | Override convergence preset for the GSM string optimizer (`stopt.thresh`). | `gau_loose` |
 | `--dmf-tol TEXT` | Override the IPOPT dual-infeasibility tolerance of the DMF optimizer (`dmf.tol`): `tight` (0.04), `middle` (0.10), `loose` (0.20), or a positive float. Gaussian presets are rejected. | `tight` |
 | `--config FILE` | Base YAML configuration layer applied before explicit CLI values. | _None_ |
@@ -132,6 +132,9 @@ See [YAML Reference](yaml-reference.md) for full key listings:
 - [`dmf`](yaml-reference.md#dmf) — Direct Max Flux + (C)FB-ENM interpolation (DMF mode).
 - [`stopt`](yaml-reference.md#stopt) — StringOptimizer settings.
 - [`opt.lbfgs`](yaml-reference.md#lbfgs) / [`opt.rfo`](yaml-reference.md#rfo) — Endpoint single-structure preoptimization. An explicitly supplied CLI `--preopt-max-cycles` overrides the YAML value; when omitted, YAML remains effective.
+
+Single-structure settings also accept `stopt.lbfgs` / `stopt.rfo`;
+see [YAML Reference](yaml-reference.md#stopt) for aliases and conflict checks.
 
 ### `path-opt`-specific defaults
 

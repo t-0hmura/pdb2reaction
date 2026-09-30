@@ -67,6 +67,12 @@ YAML/JSON ファイル書式、インライン Python リテラル構文、原�
 4. 各 `(i, j)` について、`<out-dir>/grid/point_iDDD_jDDD.xyz`（`DDD = round(d × 100)` Å。例 `d1=1.30 Å, d2=3.10 Å` → `point_i130_j310.xyz`）に構造を保存し、バイアス収束の可否を記録し、バイアスを除去した MLIP エネルギーを評価します。丸め後のタグが別の点と重なる場合、後のファイル名には 0 始まりの格子 index `_grid_III_JJJ` が付きます。`--dump` の場合、外側ループごとの内側軌跡が `inner_path_d1_###_trj.xyz`（`###` は外側ステップ index）として保存されます。
 5. すべての点を走査したら、`i,j,d1_A,d2_A,energy_hartree,bias_converged,is_preopt,energy_kcal,d1_label,d2_label` の列を持つ `<out-dir>/surface.csv` を作成します。参照行は常に `i = j = -1`、`is_preopt = true` として表に残しますが、基準エネルギー、補間、plot からは除外します。`--baseline {min|first}` で kcal/mol の基準をシフトします。`--baseline first` は再並べ替え後の最初の eligible 格子点（`i = j = 0`）を使い、その点が対象外なら eligible point の最小値へ fallback します。eligible point が少なくとも 3 つあり、重複せず非共線の場合だけ、`scan2d_map.png`（2D contour）と `scan2d_landscape.html`（3D surface）を生成します。条件を満たさない場合も `surface.csv` は残り、plot は生成せず正常に扱います。`--zmin/--zmax` でカラースケールを固定できます。
 
+`d1_A` / `d2_A` は緩和後の実測値、
+`target_d1_A` / `target_d2_A` は拘束の目標値です。
+ファイル名の距離タグは目標値を表します。使える点があっても補間に足りない
+場合は CSV を保持して図だけを省略します（`scientific_status: partial`、終了コード 0）。
+使える点が 0 個なら `scientific_status: failed`、終了コード 1 です。
+
 ## 出力
 
 実行後は `surface.csv`、`grid/` 配下の各点の構造、`scan2d_map.png` / `scan2d_landscape.html` のプロットを確認してください。

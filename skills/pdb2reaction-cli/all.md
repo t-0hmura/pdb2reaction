@@ -102,7 +102,8 @@ Three zones: deliverables at `<out_dir>/`, per-segment deliverables under `<out_
 ```python
 import json
 d = json.load(open("result_all/summary.json"))
-print(d["status"])                    # "success" / "partial" / "failed"
+print(d["execution_status"])          # "completed" / "failed"
+print(d["scientific_status"])         # "success" / "partial" / "failed"
 print(d["pdb2reaction_version"])
 print(d["charge"], d["spin"])
 print(d["rate_limiting_step"])        # legacy key: highest local segment barrier

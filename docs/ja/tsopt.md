@@ -33,6 +33,7 @@ YAML の半径は Bohr 単位で、`opt` / `rsirfo` の既存の優先順位を�
 | --- | --- | --- |
 | 収束条件未達、明示したサイクル上限への到達 | 最終構造と軌跡を保持し、終端 PHVA を省略 | TS 結果の登録後、IRC 前で停止 |
 | 有効化したエネルギープラトー停止（`stalled`） | 最終構造と軌跡を保持し、終端 PHVA を実行して n_imag を報告 | TS 結果の登録後、IRC 前で停止 |
+| 収束後に `--skip-final-freq` を指定 | 構造を保持し、終端 PHVA を省略 | 反応モードを確認できないため IRC 前で停止 |
 | 終端 PHVA の失敗 | 構造を保持し、`hessian_status: failed` と理由を記録 | 結果の登録後、IRC 前で停止 |
 | 不正な入力・構造、または `ZeroStepLength` / `OptimizationError` など回復不能なオプティマイザの例外 | エラー情報を記録し、それ以前に書かれたファイルを可能な範囲で保持 | 通常の数値非収束とは区別して処理を中断 |
 
@@ -142,7 +143,7 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
  [-b/--backend uma|orb|mace|aimnet2|dft] \
  [--opt-mode grad|hess|dimer|rsirfo|trim|rsprfo] [--flatten/--no-flatten] \
  [--freeze-links/--no-freeze-links] [--max-cycles N] [--thresh PRESET] \
- [--hessian-calc-mode Analytical|FiniteDifference] \
+ [--hessian-calc-mode Analytical|FiniteDifference] [--skip-final-freq / --no-skip-final-freq] \
  [--convert-files/--no-convert-files] [--ref-pdb FILE]
 ```
 
@@ -181,6 +182,7 @@ pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l, --ligand-charge <
 | `--config FILE` | 明示 CLI オプションより前に適用するベース YAML 設定ファイル | _None_ |
 | `--show-config/--no-show-config` | 読み込んだ YAML ファイルとその最上位の key を表示して実行を継続 | `False` |
 | `--read-hess PATH` | Hessian を計算せず、NumPy の `.npy` ファイル（`freq`・`tsopt` の `--dump-hess` で書いたものなど。形式は [`freq`](freq.md)）から初期 Hessian を読む。RS-P-RFO・RS-I-RFO・TRIM では `rsirfo.hessian_init: calc`（デフォルト）も必要 | _None_ |
+| `--skip-final-freq / --no-skip-final-freq` | 収束後の終端 PHVA を省略。プラトー停止では実行。`--dump-hess` と併用不可。 | `False` |
 | `--dump-hess PATH` | 最終構造の Hessian を NumPy の `.npy` 配列として保存する。`freq`・`tsopt`・`irc` の `--read-hess` や、ほかのプログラムで使える。最終 Hessian を計算したときだけ書く | _None_ |
 | `--dry-run/--no-dry-run` | 実行せずにオプションと入力を検証する | `False` |
 

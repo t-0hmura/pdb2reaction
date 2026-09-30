@@ -80,6 +80,13 @@ TS 最適化はより厳しい "baker" プリセットを、通常の極小化�
 
 ## 概要
 
+`opt.lbfgs` / `opt.rfo` は `lbfgs` / `rfo`、`freq.thermo` は
+`thermo` の別の書き方です。熱化学設定は `all --thermo` でも使用します。
+path 系では `stopt.lbfgs` / `stopt.rfo` も単一構造最適化を設定します。
+同じ YAML 層で別の場所に明示した値が矛盾するとエラーになり、共通の
+`opt` キーと選択したオプティマイザの設定も照合します。path の出力先と
+prefix は実行ごとに設定します。ストリング最適化は外側の `stopt` を読みます。
+
 
 | セクション | 説明 | 使用されるコマンド |
 |---------|-------------|---------|
@@ -93,7 +100,7 @@ TS 最適化はより厳しい "baker" プリセットを、通常の極小化�
 | [`stopt`](#stopt) | StringOptimizer 設定 | path-opt, path-search |
 | [`irc`](#ja-irc-section) | IRC 積分設定 | irc |
 | [`freq`](#ja-freq-section) | 振動解析設定 | freq |
-| [`thermo`](#thermo) | 熱化学設定 | freq |
+| [`thermo`](#thermo) | 熱化学設定 | all, freq |
 | [`dft`](#ja-dft-section) | DFT 計算設定 | dft |
 | [`bias`](#bias) | 調和バイアス設定 | scan, scan2d, scan3d |
 | [`bond`](#bond) | 結合変化検出設定 | scan, path-search |

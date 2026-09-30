@@ -450,6 +450,7 @@ See also the extended [`summary.json` section](#summary-json-path-search-all) fo
 | `min_energy_hartree` | float | Minimum energy across frames |
 | `max_energy_hartree` | float | Maximum energy across frames |
 | `energy_source` | string | `"trajectory_comment"` or `"mlip_recomputed"` |
+| `mlip_backend` / `mlip_model` / `mlip_model_label` / `mlip_task` / `mlip_precision` | string \| null | Effective recomputation provenance; all are null in trajectory-comment mode |
 | `energy_provenance` | string[] | Per-frame energy source provenance |
 | `energy_unit` | string | Stored energy unit (`hartree`) |
 | `backend` | string or null | MLIP backend only when frame energies were recomputed; null in comment-energy mode |

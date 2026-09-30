@@ -41,6 +41,7 @@ available as an explicit choice.
 | --- | --- | --- |
 | Convergence criteria unmet or explicit cycle limit reached | Retain the final geometry and trajectory; skip terminal PHVA | Register the TS result and stop before IRC |
 | Opt-in energy plateau (`stalled`) | Retain the final geometry and trajectory; run terminal PHVA and report n_imag | Register the TS result and stop before IRC |
+| Converged with `--skip-final-freq` | Retain the geometry; skip terminal PHVA | Stop before IRC because the reaction mode is unverified |
 | Terminal PHVA fails | Retain the geometry and set `hessian_status: failed` with the error; do not invent frequencies | Stop before IRC after artifact registration |
 | Invalid input/geometry or an unrecoverable optimizer exception such as `ZeroStepLength` / `OptimizationError` | Follow the structured error-envelope path; only files already written are retained on a best-effort basis | Abort the stage rather than relabeling it as ordinary non-convergence |
 
@@ -161,7 +162,7 @@ Command form:
 pdb2reaction tsopt -i INPUT.{pdb|xyz|trj|...} [-q CHARGE] [-l 'RES:Q,...'] [-m 2S+1] \
     [-b uma|orb|mace|aimnet2|dft] [--opt-mode grad|hess|dimer|rsirfo|trim|rsprfo] [--flatten / --no-flatten] \
     [--freeze-links / --no-freeze-links] [--max-cycles N] [--thresh PRESET] \
-    [--hessian-calc-mode Analytical|FiniteDifference] \
+    [--hessian-calc-mode Analytical|FiniteDifference] [--skip-final-freq / --no-skip-final-freq] \
     [--convert-files / --no-convert-files] [--ref-pdb FILE]
 ```
 
@@ -201,6 +202,7 @@ The tables below cover the options that need explanation. The full flag list is 
 | `--config FILE` | Base YAML configuration applied before explicit CLI options. | _None_ |
 | `--show-config / --no-show-config` | Print the loaded YAML file and its top-level keys, then continue. | `False` |
 | `--read-hess PATH` | Start from the Hessian in a NumPy `.npy` file (for example from `freq` or `tsopt --dump-hess`; format in [`freq`](freq.md)) instead of computing it. RS-P-RFO / RS-I-RFO / TRIM also need `rsirfo.hessian_init: calc` (the default). | _None_ |
+| `--skip-final-freq / --no-skip-final-freq` | Skip terminal PHVA after convergence; plateau stops still run PHVA. Cannot be combined with `--dump-hess`. | `False` |
 | `--dump-hess PATH` | Save the final-geometry Hessian as a NumPy `.npy` array for `--read-hess` in `freq`, `tsopt`, or `irc`, or for other programs. Written only when the final Hessian was computed. | _None_ |
 | `--dry-run / --no-dry-run` | Validate options and inputs without running TS optimization. | `False` |
 

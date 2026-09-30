@@ -88,7 +88,7 @@ Same as `all.md`. Specifically for endpoint-MEP mode:
 
 | Symptom in `summary.json` | Likely cause | Fix |
 |---|---|---|
-| `status == "partial"` with `bond-summary` reporting extra changes between inputs vs the optimized MEP | Bond-change detector found extra changes; the reaction encoded by the endpoints and the optimized candidate path may differ. | Inspect the structures and bond report first. If justified, compare `peak`/`minima` refinement or supply a verified intermediate; changing the refinement rule is not itself a correctness fix. |
+| `bond-summary` reports extra changes between inputs and the optimized MEP | Bond-change detector found extra changes; the reaction encoded by the endpoints and the optimized candidate path may differ. | Inspect the structures and bond report first. If justified, compare `peak`/`minima` refinement or supply a verified intermediate; changing the refinement rule is not itself a correctness fix. |
 | `post_segments[i]["ts_imag"]["n_imag"] > 1` | Higher-order saddle or numerical/seed problem; not a validated TS | Inspect the modes, improve the MEP seed and/or try `--flatten`; use Dimer or a second backend as a cross-check rather than relabeling it a first-order saddle. |
 | Different atoms/order across `-i` inputs | Inconsistent extractions | Re-extract with one controlled residue/atom selection and compare the ordered `(element, chain, residue, atom-name)` signatures; equal PDB line counts alone are insufficient. |
 

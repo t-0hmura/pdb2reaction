@@ -34,7 +34,7 @@ calculation, the scalar energy and `|force|_max` are printed to stdout and
 |---|---|---|
 | _stdout_ | scalar energy (a.u.) and `|force|_max`, printed as `[sp] energy = …` | successful calculation |
 | `forces.npy` | `(N, 3)` array of forces in atomic units (Hartree / Bohr) | successful calculation |
-| `hessian.npy` | mass-unweighted Hessian (Hartree / Bohr²): `(3N, 3N)` without frozen atoms, or the active block with YAML `geom.freeze_atoms` | only with `--hess` |
+| `hessian.npy` | mass-unweighted Hessian (Hartree / Bohr²): `(3N, 3N)` without frozen atoms, or the active block with `--freeze-atoms` or YAML `geom.freeze_atoms` | only with `--hess` |
 | `result.json` / `summary.json` | machine-readable energy (a.u.), backend, charge/spin, paths to npy outputs, elapsed time | only with `--out-json` |
 
 `sp` writes no human-readable `summary.log`.
@@ -61,6 +61,7 @@ The full flag list is in the generated [command reference](reference/commands/in
 | `-b, --backend [uma\|orb\|mace\|aimnet2\|dft]` | `uma` | MLIP backend or optional DFT calculator |
 | `--hess / --no-hess` | `--no-hess` | also compute and write `hessian.npy` |
 | `--hessian-calc-mode [Analytical\|FiniteDifference]` | `FiniteDifference` | select the Hessian mode (only applies with `--hess`) |
+| `--freeze-atoms TEXT` | — | 1-based atom indices, combined with YAML `geom.freeze_atoms` |
 | `-o, --out-dir PATH` | `./result_sp/` | output directory |
 | `--precision [fp32\|fp64]` | backend-dependent | numeric precision passed to the backend |
 | `--config PATH` | — | YAML config providing `calc.*`, `geom.*` defaults |
@@ -71,7 +72,7 @@ Run `pdb2reaction sp --help-advanced` for the full option list.
 
 ## Notes
 
-- `sp` has no freeze CLI flag, but honors the 1-based YAML
+- `sp` accepts `--freeze-atoms` and the 1-based YAML
   `geom.freeze_atoms` list. Frozen forces are zeroed by the backend geometry
   contract and `--hess` writes the active partial-Hessian block by default.
 - Use [`dft`](dft.md) when population analysis is needed; `sp -b dft` provides the calculator single-point route.

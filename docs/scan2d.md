@@ -103,6 +103,13 @@ see {ref}`CLI Conventions: Scan-list spec <scan-list-spec>`.
     `<out-dir>/`. With insufficient support, `surface.csv` remains available
     and plots are omitted cleanly. Use `--zmin/--zmax` to clamp the color scale.
 
+The `d1_A` / `d2_A` columns store measured coordinates after relaxation;
+`target_d1_A` / `target_d2_A` store restraint targets.
+Filename distance tags describe the targets. With usable points but insufficient
+interpolation support, the CSV is retained and the plot is omitted
+(`scientific_status: partial`, exit 0). No usable points gives
+`scientific_status: failed` and exit 1.
+
 ## Outputs
 
 After a run, check `surface.csv`, the per-point structures under `grid/`, and the `scan2d_map.png` / `scan2d_landscape.html` plots.

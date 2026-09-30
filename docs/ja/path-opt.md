@@ -114,7 +114,7 @@ out_dir/
 | `--convert-files/--no-convert-files` | 入力トポロジー／テンプレートに応じた XYZ/TRJ → PDB/CIF/GJF companion 生成の切り替え | `True` |
 | `--ref-pdb FILE` | XYZ/GJF 入力用の参照 PDB/mmCIF トポロジー（XYZ 座標を保持して変換を有効化） | _None_ |
 | `-o, --out-dir TEXT` | 出力ディレクトリ | `./result_path_opt/` |
-| `--thresh TEXT` | エンドポイント事前最適化のみの収束プリセットを上書き（`opt.lbfgs/rfo.thresh`） | `gau` |
+| `--thresh TEXT` | 単一構造最適化と入力構造の整列の収束プリセット（`opt.lbfgs/rfo.thresh`）。 | `gau` |
 | `--thresh-gsm TEXT` | GSM ストリング最適化（成長およびクライミング精密化）の収束プリセットを上書き（`stopt.thresh`; `gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`） | `gau_loose` |
 | `--dmf-tol TEXT` | DMF 最適化の IPOPT dual-infeasibility 許容値を上書き（`dmf.tol`）。`tight`(0.04)、`middle`(0.10)、`loose`(0.20) または正の float。Gaussian プリセットは受け付けない | `tight` |
 | `--config FILE` | 明示 CLI 指定より前に適用されるベース YAML | _None_ |
@@ -156,6 +156,9 @@ opt:
 ## 終了コード
 
 CLI 規約の {ref}`ja-exit-codes` を参照してください。
+
+単一構造の設定は `stopt.lbfgs` / `stopt.rfo` でも指定できます。
+別の書き方と矛盾の検査は [YAML リファレンス](yaml-reference.md#stopt) を参照してください。
 
 ## 関連項目
 

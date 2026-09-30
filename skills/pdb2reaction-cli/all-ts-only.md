@@ -87,7 +87,7 @@ warning-labelled diagnostic IRC, but it is not a validated first-order TS.
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| top-level `status == "partial"` and the segment lacks `mlip`/`ts_imag` post data | TS optimization or subsequent validation did not complete | Inspect `summary.log` and the `segments/seg_01/ts/` artifacts before choosing a targeted retry such as a better MEP seed, another optimizer family, coordinates, or `--flatten` for surplus modes. |
+| top-level `scientific_status == "failed"` and the segment lacks `mlip`/`ts_imag` post data | TS optimization or subsequent validation did not complete | Inspect `summary.log` and the `segments/seg_01/ts/` artifacts before choosing a targeted retry such as a better MEP seed, another optimizer family, coordinates, or `--flatten` for surplus modes. |
 | `post["ts_imag"]["n_imag"] == 0` | Geometry reached a local minimum or a near-zero mode was classified differently | Inspect frequencies/displacements and obtain a better saddle seed, commonly from a validated/refined endpoint path. |
 | `post["ts_imag"]["n_imag"] >= 2` | Higher-order saddle or numerical/constraint artifact | Not a valid first-order TS. Inspect every displacement, verify freeze/PHVA and precision, then retry from a better seed and/or with `--flatten`. |
 | `segments[0]["bond_changes"]` is empty (no cutoff-defined covalent bonds change) | Endpoints may differ only conformationally/proton-position-wise, may be the same basin, or the geometric cutoff may miss the event | Inspect both endpoints and the imaginary displacement; an empty covalent bond-change report alone does not classify the TS as physical or non-physical. |

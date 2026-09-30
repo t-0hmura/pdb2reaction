@@ -81,6 +81,14 @@ Accepted values: `gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`
 
 ## Overview
 
+`opt.lbfgs` and `opt.rfo` are aliases of `lbfgs` and `rfo`;
+`freq.thermo` is an alias of `thermo`, also used by `all --thermo`.
+In path workflows, `stopt.lbfgs` and `stopt.rfo` also configure
+single-structure optimizers. Conflicting explicit values within one YAML
+layer are rejected, including common `opt` keys and the selected optimizer
+section; path-specific output directories and prefixes are assigned per run.
+String optimization reads the outer `stopt` section.
+
 
 | Section | Description | Used by |
 |---------|-------------|---------|
@@ -94,7 +102,7 @@ Accepted values: `gau_loose`, `gau`, `gau_tight`, `gau_vtight`, `baker`, `never`
 | [`stopt`](#stopt) | StringOptimizer settings | path-opt, path-search |
 | [`irc`](#irc-section) | IRC integration settings | irc |
 | [`freq`](#freq-section) | Vibrational analysis settings | freq |
-| [`thermo`](#thermo) | Thermochemistry settings | freq |
+| [`thermo`](#thermo) | Thermochemistry settings | all, freq |
 | [`dft`](#dft-section) | DFT calculation settings | dft |
 | [`bias`](#bias) | Harmonic bias settings | scan, scan2d, scan3d |
 | [`bond`](#bond) | Bond-change detection settings | scan, path-search |

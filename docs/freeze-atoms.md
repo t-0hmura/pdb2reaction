@@ -12,7 +12,7 @@ When a residue is sliced out of a larger protein using the `extract` sub-command
 
 Auto-freezes the parent atoms of cap hydrogens added by `extract` in the
 subcommands listed below. `sp` does not auto-freeze link parents; it honors an
-explicit `geom.freeze_atoms` list. Recipe:
+explicit `--freeze-atoms` or `geom.freeze_atoms` list. Recipe:
 
 ```bash
 pdb2reaction extract -i complex.pdb -c 'SAM,GPP' -l 'SAM:1,GPP:-3' -o model.pdb
